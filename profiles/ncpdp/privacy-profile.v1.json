@@ -45,5 +45,5 @@
     "This profile is a data-minimization control, not a claim of legal compliance or an NCPDP-adopted standard."
   ],
   "reference_implementation": "lib/ncpdp/privacy.ts",
-  "tests": "tests/ncpdp-privacy.test.js"
+  "tests": "tests/ncpdp-privacy.test.ts"
 }

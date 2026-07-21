@@ -74,6 +74,6 @@ regulatory endorsement.
 ## Conformance
 
 `conformance/vectors/reliance-profile-registry.v1.json` +
-`tests/reliance-profile-registry.test.js`: a pinned accept, a verified-but-
+`tests/reliance-profile-registry.test.ts`: a pinned accept, a verified-but-
 unpinned case, and a reject for tampered body, tampered hash, invalid signature,
 `profile_id` mismatch, and stale epoch.

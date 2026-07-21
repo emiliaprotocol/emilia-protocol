@@ -25,13 +25,15 @@ import { fileURLToPath } from 'node:url';
 
 import ts from 'typescript';
 
-import { STANDALONE_RUNTIME_SOURCES } from './standalone-runtime-targets.mjs';
+import fsSync from 'node:fs';
+
+import { companionSources } from './standalone-runtime-targets.mjs';
 
 const scriptPath = fileURLToPath(import.meta.url);
 const repositoryRoot = resolve(dirname(scriptPath), '..');
 const SCRIPT_NAME = 'scripts/build-standalone-runtimes.mjs';
 
-const TARGETS = STANDALONE_RUNTIME_SOURCES.map((relativeSource) => {
+const TARGETS = companionSources(fsSync, repositoryRoot).map((relativeSource) => {
   const sourcePath = resolve(repositoryRoot, relativeSource);
   const runtimePath = sourcePath.replace(/\.mts$/, '.mjs').replace(/\.ts$/, '.js');
   const basename = relativeSource.split('/').pop();
@@ -83,7 +85,7 @@ async function renderRuntime({ sourcePath, banner }) {
   const afterShebang = shebangMatch ? result.outputText.slice(shebangMatch[0].length) : result.outputText;
   // Only enforce preservation when the source actually had a license header
   // to begin with -- a handful of these scripts never carried one.
-  if (/Apache-2\.0/.test(source) && !/Apache-2\.0/.test(afterShebang.slice(0, 1000))) {
+  if (/Apache-2\.0/.test(source) && !/Apache-2\.0/.test(afterShebang)) {
     throw new Error(`${sourcePath} must retain its Apache-2.0 header`);
   }
   const spdxLine = '// SPDX-License-Identifier: Apache-2.0\n';
@@ -138,6 +140,21 @@ export async function buildStandaloneRuntimes({ check = false } = {}) {
         );
       }
       continue;
+    }
+    // Clobber guard: never overwrite a runtime path that holds a handwritten
+    // (non-generated) file -- the dir-glob scan could otherwise silently
+    // replace a real .js sibling of a TS-first source with transpiled output.
+    let existing = null;
+    try {
+      existing = await readFile(target.runtimePath, 'utf8');
+    } catch (error) {
+      if (error?.code !== 'ENOENT') throw error;
+    }
+    if (existing !== null && existing !== expected
+      && !existing.includes(`by ${SCRIPT_NAME}. Do not edit.`)) {
+      throw new Error(
+        `${target.relativeSource}: refusing to overwrite handwritten ${target.runtimePath.slice(repositoryRoot.length + 1)} with generated output`,
+      );
     }
     await writeFile(target.runtimePath, expected, 'utf8');
   }

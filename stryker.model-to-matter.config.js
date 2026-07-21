@@ -15,11 +15,17 @@ export default {
   // Every executable function from sha256hex through effect verification.
   // Module-scope frozen protocol tables and export aggregation are exact-tested
   // separately; Vitest loads those ESM initializers before mutant activation.
-  mutate: ['lib/frontier/model-to-matter.js:107-1127'],
+  // Mutate the .ts SOURCE, not the generated Node-20 companion at the old .js
+  // path: vitest resolves all imports to the source (see vitest.config.js's
+  // companion redirect), so mutants placed in the companion never load and
+  // survive as false no-coverage. Range re-derived against the .ts
+  // (strictInstantMs start .. the expected_action_invalid guard in
+  // verifyModelToMatterEffect, matching the old 107-1127 companion span).
+  mutate: ['lib/frontier/model-to-matter.ts:119-1115'],
   testFiles: [
-    'tests/model-to-matter.test.js',
-    'tests/model-to-matter-security-branches.test.js',
-    'tests/model-to-matter-mutation-oracles.test.js',
+    'tests/model-to-matter.test.{js,ts}',
+    'tests/model-to-matter-security-branches.test.{js,ts}',
+    'tests/model-to-matter-mutation-oracles.test.{js,ts}',
   ],
   thresholds: {
     // See the status file for the score produced by the current source and

@@ -1,4 +1,6 @@
 // SPDX-License-Identifier: Apache-2.0
+// Generated from linear-export.mts by scripts/build-standalone-runtimes.mjs. Do not edit.
+/* eslint-disable */
 //
 // Canonical MCP example #5 — a Linear MCP server whose `export_customer_data`
 // tool cannot run without an EMILIA authorization receipt.
@@ -8,13 +10,11 @@
 //
 // Fully offline: real verifier from @emilia-protocol/require-receipt, no Linear
 // OAuth, no workspace. Manifest-driven; earns RR-1.
-
-import { runDemo } from './_kit.mjs';
-
+import { runDemo } from './_kit.mts';
 await runDemo({
-  title: 'mcp-linear-export — export_customer_data requires a receipt',
-  tool: 'export_customer_data',
-  args: { workspace: 'acme', scope: 'all_issues', format: 'csv' },
-  approver: 'ep:approver:data-protection-officer (passkey)',
-  agentLine: '"Pulling a full customer/issue export for the analytics request."',
+    title: 'mcp-linear-export — export_customer_data requires a receipt',
+    tool: 'export_customer_data',
+    args: { workspace: 'acme', scope: 'all_issues', format: 'csv' },
+    approver: 'ep:approver:data-protection-officer (passkey)',
+    agentLine: '"Pulling a full customer/issue export for the analytics request."',
 });

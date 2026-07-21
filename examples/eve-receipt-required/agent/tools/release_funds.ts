@@ -43,8 +43,10 @@ export default defineTool({
     if (result.ok === false) {
       // Receipt missing/invalid/replayed → do NOT mutate. Hand the model a
       // machine-readable challenge (HTTP 428-shaped) describing what to bring.
-      return { ok: false, receipt_required: true, status: result.status, challenge: result.body };
+      const failed = result as { ok: false; status: any; body: any };
+      return { ok: false, receipt_required: true, status: failed.status, challenge: failed.body };
     }
-    return { ok: true, ...result.result, receipt: result.receiptId };
+    const succeeded = result as { ok: true; result: any; receiptId?: string };
+    return { ok: true, ...succeeded.result, receipt: succeeded.receiptId };
   },
 });

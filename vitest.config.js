@@ -1,6 +1,9 @@
 import { defineConfig } from 'vitest/config';
 import path from 'path';
-import { COMPANION_RUNTIME_PATHS } from './scripts/standalone-runtime-targets.mjs';
+import fs from 'fs';
+import { companionRuntimePaths } from './scripts/standalone-runtime-targets.mjs';
+
+const COMPANION_RUNTIME_PATHS = companionRuntimePaths(fs, __dirname);
 
 // Node-20 standalone-runtime companions are generated transpilations of .ts
 // sources (see scripts/build-standalone-runtimes.mjs). Tests must exercise the
@@ -64,7 +67,14 @@ export default defineConfig({
     // .claude/.serena are local agent scratch/worktree directories. They may
     // contain stale copies of this repo with their own tests and env assumptions;
     // collecting them would poison the canonical gate with non-source artifacts.
-    exclude: ['e2e/**', '**/node_modules/**', 'dist/**', '.next/**', '.claude/**', '.serena/**', 'packages/**', 'apps/**', 'examples/**', 'receipt-required-pr-kit/**', '.stryker-*-tmp/**'],
+    exclude: [
+      'e2e/**', '**/node_modules/**', 'dist/**', '.next/**', '.claude/**', '.serena/**',
+      'packages/**', 'apps/**', 'examples/**', 'receipt-required-pr-kit/**', '.stryker-*-tmp/**',
+      // Generated Node-20 companions of .test.ts sources (e.g. under
+      // conformance/): vitest must collect the .ts source only, or every
+      // converted test in a companion-glob tree runs twice.
+      ...COMPANION_RUNTIME_PATHS,
+    ],
     coverage: {
       provider: 'v8',
       reporter: ['text', 'lcov', 'html'],

@@ -1,13 +1,13 @@
 {
   "@version": "EMILIA-REPO-CONTEXT-v1",
-  "evidence_snapshot_at": "2026-07-21T06:14:19.082Z",
+  "evidence_snapshot_at": "2026-07-21T08:04:42.678Z",
   "provenance": {
     "generator": "scripts/generate-llm-context.mjs",
-    "input_digest_sha256": "0216c4e597befd26f0c62e9f058a68c7288453e484676f5487dcdb58c0de7b09",
+    "input_digest_sha256": "959869f43af366a0bc41d9a081526dc8d716254eea61b9e1bad6687461fb0444",
     "generated_from": [
       {
         "path": "docs/ai/context-source.v1.json",
-        "sha256": "32ce05090a6cefdd11022db62b5bf5259ec4ab6a9a312e41a9a22a96829ab87f",
+        "sha256": "7ca48a67f18c69100e2c7f44137db5dab3c34e5a58b03003e1e54f29233e0433",
         "bytes": 38686
       },
       {
@@ -17,12 +17,12 @@
       },
       {
         "path": "lib/proof-stats.json",
-        "sha256": "7c4c9d32660ce4ad7fb82f244d2c4e2af9e156d1f0cc4a28cbc337d92ecaa3d5",
+        "sha256": "ba27ca46a9068f4c65ec032814a29bb34a5fbff3ee8c40651a9f184b80a88ae6",
         "bytes": 1068
       },
       {
         "path": "conformance/conformance-manifest.json",
-        "sha256": "7bf850b8bce01406493b7fdfd449b49c760c27e06d261ec1b6a9965441b0be77",
+        "sha256": "cfa19313b406b5a0526a34711c46bb66144db1330829973501a283d1dc677b34",
         "bytes": 6361
       },
       {
@@ -32,12 +32,12 @@
       },
       {
         "path": "security/claims.v1.json",
-        "sha256": "a5c0436a17e12f994ec610ff85a3615c49fd5709700ea5dd4dcdaf19e565bef3",
+        "sha256": "aacfeed164a32ec2cfcf1d30951adb6b90172253a01c1528412fcd539061cd6b",
         "bytes": 155974
       },
       {
         "path": "security/security-case.json",
-        "sha256": "394f14f60c0ce034f6ff2c3281ba2676eda6afbc6189be32a421874802f257cf",
+        "sha256": "754bdee11ebadb67742c945b47652caa8f5ac20047f30f0a15bb7e1a093b482c",
         "bytes": 249912
       },
       {
@@ -266,8 +266,8 @@
       "implementations": 3,
       "relationship": "same_team_ports",
       "claim_scope": "current same-team cross-language consistency; not independent implementation evidence",
-      "manifest_sha256": "7b92abb58146daa1307b6b1e1aaac390cd75f40cf0c2f641f2ed4b74156ba31b",
-      "vector_bundle_sha256": "2f614283d4024c2dc4e89535cd1a56b8ba2548fc66f9b96760fc8fb56825cd3d"
+      "manifest_sha256": "833a60781fa24d104c935de7cd9472ef219f3d32cd8b4316f6412e9eacb79022",
+      "vector_bundle_sha256": "ee1021eb36de8e50448d9f12f00d16f3e24561276c9a42241e88178d5daa0d3e"
     },
     "formal": {
       "tla_invariants": 26,
@@ -288,7 +288,7 @@
       "status": "passed",
       "claims": 30,
       "evidence_files": 159,
-      "evidence_bundle_sha256": "c6d3b56480f061a67335c2a63fca84a59b45bff33fb8fadd5afc8f252747e9c7"
+      "evidence_bundle_sha256": "4bc6115517bb4fc546535721ffa8babe20124df6444e75c5ed771953bbdd529c"
     },
     "caid": {
       "core_vectors": 48,
@@ -1296,7 +1296,7 @@
       "language_coverage": {
         "javascript": {
           "status": "covered",
-          "evidence": "tests/evidence-challenge-durable.test.js"
+          "evidence": "tests/evidence-challenge-durable.test.ts"
         },
         "python": {
           "status": "not_applicable",
@@ -1571,7 +1571,7 @@
       "language_coverage": {
         "javascript": {
           "status": "covered",
-          "evidence": "tests/aec-execution-gate.test.js"
+          "evidence": "tests/aec-execution-gate.test.ts"
         },
         "python": {
           "status": "not_applicable",
@@ -1645,7 +1645,7 @@
       "language_coverage": {
         "javascript": {
           "status": "covered",
-          "evidence": "tests/ncpdp-privacy.test.js"
+          "evidence": "tests/ncpdp-privacy.test.ts"
         },
         "python": {
           "status": "not_applicable",
@@ -1718,7 +1718,7 @@
       "language_coverage": {
         "javascript": {
           "status": "covered",
-          "evidence": "tests/release-reproducibility.test.js"
+          "evidence": "tests/release-reproducibility.test.ts"
         },
         "python": {
           "status": "not_applicable",
@@ -1774,7 +1774,7 @@
       "language_coverage": {
         "javascript": {
           "status": "covered",
-          "evidence": "tests/release-reproducibility.test.js"
+          "evidence": "tests/release-reproducibility.test.ts"
         },
         "python": {
           "status": "not_applicable",
@@ -1866,7 +1866,7 @@
       "language_coverage": {
         "javascript": {
           "status": "covered",
-          "evidence": "tests/release-chain-coverage.test.js"
+          "evidence": "tests/release-chain-coverage.test.ts"
         },
         "python": {
           "status": "not_applicable",
@@ -1951,7 +1951,7 @@
       "language_coverage": {
         "javascript": {
           "status": "covered",
-          "evidence": "tests/release-chain-coverage.test.js"
+          "evidence": "tests/release-chain-coverage.test.ts"
         },
         "python": {
           "status": "not_applicable",
@@ -2057,7 +2057,7 @@
       "language_coverage": {
         "javascript": {
           "status": "covered",
-          "evidence": "tests/model-to-matter.test.js"
+          "evidence": "tests/model-to-matter.test.ts"
         },
         "python": {
           "status": "gap",
@@ -3524,7 +3524,7 @@
       "purpose": "run the free privileged-tool-call wedge: refuse, approve the exact action, execute once, and refuse replay"
     },
     {
-      "command": "npx vitest run tests/assurance-package.test.js",
+      "command": "npx vitest run tests/assurance-package.test.ts",
       "purpose": "execute Assurance Plane package, drift, determinism, null-conclusion, and control-mapping tests"
     },
     {
@@ -3576,7 +3576,7 @@
       "purpose": "run the offline oversight receipt report and its tamper and unpinned-approver refusals"
     },
     {
-      "command": "node conformance/vectors/generate-agentroa-orprg-ep.mjs --check && npx vitest run tests/agentroa-orprg-ep-caid.test.js",
+      "command": "node conformance/vectors/generate-agentroa-orprg-ep.mjs --check && npx vitest run tests/agentroa-orprg-ep-caid.test.ts",
       "purpose": "check the cross-standard corpus without rewriting it, then verify AgentROA, ORPRG, EP quorum, pinned CAID mappings, replay refusal, and substitution negatives"
     },
     {

@@ -7,7 +7,7 @@ Copyright the EMILIA Protocol authors.
 
 **Live demo endpoint:** `POST /api/demo/require-receipt`
 **Powered by:** [`@emilia-protocol/require-receipt`](../packages/require-receipt)
-**HTTP conformance:** [`tests/http-api-conformance.test.js`](../tests/http-api-conformance.test.js)
+**HTTP conformance:** [`tests/http-api-conformance.test.ts`](../tests/http-api-conformance.test.ts)
 
 EMILIA makes agent accountability verifiable. Before an agent changes money,
 code, permissions, records, or regulated state, the system requires a receipt.
@@ -67,7 +67,7 @@ The conformance test proves the API boundary, not just the verifier library:
 Run it:
 
 ```bash
-npx vitest run tests/http-api-conformance.test.js
+npx vitest run tests/http-api-conformance.test.ts
 ```
 
 ---

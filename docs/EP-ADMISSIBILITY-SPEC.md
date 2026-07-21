@@ -19,7 +19,7 @@ admissible | missing_evidence | stale | conflicted | unverifiable
 ```
 
 - Spec surface: [`lib/evidence/admissibility.js`](../lib/evidence/admissibility.js) (`evaluateAdmissibility`)
-- Runnable vector: [`examples/admissibility/admissibility-vector.mjs`](../examples/admissibility/admissibility-vector.mjs) (`node examples/admissibility/admissibility-vector.mjs --emit`) · CI: `tests/admissibility.test.js`
+- Runnable vector: [`examples/admissibility/admissibility-vector.mjs`](../examples/admissibility/admissibility-vector.mjs) (`node examples/admissibility/admissibility-vector.mjs --emit`) · CI: `tests/admissibility.test.ts`
 - Sharpens **EP-AEC** ([`draft-schrock-ep-authorization-evidence-chain`](../standards/)) — see "Relationship to EP-AEC" below.
 
 ## Why this is a distinct primitive, not another receipt

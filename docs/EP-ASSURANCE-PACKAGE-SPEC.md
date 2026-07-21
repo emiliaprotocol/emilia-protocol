@@ -84,7 +84,7 @@ evidence (`--strict`: on any drift), so it drops into an audit or CI pipeline.
 
 ## Conformance
 
-`tests/assurance-package.test.js`: bundling, the drift catch (a runtime claiming
+`tests/assurance-package.test.ts`: bundling, the drift catch (a runtime claiming
 `rely` over an over-ceiling authorization is caught), deterministic
 re-performance, null-conclusion enforcement, and full verdict→control coverage.
 `examples/reliance/ey-continuous-assurance.mjs` runs the end-to-end story over a

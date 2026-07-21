@@ -420,7 +420,7 @@ jobs:
       - name: Check published proof statistics against an executed test run
         env:
           # generate-proof-stats.mjs runs the full vitest suite, and
-          # tests/grace-curtailment.test.js execFileSync-spawns
+          # tests/grace-curtailment.test.ts execFileSync-spawns
           # examples/grace/proof-of-curtailment-vector.mjs as a bare `node`
           # child process. Vitest's own transform pipeline covers everything
           # it loads directly, but not that grandchild subprocess, which
@@ -590,7 +590,7 @@ jobs:
           cache: npm
       - run: npm ci --ignore-scripts
       - name: Run benchmark tests
-        run: npx vitest run tests/benchmark.test.js tests/adversarial-benchmarks.test.js
+        run: npx vitest run tests/benchmark.test.ts tests/adversarial-benchmarks.test.ts
         env:
           BENCHMARK_CI: '1'
 
@@ -932,7 +932,7 @@ jobs:
           spec_paths=$(grep -c '^\s\+/api/' openapi.yaml || echo 0)
           # Exclude surfaces that are intentionally documented OUTSIDE EP's
           # protocol OpenAPI (mirrors the OPENAPI_EXEMPTIONS in
-          # tests/route-coverage.test.js): SCIM is RFC 7643/7644 + its own
+          # tests/route-coverage.test.ts): SCIM is RFC 7643/7644 + its own
           # ServiceProviderConfig; the pilot sandbox is GTM onboarding tooling.
           route_files=$(find app/api \( -name route.js -o -name route.ts \) 2>/dev/null | grep -vE '/api/scim/|/api/sso/|/api/pilot/|/api/badge/|/api/demo/|/api/score/' | wc -l | tr -d ' ')
           echo "openapi.yaml paths: $spec_paths"
@@ -1069,7 +1069,7 @@ jobs:
           cache: npm
       - run: npm ci --ignore-scripts
       - name: Run Postgres integration tests
-        run: npx vitest run tests/postgres-integration.test.js
+        run: npx vitest run tests/postgres-integration.test.ts
         env:
           INTEGRATION_POSTGRES: "1"
           PGHOST:     localhost

@@ -38,8 +38,8 @@ the exact seven-edge/eight-edge boundary oracle rather than timing out.
 The Gate slice is pinned to the decision-bearing predicates for break-glass
 policy and execution ordering, canonical execution binding, strict key-window
 evaluation, and durable ownership-fenced permanent consumption. Its dedicated
-oracles live in `tests/gate-security-remediation.test.js` and
-`tests/gate-execution-binding-failclosed.test.js`.
+oracles live in `tests/gate-security-remediation.test.ts` and
+`tests/gate-execution-binding-failclosed.test.ts`.
 
 Run the gate with:
 

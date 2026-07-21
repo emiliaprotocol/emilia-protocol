@@ -1,3 +1,5 @@
+// Generated from staircase.ts by scripts/build-standalone-runtimes.mjs. Do not edit.
+/* eslint-disable */
 /**
  * Staircase Load Test — Find the Knee of the Curve
  *
@@ -13,81 +15,68 @@
  *
  * @license Apache-2.0
  */
-
 import { check, sleep } from 'k6';
 import { Trend, Rate, Counter } from 'k6/metrics';
 import { SLO, epPost, makeHandshakePayload } from './config.js';
-
 // ── Custom metrics ───────────────────────────────────────────────────────────
-
 const duration = new Trend('ep_create_duration', true);
 const errors = new Rate('ep_create_errors');
 const total = new Counter('ep_create_total');
-
 // ── Staircase stages ─────────────────────────────────────────────────────────
-
 export const options = {
-  stages: [
-    { duration: '60s', target: 10 },    // step 1: 10 VUs
-    { duration: '60s', target: 25 },    // step 2: 25 VUs
-    { duration: '60s', target: 50 },    // step 3: 50 VUs
-    { duration: '60s', target: 100 },   // step 4: 100 VUs
-    { duration: '60s', target: 250 },   // step 5: 250 VUs
-    { duration: '60s', target: 500 },   // step 6: 500 VUs
-    { duration: '30s', target: 0 },     // cooldown
-  ],
-
-  // No thresholds — this is diagnostic, not pass/fail
-  thresholds: {},
+    stages: [
+        { duration: '60s', target: 10 }, // step 1: 10 VUs
+        { duration: '60s', target: 25 }, // step 2: 25 VUs
+        { duration: '60s', target: 50 }, // step 3: 50 VUs
+        { duration: '60s', target: 100 }, // step 4: 100 VUs
+        { duration: '60s', target: 250 }, // step 5: 250 VUs
+        { duration: '60s', target: 500 }, // step 6: 500 VUs
+        { duration: '30s', target: 0 }, // cooldown
+    ],
+    // No thresholds — this is diagnostic, not pass/fail
+    thresholds: {},
 };
-
 // ── Test function ────────────────────────────────────────────────────────────
-
 export default function staircase() {
-  const payload = makeHandshakePayload();
-  const res = epPost('/api/handshake', payload);
-
-  duration.add(res.timings.duration);
-  total.add(1);
-
-  const passed = check(res, {
-    'status is 201': (r) => r.status === 201,
-    'has handshake_id': (r) => {
-      try { return !!r.json().handshake_id; } catch { return false; }
-    },
-  });
-
-  errors.add(passed ? 0 : 1);
-
-  sleep(0.2); // 200ms think time between iterations
+    const payload = makeHandshakePayload();
+    const res = epPost('/api/handshake', payload);
+    duration.add(res.timings.duration);
+    total.add(1);
+    const passed = check(res, {
+        'status is 201': (r) => r.status === 201,
+        'has handshake_id': (r) => {
+            try {
+                return !!r.json().handshake_id;
+            }
+            catch {
+                return false;
+            }
+        },
+    });
+    errors.add(passed ? 0 : 1);
+    sleep(0.2); // 200ms think time between iterations
 }
-
 // ── Summary ──────────────────────────────────────────────────────────────────
-
 /**
  * @typedef {Object} K6Metric
  * @property {Object.<string, *>} values
  */
-
 /**
  * @typedef {Object} K6SummaryData
  * @property {Object.<string, K6Metric>} metrics
  */
-
 /** @param {K6SummaryData} data */
 export function handleSummary(data) {
-  const p50 = data.metrics.ep_create_duration?.values?.['p(50)'] || 'N/A';
-  const p95 = data.metrics.ep_create_duration?.values?.['p(95)'] || 'N/A';
-  const p99 = data.metrics.ep_create_duration?.values?.['p(99)'] || 'N/A';
-  const errRate = data.metrics.ep_create_errors?.values?.rate || 0;
-  const count = data.metrics.ep_create_total?.values?.count || 0;
-  const httpFail = data.metrics.http_req_failed?.values?.rate || 0;
-
-  // Per-status-code breakdown
-  const status201 = data.metrics['checks']?.values?.passes || 0;
-  const statusFail = data.metrics['checks']?.values?.fails || 0;
-
-  const summary = `
+    const p50 = data.metrics.ep_create_duration?.values?.['p(50)'] || 'N/A';
+    const p95 = data.metrics.ep_create_duration?.values?.['p(95)'] || 'N/A';
+    const p99 = data.metrics.ep_create_duration?.values?.['p(99)'] || 'N/A';
+    const errRate = data.metrics.ep_create_errors?.values?.rate || 0;
+    const count = data.metrics.ep_create_total?.values?.count || 0;
+    const httpFail = data.metrics.http_req_failed?.values?.rate || 0;
+    // Per-status-code breakdown
+    const status201 = data.metrics['checks']?.values?.passes || 0;
+    const statusFail = data.metrics['checks']?.values?.fails || 0;
+    const summary = `
 ╔══════════════════════════════════════════════════════════════════════╗
 ║                 STAIRCASE LOAD TEST — RESULTS                      ║
 ║            10 → 25 → 50 → 100 → 250 → 500 VUs                    ║
@@ -106,9 +95,8 @@ export function handleSummary(data) {
 
 Check k6 Cloud or the JSON output for per-step VU breakdown.
 `;
-
-  return {
-    stdout: summary,
-    'staircase-results.json': JSON.stringify(data, null, 2),
-  };
+    return {
+        stdout: summary,
+        'staircase-results.json': JSON.stringify(data, null, 2),
+    };
 }

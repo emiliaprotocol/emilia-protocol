@@ -5,7 +5,7 @@
 #
 # Usage:
 #   docker compose -f docker-compose.test.yml up -d
-#   INTEGRATION_POSTGRES=1 npx vitest run tests/postgres-integration.test.js
+#   INTEGRATION_POSTGRES=1 npx vitest run tests/postgres-integration.test.ts
 #   docker compose -f docker-compose.test.yml down -v
 
 services:

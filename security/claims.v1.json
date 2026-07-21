@@ -39,11 +39,11 @@
         { "suite": "security/vectors.v1.json", "case_id": "reject_class_a_bearer_denial", "polarity": "negative", "expect": { "valid": false } }
       ],
       "tests": [
-        { "file": "tests/signoff-decision-evidence.test.js", "title": "exports a device-signed denial that verifies offline under a pinned approver key", "runner": "vitest" },
-        { "file": "tests/v1-api.test.js", "title": "exports a bound Class-A denial as portable EP-SIGNOFF-v1 evidence", "runner": "vitest" },
-        { "file": "tests/webauthn-approve-route.test.js", "title": "refuses to relabel a device-signed denial as approval", "runner": "vitest" },
-        { "file": "tests/v1-api.test.js", "title": "returns 403 when bearer-key rejection attempts a Class-A-required receipt", "runner": "vitest" },
-        { "file": "tests/webauthn-lib.test.js", "title": "treats a matching rejection as equally terminal", "runner": "vitest" }
+        { "file": "tests/signoff-decision-evidence.test.ts", "title": "exports a device-signed denial that verifies offline under a pinned approver key", "runner": "vitest" },
+        { "file": "tests/v1-api.test.ts", "title": "exports a bound Class-A denial as portable EP-SIGNOFF-v1 evidence", "runner": "vitest" },
+        { "file": "tests/webauthn-approve-route.test.ts", "title": "refuses to relabel a device-signed denial as approval", "runner": "vitest" },
+        { "file": "tests/v1-api.test.ts", "title": "returns 403 when bearer-key rejection attempts a Class-A-required receipt", "runner": "vitest" },
+        { "file": "tests/webauthn-lib.test.ts", "title": "treats a matching rejection as equally terminal", "runner": "vitest" }
       ],
       "formal": [
         { "status": "not_modeled", "gap": "TLA+ and Alloy model rejection terminality, but the exact decision-in-WebAuthn-challenge bytes, API alias mapping, and bearer-path assurance gate are executable properties rather than a composed formal proof." }
@@ -215,14 +215,14 @@
         "go": { "status": "gap", "reason": "No authority resolver port is claimed; the security case fails if this absence is omitted." }
       },
       "vectors": [
-        { "suite": "conformance/vectors/authority.v1.json", "case_id": "authorized_within_scope_and_limit", "polarity": "positive", "expect": { "valid": true, "verdict": "authorized" }, "execution": { "runner": "vitest", "file": "tests/authority-registry.test.js", "title": "resolve: authorized_within_scope_and_limit" } },
-        { "suite": "conformance/vectors/authority.v1.json", "case_id": "reject_amount_exceeded", "polarity": "negative", "expect": { "valid": false, "verdict": "amount_exceeded" }, "execution": { "runner": "vitest", "file": "tests/authority-registry.test.js", "title": "resolve: reject_amount_exceeded" } },
-        { "suite": "conformance/vectors/authority.v1.json", "case_id": "proof_accepted_when_pinned", "polarity": "positive", "expect": { "valid": true, "reason": "accepted" }, "execution": { "runner": "vitest", "file": "tests/authority-registry.test.js", "title": "proof: proof_accepted_when_pinned" } },
-        { "suite": "conformance/vectors/authority.v1.json", "case_id": "reject_proof_registry_head_mismatch", "polarity": "negative", "expect": { "valid": false, "reason": "registry_head_mismatch" }, "execution": { "runner": "vitest", "file": "tests/authority-registry.test.js", "title": "proof: reject_proof_registry_head_mismatch" } }
+        { "suite": "conformance/vectors/authority.v1.json", "case_id": "authorized_within_scope_and_limit", "polarity": "positive", "expect": { "valid": true, "verdict": "authorized" }, "execution": { "runner": "vitest", "file": "tests/authority-registry.test.ts", "title": "resolve: authorized_within_scope_and_limit" } },
+        { "suite": "conformance/vectors/authority.v1.json", "case_id": "reject_amount_exceeded", "polarity": "negative", "expect": { "valid": false, "verdict": "amount_exceeded" }, "execution": { "runner": "vitest", "file": "tests/authority-registry.test.ts", "title": "resolve: reject_amount_exceeded" } },
+        { "suite": "conformance/vectors/authority.v1.json", "case_id": "proof_accepted_when_pinned", "polarity": "positive", "expect": { "valid": true, "reason": "accepted" }, "execution": { "runner": "vitest", "file": "tests/authority-registry.test.ts", "title": "proof: proof_accepted_when_pinned" } },
+        { "suite": "conformance/vectors/authority.v1.json", "case_id": "reject_proof_registry_head_mismatch", "polarity": "negative", "expect": { "valid": false, "reason": "registry_head_mismatch" }, "execution": { "runner": "vitest", "file": "tests/authority-registry.test.ts", "title": "proof: reject_proof_registry_head_mismatch" } }
       ],
       "tests": [
-        { "file": "tests/authority-registry.test.js", "title": "does not let a key pinned for one issuer authenticate another issuer", "runner": "vitest" },
-        { "file": "tests/authority-registry.test.js", "title": "delegation cannot widen by omitting scope, ceiling, currency, policy, assurance, lifecycle, or organization", "runner": "vitest" }
+        { "file": "tests/authority-registry.test.ts", "title": "does not let a key pinned for one issuer authenticate another issuer", "runner": "vitest" },
+        { "file": "tests/authority-registry.test.ts", "title": "delegation cannot widen by omitting scope, ceiling, currency, policy, assurance, lifecycle, or organization", "runner": "vitest" }
       ],
       "formal": [
         { "status": "partial", "model": "formal/tamarin/ep_reliance_composed.spthy", "runner": "formal/tamarin/run-composed.sh", "lemma": "execution_requires_full_composition", "result_evidence": "formal/tamarin/results/ep_reliance_composed.summary.txt", "scope": "Symbolic issuer and authority pins are composed; concrete registry scope algebra remains executable rather than symbolically modeled." }
@@ -250,14 +250,14 @@
         "go": { "status": "gap", "reason": "No reliance-kernel port is claimed; base receipt and revocation primitives remain covered separately." }
       },
       "vectors": [
-        { "suite": "conformance/vectors/reliance.v1.json", "case_id": "rely_full_packet_composes", "polarity": "positive", "expect": { "valid": true, "verdict": "rely" }, "execution": { "runner": "vitest", "file": "tests/reliance-kernel.test.js", "title": "rely_full_packet_composes → rely" } },
-        { "suite": "conformance/vectors/reliance.v1.json", "case_id": "reject_no_profile", "polarity": "negative", "expect": { "valid": false, "verdict": "do_not_rely_no_profile" }, "execution": { "runner": "vitest", "file": "tests/reliance-kernel.test.js", "title": "reject_no_profile → do_not_rely_no_profile" } },
-        { "suite": "conformance/vectors/reliance.v1.json", "case_id": "reject_authority_organization_mismatch", "polarity": "negative", "expect": { "valid": false, "verdict": "do_not_rely_authority_organization_mismatch" }, "execution": { "runner": "vitest", "file": "tests/reliance-kernel.test.js", "title": "reject_authority_organization_mismatch → do_not_rely_authority_organization_mismatch" } }
+        { "suite": "conformance/vectors/reliance.v1.json", "case_id": "rely_full_packet_composes", "polarity": "positive", "expect": { "valid": true, "verdict": "rely" }, "execution": { "runner": "vitest", "file": "tests/reliance-kernel.test.ts", "title": "rely_full_packet_composes → rely" } },
+        { "suite": "conformance/vectors/reliance.v1.json", "case_id": "reject_no_profile", "polarity": "negative", "expect": { "valid": false, "verdict": "do_not_rely_no_profile" }, "execution": { "runner": "vitest", "file": "tests/reliance-kernel.test.ts", "title": "reject_no_profile → do_not_rely_no_profile" } },
+        { "suite": "conformance/vectors/reliance.v1.json", "case_id": "reject_authority_organization_mismatch", "polarity": "negative", "expect": { "valid": false, "verdict": "do_not_rely_authority_organization_mismatch" }, "execution": { "runner": "vitest", "file": "tests/reliance-kernel.test.ts", "title": "reject_authority_organization_mismatch → do_not_rely_authority_organization_mismatch" } }
       ],
       "tests": [
-        { "file": "tests/reliance-kernel.test.js", "title": "no pinned profile → no reliance (verification can pass, reliance cannot)", "runner": "vitest" },
-        { "file": "tests/reliance-kernel.test.js", "title": "pins the authority registry head and minimum epoch at reliance time", "runner": "vitest" },
-        { "file": "tests/reliance-kernel.test.js", "title": "refuses caller material fields that disagree with the signed receipt", "runner": "vitest" }
+        { "file": "tests/reliance-kernel.test.ts", "title": "no pinned profile → no reliance (verification can pass, reliance cannot)", "runner": "vitest" },
+        { "file": "tests/reliance-kernel.test.ts", "title": "pins the authority registry head and minimum epoch at reliance time", "runner": "vitest" },
+        { "file": "tests/reliance-kernel.test.ts", "title": "refuses caller material fields that disagree with the signed receipt", "runner": "vitest" }
       ],
       "formal": [
         { "status": "partial", "model": "formal/tamarin/ep_reliance_composed.spthy", "runner": "formal/tamarin/run-composed.sh", "lemma": "execution_requires_full_composition", "result_evidence": "formal/tamarin/results/ep_reliance_composed.summary.txt", "scope": "Challenge, approval, authority, revocation, issuer pinning, consumption, and execution are composed. Assurance arithmetic, policy authorship, clocks, and transparency completeness remain external." }
@@ -328,17 +328,17 @@
         "go": { "status": "covered", "evidence": "conformance/vectors/outcome-binding.exec.v1.json" }
       },
       "vectors": [
-        { "suite": "formal/outcome-authority-join.cases.json", "case_id": "outcome_accept_exact_in_bounds", "polarity": "positive", "expect": { "valid": true }, "execution": { "runner": "vitest", "file": "tests/outcome-authority-formal.test.js", "title": "formal case: outcome_accept_exact_in_bounds" } },
-        { "suite": "formal/outcome-authority-join.cases.json", "case_id": "outcome_reject_action_digest_substitution", "polarity": "negative", "expect": { "valid": false }, "execution": { "runner": "vitest", "file": "tests/outcome-authority-formal.test.js", "title": "formal case: outcome_reject_action_digest_substitution" } },
-        { "suite": "formal/outcome-authority-join.cases.json", "case_id": "outcome_reject_receipt_digest_substitution", "polarity": "negative", "expect": { "valid": false }, "execution": { "runner": "vitest", "file": "tests/outcome-authority-formal.test.js", "title": "formal case: outcome_reject_receipt_digest_substitution" } },
-        { "suite": "formal/outcome-authority-join.cases.json", "case_id": "outcome_reject_policy_widening_signed_divergence", "polarity": "negative", "expect": { "valid": false }, "execution": { "runner": "vitest", "file": "tests/outcome-authority-formal.test.js", "title": "formal case: outcome_reject_policy_widening_signed_divergence" } }
+        { "suite": "formal/outcome-authority-join.cases.json", "case_id": "outcome_accept_exact_in_bounds", "polarity": "positive", "expect": { "valid": true }, "execution": { "runner": "vitest", "file": "tests/outcome-authority-formal.test.ts", "title": "formal case: outcome_accept_exact_in_bounds" } },
+        { "suite": "formal/outcome-authority-join.cases.json", "case_id": "outcome_reject_action_digest_substitution", "polarity": "negative", "expect": { "valid": false }, "execution": { "runner": "vitest", "file": "tests/outcome-authority-formal.test.ts", "title": "formal case: outcome_reject_action_digest_substitution" } },
+        { "suite": "formal/outcome-authority-join.cases.json", "case_id": "outcome_reject_receipt_digest_substitution", "polarity": "negative", "expect": { "valid": false }, "execution": { "runner": "vitest", "file": "tests/outcome-authority-formal.test.ts", "title": "formal case: outcome_reject_receipt_digest_substitution" } },
+        { "suite": "formal/outcome-authority-join.cases.json", "case_id": "outcome_reject_policy_widening_signed_divergence", "polarity": "negative", "expect": { "valid": false }, "execution": { "runner": "vitest", "file": "tests/outcome-authority-formal.test.ts", "title": "formal case: outcome_reject_policy_widening_signed_divergence" } }
       ],
       "tests": [
         { "file": "packages/verify/outcome-binding.test.js", "title": "accepts real signed receipt + pinned executor attestation + in-bounds outcome", "runner": "node-test" },
         { "file": "packages/verify/outcome-binding.test.js", "title": "relying-party policy can tighten but cannot replace or loosen signed intent", "runner": "node-test" },
         { "file": "packages/verify/outcome-binding.test.js", "title": "result_digest binds the exact signed attestation, not only the verdict", "runner": "node-test" },
-        { "file": "tests/outcome-authority-formal.test.js", "title": "all six load-bearing obligations hold in the bounded model", "runner": "vitest" },
-        { "file": "tests/outcome-authority-formal.test.js", "title": "every weakened invariant produces a counterexample", "runner": "vitest" }
+        { "file": "tests/outcome-authority-formal.test.ts", "title": "all six load-bearing obligations hold in the bounded model", "runner": "vitest" },
+        { "file": "tests/outcome-authority-formal.test.ts", "title": "every weakened invariant produces a counterexample", "runner": "vitest" }
       ],
       "formal": [
         {
@@ -393,20 +393,20 @@
         "go": { "status": "covered", "evidence": "conformance/vectors/authority-document-proof-join.exec.v1.json" }
       },
       "vectors": [
-        { "suite": "formal/outcome-authority-join.cases.json", "case_id": "authority_accept_newest_key_with_registry_pins", "polarity": "positive", "expect": { "valid": true }, "execution": { "runner": "vitest", "file": "tests/outcome-authority-formal.test.js", "title": "formal case: authority_accept_newest_key_with_registry_pins" } },
-        { "suite": "formal/outcome-authority-join.cases.json", "case_id": "authority_reject_key_omitted_by_newest_document", "polarity": "negative", "expect": { "valid": false }, "execution": { "runner": "vitest", "file": "tests/outcome-authority-formal.test.js", "title": "formal case: authority_reject_key_omitted_by_newest_document" } },
-        { "suite": "formal/outcome-authority-join.cases.json", "case_id": "authority_reject_revoked_proof_key", "polarity": "negative", "expect": { "valid": false }, "execution": { "runner": "vitest", "file": "tests/outcome-authority-formal.test.js", "title": "formal case: authority_reject_revoked_proof_key" } },
-        { "suite": "formal/outcome-authority-join.cases.json", "case_id": "authority_reject_revoked_rotation_key", "polarity": "negative", "expect": { "valid": false }, "execution": { "runner": "vitest", "file": "tests/outcome-authority-formal.test.js", "title": "formal case: authority_reject_revoked_rotation_key" } },
-        { "suite": "formal/outcome-authority-join.cases.json", "case_id": "authority_reject_missing_registry_head_pin", "polarity": "negative", "expect": { "valid": false }, "execution": { "runner": "vitest", "file": "tests/outcome-authority-formal.test.js", "title": "formal case: authority_reject_missing_registry_head_pin" } },
-        { "suite": "formal/outcome-authority-join.cases.json", "case_id": "authority_reject_missing_registry_epoch_pin", "polarity": "negative", "expect": { "valid": false }, "execution": { "runner": "vitest", "file": "tests/outcome-authority-formal.test.js", "title": "formal case: authority_reject_missing_registry_epoch_pin" } }
+        { "suite": "formal/outcome-authority-join.cases.json", "case_id": "authority_accept_newest_key_with_registry_pins", "polarity": "positive", "expect": { "valid": true }, "execution": { "runner": "vitest", "file": "tests/outcome-authority-formal.test.ts", "title": "formal case: authority_accept_newest_key_with_registry_pins" } },
+        { "suite": "formal/outcome-authority-join.cases.json", "case_id": "authority_reject_key_omitted_by_newest_document", "polarity": "negative", "expect": { "valid": false }, "execution": { "runner": "vitest", "file": "tests/outcome-authority-formal.test.ts", "title": "formal case: authority_reject_key_omitted_by_newest_document" } },
+        { "suite": "formal/outcome-authority-join.cases.json", "case_id": "authority_reject_revoked_proof_key", "polarity": "negative", "expect": { "valid": false }, "execution": { "runner": "vitest", "file": "tests/outcome-authority-formal.test.ts", "title": "formal case: authority_reject_revoked_proof_key" } },
+        { "suite": "formal/outcome-authority-join.cases.json", "case_id": "authority_reject_revoked_rotation_key", "polarity": "negative", "expect": { "valid": false }, "execution": { "runner": "vitest", "file": "tests/outcome-authority-formal.test.ts", "title": "formal case: authority_reject_revoked_rotation_key" } },
+        { "suite": "formal/outcome-authority-join.cases.json", "case_id": "authority_reject_missing_registry_head_pin", "polarity": "negative", "expect": { "valid": false }, "execution": { "runner": "vitest", "file": "tests/outcome-authority-formal.test.ts", "title": "formal case: authority_reject_missing_registry_head_pin" } },
+        { "suite": "formal/outcome-authority-join.cases.json", "case_id": "authority_reject_missing_registry_epoch_pin", "polarity": "negative", "expect": { "valid": false }, "execution": { "runner": "vitest", "file": "tests/outcome-authority-formal.test.ts", "title": "formal case: authority_reject_missing_registry_epoch_pin" } }
       ],
       "tests": [
-        { "file": "tests/authority-document-proof-join.test.js", "title": "requires every load-bearing join check on acceptance", "runner": "vitest" },
-        { "file": "tests/authority-document-proof-join.test.js", "title": "preserves proof verification but refuses absent registry and epoch pins", "runner": "vitest" },
-        { "file": "tests/authority-document-proof-join.test.js", "title": "does not resolve a proof signer through a key omitted by the effective document", "runner": "vitest" },
-        { "file": "tests/authority-doc.test.js", "title": "does not accept a rotation issuer revoked at the successor issuance time", "runner": "vitest" },
-        { "file": "tests/outcome-authority-formal.test.js", "title": "all six load-bearing obligations hold in the bounded model", "runner": "vitest" },
-        { "file": "tests/outcome-authority-formal.test.js", "title": "every weakened invariant produces a counterexample", "runner": "vitest" }
+        { "file": "tests/authority-document-proof-join.test.ts", "title": "requires every load-bearing join check on acceptance", "runner": "vitest" },
+        { "file": "tests/authority-document-proof-join.test.ts", "title": "preserves proof verification but refuses absent registry and epoch pins", "runner": "vitest" },
+        { "file": "tests/authority-document-proof-join.test.ts", "title": "does not resolve a proof signer through a key omitted by the effective document", "runner": "vitest" },
+        { "file": "tests/authority-doc.test.ts", "title": "does not accept a rotation issuer revoked at the successor issuance time", "runner": "vitest" },
+        { "file": "tests/outcome-authority-formal.test.ts", "title": "all six load-bearing obligations hold in the bounded model", "runner": "vitest" },
+        { "file": "tests/outcome-authority-formal.test.ts", "title": "every weakened invariant produces a counterexample", "runner": "vitest" }
       ],
       "formal": [
         {
@@ -482,7 +482,7 @@
         { "language": "javascript", "file": "lib/negotiate/evidence-challenge.ts", "export": "evaluateRegisteredPresentation" }
       ],
       "language_coverage": {
-        "javascript": { "status": "covered", "evidence": "tests/evidence-challenge-durable.test.js" },
+        "javascript": { "status": "covered", "evidence": "tests/evidence-challenge-durable.test.ts" },
         "python": { "status": "not_applicable", "reason": "Challenge lifecycle state belongs to the Node relying-party enforcement service, not the offline Python verifier." },
         "go": { "status": "not_applicable", "reason": "Challenge lifecycle state belongs to the Node relying-party enforcement service, not the offline Go verifier." }
       },
@@ -492,10 +492,10 @@
         { "suite": "security/vectors.v1.json", "case_id": "reject_challenge_policy_drift", "polarity": "negative", "expect": { "valid": false } }
       ],
       "tests": [
-        { "file": "tests/evidence-challenge-durable.test.js", "title": "atomically registers one exact challenge across 100 concurrent workers", "runner": "vitest" },
-        { "file": "tests/evidence-challenge-durable.test.js", "title": "survives restart and admits exactly one concurrent presentation", "runner": "vitest" },
-        { "file": "tests/evidence-challenge-durable.test.js", "title": "refuses policy drift without consuming the registered challenge", "runner": "vitest" },
-        { "file": "tests/evidence-challenge-durable.test.js", "title": "propagates backend outage without an in-memory fallback", "runner": "vitest" }
+        { "file": "tests/evidence-challenge-durable.test.ts", "title": "atomically registers one exact challenge across 100 concurrent workers", "runner": "vitest" },
+        { "file": "tests/evidence-challenge-durable.test.ts", "title": "survives restart and admits exactly one concurrent presentation", "runner": "vitest" },
+        { "file": "tests/evidence-challenge-durable.test.ts", "title": "refuses policy drift without consuming the registered challenge", "runner": "vitest" },
+        { "file": "tests/evidence-challenge-durable.test.ts", "title": "propagates backend outage without an in-memory fallback", "runner": "vitest" }
       ],
       "formal": [
         { "status": "partial", "model": "formal/tamarin/ep_reliance_composed.spthy", "runner": "formal/tamarin/run-composed.sh", "lemma": "injective_execution_with_consumption", "result_evidence": "formal/tamarin/results/ep_reliance_composed.summary.txt", "scope": "The symbolic model binds and consumes a fresh relying-party challenge; durable registration and crash behavior are exercised by executable fault tests." }
@@ -561,8 +561,8 @@
       "tests": [
         { "file": "packages/gate/gate.test.js", "title": "run() commits a successful effect and permanently refuses replay", "runner": "node-test" },
         { "file": "packages/gate/gate.test.js", "title": "run() consumes an indeterminate attempt when the executor throws", "runner": "node-test" },
-        { "file": "tests/aec-execution-gate.test.js", "title": "executes a Class-A chain once and refuses replay", "runner": "vitest" },
-        { "file": "tests/aec-execution-gate.test.js", "title": "burns an indeterminate authorization after the effect starts", "runner": "vitest" }
+        { "file": "tests/aec-execution-gate.test.ts", "title": "executes a Class-A chain once and refuses replay", "runner": "vitest" },
+        { "file": "tests/aec-execution-gate.test.ts", "title": "burns an indeterminate authorization after the effect starts", "runner": "vitest" }
       ],
       "formal": [
         { "status": "partial", "model": "formal/tamarin/ep_reliance_composed.spthy", "runner": "formal/tamarin/run-composed.sh", "lemma": "injective_execution_with_consumption", "result_evidence": "formal/tamarin/results/ep_reliance_composed.summary.txt", "scope": "The composed lemma proves injective checked execution but does not model an external system whose effect succeeds before its response is lost." }
@@ -631,7 +631,7 @@
         { "language": "javascript", "file": "packages/gate/src/evidence.ts", "export": "createAtomicEvidenceLog" }
       ],
       "language_coverage": {
-        "javascript": { "status": "covered", "evidence": "tests/aec-execution-gate.test.js" },
+        "javascript": { "status": "covered", "evidence": "tests/aec-execution-gate.test.ts" },
         "python": { "status": "not_applicable", "reason": "Python implements offline AEC verification but does not own the stateful external-effect transaction." },
         "go": { "status": "not_applicable", "reason": "Go implements offline AEC verification but does not own the stateful external-effect transaction." }
       },
@@ -640,13 +640,13 @@
         { "suite": "security/vectors.v1.json", "case_id": "reject_aec_replay_via_decoy_component", "polarity": "negative", "expect": { "valid": false } }
       ],
       "tests": [
-        { "file": "tests/aec-execution-gate.test.js", "title": "executes a Class-A chain once and refuses replay", "runner": "vitest" },
-        { "file": "tests/aec-execution-gate.test.js", "title": "cannot mint a fresh replay key with an invalid decoy component", "runner": "vitest" },
-        { "file": "tests/aec-execution-gate.test.js", "title": "never accepts presenter-supplied verifier code as relying-party evidence policy", "runner": "vitest" },
-        { "file": "tests/aec-execution-gate.test.js", "title": "captures validated store and logger methods against post-construction replacement", "runner": "vitest" },
-        { "file": "tests/aec-execution-gate.test.js", "title": "refuses expiring consumption and process-local evidence in production mode", "runner": "vitest" },
-        { "file": "tests/aec-execution-gate.test.js", "title": "treats false commit and malformed log acknowledgements as failures", "runner": "vitest" },
-        { "file": "tests/aec-execution-gate.test.js", "title": "passes a frozen pre-await action snapshot to the effect", "runner": "vitest" },
+        { "file": "tests/aec-execution-gate.test.ts", "title": "executes a Class-A chain once and refuses replay", "runner": "vitest" },
+        { "file": "tests/aec-execution-gate.test.ts", "title": "cannot mint a fresh replay key with an invalid decoy component", "runner": "vitest" },
+        { "file": "tests/aec-execution-gate.test.ts", "title": "never accepts presenter-supplied verifier code as relying-party evidence policy", "runner": "vitest" },
+        { "file": "tests/aec-execution-gate.test.ts", "title": "captures validated store and logger methods against post-construction replacement", "runner": "vitest" },
+        { "file": "tests/aec-execution-gate.test.ts", "title": "refuses expiring consumption and process-local evidence in production mode", "runner": "vitest" },
+        { "file": "tests/aec-execution-gate.test.ts", "title": "treats false commit and malformed log acknowledgements as failures", "runner": "vitest" },
+        { "file": "tests/aec-execution-gate.test.ts", "title": "passes a frozen pre-await action snapshot to the effect", "runner": "vitest" },
         { "file": "packages/gate/evidence-atomic.test.js", "title": "atomic evidence: concurrent replicas append one linear chain", "runner": "node-test" },
         { "file": "packages/gate/evidence-atomic.test.js", "title": "atomic evidence: response loss after append recovers the same record id", "runner": "node-test" },
         { "file": "packages/gate/evidence-atomic.test.js", "title": "atomic evidence: a backend cannot claim success without persisting the record", "runner": "node-test" },
@@ -681,7 +681,7 @@
         { "language": "javascript", "file": "lib/ncpdp/privacy.ts", "export": "evaluateRxDisclosure" }
       ],
       "language_coverage": {
-        "javascript": { "status": "covered", "evidence": "tests/ncpdp-privacy.test.js" },
+        "javascript": { "status": "covered", "evidence": "tests/ncpdp-privacy.test.ts" },
         "python": { "status": "not_applicable", "reason": "This profile is enforced by the Node Rx sidecar; no Python wire emitter is claimed." },
         "go": { "status": "not_applicable", "reason": "This profile is enforced by the Node Rx sidecar; no Go wire emitter is claimed." }
       },
@@ -692,10 +692,10 @@
         { "suite": "security/vectors.v1.json", "case_id": "reject_health_disclosure_substitution", "polarity": "negative", "expect": { "valid": false } }
       ],
       "tests": [
-        { "file": "tests/ncpdp-privacy.test.js", "title": "projects an appeal bundle without recursively copying planted PHI", "runner": "vitest" },
-        { "file": "tests/ncpdp-privacy.test.js", "title": "refuses direct identifiers, bare hashes, free text, and instance-specific appeal URLs", "runner": "vitest" },
-        { "file": "tests/ncpdp-privacy.test.js", "title": "discloses only to the pinned audience and purpose within the retention budget", "runner": "vitest" },
-        { "file": "tests/ncpdp-privacy.test.js", "title": "refuses purpose, audience, retention, artifact, and field-smuggling attacks", "runner": "vitest" }
+        { "file": "tests/ncpdp-privacy.test.ts", "title": "projects an appeal bundle without recursively copying planted PHI", "runner": "vitest" },
+        { "file": "tests/ncpdp-privacy.test.ts", "title": "refuses direct identifiers, bare hashes, free text, and instance-specific appeal URLs", "runner": "vitest" },
+        { "file": "tests/ncpdp-privacy.test.ts", "title": "discloses only to the pinned audience and purpose within the retention budget", "runner": "vitest" },
+        { "file": "tests/ncpdp-privacy.test.ts", "title": "refuses purpose, audience, retention, artifact, and field-smuggling attacks", "runner": "vitest" }
       ],
       "formal": [
         { "status": "not_modeled", "gap": "Data-flow noninterference and malicious covert channels are not formally modeled; exact schemas and planted-data leakage attacks are executable tests." }
@@ -716,7 +716,7 @@
         { "language": "javascript", "file": "scripts/verify-reproducible-package.mjs", "export": "verifyReproduciblePackage" }
       ],
       "language_coverage": {
-        "javascript": { "status": "covered", "evidence": "tests/release-reproducibility.test.js" },
+        "javascript": { "status": "covered", "evidence": "tests/release-reproducibility.test.ts" },
         "python": { "status": "not_applicable", "reason": "This claim concerns npm tarball construction; Python wheel reproducibility is a separate release claim." },
         "go": { "status": "not_applicable", "reason": "This claim concerns npm tarball construction; the Go verifier is not published through npm." }
       },
@@ -725,9 +725,9 @@
         { "suite": "security/vectors.v1.json", "case_id": "reject_registry_byte_substitution", "polarity": "negative", "expect": { "valid": false } }
       ],
       "tests": [
-        { "file": "tests/release-reproducibility.test.js", "title": "packs @emilia-protocol/verify twice to byte-identical tarballs", "runner": "vitest" },
-        { "file": "tests/release-reproducibility.test.js", "title": "normalizes source file modes across independent package checkouts", "runner": "vitest" },
-        { "file": "tests/release-reproducibility.test.js", "title": "rejects a one-byte registry artifact substitution", "runner": "vitest" }
+        { "file": "tests/release-reproducibility.test.ts", "title": "packs @emilia-protocol/verify twice to byte-identical tarballs", "runner": "vitest" },
+        { "file": "tests/release-reproducibility.test.ts", "title": "normalizes source file modes across independent package checkouts", "runner": "vitest" },
+        { "file": "tests/release-reproducibility.test.ts", "title": "rejects a one-byte registry artifact substitution", "runner": "vitest" }
       ],
       "operational_evidence": [
         { "file": ".github/workflows/publish-verify-sdk.yml", "contains": ["actions/attest@f7c74d28b9d84cb8768d0b8ca14a4bac6ef463e6", "npm publish \"../../release-artifacts/${{ steps.pack.outputs.tarball }}\" --access public --provenance", "cmp \"../../release-artifacts/${{ steps.pack.outputs.tarball }}\" \"../../registry-copy/$REGISTRY_TARBALL\""] }
@@ -750,7 +750,7 @@
         { "language": "javascript", "file": "scripts/python-artifact-integrity.mjs", "export": "assertPythonArtifactBytesMatch" }
       ],
       "language_coverage": {
-        "javascript": { "status": "covered", "evidence": "tests/release-reproducibility.test.js" },
+        "javascript": { "status": "covered", "evidence": "tests/release-reproducibility.test.ts" },
         "python": { "status": "not_applicable", "reason": "Python and Hatchling construct the artifacts; the byte-identity acceptance check is a release-control function implemented in JavaScript and cmp." },
         "go": { "status": "not_applicable", "reason": "The Go verifier is not published as a PyPI artifact." }
       },
@@ -761,11 +761,11 @@
         { "suite": "security/vectors.v1.json", "case_id": "reject_pypi_sdist_substitution", "polarity": "negative", "expect": { "valid": false } }
       ],
       "tests": [
-        { "file": "tests/release-reproducibility.test.js", "title": "accepts a PyPI wheel only when every published byte matches", "runner": "vitest" },
-        { "file": "tests/release-reproducibility.test.js", "title": "rejects a one-byte PyPI wheel substitution", "runner": "vitest" },
-        { "file": "tests/release-reproducibility.test.js", "title": "accepts a PyPI sdist only when every published byte matches", "runner": "vitest" },
-        { "file": "tests/release-reproducibility.test.js", "title": "rejects a one-byte PyPI sdist substitution", "runner": "vitest" },
-        { "file": "tests/release-reproducibility.test.js", "title": "PyPI workflow builds twice, attests, publishes, and registry-compares the same wheel and sdist", "runner": "vitest" }
+        { "file": "tests/release-reproducibility.test.ts", "title": "accepts a PyPI wheel only when every published byte matches", "runner": "vitest" },
+        { "file": "tests/release-reproducibility.test.ts", "title": "rejects a one-byte PyPI wheel substitution", "runner": "vitest" },
+        { "file": "tests/release-reproducibility.test.ts", "title": "accepts a PyPI sdist only when every published byte matches", "runner": "vitest" },
+        { "file": "tests/release-reproducibility.test.ts", "title": "rejects a one-byte PyPI sdist substitution", "runner": "vitest" },
+        { "file": "tests/release-reproducibility.test.ts", "title": "PyPI workflow builds twice, attests, publishes, and registry-compares the same wheel and sdist", "runner": "vitest" }
       ],
       "operational_evidence": [
         { "file": ".github/workflows/publish-python-verify.yml", "contains": ["verify-reproducible-wheel.mjs packages/python-verify", "subject-path: ${{ steps.build.outputs.wheel }}", "subject-path: ${{ steps.build.outputs.sdist }}", "packages-dir: release-artifacts/python-verify/", "cmp \"${{ steps.build.outputs.wheel }}\" \"$REGISTRY_WHEEL\"", "cmp \"${{ steps.build.outputs.sdist }}\" \"$REGISTRY_SDIST\""] }
@@ -794,7 +794,7 @@
         { "language": "javascript", "file": "scripts/require-release-approval.mjs", "export": "verifyReleaseGitState" }
       ],
       "language_coverage": {
-        "javascript": { "status": "covered", "evidence": "tests/release-chain-coverage.test.js" },
+        "javascript": { "status": "covered", "evidence": "tests/release-chain-coverage.test.ts" },
         "python": { "status": "not_applicable", "reason": "Python packages are built by pinned Python tooling, while inventory and workflow enforcement are repository controls implemented in JavaScript." },
         "go": { "status": "not_applicable", "reason": "Go tag publication has a distinct source-and-proxy claim because a Go module is not an OIDC-uploaded registry artifact." }
       },
@@ -805,12 +805,12 @@
         { "suite": "security/vectors.v1.json", "case_id": "reject_unapproved_release_dispatch", "polarity": "negative", "expect": { "valid": false } }
       ],
       "tests": [
-        { "file": "tests/release-chain-coverage.test.js", "title": "every declared npm and PyPI package uses reproducible registry-byte verification", "runner": "vitest" },
-        { "file": "tests/release-chain-coverage.test.js", "title": "refuses a reusable publisher with its post-registry byte comparison removed", "runner": "vitest" },
-        { "file": "tests/release-chain-coverage.test.js", "title": "refuses a reusable PyPI publisher with its post-registry byte comparison removed", "runner": "vitest" },
-        { "file": "tests/release-approval.test.js", "title": "accepts an owner dispatch bound to the exact package version and tag", "runner": "vitest" },
-        { "file": "tests/release-approval.test.js", "title": "rejects automatic events, other actors, tag drift, and weak confirmation", "runner": "vitest" },
-        { "file": "tests/release-approval.test.js", "title": "binds the checked-out commit to a tag contained in main", "runner": "vitest" }
+        { "file": "tests/release-chain-coverage.test.ts", "title": "every declared npm and PyPI package uses reproducible registry-byte verification", "runner": "vitest" },
+        { "file": "tests/release-chain-coverage.test.ts", "title": "refuses a reusable publisher with its post-registry byte comparison removed", "runner": "vitest" },
+        { "file": "tests/release-chain-coverage.test.ts", "title": "refuses a reusable PyPI publisher with its post-registry byte comparison removed", "runner": "vitest" },
+        { "file": "tests/release-approval.test.ts", "title": "accepts an owner dispatch bound to the exact package version and tag", "runner": "vitest" },
+        { "file": "tests/release-approval.test.ts", "title": "rejects automatic events, other actors, tag drift, and weak confirmation", "runner": "vitest" },
+        { "file": "tests/release-approval.test.ts", "title": "binds the checked-out commit to a tag contained in main", "runner": "vitest" }
       ],
       "operational_evidence": [
         { "file": ".github/workflows/_publish-npm-package.yml", "contains": ["scripts/require-release-approval.mjs", "npm run security-case:emit", "npm run conformance:manifest", "verify-reproducible-package.mjs", "actions/attest@f7c74d28b9d84cb8768d0b8ca14a4bac6ef463e6", "npm publish \"${{ steps.pack.outputs.tarball }}\" --access public --provenance", "cmp \"$TESTED_TARBALL\" \"registry-copy/$REGISTRY_TARBALL\""] },
@@ -842,7 +842,7 @@
         { "language": "javascript", "file": "scripts/require-release-approval.mjs", "export": "verifyUnpublishedReleaseGitState" }
       ],
       "language_coverage": {
-        "javascript": { "status": "covered", "evidence": "tests/release-chain-coverage.test.js" },
+        "javascript": { "status": "covered", "evidence": "tests/release-chain-coverage.test.ts" },
         "python": { "status": "not_applicable", "reason": "Release workflow verification is a repository control implemented in JavaScript." },
         "go": { "status": "covered", "evidence": "packages/go-verify/signoff_compatibility_test.go" }
       },
@@ -854,13 +854,13 @@
         { "suite": "security/vectors.v1.json", "case_id": "reject_unclassified_go_module", "polarity": "negative", "expect": { "valid": false } }
       ],
       "tests": [
-        { "file": "tests/release-chain-coverage.test.js", "title": "Go release isolates tag write authority and verifies the public proxy origin", "runner": "vitest" },
-        { "file": "tests/release-chain-coverage.test.js", "title": "refuses a Go tag publisher without public-proxy source comparison", "runner": "vitest" },
-        { "file": "tests/release-chain-coverage.test.js", "title": "refuses Go release code execution in the contents-write tag job", "runner": "vitest" },
-        { "file": "tests/release-chain-coverage.test.js", "title": "refuses a Go release checkout that follows mutable main or keeps credentials", "runner": "vitest" },
-        { "file": "tests/release-chain-coverage.test.js", "title": "refuses slash-bearing Go release artifact names derived from the tag", "runner": "vitest" },
-        { "file": "tests/release-chain-coverage.test.js", "title": "refuses an unclassified Go module even when its release manifest is absent", "runner": "vitest" },
-        { "file": "tests/release-approval.test.js", "title": "permits tag creation only from the exact clean main commit with no existing tag", "runner": "vitest" }
+        { "file": "tests/release-chain-coverage.test.ts", "title": "Go release isolates tag write authority and verifies the public proxy origin", "runner": "vitest" },
+        { "file": "tests/release-chain-coverage.test.ts", "title": "refuses a Go tag publisher without public-proxy source comparison", "runner": "vitest" },
+        { "file": "tests/release-chain-coverage.test.ts", "title": "refuses Go release code execution in the contents-write tag job", "runner": "vitest" },
+        { "file": "tests/release-chain-coverage.test.ts", "title": "refuses a Go release checkout that follows mutable main or keeps credentials", "runner": "vitest" },
+        { "file": "tests/release-chain-coverage.test.ts", "title": "refuses slash-bearing Go release artifact names derived from the tag", "runner": "vitest" },
+        { "file": "tests/release-chain-coverage.test.ts", "title": "refuses an unclassified Go module even when its release manifest is absent", "runner": "vitest" },
+        { "file": "tests/release-approval.test.ts", "title": "permits tag creation only from the exact clean main commit with no existing tag", "runner": "vitest" }
       ],
       "operational_evidence": [
         { "file": ".github/workflows/publish-go-verify.yml", "contains": ["ref: ${{ github.sha }}", "persist-credentials: false", "--expected-commit \"$GITHUB_SHA\"", "go-version-file: packages/go-verify/go.mod", "refs/tags/packages/go-verify/v*", "rules.has('deletion') && rules.has('update')", "github.rest.git.createRef", "p.Origin?.[key]", "p.GoModSum", "diff -ru packages/go-verify \"$PROXY_DIR\"", "release-artifacts/go-verify-proxy.zip"] },
@@ -898,7 +898,7 @@
         { "language": "javascript", "file": "lib/frontier/model-to-matter.ts", "export": "evaluateRegisteredModelToMatterPresentation" }
       ],
       "language_coverage": {
-        "javascript": { "status": "covered", "evidence": "tests/model-to-matter.test.js" },
+        "javascript": { "status": "covered", "evidence": "tests/model-to-matter.test.ts" },
         "python": { "status": "gap", "reason": "No Python Model-to-Matter profile implementation or conformance claim exists." },
         "go": { "status": "gap", "reason": "No Go Model-to-Matter profile implementation or conformance claim exists." }
       },
@@ -907,14 +907,14 @@
         { "suite": "security/vectors.v1.json", "case_id": "reject_model_to_matter_without_revocation_state", "polarity": "negative", "expect": { "valid": false } }
       ],
       "tests": [
-        { "file": "tests/model-to-matter.test.js", "title": "admits at most one clearance across distinct challenges for the same action", "runner": "vitest" },
-        { "file": "tests/model-to-matter.test.js", "title": "uses one registered CAID over the exact bytes every evidence leg binds", "runner": "vitest" },
-        { "file": "tests/model-to-matter.test.js", "title": "snapshots the action, profile, and graph before awaiting durable consumption", "runner": "vitest" },
-        { "file": "tests/model-to-matter.test.js", "title": "fails before challenge consumption when explicit revocation state is absent", "runner": "vitest" },
-        { "file": "tests/model-to-matter.test.js", "title": "refuses tampering, issuer laundering, cross-action replay, and impossible timestamps", "runner": "vitest" },
-        { "file": "tests/model-to-matter.test.js", "title": "pins all trust configuration and invokes the effect adapter only after one successful clearance", "runner": "vitest" },
-        { "file": "tests/model-to-matter.test.js", "title": "refuses every transaction-scoped trust field before challenge consumption", "runner": "vitest" },
-        { "file": "tests/model-to-matter.test.js", "title": "requires explicit durable custody in production mode", "runner": "vitest" }
+        { "file": "tests/model-to-matter.test.ts", "title": "admits at most one clearance across distinct challenges for the same action", "runner": "vitest" },
+        { "file": "tests/model-to-matter.test.ts", "title": "uses one registered CAID over the exact bytes every evidence leg binds", "runner": "vitest" },
+        { "file": "tests/model-to-matter.test.ts", "title": "snapshots the action, profile, and graph before awaiting durable consumption", "runner": "vitest" },
+        { "file": "tests/model-to-matter.test.ts", "title": "fails before challenge consumption when explicit revocation state is absent", "runner": "vitest" },
+        { "file": "tests/model-to-matter.test.ts", "title": "refuses tampering, issuer laundering, cross-action replay, and impossible timestamps", "runner": "vitest" },
+        { "file": "tests/model-to-matter.test.ts", "title": "pins all trust configuration and invokes the effect adapter only after one successful clearance", "runner": "vitest" },
+        { "file": "tests/model-to-matter.test.ts", "title": "refuses every transaction-scoped trust field before challenge consumption", "runner": "vitest" },
+        { "file": "tests/model-to-matter.test.ts", "title": "requires explicit durable custody in production mode", "runner": "vitest" }
       ],
       "operational_evidence": [
         {
@@ -1018,12 +1018,12 @@
       ],
       "tests": [
         {
-          "file": "tests/role-non-substitution.test.js",
+          "file": "tests/role-non-substitution.test.ts",
           "title": "NEGATIVE: a bare operator-signed envelope is not a human ceremony",
           "runner": "vitest"
         },
         {
-          "file": "tests/aec-safety-critical.test.js",
+          "file": "tests/aec-safety-critical.test.ts",
           "title": "requires the executor to pin the expected action independently of the chain",
           "runner": "vitest"
         }
@@ -1133,9 +1133,9 @@
         { "suite": "mobile/conformance/mobile-core.v1.json", "case_id": "refuse_blind_retry_and_unpinned_provider_outcome", "polarity": "negative", "expect": { "valid": false } }
       ],
       "tests": [
-        { "file": "tests/mobile-action-continuity.test.js", "title": "keeps authorization, consumption, uncertainty, and execution separate", "runner": "vitest" },
-        { "file": "tests/mobile-action-continuity.test.js", "title": "reconciles only an exact signed provider outcome and preserves terminal refusals", "runner": "vitest" },
-        { "file": "tests/mobile-action-continuity-routes.test.js", "title": "atomically consumes once, marks timeout indeterminate, and refuses blind replay semantics", "runner": "vitest" }
+        { "file": "tests/mobile-action-continuity.test.ts", "title": "keeps authorization, consumption, uncertainty, and execution separate", "runner": "vitest" },
+        { "file": "tests/mobile-action-continuity.test.ts", "title": "reconciles only an exact signed provider outcome and preserves terminal refusals", "runner": "vitest" },
+        { "file": "tests/mobile-action-continuity-routes.test.ts", "title": "atomically consumes once, marks timeout indeterminate, and refuses blind replay semantics", "runner": "vitest" }
       ],
       "operational_evidence": [
         {
@@ -1293,12 +1293,12 @@
         { "suite": "conformance/vectors/grace-mobile-grid.v1.json", "case_id": "reject_meter_rule_smuggling", "polarity": "negative", "expect": { "valid": false } }
       ],
       "tests": [
-        { "file": "tests/grace-mobile-grid.test.js", "title": "executes, measures, emits a valid -02 Signed Statement, and settles once", "runner": "vitest" },
-        { "file": "tests/grace-mobile-grid.test.js", "title": "refuses initiator self-approval under the pinned mobile roster", "runner": "vitest" },
-        { "file": "tests/grace-mobile-grid.test.js", "title": "refuses an inactive or expired action before touching COSA", "runner": "vitest" },
-        { "file": "tests/grace-mobile-grid.test.js", "title": "burns an indeterminate dispatch and never retries the physical effect", "runner": "vitest" },
-        { "file": "tests/grace-mobile-grid.test.js", "title": "consumes one execution and one settlement under concurrent duplicate delivery", "runner": "vitest" },
-        { "file": "tests/grace-mobile-grid.test.js", "title": "refuses meter signature substitution and market-rule smuggling", "runner": "vitest" }
+        { "file": "tests/grace-mobile-grid.test.ts", "title": "executes, measures, emits a valid -02 Signed Statement, and settles once", "runner": "vitest" },
+        { "file": "tests/grace-mobile-grid.test.ts", "title": "refuses initiator self-approval under the pinned mobile roster", "runner": "vitest" },
+        { "file": "tests/grace-mobile-grid.test.ts", "title": "refuses an inactive or expired action before touching COSA", "runner": "vitest" },
+        { "file": "tests/grace-mobile-grid.test.ts", "title": "burns an indeterminate dispatch and never retries the physical effect", "runner": "vitest" },
+        { "file": "tests/grace-mobile-grid.test.ts", "title": "consumes one execution and one settlement under concurrent duplicate delivery", "runner": "vitest" },
+        { "file": "tests/grace-mobile-grid.test.ts", "title": "refuses meter signature substitution and market-rule smuggling", "runner": "vitest" }
       ],
       "operational_evidence": [
         {
@@ -1395,9 +1395,9 @@
         { "file": "packages/gate/action-escrow-package.test.js", "title": "assembler refuses pruned operation history and regressing timestamps", "runner": "node-test" },
         { "file": "packages/gate/action-escrow-evidence.test.js", "title": "contractor package re-performs the bound project sidecar and refuses profile confusion", "runner": "node-test" },
         { "file": "packages/gate/action-escrow-postgres.test.js", "title": "health refuses owner or destructive runtime privileges", "runner": "node-test" },
-        { "file": "tests/action-escrow-escrow-com.test.js", "title": "refuses milestone acceptance until every schedule is secured and funded", "runner": "vitest" },
-        { "file": "tests/action-escrow-procore.test.js", "title": "double-fetches an exact read-only snapshot and marks it non-authoritative", "runner": "vitest" },
-        { "file": "tests/action-escrow-procore.test.js", "title": "binds every source coordinate and refuses provenance relabeling", "runner": "vitest" },
+        { "file": "tests/action-escrow-escrow-com.test.ts", "title": "refuses milestone acceptance until every schedule is secured and funded", "runner": "vitest" },
+        { "file": "tests/action-escrow-procore.test.ts", "title": "double-fetches an exact read-only snapshot and marks it non-authoritative", "runner": "vitest" },
+        { "file": "tests/action-escrow-procore.test.ts", "title": "binds every source coordinate and refuses provenance relabeling", "runner": "vitest" },
         { "file": "packages/gate/action-escrow-verifiers.test.js", "title": "the contractor profile requires a project source digest bound to its signed term", "runner": "node-test" },
         { "file": "examples/action-escrow/scenario.test.mjs", "title": "keeps document, exact-action approvals, and external custody visibly separate", "runner": "node-test" },
         { "file": "examples/action-escrow/scenario.test.mjs", "title": "uses the shipped DAB, Action Escrow kernel, and portable evidence package", "runner": "node-test" },

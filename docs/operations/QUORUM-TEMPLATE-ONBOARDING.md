@@ -74,7 +74,7 @@ FROM org_quorum_policies WHERE organization_id = '<organization_id>';
 
 Then exercise the create path with a below-floor `quorum_policy` and confirm a
 422, and an at-or-above-floor policy and confirm success. The invariant is
-covered in `tests/quorum-org-template.test.js`.
+covered in `tests/quorum-org-template.test.ts`.
 
 ## Rollback
 

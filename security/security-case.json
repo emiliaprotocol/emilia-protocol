@@ -1,7 +1,7 @@
 {
   "@version": "EP-SECURITY-CASE-RESOLVED-v2",
   "source": "security/claims.v1.json",
-  "evidence_bundle_sha256": "c6d3b56480f061a67335c2a63fca84a59b45bff33fb8fadd5afc8f252747e9c7",
+  "evidence_bundle_sha256": "4bc6115517bb4fc546535721ffa8babe20124df6444e75c5ed771953bbdd529c",
   "claim_count": 30,
   "evidence_file_count": 159,
   "execution": {
@@ -402,7 +402,7 @@
       },
       {
         "runner": "vitest",
-        "file": "tests/action-escrow-escrow-com.test.js",
+        "file": "tests/action-escrow-escrow-com.test.ts",
         "titles": [
           "refuses milestone acceptance until every schedule is secured and funded"
         ],
@@ -410,7 +410,7 @@
       },
       {
         "runner": "vitest",
-        "file": "tests/action-escrow-procore.test.js",
+        "file": "tests/action-escrow-procore.test.ts",
         "titles": [
           "binds every source coordinate and refuses provenance relabeling",
           "double-fetches an exact read-only snapshot and marks it non-authoritative"
@@ -419,7 +419,7 @@
       },
       {
         "runner": "vitest",
-        "file": "tests/aec-execution-gate.test.js",
+        "file": "tests/aec-execution-gate.test.ts",
         "titles": [
           "burns an indeterminate authorization after the effect starts",
           "cannot mint a fresh replay key with an invalid decoy component",
@@ -434,7 +434,7 @@
       },
       {
         "runner": "vitest",
-        "file": "tests/aec-safety-critical.test.js",
+        "file": "tests/aec-safety-critical.test.ts",
         "titles": [
           "requires the executor to pin the expected action independently of the chain"
         ],
@@ -442,7 +442,7 @@
       },
       {
         "runner": "vitest",
-        "file": "tests/authority-doc.test.js",
+        "file": "tests/authority-doc.test.ts",
         "titles": [
           "does not accept a rotation issuer revoked at the successor issuance time"
         ],
@@ -450,7 +450,7 @@
       },
       {
         "runner": "vitest",
-        "file": "tests/authority-document-proof-join.test.js",
+        "file": "tests/authority-document-proof-join.test.ts",
         "titles": [
           "does not resolve a proof signer through a key omitted by the effective document",
           "preserves proof verification but refuses absent registry and epoch pins",
@@ -460,7 +460,7 @@
       },
       {
         "runner": "vitest",
-        "file": "tests/authority-registry.test.js",
+        "file": "tests/authority-registry.test.ts",
         "titles": [
           "delegation cannot widen by omitting scope, ceiling, currency, policy, assurance, lifecycle, or organization",
           "does not let a key pinned for one issuer authenticate another issuer",
@@ -473,7 +473,7 @@
       },
       {
         "runner": "vitest",
-        "file": "tests/evidence-challenge-durable.test.js",
+        "file": "tests/evidence-challenge-durable.test.ts",
         "titles": [
           "atomically registers one exact challenge across 100 concurrent workers",
           "binds registration to the entire challenge body, not only id and nonce",
@@ -485,7 +485,7 @@
       },
       {
         "runner": "vitest",
-        "file": "tests/grace-mobile-grid.test.js",
+        "file": "tests/grace-mobile-grid.test.ts",
         "titles": [
           "burns an indeterminate dispatch and never retries the physical effect",
           "consumes one execution and one settlement under concurrent duplicate delivery",
@@ -498,7 +498,7 @@
       },
       {
         "runner": "vitest",
-        "file": "tests/mobile-action-continuity-routes.test.js",
+        "file": "tests/mobile-action-continuity-routes.test.ts",
         "titles": [
           "atomically consumes once, marks timeout indeterminate, and refuses blind replay semantics"
         ],
@@ -506,7 +506,7 @@
       },
       {
         "runner": "vitest",
-        "file": "tests/mobile-action-continuity.test.js",
+        "file": "tests/mobile-action-continuity.test.ts",
         "titles": [
           "accepts terminal execution only under a pinned provider key and exact operation binding",
           "keeps authorization, consumption, uncertainty, and execution separate",
@@ -516,7 +516,7 @@
       },
       {
         "runner": "vitest",
-        "file": "tests/model-to-matter.test.js",
+        "file": "tests/model-to-matter.test.ts",
         "titles": [
           "admits at most one clearance across distinct challenges for the same action",
           "fails before challenge consumption when explicit revocation state is absent",
@@ -531,7 +531,7 @@
       },
       {
         "runner": "vitest",
-        "file": "tests/ncpdp-privacy.test.js",
+        "file": "tests/ncpdp-privacy.test.ts",
         "titles": [
           "discloses only to the pinned audience and purpose within the retention budget",
           "projects an appeal bundle without recursively copying planted PHI",
@@ -542,7 +542,7 @@
       },
       {
         "runner": "vitest",
-        "file": "tests/outcome-authority-formal.test.js",
+        "file": "tests/outcome-authority-formal.test.ts",
         "titles": [
           "all six load-bearing obligations hold in the bounded model",
           "every weakened invariant produces a counterexample",
@@ -561,7 +561,7 @@
       },
       {
         "runner": "vitest",
-        "file": "tests/release-approval.test.js",
+        "file": "tests/release-approval.test.ts",
         "titles": [
           "accepts an owner dispatch bound to the exact package version and tag",
           "binds the checked-out commit to a tag contained in main",
@@ -572,7 +572,7 @@
       },
       {
         "runner": "vitest",
-        "file": "tests/release-chain-coverage.test.js",
+        "file": "tests/release-chain-coverage.test.ts",
         "titles": [
           "Go release isolates tag write authority and verifies the public proxy origin",
           "every declared npm and PyPI package uses reproducible registry-byte verification",
@@ -588,7 +588,7 @@
       },
       {
         "runner": "vitest",
-        "file": "tests/release-reproducibility.test.js",
+        "file": "tests/release-reproducibility.test.ts",
         "titles": [
           "PyPI workflow builds twice, attests, publishes, and registry-compares the same wheel and sdist",
           "accepts a PyPI sdist only when every published byte matches",
@@ -604,7 +604,7 @@
       },
       {
         "runner": "vitest",
-        "file": "tests/reliance-kernel.test.js",
+        "file": "tests/reliance-kernel.test.ts",
         "titles": [
           "no pinned profile → no reliance (verification can pass, reliance cannot)",
           "pins the authority registry head and minimum epoch at reliance time",
@@ -617,7 +617,7 @@
       },
       {
         "runner": "vitest",
-        "file": "tests/role-non-substitution.test.js",
+        "file": "tests/role-non-substitution.test.ts",
         "titles": [
           "NEGATIVE: a bare operator-signed envelope is not a human ceremony"
         ],
@@ -625,7 +625,7 @@
       },
       {
         "runner": "vitest",
-        "file": "tests/signoff-decision-evidence.test.js",
+        "file": "tests/signoff-decision-evidence.test.ts",
         "titles": [
           "exports a device-signed denial that verifies offline under a pinned approver key"
         ],
@@ -633,7 +633,7 @@
       },
       {
         "runner": "vitest",
-        "file": "tests/v1-api.test.js",
+        "file": "tests/v1-api.test.ts",
         "titles": [
           "exports a bound Class-A denial as portable EP-SIGNOFF-v1 evidence",
           "returns 403 when bearer-key rejection attempts a Class-A-required receipt"
@@ -642,7 +642,7 @@
       },
       {
         "runner": "vitest",
-        "file": "tests/webauthn-approve-route.test.js",
+        "file": "tests/webauthn-approve-route.test.ts",
         "titles": [
           "refuses to relabel a device-signed denial as approval"
         ],
@@ -650,7 +650,7 @@
       },
       {
         "runner": "vitest",
-        "file": "tests/webauthn-lib.test.js",
+        "file": "tests/webauthn-lib.test.ts",
         "titles": [
           "treats a matching rejection as equally terminal"
         ],
@@ -679,7 +679,7 @@
     "security-evidence": {
       "kind": "content-addressed-evidence-bundle",
       "filename": "security-case-evidence.v1",
-      "sha256": "c6d3b56480f061a67335c2a63fca84a59b45bff33fb8fadd5afc8f252747e9c7",
+      "sha256": "4bc6115517bb4fc546535721ffa8babe20124df6444e75c5ed771953bbdd529c",
       "file_count": 159
     },
     "verify-sdk": {
@@ -791,27 +791,27 @@
       ],
       "tests": [
         {
-          "file": "tests/signoff-decision-evidence.test.js",
+          "file": "tests/signoff-decision-evidence.test.ts",
           "title": "exports a device-signed denial that verifies offline under a pinned approver key",
           "runner": "vitest"
         },
         {
-          "file": "tests/v1-api.test.js",
+          "file": "tests/v1-api.test.ts",
           "title": "exports a bound Class-A denial as portable EP-SIGNOFF-v1 evidence",
           "runner": "vitest"
         },
         {
-          "file": "tests/webauthn-approve-route.test.js",
+          "file": "tests/webauthn-approve-route.test.ts",
           "title": "refuses to relabel a device-signed denial as approval",
           "runner": "vitest"
         },
         {
-          "file": "tests/v1-api.test.js",
+          "file": "tests/v1-api.test.ts",
           "title": "returns 403 when bearer-key rejection attempts a Class-A-required receipt",
           "runner": "vitest"
         },
         {
-          "file": "tests/webauthn-lib.test.js",
+          "file": "tests/webauthn-lib.test.ts",
           "title": "treats a matching rejection as equally terminal",
           "runner": "vitest"
         }
@@ -843,7 +843,7 @@
         },
         {
           "artifact_id": "security-evidence",
-          "sha256": "c6d3b56480f061a67335c2a63fca84a59b45bff33fb8fadd5afc8f252747e9c7"
+          "sha256": "4bc6115517bb4fc546535721ffa8babe20124df6444e75c5ed771953bbdd529c"
         }
       ]
     },
@@ -1106,7 +1106,7 @@
         },
         {
           "artifact_id": "security-evidence",
-          "sha256": "c6d3b56480f061a67335c2a63fca84a59b45bff33fb8fadd5afc8f252747e9c7"
+          "sha256": "4bc6115517bb4fc546535721ffa8babe20124df6444e75c5ed771953bbdd529c"
         }
       ]
     },
@@ -1214,7 +1214,7 @@
         },
         {
           "artifact_id": "security-evidence",
-          "sha256": "c6d3b56480f061a67335c2a63fca84a59b45bff33fb8fadd5afc8f252747e9c7"
+          "sha256": "4bc6115517bb4fc546535721ffa8babe20124df6444e75c5ed771953bbdd529c"
         }
       ]
     },
@@ -1333,7 +1333,7 @@
         },
         {
           "artifact_id": "security-evidence",
-          "sha256": "c6d3b56480f061a67335c2a63fca84a59b45bff33fb8fadd5afc8f252747e9c7"
+          "sha256": "4bc6115517bb4fc546535721ffa8babe20124df6444e75c5ed771953bbdd529c"
         }
       ]
     },
@@ -1455,7 +1455,7 @@
         },
         {
           "artifact_id": "security-evidence",
-          "sha256": "c6d3b56480f061a67335c2a63fca84a59b45bff33fb8fadd5afc8f252747e9c7"
+          "sha256": "4bc6115517bb4fc546535721ffa8babe20124df6444e75c5ed771953bbdd529c"
         }
       ]
     },
@@ -1517,7 +1517,7 @@
           },
           "execution": {
             "runner": "vitest",
-            "file": "tests/authority-registry.test.js",
+            "file": "tests/authority-registry.test.ts",
             "title": "resolve: authorized_within_scope_and_limit"
           }
         },
@@ -1531,7 +1531,7 @@
           },
           "execution": {
             "runner": "vitest",
-            "file": "tests/authority-registry.test.js",
+            "file": "tests/authority-registry.test.ts",
             "title": "resolve: reject_amount_exceeded"
           }
         },
@@ -1545,7 +1545,7 @@
           },
           "execution": {
             "runner": "vitest",
-            "file": "tests/authority-registry.test.js",
+            "file": "tests/authority-registry.test.ts",
             "title": "proof: proof_accepted_when_pinned"
           }
         },
@@ -1559,19 +1559,19 @@
           },
           "execution": {
             "runner": "vitest",
-            "file": "tests/authority-registry.test.js",
+            "file": "tests/authority-registry.test.ts",
             "title": "proof: reject_proof_registry_head_mismatch"
           }
         }
       ],
       "tests": [
         {
-          "file": "tests/authority-registry.test.js",
+          "file": "tests/authority-registry.test.ts",
           "title": "does not let a key pinned for one issuer authenticate another issuer",
           "runner": "vitest"
         },
         {
-          "file": "tests/authority-registry.test.js",
+          "file": "tests/authority-registry.test.ts",
           "title": "delegation cannot widen by omitting scope, ceiling, currency, policy, assurance, lifecycle, or organization",
           "runner": "vitest"
         }
@@ -1599,7 +1599,7 @@
       "release_artifact_hashes": [
         {
           "artifact_id": "security-evidence",
-          "sha256": "c6d3b56480f061a67335c2a63fca84a59b45bff33fb8fadd5afc8f252747e9c7"
+          "sha256": "4bc6115517bb4fc546535721ffa8babe20124df6444e75c5ed771953bbdd529c"
         }
       ]
     },
@@ -1667,7 +1667,7 @@
           },
           "execution": {
             "runner": "vitest",
-            "file": "tests/reliance-kernel.test.js",
+            "file": "tests/reliance-kernel.test.ts",
             "title": "rely_full_packet_composes → rely"
           }
         },
@@ -1681,7 +1681,7 @@
           },
           "execution": {
             "runner": "vitest",
-            "file": "tests/reliance-kernel.test.js",
+            "file": "tests/reliance-kernel.test.ts",
             "title": "reject_no_profile → do_not_rely_no_profile"
           }
         },
@@ -1695,24 +1695,24 @@
           },
           "execution": {
             "runner": "vitest",
-            "file": "tests/reliance-kernel.test.js",
+            "file": "tests/reliance-kernel.test.ts",
             "title": "reject_authority_organization_mismatch → do_not_rely_authority_organization_mismatch"
           }
         }
       ],
       "tests": [
         {
-          "file": "tests/reliance-kernel.test.js",
+          "file": "tests/reliance-kernel.test.ts",
           "title": "no pinned profile → no reliance (verification can pass, reliance cannot)",
           "runner": "vitest"
         },
         {
-          "file": "tests/reliance-kernel.test.js",
+          "file": "tests/reliance-kernel.test.ts",
           "title": "pins the authority registry head and minimum epoch at reliance time",
           "runner": "vitest"
         },
         {
-          "file": "tests/reliance-kernel.test.js",
+          "file": "tests/reliance-kernel.test.ts",
           "title": "refuses caller material fields that disagree with the signed receipt",
           "runner": "vitest"
         }
@@ -1745,7 +1745,7 @@
         },
         {
           "artifact_id": "security-evidence",
-          "sha256": "c6d3b56480f061a67335c2a63fca84a59b45bff33fb8fadd5afc8f252747e9c7"
+          "sha256": "4bc6115517bb4fc546535721ffa8babe20124df6444e75c5ed771953bbdd529c"
         }
       ]
     },
@@ -1904,7 +1904,7 @@
         },
         {
           "artifact_id": "security-evidence",
-          "sha256": "c6d3b56480f061a67335c2a63fca84a59b45bff33fb8fadd5afc8f252747e9c7"
+          "sha256": "4bc6115517bb4fc546535721ffa8babe20124df6444e75c5ed771953bbdd529c"
         }
       ]
     },
@@ -1977,7 +1977,7 @@
           },
           "execution": {
             "runner": "vitest",
-            "file": "tests/outcome-authority-formal.test.js",
+            "file": "tests/outcome-authority-formal.test.ts",
             "title": "formal case: outcome_accept_exact_in_bounds"
           }
         },
@@ -1990,7 +1990,7 @@
           },
           "execution": {
             "runner": "vitest",
-            "file": "tests/outcome-authority-formal.test.js",
+            "file": "tests/outcome-authority-formal.test.ts",
             "title": "formal case: outcome_reject_action_digest_substitution"
           }
         },
@@ -2003,7 +2003,7 @@
           },
           "execution": {
             "runner": "vitest",
-            "file": "tests/outcome-authority-formal.test.js",
+            "file": "tests/outcome-authority-formal.test.ts",
             "title": "formal case: outcome_reject_receipt_digest_substitution"
           }
         },
@@ -2016,7 +2016,7 @@
           },
           "execution": {
             "runner": "vitest",
-            "file": "tests/outcome-authority-formal.test.js",
+            "file": "tests/outcome-authority-formal.test.ts",
             "title": "formal case: outcome_reject_policy_widening_signed_divergence"
           }
         }
@@ -2038,12 +2038,12 @@
           "runner": "node-test"
         },
         {
-          "file": "tests/outcome-authority-formal.test.js",
+          "file": "tests/outcome-authority-formal.test.ts",
           "title": "all six load-bearing obligations hold in the bounded model",
           "runner": "vitest"
         },
         {
-          "file": "tests/outcome-authority-formal.test.js",
+          "file": "tests/outcome-authority-formal.test.ts",
           "title": "every weakened invariant produces a counterexample",
           "runner": "vitest"
         }
@@ -2085,7 +2085,7 @@
         },
         {
           "artifact_id": "security-evidence",
-          "sha256": "c6d3b56480f061a67335c2a63fca84a59b45bff33fb8fadd5afc8f252747e9c7"
+          "sha256": "4bc6115517bb4fc546535721ffa8babe20124df6444e75c5ed771953bbdd529c"
         }
       ]
     },
@@ -2164,7 +2164,7 @@
           },
           "execution": {
             "runner": "vitest",
-            "file": "tests/outcome-authority-formal.test.js",
+            "file": "tests/outcome-authority-formal.test.ts",
             "title": "formal case: authority_accept_newest_key_with_registry_pins"
           }
         },
@@ -2177,7 +2177,7 @@
           },
           "execution": {
             "runner": "vitest",
-            "file": "tests/outcome-authority-formal.test.js",
+            "file": "tests/outcome-authority-formal.test.ts",
             "title": "formal case: authority_reject_key_omitted_by_newest_document"
           }
         },
@@ -2190,7 +2190,7 @@
           },
           "execution": {
             "runner": "vitest",
-            "file": "tests/outcome-authority-formal.test.js",
+            "file": "tests/outcome-authority-formal.test.ts",
             "title": "formal case: authority_reject_revoked_proof_key"
           }
         },
@@ -2203,7 +2203,7 @@
           },
           "execution": {
             "runner": "vitest",
-            "file": "tests/outcome-authority-formal.test.js",
+            "file": "tests/outcome-authority-formal.test.ts",
             "title": "formal case: authority_reject_revoked_rotation_key"
           }
         },
@@ -2216,7 +2216,7 @@
           },
           "execution": {
             "runner": "vitest",
-            "file": "tests/outcome-authority-formal.test.js",
+            "file": "tests/outcome-authority-formal.test.ts",
             "title": "formal case: authority_reject_missing_registry_head_pin"
           }
         },
@@ -2229,39 +2229,39 @@
           },
           "execution": {
             "runner": "vitest",
-            "file": "tests/outcome-authority-formal.test.js",
+            "file": "tests/outcome-authority-formal.test.ts",
             "title": "formal case: authority_reject_missing_registry_epoch_pin"
           }
         }
       ],
       "tests": [
         {
-          "file": "tests/authority-document-proof-join.test.js",
+          "file": "tests/authority-document-proof-join.test.ts",
           "title": "requires every load-bearing join check on acceptance",
           "runner": "vitest"
         },
         {
-          "file": "tests/authority-document-proof-join.test.js",
+          "file": "tests/authority-document-proof-join.test.ts",
           "title": "preserves proof verification but refuses absent registry and epoch pins",
           "runner": "vitest"
         },
         {
-          "file": "tests/authority-document-proof-join.test.js",
+          "file": "tests/authority-document-proof-join.test.ts",
           "title": "does not resolve a proof signer through a key omitted by the effective document",
           "runner": "vitest"
         },
         {
-          "file": "tests/authority-doc.test.js",
+          "file": "tests/authority-doc.test.ts",
           "title": "does not accept a rotation issuer revoked at the successor issuance time",
           "runner": "vitest"
         },
         {
-          "file": "tests/outcome-authority-formal.test.js",
+          "file": "tests/outcome-authority-formal.test.ts",
           "title": "all six load-bearing obligations hold in the bounded model",
           "runner": "vitest"
         },
         {
-          "file": "tests/outcome-authority-formal.test.js",
+          "file": "tests/outcome-authority-formal.test.ts",
           "title": "every weakened invariant produces a counterexample",
           "runner": "vitest"
         }
@@ -2298,7 +2298,7 @@
       "release_artifact_hashes": [
         {
           "artifact_id": "security-evidence",
-          "sha256": "c6d3b56480f061a67335c2a63fca84a59b45bff33fb8fadd5afc8f252747e9c7"
+          "sha256": "4bc6115517bb4fc546535721ffa8babe20124df6444e75c5ed771953bbdd529c"
         }
       ]
     },
@@ -2407,7 +2407,7 @@
         },
         {
           "artifact_id": "security-evidence",
-          "sha256": "c6d3b56480f061a67335c2a63fca84a59b45bff33fb8fadd5afc8f252747e9c7"
+          "sha256": "4bc6115517bb4fc546535721ffa8babe20124df6444e75c5ed771953bbdd529c"
         }
       ]
     },
@@ -2452,7 +2452,7 @@
       "language_coverage": {
         "javascript": {
           "status": "covered",
-          "evidence": "tests/evidence-challenge-durable.test.js"
+          "evidence": "tests/evidence-challenge-durable.test.ts"
         },
         "python": {
           "status": "not_applicable",
@@ -2491,22 +2491,22 @@
       ],
       "tests": [
         {
-          "file": "tests/evidence-challenge-durable.test.js",
+          "file": "tests/evidence-challenge-durable.test.ts",
           "title": "atomically registers one exact challenge across 100 concurrent workers",
           "runner": "vitest"
         },
         {
-          "file": "tests/evidence-challenge-durable.test.js",
+          "file": "tests/evidence-challenge-durable.test.ts",
           "title": "survives restart and admits exactly one concurrent presentation",
           "runner": "vitest"
         },
         {
-          "file": "tests/evidence-challenge-durable.test.js",
+          "file": "tests/evidence-challenge-durable.test.ts",
           "title": "refuses policy drift without consuming the registered challenge",
           "runner": "vitest"
         },
         {
-          "file": "tests/evidence-challenge-durable.test.js",
+          "file": "tests/evidence-challenge-durable.test.ts",
           "title": "propagates backend outage without an in-memory fallback",
           "runner": "vitest"
         }
@@ -2539,7 +2539,7 @@
         },
         {
           "artifact_id": "security-evidence",
-          "sha256": "c6d3b56480f061a67335c2a63fca84a59b45bff33fb8fadd5afc8f252747e9c7"
+          "sha256": "4bc6115517bb4fc546535721ffa8babe20124df6444e75c5ed771953bbdd529c"
         }
       ]
     },
@@ -2646,7 +2646,7 @@
         },
         {
           "artifact_id": "security-evidence",
-          "sha256": "c6d3b56480f061a67335c2a63fca84a59b45bff33fb8fadd5afc8f252747e9c7"
+          "sha256": "4bc6115517bb4fc546535721ffa8babe20124df6444e75c5ed771953bbdd529c"
         }
       ]
     },
@@ -2732,12 +2732,12 @@
           "runner": "node-test"
         },
         {
-          "file": "tests/aec-execution-gate.test.js",
+          "file": "tests/aec-execution-gate.test.ts",
           "title": "executes a Class-A chain once and refuses replay",
           "runner": "vitest"
         },
         {
-          "file": "tests/aec-execution-gate.test.js",
+          "file": "tests/aec-execution-gate.test.ts",
           "title": "burns an indeterminate authorization after the effect starts",
           "runner": "vitest"
         }
@@ -2770,7 +2770,7 @@
         },
         {
           "artifact_id": "security-evidence",
-          "sha256": "c6d3b56480f061a67335c2a63fca84a59b45bff33fb8fadd5afc8f252747e9c7"
+          "sha256": "4bc6115517bb4fc546535721ffa8babe20124df6444e75c5ed771953bbdd529c"
         }
       ]
     },
@@ -2899,7 +2899,7 @@
         },
         {
           "artifact_id": "security-evidence",
-          "sha256": "c6d3b56480f061a67335c2a63fca84a59b45bff33fb8fadd5afc8f252747e9c7"
+          "sha256": "4bc6115517bb4fc546535721ffa8babe20124df6444e75c5ed771953bbdd529c"
         }
       ]
     },
@@ -2952,7 +2952,7 @@
       "language_coverage": {
         "javascript": {
           "status": "covered",
-          "evidence": "tests/aec-execution-gate.test.js"
+          "evidence": "tests/aec-execution-gate.test.ts"
         },
         "python": {
           "status": "not_applicable",
@@ -2983,37 +2983,37 @@
       ],
       "tests": [
         {
-          "file": "tests/aec-execution-gate.test.js",
+          "file": "tests/aec-execution-gate.test.ts",
           "title": "executes a Class-A chain once and refuses replay",
           "runner": "vitest"
         },
         {
-          "file": "tests/aec-execution-gate.test.js",
+          "file": "tests/aec-execution-gate.test.ts",
           "title": "cannot mint a fresh replay key with an invalid decoy component",
           "runner": "vitest"
         },
         {
-          "file": "tests/aec-execution-gate.test.js",
+          "file": "tests/aec-execution-gate.test.ts",
           "title": "never accepts presenter-supplied verifier code as relying-party evidence policy",
           "runner": "vitest"
         },
         {
-          "file": "tests/aec-execution-gate.test.js",
+          "file": "tests/aec-execution-gate.test.ts",
           "title": "captures validated store and logger methods against post-construction replacement",
           "runner": "vitest"
         },
         {
-          "file": "tests/aec-execution-gate.test.js",
+          "file": "tests/aec-execution-gate.test.ts",
           "title": "refuses expiring consumption and process-local evidence in production mode",
           "runner": "vitest"
         },
         {
-          "file": "tests/aec-execution-gate.test.js",
+          "file": "tests/aec-execution-gate.test.ts",
           "title": "treats false commit and malformed log acknowledgements as failures",
           "runner": "vitest"
         },
         {
-          "file": "tests/aec-execution-gate.test.js",
+          "file": "tests/aec-execution-gate.test.ts",
           "title": "passes a frozen pre-await action snapshot to the effect",
           "runner": "vitest"
         },
@@ -3073,7 +3073,7 @@
         },
         {
           "artifact_id": "security-evidence",
-          "sha256": "c6d3b56480f061a67335c2a63fca84a59b45bff33fb8fadd5afc8f252747e9c7"
+          "sha256": "4bc6115517bb4fc546535721ffa8babe20124df6444e75c5ed771953bbdd529c"
         }
       ]
     },
@@ -3120,7 +3120,7 @@
       "language_coverage": {
         "javascript": {
           "status": "covered",
-          "evidence": "tests/ncpdp-privacy.test.js"
+          "evidence": "tests/ncpdp-privacy.test.ts"
         },
         "python": {
           "status": "not_applicable",
@@ -3167,22 +3167,22 @@
       ],
       "tests": [
         {
-          "file": "tests/ncpdp-privacy.test.js",
+          "file": "tests/ncpdp-privacy.test.ts",
           "title": "projects an appeal bundle without recursively copying planted PHI",
           "runner": "vitest"
         },
         {
-          "file": "tests/ncpdp-privacy.test.js",
+          "file": "tests/ncpdp-privacy.test.ts",
           "title": "refuses direct identifiers, bare hashes, free text, and instance-specific appeal URLs",
           "runner": "vitest"
         },
         {
-          "file": "tests/ncpdp-privacy.test.js",
+          "file": "tests/ncpdp-privacy.test.ts",
           "title": "discloses only to the pinned audience and purpose within the retention budget",
           "runner": "vitest"
         },
         {
-          "file": "tests/ncpdp-privacy.test.js",
+          "file": "tests/ncpdp-privacy.test.ts",
           "title": "refuses purpose, audience, retention, artifact, and field-smuggling attacks",
           "runner": "vitest"
         }
@@ -3207,7 +3207,7 @@
       "release_artifact_hashes": [
         {
           "artifact_id": "security-evidence",
-          "sha256": "c6d3b56480f061a67335c2a63fca84a59b45bff33fb8fadd5afc8f252747e9c7"
+          "sha256": "4bc6115517bb4fc546535721ffa8babe20124df6444e75c5ed771953bbdd529c"
         }
       ]
     },
@@ -3243,7 +3243,7 @@
       "language_coverage": {
         "javascript": {
           "status": "covered",
-          "evidence": "tests/release-reproducibility.test.js"
+          "evidence": "tests/release-reproducibility.test.ts"
         },
         "python": {
           "status": "not_applicable",
@@ -3274,17 +3274,17 @@
       ],
       "tests": [
         {
-          "file": "tests/release-reproducibility.test.js",
+          "file": "tests/release-reproducibility.test.ts",
           "title": "packs @emilia-protocol/verify twice to byte-identical tarballs",
           "runner": "vitest"
         },
         {
-          "file": "tests/release-reproducibility.test.js",
+          "file": "tests/release-reproducibility.test.ts",
           "title": "normalizes source file modes across independent package checkouts",
           "runner": "vitest"
         },
         {
-          "file": "tests/release-reproducibility.test.js",
+          "file": "tests/release-reproducibility.test.ts",
           "title": "rejects a one-byte registry artifact substitution",
           "runner": "vitest"
         }
@@ -3323,7 +3323,7 @@
         },
         {
           "artifact_id": "security-evidence",
-          "sha256": "c6d3b56480f061a67335c2a63fca84a59b45bff33fb8fadd5afc8f252747e9c7"
+          "sha256": "4bc6115517bb4fc546535721ffa8babe20124df6444e75c5ed771953bbdd529c"
         }
       ]
     },
@@ -3353,7 +3353,7 @@
       "language_coverage": {
         "javascript": {
           "status": "covered",
-          "evidence": "tests/release-reproducibility.test.js"
+          "evidence": "tests/release-reproducibility.test.ts"
         },
         "python": {
           "status": "not_applicable",
@@ -3400,27 +3400,27 @@
       ],
       "tests": [
         {
-          "file": "tests/release-reproducibility.test.js",
+          "file": "tests/release-reproducibility.test.ts",
           "title": "accepts a PyPI wheel only when every published byte matches",
           "runner": "vitest"
         },
         {
-          "file": "tests/release-reproducibility.test.js",
+          "file": "tests/release-reproducibility.test.ts",
           "title": "rejects a one-byte PyPI wheel substitution",
           "runner": "vitest"
         },
         {
-          "file": "tests/release-reproducibility.test.js",
+          "file": "tests/release-reproducibility.test.ts",
           "title": "accepts a PyPI sdist only when every published byte matches",
           "runner": "vitest"
         },
         {
-          "file": "tests/release-reproducibility.test.js",
+          "file": "tests/release-reproducibility.test.ts",
           "title": "rejects a one-byte PyPI sdist substitution",
           "runner": "vitest"
         },
         {
-          "file": "tests/release-reproducibility.test.js",
+          "file": "tests/release-reproducibility.test.ts",
           "title": "PyPI workflow builds twice, attests, publishes, and registry-compares the same wheel and sdist",
           "runner": "vitest"
         }
@@ -3457,7 +3457,7 @@
       "release_artifact_hashes": [
         {
           "artifact_id": "security-evidence",
-          "sha256": "c6d3b56480f061a67335c2a63fca84a59b45bff33fb8fadd5afc8f252747e9c7"
+          "sha256": "4bc6115517bb4fc546535721ffa8babe20124df6444e75c5ed771953bbdd529c"
         }
       ]
     },
@@ -3523,7 +3523,7 @@
       "language_coverage": {
         "javascript": {
           "status": "covered",
-          "evidence": "tests/release-chain-coverage.test.js"
+          "evidence": "tests/release-chain-coverage.test.ts"
         },
         "python": {
           "status": "not_applicable",
@@ -3570,32 +3570,32 @@
       ],
       "tests": [
         {
-          "file": "tests/release-chain-coverage.test.js",
+          "file": "tests/release-chain-coverage.test.ts",
           "title": "every declared npm and PyPI package uses reproducible registry-byte verification",
           "runner": "vitest"
         },
         {
-          "file": "tests/release-chain-coverage.test.js",
+          "file": "tests/release-chain-coverage.test.ts",
           "title": "refuses a reusable publisher with its post-registry byte comparison removed",
           "runner": "vitest"
         },
         {
-          "file": "tests/release-chain-coverage.test.js",
+          "file": "tests/release-chain-coverage.test.ts",
           "title": "refuses a reusable PyPI publisher with its post-registry byte comparison removed",
           "runner": "vitest"
         },
         {
-          "file": "tests/release-approval.test.js",
+          "file": "tests/release-approval.test.ts",
           "title": "accepts an owner dispatch bound to the exact package version and tag",
           "runner": "vitest"
         },
         {
-          "file": "tests/release-approval.test.js",
+          "file": "tests/release-approval.test.ts",
           "title": "rejects automatic events, other actors, tag drift, and weak confirmation",
           "runner": "vitest"
         },
         {
-          "file": "tests/release-approval.test.js",
+          "file": "tests/release-approval.test.ts",
           "title": "binds the checked-out commit to a tag contained in main",
           "runner": "vitest"
         }
@@ -3674,7 +3674,7 @@
       "release_artifact_hashes": [
         {
           "artifact_id": "security-evidence",
-          "sha256": "c6d3b56480f061a67335c2a63fca84a59b45bff33fb8fadd5afc8f252747e9c7"
+          "sha256": "4bc6115517bb4fc546535721ffa8babe20124df6444e75c5ed771953bbdd529c"
         }
       ]
     },
@@ -3730,7 +3730,7 @@
       "language_coverage": {
         "javascript": {
           "status": "covered",
-          "evidence": "tests/release-chain-coverage.test.js"
+          "evidence": "tests/release-chain-coverage.test.ts"
         },
         "python": {
           "status": "not_applicable",
@@ -3785,37 +3785,37 @@
       ],
       "tests": [
         {
-          "file": "tests/release-chain-coverage.test.js",
+          "file": "tests/release-chain-coverage.test.ts",
           "title": "Go release isolates tag write authority and verifies the public proxy origin",
           "runner": "vitest"
         },
         {
-          "file": "tests/release-chain-coverage.test.js",
+          "file": "tests/release-chain-coverage.test.ts",
           "title": "refuses a Go tag publisher without public-proxy source comparison",
           "runner": "vitest"
         },
         {
-          "file": "tests/release-chain-coverage.test.js",
+          "file": "tests/release-chain-coverage.test.ts",
           "title": "refuses Go release code execution in the contents-write tag job",
           "runner": "vitest"
         },
         {
-          "file": "tests/release-chain-coverage.test.js",
+          "file": "tests/release-chain-coverage.test.ts",
           "title": "refuses a Go release checkout that follows mutable main or keeps credentials",
           "runner": "vitest"
         },
         {
-          "file": "tests/release-chain-coverage.test.js",
+          "file": "tests/release-chain-coverage.test.ts",
           "title": "refuses slash-bearing Go release artifact names derived from the tag",
           "runner": "vitest"
         },
         {
-          "file": "tests/release-chain-coverage.test.js",
+          "file": "tests/release-chain-coverage.test.ts",
           "title": "refuses an unclassified Go module even when its release manifest is absent",
           "runner": "vitest"
         },
         {
-          "file": "tests/release-approval.test.js",
+          "file": "tests/release-approval.test.ts",
           "title": "permits tag creation only from the exact clean main commit with no existing tag",
           "runner": "vitest"
         }
@@ -3884,7 +3884,7 @@
       "release_artifact_hashes": [
         {
           "artifact_id": "security-evidence",
-          "sha256": "c6d3b56480f061a67335c2a63fca84a59b45bff33fb8fadd5afc8f252747e9c7"
+          "sha256": "4bc6115517bb4fc546535721ffa8babe20124df6444e75c5ed771953bbdd529c"
         }
       ]
     },
@@ -3955,7 +3955,7 @@
       "language_coverage": {
         "javascript": {
           "status": "covered",
-          "evidence": "tests/model-to-matter.test.js"
+          "evidence": "tests/model-to-matter.test.ts"
         },
         "python": {
           "status": "gap",
@@ -3986,42 +3986,42 @@
       ],
       "tests": [
         {
-          "file": "tests/model-to-matter.test.js",
+          "file": "tests/model-to-matter.test.ts",
           "title": "admits at most one clearance across distinct challenges for the same action",
           "runner": "vitest"
         },
         {
-          "file": "tests/model-to-matter.test.js",
+          "file": "tests/model-to-matter.test.ts",
           "title": "uses one registered CAID over the exact bytes every evidence leg binds",
           "runner": "vitest"
         },
         {
-          "file": "tests/model-to-matter.test.js",
+          "file": "tests/model-to-matter.test.ts",
           "title": "snapshots the action, profile, and graph before awaiting durable consumption",
           "runner": "vitest"
         },
         {
-          "file": "tests/model-to-matter.test.js",
+          "file": "tests/model-to-matter.test.ts",
           "title": "fails before challenge consumption when explicit revocation state is absent",
           "runner": "vitest"
         },
         {
-          "file": "tests/model-to-matter.test.js",
+          "file": "tests/model-to-matter.test.ts",
           "title": "refuses tampering, issuer laundering, cross-action replay, and impossible timestamps",
           "runner": "vitest"
         },
         {
-          "file": "tests/model-to-matter.test.js",
+          "file": "tests/model-to-matter.test.ts",
           "title": "pins all trust configuration and invokes the effect adapter only after one successful clearance",
           "runner": "vitest"
         },
         {
-          "file": "tests/model-to-matter.test.js",
+          "file": "tests/model-to-matter.test.ts",
           "title": "refuses every transaction-scoped trust field before challenge consumption",
           "runner": "vitest"
         },
         {
-          "file": "tests/model-to-matter.test.js",
+          "file": "tests/model-to-matter.test.ts",
           "title": "requires explicit durable custody in production mode",
           "runner": "vitest"
         }
@@ -4075,7 +4075,7 @@
       "release_artifact_hashes": [
         {
           "artifact_id": "security-evidence",
-          "sha256": "c6d3b56480f061a67335c2a63fca84a59b45bff33fb8fadd5afc8f252747e9c7"
+          "sha256": "4bc6115517bb4fc546535721ffa8babe20124df6444e75c5ed771953bbdd529c"
         }
       ]
     },
@@ -4328,12 +4328,12 @@
       ],
       "tests": [
         {
-          "file": "tests/role-non-substitution.test.js",
+          "file": "tests/role-non-substitution.test.ts",
           "title": "NEGATIVE: a bare operator-signed envelope is not a human ceremony",
           "runner": "vitest"
         },
         {
-          "file": "tests/aec-safety-critical.test.js",
+          "file": "tests/aec-safety-critical.test.ts",
           "title": "requires the executor to pin the expected action independently of the chain",
           "runner": "vitest"
         }
@@ -4359,7 +4359,7 @@
       "release_artifact_hashes": [
         {
           "artifact_id": "security-evidence",
-          "sha256": "c6d3b56480f061a67335c2a63fca84a59b45bff33fb8fadd5afc8f252747e9c7"
+          "sha256": "4bc6115517bb4fc546535721ffa8babe20124df6444e75c5ed771953bbdd529c"
         }
       ]
     },
@@ -4538,7 +4538,7 @@
         },
         {
           "artifact_id": "security-evidence",
-          "sha256": "c6d3b56480f061a67335c2a63fca84a59b45bff33fb8fadd5afc8f252747e9c7"
+          "sha256": "4bc6115517bb4fc546535721ffa8babe20124df6444e75c5ed771953bbdd529c"
         }
       ]
     },
@@ -4633,17 +4633,17 @@
       ],
       "tests": [
         {
-          "file": "tests/mobile-action-continuity.test.js",
+          "file": "tests/mobile-action-continuity.test.ts",
           "title": "keeps authorization, consumption, uncertainty, and execution separate",
           "runner": "vitest"
         },
         {
-          "file": "tests/mobile-action-continuity.test.js",
+          "file": "tests/mobile-action-continuity.test.ts",
           "title": "reconciles only an exact signed provider outcome and preserves terminal refusals",
           "runner": "vitest"
         },
         {
-          "file": "tests/mobile-action-continuity-routes.test.js",
+          "file": "tests/mobile-action-continuity-routes.test.ts",
           "title": "atomically consumes once, marks timeout indeterminate, and refuses blind replay semantics",
           "runner": "vitest"
         }
@@ -4688,7 +4688,7 @@
         },
         {
           "artifact_id": "security-evidence",
-          "sha256": "c6d3b56480f061a67335c2a63fca84a59b45bff33fb8fadd5afc8f252747e9c7"
+          "sha256": "4bc6115517bb4fc546535721ffa8babe20124df6444e75c5ed771953bbdd529c"
         }
       ]
     },
@@ -4838,7 +4838,7 @@
         },
         {
           "artifact_id": "security-evidence",
-          "sha256": "c6d3b56480f061a67335c2a63fca84a59b45bff33fb8fadd5afc8f252747e9c7"
+          "sha256": "4bc6115517bb4fc546535721ffa8babe20124df6444e75c5ed771953bbdd529c"
         }
       ]
     },
@@ -4957,7 +4957,7 @@
         },
         {
           "artifact_id": "security-evidence",
-          "sha256": "c6d3b56480f061a67335c2a63fca84a59b45bff33fb8fadd5afc8f252747e9c7"
+          "sha256": "4bc6115517bb4fc546535721ffa8babe20124df6444e75c5ed771953bbdd529c"
         }
       ]
     },
@@ -5064,32 +5064,32 @@
       ],
       "tests": [
         {
-          "file": "tests/grace-mobile-grid.test.js",
+          "file": "tests/grace-mobile-grid.test.ts",
           "title": "executes, measures, emits a valid -02 Signed Statement, and settles once",
           "runner": "vitest"
         },
         {
-          "file": "tests/grace-mobile-grid.test.js",
+          "file": "tests/grace-mobile-grid.test.ts",
           "title": "refuses initiator self-approval under the pinned mobile roster",
           "runner": "vitest"
         },
         {
-          "file": "tests/grace-mobile-grid.test.js",
+          "file": "tests/grace-mobile-grid.test.ts",
           "title": "refuses an inactive or expired action before touching COSA",
           "runner": "vitest"
         },
         {
-          "file": "tests/grace-mobile-grid.test.js",
+          "file": "tests/grace-mobile-grid.test.ts",
           "title": "burns an indeterminate dispatch and never retries the physical effect",
           "runner": "vitest"
         },
         {
-          "file": "tests/grace-mobile-grid.test.js",
+          "file": "tests/grace-mobile-grid.test.ts",
           "title": "consumes one execution and one settlement under concurrent duplicate delivery",
           "runner": "vitest"
         },
         {
-          "file": "tests/grace-mobile-grid.test.js",
+          "file": "tests/grace-mobile-grid.test.ts",
           "title": "refuses meter signature substitution and market-rule smuggling",
           "runner": "vitest"
         }
@@ -5128,7 +5128,7 @@
       "release_artifact_hashes": [
         {
           "artifact_id": "security-evidence",
-          "sha256": "c6d3b56480f061a67335c2a63fca84a59b45bff33fb8fadd5afc8f252747e9c7"
+          "sha256": "4bc6115517bb4fc546535721ffa8babe20124df6444e75c5ed771953bbdd529c"
         }
       ]
     },
@@ -5452,17 +5452,17 @@
           "runner": "node-test"
         },
         {
-          "file": "tests/action-escrow-escrow-com.test.js",
+          "file": "tests/action-escrow-escrow-com.test.ts",
           "title": "refuses milestone acceptance until every schedule is secured and funded",
           "runner": "vitest"
         },
         {
-          "file": "tests/action-escrow-procore.test.js",
+          "file": "tests/action-escrow-procore.test.ts",
           "title": "double-fetches an exact read-only snapshot and marks it non-authoritative",
           "runner": "vitest"
         },
         {
-          "file": "tests/action-escrow-procore.test.js",
+          "file": "tests/action-escrow-procore.test.ts",
           "title": "binds every source coordinate and refuses provenance relabeling",
           "runner": "vitest"
         },
@@ -5520,7 +5520,7 @@
         },
         {
           "artifact_id": "security-evidence",
-          "sha256": "c6d3b56480f061a67335c2a63fca84a59b45bff33fb8fadd5afc8f252747e9c7"
+          "sha256": "4bc6115517bb4fc546535721ffa8babe20124df6444e75c5ed771953bbdd529c"
         }
       ]
     },
@@ -5842,7 +5842,7 @@
         },
         {
           "artifact_id": "security-evidence",
-          "sha256": "c6d3b56480f061a67335c2a63fca84a59b45bff33fb8fadd5afc8f252747e9c7"
+          "sha256": "4bc6115517bb4fc546535721ffa8babe20124df6444e75c5ed771953bbdd529c"
         }
       ]
     }
@@ -5882,19 +5882,19 @@
     },
     {
       "path": "conformance/result-contract.mjs",
-      "sha256": "85875cc981bd48228d35141e60cb1deabeaa2ab888ffbbb3f6a0e2c6df0c899b"
+      "sha256": "b5cab816a82517278cbe7db62832e693a3f5cc4c10aa346630fc99288d6083c1"
     },
     {
       "path": "conformance/run-model-to-matter.mjs",
-      "sha256": "457548930a77ffa0915ae4e3a4ee8de1dd3bb71445c5716e9aaeefa6cb7ae5ea"
+      "sha256": "d3202ef607e65084e0aab0979e3e5c9987854d5bc6122d30e5eafbf3e42c859a"
     },
     {
       "path": "conformance/runners/strict-json.mjs",
-      "sha256": "c6c2988ea96b5caa30ee936696c603d9b35ffde3e355c48dc2e813072b1b33a9"
+      "sha256": "9cd775340b74f73503abf964ad36660fea6370b66f7f88f49d4a9cf77c0b30ad"
     },
     {
       "path": "conformance/suites.mjs",
-      "sha256": "2f614283d4024c2dc4e89535cd1a56b8ba2548fc66f9b96760fc8fb56825cd3d"
+      "sha256": "ee1021eb36de8e50448d9f12f00d16f3e24561276c9a42241e88178d5daa0d3e"
     },
     {
       "path": "conformance/vectors/aec-role.v1.json",
@@ -5910,7 +5910,7 @@
     },
     {
       "path": "conformance/vectors/grace-mobile-grid.v1.json",
-      "sha256": "3c5b90805a9756792540fe8c14fe3765329b6cd404437d99452cb62dca30b787"
+      "sha256": "be4a5cefea9c2446e9d86d824c193748db06929fc285880327393d838f59298f"
     },
     {
       "path": "conformance/vectors/model-to-matter.v1.json",
@@ -5946,23 +5946,23 @@
     },
     {
       "path": "examples/action-escrow/scenario.test.mjs",
-      "sha256": "a1b6bf14e0e877d13131b2e814f8774dac3907faf6a90d257f7024f617dd445d"
+      "sha256": "7bdffda16a2699f01712b45deafcd0328e63db227078b12ba76ddffe35a3cb4f"
     },
     {
       "path": "examples/grace/live-control-room.mjs",
-      "sha256": "cdc47329b549eba02b59181bbfa3cca4765154bc97ccab3bf49960978d1ef8da"
+      "sha256": "77f79a55a536b927a1169e63b55485f4e43178ed58c8380b9bd3329390e7eb34"
     },
     {
       "path": "examples/receipt-program/demo.test.mjs",
-      "sha256": "4a26a25a8f4bff0bbb27b65fee0bd4504163b701042e3459bc64d7414e56770d"
+      "sha256": "6e39b678b0226bfd1018dd489b340ddb4cf4ccf704daef95d466b8d1e4820401"
     },
     {
       "path": "examples/regulatory-mobile-oversight/demo.test.mjs",
-      "sha256": "49bbf1faa9311ef552e52c9c10ad18a0397dff85d009a94302b8608b2ab14728"
+      "sha256": "37486513ec10d9a5c460586db4a3236241a9c6dafc5e3ce3abe027ace37a22d0"
     },
     {
       "path": "examples/regulatory-mobile-oversight/lib.mjs",
-      "sha256": "11d32a9d525fd0ddf326ef9c99c4be37aec6bf27e697439a9f7054671f30ad60"
+      "sha256": "ff3ea5fb20752360fc17f93312e0ae145f7240beb6e67dfc5e9743e2d39a0cc1"
     },
     {
       "path": "formal/check-outcome-authority-join.mjs",
@@ -6054,31 +6054,31 @@
     },
     {
       "path": "mobile/conformance/mobile-core.v1.json",
-      "sha256": "30d4e147c2ccc982dce5ce4088171fa7255960a5ebfababf96bb047aef8dc3e4"
+      "sha256": "86ac401f9578d296340b93a1bd3001e936d0c186ef028506c6d5a05f4f714942"
     },
     {
       "path": "packages/gate/action-escrow-custodian.test.js",
-      "sha256": "ffe14876c09da9b8f485936de041ccd30e7954fb8bab4fa060e0340ab7f4c6e8"
+      "sha256": "1cbb43f9141c093bcc0f12cb47edd4bbd48803010c719940d88153f67b690a55"
     },
     {
       "path": "packages/gate/action-escrow-evidence.test.js",
-      "sha256": "4e253fdbea1317273d48a13785eed06c542c282b7c13233a403ff481ae90e96e"
+      "sha256": "feed6811358487cd9af780662c6d5f978260ca7d6cc7802ab9c1fb0db4968ba8"
     },
     {
       "path": "packages/gate/action-escrow-package.test.js",
-      "sha256": "4739d1ee8ec47f8d949a47268cb4bbd66c33e042aced7e04ce2a4cfe6a14b0f3"
+      "sha256": "4dd728306754de34f90ec56f799947bd2e337c1cae749fd09f15efb7b8f3142d"
     },
     {
       "path": "packages/gate/action-escrow-postgres.test.js",
-      "sha256": "978a18af69901da5d034359330c82fadc2c7b50aeb46f9d1f14c605574fcdc60"
+      "sha256": "1eb050a7cda059043d310e53ab659237525b24f0447e1e8228e8b8e30f4a5b4f"
     },
     {
       "path": "packages/gate/action-escrow-verifiers.test.js",
-      "sha256": "bffc64cb8fdba6dfbef033c7eed57a8ecc74679448214e1a74dcb9dff9001d67"
+      "sha256": "cc6e99d7fa3d9180d807b940ca3d1dca0e21eadde2769c599122327f34524286"
     },
     {
       "path": "packages/gate/action-escrow.test.js",
-      "sha256": "5d36bb7be8e8725fe4dfb82cca0df73472805c3ab640c16fd85dcf18a1ecb95d"
+      "sha256": "d875da0bceb720157fe5a41d05f098326aabb813c61836bd1338b54cf3f98fbd"
     },
     {
       "path": "packages/gate/deploy/sql/001-runtime.sql",
@@ -6086,19 +6086,19 @@
     },
     {
       "path": "packages/gate/evidence-atomic.test.js",
-      "sha256": "1b6ff5dbd575756aed0a2f1bba8c8a15812206ef6ebaaaff3d3bb317dc7e5787"
+      "sha256": "c4e9c613506840e6d1c1e3356857f086f36728fbb801fb4f611075389185b91a"
     },
     {
       "path": "packages/gate/gate.test.js",
-      "sha256": "58567dc983ed85cd9f26790944f7406ff88250ea29488380ca60865fed941e69"
+      "sha256": "b7a299b7d7d8a6ae2f80c7585cc697b3e13d5af6f004ed7fd03ba785f59fe46f"
     },
     {
       "path": "packages/gate/network-witness.test.js",
-      "sha256": "882802cddeaddf695e100fd7db215b7658e9376bd929f5bbd77d3b4b1b4cbb4a"
+      "sha256": "5ee6fb278095fd969f31efa3ca79208df75051a0459219b4a8fb6f0626c7381d"
     },
     {
       "path": "packages/gate/receipt-program.test.js",
-      "sha256": "30cd6b745879b1e17520234d7162f266939bfdf2150f4e6337b6afe78baa5bca"
+      "sha256": "79fccaba1702f0ab25a93af7210756451441b7219e0e799879a94293c7108254"
     },
     {
       "path": "packages/gate/src/action-escrow-custodian.ts",
@@ -6158,11 +6158,11 @@
     },
     {
       "path": "packages/gate/store-faults.test.js",
-      "sha256": "2340963dfe8848689851b189db400d6904c6124d83696db3d44e47a57bd48712"
+      "sha256": "4c181e40a4ad23a0a2970fe0cc5ba42f26679335353c692e9b2b21556d011e52"
     },
     {
       "path": "packages/gate/store-linearizability.test.js",
-      "sha256": "9917325b77e69fbcdfbc7e9b01fd9a12b00eba92d77b2b27a211ef3dbaf14797"
+      "sha256": "3e1c7f106c9f3cbed7dafcb515f062ce29cde9931b3e46099f41df3e5518e095"
     },
     {
       "path": "packages/go-verify/authority_join.go",
@@ -6210,7 +6210,7 @@
     },
     {
       "path": "packages/mobile/enrollment.test.js",
-      "sha256": "58a9efffda68bfb3afcc9ce32788e5319fb831dae77e43f5c3a209150ce4adf3"
+      "sha256": "6f5d45b97d02745d1dc147b41d420c615944ac08c66fe35a391eb8d1499e4640"
     },
     {
       "path": "packages/mobile/government.js",
@@ -6218,7 +6218,7 @@
     },
     {
       "path": "packages/mobile/government.test.js",
-      "sha256": "2751add4d40ff58657270a5cdf6bf1689d9a6bcc2c653100bce9db74987c06ba"
+      "sha256": "d2a73ed5d64f5cf7b0caa8ca79cfc3c5c4b11bd5d5568348f3741ec298f1fe21"
     },
     {
       "path": "packages/mobile/http.js",
@@ -6226,7 +6226,7 @@
     },
     {
       "path": "packages/mobile/http.test.js",
-      "sha256": "65fa5ec9d9119e307b5f6045e25e29488fa79c963c12a63abae75f2b4ae8fda5"
+      "sha256": "936834813bd89a2d2a96794ad0d1914233f338bb37be7f1a4137140f5186a78d"
     },
     {
       "path": "packages/mobile/index.js",
@@ -6234,7 +6234,7 @@
     },
     {
       "path": "packages/mobile/index.test.js",
-      "sha256": "35bc5f9472eb47c997da14e061e9f73bb2a53c3193911b4e831335b58a93fe80"
+      "sha256": "27aeb6b5a0acde6fcfd469680450e3a1f5465d785d996ecf04a8249466698e70"
     },
     {
       "path": "packages/mobile/src/enrollment.ts",
@@ -6274,7 +6274,7 @@
     },
     {
       "path": "packages/verify/outcome-binding.test.js",
-      "sha256": "0119df2b27800167c9a1871de5162dc722dfcfdbed01f199567e1585257bdbf8"
+      "sha256": "0ccd5acd47fa9efdfd8c6cc7a9d110e75605a9fb86ff7e46c5c34466de445f44"
     },
     {
       "path": "packages/verify/quorum.js",
@@ -6282,7 +6282,7 @@
     },
     {
       "path": "packages/verify/quorum.test.js",
-      "sha256": "42a58385fcb968b946db5beaa0cb01375ee10106f75b4f160d7f99aaf34fd511"
+      "sha256": "a1b0debd831a486394d73a39c8c0c9c2363db1e989c8d9a990c7e45ef4182c4f"
     },
     {
       "path": "packages/verify/reliance.js",
@@ -6294,7 +6294,7 @@
     },
     {
       "path": "packages/verify/resolution.test.js",
-      "sha256": "c0f811ee03b1b37666a5c63130adcf5a68f2c4e4793e07ff75272a2309e1c7c5"
+      "sha256": "c0af33c16a62aa53cb77ce13f4ba64bcc36493f047f58691bcfe1d98cefa30fd"
     },
     {
       "path": "packages/verify/revocation.js",
@@ -6302,7 +6302,7 @@
     },
     {
       "path": "packages/verify/revocation.test.js",
-      "sha256": "4cdd1e61b70266023c3995648dca76592da852c4485e813abcde1e8a34afb697"
+      "sha256": "92660221e784797eb89958a59eeff8e3dbdee17c50dbaeb0f98f0333753e7ae8"
     },
     {
       "path": "packages/verify/src/authority-proof.ts",
@@ -6346,11 +6346,11 @@
     },
     {
       "path": "packages/verify/timestamp-proof.test.js",
-      "sha256": "c9abf690af0ea90062f272a0b50eebd52f9b04efc807e85360cf8423580f6fb6"
+      "sha256": "af9efc94f26c741bc6806110c67ac0f7eb1d798dd86b9f6aabbf4de442ae6885"
     },
     {
       "path": "packages/verify/trust-receipt.test.js",
-      "sha256": "ce8514ad9732a19c501340bd8f7dfbccd4983b6c1da59d82c5b17498b1a7955a"
+      "sha256": "5fcd13ec78137b01c246c459182c6f6d14b0c4d2517967209a752b0d01cb7690"
     },
     {
       "path": "release/release-packages.v1.json",
@@ -6382,106 +6382,106 @@
     },
     {
       "path": "security/claims.v1.json",
-      "sha256": "a5c0436a17e12f994ec610ff85a3615c49fd5709700ea5dd4dcdaf19e565bef3"
+      "sha256": "aacfeed164a32ec2cfcf1d30951adb6b90172253a01c1528412fcd539061cd6b"
     },
     {
       "path": "security/vectors.v1.json",
-      "sha256": "ea4f43df32394065d319c31839748a90ebb8757bc366d0c62d2d3d0930a197a7"
+      "sha256": "c697fc1e58dcd8c82c45f0ea8737ef7410ee7bc2557ca117a109e199767ee7bc"
     },
     {
       "path": "supabase/migrations/20260720193917_mobile_action_continuity_hardening.sql",
       "sha256": "9ba1880c03dd97a1ee1c207c80986ba7d1e7db05d380f82262e3999e436cfef0"
     },
     {
-      "path": "tests/action-escrow-escrow-com.test.js",
+      "path": "tests/action-escrow-escrow-com.test.ts",
       "sha256": "210b28d019ae8d7ed7226d5157fdc0731df5479505c77a7816671a26de1537de"
     },
     {
-      "path": "tests/action-escrow-procore.test.js",
+      "path": "tests/action-escrow-procore.test.ts",
       "sha256": "9e7f489c8703b0161d2c01945e84893b316934131a9ff73e5b8590cd14b313d0"
     },
     {
-      "path": "tests/aec-execution-gate.test.js",
+      "path": "tests/aec-execution-gate.test.ts",
       "sha256": "592bc5ca305503adf3f7ca6704d618e3b52be19da6ac2414141dcae71f74754d"
     },
     {
-      "path": "tests/aec-safety-critical.test.js",
+      "path": "tests/aec-safety-critical.test.ts",
       "sha256": "7f29883357aa8b8b1df4765a3fcf7b2634c1601088104f9717176e0b16def534"
     },
     {
-      "path": "tests/authority-doc.test.js",
+      "path": "tests/authority-doc.test.ts",
       "sha256": "c799c5e280f8ce20201937c20d7ea793bf7b19df71b167b8b724ff20c40145ae"
     },
     {
-      "path": "tests/authority-document-proof-join.test.js",
+      "path": "tests/authority-document-proof-join.test.ts",
       "sha256": "19b4db8bb784da984f64e3ba9c01b2288589f811a46a7da881f8a18fb22f0410"
     },
     {
-      "path": "tests/authority-registry.test.js",
+      "path": "tests/authority-registry.test.ts",
       "sha256": "81c26b897a50668d33d06e01e3275da340cc938f6558dec8f0b721f499ce4213"
     },
     {
-      "path": "tests/evidence-challenge-durable.test.js",
+      "path": "tests/evidence-challenge-durable.test.ts",
       "sha256": "17466f71be88b3fb2962df6fb90b4e252d89a780360a63e4903cbe8fec2898b4"
     },
     {
-      "path": "tests/grace-mobile-grid.test.js",
+      "path": "tests/grace-mobile-grid.test.ts",
       "sha256": "8d81c870c9c77240c821acd8e176fa753c363b90237169f6bdec78723804b832"
     },
     {
-      "path": "tests/mobile-action-continuity-routes.test.js",
+      "path": "tests/mobile-action-continuity-routes.test.ts",
       "sha256": "89405130f4e8d3ebeae1687e410f5ba0818e73db5968a2003d6b6e1500f5337a"
     },
     {
-      "path": "tests/mobile-action-continuity.test.js",
+      "path": "tests/mobile-action-continuity.test.ts",
       "sha256": "70f37b8da2ab60fddda4a85a6b9ef6a07eeb213d7ca1d6ba9f4d96f3965a2626"
     },
     {
-      "path": "tests/model-to-matter.test.js",
+      "path": "tests/model-to-matter.test.ts",
       "sha256": "7d2928f42971bd9533b8af2738124b56e98d1c58ecf56e37d82257c02575eed2"
     },
     {
-      "path": "tests/ncpdp-privacy.test.js",
+      "path": "tests/ncpdp-privacy.test.ts",
       "sha256": "933e787c626fbab87ebeb29db439994376133353ae316a1b136f3049dfc00e43"
     },
     {
-      "path": "tests/outcome-authority-formal.test.js",
+      "path": "tests/outcome-authority-formal.test.ts",
       "sha256": "a635be72aa6bd43cf1bf9532bec1d4b556244e8995bd4fd1ba916e89633a1e99"
     },
     {
-      "path": "tests/release-approval.test.js",
+      "path": "tests/release-approval.test.ts",
       "sha256": "b3a9a07fdd331b96e2e62d3626c57798935d3ab5515af4f2bf0945da5baf55a7"
     },
     {
-      "path": "tests/release-chain-coverage.test.js",
+      "path": "tests/release-chain-coverage.test.ts",
       "sha256": "90b0041c4f2ba38decde6cd05c5331ad20f2607fbc746954e731c7e471f44808"
     },
     {
-      "path": "tests/release-reproducibility.test.js",
+      "path": "tests/release-reproducibility.test.ts",
       "sha256": "037094e75ae8178f4acb98f59248cde2af3ef844ab693cad2f5caf696b0fe392"
     },
     {
-      "path": "tests/reliance-kernel.test.js",
+      "path": "tests/reliance-kernel.test.ts",
       "sha256": "db381d619aee0850a5a632ccb6cc529fd2df303fa8ce42e377cb013501b29185"
     },
     {
-      "path": "tests/role-non-substitution.test.js",
+      "path": "tests/role-non-substitution.test.ts",
       "sha256": "6dbc42fe57390bc990b6f2c0554125cdff6f158de93ac722a4ebf1006d66e57b"
     },
     {
-      "path": "tests/signoff-decision-evidence.test.js",
+      "path": "tests/signoff-decision-evidence.test.ts",
       "sha256": "e71fbc74e10b51e1bbe65674a26013a94dba8d80b1ff024050f91e9515e08895"
     },
     {
-      "path": "tests/v1-api.test.js",
+      "path": "tests/v1-api.test.ts",
       "sha256": "7a400f4622a5599338aaee794830843f22ca6fca9f6f25eba8f95c0ab66004ba"
     },
     {
-      "path": "tests/webauthn-approve-route.test.js",
+      "path": "tests/webauthn-approve-route.test.ts",
       "sha256": "874a6f68bcca26c895ae04fd42692b9b1c2f98032a51681fa07c7988526ab251"
     },
     {
-      "path": "tests/webauthn-lib.test.js",
+      "path": "tests/webauthn-lib.test.ts",
       "sha256": "82ade1064c9b8ac983bfee164a6444af62730a424451ab465ecd3c9b36dd88ba"
     }
   ]

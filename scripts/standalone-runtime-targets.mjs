@@ -86,6 +86,7 @@ export const STANDALONE_RUNTIME_SOURCES = [
   'apps/gate-service/src/runtime.ts',
   'apps/gate-service/src/server.ts',
   'apps/gate-service/test/helpers.ts',
+  'apps/secure-app/lib/ep-signoff.ts',
   // scripts/ (excluding scripts/ts-loader/** -- the resolution hook itself,
   // which cannot depend on TypeScript stripping to bootstrap -- and this
   // file plus build-ts-runtime.mjs, the meta build tools that produce these
@@ -163,7 +164,95 @@ export const STANDALONE_RUNTIME_SOURCES = [
   'scripts/verify-security-case.mts',
 ];
 
-/** Repo-relative generated-companion paths (.ts -> .js, .mts -> .mjs). */
+/**
+ * Trees whose EVERY .ts/.mts source gets a companion automatically: these
+ * directories are executed by bare `node` in Node-20 CI jobs (or discovered
+ * by `node --test`, which on Node 20 only finds .test.js/.test.mjs), so each
+ * converted source needs a generated runtime twin without a manual list
+ * entry per file. Scanned by companionSources() below.
+ */
+export const COMPANION_DIR_GLOBS = [
+  'examples',
+  'conformance',
+  'witness',
+  'fuzz',
+  'attestation',
+  'load-tests',
+  'bench',
+  'mcp-server',
+  'cli',
+  'integrations',
+  'actions',
+  'receipt-required-pr-kit',
+  // ('formal' is deliberately NOT scanned: the bounded-model and runner .mjs
+  // bytes are themselves the recorded proof subject -- the checked-in
+  // formal/results summaries pin their exact SHA-256, so those files stay
+  // byte-stable handwritten JS, like conformance vectors.)
+  'ml',
+  'create-ep-app',
+  'eslint-rules',
+];
+
+/**
+ * Package-internal test trees: run via `node --test` on Node 20 in the
+ * per-package CI jobs; .test.ts sources need .test.js companions so
+ * discovery keeps finding them.
+ */
+export const COMPANION_PACKAGE_TEST_GLOBS = ['packages'];
+
+function scanTree(fs, dir, out) {
+  let entries;
+  try {
+    entries = fs.readdirSync(dir, { withFileTypes: true });
+  } catch {
+    return;
+  }
+  for (const entry of entries) {
+    if (entry.name === 'node_modules' || entry.name === 'dist' || entry.name === '.git') continue;
+    const full = `${dir}/${entry.name}`;
+    if (entry.isDirectory()) {
+      scanTree(fs, full, out);
+    } else if (/\.m?ts$/.test(entry.name) && !entry.name.endsWith('.d.ts') && !entry.name.endsWith('.d.mts')) {
+      out.push(full);
+    }
+  }
+}
+
+/**
+ * Full companion source list: the explicit entries above plus every .ts/.mts
+ * source under COMPANION_DIR_GLOBS, plus every *.test.ts / *.test.mts under
+ * COMPANION_PACKAGE_TEST_GLOBS. Takes the fs module and repo root as
+ * arguments so this module itself stays import-side-effect free for config
+ * bundlers.
+ */
+export function companionSources(fs, repoRoot) {
+  const out = [...STANDALONE_RUNTIME_SOURCES];
+  const seen = new Set(out);
+  const scanned = [];
+  for (const dir of COMPANION_DIR_GLOBS) scanTree(fs, `${repoRoot}/${dir}`, scanned);
+  for (const abs of scanned) {
+    const rel = abs.slice(repoRoot.length + 1);
+    if (!seen.has(rel)) { seen.add(rel); out.push(rel); }
+  }
+  const pkgScanned = [];
+  for (const dir of COMPANION_PACKAGE_TEST_GLOBS) scanTree(fs, `${repoRoot}/${dir}`, pkgScanned);
+  for (const abs of pkgScanned) {
+    const rel = abs.slice(repoRoot.length + 1);
+    if (!/\.test\.m?ts$/.test(rel)) continue;
+    if (!seen.has(rel)) { seen.add(rel); out.push(rel); }
+  }
+  return out;
+}
+
+/** Repo-relative generated-companion paths for the full scanned set. */
+export function companionRuntimePaths(fs, repoRoot) {
+  return companionSources(fs, repoRoot).map(
+    (source) => source.replace(/\.mts$/, '.mjs').replace(/\.ts$/, '.js'),
+  );
+}
+
+/** Repo-relative generated-companion paths (.ts -> .js, .mts -> .mjs) for
+ * the explicit list only; prefer companionRuntimePaths(fs, root). */
 export const COMPANION_RUNTIME_PATHS = STANDALONE_RUNTIME_SOURCES.map(
   (source) => source.replace(/\.mts$/, '.mjs').replace(/\.ts$/, '.js'),
 );

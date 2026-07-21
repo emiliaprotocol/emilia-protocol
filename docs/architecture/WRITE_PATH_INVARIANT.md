@@ -125,7 +125,7 @@ Broader CI guardrail. Checks:
 
 5. **Embedded issuer keys**: Detects `presentation.publicKey`, `presentation.signingKey`, `payload.key` patterns in handshake code.
 
-6. **Test suite presence**: Warns if `tests/handshake.test.js` or `tests/handshake-attack.test.js` are missing or lack invariant/attack coverage.
+6. **Test suite presence**: Warns if `tests/handshake.test.ts` or `tests/handshake-attack.test.ts` are missing or lack invariant/attack coverage.
 
 Critical violations cause CI failure (exit code 1). Warnings pass but are reported.
 

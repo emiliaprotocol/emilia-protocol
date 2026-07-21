@@ -20,8 +20,8 @@
 | **Total** | **112** | **All passing** |
 
 Test files:
-- `tests/commit.test.js` (104 test cases)
-- `tests/commit-routes.test.js` (8 test cases)
+- `tests/commit.test.ts` (104 test cases)
+- `tests/commit-routes.test.ts` (8 test cases)
 
 ---
 

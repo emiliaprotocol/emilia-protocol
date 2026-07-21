@@ -1,7 +1,7 @@
 # EP Benchmark Results
 
 **Version:** 1.0
-**Purpose:** Prove the EP protocol kernel is lightweight. Every number here is auditable against `tests/benchmark.test.js`.
+**Purpose:** Prove the EP protocol kernel is lightweight. Every number here is auditable against `tests/benchmark.test.ts`.
 
 ---
 
@@ -43,7 +43,7 @@ These SLOs account for mock infrastructure overhead (Vitest mock dispatch, in-me
 ## 4. How to Run
 
 ```bash
-npx vitest run tests/benchmark.test.js
+npx vitest run tests/benchmark.test.ts
 ```
 
 Results are printed to stdout with the `[BENCH]` prefix. Each line reports p50, p95, p99, mean, min, and max latencies.

@@ -94,10 +94,10 @@ enrollment flow uses.
 
 ## Conformance
 
-The mapping, filter, and PATCH semantics are covered by `tests/scim-core.test.js`
+The mapping, filter, and PATCH semantics are covered by `tests/scim-core.test.ts`
 (24 cases) and the full create → list → filter → deprovision → delete lifecycle,
 the auth gate, and the approver-linkage (provision-eligible / deprovision-revokes /
-re-activation-never-resurrects) by `tests/scim-routes.test.js` (15 cases). Storage
+re-activation-never-resurrects) by `tests/scim-routes.test.ts` (15 cases). Storage
 is `supabase/migrations/095_scim_provisioning.sql`.
 
 > **Live IdP round-trip:** the server is conformance-tested against the SCIM

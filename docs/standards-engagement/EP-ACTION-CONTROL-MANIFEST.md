@@ -92,4 +92,4 @@ That is why it can become the glue.
 - Public manifest: `public/.well-known/agent-action-control.json`
 - Schema: `public/docs/schemas/agent-action-control-manifest-v0.2.schema.json`
 - Validator/API: `packages/gate/action-control-manifest.js`
-- Tests: `tests/action-control-manifest.test.js`
+- Tests: `tests/action-control-manifest.test.ts`

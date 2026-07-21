@@ -4,7 +4,7 @@ Section 2.4 of the reviewer's next-phase document.
 
 ## Overview
 
-The property-based test suite (`tests/property-based.test.js`) uses [fast-check](https://github.com/dubzzz/fast-check) to verify that EP protocol invariants hold across hundreds of randomly generated inputs. Unlike example-based tests, property tests explore the input space stochastically, catching edge cases that hand-written fixtures miss.
+The property-based test suite (`tests/property-based.test.ts`) uses [fast-check](https://github.com/dubzzz/fast-check) to verify that EP protocol invariants hold across hundreds of randomly generated inputs. Unlike example-based tests, property tests explore the input space stochastically, catching edge cases that hand-written fixtures miss.
 
 ## What Is Property-Tested
 
@@ -80,7 +80,7 @@ The property-based test suite (`tests/property-based.test.js`) uses [fast-check]
 ## Running
 
 ```bash
-npx vitest run tests/property-based.test.js
+npx vitest run tests/property-based.test.ts
 ```
 
 ## Relationship to Other Test Suites

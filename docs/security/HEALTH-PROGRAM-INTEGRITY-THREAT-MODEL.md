@@ -178,4 +178,4 @@ Release is blocked unless executable tests prove refusal under:
 9. missing or conflicting evidence-packet identity/outcome fields.
 
 The focused hostile suite is
-`tests/health-program-integrity-hostile.test.js`.
+`tests/health-program-integrity-hostile.test.ts`.

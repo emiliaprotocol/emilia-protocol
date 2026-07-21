@@ -1,10 +1,9 @@
 #!/usr/bin/env node
 // SPDX-License-Identifier: Apache-2.0
-
-import { runIndeterminateEffectDemo } from './scenario.mjs';
-
+// Generated from demo.mts by scripts/build-standalone-runtimes.mjs. Do not edit.
+/* eslint-disable */
+import { runIndeterminateEffectDemo } from './scenario.mts';
 const result = await runIndeterminateEffectDemo();
-
 console.log('EMILIA INDETERMINATE-EFFECT RECONCILIATION');
 console.log('');
 console.log(`1  PROVIDER COMMITTED     effects=${result.provider.committed_effects}`);

@@ -377,10 +377,10 @@ no frozen package.
   forgeries, not hand-edited JSON) and asserts each catalogue id by name:
   - **`conformance/vectors/wysiwys.v1.json`**
     (`EP-WYSIWYS-DISPLAY-ATTESTATION-VECTORS-v1`) +
-    **`tests/wysiwys.test.js`**.
+    **`tests/wysiwys.test.ts`**.
   - **`conformance/vectors/execution-integrity.v1.json`**
     (`EP-EXECUTION-INTEGRITY-VECTORS-v1`) +
-    **`tests/execution-integrity.test.js`**.
+    **`tests/execution-integrity.test.ts`**.
 
   As run with `vitest`, every `must_reject` vector returns `valid: false`
   on its named failing check and every `must_accept` vector returns
@@ -519,7 +519,7 @@ most sensitive embedded action.
   catalogue (`EP-WYSIWYS-DISPLAY-ATTESTATION-VECTORS-v1`)
 - `conformance/vectors/execution-integrity.v1.json` — execution-integrity
   attack catalogue (`EP-EXECUTION-INTEGRITY-VECTORS-v1`)
-- `tests/wysiwys.test.js`, `tests/execution-integrity.test.js` — live
+- `tests/wysiwys.test.ts`, `tests/execution-integrity.test.ts` — live
   adversarial suites asserting each vector id by name (20/20 passing)
 - `docs/RECEIPT-CLAIMS.md` — what a receipt proves and does not prove
   ("a signature proves user presence and approval toward *whatever was

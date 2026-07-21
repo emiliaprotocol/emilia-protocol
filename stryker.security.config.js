@@ -74,12 +74,12 @@ export default {
     'lib/authority/resolver.js:57-378',
   ],
   testFiles: [
-    'tests/gate-security-remediation.test.js',
-    'tests/gate-execution-binding-failclosed.test.js',
-    'tests/mutation-security-kernel.test.js',
-    'tests/reliance-kernel.test.js',
-    'tests/authority-registry.test.js',
-    'tests/audit-regression.test.js',
+    'tests/gate-security-remediation.test.{js,ts}',
+    'tests/gate-execution-binding-failclosed.test.{js,ts}',
+    'tests/mutation-security-kernel.test.{js,ts}',
+    'tests/reliance-kernel.test.{js,ts}',
+    'tests/authority-registry.test.{js,ts}',
+    'tests/audit-regression.test.{js,ts}',
   ],
   thresholds: {
     // CI may improve this score, but may never silently fall below the 90% floor.

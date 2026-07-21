@@ -7,7 +7,7 @@
       "expect": { "valid": true },
       "execution": {
         "runner": "vitest",
-        "file": "tests/grace-mobile-grid.test.js",
+        "file": "tests/grace-mobile-grid.test.ts",
         "title": "executes, measures, emits a valid -02 Signed Statement, and settles once"
       }
     },
@@ -16,7 +16,7 @@
       "expect": { "valid": false },
       "execution": {
         "runner": "vitest",
-        "file": "tests/grace-mobile-grid.test.js",
+        "file": "tests/grace-mobile-grid.test.ts",
         "title": "refuses initiator self-approval under the pinned mobile roster"
       }
     },
@@ -25,7 +25,7 @@
       "expect": { "valid": false },
       "execution": {
         "runner": "vitest",
-        "file": "tests/grace-mobile-grid.test.js",
+        "file": "tests/grace-mobile-grid.test.ts",
         "title": "refuses an inactive or expired action before touching COSA"
       }
     },
@@ -34,7 +34,7 @@
       "expect": { "valid": false },
       "execution": {
         "runner": "vitest",
-        "file": "tests/grace-mobile-grid.test.js",
+        "file": "tests/grace-mobile-grid.test.ts",
         "title": "consumes one execution and one settlement under concurrent duplicate delivery"
       }
     },
@@ -43,7 +43,7 @@
       "expect": { "valid": false },
       "execution": {
         "runner": "vitest",
-        "file": "tests/grace-mobile-grid.test.js",
+        "file": "tests/grace-mobile-grid.test.ts",
         "title": "refuses meter signature substitution and market-rule smuggling"
       }
     }

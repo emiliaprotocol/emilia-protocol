@@ -35,7 +35,7 @@ It covers three high-risk families:
 Run the conformance check:
 
 ```bash
-npx vitest run tests/http-api-conformance.test.js
+npx vitest run tests/http-api-conformance.test.ts
 ```
 
 Schema/security drift checks are separate operational gates and should continue

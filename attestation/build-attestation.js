@@ -1,3 +1,5 @@
+// Generated from build-attestation.ts by scripts/build-standalone-runtimes.mjs. Do not edit.
+/* eslint-disable */
 /**
  * EP Build / Binary Attestation — EP-BUILD-ATTESTATION-v1
  *
@@ -38,21 +40,16 @@
  *
  * @license Apache-2.0
  */
-
 import crypto from 'node:crypto';
 import { canonicalize, verifyMerkleAnchor, MERKLE_V2_ALG } from '../packages/verify/index.js';
-
 export const BUILD_ATTESTATION_VERSION = 'EP-BUILD-ATTESTATION-v1';
 export const ATTESTATION_SUBJECT_VERSION = 'EP-BUILD-ATTESTATION-SUBJECT-v1';
 export const TPM_QUOTE_FORMAT = 'EP-TPM-QUOTE-v1';
-
 const HEX64 = /^[0-9a-f]{64}$/;
 const GIT_SHA = /^[0-9a-f]{40}$/;
-
 function sha256Hex(buf) {
-  return crypto.createHash('sha256').update(buf).digest('hex');
+    return crypto.createHash('sha256').update(buf).digest('hex');
 }
-
 /**
  * The canonical SUBJECT the transparency-log leaf commits to. This is what binds
  * a log entry to one exact (source commit, binary artifact) pair. Changing any
@@ -63,15 +60,14 @@ function sha256Hex(buf) {
  * @returns {object} the canonical subject object (pre-canonicalization)
  */
 export function attestationSubject(record) {
-  return {
-    '@subject': ATTESTATION_SUBJECT_VERSION,
-    source_commit: record.source.commit,
-    package_path: record.source.package_path,
-    artifact_filename: record.artifact.filename,
-    artifact_sha256: record.artifact.sha256,
-  };
+    return {
+        '@subject': ATTESTATION_SUBJECT_VERSION,
+        source_commit: record.source.commit,
+        package_path: record.source.package_path,
+        artifact_filename: record.artifact.filename,
+        artifact_sha256: record.artifact.sha256,
+    };
 }
-
 /**
  * EP-MERKLE-v2 leaf hash of the attestation subject:
  *   SHA-256(0x00 || canonicalJSON(subject)) -> hex.
@@ -83,35 +79,43 @@ export function attestationSubject(record) {
  * @returns {string} hex leaf hash
  */
 export function attestationLeafHash(subject) {
-  const preimage = Buffer.concat([Buffer.from([0x00]), Buffer.from(canonicalize(subject), 'utf8')]);
-  return sha256Hex(preimage);
+    const preimage = Buffer.concat([Buffer.from([0x00]), Buffer.from(canonicalize(subject), 'utf8')]);
+    return sha256Hex(preimage);
 }
-
 function structuralError(record) {
-  if (!record || typeof record !== 'object' || Array.isArray(record)) return 'record must be a JSON object';
-  if (record['@version'] !== BUILD_ATTESTATION_VERSION) return `record @version must be ${BUILD_ATTESTATION_VERSION}`;
-
-  const s = record.source;
-  if (!s || typeof s !== 'object' || Array.isArray(s)) return 'record.source must be an object';
-  if (typeof s.commit !== 'string' || !GIT_SHA.test(s.commit)) return 'record.source.commit must be a 40-hex git sha';
-  if (typeof s.package_path !== 'string' || s.package_path.trim() === '') return 'record.source.package_path must be a non-empty string';
-
-  const a = record.artifact;
-  if (!a || typeof a !== 'object' || Array.isArray(a)) return 'record.artifact must be an object';
-  if (typeof a.filename !== 'string' || a.filename.trim() === '') return 'record.artifact.filename must be a non-empty string';
-  if (typeof a.sha256 !== 'string' || !HEX64.test(a.sha256)) return 'record.artifact.sha256 must be a 64-hex digest';
-  if (!Number.isInteger(a.bytes) || a.bytes < 0) return 'record.artifact.bytes must be a non-negative integer';
-
-  const l = record.log_entry;
-  if (!l || typeof l !== 'object' || Array.isArray(l)) return 'record.log_entry must be an object';
-  if (l.alg !== MERKLE_V2_ALG) return `record.log_entry.alg must be ${MERKLE_V2_ALG}`;
-  if (typeof l.leaf_hash !== 'string' || !HEX64.test(l.leaf_hash)) return 'record.log_entry.leaf_hash must be a 64-hex digest';
-  if (typeof l.merkle_root !== 'string' || !HEX64.test(l.merkle_root)) return 'record.log_entry.merkle_root must be a 64-hex digest';
-  if (!Array.isArray(l.merkle_proof)) return 'record.log_entry.merkle_proof must be an array';
-
-  return null;
+    if (!record || typeof record !== 'object' || Array.isArray(record))
+        return 'record must be a JSON object';
+    if (record['@version'] !== BUILD_ATTESTATION_VERSION)
+        return `record @version must be ${BUILD_ATTESTATION_VERSION}`;
+    const s = record.source;
+    if (!s || typeof s !== 'object' || Array.isArray(s))
+        return 'record.source must be an object';
+    if (typeof s.commit !== 'string' || !GIT_SHA.test(s.commit))
+        return 'record.source.commit must be a 40-hex git sha';
+    if (typeof s.package_path !== 'string' || s.package_path.trim() === '')
+        return 'record.source.package_path must be a non-empty string';
+    const a = record.artifact;
+    if (!a || typeof a !== 'object' || Array.isArray(a))
+        return 'record.artifact must be an object';
+    if (typeof a.filename !== 'string' || a.filename.trim() === '')
+        return 'record.artifact.filename must be a non-empty string';
+    if (typeof a.sha256 !== 'string' || !HEX64.test(a.sha256))
+        return 'record.artifact.sha256 must be a 64-hex digest';
+    if (!Number.isInteger(a.bytes) || a.bytes < 0)
+        return 'record.artifact.bytes must be a non-negative integer';
+    const l = record.log_entry;
+    if (!l || typeof l !== 'object' || Array.isArray(l))
+        return 'record.log_entry must be an object';
+    if (l.alg !== MERKLE_V2_ALG)
+        return `record.log_entry.alg must be ${MERKLE_V2_ALG}`;
+    if (typeof l.leaf_hash !== 'string' || !HEX64.test(l.leaf_hash))
+        return 'record.log_entry.leaf_hash must be a 64-hex digest';
+    if (typeof l.merkle_root !== 'string' || !HEX64.test(l.merkle_root))
+        return 'record.log_entry.merkle_root must be a 64-hex digest';
+    if (!Array.isArray(l.merkle_proof))
+        return 'record.log_entry.merkle_proof must be an array';
+    return null;
 }
-
 /**
  * TPM 2.0 verifier boundary.
  *
@@ -133,31 +137,32 @@ function structuralError(record) {
  * @returns {{ supported: boolean, ok: boolean, reason: string, pcrDigest?: string }}
  */
 export function verifyTpmQuote(_quote, opts = {}) {
-  if (typeof opts.hardwareVerifier === 'function') {
-    const r = opts.hardwareVerifier(_quote);
+    if (typeof opts.hardwareVerifier === 'function') {
+        const r = opts.hardwareVerifier(_quote);
+        return {
+            supported: true,
+            ok: r.ok === true,
+            reason: r.ok === true ? 'tpm-quote-verified-by-injected-hardware-verifier' : (r.reason || 'tpm-quote-rejected'),
+            ...(r.pcrDigest ? { pcrDigest: r.pcrDigest } : {}),
+        };
+    }
     return {
-      supported: true,
-      ok: r.ok === true,
-      reason: r.ok === true ? 'tpm-quote-verified-by-injected-hardware-verifier' : (r.reason || 'tpm-quote-rejected'),
-      ...(r.pcrDigest ? { pcrDigest: r.pcrDigest } : {}),
+        supported: false,
+        ok: false,
+        reason: 'tpm-hardware-required: no TPM 2.0 verifier and deployment trust policy were supplied (see attestation/STAGING.md)',
     };
-  }
-  return {
-    supported: false,
-    ok: false,
-    reason: 'tpm-hardware-required: no TPM 2.0 verifier and deployment trust policy were supplied (see attestation/STAGING.md)',
-  };
 }
-
 function tpmQuoteStructureError(q) {
-  if (!q || typeof q !== 'object' || Array.isArray(q)) return 'tpm_quote must be an object';
-  if (q['@format'] !== TPM_QUOTE_FORMAT) return `tpm_quote.@format must be ${TPM_QUOTE_FORMAT}`;
-  for (const field of ['quoted', 'signature', 'ak_public', 'nonce']) {
-    if (typeof q[field] !== 'string' || q[field].trim() === '') return `tpm_quote.${field} must be a non-empty string`;
-  }
-  return null;
+    if (!q || typeof q !== 'object' || Array.isArray(q))
+        return 'tpm_quote must be an object';
+    if (q['@format'] !== TPM_QUOTE_FORMAT)
+        return `tpm_quote.@format must be ${TPM_QUOTE_FORMAT}`;
+    for (const field of ['quoted', 'signature', 'ak_public', 'nonce']) {
+        if (typeof q[field] !== 'string' || q[field].trim() === '')
+            return `tpm_quote.${field} must be a non-empty string`;
+    }
+    return null;
 }
-
 /**
  * Verify an EP build/binary attestation record, fail-closed.
  *
@@ -189,128 +194,101 @@ function tpmQuoteStructureError(q) {
  * @returns {{ valid: boolean, complete: boolean, links: object, reason?: string }}
  */
 export function verifyBuildAttestation(record, opts = {}) {
-  /** @type {{
-   *   record_shape: boolean,
-   *   leaf_binding: boolean,
-   *   log_inclusion: boolean | {status: string, checkpoint_root_matched: boolean},
-   *   rebuild: {
-   *     status: string,
-   *     reason?: string,
-   *     built_source_commit?: string,
-   *     claimed_source_commit?: string,
-   *     built_sha256?: string,
-   *     claimed_sha256?: string,
-   *     source_commit?: string,
-   *     sha256?: string
-   *   },
-   *   tpm_quote: {status: string, reason?: string}
-   * }} */
-  const links = {
-    record_shape: false,
-    leaf_binding: false,
-    log_inclusion: false,
-    rebuild: { status: 'not_checked' },
-    tpm_quote: { status: 'absent' },
-  };
-
-  const shapeErr = structuralError(record);
-  if (shapeErr) {
-    return { valid: false, complete: false, links, reason: shapeErr };
-  }
-  links.record_shape = true;
-
-  // Link 1: the leaf is bound to this exact source+binary.
-  const expectedLeaf = attestationLeafHash(attestationSubject(record));
-  if (record.log_entry.leaf_hash !== expectedLeaf) {
-    return {
-      valid: false,
-      complete: false,
-      links,
-      reason: `leaf_binding_failed: log_entry.leaf_hash does not commit to this {source, artifact} (expected ${expectedLeaf})`,
+    const links = {
+        record_shape: false,
+        leaf_binding: false,
+        log_inclusion: false,
+        rebuild: { status: 'not_checked' },
+        tpm_quote: { status: 'absent' },
     };
-  }
-  links.leaf_binding = true;
-
-  // Link 2: the leaf is included under the claimed EP-MERKLE-v2 root.
-  const included = verifyMerkleAnchor(
-    record.log_entry.leaf_hash,
-    record.log_entry.merkle_proof,
-    record.log_entry.merkle_root,
-    { v2: true },
-  );
-  if (!included) {
-    return { valid: false, complete: false, links, reason: 'log_inclusion_failed: leaf does not reconstruct the claimed merkle_root' };
-  }
-  links.log_inclusion = true;
-
-  // Optional interior check: if a signed checkpoint is carried, its root must
-  // equal the inclusion root (defense buyer separately verifies the checkpoint
-  // signature + witness quorum via @emilia-protocol/verify).
-  if (record.log_entry.checkpoint && typeof record.log_entry.checkpoint === 'object') {
-    if (record.log_entry.checkpoint.root_hash !== record.log_entry.merkle_root) {
-      return { valid: false, complete: false, links, reason: 'checkpoint_root_mismatch: checkpoint.root_hash != log_entry.merkle_root' };
+    const shapeErr = structuralError(record);
+    if (shapeErr) {
+        return { valid: false, complete: false, links, reason: shapeErr };
     }
-    links.log_inclusion = { status: 'included', checkpoint_root_matched: true };
-  }
-
-  // Link 3 (optional, live): binary hash == deterministic build of pinned source.
-  let complete = false;
-  if (typeof opts.rebuild === 'function') {
-    let rebuilt;
-    try {
-      rebuilt = opts.rebuild({ commit: record.source.commit, package_path: record.source.package_path });
-    } catch (e) {
-      return { valid: false, complete: false, links: { ...links, rebuild: { status: 'error', reason: String(e && e.message || e) } }, reason: 'rebuild_error' };
+    links.record_shape = true;
+    // Link 1: the leaf is bound to this exact source+binary.
+    const expectedLeaf = attestationLeafHash(attestationSubject(record));
+    if (record.log_entry.leaf_hash !== expectedLeaf) {
+        return {
+            valid: false,
+            complete: false,
+            links,
+            reason: `leaf_binding_failed: log_entry.leaf_hash does not commit to this {source, artifact} (expected ${expectedLeaf})`,
+        };
     }
-    if (!rebuilt || typeof rebuilt.sha256 !== 'string' || !HEX64.test(rebuilt.sha256)) {
-      links.rebuild = { status: 'error', reason: 'rebuild did not return a 64-hex sha256' };
-      return { valid: false, complete: false, links, reason: 'rebuild_error' };
+    links.leaf_binding = true;
+    // Link 2: the leaf is included under the claimed EP-MERKLE-v2 root.
+    const included = verifyMerkleAnchor(record.log_entry.leaf_hash, record.log_entry.merkle_proof, record.log_entry.merkle_root, { v2: true });
+    if (!included) {
+        return { valid: false, complete: false, links, reason: 'log_inclusion_failed: leaf does not reconstruct the claimed merkle_root' };
     }
-    if (typeof rebuilt.source_commit !== 'string' || !GIT_SHA.test(rebuilt.source_commit)) {
-      links.rebuild = { status: 'error', reason: 'rebuild did not report the checked-out source_commit' };
-      return { valid: false, complete: false, links, reason: 'rebuild_source_unverified' };
+    links.log_inclusion = true;
+    // Optional interior check: if a signed checkpoint is carried, its root must
+    // equal the inclusion root (defense buyer separately verifies the checkpoint
+    // signature + witness quorum via @emilia-protocol/verify).
+    if (record.log_entry.checkpoint && typeof record.log_entry.checkpoint === 'object') {
+        if (record.log_entry.checkpoint.root_hash !== record.log_entry.merkle_root) {
+            return { valid: false, complete: false, links, reason: 'checkpoint_root_mismatch: checkpoint.root_hash != log_entry.merkle_root' };
+        }
+        links.log_inclusion = { status: 'included', checkpoint_root_matched: true };
     }
-    if (rebuilt.source_commit !== record.source.commit) {
-      links.rebuild = {
-        status: 'source_mismatch',
-        built_source_commit: rebuilt.source_commit,
-        claimed_source_commit: record.source.commit,
-      };
-      return {
-        valid: false,
-        complete: false,
-        links,
-        reason: 'rebuild_source_mismatch: checked-out source is not record.source.commit',
-      };
+    // Link 3 (optional, live): binary hash == deterministic build of pinned source.
+    let complete = false;
+    if (typeof opts.rebuild === 'function') {
+        let rebuilt;
+        try {
+            rebuilt = opts.rebuild({ commit: record.source.commit, package_path: record.source.package_path });
+        }
+        catch (e) {
+            return { valid: false, complete: false, links: { ...links, rebuild: { status: 'error', reason: String(e && e.message || e) } }, reason: 'rebuild_error' };
+        }
+        if (!rebuilt || typeof rebuilt.sha256 !== 'string' || !HEX64.test(rebuilt.sha256)) {
+            links.rebuild = { status: 'error', reason: 'rebuild did not return a 64-hex sha256' };
+            return { valid: false, complete: false, links, reason: 'rebuild_error' };
+        }
+        if (typeof rebuilt.source_commit !== 'string' || !GIT_SHA.test(rebuilt.source_commit)) {
+            links.rebuild = { status: 'error', reason: 'rebuild did not report the checked-out source_commit' };
+            return { valid: false, complete: false, links, reason: 'rebuild_source_unverified' };
+        }
+        if (rebuilt.source_commit !== record.source.commit) {
+            links.rebuild = {
+                status: 'source_mismatch',
+                built_source_commit: rebuilt.source_commit,
+                claimed_source_commit: record.source.commit,
+            };
+            return {
+                valid: false,
+                complete: false,
+                links,
+                reason: 'rebuild_source_mismatch: checked-out source is not record.source.commit',
+            };
+        }
+        if (rebuilt.sha256 !== record.artifact.sha256) {
+            links.rebuild = { status: 'mismatch', built_sha256: rebuilt.sha256, claimed_sha256: record.artifact.sha256 };
+            return { valid: false, complete: true, links, reason: 'rebuild_mismatch: binary hash is not the deterministic build of the pinned source' };
+        }
+        links.rebuild = {
+            status: 'matched',
+            source_commit: rebuilt.source_commit,
+            sha256: rebuilt.sha256,
+        };
+        complete = true;
     }
-    if (rebuilt.sha256 !== record.artifact.sha256) {
-      links.rebuild = { status: 'mismatch', built_sha256: rebuilt.sha256, claimed_sha256: record.artifact.sha256 };
-      return { valid: false, complete: true, links, reason: 'rebuild_mismatch: binary hash is not the deterministic build of the pinned source' };
+    // Link 4 (optional, hardware-gated): TPM quote.
+    if (record.tpm_quote !== undefined) {
+        const qErr = tpmQuoteStructureError(record.tpm_quote);
+        if (qErr) {
+            return { valid: false, complete, links: { ...links, tpm_quote: { status: 'malformed', reason: qErr } }, reason: qErr };
+        }
+        const tpm = verifyTpmQuote(record.tpm_quote, { hardwareVerifier: opts.tpmHardwareVerifier });
+        links.tpm_quote = tpm.supported
+            ? { status: tpm.ok ? 'verified' : 'rejected', reason: tpm.reason }
+            : { status: 'hardware_required', reason: tpm.reason };
+        // A present-but-hardware-required quote does not fail the software chain, but
+        // an explicitly REJECTED quote (a real verifier said no) is fail-closed.
+        if (tpm.supported && !tpm.ok) {
+            return { valid: false, complete, links, reason: `tpm_quote_rejected: ${tpm.reason}` };
+        }
     }
-    links.rebuild = {
-      status: 'matched',
-      source_commit: rebuilt.source_commit,
-      sha256: rebuilt.sha256,
-    };
-    complete = true;
-  }
-
-  // Link 4 (optional, hardware-gated): TPM quote.
-  if (record.tpm_quote !== undefined) {
-    const qErr = tpmQuoteStructureError(record.tpm_quote);
-    if (qErr) {
-      return { valid: false, complete, links: { ...links, tpm_quote: { status: 'malformed', reason: qErr } }, reason: qErr };
-    }
-    const tpm = verifyTpmQuote(record.tpm_quote, { hardwareVerifier: opts.tpmHardwareVerifier });
-    links.tpm_quote = tpm.supported
-      ? { status: tpm.ok ? 'verified' : 'rejected', reason: tpm.reason }
-      : { status: 'hardware_required', reason: tpm.reason };
-    // A present-but-hardware-required quote does not fail the software chain, but
-    // an explicitly REJECTED quote (a real verifier said no) is fail-closed.
-    if (tpm.supported && !tpm.ok) {
-      return { valid: false, complete, links, reason: `tpm_quote_rejected: ${tpm.reason}` };
-    }
-  }
-
-  return { valid: true, complete, links };
+    return { valid: true, complete, links };
 }

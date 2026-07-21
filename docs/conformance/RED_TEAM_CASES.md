@@ -776,12 +776,12 @@ Threat classes reference GOD FILE section 9.1 taxonomy.
 
 | Test File | Cases Covered |
 |-----------|---------------|
-| `tests/adversarial-benchmarks.test.js` | RT-013, RT-014, RT-055, RT-056, RT-061 through RT-066 |
-| `tests/adversarial-breakage.test.js` | RT-001, RT-010, RT-011, RT-013, RT-025, RT-048, RT-058 through RT-060, RT-074 through RT-076 |
-| `tests/handshake-attack.test.js` | RT-002, RT-003, RT-005 through RT-009, RT-012, RT-015 through RT-018, RT-030, RT-031, RT-032, RT-033, RT-035, RT-036, RT-051 through RT-054, RT-067 through RT-073, RT-082, RT-083 |
-| `tests/handshake-adversarial.test.js` | RT-019, RT-020, RT-021, RT-022, RT-024, RT-026, RT-040, RT-041, RT-044, RT-050, RT-057 |
-| `tests/concurrency-warfare.test.js` | RT-019, RT-023, RT-034, RT-042 through RT-050 |
-| `tests/handshake-invariants.test.js` | RT-002, RT-006, RT-007, RT-017, RT-027, RT-030, RT-037 |
-| `tests/conformance.test.js` | RT-038, RT-057 |
-| `tests/ci-guardrails.test.js` | RT-038, RT-039 |
-| `tests/dual-control.test.js` | RT-077, RT-080 |
+| `tests/adversarial-benchmarks.test.ts` | RT-013, RT-014, RT-055, RT-056, RT-061 through RT-066 |
+| `tests/adversarial-breakage.test.ts` | RT-001, RT-010, RT-011, RT-013, RT-025, RT-048, RT-058 through RT-060, RT-074 through RT-076 |
+| `tests/handshake-attack.test.ts` | RT-002, RT-003, RT-005 through RT-009, RT-012, RT-015 through RT-018, RT-030, RT-031, RT-032, RT-033, RT-035, RT-036, RT-051 through RT-054, RT-067 through RT-073, RT-082, RT-083 |
+| `tests/handshake-adversarial.test.ts` | RT-019, RT-020, RT-021, RT-022, RT-024, RT-026, RT-040, RT-041, RT-044, RT-050, RT-057 |
+| `tests/concurrency-warfare.test.ts` | RT-019, RT-023, RT-034, RT-042 through RT-050 |
+| `tests/handshake-invariants.test.ts` | RT-002, RT-006, RT-007, RT-017, RT-027, RT-030, RT-037 |
+| `tests/conformance.test.ts` | RT-038, RT-057 |
+| `tests/ci-guardrails.test.ts` | RT-038, RT-039 |
+| `tests/dual-control.test.ts` | RT-077, RT-080 |

@@ -1,4 +1,6 @@
 // SPDX-License-Identifier: Apache-2.0
+// Generated from gen-operator2.mts by scripts/build-standalone-runtimes.mjs. Do not edit.
+/* eslint-disable */
 //
 // Generates EP Federation Operator 2's identity + a signed EP-RECEIPT-v1, and
 // emits the Supabase Edge Function (index.ts) that serves Operator 2's PIP-006
@@ -9,61 +11,55 @@
 //
 // Operator 2 is a SEPARATELY-DEPLOYED operator (different infra/region/keys),
 // not an independent third party — see PIP-006 status note.
-
 import crypto from 'node:crypto';
 import { writeFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { dirname, resolve } from 'node:path';
-
 const HERE = dirname(fileURLToPath(import.meta.url));
 const BASE = 'https://kgknhhdqsykxcwzdfeim.supabase.co/functions/v1/operator2';
 const OPERATOR_ID = 'ep_operator_2_supabase_edge';
-
 // canonicalize: byte-identical to packages/verify/index.js
 function canonicalize(value) {
-  if (value === null || value === undefined) return JSON.stringify(value);
-  if (Array.isArray(value)) return `[${value.map(canonicalize).join(',')}]`;
-  if (typeof value === 'object') {
-    return `{${Object.keys(value).sort().map((k) => JSON.stringify(k) + ':' + canonicalize(value[k])).join(',')}}`;
-  }
-  return JSON.stringify(value);
+    if (value === null || value === undefined)
+        return JSON.stringify(value);
+    if (Array.isArray(value))
+        return `[${value.map(canonicalize).join(',')}]`;
+    if (typeof value === 'object') {
+        return `{${Object.keys(value).sort().map((k) => JSON.stringify(k) + ':' + canonicalize(value[k])).join(',')}}`;
+    }
+    return JSON.stringify(value);
 }
-
 const { publicKey, privateKey } = crypto.generateKeyPairSync('ed25519');
 const pubB64u = publicKey.export({ type: 'spki', format: 'der' }).toString('base64url');
-
 const payload = {
-  receipt_id: 'ep_receipt_operator2_demo_001',
-  '@version': 'EP-RECEIPT-v1',
-  entity_id: 'ep_entity_operator2_demo_agent',
-  action: { type: 'fin/payment-release', amount: 42000, currency: 'USD' },
-  context: { risk_signals: ['cross_operator_demo'] },
-  issued_at: '2026-06-11T00:00:00Z',
-  issuer_operator: OPERATOR_ID,
+    receipt_id: 'ep_receipt_operator2_demo_001',
+    '@version': 'EP-RECEIPT-v1',
+    entity_id: 'ep_entity_operator2_demo_agent',
+    action: { type: 'fin/payment-release', amount: 42000, currency: 'USD' },
+    context: { risk_signals: ['cross_operator_demo'] },
+    issued_at: '2026-06-11T00:00:00Z',
+    issuer_operator: OPERATOR_ID,
 };
 const sig = crypto.sign(null, Buffer.from(canonicalize(payload), 'utf8'), privateKey).toString('base64url');
-
 const receipt = {
-  '@version': 'EP-RECEIPT-v1',
-  payload,
-  signature: {
-    signer: OPERATOR_ID,
-    key_discovery: `${BASE}/.well-known/ep-keys.json`,
-    algorithm: 'Ed25519',
-    value: sig,
-  },
+    '@version': 'EP-RECEIPT-v1',
+    payload,
+    signature: {
+        signer: OPERATOR_ID,
+        key_discovery: `${BASE}/.well-known/ep-keys.json`,
+        algorithm: 'Ed25519',
+        value: sig,
+    },
 };
-
 const discovery = {
-  version: '1.1',
-  operator_id: OPERATOR_ID,
-  protocol_version: 'EP-CORE-v1.0',
-  cache_ttl_seconds: 300,
-  verify_url_template: `${BASE}/api/verify/{receipt_id}`,
-  keys: { [OPERATOR_ID]: { public_key: pubB64u, algorithm: 'Ed25519' } },
-  historical_keys: {},
+    version: '1.1',
+    operator_id: OPERATOR_ID,
+    protocol_version: 'EP-CORE-v1.0',
+    cache_ttl_seconds: 300,
+    verify_url_template: `${BASE}/api/verify/{receipt_id}`,
+    keys: { [OPERATOR_ID]: { public_key: pubB64u, algorithm: 'Ed25519' } },
+    historical_keys: {},
 };
-
 // Edge function: static-serves Operator 2's discovery, a sample signed receipt,
 // and its verifier-of-record. No private key at runtime — the receipt is
 // pre-signed here.
@@ -88,7 +84,6 @@ Deno.serve((req: Request) => {
   return J({ operator_id: DISCOVERY.operator_id, surfaces: ["/.well-known/ep-keys.json", "/receipt", "/api/verify/{receipt_id}"] });
 });
 `;
-
 writeFileSync(resolve(HERE, 'index.ts'), fn);
 // Also drop the receipt + discovery as fixtures for the conformance script.
 writeFileSync(resolve(HERE, 'operator2-receipt.json'), JSON.stringify(receipt, null, 2) + '\n');

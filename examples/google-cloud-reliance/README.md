@@ -16,7 +16,7 @@ mutation, and refuses replay.
 ```bash
 node examples/google-cloud-reliance/demo.mjs
 node examples/google-cloud-reliance/demo.mjs --json
-npx vitest run tests/google-cloud-reliance.test.js
+npx vitest run tests/google-cloud-reliance.test.ts
 ```
 
 ## The six exercised outcomes

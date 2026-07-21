@@ -1,7 +1,7 @@
 # Assurance-Tier Enforcement at Consume (design note)
 
 **Status:** IMPLEMENTED and **default ON (fail-closed)** — see `lib/guard-tier.js`,
-the consume route's dual gate, and `tests/guard-tier.test.js`. A receipt the policy
+the consume route's dual gate, and `tests/guard-tier.test.ts`. A receipt the policy
 labeled `dual` now requires two distinct Class-A approvers to consume by default;
 set `EP_TIER_QUORUM_ENFORCE=false` to explicitly opt out (permissive dev/demo).
 Scopes two requests into one mechanism: (1) value-tier → enforced quorum,
@@ -12,7 +12,7 @@ policy or require the second Class-A approval before consume.
 ## What already exists (do NOT rebuild)
 - **Value tiers** (`lib/guard-policies.js`): payment release ≥ $50k → `single`,
   ≥ $1M → `dual`. Score-independent (`evaluateGuardPolicy` takes no trust score;
-  locked by `tests/guard-policies.test.js`).
+  locked by `tests/guard-policies.test.ts`).
 - **Revocation-at-execution** (`consume/route.js`, single-signoff branch): the
   approver's authority is resolved via `resolveGuardAuthority(...)`, which checks
   **in-org, in-role, in-window, not revoked, sufficient assurance** at consume

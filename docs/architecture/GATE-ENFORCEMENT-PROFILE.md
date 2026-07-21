@@ -729,7 +729,7 @@ The current repository maps this profile to:
 | --- | --- |
 | AgentROA -01 envelope, delegation-chain, policy, topology, and AER verification | `packages/verify/agentroa.js` and `packages/verify/agentroa.test.js` |
 | Concrete ORPRG JSON/JCS/Ed25519 PermitReceipt verification with pinned issuer, policy, epoch, status, scope, budget, and durable anti-replay | `packages/verify/orprg.js` and `packages/verify/orprg.test.js` |
-| Pinned CAID projection and AgentROA + ORPRG + genuine EP quorum shared-action composition | `caid/impl/js/mapping.mjs`, `conformance/vectors/agentroa-orprg-ep.v1.json`, and `tests/agentroa-orprg-ep-caid.test.js` |
+| Pinned CAID projection and AgentROA + ORPRG + genuine EP quorum shared-action composition | `caid/impl/js/mapping.mjs`, `conformance/vectors/agentroa-orprg-ep.v1.json`, and `tests/agentroa-orprg-ep-caid.test.ts` |
 | EP receipt and quorum verification, kept separate from machine-scope and machine-policy evidence | `packages/verify/index.js` and `packages/verify/quorum.js` |
 | Constructor-pinned heterogeneous evidence requirement and action-keyed execution custody | `packages/verify/evidence-chain.js` and `packages/gate/aec-execution.js` |
 | Challenge, receipt verification, assurance, observed-action binding, one-time reservation, invocation, and execution evidence | `packages/gate/index.js` |

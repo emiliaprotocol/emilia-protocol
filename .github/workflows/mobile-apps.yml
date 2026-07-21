@@ -28,9 +28,9 @@ on:
       - 'supabase/migrations/*mobile*.sql'
       - 'tests/mobile-production-*.test.js'
       - 'tests/mobile-production-migration.sql'
-      - 'tests/conformance.test.js'
-      - 'tests/security.test.js'
-      - 'tests/write-guard-extended.test.js'
+      - 'tests/conformance.test.ts'
+      - 'tests/security.test.ts'
+      - 'tests/write-guard-extended.test.ts'
       - '.github/workflows/mobile-apps.yml'
   pull_request:
     branches: [main]
@@ -59,9 +59,9 @@ on:
       - 'supabase/migrations/*mobile*.sql'
       - 'tests/mobile-production-*.test.js'
       - 'tests/mobile-production-migration.sql'
-      - 'tests/conformance.test.js'
-      - 'tests/security.test.js'
-      - 'tests/write-guard-extended.test.js'
+      - 'tests/conformance.test.ts'
+      - 'tests/security.test.ts'
+      - 'tests/write-guard-extended.test.ts'
       - '.github/workflows/mobile-apps.yml'
   workflow_dispatch:
 
@@ -105,7 +105,7 @@ jobs:
           MOBILE_CONFORMANCE_PORTS: javascript
         run: npm run mobile:conformance
       - name: Run production adapters and routes
-        run: npx vitest run tests/mobile-production-attestation.test.js tests/mobile-production-routes.test.js tests/mobile-production-runtime.test.js tests/mobile-production-store.test.js
+        run: npx vitest run tests/mobile-production-attestation.test.ts tests/mobile-production-routes.test.ts tests/mobile-production-runtime.test.ts tests/mobile-production-store.test.ts
       - name: Run mobile package hostility suite
         run: node --test packages/mobile/*.test.js
       - name: Execute the production migration contract

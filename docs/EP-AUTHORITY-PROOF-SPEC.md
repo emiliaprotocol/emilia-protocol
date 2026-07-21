@@ -89,4 +89,4 @@ itself authorize the action — acceptance requires the out-of-band pin.
 `conformance/vectors/authority.v1.json` proof vectors cover accept-when-pinned
 plus every refusal: unpinned key, tampered body, head mismatch, stale epoch, and
 a forged envelope `key_id`. Signatures are reproduced at test time from a fixed
-seed. Driven by `tests/authority-registry.test.js`.
+seed. Driven by `tests/authority-registry.test.ts`.

@@ -29,7 +29,7 @@ node examples/model-to-matter/demo.mjs
 Run the adversarial contract:
 
 ```bash
-npx vitest run tests/model-to-matter.test.js
+npx vitest run tests/model-to-matter.test.ts
 npm run m2m:conformance
 npm run test:mutation:model-to-matter
 ```

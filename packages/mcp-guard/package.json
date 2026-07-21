@@ -39,7 +39,7 @@
   "scripts": {
     "build": "tsc -p tsconfig.json",
     "pretest": "npm run build",
-    "test": "cd ../.. && npx vitest run tests/mcp-guard-boundary.test.js"
+    "test": "cd ../.. && npx vitest run tests/mcp-guard-boundary.test.ts"
   },
   "peerDependencies": {
     "@emilia-protocol/require-receipt": "^0.6.0"
