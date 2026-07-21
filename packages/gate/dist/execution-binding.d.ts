@@ -29,11 +29,11 @@ export declare function verifyExecutionBinding({ requirement, receipt, observedA
     ok: boolean;
     required: boolean;
     required_fields: any[];
-    missing_signed_fields: string[];
-    missing_observed_fields: string[];
-    invalid_signed_fields: string[];
-    invalid_observed_fields: string[];
-    mismatched_fields: string[];
+    missing_signed_fields: PropertyKey[];
+    missing_observed_fields: PropertyKey[];
+    invalid_signed_fields: PropertyKey[];
+    invalid_observed_fields: PropertyKey[];
+    mismatched_fields: PropertyKey[];
     signed_hash: string | null;
     observed_hash: string | null;
     note: string;
