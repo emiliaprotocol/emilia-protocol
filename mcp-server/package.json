@@ -21,6 +21,9 @@
     "@emilia-protocol/verify": "^3.10.1",
     "@modelcontextprotocol/sdk": "^1.29.0"
   },
+  "overrides": {
+    "@hono/node-server": "2.0.8"
+  },
   "devDependencies": {
     "vitest": "^4.1.8"
   },

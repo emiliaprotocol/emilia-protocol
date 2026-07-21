@@ -22,8 +22,25 @@ details):
    (one-time consumption).
 5. **forged_refused** — a receipt with an altered signed field is refused.
 
-Higher levels are reserved (e.g. RR-2 = quorum-required actions enforce a
-satisfied multi-party quorum; RR-3 = execution attestation emitted).
+## Level RR-2 (acquisition profile)
+
+RR-2 is additive to RR-1. It requires a valid Action Control v0.2 manifest with
+the acquisition extension, strict HTTP problem details, an exact out-of-band
+authorization-endpoint pin, parameter/action-digest binding, durable
+idempotency, separate approval and polling capabilities, Class-A/quorum
+terminal evidence, and no receipt on non-approved states. Selector ambiguity,
+cross-tenant lookup, endpoint substitution, changed-idempotency replay,
+unsigned evidence, and CAID/action substitution must all refuse.
+
+The repository does not ship an RR-2 badge merely because these source tests
+pass. An RR-2 claim requires the black-box acquisition and gateway suites
+against an exact deployed endpoint/runtime digest. Until then the profile is a
+tested reference implementation, not deployment certification.
+
+The repository's reference server currently exercises RR-2 only for the
+server-controlled `payment.release` Class-A profile. This is not a universal
+acquisition claim: unsupported Action Control entries omit the authorization
+descriptor and remain RR-1 challenge/enforcement surfaces.
 
 ## Earn it — run the harness
 

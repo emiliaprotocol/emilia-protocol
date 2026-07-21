@@ -13,6 +13,14 @@
     "./strict-json": {
       "import": "./strict-json.js",
       "types": "./dist/strict-json.d.ts"
+    },
+    "./edge": {
+      "import": "./dist/edge.js",
+      "types": "./dist/edge.d.ts"
+    },
+    "./acquisition": {
+      "import": "./dist/acquisition.js",
+      "types": "./dist/acquisition.d.ts"
     }
   },
   "files": [

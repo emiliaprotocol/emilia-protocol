@@ -43,8 +43,8 @@
     "check:write-discipline": "node scripts/check-write-discipline.js",
     "check:demo-key": "node scripts/check-demo-key-isolation.js",
     "check:admissibility": "node scripts/check-admissibility-registry.mjs",
-    "check:security-case": "node scripts/verify-security-case.mjs --execute",
-    "security-case:emit": "node scripts/verify-security-case.mjs --execute --emit security/security-case.json",
+    "check:security-case": "node --import ./scripts/ts-loader/register.mjs scripts/verify-security-case.mjs --execute",
+    "security-case:emit": "node --import ./scripts/ts-loader/register.mjs scripts/verify-security-case.mjs --execute --emit security/security-case.json",
     "check:authority-claims": "node scripts/check-authority-claims.mjs",
     "check:runtime-bridge": "node scripts/check-runtime-bridge.mjs",
     "check:conformance-docs": "node scripts/check-conformance-doc-counts.mjs",
@@ -138,6 +138,7 @@
     "zod": "^4.4.3"
   },
   "overrides": {
+    "@hono/node-server": "2.0.8",
     "rollup": "^4.22.5",
     "postcss": "^8.5.12",
     "qs": "^6.15.2",

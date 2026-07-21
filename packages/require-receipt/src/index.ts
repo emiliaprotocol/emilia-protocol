@@ -19,6 +19,25 @@
  */
 import crypto from 'node:crypto';
 import { strictJsonGate } from './strict-json.js';
+export {
+  EP_APPROVAL_FLOW,
+  APPROVAL_REQUEST_ID_PATTERN,
+  APPROVAL_POLL_TOKEN_PATTERN,
+  APPROVAL_IDEMPOTENCY_KEY_PATTERN,
+  APPROVAL_STATUSES,
+  approvalActionHash,
+  validateApprovalAuthorization,
+  validateRequiredFields,
+  validateCaidSelector,
+  beginReceiptApproval,
+  pollReceiptApproval,
+} from './acquisition.js';
+import {
+  approvalActionHash,
+  validateApprovalAuthorization,
+  validateRequiredFields,
+  validateCaidSelector,
+} from './acquisition.js';
 
 type AnyRecord = Record<string, any>;
 type AssuranceTier = 'software' | 'class_a' | 'quorum';
@@ -215,6 +234,35 @@ function normalizeApproverKeys(input: any): AnyRecord {
   return input;
 }
 
+function verifyEmbeddedClassASignoff(doc: AnyRecord, opts: AssuranceOptions = {}): AssuranceResult {
+  const payload = doc?.payload;
+  const signoff = payload?.signoff || payload?.claim?.signoff;
+  const keyId = payload?.approver_key_id || payload?.claim?.approver_key_id;
+  const keys = normalizeApproverKeys(opts.approverKeys || opts.approver_keys);
+  const entry = typeof keyId === 'string' ? keys[keyId] : null;
+  if (!isObject(signoff) || !isObject(entry) || entry.key_class !== 'A'
+      || typeof entry.public_key !== 'string') {
+    return { ok: false, tier: 'software', reason: 'assurance_proof_required' };
+  }
+  const approver = signoff.context?.approver;
+  const sourceHash = payload?.claim?.source_receipt_action_hash;
+  if (typeof approver !== 'string' || approver !== entry.approver_id
+      || payload?.claim?.approver !== approver
+      || typeof sourceHash !== 'string'
+      || signoff.context?.action_hash !== sourceHash) {
+    return { ok: false, tier: 'software', reason: 'assurance_context_mismatch' };
+  }
+  try {
+    const digest = sha256Bytes(canonicalize(signoff.context));
+    const valid = verifyWebAuthnDigest(signoff.webauthn, digest, entry.public_key, opts);
+    return valid
+      ? { ok: true, tier: 'class_a', reason: 'embedded_class_a_signoff_verified', approvers: [approver] }
+      : { ok: false, tier: 'software', reason: 'assurance_proof_invalid' };
+  } catch {
+    return { ok: false, tier: 'software', reason: 'assurance_proof_invalid' };
+  }
+}
+
 /**
  * Validate the quorum rule supplied by the relying party. The policy is a trust
  * input, not evidence: a receipt creator's own threshold or roster never
@@ -358,7 +406,9 @@ export function receiptAssuranceTier(doc: AnyRecord, opts: AssuranceOptions = {}
     ? invokeCustomAssurance(opts.verifyAssurance, doc, 'quorum')
     : null;
   if (custom?.ok) return custom.tier;
-  return verifyPinnedAssuranceProof(doc, opts).tier;
+  const proof = verifyPinnedAssuranceProof(doc, opts);
+  if (proof.ok) return proof.tier;
+  return verifyEmbeddedClassASignoff(doc, opts).tier;
 }
 
 export function evaluateReceiptAssurance(doc: AnyRecord, required: string, opts: AssuranceOptions = {}): AnyRecord {
@@ -374,7 +424,11 @@ export function evaluateReceiptAssurance(doc: AnyRecord, required: string, opts:
       return { ok: false, have: normalizeAssuranceClass(lower.tier), need, reason: policy.reason };
     }
   }
-  const proof = custom || verifyPinnedAssuranceProof(doc, opts);
+  const pinned = custom || verifyPinnedAssuranceProof(doc, opts);
+  const hasEmbeddedSignoff = isObject(doc?.payload?.signoff || doc?.payload?.claim?.signoff);
+  const proof = pinned.ok || !hasEmbeddedSignoff
+    ? pinned
+    : verifyEmbeddedClassASignoff(doc, opts);
   const have = normalizeAssuranceClass(proof.tier);
   const rankOk = (ASSURANCE_RANK[have] ?? 0) >= (ASSURANCE_RANK[need] ?? 0);
   return {
@@ -387,6 +441,18 @@ export function evaluateReceiptAssurance(doc: AnyRecord, required: string, opts:
 }
 
 function challengeHeaderParams(opts: ChallengeOptions = {}) {
+  const authorization = opts.authorization === undefined
+    ? null
+    : validateApprovalAuthorization(opts.authorization);
+  if (authorization && !authorization.ok) throw new Error(authorization.reason);
+  const requiredFields = opts.requiredFields === undefined && opts.required_fields === undefined
+    ? null
+    : validateRequiredFields(opts.requiredFields ?? opts.required_fields);
+  if (requiredFields && !requiredFields.ok) throw new Error(requiredFields.reason);
+  const caidSelector = opts.caidSelector === undefined && opts.caid_selector === undefined
+    ? null
+    : validateCaidSelector(opts.caidSelector ?? opts.caid_selector);
+  if (caidSelector && !caidSelector.ok) throw new Error(caidSelector.reason);
   return definedEntries({
     action: opts.action,
     action_hash: opts.actionHash,
@@ -396,6 +462,10 @@ function challengeHeaderParams(opts: ChallengeOptions = {}) {
     assurance: opts.assuranceClass,
     quorum: opts.quorum ? JSON.stringify(opts.quorum) : null,
     max_age: Number.isFinite(opts.maxAgeSec) ? String(opts.maxAgeSec) : null,
+    authorization_endpoint: authorization?.ok ? authorization.value.authorization_endpoint : null,
+    flow: authorization?.ok ? authorization.value.flow : null,
+    required_fields: requiredFields?.ok ? JSON.stringify(requiredFields.value) : null,
+    caid_selector: caidSelector?.ok ? JSON.stringify(caidSelector.value) : null,
   });
 }
 
@@ -420,7 +490,9 @@ export function receiptRequiredHeader(opts: ChallengeOptions = {}) {
  */
 export function verifyEmiliaReceipt(doc: any, opts: VerifyOptions = {}) {
   const { trustedKeys = [], allowInlineKey = false, action = null, maxAgeSec = 900,
-    now = Date.now, allowedOutcomes = ['allow', 'allow_with_signoff'] } = opts;
+    now = Date.now, allowedOutcomes = ['allow', 'allow_with_signoff'],
+    actionHash = null, requiredFields = null, required_fields = null,
+    caidSelector = null, caid_selector = null, maxFutureSkewSec = 60 } = opts;
 
   if (!doc || doc['@version'] !== 'EP-RECEIPT-v1' || !doc.payload || !doc.signature?.value) {
     return { ok: false, reason: 'malformed_receipt' };
@@ -452,13 +524,64 @@ export function verifyEmiliaReceipt(doc: any, opts: VerifyOptions = {}) {
   // parseable created_at. A missing or unparseable created_at is treated as
   // EXPIRED (not skipped) so an undated receipt can never slip past the age
   // gate — matching what /api/v1/guarded enforces on the demand side.
+  const nowMs = typeof now === 'function' ? now() : Number.NaN;
   if (maxAgeSec) {
-    const nowMs = typeof now === 'function' ? now() : Number.NaN;
     const ageSec = (nowMs - Date.parse(payload.created_at)) / 1000;
     if (!Number.isFinite(ageSec) || ageSec > maxAgeSec) return { ok: false, reason: 'receipt_expired' };
+    if (!Number.isFinite(maxFutureSkewSec) || maxFutureSkewSec < 0 || ageSec < -maxFutureSkewSec) {
+      return { ok: false, reason: 'receipt_not_yet_valid' };
+    }
+  }
+  // A signed terminal expiry is an absolute validity boundary. Disabling the
+  // relative-age policy must never revive a receipt after that boundary.
+  if (payload.expires_at !== undefined) {
+    const expiresAt = Date.parse(payload.expires_at);
+    if (!Number.isFinite(nowMs) || !Number.isFinite(expiresAt) || nowMs >= expiresAt) {
+      return { ok: false, reason: 'receipt_expired' };
+    }
   }
   if (action && payload.claim?.action_type !== action) {
     return { ok: false, reason: 'action_mismatch', detail: `receipt is for "${payload.claim?.action_type}", required "${action}"` };
+  }
+  const expectedFields = requiredFields ?? required_fields;
+  const expectedCaidSelector = caidSelector ?? caid_selector;
+  if (actionHash || expectedFields || expectedCaidSelector) {
+    const signedAction = payload.claim?.canonical_action;
+    if (!isObject(signedAction)) return { ok: false, reason: 'signed_action_required' };
+    let computedActionHash;
+    try {
+      computedActionHash = approvalActionHash(signedAction);
+    } catch {
+      return { ok: false, reason: 'signed_action_invalid' };
+    }
+    const claimHash = typeof payload.claim?.action_hash === 'string'
+      ? `sha256:${payload.claim.action_hash.replace(/^sha256:/, '').toLowerCase()}`
+      : null;
+    if (!claimHash || claimHash !== computedActionHash) {
+      return { ok: false, reason: 'signed_action_hash_mismatch' };
+    }
+    if (actionHash && actionHash !== computedActionHash) {
+      return { ok: false, reason: 'action_hash_mismatch' };
+    }
+    if (expectedFields) {
+      const checkedFields = validateRequiredFields(expectedFields);
+      if (!checkedFields.ok) return { ok: false, reason: checkedFields.reason };
+      for (const field of checkedFields.value) {
+        if (!Object.prototype.hasOwnProperty.call(signedAction, field)
+            || signedAction[field] === undefined) {
+          return { ok: false, reason: 'signed_action_required_field_missing', detail: field };
+        }
+      }
+    }
+    if (expectedCaidSelector) {
+      const checkedSelector = validateCaidSelector(expectedCaidSelector);
+      if (!checkedSelector.ok) return { ok: false, reason: checkedSelector.reason };
+      const caid = signedAction[checkedSelector.value.field];
+      if (typeof caid !== 'string'
+          || !/^caid:1:[a-z][a-z0-9-]*(?:\.[a-z][a-z0-9-]*)*\.[1-9][0-9]*:[a-z0-9]+(?:-[a-z0-9]+)*:[A-Za-z0-9_-]{43}$/.test(caid)) {
+        return { ok: false, reason: 'signed_action_caid_invalid' };
+      }
+    }
   }
   const outcome = payload.claim?.outcome;
   if (allowedOutcomes && !allowedOutcomes.includes(outcome)) {
@@ -477,6 +600,18 @@ export function receiptChallenge(action: string | null, reason: string, opts: nu
   const o = asChallengeOptions(opts);
   const status = o.statusCode || o.status || LEGACY_RECEIPT_REQUIRED_STATUS;
   const proofHeader = o.proofHeader || RECEIPT_PROOF_HEADER;
+  const authorization = o.authorization === undefined
+    ? null
+    : validateApprovalAuthorization(o.authorization);
+  if (authorization && !authorization.ok) throw new Error(authorization.reason);
+  const requiredFields = o.requiredFields === undefined && o.required_fields === undefined
+    ? null
+    : validateRequiredFields(o.requiredFields ?? o.required_fields);
+  if (requiredFields && !requiredFields.ok) throw new Error(requiredFields.reason);
+  const caidSelector = o.caidSelector === undefined && o.caid_selector === undefined
+    ? null
+    : validateCaidSelector(o.caidSelector ?? o.caid_selector);
+  if (caidSelector && !caidSelector.ok) throw new Error(caidSelector.reason);
   return {
     type: 'https://emiliaprotocol.ai/errors/emilia_receipt_required',
     title: 'EMILIA Receipt Required',
@@ -494,7 +629,12 @@ export function receiptChallenge(action: string | null, reason: string, opts: nu
       assurance_class: o.assuranceClass || null,
       quorum: o.quorum || null,
       max_age_sec: Number.isFinite(o.maxAgeSec) ? o.maxAgeSec : null,
-      how: 'Obtain a receipt (run emilia-gate, the SDK, or POST /api/trust/gate), then resend with the header.',
+      authorization: authorization?.ok ? { ...authorization.value } : null,
+      required_fields: requiredFields?.ok ? [...requiredFields.value] : null,
+      caid_selector: caidSelector?.ok ? { ...caidSelector.value } : null,
+      how: authorization?.ok
+        ? `POST the exact challenged action to the authorization endpoint using ${authorization.value.flow}, poll with the returned private token, then retry with the approved receipt.`
+        : 'Obtain a receipt (run emilia-gate, the SDK, or POST /api/trust/gate), then resend with the header.',
       learn_more: 'https://www.emiliaprotocol.ai/agent-guard',
     },
   };

@@ -96,6 +96,10 @@ function fsPathToOpenapi(p) {
  * ROUTE_POLICIES entry. Keep this list as short as possible.
  */
 const MUTATING_POLICY_EXEMPTIONS = [
+  // EP-APPROVAL-v1 creation authenticates its Cloud key, requires the named
+  // approval_request capability, and applies cloud_write rate limiting inside
+  // the route. Polling intentionally uses a separate non-Cloud capability.
+  '/api/v1/approvals',
   // Signoff routes — middleware policies to be added in a follow-up.
   '/api/signoff/challenge',
   '/api/signoff/[challengeId]/attest',

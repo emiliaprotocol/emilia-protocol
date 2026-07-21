@@ -7,8 +7,9 @@ import { buildStandaloneRuntimes } from './build-standalone-runtimes.mjs';
 
 const root = process.cwd();
 const tsc = join(root, 'node_modules', 'typescript', 'bin', 'tsc');
+// lib/strict-json.js is intentionally a vendored, drift-tested verifier copy;
+// it has no TypeScript source entry and must not be synthesized here.
 const builds = [
-  ['lib/strict-json.ts', 'lib', 'lib/dist'],
   ['packages/gate/src/action-control-manifest.ts', 'packages/gate/src', 'packages/gate/dist'],
 ];
 

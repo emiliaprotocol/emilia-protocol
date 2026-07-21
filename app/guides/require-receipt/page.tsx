@@ -20,22 +20,25 @@ const codeBox: React.CSSProperties = {
 };
 
 const MANIFEST = `{
-  "@version": "EP-ACTION-RISK-MANIFEST-v0.1",
+  "@version": "EP-ACTION-CONTROL-MANIFEST-v0.2",
+  "profile": "agent-action-control",
   "service": {
     "name": "Acme MCP",
-    "manifest_url": "https://mcp.acme.com/.well-known/agent-actions.json"
-  },
-  "receipt_required": {
-    "status": 428,
-    "challenge_header": "Receipt-Required",
-    "proof_header": "X-EMILIA-Receipt",
-    "receipt_profile": "EP-RECEIPT-v1"
+    "issuer": "https://mcp.acme.com",
+    "manifest_url": "https://mcp.acme.com/.well-known/agent-action-control.json"
   },
   "defaults": {
-    "read_only": "allow",
+    "decision_point": "pre_effect_commit",
     "missing_receipt": "refuse",
     "invalid_receipt": "refuse",
-    "stale_receipt": "refuse"
+    "stale_receipt": "refuse",
+    "replay": "one_time_consumption",
+    "evidence_log": "strict"
+  },
+  "evidence_profiles": {
+    "authorization_receipt": "EP-RECEIPT-v1",
+    "execution_attestation": "EP-EXECUTION-ATTESTATION-v1",
+    "reliance_packet": "EP-RELIANCE-PACKET-v1"
   },
   "actions": [
     {
@@ -46,44 +49,62 @@ const MANIFEST = `{
       "receipt_required": true,
       "assurance_class": "class_a",
       "max_age_sec": 900,
-      "quorum": { "required": false }
+      "control": {
+        "enforcement_point": "pre_effect_commit",
+        "status": 428,
+        "challenge_header": "Receipt-Required",
+        "proof_header": "X-EMILIA-Receipt",
+        "authorization": {
+          "authorization_endpoint": "https://approve.example.com/api/v1/approvals",
+          "flow": "EP-APPROVAL-v1"
+        },
+        "authorization_receipt": {
+          "required": true,
+          "profile": "EP-RECEIPT-v1",
+          "verifier": "offline"
+        },
+        "replay": { "mode": "one_time_consumption", "receipt_id_required": true },
+        "execution_binding": {
+          "required": true,
+          "source": "system_of_record",
+          "required_fields": [
+            "action_type", "amount", "currency", "beneficiary_account_hash", "action_caid"
+          ],
+          "caid_selector": { "field": "action_caid" }
+        },
+        "evidence_output": {
+          "audit_event": true,
+          "execution_attestation": true,
+          "reliance_packet": true,
+          "blocked_attempts": true
+        }
+      },
+      "conformance": { "level": "EG-1", "checks": ["execution_drift_refused"] }
     }
   ]
 }`;
 
 const MCP_GATE = `import {
-  findActionRequirement,
-  makeReceiptGate,
-} from '@emilia-protocol/require-receipt';
+  createGate,
+  findActionControl,
+} from '@emilia-protocol/gate';
 
-const manifest = await fetch('https://mcp.acme.com/.well-known/agent-actions.json')
+const manifest = await fetch('https://mcp.acme.com/.well-known/agent-action-control.json')
   .then((r) => r.json());
-const gates = new Map();
 const approverKeys = JSON.parse(process.env.EMILIA_APPROVER_KEYS_JSON);
 const allowedOrigins = process.env.EMILIA_ALLOWED_ORIGINS.split(',');
 
-// Inject a fleet-wide ownership-fenced implementation. reserve() must be an
-// atomic insert-if-absent; an uncertain reservation remains closed.
-const store = productionReceiptStore; // { reserve, commit, release }
-
-function gateFor(req) {
-  if (!gates.has(req.action_type)) {
-    gates.set(req.action_type, makeReceiptGate({
-      action: req.action_type,
-      trustedKeys: [process.env.EMILIA_ISSUER_PUBKEY].filter(Boolean),
-      approverKeys,
-      rpId: process.env.EMILIA_RP_ID,
-      allowedOrigins,
-      assuranceClass: req.assurance_class,
-      quorum: req.quorum,
-      quorumPolicy: req.quorum?.required ? PINNED_QUORUM_POLICIES[req.id] : undefined,
-      maxAgeSec: req.max_age_sec,
-      manifestUrl: '/.well-known/agent-actions.json',
-      store,
-    }));
-  }
-  return gates.get(req.action_type);
-}
+// The store is durable, ownership-fenced, and permanent. reserve() is atomic;
+// an uncertain reservation remains closed until reconciliation.
+const gate = createGate({
+  manifest,
+  trustedKeys: [process.env.EMILIA_ISSUER_PUBKEY].filter(Boolean),
+  approverKeys,
+  rpId: process.env.EMILIA_RP_ID,
+  allowedOrigins,
+  quorumPolicies: PINNED_QUORUM_POLICIES,
+  store: productionReceiptStore,
+});
 
 function stripEpControlArgs(args = {}) {
   const { __ep, emilia_receipt, ...clean } = args;
@@ -91,18 +112,44 @@ function stripEpControlArgs(args = {}) {
 }
 
 export async function guardedCallTool(name, args, extra = {}) {
-  const req = findActionRequirement(manifest, { protocol: 'mcp', tool: name });
+  const req = findActionControl(manifest, { protocol: 'mcp', tool: name });
   if (!req?.receipt_required) return handleTool(name, args, extra);
 
   const receipt = args.__ep?.receipt || args.emilia_receipt || extra._meta?.emilia_receipt;
   const clean = stripEpControlArgs(args);
-  const result = await gateFor(req).run(
+  const observedAction = readExactActionFromSystemOfRecord(req.action_type, clean);
+  const result = await gate.run({
+    selector: { protocol: 'mcp', tool: name },
     receipt,
-    { target: clean.payment_id },
-    () => handleTool(name, clean, extra),
-  );
+    observedAction,
+  }, () => handleTool(name, clean, extra));
   return result.ok ? result.result : result.body;
 }`;
+
+const ACQUIRE = `import {
+  beginReceiptApproval,
+  pollReceiptApproval,
+} from '@emilia-protocol/require-receipt';
+
+const pending = await beginReceiptApproval({
+  authorization: challenge.required.authorization,
+  trustedAuthorization: configuredApprovalEndpoint,
+  challenge: challenge.required,
+  action: exactSystemOfRecordAction,
+  approver_id: 'approver@example.com',
+  idempotency_key: crypto.randomUUID(),
+  requesterAuthorization: () => \`Bearer \${process.env.EMILIA_API_KEY}\`,
+});
+
+const terminal = await pollReceiptApproval({
+  authorization: challenge.required.authorization,
+  trustedAuthorization: configuredApprovalEndpoint,
+  request_id: pending.request_id,
+  poll_token: pending.poll_token,
+});
+
+if (terminal.status !== 'approved') throw new Error(terminal.status);
+await retryOriginalCall({ receipt: terminal.receipt });`;
 
 const LIVE_GUARD = `import { EPClient } from '@emilia-protocol/sdk';
 import { withMcpReceiptGuard } from '@emilia-protocol/mcp-guard';
@@ -145,7 +192,13 @@ app.post(
     trustedKeys: [process.env.EMILIA_ISSUER_PUBKEY],
     action: 'payment.release',
     statusCode: 428,
-    manifestUrl: '/.well-known/agent-actions.json',
+    manifestUrl: '/.well-known/agent-action-control.json',
+    authorization: {
+      authorization_endpoint: 'https://approve.example.com/api/v1/approvals',
+      flow: 'EP-APPROVAL-v1',
+    },
+    requiredFields: ['action_type', 'amount', 'currency', 'beneficiary_account_hash', 'action_caid'],
+    caidSelector: { field: 'action_caid' },
     maxAgeSec: 900,
   }),
   (req, res) => res.json({ released: true, receipt: req.emiliaReceipt.receipt_id }),
@@ -190,7 +243,7 @@ export default function RequireReceiptGuide() {
           <div style={styles.eyebrow}>DEVELOPER GUIDE · RECEIPT REQUIRED</div>
           <h1 style={{ ...styles.h1Large, maxWidth: 920 }}>Add Receipt Required to an MCP server in 10 minutes.</h1>
           <p style={{ ...styles.body, maxWidth: 780, marginTop: 18, fontSize: 18 }}>
-            <strong>No receipt, no irreversible action.</strong> Publish an Action Risk Manifest,
+            <strong>No receipt, no irreversible action.</strong> Publish an Action Control Manifest,
             wrap one dangerous tool, and return <strong>428 Receipt Required</strong> until the
             agent brings an <span style={{ fontFamily: font.mono, color: color.t1 }}>EP-RECEIPT-v1</span>
             bound to the exact action. Valid receipt runs. Same receipt again is replay-refused.
@@ -204,11 +257,11 @@ export default function RequireReceiptGuide() {
 
         <section style={styles.sectionWide}>
           <div style={styles.eyebrow}>STEP 1 · DECLARE THE DANGER</div>
-          <h2 style={{ ...styles.h2, maxWidth: 760 }}>Publish <span style={{ fontFamily: font.mono }}>/.well-known/agent-actions.json</span>.</h2>
+          <h2 style={{ ...styles.h2, maxWidth: 760 }}>Publish <span style={{ fontFamily: font.mono }}>/.well-known/agent-action-control.json</span>.</h2>
           <p style={{ ...styles.body, maxWidth: 760 }}>
             Start with one irreversible MCP tool. The manifest is deliberately boring: it names the
-            tool, the canonical action bound into the receipt, the assurance class, and the freshness
-            window an agent must satisfy.
+            tool, the exact fields and CAID selector the receipt must bind, the assurance class, and—only
+            for profiles your approval service can actually complete—the pinned acquisition endpoint.
           </p>
           <pre style={codeBox}>{MANIFEST}</pre>
         </section>
@@ -225,7 +278,18 @@ export default function RequireReceiptGuide() {
         </section>
 
         <section style={styles.sectionWide}>
-          <div style={styles.eyebrow}>STEP 3 · PROVE THE RITUAL</div>
+          <div style={styles.eyebrow}>STEP 3 · ACQUIRE THE RECEIPT</div>
+          <h2 style={{ ...styles.h2, maxWidth: 760 }}>Turn a refusal into a machine-completable approval.</h2>
+          <p style={{ ...styles.body, maxWidth: 760 }}>
+            The agent sends the exact challenged action to an endpoint it already trusts, receives a
+            human-review URL plus a separate poll capability, waits for a terminal Class-A decision,
+            then retries. The manifest never supplies the requester credential and never becomes a trust root.
+          </p>
+          <pre style={codeBox}>{ACQUIRE}</pre>
+        </section>
+
+        <section style={styles.sectionWide}>
+          <div style={styles.eyebrow}>STEP 4 · PROVE THE RITUAL</div>
           <h2 style={{ ...styles.h2, maxWidth: 760 }}>Run it cold, no account, no API key.</h2>
           <p style={{ ...styles.body, maxWidth: 760 }}>
             The repo ships three manifest-driven MCP examples: payment release, repo deletion, and
@@ -235,7 +299,7 @@ export default function RequireReceiptGuide() {
         </section>
 
         <section style={styles.sectionWide}>
-          <div style={styles.eyebrow}>STEP 4 · GO LIVE</div>
+          <div style={styles.eyebrow}>STEP 5 · GO LIVE</div>
           <h2 style={{ ...styles.h2, maxWidth: 760 }}>Use the system-of-record guard when the write is real.</h2>
           <p style={{ ...styles.body, maxWidth: 760 }}>
             For production, <span style={{ fontFamily: font.mono, color: color.t1 }}>withMcpReceiptGuard</span>

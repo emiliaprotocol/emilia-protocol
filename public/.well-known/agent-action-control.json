@@ -59,7 +59,10 @@
             "currency",
             "payment_instruction_id",
             "beneficiary_account_hash"
-          ]
+          ],
+          "caid_selector": {
+            "field": "action_caid"
+          }
         },
         "transparency": {
           "mode": "registerable",
@@ -71,6 +74,10 @@
           "execution_attestation": true,
           "reliance_packet": true,
           "blocked_attempts": true
+        },
+        "authorization": {
+          "authorization_endpoint": "https://www.emiliaprotocol.ai/api/v1/approvals",
+          "flow": "EP-APPROVAL-v1"
         }
       },
       "conformance": {
@@ -189,7 +196,10 @@
             "currency",
             "payment_instruction_id",
             "beneficiary_account_hash"
-          ]
+          ],
+          "caid_selector": {
+            "field": "action_caid"
+          }
         },
         "transparency": {
           "mode": "registerable",
@@ -201,6 +211,10 @@
           "execution_attestation": true,
           "reliance_packet": true,
           "blocked_attempts": true
+        },
+        "authorization": {
+          "authorization_endpoint": "https://www.emiliaprotocol.ai/api/v1/approvals",
+          "flow": "EP-APPROVAL-v1"
         }
       },
       "conformance": {

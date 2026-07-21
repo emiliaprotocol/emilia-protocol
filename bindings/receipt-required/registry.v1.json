@@ -1,0 +1,314 @@
+{
+  "@version": "EP-RECEIPT-REQUIRED-BINDINGS-v1",
+  "registry_id": "ep:receipt-required:bindings:v1",
+  "description": "Data-only carrier profiles for transporting a Receipt Required challenge and an EMILIA proof binding without adding protocol-specific authorization logic.",
+  "artifact_boundary": "A profile maps fields and proof slots only. Every foreign artifact must verify under its native rules before its CAID or action hash is relied on. A mapped CAID is not authorization, adoption, or execution proof.",
+  "profiles": [
+    {
+      "profile_id": "ep:receipt-required:binding:http:v1",
+      "protocol_id": "http",
+      "protocol_version": "HTTP with Receipt Required v0.2",
+      "implementation_status": "experimental_reference",
+      "match_selector": {
+        "carrier": "http_response",
+        "discriminator_path": "/status",
+        "discriminator_value": 428
+      },
+      "challenge_carrier": {
+        "kind": "http_problem_response",
+        "location": "Receipt-Required header and problem body",
+        "content_type": "application/problem+json",
+        "refusal_code": 428
+      },
+      "proof_carrier": {
+        "kind": "http_request_header",
+        "location": "X-EMILIA-Receipt",
+        "content_type": "application/ep-receipt+json"
+      },
+      "caid_extraction": {
+        "caid_path": "/request/headers/X-EMILIA-Receipt/binding/caid",
+        "action_hash_path": "/request/headers/X-EMILIA-Receipt/binding/action_hash"
+      },
+      "required_field_mapping": [
+        {
+          "action_field": "action_type",
+          "source_path": "/request/body/action_type"
+        },
+        { "action_field": "amount", "source_path": "/request/body/amount" },
+        { "action_field": "currency", "source_path": "/request/body/currency" },
+        {
+          "action_field": "beneficiary_account",
+          "source_path": "/request/body/beneficiary_account"
+        },
+        {
+          "action_field": "payment_instruction_id",
+          "source_path": "/request/body/payment_instruction_id"
+        }
+      ],
+      "conformance_vector_refs": [
+        "accept_same_action",
+        "reject_caid_mismatch",
+        "reject_action_hash_mismatch",
+        "reject_missing_protocol_binding"
+      ],
+      "claim_boundary": "The repository contains an experimental HTTP carrier and gateway reference. Native wire-format interoperability and independent deployment verification are not claimed."
+    },
+    {
+      "profile_id": "ep:receipt-required:binding:mcp:v1",
+      "protocol_id": "mcp",
+      "protocol_version": "MCP structured-tool-error profile",
+      "implementation_status": "documented_profile",
+      "match_selector": {
+        "carrier": "mcp_tool_result",
+        "discriminator_path": "/structured_error/code",
+        "discriminator_value": "emilia_receipt_required"
+      },
+      "challenge_carrier": {
+        "kind": "mcp_structured_tool_error",
+        "location": "structured_error.receipt_required",
+        "content_type": "application/json",
+        "refusal_code": "emilia_receipt_required"
+      },
+      "proof_carrier": {
+        "kind": "mcp_call_metadata",
+        "location": "call.meta.emilia_receipt",
+        "content_type": "application/ep-receipt+json"
+      },
+      "caid_extraction": {
+        "caid_path": "/call/meta/emilia_receipt/binding/caid",
+        "action_hash_path": "/call/meta/emilia_receipt/binding/action_hash"
+      },
+      "required_field_mapping": [
+        {
+          "action_field": "action_type",
+          "source_path": "/call/params/action_type"
+        },
+        { "action_field": "amount", "source_path": "/call/params/amount" },
+        { "action_field": "currency", "source_path": "/call/params/currency" },
+        {
+          "action_field": "beneficiary_account",
+          "source_path": "/call/params/beneficiary_account"
+        },
+        {
+          "action_field": "payment_instruction_id",
+          "source_path": "/call/params/payment_instruction_id"
+        }
+      ],
+      "conformance_vector_refs": [
+        "accept_same_action",
+        "reject_caid_mismatch",
+        "reject_action_hash_mismatch",
+        "reject_missing_protocol_binding"
+      ],
+      "claim_boundary": "The repository contains a documented MCP carrier profile and synthetic vectors; no native MCP parser interoperability result, project adoption, or certification is claimed."
+    },
+    {
+      "profile_id": "ep:receipt-required:binding:a2a:v1",
+      "protocol_id": "a2a",
+      "protocol_version": "A2A task-metadata profile",
+      "implementation_status": "documented_profile",
+      "match_selector": {
+        "carrier": "a2a_task",
+        "discriminator_path": "/state",
+        "discriminator_value": "input-required"
+      },
+      "challenge_carrier": {
+        "kind": "a2a_task_metadata",
+        "location": "task.metadata.receipt_required",
+        "content_type": "application/json",
+        "refusal_code": "input-required"
+      },
+      "proof_carrier": {
+        "kind": "a2a_task_metadata",
+        "location": "task.metadata.emilia_receipt",
+        "content_type": "application/ep-receipt+json"
+      },
+      "caid_extraction": {
+        "caid_path": "/task/metadata/emilia_receipt/binding/caid",
+        "action_hash_path": "/task/metadata/emilia_receipt/binding/action_hash"
+      },
+      "required_field_mapping": [
+        {
+          "action_field": "action_type",
+          "source_path": "/task/input/action_type"
+        },
+        { "action_field": "amount", "source_path": "/task/input/amount" },
+        { "action_field": "currency", "source_path": "/task/input/currency" },
+        {
+          "action_field": "beneficiary_account",
+          "source_path": "/task/input/beneficiary_account"
+        },
+        {
+          "action_field": "payment_instruction_id",
+          "source_path": "/task/input/payment_instruction_id"
+        }
+      ],
+      "conformance_vector_refs": [
+        "accept_same_action",
+        "reject_caid_mismatch",
+        "reject_action_hash_mismatch",
+        "reject_missing_protocol_binding"
+      ],
+      "claim_boundary": "This is a documented carrier profile and synthetic fixture. The repository does not claim a production A2A adapter, adoption, or interoperability result."
+    },
+    {
+      "profile_id": "ep:receipt-required:binding:x402:v1",
+      "protocol_id": "x402",
+      "protocol_version": "x402Version 1 compatibility profile",
+      "implementation_status": "experimental_reference",
+      "match_selector": {
+        "carrier": "http_response",
+        "discriminator_path": "/status",
+        "discriminator_value": 402
+      },
+      "challenge_carrier": {
+        "kind": "x402_accepts_entry",
+        "location": "response.accepts[scheme=emilia-receipt]",
+        "content_type": "application/json",
+        "refusal_code": 402
+      },
+      "proof_carrier": {
+        "kind": "x402_payment_header",
+        "location": "X-PAYMENT",
+        "content_type": "application/ep-receipt+json"
+      },
+      "caid_extraction": {
+        "caid_path": "/request/headers/X-PAYMENT/proof/binding/caid",
+        "action_hash_path": "/request/headers/X-PAYMENT/proof/binding/action_hash"
+      },
+      "required_field_mapping": [
+        {
+          "action_field": "action_type",
+          "source_path": "/request/body/action_type"
+        },
+        { "action_field": "amount", "source_path": "/request/body/amount" },
+        { "action_field": "currency", "source_path": "/request/body/currency" },
+        {
+          "action_field": "beneficiary_account",
+          "source_path": "/request/body/beneficiary_account"
+        },
+        {
+          "action_field": "payment_instruction_id",
+          "source_path": "/request/body/payment_instruction_id"
+        }
+      ],
+      "conformance_vector_refs": [
+        "accept_same_action",
+        "reject_caid_mismatch",
+        "reject_action_hash_mismatch",
+        "reject_missing_protocol_binding"
+      ],
+      "claim_boundary": "The repository contains an experimental x402-shaped reference rail. It is not a monetary settlement implementation or an x402 adoption claim."
+    },
+    {
+      "profile_id": "ep:receipt-required:binding:ap2:v1",
+      "protocol_id": "ap2",
+      "protocol_version": "AP2 evidence-slot profile draft",
+      "implementation_status": "synthetic_binding_profile",
+      "match_selector": {
+        "carrier": "ap2_message",
+        "discriminator_path": "/payment_intent/evidence/type",
+        "discriminator_value": "ep.authorization_receipt"
+      },
+      "challenge_carrier": {
+        "kind": "ap2_evidence_requirement",
+        "location": "payment_intent.evidence_requirement",
+        "content_type": "application/json",
+        "refusal_code": "authorization_evidence_required"
+      },
+      "proof_carrier": {
+        "kind": "ap2_evidence_slot",
+        "location": "payment_intent.evidence.ep_authorization_receipt",
+        "content_type": "application/ep-receipt+json"
+      },
+      "caid_extraction": {
+        "caid_path": "/payment_intent/evidence/ep_authorization_receipt/binding/caid",
+        "action_hash_path": "/payment_intent/evidence/ep_authorization_receipt/binding/action_hash"
+      },
+      "required_field_mapping": [
+        {
+          "action_field": "action_type",
+          "source_path": "/payment_intent/details/action_type"
+        },
+        {
+          "action_field": "amount",
+          "source_path": "/payment_intent/details/amount"
+        },
+        {
+          "action_field": "currency",
+          "source_path": "/payment_intent/details/currency"
+        },
+        {
+          "action_field": "beneficiary_account",
+          "source_path": "/payment_intent/details/beneficiary_account"
+        },
+        {
+          "action_field": "payment_instruction_id",
+          "source_path": "/payment_intent/details/payment_instruction_id"
+        }
+      ],
+      "conformance_vector_refs": [
+        "accept_same_action",
+        "reject_caid_mismatch",
+        "reject_action_hash_mismatch",
+        "reject_missing_protocol_binding"
+      ],
+      "claim_boundary": "Synthetic data-only profile. No AP2 implementation, conformance, adoption, endorsement, or live PaymentIntent integration is claimed."
+    },
+    {
+      "profile_id": "ep:receipt-required:binding:wimse:v1",
+      "protocol_id": "wimse",
+      "protocol_version": "WIMSE verification-context profile draft",
+      "implementation_status": "verification_context_only",
+      "match_selector": {
+        "carrier": "wimse_context",
+        "discriminator_path": "/authorization_context/evidence/type",
+        "discriminator_value": "ep.authorization_receipt"
+      },
+      "challenge_carrier": {
+        "kind": "workload_authorization_context",
+        "location": "authorization_context.requirements",
+        "content_type": "application/json",
+        "refusal_code": "authorization_evidence_required"
+      },
+      "proof_carrier": {
+        "kind": "workload_authorization_evidence",
+        "location": "authorization_context.evidence.ep_authorization_receipt",
+        "content_type": "application/ep-receipt+json"
+      },
+      "caid_extraction": {
+        "caid_path": "/authorization_context/evidence/ep_authorization_receipt/binding/caid",
+        "action_hash_path": "/authorization_context/evidence/ep_authorization_receipt/binding/action_hash"
+      },
+      "required_field_mapping": [
+        {
+          "action_field": "action_type",
+          "source_path": "/workload_context/request/action_type"
+        },
+        {
+          "action_field": "amount",
+          "source_path": "/workload_context/request/amount"
+        },
+        {
+          "action_field": "currency",
+          "source_path": "/workload_context/request/currency"
+        },
+        {
+          "action_field": "beneficiary_account",
+          "source_path": "/workload_context/request/beneficiary_account"
+        },
+        {
+          "action_field": "payment_instruction_id",
+          "source_path": "/workload_context/request/payment_instruction_id"
+        }
+      ],
+      "conformance_vector_refs": [
+        "accept_same_action",
+        "reject_caid_mismatch",
+        "reject_action_hash_mismatch",
+        "reject_missing_protocol_binding"
+      ],
+      "claim_boundary": "Synthetic verification-context profile only. WIMSE identity evidence does not authorize an action, and no WIMSE implementation, adoption, or endorsement is claimed."
+    }
+  ]
+}
