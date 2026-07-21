@@ -605,3 +605,61 @@ describe('policy packs', () => {
     }
   });
 });
+
+// ── node.type / artifact.typ consistency ────────────────────────────────────
+// The graph layer dispatches verifiers by node.type (presenter-supplied).
+// A verifier that validates the artifact's own typ field rejects a relabeled
+// artifact. This mirrors the AEC layer's role-non-substitution pattern
+// (tests/role-non-substitution.test.js) at the graph layer.
+
+describe('node.type / artifact.typ consistency — verifier-level defense', () => {
+  it('a verifier that checks artifact.typ rejects a relabeled artifact', () => {
+    const auth = mk('authorization_receipt', { issued_at: '2026-07-02T00:00:00Z' });
+    const authId = artifactDigest(auth);
+
+    const strictVerifiers = {
+      authorization_receipt: (a) => ({ valid: a.typ === 'authorization_receipt', action_digest: a.action }),
+      policy_permit: (a) => ({ valid: a.typ === 'policy_permit', action_digest: a.action }),
+      workload_identity: (a) => ({ valid: a.typ === 'workload_identity', action_digest: a.action }),
+    };
+
+    const doc = {
+      '@version': EVIDENCE_GRAPH_VERSION, action_digest: ACTION,
+      nodes: [
+        { id: authId, type: 'policy_permit', artifact: auth },
+        { id: artifactDigest(mk('workload_identity')), type: 'workload_identity', artifact: mk('workload_identity') },
+      ],
+      edges: [],
+    };
+
+    const r = evaluateEvidenceGraph(doc, wirePack, { verifiers: strictVerifiers, as_of: AS_OF });
+    expect(r.verdict).not.toBe('admissible');
+  });
+
+  it('a verifier that checks artifact.typ accepts a correctly typed artifact', () => {
+    const auth = mk('authorization_receipt', { issued_at: '2026-07-02T00:00:00Z' });
+    const authId = artifactDigest(auth);
+    const permit = mk('policy_permit', { authorizes_receipt: authId, issued_at: '2026-07-02T00:00:00Z' });
+    const permitId = artifactDigest(permit);
+    const wl = mk('workload_identity', { issued_at: '2026-07-02T00:00:00Z' });
+
+    const strictVerifiers = {
+      authorization_receipt: (a) => ({ valid: a.typ === 'authorization_receipt', action_digest: a.action }),
+      policy_permit: (a) => ({ valid: a.typ === 'policy_permit', action_digest: a.action }),
+      workload_identity: (a) => ({ valid: a.typ === 'workload_identity', action_digest: a.action }),
+    };
+
+    const doc = {
+      '@version': EVIDENCE_GRAPH_VERSION, action_digest: ACTION,
+      nodes: [
+        { id: authId, type: 'authorization_receipt', artifact: auth },
+        { id: permitId, type: 'policy_permit', artifact: permit },
+        { id: artifactDigest(wl), type: 'workload_identity', artifact: wl },
+      ],
+      edges: [{ from: permitId, rel: 'permits', to: authId }],
+    };
+
+    const r = evaluateEvidenceGraph(doc, wirePack, { verifiers: strictVerifiers, as_of: AS_OF });
+    expect(r.verdict).toBe('admissible');
+  });
+});
