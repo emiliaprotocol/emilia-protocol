@@ -16,15 +16,35 @@ const companionAbsolute = new Map(COMPANION_RUNTIME_PATHS.map((runtimePath) => [
   path.resolve(__dirname, runtimePath),
   path.resolve(__dirname, runtimePath.replace(/\.mjs$/, '.mts').replace(/\.js$/, '.ts')),
 ]));
+// Mutation runs only (EP_MUTATE_SRC=1, set by the test:mutation:* scripts):
+// Stryker instruments packages/*/src/*.ts, but the suites load the compiled
+// dist/ output -- so every mutant sat unloaded and "survived" as false
+// no-coverage. Under the flag, any import that lands in a package's dist/
+// is redirected to its src/*.ts twin, and .js specifiers between src files
+// resolve to their .ts siblings. Normal test runs keep exercising dist
+// (what ships) exactly as before.
+const MUTATE_SRC = process.env.EP_MUTATE_SRC === '1';
+
 const companionSourceRedirect = {
   name: 'ep-companion-source-redirect',
   enforce: 'pre',
   async resolveId(source, importer, options) {
+    if (MUTATE_SRC && importer && /\/packages\/[^/]+\/src\//.test(importer) && /^\.\.?\//.test(source) && source.endsWith('.js')) {
+      const tsCandidate = path.resolve(path.dirname(importer), source.replace(/\.js$/, '.ts'));
+      if (fs.existsSync(tsCandidate)) return tsCandidate;
+    }
     // No specifier-shape filter: '@/lib/supabase' (extensionless, used by
     // vi.mock in tests) and '@/lib/supabase.js' (used by sources) must both
     // land on the SAME redirected id, or module mocks silently miss.
     const resolved = await this.resolve(source, importer, { skipSelf: true, ...options });
     if (!resolved) return null;
+    if (MUTATE_SRC) {
+      const m = resolved.id.match(/^(.*\/packages\/[^/]+)\/dist\/(.+)\.js$/);
+      if (m) {
+        const srcTwin = `${m[1]}/src/${m[2]}.ts`;
+        if (fs.existsSync(srcTwin)) return srcTwin;
+      }
+    }
     const target = companionAbsolute.get(resolved.id);
     return target ?? null;
   },

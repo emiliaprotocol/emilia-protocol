@@ -71,7 +71,10 @@ export default {
     'packages/gate/src/execution-binding.ts:161-176',
     'packages/gate/src/execution-binding.ts:181-204',
     'packages/verify/src/reliance.ts:69-575',
-    'lib/authority/resolver.js:57-378',
+    // .ts source, not the generated companion at the old .js path (mutants in
+    // a companion never load -- vitest resolves imports to the source). Range
+    // re-derived: strictInstantMs .. the __authoritySecurityInternals export.
+    'lib/authority/resolver.ts:57-342',
   ],
   testFiles: [
     'tests/gate-security-remediation.test.{js,ts}',

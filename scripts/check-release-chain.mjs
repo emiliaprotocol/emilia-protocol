@@ -19,7 +19,7 @@ function walkFiles(root, directory = root, files = []) {
         const absolute = path.join(directory, entry.name);
         const relative = path.relative(root, absolute).split(path.sep).join('/');
         if (entry.isDirectory()) {
-            if (SKIP_DIRS.has(entry.name) || relative.startsWith('conformance/clean-room/frozen-v1/'))
+            if (SKIP_DIRS.has(entry.name) || entry.name.startsWith('.stryker-') || relative.startsWith('conformance/clean-room/frozen-v1/'))
                 continue;
             walkFiles(root, absolute, files);
         }
