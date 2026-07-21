@@ -218,4 +218,154 @@ describe('Gate execution-binding — fail-closed on absent observed action', () 
       expect(r.invalid_observed_fields, name).toContain('material');
     }
   });
+
+  // The refusals below use a required field literally named `__proto__`.
+  // That name is load-bearing, not decoration: the verifier accumulates
+  // accepted values into a plain `{}` and writes them with `values[field] =`,
+  // so a `__proto__` field hits Object.prototype's setter instead of creating
+  // an own key. A refusal that is recorded only as "this field never landed in
+  // the accumulator" is therefore INVISIBLE for this field name, and the
+  // aggregate re-check that normally backstops per-field refusals cannot see it
+  // either. These cases pin that each per-field refusal is recorded explicitly,
+  // by name, rather than being inferred from the accumulator's contents.
+
+  it('REFUSES a __proto__-named field when the container is not a plain object', () => {
+    const r = verifyExecutionBinding({
+      requirement: { execution_binding: { required_fields: ['__proto__'] } },
+      receipt: { payload: { claim: [] } },
+      observedAction: new Map(),
+    });
+    expect(r.ok).toBe(false);
+    expect(r.invalid_signed_fields).toEqual(['__proto__']);
+    expect(r.invalid_observed_fields).toEqual(['__proto__']);
+    expect(r.signed_hash).toBeNull();
+    expect(r.observed_hash).toBeNull();
+  });
+
+  it('REFUSES a __proto__-named field carried as a non-enumerable or accessor property', () => {
+    const withDescriptor = (descriptor) => {
+      const container = {};
+      Object.defineProperty(container, '__proto__', descriptor);
+      return container;
+    };
+    const cases = [
+      ['non-enumerable', { value: 1, enumerable: false, configurable: true }],
+      ['accessor', { get: () => 1, enumerable: true, configurable: true }],
+    ];
+
+    for (const [name, descriptor] of cases) {
+      const r = verifyExecutionBinding({
+        requirement: { execution_binding: { required_fields: ['__proto__'] } },
+        receipt: { payload: { claim: withDescriptor(descriptor) } },
+        observedAction: withDescriptor(descriptor),
+      });
+      expect(r.ok, name).toBe(false);
+      expect(r.missing_signed_fields, name).toEqual([]);
+      expect(r.missing_observed_fields, name).toEqual([]);
+      expect(r.invalid_signed_fields, name).toEqual(['__proto__']);
+      expect(r.invalid_observed_fields, name).toEqual(['__proto__']);
+      expect(r.signed_hash, name).toBeNull();
+      expect(r.observed_hash, name).toBeNull();
+    }
+  });
+
+  it('REFUSES a __proto__-named field holding an out-of-profile value, on each side independently', () => {
+    const withValue = (value) => {
+      const container = {};
+      Object.defineProperty(container, '__proto__', {
+        value, enumerable: true, writable: true, configurable: true,
+      });
+      return container;
+    };
+    const requirement = { execution_binding: { required_fields: ['__proto__'] } };
+
+    const both = verifyExecutionBinding({
+      requirement,
+      receipt: { payload: { claim: withValue(Number.NaN) } },
+      observedAction: withValue(Number.NaN),
+    });
+    expect(both.ok).toBe(false);
+    expect(both.invalid_signed_fields).toEqual(['__proto__']);
+    expect(both.invalid_observed_fields).toEqual(['__proto__']);
+    expect(both.signed_hash).toBeNull();
+    expect(both.observed_hash).toBeNull();
+
+    // Signed side alone: the observed side is a well-formed plain field, so the
+    // refusal cannot be attributed to the observed container.
+    const signedOnly = verifyExecutionBinding({
+      requirement,
+      receipt: { payload: { claim: withValue(Number.NaN) } },
+      observedAction: withValue(1),
+    });
+    expect(signedOnly.ok).toBe(false);
+    expect(signedOnly.invalid_signed_fields).toEqual(['__proto__']);
+    expect(signedOnly.invalid_observed_fields).toEqual([]);
+    expect(signedOnly.signed_hash).toBeNull();
+
+    const observedOnly = verifyExecutionBinding({
+      requirement,
+      receipt: { payload: { claim: withValue(1) } },
+      observedAction: withValue(Number.NaN),
+    });
+    expect(observedOnly.ok).toBe(false);
+    expect(observedOnly.invalid_signed_fields).toEqual([]);
+    expect(observedOnly.invalid_observed_fields).toEqual(['__proto__']);
+    expect(observedOnly.observed_hash).toBeNull();
+  });
+
+  // A required-field entry that is not a string is coerced to a property key
+  // every time it is used, so a non-string entry can run code BETWEEN the
+  // per-field read and the accumulator write, and make one property answer
+  // twice differently. The already-refused field must stay refused exactly
+  // once: the aggregate re-check must not re-report a field the per-field pass
+  // already named.
+  it('reports an already-refused signed field exactly once under a side-effecting field name', () => {
+    const shared = { amount: 1 };
+    const claim = { b: shared };
+    Object.defineProperty(claim, 'a', { get: () => 1, enumerable: true, configurable: true });
+    const rebinder = {
+      toString() {
+        Object.defineProperty(claim, 'a', {
+          value: shared, enumerable: true, writable: true, configurable: true,
+        });
+        return 'a';
+      },
+    };
+
+    const r = verifyExecutionBinding({
+      requirement: { execution_binding: { required_fields: ['a', rebinder, 'b'] } },
+      receipt: { payload: { claim } },
+      observedAction: { a: { amount: 1 }, b: { amount: 1 } },
+    });
+    expect(r.ok).toBe(false);
+    // 'a' was refused as an accessor by the per-field pass; the rebound alias
+    // then poisoned the aggregate, which refuses 'b'. Each field once.
+    expect(r.invalid_signed_fields).toEqual(['a', 'b']);
+    expect(r.invalid_observed_fields).toEqual([]);
+    expect(r.signed_hash).toBeNull();
+  });
+
+  it('reports an already-refused observed field exactly once under a side-effecting field name', () => {
+    const shared = { amount: 1 };
+    const observed = { b: shared };
+    Object.defineProperty(observed, 'a', { get: () => 1, enumerable: true, configurable: true });
+    const rebinder = {
+      toString() {
+        Object.defineProperty(observed, 'a', {
+          value: shared, enumerable: true, writable: true, configurable: true,
+        });
+        return 'a';
+      },
+    };
+
+    const r = verifyExecutionBinding({
+      requirement: { execution_binding: { required_fields: ['a', rebinder, 'b'] } },
+      receipt: { payload: { claim: { a: { amount: 1 }, b: { amount: 1 } } } },
+      observedAction: observed,
+    });
+    expect(r.ok).toBe(false);
+    expect(r.invalid_observed_fields).toEqual(['a', 'b']);
+    expect(r.invalid_signed_fields).toEqual([]);
+    expect(r.observed_hash).toBeNull();
+  });
 });
