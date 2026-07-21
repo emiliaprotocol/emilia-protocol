@@ -1,0 +1,17 @@
+DTC Base escrow Alloy verification
+Executed: 2026-07-20
+Tool: Alloy 6.2.0 (pinned SHA-256 verified), SAT4J
+Model SHA-256: d89f62840e357f90e88f566cec1e33a467fab47955626c3650cb06ae0a605005
+
+Result: PASS
+Assertions: 5/5 held with no counterexample
+Scenarios: 3/3 satisfiable (non-vacuous)
+
+Assertions:
+- IndeterminatePreservesReservation
+- TerminalTransitionsConserveValue
+- ReceiptConsumptionNeverReverses
+- TerminalStatesHaveNoOutgoingSettlementStep
+- CompromisedProviderCannotSettle
+
+This is a bounded relational model, not a proof of the compiled EVM bytecode.

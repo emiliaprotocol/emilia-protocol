@@ -1,0 +1,31 @@
+{
+  "name": "@emilia-protocol/dtc-base",
+  "version": "0.1.0-private",
+  "private": true,
+  "description": "Private DTC Base settlement profile for exact, consequence-bound machine actions",
+  "license": "Apache-2.0",
+  "engines": {
+    "node": ">=20.0.0"
+  },
+  "scripts": {
+    "compile": "hardhat compile",
+    "demo": "hardhat run scripts/demo.cjs",
+    "deploy:base-sepolia": "hardhat run scripts/deploy.cjs --network baseSepolia",
+    "test": "hardhat test",
+    "test:hostile": "hardhat test test/DTCBaseSettlement.hostile.test.cjs",
+    "coverage": "hardhat coverage",
+    "lint:sol": "solhint contracts/DTCBaseSettlement.sol contracts/interfaces/IDTCBaseSettlement.sol",
+    "formal:verify": "bash scripts/run-formal.sh",
+    "verify": "npm run compile && npm run lint:sol && npm test && npm run coverage"
+  },
+  "dependencies": {
+    "@openzeppelin/contracts": "5.4.0",
+    "ethers": "6.17.0"
+  },
+  "devDependencies": {
+    "@nomicfoundation/hardhat-toolbox": "5.0.0",
+    "hardhat": "2.28.5",
+    "solhint": "6.2.3",
+    "solidity-coverage": "0.8.16"
+  }
+}

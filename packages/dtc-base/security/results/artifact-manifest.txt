@@ -1,0 +1,27 @@
+DTC Base private release-candidate artifact manifest
+Generated: 2026-07-20
+
+SHA-256  contracts/DTCBaseSettlement.sol
+77c4c05035b616358b668ca0614bde9d897a46c491e2658f34335dc080f0b762
+
+SHA-256  contracts/interfaces/IDTCBaseSettlement.sol
+2e763a971e1a8f23d8b9d4d245ba46bc72f4d1949ad47e9820c99ca8fec93484
+
+SHA-256  lib/receipt-program-bridge.mjs
+e2875d273a184445e3bc839662eb69ed80108b8bf4490b1ee1bc143429226614
+
+SHA-256  package-lock.json
+7af45376f53ca990bdb86af38f9438f5b973f5c0902026383460d3958f822aa4
+
+Verification summary
+- Hardhat tests: 32 passing
+- Contract statement coverage: 97.87 percent
+- Contract branch coverage: 63.07 percent
+- Contract function coverage: 95.35 percent
+- Contract line coverage: 94.55 percent
+- Deployed bytecode: 18,051 bytes
+- EIP-170 headroom: 6,525 bytes
+- Production npm dependency audit: 0 reported vulnerabilities
+- Slither 0.11.5: 7 intended-use findings triaged in SECURITY_REVIEW.md
+- TLC: 8 invariants and 1 temporal property held over 48 distinct states
+- Alloy: 5 of 5 assertions held; 3 of 3 scenarios satisfiable

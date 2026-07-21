@@ -1,0 +1,28 @@
+DTC Base settlement TLA+ verification
+Executed: 2026-07-20
+Tool: TLC 2.19 (TLA+ tools v1.7.4, pinned SHA-256 verified)
+Model SHA-256: e11505bf164c94a5de8acace451ebbfc3cb5cd01a29d070bcd9cd84410210702
+Config SHA-256: 8e9a0e5633ba89137ea9f881da0325a496593ec027754b229c2574ab694bab85
+
+Result: PASS - no error found
+States generated: 127
+Distinct states: 48
+States left on queue: 0
+Maximum depth: 9
+
+Checked invariants:
+- TypeInvariant
+- MoneyConservation
+- ReceiptMatchesLifecycle
+- NoClaimsBeforeTerminal
+- IndeterminateFreezesFullBudget
+- TerminalUnlocksBudget
+- SuccessAllocationBounded
+- NoMerchantPaymentOnFailure
+
+Checked temporal property:
+- ProviderRevocationMonotonic
+
+Deadlock checking is disabled because a fully withdrawn terminal state is an
+intentional quiescent endpoint. This is a bounded model check, not a proof of
+the compiled EVM bytecode.
