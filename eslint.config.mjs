@@ -32,6 +32,9 @@ const config = [
       'infrastructure/**',
       'create-ep-app/**',
       'public/embed.js',
+      // Generated, dependency-bundled MCP runtime. Source is linted via
+      // mcp-server/index.js and CI rebuilds/diffs this artifact separately.
+      'mcp-server/bundle.js',
     ],
   },
 
