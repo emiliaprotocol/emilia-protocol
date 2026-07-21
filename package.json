@@ -50,7 +50,7 @@
     "check:conformance-docs": "node scripts/check-conformance-doc-counts.mjs",
     "preprint:build": "SOURCE_DATE_EPOCH=1784419200 FORCE_SOURCE_DATE=1 tectonic -X compile papers/preprint/main.tex",
     "check:preprint": "node scripts/check-preprint-sync.mjs",
-    "test:preprint": "node --test tests/preprint-sync.node.mjs",
+    "test:preprint": "node --test tests/preprint-sync.node.ts",
     "gov:check": "node scripts/gov-readiness-check.mjs",
     "gov:db-contract": "node scripts/db-contract.mjs",
     "schema:security": "node scripts/db-contract.mjs",

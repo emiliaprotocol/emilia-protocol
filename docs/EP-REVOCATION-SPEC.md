@@ -11,7 +11,7 @@ current published authorization-receipts draft
 **Reference implementation:** `lib/revocation/revocation.js`
 **Conformance vectors:** attack catalogue `conformance/vectors/revocation.v1.json`;
 executable cross-language suite `conformance/vectors/revocation.exec.v2.json`
-**Conformance tests:** `tests/revocation.test.ts`
+**Conformance tests:** `tests/revocation.test.js`
 
 > This is a **specification proposal** plus a reference implementation. It is
 > **experimental**. It is **not** a production claim, asserts **no** customers,
@@ -300,7 +300,7 @@ rolled-back, or incomplete status evidence MUST NOT be interpreted as
 
 `conformance/vectors/revocation.v1.json` is the authoritative,
 attack-catalogue-first catalogue; every id is asserted by name in
-`tests/revocation.test.ts`. The live real-crypto cross-language vectors are in
+`tests/revocation.test.js`. The live real-crypto cross-language vectors are in
 `conformance/vectors/revocation.exec.v2.json`; v1 remains byte-frozen as part of
 the historical external clean-room bundle. The
 negatives are minted with **real** Ed25519 keys and **real** detached proofs
@@ -331,7 +331,7 @@ that fails for an unrelated reason.
 | `z3_old_terminal_revocation_remains_valid` | Old revocation presented with a legacy max-age option | accept | — |
 | `z4_historical_v1_key_label_exact_pin` | Historical local key label with the exact pinned SPKI | accept | — |
 
-Run: `npx vitest run tests/revocation.test.ts`.
+Run: `npx vitest run tests/revocation.test.js`.
 
 ---
 
