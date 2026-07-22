@@ -1,5 +1,12 @@
 # EP-RECEIPT-v1 conformance vectors
 
+`proposal-to-effect.v1.json` is the executable TypeScript reference-profile
+suite for the non-authoritative proposal, exact CAID/AEB/Gate join, one-time
+operation admission, and indeterminate-effect reconciliation lifecycle. It is
+loaded by `packages/gate/proposal-to-effect.test.ts`. It is not included in the
+JS/Python/Go receipt-verifier totals because Proposal-to-Effect is a Gate
+orchestration profile, not a new portable receipt-verification format.
+
 `model-to-matter.v1.json` is the deterministic executor-side clearance and
 effect-statement suite for the Model-to-Matter profile. Regenerate it with
 `node conformance/vectors/generate-model-to-matter.mjs` and execute it with

@@ -59,6 +59,64 @@ if (!out.ok) throw out.body; // 428 Receipt Required
 console.log(out.packet.verdict); // "rely"
 ```
 
+## Proposal to effect
+
+`@emilia-protocol/gate/proposal-to-effect` closes the loop from an agent's
+proposal to a controlled consequence without minting another authorization
+format. The proposal is an unsigned, short-lived request; authority remains in
+`EP-RECEIPT-v1` and the relying party's pinned AEB requirement.
+
+```js
+import { createProposalToEffect } from '@emilia-protocol/gate/proposal-to-effect';
+
+const controller = createProposalToEffect({
+  gate,
+  profiles: {
+    'payment-release': {
+      id: 'payment-release',
+      action_type: 'payment.release',
+      selector: { protocol: 'mcp', tool: 'release_payment' },
+      required_fields: [
+        'action_type', 'amount_usd', 'currency',
+        'payment_instruction_id', 'beneficiary_account_hash',
+      ],
+      authorization: {
+        authorization_endpoint: 'https://authorize.example/v1/approvals',
+        flow: 'EP-APPROVAL-v1',
+      },
+      aeb_requirement_ref: 'requirement:payment-release',
+      ttl_sec: 300,
+      canonicalize_action: deriveCanonicalPaymentActionAndCaid,
+    },
+  },
+  aeb: {
+    config: pinnedAebConfig,
+    adapters: pinnedAebAdapters,
+    store: durableOperationStore,
+    resolve_artifacts,
+    verify_provider_evidence,
+  },
+});
+
+const proposal = controller.prepare({
+  proposal_id, profile_id: 'payment-release', operation_id,
+  initiator_id: authenticatedAgentId, action: paymentFromSystemOfRecord,
+});
+
+const result = await controller.execute(
+  { proposal, receipt, evaluation: signedAebEvaluation },
+  ({ action }) => paymentProvider.release(action),
+);
+```
+
+The controller re-verifies the signed AEB evaluation, runs Gate policy,
+reserves the operation before invoking the effect, and consumes it after
+success. An uncertain provider result remains reserved; only authenticated
+provider evidence bound to the same operation, CAID, and action digest can
+reconcile it. See
+[`docs/protocol/proposal-to-effect-profile-v1.md`](../../docs/protocol/proposal-to-effect-profile-v1.md)
+and run `node examples/proposal-to-effect/demo.mjs` from the repository root.
+
 ## Three-plane deployment
 
 High-consequence infrastructure separates three jobs instead of asking one

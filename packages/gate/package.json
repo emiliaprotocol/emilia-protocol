@@ -1,6 +1,6 @@
 {
   "name": "@emilia-protocol/gate",
-  "version": "0.13.0",
+  "version": "0.14.0",
   "repository": {
     "type": "git",
     "url": "https://github.com/emiliaprotocol/emilia-protocol.git",
@@ -71,6 +71,7 @@
     "./remedy-program": "./remedy-program.js",
     "./remedy-program-receipt": "./remedy-program-receipt.js",
     "./remedy-program-postgres": "./remedy-program-postgres.js",
+    "./proposal-to-effect": "./proposal-to-effect.js",
     "./zk-range-proof": "./zk-range-proof.js"
   },
   "bin": {
@@ -111,6 +112,7 @@
     "remedy-program.js",
     "remedy-program-receipt.js",
     "remedy-program-postgres.js",
+    "proposal-to-effect.js",
     "zk-range-proof.js",
     "reports/assurance-package.js",
     "ep-assure.mjs",
@@ -183,8 +185,8 @@
   },
   "dependencies": {
     "@noble/curves": "2.2.0",
-    "@emilia-protocol/require-receipt": "0.6.1",
-    "@emilia-protocol/verify": "3.11.0"
+    "@emilia-protocol/require-receipt": "0.7.0",
+    "@emilia-protocol/verify": "3.13.0"
   },
   "keywords": [
     "emilia",

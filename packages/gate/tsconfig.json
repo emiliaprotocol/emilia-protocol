@@ -82,6 +82,7 @@
     "src/trust-program-revocation.ts",
     "src/remedy-program.ts",
     "src/remedy-program-receipt.ts",
-    "src/remedy-program-postgres.ts"
+    "src/remedy-program-postgres.ts",
+    "src/proposal-to-effect.ts"
   ]
 }

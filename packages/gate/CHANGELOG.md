@@ -4,6 +4,28 @@
 All notable changes to `@emilia-protocol/gate` are documented here.
 This package follows [Semantic Versioning](https://semver.org/).
 
+## 0.14.0 (2026-07-22)
+
+### Added
+
+- `./proposal-to-effect`, an orchestration profile over CAID, the existing
+  `EP-APPROVAL-v1` acquisition rail, signed AEB evaluation, Gate authorization,
+  durable operation reservation, exact effect invocation, and authenticated
+  reconciliation.
+- An executable end-to-end example and profile vectors covering exact-action
+  mutation, stale evidence, one-time replay, indeterminate effects, and
+  post-effect commit failure.
+
+### Security
+
+- A proposal is explicitly non-authoritative and carries no signature, permit,
+  or presenter-controlled authorization decision.
+- AEB and Gate make independent, fail-closed decisions over the same operation,
+  initiator, CAID, normalized action, and relying-party pins.
+- Once an effect may have executed, failed bookkeeping cannot release its AEB
+  reservation. The operation remains frozen until authenticated provider
+  evidence proves `COMMITTED` or `NOT_COMMITTED`.
+
 ## 0.13.0 (2026-07-20)
 
 ### Added
