@@ -945,65 +945,65 @@ export function verifyDavinciPasReviewBinding(
   context: unknown,
 ): DavinciPasVerificationResult {
   const reasons: string[] = [];
-  let shapeValid = false;
+  let portableBinding: DavinciPasReviewBinding | undefined;
   try {
-    shapeValid = validatePortableShape(binding, reasons);
+    if (validatePortableShape(binding, reasons)) portableBinding = binding;
   } catch {
     addReason(reasons, 'portable_output_not_canonical_json');
     addReason(reasons, 'portable_binding_invalid');
   }
   const trustedContext = isPlainRecord(context) ? context : {};
 
-  if (shapeValid) {
-    const computed = computeCaid(binding.action, {
+  if (portableBinding) {
+    const computed = computeCaid(portableBinding.action, {
       suite: 'jcs-sha256',
       definitions: [CAID_DEFINITION],
     });
-    if (typeof computed?.digest !== 'string' || computed.digest !== binding.action_digest) {
+    if (typeof computed?.digest !== 'string' || computed.digest !== portableBinding.action_digest) {
       addReason(reasons, 'action_digest_mismatch');
     }
-    if (typeof computed?.caid !== 'string' || computed.caid !== binding.caid) {
+    if (typeof computed?.caid !== 'string' || computed.caid !== portableBinding.caid) {
       addReason(reasons, 'caid_mismatch');
     }
-    const caidVerification = verifyCaid(binding.action, binding.caid, {
+    const caidVerification = verifyCaid(portableBinding.action, portableBinding.caid, {
       definitions: [CAID_DEFINITION],
     });
     if (caidVerification.valid !== true) addReason(reasons, 'caid_mismatch');
 
     if (typeof trustedContext.expected_operation_id === 'string'
-        && trustedContext.expected_operation_id !== binding.action.operation_id) {
+        && trustedContext.expected_operation_id !== portableBinding.action.operation_id) {
       addReason(reasons, 'expected_operation_id_mismatch');
     }
     if (typeof trustedContext.expected_caid === 'string'
-        && trustedContext.expected_caid !== binding.caid) {
+        && trustedContext.expected_caid !== portableBinding.caid) {
       addReason(reasons, 'expected_caid_mismatch');
     }
     if (trustedContext.consumed_caids instanceof Set
-        && trustedContext.consumed_caids.has(binding.caid)) {
+        && trustedContext.consumed_caids.has(portableBinding.caid)) {
       addReason(reasons, 'replay_refused');
     }
 
     try {
-      if (digestPasValue(trustedContext.claim) !== binding.action.claim_digest) {
+      if (digestPasValue(trustedContext.claim) !== portableBinding.action.claim_digest) {
         addReason(reasons, 'claim_digest_mismatch');
       }
     } catch {
       addReason(reasons, 'claim_digest_mismatch');
     }
     try {
-      if (digestPasValue(trustedContext.claim_response) !== binding.action.claim_response_digest) {
+      if (digestPasValue(trustedContext.claim_response) !== portableBinding.action.claim_response_digest) {
         addReason(reasons, 'claim_response_digest_mismatch');
       }
     } catch {
       addReason(reasons, 'claim_response_digest_mismatch');
     }
     if (isPlainRecord(trustedContext.policy)
-        && trustedContext.policy.policy_digest !== binding.action.policy_digest) {
+        && trustedContext.policy.policy_digest !== portableBinding.action.policy_digest) {
       addReason(reasons, 'policy_digest_mismatch');
     }
 
     const expected = buildDavinciPasReviewBinding(trustedContext);
-    if (!expected.ok || !canonicalEqual(expected.binding.action, binding.action)) {
+    if (!expected.ok || !canonicalEqual(expected.binding.action, portableBinding.action)) {
       addReason(reasons, 'action_projection_mismatch');
     }
   }
