@@ -18,13 +18,14 @@ Start here:
 
 A draft published on the IETF Datatracker is an **active individual
 Internet-Draft**. It is not an RFC, not an adopted working-group item, and not
-IETF endorsement. Unsubmitted draft sources and filing schedules are prepared
-outside this public repository.
+IETF endorsement. Active successor drafts, review packets, and filing schedules
+are prepared outside this public repository. Intentionally public retired
+sources and partner-triggered profiles remain here with explicit dispositions.
 
-The July 19 publication set was verified against the IETF archive on
-2026-07-19. Each archived IETF TXT is byte-for-byte identical to its local
-snapshot under `posted/`. The exact inventory and revision numbers are in
-`STATUS.json`; the IETF Datatracker remains the authority for live status.
+The July 21 publication set was verified against the immutable IETF archive on
+2026-07-21. Each of its seven XML sources is byte-for-byte identical to the
+archive copy. Earlier rendered snapshots remain historical conveniences; the
+IETF archive is authoritative for rendered forms and live status.
 
 ## Cohesive architecture
 
@@ -41,29 +42,29 @@ and Quorum provide named evidence profiles. AEC evaluates evidence
 satisfaction. Challenge, enforcement, outcome, revocation, and preservation
 remain separate lifecycle transitions.
 
-## July 19 published wave
+## Current July 21 published wave
 
-1. `draft-schrock-canonical-action-identifier-00`
-2. `draft-schrock-ep-architecture-01`
-3. `draft-schrock-ep-authority-introduction-01`
-4. `draft-schrock-ep-authorization-receipts-07`
-5. `draft-schrock-ep-quorum-03`
-6. `draft-schrock-ep-bounded-capability-receipts-00`
-7. `draft-schrock-ep-authorization-evidence-chain-03`
-8. `draft-schrock-model-to-matter-00` (Experimental application profile; no
+1. `draft-schrock-action-evidence-boundary-00`
+2. `draft-schrock-canonical-action-identifier-01`
+3. `draft-schrock-ep-architecture-02`
+4. `draft-schrock-ep-authorization-evidence-chain-04`
+5. `draft-schrock-ep-authorization-receipts-08`
+6. `draft-schrock-ep-revocation-statement-00`
+7. `draft-schrock-model-to-matter-01` (Experimental application profile; no
    deployment or partner claim)
 
-The first seven documents form the protocol line. Model-to-Matter demonstrates
-the architecture at an executor boundary and carries explicit non-goals.
+These revisions advance the thin protocol line without collapsing evidence,
+authorization, revocation, and execution into one claim. Model-to-Matter
+remains an experimental executor profile with explicit non-goals.
 
 ## Directory layout
 
 - `posted/`: source snapshots for revisions already on Datatracker.
 - `archive/`: superseded revisions and retired standalone candidates.
-- `staged/`: public staging policy only; unsubmitted draft sources stay private.
 - `profiles/`: remaining application or commercial profiles that need an
   external validating partner before they re-enter the filing lane.
 - `observatory/`: revision-pinned source catalog and generated comparison data.
 
-Do not infer filing status from a file's directory alone. Use `STATUS.json` and
-then verify against Datatracker.
+Active successor drafts and filing packets remain outside this public
+repository. Intentionally public retired and partner-triggered sources are not
+submission queues. Use `STATUS.json` and then Datatracker for filing status.

@@ -1,6 +1,6 @@
 {
   "name": "@emilia-protocol/require-receipt",
-  "version": "0.6.1",
+  "version": "0.7.0",
   "description": "Demand a verifiable EMILIA authorization receipt for any irreversible agent action. Emits Receipt Required challenges (428, with legacy 402 compatibility) and tells the agent exactly what to bring.",
   "type": "module",
   "main": "index.js",

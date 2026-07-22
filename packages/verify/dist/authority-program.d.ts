@@ -21,6 +21,7 @@ export declare function verifyAuthorityProgram(program: unknown, stageReceipts: 
     verifyAom?: VerificationCallback;
     verifyCapabilityNarrowing?: VerificationCallback;
     verifyParallelAllocation?: VerificationCallback;
+    verifyRootActionBinding?: VerificationCallback;
 }): Obj;
 export {};
 //# sourceMappingURL=authority-program.d.ts.map

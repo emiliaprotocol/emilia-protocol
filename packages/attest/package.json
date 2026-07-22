@@ -1,6 +1,6 @@
 {
   "name": "@emilia-protocol/attest",
-  "version": "0.2.0",
+  "version": "0.2.1",
   "description": "Bind relying-party-pinned identity bytes and subject to a work-product hash in a signed EP receipt; no identity, authority, or execution overclaim.",
   "license": "Apache-2.0",
   "type": "module",

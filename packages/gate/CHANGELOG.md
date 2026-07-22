@@ -15,6 +15,9 @@ This package follows [Semantic Versioning](https://semver.org/).
   context, and evidence record, including CAID re-performance, exact schemas and
   instruction sequencing, result digest, action/operation binding, and Gate
   evidence-record references.
+- A tenant-bound Trust Program kernel for staged, ordered or threshold
+  authorization ceremonies, with durable Postgres state, revocation handling,
+  exact predecessor/evidence bindings, and tenant-wide replay refusal.
 - Explicit `executed`, `refused`, and `indeterminate` terminal states. Provider
   timeout and non-canonical provider output halt the operation without restoring
   replay authority.

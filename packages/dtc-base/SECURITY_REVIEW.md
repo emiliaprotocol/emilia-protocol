@@ -1,6 +1,6 @@
-# DTC Base private security review
+# DTC Base implementer security review
 
-**Status:** private implementer review; not an independent audit
+**Status:** public implementer review; not an independent audit
 
 **Deployment verdict:** do not deploy with customer funds or market as production DTC infrastructure.
 
@@ -12,8 +12,8 @@
 - functional, hostile, audit-regression, and real Gate integration tests
 - bounded TLA+ and Alloy models
 
-Artifact hashes are recorded in `security/results/artifact-manifest.txt`; formal model hashes are recorded in
-`formal/results/`. They must be recomputed after every change.
+Artifact hashes are recorded in `security/results/artifact-manifest.txt`; formal model hashes and bounded-run summaries
+are recorded in `formal/results/`. Dedicated CI regenerates both in a temporary directory and fails closed on drift.
 
 ## Hostile-review findings and disposition
 
@@ -35,6 +35,10 @@ Artifact hashes are recorded in `security/results/artifact-manifest.txt`; formal
 - Strict TypeScript typecheck and build: pass.
 - Hardhat functional/hostile/integration suite: pass.
 - Production dependency audit (`npm audit --omit=dev`): zero reported vulnerabilities.
+- Development-only toolchain audit: no critical advisory. Six high advisory roots remain in the pinned Hardhat 2
+  test/compile graph because no compatible upstream resolution exists. CI permits only those exact advisory URLs,
+  fails on any new high or critical advisory, and expires the exception on 2026-08-21. They are excluded from the
+  production-dependency zero-vulnerability statement.
 - Solidity coverage: high statement/function coverage; branch coverage remains below a production release target.
 - TLC 2.19: complete bounded graph, eight invariants plus monotonic-revocation property, no error.
 - Alloy 6.2.0: five assertions held, three scenarios satisfiable.
@@ -70,9 +74,13 @@ These are accepted design uses, not suppressed detector output.
    source publication, RPC redundancy, and an independently operated reconciliation service.
 8. **Formal scope.** TLA+ and Alloy check bounded abstract state machines, not Solidity bytecode, compiler correctness,
    provider behavior, or the cross-store saga.
+9. **Development toolchain advisories.** The current Hardhat 2 toolchain carries six reviewed high transitive advisory
+   roots. It is not shipped
+   as a runtime dependency, but it still requires isolation and a separately tested migration before any production
+   release process can rely on it.
 
 ## Claim boundary
 
-The private artifact demonstrates an enforceable Base settlement profile joined to the real EMILIA receipt-program
+The public experimental artifact demonstrates an enforceable Base settlement profile joined to the real EMILIA receipt-program
 kernel. It does not establish that the system is independently audited, deployed, legally an escrow service, or safe for
 production funds. No Base mainnet target is configured.

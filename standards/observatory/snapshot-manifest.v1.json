@@ -15,8 +15,8 @@
     },
     {
       "path": "standards/observatory/recon-summary.v1.json",
-      "bytes": 830,
-      "sha256": "6099a7311e040332f2ce75c7305cc7b1eec28d62fcc7cb19591627f366141e4d"
+      "bytes": 785,
+      "sha256": "1bbba8894416f5ed8689fdc047d4f25c49725cdfe5ee880547fad9ac94a27895"
     },
     {
       "path": "scripts/build-standards-observatory.mjs",

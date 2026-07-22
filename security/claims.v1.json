@@ -928,7 +928,7 @@
       ],
       "operational_evidence": [
         { "file": ".github/workflows/publish-go-verify.yml", "contains": ["ref: ${{ github.sha }}", "persist-credentials: false", "--expected-commit \"$GITHUB_SHA\"", "go-version-file: packages/go-verify/go.mod", "refs/tags/packages/go-verify/v*", "rules.has('deletion') && rules.has('update')", "github.rest.git.createRef", "p.Origin?.[key]", "p.GoModSum", "diff -ru packages/go-verify \"$PROXY_DIR\"", "release-artifacts/go-verify-proxy.zip"] },
-        { "file": "packages/go-verify/go-release.json", "contains": ["EP-GO-MODULE-RELEASE-v1", "github.com/emiliaprotocol/emilia-protocol/packages/go-verify/v2", "packages/go-verify/v2.3.1"] },
+        { "file": "packages/go-verify/go-release.json", "contains": ["EP-GO-MODULE-RELEASE-v1", "github.com/emiliaprotocol/emilia-protocol/packages/go-verify/v2", "packages/go-verify/v2.4.0"] },
         { "file": "release/release-packages.v1.json", "contains": ["github.com/emiliaprotocol/emilia-protocol/packages/go-verify/v2", "publish-go-verify.yml", "go_tag"] },
         { "file": "packages/go-verify/signoff_compatibility_test.go", "contains": ["func(map[string]any, string, string) SignoffResult", "func(map[string]any, string) QuorumResult"] }
       ],
@@ -1160,6 +1160,67 @@
         "an authentic attestation result does not prove that reference values or appraisal policy are complete or correct",
         "a measured build is not thereby vulnerability-free, physically genuine, or the only code able to affect the action",
         "no Python, Go, deployed hardware, independent operator, or supply-chain validation is claimed"
+      ],
+      "release_artifacts": ["verify-sdk", "security-evidence"]
+    },
+    {
+      "claim_id": "authority-program-composition-is-root-bound-and-closed",
+      "statement": "The public experimental Authority Program verifier accepts a signed series/parallel authority program only under relying-party-pinned program and per-organization stage keys, an independently recomputed root CAID and canonical-action digest, exact predecessor stage-receipt digests, closed native AEC and AOM results, capability narrowing, and authoritative parallel allocation proof. A valid result explicitly does not prove freshness, current revocation status, execution, or deployment.",
+      "acceptance_roots": [
+        "the relying party pins the exact program digest and program-signing organization, key identifier, and Ed25519 public key",
+        "the relying party owns the root canonical action, CAID registry and profile, stage-key directory, and native AEC, AOM, capability, and parallel-allocation verifiers",
+        "every presented stage receipt is immutable and signed by the exact organization and key assigned by the program"
+      ],
+      "enforcement_path": [
+        { "language": "javascript", "file": "packages/verify/src/authority-program.ts", "symbol": "verifyAuthorityProgram", "exported": true },
+        { "language": "javascript", "file": "packages/verify/src/authority-program.ts", "symbol": "deriveAuthorityProgramPredecessors", "exported": true }
+      ],
+      "implementations": [
+        { "language": "javascript", "file": "packages/verify/authority-program.js", "export": "verifyAuthorityProgram" },
+        { "language": "javascript", "file": "packages/verify/authority-program.js", "export": "deriveAuthorityProgramPredecessors" }
+      ],
+      "language_coverage": {
+        "javascript": { "status": "covered", "evidence": "conformance/vectors/authority-program.v1.json" },
+        "python": { "status": "gap", "reason": "No Python implementation of the Authority Program composition verifier is claimed." },
+        "go": { "status": "gap", "reason": "No Go implementation of the Authority Program composition verifier is claimed." }
+      },
+      "vectors": [
+        {
+          "suite": "conformance/vectors/authority-program.v1.json",
+          "case_id": "accept-exact-authority-program",
+          "polarity": "positive",
+          "expect": { "valid": true, "reason": null },
+          "execution": { "runner": "node-test", "file": "conformance/authority-program-profile.test.js", "title": "public authority-program vector verifies exact program and cross-organization stage signatures" }
+        },
+        {
+          "suite": "conformance/vectors/authority-program.v1.json",
+          "case_id": "reject-missing-root-action-binding",
+          "polarity": "negative",
+          "expect": { "valid": false, "reason": "root_action_binding_unproven" },
+          "execution": { "runner": "node-test", "file": "conformance/authority-program-profile.test.js", "title": "public authority-program vector requires a relying-party root action binding verifier" }
+        }
+      ],
+      "tests": [
+        { "file": "packages/verify/authority-program.test.js", "title": "verifies a signed nested sequence/parallel program as immutable digest joins", "runner": "node-test" },
+        { "file": "packages/verify/authority-program.test.js", "title": "requires a relying-party proof that the root CAID and action digest describe one action", "runner": "node-test" },
+        { "file": "packages/verify/authority-program.test.js", "title": "requires exact independently verified AEC and explicit AOM joins", "runner": "node-test" },
+        { "file": "packages/verify/authority-program.test.js", "title": "rejects capability broadening and parallel budget claims without authoritative allocation proof", "runner": "node-test" }
+      ],
+      "formal": [
+        {
+          "status": "not_modeled",
+          "gap": "A separate bounded TLC model checks the Authority Program structural and root-binding invariants, but no refinement proof connects that abstraction to the TypeScript signature, CAID, or injected-native-verifier implementation."
+        }
+      ],
+      "assumptions": [
+        "Ed25519 signatures are unforgeable, SHA-256 collisions are infeasible, and the relying party protects every pinned trust input",
+        "the root-action callback obtains the relying-party-owned action and recomputes CAID plus canonical digest rather than echoing presenter values",
+        "the injected native verifiers correctly verify AEC, AOM, capability narrowing, and aggregate parallel allocation under their own pinned policies"
+      ],
+      "exclusions": [
+        "the verifier is a pure public experimental reference implementation, not a scheduler, state store, deployment, adopted standard, or independent implementation",
+        "a valid composition does not prove freshness, current non-revocation, one-time consumption, execution, outcome truth, legal authority, safety, or commercial correctness",
+        "series/parallel programs are supported; arbitrary DAGs are deliberately unrepresentable"
       ],
       "release_artifacts": ["verify-sdk", "security-evidence"]
     },

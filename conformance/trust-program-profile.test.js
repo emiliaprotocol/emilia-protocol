@@ -68,35 +68,40 @@ function createAtomicStore(compareAndSwapBarrierSize = 0) {
     releaseBarrier = resolveBarrier;
   });
 
+  const storageKey = (tenantId, instanceId) => `${tenantId.length}:${tenantId}${instanceId}`;
+
   return {
     durable: false,
-    async create(state) {
-      if (records.has(state.instance_id))
+    async create({ tenantId, state }) {
+      const key = storageKey(tenantId, state.instance_id);
+      if (records.has(key))
         return { ok: false, reason: "instance_exists" };
-      records.set(state.instance_id, structuredClone(state));
+      records.set(key, structuredClone(state));
       return { ok: true, state: structuredClone(state) };
     },
-    async get(instanceId) {
-      const state = records.get(instanceId);
+    async get({ tenantId, instanceId }) {
+      const state = records.get(storageKey(tenantId, instanceId));
       return state
         ? { ok: true, state: structuredClone(state) }
         : { ok: false, reason: "instance_not_found" };
     },
-    async compareAndSwap({ instanceId, expectedRevision, state }) {
+    async compareAndSwap({ tenantId, instanceId, expectedRevision, state }) {
       if (arrivals < compareAndSwapBarrierSize) {
         arrivals += 1;
         if (arrivals === compareAndSwapBarrierSize) releaseBarrier();
         await barrier;
       }
-      const current = records.get(instanceId);
+      const key = storageKey(tenantId, instanceId);
+      const current = records.get(key);
       if (!current) return { ok: false, reason: "instance_not_found" };
       if (current.revision !== expectedRevision)
         return { ok: false, reason: "revision_conflict" };
-      records.set(instanceId, structuredClone(state));
+      records.set(key, structuredClone(state));
       return { ok: true, state: structuredClone(state) };
     },
-    async invalidate({ instanceId, expectedRevision, reason, at }) {
-      const current = records.get(instanceId);
+    async invalidate({ tenantId, instanceId, expectedRevision, reason, at }) {
+      const key = storageKey(tenantId, instanceId);
+      const current = records.get(key);
       if (!current) return { ok: false, reason: "instance_not_found" };
       if (current.revision !== expectedRevision)
         return { ok: false, reason: "revision_conflict" };
@@ -109,7 +114,7 @@ function createAtomicStore(compareAndSwapBarrierSize = 0) {
       if (["locked", "ready"].includes(next.execution.status)) {
         next.execution.status = "invalidated";
       }
-      records.set(instanceId, next);
+      records.set(key, next);
       return { ok: true, state: structuredClone(next) };
     },
   };
@@ -422,14 +427,14 @@ async function runOperation(context, operation) {
 }
 
 describe("EP Gate Trust Program conformance catalog", () => {
-  it("is a closed internal suite with complete required coverage", () => {
+  it("is a public experimental profile with complete required coverage", () => {
     expect(catalog.suite).toBe("EP-GATE-TRUST-PROGRAM-v1");
     expect(catalog.machine_discriminator).toBe(TRUST_PROGRAM_VERSION);
     expect(catalog.stage_receipt_discriminator).toBe(
       TRUST_STAGE_RECEIPT_VERSION,
     );
     expect(catalog.artifact_classification).toBe(
-      "closed_internal_operational_profile",
+      "public_experimental_operational_profile",
     );
     expect(catalog.standardization_status).toEqual({
       standard: false,

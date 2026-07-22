@@ -5,7 +5,7 @@ export declare const EP_APPROVAL_FLOW = "EP-APPROVAL-v1";
 export declare const APPROVAL_REQUEST_ID_PATTERN: RegExp;
 export declare const APPROVAL_POLL_TOKEN_PATTERN: RegExp;
 export declare const APPROVAL_IDEMPOTENCY_KEY_PATTERN: RegExp;
-export declare const APPROVAL_STATUSES: readonly ["pending", "approved", "denied", "expired", "cancelled"];
+export declare const APPROVAL_STATUSES: readonly ["pending", "indeterminate", "approved", "denied", "expired", "cancelled"];
 export declare function approvalActionHash(action: unknown): string;
 export declare function validateApprovalAuthorization(input: unknown): {
     ok: true;

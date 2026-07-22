@@ -36,9 +36,9 @@ These annotations become citeworthy when each one is attached to an immutable so
 | C8 | CI runs the three language ports against shared vectors and separately gates TLC, Alloy, and Tamarin. | EXECUTABLE/OPERATIONAL evidence at the pinned revision. CI is not a refinement proof and does not prove the hosted runner or release pipeline trustworthy. | `.github/workflows/ci.yml`; `.github/workflows/tlc.yml`; `.github/workflows/alloy.yml`; `.github/workflows/tamarin.yml` |
 | C9 | A strict clean-room independent implementation has not yet been accepted. | Negative scope fact. The recorded Rust candidate has `strictCleanRoomAcceptance: false`; do not market same-team ports as independent. | `lib/proof-stats.json`; `conformance/clean-room/conformance-manifest.v1.json`; `conformance/external/` |
 | C10 | Delegated capability authority is modeled as monotonically non-increasing. | BOUNDED-CHECKED in TLA+ and Alloy under stated bounds; executable enforcement remains separate. | `DelegationAuthorityNonIncreasing` in `formal/ep_capability.tla`; `AuthorityNonIncreasing` in `formal/ep_delegation.als`; `packages/gate/src/capability-receipt.ts` |
-| C11 | `EP-AUTHORITY-PROGRAM-v1` is a pure verifier over a relying-party-pinned signed recursive series/parallel program and immutable signed stage receipts. | PRIVATE EXECUTABLE EVIDENCE. It rejects arbitrary DAG vocabulary, verifies exact predecessor receipt digests, joins separately verified AEC/AOM results, requires capability narrowing and authoritative parallel allocation, and always returns `execution_proven: false`. It is not public or deployed. | `packages/verify/src/authority-program.ts`; `packages/verify/authority-program.test.ts`; `docs/architecture/AUTHORITY-PROGRAM-PRIVATE.md`; `conformance/vectors/authority-program.v1.json` |
+| C11 | `EP-AUTHORITY-PROGRAM-v1` is a pure verifier over a relying-party-pinned signed recursive series/parallel program and immutable signed stage receipts. | PUBLIC EXPERIMENTAL EXECUTABLE EVIDENCE. It rejects arbitrary DAG vocabulary, requires a relying-party root CAID/action binding decision, verifies exact predecessor receipt digests, joins separately verified AEC/AOM results, requires capability narrowing and authoritative parallel allocation, and always returns `freshness_proven: false`, `revocation_checked: false`, and `execution_proven: false`. It is not deployed, independently reviewed, or an adopted standard. | `packages/verify/src/authority-program.ts`; `packages/verify/authority-program.test.ts`; `docs/architecture/AUTHORITY-PROGRAM.md`; `conformance/vectors/authority-program.v1.json` |
 | C12 | Conservation of Authority can be stated for the authority-program fold: validity implies every stage's capability is narrowed and every parallel allocation is authoritative. | BOUNDED-CHECKED in the representative four-stage nested series/parallel TLC configuration. Callback correctness remains a relying-party assumption; the model does not inspect native capability arithmetic. | `formal/ep_authority_program.tla` invariant `ConservationOfAuthority`; `formal/ep_authority_program.cfg`; `packages/verify/src/authority-program.ts` |
-| C13 | Authority-program verification proves no material execution. | BOUNDED-CHECKED and executable result contract. `executionProven` remains false in every modeled state and every verifier outcome. | `NoExecutionProof` in `formal/ep_authority_program.tla`; `execution_proven: false` in `packages/verify/src/authority-program.ts` and its test |
+| C13 | Authority-program verification proves neither freshness, current non-revocation, nor material execution. | BOUNDED-CHECKED execution exclusion plus executable result contract. `executionProven` remains false in every modeled state; the verifier also reports `freshness_proven: false` and `revocation_checked: false` in every outcome. | `NoExecutionProof` in `formal/ep_authority_program.tla`; closed result fields in `packages/verify/src/authority-program.ts` and its test |
 | C14 | The receipt-program kernel has executable CAID, capability, terminal-outcome, and evidence checks, and its bounded lifecycle model contributes 14 invariants plus three temporal properties. | EXECUTABLE EVIDENCE plus BOUNDED-CHECKED lifecycle abstraction. The model does not prove TypeScript, database linearizability, cryptography, provider truth, wall-clock deadlines, settlement, or arbitrary concurrency. Python and Go receipt-program ports are explicitly absent. | claim `receipt-program-is-caid-bound-budgeted-and-terminal` in `security/claims.v1.json`; `packages/gate/src/receipt-program.ts`; `packages/gate/receipt-program.test.ts`; `formal/ep_receipt_program.tla`; `formal/ep_receipt_program.cfg` |
 | C15 | The repository has an opt-in Ed25519 plus ML-DSA-65 prototype. | EXECUTABLE prototype only. It is not wired into default `EP-RECEIPT-v1`, deployed Gate receipts, or FIPS validation. | `packages/verify/src/pq-hybrid.ts`; `packages/verify/pq-hybrid.test.ts`; `docs/RECEIPT-CLAIMS.md` |
 | C16 | The repository has an optional Bulletproofs range-receipt envelope. | EXECUTABLE optional backend/prototype; not invented cryptography and not evidence that every deployment uses zero knowledge. | `packages/gate/src/zk-range-proof.ts`; its tests and exported declarations |
@@ -60,7 +60,7 @@ Receipt Program addition = 14 invariants
                          +  3 temporal properties
                          = 17
 
-Post-integration TLC corpus = 40 + 17 = 57 obligations
+Selected TLC paper corpus = 40 + 17 + 12 = 69 obligations
 
 Alloy assertions = 15 relations
                  +  7 federation
@@ -97,7 +97,7 @@ from that exact clean revision.
 - The models and implementations are maintained by the same organization; shared misunderstandings can survive all three ports.
 - Conformance vectors can encode the same specification mistake as the implementations.
 - Generated statistics can lag model files. Every submission build must fail on count drift.
-- The authority-program model abstracts callback correctness to booleans; it proves the fold rejects a failed narrowing/allocation assertion, not that a callback's native verifier is correct.
+- The authority-program model abstracts callback correctness to booleans; it proves the fold rejects failed root binding, narrowing, or allocation assertions, not that a callback's native verifier is correct.
 
 ### Construct validity
 
@@ -121,13 +121,13 @@ from that exact clean revision.
 ## Do-not-claim list
 
 - Do not claim EP is the first authorization-receipt, staged-approval, or distributed-trust system.
-- Do not use 40 as the post-integration TLC total. The exact formulation is a 40-obligation baseline plus 17 bounded Receipt Program obligations, for 57 total; do not call all 57 invariants.
+- Do not use 40 as the selected paper-corpus TLC total. The exact formulation is a 40-obligation baseline plus 17 bounded Receipt Program obligations plus 12 bounded Authority Program obligations, for 69 total; do not call all 69 invariants.
 - Do not claim all 22 Tamarin lemmas verify; 19 verify and three are deliberately falsified comparison lemmas.
 - Do not claim three independent implementations; they are three same-team reference ports.
 - Do not claim a formal refinement proof from TLA+/Alloy/Tamarin to TypeScript, Python, or Go.
 - Do not claim global replay impossibility, universal atomicity, or execution truth.
 - Do not claim the bounded Receipt Program model proves implementation correctness, provider truth, settlement, or arbitrary concurrency.
-- Do not claim the authority-program model proves execution; it explicitly proves no such thing.
+- Do not claim the authority-program verifier proves freshness, non-revocation, or execution; its result explicitly says each is unproven or unchecked.
 - Do not claim DTC settlement is production infrastructure. The public Base profile is experimental source until independently audited and deployed.
 - Do not claim new cryptography, post-quantum security, FIPS validation, or a production zero-knowledge deployment.
 - Do not claim an independent witness network, independent hardware attestation, or independently reproduced settlement.

@@ -99,6 +99,7 @@ GlobalFaults == {
   "none",
   "program-pin",
   "program-signature",
+  "root-action-binding",
   "stage-set",
   "duplicate-receipt",
   "parallel-allocation"
@@ -124,6 +125,7 @@ ProgramSignatureValid == faultKind # "program-signature"
 CompleteUniqueStageSet ==
   faultKind \notin {"stage-set", "duplicate-receipt"}
 ParallelAllocationAuthoritative == faultKind # "parallel-allocation"
+RootActionBindingVerified == faultKind # "root-action-binding"
 
 StageSignatureValid(stage) ==
   ~(faultKind = "stage-signature" /\ faultStage = stage)
@@ -152,6 +154,7 @@ StageValid(stage) ==
 ProgramEnvelopeValid ==
   /\ ProgramPinned
   /\ ProgramSignatureValid
+  /\ RootActionBindingVerified
   /\ CompleteUniqueStageSet
 
 Init ==
@@ -216,6 +219,9 @@ ValidOnlyAfterCompleteFold ==
 
 ValidImpliesPinnedSignedProgram ==
   status = "valid" => (ProgramPinned /\ ProgramSignatureValid)
+
+ValidImpliesRootActionBinding ==
+  status = "valid" => RootActionBindingVerified
 
 ValidImpliesExactStageSet ==
   status = "valid" => CompleteUniqueStageSet

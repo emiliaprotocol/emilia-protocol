@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 // SPDX-License-Identifier: Apache-2.0
-// Private deterministic vector generator. Test keys have no operational value.
+// Public deterministic vector generator. Test keys have no operational value.
 import crypto from 'node:crypto';
 import { writeFile } from 'node:fs/promises';
 import { dirname, resolve } from 'node:path';
@@ -20,10 +20,22 @@ const HERE = dirname(fileURLToPath(import.meta.url));
 const OUTPUT = resolve(HERE, 'authority-program.v1.json');
 const digest = (label) => `sha256:${crypto.createHash('sha256').update(label).digest('hex')}`;
 const clone = (value) => structuredClone(value);
+const rootAction = {
+  action_type: 'payment.release.1',
+  amount: '250.00',
+  currency: 'EUR',
+  beneficiary_account: 'sha256:9f86d081884c7d659a2feaa0c55ad015a3bf4f1b2b0b822cd15d6c15b0f00a08',
+  payment_instruction_id: 'pi-authority-program-0001',
+};
+const rootActionHash = crypto.createHash('sha256').update(canonicalize(rootAction), 'utf8').digest();
+const rootActionBinding = {
+  root_caid: `caid:1:${rootAction.action_type}:jcs-sha256:${rootActionHash.toString('base64url')}`,
+  root_action_digest: `sha256:${rootActionHash.toString('hex')}`,
+};
 const ED25519_PKCS8_SEED_PREFIX = Buffer.from('302e020100300506032b657004220420', 'hex');
 function deterministicTestKey(name) {
   const seed = crypto.createHash('sha256')
-    .update(`EP-AUTHORITY-PROGRAM-v1 private conformance test key\0${name}`)
+    .update(`EP-AUTHORITY-PROGRAM-v1 public experimental conformance test key\0${name}`)
     .digest();
   return crypto.createPrivateKey({
     key: Buffer.concat([ED25519_PKCS8_SEED_PREFIX, seed]),
@@ -80,8 +92,8 @@ const stage = (stage_id, organization_id, key_id) => ({
 const program = signProgram({
   '@version': AUTHORITY_PROGRAM_VERSION,
   program_id: 'authority-program:conformance:v1',
-  root_caid: `caid:1:payment.release.1:jcs-sha256:${'A'.repeat(43)}`,
-  root_action_digest: digest('root-action'),
+  root_caid: rootActionBinding.root_caid,
+  root_action_digest: rootActionBinding.root_action_digest,
   expression: {
     type: 'sequence',
     children: [
@@ -149,8 +161,9 @@ const replace = (stageId, mutate) => {
 
 const vector = {
   '@version': 'EP-AUTHORITY-PROGRAM-CONFORMANCE-v1',
-  status: 'private-prepublication-test-vector',
+  status: 'public-experimental-test-vector',
   note: 'Deterministic test keys only. This vector is not an adopted standard or independent implementation.',
+  root_action: rootAction,
   program,
   program_pin: {
     digest: authorityProgramDigest(program),
@@ -181,6 +194,16 @@ const vector = {
       },
     },
   },
+  vectors: [
+    {
+      id: 'accept-exact-authority-program',
+      expect: { valid: true, reason: null },
+    },
+    {
+      id: 'reject-missing-root-action-binding',
+      expect: { valid: false, reason: 'root_action_binding_unproven' },
+    },
+  ],
   invalid_cases: [
     {
       name: 'missing-predecessor',

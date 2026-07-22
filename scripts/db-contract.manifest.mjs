@@ -80,6 +80,12 @@ const SERVICE_ONLY_TABLES = [
     // spending/budget state reached only through the service-role durable store.
     'ep_capability_state',
     'ep_capability_operations',
+    // Approval acquisition and evidence-readiness state are tenant-bound,
+    // service-only control-plane records. Public roles must never query or
+    // mutate them directly.
+    'approval_acquisition_requests',
+    'guard_receipt_streams',
+    'guard_receipt_event_bindings',
 ];
 export const contract = {
     // Tables that MUST exist. Missing => hard FAIL.
@@ -150,6 +156,17 @@ export const contract = {
         ep_capability_operations: ['operation_id', 'capability_id', 'action_digest', 'amount', 'currency',
             'status', 'reservation_token', 'outcome', 'reconciliation_outcome',
             'reconciliation_evidence_digest', 'reserved_at', 'committed_at', 'reconciled_at'],
+        approval_acquisition_requests: ['request_id', 'tenant_id', 'environment',
+            'requester_key_id', 'producer_key_id', 'idempotency_digest', 'request_digest', 'challenge_hash',
+            'action_hash', 'action_caid', 'action', 'approver_id', 'poll_token_hash',
+            'poll_token_key_id', 'poll_token_ciphertext', 'poll_token_iv',
+            'poll_token_tag', 'status', 'reconciliation_state', 'receipt_id',
+            'signoff_id', 'receipt_action_hash', 'refusal_code', 'indeterminate_at',
+            'reconciled_at', 'refused_at', 'expires_at', 'created_at', 'updated_at'],
+        guard_receipt_streams: ['receipt_id', 'tenant_id', 'environment',
+            'created_event_id', 'created_at'],
+        guard_receipt_event_bindings: ['event_id', 'receipt_id', 'tenant_id',
+            'environment', 'event_type', 'event_created_at', 'bound_at'],
         // enrollment_basis records whether an approver credential was bound against
         // the org's provisioned directory or operator-attested; directory_user_id
         // pins the exact scim_users row that authorized a directory-basis enrollment.
@@ -237,6 +254,14 @@ export const contract = {
         'activate_policy_rollout_authorized',
         'issue_tenant_api_key_audited',
         'consume_trust_receipt_authorized',
+        'reserve_approval_acquisition_request',
+        'enter_approval_acquisition_boundary',
+        'complete_approval_acquisition_request',
+        'reconcile_approval_acquisition_request',
+        'refuse_approval_acquisition_request',
+        'recover_approval_acquisition_poll_token',
+        'bind_guard_receipt_event_scope',
+        'reject_guard_receipt_binding_mutation',
         'gov_schema_contract_introspect',
         'complete_webauthn_registration_atomic',
         'consume_trust_desk_bootstrap_atomic',

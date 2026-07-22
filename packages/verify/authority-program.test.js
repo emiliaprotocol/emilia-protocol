@@ -8,6 +8,21 @@ import { canonicalize } from './index.js';
 import { AUTHORITY_PROGRAM_DOMAIN, AUTHORITY_PROGRAM_VERSION, AUTHORITY_STAGE_RECEIPT_DOMAIN, AUTHORITY_STAGE_RECEIPT_VERSION, authorityProgramDigest, authorityStageReceiptDigest, deriveAuthorityProgramPredecessors, verifyAuthorityProgram, } from './authority-program.js';
 const digest = (label) => `sha256:${crypto.createHash('sha256').update(label).digest('hex')}`;
 const clone = (value) => structuredClone(value);
+const rootAction = {
+    action_type: 'payment.release.1',
+    amount: '250.00',
+    currency: 'EUR',
+    beneficiary_account: 'sha256:9f86d081884c7d659a2feaa0c55ad015a3bf4f1b2b0b822cd15d6c15b0f00a08',
+    payment_instruction_id: 'pi-authority-program-0001',
+};
+function rootActionBinding() {
+    const hash = crypto.createHash('sha256').update(canonicalize(rootAction), 'utf8').digest();
+    return {
+        valid: true,
+        root_caid: `caid:1:${rootAction.action_type}:jcs-sha256:${hash.toString('base64url')}`,
+        root_action_digest: `sha256:${hash.toString('hex')}`,
+    };
+}
 const programKey = crypto.generateKeyPairSync('ed25519');
 const stageKeys = {
     'org:alpha': { 'key:alpha': crypto.generateKeyPairSync('ed25519') },
@@ -63,11 +78,12 @@ function stage(stage_id, organization_id, key_id) {
     };
 }
 function makeProgram() {
+    const root = rootActionBinding();
     return signProgram({
         '@version': AUTHORITY_PROGRAM_VERSION,
         program_id: 'authority-program:purchase-release:v1',
-        root_caid: `caid:1:payment.release.1:jcs-sha256:${'A'.repeat(43)}`,
-        root_action_digest: digest('root-action'),
+        root_caid: root.root_caid,
+        root_action_digest: root.root_action_digest,
         expression: {
             type: 'sequence',
             children: [
@@ -172,6 +188,7 @@ function optionsFor(bundle) {
             requirement_digest: digest(`${parallel_id}:allocation:requirement`),
             proof_digest: digest(`${parallel_id}:allocation:proof`),
         }),
+        verifyRootActionBinding: rootActionBinding,
     };
 }
 function resignReceipt(receipt) {
@@ -196,9 +213,37 @@ test('verifies a signed nested sequence/parallel program as immutable digest joi
             .map((receipt) => [receipt.stage_id, authorityStageReceiptDigest(receipt)])
             .sort(([left], [right]) => left.localeCompare(right))),
         parallel_allocation_status: 'verified',
+        root_action_binding_status: 'verified',
+        freshness_proven: false,
+        revocation_checked: false,
         execution_proven: false,
         reason: null,
     });
+});
+test('requires a relying-party proof that the root CAID and action digest describe one action', () => {
+    const bundle = makeBundle();
+    const options = optionsFor(bundle);
+    const missing = { ...options, verifyRootActionBinding: undefined };
+    assert.equal(verifyAuthorityProgram(bundle.program, bundle.receipts, missing).reason, 'root_action_binding_unproven');
+    const mismatched = {
+        ...options,
+        verifyRootActionBinding: ({ root_caid }) => ({
+            valid: true,
+            root_caid,
+            root_action_digest: digest('different-root-action'),
+        }),
+    };
+    assert.equal(verifyAuthorityProgram(bundle.program, bundle.receipts, mismatched).reason, 'root_action_binding_mismatch');
+    const smuggled = {
+        ...options,
+        verifyRootActionBinding: (context) => ({
+            valid: true,
+            root_caid: context.root_caid,
+            root_action_digest: context.root_action_digest,
+            trusted_by_default: true,
+        }),
+    };
+    assert.equal(verifyAuthorityProgram(bundle.program, bundle.receipts, smuggled).reason, 'root_action_binding_unproven');
 });
 test('fails closed for unsigned, wrongly signed, untrusted, or wrongly pinned programs', () => {
     const bundle = makeBundle();
@@ -253,6 +298,9 @@ test('hostile JavaScript objects cannot throw through the pure verifier', () => 
         root_action_digest: null,
         stage_receipt_digests: {},
         parallel_allocation_status: null,
+        root_action_binding_status: null,
+        freshness_proven: false,
+        revocation_checked: false,
         execution_proven: false,
         reason: 'malformed_input',
     });
@@ -298,7 +346,7 @@ test('rejects the wrong stage organization and receipt replay across every bindi
         root_caid: `caid:1:payment.release.1:jcs-sha256:${'B'.repeat(43)}`,
     });
     const otherRootOptions = { ...options, programPin: { ...options.programPin, digest: authorityProgramDigest(otherRoot) } };
-    assert.equal(verifyAuthorityProgram(otherRoot, bundle.receipts, otherRootOptions).reason, 'stage_program_digest_mismatch');
+    assert.equal(verifyAuthorityProgram(otherRoot, bundle.receipts, otherRootOptions).reason, 'root_action_binding_mismatch');
     const otherAuthority = clone(bundle.program);
     otherAuthority.expression.children[1].branches[0].authority = {
         organization_id: 'org:gamma',

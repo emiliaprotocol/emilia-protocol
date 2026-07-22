@@ -442,7 +442,8 @@ test('invalidation is terminal and stale concurrent transitions fail closed', as
   });
   assert.equal(challenge.reason, 'program_instance_invalidated');
   const stale = await store.invalidate({
-    instanceId: 'tpi_invalidated', expectedRevision: snapshot.state.revision, reason: 'stale', at: NOW,
+    tenantId: 'tenant_test', instanceId: 'tpi_invalidated',
+    expectedRevision: snapshot.state.revision, reason: 'stale', at: NOW,
   });
   assert.equal(stale.reason, 'revision_conflict');
 });

@@ -4,6 +4,7 @@ import { describe, expect, it } from 'vitest';
 import {
   APPROVAL_REQUIRED_FIELDS,
   SUPPORTED_APPROVAL_ACTION_TYPES,
+  bindApprovalCreateRequestScope,
   buildPaymentReleaseActionIdentity,
   parseApprovalCreateRequest,
 } from '../lib/approval-acquisition/contract.ts';
@@ -76,6 +77,42 @@ describe('EP-APPROVAL-v1 fixed payment profile', () => {
       counterparty_name: 'Bicycle Shop',
       payment_destination_hash: `sha256:${'a'.repeat(64)}`,
       approver_id: 'approver@example.test',
+    });
+  });
+
+  it('cryptographically scopes the logical request to tenant and environment, not key generation', async () => {
+    const { provisional } = fixture();
+    const { approvalActionHash } = await import('@emilia-protocol/require-receipt');
+    const parsed = parseApprovalCreateRequest({
+      ...provisional,
+      challenge: { ...provisional.challenge, action_hash: approvalActionHash(provisional.action) },
+    });
+    expect(parsed.ok).toBe(true);
+    if (!parsed.ok) return;
+
+    const production = bindApprovalCreateRequestScope(parsed.value, {
+      tenantId: '33333333-3333-4333-8333-333333333333',
+      environment: 'production',
+    });
+    const sameScopeAfterKeyRotation = bindApprovalCreateRequestScope(parsed.value, {
+      tenantId: '33333333-3333-4333-8333-333333333333',
+      environment: 'production',
+    });
+    const staging = bindApprovalCreateRequestScope(parsed.value, {
+      tenantId: '33333333-3333-4333-8333-333333333333',
+      environment: 'staging',
+    });
+    const otherTenant = bindApprovalCreateRequestScope(parsed.value, {
+      tenantId: '44444444-4444-4444-8444-444444444444',
+      environment: 'production',
+    });
+
+    expect(production.requestDigest).toBe(sameScopeAfterKeyRotation.requestDigest);
+    expect(staging.requestDigest).not.toBe(production.requestDigest);
+    expect(otherTenant.requestDigest).not.toBe(production.requestDigest);
+    expect(production.requestScope).toEqual({
+      tenant_id: '33333333-3333-4333-8333-333333333333',
+      environment: 'production',
     });
   });
 

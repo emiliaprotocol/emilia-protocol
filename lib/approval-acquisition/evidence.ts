@@ -23,6 +23,7 @@ type Signer = (payload: Record<string, any>) => SignedApprovalReceipt | null;
 
 export type ApprovalPollStatus =
   | { status: 'pending' }
+  | { status: 'indeterminate'; reconciliation: { state: 'required'; retry_safe: false } }
   | { status: 'denied' }
   | { status: 'expired' }
   | { status: 'approved'; receipt: SignedApprovalReceipt }
@@ -54,6 +55,33 @@ function samePaymentMaterial(row: ApprovalAcquisitionRow, canonicalAction: Recor
     && canonicalAction.counterparty_name === action.counterparty_name
     && canonicalAction.payment_destination_hash === action.beneficiary_account_hash
     && canonicalAction.action_caid === row.action_caid;
+}
+
+function sameAcquisitionScope(row: ApprovalAcquisitionRow, state: Record<string, any>): boolean {
+  const scope = state.canonical_action?.acquisition_scope;
+  return state.acquisition_tenant_id === row.tenant_id
+    && state.acquisition_environment === row.environment
+    && state.acquisition_request_id === row.request_id
+    && state.acquisition_request_digest === row.request_digest
+    && state.acquisition_action_hash === row.action_hash
+    && state.acquisition_action_caid === row.action_caid
+    && state.acquisition_challenge_hash === row.challenge_hash
+    && scope
+    && typeof scope === 'object'
+    && !Array.isArray(scope)
+    && scope.tenant_id === row.tenant_id
+    && scope.environment === row.environment
+    && scope.request_id === row.request_id
+    && scope.request_digest === row.request_digest
+    && scope.action_hash === row.action_hash
+    && scope.action_caid === row.action_caid
+    && scope.challenge_hash === row.challenge_hash;
+}
+
+function producerKeyId(row: ApprovalAcquisitionRow): string | null {
+  return typeof row.producer_key_id === 'string' && row.producer_key_id.length > 0
+    ? row.producer_key_id
+    : null;
 }
 
 function signApprovalReceipt(payload: Record<string, any>): SignedApprovalReceipt | null {
@@ -98,6 +126,9 @@ export function deriveApprovalStatus(
   now: Date = new Date(),
   { signer = signApprovalReceipt }: { signer?: Signer } = {},
 ): ApprovalPollStatus {
+  if (row.status === 'indeterminate') {
+    return { status: 'indeterminate', reconciliation: { state: 'required', retry_safe: false } };
+  }
   if (row.status !== 'pending' || !row.receipt_id || !row.signoff_id || !row.receipt_action_hash) {
     const expiresAt = Date.parse(row.expires_at);
     return Number.isFinite(expiresAt) && now.getTime() >= expiresAt
@@ -112,7 +143,9 @@ export function deriveApprovalStatus(
   if (createdEvents.length !== 1) return { status: 'not_ready', reason: 'creation_evidence_invalid' };
   const created = createdEvents[0];
   const base = created.after_state;
-  const expectedCreator = `ep:cloud-key:${row.requester_key_id}`;
+  const producer = producerKeyId(row);
+  if (!producer) return { status: 'not_ready', reason: 'producer_binding_unavailable' };
+  const expectedCreator = `ep:cloud-key:${producer}`;
   if (!base
       || created.actor_id !== expectedCreator
       || base.organization_id !== row.tenant_id
@@ -120,6 +153,7 @@ export function deriveApprovalStatus(
       || base.action_hash !== row.receipt_action_hash
       || base.signoff_required !== true
       || base.required_assurance !== 'A'
+      || !sameAcquisitionScope(row, base)
       || !samePaymentMaterial(row, base.canonical_action || {})) {
     return { status: 'not_ready', reason: 'receipt_binding_invalid' };
   }
@@ -127,7 +161,11 @@ export function deriveApprovalStatus(
   const requests = events.filter((event) => event.event_type === 'guard.signoff.requested'
     && event.actor_id === expectedCreator
     && event.after_state?.signoff_id === row.signoff_id
-    && event.after_state?.approver_id === row.approver_id);
+    && event.after_state?.approver_id === row.approver_id
+    && event.after_state?.acquisition_tenant_id === row.tenant_id
+    && event.after_state?.acquisition_environment === row.environment
+    && event.after_state?.acquisition_request_id === row.request_id
+    && event.after_state?.acquisition_request_digest === row.request_digest);
   if (requests.length !== 1) return { status: 'not_ready', reason: 'signoff_request_invalid' };
 
   const approved = decisionEvents(events, 'guard.signoff.approved', row);
@@ -169,6 +207,11 @@ export function deriveApprovalStatus(
       action_caid: row.action_caid,
       challenge_hash: row.challenge_hash,
       source_receipt_action_hash: row.receipt_action_hash,
+      request_scope: {
+        tenant_id: row.tenant_id,
+        environment: row.environment,
+        request_digest: row.request_digest,
+      },
       outcome: 'allow_with_signoff',
       approver: row.approver_id,
     },
@@ -186,7 +229,17 @@ export function deriveApprovalStatus(
     // acquisition action above, forming a closed transitive proof chain.
     signoff: classA.signoff,
     approver_key_id: classA.credential_id,
-    subject: `ep:cloud-key:${row.requester_key_id}`,
+    authenticated_actor: {
+      type: 'cloud_key',
+      key_id: producer,
+      subject: expectedCreator,
+    },
+    requester_actor: {
+      type: 'cloud_key',
+      key_id: row.requester_key_id,
+      subject: `ep:cloud-key:${row.requester_key_id}`,
+    },
+    subject: expectedCreator,
     created_at: created.created_at || row.created_at,
     expires_at: row.expires_at,
   };
@@ -225,4 +278,6 @@ export async function loadApprovalStatus(
   return deriveApprovalStatus(row, data, now);
 }
 
-export const _internals = { samePaymentMaterial, signApprovalReceipt };
+export const _internals = {
+  samePaymentMaterial, sameAcquisitionScope, producerKeyId, signApprovalReceipt,
+};

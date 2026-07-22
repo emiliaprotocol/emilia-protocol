@@ -83,10 +83,10 @@ describe('DTC Base x EMILIA receipt-program kernel', function () {
       operationIdField: 'payment_instruction_id',
       certificatePrivateKey: certificateOperator.privateKey,
       certificateContext: {
-        issuer: 'emilia-dtc-private-test',
-        tenant: 'private-test',
+        issuer: 'emilia-dtc-experimental-test',
+        tenant: 'experimental-test',
         environment: 'hardhat',
-        audience: 'private-test-verifier',
+        audience: 'experimental-test-verifier',
         key_id: 'local-dev',
       },
       projectResult: (result) => ({

@@ -1,5 +1,5 @@
 /**
- * Bounded relational model for the private DTC Base settlement profile.
+ * Bounded relational model for the public experimental DTC Base settlement profile.
  *
  * This checks transition shape, not Solidity bytecode. The executable tests
  * connect the same invariants to the contract implementation.

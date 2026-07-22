@@ -12,7 +12,7 @@ import {
   verifyEmiliaReceipt,
 } from '@emilia-protocol/require-receipt';
 
-const INNER_HASH = `sha256:${'1'.repeat(64)}`;
+const INNER_HASH = '1'.repeat(64);
 const PAYMENT_MATERIAL = {
   action_type: 'payment.release',
   amount_usd: 200,
@@ -33,6 +33,7 @@ function row(overrides: Partial<ApprovalAcquisitionRow> = {}): ApprovalAcquisiti
     tenant_id: 'tenant-a',
     environment: 'production',
     requester_key_id: 'key-a',
+    producer_key_id: 'key-a',
     idempotency_digest: `sha256:${'3'.repeat(64)}`,
     request_digest: `sha256:${'4'.repeat(64)}`,
     challenge_hash: `sha256:${'5'.repeat(64)}`,
@@ -41,13 +42,19 @@ function row(overrides: Partial<ApprovalAcquisitionRow> = {}): ApprovalAcquisiti
     action: EXACT_ACTION,
     approver_id: 'approver@example.test',
     poll_token_hash: `sha256:${'6'.repeat(64)}`,
+    poll_token_key_id: '2026-07-v1',
     poll_token_ciphertext: 'ciphertext',
     poll_token_iv: 'iv',
     poll_token_tag: 'tag',
     status: 'pending',
+    reconciliation_state: 'not_required',
+    refusal_code: null,
     receipt_id: 'tr_receipt_1',
     signoff_id: 'so_signoff_1',
     receipt_action_hash: INNER_HASH,
+    indeterminate_at: null,
+    reconciled_at: null,
+    refused_at: null,
     expires_at: '2026-07-21T20:00:00.000Z',
     created_at: '2026-07-21T19:00:00.000Z',
     updated_at: '2026-07-21T19:00:01.000Z',
@@ -55,7 +62,15 @@ function row(overrides: Partial<ApprovalAcquisitionRow> = {}): ApprovalAcquisiti
   };
 }
 
-function timeline({ approved = true, rejected = false, portable = true, assertion = null as any } = {}) {
+function timeline({
+  approved = true,
+  rejected = false,
+  portable = true,
+  assertion = null as any,
+  tenantId = 'tenant-a',
+  environment = 'production',
+  requesterKeyId = 'key-a',
+} = {}) {
   const context = {
     nonce: 'so_signoff_1',
     approver: 'approver@example.test',
@@ -65,10 +80,17 @@ function timeline({ approved = true, rejected = false, portable = true, assertio
   const events: any[] = [
     {
       event_type: 'guard.trust_receipt.created',
-      actor_id: 'ep:cloud-key:key-a',
+      actor_id: `ep:cloud-key:${requesterKeyId}`,
       created_at: '2026-07-21T19:00:02.000Z',
       after_state: {
-        organization_id: 'tenant-a',
+        organization_id: tenantId,
+        acquisition_tenant_id: tenantId,
+        acquisition_environment: environment,
+        acquisition_request_id: `apr_${'a'.repeat(32)}`,
+        acquisition_request_digest: `sha256:${'4'.repeat(64)}`,
+        acquisition_action_hash: EXACT_HASH,
+        acquisition_action_caid: CAID,
+        acquisition_challenge_hash: `sha256:${'5'.repeat(64)}`,
         action_type: 'large_payment_release',
         action_hash: INNER_HASH,
         signoff_required: true,
@@ -84,17 +106,30 @@ function timeline({ approved = true, rejected = false, portable = true, assertio
           counterparty_name: 'Bicycle Shop',
           payment_destination_hash: `sha256:${'b'.repeat(64)}`,
           action_caid: CAID,
+          acquisition_scope: {
+            tenant_id: tenantId,
+            environment,
+            request_id: `apr_${'a'.repeat(32)}`,
+            request_digest: `sha256:${'4'.repeat(64)}`,
+            action_hash: EXACT_HASH,
+            action_caid: CAID,
+            challenge_hash: `sha256:${'5'.repeat(64)}`,
+          },
         },
       },
     },
     {
       event_type: 'guard.signoff.requested',
-      actor_id: 'ep:cloud-key:key-a',
+      actor_id: `ep:cloud-key:${requesterKeyId}`,
       created_at: '2026-07-21T19:00:03.000Z',
       after_state: {
         signoff_id: 'so_signoff_1',
         approver_id: 'approver@example.test',
         action_hash: INNER_HASH,
+        acquisition_tenant_id: tenantId,
+        acquisition_environment: environment,
+        acquisition_request_id: `apr_${'a'.repeat(32)}`,
+        acquisition_request_digest: `sha256:${'4'.repeat(64)}`,
       },
     },
   ];
@@ -154,6 +189,16 @@ describe('EP-APPROVAL-v1 terminal evidence', () => {
     expect(result.receipt.payload.claim.action_hash).toBe(EXACT_HASH);
     expect(result.receipt.payload.claim.outcome).toBe('allow_with_signoff');
     expect(result.receipt.payload.claim.source_receipt_action_hash).toBe(INNER_HASH);
+    expect(result.receipt.payload.claim.request_scope).toEqual({
+      tenant_id: 'tenant-a',
+      environment: 'production',
+      request_digest: `sha256:${'4'.repeat(64)}`,
+    });
+    expect(result.receipt.payload.authenticated_actor).toEqual({
+      type: 'cloud_key',
+      key_id: 'key-a',
+      subject: 'ep:cloud-key:key-a',
+    });
     expect(result.receipt.payload.signoff.context.action_hash).toBe(INNER_HASH);
     expect(result.receipt.payload.approver_key_id).toBe('credential-a');
     expect(result.receipt.payload.authorization.class_a_decision_evidence.key_class).toBe('A');
@@ -228,12 +273,35 @@ describe('EP-APPROVAL-v1 terminal evidence', () => {
     })).toMatchObject({ ok: true, have: 'class_a' });
   });
 
+  it('binds rotated-resume evidence to the actual producer while retaining requester provenance', () => {
+    const result = deriveApprovalStatus(
+      row({ requester_key_id: 'key-a', producer_key_id: 'key-b' }),
+      timeline({ requesterKeyId: 'key-b' }),
+      new Date('2026-07-21T19:10:00.000Z'),
+      { signer: (payload) => ({ '@version': 'EP-RECEIPT-v1', payload, signature: { value: 'signed' } }) },
+    );
+    expect(result.status).toBe('approved');
+    if (result.status !== 'approved') return;
+    expect(result.receipt.payload.authenticated_actor).toEqual({
+      type: 'cloud_key',
+      key_id: 'key-b',
+      subject: 'ep:cloud-key:key-b',
+    });
+    expect(result.receipt.payload.requester_actor).toEqual({
+      type: 'cloud_key',
+      key_id: 'key-a',
+      subject: 'ep:cloud-key:key-a',
+    });
+  });
+
   it('refuses operator-only, unsigned, ambiguous, or mismatched evidence', () => {
     const now = new Date('2026-07-21T19:10:00.000Z');
     expect(deriveApprovalStatus(row(), timeline({ portable: false }), now).status).toBe('not_ready');
     expect(deriveApprovalStatus(row(), timeline(), now, { signer: () => null }).status).toBe('not_ready');
     expect(deriveApprovalStatus(row(), timeline({ approved: true, rejected: true }), now).status).toBe('not_ready');
     expect(deriveApprovalStatus(row({ tenant_id: 'tenant-b' }), timeline(), now).status).toBe('not_ready');
+    expect(deriveApprovalStatus(row({ environment: 'staging' }), timeline(), now).status).toBe('not_ready');
+    expect(deriveApprovalStatus(row({ producer_key_id: 'key-b' }), timeline(), now).status).toBe('not_ready');
   });
 
   it('never attaches a receipt to pending, denied, or expired states', () => {
@@ -243,5 +311,20 @@ describe('EP-APPROVAL-v1 terminal evidence', () => {
     expect(pending).toEqual({ status: 'pending' });
     expect(denied).toEqual({ status: 'denied' });
     expect(expired).toEqual({ status: 'expired' });
+  });
+
+  it('preserves indeterminate as non-retry-safe even after the ceremony expiry', () => {
+    const result = deriveApprovalStatus(row({
+      status: 'indeterminate',
+      reconciliation_state: 'required',
+      receipt_id: null,
+      signoff_id: null,
+      receipt_action_hash: null,
+      indeterminate_at: '2026-07-21T19:01:00.000Z',
+    }), [], new Date('2026-07-22T20:00:00.000Z'));
+    expect(result).toEqual({
+      status: 'indeterminate',
+      reconciliation: { state: 'required', retry_safe: false },
+    });
   });
 });

@@ -9,6 +9,7 @@ import { approvalJson, approvalProblem } from '@/lib/approval-acquisition/respon
 import {
   ApprovalStorageError,
   findApprovalRequest,
+  reconcileApprovalRequest,
 } from '@/lib/approval-acquisition/store.js';
 import {
   APPROVAL_POLL_TOKEN_PATTERN,
@@ -46,8 +47,19 @@ export async function GET(
     const token = authenticateApprovalPollCapability(request);
     if (!APPROVAL_REQUEST_ID_PATTERN.test(requestId) || !token) return notFound();
 
-    const row = await findApprovalRequest(requestId, hashPollToken(token));
+    let row = await findApprovalRequest(requestId, hashPollToken(token));
     if (!row) return notFound();
+    if (row.status === 'invoking' || row.status === 'indeterminate') {
+      const recovery = await reconcileApprovalRequest(row.request_id, row.request_digest);
+      row = recovery.request;
+      if (recovery.outcome === 'indeterminate') {
+        return approvalJson({
+          request_id: requestId,
+          status: 'indeterminate',
+          reconciliation: { state: 'required', retry_safe: false },
+        });
+      }
+    }
     const result = await loadApprovalStatus(row, new Date());
     if (result.status === 'not_ready') {
       return approvalProblem(503, 'approval_receipt_not_ready', 'A verifiable Class-A approval receipt is not available');

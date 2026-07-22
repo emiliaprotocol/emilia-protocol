@@ -196,7 +196,7 @@ function validateCatalog() {
     assertExactKeys(catalog, CATALOG_KEYS, 'catalog');
     assert.equal(catalog.profile, REMEDY_PROGRAM_VERSION);
     assert.equal(catalog.vectors_version, '1.0.0');
-    assert.equal(catalog.visibility, 'private');
+    assert.equal(catalog.visibility, 'public-experimental');
     assert.equal(catalog.vector_count, catalog.vectors.length, 'declared vector count is stale');
     assert.match(catalog.claim_boundary, /deterministic verifier doubles/);
     assert.match(catalog.claim_boundary, /orchestration-only/);
@@ -244,7 +244,7 @@ function validateCatalog() {
     assert.deepEqual([...coverage].sort(), [...new Set(catalog.required_coverage)].sort(), 'coverage catalog is stale or unhandled');
     assert.deepEqual([...usedFixtures].sort(), Object.keys(catalog.fixtures).sort(), 'catalog has unused or unhandled fixtures');
 }
-test('Remedy Program catalog is private, exhaustive, and claim-bounded', () => {
+test('Remedy Program catalog is public, exhaustive, and claim-bounded', () => {
     validateCatalog();
 });
 test('every Remedy Program semantic vector executes against the real kernel', async (t) => {

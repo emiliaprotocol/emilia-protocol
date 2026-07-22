@@ -1,8 +1,9 @@
 {
   "@version": "EMILIA-STANDARDS-PORTFOLIO-v1",
   "updated": "2026-07-21",
-  "active_datatracker_count": 16,
-  "posted_snapshot_policy": "standards/posted contains the current published revision of every active draft-schrock-* Datatracker record. XML and TXT snapshots were checked against the IETF archive on 2026-07-21.",
+  "active_datatracker_count": 19,
+  "active_schrock_datatracker_count": 18,
+  "posted_snapshot_policy": "standards/posted contains the current published revision of every active draft-schrock-* Datatracker record. The seven XML sources published on 2026-07-21 were verified byte-for-byte against the immutable IETF archive; earlier TXT snapshots remain historical conveniences, while the IETF archive is authoritative for rendered forms.",
   "status_language": {
     "active_individual_submission": "Published on the IETF Datatracker as an individual Internet-Draft. Not an RFC, not an adopted working-group item, and not IETF endorsement.",
     "candidate": "Repository source under review. Not filed.",
@@ -19,6 +20,12 @@
     "EXECUTED": "An executor asserts or attests that an effect occurred."
   },
   "portfolio_layers": [
+    {
+      "layer": 0,
+      "name": "architecture",
+      "question": "How do the evidence, authority, decision, and lifecycle layers compose without collapsing their claims?",
+      "emilia_position": "Define the separation and binding seams; leave native identity, policy, and transport verification to their owning protocols."
+    },
     {
       "layer": 1,
       "name": "identity_transport",
@@ -72,11 +79,18 @@
       "next_action": "Hold the current published revision while implementation feedback accumulates"
     },
     {
-      "draft": "draft-schrock-canonical-action-identifier",
+      "draft": "draft-schrock-action-evidence-boundary",
       "revision": "00",
       "layer": "material_action_identity_mapping",
+      "role": "Boundary contract joining independently verified evidence to one material action",
+      "next_action": "Published July 21; collect independent implementation and interoperation feedback"
+    },
+    {
+      "draft": "draft-schrock-canonical-action-identifier",
+      "revision": "01",
+      "layer": "material_action_identity_mapping",
       "role": "Typed material-action identity and profile-bounded cross-format matching",
-      "next_action": "Published July 19; hold -00 while implementation and interoperability feedback accumulates"
+      "next_action": "Published July 21; use -01 as the current CAID baseline"
     },
     {
       "draft": "draft-schrock-emilia-eye",
@@ -94,10 +108,10 @@
     },
     {
       "draft": "draft-schrock-ep-architecture",
-      "revision": "01",
+      "revision": "02",
       "layer": "architecture",
       "role": "Portfolio architecture",
-      "next_action": "Published July 19; use -01 as the current architecture baseline"
+      "next_action": "Published July 21; use -02 as the current architecture baseline"
     },
     {
       "draft": "draft-schrock-ep-authority-introduction",
@@ -108,17 +122,17 @@
     },
     {
       "draft": "draft-schrock-ep-authorization-evidence-chain",
-      "revision": "03",
+      "revision": "04",
       "layer": "evidence_satisfaction",
       "role": "Heterogeneous evidence composition",
-      "next_action": "Published July 19; use -03 SATISFIED vocabulary and CAID mapping boundary"
+      "next_action": "Published July 21; use -04 as the current evidence-composition baseline"
     },
     {
       "draft": "draft-schrock-ep-authorization-receipts",
-      "revision": "07",
+      "revision": "08",
       "layer": "authorization_evidence",
       "role": "One action-bound organizational approval evidence profile",
-      "next_action": "Published July 19; use -07 scoped novelty, offline, and replay claims"
+      "next_action": "Published July 21; use -08 as the current receipt and extension baseline"
     },
     {
       "draft": "draft-schrock-ep-bounded-capability-receipts",
@@ -156,6 +170,13 @@
       "next_action": "Published July 19; quorum owns ordered multi-party ceremony semantics"
     },
     {
+      "draft": "draft-schrock-ep-revocation-statement",
+      "revision": "00",
+      "layer": "execution_lifecycle",
+      "role": "Signed retraction of authority without rewriting an already executed effect",
+      "next_action": "Published July 21; collect freshness, status-distribution, and interoperability feedback"
+    },
+    {
       "draft": "draft-schrock-human-authorization-binding",
       "revision": "00",
       "layer": "authorization_evidence",
@@ -164,10 +185,10 @@
     },
     {
       "draft": "draft-schrock-model-to-matter",
-      "revision": "00",
+      "revision": "01",
       "layer": "execution_lifecycle",
       "role": "Experimental executor-side authorization-evidence clearance for model-directed physical execution",
-      "next_action": "Published July 19; do not claim deployment, scientific-safety determination, physical truth, or external endorsement without independent evidence"
+      "next_action": "Published July 21; do not claim deployment, scientific-safety determination, physical truth, or external endorsement without independent evidence"
     },
     {
       "draft": "draft-mih-sato-agent-accountability-composition",
@@ -181,19 +202,19 @@
     "submission_window_opens_after": "2026-07-18T23:59:00+02:00",
     "filing_date": "2026-07-19",
     "publication_status": "published_and_ietf_archive_verified_2026_07_19",
-    "verification": "Each posted TXT is byte-for-byte identical to the corresponding https://www.ietf.org/archive/id/ artifact.",
+    "verification": "Each listed local publication snapshot was verified against the corresponding https://www.ietf.org/archive/id/ artifact before its revision was superseded.",
     "items": [
       {
         "priority": 1,
         "draft": "draft-schrock-canonical-action-identifier-00",
-        "source": "standards/posted/draft-schrock-canonical-action-identifier-00.xml",
+        "source": "standards/archive/draft-schrock-canonical-action-identifier-00.xml",
         "claim": "Typed material action identity plus profile-bounded cross-format matching",
         "state": "published_ietf_archive_verified_exact_local_match"
       },
       {
         "priority": 2,
         "draft": "draft-schrock-ep-architecture-01",
-        "source": "standards/posted/draft-schrock-ep-architecture-01.xml",
+        "source": "standards/archive/draft-schrock-ep-architecture-01.xml",
         "claim": "Cross-domain evidence architecture and non-collapsing decision vocabulary",
         "state": "published_ietf_archive_verified_exact_local_match"
       },
@@ -207,7 +228,7 @@
       {
         "priority": 4,
         "draft": "draft-schrock-ep-authorization-receipts-07",
-        "source": "standards/posted/draft-schrock-ep-authorization-receipts-07.xml",
+        "source": "standards/archive/draft-schrock-ep-authorization-receipts-07.xml",
         "claim": "One explicit action-bound approval evidence profile with scoped replay and offline guarantees",
         "state": "published_ietf_archive_verified_exact_local_match"
       },
@@ -228,14 +249,14 @@
       {
         "priority": 7,
         "draft": "draft-schrock-ep-authorization-evidence-chain-03",
-        "source": "standards/posted/draft-schrock-ep-authorization-evidence-chain-03.xml",
+        "source": "standards/archive/draft-schrock-ep-authorization-evidence-chain-03.xml",
         "claim": "Relying-party evidence satisfaction over natively verified, action-matched components",
         "state": "published_ietf_archive_verified_exact_local_match"
       },
       {
         "priority": 8,
         "draft": "draft-schrock-model-to-matter-00",
-        "source": "standards/posted/draft-schrock-model-to-matter-00.xml",
+        "source": "standards/archive/draft-schrock-model-to-matter-00.xml",
         "lane": "name_establishing_experimental_profile",
         "claim": "Executor-side authorization-evidence clearance for model-directed physical execution",
         "state": "published_ietf_archive_verified_exact_local_match",
@@ -243,11 +264,54 @@
       }
     ]
   },
+  "july_21_2026_publication_wave": {
+    "filing_date": "2026-07-21",
+    "publication_status": "published_and_ietf_archive_verified_2026_07_21",
+    "verification": "Each posted XML is byte-for-byte identical to the corresponding https://www.ietf.org/archive/id/ artifact.",
+    "items": [
+      {
+        "draft": "draft-schrock-action-evidence-boundary-00",
+        "source": "standards/posted/draft-schrock-action-evidence-boundary-00.xml",
+        "state": "published_ietf_archive_verified_exact_local_match"
+      },
+      {
+        "draft": "draft-schrock-canonical-action-identifier-01",
+        "source": "standards/posted/draft-schrock-canonical-action-identifier-01.xml",
+        "state": "published_ietf_archive_verified_exact_local_match"
+      },
+      {
+        "draft": "draft-schrock-ep-architecture-02",
+        "source": "standards/posted/draft-schrock-ep-architecture-02.xml",
+        "state": "published_ietf_archive_verified_exact_local_match"
+      },
+      {
+        "draft": "draft-schrock-ep-authorization-evidence-chain-04",
+        "source": "standards/posted/draft-schrock-ep-authorization-evidence-chain-04.xml",
+        "state": "published_ietf_archive_verified_exact_local_match"
+      },
+      {
+        "draft": "draft-schrock-ep-authorization-receipts-08",
+        "source": "standards/posted/draft-schrock-ep-authorization-receipts-08.xml",
+        "state": "published_ietf_archive_verified_exact_local_match"
+      },
+      {
+        "draft": "draft-schrock-ep-revocation-statement-00",
+        "source": "standards/posted/draft-schrock-ep-revocation-statement-00.xml",
+        "state": "published_ietf_archive_verified_exact_local_match"
+      },
+      {
+        "draft": "draft-schrock-model-to-matter-01",
+        "source": "standards/posted/draft-schrock-model-to-matter-01.xml",
+        "state": "published_ietf_archive_verified_exact_local_match",
+        "limitations": "Reference implementation and synthetic vectors only; no deployment, scientific-safety determination, physical-truth claim, or external endorsement"
+      }
+    ]
+  },
   "retired_absorbed": [
     {
       "draft": "draft-schrock-ep-assurance-classes-00",
       "canonical_owner": "Proof predicates in relying-party profiles and native receipt verifier outputs",
-      "reason": "S/H/V/Q created a second assurance language beside deployed receipt and authority vocabularies. The standalone taxonomy is retired before filing."
+      "reason": "S/H/V/Q created a second assurance language beside the existing receipt and scoped-authority vocabularies. The standalone taxonomy is retired before filing."
     },
     {
       "draft": "draft-schrock-ep-authority-registry-00",
@@ -256,8 +320,8 @@
     },
     {
       "draft": "draft-schrock-ep-agent-trust-stack-00",
-      "canonical_owner": "draft-schrock-ep-architecture-01",
-      "reason": "Its composition map is fully absorbed by Architecture-01."
+      "canonical_owner": "draft-schrock-ep-architecture-02",
+      "reason": "Its composition map is fully absorbed by Architecture-02."
     },
     {
       "draft": "draft-schrock-ep-pqc-00",
@@ -279,12 +343,12 @@
   ],
   "held": [],
   "consolidation_rules": [
-    "Architecture-01 absorbs the staged Agent Trust Stack map.",
+    "Architecture-02 absorbs the retired Agent Trust Stack map.",
     "AEC owns component verification, action binding, and evidence satisfaction; it does not define effect or ceremony records.",
     "Quorum owns ordered multi-handshake and distinct-human policy semantics.",
     "Receipts owns the base receipt and explicit approval profile, not every approval mechanism.",
     "Challenge will profile AuthZEN AARP's requestable denial and PDP-verifiable approval state instead of redefining its workflow.",
-    "Revocation owns terminal negative evidence; current non-revocation is a separately authenticated, policy-fresh status input and may profile Token Status List.",
+    "Revocation Statement-00 owns terminal negative evidence; current non-revocation remains a separately authenticated, policy-fresh status input.",
     "Assurance requirements are verifier-visible proof predicates; no standalone universal S/H/V/Q taxonomy is being filed.",
     "Authority Introduction owns trust-root introduction and scoped authority; no separate Authority Registry draft is filed.",
     "Evidence Record owns crypto agility and hybrid anti-stripping; no standalone PQC algorithm catalog is filed."

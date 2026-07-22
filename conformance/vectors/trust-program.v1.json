@@ -3,13 +3,13 @@
   "machine_discriminator": "EP-GATE-TRUST-PROGRAM-PROFILE-v1",
   "stage_receipt_discriminator": "EP-GATE-TRUST-STAGE-RECEIPT-v1",
   "vectors_version": "1.0.0",
-  "artifact_classification": "closed_internal_operational_profile",
+  "artifact_classification": "public_experimental_operational_profile",
   "standardization_status": {
     "standard": false,
     "ietf_draft": false,
     "external_interoperability_claim": false
   },
-  "description": "Executable internal conformance catalog for the private EMILIA Gate Trust Program reference API. The runner applies these program mutations and ordered operations to packages/gate/src/trust-program.ts through its JavaScript entry point, generates fresh Ed25519 stage-receipt keys, and compares exact fail-closed reasons and state revisions.",
+  "description": "Executable public experimental conformance catalog for the EMILIA Gate Trust Program reference API. The runner applies these program mutations and ordered operations to packages/gate/src/trust-program.ts through its JavaScript entry point, generates fresh Ed25519 stage-receipt keys, and compares exact fail-closed reasons and state revisions.",
   "claim_limitations": [
     "Passing this catalog demonstrates behavior of the in-repository reference implementation against these cases only.",
     "The catalog is not a standard, is not an IETF Internet-Draft, and does not establish interoperability with an independent implementation.",

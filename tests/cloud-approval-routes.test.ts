@@ -174,6 +174,7 @@ describe('Cloud approval endpoint', () => {
   ])('rejects %s before minting a receipt', async (_label, overrides) => {
     const response = await POST(request('POST', approvalBody(overrides)));
     expect(response.status).toBe(400);
+    expect(response.headers.get('x-emilia-approval-boundary')).toBe('not-entered');
     expect(mockCreateReceipt).not.toHaveBeenCalled();
   });
 

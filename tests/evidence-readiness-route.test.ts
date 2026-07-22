@@ -1,4 +1,5 @@
 // SPDX-License-Identifier: Apache-2.0
+import { readFileSync } from 'node:fs';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 vi.mock('@/lib/cloud/auth', () => ({
@@ -21,6 +22,11 @@ import { authenticateCloudRequest } from '@/lib/cloud/auth';
 import { requirePermission } from '@/lib/cloud/authorize';
 import { loadTenantGuardReceipts } from '@/lib/cloud/guard-receipts';
 import { GET } from '../app/api/cloud/evidence-readiness/runs/route.js';
+
+const tenancyMigration = readFileSync(
+  new URL('../supabase/migrations/20260722020000_evidence_readiness_event_tenancy.sql', import.meta.url),
+  'utf8',
+);
 
 const auth = {
   tenantId: '00000000-0000-4000-8000-000000000001',
@@ -63,11 +69,20 @@ describe('GET /api/cloud/evidence-readiness/runs', () => {
     expect(loadTenantGuardReceipts).not.toHaveBeenCalled();
   });
 
-  it('refuses non-production keys until stored rows carry environment scope', async () => {
+  it('passes the authenticated environment into the tenant-scoped evidence query', async () => {
     vi.mocked(authenticateCloudRequest).mockResolvedValue({ ...auth, environment: 'staging' });
     const response = await GET(request());
+    expect(response.status).toBe(200);
+    expect(loadTenantGuardReceipts).toHaveBeenCalledWith(expect.objectContaining({
+      tenantId: auth.tenantId,
+      environment: 'staging',
+    }));
+  });
+
+  it('fails closed when authentication returns an unsupported environment', async () => {
+    vi.mocked(authenticateCloudRequest).mockResolvedValue({ ...auth, environment: 'unknown' });
+    const response = await GET(request());
     expect(response.status).toBe(403);
-    expect(await response.json()).toMatchObject({ detail: expect.stringContaining('production-scoped') });
     expect(loadTenantGuardReceipts).not.toHaveBeenCalled();
   });
 
@@ -113,6 +128,7 @@ describe('GET /api/cloud/evidence-readiness/runs', () => {
     expect(response.status).toBe(200);
     expect(loadTenantGuardReceipts).toHaveBeenCalledWith(expect.objectContaining({
       tenantId: auth.tenantId,
+      environment: 'production',
       limit: 25,
       dateFrom: '2026-07-01T00:00:00.000Z',
       dateTo: '2026-07-21T00:00:00.000Z',
@@ -138,5 +154,51 @@ describe('GET /api/cloud/evidence-readiness/runs', () => {
     const response = await GET(request());
     expect(response.status).toBe(503);
     expect(await response.json()).toMatchObject({ detail: expect.stringContaining('no partial result') });
+  });
+});
+
+describe('Evidence Readiness event-tenancy migration', () => {
+  it('binds exact audit event ids to one constrained tenant/environment stream', () => {
+    expect(tenancyMigration).toContain('CREATE TABLE IF NOT EXISTS public.guard_receipt_streams');
+    expect(tenancyMigration).toContain('CREATE TABLE IF NOT EXISTS public.guard_receipt_event_bindings');
+    expect(tenancyMigration).toContain('REFERENCES public.tenant_environments(tenant_id, name)');
+    expect(tenancyMigration).toContain('REFERENCES public.audit_events(id) ON DELETE RESTRICT');
+    expect(tenancyMigration).toContain('FOREIGN KEY (receipt_id, tenant_id, environment)');
+    expect(tenancyMigration).toContain('AFTER INSERT ON public.audit_events');
+  });
+
+  it('locks writers, installs the trigger, and only then starts the backfill', () => {
+    const lockOffset = tenancyMigration.indexOf(
+      'LOCK TABLE public.audit_events IN SHARE ROW EXCLUSIVE MODE;',
+    );
+    const triggerOffset = tenancyMigration.indexOf(
+      'CREATE TRIGGER bind_guard_receipt_event_scope',
+    );
+    const backfillOffset = tenancyMigration.indexOf('WITH eligible_created AS (');
+
+    expect(lockOffset).toBeGreaterThan(-1);
+    expect(triggerOffset).toBeGreaterThan(lockOffset);
+    expect(backfillOffset).toBeGreaterThan(triggerOffset);
+  });
+
+  it('omits ambiguous legacy targets and rejects future receipt-id collisions', () => {
+    expect(tenancyMigration).toContain('HAVING pg_catalog.count(*) = 1');
+    expect(tenancyMigration).toContain("RAISE EXCEPTION 'guard_receipt_target_collision'");
+    expect(tenancyMigration).toContain("request_binding.event_type = 'guard.signoff.requested'");
+    expect(tenancyMigration).toContain("NEW.after_state ->> 'action_hash' IS DISTINCT FROM v_action_hash");
+    expect(tenancyMigration).toMatch(
+      /ELSIF NEW\.event_type = 'guard\.trust_receipt\.consumed'[\s\S]+NEW\.actor_id IS DISTINCT FROM v_created_actor/,
+    );
+  });
+
+  it('keeps binding state append-only and service-role read-only', () => {
+    expect(tenancyMigration).toContain('GUARD_RECEIPT_BINDING_IMMUTABILITY_VIOLATION');
+    expect(tenancyMigration).toContain('FORCE ROW LEVEL SECURITY');
+    expect(tenancyMigration).toContain(
+      'GRANT SELECT ON TABLE public.guard_receipt_event_bindings TO service_role;',
+    );
+    expect(tenancyMigration).not.toMatch(
+      /GRANT (?:INSERT|UPDATE|DELETE)[^;]+guard_receipt_event_bindings/i,
+    );
   });
 });

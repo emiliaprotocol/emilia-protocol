@@ -12,6 +12,7 @@ export type TrustJson = null | boolean | number | string | TrustJson[] | {
     [key: string]: TrustJson;
 };
 export interface TrustProgramState extends Record<string, unknown> {
+    tenant_id: string;
     instance_id: string;
     program_digest: string;
     root_caid: string;
@@ -28,14 +29,22 @@ export interface TrustProgramResult extends Record<string, unknown> {
 }
 export interface TrustProgramStore {
     readonly durable: boolean;
-    create(state: TrustProgramState): Promise<TrustProgramResult>;
-    get(instanceId: string): Promise<TrustProgramResult>;
+    create(input: {
+        tenantId: string;
+        state: TrustProgramState;
+    }): Promise<TrustProgramResult>;
+    get(input: {
+        tenantId: string;
+        instanceId: string;
+    }): Promise<TrustProgramResult>;
     compareAndSwap(input: {
+        tenantId: string;
         instanceId: string;
         expectedRevision: number;
         state: TrustProgramState;
     }): Promise<TrustProgramResult>;
     invalidate(input: {
+        tenantId: string;
         instanceId: string;
         expectedRevision: number;
         reason: string;

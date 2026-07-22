@@ -8,7 +8,7 @@ describe('receipt-program Base bridge characterization', function () {
   function request() {
     const receipt = {
       '@type': 'EP-RECEIPT-v1',
-      receipt_id: 'rcpt_private_001',
+      receipt_id: 'rcpt_experimental_001',
       decision: 'allow_with_signoff',
     };
     return {
@@ -35,10 +35,10 @@ describe('receipt-program Base bridge characterization', function () {
     const compiled = compileReceiptProgram(request(), 'payment_instruction_id');
 
     expect(compiled.programDigest).to.equal(
-      'sha256:7efc3f1a036de586e392347645a760344ac34500c54a98c070f5b92f2709dc13',
+      'sha256:806dab30217683d029382af2a3a7e631c6c4ab2e0ee42b078b6c866e0eda278c',
     );
     expect(compiled.receiptHash).to.equal(
-      '0x100f5de6ead6cb4beb7b68b56ac07871f7c805a566f7b65159e65b3304fcb4c2',
+      '0x4457e67bc04a009f909aef9d91a7c898793970fb2dbe565fcb151a5eaa840d3b',
     );
     expect(compiled.caidHash).to.equal(
       '0x9ac94becc4433ebc9416f502dcd514a983eaa47f57bd6f9c3f960403c7d325a3',

@@ -1,17 +1,17 @@
-EP-AUTHORITY-PROGRAM-TLC-PRIVATE-v1
+EP-AUTHORITY-PROGRAM-TLC-BOUNDED-v1
 Status: public same-team bounded model result; not submitted, deployed, or independently reviewed
 Method: TLC exhaustive state exploration in the configured finite scope
 Execution date: 2026-07-21
 TLC: 2.19 (TLA+ tools v1.7.4, rev 5a47802)
 TLA+ tools JAR SHA-256: 936a262061c914694dfd669a543be24573c45d5aa0ff20a8b96b23d01e050e88
-Model SHA-256: f4622962d1233ede0c0c2800c65062256f0d7985bbd00ae0b4b8ae48b65fcd72
-Configuration SHA-256: f7b52856ca48f284c2145d686d57c3e3f40a5dfa85039de5843f04abdb9c1967
+Model SHA-256: f86dbe888e00c2576043064be84b4cbd89d263d01f35a85a6e79155240047f7d
+Configuration SHA-256: e1bf2149eb5c32632407ec07972a5e9793cfb4d22f45a86eeafe90fb1bfa0719
 
 Configuration: sequence(stage-a, parallel(stage-b, stage-c), stage-d) with one injected global or stage-local fault class.
-Obligations: 10 state invariants and 1 liveness property.
+Obligations: 11 state invariants and 1 liveness property.
 Result: Model checking completed. No error has been found.
-States: 295 generated; 214 distinct; 0 left on queue; complete depth 6.
+States: 307 generated; 222 distinct; 0 left on queue; complete depth 6.
 
 Scope: representative four-stage nested series/parallel verification fold.
-Assumptions: callback verdicts accurately represent signature, AEC, AOM, capability-narrowing, allocation, and binding verification.
-Exclusions: arbitrary graph size, implementation refinement, callback correctness, cryptography, storage, scheduling/execution, and physical outcome. `NoExecutionProof` keeps executionProven false in every modeled state.
+Assumptions: callback verdicts accurately represent root CAID/action binding, signature, AEC, AOM, capability-narrowing, allocation, and other native verification.
+Exclusions: arbitrary graph size, implementation refinement, callback correctness, cryptography, freshness, revocation, storage, scheduling/execution, and physical outcome. `NoExecutionProof` keeps executionProven false in every modeled state.

@@ -157,6 +157,29 @@ for the composed claim and exact bounds.
 
 ---
 
+## TLA+ — `ep_authority_program.tla`
+
+**Model checker:** TLC 2.19 (TLA+ tools `v1.7.4`, rev `5a47802`)
+**Verified bounded parameters:** one four-stage
+`sequence(A, parallel(B, C), D)` fold with one injected global or stage-local
+fault class
+**Local execution:** 2026-07-21, pinned jar SHA-256
+`936a262061c914694dfd669a543be24573c45d5aa0ff20a8b96b23d01e050e88`
+**Result:** 307 states generated, 222 distinct states, complete depth 6 —
+**no error found** across all 11 invariants and one liveness property
+**Result evidence:** `formal/results/ep-authority-program.tlc.summary.txt`
+**CI gate:** the pinned workflow executes this model on every relevant push and
+pull request.
+
+The model checks series/parallel predecessor derivation, pinned program and
+stage trust, the mandatory relying-party root CAID/action binding decision,
+exact AEC/AOM joins, capability narrowing, authoritative parallel allocation,
+and the invariant that a valid fold still proves no execution. It is a bounded
+same-team model, not an implementation refinement, cryptographic proof,
+freshness proof, revocation check, or independent review.
+
+---
+
 ## TLA+ — `ep_trust_program.tla`
 
 **Model checker:** TLC, pinned CI toolchain in [`.github/workflows/tlc.yml`](../.github/workflows/tlc.yml)
@@ -466,4 +489,4 @@ When a property is verified by a model checker:
 
 ---
 
-*Last updated: 2026-07-21 (bounded receipt-program model: 14 invariants and 3 action properties checked across 780 distinct states with no error; Conservation of Authority claim boundary added). Prior: 2026-07-10 (composed reliance-path v2: 10 strict lemmas verified; no-consumption and unpinned-registry-view comparisons falsified with concrete traces; all well-formedness checks clean). Prior: 2026-07-06 (Tamarin quorum model added: 5 lemmas verified). Prior: 2026-07-05 (Tamarin core-receipt model added). Prior: 2026-06-11 — 26 TLA+ properties verified across 413,137 states with 0 errors; 15 relation assertions and 7 federation assertions verified with 0 counterexamples.*
+*Last updated: 2026-07-21 (bounded authority-program model added to the pinned CI gate with an explicit root-action-binding obligation; bounded receipt-program model checks 14 invariants and 3 action properties across 780 distinct states with no error; Conservation of Authority claim boundary added). Prior: 2026-07-10 (composed reliance-path v2: 10 strict lemmas verified; no-consumption and unpinned-registry-view comparisons falsified with concrete traces; all well-formedness checks clean). Prior: 2026-07-06 (Tamarin quorum model added: 5 lemmas verified). Prior: 2026-07-05 (Tamarin core-receipt model added). Prior: 2026-06-11 — 26 TLA+ properties verified across 413,137 states with 0 errors; 15 relation assertions and 7 federation assertions verified with 0 counterexamples.*

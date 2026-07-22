@@ -191,17 +191,19 @@ the artifact. Registry state and tags were therefore checked independently.
 ## Standards status
 
 The live IETF Datatracker, not a repository filename, is authoritative for
-filing status. On July 19, 2026, the following published TXT artifacts were
-verified byte-for-byte against their local snapshots:
+filing status. On July 21, 2026, the repository inventory was refreshed against
+the live Datatracker. The current revisions include:
 
-- [CAID, revision 00](https://datatracker.ietf.org/doc/draft-schrock-canonical-action-identifier/)
-- [Architecture, revision 01](https://datatracker.ietf.org/doc/draft-schrock-ep-architecture/)
+- [Action Evidence Boundary, revision 00](https://datatracker.ietf.org/doc/draft-schrock-action-evidence-boundary/)
+- [CAID, revision 01](https://datatracker.ietf.org/doc/draft-schrock-canonical-action-identifier/)
+- [Architecture, revision 02](https://datatracker.ietf.org/doc/draft-schrock-ep-architecture/)
 - [Authority Introduction, revision 01](https://datatracker.ietf.org/doc/draft-schrock-ep-authority-introduction/)
-- [Authorization Receipts, revision 07](https://datatracker.ietf.org/doc/draft-schrock-ep-authorization-receipts/)
+- [Authorization Receipts, revision 08](https://datatracker.ietf.org/doc/draft-schrock-ep-authorization-receipts/)
 - [EP-QUORUM, revision 03](https://datatracker.ietf.org/doc/draft-schrock-ep-quorum/)
 - [Bounded Capability Receipts, revision 00](https://datatracker.ietf.org/doc/draft-schrock-ep-bounded-capability-receipts/)
-- [EP-AEC, revision 03](https://datatracker.ietf.org/doc/draft-schrock-ep-authorization-evidence-chain/)
-- [Model-to-Matter, revision 00](https://datatracker.ietf.org/doc/draft-schrock-model-to-matter/)
+- [EP-AEC, revision 04](https://datatracker.ietf.org/doc/draft-schrock-ep-authorization-evidence-chain/)
+- [Revocation Statement, revision 00](https://datatracker.ietf.org/doc/draft-schrock-ep-revocation-statement/)
+- [Model-to-Matter, revision 01](https://datatracker.ietf.org/doc/draft-schrock-model-to-matter/)
 
 Datatracker labels each as an **Active Internet-Draft (individual)** and states
 that an Internet-Draft is not IETF-endorsed and has no formal standing in the
@@ -209,11 +211,11 @@ IETF standards process. No RFC stream, responsible Area Director, or working
 group adoption is shown for these documents.
 
 [`standards/STATUS.json`](standards/STATUS.json) is the repository's portfolio
-inventory. Files under [`standards/staged/`](standards/staged/) are candidate
-sources, not filed revisions. This due-diligence document intentionally does
-not summarize staged or private draft contents. Architecture documents and
-draft packets are design evidence, not proof of standards adoption or deployed
-behavior.
+inventory. Current published snapshots are under [`standards/posted/`](standards/posted/);
+superseded and unfiled material is under [`standards/archive/`](standards/archive/).
+No private submission packet is stored in the public repository. Architecture
+documents and draft packets are design evidence, not proof of standards
+adoption or deployed behavior.
 
 ## External and hardware milestones
 

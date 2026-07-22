@@ -1,7 +1,7 @@
-# EP Authority Program — Private Architecture Note
+# EP Authority Program — Architecture Note
 
-Status: private, pre-publication design and reference implementation. Do not
-publish, submit, deploy, or describe this file as an adopted standard.
+Status: public experimental design and reference implementation. It is not a
+deployment, independent verification, or adopted standard.
 
 ## Purpose
 
@@ -60,7 +60,7 @@ verifier decides whether its heterogeneous authorization evidence is valid.
 
 AOM means an **EP Action Outcome Manifest** requirement/result: an explicit
 manifest of the outcome evidence a stage requires and the verified result that
-satisfied it. This private contract does not silently alias AOM to
+satisfied it. This profile does not silently alias AOM to
 `EP-OUTCOME-BINDING`, an outcome attestation, or any other existing artifact.
 The relying party must inject an AOM verifier that understands the pinned AOM
 profile. The authority-program verifier checks only that its closed result binds
@@ -88,7 +88,16 @@ The verifier replaces those stage identifiers with the digests of the actual
 signed receipts and requires the receipt's digest array to match exactly in
 canonical order. Missing, extra, reordered, or substituted digests fail.
 
-## Native verifier boundary
+## Root action and native verifier boundary
+
+The program carries both a CAID and a canonical-action digest, but it does not
+carry the action object itself. A relying party therefore MUST supply a
+`verifyRootActionBinding` adapter that retrieves the RP-owned canonical action,
+recomputes its CAID under the pinned CAID registry/profile, recomputes its
+SHA-256 canonical-action digest, and returns the exact pair. Missing, malformed,
+extra-field, false, or mismatched results fail closed. Merely echoing the values
+from the callback context does not establish the binding and is non-conformant
+for an operational relying party.
 
 The RP injects pure adapters for AEC, AOM, capability narrowing, and parallel
 allocation. Every adapter returns a closed result. The authority-program
@@ -110,24 +119,29 @@ a warning.
 ## Result and consequence boundary
 
 The closed `EP-AUTHORITY-PROGRAM-VERIFY-RESULT-v1` result reports the exact
-program/root bindings, verified stage-receipt digests, parallel-allocation
-status, and one reason. It always reports `execution_proven: false`.
+program/root bindings, verified stage-receipt digests, root-action-binding and
+parallel-allocation status, and one reason. It always reports
+`freshness_proven: false`, `revocation_checked: false`, and
+`execution_proven: false`.
 
 A valid result means only that the signed authority program and immutable joins
-verify under the relying party's pins and native verifier results. Existing
+verify under the relying party's pins and native verifier results. The result
+is replayable offline: the caller must separately apply a current revocation
+view and freshness policy before treating it as live authorization. Existing
 Gate/AEC/Receipt Program components separately decide authorization, reserve or
 consume capability, execute, and record outcome. This module cannot perform or
 authorize those consequence-bearing operations by itself.
 
 ## Security invariants exercised
 
-The hostile package and private conformance suites cover:
+The hostile package and public experimental conformance suites cover:
 
 - unsigned, wrongly signed, wrong-signer, and wrong-program-pin rejection;
 - arbitrary DAG vocabulary and unknown-field rejection;
 - nested sequence/parallel predecessor derivation;
 - missing, extra, and reordered predecessor receipt digests;
 - wrong organization/key and duplicate stage/receipt replay;
+- absent, malformed, smuggled, or mismatched root CAID/action binding proof;
 - replay under another program, root CAID, root action, stage, or authority;
 - wrong AEC and explicit AOM requirement/result joins;
 - closed callback-result enforcement;

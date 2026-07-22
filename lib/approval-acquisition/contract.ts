@@ -76,6 +76,15 @@ export type ApprovalCreateValue = {
   };
 };
 
+export type ApprovalRequestScope = {
+  tenant_id: string;
+  environment: string;
+};
+
+export type ScopedApprovalCreateValue = ApprovalCreateValue & {
+  requestScope: ApprovalRequestScope;
+};
+
 export type ApprovalParseResult =
   | { ok: true; value: ApprovalCreateValue }
   | { ok: false; status: number; code: string; detail: string };
@@ -257,6 +266,30 @@ export function parseApprovalCreateRequest(input: unknown): ApprovalParseResult 
         approver_id: input.approver_id,
       },
     },
+  };
+}
+
+export function bindApprovalCreateRequestScope(
+  value: ApprovalCreateValue,
+  scope: { tenantId: string; environment: string },
+): ScopedApprovalCreateValue {
+  if (typeof scope.tenantId !== 'string' || !scope.tenantId
+      || typeof scope.environment !== 'string'
+      || !/^[A-Za-z0-9][A-Za-z0-9._:-]{0,63}$/.test(scope.environment)) {
+    throw new Error('approval_request_scope_invalid');
+  }
+  const requestScope = {
+    tenant_id: scope.tenantId,
+    environment: scope.environment,
+  };
+  return {
+    ...value,
+    requestScope,
+    requestDigest: digest({
+      protocol: APPROVAL_FLOW,
+      request_scope: requestScope,
+      request: value.normalizedBody,
+    }),
   };
 }
 

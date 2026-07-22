@@ -5,14 +5,17 @@ import crypto from 'node:crypto';
 import {
   EP_APPROVAL_FLOW,
   approvalActionHash,
-  beginReceiptApproval,
-  pollReceiptApproval,
   makeReceiptGate,
   receiptChallenge,
   receiptRequiredHeader,
   validateApprovalAuthorization,
   verifyEmiliaReceipt,
 } from '../packages/require-receipt/index.js';
+import {
+  beginReceiptApproval,
+  pollReceiptApproval,
+} from '../packages/require-receipt/src/acquisition.ts';
+import * as publishedRequireReceipt from '../packages/require-receipt/index.js';
 import {
   createDefaultActionControlManifest,
   createGate,
@@ -192,6 +195,32 @@ describe('EP-APPROVAL-v1 challenge contract', () => {
 });
 
 describe('EP-APPROVAL-v1 acquisition client', () => {
+  it('ships indeterminate handling through the published package entrypoint', async () => {
+    expect(publishedRequireReceipt.APPROVAL_STATUSES).toContain('indeterminate');
+    const indeterminate = {
+      request_id: 'apr_0123456789abcdef0123456789abcdef',
+      poll_token: 'apt_0123456789abcdef0123456789abcdef0123456789abcdef',
+      status: 'indeterminate',
+      expires_at: '2026-07-21T20:00:00.000Z',
+      reconciliation: { state: 'required', retry_safe: false },
+    };
+    const fetchImpl = vi.fn(async () => new Response(JSON.stringify(indeterminate), {
+      status: 202,
+      headers: { 'content-type': 'application/json' },
+    }));
+
+    await expect(publishedRequireReceipt.beginReceiptApproval({
+      authorization,
+      trustedAuthorization: authorization,
+      challenge,
+      action,
+      approver_id: 'approver@example.test',
+      idempotency_key: 'idem_0123456789abcdef',
+      requesterAuthorization,
+      fetchImpl,
+    })).resolves.toEqual(indeterminate);
+  });
+
   it('posts the exact challenged action without following redirects', async () => {
     const fetchImpl = vi.fn(async () => new Response(JSON.stringify({
       request_id: 'apr_0123456789abcdef0123456789abcdef',
@@ -294,6 +323,58 @@ describe('EP-APPROVAL-v1 acquisition client', () => {
     expect(url).toBe('https://authorize.example.test/v1/approvals/apr_0123456789abcdef0123456789abcdef');
     expect(init.redirect).toBe('error');
     expect(init.headers.authorization).toBe('EP-Approval apt_0123456789abcdef0123456789abcdef0123456789abcdef');
+  });
+
+  it('preserves an indeterminate response for safe polling and rejects any replay-safe downgrade', async () => {
+    const indeterminate = {
+      request_id: 'apr_0123456789abcdef0123456789abcdef',
+      poll_token: 'apt_0123456789abcdef0123456789abcdef0123456789abcdef',
+      status: 'indeterminate',
+      expires_at: '2026-07-21T20:00:00.000Z',
+      reconciliation: { state: 'required', retry_safe: false },
+    };
+    const beginFetch = vi.fn(async () => new Response(JSON.stringify(indeterminate), {
+      status: 202,
+      headers: { 'content-type': 'application/json' },
+    }));
+    expect(await beginReceiptApproval({
+      authorization,
+      trustedAuthorization: authorization,
+      challenge,
+      action,
+      approver_id: 'approver@example.test',
+      idempotency_key: 'idem_0123456789abcdef',
+      requesterAuthorization,
+      fetchImpl: beginFetch,
+    })).toEqual(indeterminate);
+
+    const pollFetch = vi.fn(async () => new Response(JSON.stringify({
+      request_id: indeterminate.request_id,
+      status: 'indeterminate',
+      reconciliation: { state: 'required', retry_safe: false },
+    }), { status: 200, headers: { 'content-type': 'application/json' } }));
+    expect(await pollReceiptApproval({
+      authorization,
+      trustedAuthorization: authorization,
+      request_id: indeterminate.request_id,
+      poll_token: indeterminate.poll_token,
+      fetchImpl: pollFetch,
+    })).toMatchObject({ status: 'indeterminate', reconciliation: { retry_safe: false } });
+
+    const unsafe = vi.fn(async () => new Response(JSON.stringify({
+      ...indeterminate,
+      reconciliation: { state: 'required', retry_safe: true },
+    }), { status: 202, headers: { 'content-type': 'application/json' } }));
+    await expect(beginReceiptApproval({
+      authorization,
+      trustedAuthorization: authorization,
+      challenge,
+      action,
+      approver_id: 'approver@example.test',
+      idempotency_key: 'idem_0123456789abcdef',
+      requesterAuthorization,
+      fetchImpl: unsafe,
+    })).rejects.toThrow('approval_reconciliation_invalid');
   });
 
   it('rejects cross-origin approval URLs and malformed state responses', async () => {

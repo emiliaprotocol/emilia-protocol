@@ -1,37 +1,40 @@
-DTC Base private release-candidate artifact manifest
-Generated: 2026-07-20
+DTC Base experimental source artifact manifest
+Format: SHA-256 digest followed by repository-package-relative path
+Files: 32
+Generated deterministically by npm run artifacts:refresh; timestamps are intentionally omitted.
 
-SHA-256  contracts/DTCBaseSettlement.sol
-77c4c05035b616358b668ca0614bde9d897a46c491e2658f34335dc080f0b762
+ae667371df03ca579cf43eb586efdbf9db7264fe11f4186d64d92dd87851e579  .env.example
+ffcf2f1a07cffd4fda1bf641384357d61c8ef773817462552d6adb61137304d2  .gitignore
+1be8f1d5cb80f6a7022f19fbe7afe1fe3186dea0e011de45c710db5298a3dabe  .solhint.json
+77c4c05035b616358b668ca0614bde9d897a46c491e2658f34335dc080f0b762  contracts/DTCBaseSettlement.sol
+2e763a971e1a8f23d8b9d4d245ba46bc72f4d1949ad47e9820c99ca8fec93484  contracts/interfaces/IDTCBaseSettlement.sol
+548da4adad2d4485dba3907ba324dcdaca298350570e6cec9288cb8a2481a6b0  contracts/test/MockERC1271Signer.sol
+9ba15a7f2436ffb10f81cfaf7e4d7fc67aed36333a5a62fdf4cfb4ec14c2708a  contracts/test/ReentrantWithdrawer.sol
+782a37e34ed8c02f52d1c46cb02d84f63a04b9ed08305b956d9b7d94d741d3ff  formal/dtc_base_escrow.als
+7e6b30c007dc039192364672604556e25482ac7e81b2b846b89f073bd2bc4360  formal/dtc_base_settlement.cfg
+e11505bf164c94a5de8acace451ebbfc3cb5cd01a29d070bcd9cd84410210702  formal/dtc_base_settlement.tla
+3b36ecbb9c6728b06aa1f3b83c0fcaf2f8a2f42546f4b8e63599d7804ff37da3  formal/README.md
+adb607ea3d70993f0f5d35764b0c7264a257cb58d50326f03b711d601f592e69  formal/results/alloy.summary.txt
+5b4f3b65a19643278c4e2e40a0e2f9dbbb04155ba766cb74beddfdc88c5b157b  formal/results/tlc.summary.txt
+0ef7866537e59009c36ed223098a1114d035021a7984d733cde5e31272beee17  hardhat.config.cjs
+f43bd5afc9bb9ff066fe233a1328a213278546fce85a489025d0c26ae50b500e  lib/receipt-program-bridge.ts
+7ad035a9c9e818ac3738bce81f8224e119d7186b34e3218e385727a51b9903be  package-lock.json
+e80f2f4424224be1b3375af95b47a093c4d835172598a75cc3e865d275b541bd  package.json
+e03f2181440c2beb7e4560151bbcacff87abc86aafc636302c7cc3a1c4ecb465  README.md
+70a9c4ab5fa05ddfee7b069950926401e740746c48ec5ad34ac7470d48e916fa  scripts/audit-toolchain.mjs
+1ab7c6f7a7387452fe4d569b256d10b69a5faeb157c733c67ec5506143c5c946  scripts/demo.ts
+5fee58e8c788fad3ccf41b85a53e5c1d1cae0816865cc623c303f8f454820154  scripts/deploy.ts
+9f5c7c8f5f95889d3f33910c2eeedf2585f20a8e34ab9ef4220fa56781c41497  scripts/render-formal-results.mjs
+5d6508a8bc6f47b75978e5c76db560a6f62e368f29c7e07d9a1a6aba0ef8bd61  scripts/run-formal.sh
+880e2b24e0d4231cee5bed431d7d76050a519f1e23c7248c67697eb8da741311  scripts/verify-artifact-manifest.mjs
+d03fe4d14e3cffbb0965ab0a8162a3dc401e26cc180736c64a738666a9308ae7  scripts/verify-package-policy.mjs
+50db88da5ac5d5eecb2a669b3bed7d031fbd5ced12dd6f6cd3be053fa83f1af6  SECURITY_REVIEW.md
+1cf73aa19573b7aa82e5c28a94788de6e784656e00b0e2d53f694c6d2c2f9d5c  test/DTCBaseSettlement.audit-regressions.test.cjs
+f0df9f61574c7068eaae6e40e742421f3a23c24129abf6664fcf8c56ba1feb38  test/DTCBaseSettlement.hostile.test.cjs
+65c934f2e0142a988f10610250ddfff9d7fa444a11f046b11141427efdc562fb  test/DTCBaseSettlement.test.cjs
+8720323c1ab103a9aaec48d119c4952a6e23033230519f49fa5fd884c7ddacef  test/DTCReceiptProgram.integration.test.cjs
+287d234abe8ade9fe0a7ab14d21cac507909796dcb1d2df9556d619c98c86138  test/ReceiptProgramBridge.characterization.test.cjs
+8bf7f27395800b0d907804e8dee5ed6b1c60a24b444a79a96e911f6eb5d9c18d  tsconfig.json
 
-SHA-256  contracts/interfaces/IDTCBaseSettlement.sol
-2e763a971e1a8f23d8b9d4d245ba46bc72f4d1949ad47e9820c99ca8fec93484
-
-SHA-256  lib/receipt-program-bridge.ts
-8988e92dabccf25fe0bed84dd33be035ddcd54815a2b4308a575d0abd97c5306
-
-SHA-256  tsconfig.json
-8bf7f27395800b0d907804e8dee5ed6b1c60a24b444a79a96e911f6eb5d9c18d
-
-SHA-256  scripts/demo.ts
-1ab7c6f7a7387452fe4d569b256d10b69a5faeb157c733c67ec5506143c5c946
-
-SHA-256  scripts/deploy.ts
-62bf526f3ac905f7bd27cbcb1c61e2e7bccdcae978c8be8049e6045c298043be
-
-SHA-256  package-lock.json
-29cb0469f3f5ec7b537c42714aeb24f717051ca9ef24d8f2e8d8e6fff8e8842f
-
-Verification summary
-- TypeScript 5.9 strict typecheck and declaration build: passing
-- Hardhat tests: 35 passing
-- Contract statement coverage: 97.87 percent
-- Contract branch coverage: 63.07 percent
-- Contract function coverage: 95.35 percent
-- Contract line coverage: 94.55 percent
-- Deployed bytecode: 18,051 bytes
-- EIP-170 headroom: 6,525 bytes
-- Production npm dependency audit: 0 reported vulnerabilities
-- Slither 0.11.5: 7 intended-use findings triaged in SECURITY_REVIEW.md
-- TLC: 8 invariants and 1 temporal property held over 48 distinct states
-- Alloy: 5 of 5 assertions held; 3 of 3 scenarios satisfiable
+Claim boundary: this manifest records source integrity only. It is not an
+independent audit, a deployment record, or a production-safety claim.

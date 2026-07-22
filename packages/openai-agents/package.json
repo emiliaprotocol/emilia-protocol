@@ -1,6 +1,6 @@
 {
   "name": "@emilia-protocol/openai-agents",
-  "version": "0.2.0",
+  "version": "0.2.1",
   "description": "Turn the OpenAI Agents SDK human-in-the-loop tool-approval step into a verifiable, offline-checkable EMILIA authorization receipt. OpenAI pauses an agent and asks for approval; EMILIA makes that approval portable, tamper-evident evidence — a named human accountably authorized this exact tool call. Composes WITH OpenAI's approval primitive (needsApproval / interruptions / state.approve|reject); does not replace it. Reference implementation, experimental.",
   "type": "module",
   "main": "index.js",
@@ -11,7 +11,15 @@
       "import": "./index.js"
     }
   },
-  "files": ["index.js", "index.d.ts", "dist/", "src/", "tsconfig.json", "README.md", "LICENSE"],
+  "files": [
+    "index.js",
+    "index.d.ts",
+    "dist/",
+    "src/",
+    "tsconfig.json",
+    "README.md",
+    "LICENSE"
+  ],
   "license": "Apache-2.0",
   "scripts": {
     "build": "tsc -p tsconfig.json",
@@ -32,7 +40,9 @@
     "verifiable-credential",
     "ai-safety"
   ],
-  "engines": { "node": ">=18" },
+  "engines": {
+    "node": ">=18"
+  },
   "dependencies": {
     "@emilia-protocol/require-receipt": "^0.6.0"
   },
@@ -40,7 +50,9 @@
     "@openai/agents": ">=0.0.1"
   },
   "peerDependenciesMeta": {
-    "@openai/agents": { "optional": true }
+    "@openai/agents": {
+      "optional": true
+    }
   },
   "repository": {
     "type": "git",
@@ -48,5 +60,7 @@
     "directory": "packages/openai-agents"
   },
   "homepage": "https://www.emiliaprotocol.ai/agent-guard",
-  "publishConfig": { "access": "public" }
+  "publishConfig": {
+    "access": "public"
+  }
 }

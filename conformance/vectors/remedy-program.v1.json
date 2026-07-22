@@ -1,9 +1,9 @@
 {
   "profile": "EP-GATE-REMEDY-PROGRAM-PROFILE-v1",
   "vectors_version": "1.0.0",
-  "visibility": "private",
+  "visibility": "public-experimental",
   "vector_count": 20,
-  "description": "Executable private semantic conformance catalog for the EMILIA Gate Remedy Program orchestration kernel. Each vector is an ordered sequence of kernel API calls with an explicit accepted state transition or refusal reason.",
+  "description": "Executable public experimental semantic conformance catalog for the EMILIA Gate Remedy Program orchestration kernel. Each vector is an ordered sequence of kernel API calls with an explicit accepted state transition or refusal reason.",
   "claim_boundary": "These vectors use deterministic verifier doubles and are orchestration-only. They test the real Remedy Program state machine and binding checks, but they are not independent verification or cryptographic proof.",
   "verifier_model": "Verifier doubles deterministically project the exact fields presented by the operation and the kernel-pinned expected context. A vector may name evidence IDs that the authorization double must refuse. No signature, key, certificate, network, external witness, or independent implementation is exercised.",
   "materialization": {

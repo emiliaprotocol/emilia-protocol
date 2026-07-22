@@ -1,7 +1,7 @@
 // @ts-nocheck
 // SPDX-License-Identifier: Apache-2.0
 /**
- * Private Trust Program profile for EP-REVOCATION-v1.
+ * Public experimental Trust Program profile for EP-REVOCATION-v1.
  *
  * The portable statement is untrusted input. The relying party derives the
  * complete commit target from its own exact execution authorization binding,

@@ -107,14 +107,21 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
 
     const acquisitionReplayRequested = body.return_existing === true
       || body.acquisition_request_id !== undefined
-      || body.acquisition_request_digest !== undefined;
+      || body.acquisition_request_digest !== undefined
+      || body.acquisition_tenant_id !== undefined
+      || body.acquisition_environment !== undefined;
     const acquisitionReplayValid = acquisitionReplayRequested
       && isCloudGuardPrincipal(auth)
       && !quorumPolicy
       && ACQUISITION_REQUEST_PATTERN.test(body.acquisition_request_id || '')
       && SHA256_DIGEST_PATTERN.test(body.acquisition_request_digest || '')
+      && body.acquisition_tenant_id === created.after_state?.organization_id
+      && body.acquisition_tenant_id === authEntityId(auth)
+      && body.acquisition_environment === auth.guard_cloud?.environment
       && created.after_state?.acquisition_request_id === body.acquisition_request_id
       && created.after_state?.acquisition_request_digest === body.acquisition_request_digest
+      && created.after_state?.acquisition_tenant_id === body.acquisition_tenant_id
+      && created.after_state?.acquisition_environment === body.acquisition_environment
       && APPROVER_ID_PATTERN.test(body.approver_id || '');
     if (acquisitionReplayRequested && !acquisitionReplayValid) {
       return epProblem(409, 'acquisition_binding_conflict', 'The signoff replay binding does not match the durable receipt');
@@ -128,6 +135,8 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
           && existing.after_state?.action_hash === created.after_state.action_hash
           && existing.after_state?.acquisition_request_id === body.acquisition_request_id
           && existing.after_state?.acquisition_request_digest === body.acquisition_request_digest
+          && existing.after_state?.acquisition_tenant_id === body.acquisition_tenant_id
+          && existing.after_state?.acquisition_environment === body.acquisition_environment
           && /^sig_[a-f0-9]{32}$/.test(existing.after_state?.signoff_id || '')) {
         return NextResponse.json({
           signoff_id: existing.after_state.signoff_id,
@@ -225,6 +234,8 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
         ...(acquisitionReplayValid ? {
           acquisition_request_id: body.acquisition_request_id,
           acquisition_request_digest: body.acquisition_request_digest,
+          acquisition_tenant_id: body.acquisition_tenant_id,
+          acquisition_environment: body.acquisition_environment,
         } : {}),
       },
     });

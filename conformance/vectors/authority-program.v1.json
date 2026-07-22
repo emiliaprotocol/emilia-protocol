@@ -1,12 +1,19 @@
 {
   "@version": "EP-AUTHORITY-PROGRAM-CONFORMANCE-v1",
-  "status": "private-prepublication-test-vector",
+  "status": "public-experimental-test-vector",
   "note": "Deterministic test keys only. This vector is not an adopted standard or independent implementation.",
+  "root_action": {
+    "action_type": "payment.release.1",
+    "amount": "250.00",
+    "currency": "EUR",
+    "beneficiary_account": "sha256:9f86d081884c7d659a2feaa0c55ad015a3bf4f1b2b0b822cd15d6c15b0f00a08",
+    "payment_instruction_id": "pi-authority-program-0001"
+  },
   "program": {
     "@version": "EP-AUTHORITY-PROGRAM-v1",
     "program_id": "authority-program:conformance:v1",
-    "root_caid": "caid:1:payment.release.1:jcs-sha256:AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA",
-    "root_action_digest": "sha256:0b27883b72d2f8350a673871762e7758bc92a9ef7f57657b0c2c5a075bd247c3",
+    "root_caid": "caid:1:payment.release.1:jcs-sha256:_ZVbq5slTuBQiVAOfy45JOUfLvhbRYzvexerlAcCLhg",
+    "root_action_digest": "sha256:fd955bab9b254ee05089500e7f2e3924e51f2ef85b458cef7b17ab9407022e18",
     "expression": {
       "type": "sequence",
       "children": [
@@ -68,36 +75,36 @@
       "algorithm": "Ed25519",
       "organization_id": "org:governance",
       "key_id": "key:program",
-      "signature_b64u": "qVMzVwvpmrmbzIQm4MUp8PuL2pRLXnyeDdG-b_s2XlyJA41cx58e-c1fVpmaQ864N7OZAH4ZYwVZ2Ei6m4FTCA"
+      "signature_b64u": "E3be1c7B0foxq3pCZje6u1hayDM3o-3nuKQBBGtclUo93kRxm4ZvLnBmnm3vvnkGLIIY6P7c8tkDmU7GfZhwDA"
     }
   },
   "program_pin": {
-    "digest": "sha256:ef32873e18eadb91a485db697a0228952ac1b4e7f31570fe7f997558a430c51c",
+    "digest": "sha256:59ae36f88b61dfa6e49bc46a1a59bfcda42336b281a4a2d7caff39bd3978e790",
     "organization_id": "org:governance",
     "key_id": "key:program",
-    "public_key": "MCowBQYDK2VwAyEADNELFRXMOIkgWLd4AtKpyv6u_b5TuaF3ylMB1mJRzPw"
+    "public_key": "MCowBQYDK2VwAyEAQt4xWGRs20v-Mu7hhgG2_J5n1ujnGzcXpAgEGcX8tXY"
   },
   "stage_keys": {
     "org:alpha": {
-      "key:alpha": "MCowBQYDK2VwAyEAolCFZ6TIPu2RUDdH8ubHi3GHNQaTkFjzUkXZvZNN63Y"
+      "key:alpha": "MCowBQYDK2VwAyEAhI-eQjMd8C2H3Q_-ODfqVEI1aBlmnYFSTrDQ6zCRMdo"
     },
     "org:beta": {
-      "key:beta": "MCowBQYDK2VwAyEAltX36hwgEb8Jn3PV5G-HwheKM1-BhWStHWC0KQWNt-0"
+      "key:beta": "MCowBQYDK2VwAyEAWM4saZO9xPvkwXPp8FGGJjF4x6MLWulJJkWCStYZMx0"
     },
     "org:gamma": {
-      "key:gamma": "MCowBQYDK2VwAyEAnT6cC6riPZsrB-SMLERmAxJcR6Nha1w12SJfAgvF3Fg"
+      "key:gamma": "MCowBQYDK2VwAyEA-TecHN-h2uH6Vvq1-9_UjkcHjTbCyGV4C_9kpP3fzGk"
     },
     "org:delta": {
-      "key:delta": "MCowBQYDK2VwAyEAKJ4T8YgZ5lssiCbW81dZa4-1_kkm4idrY3GDVgGGvFU"
+      "key:delta": "MCowBQYDK2VwAyEAb8OSZ-w9zVGpCMzmlPT8i2cDVzJTlYn7Ptz93i5ZZfg"
     }
   },
   "stage_receipts": [
     {
       "@version": "EP-AUTHORITY-STAGE-RECEIPT-v1",
       "receipt_id": "authority-stage-receipt:stage-a:conformance",
-      "program_digest": "sha256:ef32873e18eadb91a485db697a0228952ac1b4e7f31570fe7f997558a430c51c",
-      "root_caid": "caid:1:payment.release.1:jcs-sha256:AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA",
-      "root_action_digest": "sha256:0b27883b72d2f8350a673871762e7758bc92a9ef7f57657b0c2c5a075bd247c3",
+      "program_digest": "sha256:59ae36f88b61dfa6e49bc46a1a59bfcda42336b281a4a2d7caff39bd3978e790",
+      "root_caid": "caid:1:payment.release.1:jcs-sha256:_ZVbq5slTuBQiVAOfy45JOUfLvhbRYzvexerlAcCLhg",
+      "root_action_digest": "sha256:fd955bab9b254ee05089500e7f2e3924e51f2ef85b458cef7b17ab9407022e18",
       "stage_id": "stage-a",
       "issuer": {
         "organization_id": "org:alpha",
@@ -120,22 +127,22 @@
       "proof": {
         "algorithm": "Ed25519",
         "key_id": "key:alpha",
-        "signature_b64u": "cd8arwTPL3rxBiCLSBA1Fv9y91Bh3ROrPFRn13LcC5jslvU-7o2TAloC0KDiFPFZD04ENXxz9uxg5mQodsLFBw"
+        "signature_b64u": "CY-hZhvSrVWXVhHbHuNp4ixElqycIOkKWm4hcbVGqjitXVsCsXA5ekLmCjIqu9YVMlaf0kxggZy7Bx_WmzkdAA"
       }
     },
     {
       "@version": "EP-AUTHORITY-STAGE-RECEIPT-v1",
       "receipt_id": "authority-stage-receipt:stage-b:conformance",
-      "program_digest": "sha256:ef32873e18eadb91a485db697a0228952ac1b4e7f31570fe7f997558a430c51c",
-      "root_caid": "caid:1:payment.release.1:jcs-sha256:AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA",
-      "root_action_digest": "sha256:0b27883b72d2f8350a673871762e7758bc92a9ef7f57657b0c2c5a075bd247c3",
+      "program_digest": "sha256:59ae36f88b61dfa6e49bc46a1a59bfcda42336b281a4a2d7caff39bd3978e790",
+      "root_caid": "caid:1:payment.release.1:jcs-sha256:_ZVbq5slTuBQiVAOfy45JOUfLvhbRYzvexerlAcCLhg",
+      "root_action_digest": "sha256:fd955bab9b254ee05089500e7f2e3924e51f2ef85b458cef7b17ab9407022e18",
       "stage_id": "stage-b",
       "issuer": {
         "organization_id": "org:beta",
         "key_id": "key:beta"
       },
       "predecessor_receipt_digests": [
-        "sha256:11f6d6d8cd2b7aa29556768702442eda3fba9e001d0e3c920f0e9fe02eaa9697"
+        "sha256:facf9a5b582ec997308bf395f23685e20a6f13a9ff7299379d446336c8b2053a"
       ],
       "aec": {
         "requirement_digest": "sha256:2c0d586c0a1dc0f0e6b1cb317da8e2188c5fa9f7e7cbf79388c3f3677a8aacbd",
@@ -153,22 +160,22 @@
       "proof": {
         "algorithm": "Ed25519",
         "key_id": "key:beta",
-        "signature_b64u": "0b5lLhHdxfjuQUCKGcyEP7VGl3hmL3OOGgpJIUfgrJr7PffM3xzdgCRLVuDtGvgeLZe3RJ4IPJuHaOo2c4WfDA"
+        "signature_b64u": "_1PgjGUu_Ich2DXG1JLDBHqVisN65tZonn2dJFXOd_J2EholIqRoefob-S7eOijsWAgQHH44suUT6MgsJB0cDQ"
       }
     },
     {
       "@version": "EP-AUTHORITY-STAGE-RECEIPT-v1",
       "receipt_id": "authority-stage-receipt:stage-c:conformance",
-      "program_digest": "sha256:ef32873e18eadb91a485db697a0228952ac1b4e7f31570fe7f997558a430c51c",
-      "root_caid": "caid:1:payment.release.1:jcs-sha256:AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA",
-      "root_action_digest": "sha256:0b27883b72d2f8350a673871762e7758bc92a9ef7f57657b0c2c5a075bd247c3",
+      "program_digest": "sha256:59ae36f88b61dfa6e49bc46a1a59bfcda42336b281a4a2d7caff39bd3978e790",
+      "root_caid": "caid:1:payment.release.1:jcs-sha256:_ZVbq5slTuBQiVAOfy45JOUfLvhbRYzvexerlAcCLhg",
+      "root_action_digest": "sha256:fd955bab9b254ee05089500e7f2e3924e51f2ef85b458cef7b17ab9407022e18",
       "stage_id": "stage-c",
       "issuer": {
         "organization_id": "org:gamma",
         "key_id": "key:gamma"
       },
       "predecessor_receipt_digests": [
-        "sha256:11f6d6d8cd2b7aa29556768702442eda3fba9e001d0e3c920f0e9fe02eaa9697"
+        "sha256:facf9a5b582ec997308bf395f23685e20a6f13a9ff7299379d446336c8b2053a"
       ],
       "aec": {
         "requirement_digest": "sha256:d1a549fb97f22f1f7c3a4a02b47ea5871a87d28ff479416e46a2ad9db7c535b3",
@@ -186,23 +193,23 @@
       "proof": {
         "algorithm": "Ed25519",
         "key_id": "key:gamma",
-        "signature_b64u": "7tHo_aXyVAMwO-wq5H0DDZj20DN7iBkCgfS__dUfK9g1DqlPk_ekcxS343dQXweVulo2OTuEYc44q3I4-yFYAg"
+        "signature_b64u": "GVTT36KmclGCEqKeO14IDYddAe66MsdztAdPUx4mZV2wr6AHiQKg8CFXQuBUXwZa4I9jxk1Vmrd5bFJJzrJLDg"
       }
     },
     {
       "@version": "EP-AUTHORITY-STAGE-RECEIPT-v1",
       "receipt_id": "authority-stage-receipt:stage-d:conformance",
-      "program_digest": "sha256:ef32873e18eadb91a485db697a0228952ac1b4e7f31570fe7f997558a430c51c",
-      "root_caid": "caid:1:payment.release.1:jcs-sha256:AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA",
-      "root_action_digest": "sha256:0b27883b72d2f8350a673871762e7758bc92a9ef7f57657b0c2c5a075bd247c3",
+      "program_digest": "sha256:59ae36f88b61dfa6e49bc46a1a59bfcda42336b281a4a2d7caff39bd3978e790",
+      "root_caid": "caid:1:payment.release.1:jcs-sha256:_ZVbq5slTuBQiVAOfy45JOUfLvhbRYzvexerlAcCLhg",
+      "root_action_digest": "sha256:fd955bab9b254ee05089500e7f2e3924e51f2ef85b458cef7b17ab9407022e18",
       "stage_id": "stage-d",
       "issuer": {
         "organization_id": "org:delta",
         "key_id": "key:delta"
       },
       "predecessor_receipt_digests": [
-        "sha256:4727b3a2a0fe925c7cf545e7062c8160f7790d9f15e25fd43a0ef646d481fbc9",
-        "sha256:ed15766b12270bbce2d1435f48b60b65a2f71efff58dcf506d0c58a51ca026fc"
+        "sha256:d7a38098348fe3d388804f756d9f3d7a10a1f7c541ee1f4a012c7e294122882c",
+        "sha256:e6b1872c3751e4d837d5af4f2c8ec19111d0c76fa5e7080ab1e541994c8aff06"
       ],
       "aec": {
         "requirement_digest": "sha256:9482a050f9a159886eaff760c8f048464db766fddfc33ab2e8b22e9f296e1c1a",
@@ -220,7 +227,7 @@
       "proof": {
         "algorithm": "Ed25519",
         "key_id": "key:delta",
-        "signature_b64u": "_tFDQzMnXFgmu3J6DA2Eu5CVBmgCiMCQqAdFNdMbT1R-idkW_Zutli5qfkfhN6bGbs1HBQY-3ASEqtsjXGzvDA"
+        "signature_b64u": "G78Eb4IHUGHVyMezjafQP8frgltpVmktWNajDvBz4uS3eSDflSJbXkovIT5vGfAnNqjlKdNgdgPs3O_uMSQPAA"
       }
     }
   ],
@@ -313,6 +320,22 @@
       }
     }
   },
+  "vectors": [
+    {
+      "id": "accept-exact-authority-program",
+      "expect": {
+        "valid": true,
+        "reason": null
+      }
+    },
+    {
+      "id": "reject-missing-root-action-binding",
+      "expect": {
+        "valid": false,
+        "reason": "root_action_binding_unproven"
+      }
+    }
+  ],
   "invalid_cases": [
     {
       "name": "missing-predecessor",
@@ -320,16 +343,16 @@
       "replacement_receipt": {
         "@version": "EP-AUTHORITY-STAGE-RECEIPT-v1",
         "receipt_id": "authority-stage-receipt:stage-d:conformance",
-        "program_digest": "sha256:ef32873e18eadb91a485db697a0228952ac1b4e7f31570fe7f997558a430c51c",
-        "root_caid": "caid:1:payment.release.1:jcs-sha256:AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA",
-        "root_action_digest": "sha256:0b27883b72d2f8350a673871762e7758bc92a9ef7f57657b0c2c5a075bd247c3",
+        "program_digest": "sha256:59ae36f88b61dfa6e49bc46a1a59bfcda42336b281a4a2d7caff39bd3978e790",
+        "root_caid": "caid:1:payment.release.1:jcs-sha256:_ZVbq5slTuBQiVAOfy45JOUfLvhbRYzvexerlAcCLhg",
+        "root_action_digest": "sha256:fd955bab9b254ee05089500e7f2e3924e51f2ef85b458cef7b17ab9407022e18",
         "stage_id": "stage-d",
         "issuer": {
           "organization_id": "org:delta",
           "key_id": "key:delta"
         },
         "predecessor_receipt_digests": [
-          "sha256:4727b3a2a0fe925c7cf545e7062c8160f7790d9f15e25fd43a0ef646d481fbc9"
+          "sha256:d7a38098348fe3d388804f756d9f3d7a10a1f7c541ee1f4a012c7e294122882c"
         ],
         "aec": {
           "requirement_digest": "sha256:9482a050f9a159886eaff760c8f048464db766fddfc33ab2e8b22e9f296e1c1a",
@@ -347,7 +370,7 @@
         "proof": {
           "algorithm": "Ed25519",
           "key_id": "key:delta",
-          "signature_b64u": "3JP0ACATr3xypPXLSv_2GSk8OwMQ2aIDM6fQkcfYLoTAZZFGft9gm0OQgWBovIH25l0e1EvjEvIfuO8a2vXQDA"
+          "signature_b64u": "t2SYAhxx2Ihe-SiDWoz1IjHkf2LpD_Lw9vScYXX2oKgxL9bw9YSbvHVwgc2fPj3hSV-Q7SVbzxrRM0F0muarBA"
         }
       },
       "expected_reason": "predecessor_receipt_digest_mismatch"
@@ -358,16 +381,16 @@
       "replacement_receipt": {
         "@version": "EP-AUTHORITY-STAGE-RECEIPT-v1",
         "receipt_id": "authority-stage-receipt:stage-b:conformance",
-        "program_digest": "sha256:ef32873e18eadb91a485db697a0228952ac1b4e7f31570fe7f997558a430c51c",
-        "root_caid": "caid:1:payment.release.1:jcs-sha256:AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA",
-        "root_action_digest": "sha256:0b27883b72d2f8350a673871762e7758bc92a9ef7f57657b0c2c5a075bd247c3",
+        "program_digest": "sha256:59ae36f88b61dfa6e49bc46a1a59bfcda42336b281a4a2d7caff39bd3978e790",
+        "root_caid": "caid:1:payment.release.1:jcs-sha256:_ZVbq5slTuBQiVAOfy45JOUfLvhbRYzvexerlAcCLhg",
+        "root_action_digest": "sha256:fd955bab9b254ee05089500e7f2e3924e51f2ef85b458cef7b17ab9407022e18",
         "stage_id": "stage-b",
         "issuer": {
           "organization_id": "org:beta",
           "key_id": "key:beta"
         },
         "predecessor_receipt_digests": [
-          "sha256:11f6d6d8cd2b7aa29556768702442eda3fba9e001d0e3c920f0e9fe02eaa9697"
+          "sha256:facf9a5b582ec997308bf395f23685e20a6f13a9ff7299379d446336c8b2053a"
         ],
         "aec": {
           "requirement_digest": "sha256:2c0d586c0a1dc0f0e6b1cb317da8e2188c5fa9f7e7cbf79388c3f3677a8aacbd",
@@ -385,7 +408,7 @@
         "proof": {
           "algorithm": "Ed25519",
           "key_id": "key:beta",
-          "signature_b64u": "w5C2qYn2lmyOdJprte86bGBGSzE0lcQMa6H0H8RIryqYwOVDo3fS7g4LN0Atimj4RbDxAC-6bQtEIMbcw5XADA"
+          "signature_b64u": "9U0ewYoPgb_MYVUL8xekiCHtN08GQeIyp24-4gGf9E4frIvCYVLYZkhdl9tRAhFqjT8RMhRNP2i7SFMB1KWrDg"
         }
       },
       "expected_reason": "aec_verification_mismatch"
@@ -396,16 +419,16 @@
       "replacement_receipt": {
         "@version": "EP-AUTHORITY-STAGE-RECEIPT-v1",
         "receipt_id": "authority-stage-receipt:stage-c:conformance",
-        "program_digest": "sha256:ef32873e18eadb91a485db697a0228952ac1b4e7f31570fe7f997558a430c51c",
-        "root_caid": "caid:1:payment.release.1:jcs-sha256:AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA",
-        "root_action_digest": "sha256:0b27883b72d2f8350a673871762e7758bc92a9ef7f57657b0c2c5a075bd247c3",
+        "program_digest": "sha256:59ae36f88b61dfa6e49bc46a1a59bfcda42336b281a4a2d7caff39bd3978e790",
+        "root_caid": "caid:1:payment.release.1:jcs-sha256:_ZVbq5slTuBQiVAOfy45JOUfLvhbRYzvexerlAcCLhg",
+        "root_action_digest": "sha256:fd955bab9b254ee05089500e7f2e3924e51f2ef85b458cef7b17ab9407022e18",
         "stage_id": "stage-c",
         "issuer": {
           "organization_id": "org:gamma",
           "key_id": "key:gamma"
         },
         "predecessor_receipt_digests": [
-          "sha256:11f6d6d8cd2b7aa29556768702442eda3fba9e001d0e3c920f0e9fe02eaa9697"
+          "sha256:facf9a5b582ec997308bf395f23685e20a6f13a9ff7299379d446336c8b2053a"
         ],
         "aec": {
           "requirement_digest": "sha256:d1a549fb97f22f1f7c3a4a02b47ea5871a87d28ff479416e46a2ad9db7c535b3",
@@ -423,7 +446,7 @@
         "proof": {
           "algorithm": "Ed25519",
           "key_id": "key:gamma",
-          "signature_b64u": "y0-UD-3cBhmb3b50Y85z1W8gxdltqvtcUW0rv5P6yLlKgDHSdCFz1PSUI3SlnmvKKC3QBk-ziZ2F_LIyfUgzCw"
+          "signature_b64u": "0ffK6UJhJfKZgIpBEUmTr0zXPfN9M4Ep9wKSjqq7PNq7HsNRnMW2NvEoEYTmQagPPMUwWsXi4HzFGtABXTsnAA"
         }
       },
       "expected_reason": "aom_requirement_mismatch"

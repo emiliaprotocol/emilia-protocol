@@ -324,6 +324,9 @@ function failure(reason, program = null, programDigest = null) {
             : null,
         stage_receipt_digests: {},
         parallel_allocation_status: null,
+        root_action_binding_status: null,
+        freshness_proven: false,
+        revocation_checked: false,
         execution_proven: false,
         reason,
     };
@@ -379,6 +382,18 @@ function validParallelResult(value) {
         && typeof value.proof_digest === 'string'
         && DIGEST.test(value.proof_digest);
 }
+function validRootActionBindingResult(value) {
+    return exactObject(value, [
+        'valid',
+        'root_caid',
+        'root_action_digest',
+    ])
+        && value.valid === true
+        && typeof value.root_caid === 'string'
+        && ROOT_CAID.test(value.root_caid)
+        && typeof value.root_action_digest === 'string'
+        && DIGEST.test(value.root_action_digest);
+}
 /** Digest of the exact signed authority-program envelope. */
 export function authorityProgramDigest(program) {
     return digest(program);
@@ -403,6 +418,7 @@ export function deriveAuthorityProgramPredecessors(expression) {
  * The callbacks are relying-party-owned pure adapters to native verifiers.
  * Their returned objects are closed and must bind the exact signed digests.
  * No callback result can authorize execution; the result explicitly reports
+ * `freshness_proven: false`, `revocation_checked: false`, and
  * `execution_proven: false`.
  */
 function verifyAuthorityProgramCore(program, stageReceipts, options = {}) {
@@ -434,6 +450,18 @@ function verifyAuthorityProgramCore(program, stageReceipts, options = {}) {
     }
     if (!verifyEd25519(program, AUTHORITY_PROGRAM_DOMAIN, options.programPin.public_key)) {
         return failure('invalid_program_signature', program, programDigest);
+    }
+    const rootActionBinding = safeCallback(options.verifyRootActionBinding, {
+        program_digest: programDigest,
+        root_caid: program.root_caid,
+        root_action_digest: program.root_action_digest,
+    });
+    if (!validRootActionBindingResult(rootActionBinding)) {
+        return failure('root_action_binding_unproven', program, programDigest);
+    }
+    if (rootActionBinding.root_caid !== program.root_caid
+        || rootActionBinding.root_action_digest !== program.root_action_digest) {
+        return failure('root_action_binding_mismatch', program, programDigest);
     }
     if (!Array.isArray(stageReceipts) || stageReceipts.length !== analysis.stages.size) {
         return failure('stage_receipt_set_mismatch', program, programDigest);
@@ -589,6 +617,9 @@ function verifyAuthorityProgramCore(program, stageReceipts, options = {}) {
         root_action_digest: program.root_action_digest,
         stage_receipt_digests: orderedDigests,
         parallel_allocation_status: analysis.parallels.length > 0 ? 'verified' : 'not_applicable',
+        root_action_binding_status: 'verified',
+        freshness_proven: false,
+        revocation_checked: false,
         execution_proven: false,
         reason: null,
     };
@@ -610,6 +641,7 @@ export function verifyAuthorityProgram(program, stageReceipts, options = {}) {
             verifyAom: options.verifyAom,
             verifyCapabilityNarrowing: options.verifyCapabilityNarrowing,
             verifyParallelAllocation: options.verifyParallelAllocation,
+            verifyRootActionBinding: options.verifyRootActionBinding,
         };
         return verifyAuthorityProgramCore(structuredClone(program), structuredClone(stageReceipts), snapshotOptions);
     }

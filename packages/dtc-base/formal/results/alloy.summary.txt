@@ -1,13 +1,13 @@
-DTC Base escrow Alloy verification
-Executed: 2026-07-20
-Tool: Alloy 6.2.0 (pinned SHA-256 verified), SAT4J
-Model SHA-256: d89f62840e357f90e88f566cec1e33a467fab47955626c3650cb06ae0a605005
+DTC Base escrow Alloy bounded-model summary
+Tool: Alloy 6.2.0 with SAT4J
+Pinned release: v6.2.0 (download SHA-256 6b8c1cb5bc93bedfc7c61435c4e1ab6e688a242dc702a394628d9a9801edb78d)
+Model SHA-256: 782a37e34ed8c02f52d1c46cb02d84f63a04b9ed08305b956d9b7d94d741d3ff
 
 Result: PASS
 Assertions: 5/5 held with no counterexample
 Scenarios: 3/3 satisfiable (non-vacuous)
 
-Assertions:
+Checked assertions (5):
 - IndeterminatePreservesReservation
 - TerminalTransitionsConserveValue
 - ReceiptConsumptionNeverReverses

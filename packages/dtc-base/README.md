@@ -1,4 +1,4 @@
-# DTC Base Settlement Profile (private experiment)
+# DTC Base Settlement Profile (public experiment)
 
 This package is an optional Base settlement profile for EMILIA. It binds a verified EMILIA authorization to a
 native-ETH reservation, a provider-boundary marker, authenticated provider evidence, and a terminal certificate.
@@ -10,7 +10,7 @@ have succeeded; it does not reimplement them in Solidity.
 
 ## Status
 
-- Private and local only.
+- Public source; intentionally marked non-publishable as an npm package until its release blockers are closed.
 - Not independently audited.
 - Not deployed.
 - Not suitable for customer funds.
@@ -69,14 +69,26 @@ funds by asserting an unconfirmed request hash.
 - The terminal certificate is a deterministic on-chain commitment, not a representation that the external evidence is
   legally conclusive.
 
-## Run locally
+## Run and verify locally
+
+The integration tests exercise the current in-repository Gate, Require Receipt, Verify, and CAID implementations. From
+the repository root, install both committed lockfiles before running the package gate:
 
 ```bash
-npm ci
-npm run verify
-npm run formal:verify
-npm run demo
+npm ci --ignore-scripts
+npm ci --ignore-scripts --prefix packages/dtc-base
+npm run verify --prefix packages/dtc-base
+npm run coverage --prefix packages/dtc-base
+npm run demo --prefix packages/dtc-base
 ```
+
+`verify` checks the non-publishable/Base-Sepolia-only policy, strict TypeScript, Solidity compilation, separately named
+functional/hostile/integration suites, Solidity lint, a zero-vulnerability production audit, a time-bounded exact
+allow-list for otherwise-unresolved Hardhat development-tool advisories, and the
+checked-in evidence. Formal verification downloads checksum-pinned TLC and Alloy releases, regenerates deterministic
+summaries in a temporary directory, and fails if they differ from `formal/results/`. The artifact manifest is regenerated
+from the current package files and fails on any stale hash. Maintainers intentionally refreshing those checked-in files
+must run `npm run evidence:refresh --prefix packages/dtc-base` and review the resulting diff.
 
 The demo executes the decisive failure mode: the provider boundary is entered, the first response is indeterminate,
 the full value remains frozen, and fresh provider-signed evidence is required before settlement.
@@ -84,7 +96,7 @@ the full value remains frozen, and fresh provider-signed evidence is required be
 ## Guarded Base Sepolia deployment
 
 Copy `.env.example`, provide non-development keys, and review `scripts/deploy.ts`. The script refuses unsupported
-chains and refuses a remote deployment unless the explicit private/unaudited acknowledgement is present.
+chains and refuses a remote deployment unless the explicit experimental/unaudited acknowledgement is present.
 
 ```bash
 npm run deploy:base-sepolia
@@ -106,4 +118,7 @@ Deployment is not audit, production authorization, or permission to hold custome
 - `tsconfig.json` — strict NodeNext compiler contract; generated `dist/` output is local and ignored.
 - `formal/dtc_base_settlement.tla` — bounded transition-system model.
 - `formal/dtc_base_escrow.als` — relational transition model.
+- `scripts/render-formal-results.mjs` — fail-closed renderer/checker for deterministic formal summaries.
+- `scripts/verify-artifact-manifest.mjs` — deterministic source-artifact manifest refresh and drift check.
+- `scripts/verify-package-policy.mjs` — enforces `private: true` and Base Sepolia as the only remote network.
 - `SECURITY_REVIEW.md` — hostile findings, static-analysis triage, and release blockers.

@@ -1,4 +1,5 @@
-require('@nomicfoundation/hardhat-toolbox');
+require('@nomicfoundation/hardhat-ethers');
+require('@nomicfoundation/hardhat-chai-matchers');
 require('solidity-coverage');
 
 const networks = {};

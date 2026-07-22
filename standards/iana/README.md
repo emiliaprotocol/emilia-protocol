@@ -2,8 +2,9 @@
 
 Completed, paste-ready registration templates for the IANA actions the EP
 draft set names. Built 2026-07-04 from a full inventory of the IANA
-Considerations sections of every draft in `standards/` (the 9-draft IETF 126
-batch at top level), `standards/posted/`, and `standards/staged/`.
+Considerations sections of the then-current public draft corpus. Current
+published source is under `standards/posted/`; unsubmitted revisions are not
+kept in this public repository.
 
 **The rule this directory lives by:** a registration is prepared *for* a
 string only where a draft's own text carries that string, citing that draft.
@@ -37,8 +38,8 @@ revision backs it. Nothing here invents a name that contradicts posted text.
 
 Not IANA actions (no filing anywhere): the EP **profile registry** entries the
 drafts declare — `grid.curtailment` (draft-schrock-kintzele-grid-curtailment-00),
-`control_mode` values (staged human-oversight-profile), PQC algorithm
-identifiers (staged ep-pqc), and the render-profile / display-attestation
+`control_mode` values (partner-triggered human-oversight profile), historical
+PQC algorithm identifiers, and the render-profile / display-attestation
 identifiers the presentation-binding draft anticipates. Those live in EP's own
 registry, not IANA's.
 

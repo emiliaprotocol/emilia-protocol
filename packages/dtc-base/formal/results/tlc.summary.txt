@@ -1,16 +1,19 @@
-DTC Base settlement TLA+ verification
-Executed: 2026-07-20
-Tool: TLC 2.19 (TLA+ tools v1.7.4, pinned SHA-256 verified)
+DTC Base settlement TLA+ bounded-model summary
+Tool: TLC 2.19 of 08 August 2024 (rev: 5a47802)
+Pinned release: v1.7.4 (download SHA-256 936a262061c914694dfd669a543be24573c45d5aa0ff20a8b96b23d01e050e88)
 Model SHA-256: e11505bf164c94a5de8acace451ebbfc3cb5cd01a29d070bcd9cd84410210702
-Config SHA-256: 8e9a0e5633ba89137ea9f881da0325a496593ec027754b229c2574ab694bab85
+Config SHA-256: 7e6b30c007dc039192364672604556e25482ac7e81b2b846b89f073bd2bc4360
 
 Result: PASS - no error found
 States generated: 127
 Distinct states: 48
 States left on queue: 0
-Maximum depth: 9
 
-Checked invariants:
+Traversal depth is intentionally omitted: parallel TLC may report a different
+breadth-first discovery depth for the same complete state set. The stable
+evidence is the generated/distinct totals, empty queue, and clean completion.
+
+Checked invariants (8):
 - TypeInvariant
 - MoneyConservation
 - ReceiptMatchesLifecycle
@@ -20,7 +23,7 @@ Checked invariants:
 - SuccessAllocationBounded
 - NoMerchantPaymentOnFailure
 
-Checked temporal property:
+Checked temporal properties (1):
 - ProviderRevocationMonotonic
 
 Deadlock checking is disabled because a fully withdrawn terminal state is an

@@ -1,6 +1,6 @@
 {
   "name": "@emilia-protocol/crash-test",
-  "version": "0.4.0",
+  "version": "0.4.1",
   "description": "Offline authorization-evidence demonstration: verify an exact-action quorum under relying-party-pinned policy, approver keys, WebAuthn scope, and operator key, then refuse tampering and self-anchored trust.",
   "license": "Apache-2.0",
   "type": "module",

@@ -2,19 +2,26 @@
 // Generated from trust-program-postgres.test.ts by scripts/build-standalone-runtimes.mjs. Do not edit.
 /* eslint-disable */
 import assert from 'node:assert/strict';
+import { createHash } from 'node:crypto';
 import { readFileSync } from 'node:fs';
 import test from 'node:test';
-import { TRUST_PROGRAM_POSTGRES_SQL, createTrustProgramPostgresStore, } from './trust-program-postgres.js';
+const { TRUST_PROGRAM_POSTGRES_SQL, createTrustProgramPostgresStore, } = await import(process.env.TRUST_PROGRAM_TEST_SOURCE === '1'
+    ? './src/trust-program-postgres.ts'
+    : './trust-program-postgres.js');
 const MIGRATION = readFileSync(new URL('../../supabase/migrations/20260721163000_trust_program_store.sql', import.meta.url), 'utf8');
-function initialState(instanceId = 'instance-1') {
+function digest(value) {
+    return `sha256:${createHash('sha256').update(value, 'utf8').digest('hex')}`;
+}
+function initialState(tenantId = 'tenant-1', instanceId = 'instance-1', rootMarker = 'A') {
     return {
         version: 'EP-GATE-TRUST-PROGRAM-PROFILE-v1',
+        tenant_id: tenantId,
         instance_id: instanceId,
         program_id: 'program-1',
         program_version: 1,
         program_digest: `sha256:${'11'.repeat(32)}`,
-        root_caid: 'caid:root-1',
-        action_digest: `sha256:${'22'.repeat(32)}`,
+        root_caid: `caid:1:trust.root.1:jcs-sha256:${rootMarker.repeat(43)}`,
+        action_digest: digest(`root-action-${rootMarker}`),
         status: 'active',
         revision: 0,
         created_at: '2026-07-21T16:30:00.000Z',
@@ -43,9 +50,17 @@ function initialState(instanceId = 'instance-1') {
         invalidation_reason: null,
     };
 }
+function createState(store, state) {
+    return store.create({ tenantId: state.tenant_id, state });
+}
 function fakePostgres() {
     let records = new Map();
     let events = new Map();
+    let evidenceIds = new Map();
+    let evidenceDigests = new Map();
+    let rootActions = new Map();
+    let rootCaids = new Map();
+    let executionOperations = new Map();
     let snapshot = null;
     let nextResult = null;
     let nextError = null;
@@ -54,12 +69,45 @@ function fakePostgres() {
     function copyMap(map) {
         return new Map([...map].map(([key, value]) => [key, structuredClone(value)]));
     }
-    function refusal(instanceId, reason) {
+    const key = (tenantId, instanceId) => JSON.stringify([tenantId, instanceId]);
+    const claimKey = (tenantId, value) => JSON.stringify([tenantId, value]);
+    const stateEvidence = (state) => Object.values(state.stages)
+        .flatMap((stage) => Object.values(stage.evidence));
+    function reserve(state, revision) {
+        for (const evidence of stateEvidence(state)) {
+            evidenceIds.set(claimKey(state.tenant_id, evidence.evidence_id), state.instance_id);
+            evidenceDigests.set(claimKey(state.tenant_id, evidence.evidence_digest), state.instance_id);
+        }
+        rootActions.set(claimKey(state.tenant_id, state.action_digest), state.instance_id);
+        rootCaids.set(claimKey(state.tenant_id, state.root_caid), state.instance_id);
+        if (state.execution.operation_id) {
+            executionOperations.set(claimKey(state.tenant_id, state.execution.operation_id), { instanceId: state.instance_id, revision });
+        }
+    }
+    function replayReason(state) {
+        const other = (map, value) => {
+            const owner = map.get(claimKey(state.tenant_id, value));
+            return owner !== undefined
+                && (typeof owner === 'string' ? owner : owner.instanceId) !== state.instance_id;
+        };
+        if (stateEvidence(state).some((evidence) => other(evidenceIds, evidence.evidence_id)
+            || other(evidenceDigests, evidence.evidence_digest)))
+            return 'evidence_replayed';
+        if (other(rootActions, state.action_digest)
+            || other(rootCaids, state.root_caid)
+            || (state.execution.operation_id
+                && other(executionOperations, state.execution.operation_id))) {
+            return 'trust_operation_replayed';
+        }
+        return null;
+    }
+    function refusal(tenantId, instanceId, reason) {
         return {
             rowCount: 1,
             rows: [{
                     ok: false,
                     reason,
+                    tenant_id: tenantId,
                     instance_id: instanceId,
                     revision: null,
                     state_json: null,
@@ -73,6 +121,7 @@ function fakePostgres() {
             rows: [{
                     ok: true,
                     reason: null,
+                    tenant_id: record.tenant_id,
                     instance_id: record.instance_id,
                     revision: String(record.revision),
                     state_json: record.state_json,
@@ -84,7 +133,15 @@ function fakePostgres() {
         async query(text, params = []) {
             if (text.startsWith('BEGIN ')) {
                 assert.equal(snapshot, null, 'fake permits only one pinned transaction at a time');
-                snapshot = { records: copyMap(records), events: copyMap(events) };
+                snapshot = {
+                    records: copyMap(records),
+                    events: copyMap(events),
+                    evidenceIds: copyMap(evidenceIds),
+                    evidenceDigests: copyMap(evidenceDigests),
+                    rootActions: copyMap(rootActions),
+                    rootCaids: copyMap(rootCaids),
+                    executionOperations: copyMap(executionOperations),
+                };
                 transactionLog.push(text);
                 return { rowCount: null, rows: [] };
             }
@@ -98,6 +155,11 @@ function fakePostgres() {
                 assert.notEqual(snapshot, null);
                 records = snapshot.records;
                 events = snapshot.events;
+                evidenceIds = snapshot.evidenceIds;
+                evidenceDigests = snapshot.evidenceDigests;
+                rootActions = snapshot.rootActions;
+                rootCaids = snapshot.rootCaids;
+                executionOperations = snapshot.executionOperations;
                 snapshot = null;
                 transactionLog.push(text);
                 return { rowCount: null, rows: [] };
@@ -113,18 +175,25 @@ function fakePostgres() {
                 return result;
             }
             if (text === TRUST_PROGRAM_POSTGRES_SQL.create) {
-                const [instanceId, stateJson, stateDigest, eventAt] = params;
-                if (records.has(instanceId))
-                    return refusal(instanceId, 'instance_exists');
+                const [tenantId, instanceId, stateJson, stateDigest, eventAt] = params;
+                const recordKey = key(tenantId, instanceId);
+                if (records.has(recordKey))
+                    return refusal(tenantId, instanceId, 'instance_exists');
+                const state = JSON.parse(stateJson);
+                const replay = replayReason(state);
+                if (replay)
+                    return refusal(tenantId, instanceId, replay);
                 const record = {
+                    tenant_id: tenantId,
                     instance_id: instanceId,
                     revision: 0,
                     state_json: stateJson,
                     state_digest: stateDigest,
                     updated_at: eventAt,
                 };
-                records.set(instanceId, record);
-                events.set(instanceId, [{
+                records.set(recordKey, record);
+                events.set(recordKey, [{
+                        tenant_id: tenantId,
                         instance_id: instanceId,
                         revision: 0,
                         previous_revision: null,
@@ -134,31 +203,41 @@ function fakePostgres() {
                         reason: null,
                         recorded_at: eventAt,
                     }]);
+                reserve(state, 0);
                 return success(record);
             }
             if (text === TRUST_PROGRAM_POSTGRES_SQL.get) {
-                const record = records.get(params[0]);
-                return record ? success(record) : refusal(params[0], 'instance_not_found');
+                const [tenantId, instanceId] = params;
+                const record = records.get(key(tenantId, instanceId));
+                return record ? success(record) : refusal(tenantId, instanceId, 'instance_not_found');
             }
             if (text === TRUST_PROGRAM_POSTGRES_SQL.compareAndSwap) {
-                const [instanceId, expectedRevision, nextRevision, stateJson, stateDigest, eventAt] = params;
-                const current = records.get(instanceId);
+                const [tenantId, instanceId, expectedRevision, nextRevision, stateJson, stateDigest, eventAt] = params;
+                const recordKey = key(tenantId, instanceId);
+                const current = records.get(recordKey);
                 if (!current)
-                    return refusal(instanceId, 'instance_not_found');
-                if (current.revision !== expectedRevision)
-                    return refusal(instanceId, 'revision_conflict');
-                if (Date.parse(eventAt) < Date.parse(current.updated_at)) {
-                    return refusal(instanceId, 'clock_regression');
+                    return refusal(tenantId, instanceId, 'instance_not_found');
+                if (current.revision !== expectedRevision) {
+                    return refusal(tenantId, instanceId, 'revision_conflict');
                 }
+                if (Date.parse(eventAt) < Date.parse(current.updated_at)) {
+                    return refusal(tenantId, instanceId, 'clock_regression');
+                }
+                const state = JSON.parse(stateJson);
+                const replay = replayReason(state);
+                if (replay)
+                    return refusal(tenantId, instanceId, replay);
                 const record = {
+                    tenant_id: tenantId,
                     instance_id: instanceId,
                     revision: nextRevision,
                     state_json: stateJson,
                     state_digest: stateDigest,
                     updated_at: eventAt,
                 };
-                records.set(instanceId, record);
-                events.get(instanceId).push({
+                records.set(recordKey, record);
+                events.get(recordKey).push({
+                    tenant_id: tenantId,
                     instance_id: instanceId,
                     revision: nextRevision,
                     previous_revision: expectedRevision,
@@ -168,30 +247,35 @@ function fakePostgres() {
                     reason: null,
                     recorded_at: eventAt,
                 });
+                reserve(state, nextRevision);
                 return success(record);
             }
             if (text === TRUST_PROGRAM_POSTGRES_SQL.invalidate) {
-                const [instanceId, expectedRevision, reason, eventAt, stateJson, stateDigest] = params;
-                const current = records.get(instanceId);
+                const [tenantId, instanceId, expectedRevision, reason, eventAt, stateJson, stateDigest] = params;
+                const recordKey = key(tenantId, instanceId);
+                const current = records.get(recordKey);
                 if (!current)
-                    return refusal(instanceId, 'instance_not_found');
-                if (current.revision !== expectedRevision)
-                    return refusal(instanceId, 'revision_conflict');
+                    return refusal(tenantId, instanceId, 'instance_not_found');
+                if (current.revision !== expectedRevision) {
+                    return refusal(tenantId, instanceId, 'revision_conflict');
+                }
                 if (Date.parse(eventAt) < Date.parse(current.updated_at)) {
-                    return refusal(instanceId, 'clock_regression');
+                    return refusal(tenantId, instanceId, 'clock_regression');
                 }
                 if (JSON.parse(current.state_json).status === 'invalidated') {
-                    return refusal(instanceId, 'program_instance_invalidated');
+                    return refusal(tenantId, instanceId, 'program_instance_invalidated');
                 }
                 const record = {
+                    tenant_id: tenantId,
                     instance_id: instanceId,
                     revision: expectedRevision + 1,
                     state_json: stateJson,
                     state_digest: stateDigest,
                     updated_at: eventAt,
                 };
-                records.set(instanceId, record);
-                events.get(instanceId).push({
+                records.set(recordKey, record);
+                events.get(recordKey).push({
+                    tenant_id: tenantId,
                     instance_id: instanceId,
                     revision: expectedRevision + 1,
                     previous_revision: expectedRevision,
@@ -211,8 +295,14 @@ function fakePostgres() {
     };
     return {
         pool: { async connect() { return client; } },
+        key,
         get records() { return records; },
         get events() { return events; },
+        get evidenceIds() { return evidenceIds; },
+        get evidenceDigests() { return evidenceDigests; },
+        get rootActions() { return rootActions; },
+        get rootCaids() { return rootCaids; },
+        get executionOperations() { return executionOperations; },
         transactionLog,
         get releases() { return releases; },
         returnNext(result) { nextResult = result; },
@@ -223,12 +313,26 @@ test('migration is private, RPC-only, force-RLS, and append-only', () => {
     assert.match(MIGRATION, /CREATE SCHEMA IF NOT EXISTS trust_program_private/);
     assert.match(MIGRATION, /root_id SMALLINT PRIMARY KEY CHECK \(root_id = 1\)/);
     assert.match(MIGRATION, /INSERT INTO trust_program_private\.store_root \(root_id\) VALUES \(1\)/);
-    assert.match(MIGRATION, /PRIMARY KEY \(instance_id, revision\)/);
-    assert.match(MIGRATION, /BEFORE UPDATE OR DELETE ON trust_program_private\.events/);
-    assert.equal((MIGRATION.match(/FORCE ROW LEVEL SECURITY/g) ?? []).length, 3);
+    assert.match(MIGRATION, /PRIMARY KEY \(tenant_id, instance_id\)/);
+    assert.match(MIGRATION, /PRIMARY KEY \(tenant_id, instance_id, revision\)/);
+    assert.match(MIGRATION, /FOREIGN KEY \(tenant_id, instance_id\)\s+REFERENCES trust_program_private\.instances\(tenant_id, instance_id\) ON DELETE RESTRICT/);
+    assert.match(MIGRATION, /PRIMARY KEY \(tenant_id, evidence_id\)/);
+    assert.match(MIGRATION, /PRIMARY KEY \(tenant_id, evidence_digest\)/);
+    assert.match(MIGRATION, /PRIMARY KEY \(tenant_id, root_action_digest\)/);
+    assert.match(MIGRATION, /UNIQUE \(tenant_id, root_caid\)/);
+    assert.match(MIGRATION, /PRIMARY KEY \(tenant_id, operation_id\)/);
+    for (const table of [
+        'events', 'evidence_id_consumptions', 'evidence_digest_consumptions',
+        'trust_roots', 'execution_operation_consumptions',
+    ]) {
+        assert.match(MIGRATION, new RegExp(`BEFORE UPDATE OR DELETE ON trust_program_private\\.${table}`));
+    }
+    assert.equal((MIGRATION.match(/FORCE ROW LEVEL SECURITY/g) ?? []).length, 7);
     assert.doesNotMatch(MIGRATION, /GRANT\s+[^;]*\bON TABLE\b[^;]*\bservice_role\b/is);
     assert.match(MIGRATION, /REVOKE ALL ON TABLE trust_program_private\.events\s+FROM PUBLIC, anon, authenticated, service_role;/);
     assert.match(MIGRATION, /GRANT USAGE ON SCHEMA trust_program_private TO service_role/);
+    assert.match(MIGRATION, /'evidence_replayed'::pg_catalog\.text/);
+    assert.match(MIGRATION, /'trust_operation_replayed'::pg_catalog\.text/);
     for (const name of ['create', 'get', 'compare_and_swap', 'invalidate']) {
         const start = MIGRATION.indexOf(`trust_program_private.trust_program_${name}(`);
         assert.notEqual(start, -1, `${name} RPC must exist`);
@@ -249,14 +353,15 @@ test('create and get implement the durable kernel store contract', async () => {
     const pg = fakePostgres();
     const store = createTrustProgramPostgresStore({ pool: pg.pool });
     const state = initialState();
+    const lookup = { tenantId: state.tenant_id, instanceId: state.instance_id };
     assert.equal(store.durable, true);
-    assert.deepEqual(await store.get(state.instance_id), { ok: false, reason: 'instance_not_found' });
-    assert.deepEqual(await store.create(state), { ok: true, state });
-    assert.deepEqual(await store.create(state), { ok: false, reason: 'instance_exists' });
-    const loaded = await store.get(state.instance_id);
+    assert.deepEqual(await store.get(lookup), { ok: false, reason: 'instance_not_found' });
+    assert.deepEqual(await createState(store, state), { ok: true, state });
+    assert.deepEqual(await createState(store, state), { ok: false, reason: 'instance_exists' });
+    const loaded = await store.get(lookup);
     assert.deepEqual(loaded, { ok: true, state });
     loaded.state.status = 'caller-mutated';
-    assert.equal((await store.get(state.instance_id)).state.status, 'active');
+    assert.equal((await store.get(lookup)).state.status, 'active');
     assert.ok(pg.transactionLog.includes('BEGIN ISOLATION LEVEL REPEATABLE READ READ ONLY'));
     assert.ok(pg.transactionLog.includes('BEGIN ISOLATION LEVEL READ COMMITTED READ WRITE'));
     assert.equal(pg.releases, 5);
@@ -264,18 +369,18 @@ test('create and get implement the durable kernel store contract', async () => {
 test('compareAndSwap installs and journals exactly one next revision', async () => {
     const pg = fakePostgres();
     const store = createTrustProgramPostgresStore({ pool: pg.pool });
-    const created = await store.create(initialState('instance-cas'));
+    const created = await createState(store, initialState('tenant-cas', 'instance-cas'));
     const next = structuredClone(created.state);
     next.revision = 1;
     next.updated_at = '2026-07-21T16:31:00.000Z';
     next.stages.identify.status = 'satisfied';
     assert.deepEqual(await store.compareAndSwap({
-        instanceId: 'instance-cas', expectedRevision: 0, state: next,
+        tenantId: 'tenant-cas', instanceId: 'instance-cas', expectedRevision: 0, state: next,
     }), { ok: true, state: next });
     assert.deepEqual(await store.compareAndSwap({
-        instanceId: 'instance-cas', expectedRevision: 0, state: next,
+        tenantId: 'tenant-cas', instanceId: 'instance-cas', expectedRevision: 0, state: next,
     }), { ok: false, reason: 'revision_conflict' });
-    const history = pg.events.get('instance-cas');
+    const history = pg.events.get(pg.key('tenant-cas', 'instance-cas'));
     assert.equal(history.length, 2);
     assert.deepEqual(history.map(({ revision, previous_revision, event_kind }) => ({
         revision, previous_revision, event_kind,
@@ -283,32 +388,32 @@ test('compareAndSwap installs and journals exactly one next revision', async () 
         { revision: 0, previous_revision: null, event_kind: 'create' },
         { revision: 1, previous_revision: 0, event_kind: 'cas' },
     ]);
-    assert.equal(history[1].state_json, pg.records.get('instance-cas').state_json);
-    assert.equal(history[1].state_digest, pg.records.get('instance-cas').state_digest);
+    assert.equal(history[1].state_json, pg.records.get(pg.key('tenant-cas', 'instance-cas')).state_json);
+    assert.equal(history[1].state_digest, pg.records.get(pg.key('tenant-cas', 'instance-cas')).state_digest);
 });
 test('durable transitions refuse a timestamp older than the stored revision', async () => {
     const pg = fakePostgres();
     const store = createTrustProgramPostgresStore({ pool: pg.pool });
-    const created = await store.create(initialState('instance-clock'));
+    const created = await createState(store, initialState('tenant-clock', 'instance-clock'));
     const next = structuredClone(created.state);
     next.revision = 1;
     next.updated_at = '2026-07-21T16:29:59.999Z';
     assert.deepEqual(await store.compareAndSwap({
-        instanceId: 'instance-clock', expectedRevision: 0, state: next,
+        tenantId: 'tenant-clock', instanceId: 'instance-clock', expectedRevision: 0, state: next,
     }), { ok: false, reason: 'clock_regression' });
-    assert.equal((await store.get('instance-clock')).state.revision, 0);
+    assert.equal((await store.get({ tenantId: 'tenant-clock', instanceId: 'instance-clock' })).state.revision, 0);
     assert.match(MIGRATION, /'clock_regression'::pg_catalog\.text/);
 });
 test('invalidation matches the kernel transition and is revision-fenced', async () => {
     const pg = fakePostgres();
     const store = createTrustProgramPostgresStore({ pool: pg.pool });
-    await store.create(initialState('instance-invalidate'));
+    await createState(store, initialState('tenant-invalidate', 'instance-invalidate'));
     assert.deepEqual(await store.invalidate({
-        instanceId: 'instance-invalidate', expectedRevision: 7,
+        tenantId: 'tenant-invalidate', instanceId: 'instance-invalidate', expectedRevision: 7,
         reason: 'operator revoked authorization', at: Date.parse('2026-07-21T16:32:00.000Z'),
     }), { ok: false, reason: 'revision_conflict' });
     const invalidated = await store.invalidate({
-        instanceId: 'instance-invalidate', expectedRevision: 0,
+        tenantId: 'tenant-invalidate', instanceId: 'instance-invalidate', expectedRevision: 0,
         reason: 'operator revoked authorization', at: Date.parse('2026-07-21T16:32:00.000Z'),
     });
     assert.equal(invalidated.ok, true);
@@ -318,10 +423,10 @@ test('invalidation matches the kernel transition and is revision-fenced', async 
     assert.equal(invalidated.state.invalidation_reason, 'operator revoked authorization');
     assert.deepEqual(Object.values(invalidated.state.stages).map((stage) => stage.status), ['invalidated', 'invalidated']);
     assert.equal(invalidated.state.execution.status, 'invalidated');
-    const event = pg.events.get('instance-invalidate').at(-1);
+    const event = pg.events.get(pg.key('tenant-invalidate', 'instance-invalidate')).at(-1);
     assert.deepEqual({ revision: event.revision, previous_revision: event.previous_revision, kind: event.event_kind, reason: event.reason }, { revision: 1, previous_revision: 0, kind: 'invalidate', reason: 'operator revoked authorization' });
     assert.deepEqual(await store.invalidate({
-        instanceId: 'instance-invalidate', expectedRevision: 1,
+        tenantId: 'tenant-invalidate', instanceId: 'instance-invalidate', expectedRevision: 1,
         reason: 'again', at: Date.parse('2026-07-21T16:33:00.000Z'),
     }), { ok: false, reason: 'program_instance_invalidated' });
 });
@@ -330,10 +435,11 @@ test('invalidation preserves claimed and indeterminate consequences for safe rec
         const pg = fakePostgres();
         const store = createTrustProgramPostgresStore({ pool: pg.pool });
         const instanceId = `instance-${executionStatus}`;
-        const current = initialState(instanceId);
+        const current = initialState('tenant-consequence', instanceId);
         current.execution.status = executionStatus;
-        await store.create(current);
+        await createState(store, current);
         const invalidated = await store.invalidate({
+            tenantId: 'tenant-consequence',
             instanceId,
             expectedRevision: 0,
             reason: 'authorization revoked while consequence is in flight',
@@ -344,18 +450,111 @@ test('invalidation preserves claimed and indeterminate consequences for safe rec
         assert.equal(invalidated.state.execution.status, executionStatus);
     }
 });
+test('hostile tenant confusion cannot address another tenant instance', async () => {
+    const pg = fakePostgres();
+    const store = createTrustProgramPostgresStore({ pool: pg.pool });
+    const first = initialState('tenant-a', 'shared-instance');
+    const second = initialState('tenant-b', 'shared-instance');
+    await assert.rejects(() => store.create(first), /create input is invalid/);
+    await assert.rejects(() => store.create({
+        tenantId: 'tenant-a', state: { ...first, tenant_id: 'tenant-b' },
+    }), /state binding does not match/);
+    assert.equal((await createState(store, first)).ok, true);
+    assert.equal((await createState(store, second)).ok, true);
+    assert.deepEqual(await store.get({ tenantId: 'tenant-c', instanceId: 'shared-instance' }), { ok: false, reason: 'instance_not_found' });
+    assert.equal((await store.get({ tenantId: 'tenant-b', instanceId: 'shared-instance' })).state.tenant_id, 'tenant-b');
+    await assert.rejects(() => store.get('shared-instance'), /lookup input is invalid/);
+    const forged = { ...first, tenant_id: 'tenant-b', revision: 1 };
+    await assert.rejects(() => store.compareAndSwap({
+        tenantId: 'tenant-a', instanceId: 'shared-instance', expectedRevision: 0,
+        state: forged,
+    }), /state binding does not match/);
+    assert.equal(pg.records.size, 2);
+});
+test('hostile root action digest and CAID reuse fail closed within a tenant', async () => {
+    const pg = fakePostgres();
+    const store = createTrustProgramPostgresStore({ pool: pg.pool });
+    const first = initialState('tenant-root', 'root-a', 'A');
+    assert.equal((await createState(store, first)).ok, true);
+    const reusedAction = initialState('tenant-root', 'root-b', 'B');
+    reusedAction.action_digest = first.action_digest;
+    assert.deepEqual(await createState(store, reusedAction), {
+        ok: false, reason: 'trust_operation_replayed',
+    });
+    const reusedCaid = initialState('tenant-root', 'root-c', 'C');
+    reusedCaid.root_caid = first.root_caid;
+    assert.deepEqual(await createState(store, reusedCaid), {
+        ok: false, reason: 'trust_operation_replayed',
+    });
+    assert.equal((await createState(store, initialState('tenant-other', 'root-b', 'A'))).ok, true);
+});
+test('hostile evidence id, digest, and execution operation reuse fail closed across instances', async () => {
+    const pg = fakePostgres();
+    const store = createTrustProgramPostgresStore({ pool: pg.pool });
+    const first = initialState('tenant-replay', 'replay-a', 'A');
+    const second = initialState('tenant-replay', 'replay-b', 'B');
+    await createState(store, first);
+    await createState(store, second);
+    const evidenceDigest = digest('shared-evidence');
+    const firstEvidence = structuredClone(first);
+    firstEvidence.revision = 1;
+    firstEvidence.updated_at = '2026-07-21T16:31:00.000Z';
+    firstEvidence.stages.identify.evidence.proof = {
+        evidence_id: 'shared-evidence-id', evidence_digest: evidenceDigest,
+    };
+    firstEvidence.used_evidence_ids = ['shared-evidence-id'];
+    assert.equal((await store.compareAndSwap({
+        tenantId: first.tenant_id, instanceId: first.instance_id,
+        expectedRevision: 0, state: firstEvidence,
+    })).ok, true);
+    const replayId = structuredClone(second);
+    replayId.revision = 1;
+    replayId.updated_at = '2026-07-21T16:31:00.000Z';
+    replayId.stages.identify.evidence.proof = {
+        evidence_id: 'shared-evidence-id', evidence_digest: digest('different-evidence'),
+    };
+    replayId.used_evidence_ids = ['shared-evidence-id'];
+    assert.deepEqual(await store.compareAndSwap({
+        tenantId: second.tenant_id, instanceId: second.instance_id,
+        expectedRevision: 0, state: replayId,
+    }), { ok: false, reason: 'evidence_replayed' });
+    replayId.stages.identify.evidence.proof = {
+        evidence_id: 'different-evidence-id', evidence_digest: evidenceDigest,
+    };
+    replayId.used_evidence_ids = ['different-evidence-id'];
+    assert.deepEqual(await store.compareAndSwap({
+        tenantId: second.tenant_id, instanceId: second.instance_id,
+        expectedRevision: 0, state: replayId,
+    }), { ok: false, reason: 'evidence_replayed' });
+    const firstOperation = { ...firstEvidence, revision: 2,
+        updated_at: '2026-07-21T16:32:00.000Z', execution: {
+            ...firstEvidence.execution, operation_id: 'shared-operation',
+        } };
+    assert.equal((await store.compareAndSwap({
+        tenantId: first.tenant_id, instanceId: first.instance_id,
+        expectedRevision: 1, state: firstOperation,
+    })).ok, true);
+    const replayOperation = structuredClone(second);
+    replayOperation.revision = 1;
+    replayOperation.updated_at = '2026-07-21T16:31:00.000Z';
+    replayOperation.execution.operation_id = 'shared-operation';
+    assert.deepEqual(await store.compareAndSwap({
+        tenantId: second.tenant_id, instanceId: second.instance_id,
+        expectedRevision: 0, state: replayOperation,
+    }), { ok: false, reason: 'trust_operation_replayed' });
+});
 test('malformed rows, digest mismatch, ambiguous outcomes, and errors fail closed', async () => {
     const pg = fakePostgres();
     const store = createTrustProgramPostgresStore({ pool: pg.pool });
-    await store.create(initialState('instance-closed'));
-    pg.records.get('instance-closed').state_digest = `sha256:${'00'.repeat(32)}`;
-    await assert.rejects(() => store.get('instance-closed'), /invalid state envelope/);
+    await createState(store, initialState('tenant-closed', 'instance-closed'));
+    pg.records.get(pg.key('tenant-closed', 'instance-closed')).state_digest = `sha256:${'00'.repeat(32)}`;
+    await assert.rejects(() => store.get({ tenantId: 'tenant-closed', instanceId: 'instance-closed' }), /invalid state envelope/);
     assert.equal(pg.transactionLog.at(-1), 'ROLLBACK');
     pg.returnNext({ rowCount: 0, rows: [] });
-    await assert.rejects(() => store.get('instance-missing'), /outcome is ambiguous/);
+    await assert.rejects(() => store.get({ tenantId: 'tenant-closed', instanceId: 'instance-missing' }), /outcome is ambiguous/);
     assert.equal(pg.transactionLog.at(-1), 'ROLLBACK');
     pg.throwNext(new Error('database unavailable'));
-    await assert.rejects(() => store.get('instance-missing'), /database unavailable/);
+    await assert.rejects(() => store.get({ tenantId: 'tenant-closed', instanceId: 'instance-missing' }), /database unavailable/);
     assert.equal(pg.transactionLog.at(-1), 'ROLLBACK');
     assert.throws(() => createTrustProgramPostgresStore({ pool: { query: async () => ({}) } }), /transaction-capable pg pool/);
 });

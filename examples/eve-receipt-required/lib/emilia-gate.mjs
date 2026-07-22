@@ -34,7 +34,7 @@
 //
 //   GENERATED — do not edit by hand. Regenerate with:
 //     npx @emilia-protocol/require-receipt   (or: node build-drop-in.mjs)
-//   source: @emilia-protocol/require-receipt@0.6.1  ·  content-sha256:c436de73c8e5d263
+//   source: @emilia-protocol/require-receipt@0.7.0  ·  content-sha256:e985dfce5e0704b7
 //   docs: https://www.emiliaprotocol.ai/gate   spec: draft-schrock-ep-authorization-receipts
 
 // SPDX-License-Identifier: Apache-2.0
@@ -182,6 +182,7 @@ export const APPROVAL_POLL_TOKEN_PATTERN = /^apt_[a-f0-9]{48}$/;
 export const APPROVAL_IDEMPOTENCY_KEY_PATTERN = /^[A-Za-z0-9][A-Za-z0-9._:-]{15,127}$/;
 export const APPROVAL_STATUSES = Object.freeze([
     'pending',
+    'indeterminate',
     'approved',
     'denied',
     'expired',
@@ -404,6 +405,17 @@ function assertReceiptState(body) {
     else if (body.receipt !== undefined) {
         throw new Error('receipt_on_nonapproved_status');
     }
+    if (body.status === 'indeterminate') {
+        if (!isPlainObject(body.reconciliation)
+            || !exactKeys(body.reconciliation, ['retry_safe', 'state'])
+            || body.reconciliation.state !== 'required'
+            || body.reconciliation.retry_safe !== false) {
+            throw new Error('approval_reconciliation_invalid');
+        }
+    }
+    else if (body.reconciliation !== undefined) {
+        throw new Error('approval_reconciliation_invalid');
+    }
 }
 export async function beginReceiptApproval({ authorization, trustedAuthorization, challenge, action, approver_id, idempotency_key, requesterAuthorization, fetchImpl = fetch, }) {
     const auth = requirePinnedAuthorization(authorization, trustedAuthorization);
@@ -432,11 +444,13 @@ export async function beginReceiptApproval({ authorization, trustedAuthorization
             idempotency_key,
         }),
     });
-    if (response.status !== 201)
+    if (response.status !== 201 && response.status !== 202) {
         throw new Error(`approval_request_failed:${response.status}`);
+    }
     const body = await readBoundedJson(response);
     validateRequestId(body.request_id);
-    if (body.status !== 'pending')
+    const expectedStatus = response.status === 201 ? 'pending' : 'indeterminate';
+    if (body.status !== expectedStatus)
         throw new Error('approval_initial_status_invalid');
     if (typeof body.poll_token !== 'string' || !APPROVAL_POLL_TOKEN_PATTERN.test(body.poll_token)) {
         throw new Error('approval_poll_token_invalid');
@@ -444,19 +458,23 @@ export async function beginReceiptApproval({ authorization, trustedAuthorization
     if (typeof body.expires_at !== 'string' || !Number.isFinite(Date.parse(body.expires_at))) {
         throw new Error('approval_expiry_invalid');
     }
-    let approvalUrl;
-    try {
-        approvalUrl = new URL(body.approval_url);
+    if (body.status === 'pending') {
+        let approvalUrl;
+        try {
+            approvalUrl = new URL(body.approval_url);
+        }
+        catch {
+            throw new Error('approval_url_invalid');
+        }
+        if (approvalUrl.protocol !== 'https:' || approvalUrl.origin !== new URL(auth.authorization_endpoint).origin
+            || approvalUrl.username || approvalUrl.password || approvalUrl.hash) {
+            throw new Error('approval_url_origin_mismatch');
+        }
     }
-    catch {
-        throw new Error('approval_url_invalid');
+    else if (body.approval_url !== undefined) {
+        throw new Error('approval_url_on_indeterminate_status');
     }
-    if (approvalUrl.protocol !== 'https:' || approvalUrl.origin !== new URL(auth.authorization_endpoint).origin
-        || approvalUrl.username || approvalUrl.password || approvalUrl.hash) {
-        throw new Error('approval_url_origin_mismatch');
-    }
-    if (body.receipt !== undefined)
-        throw new Error('receipt_on_nonapproved_status');
+    assertReceiptState(body);
     return body;
 }
 export async function pollReceiptApproval({ authorization, trustedAuthorization, request_id, poll_token, fetchImpl = fetch, }) {

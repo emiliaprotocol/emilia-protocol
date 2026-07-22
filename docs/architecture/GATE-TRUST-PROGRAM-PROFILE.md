@@ -2,7 +2,7 @@
 
 # EMILIA Gate Trust Program Profile v1
 
-**Status:** private implementation profile; not a deployment or standardization claim
+**Status:** public experimental implementation profile; not a deployment or standardization claim
 
 **Machine discriminator:** `EP-GATE-TRUST-PROGRAM-PROFILE-v1`
 
@@ -10,11 +10,11 @@
 
 **Reference API:** `packages/gate/src/trust-program.ts`
 
-This document is an internal implementation and operations contract for the
-private EMILIA Gate Trust Program build. It is not a standard, an IETF
+This document is an implementation and operations contract for the public
+experimental EMILIA Gate Trust Program build. It is not a standard, an IETF
 Internet-Draft, a proposal for IETF adoption, or an assertion of independent
 interoperability. The capitalized terms MUST, MUST NOT, REQUIRED, SHOULD, and
-MAY describe requirements of this private profile only.
+MAY describe requirements of this implementation profile only.
 
 ## 1. Purpose and boundary
 

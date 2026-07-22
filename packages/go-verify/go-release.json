@@ -1,6 +1,6 @@
 {
   "@version": "EP-GO-MODULE-RELEASE-v1",
   "module": "github.com/emiliaprotocol/emilia-protocol/packages/go-verify/v2",
-  "version": "2.3.1",
-  "tag": "packages/go-verify/v2.3.1"
+  "version": "2.4.0",
+  "tag": "packages/go-verify/v2.4.0"
 }

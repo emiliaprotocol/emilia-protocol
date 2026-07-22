@@ -383,7 +383,7 @@ export function compileReceiptProgram(
 }
 
 /**
- * Construct a private receipt-program -> Base effect adapter.
+ * Construct an experimental receipt-program -> Base effect adapter.
  *
  * The adapter is fail-closed and constructor-pins every trust callback. It is
  * still a two-ledger saga: EMILIA's capability reservation and the Base

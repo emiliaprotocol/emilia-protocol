@@ -1,7 +1,7 @@
 <!-- SPDX-License-Identifier: Apache-2.0 -->
 # EMILIA Action Escrow Security Contract
 
-**Status:** private implementation contract; not a deployment or standardization claim
+**Status:** public implementation contract; not a deployment or standardization claim
 
 **Profile family:** `EP-ACTION-ESCROW-*`
 

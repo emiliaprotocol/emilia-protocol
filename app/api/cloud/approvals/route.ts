@@ -23,6 +23,12 @@ const PAYMENT_REFERENCE_PATTERN = /^[A-Za-z0-9][A-Za-z0-9:._/-]{2,199}$/;
 const CONTROL_CHARACTERS = /[\u0000-\u001f\u007f]/;
 const SHA256_DIGEST_PATTERN = /^sha256:[a-f0-9]{64}$/;
 const ACQUISITION_REQUEST_PATTERN = /^apr_[a-f0-9]{32}$/;
+const APPROVAL_BOUNDARY_HEADER = 'x-emilia-approval-boundary';
+
+function preBoundary<T extends NextResponse>(response: T): T {
+  response.headers.set(APPROVAL_BOUNDARY_HEADER, 'not-entered');
+  return response;
+}
 
 function authHeader(request: NextRequest): string {
   return request.headers.get('authorization') || '';
@@ -56,7 +62,10 @@ async function relayJson(response: Response) {
   });
 }
 
-function validateApprovalInput(body: any): [string, string] | null {
+function validateApprovalInput(
+  body: any,
+  scope: { tenantId: string; environment: string },
+): [string, string] | null {
   if (body === null || typeof body !== 'object' || Array.isArray(body)) {
     return ['invalid_body', 'request body must be a JSON object'];
   }
@@ -97,6 +106,8 @@ function validateApprovalInput(body: any): [string, string] | null {
     'acquisition_action_hash',
     'acquisition_action_caid',
     'acquisition_challenge_hash',
+    'acquisition_tenant_id',
+    'acquisition_environment',
   ];
   const acquisitionCount = acquisitionKeys.filter((key) => body[key] !== undefined).length;
   if (acquisitionCount !== 0 && acquisitionCount !== acquisitionKeys.length) {
@@ -106,7 +117,9 @@ function validateApprovalInput(body: any): [string, string] | null {
     if (!ACQUISITION_REQUEST_PATTERN.test(body.acquisition_request_id || '')
         || !SHA256_DIGEST_PATTERN.test(body.acquisition_request_digest || '')
         || !SHA256_DIGEST_PATTERN.test(body.acquisition_action_hash || '')
-        || !SHA256_DIGEST_PATTERN.test(body.acquisition_challenge_hash || '')) {
+        || !SHA256_DIGEST_PATTERN.test(body.acquisition_challenge_hash || '')
+        || body.acquisition_tenant_id !== scope.tenantId
+        || body.acquisition_environment !== scope.environment) {
       return ['invalid_acquisition_binding', 'the acquisition binding identifiers are malformed'];
     }
     const material = {
@@ -174,18 +187,20 @@ export async function GET(request: NextRequest) {
 }
 
 export async function POST(request: NextRequest) {
+  let boundaryEntered = false;
   try {
     const auth = await authenticateCloudRequest(request);
-    if (!auth) return epProblem(401, 'unauthorized', 'A valid Cloud API key is required');
+    if (!auth) return preBoundary(epProblem(401, 'unauthorized', 'A valid Cloud API key is required'));
     requirePermission(auth, 'approval_request');
 
     const parsed = await readLimitedJson(request, MAX_APPROVAL_REQUEST_BYTES, { invalidValue: {} });
-    if (!parsed.ok) return epProblem(parsed.status, parsed.code, parsed.detail);
+    if (!parsed.ok) return preBoundary(epProblem(parsed.status, parsed.code, parsed.detail));
     const body = parsed.value;
-    const inputError = validateApprovalInput(body);
-    if (inputError) return epProblem(400, inputError[0], inputError[1]);
+    const inputError = validateApprovalInput(body, auth);
+    if (inputError) return preBoundary(epProblem(400, inputError[0], inputError[1]));
 
     const authorization = authHeader(request);
+    boundaryEntered = true;
     const receiptResponse = await createTrustReceipt(delegatedRequest(
       new URL('/api/v1/trust-receipts', request.url),
       authorization,
@@ -203,6 +218,8 @@ export async function POST(request: NextRequest) {
           acquisition_action_hash: body.acquisition_action_hash,
           acquisition_action_caid: body.acquisition_action_caid,
           acquisition_challenge_hash: body.acquisition_challenge_hash,
+          acquisition_tenant_id: body.acquisition_tenant_id,
+          acquisition_environment: body.acquisition_environment,
         } : {}),
         display_summary: `Release ${body.currency} ${body.amount} to ${body.counterparty_name.trim()}`,
         expires_in_sec: 60 * 60,
@@ -233,6 +250,8 @@ export async function POST(request: NextRequest) {
         ...(body.acquisition_request_id ? {
           acquisition_request_id: body.acquisition_request_id,
           acquisition_request_digest: body.acquisition_request_digest,
+          acquisition_tenant_id: body.acquisition_tenant_id,
+          acquisition_environment: body.acquisition_environment,
           return_existing: true,
         } : {}),
       },
@@ -261,9 +280,11 @@ export async function POST(request: NextRequest) {
     });
   } catch (error) {
     if (error instanceof CloudAuthorizationError) {
-      return epProblem(403, 'approval_request_permission_required', error.message);
+      const response = epProblem(403, 'approval_request_permission_required', error.message);
+      return boundaryEntered ? response : preBoundary(response);
     }
     logger.error('[cloud/approvals] POST failed:', error);
-    return epProblem(500, 'internal_error', 'Approval request failed');
+    const response = epProblem(500, 'internal_error', 'Approval request failed');
+    return boundaryEntered ? response : preBoundary(response);
   }
 }

@@ -1,6 +1,6 @@
+import type { TrustProgramStore } from './trust-program.js';
 export declare const TRUST_PROGRAM_PG_STORE_VERSION = "EP-GATE-TRUST-PROGRAM-PG-STORE-v1";
 export declare const TRUST_PROGRAM_MAX_STATE_BYTES: number;
-type RecordLike = Record<string, any>;
 type QueryResult = {
     rowCount: number | null;
     rows?: any[];
@@ -13,10 +13,10 @@ type PgPool = {
     connect: () => Promise<PgClient>;
 };
 export declare const TRUST_PROGRAM_POSTGRES_SQL: Readonly<{
-    create: "SELECT ok, reason, instance_id, revision, state_json, state_digest\nFROM trust_program_private.trust_program_create($1::text, $2::text, $3::text, $4::text)";
-    get: "SELECT ok, reason, instance_id, revision, state_json, state_digest\nFROM trust_program_private.trust_program_get($1::text)";
-    compareAndSwap: "SELECT ok, reason, instance_id, revision, state_json, state_digest\nFROM trust_program_private.trust_program_compare_and_swap(\n  $1::text, $2::bigint, $3::bigint, $4::text, $5::text, $6::text\n)";
-    invalidate: "SELECT ok, reason, instance_id, revision, state_json, state_digest\nFROM trust_program_private.trust_program_invalidate(\n  $1::text, $2::bigint, $3::text, $4::text, $5::text, $6::text\n)";
+    create: "SELECT ok, reason, tenant_id, instance_id, revision, state_json, state_digest\nFROM trust_program_private.trust_program_create(\n  $1::text, $2::text, $3::text, $4::text, $5::text\n)";
+    get: "SELECT ok, reason, tenant_id, instance_id, revision, state_json, state_digest\nFROM trust_program_private.trust_program_get($1::text, $2::text)";
+    compareAndSwap: "SELECT ok, reason, tenant_id, instance_id, revision, state_json, state_digest\nFROM trust_program_private.trust_program_compare_and_swap(\n  $1::text, $2::text, $3::bigint, $4::bigint, $5::text, $6::text, $7::text\n)";
+    invalidate: "SELECT ok, reason, tenant_id, instance_id, revision, state_json, state_digest\nFROM trust_program_private.trust_program_invalidate(\n  $1::text, $2::text, $3::bigint, $4::text, $5::text, $6::text, $7::text\n)";
 }>;
 /**
  * Create the exact durable store consumed by createTrustProgramKernel().
@@ -25,46 +25,15 @@ export declare const TRUST_PROGRAM_POSTGRES_SQL: Readonly<{
  */
 export declare function createTrustProgramPostgresStore({ pool }?: {
     pool?: PgPool;
-}): Readonly<{
-    version: "EP-GATE-TRUST-PROGRAM-PG-STORE-v1";
-    durable: true;
-    create(state: RecordLike): Promise<{
-        ok: false;
-        reason: string;
-    } | {
-        ok: true;
-        state: RecordLike;
-    }>;
-    get(instanceId: string): Promise<{
-        ok: false;
-        reason: string;
-    } | {
-        ok: true;
-        state: RecordLike;
-    }>;
-    compareAndSwap({ instanceId, expectedRevision, state }: RecordLike): Promise<{
-        ok: false;
-        reason: string;
-    } | {
-        ok: true;
-        state: RecordLike;
-    }>;
-    invalidate({ instanceId, expectedRevision, reason, at }: RecordLike): Promise<{
-        ok: false;
-        reason: string;
-    } | {
-        ok: true;
-        state: RecordLike;
-    }>;
-}>;
+}): TrustProgramStore;
 declare const _default: {
     TRUST_PROGRAM_PG_STORE_VERSION: string;
     TRUST_PROGRAM_MAX_STATE_BYTES: number;
     TRUST_PROGRAM_POSTGRES_SQL: Readonly<{
-        create: "SELECT ok, reason, instance_id, revision, state_json, state_digest\nFROM trust_program_private.trust_program_create($1::text, $2::text, $3::text, $4::text)";
-        get: "SELECT ok, reason, instance_id, revision, state_json, state_digest\nFROM trust_program_private.trust_program_get($1::text)";
-        compareAndSwap: "SELECT ok, reason, instance_id, revision, state_json, state_digest\nFROM trust_program_private.trust_program_compare_and_swap(\n  $1::text, $2::bigint, $3::bigint, $4::text, $5::text, $6::text\n)";
-        invalidate: "SELECT ok, reason, instance_id, revision, state_json, state_digest\nFROM trust_program_private.trust_program_invalidate(\n  $1::text, $2::bigint, $3::text, $4::text, $5::text, $6::text\n)";
+        create: "SELECT ok, reason, tenant_id, instance_id, revision, state_json, state_digest\nFROM trust_program_private.trust_program_create(\n  $1::text, $2::text, $3::text, $4::text, $5::text\n)";
+        get: "SELECT ok, reason, tenant_id, instance_id, revision, state_json, state_digest\nFROM trust_program_private.trust_program_get($1::text, $2::text)";
+        compareAndSwap: "SELECT ok, reason, tenant_id, instance_id, revision, state_json, state_digest\nFROM trust_program_private.trust_program_compare_and_swap(\n  $1::text, $2::text, $3::bigint, $4::bigint, $5::text, $6::text, $7::text\n)";
+        invalidate: "SELECT ok, reason, tenant_id, instance_id, revision, state_json, state_digest\nFROM trust_program_private.trust_program_invalidate(\n  $1::text, $2::text, $3::bigint, $4::text, $5::text, $6::text, $7::text\n)";
     }>;
     createTrustProgramPostgresStore: typeof createTrustProgramPostgresStore;
 };

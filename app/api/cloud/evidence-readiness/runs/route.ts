@@ -12,6 +12,7 @@ export const dynamic = "force-dynamic";
 const MAX_LIMIT = 100;
 const DEFAULT_LIMIT = 50;
 const MAX_WINDOW_MS = 31 * 24 * 60 * 60 * 1000;
+const EVIDENCE_ENVIRONMENTS = new Set(["development", "staging", "production"]);
 
 function boundedText(value: unknown, max = 512): string | null {
   if (typeof value !== "string") return null;
@@ -61,14 +62,11 @@ export async function GET(request: Request) {
     if (!auth) return EP_ERRORS.UNAUTHORIZED();
     requirePermission(auth, "read");
 
-    // audit_events predates Cloud environments. Until each persisted row has
-    // an environment binding, admitting a staging/development key would let it
-    // read the tenant's production receipt stream. Fail closed instead.
-    if (auth.environment !== "production") {
+    if (!EVIDENCE_ENVIRONMENTS.has(auth.environment)) {
       return epProblem(
         403,
-        "environment_scope_unsupported",
-        "Evidence readiness currently requires a production-scoped Cloud key.",
+        "environment_scope_invalid",
+        "Evidence readiness requires an authenticated Cloud environment scope.",
       );
     }
 
@@ -97,6 +95,7 @@ export async function GET(request: Request) {
     const result = await loadTenantGuardReceipts({
       supabase: getGuardedClient(),
       tenantId: auth.tenantId,
+      environment: auth.environment,
       limit,
       dateFrom: from.value,
       dateTo: to.value,

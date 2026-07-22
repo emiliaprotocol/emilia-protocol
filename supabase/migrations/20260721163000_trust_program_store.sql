@@ -14,17 +14,23 @@ CREATE TABLE trust_program_private.store_root (
 INSERT INTO trust_program_private.store_root (root_id) VALUES (1);
 
 CREATE TABLE trust_program_private.instances (
-  instance_id TEXT PRIMARY KEY
+  tenant_id TEXT NOT NULL
+    CHECK (
+      octet_length(tenant_id) BETWEEN 1 AND 512
+      AND tenant_id !~ '[[:cntrl:]]'
+    ),
+  instance_id TEXT NOT NULL
     CHECK (instance_id ~ '^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$'),
   revision BIGINT NOT NULL CHECK (revision >= 0 AND revision <= 9007199254740991),
   state_json TEXT NOT NULL CHECK (octet_length(state_json) <= 4194304),
   state_digest TEXT NOT NULL CHECK (state_digest ~ '^sha256:[0-9a-f]{64}$'),
-  updated_at TEXT NOT NULL
+  updated_at TEXT NOT NULL,
+  PRIMARY KEY (tenant_id, instance_id)
 );
 
 CREATE TABLE trust_program_private.events (
-  instance_id TEXT NOT NULL
-    REFERENCES trust_program_private.instances(instance_id) ON DELETE RESTRICT,
+  tenant_id TEXT NOT NULL,
+  instance_id TEXT NOT NULL,
   revision BIGINT NOT NULL CHECK (revision >= 0 AND revision <= 9007199254740991),
   previous_revision BIGINT NULL,
   event_kind TEXT NOT NULL CHECK (event_kind IN ('create', 'cas', 'invalidate')),
@@ -32,7 +38,9 @@ CREATE TABLE trust_program_private.events (
   state_digest TEXT NOT NULL CHECK (state_digest ~ '^sha256:[0-9a-f]{64}$'),
   reason TEXT NULL,
   recorded_at TEXT NOT NULL,
-  PRIMARY KEY (instance_id, revision),
+  PRIMARY KEY (tenant_id, instance_id, revision),
+  FOREIGN KEY (tenant_id, instance_id)
+    REFERENCES trust_program_private.instances(tenant_id, instance_id) ON DELETE RESTRICT,
   CHECK (
     (event_kind = 'create' AND revision = 0 AND previous_revision IS NULL)
     OR (
@@ -46,12 +54,71 @@ CREATE TABLE trust_program_private.events (
   )
 );
 
+CREATE TABLE trust_program_private.evidence_id_consumptions (
+  tenant_id TEXT NOT NULL,
+  evidence_id TEXT NOT NULL
+    CHECK (evidence_id ~ '^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$'),
+  instance_id TEXT NOT NULL,
+  revision BIGINT NOT NULL CHECK (revision >= 0 AND revision <= 9007199254740991),
+  recorded_at TEXT NOT NULL,
+  PRIMARY KEY (tenant_id, evidence_id),
+  FOREIGN KEY (tenant_id, instance_id, revision)
+    REFERENCES trust_program_private.events(tenant_id, instance_id, revision) ON DELETE RESTRICT
+);
+
+CREATE TABLE trust_program_private.evidence_digest_consumptions (
+  tenant_id TEXT NOT NULL,
+  evidence_digest TEXT NOT NULL
+    CHECK (evidence_digest ~ '^sha256:[0-9a-f]{64}$'),
+  instance_id TEXT NOT NULL,
+  revision BIGINT NOT NULL CHECK (revision >= 0 AND revision <= 9007199254740991),
+  recorded_at TEXT NOT NULL,
+  PRIMARY KEY (tenant_id, evidence_digest),
+  FOREIGN KEY (tenant_id, instance_id, revision)
+    REFERENCES trust_program_private.events(tenant_id, instance_id, revision) ON DELETE RESTRICT
+);
+
+CREATE TABLE trust_program_private.trust_roots (
+  tenant_id TEXT NOT NULL,
+  root_action_digest TEXT NOT NULL
+    CHECK (root_action_digest ~ '^sha256:[0-9a-f]{64}$'),
+  root_caid TEXT NOT NULL,
+  instance_id TEXT NOT NULL,
+  revision BIGINT NOT NULL CHECK (revision = 0),
+  recorded_at TEXT NOT NULL,
+  PRIMARY KEY (tenant_id, root_action_digest),
+  UNIQUE (tenant_id, root_caid),
+  UNIQUE (tenant_id, instance_id),
+  FOREIGN KEY (tenant_id, instance_id, revision)
+    REFERENCES trust_program_private.events(tenant_id, instance_id, revision) ON DELETE RESTRICT
+);
+
+CREATE TABLE trust_program_private.execution_operation_consumptions (
+  tenant_id TEXT NOT NULL,
+  operation_id TEXT NOT NULL
+    CHECK (operation_id ~ '^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$'),
+  instance_id TEXT NOT NULL,
+  revision BIGINT NOT NULL CHECK (revision >= 0 AND revision <= 9007199254740991),
+  recorded_at TEXT NOT NULL,
+  PRIMARY KEY (tenant_id, operation_id),
+  FOREIGN KEY (tenant_id, instance_id, revision)
+    REFERENCES trust_program_private.events(tenant_id, instance_id, revision) ON DELETE RESTRICT
+);
+
 ALTER TABLE trust_program_private.store_root ENABLE ROW LEVEL SECURITY;
 ALTER TABLE trust_program_private.store_root FORCE ROW LEVEL SECURITY;
 ALTER TABLE trust_program_private.instances ENABLE ROW LEVEL SECURITY;
 ALTER TABLE trust_program_private.instances FORCE ROW LEVEL SECURITY;
 ALTER TABLE trust_program_private.events ENABLE ROW LEVEL SECURITY;
 ALTER TABLE trust_program_private.events FORCE ROW LEVEL SECURITY;
+ALTER TABLE trust_program_private.evidence_id_consumptions ENABLE ROW LEVEL SECURITY;
+ALTER TABLE trust_program_private.evidence_id_consumptions FORCE ROW LEVEL SECURITY;
+ALTER TABLE trust_program_private.evidence_digest_consumptions ENABLE ROW LEVEL SECURITY;
+ALTER TABLE trust_program_private.evidence_digest_consumptions FORCE ROW LEVEL SECURITY;
+ALTER TABLE trust_program_private.trust_roots ENABLE ROW LEVEL SECURITY;
+ALTER TABLE trust_program_private.trust_roots FORCE ROW LEVEL SECURITY;
+ALTER TABLE trust_program_private.execution_operation_consumptions ENABLE ROW LEVEL SECURITY;
+ALTER TABLE trust_program_private.execution_operation_consumptions FORCE ROW LEVEL SECURITY;
 
 REVOKE ALL ON TABLE trust_program_private.store_root
   FROM PUBLIC, anon, authenticated, service_role;
@@ -59,8 +126,17 @@ REVOKE ALL ON TABLE trust_program_private.instances
   FROM PUBLIC, anon, authenticated, service_role;
 REVOKE ALL ON TABLE trust_program_private.events
   FROM PUBLIC, anon, authenticated, service_role;
+REVOKE ALL ON TABLE trust_program_private.evidence_id_consumptions
+  FROM PUBLIC, anon, authenticated, service_role;
+REVOKE ALL ON TABLE trust_program_private.evidence_digest_consumptions
+  FROM PUBLIC, anon, authenticated, service_role;
+REVOKE ALL ON TABLE trust_program_private.trust_roots
+  FROM PUBLIC, anon, authenticated, service_role;
+REVOKE ALL ON TABLE trust_program_private.execution_operation_consumptions
+  FROM PUBLIC, anon, authenticated, service_role;
 
 CREATE OR REPLACE FUNCTION trust_program_private.validate_state(
+  p_tenant_id pg_catalog.text,
   p_instance_id pg_catalog.text,
   p_revision pg_catalog.int8,
   p_state_json pg_catalog.text,
@@ -76,7 +152,10 @@ AS $$
 DECLARE
   v_state pg_catalog.jsonb;
 BEGIN
-  IF p_instance_id IS NULL
+  IF p_tenant_id IS NULL
+     OR pg_catalog.octet_length(p_tenant_id) NOT BETWEEN 1 AND 512
+     OR p_tenant_id ~ '[[:cntrl:]]'
+     OR p_instance_id IS NULL
      OR p_instance_id !~ '^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$'
      OR p_revision IS NULL
      OR p_revision < 0
@@ -105,7 +184,22 @@ BEGIN
   END;
 
   IF pg_catalog.jsonb_typeof(v_state) IS DISTINCT FROM 'object'
+     OR v_state ->> 'tenant_id' IS DISTINCT FROM p_tenant_id
      OR v_state ->> 'instance_id' IS DISTINCT FROM p_instance_id
+     OR v_state ->> 'root_caid' IS NULL
+     OR v_state ->> 'root_caid'
+          !~ '^caid:1:[a-z][a-z0-9.-]*\.[1-9][0-9]*:jcs-sha256:[A-Za-z0-9_-]{43}$'
+     OR v_state ->> 'action_digest' IS NULL
+     OR v_state ->> 'action_digest' !~ '^sha256:[0-9a-f]{64}$'
+     OR pg_catalog.jsonb_typeof(v_state -> 'execution') IS DISTINCT FROM 'object'
+     OR (
+       (v_state -> 'execution') ? 'operation_id'
+       AND (
+         v_state #>> '{execution,operation_id}' IS NULL
+         OR v_state #>> '{execution,operation_id}'
+              !~ '^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$'
+       )
+     )
      OR NOT pg_catalog.pg_input_is_valid(v_state ->> 'revision', 'bigint')
      OR (v_state ->> 'revision')::pg_catalog.int8 IS DISTINCT FROM p_revision
      OR v_state ->> 'updated_at' IS DISTINCT FROM p_event_at
@@ -114,6 +208,55 @@ BEGIN
   END IF;
 
   RETURN v_state;
+END;
+$$;
+
+CREATE OR REPLACE FUNCTION trust_program_private.state_evidence(
+  p_state pg_catalog.jsonb
+)
+RETURNS TABLE (
+  evidence_id pg_catalog.text,
+  evidence_digest pg_catalog.text
+)
+LANGUAGE plpgsql
+IMMUTABLE
+SECURITY DEFINER
+SET search_path = ''
+AS $$
+DECLARE
+  v_stage pg_catalog.jsonb;
+BEGIN
+  IF pg_catalog.jsonb_typeof(p_state -> 'stages') IS DISTINCT FROM 'object' THEN
+    RAISE EXCEPTION 'TP_ARGUMENT_INVALID' USING ERRCODE = '22023';
+  END IF;
+
+  FOR v_stage IN
+    SELECT stage.value
+    FROM pg_catalog.jsonb_each(p_state -> 'stages') AS stage(key, value)
+  LOOP
+    IF pg_catalog.jsonb_typeof(v_stage) IS DISTINCT FROM 'object'
+       OR pg_catalog.jsonb_typeof(v_stage -> 'evidence') IS DISTINCT FROM 'object'
+    THEN
+      RAISE EXCEPTION 'TP_ARGUMENT_INVALID' USING ERRCODE = '22023';
+    END IF;
+
+    IF EXISTS (
+      SELECT 1
+      FROM pg_catalog.jsonb_each(v_stage -> 'evidence') AS item(key, value)
+      WHERE pg_catalog.jsonb_typeof(item.value) IS DISTINCT FROM 'object'
+         OR item.value ->> 'evidence_id' IS NULL
+         OR item.value ->> 'evidence_id'
+              !~ '^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$'
+         OR item.value ->> 'evidence_digest' IS NULL
+         OR item.value ->> 'evidence_digest' !~ '^sha256:[0-9a-f]{64}$'
+    ) THEN
+      RAISE EXCEPTION 'TP_ARGUMENT_INVALID' USING ERRCODE = '22023';
+    END IF;
+
+    RETURN QUERY
+    SELECT DISTINCT item.value ->> 'evidence_id', item.value ->> 'evidence_digest'
+    FROM pg_catalog.jsonb_each(v_stage -> 'evidence') AS item(key, value);
+  END LOOP;
 END;
 $$;
 
@@ -133,7 +276,28 @@ CREATE TRIGGER trust_program_events_immutable
   FOR EACH ROW
   EXECUTE FUNCTION trust_program_private.reject_event_mutation();
 
+CREATE TRIGGER trust_program_evidence_ids_immutable
+  BEFORE UPDATE OR DELETE ON trust_program_private.evidence_id_consumptions
+  FOR EACH ROW
+  EXECUTE FUNCTION trust_program_private.reject_event_mutation();
+
+CREATE TRIGGER trust_program_evidence_digests_immutable
+  BEFORE UPDATE OR DELETE ON trust_program_private.evidence_digest_consumptions
+  FOR EACH ROW
+  EXECUTE FUNCTION trust_program_private.reject_event_mutation();
+
+CREATE TRIGGER trust_program_roots_immutable
+  BEFORE UPDATE OR DELETE ON trust_program_private.trust_roots
+  FOR EACH ROW
+  EXECUTE FUNCTION trust_program_private.reject_event_mutation();
+
+CREATE TRIGGER trust_program_execution_operations_immutable
+  BEFORE UPDATE OR DELETE ON trust_program_private.execution_operation_consumptions
+  FOR EACH ROW
+  EXECUTE FUNCTION trust_program_private.reject_event_mutation();
+
 CREATE OR REPLACE FUNCTION trust_program_private.trust_program_create(
+  p_tenant_id pg_catalog.text,
   p_instance_id pg_catalog.text,
   p_state_json pg_catalog.text,
   p_state_digest pg_catalog.text,
@@ -142,6 +306,7 @@ CREATE OR REPLACE FUNCTION trust_program_private.trust_program_create(
 RETURNS TABLE (
   ok pg_catalog.bool,
   reason pg_catalog.text,
+  tenant_id pg_catalog.text,
   instance_id pg_catalog.text,
   revision pg_catalog.int8,
   state_json pg_catalog.text,
@@ -156,7 +321,7 @@ DECLARE
   v_inserted pg_catalog.bool := false;
 BEGIN
   v_state := trust_program_private.validate_state(
-    p_instance_id, 0, p_state_json, p_state_digest, p_event_at
+    p_tenant_id, p_instance_id, 0, p_state_json, p_state_digest, p_event_at
   );
 
   IF v_state ->> 'status' IS DISTINCT FROM 'active' THEN
@@ -171,39 +336,123 @@ BEGIN
     RAISE EXCEPTION 'TP_STORE_CORRUPT' USING ERRCODE = '55000';
   END IF;
 
+  IF EXISTS (
+    SELECT 1
+    FROM trust_program_private.instances AS i
+    WHERE i.tenant_id = p_tenant_id
+      AND i.instance_id = p_instance_id
+  ) THEN
+    RETURN QUERY SELECT false, 'instance_exists'::pg_catalog.text,
+      p_tenant_id, p_instance_id, NULL::pg_catalog.int8,
+      NULL::pg_catalog.text, NULL::pg_catalog.text;
+    RETURN;
+  END IF;
+
+  IF EXISTS (
+    SELECT 1
+    FROM trust_program_private.state_evidence(v_state) AS candidate
+    JOIN trust_program_private.evidence_id_consumptions AS consumed
+      ON consumed.tenant_id = p_tenant_id
+     AND consumed.evidence_id = candidate.evidence_id
+  ) OR EXISTS (
+    SELECT 1
+    FROM trust_program_private.state_evidence(v_state) AS candidate
+    JOIN trust_program_private.evidence_digest_consumptions AS consumed
+      ON consumed.tenant_id = p_tenant_id
+     AND consumed.evidence_digest = candidate.evidence_digest
+  ) THEN
+    RETURN QUERY SELECT false, 'evidence_replayed'::pg_catalog.text,
+      p_tenant_id, p_instance_id, NULL::pg_catalog.int8,
+      NULL::pg_catalog.text, NULL::pg_catalog.text;
+    RETURN;
+  END IF;
+
+  IF EXISTS (
+    SELECT 1
+    FROM trust_program_private.trust_roots AS consumed
+    WHERE consumed.tenant_id = p_tenant_id
+      AND (
+        consumed.root_action_digest = v_state ->> 'action_digest'
+        OR consumed.root_caid = v_state ->> 'root_caid'
+      )
+  ) OR (
+    v_state #>> '{execution,operation_id}' IS NOT NULL
+    AND EXISTS (
+      SELECT 1
+      FROM trust_program_private.execution_operation_consumptions AS consumed
+      WHERE consumed.tenant_id = p_tenant_id
+        AND consumed.operation_id = v_state #>> '{execution,operation_id}'
+    )
+  ) THEN
+    RETURN QUERY SELECT false, 'trust_operation_replayed'::pg_catalog.text,
+      p_tenant_id, p_instance_id, NULL::pg_catalog.int8,
+      NULL::pg_catalog.text, NULL::pg_catalog.text;
+    RETURN;
+  END IF;
+
   INSERT INTO trust_program_private.instances AS i (
-    instance_id, revision, state_json, state_digest, updated_at
+    tenant_id, instance_id, revision, state_json, state_digest, updated_at
   ) VALUES (
-    p_instance_id, 0, p_state_json, p_state_digest, p_event_at
+    p_tenant_id, p_instance_id, 0, p_state_json, p_state_digest, p_event_at
   )
   ON CONFLICT ON CONSTRAINT instances_pkey DO NOTHING
   RETURNING true INTO v_inserted;
 
   IF v_inserted IS DISTINCT FROM true THEN
     RETURN QUERY SELECT false, 'instance_exists'::pg_catalog.text,
-      p_instance_id, NULL::pg_catalog.int8, NULL::pg_catalog.text, NULL::pg_catalog.text;
+      p_tenant_id, p_instance_id, NULL::pg_catalog.int8,
+      NULL::pg_catalog.text, NULL::pg_catalog.text;
     RETURN;
   END IF;
 
   INSERT INTO trust_program_private.events (
-    instance_id, revision, previous_revision, event_kind,
+    tenant_id, instance_id, revision, previous_revision, event_kind,
     state_json, state_digest, reason, recorded_at
   ) VALUES (
-    p_instance_id, 0, NULL, 'create',
+    p_tenant_id, p_instance_id, 0, NULL, 'create',
     p_state_json, p_state_digest, NULL, p_event_at
   );
 
+  INSERT INTO trust_program_private.evidence_id_consumptions (
+    tenant_id, evidence_id, instance_id, revision, recorded_at
+  )
+  SELECT DISTINCT p_tenant_id, candidate.evidence_id, p_instance_id, 0, p_event_at
+  FROM trust_program_private.state_evidence(v_state) AS candidate;
+
+  INSERT INTO trust_program_private.evidence_digest_consumptions (
+    tenant_id, evidence_digest, instance_id, revision, recorded_at
+  )
+  SELECT DISTINCT p_tenant_id, candidate.evidence_digest, p_instance_id, 0, p_event_at
+  FROM trust_program_private.state_evidence(v_state) AS candidate;
+
+  INSERT INTO trust_program_private.trust_roots (
+    tenant_id, root_action_digest, root_caid, instance_id, revision, recorded_at
+  ) VALUES (
+    p_tenant_id, v_state ->> 'action_digest', v_state ->> 'root_caid',
+    p_instance_id, 0, p_event_at
+  );
+
+  IF v_state #>> '{execution,operation_id}' IS NOT NULL THEN
+    INSERT INTO trust_program_private.execution_operation_consumptions (
+      tenant_id, operation_id, instance_id, revision, recorded_at
+    ) VALUES (
+      p_tenant_id, v_state #>> '{execution,operation_id}', p_instance_id, 0, p_event_at
+    );
+  END IF;
+
   RETURN QUERY SELECT true, NULL::pg_catalog.text,
-    p_instance_id, 0::pg_catalog.int8, p_state_json, p_state_digest;
+    p_tenant_id, p_instance_id, 0::pg_catalog.int8, p_state_json, p_state_digest;
 END;
 $$;
 
 CREATE OR REPLACE FUNCTION trust_program_private.trust_program_get(
+  p_tenant_id pg_catalog.text,
   p_instance_id pg_catalog.text
 )
 RETURNS TABLE (
   ok pg_catalog.bool,
   reason pg_catalog.text,
+  tenant_id pg_catalog.text,
   instance_id pg_catalog.text,
   revision pg_catalog.int8,
   state_json pg_catalog.text,
@@ -217,7 +466,10 @@ AS $$
 DECLARE
   v_instance trust_program_private.instances%ROWTYPE;
 BEGIN
-  IF p_instance_id IS NULL
+  IF p_tenant_id IS NULL
+     OR pg_catalog.octet_length(p_tenant_id) NOT BETWEEN 1 AND 512
+     OR p_tenant_id ~ '[[:cntrl:]]'
+     OR p_instance_id IS NULL
      OR p_instance_id !~ '^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$'
   THEN
     RAISE EXCEPTION 'TP_ARGUMENT_INVALID' USING ERRCODE = '22023';
@@ -225,15 +477,18 @@ BEGIN
 
   SELECT i.* INTO v_instance
   FROM trust_program_private.instances AS i
-  WHERE i.instance_id = p_instance_id;
+  WHERE i.tenant_id = p_tenant_id
+    AND i.instance_id = p_instance_id;
 
   IF NOT FOUND THEN
     RETURN QUERY SELECT false, 'instance_not_found'::pg_catalog.text,
-      p_instance_id, NULL::pg_catalog.int8, NULL::pg_catalog.text, NULL::pg_catalog.text;
+      p_tenant_id, p_instance_id, NULL::pg_catalog.int8,
+      NULL::pg_catalog.text, NULL::pg_catalog.text;
     RETURN;
   END IF;
 
   PERFORM trust_program_private.validate_state(
+    v_instance.tenant_id,
     v_instance.instance_id,
     v_instance.revision,
     v_instance.state_json,
@@ -244,7 +499,8 @@ BEGIN
   IF NOT EXISTS (
     SELECT 1
     FROM trust_program_private.events AS e
-    WHERE e.instance_id = v_instance.instance_id
+    WHERE e.tenant_id = v_instance.tenant_id
+      AND e.instance_id = v_instance.instance_id
       AND e.revision = v_instance.revision
       AND e.state_json = v_instance.state_json
       AND e.state_digest = v_instance.state_digest
@@ -253,13 +509,51 @@ BEGIN
     RAISE EXCEPTION 'TP_STORE_CORRUPT' USING ERRCODE = '55000';
   END IF;
 
+  IF NOT EXISTS (
+    SELECT 1
+    FROM trust_program_private.trust_roots AS root
+    WHERE root.tenant_id = v_instance.tenant_id
+      AND root.instance_id = v_instance.instance_id
+      AND root.root_action_digest = v_instance.state_json::pg_catalog.jsonb ->> 'action_digest'
+      AND root.root_caid = v_instance.state_json::pg_catalog.jsonb ->> 'root_caid'
+  ) OR EXISTS (
+    SELECT 1
+    FROM trust_program_private.state_evidence(v_instance.state_json::pg_catalog.jsonb) AS candidate
+    WHERE NOT EXISTS (
+      SELECT 1
+      FROM trust_program_private.evidence_id_consumptions AS consumed
+      WHERE consumed.tenant_id = v_instance.tenant_id
+        AND consumed.evidence_id = candidate.evidence_id
+        AND consumed.instance_id = v_instance.instance_id
+    ) OR NOT EXISTS (
+      SELECT 1
+      FROM trust_program_private.evidence_digest_consumptions AS consumed
+      WHERE consumed.tenant_id = v_instance.tenant_id
+        AND consumed.evidence_digest = candidate.evidence_digest
+        AND consumed.instance_id = v_instance.instance_id
+    )
+  ) OR (
+    v_instance.state_json::pg_catalog.jsonb #>> '{execution,operation_id}' IS NOT NULL
+    AND NOT EXISTS (
+      SELECT 1
+      FROM trust_program_private.execution_operation_consumptions AS consumed
+      WHERE consumed.tenant_id = v_instance.tenant_id
+        AND consumed.operation_id = v_instance.state_json::pg_catalog.jsonb
+              #>> '{execution,operation_id}'
+        AND consumed.instance_id = v_instance.instance_id
+    )
+  ) THEN
+    RAISE EXCEPTION 'TP_STORE_CORRUPT' USING ERRCODE = '55000';
+  END IF;
+
   RETURN QUERY SELECT true, NULL::pg_catalog.text,
-    v_instance.instance_id, v_instance.revision,
+    v_instance.tenant_id, v_instance.instance_id, v_instance.revision,
     v_instance.state_json, v_instance.state_digest;
 END;
 $$;
 
 CREATE OR REPLACE FUNCTION trust_program_private.trust_program_compare_and_swap(
+  p_tenant_id pg_catalog.text,
   p_instance_id pg_catalog.text,
   p_expected_revision pg_catalog.int8,
   p_next_revision pg_catalog.int8,
@@ -270,6 +564,7 @@ CREATE OR REPLACE FUNCTION trust_program_private.trust_program_compare_and_swap(
 RETURNS TABLE (
   ok pg_catalog.bool,
   reason pg_catalog.text,
+  tenant_id pg_catalog.text,
   instance_id pg_catalog.text,
   revision pg_catalog.int8,
   state_json pg_catalog.text,
@@ -293,7 +588,8 @@ BEGIN
   END IF;
 
   v_next_state := trust_program_private.validate_state(
-    p_instance_id, p_next_revision, p_state_json, p_state_digest, p_event_at
+    p_tenant_id, p_instance_id, p_next_revision,
+    p_state_json, p_state_digest, p_event_at
   );
 
   PERFORM 1
@@ -306,16 +602,19 @@ BEGIN
 
   SELECT i.* INTO v_current
   FROM trust_program_private.instances AS i
-  WHERE i.instance_id = p_instance_id
+  WHERE i.tenant_id = p_tenant_id
+    AND i.instance_id = p_instance_id
   FOR UPDATE;
 
   IF NOT FOUND THEN
     RETURN QUERY SELECT false, 'instance_not_found'::pg_catalog.text,
-      p_instance_id, NULL::pg_catalog.int8, NULL::pg_catalog.text, NULL::pg_catalog.text;
+      p_tenant_id, p_instance_id, NULL::pg_catalog.int8,
+      NULL::pg_catalog.text, NULL::pg_catalog.text;
     RETURN;
   END IF;
 
   v_current_state := trust_program_private.validate_state(
+    v_current.tenant_id,
     v_current.instance_id,
     v_current.revision,
     v_current.state_json,
@@ -326,7 +625,8 @@ BEGIN
   IF NOT EXISTS (
     SELECT 1
     FROM trust_program_private.events AS e
-    WHERE e.instance_id = v_current.instance_id
+    WHERE e.tenant_id = v_current.tenant_id
+      AND e.instance_id = v_current.instance_id
       AND e.revision = v_current.revision
       AND e.state_json = v_current.state_json
       AND e.state_digest = v_current.state_digest
@@ -337,17 +637,20 @@ BEGIN
 
   IF v_current.revision IS DISTINCT FROM p_expected_revision THEN
     RETURN QUERY SELECT false, 'revision_conflict'::pg_catalog.text,
-      p_instance_id, NULL::pg_catalog.int8, NULL::pg_catalog.text, NULL::pg_catalog.text;
+      p_tenant_id, p_instance_id, NULL::pg_catalog.int8,
+      NULL::pg_catalog.text, NULL::pg_catalog.text;
     RETURN;
   END IF;
 
   IF p_event_at::pg_catalog.timestamptz < v_current.updated_at::pg_catalog.timestamptz THEN
     RETURN QUERY SELECT false, 'clock_regression'::pg_catalog.text,
-      p_instance_id, NULL::pg_catalog.int8, NULL::pg_catalog.text, NULL::pg_catalog.text;
+      p_tenant_id, p_instance_id, NULL::pg_catalog.int8,
+      NULL::pg_catalog.text, NULL::pg_catalog.text;
     RETURN;
   END IF;
 
-  IF v_next_state ->> 'version' IS DISTINCT FROM v_current_state ->> 'version'
+  IF v_next_state ->> 'tenant_id' IS DISTINCT FROM v_current_state ->> 'tenant_id'
+     OR v_next_state ->> 'version' IS DISTINCT FROM v_current_state ->> 'version'
      OR v_next_state ->> 'instance_id' IS DISTINCT FROM v_current_state ->> 'instance_id'
      OR v_next_state ->> 'program_id' IS DISTINCT FROM v_current_state ->> 'program_id'
      OR v_next_state ->> 'program_version' IS DISTINCT FROM v_current_state ->> 'program_version'
@@ -359,27 +662,143 @@ BEGIN
     RAISE EXCEPTION 'TP_STATE_BINDING_CHANGED' USING ERRCODE = '22023';
   END IF;
 
+  IF NOT EXISTS (
+    SELECT 1
+    FROM trust_program_private.trust_roots AS root
+    WHERE root.tenant_id = p_tenant_id
+      AND root.instance_id = p_instance_id
+      AND root.root_action_digest = v_current_state ->> 'action_digest'
+      AND root.root_caid = v_current_state ->> 'root_caid'
+  ) OR EXISTS (
+    SELECT 1
+    FROM trust_program_private.state_evidence(v_current_state) AS candidate
+    WHERE NOT EXISTS (
+      SELECT 1
+      FROM trust_program_private.evidence_id_consumptions AS consumed
+      WHERE consumed.tenant_id = p_tenant_id
+        AND consumed.evidence_id = candidate.evidence_id
+        AND consumed.instance_id = p_instance_id
+    ) OR NOT EXISTS (
+      SELECT 1
+      FROM trust_program_private.evidence_digest_consumptions AS consumed
+      WHERE consumed.tenant_id = p_tenant_id
+        AND consumed.evidence_digest = candidate.evidence_digest
+        AND consumed.instance_id = p_instance_id
+    )
+  ) OR (
+    v_current_state #>> '{execution,operation_id}' IS NOT NULL
+    AND NOT EXISTS (
+      SELECT 1
+      FROM trust_program_private.execution_operation_consumptions AS consumed
+      WHERE consumed.tenant_id = p_tenant_id
+        AND consumed.operation_id = v_current_state #>> '{execution,operation_id}'
+        AND consumed.instance_id = p_instance_id
+    )
+  ) THEN
+    RAISE EXCEPTION 'TP_STORE_CORRUPT' USING ERRCODE = '55000';
+  END IF;
+
+  IF EXISTS (
+    SELECT 1
+    FROM trust_program_private.state_evidence(v_next_state) AS candidate
+    JOIN trust_program_private.evidence_id_consumptions AS consumed
+      ON consumed.tenant_id = p_tenant_id
+     AND consumed.evidence_id = candidate.evidence_id
+    WHERE consumed.instance_id <> p_instance_id
+  ) OR EXISTS (
+    SELECT 1
+    FROM trust_program_private.state_evidence(v_next_state) AS candidate
+    JOIN trust_program_private.evidence_digest_consumptions AS consumed
+      ON consumed.tenant_id = p_tenant_id
+     AND consumed.evidence_digest = candidate.evidence_digest
+    WHERE consumed.instance_id <> p_instance_id
+  ) THEN
+    RETURN QUERY SELECT false, 'evidence_replayed'::pg_catalog.text,
+      p_tenant_id, p_instance_id, NULL::pg_catalog.int8,
+      NULL::pg_catalog.text, NULL::pg_catalog.text;
+    RETURN;
+  END IF;
+
+  IF v_next_state #>> '{execution,operation_id}' IS NOT NULL
+     AND EXISTS (
+       SELECT 1
+       FROM trust_program_private.execution_operation_consumptions AS consumed
+       WHERE consumed.tenant_id = p_tenant_id
+         AND consumed.operation_id = v_next_state #>> '{execution,operation_id}'
+         AND consumed.instance_id <> p_instance_id
+     )
+  THEN
+    RETURN QUERY SELECT false, 'trust_operation_replayed'::pg_catalog.text,
+      p_tenant_id, p_instance_id, NULL::pg_catalog.int8,
+      NULL::pg_catalog.text, NULL::pg_catalog.text;
+    RETURN;
+  END IF;
+
   UPDATE trust_program_private.instances AS i
   SET revision = p_next_revision,
       state_json = p_state_json,
       state_digest = p_state_digest,
       updated_at = p_event_at
-  WHERE i.instance_id = p_instance_id;
+  WHERE i.tenant_id = p_tenant_id
+    AND i.instance_id = p_instance_id;
 
   INSERT INTO trust_program_private.events (
-    instance_id, revision, previous_revision, event_kind,
+    tenant_id, instance_id, revision, previous_revision, event_kind,
     state_json, state_digest, reason, recorded_at
   ) VALUES (
-    p_instance_id, p_next_revision, p_expected_revision, 'cas',
+    p_tenant_id, p_instance_id, p_next_revision, p_expected_revision, 'cas',
     p_state_json, p_state_digest, NULL, p_event_at
   );
 
+  INSERT INTO trust_program_private.evidence_id_consumptions (
+    tenant_id, evidence_id, instance_id, revision, recorded_at
+  )
+  SELECT DISTINCT p_tenant_id, candidate.evidence_id, p_instance_id,
+    p_next_revision, p_event_at
+  FROM trust_program_private.state_evidence(v_next_state) AS candidate
+  WHERE NOT EXISTS (
+    SELECT 1
+    FROM trust_program_private.evidence_id_consumptions AS consumed
+    WHERE consumed.tenant_id = p_tenant_id
+      AND consumed.evidence_id = candidate.evidence_id
+  );
+
+  INSERT INTO trust_program_private.evidence_digest_consumptions (
+    tenant_id, evidence_digest, instance_id, revision, recorded_at
+  )
+  SELECT DISTINCT p_tenant_id, candidate.evidence_digest, p_instance_id,
+    p_next_revision, p_event_at
+  FROM trust_program_private.state_evidence(v_next_state) AS candidate
+  WHERE NOT EXISTS (
+    SELECT 1
+    FROM trust_program_private.evidence_digest_consumptions AS consumed
+    WHERE consumed.tenant_id = p_tenant_id
+      AND consumed.evidence_digest = candidate.evidence_digest
+  );
+
+  IF v_next_state #>> '{execution,operation_id}' IS NOT NULL THEN
+    IF NOT EXISTS (
+      SELECT 1
+      FROM trust_program_private.execution_operation_consumptions AS consumed
+      WHERE consumed.tenant_id = p_tenant_id
+        AND consumed.operation_id = v_next_state #>> '{execution,operation_id}'
+    ) THEN
+      INSERT INTO trust_program_private.execution_operation_consumptions (
+        tenant_id, operation_id, instance_id, revision, recorded_at
+      ) VALUES (
+        p_tenant_id, v_next_state #>> '{execution,operation_id}',
+        p_instance_id, p_next_revision, p_event_at
+      );
+    END IF;
+  END IF;
+
   RETURN QUERY SELECT true, NULL::pg_catalog.text,
-    p_instance_id, p_next_revision, p_state_json, p_state_digest;
+    p_tenant_id, p_instance_id, p_next_revision, p_state_json, p_state_digest;
 END;
 $$;
 
 CREATE OR REPLACE FUNCTION trust_program_private.trust_program_invalidate(
+  p_tenant_id pg_catalog.text,
   p_instance_id pg_catalog.text,
   p_expected_revision pg_catalog.int8,
   p_reason pg_catalog.text,
@@ -390,6 +809,7 @@ CREATE OR REPLACE FUNCTION trust_program_private.trust_program_invalidate(
 RETURNS TABLE (
   ok pg_catalog.bool,
   reason pg_catalog.text,
+  tenant_id pg_catalog.text,
   instance_id pg_catalog.text,
   revision pg_catalog.int8,
   state_json pg_catalog.text,
@@ -418,7 +838,8 @@ BEGIN
   END IF;
   v_next_revision := p_expected_revision + 1;
   v_next_state := trust_program_private.validate_state(
-    p_instance_id, v_next_revision, p_state_json, p_state_digest, p_at
+    p_tenant_id, p_instance_id, v_next_revision,
+    p_state_json, p_state_digest, p_at
   );
 
   PERFORM 1
@@ -431,16 +852,19 @@ BEGIN
 
   SELECT i.* INTO v_current
   FROM trust_program_private.instances AS i
-  WHERE i.instance_id = p_instance_id
+  WHERE i.tenant_id = p_tenant_id
+    AND i.instance_id = p_instance_id
   FOR UPDATE;
 
   IF NOT FOUND THEN
     RETURN QUERY SELECT false, 'instance_not_found'::pg_catalog.text,
-      p_instance_id, NULL::pg_catalog.int8, NULL::pg_catalog.text, NULL::pg_catalog.text;
+      p_tenant_id, p_instance_id, NULL::pg_catalog.int8,
+      NULL::pg_catalog.text, NULL::pg_catalog.text;
     RETURN;
   END IF;
 
   v_current_state := trust_program_private.validate_state(
+    v_current.tenant_id,
     v_current.instance_id,
     v_current.revision,
     v_current.state_json,
@@ -451,7 +875,8 @@ BEGIN
   IF NOT EXISTS (
     SELECT 1
     FROM trust_program_private.events AS e
-    WHERE e.instance_id = v_current.instance_id
+    WHERE e.tenant_id = v_current.tenant_id
+      AND e.instance_id = v_current.instance_id
       AND e.revision = v_current.revision
       AND e.state_json = v_current.state_json
       AND e.state_digest = v_current.state_digest
@@ -462,17 +887,20 @@ BEGIN
 
   IF v_current.revision IS DISTINCT FROM p_expected_revision THEN
     RETURN QUERY SELECT false, 'revision_conflict'::pg_catalog.text,
-      p_instance_id, NULL::pg_catalog.int8, NULL::pg_catalog.text, NULL::pg_catalog.text;
+      p_tenant_id, p_instance_id, NULL::pg_catalog.int8,
+      NULL::pg_catalog.text, NULL::pg_catalog.text;
     RETURN;
   END IF;
   IF p_at::pg_catalog.timestamptz < v_current.updated_at::pg_catalog.timestamptz THEN
     RETURN QUERY SELECT false, 'clock_regression'::pg_catalog.text,
-      p_instance_id, NULL::pg_catalog.int8, NULL::pg_catalog.text, NULL::pg_catalog.text;
+      p_tenant_id, p_instance_id, NULL::pg_catalog.int8,
+      NULL::pg_catalog.text, NULL::pg_catalog.text;
     RETURN;
   END IF;
   IF v_current_state ->> 'status' IS NOT DISTINCT FROM 'invalidated' THEN
     RETURN QUERY SELECT false, 'program_instance_invalidated'::pg_catalog.text,
-      p_instance_id, NULL::pg_catalog.int8, NULL::pg_catalog.text, NULL::pg_catalog.text;
+      p_tenant_id, p_instance_id, NULL::pg_catalog.int8,
+      NULL::pg_catalog.text, NULL::pg_catalog.text;
     RETURN;
   END IF;
 
@@ -521,50 +949,58 @@ BEGIN
       state_json = p_state_json,
       state_digest = p_state_digest,
       updated_at = p_at
-  WHERE i.instance_id = p_instance_id;
+  WHERE i.tenant_id = p_tenant_id
+    AND i.instance_id = p_instance_id;
 
   INSERT INTO trust_program_private.events (
-    instance_id, revision, previous_revision, event_kind,
+    tenant_id, instance_id, revision, previous_revision, event_kind,
     state_json, state_digest, reason, recorded_at
   ) VALUES (
-    p_instance_id, v_next_revision, p_expected_revision, 'invalidate',
+    p_tenant_id, p_instance_id, v_next_revision, p_expected_revision, 'invalidate',
     p_state_json, p_state_digest, p_reason, p_at
   );
 
   RETURN QUERY SELECT true, NULL::pg_catalog.text,
-    p_instance_id, v_next_revision, p_state_json, p_state_digest;
+    p_tenant_id, p_instance_id, v_next_revision, p_state_json, p_state_digest;
 END;
 $$;
 
 REVOKE ALL ON FUNCTION trust_program_private.validate_state(
-  pg_catalog.text, pg_catalog.int8, pg_catalog.text, pg_catalog.text, pg_catalog.text
+  pg_catalog.text, pg_catalog.text, pg_catalog.int8,
+  pg_catalog.text, pg_catalog.text, pg_catalog.text
 ) FROM PUBLIC, anon, authenticated, service_role;
+REVOKE ALL ON FUNCTION trust_program_private.state_evidence(pg_catalog.jsonb)
+  FROM PUBLIC, anon, authenticated, service_role;
 REVOKE ALL ON FUNCTION trust_program_private.reject_event_mutation()
   FROM PUBLIC, anon, authenticated, service_role;
 REVOKE ALL ON FUNCTION trust_program_private.trust_program_create(
-  pg_catalog.text, pg_catalog.text, pg_catalog.text, pg_catalog.text
+  pg_catalog.text, pg_catalog.text, pg_catalog.text, pg_catalog.text, pg_catalog.text
 ) FROM PUBLIC, anon, authenticated, service_role;
-REVOKE ALL ON FUNCTION trust_program_private.trust_program_get(pg_catalog.text)
+REVOKE ALL ON FUNCTION trust_program_private.trust_program_get(
+  pg_catalog.text, pg_catalog.text
+)
   FROM PUBLIC, anon, authenticated, service_role;
 REVOKE ALL ON FUNCTION trust_program_private.trust_program_compare_and_swap(
-  pg_catalog.text, pg_catalog.int8, pg_catalog.int8,
+  pg_catalog.text, pg_catalog.text, pg_catalog.int8, pg_catalog.int8,
   pg_catalog.text, pg_catalog.text, pg_catalog.text
 ) FROM PUBLIC, anon, authenticated, service_role;
 REVOKE ALL ON FUNCTION trust_program_private.trust_program_invalidate(
-  pg_catalog.text, pg_catalog.int8, pg_catalog.text,
+  pg_catalog.text, pg_catalog.text, pg_catalog.int8, pg_catalog.text,
   pg_catalog.text, pg_catalog.text, pg_catalog.text
 ) FROM PUBLIC, anon, authenticated, service_role;
 
 GRANT EXECUTE ON FUNCTION trust_program_private.trust_program_create(
-  pg_catalog.text, pg_catalog.text, pg_catalog.text, pg_catalog.text
+  pg_catalog.text, pg_catalog.text, pg_catalog.text, pg_catalog.text, pg_catalog.text
 ) TO service_role;
-GRANT EXECUTE ON FUNCTION trust_program_private.trust_program_get(pg_catalog.text)
+GRANT EXECUTE ON FUNCTION trust_program_private.trust_program_get(
+  pg_catalog.text, pg_catalog.text
+)
   TO service_role;
 GRANT EXECUTE ON FUNCTION trust_program_private.trust_program_compare_and_swap(
-  pg_catalog.text, pg_catalog.int8, pg_catalog.int8,
+  pg_catalog.text, pg_catalog.text, pg_catalog.int8, pg_catalog.int8,
   pg_catalog.text, pg_catalog.text, pg_catalog.text
 ) TO service_role;
 GRANT EXECUTE ON FUNCTION trust_program_private.trust_program_invalidate(
-  pg_catalog.text, pg_catalog.int8, pg_catalog.text,
+  pg_catalog.text, pg_catalog.text, pg_catalog.int8, pg_catalog.text,
   pg_catalog.text, pg_catalog.text, pg_catalog.text
 ) TO service_role;

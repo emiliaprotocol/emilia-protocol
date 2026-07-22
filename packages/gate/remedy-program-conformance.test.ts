@@ -256,7 +256,7 @@ function validateCatalog() {
   assertExactKeys(catalog as unknown as DataRecord, CATALOG_KEYS, 'catalog');
   assert.equal(catalog.profile, REMEDY_PROGRAM_VERSION);
   assert.equal(catalog.vectors_version, '1.0.0');
-  assert.equal(catalog.visibility, 'private');
+  assert.equal(catalog.visibility, 'public-experimental');
   assert.equal(catalog.vector_count, catalog.vectors.length, 'declared vector count is stale');
   assert.match(catalog.claim_boundary, /deterministic verifier doubles/);
   assert.match(catalog.claim_boundary, /orchestration-only/);
@@ -306,7 +306,7 @@ function validateCatalog() {
   assert.deepEqual([...usedFixtures].sort(), Object.keys(catalog.fixtures).sort(), 'catalog has unused or unhandled fixtures');
 }
 
-test('Remedy Program catalog is private, exhaustive, and claim-bounded', () => {
+test('Remedy Program catalog is public, exhaustive, and claim-bounded', () => {
   validateCatalog();
 });
 

@@ -334,10 +334,11 @@ test('a verified stale revision on an unclaimed ready instance retries CAS and c
     const instanceId = 'program-instance-stale-ready';
     const { kernel, program, admitted, binding } = await createReadyKernel(store, instanceId);
     const staleRevision = admitted.state.revision;
-    const stored = await store.get(instanceId);
+    const stored = await store.get({ tenantId: RECEIPT_CONTEXT.tenant, instanceId });
     const unrelatedTransition = structuredClone(stored.state);
     unrelatedTransition.revision += 1;
     assert.equal((await store.compareAndSwap({
+        tenantId: RECEIPT_CONTEXT.tenant,
         instanceId,
         expectedRevision: staleRevision,
         state: unrelatedTransition,

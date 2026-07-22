@@ -44,7 +44,7 @@ const STAGE_RECEIPT_PAYLOAD_KEYS = new Set([
 ]);
 const STAGE_RECEIPT_SIGNATURE_KEYS = new Set(['algorithm', 'value']);
 const STATE_KEYS = new Set([
-  'version', 'instance_id', 'program_id', 'program_version', 'program_digest',
+  'version', 'tenant_id', 'instance_id', 'program_id', 'program_version', 'program_digest',
   'root_caid', 'action_digest', 'status', 'revision', 'created_at', 'updated_at',
   'stages', 'used_evidence_ids', 'execution', 'invalidation_reason',
 ]);
@@ -71,6 +71,7 @@ type Failure = { ok: false; reason: string };
 export type TrustJson = null | boolean | number | string | TrustJson[] | { [key: string]: TrustJson };
 
 export interface TrustProgramState extends Record<string, unknown> {
+  tenant_id: string;
   instance_id: string;
   program_digest: string;
   root_caid: string;
@@ -89,14 +90,19 @@ export interface TrustProgramResult extends Record<string, unknown> {
 
 export interface TrustProgramStore {
   readonly durable: boolean;
-  create(state: TrustProgramState): Promise<TrustProgramResult>;
-  get(instanceId: string): Promise<TrustProgramResult>;
+  create(input: {
+    tenantId: string;
+    state: TrustProgramState;
+  }): Promise<TrustProgramResult>;
+  get(input: { tenantId: string; instanceId: string }): Promise<TrustProgramResult>;
   compareAndSwap(input: {
+    tenantId: string;
     instanceId: string;
     expectedRevision: number;
     state: TrustProgramState;
   }): Promise<TrustProgramResult>;
   invalidate(input: {
+    tenantId: string;
     instanceId: string;
     expectedRevision: number;
     reason: string;
@@ -540,7 +546,13 @@ export function verifyTrustStageReceipt(receipt: unknown, options: {
   return { valid: true, reason: null, checks, receipt_digest: receipt.receipt_digest, payload: clone(receipt.payload) };
 }
 
-function initialState(program: RecordLike, programDigest: string, instanceId: string, now: number) {
+function initialState(
+  program: RecordLike,
+  programDigest: string,
+  tenantId: string,
+  instanceId: string,
+  now: number,
+) {
   const stages: RecordLike = {};
   for (const stage of program.stages) {
     stages[stage.stage_id] = {
@@ -552,6 +564,7 @@ function initialState(program: RecordLike, programDigest: string, instanceId: st
   }
   return {
     version: TRUST_PROGRAM_VERSION,
+    tenant_id: tenantId,
     instance_id: instanceId,
     program_id: program.program_id,
     program_version: program.version,
@@ -584,12 +597,14 @@ function storedStateValid(
   state: unknown,
   program: RecordLike,
   programDigest: string,
+  tenantId: string,
   instanceId: string,
   receiptContext: RecordLike,
   receiptVerificationKey?: string | crypto.KeyObject,
 ) {
   if (!exactKeys(state, STATE_KEYS)
       || state.version !== TRUST_PROGRAM_VERSION
+      || state.tenant_id !== tenantId
       || state.instance_id !== instanceId
       || state.program_id !== program.program_id
       || state.program_version !== program.version
@@ -774,35 +789,59 @@ function storedStateValid(
   return true;
 }
 
+function assertStoreIdentity(tenantId: unknown, instanceId: unknown) {
+  if (typeof tenantId !== 'string'
+      || Buffer.byteLength(tenantId, 'utf8') < 1
+      || Buffer.byteLength(tenantId, 'utf8') > 512
+      || /[\u0000-\u001f\u007f]/.test(tenantId)) {
+    throw new TypeError('trust-program tenantId is invalid');
+  }
+  if (typeof instanceId !== 'string' || !ID.test(instanceId)) {
+    throw new TypeError('trust-program instanceId is invalid');
+  }
+}
+
 /**
  * In-process compare-and-swap store. Deliberately rejected by the kernel unless
  * allowEphemeralState is explicit; production must use a durable atomic store.
  */
 export function createMemoryTrustProgramStore(): TrustProgramStore {
   const records = new Map<string, RecordLike>();
+  const storageKey = (tenantId: string, instanceId: string) => `${tenantId.length}:${tenantId}${instanceId}`;
   return {
     durable: false,
-    async create(state: RecordLike) {
-      if (records.has(state.instance_id)) return fail('instance_exists');
-      records.set(state.instance_id, clone(state));
+    async create({ tenantId, state }: RecordLike) {
+      assertStoreIdentity(tenantId, state?.instance_id);
+      if (state?.tenant_id !== tenantId) return fail('state_binding_invalid');
+      const key = storageKey(state.tenant_id, state.instance_id);
+      if (records.has(key)) return fail('instance_exists');
+      records.set(key, clone(state));
       return { ok: true, state: clone(state) };
     },
-    async get(instanceId: string) {
-      const state = records.get(instanceId);
+    async get({ tenantId, instanceId }: { tenantId: string; instanceId: string }) {
+      assertStoreIdentity(tenantId, instanceId);
+      const state = records.get(storageKey(tenantId, instanceId));
       return state ? { ok: true, state: clone(state) } : fail('instance_not_found');
     },
-    async compareAndSwap({ instanceId, expectedRevision, state }: RecordLike) {
-      const current = records.get(instanceId);
+    async compareAndSwap({ tenantId, instanceId, expectedRevision, state }: RecordLike) {
+      assertStoreIdentity(tenantId, instanceId);
+      const key = storageKey(tenantId, instanceId);
+      const current = records.get(key);
       if (!current) return fail('instance_not_found');
+      if (state?.tenant_id !== tenantId || state?.instance_id !== instanceId) {
+        return fail('state_binding_invalid');
+      }
       if (current.revision !== expectedRevision) return fail('revision_conflict');
       if (strictInstant(state?.updated_at) < strictInstant(current.updated_at)) {
         return fail('clock_regression');
       }
-      records.set(instanceId, clone(state));
+      records.set(key, clone(state));
       return { ok: true, state: clone(state) };
     },
-    async invalidate({ instanceId, expectedRevision, reason, at }: RecordLike) {
-      const current = records.get(instanceId);
+    async invalidate({ tenantId, instanceId, expectedRevision, reason, at }: RecordLike) {
+      assertStoreIdentity(tenantId, instanceId);
+      const key = storageKey(tenantId, instanceId);
+      const current = records.get(key);
       if (!current) return fail('instance_not_found');
       if (current.revision !== expectedRevision) return fail('revision_conflict');
       if (current.status === 'invalidated') return fail('program_instance_invalidated');
@@ -810,7 +849,7 @@ export function createMemoryTrustProgramStore(): TrustProgramStore {
         return fail('clock_regression');
       }
       const next = invalidateState(current, reason, at);
-      records.set(instanceId, clone(next));
+      records.set(key, clone(next));
       return { ok: true, state: clone(next) };
     },
   } as unknown as TrustProgramStore;
@@ -866,7 +905,8 @@ export function createTrustProgramKernel(options: TrustProgramKernelConfig): Tru
   if ((!options.receiptPrivateKey && typeof options.receiptSigner !== 'function')
       || !isDataRecord(options.receiptContext)
       || !exactKeys(options.receiptContext, STAGE_RECEIPT_ISSUER_KEYS)
-      || !Object.values(options.receiptContext).every(boundedContextString)) {
+      || !Object.values(options.receiptContext).every(boundedContextString)
+      || Buffer.byteLength(options.receiptContext.tenant, 'utf8') > 512) {
     throw new TypeError('stage receipt signer required');
   }
   if (options.allowEphemeralState !== true
@@ -881,6 +921,8 @@ export function createTrustProgramKernel(options: TrustProgramKernelConfig): Tru
 
   const program = clone(options.program) as RecordLike;
   const programDigest = checked.digest!;
+  const receiptContext = Object.freeze(clone(options.receiptContext)) as RecordLike;
+  const tenantId = receiptContext.tenant;
   const sourceStore = options.store;
   const store: TrustProgramStore = Object.freeze({
     durable: sourceStore.durable === true,
@@ -890,7 +932,6 @@ export function createTrustProgramKernel(options: TrustProgramKernelConfig): Tru
     invalidate: sourceStore.invalidate.bind(sourceStore),
   });
   const verifiers = Object.freeze({ ...options.verifiers });
-  const receiptContext = Object.freeze(clone(options.receiptContext)) as RecordLike;
   const receiptPrivateKey = options.receiptPrivateKey;
   const receiptVerificationKey = options.receiptVerificationKey;
   const receiptSigner = options.receiptSigner;
@@ -915,6 +956,7 @@ export function createTrustProgramKernel(options: TrustProgramKernelConfig): Tru
       result.state,
       program,
       programDigest,
+      tenantId,
       instanceId,
       receiptContext,
       receiptVerificationKey,
@@ -924,7 +966,7 @@ export function createTrustProgramKernel(options: TrustProgramKernelConfig): Tru
 
   const load = async (instanceId: string): Promise<RecordLike> => {
     try {
-      const result = await store.get(instanceId);
+      const result = await store.get({ tenantId, instanceId });
       return checkedStoreResult(result, instanceId);
     } catch {
       return fail('store_unavailable');
@@ -932,7 +974,8 @@ export function createTrustProgramKernel(options: TrustProgramKernelConfig): Tru
   };
   const compareAndSwap = async (input: RecordLike): Promise<RecordLike> => {
     try {
-      const result = await store.compareAndSwap(input as {
+      const result = await store.compareAndSwap({ ...input, tenantId } as {
+        tenantId: string;
         instanceId: string;
         expectedRevision: number;
         state: TrustProgramState;
@@ -981,7 +1024,12 @@ export function createTrustProgramKernel(options: TrustProgramKernelConfig): Tru
       return fail('action_binding_verifier_unavailable');
     }
     try {
-      const result = await store.create(initialState(program, programDigest, instanceId, current));
+      const result = await store.create({
+        tenantId,
+        state: initialState(
+          program, programDigest, tenantId, instanceId, current,
+        ),
+      });
       return checkedStoreResult(result, instanceId);
     } catch {
       return fail('store_unavailable');
@@ -1380,7 +1428,7 @@ export function createTrustProgramKernel(options: TrustProgramKernelConfig): Tru
     if (!transition.ok) return fail(transition.reason);
     try {
       const result = await store.invalidate({
-        instanceId, expectedRevision, reason, at: transition.at,
+        tenantId, instanceId, expectedRevision, reason, at: transition.at,
       });
       return checkedStoreResult(result, instanceId);
     } catch {

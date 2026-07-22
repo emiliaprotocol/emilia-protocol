@@ -2,13 +2,13 @@
 
 > EMILIA Gate is the commercial consequence firewall that prevents consequential machine actions on protected executor paths without verifiable authority. It consumes native delegation and machine-policy evidence as independently verified inputs, joins them to exact-action human authority, reserves bounded capabilities before provider entry, and preserves executed or indeterminate outcomes. EMILIA Protocol is the open verification and evidence substrate underneath it; EMILIA Approver captures device-bound exact-action human decisions; EMILIA Assurance Plane provides scoped verification, re-performance, conformance reports, and deployment evidence without acting as an auditor or accredited certifier.
 
-This is a generated discovery index following the llms.txt proposal. Evidence snapshot: 2026-07-22T01:08:53.557Z. For substantive analysis, load the full or machine-readable context below before drawing conclusions from individual repository files.
+This is a generated discovery index following the llms.txt proposal. Evidence snapshot: 2026-07-22T03:23:03.414Z. For substantive analysis, load the full or machine-readable context below before drawing conclusions from individual repository files.
 
 ## Engineering Evidence
 
-EMILIA is implemented security infrastructure, not architecture-only: 7,423 automated tests across 387 files; 30 executable security claims over 159 hashed evidence files; 10 verified obligations in one composed Tamarin model, with 2 deliberately weakened variants producing concrete attack traces.
+EMILIA is implemented security infrastructure, not architecture-only: 7,567 automated tests across 402 files; 33 executable security claims over 176 hashed evidence files; 10 verified obligations in one composed Tamarin model, with 2 deliberately weakened variants producing concrete attack traces.
 
-Interoperability evidence: 21 conformance suites and 328 current vectors across three same-team ports; external Rust evidence covers a time-pinned 164-vector set plus 359 hostility cases. Strict clean-room construction acceptance remains false.
+Interoperability evidence: 21 conformance suites and 329 current vectors across three same-team ports; external Rust evidence covers a time-pinned 164-vector set plus 359 hostility cases. Strict clean-room construction acceptance remains false.
 
 ## Canonical Context
 
@@ -22,20 +22,22 @@ Interoperability evidence: 21 conformance suites and 328 current vectors across 
 
 - [draft-schrock-agent-action-manifest](https://datatracker.ietf.org/doc/draft-schrock-agent-action-manifest/): Service declaration of evidence and enforcement requirements; snapshot revision -00, check Datatracker for current status.
 - [draft-schrock-authorization-evidence-challenge](https://datatracker.ietf.org/doc/draft-schrock-authorization-evidence-challenge/): Action-bound request for missing evidence; snapshot revision -00, check Datatracker for current status.
-- [draft-schrock-canonical-action-identifier](https://datatracker.ietf.org/doc/draft-schrock-canonical-action-identifier/): Typed material-action identity and profile-bounded cross-format matching; snapshot revision -00, check Datatracker for current status.
+- [draft-schrock-action-evidence-boundary](https://datatracker.ietf.org/doc/draft-schrock-action-evidence-boundary/): Boundary contract joining independently verified evidence to one material action; snapshot revision -00, check Datatracker for current status.
+- [draft-schrock-canonical-action-identifier](https://datatracker.ietf.org/doc/draft-schrock-canonical-action-identifier/): Typed material-action identity and profile-bounded cross-format matching; snapshot revision -01, check Datatracker for current status.
 - [draft-schrock-emilia-eye](https://datatracker.ietf.org/doc/draft-schrock-emilia-eye/): Scope-bound advisory that can tighten but never authorize; snapshot revision -00, check Datatracker for current status.
 - [draft-schrock-ep-action-evidence-graph](https://datatracker.ietf.org/doc/draft-schrock-ep-action-evidence-graph/): Purpose-relative evidence graph and replay; snapshot revision -00, check Datatracker for current status.
-- [draft-schrock-ep-architecture](https://datatracker.ietf.org/doc/draft-schrock-ep-architecture/): Portfolio architecture; snapshot revision -01, check Datatracker for current status.
+- [draft-schrock-ep-architecture](https://datatracker.ietf.org/doc/draft-schrock-ep-architecture/): Portfolio architecture; snapshot revision -02, check Datatracker for current status.
 - [draft-schrock-ep-authority-introduction](https://datatracker.ietf.org/doc/draft-schrock-ep-authority-introduction/): Authority introduction and trust-root boundary; snapshot revision -01, check Datatracker for current status.
-- [draft-schrock-ep-authorization-evidence-chain](https://datatracker.ietf.org/doc/draft-schrock-ep-authorization-evidence-chain/): Heterogeneous evidence composition; snapshot revision -03, check Datatracker for current status.
-- [draft-schrock-ep-authorization-receipts](https://datatracker.ietf.org/doc/draft-schrock-ep-authorization-receipts/): One action-bound organizational approval evidence profile; snapshot revision -07, check Datatracker for current status.
+- [draft-schrock-ep-authorization-evidence-chain](https://datatracker.ietf.org/doc/draft-schrock-ep-authorization-evidence-chain/): Heterogeneous evidence composition; snapshot revision -04, check Datatracker for current status.
+- [draft-schrock-ep-authorization-receipts](https://datatracker.ietf.org/doc/draft-schrock-ep-authorization-receipts/): One action-bound organizational approval evidence profile; snapshot revision -08, check Datatracker for current status.
 - [draft-schrock-ep-bounded-capability-receipts](https://datatracker.ietf.org/doc/draft-schrock-ep-bounded-capability-receipts/): Action-bound capability budget and spend evidence; snapshot revision -00, check Datatracker for current status.
 - [draft-schrock-ep-enforcement-point](https://datatracker.ietf.org/doc/draft-schrock-ep-enforcement-point/): Executor-side fail-closed enforcement profile; snapshot revision -00, check Datatracker for current status.
 - [draft-schrock-ep-evidence-record](https://datatracker.ietf.org/doc/draft-schrock-ep-evidence-record/): Long-term crypto-agile evidence preservation; snapshot revision -01, check Datatracker for current status.
 - [draft-schrock-ep-presentation-binding](https://datatracker.ietf.org/doc/draft-schrock-ep-presentation-binding/): Binding the signed action to what the approver was shown; snapshot revision -00, check Datatracker for current status.
 - [draft-schrock-ep-quorum](https://datatracker.ietf.org/doc/draft-schrock-ep-quorum/): Distinct-human multi-handshake composition; snapshot revision -03, check Datatracker for current status.
+- [draft-schrock-ep-revocation-statement](https://datatracker.ietf.org/doc/draft-schrock-ep-revocation-statement/): Signed retraction of authority without rewriting an already executed effect; snapshot revision -00, check Datatracker for current status.
 - [draft-schrock-human-authorization-binding](https://datatracker.ietf.org/doc/draft-schrock-human-authorization-binding/): Binding a human-authorization artifact into adjacent host formats; snapshot revision -00, check Datatracker for current status.
-- [draft-schrock-model-to-matter](https://datatracker.ietf.org/doc/draft-schrock-model-to-matter/): Experimental executor-side authorization-evidence clearance for model-directed physical execution; snapshot revision -00, check Datatracker for current status.
+- [draft-schrock-model-to-matter](https://datatracker.ietf.org/doc/draft-schrock-model-to-matter/): Experimental executor-side authorization-evidence clearance for model-directed physical execution; snapshot revision -01, check Datatracker for current status.
 - [draft-mih-sato-agent-accountability-composition](https://datatracker.ietf.org/doc/draft-mih-sato-agent-accountability-composition/): Coauthored composition perspective; snapshot revision -00, check Datatracker for current status.
 
 ## Evidence

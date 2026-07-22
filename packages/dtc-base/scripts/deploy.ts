@@ -5,7 +5,7 @@ import { asDtcBaseSettlementContract } from '../lib/receipt-program-bridge.js';
 
 const { ethers, network } = hre;
 
-const DEPLOY_ACK = 'I_UNDERSTAND_THIS_IS_PRIVATE_UNAUDITED_CODE';
+const DEPLOY_ACK = 'I_UNDERSTAND_THIS_IS_EXPERIMENTAL_UNAUDITED_CODE';
 const ALLOWED_REMOTE_CHAIN = 84532n;
 
 function requiredAddress(name: string): string {
@@ -24,7 +24,7 @@ async function main(): Promise<void> {
       throw new Error(`refusing unsupported chain ${chainId}; this script permits Base Sepolia only`);
     }
     if (process.env.DTC_DEPLOY_ACK !== DEPLOY_ACK) {
-      throw new Error('refusing remote deployment without the private-unaudited-code acknowledgement');
+      throw new Error('refusing remote deployment without the experimental-unaudited-code acknowledgement');
     }
   }
 
@@ -72,7 +72,7 @@ async function main(): Promise<void> {
   }
 
   process.stdout.write(`${JSON.stringify({
-    status: 'DEPLOYED_PRIVATE_UNAUDITED',
+    status: 'DEPLOYED_EXPERIMENTAL_UNAUDITED',
     network: network.name,
     chainId: chainId.toString(),
     contract: address,

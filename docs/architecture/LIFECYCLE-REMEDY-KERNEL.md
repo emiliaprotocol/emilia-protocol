@@ -2,7 +2,7 @@
 
 # EMILIA Lifecycle and Remedy Kernel
 
-**Status:** private implementation-aligned architecture contract; not a
+**Status:** public experimental implementation-aligned architecture contract; not a
 deployment, conformance, or standardization claim
 
 **Profile discriminator:** `EP-GATE-REMEDY-PROGRAM-PROFILE-v1`

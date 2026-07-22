@@ -8,9 +8,9 @@ Intended status: Informational                               28 June 2026
 Expires: 30 December 2026
 ```
 
-> STATUS (repo): staged I-D. Render to .xml/.txt via xml2rfc and file with the EP cluster batch.
-> Derived from PIP-015. Profile + roadmap; the hybrid signing path is reference-implementation
-> follow-on (do not hand-roll PQC — use a vetted ML-DSA library).
+> STATUS (repo): archived and retired as a standalone filing candidate. The
+> canonical owner is the Evidence Record crypto-agility and anti-stripping work.
+> Historical text below is retained for audit; do not file it.
 
 ## Abstract
 

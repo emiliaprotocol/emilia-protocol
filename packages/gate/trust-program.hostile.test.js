@@ -126,7 +126,25 @@ test('constructor-owned trust configuration is snapshotted against later mutatio
     receiptContext.tenant = 'tenant-b';
     const completed = await completeOne(subject, 'pinned_configuration');
     assert.equal(completed.ok, true);
+    assert.equal(completed.state.tenant_id, 'tenant-a');
     assert.equal(completed.stage_receipt.issuer.tenant, 'tenant-a');
+});
+test('public memory store create requires tenant identity and isolates tenant instances', async () => {
+    const store = createMemoryTrustProgramStore();
+    const tenantAState = {
+        tenant_id: 'tenant-a', instance_id: 'shared-instance', revision: 0,
+    };
+    const tenantBState = {
+        tenant_id: 'tenant-b', instance_id: 'shared-instance', revision: 0,
+    };
+    await assert.rejects(() => store.create(tenantAState), /tenantId is invalid/);
+    assert.deepEqual(await store.create({ tenantId: 'tenant-b', state: tenantAState }), {
+        ok: false, reason: 'state_binding_invalid',
+    });
+    assert.equal((await store.create({ tenantId: 'tenant-a', state: tenantAState })).ok, true);
+    assert.equal((await store.create({ tenantId: 'tenant-b', state: tenantBState })).ok, true);
+    assert.equal((await store.get({ tenantId: 'tenant-a', instanceId: 'shared-instance' })).state?.tenant_id, 'tenant-a');
+    assert.equal((await store.get({ tenantId: 'tenant-b', instanceId: 'shared-instance' })).state?.tenant_id, 'tenant-b');
 });
 test('valid evidence for a different action or CAID cannot cross the challenge binding', async () => {
     const first = kernel();

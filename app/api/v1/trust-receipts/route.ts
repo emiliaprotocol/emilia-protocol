@@ -222,6 +222,8 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
           'acquisition_action_hash',
           'acquisition_action_caid',
           'acquisition_challenge_hash',
+          'acquisition_tenant_id',
+          'acquisition_environment',
         ];
         const acquisitionCount = acquisitionKeys.filter((key) => body[key] !== undefined).length;
         if (acquisitionCount !== 0 && acquisitionCount !== acquisitionKeys.length) {
@@ -232,7 +234,9 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
               || !SHA256_DIGEST_PATTERN.test(body.acquisition_request_digest || '')
               || !SHA256_DIGEST_PATTERN.test(body.acquisition_action_hash || '')
               || !SHA256_DIGEST_PATTERN.test(body.acquisition_challenge_hash || '')
-              || body.acquisition_action_caid !== body.action_caid)) {
+              || body.acquisition_action_caid !== body.action_caid
+              || body.acquisition_tenant_id !== body.organization_id
+              || body.acquisition_environment !== auth.guard_cloud?.environment)) {
           return epProblem(400, 'invalid_acquisition_binding', 'The acquisition binding is malformed or identifies different payment material');
         }
       }
@@ -275,11 +279,17 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
             || state.acquisition_action_hash !== body.acquisition_action_hash
             || state.acquisition_action_caid !== body.acquisition_action_caid
             || state.acquisition_challenge_hash !== body.acquisition_challenge_hash
+            || state.acquisition_tenant_id !== body.acquisition_tenant_id
+            || state.acquisition_environment !== body.acquisition_environment
             || state.organization_id !== body.organization_id
             || state.action_type !== body.action_type
             || !RECEIPT_ID_PATTERN.test(replay.target_id || '')
             || !state.canonical_action
-            || state.canonical_action.action_caid !== body.action_caid) {
+            || state.canonical_action.action_caid !== body.action_caid
+            || state.canonical_action.acquisition_scope?.tenant_id !== body.acquisition_tenant_id
+            || state.canonical_action.acquisition_scope?.environment !== body.acquisition_environment
+            || state.canonical_action.acquisition_scope?.request_id !== body.acquisition_request_id
+            || state.canonical_action.acquisition_scope?.request_digest !== body.acquisition_request_digest) {
           return epProblem(409, 'acquisition_binding_conflict', 'The acquisition request id is bound to different action material');
         }
         return NextResponse.json({
@@ -430,6 +440,19 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
       nonce,
       expires_at: expiresAt.toISOString(),
       requested_at: now.toISOString(),
+      ...(body.acquisition_request_id
+        ? {
+            acquisition_scope: {
+              tenant_id: body.acquisition_tenant_id,
+              environment: body.acquisition_environment,
+              request_id: body.acquisition_request_id,
+              request_digest: body.acquisition_request_digest,
+              action_hash: body.acquisition_action_hash,
+              action_caid: body.acquisition_action_caid,
+              challenge_hash: body.acquisition_challenge_hash,
+            },
+          }
+        : {}),
       // CAID is computed above by the server for the connected payment
       // approval endpoint. Keep the typed action and digest inside the
       // canonical action so action_hash, every approver assertion, and the
@@ -607,6 +630,8 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
             acquisition_action_hash: body.acquisition_action_hash,
             acquisition_action_caid: body.acquisition_action_caid,
             acquisition_challenge_hash: body.acquisition_challenge_hash,
+            acquisition_tenant_id: body.acquisition_tenant_id,
+            acquisition_environment: body.acquisition_environment,
           } : {}),
         },
       });

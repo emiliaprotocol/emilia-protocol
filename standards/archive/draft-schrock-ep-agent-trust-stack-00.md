@@ -8,10 +8,9 @@ Intended status: Informational                               28 June 2026
 Expires: 30 December 2026
 ```
 
-> STATUS (repo): staged I-D. Render to .xml/.txt via xml2rfc and file with the EP cluster batch.
-> Companion to draft-schrock-ep-architecture (EP-internal) and -authorization-evidence-chain (the
-> composition seam). This draft is the cross-effort interoperability map: how independent IETF
-> efforts compose into one verifiable account of an agent action.
+> STATUS (repo): archived and retired as a standalone filing candidate. Its
+> composition map is absorbed by Architecture-02 and the Authorization Evidence
+> Chain. Historical text below is retained for audit; do not file it.
 
 ## Abstract
 
