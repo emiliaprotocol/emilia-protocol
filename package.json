@@ -13,7 +13,7 @@
   },
   "license": "Apache-2.0",
   "engines": {
-    "node": ">=20.0.0"
+    "node": ">=20.19.0"
   },
   "scripts": {
     "dev": "next dev",
@@ -44,8 +44,8 @@
     "check:repository-boundary": "node scripts/check-repository-boundary.js",
     "check:demo-key": "node scripts/check-demo-key-isolation.js",
     "check:admissibility": "node scripts/check-admissibility-registry.mjs",
-    "check:security-case": "node scripts/verify-security-case.mjs --execute",
-    "security-case:emit": "node scripts/verify-security-case.mjs --execute --emit security/security-case.json",
+    "check:security-case": "node --import ./scripts/ts-loader/register.mjs scripts/verify-security-case.mjs --execute",
+    "security-case:emit": "node --import ./scripts/ts-loader/register.mjs scripts/verify-security-case.mjs --execute --emit security/security-case.json",
     "check:authority-claims": "node scripts/check-authority-claims.mjs",
     "check:runtime-bridge": "node scripts/check-runtime-bridge.mjs",
     "check:conformance-docs": "node scripts/check-conformance-doc-counts.mjs",
@@ -104,8 +104,13 @@
     "conformance:operator2": "node conformance/operator2/verify-live.mjs"
   },
   "lint-staged": {
-    "{app,lib,components}/**/*.{js,mjs,ts,tsx}": [
-      "eslint --max-warnings=0",
+    "{app,components}/**/*.{js,mjs,ts,tsx}": [
+      "eslint --max-warnings=0"
+    ],
+    "lib/**/*.{ts,tsx,mts}": [
+      "eslint --max-warnings=0"
+    ],
+    "{app,lib,components}/**/*.{js,mjs,ts,tsx,mts}": [
       "node scripts/check-license-headers.js"
     ]
   },

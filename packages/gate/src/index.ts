@@ -54,7 +54,13 @@ import { createEg1Harness, makeGateInvoke, runEg1, EG1_DEFAULT_SELECTOR, mintDev
 import { CF1_VERSION, CF1_CHECKS, runCf1 } from './cf1-conformance.js';
 import { createKeyRegistry, asKeyRegistry } from './key-registry.js';
 import { classifyRetention, buildRetentionExport } from './retention.js';
-import { createDefaultActionControlManifest, findActionControl, validateActionControlManifest } from './action-control-manifest.js';
+import {
+  ACTION_CONTROL_MANIFEST_VERSION,
+  createDefaultActionControlManifest,
+  findActionControl,
+  resolveActionControl,
+  validateActionControlManifest,
+} from './action-control-manifest.js';
 import {
   createRuntimeMonitor,
   RUNTIME_MONITOR_VERSION,
@@ -168,6 +174,7 @@ export {
   toActionControl,
   createDefaultActionControlManifest,
   findActionControl,
+  resolveActionControl,
   validateActionControlManifest,
 } from './action-control-manifest.js';
 export { EXECUTION_BINDING_VERSION, canonicalize, hashCanonical, materialFieldsFor, verifyExecutionBinding } from './execution-binding.js';
@@ -238,6 +245,45 @@ export {
   createReceiptProgramKernel,
   verifyReceiptProgramCertificate,
 } from './receipt-program.js';
+export {
+  TRUST_PROGRAM_VERSION,
+  TRUST_STAGE_RECEIPT_VERSION,
+  validateTrustProgram,
+  trustProgramDigest,
+  verifyTrustStageReceipt,
+  createMemoryTrustProgramStore,
+  createTrustProgramKernel,
+} from './trust-program.js';
+export {
+  TRUST_PROGRAM_REVOCATION_TARGET_VERSION,
+  deriveTrustProgramRevocationTargetObject,
+  deriveTrustProgramRevocationTarget,
+  verifyTrustProgramRevocation,
+  applyTrustProgramRevocation,
+} from './trust-program-revocation.js';
+export {
+  REMEDY_PROGRAM_VERSION,
+  createRemedyMemoryStore,
+  createRemedyProgramKernel,
+} from './remedy-program.js';
+export {
+  ACTION_REMEDY_RECEIPT_VERSION,
+  REMEDY_PROGRAM_RECEIPT_VERSION,
+  ACTION_REMEDY_RECEIPT_DOMAIN,
+  expectedRemedyProgramReceiptBindings,
+  remedyProgramReceiptSigningBytes,
+  issueRemedyProgramReceipt,
+  signRemedyProgramReceipt,
+  createRemedyProgramReceipt,
+  verifyRemedyProgramReceipt,
+} from './remedy-program-receipt.js';
+export {
+  REMEDY_PROGRAM_PG_STORE_VERSION,
+  REMEDY_PROGRAM_MAX_STATE_BYTES,
+  REMEDY_PROGRAM_MAX_FORWARD_SKEW_MINUTES,
+  REMEDY_PROGRAM_POSTGRES_SQL,
+  createRemedyProgramPostgresStore,
+} from './remedy-program-postgres.js';
 export const ASSURANCE_TIERS = ['software', 'class_a', 'quorum'];
 const TIER_RANK = { software: 0, class_a: 1, quorum: 2 };
 const CAPABILITY_FAILURE_STATUS = 409;
@@ -549,17 +595,35 @@ export function receiptAssuranceTier(doc: any, opts: ReceiptAssuranceOpts = {}) 
   if ((TIER_RANK[detail.tier] ?? 0) < TIER_RANK.class_a) {
     const so = p.signoff || p.claim?.signoff;
     if (isSignoffEvidence(so)) {
-      const key = so.approver_public_key || p.approver_public_key || p.claim?.approver_public_key;
+      const keyId = p.approver_key_id || p.claim?.approver_key_id;
+      const pinnedById = typeof keyId === 'string' && opts.approverKeys
+        && typeof opts.approverKeys === 'object' && !Array.isArray(opts.approverKeys)
+        ? opts.approverKeys[keyId]
+        : null;
+      const key = pinnedById?.public_key
+        || so.approver_public_key || p.approver_public_key || p.claim?.approver_public_key;
       if (key) {
         const sr = verifyWebAuthnSignoff(so, key, verifyOpts);
-        const trusted = keyIsTrusted(key, so?.context?.approver);
+        const sourceHash = p.claim?.source_receipt_action_hash;
+        // Acquisition terminal receipts carry a second, explicit signoff
+        // binding. Enforce it whenever present without retroactively changing
+        // the contract for ordinary receipts whose signoff directly supports
+        // the receipt itself.
+        const transitiveBinding = sourceHash === undefined
+          || (typeof sourceHash === 'string'
+            && so?.context?.action_hash === sourceHash
+            && p.claim?.approver === so?.context?.approver);
+        const trusted = (pinnedById?.key_class === 'A'
+          && pinnedById?.approver_id === so?.context?.approver)
+          || keyIsTrusted(key, so?.context?.approver);
         detail.signoff = {
-          valid: sr.valid,
+          valid: sr.valid && transitiveBinding,
           checks: sr.checks,
           embedded_key_trusted: trusted,
           approver: so?.context?.approver ?? null,
         };
-        if (sr.valid && trusted && (TIER_RANK[detail.tier] ?? 0) < TIER_RANK.class_a) detail.tier = 'class_a';
+        if (sr.valid && transitiveBinding && trusted
+            && (TIER_RANK[detail.tier] ?? 0) < TIER_RANK.class_a) detail.tier = 'class_a';
       }
     }
   }
@@ -871,9 +935,12 @@ export function createGate({ manifest = null, trustedKeys = [], maxAgeSec = 900,
   // trustedKeys list. A flat list is coerced to an always-valid registry, so
   // existing callers are unchanged.
   const registry = keyRegistry ? asKeyRegistry(keyRegistry) : (trustedKeys.length ? asKeyRegistry(trustedKeys) : null);
+  const usesActionControlManifest = manifest?.['@version'] === ACTION_CONTROL_MANIFEST_VERSION;
   if (manifest) {
-    const m = validateActionRiskManifest(manifest);
-    if (!m.ok) throw new Error('EMILIA Gate: invalid action-risk manifest: ' + m.errors.join('; '));
+    const m = usesActionControlManifest
+      ? validateActionControlManifest(manifest)
+      : validateActionRiskManifest(manifest);
+    if (!m.ok) throw new Error(`EMILIA Gate: invalid ${usesActionControlManifest ? 'action-control' : 'action-risk'} manifest: ${m.errors.join('; ')}`);
     for (const [index, actionRequirement] of (manifest.actions || []).entries()) {
       if (actionRequirement?.receipt_required !== true) continue;
       const business = businessAuthorizationRequirement(actionRequirement);
@@ -921,11 +988,66 @@ export function createGate({ manifest = null, trustedKeys = [], maxAgeSec = 900,
   }
   const evidence = log || createEvidenceLog({ strict: strictEvidence });
 
+  function resolveRequirement(selector: Obj): Obj | null {
+    if (!manifest) return null;
+    const controlResolution = usesActionControlManifest
+      ? resolveActionControl(manifest, selector)
+      : null;
+    const raw = usesActionControlManifest
+      ? (controlResolution?.status === 'one'
+          ? controlResolution.action
+          : (controlResolution?.status === 'ambiguous'
+              ? {
+                  action_type: selector.action_type || selector.action || 'ambiguous.action',
+                  receipt_required: true,
+                  assurance_class: 'quorum',
+                  __resolution_ambiguous: true,
+                  ambiguous_action_ids: controlResolution.action_ids,
+                }
+              : null))
+      : findActionRequirement(manifest, selector);
+    if (!raw || !usesActionControlManifest) return raw;
+    // Action Control v0.2 keeps enforcement details under `control`; the Gate's
+    // existing execution/business checks consume the normalized flat view.
+    // The original object remains available under `control` for evidence.
+    return {
+      ...raw,
+      execution_binding: raw.control?.execution_binding || raw.execution_binding,
+      authorization: raw.control?.authorization || null,
+      caid_selector: raw.control?.execution_binding?.caid_selector
+        || raw.control?.caid_selector
+        || raw.execution_binding?.caid_selector
+        || null,
+    };
+  }
+
+  function acquisitionChallengeOptions(requirement: Obj | null, selector: Obj, requiredTier: string, observed: Obj | null = null) {
+    const observedHash = observed ? safeCanonicalHash(observed) : null;
+    const acquisition = requirement?.authorization || requirement?.control?.authorization || undefined;
+    return {
+      status: RECEIPT_REQUIRED_STATUS,
+      assuranceClass: requiredTier,
+      maxAgeSec,
+      manifest: selector.manifestUrl
+        || (usesActionControlManifest ? manifest?.service?.manifest_url : null),
+      // An acquisition endpoint whose POST contract requires an exact action
+      // hash is a dead end unless this executor actually observed and hashed
+      // the system-of-record action. Do not advertise a machine-completable
+      // flow from a type-only challenge.
+      authorization: !usesActionControlManifest || observedHash ? acquisition : undefined,
+      requiredFields: requirement?.execution_binding?.required_fields
+        || requirement?.control?.execution_binding?.required_fields
+        || undefined,
+      caidSelector: requirement?.caid_selector || requirement?.control?.caid_selector || undefined,
+      actionHash: observedHash ? `sha256:${observedHash}` : undefined,
+    };
+  }
+
   async function check({ selector = {}, receipt = null, observedAction = null, consumptionMode = 'consume', admissibilityProfile = null, reliancePacket: presentedPacket = null, admissibility = null, capability = null }: {
     selector?: any; receipt?: any; observedAction?: any; consumptionMode?: string;
     admissibilityProfile?: any; reliancePacket?: any; admissibility?: any; capability?: any;
   } = {}) {
-    const requirement = /** @type {any} */ (manifest ? findActionRequirement(manifest, selector) : null);
+    const requirement = /** @type {any} */ (resolveRequirement(selector));
     const action = requirement?.action_type || selector.action_type || selector.action || null;
     const guarded = Boolean(requirement && requirement.receipt_required !== false);
     const runtimeCycleId = runtimeMonitor?.beginCheck({
@@ -1022,13 +1144,9 @@ export function createGate({ manifest = null, trustedKeys = [], maxAgeSec = 900,
         enumerable: false,
       });
       if (!allow) {
-        out.challenge = receiptChallenge(action, reason, {
-          status: RECEIPT_REQUIRED_STATUS,
-          assuranceClass: requiredTier,
-          maxAgeSec,
-          manifest: selector.manifestUrl,
-        });
-        out.header = receiptRequiredHeader({ action, assuranceClass: requiredTier, maxAgeSec });
+        const challengeOptions = acquisitionChallengeOptions(requirement, selector, requiredTier, observed);
+        out.challenge = receiptChallenge(action, reason, challengeOptions);
+        out.header = receiptRequiredHeader({ action, ...challengeOptions });
       }
       return out;
     }
@@ -1038,6 +1156,11 @@ export function createGate({ manifest = null, trustedKeys = [], maxAgeSec = 900,
     if (runtimePreflight && !runtimePreflight.ok) {
       return decide(false, RECEIPT_REQUIRED_STATUS, runtimePreflight.reason, {
         runtime_mode: runtimePreflight.mode,
+      });
+    }
+    if (requirement?.__resolution_ambiguous === true) {
+      return decide(false, RECEIPT_REQUIRED_STATUS, 'manifest_selector_ambiguous', {
+        ambiguous_action_ids: requirement.ambiguous_action_ids,
       });
     }
     // Manifest present and this selector is not guarded (or explicitly not required): pass through.
@@ -1072,12 +1195,23 @@ export function createGate({ manifest = null, trustedKeys = [], maxAgeSec = 900,
     const effectiveKeys = registry
       ? registry.keysValidAt(receipt?.payload?.created_at)
       : trustedKeys;
+    const observedActionHash = usesActionControlManifest && observed
+      ? safeCanonicalHash(observed)
+      : null;
+    if (usesActionControlManifest && observed && !observedActionHash) {
+      return decide(false, RECEIPT_REQUIRED_STATUS, 'observed_action_invalid');
+    }
     const v = verifyEmiliaReceipt(receipt, {
       trustedKeys: effectiveKeys,
       allowInlineKey,
       action,
       maxAgeSec,
       now,
+      ...(usesActionControlManifest && observed ? {
+        actionHash: `sha256:${observedActionHash}`,
+        requiredFields: requirement?.execution_binding?.required_fields,
+        caidSelector: requirement?.caid_selector || undefined,
+      } : {}),
     });
     if (!v.ok) {
       return decide(false, RECEIPT_REQUIRED_STATUS, `receipt_rejected:${v.reason}`, { rejected: v });
@@ -1303,12 +1437,15 @@ export function createGate({ manifest = null, trustedKeys = [], maxAgeSec = 900,
     if (typeof res?.setHeader === 'function' && authorization.header) {
       res.setHeader(RECEIPT_REQUIRED_HEADER, authorization.header);
     }
+    if (typeof res?.setHeader === 'function') {
+      res.setHeader('content-type', 'application/problem+json');
+      res.setHeader('cache-control', 'no-store');
+    }
     if (typeof res?.status === 'function' && typeof res?.json === 'function') {
       return res.status(authorization.status).json(authorization.challenge);
     }
     if (res) res.statusCode = authorization.status;
     if (typeof res?.end === 'function') {
-      if (typeof res?.setHeader === 'function') res.setHeader('content-type', 'application/json');
       return res.end(JSON.stringify(authorization.challenge));
     }
     return authorization;
@@ -1946,6 +2083,7 @@ export default {
   buildRetentionExport,
   createDefaultActionControlManifest,
   findActionControl,
+  resolveActionControl,
   validateActionControlManifest,
   createRuntimeMonitor,
   RUNTIME_MONITOR_VERSION,

@@ -90,6 +90,10 @@ export default defineConfig({
     exclude: [
       'e2e/**', '**/node_modules/**', 'dist/**', '.next/**', '.claude/**', '.serena/**',
       'packages/**', 'apps/**', 'examples/**', 'receipt-required-pr-kit/**', '.stryker-*-tmp/**',
+      // This conformance source deliberately uses node:test because the public
+      // vector runner executes it directly on Node. Its generated .js twin is
+      // already excluded below; exclude the TypeScript source from Vitest too.
+      'conformance/authority-program-profile.test.ts',
       // Generated Node-20 companions of .test.ts sources (e.g. under
       // conformance/): vitest must collect the .ts source only, or every
       // converted test in a companion-glob tree runs twice.

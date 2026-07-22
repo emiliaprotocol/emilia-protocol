@@ -1,0 +1,126 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://www.emiliaprotocol.ai/bindings/receipt-required/registry.schema.json",
+  "title": "Receipt Required binding-slot registry",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "@version",
+    "registry_id",
+    "description",
+    "artifact_boundary",
+    "profiles"
+  ],
+  "properties": {
+    "@version": { "const": "EP-RECEIPT-REQUIRED-BINDINGS-v1" },
+    "registry_id": { "const": "ep:receipt-required:bindings:v1" },
+    "description": { "type": "string", "minLength": 1 },
+    "artifact_boundary": { "type": "string", "minLength": 1 },
+    "profiles": {
+      "type": "array",
+      "minItems": 1,
+      "items": { "$ref": "#/$defs/profile" }
+    }
+  },
+  "$defs": {
+    "profile": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "profile_id",
+        "protocol_id",
+        "protocol_version",
+        "implementation_status",
+        "match_selector",
+        "challenge_carrier",
+        "proof_carrier",
+        "caid_extraction",
+        "required_field_mapping",
+        "conformance_vector_refs",
+        "claim_boundary"
+      ],
+      "properties": {
+        "profile_id": {
+          "type": "string",
+          "pattern": "^ep:receipt-required:binding:[a-z0-9-]+:v1$"
+        },
+        "protocol_id": { "type": "string", "pattern": "^[a-z0-9-]+$" },
+        "protocol_version": { "type": "string", "minLength": 1 },
+        "implementation_status": {
+          "enum": [
+            "reference_implemented",
+            "experimental_reference",
+            "documented_profile",
+            "synthetic_binding_profile",
+            "verification_context_only"
+          ]
+        },
+        "match_selector": { "$ref": "#/$defs/matchSelector" },
+        "challenge_carrier": { "$ref": "#/$defs/challengeCarrier" },
+        "proof_carrier": { "$ref": "#/$defs/proofCarrier" },
+        "caid_extraction": { "$ref": "#/$defs/caidExtraction" },
+        "required_field_mapping": {
+          "type": "array",
+          "minItems": 1,
+          "items": { "$ref": "#/$defs/fieldMapping" }
+        },
+        "conformance_vector_refs": {
+          "type": "array",
+          "minItems": 1,
+          "items": { "type": "string", "minLength": 1 },
+          "uniqueItems": true
+        },
+        "claim_boundary": { "type": "string", "minLength": 1 }
+      }
+    },
+    "matchSelector": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["carrier", "discriminator_path", "discriminator_value"],
+      "properties": {
+        "carrier": { "type": "string", "minLength": 1 },
+        "discriminator_path": { "type": "string", "pattern": "^/" },
+        "discriminator_value": { "type": ["string", "integer"] }
+      }
+    },
+    "challengeCarrier": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["kind", "location", "content_type", "refusal_code"],
+      "properties": {
+        "kind": { "type": "string", "minLength": 1 },
+        "location": { "type": "string", "minLength": 1 },
+        "content_type": { "type": "string", "minLength": 1 },
+        "refusal_code": { "type": ["string", "integer"] }
+      }
+    },
+    "proofCarrier": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["kind", "location", "content_type"],
+      "properties": {
+        "kind": { "type": "string", "minLength": 1 },
+        "location": { "type": "string", "minLength": 1 },
+        "content_type": { "type": "string", "minLength": 1 }
+      }
+    },
+    "caidExtraction": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["caid_path", "action_hash_path"],
+      "properties": {
+        "caid_path": { "type": "string", "pattern": "^/" },
+        "action_hash_path": { "type": "string", "pattern": "^/" }
+      }
+    },
+    "fieldMapping": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["action_field", "source_path"],
+      "properties": {
+        "action_field": { "type": "string", "pattern": "^[a-z][a-z0-9_]*$" },
+        "source_path": { "type": "string", "pattern": "^/" }
+      }
+    }
+  }
+}

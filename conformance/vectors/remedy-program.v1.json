@@ -1,0 +1,649 @@
+{
+  "profile": "EP-GATE-REMEDY-PROGRAM-PROFILE-v1",
+  "vectors_version": "1.0.0",
+  "visibility": "public-experimental",
+  "vector_count": 20,
+  "description": "Executable public experimental semantic conformance catalog for the EMILIA Gate Remedy Program orchestration kernel. Each vector is an ordered sequence of kernel API calls with an explicit accepted state transition or refusal reason.",
+  "claim_boundary": "These vectors use deterministic verifier doubles and are orchestration-only. They test the real Remedy Program state machine and binding checks, but they are not independent verification or cryptographic proof.",
+  "verifier_model": "Verifier doubles deterministically project the exact fields presented by the operation and the kernel-pinned expected context. A vector may name evidence IDs that the authorization double must refuse. No signature, key, certificate, network, external witness, or independent implementation is exercised.",
+  "materialization": {
+    "$digest": "A one-character lowercase hexadecimal value expands to sha256: followed by that character 64 times.",
+    "$sha256": "A string expands to sha256: followed by the lowercase SHA-256 of its UTF-8 bytes.",
+    "$caid": "A one-character base64url value expands to caid:1:payments.refund.1:jcs-sha256: followed by that character 43 times."
+  },
+  "required_coverage": [
+    "executed-original",
+    "indeterminate-original-petition",
+    "authenticated-original-reconciliation-executed",
+    "authenticated-original-reconciliation-proved-no-effect",
+    "late-revocation-no-undo",
+    "separate-adjudication",
+    "receipt-program-owner-xor",
+    "action-escrow-owner-xor",
+    "fresh-remedy-caid-action-operation",
+    "cross-case-action-replay",
+    "cross-case-caid-replay",
+    "two-partial-remedies-exact-cap",
+    "final-cent-refused",
+    "same-operation-modified-conflict",
+    "cross-tenant-refusal",
+    "cross-case-evidence-replay",
+    "cross-case-operation-replay",
+    "second-claimant-refused",
+    "indeterminate-remedy-fences-retry",
+    "remedy-reconciliation-executed",
+    "remedy-reconciliation-proved-no-effect",
+    "no-remedy-decision",
+    "trigger-evidence-never-authority"
+  ],
+  "fixtures": {
+    "create_executed": {
+      "instanceId": "case-1",
+      "tenantId": "tenant-1",
+      "environment": "production",
+      "audience": "merchant-1",
+      "original": {
+        "caid": { "$caid": "A" },
+        "action_digest": { "$sha256": "original-action-1" },
+        "operation_id": "original-operation-1",
+        "consequence_mode": "receipt-program",
+        "consequence_digest": { "$sha256": "original-consequence-1" },
+        "terminal_evidence_digest": { "$sha256": "original-evidence-1" },
+        "outcome": "executed",
+        "occurred_at": "2026-07-21T18:00:00.000Z"
+      },
+      "remedyProfileDigest": { "$sha256": "remedy-profile-1" },
+      "destinationBindingDigest": { "$sha256": "destination-1" },
+      "maxRemedyUnits": 10000,
+      "unit": "USD-cent",
+      "evidence": {
+        "kind": "deterministic-original-effect"
+      }
+    },
+    "open_dispute": {
+      "instanceId": "case-1",
+      "tenantId": "tenant-1",
+      "dispute": {
+        "dispute_id": "dispute-1",
+        "evidence_id": "dispute-evidence-1",
+        "evidence_digest": { "$sha256": "dispute-evidence-1" },
+        "challenger_id": "claimant-1",
+        "requested_units": 10000,
+        "opened_at": "2026-07-21T18:20:00.000Z"
+      }
+    },
+    "record_revocation": {
+      "instanceId": "case-1",
+      "tenantId": "tenant-1",
+      "evidence": {
+        "id": "revocation-evidence-1",
+        "digest": { "$sha256": "revocation-evidence-1" }
+      }
+    },
+    "reconcile_original": {
+      "instanceId": "case-1",
+      "tenantId": "tenant-1",
+      "outcome": "executed",
+      "evidence": {
+        "evidence_id": "original-reconciliation-1",
+        "evidence_digest": { "$sha256": "original-reconciliation-1" },
+        "observed_at": "2026-07-21T18:24:00.000Z"
+      }
+    },
+    "authorize_receipt_program": {
+      "instanceId": "case-1",
+      "tenantId": "tenant-1",
+      "authorization": {
+        "evidence_id": "authorization-evidence-1",
+        "evidence_digest": { "$sha256": "authorization-evidence-1" },
+        "remedy_operation_id": "remedy-operation-1",
+        "remedy_caid": { "$caid": "B" },
+        "remedy_action_digest": { "$sha256": "remedy-action-1" },
+        "consequence_mode": "receipt-program",
+        "capability_template_digest": { "$sha256": "capability-template-1" },
+        "escrow_profile_digest": null,
+        "units": 4000,
+        "authorized_at": "2026-07-21T18:25:00.000Z"
+      }
+    },
+    "authorize_action_escrow": {
+      "instanceId": "case-1",
+      "tenantId": "tenant-1",
+      "authorization": {
+        "evidence_id": "authorization-evidence-2",
+        "evidence_digest": { "$sha256": "authorization-evidence-2" },
+        "remedy_operation_id": "remedy-operation-2",
+        "remedy_caid": { "$caid": "C" },
+        "remedy_action_digest": { "$sha256": "remedy-action-2" },
+        "consequence_mode": "action-escrow",
+        "capability_template_digest": null,
+        "escrow_profile_digest": { "$sha256": "escrow-profile-2" },
+        "units": 6000,
+        "authorized_at": "2026-07-21T18:26:00.000Z"
+      }
+    },
+    "claim_remedy": {
+      "instanceId": "case-1",
+      "tenantId": "tenant-1",
+      "remedyOperationId": "remedy-operation-1",
+      "claimToken": "claimant-A"
+    },
+    "finalize_remedy": {
+      "instanceId": "case-1",
+      "tenantId": "tenant-1",
+      "remedyOperationId": "remedy-operation-1",
+      "claimToken": "claimant-A",
+      "outcome": "executed",
+      "evidence": {
+        "evidence_id": "outcome-evidence-1",
+        "evidence_digest": { "$sha256": "outcome-evidence-1" },
+        "observed_at": "2026-07-21T18:27:00.000Z"
+      }
+    },
+    "reconcile_remedy": {
+      "instanceId": "case-1",
+      "tenantId": "tenant-1",
+      "remedyOperationId": "remedy-operation-1",
+      "outcome": "executed",
+      "evidence": {
+        "evidence_id": "remedy-reconciliation-1",
+        "evidence_digest": { "$sha256": "remedy-reconciliation-1" },
+        "observed_at": "2026-07-21T18:29:00.000Z"
+      }
+    },
+    "resolve_no_remedy": {
+      "instanceId": "case-1",
+      "tenantId": "tenant-1",
+      "resolution": {
+        "evidence_id": "resolution-evidence-1",
+        "evidence_digest": { "$sha256": "resolution-evidence-1" },
+        "outcome": "no_remedy",
+        "resolved_at": "2026-07-21T18:29:00.000Z"
+      }
+    },
+    "status": {
+      "instanceId": "case-1",
+      "tenantId": "tenant-1"
+    }
+  },
+  "vectors": [
+    {
+      "id": "accept_executed_original",
+      "description": "An authenticated executed original creates a remedy case without changing or compensating the original effect.",
+      "covers": ["executed-original"],
+      "steps": [
+        {
+          "op": "create",
+          "fixture": "create_executed",
+          "expect": {
+            "ok": true,
+            "state.version": "EP-GATE-REMEDY-PROGRAM-PROFILE-v1",
+            "state.status": "effect_executed",
+            "state.original.outcome": "executed",
+            "state.original.operation_id": "original-operation-1",
+            "state.remedied_units": 0,
+            "state.remaining_units": 10000
+          }
+        }
+      ]
+    },
+    {
+      "id": "reconcile_indeterminate_original_as_executed",
+      "description": "An indeterminate original may accept a petition, but remedy authorization remains fenced until authenticated reconciliation proves the original executed.",
+      "covers": [
+        "indeterminate-original-petition",
+        "authenticated-original-reconciliation-executed"
+      ],
+      "steps": [
+        {
+          "op": "create",
+          "fixture": "create_executed",
+          "patch": {
+            "instanceId": "indeterminate-original-executed",
+            "original": { "outcome": "indeterminate" }
+          },
+          "expect": { "ok": true, "state.status": "effect_indeterminate" }
+        },
+        {
+          "op": "openDispute",
+          "fixture": "open_dispute",
+          "patch": { "instanceId": "indeterminate-original-executed" },
+          "expect": { "ok": true, "state.status": "disputed" }
+        },
+        {
+          "op": "authorizeRemedy",
+          "fixture": "authorize_receipt_program",
+          "patch": {
+            "instanceId": "indeterminate-original-executed",
+            "authorization": {
+              "evidence_id": "authorization-before-original-reconciliation",
+              "evidence_digest": { "$sha256": "authorization-before-original-reconciliation" },
+              "remedy_operation_id": "remedy-before-original-reconciliation",
+              "remedy_action_digest": { "$sha256": "remedy-before-original-reconciliation" },
+              "units": 1000
+            }
+          },
+          "expect": { "ok": false, "reason": "original_effect_indeterminate" }
+        },
+        {
+          "op": "reconcileOriginalEffect",
+          "fixture": "reconcile_original",
+          "patch": { "instanceId": "indeterminate-original-executed" },
+          "expect": {
+            "ok": true,
+            "state.status": "disputed",
+            "state.original.outcome": "indeterminate",
+            "state.original_reconciliation.outcome": "executed"
+          }
+        },
+        {
+          "op": "authorizeRemedy",
+          "fixture": "authorize_receipt_program",
+          "patch": {
+            "instanceId": "indeterminate-original-executed",
+            "authorization": {
+              "evidence_id": "authorization-after-original-reconciliation",
+              "evidence_digest": { "$sha256": "authorization-after-original-reconciliation" },
+              "remedy_operation_id": "remedy-after-original-reconciliation",
+              "remedy_action_digest": { "$sha256": "remedy-after-original-reconciliation" },
+              "units": 1000
+            }
+          },
+          "expect": { "ok": true, "state.status": "remedy_authorized" }
+        }
+      ]
+    },
+    {
+      "id": "reconcile_indeterminate_original_as_proved_no_effect",
+      "description": "An indeterminate original may accept a petition, then an authenticated proved-no-effect reconciliation closes the case without inventing compensation.",
+      "covers": [
+        "indeterminate-original-petition",
+        "authenticated-original-reconciliation-proved-no-effect"
+      ],
+      "steps": [
+        {
+          "op": "create",
+          "fixture": "create_executed",
+          "patch": {
+            "instanceId": "indeterminate-original-no-effect",
+            "original": { "outcome": "indeterminate" }
+          },
+          "expect": { "ok": true, "state.status": "effect_indeterminate" }
+        },
+        {
+          "op": "openDispute",
+          "fixture": "open_dispute",
+          "patch": { "instanceId": "indeterminate-original-no-effect" },
+          "expect": { "ok": true, "state.status": "disputed" }
+        },
+        {
+          "op": "reconcileOriginalEffect",
+          "fixture": "reconcile_original",
+          "patch": {
+            "instanceId": "indeterminate-original-no-effect",
+            "outcome": "proved_no_effect",
+            "evidence": {
+              "evidence_id": "original-reconciliation-no-effect",
+              "evidence_digest": { "$sha256": "original-reconciliation-no-effect" }
+            }
+          },
+          "expect": {
+            "ok": true,
+            "state.status": "original_proved_no_effect",
+            "state.original.outcome": "indeterminate",
+            "state.original_reconciliation.outcome": "proved_no_effect",
+            "state.remedied_units": 0
+          }
+        },
+        {
+          "op": "authorizeRemedy",
+          "fixture": "authorize_receipt_program",
+          "patch": { "instanceId": "indeterminate-original-no-effect", "authorization": { "units": 1 } },
+          "expect": { "ok": false, "reason": "remedy_case_terminal" }
+        }
+      ]
+    },
+    {
+      "id": "late_revocation_preserves_executed_effect",
+      "description": "A late revocation is recorded as future-authority-only and never rewrites the executed original outcome.",
+      "covers": ["late-revocation-no-undo"],
+      "steps": [
+        {
+          "op": "create",
+          "fixture": "create_executed",
+          "patch": { "instanceId": "late-revocation" },
+          "expect": { "ok": true, "state.status": "effect_executed" }
+        },
+        {
+          "op": "recordRevocation",
+          "fixture": "record_revocation",
+          "patch": { "instanceId": "late-revocation" },
+          "expect": {
+            "ok": true,
+            "code": "late_revocation_recorded",
+            "state.status": "effect_executed",
+            "state.original.outcome": "executed",
+            "state.revocation.effect": "future_authority_only"
+          }
+        }
+      ]
+    },
+    {
+      "id": "adjudication_is_separate_from_claim_and_execution",
+      "description": "Opening a dispute does not itself authorize or claim a remedy; adjudicated authorization and claimant ownership are separate transitions.",
+      "covers": ["separate-adjudication"],
+      "steps": [
+        { "op": "create", "fixture": "create_executed", "patch": { "instanceId": "separate-adjudication" }, "expect": { "ok": true } },
+        { "op": "openDispute", "fixture": "open_dispute", "patch": { "instanceId": "separate-adjudication" }, "expect": { "ok": true, "state.status": "disputed" } },
+        {
+          "op": "claimRemedy",
+          "fixture": "claim_remedy",
+          "patch": { "instanceId": "separate-adjudication" },
+          "expect": { "ok": false, "reason": "remedy_not_authorized" }
+        },
+        { "op": "authorizeRemedy", "fixture": "authorize_receipt_program", "patch": { "instanceId": "separate-adjudication" }, "expect": { "ok": true, "state.status": "remedy_authorized" } },
+        { "op": "claimRemedy", "fixture": "claim_remedy", "patch": { "instanceId": "separate-adjudication" }, "expect": { "ok": true, "state.status": "remedy_claimed" } }
+      ]
+    },
+    {
+      "id": "receipt_program_is_exactly_one_owner",
+      "description": "Receipt Program ownership is accepted only with a capability-template digest and a null Action Escrow profile.",
+      "covers": ["receipt-program-owner-xor"],
+      "steps": [
+        { "op": "create", "fixture": "create_executed", "patch": { "instanceId": "receipt-owner-xor" }, "expect": { "ok": true } },
+        { "op": "openDispute", "fixture": "open_dispute", "patch": { "instanceId": "receipt-owner-xor" }, "expect": { "ok": true } },
+        {
+          "op": "authorizeRemedy",
+          "fixture": "authorize_receipt_program",
+          "patch": {
+            "instanceId": "receipt-owner-xor",
+            "authorization": { "escrow_profile_digest": { "$sha256": "forbidden-second-owner" } }
+          },
+          "expect": { "ok": false, "reason": "remedy_owner_invalid" }
+        },
+        {
+          "op": "authorizeRemedy",
+          "fixture": "authorize_receipt_program",
+          "patch": { "instanceId": "receipt-owner-xor" },
+          "expect": {
+            "ok": true,
+            "state.active_remedy.consequence_mode": "receipt-program",
+            "state.active_remedy.capability_template_digest": { "$sha256": "capability-template-1" },
+            "state.active_remedy.escrow_profile_digest": null
+          }
+        }
+      ]
+    },
+    {
+      "id": "action_escrow_is_exactly_one_owner",
+      "description": "Action Escrow ownership is accepted only with an escrow-profile digest and a null Receipt Program capability template.",
+      "covers": ["action-escrow-owner-xor"],
+      "steps": [
+        { "op": "create", "fixture": "create_executed", "patch": { "instanceId": "escrow-owner-xor" }, "expect": { "ok": true } },
+        { "op": "openDispute", "fixture": "open_dispute", "patch": { "instanceId": "escrow-owner-xor" }, "expect": { "ok": true } },
+        {
+          "op": "authorizeRemedy",
+          "fixture": "authorize_action_escrow",
+          "patch": {
+            "instanceId": "escrow-owner-xor",
+            "authorization": { "escrow_profile_digest": null }
+          },
+          "expect": { "ok": false, "reason": "remedy_owner_invalid" }
+        },
+        {
+          "op": "authorizeRemedy",
+          "fixture": "authorize_action_escrow",
+          "patch": { "instanceId": "escrow-owner-xor" },
+          "expect": {
+            "ok": true,
+            "state.active_remedy.consequence_mode": "action-escrow",
+            "state.active_remedy.capability_template_digest": null,
+            "state.active_remedy.escrow_profile_digest": { "$sha256": "escrow-profile-2" }
+          }
+        }
+      ]
+    },
+    {
+      "id": "fresh_caid_action_and_operation_are_accepted_across_cases",
+      "description": "Two same-tenant cases may authorize remedies only when the remedy CAID, action digest, and operation ID are all fresh.",
+      "covers": ["fresh-remedy-caid-action-operation"],
+      "steps": [
+        { "op": "create", "fixture": "create_executed", "patch": { "instanceId": "fresh-case-a" }, "expect": { "ok": true } },
+        {
+          "op": "create",
+          "fixture": "create_executed",
+          "patch": {
+            "instanceId": "fresh-case-b",
+            "original": {
+              "caid": { "$caid": "D" },
+              "action_digest": { "$sha256": "fresh-original-action-b" },
+              "operation_id": "fresh-original-operation-b",
+              "terminal_evidence_digest": { "$sha256": "fresh-original-evidence-b" }
+            }
+          },
+          "expect": { "ok": true }
+        },
+        { "op": "openDispute", "fixture": "open_dispute", "patch": { "instanceId": "fresh-case-a", "dispute": { "dispute_id": "fresh-dispute-a", "evidence_id": "fresh-dispute-evidence-a", "evidence_digest": { "$sha256": "fresh-dispute-evidence-a" } } }, "expect": { "ok": true } },
+        { "op": "openDispute", "fixture": "open_dispute", "patch": { "instanceId": "fresh-case-b", "dispute": { "dispute_id": "fresh-dispute-b", "evidence_id": "fresh-dispute-evidence-b", "evidence_digest": { "$sha256": "fresh-dispute-evidence-b" } } }, "expect": { "ok": true } },
+        { "op": "authorizeRemedy", "fixture": "authorize_receipt_program", "patch": { "instanceId": "fresh-case-a", "authorization": { "evidence_id": "fresh-authorization-a", "evidence_digest": { "$sha256": "fresh-authorization-a" }, "remedy_operation_id": "fresh-remedy-operation-a", "remedy_caid": { "$caid": "E" }, "remedy_action_digest": { "$sha256": "fresh-remedy-action-a" }, "units": 1000 } }, "expect": { "ok": true } },
+        { "op": "authorizeRemedy", "fixture": "authorize_receipt_program", "patch": { "instanceId": "fresh-case-b", "authorization": { "evidence_id": "fresh-authorization-b", "evidence_digest": { "$sha256": "fresh-authorization-b" }, "remedy_operation_id": "fresh-remedy-operation-b", "remedy_caid": { "$caid": "F" }, "remedy_action_digest": { "$sha256": "fresh-remedy-action-b" }, "units": 1000 } }, "expect": { "ok": true, "state.status": "remedy_authorized" } }
+      ]
+    },
+    {
+      "id": "cross_case_action_replay_is_refused",
+      "description": "A fresh operation ID and CAID cannot disguise a remedy action digest already authorized in another same-tenant case.",
+      "covers": ["cross-case-action-replay"],
+      "steps": [
+        { "op": "create", "fixture": "create_executed", "patch": { "instanceId": "action-replay-a" }, "expect": { "ok": true } },
+        { "op": "create", "fixture": "create_executed", "patch": { "instanceId": "action-replay-b", "original": { "operation_id": "action-replay-original-b", "action_digest": { "$sha256": "action-replay-original-b" }, "terminal_evidence_digest": { "$sha256": "action-replay-original-evidence-b" } } }, "expect": { "ok": true } },
+        { "op": "openDispute", "fixture": "open_dispute", "patch": { "instanceId": "action-replay-a", "dispute": { "dispute_id": "action-replay-dispute-a", "evidence_id": "action-replay-dispute-evidence-a", "evidence_digest": { "$sha256": "action-replay-dispute-evidence-a" } } }, "expect": { "ok": true } },
+        { "op": "openDispute", "fixture": "open_dispute", "patch": { "instanceId": "action-replay-b", "dispute": { "dispute_id": "action-replay-dispute-b", "evidence_id": "action-replay-dispute-evidence-b", "evidence_digest": { "$sha256": "action-replay-dispute-evidence-b" } } }, "expect": { "ok": true } },
+        { "op": "authorizeRemedy", "fixture": "authorize_receipt_program", "patch": { "instanceId": "action-replay-a", "authorization": { "evidence_id": "action-replay-authorization-a", "evidence_digest": { "$sha256": "action-replay-authorization-a" }, "remedy_operation_id": "action-replay-operation-a", "remedy_caid": { "$caid": "G" }, "remedy_action_digest": { "$sha256": "shared-remedy-action" }, "units": 1000 } }, "expect": { "ok": true } },
+        { "op": "authorizeRemedy", "fixture": "authorize_receipt_program", "patch": { "instanceId": "action-replay-b", "authorization": { "evidence_id": "action-replay-authorization-b", "evidence_digest": { "$sha256": "action-replay-authorization-b" }, "remedy_operation_id": "action-replay-operation-b", "remedy_caid": { "$caid": "H" }, "remedy_action_digest": { "$sha256": "shared-remedy-action" }, "units": 1000 } }, "expect": { "ok": false, "reason": "remedy_operation_replayed" } }
+      ]
+    },
+    {
+      "id": "cross_case_caid_replay_is_refused",
+      "description": "A fresh operation ID and action digest cannot disguise a remedy CAID already authorized in another same-tenant case.",
+      "covers": ["cross-case-caid-replay"],
+      "steps": [
+        { "op": "create", "fixture": "create_executed", "patch": { "instanceId": "caid-replay-a" }, "expect": { "ok": true } },
+        { "op": "create", "fixture": "create_executed", "patch": { "instanceId": "caid-replay-b", "original": { "operation_id": "caid-replay-original-b", "action_digest": { "$sha256": "caid-replay-original-b" }, "terminal_evidence_digest": { "$sha256": "caid-replay-original-evidence-b" } } }, "expect": { "ok": true } },
+        { "op": "openDispute", "fixture": "open_dispute", "patch": { "instanceId": "caid-replay-a", "dispute": { "dispute_id": "caid-replay-dispute-a", "evidence_id": "caid-replay-dispute-evidence-a", "evidence_digest": { "$sha256": "caid-replay-dispute-evidence-a" } } }, "expect": { "ok": true } },
+        { "op": "openDispute", "fixture": "open_dispute", "patch": { "instanceId": "caid-replay-b", "dispute": { "dispute_id": "caid-replay-dispute-b", "evidence_id": "caid-replay-dispute-evidence-b", "evidence_digest": { "$sha256": "caid-replay-dispute-evidence-b" } } }, "expect": { "ok": true } },
+        { "op": "authorizeRemedy", "fixture": "authorize_receipt_program", "patch": { "instanceId": "caid-replay-a", "authorization": { "evidence_id": "caid-replay-authorization-a", "evidence_digest": { "$sha256": "caid-replay-authorization-a" }, "remedy_operation_id": "caid-replay-operation-a", "remedy_caid": { "$caid": "I" }, "remedy_action_digest": { "$sha256": "caid-replay-action-a" }, "units": 1000 } }, "expect": { "ok": true } },
+        { "op": "authorizeRemedy", "fixture": "authorize_receipt_program", "patch": { "instanceId": "caid-replay-b", "authorization": { "evidence_id": "caid-replay-authorization-b", "evidence_digest": { "$sha256": "caid-replay-authorization-b" }, "remedy_operation_id": "caid-replay-operation-b", "remedy_caid": { "$caid": "I" }, "remedy_action_digest": { "$sha256": "caid-replay-action-b" }, "units": 1000 } }, "expect": { "ok": false, "reason": "remedy_operation_replayed" } }
+      ]
+    },
+    {
+      "id": "two_partial_remedies_reach_exact_cap_and_refuse_final_cent",
+      "description": "Two separately owned compensating operations commit 4000 and 6000 units, exactly exhausting the cap; a fresh final-cent authorization is refused.",
+      "covers": ["two-partial-remedies-exact-cap", "final-cent-refused"],
+      "steps": [
+        { "op": "create", "fixture": "create_executed", "patch": { "instanceId": "exact-cap" }, "expect": { "ok": true } },
+        { "op": "openDispute", "fixture": "open_dispute", "patch": { "instanceId": "exact-cap" }, "expect": { "ok": true } },
+        { "op": "authorizeRemedy", "fixture": "authorize_receipt_program", "patch": { "instanceId": "exact-cap" }, "expect": { "ok": true } },
+        { "op": "claimRemedy", "fixture": "claim_remedy", "patch": { "instanceId": "exact-cap" }, "expect": { "ok": true } },
+        {
+          "op": "finalizeRemedy",
+          "fixture": "finalize_remedy",
+          "patch": { "instanceId": "exact-cap" },
+          "expect": { "ok": true, "state.status": "partially_remedied", "state.remedied_units": 4000, "state.remaining_units": 6000 }
+        },
+        { "op": "authorizeRemedy", "fixture": "authorize_action_escrow", "patch": { "instanceId": "exact-cap" }, "expect": { "ok": true } },
+        { "op": "claimRemedy", "fixture": "claim_remedy", "patch": { "instanceId": "exact-cap", "remedyOperationId": "remedy-operation-2", "claimToken": "claimant-B" }, "expect": { "ok": true } },
+        {
+          "op": "finalizeRemedy",
+          "fixture": "finalize_remedy",
+          "patch": {
+            "instanceId": "exact-cap",
+            "remedyOperationId": "remedy-operation-2",
+            "claimToken": "claimant-B",
+            "evidence": { "evidence_id": "outcome-evidence-2", "evidence_digest": { "$sha256": "outcome-evidence-2" }, "observed_at": "2026-07-21T18:28:00.000Z" }
+          },
+          "expect": { "ok": true, "state.status": "remedied", "state.remedied_units": 10000, "state.remaining_units": 0, "state.remedies.0.units": 4000, "state.remedies.1.units": 6000 }
+        },
+        {
+          "op": "authorizeRemedy",
+          "fixture": "authorize_receipt_program",
+          "patch": {
+            "instanceId": "exact-cap",
+            "authorization": {
+              "evidence_id": "final-cent-authorization",
+              "evidence_digest": { "$sha256": "final-cent-authorization" },
+              "remedy_operation_id": "final-cent-operation",
+              "remedy_caid": { "$caid": "J" },
+              "remedy_action_digest": { "$sha256": "final-cent-action" },
+              "units": 1
+            }
+          },
+          "expect": { "ok": false, "reason": "remedy_limit_exhausted" }
+        }
+      ]
+    },
+    {
+      "id": "modified_request_for_same_operation_is_conflict",
+      "description": "An exact remedy operation ID cannot be retried with modified units, even while the original authorization remains active.",
+      "covers": ["same-operation-modified-conflict"],
+      "steps": [
+        { "op": "create", "fixture": "create_executed", "patch": { "instanceId": "modified-operation" }, "expect": { "ok": true } },
+        { "op": "openDispute", "fixture": "open_dispute", "patch": { "instanceId": "modified-operation" }, "expect": { "ok": true } },
+        { "op": "authorizeRemedy", "fixture": "authorize_receipt_program", "patch": { "instanceId": "modified-operation" }, "expect": { "ok": true } },
+        { "op": "authorizeRemedy", "fixture": "authorize_receipt_program", "patch": { "instanceId": "modified-operation", "authorization": { "units": 4001 } }, "expect": { "ok": false, "reason": "remedy_operation_replayed" } }
+      ]
+    },
+    {
+      "id": "cross_tenant_case_access_is_refused",
+      "description": "A case lookup under another tenant is indistinguishable from a missing case.",
+      "covers": ["cross-tenant-refusal"],
+      "steps": [
+        { "op": "create", "fixture": "create_executed", "patch": { "instanceId": "shared-instance", "tenantId": "tenant-A" }, "expect": { "ok": true } },
+        { "op": "status", "fixture": "status", "patch": { "instanceId": "shared-instance", "tenantId": "tenant-B" }, "expect": { "ok": false, "reason": "remedy_case_not_found" } }
+      ]
+    },
+    {
+      "id": "cross_case_evidence_replay_is_refused",
+      "description": "Evidence consumed by one case cannot open another case in the same tenant.",
+      "covers": ["cross-case-evidence-replay"],
+      "steps": [
+        { "op": "create", "fixture": "create_executed", "patch": { "instanceId": "evidence-replay-a" }, "expect": { "ok": true } },
+        { "op": "create", "fixture": "create_executed", "patch": { "instanceId": "evidence-replay-b", "original": { "operation_id": "evidence-replay-original-b", "action_digest": { "$sha256": "evidence-replay-original-b" }, "terminal_evidence_digest": { "$sha256": "evidence-replay-original-evidence-b" } } }, "expect": { "ok": true } },
+        { "op": "openDispute", "fixture": "open_dispute", "patch": { "instanceId": "evidence-replay-a", "dispute": { "dispute_id": "evidence-replay-dispute-a", "evidence_id": "shared-cross-case-evidence", "evidence_digest": { "$sha256": "shared-cross-case-evidence" } } }, "expect": { "ok": true } },
+        { "op": "openDispute", "fixture": "open_dispute", "patch": { "instanceId": "evidence-replay-b", "dispute": { "dispute_id": "evidence-replay-dispute-b", "evidence_id": "shared-cross-case-evidence", "evidence_digest": { "$sha256": "shared-cross-case-evidence" } } }, "expect": { "ok": false, "reason": "evidence_replayed" } }
+      ]
+    },
+    {
+      "id": "cross_case_operation_replay_is_refused",
+      "description": "A remedy operation consumed by one case cannot be authorized in another same-tenant case, even with fresh evidence, action, and CAID.",
+      "covers": ["cross-case-operation-replay"],
+      "steps": [
+        { "op": "create", "fixture": "create_executed", "patch": { "instanceId": "operation-replay-a" }, "expect": { "ok": true } },
+        { "op": "create", "fixture": "create_executed", "patch": { "instanceId": "operation-replay-b", "original": { "operation_id": "operation-replay-original-b", "action_digest": { "$sha256": "operation-replay-original-b" }, "terminal_evidence_digest": { "$sha256": "operation-replay-original-evidence-b" } } }, "expect": { "ok": true } },
+        { "op": "openDispute", "fixture": "open_dispute", "patch": { "instanceId": "operation-replay-a", "dispute": { "dispute_id": "operation-replay-dispute-a", "evidence_id": "operation-replay-dispute-evidence-a", "evidence_digest": { "$sha256": "operation-replay-dispute-evidence-a" } } }, "expect": { "ok": true } },
+        { "op": "openDispute", "fixture": "open_dispute", "patch": { "instanceId": "operation-replay-b", "dispute": { "dispute_id": "operation-replay-dispute-b", "evidence_id": "operation-replay-dispute-evidence-b", "evidence_digest": { "$sha256": "operation-replay-dispute-evidence-b" } } }, "expect": { "ok": true } },
+        { "op": "authorizeRemedy", "fixture": "authorize_receipt_program", "patch": { "instanceId": "operation-replay-a", "authorization": { "evidence_id": "operation-replay-authorization-a", "evidence_digest": { "$sha256": "operation-replay-authorization-a" }, "remedy_operation_id": "shared-remedy-operation", "remedy_caid": { "$caid": "K" }, "remedy_action_digest": { "$sha256": "operation-replay-action-a" }, "units": 1000 } }, "expect": { "ok": true } },
+        { "op": "authorizeRemedy", "fixture": "authorize_receipt_program", "patch": { "instanceId": "operation-replay-b", "authorization": { "evidence_id": "operation-replay-authorization-b", "evidence_digest": { "$sha256": "operation-replay-authorization-b" }, "remedy_operation_id": "shared-remedy-operation", "remedy_caid": { "$caid": "L" }, "remedy_action_digest": { "$sha256": "operation-replay-action-b" }, "units": 1000 } }, "expect": { "ok": false, "reason": "remedy_operation_replayed" } }
+      ]
+    },
+    {
+      "id": "second_claimant_is_refused",
+      "description": "Once a remedy operation is claimed, a different claim token cannot acquire or finalize it.",
+      "covers": ["second-claimant-refused"],
+      "steps": [
+        { "op": "create", "fixture": "create_executed", "patch": { "instanceId": "second-claimant" }, "expect": { "ok": true } },
+        { "op": "openDispute", "fixture": "open_dispute", "patch": { "instanceId": "second-claimant" }, "expect": { "ok": true } },
+        { "op": "authorizeRemedy", "fixture": "authorize_receipt_program", "patch": { "instanceId": "second-claimant" }, "expect": { "ok": true } },
+        { "op": "claimRemedy", "fixture": "claim_remedy", "patch": { "instanceId": "second-claimant" }, "expect": { "ok": true, "state.status": "remedy_claimed" } },
+        { "op": "claimRemedy", "fixture": "claim_remedy", "patch": { "instanceId": "second-claimant", "claimToken": "claimant-B" }, "expect": { "ok": false, "reason": "remedy_claim_owned" } },
+        { "op": "status", "fixture": "status", "patch": { "instanceId": "second-claimant" }, "expect": { "ok": true, "state.status": "remedy_claimed" } }
+      ]
+    },
+    {
+      "id": "indeterminate_remedy_fences_retry_until_executed_reconciliation",
+      "description": "An indeterminate remedy outcome makes exact finalization retries idempotent, refuses modified retries and reclaims, and consumes units only after authenticated executed reconciliation.",
+      "covers": ["indeterminate-remedy-fences-retry", "remedy-reconciliation-executed"],
+      "steps": [
+        { "op": "create", "fixture": "create_executed", "patch": { "instanceId": "indeterminate-remedy-executed" }, "expect": { "ok": true } },
+        { "op": "openDispute", "fixture": "open_dispute", "patch": { "instanceId": "indeterminate-remedy-executed" }, "expect": { "ok": true } },
+        { "op": "authorizeRemedy", "fixture": "authorize_receipt_program", "patch": { "instanceId": "indeterminate-remedy-executed", "authorization": { "units": 10000 } }, "expect": { "ok": true } },
+        { "op": "claimRemedy", "fixture": "claim_remedy", "patch": { "instanceId": "indeterminate-remedy-executed" }, "expect": { "ok": true } },
+        { "op": "finalizeRemedy", "fixture": "finalize_remedy", "patch": { "instanceId": "indeterminate-remedy-executed", "outcome": "indeterminate" }, "expect": { "ok": true, "state.status": "remedy_indeterminate", "state.remedied_units": 0, "state.remaining_units": 10000 } },
+        { "op": "finalizeRemedy", "fixture": "finalize_remedy", "patch": { "instanceId": "indeterminate-remedy-executed", "outcome": "indeterminate" }, "expect": { "ok": true, "idempotent": true, "state.status": "remedy_indeterminate" } },
+        { "op": "finalizeRemedy", "fixture": "finalize_remedy", "patch": { "instanceId": "indeterminate-remedy-executed", "outcome": "indeterminate", "evidence": { "evidence_id": "modified-indeterminate-outcome", "evidence_digest": { "$sha256": "modified-indeterminate-outcome" } } }, "expect": { "ok": false, "reason": "remedy_indeterminate" } },
+        { "op": "claimRemedy", "fixture": "claim_remedy", "patch": { "instanceId": "indeterminate-remedy-executed" }, "expect": { "ok": false, "reason": "remedy_indeterminate" } },
+        { "op": "reconcileRemedy", "fixture": "reconcile_remedy", "patch": { "instanceId": "indeterminate-remedy-executed", "outcome": "executed" }, "expect": { "ok": true, "state.status": "remedied", "state.remedied_units": 10000, "state.remaining_units": 0 } }
+      ]
+    },
+    {
+      "id": "indeterminate_remedy_fences_retry_until_proved_no_effect_reconciliation",
+      "description": "An indeterminate remedy remains fenced until authenticated proved-no-effect reconciliation reopens adjudication without consuming units.",
+      "covers": ["indeterminate-remedy-fences-retry", "remedy-reconciliation-proved-no-effect"],
+      "steps": [
+        { "op": "create", "fixture": "create_executed", "patch": { "instanceId": "indeterminate-remedy-no-effect" }, "expect": { "ok": true } },
+        { "op": "openDispute", "fixture": "open_dispute", "patch": { "instanceId": "indeterminate-remedy-no-effect" }, "expect": { "ok": true } },
+        { "op": "authorizeRemedy", "fixture": "authorize_receipt_program", "patch": { "instanceId": "indeterminate-remedy-no-effect", "authorization": { "units": 10000 } }, "expect": { "ok": true } },
+        { "op": "claimRemedy", "fixture": "claim_remedy", "patch": { "instanceId": "indeterminate-remedy-no-effect" }, "expect": { "ok": true } },
+        { "op": "finalizeRemedy", "fixture": "finalize_remedy", "patch": { "instanceId": "indeterminate-remedy-no-effect", "outcome": "indeterminate" }, "expect": { "ok": true, "state.status": "remedy_indeterminate" } },
+        { "op": "claimRemedy", "fixture": "claim_remedy", "patch": { "instanceId": "indeterminate-remedy-no-effect" }, "expect": { "ok": false, "reason": "remedy_indeterminate" } },
+        { "op": "reconcileRemedy", "fixture": "reconcile_remedy", "patch": { "instanceId": "indeterminate-remedy-no-effect", "outcome": "proved_no_effect", "evidence": { "evidence_id": "remedy-reconciliation-no-effect", "evidence_digest": { "$sha256": "remedy-reconciliation-no-effect" } } }, "expect": { "ok": true, "state.status": "disputed", "state.remedied_units": 0, "state.remaining_units": 10000 } },
+        { "op": "authorizeRemedy", "fixture": "authorize_action_escrow", "patch": { "instanceId": "indeterminate-remedy-no-effect", "authorization": { "units": 10000 } }, "expect": { "ok": true, "state.status": "remedy_authorized" } }
+      ]
+    },
+    {
+      "id": "authenticated_no_remedy_decision_is_terminal",
+      "description": "A separately verified no-remedy adjudication closes a disputed case and refuses later compensation.",
+      "covers": ["no-remedy-decision"],
+      "steps": [
+        { "op": "create", "fixture": "create_executed", "patch": { "instanceId": "no-remedy-decision" }, "expect": { "ok": true } },
+        { "op": "openDispute", "fixture": "open_dispute", "patch": { "instanceId": "no-remedy-decision" }, "expect": { "ok": true } },
+        { "op": "resolveDispute", "fixture": "resolve_no_remedy", "patch": { "instanceId": "no-remedy-decision" }, "expect": { "ok": true, "state.status": "resolved_no_remedy", "state.resolution.outcome": "no_remedy" } },
+        { "op": "authorizeRemedy", "fixture": "authorize_receipt_program", "patch": { "instanceId": "no-remedy-decision", "authorization": { "units": 1 } }, "expect": { "ok": false, "reason": "remedy_case_terminal" } }
+      ]
+    },
+    {
+      "id": "trigger_evidence_never_becomes_remedy_authority",
+      "description": "Petition trigger evidence cannot be replayed as authorization, and fresh trigger-only evidence refused by the deterministic authorization verifier cannot activate a remedy.",
+      "covers": ["trigger-evidence-never-authority"],
+      "verifier_policy": {
+        "reject_authorization_evidence_ids": ["trigger-only-authorization"]
+      },
+      "steps": [
+        { "op": "create", "fixture": "create_executed", "patch": { "instanceId": "trigger-not-authority" }, "expect": { "ok": true } },
+        { "op": "openDispute", "fixture": "open_dispute", "patch": { "instanceId": "trigger-not-authority" }, "expect": { "ok": true, "state.status": "disputed" } },
+        {
+          "op": "authorizeRemedy",
+          "fixture": "authorize_receipt_program",
+          "patch": {
+            "instanceId": "trigger-not-authority",
+            "authorization": {
+              "evidence_id": "dispute-evidence-1",
+              "evidence_digest": { "$sha256": "dispute-evidence-1" },
+              "remedy_operation_id": "replayed-trigger-operation",
+              "remedy_caid": { "$caid": "M" },
+              "remedy_action_digest": { "$sha256": "replayed-trigger-action" },
+              "units": 1000
+            }
+          },
+          "expect": { "ok": false, "reason": "evidence_replayed" }
+        },
+        {
+          "op": "authorizeRemedy",
+          "fixture": "authorize_receipt_program",
+          "patch": {
+            "instanceId": "trigger-not-authority",
+            "authorization": {
+              "evidence_id": "trigger-only-authorization",
+              "evidence_digest": { "$sha256": "trigger-only-authorization" },
+              "remedy_operation_id": "trigger-only-operation",
+              "remedy_caid": { "$caid": "N" },
+              "remedy_action_digest": { "$sha256": "trigger-only-action" },
+              "units": 1000
+            }
+          },
+          "expect": { "ok": false, "reason": "remedy_authorization_invalid" }
+        },
+        { "op": "status", "fixture": "status", "patch": { "instanceId": "trigger-not-authority" }, "expect": { "ok": true, "state.status": "disputed", "state.active_remedy": null } }
+      ]
+    }
+  ]
+}

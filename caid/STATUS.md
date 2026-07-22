@@ -1,17 +1,20 @@
 # CAID Status
 
-Updated: 2026-07-14
+Updated: 2026-07-21
 
 ## Verified implementation
 
 - A typed action object and strict `caid:1` identifier.
-- An immutable 45-type seed registry and two-suite registry.
+- An immutable 47-type seed registry and two-suite registry.
 - Same-team, dependency-free JavaScript, Python, and Go reference ports.
 - 48 shared core vectors passing in all three ports.
-- 13 Action-Mapping Profile vectors passing with byte-for-byte agreement on
-  verdicts and refusal reasons in all three ports.
+- 23 Action-Mapping Profile vectors passing with byte-for-byte agreement on
+  verdicts and refusal reasons in all three ports, including the SILP IR to
+  CAID `CANCEL+EMAIL` profile.
 - Closed mapping verdicts: `EQUIVALENT_UNDER_PROFILE`, `NOT_EQUIVALENT`, and
-  `INDETERMINATE`.
+  `INDETERMINATE`. SILP correlation metadata is deliberately non-material;
+  ordered entities, action associations, complete constraints, alternatives,
+  and action sequence are material, while missing or lossy fields abstain.
 
 Run the complete gate from the repository root:
 

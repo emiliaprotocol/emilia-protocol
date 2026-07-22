@@ -11,5 +11,5 @@
     "workflow_files_scanned": 327
   },
   "corpus_sha256": "9fc130a7ce66205fe48a9c66d48e1041fea5c4baaa236091408159a2762864ed",
-  "private_index_path": "docs/strategy-private/observatory/recon-index.v1.json"
+  "private_index_published": false
 }

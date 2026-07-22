@@ -92,7 +92,7 @@ function spkiFingerprint(value: unknown): string | null {
  *     action_hash: string,                  // the action the whole quorum authorizes
  *     policy: {
  *       mode: "threshold" | "ordered",
- *       required: number,                   // M (threshold mode); ordered requires all listed
+ *       required: number,                   // M; ordered mode admits the first M roster slots
  *       approvers: [{ role: string, approver: string }],  // N eligible (role -> named human)
  *       distinct_humans?: boolean,          // default true
  *       window_sec?: number,                // default 900; max span across signatures
@@ -132,10 +132,12 @@ export function verifyQuorum(quorum: QuorumDocument | null | undefined, opts: Re
     const distinctHumans = policy.distinct_humans !== false; // default true
     const windowSec = typeof policy.window_sec === 'number' && Number.isFinite(policy.window_sec) ? policy.window_sec : 900;
     const eligible = Array.isArray(policy.approvers) ? policy.approvers : [];
-    const required = mode === 'ordered'
-      ? eligible.length
-      : (typeof policy.required === 'number' && Number.isInteger(policy.required) && policy.required > 0 ? policy.required : NaN);
-    if (!Number.isInteger(required) || required <= 0 || eligible.length === 0) {
+    const required = typeof policy.required === 'number'
+      && Number.isInteger(policy.required) && policy.required > 0
+      ? policy.required
+      : NaN;
+    if (!Number.isInteger(required) || required <= 0
+        || eligible.length === 0 || required > eligible.length) {
       return { valid: false, checks, members: memberResults };
     }
 
@@ -207,11 +209,12 @@ export function verifyQuorum(quorum: QuorumDocument | null | undefined, opts: Re
     checks.threshold_met = distinctEligible.size >= required;
 
     // 6. Order (ordered mode): member roles, in delivery order, match the policy
-    //    sequence for the first `required` slots, and signature times strictly increase.
+    //    sequence for every admitted member (at least the first `required`
+    //    slots), and signature times strictly increase.
     if (mode === 'ordered') {
-      const seqRolesOk = eligible.every((e, idx) => members[idx]?.role === e.role
-        && members[idx]?.signoff?.context?.approver === e.approver);
-      const times = issuedAts.slice(0, eligible.length);
+      const seqRolesOk = members.length <= eligible.length && members.every((member, idx) => member?.role === eligible[idx]?.role
+        && member?.signoff?.context?.approver === eligible[idx]?.approver);
+      const times = issuedAts.slice(0, members.length);
       // Array.prototype.every only invokes this callback for `idx` once every
       // prior callback (0..idx-1) returned truthy — so for idx > 0, the
       // `t !== null` check at idx-1 already guaranteed times[idx - 1] is a
@@ -220,7 +223,7 @@ export function verifyQuorum(quorum: QuorumDocument | null | undefined, opts: Re
         const previous = times[idx - 1];
         return t !== null && (idx === 0 || (typeof previous === 'number' && t > previous));
       });
-      checks.order_satisfied = members.length >= eligible.length && seqRolesOk && timesOk;
+      checks.order_satisfied = members.length >= required && seqRolesOk && timesOk;
     } else {
       checks.order_satisfied = true; // not applicable in threshold mode
     }
@@ -232,8 +235,8 @@ export function verifyQuorum(quorum: QuorumDocument | null | undefined, opts: Re
     //     asserted timestamps. The first signoff MUST carry no predecessor. When
     //     the policy does not request it, this is not applicable (true).
     if (mode === 'ordered' && policy.ordered_chain === true) {
-      const seq = members.slice(0, eligible.length);
-      let linked = seq.length === eligible.length;
+      const seq = members;
+      let linked = seq.length >= required && seq.length <= eligible.length;
       for (let idx = 0; idx < seq.length; idx++) {
         const prev = seq[idx]?.signoff?.context?.prev_context_hash;
         if (idx === 0) {

@@ -4,16 +4,26 @@
 /* eslint-disable */
 // Regenerates lib/proof-stats.json from ground truth or checks it in CI.
 import { spawnSync } from 'node:child_process';
-import { readFileSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
 import { isDeepStrictEqual } from 'node:util';
 const check = process.argv.includes('--check');
-const execution = spawnSync('npx', ['vitest', 'run', '--silent', '--reporter=json'], {
+const reportDir = mkdtempSync(join(tmpdir(), 'ep-proof-stats-'));
+const reportPath = join(reportDir, 'vitest.json');
+const execution = spawnSync('npx', [
+    'vitest', 'run', '--silent', '--reporter=json', `--outputFile=${reportPath}`,
+], {
     encoding: 'utf8',
     maxBuffer: 1e9,
 });
 if (execution.error)
     throw execution.error;
-const j = JSON.parse(execution.stdout || '{}');
+if (!existsSync(reportPath)) {
+    throw new Error(`Vitest did not write its JSON report:\n${execution.stderr || execution.stdout}`);
+}
+const j = JSON.parse(readFileSync(reportPath, 'utf8'));
+rmSync(reportDir, { recursive: true, force: true });
 if (execution.status !== 0) {
     console.error('PROOF STATS: FAIL — the measured test run did not pass');
     for (const result of j.testResults.filter((item) => item.status === 'failed').slice(0, 20)) {

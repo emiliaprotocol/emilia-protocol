@@ -3,6 +3,13 @@
 // Resolve and execute every exact security claim, then bind the result to the
 // reproducible release artifacts reviewers receive. This gate deliberately
 // rejects keyword/substr coverage as evidence of an invariant.
+//
+// Security claims import the repository's TypeScript source directly. Register
+// the same NodeNext `.js` -> `.ts` source resolver used by CI before any of
+// those dynamic imports execute; otherwise the security gate silently loses
+// executable coverage after a source file is converted from JS to TS.
+import './ts-loader/register.mjs';
+
 import crypto from 'node:crypto';
 import fs from 'node:fs';
 import path from 'node:path';
@@ -16,6 +23,10 @@ import {
   executionSuiteFile,
   validateResultRows,
 } from '../conformance/result-contract.mjs';
+// The governed security case dynamically executes TypeScript-migrated source
+// whose historical import specifiers still end in .js. Register the same
+// resolver CI uses so `npm run check:security-case` is not CI-environment-only.
+import './ts-loader/register.mjs';
 
 const ROOT: string = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const SOURCE: string = path.join(ROOT, 'security', 'claims.v1.json');

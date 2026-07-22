@@ -41,7 +41,9 @@
     "src/reliance-gap.ts",
     "src/agentroa.ts",
     "src/orprg.ts",
+    "src/platform-attestation.ts",
     "src/evidence-chain.ts",
+    "src/authority-program.ts",
     "src/index.ts",
     "src/cli.ts"
   ]

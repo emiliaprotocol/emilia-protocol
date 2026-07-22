@@ -958,6 +958,30 @@
       "references": []
     },
     {
+      "action_type": "travel.cancel-notify.1",
+      "status": "active",
+      "risk_class": "external-communication",
+      "summary": "Cancellation of a travel reservation with a time constraint and a secondary notification action.",
+      "required_fields": [
+        {"name": "primary_action", "type": "string", "notes": "SILP root intent, for example !CANCEL"},
+        {"name": "resource", "type": "string", "notes": "The primary action's material target"},
+        {"name": "cancel_time", "type": "string", "notes": "The primary action's material time slot"},
+        {"name": "secondary_action", "type": "string", "notes": "A material secondary action, for example !EMAIL"},
+        {"name": "notification_recipient", "type": "string", "notes": "The secondary action's material recipient"},
+        {"name": "constraint_type", "type": "string"},
+        {"name": "constraint_value", "type": "string"},
+        {"name": "constraint_time", "type": "string"},
+        {"name": "constraint_subject", "type": "string"},
+        {"name": "entities_digest", "type": "digest", "notes": "sha256:<lowercase hex> of the complete ordered SILP entity list, including entity/action associations"},
+        {"name": "constraints_digest", "type": "digest", "notes": "sha256:<lowercase hex> of the complete ordered SILP constraint list"},
+        {"name": "alternatives_digest", "type": "digest", "notes": "sha256:<lowercase hex> of the complete SILP alternatives list"},
+        {"name": "sequence_digest", "type": "digest", "notes": "sha256:<lowercase hex> of the declared SILP action sequence"}
+      ],
+      "optional_fields": [],
+      "digest_notes": "The root intent, complete ordered entity and constraint collections, declared action sequence, all alternatives, primary target and timing, and secondary action and recipient are material. SILP correlation metadata such as req_id, session_id, priority, confidence, and output hints are not material unless a separate action profile says otherwise.",
+      "references": ["draft-hwang-silp-protocol-01"]
+    },
+    {
       "action_type": "science.bio.experiment.execute.1",
       "status": "active",
       "risk_class": "safety-critical",

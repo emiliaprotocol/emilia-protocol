@@ -6,7 +6,7 @@
     "name": "EMILIA Protocol, Inc.",
     "email": "team@emiliaprotocol.ai",
     "phone": "",
-    "description": "EMILIA Protocol, Inc. maintains EMILIA Protocol: an open Apache-2.0 standard plus zero-dependency reference toolkit for authorization receipts, offline-verifiable proof that a named human approved an exact, irreversible AI-agent action before it executed. The open public good is the security verification toolchain: interoperable verifiers in JavaScript, Python, and Go, an adversarial conformance suite, formal models, and an IETF Internet-Draft. The for-profit company funds and stewards the open core.",
+    "description": "EMILIA Protocol, Inc. maintains EMILIA Protocol: an open Apache-2.0 protocol and reference toolkit for independently verifying authorization evidence for consequential machine actions. The public-good surface includes JavaScript, Python, and Go reference verifiers, adversarial conformance vectors, formal models, executable security claims, and individual IETF Internet-Drafts. The for-profit company funds and stewards the open core.",
     "webpageUrl": {
       "url": "https://www.emiliaprotocol.ai",
       "wellKnown": "https://www.emiliaprotocol.ai/.well-known/funding-manifest-urls"
@@ -16,7 +16,7 @@
     {
       "guid": "emilia-protocol",
       "name": "EMILIA Protocol",
-      "description": "An open protocol and zero-dependency reference toolkit that produces an authorization receipt: offline-verifiable proof that a named human approved an exact, irreversible AI-agent action before it executed. The fundable open surface is the verification toolchain that makes a receipt checkable by any third party: three interoperable reference verifiers (JavaScript, Python, Go) proven to agree on canonical adversarial conformance vectors in CI, the npm packages @emilia-protocol/verify and @emilia-protocol/issue, an adversarial conformance suite with 85 cataloged red-team cases, formal models (26 TLA+ properties and 32 Alloy assertions across four models, 0 counterexamples), and the IETF Internet-Draft draft-schrock-ep-authorization-receipts-07.",
+      "description": "An open protocol and reference toolkit for producing and independently verifying authorization evidence for consequential machine actions. The fundable public surface includes same-team JavaScript, Python, and Go reference verifiers checked against shared adversarial vectors in CI; the npm packages @emilia-protocol/verify and @emilia-protocol/issue; executable security claims with hashed evidence; formal models with explicit boundedness and exclusions; and the individual Internet-Draft draft-schrock-ep-authorization-receipts-08.",
       "webpageUrl": {
         "url": "https://www.emiliaprotocol.ai",
         "wellKnown": "https://www.emiliaprotocol.ai/.well-known/funding-manifest-urls"

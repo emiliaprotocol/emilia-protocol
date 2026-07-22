@@ -22,6 +22,30 @@
       ],
       "digest_notes": "merchant, customer, fulfillment target, and canonical line items are material; an order identifier alone is not globally sufficient",
       "references": []
+    },
+    {
+      "action_type": "travel.cancel-notify.1",
+      "status": "active",
+      "risk_class": "external-communication",
+      "summary": "Cancellation of a travel reservation with a time constraint and a secondary notification action.",
+      "required_fields": [
+        { "name": "primary_action", "type": "string", "notes": "SILP root intent, for example !CANCEL" },
+        { "name": "resource", "type": "string", "notes": "The primary action's material target" },
+        { "name": "cancel_time", "type": "string", "notes": "The primary action's material time slot" },
+        { "name": "secondary_action", "type": "string", "notes": "A material secondary action, for example !EMAIL" },
+        { "name": "notification_recipient", "type": "string", "notes": "The secondary action's material recipient" },
+        { "name": "constraint_type", "type": "string" },
+        { "name": "constraint_value", "type": "string" },
+        { "name": "constraint_time", "type": "string" },
+        { "name": "constraint_subject", "type": "string" },
+        { "name": "entities_digest", "type": "digest", "notes": "sha256:<lowercase hex> of the complete ordered SILP entity list, including entity/action associations" },
+        { "name": "constraints_digest", "type": "digest", "notes": "sha256:<lowercase hex> of the complete ordered SILP constraint list" },
+        { "name": "alternatives_digest", "type": "digest", "notes": "sha256:<lowercase hex> of the complete SILP alternatives list" },
+        { "name": "sequence_digest", "type": "digest", "notes": "sha256:<lowercase hex> of the declared SILP action sequence" }
+      ],
+      "optional_fields": [],
+      "digest_notes": "The root intent, complete ordered entity and constraint collections, declared action sequence, all alternatives, primary target and timing, and secondary action and recipient are material. SILP correlation metadata such as req_id, session_id, priority, confidence, and output hints are not material unless a separate action profile says otherwise.",
+      "references": ["draft-hwang-silp-protocol-01"]
     }
   ],
   "profiles": {
@@ -82,6 +106,47 @@
         { "source_path": "/checkout/customer_id", "target_field": "customer_ref", "transform": "sha256-utf8" },
         { "source_path": "/checkout/fulfillment", "target_field": "fulfillment_ref", "transform": "sha256-jcs" }
       ]
+    },
+    "silp-cancel-email-v1": {
+      "@version": "CAID-MAPPING-PROFILE-v1",
+      "profile_id": "urn:emilia:mapping:silp-cancel-email-to-travel-cancel-notify:1",
+      "source_format": {
+        "media_type": "application/silp-ir+json",
+        "schema": "https://github.com/Juwan-Hwang/polyglotir#silp-ir",
+        "version": "ir-v0.1"
+      },
+      "target_action_type": "travel.cancel-notify.1",
+      "loss_policy": "no-material-field-loss",
+      "material_source_paths": [
+        "/intent",
+        "/entities/0/value",
+        "/entities/1/value",
+        "/entities/2/action",
+        "/entities/2/value",
+        "/constraints/0/type",
+        "/constraints/0/value",
+        "/constraints/0/time",
+        "/constraints/0/subject",
+        "/entities",
+        "/constraints",
+        "/alternatives",
+        "/meta/seq"
+      ],
+      "rules": [
+        { "source_path": "/intent", "target_field": "primary_action", "transform": "copy" },
+        { "source_path": "/entities/0/value", "target_field": "resource", "transform": "copy" },
+        { "source_path": "/entities/1/value", "target_field": "cancel_time", "transform": "copy" },
+        { "source_path": "/entities/2/action", "target_field": "secondary_action", "transform": "copy" },
+        { "source_path": "/entities/2/value", "target_field": "notification_recipient", "transform": "copy" },
+        { "source_path": "/constraints/0/type", "target_field": "constraint_type", "transform": "copy" },
+        { "source_path": "/constraints/0/value", "target_field": "constraint_value", "transform": "copy" },
+        { "source_path": "/constraints/0/time", "target_field": "constraint_time", "transform": "copy" },
+        { "source_path": "/constraints/0/subject", "target_field": "constraint_subject", "transform": "copy" },
+        { "source_path": "/entities", "target_field": "entities_digest", "transform": "sha256-jcs" },
+        { "source_path": "/constraints", "target_field": "constraints_digest", "transform": "sha256-jcs" },
+        { "source_path": "/alternatives", "target_field": "alternatives_digest", "transform": "sha256-jcs" },
+        { "source_path": "/meta/seq", "target_field": "sequence_digest", "transform": "sha256-jcs" }
+      ]
     }
   },
   "sources": {
@@ -119,6 +184,50 @@
         "created_at": "2026-07-08T11:59:00Z"
       },
       "checkout_hash": "native-ap2-digest-verified-by-the-ap2-verifier"
+    },
+    "silp-cancel-email": {
+      "silp": "v1",
+      "version": "ir-v0.1",
+      "intent": "!CANCEL",
+      "entities": [
+        { "id": "act", "value": "flight", "action": "!CANCEL" },
+        { "id": "time", "value": "t+1pm", "action": "!CANCEL" },
+        { "id": "act", "value": "zhangsan", "action": "!EMAIL" }
+      ],
+      "constraints": [
+        { "type": "loc", "value": "Beijing", "time": "t+1am", "subject": "me" }
+      ],
+      "alternatives": [],
+      "meta": {
+        "req_id": "a1b2c3d4",
+        "session_id": "s1",
+        "priority": 7,
+        "confidence": 1,
+        "seq": ["!CANCEL", "!EMAIL"],
+        "out": "code"
+      }
+    },
+    "silp-cancel-email-metadata-variant": {
+      "silp": "v1",
+      "version": "ir-v0.1",
+      "intent": "!CANCEL",
+      "entities": [
+        { "id": "act", "value": "flight", "action": "!CANCEL" },
+        { "id": "time", "value": "t+1pm", "action": "!CANCEL" },
+        { "id": "act", "value": "zhangsan", "action": "!EMAIL" }
+      ],
+      "constraints": [
+        { "type": "loc", "value": "Beijing", "time": "t+1am", "subject": "me" }
+      ],
+      "alternatives": [],
+      "meta": {
+        "req_id": "d4c3b2a1",
+        "session_id": "s2",
+        "priority": 1,
+        "confidence": 0,
+        "seq": ["!CANCEL", "!EMAIL"],
+        "out": "json"
+      }
     }
   },
   "vectors": [
@@ -243,6 +352,106 @@
       ],
       "repin_after_mutation": ["right"],
       "expect": { "verdict": "INDETERMINATE", "reason_contains": "right:invalid_mapping_profile" }
+    },
+    {
+      "id": "silp-cancel-email-equivalent-under-profile",
+      "left": { "source": "silp-cancel-email", "profile": "silp-cancel-email-v1", "pin": "profile" },
+      "right": { "source": "silp-cancel-email-metadata-variant", "profile": "silp-cancel-email-v1", "pin": "profile" },
+      "expect": { "verdict": "EQUIVALENT_UNDER_PROFILE", "reasons": [] }
+    },
+    {
+      "id": "silp-correlation-metadata-is-not-material",
+      "left": { "source": "silp-cancel-email", "profile": "silp-cancel-email-v1", "pin": "profile" },
+      "right": { "source": "silp-cancel-email", "profile": "silp-cancel-email-v1", "pin": "profile" },
+      "mutations": [
+        { "side": "right", "target": "source", "op": "set", "path": "/meta/req_id", "value": "deadbeef" },
+        { "side": "right", "target": "source", "op": "set", "path": "/meta/session_id", "value": "zz" },
+        { "side": "right", "target": "source", "op": "set", "path": "/meta/confidence", "value": 0 }
+      ],
+      "expect": { "verdict": "EQUIVALENT_UNDER_PROFILE", "reasons": [] }
+    },
+    {
+      "id": "silp-secondary-action-is-material",
+      "left": { "source": "silp-cancel-email", "profile": "silp-cancel-email-v1", "pin": "profile" },
+      "right": { "source": "silp-cancel-email", "profile": "silp-cancel-email-v1", "pin": "profile" },
+      "mutations": [
+        { "side": "right", "target": "source", "op": "set", "path": "/entities/2/action", "value": "!NOTIFY" }
+      ],
+      "expect": { "verdict": "NOT_EQUIVALENT", "reasons": ["material_projection_mismatch"] }
+    },
+    {
+      "id": "silp-sequence-order-is-material",
+      "left": { "source": "silp-cancel-email", "profile": "silp-cancel-email-v1", "pin": "profile" },
+      "right": { "source": "silp-cancel-email", "profile": "silp-cancel-email-v1", "pin": "profile" },
+      "mutations": [
+        { "side": "right", "target": "source", "op": "set", "path": "/meta/seq/0", "value": "!EMAIL" },
+        { "side": "right", "target": "source", "op": "set", "path": "/meta/seq/1", "value": "!CANCEL" }
+      ],
+      "expect": { "verdict": "NOT_EQUIVALENT", "reasons": ["material_projection_mismatch"] }
+    },
+    {
+      "id": "silp-entity-action-association-is-material",
+      "left": { "source": "silp-cancel-email", "profile": "silp-cancel-email-v1", "pin": "profile" },
+      "right": { "source": "silp-cancel-email", "profile": "silp-cancel-email-v1", "pin": "profile" },
+      "mutations": [
+        { "side": "right", "target": "source", "op": "set", "path": "/entities/0/action", "value": "!EMAIL" }
+      ],
+      "expect": { "verdict": "NOT_EQUIVALENT", "reasons": ["material_projection_mismatch"] }
+    },
+    {
+      "id": "silp-additional-action-is-material",
+      "left": { "source": "silp-cancel-email", "profile": "silp-cancel-email-v1", "pin": "profile" },
+      "right": { "source": "silp-cancel-email", "profile": "silp-cancel-email-v1", "pin": "profile" },
+      "mutations": [
+        { "side": "right", "target": "source", "op": "set", "path": "/entities", "value": [
+          { "id": "act", "value": "flight", "action": "!CANCEL" },
+          { "id": "time", "value": "t+1pm", "action": "!CANCEL" },
+          { "id": "act", "value": "zhangsan", "action": "!EMAIL" },
+          { "id": "act", "value": "merchant", "action": "!PAY" }
+        ] }
+      ],
+      "expect": { "verdict": "NOT_EQUIVALENT", "reasons": ["material_projection_mismatch"] }
+    },
+    {
+      "id": "silp-additional-constraint-is-material",
+      "left": { "source": "silp-cancel-email", "profile": "silp-cancel-email-v1", "pin": "profile" },
+      "right": { "source": "silp-cancel-email", "profile": "silp-cancel-email-v1", "pin": "profile" },
+      "mutations": [
+        { "side": "right", "target": "source", "op": "set", "path": "/constraints", "value": [
+          { "type": "loc", "value": "Beijing", "time": "t+1am", "subject": "me" },
+          { "type": "budget", "value": "200", "subject": "me" }
+        ] }
+      ],
+      "expect": { "verdict": "NOT_EQUIVALENT", "reasons": ["material_projection_mismatch"] }
+    },
+    {
+      "id": "silp-alternative-is-material",
+      "left": { "source": "silp-cancel-email", "profile": "silp-cancel-email-v1", "pin": "profile" },
+      "right": { "source": "silp-cancel-email", "profile": "silp-cancel-email-v1", "pin": "profile" },
+      "mutations": [
+        { "side": "right", "target": "source", "op": "set", "path": "/alternatives", "value": [
+          { "intent": "!RESCHEDULE" }
+        ] }
+      ],
+      "expect": { "verdict": "NOT_EQUIVALENT", "reasons": ["material_projection_mismatch"] }
+    },
+    {
+      "id": "silp-missing-material-field-abstains",
+      "left": { "source": "silp-cancel-email", "profile": "silp-cancel-email-v1", "pin": "profile" },
+      "right": { "source": "silp-cancel-email", "profile": "silp-cancel-email-v1", "pin": "profile" },
+      "mutations": [
+        { "side": "right", "target": "source", "op": "delete", "path": "/entities/1/value" }
+      ],
+      "expect": { "verdict": "INDETERMINATE", "reason_contains": "right:missing_source_field:/entities/1/value" }
+    },
+    {
+      "id": "silp-constraint-time-loss-abstains",
+      "left": { "source": "silp-cancel-email", "profile": "silp-cancel-email-v1", "pin": "profile" },
+      "right": { "source": "silp-cancel-email", "profile": "silp-cancel-email-v1", "pin": "profile" },
+      "mutations": [
+        { "side": "right", "target": "source", "op": "delete", "path": "/constraints/0/time" }
+      ],
+      "expect": { "verdict": "INDETERMINATE", "reason_contains": "right:missing_source_field:/constraints/0/time" }
     }
   ]
 }

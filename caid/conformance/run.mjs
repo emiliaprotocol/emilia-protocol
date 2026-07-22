@@ -50,9 +50,9 @@ run('Python core: 48 vectors', 'python3', ['impl/python/run_vectors.py']);
 run('Go core: 48 vectors', 'go', ['run', './cmd/core-vectors'], GO_ROOT);
 
 const mappingOutputs = [
-  ['JavaScript', run('JavaScript mapping: 13 vectors', 'node', ['impl/js/run-mapping-vectors.mjs', '--json'])],
-  ['Python', run('Python mapping: 13 vectors', 'python3', ['impl/python/run_mapping_vectors.py', '--json'])],
-  ['Go', run('Go mapping: 13 vectors', 'go', ['run', './cmd/mapping-vectors', '--json'], GO_ROOT)],
+  ['JavaScript', run(`JavaScript mapping: ${mappingCorpus.vectors.length} vectors`, 'node', ['impl/js/run-mapping-vectors.mjs', '--json'])],
+  ['Python', run(`Python mapping: ${mappingCorpus.vectors.length} vectors`, 'python3', ['impl/python/run_mapping_vectors.py', '--json'])],
+  ['Go', run(`Go mapping: ${mappingCorpus.vectors.length} vectors`, 'go', ['run', './cmd/mapping-vectors', '--json'], GO_ROOT)],
 ];
 
 const baseline = JSON.stringify(JSON.parse(mappingOutputs[0][1]));
@@ -64,4 +64,4 @@ for (const [language, output] of mappingOutputs.slice(1)) {
 }
 
 console.log('PASS cross-language mapping verdict and reason parity');
-console.log('CAID conformance: 48 core + 13 mapping vectors green in JS, Python, and Go.');
+console.log(`CAID conformance: 48 core + ${mappingCorpus.vectors.length} mapping vectors green in JS, Python, and Go.`);

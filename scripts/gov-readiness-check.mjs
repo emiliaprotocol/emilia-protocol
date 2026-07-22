@@ -97,7 +97,7 @@ check('strict production verifier refuses inline issuer keys', () => {
     return 'production verifier pins trusted issuer keys on non-demo guarded endpoints';
 });
 check('inline/self-signed receipt acceptance is demo-only', () => {
-    const runtimeFiles = collect('app/api', /\.js$/);
+    const runtimeFiles = collect('app/api', /\.(js|ts)$/);
     const offenders = [];
     for (const rel of runtimeFiles) {
         const src = read(rel);

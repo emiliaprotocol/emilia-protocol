@@ -1,6 +1,6 @@
 # EMILIA Standards Portfolio
 
-Updated: 2026-07-19
+Updated: 2026-07-21
 
 ## One story
 
@@ -93,44 +93,43 @@ content. The CAID Action-Mapping Profile handles the harder case:
 This is content correlation, not authorization. The current implementation and
 shared vectors are in [`../caid`](../caid).
 
-## July 19 published line
+## Current published line
 
-Eight revisions were published on **Sunday, July 19, 2026**. Their local TXT
-snapshots were verified byte-for-byte against the IETF archive:
+The July 19 wave established the initial protocol line. On **Tuesday, July 21,
+2026**, seven additional or successor revisions were published, and their local
+XML sources were verified byte-for-byte against the IETF archive:
 
-1. `draft-schrock-canonical-action-identifier-00`: material action identity
-   and profile-bounded matching.
-2. `draft-schrock-ep-architecture-01`: the ecosystem map, applicability test,
-   and decision vocabulary.
-3. `draft-schrock-ep-authority-introduction-01`: trust-root introduction and
-   scoped human authority.
-4. `draft-schrock-ep-authorization-receipts-07`: one explicit organizational
-   approval-evidence profile, with scoped offline and replay claims.
-5. `draft-schrock-ep-quorum-03`: ordered multi-party ceremony and
-   distinct-human policy semantics.
-6. `draft-schrock-ep-bounded-capability-receipts-00`: action-bound capability
-   budgets and spend evidence.
-7. `draft-schrock-ep-authorization-evidence-chain-03`: native verification,
-   action binding, and evidence satisfaction.
-8. `draft-schrock-model-to-matter-00`: an Experimental name-establishing
-   profile. It applies the protocol line to a physical
-   executor and is backed by a JavaScript reference gate, deterministic public
-   vectors, mutation testing, and a runnable synthetic demonstration.
+1. `draft-schrock-action-evidence-boundary-00`: the explicit boundary between
+   independently verified evidence and one material action.
+2. `draft-schrock-canonical-action-identifier-01`: current material-action
+   identity and profile-bounded matching.
+3. `draft-schrock-ep-architecture-02`: current ecosystem map, applicability
+   test, and decision vocabulary.
+4. `draft-schrock-ep-authorization-evidence-chain-04`: current native
+   verification, action binding, and evidence-satisfaction composition.
+5. `draft-schrock-ep-authorization-receipts-08`: current organizational
+   approval-evidence profile and extension seam.
+6. `draft-schrock-ep-revocation-statement-00`: signed retraction of authority
+   without rewriting an already executed effect.
+7. `draft-schrock-model-to-matter-01`: the current Experimental executor-side
+   application profile.
 
-The first seven documents are the cohesive protocol line. Model-to-Matter is
-deliberately separate: filing it establishes the name and executor-side
-application without claiming a wet-lab deployment, screening capability,
-scientific-safety judgment, physical truth, or external endorsement. A partner
-is required before claiming adoption, not before publishing the open profile.
+The published line also retains Authority Introduction-01, Quorum-03, Bounded
+Capability Receipts-00, and the other current individual drafts listed in
+`STATUS.json`. Model-to-Matter remains deliberately separate: publication does
+not claim a wet-lab deployment, screening capability, scientific-safety
+judgment, physical truth, or external endorsement.
 
 Machine-readable status, including every active individual draft and every
 disposition, is in [`STATUS.json`](STATUS.json). A published individual
 Internet-Draft is a proposal, not an RFC, a working-group adoption, or IETF
 endorsement.
 
-Unsubmitted draft sources, review packets, and filing schedules are maintained
-outside the public repository. Public status changes only when a submission is
-published and its immutable snapshot is archived here.
+Active successor drafts, review packets, and filing schedules are maintained
+outside the public repository. Intentionally public retired sources and
+partner-triggered profiles stay here only with an explicit disposition. Public
+filing status changes only when a submission is published and its immutable
+snapshot is archived here.
 
 ## Disposition ledger
 
@@ -140,7 +139,7 @@ These are decisions, not an indefinite waiting room:
 | --- | --- | --- |
 | Assurance Classes | Retired before filing | Verifier-visible proof predicates and profile-local aliases |
 | Authority Registry | Retired and absorbed | Authority Introduction-01 |
-| Agent Trust Stack | Retired and absorbed | Architecture-01 |
+| Agent Trust Stack | Retired and absorbed | Architecture-02 |
 | PQC | Retired as a standalone draft | Evidence Record crypto agility and anti-stripping |
 | Model-to-Matter | Published July 19 as an Experimental profile | Name and open executor profile established; deployment claims require a real executor |
 | Human Oversight | Partner-triggered profile | A regulator or management-system standards partner validates the mapping |

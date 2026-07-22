@@ -1,0 +1,100 @@
+# Reference / experimental. Not production audited.
+static_resources:
+  listeners:
+    - name: protected_http
+      address:
+        socket_address: { address: 0.0.0.0, port_value: 8080 }
+      filter_chains:
+        - filters:
+            - name: envoy.filters.network.http_connection_manager
+              typed_config:
+                "@type": type.googleapis.com/envoy.extensions.filters.network.http_connection_manager.v3.HttpConnectionManager
+                stat_prefix: receipt_required_gateway
+                route_config:
+                  name: protected_service
+                  virtual_hosts:
+                    - name: protected_service
+                      domains: ["*"]
+                      routes:
+                        - match: { prefix: "/" }
+                          route: { cluster: protected_upstream }
+                http_filters:
+                  # Overwrite client-controlled metadata before ext_authz sees it.
+                  - name: envoy.filters.http.lua
+                    typed_config:
+                      "@type": type.googleapis.com/envoy.extensions.filters.http.lua.v3.Lua
+                      inline_code: |
+                        function envoy_on_request(handle)
+                          local h = handle:headers()
+                          h:replace("x-ep-original-method", h:get(":method") or "")
+                          h:replace("x-ep-original-uri", h:get(":path") or "")
+                          h:replace("x-ep-original-host", h:get(":authority") or "")
+                          h:replace("x-ep-original-scheme", h:get(":scheme") or "https")
+                          h:replace("x-ep-original-content-length", h:get("content-length") or "0")
+                        end
+                  - name: envoy.filters.http.ext_authz
+                    typed_config:
+                      "@type": type.googleapis.com/envoy.extensions.filters.http.ext_authz.v3.ExtAuthz
+                      transport_api_version: V3
+                      failure_mode_allow: false
+                      status_on_error: { code: ServiceUnavailable }
+                      http_service:
+                        server_uri:
+                          uri: http://ep-edge-auth:8788
+                          cluster: ep_edge_auth
+                          timeout: 1s
+                        path_prefix: /envoy-auth
+                        authorization_request:
+                          allowed_headers:
+                            patterns:
+                              - exact: x-emilia-receipt
+                              - exact: content-length
+                              - exact: x-ep-original-method
+                              - exact: x-ep-original-uri
+                              - exact: x-ep-original-host
+                              - exact: x-ep-original-scheme
+                              - exact: x-ep-original-content-length
+                        authorization_response:
+                          allowed_upstream_headers:
+                            patterns:
+                              - exact: x-emilia-verified-action
+                              - exact: x-emilia-verified-receipt-id
+                  # ext_authz has finished; remove proof and internal metadata.
+                  - name: envoy.filters.http.lua
+                    typed_config:
+                      "@type": type.googleapis.com/envoy.extensions.filters.http.lua.v3.Lua
+                      inline_code: |
+                        function envoy_on_request(handle)
+                          local h = handle:headers()
+                          h:remove("x-emilia-receipt")
+                          h:remove("x-ep-original-method")
+                          h:remove("x-ep-original-uri")
+                          h:remove("x-ep-original-host")
+                          h:remove("x-ep-original-scheme")
+                          h:remove("x-ep-original-content-length")
+                        end
+                  - name: envoy.filters.http.router
+                    typed_config:
+                      "@type": type.googleapis.com/envoy.extensions.filters.http.router.v3.Router
+  clusters:
+    - name: ep_edge_auth
+      type: STRICT_DNS
+      connect_timeout: 1s
+      load_assignment:
+        cluster_name: ep_edge_auth
+        endpoints:
+          - lb_endpoints:
+              - endpoint:
+                  address:
+                    socket_address: { address: ep-edge-auth, port_value: 8788 }
+    - name: protected_upstream
+      type: STRICT_DNS
+      connect_timeout: 2s
+      load_assignment:
+        cluster_name: protected_upstream
+        endpoints:
+          - lb_endpoints:
+              - endpoint:
+                  address:
+                    socket_address: { address: protected-api, port_value: 9000 }
+

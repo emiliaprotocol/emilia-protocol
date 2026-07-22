@@ -6,7 +6,7 @@ import { createEg1Harness, runEg1 } from './eg1-conformance.js';
 import { runCf1 } from './cf1-conformance.js';
 import { createKeyRegistry, asKeyRegistry } from './key-registry.js';
 import { classifyRetention, buildRetentionExport } from './retention.js';
-import { createDefaultActionControlManifest, findActionControl, validateActionControlManifest } from './action-control-manifest.js';
+import { createDefaultActionControlManifest, findActionControl, resolveActionControl, validateActionControlManifest } from './action-control-manifest.js';
 import { createRuntimeMonitor } from './runtime-monitor.js';
 import { capabilityBaseReceiptDigest, capabilityActionDigest, verifyCapabilityScope, mintCapabilityReceipt, verifyCapabilityReceipt, splitCapabilitySecret, reconstructCapabilitySecret, createMemoryCapabilityStore, createPostgresCapabilityStore, executeWithCapability, executeWithThreshold, reconcileCapabilityOperation } from './capability-receipt.js';
 import { deriveZkRangeBases, loadBulletproofBackend, mintZkRangeReceipt, verifyZkRangeReceipt } from './zk-range-proof.js';
@@ -32,7 +32,7 @@ export { createDurableChallengeStore, challengeStorageKey, challengeBodyDigest, 
 export { createKeyRegistry, asKeyRegistry } from './key-registry.js';
 export { classifyRetention, buildRetentionExport, RETENTION_EXPORT_VERSION } from './retention.js';
 export { DEFAULT_GATE_MANIFEST, HIGH_RISK_ACTION_PACKS, createDefaultActionRiskManifest };
-export { ACTION_CONTROL_MANIFEST_VERSION, ACTION_CONTROL_SCHEMA_URL, ACTION_CONTROL_CONFORMANCE_LEVEL, ACTION_CONTROL_DEFAULTS, ACTION_CONTROL_EVIDENCE_PROFILES, ACTION_CONTROL_CONFORMANCE_CHECKS, toActionControl, createDefaultActionControlManifest, findActionControl, validateActionControlManifest, } from './action-control-manifest.js';
+export { ACTION_CONTROL_MANIFEST_VERSION, ACTION_CONTROL_SCHEMA_URL, ACTION_CONTROL_CONFORMANCE_LEVEL, ACTION_CONTROL_DEFAULTS, ACTION_CONTROL_EVIDENCE_PROFILES, ACTION_CONTROL_CONFORMANCE_CHECKS, toActionControl, createDefaultActionControlManifest, findActionControl, resolveActionControl, validateActionControlManifest, } from './action-control-manifest.js';
 export { EXECUTION_BINDING_VERSION, canonicalize, hashCanonical, materialFieldsFor, verifyExecutionBinding } from './execution-binding.js';
 export { RELIANCE_PACKET_VERSION, ADMISSIBILITY_VERDICTS, buildReliancePacket } from './reliance-packet.js';
 export { EXTERNAL_VERIFICATION_STATEMENT_VERSION, EXTERNAL_VERIFICATION_DOMAIN, externalVerificationDigest, signExternalVerificationStatement, verifyExternalVerificationStatement, } from './reports/external-verification.js';
@@ -44,6 +44,11 @@ export { FORMAL_RUNTIME_BRIDGE_VERSION, FORMAL_RUNTIME_SPEC, FORMAL_RUNTIME_CONF
 export { CAPABILITY_RECEIPT_VERSION, CAPABILITY_STATE_VERSION, CAPABILITY_SHARE_VERSION, CAPABILITY_SCOPE_PROFILE, CAPABILITY_CAID_SCOPE_PROFILE, CAPABILITY_STATE_DDL, CAPABILITY_SQL, capabilityBaseReceiptDigest, capabilityActionDigest, verifyCapabilityScope, mintCapabilityReceipt, verifyCapabilityReceipt, splitCapabilitySecret, reconstructCapabilitySecret, createMemoryCapabilityStore, createPostgresCapabilityStore, executeWithCapability, executeWithThreshold, reconcileCapabilityOperation, delegateCapabilityReceipt, } from './capability-receipt.js';
 export { ZK_RANGE_RECEIPT_VERSION, ZK_RANGE_SCHEME, ZK_RANGE_BACKEND_PACKAGE, deriveZkRangeBases, loadBulletproofBackend, mintZkRangeReceipt, verifyZkRangeReceipt, } from './zk-range-proof.js';
 export { RECEIPT_PROGRAM_VERSION, RECEIPT_PROGRAM_CERTIFICATE_VERSION, RECEIPT_PROGRAM_SIGNATURE_ALGORITHM, createReceiptProgramKernel, verifyReceiptProgramCertificate, } from './receipt-program.js';
+export { TRUST_PROGRAM_VERSION, TRUST_STAGE_RECEIPT_VERSION, validateTrustProgram, trustProgramDigest, verifyTrustStageReceipt, createMemoryTrustProgramStore, createTrustProgramKernel, } from './trust-program.js';
+export { TRUST_PROGRAM_REVOCATION_TARGET_VERSION, deriveTrustProgramRevocationTargetObject, deriveTrustProgramRevocationTarget, verifyTrustProgramRevocation, applyTrustProgramRevocation, } from './trust-program-revocation.js';
+export { REMEDY_PROGRAM_VERSION, createRemedyMemoryStore, createRemedyProgramKernel, } from './remedy-program.js';
+export { ACTION_REMEDY_RECEIPT_VERSION, REMEDY_PROGRAM_RECEIPT_VERSION, ACTION_REMEDY_RECEIPT_DOMAIN, expectedRemedyProgramReceiptBindings, remedyProgramReceiptSigningBytes, issueRemedyProgramReceipt, signRemedyProgramReceipt, createRemedyProgramReceipt, verifyRemedyProgramReceipt, } from './remedy-program-receipt.js';
+export { REMEDY_PROGRAM_PG_STORE_VERSION, REMEDY_PROGRAM_MAX_STATE_BYTES, REMEDY_PROGRAM_MAX_FORWARD_SKEW_MINUTES, REMEDY_PROGRAM_POSTGRES_SQL, createRemedyProgramPostgresStore, } from './remedy-program-postgres.js';
 export declare const ASSURANCE_TIERS: string[];
 /**
  * Structurally compare a PRE-COMPUTED admissibility block with a profile hash.
@@ -882,6 +887,9 @@ declare const _default: {
             why?: string;
             execution_binding?: {
                 required_fields: string[];
+                caid_selector?: {
+                    field: string;
+                };
             };
             business_authorization?: Record<string, any>;
         }[];
@@ -900,6 +908,9 @@ declare const _default: {
         why?: string;
         execution_binding?: {
             required_fields: string[];
+            caid_selector?: {
+                field: string;
+            };
         };
         business_authorization?: Record<string, any>;
     }[];
@@ -921,6 +932,7 @@ declare const _default: {
     buildRetentionExport: typeof buildRetentionExport;
     createDefaultActionControlManifest: typeof createDefaultActionControlManifest;
     findActionControl: typeof findActionControl;
+    resolveActionControl: typeof resolveActionControl;
     validateActionControlManifest: typeof validateActionControlManifest;
     createRuntimeMonitor: typeof createRuntimeMonitor;
     RUNTIME_MONITOR_VERSION: string;

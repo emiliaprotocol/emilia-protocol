@@ -38,6 +38,7 @@ const COVERED_ELSEWHERE = {
     attest: 'ci.yml — "Verify package suites (node:test)" step',
     'require-receipt': 'ci.yml — "Verify package suites (node:test)" step',
     gate: 'ci.yml — gate-product job (npm test + SQL/Helm/Terraform/image checks)',
+    'dtc-base': 'dtc-base.yml — isolated lockfile install plus the full public experimental source gate',
     // packages/mobile is deliberately NOT excluded. mobile-apps.yml does run it,
     // but only under a path filter (app/.well-known, app/api/v1/mobile,
     // app/mobile, packages/mobile). Mobile imports ../gate/* and

@@ -3,6 +3,22 @@
 All notable changes to `@emilia-protocol/verify` are documented here.
 This package follows [Semantic Versioning](https://semver.org/).
 
+## 3.12.0 (2026-07-21)
+
+### Added
+
+- Closed Authority Program verification with mandatory relying-party root
+  action re-performance, predecessor-stage digest binding, organization and
+  execution checks, and explicit freshness/revocation decisions.
+- Platform-attestation evidence verification and citeable authority/evidence
+  composition artifacts aligned with the shared conformance vectors.
+
+### Security
+
+- Authority programs cannot authorize a presenter-supplied root action. The
+  relying party must retrieve or own the root action and independently
+  recompute its CAID and action digest.
+
 ## 3.11.0 (2026-07-17)
 
 ### Added

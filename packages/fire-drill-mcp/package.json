@@ -1,6 +1,6 @@
 {
   "name": "@emilia-protocol/fire-drill-mcp",
-  "version": "0.2.0",
+  "version": "0.2.1",
   "description": "MCP wrapper for static required-receipt declaration scanning. Runtime verification, consumption, and EG-1 enforcement remain explicitly unassessed.",
   "type": "module",
   "license": "Apache-2.0",

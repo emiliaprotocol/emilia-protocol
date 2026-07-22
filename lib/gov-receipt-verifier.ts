@@ -9,7 +9,7 @@
 import { getGovVerifierConfig, getPinnedApproverKeys, getPinnedQuorumPolicies } from './env.js';
 import { verifyEmiliaReceipt, evaluateReceiptAssurance } from '../packages/require-receipt/index.js';
 import { verifyTrustReceipt } from '../packages/verify/index.js';
-import { createDefaultActionControlManifest, findActionControl } from '../packages/gate/action-control-manifest.js';
+import { createDefaultActionControlManifest } from '../packages/gate/action-control-manifest.js';
 
 /**
  * @param {object} [params]
@@ -60,9 +60,21 @@ const DEFAULT_ACTION_CONTROL_MANIFEST = createDefaultActionControlManifest();
  * @returns {'software'|'class_a'|'quorum'}
  */
 export function requiredAssuranceForAction(action, { manifest = DEFAULT_ACTION_CONTROL_MANIFEST } = {}) {
-  const control = action ? findActionControl(manifest, { action_type: action }) : null;
-  if (control && control.receipt_required === false) return 'software';
-  return control?.assurance_class || 'software';
+  if (!action || !Array.isArray(manifest?.actions)) return 'software';
+  const controls = manifest.actions.filter((entry) => entry?.action_type === action);
+  const guarded = controls.filter((entry) => entry?.receipt_required !== false);
+  if (guarded.length === 0) return 'software';
+  const rank = { software: 0, class_a: 1, quorum: 2 };
+  let required: 'software' | 'class_a' | 'quorum' = 'software';
+  for (const control of guarded) {
+    const tier = control?.assurance_class;
+    // A malformed guarded entry is a trust-policy failure, never permission to
+    // downgrade. The default manifest is author-time validated; overrides fail
+    // toward the strongest tier here.
+    if (!(tier in rank)) return 'quorum';
+    if (rank[tier] > rank[required]) required = tier;
+  }
+  return required;
 }
 
 /**

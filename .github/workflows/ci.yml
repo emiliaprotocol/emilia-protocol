@@ -413,6 +413,10 @@ jobs:
           node-version: 24
           cache: npm
       - run: npm ci --ignore-scripts
+      - name: Rebuild governed TypeScript runtimes and refuse drift
+        run: |
+          npm run build:ts-runtime
+          git diff --exit-code
       - name: Check language governance
         run: node scripts/check-language-governance.js
       - name: Check public conformance claims against the current manifest
@@ -574,10 +578,13 @@ jobs:
             -C node_modules/@emilia-protocol/verify
       - name: Verify npm pack succeeds
         working-directory: mcp-server
-        run: npm pack
+        run: |
+          npm run build
+          git diff --exit-code -- bundle.js
+          npm pack
       - name: Smoke test — verify entry point loads
         working-directory: mcp-server
-        run: node -e "import('./index.js').then(() => console.log('MCP server entry OK'))"
+        run: node -e "import('./bundle.js').then(() => console.log('MCP server entry OK'))"
 
   # ── Job 9b: Benchmark gate — performance regression check ────────
   benchmark:
@@ -722,6 +729,8 @@ jobs:
             --emit test-results/external-rust-conformance.json
       - name: Prepare suite-dispatch hostility runner
         run: |
+          # JavaScript template literal below is intentionally single-quoted.
+          # shellcheck disable=SC2016
           node --input-type=module -e \
             'import fs from "node:fs"; fs.writeFileSync(process.argv[1], `${JSON.stringify({ runners: [{ name: "rust-cleanroom-jdieselny", command: process.argv[2], args: [], cwd: ".", dispatch: "suite" }] }, null, 2)}\n`);' \
             test-results/external-rust-runner.json \
@@ -934,7 +943,7 @@ jobs:
           # protocol OpenAPI (mirrors the OPENAPI_EXEMPTIONS in
           # tests/route-coverage.test.ts): SCIM is RFC 7643/7644 + its own
           # ServiceProviderConfig; the pilot sandbox is GTM onboarding tooling.
-          route_files=$(find app/api \( -name route.js -o -name route.ts \) 2>/dev/null | grep -vE '/api/scim/|/api/sso/|/api/pilot/|/api/badge/|/api/demo/|/api/score/' | wc -l | tr -d ' ')
+          route_files=$(find app/api \( -name route.js -o -name route.ts \) 2>/dev/null | grep -cvE '/api/scim/|/api/sso/|/api/pilot/|/api/badge/|/api/demo/|/api/score/' || true)
           echo "openapi.yaml paths: $spec_paths"
           echo "core app/api route files (excl. scim, sso, pilot): $route_files"
           # Enforce minimum 75% coverage — cloud/operational routes may be documented separately.

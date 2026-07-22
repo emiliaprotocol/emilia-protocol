@@ -1,15 +1,20 @@
+<!-- SPDX-License-Identifier: Apache-2.0 -->
 # EMILIA Action Escrow Security Contract
 
-**Status:** implementation contract  
-**Profile family:** `EP-ACTION-ESCROW-*`  
-**Product boundary:** EMILIA coordinates evidence and enforcement. A separately
-licensed provider holds and moves funds.
+**Status:** public implementation contract; not a deployment or standardization claim
+
+**Profile family:** `EP-ACTION-ESCROW-*`
+
+**Product boundary:** EMILIA coordinates evidence and technical enforcement. A
+separately selected provider holds or moves funds; this contract does not prove
+that provider's licensing, suitability, solvency, or jurisdictional authority.
 
 ## Purpose
 
-Action Escrow turns an executed agreement into an exact, enforceable machine
+Action Escrow maps an executed agreement to an exact, technically gated machine
 action without treating a signed PDF, an approval, or a provider status as
-interchangeable evidence.
+interchangeable evidence. Technical gating under this profile is not a claim
+that the agreement, release, or remedy is legally enforceable.
 
 The first profile is a contractor milestone release:
 
@@ -17,12 +22,15 @@ The first profile is a contractor milestone release:
 2. a signed Document-to-Action Binding maps that exact document and its material
    terms to an exact release action;
 3. every required party separately approves that exact release action;
-4. a licensed custodian reports that the matching funds are available;
+4. a configured custodian or payment provider reports that the matching funds
+   are available under a separately authenticated adapter;
 5. the release engine reserves the one permitted effect, invokes the custodian
    with a stable idempotency key, and reconciles the result;
 6. both parties receive the same portable evidence manifest.
 
-The human-facing rule is: **Both sides sign. The system obeys.**
+The human-facing rule is: **Both sides approve the exact release before the
+configured path may proceed.** This describes the technical control, not legal
+adjudication or guaranteed provider performance.
 
 ## Three Independent Proofs
 
@@ -56,15 +64,21 @@ provider and jurisdiction diligence.
 
 The provider call is an external effect. A timeout or lost response after the
 call begins is `release_indeterminate`, not proof that release failed.
-The durable reservation remains closed to another release call even if the
-original provider response arrives later. While the effect is indeterminate,
-`reconciled_at`, `provider_statement`, and `provider_verification` remain empty.
-EMILIA sets them only from an authoritative provider read whose transport is
-authenticated and whose statement verifier authenticates and binds the evidence
-to the exact provider, idempotency key, request, transaction, milestone, amount,
-currency, destination, agreement, document binding, and release action. Failed
-authentication leaves the release indeterminate. Only authenticated
-`not_released` evidence may reopen the release path.
+`release_indeterminate` is Action Escrow's fenced owner result: it preserves
+single ownership of the release attempt while the provider effect is unknown.
+It is not an irreversible terminal state, an execution-success claim, or a
+retry grant. The durable reservation remains closed to another release call
+even if the original provider response arrives later. While the effect is
+indeterminate, `reconciled_at`, `provider_statement`, and
+`provider_verification` remain empty. EMILIA sets them only from an
+authoritative provider read whose transport is authenticated and whose
+statement verifier authenticates and binds the evidence to the exact provider,
+idempotency key, request, transaction, milestone, amount, currency,
+destination, agreement, document binding, and release action. Failed
+authentication leaves the release indeterminate. Authenticated `released`
+evidence closes the owner result as released; authenticated `not_released`
+evidence may return the state to the applicable pre-release path without
+pretending that the uncertainty never existed.
 
 ## Signed Document-to-Action Binding
 
@@ -115,9 +129,13 @@ The effect sequence is:
 2. durably record the exact provider request and stable idempotency key;
 3. invoke the configured custodian;
 4. authenticate and reconcile the provider's authoritative state;
-5. atomically commit `released`, or freeze as `release_indeterminate`.
+5. atomically commit `released`, return to the applicable pre-release state on
+   authenticated `not_released` evidence, or fence the owner result as
+   `release_indeterminate`.
 
-No path automatically retries an indeterminate release.
+No path automatically retries an indeterminate release. The only permitted
+advance is an authenticated reconciliation of the same provider operation and
+idempotency key.
 
 ## Milestone Evidence
 
@@ -129,6 +147,31 @@ Where the agreement requires a human decision, the relevant party approves,
 declines, amends, or rejects the milestone resolution. A machine classifier may
 support review but cannot silently fill a required human-approval role.
 
+A comparison verdict says only how named evidence compares under a pinned
+profile. It is not a provider execution outcome. Likewise, if a later review
+marks a receipt assessment `overturned`, the assessment is superseded; neither
+the receipt bytes nor an external release is reversed.
+
+## Closed-Loop Remedy Composition
+
+Action Escrow owns the release-effect claim downstream of Gate. Gate remains the
+policy and enforcement controller that fences one owner claim; it does not move
+funds. The Gate claim token presented to the selected Action Escrow worker is a
+bearer capability and must be protected as a secret; it is not worker identity,
+payment authority outside the bound claim, or legal entitlement. A dispute
+records a bounded challenge to an observed release and remains separate from any
+decision about remedy. Revocation before Gate issues the release claim can
+prevent that claim. Revocation learned after claim or effect is late: it may
+constrain future authority and support a dispute, but it cannot rewrite the
+original release record.
+
+Every refund, clawback request, replacement release, or other remedy is a fresh
+compensating action. It requires a new CAID, action digest, operation ID,
+authorization, owner claim, provider result, and evidence record. A remedy may
+offset an original effect; it does not mutate or reverse the original effect in
+the evidence history. See
+[Lifecycle and Remedy Kernel](./LIFECYCLE-REMEDY-KERNEL.md).
+
 ## Portable Evidence Package
 
 `EP-ACTION-ESCROW-EVIDENCE-PACKAGE-v1` contains or references:
@@ -138,7 +181,8 @@ support review but cannot silently fill a required human-approval role.
 - each required party's exact-action resolution;
 - authoritative funding evidence;
 - milestone evidence and its resolution;
-- the release reservation, provider request reference, and reconciled result;
+- the release reservation, provider request reference, and released,
+  not-released, or fenced-indeterminate owner result;
 - amendment and supersession history;
 - the relying party's verification profile and trust-root identifiers;
 - a deterministic content digest and explicit limitations.
@@ -169,9 +213,10 @@ The implementation and hostile suite MUST refuse:
 
 ## Claim Boundary
 
-Action Escrow can prove that pinned parties approved exact bytes and that a
-configured executor applied a closed state machine to a custodian call. It does
-not prove:
+Action Escrow can produce verifiable evidence that pinned parties approved exact
+bytes and that a configured executor applied a closed state machine to a
+custodian call. That is a technical-control claim, not a legal-enforcement
+claim. It does not prove:
 
 - civil identity without the relying party's enrollment process;
 - comprehension, voluntariness, or absence of coercion;
@@ -179,7 +224,11 @@ not prove:
 - quality or physical completion of work;
 - provider licensing or solvency;
 - that no payment path existed outside the integrated custodian;
-- finality while the provider outcome is indeterminate.
+- finality while the provider outcome is indeterminate;
+- that a comparison verdict is an execution outcome;
+- that an overturned receipt assessment reversed a receipt or external effect;
+- adjudication of a dispute or legal enforceability of a remedy; or
+- production deployment, independent conformance, or adoption as a standard.
 
-The guarantee is exactly as strong as complete mediation at the custodian
-release boundary and the relying party's pinned trust roots.
+The technical assurance is exactly as strong as complete mediation at the
+custodian release boundary and the relying party's pinned trust roots.

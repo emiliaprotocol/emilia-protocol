@@ -142,7 +142,7 @@ npm run test:mutation:model-to-matter
 ```
 
 The published Experimental Internet-Draft source is archived locally at
-`standards/posted/draft-schrock-model-to-matter-00.xml`. It specifies the
+`standards/posted/draft-schrock-model-to-matter-01.xml`. It specifies the
 executor-side lifecycle and explicit non-goals. Publication establishes the
 open Model-to-Matter name; it does not establish deployment, adoption,
 partnership, or endorsement.

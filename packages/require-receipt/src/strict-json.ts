@@ -26,8 +26,11 @@ export function strictJsonGate(raw: unknown) {
   }
   try { JSON.parse(input); } catch { return { ok: false, reason: 'invalid JSON syntax' }; }
   let index = 0;
-  const stack = [];
-  let reason = null;
+  const stack: Array<
+    | { object: true; keys: Set<string>; expectsKey: boolean }
+    | { object: false }
+  > = [];
+  let reason: string | null = null;
   const escapes: Record<string, string> = { '"': '"', '\\': '\\', '/': '/', b: '\b', f: '\f', n: '\n', r: '\r', t: '\t' };
 
   function readString() {

@@ -508,6 +508,25 @@ export function getPublicBaseUrl(): string {
   return process.env.EP_PUBLIC_BASE_URL || 'https://www.emiliaprotocol.ai';
 }
 
+/**
+ * EP-APPROVAL-v1 server configuration. The encryption key protects the
+ * recoverable polling capability at rest; the public origin is used only to
+ * construct the same-origin human review URL returned to the requester.
+ */
+export function getApprovalAcquisitionConfig(): {
+  tokenEncryptionKey: string | null;
+  tokenEncryptionKeyring: string | null;
+  tokenEncryptionActiveKeyId: string | null;
+  publicOrigin: string | null;
+} {
+  return {
+    tokenEncryptionKey: process.env.EP_APPROVAL_TOKEN_ENCRYPTION_KEY || null,
+    tokenEncryptionKeyring: process.env.EP_APPROVAL_TOKEN_ENCRYPTION_KEYRING || null,
+    tokenEncryptionActiveKeyId: process.env.EP_APPROVAL_TOKEN_ENCRYPTION_ACTIVE_KEY_ID || null,
+    publicOrigin: process.env.EP_APPROVAL_PUBLIC_ORIGIN || null,
+  };
+}
+
 // =============================================================================
 // AUTO-SUBMIT SECRET (machine credential for /api/receipts/auto-submit)
 // =============================================================================

@@ -1,13 +1,13 @@
 {
   "@version": "EMILIA-REPO-CONTEXT-v1",
-  "evidence_snapshot_at": "2026-07-22T01:08:53.557Z",
+  "evidence_snapshot_at": "2026-07-22T04:28:41.374Z",
   "provenance": {
     "generator": "scripts/generate-llm-context.mjs",
-    "input_digest_sha256": "084c2105fe1922748064db811031e2849b9ff397d854baef8dee8db5f6436c0a",
+    "input_digest_sha256": "860b77cb298e48837930b8b1665f2ae5da39372e918444704f6302f47cad7637",
     "generated_from": [
       {
         "path": "docs/ai/context-source.v1.json",
-        "sha256": "7ca48a67f18c69100e2c7f44137db5dab3c34e5a58b03003e1e54f29233e0433",
+        "sha256": "c8fd53791d210f67c31c9669678e4c6bdceed81e883404479522ecaa208c4d07",
         "bytes": 38686
       },
       {
@@ -17,12 +17,12 @@
       },
       {
         "path": "lib/proof-stats.json",
-        "sha256": "8834d455a0fd9327eb60393fc96235cb2f255a8739906fb5ee897edbd36c854a",
+        "sha256": "62293a5977a4d0af1e60f4340067a6ccdbd3789df86ace48849cf90a7aa0d9e2",
         "bytes": 1068
       },
       {
         "path": "conformance/conformance-manifest.json",
-        "sha256": "cfa19313b406b5a0526a34711c46bb66144db1330829973501a283d1dc677b34",
+        "sha256": "2f2f6fbe228260f960d0e9f5b1230b25e4ed4a228fa3f98f5ca8c474a3ad0af8",
         "bytes": 6361
       },
       {
@@ -32,13 +32,13 @@
       },
       {
         "path": "security/claims.v1.json",
-        "sha256": "aacfeed164a32ec2cfcf1d30951adb6b90172253a01c1528412fcd539061cd6b",
-        "bytes": 155974
+        "sha256": "ab19e0ea105bdc245bf5cd950aa9c3ed5e8db562723d327a222f795532acb23c",
+        "bytes": 174455
       },
       {
         "path": "security/security-case.json",
-        "sha256": "f26fd966aecca2dd8c3f8631e794964cad2e6292c8feec389663501b28edb530",
-        "bytes": 249912
+        "sha256": "ce7a154f8db1fa18ba4e78a79284768ab531f6b8f08e82c5c98d999590781fd4",
+        "bytes": 278567
       },
       {
         "path": "lib/standards-observatory.snapshot.json",
@@ -47,8 +47,8 @@
       },
       {
         "path": "standards/STATUS.json",
-        "sha256": "bf80223a9cbbbca49c65326c038ac8872b211ffdad69cd59b9dcd3dc3dbd99ea",
-        "bytes": 15914
+        "sha256": "df82d76d94c1d5573b9c777732ac534dcab868162b2827045853700a60facd54",
+        "bytes": 19226
       },
       {
         "path": "caid/conformance/vectors.json",
@@ -57,8 +57,8 @@
       },
       {
         "path": "caid/conformance/mapping-vectors.json",
-        "sha256": "e1a6ee395c3279d36f820ee06b1f6c80858c0e79aaf67e90cef534d05d8083f4",
-        "bytes": 12046
+        "sha256": "1fd6d79952fc93ec09104d5928da539445325aef2371c5796af59d91dcf1fb5d",
+        "bytes": 23332
       },
       {
         "path": "conformance/vectors/model-to-matter.v1.json",
@@ -256,17 +256,17 @@
   ],
   "current_evidence": {
     "automated_tests": {
-      "total": 7423,
-      "files": 387,
+      "total": 7630,
+      "files": 405,
       "policy": "all platform-applicable cases must pass; platform-specific cases may skip"
     },
     "cross_language_conformance": {
       "suites": 21,
-      "vectors": 328,
+      "vectors": 329,
       "implementations": 3,
       "relationship": "same_team_ports",
       "claim_scope": "current same-team cross-language consistency; not independent implementation evidence",
-      "manifest_sha256": "833a60781fa24d104c935de7cd9472ef219f3d32cd8b4316f6412e9eacb79022",
+      "manifest_sha256": "a5020f1ac88dd7b73b33a41b7ae4f2ca64ecdd8ea61fd6ef462f8d17f2c15af7",
       "vector_bundle_sha256": "ee1021eb36de8e50448d9f12f00d16f3e24561276c9a42241e88178d5daa0d3e"
     },
     "formal": {
@@ -286,13 +286,13 @@
     "red_team_cases": 85,
     "security_case": {
       "status": "passed",
-      "claims": 30,
-      "evidence_files": 159,
-      "evidence_bundle_sha256": "19d8d3062a1b7463348d6cc5f4867a07752cdfa8a5ae6b9dbe5c9650c464efb7"
+      "claims": 33,
+      "evidence_files": 176,
+      "evidence_bundle_sha256": "ff0191903b85a0b6435d7109486ab4ccffcec20fa47497650f9ac17980d24953"
     },
     "caid": {
       "core_vectors": 48,
-      "mapping_vectors": 13,
+      "mapping_vectors": 23,
       "same_team_ports": [
         "javascript",
         "python",
@@ -345,7 +345,7 @@
       "manifest_sha256": "b7a312a5ad5fe41f66f5e97ae795bf20d4281a5a4f6da0211d579144021fbbfc",
       "scope": "time_pinned_vector_set",
       "relation_to_current_bundle": "time_pinned_prior_vector_set",
-      "current_vectors": 328
+      "current_vectors": 329
     },
     "hostility": {
       "suite": "EP-DIFFERENTIAL-HOSTILITY-v2",
@@ -861,6 +861,98 @@
       ],
       "exclusions": [
         "a colluding registry quorum outside the pinned fault model remains an external trust failure"
+      ]
+    },
+    {
+      "claim_id": "conservation-of-authority-is-bounded-and-non-amplifying",
+      "statement": "Within an accepted delegation path, action and audience selectors can only narrow, budget dimensions and expiry cannot increase, and cycles or a leaf naming itself as an ancestor are refused. Aggregate sibling-budget conservation is claimed only when allocations come from an authoritative epoch-pinned ledger and reservations are atomic; it is not inferred from path containment alone.",
+      "acceptance_roots": [
+        "the relying party's pinned authority-registry view and capability issuer",
+        "an authoritative epoch-pinned allocation ledger for aggregate branch claims",
+        "atomic compare-and-update reservation in the shared capability store"
+      ],
+      "enforcement_path": [
+        {
+          "language": "javascript",
+          "file": "lib/authority/resolver.ts",
+          "symbol": "evaluateAuthorityVerdict",
+          "exported": true
+        },
+        {
+          "language": "javascript",
+          "file": "packages/gate/src/capability-receipt.ts",
+          "symbol": "delegateCapabilityReceipt",
+          "exported": true
+        },
+        {
+          "language": "javascript",
+          "file": "packages/gate/src/capability-receipt.ts",
+          "symbol": "createMemoryCapabilityStore",
+          "exported": true
+        },
+        {
+          "language": "javascript",
+          "file": "packages/gate/src/capability-receipt.ts",
+          "symbol": "createPostgresCapabilityStore",
+          "exported": true
+        }
+      ],
+      "language_coverage": {
+        "javascript": {
+          "status": "covered",
+          "evidence": "conformance/vectors/authority.v1.json"
+        },
+        "python": {
+          "status": "gap",
+          "reason": "No Python authority resolver, bounded-capability delegation kernel, or authoritative allocation store is claimed."
+        },
+        "go": {
+          "status": "gap",
+          "reason": "No Go authority resolver, bounded-capability delegation kernel, or authoritative allocation store is claimed."
+        }
+      },
+      "vectors": [
+        {
+          "suite": "conformance/vectors/authority.v1.json",
+          "case_id": "authorized_within_scope_and_limit",
+          "polarity": "positive"
+        },
+        {
+          "suite": "conformance/vectors/authority.v1.json",
+          "case_id": "reject_delegation_widened_amount",
+          "polarity": "negative"
+        },
+        {
+          "suite": "conformance/vectors/authority.v1.json",
+          "case_id": "reject_delegation_parent_missing",
+          "polarity": "negative"
+        }
+      ],
+      "formal": [
+        {
+          "status": "partial",
+          "method": "bounded_exhaustive_state_exploration",
+          "model": "formal/conservation-authority.model.mjs",
+          "runner": "formal/check-conservation-authority.mjs",
+          "result_evidence": "formal/results/conservation-authority.summary.txt",
+          "obligations": [
+            "DelegationPathAuthorityNeverAmplifies",
+            "AggregateBranchBudgetIsConserved",
+            "AuthoritativeAllocationIsRequired",
+            "ConcurrentReservationsAreAtomic"
+          ],
+          "scope": "Same-team bounded exhaustive exploration of action and audience selector sets, two independent budget dimensions, expiry, two sibling allocations, and two concurrent reservation requests; every deliberately weakened obligation produces a concrete counterexample."
+        }
+      ],
+      "assumptions": [
+        "every accepted child is evaluated against its direct authenticated parent",
+        "aggregate branch claims use the same authoritative allocation epoch for all siblings",
+        "all workers share a linearizable atomic reservation boundary"
+      ],
+      "exclusions": [
+        "the bounded evidence is not an unbounded theorem or a refinement proof of TypeScript or SQL",
+        "path non-amplification alone does not conserve aggregate sibling budgets",
+        "registry compromise, database isolation failure, legal authority, human intent, and physical-world truth are outside this claim"
       ]
     },
     {
@@ -2240,6 +2332,162 @@
       ]
     },
     {
+      "claim_id": "platform-attestation-result-is-rp-pinned-and-action-bound",
+      "statement": "An ep-platform-attestation AEC leg is satisfied only by a closed, verifier-signed EAT/JWT attestation result under the relying party's pinned Ed25519 key, profile, audience, nonce, exact action digest, accepted build measurement, verification time, and maximum age. Presenter-supplied keys and verifier overrides are refused. Acceptance does not claim that EMILIA appraised raw hardware evidence or independently established a TPM, TEE, secure-boot chain, or genuine device.",
+      "acceptance_roots": [
+        "the external RATS Verifier's issuer and Ed25519 result-signing key pinned by the relying party",
+        "the EAT profile, audience, nonce, action, reference build measurements, verification time, and maximum age pinned by the relying party",
+        "the external Verifier's appraisal policy, endorsements, and reference values"
+      ],
+      "enforcement_path": [
+        {
+          "language": "javascript",
+          "file": "packages/verify/src/platform-attestation.ts",
+          "symbol": "verifyPlatformAttestation",
+          "exported": true
+        },
+        {
+          "language": "javascript",
+          "file": "packages/verify/src/evidence-chain.ts",
+          "symbol": "verifyAuthorizationChain",
+          "exported": true
+        }
+      ],
+      "language_coverage": {
+        "javascript": {
+          "status": "covered",
+          "evidence": "conformance/vectors/platform-attestation.v1.json"
+        },
+        "python": {
+          "status": "gap",
+          "reason": "No Python verifier for the reserved ep-platform-attestation AEC component is claimed."
+        },
+        "go": {
+          "status": "gap",
+          "reason": "No Go verifier for the reserved ep-platform-attestation AEC component is claimed."
+        }
+      },
+      "vectors": [
+        {
+          "suite": "conformance/vectors/platform-attestation.v1.json",
+          "case_id": "accept_exact_pinned_result",
+          "polarity": "positive"
+        },
+        {
+          "suite": "conformance/vectors/platform-attestation.v1.json",
+          "case_id": "reject_key_substitution",
+          "polarity": "negative"
+        },
+        {
+          "suite": "conformance/vectors/platform-attestation.v1.json",
+          "case_id": "reject_nonce_mismatch",
+          "polarity": "negative"
+        },
+        {
+          "suite": "conformance/vectors/platform-attestation.v1.json",
+          "case_id": "reject_action_mismatch",
+          "polarity": "negative"
+        },
+        {
+          "suite": "conformance/vectors/platform-attestation.v1.json",
+          "case_id": "reject_build_mismatch",
+          "polarity": "negative"
+        },
+        {
+          "suite": "conformance/vectors/platform-attestation.v1.json",
+          "case_id": "reject_expired_result",
+          "polarity": "negative"
+        },
+        {
+          "suite": "conformance/vectors/platform-attestation.v1.json",
+          "case_id": "reject_reserved_override",
+          "polarity": "negative"
+        }
+      ],
+      "formal": [
+        {
+          "status": "not_modeled",
+          "gap": "The RATS Verifier-to-Relying-Party role boundary, EAT/JWT parsing, pinned external appraisal result, and exact platform-attestation AEC component are covered by executable JavaScript vectors but are not represented in the current TLA+, Alloy, or Tamarin models."
+        }
+      ],
+      "assumptions": [
+        "the external Verifier correctly appraises raw platform evidence and protects its result-signing key",
+        "the relying party provisions the correct verifier key, profile, reference measurements, action, nonce, audience, clock, and freshness bound",
+        "all consequential execution paths use the AEC result rather than bypassing the measured Gate boundary"
+      ],
+      "exclusions": [
+        "EMILIA does not verify raw TPM or TEE quotes in this profile",
+        "an authentic attestation result does not prove that reference values or appraisal policy are complete or correct",
+        "a measured build is not thereby vulnerability-free, physically genuine, or the only code able to affect the action",
+        "no Python, Go, deployed hardware, independent operator, or supply-chain validation is claimed"
+      ]
+    },
+    {
+      "claim_id": "authority-program-composition-is-root-bound-and-closed",
+      "statement": "The public experimental Authority Program verifier accepts a signed series/parallel authority program only under relying-party-pinned program and per-organization stage keys, an independently recomputed root CAID and canonical-action digest, exact predecessor stage-receipt digests, closed native AEC and AOM results, capability narrowing, and authoritative parallel allocation proof. A valid result explicitly does not prove freshness, current revocation status, execution, or deployment.",
+      "acceptance_roots": [
+        "the relying party pins the exact program digest and program-signing organization, key identifier, and Ed25519 public key",
+        "the relying party owns the root canonical action, CAID registry and profile, stage-key directory, and native AEC, AOM, capability, and parallel-allocation verifiers",
+        "every presented stage receipt is immutable and signed by the exact organization and key assigned by the program"
+      ],
+      "enforcement_path": [
+        {
+          "language": "javascript",
+          "file": "packages/verify/src/authority-program.ts",
+          "symbol": "verifyAuthorityProgram",
+          "exported": true
+        },
+        {
+          "language": "javascript",
+          "file": "packages/verify/src/authority-program.ts",
+          "symbol": "deriveAuthorityProgramPredecessors",
+          "exported": true
+        }
+      ],
+      "language_coverage": {
+        "javascript": {
+          "status": "covered",
+          "evidence": "conformance/vectors/authority-program.v1.json"
+        },
+        "python": {
+          "status": "gap",
+          "reason": "No Python implementation of the Authority Program composition verifier is claimed."
+        },
+        "go": {
+          "status": "gap",
+          "reason": "No Go implementation of the Authority Program composition verifier is claimed."
+        }
+      },
+      "vectors": [
+        {
+          "suite": "conformance/vectors/authority-program.v1.json",
+          "case_id": "accept-exact-authority-program",
+          "polarity": "positive"
+        },
+        {
+          "suite": "conformance/vectors/authority-program.v1.json",
+          "case_id": "reject-missing-root-action-binding",
+          "polarity": "negative"
+        }
+      ],
+      "formal": [
+        {
+          "status": "not_modeled",
+          "gap": "A separate bounded TLC model checks the Authority Program structural and root-binding invariants, but no refinement proof connects that abstraction to the TypeScript signature, CAID, or injected-native-verifier implementation."
+        }
+      ],
+      "assumptions": [
+        "Ed25519 signatures are unforgeable, SHA-256 collisions are infeasible, and the relying party protects every pinned trust input",
+        "the root-action callback obtains the relying-party-owned action and recomputes CAID plus canonical digest rather than echoing presenter values",
+        "the injected native verifiers correctly verify AEC, AOM, capability narrowing, and aggregate parallel allocation under their own pinned policies"
+      ],
+      "exclusions": [
+        "the verifier is a pure public experimental reference implementation, not a scheduler, state store, deployment, adopted standard, or independent implementation",
+        "a valid composition does not prove freshness, current non-revocation, one-time consumption, execution, outcome truth, legal authority, safety, or commercial correctness",
+        "series/parallel programs are supported; arbitrary DAGs are deliberately unrepresentable"
+      ]
+    },
+    {
       "claim_id": "mobile-ceremony-exact-binding-and-consumption",
       "statement": "A native mobile approval or denial is accepted only when exact relying-party-created action, presentation, decision, profile, app, enrollment, origin, and validity bytes pass the pinned Class-A WebAuthn path, independently verified platform evidence is bound to the same request, and the exact registered challenge body is consumed atomically and recorded durably.",
       "acceptance_roots": [
@@ -2935,8 +3183,20 @@
       ],
       "formal": [
         {
-          "status": "not_modeled",
-          "gap": "The receipt-program certificate composition, KMS/HSM signer boundary, CAID re-performance, bounded result projection, certificate-log append, recovery behavior, and exact Gate evidence references are executable but are not represented together in the current TLA+, Alloy, or Tamarin models."
+          "status": "partial",
+          "method": "bounded_exhaustive_state_exploration",
+          "model": "formal/receipt-program.model.mjs",
+          "runner": "formal/check-receipt-program.mjs",
+          "result_evidence": "formal/results/receipt-program.summary.txt",
+          "obligations": [
+            "CaidValidatedBeforeReservation",
+            "ReservationPrecedesExternalEffect",
+            "ConsumedReceiptReplayIsRefused",
+            "IndeterminateRetainsReservation",
+            "TerminalStateIsImmutable",
+            "CertificateRequiresTerminalEvidenceSignerAndAppend"
+          ],
+          "scope": "Same-team bounded exhaustive exploration of one receipt-program lifecycle with at most two attempted external effects; authenticated CAID, evidence, signer, and append outcomes are abstract inputs, and every deliberately weakened obligation produces a concrete counterexample. The companion TLA+ model and its independently labeled TLC result are recorded in formal/PROOF_STATUS.md and formal/results/ep-receipt-program.tlc.summary.txt."
         }
       ],
       "assumptions": [
@@ -3060,10 +3320,18 @@
       "status_rule": "Check the live IETF Datatracker URL; do not infer status or revision from a local filename."
     },
     {
-      "identifier": "draft-schrock-canonical-action-identifier",
+      "identifier": "draft-schrock-action-evidence-boundary",
       "revision_at_snapshot": "00",
+      "role": "Boundary contract joining independently verified evidence to one material action",
+      "next_action": "Published July 21; collect independent implementation and interoperation feedback",
+      "url": "https://datatracker.ietf.org/doc/draft-schrock-action-evidence-boundary/",
+      "status_rule": "Check the live IETF Datatracker URL; do not infer status or revision from a local filename."
+    },
+    {
+      "identifier": "draft-schrock-canonical-action-identifier",
+      "revision_at_snapshot": "01",
       "role": "Typed material-action identity and profile-bounded cross-format matching",
-      "next_action": "Published July 19; hold -00 while implementation and interoperability feedback accumulates",
+      "next_action": "Published July 21; use -01 as the current CAID baseline",
       "url": "https://datatracker.ietf.org/doc/draft-schrock-canonical-action-identifier/",
       "status_rule": "Check the live IETF Datatracker URL; do not infer status or revision from a local filename."
     },
@@ -3085,9 +3353,9 @@
     },
     {
       "identifier": "draft-schrock-ep-architecture",
-      "revision_at_snapshot": "01",
+      "revision_at_snapshot": "02",
       "role": "Portfolio architecture",
-      "next_action": "Published July 19; use -01 as the current architecture baseline",
+      "next_action": "Published July 21; use -02 as the current architecture baseline",
       "url": "https://datatracker.ietf.org/doc/draft-schrock-ep-architecture/",
       "status_rule": "Check the live IETF Datatracker URL; do not infer status or revision from a local filename."
     },
@@ -3101,17 +3369,17 @@
     },
     {
       "identifier": "draft-schrock-ep-authorization-evidence-chain",
-      "revision_at_snapshot": "03",
+      "revision_at_snapshot": "04",
       "role": "Heterogeneous evidence composition",
-      "next_action": "Published July 19; use -03 SATISFIED vocabulary and CAID mapping boundary",
+      "next_action": "Published July 21; use -04 as the current evidence-composition baseline",
       "url": "https://datatracker.ietf.org/doc/draft-schrock-ep-authorization-evidence-chain/",
       "status_rule": "Check the live IETF Datatracker URL; do not infer status or revision from a local filename."
     },
     {
       "identifier": "draft-schrock-ep-authorization-receipts",
-      "revision_at_snapshot": "07",
+      "revision_at_snapshot": "08",
       "role": "One action-bound organizational approval evidence profile",
-      "next_action": "Published July 19; use -07 scoped novelty, offline, and replay claims",
+      "next_action": "Published July 21; use -08 as the current receipt and extension baseline",
       "url": "https://datatracker.ietf.org/doc/draft-schrock-ep-authorization-receipts/",
       "status_rule": "Check the live IETF Datatracker URL; do not infer status or revision from a local filename."
     },
@@ -3156,6 +3424,14 @@
       "status_rule": "Check the live IETF Datatracker URL; do not infer status or revision from a local filename."
     },
     {
+      "identifier": "draft-schrock-ep-revocation-statement",
+      "revision_at_snapshot": "00",
+      "role": "Signed retraction of authority without rewriting an already executed effect",
+      "next_action": "Published July 21; collect freshness, status-distribution, and interoperability feedback",
+      "url": "https://datatracker.ietf.org/doc/draft-schrock-ep-revocation-statement/",
+      "status_rule": "Check the live IETF Datatracker URL; do not infer status or revision from a local filename."
+    },
+    {
       "identifier": "draft-schrock-human-authorization-binding",
       "revision_at_snapshot": "00",
       "role": "Binding a human-authorization artifact into adjacent host formats",
@@ -3165,9 +3441,9 @@
     },
     {
       "identifier": "draft-schrock-model-to-matter",
-      "revision_at_snapshot": "00",
+      "revision_at_snapshot": "01",
       "role": "Experimental executor-side authorization-evidence clearance for model-directed physical execution",
-      "next_action": "Published July 19; do not claim deployment, scientific-safety determination, physical truth, or external endorsement without independent evidence",
+      "next_action": "Published July 21; do not claim deployment, scientific-safety determination, physical truth, or external endorsement without independent evidence",
       "url": "https://datatracker.ietf.org/doc/draft-schrock-model-to-matter/",
       "status_rule": "Check the live IETF Datatracker URL; do not infer status or revision from a local filename."
     },
@@ -3190,6 +3466,12 @@
       "EXECUTED": "An executor asserts or attests that an effect occurred."
     },
     "layers": [
+      {
+        "layer": 0,
+        "name": "architecture",
+        "question": "How do the evidence, authority, decision, and lifecycle layers compose without collapsing their claims?",
+        "emilia_position": "Define the separation and binding seams; leave native identity, policy, and transport verification to their owning protocols."
+      },
       {
         "layer": 1,
         "name": "identity_transport",
@@ -3231,19 +3513,19 @@
       "submission_window_opens_after": "2026-07-18T23:59:00+02:00",
       "filing_date": "2026-07-19",
       "publication_status": "published_and_ietf_archive_verified_2026_07_19",
-      "verification": "Each posted TXT is byte-for-byte identical to the corresponding https://www.ietf.org/archive/id/ artifact.",
+      "verification": "Each listed local publication snapshot was verified against the corresponding https://www.ietf.org/archive/id/ artifact before its revision was superseded.",
       "items": [
         {
           "priority": 1,
           "draft": "draft-schrock-canonical-action-identifier-00",
-          "source": "standards/posted/draft-schrock-canonical-action-identifier-00.xml",
+          "source": "standards/archive/draft-schrock-canonical-action-identifier-00.xml",
           "claim": "Typed material action identity plus profile-bounded cross-format matching",
           "state": "published_ietf_archive_verified_exact_local_match"
         },
         {
           "priority": 2,
           "draft": "draft-schrock-ep-architecture-01",
-          "source": "standards/posted/draft-schrock-ep-architecture-01.xml",
+          "source": "standards/archive/draft-schrock-ep-architecture-01.xml",
           "claim": "Cross-domain evidence architecture and non-collapsing decision vocabulary",
           "state": "published_ietf_archive_verified_exact_local_match"
         },
@@ -3257,7 +3539,7 @@
         {
           "priority": 4,
           "draft": "draft-schrock-ep-authorization-receipts-07",
-          "source": "standards/posted/draft-schrock-ep-authorization-receipts-07.xml",
+          "source": "standards/archive/draft-schrock-ep-authorization-receipts-07.xml",
           "claim": "One explicit action-bound approval evidence profile with scoped replay and offline guarantees",
           "state": "published_ietf_archive_verified_exact_local_match"
         },
@@ -3278,14 +3560,14 @@
         {
           "priority": 7,
           "draft": "draft-schrock-ep-authorization-evidence-chain-03",
-          "source": "standards/posted/draft-schrock-ep-authorization-evidence-chain-03.xml",
+          "source": "standards/archive/draft-schrock-ep-authorization-evidence-chain-03.xml",
           "claim": "Relying-party evidence satisfaction over natively verified, action-matched components",
           "state": "published_ietf_archive_verified_exact_local_match"
         },
         {
           "priority": 8,
           "draft": "draft-schrock-model-to-matter-00",
-          "source": "standards/posted/draft-schrock-model-to-matter-00.xml",
+          "source": "standards/archive/draft-schrock-model-to-matter-00.xml",
           "lane": "name_establishing_experimental_profile",
           "claim": "Executor-side authorization-evidence clearance for model-directed physical execution",
           "state": "published_ietf_archive_verified_exact_local_match",
@@ -3297,7 +3579,7 @@
       {
         "draft": "draft-schrock-ep-assurance-classes-00",
         "canonical_owner": "Proof predicates in relying-party profiles and native receipt verifier outputs",
-        "reason": "S/H/V/Q created a second assurance language beside deployed receipt and authority vocabularies. The standalone taxonomy is retired before filing."
+        "reason": "S/H/V/Q created a second assurance language beside the existing receipt and scoped-authority vocabularies. The standalone taxonomy is retired before filing."
       },
       {
         "draft": "draft-schrock-ep-authority-registry-00",
@@ -3306,8 +3588,8 @@
       },
       {
         "draft": "draft-schrock-ep-agent-trust-stack-00",
-        "canonical_owner": "draft-schrock-ep-architecture-01",
-        "reason": "Its composition map is fully absorbed by Architecture-01."
+        "canonical_owner": "draft-schrock-ep-architecture-02",
+        "reason": "Its composition map is fully absorbed by Architecture-02."
       },
       {
         "draft": "draft-schrock-ep-pqc-00",
@@ -3490,8 +3772,8 @@
       "purpose": "15 deterministic Model-to-Matter CAID, acceptance, refusal, replay, storage-failure, and effect-statement cases"
     },
     {
-      "path": "standards/posted/draft-schrock-model-to-matter-00.xml",
-      "purpose": "Published July 19 Experimental Model-to-Matter profile with explicit non-goals and implementation status"
+      "path": "standards/posted/draft-schrock-model-to-matter-01.xml",
+      "purpose": "Published July 21 Experimental Model-to-Matter profile with explicit non-goals and implementation status"
     },
     {
       "path": "examples/mobile-government",

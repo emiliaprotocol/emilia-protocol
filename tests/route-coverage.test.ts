@@ -13,7 +13,7 @@ const API_DIR = path.join(ROOT, 'app', 'api');
 const MIDDLEWARE_PATH = path.join(ROOT, 'middleware.ts');
 const OPENAPI_PATH = path.join(ROOT, 'openapi.yaml');
 
-/** Read all `route.js` files under app/api/ and return their API paths. */
+/** Read all `route.js`/`route.ts` files under app/api/ and return their API paths. */
 function discoverRouteFiles() {
   const files = fg.sync('app/api/**/route.{js,ts}', { cwd: ROOT });
   return files.map((f) => {
@@ -96,6 +96,10 @@ function fsPathToOpenapi(p) {
  * ROUTE_POLICIES entry. Keep this list as short as possible.
  */
 const MUTATING_POLICY_EXEMPTIONS = [
+  // EP-APPROVAL-v1 creation authenticates its Cloud key, requires the named
+  // approval_request capability, and applies cloud_write rate limiting inside
+  // the route. Polling intentionally uses a separate non-Cloud capability.
+  '/api/v1/approvals',
   // Signoff routes — middleware policies to be added in a follow-up.
   '/api/signoff/challenge',
   '/api/signoff/[challengeId]/attest',

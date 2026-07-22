@@ -63,6 +63,8 @@ const RECEIPT_TTL_MS = 24 * 60 * 60 * 1000;
 const RECEIPT_TTL_MIN_MS = 60 * 1000;
 const MAX_TRUST_RECEIPT_CREATE_BYTES = 256 * 1024;
 const SHA256_DIGEST_PATTERN = /^sha256:[a-f0-9]{64}$/;
+const ACQUISITION_REQUEST_PATTERN = /^apr_[a-f0-9]{32}$/;
+const RECEIPT_ID_PATTERN = /^tr_[a-f0-9]{32}$/;
 const PAYMENT_RELEASE_CAID_DEFINITION = caidActionTypeRegistry.types.find(
   (definition) => definition.action_type === 'payment.release.1'
     && definition.status === 'active',
@@ -213,6 +215,30 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
         body.action_caid = caidResult.caid;
         body.caid_digest = caidResult.digest;
         body.caid_action = caidAction;
+
+        const acquisitionKeys = [
+          'acquisition_request_id',
+          'acquisition_request_digest',
+          'acquisition_action_hash',
+          'acquisition_action_caid',
+          'acquisition_challenge_hash',
+          'acquisition_tenant_id',
+          'acquisition_environment',
+        ];
+        const acquisitionCount = acquisitionKeys.filter((key) => body[key] !== undefined).length;
+        if (acquisitionCount !== 0 && acquisitionCount !== acquisitionKeys.length) {
+          return epProblem(400, 'invalid_acquisition_binding', 'The acquisition binding must be complete');
+        }
+        if (acquisitionCount === acquisitionKeys.length
+            && (!ACQUISITION_REQUEST_PATTERN.test(body.acquisition_request_id || '')
+              || !SHA256_DIGEST_PATTERN.test(body.acquisition_request_digest || '')
+              || !SHA256_DIGEST_PATTERN.test(body.acquisition_action_hash || '')
+              || !SHA256_DIGEST_PATTERN.test(body.acquisition_challenge_hash || '')
+              || body.acquisition_action_caid !== body.action_caid
+              || body.acquisition_tenant_id !== body.organization_id
+              || body.acquisition_environment !== auth.guard_cloud?.environment)) {
+          return epProblem(400, 'invalid_acquisition_binding', 'The acquisition binding is malformed or identifies different payment material');
+        }
       }
     }
     if (body.actor_id && body.actor_id !== actor_id) {
@@ -227,6 +253,79 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
     if (inputError) return epProblem(inputError.status, inputError.code, inputError.detail);
 
     const supabase = getGuardedClient();
+
+    // EP-APPROVAL-v1 recovery key. A retry after a process crash must recover
+    // the immutable receipt already appended for this authenticated cloud key,
+    // never mint a second receipt. The request digest and exact action binding
+    // make same-id body drift a conflict rather than an alias.
+    if (body.acquisition_request_id) {
+      const { data: replayRows, error: replayError } = await supabase
+        .from('audit_events')
+        .select('target_id, after_state, created_at')
+        .eq('event_type', 'guard.trust_receipt.created')
+        .eq('actor_id', actor_id)
+        .eq('after_state->>acquisition_request_id', body.acquisition_request_id)
+        .limit(2);
+      if (replayError) {
+        return epProblem(503, 'acquisition_recovery_unavailable', 'Could not verify the durable acquisition state');
+      }
+      if ((replayRows || []).length > 1) {
+        return epProblem(503, 'acquisition_recovery_ambiguous', 'The durable acquisition state is ambiguous');
+      }
+      if (replayRows?.length === 1) {
+        const replay = replayRows[0];
+        const state = replay.after_state || {};
+        if (state.acquisition_request_digest !== body.acquisition_request_digest
+            || state.acquisition_action_hash !== body.acquisition_action_hash
+            || state.acquisition_action_caid !== body.acquisition_action_caid
+            || state.acquisition_challenge_hash !== body.acquisition_challenge_hash
+            || state.acquisition_tenant_id !== body.acquisition_tenant_id
+            || state.acquisition_environment !== body.acquisition_environment
+            || state.organization_id !== body.organization_id
+            || state.action_type !== body.action_type
+            || !RECEIPT_ID_PATTERN.test(replay.target_id || '')
+            || !state.canonical_action
+            || state.canonical_action.action_caid !== body.action_caid
+            || state.canonical_action.acquisition_scope?.tenant_id !== body.acquisition_tenant_id
+            || state.canonical_action.acquisition_scope?.environment !== body.acquisition_environment
+            || state.canonical_action.acquisition_scope?.request_id !== body.acquisition_request_id
+            || state.canonical_action.acquisition_scope?.request_digest !== body.acquisition_request_digest) {
+          return epProblem(409, 'acquisition_binding_conflict', 'The acquisition request id is bound to different action material');
+        }
+        return NextResponse.json({
+          receipt_id: replay.target_id,
+          decision: state.decision,
+          observed_decision: null,
+          policy_id: state.policy_id,
+          policy_hash: state.policy_hash,
+          action_hash: state.action_hash,
+          before_state_hash: state.before_state_hash,
+          after_state_hash: state.after_state_hash,
+          nonce: state.canonical_action.nonce,
+          expires_at: state.expires_at,
+          signoff_required: state.signoff_required,
+          required_assurance: state.required_assurance,
+          signoff_request_id: null,
+          risk_flags: state.risk_flags || [],
+          receipt_status: state.receipt_status,
+          enforcement_mode: state.enforcement_mode,
+          evidence_status: 'durable',
+          authority: {
+            ...(state.authority_binding || {}),
+            detail: state.authority_detail,
+            admissibility: state.authority_enforcement?.admissibility,
+            enforcement_mode: state.authority_enforcement?.mode,
+            is_critical: state.authority_enforcement?.is_critical,
+          },
+          reasons: state.reasons || [],
+          canonical_action: state.canonical_action,
+          execution_binding: state.execution_binding,
+        }, {
+          status: 200,
+          headers: { 'cache-control': 'no-store, private', 'x-emilia-idempotent-replay': 'true' },
+        });
+      }
+    }
 
     // ── Org-pinned quorum template gate (policy authenticity) ─────────────
     // verifyQuorum proves a quorum is internally consistent against WHATEVER
@@ -341,6 +440,19 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
       nonce,
       expires_at: expiresAt.toISOString(),
       requested_at: now.toISOString(),
+      ...(body.acquisition_request_id
+        ? {
+            acquisition_scope: {
+              tenant_id: body.acquisition_tenant_id,
+              environment: body.acquisition_environment,
+              request_id: body.acquisition_request_id,
+              request_digest: body.acquisition_request_digest,
+              action_hash: body.acquisition_action_hash,
+              action_caid: body.acquisition_action_caid,
+              challenge_hash: body.acquisition_challenge_hash,
+            },
+          }
+        : {}),
       // CAID is computed above by the server for the connected payment
       // approval endpoint. Keep the typed action and digest inside the
       // canonical action so action_hash, every approver assertion, and the
@@ -512,6 +624,15 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
           currency: body.currency || null,
           risk_flags: body.risk_flags || [],
           target_resource_id: body.target_resource_id,
+          ...(body.acquisition_request_id ? {
+            acquisition_request_id: body.acquisition_request_id,
+            acquisition_request_digest: body.acquisition_request_digest,
+            acquisition_action_hash: body.acquisition_action_hash,
+            acquisition_action_caid: body.acquisition_action_caid,
+            acquisition_challenge_hash: body.acquisition_challenge_hash,
+            acquisition_tenant_id: body.acquisition_tenant_id,
+            acquisition_environment: body.acquisition_environment,
+          } : {}),
         },
       });
       if (auditError) throw auditError;

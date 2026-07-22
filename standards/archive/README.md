@@ -11,9 +11,21 @@ The following posted revisions were superseded on 2026-07-19 and moved here:
 - `draft-schrock-ep-quorum-02`
 - `draft-schrock-ep-authorization-evidence-chain-02`
 
+The following posted revisions were superseded on 2026-07-21 and moved here:
+
+- `draft-schrock-canonical-action-identifier-00`
+- `draft-schrock-ep-architecture-01`
+- `draft-schrock-ep-authorization-evidence-chain-03`
+- `draft-schrock-ep-authorization-receipts-07`
+- `draft-schrock-model-to-matter-00`
+
+`draft-schrock-authorization-evidence-challenge-01.html` is an archived,
+unfiled rendering. The current published revision remains -00; the archived
+HTML is not an upload candidate.
+
 The following unfiled standalone candidates were retired on 2026-07-14:
 
-- `draft-schrock-ep-agent-trust-stack-00`: absorbed by Architecture-01.
+- `draft-schrock-ep-agent-trust-stack-00`: absorbed by Architecture-02.
 - `draft-schrock-ep-assurance-classes-00`: replaced by verifier-visible proof
   predicates and profile-local compatibility aliases; no shared S/H/V/Q
   taxonomy is being proposed.

@@ -1,0 +1,16 @@
+EP-CONSERVATION-OF-AUTHORITY-BOUNDED-MODEL-v1
+Method: bounded_exhaustive_state_exploration
+Execution date: 2026-07-21
+Model SHA-256: f72e0764d0fa2f8c781c6ba34a112cc9290c7b19d14c918fbfabf3739c7a9581
+Runner SHA-256: f046656ec0807913210c799f15a10a596969b1be05549111eb83c01fe2577037
+
+DelegationPathAuthorityNeverAmplifies (186624 delegation paths; selector-containment mutant rejected): verified
+AggregateBranchBudgetIsConserved (118098 allocation and reservation states; sibling-aggregate mutant rejected): verified
+AuthoritativeAllocationIsRequired (118098 allocation and reservation states; unpinned-ledger mutant rejected): verified
+ConcurrentReservationsAreAtomic (13122 reservation states; stale-snapshot mutant rejected): verified
+
+Result: 4 of 4 bounded obligations verified; 4 of 4 deliberately weakened variants produced concrete counterexamples.
+
+Scope: same-team bounded exhaustive exploration of the finite abstraction in the bound model bytes above. Path non-amplification is checked independently from aggregate sibling budget conservation. Authority is represented by action and audience sets, a two-dimensional cents/calls budget, and expiry order; it is not represented by a scalar authority score. This is partial formal evidence, not an unbounded protocol proof or independent implementation evidence.
+Assumptions: direct-parent capability resolution; an authoritative epoch-pinned allocation ledger; atomic compare-and-update reservation; exact authenticated selector, audience, budget, and expiry inputs.
+Exclusions: registry compromise, database isolation failure, cryptographic break, physical-world truth, and aggregate conservation without authoritative allocation or atomic reservation.

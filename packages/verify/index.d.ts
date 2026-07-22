@@ -638,6 +638,28 @@ export function createOrprgAecVerifier(
   action_digest?: string;
 };
 
+/** Private pre-publication pure verifier for signed series/parallel authority programs. */
+export const AUTHORITY_PROGRAM_VERSION: 'EP-AUTHORITY-PROGRAM-v1';
+export const AUTHORITY_PROGRAM_DOMAIN: 'EP-AUTHORITY-PROGRAM-v1\0';
+export const AUTHORITY_STAGE_RECEIPT_VERSION: 'EP-AUTHORITY-STAGE-RECEIPT-v1';
+export const AUTHORITY_STAGE_RECEIPT_DOMAIN: 'EP-AUTHORITY-STAGE-RECEIPT-v1\0';
+export const AUTHORITY_PROGRAM_RESULT_VERSION: 'EP-AUTHORITY-PROGRAM-VERIFY-RESULT-v1';
+export function authorityProgramDigest(program: unknown): string;
+export function authorityStageReceiptDigest(receipt: unknown): string;
+export function deriveAuthorityProgramPredecessors(expression: unknown): Record<string, string[]>;
+export function verifyAuthorityProgram(
+  program: unknown,
+  stageReceipts: unknown,
+  options?: {
+    programPin?: Record<string, unknown>;
+    stageKeys?: Record<string, unknown>;
+    verifyAec?: (context: Readonly<Record<string, unknown>>) => unknown;
+    verifyAom?: (context: Readonly<Record<string, unknown>>) => unknown;
+    verifyCapabilityNarrowing?: (context: Readonly<Record<string, unknown>>) => unknown;
+    verifyParallelAllocation?: (context: Readonly<Record<string, unknown>>) => unknown;
+  }
+): Record<string, unknown>;
+
 export const OUTCOME_ATTESTATION_VERSION: 'EP-OUTCOME-ATTESTATION-v1';
 export const OUTCOME_ATTESTATION_DOMAIN: 'EP-OUTCOME-ATTESTATION-v1\0';
 export const OUTCOME_BINDING_VERSION: 'EP-OUTCOME-BINDING-v1';

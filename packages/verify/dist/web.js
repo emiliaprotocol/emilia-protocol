@@ -266,7 +266,11 @@ export async function verifyWebAuthnSignoff(signoff, approverPublicKeySpkiB64u, 
         const clientDataText = DEC.decode(clientDataBytes);
         const clientDataGate = strictJsonGate(clientDataText);
         if (!clientDataGate.ok) {
-            return { valid: false, checks, error: `Invalid clientDataJSON: ${clientDataGate.reason}` };
+            return {
+                valid: false,
+                checks,
+                error: `Invalid clientDataJSON: ${'reason' in clientDataGate ? clientDataGate.reason : 'strict JSON rejected'}`,
+            };
         }
         const clientData = JSON.parse(clientDataText);
         const expectedChallenge = bytesToB64u(await sha256Bytes(utf8(canonicalize(signoff.context))));

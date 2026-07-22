@@ -34,6 +34,15 @@ function graphFor(types, overrides = {}) {
   return { '@version': EVIDENCE_GRAPH_VERSION, action_digest: artifactDigest(ACTION), nodes, edges };
 }
 
+function chainFor(types) {
+  return {
+    '@version': 'EP-AEC-v1',
+    action: ACTION,
+    requirement: 'authorization_receipt', // presenter value is ignored
+    components: types.map((type) => ({ type, evidence: mk(type) })),
+  };
+}
+
 describe('AE-CHALLENGE — the negotiation loop', () => {
   it('derives the go-get list from the policy, with freshness and revocation flags', () => {
     const req = deriveRequiredEvidence(policy);
@@ -42,7 +51,9 @@ describe('AE-CHALLENGE — the negotiation loop', () => {
     expect(types).toContain('policy_permit');
     expect(types).toContain('workload_identity');
     expect(req.find((r) => r.type === 'authorization_receipt').fresh_max_sec).toBe(300);
+    expect(req.find((r) => r.type === 'authorization_receipt').max_age_sec).toBe(300);
     expect(req.find((r) => r.type === 'authorization_receipt').revocation_checked).toBe(true);
+    expect(req.find((r) => r.type === 'authorization_receipt').status).toBe('current');
   });
 
   it('carries per-type assurance constraints when the policy supplies them', () => {
@@ -60,6 +71,7 @@ describe('AE-CHALLENGE — the negotiation loop', () => {
     expect(ch['@version']).toBe(CHALLENGE_VERSION);
     expect(ch.action_digest).toBe(artifactDigest(ACTION));
     expect(ch.policy_digest).toBe(artifactDigest(policy));
+    expect(ch.present_as).toEqual(['EP-AEC-v1']);
 
     const partial = evaluatePresentation(ch, graphFor(['authorization_receipt']), policy,
       { verifiers, as_of: AS_OF, consumedNonces: nonces, nonce: 'n2' });
@@ -75,6 +87,42 @@ describe('AE-CHALLENGE — the negotiation loop', () => {
       { verifiers, as_of: AS_OF, consumedNonces: nonces });
     expect(done.verdict).toBe('admissible');
     expect(done.next_challenge).toBeNull();
+  });
+
+  it('accepts the exact EP-AEC-v1 format advertised by the challenge', () => {
+    const ch = createEvidenceChallenge(ACTION, policy, {
+      expires_at: EXPIRES,
+      nonce: 'aec-presentation-nonce',
+      audience: 'travel.example',
+    });
+    const result = evaluatePresentation(
+      ch,
+      chainFor(['authorization_receipt', 'policy_permit', 'workload_identity']),
+      policy,
+      {
+        verifiers,
+        as_of: AS_OF,
+        consumedNonces: new Set(),
+        expected_audience: 'travel.example',
+      },
+    );
+    expect(result.verdict).toBe('admissible');
+  });
+
+  it('binds an audience when one is minted and refuses cross-audience replay', () => {
+    const ch = createEvidenceChallenge(ACTION, policy, {
+      expires_at: EXPIRES,
+      nonce: 'audience-binding-nonce',
+      audience: 'travel.example',
+    });
+    const result = evaluatePresentation(ch, graphFor(['authorization_receipt']), policy, {
+      verifiers,
+      as_of: AS_OF,
+      consumedNonces: new Set(),
+      expected_audience: 'payments.example',
+    });
+    expect(result.verdict).toBe('refused');
+    expect(result.reasons.join(' ')).toContain('audience');
   });
 
   it('a challenge nonce is single-use: the second presentation is refused before policy runs', () => {
@@ -236,6 +284,27 @@ describe('deriveRequiredEvidence — edge cases fail safe', () => {
     const types = req.map((r) => r.type);
     expect(types).not.toContain('authorization_receipt');
     expect(types).toContain('policy_permit');
+  });
+
+  it('requests only the least-disclosing unsatisfied branch of an OR policy', () => {
+    expect(deriveRequiredEvidence({ requirement: 'authorization_receipt OR policy_permit' }))
+      .toEqual([{ type: 'authorization_receipt' }]);
+    expect(deriveRequiredEvidence(
+      { requirement: 'authorization_receipt OR (policy_permit AND workload_identity)' },
+      { satisfied_by: ['policy_permit'] },
+    )).toEqual([{ type: 'authorization_receipt' }]);
+  });
+
+  it('carries profile and proof-predicate requirements per evidence type', () => {
+    expect(deriveRequiredEvidence({
+      requirement: 'authorization_receipt',
+      profiles: { authorization_receipt: 'ep-receipt-v1' },
+      proof_predicates: { authorization_receipt: ['signature_valid', 'not_revoked'] },
+    })).toEqual([{
+      type: 'authorization_receipt',
+      profile: 'ep-receipt-v1',
+      proof_predicates: ['signature_valid', 'not_revoked'],
+    }]);
   });
 
   it('a type with no freshness bound simply omits fresh_max_sec', () => {

@@ -72,8 +72,11 @@ describe('HTTP/API Receipt Required conformance', () => {
     for (const action of await catalog()) {
       const missing = await POST(request({ demo: action.id }));
       expect(missing.status).toBe(428);
+      expect(missing.headers.get('content-type')).toContain('application/problem+json');
       expect(missing.headers.get('receipt-required')).toContain(action.action);
       const missingBody = await missing.json();
+      expect(missingBody.status).toBe(missing.status);
+      expect(missingBody.required.status).toBe(missing.status);
       expect(missingBody.required.action).toBe(action.action);
       expect(missingBody.loop.invariant).toBe('No receipt, no irreversible action.');
 
@@ -99,6 +102,7 @@ describe('HTTP/API Receipt Required conformance', () => {
 
       const replay = await POST(request({ demo: action.id, emilia_receipt: receipt }));
       expect(replay.status).toBe(428);
+      expect(replay.headers.get('content-type')).toContain('application/problem+json');
       const replayBody = await replay.json();
       expect(replayBody.rejected.reason).toBe('replay_refused');
 

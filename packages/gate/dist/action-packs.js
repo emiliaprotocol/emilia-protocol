@@ -1,4 +1,3 @@
-// @ts-nocheck
 // SPDX-License-Identifier: Apache-2.0
 // EMILIA Gate default action packs: the high-risk families that should require
 // pre-execution human authorization before a machine mutates the world.
@@ -15,6 +14,7 @@ export const HIGH_RISK_ACTION_PACKS = Object.freeze([
         why: 'Moves funds or releases value. Requires a named human signoff, not an agent-only key.',
         execution_binding: {
             required_fields: ['action_type', 'amount_usd', 'currency', 'payment_instruction_id', 'beneficiary_account_hash'],
+            caid_selector: { field: 'action_caid' },
         },
     }),
     Object.freeze({
@@ -113,7 +113,13 @@ export function createDefaultActionRiskManifest({ includePassThrough = true, ext
                 ...a,
                 match: { ...a.match },
                 execution_binding: a.execution_binding
-                    ? { ...a.execution_binding, required_fields: [...a.execution_binding.required_fields] }
+                    ? {
+                        ...a.execution_binding,
+                        required_fields: [...a.execution_binding.required_fields],
+                        ...(a.execution_binding.caid_selector
+                            ? { caid_selector: { ...a.execution_binding.caid_selector } }
+                            : {}),
+                    }
                     : undefined,
             })),
             ...(includePassThrough ? DEFAULT_PASS_THROUGH_ACTIONS.map((a) => ({ ...a, match: { ...a.match } })) : []),

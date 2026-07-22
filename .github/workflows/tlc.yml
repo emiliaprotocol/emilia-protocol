@@ -14,17 +14,23 @@ on:
     paths:
       - 'formal/**.tla'
       - 'formal/**.cfg'
+      - 'formal/CONSERVATION_OF_AUTHORITY.md'
+      - 'formal/PROOF_STATUS.md'
+      - 'formal/RUN_TLC.md'
       - '.github/workflows/tlc.yml'
   pull_request:
     paths:
       - 'formal/**.tla'
       - 'formal/**.cfg'
+      - 'formal/CONSERVATION_OF_AUTHORITY.md'
+      - 'formal/PROOF_STATUS.md'
+      - 'formal/RUN_TLC.md'
       - '.github/workflows/tlc.yml'
   workflow_dispatch:
 
 jobs:
   tlc:
-    name: Verify ep_handshake.tla + ep_capability.tla
+    name: Verify handshake + capability + receipt + authority + trust + remedy programs
     runs-on: ubuntu-latest
 
     steps:
@@ -102,6 +108,106 @@ jobs:
             exit 1
           fi
 
+      - name: Run TLC on ep_receipt_program.tla
+        working-directory: formal
+        run: |
+          java -Xmx2G -jar ../tla2tools.jar \
+            -workers auto \
+            -config ep_receipt_program.cfg \
+            ep_receipt_program.tla \
+            2>&1 | tee tlc-receipt-program-output.txt
+
+      - name: Check ep_receipt_program TLC result
+        working-directory: formal
+        run: |
+          if grep -q "Error:" tlc-receipt-program-output.txt; then
+            echo "TLC found an error — one or more receipt-program properties are violated."
+            grep -A 20 "Error:" tlc-receipt-program-output.txt
+            exit 1
+          fi
+
+      - name: Run TLC on ep_authority_program.tla
+        working-directory: formal
+        run: |
+          java -Xmx2G -jar ../tla2tools.jar \
+            -workers auto \
+            -config ep_authority_program.cfg \
+            ep_authority_program.tla \
+            2>&1 | tee tlc-authority-program-output.txt
+
+      - name: Check ep_authority_program TLC result
+        working-directory: formal
+        run: |
+          if grep -q "Error:" tlc-authority-program-output.txt; then
+            echo "TLC found an error — one or more authority-program properties are violated."
+            grep -A 20 "Error:" tlc-authority-program-output.txt
+            exit 1
+          fi
+          if grep -q "Model checking completed. No error has been found." tlc-authority-program-output.txt; then
+            echo "TLC: all authority-program properties hold in the configured bounds."
+          else
+            echo "TLC did not produce a clean authority-program completion message."
+            cat tlc-authority-program-output.txt
+            exit 1
+          fi
+
+      - name: Run TLC on ep_trust_program.tla
+        working-directory: formal
+        run: |
+          java -Xmx4G -jar ../tla2tools.jar \
+            -workers auto \
+            -config ep_trust_program.cfg \
+            ep_trust_program.tla \
+            2>&1 | tee tlc-trust-program-output.txt
+
+      - name: Check ep_trust_program TLC result
+        working-directory: formal
+        run: |
+          if grep -q "Error:" tlc-trust-program-output.txt; then
+            echo "TLC found an error — one or more Trust Program invariants are violated."
+            grep -A 20 "Error:" tlc-trust-program-output.txt
+            exit 1
+          fi
+
+      - name: Run TLC on ep_lifecycle_remedy.tla
+        working-directory: formal
+        run: |
+          java -Xmx4G -jar ../tla2tools.jar \
+            -workers auto \
+            -config ep_lifecycle_remedy.cfg \
+            ep_lifecycle_remedy.tla \
+            2>&1 | tee tlc-lifecycle-remedy-output.txt
+
+      - name: Check ep_lifecycle_remedy TLC result
+        working-directory: formal
+        run: |
+          if grep -q "Error:" tlc-lifecycle-remedy-output.txt; then
+            echo "TLC found an error — one or more lifecycle/remedy invariants are violated."
+            grep -A 20 "Error:" tlc-lifecycle-remedy-output.txt
+            exit 1
+          fi
+          if grep -q "Model checking completed. No error has been found." tlc-lifecycle-remedy-output.txt; then
+            echo "TLC: all lifecycle/remedy invariants hold in the bounded model."
+          else
+            echo "TLC did not produce a clean lifecycle/remedy completion message."
+            cat tlc-lifecycle-remedy-output.txt
+            exit 1
+          fi
+          if grep -q "Model checking completed. No error has been found." tlc-trust-program-output.txt; then
+            echo "TLC: all Trust Program invariants hold in the bounded model."
+          else
+            echo "TLC did not produce a clean Trust Program completion message."
+            cat tlc-trust-program-output.txt
+            exit 1
+          fi
+          if grep -q "Model checking completed. No error has been found." tlc-receipt-program-output.txt; then
+            echo "TLC: all receipt-program properties hold in the configured bounds."
+          else
+            echo "TLC did not produce a clean completion message. Check the artifact."
+            cat tlc-receipt-program-output.txt
+            exit 1
+          fi
+
       - name: Upload TLC output
         if: always()
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a  # v7.0.1
@@ -110,4 +216,8 @@ jobs:
           path: |
             formal/tlc-output.txt
             formal/tlc-capability-output.txt
+            formal/tlc-receipt-program-output.txt
+            formal/tlc-authority-program-output.txt
+            formal/tlc-trust-program-output.txt
+            formal/tlc-lifecycle-remedy-output.txt
           retention-days: 90

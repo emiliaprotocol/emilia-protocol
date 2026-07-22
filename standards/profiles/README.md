@@ -2,9 +2,10 @@
 
 These documents apply the open evidence architecture to a deployment or
 commercial relationship. They are deliberately outside the core IETF filing
-line. A profile moves back to `standards/staged/` only when a named external
+line. A profile moves into an external filing workspace only when a named
 executor, regulator, insurer, or relying party validates the requirement and
-participates in the review.
+participates in the review; the published revision is archived here only after
+filing.
 
 - `draft-schrock-ep-human-oversight-profile-00`: regulatory implementation
   profile. Trigger: a standards or government partner needs a portable mapping

@@ -293,7 +293,11 @@ export async function verifyWebAuthnSignoff(signoff: JsonObject, approverPublicK
     const clientDataText = DEC.decode(clientDataBytes);
     const clientDataGate = strictJsonGate(clientDataText);
     if (!clientDataGate.ok) {
-      return { valid: false, checks, error: `Invalid clientDataJSON: ${clientDataGate.reason}` };
+      return {
+        valid: false,
+        checks,
+        error: `Invalid clientDataJSON: ${'reason' in clientDataGate ? clientDataGate.reason : 'strict JSON rejected'}`,
+      };
     }
     const clientData = JSON.parse(clientDataText);
     const expectedChallenge = bytesToB64u(await sha256Bytes(utf8(canonicalize(signoff.context))));
@@ -402,7 +406,7 @@ export async function verifyReceiptBundle(bundle: JsonObject, publicKeyBase64url
   if (bundle?.['@version'] !== 'EP-BUNDLE-v1') {
     return { valid: false, total: 0, verified: 0, failed: ['Invalid bundle version'] };
   }
-  const failed = [];
+  const failed: string[] = [];
   let verified = 0;
   for (let i = 0; i < bundle.documents.length; i++) {
     const result = await verifyReceipt(bundle.documents[i], publicKeyBase64url);

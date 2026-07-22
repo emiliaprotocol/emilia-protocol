@@ -1,0 +1,62 @@
+{
+  "suite": "EP-PLATFORM-ATTESTATION-v1",
+  "profile": "tag:emiliaprotocol.ai,2026:platform-attestation/eat-jwt/v1",
+  "vectors_version": "2026-07-21.1",
+  "note": "Deterministic mutation instructions for the EP platform-attestation consumer profile. The runner creates ephemeral Ed25519 fixture keys and compact JWTs; this public file intentionally contains no keys, private material, signatures, or tokens.",
+  "vectors": [
+    {
+      "id": "accept_exact_pinned_result",
+      "title": "PLATFORM ATTESTATION: accepts the exact RP-pinned result",
+      "mutation": "none",
+      "expect": { "valid": true, "reason": null }
+    },
+    {
+      "id": "reject_key_substitution",
+      "title": "PLATFORM ATTESTATION: rejects attester key substitution",
+      "mutation": "key_substitution",
+      "expect": { "valid": false, "reason": "signature_invalid" }
+    },
+    {
+      "id": "reject_nonce_mismatch",
+      "title": "PLATFORM ATTESTATION: rejects a different EAT nonce",
+      "mutation": "nonce_mismatch",
+      "expect": { "valid": false, "reason": "nonce_mismatch" }
+    },
+    {
+      "id": "reject_action_mismatch",
+      "title": "PLATFORM ATTESTATION: rejects a different action digest",
+      "mutation": "action_mismatch",
+      "expect": { "valid": false, "reason": "action_digest_mismatch" }
+    },
+    {
+      "id": "reject_build_mismatch",
+      "title": "PLATFORM ATTESTATION: rejects an unpinned build measurement",
+      "mutation": "build_mismatch",
+      "expect": { "valid": false, "reason": "measurement_untrusted" }
+    },
+    {
+      "id": "reject_expired_result",
+      "title": "PLATFORM ATTESTATION: rejects an expired result",
+      "mutation": "expired",
+      "expect": { "valid": false, "reason": "token_expired" }
+    },
+    {
+      "id": "reject_future_result",
+      "title": "PLATFORM ATTESTATION: rejects a future-issued result",
+      "mutation": "future_issued",
+      "expect": { "valid": false, "reason": "token_from_future" }
+    },
+    {
+      "id": "reject_over_age_result",
+      "title": "PLATFORM ATTESTATION: rejects a result older than RP policy",
+      "mutation": "over_age",
+      "expect": { "valid": false, "reason": "token_too_old" }
+    },
+    {
+      "id": "reject_reserved_override",
+      "title": "PLATFORM ATTESTATION: ignores a custom override for the reserved AEC type",
+      "mutation": "reserved_override",
+      "expect": { "valid": false, "reason": "component evidence did not verify" }
+    }
+  ]
+}

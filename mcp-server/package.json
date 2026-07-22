@@ -1,25 +1,26 @@
 {
   "name": "@emilia-protocol/mcp-server",
   "mcpName": "io.github.emiliaprotocol/mcp-server",
-  "version": "1.1.1",
-  "description": "Stop your AI agent before it does something irreversible. ep_guard_action holds a payment, deletion, or account change until a named human signs off \u2014 and returns a receipt anyone can verify offline. The seatbelt for agent tool calls, over MCP.",
-  "main": "index.js",
+  "version": "2.0.0",
+  "description": "Stop your AI agent before it does something irreversible. ep_guard_action holds a payment, deletion, or account change until a named human signs off — and returns a receipt anyone can verify offline. The seatbelt for agent tool calls, over MCP.",
+  "main": "bundle.js",
   "type": "module",
   "bin": {
-    "emilia-mcp": "./index.js"
+    "emilia-mcp": "./bundle.js"
   },
   "files": [
-    "index.js",
+    "bundle.js",
     "auto-receipt.js",
     "README.md",
     "LICENSE"
   ],
   "scripts": {
+    "build": "node scripts/build-bundle.mjs",
+    "prepack": "npm run build",
     "test": "vitest run"
   },
   "dependencies": {
-    "@emilia-protocol/verify": "^3.10.1",
-    "@modelcontextprotocol/sdk": "^1.29.0"
+    "@emilia-protocol/verify": "^3.10.1"
   },
   "overrides": {
     "@hono/node-server": "2.0.10",
@@ -28,6 +29,8 @@
     "hono": "4.12.27"
   },
   "devDependencies": {
+    "@modelcontextprotocol/sdk": "^1.29.0",
+    "esbuild": "^0.28.1",
     "vitest": "^4.1.8"
   },
   "keywords": [

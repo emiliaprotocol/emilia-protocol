@@ -38,6 +38,12 @@ export { receiptAssuranceTier };
  * @param {string} [opts.manifestUrl]
  * @param {string} [opts.assuranceClass]
  * @param {object} [opts.quorum]
+ * @param {{authorization_endpoint:string,flow:'EP-APPROVAL-v1'}} [opts.authorization]
+ *   relying-party-pinned acquisition descriptor exposed in challenges.
+ * @param {string[]} [opts.requiredFields] exact material action fields an
+ *   acquisition request and later execution observation must bind.
+ * @param {{field:string}} [opts.caidSelector] CAID field required by the
+ *   acquisition contract. CAID identifies content; it never grants authority.
  * @param {object} [opts.quorumPolicy] relying-party-pinned organizational quorum rule
  * @param {Record<string, any>} [opts.approverKeys] pinned approver keys (assurance eval).
  * @param {Record<string, any>} [opts.approver_keys] snake_case alias of approverKeys.
@@ -53,8 +59,9 @@ export { receiptAssuranceTier };
  *   uncertain reservation closed until operator reconciliation.
  */
 export declare function makeReceiptGate(opts?: AnyRecord): {
-    check: (receipt: AnyRecord | null | undefined, { target }?: {
+    check: (receipt: AnyRecord | null | undefined, { target, observedAction, }?: {
         target?: any;
+        observedAction?: AnyRecord;
     }) => Promise<{
         ok: boolean;
         status: any;
@@ -75,6 +82,14 @@ export declare function makeReceiptGate(opts?: AnyRecord): {
                 assurance_class: any;
                 quorum: any;
                 max_age_sec: any;
+                authorization: {
+                    authorization_endpoint: string;
+                    flow: typeof import("./acquisition.js").EP_APPROVAL_FLOW;
+                } | null;
+                required_fields: string[] | null;
+                caid_selector: {
+                    field: string;
+                } | null;
                 how: string;
                 learn_more: string;
             };
@@ -116,6 +131,14 @@ export declare function makeReceiptGate(opts?: AnyRecord): {
                 assurance_class: any;
                 quorum: any;
                 max_age_sec: any;
+                authorization: {
+                    authorization_endpoint: string;
+                    flow: typeof import("./acquisition.js").EP_APPROVAL_FLOW;
+                } | null;
+                required_fields: string[] | null;
+                caid_selector: {
+                    field: string;
+                } | null;
                 how: string;
                 learn_more: string;
             };

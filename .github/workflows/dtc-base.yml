@@ -1,0 +1,108 @@
+name: DTC Base
+
+permissions:
+  contents: read
+
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+
+on:
+  push:
+    paths:
+      - '.github/workflows/dtc-base.yml'
+      - '.npmrc'
+      - 'package-lock.json'
+      - 'packages/dtc-base/**'
+      - 'packages/gate/**'
+      - 'packages/require-receipt/**'
+      - 'packages/verify/**'
+      - 'caid/impl/js/caid.mjs'
+      - 'formal/AlloyCheck.java'
+  pull_request:
+    paths:
+      - '.github/workflows/dtc-base.yml'
+      - '.npmrc'
+      - 'package-lock.json'
+      - 'packages/dtc-base/**'
+      - 'packages/gate/**'
+      - 'packages/require-receipt/**'
+      - 'packages/verify/**'
+      - 'caid/impl/js/caid.mjs'
+      - 'formal/AlloyCheck.java'
+  workflow_dispatch:
+
+concurrency:
+  group: dtc-base-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  verify:
+    name: Public experimental source gate
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
+
+      - name: Set up Node.js
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020  # v7.0.0
+        with:
+          node-version: 24
+          cache: npm
+          cache-dependency-path: |
+            package-lock.json
+            packages/dtc-base/package-lock.json
+
+      - name: Set up Java for TLC and Alloy
+        uses: actions/setup-java@03ad4de0992f5dab5e18fcb136590ce7c4a0ac95  # v5.6.0
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - name: Install repository integration dependencies from lock
+        run: npm ci --ignore-scripts
+
+      - name: Install DTC Base dependencies from lock
+        working-directory: packages/dtc-base
+        run: npm ci --ignore-scripts
+
+      - name: Verify non-publishable and Base Sepolia-only policy
+        working-directory: packages/dtc-base
+        run: npm run policy:verify
+
+      - name: Typecheck strict TypeScript
+        working-directory: packages/dtc-base
+        run: npm run typecheck
+
+      - name: Compile Solidity
+        working-directory: packages/dtc-base
+        run: npm run compile
+
+      - name: Run functional tests
+        working-directory: packages/dtc-base
+        run: npm run test:functional
+
+      - name: Run hostile and audit-regression tests
+        working-directory: packages/dtc-base
+        run: npm run test:hostile
+
+      - name: Run Gate and bridge integration tests
+        working-directory: packages/dtc-base
+        run: npm run test:integration
+
+      - name: Lint Solidity
+        working-directory: packages/dtc-base
+        run: npm run lint
+
+      - name: Audit production dependencies
+        working-directory: packages/dtc-base
+        run: npm run audit:prod
+
+      - name: Reject new high advisories outside the time-bounded toolchain exception
+        working-directory: packages/dtc-base
+        run: npm run audit:toolchain
+
+      - name: Verify formal summaries and artifact manifest are current
+        working-directory: packages/dtc-base
+        run: npm run evidence:verify

@@ -1,0 +1,109 @@
+{
+  "@version": "EMILIA-SUCCESSION-AUTHORIZATION-BINDING-V1",
+  "description": "Cross-format vector for the optional succession-receipt authorization_binding claim. The succession format remains authoritative for succession semantics. This fixture checks internal CAID and canonical-representation binding only after the caller has natively verified the receipt; it does not itself verify either format's signature, freshness, audience, succession state, or replay state.",
+  "verification_precondition": "native_authorization_receipt_verified",
+  "canonicalization": "RFC 8785 JSON Canonicalization Scheme",
+  "caid_derivation": {
+    "type_definition": "caid/registry/action-types.json#travel.cancel-notify.1",
+    "type_definition_digest": "sha256:3d3c498bb8ea8eab55b92083db53c54b5cfc57db0fb251e361b164af0b268fcc",
+    "action_object": {
+      "action_type": "travel.cancel-notify.1",
+      "primary_action": "!CANCEL",
+      "resource": "flight",
+      "cancel_time": "t+1pm",
+      "secondary_action": "!EMAIL",
+      "notification_recipient": "zhangsan",
+      "constraint_type": "loc",
+      "constraint_value": "Beijing",
+      "constraint_time": "t+1am",
+      "constraint_subject": "me",
+      "entities_digest": "sha256:240a2e00860cac72b5a57fe8ef12209325416c8309b9e570d88714358a17987d",
+      "constraints_digest": "sha256:1a6512e2ba3d3f9da43f22f63ae29db255df400551244e9962c97e66be813a79",
+      "alternatives_digest": "sha256:4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+      "sequence_digest": "sha256:d621c9243fe591af16bf31e9e57bd89ab0fc06d1d18863676bbe93ef8c7691f2"
+    },
+    "canonical_action_object_utf8": "{\"action_type\":\"travel.cancel-notify.1\",\"alternatives_digest\":\"sha256:4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945\",\"cancel_time\":\"t+1pm\",\"constraint_subject\":\"me\",\"constraint_time\":\"t+1am\",\"constraint_type\":\"loc\",\"constraint_value\":\"Beijing\",\"constraints_digest\":\"sha256:1a6512e2ba3d3f9da43f22f63ae29db255df400551244e9962c97e66be813a79\",\"entities_digest\":\"sha256:240a2e00860cac72b5a57fe8ef12209325416c8309b9e570d88714358a17987d\",\"notification_recipient\":\"zhangsan\",\"primary_action\":\"!CANCEL\",\"resource\":\"flight\",\"secondary_action\":\"!EMAIL\",\"sequence_digest\":\"sha256:d621c9243fe591af16bf31e9e57bd89ab0fc06d1d18863676bbe93ef8c7691f2\"}",
+    "suite": "jcs-sha256",
+    "digest_algorithm": "SHA-256 over the UTF-8 bytes of canonical_action_object_utf8",
+    "domain_separation": "none",
+    "digest_hex": "3e67d028ee448a775ac8f540380ac44633e8b2e53627d43b56038474e071b3c5",
+    "digest_base64url_unpadded": "PmfQKO5EindayPVAOArERjPosuU2J9Q7VgOEdOBxs8U",
+    "caid": "caid:1:travel.cancel-notify.1:jcs-sha256:PmfQKO5EindayPVAOArERjPosuU2J9Q7VgOEdOBxs8U"
+  },
+  "authorization_receipt": {
+    "@version": "EP-RECEIPT-v1",
+    "caid": "caid:1:travel.cancel-notify.1:jcs-sha256:PmfQKO5EindayPVAOArERjPosuU2J9Q7VgOEdOBxs8U",
+    "action_type": "travel.cancel-notify.1",
+    "action": {
+      "primary_action": "!CANCEL",
+      "resource": "flight",
+      "cancel_time": "t+1pm",
+      "secondary_action": "!EMAIL",
+      "notification_recipient": "zhangsan",
+      "constraint_type": "loc",
+      "constraint_value": "Beijing",
+      "constraint_time": "t+1am",
+      "constraint_subject": "me",
+      "entities_digest": "sha256:240a2e00860cac72b5a57fe8ef12209325416c8309b9e570d88714358a17987d",
+      "constraints_digest": "sha256:1a6512e2ba3d3f9da43f22f63ae29db255df400551244e9962c97e66be813a79",
+      "alternatives_digest": "sha256:4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+      "sequence_digest": "sha256:d621c9243fe591af16bf31e9e57bd89ab0fc06d1d18863676bbe93ef8c7691f2"
+    },
+    "authorization": {
+      "principal": "did:example:alice",
+      "audience": "travel.example",
+      "decision": "approved"
+    },
+    "issued_at": "2026-07-20T12:00:00Z"
+  },
+  "succession_receipt": {
+    "credential": {
+      "subject": {
+        "authorization_binding": {
+          "caid": "caid:1:travel.cancel-notify.1:jcs-sha256:PmfQKO5EindayPVAOArERjPosuU2J9Q7VgOEdOBxs8U",
+          "receipt_hash": "0c0dea42b483e1f47fa1bc931f0e7a20d6b6f191e59c6e65ba3567fa821c3d3a",
+          "format": "EP-RECEIPT-v1"
+        }
+      }
+    }
+  },
+  "vectors": [
+    {
+      "id": "binding-present-verifies",
+      "expect": { "present": true, "valid": true, "asserts_binding": true, "reasons": [] }
+    },
+    {
+      "id": "receipt-hash-mismatch-refuses",
+      "mutations": [
+        { "path": "/succession_receipt/credential/subject/authorization_binding/receipt_hash", "value": "0000000000000000000000000000000000000000000000000000000000000000" }
+      ],
+      "expect": { "present": true, "valid": false, "asserts_binding": false, "reasons": ["receipt_hash_mismatch"] }
+    },
+    {
+      "id": "unverified-native-receipt-refuses-to-assert-binding",
+      "native_verified": false,
+      "expect": { "present": true, "valid": false, "asserts_binding": false, "reasons": ["native_receipt_verification_required"] }
+    },
+    {
+      "id": "caid-mismatch-refuses",
+      "mutations": [
+        { "path": "/succession_receipt/credential/subject/authorization_binding/caid", "value": "caid:1:travel.cancel-notify.1:jcs-sha256:AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA" }
+      ],
+      "expect": { "present": true, "valid": false, "asserts_binding": false, "reasons": ["caid_mismatch"] }
+    },
+    {
+      "id": "changed-receipt-material-refuses",
+      "mutations": [
+        { "path": "/authorization_receipt/action/cancel_time", "value": "t+2pm" }
+      ],
+      "expect": { "present": true, "valid": false, "asserts_binding": false, "reasons": ["receipt_caid_derivation_mismatch", "receipt_hash_mismatch"] }
+    },
+    {
+      "id": "optional-binding-absent-does-not-invalidate-succession",
+      "mutations": [
+        { "path": "/succession_receipt/credential/subject/authorization_binding", "delete": true }
+      ],
+      "expect": { "present": false, "valid": true, "asserts_binding": false, "reasons": [] }
+    }
+  ]
+}

@@ -232,6 +232,70 @@
       "release_artifacts": ["security-evidence"]
     },
     {
+      "claim_id": "conservation-of-authority-is-bounded-and-non-amplifying",
+      "statement": "Within an accepted delegation path, action and audience selectors can only narrow, budget dimensions and expiry cannot increase, and cycles or a leaf naming itself as an ancestor are refused. Aggregate sibling-budget conservation is claimed only when allocations come from an authoritative epoch-pinned ledger and reservations are atomic; it is not inferred from path containment alone.",
+      "acceptance_roots": [
+        "the relying party's pinned authority-registry view and capability issuer",
+        "an authoritative epoch-pinned allocation ledger for aggregate branch claims",
+        "atomic compare-and-update reservation in the shared capability store"
+      ],
+      "enforcement_path": [
+        { "language": "javascript", "file": "lib/authority/resolver.ts", "symbol": "evaluateAuthorityVerdict", "exported": true },
+        { "language": "javascript", "file": "packages/gate/src/capability-receipt.ts", "symbol": "delegateCapabilityReceipt", "exported": true },
+        { "language": "javascript", "file": "packages/gate/src/capability-receipt.ts", "symbol": "createMemoryCapabilityStore", "exported": true },
+        { "language": "javascript", "file": "packages/gate/src/capability-receipt.ts", "symbol": "createPostgresCapabilityStore", "exported": true }
+      ],
+      "implementations": [
+        { "language": "javascript", "file": "lib/authority/resolver.ts", "export": "evaluateAuthorityVerdict" },
+        { "language": "javascript", "file": "packages/gate/src/capability-receipt.ts", "export": "delegateCapabilityReceipt" },
+        { "language": "javascript", "file": "packages/gate/src/capability-receipt.ts", "export": "createMemoryCapabilityStore" },
+        { "language": "javascript", "file": "packages/gate/src/capability-receipt.ts", "export": "createPostgresCapabilityStore" }
+      ],
+      "language_coverage": {
+        "javascript": { "status": "covered", "evidence": "conformance/vectors/authority.v1.json" },
+        "python": { "status": "gap", "reason": "No Python authority resolver, bounded-capability delegation kernel, or authoritative allocation store is claimed." },
+        "go": { "status": "gap", "reason": "No Go authority resolver, bounded-capability delegation kernel, or authoritative allocation store is claimed." }
+      },
+      "vectors": [
+        { "suite": "conformance/vectors/authority.v1.json", "case_id": "authorized_within_scope_and_limit", "polarity": "positive", "expect": { "valid": true, "verdict": "authorized" }, "execution": { "runner": "vitest", "file": "tests/authority-registry.test.ts", "title": "resolve: authorized_within_scope_and_limit" } },
+        { "suite": "conformance/vectors/authority.v1.json", "case_id": "reject_delegation_widened_amount", "polarity": "negative", "expect": { "valid": false, "verdict": "delegation_broken" }, "execution": { "runner": "vitest", "file": "tests/authority-registry.test.ts", "title": "resolve: reject_delegation_widened_amount" } },
+        { "suite": "conformance/vectors/authority.v1.json", "case_id": "reject_delegation_parent_missing", "polarity": "negative", "expect": { "valid": false, "verdict": "delegation_broken" }, "execution": { "runner": "vitest", "file": "tests/authority-registry.test.ts", "title": "resolve: reject_delegation_parent_missing" } }
+      ],
+      "tests": [
+        { "file": "tests/authority-registry.test.ts", "title": "delegation cannot widen by omitting scope, ceiling, currency, policy, assurance, lifecycle, or organization", "runner": "vitest" },
+        { "file": "packages/gate/capability-receipt.test.js", "title": "delegation burns parent budget before registering a spendable child", "runner": "node-test" },
+        { "file": "packages/gate/capability-receipt.test.js", "title": "delegation cannot outlive its parent, including across multiple hops", "runner": "node-test" },
+        { "file": "packages/gate/capability-receipt.test.js", "title": "a delegation chain that grants increasing authority is rejected", "runner": "node-test" }
+      ],
+      "formal": [
+        {
+          "status": "partial",
+          "method": "bounded_exhaustive_state_exploration",
+          "model": "formal/conservation-authority.model.mjs",
+          "runner": "formal/check-conservation-authority.mjs",
+          "result_evidence": "formal/results/conservation-authority.summary.txt",
+          "obligations": [
+            "DelegationPathAuthorityNeverAmplifies",
+            "AggregateBranchBudgetIsConserved",
+            "AuthoritativeAllocationIsRequired",
+            "ConcurrentReservationsAreAtomic"
+          ],
+          "scope": "Same-team bounded exhaustive exploration of action and audience selector sets, two independent budget dimensions, expiry, two sibling allocations, and two concurrent reservation requests; every deliberately weakened obligation produces a concrete counterexample."
+        }
+      ],
+      "assumptions": [
+        "every accepted child is evaluated against its direct authenticated parent",
+        "aggregate branch claims use the same authoritative allocation epoch for all siblings",
+        "all workers share a linearizable atomic reservation boundary"
+      ],
+      "exclusions": [
+        "the bounded evidence is not an unbounded theorem or a refinement proof of TypeScript or SQL",
+        "path non-amplification alone does not conserve aggregate sibling budgets",
+        "registry compromise, database isolation failure, legal authority, human intent, and physical-world truth are outside this claim"
+      ],
+      "release_artifacts": ["gate-sdk", "security-evidence"]
+    },
+    {
       "claim_id": "reliance-requires-pinned-profile",
       "statement": "A cryptographically valid packet still refuses reliance unless signed action material satisfies the relying party's pinned assurance, organization-bound authority, exact registry head and epoch floor, policy, revocation, issuer, and consumption profile.",
       "acceptance_roots": ["EP-RELIANCE-PROFILE-v1 pinned by the relying party"],
@@ -864,7 +928,7 @@
       ],
       "operational_evidence": [
         { "file": ".github/workflows/publish-go-verify.yml", "contains": ["ref: ${{ github.sha }}", "persist-credentials: false", "--expected-commit \"$GITHUB_SHA\"", "go-version-file: packages/go-verify/go.mod", "refs/tags/packages/go-verify/v*", "rules.has('deletion') && rules.has('update')", "github.rest.git.createRef", "p.Origin?.[key]", "p.GoModSum", "diff -ru packages/go-verify \"$PROXY_DIR\"", "release-artifacts/go-verify-proxy.zip"] },
-        { "file": "packages/go-verify/go-release.json", "contains": ["EP-GO-MODULE-RELEASE-v1", "github.com/emiliaprotocol/emilia-protocol/packages/go-verify/v2", "packages/go-verify/v2.3.1"] },
+        { "file": "packages/go-verify/go-release.json", "contains": ["EP-GO-MODULE-RELEASE-v1", "github.com/emiliaprotocol/emilia-protocol/packages/go-verify/v2", "packages/go-verify/v2.4.0"] },
         { "file": "release/release-packages.v1.json", "contains": ["github.com/emiliaprotocol/emilia-protocol/packages/go-verify/v2", "publish-go-verify.yml", "go_tag"] },
         { "file": "packages/go-verify/signoff_compatibility_test.go", "contains": ["func(map[string]any, string, string) SignoffResult", "func(map[string]any, string) QuorumResult"] }
       ],
@@ -1044,6 +1108,121 @@
         "offline AEC verification does not prove current revocation status or atomic one-time consumption; an execution gate must enforce those stateful properties separately"
       ],
       "release_artifacts": ["security-evidence"]
+    },
+    {
+      "claim_id": "platform-attestation-result-is-rp-pinned-and-action-bound",
+      "statement": "An ep-platform-attestation AEC leg is satisfied only by a closed, verifier-signed EAT/JWT attestation result under the relying party's pinned Ed25519 key, profile, audience, nonce, exact action digest, accepted build measurement, verification time, and maximum age. Presenter-supplied keys and verifier overrides are refused. Acceptance does not claim that EMILIA appraised raw hardware evidence or independently established a TPM, TEE, secure-boot chain, or genuine device.",
+      "acceptance_roots": [
+        "the external RATS Verifier's issuer and Ed25519 result-signing key pinned by the relying party",
+        "the EAT profile, audience, nonce, action, reference build measurements, verification time, and maximum age pinned by the relying party",
+        "the external Verifier's appraisal policy, endorsements, and reference values"
+      ],
+      "enforcement_path": [
+        { "language": "javascript", "file": "packages/verify/src/platform-attestation.ts", "symbol": "verifyPlatformAttestation", "exported": true },
+        { "language": "javascript", "file": "packages/verify/src/evidence-chain.ts", "symbol": "verifyAuthorizationChain", "exported": true }
+      ],
+      "implementations": [
+        { "language": "javascript", "file": "packages/verify/platform-attestation.js", "export": "verifyPlatformAttestation" },
+        { "language": "javascript", "file": "packages/verify/evidence-chain.js", "export": "verifyAuthorizationChain" }
+      ],
+      "language_coverage": {
+        "javascript": { "status": "covered", "evidence": "conformance/vectors/platform-attestation.v1.json" },
+        "python": { "status": "gap", "reason": "No Python verifier for the reserved ep-platform-attestation AEC component is claimed." },
+        "go": { "status": "gap", "reason": "No Go verifier for the reserved ep-platform-attestation AEC component is claimed." }
+      },
+      "vectors": [
+        { "suite": "conformance/vectors/platform-attestation.v1.json", "case_id": "accept_exact_pinned_result", "polarity": "positive", "expect": { "valid": true, "reason": null }, "execution": { "runner": "node-test", "file": "packages/verify/platform-attestation.test.js", "title": "PLATFORM ATTESTATION: accepts the exact RP-pinned result" } },
+        { "suite": "conformance/vectors/platform-attestation.v1.json", "case_id": "reject_key_substitution", "polarity": "negative", "expect": { "valid": false, "reason": "signature_invalid" }, "execution": { "runner": "node-test", "file": "packages/verify/platform-attestation.test.js", "title": "PLATFORM ATTESTATION: rejects attester key substitution" } },
+        { "suite": "conformance/vectors/platform-attestation.v1.json", "case_id": "reject_nonce_mismatch", "polarity": "negative", "expect": { "valid": false, "reason": "nonce_mismatch" }, "execution": { "runner": "node-test", "file": "packages/verify/platform-attestation.test.js", "title": "PLATFORM ATTESTATION: rejects a different EAT nonce" } },
+        { "suite": "conformance/vectors/platform-attestation.v1.json", "case_id": "reject_action_mismatch", "polarity": "negative", "expect": { "valid": false, "reason": "action_digest_mismatch" }, "execution": { "runner": "node-test", "file": "packages/verify/platform-attestation.test.js", "title": "PLATFORM ATTESTATION: rejects a different action digest" } },
+        { "suite": "conformance/vectors/platform-attestation.v1.json", "case_id": "reject_build_mismatch", "polarity": "negative", "expect": { "valid": false, "reason": "measurement_untrusted" }, "execution": { "runner": "node-test", "file": "packages/verify/platform-attestation.test.js", "title": "PLATFORM ATTESTATION: rejects an unpinned build measurement" } },
+        { "suite": "conformance/vectors/platform-attestation.v1.json", "case_id": "reject_expired_result", "polarity": "negative", "expect": { "valid": false, "reason": "token_expired" }, "execution": { "runner": "node-test", "file": "packages/verify/platform-attestation.test.js", "title": "PLATFORM ATTESTATION: rejects an expired result" } },
+        { "suite": "conformance/vectors/platform-attestation.v1.json", "case_id": "reject_reserved_override", "polarity": "negative", "expect": { "valid": false, "reason": "component evidence did not verify" }, "execution": { "runner": "node-test", "file": "packages/verify/platform-attestation.test.js", "title": "PLATFORM ATTESTATION: ignores a custom override for the reserved AEC type" } }
+      ],
+      "tests": [
+        { "file": "packages/verify/platform-attestation.test.js", "title": "accepts only the exact RP-pinned EAT/JWT platform-attestation result", "runner": "node-test" },
+        { "file": "packages/verify/platform-attestation.test.js", "title": "is a non-overridable built-in AEC component bound to the chain action", "runner": "node-test" },
+        { "file": "packages/verify/platform-attestation.test.js", "title": "rejects key substitution and never consumes presenter-supplied trust anchors", "runner": "node-test" },
+        { "file": "packages/verify/platform-attestation.test.js", "title": "rejects nonce, action, build measurement, profile, and audience mismatches", "runner": "node-test" },
+        { "file": "packages/verify/platform-attestation.test.js", "title": "rejects expired, future-issued, over-age, and malformed freshness claims", "runner": "node-test" },
+        { "file": "packages/verify/platform-attestation.test.js", "title": "rejects duplicate JSON members before interpretation and all unknown fields", "runner": "node-test" }
+      ],
+      "formal": [
+        { "status": "not_modeled", "gap": "The RATS Verifier-to-Relying-Party role boundary, EAT/JWT parsing, pinned external appraisal result, and exact platform-attestation AEC component are covered by executable JavaScript vectors but are not represented in the current TLA+, Alloy, or Tamarin models." }
+      ],
+      "assumptions": [
+        "the external Verifier correctly appraises raw platform evidence and protects its result-signing key",
+        "the relying party provisions the correct verifier key, profile, reference measurements, action, nonce, audience, clock, and freshness bound",
+        "all consequential execution paths use the AEC result rather than bypassing the measured Gate boundary"
+      ],
+      "exclusions": [
+        "EMILIA does not verify raw TPM or TEE quotes in this profile",
+        "an authentic attestation result does not prove that reference values or appraisal policy are complete or correct",
+        "a measured build is not thereby vulnerability-free, physically genuine, or the only code able to affect the action",
+        "no Python, Go, deployed hardware, independent operator, or supply-chain validation is claimed"
+      ],
+      "release_artifacts": ["verify-sdk", "security-evidence"]
+    },
+    {
+      "claim_id": "authority-program-composition-is-root-bound-and-closed",
+      "statement": "The public experimental Authority Program verifier accepts a signed series/parallel authority program only under relying-party-pinned program and per-organization stage keys, an independently recomputed root CAID and canonical-action digest, exact predecessor stage-receipt digests, closed native AEC and AOM results, capability narrowing, and authoritative parallel allocation proof. A valid result explicitly does not prove freshness, current revocation status, execution, or deployment.",
+      "acceptance_roots": [
+        "the relying party pins the exact program digest and program-signing organization, key identifier, and Ed25519 public key",
+        "the relying party owns the root canonical action, CAID registry and profile, stage-key directory, and native AEC, AOM, capability, and parallel-allocation verifiers",
+        "every presented stage receipt is immutable and signed by the exact organization and key assigned by the program"
+      ],
+      "enforcement_path": [
+        { "language": "javascript", "file": "packages/verify/src/authority-program.ts", "symbol": "verifyAuthorityProgram", "exported": true },
+        { "language": "javascript", "file": "packages/verify/src/authority-program.ts", "symbol": "deriveAuthorityProgramPredecessors", "exported": true }
+      ],
+      "implementations": [
+        { "language": "javascript", "file": "packages/verify/authority-program.js", "export": "verifyAuthorityProgram" },
+        { "language": "javascript", "file": "packages/verify/authority-program.js", "export": "deriveAuthorityProgramPredecessors" }
+      ],
+      "language_coverage": {
+        "javascript": { "status": "covered", "evidence": "conformance/vectors/authority-program.v1.json" },
+        "python": { "status": "gap", "reason": "No Python implementation of the Authority Program composition verifier is claimed." },
+        "go": { "status": "gap", "reason": "No Go implementation of the Authority Program composition verifier is claimed." }
+      },
+      "vectors": [
+        {
+          "suite": "conformance/vectors/authority-program.v1.json",
+          "case_id": "accept-exact-authority-program",
+          "polarity": "positive",
+          "expect": { "valid": true, "reason": null },
+          "execution": { "runner": "node-test", "file": "conformance/authority-program-profile.test.js", "title": "public authority-program vector verifies exact program and cross-organization stage signatures" }
+        },
+        {
+          "suite": "conformance/vectors/authority-program.v1.json",
+          "case_id": "reject-missing-root-action-binding",
+          "polarity": "negative",
+          "expect": { "valid": false, "reason": "root_action_binding_unproven" },
+          "execution": { "runner": "node-test", "file": "conformance/authority-program-profile.test.js", "title": "public authority-program vector requires a relying-party root action binding verifier" }
+        }
+      ],
+      "tests": [
+        { "file": "packages/verify/authority-program.test.js", "title": "verifies a signed nested sequence/parallel program as immutable digest joins", "runner": "node-test" },
+        { "file": "packages/verify/authority-program.test.js", "title": "requires a relying-party proof that the root CAID and action digest describe one action", "runner": "node-test" },
+        { "file": "packages/verify/authority-program.test.js", "title": "requires exact independently verified AEC and explicit AOM joins", "runner": "node-test" },
+        { "file": "packages/verify/authority-program.test.js", "title": "rejects capability broadening and parallel budget claims without authoritative allocation proof", "runner": "node-test" }
+      ],
+      "formal": [
+        {
+          "status": "not_modeled",
+          "gap": "A separate bounded TLC model checks the Authority Program structural and root-binding invariants, but no refinement proof connects that abstraction to the TypeScript signature, CAID, or injected-native-verifier implementation."
+        }
+      ],
+      "assumptions": [
+        "Ed25519 signatures are unforgeable, SHA-256 collisions are infeasible, and the relying party protects every pinned trust input",
+        "the root-action callback obtains the relying-party-owned action and recomputes CAID plus canonical digest rather than echoing presenter values",
+        "the injected native verifiers correctly verify AEC, AOM, capability narrowing, and aggregate parallel allocation under their own pinned policies"
+      ],
+      "exclusions": [
+        "the verifier is a pure public experimental reference implementation, not a scheduler, state store, deployment, adopted standard, or independent implementation",
+        "a valid composition does not prove freshness, current non-revocation, one-time consumption, execution, outcome truth, legal authority, safety, or commercial correctness",
+        "series/parallel programs are supported; arbitrary DAGs are deliberately unrepresentable"
+      ],
+      "release_artifacts": ["verify-sdk", "security-evidence"]
     },
     {
       "claim_id": "mobile-ceremony-exact-binding-and-consumption",
@@ -1490,7 +1669,22 @@
         { "file": "examples/receipt-program/demo.test.mjs", "title": "receipt-program demo delegates budget, executes once, and verifies its certificate", "runner": "node-test" }
       ],
       "formal": [
-        { "status": "not_modeled", "gap": "The receipt-program certificate composition, KMS/HSM signer boundary, CAID re-performance, bounded result projection, certificate-log append, recovery behavior, and exact Gate evidence references are executable but are not represented together in the current TLA+, Alloy, or Tamarin models." }
+        {
+          "status": "partial",
+          "method": "bounded_exhaustive_state_exploration",
+          "model": "formal/receipt-program.model.mjs",
+          "runner": "formal/check-receipt-program.mjs",
+          "result_evidence": "formal/results/receipt-program.summary.txt",
+          "obligations": [
+            "CaidValidatedBeforeReservation",
+            "ReservationPrecedesExternalEffect",
+            "ConsumedReceiptReplayIsRefused",
+            "IndeterminateRetainsReservation",
+            "TerminalStateIsImmutable",
+            "CertificateRequiresTerminalEvidenceSignerAndAppend"
+          ],
+          "scope": "Same-team bounded exhaustive exploration of one receipt-program lifecycle with at most two attempted external effects; authenticated CAID, evidence, signer, and append outcomes are abstract inputs, and every deliberately weakened obligation produces a concrete counterexample. The companion TLA+ model and its independently labeled TLC result are recorded in formal/PROOF_STATUS.md and formal/results/ep-receipt-program.tlc.summary.txt."
+        }
       ],
       "assumptions": [
         "every protected effect path is completely mediated by the configured Gate and provider adapter",

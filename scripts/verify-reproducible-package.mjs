@@ -8,7 +8,7 @@ import os from 'node:os';
 import path from 'node:path';
 import { spawnSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
-import * as pako from 'pako';
+import { gzip, ungzip } from 'pako';
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const npm = process.platform === 'win32' ? 'npm.cmd' : 'npm';
 export function assertArtifactBytesMatch(expected, observed) {
@@ -30,8 +30,8 @@ export function assertArtifactBytesMatch(expected, observed) {
  * @param {Buffer|Uint8Array} archive
  */
 export function canonicalizeNpmTarball(archive) {
-    const tarBytes = pako.ungzip(archive);
-    const gzipBytes = Buffer.from(pako.gzip(tarBytes, {
+    const tarBytes = ungzip(archive);
+    const gzipBytes = Buffer.from(gzip(tarBytes, {
         level: 9,
     }));
     // Pako 3 no longer exposes the v1 `header` option.  Normalize the two

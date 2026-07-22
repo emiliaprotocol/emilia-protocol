@@ -640,17 +640,21 @@ function checkHandshakeTestSuite(): DisciplineViolation[] {
   const violations: DisciplineViolation[] = [];
   const testDir: string = path.join(ROOT, 'tests');
 
-  const handshakeTestFile: string = path.join(testDir, 'handshake.test.js');
-  const attackTestFile: string = path.join(testDir, 'handshake-attack.test.js');
+  const resolveTestFile = (basename: string): string | null => {
+    for (const extension of ['ts', 'js']) {
+      const candidate = path.join(testDir, `${basename}.${extension}`);
+      if (fs.existsSync(candidate)) return candidate;
+    }
+    return null;
+  };
+  const handshakeTestFile: string | null = resolveTestFile('handshake.test');
+  const attackTestFile: string | null = resolveTestFile('handshake-attack.test');
 
-  const handshakeTestExists: boolean = fs.existsSync(handshakeTestFile);
-  const attackTestExists: boolean = fs.existsSync(attackTestFile);
-
-  if (!handshakeTestExists) {
+  if (handshakeTestFile === null) {
     violations.push({
-      file: 'tests/handshake.test.js',
+      file: 'tests/handshake.test.{ts,js}',
       line: 0,
-      message: `Missing handshake test suite — tests/handshake.test.js must exist`,
+      message: `Missing handshake test suite — tests/handshake.test.ts or .js must exist`,
       severity: 'warning',
       section: 'handshake',
     });
@@ -660,7 +664,7 @@ function checkHandshakeTestSuite(): DisciplineViolation[] {
     const hasInvariantTests: boolean = /invariant|Security Invariants|attack/i.test(content);
     if (!hasInvariantTests) {
       violations.push({
-        file: 'tests/handshake.test.js',
+        file: path.relative(ROOT, handshakeTestFile),
         line: 0,
         message: `Handshake test suite missing security invariant tests — must include invariant or attack test coverage`,
         severity: 'warning',
@@ -669,11 +673,11 @@ function checkHandshakeTestSuite(): DisciplineViolation[] {
     }
   }
 
-  if (!attackTestExists) {
+  if (attackTestFile === null) {
     violations.push({
-      file: 'tests/handshake-attack.test.js',
+      file: 'tests/handshake-attack.test.{ts,js}',
       line: 0,
-      message: `Missing handshake attack test suite — tests/handshake-attack.test.js should exist`,
+      message: `Missing handshake attack test suite — tests/handshake-attack.test.ts or .js should exist`,
       severity: 'warning',
       section: 'handshake',
     });

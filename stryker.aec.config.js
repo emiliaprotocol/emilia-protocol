@@ -10,6 +10,7 @@ export default {
     'sdks/kotlin-mobile/build/**',
     'sdks/kotlin-mobile/sample/build/**',
     '.next/**',
+    '.vercel/**',
     'reports/**',
   ],
   mutate: [
@@ -24,6 +25,7 @@ export default {
   testFiles: [
     'tests/aec-safety-critical.test.{js,ts}',
     'tests/aec-role-conformance.test.{js,ts}',
+    'tests/aec-platform-attestation.test.{js,ts}',
     'tests/aec-mutation-oracles.test.{js,ts}',
     'tests/aec-isolated-refusals.test.{js,ts}',
     'tests/aec-execution-gate.test.{js,ts}',
@@ -31,8 +33,8 @@ export default {
     'tests/atomic-evidence-log.test.{js,ts}',
   ],
   thresholds: {
-    // Ratcheted over the complete public AEC verifier boundary, execution gate,
-    // and fleet-safe evidence log: 80.15% total / 81.68% covered.
+    // Complete public AEC verifier boundary, platform-attestation consumer,
+    // execution gate, and fleet-safe evidence log: 80.00% total / 81.77% covered.
     high: 90,
     low: 80,
     break: 80,

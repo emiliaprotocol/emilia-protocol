@@ -24,6 +24,8 @@ const DEFAULT_APPROVAL_TTL_MS = 4 * 60 * 60 * 1000;
 // malformed or path-traversal-shaped receipt_id never reaches the DB.
 const RECEIPT_ID_PATTERN = /^tr_[a-f0-9]{32}$/;
 const MAX_SIGNOFF_REQUEST_BYTES = 64 * 1024;
+const ACQUISITION_REQUEST_PATTERN = /^apr_[a-f0-9]{32}$/;
+const SHA256_DIGEST_PATTERN = /^sha256:[a-f0-9]{64}$/;
 
 export async function POST(request: NextRequest): Promise<NextResponse> {
   try {
@@ -103,8 +105,52 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
       return epProblem(409, 'signoff_not_required', 'Receipt does not require signoff');
     }
 
+    const acquisitionReplayRequested = body.return_existing === true
+      || body.acquisition_request_id !== undefined
+      || body.acquisition_request_digest !== undefined
+      || body.acquisition_tenant_id !== undefined
+      || body.acquisition_environment !== undefined;
+    const acquisitionReplayValid = acquisitionReplayRequested
+      && isCloudGuardPrincipal(auth)
+      && !quorumPolicy
+      && ACQUISITION_REQUEST_PATTERN.test(body.acquisition_request_id || '')
+      && SHA256_DIGEST_PATTERN.test(body.acquisition_request_digest || '')
+      && body.acquisition_tenant_id === created.after_state?.organization_id
+      && body.acquisition_tenant_id === authEntityId(auth)
+      && body.acquisition_environment === auth.guard_cloud?.environment
+      && created.after_state?.acquisition_request_id === body.acquisition_request_id
+      && created.after_state?.acquisition_request_digest === body.acquisition_request_digest
+      && created.after_state?.acquisition_tenant_id === body.acquisition_tenant_id
+      && created.after_state?.acquisition_environment === body.acquisition_environment
+      && APPROVER_ID_PATTERN.test(body.approver_id || '');
+    if (acquisitionReplayRequested && !acquisitionReplayValid) {
+      return epProblem(409, 'acquisition_binding_conflict', 'The signoff replay binding does not match the durable receipt');
+    }
+
     const existing = events.find((e) => e.event_type === 'guard.signoff.requested');
     if (existing) {
+      if (acquisitionReplayValid
+          && existing.actor_id === initiatorEntityId
+          && existing.after_state?.approver_id === body.approver_id
+          && existing.after_state?.action_hash === created.after_state.action_hash
+          && existing.after_state?.acquisition_request_id === body.acquisition_request_id
+          && existing.after_state?.acquisition_request_digest === body.acquisition_request_digest
+          && existing.after_state?.acquisition_tenant_id === body.acquisition_tenant_id
+          && existing.after_state?.acquisition_environment === body.acquisition_environment
+          && /^sig_[a-f0-9]{32}$/.test(existing.after_state?.signoff_id || '')) {
+        return NextResponse.json({
+          signoff_id: existing.after_state.signoff_id,
+          receipt_id: body.receipt_id,
+          action_hash: created.after_state.action_hash,
+          initiator_id: initiatorEntityId,
+          approver_id: existing.after_state.approver_id,
+          expires_at: existing.after_state.expires_at,
+          status: 'pending',
+        }, {
+          status: 200,
+          headers: { 'cache-control': 'no-store, private', 'x-emilia-idempotent-replay': 'true' },
+        });
+      }
       return epProblem(409, 'signoff_already_requested', 'Signoff already requested for this receipt');
     }
 
@@ -185,6 +231,12 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
         expires_at: expiresAt,
         comment,
         required_assurance: created.after_state.required_assurance || null,
+        ...(acquisitionReplayValid ? {
+          acquisition_request_id: body.acquisition_request_id,
+          acquisition_request_digest: body.acquisition_request_digest,
+          acquisition_tenant_id: body.acquisition_tenant_id,
+          acquisition_environment: body.acquisition_environment,
+        } : {}),
       },
     });
 

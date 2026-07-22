@@ -242,15 +242,13 @@ func builtinAECVerifiers() map[string]ComponentVerifier {
 				return ComponentResult{Valid: false, ActionDigest: ""}
 			}
 			required := 0
-			if mode == "ordered" {
-				eligible, _ := policy["approvers"].([]any)
-				required = len(eligible)
-			} else if n, ok := toFloat(policy["required"]); ok && n == float64(int(n)) {
+			if n, ok := toFloat(policy["required"]); ok && n == float64(int(n)) {
 				required = int(n)
 			}
+			eligible, _ := policy["approvers"].([]any)
 			distinct, _ := policy["distinct_humans"].(bool)
 			orderedChain, _ := policy["ordered_chain"].(bool)
-			if required < 2 || !distinct || (mode == "ordered" && !orderedChain) {
+			if required < 2 || required > len(eligible) || !distinct || (mode == "ordered" && !orderedChain) {
 				return ComponentResult{Valid: false, ActionDigest: ""}
 			}
 			presentedPolicy := getMap(m["policy"])

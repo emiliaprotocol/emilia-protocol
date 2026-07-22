@@ -60,27 +60,29 @@ npx --yes npm@11.18.0 trust list <package> --json
 Both commands require maintainer authentication and proof of presence. A
 successful create response is followed by `trust list`; the returned
 repository, workflow filename, and publish permission must exactly match
-`release/release-packages.v1.json`. All seven npm relationships were created
-and read back with that procedure on 2026-07-10.
+`release/release-packages.v1.json`. The current release registry declares 19
+npm publisher relationships. Registry-side activation must be read back for
+every declared caller before its next release; the repository manifest, not a
+historical count in this document, is authoritative.
 
 The actual npm publish jobs do not declare an environment; a separate job uses
 the protected approval environment before the publish job can start. The
 complete package/workflow inventory is machine-checked in
-`release/release-packages.v1.json`. The six smaller npm workflows call the
-shared `_publish-npm-package.yml`, but npm validates the package's calling
+`release/release-packages.v1.json`. The reusable npm callers invoke the shared
+`_publish-npm-package.yml`, but npm validates the package's calling
 `publish-*.yml` filename. The core verifier uses `publish-verify-sdk.yml`. Do not add `NPM_TOKEN` as a
 fallback: a broken OIDC link must fail closed instead of silently changing the
 release identity.
 
 ### PyPI
 
-For `emilia-verify`, `emilia-protocol`, and `langchain-emilia`, add matching
-GitHub trusted publishers under each project's Publishing settings. The
-workflow filenames are `publish-python-verify.yml`, `publish-python-sdk.yml`,
-and `publish-langchain-python.yml`. Leave the registry publisher's environment
+The release registry currently declares five PyPI projects: `emilia-crewai`,
+`ep-verify`, `emilia-verify`, `emilia-protocol`, and `langchain-emilia`. Add the
+matching GitHub trusted publisher named in each entry's workflow under the
+project's Publishing settings. Leave the registry publisher's environment
 blank because the OIDC-bearing publish jobs do not declare one; their separate
-approval jobs do. Live activation and first-release proof are
-tracked in GitHub issue #251.
+approval jobs do. Live activation and first-release proof are tracked in
+GitHub issue #251.
 
 ## Core verifier release
 
@@ -122,12 +124,13 @@ tracked in GitHub issue #251.
 
 ## Other npm package releases
 
-The Gate, Issue, LangChain, MCP server, Require-Receipt, and TypeScript SDK
-workflows all call `_publish-npm-package.yml`. Each caller still has its own npm
-trusted-publisher identity. Before tagging, run `npm run check:release-chain`;
-it refuses an undeclared publisher or a workflow missing tests, version binding,
-reproducible packing, exact-byte attestation, OIDC publication, or registry
-comparison. A pushed tag never starts a package publication workflow.
+All npm release surfaces declared in `release/release-packages.v1.json` use a
+dedicated caller and trusted-publisher identity, whether they invoke the shared
+workflow or a package-specific build. Before tagging, run
+`npm run check:release-chain`; it refuses an undeclared publisher or a workflow
+missing tests, version binding, reproducible packing, exact-byte attestation,
+OIDC publication, or registry comparison. A pushed tag never starts a package
+publication workflow.
 
 ## Evidence retained per approved release
 

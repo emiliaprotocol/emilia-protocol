@@ -624,15 +624,14 @@ def verify_quorum(quorum: Any, opts: Optional[dict] = None) -> dict:
         window_sec = _ws if isinstance(_ws, (int, float)) and not isinstance(_ws, bool) else 900
         eligible = policy.get("approvers") if isinstance(policy.get("approvers"), list) else []
         _req = policy.get("required")
-        if mode == "ordered":
-            required = len(eligible)
-        elif isinstance(_req, bool):
+        if isinstance(_req, bool):
             required = None  # a JSON boolean is not a valid threshold (True is not 1)
         elif isinstance(_req, (int, float)) and float(_req).is_integer() and _req >= 1:
             required = int(_req)  # integer or integral float (2.0 -> 2); rejects 2.5
         else:
             required = None
-        if not isinstance(required, int) or required <= 0 or not eligible:
+        if (not isinstance(required, int) or required <= 0 or not eligible
+                or required > len(eligible)):
             return {"valid": False, "checks": checks, "members": members_out}
 
         import datetime as _dt
@@ -685,18 +684,18 @@ def verify_quorum(quorum: Any, opts: Optional[dict] = None) -> dict:
                          if f"{m.get('role')} {((m.get('signoff') or {}).get('context') or {}).get('approver')}" in eligible_set}
         checks["threshold_met"] = len(distinct_elig) >= required
         if mode == "ordered":
-            seq_ok = all(idx < len(members)
-                         and members[idx].get("role") == e.get("role")
-                         and ((members[idx].get("signoff") or {}).get("context") or {}).get("approver") == e.get("approver")
-                         for idx, e in enumerate(eligible))
-            times = issued[:len(eligible)]
+            seq_ok = (len(members) <= len(eligible)
+                      and all(m.get("role") == eligible[idx].get("role")
+                              and ((m.get("signoff") or {}).get("context") or {}).get("approver") == eligible[idx].get("approver")
+                              for idx, m in enumerate(members)))
+            times = issued[:len(members)]
             times_ok = all(t is not None and (idx == 0 or t > times[idx - 1]) for idx, t in enumerate(times))
-            checks["order_satisfied"] = len(members) >= len(eligible) and seq_ok and times_ok
+            checks["order_satisfied"] = len(members) >= required and seq_ok and times_ok
         else:
             checks["order_satisfied"] = True
         if mode == "ordered" and policy.get("ordered_chain") is True:
-            seq = members[:len(eligible)]
-            linked = len(seq) == len(eligible)
+            seq = members
+            linked = len(seq) >= required and len(seq) <= len(eligible)
             for idx, mem in enumerate(seq):
                 prev = ((mem.get("signoff") or {}).get("context") or {}).get("prev_context_hash")
                 if idx == 0:
@@ -1771,8 +1770,10 @@ def _builtin_aec_verifiers() -> dict:
         mode = policy.get("mode")
         if mode not in ("threshold", "ordered"):
             return {"valid": False, "action_digest": None}
-        req = len(policy.get("approvers") or []) if mode == "ordered" else policy.get("required")
+        policy_approvers = policy.get("approvers") if isinstance(policy.get("approvers"), list) else []
+        req = policy.get("required")
         if (isinstance(req, bool) or not isinstance(req, int) or req < 2
+                or req > len(policy_approvers)
                 or policy.get("distinct_humans") is not True
                 or (mode == "ordered" and policy.get("ordered_chain") is not True)):
             return {"valid": False, "action_digest": None}

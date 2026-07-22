@@ -7,7 +7,7 @@ on:
   workflow_dispatch:
     inputs:
       release_tag:
-        description: Exact tag, for example packages/go-verify/v2.3.1
+        description: Exact tag, for example packages/go-verify/v2.4.0
         required: true
         type: string
       confirmation:

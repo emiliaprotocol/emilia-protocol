@@ -53,6 +53,7 @@ const AUTHZ_SIGNALS = [
   'revokeChallenge',         // signoff/revoke.js: actor-bound
   'revokeAttestation',       // signoff/revoke.js: actor-bound
   'authenticateMobileToken', // mobile/store.js: active session plus entity, approver, app, and device scope
+  'authenticateApprovalPollCapability', // EP-APPROVAL private bearer capability, hashed before exact request lookup
   'authenticateReleaseLockOrg', // Release Lock org + authenticated entity binding
   'releaseLockSessionCookie',   // host-only strict cookie; SQL binds lock + role + contact + optional round
 ];
@@ -75,6 +76,15 @@ const PUBLIC_BY_DESIGN = new Set([
   'app/api/score/[entityId]/route.ts',                // RETIRED — returns HTTP 410 Gone (score surface removed)
   'app/api/score/[entityId]/history/route.ts',        // RETIRED — returns HTTP 410 Gone
 ]);
+
+// Match PUBLIC_BY_DESIGN regardless of route.js vs route.ts so this list doesn't
+// need a lockstep edit every time a listed route is converted during the TS migration.
+const PUBLIC_BY_DESIGN_NORMALIZED = new Set(
+  Array.from(PUBLIC_BY_DESIGN, (p) => p.replace(/\.(js|ts)$/, ''))
+);
+function isPublicByDesign(rel) {
+  return PUBLIC_BY_DESIGN_NORMALIZED.has(rel.replace(/\.(js|ts)$/, ''));
+}
 
 function walk(dir) {
   const out = [];
@@ -104,7 +114,7 @@ describe('object-authorization sweep — every dynamic route is gated or reviewe
   });
 
   it.each(files)('%s carries an authorization gate or is reviewed-public', (rel) => {
-    if (PUBLIC_BY_DESIGN.has(rel)) return; // explicit, reviewed decision
+    if (isPublicByDesign(rel)) return; // explicit, reviewed decision
     const src = fs.readFileSync(path.resolve(API_DIR, '../..', rel), 'utf8');
     const hasGate = AUTHZ_SIGNALS.some((sig) => src.includes(sig));
     expect(

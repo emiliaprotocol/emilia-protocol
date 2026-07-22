@@ -2,7 +2,7 @@
 import crypto from 'node:crypto';
 import { describe, expect, it } from 'vitest';
 
-import { __aecSecurityInternals, actionDigest } from '../packages/verify/evidence-chain.js';
+import { __aecSecurityInternals, actionDigest } from '../packages/verify/src/evidence-chain.ts';
 import { __aecExecutionSecurityInternals } from '../packages/gate/aec-execution.js';
 import {
   __atomicEvidenceSecurityInternals,
@@ -27,10 +27,25 @@ const encodeClientData = (value) => Buffer.from(JSON.stringify(value), 'utf8').t
 
 describe('AEC verifier mutation oracles', () => {
   const {
-    normDigest, strictInstantMs, freshAt, freshRegistrySnapshot,
+    isRecord, own, sha256hex, normDigest, strictInstantMs, freshAt, freshRegistrySnapshot,
     activeDirectoryEntry, allowedOriginSet, webauthnOrigin,
     validUnicodeString, boundedJson, tokenizeRequirement, evalRequirement,
   } = __aecSecurityInternals;
+
+  it('keeps object, ownership, and digest primitives fail-closed', () => {
+    expect(isRecord({})).toBe(true);
+    expect(isRecord(Object.create(null))).toBe(true);
+    expect(isRecord(null)).toBe(false);
+    expect(isRecord([])).toBe(false);
+    expect(isRecord('object')).toBe(false);
+
+    const inherited = Object.create({ inherited: true });
+    inherited.own = true;
+    expect(own(inherited, 'own')).toBe(true);
+    expect(own(inherited, 'inherited')).toBe(false);
+    expect(own(null, 'own')).toBe(false);
+    expect(sha256hex('abc')).toBe('ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad');
+  });
 
   it('computes a fixed SHA-256 digest over canonical action bytes', () => {
     expect(actionDigest({ x: 1 })).toBe('5041bf1f713df204784353e82f6a4a535931cb64f1f4b4a5aeaffcb720918b22');
@@ -39,7 +54,10 @@ describe('AEC verifier mutation oracles', () => {
   it('normalizes only exact SHA-256 digest forms', () => {
     expect(normDigest(HEX)).toBe(HEX);
     expect(normDigest(`SHA256:${HEX.toUpperCase()}`)).toBe(HEX);
-    for (const value of [null, 1, '', 'sha256:', `sha512:${HEX}`, HEX.slice(1), `${HEX}0`, 'g'.repeat(64)]) {
+    for (const value of [
+      null, 1, '', 'sha256:', `sha512:${HEX}`, `prefix-sha256:${HEX}`,
+      `${HEX}:sha256`, HEX.slice(1), `${HEX}0`, 'g'.repeat(64),
+    ]) {
       expect(normDigest(value)).toBeNull();
     }
     expect(normDigest(OTHER_HEX)).toBe(OTHER_HEX);
@@ -56,6 +74,16 @@ describe('AEC verifier mutation oracles', () => {
       '2026-01-01T24:00:00Z', '2026-01-01T00:60:00Z',
       '2026-01-01T00:00:60Z', '2026-01-01T00:00:00+24:00',
       '2026-01-01T00:00:00+00:60',
+      'x2026-01-01T00:00:00Z', '2026-01-01T00:00:00Zx',
+      '026-01-01T00:00:00Z', 'xxxx-01-01T00:00:00Z',
+      '2026-1-01T00:00:00Z', '2026-xx-01T00:00:00Z',
+      '2026-01-1T00:00:00Z', '2026-01-xxT00:00:00Z',
+      '2026-01-01T0:00:00Z', '2026-01-01Txx:00:00Z',
+      '2026-01-01T00:0:00Z', '2026-01-01T00:xx:00Z',
+      '2026-01-01T00:00:0Z', '2026-01-01T00:00:xxZ',
+      '2026-01-01T00:00:00.xZ', '2026-01-01T00:00:00x00:00',
+      '2026-01-01T00:00:00+0:00', '2026-01-01T00:00:00+xx:00',
+      '2026-01-01T00:00:00+00:0', '2026-01-01T00:00:00+00:xx',
     ]) expect(Number.isNaN(strictInstantMs(value))).toBe(true);
   });
 
@@ -69,6 +97,7 @@ describe('AEC verifier mutation oracles', () => {
     expect(freshAt(context, at, -1)).toBe(false);
     expect(freshAt(context, at, 300.5)).toBe(false);
     expect(freshAt({}, at, 300)).toBe(false);
+    expect(freshAt(undefined, at, 300)).toBe(false);
     expect(freshAt(context, 'invalid', 300)).toBe(false);
   });
 
@@ -80,10 +109,13 @@ describe('AEC verifier mutation oracles', () => {
     expect(freshRegistrySnapshot({ ...profile, max_registry_age_sec: -1 }, at)).toBe(false);
     expect(freshRegistrySnapshot({ ...profile, max_registry_age_sec: 300.5 }, at)).toBe(false);
     expect(freshRegistrySnapshot({}, at)).toBe(false);
+    expect(freshRegistrySnapshot(undefined, at)).toBe(false);
   });
 
   it('admits only active directory entries in-window and before revocation', () => {
     expect(activeDirectoryEntry(directoryEntry, at)).toBe(true);
+    expect(activeDirectoryEntry({ ...directoryEntry, valid_from: at }, at)).toBe(true);
+    expect(activeDirectoryEntry({ ...directoryEntry, valid_to: at }, at)).toBe(true);
     expect(activeDirectoryEntry({ ...directoryEntry, revoked_at: '2026-07-11T12:00:00.001Z' }, at)).toBe(true);
     expect(activeDirectoryEntry({ ...directoryEntry, revoked_at: at }, at)).toBe(false);
     expect(activeDirectoryEntry({ ...directoryEntry, status: 'inactive' }, at)).toBe(false);
@@ -99,6 +131,10 @@ describe('AEC verifier mutation oracles', () => {
     for (const origins of [undefined, null, [], Array(17).fill('https://x.example'), [1], [''], ['x'.repeat(2049)]]) {
       expect(allowedOriginSet({ allowed_origins: origins })).toBeNull();
     }
+    expect(allowedOriginSet({ allowed_origins: Array.from({ length: 16 }, (_, i) => `https://${i}.example`) })?.size)
+      .toBe(16);
+    expect(allowedOriginSet({ allowed_origins: ['x'.repeat(2048)] })?.has('x'.repeat(2048))).toBe(true);
+    expect(allowedOriginSet(undefined)).toBeNull();
   });
 
   it('extracts origin only from canonical base64url JSON client data', () => {
@@ -109,6 +145,7 @@ describe('AEC verifier mutation oracles', () => {
       encodeClientData([]), encodeClientData({ origin: 1 }),
     ]) expect(webauthnOrigin({ client_data_json })).toBeNull();
     expect(webauthnOrigin(null)).toBeNull();
+    expect(webauthnOrigin(undefined)).toBeNull();
   });
 
   it('rejects invalid Unicode and every non-canonical JSON value class', () => {

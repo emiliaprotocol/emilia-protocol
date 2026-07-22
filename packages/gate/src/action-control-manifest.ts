@@ -15,6 +15,16 @@ type Obj = Record<string, any>;
 export const ACTION_CONTROL_MANIFEST_VERSION = 'EP-ACTION-CONTROL-MANIFEST-v0.2';
 export const ACTION_CONTROL_SCHEMA_URL = 'https://www.emiliaprotocol.ai/docs/schemas/agent-action-control-manifest-v0.2.schema.json';
 export const ACTION_CONTROL_CONFORMANCE_LEVEL = 'EG-1';
+export const ACTION_CONTROL_AUTHORIZATION = Object.freeze({
+  authorization_endpoint: 'https://www.emiliaprotocol.ai/api/v1/approvals',
+  flow: 'EP-APPROVAL-v1',
+});
+// Acquisition is advertised only when the reference server has a closed,
+// independently verifiable ceremony for the action type. Receipt-required
+// actions outside this registry remain enforceable, but challenge-only.
+export const ACTION_CONTROL_ACQUISITION_ACTION_TYPES = Object.freeze([
+  'payment.release',
+]);
 
 const RISK_LEVELS = new Set(['low', 'medium', 'high', 'critical']);
 const ASSURANCE_CLASSES = new Set(['software', 'class_a', 'quorum']);
@@ -59,8 +69,14 @@ function normalizeAssurance(value: any): string {
   return ASSURANCE_CLASSES.has(value) ? value : 'software';
 }
 
+function supportsReferenceAcquisition(actionType: unknown): boolean {
+  return typeof actionType === 'string'
+    && ACTION_CONTROL_ACQUISITION_ACTION_TYPES.includes(actionType);
+}
+
 function defaultControlForAction(action: Obj): Obj {
   const requiredFields = action.execution_binding?.required_fields || [];
+  const caidSelector = action.execution_binding?.caid_selector;
   if (!action.receipt_required) {
     return {
       enforcement_point: 'none',
@@ -68,7 +84,7 @@ function defaultControlForAction(action: Obj): Obj {
       evidence_output: { audit_event: true },
     };
   }
-  return {
+  const control: Obj = {
     enforcement_point: 'pre_effect_commit',
     status: 428,
     challenge_header: 'Receipt-Required',
@@ -87,6 +103,7 @@ function defaultControlForAction(action: Obj): Obj {
       required: true,
       source: 'system_of_record',
       required_fields: [...requiredFields],
+      ...(caidSelector ? { caid_selector: cloneJson(caidSelector) } : {}),
     },
     transparency: {
       mode: 'registerable',
@@ -100,6 +117,10 @@ function defaultControlForAction(action: Obj): Obj {
       blocked_attempts: true,
     },
   };
+  if (supportsReferenceAcquisition(action.action_type)) {
+    control.authorization = { ...ACTION_CONTROL_AUTHORIZATION };
+  }
+  return control;
 }
 
 export function toActionControl(action: Obj): Obj {
@@ -141,8 +162,18 @@ export function createDefaultActionControlManifest({
   const actions = [
     ...HIGH_RISK_ACTION_PACKS.map(toActionControl),
     ...(includePassThrough ? DEFAULT_PASS_THROUGH_ACTIONS.map(toActionControl) : []),
-    ...extraActions.map(toActionControl),
   ];
+  // `extraActions` is also the supported customization mechanism. An exact id
+  // or exact transport-selector match replaces the built-in entry; leaving
+  // both would create an ambiguous manifest that the validator correctly
+  // rejects. Broader/partial overlaps are not silently normalized and remain
+  // validation errors.
+  for (const candidate of extraActions.map(toActionControl)) {
+    const index = actions.findIndex((current) => current.id === candidate.id
+      || selectorsEqual(current, candidate));
+    if (index >= 0) actions.splice(index, 1, candidate);
+    else actions.push(candidate);
+  }
   return {
     '@version': ACTION_CONTROL_MANIFEST_VERSION,
     '$schema': ACTION_CONTROL_SCHEMA_URL,
@@ -159,20 +190,104 @@ export function createDefaultActionControlManifest({
   };
 }
 
-function selectorMatches(match: Obj = {}, selector: Obj = {}): boolean {
-  if (!match || typeof match !== 'object') return false;
-  return Object.entries(match).every(([k, v]) => selector[k] === v);
+function selectorMatches(action: Obj, selector: Obj = {}): boolean {
+  if (!action || typeof action !== 'object' || Array.isArray(action)
+      || !selector || typeof selector !== 'object' || Array.isArray(selector)) return false;
+  const match = action.match;
+  if (!match || typeof match !== 'object' || Array.isArray(match)) return false;
+  const matchEntries = Object.entries(match);
+  if (matchEntries.length === 0) return false;
+  // action_type is an additional constraint; it may never bypass a conflicting
+  // transport selector. Other selector metadata (for example manifestUrl) is
+  // not part of the action's transport identity.
+  if (Object.prototype.hasOwnProperty.call(selector, 'action_type')
+      && selector.action_type !== action.action_type) return false;
+  return matchEntries.every(([key, value]) => (
+    Object.prototype.hasOwnProperty.call(selector, key) && selector[key] === value
+  ));
 }
 
 export function findActionControl(manifest: Obj, selector: Obj = {}): Obj | null {
-  if (!manifest || !Array.isArray(manifest.actions)) return null;
-  return manifest.actions.find((action) => {
-    if (selector.action_type && action.action_type === selector.action_type) return true;
-    return selectorMatches(action.match, selector);
-  }) || null;
+  const resolved = resolveActionControl(manifest, selector);
+  return resolved.status === 'one' ? resolved.action : null;
 }
 
-export function validateActionControlManifest(manifest: Obj): Obj {
+export function resolveActionControl(manifest: Obj, selector: Obj = {}):
+  | { status: 'none'; action: null }
+  | { status: 'one'; action: Obj }
+  | { status: 'ambiguous'; action: null; action_ids: string[] } {
+  if (!manifest || !Array.isArray(manifest.actions)) return { status: 'none', action: null };
+  const matches = manifest.actions.filter((action) => selectorMatches(action, selector));
+  if (matches.length === 0) return { status: 'none', action: null };
+  if (matches.length === 1) return { status: 'one', action: matches[0] };
+  return {
+    status: 'ambiguous',
+    action: null,
+    action_ids: matches.map((action) => String(action.id || '')).sort(),
+  };
+}
+
+function selectorsOverlap(left: Obj, right: Obj): boolean {
+  const a = left?.match;
+  const b = right?.match;
+  if (!a || !b || typeof a !== 'object' || typeof b !== 'object'
+      || Array.isArray(a) || Array.isArray(b)) return false;
+  const shared = Object.keys(a).filter((key) => Object.prototype.hasOwnProperty.call(b, key));
+  return shared.every((key) => a[key] === b[key]);
+}
+
+function selectorsEqual(left: Obj, right: Obj): boolean {
+  const a = left?.match;
+  const b = right?.match;
+  if (!a || !b || typeof a !== 'object' || typeof b !== 'object'
+      || Array.isArray(a) || Array.isArray(b)) return false;
+  const aKeys = Object.keys(a).sort();
+  const bKeys = Object.keys(b).sort();
+  return aKeys.length > 0
+    && aKeys.length === bKeys.length
+    && aKeys.every((key, index) => key === bKeys[index] && a[key] === b[key]);
+}
+
+function validateAuthorizationDescriptor(authorization: any, prefix: string, errors: string[]): void {
+  if (!authorization || typeof authorization !== 'object' || Array.isArray(authorization)) {
+    errors.push(`${prefix}.control.authorization must be an object`);
+    return;
+  }
+
+  const prototype = Object.getPrototypeOf(authorization);
+  const keys = Object.keys(authorization).sort();
+  if ((prototype !== Object.prototype && prototype !== null)
+      || keys.length !== 2
+      || keys[0] !== 'authorization_endpoint'
+      || keys[1] !== 'flow') {
+    errors.push(`${prefix}.control.authorization must contain only authorization_endpoint and flow`);
+  }
+
+  if (authorization.flow !== 'EP-APPROVAL-v1') {
+    errors.push(`${prefix}.control.authorization.flow must be EP-APPROVAL-v1`);
+  }
+
+  let endpoint: URL | null = null;
+  try {
+    endpoint = new URL(authorization.authorization_endpoint);
+  } catch {
+    // The common error below intentionally covers both malformed and relative URLs.
+  }
+  if (!endpoint
+      || endpoint.protocol !== 'https:'
+      || !endpoint.hostname
+      || endpoint.username
+      || endpoint.password
+      || endpoint.search
+      || endpoint.hash) {
+    errors.push(`${prefix}.control.authorization.authorization_endpoint must be an absolute HTTPS URL without credentials, query, or fragment`);
+  }
+}
+
+export function validateActionControlManifest(
+  manifest: Obj,
+  { requireAcquisition = false }: { requireAcquisition?: boolean } = {},
+): Obj {
   const errors: string[] = [];
   if (!manifest || typeof manifest !== 'object' || Array.isArray(manifest)) {
     return { ok: false, errors: ['manifest must be an object'] };
@@ -192,6 +307,7 @@ export function validateActionControlManifest(manifest: Obj): Obj {
   if (!Array.isArray(manifest.actions) || manifest.actions.length === 0) {
     errors.push('actions must be a non-empty array');
   }
+  const ids = new Map<string, number>();
   for (const [idx, action] of (manifest.actions || []).entries()) {
     const prefix = `actions[${idx}]`;
     if (!action || typeof action !== 'object') {
@@ -199,6 +315,8 @@ export function validateActionControlManifest(manifest: Obj): Obj {
       continue;
     }
     if (!action.id || typeof action.id !== 'string') errors.push(`${prefix}.id is required`);
+    else if (ids.has(action.id)) errors.push(`${prefix}.id duplicates actions[${ids.get(action.id)}].id`);
+    else ids.set(action.id, idx);
     if (!action.action_type || typeof action.action_type !== 'string') errors.push(`${prefix}.action_type is required`);
     if (!action.match || typeof action.match !== 'object') errors.push(`${prefix}.match is required`);
     if (typeof action.receipt_required !== 'boolean') errors.push(`${prefix}.receipt_required must be boolean`);
@@ -210,12 +328,24 @@ export function validateActionControlManifest(manifest: Obj): Obj {
     if (action.receipt_required && action.risk === 'critical' && action.assurance_class === 'software') {
       errors.push(`${prefix}.assurance_class must be class_a or quorum when risk is critical`);
     }
+    const authorization = action.control?.authorization;
+    if (authorization !== undefined) {
+      validateAuthorizationDescriptor(authorization, prefix, errors);
+      if (!supportsReferenceAcquisition(action.action_type)) {
+        errors.push(`${prefix}.control.authorization is advertised for an unsupported acquisition action_type`);
+      }
+    }
     if (action.receipt_required) {
       if (!Number.isFinite(action.max_age_sec) || action.max_age_sec <= 0) errors.push(`${prefix}.max_age_sec must be positive`);
       const control = action.control;
       if (!control || typeof control !== 'object') {
         errors.push(`${prefix}.control is required when receipt_required=true`);
         continue;
+      }
+      if (requireAcquisition
+          && supportsReferenceAcquisition(action.action_type)
+          && authorization === undefined) {
+        errors.push(`${prefix}.control.authorization is required for acquisition conformance`);
       }
       if (!ENFORCEMENT_POINTS.has(control.enforcement_point)) {
         errors.push(`${prefix}.control.enforcement_point must be pre_execution or pre_effect_commit`);
@@ -231,6 +361,14 @@ export function validateActionControlManifest(manifest: Obj): Obj {
       if (control.execution_binding?.source !== 'system_of_record') errors.push(`${prefix}.control.execution_binding.source must be system_of_record`);
       if (!Array.isArray(fields) || fields.length === 0 || fields.some((f: any) => typeof f !== 'string' || !f)) {
         errors.push(`${prefix}.control.execution_binding.required_fields must be a non-empty string array`);
+      }
+      const caidSelector = control.execution_binding?.caid_selector;
+      if (caidSelector !== undefined
+          && (!caidSelector || typeof caidSelector !== 'object' || Array.isArray(caidSelector)
+            || Object.keys(caidSelector).length !== 1
+            || typeof caidSelector.field !== 'string'
+            || !/^[A-Za-z][A-Za-z0-9_]{0,127}$/.test(caidSelector.field))) {
+        errors.push(`${prefix}.control.execution_binding.caid_selector must select one safe action field`);
       }
       if (control.evidence_output?.execution_attestation !== true) errors.push(`${prefix}.control.evidence_output.execution_attestation must be true`);
       if (control.evidence_output?.reliance_packet !== true) errors.push(`${prefix}.control.evidence_output.reliance_packet must be true`);
@@ -260,6 +398,13 @@ export function validateActionControlManifest(manifest: Obj): Obj {
       }
     }
   }
+  for (let left = 0; left < (manifest.actions || []).length; left += 1) {
+    for (let right = left + 1; right < manifest.actions.length; right += 1) {
+      if (selectorsOverlap(manifest.actions[left], manifest.actions[right])) {
+        errors.push(`actions[${left}].match overlaps actions[${right}].match`);
+      }
+    }
+  }
   return { ok: errors.length === 0, errors };
 }
 
@@ -267,11 +412,13 @@ export default {
   ACTION_CONTROL_MANIFEST_VERSION,
   ACTION_CONTROL_SCHEMA_URL,
   ACTION_CONTROL_CONFORMANCE_LEVEL,
+  ACTION_CONTROL_AUTHORIZATION,
   ACTION_CONTROL_DEFAULTS,
   ACTION_CONTROL_EVIDENCE_PROFILES,
   ACTION_CONTROL_CONFORMANCE_CHECKS,
   toActionControl,
   createDefaultActionControlManifest,
   findActionControl,
+  resolveActionControl,
   validateActionControlManifest,
 };

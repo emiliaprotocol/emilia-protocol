@@ -8,7 +8,9 @@ Intended status: Informational                               28 June 2026
 Expires: 30 December 2026
 ```
 
-> STATUS (repo): staged I-D, md+xml+txt rendered. **File post-interim, civilian-first**
+> STATUS (repo): public partner-triggered profile; not filed and not a filing
+> candidate until a named standards or government partner validates the mapping.
+> Civilian-first framing only.
 > (EU AI Act Art. 14 + NIST lead; DoD 3000.09 / CCW as secondary applicability only) — leading
 > the cluster's debut with defense framing is the one thing that could taint it. Derived from PIP-013.
 

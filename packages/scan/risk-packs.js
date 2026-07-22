@@ -19,6 +19,7 @@ export const HIGH_RISK_ACTION_PACKS = Object.freeze([
     why: 'Moves funds or releases value. Requires a named human signoff, not an agent-only key.',
     execution_binding: {
       required_fields: ['action_type', 'amount_usd', 'currency', 'payment_instruction_id', 'beneficiary_account_hash'],
+      caid_selector: { field: 'action_caid' },
     },
   }),
   Object.freeze({

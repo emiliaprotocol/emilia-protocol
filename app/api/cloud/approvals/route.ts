@@ -15,11 +15,20 @@ import { APPROVER_ID_PATTERN } from '@/lib/webauthn';
 import { loadTenantApprovalQueue } from '@/lib/cloud/approval-queue.js';
 import { POST as createTrustReceipt } from '../../v1/trust-receipts/route.js';
 import { POST as requestSignoff } from '../../v1/signoffs/request/route.js';
+import { approvalActionHash } from '@emilia-protocol/require-receipt';
+import { buildPaymentReleaseActionIdentity } from '@/lib/approval-acquisition/contract.js';
 
 const MAX_APPROVAL_REQUEST_BYTES = 32 * 1024;
 const PAYMENT_REFERENCE_PATTERN = /^[A-Za-z0-9][A-Za-z0-9:._/-]{2,199}$/;
 const CONTROL_CHARACTERS = /[\u0000-\u001f\u007f]/;
 const SHA256_DIGEST_PATTERN = /^sha256:[a-f0-9]{64}$/;
+const ACQUISITION_REQUEST_PATTERN = /^apr_[a-f0-9]{32}$/;
+const APPROVAL_BOUNDARY_HEADER = 'x-emilia-approval-boundary';
+
+function preBoundary<T extends NextResponse>(response: T): T {
+  response.headers.set(APPROVAL_BOUNDARY_HEADER, 'not-entered');
+  return response;
+}
 
 function authHeader(request: NextRequest): string {
   return request.headers.get('authorization') || '';
@@ -53,7 +62,10 @@ async function relayJson(response: Response) {
   });
 }
 
-function validateApprovalInput(body: any): [string, string] | null {
+function validateApprovalInput(
+  body: any,
+  scope: { tenantId: string; environment: string },
+): [string, string] | null {
   if (body === null || typeof body !== 'object' || Array.isArray(body)) {
     return ['invalid_body', 'request body must be a JSON object'];
   }
@@ -87,6 +99,43 @@ function validateApprovalInput(body: any): [string, string] | null {
       'invalid_payment_destination_hash',
       'payment_destination_hash must be sha256:<64 lowercase hex>',
     ];
+  }
+  const acquisitionKeys = [
+    'acquisition_request_id',
+    'acquisition_request_digest',
+    'acquisition_action_hash',
+    'acquisition_action_caid',
+    'acquisition_challenge_hash',
+    'acquisition_tenant_id',
+    'acquisition_environment',
+  ];
+  const acquisitionCount = acquisitionKeys.filter((key) => body[key] !== undefined).length;
+  if (acquisitionCount !== 0 && acquisitionCount !== acquisitionKeys.length) {
+    return ['invalid_acquisition_binding', 'the acquisition binding must be supplied as one complete set'];
+  }
+  if (acquisitionCount === acquisitionKeys.length) {
+    if (!ACQUISITION_REQUEST_PATTERN.test(body.acquisition_request_id || '')
+        || !SHA256_DIGEST_PATTERN.test(body.acquisition_request_digest || '')
+        || !SHA256_DIGEST_PATTERN.test(body.acquisition_action_hash || '')
+        || !SHA256_DIGEST_PATTERN.test(body.acquisition_challenge_hash || '')
+        || body.acquisition_tenant_id !== scope.tenantId
+        || body.acquisition_environment !== scope.environment) {
+      return ['invalid_acquisition_binding', 'the acquisition binding identifiers are malformed'];
+    }
+    const material = {
+      action_type: 'payment.release',
+      amount_usd: body.amount,
+      currency: body.currency,
+      payment_instruction_id: body.payment_reference,
+      beneficiary_account_hash: body.payment_destination_hash,
+      counterparty_name: body.counterparty_name.trim(),
+    };
+    const identity = buildPaymentReleaseActionIdentity(material);
+    if (!identity.ok
+        || identity.actionCaid !== body.acquisition_action_caid
+        || approvalActionHash({ ...material, action_caid: identity.actionCaid }) !== body.acquisition_action_hash) {
+      return ['invalid_acquisition_binding', 'the acquisition binding does not identify the exact payment action'];
+    }
   }
   return null;
 }
@@ -138,18 +187,20 @@ export async function GET(request: NextRequest) {
 }
 
 export async function POST(request: NextRequest) {
+  let boundaryEntered = false;
   try {
     const auth = await authenticateCloudRequest(request);
-    if (!auth) return epProblem(401, 'unauthorized', 'A valid Cloud API key is required');
+    if (!auth) return preBoundary(epProblem(401, 'unauthorized', 'A valid Cloud API key is required'));
     requirePermission(auth, 'approval_request');
 
     const parsed = await readLimitedJson(request, MAX_APPROVAL_REQUEST_BYTES, { invalidValue: {} });
-    if (!parsed.ok) return epProblem(parsed.status, parsed.code, parsed.detail);
+    if (!parsed.ok) return preBoundary(epProblem(parsed.status, parsed.code, parsed.detail));
     const body = parsed.value;
-    const inputError = validateApprovalInput(body);
-    if (inputError) return epProblem(400, inputError[0], inputError[1]);
+    const inputError = validateApprovalInput(body, auth);
+    if (inputError) return preBoundary(epProblem(400, inputError[0], inputError[1]));
 
     const authorization = authHeader(request);
+    boundaryEntered = true;
     const receiptResponse = await createTrustReceipt(delegatedRequest(
       new URL('/api/v1/trust-receipts', request.url),
       authorization,
@@ -161,12 +212,21 @@ export async function POST(request: NextRequest) {
         currency: body.currency,
         counterparty_name: body.counterparty_name.trim(),
         payment_destination_hash: body.payment_destination_hash,
+        ...(body.acquisition_request_id ? {
+          acquisition_request_id: body.acquisition_request_id,
+          acquisition_request_digest: body.acquisition_request_digest,
+          acquisition_action_hash: body.acquisition_action_hash,
+          acquisition_action_caid: body.acquisition_action_caid,
+          acquisition_challenge_hash: body.acquisition_challenge_hash,
+          acquisition_tenant_id: body.acquisition_tenant_id,
+          acquisition_environment: body.acquisition_environment,
+        } : {}),
         display_summary: `Release ${body.currency} ${body.amount} to ${body.counterparty_name.trim()}`,
         expires_in_sec: 60 * 60,
         enforcement_mode: 'enforce',
       },
     ) as any);
-    if (receiptResponse.status !== 201) return relayJson(receiptResponse);
+    if (![200, 201].includes(receiptResponse.status)) return relayJson(receiptResponse);
     const receipt = await receiptResponse.json();
     if (!receipt.signoff_required || receipt.required_assurance !== 'A') {
       logger.error('[cloud/approvals] critical action minted without Class-A signoff', {
@@ -187,9 +247,16 @@ export async function POST(request: NextRequest) {
         approver_id: body.approver_id,
         expires_in_minutes: 60,
         comment: typeof body.comment === 'string' ? body.comment.slice(0, 500) : null,
+        ...(body.acquisition_request_id ? {
+          acquisition_request_id: body.acquisition_request_id,
+          acquisition_request_digest: body.acquisition_request_digest,
+          acquisition_tenant_id: body.acquisition_tenant_id,
+          acquisition_environment: body.acquisition_environment,
+          return_existing: true,
+        } : {}),
       },
     ) as any);
-    if (signoffResponse.status !== 201) {
+    if (![200, 201].includes(signoffResponse.status)) {
       const failed = await relayJson(signoffResponse);
       failed.headers.set('x-emilia-orphaned-receipt-id', receipt.receipt_id);
       return failed;
@@ -213,9 +280,11 @@ export async function POST(request: NextRequest) {
     });
   } catch (error) {
     if (error instanceof CloudAuthorizationError) {
-      return epProblem(403, 'approval_request_permission_required', error.message);
+      const response = epProblem(403, 'approval_request_permission_required', error.message);
+      return boundaryEntered ? response : preBoundary(response);
     }
     logger.error('[cloud/approvals] POST failed:', error);
-    return epProblem(500, 'internal_error', 'Approval request failed');
+    const response = epProblem(500, 'internal_error', 'Approval request failed');
+    return boundaryEntered ? response : preBoundary(response);
   }
 }

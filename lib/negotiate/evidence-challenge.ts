@@ -29,11 +29,13 @@
  */
 import crypto from 'node:crypto';
 import { artifactDigest, evaluateEvidenceGraph } from '../evidence/evidence-graph.js';
+import { evaluateChainAdmissibility } from '../evidence/admissibility.js';
 
 export const CHALLENGE_VERSION = 'AE-CHALLENGE-v1';
 export const CHALLENGE_MEDIA_TYPE = 'application/authorization-evidence-challenge+json';
 
 const SHA256_DIGEST_RE = /^sha256:[0-9a-f]{64}$/i;
+const DURABLE_NONCE_RE = /^[A-Za-z0-9_-]{16,128}$/;
 const RFC3339_INSTANT = /^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2}):(\d{2})(?:\.\d{1,9})?(?:Z|([+-])(\d{2}):(\d{2}))$/;
 
 function validSha256Digest(value) {
@@ -89,6 +91,10 @@ type EvidenceChallengeOpts = {
   as_of?: string;
   consumedNonces?: Set<string>;
   next_expires_at?: string;
+  audience?: string;
+  expected_audience?: string;
+  keysByType?: Record<string, any>;
+  policiesByType?: Record<string, any>;
 };
 
 function mintChallengeForDigest(action_digest, policy, opts: EvidenceChallengeOpts = {}) {
@@ -97,6 +103,10 @@ function mintChallengeForDigest(action_digest, policy, opts: EvidenceChallengeOp
   if (!validSha256Digest(action_digest)) throw new Error('action_digest MUST be a sha256 digest');
   const nonce = opts.nonce ?? crypto.randomBytes(18).toString('base64url');
   if (typeof nonce !== 'string' || !nonce.trim()) throw new Error('nonce MUST be a non-empty string');
+  if (opts.audience !== undefined
+      && (typeof opts.audience !== 'string' || !opts.audience.trim() || opts.audience.length > 256)) {
+    throw new Error('audience MUST be a non-empty string of at most 256 characters');
+  }
   return {
     '@version': CHALLENGE_VERSION,
     challenge_id: opts.challenge_id ?? crypto.randomUUID(),
@@ -106,10 +116,70 @@ function mintChallengeForDigest(action_digest, policy, opts: EvidenceChallengeOp
     policy_id: policy?.policy_id ?? null,
     policy_digest: digestPolicy(policy),
     required_evidence: deriveRequiredEvidence(policy, opts.prior ?? null),
-    present_as: ['EP-AEG-v1'],
+    // Case-sensitive wire identifier implemented by verifyAuthorizationChain.
+    present_as: ['EP-AEC-v1'],
     obtain_hints: opts.obtain_hints ?? [],
     expires_at: opts.expires_at,
+    ...(opts.audience !== undefined ? { audience: opts.audience } : {}),
   };
+}
+
+type RequirementNode =
+  | { kind: 'type'; value: string }
+  | { kind: 'and' | 'or'; left: RequirementNode; right: RequirementNode };
+
+function parseRequirementExpression(value: unknown): RequirementNode | null {
+  const source = String(value ?? '').trim();
+  if (!source) return null;
+  const tokens = source.match(/\(|\)|AND|OR|[A-Za-z0-9_.:-]+/g) ?? [];
+  if (tokens.join('') !== source.replace(/\s+/g, '')) {
+    throw new Error('policy requirement contains an unknown token');
+  }
+  let cursor = 0;
+  const peek = () => tokens[cursor];
+  const take = () => tokens[cursor++];
+  const atom = (): RequirementNode => {
+    const token = take();
+    if (token === '(') {
+      const nested = or();
+      if (take() !== ')') throw new Error('policy requirement has unbalanced parentheses');
+      return nested;
+    }
+    if (!token || token === 'AND' || token === 'OR' || token === ')') {
+      throw new Error('policy requirement is malformed');
+    }
+    return { kind: 'type', value: token };
+  };
+  const and = (): RequirementNode => {
+    let left = atom();
+    while (peek() === 'AND') {
+      take();
+      left = { kind: 'and', left, right: atom() };
+    }
+    return left;
+  };
+  const or = (): RequirementNode => {
+    let left = and();
+    while (peek() === 'OR') {
+      take();
+      left = { kind: 'or', left, right: and() };
+    }
+    return left;
+  };
+  const parsed = or();
+  if (cursor !== tokens.length) throw new Error('policy requirement has trailing tokens');
+  return parsed;
+}
+
+function missingTypes(node: RequirementNode | null, satisfied: Set<string>): string[] {
+  if (!node) return [];
+  if (node.kind === 'type') return satisfied.has(node.value) ? [] : [node.value];
+  const left = missingTypes(node.left, satisfied);
+  const right = missingTypes(node.right, satisfied);
+  if (node.kind === 'and') return [...new Set([...left, ...right])];
+  // An OR is satisfied by one branch. Request the least-disclosing branch;
+  // ties are stable and follow the relying party's written order.
+  return left.length <= right.length ? left : right;
 }
 
 /**
@@ -119,16 +189,27 @@ function mintChallengeForDigest(action_digest, policy, opts: EvidenceChallengeOp
  * @param {{satisfied_by?: string[]}|null} [priorResult]
  */
 export function deriveRequiredEvidence(policy, priorResult: { satisfied_by?: string[] } | null = null) {
-  const tokens = String(policy?.requirement ?? '')
-    .match(/[A-Za-z0-9_.:-]+/g)?.filter((t) => !['AND', 'OR'].includes(t.toUpperCase())) ?? [];
   const satisfied = new Set(priorResult?.satisfied_by ?? []);
+  const tokens = missingTypes(parseRequirementExpression(policy?.requirement), satisfied);
   const assuranceByType = [policy?.required_assurance, policy?.assurance_class, policy?.assurance_classes]
     .find((v) => v && typeof v === 'object') ?? {};
-  return [...new Set(tokens)].filter((t) => !satisfied.has(t)).map((type) => ({
+  return [...new Set(tokens)].map((type) => ({
     type,
     ...(typeof assuranceByType[type] === 'string' ? { assurance_class: assuranceByType[type] } : {}),
-    ...(Number.isFinite(policy?.freshness_sec?.[type]) ? { fresh_max_sec: policy.freshness_sec[type] } : {}),
-    ...(policy?.revocation_required?.includes(type) ? { revocation_checked: true } : {}),
+    ...(Number.isFinite(policy?.freshness_sec?.[type]) ? {
+      max_age_sec: policy.freshness_sec[type],
+      // Compatibility alias for the -00 wire shape.
+      fresh_max_sec: policy.freshness_sec[type],
+    } : {}),
+    ...(policy?.revocation_required?.includes(type) ? {
+      status: 'current',
+      // Compatibility alias for the -00 wire shape.
+      revocation_checked: true,
+    } : {}),
+    ...(typeof policy?.profiles?.[type] === 'string' ? { profile: policy.profiles[type] } : {}),
+    ...(Array.isArray(policy?.proof_predicates?.[type])
+      ? { proof_predicates: [...policy.proof_predicates[type]] }
+      : {}),
   }));
 }
 
@@ -153,6 +234,9 @@ function requireChallengeStore(store) {
 export async function createRegisteredEvidenceChallenge(action, policy, opts: EvidenceChallengeOpts = {}) {
   const store = requireChallengeStore(opts.challengeStore);
   const challenge = createEvidenceChallenge(action, policy, opts);
+  if (!DURABLE_NONCE_RE.test(challenge.nonce)) {
+    throw new Error('durable challenge nonce MUST be 16-128 base64url characters');
+  }
   if (await store.register(challenge) !== true) {
     throw new Error('challenge registration collision or replay');
   }
@@ -174,6 +258,7 @@ export function createFollowupEvidenceChallenge(challenge, policy, priorResult, 
     nonce,
     expires_at,
     prior: priorResult,
+    audience: opts.audience ?? challenge.audience,
   });
 }
 
@@ -181,10 +266,43 @@ export function createFollowupEvidenceChallenge(challenge, policy, priorResult, 
 export async function createRegisteredFollowupEvidenceChallenge(challenge, policy, priorResult, opts: EvidenceChallengeOpts = {}) {
   const store = requireChallengeStore(opts.challengeStore);
   const next = createFollowupEvidenceChallenge(challenge, policy, priorResult, opts);
+  if (!DURABLE_NONCE_RE.test(next.nonce)) {
+    throw new Error('durable challenge nonce MUST be 16-128 base64url characters');
+  }
   if (await store.register(next) !== true) {
     throw new Error('follow-up challenge registration collision or replay');
   }
   return next;
+}
+
+function validateAudience(challenge, opts: EvidenceChallengeOpts): string | null {
+  if (challenge?.audience === undefined && opts.expected_audience === undefined) return null;
+  if (typeof challenge?.audience !== 'string' || !challenge.audience.trim()) {
+    return 'challenge audience missing or invalid';
+  }
+  if (typeof opts.expected_audience !== 'string' || !opts.expected_audience.trim()) {
+    return 'expected audience is required for an audience-bound challenge';
+  }
+  return challenge.audience === opts.expected_audience
+    ? null
+    : 'challenge audience does not match this relying party';
+}
+
+function evaluateEvidencePresentation(challenge, presentation, policy, opts: EvidenceChallengeOpts) {
+  if (presentation?.['@version'] === 'EP-AEC-v1') {
+    return evaluateChainAdmissibility(presentation, policy, {
+      verifiers: opts.verifiers,
+      keysByType: opts.keysByType,
+      policiesByType: opts.policiesByType,
+      expectedActionDigest: challenge.action_digest,
+      as_of: opts.as_of,
+      verificationTime: opts.as_of,
+    });
+  }
+  return evaluateEvidenceGraph(presentation, policy, {
+    verifiers: opts.verifiers,
+    as_of: opts.as_of,
+  });
 }
 
 /**
@@ -207,6 +325,8 @@ export function evaluatePresentation(challenge, graphDoc, policy, opts: Evidence
   if (typeof challenge?.nonce !== 'string' || !challenge.nonce.trim()) return refuse('challenge nonce missing or invalid');
   if (!validSha256Digest(challenge.action_digest)) return refuse('challenge action_digest missing or invalid');
   if (!policyMatchesChallenge(challenge, policy)) return refuse('challenge policy_digest missing or policy changed');
+  const audienceError = validateAudience(challenge, opts);
+  if (audienceError) return refuse(audienceError);
   const expiresAt = parseTimestamp(challenge.expires_at);
   if (Number.isNaN(expiresAt)) return refuse('challenge expires_at missing or invalid');
   const asOf = parseTimestamp(opts.as_of);
@@ -217,11 +337,11 @@ export function evaluatePresentation(challenge, graphDoc, policy, opts: Evidence
   if (nonces.has(challenge.nonce)) return refuse('challenge nonce already consumed (replay)');
   nonces.add(challenge.nonce); // consumed on FIRST evaluation attempt, success or not
 
-  if (graphDoc?.action_digest !== challenge.action_digest) {
+  if (graphDoc?.['@version'] !== 'EP-AEC-v1' && graphDoc?.action_digest !== challenge.action_digest) {
     return refuse('presented graph binds a different action than the challenge (action swap)');
   }
 
-  const result = evaluateEvidenceGraph(graphDoc, policy, { verifiers: opts.verifiers, as_of: opts.as_of });
+  const result = evaluateEvidencePresentation(challenge, graphDoc, policy, opts);
   let next_challenge: ReturnType<typeof createFollowupEvidenceChallenge> | null = null;
   if (result.verdict !== 'admissible') {
     next_challenge = createFollowupEvidenceChallenge(challenge, policy, result, {
@@ -243,8 +363,11 @@ export async function evaluateRegisteredPresentation(challenge, graphDoc, policy
 
   if (challenge?.['@version'] !== CHALLENGE_VERSION) return refuse('unknown challenge version');
   if (typeof challenge?.nonce !== 'string' || !challenge.nonce.trim()) return refuse('challenge nonce missing or invalid');
+  if (!DURABLE_NONCE_RE.test(challenge.nonce)) return refuse('durable challenge nonce missing or too weak');
   if (!validSha256Digest(challenge.action_digest)) return refuse('challenge action_digest missing or invalid');
   if (!policyMatchesChallenge(challenge, policy)) return refuse('challenge policy_digest missing or policy changed');
+  const audienceError = validateAudience(challenge, opts);
+  if (audienceError) return refuse(audienceError);
   const expiresAt = parseTimestamp(challenge.expires_at);
   if (Number.isNaN(expiresAt)) return refuse('challenge expires_at missing or invalid');
   const asOf = parseTimestamp(opts.as_of);
@@ -255,11 +378,11 @@ export async function evaluateRegisteredPresentation(challenge, graphDoc, policy
   if (await store.consume(challenge) !== true) {
     return refuse('challenge is unregistered, tampered, or already consumed (replay)');
   }
-  if (graphDoc?.action_digest !== challenge.action_digest) {
+  if (graphDoc?.['@version'] !== 'EP-AEC-v1' && graphDoc?.action_digest !== challenge.action_digest) {
     return refuse('presented graph binds a different action than the challenge (action swap)');
   }
 
-  const result = evaluateEvidenceGraph(graphDoc, policy, { verifiers: opts.verifiers, as_of: opts.as_of });
+  const result = evaluateEvidencePresentation(challenge, graphDoc, policy, opts);
   let next_challenge: Awaited<ReturnType<typeof createRegisteredFollowupEvidenceChallenge>> | null = null;
   if (result.verdict !== 'admissible') {
     next_challenge = await createRegisteredFollowupEvidenceChallenge(challenge, policy, result, {

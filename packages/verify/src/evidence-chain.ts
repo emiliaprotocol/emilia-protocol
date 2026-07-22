@@ -32,6 +32,10 @@
  */
 import crypto from 'node:crypto';
 import { canonicalize, verifyTrustReceipt, verifyQuorum } from '../index.js';
+import {
+  EP_PLATFORM_ATTESTATION_COMPONENT,
+  verifyPlatformAttestation,
+} from './platform-attestation.js';
 import { strictJsonGate } from './strict-json.js';
 
 type Obj = Record<string, any>;
@@ -46,7 +50,7 @@ const MAX_QUORUM_MEMBERS = 32;
 const MAX_JSON_DEPTH = 64;
 const MAX_JSON_NODES = 50000;
 const MAX_JSON_STRING_BYTES = 1024 * 1024;
-const RESERVED_COMPONENT_TYPES = new Set(['ep-quorum', 'ep-receipt']);
+const RESERVED_COMPONENT_TYPES = new Set(['ep-quorum', 'ep-receipt', EP_PLATFORM_ATTESTATION_COMPONENT]);
 const IDENT_CHAR = /[A-Za-z0-9_.:-]/;
 const IDENT = /^[A-Za-z0-9_.:-]+$/;
 const HEX_256 = /^[0-9a-f]{64}$/;
@@ -196,6 +200,32 @@ function boundedJson(value: any): boolean {
  */
 function builtinVerifiers(): Obj {
   return {
+    // A signed platform attestation result consumed under a relying-party-owned
+    // profile. Trust keys, nonce, profile, audience, build references, and
+    // freshness all come from opts; the presenter supplies only the token.
+    [EP_PLATFORM_ATTESTATION_COMPONENT]: (evidence: any, ctx: any): Obj => {
+      const profile = ctx?.policiesByType?.[EP_PLATFORM_ATTESTATION_COMPONENT];
+      const trustedAttesters = ctx?.keysByType?.[EP_PLATFORM_ATTESTATION_COMPONENT];
+      if (!isRecord(profile)) {
+        return { valid: false, action_digest: null, detail: { reason: 'missing relying-party platform-attestation profile' } };
+      }
+      let expectedActionDigest: string;
+      try {
+        expectedActionDigest = `sha256:${actionDigest(ctx?.action)}`;
+      } catch {
+        return { valid: false, action_digest: null, detail: { reason: 'platform-attestation action is not canonicalizable' } };
+      }
+      return verifyPlatformAttestation(evidence, {
+        trustedAttesters,
+        expectedProfile: profile.expected_profile,
+        expectedAudience: profile.expected_audience,
+        expectedNonce: profile.expected_nonce,
+        expectedActionDigest,
+        referenceMeasurements: profile.reference_measurements,
+        verificationTime: ctx?.verificationTime,
+        maxAgeSeconds: profile.max_age_sec,
+      });
+    },
     // A distinct-human quorum (EP-QUORUM-v1) — the two-person-rule leg.
     'ep-quorum': (evidence: any, ctx: any): Obj => {
       // `verifyQuorum` proves internal consistency only. Acceptance additionally
@@ -219,10 +249,12 @@ function builtinVerifiers(): Obj {
       if (mode !== 'threshold' && mode !== 'ordered') {
         return { valid: false, action_digest: null, detail: { reason: 'quorum policy mode must be threshold or ordered' } };
       }
-      const required = mode === 'ordered'
-        ? (Array.isArray(profile.policy.approvers) ? profile.policy.approvers.length : 0)
-        : profile.policy.required;
-      if (!Number.isInteger(required) || required < 2 || profile.policy.distinct_humans !== true) {
+      const required = profile.policy.required;
+      const approverCount = Array.isArray(profile.policy.approvers)
+        ? profile.policy.approvers.length
+        : 0;
+      if (!Number.isInteger(required) || required < 2 || required > approverCount
+          || profile.policy.distinct_humans !== true) {
         return { valid: false, action_digest: null, detail: { reason: 'ep-quorum requires at least two distinct humans' } };
       }
       if (mode === 'ordered' && profile.policy.ordered_chain !== true) {
@@ -556,6 +588,10 @@ export function verifyAuthorizationChain(aec: Obj, opts: Obj = {}): Obj {
 // Mutation and differential-test surface. These helpers are not protocol API;
 // exporting them keeps boundary tests from reimplementing the acceptance math.
 export const __aecSecurityInternals = Object.freeze({
+  builtinVerifiers,
+  isRecord,
+  own,
+  sha256hex,
   normDigest,
   strictInstantMs,
   freshAt,

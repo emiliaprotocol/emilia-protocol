@@ -1,3 +1,4 @@
+export { EP_APPROVAL_FLOW, APPROVAL_REQUEST_ID_PATTERN, APPROVAL_POLL_TOKEN_PATTERN, APPROVAL_IDEMPOTENCY_KEY_PATTERN, APPROVAL_STATUSES, approvalActionHash, validateApprovalAuthorization, validateRequiredFields, validateCaidSelector, beginReceiptApproval, pollReceiptApproval, } from './acquisition.js';
 type AnyRecord = Record<string, any>;
 type AssuranceTier = 'software' | 'class_a' | 'quorum';
 type AssuranceOptions = AnyRecord;
@@ -100,6 +101,14 @@ export declare function receiptChallenge(action: string | null, reason: string, 
         assurance_class: any;
         quorum: any;
         max_age_sec: any;
+        authorization: {
+            authorization_endpoint: string;
+            flow: typeof import("./acquisition.js").EP_APPROVAL_FLOW;
+        } | null;
+        required_fields: string[] | null;
+        caid_selector: {
+            field: string;
+        } | null;
         how: string;
         learn_more: string;
     };

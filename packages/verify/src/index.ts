@@ -18,6 +18,17 @@ type Obj = Record<string, any>;
 
 export { AGENTROA_DRAFT, verifyAgentROA } from './agentroa.js';
 export {
+  AUTHORITY_PROGRAM_VERSION,
+  AUTHORITY_PROGRAM_DOMAIN,
+  AUTHORITY_STAGE_RECEIPT_VERSION,
+  AUTHORITY_STAGE_RECEIPT_DOMAIN,
+  AUTHORITY_PROGRAM_RESULT_VERSION,
+  authorityProgramDigest,
+  authorityStageReceiptDigest,
+  deriveAuthorityProgramPredecessors,
+  verifyAuthorityProgram,
+} from './authority-program.js';
+export {
   OUTCOME_ATTESTATION_VERSION,
   OUTCOME_ATTESTATION_DOMAIN,
   OUTCOME_BINDING_VERSION,
