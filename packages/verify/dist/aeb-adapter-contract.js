@@ -406,9 +406,10 @@ const ADAPTER_PIN_KEYS = new Set(['version', 'trust_roots', 'config', 'config_di
 const PROFILE_KEYS = new Set(['version', 'definition', 'registry_entry_ref', 'mapper_id', 'resolver', 'semantic_equivalence', 'profile_digest']);
 const RESOLVER_KEYS = new Set(['id', 'version', 'implementation_digest']);
 const EQUIVALENCE_KEYS = new Set(['assertion', 'loss_policy', 'omitted_material_fields', 'omitted_nonmaterial_fields']);
-const REQUIREMENT_KEYS = new Set(['@version', 'all_of', 'any_of', 'quorum', 'initiator_exclusion', 'one_time_consumption']);
-const QUORUM_KEYS = new Set(['role', 'threshold', 'subject_kind', 'distinct_subjects']);
-const EXCLUSION_KEYS = new Set(['roles']);
+const REQUIREMENT_KEYS = new Set(['@version', 'all_of', 'any_of', 'terms']);
+const QUORUM_TERM_KEYS = new Set(['type', 'role', 'threshold']);
+const EXCLUSION_TERM_KEYS = new Set(['type', 'roles']);
+const ONE_TIME_TERM_KEYS = new Set(['type']);
 const EVALUATOR_KEY_KEYS = new Set(['public_key']);
 function validConfig(config) {
     const reasons = [];
@@ -509,29 +510,39 @@ function validConfig(config) {
         const anyOfValid = requirement.any_of === undefined || (Array.isArray(requirement.any_of)
             && requirement.any_of.every((group) => Array.isArray(group) && group.length > 0 && group.every(validRole)
                 && new Set(group).size === group.length));
-        const quorumValid = requirement.quorum === undefined || (Array.isArray(requirement.quorum)
-            && new Set(requirement.quorum.map((rule) => isObject(rule) ? rule.role : null)).size === requirement.quorum.length
-            && requirement.quorum.every((rule) => isObject(rule) && exactKeys(rule, QUORUM_KEYS) && validRole(rule.role)
-                && typeof rule.threshold === 'number' && Number.isSafeInteger(rule.threshold) && rule.threshold >= 2
-                && rule.subject_kind === 'human' && rule.distinct_subjects === true));
-        const exclusionValid = requirement.initiator_exclusion === undefined || (isObject(requirement.initiator_exclusion)
-            && exactKeys(requirement.initiator_exclusion, EXCLUSION_KEYS)
-            && Array.isArray(requirement.initiator_exclusion.roles) && requirement.initiator_exclusion.roles.length > 0
-            && requirement.initiator_exclusion.roles.every(validRole)
-            && new Set(requirement.initiator_exclusion.roles).size === requirement.initiator_exclusion.roles.length);
+        const rawTerms = Array.isArray(requirement.terms) ? requirement.terms : [];
+        const quorumRules = rawTerms.filter((term) => isObject(term) && term.type === 'distinct-human-quorum');
+        const exclusionRules = rawTerms.filter((term) => isObject(term) && term.type === 'initiator-exclusion');
+        const oneTimeRules = rawTerms.filter((term) => isObject(term) && term.type === 'one-time-consumption');
+        const termsValid = Array.isArray(requirement.terms) && requirement.terms.length > 0
+            && requirement.terms.every((term) => {
+                if (!isObject(term) || !exactString(term.type))
+                    return false;
+                if (term.type === 'distinct-human-quorum') {
+                    return exactKeys(term, QUORUM_TERM_KEYS) && validRole(term.role)
+                        && typeof term.threshold === 'number' && Number.isSafeInteger(term.threshold) && term.threshold >= 2;
+                }
+                if (term.type === 'initiator-exclusion') {
+                    return exactKeys(term, EXCLUSION_TERM_KEYS) && Array.isArray(term.roles) && term.roles.length > 0
+                        && term.roles.every(validRole) && new Set(term.roles).size === term.roles.length;
+                }
+                return term.type === 'one-time-consumption' && exactKeys(term, ONE_TIME_TERM_KEYS);
+            })
+            && new Set(quorumRules.map((term) => term.role)).size === quorumRules.length
+            && exclusionRules.length <= 1
+            && oneTimeRules.length === 1;
         const hasRequirement = (allOfValid && requirement.all_of.length > 0)
             || (Array.isArray(requirement.any_of) && requirement.any_of.length > 0)
-            || (Array.isArray(requirement.quorum) && requirement.quorum.length > 0);
+            || quorumRules.length > 0;
         if (!exactString(id) || !isObject(rawRequirement) || !onlyKeys(rawRequirement, REQUIREMENT_KEYS)
             || requirement['@version'] !== AEB_REQUIREMENT_VERSION
-            || !allOfValid || !anyOfValid || !quorumValid || !exclusionValid || !hasRequirement
-            || requirement.one_time_consumption !== true)
+            || !allOfValid || !anyOfValid || !termsValid || !hasRequirement)
             reasons.push(`invalid_requirement:${id}`);
         const roles = new Set([
             ...(Array.isArray(requirement.all_of) ? requirement.all_of : []),
             ...(Array.isArray(requirement.any_of) ? requirement.any_of.flat() : []),
-            ...(Array.isArray(requirement.quorum) ? requirement.quorum.map((rule) => rule.role) : []),
-            ...(Array.isArray(requirement.initiator_exclusion?.roles) ? requirement.initiator_exclusion.roles : []),
+            ...quorumRules.map((rule) => String(rule.role)),
+            ...exclusionRules.flatMap((rule) => Array.isArray(rule.roles) ? rule.roles.map(String) : []),
         ]);
         for (const role of roles)
             if (!roleRegistryEntry(config, role))
@@ -544,18 +555,27 @@ function validConfig(config) {
     }
     return sortedUnique(reasons);
 }
+function distinctHumanQuorumTerms(requirement) {
+    return requirement.terms.filter((term) => term.type === 'distinct-human-quorum');
+}
+function initiatorExclusionTerm(requirement) {
+    return requirement.terms.find((term) => term.type === 'initiator-exclusion');
+}
+function requiresOneTimeConsumption(requirement) {
+    return requirement.terms.some((term) => term.type === 'one-time-consumption');
+}
 function requiredRoles(requirement) {
     return new Set([
         ...requirement.all_of,
         ...(requirement.any_of ?? []).flat(),
-        ...(requirement.quorum ?? []).map((rule) => rule.role),
+        ...distinctHumanQuorumTerms(requirement).map((rule) => rule.role),
     ]);
 }
 function aecRequirementExpression(requirement) {
     const terms = [
         ...sortedUnique(requirement.all_of),
         ...(requirement.any_of ?? []).map((group) => `(${sortedUnique(group).join(' OR ')})`),
-        ...sortedUnique((requirement.quorum ?? []).map((rule) => rule.role)),
+        ...sortedUnique(distinctHumanQuorumTerms(requirement).map((rule) => rule.role)),
     ];
     return sortedUnique(terms).join(' AND ');
 }
@@ -621,7 +641,7 @@ function evaluateAuthorityConstraints(requirement, legs, initiatorId) {
     const reasons = [];
     let indeterminate = false;
     let quorumSatisfied = true;
-    for (const rule of requirement.quorum ?? []) {
+    for (const rule of distinctHumanQuorumTerms(requirement)) {
         const candidates = legs.filter((leg) => leg.evidence_role === rule.role);
         const satisfiedHumans = candidates.filter((leg) => leg.verdict === 'SATISFIED' && leg.subject?.kind === 'human');
         const distinct = new Set(satisfiedHumans.map((leg) => leg.subject.id));
@@ -632,7 +652,7 @@ function evaluateAuthorityConstraints(requirement, legs, initiatorId) {
                 indeterminate = true;
         }
     }
-    const excludedRoles = new Set(requirement.initiator_exclusion?.roles ?? []);
+    const excludedRoles = new Set(initiatorExclusionTerm(requirement)?.roles ?? []);
     const selfApprovedRoles = new Set(legs
         .filter((leg) => leg.verdict === 'SATISFIED'
         && excludedRoles.has(leg.evidence_role) && leg.subject?.id === initiatorId)
@@ -640,7 +660,7 @@ function evaluateAuthorityConstraints(requirement, legs, initiatorId) {
     const selfApproval = selfApprovedRoles.size > 0;
     if (selfApproval)
         reasons.push(...[...selfApprovedRoles].map((role) => `initiator_excluded:${role}`));
-    const oneTime = requirement.one_time_consumption === true;
+    const oneTime = requiresOneTimeConsumption(requirement);
     if (!oneTime)
         reasons.push('one_time_consumption_not_required');
     const verdict = indeterminate ? 'INDETERMINATE'

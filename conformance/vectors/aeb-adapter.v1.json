@@ -55,6 +55,11 @@
       "expect": { "verdict": "UNSATISFIED", "invoke_allowed": false }
     },
     {
+      "id": "authority_predicates_are_first_class_requirement_terms",
+      "input": "the pinned requirement contains distinct-human-quorum, initiator-exclusion, and one-time-consumption terms",
+      "expect": { "verdict": "SATISFIED", "authority_terms_enforced": true }
+    },
+    {
       "id": "registry_kind_substitution_is_indeterminate",
       "input": "an evidence-role entry is substituted with a mapping-profile entry under a recomputed registry digest",
       "expect": { "verdict": "INDETERMINATE", "invoke_allowed": false }

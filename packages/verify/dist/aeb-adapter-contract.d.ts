@@ -142,23 +142,27 @@ export interface AebPinnedProfile {
     /** Must equal profileDigest(id, this). */
     profile_digest: AebDigest;
 }
-export interface AebQuorumRequirement {
+export interface AebDistinctHumanQuorumTerm {
+    type: 'distinct-human-quorum';
     role: string;
     threshold: number;
-    subject_kind: 'human';
-    distinct_subjects: true;
 }
+export interface AebInitiatorExclusionTerm {
+    type: 'initiator-exclusion';
+    roles: readonly string[];
+}
+export interface AebOneTimeConsumptionTerm {
+    type: 'one-time-consumption';
+}
+export type AebRequirementTerm = AebDistinctHumanQuorumTerm | AebInitiatorExclusionTerm | AebOneTimeConsumptionTerm;
 export interface AebRequirement {
     '@version': typeof AEB_REQUIREMENT_VERSION;
     /** Every listed role must have a satisfied leg. */
     all_of: readonly string[];
     /** Each group requires at least one satisfied role. */
     any_of?: readonly (readonly string[])[];
-    quorum?: readonly AebQuorumRequirement[];
-    initiator_exclusion?: {
-        roles: readonly string[];
-    };
-    one_time_consumption: true;
+    /** Authority and execution predicates evaluated in addition to the AEC role expression. */
+    terms: readonly AebRequirementTerm[];
 }
 export type AebRegistryEntryKind = 'mapping-profile' | 'evidence-role' | 'receipt-extension';
 export interface AebRegistryEntry {

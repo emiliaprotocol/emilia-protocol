@@ -42,9 +42,13 @@ epoch, and complete registry digest are pinned. A mapping entry cannot be
 substituted for an evidence role even if the outer registry digest is
 recomputed.
 
-`AEB-REQUIREMENT-v1` makes the authority predicates explicit: `all_of` and
-`any_of` role expressions, distinct-human quorum, initiator exclusion, and
-mandatory one-time consumption. Composition is delegated to the existing
+`AEB-REQUIREMENT-v1` makes the authority predicates explicit. `all_of` and
+`any_of` are role expressions. Its typed `terms` array carries
+`distinct-human-quorum`, `initiator-exclusion`, and the mandatory
+`one-time-consumption` execution predicate. A requirement with an unknown
+term, duplicate quorum role, multiple exclusion terms, or anything other than
+exactly one one-time-consumption term is invalid. Composition is delegated to
+the existing
 `EP-AEC-v1` verifier with a relying-party-pinned requirement over the exact
 CAID and normalized action digest. AEB does not implement a second evidence
 chain.

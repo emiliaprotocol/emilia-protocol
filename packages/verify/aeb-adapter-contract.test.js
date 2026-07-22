@@ -40,6 +40,7 @@ test('AEB-ADAPTER-v1 publishes the refusal and lifecycle vector set', () => {
     'unaccepted_mapper_is_indeterminate',
     'material_information_loss_refuses_equivalence',
     'duplicate_or_initiating_human_cannot_satisfy_quorum',
+    'authority_predicates_are_first_class_requirement_terms',
     'registry_kind_substitution_is_indeterminate',
     'aec_is_the_composition_engine',
     'same_caid_different_normalized_action_refuses',
@@ -102,9 +103,11 @@ function registryEntry(entryId, kind, version, definition) {
 function setup(requirement = {
   '@version': 'AEB-REQUIREMENT-v1',
   all_of: ['operator-of-record', 'human-authorization'],
-  quorum: [{ role: 'human-authorization', threshold: 2, subject_kind: 'human', distinct_subjects: true }],
-  initiator_exclusion: { roles: ['human-authorization'] },
-  one_time_consumption: true,
+  terms: [
+    { type: 'distinct-human-quorum', role: 'human-authorization', threshold: 2 },
+    { type: 'initiator-exclusion', roles: ['human-authorization'] },
+    { type: 'one-time-consumption' },
+  ],
 }) {
   const adapter = makeAdapter();
   const profile = {
@@ -228,8 +231,10 @@ test('signed native bridge composes WIMSE possession and human authorization', (
   const requirement = {
     '@version': 'AEB-REQUIREMENT-v1',
     all_of: ['workload-possession', 'human-authorization'],
-    initiator_exclusion: { roles: ['human-authorization'] },
-    one_time_consumption: true,
+    terms: [
+      { type: 'initiator-exclusion', roles: ['human-authorization'] },
+      { type: 'one-time-consumption' },
+    ],
   };
   const s = setup(requirement);
   s.config.registry.entries['role:workload-possession'] = registryEntry(
@@ -357,7 +362,11 @@ test('AEB freezes indeterminate execution and consumes a satisfied authorization
 });
 
 test('AEB treats a material CAID mismatch as unsatisfied', () => {
-  const s = setup({ '@version': 'AEB-REQUIREMENT-v1', all_of: ['operator-of-record'], one_time_consumption: true });
+  const s = setup({
+    '@version': 'AEB-REQUIREMENT-v1',
+    all_of: ['operator-of-record'],
+    terms: [{ type: 'one-time-consumption' }],
+  });
   const result = evaluate(s, [leg('operator-of-record', OTHER_CAID)]);
   assert.equal(result.record.verdict, 'UNSATISFIED');
   assert.ok(result.record.reasons.includes('caid_mismatch'));
@@ -413,6 +422,46 @@ test('AEB enforces distinct-human quorum and initiator exclusion', () => {
   ]);
   assert.equal(selfApproved.record.verdict, 'UNSATISFIED');
   assert.ok(selfApproved.record.reasons.includes('initiator_excluded:human-authorization'));
+});
+
+test('AEB expresses authority controls as first-class requirement terms', () => {
+  const s = setup({
+    '@version': 'AEB-REQUIREMENT-v1',
+    all_of: ['operator-of-record', 'human-authorization'],
+    terms: [
+      { type: 'distinct-human-quorum', role: 'human-authorization', threshold: 2 },
+      { type: 'initiator-exclusion', roles: ['human-authorization'] },
+      { type: 'one-time-consumption' },
+    ],
+  });
+  const result = evaluate(s, [
+    leg('operator-of-record'),
+    leg('human-authorization', CAID, 'artifact:human-alice', { id: 'human:alice', kind: 'human' }),
+    leg('human-authorization', CAID, 'artifact:human-bob', { id: 'human:bob', kind: 'human' }),
+  ]);
+  assert.equal(result.record.verdict, 'SATISFIED');
+  assert.deepEqual(result.record.authority_constraints, {
+    distinct_human_quorum: true,
+    initiator_exclusion: true,
+    one_time_consumption: true,
+  });
+});
+
+test('AEB fails closed on unknown, duplicate, or weakened authority terms', () => {
+  for (const terms of [
+    [{ type: 'one-time-consumption' }, { type: 'presenter-override' }],
+    [{ type: 'one-time-consumption' }, { type: 'one-time-consumption' }],
+    [{ type: 'initiator-exclusion', roles: ['human-authorization'] }],
+  ]) {
+    const s = setup({
+      '@version': 'AEB-REQUIREMENT-v1',
+      all_of: ['operator-of-record', 'human-authorization'],
+      terms,
+    });
+    const result = evaluate(s);
+    assert.equal(result.record.verdict, 'INDETERMINATE');
+    assert.ok(result.record.reasons.includes('invalid_requirement:req:purchase'));
+  }
 });
 
 test('AEB uses one unified registry and refuses cross-kind substitution', () => {
