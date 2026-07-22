@@ -94,6 +94,13 @@ function requireText(text, needles, label) {
     if (missing.length)
         throw new Error(`${label} is missing release controls: ${missing.join(', ')}`);
 }
+function requireBefore(text, earlier, later, label) {
+    const earlierIndex = text.indexOf(earlier);
+    const laterIndex = text.indexOf(later);
+    if (earlierIndex < 0 || laterIndex < 0 || earlierIndex >= laterIndex) {
+        throw new Error(`${label} must run ${earlier} before ${later}`);
+    }
+}
 function forbidCredentialInjection(text, label) {
     if (/^\s*(?:NPM_TOKEN|NODE_AUTH_TOKEN|TWINE_PASSWORD|PYPI_API_TOKEN)\s*:/m.test(text)
         || /^\s*password\s*:/m.test(text)) {
@@ -148,6 +155,17 @@ export function validateReusableNpmWorkflowText(text) {
         '--allowed-actor FutureEnterprises',
         'group: registry-publish-${{ inputs.package_name }}',
     ], 'reusable npm workflow');
+    const workflow = YAML.parse(text);
+    const permissions = workflow?.permissions ?? {};
+    const expectedPermissions = {
+        contents: 'read',
+        'id-token': 'write',
+        attestations: 'write',
+    };
+    if (JSON.stringify(permissions) !== JSON.stringify(expectedPermissions)) {
+        throw new Error('reusable npm workflow requests permissions outside the caller release boundary');
+    }
+    requireBefore(text, 'scripts/require-release-approval.mjs', 'run: npm test', 'reusable npm workflow');
     forbidCredentialInjection(text, 'reusable npm workflow');
     return true;
 }
@@ -299,6 +317,7 @@ function validateNpmDirect(text, label) {
         'cmp "../../release-artifacts/${{ steps.pack.outputs.tarball }}" "../../registry-copy/$REGISTRY_TARBALL"',
         'scripts/require-release-approval.mjs',
     ], label);
+    requireBefore(text, 'scripts/require-release-approval.mjs', 'run: npm test', label);
     validateManualPublisher(text, label, { direct: true });
     forbidCredentialInjection(text, label);
 }
