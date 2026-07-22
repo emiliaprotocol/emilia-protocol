@@ -18,6 +18,14 @@ describe('public/private repository boundary', () => {
     ]);
   });
 
+  it('refuses named government meeting briefings', () => {
+    expect(findRepositoryBoundaryViolations([
+      'docs/briefs/CALIFORNIA-VERIFIABLE-AI-OVERSIGHT-BRIEFING.md',
+    ])).toEqual([
+      'docs/briefs/CALIFORNIA-VERIFIABLE-AI-OVERSIGHT-BRIEFING.md',
+    ]);
+  });
+
   it('allows public standards, evidence, product documentation, and application routes', () => {
     expect(findRepositoryBoundaryViolations([
       'standards/staged/draft-schrock-action-evidence-boundary-00.xml',
