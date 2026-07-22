@@ -1,0 +1,135 @@
+{
+  "@type": "EP-DAVINCI-PAS-REVIEW-BINDING-PROFILE-v1",
+  "title": "HL7 Da Vinci PAS 2.2.1 Medical Prior-Authorization Review Binding",
+  "status": "reference profile / standards-engagement candidate",
+  "profile_id": "davinci-pas-review-binding.v1",
+  "rail": "hl7-davinci-pas-medical",
+  "fhir": {
+    "release": "R4",
+    "package": "hl7.fhir.us.davinci-pas",
+    "version": "2.2.1",
+    "claim_profile": "http://hl7.org/fhir/us/davinci-pas/StructureDefinition/profile-claim|2.2.1",
+    "claim_response_profile": "http://hl7.org/fhir/us/davinci-pas/StructureDefinition/profile-claimresponse|2.2.1",
+    "reviewer_extension": "http://hl7.org/fhir/us/davinci-pas/StructureDefinition/extension-claimResponseReviewer",
+    "review_action_extension": "http://hl7.org/fhir/us/davinci-pas/StructureDefinition/extension-reviewAction",
+    "review_action_code_extension": "http://hl7.org/fhir/us/davinci-pas/StructureDefinition/extension-reviewActionCode"
+  },
+  "source_contract": {
+    "trust_boundary": "The caller supplies Claim, ClaimResponse, policy, pairwise-patient mapping, and reviewer evidence from authenticated server-owned systems of record. Agent, patient-facing, and request-body assertions are not trust sources.",
+    "required_relationships": [
+      "Claim.use and ClaimResponse.use are preauthorization",
+      "ClaimResponse.request is the exact Claim/{id} reference",
+      "Claim and ClaimResponse patient references match before projection",
+      "Claim and ClaimResponse insurer references match before projection",
+      "Claim.item.sequence and ClaimResponse.item.itemSequence form the same unique set",
+      "Each response item has exactly one supported PAS review-action code"
+    ]
+  },
+  "material_action": {
+    "action_type": "health.medical-prior-authorization-review.1",
+    "caid_suite": "jcs-sha256",
+    "required_fields": [
+      "operation_id",
+      "rail",
+      "ig_version",
+      "pairwise_patient_ref",
+      "claim_digest",
+      "claim_identifier_digest",
+      "claim_response_digest",
+      "request_reference_digest",
+      "service_request_digest",
+      "decision_digest",
+      "decision_outcome",
+      "fhir_outcome",
+      "policy_id",
+      "policy_version",
+      "policy_digest"
+    ],
+    "adverse_required_fields": [
+      "reviewer_ref",
+      "reviewer_fhir_identity_digest",
+      "reviewer_identity_evidence_digest",
+      "reviewer_authority_evidence_digest",
+      "reviewer_authority_scope"
+    ],
+    "digested_server_projections": {
+      "claim_digest": "Entire server-observed PAS Claim",
+      "claim_identifier_digest": "Claim.identifier array",
+      "claim_response_digest": "Entire server-observed PAS ClaimResponse",
+      "request_reference_digest": "ClaimResponse.request reference object",
+      "service_request_digest": "Claim careTeam, supportingInfo, diagnosis, procedure, insurance, and item fields",
+      "decision_digest": "FHIR processing outcome plus ordered response item sequences, PAS review-action codes, and exact adjudication digests"
+    }
+  },
+  "decision_mapping": {
+    "A1": "approved",
+    "A2": "modified",
+    "A3": "denied",
+    "A4": "pended",
+    "multiple_distinct_line_outcomes": "mixed",
+    "adverse_outcomes": ["modified", "denied", "pended", "mixed"]
+  },
+  "adverse_review": {
+    "fhir_requirements": [
+      "Exactly one ClaimResponse reviewer extension",
+      "wasHumanReviewedFlag is true",
+      "reviewerNPI identifier is present"
+    ],
+    "accepted_identity_evidence": [
+      "status is accepted",
+      "subject_ref equals reviewer_ref",
+      "evidence_digest is a SHA-256 digest",
+      "fhir_reviewer_digest equals the exact reviewer-extension digest"
+    ],
+    "accepted_authority_evidence": [
+      "status is accepted",
+      "subject_ref equals reviewer_ref",
+      "scope is medical_prior_authorization.adverse_decision",
+      "policy_digest equals the bound decision policy",
+      "claim_response_digest equals the bound server ClaimResponse"
+    ],
+    "acceptance_boundary": "Accepted means the relying party has already verified and accepted the evidence under its own trust policy. This reference module validates the binding and does not verify issuer signatures, licenses, registries, or revocation by itself."
+  },
+  "portable_output": {
+    "allowlist_only": true,
+    "patient_reference": "pairwise only",
+    "contains": [
+      "profile and rail identifiers",
+      "exact material action fields",
+      "canonical SHA-256 digests",
+      "CAID"
+    ],
+    "prohibits": [
+      "raw Claim or ClaimResponse resources",
+      "direct Patient references or patient identifiers",
+      "names, birth dates, and contact information",
+      "raw diagnosis, procedure, service, supportingInfo, or clinical-note fields",
+      "unknown or extension fields outside the portable allowlist"
+    ],
+    "privacy_claim": "This is a deterministic minimization control, not a HIPAA, CMIA, security, or legal-compliance determination."
+  },
+  "replay": {
+    "operation_id_bound": true,
+    "caid_bound": true,
+    "verifier_input": "The caller supplies its expected operation/CAID and durable consumed-CAID state. The pure verifier refuses a consumed CAID but does not persist consumption."
+  },
+  "pharmacy_rail": {
+    "separate": true,
+    "owner": "NCPDP",
+    "replacement": false,
+    "excluded_from_this_binding": true,
+    "note": "Drug prior authorization and pharmacy-benefit workflows stay on the applicable NCPDP SCRIPT/ePA and related pharmacy standards. This PAS profile is only the medical prior-authorization rail."
+  },
+  "regulatory_context": {
+    "california_sb_1120": "SB 1120 makes licensed-professional review of adverse medical-necessity decisions an auditable operational event; it does not mandate EMILIA, CAIDs, signatures, or cryptographic receipts.",
+    "cms_wiser": "CMS WISeR requires appropriately licensed human clinical review for non-affirmations, creating an auditable licensed-review event; it does not mandate EMILIA, CAIDs, signatures, or cryptographic receipts."
+  },
+  "claim_boundaries": [
+    "No production, deployment, availability, or EHR-integration claim.",
+    "No claim that a digest proves source authenticity or that a CAID proves authorization.",
+    "No legal, regulatory, clinical, medical-necessity, privacy-compliance, or payer-policy determination.",
+    "No claim of HL7, Da Vinci, CMS, California, or NCPDP endorsement."
+  ],
+  "reference_implementation": "lib/health/davinci-pas-binding.ts",
+  "tests": "tests/davinci-pas-binding.test.ts"
+}

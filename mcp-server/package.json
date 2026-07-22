@@ -21,6 +21,12 @@
     "@emilia-protocol/verify": "^3.10.1",
     "@modelcontextprotocol/sdk": "^1.29.0"
   },
+  "overrides": {
+    "@hono/node-server": "2.0.10",
+    "body-parser": "2.3.0",
+    "fast-uri": "3.1.4",
+    "hono": "4.12.27"
+  },
   "devDependencies": {
     "vitest": "^4.1.8"
   },
@@ -45,7 +51,7 @@
   ],
   "license": "Apache-2.0",
   "engines": {
-    "node": ">=18"
+    "node": ">=20"
   },
   "publishConfig": {
     "access": "public"

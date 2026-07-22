@@ -1,0 +1,688 @@
+<?xml version="1.0" encoding="utf-8"?>
+<rfc xmlns:xi="http://www.w3.org/2001/XInclude"
+     docName="draft-schrock-ep-authorization-evidence-chain-04"
+     category="info" ipr="trust200902" submissionType="IETF"
+     version="3" tocInclude="true" sortRefs="true" symRefs="true">
+  <front>
+    <title abbrev="Authorization Evidence Chains">Authorization Evidence Chains: Composing Heterogeneous Agent-Action Evidence (EP-AEC)</title>
+    <seriesInfo name="Internet-Draft" value="draft-schrock-ep-authorization-evidence-chain-04"/>
+    <author fullname="Iman Schrock">
+      <organization>EMILIA Protocol, Inc.</organization>
+      <address>
+        <postal>
+          <country>US</country>
+        </postal>
+        <email>team@emiliaprotocol.ai</email>
+      </address>
+    </author>
+    <date year="2026" month="July" day="21"/>
+    <area>sec</area>
+    <keyword>AI agents</keyword>
+    <keyword>authorization</keyword>
+    <keyword>evidence</keyword>
+    <keyword>composition</keyword>
+    <keyword>replay</keyword>
+    <keyword>JCS</keyword>
+    <abstract>
+      <t>Consequential agent actions can produce heterogeneous identity,
+      delegation, policy, permit, approval, transparency, capability, and
+      execution artifacts. Each artifact can verify under its own
+      specification while still referring to a different action, filling a
+      different evidentiary role, or failing a relying party's freshness,
+      status, or inter-artifact binding requirement. This document defines
+      the Authorization Evidence Chain (EP-AEC): a transport-agnostic
+      composition object and a fail-closed evaluation algorithm that preserves
+      native verification, establishes exact material-action matching, and
+      evaluates a relying-party-pinned evidence requirement.</t>
+      <t>AEC produces SATISFIED or UNSATISFIED and a replayable evaluation
+      record. SATISFIED means only that the presented evidence filled the
+      relying party's named evidence requirement at the stated verification
+      time. It is not a universal authorization decision, a policy language
+      for the protected application, or proof of execution or outcome. The
+      executor makes the separate local AUTHORIZED decision and controls
+      consumption, invocation, and effect handling. AEC introduces no new
+      component receipt type and does not replace any native verifier.</t>
+    </abstract>
+  </front>
+
+  <middle>
+    <section anchor="intro">
+      <name>Introduction</name>
+      <t>One consequential action can produce several independently useful
+      artifacts: a workload credential, a delegation record, a policy permit,
+      a named-human authorization receipt, a quorum, a bounded-capability
+      operation record, or a transparency receipt. These artifacts answer
+      different questions. A relying party may require several of them for one
+      action.</t>
+      <t>Native validity is not sufficient for composition. A valid permit for
+      action A and a valid approval for action B do not jointly authorize
+      either action. Likewise, two valid artifacts can still be inadequate if
+      the relying party required a fresher approval, a checked revocation
+      status, or a byte-backed relation showing that one artifact explicitly
+      references another.</t>
+      <t>EP-AEC provides the thin composition layer. It dispatches artifacts
+      to their native verifiers, maps only integrity-protected native action
+      commitments to the relying party's expected material action, evaluates
+      an evidence requirement owned by the relying party, and records the
+      exact inputs to that evidence decision. It does not decide whether the
+      protected application should act.</t>
+
+      <section anchor="scope">
+        <name>Scope and Non-Goals</name>
+        <t>This document defines:</t>
+        <ul>
+          <li>the EP-AEC-v1 composition object;</li>
+          <li>the EP-AEC-REQUIREMENT-v1 relying-party evidence requirement;</li>
+          <li>a verifier-result contract that keeps native verification
+          separate from material-action mapping;</li>
+          <li>a fail-closed SATISFIED or UNSATISFIED evaluation; and</li>
+          <li>the EP-AEC-REPLAY-v1 evaluation record and replay digest.</li>
+        </ul>
+        <t>This document does not define a universal evidence taxonomy, a
+        general authorization policy language, a component receipt format, an
+        application allow or deny decision, a signed reliance-result format,
+        a transparency service, or an execution state machine. It does not
+        require a graph wire format or make presenter-asserted graph edges
+        authoritative.</t>
+      </section>
+    </section>
+
+    <section anchor="terminology">
+      <name>Terminology</name>
+      <t>The key words "MUST", "MUST NOT", "REQUIRED", "SHOULD", "SHOULD
+      NOT", and "MAY" in this document are to be interpreted as described in
+      BCP 14 <xref target="RFC2119"/> <xref target="RFC8174"/> when, and only
+      when, they appear in all capitals, as shown here.</t>
+      <dl>
+        <dt>Native verifier</dt>
+        <dd>A verifier selected by the relying party for one artifact format
+        and revision. It checks that format's syntax, signatures, issuer,
+        audience, validity, and format-specific semantics under pinned trust
+        inputs.</dd>
+        <dt>VERIFIED</dt>
+        <dd>The native verifier accepted an artifact under the selected native
+        profile. This state alone says nothing about whether the artifact
+        denotes the expected material action.</dd>
+        <dt>MATCH</dt>
+        <dd>A VERIFIED artifact's integrity-protected native action commitment
+        denotes the relying party's expected material action by direct exact
+        digest equality or by an exact, relying-party-pinned CAID mapping
+        profile.</dd>
+        <dt>SATISFIED</dt>
+        <dd>Eligible evidence filled the relying party's evidence requirement
+        at the explicit verification time.</dd>
+        <dt>AUTHORIZED</dt>
+        <dd>A separate local application decision permitting an invocation.
+        AEC does not produce this state.</dd>
+        <dt>Evidence digest</dt>
+        <dd>The string "sha256:" followed by the lowercase hexadecimal
+        SHA-256 digest of an artifact's JCS <xref target="RFC8785"/>
+        serialization.</dd>
+        <dt>Normalized evidence fact</dt>
+        <dd>A verifier-produced, bounded record of native validity,
+        material-action mapping, time and status checks, and byte-backed
+        bindings for one component. It is not supplied by the presenter.</dd>
+      </dl>
+    </section>
+
+    <section anchor="object">
+      <name>The Authorization Evidence Chain Object</name>
+      <sourcecode type="json"><![CDATA[
+{
+  "@version": "EP-AEC-v1",
+  "action": { "...": "Action Object" },
+  "action_digest": "sha256:<hex>",
+  "action_caid": "caid:1:<action-type>:<suite>:<digest-b64url>",
+  "components": [
+    {
+      "type": "ep-quorum",
+      "label": "two-person human authorization",
+      "evidence_digest": "sha256:<hex>",
+      "evidence": { "...": "native artifact" }
+    },
+    {
+      "type": "policy-permit",
+      "evidence": { "...": "native artifact" }
+    }
+  ],
+  "requirement": "ep-quorum AND policy-permit"
+}
+]]></sourcecode>
+      <ul>
+        <li><tt>@version</tt> (string, REQUIRED) MUST equal
+        <tt>EP-AEC-v1</tt>.</li>
+        <li><tt>action</tt> (object, REQUIRED) is the closed Action Object to
+        which the evaluation is joined.</li>
+        <li><tt>action_digest</tt> (string, OPTIONAL) is descriptive. When
+        present, it MUST equal the verifier's recomputation over
+        <tt>action</tt>.</li>
+        <li><tt>action_caid</tt> (string, OPTIONAL) is descriptive. It MUST NOT
+        establish its own mapping or trust. When the relying party requires a
+        CAID, the verifier recomputes or independently obtains the expected
+        CAID and compares it as specified in <xref target="matching"/>.</li>
+        <li><tt>components</tt> (array, REQUIRED and non-empty) contains
+        <tt>type</tt> (string), <tt>evidence</tt> (JSON value suitable for the
+        native format), and optional <tt>label</tt> and
+        <tt>evidence_digest</tt> strings. A label is display-only. When an
+        evidence digest is present, the verifier MUST recompute and compare
+        it before native verification.</li>
+        <li><tt>requirement</tt> (string, OPTIONAL) is a presenter-supplied
+        description. It MUST NOT become the relying party's sufficiency bar
+        and MUST NOT produce SATISFIED.</li>
+      </ul>
+      <t>The chain is a bundle, not an authority-bearing graph. Component
+      order is preserved for reporting, but order confers no semantics. All
+      credited relations between components come from integrity-protected
+      native bytes exposed by a trusted native verifier, never from labels,
+      ordering, or presenter-supplied edges.</t>
+    </section>
+
+    <section anchor="rp-requirement">
+      <name>The Relying-Party Evidence Requirement</name>
+      <t>Before returning SATISFIED, a verifier MUST receive an
+      EP-AEC-REQUIREMENT-v1 object from relying-party-controlled
+      configuration. The chain document cannot supply or weaken it.</t>
+      <sourcecode type="json"><![CDATA[
+{
+  "@version": "EP-AEC-REQUIREMENT-v1",
+  "requirement_id": "treasury-wire-evidence@7",
+  "purpose": "pre-execution evidence check",
+  "expression": "ep-quorum AND policy-permit",
+  "freshness_sec": {
+    "ep-quorum": 300,
+    "policy-permit": 600
+  },
+  "status_required": ["ep-quorum"],
+  "required_bindings": [
+    {
+      "from_type": "policy-permit",
+      "relation": "permits",
+      "to_type": "ep-quorum"
+    }
+  ]
+}
+]]></sourcecode>
+      <ul>
+        <li><tt>@version</tt> MUST equal
+        <tt>EP-AEC-REQUIREMENT-v1</tt>.</li>
+        <li><tt>requirement_id</tt> is a relying-party identifier for the exact
+        evidence requirement revision. It carries no authority by itself.</li>
+        <li><tt>purpose</tt> is descriptive and MUST NOT alter expression
+        evaluation.</li>
+        <li><tt>expression</tt> is REQUIRED and follows
+        <xref target="expressions"/>.</li>
+        <li><tt>freshness_sec</tt> is an OPTIONAL map from component type to a
+        non-negative maximum age in seconds.</li>
+        <li><tt>status_required</tt> is an OPTIONAL array of component types
+        for which a fresh authenticated status result is required.</li>
+        <li><tt>required_bindings</tt> is an OPTIONAL array of
+        <tt>from_type</tt>, <tt>relation</tt>, and <tt>to_type</tt> triples.
+        Each triple requires at least one eligible source component whose
+        native verified bytes bind, under that relation, the evidence digest
+        of an eligible target component of the named type.</li>
+      </ul>
+      <t>The verifier MUST compute the requirement profile digest over the JCS
+      serialization of the complete requirement object. The requirement
+      object controls evidence sufficiency only. Application rules about
+      amounts, destinations, operator permissions, legal authority, risk
+      acceptance, or whether to execute remain in the separate local
+      authorization policy.</t>
+    </section>
+
+    <section anchor="acceptance-inputs">
+      <name>Relying-Party Acceptance Inputs</name>
+      <t>Internal agreement among presenter-supplied artifacts cannot satisfy
+      a relying party. The verifier MUST receive these values from trusted
+      configuration or from the protected boundary that is about to act:</t>
+      <ul>
+        <li>the EP-AEC-REQUIREMENT-v1 object;</li>
+        <li>the expected Action Object or its independently computed canonical
+        action digest;</li>
+        <li>an expected CAID and mapping profiles when cross-format action
+        mapping is used;</li>
+        <li>an explicit verification time;</li>
+        <li>the native verifier revisions, trust anchors, audiences, freshness
+        inputs, and status sources selected for each component type; and</li>
+        <li>documented resource limits for parsing, nesting, component count,
+        expression size, and verifier execution.</li>
+      </ul>
+      <t>These values MUST NOT be taken from the presented chain or from an
+      untrusted caller. If any required input is absent, malformed, ambiguous,
+      or outside its configured validity, the result is UNSATISFIED.</t>
+    </section>
+
+    <section anchor="native-contract">
+      <name>Native Verification and Normalized Facts</name>
+      <t>AEC does not reinterpret a native signature or token. For each
+      component, a relying-party-selected native verifier first returns a
+      bounded internal result containing:</t>
+      <ul>
+        <li>native validity and a machine-readable failure reason;</li>
+        <li>the integrity-protected native action commitment, if any;</li>
+        <li>the protected issuance and expiration instants needed by the
+        selected freshness check;</li>
+        <li>the protected issuer, audience, and format revision relevant to
+        the selected native profile;</li>
+        <li>an authenticated status result and status-snapshot digest when
+        status checking is required; and</li>
+        <li>zero or more relation and target-evidence-digest bindings extracted
+        from integrity-protected native fields.</li>
+      </ul>
+      <t>A component reaches VERIFIED only when its native verifier succeeds.
+      AEC MUST NOT accept a presenter's <tt>verified</tt> Boolean, normalized
+      fact, mapping result, key, trust anchor, status assertion, or relation as
+      a substitute for native verification.</t>
+      <t>A deployment in which a protected boundary performs native
+      verification before calling the AEC evaluator MAY pass the verifier
+      results internally instead of repeating the cryptographic work. Such
+      results MUST be integrity-bound inside the same trust boundary to the
+      exact evidence digest, native verifier profile digest, trust snapshot,
+      and verification time. Serialized results received from the presenter
+      are evidence artifacts of their own and require a native verifier; they
+      are not trusted internal results.</t>
+    </section>
+
+    <section anchor="matching">
+      <name>Material-Action Matching</name>
+      <t>Native verification and material-action matching are distinct and
+      ordered. Mapping MUST NOT inspect unverified claims as authoritative
+      input.</t>
+      <ol>
+        <li>The boundary computes the expected action digest from the frozen
+        action it is actually preparing to perform.</li>
+        <li>The native verifier verifies the component and exposes only its
+        integrity-protected native action commitment.</li>
+        <li>If that commitment uses the same action representation and digest
+        algorithm, exact digest equality establishes MATCH.</li>
+        <li>Otherwise, a relying-party-pinned Action-Mapping Profile from
+        <xref target="CAID"/> projects the verified native payload to the
+        expected CAID action type. Only the CAID verdict
+        EQUIVALENT_UNDER_PROFILE establishes MATCH.</li>
+      </ol>
+      <t>NOT_EQUIVALENT, INDETERMINATE, an unknown mapping revision, a lossy
+      projection, a presenter-selected profile, or a mismatch between the
+      projected CAID and the expected CAID is not MATCH and MUST make that
+      component ineligible. CAID carries content identity, not trust or
+      authorization semantics.</t>
+    </section>
+
+    <section anchor="expressions">
+      <name>Requirement Expressions</name>
+      <t>The expression grammar uses ABNF and its core rules as defined by
+      <xref target="RFC5234"/>:</t>
+      <sourcecode type="abnf"><![CDATA[
+expr     = term *(WS operator WS term)
+term     = ident / "(" WS expr WS ")"
+operator = "AND" / "OR" / "&&" / "||"
+ident    = 1*(ALPHA / DIGIT / "." / ":" / "-" / "_")
+WS       = *(SP / HTAB / CR / LF)
+]]></sourcecode>
+      <t>An identifier matches a component type with at least one eligible
+      component. An unknown identifier evaluates to false. Implementations
+      MUST use a bounded parser and MUST NOT use a general-purpose evaluator.
+      AND and OR have equal binding strength and are evaluated strictly from
+      left to right. Parentheses are the only precedence mechanism.</t>
+      <t>This expression deliberately answers only which evidence roles are
+      present. It has no variables for action parameters, principals,
+      entitlements, business risk, or effect state. Those belong to native
+      artifact verification, CAID mapping, or local authorization.</t>
+    </section>
+
+    <section anchor="verify">
+      <name>Verification Algorithm</name>
+      <t>Given chain C and the acceptance inputs in
+      <xref target="acceptance-inputs"/>, a verifier MUST proceed
+      fail-closed:</t>
+      <ol>
+        <li>Strictly parse C as I-JSON <xref target="RFC7493"/> and enforce all
+        configured resource limits. Reject duplicate member names,
+        non-integer numbers, malformed Unicode, cycles in an in-memory object,
+        and unsupported versions.</li>
+        <li>Compute the canonical action digest over C.action. Compare it with
+        the executor-owned expected action digest. If C.action_digest is
+        present, compare it too. Any mismatch yields UNSATISFIED.</li>
+        <li>Validate and digest the relying-party requirement. If the only
+        available requirement came from C, yield UNSATISFIED.</li>
+        <li><t>For each component in array order:</t>
+          <ol type="a">
+            <li>Compute its evidence digest. If a presented evidence digest
+            exists and differs, mark the component ineligible.</li>
+            <li>Invoke the selected native verifier or consume a trusted
+            internal verifier result as constrained by
+            <xref target="native-contract"/>. Exceptions and unknown verifier
+            types make the component ineligible.</li>
+            <li>Only after native VERIFIED, establish material-action MATCH
+            under <xref target="matching"/>. A different or indeterminate
+            action makes the component ineligible.</li>
+            <li>If the requirement sets a freshness bound for the component
+            type, require protected issuance time, verification time within
+            the native validity window, and age not exceeding the bound.
+            Future-issued, expired, missing, or malformed times make the
+            component ineligible.</li>
+            <li>If status is required for the component type, require an
+            authenticated, sufficiently fresh status snapshot under the
+            selected native profile. Revoked, unknown, stale, or
+            unauthenticated status makes the component ineligible.</li>
+            <li>Record a normalized fact including component index, type,
+            evidence digest, native verifier profile digest, native validity,
+            mapping verdict, freshness and status results, and only the
+            byte-backed bindings returned by the native verifier.</li>
+          </ol>
+        </li>
+        <li>Construct the satisfied type set from eligible components only and
+        evaluate the relying-party expression.</li>
+        <li>For every required binding, require an eligible source and target
+        pair with matching types and a source native fact whose named relation
+        binds the target's exact evidence digest. A label, component order,
+        equal action digest, or presenter's relation claim does not satisfy a
+        required binding.</li>
+        <li>Return SATISFIED only if the expression is true, every required
+        binding exists, and every mandatory acceptance check succeeded.
+        Otherwise return UNSATISFIED.</li>
+        <li>Produce the replay record in <xref target="replay"/>. Any
+        unexpected error at any step yields UNSATISFIED and a bounded reason;
+        it MUST NOT yield a partial success.</li>
+      </ol>
+      <t>The result MUST carry <tt>satisfied</tt> as a Boolean and SHOULD carry
+      bounded per-component reason codes. An implementation may retain a
+      legacy <tt>allow</tt> alias, but that alias MUST equal
+      <tt>satisfied</tt> and MUST NOT be interpreted as local AUTHORIZED.</t>
+    </section>
+
+    <section anchor="replay">
+      <name>Evidence Evaluation Replay</name>
+      <t>An evaluator MUST be able to emit an EP-AEC-REPLAY-v1 record. The
+      replay record is an evaluation output, not a presenter input:</t>
+      <sourcecode type="json"><![CDATA[
+{
+  "@version": "EP-AEC-REPLAY-v1",
+  "aec_digest": "sha256:<hex>",
+  "expected_action_digest": "sha256:<hex>",
+  "expected_caid": "caid:1:<action-type>:<suite>:<digest-b64url>",
+  "requirement_profile_digest": "sha256:<hex>",
+  "verification_time": "2026-07-27T17:00:00Z",
+  "facts": [ { "...": "normalized evidence fact" } ],
+  "satisfied": true,
+  "reasons": []
+}
+]]></sourcecode>
+      <t>The <tt>aec_digest</tt> is the evidence digest of the complete
+      EP-AEC-v1 object. Facts remain in component array order. Object members
+      inside each fact use JCS ordering. The replay digest is the evidence
+      digest of the complete EP-AEC-REPLAY-v1 record.</t>
+      <t>Given the same AEC object, expected action inputs, requirement
+      profile, explicit verification time, normalized native facts, and
+      algorithm revision, implementations MUST compute the same replay digest
+      and SATISFIED result. Native verification can depend on trust snapshots
+      or status services; therefore the replay record MUST bind the selected
+      verifier-profile and status-snapshot digests needed to identify those
+      inputs. A replay record without the underlying evidence and identified
+      trust snapshots can identify a decision but cannot independently prove
+      that every recorded native fact was true.</t>
+      <t>The replay digest is not a signature, authorization, transparency
+      receipt, or current-status proof. Another format MAY sign or log it. This
+      document intentionally defines no signed reliance-result envelope and no
+      legal meaning for a SATISFIED result.</t>
+    </section>
+
+    <section anchor="human-leg">
+      <name>Human-Authorization Components</name>
+      <t>AEC does not infer that a generic operator signature, credential,
+      policy decision, or attested workload represents a named-human approval
+      ceremony. A relying party that needs an EMILIA human authorization or
+      quorum requires <tt>ep-receipt</tt> or <tt>ep-quorum</tt> explicitly.</t>
+      <t>The <tt>ep-receipt</tt> built-in MUST accept only a Trust Receipt under
+      a relying-party profile that pins the approver directory, accepted key
+      class, WebAuthn RP ID and signed-origin allowlist where required, policy
+      hash, log key, maximum evidence age, verification time, and fresh
+      registry snapshot as specified by <xref target="EP-RECEIPTS"/>. A bare
+      operator envelope is not an <tt>ep-receipt</tt> human leg.</t>
+      <t>The <tt>ep-quorum</tt> built-in MUST compare the presented quorum
+      policy with the relying-party-pinned policy and enforce the selected
+      approver, role, distinctness, origin, ordering, and freshness rules of
+      <xref target="EP-QUORUM"/>. A safety-critical profile requiring human
+      separation MUST require at least two distinct humans. A valid quorum
+      under presenter-selected keys or a weaker presenter-selected policy is
+      ineligible.</t>
+      <t>Credential validity and human operation remain distinct. A valid
+      credential identifies a key holder under its native profile; it does not
+      establish that a human operated an agent for this action, reviewed the
+      material fields, or held legal authority.</t>
+    </section>
+
+    <section anchor="bounded-capability-leg">
+      <name>Bounded-Capability Operation Components</name>
+      <t>A static bounded-capability receipt authorizes capability issuance
+      and MUST NOT be treated as bound to every later exercise merely because
+      the proposed action falls within its scope.</t>
+      <t>A <tt>bounded-capability-operation</tt> component is eligible only
+      when its native verified operation record binds the exact action and the
+      native verifier validates the referenced capability, issuance
+      authorization, scope result, and operation record. AEC does not query or
+      reserve current budget. A capability component MUST NOT satisfy
+      <tt>ep-receipt</tt>, <tt>ep-quorum</tt>, or another human role.</t>
+    </section>
+
+    <section anchor="aeb-lifecycle">
+      <name>Position in the Effect-Boundary Lifecycle</name>
+      <t>AEC occupies one deliberately narrow transition in the effect-boundary
+      lifecycle described by <xref target="EP-AEB"/>:</t>
+      <sourcecode type="text"><![CDATA[
+native VERIFIED
+  -> material-action MATCH
+  -> AEC SATISFIED
+  -> local AUTHORIZED
+  -> atomic CONSUMED or RESERVED
+  -> INVOKED
+  -> EXECUTED, FAILED, or INDETERMINATE
+]]></sourcecode>
+      <t>AEC can orchestrate native verification and mapping itself or consume
+      trusted internal results from the same protected boundary. In both
+      arrangements, VERIFIED precedes MATCH, and both precede SATISFIED. AEC
+      MUST NOT collapse SATISFIED into AUTHORIZED, consume an authorization,
+      invoke an effect, classify an outcome, or reconcile an indeterminate
+      effect.</t>
+      <t>One-time consumption is stateful and remains at the effect boundary.
+      An offline SATISFIED result cannot prove that another executor has not
+      already acted. A consequential executor uses shared atomic state keyed
+      by an executor-derived action instance and preserves an uncertain
+      operation instead of blindly replaying it.</t>
+    </section>
+
+    <section anchor="security">
+      <name>Security Considerations</name>
+      <t><strong>Presenter-selected sufficiency.</strong> A presenter can
+      construct a weak requirement that its own evidence satisfies. The
+      EP-AEC-REQUIREMENT-v1 object MUST come from relying-party configuration.
+      C.requirement is descriptive only.</t>
+      <t><strong>Presenter-selected action.</strong> Agreement among components
+      proves only internal agreement. The expected action digest and CAID must
+      be computed or selected by the protected boundary from the action it is
+      actually preparing to perform.</t>
+      <t><strong>Cross-binding.</strong> An attacker can splice individually
+      valid artifacts for different actions. Native verification before
+      mapping and exact MATCH for each eligible component are required. A
+      label, shared principal, shared session, or similar-looking parameter is
+      not a match.</t>
+      <t><strong>Unbacked relations.</strong> A presenter can claim that one
+      artifact permits, delegates to, records, or supersedes another. AEC
+      credits a relation only when the trusted native verifier extracts the
+      target evidence digest and relation from integrity-protected native
+      bytes. An unbacked relation never satisfies a required binding.</t>
+      <t><strong>Verifier and key-role confusion.</strong> Native verifiers,
+      revisions, trust anchors, mapping profiles, and human directories are
+      relying-party pins. They MUST NOT be accepted in the same transaction as
+      presenter-controlled evidence. A key trusted for one component role
+      does not automatically satisfy another role.</t>
+      <t><strong>Freshness and status.</strong> Message freshness, artifact
+      age, credential validity, credential revocation, authority revocation,
+      and policy revision are separate checks. A current credential does not
+      make old per-action evidence fresh. A replay record captures the checked
+      instant and snapshots; it does not establish current status later.</t>
+      <t><strong>Replay overclaiming.</strong> Deterministic replay shows that
+      the same normalized inputs produce the same evidence result. It is not a
+      refinement proof, a guarantee that a native verifier was correctly
+      implemented, or proof that the recorded external status snapshot was
+      honest.</t>
+      <t><strong>Resource exhaustion.</strong> Implementations MUST bound JSON
+      depth, node count, component count, string bytes, expression tokens and
+      depth, binding count, native verifier work, and diagnostic output. Any
+      bound exceeded is UNSATISFIED.</t>
+      <t><strong>Host-language and transport boundaries.</strong> Strict JSON
+      parsing must reject duplicate member names before ordinary object
+      construction can hide them. AEC inherits the confidentiality and
+      integrity properties of its transport. The evidence and frozen action
+      passed to later stages must not be mutable after evaluation.</t>
+      <t><strong>Signature overclaiming.</strong> A valid signature establishes
+      only the signer and statement semantics of the selected native profile.
+      It does not inherently prove a natural person's identity, human
+      operation, comprehension, legal authority, safety, execution, or
+      outcome.</t>
+    </section>
+
+    <section anchor="privacy">
+      <name>Privacy Considerations</name>
+      <t>An AEC bundle can reveal identities, organizational roles,
+      destinations, resources, policy choices, and timing. Presenters and
+      relying parties SHOULD disclose and retain only evidence needed by the
+      selected requirement. A plain digest of low-entropy personal data is not
+      anonymization.</t>
+      <t>The replay record SHOULD contain normalized facts and content digests,
+      not unnecessary raw evidence. Even those facts can reveal relationships
+      and decision timing. Access, retention, and correlation controls remain
+      deployment responsibilities.</t>
+    </section>
+
+    <section anchor="relationship">
+      <name>Relationship to Other Work</name>
+      <t>CAID <xref target="CAID"/> owns typed material-action identity and
+      exact, relying-party-pinned cross-format mapping. AEC uses CAID only
+      after native verification and does not add trust semantics to a CAID.</t>
+      <t>Authorization Receipts <xref target="EP-RECEIPTS"/> and Quorum
+      <xref target="EP-QUORUM"/> define two native human-authorization
+      components. AEC composes them without generalizing all evidence into
+      those formats.</t>
+      <t>The earlier Action Evidence Graph draft <xref target="EP-AEG"/>
+      described content-addressed graph references, relying-party evidence
+      policy replay, a five-verdict classification, policy packs, and a signed
+      reliance result. This revision incorporates the useful composition
+      substance into AEC: relying-party-owned evidence requirements,
+      content-digested components, byte-backed relations, normalized facts,
+      and a replay digest. It intentionally does not adopt the EP-AEG-v1 graph
+      envelope, five-verdict taxonomy, policy packs, or signed reliance-result
+      format.</t>
+      <t>If draft-schrock-ep-authorization-evidence-chain-04 is published, it
+      is intended to supersede draft-schrock-ep-action-evidence-graph-00 for
+      this evidence-composition and replay scope. Until publication, the
+      posted AEC-03 and AEG-00 remain their respective public snapshots; a
+      local staged source does not replace an Internet-Draft.</t>
+    </section>
+
+    <section anchor="iana">
+      <name>IANA Considerations</name>
+      <t>This document has no IANA actions. It creates no universal component,
+      relation, verifier, action-mapping, requirement, reason-code, or policy
+      registry.</t>
+    </section>
+
+    <section anchor="changes-04">
+      <name>Changes in -04</name>
+      <ul>
+        <li>Defined EP-AEC-REQUIREMENT-v1 so expression, freshness, status,
+        and required inter-artifact bindings are pinned by the relying party.</li>
+        <li>Defined normalized native facts and EP-AEC-REPLAY-v1 without
+        changing the EP-AEC-v1 component envelope or creating a signed
+        reliance-result format.</li>
+        <li>Made native VERIFIED, CAID material-action MATCH, AEC SATISFIED,
+        local AUTHORIZED, and effect outcomes distinct ordered states.</li>
+        <li>Required inter-artifact bindings to come from integrity-protected
+        native bytes rather than presenter-asserted graph edges.</li>
+        <li>Integrated the useful evidence-policy replay substance of AEG-00
+        while declining its separate graph envelope, policy packs, and
+        five-verdict taxonomy.</li>
+        <li>Clarified that AEG-00 is superseded for this scope only if -04 is
+        published.</li>
+      </ul>
+    </section>
+
+    <section anchor="impl">
+      <name>Implementation Status</name>
+      <t>The existing reference verifier implements the EP-AEC-v1 envelope,
+      native-verifier dispatch, exact action-digest binding, bounded Boolean
+      requirement evaluation, relying-party requirement precedence, built-in
+      human legs, and SATISFIED or UNSATISFIED. Same-team TypeScript, Python,
+      and Go implementations consume shared vectors; this is cross-language
+      consistency testing, not independent implementation.</t>
+      <t>The repository also contains an experimental implementation and tests
+      for content-digested evidence nodes, required byte-backed relations,
+      freshness evaluation, deterministic replay digests, and signed reliance
+      results from the earlier AEG design. As of this revision date, the
+      combined EP-AEC-REQUIREMENT-v1 and EP-AEC-REPLAY-v1 contract in this
+      document is not yet covered by the three-language AEC vector suite.
+      Therefore the repository MUST NOT be described as a complete conforming
+      implementation of -04 until those combined vectors and implementations
+      exist.</t>
+    </section>
+  </middle>
+
+  <back>
+    <references>
+      <name>Normative References</name>
+      <xi:include href="https://bib.ietf.org/public/rfc/bibxml/reference.RFC.2119.xml"/>
+      <xi:include href="https://bib.ietf.org/public/rfc/bibxml/reference.RFC.8174.xml"/>
+      <xi:include href="https://bib.ietf.org/public/rfc/bibxml/reference.RFC.5234.xml"/>
+      <xi:include href="https://bib.ietf.org/public/rfc/bibxml/reference.RFC.7493.xml"/>
+      <xi:include href="https://bib.ietf.org/public/rfc/bibxml/reference.RFC.8785.xml"/>
+      <reference anchor="CAID" target="https://datatracker.ietf.org/doc/draft-schrock-canonical-action-identifier/">
+        <front>
+          <title>The Canonical Action Identifier (CAID)</title>
+          <author fullname="Iman Schrock"><organization>EMILIA Protocol, Inc.</organization></author>
+          <date year="2026" month="July"/>
+        </front>
+        <seriesInfo name="Internet-Draft" value="draft-schrock-canonical-action-identifier-01"/>
+      </reference>
+      <reference anchor="EP-RECEIPTS" target="https://datatracker.ietf.org/doc/draft-schrock-ep-authorization-receipts/">
+        <front>
+          <title>Authorization Receipts for High-Risk Agent Actions</title>
+          <author fullname="Iman Schrock"><organization>EMILIA Protocol, Inc.</organization></author>
+          <date year="2026" month="July"/>
+        </front>
+        <seriesInfo name="Internet-Draft" value="draft-schrock-ep-authorization-receipts-08"/>
+      </reference>
+      <reference anchor="EP-QUORUM" target="https://datatracker.ietf.org/doc/draft-schrock-ep-quorum/">
+        <front>
+          <title>Multi-Party Quorum Authorization for High-Risk Agent Actions (EP-QUORUM)</title>
+          <author fullname="Iman Schrock"><organization>EMILIA Protocol, Inc.</organization></author>
+          <date year="2026" month="July"/>
+        </front>
+        <seriesInfo name="Internet-Draft" value="draft-schrock-ep-quorum-03"/>
+      </reference>
+    </references>
+    <references>
+      <name>Informative References</name>
+      <reference anchor="EP-AEG" target="https://datatracker.ietf.org/doc/draft-schrock-ep-action-evidence-graph/">
+        <front>
+          <title>Action Evidence Graphs and Evidence Policy Replay for High-Risk Agent Actions (EP-AEG)</title>
+          <author fullname="Iman Schrock"><organization>EMILIA Protocol, Inc.</organization></author>
+          <date year="2026" month="July"/>
+        </front>
+        <seriesInfo name="Internet-Draft" value="draft-schrock-ep-action-evidence-graph-00"/>
+      </reference>
+      <reference anchor="EP-AEB">
+        <front>
+          <title>The Action Evidence Boundary for Consequential Agent Effects</title>
+          <author fullname="Iman Schrock"><organization>EMILIA Protocol, Inc.</organization></author>
+          <date year="2026" month="July"/>
+        </front>
+        <seriesInfo name="Internet-Draft" value="draft-schrock-action-evidence-boundary-00"/>
+      </reference>
+    </references>
+    <section anchor="acknowledgments" numbered="false">
+      <name>Acknowledgments</name>
+      <t>Review of adjacent work sharpened the separation among native
+      validity, cross-format action mapping, evidence satisfaction, local
+      authorization, credential status, human operation, and effect truth.
+      Acknowledgment does not imply endorsement.</t>
+    </section>
+  </back>
+</rfc>

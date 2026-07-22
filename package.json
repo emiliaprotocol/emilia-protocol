@@ -41,6 +41,7 @@
     "typecheck": "npm run typecheck:core && npm run typecheck:lib && npm run typecheck:rest && npm run typecheck:app && npm run typecheck:secure-app && npm run typecheck:declarations && npm run typecheck:sdk",
     "check:protocol": "node scripts/check-protocol-discipline.js && node scripts/check-write-discipline.js",
     "check:write-discipline": "node scripts/check-write-discipline.js",
+    "check:repository-boundary": "node scripts/check-repository-boundary.js",
     "check:demo-key": "node scripts/check-demo-key-isolation.js",
     "check:admissibility": "node scripts/check-admissibility-registry.mjs",
     "check:security-case": "node scripts/verify-security-case.mjs --execute",
@@ -138,9 +139,14 @@
     "zod": "^4.4.3"
   },
   "overrides": {
+    "@hono/node-server": "2.0.10",
+    "body-parser": "2.3.0",
+    "fast-uri": "3.1.4",
+    "hono": "4.12.27",
     "rollup": "^4.22.5",
     "postcss": "^8.5.12",
     "qs": "^6.15.2",
+    "sharp": "0.35.3",
     "ws": "^8.21.0"
   },
   "devDependencies": {

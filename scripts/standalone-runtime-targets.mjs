@@ -114,6 +114,7 @@ export const STANDALONE_RUNTIME_SOURCES = [
   'scripts/check-protocol-discipline.ts',
   'scripts/check-public-conformance-claims.mts',
   'scripts/check-release-chain.mts',
+  'scripts/check-repository-boundary.ts',
   'scripts/check-runtime-bridge.mts',
   'scripts/check-write-discipline.ts',
   'scripts/create-ep-profile.mts',

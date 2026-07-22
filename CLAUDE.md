@@ -6,7 +6,7 @@
 - Do not infer current behavior or standards status from archived, staged, private, or randomly sampled documents.
 
 ## Critical
-- **This repo is PUBLIC.** Everything tracked is world-readable. Business, strategy, GTM, investor, fundraising, outreach, competitive, and pitch material never goes in tracked paths; it belongs in docs/strategy-private/ (gitignored) or outside the repo entirely. When in doubt, don't `git add` it.
+- **This repo is PUBLIC.** Everything tracked is world-readable. Business, strategy, GTM, investor, fundraising, outreach, competitive, and pitch material belongs in the private `emiliaprotocol/emilia-company` repository, never in tracked paths here. `docs/strategy-private/` remains ignored only as a compatibility safeguard, not as a source of truth. Run `npm run check:repository-boundary` before publishing. When in doubt, don't `git add` it.
 - **main == production within minutes.** Multiple agent sessions commit and push this same checkout in near-real-time, so a local commit is NOT a hold. Anything that must not publish yet goes on a branch or stays outside the repo. Re-fetch before reasoning about origin state.
 - Branch protection is off by owner decision: work directly on main and push each verified chunk.
 
@@ -30,3 +30,4 @@ This repo owns the VERIFIED-vs-ACCEPTED and reproduction-vs-independent distinct
 - Gate (productized enforcement point): packages/gate
 - MCP server: mcp-server/
 - Capability map: docs/CAPABILITY-MAP.md
+- Repository disclosure boundary: docs/REPOSITORY-BOUNDARIES.md

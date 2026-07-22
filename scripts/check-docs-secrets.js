@@ -154,12 +154,15 @@ const SAFE_HOSTS = new Set([
     "w3.org",
     "apache.org",
     "iso.org",
+    "hl7.org",
+    "aiuc-1.com",
     // Government / grant-program domains (referenced in archived grant/application drafts)
     "nsf.gov",
     "sam.gov",
     "research.gov",
     "darpa.mil",
     "nist.gov",
+    "legislature.ca.gov",
     // Energy / grid reference bodies (cited for macro stats in the GRACE docs)
     "iea.org",
     "nerc.com",

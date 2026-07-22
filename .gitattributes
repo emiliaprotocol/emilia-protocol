@@ -135,6 +135,7 @@ scripts/check-preprint-sync.mjs linguist-generated=true
 scripts/check-protocol-discipline.js linguist-generated=true
 scripts/check-public-conformance-claims.mjs linguist-generated=true
 scripts/check-release-chain.mjs linguist-generated=true
+scripts/check-repository-boundary.js linguist-generated=true
 scripts/check-runtime-bridge.mjs linguist-generated=true
 scripts/check-write-discipline.js linguist-generated=true
 scripts/create-ep-profile.mjs linguist-generated=true

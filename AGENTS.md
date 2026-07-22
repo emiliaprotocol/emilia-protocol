@@ -23,6 +23,10 @@ design notes.
   filename does not establish current standards status.
 - `standards/archive/**` is historical. `standards/staged/**` is not proof of
   submission. Private strategy and outreach documents are not product status.
+- Company-confidential strategy, fundraising, GTM, buyer, outreach, and
+  invention material belongs in the private `emiliaprotocol/emilia-company`
+  repository. See `docs/REPOSITORY-BOUNDARIES.md` and run
+  `npm run check:repository-boundary` before publishing.
 - Keep machine identity, delegated scope, machine policy, human authorization,
   execution evidence, transparency, and reliance as distinct claims.
 - Never upgrade a time-pinned external result to a newer vector bundle.

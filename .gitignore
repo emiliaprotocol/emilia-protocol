@@ -71,8 +71,9 @@ docs/ip/
 # until deliberately published (git add -f when ready).
 docs/grace-raise/
 
-# Local strategy stash — targeting plans and build direction (competitive
-# intel; the public repo must never carry the parcel map or the build queue).
+# Compatibility safeguard only. The source of truth for targeting plans,
+# commercial strategy, and private operating material is the private
+# emiliaprotocol/emilia-company repository.
 docs/strategy-private/
 
 # ── Private business material (2026-07-05) — NOT the open protocol ──

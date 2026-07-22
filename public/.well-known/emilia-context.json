@@ -1,9 +1,9 @@
 {
   "@version": "EMILIA-REPO-CONTEXT-v1",
-  "evidence_snapshot_at": "2026-07-21T18:14:45.941Z",
+  "evidence_snapshot_at": "2026-07-22T00:45:41.487Z",
   "provenance": {
     "generator": "scripts/generate-llm-context.mjs",
-    "input_digest_sha256": "35be771e132b93e941a98e6fa833791d55b4b21367d0e7475466055ce234554f",
+    "input_digest_sha256": "8eb8647cf61d6d6cda8702e31ace778a852e8be76ec8b044f362eea025a5fb78",
     "generated_from": [
       {
         "path": "docs/ai/context-source.v1.json",
@@ -17,7 +17,7 @@
       },
       {
         "path": "lib/proof-stats.json",
-        "sha256": "d74b09189a7cf17c43b34997fea0ef01cdc99e7e7744dc02bb7b7c49700925c1",
+        "sha256": "a88974bc489391a7ee7a1331c01f54ca6ad4312e321fb1786fe3861b95ea5708",
         "bytes": 1068
       },
       {
@@ -47,8 +47,8 @@
       },
       {
         "path": "standards/STATUS.json",
-        "sha256": "80163ed66fde219f2d30d4ff8259d890812bb73afa8a74cd045cc022ce84136e",
-        "bytes": 15665
+        "sha256": "bf80223a9cbbbca49c65326c038ac8872b211ffdad69cd59b9dcd3dc3dbd99ea",
+        "bytes": 15914
       },
       {
         "path": "caid/conformance/vectors.json",
@@ -256,8 +256,8 @@
   ],
   "current_evidence": {
     "automated_tests": {
-      "total": 7407,
-      "files": 385,
+      "total": 7422,
+      "files": 387,
       "policy": "all platform-applicable cases must pass; platform-specific cases may skip"
     },
     "cross_language_conformance": {
@@ -3181,7 +3181,7 @@
     }
   ],
   "standards_portfolio": {
-    "updated": "2026-07-19",
+    "updated": "2026-07-21",
     "decision_vocabulary": {
       "VERIFIED": "One artifact passed its native verifier under relying-party-selected trust inputs.",
       "MATCH": "Independently verified artifacts denote the same material action directly or under exact pinned mapping profiles.",
