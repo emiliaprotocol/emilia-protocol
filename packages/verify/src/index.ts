@@ -28,6 +28,7 @@ export {
   deriveAuthorityProgramPredecessors,
   verifyAuthorityProgram,
 } from './authority-program.js';
+export * from './aeb-adapter-contract.js';
 export {
   OUTCOME_ATTESTATION_VERSION,
   OUTCOME_ATTESTATION_DOMAIN,

@@ -284,6 +284,11 @@ export {
   REMEDY_PROGRAM_POSTGRES_SQL,
   createRemedyProgramPostgresStore,
 } from './remedy-program-postgres.js';
+export {
+  PROPOSAL_TO_EFFECT_VERSION,
+  proposalToEffectConsumptionNonce,
+  createProposalToEffect,
+} from './proposal-to-effect.js';
 export const ASSURANCE_TIERS = ['software', 'class_a', 'quorum'];
 const TIER_RANK = { software: 0, class_a: 1, quorum: 2 };
 const CAPABILITY_FAILURE_STATUS = 409;

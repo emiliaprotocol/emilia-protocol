@@ -14,6 +14,13 @@ declare function webauthnOrigin(webauthn: any): string | null;
 declare function validUnicodeString(value: any): boolean;
 declare function boundedJson(value: any): boolean;
 /**
+ * Built-in component verifiers. Each takes (evidence, ctx) and returns
+ * { valid: boolean, action_digest: string|null, detail?: any }.
+ * `action_digest` is the digest the component ITSELF attests it authorized — the
+ * chain then checks every component's attested digest equals the chain's digest.
+ */
+declare function builtinVerifiers(): Obj;
+/**
  * Evaluate a tiny boolean requirement expression over the SET of verified
  * component types. Grammar (safe, no eval):
  *   expr = term *(("AND"/"OR"/"&&"/"||") term)
@@ -30,6 +37,10 @@ declare function evalRequirement(expr: any, satisfied: Set<string>): Obj;
  */
 export declare function verifyAuthorizationChain(aec: Obj, opts?: Obj): Obj;
 export declare const __aecSecurityInternals: Readonly<{
+    builtinVerifiers: typeof builtinVerifiers;
+    isRecord: (v: any) => boolean;
+    own: (obj: any, key: string) => boolean;
+    sha256hex: (s: string) => string;
     normDigest: typeof normDigest;
     strictInstantMs: typeof strictInstantMs;
     freshAt: typeof freshAt;

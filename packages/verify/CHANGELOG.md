@@ -3,6 +3,24 @@
 All notable changes to `@emilia-protocol/verify` are documented here.
 This package follows [Semantic Versioning](https://semver.org/).
 
+## 3.13.0 (2026-07-22)
+
+### Added
+
+- `./aeb-adapter-contract`, the relying-party-pinned evidence-adapter boundary
+  with deterministic native verification, loss-detecting CAID mapping,
+  signed and re-derivable evaluation records, and durable execution lifecycle.
+- First-class AEB requirement terms for distinct-human quorum,
+  initiator exclusion, and mandatory one-time consumption.
+
+### Security
+
+- Native verification, relying-party acceptance, evidence satisfaction, and
+  local authorization remain separate states. Presenter-selected adapters,
+  trust roots, mappings, registries, or requirements are refused.
+- Stale, revoked, unavailable, materially lossy, mismatched, non-rederivable,
+  or replayed evidence fails closed before execution.
+
 ## 3.12.0 (2026-07-21)
 
 ### Added
