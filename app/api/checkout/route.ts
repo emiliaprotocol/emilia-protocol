@@ -8,7 +8,9 @@ export const runtime = 'nodejs';
 /**
  * POST /api/checkout
  *
- * Creates a Stripe Checkout Session for an EMILIA Gate Cloud plan and returns its URL.
+ * Legacy, unlinked checkout for historical EMILIA Gate Cloud subscriptions.
+ * The current public offer is a fixed-scope managed pilot followed by a
+ * production contract; /pricing intentionally does not call this endpoint.
  *
  * The secret key and Price IDs are read from server-side env — never from the
  * client, never hardcoded. Run `scripts/stripe-setup.mjs` (with your own

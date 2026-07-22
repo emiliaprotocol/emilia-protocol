@@ -1,4 +1,10 @@
-# Stripe / EMILIA Gate Cloud billing — setup runbook
+# Legacy Stripe / EMILIA Gate Cloud billing — inactive runbook
+
+> **Not the current public Gate offer.** The public pricing path is the fixed
+> $25,000 managed pilot followed by a production contract scoped by protected
+> workflow, deployment boundary, retention, integrations, and service level.
+> `/pricing` does not link to these historical Team or Business subscriptions.
+> Do not activate them for new customers without an approved offer change.
 
 The site is wired for two billing paths. Pick one (or both). **Neither requires
 pasting a secret key into a chat or a file you commit.**
@@ -36,7 +42,8 @@ expose and need no secret key in the app.
    vercel env add NEXT_PUBLIC_STRIPE_CLOUD_BUSINESS production   # https://buy.stripe.com/...
    ```
 
-3. Redeploy. The `/pricing` "EMILIA Gate Cloud" CTA now links straight to checkout.
+3. A redeploy only makes the historical link available to code that explicitly
+   uses the environment variable. The current `/pricing` page does not use it.
 
 ---
 
@@ -53,9 +60,9 @@ Use this if you want the checkout to launch from your own button/flow.
    vercel env add STRIPE_PRICE_CLOUD_BUSINESS production   # price_...
    ```
 
-3. Redeploy. `POST /api/checkout { "plan": "team" }` returns `{ url }`; until the
-   env is set it returns `503 checkout_unconfigured` and the page falls back to
-   "request early access" — so nothing breaks before billing is live.
+3. `POST /api/checkout { "plan": "team" }` returns `{ url }`; until the env is
+   set it returns `503 checkout_unconfigured`. This endpoint is retained for
+   historical integrations and is not linked from the current pricing page.
 
 ---
 
