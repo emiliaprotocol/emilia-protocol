@@ -54,9 +54,10 @@ function decodeEncryptionKey(raw: unknown): Buffer | null {
 }
 
 function encryptionKeyring(): EncryptionKeyring {
-  const serialized = process.env.EP_APPROVAL_TOKEN_ENCRYPTION_KEYRING;
-  if (serialized === undefined) {
-    const legacyKey = decodeEncryptionKey(getApprovalAcquisitionConfig().tokenEncryptionKey);
+  const config = getApprovalAcquisitionConfig();
+  const serialized = config.tokenEncryptionKeyring;
+  if (serialized === null) {
+    const legacyKey = decodeEncryptionKey(config.tokenEncryptionKey);
     if (!legacyKey) throw new Error('approval_token_encryption_key_unavailable');
     return { activeKeyId: 'legacy-v1', keys: new Map([['legacy-v1', legacyKey]]) };
   }
@@ -83,7 +84,7 @@ function encryptionKeyring(): EncryptionKeyring {
     }
     keys.set(keyId, key);
   }
-  const activeKeyId = process.env.EP_APPROVAL_TOKEN_ENCRYPTION_ACTIVE_KEY_ID || '';
+  const activeKeyId = config.tokenEncryptionActiveKeyId || '';
   if (!APPROVAL_TOKEN_KEY_ID_PATTERN.test(activeKeyId) || !keys.has(activeKeyId)) {
     throw new Error('approval_token_encryption_key_unavailable');
   }

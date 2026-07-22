@@ -515,10 +515,14 @@ export function getPublicBaseUrl(): string {
  */
 export function getApprovalAcquisitionConfig(): {
   tokenEncryptionKey: string | null;
+  tokenEncryptionKeyring: string | null;
+  tokenEncryptionActiveKeyId: string | null;
   publicOrigin: string | null;
 } {
   return {
     tokenEncryptionKey: process.env.EP_APPROVAL_TOKEN_ENCRYPTION_KEY || null,
+    tokenEncryptionKeyring: process.env.EP_APPROVAL_TOKEN_ENCRYPTION_KEYRING || null,
+    tokenEncryptionActiveKeyId: process.env.EP_APPROVAL_TOKEN_ENCRYPTION_ACTIVE_KEY_ID || null,
     publicOrigin: process.env.EP_APPROVAL_PUBLIC_ORIGIN || null,
   };
 }

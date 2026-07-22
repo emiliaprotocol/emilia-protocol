@@ -327,4 +327,48 @@ describe('EP-APPROVAL-v1 terminal evidence', () => {
       reconciliation: { state: 'required', retry_safe: false },
     });
   });
+
+  it('fails closed at every malformed timeline boundary and preserves deterministic expiry', () => {
+    const now = new Date('2026-07-21T19:10:00.000Z');
+    expect(deriveApprovalStatus(
+      row({ status: 'refused', receipt_id: null }),
+      [],
+      new Date('2026-07-21T21:00:00.000Z'),
+    )).toEqual({ status: 'expired' });
+    expect(deriveApprovalStatus(row(), null as any, now))
+      .toEqual({ status: 'not_ready', reason: 'timeline_invalid' });
+    expect(deriveApprovalStatus(row(), Array.from({ length: 201 }, () => ({} as any)), now))
+      .toEqual({ status: 'not_ready', reason: 'timeline_invalid' });
+    expect(deriveApprovalStatus(row(), [], now))
+      .toEqual({ status: 'not_ready', reason: 'creation_evidence_invalid' });
+    expect(deriveApprovalStatus(row({ producer_key_id: null }), timeline(), now))
+      .toEqual({ status: 'not_ready', reason: 'producer_binding_unavailable' });
+
+    const missingAction = timeline();
+    delete missingAction[0].after_state.canonical_action;
+    expect(deriveApprovalStatus(row(), missingAction, now))
+      .toEqual({ status: 'not_ready', reason: 'receipt_binding_invalid' });
+
+    const missingRequest = timeline().filter((event) => event.event_type !== 'guard.signoff.requested');
+    expect(deriveApprovalStatus(row(), missingRequest, now))
+      .toEqual({ status: 'not_ready', reason: 'signoff_request_invalid' });
+
+    const missingDecisionTime = timeline();
+    delete missingDecisionTime[2].created_at;
+    expect(deriveApprovalStatus(row(), missingDecisionTime, now)).toEqual({ status: 'expired' });
+
+    const actorFallback = timeline();
+    delete actorFallback[2].after_state.approver_id;
+    expect(deriveApprovalStatus(row(), actorFallback, now).status).toBe('not_ready');
+
+    const missingCreationTime = timeline();
+    delete missingCreationTime[0].created_at;
+    const approved = deriveApprovalStatus(row(), missingCreationTime, now, {
+      signer: (payload) => ({ '@version': 'EP-RECEIPT-v1', payload, signature: { value: 'signed' } }),
+    });
+    expect(approved.status).toBe('approved');
+    if (approved.status === 'approved') {
+      expect(approved.receipt.payload.created_at).toBe(row().created_at);
+    }
+  });
 });

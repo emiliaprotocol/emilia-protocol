@@ -4,7 +4,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { generateKeyPairSync } from 'node:crypto';
-import { canonicalKeyFingerprint, createActionEscrowExecutionOutcomeVerifier, createActionEscrowTerminalOutcomeVerifier, createAecTrustProgramAdapter, createPinnedEvidenceAdapter, createQuorumTrustProgramAdapter, createReceiptProgramExecutionOutcomeVerifier, createReceiptProgramTerminalOutcomeVerifier, } from './src/trust-program-adapters.ts';
+import { canonicalKeyFingerprint, createActionEscrowExecutionOutcomeVerifier, createActionEscrowTerminalOutcomeVerifier, createAecTrustProgramAdapter, createPinnedEvidenceAdapter, createQuorumTrustProgramAdapter, createReceiptProgramExecutionOutcomeVerifier, createReceiptProgramTerminalOutcomeVerifier, } from './trust-program-adapters.js';
 import { TRUST_PROGRAM_VERSION, trustProgramDigest } from './trust-program.js';
 const HASH = (character) => `sha256:${character.repeat(64)}`;
 const POLICY_DIGEST = HASH('a');

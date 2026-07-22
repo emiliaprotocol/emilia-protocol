@@ -6,7 +6,7 @@ team@emiliaprotocol.ai
 
 *Preprint. July 2026.*
 
-*The construction analyzed here is also specified, in engineering form, as a set of individual Internet-Drafts (draft-schrock-ep-authorization-receipts-06 and companions). Those are individual submissions with no working-group status; this paper is self-contained and does not depend on them.*
+*The construction analyzed here is also specified, in engineering form, as a set of individual Internet-Drafts (draft-schrock-ep-authorization-receipts-08 and companions). Those are individual submissions with no working-group status; this paper is self-contained and does not depend on them.*
 
 ---
 
@@ -355,9 +355,9 @@ The following are published under the Apache-2.0 license in the EMILIA Protocol 
 
 ## References
 
-- I. Schrock, "Authorization Receipts for High-Risk Agent Actions," Internet-Draft draft-schrock-ep-authorization-receipts-06, work in progress, July 2026.
-- I. Schrock, "Multi-Party Human Authorization (EP-QUORUM)," Internet-Draft draft-schrock-ep-quorum-02, work in progress, July 2026.
-- I. Schrock, "Authorization Evidence Chains: Composing Heterogeneous Agent-Authorization Receipts (EP-AEC)," Internet-Draft draft-schrock-ep-authorization-evidence-chain-02, work in progress, July 2026.
+- I. Schrock, "Authorization Receipts for High-Risk Agent Actions," Internet-Draft draft-schrock-ep-authorization-receipts-08, work in progress, July 2026.
+- I. Schrock, "Multi-Party Human Authorization (EP-QUORUM)," Internet-Draft draft-schrock-ep-quorum-03, work in progress, July 2026.
+- I. Schrock, "Authorization Evidence Chains: Composing Heterogeneous Agent-Authorization Receipts (EP-AEC)," Internet-Draft draft-schrock-ep-authorization-evidence-chain-04, work in progress, July 2026.
 - I. Schrock, "Long-Term Evidence Records for Authorization Receipts (EP-EVIDENCE-RECORD)," Internet-Draft draft-schrock-ep-evidence-record-01, work in progress, July 2026.
 - S. Meier, B. Schmidt, C. Cremers, D. Basin, "The TAMARIN Prover for the Symbolic Analysis of Security Protocols," CAV 2013.
 - D. Dolev, A. C. Yao, "On the Security of Public Key Protocols," IEEE Transactions on Information Theory, 1983.

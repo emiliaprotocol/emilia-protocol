@@ -71,7 +71,7 @@ Page budgets exclude bibliography and should be treated as ceilings.
    - Dolev-Yao and symbolic-encoding assumptions; WebAuthn, directory, wall clock, and computational security exclusions.
 
 7. **Cross-language conformance and CI coupling — 2.0 pages**
-   - 21 suites, 328 vectors, three same-team reference ports.
+   - 21 suites, 329 vectors, three same-team reference ports.
    - CI jobs that execute models and cross-language vectors.
    - A worked drift example must be reconstructed from git history before submission; do not invent one from memory.
    - Explain why agreement is consistency evidence, not independent implementation evidence or formal refinement.

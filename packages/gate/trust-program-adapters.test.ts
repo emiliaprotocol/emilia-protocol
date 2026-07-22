@@ -13,7 +13,7 @@ import {
   createQuorumTrustProgramAdapter,
   createReceiptProgramExecutionOutcomeVerifier,
   createReceiptProgramTerminalOutcomeVerifier,
-} from './src/trust-program-adapters.ts';
+} from './trust-program-adapters.js';
 import { TRUST_PROGRAM_VERSION, trustProgramDigest } from './trust-program.js';
 
 const HASH = (character: string) => `sha256:${character.repeat(64)}`;

@@ -1,7 +1,7 @@
 # Financial Institutions Brief
 
 ## What's new (June 2026)
-- **21 suites / 328 vectors:** JavaScript, Python, and Go same-team ports agree on the public suite; a separately authored Rust verifier rebuilt from pinned public source passes the pinned 16-suite/164-vector clean-room bundle plus 359 hostile cases. Strict independently attested construction acceptance remains pending.
+- **21 suites / 329 vectors:** JavaScript, Python, and Go same-team ports agree on the public suite; a separately authored Rust verifier rebuilt from pinned public source passes the pinned 16-suite/164-vector clean-room bundle plus 359 hostile cases. Strict independently attested construction acceptance remains pending.
 - **Payment-redirect / BEC defense, demonstrably:** the payee account is *inside* the signed action, so swapping it after approval breaks verification rather than sailing through. Run `npx -y @emilia-protocol/crash-test --scenario procurement` to watch it reject a post-approval account swap, offline.
 - **Composition (EP-AEC):** EP composes delegation, policy-permit, and named-human receipts into one offline SATISFIED/UNSATISFIED evidence verdict. The financial executor separately authorizes the transaction, and can require both evidence legs to be satisfied first.
 
