@@ -260,6 +260,7 @@ examples/multi-handshake/compose-and-verify.mjs linguist-generated=true
 examples/ncpdp/derf-receipt-demo.mjs linguist-generated=true
 examples/ncpdp/specialty-pa-reliance-flow.mjs linguist-generated=true
 examples/oaip-oversight-receipt/demo.mjs linguist-generated=true
+examples/oauth-authorization-evidence/demo.mjs linguist-generated=true
 examples/proposal-to-effect/demo.mjs linguist-generated=true
 examples/receipt-program/demo.mjs linguist-generated=true
 examples/receipt-program/demo.test.mjs linguist-generated=true
