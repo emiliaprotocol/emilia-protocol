@@ -51,6 +51,24 @@ form Web Crypto expects). Call `isSupported()` to feature-detect.
 
 ## API
 
+### AEB evidence boundary — `@emilia-protocol/verify/aeb-adapter-contract`
+
+The AEB kernel verifies native evidence under relying-party-pinned adapters,
+maps every accepted leg through a pinned CAID profile, composes the legs through
+`EP-AEC-v1`, enforces distinct-human quorum and no-self-approval, and reserves
+the authorization before execution.
+
+Use `createAebNativeVerificationAttestationAdapter()` when a native protocol
+verifier runs at a workload gateway. Its signed attestation binds the native
+artifact digest, protocol, audience, subject, evidence role, mapper, resolver,
+CAID, and normalized-action digest. Presenter-selected roots, mappers, profiles,
+and unsigned gateway headers are not trusted.
+
+`InMemoryAebConsumptionStore` is test-only. Fleet execution uses
+`authorizeAebExecutionDurable()` and `reconcileAebExecutionDurable()` with the
+durable, ownership-fenced store contract implemented by
+`@emilia-protocol/gate`.
+
 ### `verifyReceipt(doc, publicKeyBase64url)`
 
 Verify an EP-RECEIPT-v1 document. Performs three independent checks:

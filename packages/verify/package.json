@@ -86,6 +86,10 @@
     "./authority-program": {
       "import": "./authority-program.js",
       "types": "./dist/authority-program.d.ts"
+    },
+    "./aeb-adapter-contract": {
+      "import": "./aeb-adapter-contract.js",
+      "types": "./dist/aeb-adapter-contract.d.ts"
     }
   },
   "files": [
@@ -123,6 +127,7 @@
     "outcome-binding.js",
     "authority-program.js",
     "authority-program.d.ts",
+    "aeb-adapter-contract.js",
     "effect-predicates.js",
     "cli.js",
     "index.d.ts",
@@ -157,7 +162,7 @@
   "scripts": {
     "build": "tsc -p tsconfig.json && node postbuild-ts-nocheck.mjs",
     "pretest": "npm run build",
-    "test": "node --test test.js web.test.js federation.test.js trust-receipt.test.js trust-receipt-knobs.test.js quorum.test.js revocation.test.js time-attestation.test.js no-symmetric.test.js cli.test.js evidence-chain.test.js platform-attestation.test.js agent-binding.test.js agentroa.test.js orprg.test.js outcome-binding.test.js authority-program.test.js consistency.test.js witness.test.js timestamp-proof.test.js currency.test.js consumption-proof.test.js initiator-attestation.test.js surface-binding.test.js consent-grant.test.js resolution.test.js document-action-binding.test.js pq-hybrid.test.js"
+    "test": "node --test test.js web.test.js federation.test.js trust-receipt.test.js trust-receipt-knobs.test.js quorum.test.js revocation.test.js time-attestation.test.js no-symmetric.test.js cli.test.js evidence-chain.test.js platform-attestation.test.js agent-binding.test.js agentroa.test.js orprg.test.js outcome-binding.test.js authority-program.test.js aeb-adapter-contract.test.js consistency.test.js witness.test.js timestamp-proof.test.js currency.test.js consumption-proof.test.js initiator-attestation.test.js surface-binding.test.js consent-grant.test.js resolution.test.js document-action-binding.test.js pq-hybrid.test.js"
   },
   "bin": {
     "emilia-verify": "./cli.js"

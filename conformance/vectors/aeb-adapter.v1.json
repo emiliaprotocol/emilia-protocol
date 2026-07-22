@@ -1,0 +1,83 @@
+{
+  "@version": "AEB-ADAPTER-v1",
+  "vectors_version": "1",
+  "description": "State and refusal vectors for the relying-party-pinned AEB evidence-adapter boundary.",
+  "semantics": {
+    "native_verification": ["VERIFIED", "FAILED"],
+    "acceptance": ["ACCEPTED", "REJECTED", "INDETERMINATE"],
+    "verdict": ["SATISFIED", "UNSATISFIED", "INDETERMINATE"],
+    "execution": ["AUTHORIZED", "REFUSED", "RECONCILIATION_REQUIRED"]
+  },
+  "vectors": [
+    {
+      "id": "multi_leg_same_caid_satisfies_all_of",
+      "input": "two independently verified roles project to one CAID",
+      "expect": { "verdict": "SATISFIED", "invoke_allowed": true }
+    },
+    {
+      "id": "stale_status_is_indeterminate",
+      "input": "one required role has a status older than the pinned max age",
+      "expect": { "verdict": "INDETERMINATE", "execution": "RECONCILIATION_REQUIRED", "invoke_allowed": false }
+    },
+    {
+      "id": "revoked_evidence_is_unsatisfied",
+      "input": "one required role is explicitly revoked",
+      "expect": { "verdict": "UNSATISFIED", "execution": "REFUSED", "invoke_allowed": false }
+    },
+    {
+      "id": "caid_mismatch_is_not_equivalence",
+      "input": "a native artifact maps to a different CAID",
+      "expect": { "verdict": "UNSATISFIED", "invoke_allowed": false }
+    },
+    {
+      "id": "consumption_is_atomic_and_one_time",
+      "input": "a committed operation is presented again with the same nonce",
+      "expect": { "second_reservation": "REFUSED", "invoke_allowed": false }
+    },
+    {
+      "id": "unsigned_or_non_rederivable_verdict_is_not_authority",
+      "input": "a verdict is changed without a valid evaluator signature and re-derivation",
+      "expect": { "verification": false, "invoke_allowed": false }
+    },
+    {
+      "id": "unaccepted_mapper_is_indeterminate",
+      "input": "the mapping profile names a mapper outside the relying party accepted mapper set",
+      "expect": { "verdict": "INDETERMINATE", "invoke_allowed": false }
+    },
+    {
+      "id": "material_information_loss_refuses_equivalence",
+      "input": "the mapping profile discloses an omitted material source field while claiming equivalence",
+      "expect": { "verdict": "INDETERMINATE", "invoke_allowed": false }
+    },
+    {
+      "id": "duplicate_or_initiating_human_cannot_satisfy_quorum",
+      "input": "the human quorum repeats one subject or includes the action initiator",
+      "expect": { "verdict": "UNSATISFIED", "invoke_allowed": false }
+    },
+    {
+      "id": "registry_kind_substitution_is_indeterminate",
+      "input": "an evidence-role entry is substituted with a mapping-profile entry under a recomputed registry digest",
+      "expect": { "verdict": "INDETERMINATE", "invoke_allowed": false }
+    },
+    {
+      "id": "aec_is_the_composition_engine",
+      "input": "all native legs are joined through the relying-party-pinned EP-AEC-v1 requirement over one CAID action",
+      "expect": { "composition_engine": "EP-AEC-v1", "verdict": "SATISFIED" }
+    },
+    {
+      "id": "same_caid_different_normalized_action_refuses",
+      "input": "two adapters return the same CAID but bind different normalized material-action digests",
+      "expect": { "verdict": "UNSATISFIED", "invoke_allowed": false }
+    },
+    {
+      "id": "production_path_requires_durable_ownership_fenced_store",
+      "input": "production authorization is attempted with an ephemeral or non-ownership-fenced store",
+      "expect": { "execution": "REFUSED", "reason": "secure_consumption_store_required" }
+    },
+    {
+      "id": "signed_native_bridge_composes_wimse_possession_and_human_authorization",
+      "input": "RP-pinned native verifiers attest a WIMSE possession row and a human-authorization row mapped to one CAID",
+      "expect": { "composition_engine": "EP-AEC-v1", "verdict": "SATISFIED", "forged_mapping": "REFUSED" }
+    }
+  ]
+}
