@@ -36,6 +36,7 @@ const FORBIDDEN_EXACT = new Set([
     'docs/TRUST-DESK-AUTOMATION-SPEC.md',
     'docs/TRUST-DESK-LAUNCH-RUNBOOK.md',
     'docs/briefs/INVESTOR_ONE_PAGER.md',
+    'docs/briefs/CALIFORNIA-VERIFIABLE-AI-OVERSIGHT-BRIEFING.md',
 ]);
 // This catches confidential docs force-added outside the canonical private
 // directories. It is deliberately scoped to document files under docs/ so

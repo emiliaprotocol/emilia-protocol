@@ -25,6 +25,7 @@ The private companion repository owns:
 - GTM plans, target accounts, buyer maps, pricing strategy, and competitive
   assessments;
 - private partner hypotheses, outreach, contact lists, and meeting materials;
+- named government, regulator, prospect, and partner briefing materials;
 - invention disclosures and attorney-preparation material;
 - customer-, prospect-, pilot-, and deployment-specific documents; and
 - internal operating decisions and submission operations.
