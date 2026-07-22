@@ -1,9 +1,9 @@
 {
   "@version": "EMILIA-REPO-CONTEXT-v1",
-  "evidence_snapshot_at": "2026-07-22T04:21:56.526Z",
+  "evidence_snapshot_at": "2026-07-22T04:28:41.374Z",
   "provenance": {
     "generator": "scripts/generate-llm-context.mjs",
-    "input_digest_sha256": "e28e7be06c1515c9b0b97b1f831a732a55aefab9374229c530be672675d7e0e4",
+    "input_digest_sha256": "860b77cb298e48837930b8b1665f2ae5da39372e918444704f6302f47cad7637",
     "generated_from": [
       {
         "path": "docs/ai/context-source.v1.json",
@@ -17,12 +17,12 @@
       },
       {
         "path": "lib/proof-stats.json",
-        "sha256": "84c80477ee680806f3a6c8e1a862fa8767a2073c7a0aa6281f7250ac6fc73458",
+        "sha256": "62293a5977a4d0af1e60f4340067a6ccdbd3789df86ace48849cf90a7aa0d9e2",
         "bytes": 1068
       },
       {
         "path": "conformance/conformance-manifest.json",
-        "sha256": "c5d900a5cec840448c82fcaf8225bd3b82227bd59a7388a147d05284315d0a0a",
+        "sha256": "2f2f6fbe228260f960d0e9f5b1230b25e4ed4a228fa3f98f5ca8c474a3ad0af8",
         "bytes": 6361
       },
       {
@@ -266,7 +266,7 @@
       "implementations": 3,
       "relationship": "same_team_ports",
       "claim_scope": "current same-team cross-language consistency; not independent implementation evidence",
-      "manifest_sha256": "b58459d1b7bd6883463ffb157c3f7bd3d4d08bff2db7c644f00248c030bd24da",
+      "manifest_sha256": "a5020f1ac88dd7b73b33a41b7ae4f2ca64ecdd8ea61fd6ef462f8d17f2c15af7",
       "vector_bundle_sha256": "ee1021eb36de8e50448d9f12f00d16f3e24561276c9a42241e88178d5daa0d3e"
     },
     "formal": {
