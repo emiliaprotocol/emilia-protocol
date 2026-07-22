@@ -153,12 +153,14 @@ Plant the gate at every actuator boundary, widest-adoption-first:
 
 ## Standards
 
-The public standards basis includes the individual Internet-Drafts for the
-Enforcement Point, Authorization Receipts, Quorum, and AEC. They are not RFCs,
-working-group-adopted documents, or IETF endorsement. CAID -00 is a render-clean
-filing candidate but is not posted. Bounded Capability is implemented EMILIA
-architecture and must not be represented as a posted standard. Conformance is
-earned by executable harnesses, not asserted by draft status.
+The public standards basis includes 14 active `draft-schrock` individual
+Internet-Drafts. The July 22 wave posted AEB -00, CAID -01, Architecture -02,
+AEC -04, Authorization Receipts -08, Revocation Statement -00, and
+Model-to-Matter -01. Bounded Capability Receipts -00, Quorum -03, and the other
+active revisions remain individual submissions as recorded in
+`standards/STATUS.json` and live Datatracker. None is an RFC, an adopted
+working-group item, or IETF endorsement. Conformance is earned by executable
+harnesses, not asserted by draft status.
 
 Formal assurance is scoped the same way. Machine-checked models establish named
 properties within their declared bounds and assumptions; they do not prove the

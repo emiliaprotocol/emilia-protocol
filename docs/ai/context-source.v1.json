@@ -92,6 +92,18 @@
       "definition": "MATCH means independently verified artifacts denote the same material action, either by direct CAID equality or under exact relying-party-pinned Action-Mapping Profiles. Matching is content correlation, never authority."
     },
     {
+      "term": "Action Evidence Boundary (AEB)",
+      "definition": "The relying-party contract that keeps native verification, exact-action matching, evidence satisfaction, local authorization, one-time consumption, and executed or indeterminate outcome distinct. AEB joins independently verified evidence under pinned mappings and requirements; it never authorizes by itself."
+    },
+    {
+      "term": "Trust Program",
+      "definition": "A public experimental Gate implementation profile for staged, parallel, or quorum evidence seats. Each stage receipt binds its program, instance, CAID, action, predecessor receipt digests, execution binding, and outcome. It is not an Internet-Draft, adopted standard, production deployment, or independent interoperability result."
+    },
+    {
+      "term": "receipt acquisition flow",
+      "definition": "The EP-APPROVAL-v1 reference flow in which a Receipt-Required challenge names an authorization endpoint, an agent creates an approval request, a human or program decides, the agent polls for a receipt, and the exact action is retried. The current hosted prototype protects payment.release and does not move funds."
+    },
+    {
       "term": "adjacent authorization composition",
       "definition": "AgentROA governs delegated agent scope and emits gateway evidence. The concrete ORPRG JSON/JCS/Ed25519 profile proves a machine-policy permit under its native rules. EMILIA verifies those artifacts under separate relying-party pins, correlates their material action through exact CAID mapping profiles, and can require them beside EP human evidence. None substitutes for another."
     },
@@ -209,7 +221,7 @@
     "The AgentROA and ORPRG adapters implement the exact documented native formats and relying-party profiles. They do not claim universal support for every future revision or ORPRG wire profile.",
     "The checked-in TPM interoperability fixture was generated with a software TPM. The verifier is real, but no physical TPM, manufacturer EK chain, measured-boot deployment, or running-production-binary attestation is claimed.",
     "The three local witness instances prove emit, quorum, and gossip behavior. They are not independent operators. Independent witness evidence exists only after separately administered external operators generate and control their own keys and publish live views.",
-    "CAID -00, Bounded Capability Receipts -00, and AEC -03 are published individual Internet-Drafts. They are proposals, not RFCs, adopted working-group items, or IETF endorsement.",
+    "Fourteen draft-schrock individual Internet-Drafts are active as of the July 22 Datatracker check. The July 22 wave posted AEB -00, CAID -01, Architecture -02, AEC -04, Authorization Receipts -08, Revocation Statement -00, and Model-to-Matter -01. They are proposals, not RFCs, adopted working-group items, or IETF endorsement.",
     "The mobile ceremony proves that a pinned enrolled credential completed a user-verified platform ceremony over exact bytes. It does not prove civil identity, comprehension, legality, wisdom, safety, or physical outcome.",
     "Apple App Attest and Google Play Integrity are online verification dependencies at mobile ceremony time. Their tokens are not silently claimed as offline-verifiable evidence; the resulting EP Class-A signoff and receipt retain only their separately specified properties.",
     "The government mobile reference apps and example.gov identifiers are implementation examples. They do not claim adoption, procurement, partnership, or endorsement by any state, agency, or government entity.",
@@ -522,7 +534,7 @@
     "Use the interoperability line: AgentROA governs what an agent may call; ORPRG verifies that policy permitted the effect; EMILIA proves who authorized the exact material action and controls the protected consequence. Do not market EMILIA as another general agent-authorization gateway.",
     "When describing bounded capabilities, include reserve-before-effect, stable operation and exact-action binding, overspend and replay refusal, indeterminate consumption, and authenticated provider reconciliation. Never imply that uncertainty is safely refundable.",
     "Describe physical TPM attestation and independent witness operation as external deployment evidence not yet obtained. The strict TPM verifier and local witness testnet are shipped code, not substitutes for those external facts.",
-    "Describe CAID -00, Bounded Capability Receipts -00, and AEC -03 as published individual Internet-Drafts, never as RFCs, adopted working-group items, or IETF endorsement.",
+    "Describe the 14 active draft-schrock individual Internet-Drafts using the revisions in standards/STATUS.json and live Datatracker. The July 22 wave includes AEB -00, CAID -01, Architecture -02, AEC -04, Authorization Receipts -08, Revocation Statement -00, and Model-to-Matter -01. Never call them RFCs, adopted working-group items, or IETF endorsement.",
     "Describe CAID mapping as relying-party-pinned material equivalence with an INDETERMINATE abstention state, never as generic semantic equivalence or authorization.",
     "Do not characterize EMILIA as architecture-only or grade its engineering maturity before reading current_evidence and security_claims in the generated machine context.",
     "When evaluating maturity, report protocol design, executable security claims, composed formal scope, conformance, external implementation evidence, and production adoption as separate dimensions.",
