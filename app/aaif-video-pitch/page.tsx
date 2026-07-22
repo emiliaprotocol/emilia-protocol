@@ -8,15 +8,16 @@ import registryIndex from '../../packages/fire-drill/registry-index.json';
 import reports from '../../packages/fire-drill/reports.json';
 
 export const metadata: Metadata = {
-  title: 'EMILIA for AAIF - Human Authorization Receipts',
+  title: 'EMILIA for AAIF - Exact-Action Authorization Evidence',
   description:
-    'A concise technical overview of EMILIA: offline-verifiable human authorization receipts for irreversible AI agent actions.',
+    'A concise technical overview of EMILIA: exact-action identity, authorization evidence, acquisition, and consequence control for high-risk agent actions.',
   alternates: { canonical: '/aaif-video-pitch' },
   robots: { index: false, follow: false },
 };
 
 const repoUrl = 'https://github.com/emiliaprotocol/emilia-protocol';
 const draftUrl = 'https://datatracker.ietf.org/doc/draft-schrock-ep-authorization-receipts/';
+const draftClusterUrl = 'https://datatracker.ietf.org/doc/search?name=schrock&activedrafts=on';
 const scittProfileUrl = `${repoUrl}/blob/main/docs/EP-RECEIPT-SCITT-PROFILE.md`;
 const scittHarnessUrl = `${repoUrl}/blob/main/examples/scitt/ep-receipt-scitt-end-to-end.mjs`;
 
@@ -31,7 +32,7 @@ const stackRows = [
   ['MCP', 'connects agents to tools'],
   ['goose', 'runs the agent workflow'],
   ['AGENTS.md', 'guides local behavior'],
-  ['EMILIA', 'proves a named human authorized the exact irreversible action'],
+  ['EMILIA', 'binds exact action, verified evidence, local authorization, consumption, and outcome'],
 ];
 
 const rrChecks = [
@@ -50,24 +51,24 @@ const scittChecks = [
 
 const proofStats = [
   [proofStatsData.tests.total.toLocaleString('en-US'), 'automated test cases'],
-  ['26', 'TLA+ safety properties'],
-  ['35 / 22', 'Alloy facts / assertions'],
-  ['16', 'cross-language conformance suites'],
+  [String(proofStatsData.tla.invariants), 'TLA+ invariants checked by TLC'],
+  [`${proofStatsData.alloy.facts} / ${proofStatsData.alloy.assertions}`, 'Alloy facts / assertions'],
+  [`${proofStatsData.conformance.suites} / ${proofStatsData.conformance.vectors}`, 'conformance suites / vectors'],
 ];
 
 const capabilityCards = [
-  ['Authorization receipts', 'Single human signs the exact action before execution.', '/spec'],
-  ['Quorum', 'M-of-N or ordered two-person rule for highest-stakes actions.', '/quorum'],
-  ['Evidence graph', 'Compose authorization, policy, and identity into one offline-verifiable graph — who authorized, what ran, under which policy.', '/standards'],
-  ['Human control', 'Defense and public-sector oversight mapped to verifiable receipts.', '/human-control'],
+  ['Authorization receipts', 'One accountable decision binds the exact material action before protected execution.', '/spec'],
+  ['Quorum + Trust Programs', 'M-of-N, ordered, staged, or parallel authority with predecessor-bound evidence.', '/quorum'],
+  ['CAID + AEB', 'Name the exact action, join independently verified evidence, and keep local authorization separate.', '/standards'],
+  ['Receipt acquisition', 'Discover an authorization endpoint, request approval, poll for the receipt, and retry.', '/try/receipt-required'],
 ];
 
 const objections = [
   ['"Isn’t this just SCITT?"', 'SCITT proves a statement was logged. EP proves who authorized — and rides as a SCITT Signed Statement. Composes, doesn’t compete.'],
   ['"Isn’t this OAuth / delegation?"', 'Those grant a machine a scope. EP proves a named human approved this exact action. Above identity, not instead of it.'],
-  ['"Why not just log the approval?"', 'A log is operator-editable testimony. An EP receipt is offline-verifiable evidence — bound to the action, one-time, no trust in the operator.'],
+  ['"Why not just log the approval?"', 'A log may preserve operator history. An EP receipt adds portable signed evidence bound to the exact action and disclosed trust roots; it does not make upstream facts automatically true.'],
   ['"Doesn’t per-action sign-off kill latency?"', 'Only irreversible actions gate — not every call. Pre-authorization, scoped delegation, and quorum carry the throughput.'],
-  ['"Where does it standardize?"', 'Individual IETF I-D cluster — receipts + quorum + evidence-chain — composing with SCITT / RFC 9943. That’s the open question we bring.'],
+  ['"Where does it standardize?"', 'Fourteen active individual Internet-Drafts, including the July 22 CAID, AEB, architecture, receipt, evidence-chain, revocation, and model-to-matter wave. None is an RFC, WG item, or IETF endorsement.'],
 ];
 
 const links = [
@@ -107,7 +108,7 @@ export default function AaifVideoPitchPage() {
       `}</style>
       <header style={s.topbar}>
         <Link href="/" style={s.brand}>EMILIA</Link>
-        <div style={s.topMeta}>Human authorization receipts for AI agent actions</div>
+        <div style={s.topMeta}>Exact-action authorization evidence for consequential agent execution</div>
         <nav style={s.topLinks}>
           {links.map(([href, label]) => (
             <a key={href} href={href} style={s.topLink}>
@@ -120,9 +121,9 @@ export default function AaifVideoPitchPage() {
       <section style={s.hero} className="aaif-hero">
         <div style={s.heroText}>
           <div style={s.eyebrow}>EMILIA FOR AAIF</div>
-          <h1 style={s.h1}>The missing human-proof layer for agent actions.</h1>
+          <h1 style={s.h1}>A neutral exact-action evidence layer for consequential agent execution.</h1>
           <p style={s.lead}>
-            The agent stack is filling in around identity, tools, execution, and logs. The void in the middle is portable proof that a named human authorized one exact irreversible action before it ran.
+            The agent stack is filling in around identity, tools, execution, and logs. EMILIA binds one exact material action to independently verified evidence, relying-party policy, accountable authority, bounded consumption, and outcome—without replacing the native protocols that supply those inputs.
           </p>
         </div>
         <div style={{ margin: '28px auto 4px', maxWidth: 900, width: '100%' }}>
@@ -140,7 +141,7 @@ export default function AaifVideoPitchPage() {
           </video>
         </div>
         <div style={s.lowerThird}>
-          <span style={s.pill}>draft-schrock-ep-authorization-receipts</span>
+          <span style={s.pill}>7 new/revised July 22 I-Ds · 14 active</span>
           <span style={s.pill}>Apache-2.0</span>
           <span style={s.pill}>JS / Python / Go verifiers</span>
           <span style={s.pill}>offline-verifiable</span>
@@ -150,7 +151,7 @@ export default function AaifVideoPitchPage() {
       <section id="gap" style={{ ...s.slide, ...s.anchor }} className="aaif-slide">
         <div style={s.slideInner}>
           <div style={s.eyebrow}>01 · THE LANDSCAPE GAP</div>
-          <h2 style={s.h2}>Many drafts describe the agent stack. The missing primitive is proof of human authorization.</h2>
+          <h2 style={s.h2}>Many drafts describe the agent stack. The missing seam is exact-action evidence at the consequence boundary.</h2>
           <div style={s.voidMap} className="aaif-void-map">
             <div style={s.ringGrid} className="aaif-ring-grid">
               {landscapeRings.map(([name, job]) => (
@@ -162,13 +163,13 @@ export default function AaifVideoPitchPage() {
             </div>
             <div style={s.voidCenter}>
               <span style={s.voidLabel}>BLACK VOID</span>
-              <strong style={s.voidQuestion}>Who authorized this exact irreversible action before execution?</strong>
-              <p style={s.voidBody}>EMILIA fills this with an offline-verifiable receipt.</p>
+              <strong style={s.voidQuestion}>Which evidence satisfied which requirement for this exact action—and who may authorize it?</strong>
+              <p style={s.voidBody}>CAID names the action. AEB joins verified evidence. Gate alone applies local authorization.</p>
             </div>
           </div>
           <div style={s.rowLinks}>
             <Link href="/standards" style={s.secondaryLink}>Open standards map</Link>
-            <a href={draftUrl} style={s.secondaryLink} target="_blank" rel="noopener noreferrer">Open I-D</a>
+            <a href={draftClusterUrl} style={s.secondaryLink} target="_blank" rel="noopener noreferrer">Open I-D cluster</a>
           </div>
         </div>
       </section>
@@ -185,7 +186,7 @@ export default function AaifVideoPitchPage() {
               </div>
             ))}
           </div>
-          <p style={s.statement}>Decision logs are testimony. Receipts are evidence.</p>
+          <p style={s.statement}>Evidence can be verified. Authorization still belongs to the relying party.</p>
         </div>
       </section>
 
@@ -230,7 +231,7 @@ export default function AaifVideoPitchPage() {
       <section id="surfaces" style={{ ...s.slide, ...s.anchor }} className="aaif-slide">
         <div style={s.slideInner}>
           <div style={s.eyebrow}>05 · HIGHER-STAKES SURFACES</div>
-          <h2 style={s.h2}>Single approval, quorum, and human-control profiles use the same receipt spine.</h2>
+          <h2 style={s.h2}>Single approval, quorum, staged programs, and acquisition use the same exact-action spine.</h2>
           <div style={s.capabilityGrid}>
             {capabilityCards.map(([name, body, href]) => (
               <Link key={name} href={href} style={s.capabilityCard}>
@@ -239,7 +240,7 @@ export default function AaifVideoPitchPage() {
               </Link>
             ))}
           </div>
-          <p style={s.body}>The defense-facing human-control surface maps receipt evidence to DoD Directive 3000.09, EU AI Act Article 14, NIST AI RMF, and the LAWS debate - carefully scoped as authorization proof, not proof of wisdom.</p>
+          <p style={s.body}>The open protocol and company products are deliberately separate. AAIF can evaluate the formats, verifiers, vectors, and reference Gate without adopting EMILIA&apos;s operated commercial services.</p>
         </div>
       </section>
 
@@ -264,12 +265,12 @@ export default function AaifVideoPitchPage() {
           <div style={s.eyebrow}>REAL AND SMALL</div>
           <h2 style={s.h2}>A primitive, not a platform pitch.</h2>
           <ul style={s.bullets}>
-            <li>Active individual Internet-Draft, not an IETF endorsement.</li>
-            <li>Reference verifiers in JavaScript, Python, and Go agree on shared conformance vectors.</li>
-            <li>26 TLA+ safety properties and Alloy checks are machine-checked in CI.</li>
+            <li>Seven new or revised individual Internet-Drafts posted July 22; 14 active total. None is an RFC, WG item, or IETF endorsement.</li>
+            <li>Same-team TypeScript, Python, and Go reference ports agree on shared vectors; they are not independent implementations.</li>
+            <li>26 TLA+ invariants, 32 Alloy assertions, and 10 + 2 Tamarin obligations/counterexamples are checked in CI under their stated scopes.</li>
             <li>No account or backend for the local demo: <code>npx @emilia-protocol/issue demo</code>.</li>
           </ul>
-          <a href={draftUrl} style={s.secondaryLink} target="_blank" rel="noopener noreferrer">Open datatracker draft</a>
+          <a href={draftClusterUrl} style={s.secondaryLink} target="_blank" rel="noopener noreferrer">Open Datatracker cluster</a>
         </div>
       </section>
 

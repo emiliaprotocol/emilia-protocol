@@ -266,8 +266,8 @@ export default function ModelToMatterPage(): React.ReactElement {
           <div style={styles.eyebrow}>OPEN AND RUNNABLE</div>
           <h2 style={{ ...styles.h2, maxWidth: 760 }}>Read it, run it, break it.</h2>
           <div style={{ marginTop: 24, ...grid.auto(240) }}>
-            <a href={`${REPO}/blob/main/standards/posted/draft-schrock-model-to-matter-00.txt`} style={{ ...styles.card, padding: 22, textDecoration: 'none' }}>
-              <div style={{ ...styles.h3, fontSize: 17 }}>Internet-Draft -00</div>
+            <a href="https://datatracker.ietf.org/doc/draft-schrock-model-to-matter/" style={{ ...styles.card, padding: 22, textDecoration: 'none' }}>
+              <div style={{ ...styles.h3, fontSize: 17 }}>Internet-Draft -01</div>
               <div style={{ ...styles.cardBody, marginTop: 6 }}>The published Experimental executor profile.</div>
             </a>
             <a href={`${REPO}/blob/main/docs/verticals/MODEL-TO-MATTER.md`} style={{ ...styles.card, padding: 22, textDecoration: 'none' }}>

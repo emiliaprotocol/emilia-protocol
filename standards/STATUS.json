@@ -1,9 +1,9 @@
 {
   "@version": "EMILIA-STANDARDS-PORTFOLIO-v1",
-  "updated": "2026-07-21",
-  "active_datatracker_count": 19,
-  "active_schrock_datatracker_count": 18,
-  "posted_snapshot_policy": "standards/posted contains the current published revision of every active draft-schrock-* Datatracker record. The seven XML sources published on 2026-07-21 were verified byte-for-byte against the immutable IETF archive; earlier TXT snapshots remain historical conveniences, while the IETF archive is authoritative for rendered forms.",
+  "updated": "2026-07-22",
+  "active_datatracker_count": 15,
+  "active_schrock_datatracker_count": 14,
+  "posted_snapshot_policy": "standards/posted contains the current published revision of every active draft-schrock-* Datatracker record. The seven XML sources in the July 22 UTC publication wave were verified byte-for-byte against the immutable IETF archive; earlier TXT snapshots remain historical conveniences, while the IETF archive is authoritative for rendered forms.",
   "status_language": {
     "active_individual_submission": "Published on the IETF Datatracker as an individual Internet-Draft. Not an RFC, not an adopted working-group item, and not IETF endorsement.",
     "candidate": "Repository source under review. Not filed.",
@@ -65,20 +65,6 @@
   ],
   "active_datatracker": [
     {
-      "draft": "draft-schrock-agent-action-manifest",
-      "revision": "00",
-      "layer": "execution_lifecycle",
-      "role": "Service declaration of evidence and enforcement requirements",
-      "next_action": "Hold the current published revision while implementation feedback accumulates"
-    },
-    {
-      "draft": "draft-schrock-authorization-evidence-challenge",
-      "revision": "00",
-      "layer": "execution_lifecycle",
-      "role": "Action-bound request for missing evidence",
-      "next_action": "Hold the current published revision while implementation feedback accumulates"
-    },
-    {
       "draft": "draft-schrock-action-evidence-boundary",
       "revision": "00",
       "layer": "material_action_identity_mapping",
@@ -98,13 +84,6 @@
       "layer": "execution_lifecycle",
       "role": "Scope-bound advisory that can tighten but never authorize",
       "next_action": "Hold current revision"
-    },
-    {
-      "draft": "draft-schrock-ep-action-evidence-graph",
-      "revision": "00",
-      "layer": "evidence_satisfaction",
-      "role": "Purpose-relative evidence graph and replay",
-      "next_action": "Hold the current published revision"
     },
     {
       "draft": "draft-schrock-ep-architecture",
@@ -140,13 +119,6 @@
       "layer": "delegation_capability_policy",
       "role": "Action-bound capability budget and spend evidence",
       "next_action": "Published July 19; guard-path spend enforcement and verified-action binding are implemented on main"
-    },
-    {
-      "draft": "draft-schrock-ep-enforcement-point",
-      "revision": "00",
-      "layer": "execution_lifecycle",
-      "role": "Executor-side fail-closed enforcement profile",
-      "next_action": "Hold current revision"
     },
     {
       "draft": "draft-schrock-ep-evidence-record",
@@ -196,6 +168,32 @@
       "layer": "architecture",
       "role": "Coauthored composition perspective",
       "next_action": "Coordinate terminology; do not imply sole authorship"
+    }
+  ],
+  "replaced_datatracker": [
+    {
+      "draft": "draft-schrock-agent-action-manifest",
+      "revision": "00",
+      "datatracker_state": "replaced",
+      "successor": "draft-schrock-ep-architecture-02 and draft-schrock-action-evidence-boundary-00"
+    },
+    {
+      "draft": "draft-schrock-authorization-evidence-challenge",
+      "revision": "00",
+      "datatracker_state": "replaced",
+      "successor": "draft-schrock-action-evidence-boundary-00"
+    },
+    {
+      "draft": "draft-schrock-ep-action-evidence-graph",
+      "revision": "00",
+      "datatracker_state": "replaced",
+      "successor": "draft-schrock-ep-authorization-evidence-chain-04"
+    },
+    {
+      "draft": "draft-schrock-ep-enforcement-point",
+      "revision": "00",
+      "datatracker_state": "replaced",
+      "successor": "draft-schrock-action-evidence-boundary-00 and draft-schrock-ep-architecture-02"
     }
   ],
   "july_19_2026_core_wave": {

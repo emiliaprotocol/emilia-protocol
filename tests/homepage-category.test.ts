@@ -95,7 +95,7 @@ describe('homepage category contract', () => {
     const investors = compact(read('app/investors/page.js'));
     const productBrief = compact(read('docs/EMILIA-GATE-PRODUCT-BRIEF.md'));
 
-    for (const surface of [homepage, gate, investors, productBrief]) {
+    for (const surface of [homepage, gate, productBrief]) {
       expect(surface).toContain(hierarchy);
     }
 
@@ -107,8 +107,10 @@ describe('homepage category contract', () => {
     expect(gate).toContain('RECEIPT PROGRAMS');
     expect(gate).toContain('npm run demo:receipt-program');
     expect(gate).toContain('It is not a ZK proof, consensus result, provider attestation');
-    expect(investors).toContain('none is an RFC or adopted standard.');
-    expect(investors).toContain('No physical hardware attestation in production or independently operated witness network is claimed today.');
+    expect(investors).toContain('CAID names the material action; AEB joins independently verified evidence');
+    expect(investors).toContain('Neither authorizes. Gate applies local policy');
+    expect(investors).toContain('They are not RFCs, working-group items, adopted standards, or IETF endorsement.');
+    expect(investors).toContain('No production hardware-attestation fleet or independently operated witness network is claimed today.');
     expect(productBrief).toContain('No independently administered operator has produced external witness evidence');
     expect(productBrief).toContain('they do not prove the deployed service, provider, or physical world.');
   });

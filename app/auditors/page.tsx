@@ -100,7 +100,7 @@ export default function AuditorsPage() {
             (<a href="https://github.com/emiliaprotocol/emilia-protocol/tree/main/packages/python-verify" style={lnk} target="_blank" rel="noopener noreferrer">Python</a>,{' '}
             <a href="https://github.com/emiliaprotocol/emilia-protocol/tree/main/packages/go-verify" style={lnk} target="_blank" rel="noopener noreferrer">Go</a>) in the same
             public repository — three same-team reference ports, all held to the same published conformance
-            suites (21 active suites and 328 vectors), so the verdict does not depend on which language your team runs.
+            suites (21 active suites and 329 vectors), so the verdict does not depend on which language your team runs.
           </li>
           <li style={{ marginBottom: 14 }}>
             <strong style={{ color: color.t1 }}>Read the checks.</strong> Each line is one verified property (table below).
