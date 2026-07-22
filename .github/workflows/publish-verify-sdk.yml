@@ -68,6 +68,21 @@ jobs:
           node-version: "24"
           registry-url: https://registry.npmjs.org
 
+      - name: Require owner approval bound to clean tag, package, version, and main
+        working-directory: ${{ github.workspace }}
+        env:
+          RELEASE_TAG: ${{ inputs.release_tag }}
+          RELEASE_CONFIRMATION: ${{ inputs.confirmation }}
+        run: |
+          VERSION=$(node -p "require('./packages/verify/package.json').version")
+          node scripts/require-release-approval.mjs \
+            --allowed-actor FutureEnterprises \
+            --tag "$RELEASE_TAG" \
+            --tag-prefix verify-v \
+            --package @emilia-protocol/verify \
+            --version "$VERSION" \
+            --confirmation "$RELEASE_CONFIRMATION"
+
       - name: Setup Python
         uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97  # v7.0.0
         with:
@@ -97,21 +112,6 @@ jobs:
 
       - name: Run tests
         run: npm test
-
-      - name: Require owner approval bound to tag, package, version, and main
-        working-directory: ${{ github.workspace }}
-        env:
-          RELEASE_TAG: ${{ inputs.release_tag }}
-          RELEASE_CONFIRMATION: ${{ inputs.confirmation }}
-        run: |
-          VERSION=$(node -p "require('./packages/verify/package.json').version")
-          node scripts/require-release-approval.mjs \
-            --allowed-actor FutureEnterprises \
-            --tag "$RELEASE_TAG" \
-            --tag-prefix verify-v \
-            --package @emilia-protocol/verify \
-            --version "$VERSION" \
-            --confirmation "$RELEASE_CONFIRMATION"
 
       - name: Resolve repository security and conformance manifests
         working-directory: ${{ github.workspace }}
