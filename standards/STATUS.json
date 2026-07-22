@@ -1,6 +1,8 @@
 {
   "@version": "EMILIA-STANDARDS-PORTFOLIO-v1",
-  "updated": "2026-07-19",
+  "updated": "2026-07-21",
+  "active_datatracker_count": 16,
+  "posted_snapshot_policy": "standards/posted contains the current published revision of every active draft-schrock-* Datatracker record. XML and TXT snapshots were checked against the IETF archive on 2026-07-21.",
   "status_language": {
     "active_individual_submission": "Published on the IETF Datatracker as an individual Internet-Draft. Not an RFC, not an adopted working-group item, and not IETF endorsement.",
     "candidate": "Repository source under review. Not filed.",

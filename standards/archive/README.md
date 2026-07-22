@@ -1,7 +1,8 @@
 # Archived and retired Internet-Draft sources
 
-Superseded revisions, already-submitted sources, and unfiled candidates whose
-scope was absorbed elsewhere live here. Nothing here should be uploaded.
+Superseded revisions and unfiled candidates whose scope was absorbed or held
+elsewhere live here. Current active Datatracker revisions belong in
+`../posted/`, never here. Nothing in this directory should be uploaded.
 History is preserved by git; these were moved, not deleted.
 
 The following posted revisions were superseded on 2026-07-19 and moved here:
@@ -23,6 +24,10 @@ The following unfiled standalone candidates were retired on 2026-07-14:
   is being filed.
 - `ASSURANCE-LETTER-MIGRATION-RETIRED.md`: tombstone for the abandoned data and
   API migration; it is not an executable plan.
+- `draft-schrock-kintzele-grid-curtailment-00`: unfiled application candidate;
+  archived outside the seven-draft submission packet.
+- `submission-notes/`: historical filing instructions, retained for audit but
+  not part of an upload packet.
 
 To revive any archived work, first establish that its scope is not already
 owned by an active draft, then copy it out under a new revision after checking
