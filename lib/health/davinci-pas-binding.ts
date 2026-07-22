@@ -945,7 +945,13 @@ export function verifyDavinciPasReviewBinding(
   context: unknown,
 ): DavinciPasVerificationResult {
   const reasons: string[] = [];
-  const shapeValid = validatePortableShape(binding, reasons);
+  let shapeValid = false;
+  try {
+    shapeValid = validatePortableShape(binding, reasons);
+  } catch {
+    addReason(reasons, 'portable_output_not_canonical_json');
+    addReason(reasons, 'portable_binding_invalid');
+  }
   const trustedContext = isPlainRecord(context) ? context : {};
 
   if (shapeValid) {
@@ -1005,7 +1011,7 @@ export function verifyDavinciPasReviewBinding(
   return { valid: reasons.length === 0, reasons };
 }
 
-export default {
+const davinciPasBinding = {
   DAVINCI_PAS_ACTION_TYPE,
   DAVINCI_PAS_BINDING_TYPE,
   DAVINCI_PAS_PROFILE_ID,
@@ -1015,3 +1021,5 @@ export default {
   digestPasValue,
   verifyDavinciPasReviewBinding,
 };
+
+export default davinciPasBinding;

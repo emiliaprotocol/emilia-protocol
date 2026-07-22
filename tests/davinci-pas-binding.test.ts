@@ -368,6 +368,23 @@ describe('Da Vinci PAS medical-review binding', () => {
     ]));
   });
 
+  it('fails closed when hostile reflection traps make a portable binding unreadable', () => {
+    const hostileBinding = new Proxy({}, {
+      ownKeys() {
+        throw new Error('hostile ownKeys trap');
+      },
+    });
+
+    expect(() => verifyDavinciPasReviewBinding(hostileBinding, serverInput())).not.toThrow();
+    expect(verifyDavinciPasReviewBinding(hostileBinding, serverInput())).toEqual({
+      valid: false,
+      reasons: expect.arrayContaining([
+        'portable_output_not_canonical_json',
+        'portable_binding_invalid',
+      ]),
+    });
+  });
+
   it('keeps the NCPDP pharmacy pathway explicitly separate', () => {
     const profile = JSON.parse(readFileSync(
       new URL('../profiles/health/davinci-pas-review-binding.v1.json', import.meta.url),
