@@ -263,13 +263,14 @@ export const contract = {
         'bind_guard_receipt_event_scope',
         'reject_guard_receipt_binding_mutation',
         'gov_schema_contract_introspect',
+        'gov_schema_reconcile_introspect',
         'complete_webauthn_registration_atomic',
         'consume_trust_desk_bootstrap_atomic',
         ...RELEASE_LOCK_SERVICE_RPCS,
     ],
     // Functions that MUST exist (existence only). Includes the append-only
     // immutability triggers — their absence means tamper-evidence is unenforced.
-    requiredRpcs: ['gov_schema_contract_introspect', 'load_verify_context',
+    requiredRpcs: ['gov_schema_contract_introspect', 'gov_schema_reconcile_introspect', 'load_verify_context',
         'prevent_protocol_event_mutation', 'prevent_handshake_event_mutation',
         'prevent_consumption_reversal'],
 };

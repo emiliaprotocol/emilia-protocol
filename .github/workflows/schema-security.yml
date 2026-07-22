@@ -13,8 +13,9 @@ name: schema-security
 #
 # Required repo secret (Settings → Secrets → Actions):
 #   SCHEMA_GATE_DB_URL — least-privilege pooler connection string for the
-#   read-only `schema_gate` Postgres role (EXECUTE on gov_schema_contract_introspect
-#   only; cannot read any table rows). The god-mode service-role key is NOT in CI.
+#   read-only `schema_gate` Postgres role (EXECUTE on the two metadata-only
+#   schema introspection functions; cannot read any table rows). The god-mode
+#   service-role key is NOT in CI.
 #
 # To make this a true deploy gate: add "schema-security / schema-contract" as a
 # required status check in branch protection for main, and enable Vercel's

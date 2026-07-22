@@ -6,8 +6,8 @@
 // migration-reconcile.mjs).
 //
 // Least-privilege by default: when SCHEMA_GATE_DB_URL is set (CI), connect as the
-// dedicated `schema_gate` Postgres role — which can EXECUTE only
-// gov_schema_contract_introspect() and read NO table rows — over the Supabase
+// dedicated `schema_gate` Postgres role — which can EXECUTE only the two
+// metadata introspection functions and read NO table rows — over the Supabase
 // pooler. The god-mode service-role key never enters CI.
 //
 // Local fallback: if SCHEMA_GATE_DB_URL is absent, use supabase-js with the
@@ -28,8 +28,17 @@ export async function fetchSchemaSnapshot() {
         const client = new pg.Client({ connectionString: dbUrl, ssl: { ca, rejectUnauthorized: true } });
         await client.connect();
         try {
-            const { rows } = await client.query('select public.gov_schema_contract_introspect() as snap');
-            return rows[0].snap;
+            const { rows } = await client.query(`
+        select
+          public.gov_schema_contract_introspect() as snap,
+          public.gov_schema_reconcile_introspect() as reconcile
+      `);
+            const row = rows[0];
+            return {
+                ...row.snap,
+                reconcile_tables: row.reconcile.tables,
+                reconcile_functions: row.reconcile.functions,
+            };
         }
         finally {
             await client.end();
@@ -42,8 +51,19 @@ export async function fetchSchemaSnapshot() {
         throw new Error('Set SCHEMA_GATE_DB_URL (preferred) or NEXT_PUBLIC_SUPABASE_URL + SUPABASE_SERVICE_ROLE_KEY');
     }
     const sb = createClient(URL, KEY, { auth: { persistSession: false } });
-    const { data, error } = await sb.rpc('gov_schema_contract_introspect');
-    if (error)
-        throw new Error(`introspection RPC failed (migration 115 applied?): ${error.message}`);
-    return data;
+    const [contractResult, reconcileResult] = await Promise.all([
+        sb.rpc('gov_schema_contract_introspect'),
+        sb.rpc('gov_schema_reconcile_introspect'),
+    ]);
+    if (contractResult.error) {
+        throw new Error(`contract introspection RPC failed (migration 115 applied?): ${contractResult.error.message}`);
+    }
+    if (reconcileResult.error) {
+        throw new Error(`reconciliation introspection RPC failed (migration 20260722050000 applied?): ${reconcileResult.error.message}`);
+    }
+    return {
+        ...contractResult.data,
+        reconcile_tables: reconcileResult.data.tables,
+        reconcile_functions: reconcileResult.data.functions,
+    };
 }

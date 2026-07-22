@@ -88,8 +88,13 @@ let snap: any;
 try { snap = await fetchSchemaSnapshot(); }
 catch (e) { console.error('FATAL: introspection failed:', (e as any).message); process.exit(2); }
 
-const prodTables: Set<string> = new Set(snap.tables);
-const prodFns: Set<string> = new Set(snap.functions.map((f: any) => f.name));
+if (!Array.isArray(snap.reconcile_tables) || !Array.isArray(snap.reconcile_functions)) {
+  console.error('FATAL: reconciliation snapshot is missing qualified private-schema object names');
+  process.exit(2);
+}
+
+const prodTables: Set<string> = new Set(snap.reconcile_tables);
+const prodFns: Set<string> = new Set(snap.reconcile_functions);
 
 const missingTables: string[] = declaredTables.filter((t) => !prodTables.has(t));
 const missingFns: string[] = declaredFns.filter((f) => !prodFns.has(f));
