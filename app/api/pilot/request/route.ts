@@ -14,6 +14,7 @@ import { getGuardedClient } from '@/lib/write-guard';
 import { epProblem } from '@/lib/errors';
 import { logger } from '@/lib/logger.js';
 import { readLimitedJson } from '@/lib/http/body-limit';
+import { MANAGED_PILOT } from '@/lib/commercial-offer';
 
 const RESEND_URL = 'https://api.resend.com/emails';
 // Same verified Resend sender domain the Trust Desk uses.
@@ -131,8 +132,9 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
         `Hi ${name.split(' ')[0]},\n\n` +
         `Got your pilot request for: ${workflow.label}.\n\n` +
         `What happens next: I reply personally within one business day with a ` +
-        `15-minute scheduling link and the one-page pilot plan (4 weeks, free, ` +
-        `observe-mode first — nothing is blocked until you decide).\n\n` +
+        `15-minute scheduling link and the one-page ${MANAGED_PILOT.durationLabel}, ` +
+        `${MANAGED_PILOT.priceLabel} pilot scope (${MANAGED_PILOT.workflowLabel}; ` +
+        `observe mode first, with enforcement only after your approval).\n\n` +
         `Meanwhile, three things you can verify without trusting us:\n` +
         `- Be the approver yourself (20 seconds): https://www.emiliaprotocol.ai/try\n` +
         `- Verify a receipt offline: https://www.emiliaprotocol.ai/verify\n` +

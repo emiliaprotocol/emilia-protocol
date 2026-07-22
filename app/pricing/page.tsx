@@ -2,16 +2,17 @@ import type { Metadata } from 'next';
 import Link from 'next/link';
 import SiteNav from '@/components/SiteNav';
 import SiteFooter from '@/components/SiteFooter';
+import { MANAGED_PILOT, PRODUCTION_GATE } from '@/lib/commercial-offer';
 import { cta, color, font, radius } from '@/lib/tokens';
 
 export const metadata: Metadata = {
   title: 'EMILIA Gate Pricing',
   description:
-    'Keep EMILIA Protocol open and reproducible. Add EMILIA Gate Cloud or Enterprise for managed enforcement, evidence operations, and private deployment.',
+    'Use the open EMILIA Protocol for free, prove one protected workflow in a fixed-scope pilot, then price production Gate operations around the boundary you protect.',
   alternates: { canonical: '/pricing' },
   openGraph: {
     title: 'EMILIA Gate Pricing',
-    description: 'Open proof infrastructure, with paid Gate operations and Assurance services.',
+    description: 'Open proof infrastructure, a fixed-scope managed pilot, and production Gate operations priced by protected workflow.',
     url: 'https://www.emiliaprotocol.ai/pricing',
     type: 'website',
   },
@@ -20,10 +21,6 @@ export const metadata: Metadata = {
 const C = ({ children, style }: { children: React.ReactNode; style?: React.CSSProperties }): React.ReactElement => (
   <div style={{ maxWidth: 1120, margin: '0 auto', padding: '0 32px', ...style }}>{children}</div>
 );
-
-// Gate Cloud "Subscribe" activates the moment a payment link is set in env
-// (see docs/STRIPE_SETUP.md). Until then the CTA falls back to early-access.
-const CLOUD_CHECKOUT = process.env.NEXT_PUBLIC_STRIPE_CLOUD_TEAM || '';
 
 const TIERS: Array<{
   name: string;
@@ -40,64 +37,62 @@ const TIERS: Array<{
 }> = [
   {
     name: 'Open Protocol',
-    price: 'Free',
-    priceNote: 'Apache 2.0 · forever',
+    price: '$0',
+    priceNote: 'Apache 2.0 · self-operated',
     priceIsLabel: false,
-    tagline: 'Use the public receipt formats, verifiers, conformance vectors, and integration packages under your own keys.',
+    tagline: 'Build and verify under your own keys when your team wants to operate the trust boundary itself.',
     accent: color.green,
     cta: { label: 'Read the protocol docs', href: '/protocol' },
     ctaStyle: 'secondary' as const,
     highlight: false,
     available: true,
     features: [
-      'Open authorization-evidence formats',
-      'JavaScript, Python, Go, and external Rust verification evidence',
+      'Open authorization-evidence formats and Gate runtime',
+      'TypeScript, Python, and Go verification packages',
       'Public conformance vectors and security case',
       'MCP and SDK integration packages',
       'Self-hosted under your own trust policy',
-      'Offline, issuer-independent verification where the profile permits',
+      'Community support; your team operates policy and evidence',
     ],
   },
   {
-    name: 'Gate Cloud',
-    price: '$499',
-    priceNote: 'per month · early access',
+    name: MANAGED_PILOT.name,
+    price: MANAGED_PILOT.shortPriceLabel,
+    priceNote: `fixed scope · ${MANAGED_PILOT.durationLabel}`,
     priceIsLabel: false,
-    tagline: 'Managed consequence-firewall operations for teams that want to protect configured actions without running the control plane.',
+    tagline: 'Prove Gate on one consequential workflow before committing to a production rollout.',
     accent: color.blue,
-    cta: CLOUD_CHECKOUT
-      ? { label: 'Subscribe', href: CLOUD_CHECKOUT }
-      : { label: 'Get started', href: '/signup' },
+    cta: { label: 'Scope the pilot', href: '/pilot' },
     ctaStyle: 'primary' as const,
-    highlight: false,
+    highlight: true,
     available: true,
     features: [
-      'Everything in the open Protocol',
-      'Managed Gate policy and enforcement service',
-      'Approver routing and escalation workflows',
-      'Evidence retention, export, and observability',
-      'Webhooks and integration support',
-      'Tenant-isolated hosted operation',
+      MANAGED_PILOT.workflowLabel,
+      'Observe-mode baseline and risk inventory',
+      'Action, evidence, approval, and escalation policy',
+      'Customer-approved enforcement rollout',
+      'Auditor-ready evidence package and findings review',
+      'Production architecture and commercial recommendation',
     ],
   },
   {
-    name: 'Gate Enterprise',
-    price: 'Custom',
-    priceNote: 'annual · scoped deployment',
+    name: PRODUCTION_GATE.name,
+    price: PRODUCTION_GATE.priceLabel,
+    priceNote: 'quoted by protected workflow and operating boundary',
     priceIsLabel: true,
-    tagline: 'Private deployment, identity integration, solution profiles, and operational support at the protected system boundary.',
+    tagline: 'Managed policy, approval, consumption, and evidence operations for consequential workflows in production.',
     accent: color.gold,
     cta: { label: 'Talk to us', href: '/partners' },
     ctaStyle: 'secondary' as const,
     highlight: false,
     available: true,
     features: [
-      'Everything in Gate Cloud',
+      'Everything proven in the managed pilot',
       'Private cloud, VPC, or self-hosted deployment options',
       'SAML/OIDC identity and SCIM provisioning integration',
-      'Government, financial, energy, and multi-party profiles',
-      'Procurement and security-review evidence support',
-      'Priority integration support and negotiated service levels',
+      'Durable one-time consumption and reconciliation operations',
+      'Evidence retention, export, observability, and SIEM integration',
+      'Negotiated support, service level, and deployment warranty',
     ],
   },
 ];
@@ -106,8 +101,9 @@ const TIERS: Array<{
 const OPEN_CORE = [
   ['Verify receipts under your own pinned trust policy', true, true, true],
   ['Use public formats, packages, and conformance vectors', true, true, true],
-  ['Managed Gate policy and enforcement operations', false, true, true],
-  ['Hosted approver routing and continuous evidence', false, true, true],
+  ['Managed workflow mapping and evidence policy', false, true, true],
+  ['Observe-first rollout with customer-approved enforcement', false, true, true],
+  ['Ongoing approver routing and continuous evidence', false, false, true],
   ['Private deployment, identity integration, profiles, and SLA', false, false, true],
 ];
 
@@ -138,11 +134,11 @@ export default function PricingPage(): React.ReactElement {
             Pricing
           </div>
           <h1 style={{ fontFamily: font.sans, fontWeight: 700, fontSize: 'clamp(38px, 5vw, 64px)', letterSpacing: -2.2, lineHeight: 1.0, color: color.t1, margin: '0 0 24px', maxWidth: 780 }}>
-            The Protocol is open. Gate is the product.
+            Start open. Prove one workflow. Scale the boundary.
           </h1>
           <p style={{ fontSize: 18, color: color.t2, maxWidth: 620, lineHeight: 1.7, margin: 0 }}>
-            Anyone can run EMILIA verification under their own pinned inputs. Customers pay for Gate to mediate
-            configured consequential actions, operate the approval workflow, and preserve decision evidence at the real system boundary.
+            The protocol and self-operated runtime are free. The paid product begins when EMILIA maps, operates,
+            and stands behind a protected workflow at your real system boundary.
           </p>
         </C>
       </section>
@@ -199,9 +195,9 @@ export default function PricingPage(): React.ReactElement {
             ))}
           </div>
           <p style={{ fontFamily: font.mono, fontSize: 11, color: color.t3, letterSpacing: 0.3, marginTop: 20, lineHeight: 1.6 }}>
-            The Protocol is open today. Gate Cloud is in early access, and Gate Enterprise is scoped around the
-            protected actions, deployment boundary, and operating requirements.
-            {' '}<Link href="/signup" style={{ color: color.gold }}>Or grab a free sandbox key &rarr;</Link>
+            No seat tax and no generic API-call bundle. Production pricing follows the number and risk of protected
+            workflows, the deployment boundary, evidence retention, integrations, and service level.
+            {' '}<Link href="/pilot/sandbox" style={{ color: color.gold }}>Run the free sandbox first &rarr;</Link>
           </p>
         </C>
       </section>
@@ -217,12 +213,12 @@ export default function PricingPage(): React.ReactElement {
               Most teams start with a pilot, not a plan.
             </h2>
             <p style={{ fontSize: 16, color: 'rgba(250,250,249,0.72)', lineHeight: 1.7, marginBottom: 30, maxWidth: 620 }}>
-              One high-risk workflow, 60 days, nothing blocked. EMILIA runs in observe mode and hands you the
-              evidence packet &mdash; the receipts that would have been required, and the actions that had no
-              verifiable human behind them. It&rsquo;s the fastest way to put a real receipt in front of your own auditor.
+              One high-risk workflow over {MANAGED_PILOT.durationLabel}. We begin in observe mode, configure the
+              evidence and approval policy, and enable enforcement only after your team approves it. You finish with
+              a working control, an evidence package, and a decision-ready production plan.
             </p>
             <div style={{ display: 'flex', gap: 36, flexWrap: 'wrap', marginBottom: 32 }}>
-              {[['$25K', 'scoped departmental pilot'], ['60 days', 'observe mode, zero blocking'], ['1 workflow', 'you pick the riskiest one']].map(([n, l]) => (
+              {[[MANAGED_PILOT.shortPriceLabel, 'fixed, scoped engagement'], [MANAGED_PILOT.durationLabel, 'observe, configure, then enforce'], [MANAGED_PILOT.workflowLabel, 'you pick the riskiest one']].map(([n, l]) => (
                 <div key={n}>
                   <div style={{ fontFamily: font.sans, fontWeight: 700, fontSize: 26, letterSpacing: -1, color: '#FAFAF9' }}>{n}</div>
                   <div style={{ fontFamily: font.mono, fontSize: 11, letterSpacing: 0.4, color: 'rgba(250,250,249,0.55)' }}>{l}</div>
@@ -230,7 +226,7 @@ export default function PricingPage(): React.ReactElement {
               ))}
             </div>
             <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap' }}>
-              <Link href="/pilot" className="ep-cta" style={{ ...cta.primary, background: color.gold, color: '#1C1917' }}>Scope a 60-day pilot &rarr;</Link>
+              <Link href="/pilot" className="ep-cta" style={{ ...cta.primary, background: color.gold, color: '#1C1917' }}>Scope the managed pilot &rarr;</Link>
               <Link href="/pilot/sandbox" className="ep-cta-secondary" style={{ ...cta.secondary, color: 'rgba(250,250,249,0.8)', borderColor: 'rgba(255,255,255,0.15)' }}>Run the sandbox yourself</Link>
             </div>
           </div>
@@ -249,7 +245,7 @@ export default function PricingPage(): React.ReactElement {
           <div className="ep-pricing-table" style={{ background: color.card, border: `1px solid ${color.border}`, borderRadius: radius.base, overflowX: 'auto' }}>
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 120px 120px 120px', alignItems: 'center', padding: '14px 24px', borderBottom: `1px solid ${color.borderHover}`, background: 'rgba(245,244,240,0.6)' }}>
               <span style={{ fontFamily: font.mono, fontSize: 10, letterSpacing: 1, textTransform: 'uppercase', color: color.t1, fontWeight: 700 }}>Capability</span>
-              {['Protocol', 'Gate Cloud', 'Gate Enterprise'].map((h) => (
+              {['Open', 'Pilot', 'Production'].map((h) => (
                 <span key={h} style={{ fontFamily: font.mono, fontSize: 10, letterSpacing: 1, textTransform: 'uppercase', color: color.t1, fontWeight: 700, textAlign: 'center' }}>{h}</span>
               ))}
             </div>
