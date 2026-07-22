@@ -588,6 +588,10 @@ export function verifyAuthorizationChain(aec: Obj, opts: Obj = {}): Obj {
 // Mutation and differential-test surface. These helpers are not protocol API;
 // exporting them keeps boundary tests from reimplementing the acceptance math.
 export const __aecSecurityInternals = Object.freeze({
+  builtinVerifiers,
+  isRecord,
+  own,
+  sha256hex,
   normDigest,
   strictInstantMs,
   freshAt,
