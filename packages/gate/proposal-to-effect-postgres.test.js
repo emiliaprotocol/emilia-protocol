@@ -451,6 +451,8 @@ test('secure DDL separates database roles, tenant principals, and recovery autho
     assert.match(PROPOSAL_TO_EFFECT_POSTGRES_DDL, /SET search_path = ''/);
     assert.match(PROPOSAL_TO_EFFECT_POSTGRES_DDL, /state = 'INDETERMINATE'/);
     assert.match(PROPOSAL_TO_EFFECT_POSTGRES_DDL, /state IN \('COMMITTED', 'RELEASED', 'ESCALATED'\)/);
+    assert.equal(PROPOSAL_TO_EFFECT_POSTGRES_DDL.match(/HH24:MI:SS\.US/g)?.length, 2, 'recovery snapshots must preserve PostgreSQL microseconds for exact lease fencing');
+    assert.doesNotMatch(PROPOSAL_TO_EFFECT_POSTGRES_DDL, /HH24:MI:SS\.MS/);
     for (const column of ['operation_id', 'caid', 'action_digest']) {
         assert.match(PROPOSAL_TO_EFFECT_POSTGRES_DDL, new RegExp(`provider_evidence[\\s\\S]*\\b${column}\\b`));
     }
@@ -631,6 +633,10 @@ test('restart recovery requires server authorization, rotates custody, and fence
     const first = storeFixture({ pg });
     const attempt = binding();
     const staleOwner = await makeIndeterminate(first.store, attempt);
+    const stored = pg.attempts.get(pg.namespaceKey(attempt.tenant_id, attempt.provider_id, attempt.provider_account_id, attempt.environment, attempt.attempt_id));
+    assert.ok(stored);
+    stored.last_heartbeat_at = stored.last_heartbeat_at.replace(/(\.\d{3})Z$/, (_match, milliseconds) => `${milliseconds}123Z`);
+    stored.lease_expires_at = stored.lease_expires_at.replace(/(\.\d{3})Z$/, (_match, milliseconds) => `${milliseconds}456Z`);
     const nonterminal = await first.store.read({
         tenant_id: attempt.tenant_id,
         provider_id: attempt.provider_id,
@@ -641,6 +647,8 @@ test('restart recovery requires server authorization, rotates custody, and fence
     });
     assert.equal(nonterminal?.state, 'INDETERMINATE');
     assert.equal(nonterminal?.evidence_digest, null);
+    assert.match(nonterminal?.last_heartbeat_at ?? '', /\.\d{6}Z$/);
+    assert.match(nonterminal?.lease_expires_at ?? '', /\.\d{6}Z$/);
     const restarted = storeFixture({
         pg,
         randomStart: 100,
