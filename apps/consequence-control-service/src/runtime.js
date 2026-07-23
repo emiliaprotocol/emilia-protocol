@@ -470,35 +470,40 @@ export function createConsequenceControlRuntime(config) {
             return refused(403, 'profile_not_authorized');
         }
         try {
-            const recovered = await config.recoverAttempt({
-                principal,
-                proposal: clone(proposal),
-                attempt: clone(body.attempt),
-            });
-            if (!isPlainObject(recovered)
-                || recovered.tenant_id !== body.attempt.tenant_id
-                || recovered.attempt_id !== body.attempt.attempt_id
-                || typeof recovered.owner !== 'string'
-                || recovered.owner.length < 16
-                || recovered.owner.length > 1024) {
-                return refused(409, 'attempt_recovery_refused');
-            }
-            const recoveryAuthorization = await config.aebRecoveryAuthorization({
-                principal,
-                proposal: clone(proposal),
-                attempt: clone(body.attempt),
-            });
             const result = await config.withEvidenceContext({
                 principal,
                 proposal: clone(proposal),
                 evidence: clone(body.evidence),
-            }, () => config.controller.reconcile({
-                proposal,
-                evaluation: clone(body.evaluation),
-                attempt: recovered,
-                provider_evidence: clone(body.provider_evidence),
-                aeb_recovery_authorization: recoveryAuthorization,
-            }));
+            }, async () => {
+                const recovered = await config.recoverAttempt({
+                    principal,
+                    proposal: clone(proposal),
+                    attempt: clone(body.attempt),
+                });
+                if (!isPlainObject(recovered)
+                    || recovered.tenant_id !== body.attempt.tenant_id
+                    || recovered.attempt_id !== body.attempt.attempt_id
+                    || typeof recovered.owner !== 'string'
+                    || recovered.owner.length < 16
+                    || recovered.owner.length > 1024) {
+                    return { ok: false, reason: 'attempt_recovery_refused' };
+                }
+                const recoveryAuthorization = await config.aebRecoveryAuthorization({
+                    principal,
+                    proposal: clone(proposal),
+                    attempt: clone(body.attempt),
+                });
+                return config.controller.reconcile({
+                    proposal,
+                    evaluation: clone(body.evaluation),
+                    attempt: recovered,
+                    provider_evidence: clone(body.provider_evidence),
+                    aeb_recovery_authorization: recoveryAuthorization,
+                });
+            });
+            if (result?.reason === 'attempt_recovery_refused') {
+                return refused(409, 'attempt_recovery_refused');
+            }
             return response(statusForControllerResult(result), {
                 status: result?.ok === true ? 'reconciled' : 'refused',
                 result: sanitizeControllerResult(result),

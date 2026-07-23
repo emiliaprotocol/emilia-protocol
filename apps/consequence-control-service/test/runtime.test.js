@@ -439,6 +439,48 @@ test('reconcile recovers owner and AEB authorization on the server', async () =>
   assert.deepEqual(context.evidence, evidence());
 });
 
+test('reconcile authorizes durable recovery inside the request evidence context', async () => {
+  let activeContext = null;
+  const { runtime } = fixture({
+    withEvidenceContext: async (context, work) => {
+      assert.equal(activeContext, null);
+      activeContext = structuredClone(context);
+      try {
+        return await work();
+      } finally {
+        activeContext = null;
+      }
+    },
+    recoverAttempt: async ({ attempt }) => {
+      assert.deepEqual(activeContext?.evidence, evidence());
+      return {
+        tenant_id: attempt.tenant_id,
+        attempt_id: attempt.attempt_id,
+        owner: 'pto-owner:v1:context-bound-recovery-capability',
+      };
+    },
+    aebRecoveryAuthorization: async () => {
+      assert.deepEqual(activeContext?.evidence, evidence());
+      return { recovery: 'context-bound' };
+    },
+  });
+
+  const result = await runtime.reconcile({
+    principal: PRINCIPAL,
+    proposalId: 'proposal:0000000000000001',
+    body: {
+      proposal: proposal(),
+      evaluation: { verdict: 'SATISFIED' },
+      attempt: publicAttempt(),
+      provider_evidence: { outcome: 'COMMITTED' },
+      evidence: evidence(),
+    },
+  });
+
+  assert.equal(result.status, 200);
+  assert.equal(activeContext, null);
+});
+
 test('execute refuses malformed evidence before selecting an effect', async () => {
   let effectSelected = false;
   const { runtime, calls } = fixture({
