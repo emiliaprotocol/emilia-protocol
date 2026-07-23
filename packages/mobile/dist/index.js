@@ -16,7 +16,7 @@ import { strictJsonGate } from './strict-json.js';
 import { MOBILE_PRESENTATION_VERSION, normalizeControlledMobilePresentation, normalizeMobilePresentation, projectMobileAction, validControlledMobilePresentation, validMobilePresentation, } from './presentation.js';
 import { buildMobileAndroidKeyBinding, buildMobileEnrollmentBinding, createMobileEnrollmentService, MOBILE_ANDROID_KEY_BINDING_VERSION, MOBILE_ENROLLMENT_CHALLENGE_VERSION, MOBILE_ENROLLMENT_VERSION, } from './enrollment.js';
 import { MOBILE_ACTION_CAID_TYPE, MOBILE_ACTION_CAID_PATTERN, buildMobileActionIdentity, mobileActionFingerprint, verifyMobileActionIdentity, } from './action-identity.js';
-const verifier = await import('../../verify/index.js');
+const verifier = await import('@emilia-protocol/verify');
 const { canonicalize, isCanonicalizable, verifyWebAuthnSignoff } = verifier;
 export const MOBILE_CHALLENGE_VERSION = 'EP-MOBILE-CHALLENGE-v2';
 export const MOBILE_CEREMONY_VERSION = 'EP-MOBILE-CEREMONY-v1';

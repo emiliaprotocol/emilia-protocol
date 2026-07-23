@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: Apache-2.0
 import crypto from 'node:crypto';
 
-const verifier = await import('../../verify/index.js');
+const verifier = await import('@emilia-protocol/verify');
 const { canonicalize, isCanonicalizable } = verifier as AnyRecord;
 
 type AnyRecord = Record<string, any>;

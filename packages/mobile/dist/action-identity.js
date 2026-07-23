@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: Apache-2.0
 import crypto from 'node:crypto';
-const verifier = await import('../../verify/index.js');
+const verifier = await import('@emilia-protocol/verify');
 const { canonicalize, isCanonicalizable } = verifier;
 export const MOBILE_ACTION_CAID_TYPE = 'emilia.mobile.authorized-action.1';
 export const MOBILE_ACTION_CAID_PATTERN = /^caid:1:emilia\.mobile\.authorized-action\.1:jcs-sha256:[A-Za-z0-9_-]{43}$/;
