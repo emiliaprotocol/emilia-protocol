@@ -16,6 +16,9 @@ This package follows [Semantic Versioning](https://semver.org/).
   CAID mapping and stable native replay identities.
 - `./status`, a signed current-status profile with scoped revoker authority,
   freshness, monotonic sequence, predecessor binding, and terminal revocation.
+- `./agent-edge-continuity`, a relying-party-pinned provenance and
+  action-lineage profile across user, harness, model, MCP, A2A, and effect
+  boundaries.
 
 ### Security
 
@@ -32,6 +35,12 @@ This package follows [Semantic Versioning](https://semver.org/).
   relying-party-pinned network boundary, with redirects disabled.
 - ORPRG inspection is non-mutating and never claims final native authorization;
   the Gate must atomically reserve its native replay unit with the AEB action.
+- Continuity execution requires execution-mode AEB verification and binds the
+  operation, proposal, relying party, configuration, initiator, executor, CAID,
+  and action. Signer authority is scoped by source, edge, status, and time.
+- Fleet execution atomically reserves continuity IDs and handoff nonces with
+  native AEB replay identities. Post-effect observations cannot authorize, and
+  `INDETERMINATE` remains under Proposal-to-Effect custody.
 
 ## 3.12.0 (2026-07-21)
 

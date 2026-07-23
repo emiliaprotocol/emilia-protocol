@@ -1548,6 +1548,8 @@ export function authorizeAebExecution(
     verification: Pick<AebEvaluationVerification, 'valid' | 'execution_authorizing'>;
     local_authorization: boolean;
     store: AebConsumptionStore;
+    /** Extra profile replay identities reserved atomically with native evidence. */
+    additional_replay_keys?: readonly string[];
   },
 ): AebExecutionDecision {
   const reservationKey = aebReservationKey(record);
@@ -1557,7 +1559,10 @@ export function authorizeAebExecution(
   if (record.verdict !== 'SATISFIED') return { allowed: false, invoke_allowed: false, state: 'REFUSED', reason: 'evidence_requirement_not_satisfied' };
   if (record.authority_constraints?.one_time_consumption !== true) return { allowed: false, invoke_allowed: false, state: 'REFUSED', reason: 'one_time_consumption_not_required' };
   if (!options.local_authorization) return { allowed: false, invoke_allowed: false, state: 'REFUSED', reason: 'local_authorization_denied' };
-  if (!options.store.reserve(reservationKey, aebNativeReplayKeys(record))) {
+  if (!options.store.reserve(reservationKey, sortedUnique([
+    ...aebNativeReplayKeys(record),
+    ...(options.additional_replay_keys ?? []),
+  ]))) {
     return { allowed: false, invoke_allowed: false, state: 'REFUSED', reason: 'consumption_conflict' };
   }
   return { allowed: true, invoke_allowed: true, state: 'AUTHORIZED', reason: 'reserved_for_execution', reservation_key: reservationKey };
@@ -1615,6 +1620,8 @@ export async function authorizeAebExecutionDurable(
     verification: Pick<AebEvaluationVerification, 'valid' | 'execution_authorizing'>;
     local_authorization: boolean;
     store: unknown;
+    /** Extra profile replay identities reserved atomically with native evidence. */
+    additional_replay_keys?: readonly string[];
   },
 ): Promise<AebExecutionDecision> {
   const reservationKey = aebReservationKey(record);
@@ -1626,7 +1633,10 @@ export async function authorizeAebExecutionDurable(
   if (!options.local_authorization) return { allowed: false, invoke_allowed: false, state: 'REFUSED', reason: 'local_authorization_denied' };
   if (!secureDurableStore(options.store)) return { allowed: false, invoke_allowed: false, state: 'REFUSED', reason: 'secure_consumption_store_required' };
   try {
-    const reservation = await options.store.reserve(reservationKey, aebNativeReplayKeys(record));
+    const reservation = await options.store.reserve(reservationKey, sortedUnique([
+      ...aebNativeReplayKeys(record),
+      ...(options.additional_replay_keys ?? []),
+    ]));
     if (reservation !== true && reservation !== 'RESERVED') {
       return {
         allowed: false,

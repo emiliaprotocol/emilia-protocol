@@ -456,6 +456,7 @@ packages/require-receipt/manifest-assurance.test.js linguist-generated=true
 packages/verify/aeb-adapter-contract.test.js linguist-generated=true
 packages/verify/aeb-native-adapters.test.js linguist-generated=true
 packages/verify/agent-binding.test.js linguist-generated=true
+packages/verify/agent-edge-continuity.test.js linguist-generated=true
 packages/verify/agentroa.test.js linguist-generated=true
 packages/verify/authority-program.test.js linguist-generated=true
 packages/verify/cli.test.js linguist-generated=true

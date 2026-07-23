@@ -30,6 +30,7 @@ export {
 } from './authority-program.js';
 export * from './aeb-adapter-contract.js';
 export * from './aeb-native-adapters.js';
+export * from './agent-edge-continuity.js';
 export * from './status.js';
 export {
   OUTCOME_ATTESTATION_VERSION,

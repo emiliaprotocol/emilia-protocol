@@ -46,6 +46,7 @@
     "src/authority-program.ts",
     "src/aeb-adapter-contract.ts",
     "src/aeb-native-adapters.ts",
+    "src/agent-edge-continuity.ts",
     "src/status.ts",
     "src/index.ts",
     "src/cli.ts"

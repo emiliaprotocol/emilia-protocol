@@ -80,6 +80,29 @@ function revokerSigner(
   return externalSigner(revokerKeys, deriveRevokerKeyId(publicKey(revokerKeys)), onSign);
 }
 
+function statusInput(authority: Awaited<ReturnType<typeof certificate>>, overrides: Record<string, unknown> = {}) {
+  return {
+    authorityPin,
+    certificate: authority,
+    target: TARGET,
+    status: 'not_revoked',
+    issuedAt: '2026-07-22T12:00:00Z',
+    nextUpdate: '2026-07-22T12:05:00Z',
+    signer: revokerSigner(),
+    ...overrides,
+  };
+}
+
+function resignStatus(status: Record<string, any>): void {
+  const unsigned = structuredClone(status);
+  delete unsigned.proof;
+  status.proof.signature_b64u = crypto.sign(
+    null,
+    Buffer.from(`${STATUS_DOMAIN}${jcs(unsigned)}`),
+    revokerKeys.privateKey,
+  ).toString('base64url');
+}
+
 function certificateInput(overrides: Record<string, unknown> = {}) {
   return {
     certificateId: 'revoker-authority:acme:primary:v1',
@@ -417,5 +440,147 @@ describe('EP status issuer', () => {
         async sign() { return 'not-a-signature'; },
       },
     })).rejects.toThrow(/signature/i);
+  });
+
+  it('rejects missing, accessor-backed, and symbol-keyed issuer inputs', async () => {
+    const missing = certificateInput() as Record<string, unknown>;
+    delete missing.certificateId;
+    await expect(buildRevokerAuthorityCertificate(missing as any)).rejects.toThrow(/missing.*certificateId/i);
+
+    const accessor = certificateInput() as Record<string, unknown>;
+    Object.defineProperty(accessor, 'certificateId', {
+      enumerable: true,
+      get() { return 'revoker-authority:acme:primary:v1'; },
+    });
+    await expect(buildRevokerAuthorityCertificate(accessor as any)).rejects.toThrow(/plain data object/i);
+
+    const symbolKeyed = certificateInput() as Record<PropertyKey, unknown>;
+    symbolKeyed[Symbol('hidden')] = true;
+    await expect(buildRevokerAuthorityCertificate(symbolKeyed as any)).rejects.toThrow(/plain data object/i);
+  });
+
+  it('rejects malformed authority pins, keys, scopes, and certificate windows', async () => {
+    const cases = [
+      { authorityPin: { ...authorityPin, authority_domain: 'https://status.acme.example' } },
+      { authorityPin: { ...authorityPin, authority_id: 'bad id' } },
+      { authorityPin: { ...authorityPin, public_key: 'not-a-key' } },
+      { revokerPublicKey: 'not-a-key' },
+      { scope: { allowed_target_types: [], allowed_usages: ['authorization'] } },
+      { scope: { allowed_target_types: ['receipt', 'receipt'], allowed_usages: ['authorization'] } },
+      { scope: { allowed_target_types: ['unknown'], allowed_usages: ['authorization'] } },
+      { scope: { allowed_target_types: ['receipt'], allowed_usages: ['unknown'] } },
+      { issuedAt: '2026-08-01T00:00:00Z', expiresAt: '2026-08-01T00:00:00Z' },
+      { issuedAt: '2026-07-01T00:00:00+24:00' },
+    ];
+    for (const overrides of cases) {
+      await expect(buildRevokerAuthorityCertificate(certificateInput(overrides)))
+        .rejects.toBeInstanceOf(Error);
+    }
+
+    const sparse = ['receipt'] as unknown[];
+    sparse.length = 2;
+    await expect(buildRevokerAuthorityCertificate(certificateInput({
+      scope: { allowed_target_types: sparse, allowed_usages: ['authorization'] },
+    }))).rejects.toThrow(/scope/i);
+  });
+
+  it('rejects malformed targets, statuses, and terminal/current windows', async () => {
+    const authority = await certificate();
+    const cases = [
+      { target: { ...TARGET, type: 'unknown' } },
+      { target: { ...TARGET, id: 'bad id' } },
+      { target: { ...TARGET, digest: `sha256:${'A'.repeat(64)}` } },
+      { target: { ...TARGET, usage: 'unknown' } },
+      { status: 'maybe' },
+      { status: 'revoked', nextUpdate: '2026-07-22T12:05:00Z' },
+      { nextUpdate: '2026-09-01T00:00:00Z' },
+      { issuedAt: '2026-07-22T12:00:00+00:99' },
+    ];
+    for (const overrides of cases) {
+      await expect(buildStatusArtifact(statusInput(authority, overrides) as any))
+        .rejects.toBeInstanceOf(Error);
+    }
+  });
+
+  it('accepts raw signature bytes and rejects invalid bytes or non-Error signer failure', async () => {
+    const byteSigner: ExternalEd25519Signer = {
+      algorithm: 'Ed25519',
+      keyId: authorityPin.key_id,
+      async sign(bytes) {
+        return new Uint8Array(crypto.sign(null, Buffer.from(bytes), authorityKeys.privateKey));
+      },
+    };
+    const authority = await buildRevokerAuthorityCertificate(certificateInput({ signer: byteSigner }));
+    expect(verifyRevokerAuthorityCertificate(authority, { authorityPin, now: NOW }).valid).toBe(true);
+
+    for (const sign of [
+      async () => new Uint8Array(63),
+      async () => { throw 'kms offline'; },
+    ]) {
+      await expect(buildRevokerAuthorityCertificate(certificateInput({
+        signer: { algorithm: 'Ed25519', keyId: authorityPin.key_id, sign },
+      }))).rejects.toBeInstanceOf(Error);
+    }
+    await expect(buildRevokerAuthorityCertificate(certificateInput({
+      signer: { algorithm: 'P-256', keyId: authorityPin.key_id, async sign() { return ''; } },
+    }))).rejects.toThrow(/algorithm/i);
+    await expect(buildRevokerAuthorityCertificate(certificateInput({
+      signer: { algorithm: 'Ed25519', keyId: authorityPin.key_id } as any,
+    }))).rejects.toThrow(/requires async sign/i);
+  });
+
+  it('detects round-trip signature substitution for both artifact classes', async () => {
+    const attacker = crypto.generateKeyPairSync('ed25519');
+    await expect(buildRevokerAuthorityCertificate(certificateInput({
+      signer: externalSigner(attacker, authorityPin.key_id),
+    }))).rejects.toThrow(/round-trip|verification/i);
+
+    const authority = await certificate();
+    await expect(buildStatusArtifact(statusInput(authority, {
+      signer: externalSigner(attacker, deriveRevokerKeyId(publicKey(revokerKeys))),
+    }) as any)).rejects.toThrow(/round-trip|verification/i);
+  });
+
+  it('refuses every malformed predecessor axis before successor signing', async () => {
+    const authority = await certificate();
+    const first = await buildStatusArtifact(statusInput(authority) as any);
+    const mutations: Array<(value: Record<string, any>) => void> = [
+      (value) => { value.authority_domain = 'status.other.example'; },
+      (value) => { value.target.id = 'receipt:other'; },
+      (value) => { value.status = 'unknown'; },
+      (value) => { value.sequence = -1; },
+      (value) => { value.previous_status_digest = 'bad'; },
+      (value) => { value.issued_at = '2026-07-22T12:01:00Z'; },
+      (value) => { value.next_update = '2026-07-22T11:59:00Z'; },
+      (value) => { value.proof.algorithm = 'P-256'; },
+      (value) => { value.proof.signature_b64u = 'invalid'; },
+    ];
+    for (const mutate of mutations) {
+      const previous = structuredClone(first) as Record<string, any>;
+      mutate(previous);
+      await expect(buildStatusArtifact(statusInput(authority, {
+        issuedAt: '2026-07-22T12:01:00Z',
+        nextUpdate: '2026-07-22T12:06:00Z',
+        previousStatus: previous,
+      }) as any)).rejects.toBeInstanceOf(Error);
+    }
+
+    const exhausted = structuredClone(first) as Record<string, any>;
+    exhausted.sequence = Number.MAX_SAFE_INTEGER;
+    resignStatus(exhausted);
+    await expect(buildStatusArtifact(statusInput(authority, {
+      issuedAt: '2026-07-22T12:01:00Z',
+      nextUpdate: '2026-07-22T12:06:00Z',
+      previousStatus: exhausted,
+    }) as any)).rejects.toThrow(/sequence/i);
+
+    const malformedTerminal = structuredClone(first) as Record<string, any>;
+    malformedTerminal.status = 'revoked';
+    resignStatus(malformedTerminal);
+    await expect(buildStatusArtifact(statusInput(authority, {
+      issuedAt: '2026-07-22T12:01:00Z',
+      nextUpdate: '2026-07-22T12:06:00Z',
+      previousStatus: malformedTerminal,
+    }) as any)).rejects.toThrow(/revoked previousStatus|terminal revocation/i);
   });
 });

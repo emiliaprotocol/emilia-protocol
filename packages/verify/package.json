@@ -99,6 +99,10 @@
       "types": "./dist/aeb-native-adapters.d.ts",
       "import": "./aeb-native-adapters.js"
     },
+    "./agent-edge-continuity": {
+      "types": "./dist/agent-edge-continuity.d.ts",
+      "import": "./agent-edge-continuity.js"
+    },
     "./status": {
       "types": "./dist/status.d.ts",
       "import": "./status.js"
@@ -143,6 +147,7 @@
     "authority-program.d.ts",
     "aeb-adapter-contract.js",
     "aeb-native-adapters.js",
+    "agent-edge-continuity.js",
     "status.js",
     "status.d.ts",
     "effect-predicates.js",
@@ -179,7 +184,7 @@
     "build": "tsc -p tsconfig.json && node postbuild-ts-nocheck.mjs",
     "prepack": "npm run build",
     "pretest": "npm run build",
-    "test": "node --test test.js web.test.js federation.test.js trust-receipt.test.js trust-receipt-knobs.test.js quorum.test.js revocation.test.js status.test.js time-attestation.test.js no-symmetric.test.js cli.test.js evidence-chain.test.js platform-attestation.test.js agent-binding.test.js agentroa.test.js orprg.test.js outcome-binding.test.js authority-program.test.js aeb-adapter-contract.test.js aeb-native-adapters.test.js consistency.test.js witness.test.js timestamp-proof.test.js currency.test.js consumption-proof.test.js initiator-attestation.test.js surface-binding.test.js consent-grant.test.js resolution.test.js document-action-binding.test.js pq-hybrid.test.js"
+    "test": "node --test test.js web.test.js federation.test.js trust-receipt.test.js trust-receipt-knobs.test.js quorum.test.js revocation.test.js status.test.js time-attestation.test.js no-symmetric.test.js cli.test.js evidence-chain.test.js platform-attestation.test.js agent-binding.test.js agentroa.test.js orprg.test.js outcome-binding.test.js authority-program.test.js aeb-adapter-contract.test.js aeb-native-adapters.test.js agent-edge-continuity.test.js consistency.test.js witness.test.js timestamp-proof.test.js currency.test.js consumption-proof.test.js initiator-attestation.test.js surface-binding.test.js consent-grant.test.js resolution.test.js document-action-binding.test.js pq-hybrid.test.js"
   },
   "bin": {
     "emilia-verify": "./cli.js"

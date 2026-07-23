@@ -76,6 +76,27 @@ permit and exposes its native replay unit, while the Gate atomically fences
 that replay unit before any effect. Inspection is never reported as a final
 native `ALLOW`.
 
+### Agent Edge Continuity — `@emilia-protocol/verify/agent-edge-continuity`
+
+`EP-AGENT-EDGE-CONTINUITY-v1` carries one material action across user,
+harness, model, MCP tool, A2A handoff, and effect boundaries without turning
+provenance into authority. Every envelope binds the relying party, pinned
+configuration, initiator, executor, CAID, normalized action, proposal, and
+operation.
+
+Verification is offline and relying-party controlled. Signer pins constrain
+each key by status, validity, source, and edge; topology pins constrain roots,
+transitions, execution edges, path depth, lifetime, and age.
+
+The single-process `authorizeAgentContinuityExecution()` is for reference
+tests. Fleet execution uses `authorizeAgentContinuityExecutionDurable()`,
+which atomically fences AEB native replay identities plus every continuity ID
+and handoff nonce. Historical AEB verification, a post-effect envelope before
+reservation, or an insecure store cannot authorize execution.
+
+The outcome edge is evidence only. Proposal-to-Effect custody keeps an
+`INDETERMINATE` action locked and requires authenticated reconciliation.
+
 ### Signed current status — `@emilia-protocol/verify/status`
 
 `EP-STATUS-v1` verifies fresh current/revoked state under a separately pinned

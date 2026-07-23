@@ -390,6 +390,8 @@ export declare function authorizeAebExecution(record: AebEvaluationRecord, optio
     verification: Pick<AebEvaluationVerification, 'valid' | 'execution_authorizing'>;
     local_authorization: boolean;
     store: AebConsumptionStore;
+    /** Extra profile replay identities reserved atomically with native evidence. */
+    additional_replay_keys?: readonly string[];
 }): AebExecutionDecision;
 /** Stable native approval identities that must be fenced with the operation reservation. */
 export declare function aebNativeReplayKeys(record: Pick<AebEvaluationRecord, 'evaluator' | 'legs'>): string[];
@@ -405,6 +407,8 @@ export declare function authorizeAebExecutionDurable(record: AebEvaluationRecord
     verification: Pick<AebEvaluationVerification, 'valid' | 'execution_authorizing'>;
     local_authorization: boolean;
     store: unknown;
+    /** Extra profile replay identities reserved atomically with native evidence. */
+    additional_replay_keys?: readonly string[];
 }): Promise<AebExecutionDecision>;
 export declare function reconcileAebExecutionDurable(store: unknown, reservationKey: string, outcome: 'COMMITTED' | 'NOT_COMMITTED' | 'INDETERMINATE'): Promise<{
     state: 'CONSUMED' | 'AVAILABLE' | 'RECONCILIATION_REQUIRED';

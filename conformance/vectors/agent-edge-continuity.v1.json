@@ -1,0 +1,22 @@
+{
+  "@type": "EP-AGENT-EDGE-CONTINUITY-v1",
+  "vectors_version": "1",
+  "description": "Cross-edge continuity, authority, replay, and execution-boundary refusal vectors.",
+  "vectors": [
+    { "id": "complete_user_model_mcp_a2a_effect_graph", "expect": { "valid": true } },
+    { "id": "changed_action_is_refused", "expect": { "valid": false } },
+    { "id": "operation_swap_is_refused", "expect": { "valid": false } },
+    { "id": "missing_parent_or_sequence_gap_is_refused", "expect": { "valid": false } },
+    { "id": "a2a_scope_widening_is_refused", "expect": { "valid": false } },
+    { "id": "duplicate_nonce_is_replay", "expect": { "valid": false } },
+    { "id": "signer_source_or_edge_escalation_is_refused", "expect": { "valid": false } },
+    { "id": "revoked_or_stale_signer_is_refused", "expect": { "valid": false } },
+    { "id": "required_pre_execution_edge_is_missing", "expect": { "invoke_allowed": false } },
+    { "id": "historical_aeb_verification_is_not_execution_authority", "expect": { "invoke_allowed": false } },
+    { "id": "continuity_replay_is_fenced_across_aeb_wrappers", "expect": { "invoke_allowed": false } },
+    { "id": "effect_evidence_cannot_precede_execution_reservation", "expect": { "invoke_allowed": false } },
+    { "id": "malformed_graph_never_touches_the_store", "expect": { "invoke_allowed": false } },
+    { "id": "production_path_requires_durable_ownership_fenced_store", "expect": { "invoke_allowed": false } },
+    { "id": "indeterminate_effect_is_not_success", "expect": { "valid": true, "outcome": "INDETERMINATE" } }
+  ]
+}
