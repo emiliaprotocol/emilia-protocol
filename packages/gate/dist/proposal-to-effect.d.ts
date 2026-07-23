@@ -5,10 +5,73 @@
  * requirement; consequence custody remains in Gate and its durable stores.
  */
 import { EP_APPROVAL_FLOW } from '@emilia-protocol/require-receipt/acquisition';
-import { type AebAdapter, type AebDigest, type AebDurableConsumptionStore, type AebEvaluationRecord, type AebPinnedConfig } from '@emilia-protocol/verify/aeb-adapter-contract';
+import { type AebAdapter, type AebDigest, type AebDurableConsumptionStore, type AebEvaluationRecord, type AebPinnedConfig, type AebStatusInput } from '@emilia-protocol/verify/aeb-adapter-contract';
 export declare const PROPOSAL_TO_EFFECT_VERSION = "EMILIA-PROPOSAL-TO-EFFECT-v1";
 type JsonObject = Record<string, any>;
 type FetchLike = typeof fetch;
+declare const CONSEQUENCE_ATTEMPT_OWNER: unique symbol;
+export type ConsequenceAttemptOwnerHandle = string & {
+    readonly [CONSEQUENCE_ATTEMPT_OWNER]: true;
+};
+export type ConsequenceAttemptState = 'RESERVED' | 'INVOKING' | 'INDETERMINATE' | 'COMMITTED' | 'RELEASED' | 'ESCALATED';
+export type ProposalToEffectProviderOutcome = 'COMMITTED' | 'NOT_COMMITTED' | 'ESCALATED';
+export interface ConsequenceAttemptBinding {
+    tenant_id: string;
+    provider_id: string;
+    provider_account_id: string;
+    environment: string;
+    attempt_id: string;
+    request_digest: AebDigest;
+}
+export interface ConsequenceAttemptReference {
+    tenant_id: string;
+    attempt_id: string;
+    owner: ConsequenceAttemptOwnerHandle;
+}
+export interface AuthenticatedProviderEvidenceBinding extends ConsequenceAttemptBinding {
+    operation_id: string;
+    caid: string;
+    action_digest: AebDigest;
+    evidence_id: string;
+    observed_at: string;
+    outcome: ProposalToEffectProviderOutcome;
+    evidence_digest: AebDigest;
+}
+export type ConsequenceAttemptTransition = {
+    expected_state: 'RESERVED';
+    next_state: 'INVOKING';
+} | {
+    expected_state: 'INVOKING';
+    next_state: 'INDETERMINATE';
+} | {
+    expected_state: 'INDETERMINATE';
+    next_state: 'COMMITTED' | 'RELEASED' | 'ESCALATED';
+};
+/** Owner-fenced durable CAS custody for one provider invocation attempt. */
+export interface ProposalToEffectConsequenceAttemptStore {
+    durable: true;
+    ownershipFenced: true;
+    compareAndSwap: true;
+    atomicEvidenceBinding: true;
+    reserve(binding: ConsequenceAttemptBinding): Promise<{
+        reserved: true;
+        owner: ConsequenceAttemptOwnerHandle;
+    } | {
+        reserved: false;
+        reason: string;
+    }>;
+    transition(input: ConsequenceAttemptReference & ConsequenceAttemptTransition): Promise<boolean>;
+    reconcile(input: ConsequenceAttemptReference & {
+        expected_state: 'INDETERMINATE';
+        next_state: 'COMMITTED' | 'RELEASED' | 'ESCALATED';
+        evidence: AuthenticatedProviderEvidenceBinding;
+    }): Promise<boolean>;
+    /** Read terminal custody without exposing owner material, for saga repair. */
+    read?(binding: ConsequenceAttemptBinding): Promise<{
+        state: ConsequenceAttemptState;
+        evidence_digest?: AebDigest | null;
+    } | null>;
+}
 export interface ProposalToEffectProfile {
     id: string;
     action_type: string;
@@ -56,10 +119,22 @@ export interface ProposalToEffectProposal {
         authorization_endpoint: string;
         flow: typeof EP_APPROVAL_FLOW;
     };
+    consequence: {
+        tenant_id: string;
+        provider_id: string;
+        provider_account_id: string;
+        environment: string;
+        executor_id: string;
+        request_digest: AebDigest;
+    };
     aeb: {
         requirement_ref: string;
         pinned_config_digest: AebDigest;
         consumption_nonce: AebDigest;
+    };
+    integrity: {
+        alg: 'HMAC-SHA256';
+        value: string;
     };
 }
 export interface ProposalToEffectGate {
@@ -68,12 +143,47 @@ export interface ProposalToEffectGate {
 }
 export interface ProposalToEffectProviderVerification {
     valid: boolean;
-    outcome?: 'COMMITTED' | 'NOT_COMMITTED';
-    evidence_digest?: AebDigest | null;
+    outcome?: ProposalToEffectProviderOutcome;
+    evidence_id?: string;
+    observed_at?: string;
+    tenant_id?: string;
+    request_digest?: AebDigest;
+    provider_id?: string;
+    provider_account_id?: string;
+    environment?: string;
+    attempt_id?: string;
+    operation_id?: string;
+    caid?: string;
+    action_digest?: AebDigest;
+    evidence_digest?: AebDigest;
+    reason?: string;
+}
+export interface ProposalToEffectCurrentStatusVerification {
+    valid: boolean;
+    outcome: 'current_not_revoked' | 'revoked' | 'indeterminate';
+    /** Authenticated normalized AEB status; never raw presenter data. */
+    status?: AebStatusInput | null;
     reason?: string;
 }
 export interface ProposalToEffectOptions {
     gate: ProposalToEffectGate;
+    proposal_integrity: {
+        /** Server-held key copied at controller construction; minimum 256 bits. */
+        hmac_sha256_key: Uint8Array;
+    };
+    consequence: {
+        tenant_id: string;
+        provider_id: string;
+        provider_account_id: string;
+        environment: string;
+        executor_id: string;
+        store: ProposalToEffectConsequenceAttemptStore;
+        /** Server-side allocator. Presented execute input never selects attempt_id. */
+        create_attempt_id?: (input: {
+            tenant_id: string;
+            request_digest: AebDigest;
+        }) => Promise<string> | string;
+    };
     profiles: Record<string, ProposalToEffectProfile>;
     aeb: {
         config: AebPinnedConfig;
@@ -83,12 +193,37 @@ export interface ProposalToEffectOptions {
             proposal: ProposalToEffectProposal;
             evaluation: AebEvaluationRecord;
         }): Promise<Record<string, unknown>> | Record<string, unknown>;
+        currentStatusResolver(input: {
+            proposal: ProposalToEffectProposal;
+            evaluation: AebEvaluationRecord;
+            leg: AebEvaluationRecord['legs'][number];
+        }): Promise<unknown> | unknown;
+        /** Configure this around EP-STATUS-v1 verifyStatusArtifact and server pins. */
+        statusVerifier(input: {
+            status_artifact: unknown;
+            expected: {
+                tenant_id: string;
+                executor_id: string;
+                operation_id: string;
+                caid: string;
+                artifact_ref: string;
+                evidence_digest: AebDigest;
+                replay_unit: AebDigest;
+            };
+            now: string;
+        }): Promise<ProposalToEffectCurrentStatusVerification> | ProposalToEffectCurrentStatusVerification;
         verify_provider_evidence(input: {
             evidence: unknown;
             expected: {
                 operation_id: string;
                 caid: string;
                 action_digest: AebDigest;
+                tenant_id: string;
+                request_digest: AebDigest;
+                provider_id: string;
+                provider_account_id: string;
+                environment: string;
+                attempt_id: string;
             };
         }): Promise<ProposalToEffectProviderVerification> | ProposalToEffectProviderVerification;
     };
@@ -130,12 +265,25 @@ export declare function createProposalToEffect(options: ProposalToEffectOptions)
         action: JsonObject;
         proposal: ProposalToEffectProposal;
         authorization: JsonObject;
+        /** Provider request binding; the opaque store owner never crosses the effect boundary. */
+        attempt: ConsequenceAttemptBinding;
     }) => unknown | Promise<unknown>) => Promise<JsonObject>;
     reconcile: (input: {
         proposal: unknown;
         evaluation: unknown;
+        attempt: ConsequenceAttemptReference | (ConsequenceAttemptBinding & {
+            owner: ConsequenceAttemptOwnerHandle;
+        });
         provider_evidence: unknown;
+        aeb_recovery_authorization?: unknown;
     }) => Promise<JsonObject>;
+    repairAeb: (input: {
+        proposal: unknown;
+        evaluation: unknown;
+        attempt: unknown;
+        aeb_recovery_authorization?: unknown;
+    }) => Promise<JsonObject>;
+    getReconciliationHandle: (target: object) => ConsequenceAttemptReference | null;
 }>;
 declare const _default: {
     PROPOSAL_TO_EFFECT_VERSION: string;

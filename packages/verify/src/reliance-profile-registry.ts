@@ -20,7 +20,7 @@
  * unpinned key is identified, not trusted. FAIL-CLOSED throughout.
  */
 import crypto from 'node:crypto';
-import { canonicalize } from '../index.js';
+import { canonicalize } from './index.js';
 import { validateRelianceProfile, RELIANCE_PROFILE_VERSION } from './reliance.js';
 
 type Obj = Record<string, any>;

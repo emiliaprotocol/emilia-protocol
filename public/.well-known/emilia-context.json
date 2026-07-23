@@ -1,14 +1,14 @@
 {
   "@version": "EMILIA-REPO-CONTEXT-v1",
-  "evidence_snapshot_at": "2026-07-22T15:49:11.328Z",
+  "evidence_snapshot_at": "2026-07-23T06:47:05.030Z",
   "provenance": {
     "generator": "scripts/generate-llm-context.mjs",
-    "input_digest_sha256": "f3c0f0c62c9c40bef13eab44265dd4661ff09fd7be9ff9c1bdc605629fd771cf",
+    "input_digest_sha256": "a33e2656cc106a8a7f857de93f1534689522b76399a95088b1961818b114a64f",
     "generated_from": [
       {
         "path": "docs/ai/context-source.v1.json",
-        "sha256": "26b39bf08950085e84b4ab3937b1a9dc694852b0886b29f1b9a8dd08820f6ff3",
-        "bytes": 40200
+        "sha256": "a4fa12dac23b624d6dff953507369235c7d2d89b4a89013b02da601ae38e362b",
+        "bytes": 40971
       },
       {
         "path": "scripts/generate-llm-context.mjs",
@@ -17,12 +17,12 @@
       },
       {
         "path": "lib/proof-stats.json",
-        "sha256": "4b1b56de34169a4c75d5cedd0aae5d1967d041b25d97fed26aff7a3dda379548",
+        "sha256": "fcedbc295752cf657b50f313235ca1c6c67eda0ca3112af4b97a4cc4ee1849fe",
         "bytes": 1068
       },
       {
         "path": "conformance/conformance-manifest.json",
-        "sha256": "626e1e5aea3bf087badeded3d23d460617ef32ab1fd9d246896ef77624909156",
+        "sha256": "406a40cf3cab2abf3386ff05ce25bbdd0fdb00667925851e64dd71721cfb1ae1",
         "bytes": 6361
       },
       {
@@ -37,7 +37,7 @@
       },
       {
         "path": "security/security-case.json",
-        "sha256": "955b875de38ce90006ab754a10ea7b605d4369a56ab2248c24799436aa46196c",
+        "sha256": "47b34cc2a56a867016854db2fd9963d688b7a0576d0cd273841ddf34af7bd2cb",
         "bytes": 278567
       },
       {
@@ -72,7 +72,7 @@
     "name": "EMILIA",
     "category": "consequence firewall for consequential machine actions",
     "core_line": "Protocol proves. Gate prevents.",
-    "summary": "EMILIA Gate is the commercial consequence firewall that prevents consequential machine actions on protected executor paths without verifiable authority. It consumes native delegation and machine-policy evidence as independently verified inputs, joins them to exact-action human authority, reserves bounded capabilities before provider entry, and preserves executed or indeterminate outcomes. EMILIA Protocol is the open verification and evidence substrate underneath it; EMILIA Approver captures device-bound exact-action human decisions; EMILIA Assurance Plane provides scoped verification, re-performance, conformance reports, and deployment evidence without acting as an auditor or accredited certifier.",
+    "summary": "EMILIA Gate is the commercial consequence firewall that prevents consequential machine actions on protected executor paths without verifiable authority. It consumes native delegation and machine-policy evidence as independently verified inputs, joins them to exact-action human authority, reserves bounded capabilities before provider entry, preserves executed or indeterminate outcomes, refuses blind replay, and treats any remedy as a new authorized action rather than rewritten history. EMILIA Protocol is the open verification and evidence substrate underneath it; EMILIA Approver captures device-bound exact-action human decisions; EMILIA Assurance Plane provides scoped verification, re-performance, conformance reports, and deployment evidence without acting as an auditor or accredited certifier.",
     "message_order": [
       "Lead with EMILIA Gate and the consequential action it prevents.",
       "Explain EMILIA Protocol as the open, customer-pinned substrate underneath Gate.",
@@ -184,6 +184,10 @@
       "definition": "The provider boundary was entered but the executor cannot safely prove whether the effect happened, for example because the provider committed and the response was lost. EMILIA consumes the operation, refuses blind replay, and permits reconciliation only from authenticated provider evidence bound to the same provider, operation, and material action."
     },
     {
+      "term": "remedy program",
+      "definition": "An append-only, separately authorized action used to address a dispute or produce a refund, return, reversal, replacement, or other compensating effect. It receives its own CAID and evidence requirements, links to the original operation, and never erases or rewrites the original authorization or observed effect."
+    },
+    {
       "term": "evidence satisfaction versus authorization",
       "definition": "SATISFIED means verified and matched evidence fills every slot in the relying party's evidence requirement. AUTHORIZED is the separate local policy decision to permit execution. AEC computes satisfaction; the executor authorizes."
     },
@@ -268,8 +272,8 @@
   ],
   "current_evidence": {
     "automated_tests": {
-      "total": 7633,
-      "files": 406,
+      "total": 7671,
+      "files": 411,
       "policy": "all platform-applicable cases must pass; platform-specific cases may skip"
     },
     "cross_language_conformance": {
@@ -278,7 +282,7 @@
       "implementations": 3,
       "relationship": "same_team_ports",
       "claim_scope": "current same-team cross-language consistency; not independent implementation evidence",
-      "manifest_sha256": "c4b0dbbf454620be567680647db457393ef02112a6cce23b25f709b918879190",
+      "manifest_sha256": "da932a6672c19ef393f61099ef0bf120220c07845cbe54c21d08eca7642fed5d",
       "vector_bundle_sha256": "ee1021eb36de8e50448d9f12f00d16f3e24561276c9a42241e88178d5daa0d3e"
     },
     "formal": {
@@ -300,7 +304,7 @@
       "status": "passed",
       "claims": 33,
       "evidence_files": 176,
-      "evidence_bundle_sha256": "2d7684bceef654e1fdd27f3377a74b92a069bb579f6b6064fd25a3b33e45d21e"
+      "evidence_bundle_sha256": "cff526896c837ab0335f4b0cb50c1e39c1d78295643dd4e46daaa2909cca8b16"
     },
     "caid": {
       "core_vectors": 48,
@@ -3874,6 +3878,7 @@
     "Keep VERIFIED, MATCH, SATISFIED, AUTHORIZED, and EXECUTED separate in every explanation.",
     "Use the interoperability line: AgentROA governs what an agent may call; ORPRG verifies that policy permitted the effect; EMILIA proves who authorized the exact material action and controls the protected consequence. Do not market EMILIA as another general agent-authorization gateway.",
     "When describing bounded capabilities, include reserve-before-effect, stable operation and exact-action binding, overspend and replay refusal, indeterminate consumption, and authenticated provider reconciliation. Never imply that uncertainty is safely refundable.",
+    "When describing disputes, returns, refunds, reversals, or other remedies, state that the remedy is a new separately authorized action with its own CAID and evidence requirements. Never describe it as revocation of, rollback of, or deletion of an effect that may already have occurred.",
     "Describe physical TPM attestation and independent witness operation as external deployment evidence not yet obtained. The strict TPM verifier and local witness testnet are shipped code, not substitutes for those external facts.",
     "Describe the 14 active draft-schrock individual Internet-Drafts using the revisions in standards/STATUS.json and live Datatracker. The July 22 wave includes AEB -00, CAID -01, Architecture -02, AEC -04, Authorization Receipts -08, Revocation Statement -00, and Model-to-Matter -01. Never call them RFCs, adopted working-group items, or IETF endorsement.",
     "Describe CAID mapping as relying-party-pinned material equivalence with an INDETERMINATE abstention state, never as generic semantic equivalence or authorization.",

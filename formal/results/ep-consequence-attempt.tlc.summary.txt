@@ -1,0 +1,32 @@
+EP-CONSEQUENCE-ATTEMPT-TLC-BOUNDED-v1
+Status: local same-team bounded model result; not deployed or independently reviewed
+Method: TLC exhaustive state exploration in the configured finite scope
+Execution date: 2026-07-22
+TLC: 2.19 (TLA+ tools v1.7.4, rev 5a47802)
+TLA+ tools JAR SHA-256: 936a262061c914694dfd669a543be24573c45d5aa0ff20a8b96b23d01e050e88
+Model SHA-256: 5f5d2f1ea288a894d1dde5d880b119c4133b09bbd234b75a4851066f40bd646f
+Configuration SHA-256: c40157281031f20e4607c6d16787068efd36ce8cc9ae783afec5139b9b7cf78a
+Unsafe model SHA-256: 25d83d84d2659ec92a98da7c9d5c51dcae057ae735987027a043b81fd91d0105
+Unsafe configuration SHA-256: f9fc06f1b1cafc7eccf407a39bd482b5af1101ec7a6c90990a405e7e912eca9a
+
+Configuration: two attempt identifiers, two exact request/AEB bindings, three
+owner handles, five fixed provider-evidence items, and a Boolean lease-staleness
+abstraction.
+Obligations: 14 state invariants and 13 transition properties.
+Result: Model checking completed. No error has been found.
+States: 3,626,013 generated; 93,724 distinct; 0 left on queue; complete depth 21.
+
+Negative control: the deliberately weakened model permits blind replay from
+INDETERMINATE. TLC falsified InvokeAtMostOnce at counterexample state 6 after
+generating 3,919 states (441 distinct; 297 left queued; reported search depth
+8). This establishes that the no-replay transition guard is load-bearing in
+the bounded model.
+
+Scope: AEB reservation before attempt allocation, AEB consumption before an
+attempt becomes COMMITTED, RELEASED-to-AVAILABLE completion, the ESCALATED
+reservation fence, exact request/attempt allocation, at-most-once provider
+invocation, owner-fenced recovery of RESERVED/INVOKING/INDETERMINATE attempts,
+expired-lease recovery gating, terminal irreversibility, and authenticated
+exact-attempt reconciliation. Exclusions: implementation refinement,
+PostgreSQL linearizability/durability, lease-clock correctness, cryptography,
+provider truth, arbitrary cardinality, availability, and unbounded proof.

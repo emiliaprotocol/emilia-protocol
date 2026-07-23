@@ -15,7 +15,7 @@
  */
 
 import crypto from 'node:crypto';
-import { canonicalize, isCanonicalizable, verifyWebAuthnSignoff } from '../index.js';
+import { canonicalize, isCanonicalizable, verifyWebAuthnSignoff } from './index.js';
 import { strictJsonGate } from './strict-json.js';
 
 type Obj = Record<string, any>;

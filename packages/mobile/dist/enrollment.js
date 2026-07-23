@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: Apache-2.0
 import crypto from 'node:crypto';
-const verifier = await import('../../verify/index.js');
+const verifier = await import('@emilia-protocol/verify');
 const { canonicalize, isCanonicalizable } = verifier;
 export const MOBILE_ENROLLMENT_CHALLENGE_VERSION = 'EP-MOBILE-ENROLLMENT-CHALLENGE-v1';
 export const MOBILE_ENROLLMENT_VERSION = 'EP-MOBILE-ENROLLMENT-v1';

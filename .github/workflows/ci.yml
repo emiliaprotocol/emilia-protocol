@@ -567,6 +567,7 @@ jobs:
           cache: npm
       - name: Install dependencies against the local unreleased verifier
         run: |
+          npm ci --ignore-scripts
           npm pack ./packages/verify --json --pack-destination "$RUNNER_TEMP" > "$RUNNER_TEMP/verify-pack.json"
           VERIFY_TARBALL=$(node -e "const r=require(process.argv[1]); if(r.length!==1) process.exit(2); process.stdout.write(r[0].filename)" "$RUNNER_TEMP/verify-pack.json")
           cd mcp-server

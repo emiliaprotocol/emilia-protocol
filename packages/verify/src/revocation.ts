@@ -23,7 +23,7 @@
  * out of scope; see SPEC §7).
  */
 import crypto from 'node:crypto';
-import { canonicalize } from '../index.js';
+import { canonicalize } from './index.js';
 
 export const REVOCATION_VERSION = 'EP-REVOCATION-v1';
 const TARGET_TYPES = Object.freeze(['receipt', 'commit', 'delegation']);

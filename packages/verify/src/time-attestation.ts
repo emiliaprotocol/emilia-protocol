@@ -29,7 +29,7 @@
  * that no EARLIER attestation exists. It bounds, it does not divine.
  */
 import crypto from 'node:crypto';
-import { canonicalize } from '../index.js';
+import { canonicalize } from './index.js';
 
 export const TIME_ATTESTATION_VERSION = 'EP-TIME-ATTESTATION-v1';
 

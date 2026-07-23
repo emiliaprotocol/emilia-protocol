@@ -55,21 +55,49 @@
  * laundering." — PIP-006.
  *
  * Zero runtime dependencies. Works fully offline when the caller supplies the
- * discovery document and revocation set; works online with an injectable
- * fetch implementation (defaults to global fetch on Node 18+ / browsers).
+ * discovery document and revocation set. Online verification requires a
+ * caller-provided resolver + pinned transport boundary; a plain injected or
+ * global fetch cannot prevent DNS rebinding and is never treated as safe.
  *
  * @license Apache-2.0
  */
 type Obj = Record<string, any>;
+interface FederationStatusVerifierContext {
+    receiptId: string;
+    signer: string | null;
+    verifyUrl: string;
+}
+interface FederationStatusVerifierResult {
+    authenticated?: unknown;
+    target_bound?: unknown;
+    fresh?: unknown;
+    revoked?: unknown;
+}
+interface FederationPinnedFetchContext {
+    hostname: string;
+    approvedAddresses: readonly string[];
+}
+interface FederationPinnedFetchResult {
+    response: any;
+    connectedAddress: string;
+}
+interface FederationNetworkBoundary {
+    resolveAddresses: (hostname: string, context: {
+        signal?: AbortSignal;
+    }) => readonly string[] | Promise<readonly string[]>;
+    fetchPinned: (url: string, init: RequestInit, context: FederationPinnedFetchContext) => FederationPinnedFetchResult | Promise<FederationPinnedFetchResult>;
+}
 interface FederationOpts {
     revokedReceiptIds?: Set<string> | string[];
     expectedSigner?: string;
     trustedIssuers?: any;
+    /** @deprecated Plain fetch cannot enforce DNS resolution pinning and is rejected online. */
     fetchImpl?: any;
+    networkBoundary?: FederationNetworkBoundary;
     timeoutMs?: number;
     keyDiscoveryUrl?: string;
     verifyUrlBase?: string;
-    allowInsecureFetch?: boolean;
+    statusVerifier?: (status: unknown, context: FederationStatusVerifierContext) => FederationStatusVerifierResult | Promise<FederationStatusVerifierResult>;
 }
 interface FederationResult {
     accepted: boolean;
@@ -157,11 +185,14 @@ declare function originOf(value: unknown): string | null;
  *
  * The receipt's `signature.key_discovery` URL (PIP-006 §"Federation contract")
  * is the operator's ep-keys.json location. Revocation is checked against the
- * operator's verifier-of-record endpoint (`/api/verify/{receipt_id}`), which
- * reports a `revoked` field. Cryptographic verification and live acceptance are
- * deliberately separate: an unavailable revocation surface does not erase a
- * valid signature (`verified` may remain true), but it MUST prevent a live
- * acceptance decision (`accepted` remains false) until status is confirmed.
+ * operator's verifier-of-record endpoint (`/api/verify/{receipt_id}`). Its JSON
+ * response is untrusted input: HTTP success and `revoked: false` are not proof
+ * of current status. Acceptance requires a relying-party configured
+ * `statusVerifier` to authenticate the response and confirm exact target binding
+ * plus freshness. Cryptographic verification and live acceptance are
+ * deliberately separate: an unavailable or untrusted status result does not
+ * erase a valid signature (`verified` may remain true), but it MUST prevent a
+ * live acceptance decision (`accepted` remains false).
  *
  * FAIL CLOSED + SSRF-GUARDED. The receipt-supplied `key_discovery` URL is
  * attacker-controlled. It is fetched ONLY when the relying party has pinned the
@@ -176,13 +207,20 @@ declare function originOf(value: unknown): string | null;
  * choice — it is the source of truth and is always honored (still SSRF-guarded),
  * needing no origin match. Every fetch of a URL that could be influenced by the
  * receipt (key discovery, discovery-advertised verify_url_template) is routed
- * through assertSafeFetchUrl: https-only, no embedded credentials, and private /
- * loopback / link-local / cloud-metadata targets are blocked, with redirects
- * disabled (redirect:manual).
+ * through two gates: assertSafeFetchUrl performs https/credential/literal-host
+ * checks, then opts.networkBoundary resolves every address, rejects the entire
+ * answer set unless every address is public, and fetches through a transport
+ * pinned to that approved set. Redirects are disabled (redirect:manual).
  *
  * @param {object} receipt - EP-RECEIPT-v1 with signature.signer + signature.key_discovery
  * @param {object} [opts]
- * @param {typeof fetch} [opts.fetchImpl] - injectable fetch (defaults to global fetch)
+ * @param {object} opts.networkBoundary - required online resolver + pinned
+ *   transport. resolveAddresses(hostname) MUST return every A/AAAA address.
+ *   fetchPinned(url, init, { hostname, approvedAddresses }) MUST connect directly
+ *   to one approved address without re-resolving, preserve hostname-based TLS
+ *   SNI/Host handling, and return { response, connectedAddress }.
+ * @param {typeof fetch} [opts.fetchImpl] - deprecated and rejected as an online
+ *   transport when no networkBoundary is supplied; plain fetch is DNS-rebindable
  * @param {number} [opts.timeoutMs=5000]
  * @param {string} [opts.keyDiscoveryUrl] - relying-party override of the key_discovery URL
  * @param {string} [opts.verifyUrlBase] - relying-party override base for the revocation check
@@ -195,11 +233,15 @@ declare function originOf(value: unknown): string | null;
  * @param {string} [opts.expectedSigner] - out-of-band single-issuer pin (id only;
  *   like a bare-id trustedIssuers entry, it does not bind the key source, so it
  *   does not by itself authorize fetching a receipt-supplied key_discovery)
- * @param {boolean} [opts.allowInsecureFetch=false] - test-only escape hatch to skip the SSRF guard
+ * @param {Function} [opts.statusVerifier] - relying-party configured verifier for
+ *   the fetched status document. It receives `(status, { receiptId, signer,
+ *   verifyUrl })` and MUST return explicit `authenticated: true`,
+ *   `target_bound: true`, `fresh: true`, and boolean `revoked`. Absence,
+ *   exceptions, malformed output, or any non-true trust check fails closed.
  * @returns {Promise<ReturnType<typeof verifyFederatedReceiptOffline> & { fetched: object, revocation_confirmed?: boolean, revocation_status?: string }>}
  */
 export declare function verifyFederatedReceipt(receipt: Obj, opts?: FederationOpts): Promise<FederationResult>;
-export declare function assertSafeFetchUrl(value: unknown, opts?: FederationOpts): {
+export declare function assertSafeFetchUrl(value: unknown, _opts?: FederationOpts): {
     ok: boolean;
     error?: string;
 };

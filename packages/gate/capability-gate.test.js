@@ -61,6 +61,68 @@ function request(fixtureValue, { operationId, amount = 40, action = fixtureValue
         },
     };
 }
+function secureConsumptionStore() {
+    return {
+        durable: true,
+        ownershipFenced: true,
+        permanentConsumption: true,
+        async consume() { return true; },
+        async reserve() { return true; },
+        async commit() { return true; },
+    };
+}
+function capabilityAdapter(overrides = {}) {
+    return {
+        durable: true,
+        reconciliationCapable: true,
+        registerCapability() { return true; },
+        async reserveSpend() { return { ok: false }; },
+        async commitSpend() { return { ok: false }; },
+        async reconcileSpend() { return { ok: false }; },
+        ...overrides,
+    };
+}
+test('production gate rejects the in-memory capability store unless test/demo state is explicit', () => {
+    const capabilityStore = createMemoryCapabilityStore();
+    assert.throws(() => createGate({
+        store: secureConsumptionStore(),
+        capabilityStore,
+        capabilityTrustedIssuerKeys: ['pinned-capability-issuer'],
+    }), /capabilityStore must be durable and reconciliation-capable/);
+    assert.doesNotThrow(() => createGate({
+        capabilityStore,
+        capabilityTrustedIssuerKeys: ['pinned-capability-issuer'],
+        allowEphemeralStore: true,
+    }));
+});
+test('production gate rejects capability adapters without explicit durability and reconciliation markers', () => {
+    for (const capabilityStore of [
+        capabilityAdapter({ durable: undefined, reconciliationCapable: undefined }),
+        capabilityAdapter({ reconciliationCapable: undefined }),
+        capabilityAdapter({ durable: undefined }),
+    ]) {
+        assert.throws(() => createGate({
+            store: secureConsumptionStore(),
+            capabilityStore,
+            capabilityTrustedIssuerKeys: ['pinned-capability-issuer'],
+        }), /capabilityStore must be durable and reconciliation-capable/);
+    }
+});
+test('capability adapters must implement reconciliation even when their security markers are present', () => {
+    const capabilityStore = capabilityAdapter({ reconcileSpend: undefined });
+    assert.throws(() => createGate({
+        store: secureConsumptionStore(),
+        capabilityStore,
+        capabilityTrustedIssuerKeys: ['pinned-capability-issuer'],
+    }), /capabilityStore must implement .*reconcileSpend\(\)/);
+});
+test('production gate accepts an explicitly marked durable reconciliation-capable adapter', () => {
+    assert.doesNotThrow(() => createGate({
+        store: secureConsumptionStore(),
+        capabilityStore: capabilityAdapter(),
+        capabilityTrustedIssuerKeys: ['pinned-capability-issuer'],
+    }));
+});
 test('gate capability path reserves and commits budget around the effect', async () => {
     const f = fixture();
     let effects = 0;

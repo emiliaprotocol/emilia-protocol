@@ -41,10 +41,10 @@ const COVERED_ELSEWHERE = {
     'dtc-base': 'dtc-base.yml — isolated lockfile install plus the full public experimental source gate',
     // packages/mobile is deliberately NOT excluded. mobile-apps.yml does run it,
     // but only under a path filter (app/.well-known, app/api/v1/mobile,
-    // app/mobile, packages/mobile). Mobile imports ../gate/* and
-    // ../verify/index.js by relative path, so a change to gate or verify can
-    // break it without touching any filtered path. Running it here on every push
-    // costs ~160ms and closes that cross-package hole.
+    // app/mobile, packages/mobile). Mobile consumes the workspace-linked
+    // @emilia-protocol/verify package, so a change to Verify can break it without
+    // touching any filtered path. Running it here on every push closes that
+    // cross-package hole.
     // Its test script shells back to the root vitest run, which the `test` job
     // already performs; running it here would duplicate that whole invocation.
     'mcp-guard': 'ci.yml — root vitest run (tests/mcp-guard-boundary.test.js)',

@@ -57,7 +57,7 @@
  */
 
 import crypto from 'node:crypto';
-import { canonicalize } from '../index.js';
+import { canonicalize } from './index.js';
 
 export const INITIATOR_ATTESTATION_VERSION = 'EP-INITIATOR-ATTESTATION-v1';
 

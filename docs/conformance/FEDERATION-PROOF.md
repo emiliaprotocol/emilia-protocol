@@ -20,7 +20,16 @@ Federation is what makes EP an open standard rather than a single-vendor service
 
 The identity and the signed receipt are generated together by `gen-operator2.mjs` (the served public key and the served receipt's signature are produced in the same run, so they always match), and the canonicalization is byte-identical to `packages/verify/index.js`. There is no private key at runtime — the receipt is pre-signed and the edge function only static-serves.
 
-## The live proof (6 checks)
+## The recorded live proof (6 checks)
+
+The following records the June 2026 run. The current verifier is stricter:
+HTTP success and a JSON `revoked: false` value no longer establish current
+non-revocation. A live acceptance run now also requires a relying-party-pinned
+status verifier that authenticates the status document, binds it to the exact
+receipt, and verifies freshness. The historical deployment therefore proves
+cross-origin discovery and signature verification, but it must be upgraded to
+`EP-STATUS-v1` (or an equivalent pinned status verifier) before rerunning the
+current live-acceptance check.
 
 `node conformance/operator2/verify-live.mjs` runs the relying-party path against Operator 2's live origin and asserts six things:
 
@@ -28,7 +37,9 @@ The identity and the signed receipt are generated together by `gen-operator2.mjs
 2. The **receipt verifies against Operator 2's published keys** — resolved live from Operator 2's pinned discovery origin (`verifyFederatedReceipt`, `packages/verify/federation.js`).
 3. The **signer is Operator 2** (`signature.signer` matches the verified signer).
 4. **Operator 2's revocation surface was consulted** — the discovery doc's `verify_url_template` is followed to Operator 2's `/api/verify/{receipt_id}`.
-5. The **verdict is `accepted`** — verified *and* not revoked.
+5. The legacy verifier's verdict was **`accepted`** — verified and reported not
+   revoked under the status rule in force at the time. The current verifier
+   intentionally refuses that same unverified status response.
 6. A **tampered receipt is rejected** (the amount is mutated to 999,999,999): even with live keys, a forgery does not verify. This is the no-trust-laundering control.
 
 This upgrades PIP-006 acceptance gate #1 from a self-hosted synthetic harness to two separately-deployed live operators cross-verifying, end to end.
@@ -36,12 +47,29 @@ This upgrades PIP-006 acceptance gate #1 from a self-hosted synthetic harness to
 ## What this demonstrates about PIP-006 mechanics
 
 - **Key discovery works against a foreign origin.** The relying party pins Operator 2's discovery origin, fetches `ep-keys.json`, and treats the receipt's `key_discovery` field as a non-authoritative hint.
-- **`verify_url_template` works.** Revocation status is resolved by following the template from the discovery doc to the issuer's verifier-of-record.
-- **Offline and online both hold.** `verifyFederatedReceiptOffline` verifies with a supplied `ep-keys.json` and revocation set (air-gapped); `verifyFederatedReceipt` does the same over the network with an injectable `fetch`. Both reject tamper, wrong-operator, rotation, and revocation cases (`packages/verify/federation.test.js`, 14 cases). The path is also modeled and machine-checked in `formal/ep_federation.als` (seven safety assertions, no counterexample).
+- **`verify_url_template` works as transport discovery.** The response is still
+  untrusted input until a relying-party-configured status verifier authenticates
+  it, binds the exact target, and proves freshness.
+- **Offline and online both hold, under different trust boundaries.**
+  `verifyFederatedReceiptOffline` verifies with a supplied `ep-keys.json` and
+  revocation set (air-gapped). `verifyFederatedReceipt` requires a relying-party
+  resolver plus pinned transport that proves the connected address belongs to
+  the all-public approved DNS set; plain/global fetch, redirects, private or
+  mixed DNS answers, and an unapproved connected address are refused. Historical
+  keys accept only receipts whose signed strict-RFC-3339 `issued_at` is no later
+  than the key's valid `retired_at`. The executable suite covers tamper,
+  wrong-operator, rotation, retirement, revocation, DNS rebinding, and status
+  authentication. The path is also modeled and machine-checked in
+  `formal/ep_federation.als` (seven safety assertions, no counterexample).
 
 ## Honest limitation
 
-**Both operators are operated by EMILIA.** Operator 2 runs on separate infrastructure, with its own key, on a different project and region — but it is the same owner. So this proof demonstrates the *mechanism* across separate deployments; it is **not** the independent-third-party operator the gate ultimately wants. That remains the **open milestone**.
+**Both operators are operated by EMILIA, and the recorded status/network
+surface is not yet upgraded to the current verifier contract.** Operator 2 runs on separate
+infrastructure, with its own key, on a different project and region — but it is
+the same owner. So this proof demonstrates the discovery and signature
+mechanism across separate deployments; it is **not** independent-operation
+proof or a current live-acceptance proof. Both remain open milestones.
 
 The final step is an externally-operated instance — a different organization standing up the same surfaces and passing:
 

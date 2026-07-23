@@ -64,6 +64,40 @@ const pinFor = (op, { pinKey = false } = {}) => ({
   },
 });
 
+// Relying-party status policy. The network response is not trusted by itself;
+// this verifier is the configured trust boundary for authentication, exact
+// target binding, and freshness.
+const verifyFreshStatus = async (status, { receiptId }) => ({
+  authenticated: true,
+  target_bound: status?.receipt_id === receiptId,
+  fresh: true,
+  revoked: status?.revoked,
+});
+
+const TEST_PUBLIC_ADDRESS = '93.184.216.34';
+
+// Explicit online trust boundary used by tests. Production implementations
+// resolve every A/AAAA record, then connect directly to one approved address
+// while preserving the URL hostname for TLS SNI and the Host header.
+const testNetworkFor = (
+  fetchImpl,
+  {
+    resolveAddresses = async () => [TEST_PUBLIC_ADDRESS],
+    connectedAddress = null,
+  } = {},
+) => ({
+  networkBoundary: {
+    resolveAddresses,
+    async fetchPinned(url, init, context) {
+      const response = await fetchImpl(url, init, context);
+      return {
+        response,
+        connectedAddress: connectedAddress || context.approvedAddresses[0],
+      };
+    },
+  },
+});
+
 /** Operator issues a genuine EP-RECEIPT-v1 over `payload`, signed with `signingKey`. */
 function issueReceipt(op, payload, { signingKey } = {}) {
   const priv = signingKey || op.privateKey;
@@ -186,12 +220,71 @@ test('a pre-rotation receipt verifies against an advertised historical key', () 
   const A = makeOperator('ep_operator_a'); // new (current) key
 
   const oldReceipt = issueReceipt(oldOp, samplePayload('ep_receipt_004'), { signingKey: oldKeyPair.privateKey });
+  oldOp.retired_at = '2026-06-11T12:00:00Z';
   const doc = discoveryDoc(A, { historical: [oldOp] });
 
   const result = verifyFederatedReceiptOffline(oldReceipt, doc, { trustedIssuers: ['ep_operator_a'] });
   assert.equal(result.verified, true, 'pre-rotation receipt must verify against historical key');
   assert.equal(result.accepted, true);
   assert.equal(result.keyMatched, 'historical');
+});
+
+test('a historical key refuses receipts issued after retirement or without a valid bound issued_at', () => {
+  const oldKeyPair = crypto.generateKeyPairSync('ed25519');
+  const oldOp = {
+    operatorId: 'ep_operator_a',
+    privateKey: oldKeyPair.privateKey,
+    publicKeyB64u: oldKeyPair.publicKey.export({ type: 'spki', format: 'der' }).toString('base64url'),
+    retired_at: '2026-06-11T12:00:00Z',
+  };
+  const A = makeOperator('ep_operator_a');
+  const doc = discoveryDoc(A, { historical: [oldOp] });
+  const cases = [
+    { name: 'missing issued_at', issuedAt: undefined },
+    { name: 'malformed issued_at', issuedAt: 'not-a-timestamp' },
+    { name: 'issued after retirement', issuedAt: '2026-06-11T12:00:00.000000001Z' },
+  ];
+
+  for (const item of cases) {
+    const payload = samplePayload(`ep_receipt_historical_${item.name.replaceAll(' ', '_')}`);
+    if (item.issuedAt === undefined) delete payload.issued_at;
+    else payload.issued_at = item.issuedAt;
+    const receipt = issueReceipt(oldOp, payload, { signingKey: oldKeyPair.privateKey });
+
+    const result = verifyFederatedReceiptOffline(receipt, doc, {
+      trustedIssuers: ['ep_operator_a'],
+    });
+    assert.equal(result.verified, false, item.name);
+    assert.equal(result.accepted, false, item.name);
+    assert.match(result.error || '', /historical key.*issued_at|retired_at/i, item.name);
+  }
+});
+
+test('a historical key with missing or malformed retired_at fails closed', () => {
+  const oldKeyPair = crypto.generateKeyPairSync('ed25519');
+  const oldOp = {
+    operatorId: 'ep_operator_a',
+    privateKey: oldKeyPair.privateKey,
+    publicKeyB64u: oldKeyPair.publicKey.export({ type: 'spki', format: 'der' }).toString('base64url'),
+    retired_at: '2026-06-12T00:00:00Z',
+  };
+  const A = makeOperator('ep_operator_a');
+
+  for (const retiredAt of [undefined, 'not-a-timestamp']) {
+    const doc = discoveryDoc(A, { historical: [oldOp] });
+    if (retiredAt === undefined) delete doc.historical_keys.ep_operator_a[0].retired_at;
+    else doc.historical_keys.ep_operator_a[0].retired_at = retiredAt;
+    const receipt = issueReceipt(oldOp, samplePayload(`ep_receipt_bad_retirement_${String(retiredAt)}`), {
+      signingKey: oldKeyPair.privateKey,
+    });
+
+    const result = verifyFederatedReceiptOffline(receipt, doc, {
+      trustedIssuers: ['ep_operator_a'],
+    });
+    assert.equal(result.verified, false);
+    assert.equal(result.accepted, false);
+    assert.match(result.error || '', /historical key.*retired_at/i);
+  }
 });
 
 test('resolveOperatorKeys returns current before historical', () => {
@@ -249,7 +342,7 @@ test('an operator that advertises no key for the signer is rejected', () => {
 
 // ── 7. Online path with injected fetch (no real network) ─────────────────────
 
-test('online verifyFederatedReceipt resolves keys + revocation via injected fetch', async () => {
+test('online verifyFederatedReceipt resolves keys + revocation through a pinned test transport', async () => {
   const A = makeOperator('ep_operator_a');
   const receipt = issueReceipt(A, samplePayload('ep_receipt_008'));
   const doc = discoveryDoc(A);
@@ -265,7 +358,11 @@ test('online verifyFederatedReceipt resolves keys + revocation via injected fetc
     return { ok: false, status: 404, json: async () => ({}) };
   };
 
-  const result = await verifyFederatedReceipt(receipt, { fetchImpl, trustedIssuers: pinFor(A) });
+  const result = await verifyFederatedReceipt(receipt, {
+    ...testNetworkFor(fetchImpl),
+    trustedIssuers: pinFor(A),
+    statusVerifier: verifyFreshStatus,
+  });
   assert.equal(result.verified, true);
   assert.equal(result.accepted, true);
   assert.equal(result.revocation_confirmed, true);
@@ -289,7 +386,11 @@ test('online path uses the discovery doc verify_url_template for revocation', as
     return { ok: false, status: 404, json: async () => ({}) };
   };
 
-  const result = await verifyFederatedReceipt(receipt, { fetchImpl, trustedIssuers: pinFor(A) });
+  const result = await verifyFederatedReceipt(receipt, {
+    ...testNetworkFor(fetchImpl),
+    trustedIssuers: pinFor(A),
+    statusVerifier: verifyFreshStatus,
+  });
   assert.equal(result.accepted, true);
   assert.equal(result.revocation_confirmed, true);
   assert.equal(revocationUrlHit, 'https://op.example/fn/op/api/verify/ep_receipt_008b');
@@ -308,7 +409,11 @@ test('online path honors an operator revocation verdict', async () => {
     return { ok: false, status: 404, json: async () => ({}) };
   };
 
-  const result = await verifyFederatedReceipt(receipt, { fetchImpl, trustedIssuers: pinFor(A) });
+  const result = await verifyFederatedReceipt(receipt, {
+    ...testNetworkFor(fetchImpl),
+    trustedIssuers: pinFor(A),
+    statusVerifier: verifyFreshStatus,
+  });
   assert.equal(result.verified, true);
   assert.equal(result.revoked, true);
   assert.equal(result.accepted, false);
@@ -318,7 +423,10 @@ test('online path fails closed when key discovery is unreachable', async () => {
   const A = makeOperator('ep_operator_a');
   const receipt = issueReceipt(A, samplePayload('ep_receipt_010'));
   const fetchImpl = async () => { throw new Error('network down'); };
-  const result = await verifyFederatedReceipt(receipt, { fetchImpl, trustedIssuers: pinFor(A) });
+  const result = await verifyFederatedReceipt(receipt, {
+    ...testNetworkFor(fetchImpl),
+    trustedIssuers: pinFor(A),
+  });
   assert.equal(result.verified, false);
   assert.equal(result.accepted, false);
   assert.match(result.error || '', /Failed to fetch operator key discovery/);
@@ -333,13 +441,82 @@ test('online path preserves signature verification but refuses acceptance when r
     if (url.endsWith('/ep-keys.json')) return { ok: true, status: 200, json: async () => doc };
     throw new Error('revocation feed down');
   };
-  const result = await verifyFederatedReceipt(receipt, { fetchImpl, trustedIssuers: pinFor(A) });
+  const result = await verifyFederatedReceipt(receipt, {
+    ...testNetworkFor(fetchImpl),
+    trustedIssuers: pinFor(A),
+  });
   assert.equal(result.verified, true);
   assert.equal(result.accepted, false, 'unknown revocation state must not become live acceptance');
   assert.equal(result.revocation_confirmed, false);
   assert.equal(result.revocation_status, 'unavailable');
   assert.equal(result.checks.not_revoked, false);
   assert.match(result.error || '', /revocation status is unavailable/);
+});
+
+test('online path requires authenticated, target-bound, fresh status and an explicit revoked field', async () => {
+  const A = makeOperator('ep_operator_a');
+  const receiptId = 'ep_receipt_status_fail_closed';
+  const receipt = issueReceipt(A, samplePayload(receiptId));
+  const doc = discoveryDoc(A);
+
+  const run = async (status, statusVerifier) => {
+    const fetchImpl = async (url) => {
+      if (url.endsWith('/ep-keys.json')) return { ok: true, status: 200, json: async () => doc };
+      if (url.includes('/api/verify/')) return { ok: true, status: 200, json: async () => status };
+      return { ok: false, status: 404, json: async () => ({}) };
+    };
+    return verifyFederatedReceipt(receipt, {
+      ...testNetworkFor(fetchImpl),
+      trustedIssuers: pinFor(A),
+      ...(statusVerifier ? { statusVerifier } : {}),
+    });
+  };
+
+  const cases = [
+    {
+      name: 'successful JSON without a relying-party status verifier',
+      status: { receipt_id: receiptId, revoked: false },
+      statusVerifier: null,
+    },
+    {
+      name: 'missing revoked field',
+      status: { receipt_id: receiptId },
+      statusVerifier: async () => ({ authenticated: true, target_bound: true, fresh: true, revoked: false }),
+    },
+    {
+      name: 'malformed verifier result',
+      status: { receipt_id: receiptId, revoked: false },
+      statusVerifier: async () => ({ authenticated: true }),
+    },
+    {
+      name: 'unauthenticated verifier result',
+      status: { receipt_id: receiptId, revoked: false },
+      statusVerifier: async () => ({ authenticated: false, target_bound: true, fresh: true, revoked: false }),
+    },
+    {
+      name: 'response bound to another receipt',
+      status: { receipt_id: 'ep_receipt_other', revoked: false },
+      statusVerifier: async () => ({ authenticated: true, target_bound: true, fresh: true, revoked: false }),
+    },
+    {
+      name: 'verifier cannot bind the target',
+      status: { receipt_id: receiptId, revoked: false },
+      statusVerifier: async () => ({ authenticated: true, target_bound: false, fresh: true, revoked: false }),
+    },
+    {
+      name: 'stale verifier result',
+      status: { receipt_id: receiptId, revoked: false },
+      statusVerifier: async () => ({ authenticated: true, target_bound: true, fresh: false, revoked: false }),
+    },
+  ];
+
+  for (const item of cases) {
+    const result = await run(item.status, item.statusVerifier);
+    assert.equal(result.verified, true, item.name);
+    assert.equal(result.accepted, false, item.name);
+    assert.equal(result.revocation_confirmed, false, item.name);
+    assert.equal(result.checks.not_revoked, false, item.name);
+  }
 });
 
 // ── 8. Trust-anchor injection — the DoD-audit finding ─────────────────────────
@@ -492,10 +669,16 @@ test('ONLINE: a properly key-SOURCE-pinned same-origin redemption still ACCEPTS'
   const doc = discoveryDoc(A);
   const fetchImpl = async (url) => {
     if (url.endsWith('/ep-keys.json')) return { ok: true, status: 200, json: async () => doc };
-    if (url.includes('/api/verify/')) return { ok: true, status: 200, json: async () => ({ revoked: false }) };
+    if (url.includes('/api/verify/')) {
+      return { ok: true, status: 200, json: async () => ({ receipt_id: 'ep_receipt_launder_ok', revoked: false }) };
+    }
     return { ok: false, status: 404, json: async () => ({}) };
   };
-  const result = await verifyFederatedReceipt(receipt, { fetchImpl, trustedIssuers: pinFor(A, { pinKey: true }) });
+  const result = await verifyFederatedReceipt(receipt, {
+    ...testNetworkFor(fetchImpl),
+    trustedIssuers: pinFor(A, { pinKey: true }),
+    statusVerifier: verifyFreshStatus,
+  });
   assert.equal(result.verified, true);
   assert.equal(result.accepted, true);
   assert.equal(result.trusted, true);
@@ -505,6 +688,88 @@ test('ONLINE: a properly key-SOURCE-pinned same-origin redemption still ACCEPTS'
 // The receipt supplies the key_discovery URL. A pinned signer is necessary but
 // not sufficient: the URL itself must be a safe public https target, or the
 // fetch is an SSRF primitive against the verifier's network.
+
+test('ONLINE: an injected plain fetch is not an SSRF-safe network boundary', async () => {
+  const A = makeOperator('ep_operator_a');
+  const receipt = issueReceipt(A, samplePayload('ep_receipt_plain_fetch'));
+  const doc = discoveryDoc(A);
+  let fetchCalled = false;
+  const fetchImpl = async (url) => {
+    fetchCalled = true;
+    if (url.endsWith('/ep-keys.json')) return { ok: true, status: 200, json: async () => doc };
+    return {
+      ok: true,
+      status: 200,
+      json: async () => ({ receipt_id: 'ep_receipt_plain_fetch', revoked: false }),
+    };
+  };
+
+  const result = await verifyFederatedReceipt(receipt, {
+    fetchImpl,
+    trustedIssuers: pinFor(A),
+    statusVerifier: verifyFreshStatus,
+  });
+  assert.equal(fetchCalled, false);
+  assert.equal(result.verified, false);
+  assert.equal(result.accepted, false);
+  assert.match(result.error || '', /network boundary|plain fetch/i);
+});
+
+test('ONLINE: DNS aliases to loopback such as nip.io are blocked before fetch', async () => {
+  const A = makeOperator('ep_operator_a');
+  const receipt = issueReceipt(A, samplePayload('ep_receipt_nip_io'));
+  let fetchCalled = false;
+  const fetchImpl = async () => {
+    fetchCalled = true;
+    return { ok: true, status: 200, json: async () => discoveryDoc(A) };
+  };
+  const result = await verifyFederatedReceipt(receipt, {
+    ...testNetworkFor(fetchImpl, {
+      resolveAddresses: async () => ['127.0.0.1'],
+    }),
+    keyDiscoveryUrl: 'https://127.0.0.1.nip.io/.well-known/ep-keys.json',
+  });
+
+  assert.equal(fetchCalled, false);
+  assert.equal(result.verified, false);
+  assert.equal(result.accepted, false);
+  assert.match(result.error || '', /resolved address.*not public/i);
+});
+
+test('ONLINE: mixed public and private DNS answers fail closed before fetch', async () => {
+  const A = makeOperator('ep_operator_a');
+  const receipt = issueReceipt(A, samplePayload('ep_receipt_multi_address'));
+  let fetchCalled = false;
+  const fetchImpl = async () => {
+    fetchCalled = true;
+    return { ok: true, status: 200, json: async () => discoveryDoc(A) };
+  };
+  const result = await verifyFederatedReceipt(receipt, {
+    ...testNetworkFor(fetchImpl, {
+      resolveAddresses: async () => [TEST_PUBLIC_ADDRESS, '10.0.0.8'],
+    }),
+    keyDiscoveryUrl: 'https://multi-address.example/.well-known/ep-keys.json',
+  });
+
+  assert.equal(fetchCalled, false);
+  assert.equal(result.verified, false);
+  assert.equal(result.accepted, false);
+  assert.match(result.error || '', /resolved address.*not public/i);
+});
+
+test('ONLINE: pinned transport must attest a connection to an approved address', async () => {
+  const A = makeOperator('ep_operator_a');
+  const receipt = issueReceipt(A, samplePayload('ep_receipt_unapproved_connection'));
+  const fetchImpl = async () => ({ ok: true, status: 200, json: async () => discoveryDoc(A) });
+  const result = await verifyFederatedReceipt(receipt, {
+    ...testNetworkFor(fetchImpl, { connectedAddress: '93.184.216.35' }),
+    trustedIssuers: pinFor(A),
+  });
+
+  assert.equal(result.verified, false);
+  assert.equal(result.accepted, false);
+  assert.match(result.error || '', /connected address.*not approved/i);
+});
 
 const PRIVATE_KEY_DISCOVERY_URLS = [
   'http://ep_operator_a.example/.well-known/ep-keys.json',       // not https
@@ -598,8 +863,16 @@ test('ONLINE: a caller-supplied keyDiscoveryUrl override is still SSRF-guarded',
 test('ONLINE: redirect responses are refused (redirect:manual closes rebind-via-redirect)', async () => {
   const A = makeOperator('ep_operator_a');
   const receipt = issueReceipt(A, samplePayload('ep_receipt_redirect'));
-  const fetchImpl = async () => ({ ok: false, status: 302, type: 'opaqueredirect', json: async () => ({}) });
-  const result = await verifyFederatedReceipt(receipt, { fetchImpl, trustedIssuers: pinFor(A) });
+  let redirectMode = null;
+  const fetchImpl = async (_url, init) => {
+    redirectMode = init.redirect;
+    return { ok: false, status: 302, type: 'opaqueredirect', json: async () => ({}) };
+  };
+  const result = await verifyFederatedReceipt(receipt, {
+    ...testNetworkFor(fetchImpl),
+    trustedIssuers: pinFor(A),
+  });
+  assert.equal(redirectMode, 'manual');
   assert.equal(result.verified, false);
   assert.equal(result.accepted, false);
   assert.match(result.error || '', /Failed to fetch operator key discovery|redirect/);

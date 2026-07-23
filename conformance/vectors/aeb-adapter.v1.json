@@ -56,8 +56,23 @@
     },
     {
       "id": "authority_predicates_are_first_class_requirement_terms",
-      "input": "the pinned requirement contains distinct-human-quorum, initiator-exclusion, and one-time-consumption terms",
+      "input": "the pinned requirement contains distinct-human-quorum, initiator-exclusion, executor-exclusion, and one-time-consumption terms",
       "expect": { "verdict": "SATISFIED", "authority_terms_enforced": true }
+    },
+    {
+      "id": "executor_cannot_satisfy_approval_role",
+      "input": "a required approval role is held by the server-selected executor",
+      "expect": { "verdict": "UNSATISFIED", "invoke_allowed": false }
+    },
+    {
+      "id": "native_replay_unit_is_fenced_across_aeb_wrappers",
+      "input": "the same accepted native authorization is wrapped in a new AEB operation and nonce",
+      "expect": { "second_reservation": "REFUSED", "reason": "native_replay_conflict", "invoke_allowed": false }
+    },
+    {
+      "id": "presenter_status_cannot_establish_current_authority",
+      "input": "the presenter supplies non-revoked status but the relying party cannot authenticate a fresh current head",
+      "expect": { "verification": false, "execution": "REFUSED", "invoke_allowed": false }
     },
     {
       "id": "registry_kind_substitution_is_indeterminate",

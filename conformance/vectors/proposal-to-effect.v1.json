@@ -51,7 +51,11 @@
     },
     {
       "id": "executed_effect_commit_failure_stays_reserved",
-      "expect": { "error": "EMILIA_PROPOSAL_TO_EFFECT_COMMIT_FAILED", "state": "RESERVED" }
+      "expect": {
+        "error": "EMILIA_PROPOSAL_TO_EFFECT_COMMIT_FAILED",
+        "aeb_state": "RESERVED",
+        "attempt_state": "INDETERMINATE"
+      }
     }
   ]
 }

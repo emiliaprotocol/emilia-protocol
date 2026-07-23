@@ -58,7 +58,7 @@
  */
 
 import crypto from 'crypto';
-import { canonicalize } from '../index.js';
+import { canonicalize } from './index.js';
 
 export const WITNESS_VERSION = 'EP-WITNESS-v1';
 

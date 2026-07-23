@@ -30,6 +30,7 @@ export type Acceptance = 'ACCEPTED' | 'REJECTED' | 'INDETERMINATE';
 export type MappingVerdict = 'MATCH' | 'MISMATCH' | 'INDETERMINATE';
 export type AebVerdict = 'SATISFIED' | 'UNSATISFIED' | 'INDETERMINATE';
 export type AebLegVerdict = AebVerdict;
+export type AebVerificationMode = 'execution' | 'historical';
 export type AebJson = null | boolean | string | number | AebJson[] | {
     [key: string]: AebJson;
 };
@@ -51,6 +52,8 @@ export interface AebNativeResult {
     status_digest: AebDigest;
     evidence_role: string;
     subject: AebEvidenceSubject;
+    /** Stable native authorization identity, independent of an AEB operation wrapper. */
+    replay_unit: AebDigest;
     reasons: string[];
 }
 export interface AebEvidenceSubject {
@@ -72,6 +75,8 @@ export interface AebAdapterInput {
     /** Immutable relying-party configuration pinned by adapterConfigDigest. */
     adapter_config: unknown;
     profile: AebPinnedProfile;
+    /** Exact action the relying party is deciding whether to execute. */
+    expected_action: unknown;
     now: string;
 }
 export interface AebAdapter {
@@ -151,10 +156,14 @@ export interface AebInitiatorExclusionTerm {
     type: 'initiator-exclusion';
     roles: readonly string[];
 }
+export interface AebExecutorExclusionTerm {
+    type: 'executor-exclusion';
+    roles: readonly string[];
+}
 export interface AebOneTimeConsumptionTerm {
     type: 'one-time-consumption';
 }
-export type AebRequirementTerm = AebDistinctHumanQuorumTerm | AebInitiatorExclusionTerm | AebOneTimeConsumptionTerm;
+export type AebRequirementTerm = AebDistinctHumanQuorumTerm | AebInitiatorExclusionTerm | AebExecutorExclusionTerm | AebOneTimeConsumptionTerm;
 export interface AebRequirement {
     '@version': typeof AEB_REQUIREMENT_VERSION;
     /** Every listed role must have a satisfied leg. */
@@ -212,6 +221,7 @@ export interface AebEvaluationLeg {
     artifact_ref: string;
     evidence_digest: AebDigest;
     status_digest: AebDigest;
+    replay_unit: AebDigest;
     evidence_role: string;
     subject: AebEvidenceSubject | null;
     mapper_id: string;
@@ -240,6 +250,7 @@ export interface AebEvaluationRecord {
     operation_id: string;
     consumption_nonce: string;
     initiator_id: string;
+    executor_id?: string;
     evaluator: {
         id: string;
         key_id: string;
@@ -259,6 +270,7 @@ export interface AebEvaluationRecord {
     authority_constraints: {
         distinct_human_quorum: boolean;
         initiator_exclusion: boolean;
+        executor_exclusion: boolean;
         one_time_consumption: boolean;
     };
     verdict: AebVerdict;
@@ -282,8 +294,10 @@ export interface AebEvaluationOptions {
     operation_id: string;
     consumption_nonce: string;
     initiator_id: string;
+    executor_id?: string;
     requirement_ref: string;
     caid: string;
+    expected_action?: unknown;
     legs: readonly AebEvidenceLegInput[];
     evaluated_at: string;
     signer?: AebEvaluationSigner;
@@ -294,15 +308,27 @@ export interface AebVerificationOptions {
     config: AebPinnedConfig;
     adapters: Record<string, AebAdapter>;
     artifacts: Record<string, unknown>;
+    /**
+     * Historical verification can re-derive evidence but can never authorize
+     * execution. Omission retains the PTE-compatible split: execution inputs
+     * select execution mode; otherwise verification is historical.
+     */
+    mode?: AebVerificationMode;
+    expected_action?: unknown;
+    /** Fresh status results authenticated by the relying party at execution time. */
+    current_statuses?: Record<string, AebStatusInput>;
     now?: string;
 }
 export interface AebEvaluationVerification {
     valid: boolean;
+    /** True only for a complete, fresh execution-mode verification. */
+    execution_authorizing: boolean;
     checks: {
         schema: boolean;
         signature: boolean;
         pinned_config: boolean;
         rederived: boolean;
+        current_status: boolean;
         verdict: boolean;
     };
     reasons: string[];
@@ -315,7 +341,7 @@ export interface AebExecutionDecision {
     reservation_key?: string;
 }
 export interface AebConsumptionStore {
-    reserve(key: string): boolean;
+    reserve(key: string, replayKeys: readonly string[]): boolean;
     commit(key: string): boolean;
     release(key: string): boolean;
     state(key: string): 'AVAILABLE' | 'RESERVED' | 'CONSUMED';
@@ -325,14 +351,17 @@ export interface AebDurableConsumptionStore {
     durable: true;
     ownershipFenced: true;
     permanentConsumption: true;
-    reserve(key: string): Promise<boolean>;
+    atomicReplayFenced: true;
+    reserve(key: string, replayKeys: readonly string[]): Promise<boolean | AebReservationResult>;
     commit(key: string): Promise<boolean>;
     release(key: string): Promise<boolean>;
 }
+export type AebReservationResult = 'RESERVED' | 'CONSUMPTION_CONFLICT' | 'NATIVE_REPLAY_CONFLICT';
 /** Small synchronous reference store. Production stores must provide an atomic equivalent. */
 export declare class InMemoryAebConsumptionStore implements AebConsumptionStore {
     private readonly entries;
-    reserve(key: string): boolean;
+    private readonly replayOwners;
+    reserve(key: string, replayKeys?: readonly string[]): boolean;
     commit(key: string): boolean;
     release(key: string): boolean;
     state(key: string): 'AVAILABLE' | 'RESERVED' | 'CONSUMED';
@@ -358,10 +387,14 @@ export declare function unifiedRegistryDigest(registry: AebUnifiedRegistry): Aeb
 export declare function evaluateAebEvidence(options: AebEvaluationOptions): AebEvaluationResult;
 export declare function verifyAebEvaluation(record: unknown, options: AebVerificationOptions): AebEvaluationVerification;
 export declare function authorizeAebExecution(record: AebEvaluationRecord, options: {
-    verified: boolean;
+    verification: Pick<AebEvaluationVerification, 'valid' | 'execution_authorizing'>;
     local_authorization: boolean;
     store: AebConsumptionStore;
+    /** Extra profile replay identities reserved atomically with native evidence. */
+    additional_replay_keys?: readonly string[];
 }): AebExecutionDecision;
+/** Stable native approval identities that must be fenced with the operation reservation. */
+export declare function aebNativeReplayKeys(record: Pick<AebEvaluationRecord, 'evaluator' | 'legs'>): string[];
 /** Collision-resistant, tenant-scoped key used by both reference and durable stores. */
 export declare function aebReservationKey(record: Pick<AebEvaluationRecord, 'evaluator' | 'composition' | 'caid' | 'operation_id' | 'consumption_nonce'>): string;
 export declare function reconcileAebExecution(store: AebConsumptionStore, reservationKey: string, outcome: 'COMMITTED' | 'NOT_COMMITTED' | 'INDETERMINATE'): {
@@ -371,9 +404,11 @@ export declare function reconcileAebExecution(store: AebConsumptionStore, reserv
 };
 /** Production authorization path for shared Postgres/Redis/DynamoDB-backed custody. */
 export declare function authorizeAebExecutionDurable(record: AebEvaluationRecord, options: {
-    verified: boolean;
+    verification: Pick<AebEvaluationVerification, 'valid' | 'execution_authorizing'>;
     local_authorization: boolean;
     store: unknown;
+    /** Extra profile replay identities reserved atomically with native evidence. */
+    additional_replay_keys?: readonly string[];
 }): Promise<AebExecutionDecision>;
 export declare function reconcileAebExecutionDurable(store: unknown, reservationKey: string, outcome: 'COMMITTED' | 'NOT_COMMITTED' | 'INDETERMINATE'): Promise<{
     state: 'CONSUMED' | 'AVAILABLE' | 'RECONCILIATION_REQUIRED';

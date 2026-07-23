@@ -29,6 +29,9 @@ export {
   verifyAuthorityProgram,
 } from './authority-program.js';
 export * from './aeb-adapter-contract.js';
+export * from './aeb-native-adapters.js';
+export * from './agent-edge-continuity.js';
+export * from './status.js';
 export {
   OUTCOME_ATTESTATION_VERSION,
   OUTCOME_ATTESTATION_DOMAIN,
@@ -536,7 +539,11 @@ export function verifyWebAuthnSignoff(signoff: any, approverPublicKeySpkiB64u: s
  * @param {{ allowUnsigned?: boolean }} options - Set allowUnsigned only for structure/expiry checks.
  * @returns {{ valid: boolean, claim: object, error?: string }}
  */
-export function verifyCommitmentProof(proof: any, publicKeyBase64url: string | null | undefined, options: any = {}): Obj {
+export function verifyCommitmentProof(
+  proof: any,
+  publicKeyBase64url: string | null | undefined = null,
+  options: any = {},
+): Obj {
   if (!proof?.['@version'] || !SUPPORTED_PROOF_VERSIONS.includes(proof['@version'])) {
     return { valid: false, claim: null, error: `Unsupported version: ${proof?.['@version']}` };
   }

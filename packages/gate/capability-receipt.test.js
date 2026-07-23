@@ -5,7 +5,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { generateKeyPairSync, sign } from 'node:crypto';
 import { canonicalize } from './execution-binding.js';
-import { executeWithCapability, executeWithThreshold, reconcileCapabilityOperation, delegateCapabilityReceipt, createMemoryCapabilityStore, createPostgresCapabilityStore, CAPABILITY_SQL, mintCapabilityReceipt, reconstructCapabilitySecret, splitCapabilitySecret, verifyCapabilityReceipt, CAPABILITY_RECEIPT_VERSION, CAPABILITY_SCOPE_PROFILE, CAPABILITY_CAID_SCOPE_PROFILE, capabilityActionDigest, capabilityBaseReceiptDigest, } from './capability-receipt.js';
+import { executeWithCapability, executeWithThreshold, reconcileCapabilityOperation, delegateCapabilityReceipt, createMemoryCapabilityStore, createPostgresCapabilityStore, isSecureCapabilityStore, CAPABILITY_SQL, mintCapabilityReceipt, reconstructCapabilitySecret, splitCapabilitySecret, verifyCapabilityReceipt, CAPABILITY_RECEIPT_VERSION, CAPABILITY_SCOPE_PROFILE, CAPABILITY_CAID_SCOPE_PROFILE, capabilityActionDigest, capabilityBaseReceiptDigest, } from './capability-receipt.js';
 const NOW = Date.parse('2026-07-18T22:00:00.000Z');
 function baseReceipt({ privateKey, publicKey, receiptId = 'base_1' } = {}) {
     const payload = {
@@ -51,6 +51,27 @@ function options(overrides = {}) {
         ...overrides,
     };
 }
+test('capability stores expose explicit production durability and reconciliation markers', () => {
+    const memory = createMemoryCapabilityStore();
+    assert.equal(memory.durable, false);
+    assert.equal(memory.reconciliationCapable, true);
+    assert.equal(isSecureCapabilityStore(memory), false);
+    const postgres = createPostgresCapabilityStore({
+        transaction: async () => assert.fail('store contract inspection must not open a transaction'),
+    });
+    assert.equal(postgres.durable, true);
+    assert.equal(postgres.reconciliationCapable, true);
+    assert.equal(isSecureCapabilityStore(postgres), true);
+    const methodsOnly = {
+        registerCapability() { },
+        reserveSpend() { },
+        commitSpend() { },
+        reconcileSpend() { },
+    };
+    assert.equal(isSecureCapabilityStore(methodsOnly), false);
+    assert.equal(isSecureCapabilityStore({ ...methodsOnly, durable: true }), false);
+    assert.equal(isSecureCapabilityStore({ ...methodsOnly, reconciliationCapable: true }), false);
+});
 test('capability metadata is issuer-signed and tamper-evident', () => {
     const keys = issuer();
     const minted = mintCapabilityReceipt(keys.receipt, options({ issuerPrivateKey: keys.privateKey }));

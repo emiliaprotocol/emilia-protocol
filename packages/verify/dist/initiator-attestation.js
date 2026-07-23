@@ -56,7 +56,7 @@
  * passes through unmarked.
  */
 import crypto from 'node:crypto';
-import { canonicalize } from '../index.js';
+import { canonicalize } from './index.js';
 export const INITIATOR_ATTESTATION_VERSION = 'EP-INITIATOR-ATTESTATION-v1';
 /** The action-object member under which a bound attestation is placed (bindInto). */
 export const INITIATOR_ATTESTATION_FIELD = 'initiator_software';

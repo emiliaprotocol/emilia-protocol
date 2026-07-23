@@ -213,12 +213,18 @@ export declare function splitCapabilitySecret(secret: any, threshold: any, { ran
 /** Reconstruct a capability secret from at least m unique shares. */
 export declare function reconstructCapabilitySecret(shares: any, threshold: any): Buffer<ArrayBuffer>;
 /**
+ * Production capability-store contract. Methods alone are insufficient: an
+ * adapter must explicitly assert durable custody and reconciliation support.
+ */
+export declare function isSecureCapabilityStore(store: any): boolean;
+/**
  * An in-memory atomic reference store. It is intentionally marked non-durable
  * and is suitable only for tests; production callers must use an implementation
  * backed by a transactional database or equivalent linearizable store.
  */
 export declare function createMemoryCapabilityStore(): {
     durable: boolean;
+    reconciliationCapable: boolean;
     registerCapability(capabilityReceipt: any): boolean;
     reserveSpend({ capabilityId, capabilityFingerprint, operationId, actionDigest, amount, currency, now }: ReserveSpendOptions): Promise<{
         ok: boolean;
@@ -286,6 +292,7 @@ export declare function createPostgresCapabilityStore({ transaction }?: {
     transaction?: (callback: (query: Function) => any) => any;
 }): {
     durable: boolean;
+    reconciliationCapable: boolean;
     registerCapability(capabilityReceipt: any): Promise<any>;
     reserveSpend({ capabilityId, capabilityFingerprint, operationId, actionDigest, amount, currency, now }: ReserveSpendOptions): Promise<any>;
     commitSpend({ capabilityId, operationId, reservationToken, outcome, now }?: CommitSpendOptions): Promise<any>;
@@ -592,6 +599,7 @@ declare const _default: {
     reconstructCapabilitySecret: typeof reconstructCapabilitySecret;
     createMemoryCapabilityStore: typeof createMemoryCapabilityStore;
     createPostgresCapabilityStore: typeof createPostgresCapabilityStore;
+    isSecureCapabilityStore: typeof isSecureCapabilityStore;
     executeWithCapability: typeof executeWithCapability;
     executeWithThreshold: typeof executeWithThreshold;
     reconcileCapabilityOperation: typeof reconcileCapabilityOperation;

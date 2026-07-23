@@ -1,5 +1,12 @@
 # EP-RECEIPT-v1 conformance vectors
 
+`agent-edge-continuity.v1.json` is the executable TypeScript reference-profile
+refusal registry for provenance/action continuity and its AEB execution
+composition. It is loaded by
+`packages/verify/agent-edge-continuity.test.ts`. It is not included in the
+JS/Python/Go verifier totals: no independent cross-language implementation or
+static signed-fixture suite is claimed yet.
+
 `proposal-to-effect.v1.json` is the executable TypeScript reference-profile
 suite for the non-authoritative proposal, exact CAID/AEB/Gate join, one-time
 operation admission, and indeterminate-effect reconciliation lifecycle. It is

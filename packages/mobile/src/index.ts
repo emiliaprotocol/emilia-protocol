@@ -40,7 +40,7 @@ import {
   verifyMobileActionIdentity,
 } from './action-identity.js';
 
-const verifier = await import('../../verify/index.js');
+const verifier = await import('@emilia-protocol/verify');
 const { canonicalize, isCanonicalizable, verifyWebAuthnSignoff } = verifier as AnyRecord;
 
 type AnyRecord = Record<string, any>;

@@ -13,7 +13,7 @@
  * carry a public key.
  */
 import crypto from 'node:crypto';
-import { canonicalize } from '../index.js';
+import { canonicalize } from './index.js';
 export const DOCUMENT_ACTION_BINDING_VERSION = 'EP-DOCUMENT-ACTION-BINDING-v1';
 export const DOCUMENT_ACTION_BINDING_DOMAIN = `${DOCUMENT_ACTION_BINDING_VERSION}\0`;
 export const DOCUMENT_ACTION_MATERIAL_TERM_TYPES = Object.freeze([

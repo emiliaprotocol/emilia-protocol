@@ -80,6 +80,12 @@ const SERVICE_ONLY_TABLES = [
     // spending/budget state reached only through the service-role durable store.
     'ep_capability_state',
     'ep_capability_operations',
+    // Durable AEB operation and native-protocol replay fences. These are
+    // authoritative execution-control state and therefore service-only.
+    'ep_aeb_consumption_operations',
+    'ep_aeb_consumption_replay_fences',
+    'ep_remedy_case_sets',
+    'ep_remedy_case_set_events',
     // Approval acquisition and evidence-readiness state are tenant-bound,
     // service-only control-plane records. Public roles must never query or
     // mutate them directly.
@@ -156,6 +162,15 @@ export const contract = {
         ep_capability_operations: ['operation_id', 'capability_id', 'action_digest', 'amount', 'currency',
             'status', 'reservation_token', 'outcome', 'reconciliation_outcome',
             'reconciliation_evidence_digest', 'reserved_at', 'committed_at', 'reconciled_at'],
+        ep_aeb_consumption_operations: ['tenant_id', 'relying_party_id', 'operation_key',
+            'state', 'owner_token', 'reserved_at', 'consumed_at'],
+        ep_aeb_consumption_replay_fences: ['tenant_id', 'relying_party_id', 'replay_key',
+            'operation_key', 'reserved_at'],
+        ep_remedy_case_sets: ['tenant_id', 'case_set_id', 'revision', 'status',
+            'owner_token_digest', 'manifest_json', 'manifest_digest', 'state_json',
+            'state_digest', 'recorded_at'],
+        ep_remedy_case_set_events: ['tenant_id', 'case_set_id', 'revision',
+            'previous_revision', 'status', 'state_json', 'state_digest', 'recorded_at'],
         approval_acquisition_requests: ['request_id', 'tenant_id', 'environment',
             'requester_key_id', 'producer_key_id', 'idempotency_digest', 'request_digest', 'challenge_hash',
             'action_hash', 'action_caid', 'action', 'approver_id', 'poll_token_hash',

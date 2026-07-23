@@ -20,7 +20,7 @@
  * unpinned key is identified, not trusted. FAIL-CLOSED throughout.
  */
 import crypto from 'node:crypto';
-import { canonicalize } from '../index.js';
+import { canonicalize } from './index.js';
 import { validateRelianceProfile, RELIANCE_PROFILE_VERSION } from './reliance.js';
 export const PROFILE_REGISTRY_VERSION = 'EP-RELIANCE-PROFILE-REGISTRY-v1';
 export const PROFILE_REGISTRY_DOMAIN = 'EP-RELIANCE-PROFILE-REGISTRY-v1\0';

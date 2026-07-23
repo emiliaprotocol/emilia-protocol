@@ -30,7 +30,7 @@
  * (that is an operational discipline the chain records, not one it can divine).
  */
 import crypto from 'node:crypto';
-import { canonicalize } from '../index.js';
+import { canonicalize } from './index.js';
 import { verifyTimeAttestation, type TimeAttestation } from './time-attestation.js';
 
 export const EVIDENCE_RECORD_VERSION = 'EP-EVIDENCE-RECORD-v1';

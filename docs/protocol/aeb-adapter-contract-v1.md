@@ -10,7 +10,7 @@ trust configuration and decides whether the result is admissible.
 An adapter is a versioned, deterministic module with two operations:
 
 1. `verifyNative` verifies the artifact in its native format using only the
-   trust roots and status input supplied by the relying party.
+   trust roots, expected action, and status input supplied by the relying party.
 2. `mapAction` projects the verified artifact through a named, versioned
    mapping profile and returns the resulting CAID.
 
@@ -20,7 +20,7 @@ presented artifact cannot select a different adapter, profile, root, or
 requirement.
 
 The implementation passes adapters detached, recursively frozen copies of the
-artifact, status, trust roots, adapter configuration, and mapping profile. This
+artifact, expected action, status, trust roots, adapter configuration, and mapping profile. This
 prevents an adapter or hostile input object from mutating the relying party's
 pinned configuration between native verification and action mapping.
 
@@ -44,9 +44,9 @@ recomputed.
 
 `AEB-REQUIREMENT-v1` makes the authority predicates explicit. `all_of` and
 `any_of` are role expressions. Its typed `terms` array carries
-`distinct-human-quorum`, `initiator-exclusion`, and the mandatory
+`distinct-human-quorum`, `initiator-exclusion`, `executor-exclusion`, and the mandatory
 `one-time-consumption` execution predicate. A requirement with an unknown
-term, duplicate quorum role, multiple exclusion terms, or anything other than
+term, duplicate quorum role, duplicate exclusion term of either kind, or anything other than
 exactly one one-time-consumption term is invalid. Composition is delegated to
 the existing
 `EP-AEC-v1` verifier with a relying-party-pinned requirement over the exact
@@ -69,6 +69,12 @@ authenticated status result, a matching CAID, and every role required by the
 pinned requirement. A stale, unavailable, or uncheckable status result is
 `INDETERMINATE`; it is never treated as approval.
 
+The evaluation record binds the initiator and, when the requirement uses
+`executor-exclusion`, the server-selected executor. A subject satisfying an
+excluded approval role cannot also be the initiator or executor. This is an
+identifier-separation invariant; the relying party remains responsible for
+anchoring those identifiers to real people or workloads.
+
 ## Multi-leg joins
 
 Several native artifacts may satisfy one requirement when their adapters
@@ -86,6 +92,11 @@ refused. The conformance suite uses the bridge to compose a WIMSE possession
 row with a human-authorization row. The bridge consumes the WIMSE verifier's
 signed result; it does not redefine WIMSE credential verification.
 
+Every accepted native result also carries a stable `replay_unit` derived from
+the native authorization itself. It does not include the AEB operation ID or
+consumption nonce. Changing the AEB wrapper therefore cannot make one native
+approval spendable again.
+
 ## Evaluation records
 
 `AEB-EVALUATION-v1` records are signed by an evaluator key pinned by the
@@ -94,6 +105,19 @@ digest, requirement and profile references, artifact references and digests,
 per-leg states, CAID, freshness, verdict, and operation/consumption binding.
 The record is evidence transport, not a bearer token: a verifier should
 re-run the adapters and compare the re-derived body before relying on it.
+Both the pinned evaluator key and the signing key are required to be Ed25519;
+an RSA or P-256 key labeled as `Ed25519` is refused before a record can become
+execution-authorizing.
+
+Historical verification re-derives the status snapshot signed into the
+evaluation and always returns `execution_authorizing: false`. It is the default
+when live execution inputs are absent. Execution-time verification is a
+separate explicit mode: it requires the exact normalized action, verifier
+clock, and a
+fresh status result obtained and authenticated by relying-party configuration
+for every leg. A missing, stale, consumed, revoked, or unavailable current
+status fails closed. `EP-STATUS-v1` is the portable signed status profile for
+deployments that need an offline-verifiable current-status artifact.
 
 ## Execution boundary
 
@@ -101,8 +125,8 @@ The reference package exposes an atomic consumption-store interface. A local
 execution gate:
 
 1. requires a verified, `SATISFIED` evaluation and local authorization;
-2. reserves the operation/nonce before invocation;
-3. refuses replay after consumption; and
+2. atomically reserves the operation/nonce and every native replay unit before invocation;
+3. refuses same-operation and rewrapped-native-evidence replay after consumption; and
 4. freezes an `INDETERMINATE` evaluation for authenticated reconciliation.
 
 An indeterminate invocation outcome remains reserved until reconciliation
@@ -111,8 +135,10 @@ is for tests and examples. The production API requires a durable,
 ownership-fenced, permanent-consumption store and is compatible with the
 durable store contract in `@emilia-protocol/gate`. Reservation keys are hashed
 over relying-party identity, pinned-config digest, CAID, normalized-action
-digest, operation, and nonce. Store outages and ownership conflicts fail
-closed.
+digest, operation, and nonce. Native replay keys are separately namespaced by
+the relying party. A production store must explicitly declare durable custody,
+ownership fencing, permanent consumption, and atomic replay fencing. Store
+outages, partial multi-key reservations, and ownership conflicts fail closed.
 
 ## Reference implementation
 

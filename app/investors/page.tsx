@@ -65,7 +65,10 @@ export default function InvestorsPage() {
           The company operates Gate, Approver, and the Assurance Plane. CAID names the material
           action; AEB joins independently verified evidence under relying-party-pinned mappings and
           requirements. Neither authorizes. Gate applies local policy, reserves bounded authority,
-          owns the effect call, and records executed or indeterminate outcome evidence.
+          owns the effect call, and records executed or indeterminate outcome evidence. It refuses
+          blind replay after uncertain provider entry, reconciles only authenticated same-operation
+          evidence, and treats refunds, returns, reversals, or other remedies as separately
+          authorized actions rather than rewriting history.
         </p>
         <p style={{ fontFamily: font.sans, fontSize: 15, lineHeight: 1.55, color: '#57534E', maxWidth: 560, marginBottom: 12 }}>
           Complex authority can be staged or parallel. The public experimental Trust Program

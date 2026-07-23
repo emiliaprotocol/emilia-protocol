@@ -20,7 +20,7 @@
  * leaf, or missing per-action approval for an irreversible action.
  */
 import crypto from 'node:crypto';
-import { verifyTrustReceipt, canonicalize } from '../index.js';
+import { verifyTrustReceipt, canonicalize } from './index.js';
 export const PROVENANCE_VERSION = 'EP-PROVENANCE-CHAIN-v1';
 const DEFAULT_HUMAN_KEY_CLASSES = ['A'];
 // Normalize to a bare lowercase hex digest, but ONLY if it is a well-formed

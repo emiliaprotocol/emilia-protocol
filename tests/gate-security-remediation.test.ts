@@ -692,6 +692,7 @@ describe('Gate construction guards fail closed without a runtime monitor', () =>
       registerCapability: async () => ({ ok: true }),
       reserveSpend: async () => ({ ok: true, reservation_id: 'res_1' }),
       commitSpend: async () => ({ ok: true }),
+      reconcileSpend: async () => ({ ok: true }),
     };
     const gateWith = (capabilityTrustedIssuerKeys) => createGate({
       trustedKeys: [harness.publicKey],

@@ -92,6 +92,12 @@ describe('/api/verify/[receiptId] hash field coverage', () => {
     expect(body.recomputed_hash).toBe(storedHash);
     expect(body.hash_valid).toBe(true);
     expect(body.chain.chain_intact).toBe(true);
+    expect(body).not.toHaveProperty('revoked');
+    expect(body.revocation).toEqual({
+      status: 'unavailable',
+      checked: false,
+      basis: 'no authenticated current-status authority is configured for this receipt',
+    });
   });
 
   it('reports hash_valid:false when a bound field (claims) is tampered after signing', async () => {

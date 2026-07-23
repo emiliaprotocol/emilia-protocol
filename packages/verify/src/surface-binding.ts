@@ -45,7 +45,7 @@
  */
 
 import crypto from 'node:crypto';
-import { canonicalize } from '../index.js';
+import { canonicalize } from './index.js';
 
 export const SURFACE_BINDING_VERSION = 'EP-SURFACE-BINDING-v1';
 
