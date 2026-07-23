@@ -11,6 +11,15 @@ const migration = readFileSync(
 );
 
 describe('AEB authenticated replay status lookup migration', () => {
+  it('temporarily assumes the private-schema owner and revokes that membership', () => {
+    expect(migration).toContain(
+      'GRANT ep_aeb_store_owner TO CURRENT_USER\n  WITH INHERIT FALSE, SET TRUE;\nSET ROLE ep_aeb_store_owner;',
+    );
+    expect(migration).toContain(
+      'RESET ROLE;\nREVOKE ep_aeb_store_owner FROM CURRENT_USER;',
+    );
+  });
+
   it('exposes only a tenant-bound exact replay-fence observation', () => {
     expect(migration).toContain(
       'CREATE OR REPLACE FUNCTION ep_aeb_private.has_replay_fence(',

@@ -11,6 +11,15 @@ const migration = readFileSync(
 );
 
 describe('consequence-control database principal readiness migration', () => {
+  it('uses the AEB owner only for AEB-owned DDL, then resets before PTE DDL', () => {
+    expect(migration).toMatch(
+      /GRANT ep_aeb_store_owner TO CURRENT_USER\s+WITH INHERIT FALSE, SET TRUE;\s+SET ROLE ep_aeb_store_owner;\s+DO \$aeb_preflight\$/,
+    );
+    expect(migration).toMatch(
+      /SET ROLE ep_aeb_store_owner;[\s\S]+DO \$aeb_preflight\$[\s\S]+DO \$aeb_constraints\$[\s\S]+CREATE OR REPLACE FUNCTION ep_aeb_private\.principal_readiness\([\s\S]+RESET ROLE;\s+REVOKE ep_aeb_store_owner FROM CURRENT_USER;\s+DO \$pte_preflight\$[\s\S]+DO \$pte_constraints\$[\s\S]+CREATE OR REPLACE FUNCTION proposal_to_effect_private\.principal_readiness\(/,
+    );
+  });
+
   it('makes execute and recover mutually exclusive in both tenant maps', () => {
     expect(migration).toContain(
       'CONSTRAINT ep_aeb_tenant_principal_one_capability',

@@ -59,9 +59,14 @@ CREATE TABLE public.ep_aeb_status_heads (
   )
 );
 
-GRANT ep_aeb_store_owner TO CURRENT_USER;
+GRANT ep_aeb_store_owner TO CURRENT_USER
+  WITH INHERIT FALSE, SET TRUE;
+GRANT USAGE, CREATE ON SCHEMA public TO ep_aeb_store_owner;
 
 ALTER TABLE public.ep_aeb_status_heads OWNER TO ep_aeb_store_owner;
+
+SET ROLE ep_aeb_store_owner;
+
 ALTER TABLE public.ep_aeb_status_heads ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.ep_aeb_status_heads FORCE ROW LEVEL SECURITY;
 
@@ -380,4 +385,6 @@ COMMENT ON FUNCTION ep_aeb_private.compare_and_advance_status_head(
 ) IS
   'Atomically compare and advance an accepted status head after Gate-side cryptographic verification.';
 
+RESET ROLE;
+REVOKE CREATE ON SCHEMA public FROM ep_aeb_store_owner;
 REVOKE ep_aeb_store_owner FROM CURRENT_USER;
