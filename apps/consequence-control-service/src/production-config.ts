@@ -56,7 +56,8 @@ const AEB_PRINCIPAL_READINESS_SQL = `
     opposite_role_absent,
     rpc_grants_ok,
     schema_objects_ok,
-    schema_contract
+    schema_contract,
+    TRUE AS recovery_precision_ok
   FROM ep_aeb_private.principal_readiness($1, $2)
 `;
 const PTE_PRINCIPAL_READINESS_SQL = `
@@ -68,7 +69,17 @@ const PTE_PRINCIPAL_READINESS_SQL = `
     opposite_role_absent,
     rpc_grants_ok,
     schema_objects_ok,
-    schema_contract
+    schema_contract,
+    COALESCE(
+      POSITION(
+        'HH24:MI:SS.US' IN pg_catalog.pg_get_functiondef(
+          pg_catalog.to_regprocedure(
+            'proposal_to_effect_private.read_attempt(text,text,text,text,text,text)'
+          )
+        )
+      ) > 0,
+      FALSE
+    ) AS recovery_precision_ok
   FROM proposal_to_effect_private.principal_readiness($1, $2)
 `;
 
@@ -264,6 +275,7 @@ function readinessPrincipal(
       || row.opposite_role_absent !== true
       || row.rpc_grants_ok !== true
       || row.schema_objects_ok !== true
+      || row.recovery_precision_ok !== true
       || row.schema_contract !== expectedContract) {
     return null;
   }

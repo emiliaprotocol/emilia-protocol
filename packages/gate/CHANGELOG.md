@@ -4,6 +4,18 @@
 All notable changes to `@emilia-protocol/gate` are documented here.
 This package follows [Semantic Versioning](https://semver.org/).
 
+## 0.15.2 (2026-07-23)
+
+### Fixed
+
+- Proposal-to-Effect recovery snapshots now preserve PostgreSQL microseconds
+  for the exact lease compare-and-swap fence. The previous millisecond
+  serialization could make a stale attempt conflict with its own stored lease
+  and remain permanently unrecoverable.
+- The managed consequence-control readiness gate verifies that the live
+  `read_attempt` RPC carries the required microsecond-precision contract
+  before admitting traffic.
+
 ## 0.15.1 (2026-07-23)
 
 ### Added

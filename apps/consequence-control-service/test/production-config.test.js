@@ -30,6 +30,7 @@ function readinessRow({
     opposite_role_absent: true,
     rpc_grants_ok: true,
     schema_objects_ok: true,
+    recovery_precision_ok: true,
     schema_contract: overrides.schema_contract,
     ...overrides,
   };
@@ -225,6 +226,7 @@ test('database readiness rejects missing tenant rows, role separation, grants, o
     ['opposite_role_absent', false],
     ['rpc_grants_ok', false],
     ['schema_objects_ok', false],
+    ['recovery_precision_ok', false],
     ['schema_contract', 'stale'],
   ]) {
     assert.equal(await verifyDatabasePrincipalSeparation({

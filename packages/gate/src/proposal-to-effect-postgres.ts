@@ -901,11 +901,11 @@ BEGIN
     attempts.owner_generation,
     pg_catalog.to_char(
       attempts.last_heartbeat_at AT TIME ZONE 'UTC',
-      'YYYY-MM-DD"T"HH24:MI:SS.MS"Z"'
+      'YYYY-MM-DD"T"HH24:MI:SS.US"Z"'
     ),
     pg_catalog.to_char(
       attempts.lease_expires_at AT TIME ZONE 'UTC',
-      'YYYY-MM-DD"T"HH24:MI:SS.MS"Z"'
+      'YYYY-MM-DD"T"HH24:MI:SS.US"Z"'
     ),
     attempts.lease_expires_at <= pg_catalog.clock_timestamp()
   FROM proposal_to_effect_private.consequence_attempts AS attempts
@@ -1091,9 +1091,13 @@ function assertDigest(value: unknown, name: string): asserts value is AebDigest 
 
 function assertInstant(value: unknown, name: string): asserts value is string {
   if (typeof value !== 'string'
-      || !/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z$/.test(value)
-      || !Number.isFinite(Date.parse(value))
-      || new Date(Date.parse(value)).toISOString() !== value) {
+      || !/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3,6}Z$/.test(value)) {
+    throw new TypeError(`${name} is invalid`);
+  }
+  const parsed = Date.parse(value);
+  const millisecondInstant = value.replace(/\.(\d{3})\d{0,3}Z$/, '.$1Z');
+  if (!Number.isFinite(parsed)
+      || new Date(parsed).toISOString() !== millisecondInstant) {
     throw new TypeError(`${name} is invalid`);
   }
 }
