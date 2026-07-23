@@ -38,6 +38,7 @@ function fakePostgres() {
     let attempts = new Map();
     let evidenceRows = new Map();
     let malformedAfterNextMutation = false;
+    let malformedNextLookupBinding = false;
     let nextMutationError = null;
     let loseNextCommitAcknowledgement = false;
     let nowMs = Date.parse('2026-07-22T18:00:00.000Z');
@@ -88,7 +89,8 @@ function fakePostgres() {
                         transactionLog.push(text);
                         return { rowCount: null, rows: [] };
                     }
-                    const mutation = text !== PROPOSAL_TO_EFFECT_POSTGRES_SQL.read;
+                    const mutation = text !== PROPOSAL_TO_EFFECT_POSTGRES_SQL.read
+                        && text !== PROPOSAL_TO_EFFECT_POSTGRES_SQL.lookup;
                     if (mutation && nextMutationError) {
                         const error = nextMutationError;
                         nextMutationError = null;
@@ -244,6 +246,28 @@ function fakePostgres() {
                         }
                         result = success(applied || idempotent);
                     }
+                    else if (text === PROPOSAL_TO_EFFECT_POSTGRES_SQL.lookup) {
+                        const [tenantId, providerId, providerAccountId, environment, requestDigest,] = params;
+                        const matches = [...attempts.values()].filter((record) => (record.tenant_id === tenantId
+                            && record.provider_id === providerId
+                            && record.provider_account_id === providerAccountId
+                            && record.environment === environment
+                            && record.request_digest === requestDigest));
+                        result = {
+                            rowCount: matches.length,
+                            rows: matches.map((record) => ({
+                                tenant_id: malformedNextLookupBinding
+                                    ? 'tenant-unexpected'
+                                    : record.tenant_id,
+                                provider_id: record.provider_id,
+                                provider_account_id: record.provider_account_id,
+                                environment: record.environment,
+                                attempt_id: record.attempt_id,
+                                request_digest: record.request_digest,
+                            })),
+                        };
+                        malformedNextLookupBinding = false;
+                    }
                     else if (text === PROPOSAL_TO_EFFECT_POSTGRES_SQL.read) {
                         const [tenantId, providerId, providerAccountId, environment, attemptId, requestDigest,] = params;
                         const record = attempts.get(namespaceKey(tenantId, providerId, providerAccountId, environment, attemptId));
@@ -348,6 +372,9 @@ function fakePostgres() {
         },
         malformAfterNextMutation() {
             malformedAfterNextMutation = true;
+        },
+        malformNextLookupBinding() {
+            malformedNextLookupBinding = true;
         },
         failNextMutation(error = new Error('database unavailable')) {
             nextMutationError = error;
@@ -525,6 +552,51 @@ test('tenant and provider/account/environment namespaces are isolated', async ()
         expected_state: 'INVOKING',
         next_state: 'INDETERMINATE',
     }), false);
+});
+test('exact lookup rediscovers only the authenticated public attempt binding', async () => {
+    const { pg, store } = storeFixture();
+    const attempt = binding();
+    await reserveOwner(store, attempt);
+    const lookup = {
+        tenant_id: attempt.tenant_id,
+        provider_id: attempt.provider_id,
+        provider_account_id: attempt.provider_account_id,
+        environment: attempt.environment,
+        request_digest: attempt.request_digest,
+    };
+    assert.deepEqual(await store.lookup(lookup), attempt);
+    assert.equal(await store.lookup({ ...lookup, request_digest: DIGESTS.action_digest }), null);
+    assert.equal(await store.lookup({ ...lookup, tenant_id: 'tenant-other' }), null);
+    assert.equal(pg.queryPrincipals.at(-1), 'executor');
+    assert.equal(pg.transactionLog.filter((entry) => (entry === 'BEGIN ISOLATION LEVEL REPEATABLE READ READ ONLY')).length, 3);
+    assert.equal(pg.attempts.values().next().value?.state, 'RESERVED');
+    assert.deepEqual(Object.keys(await store.lookup(lookup) ?? {}).sort(), [
+        'attempt_id',
+        'environment',
+        'provider_account_id',
+        'provider_id',
+        'request_digest',
+        'tenant_id',
+    ]);
+});
+test('lookup fails closed on malformed, mismatched, ambiguous, or overbroad input', async () => {
+    const { pg, store } = storeFixture();
+    const attempt = binding();
+    await reserveOwner(store, attempt);
+    const lookup = {
+        tenant_id: attempt.tenant_id,
+        provider_id: attempt.provider_id,
+        provider_account_id: attempt.provider_account_id,
+        environment: attempt.environment,
+        request_digest: attempt.request_digest,
+    };
+    pg.malformNextLookupBinding();
+    await assert.rejects(store.lookup(lookup), /malformed Postgres result: lookup binding/);
+    await assert.rejects(store.lookup({ ...lookup, attempt_id: attempt.attempt_id }), /attempt lookup is invalid/);
+    const duplicate = structuredClone(pg.attempts.values().next().value);
+    duplicate.attempt_id = 'attempt-duplicate';
+    pg.attempts.set(pg.namespaceKey(duplicate.tenant_id, duplicate.provider_id, duplicate.provider_account_id, duplicate.environment, duplicate.attempt_id), duplicate);
+    await assert.rejects(store.lookup(lookup), /malformed Postgres result: lookup/);
 });
 test('terminal states are immutable and cannot be reopened', async () => {
     const { pg, store } = storeFixture();

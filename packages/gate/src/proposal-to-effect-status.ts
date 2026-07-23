@@ -13,12 +13,31 @@ import {
   verifyStatusArtifact,
   type RevokerAuthorityPin,
   type StatusTarget,
+  type StatusVerification,
 } from '@emilia-protocol/verify/status';
 
 import type {
   ProposalToEffectCurrentStatusVerification,
   ProposalToEffectOptions,
 } from './proposal-to-effect.js';
+import type {
+  ProposalToEffectStatusHeadStore,
+} from './proposal-to-effect-status-head-store.js';
+
+export {
+  PROPOSAL_TO_EFFECT_STATUS_HEAD_STORE_VERSION,
+  PROPOSAL_TO_EFFECT_STATUS_HEAD_TABLE,
+  PROPOSAL_TO_EFFECT_STATUS_HEAD_SQL,
+  createPostgresProposalToEffectStatusHeadStore,
+} from './proposal-to-effect-status-head-store.js';
+export type {
+  PostgresProposalToEffectStatusHeadStoreOptions,
+  ProposalToEffectStatusHeadAcceptance,
+  ProposalToEffectStatusHeadAcceptanceInput,
+  ProposalToEffectStatusHeadPgClient,
+  ProposalToEffectStatusHeadPgPool,
+  ProposalToEffectStatusHeadStore,
+} from './proposal-to-effect-status-head-store.js';
 
 type MaybePromise<T> = T | Promise<T>;
 type ProposalToEffectStatusVerifier = ProposalToEffectOptions['aeb']['statusVerifier'];
@@ -31,13 +50,6 @@ export type ProposalToEffectStatusExpected =
 export interface ProposalToEffectStatusResolverContext {
   expected: ProposalToEffectStatusExpected;
   target: Readonly<StatusTarget>;
-}
-
-export interface ProposalToEffectPreviousHeadResolution {
-  /** Confirms this result came from the relying party's authenticated store. */
-  authenticated: boolean;
-  /** Null means the store authoritatively has no accepted head for the target. */
-  status: unknown | null;
 }
 
 export interface ProposalToEffectConsumptionState {
@@ -63,10 +75,12 @@ export interface ProposalToEffectStatusVerifierOptions {
   certificateResolver(
     input: ProposalToEffectStatusResolverContext,
   ): MaybePromise<unknown>;
-  /** Server-side lookup of the relying party's previously accepted status head. */
-  previousHeadResolver(
-    input: ProposalToEffectStatusResolverContext,
-  ): MaybePromise<ProposalToEffectPreviousHeadResolution>;
+  /**
+   * Durable relying-party status custody. It loads the accepted predecessor,
+   * verifies the candidate against that predecessor, and compare-and-advances
+   * one fixed tenant/relying-party/target head atomically.
+   */
+  statusHeadStore: ProposalToEffectStatusHeadStore;
   /** Authenticated local consumption lookup; this is not inferred from EP-STATUS-v1. */
   consumptionStateResolver(
     input: ProposalToEffectConsumptionResolverContext,
@@ -229,7 +243,11 @@ function verifierConfiguration(
   if (!authorityPin
       || typeof options.targetMapper !== 'function'
       || typeof options.certificateResolver !== 'function'
-      || typeof options.previousHeadResolver !== 'function'
+      || !dataRecord(options.statusHeadStore)
+      || options.statusHeadStore.durable !== true
+      || !boundedString(options.statusHeadStore.tenantId)
+      || !boundedString(options.statusHeadStore.relyingPartyId)
+      || typeof options.statusHeadStore.accept !== 'function'
       || typeof options.consumptionStateResolver !== 'function') {
     throw new TypeError('proposal_to_effect_status_configuration_invalid');
   }
@@ -246,7 +264,7 @@ export function createProposalToEffectStatusVerifier(
   const authorityPin = verifierConfiguration(options);
   const targetMapper = options.targetMapper;
   const certificateResolver = options.certificateResolver;
-  const previousHeadResolver = options.previousHeadResolver;
+  const statusHeadStore = options.statusHeadStore;
   const consumptionStateResolver = options.consumptionStateResolver;
 
   return async (input): Promise<ProposalToEffectCurrentStatusVerification> => {
@@ -270,7 +288,6 @@ export function createProposalToEffectStatusVerifier(
 
     const context = Object.freeze({ expected, target });
     let certificate: unknown;
-    let previousStatus: unknown;
     try {
       const resolvedCertificate = await certificateResolver(context);
       if (resolvedCertificate === undefined || resolvedCertificate === null) {
@@ -280,26 +297,40 @@ export function createProposalToEffectStatusVerifier(
     } catch {
       return refusal('indeterminate', 'status_certificate_unavailable');
     }
-    try {
-      const resolution = await previousHeadResolver(context);
-      if (!dataRecord(resolution)
-          || resolution.authenticated !== true
-          || !Object.hasOwn(resolution, 'status')
-          || resolution.status === undefined) {
-        return refusal('indeterminate', 'status_previous_head_unavailable');
-      }
-      previousStatus = resolution.status === null
-        ? undefined : snapshotJson(resolution.status);
-    } catch {
-      return refusal('indeterminate', 'status_previous_head_unavailable');
+
+    if (statusHeadStore.tenantId !== expected.tenant_id) {
+      return refusal('indeterminate', 'status_head_scope_mismatch');
     }
 
-    const verification = verifyStatusArtifact(target, statusArtifact, {
-      authorityPin,
-      certificate,
-      previousStatus,
-      now: input.now,
-    });
+    let acceptance;
+    try {
+      acceptance = await statusHeadStore.accept({
+        target,
+        status: statusArtifact,
+        verify: (previousStatus) => verifyStatusArtifact(target, statusArtifact, {
+          authorityPin,
+          certificate,
+          previousStatus,
+          now: input.now,
+        }),
+      });
+    } catch {
+      return refusal('indeterminate', 'status_head_store_unavailable');
+    }
+    if (!dataRecord(acceptance)
+        || typeof acceptance.accepted !== 'boolean'
+        || !Object.hasOwn(acceptance, 'verification')
+        || !dataRecord(acceptance.verification)) {
+      return refusal('indeterminate', 'status_head_store_invalid');
+    }
+    if (!acceptance.accepted) {
+      return refusal(
+        'indeterminate',
+        boundedString(acceptance.reason)
+          ? acceptance.reason : 'status_head_store_refused',
+      );
+    }
+    const verification = acceptance.verification as unknown as StatusVerification;
     if (!verification.valid || verification.outcome === 'indeterminate') {
       return refusal(
         'indeterminate',

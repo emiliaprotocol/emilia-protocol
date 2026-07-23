@@ -313,7 +313,21 @@ export {
   proposalToEffectConsumptionNonce,
   createProposalToEffect,
 } from './proposal-to-effect.js';
-export { createProposalToEffectStatusVerifier } from './proposal-to-effect-status.js';
+export {
+  PROPOSAL_TO_EFFECT_STATUS_HEAD_STORE_VERSION,
+  PROPOSAL_TO_EFFECT_STATUS_HEAD_TABLE,
+  PROPOSAL_TO_EFFECT_STATUS_HEAD_SQL,
+  createProposalToEffectStatusVerifier,
+  createPostgresProposalToEffectStatusHeadStore,
+} from './proposal-to-effect-status.js';
+export type {
+  PostgresProposalToEffectStatusHeadStoreOptions,
+  ProposalToEffectStatusHeadAcceptance,
+  ProposalToEffectStatusHeadAcceptanceInput,
+  ProposalToEffectStatusHeadPgClient,
+  ProposalToEffectStatusHeadPgPool,
+  ProposalToEffectStatusHeadStore,
+} from './proposal-to-effect-status.js';
 export {
   PROPOSAL_TO_EFFECT_POSTGRES_DDL,
   PROPOSAL_TO_EFFECT_POSTGRES_SQL,

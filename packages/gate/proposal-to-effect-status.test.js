@@ -108,6 +108,38 @@ function signStatus(body, signer = revokerKeys) {
     };
 }
 const certificate = signCertificate();
+function statusHeadStore(head = null, predecessor = null) {
+    let acceptedHead = head === null ? null : structuredClone(head);
+    let acceptedPredecessor = predecessor === null ? null : structuredClone(predecessor);
+    return {
+        durable: true,
+        tenantId: EXPECTED.tenant_id,
+        relyingPartyId: 'rp:gate-1',
+        async accept({ status, verify }) {
+            const candidate = structuredClone(status);
+            const candidateDigest = statusArtifactDigest(candidate);
+            const existing = acceptedHead !== null
+                && candidateDigest === statusArtifactDigest(acceptedHead);
+            const verification = await verify(existing
+                ? acceptedPredecessor ?? undefined
+                : acceptedHead ?? undefined);
+            if (!verification.valid || verification.outcome === 'indeterminate') {
+                return {
+                    accepted: false,
+                    source: null,
+                    reason: verification.reasons[0] ?? 'status_verification_failed',
+                    verification,
+                };
+            }
+            if (existing) {
+                return { accepted: true, source: 'existing', reason: null, verification };
+            }
+            acceptedPredecessor = acceptedHead;
+            acceptedHead = candidate;
+            return { accepted: true, source: 'advanced', reason: null, verification };
+        },
+    };
+}
 function verifier(overrides = {}) {
     return createProposalToEffectStatusVerifier({
         authorityPin,
@@ -118,7 +150,7 @@ function verifier(overrides = {}) {
             usage: 'authorization',
         }),
         certificateResolver: async () => certificate,
-        previousHeadResolver: async () => ({ authenticated: true, status: null }),
+        statusHeadStore: statusHeadStore(),
         consumptionStateResolver: async () => ({ authenticated: true, consumed: false }),
         ...overrides,
     });
@@ -130,6 +162,29 @@ async function check(statusArtifact, statusVerifier = verifier()) {
         now: NOW,
     });
 }
+test('rejects the legacy caller-controlled previous-head resolver configuration', () => {
+    assert.throws(() => createProposalToEffectStatusVerifier({
+        authorityPin,
+        targetMapper: () => TARGET,
+        certificateResolver: async () => certificate,
+        previousHeadResolver: async () => ({ authenticated: true, status: null }),
+        consumptionStateResolver: async () => ({ authenticated: true, consumed: false }),
+    }), /proposal_to_effect_status_configuration_invalid/);
+});
+test('gives durable custody no presenter-supplied predecessor input', async () => {
+    const base = statusHeadStore();
+    let acceptedInputKeys = [];
+    const observingStore = {
+        ...base,
+        async accept(input) {
+            acceptedInputKeys = Object.keys(input).sort();
+            return base.accept(input);
+        },
+    };
+    const result = await check(signStatus(statusBody(certificate)), verifier({ statusHeadStore: observingStore }));
+    assert.equal(result.valid, true);
+    assert.deepEqual(acceptedInputKeys, ['status', 'target', 'verify']);
+});
 test('returns one normalized unconsumed AEB status only for current non-revocation', async () => {
     const result = await check(signStatus(statusBody(certificate)));
     assert.deepEqual(result, {
@@ -162,7 +217,7 @@ test('rejects rollback against the relying-party-held previous status head', asy
         next_update: '2026-07-22T12:06:00Z',
     }));
     const statusVerifier = verifier({
-        previousHeadResolver: async () => ({ authenticated: true, status: next }),
+        statusHeadStore: statusHeadStore(next, first),
     });
     const result = await check(first, statusVerifier);
     assert.equal(result.valid, false);
@@ -201,9 +256,11 @@ test('requires authenticated local unconsumed state and never infers it from sta
 });
 test('fails closed when any server-side resolver is unavailable', async () => {
     const current = signStatus(statusBody(certificate));
+    const unavailableStore = statusHeadStore();
+    unavailableStore.accept = async () => { throw new Error('head store down'); };
     const unavailable = [
         verifier({ certificateResolver: async () => { throw new Error('certificate store down'); } }),
-        verifier({ previousHeadResolver: async () => { throw new Error('head store down'); } }),
+        verifier({ statusHeadStore: unavailableStore }),
         verifier({ consumptionStateResolver: async () => { throw new Error('consumption store down'); } }),
     ];
     for (const statusVerifier of unavailable) {

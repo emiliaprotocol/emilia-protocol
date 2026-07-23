@@ -907,6 +907,9 @@ export const PROPOSAL_TO_EFFECT_POSTGRES_SQL = Object.freeze({
     $1, $2, $3, $4, $5, $6, $7, $8, $9,
     $10, $11, $12, $13, $14, $15, $16, $17, $18, $19
   )`,
+    lookup: `SELECT * FROM proposal_to_effect_private.lookup_attempt(
+    $1, $2, $3, $4, $5
+  )`,
     read: `SELECT * FROM proposal_to_effect_private.read_attempt(
     $1, $2, $3, $4, $5, $6
   )`,
@@ -978,6 +981,22 @@ function assertAttemptReference(value) {
         throw new TypeError('consequence attempt reference is invalid');
     }
     assertBinding(value);
+}
+function assertAttemptLookup(value) {
+    if (!isRecord(value) || !hasExactKeys(value, [
+        'tenant_id',
+        'provider_id',
+        'provider_account_id',
+        'environment',
+        'request_digest',
+    ])) {
+        throw new TypeError('consequence attempt lookup is invalid');
+    }
+    assertIdentifier(value.tenant_id, 'lookup tenant_id');
+    assertIdentifier(value.provider_id, 'lookup provider_id');
+    assertIdentifier(value.provider_account_id, 'lookup provider_account_id');
+    assertIdentifier(value.environment, 'lookup environment');
+    assertDigest(value.request_digest, 'lookup request_digest');
 }
 function assertResolvedDigests(value) {
     if (!isRecord(value) || !hasExactKeys(value, [
@@ -1139,6 +1158,44 @@ function parseSnapshot(result, input) {
         last_heartbeat_at: row.last_heartbeat_at,
         lease_expires_at: row.lease_expires_at,
         lease_stale: row.lease_stale,
+    };
+}
+function parseLookup(result, input) {
+    assertResultEnvelope(result, 'lookup');
+    if (result.rowCount === 0 && result.rows.length === 0)
+        return null;
+    const row = result.rows[0];
+    if (result.rowCount !== 1 || result.rows.length !== 1 || !isRecord(row)
+        || !hasExactKeys(row, [
+            'tenant_id',
+            'provider_id',
+            'provider_account_id',
+            'environment',
+            'attempt_id',
+            'request_digest',
+        ])) {
+        throw new Error('malformed Postgres result: lookup');
+    }
+    assertIdentifier(row.tenant_id, 'lookup tenant_id');
+    assertIdentifier(row.provider_id, 'lookup provider_id');
+    assertIdentifier(row.provider_account_id, 'lookup provider_account_id');
+    assertIdentifier(row.environment, 'lookup environment');
+    assertIdentifier(row.attempt_id, 'lookup attempt_id');
+    assertDigest(row.request_digest, 'lookup request_digest');
+    if (row.tenant_id !== input.tenant_id
+        || row.provider_id !== input.provider_id
+        || row.provider_account_id !== input.provider_account_id
+        || row.environment !== input.environment
+        || row.request_digest !== input.request_digest) {
+        throw new Error('malformed Postgres result: lookup binding');
+    }
+    return {
+        tenant_id: row.tenant_id,
+        provider_id: row.provider_id,
+        provider_account_id: row.provider_account_id,
+        environment: row.environment,
+        attempt_id: row.attempt_id,
+        request_digest: row.request_digest,
     };
 }
 function transitionAllowed(expected, next) {
@@ -1444,6 +1501,16 @@ export function createProposalToEffectPostgresStore(options) {
                 evidenceBindingDigest(attemptDigest, providerEvidence),
             ]), 'reconcile'));
             return result.applied;
+        },
+        async lookup(input) {
+            assertAttemptLookup(input);
+            return retryAmbiguousCommit(pool, true, 'lookup', async (client) => parseLookup(await client.query(PROPOSAL_TO_EFFECT_POSTGRES_SQL.lookup, [
+                input.tenant_id,
+                input.provider_id,
+                input.provider_account_id,
+                input.environment,
+                input.request_digest,
+            ]), input));
         },
         async read(input) {
             assertAttemptReference(input);

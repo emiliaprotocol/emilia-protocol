@@ -24,6 +24,13 @@ export interface ProposalToEffectAttemptDigests {
     action_digest: AebDigest;
     config_digest: AebDigest;
 }
+export interface ProposalToEffectPostgresAttemptLookup {
+    tenant_id: string;
+    provider_id: string;
+    provider_account_id: string;
+    environment: string;
+    request_digest: AebDigest;
+}
 export interface ProposalToEffectPostgresAttemptReference {
     tenant_id: string;
     provider_id: string;
@@ -52,6 +59,12 @@ export type ProposalToEffectPostgresRecoveryResult = {
     reason: 'attempt_not_found' | 'attempt_not_stale' | 'recovery_not_authorized' | 'recovery_conflict' | 'terminal_state_immutable';
 };
 export interface ProposalToEffectPostgresStore extends ProposalToEffectConsequenceAttemptStore {
+    /**
+     * Rediscover an attempt after a lost response using only the exact,
+     * server-derived provider tuple and request digest. This neither executes
+     * nor rotates custody and returns no owner or operational state.
+     */
+    lookup(input: ProposalToEffectPostgresAttemptLookup): Promise<ProposalToEffectPostgresAttemptReference | null>;
     /**
      * Read operational saga state by its complete durable namespace and request
      * digest. Owner material is deliberately absent.
@@ -103,6 +116,7 @@ export declare const PROPOSAL_TO_EFFECT_POSTGRES_SQL: Readonly<{
     transition: "SELECT * FROM proposal_to_effect_private.transition_attempt(\n    $1, $2, $3, $4, $5, $6\n  )";
     heartbeat: "SELECT * FROM proposal_to_effect_private.heartbeat_attempt(\n    $1, $2, $3, $4\n  )";
     reconcile: "SELECT * FROM proposal_to_effect_private.reconcile_attempt(\n    $1, $2, $3, $4, $5, $6, $7, $8, $9,\n    $10, $11, $12, $13, $14, $15, $16, $17, $18, $19\n  )";
+    lookup: "SELECT * FROM proposal_to_effect_private.lookup_attempt(\n    $1, $2, $3, $4, $5\n  )";
     read: "SELECT * FROM proposal_to_effect_private.read_attempt(\n    $1, $2, $3, $4, $5, $6\n  )";
     recover: "SELECT * FROM proposal_to_effect_private.recover_attempt(\n    $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12\n  )";
 }>;
@@ -119,6 +133,7 @@ declare const _default: {
         transition: "SELECT * FROM proposal_to_effect_private.transition_attempt(\n    $1, $2, $3, $4, $5, $6\n  )";
         heartbeat: "SELECT * FROM proposal_to_effect_private.heartbeat_attempt(\n    $1, $2, $3, $4\n  )";
         reconcile: "SELECT * FROM proposal_to_effect_private.reconcile_attempt(\n    $1, $2, $3, $4, $5, $6, $7, $8, $9,\n    $10, $11, $12, $13, $14, $15, $16, $17, $18, $19\n  )";
+        lookup: "SELECT * FROM proposal_to_effect_private.lookup_attempt(\n    $1, $2, $3, $4, $5\n  )";
         read: "SELECT * FROM proposal_to_effect_private.read_attempt(\n    $1, $2, $3, $4, $5, $6\n  )";
         recover: "SELECT * FROM proposal_to_effect_private.recover_attempt(\n    $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12\n  )";
     }>;

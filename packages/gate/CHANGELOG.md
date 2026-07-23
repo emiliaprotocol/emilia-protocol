@@ -4,6 +4,34 @@
 All notable changes to `@emilia-protocol/gate` are documented here.
 This package follows [Semantic Versioning](https://semver.org/).
 
+## 0.15.1 (2026-07-23)
+
+### Added
+
+- A tenant-authenticated `hasReplayFence()` observation on the durable AEB
+  consumption store. It reports an exact native replay unit as unavailable
+  when either a reserved or permanently consumed fence exists.
+- Durable accepted `EP-STATUS-v1` head custody, scoped by tenant, relying
+  party, and complete status target, with database-side compare-and-advance.
+- A tenant-authorized Proposal-to-Effect attempt lookup over the immutable
+  provider tuple and request digest, so a lost indeterminate HTTP response can
+  be rediscovered without invoking the effect again or rotating recovery
+  ownership.
+
+### Security
+
+- Proposal-to-Effect status verification can now obtain exact, server-side
+  replay state without granting direct table access. The observation is a
+  preflight check; the immediately following atomic reservation remains the
+  race-closing authority boundary.
+- Proposal-to-Effect no longer accepts a caller-configurable previous-head
+  resolver. Status candidates are verified against the relying party's stored
+  predecessor and admitted only if that head still wins an atomic comparison.
+- The production readiness contract proves distinct executor and recovery
+  session identities, exclusive tenant capabilities, exact role/RPC grants,
+  and the required replay, status-head, and attempt-store schema before
+  admitting traffic.
+
 ## 0.15.0 (2026-07-22)
 
 ### Added

@@ -53,7 +53,8 @@ export { REMEDY_PROGRAM_EVIDENCE_VERSION, REMEDY_PROGRAM_EVIDENCE_DOMAIN, remedy
 export { REMEDY_CASE_SET_VERSION, createRemedyCaseSetCoordinator, } from './remedy-case-set.js';
 export { REMEDY_CASE_SET_PG_STORE_VERSION, REMEDY_CASE_SET_TABLE, REMEDY_CASE_SET_EVENT_TABLE, REMEDY_CASE_SET_MAX_STATE_BYTES, REMEDY_CASE_SET_MAX_MANIFEST_BYTES, REMEDY_CASE_SET_MAX_FORWARD_SKEW_MINUTES, REMEDY_CASE_SET_POSTGRES_DDL, REMEDY_CASE_SET_POSTGRES_SQL, createRemedyCaseSetPostgresStore, } from './remedy-case-set-postgres.js';
 export { PROPOSAL_TO_EFFECT_VERSION, proposalToEffectConsumptionNonce, createProposalToEffect, } from './proposal-to-effect.js';
-export { createProposalToEffectStatusVerifier } from './proposal-to-effect-status.js';
+export { PROPOSAL_TO_EFFECT_STATUS_HEAD_STORE_VERSION, PROPOSAL_TO_EFFECT_STATUS_HEAD_TABLE, PROPOSAL_TO_EFFECT_STATUS_HEAD_SQL, createProposalToEffectStatusVerifier, createPostgresProposalToEffectStatusHeadStore, } from './proposal-to-effect-status.js';
+export type { PostgresProposalToEffectStatusHeadStoreOptions, ProposalToEffectStatusHeadAcceptance, ProposalToEffectStatusHeadAcceptanceInput, ProposalToEffectStatusHeadPgClient, ProposalToEffectStatusHeadPgPool, ProposalToEffectStatusHeadStore, } from './proposal-to-effect-status.js';
 export { PROPOSAL_TO_EFFECT_POSTGRES_DDL, PROPOSAL_TO_EFFECT_POSTGRES_SQL, proposalToEffectAttemptDigest, createProposalToEffectPostgresStore, } from './proposal-to-effect-postgres.js';
 export { AEB_PG_CONSUMPTION_STORE_VERSION, AEB_CONSUMPTION_OPERATION_TABLE, AEB_CONSUMPTION_REPLAY_TABLE, AEB_CONSUMPTION_DDL, AEB_CONSUMPTION_SQL, createPostgresAebDurableConsumptionStore, } from './aeb-consumption-store.js';
 export declare const ASSURANCE_TIERS: string[];

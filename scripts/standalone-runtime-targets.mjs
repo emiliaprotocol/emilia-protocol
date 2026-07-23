@@ -87,6 +87,11 @@ export const STANDALONE_RUNTIME_SOURCES = [
   'apps/gate-service/src/runtime.ts',
   'apps/gate-service/src/server.ts',
   'apps/gate-service/test/helpers.ts',
+  'apps/consequence-control-service/src/routes.ts',
+  'apps/consequence-control-service/src/runtime.ts',
+  'apps/consequence-control-service/src/github-app.ts',
+  'apps/consequence-control-service/src/production-config.ts',
+  'apps/consequence-control-service/src/server.ts',
   'apps/secure-app/lib/ep-signoff.ts',
   // scripts/ (excluding scripts/ts-loader/** -- the resolution hook itself,
   // which cannot depend on TypeScript stripping to bootstrap -- and this

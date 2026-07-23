@@ -136,6 +136,22 @@ BEGIN
     RETURNING ${AEB_CONSUMPTION_OPERATION_TABLE}.operation_key;
 END
 $fn$;
+CREATE OR REPLACE FUNCTION ep_aeb_private.has_replay_fence(
+  p_tenant_id TEXT, p_relying_party_id TEXT, p_replay_key TEXT
+) RETURNS TABLE(fenced BOOLEAN)
+LANGUAGE plpgsql VOLATILE SECURITY DEFINER SET search_path = ''
+AS $fn$
+BEGIN
+  PERFORM ep_aeb_private.assert_tenant_principal(p_tenant_id, FALSE);
+  RETURN QUERY SELECT EXISTS (
+    SELECT 1
+    FROM public.${AEB_CONSUMPTION_REPLAY_TABLE} AS fences
+    WHERE fences.tenant_id = p_tenant_id
+      AND fences.relying_party_id = p_relying_party_id
+      AND fences.replay_key = p_replay_key
+  );
+END
+$fn$;
 CREATE OR REPLACE FUNCTION ep_aeb_private.reserve_replay_keys(
   p_tenant_id TEXT, p_relying_party_id TEXT, p_operation_key TEXT, p_replay_keys TEXT[]
 ) RETURNS TABLE(replay_key TEXT)
@@ -200,6 +216,8 @@ ALTER FUNCTION ep_aeb_private.assert_tenant_principal(TEXT, BOOLEAN)
   OWNER TO ${AEB_CONSUMPTION_OWNER_ROLE};
 ALTER FUNCTION ep_aeb_private.reserve_operation(TEXT, TEXT, TEXT, TEXT)
   OWNER TO ${AEB_CONSUMPTION_OWNER_ROLE};
+ALTER FUNCTION ep_aeb_private.has_replay_fence(TEXT, TEXT, TEXT)
+  OWNER TO ${AEB_CONSUMPTION_OWNER_ROLE};
 ALTER FUNCTION ep_aeb_private.reserve_replay_keys(TEXT, TEXT, TEXT, TEXT[])
   OWNER TO ${AEB_CONSUMPTION_OWNER_ROLE};
 ALTER FUNCTION ep_aeb_private.commit_operation(TEXT, TEXT, TEXT, TEXT)
@@ -211,7 +229,8 @@ ALTER FUNCTION ep_aeb_private.release_operation(TEXT, TEXT, TEXT, TEXT)
 REVOKE ALL ON ALL FUNCTIONS IN SCHEMA ep_aeb_private
   FROM PUBLIC, anon, authenticated, service_role;
 GRANT USAGE ON SCHEMA ep_aeb_private TO ${AEB_CONSUMPTION_EXECUTOR_ROLE}, ${AEB_CONSUMPTION_RECOVERY_ROLE};
-GRANT EXECUTE ON FUNCTION ep_aeb_private.reserve_operation(TEXT, TEXT, TEXT, TEXT),
+GRANT EXECUTE ON FUNCTION ep_aeb_private.has_replay_fence(TEXT, TEXT, TEXT),
+  ep_aeb_private.reserve_operation(TEXT, TEXT, TEXT, TEXT),
   ep_aeb_private.reserve_replay_keys(TEXT, TEXT, TEXT, TEXT[]),
   ep_aeb_private.commit_operation(TEXT, TEXT, TEXT, TEXT),
   ep_aeb_private.release_operation(TEXT, TEXT, TEXT, TEXT)
@@ -222,6 +241,7 @@ REVOKE ${AEB_CONSUMPTION_OWNER_ROLE} FROM CURRENT_USER;`;
 
 /** Exact statements issued by the store, exported for audit and deterministic fakes. */
 export const AEB_CONSUMPTION_SQL = Object.freeze({
+  hasReplayFence: `SELECT fenced FROM ep_aeb_private.has_replay_fence($1::text, $2::text, $3::text)`,
   reserveOperation: `SELECT operation_key FROM ep_aeb_private.reserve_operation($1::text, $2::text, $3::text, $4::text)`,
   reserveReplayKeys: `SELECT replay_key FROM ep_aeb_private.reserve_replay_keys($1::text, $2::text, $3::text, $4::text[])`,
   commitOperation: `SELECT operation_key FROM ep_aeb_private.commit_operation($1::text, $2::text, $3::text, $4::text)`,
@@ -270,6 +290,12 @@ export type AebRecoveryClaimAuthorizer = (
 
 export interface PostgresAebDurableConsumptionStore extends AebDurableConsumptionStore {
   recoveryClaimSupported: true;
+  /**
+   * Authenticated pre-reservation observation for one exact native replay key.
+   * A true result includes both RESERVED and CONSUMED fences. Atomic reserve
+   * remains the race-closing operation.
+   */
+  hasReplayFence(replayKey: string): Promise<boolean>;
   /**
    * Rotate ownership of an existing RESERVED row after external authorization.
    * The stored and replacement owner tokens are never returned or passed to
@@ -394,6 +420,27 @@ export function createPostgresAebDurableConsumptionStore({
     permanentConsumption: true,
     atomicReplayFenced: true,
     recoveryClaimSupported: true,
+
+    async hasReplayFence(replayKey): Promise<boolean> {
+      assertText(replayKey, 'native replay key', 4096);
+      const client = await pool.connect();
+      if (!client || typeof client.query !== 'function' || typeof client.release !== 'function') {
+        throw new TypeError('AEB consumption pg pool returned an invalid client');
+      }
+      try {
+        const result = await client.query(AEB_CONSUMPTION_SQL.hasReplayFence, [
+          tenantId, relyingPartyId, replayKey,
+        ]);
+        const rows = exactRowCount(result, 'lookup replay fence');
+        const fenced = result.rows?.[0]?.fenced;
+        if (rows !== 1 || result.rows?.length !== 1 || typeof fenced !== 'boolean') {
+          throw new Error('lookup replay fence: malformed PostgreSQL result');
+        }
+        return fenced;
+      } finally {
+        client.release();
+      }
+    },
 
     async reserve(key, replayKeys = []): Promise<AebReservationResult> {
       assertText(key, 'operation key', 4096);

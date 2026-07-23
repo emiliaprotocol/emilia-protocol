@@ -9,6 +9,7 @@
  * latter. The later atomic AEB reserve remains the race-closing operation.
  */
 import { verifyStatusArtifact, } from '@emilia-protocol/verify/status';
+export { PROPOSAL_TO_EFFECT_STATUS_HEAD_STORE_VERSION, PROPOSAL_TO_EFFECT_STATUS_HEAD_TABLE, PROPOSAL_TO_EFFECT_STATUS_HEAD_SQL, createPostgresProposalToEffectStatusHeadStore, } from './proposal-to-effect-status-head-store.js';
 const DIGEST_PATTERN = /^sha256:[0-9a-f]{64}$/;
 const CAID_PATTERN = /^caid:1:[a-z][a-z0-9-]*(?:\.[a-z][a-z0-9-]*)*\.[1-9][0-9]*:[a-z0-9]+(?:-[a-z0-9]+)*:[A-Za-z0-9_-]{43}$/;
 const EXPECTED_KEYS = [
@@ -159,7 +160,11 @@ function verifierConfiguration(options) {
     if (!authorityPin
         || typeof options.targetMapper !== 'function'
         || typeof options.certificateResolver !== 'function'
-        || typeof options.previousHeadResolver !== 'function'
+        || !dataRecord(options.statusHeadStore)
+        || options.statusHeadStore.durable !== true
+        || !boundedString(options.statusHeadStore.tenantId)
+        || !boundedString(options.statusHeadStore.relyingPartyId)
+        || typeof options.statusHeadStore.accept !== 'function'
         || typeof options.consumptionStateResolver !== 'function') {
         throw new TypeError('proposal_to_effect_status_configuration_invalid');
     }
@@ -173,7 +178,7 @@ export function createProposalToEffectStatusVerifier(options) {
     const authorityPin = verifierConfiguration(options);
     const targetMapper = options.targetMapper;
     const certificateResolver = options.certificateResolver;
-    const previousHeadResolver = options.previousHeadResolver;
+    const statusHeadStore = options.statusHeadStore;
     const consumptionStateResolver = options.consumptionStateResolver;
     return async (input) => {
         const expected = snapshotExpected(input?.expected);
@@ -196,7 +201,6 @@ export function createProposalToEffectStatusVerifier(options) {
         }
         const context = Object.freeze({ expected, target });
         let certificate;
-        let previousStatus;
         try {
             const resolvedCertificate = await certificateResolver(context);
             if (resolvedCertificate === undefined || resolvedCertificate === null) {
@@ -207,26 +211,36 @@ export function createProposalToEffectStatusVerifier(options) {
         catch {
             return refusal('indeterminate', 'status_certificate_unavailable');
         }
+        if (statusHeadStore.tenantId !== expected.tenant_id) {
+            return refusal('indeterminate', 'status_head_scope_mismatch');
+        }
+        let acceptance;
         try {
-            const resolution = await previousHeadResolver(context);
-            if (!dataRecord(resolution)
-                || resolution.authenticated !== true
-                || !Object.hasOwn(resolution, 'status')
-                || resolution.status === undefined) {
-                return refusal('indeterminate', 'status_previous_head_unavailable');
-            }
-            previousStatus = resolution.status === null
-                ? undefined : snapshotJson(resolution.status);
+            acceptance = await statusHeadStore.accept({
+                target,
+                status: statusArtifact,
+                verify: (previousStatus) => verifyStatusArtifact(target, statusArtifact, {
+                    authorityPin,
+                    certificate,
+                    previousStatus,
+                    now: input.now,
+                }),
+            });
         }
         catch {
-            return refusal('indeterminate', 'status_previous_head_unavailable');
+            return refusal('indeterminate', 'status_head_store_unavailable');
         }
-        const verification = verifyStatusArtifact(target, statusArtifact, {
-            authorityPin,
-            certificate,
-            previousStatus,
-            now: input.now,
-        });
+        if (!dataRecord(acceptance)
+            || typeof acceptance.accepted !== 'boolean'
+            || !Object.hasOwn(acceptance, 'verification')
+            || !dataRecord(acceptance.verification)) {
+            return refusal('indeterminate', 'status_head_store_invalid');
+        }
+        if (!acceptance.accepted) {
+            return refusal('indeterminate', boundedString(acceptance.reason)
+                ? acceptance.reason : 'status_head_store_refused');
+        }
+        const verification = acceptance.verification;
         if (!verification.valid || verification.outcome === 'indeterminate') {
             return refusal('indeterminate', verification.reasons[0] ?? 'status_verification_failed');
         }

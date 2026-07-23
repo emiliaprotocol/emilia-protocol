@@ -88,6 +88,7 @@
     "src/remedy-case-set-postgres.ts",
     "src/proposal-to-effect.ts",
     "src/proposal-to-effect-status.ts",
+    "src/proposal-to-effect-status-head-store.ts",
     "src/proposal-to-effect-postgres.ts",
     "src/aeb-consumption-store.ts"
   ]

@@ -21,11 +21,18 @@
       ],
       "@emilia-protocol/fire-drill/*": [
         "./packages/fire-drill/*"
+      ],
+      "@emilia-protocol/gate": [
+        "./packages/gate/dist/index.d.ts"
+      ],
+      "@emilia-protocol/gate/*": [
+        "./packages/gate/dist/*.d.ts"
       ]
     }
   },
   "include": [
     "actions/**/*",
+    "apps/consequence-control-service/src/**/*",
     "apps/gate-service/src/**/*",
     "attestation/**/*",
     "bench/**/*",

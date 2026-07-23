@@ -1,0 +1,29 @@
+{
+  "name": "@emilia-protocol/consequence-control-service",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Authenticated HTTP custody for Proposal-to-Effect execution and reconciliation.",
+  "type": "module",
+  "engines": {
+    "node": ">=22.0.0"
+  },
+  "exports": {
+    ".": "./src/runtime.js",
+    "./github-app": "./src/github-app.js",
+    "./production-config": "./src/production-config.js",
+    "./routes": "./src/routes.js",
+    "./server": "./src/server.js"
+  },
+  "scripts": {
+    "start": "node src/server.js",
+    "test": "node --test test/*.test.js"
+  },
+  "dependencies": {
+    "@emilia-protocol/gate": "file:../../packages/gate",
+    "@emilia-protocol/require-receipt": "file:../../packages/require-receipt",
+    "@emilia-protocol/verify": "file:../../packages/verify",
+    "@noble/curves": "2.2.0",
+    "pg": "8.22.0"
+  },
+  "license": "Apache-2.0"
+}

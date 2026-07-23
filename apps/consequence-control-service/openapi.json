@@ -1,0 +1,359 @@
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "EMILIA Consequence-Control Service",
+    "version": "0.1.1",
+    "description": "Authenticated Proposal-to-Effect custody. An indeterminate provider outcome is non-replayable, restart-discoverable by its verified proposal binding, and requires authenticated reconciliation."
+  },
+  "servers": [
+    {
+      "url": "https://managed-gate.example.invalid"
+    }
+  ],
+  "components": {
+    "securitySchemes": {
+      "bearerAuth": {
+        "type": "http",
+        "scheme": "bearer"
+      }
+    },
+    "schemas": {
+      "EvidenceContext": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["artifacts", "statuses"],
+        "properties": {
+          "artifacts": {
+            "type": "object",
+            "additionalProperties": true
+          },
+          "statuses": {
+            "type": "object",
+            "additionalProperties": true
+          }
+        }
+      },
+      "PublicAttempt": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "tenant_id",
+          "provider_id",
+          "provider_account_id",
+          "environment",
+          "attempt_id",
+          "request_digest"
+        ],
+        "properties": {
+          "tenant_id": { "type": "string" },
+          "provider_id": { "type": "string" },
+          "provider_account_id": { "type": "string" },
+          "environment": { "type": "string" },
+          "attempt_id": { "type": "string" },
+          "request_digest": {
+            "type": "string",
+            "pattern": "^sha256:[a-f0-9]{64}$"
+          }
+        }
+      },
+      "AttemptState": {
+        "type": "string",
+        "enum": [
+          "RESERVED",
+          "INVOKING",
+          "INDETERMINATE",
+          "COMMITTED",
+          "RELEASED",
+          "ESCALATED"
+        ]
+      },
+      "Error": {
+        "type": "object",
+        "required": ["status", "error"],
+        "properties": {
+          "status": { "type": "string" },
+          "error": {
+            "type": "object",
+            "required": ["code"],
+            "properties": {
+              "code": { "type": "string" }
+            }
+          }
+        }
+      }
+    }
+  },
+  "paths": {
+    "/v1/live": {
+      "get": {
+        "operationId": "live",
+        "responses": {
+          "200": { "description": "Process is live" }
+        }
+      }
+    },
+    "/v1/ready": {
+      "get": {
+        "operationId": "ready",
+        "responses": {
+          "200": { "description": "Database and provider credentials are ready" },
+          "503": { "description": "A dependency is unavailable" }
+        }
+      }
+    },
+    "/v1/proposals": {
+      "post": {
+        "operationId": "prepareProposal",
+        "security": [{ "bearerAuth": [] }],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": ["profile_id", "operation_id", "action"],
+                "properties": {
+                  "profile_id": { "type": "string" },
+                  "operation_id": { "type": "string" },
+                  "action": { "type": "object" }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": { "description": "Server-bound proposal" },
+          "400": { "description": "Invalid strict JSON request" },
+          "401": { "description": "Authentication required" },
+          "403": { "description": "Profile or target refused" }
+        }
+      }
+    },
+    "/v1/proposals/{proposal_id}/approval-requests": {
+      "post": {
+        "operationId": "beginProposalApproval",
+        "security": [{ "bearerAuth": [] }],
+        "parameters": [{
+          "name": "proposal_id",
+          "in": "path",
+          "required": true,
+          "schema": { "type": "string" }
+        }],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": ["proposal", "approver_id", "idempotency_key"],
+                "properties": {
+                  "proposal": { "type": "object" },
+                  "approver_id": { "type": "string" },
+                  "idempotency_key": { "type": "string" }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "202": { "description": "Approval acquisition is pending" }
+        }
+      }
+    },
+    "/v1/proposals/{proposal_id}/approval-requests/poll": {
+      "post": {
+        "operationId": "pollProposalApproval",
+        "security": [{ "bearerAuth": [] }],
+        "parameters": [{
+          "name": "proposal_id",
+          "in": "path",
+          "required": true,
+          "schema": { "type": "string" }
+        }],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": ["proposal", "request_id", "poll_token"],
+                "properties": {
+                  "proposal": { "type": "object" },
+                  "request_id": { "type": "string" },
+                  "poll_token": { "type": "string" }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": { "description": "Current approval-acquisition state" }
+        }
+      }
+    },
+    "/v1/proposals/{proposal_id}/execute": {
+      "post": {
+        "operationId": "executeProposal",
+        "security": [{ "bearerAuth": [] }],
+        "parameters": [{
+          "name": "proposal_id",
+          "in": "path",
+          "required": true,
+          "schema": { "type": "string" }
+        }],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": ["proposal", "receipt", "evaluation", "evidence"],
+                "properties": {
+                  "proposal": { "type": "object" },
+                  "receipt": { "type": "object" },
+                  "evaluation": { "type": "object" },
+                  "evidence": { "$ref": "#/components/schemas/EvidenceContext" }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": { "description": "Effect completed and authority consumed" },
+          "202": {
+            "description": "Provider outcome indeterminate; blind retry refused"
+          },
+          "409": { "description": "Replay, consumption, or lifecycle conflict" }
+        }
+      }
+    },
+    "/v1/proposals/{proposal_id}/attempts/lookup": {
+      "post": {
+        "operationId": "lookupProposalAttempt",
+        "description": "Rediscover an existing consequence attempt from the authenticated, integrity-verified proposal. The provider tuple and request digest are selected from the verified proposal, never from caller fields.",
+        "security": [{ "bearerAuth": [] }],
+        "parameters": [{
+          "name": "proposal_id",
+          "in": "path",
+          "required": true,
+          "schema": { "type": "string" }
+        }],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": ["proposal"],
+                "properties": {
+                  "proposal": { "type": "object" }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Existing attempt and durable state",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "required": ["status", "state", "attempt"],
+                  "properties": {
+                    "status": { "const": "found" },
+                    "state": { "$ref": "#/components/schemas/AttemptState" },
+                    "attempt": { "$ref": "#/components/schemas/PublicAttempt" }
+                  }
+                }
+              }
+            }
+          },
+          "404": { "description": "Proposal or attempt not found" },
+          "503": { "description": "Durable lookup is unavailable or failed closed" }
+        }
+      }
+    },
+    "/v1/proposals/{proposal_id}/reconcile": {
+      "post": {
+        "operationId": "reconcileProposal",
+        "security": [{ "bearerAuth": [] }],
+        "parameters": [{
+          "name": "proposal_id",
+          "in": "path",
+          "required": true,
+          "schema": { "type": "string" }
+        }],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": [
+                  "proposal",
+                  "evaluation",
+                  "attempt",
+                  "provider_evidence",
+                  "evidence"
+                ],
+                "properties": {
+                  "proposal": { "type": "object" },
+                  "evaluation": { "type": "object" },
+                  "attempt": { "$ref": "#/components/schemas/PublicAttempt" },
+                  "provider_evidence": { "type": "object" },
+                  "evidence": { "$ref": "#/components/schemas/EvidenceContext" }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": { "description": "Authenticated provider evidence reached a terminal state" },
+          "409": { "description": "Attempt is not recoverable or not indeterminate" }
+        }
+      }
+    },
+    "/v1/proposals/{proposal_id}/repair": {
+      "post": {
+        "operationId": "repairProposalConsumption",
+        "security": [{ "bearerAuth": [] }],
+        "parameters": [{
+          "name": "proposal_id",
+          "in": "path",
+          "required": true,
+          "schema": { "type": "string" }
+        }],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": ["proposal", "evaluation", "attempt", "evidence"],
+                "properties": {
+                  "proposal": { "type": "object" },
+                  "evaluation": { "type": "object" },
+                  "attempt": { "$ref": "#/components/schemas/PublicAttempt" },
+                  "evidence": { "$ref": "#/components/schemas/EvidenceContext" }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": { "description": "Terminal consequence and AEB state converged" },
+          "409": { "description": "Attempt is not terminal or cannot be repaired" }
+        }
+      }
+    }
+  }
+}
