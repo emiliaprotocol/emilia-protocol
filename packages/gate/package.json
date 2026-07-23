@@ -1,6 +1,6 @@
 {
   "name": "@emilia-protocol/gate",
-  "version": "0.15.0",
+  "version": "0.15.1",
   "repository": {
     "type": "git",
     "url": "https://github.com/emiliaprotocol/emilia-protocol.git",
@@ -269,6 +269,10 @@
       "types": "./dist/proposal-to-effect-status.d.ts",
       "import": "./proposal-to-effect-status.js"
     },
+    "./proposal-to-effect-status-head-store": {
+      "types": "./dist/proposal-to-effect-status-head-store.d.ts",
+      "import": "./proposal-to-effect-status-head-store.js"
+    },
     "./proposal-to-effect-postgres": {
       "types": "./dist/proposal-to-effect-postgres.d.ts",
       "import": "./proposal-to-effect-postgres.js"
@@ -325,6 +329,7 @@
     "remedy-case-set-postgres.js",
     "proposal-to-effect.js",
     "proposal-to-effect-status.js",
+    "proposal-to-effect-status-head-store.js",
     "proposal-to-effect-postgres.js",
     "aeb-consumption-store.js",
     "zk-range-proof.js",

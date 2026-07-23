@@ -120,6 +120,11 @@ jobs:
       - name: Run the hardened Gate service suite
         working-directory: apps/gate-service
         run: npm test
+      - name: Run the consequence-control service suite
+        working-directory: apps/consequence-control-service
+        run: |
+          npm ci --ignore-scripts
+          npm test
       - name: Verify the SQL contract and live cross-tenant isolation
         env:
           POSTGRES_IMAGE: postgres@sha256:742f40ea20b9ff2ff31db5458d127452988a2164df9e17441e191f3b72252193
@@ -139,11 +144,29 @@ jobs:
         run: npm pack --dry-run --json
       - name: Build the production service image
         run: docker build --file Dockerfile.gate --tag emilia-gate-service:ci .
+      - name: Build and import-smoke the consequence-control image
+        run: |
+          docker build --file Dockerfile.consequence-control --tag emilia-consequence-control:ci .
+          docker run --rm emilia-consequence-control:ci \
+            npm test --prefix /app/apps/consequence-control-service
+          docker run --rm emilia-consequence-control:ci \
+            node --input-type=module --eval \
+            "await import('/app/apps/consequence-control-service/src/production-config.js'); await import('/app/apps/consequence-control-service/src/server.js');"
       - name: Refuse high or critical runtime vulnerabilities
         uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
         with:
           version: v0.72.0
           image-ref: emilia-gate-service:ci
+          scanners: vuln
+          vuln-type: os,library
+          severity: HIGH,CRITICAL
+          exit-code: '1'
+          hide-progress: true
+      - name: Refuse high or critical consequence-control vulnerabilities
+        uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
+        with:
+          version: v0.72.0
+          image-ref: emilia-consequence-control:ci
           scanners: vuln
           vuln-type: os,library
           severity: HIGH,CRITICAL

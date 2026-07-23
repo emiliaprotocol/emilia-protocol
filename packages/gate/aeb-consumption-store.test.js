@@ -78,6 +78,14 @@ function createDeterministicFakePool() {
                         unlock = null;
                         return { rowCount: 0, rows: [] };
                     }
+                    if (text === AEB_CONSUMPTION_SQL.hasReplayFence) {
+                        const [tenantId, relyingPartyId, replayKey] = params;
+                        const active = transaction ?? committed;
+                        return {
+                            rowCount: 1,
+                            rows: [{ fenced: active.replays.has(replayId(tenantId, relyingPartyId, replayKey)) }],
+                        };
+                    }
                     assert.ok(transaction, 'statement executed outside a transaction');
                     if (text === AEB_CONSUMPTION_SQL.reserveOperation) {
                         const [tenantId, relyingPartyId, operationKey, ownerToken] = params;
@@ -358,6 +366,43 @@ test('commit permanently consumes the operation and its native replay fences', a
     assert.equal(await store.release('operation-consumed'), false);
     assert.equal(await store.reserve('operation-consumed', ['native-other']), 'CONSUMPTION_CONFLICT');
     assert.equal(pool.replay('tenant-a', 'rp-a', 'native-consumed')?.operationKey, 'operation-consumed');
+});
+test('authenticated replay lookup reports the exact tenant and relying-party fence', async () => {
+    const pool = createDeterministicFakePool();
+    const tenantA = makeStore(pool, { tenantId: 'tenant-a', relyingPartyId: 'rp-a' });
+    const tenantB = makeStore(pool, { tenantId: 'tenant-b', relyingPartyId: 'rp-a' });
+    const relyingPartyB = makeStore(pool, { tenantId: 'tenant-a', relyingPartyId: 'rp-b' });
+    assert.equal(await tenantA.hasReplayFence('native-exact'), false);
+    assert.equal(await tenantA.reserve('operation-exact', ['native-exact']), 'RESERVED');
+    assert.equal(await tenantA.hasReplayFence('native-exact'), true);
+    assert.equal(await tenantB.hasReplayFence('native-exact'), false);
+    assert.equal(await relyingPartyB.hasReplayFence('native-exact'), false);
+    assert.equal(await tenantA.release('operation-exact'), true);
+    assert.equal(await tenantA.hasReplayFence('native-exact'), false);
+});
+test('replay lookup database failures propagate and malformed answers fail closed', async () => {
+    const pool = createDeterministicFakePool();
+    const store = makeStore(pool);
+    pool.failNext(AEB_CONSUMPTION_SQL.hasReplayFence);
+    await assert.rejects(() => store.hasReplayFence('native-error'), /pg_unavailable/);
+    const malformedPool = {
+        async connect() {
+            return {
+                async query() {
+                    return { rowCount: 0, rows: [] };
+                },
+                release() { },
+            };
+        },
+    };
+    const malformedStore = createPostgresAebDurableConsumptionStore({
+        pool: malformedPool,
+        recoveryPool: { connect: () => malformedPool.connect() },
+        tenantId: 'tenant-a',
+        relyingPartyId: 'rp-a',
+        authorizeRecoveryClaim: async () => true,
+    });
+    await assert.rejects(() => malformedStore.hasReplayFence('native-malformed'), /lookup replay fence: malformed PostgreSQL result/);
 });
 test('a consumed native replay key conflicts under a new operation without reserving that operation', async () => {
     const pool = createDeterministicFakePool();

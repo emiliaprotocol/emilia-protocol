@@ -26,6 +26,7 @@
   },
   "include": [
     "actions/**/*",
+    "apps/consequence-control-service/src/**/*",
     "apps/gate-service/src/**/*",
     "attestation/**/*",
     "bench/**/*",
