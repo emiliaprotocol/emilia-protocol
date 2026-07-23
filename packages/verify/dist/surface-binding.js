@@ -44,7 +44,7 @@
  * and only reports digest_match on byte-exact SHA-256 equality.
  */
 import crypto from 'node:crypto';
-import { canonicalize } from '../index.js';
+import { canonicalize } from './index.js';
 export const SURFACE_BINDING_VERSION = 'EP-SURFACE-BINDING-v1';
 /** The action-object member under which a bound surface binding is placed (bindSurfaceInto). */
 export const SURFACE_BINDING_FIELD = 'approval_surface';

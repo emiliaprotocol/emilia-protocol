@@ -538,6 +538,20 @@ function capabilityStateFromEnvelope(capabilityReceipt) {
     };
 }
 /**
+ * Production capability-store contract. Methods alone are insufficient: an
+ * adapter must explicitly assert durable custody and reconciliation support.
+ */
+export function isSecureCapabilityStore(store) {
+    if (!store || typeof store !== 'object')
+        return false;
+    return store.durable === true
+        && store.reconciliationCapable === true
+        && typeof store.registerCapability === 'function'
+        && typeof store.reserveSpend === 'function'
+        && typeof store.commitSpend === 'function'
+        && typeof store.reconcileSpend === 'function';
+}
+/**
  * An in-memory atomic reference store. It is intentionally marked non-durable
  * and is suitable only for tests; production callers must use an implementation
  * backed by a transactional database or equivalent linearizable store.
@@ -547,6 +561,7 @@ export function createMemoryCapabilityStore() {
     const operations = new Map();
     return {
         durable: false,
+        reconciliationCapable: true,
         registerCapability(capabilityReceipt) {
             const verified = verifyCapabilityReceipt(capabilityReceipt, { allowUntrustedIssuer: true });
             if (!verified.ok)
@@ -693,6 +708,7 @@ export function createPostgresCapabilityStore({ transaction } = {}) {
         throw new TypeError('createPostgresCapabilityStore requires a transaction(callback) function');
     return {
         durable: true,
+        reconciliationCapable: true,
         async registerCapability(capabilityReceipt) {
             const verified = verifyCapabilityReceipt(capabilityReceipt, { allowUntrustedIssuer: true });
             if (!verified.ok)
@@ -1169,6 +1185,7 @@ export default {
     reconstructCapabilitySecret,
     createMemoryCapabilityStore,
     createPostgresCapabilityStore,
+    isSecureCapabilityStore,
     executeWithCapability,
     executeWithThreshold,
     reconcileCapabilityOperation,

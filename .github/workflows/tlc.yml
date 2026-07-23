@@ -125,6 +125,13 @@ jobs:
             grep -A 20 "Error:" tlc-receipt-program-output.txt
             exit 1
           fi
+          if grep -q "Model checking completed. No error has been found." tlc-receipt-program-output.txt; then
+            echo "TLC: all receipt-program properties hold in the configured bounds."
+          else
+            echo "TLC did not produce a clean receipt-program completion message."
+            cat tlc-receipt-program-output.txt
+            exit 1
+          fi
 
       - name: Run TLC on ep_authority_program.tla
         working-directory: formal
@@ -168,6 +175,13 @@ jobs:
             grep -A 20 "Error:" tlc-trust-program-output.txt
             exit 1
           fi
+          if grep -q "Model checking completed. No error has been found." tlc-trust-program-output.txt; then
+            echo "TLC: all Trust Program invariants hold in the bounded model."
+          else
+            echo "TLC did not produce a clean Trust Program completion message."
+            cat tlc-trust-program-output.txt
+            exit 1
+          fi
 
       - name: Run TLC on ep_lifecycle_remedy.tla
         working-directory: formal
@@ -193,20 +207,54 @@ jobs:
             cat tlc-lifecycle-remedy-output.txt
             exit 1
           fi
-          if grep -q "Model checking completed. No error has been found." tlc-trust-program-output.txt; then
-            echo "TLC: all Trust Program invariants hold in the bounded model."
-          else
-            echo "TLC did not produce a clean Trust Program completion message."
-            cat tlc-trust-program-output.txt
+
+      - name: Run TLC on ep_consequence_attempt.tla
+        working-directory: formal
+        run: |
+          java -Xmx2G -jar ../tla2tools.jar \
+            -workers auto \
+            -config ep_consequence_attempt.cfg \
+            ep_consequence_attempt.tla \
+            2>&1 | tee tlc-consequence-attempt-output.txt
+
+      - name: Check ep_consequence_attempt TLC result
+        working-directory: formal
+        run: |
+          if grep -q "Error:" tlc-consequence-attempt-output.txt; then
+            echo "TLC found an error in the consequence-attempt model."
+            grep -A 20 "Error:" tlc-consequence-attempt-output.txt
             exit 1
           fi
-          if grep -q "Model checking completed. No error has been found." tlc-receipt-program-output.txt; then
-            echo "TLC: all receipt-program properties hold in the configured bounds."
+          if grep -q "Model checking completed. No error has been found." tlc-consequence-attempt-output.txt; then
+            echo "TLC: all consequence-attempt properties hold in the configured finite scope."
           else
-            echo "TLC did not produce a clean completion message. Check the artifact."
-            cat tlc-receipt-program-output.txt
+            echo "TLC did not produce a clean consequence-attempt completion message."
+            cat tlc-consequence-attempt-output.txt
             exit 1
           fi
+
+      - name: Prove the no-blind-replay guard is load-bearing
+        working-directory: formal
+        run: |
+          set +e
+          java -Xmx2G -jar ../tla2tools.jar \
+            -workers auto \
+            -config ep_consequence_attempt_unsafe.cfg \
+            ep_consequence_attempt_unsafe.tla \
+            > tlc-consequence-attempt-unsafe-output.txt 2>&1
+          status=$?
+          set -e
+          if [ "$status" -eq 0 ]; then
+            echo "Unsafe witness unexpectedly passed; the negative control is not working."
+            cat tlc-consequence-attempt-unsafe-output.txt
+            exit 1
+          fi
+          if ! grep -q "Invariant InvokeAtMostOnce is violated" tlc-consequence-attempt-unsafe-output.txt; then
+            echo "Unsafe witness failed for an unexpected reason."
+            cat tlc-consequence-attempt-unsafe-output.txt
+            exit 1
+          fi
+          echo "Expected replay counterexample found."
 
       - name: Upload TLC output
         if: always()
@@ -220,4 +268,6 @@ jobs:
             formal/tlc-authority-program-output.txt
             formal/tlc-trust-program-output.txt
             formal/tlc-lifecycle-remedy-output.txt
+            formal/tlc-consequence-attempt-output.txt
+            formal/tlc-consequence-attempt-unsafe-output.txt
           retention-days: 90

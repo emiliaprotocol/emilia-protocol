@@ -20,7 +20,7 @@
  * leaf, or missing per-action approval for an irreversible action.
  */
 import crypto from 'node:crypto';
-import { verifyTrustReceipt, canonicalize } from '../index.js';
+import { verifyTrustReceipt, canonicalize } from './index.js';
 
 type Obj = Record<string, any>;
 

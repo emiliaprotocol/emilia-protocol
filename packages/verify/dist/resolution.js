@@ -14,7 +14,7 @@
  * an exact WebAuthn origin allowlist.
  */
 import crypto from 'node:crypto';
-import { canonicalize, isCanonicalizable, verifyWebAuthnSignoff } from '../index.js';
+import { canonicalize, isCanonicalizable, verifyWebAuthnSignoff } from './index.js';
 import { strictJsonGate } from './strict-json.js';
 export const RESOLUTION_VERSION = 'EP-RESOLUTION-v1';
 export const RESOLUTION_CONTEXT_TYPE = 'ep.resolution.v1';

@@ -45,7 +45,7 @@
  * @license Apache-2.0
  */
 import crypto from 'node:crypto';
-import { canonicalize } from '../index.js';
+import { canonicalize } from './index.js';
 import { verifyRevocation } from './revocation.js';
 
 type Obj = Record<string, any>;

@@ -34,7 +34,7 @@
  * internal consistency — it is not authorization.
  */
 import crypto from 'node:crypto';
-import { verifyWebAuthnSignoff, contextChainHash } from '../index.js';
+import { verifyWebAuthnSignoff, contextChainHash } from './index.js';
 function rosterSlotKey(role, approver) {
     return JSON.stringify([role, approver]);
 }

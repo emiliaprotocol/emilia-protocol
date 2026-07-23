@@ -57,7 +57,7 @@
  * @license Apache-2.0
  */
 import crypto from 'crypto';
-import { canonicalize } from '../index.js';
+import { canonicalize } from './index.js';
 export const WITNESS_VERSION = 'EP-WITNESS-v1';
 /**
  * Domain-separation tag prepended to the SHA-256 pre-image a witness signs.

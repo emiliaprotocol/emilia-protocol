@@ -34,7 +34,7 @@
  * is a refusal, not a warning). All vocabularies are closed.
  */
 import crypto from 'node:crypto';
-import { canonicalize } from '../index.js';
+import { canonicalize } from './index.js';
 
 type Obj = Record<string, any>;
 type KeyRef = string | { public_key: string };

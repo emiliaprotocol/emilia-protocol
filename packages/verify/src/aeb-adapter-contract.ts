@@ -33,6 +33,7 @@ export type Acceptance = 'ACCEPTED' | 'REJECTED' | 'INDETERMINATE';
 export type MappingVerdict = 'MATCH' | 'MISMATCH' | 'INDETERMINATE';
 export type AebVerdict = 'SATISFIED' | 'UNSATISFIED' | 'INDETERMINATE';
 export type AebLegVerdict = AebVerdict;
+export type AebVerificationMode = 'execution' | 'historical';
 
 export type AebJson = null | boolean | string | number | AebJson[] | { [key: string]: AebJson };
 export type AebDigest = `sha256:${string}`;
@@ -55,6 +56,8 @@ export interface AebNativeResult {
   status_digest: AebDigest;
   evidence_role: string;
   subject: AebEvidenceSubject;
+  /** Stable native authorization identity, independent of an AEB operation wrapper. */
+  replay_unit: AebDigest;
   reasons: string[];
 }
 
@@ -79,6 +82,8 @@ export interface AebAdapterInput {
   /** Immutable relying-party configuration pinned by adapterConfigDigest. */
   adapter_config: unknown;
   profile: AebPinnedProfile;
+  /** Exact action the relying party is deciding whether to execute. */
+  expected_action: unknown;
   now: string;
 }
 
@@ -161,6 +166,11 @@ export interface AebInitiatorExclusionTerm {
   roles: readonly string[];
 }
 
+export interface AebExecutorExclusionTerm {
+  type: 'executor-exclusion';
+  roles: readonly string[];
+}
+
 export interface AebOneTimeConsumptionTerm {
   type: 'one-time-consumption';
 }
@@ -168,6 +178,7 @@ export interface AebOneTimeConsumptionTerm {
 export type AebRequirementTerm =
   | AebDistinctHumanQuorumTerm
   | AebInitiatorExclusionTerm
+  | AebExecutorExclusionTerm
   | AebOneTimeConsumptionTerm;
 
 export interface AebRequirement {
@@ -235,6 +246,7 @@ export interface AebEvaluationLeg {
   artifact_ref: string;
   evidence_digest: AebDigest;
   status_digest: AebDigest;
+  replay_unit: AebDigest;
   evidence_role: string;
   subject: AebEvidenceSubject | null;
   mapper_id: string;
@@ -265,6 +277,7 @@ export interface AebEvaluationRecord {
   operation_id: string;
   consumption_nonce: string;
   initiator_id: string;
+  executor_id?: string;
   evaluator: {
     id: string;
     key_id: string;
@@ -284,6 +297,7 @@ export interface AebEvaluationRecord {
   authority_constraints: {
     distinct_human_quorum: boolean;
     initiator_exclusion: boolean;
+    executor_exclusion: boolean;
     one_time_consumption: boolean;
   };
   verdict: AebVerdict;
@@ -309,8 +323,10 @@ export interface AebEvaluationOptions {
   operation_id: string;
   consumption_nonce: string;
   initiator_id: string;
+  executor_id?: string;
   requirement_ref: string;
   caid: string;
+  expected_action?: unknown;
   legs: readonly AebEvidenceLegInput[];
   evaluated_at: string;
   signer?: AebEvaluationSigner;
@@ -322,16 +338,28 @@ export interface AebVerificationOptions {
   config: AebPinnedConfig;
   adapters: Record<string, AebAdapter>;
   artifacts: Record<string, unknown>;
+  /**
+   * Historical verification can re-derive evidence but can never authorize
+   * execution. Omission retains the PTE-compatible split: execution inputs
+   * select execution mode; otherwise verification is historical.
+   */
+  mode?: AebVerificationMode;
+  expected_action?: unknown;
+  /** Fresh status results authenticated by the relying party at execution time. */
+  current_statuses?: Record<string, AebStatusInput>;
   now?: string;
 }
 
 export interface AebEvaluationVerification {
   valid: boolean;
+  /** True only for a complete, fresh execution-mode verification. */
+  execution_authorizing: boolean;
   checks: {
     schema: boolean;
     signature: boolean;
     pinned_config: boolean;
     rederived: boolean;
+    current_status: boolean;
     verdict: boolean;
   };
   reasons: string[];
@@ -346,7 +374,7 @@ export interface AebExecutionDecision {
 }
 
 export interface AebConsumptionStore {
-  reserve(key: string): boolean;
+  reserve(key: string, replayKeys: readonly string[]): boolean;
   commit(key: string): boolean;
   release(key: string): boolean;
   state(key: string): 'AVAILABLE' | 'RESERVED' | 'CONSUMED';
@@ -357,18 +385,24 @@ export interface AebDurableConsumptionStore {
   durable: true;
   ownershipFenced: true;
   permanentConsumption: true;
-  reserve(key: string): Promise<boolean>;
+  atomicReplayFenced: true;
+  reserve(key: string, replayKeys: readonly string[]): Promise<boolean | AebReservationResult>;
   commit(key: string): Promise<boolean>;
   release(key: string): Promise<boolean>;
 }
 
+export type AebReservationResult = 'RESERVED' | 'CONSUMPTION_CONFLICT' | 'NATIVE_REPLAY_CONFLICT';
+
 /** Small synchronous reference store. Production stores must provide an atomic equivalent. */
 export class InMemoryAebConsumptionStore implements AebConsumptionStore {
   private readonly entries = new Map<string, 'RESERVED' | 'CONSUMED'>();
+  private readonly replayOwners = new Map<string, string>();
 
-  reserve(key: string): boolean {
+  reserve(key: string, replayKeys: readonly string[] = []): boolean {
     if (this.entries.has(key)) return false;
+    if (replayKeys.some((replayKey) => this.replayOwners.has(replayKey))) return false;
     this.entries.set(key, 'RESERVED');
+    for (const replayKey of replayKeys) this.replayOwners.set(replayKey, key);
     return true;
   }
 
@@ -381,6 +415,9 @@ export class InMemoryAebConsumptionStore implements AebConsumptionStore {
   release(key: string): boolean {
     if (this.entries.get(key) !== 'RESERVED') return false;
     this.entries.delete(key);
+    for (const [replayKey, owner] of this.replayOwners) {
+      if (owner === key) this.replayOwners.delete(replayKey);
+    }
     return true;
   }
 
@@ -459,6 +496,45 @@ function exactString(value: unknown): value is string {
   return typeof value === 'string' && value.length > 0 && IDENT_RE.test(value);
 }
 
+function ed25519PublicKey(value: unknown): KeyObject | null {
+  if (typeof value !== 'string' || value.length === 0 || !/^[A-Za-z0-9_-]+$/.test(value)) return null;
+  try {
+    const bytes = Buffer.from(value, 'base64url');
+    if (bytes.length === 0 || bytes.toString('base64url') !== value) return null;
+    const key = crypto.createPublicKey({ key: bytes, type: 'spki', format: 'der' });
+    const canonical = key.export({ type: 'spki', format: 'der' });
+    return key.type === 'public' && key.asymmetricKeyType === 'ed25519'
+      && Buffer.isBuffer(canonical) && canonical.equals(bytes) ? key : null;
+  } catch {
+    return null;
+  }
+}
+
+function isEd25519PrivateKey(value: unknown): value is KeyObject {
+  return value instanceof crypto.KeyObject && value.type === 'private' && value.asymmetricKeyType === 'ed25519';
+}
+
+function privateKeyMatchesPublicKey(privateKey: KeyObject, publicKey: KeyObject): boolean {
+  try {
+    const signerJwk = privateKey.export({ format: 'jwk' });
+    const pinnedJwk = publicKey.export({ format: 'jwk' });
+    return signerJwk.kty === 'OKP' && signerJwk.crv === 'Ed25519'
+      && typeof signerJwk.x === 'string' && signerJwk.x === pinnedJwk.x;
+  } catch {
+    return false;
+  }
+}
+
+function validEd25519Signature(value: unknown): value is string {
+  if (typeof value !== 'string' || !/^[A-Za-z0-9_-]{86}$/.test(value)) return false;
+  try {
+    const bytes = Buffer.from(value, 'base64url');
+    return bytes.length === 64 && bytes.toString('base64url') === value;
+  } catch {
+    return false;
+  }
+}
+
 function safeClone<T>(value: T): T {
   return JSON.parse(canonicalize(value)) as T;
 }
@@ -486,6 +562,9 @@ export function signAebNativeVerificationAttestation(
   body: AebNativeVerificationAttestationBody,
   signer: AebNativeVerificationAttestationSigner,
 ): AebNativeVerificationAttestation {
+  if (!exactString(signer?.key_id) || !isEd25519PrivateKey(signer?.private_key)) {
+    throw new TypeError('Ed25519 native attestation signer required');
+  }
   const detached = safeClone(body);
   const value = crypto.sign(null, nativeAttestationSigningBytes(detached), signer.private_key).toString('base64url');
   return { ...detached, signature: { alg: 'Ed25519', key_id: signer.key_id, value } };
@@ -526,11 +605,8 @@ function nativeAttestationShape(value: unknown): value is AebNativeVerificationA
       || !CAID_RE.test(value.mapping.caid) || !validDigest(value.mapping.normalized_action_digest)
       || !isObject(value.signature) || !exactKeys(value.signature, NATIVE_SIGNATURE_KEYS)
       || value.signature.alg !== 'Ed25519' || !exactString(value.signature.key_id)
-      || typeof value.signature.value !== 'string' || !/^[A-Za-z0-9_-]{86}$/.test(value.signature.value)) return false;
-  try {
-    const bytes = Buffer.from(value.signature.value, 'base64url');
-    return bytes.length === 64 && bytes.toString('base64url') === value.signature.value;
-  } catch { return false; }
+      || !validEd25519Signature(value.signature.value)) return false;
+  return true;
 }
 
 function nativeAttestationConfig(value: unknown): { audience: string; accepted_protocols: string[] } | null {
@@ -550,12 +626,9 @@ function verifyNativeAttestationSignature(
     && candidate.key_id === attestation.signature.key_id && typeof candidate.public_key === 'string');
   if (!isObject(root) || typeof root.public_key !== 'string') return false;
   try {
-    const bytes = Buffer.from(root.public_key, 'base64url');
-    if (bytes.length === 0 || bytes.toString('base64url') !== root.public_key) return false;
-    const key = crypto.createPublicKey({ key: bytes, type: 'spki', format: 'der' });
-    return key.asymmetricKeyType === 'ed25519'
-      && crypto.verify(null, nativeAttestationSigningBytes(nativeAttestationBody(attestation)), key,
-        Buffer.from(attestation.signature.value, 'base64url'));
+    const key = ed25519PublicKey(root.public_key);
+    return key !== null && crypto.verify(null, nativeAttestationSigningBytes(nativeAttestationBody(attestation)), key,
+      Buffer.from(attestation.signature.value, 'base64url'));
   } catch { return false; }
 }
 
@@ -577,7 +650,7 @@ export function createAebNativeVerificationAttestationAdapter(
       const fallback: AebNativeResult = {
         native_verification: 'FAILED', acceptance: 'REJECTED', evidence_digest: evidenceDigest,
         status_digest: inputStatusDigest, evidence_role: 'invalid-evidence',
-        subject: { id: 'invalid-evidence', kind: 'system' }, reasons: [],
+        subject: { id: 'invalid-evidence', kind: 'system' }, replay_unit: evidenceDigest, reasons: [],
       };
       if (!nativeAttestationShape(input.artifact)) {
         fallback.reasons = ['native_attestation_malformed'];
@@ -585,6 +658,14 @@ export function createAebNativeVerificationAttestationAdapter(
       }
       fallback.evidence_role = input.artifact.evidence_role;
       fallback.subject = safeClone(input.artifact.subject);
+      fallback.replay_unit = digest({
+        adapter_id: options.id,
+        protocol_id: input.artifact.protocol_id,
+        audience: input.artifact.audience,
+        native_artifact_ref: input.artifact.native_artifact_ref,
+        native_artifact_digest: input.artifact.native_artifact_digest,
+        verifier_key_id: input.artifact.signature.key_id,
+      });
       const config = nativeAttestationConfig(input.adapter_config);
       if (!config || input.artifact.audience !== config.audience
           || !config.accepted_protocols.includes(input.artifact.protocol_id)) {
@@ -841,6 +922,7 @@ function validConfig(config: AebPinnedConfig): string[] {
     const rawTerms = Array.isArray(requirement.terms) ? requirement.terms : [];
     const quorumRules = rawTerms.filter((term) => isObject(term) && term.type === 'distinct-human-quorum');
     const exclusionRules = rawTerms.filter((term) => isObject(term) && term.type === 'initiator-exclusion');
+    const executorExclusionRules = rawTerms.filter((term) => isObject(term) && term.type === 'executor-exclusion');
     const oneTimeRules = rawTerms.filter((term) => isObject(term) && term.type === 'one-time-consumption');
     const termsValid = Array.isArray(requirement.terms) && requirement.terms.length > 0
       && requirement.terms.every((term) => {
@@ -849,7 +931,7 @@ function validConfig(config: AebPinnedConfig): string[] {
           return exactKeys(term, QUORUM_TERM_KEYS) && validRole(term.role)
             && typeof term.threshold === 'number' && Number.isSafeInteger(term.threshold) && term.threshold >= 2;
         }
-        if (term.type === 'initiator-exclusion') {
+        if (term.type === 'initiator-exclusion' || term.type === 'executor-exclusion') {
           return exactKeys(term, EXCLUSION_TERM_KEYS) && Array.isArray(term.roles) && term.roles.length > 0
             && term.roles.every(validRole) && new Set(term.roles).size === term.roles.length;
         }
@@ -857,6 +939,7 @@ function validConfig(config: AebPinnedConfig): string[] {
       })
       && new Set(quorumRules.map((term) => term.role)).size === quorumRules.length
       && exclusionRules.length <= 1
+      && executorExclusionRules.length <= 1
       && oneTimeRules.length === 1;
     const hasRequirement = (allOfValid && requirement.all_of.length > 0)
       || (Array.isArray(requirement.any_of) && requirement.any_of.length > 0)
@@ -869,12 +952,13 @@ function validConfig(config: AebPinnedConfig): string[] {
       ...(Array.isArray(requirement.any_of) ? requirement.any_of.flat() : []),
       ...quorumRules.map((rule) => String(rule.role)),
       ...exclusionRules.flatMap((rule) => Array.isArray(rule.roles) ? rule.roles.map(String) : []),
+      ...executorExclusionRules.flatMap((rule) => Array.isArray(rule.roles) ? rule.roles.map(String) : []),
     ]);
     for (const role of roles) if (!roleRegistryEntry(config, role)) reasons.push(`role_not_registered:${role}`);
   }
   for (const [id, key] of Object.entries(config?.evaluator_keys ?? {})) {
     if (!exactString(id) || !isObject(key) || !exactKeys(key, EVALUATOR_KEY_KEYS)
-        || typeof key.public_key !== 'string' || key.public_key.length === 0) reasons.push(`invalid_evaluator_key:${id}`);
+        || ed25519PublicKey(key.public_key) === null) reasons.push(`invalid_evaluator_key:${id}`);
   }
   return sortedUnique(reasons);
 }
@@ -885,6 +969,10 @@ function distinctHumanQuorumTerms(requirement: AebRequirement): AebDistinctHuman
 
 function initiatorExclusionTerm(requirement: AebRequirement): AebInitiatorExclusionTerm | undefined {
   return requirement.terms.find((term): term is AebInitiatorExclusionTerm => term.type === 'initiator-exclusion');
+}
+
+function executorExclusionTerm(requirement: AebRequirement): AebExecutorExclusionTerm | undefined {
+  return requirement.terms.find((term): term is AebExecutorExclusionTerm => term.type === 'executor-exclusion');
 }
 
 function requiresOneTimeConsumption(requirement: AebRequirement): boolean {
@@ -974,10 +1062,16 @@ function composeWithAec(requirement: AebRequirement, legs: readonly AebEvaluatio
   };
 }
 
-function evaluateAuthorityConstraints(requirement: AebRequirement, legs: readonly AebEvaluationLeg[], initiatorId: string): {
+function evaluateAuthorityConstraints(
+  requirement: AebRequirement,
+  legs: readonly AebEvaluationLeg[],
+  initiatorId: string,
+  executorId?: string,
+): {
   verdict: AebVerdict;
   distinct_human_quorum: boolean;
   initiator_exclusion: boolean;
+  executor_exclusion: boolean;
   one_time_consumption: boolean;
   reasons: string[];
 } {
@@ -1001,14 +1095,31 @@ function evaluateAuthorityConstraints(requirement: AebRequirement, legs: readonl
     .map((leg) => leg.evidence_role));
   const selfApproval = selfApprovedRoles.size > 0;
   if (selfApproval) reasons.push(...[...selfApprovedRoles].map((role) => `initiator_excluded:${role}`));
+  const executorRule = executorExclusionTerm(requirement);
+  let executorExcluded = true;
+  if (executorRule) {
+    if (!exactString(executorId)) {
+      executorExcluded = false;
+      reasons.push('executor_binding_required');
+    } else {
+      const excludedRoles = new Set(executorRule.roles);
+      const executorApprovedRoles = new Set(legs
+        .filter((leg) => leg.verdict === 'SATISFIED'
+          && excludedRoles.has(leg.evidence_role) && leg.subject?.id === executorId)
+        .map((leg) => leg.evidence_role));
+      executorExcluded = executorApprovedRoles.size === 0;
+      if (!executorExcluded) reasons.push(...[...executorApprovedRoles].map((role) => `executor_excluded:${role}`));
+    }
+  }
   const oneTime = requiresOneTimeConsumption(requirement);
   if (!oneTime) reasons.push('one_time_consumption_not_required');
   const verdict: AebVerdict = indeterminate ? 'INDETERMINATE'
-    : quorumSatisfied && !selfApproval && oneTime ? 'SATISFIED' : 'UNSATISFIED';
+    : quorumSatisfied && !selfApproval && executorExcluded && oneTime ? 'SATISFIED' : 'UNSATISFIED';
   return {
     verdict,
     distinct_human_quorum: quorumSatisfied,
     initiator_exclusion: !selfApproval,
+    executor_exclusion: executorExcluded,
     one_time_consumption: oneTime,
     reasons: sortedUnique(reasons),
   };
@@ -1020,6 +1131,7 @@ function deriveEvaluation(options: AebEvaluationOptions): { body: Omit<AebEvalua
   try { configReasons = validConfig(options.config); reasons.push(...configReasons); } catch { configReasons = ['invalid_config']; reasons.push('invalid_config'); }
   if (!exactString(options.operation_id) || !exactString(options.consumption_nonce)) reasons.push('invalid_operation_binding');
   if (!exactString(options.initiator_id)) reasons.push('invalid_initiator_binding');
+  if (options.executor_id !== undefined && !exactString(options.executor_id)) reasons.push('invalid_executor_binding');
   if (!exactString(options.requirement_ref) || !exactString(options.caid) || !CAID_RE.test(options.caid)) reasons.push('invalid_action_binding');
   if (!Number.isFinite(parseInstant(options.evaluated_at))) reasons.push('invalid_evaluated_at');
   const requirement = options.config?.requirements?.[options.requirement_ref];
@@ -1041,6 +1153,7 @@ function deriveEvaluation(options: AebEvaluationOptions): { body: Omit<AebEvalua
       artifact_ref: input.artifact_ref,
       evidence_digest: ('sha256:' + '0'.repeat(64)) as AebDigest,
       status_digest: ('sha256:' + '0'.repeat(64)) as AebDigest,
+      replay_unit: ('sha256:' + '0'.repeat(64)) as AebDigest,
       evidence_role: '',
       subject: null,
       mapper_id: profile?.mapper_id ?? '',
@@ -1077,6 +1190,7 @@ function deriveEvaluation(options: AebEvaluationOptions): { body: Omit<AebEvalua
       const status = deepFreeze(safeClone(input.status));
       const trustRoots = deepFreeze(safeClone(adapterPin.trust_roots));
       const profileInput = deepFreeze(safeClone(profile));
+      const expectedAction = deepFreeze(JSON.parse(canonicalize(options.expected_action ?? null)) as unknown);
       const adapterConfig = deepFreeze(JSON.parse(canonicalize(adapterPin.config ?? null)) as unknown);
       base.evidence_digest = digest(artifact);
       base.status_digest = statusDigest(status);
@@ -1086,10 +1200,12 @@ function deriveEvaluation(options: AebEvaluationOptions): { body: Omit<AebEvalua
         status,
         trust_roots: trustRoots,
         adapter_config: adapterConfig,
+        expected_action: expectedAction,
         now: options.evaluated_at,
       });
       if (!isObject(native) || !validDigest(native.evidence_digest) || native.evidence_digest !== base.evidence_digest
           || !validDigest(native.status_digest) || native.status_digest !== base.status_digest
+          || !validDigest(native.replay_unit)
           || (native.native_verification !== 'VERIFIED' && native.native_verification !== 'FAILED')
           || !['ACCEPTED', 'REJECTED', 'INDETERMINATE'].includes(native.acceptance)
           || !validRole(native.evidence_role) || !isObject(native.subject) || !exactString(native.subject.id)
@@ -1103,6 +1219,7 @@ function deriveEvaluation(options: AebEvaluationOptions): { body: Omit<AebEvalua
       base.acceptance = native.acceptance;
       base.evidence_role = native.evidence_role;
       base.subject = { id: native.subject.id, kind: native.subject.kind };
+      base.replay_unit = native.replay_unit;
       base.reasons.push(...native.reasons);
       const roleEntry = roleRegistryEntry(options.config, native.evidence_role);
       const allowedSubjectKinds = roleEntry && isObject(roleEntry.definition) && Array.isArray(roleEntry.definition.subject_kinds)
@@ -1118,6 +1235,7 @@ function deriveEvaluation(options: AebEvaluationOptions): { body: Omit<AebEvalua
         trust_roots: trustRoots,
         adapter_config: adapterConfig,
         profile: profileInput,
+        expected_action: expectedAction,
         now: options.evaluated_at,
         native,
       });
@@ -1132,6 +1250,10 @@ function deriveEvaluation(options: AebEvaluationOptions): { body: Omit<AebEvalua
         base.action_digest = mapping.action_digest;
         base.reasons.push(...mapping.reasons);
         if (mapping.mapping === 'MATCH' && mapping.action_digest === null) base.reasons.push('normalized_action_digest_missing');
+        if (options.expected_action !== undefined && mapping.action_digest !== digest(expectedAction)) {
+          base.mapping = 'MISMATCH';
+          base.reasons.push('expected_action_digest_mismatch', 'normalized_action_digest_mismatch');
+        }
       }
       const hardFailure = base.native_verification === 'FAILED' || base.acceptance === 'REJECTED'
         || base.mapping === 'MISMATCH' || base.freshness.revoked || base.freshness.consumed
@@ -1164,6 +1286,7 @@ function deriveEvaluation(options: AebEvaluationOptions): { body: Omit<AebEvalua
   let authorityConstraints = {
     distinct_human_quorum: false,
     initiator_exclusion: false,
+    executor_exclusion: false,
     one_time_consumption: false,
   };
   let aggregate: { verdict: AebVerdict; reasons: string[] } = {
@@ -1171,7 +1294,7 @@ function deriveEvaluation(options: AebEvaluationOptions): { body: Omit<AebEvalua
   };
   if (requirement && configReasons.length === 0) {
     const composed = composeWithAec(requirement, legs, options.caid);
-    const constrained = evaluateAuthorityConstraints(requirement, legs, options.initiator_id);
+    const constrained = evaluateAuthorityConstraints(requirement, legs, options.initiator_id, options.executor_id);
     composition = {
       engine: composed.engine,
       requirement_expression: composed.requirement_expression,
@@ -1181,6 +1304,7 @@ function deriveEvaluation(options: AebEvaluationOptions): { body: Omit<AebEvalua
     authorityConstraints = {
       distinct_human_quorum: constrained.distinct_human_quorum,
       initiator_exclusion: constrained.initiator_exclusion,
+      executor_exclusion: constrained.executor_exclusion,
       one_time_consumption: constrained.one_time_consumption,
     };
     const verdict: AebVerdict = composed.satisfied && constrained.verdict === 'SATISFIED' ? 'SATISFIED'
@@ -1202,6 +1326,7 @@ function deriveEvaluation(options: AebEvaluationOptions): { body: Omit<AebEvalua
     operation_id: options.operation_id,
     consumption_nonce: options.consumption_nonce,
     initiator_id: options.initiator_id,
+    ...(options.executor_id !== undefined ? { executor_id: options.executor_id } : {}),
     evaluator: { id: options.config?.relying_party_id ?? '', key_id: options.signer?.key_id ?? options.evaluator_key_id ?? '', pinned_config_digest: configDigest },
     requirement_ref: options.requirement_ref,
     requirement_digest: requirementDigest,
@@ -1223,11 +1348,19 @@ export function evaluateAebEvidence(options: AebEvaluationOptions): AebEvaluatio
     const { body } = deriveEvaluation(options);
     const record: AebEvaluationRecord = safeClone(body) as AebEvaluationRecord;
     if (options.signer) {
-      if (!options.config.evaluator_keys?.[options.signer.key_id]) {
+      const pinnedKey = options.config.evaluator_keys?.[options.signer.key_id]?.public_key;
+      if (pinnedKey === undefined) {
         record.reasons = sortedUnique([...record.reasons, 'evaluator_key_not_pinned']);
+      } else if (!isEd25519PrivateKey(options.signer.private_key)) {
+        record.reasons = sortedUnique([...record.reasons, 'evaluator_signer_not_ed25519']);
       } else {
-        const signature = crypto.sign(null, signingBytes(body), options.signer.private_key).toString('base64url');
-        record.signature = { alg: 'Ed25519', key_id: options.signer.key_id, value: signature };
+        const publicKey = ed25519PublicKey(pinnedKey);
+        if (!publicKey || !privateKeyMatchesPublicKey(options.signer.private_key, publicKey)) {
+          record.reasons = sortedUnique([...record.reasons, 'evaluator_signer_key_mismatch']);
+        } else {
+          const signature = crypto.sign(null, signingBytes(body), options.signer.private_key).toString('base64url');
+          record.signature = { alg: 'Ed25519', key_id: options.signer.key_id, value: signature };
+        }
       }
     } else {
       record.reasons = sortedUnique([...record.reasons, 'evaluation_signature_required']);
@@ -1240,6 +1373,7 @@ export function evaluateAebEvidence(options: AebEvaluationOptions): AebEvaluatio
       operation_id: typeof options?.operation_id === 'string' ? options.operation_id : '',
       consumption_nonce: typeof options?.consumption_nonce === 'string' ? options.consumption_nonce : '',
       initiator_id: typeof options?.initiator_id === 'string' ? options.initiator_id : '',
+      ...(typeof options?.executor_id === 'string' ? { executor_id: options.executor_id } : {}),
       evaluator: { id: '', key_id: '', pinned_config_digest: zero },
       requirement_ref: typeof options?.requirement_ref === 'string' ? options.requirement_ref : '',
       requirement_digest: zero,
@@ -1247,7 +1381,12 @@ export function evaluateAebEvidence(options: AebEvaluationOptions): AebEvaluatio
       caid: typeof options?.caid === 'string' ? options.caid : '',
       legs: [],
       composition: { engine: AEC_VERSION, requirement_expression: '', action_digest: zero, satisfied: false },
-      authority_constraints: { distinct_human_quorum: false, initiator_exclusion: false, one_time_consumption: false },
+      authority_constraints: {
+        distinct_human_quorum: false,
+        initiator_exclusion: false,
+        executor_exclusion: false,
+        one_time_consumption: false,
+      },
       verdict: 'INDETERMINATE', evaluated_at: typeof options?.evaluated_at === 'string' ? options.evaluated_at : '',
       evidence_digest: zero, reasons: ['evaluation_error'],
     };
@@ -1257,30 +1396,71 @@ export function evaluateAebEvidence(options: AebEvaluationOptions): AebEvaluatio
 
 function shapeValid(record: unknown): record is AebEvaluationRecord {
   if (!isObject(record) || record['@type'] !== AEB_EVALUATION_VERSION || !exactString(record.operation_id)
-      || !exactString(record.consumption_nonce) || !exactString(record.initiator_id) || !isObject(record.evaluator)
+      || !exactString(record.consumption_nonce) || !exactString(record.initiator_id)
+      || (record.executor_id !== undefined && !exactString(record.executor_id)) || !isObject(record.evaluator)
       || !exactString(record.evaluator.id) || !exactString(record.evaluator.key_id) || !validDigest(record.evaluator.pinned_config_digest)
       || !exactString(record.requirement_ref) || !validDigest(record.requirement_digest) || !validDigest(record.registry_digest) || !exactString(record.caid)
       || typeof record.caid !== 'string' || !CAID_RE.test(record.caid) || !Array.isArray(record.legs) || typeof record.verdict !== 'string' || !['SATISFIED', 'UNSATISFIED', 'INDETERMINATE'].includes(record.verdict)
       || !isObject(record.composition) || record.composition.engine !== AEC_VERSION || typeof record.composition.requirement_expression !== 'string'
       || !validDigest(record.composition.action_digest) || typeof record.composition.satisfied !== 'boolean'
       || !isObject(record.authority_constraints) || typeof record.authority_constraints.distinct_human_quorum !== 'boolean'
-      || typeof record.authority_constraints.initiator_exclusion !== 'boolean' || typeof record.authority_constraints.one_time_consumption !== 'boolean'
+      || typeof record.authority_constraints.initiator_exclusion !== 'boolean'
+      || typeof record.authority_constraints.executor_exclusion !== 'boolean'
+      || typeof record.authority_constraints.one_time_consumption !== 'boolean'
       || !Number.isFinite(parseInstant(record.evaluated_at)) || !validDigest(record.evidence_digest) || !Array.isArray(record.reasons)
       || !isObject(record.signature) || record.signature.alg !== 'Ed25519' || record.signature.key_id !== record.evaluator.key_id
-      || typeof record.signature.value !== 'string' || record.signature.value.length === 0) return false;
+      || !validEd25519Signature(record.signature.value)) return false;
   return true;
 }
 
 function verifyAebEvaluationInner(record: unknown, options: AebVerificationOptions): AebEvaluationVerification {
-  const checks = { schema: shapeValid(record), signature: false, pinned_config: false, rederived: false, verdict: false };
+  const mode = options.mode
+    ?? (options.now !== undefined || options.current_statuses !== undefined ? 'execution' : 'historical');
+  const checks = {
+    schema: shapeValid(record),
+    signature: false,
+    pinned_config: false,
+    rederived: false,
+    current_status: mode === 'historical',
+    verdict: false,
+  };
   const reasons: string[] = [];
-  if (!checks.schema) return { valid: false, checks, reasons: ['malformed_evaluation_record'] };
+  if (!checks.schema) {
+    return { valid: false, execution_authorizing: false, checks, reasons: ['malformed_evaluation_record'] };
+  }
+  if (mode !== 'execution' && mode !== 'historical') {
+    return { valid: false, execution_authorizing: false, checks, reasons: ['verification_mode_invalid'] };
+  }
   const typed = record as AebEvaluationRecord;
-  if (options.now !== undefined) {
-    const nowMs = parseInstant(options.now);
-    const evaluatedMs = parseInstant(typed.evaluated_at);
-    if (!Number.isFinite(nowMs) || !Number.isFinite(evaluatedMs) || evaluatedMs > nowMs) {
-      reasons.push('evaluation_time_in_future');
+  if (mode === 'execution') {
+    if (options.expected_action === undefined) reasons.push('expected_action_required');
+    if (options.now === undefined) {
+      reasons.push('execution_now_required');
+    } else {
+      const nowMs = parseInstant(options.now);
+      const evaluatedMs = parseInstant(typed.evaluated_at);
+      if (!Number.isFinite(nowMs)) {
+        reasons.push('execution_now_invalid');
+      } else if (!Number.isFinite(evaluatedMs) || evaluatedMs > nowMs) {
+        reasons.push('evaluation_time_in_future');
+      }
+      checks.current_status = Number.isFinite(nowMs);
+      for (const leg of typed.legs) {
+        const status = options.current_statuses?.[leg.artifact_ref];
+        const pin = options.config.adapters?.[leg.adapter_id];
+        if (!status || !pin) {
+          checks.current_status = false;
+          reasons.push(`current_status_unavailable:${leg.artifact_ref}`);
+          continue;
+        }
+        const current = emptyFreshness(status, options.now, pin.max_status_age_sec);
+        if (!current.fresh) {
+          checks.current_status = false;
+          if (status.revoked === true) reasons.push(`current_status_revoked:${leg.artifact_ref}`);
+          else if (status.consumed === true) reasons.push(`current_status_consumed:${leg.artifact_ref}`);
+          else reasons.push(`current_status_not_fresh:${leg.artifact_ref}`);
+        }
+      }
     }
   }
   const configErrors = validConfig(options.config);
@@ -1289,9 +1469,9 @@ function verifyAebEvaluationInner(record: unknown, options: AebVerificationOptio
     && typed.registry_digest === options.config.registry.registry_digest;
   if (!checks.pinned_config) reasons.push('pinned_config_mismatch');
   const key = options.config.evaluator_keys?.[typed.signature!.key_id]?.public_key;
-  if (typeof key === 'string') {
+  const keyObject = ed25519PublicKey(key);
+  if (keyObject) {
     try {
-      const keyObject = crypto.createPublicKey({ key: Buffer.from(key, 'base64url'), type: 'spki', format: 'der' });
       checks.signature = crypto.verify(null, signingBytes(typed), keyObject, Buffer.from(typed.signature!.value, 'base64url'));
     } catch { checks.signature = false; }
   }
@@ -1322,8 +1502,10 @@ function verifyAebEvaluationInner(record: unknown, options: AebVerificationOptio
     operation_id: typed.operation_id,
     consumption_nonce: typed.consumption_nonce,
     initiator_id: typed.initiator_id,
+    ...(typed.executor_id !== undefined ? { executor_id: typed.executor_id } : {}),
     requirement_ref: typed.requirement_ref,
     caid: typed.caid,
+    ...(options.expected_action !== undefined ? { expected_action: options.expected_action } : {}),
     legs,
     evaluated_at: typed.evaluated_at,
     evaluator_key_id: typed.evaluator.key_id,
@@ -1334,7 +1516,17 @@ function verifyAebEvaluationInner(record: unknown, options: AebVerificationOptio
   checks.verdict = typed.verdict === derivedRecord.verdict;
   if (!checks.rederived) reasons.push('evaluation_not_rederivable');
   if (!checks.verdict) reasons.push('verdict_mismatch');
-  return { valid: Object.values(checks).every(Boolean) && !reasons.includes('evaluation_time_in_future'), checks, reasons: sortedUnique(reasons) };
+  const valid = Object.values(checks).every(Boolean)
+    && !reasons.includes('expected_action_required')
+    && !reasons.includes('execution_now_required')
+    && !reasons.includes('execution_now_invalid')
+    && !reasons.includes('evaluation_time_in_future');
+  return {
+    valid,
+    execution_authorizing: valid && mode === 'execution',
+    checks,
+    reasons: sortedUnique(reasons),
+  };
 }
 
 export function verifyAebEvaluation(record: unknown, options: AebVerificationOptions): AebEvaluationVerification {
@@ -1343,7 +1535,8 @@ export function verifyAebEvaluation(record: unknown, options: AebVerificationOpt
   } catch {
     return {
       valid: false,
-      checks: { schema: false, signature: false, pinned_config: false, rederived: false, verdict: false },
+      execution_authorizing: false,
+      checks: { schema: false, signature: false, pinned_config: false, rederived: false, current_status: false, verdict: false },
       reasons: ['evaluation_verification_error'],
     };
   }
@@ -1351,16 +1544,31 @@ export function verifyAebEvaluation(record: unknown, options: AebVerificationOpt
 
 export function authorizeAebExecution(
   record: AebEvaluationRecord,
-  options: { verified: boolean; local_authorization: boolean; store: AebConsumptionStore },
+  options: {
+    verification: Pick<AebEvaluationVerification, 'valid' | 'execution_authorizing'>;
+    local_authorization: boolean;
+    store: AebConsumptionStore;
+  },
 ): AebExecutionDecision {
   const reservationKey = aebReservationKey(record);
-  if (!options.verified) return { allowed: false, invoke_allowed: false, state: 'REFUSED', reason: 'evaluation_not_verified' };
+  if (options.verification?.valid !== true) return { allowed: false, invoke_allowed: false, state: 'REFUSED', reason: 'evaluation_not_verified' };
+  if (options.verification.execution_authorizing !== true) return { allowed: false, invoke_allowed: false, state: 'REFUSED', reason: 'execution_verification_required' };
   if (record.verdict === 'INDETERMINATE') return { allowed: false, invoke_allowed: false, state: 'RECONCILIATION_REQUIRED', reason: 'evidence_indeterminate' };
   if (record.verdict !== 'SATISFIED') return { allowed: false, invoke_allowed: false, state: 'REFUSED', reason: 'evidence_requirement_not_satisfied' };
   if (record.authority_constraints?.one_time_consumption !== true) return { allowed: false, invoke_allowed: false, state: 'REFUSED', reason: 'one_time_consumption_not_required' };
   if (!options.local_authorization) return { allowed: false, invoke_allowed: false, state: 'REFUSED', reason: 'local_authorization_denied' };
-  if (!options.store.reserve(reservationKey)) return { allowed: false, invoke_allowed: false, state: 'REFUSED', reason: 'consumption_conflict' };
+  if (!options.store.reserve(reservationKey, aebNativeReplayKeys(record))) {
+    return { allowed: false, invoke_allowed: false, state: 'REFUSED', reason: 'consumption_conflict' };
+  }
   return { allowed: true, invoke_allowed: true, state: 'AUTHORIZED', reason: 'reserved_for_execution', reservation_key: reservationKey };
+}
+
+/** Stable native approval identities that must be fenced with the operation reservation. */
+export function aebNativeReplayKeys(record: Pick<AebEvaluationRecord, 'evaluator' | 'legs'>): string[] {
+  return sortedUnique(record.legs.map((leg) => `aeb-native:${digest({
+    relying_party_id: record.evaluator.id,
+    replay_unit: leg.replay_unit,
+  })}`));
 }
 
 /** Collision-resistant, tenant-scoped key used by both reference and durable stores. */
@@ -1396,25 +1604,36 @@ export function reconcileAebExecution(
 
 function secureDurableStore(store: unknown): store is AebDurableConsumptionStore {
   return isObject(store) && store.durable === true && store.ownershipFenced === true
-    && store.permanentConsumption === true && typeof store.reserve === 'function'
+    && store.permanentConsumption === true && store.atomicReplayFenced === true && typeof store.reserve === 'function'
     && typeof store.commit === 'function' && typeof store.release === 'function';
 }
 
 /** Production authorization path for shared Postgres/Redis/DynamoDB-backed custody. */
 export async function authorizeAebExecutionDurable(
   record: AebEvaluationRecord,
-  options: { verified: boolean; local_authorization: boolean; store: unknown },
+  options: {
+    verification: Pick<AebEvaluationVerification, 'valid' | 'execution_authorizing'>;
+    local_authorization: boolean;
+    store: unknown;
+  },
 ): Promise<AebExecutionDecision> {
   const reservationKey = aebReservationKey(record);
-  if (!options.verified) return { allowed: false, invoke_allowed: false, state: 'REFUSED', reason: 'evaluation_not_verified' };
+  if (options.verification?.valid !== true) return { allowed: false, invoke_allowed: false, state: 'REFUSED', reason: 'evaluation_not_verified' };
+  if (options.verification.execution_authorizing !== true) return { allowed: false, invoke_allowed: false, state: 'REFUSED', reason: 'execution_verification_required' };
   if (record.verdict === 'INDETERMINATE') return { allowed: false, invoke_allowed: false, state: 'RECONCILIATION_REQUIRED', reason: 'evidence_indeterminate' };
   if (record.verdict !== 'SATISFIED') return { allowed: false, invoke_allowed: false, state: 'REFUSED', reason: 'evidence_requirement_not_satisfied' };
   if (record.authority_constraints?.one_time_consumption !== true) return { allowed: false, invoke_allowed: false, state: 'REFUSED', reason: 'one_time_consumption_not_required' };
   if (!options.local_authorization) return { allowed: false, invoke_allowed: false, state: 'REFUSED', reason: 'local_authorization_denied' };
   if (!secureDurableStore(options.store)) return { allowed: false, invoke_allowed: false, state: 'REFUSED', reason: 'secure_consumption_store_required' };
   try {
-    if (await options.store.reserve(reservationKey) !== true) {
-      return { allowed: false, invoke_allowed: false, state: 'REFUSED', reason: 'consumption_conflict' };
+    const reservation = await options.store.reserve(reservationKey, aebNativeReplayKeys(record));
+    if (reservation !== true && reservation !== 'RESERVED') {
+      return {
+        allowed: false,
+        invoke_allowed: false,
+        state: 'REFUSED',
+        reason: reservation === 'NATIVE_REPLAY_CONFLICT' ? 'native_replay_conflict' : 'consumption_conflict',
+      };
     }
   } catch {
     return { allowed: false, invoke_allowed: false, state: 'REFUSED', reason: 'consumption_store_unavailable' };

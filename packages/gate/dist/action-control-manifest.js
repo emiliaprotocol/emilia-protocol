@@ -1,3 +1,4 @@
+// @ts-nocheck
 // SPDX-License-Identifier: Apache-2.0
 //
 // EP Action Control Manifest: the missing control-plane waist between agent

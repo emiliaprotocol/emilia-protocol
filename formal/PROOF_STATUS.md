@@ -239,6 +239,43 @@ database implementation, wall-clock truth, legal entitlement, or deployment.
 
 ---
 
+## TLA+ — `ep_consequence_attempt.tla` (durable effect and AEB custody)
+
+**Model checker:** TLC 2.19 (TLA+ tools `v1.7.4`, rev `5a47802`)
+**Tool digest:** `936a262061c914694dfd669a543be24573c45d5aa0ff20a8b96b23d01e050e88`
+**Local execution:** 2026-07-22; the pinned CI workflow reruns both the safety
+model and its deliberately unsafe negative control.
+**Result:** 3,626,013 states generated, 93,724 distinct states, complete depth
+21 — **no error found** across 14 invariants and 13 transition properties.
+**Result evidence:** `formal/results/ep-consequence-attempt.tlc.summary.txt`
+
+The bounded model composes all six consequence-attempt states with AEB
+`AVAILABLE` / `RESERVED` / `CONSUMED` authority. It checks that AEB is reserved
+before attempt allocation, remains fenced across provider entry and uncertain
+outcomes, is consumed before an attempt can become `COMMITTED`, and returns to
+`AVAILABLE` only before attempt allocation or after the exact attempt is
+`RELEASED`. `ESCALATED` deliberately retains the reservation fence.
+
+Recovery mirrors the durable lease transition: an expired lease is required;
+recovering `RESERVED` preserves `RESERVED`; recovering `INVOKING` or
+`INDETERMINATE` yields `INDETERMINATE`; and owner generation rotation fences
+the prior owner. The model also checks at-most-once provider invocation,
+immutable exact request/attempt allocation, effect uncertainty, terminal
+irreversibility, and authenticated exact-attempt evidence reconciliation.
+
+The companion `ep_consequence_attempt_unsafe.tla` deliberately adds a blind
+replay from `INDETERMINATE`. TLC falsified `InvokeAtMostOnce` at state 6. The
+negative control is CI-gated: it must fail for that exact invariant, so a parser
+failure or an unexpectedly safe weakened model cannot pass as evidence.
+
+**Scope boundary:** this is exhaustive exploration only within the configured
+finite scope. It is not an implementation refinement or an unbounded proof,
+and it abstracts PostgreSQL durability/linearizability, correctness of the
+lease clock and recovery authorizer, cryptography, provider truth, availability,
+and arbitrary cardinality.
+
+---
+
 ## Alloy — `ep_relations.als`
 
 **Model checker:** Alloy 6.2.0 (SAT4J solver)
@@ -489,4 +526,4 @@ When a property is verified by a model checker:
 
 ---
 
-*Last updated: 2026-07-21 (bounded authority-program model added to the pinned CI gate with an explicit root-action-binding obligation; bounded receipt-program model checks 14 invariants and 3 action properties across 780 distinct states with no error; Conservation of Authority claim boundary added). Prior: 2026-07-10 (composed reliance-path v2: 10 strict lemmas verified; no-consumption and unpinned-registry-view comparisons falsified with concrete traces; all well-formedness checks clean). Prior: 2026-07-06 (Tamarin quorum model added: 5 lemmas verified). Prior: 2026-07-05 (Tamarin core-receipt model added). Prior: 2026-06-11 — 26 TLA+ properties verified across 413,137 states with 0 errors; 15 relation assertions and 7 federation assertions verified with 0 counterexamples.*
+*Last updated: 2026-07-22 (bounded consequence-attempt/AEB custody model added to the pinned CI gate: 27 checks across 93,724 distinct states, including consume-before-commit ordering and stale-lease-only recovery; deliberately weakened replay model falsifies `InvokeAtMostOnce`). Prior: 2026-07-21 (bounded authority-program and receipt-program models plus Conservation of Authority claim boundary). Prior: 2026-07-10 (composed reliance-path v2: 10 strict lemmas verified; no-consumption and unpinned-registry-view comparisons falsified with concrete traces; all well-formedness checks clean). Prior: 2026-07-06 (Tamarin quorum model added: 5 lemmas verified). Prior: 2026-07-05 (Tamarin core-receipt model added). Prior: 2026-06-11 — 26 TLA+ properties verified across 413,137 states with 0 errors; 15 relation assertions and 7 federation assertions verified with 0 counterexamples.*

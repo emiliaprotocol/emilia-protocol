@@ -41,7 +41,7 @@ import { classifyRetention, buildRetentionExport } from './retention.js';
 import { ACTION_CONTROL_MANIFEST_VERSION, createDefaultActionControlManifest, findActionControl, resolveActionControl, validateActionControlManifest, } from './action-control-manifest.js';
 import { createRuntimeMonitor, RUNTIME_MONITOR_VERSION, RUNTIME_MONITOR_MODES, RUNTIME_INVARIANTS, } from './runtime-monitor.js';
 import { FORMAL_RUNTIME_BRIDGE_VERSION, FORMAL_RUNTIME_SPEC, FORMAL_RUNTIME_CONFIG, FORMAL_RUNTIME_INVARIANT_MAP, } from './formal-runtime-map.js';
-import { CAPABILITY_RECEIPT_VERSION, CAPABILITY_STATE_VERSION, CAPABILITY_SHARE_VERSION, CAPABILITY_SCOPE_PROFILE, CAPABILITY_CAID_SCOPE_PROFILE, CAPABILITY_STATE_DDL, CAPABILITY_SQL, capabilityBaseReceiptDigest, capabilityActionDigest, verifyCapabilityScope, mintCapabilityReceipt, verifyCapabilityReceipt, splitCapabilitySecret, reconstructCapabilitySecret, createMemoryCapabilityStore, createPostgresCapabilityStore, executeWithCapability, executeWithThreshold, reconcileCapabilityOperation, } from './capability-receipt.js';
+import { CAPABILITY_RECEIPT_VERSION, CAPABILITY_STATE_VERSION, CAPABILITY_SHARE_VERSION, CAPABILITY_SCOPE_PROFILE, CAPABILITY_CAID_SCOPE_PROFILE, CAPABILITY_STATE_DDL, CAPABILITY_SQL, capabilityBaseReceiptDigest, capabilityActionDigest, verifyCapabilityScope, mintCapabilityReceipt, verifyCapabilityReceipt, splitCapabilitySecret, reconstructCapabilitySecret, createMemoryCapabilityStore, createPostgresCapabilityStore, isSecureCapabilityStore, executeWithCapability, executeWithThreshold, reconcileCapabilityOperation, } from './capability-receipt.js';
 import { ZK_RANGE_RECEIPT_VERSION, ZK_RANGE_SCHEME, ZK_RANGE_BACKEND_PACKAGE, deriveZkRangeBases, loadBulletproofBackend, mintZkRangeReceipt, verifyZkRangeReceipt, } from './zk-range-proof.js';
 import { mintBreakGlassAuthorization, verifyBreakGlass, consumeBreakGlass, buildBreakGlassEvidence, runBreakGlass, BREAKGLASS_VERSION, BREAKGLASS_EVIDENCE_KIND, } from './breakglass.js';
 export { MemoryConsumptionStore, canonicalEvidenceJson, createEvidenceLog, createAtomicEvidenceLog, createMemoryAtomicEvidenceBackend, };
@@ -59,7 +59,7 @@ export { CF1_VERSION, CF1_CHECKS, runCf1 } from './cf1-conformance.js';
 export { mintBreakGlassAuthorization, verifyBreakGlass, consumeBreakGlass, buildBreakGlassEvidence, runBreakGlass, BREAKGLASS_VERSION, BREAKGLASS_EVIDENCE_KIND, };
 export { createRuntimeMonitor, RUNTIME_MONITOR_VERSION, RUNTIME_MONITOR_MODES, RUNTIME_INVARIANTS } from './runtime-monitor.js';
 export { FORMAL_RUNTIME_BRIDGE_VERSION, FORMAL_RUNTIME_SPEC, FORMAL_RUNTIME_CONFIG, FORMAL_RUNTIME_INVARIANT_MAP, } from './formal-runtime-map.js';
-export { CAPABILITY_RECEIPT_VERSION, CAPABILITY_STATE_VERSION, CAPABILITY_SHARE_VERSION, CAPABILITY_SCOPE_PROFILE, CAPABILITY_CAID_SCOPE_PROFILE, CAPABILITY_STATE_DDL, CAPABILITY_SQL, capabilityBaseReceiptDigest, capabilityActionDigest, verifyCapabilityScope, mintCapabilityReceipt, verifyCapabilityReceipt, splitCapabilitySecret, reconstructCapabilitySecret, createMemoryCapabilityStore, createPostgresCapabilityStore, executeWithCapability, executeWithThreshold, reconcileCapabilityOperation, delegateCapabilityReceipt, } from './capability-receipt.js';
+export { CAPABILITY_RECEIPT_VERSION, CAPABILITY_STATE_VERSION, CAPABILITY_SHARE_VERSION, CAPABILITY_SCOPE_PROFILE, CAPABILITY_CAID_SCOPE_PROFILE, CAPABILITY_STATE_DDL, CAPABILITY_SQL, capabilityBaseReceiptDigest, capabilityActionDigest, verifyCapabilityScope, mintCapabilityReceipt, verifyCapabilityReceipt, splitCapabilitySecret, reconstructCapabilitySecret, createMemoryCapabilityStore, createPostgresCapabilityStore, isSecureCapabilityStore, executeWithCapability, executeWithThreshold, reconcileCapabilityOperation, delegateCapabilityReceipt, } from './capability-receipt.js';
 export { ZK_RANGE_RECEIPT_VERSION, ZK_RANGE_SCHEME, ZK_RANGE_BACKEND_PACKAGE, deriveZkRangeBases, loadBulletproofBackend, mintZkRangeReceipt, verifyZkRangeReceipt, } from './zk-range-proof.js';
 export { RECEIPT_PROGRAM_VERSION, RECEIPT_PROGRAM_CERTIFICATE_VERSION, RECEIPT_PROGRAM_SIGNATURE_ALGORITHM, createReceiptProgramKernel, verifyReceiptProgramCertificate, } from './receipt-program.js';
 export { TRUST_PROGRAM_VERSION, TRUST_STAGE_RECEIPT_VERSION, validateTrustProgram, trustProgramDigest, verifyTrustStageReceipt, createMemoryTrustProgramStore, createTrustProgramKernel, } from './trust-program.js';
@@ -67,7 +67,13 @@ export { TRUST_PROGRAM_REVOCATION_TARGET_VERSION, deriveTrustProgramRevocationTa
 export { REMEDY_PROGRAM_VERSION, createRemedyMemoryStore, createRemedyProgramKernel, } from './remedy-program.js';
 export { ACTION_REMEDY_RECEIPT_VERSION, REMEDY_PROGRAM_RECEIPT_VERSION, ACTION_REMEDY_RECEIPT_DOMAIN, expectedRemedyProgramReceiptBindings, remedyProgramReceiptSigningBytes, issueRemedyProgramReceipt, signRemedyProgramReceipt, createRemedyProgramReceipt, verifyRemedyProgramReceipt, } from './remedy-program-receipt.js';
 export { REMEDY_PROGRAM_PG_STORE_VERSION, REMEDY_PROGRAM_MAX_STATE_BYTES, REMEDY_PROGRAM_MAX_FORWARD_SKEW_MINUTES, REMEDY_PROGRAM_POSTGRES_SQL, createRemedyProgramPostgresStore, } from './remedy-program-postgres.js';
+export { REMEDY_PROGRAM_EVIDENCE_VERSION, REMEDY_PROGRAM_EVIDENCE_DOMAIN, remedyProgramEvidenceDigest, remedyProgramEvidenceSigningBytes, createRemedyProgramAdapters, } from './remedy-program-adapters.js';
+export { REMEDY_CASE_SET_VERSION, createRemedyCaseSetCoordinator, } from './remedy-case-set.js';
+export { REMEDY_CASE_SET_PG_STORE_VERSION, REMEDY_CASE_SET_TABLE, REMEDY_CASE_SET_EVENT_TABLE, REMEDY_CASE_SET_MAX_STATE_BYTES, REMEDY_CASE_SET_MAX_MANIFEST_BYTES, REMEDY_CASE_SET_MAX_FORWARD_SKEW_MINUTES, REMEDY_CASE_SET_POSTGRES_DDL, REMEDY_CASE_SET_POSTGRES_SQL, createRemedyCaseSetPostgresStore, } from './remedy-case-set-postgres.js';
 export { PROPOSAL_TO_EFFECT_VERSION, proposalToEffectConsumptionNonce, createProposalToEffect, } from './proposal-to-effect.js';
+export { createProposalToEffectStatusVerifier } from './proposal-to-effect-status.js';
+export { PROPOSAL_TO_EFFECT_POSTGRES_DDL, PROPOSAL_TO_EFFECT_POSTGRES_SQL, proposalToEffectAttemptDigest, createProposalToEffectPostgresStore, } from './proposal-to-effect-postgres.js';
+export { AEB_PG_CONSUMPTION_STORE_VERSION, AEB_CONSUMPTION_OPERATION_TABLE, AEB_CONSUMPTION_REPLAY_TABLE, AEB_CONSUMPTION_DDL, AEB_CONSUMPTION_SQL, createPostgresAebDurableConsumptionStore, } from './aeb-consumption-store.js';
 export const ASSURANCE_TIERS = ['software', 'class_a', 'quorum'];
 const TIER_RANK = { software: 0, class_a: 1, quorum: 2 };
 const CAPABILITY_FAILURE_STATUS = 409;
@@ -611,8 +617,13 @@ export function createGate({ manifest = null, trustedKeys = [], maxAgeSec = 900,
     }
     if (capabilityStore && (typeof capabilityStore.registerCapability !== 'function'
         || typeof capabilityStore.reserveSpend !== 'function'
-        || typeof capabilityStore.commitSpend !== 'function')) {
-        throw new Error('EMILIA Gate capabilityStore must implement registerCapability(), reserveSpend(), and commitSpend()');
+        || typeof capabilityStore.commitSpend !== 'function'
+        || typeof capabilityStore.reconcileSpend !== 'function')) {
+        throw new Error('EMILIA Gate capabilityStore must implement registerCapability(), reserveSpend(), commitSpend(), and reconcileSpend()');
+    }
+    if (capabilityStore && !allowEphemeralStore && !isSecureCapabilityStore(capabilityStore)) {
+        throw new Error('EMILIA Gate capabilityStore must be durable and reconciliation-capable. '
+            + 'Pass allowEphemeralStore:true only for an explicit test/demo gate.');
     }
     if (capabilityStore && (!Array.isArray(capabilityTrustedIssuerKeys)
         || capabilityTrustedIssuerKeys.length === 0
@@ -1723,6 +1734,7 @@ export default {
     reconstructCapabilitySecret,
     createMemoryCapabilityStore,
     createPostgresCapabilityStore,
+    isSecureCapabilityStore,
     executeWithCapability,
     executeWithThreshold,
     reconcileCapabilityOperation,

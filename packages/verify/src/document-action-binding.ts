@@ -14,7 +14,7 @@
  */
 
 import crypto from 'node:crypto';
-import { canonicalize } from '../index.js';
+import { canonicalize } from './index.js';
 
 type Obj = Record<string, any>;
 

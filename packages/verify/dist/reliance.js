@@ -27,7 +27,7 @@
  * never prove the negative "unconsumed" claim.
  */
 import crypto from 'node:crypto';
-import { verifyTrustReceipt, verifyQuorum, canonicalize } from '../index.js';
+import { verifyTrustReceipt, verifyQuorum, canonicalize } from './index.js';
 import { verifyRevocation } from './revocation.js';
 import { verifyConsumptionProof } from './consumption-proof.js';
 import { verifyAuthorityProof } from './authority-proof.js';

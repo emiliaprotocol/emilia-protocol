@@ -83,6 +83,12 @@
     "src/remedy-program.ts",
     "src/remedy-program-receipt.ts",
     "src/remedy-program-postgres.ts",
-    "src/proposal-to-effect.ts"
+    "src/remedy-program-adapters.ts",
+    "src/remedy-case-set.ts",
+    "src/remedy-case-set-postgres.ts",
+    "src/proposal-to-effect.ts",
+    "src/proposal-to-effect-status.ts",
+    "src/proposal-to-effect-postgres.ts",
+    "src/aeb-consumption-store.ts"
   ]
 }

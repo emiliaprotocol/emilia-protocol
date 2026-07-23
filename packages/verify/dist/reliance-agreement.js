@@ -34,7 +34,7 @@
  * is a refusal, not a warning). All vocabularies are closed.
  */
 import crypto from 'node:crypto';
-import { canonicalize } from '../index.js';
+import { canonicalize } from './index.js';
 export const RELIANCE_AGREEMENT_VERSION = 'EP-RELIANCE-AGREEMENT-v1';
 export const RELIANCE_EVENT_VERSION = 'EP-RELIANCE-EVENT-v1';
 export const RELIANCE_AGREEMENT_DOMAIN = 'EP-RELIANCE-AGREEMENT-v1\0';

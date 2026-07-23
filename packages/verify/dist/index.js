@@ -15,6 +15,8 @@ import { verifyOutcomeBindingCore } from './outcome-binding.js';
 export { AGENTROA_DRAFT, verifyAgentROA } from './agentroa.js';
 export { AUTHORITY_PROGRAM_VERSION, AUTHORITY_PROGRAM_DOMAIN, AUTHORITY_STAGE_RECEIPT_VERSION, AUTHORITY_STAGE_RECEIPT_DOMAIN, AUTHORITY_PROGRAM_RESULT_VERSION, authorityProgramDigest, authorityStageReceiptDigest, deriveAuthorityProgramPredecessors, verifyAuthorityProgram, } from './authority-program.js';
 export * from './aeb-adapter-contract.js';
+export * from './aeb-native-adapters.js';
+export * from './status.js';
 export { OUTCOME_ATTESTATION_VERSION, OUTCOME_ATTESTATION_DOMAIN, OUTCOME_BINDING_VERSION, OUTCOME_BINDING_OUTCOMES, buildOutcomeAttestation, verifyOutcomeAttestation, observedEffectsDigest, trustReceiptDigest, } from './outcome-binding.js';
 export { ORPRG_JSON_JCS_PROFILE, ORPRG_ACTION_PROFILE, computeOrprgActionDigest, verifyOrprgJsonJcsPermit, verifyOrprgJsonJcsPermitAsync, createOrprgAecVerifier, } from './orprg.js';
 const FATAL_UTF8 = new TextDecoder('utf-8', { fatal: true });
@@ -436,7 +438,7 @@ export function verifyWebAuthnSignoff(signoff, approverPublicKeySpkiB64u, opts =
  * @param {{ allowUnsigned?: boolean }} options - Set allowUnsigned only for structure/expiry checks.
  * @returns {{ valid: boolean, claim: object, error?: string }}
  */
-export function verifyCommitmentProof(proof, publicKeyBase64url, options = {}) {
+export function verifyCommitmentProof(proof, publicKeyBase64url = null, options = {}) {
     if (!proof?.['@version'] || !SUPPORTED_PROOF_VERSIONS.includes(proof['@version'])) {
         return { valid: false, claim: null, error: `Unsupported version: ${proof?.['@version']}` };
     }

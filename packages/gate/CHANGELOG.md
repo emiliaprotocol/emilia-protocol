@@ -4,7 +4,7 @@
 All notable changes to `@emilia-protocol/gate` are documented here.
 This package follows [Semantic Versioning](https://semver.org/).
 
-## 0.14.0 (2026-07-22)
+## 0.15.0 (2026-07-22)
 
 ### Added
 
@@ -15,6 +15,23 @@ This package follows [Semantic Versioning](https://semver.org/).
 - An executable end-to-end example and profile vectors covering exact-action
   mutation, stale evidence, one-time replay, indeterminate effects, and
   post-effect commit failure.
+- `./aeb-consumption-store`, a tenant- and relying-party-namespaced PostgreSQL
+  store that atomically fences the AEB operation and all native replay units,
+  with opaque owner tokens and authorized restart recovery.
+- `./proposal-to-effect-status`, which verifies server-resolved
+  `EP-STATUS-v1` heads and separately requires authenticated local consumption
+  state before the atomic execution reservation.
+- `./proposal-to-effect-postgres`, a private-schema PostgreSQL store for
+  consequence attempts with HMAC-hidden owner capabilities, tenant/provider
+  namespaces, owner-fenced transitions, immutable terminal states, exact
+  provider-evidence reconciliation, database leases, disjoint executor and
+  recovery roles, tenant-principal bindings, and stale-only restart recovery.
+- Concrete Remedy Program evidence adapters for signed disputes,
+  authorizations, provider outcomes, Action Escrow state, and late revocation.
+- A heterogeneous remedy case-set coordinator that completes only after every
+  exact child state and signed remedy receipt verifies.
+- A PostgreSQL remedy case-set store with tenant RLS, immutable manifests,
+  append-only state events, database-clock custody, and owner/revision CAS.
 
 ### Security
 
@@ -25,6 +42,20 @@ This package follows [Semantic Versioning](https://semver.org/).
 - Once an effect may have executed, failed bookkeeping cannot release its AEB
   reservation. The operation remains frozen until authenticated provider
   evidence proves `COMMITTED` or `NOT_COMMITTED`.
+- A committed effect consumes AEB replay authority before its consequence row
+  becomes terminal. `repairAeb` converges legacy or crash-window terminal rows
+  without invoking an effect, and opaque attempt-owner capabilities are kept
+  out of enumerable results and errors.
+- A recovered worker receives a rotated owner capability; the stale worker can
+  no longer transition or reconcile the attempt. An in-flight attempt is
+  conservatively recovered as `INDETERMINATE`, never retried as unexecuted.
+- AEB production consumption state is RPC-only behind tenant-bound, no-bypass
+  executor and recovery roles with physically separate pools. Supabase
+  `service_role` and both runtime roles have no direct table authority;
+  in-memory stores remain test-only.
+- Remedy case-set state and append-only history are likewise RPC-only behind a
+  tenant-bound no-bypass executor; generic service credentials cannot rewrite
+  current or historical remedy state.
 
 ## 0.13.0 (2026-07-20)
 

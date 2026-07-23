@@ -55,12 +55,13 @@
  * laundering." — PIP-006.
  *
  * Zero runtime dependencies. Works fully offline when the caller supplies the
- * discovery document and revocation set; works online with an injectable
- * fetch implementation (defaults to global fetch on Node 18+ / browsers).
+ * discovery document and revocation set. Online verification requires a
+ * caller-provided resolver + pinned transport boundary; a plain injected or
+ * global fetch cannot prevent DNS rebinding and is never treated as safe.
  *
  * @license Apache-2.0
  */
-import { verifyReceipt } from '../index.js';
+import { verifyReceipt } from './index.js';
 /** @typedef {import('./index.js').IssuerPin} IssuerPin */
 // =============================================================================
 // KEY RESOLUTION
@@ -105,6 +106,43 @@ export function resolveOperatorKeys(discoveryDoc, signerId) {
         }
     }
     return candidates;
+}
+// Parse a strict RFC 3339 timestamp to nanoseconds so sub-millisecond issuance
+// cannot slip past a retirement boundary through Date's millisecond truncation.
+function parseBoundTimestamp(value) {
+    if (typeof value !== 'string')
+        return null;
+    const match = value.match(/^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2}):(\d{2})(?:\.(\d{1,9}))?(Z|([+-])(\d{2}):(\d{2}))$/);
+    if (!match || match[8] === '-00:00')
+        return null;
+    const year = Number(match[1]);
+    const month = Number(match[2]);
+    const day = Number(match[3]);
+    const hour = Number(match[4]);
+    const minute = Number(match[5]);
+    const second = Number(match[6]);
+    const offsetHour = match[10] ? Number(match[10]) : 0;
+    const offsetMinute = match[11] ? Number(match[11]) : 0;
+    const leapYear = year % 4 === 0 && (year % 100 !== 0 || year % 400 === 0);
+    const daysInMonth = [31, leapYear ? 29 : 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31];
+    if (month < 1 || month > 12 ||
+        day < 1 || day > daysInMonth[month - 1] ||
+        hour > 23 ||
+        minute > 59 ||
+        second > 59 ||
+        offsetHour > 23 ||
+        offsetMinute > 59) {
+        return null;
+    }
+    const utcMilliseconds = Date.parse(`${match[1]}-${match[2]}-${match[3]}T${match[4]}:${match[5]}:${match[6]}Z`);
+    if (!Number.isFinite(utcMilliseconds))
+        return null;
+    const fractionalNanoseconds = BigInt((match[7] || '').padEnd(9, '0') || '0');
+    const offsetNanoseconds = BigInt(offsetHour * 60 + offsetMinute) * 60n * 1000000000n;
+    const signedOffset = match[9] === '+' ? -offsetNanoseconds :
+        match[9] === '-' ? offsetNanoseconds :
+            0n;
+    return BigInt(utcMilliseconds) * 1000000n + fractionalNanoseconds + signedOffset;
 }
 // =============================================================================
 // OFFLINE VERIFICATION
@@ -180,10 +218,34 @@ export function verifyFederatedReceiptOffline(receipt, discoveryDoc, opts = {}) 
     // operator's key matches none of them.
     let matched = null;
     let lastChecks = null;
+    let historicalKeyError = null;
     for (const cand of candidates) {
         const v = verifyReceipt(receipt, cand.public_key);
         lastChecks = v.checks;
         if (v.valid) {
+            // Only inspect issued_at after the signature verifies: payload.issued_at
+            // is then cryptographically bound to this receipt. A historical key has
+            // no authority after retirement, and an absent/malformed boundary on
+            // either side is not evidence that issuance preceded retirement.
+            if (cand.status === 'historical') {
+                const issuedAt = parseBoundTimestamp(receipt?.payload?.issued_at);
+                const retiredAt = parseBoundTimestamp(cand.retired_at);
+                if (issuedAt === null) {
+                    historicalKeyError =
+                        'Historical key matched the signature, but payload.issued_at is missing or malformed; refusing verification';
+                    continue;
+                }
+                if (retiredAt === null) {
+                    historicalKeyError =
+                        'Historical key matched the signature, but retired_at is missing or malformed; refusing verification';
+                    continue;
+                }
+                if (issuedAt > retiredAt) {
+                    historicalKeyError =
+                        'Historical key matched the signature, but payload.issued_at is after retired_at; refusing verification';
+                    continue;
+                }
+            }
             matched = cand;
             break;
         }
@@ -194,11 +256,12 @@ export function verifyFederatedReceiptOffline(receipt, discoveryDoc, opts = {}) 
     if (!matched) {
         return {
             ...result,
-            error: 'Signature does not verify against any key the operator advertises',
+            error: historicalKeyError || 'Signature does not verify against any key the operator advertises',
         };
     }
     result.verified = true;
     result.checks.signature = true;
+    result.checks.historical_key_time_valid = true;
     result.keyMatched = matched.status;
     // KEY-SOURCE PIN — fail closed. If the relying party pinned a specific public
     // key (or set of keys) for this signer, the key that actually verified the
@@ -330,11 +393,14 @@ function normalizeStringSet(input) {
  *
  * The receipt's `signature.key_discovery` URL (PIP-006 §"Federation contract")
  * is the operator's ep-keys.json location. Revocation is checked against the
- * operator's verifier-of-record endpoint (`/api/verify/{receipt_id}`), which
- * reports a `revoked` field. Cryptographic verification and live acceptance are
- * deliberately separate: an unavailable revocation surface does not erase a
- * valid signature (`verified` may remain true), but it MUST prevent a live
- * acceptance decision (`accepted` remains false) until status is confirmed.
+ * operator's verifier-of-record endpoint (`/api/verify/{receipt_id}`). Its JSON
+ * response is untrusted input: HTTP success and `revoked: false` are not proof
+ * of current status. Acceptance requires a relying-party configured
+ * `statusVerifier` to authenticate the response and confirm exact target binding
+ * plus freshness. Cryptographic verification and live acceptance are
+ * deliberately separate: an unavailable or untrusted status result does not
+ * erase a valid signature (`verified` may remain true), but it MUST prevent a
+ * live acceptance decision (`accepted` remains false).
  *
  * FAIL CLOSED + SSRF-GUARDED. The receipt-supplied `key_discovery` URL is
  * attacker-controlled. It is fetched ONLY when the relying party has pinned the
@@ -349,13 +415,20 @@ function normalizeStringSet(input) {
  * choice — it is the source of truth and is always honored (still SSRF-guarded),
  * needing no origin match. Every fetch of a URL that could be influenced by the
  * receipt (key discovery, discovery-advertised verify_url_template) is routed
- * through assertSafeFetchUrl: https-only, no embedded credentials, and private /
- * loopback / link-local / cloud-metadata targets are blocked, with redirects
- * disabled (redirect:manual).
+ * through two gates: assertSafeFetchUrl performs https/credential/literal-host
+ * checks, then opts.networkBoundary resolves every address, rejects the entire
+ * answer set unless every address is public, and fetches through a transport
+ * pinned to that approved set. Redirects are disabled (redirect:manual).
  *
  * @param {object} receipt - EP-RECEIPT-v1 with signature.signer + signature.key_discovery
  * @param {object} [opts]
- * @param {typeof fetch} [opts.fetchImpl] - injectable fetch (defaults to global fetch)
+ * @param {object} opts.networkBoundary - required online resolver + pinned
+ *   transport. resolveAddresses(hostname) MUST return every A/AAAA address.
+ *   fetchPinned(url, init, { hostname, approvedAddresses }) MUST connect directly
+ *   to one approved address without re-resolving, preserve hostname-based TLS
+ *   SNI/Host handling, and return { response, connectedAddress }.
+ * @param {typeof fetch} [opts.fetchImpl] - deprecated and rejected as an online
+ *   transport when no networkBoundary is supplied; plain fetch is DNS-rebindable
  * @param {number} [opts.timeoutMs=5000]
  * @param {string} [opts.keyDiscoveryUrl] - relying-party override of the key_discovery URL
  * @param {string} [opts.verifyUrlBase] - relying-party override base for the revocation check
@@ -368,7 +441,11 @@ function normalizeStringSet(input) {
  * @param {string} [opts.expectedSigner] - out-of-band single-issuer pin (id only;
  *   like a bare-id trustedIssuers entry, it does not bind the key source, so it
  *   does not by itself authorize fetching a receipt-supplied key_discovery)
- * @param {boolean} [opts.allowInsecureFetch=false] - test-only escape hatch to skip the SSRF guard
+ * @param {Function} [opts.statusVerifier] - relying-party configured verifier for
+ *   the fetched status document. It receives `(status, { receiptId, signer,
+ *   verifyUrl })` and MUST return explicit `authenticated: true`,
+ *   `target_bound: true`, `fresh: true`, and boolean `revoked`. Absence,
+ *   exceptions, malformed output, or any non-true trust check fails closed.
  * @returns {Promise<ReturnType<typeof verifyFederatedReceiptOffline> & { fetched: object, revocation_confirmed?: boolean, revocation_status?: string }>}
  */
 export async function verifyFederatedReceipt(receipt, opts = {}) {
@@ -377,10 +454,6 @@ export async function verifyFederatedReceipt(receipt, opts = {}) {
         accepted: false, verified: false, revoked: false, trusted: false, signer,
         keyMatched: null, checks: {}, fetched, error,
     });
-    const fetchImpl = opts.fetchImpl || (typeof fetch !== 'undefined' ? fetch : null);
-    if (!fetchImpl) {
-        return bail({}, 'No fetch implementation available; use verifyFederatedReceiptOffline instead');
-    }
     // A caller-supplied opts.keyDiscoveryUrl override is the relying party's OWN
     // choice and is always honored (still SSRF-guarded below). Otherwise we may
     // only use the RECEIPT-supplied key_discovery, and only under two conditions:
@@ -419,19 +492,37 @@ export async function verifyFederatedReceipt(receipt, opts = {}) {
     if (!discoverySafe.ok) {
         return bail({ keyDiscoveryUrl, discovery: { ok: false, blocked: true } }, `Blocked unsafe key_discovery URL: ${discoverySafe.error}`);
     }
+    const networkBoundary = opts.networkBoundary;
+    if (!networkBoundary ||
+        typeof networkBoundary.resolveAddresses !== 'function' ||
+        typeof networkBoundary.fetchPinned !== 'function') {
+        return bail({ keyDiscoveryUrl, discovery: { ok: false, blocked: true } }, 'Online federation verification requires an explicit resolver + pinned-fetch network boundary; ' +
+            'an injected plain fetch or global fetch is not safe against DNS rebinding');
+    }
     /** @type {{ keyDiscoveryUrl: string, discovery: { ok: boolean }|null, revocation: { ok: boolean, revoked?: boolean, blocked?: boolean }|null }} */
     const fetched = { keyDiscoveryUrl, discovery: null, revocation: null };
     let discoveryDoc;
     try {
-        discoveryDoc = await fetchJson(fetchImpl, keyDiscoveryUrl, opts.timeoutMs);
+        discoveryDoc = await fetchJson(networkBoundary, keyDiscoveryUrl, opts.timeoutMs);
         fetched.discovery = { ok: true };
     }
     catch (e) {
         return bail(fetched, `Failed to fetch operator key discovery: ${e instanceof Error ? e.message : String(e)}`);
     }
     // Resolve revocation from the operator's verifier-of-record, when reachable.
+    // The fetched JSON is never itself a trust source. A relying-party supplied
+    // statusVerifier must authenticate it and establish exact target binding plus
+    // freshness before either revoked:false or revoked:true becomes current state.
     const revokedReceiptIds = new Set();
-    const receiptId = receipt.payload?.receipt_id || receipt.receipt_id;
+    const receiptIdValue = receipt.payload?.receipt_id || receipt.receipt_id;
+    const receiptId = typeof receiptIdValue === 'string' && receiptIdValue ? receiptIdValue : null;
+    let revocationConfirmed = false;
+    let statusChecks = {
+        authenticated: false,
+        target_bound: false,
+        fresh: false,
+        revoked_explicit: false,
+    };
     if (receiptId) {
         // Prefer the operator's advertised verify_url_template (PIP-006) — it lets
         // an operator host its verifier-of-record at any path, not just
@@ -442,9 +533,34 @@ export async function verifyFederatedReceipt(receipt, opts = {}) {
         // attacker-influenced hop, so it too must clear the SSRF guard.
         if (verifyUrl && assertSafeFetchUrl(verifyUrl, opts).ok) {
             try {
-                const v = await fetchJson(fetchImpl, verifyUrl, opts.timeoutMs);
-                fetched.revocation = { ok: true, revoked: v?.revoked === true };
-                if (v?.revoked === true)
+                const v = await fetchJson(networkBoundary, verifyUrl, opts.timeoutMs);
+                let statusResult = null;
+                if (typeof opts.statusVerifier === 'function') {
+                    try {
+                        const candidate = await opts.statusVerifier(v, { receiptId, signer, verifyUrl });
+                        statusResult = isPlainObject(candidate) ? candidate : null;
+                    }
+                    catch {
+                        statusResult = null;
+                    }
+                }
+                const responseTargetBound = isPlainObject(v) && v.receipt_id === receiptId;
+                const responseHasRevoked = isPlainObject(v) && typeof v.revoked === 'boolean';
+                const resultHasRevoked = statusResult !== null && typeof statusResult.revoked === 'boolean';
+                statusChecks = {
+                    authenticated: statusResult?.authenticated === true,
+                    target_bound: responseTargetBound && statusResult?.target_bound === true,
+                    fresh: statusResult?.fresh === true,
+                    revoked_explicit: responseHasRevoked && resultHasRevoked && statusResult?.revoked === v.revoked,
+                };
+                revocationConfirmed = Object.values(statusChecks).every(Boolean);
+                fetched.revocation = {
+                    ok: true,
+                    verified: revocationConfirmed,
+                    revoked: revocationConfirmed ? v.revoked : undefined,
+                    ...statusChecks,
+                };
+                if (revocationConfirmed && v.revoked === true)
                     revokedReceiptIds.add(receiptId);
             }
             catch {
@@ -462,7 +578,6 @@ export async function verifyFederatedReceipt(receipt, opts = {}) {
         expectedSigner: opts.expectedSigner,
         trustedIssuers: opts.trustedIssuers,
     });
-    const revocationConfirmed = fetched.revocation?.ok === true;
     const revoked = offline.revoked === true;
     const revocationStatus = revoked
         ? 'revoked'
@@ -473,18 +588,33 @@ export async function verifyFederatedReceipt(receipt, opts = {}) {
         return {
             ...offline,
             accepted: false,
-            checks: { ...offline.checks, not_revoked: false, revocation_confirmed: false },
+            checks: {
+                ...offline.checks,
+                not_revoked: false,
+                revocation_confirmed: false,
+                status_authenticated: statusChecks.authenticated,
+                status_target_bound: statusChecks.target_bound,
+                status_fresh: statusChecks.fresh,
+                status_revoked_explicit: statusChecks.revoked_explicit,
+            },
             fetched,
             revocation_confirmed: false,
             revocation_status: revocationStatus,
             error: offline.accepted
-                ? 'Signature verifies and issuer is pinned, but revocation status is unavailable; refusing live acceptance'
+                ? 'Signature verifies and issuer is pinned, but revocation status is unavailable or untrusted; refusing live acceptance'
                 : offline.error,
         };
     }
     return {
         ...offline,
-        checks: { ...offline.checks, revocation_confirmed: true },
+        checks: {
+            ...offline.checks,
+            revocation_confirmed: true,
+            status_authenticated: true,
+            status_target_bound: true,
+            status_fresh: true,
+            status_revoked_explicit: true,
+        },
         fetched,
         revocation_confirmed: true,
         revocation_status: revocationStatus,
@@ -505,19 +635,39 @@ function resolveVerifyUrl(discoveryDoc, verifyUrlBase, keyDiscoveryUrl, receiptI
     const base = deriveVerifyBase(keyDiscoveryUrl);
     return base ? `${base}/api/verify/${id}` : null;
 }
-async function fetchJson(fetchImpl, url, timeoutMs = 5000) {
+async function fetchJson(networkBoundary, url, timeoutMs = 5000) {
     const controller = typeof AbortController !== 'undefined' ? new AbortController() : null;
     const timer = controller ? setTimeout(() => controller.abort(), timeoutMs) : null;
     try {
+        const parsed = new URL(url);
+        const hostname = normalizeHost(parsed.hostname);
+        const resolved = await networkBoundary.resolveAddresses(hostname, {
+            signal: controller?.signal,
+        });
+        const approvedAddresses = Object.freeze(validateResolvedAddresses(resolved));
+        if (controller?.signal.aborted)
+            throw new Error('address resolution timed out');
         // redirect:'manual' — a 3xx to a private/link-local host would bypass the
-        // pre-flight SSRF guard, so we refuse to follow redirects at all. An
-        // operator's discovery surface is expected to be served directly.
+        // pinned transport, so both the transport contract and this response check
+        // refuse to follow redirects. Operator surfaces must be served directly.
         const init = { redirect: 'manual' };
         if (controller)
             init.signal = controller.signal;
-        const res = await fetchImpl(url, init);
-        if (res && res.type === 'opaqueredirect')
+        const pinnedResult = await networkBoundary.fetchPinned(url, init, {
+            hostname,
+            approvedAddresses,
+        });
+        if (!isPlainObject(pinnedResult) || !('response' in pinnedResult)) {
+            throw new Error('pinned transport returned a malformed result');
+        }
+        const connectedAddress = normalizeIpAddress(pinnedResult.connectedAddress);
+        if (!connectedAddress || !approvedAddresses.includes(connectedAddress)) {
+            throw new Error(`pinned transport connected address ${connectedAddress || '(invalid)'} was not approved`);
+        }
+        const res = pinnedResult.response;
+        if (res && (res.type === 'opaqueredirect' || res.redirected === true)) {
             throw new Error('refusing to follow redirect');
+        }
         const status = res?.status;
         if (typeof status === 'number' && status >= 300 && status < 400) {
             throw new Error(`refusing to follow redirect (HTTP ${status})`);
@@ -547,23 +697,18 @@ function deriveVerifyBase(keyDiscoveryUrl) {
 // =============================================================================
 // Any server-side fetch of a URL that a receipt (or a receipt-reachable
 // discovery document) can influence is an SSRF primitive. This guard is a
-// pre-flight, string-only check — zero dependencies, safe in browsers/edge —
-// that rejects the classic SSRF targets before a request is ever issued:
+// first-pass, string-only check — zero dependencies, safe in browsers/edge —
+// that rejects classic SSRF targets before address resolution:
 //   - non-https schemes (http/file/gopher/data/…),
 //   - embedded credentials (user:pass@host),
 //   - loopback / private / link-local / unique-local / cloud-metadata hosts.
 // It is deliberately conservative: literal IPs in private ranges and the
-// well-known metadata hostnames are blocked outright. Callers that must reach a
-// private host (tests) can pass opts.allowInsecureFetch to bypass it.
+// well-known metadata hostnames are blocked outright.
 //
-// Note: this is a name/literal check, not a resolve-and-pin. It cannot stop DNS
-// rebinding to a private address on its own; redirect:'manual' in fetchJson
-// closes the redirect-to-private vector, and deployments that need full
-// resolve-time pinning should layer a resolving guard (e.g. lib/sso/url-policy)
-// in front. Kept dependency-free so /web and offline builds stay portable.
-export function assertSafeFetchUrl(value, opts = {}) {
-    if (opts.allowInsecureFetch)
-        return { ok: true };
+// This check is intentionally not the online trust boundary: hostnames can
+// resolve or rebind to non-public addresses. fetchJson therefore requires the
+// caller's resolver + pinned transport and validates every answer before I/O.
+export function assertSafeFetchUrl(value, _opts = {}) {
     let url;
     try {
         url = new URL(String(value || ''));
@@ -603,10 +748,44 @@ function isBlockedHostname(host) {
         return true;
     return host === 'localhost' || host.endsWith('.localhost');
 }
+function normalizeIpAddress(value) {
+    const raw = normalizeHost(value);
+    if (isIPv4(raw)) {
+        return raw.split('.').map((part) => String(Number(part))).join('.');
+    }
+    if (!raw.includes(':'))
+        return null;
+    try {
+        const parsed = new URL(`https://[${raw}]/`);
+        const normalized = normalizeHost(parsed.hostname);
+        return normalized.includes(':') ? normalized : null;
+    }
+    catch {
+        return null;
+    }
+}
+function validateResolvedAddresses(resolved) {
+    if (!Array.isArray(resolved) || resolved.length === 0) {
+        throw new Error('address resolution returned no addresses');
+    }
+    const approved = [];
+    for (const raw of resolved) {
+        const address = normalizeIpAddress(raw);
+        if (!address) {
+            throw new Error(`address resolution returned a non-IP value: ${String(raw)}`);
+        }
+        if (isPrivateOrReservedAddress(address)) {
+            throw new Error(`resolved address ${address} is not public`);
+        }
+        if (!approved.includes(address))
+            approved.push(address);
+    }
+    return approved;
+}
 function isPrivateOrReservedAddress(host) {
     if (isIPv4(host))
         return isPrivateIPv4(host);
-    if (host.includes(':'))
+    if (normalizeIpAddress(host)?.includes(':'))
         return isPrivateIPv6(host);
     return false;
 }
@@ -615,7 +794,7 @@ function isIPv4(host) {
     return parts.length === 4 && parts.every((p) => /^\d{1,3}$/.test(p) && Number(p) <= 255);
 }
 function isPrivateIPv4(host) {
-    const [a, b] = host.split('.').map(Number);
+    const [a, b, c] = host.split('.').map(Number);
     return (a === 0 || // "this" network
         a === 10 || // private
         a === 127 || // loopback
@@ -623,12 +802,18 @@ function isPrivateIPv4(host) {
         (a === 172 && b >= 16 && b <= 31) || // private
         (a === 192 && b === 168) || // private
         (a === 100 && b >= 64 && b <= 127) || // carrier-grade NAT
+        (a === 192 && b === 0) || // IETF protocol + documentation assignments
+        (a === 192 && b === 88 && c === 99) || // deprecated 6to4 relay anycast
         (a === 198 && (b === 18 || b === 19)) || // benchmarking
+        (a === 198 && b === 51 && c === 100) || // documentation
+        (a === 203 && b === 0 && c === 113) || // documentation
         a >= 224 // multicast / reserved
     );
 }
 function isPrivateIPv6(host) {
-    const h = host.toLowerCase();
+    const h = normalizeIpAddress(host);
+    if (!h || !h.includes(':'))
+        return true;
     if (h === '::1' || h === '::')
         return true;
     // IPv4-mapped (::ffff:a.b.c.d, or normalized ::ffff:7f00:1) — unwrap the
@@ -643,10 +828,20 @@ function isPrivateIPv6(host) {
         const dotted = `${hi >> 8}.${hi & 0xff}.${lo >> 8}.${lo & 0xff}`;
         return isPrivateIPv4(dotted);
     }
-    return (h.startsWith('fc') || // unique local
-        h.startsWith('fd') || // unique local
-        h.startsWith('fe80') || // link-local
-        h.startsWith('ff') // multicast
+    const firstHextet = Number.parseInt(h.split(':', 1)[0] || '0', 16);
+    if ((firstHextet & 0xe000) !== 0x2000)
+        return true; // require global-unicast 2000::/3
+    return (h === '2001::' ||
+        h.startsWith('2001::') || // Teredo / special-purpose
+        h.startsWith('2001:0:') ||
+        h.startsWith('2001:2:') || // benchmarking
+        h.startsWith('2001:10:') || // ORCHID
+        h.startsWith('2001:20:') || // ORCHIDv2
+        h === '2001:db8::' ||
+        h.startsWith('2001:db8:') || // documentation
+        h === '2002::' ||
+        h.startsWith('2002:') || // 6to4 transition
+        h.startsWith('3fff:') // documentation/special-purpose
     );
 }
 export const _internals = {

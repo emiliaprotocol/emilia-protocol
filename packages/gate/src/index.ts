@@ -90,6 +90,7 @@ import {
   reconstructCapabilitySecret,
   createMemoryCapabilityStore,
   createPostgresCapabilityStore,
+  isSecureCapabilityStore,
   executeWithCapability,
   executeWithThreshold,
   reconcileCapabilityOperation,
@@ -224,6 +225,7 @@ export {
   reconstructCapabilitySecret,
   createMemoryCapabilityStore,
   createPostgresCapabilityStore,
+  isSecureCapabilityStore,
   executeWithCapability,
   executeWithThreshold,
   reconcileCapabilityOperation,
@@ -285,10 +287,47 @@ export {
   createRemedyProgramPostgresStore,
 } from './remedy-program-postgres.js';
 export {
+  REMEDY_PROGRAM_EVIDENCE_VERSION,
+  REMEDY_PROGRAM_EVIDENCE_DOMAIN,
+  remedyProgramEvidenceDigest,
+  remedyProgramEvidenceSigningBytes,
+  createRemedyProgramAdapters,
+} from './remedy-program-adapters.js';
+export {
+  REMEDY_CASE_SET_VERSION,
+  createRemedyCaseSetCoordinator,
+} from './remedy-case-set.js';
+export {
+  REMEDY_CASE_SET_PG_STORE_VERSION,
+  REMEDY_CASE_SET_TABLE,
+  REMEDY_CASE_SET_EVENT_TABLE,
+  REMEDY_CASE_SET_MAX_STATE_BYTES,
+  REMEDY_CASE_SET_MAX_MANIFEST_BYTES,
+  REMEDY_CASE_SET_MAX_FORWARD_SKEW_MINUTES,
+  REMEDY_CASE_SET_POSTGRES_DDL,
+  REMEDY_CASE_SET_POSTGRES_SQL,
+  createRemedyCaseSetPostgresStore,
+} from './remedy-case-set-postgres.js';
+export {
   PROPOSAL_TO_EFFECT_VERSION,
   proposalToEffectConsumptionNonce,
   createProposalToEffect,
 } from './proposal-to-effect.js';
+export { createProposalToEffectStatusVerifier } from './proposal-to-effect-status.js';
+export {
+  PROPOSAL_TO_EFFECT_POSTGRES_DDL,
+  PROPOSAL_TO_EFFECT_POSTGRES_SQL,
+  proposalToEffectAttemptDigest,
+  createProposalToEffectPostgresStore,
+} from './proposal-to-effect-postgres.js';
+export {
+  AEB_PG_CONSUMPTION_STORE_VERSION,
+  AEB_CONSUMPTION_OPERATION_TABLE,
+  AEB_CONSUMPTION_REPLAY_TABLE,
+  AEB_CONSUMPTION_DDL,
+  AEB_CONSUMPTION_SQL,
+  createPostgresAebDurableConsumptionStore,
+} from './aeb-consumption-store.js';
 export const ASSURANCE_TIERS = ['software', 'class_a', 'quorum'];
 const TIER_RANK = { software: 0, class_a: 1, quorum: 2 };
 const CAPABILITY_FAILURE_STATUS = 409;
@@ -878,11 +917,13 @@ export function verifyBusinessAuthorization({ requirement, receipt, assurance, t
  * @param {object} [opts.store]         durable, ownership-fenced, permanent consumption store
  * @param {object} [opts.capabilityStore] Marvel capability budget store. A
  *   capability run reserves here before the effect and commits after it.
+ *   Production stores must explicitly mark durable and reconciliation-capable
+ *   custody and implement register/reserve/commit/reconcile operations.
  * @param {string[]} [opts.capabilityTrustedIssuerKeys] pinned capability
  *   envelope issuer keys. Required when capabilityStore is configured.
  * @param {function|null} [opts.capabilityCaidResolver] relying-party-pinned resolver
  *   for `urn:emilia:scope:caid-set-v1`. Missing resolver fails CAID scope closed.
- * @param {boolean} [opts.allowEphemeralStore=false] explicit test/demo opt-in for in-memory state
+ * @param {boolean} [opts.allowEphemeralStore=false] explicit test/demo opt-in for in-memory consumption or capability state
  * @param {object} [opts.log]           evidence log (default in-memory, hash-chained)
  * @param {boolean} [opts.allowInlineKey=false] accept the receipt's own key (integrity, NOT trust)
  * @param {object} [opts.keyRegistry] a key registry (createKeyRegistry) for rotation + revocation;
@@ -960,8 +1001,15 @@ export function createGate({ manifest = null, trustedKeys = [], maxAgeSec = 900,
   }
   if (capabilityStore && (typeof capabilityStore.registerCapability !== 'function'
       || typeof capabilityStore.reserveSpend !== 'function'
-      || typeof capabilityStore.commitSpend !== 'function')) {
-    throw new Error('EMILIA Gate capabilityStore must implement registerCapability(), reserveSpend(), and commitSpend()');
+      || typeof capabilityStore.commitSpend !== 'function'
+      || typeof capabilityStore.reconcileSpend !== 'function')) {
+    throw new Error('EMILIA Gate capabilityStore must implement registerCapability(), reserveSpend(), commitSpend(), and reconcileSpend()');
+  }
+  if (capabilityStore && !allowEphemeralStore && !isSecureCapabilityStore(capabilityStore)) {
+    throw new Error(
+      'EMILIA Gate capabilityStore must be durable and reconciliation-capable. '
+      + 'Pass allowEphemeralStore:true only for an explicit test/demo gate.',
+    );
   }
   if (capabilityStore && (!Array.isArray(capabilityTrustedIssuerKeys)
       || capabilityTrustedIssuerKeys.length === 0
@@ -2114,6 +2162,7 @@ export default {
   reconstructCapabilitySecret,
   createMemoryCapabilityStore,
   createPostgresCapabilityStore,
+  isSecureCapabilityStore,
   executeWithCapability,
   executeWithThreshold,
   reconcileCapabilityOperation,

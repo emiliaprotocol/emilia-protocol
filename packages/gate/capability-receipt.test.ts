@@ -11,6 +11,7 @@ import {
   delegateCapabilityReceipt,
   createMemoryCapabilityStore,
   createPostgresCapabilityStore,
+  isSecureCapabilityStore,
   CAPABILITY_SQL,
   mintCapabilityReceipt,
   reconstructCapabilitySecret,
@@ -73,6 +74,30 @@ function options(overrides = {}) {
     ...overrides,
   };
 }
+
+test('capability stores expose explicit production durability and reconciliation markers', () => {
+  const memory = createMemoryCapabilityStore();
+  assert.equal(memory.durable, false);
+  assert.equal(memory.reconciliationCapable, true);
+  assert.equal(isSecureCapabilityStore(memory), false);
+
+  const postgres = createPostgresCapabilityStore({
+    transaction: async () => assert.fail('store contract inspection must not open a transaction'),
+  });
+  assert.equal(postgres.durable, true);
+  assert.equal(postgres.reconciliationCapable, true);
+  assert.equal(isSecureCapabilityStore(postgres), true);
+
+  const methodsOnly = {
+    registerCapability() {},
+    reserveSpend() {},
+    commitSpend() {},
+    reconcileSpend() {},
+  };
+  assert.equal(isSecureCapabilityStore(methodsOnly), false);
+  assert.equal(isSecureCapabilityStore({ ...methodsOnly, durable: true }), false);
+  assert.equal(isSecureCapabilityStore({ ...methodsOnly, reconciliationCapable: true }), false);
+});
 
 test('capability metadata is issuer-signed and tamper-evident', () => {
   const keys = issuer();

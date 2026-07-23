@@ -452,7 +452,7 @@ function verifyTrustProgramRevocationInternal(input: TrustProgramRevocationVerif
   try {
     const result = verifyPortableRevocation(
       target,
-      statement as object,
+      statement as Record<string, unknown>,
       { revokerKeys, now },
     );
     if (!isDataRecord(result) || typeof result.valid !== 'boolean'

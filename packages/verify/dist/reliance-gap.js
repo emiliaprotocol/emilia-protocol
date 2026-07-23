@@ -36,7 +36,7 @@
  * order, so the same inputs reproduce the same report byte for byte.
  */
 import crypto from 'node:crypto';
-import { canonicalize } from '../index.js';
+import { canonicalize } from './index.js';
 import { evaluateReliance, RELIANCE_KERNEL_VERSION, RELIANCE_PROFILE_VERSION, } from './reliance.js';
 import { PROFILE_REGISTRY_VERSION } from './reliance-profile-registry.js';
 export const RELIANCE_GAP_REPORT_VERSION = 'EP-RELIANCE-GAP-REPORT-v1';

@@ -68,9 +68,19 @@ format. The proposal is an unsigned, short-lived request; authority remains in
 
 ```js
 import { createProposalToEffect } from '@emilia-protocol/gate/proposal-to-effect';
+import { createProposalToEffectPostgresStore } from '@emilia-protocol/gate/proposal-to-effect-postgres';
 
 const controller = createProposalToEffect({
   gate,
+  proposal_integrity: { hmac_sha256_key: serverHeld32ByteKey },
+  consequence: {
+    tenant_id: tenantId,
+    provider_id: providerId,
+    provider_account_id: providerAccountId,
+    environment,
+    executor_id: executorId,
+    store: durableConsequenceAttemptStore,
+  },
   profiles: {
     'payment-release': {
       id: 'payment-release',
@@ -94,6 +104,8 @@ const controller = createProposalToEffect({
     adapters: pinnedAebAdapters,
     store: durableOperationStore,
     resolve_artifacts,
+    currentStatusResolver,
+    statusVerifier,
     verify_provider_evidence,
   },
 });
@@ -113,9 +125,28 @@ The controller re-verifies the signed AEB evaluation, runs Gate policy,
 reserves the operation before invoking the effect, and consumes it after
 success. An uncertain provider result remains reserved; only authenticated
 provider evidence bound to the same operation, CAID, and action digest can
-reconcile it. See
+reconcile it. Owner capabilities are not serialized in results or errors;
+same-process services retrieve them with `getReconciliationHandle(object)`,
+while restarted services use the PostgreSQL store's authorized recovery path.
+Production PostgreSQL wiring uses different executor and recovery pools. Each
+database login is explicitly bound to a tenant and receives only its matching
+non-login group role; `service_role` receives neither RPC surface. Recovery is
+possible only after the database lease is stale, rotates the owner capability,
+and preserves `INDETERMINATE` whenever provider execution may have started.
+`repairAeb()` converges a durable terminal attempt with a stranded AEB
+reservation without invoking the effect again. See
 [`docs/protocol/proposal-to-effect-profile-v1.md`](../../docs/protocol/proposal-to-effect-profile-v1.md)
 and run `node examples/proposal-to-effect/demo.mjs` from the repository root.
+
+The AEB consumption store has its own disjoint PostgreSQL credentials:
+`createPostgresAebDurableConsumptionStore()` requires an `ep_aeb_executor`
+pool and a physically distinct `ep_aeb_recovery` pool. Each login must be
+listed for the tenant in `ep_aeb_private.tenant_principals`. Neither runtime
+role receives table privileges; reserve, commit, release, and recovery claim
+are narrow security-definer functions. Supabase `service_role` receives no
+table, schema, or function authority. Remedy case sets use the same custody
+shape through a tenant-bound `ep_remedy_executor` login and
+`ep_remedy_private.tenant_principals`.
 
 ## Three-plane deployment
 

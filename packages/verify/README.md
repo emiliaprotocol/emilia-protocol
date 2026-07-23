@@ -69,6 +69,21 @@ and unsigned gateway headers are not trusted.
 durable, ownership-fenced store contract implemented by
 `@emilia-protocol/gate`.
 
+`@emilia-protocol/verify/aeb-native-adapters` supplies concrete AgentROA and
+ORPRG adapters. Both use relying-party-pinned roots, profiles, status, and
+expected actions. ORPRG uses non-mutating native inspection: it verifies the
+permit and exposes its native replay unit, while the Gate atomically fences
+that replay unit before any effect. Inspection is never reported as a final
+native `ALLOW`.
+
+### Signed current status — `@emilia-protocol/verify/status`
+
+`EP-STATUS-v1` verifies fresh current/revoked state under a separately pinned
+`EP-REVOKER-AUTHORITY-v1` certificate. Sequence and predecessor-digest binding
+reject rollback or resurrection, terminal revocation cannot be undone, and an
+unavailable or stale status authority produces `indeterminate`, never a
+fabricated `revoked: false`.
+
 ### `verifyReceipt(doc, publicKeyBase64url)`
 
 Verify an EP-RECEIPT-v1 document. Performs three independent checks:
@@ -284,6 +299,11 @@ import { verifyFederatedReceipt, verifyFederatedReceiptOffline } from '@emilia-p
 const verdict = await verifyFederatedReceipt(receipt, {
   keyDiscoveryUrl: 'https://op-a.example/.well-known/ep-keys.json',
   expectedSigner: 'ep:operator:op-a',
+  networkBoundary: {
+    resolveAddresses: resolveEveryAddress,
+    fetchPinned: fetchWithoutReresolving,
+  },
+  statusVerifier: verifyPinnedCurrentStatus,
 });
 // { accepted, verified, revoked, signer, keyMatched: 'current'|'historical', checks }
 
@@ -294,14 +314,23 @@ const verdict = await verifyFederatedReceipt(receipt, {
 const offline = verifyFederatedReceiptOffline(receipt, discoveryDoc, { revokedReceiptIds });
 ```
 
+The network boundary must reject the whole DNS answer set unless every address
+is public, connect directly to one approved address without re-resolving, retain
+hostname TLS/SNI validation, report the connected address, and refuse
+redirects. A plain injected `fetch` is deliberately insufficient against DNS
+rebinding.
+
 `resolveOperatorKeys(discoveryDoc, signerId)` is also exported (current keys
-first, then `historical_keys` for rotation safety). See
+first, then `historical_keys` whose signed `issued_at` is no later than a valid
+`retired_at`). See
 `docs/FEDERATION-REGISTRY.md` for the operator discovery convention.
 
 ## Design Principles
 
 - **Zero dependencies** — Only `node:crypto`. No supply chain risk.
-- **Offline-first** — No network calls (the federation online path takes an injectable `fetch`). No EP server needed.
+- **Offline-first** — Core verification makes no network calls. The optional
+  federation online path requires an explicit resolver plus pinned transport;
+  no EP-operated server is required.
 - **Deterministic** — Canonical JSON serialization for reproducible signatures.
 - **Auditable** — A few small files, ~1,000 lines total. Read the entire thing in an hour.
 

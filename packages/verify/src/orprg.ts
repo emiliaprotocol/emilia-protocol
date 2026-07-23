@@ -661,6 +661,49 @@ function isThenable(value: any): boolean {
 }
 
 /**
+ * Verify every native ORPRG predicate except the final anti-replay mutation.
+ *
+ * This is the first half of a two-phase composition contract. It never returns
+ * `valid:true` and never calls an anti-replay hook, so it cannot be mistaken for
+ * an executable permit. A caller may use the returned stable `replay_key` only
+ * when its own execution gate atomically reserves that key before invocation
+ * and commits it after a conclusive effect. The ordinary verify functions below
+ * remain the one-step consume-and-verify APIs.
+ */
+export function inspectOrprgJsonJcsPermit(input: any, options: any = {}): Obj {
+  try {
+    const prepared = prepareVerification(input, options);
+    if (prepared.result) {
+      return {
+        ...prepared.result,
+        inspection_valid: false,
+        replay_key: null,
+        replay_context: null,
+      };
+    }
+    prepared.detail.decision = 'INSPECTED_NOT_CONSUMED';
+    prepared.detail.denial_reason_code = 'ANTI_REPLAY_RESERVATION_REQUIRED';
+    prepared.detail.reason = 'native predicates verified; atomic replay reservation is still required';
+    return {
+      valid: false,
+      inspection_valid: true,
+      action_digest: prepared.expectedActionDigest,
+      replay_key: prepared.replayKey,
+      replay_context: prepared.replayContext,
+      detail: prepared.detail,
+    };
+  } catch {
+    const checks = newChecks();
+    const result = deny(
+      'MALFORMED_RECEIPT',
+      'unexpected input or verifier state was denied',
+      baseDetail(checks),
+    );
+    return { ...result, inspection_valid: false, replay_key: null, replay_context: null };
+  }
+}
+
+/**
  * Synchronous verifier suitable for the current synchronous EP-AEC component
  * contract. The anti-replay hook MUST synchronously and atomically consume the
  * supplied key. If it returns a Promise, throws, returns an ambiguous value, or

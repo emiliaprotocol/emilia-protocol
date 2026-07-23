@@ -41,6 +41,9 @@ test('AEB-ADAPTER-v1 publishes the refusal and lifecycle vector set', () => {
     'material_information_loss_refuses_equivalence',
     'duplicate_or_initiating_human_cannot_satisfy_quorum',
     'authority_predicates_are_first_class_requirement_terms',
+    'executor_cannot_satisfy_approval_role',
+    'native_replay_unit_is_fenced_across_aeb_wrappers',
+    'presenter_status_cannot_establish_current_authority',
     'registry_kind_substitution_is_indeterminate',
     'aec_is_the_composition_engine',
     'same_caid_different_normalized_action_refuses',
@@ -80,6 +83,7 @@ function makeAdapter() {
         }),
         evidence_role: artifact.role,
         subject: artifact.subject,
+        replay_unit: digestAeb({ adapter: 'test:operator', replay_id: artifact.replay_id }),
         reasons: trusted ? [] : ['native_trust_root_not_pinned'],
       };
     },
@@ -106,6 +110,7 @@ function setup(requirement = {
   terms: [
     { type: 'distinct-human-quorum', role: 'human-authorization', threshold: 2 },
     { type: 'initiator-exclusion', roles: ['human-authorization'] },
+    { type: 'executor-exclusion', roles: ['human-authorization'] },
     { type: 'one-time-consumption' },
   ],
 }) {
@@ -160,7 +165,7 @@ function setup(requirement = {
 function leg(role, caid = CAID, ref = `artifact:${role}`, subject = { id: role === 'human-authorization' ? 'human:alice' : 'workload:operator', kind: role === 'human-authorization' ? 'human' : 'workload' }) {
   return {
     adapter_id: 'test:operator', profile_id: 'test:order', artifact_ref: ref,
-    artifact: { root: 'root:test', role, caid, order_id: 'o-1', subject }, status: status(),
+    artifact: { root: 'root:test', role, caid, order_id: 'o-1', replay_id: ref, subject }, status: status(),
   };
 }
 
@@ -172,13 +177,23 @@ function defaultLegs() {
   ];
 }
 
-function evaluate(setupResult, legs = defaultLegs()) {
+function evaluate(setupResult, legs = defaultLegs(), bindings = {}) {
   return evaluateAebEvidence({
     config: setupResult.config,
     adapters: { 'test:operator': setupResult.adapter },
-    operation_id: 'op-1', consumption_nonce: 'nonce-1', initiator_id: 'agent:init', requirement_ref: 'req:purchase', caid: CAID,
+    operation_id: 'op-1', consumption_nonce: 'nonce-1', initiator_id: 'agent:init', executor_id: 'workload:executor',
+    requirement_ref: 'req:purchase', caid: CAID,
+    expected_action: { action_type: 'order.purchase.1', order_id: 'o-1' },
     legs, evaluated_at: NOW, signer: { key_id: 'eval:test', private_key: setupResult.keyPair.privateKey },
+    ...bindings,
   });
+}
+
+function verificationInputs(legs = defaultLegs()) {
+  return {
+    artifacts: Object.fromEntries(legs.map((item) => [item.artifact_ref, item.artifact])),
+    current_statuses: Object.fromEntries(legs.map((item) => [item.artifact_ref, status()])),
+  };
 }
 
 test('AEB evaluates and re-derives a multi-leg CAID join', () => {
@@ -188,19 +203,95 @@ test('AEB evaluates and re-derives a multi-leg CAID join', () => {
   assert.equal(result.valid, true);
   const checked = verifyAebEvaluation(result.record, {
     config: s.config, adapters: { 'test:operator': s.adapter },
+    mode: 'historical',
     artifacts: {
-      'artifact:operator-of-record': { root: 'root:test', role: 'operator-of-record', caid: CAID, order_id: 'o-1', subject: { id: 'workload:operator', kind: 'workload' } },
-      'artifact:human-alice': { root: 'root:test', role: 'human-authorization', caid: CAID, order_id: 'o-1', subject: { id: 'human:alice', kind: 'human' } },
-      'artifact:human-bob': { root: 'root:test', role: 'human-authorization', caid: CAID, order_id: 'o-1', subject: { id: 'human:bob', kind: 'human' } },
+      'artifact:operator-of-record': { root: 'root:test', role: 'operator-of-record', caid: CAID, order_id: 'o-1', replay_id: 'artifact:operator-of-record', subject: { id: 'workload:operator', kind: 'workload' } },
+      'artifact:human-alice': { root: 'root:test', role: 'human-authorization', caid: CAID, order_id: 'o-1', replay_id: 'artifact:human-alice', subject: { id: 'human:alice', kind: 'human' } },
+      'artifact:human-bob': { root: 'root:test', role: 'human-authorization', caid: CAID, order_id: 'o-1', replay_id: 'artifact:human-bob', subject: { id: 'human:bob', kind: 'human' } },
     },
   });
   assert.equal(checked.valid, true, JSON.stringify({ checked, record: result.record }));
-  assert.deepEqual(checked.checks, { schema: true, signature: true, pinned_config: true, rederived: true, verdict: true });
+  assert.deepEqual(checked.checks, { schema: true, signature: true, pinned_config: true, rederived: true, current_status: true, verdict: true });
   assert.equal(result.record.composition.engine, 'EP-AEC-v1');
   assert.equal(result.record.composition.satisfied, true);
   assert.equal(result.record.authority_constraints.distinct_human_quorum, true);
   assert.equal(result.record.authority_constraints.initiator_exclusion, true);
+  assert.equal(result.record.authority_constraints.executor_exclusion, true);
   assert.equal(result.record.authority_constraints.one_time_consumption, true);
+  assert.equal(result.record.executor_id, 'workload:executor');
+});
+
+test('execution verification requires current status, now, and exact action; default is historical', () => {
+  const s = setup();
+  const result = evaluate(s);
+  const inputs = verificationInputs();
+  const base = {
+    config: s.config,
+    adapters: { 'test:operator': s.adapter },
+    artifacts: inputs.artifacts,
+  };
+
+  const implicit = verifyAebEvaluation(result.record, base);
+  assert.equal(implicit.valid, true, JSON.stringify(implicit));
+  assert.equal(implicit.execution_authorizing, false);
+
+  const historical = verifyAebEvaluation(result.record, { ...base, mode: 'historical' });
+  assert.equal(historical.valid, true, JSON.stringify(historical));
+  assert.equal(historical.execution_authorizing, false);
+  assert.equal(authorizeAebExecution(result.record, {
+    verification: historical,
+    local_authorization: true,
+    store: new InMemoryAebConsumptionStore(),
+  }).reason, 'execution_verification_required');
+
+  const omittedNow = verifyAebEvaluation(result.record, {
+    ...base,
+    mode: 'execution',
+    expected_action: { action_type: 'order.purchase.1', order_id: 'o-1' },
+    current_statuses: inputs.current_statuses,
+  });
+  assert.equal(omittedNow.valid, false);
+  assert.equal(omittedNow.execution_authorizing, false);
+  assert.ok(omittedNow.reasons.includes('execution_now_required'));
+
+  const omittedStatus = verifyAebEvaluation(result.record, {
+    ...base,
+    mode: 'execution',
+    expected_action: { action_type: 'order.purchase.1', order_id: 'o-1' },
+    now: NOW,
+  });
+  assert.equal(omittedStatus.valid, false);
+  assert.equal(omittedStatus.execution_authorizing, false);
+  assert.ok(omittedStatus.reasons.some((reason) => reason.startsWith('current_status_unavailable:')));
+
+  const omittedAction = verifyAebEvaluation(result.record, {
+    ...base,
+    mode: 'execution',
+    current_statuses: inputs.current_statuses,
+    now: NOW,
+  });
+  assert.equal(omittedAction.valid, false);
+  assert.equal(omittedAction.execution_authorizing, false);
+  assert.ok(omittedAction.reasons.includes('expected_action_required'));
+
+  const executable = verifyAebEvaluation(result.record, {
+    ...base,
+    mode: 'execution',
+    expected_action: { action_type: 'order.purchase.1', order_id: 'o-1' },
+    current_statuses: inputs.current_statuses,
+    now: NOW,
+  });
+  assert.equal(executable.valid, true, JSON.stringify(executable));
+  assert.equal(executable.execution_authorizing, true);
+
+  const currentPteExecution = verifyAebEvaluation(result.record, {
+    ...base,
+    expected_action: { action_type: 'order.purchase.1', order_id: 'o-1' },
+    current_statuses: inputs.current_statuses,
+    now: NOW,
+  });
+  assert.equal(currentPteExecution.valid, true, JSON.stringify(currentPteExecution));
+  assert.equal(currentPteExecution.execution_authorizing, true);
 });
 
 test('AEB gives adapters only immutable relying-party-pinned configuration', () => {
@@ -257,7 +348,8 @@ test('signed native bridge composes WIMSE possession and human authorization', (
   s.config.adapters = { 'bridge:native': pin };
 
   const profile = s.config.profiles['test:order'];
-  const actionDigest = digestAeb({ action_type: 'order.purchase.1', order_id: 'o-1' });
+  const expectedAction = { action_type: 'order.purchase.1', order_id: 'o-1' };
+  const actionDigest = digestAeb(expectedAction);
   const statement = (protocol_id, role, subject, nativeRef) => signAebNativeVerificationAttestation({
     '@version': AEB_NATIVE_VERIFICATION_ATTESTATION_VERSION,
     protocol_id,
@@ -292,11 +384,34 @@ test('signed native bridge composes WIMSE possession and human authorization', (
     config: s.config,
     adapters: { 'bridge:native': adapter },
     operation_id: 'op-wimse-1', consumption_nonce: 'nonce-wimse-1', initiator_id: 'agent:init',
-    requirement_ref: 'req:purchase', caid: CAID, legs, evaluated_at: NOW,
+    requirement_ref: 'req:purchase', caid: CAID, expected_action: expectedAction, legs, evaluated_at: NOW,
     signer: { key_id: 'eval:test', private_key: s.keyPair.privateKey },
   });
   assert.equal(result.record.verdict, 'SATISFIED', JSON.stringify(result.record.reasons));
   assert.equal(result.record.composition.engine, 'EP-AEC-v1');
+  const nativeInputs = verificationInputs(legs);
+  const verified = verifyAebEvaluation(result.record, {
+    mode: 'execution',
+    config: s.config,
+    adapters: { 'bridge:native': adapter },
+    artifacts: nativeInputs.artifacts,
+    current_statuses: nativeInputs.current_statuses,
+    expected_action: expectedAction,
+    now: NOW,
+  });
+  assert.equal(verified.valid, true, JSON.stringify(verified));
+  assert.equal(verified.execution_authorizing, true);
+  const omittedAction = verifyAebEvaluation(result.record, {
+    mode: 'execution',
+    config: s.config,
+    adapters: { 'bridge:native': adapter },
+    artifacts: nativeInputs.artifacts,
+    current_statuses: nativeInputs.current_statuses,
+    now: NOW,
+  });
+  assert.equal(omittedAction.valid, false);
+  assert.equal(omittedAction.execution_authorizing, false);
+  assert.ok(omittedAction.reasons.includes('expected_action_required'));
 
   const forged = structuredClone(legs);
   forged[0].artifact.mapping.caid = OTHER_CAID;
@@ -304,11 +419,30 @@ test('signed native bridge composes WIMSE possession and human authorization', (
     config: s.config,
     adapters: { 'bridge:native': adapter },
     operation_id: 'op-wimse-2', consumption_nonce: 'nonce-wimse-2', initiator_id: 'agent:init',
-    requirement_ref: 'req:purchase', caid: CAID, legs: forged, evaluated_at: NOW,
+    requirement_ref: 'req:purchase', caid: CAID, expected_action: expectedAction, legs: forged, evaluated_at: NOW,
     signer: { key_id: 'eval:test', private_key: s.keyPair.privateKey },
   });
   assert.notEqual(refused.record.verdict, 'SATISFIED');
   assert.ok(refused.record.legs[0].reasons.includes('native_attestation_signature_invalid'));
+});
+
+test('AEB refuses RSA and P-256 evaluator keys and signers', () => {
+  for (const [algorithm, options] of [
+    ['rsa', { modulusLength: 2048 }],
+    ['ec', { namedCurve: 'prime256v1' }],
+  ]) {
+    const s = setup();
+    const keyPair = crypto.generateKeyPairSync(algorithm, options);
+    s.config.evaluator_keys['eval:test'].public_key = keyPair.publicKey
+      .export({ type: 'spki', format: 'der' }).toString('base64url');
+    const result = evaluate(s, defaultLegs(), {
+      signer: { key_id: 'eval:test', private_key: keyPair.privateKey },
+    });
+    assert.equal(result.valid, false, `${algorithm} evaluator must be refused`);
+    assert.equal(result.record.signature, undefined);
+    assert.ok(result.record.reasons.includes('invalid_evaluator_key:eval:test'));
+    assert.ok(result.record.reasons.includes('evaluator_signer_not_ed25519'));
+  }
 });
 
 test('AEB refuses a forged verdict and a changed pinned trust root', () => {
@@ -317,11 +451,13 @@ test('AEB refuses a forged verdict and a changed pinned trust root', () => {
   const forged = structuredClone(result.record);
   forged.verdict = 'SATISFIED';
   forged.legs[0].evidence_role = 'human-authorization';
-  assert.equal(verifyAebEvaluation(forged, { config: s.config, adapters: { 'test:operator': s.adapter }, artifacts: {} }).valid, false);
+  assert.equal(verifyAebEvaluation(forged, {
+    mode: 'historical', config: s.config, adapters: { 'test:operator': s.adapter }, artifacts: {},
+  }).valid, false);
   const changedConfig = structuredClone(s.config);
   changedConfig.adapters['test:operator'].trust_roots = ['attacker-root'];
   assert.equal(verifyAebEvaluation(result.record, {
-    config: changedConfig, adapters: { 'test:operator': s.adapter }, artifacts: {},
+    mode: 'historical', config: changedConfig, adapters: { 'test:operator': s.adapter }, artifacts: {},
   }).valid, false);
 });
 
@@ -349,16 +485,22 @@ test('AEB freezes indeterminate execution and consumes a satisfied authorization
     leg('human-authorization', CAID, 'artifact:human-alice', { id: 'human:alice', kind: 'human' }),
     { ...leg('human-authorization', CAID, 'artifact:human-bob', { id: 'human:bob', kind: 'human' }), status: status({ unavailable: true }) },
   ]);
-  const frozen = authorizeAebExecution(indeterminate.record, { verified: true, local_authorization: true, store });
+  const frozen = authorizeAebExecution(indeterminate.record, {
+    verification: { valid: true, execution_authorizing: true }, local_authorization: true, store,
+  });
   assert.equal(frozen.state, 'RECONCILIATION_REQUIRED');
   assert.equal(frozen.invoke_allowed, false);
 
   const satisfied = evaluate(s);
-  const authorized = authorizeAebExecution(satisfied.record, { verified: true, local_authorization: true, store });
+  const authorized = authorizeAebExecution(satisfied.record, {
+    verification: { valid: true, execution_authorizing: true }, local_authorization: true, store,
+  });
   assert.equal(authorized.state, 'AUTHORIZED');
   assert.equal(authorized.invoke_allowed, true);
   assert.equal(reconcileAebExecution(store, authorized.reservation_key, 'COMMITTED').state, 'CONSUMED');
-  assert.equal(authorizeAebExecution(satisfied.record, { verified: true, local_authorization: true, store }).reason, 'consumption_conflict');
+  assert.equal(authorizeAebExecution(satisfied.record, {
+    verification: { valid: true, execution_authorizing: true }, local_authorization: true, store,
+  }).reason, 'consumption_conflict');
 });
 
 test('AEB treats a material CAID mismatch as unsatisfied', () => {
@@ -431,6 +573,7 @@ test('AEB expresses authority controls as first-class requirement terms', () => 
     terms: [
       { type: 'distinct-human-quorum', role: 'human-authorization', threshold: 2 },
       { type: 'initiator-exclusion', roles: ['human-authorization'] },
+      { type: 'executor-exclusion', roles: ['human-authorization'] },
       { type: 'one-time-consumption' },
     ],
   });
@@ -443,8 +586,67 @@ test('AEB expresses authority controls as first-class requirement terms', () => 
   assert.deepEqual(result.record.authority_constraints, {
     distinct_human_quorum: true,
     initiator_exclusion: true,
+    executor_exclusion: true,
     one_time_consumption: true,
   });
+});
+
+test('AEB binds the executor and refuses approver-as-executor', () => {
+  const s = setup();
+  const result = evaluate(s, [
+    leg('operator-of-record'),
+    leg('human-authorization', CAID, 'artifact:executor', { id: 'workload:executor', kind: 'human' }),
+    leg('human-authorization', CAID, 'artifact:human-bob', { id: 'human:bob', kind: 'human' }),
+  ]);
+  assert.equal(result.record.executor_id, 'workload:executor');
+  assert.equal(result.record.verdict, 'UNSATISFIED');
+  assert.equal(result.record.authority_constraints.executor_exclusion, false);
+  assert.ok(result.record.reasons.includes('executor_excluded:human-authorization'));
+});
+
+test('execution-time verification refuses stale or newly revoked trusted status', () => {
+  const s = setup();
+  const result = evaluate(s);
+  const artifacts = Object.fromEntries(defaultLegs().map((item) => [item.artifact_ref, item.artifact]));
+  const currentStatuses = Object.fromEntries(defaultLegs().map((item) => [item.artifact_ref, status()]));
+
+  const current = verifyAebEvaluation(result.record, {
+    mode: 'execution',
+    config: s.config,
+    adapters: { 'test:operator': s.adapter },
+    artifacts,
+    expected_action: { action_type: 'order.purchase.1', order_id: 'o-1' },
+    current_statuses: currentStatuses,
+    now: NOW,
+  });
+  assert.equal(current.valid, true, JSON.stringify(current));
+
+  const revoked = structuredClone(currentStatuses);
+  revoked['artifact:human-alice'].revoked = true;
+  const refused = verifyAebEvaluation(result.record, {
+    mode: 'execution',
+    config: s.config,
+    adapters: { 'test:operator': s.adapter },
+    artifacts,
+    expected_action: { action_type: 'order.purchase.1', order_id: 'o-1' },
+    current_statuses: revoked,
+    now: NOW,
+  });
+  assert.equal(refused.valid, false);
+  assert.equal(refused.checks.current_status, false);
+  assert.ok(refused.reasons.includes('current_status_revoked:artifact:human-alice'));
+
+  const expired = verifyAebEvaluation(result.record, {
+    mode: 'execution',
+    config: s.config,
+    adapters: { 'test:operator': s.adapter },
+    artifacts,
+    expected_action: { action_type: 'order.purchase.1', order_id: 'o-1' },
+    current_statuses: currentStatuses,
+    now: '2026-07-21T13:00:01Z',
+  });
+  assert.equal(expired.valid, false);
+  assert.equal(expired.checks.current_status, false);
 });
 
 test('AEB fails closed on unknown, duplicate, or weakened authority terms', () => {
@@ -496,7 +698,7 @@ test('execution refuses a record that does not require one-time consumption', ()
   const weakened = structuredClone(result.record);
   weakened.authority_constraints.one_time_consumption = false;
   const decision = authorizeAebExecution(weakened, {
-    verified: true,
+    verification: { valid: true, execution_authorizing: true },
     local_authorization: true,
     store: new InMemoryAebConsumptionStore(),
   });
@@ -507,11 +709,16 @@ test('execution refuses a record that does not require one-time consumption', ()
 test('production execution requires durable ownership-fenced permanent custody', async () => {
   const s = setup();
   const result = evaluate(s);
+  assert.equal((await authorizeAebExecutionDurable(result.record, {
+    verification: { valid: true, execution_authorizing: false },
+    local_authorization: true,
+    store: {},
+  })).reason, 'execution_verification_required');
   const otherTenant = structuredClone(result.record);
   otherTenant.evaluator.id = 'rp:other';
   assert.notEqual(aebReservationKey(result.record), aebReservationKey(otherTenant));
   const insecure = await authorizeAebExecutionDurable(result.record, {
-    verified: true,
+    verification: { valid: true, execution_authorizing: true },
     local_authorization: true,
     store: { reserve: async () => true, commit: async () => true, release: async () => true },
   });
@@ -522,10 +729,14 @@ test('production execution requires durable ownership-fenced permanent custody',
     durable: true,
     ownershipFenced: true,
     permanentConsumption: true,
-    async reserve(key) {
-      if (states.has(key)) return false;
+    atomicReplayFenced: true,
+    replayOwners: new Map(),
+    async reserve(key, replayKeys) {
+      if (states.has(key)) return 'CONSUMPTION_CONFLICT';
+      if (replayKeys.some((replayKey) => this.replayOwners.has(replayKey))) return 'NATIVE_REPLAY_CONFLICT';
       states.set(key, 'RESERVED');
-      return true;
+      for (const replayKey of replayKeys) this.replayOwners.set(replayKey, key);
+      return 'RESERVED';
     },
     async commit(key) {
       if (states.get(key) !== 'RESERVED') return false;
@@ -535,15 +746,27 @@ test('production execution requires durable ownership-fenced permanent custody',
     async release(key) {
       if (states.get(key) !== 'RESERVED') return false;
       states.delete(key);
+      for (const [replayKey, owner] of this.replayOwners) {
+        if (owner === key) this.replayOwners.delete(replayKey);
+      }
       return true;
     },
   };
   const authorized = await authorizeAebExecutionDurable(result.record, {
-    verified: true, local_authorization: true, store,
+    verification: { valid: true, execution_authorizing: true }, local_authorization: true, store,
   });
   assert.equal(authorized.state, 'AUTHORIZED');
   assert.equal((await reconcileAebExecutionDurable(store, authorized.reservation_key, 'COMMITTED')).state, 'CONSUMED');
   assert.equal((await authorizeAebExecutionDurable(result.record, {
-    verified: true, local_authorization: true, store,
+    verification: { valid: true, execution_authorizing: true }, local_authorization: true, store,
   })).reason, 'consumption_conflict');
+
+  const replayedUnderNewOperation = evaluate(s, defaultLegs(), {
+    operation_id: 'op-2',
+    consumption_nonce: 'nonce-2',
+  });
+  assert.equal(replayedUnderNewOperation.record.verdict, 'SATISFIED');
+  assert.equal((await authorizeAebExecutionDurable(replayedUnderNewOperation.record, {
+    verification: { valid: true, execution_authorizing: true }, local_authorization: true, store,
+  })).reason, 'native_replay_conflict');
 });

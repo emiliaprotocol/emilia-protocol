@@ -31,7 +31,7 @@
  * executable form of the multi-effort survey matrix.
  */
 import crypto from 'node:crypto';
-import { canonicalize, verifyTrustReceipt, verifyQuorum } from '../index.js';
+import { canonicalize, verifyTrustReceipt, verifyQuorum } from './index.js';
 import {
   EP_PLATFORM_ATTESTATION_COMPONENT,
   verifyPlatformAttestation,

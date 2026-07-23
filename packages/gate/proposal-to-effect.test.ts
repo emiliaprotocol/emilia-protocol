@@ -12,7 +12,6 @@ import {
   registryEntryDigest,
   unifiedRegistryDigest,
 } from '@emilia-protocol/verify/aeb-adapter-contract';
-import { approvalActionHash } from '@emilia-protocol/require-receipt/acquisition';
 import {
   createEg1Harness,
   createTrustedActionFirewall,
@@ -26,6 +25,15 @@ import {
 
 const NOW = '2026-07-22T12:00:00Z';
 const CAID = `caid:1:payment.release.1:jcs-sha256:${'A'.repeat(43)}`;
+const PROPOSAL_INTEGRITY_DOMAIN = `${PROPOSAL_TO_EFFECT_VERSION}:INTEGRITY\0`;
+const PROPOSAL_INTEGRITY_KEY = crypto.createHash('sha256').update('proposal-to-effect-test-key').digest();
+const SERVER_CONTEXT = Object.freeze({
+  tenant_id: 'tenant:acme',
+  provider_id: 'provider:payments',
+  provider_account_id: 'account:merchant-1',
+  environment: 'sandbox',
+  executor_id: 'executor:gate-1',
+});
 const VECTOR_SUITE = JSON.parse(fs.readFileSync(
   new URL('../../conformance/vectors/proposal-to-effect.v1.json', import.meta.url),
   'utf8',
@@ -43,7 +51,11 @@ function registryEntry(entryId: string, kind: string, version: string, definitio
   return entry;
 }
 
-function aebFixture(action: Record<string, unknown>, overrides: Record<string, unknown> = {}) {
+function aebFixture(
+  action: Record<string, unknown>,
+  overrides: Record<string, unknown> = {},
+  executorId = SERVER_CONTEXT.executor_id,
+) {
   const adapter = {
     id: 'test:human',
     version: '1',
@@ -61,16 +73,21 @@ function aebFixture(action: Record<string, unknown>, overrides: Record<string, u
           consumed: status.consumed,
           unavailable: status.unavailable === true,
         }),
+        replay_unit: digestAeb({
+          root: artifact.root,
+          caid: artifact.caid,
+          subject: 'human:alice',
+        }),
         evidence_role: 'human-authorization',
         subject: { id: 'human:alice', kind: 'human' },
         reasons: trusted ? [] : ['native_trust_root_not_pinned'],
       };
     },
-    mapAction({ artifact, native }: any) {
+    mapAction({ artifact, native, expected_action }: any) {
       return {
         mapping: native.native_verification === 'VERIFIED' ? 'MATCH' : 'INDETERMINATE',
         caid: artifact.caid,
-        action_digest: digestAeb(artifact.action),
+        action_digest: digestAeb(expected_action),
         reasons: [],
       };
     },
@@ -137,6 +154,7 @@ function aebFixture(action: Record<string, unknown>, overrides: Record<string, u
         all_of: ['human-authorization'],
         terms: [
           { type: 'initiator-exclusion', roles: ['human-authorization'] },
+          { type: 'executor-exclusion', roles: ['human-authorization'] },
           { type: 'one-time-consumption' },
         ],
       },
@@ -164,8 +182,10 @@ function aebFixture(action: Record<string, unknown>, overrides: Record<string, u
       pinnedConfigDigest(config),
     ),
     initiator_id: 'agent:buyer',
+    executor_id: executorId,
     requirement_ref: 'requirement:proposal-to-effect',
     caid: CAID,
+    expected_action: action,
     legs: [{
       adapter_id: 'test:human',
       profile_id: 'payment-release',
@@ -179,6 +199,7 @@ function aebFixture(action: Record<string, unknown>, overrides: Record<string, u
   return {
     adapters: { 'test:human': adapter },
     artifacts: { 'artifact:human-approval': artifact },
+    current_statuses: { 'artifact:human-approval': status },
     config,
     evaluation: evaluated.record,
   };
@@ -186,15 +207,19 @@ function aebFixture(action: Record<string, unknown>, overrides: Record<string, u
 
 function durableStore() {
   const states = new Map<string, 'RESERVED' | 'CONSUMED'>();
+  const replayOwners = new Map<string, string>();
   return {
     durable: true as const,
     ownershipFenced: true as const,
     permanentConsumption: true as const,
+    atomicReplayFenced: true as const,
     states,
-    async reserve(key: string) {
+    async reserve(key: string, replayKeys: readonly string[]) {
       if (states.has(key)) return false;
+      if (replayKeys.some((replayKey) => replayOwners.has(replayKey))) return 'NATIVE_REPLAY_CONFLICT';
       states.set(key, 'RESERVED');
-      return true;
+      for (const replayKey of replayKeys) replayOwners.set(replayKey, key);
+      return 'RESERVED';
     },
     async commit(key: string) {
       if (states.get(key) !== 'RESERVED') return false;
@@ -204,31 +229,140 @@ function durableStore() {
     async release(key: string) {
       if (states.get(key) !== 'RESERVED') return false;
       states.delete(key);
+      for (const [replayKey, owner] of replayOwners) {
+        if (owner === key) replayOwners.delete(replayKey);
+      }
       return true;
     },
+  };
+}
+
+type TestAttemptState = 'RESERVED' | 'INVOKING' | 'INDETERMINATE' | 'COMMITTED' | 'RELEASED' | 'ESCALATED';
+
+function consequenceAttemptStore() {
+  let ownerSequence = 0;
+  const entries = new Map<string, any>();
+  const keyFor = (tenantId: string, attemptId: string) => `${tenantId}\0${attemptId}`;
+  return {
+    durable: true as const,
+    ownershipFenced: true as const,
+    compareAndSwap: true as const,
+    atomicEvidenceBinding: true as const,
+    entries,
+    async reserve(binding: any) {
+      const key = keyFor(binding.tenant_id, binding.attempt_id);
+      if (entries.has(key)) return { reserved: false, reason: 'attempt_exists' };
+      const owner = `owner:${++ownerSequence}:${crypto.randomBytes(12).toString('base64url')}`;
+      entries.set(key, { ...structuredClone(binding), owner, state: 'RESERVED' as TestAttemptState, evidence: null });
+      return { reserved: true, owner };
+    },
+    async transition(input: any) {
+      const key = keyFor(input.tenant_id, input.attempt_id);
+      const entry = entries.get(key);
+      if (!entry || entry.owner !== input.owner || entry.state !== input.expected_state) return false;
+      const allowed = (input.expected_state === 'RESERVED' && input.next_state === 'INVOKING')
+        || (input.expected_state === 'INVOKING' && input.next_state === 'INDETERMINATE')
+        || (input.expected_state === 'INDETERMINATE'
+          && ['COMMITTED', 'RELEASED', 'ESCALATED'].includes(input.next_state));
+      if (!allowed) return false;
+      entry.state = input.next_state;
+      return true;
+    },
+    async reconcile(input: any) {
+      const key = keyFor(input.tenant_id, input.attempt_id);
+      const entry = entries.get(key);
+      if (!entry || entry.owner !== input.owner || input.expected_state !== 'INDETERMINATE'
+          || entry.state !== 'INDETERMINATE') return false;
+      if (entry.tenant_id !== input.evidence.tenant_id
+          || entry.request_digest !== input.evidence.request_digest
+          || entry.provider_id !== input.evidence.provider_id
+          || entry.provider_account_id !== input.evidence.provider_account_id
+          || entry.environment !== input.evidence.environment
+          || entry.attempt_id !== input.evidence.attempt_id) return false;
+      entry.evidence = structuredClone(input.evidence);
+      entry.state = input.next_state;
+      return true;
+    },
+    async read(binding: any) {
+      const entry = entries.get(keyFor(binding.tenant_id, binding.attempt_id));
+      if (!entry
+          || entry.provider_id !== binding.provider_id
+          || entry.provider_account_id !== binding.provider_account_id
+          || entry.environment !== binding.environment
+          || entry.request_digest !== binding.request_digest) return null;
+      return { state: entry.state, evidence_digest: entry.evidence?.evidence_digest ?? null };
+    },
+  };
+}
+
+function signProposalIntegrity(proposal: any): void {
+  const unsigned = structuredClone(proposal);
+  delete unsigned.integrity;
+  proposal.integrity = {
+    alg: 'HMAC-SHA256',
+    value: crypto.createHmac('sha256', PROPOSAL_INTEGRITY_KEY)
+      .update(PROPOSAL_INTEGRITY_DOMAIN)
+      .update(digestAeb(unsigned))
+      .digest('base64url'),
+  };
+}
+
+function providerEvidence(proposal: any, attempt: any, outcome: 'COMMITTED' | 'NOT_COMMITTED' | 'ESCALATED') {
+  return {
+    authenticated: true,
+    evidence_id: `evidence:${attempt.attempt_id}`,
+    observed_at: NOW,
+    outcome,
+    operation_id: proposal.operation_id,
+    caid: proposal.caid,
+    action_digest: proposal.aeb_action_digest,
+    tenant_id: proposal.consequence.tenant_id,
+    request_digest: proposal.consequence.request_digest,
+    provider_id: proposal.consequence.provider_id,
+    provider_account_id: proposal.consequence.provider_account_id,
+    environment: proposal.consequence.environment,
+    attempt_id: attempt.attempt_id,
   };
 }
 
 function fixture({
   status = {},
   gate_override = null,
+  current_status = null,
+  aeb_executor_id = SERVER_CONTEXT.executor_id,
+  provider_verifier = null,
+  attempt_ids = ['attempt:release-1', 'attempt:release-2', 'attempt:release-3'],
+  now = () => Date.parse(NOW),
 }: {
   status?: Record<string, unknown>;
   gate_override?: any;
+  current_status?: Record<string, unknown> | null;
+  aeb_executor_id?: string;
+  provider_verifier?: any;
+  attempt_ids?: string[];
+  now?: () => number;
 } = {}) {
-  const harness = createEg1Harness({ now: () => Date.parse(NOW) });
-  const aeb = aebFixture(harness.action as Record<string, unknown>, status);
+  const harness = createEg1Harness({ now });
+  const aeb = aebFixture(harness.action as Record<string, unknown>, status, aeb_executor_id);
   const aebStore = durableStore();
+  const attemptStore = consequenceAttemptStore();
+  const queuedAttemptIds = [...attempt_ids];
   const gate = gate_override ?? createTrustedActionFirewall({
     trustedKeys: [harness.publicKey],
     approverKeys: harness.approverKeys,
     rpId: harness.rpId,
     allowedOrigins: harness.allowedOrigins,
     allowEphemeralStore: true,
-    now: () => Date.parse(NOW),
+    now,
   });
   const controller = createProposalToEffect({
     gate,
+    proposal_integrity: { hmac_sha256_key: PROPOSAL_INTEGRITY_KEY },
+    consequence: {
+      ...SERVER_CONTEXT,
+      store: attemptStore,
+      create_attempt_id: async () => queuedAttemptIds.shift() ?? `attempt:${crypto.randomUUID()}`,
+    },
     profiles: {
       'payment-release': {
         id: 'payment-release',
@@ -251,17 +385,50 @@ function fixture({
       adapters: aeb.adapters,
       store: aebStore,
       resolve_artifacts: async () => aeb.artifacts,
-      verify_provider_evidence: async ({ evidence, expected }: any) => ({
-        valid: evidence?.authenticated === true
+      currentStatusResolver: async ({ leg }: any) => current_status
+        ?? aeb.current_statuses[leg.artifact_ref],
+      statusVerifier: async ({ status_artifact }: any) => {
+        if (!status_artifact || status_artifact.unavailable === true) {
+          return { valid: false, outcome: 'indeterminate', reason: 'status_unavailable' };
+        }
+        if (status_artifact.revoked === true) {
+          return { valid: true, outcome: 'revoked', status: structuredClone(status_artifact) };
+        }
+        return { valid: true, outcome: 'current_not_revoked', status: structuredClone(status_artifact) };
+      },
+      verify_provider_evidence: provider_verifier ?? (async ({ evidence, expected }: any) => {
+        const valid = evidence?.authenticated === true
           && evidence.operation_id === expected.operation_id
           && evidence.caid === expected.caid
           && evidence.action_digest === expected.action_digest
-          && ['COMMITTED', 'NOT_COMMITTED'].includes(evidence.outcome),
-        outcome: evidence?.outcome,
-        evidence_digest: evidence ? digestAeb(evidence) : null,
+          && typeof evidence.evidence_id === 'string'
+          && typeof evidence.observed_at === 'string'
+          && evidence.tenant_id === expected.tenant_id
+          && evidence.request_digest === expected.request_digest
+          && evidence.provider_id === expected.provider_id
+          && evidence.provider_account_id === expected.provider_account_id
+          && evidence.environment === expected.environment
+          && evidence.attempt_id === expected.attempt_id
+          && ['COMMITTED', 'NOT_COMMITTED', 'ESCALATED'].includes(evidence.outcome);
+        return {
+          valid,
+          outcome: evidence?.outcome,
+          evidence_id: evidence?.evidence_id,
+          observed_at: evidence?.observed_at,
+          tenant_id: evidence?.tenant_id,
+          request_digest: evidence?.request_digest,
+          provider_id: evidence?.provider_id,
+          provider_account_id: evidence?.provider_account_id,
+          environment: evidence?.environment,
+          attempt_id: evidence?.attempt_id,
+          operation_id: evidence?.operation_id,
+          caid: evidence?.caid,
+          action_digest: evidence?.action_digest,
+          evidence_digest: evidence ? digestAeb(evidence) : null,
+        };
       }),
     },
-    now: () => Date.parse(NOW),
+    now,
   });
   const proposal = controller.prepare({
     proposal_id: 'proposal:release-1',
@@ -270,7 +437,33 @@ function fixture({
     initiator_id: 'agent:buyer',
     action: harness.action,
   });
-  return { aeb, aebStore, controller, gate, harness, proposal };
+  return { aeb, aebStore, attemptStore, controller, gate, harness, proposal };
+}
+
+function attemptEntry(store: ReturnType<typeof consequenceAttemptStore>, attempt: any) {
+  return store.entries.get(`${attempt.tenant_id}\0${attempt.attempt_id}`);
+}
+
+async function enterIndeterminate(f: ReturnType<typeof fixture>, message = 'provider response lost') {
+  let attempt: any = null;
+  await assert.rejects(
+    f.controller.execute({
+      proposal: f.proposal,
+      receipt: f.harness.mint(),
+      evaluation: f.aeb.evaluation,
+    }, async () => {
+      throw new Error(message);
+    }),
+    (error: any) => {
+      const publicAttempt = error?.proposalToEffect?.attempt;
+      const handle = f.controller.getReconciliationHandle(error);
+      attempt = handle ? { ...publicAttempt, ...handle } : null;
+      return error?.emiliaGateOutcome?.outcome === 'indeterminate'
+        && typeof attempt?.attempt_id === 'string'
+        && typeof attempt?.owner === 'string';
+    },
+  );
+  return attempt;
 }
 
 test('proposal is a server-derived request object, not a second authorization artifact', () => {
@@ -284,6 +477,15 @@ test('proposal is a server-derived request object, not a second authorization ar
   assert.equal(f.proposal.aeb.consumption_nonce, f.aeb.evaluation.consumption_nonce);
   assert.equal(f.proposal.challenge.action_hash, f.proposal.action_digest);
   assert.equal(f.proposal.authorization.flow, VECTOR_SUITE.profile.authorization_flow);
+  assert.deepEqual(
+    { ...f.proposal.consequence, request_digest: undefined },
+    { ...SERVER_CONTEXT, request_digest: undefined },
+  );
+  assert.match(f.proposal.consequence.request_digest, /^sha256:[a-f0-9]{64}$/);
+  assert.deepEqual(Object.keys(f.proposal.integrity).sort(), ['alg', 'value']);
+  assert.equal(f.proposal.integrity.alg, 'HMAC-SHA256');
+  assert.match(f.proposal.integrity.value, /^[A-Za-z0-9_-]{43}$/);
+  assert.equal(Object.hasOwn(f.proposal, 'attempt_id'), false, 'attempt IDs are selected per server-side invocation');
   const claim = vector('proposal_is_not_authority').expect;
   assert.equal(Object.hasOwn(f.proposal, 'signature'), claim.signature);
   assert.equal(Object.hasOwn(f.proposal, 'permit'), claim.permit);
@@ -300,7 +502,7 @@ test('exact proposal mutation refuses before Gate, reservation, or effect', asyn
     f.controller.execute({ proposal: mutated, receipt: f.harness.mint(), evaluation: f.aeb.evaluation }, async () => {
       invoked = true;
     }),
-    new RegExp(mutation.expect.error),
+    /proposal_integrity_invalid/,
   );
   assert.equal(invoked, false);
   assert.equal(f.aebStore.states.size, 0);
@@ -308,11 +510,15 @@ test('exact proposal mutation refuses before Gate, reservation, or effect', asyn
 
 test('recomputed proposal digests cannot detach the action from signed AEB evidence', async () => {
   const f = fixture();
-  const mutated = structuredClone(f.proposal);
-  mutated.action.amount_usd = 40001;
-  mutated.action_digest = approvalActionHash(mutated.action);
-  mutated.aeb_action_digest = digestAeb(mutated.action);
-  mutated.challenge.action_hash = mutated.action_digest;
+  const action = structuredClone(f.proposal.action);
+  action.amount_usd = 40001;
+  const mutated = f.controller.prepare({
+    proposal_id: f.proposal.proposal_id,
+    profile_id: f.proposal.profile_id,
+    operation_id: f.proposal.operation_id,
+    initiator_id: f.proposal.initiator_id,
+    action,
+  });
   let invoked = false;
   const out = await f.controller.execute({
     proposal: mutated,
@@ -345,7 +551,58 @@ test('proposal AEB block is closed and refuses presenter-added control fields', 
   const f = fixture();
   const proposal = structuredClone(f.proposal);
   proposal.aeb.authorized = true;
+  signProposalIntegrity(proposal);
   assert.throws(() => f.controller.verifyProposal(proposal), /proposal_aeb_pin_mismatch/);
+});
+
+test('server proposal integrity cannot bless a non-exact TTL or future creation time', () => {
+  let clock = Date.parse(NOW);
+  const f = fixture({ now: () => clock });
+  const wrongTtl = structuredClone(f.proposal);
+  wrongTtl.expires_at = new Date(Date.parse(wrongTtl.expires_at) + 1).toISOString();
+  signProposalIntegrity(wrongTtl);
+  assert.throws(() => f.controller.verifyProposal(wrongTtl), /proposal_ttl_mismatch/);
+
+  clock -= 1;
+  assert.throws(() => f.controller.verifyProposal(f.proposal), /proposal_created_in_future/);
+});
+
+test('server-resolved authenticated current status and exact executor are required at execution', async () => {
+  const indeterminate = fixture({ current_status: { unavailable: true } });
+  let invoked = false;
+  const missing = await indeterminate.controller.execute({
+    proposal: indeterminate.proposal,
+    receipt: indeterminate.harness.mint(),
+    evaluation: indeterminate.aeb.evaluation,
+  }, async () => { invoked = true; });
+  assert.equal(missing.ok, false);
+  assert.equal(missing.reason, 'aeb_current_status_refused');
+  assert.equal(invoked, false);
+  assert.equal(indeterminate.aebStore.states.size, 0);
+  assert.equal(indeterminate.attemptStore.entries.size, 0);
+
+  const wrongExecutor = fixture({ aeb_executor_id: 'executor:other' });
+  const mismatched = await wrongExecutor.controller.execute({
+    proposal: wrongExecutor.proposal,
+    receipt: wrongExecutor.harness.mint(),
+    evaluation: wrongExecutor.aeb.evaluation,
+  }, async () => { invoked = true; });
+  assert.equal(mismatched.ok, false);
+  assert.equal(mismatched.reason, 'aeb_evaluation_binding_mismatch');
+  assert.equal(wrongExecutor.aebStore.states.size, 0);
+});
+
+test('presenter current_statuses are ignored in favor of the configured resolver and verifier', async () => {
+  const f = fixture();
+  const result = await f.controller.execute({
+    proposal: f.proposal,
+    receipt: f.harness.mint(),
+    evaluation: f.aeb.evaluation,
+    current_statuses: {
+      'artifact:human-approval': { unavailable: true, revoked: true },
+    },
+  } as any, async () => ({ released: true }));
+  assert.equal(result.ok, true, JSON.stringify(result));
 });
 
 test('verified AEB plus Gate authorization reserves once and executes the exact effect', async () => {
@@ -359,10 +616,14 @@ test('verified AEB plus Gate authorization reserves once and executes the exact 
     effects += 1;
     return { released: action.payment_instruction_id };
   });
-  assert.equal(first.ok, true);
+  assert.equal(first.ok, true, JSON.stringify(first));
   assert.equal(first.result.released, f.harness.action.payment_instruction_id);
   assert.equal(effects, 1);
   assert.deepEqual([...f.aebStore.states.values()], ['CONSUMED']);
+  assert.equal(first.consequence.state, 'COMMITTED');
+  assert.equal(Object.hasOwn(first.consequence.attempt, 'owner'), false);
+  assert.equal(attemptEntry(f.attemptStore, first.consequence.attempt).state, 'COMMITTED');
+  assert.equal(first.consequence.attempt.request_digest, f.proposal.consequence.request_digest);
 
   const replay = await f.controller.execute({
     proposal: f.proposal,
@@ -376,7 +637,7 @@ test('verified AEB plus Gate authorization reserves once and executes the exact 
   assert.equal(effects, 1, 'a fresh receipt cannot replay one proposal operation');
 });
 
-test('executed effect with failed AEB commit remains reserved for reconciliation', async () => {
+test('failed AEB commit keeps an executed effect indeterminate and repairable', async () => {
   const f = fixture();
   f.aebStore.commit = async () => false;
   let effects = 0;
@@ -393,6 +654,99 @@ test('executed effect with failed AEB commit remains reserved for reconciliation
   );
   assert.equal(effects, 1);
   assert.deepEqual([...f.aebStore.states.values()], ['RESERVED']);
+  assert.deepEqual([...f.attemptStore.entries.values()].map((entry) => entry.state), ['INDETERMINATE']);
+});
+
+test('owner capability is non-enumerable and retrieved only from the exact in-process object', async () => {
+  const f = fixture();
+  let captured: any;
+  await assert.rejects(f.controller.execute({
+    proposal: f.proposal,
+    receipt: f.harness.mint(),
+    evaluation: f.aeb.evaluation,
+  }, async () => {
+    throw new Error('lost acknowledgement');
+  }), (error: any) => {
+    captured = error;
+    return true;
+  });
+  assert.equal(Object.hasOwn(captured.proposalToEffect.attempt, 'owner'), false);
+  assert.equal(JSON.stringify(captured).includes('owner:'), false);
+  const handle = f.controller.getReconciliationHandle(captured);
+  assert.equal(typeof handle?.owner, 'string');
+  assert.equal(f.controller.getReconciliationHandle(structuredClone(captured)), null);
+});
+
+test('provider verifier cannot assert valid while omitting exact-action reflected claims', async () => {
+  const f = fixture({
+    provider_verifier: async ({ evidence }: any) => ({
+      valid: true,
+      outcome: evidence.outcome,
+      evidence_id: evidence.evidence_id,
+      observed_at: evidence.observed_at,
+      tenant_id: evidence.tenant_id,
+      request_digest: evidence.request_digest,
+      provider_id: evidence.provider_id,
+      provider_account_id: evidence.provider_account_id,
+      environment: evidence.environment,
+      attempt_id: evidence.attempt_id,
+      evidence_digest: digestAeb(evidence),
+    }),
+  });
+  const attempt = await enterIndeterminate(f);
+  const out = await f.controller.reconcile({
+    proposal: f.proposal,
+    evaluation: f.aeb.evaluation,
+    attempt,
+    provider_evidence: providerEvidence(f.proposal, attempt, 'COMMITTED'),
+  });
+  assert.equal(out.ok, false);
+  assert.equal(out.reason, 'provider_evidence_binding_mismatch');
+  assert.equal(attemptEntry(f.attemptStore, attempt).state, 'INDETERMINATE');
+});
+
+test('provider evidence predating the proposal cannot terminalize an attempt', async () => {
+  const f = fixture();
+  const attempt = await enterIndeterminate(f);
+  const evidence = providerEvidence(f.proposal, attempt, 'COMMITTED');
+  evidence.observed_at = '2026-07-22T09:59:59.000Z';
+  const out = await f.controller.reconcile({
+    proposal: f.proposal,
+    evaluation: f.aeb.evaluation,
+    attempt,
+    provider_evidence: evidence,
+  });
+  assert.equal(out.ok, false);
+  assert.equal(out.reason, 'provider_evidence_unverified');
+  assert.equal(attemptEntry(f.attemptStore, attempt).state, 'INDETERMINATE');
+});
+
+test('repairAeb converges legacy terminal consequence states without invoking an effect', async () => {
+  const committedFixture = fixture();
+  const committedAttempt = await enterIndeterminate(committedFixture);
+  attemptEntry(committedFixture.attemptStore, committedAttempt).state = 'COMMITTED';
+  const committedPublic = { ...committedAttempt };
+  delete committedPublic.owner;
+  const committed = await committedFixture.controller.repairAeb({
+    proposal: committedFixture.proposal,
+    evaluation: committedFixture.aeb.evaluation,
+    attempt: committedPublic,
+  });
+  assert.equal(committed.ok, true, JSON.stringify(committed));
+  assert.equal(committed.aeb.state, 'CONSUMED');
+
+  const releasedFixture = fixture();
+  const releasedAttempt = await enterIndeterminate(releasedFixture);
+  attemptEntry(releasedFixture.attemptStore, releasedAttempt).state = 'RELEASED';
+  const releasedPublic = { ...releasedAttempt };
+  delete releasedPublic.owner;
+  const released = await releasedFixture.controller.repairAeb({
+    proposal: releasedFixture.proposal,
+    evaluation: releasedFixture.aeb.evaluation,
+    attempt: releasedPublic,
+  });
+  assert.equal(released.ok, true, JSON.stringify(released));
+  assert.equal(released.aeb.state, 'AVAILABLE');
 });
 
 test('stale AEB evidence fails closed before Gate reservation and effect', async () => {
@@ -451,17 +805,9 @@ test('Gate pass-through cannot satisfy a Proposal-to-Effect profile', async () =
 
 test('indeterminate effect freezes replay until authenticated provider reconciliation', async () => {
   const f = fixture();
-  await assert.rejects(
-    f.controller.execute({
-      proposal: f.proposal,
-      receipt: f.harness.mint(),
-      evaluation: f.aeb.evaluation,
-    }, async () => {
-      throw new Error('provider response lost');
-    }),
-    (error: any) => error?.emiliaGateOutcome?.outcome === 'indeterminate',
-  );
+  const attempt = await enterIndeterminate(f);
   assert.deepEqual([...f.aebStore.states.values()], ['RESERVED']);
+  assert.equal(attemptEntry(f.attemptStore, attempt).state, 'INDETERMINATE');
 
   const blocked = await f.controller.execute({
     proposal: f.proposal,
@@ -474,13 +820,8 @@ test('indeterminate effect freezes replay until authenticated provider reconcili
   const wrong = await f.controller.reconcile({
     proposal: f.proposal,
     evaluation: f.aeb.evaluation,
-    provider_evidence: {
-      authenticated: false,
-      operation_id: f.proposal.operation_id,
-      caid: f.proposal.caid,
-      action_digest: digestAeb(f.proposal.action),
-      outcome: 'COMMITTED',
-    },
+    attempt,
+    provider_evidence: { ...providerEvidence(f.proposal, attempt, 'COMMITTED'), authenticated: false },
   });
   assert.equal(wrong.ok, false);
   assert.equal(wrong.reason, 'provider_evidence_unverified');
@@ -489,46 +830,42 @@ test('indeterminate effect freezes replay until authenticated provider reconcili
   const reconciled = await f.controller.reconcile({
     proposal: f.proposal,
     evaluation: f.aeb.evaluation,
-    provider_evidence: {
-      authenticated: true,
-      operation_id: f.proposal.operation_id,
-      caid: f.proposal.caid,
-      action_digest: digestAeb(f.proposal.action),
-      outcome: 'COMMITTED',
-    },
+    attempt,
+    provider_evidence: providerEvidence(f.proposal, attempt, 'COMMITTED'),
   });
   assert.equal(reconciled.ok, true);
-  assert.equal(reconciled.state, 'CONSUMED');
+  assert.equal(reconciled.state, 'COMMITTED');
+  assert.equal(attemptEntry(f.attemptStore, attempt).state, 'COMMITTED');
+  assert.equal(attemptEntry(f.attemptStore, attempt).evidence.evidence_id, `evidence:${attempt.attempt_id}`);
   assert.deepEqual([...f.aebStore.states.values()], ['CONSUMED']);
 });
 
 test('authenticated NOT_COMMITTED reconciliation permits one explicit retry', async () => {
   const f = fixture();
   let effects = 0;
-  await assert.rejects(
-    f.controller.execute({
-      proposal: f.proposal,
-      receipt: f.harness.mint(),
-      evaluation: f.aeb.evaluation,
-    }, async () => {
-      effects += 1;
-      throw new Error('provider rejected before commit but response was lost');
-    }),
-    (error: any) => error?.emiliaGateOutcome?.outcome === 'indeterminate',
-  );
+  let firstAttempt: any = null;
+  await assert.rejects(f.controller.execute({
+    proposal: f.proposal,
+    receipt: f.harness.mint(),
+    evaluation: f.aeb.evaluation,
+  }, async () => {
+    effects += 1;
+    throw new Error('provider rejected before commit but response was lost');
+  }), (error: any) => {
+    const publicAttempt = error?.proposalToEffect?.attempt;
+    const handle = f.controller.getReconciliationHandle(error);
+    firstAttempt = handle ? { ...publicAttempt, ...handle } : null;
+    return error?.emiliaGateOutcome?.outcome === 'indeterminate' && Boolean(firstAttempt);
+  });
   const reconciled = await f.controller.reconcile({
     proposal: f.proposal,
     evaluation: f.aeb.evaluation,
-    provider_evidence: {
-      authenticated: true,
-      operation_id: f.proposal.operation_id,
-      caid: f.proposal.caid,
-      action_digest: f.proposal.aeb_action_digest,
-      outcome: 'NOT_COMMITTED',
-    },
+    attempt: firstAttempt,
+    provider_evidence: providerEvidence(f.proposal, firstAttempt, 'NOT_COMMITTED'),
   });
   assert.equal(reconciled.ok, true);
-  assert.equal(reconciled.state, vector('authenticated_not_committed_reconciliation_releases_operation').expect.state);
+  assert.equal(reconciled.state, 'RELEASED');
+  assert.equal(attemptEntry(f.attemptStore, firstAttempt).state, 'RELEASED');
 
   const retried = await f.controller.execute({
     proposal: f.proposal,
@@ -540,7 +877,159 @@ test('authenticated NOT_COMMITTED reconciliation permits one explicit retry', as
   });
   assert.equal(retried.ok, true);
   assert.equal(effects, 2);
+  assert.notEqual(retried.consequence.attempt.attempt_id, firstAttempt.attempt_id);
+  assert.equal(attemptEntry(f.attemptStore, retried.consequence.attempt).state, 'COMMITTED');
   assert.deepEqual([...f.aebStore.states.values()], ['CONSUMED']);
+});
+
+test('NOT_COMMITTED reconciliation cannot run concurrently with an invoking effect', async () => {
+  let effectStarted!: () => void;
+  let finishEffect!: () => void;
+  const started = new Promise<void>((resolve) => { effectStarted = resolve; });
+  const finish = new Promise<void>((resolve) => { finishEffect = resolve; });
+  const f = fixture({
+    gate_override: {
+      async check() {
+        return { allow: true, reason: 'authorized', requirement: { receipt_required: true } };
+      },
+      async run(_input: any, callback: any) {
+        const result = await callback({ decision: 'authorized' });
+        return { ok: true, result };
+      },
+    },
+  });
+  const executing = f.controller.execute({
+    proposal: f.proposal,
+    receipt: f.harness.mint(),
+    evaluation: f.aeb.evaluation,
+  }, async () => {
+    effectStarted();
+    await finish;
+    return { released: true };
+  });
+  const phase = await Promise.race([
+    started.then(() => 'started' as const),
+    executing.then(() => 'ended' as const, () => 'ended' as const),
+  ]);
+  if (phase !== 'started') {
+    finishEffect();
+    assert.fail('execution refused before reaching the controlled effect');
+  }
+  const entry = [...f.attemptStore.entries.values()][0];
+  assert.equal(entry.state, 'INVOKING');
+  const attempt = { tenant_id: entry.tenant_id, attempt_id: entry.attempt_id, owner: entry.owner };
+  const raced = await f.controller.reconcile({
+    proposal: f.proposal,
+    evaluation: f.aeb.evaluation,
+    attempt,
+    provider_evidence: providerEvidence(f.proposal, attempt, 'NOT_COMMITTED'),
+  });
+  const stateDuringRace = entry.state;
+  const aebDuringRace = [...f.aebStore.states.values()];
+  finishEffect();
+  const completion = await executing.then(
+    (value: any) => ({ value, error: null }),
+    (error: any) => ({ value: null, error }),
+  );
+  assert.equal(raced.ok, false);
+  assert.equal(raced.reason, 'consequence_attempt_not_indeterminate');
+  assert.equal(stateDuringRace, 'INVOKING');
+  assert.deepEqual(aebDuringRace, ['RESERVED']);
+  assert.equal(completion.error, null);
+  assert.equal(completion.value.ok, true);
+  assert.equal(entry.state, 'COMMITTED');
+});
+
+test('attempt-1 evidence and delayed owner transitions cannot mutate attempt-2 or reopen attempt-1', async () => {
+  const f = fixture({
+    provider_verifier: async ({ evidence }: any) => ({
+      valid: true,
+      outcome: evidence.outcome,
+      evidence_id: evidence.evidence_id,
+      observed_at: evidence.observed_at,
+      tenant_id: evidence.tenant_id,
+      request_digest: evidence.request_digest,
+      provider_id: evidence.provider_id,
+      provider_account_id: evidence.provider_account_id,
+      environment: evidence.environment,
+      attempt_id: evidence.attempt_id,
+      operation_id: evidence.operation_id,
+      caid: evidence.caid,
+      action_digest: evidence.action_digest,
+      evidence_digest: digestAeb(evidence),
+    }),
+  });
+  const attempt1 = await enterIndeterminate(f, 'attempt 1 response lost');
+  const evidence1 = providerEvidence(f.proposal, attempt1, 'NOT_COMMITTED');
+  const released = await f.controller.reconcile({
+    proposal: f.proposal,
+    evaluation: f.aeb.evaluation,
+    attempt: attempt1,
+    provider_evidence: evidence1,
+  });
+  assert.equal(released.state, 'RELEASED');
+
+  const attempt2 = await enterIndeterminate(f, 'attempt 2 response lost');
+  assert.notEqual(attempt2.attempt_id, attempt1.attempt_id);
+  const replayed = await f.controller.reconcile({
+    proposal: f.proposal,
+    evaluation: f.aeb.evaluation,
+    attempt: attempt2,
+    provider_evidence: evidence1,
+  });
+  assert.equal(replayed.ok, false);
+  assert.equal(replayed.reason, 'provider_evidence_binding_mismatch');
+  assert.equal(attemptEntry(f.attemptStore, attempt2).state, 'INDETERMINATE');
+
+  const wrongOwner = await f.controller.reconcile({
+    proposal: f.proposal,
+    evaluation: f.aeb.evaluation,
+    attempt: { ...attempt2, owner: attempt1.owner },
+    provider_evidence: providerEvidence(f.proposal, attempt2, 'NOT_COMMITTED'),
+  });
+  assert.equal(wrongOwner.ok, false);
+  assert.equal(wrongOwner.reason, 'consequence_attempt_not_indeterminate');
+  assert.equal(attemptEntry(f.attemptStore, attempt2).state, 'INDETERMINATE');
+
+  const delayed = await f.controller.reconcile({
+    proposal: f.proposal,
+    evaluation: f.aeb.evaluation,
+    attempt: attempt1,
+    provider_evidence: providerEvidence(f.proposal, attempt1, 'COMMITTED'),
+  });
+  assert.equal(delayed.ok, false);
+  assert.equal(delayed.reason, 'consequence_attempt_not_indeterminate');
+  assert.equal(attemptEntry(f.attemptStore, attempt1).state, 'RELEASED');
+  assert.equal(attemptEntry(f.attemptStore, attempt2).state, 'INDETERMINATE');
+});
+
+test('a duck-typed Gate that invokes the callback then returns refusal freezes custody', async () => {
+  let effects = 0;
+  const f = fixture({
+    gate_override: {
+      async check() {
+        return { allow: true, reason: 'authorized', requirement: { receipt_required: true } };
+      },
+      async run(_input: any, callback: any) {
+        await callback({ decision: 'authorized' });
+        return { ok: false, reason: 'dishonest_refusal' };
+      },
+    },
+  });
+  const refused = await f.controller.execute({
+    proposal: f.proposal,
+    receipt: f.harness.mint(),
+    evaluation: f.aeb.evaluation,
+  }, async () => {
+    effects += 1;
+    return { released: true };
+  });
+  assert.equal(refused.ok, false);
+  assert.equal(refused.reason, 'dishonest_refusal');
+  assert.equal(effects, 1);
+  assert.equal(refused.consequence.state, 'INDETERMINATE');
+  assert.equal(attemptEntry(f.attemptStore, refused.consequence.attempt).state, 'INDETERMINATE');
+  assert.deepEqual([...f.aebStore.states.values()], ['RESERVED']);
 });
 
 test('beginApproval uses the existing pinned EP-APPROVAL-v1 acquisition rail', async () => {

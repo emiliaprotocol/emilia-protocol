@@ -14,7 +14,7 @@
  * separately owned and are injected by the relying party.
  */
 import crypto from 'node:crypto';
-import { canonicalize } from '../index.js';
+import { canonicalize } from './index.js';
 export const AUTHORITY_PROGRAM_VERSION = 'EP-AUTHORITY-PROGRAM-v1';
 export const AUTHORITY_PROGRAM_DOMAIN = 'EP-AUTHORITY-PROGRAM-v1\0';
 export const AUTHORITY_STAGE_RECEIPT_VERSION = 'EP-AUTHORITY-STAGE-RECEIPT-v1';

@@ -45,7 +45,7 @@
  * @license Apache-2.0
  */
 import crypto from 'node:crypto';
-import { canonicalize } from '../index.js';
+import { canonicalize } from './index.js';
 import { verifyRevocation } from './revocation.js';
 export const CONSENT_GRANT_VERSION = 'EP-CONSENT-GRANT-v1';
 const HASH_PREFIX = /^sha256:/i;

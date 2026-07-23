@@ -71,6 +71,7 @@ export const STANDALONE_RUNTIME_SOURCES = [
   'lib/ncpdp/rx-reliance.ts',
   'lib/negotiate/evidence-challenge.ts',
   'lib/provenance/chain.ts',
+  'lib/revocation/status.ts',
   'lib/scoring-v2.ts',
   'lib/scoring.ts',
   // (lib/strict-json.js is deliberately NOT here: it is a vendored,

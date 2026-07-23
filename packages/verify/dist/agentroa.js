@@ -16,7 +16,7 @@
  * that the protected operation subsequently executed or succeeded.
  */
 import crypto from 'node:crypto';
-import { canonicalize } from '../index.js';
+import { canonicalize } from './index.js';
 export const AGENTROA_DRAFT = 'draft-nivalto-agentroa-route-authorization-01';
 const SHA256 = /^sha256:[0-9a-f]{64}$/;
 const ENVELOPE_ID = /^env:[0-9a-f]{16}$/;

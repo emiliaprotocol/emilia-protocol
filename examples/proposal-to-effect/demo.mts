@@ -40,6 +40,7 @@ const adapter: any = {
       native_verification: trusted ? 'VERIFIED' : 'FAILED',
       acceptance: trusted ? 'ACCEPTED' : 'REJECTED',
       evidence_digest: digestAeb(artifact),
+      replay_unit: digestAeb({ root: artifact.root, caid: artifact.caid }),
       status_digest: digestAeb({
         checked_at: status.checked_at,
         expires_at: status.expires_at,
@@ -113,6 +114,7 @@ const aebConfig: any = {
       all_of: ['human-authorization'],
       terms: [
         { type: 'initiator-exclusion', roles: ['human-authorization'] },
+        { type: 'executor-exclusion', roles: ['human-authorization'] },
         { type: 'one-time-consumption' },
       ],
     },
@@ -128,6 +130,7 @@ const evaluation = evaluateAebEvidence({
     pinnedConfigDigest(aebConfig),
   ),
   initiator_id: 'agent:buyer',
+  executor_id: 'agent:executor',
   requirement_ref: 'requirement:proposal-to-effect',
   caid: CAID,
   legs: [{
@@ -148,14 +151,18 @@ const evaluation = evaluateAebEvidence({
 }).record;
 
 const states = new Map<string, 'RESERVED' | 'CONSUMED'>();
+const nativeReplay = new Set<string>();
 const aebStore: any = {
   durable: true,
   ownershipFenced: true,
   permanentConsumption: true,
-  async reserve(key: string) {
+  atomicReplayFenced: true,
+  async reserve(key: string, replayKeys: readonly string[]) {
     if (states.has(key)) return false;
+    if (replayKeys.some((replayKey) => nativeReplay.has(replayKey))) return 'NATIVE_REPLAY_CONFLICT';
     states.set(key, 'RESERVED');
-    return true;
+    replayKeys.forEach((replayKey) => nativeReplay.add(replayKey));
+    return 'RESERVED';
   },
   async commit(key: string) {
     if (states.get(key) !== 'RESERVED') return false;
@@ -165,7 +172,47 @@ const aebStore: any = {
   async release(key: string) {
     if (states.get(key) !== 'RESERVED') return false;
     states.delete(key);
+    // Demo-only single-process rollback. Production uses the PostgreSQL store,
+    // which removes the operation's replay fences in the same transaction.
+    nativeReplay.clear();
     return true;
+  },
+};
+type AttemptState = 'RESERVED' | 'INVOKING' | 'INDETERMINATE' | 'COMMITTED' | 'RELEASED' | 'ESCALATED';
+const attempts = new Map<string, { owner: string; state: AttemptState; binding: any }>();
+const consequenceStore: any = {
+  durable: true,
+  ownershipFenced: true,
+  compareAndSwap: true,
+  atomicEvidenceBinding: true,
+  async reserve(binding: any) {
+    if (attempts.has(binding.attempt_id)) return { reserved: false, reason: 'consequence_attempt_conflict' };
+    const owner = `demo-owner:${crypto.randomUUID()}`;
+    attempts.set(binding.attempt_id, { owner, state: 'RESERVED', binding: structuredClone(binding) });
+    return { reserved: true, owner };
+  },
+  async transition(input: any) {
+    const row = attempts.get(input.attempt_id);
+    if (!row || row.owner !== input.owner || row.binding.tenant_id !== input.tenant_id
+        || row.state !== input.expected_state) return false;
+    row.state = input.next_state;
+    return true;
+  },
+  async reconcile(input: any) {
+    const row = attempts.get(input.attempt_id);
+    if (!row || row.owner !== input.owner || row.binding.tenant_id !== input.tenant_id
+        || row.state !== input.expected_state) return false;
+    row.state = input.next_state;
+    return true;
+  },
+  async read(binding: any) {
+    const row = attempts.get(binding.attempt_id);
+    if (!row || row.binding.tenant_id !== binding.tenant_id
+        || row.binding.provider_id !== binding.provider_id
+        || row.binding.provider_account_id !== binding.provider_account_id
+        || row.binding.environment !== binding.environment
+        || row.binding.request_digest !== binding.request_digest) return null;
+    return { state: row.state, evidence_digest: null };
   },
 };
 const gate = createTrustedActionFirewall({
@@ -178,6 +225,17 @@ const gate = createTrustedActionFirewall({
 });
 const controller = createProposalToEffect({
   gate,
+  proposal_integrity: {
+    hmac_sha256_key: crypto.createHash('sha256').update('proposal-to-effect-demo-key').digest(),
+  },
+  consequence: {
+    tenant_id: 'tenant:demo',
+    provider_id: 'provider:demo',
+    provider_account_id: 'provider-account:demo',
+    environment: 'demo',
+    executor_id: 'agent:executor',
+    store: consequenceStore,
+  },
   profiles: {
     'payment-release': {
       id: 'payment-release',
@@ -201,6 +259,21 @@ const controller = createProposalToEffect({
     adapters: { [adapter.id]: adapter },
     store: aebStore,
     resolve_artifacts: () => ({ 'artifact:human-approval': artifact }),
+    // Demo fixture only. Production resolves EP-STATUS-v1 artifacts and runs
+    // createProposalToEffectStatusVerifier with pinned authority/head state.
+    currentStatusResolver: ({ leg }: any) => ({ artifact_ref: leg.artifact_ref }),
+    statusVerifier: ({ status_artifact, expected }: any) => ({
+      valid: status_artifact?.artifact_ref === expected.artifact_ref,
+      outcome: status_artifact?.artifact_ref === expected.artifact_ref
+        ? 'current_not_revoked' : 'indeterminate',
+      status: status_artifact?.artifact_ref === expected.artifact_ref ? {
+        checked_at: '2026-07-22T11:59:00Z',
+        expires_at: '2026-07-22T12:05:00Z',
+        revocation_checked: true,
+        revoked: false,
+        consumed: false,
+      } : null,
+    }),
     verify_provider_evidence: () => ({ valid: false, reason: 'demo_does_not_reconcile' }),
   },
   now: () => Date.parse(NOW),

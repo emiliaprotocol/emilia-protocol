@@ -373,8 +373,9 @@ describe('mutation oracles for Gate admission inputs', () => {
       registerCapability() {},
       reserveSpend() {},
       commitSpend() {},
+      reconcileSpend() {},
     };
-    for (const method of ['registerCapability', 'reserveSpend', 'commitSpend']) {
+    for (const method of ['registerCapability', 'reserveSpend', 'commitSpend', 'reconcileSpend']) {
       expect(() => createGate({
         capabilityStore: { ...capabilityStore, [method]: undefined },
         capabilityTrustedIssuerKeys: ['issuer-key'],

@@ -1,6 +1,6 @@
 {
   "name": "@emilia-protocol/gate",
-  "version": "0.14.0",
+  "version": "0.15.0",
   "repository": {
     "type": "git",
     "url": "https://github.com/emiliaprotocol/emilia-protocol.git",
@@ -10,69 +10,277 @@
   "license": "Apache-2.0",
   "type": "module",
   "main": "index.js",
+  "types": "dist/index.d.ts",
   "exports": {
-    ".": "./index.js",
-    "./action-control-manifest": "./action-control-manifest.js",
-    "./mcp": "./mcp.js",
-    "./adapters/github": "./adapters/github.js",
-    "./adapters/stripe": "./adapters/stripe.js",
-    "./adapters/supabase": "./adapters/supabase.js",
-    "./adapters/aws": "./adapters/aws.js",
-    "./adapters/k8s": "./adapters/k8s.js",
-    "./adapters/terraform": "./adapters/terraform.js",
-    "./adapters/gcp": "./adapters/gcp.js",
-    "./adapters/vercel": "./adapters/vercel.js",
-    "./adapters/cloudflare": "./adapters/cloudflare.js",
-    "./adapters/linear": "./adapters/linear.js",
-    "./adapters/jira": "./adapters/jira.js",
-    "./adapters/salesforce": "./adapters/salesforce.js",
-    "./key-registry": "./key-registry.js",
-    "./retention": "./retention.js",
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./index.js"
+    },
+    "./action-control-manifest": {
+      "types": "./dist/action-control-manifest.d.ts",
+      "import": "./action-control-manifest.js"
+    },
+    "./mcp": {
+      "types": "./dist/mcp.d.ts",
+      "import": "./mcp.js"
+    },
+    "./adapters/github": {
+      "types": "./dist/adapters/github.d.ts",
+      "import": "./adapters/github.js"
+    },
+    "./adapters/stripe": {
+      "types": "./dist/adapters/stripe.d.ts",
+      "import": "./adapters/stripe.js"
+    },
+    "./adapters/supabase": {
+      "types": "./dist/adapters/supabase.d.ts",
+      "import": "./adapters/supabase.js"
+    },
+    "./adapters/aws": {
+      "types": "./dist/adapters/aws.d.ts",
+      "import": "./adapters/aws.js"
+    },
+    "./adapters/k8s": {
+      "types": "./dist/adapters/k8s.d.ts",
+      "import": "./adapters/k8s.js"
+    },
+    "./adapters/terraform": {
+      "types": "./dist/adapters/terraform.d.ts",
+      "import": "./adapters/terraform.js"
+    },
+    "./adapters/gcp": {
+      "types": "./dist/adapters/gcp.d.ts",
+      "import": "./adapters/gcp.js"
+    },
+    "./adapters/vercel": {
+      "types": "./dist/adapters/vercel.d.ts",
+      "import": "./adapters/vercel.js"
+    },
+    "./adapters/cloudflare": {
+      "types": "./dist/adapters/cloudflare.d.ts",
+      "import": "./adapters/cloudflare.js"
+    },
+    "./adapters/linear": {
+      "types": "./dist/adapters/linear.d.ts",
+      "import": "./adapters/linear.js"
+    },
+    "./adapters/jira": {
+      "types": "./dist/adapters/jira.d.ts",
+      "import": "./adapters/jira.js"
+    },
+    "./adapters/salesforce": {
+      "types": "./dist/adapters/salesforce.d.ts",
+      "import": "./adapters/salesforce.js"
+    },
+    "./key-registry": {
+      "types": "./dist/key-registry.d.ts",
+      "import": "./key-registry.js"
+    },
+    "./retention": {
+      "types": "./dist/retention.d.ts",
+      "import": "./retention.js"
+    },
     "./package.json": "./package.json",
-    "./enterprise": "./enterprise.js",
-    "./metering": "./metering.js",
-    "./network-witness": "./network-witness.js",
-    "./deployment-attestation": "./deployment-attestation.js",
-    "./coverage": "./coverage.js",
-    "./settlement": "./settlement.js",
-    "./control-plane": "./control-plane.js",
-    "./siem": "./siem.js",
-    "./roster": "./roster.js",
-    "./reports/art14": "./reports/art14.js",
-    "./reports/underwriter": "./reports/underwriter.js",
-    "./metrics": "./metrics.js",
-    "./breakglass": "./breakglass.js",
-    "./challenge-store": "./challenge-store.js",
-    "./store-postgres": "./store-postgres.js",
-    "./evidence-postgres": "./evidence-postgres.js",
-    "./witness-postgres": "./witness-postgres.js",
-    "./evidence": "./evidence.js",
-    "./action-escrow": "./action-escrow.js",
-    "./action-escrow-evidence": "./action-escrow-evidence.js",
-    "./action-escrow-state": "./action-escrow-state.js",
-    "./action-escrow-postgres": "./action-escrow-postgres.js",
-    "./action-escrow-verifiers": "./action-escrow-verifiers.js",
-    "./action-escrow-custodian": "./action-escrow-custodian.js",
-    "./action-escrow-package": "./action-escrow-package.js",
-    "./reports/auditor-workpaper": "./reports/auditor-workpaper.js",
-    "./reports/reperform": "./reports/reperform.js",
-    "./reports/external-verification": "./reports/external-verification.js",
-    "./reports/assurance-package": "./reports/assurance-package.js",
-    "./reliance-kernel": "./reliance-kernel.js",
-    "./aec-execution": "./aec-execution.js",
-    "./runtime-monitor": "./runtime-monitor.js",
-    "./formal-runtime-map": "./formal-runtime-map.js",
-    "./capability-receipt": "./capability-receipt.js",
-    "./receipt-program": "./receipt-program.js",
-    "./trust-program": "./trust-program.js",
-    "./trust-program-adapters": "./trust-program-adapters.js",
-    "./trust-program-postgres": "./trust-program-postgres.js",
-    "./trust-program-revocation": "./trust-program-revocation.js",
-    "./remedy-program": "./remedy-program.js",
-    "./remedy-program-receipt": "./remedy-program-receipt.js",
-    "./remedy-program-postgres": "./remedy-program-postgres.js",
-    "./proposal-to-effect": "./proposal-to-effect.js",
-    "./zk-range-proof": "./zk-range-proof.js"
+    "./enterprise": {
+      "types": "./dist/enterprise.d.ts",
+      "import": "./enterprise.js"
+    },
+    "./metering": {
+      "types": "./dist/metering.d.ts",
+      "import": "./metering.js"
+    },
+    "./network-witness": {
+      "types": "./dist/network-witness.d.ts",
+      "import": "./network-witness.js"
+    },
+    "./deployment-attestation": {
+      "types": "./dist/deployment-attestation.d.ts",
+      "import": "./deployment-attestation.js"
+    },
+    "./coverage": {
+      "types": "./dist/coverage.d.ts",
+      "import": "./coverage.js"
+    },
+    "./settlement": {
+      "types": "./dist/settlement.d.ts",
+      "import": "./settlement.js"
+    },
+    "./control-plane": {
+      "types": "./dist/control-plane.d.ts",
+      "import": "./control-plane.js"
+    },
+    "./siem": {
+      "types": "./dist/siem.d.ts",
+      "import": "./siem.js"
+    },
+    "./roster": {
+      "types": "./dist/roster.d.ts",
+      "import": "./roster.js"
+    },
+    "./reports/art14": {
+      "types": "./dist/reports/art14.d.ts",
+      "import": "./reports/art14.js"
+    },
+    "./reports/underwriter": {
+      "types": "./dist/reports/underwriter.d.ts",
+      "import": "./reports/underwriter.js"
+    },
+    "./metrics": {
+      "types": "./dist/metrics.d.ts",
+      "import": "./metrics.js"
+    },
+    "./breakglass": {
+      "types": "./dist/breakglass.d.ts",
+      "import": "./breakglass.js"
+    },
+    "./challenge-store": {
+      "types": "./dist/challenge-store.d.ts",
+      "import": "./challenge-store.js"
+    },
+    "./store-postgres": {
+      "types": "./dist/store-postgres.d.ts",
+      "import": "./store-postgres.js"
+    },
+    "./evidence-postgres": {
+      "types": "./dist/evidence-postgres.d.ts",
+      "import": "./evidence-postgres.js"
+    },
+    "./witness-postgres": {
+      "types": "./dist/witness-postgres.d.ts",
+      "import": "./witness-postgres.js"
+    },
+    "./evidence": {
+      "types": "./dist/evidence.d.ts",
+      "import": "./evidence.js"
+    },
+    "./action-escrow": {
+      "types": "./dist/action-escrow.d.ts",
+      "import": "./action-escrow.js"
+    },
+    "./action-escrow-evidence": {
+      "types": "./dist/action-escrow-evidence.d.ts",
+      "import": "./action-escrow-evidence.js"
+    },
+    "./action-escrow-state": {
+      "types": "./dist/action-escrow-state.d.ts",
+      "import": "./action-escrow-state.js"
+    },
+    "./action-escrow-postgres": {
+      "types": "./dist/action-escrow-postgres.d.ts",
+      "import": "./action-escrow-postgres.js"
+    },
+    "./action-escrow-verifiers": {
+      "types": "./dist/action-escrow-verifiers.d.ts",
+      "import": "./action-escrow-verifiers.js"
+    },
+    "./action-escrow-custodian": {
+      "types": "./dist/action-escrow-custodian.d.ts",
+      "import": "./action-escrow-custodian.js"
+    },
+    "./action-escrow-package": {
+      "types": "./dist/action-escrow-package.d.ts",
+      "import": "./action-escrow-package.js"
+    },
+    "./reports/auditor-workpaper": {
+      "types": "./dist/reports/auditor-workpaper.d.ts",
+      "import": "./reports/auditor-workpaper.js"
+    },
+    "./reports/reperform": {
+      "types": "./dist/reports/reperform.d.ts",
+      "import": "./reports/reperform.js"
+    },
+    "./reports/external-verification": {
+      "types": "./dist/reports/external-verification.d.ts",
+      "import": "./reports/external-verification.js"
+    },
+    "./reports/assurance-package": {
+      "types": "./dist/reports/assurance-package.d.ts",
+      "import": "./reports/assurance-package.js"
+    },
+    "./reliance-kernel": {
+      "types": "./dist/reliance-kernel.d.ts",
+      "import": "./reliance-kernel.js"
+    },
+    "./aec-execution": {
+      "types": "./dist/aec-execution.d.ts",
+      "import": "./aec-execution.js"
+    },
+    "./runtime-monitor": {
+      "types": "./dist/runtime-monitor.d.ts",
+      "import": "./runtime-monitor.js"
+    },
+    "./formal-runtime-map": {
+      "types": "./dist/formal-runtime-map.d.ts",
+      "import": "./formal-runtime-map.js"
+    },
+    "./capability-receipt": {
+      "types": "./dist/capability-receipt.d.ts",
+      "import": "./capability-receipt.js"
+    },
+    "./receipt-program": {
+      "types": "./dist/receipt-program.d.ts",
+      "import": "./receipt-program.js"
+    },
+    "./trust-program": {
+      "types": "./dist/trust-program.d.ts",
+      "import": "./trust-program.js"
+    },
+    "./trust-program-adapters": {
+      "types": "./dist/trust-program-adapters.d.ts",
+      "import": "./trust-program-adapters.js"
+    },
+    "./trust-program-postgres": {
+      "types": "./dist/trust-program-postgres.d.ts",
+      "import": "./trust-program-postgres.js"
+    },
+    "./trust-program-revocation": {
+      "types": "./dist/trust-program-revocation.d.ts",
+      "import": "./trust-program-revocation.js"
+    },
+    "./remedy-program": {
+      "types": "./dist/remedy-program.d.ts",
+      "import": "./remedy-program.js"
+    },
+    "./remedy-program-receipt": {
+      "types": "./dist/remedy-program-receipt.d.ts",
+      "import": "./remedy-program-receipt.js"
+    },
+    "./remedy-program-postgres": {
+      "types": "./dist/remedy-program-postgres.d.ts",
+      "import": "./remedy-program-postgres.js"
+    },
+    "./remedy-program-adapters": {
+      "types": "./dist/remedy-program-adapters.d.ts",
+      "import": "./remedy-program-adapters.js"
+    },
+    "./remedy-case-set": {
+      "types": "./dist/remedy-case-set.d.ts",
+      "import": "./remedy-case-set.js"
+    },
+    "./remedy-case-set-postgres": {
+      "types": "./dist/remedy-case-set-postgres.d.ts",
+      "import": "./remedy-case-set-postgres.js"
+    },
+    "./proposal-to-effect": {
+      "types": "./dist/proposal-to-effect.d.ts",
+      "import": "./proposal-to-effect.js"
+    },
+    "./proposal-to-effect-status": {
+      "types": "./dist/proposal-to-effect-status.d.ts",
+      "import": "./proposal-to-effect-status.js"
+    },
+    "./proposal-to-effect-postgres": {
+      "types": "./dist/proposal-to-effect-postgres.d.ts",
+      "import": "./proposal-to-effect-postgres.js"
+    },
+    "./aeb-consumption-store": {
+      "types": "./dist/aeb-consumption-store.d.ts",
+      "import": "./aeb-consumption-store.js"
+    },
+    "./zk-range-proof": {
+      "types": "./dist/zk-range-proof.d.ts",
+      "import": "./zk-range-proof.js"
+    }
   },
   "bin": {
     "ep-assure": "./ep-assure.mjs"
@@ -112,7 +320,13 @@
     "remedy-program.js",
     "remedy-program-receipt.js",
     "remedy-program-postgres.js",
+    "remedy-program-adapters.js",
+    "remedy-case-set.js",
+    "remedy-case-set-postgres.js",
     "proposal-to-effect.js",
+    "proposal-to-effect-status.js",
+    "proposal-to-effect-postgres.js",
+    "aeb-consumption-store.js",
     "zk-range-proof.js",
     "reports/assurance-package.js",
     "ep-assure.mjs",
@@ -177,6 +391,7 @@
   ],
   "scripts": {
     "build": "tsc -p tsconfig.json && node postbuild-ts-nocheck.mjs",
+    "prepack": "npm run build",
     "pretest": "npm run build",
     "test": "node --test",
     "demo": "node demo.mjs",
@@ -186,7 +401,7 @@
   "dependencies": {
     "@noble/curves": "2.2.0",
     "@emilia-protocol/require-receipt": "0.7.0",
-    "@emilia-protocol/verify": "3.13.0"
+    "@emilia-protocol/verify": "3.14.0"
   },
   "keywords": [
     "emilia",

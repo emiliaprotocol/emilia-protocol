@@ -3,15 +3,19 @@
 All notable changes to `@emilia-protocol/verify` are documented here.
 This package follows [Semantic Versioning](https://semver.org/).
 
-## 3.13.0 (2026-07-22)
+## 3.14.0 (2026-07-22)
 
 ### Added
 
 - `./aeb-adapter-contract`, the relying-party-pinned evidence-adapter boundary
   with deterministic native verification, loss-detecting CAID mapping,
   signed and re-derivable evaluation records, and durable execution lifecycle.
-- First-class AEB requirement terms for distinct-human quorum,
-  initiator exclusion, and mandatory one-time consumption.
+- First-class AEB requirement terms for distinct-human quorum, initiator and
+  executor exclusion, and mandatory one-time consumption.
+- Concrete relying-party-pinned AgentROA and ORPRG AEB adapters with exact
+  CAID mapping and stable native replay identities.
+- `./status`, a signed current-status profile with scoped revoker authority,
+  freshness, monotonic sequence, predecessor binding, and terminal revocation.
 
 ### Security
 
@@ -20,6 +24,14 @@ This package follows [Semantic Versioning](https://semver.org/).
   trust roots, mappings, registries, or requirements are refused.
 - Stale, revoked, unavailable, materially lossy, mismatched, non-rederivable,
   or replayed evidence fails closed before execution.
+- Historical AEB re-derivation is explicitly non-authorizing. Execution mode
+  requires the exact action, a verifier clock, fresh authenticated status for
+  every leg, and a cryptographically validated Ed25519 evaluator key.
+- Federation refuses post-retirement issuance and DNS-rebindable online
+  transports; all resolved addresses and the connected address must satisfy a
+  relying-party-pinned network boundary, with redirects disabled.
+- ORPRG inspection is non-mutating and never claims final native authorization;
+  the Gate must atomically reserve its native replay unit with the AEB action.
 
 ## 3.12.0 (2026-07-21)
 

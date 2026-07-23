@@ -16,7 +16,7 @@
  * party (and any head/epoch freshness pins are satisfied).
  */
 import crypto from 'node:crypto';
-import { canonicalize } from '../index.js';
+import { canonicalize } from './index.js';
 export const AUTHORITY_PROOF_VERSION = 'EP-AUTHORITY-PROOF-v1';
 export const AUTHORITY_PROOF_DOMAIN = 'EP-AUTHORITY-PROOF-v1\0';
 const SHA256_RE = /^sha256:[0-9a-f]{64}$/i;

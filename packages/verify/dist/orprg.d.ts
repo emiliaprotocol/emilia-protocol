@@ -43,6 +43,17 @@ declare function receiptShapeValid(receipt: any): boolean;
 declare function scopeMatchesAction(scope: any, action: any, requireBudget: boolean): boolean;
 declare function signedPayload(receipt: any): Obj;
 /**
+ * Verify every native ORPRG predicate except the final anti-replay mutation.
+ *
+ * This is the first half of a two-phase composition contract. It never returns
+ * `valid:true` and never calls an anti-replay hook, so it cannot be mistaken for
+ * an executable permit. A caller may use the returned stable `replay_key` only
+ * when its own execution gate atomically reserves that key before invocation
+ * and commits it after a conclusive effect. The ordinary verify functions below
+ * remain the one-step consume-and-verify APIs.
+ */
+export declare function inspectOrprgJsonJcsPermit(input: any, options?: any): Obj;
+/**
  * Synchronous verifier suitable for the current synchronous EP-AEC component
  * contract. The anti-replay hook MUST synchronously and atomically consume the
  * supplied key. If it returns a Promise, throws, returns an ambiguous value, or

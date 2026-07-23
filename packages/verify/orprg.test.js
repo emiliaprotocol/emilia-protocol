@@ -6,7 +6,7 @@ import assert from 'node:assert/strict';
 import crypto from 'node:crypto';
 import { canonicalize as canonicalizeCaid } from '../../caid/impl/js/caid.mjs';
 import { verifyAuthorizationChain } from './evidence-chain.js';
-import { ORPRG_ACTION_PROFILE, ORPRG_JSON_JCS_PROFILE, computeOrprgActionDigest, createOrprgAecVerifier, verifyOrprgJsonJcsPermit, verifyOrprgJsonJcsPermitAsync, } from './orprg.js';
+import { ORPRG_ACTION_PROFILE, ORPRG_JSON_JCS_PROFILE, computeOrprgActionDigest, createOrprgAecVerifier, inspectOrprgJsonJcsPermit, verifyOrprgJsonJcsPermit, verifyOrprgJsonJcsPermitAsync, } from './orprg.js';
 const NOW = '2026-07-19T12:00:00Z';
 const POLICY_DIGEST = `sha256:${'a'.repeat(64)}`;
 const EPOCH = 'policy-epoch-42';
@@ -161,6 +161,20 @@ test('a valid permit returns a clean AEC component result and consumes once', ()
     assert.equal(replay.valid, false);
     assert.equal(replay.action_digest, null);
     assert.equal(replay.detail.denial_reason_code, 'ANTI_REPLAY_FAILURE');
+});
+test('two-phase inspection verifies native predicates without consuming replay', () => {
+    const receipt = makeReceipt();
+    const store = replayStore();
+    const inspected = inspectOrprgJsonJcsPermit(receipt, options({ antiReplay: store }));
+    assert.equal(inspected.valid, false);
+    assert.equal(inspected.inspection_valid, true, inspected.detail?.reason);
+    assert.equal(inspected.detail.decision, 'INSPECTED_NOT_CONSUMED');
+    assert.equal(inspected.detail.checks.anti_replay, false);
+    assert.match(inspected.replay_key, /^orprg-replay:sha256:[0-9a-f]{64}$/);
+    assert.equal(store.seen.size, 0);
+    const accepted = verifyOrprgJsonJcsPermit(receipt, options({ antiReplay: store }));
+    assert.equal(accepted.valid, true, accepted.detail?.reason);
+    assert.equal(store.seen.has(inspected.replay_key), true);
 });
 test('re-signing different receipt bytes cannot reuse the same scoped nonce', () => {
     const opts = options();
