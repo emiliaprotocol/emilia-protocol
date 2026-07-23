@@ -148,7 +148,7 @@ jobs:
         run: |
           docker build --file Dockerfile.consequence-control --tag emilia-consequence-control:ci .
           docker run --rm emilia-consequence-control:ci \
-            npm test --prefix /app/apps/consequence-control-service
+            sh -c 'node --test /app/apps/consequence-control-service/test/*.test.js'
           docker run --rm emilia-consequence-control:ci \
             node --input-type=module --eval \
             "await import('/app/apps/consequence-control-service/src/production-config.js'); await import('/app/apps/consequence-control-service/src/server.js');"
