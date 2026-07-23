@@ -50,7 +50,7 @@ const STACK_LAYERS = [
   {
     label: 'Prevent',
     title: 'EMILIA Gate',
-    body: 'The commercial enforcement product. It challenges, verifies, consumes, and records protected actions at an integrated execution boundary.',
+    body: 'The commercial enforcement product. It challenges, verifies, reserves, invokes, reconciles, and records protected actions at an integrated execution boundary.',
     href: '/gate',
     accent: color.gold,
   },
@@ -84,7 +84,7 @@ const HOW_IT_WORKS = [
   { step: '01', accent: color.green, label: 'Observe',  body: 'Start in observe mode: see which configured actions would require stronger approval — payments, overrides, vendor changes, autonomous AI actions — without blocking them.' },
   { step: '02', accent: color.blue,  label: 'Verify',   body: 'EMILIA Gate sits between approval and execution. Before a high-risk write reaches the system of record, it binds verified actor identity, authority chain, policy-pinned action context, and a one-time nonce.' },
   { step: '03', accent: color.gold,  label: 'Own',      body: 'Where policy requires it, a directory-bound approver signs off on the exact action — on an enrolled device, bound to the exact action hash. Profiles can require initiator exclusion and an ordered, distinct-human quorum before execution.' },
-  { step: '04', accent: color.t2,    label: 'Seal',     body: 'Signed, portable authorization evidence is produced for offline verification under the relying party’s pinned inputs with `npm install @emilia-protocol/verify`; deployments can add transparency anchoring when required.' },
+  { step: '04', accent: color.t2,    label: 'Seal',     body: 'Gate records the terminal result. If provider entry occurred but the result is uncertain, it refuses blind replay until authenticated evidence reconciles the same operation. Any refund, return, or reversal is a separately authorized remedy—not rewritten history.' },
 ];
 
 // Eight bindings — the mechanical reasons a high-risk action can't be faked or
@@ -95,7 +95,7 @@ const BINDINGS = [
   { n: '03', accent: color.gold,  label: 'Policy binding',           body: 'The receipt binds the policy content that was in force, not just a policy name or version label.' },
   { n: '04', accent: color.green, label: 'Authority binding',        body: 'Holding a credential is separate from holding permission to approve. Gate evaluates the signer against the relying party’s pinned authority sources and scope.' },
   { n: '05', accent: color.blue,  label: 'Class-A enforcement',      body: 'High-risk actions require a passkey / WebAuthn device signoff — or stronger. Weaker assurance fails closed.' },
-  { n: '06', accent: color.gold,  label: 'Execution attestation',    body: 'After approval, the executor can attest what it reports running. The verifier detects drift from the approved action without treating that statement as proof of physical truth.' },
+  { n: '06', accent: color.gold,  label: 'Consequence custody',      body: 'Gate reserves before provider entry, records executed or indeterminate outcomes, refuses blind replay, and allows only authenticated same-action reconciliation. A remedy is a new authorized action, never a rewrite of the original effect.' },
   { n: '07', accent: color.green, label: 'Strict offline verifier',  body: 'Outside parties verify pinned keys, RP identity, and policy hash without trusting EMILIA’s server. npm install @emilia-protocol/verify.' },
   { n: '08', accent: color.blue,  label: 'SDK wrapper',              body: 'Developers adopt the invariant directly around a dangerous write with requireReceipt(...) — no rebuild of the call site.' },
 ];
@@ -354,9 +354,11 @@ export default function HomePage() {
             <p style={{ fontSize: 15, color: color.t2, lineHeight: 1.72, maxWidth: 760, marginTop: 16 }}>
               Action Escrow shows the chain on one exact release. If a provider is entered but its
               result cannot be established, Gate refuses blind replay and holds the operation
-              indeterminate until authenticated evidence reconciles it. The Assurance Plane then
-              re-performs the record against public verification, conformance, and formal-model
-              evidence.
+              indeterminate until authenticated evidence reconciles it. A dispute can open a
+              durable case, but a refund, return, reversal, or other remedy must be separately
+              authorized under its own CAID. The original record is never rewritten. The Assurance
+              Plane then re-performs the record against public verification, conformance, and
+              formal-model evidence.
             </p>
             <div style={{ display: 'flex', flexWrap: 'wrap', gap: 12, marginTop: 24 }}>
               <Link href="/action-escrow" className="ep-cta-secondary" style={cta.secondary}>Open Action Escrow →</Link>

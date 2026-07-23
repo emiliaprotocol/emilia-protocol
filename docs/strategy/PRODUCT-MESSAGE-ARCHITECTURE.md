@@ -3,7 +3,7 @@
 
 *Status: canonical public-message doctrine*
 
-*Last updated: 2026-07-17*
+*Last updated: 2026-07-22*
 
 This document keeps the product, protocol, apps, assurance services, standards, and vertical profiles in one coherent company story. It governs public repository narrative, machine-facing context, marketing architecture, decks, product documentation, and future copy reviews. Runtime and security claims remain governed by the higher-precedence evidence sources named in `docs/ai/context-source.v1.json`.
 
@@ -35,7 +35,11 @@ EMILIA Gate holds the consequential action at the executor
 EMILIA Approver captures a device-bound human decision
           |
           v
-EMILIA Gate verifies, authorizes locally, consumes once, and executes
+EMILIA Gate verifies, authorizes locally, reserves, invokes, and records
+          |
+          +-- uncertainty remains closed until authenticated reconciliation
+          |
+          +-- disputes may open a case; remedies require a new authorized action
           |
           v
 EMILIA Protocol evidence survives for independent verification
@@ -48,9 +52,9 @@ EMILIA Assurance Plane re-performs the deployment's claims
 
 **Role:** The commercial product and enforcement plane.
 
-Gate belongs immediately before the system that can mutate state: an MCP tool, API handler, payment rail, cloud control, clinical determination workflow, grid actuator, or physical controller. It checks the relying party's evidence requirements and local policy before calling the executor. Missing or insufficient evidence produces a closed refusal and an action-bound challenge. Accepted evidence authorizes only the exact action and is consumed once.
+Gate belongs immediately before the system that can mutate state: an MCP tool, API handler, payment rail, cloud control, clinical determination workflow, grid actuator, or physical controller. It checks the relying party's evidence requirements and local policy before calling the executor. Missing or insufficient evidence produces a closed refusal and an action-bound challenge. Accepted evidence authorizes only the exact action and is consumed once. Gate reserves bounded authority before provider entry, preserves uncertainty when the provider outcome cannot be established, refuses blind replay, and accepts reconciliation only from authenticated evidence bound to the same operation and material action. Disputes, returns, refunds, reversals, and other remedies remain append-only: they are new, separately authorized actions and never rewrite the original effect.
 
-**What customers buy:** Managed or BYOC operation, policy compilation, trust and revocation configuration, approver-directory integrations, durable consumption, evidence retention, deployment coverage, integrations, support, SLA, and a separately contracted warranty where offered.
+**What customers buy:** Managed or BYOC operation, policy compilation, trust and revocation configuration, approver-directory integrations, durable consumption, outcome reconciliation, dispute and remedy operations, evidence retention, deployment coverage, integrations, support, SLA, and a separately contracted warranty where offered.
 
 **Claim boundary:** "Gate prevents" is true only for action paths under complete mediation. An operator-controlled bypass remains outside the guarantee and must not be hidden by product language.
 
@@ -140,11 +144,12 @@ Every first-screen explanation should follow this order:
 1. **Consequence:** A machine is about to change something that matters.
 2. **Control:** Gate refuses until the required exact-action evidence is present.
 3. **Boundary:** Gate is effective where the resource owner completely mediates the mutating path.
-4. **Neutrality:** Protocol evidence verifies under the customer's keys and rules without vendor callback.
-5. **Capture:** Approver supplies a device-bound human decision when the profile requires one.
-6. **Assurance:** The deployment's claims can be re-performed and packaged for an authorized reviewer.
-7. **Proof:** Show executable claims, attack refusals, conformance, formal scope, and external implementation evidence.
-8. **Standards:** Explain the IETF and interoperability portfolio only after the product and boundary are clear.
+4. **Custody:** Provider uncertainty stays closed; reconciliation is authenticated; remedies are new authorized actions.
+5. **Neutrality:** Protocol evidence verifies under the customer's keys and rules without vendor callback.
+6. **Capture:** Approver supplies a device-bound human decision when the profile requires one.
+7. **Assurance:** The deployment's claims can be re-performed and packaged for an authorized reviewer.
+8. **Proof:** Show executable claims, attack refusals, conformance, formal scope, and external implementation evidence.
+9. **Standards:** Explain the IETF and interoperability portfolio only after the product and boundary are clear.
 
 ## The proof hierarchy
 
