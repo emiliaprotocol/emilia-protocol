@@ -17,10 +17,40 @@ const fkIndexMigration = readFileSync(
   ),
   'utf8',
 );
+const recoveryTimestampPrecisionMigration = readFileSync(
+  new URL(
+    '../supabase/migrations/20260723201346_proposal_to_effect_recovery_timestamp_precision.sql',
+    import.meta.url,
+  ),
+  'utf8',
+);
 
 describe('Proposal-to-Effect consequence-attempt production migration', () => {
-  it('installs the exact governed store DDL', () => {
-    expect(migration).toContain(PROPOSAL_TO_EFFECT_POSTGRES_DDL);
+  it('installs the governed store DDL and forward-patches the current read contract', () => {
+    const historicalInstallerDdl = PROPOSAL_TO_EFFECT_POSTGRES_DDL.replaceAll(
+      'HH24:MI:SS.US"Z"',
+      'HH24:MI:SS.MS"Z"',
+    );
+    expect(migration).toContain(historicalInstallerDdl);
+
+    const readAttemptStart = PROPOSAL_TO_EFFECT_POSTGRES_DDL.indexOf(
+      'CREATE OR REPLACE FUNCTION proposal_to_effect_private.read_attempt(',
+    );
+    const readAttemptEnd = PROPOSAL_TO_EFFECT_POSTGRES_DDL.indexOf(
+      'CREATE OR REPLACE FUNCTION proposal_to_effect_private.recover_attempt(',
+      readAttemptStart,
+    );
+    expect(readAttemptStart).toBeGreaterThanOrEqual(0);
+    expect(readAttemptEnd).toBeGreaterThan(readAttemptStart);
+    expect(recoveryTimestampPrecisionMigration).toContain(
+      PROPOSAL_TO_EFFECT_POSTGRES_DDL.slice(
+        readAttemptStart,
+        readAttemptEnd,
+      ).trim(),
+    );
+    expect(recoveryTimestampPrecisionMigration).not.toContain(
+      'HH24:MI:SS.MS"Z"',
+    );
   });
 
   it('keeps private custody tables forced-RLS and RPC-only', () => {
