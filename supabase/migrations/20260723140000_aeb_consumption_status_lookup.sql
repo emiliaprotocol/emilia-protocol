@@ -2,6 +2,10 @@
 -- This closes the status-verifier boundary without granting table reads. The
 -- later atomic reserve remains the race-closing operation.
 
+GRANT ep_aeb_store_owner TO CURRENT_USER
+  WITH INHERIT FALSE, SET TRUE;
+SET ROLE ep_aeb_store_owner;
+
 CREATE OR REPLACE FUNCTION ep_aeb_private.has_replay_fence(
   p_tenant_id TEXT,
   p_relying_party_id TEXT,
@@ -33,3 +37,6 @@ GRANT EXECUTE ON FUNCTION ep_aeb_private.has_replay_fence(TEXT, TEXT, TEXT)
 
 COMMENT ON FUNCTION ep_aeb_private.has_replay_fence(TEXT, TEXT, TEXT) IS
   'Tenant-bound exact native replay-fence lookup. True includes RESERVED and CONSUMED; atomic reserve closes races.';
+
+RESET ROLE;
+REVOKE ep_aeb_store_owner FROM CURRENT_USER;

@@ -11,6 +11,15 @@ const migration = readFileSync(
 );
 
 describe('AEB accepted status-head store migration', () => {
+  it('switches to the private-schema owner only after transferring the public table', () => {
+    expect(migration).toMatch(
+      /GRANT ep_aeb_store_owner TO CURRENT_USER\s+WITH INHERIT FALSE, SET TRUE;[\s\S]+GRANT USAGE, CREATE ON SCHEMA public TO ep_aeb_store_owner;[\s\S]+ALTER TABLE public\.ep_aeb_status_heads OWNER TO ep_aeb_store_owner;\s+SET ROLE ep_aeb_store_owner;\s+ALTER TABLE public\.ep_aeb_status_heads ENABLE ROW LEVEL SECURITY;/,
+    );
+    expect(migration).toMatch(
+      /RESET ROLE;\s+REVOKE CREATE ON SCHEMA public FROM ep_aeb_store_owner;\s+REVOKE ep_aeb_store_owner FROM CURRENT_USER;/,
+    );
+  });
+
   it('scopes each durable head by tenant, relying party, and the complete target', () => {
     expect(migration).toContain('CREATE TABLE public.ep_aeb_status_heads');
     expect(migration).toMatch(

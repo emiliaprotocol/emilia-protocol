@@ -7,7 +7,12 @@
 -- mutually exclusive group-role membership, narrow RPC grants, and required
 -- schema objects for both the AEB and Proposal-to-Effect stores.
 
-DO $preflight$
+GRANT ep_aeb_store_owner TO CURRENT_USER
+  WITH INHERIT FALSE, SET TRUE;
+
+SET ROLE ep_aeb_store_owner;
+
+DO $aeb_preflight$
 BEGIN
   IF EXISTS (
     SELECT 1
@@ -17,18 +22,10 @@ BEGIN
     RAISE EXCEPTION 'AEB_PRINCIPAL_CAPABILITY_OVERLAP_PRESENT'
       USING ERRCODE = '23514';
   END IF;
-  IF EXISTS (
-    SELECT 1
-    FROM proposal_to_effect_private.tenant_principals
-    WHERE can_execute AND can_recover
-  ) THEN
-    RAISE EXCEPTION 'PTE_PRINCIPAL_CAPABILITY_OVERLAP_PRESENT'
-      USING ERRCODE = '23514';
-  END IF;
 END
-$preflight$;
+$aeb_preflight$;
 
-DO $constraints$
+DO $aeb_constraints$
 BEGIN
   IF NOT EXISTS (
     SELECT 1
@@ -40,25 +37,11 @@ BEGIN
       ADD CONSTRAINT ep_aeb_tenant_principal_one_capability
       CHECK (can_execute <> can_recover) NOT VALID;
   END IF;
-
-  IF NOT EXISTS (
-    SELECT 1
-    FROM pg_catalog.pg_constraint
-    WHERE conrelid =
-      'proposal_to_effect_private.tenant_principals'::pg_catalog.regclass
-      AND conname = 'proposal_to_effect_tenant_principal_one_capability'
-  ) THEN
-    ALTER TABLE proposal_to_effect_private.tenant_principals
-      ADD CONSTRAINT proposal_to_effect_tenant_principal_one_capability
-      CHECK (can_execute <> can_recover) NOT VALID;
-  END IF;
 END
-$constraints$;
+$aeb_constraints$;
 
 ALTER TABLE ep_aeb_private.tenant_principals
   VALIDATE CONSTRAINT ep_aeb_tenant_principal_one_capability;
-ALTER TABLE proposal_to_effect_private.tenant_principals
-  VALIDATE CONSTRAINT proposal_to_effect_tenant_principal_one_capability;
 
 CREATE OR REPLACE FUNCTION ep_aeb_private.principal_readiness(
   p_tenant_id TEXT,
@@ -256,6 +239,44 @@ REVOKE ALL ON FUNCTION ep_aeb_private.principal_readiness(TEXT, BOOLEAN)
   FROM PUBLIC, anon, authenticated, service_role;
 GRANT EXECUTE ON FUNCTION ep_aeb_private.principal_readiness(TEXT, BOOLEAN)
   TO ep_aeb_executor, ep_aeb_recovery;
+
+COMMENT ON FUNCTION ep_aeb_private.principal_readiness(TEXT, BOOLEAN) IS
+  'Fail-closed tenant principal, role, RPC-grant, and schema readiness proof for consequence-control startup.';
+
+RESET ROLE;
+REVOKE ep_aeb_store_owner FROM CURRENT_USER;
+
+DO $pte_preflight$
+BEGIN
+  IF EXISTS (
+    SELECT 1
+    FROM proposal_to_effect_private.tenant_principals
+    WHERE can_execute AND can_recover
+  ) THEN
+    RAISE EXCEPTION 'PTE_PRINCIPAL_CAPABILITY_OVERLAP_PRESENT'
+      USING ERRCODE = '23514';
+  END IF;
+END
+$pte_preflight$;
+
+DO $pte_constraints$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1
+    FROM pg_catalog.pg_constraint
+    WHERE conrelid =
+      'proposal_to_effect_private.tenant_principals'::pg_catalog.regclass
+      AND conname = 'proposal_to_effect_tenant_principal_one_capability'
+  ) THEN
+    ALTER TABLE proposal_to_effect_private.tenant_principals
+      ADD CONSTRAINT proposal_to_effect_tenant_principal_one_capability
+      CHECK (can_execute <> can_recover) NOT VALID;
+  END IF;
+END
+$pte_constraints$;
+
+ALTER TABLE proposal_to_effect_private.tenant_principals
+  VALIDATE CONSTRAINT proposal_to_effect_tenant_principal_one_capability;
 
 CREATE OR REPLACE FUNCTION proposal_to_effect_private.principal_readiness(
   p_tenant_id TEXT,
@@ -472,8 +493,6 @@ GRANT EXECUTE ON FUNCTION
   proposal_to_effect_private.principal_readiness(TEXT, BOOLEAN)
   TO proposal_to_effect_executor, proposal_to_effect_recovery;
 
-COMMENT ON FUNCTION ep_aeb_private.principal_readiness(TEXT, BOOLEAN) IS
-  'Fail-closed tenant principal, role, RPC-grant, and schema readiness proof for consequence-control startup.';
 COMMENT ON FUNCTION
   proposal_to_effect_private.principal_readiness(TEXT, BOOLEAN) IS
   'Fail-closed tenant principal, role, RPC-grant, and schema readiness proof for consequence-control startup.';
