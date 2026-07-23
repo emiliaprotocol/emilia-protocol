@@ -1,7 +1,8 @@
 # EP-AGENT-EDGE-CONTINUITY-v1
 
-Status: private implementation profile. This is not an IETF submission and is
-not a claim of MCP, A2A, discovery, attestation, or model-behavior conformance.
+Status: public experimental implementation profile. This is not an IETF
+submission and is not a claim of MCP, A2A, discovery, attestation, or
+model-behavior conformance.
 
 ## 1. Purpose and boundary
 

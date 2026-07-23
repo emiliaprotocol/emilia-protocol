@@ -38,6 +38,19 @@ describe('AEB consumption production migration', () => {
     expect(migration).toContain('principals.tenant_id = p_tenant_id');
   });
 
+  it('grants the no-login owner only the public-schema privileges its tables require', () => {
+    expect(migration).toContain(
+      'GRANT USAGE, CREATE ON SCHEMA public TO ep_aeb_store_owner',
+    );
+    expect(migration).toContain(
+      'REVOKE CREATE ON SCHEMA public FROM ep_aeb_store_owner',
+    );
+    expect(migration.indexOf('REVOKE CREATE ON SCHEMA public FROM ep_aeb_store_owner'))
+      .toBeGreaterThan(migration.indexOf('COMMENT ON TABLE ep_aeb_consumption_replay_fences'));
+    expect(migration.indexOf('REVOKE ep_aeb_store_owner FROM CURRENT_USER'))
+      .toBeGreaterThan(migration.indexOf('REVOKE CREATE ON SCHEMA public FROM ep_aeb_store_owner'));
+  });
+
   it('exposes only narrow security-definer mutations and gives service_role no authority', () => {
     expect(migration).toMatch(/LANGUAGE plpgsql SECURITY DEFINER SET search_path = ''/);
     expect(migration).toContain('REVOKE ALL ON ALL FUNCTIONS IN SCHEMA ep_aeb_private');

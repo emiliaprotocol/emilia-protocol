@@ -10,6 +10,13 @@ const migration = readFileSync(
   ),
   'utf8',
 );
+const fkIndexMigration = readFileSync(
+  new URL(
+    '../supabase/migrations/20260722231500_proposal_to_effect_provider_evidence_fk_index.sql',
+    import.meta.url,
+  ),
+  'utf8',
+);
 
 describe('Proposal-to-Effect consequence-attempt production migration', () => {
   it('installs the exact governed store DDL', () => {
@@ -102,6 +109,15 @@ describe('Proposal-to-Effect consequence-attempt production migration', () => {
         new RegExp(`CREATE TABLE[\\s\\S]*provider_evidence[\\s\\S]*\\b${column}\\b`),
       );
     }
+  });
+
+  it('covers the provider-evidence foreign key used by reconciliation maintenance', () => {
+    expect(fkIndexMigration).toContain(
+      'CREATE INDEX IF NOT EXISTS proposal_to_effect_provider_evidence_attempt_fk_idx',
+    );
+    expect(fkIndexMigration).toContain(
+      'tenant_id,\n    provider_id,\n    provider_account_id,\n    environment,\n    attempt_id,\n    attempt_digest',
+    );
   });
 
   it('makes mutation acknowledgements safely retryable after an ambiguous COMMIT', () => {

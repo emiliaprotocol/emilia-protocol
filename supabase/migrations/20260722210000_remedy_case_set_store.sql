@@ -104,6 +104,7 @@ END
 $roles$;
 
 GRANT ep_remedy_store_owner TO CURRENT_USER;
+GRANT USAGE, CREATE ON SCHEMA public TO ep_remedy_store_owner;
 
 CREATE SCHEMA IF NOT EXISTS ep_remedy_private;
 REVOKE ALL ON SCHEMA ep_remedy_private FROM PUBLIC, anon, authenticated, service_role;
@@ -323,9 +324,10 @@ GRANT EXECUTE ON FUNCTION ep_remedy_private.assert_tenant_principal(TEXT),
   ep_remedy_private.append_case_set_event(TEXT, TEXT, BIGINT, BIGINT, TEXT, TEXT, TEXT, TIMESTAMPTZ)
   TO ep_remedy_executor;
 
-REVOKE ep_remedy_store_owner FROM CURRENT_USER;
-
 COMMENT ON TABLE ep_remedy_case_sets IS
   'Current state for tenant-scoped heterogeneous remedy case sets; immutable manifest and owner, revision-fenced CAS.';
 COMMENT ON TABLE ep_remedy_case_set_events IS
   'Append-only state history for heterogeneous remedy case sets.';
+
+REVOKE CREATE ON SCHEMA public FROM ep_remedy_store_owner;
+REVOKE ep_remedy_store_owner FROM CURRENT_USER;

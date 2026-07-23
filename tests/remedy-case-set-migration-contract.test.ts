@@ -40,6 +40,19 @@ describe('remedy case-set production migration', () => {
     expect(migration).toContain('TO ep_remedy_executor;');
   });
 
+  it('grants the no-login owner only the public-schema privileges its tables require', () => {
+    expect(migration).toContain(
+      'GRANT USAGE, CREATE ON SCHEMA public TO ep_remedy_store_owner',
+    );
+    expect(migration).toContain(
+      'REVOKE CREATE ON SCHEMA public FROM ep_remedy_store_owner',
+    );
+    expect(migration.indexOf('REVOKE CREATE ON SCHEMA public FROM ep_remedy_store_owner'))
+      .toBeGreaterThan(migration.indexOf('COMMENT ON TABLE ep_remedy_case_set_events'));
+    expect(migration.indexOf('REVOKE ep_remedy_store_owner FROM CURRENT_USER'))
+      .toBeGreaterThan(migration.indexOf('REVOKE CREATE ON SCHEMA public FROM ep_remedy_store_owner'));
+  });
+
   it('makes current manifests, terminal states, and history immutable', () => {
     expect(migration).toContain('remedy case-set identity, owner, and manifest are immutable');
     expect(migration).toContain('completed remedy case sets are immutable');

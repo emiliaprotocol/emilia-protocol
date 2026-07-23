@@ -54,6 +54,7 @@ END
 $roles$;
 
 GRANT ep_aeb_store_owner TO CURRENT_USER;
+GRANT USAGE, CREATE ON SCHEMA public TO ep_aeb_store_owner;
 
 CREATE SCHEMA IF NOT EXISTS ep_aeb_private;
 REVOKE ALL ON SCHEMA ep_aeb_private FROM PUBLIC, anon, authenticated, service_role;
@@ -244,9 +245,10 @@ GRANT EXECUTE ON FUNCTION ep_aeb_private.reserve_operation(TEXT, TEXT, TEXT, TEX
 GRANT EXECUTE ON FUNCTION ep_aeb_private.claim_operation(TEXT, TEXT, TEXT, TEXT)
   TO ep_aeb_recovery;
 
-REVOKE ep_aeb_store_owner FROM CURRENT_USER;
-
 COMMENT ON TABLE ep_aeb_consumption_operations IS
   'Durable AEB execution authorization state. RPC-only; opaque ownership-fenced RESERVED to CONSUMED lifecycle.';
 COMMENT ON TABLE ep_aeb_consumption_replay_fences IS
   'Durable native-protocol replay fences reserved atomically with AEB operations. RPC-only; consumed fences are permanent.';
+
+REVOKE CREATE ON SCHEMA public FROM ep_aeb_store_owner;
+REVOKE ep_aeb_store_owner FROM CURRENT_USER;
