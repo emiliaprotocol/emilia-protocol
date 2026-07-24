@@ -281,6 +281,10 @@
       "types": "./dist/aeb-consumption-store.d.ts",
       "import": "./aeb-consumption-store.js"
     },
+    "./authority-allocation": {
+      "types": "./dist/authority-allocation.d.ts",
+      "import": "./authority-allocation.js"
+    },
     "./zk-range-proof": {
       "types": "./dist/zk-range-proof.d.ts",
       "import": "./zk-range-proof.js"
@@ -332,6 +336,7 @@
     "proposal-to-effect-status-head-store.js",
     "proposal-to-effect-postgres.js",
     "aeb-consumption-store.js",
+    "authority-allocation.js",
     "zk-range-proof.js",
     "reports/assurance-package.js",
     "ep-assure.mjs",

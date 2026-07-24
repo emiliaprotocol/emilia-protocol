@@ -733,3 +733,20 @@ The mechanism is specified in `draft-schrock-ep-enforcement-point` (the Receipt-
 `draft-schrock-ep-authorization-receipts`. Earn the **RR-1** conformance level via
 `receiptRequiredConformance()` in `@emilia-protocol/require-receipt`. Reference implementation;
 experimental. Apache-2.0. Fails closed.
+
+## Authority allocation
+
+`@emilia-protocol/gate/authority-allocation` provides the same-team runtime
+counterpart for Conservation of Authority. A relying party installs one
+authoritative allocation snapshot pinned to an exact authority head and epoch.
+The validator refuses child action or audience widening, budget or expiry
+widening, duplicate sibling branches, and aggregate cents or calls overspend.
+Reservations are atomic, replay-fenced, and can be finalized only with the
+winning owner token, monotonic fencing token, and exact authority head and
+epoch.
+
+`createMemoryAuthorityAllocationStore()` is deterministic, non-durable
+conformance infrastructure. `createPostgresAuthorityAllocationStore()` and
+`AUTHORITY_ALLOCATION_DDL` define the durable transactional boundary; they are
+reference code and a database contract, not evidence that any deployment uses
+or correctly operates that boundary.
