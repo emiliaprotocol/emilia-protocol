@@ -4,6 +4,7 @@
 import { runActionEscrowScenario } from "./action-escrow.mjs";
 import { runAecScenario } from "./aec.mjs";
 import { runConsequenceLifecycleScenario } from "./consequence-lifecycle.mjs";
+import { runComposedTrustLifecycleScenario } from "./composed-trust-lifecycle.mjs";
 import { runGraceScenario } from "./grace-curtailment.mjs";
 import { runMobileContinuityScenario } from "./mobile-continuity.mjs";
 import { runMobileEnrollmentScenario } from "./mobile-enrollment.mjs";
@@ -14,6 +15,7 @@ const adapters = Object.freeze({
     "action-escrow": runActionEscrowScenario,
     aec: runAecScenario,
     "consequence-lifecycle": runConsequenceLifecycleScenario,
+    "composed-trust-lifecycle": runComposedTrustLifecycleScenario,
     grace: runGraceScenario,
     "mobile-continuity": runMobileContinuityScenario,
     "mobile-enrollment": runMobileEnrollmentScenario,

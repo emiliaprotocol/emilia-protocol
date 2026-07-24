@@ -47,7 +47,7 @@ const EVIDENCE = [
   {
     value: proofStats.formalRefinement.traces,
     label: 'Runtime-refined formal traces',
-    detail: `${proofStats.formalRefinement.unsafeMutationsDetected} unsafe mutations detected across ${proofStats.formalRefinement.claims} claims`,
+    detail: `${proofStats.formalRefinement.coveredTransitions}/${proofStats.formalRefinement.requiredTransitions} declared end-to-end transitions covered; ${proofStats.formalRefinement.unsafeMutationsDetected} unsafe mutations detected`,
   },
   {
     value: proofStats.tamarin.verifiedObligations,
@@ -86,14 +86,14 @@ const PROOF_LAYERS = [
   {
     label: 'State-machine safety',
     method: `${proofStats.tla.checker} · TLA+`,
-    result: `${proofStats.tla.invariants} invariants checked with no reported error`,
-    meaning: 'The bounded authorization state machine checks replay resistance, terminal-state behavior, signoff binding, delegation limits, and write-bypass safety.',
+    result: `${proofStats.tla.invariants} core invariants plus ${proofStats.tla.composedLifecycleInvariants} end-to-end lifecycle invariants checked with no reported error`,
+    meaning: 'The bounded models cover replay resistance, terminal-state behavior, signoff binding, delegation limits, revocation and poisoned-witness refusal, effect profiles, indeterminate execution, reconciliation, and separate remedy authority.',
   },
   {
     label: 'Formal-to-runtime selected traces',
     method: 'Content-addressed TLA+ action forcing + production entry points',
-    result: `${proofStats.formalRefinement.traces} traces across ${proofStats.formalRefinement.models} models; ${proofStats.formalRefinement.unsafeMutationsDetected} unsafe variants detected`,
-    meaning: 'The harness forces exact formal transition sequences, calls the corresponding production runtime APIs, compares abstract state projections, and requires both layers to reject each governed unsafe mutation. This is selected-trace evidence, not a complete implementation refinement proof.',
+    result: `${proofStats.formalRefinement.traces} traces across ${proofStats.formalRefinement.models} models; ${proofStats.formalRefinement.coveredTransitions}/${proofStats.formalRefinement.requiredTransitions} declared end-to-end transitions covered`,
+    meaning: `The harness forces exact formal transition sequences, calls the corresponding production runtime APIs, compares abstract state projections, and requires both layers to reject ${proofStats.formalRefinement.unsafeMutationsDetected} governed unsafe mutations. Declared-transition coverage is complete for one bounded composed model; this is not a complete implementation refinement proof.`,
   },
   {
     label: 'Relational structure',

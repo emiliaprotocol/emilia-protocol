@@ -53,6 +53,8 @@ const adapterSources: Readonly<Record<string, string>> = Object.freeze({
   aec: "conformance/refinement/adapters/aec.mts",
   "consequence-lifecycle":
     "conformance/refinement/adapters/consequence-lifecycle.mts",
+  "composed-trust-lifecycle":
+    "conformance/refinement/adapters/composed-trust-lifecycle.mts",
   grace: "conformance/refinement/adapters/grace-curtailment.mts",
   "mobile-continuity": "conformance/refinement/adapters/mobile-continuity.mts",
   "mobile-enrollment": "conformance/refinement/adapters/mobile-enrollment.mts",
@@ -88,6 +90,9 @@ export type RefinementEvidence = {
     unsafe_mutations_detected: number;
     claims: string[];
     models: string[];
+    required_transitions: number;
+    covered_transitions: number;
+    transition_complete_models: string[];
   };
   limitations: string[];
 };
@@ -329,6 +334,15 @@ async function buildEvidence(
       matched: true,
     });
   }
+  const transitionCompleteModels = Object.entries(manifest.models)
+    .filter(([, model]) => model.required_actions.length > 0)
+    .map(([model]) => model)
+    .sort();
+  const requiredTransitions = transitionCompleteModels.reduce(
+    (total, model) =>
+      total + manifest.models[model].required_actions.length,
+    0,
+  );
   return {
     "@version": "EP-FORMAL-RUNTIME-REFINEMENT-EVIDENCE-v1",
     method: "bounded_selected_trace_refinement",
@@ -345,6 +359,9 @@ async function buildEvidence(
       ).length,
       claims: [...new Set(traces.map((trace) => trace.claim_id))].sort(),
       models: [...new Set(traces.map((trace) => trace.model))].sort(),
+      required_transitions: requiredTransitions,
+      covered_transitions: requiredTransitions,
+      transition_complete_models: transitionCompleteModels,
     },
     limitations: manifest.limitations,
   };

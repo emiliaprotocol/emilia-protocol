@@ -291,6 +291,7 @@ conformance/operator2/index.js linguist-generated=true
 conformance/operator2/verify-live.mjs linguist-generated=true
 conformance/refinement/adapters/action-escrow.mjs linguist-generated=true
 conformance/refinement/adapters/aec.mjs linguist-generated=true
+conformance/refinement/adapters/composed-trust-lifecycle.mjs linguist-generated=true
 conformance/refinement/adapters/consequence-lifecycle.mjs linguist-generated=true
 conformance/refinement/adapters/grace-curtailment.mjs linguist-generated=true
 conformance/refinement/adapters/index.mjs linguist-generated=true

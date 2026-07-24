@@ -32,6 +32,7 @@ const adapterSources = Object.freeze({
     "action-escrow": "conformance/refinement/adapters/action-escrow.mts",
     aec: "conformance/refinement/adapters/aec.mts",
     "consequence-lifecycle": "conformance/refinement/adapters/consequence-lifecycle.mts",
+    "composed-trust-lifecycle": "conformance/refinement/adapters/composed-trust-lifecycle.mts",
     grace: "conformance/refinement/adapters/grace-curtailment.mts",
     "mobile-continuity": "conformance/refinement/adapters/mobile-continuity.mts",
     "mobile-enrollment": "conformance/refinement/adapters/mobile-enrollment.mts",
@@ -217,6 +218,11 @@ async function buildEvidence(manifest, tlcJar) {
             matched: true,
         });
     }
+    const transitionCompleteModels = Object.entries(manifest.models)
+        .filter(([, model]) => model.required_actions.length > 0)
+        .map(([model]) => model)
+        .sort();
+    const requiredTransitions = transitionCompleteModels.reduce((total, model) => total + manifest.models[model].required_actions.length, 0);
     return {
         "@version": "EP-FORMAL-RUNTIME-REFINEMENT-EVIDENCE-v1",
         method: "bounded_selected_trace_refinement",
@@ -230,6 +236,9 @@ async function buildEvidence(manifest, tlcJar) {
                 trace.runtime.steps.at(-1)?.accepted === false).length,
             claims: [...new Set(traces.map((trace) => trace.claim_id))].sort(),
             models: [...new Set(traces.map((trace) => trace.model))].sort(),
+            required_transitions: requiredTransitions,
+            covered_transitions: requiredTransitions,
+            transition_complete_models: transitionCompleteModels,
         },
         limitations: manifest.limitations,
     };

@@ -56,6 +56,10 @@ if (execution.status !== 0) {
   process.exit(1);
 }
 const cfg: string = readFileSync("formal/ep_handshake.cfg", "utf8");
+const composedLifecycleCfg: string = readFileSync(
+  "formal/ep_composed_trust_lifecycle.cfg",
+  "utf8",
+);
 const als: string = readFileSync("formal/ep_relations.als", "utf8");
 const fedAls: string = readFileSync("formal/ep_federation.als", "utf8");
 const quorumAls: string = readFileSync("formal/ep_quorum.als", "utf8");
@@ -122,7 +126,13 @@ if (
   !Array.isArray(refinement.traces) ||
   refinement.traces.length === 0 ||
   !refinement.traces.every((trace: any) => trace.matched === true) ||
-  refinement.summary?.unsafe_mutations_detected < 1
+  refinement.summary?.unsafe_mutations_detected < 1 ||
+  !Number.isSafeInteger(refinement.summary?.required_transitions) ||
+  refinement.summary.required_transitions < 1 ||
+  refinement.summary.covered_transitions !==
+    refinement.summary.required_transitions ||
+  !Array.isArray(refinement.summary?.transition_complete_models) ||
+  refinement.summary.transition_complete_models.length < 1
 ) {
   throw new Error(
     "The formal runtime refinement evidence is missing or incomplete",
@@ -166,6 +176,9 @@ const stats: ProofStats = {
   },
   tla: {
     invariants: (cfg.match(/^INVARIANT/gm) || []).length,
+    composedLifecycleInvariants: (
+      composedLifecycleCfg.match(/^INVARIANT/gm) || []
+    ).length,
     checker: "TLC 2.19",
   },
   formalRefinement: {
@@ -175,6 +188,10 @@ const stats: ProofStats = {
     traces: refinement.summary.traces,
     soundTraces: refinement.summary.sound_traces,
     unsafeMutationsDetected: refinement.summary.unsafe_mutations_detected,
+    requiredTransitions: refinement.summary.required_transitions,
+    coveredTransitions: refinement.summary.covered_transitions,
+    transitionCompleteModels:
+      refinement.summary.transition_complete_models.length,
     evidenceSha256: createHash("sha256").update(refinementBytes).digest("hex"),
     boundary:
       "selected traces; not a mechanized implementation refinement proof",

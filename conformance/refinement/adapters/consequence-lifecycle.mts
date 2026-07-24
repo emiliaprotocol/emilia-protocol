@@ -23,6 +23,7 @@ import {
   pinnedConfigDigest,
   registryEntryDigest,
   unifiedRegistryDigest,
+  verifyAebEvaluation,
 } from "../../../packages/verify/aeb-adapter-contract.js";
 import type {
   Projection,
@@ -588,6 +589,47 @@ function createRuntimeFixture() {
     harness,
     proposal,
   };
+}
+
+export function assertAebExecutionStatus(
+  kind: "fresh" | "stale" | "revoked",
+): void {
+  ensure(AEC_VECTOR, "AEC conformance vector is missing");
+  const action = structuredClone(AEC_VECTOR.aec_chain.action);
+  const aeb = createAebFixture(action);
+  const current = structuredClone(
+    aeb.statuses["artifact:human-approval"],
+  );
+  if (kind === "stale") {
+    current.checked_at = "2026-07-22T11:00:00.000Z";
+    current.expires_at = "2026-07-22T11:05:00.000Z";
+  } else if (kind === "revoked") {
+    current.revoked = true;
+  }
+  const result = verifyAebEvaluation(aeb.evaluation, {
+    config: aeb.config as any,
+    adapters: aeb.adapters as any,
+    artifacts: aeb.artifacts,
+    expected_action: action,
+    mode: "execution",
+    now: NOW,
+    current_statuses: {
+      "artifact:human-approval": current,
+    },
+  } as any);
+  if (kind === "fresh") {
+    ensure(
+      result.valid && result.execution_authorizing,
+      `fresh AEB execution status was refused: ${result.reasons.join(",")}`,
+    );
+    return;
+  }
+  ensure(
+    !result.valid &&
+      !result.execution_authorizing &&
+      result.checks.current_status === false,
+    `${kind} AEB execution status crossed the freshness boundary`,
+  );
 }
 
 async function enterIndeterminate(

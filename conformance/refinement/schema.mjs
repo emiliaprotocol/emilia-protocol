@@ -9,7 +9,13 @@ const TOP_KEYS = new Set([
     "models",
     "traces",
 ]);
-const MODEL_KEYS = new Set(["config", "variables", "projections", "actions"]);
+const MODEL_KEYS = new Set([
+    "config",
+    "variables",
+    "projections",
+    "actions",
+    "required_actions",
+]);
 const TRACE_KEYS = new Set([
     "id",
     "claim_id",
@@ -138,11 +144,25 @@ export function validateTraceManifest(input) {
                 actions[name] = expression;
             }
         }
+        const requiredActions = rawModel.required_actions === undefined ? [] : rawModel.required_actions;
+        if (!Array.isArray(requiredActions)) {
+            throw new Error(`models.${modelPath}.required_actions must be an array`);
+        }
+        for (const [index, action] of requiredActions.entries()) {
+            requireAction(action, `models.${modelPath}.required_actions[${index}]`);
+            if (!Object.hasOwn(actions, action)) {
+                throw new Error(`models.${modelPath}.required_actions[${index}] is not registered in actions`);
+            }
+        }
+        if (new Set(requiredActions).size !== requiredActions.length) {
+            throw new Error(`models.${modelPath}.required_actions contains duplicates`);
+        }
         models[modelPath] = {
             config: rawModel.config,
             variables: rawModel.variables,
             projections,
             actions,
+            required_actions: requiredActions,
         };
     }
     if (!Array.isArray(input.traces) || input.traces.length === 0) {
@@ -258,6 +278,20 @@ export function validateTraceManifest(input) {
             ...(mutation ? { mutation } : {}),
         };
     });
+    for (const [modelPath, model] of Object.entries(models)) {
+        if (model.required_actions.length === 0)
+            continue;
+        const covered = new Set(traces
+            .filter((trace) => trace.model === modelPath)
+            .flatMap((trace) => [
+            ...trace.formal_prefix,
+            ...trace.steps.map((step) => step.operator),
+        ]));
+        const missing = model.required_actions.filter((action) => !covered.has(action));
+        if (missing.length > 0) {
+            throw new Error(`models.${modelPath}.required_actions are not trace-covered: ${missing.join(", ")}`);
+        }
+    }
     return {
         "@version": "EP-FORMAL-RUNTIME-TRACES-v2",
         scope: input.scope,

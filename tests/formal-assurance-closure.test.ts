@@ -7,12 +7,19 @@ import {
   runFormalRuntimeTraceGate,
   runRuntimeTraceConformance,
 } from "../scripts/check-formal-runtime-traces.mjs";
+import { validateTraceManifest } from "../conformance/refinement/schema.mjs";
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const readJson = (relative: string) =>
   JSON.parse(fs.readFileSync(path.join(root, relative), "utf8"));
 
 const MODEL_CONTRACTS = Object.freeze([
+  {
+    model: "formal/ep_composed_trust_lifecycle.tla",
+    config: "formal/ep_composed_trust_lifecycle.cfg",
+    result: "formal/results/ep-composed-trust-lifecycle.tlc.summary.txt",
+    marker: "EP-COMPOSED-TRUST-LIFECYCLE-TLC-BOUNDED-v1",
+  },
   {
     model: "formal/ep_consequence_lifecycle.tla",
     config: "formal/ep_consequence_lifecycle.cfg",
@@ -46,7 +53,7 @@ const CLOSED_CLAIMS = Object.freeze([
 ]);
 
 describe("formal assurance closure contract", () => {
-  it("pins three bounded models, configurations, and result summaries", () => {
+  it("pins four bounded models, configurations, and result summaries", () => {
     for (const contract of MODEL_CONTRACTS) {
       for (const relative of [
         contract.model,
@@ -79,7 +86,7 @@ describe("formal assurance closure contract", () => {
     expect(result.claims).toEqual([...CLOSED_CLAIMS].sort());
   });
 
-  it("moves implementation-backed gaps to bounded partial formal coverage", () => {
+  it("records literal implementation-backed coverage while preserving the bounded claim status", () => {
     const claims = readJson("security/claims.v1.json").claims;
     for (const claimId of CLOSED_CLAIMS) {
       const claim = claims.find(
@@ -103,6 +110,51 @@ describe("formal assurance closure contract", () => {
         claimId,
       ).toBe(true);
     }
+  });
+
+  it("requires every declared composed transition to have a governed runtime trace", () => {
+    const manifest = readJson("formal/runtime-traces.v1.json");
+    const composed =
+      manifest.models["formal/ep_composed_trust_lifecycle.tla"];
+    expect(composed.required_actions).toHaveLength(36);
+    const covered = new Set(
+      manifest.traces
+        .filter(
+          (trace: any) =>
+            trace.model === "formal/ep_composed_trust_lifecycle.tla",
+        )
+        .flatMap((trace: any) => [
+          ...(trace.formal_prefix ?? []),
+          ...trace.steps.map((step: any) => step.operator),
+        ]),
+    );
+    expect(
+      composed.required_actions.filter(
+        (action: string) => !covered.has(action),
+      ),
+    ).toEqual([]);
+
+    const evidence = readJson(
+      "formal/results/formal-runtime-refinement.v1.json",
+    );
+    expect(evidence.summary.required_transitions).toBe(36);
+    expect(evidence.summary.covered_transitions).toBe(36);
+    expect(evidence.summary.transition_complete_models).toEqual([
+      "formal/ep_composed_trust_lifecycle.tla",
+    ]);
+  });
+
+  it("fails closed when a required composed transition loses its trace", () => {
+    const manifest = structuredClone(
+      readJson("formal/runtime-traces.v1.json"),
+    );
+    manifest.traces = manifest.traces.filter(
+      (trace: any) =>
+        trace.id !== "composed-aec-role-substitution-refusal",
+    );
+    expect(() => validateTraceManifest(manifest)).toThrow(
+      /required_actions are not trace-covered: PresentSubstitutedAECRole/,
+    );
   });
 
   it("keeps the refinement boundary explicit", () => {
@@ -132,6 +184,7 @@ describe("formal assurance closure contract", () => {
       "scripts/check-formal-runtime-traces.mjs",
       "conformance/refinement/harness.mjs",
       "conformance/refinement/adapters/consequence-lifecycle.mjs",
+      "conformance/refinement/adapters/composed-trust-lifecycle.mjs",
       "scripts/build-standalone-runtimes.mjs",
       "scripts/standalone-runtime-targets.mjs",
       "package.json",

@@ -659,6 +659,28 @@
           "refinement_evidence": "formal/results/formal-runtime-refinement.v1.json",
           "obligations": ["InvokeAtMostOnce", "AuthenticatedExactReconciliation", "TerminalEffectSound", "NoBlindReplayWhileIndeterminate"],
           "scope": "Bounded same-team composed lifecycle model and selected runtime traces cover response loss, indeterminate fencing, blind-replay refusal, and authenticated exact reconciliation. This is not a refinement proof; provider truth, cryptography, storage durability, and arbitrary concurrency remain acceptance roots."
+        },
+        {
+          "status": "partial",
+          "method": "bounded_tla_model_checking",
+          "model": "formal/ep_composed_trust_lifecycle.tla",
+          "runner": "formal/ep_composed_trust_lifecycle.cfg",
+          "result_evidence": "formal/results/ep-composed-trust-lifecycle.tlc.summary.txt",
+          "trace_evidence": "formal/runtime-traces.v1.json",
+          "trace_runner": "scripts/check-formal-runtime-traces.mjs",
+          "refinement_evidence": "formal/results/formal-runtime-refinement.v1.json",
+          "obligations": [
+            "ReservationRequiresTrust",
+            "ProviderAtMostOnce",
+            "RevokedBeforeExecutionCannotInvoke",
+            "AuthenticatedReconciliation",
+            "WitnessPoisonPermanent",
+            "SeparateRemedyAuthority",
+            "RemedyAtMostOnce",
+            "AuthenticatedRemedyReconciliation",
+            "RemedyDoesNotRewriteOriginal"
+          ],
+          "scope": "One bounded same-team state machine composes exact CAID, AEB, exact-role AEC, approval, Action Escrow, Model-to-Matter, GRACE, mobile continuity and enrollment, fresh status, clean witness admission, escrow, indeterminate execution, authenticated reconciliation, revocation, dispute, and separately authorized remedy. All 36 declared transitions have governed runtime traces, including eight model-defined unsafe mutations. This is still bounded selected-trace evidence, not a refinement proof or a mechanized implementation refinement proof."
         }
       ],
       "assumptions": [
