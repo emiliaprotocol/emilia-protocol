@@ -302,9 +302,10 @@ revocation state, and a pinned receipt issuer. The verifier enforces initiator
 exclusion and distinct keys, consumes the challenge once, and only then emits
 `Executed`.
 
-Machine-checked on 2026-07-10 with Tamarin 1.10.0 and Maude 3.4. The image is
-pinned by digest in `.github/workflows/tamarin.yml`; the exact summary and model
-hash are in `results/ep_reliance_composed.summary.txt`.
+Machine-checked on 2026-07-10 with Tamarin 1.10.0 and Maude 3.4. The focused
+six-claim companion model described below was checked on 2026-07-24 with the
+same pinned image. Exact model and runner hashes are in
+`results/ep_reliance_composed.summary.txt`.
 
 ```
 executable_composed_reliance (exists-trace): verified (19 steps)
@@ -335,6 +336,38 @@ The model proves use of the exact pinned registry checkpoint but not that the
 external checkpoint is complete or honestly selected. Root provisioning,
 directory transparency, collusion, and downstream business-system idempotency
 remain external assumptions.
+
+## Focused six-claim companion (`ep_six_claim_composed.spthy`)
+
+The companion theory gives six partial claims dedicated symbolic obligations
+without inflating their scope:
+
+```
+class_a_downgrade_refused (all-traces): verified (22 steps)
+signed_denial_cannot_authorize (all-traces): verified (2 steps)
+scoped_authority_is_pinned (all-traces): verified (49 steps)
+reliance_requires_pinned_profile (all-traces): verified (12 steps)
+evidence_challenge_is_registered_and_consumed (all-traces): verified (41 steps)
+aec_execution_is_action_keyed_and_fleet_fail_closed (all-traces): verified (13 steps)
+```
+
+The theory also verifies an executable strict trace, authentic signed-denial
+evidence, fresh challenge uniqueness, and fail-closed reservation failure. Six
+unsafe variants are deliberately falsified: trusting a presenter-declared key
+class, ignoring the signed decision, accepting unpinned authority scope or
+registry coordinates, trusting a presented profile, accepting an unregistered
+challenge, and deriving an execution key from presenter material.
+
+These results do **not** make the six full implementation claims formally
+verified. Class A and UV are symbolic protocol states, not WebAuthn proofs.
+Scope fields are exact terms; amount inequalities, policy authorship, and clock
+evaluation remain external. Linear challenge state and the action-key
+uniqueness restriction assume an atomic shared backend; they do not prove
+durability, owner-token fencing, restart behavior, or database semantics.
+Action-key injectivity does not prove downstream business-effect exactly-once
+behavior. The claim metadata should therefore use `status: "partial"` and
+`method: "symbolic_protocol_analysis"` with claim-specific covered and
+unmodeled statements.
 
 Re-run:
 

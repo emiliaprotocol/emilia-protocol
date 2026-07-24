@@ -1,14 +1,18 @@
-EP-RELIANCE-COMPOSED-v2 proof record
-Run date: 2026-07-10
+EP-RELIANCE-COMPOSED + EP-SIX-CLAIM-COMPOSED proof record
+Run date: 2026-07-24
 Tamarin: 1.10.0
 Maude: 3.4
 Container: lmandrelli/tamarin-prover-and-batch@sha256:dff2af961e192e2b8eef3faa0484a0075c380b476bd0e79c160a5619b2519083
+Core model: ep_reliance_composed.spthy
 Model SHA-256: 174c27c35b302a9dd096eb28b40ad7df84cf0c1633a93eff829c3de3fc8bbbd3
-Runner SHA-256: c3708440114c4447616e237ceb0694c68dc8217e43824e5151270b286f6f35d2
-Command: sh ./run-composed.sh
-Execution mode: one named lemma per pinned-container invocation against the same model bytes; every invocation reported clean well-formedness.
+Focused model: ep_six_claim_composed.spthy
+Model SHA-256: d19fee48ab098a178d56d3141a0dd545998a0a136f6e3fc8cb3db1fcf6052302
+Runner SHA-256: 78b98908ef8e8eaf139ed8bd71c4eb0af5585e2cd3a2dd8b1c6d20972003911e
+Integrated command: TAMARIN_OUT_DIR=run-output-final sh ./run-composed.sh
+Focused command form: docker run --rm -v "$PWD:/work" -w /work <pinned-container> tamarin-prover --derivcheck-timeout=300 --prove=<lemma> ep_six_claim_composed.spthy
+Execution mode: one named lemma per pinned-container invocation; every completed invocation reported clean well-formedness.
 
-Verified obligations:
+Core verified obligations (completed in the integrated runner):
   executable_composed_reliance (exists-trace): verified (19 steps)
   execution_requires_full_composition (all-traces): verified (97 steps)
   caid_binds_family_and_material (all-traces): verified (2 steps)
@@ -20,11 +24,44 @@ Verified obligations:
   execution_has_honest_approvals_or_prior_compromise (all-traces): verified (170 steps)
   injective_execution_with_consumption (all-traces): verified (2 steps)
 
-Deliberately unsafe comparison obligations:
+Core deliberately unsafe comparisons (completed in the integrated runner):
   unchecked_composition_is_injective (all-traces): falsified - found trace (31 steps)
   unchecked_registry_view_is_current (all-traces): falsified - found trace (20 steps)
 
-The first counterexample is same-receipt replay when consumption is omitted.
-The second accepts a signed authority artifact under an epoch/head different
-from the verifier-pinned checkpoint, demonstrating the stale/equivocation gap
-when exact registry-view binding is omitted.
+Focused verified obligations:
+  executable_six_claim_composition (exists-trace): verified (10 steps)
+  signed_denial_remains_verifiable_evidence (exists-trace): verified (7 steps)
+  class_a_downgrade_refused (all-traces): verified (22 steps)
+  signed_denial_cannot_authorize (all-traces): verified (2 steps)
+  scoped_authority_is_pinned (all-traces): verified (49 steps)
+  reliance_requires_pinned_profile (all-traces): verified (12 steps)
+  evidence_challenge_is_registered_and_consumed (all-traces): verified (41 steps)
+  fresh_challenge_registration_is_unique (all-traces): verified (2 steps)
+  aec_execution_is_action_keyed_and_fleet_fail_closed (all-traces): verified (13 steps)
+  action_reservation_failure_is_fail_closed (all-traces): verified (3 steps)
+
+Focused deliberately unsafe comparisons:
+  unchecked_presenter_class_is_pinned (all-traces): falsified - found trace (13 steps)
+  unchecked_signed_denial_cannot_authorize (all-traces): falsified - found trace (13 steps)
+  unchecked_authority_scope_is_pinned (all-traces): falsified - found trace (15 steps)
+  unchecked_reliance_profile_is_pinned (all-traces): falsified - found trace (13 steps)
+  unchecked_unregistered_challenge_is_registered (all-traces): falsified - found trace (13 steps)
+  unchecked_presenter_execution_key_is_canonical (all-traces): falsified - found trace (13 steps)
+
+Validation note:
+  The integrated runner completed every core obligation and reached all six
+  dedicated focused claim lemmas plus the focused sanity/uniqueness lemmas. It
+  was user-interrupted during the supplemental reservation-failure invocation,
+  before its focused unsafe-comparison loop. The reservation-failure lemma and
+  all six focused unsafe comparisons were separately run against the exact
+  focused model bytes and pinned container above. A single uninterrupted
+  end-to-end runner completion is not claimed by this record.
+
+Claim boundary:
+  All six upgraded claims remain partial symbolic protocol analyses. The model
+  treats signatures as perfect Dolev-Yao primitives; it does not model WebAuthn
+  cryptography or attestation. It exactly binds symbolic scope/profile fields,
+  but does not prove amount arithmetic, policy authorship, clocks, or registry
+  completeness. Linear challenge state and action-key uniqueness rely on an
+  external atomic shared backend and do not prove database durability,
+  owner-token fencing, restart recovery, or downstream exactly-once effects.
