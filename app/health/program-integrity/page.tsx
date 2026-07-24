@@ -5,9 +5,9 @@ import SiteNav from '@/components/SiteNav';
 import ProgramIntegrityGate from './_components/ProgramIntegrityGate';
 
 export const metadata: Metadata = {
-  title: 'Program Integrity Gate | EMILIA',
+  title: 'Amelia I + Program Integrity Gate | EMILIA',
   description:
-    'A synthetic, PHI-free reference demo showing exact-action authorization, fail-closed payment control, no-blind-replay handling, and portable program-integrity evidence.',
+    'Diagnose risky legacy workflows with Amelia I, then see a synthetic, PHI-free Gate demonstration of exact-action authorization, no-blind-replay handling, and portable evidence.',
 };
 
 export default function ProgramIntegrityPage() {

@@ -6,7 +6,7 @@ import type { Metadata } from 'next';
 export const metadata: Metadata = {
   title: 'Request a Managed Gate Pilot — One Workflow, 60 Days — EMILIA Protocol',
   description:
-    'Scope one consequential workflow for a fixed 60-day engagement: observe first, configure the evidence and approval policy, then enforce only after customer approval.',
+    'Scope one consequential workflow for a fixed 60-day Amelia I diagnostic: synthetic first, then a governed read-only export, source-linked findings, and a Gate implementation decision.',
   alternates: { canonical: '/pilot' },
 };
 

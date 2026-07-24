@@ -2,17 +2,17 @@ import type { Metadata } from 'next';
 import Link from 'next/link';
 import SiteNav from '@/components/SiteNav';
 import SiteFooter from '@/components/SiteFooter';
-import { MANAGED_PILOT, PRODUCTION_GATE } from '@/lib/commercial-offer';
+import { GATE_IMPLEMENTATION, MANAGED_PILOT, PRODUCTION_GATE } from '@/lib/commercial-offer';
 import { cta, color, font, radius } from '@/lib/tokens';
 
 export const metadata: Metadata = {
   title: 'EMILIA Gate Pricing',
   description:
-    'Use the open EMILIA Protocol for free, prove one protected workflow in a fixed-scope pilot, then price production Gate operations around the boundary you protect.',
+    'Use the open EMILIA Protocol for free, diagnose one legacy workflow with Amelia I, implement Gate at the consequence boundary, then operate it in production.',
   alternates: { canonical: '/pricing' },
   openGraph: {
     title: 'EMILIA Gate Pricing',
-    description: 'Open proof infrastructure, a fixed-scope managed pilot, and production Gate operations priced by protected workflow.',
+    description: 'Open proof infrastructure, a read-only Amelia I diagnostic, a prospective Gate implementation, and operated production controls.',
     url: 'https://www.emiliaprotocol.ai/pricing',
     type: 'website',
   },
@@ -60,7 +60,7 @@ const TIERS: Array<{
     price: MANAGED_PILOT.shortPriceLabel,
     priceNote: `fixed scope · ${MANAGED_PILOT.durationLabel}`,
     priceIsLabel: false,
-    tagline: 'Prove Gate on one consequential workflow before committing to a production rollout.',
+    tagline: 'Find where old records lose the approval-to-effect chain before changing a production path.',
     accent: color.blue,
     cta: { label: 'Scope the pilot', href: '/pilot' },
     ctaStyle: 'primary' as const,
@@ -68,12 +68,32 @@ const TIERS: Array<{
     available: true,
     features: [
       MANAGED_PILOT.workflowLabel,
-      'Observe-mode baseline and risk inventory',
-      'Action, evidence, approval, and escalation policy',
-      'Customer-approved enforcement rollout',
-      'Failure, reconciliation, and remedy-control drill',
-      'Auditor-ready evidence package and findings review',
-      'Production architecture and commercial recommendation',
+      'Synthetic replay, then one governed read-only export',
+      'Source-linked integrity cases, not automated fraud verdicts',
+      'Deterministic findings separated from heuristic leads',
+      'Material-field and action-type map',
+      'Action Control Manifest template',
+      'Decision-ready Gate implementation scope',
+    ],
+  },
+  {
+    name: GATE_IMPLEMENTATION.name,
+    price: GATE_IMPLEMENTATION.priceLabel,
+    priceNote: GATE_IMPLEMENTATION.scopeLabel,
+    priceIsLabel: true,
+    tagline: 'Turn the selected risk area into a fail-closed prospective control at the real executor boundary.',
+    accent: color.blue,
+    cta: { label: 'Design the Gate', href: '/pilot' },
+    ctaStyle: 'secondary' as const,
+    highlight: false,
+    available: true,
+    features: [
+      'System-of-record action and route binding',
+      'Receipt Required challenge and approval acquisition',
+      'Exact-action verification and one-time consumption',
+      'Indeterminate outcome and no-blind-replay handling',
+      'Authenticated reconciliation and remedy workflow',
+      'Customer acceptance vectors and production runbook',
     ],
   },
   {
@@ -81,14 +101,14 @@ const TIERS: Array<{
     price: PRODUCTION_GATE.priceLabel,
     priceNote: 'quoted by protected workflow and operating boundary',
     priceIsLabel: true,
-    tagline: 'Managed policy, approval, consumption, and evidence operations for consequential workflows in production.',
+    tagline: 'Operate policy, approval, consumption, reconciliation, and evidence for consequential production workflows.',
     accent: color.gold,
     cta: { label: 'Talk to us', href: '/partners' },
     ctaStyle: 'secondary' as const,
     highlight: false,
     available: true,
     features: [
-      'Everything proven in the managed pilot',
+      'Everything proven in the Gate implementation',
       'Private cloud, VPC, or self-hosted deployment options',
       'SAML/OIDC identity and SCIM provisioning integration',
       'Durable consumption, reconciliation, dispute, and remedy operations',
@@ -100,12 +120,11 @@ const TIERS: Array<{
 
 // Honest open-core line: what the free protocol gives you vs. what the paid plane adds.
 const OPEN_CORE = [
-  ['Verify receipts under your own pinned trust policy', true, true, true],
-  ['Use public formats, packages, and conformance vectors', true, true, true],
-  ['Managed workflow mapping and evidence policy', false, true, true],
-  ['Observe-first rollout with customer-approved enforcement', false, true, true],
-  ['Ongoing approver routing and continuous evidence', false, false, true],
-  ['Private deployment, identity integration, profiles, and SLA', false, false, true],
+  ['Verify receipts under your own pinned trust policy', true, true, true, true],
+  ['Use public formats, packages, and conformance vectors', true, true, true, true],
+  ['Retrospective workflow diagnosis and source-linked cases', false, true, true, true],
+  ['Prospective executor-bound enforcement', false, false, true, true],
+  ['Managed production evidence and service operations', false, false, false, true],
 ];
 
 const PACKS = [
@@ -135,19 +154,19 @@ export default function PricingPage(): React.ReactElement {
             Pricing
           </div>
           <h1 style={{ fontFamily: font.sans, fontWeight: 700, fontSize: 'clamp(38px, 5vw, 64px)', letterSpacing: -2.2, lineHeight: 1.0, color: color.t1, margin: '0 0 24px', maxWidth: 780 }}>
-            Start open. Prove one workflow. Scale the boundary.
+            Diagnose the past. Protect the next effect. Operate the boundary.
           </h1>
           <p style={{ fontSize: 18, color: color.t2, maxWidth: 620, lineHeight: 1.7, margin: 0 }}>
-            The protocol and self-operated runtime are free. The paid product begins when EMILIA maps, operates,
-            and stands behind a protected workflow at your real system boundary.
+            The open protocol is free. Amelia I finds the workflow that needs control. Gate then moves from a
+            scoped implementation to an operated production boundary.
           </p>
         </C>
       </section>
 
-      {/* THREE DOORS */}
+      {/* FOUR DOORS */}
       <section style={{ paddingBottom: 80 }}>
         <C>
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: 16, alignItems: 'stretch' }}>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: 16, alignItems: 'stretch' }}>
             {TIERS.map((t) => (
               <div key={t.name} style={{
                 display: 'flex', flexDirection: 'column',
@@ -208,18 +227,18 @@ export default function PricingPage(): React.ReactElement {
         <C>
           <div style={{ maxWidth: 720 }}>
             <div style={{ fontFamily: font.mono, fontSize: 10, letterSpacing: 2, textTransform: 'uppercase', color: color.gold, marginBottom: 16 }}>
-              Start here &middot; observe-mode pilot
+              Start here &middot; read-only diagnostic
             </div>
             <h2 style={{ fontFamily: font.sans, fontWeight: 700, fontSize: 'clamp(26px, 3.2vw, 42px)', letterSpacing: -1.4, lineHeight: 1.08, color: '#FAFAF9', marginBottom: 18 }}>
-              Most teams start with a pilot, not a plan.
+              Find the right boundary before asking engineering to change it.
             </h2>
             <p style={{ fontSize: 16, color: 'rgba(250,250,249,0.72)', lineHeight: 1.7, marginBottom: 30, maxWidth: 620 }}>
-              One high-risk workflow over {MANAGED_PILOT.durationLabel}. We begin in observe mode, configure the
-              evidence and approval policy, and enable enforcement only after your team approves it. You finish with
-              a working control, an evidence package, and a decision-ready production plan.
+              Amelia I starts with a synthetic replay and one governed export over {MANAGED_PILOT.durationLabel}.
+              It reconstructs action groups, separates deterministic findings from heuristic leads, and produces a
+              decision-ready manifest and implementation scope. No production path is changed in this first engagement.
             </p>
             <div style={{ display: 'flex', gap: 36, flexWrap: 'wrap', marginBottom: 32 }}>
-              {[[MANAGED_PILOT.shortPriceLabel, 'fixed, scoped engagement'], [MANAGED_PILOT.durationLabel, 'observe, configure, then enforce'], [MANAGED_PILOT.workflowLabel, 'you pick the riskiest one']].map(([n, l]) => (
+              {[[MANAGED_PILOT.shortPriceLabel, 'fixed, scoped engagement'], [MANAGED_PILOT.durationLabel, 'synthetic first, governed export second'], [MANAGED_PILOT.workflowLabel, 'find the riskiest boundary']].map(([n, l]) => (
                 <div key={n}>
                   <div style={{ fontFamily: font.sans, fontWeight: 700, fontSize: 26, letterSpacing: -1, color: '#FAFAF9' }}>{n}</div>
                   <div style={{ fontFamily: font.mono, fontSize: 11, letterSpacing: 0.4, color: 'rgba(250,250,249,0.55)' }}>{l}</div>
@@ -227,8 +246,8 @@ export default function PricingPage(): React.ReactElement {
               ))}
             </div>
             <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap' }}>
-              <Link href="/pilot" className="ep-cta" style={{ ...cta.primary, background: color.gold, color: '#1C1917' }}>Scope the managed pilot &rarr;</Link>
-              <Link href="/pilot/sandbox" className="ep-cta-secondary" style={{ ...cta.secondary, color: 'rgba(250,250,249,0.8)', borderColor: 'rgba(255,255,255,0.15)' }}>Run the sandbox yourself</Link>
+              <Link href="/pilot" className="ep-cta" style={{ ...cta.primary, background: color.gold, color: '#1C1917' }}>Scope the Amelia I diagnostic &rarr;</Link>
+              <Link href="/health/program-integrity" className="ep-cta-secondary" style={{ ...cta.secondary, color: 'rgba(250,250,249,0.8)', borderColor: 'rgba(255,255,255,0.15)' }}>See the prospective Gate</Link>
             </div>
           </div>
         </C>
@@ -244,18 +263,19 @@ export default function PricingPage(): React.ReactElement {
             Protocol proves. Gate prevents.
           </h2>
           <div className="ep-pricing-table" style={{ background: color.card, border: `1px solid ${color.border}`, borderRadius: radius.base, overflowX: 'auto' }}>
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 120px 120px 120px', alignItems: 'center', padding: '14px 24px', borderBottom: `1px solid ${color.borderHover}`, background: 'rgba(245,244,240,0.6)' }}>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 110px 110px 110px 110px', alignItems: 'center', padding: '14px 24px', borderBottom: `1px solid ${color.borderHover}`, background: 'rgba(245,244,240,0.6)' }}>
               <span style={{ fontFamily: font.mono, fontSize: 10, letterSpacing: 1, textTransform: 'uppercase', color: color.t1, fontWeight: 700 }}>Capability</span>
-              {['Open', 'Pilot', 'Production'].map((h) => (
+              {['Open', 'Diagnose', 'Implement', 'Operate'].map((h) => (
                 <span key={h} style={{ fontFamily: font.mono, fontSize: 10, letterSpacing: 1, textTransform: 'uppercase', color: color.t1, fontWeight: 700, textAlign: 'center' }}>{h}</span>
               ))}
             </div>
             {OPEN_CORE.map((row, i) => (
-              <div key={i} style={{ display: 'grid', gridTemplateColumns: '1fr 120px 120px 120px', alignItems: 'center', padding: '16px 24px', borderBottom: i < OPEN_CORE.length - 1 ? `1px solid ${color.border}` : 'none' }}>
+              <div key={i} style={{ display: 'grid', gridTemplateColumns: '1fr 110px 110px 110px 110px', alignItems: 'center', padding: '16px 24px', borderBottom: i < OPEN_CORE.length - 1 ? `1px solid ${color.border}` : 'none' }}>
                 <span style={{ fontSize: 14, color: color.t2 }}>{row[0]}</span>
                 <span style={{ textAlign: 'center' }}><Check on={row[1]} accent={color.green} /></span>
                 <span style={{ textAlign: 'center' }}><Check on={row[2]} accent={color.blue} /></span>
                 <span style={{ textAlign: 'center' }}><Check on={row[3]} accent={color.gold} /></span>
+                <span style={{ textAlign: 'center' }}><Check on={row[4]} accent={color.gold} /></span>
               </div>
             ))}
           </div>
@@ -327,10 +347,10 @@ export default function PricingPage(): React.ReactElement {
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 32, flexWrap: 'wrap' }}>
             <div>
               <h2 style={{ fontFamily: font.sans, fontWeight: 700, fontSize: 'clamp(24px, 3vw, 38px)', letterSpacing: -1.2, lineHeight: 1.1, color: color.t1, marginBottom: 10 }}>
-                Start with one protected action.
+                Start with one consequential workflow.
               </h2>
               <p style={{ fontSize: 16, color: color.t2, lineHeight: 1.6, maxWidth: 440, margin: 0 }}>
-                Put Gate immediately before one mutating system, require the evidence that matters, and measure the result.
+                Diagnose an uncertain legacy path with Amelia I, or put Gate directly before a known high-risk mutation.
               </p>
             </div>
             <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap' }}>
