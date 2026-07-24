@@ -36,11 +36,15 @@ export {
   OUTCOME_ATTESTATION_VERSION,
   OUTCOME_ATTESTATION_DOMAIN,
   OUTCOME_BINDING_VERSION,
+  OUTCOME_BINDING_RESULT_VERSION,
   OUTCOME_BINDING_OUTCOMES,
   buildOutcomeAttestation,
   verifyOutcomeAttestation,
   observedEffectsDigest,
+  outcomeBindingResultCore,
+  outcomeBindingResultDigest,
   trustReceiptDigest,
+  verifyOutcomeBindingResultDigest,
 } from './outcome-binding.js';
 export {
   ORPRG_JSON_JCS_PROFILE,

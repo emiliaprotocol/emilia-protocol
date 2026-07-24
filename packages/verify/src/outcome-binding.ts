@@ -28,6 +28,7 @@ interface OutcomeOptions {
 export const OUTCOME_ATTESTATION_VERSION = 'EP-OUTCOME-ATTESTATION-v1';
 export const OUTCOME_ATTESTATION_DOMAIN = 'EP-OUTCOME-ATTESTATION-v1\0';
 export const OUTCOME_BINDING_VERSION = 'EP-OUTCOME-BINDING-v1';
+export const OUTCOME_BINDING_RESULT_VERSION = 'EP-OUTCOME-BINDING-RESULT-v1';
 
 const DIGEST_RE = /^sha256:[0-9a-f]{64}$/;
 const KEY_ID_RE = /^ep:executor-key:sha256:[0-9a-f]{64}$/;
@@ -98,6 +99,69 @@ export function observedEffectsDigest(observedEffects: unknown): string {
 /** Digest of the exact Trust Receipt object the attestation references. */
 export function trustReceiptDigest(receipt: unknown): string {
   return digest(receipt);
+}
+
+/**
+ * Canonical digest preimage for an Outcome Binding verifier result.
+ *
+ * The core commits the exact inputs by digest, every independent binding
+ * check, all refusal reasons and evaluations, the acceptance bit, and the
+ * reported verdict. It deliberately excludes result_digest itself.
+ */
+export function outcomeBindingResultCore(result: unknown): Obj {
+  const value = result && typeof result === 'object' && !Array.isArray(result)
+    ? result as Obj
+    : {};
+  return {
+    '@version': OUTCOME_BINDING_RESULT_VERSION,
+    input_commitments: Object.hasOwn(value, 'input_commitments')
+      ? value.input_commitments
+      : null,
+    exact_commitments: Object.hasOwn(value, 'commitments')
+      ? value.commitments
+      : Object.hasOwn(value, 'exact_commitments') ? value.exact_commitments : null,
+    valid: typeof value.valid === 'boolean' ? value.valid : null,
+    verdict: Object.hasOwn(value, 'verdict')
+      ? value.verdict
+      : typeof value.outcome_binding?.outcome === 'string'
+        ? value.outcome_binding.outcome
+        : null,
+    checks: Object.hasOwn(value, 'checks') ? value.checks : null,
+    errors: Object.hasOwn(value, 'errors') ? value.errors : null,
+    outcome_binding: Object.hasOwn(value, 'outcome_binding') ? value.outcome_binding : null,
+  };
+}
+
+/** sha256:<hex> over the canonical Outcome Binding result core. */
+export function outcomeBindingResultDigest(result: unknown): string {
+  return digest(outcomeBindingResultCore(result));
+}
+
+/**
+ * Recompute and constant-time compare an Outcome Binding result digest.
+ *
+ * This verifies result integrity only. Call verifyOutcomeBinding to verify the
+ * receipt, attestation, policy composition, and exact receipt/action/nonce
+ * bindings that produced the result.
+ */
+export function verifyOutcomeBindingResultDigest(
+  result: unknown,
+  claimedDigest?: unknown,
+): boolean {
+  const value = result && typeof result === 'object' && !Array.isArray(result)
+    ? result as Obj
+    : null;
+  const claimed = claimedDigest === undefined ? value?.result_digest : claimedDigest;
+  if (!value || typeof claimed !== 'string' || !DIGEST_RE.test(claimed)) return false;
+  try {
+    const recomputed = outcomeBindingResultDigest(value);
+    return crypto.timingSafeEqual(
+      Buffer.from(claimed.slice('sha256:'.length), 'hex'),
+      Buffer.from(recomputed.slice('sha256:'.length), 'hex'),
+    );
+  } catch {
+    return false;
+  }
 }
 
 function validateObservedEffects(observed: unknown): { ok: boolean; errors: string[] } {
@@ -352,6 +416,8 @@ export function verifyOutcomeBindingCore(
   const inputCommitments = () => ({
     receipt_digest: safeDigest(receipt),
     attestation_digest: safeDigest(attestation),
+    signed_predictions_digest: safeDigest(receipt?.action?.predicted_effects),
+    signed_predictions_commitment: normalizeDigest(receipt?.action?.predicted_effects_digest),
     policy_predictions_present: Object.hasOwn(opts, 'policyPredictedEffects'),
     policy_predictions_digest: Object.hasOwn(opts, 'policyPredictedEffects')
       ? safeDigest(opts.policyPredictedEffects)
@@ -369,6 +435,7 @@ export function verifyOutcomeBindingCore(
       valid: false,
       checks,
       errors,
+      input_commitments: inputCommitments(),
       receipt,
       attestation,
       commitments: exactCommitments(),
@@ -378,15 +445,7 @@ export function verifyOutcomeBindingCore(
     };
     return {
       ...result,
-      result_digest: digest({
-        input_commitments: inputCommitments(),
-        exact_commitments: result.commitments,
-        valid: result.valid,
-        verdict: outcome_binding.outcome,
-        checks,
-        errors,
-        outcome_binding,
-      }),
+      result_digest: outcomeBindingResultDigest(result),
     };
   };
   if (typeof verifyReceipt !== 'function') return refuse('receipt_verifier_required');
@@ -455,6 +514,7 @@ export function verifyOutcomeBindingCore(
     valid,
     checks,
     errors: [...errors, ...outcome_binding.reasons],
+    input_commitments: inputCommitments(),
     receipt,
     attestation,
     commitments: exactCommitments(),
@@ -464,18 +524,7 @@ export function verifyOutcomeBindingCore(
   };
   return {
     ...result,
-    result_digest: digest({
-      input_commitments: {
-        ...inputCommitments(),
-        signed_predictions_digest: predictedEffectsDigest(signedPredictions),
-      },
-      exact_commitments: result.commitments,
-      valid: result.valid,
-      verdict: outcome_binding.outcome,
-      checks,
-      errors: result.errors,
-      outcome_binding,
-    }),
+    result_digest: outcomeBindingResultDigest(result),
   };
 }
 

@@ -8,10 +8,29 @@ interface OutcomeOptions {
 export declare const OUTCOME_ATTESTATION_VERSION = "EP-OUTCOME-ATTESTATION-v1";
 export declare const OUTCOME_ATTESTATION_DOMAIN = "EP-OUTCOME-ATTESTATION-v1\0";
 export declare const OUTCOME_BINDING_VERSION = "EP-OUTCOME-BINDING-v1";
+export declare const OUTCOME_BINDING_RESULT_VERSION = "EP-OUTCOME-BINDING-RESULT-v1";
 /** Digest over the exact observed_effects array carried by the attestation. */
 export declare function observedEffectsDigest(observedEffects: unknown): string;
 /** Digest of the exact Trust Receipt object the attestation references. */
 export declare function trustReceiptDigest(receipt: unknown): string;
+/**
+ * Canonical digest preimage for an Outcome Binding verifier result.
+ *
+ * The core commits the exact inputs by digest, every independent binding
+ * check, all refusal reasons and evaluations, the acceptance bit, and the
+ * reported verdict. It deliberately excludes result_digest itself.
+ */
+export declare function outcomeBindingResultCore(result: unknown): Obj;
+/** sha256:<hex> over the canonical Outcome Binding result core. */
+export declare function outcomeBindingResultDigest(result: unknown): string;
+/**
+ * Recompute and constant-time compare an Outcome Binding result digest.
+ *
+ * This verifies result integrity only. Call verifyOutcomeBinding to verify the
+ * receipt, attestation, policy composition, and exact receipt/action/nonce
+ * bindings that produced the result.
+ */
+export declare function verifyOutcomeBindingResultDigest(result: unknown, claimedDigest?: unknown): boolean;
 /**
  * Build an executor-signed observed-effects attestation.
  *
@@ -56,6 +75,14 @@ export declare function verifyOutcomeBindingCore(receipt: Obj, attestation: Obj,
     valid: boolean;
     checks: Record<string, boolean>;
     errors: string[];
+    input_commitments: {
+        receipt_digest: string | null;
+        attestation_digest: string | null;
+        signed_predictions_digest: string | null;
+        signed_predictions_commitment: string | null;
+        policy_predictions_present: boolean;
+        policy_predictions_digest: string | null;
+    };
     receipt: Obj;
     attestation: Obj;
     commitments: {
@@ -85,6 +112,14 @@ export declare function verifyOutcomeBindingCore(receipt: Obj, attestation: Obj,
     valid: boolean;
     checks: Record<string, boolean>;
     errors: any[];
+    input_commitments: {
+        receipt_digest: string | null;
+        attestation_digest: string | null;
+        signed_predictions_digest: string | null;
+        signed_predictions_commitment: string | null;
+        policy_predictions_present: boolean;
+        policy_predictions_digest: string | null;
+    };
     receipt: Obj;
     attestation: Obj;
     commitments: {

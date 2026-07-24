@@ -16,7 +16,7 @@ export * from './aeb-adapter-contract.js';
 export * from './aeb-native-adapters.js';
 export * from './agent-edge-continuity.js';
 export * from './status.js';
-export { OUTCOME_ATTESTATION_VERSION, OUTCOME_ATTESTATION_DOMAIN, OUTCOME_BINDING_VERSION, OUTCOME_BINDING_OUTCOMES, buildOutcomeAttestation, verifyOutcomeAttestation, observedEffectsDigest, trustReceiptDigest, } from './outcome-binding.js';
+export { OUTCOME_ATTESTATION_VERSION, OUTCOME_ATTESTATION_DOMAIN, OUTCOME_BINDING_VERSION, OUTCOME_BINDING_RESULT_VERSION, OUTCOME_BINDING_OUTCOMES, buildOutcomeAttestation, verifyOutcomeAttestation, observedEffectsDigest, outcomeBindingResultCore, outcomeBindingResultDigest, trustReceiptDigest, verifyOutcomeBindingResultDigest, } from './outcome-binding.js';
 export { ORPRG_JSON_JCS_PROFILE, ORPRG_ACTION_PROFILE, computeOrprgActionDigest, verifyOrprgJsonJcsPermit, verifyOrprgJsonJcsPermitAsync, createOrprgAecVerifier, } from './orprg.js';
 declare function canonicalize(value: any): string;
 /**
