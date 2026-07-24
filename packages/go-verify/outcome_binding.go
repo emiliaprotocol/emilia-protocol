@@ -8,6 +8,7 @@ package emiliaverify
 
 import (
 	"crypto/sha256"
+	"crypto/subtle"
 	"encoding/base64"
 	"encoding/hex"
 	"encoding/json"
@@ -20,12 +21,13 @@ import (
 )
 
 const (
-	OutcomeAttestationVersion = "EP-OUTCOME-ATTESTATION-v1"
-	OutcomeAttestationDomain  = "EP-OUTCOME-ATTESTATION-v1\x00"
-	OutcomeBindingVersion     = "EP-OUTCOME-BINDING-v1"
-	MaxPredictedEffects       = 64
-	MaxObservedEffects        = 256
-	MaxEffectStringLength     = 512
+	OutcomeAttestationVersion   = "EP-OUTCOME-ATTESTATION-v1"
+	OutcomeAttestationDomain    = "EP-OUTCOME-ATTESTATION-v1\x00"
+	OutcomeBindingVersion       = "EP-OUTCOME-BINDING-v1"
+	OutcomeBindingResultVersion = "EP-OUTCOME-BINDING-RESULT-v1"
+	MaxPredictedEffects         = 64
+	MaxObservedEffects          = 256
+	MaxEffectStringLength       = 512
 )
 
 var PredicateOps = []string{"eq", "lte", "gte", "range", "set_eq", "count_lte", "absent"}
@@ -100,6 +102,8 @@ type OutcomeBindingResult struct {
 	Valid             bool                      `json:"valid"`
 	Checks            map[string]bool           `json:"checks"`
 	Errors            []string                  `json:"errors"`
+	InputCommitments  map[string]any            `json:"input_commitments"`
+	Commitments       map[string]any            `json:"commitments"`
 	ReceiptResult     *TrustReceiptResult       `json:"receipt_result,omitempty"`
 	AttestationResult *OutcomeAttestationResult `json:"attestation_result,omitempty"`
 	OutcomeBinding    OutcomeBindingVerdict     `json:"outcome_binding"`
@@ -131,6 +135,14 @@ func normalizeOutcomeDigest(value any) string {
 		return ""
 	}
 	return strings.ToLower(text)
+}
+
+func normalizedOutcomeDigestOrNil(value any) any {
+	normalized := normalizeOutcomeDigest(value)
+	if normalized == "" {
+		return nil
+	}
+	return normalized
 }
 
 func outcomeTooLong(value any) bool {
@@ -944,16 +956,28 @@ func outcomeInputCommitments(
 	attestation map[string]any,
 	opts map[string]any,
 ) map[string]any {
+	var signedPredictionsDigest any
+	var signedPredictionsCommitment any
+	if action := getMap(receipt["action"]); action != nil {
+		if signedPredictions, present := action["predicted_effects"]; present {
+			signedPredictionsDigest = outcomeDigest(signedPredictions)
+		}
+		signedPredictionsCommitment = normalizedOutcomeDigestOrNil(
+			action["predicted_effects_digest"],
+		)
+	}
 	policy, policyPresent := opts["policyPredictedEffects"]
 	var policyDigest any
 	if policyPresent {
 		policyDigest = outcomeDigest(policy)
 	}
 	return map[string]any{
-		"receipt_digest":             outcomeDigest(receipt),
-		"attestation_digest":         outcomeDigest(attestation),
-		"policy_predictions_present": policyPresent,
-		"policy_predictions_digest":  policyDigest,
+		"receipt_digest":                outcomeDigest(receipt),
+		"attestation_digest":            outcomeDigest(attestation),
+		"signed_predictions_digest":     signedPredictionsDigest,
+		"signed_predictions_commitment": signedPredictionsCommitment,
+		"policy_predictions_present":    policyPresent,
+		"policy_predictions_digest":     policyDigest,
 	}
 }
 
@@ -992,16 +1016,65 @@ func outcomeExactCommitments(
 		"receipt_id":                 receiptID,
 		"attested_receipt_id":        attestedReceiptID,
 		"receipt_digest":             outcomeDigest(receipt),
-		"attested_receipt_digest":    normalizeOutcomeDigest(attestation["receipt_digest"]),
-		"action_hash":                normalizeOutcomeDigest(receipt["action_hash"]),
-		"attested_action_hash":       normalizeOutcomeDigest(attestation["action_hash"]),
+		"attested_receipt_digest":    normalizedOutcomeDigestOrNil(attestation["receipt_digest"]),
+		"action_hash":                normalizedOutcomeDigestOrNil(receipt["action_hash"]),
+		"attested_action_hash":       normalizedOutcomeDigestOrNil(attestation["action_hash"]),
 		"consumption_nonce":          consumptionNonce,
 		"attested_consumption_nonce": attestedConsumptionNonce,
 		"execution_id":               executionID,
 		"executor_id":                executorID,
 		"executor_key_id":            executorKeyID,
-		"observed_effects_digest":    normalizeOutcomeDigest(attestation["observed_effects_digest"]),
+		"observed_effects_digest":    normalizedOutcomeDigestOrNil(attestation["observed_effects_digest"]),
 	}
+}
+
+// OutcomeBindingResultCore returns the canonical result-digest preimage used
+// by the TypeScript reference implementation. It binds exact inputs, every
+// independent check and refusal reason, the acceptance bit, and the typed
+// outcome verdict while deliberately excluding ResultDigest itself.
+func OutcomeBindingResultCore(result OutcomeBindingResult) map[string]any {
+	return map[string]any{
+		"@version":          OutcomeBindingResultVersion,
+		"input_commitments": result.InputCommitments,
+		"exact_commitments": result.Commitments,
+		"valid":             result.Valid,
+		"verdict":           result.OutcomeBinding.Outcome,
+		"checks":            outcomeChecksMap(result.Checks),
+		"errors":            outcomeErrorsArray(result.Errors),
+		"outcome_binding":   outcomeVerdictMap(result.OutcomeBinding),
+	}
+}
+
+// OutcomeBindingResultDigest computes the canonical digest of an Outcome
+// Binding result core.
+func OutcomeBindingResultDigest(result OutcomeBindingResult) string {
+	return outcomeDigest(OutcomeBindingResultCore(result))
+}
+
+// VerifyOutcomeBindingResultDigest recomputes and constant-time compares an
+// Outcome Binding result digest. The optional claimed digest defaults to the
+// digest carried by result; more than one explicit claim fails closed.
+func VerifyOutcomeBindingResultDigest(
+	result OutcomeBindingResult,
+	claimedDigest ...string,
+) bool {
+	if len(claimedDigest) > 1 {
+		return false
+	}
+	claimed := result.ResultDigest
+	if len(claimedDigest) == 1 {
+		claimed = claimedDigest[0]
+	}
+	if !outcomeDigestPattern.MatchString(claimed) {
+		return false
+	}
+	recomputed := OutcomeBindingResultDigest(result)
+	claimedBytes, claimedErr := hex.DecodeString(strings.TrimPrefix(claimed, "sha256:"))
+	recomputedBytes, recomputedErr := hex.DecodeString(strings.TrimPrefix(recomputed, "sha256:"))
+	if claimedErr != nil || recomputedErr != nil {
+		return false
+	}
+	return subtle.ConstantTimeCompare(claimedBytes, recomputedBytes) == 1
 }
 
 func outcomeRefusal(
@@ -1017,19 +1090,14 @@ func outcomeRefusal(
 		Version: OutcomeBindingVersion, Outcome: "incomparable",
 		Evaluations: []OutcomeEvaluation{}, Reasons: append([]string{}, errors...),
 	}
-	digestInput := map[string]any{
-		"input_commitments": outcomeInputCommitments(receipt, attestation, opts),
-		"exact_commitments": outcomeExactCommitments(receipt, attestation),
-		"valid":             false,
-		"verdict":           verdict.Outcome,
-		"checks":            outcomeChecksMap(checks),
-		"errors":            outcomeErrorsArray(errors),
-		"outcome_binding":   outcomeVerdictMap(verdict),
-	}
-	return OutcomeBindingResult{
+	result := OutcomeBindingResult{
 		Valid: false, Checks: checks, Errors: errors,
-		OutcomeBinding: verdict, ResultDigest: outcomeDigest(digestInput),
+		InputCommitments: outcomeInputCommitments(receipt, attestation, opts),
+		Commitments:      outcomeExactCommitments(receipt, attestation),
+		OutcomeBinding:   verdict,
 	}
+	result.ResultDigest = OutcomeBindingResultDigest(result)
+	return result
 }
 
 // VerifyOutcomeBinding composes full Trust Receipt verification, the signed
@@ -1141,19 +1209,13 @@ func VerifyOutcomeBinding(
 	resultErrors := append(append([]string{}, errors...), verdict.Reasons...)
 	valid := allTrue(checks) && verdict.Outcome == "in_bounds"
 	inputCommitments := outcomeInputCommitments(receipt, attestation, opts)
-	inputCommitments["signed_predictions_digest"] = PredictedEffectsDigest(signedPredictions)
-	digestInput := map[string]any{
-		"input_commitments": inputCommitments,
-		"exact_commitments": outcomeExactCommitments(receipt, attestation),
-		"valid":             valid,
-		"verdict":           verdict.Outcome,
-		"checks":            outcomeChecksMap(checks),
-		"errors":            outcomeErrorsArray(resultErrors),
-		"outcome_binding":   outcomeVerdictMap(verdict),
-	}
-	return OutcomeBindingResult{
+	result := OutcomeBindingResult{
 		Valid: valid, Checks: checks, Errors: resultErrors,
-		ReceiptResult: &receiptResult, AttestationResult: &attestationResult,
-		OutcomeBinding: verdict, ResultDigest: outcomeDigest(digestInput),
+		InputCommitments: inputCommitments,
+		Commitments:      outcomeExactCommitments(receipt, attestation),
+		ReceiptResult:    &receiptResult, AttestationResult: &attestationResult,
+		OutcomeBinding: verdict,
 	}
+	result.ResultDigest = OutcomeBindingResultDigest(result)
+	return result
 }
