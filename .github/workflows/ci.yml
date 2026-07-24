@@ -386,7 +386,12 @@ jobs:
           TLA_VERSION: v1.7.4
           TLA_SHA256: 936a262061c914694dfd669a543be24573c45d5aa0ff20a8b96b23d01e050e88
         run: |
-          curl -fsSL -o tla2tools.jar \
+          curl -fsSL \
+            --retry 5 \
+            --retry-delay 2 \
+            --retry-all-errors \
+            --connect-timeout 20 \
+            -o tla2tools.jar \
             "https://github.com/tlaplus/tlaplus/releases/download/${TLA_VERSION}/tla2tools.jar"
           echo "${TLA_SHA256}  tla2tools.jar" | sha256sum -c -
       - name: Execute exact claims and require the checked-in security case to be current
