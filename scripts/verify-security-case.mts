@@ -116,6 +116,14 @@ function hasBoundedFormalResult(source: string, obligation: string): boolean {
   ).test(source);
 }
 
+function hasTlaDeclaration(source: string, obligation: string): boolean {
+  return new RegExp(`^\\s*${escaped(obligation)}\\s*==`, 'm').test(source);
+}
+
+function hasTlaConfiguredObligation(source: string, obligation: string): boolean {
+  return new RegExp(`^\\s*(?:INVARIANT|PROPERTY)\\s+${escaped(obligation)}\\s*$`, 'm').test(source);
+}
+
 function planTest(id: string, executionSpec: any, suitePath: string | null = null): void {
   if (!executionSpec || !['vitest', 'node-test'].includes(executionSpec.runner)) {
     fail(id, 'execution must name runner vitest or node-test');
@@ -442,6 +450,37 @@ for (const claim of sourceCase.claims ?? []) {
         planned.obligations.add(obligation);
       }
       boundedFormalPlan.set(key, planned);
+      continue;
+    }
+    if (formal.method === 'bounded_tla_model_checking') {
+      if (formal.status !== 'partial') {
+        fail(id, 'bounded TLA+ formal evidence must remain status partial without an implementation refinement proof');
+      }
+      if (!Array.isArray(formal.obligations) || formal.obligations.length === 0
+          || formal.obligations.some((obligation) => !nonEmpty(obligation))
+          || new Set(formal.obligations).size !== formal.obligations.length) {
+        fail(id, 'bounded TLA+ formal evidence requires unique named obligations');
+      }
+      for (const obligation of formal.obligations ?? []) {
+        if (!hasTlaDeclaration(modelSource, obligation)) {
+          fail(id, `${formal.model} does not declare exact TLA+ obligation ${obligation}`);
+        }
+        if (!hasTlaConfiguredObligation(runnerSource, obligation)) {
+          fail(id, `${formal.runner} does not configure exact TLA+ obligation ${obligation}`);
+        }
+        if (!hasBoundedFormalResult(resultSource, obligation)) {
+          fail(id, `${formal.result_evidence} has no verified bounded result for ${obligation}`);
+        }
+      }
+      if (!resultSource.includes('Result: Model checking completed. No error has been found.')) {
+        fail(id, `${formal.result_evidence} has no clean TLC completion result`);
+      }
+      if (!nonEmpty(formal.scope)
+          || !formal.scope.toLowerCase().includes('bounded')
+          || !formal.scope.toLowerCase().includes('same-team')
+          || !formal.scope.toLowerCase().includes('not a refinement proof')) {
+        fail(id, 'bounded TLA+ evidence requires explicit bounded, same-team, and no-refinement scope');
+      }
       continue;
     }
     if (!nonEmpty(formal.lemma) || !hasFormalLemma(modelSource, formal.lemma)) fail(id, `${formal.model} has no exact lemma ${formal.lemma}`);

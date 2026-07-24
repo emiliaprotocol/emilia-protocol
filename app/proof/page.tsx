@@ -9,6 +9,40 @@ import claimSource from '@/security/claims.v1.json';
 const REPO = 'https://github.com/emiliaprotocol/emilia-protocol';
 const number = (value: number | string): string => Number(value).toLocaleString('en-US');
 
+type FormalCoverage = 'fully-modeled' | 'partial' | 'executable-only';
+
+const formalCoverage = (statuses: string[]): FormalCoverage => {
+  if (statuses.length > 0 && statuses.every((status) => status === 'verified')) {
+    return 'fully-modeled';
+  }
+  if (statuses.some((status) => status === 'verified' || status === 'partial')) {
+    return 'partial';
+  }
+  return 'executable-only';
+};
+
+const CLAIM_ROWS = claimSource.claims.map((claim) => {
+  const statuses = [...new Set((claim.formal || []).map((entry) => entry.status))];
+  return {
+    claim,
+    coverage: formalCoverage(statuses),
+  };
+});
+
+const FORMAL_COUNTS = CLAIM_ROWS.reduce<Record<FormalCoverage, number>>(
+  (counts, row) => {
+    counts[row.coverage] += 1;
+    return counts;
+  },
+  { 'fully-modeled': 0, partial: 0, 'executable-only': 0 },
+);
+
+const FORMAL_LABELS: Record<FormalCoverage, string> = {
+  'fully-modeled': 'Fully modeled',
+  partial: 'Partial formal coverage',
+  'executable-only': 'Executable evidence only',
+};
+
 const EVIDENCE = [
   {
     value: proofStats.tamarin.verifiedObligations,
@@ -185,24 +219,71 @@ export default async function ProofPage() {
             <div style={{ maxWidth: 720, marginBottom: 42 }}>
               <div style={{ ...styles.eyebrow, color: color.gold }}>Executable claim inventory</div>
               <h2 style={{ ...styles.h2, fontSize: 'clamp(26px, 3vw, 38px)' }}>
-                Every headline resolves to code, vectors, scope, and assumptions.
+                Two evidence axes. No hidden “done” label.
               </h2>
               <p style={styles.body}>
-                These are the current machine-verifiable claim statements. The JSON security case
-                contains the exact enforcement paths and evidence hashes behind each one.
+                Every row below is a resolved executable security-case claim with enforcement
+                paths, tests, vectors, assumptions, exclusions, and hashed evidence. Formal model
+                scope is reported separately because code evidence and mathematical models answer
+                different questions.
               </p>
             </div>
 
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 210px), 1fr))', gap: 1, background: color.border, border: `1px solid ${color.border}`, marginBottom: 24 }}>
+              <div style={{ background: color.t1, color: '#FAFAF9', padding: 24, minHeight: 154 }}>
+                <div style={{ fontFamily: font.mono, fontSize: 10, color: color.gold, letterSpacing: 1.2, textTransform: 'uppercase', marginBottom: 14 }}>
+                  Executable evidence
+                </div>
+                <div style={{ fontFamily: font.sans, fontSize: 36, fontWeight: 700, lineHeight: 1, marginBottom: 10 }}>
+                  {claimSource.claims.length}/{claimSource.claims.length}
+                </div>
+                <div style={{ fontFamily: font.sans, fontSize: 13, lineHeight: 1.55, color: 'rgba(250,250,249,0.7)' }}>
+                  Claims resolved in the generated security case.
+                </div>
+              </div>
+              {([
+                ['fully-modeled', 'Exact claim covered by the cited formal model.'],
+                ['partial', 'A formal model covers part of the claim; the remaining implementation link is disclosed.'],
+                ['executable-only', 'Validated by code, tests, vectors, or operational evidence; no complete formal model.'],
+              ] as const).map(([coverage, detail]) => (
+                <div key={coverage} style={{ background: '#FFFFFF', padding: 24, minHeight: 154 }}>
+                  <div style={{ fontFamily: font.mono, fontSize: 10, color: color.t3, letterSpacing: 1.2, textTransform: 'uppercase', marginBottom: 14 }}>
+                    Formal model scope
+                  </div>
+                  <div style={{ fontFamily: font.sans, fontSize: 36, fontWeight: 700, color: color.t1, lineHeight: 1, marginBottom: 8 }}>
+                    {FORMAL_COUNTS[coverage]}
+                  </div>
+                  <div style={{ fontFamily: font.mono, fontSize: 10, fontWeight: 700, color: color.gold, textTransform: 'uppercase', letterSpacing: 0.7, marginBottom: 8 }}>
+                    {FORMAL_LABELS[coverage]}
+                  </div>
+                  <div style={{ fontFamily: font.sans, fontSize: 12, lineHeight: 1.5, color: color.t3 }}>
+                    {detail}
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            <p style={{ fontFamily: font.mono, fontSize: 11, lineHeight: 1.65, color: color.t2, margin: '0 0 36px', padding: '14px 16px', borderLeft: `3px solid ${color.gold}`, background: '#FFFFFF' }}>
+              “Executable evidence only” does not mean unimplemented. It means the exact claim is
+              exercised by inspectable artifacts but is not represented by a complete formal model
+              or implementation-refinement proof.
+            </p>
+
             <div style={{ borderTop: `1px solid ${color.borderHover}` }}>
-              {claimSource.claims.map((claim) => {
-                const formalStatuses = [...new Set((claim.formal || []).map((entry) => entry.status))];
+              {CLAIM_ROWS.map(({ claim, coverage }) => {
+                const evidenceCount = claim.enforcement_path.length + claim.vectors.length + claim.tests.length;
                 return (
                   <article key={claim.claim_id} style={{ padding: '24px 0', borderBottom: `1px solid ${color.border}` }}>
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', gap: 20, flexWrap: 'wrap', marginBottom: 8 }}>
                       <code style={{ fontFamily: font.mono, fontSize: 11, color: color.gold }}>{claim.claim_id}</code>
-                      <span style={{ fontFamily: font.mono, fontSize: 9, color: color.t3, textTransform: 'uppercase', letterSpacing: 1 }}>
-                        formal: {formalStatuses.join(' + ').replaceAll('_', ' ') || 'not modeled'}
-                      </span>
+                      <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
+                        <span style={{ fontFamily: font.mono, fontSize: 9, color: color.t2, textTransform: 'uppercase', letterSpacing: 0.8, padding: '5px 8px', border: `1px solid ${color.border}` }}>
+                          Executable evidence · resolved · {evidenceCount} cited checks
+                        </span>
+                        <span style={{ fontFamily: font.mono, fontSize: 9, color: coverage === 'fully-modeled' ? '#166534' : coverage === 'partial' ? '#92400E' : color.t3, background: coverage === 'fully-modeled' ? '#DCFCE7' : coverage === 'partial' ? '#FEF3C7' : '#F5F5F4', textTransform: 'uppercase', letterSpacing: 0.8, padding: '5px 8px' }}>
+                          Formal model · {FORMAL_LABELS[coverage]}
+                        </span>
+                      </div>
                     </div>
                     <p style={{ fontFamily: font.sans, fontSize: 15, color: color.t1, lineHeight: 1.65, margin: 0 }}>{claim.statement}</p>
                   </article>

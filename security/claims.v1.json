@@ -1208,8 +1208,26 @@
       ],
       "formal": [
         {
-          "status": "not_modeled",
-          "gap": "A separate bounded TLC model checks the Authority Program structural and root-binding invariants, but no refinement proof connects that abstraction to the TypeScript signature, CAID, or injected-native-verifier implementation."
+          "status": "partial",
+          "method": "bounded_tla_model_checking",
+          "model": "formal/ep_authority_program.tla",
+          "runner": "formal/ep_authority_program.cfg",
+          "result_evidence": "formal/results/ep-authority-program.tlc.summary.txt",
+          "obligations": [
+            "ExpressionIsSeriesParallel",
+            "TypeOK",
+            "CheckedReceiptsAreValid",
+            "CheckedReceiptsHaveTheirPredecessors",
+            "ValidOnlyAfterCompleteFold",
+            "ValidImpliesPinnedSignedProgram",
+            "ValidImpliesRootActionBinding",
+            "ValidImpliesExactStageSet",
+            "ValidImpliesExactReceiptBindings",
+            "ConservationOfAuthority",
+            "NoExecutionProof",
+            "EventuallyTerminates"
+          ],
+          "scope": "Public same-team bounded TLC model checking across one four-stage series/parallel fold with one injected fault class. This is not a refinement proof connecting the abstraction to the TypeScript signature, JCS and CAID computation, database behavior, or injected native verifiers."
         }
       ],
       "assumptions": [

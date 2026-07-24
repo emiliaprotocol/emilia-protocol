@@ -6,11 +6,26 @@ TLC: 2.19 (TLA+ tools v1.7.4, rev 5a47802)
 TLA+ tools JAR SHA-256: 936a262061c914694dfd669a543be24573c45d5aa0ff20a8b96b23d01e050e88
 Model SHA-256: f86dbe888e00c2576043064be84b4cbd89d263d01f35a85a6e79155240047f7d
 Configuration SHA-256: e1bf2149eb5c32632407ec07972a5e9793cfb4d22f45a86eeafe90fb1bfa0719
+Runner SHA-256: e1bf2149eb5c32632407ec07972a5e9793cfb4d22f45a86eeafe90fb1bfa0719
 
 Configuration: sequence(stage-a, parallel(stage-b, stage-c), stage-d) with one injected global or stage-local fault class.
 Obligations: 11 state invariants and 1 liveness property.
 Result: Model checking completed. No error has been found.
 States: 307 generated; 222 distinct; 0 left on queue; complete depth 6.
+
+Verified obligations:
+  ExpressionIsSeriesParallel (TLC finite scope): verified
+  TypeOK (TLC finite scope): verified
+  CheckedReceiptsAreValid (TLC finite scope): verified
+  CheckedReceiptsHaveTheirPredecessors (TLC finite scope): verified
+  ValidOnlyAfterCompleteFold (TLC finite scope): verified
+  ValidImpliesPinnedSignedProgram (TLC finite scope): verified
+  ValidImpliesRootActionBinding (TLC finite scope): verified
+  ValidImpliesExactStageSet (TLC finite scope): verified
+  ValidImpliesExactReceiptBindings (TLC finite scope): verified
+  ConservationOfAuthority (TLC finite scope): verified
+  NoExecutionProof (TLC finite scope): verified
+  EventuallyTerminates (TLC finite scope): verified
 
 Scope: representative four-stage nested series/parallel verification fold.
 Assumptions: callback verdicts accurately represent root CAID/action binding, signature, AEC, AOM, capability-narrowing, allocation, and other native verification.

@@ -1,9 +1,9 @@
 {
   "@version": "EMILIA-REPO-CONTEXT-v1",
-  "evidence_snapshot_at": "2026-07-23T17:29:49.456Z",
+  "evidence_snapshot_at": "2026-07-24T06:37:27.953Z",
   "provenance": {
     "generator": "scripts/generate-llm-context.mjs",
-    "input_digest_sha256": "00df96086315a959d3c4f8bfdd8b5c05945a6d83f8088a4d5aa0ea6b60531ac6",
+    "input_digest_sha256": "59b22c9bbcb28ad071918c25470b65ae458799d282d579679e4939db0a26d7b0",
     "generated_from": [
       {
         "path": "docs/ai/context-source.v1.json",
@@ -17,7 +17,7 @@
       },
       {
         "path": "lib/proof-stats.json",
-        "sha256": "46f6cf0c77a9fb67b8565964777a86d9b625cca2163604c1c5f6c355a969ab1a",
+        "sha256": "d19b530ae8b8a3cce9d1553b672aae71e35f94d6be80b31a087e6c4d9813f1ad",
         "bytes": 1068
       },
       {
@@ -32,13 +32,13 @@
       },
       {
         "path": "security/claims.v1.json",
-        "sha256": "ab19e0ea105bdc245bf5cd950aa9c3ed5e8db562723d327a222f795532acb23c",
-        "bytes": 174455
+        "sha256": "5b8c025be7f757a83033a6f77b5b22e3f4cd77b1e07cd8b0548d05cafcec9ca5",
+        "bytes": 175273
       },
       {
         "path": "security/security-case.json",
-        "sha256": "804f695d64c6e290c1b2207d2f19b7533e0a483f2c844d83998bae679bcbccbb",
-        "bytes": 278567
+        "sha256": "dfeeffa832259461612a1d3e9abeb0051f8c195f277264ca93832f9fb763c83f",
+        "bytes": 279840
       },
       {
         "path": "lib/standards-observatory.snapshot.json",
@@ -272,7 +272,7 @@
   ],
   "current_evidence": {
     "automated_tests": {
-      "total": 7688,
+      "total": 7689,
       "files": 415,
       "policy": "all platform-applicable cases must pass; platform-specific cases may skip"
     },
@@ -303,8 +303,8 @@
     "security_case": {
       "status": "passed",
       "claims": 33,
-      "evidence_files": 176,
-      "evidence_bundle_sha256": "187771f04d01844567069e99462fc64a52812d752b26b0477563007922bebd8f"
+      "evidence_files": 179,
+      "evidence_bundle_sha256": "c80650bc0441d40ed62fb2ed99c3d0cddbf85b687d56acd9381a347c7e33985f"
     },
     "caid": {
       "core_vectors": 48,
@@ -2488,8 +2488,26 @@
       ],
       "formal": [
         {
-          "status": "not_modeled",
-          "gap": "A separate bounded TLC model checks the Authority Program structural and root-binding invariants, but no refinement proof connects that abstraction to the TypeScript signature, CAID, or injected-native-verifier implementation."
+          "status": "partial",
+          "method": "bounded_tla_model_checking",
+          "model": "formal/ep_authority_program.tla",
+          "runner": "formal/ep_authority_program.cfg",
+          "result_evidence": "formal/results/ep-authority-program.tlc.summary.txt",
+          "obligations": [
+            "ExpressionIsSeriesParallel",
+            "TypeOK",
+            "CheckedReceiptsAreValid",
+            "CheckedReceiptsHaveTheirPredecessors",
+            "ValidOnlyAfterCompleteFold",
+            "ValidImpliesPinnedSignedProgram",
+            "ValidImpliesRootActionBinding",
+            "ValidImpliesExactStageSet",
+            "ValidImpliesExactReceiptBindings",
+            "ConservationOfAuthority",
+            "NoExecutionProof",
+            "EventuallyTerminates"
+          ],
+          "scope": "Public same-team bounded TLC model checking across one four-stage series/parallel fold with one injected fault class. This is not a refinement proof connecting the abstraction to the TypeScript signature, JCS and CAID computation, database behavior, or injected native verifiers."
         }
       ],
       "assumptions": [
