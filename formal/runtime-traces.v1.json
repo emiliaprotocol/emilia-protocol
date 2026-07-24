@@ -1,0 +1,489 @@
+{
+  "@version": "EP-FORMAL-RUNTIME-TRACES-v2",
+  "scope": "Bounded selected traces force exact TLA+ actions and compare their abstract state projections with deterministic replays through production runtime entry points.",
+  "limitations": [
+    "Trace refinement tests selected transitions; it is not a mechanized implementation refinement proof.",
+    "The formal models, adapters, and runtime implementations are maintained by the same team.",
+    "Cryptographic primitives, trusted clocks, provider truth, complete mediation, and durable database semantics remain explicit acceptance roots."
+  ],
+  "models": {
+    "formal/ep_consequence_lifecycle.tla": {
+      "config": "formal/ep_consequence_lifecycle.cfg",
+      "variables": [
+        "stage",
+        "caidOf",
+        "admittedBy",
+        "approvedBy",
+        "revoked",
+        "escrowState",
+        "invokeCount",
+        "reconciledBy",
+        "effectDigest",
+        "remedyState",
+        "remedyFor",
+        "remedyCAID",
+        "remedyDecision",
+        "coverage"
+      ],
+      "projections": {
+        "executeStage": "stage[ExecuteOp]",
+        "executeInvokeCount": "invokeCount[ExecuteOp]",
+        "executeEscrowState": "escrowState[ExecuteOp]",
+        "remedyState": "remedyState"
+      }
+    },
+    "formal/ep_effect_profiles.tla": {
+      "config": "formal/ep_effect_profiles.cfg",
+      "variables": [
+        "aeState",
+        "aeMilestoneCaid",
+        "aeReleaseCount",
+        "aeDuplicateRefused",
+        "m2mState",
+        "m2mPresentedCaid",
+        "m2mLegBindings",
+        "m2mConsumptionCount",
+        "aecState",
+        "aecPresentedRoles",
+        "graceState",
+        "graceAuthorizationVerified",
+        "graceEnvelopeVerified",
+        "graceDispatchCount",
+        "graceMeterRecorded",
+        "graceSettlementCount",
+        "graceReplayRefused",
+        "mobileState",
+        "mobileTenant",
+        "mobileExecutor",
+        "mobileProviderCalls",
+        "mobileFenced",
+        "mobileOutcomeAuthenticated",
+        "mobileOutcomeTenant",
+        "mobileOutcomeExecutor",
+        "mobileReplayRefused",
+        "mobileReconciliationRefused",
+        "enrollmentState",
+        "enrollmentRows",
+        "enrollmentActivationCount",
+        "enrollmentReplayRefused"
+      ],
+      "projections": {
+        "aeState": "aeState",
+        "aeMilestoneCaid": "aeMilestoneCaid",
+        "aeReleaseCount": "aeReleaseCount",
+        "aeDuplicateRefused": "aeDuplicateRefused",
+        "m2mState": "m2mState",
+        "m2mPresentedCaid": "m2mPresentedCaid",
+        "m2mConsumptionCount": "m2mConsumptionCount",
+        "aecState": "aecState",
+        "graceState": "graceState",
+        "graceAuthorizationVerified": "graceAuthorizationVerified",
+        "graceEnvelopeVerified": "graceEnvelopeVerified",
+        "graceDispatchCount": "graceDispatchCount",
+        "graceMeterRecorded": "graceMeterRecorded",
+        "graceSettlementCount": "graceSettlementCount",
+        "graceReplayRefused": "graceReplayRefused",
+        "mobileState": "mobileState",
+        "mobileTenant": "mobileTenant",
+        "mobileExecutor": "mobileExecutor",
+        "mobileProviderCalls": "mobileProviderCalls",
+        "mobileFenced": "mobileFenced",
+        "mobileOutcomeAuthenticated": "mobileOutcomeAuthenticated",
+        "mobileOutcomeTenant": "mobileOutcomeTenant",
+        "mobileOutcomeExecutor": "mobileOutcomeExecutor",
+        "mobileReplayRefused": "mobileReplayRefused",
+        "mobileReconciliationRefused": "mobileReconciliationRefused",
+        "enrollmentState": "enrollmentState",
+        "enrollmentRowCount": "Cardinality(enrollmentRows)",
+        "enrollmentActivationCount": "enrollmentActivationCount",
+        "enrollmentReplayRefused": "enrollmentReplayRefused"
+      },
+      "actions": {
+        "SubmitExactMilestone": "ActionEscrowStep /\\ SubmitExactMilestone",
+        "ReserveEscrowRelease": "ActionEscrowStep /\\ ReserveEscrowRelease",
+        "ReleaseEscrow": "ActionEscrowStep /\\ ReleaseEscrow",
+        "AttemptDuplicateEscrowRelease": "ActionEscrowStep /\\ AttemptDuplicateEscrowRelease",
+        "PresentSixExactLegs": "ModelToMatterStep /\\ PresentSixExactLegs",
+        "ConsumeModelToMatterClearance": "ModelToMatterStep /\\ ConsumeModelToMatterClearance",
+        "AttemptModelToMatterReplay": "ModelToMatterStep /\\ AttemptModelToMatterReplay",
+        "PresentMismatchedLeg": "ModelToMatterStep /\\ PresentMismatchedLeg",
+        "RefuseModelToMatterClearance": "ModelToMatterStep /\\ RefuseModelToMatterClearance",
+        "PresentExactAecRoles": "AecStep /\\ PresentExactAecRoles",
+        "AcceptAec": "AecStep /\\ AcceptAec",
+        "PresentSubstitutedAecRole": "AecStep /\\ PresentSubstitutedAecRole",
+        "RefuseAec": "AecStep /\\ RefuseAec",
+        "AuthorizeGrace": "GraceStep /\\ AuthorizeGrace",
+        "DispatchGrace": "GraceStep /\\ DispatchGrace",
+        "RecordGraceMeter": "GraceStep /\\ RecordGraceMeter",
+        "SettleGrace": "GraceStep /\\ SettleGrace",
+        "GraceTimeout": "GraceStep /\\ GraceTimeout",
+        "AttemptGraceReplay": "GraceStep /\\ AttemptGraceReplay",
+        "ReserveMobileAction": "MobileContinuityStep /\\ ReserveMobileAction",
+        "InvokeMobileProvider": "MobileContinuityStep /\\ InvokeMobileProvider",
+        "MobileTimeout": "MobileContinuityStep /\\ MobileTimeout",
+        "ReconcileExactMobileOutcome": "MobileContinuityStep /\\ ReconcileExactMobileOutcome",
+        "AttemptMobileProviderReplay": "MobileContinuityStep /\\ AttemptMobileProviderReplay",
+        "VerifyWebAuthnEnrollment": "MobileEnrollmentStep /\\ VerifyWebAuthnEnrollment",
+        "VerifyPlatformEnrollment": "MobileEnrollmentStep /\\ VerifyPlatformEnrollment",
+        "ActivateEnrollment": "MobileEnrollmentStep /\\ ActivateEnrollment"
+      }
+    },
+    "formal/ep_revocation_witness.tla": {
+      "config": "formal/ep_revocation_witness.cfg",
+      "variables": [
+        "now",
+        "step",
+        "revoked",
+        "revokedBy",
+        "revokedAt",
+        "lastRevocationVerdict",
+        "acceptedRevocations",
+        "refusedRevocationKinds",
+        "lastStatus",
+        "lastStatusVerdict",
+        "acceptedStatuses",
+        "refusedStatusKinds",
+        "headSequence",
+        "headDigest",
+        "headStatement",
+        "headAcceptedAt",
+        "poisoned",
+        "everPoisoned",
+        "poisonEvidence",
+        "poisonedAt",
+        "lastWitnessStatement",
+        "lastWitnessVerdict",
+        "acceptedWitnessStatements",
+        "refusedWitnessKinds"
+      ],
+      "projections": {
+        "now": "now",
+        "revoked": "revoked[TargetA]",
+        "lastRevocationVerdict": "lastRevocationVerdict[TargetA]",
+        "headSequence": "headSequence[StreamA]",
+        "poisoned": "poisoned[StreamA]",
+        "lastWitnessVerdict": "lastWitnessVerdict[StreamA]",
+        "acceptedStreamCount": "AcceptedStreamCount"
+      }
+    }
+  },
+  "traces": [
+    {
+      "id": "escrow-release-once",
+      "claim_id": "action-escrow-releases-one-exact-milestone-once",
+      "model": "formal/ep_effect_profiles.tla",
+      "adapter": "action-escrow",
+      "scenario": "escrow-release-once",
+      "kind": "sound",
+      "runtime_sources": ["packages/gate/src/action-escrow.ts", "packages/gate/dist/action-escrow.js", "packages/gate/src/execution-binding.ts", "packages/gate/dist/execution-binding.js"],
+      "obligations": ["ActionEscrowExactMilestoneRelease", "ActionEscrowSingleRelease"],
+      "steps": [
+        {"operator": "SubmitExactMilestone", "accepted": true, "projection": {"aeState": "milestone_exact", "aeMilestoneCaid": "caid:exact-action", "aeReleaseCount": 0, "aeDuplicateRefused": false}},
+        {"operator": "ReserveEscrowRelease", "accepted": true, "projection": {"aeState": "release_reserved", "aeMilestoneCaid": "caid:exact-action", "aeReleaseCount": 0, "aeDuplicateRefused": false}},
+        {"operator": "ReleaseEscrow", "accepted": true, "projection": {"aeState": "released", "aeMilestoneCaid": "caid:exact-action", "aeReleaseCount": 1, "aeDuplicateRefused": false}}
+      ]
+    },
+    {
+      "id": "escrow-duplicate-release-mutation",
+      "claim_id": "action-escrow-releases-one-exact-milestone-once",
+      "model": "formal/ep_effect_profiles.tla",
+      "adapter": "action-escrow",
+      "scenario": "escrow-duplicate-release-refused",
+      "kind": "unsafe_mutation",
+      "runtime_sources": ["packages/gate/src/action-escrow.ts", "packages/gate/dist/action-escrow.js", "packages/gate/src/execution-binding.ts", "packages/gate/dist/execution-binding.js"],
+      "obligations": ["ActionEscrowSingleRelease"],
+      "steps": [
+        {"operator": "SubmitExactMilestone", "accepted": true, "projection": {"aeState": "milestone_exact", "aeMilestoneCaid": "caid:exact-action", "aeReleaseCount": 0, "aeDuplicateRefused": false}},
+        {"operator": "ReserveEscrowRelease", "accepted": true, "projection": {"aeState": "release_reserved", "aeMilestoneCaid": "caid:exact-action", "aeReleaseCount": 0, "aeDuplicateRefused": false}},
+        {"operator": "ReleaseEscrow", "accepted": true, "projection": {"aeState": "released", "aeMilestoneCaid": "caid:exact-action", "aeReleaseCount": 1, "aeDuplicateRefused": false}},
+        {"operator": "AttemptDuplicateEscrowRelease", "accepted": false, "projection": {"aeState": "released", "aeMilestoneCaid": "caid:exact-action", "aeReleaseCount": 1, "aeDuplicateRefused": true}}
+      ],
+      "mutation": {"operator": "UnsafeDuplicateEscrowRelease", "defined_in_model": true, "obligation": "ActionEscrowSingleRelease"}
+    },
+    {
+      "id": "aec-exact-role-map",
+      "claim_id": "aec-role-substitution-refused",
+      "model": "formal/ep_effect_profiles.tla",
+      "adapter": "aec",
+      "scenario": "aec-exact-role-map",
+      "kind": "sound",
+      "runtime_sources": ["packages/verify/evidence-chain.js", "packages/verify/dist/evidence-chain.js", "packages/verify/src/evidence-chain.ts"],
+      "obligations": ["AecRoleNonSubstitution"],
+      "steps": [
+        {"operator": "PresentExactAecRoles", "accepted": true, "projection": {"aecState": "exact_roles_presented"}},
+        {"operator": "AcceptAec", "accepted": true, "projection": {"aecState": "accepted"}}
+      ]
+    },
+    {
+      "id": "aec-role-substitution-mutation",
+      "claim_id": "aec-role-substitution-refused",
+      "model": "formal/ep_effect_profiles.tla",
+      "adapter": "aec",
+      "scenario": "aec-role-substitution-refused",
+      "kind": "unsafe_mutation",
+      "runtime_sources": ["packages/verify/evidence-chain.js", "packages/verify/dist/evidence-chain.js", "packages/verify/src/evidence-chain.ts"],
+      "obligations": ["AecRoleNonSubstitution"],
+      "steps": [
+        {"operator": "PresentSubstitutedAecRole", "accepted": true, "projection": {"aecState": "substitution_presented"}},
+        {"operator": "RefuseAec", "accepted": false, "projection": {"aecState": "refused"}}
+      ],
+      "mutation": {"operator": "UnsafeAcceptSubstitutedAecRole", "defined_in_model": true, "obligation": "AecRoleNonSubstitution"}
+    },
+    {
+      "id": "grace-settle-once",
+      "claim_id": "grace-curtailment-is-authorized-measured-and-single-use",
+      "model": "formal/ep_effect_profiles.tla",
+      "adapter": "grace",
+      "scenario": "grace-settle-once",
+      "kind": "sound",
+      "runtime_sources": ["lib/grace/mobile-grid.ts", "lib/grace/curtailment.ts", "lib/grace/reference-adapters.ts", "packages/mobile/index.js", "packages/mobile/dist/index.js"],
+      "obligations": ["GraceAuthorizedEnvelopeBeforeDispatch", "GraceMeterBeforeSettlement", "GraceSingleSettlement", "GraceSingleDispatch"],
+      "steps": [
+        {"operator": "AuthorizeGrace", "accepted": true, "projection": {"graceState": "authorized", "graceAuthorizationVerified": true, "graceEnvelopeVerified": true, "graceDispatchCount": 0, "graceMeterRecorded": false, "graceSettlementCount": 0, "graceReplayRefused": false}},
+        {"operator": "DispatchGrace", "accepted": true, "projection": {"graceState": "dispatched", "graceAuthorizationVerified": true, "graceEnvelopeVerified": true, "graceDispatchCount": 1, "graceMeterRecorded": false, "graceSettlementCount": 0, "graceReplayRefused": false}},
+        {"operator": "RecordGraceMeter", "accepted": true, "projection": {"graceState": "metered", "graceAuthorizationVerified": true, "graceEnvelopeVerified": true, "graceDispatchCount": 1, "graceMeterRecorded": true, "graceSettlementCount": 0, "graceReplayRefused": false}},
+        {"operator": "SettleGrace", "accepted": true, "projection": {"graceState": "settled", "graceAuthorizationVerified": true, "graceEnvelopeVerified": true, "graceDispatchCount": 1, "graceMeterRecorded": true, "graceSettlementCount": 1, "graceReplayRefused": false}}
+      ]
+    },
+    {
+      "id": "grace-indeterminate-replay-mutation",
+      "claim_id": "grace-curtailment-is-authorized-measured-and-single-use",
+      "model": "formal/ep_effect_profiles.tla",
+      "adapter": "grace",
+      "scenario": "grace-indeterminate-replay-refused",
+      "kind": "unsafe_mutation",
+      "runtime_sources": ["lib/grace/mobile-grid.ts", "lib/grace/curtailment.ts", "lib/grace/reference-adapters.ts", "packages/mobile/index.js", "packages/mobile/dist/index.js"],
+      "obligations": ["GraceSingleDispatch"],
+      "steps": [
+        {"operator": "AuthorizeGrace", "accepted": true, "projection": {"graceState": "authorized", "graceAuthorizationVerified": true, "graceEnvelopeVerified": true, "graceDispatchCount": 0, "graceMeterRecorded": false, "graceSettlementCount": 0, "graceReplayRefused": false}},
+        {"operator": "DispatchGrace", "accepted": true, "projection": {"graceState": "dispatched", "graceAuthorizationVerified": true, "graceEnvelopeVerified": true, "graceDispatchCount": 1, "graceMeterRecorded": false, "graceSettlementCount": 0, "graceReplayRefused": false}},
+        {"operator": "GraceTimeout", "accepted": true, "projection": {"graceState": "indeterminate", "graceAuthorizationVerified": true, "graceEnvelopeVerified": true, "graceDispatchCount": 1, "graceMeterRecorded": false, "graceSettlementCount": 0, "graceReplayRefused": false}},
+        {"operator": "AttemptGraceReplay", "accepted": false, "projection": {"graceState": "indeterminate", "graceAuthorizationVerified": true, "graceEnvelopeVerified": true, "graceDispatchCount": 1, "graceMeterRecorded": false, "graceSettlementCount": 0, "graceReplayRefused": true}}
+      ],
+      "mutation": {"operator": "UnsafeGraceReplayDispatch", "defined_in_model": true, "obligation": "GraceSingleDispatch"}
+    },
+    {
+      "id": "mobile-timeout-reconcile",
+      "claim_id": "mobile-action-continuity-is-tenant-and-executor-bound",
+      "model": "formal/ep_effect_profiles.tla",
+      "adapter": "mobile-continuity",
+      "scenario": "mobile-timeout-reconcile",
+      "kind": "sound",
+      "runtime_sources": ["lib/mobile/action-continuity.ts", "lib/mobile/store.ts"],
+      "obligations": ["MobileExactTenantExecutor", "MobileTimeoutFence", "MobileAuthenticatedReconciliation"],
+      "steps": [
+        {"operator": "ReserveMobileAction", "accepted": true, "projection": {"mobileState": "reserved", "mobileTenant": "tenant:expected", "mobileExecutor": "executor:expected", "mobileProviderCalls": 0, "mobileFenced": false, "mobileOutcomeAuthenticated": false, "mobileOutcomeTenant": "none", "mobileOutcomeExecutor": "none", "mobileReplayRefused": false, "mobileReconciliationRefused": false}},
+        {"operator": "InvokeMobileProvider", "accepted": true, "projection": {"mobileState": "provider_invoked", "mobileTenant": "tenant:expected", "mobileExecutor": "executor:expected", "mobileProviderCalls": 1, "mobileFenced": false, "mobileOutcomeAuthenticated": false, "mobileOutcomeTenant": "none", "mobileOutcomeExecutor": "none", "mobileReplayRefused": false, "mobileReconciliationRefused": false}},
+        {"operator": "MobileTimeout", "accepted": true, "projection": {"mobileState": "indeterminate", "mobileTenant": "tenant:expected", "mobileExecutor": "executor:expected", "mobileProviderCalls": 1, "mobileFenced": true, "mobileOutcomeAuthenticated": false, "mobileOutcomeTenant": "none", "mobileOutcomeExecutor": "none", "mobileReplayRefused": false, "mobileReconciliationRefused": false}},
+        {"operator": "ReconcileExactMobileOutcome", "accepted": true, "projection": {"mobileState": "executed", "mobileTenant": "tenant:expected", "mobileExecutor": "executor:expected", "mobileProviderCalls": 1, "mobileFenced": true, "mobileOutcomeAuthenticated": true, "mobileOutcomeTenant": "tenant:expected", "mobileOutcomeExecutor": "executor:expected", "mobileReplayRefused": false, "mobileReconciliationRefused": false}}
+      ]
+    },
+    {
+      "id": "mobile-replay-mutation",
+      "claim_id": "mobile-action-continuity-is-tenant-and-executor-bound",
+      "model": "formal/ep_effect_profiles.tla",
+      "adapter": "mobile-continuity",
+      "scenario": "mobile-replay-refused",
+      "kind": "unsafe_mutation",
+      "runtime_sources": ["lib/mobile/action-continuity.ts", "lib/mobile/store.ts"],
+      "obligations": ["MobileTimeoutFence"],
+      "steps": [
+        {"operator": "ReserveMobileAction", "accepted": true, "projection": {"mobileState": "reserved", "mobileTenant": "tenant:expected", "mobileExecutor": "executor:expected", "mobileProviderCalls": 0, "mobileFenced": false, "mobileOutcomeAuthenticated": false, "mobileOutcomeTenant": "none", "mobileOutcomeExecutor": "none", "mobileReplayRefused": false, "mobileReconciliationRefused": false}},
+        {"operator": "InvokeMobileProvider", "accepted": true, "projection": {"mobileState": "provider_invoked", "mobileTenant": "tenant:expected", "mobileExecutor": "executor:expected", "mobileProviderCalls": 1, "mobileFenced": false, "mobileOutcomeAuthenticated": false, "mobileOutcomeTenant": "none", "mobileOutcomeExecutor": "none", "mobileReplayRefused": false, "mobileReconciliationRefused": false}},
+        {"operator": "MobileTimeout", "accepted": true, "projection": {"mobileState": "indeterminate", "mobileTenant": "tenant:expected", "mobileExecutor": "executor:expected", "mobileProviderCalls": 1, "mobileFenced": true, "mobileOutcomeAuthenticated": false, "mobileOutcomeTenant": "none", "mobileOutcomeExecutor": "none", "mobileReplayRefused": false, "mobileReconciliationRefused": false}},
+        {"operator": "AttemptMobileProviderReplay", "accepted": false, "projection": {"mobileState": "indeterminate", "mobileTenant": "tenant:expected", "mobileExecutor": "executor:expected", "mobileProviderCalls": 1, "mobileFenced": true, "mobileOutcomeAuthenticated": false, "mobileOutcomeTenant": "none", "mobileOutcomeExecutor": "none", "mobileReplayRefused": true, "mobileReconciliationRefused": false}}
+      ],
+      "mutation": {"operator": "UnsafeMobileProviderReplay", "defined_in_model": true, "obligation": "MobileTimeoutFence"}
+    },
+    {
+      "id": "mobile-enroll-two-rows",
+      "claim_id": "mobile-enrollment-requires-two-verified-rows",
+      "model": "formal/ep_effect_profiles.tla",
+      "adapter": "mobile-enrollment",
+      "scenario": "mobile-enroll-two-rows",
+      "kind": "sound",
+      "runtime_sources": ["packages/mobile/enrollment.js", "packages/mobile/dist/enrollment.js", "packages/mobile/src/enrollment.ts", "packages/verify/index.js", "packages/verify/dist/index.js"],
+      "obligations": ["MobileEnrollmentRequiresBothRows", "MobileEnrollmentActivatesAtMostOnce"],
+      "steps": [
+        {"operator": "VerifyWebAuthnEnrollment", "accepted": true, "projection": {"enrollmentState": "webauthn_only", "enrollmentRowCount": 1, "enrollmentActivationCount": 0, "enrollmentReplayRefused": false}},
+        {"operator": "VerifyPlatformEnrollment", "accepted": true, "projection": {"enrollmentState": "ready", "enrollmentRowCount": 2, "enrollmentActivationCount": 0, "enrollmentReplayRefused": false}},
+        {"operator": "ActivateEnrollment", "accepted": true, "projection": {"enrollmentState": "active", "enrollmentRowCount": 2, "enrollmentActivationCount": 1, "enrollmentReplayRefused": false}}
+      ]
+    },
+    {
+      "id": "mobile-enroll-one-row-mutation",
+      "claim_id": "mobile-enrollment-requires-two-verified-rows",
+      "model": "formal/ep_effect_profiles.tla",
+      "adapter": "mobile-enrollment",
+      "scenario": "mobile-enroll-incomplete-at-activation-refused",
+      "kind": "unsafe_mutation",
+      "runtime_sources": ["packages/mobile/enrollment.js", "packages/mobile/dist/enrollment.js", "packages/mobile/src/enrollment.ts", "packages/verify/index.js", "packages/verify/dist/index.js"],
+      "obligations": ["MobileEnrollmentRequiresBothRows"],
+      "steps": [
+        {"operator": "VerifyWebAuthnEnrollment", "accepted": true, "projection": {"enrollmentState": "webauthn_only", "enrollmentRowCount": 1, "enrollmentActivationCount": 0, "enrollmentReplayRefused": false}},
+        {"operator": "AttemptActivateIncompleteEnrollment", "accepted": false, "projection": {"enrollmentState": "webauthn_only", "enrollmentRowCount": 1, "enrollmentActivationCount": 0, "enrollmentReplayRefused": false}}
+      ],
+      "mutation": {"operator": "UnsafeActivateIncompleteEnrollment", "defined_in_model": true, "obligation": "MobileEnrollmentRequiresBothRows"}
+    },
+    {
+      "id": "model-to-matter-clearance-once",
+      "claim_id": "model-to-matter-clearance-is-exact-and-single-use",
+      "model": "formal/ep_effect_profiles.tla",
+      "adapter": "model-to-matter",
+      "scenario": "model-to-matter-clearance-once",
+      "kind": "sound",
+      "runtime_sources": ["lib/frontier/model-to-matter.ts", "packages/gate/challenge-store.js", "packages/gate/dist/challenge-store.js", "packages/gate/src/challenge-store.ts", "packages/gate/store.js", "packages/gate/dist/store.js", "packages/gate/src/store.ts"],
+      "obligations": ["ModelToMatterSixLegClearance", "ModelToMatterExactCaid", "ModelToMatterSingleConsumption"],
+      "steps": [
+        {"operator": "PresentSixExactLegs", "accepted": true, "projection": {"m2mState": "ready", "m2mPresentedCaid": "caid:exact-action", "m2mConsumptionCount": 0}},
+        {"operator": "ConsumeModelToMatterClearance", "accepted": true, "projection": {"m2mState": "consumed", "m2mPresentedCaid": "caid:exact-action", "m2mConsumptionCount": 1}},
+        {"operator": "AttemptModelToMatterReplay", "accepted": false, "projection": {"m2mState": "replay_refused", "m2mPresentedCaid": "caid:exact-action", "m2mConsumptionCount": 1}}
+      ]
+    },
+    {
+      "id": "model-to-matter-mismatch-mutation",
+      "claim_id": "model-to-matter-clearance-is-exact-and-single-use",
+      "model": "formal/ep_effect_profiles.tla",
+      "adapter": "model-to-matter",
+      "scenario": "model-to-matter-mismatch-refused",
+      "kind": "unsafe_mutation",
+      "runtime_sources": ["lib/frontier/model-to-matter.ts", "packages/gate/challenge-store.js", "packages/gate/dist/challenge-store.js", "packages/gate/src/challenge-store.ts", "packages/gate/store.js", "packages/gate/dist/store.js", "packages/gate/src/store.ts"],
+      "obligations": ["ModelToMatterExactCaid"],
+      "steps": [
+        {"operator": "PresentMismatchedLeg", "accepted": true, "projection": {"m2mState": "mismatch_presented", "m2mPresentedCaid": "caid:other-action", "m2mConsumptionCount": 0}},
+        {"operator": "RefuseModelToMatterClearance", "accepted": false, "projection": {"m2mState": "refused", "m2mPresentedCaid": "caid:other-action", "m2mConsumptionCount": 0}}
+      ],
+      "mutation": {"operator": "UnsafeAcceptMismatchedModelToMatter", "defined_in_model": true, "obligation": "ModelToMatterExactCaid"}
+    },
+    {
+      "id": "network-witness-coordinate-isolation",
+      "claim_id": "network-witness-equivocation-permanently-poisons-stream",
+      "model": "formal/ep_revocation_witness.tla",
+      "adapter": "network-witness",
+      "scenario": "network-witness-coordinate-isolation",
+      "kind": "sound",
+      "runtime_sources": ["packages/gate/src/network-witness.ts", "packages/gate/dist/network-witness.js"],
+      "obligations": ["ModelShape", "WitnessHeadSound"],
+      "steps": [
+        {"operator": "AcceptWitness(WitnessASeq1)", "accepted": true, "projection": {"acceptedStreamCount": 1}},
+        {"operator": "AcceptWitness(WitnessTenantBSeq1)", "accepted": true, "projection": {"acceptedStreamCount": 2}},
+        {"operator": "AcceptWitness(WitnessGateBSeq1)", "accepted": true, "projection": {"acceptedStreamCount": 3}},
+        {"operator": "AcceptWitness(WitnessBSeq1)", "accepted": true, "projection": {"acceptedStreamCount": 4}},
+        {"operator": "AcceptWitness(WitnessCaptureBSeq1)", "accepted": true, "projection": {"acceptedStreamCount": 5}}
+      ]
+    },
+    {
+      "id": "network-witness-monotonic-poison",
+      "claim_id": "network-witness-equivocation-permanently-poisons-stream",
+      "model": "formal/ep_revocation_witness.tla",
+      "adapter": "network-witness",
+      "scenario": "network-witness-monotonic-poison",
+      "kind": "sound",
+      "runtime_sources": ["packages/gate/src/network-witness.ts", "packages/gate/dist/network-witness.js"],
+      "obligations": ["WitnessHeadSound", "PoisonEvidenceSound", "PoisonedStreamClosed"],
+      "steps": [
+        {"operator": "AcceptWitness(WitnessASeq1)", "accepted": true, "projection": {"headSequence": 1, "poisoned": false, "lastWitnessVerdict": "accepted"}},
+        {"operator": "AdvanceTimeToOne", "accepted": true, "projection": {"headSequence": 1, "poisoned": false, "lastWitnessVerdict": "accepted"}},
+        {"operator": "AcceptWitness(WitnessASeq2)", "accepted": true, "projection": {"headSequence": 2, "poisoned": false, "lastWitnessVerdict": "accepted"}},
+        {"operator": "PoisonWitnessStream(WitnessASeq2Conflict)", "accepted": false, "projection": {"headSequence": 2, "poisoned": true, "lastWitnessVerdict": "refused"}}
+      ]
+    },
+    {
+      "id": "network-witness-poison-clear-mutation",
+      "claim_id": "network-witness-equivocation-permanently-poisons-stream",
+      "model": "formal/ep_revocation_witness.tla",
+      "adapter": "network-witness",
+      "scenario": "network-witness-poison-clear-refused",
+      "kind": "unsafe_mutation",
+      "runtime_sources": ["packages/gate/src/network-witness.ts", "packages/gate/dist/network-witness.js"],
+      "obligations": ["PoisonIrreversibilityState"],
+      "steps": [
+        {"operator": "AcceptWitness(WitnessASeq1)", "accepted": true, "projection": {"headSequence": 1, "poisoned": false, "lastWitnessVerdict": "accepted"}},
+        {"operator": "AdvanceTimeToOne", "accepted": true, "projection": {"headSequence": 1, "poisoned": false, "lastWitnessVerdict": "accepted"}},
+        {"operator": "AcceptWitness(WitnessASeq2)", "accepted": true, "projection": {"headSequence": 2, "poisoned": false, "lastWitnessVerdict": "accepted"}},
+        {"operator": "PoisonWitnessStream(WitnessASeq2Conflict)", "accepted": false, "projection": {"headSequence": 2, "poisoned": true, "lastWitnessVerdict": "refused"}},
+        {"operator": "RefuseWitness(WitnessASeq3)", "accepted": false, "projection": {"headSequence": 2, "poisoned": true, "lastWitnessVerdict": "refused"}}
+      ],
+      "mutation": {"operator": "UnsafeClearWitnessPoison", "defined_in_model": true, "obligation": "PoisonIrreversibilityState"}
+    },
+    {
+      "id": "revocation-effective-terminal",
+      "claim_id": "revocation-is-pinned-effective-and-terminal",
+      "model": "formal/ep_revocation_witness.tla",
+      "adapter": "revocation",
+      "scenario": "revocation-effective-terminal",
+      "kind": "sound",
+      "runtime_sources": ["packages/verify/revocation.js", "packages/verify/dist/revocation.js", "packages/verify/src/revocation.ts", "packages/verify/index.js", "packages/verify/dist/index.js"],
+      "obligations": ["TerminalRevocationStateSound", "TerminalRevocationDoesNotAgeOut"],
+      "steps": [
+        {"operator": "AdvanceTimeToOne", "accepted": true, "projection": {"now": 1, "revoked": false, "lastRevocationVerdict": "none"}},
+        {"operator": "AcceptTerminalRevocation(RevGoodA, TargetA)", "accepted": true, "projection": {"now": 1, "revoked": true, "lastRevocationVerdict": "accepted"}},
+        {"operator": "AdvanceTimeToMax", "accepted": true, "projection": {"now": 4, "revoked": true, "lastRevocationVerdict": "accepted"}}
+      ]
+    },
+    {
+      "id": "revocation-future-mutation",
+      "claim_id": "revocation-is-pinned-effective-and-terminal",
+      "model": "formal/ep_revocation_witness.tla",
+      "adapter": "revocation",
+      "scenario": "revocation-future-refused",
+      "kind": "unsafe_mutation",
+      "runtime_sources": ["packages/verify/revocation.js", "packages/verify/dist/revocation.js", "packages/verify/src/revocation.ts", "packages/verify/index.js", "packages/verify/dist/index.js"],
+      "obligations": ["TerminalRevocationStateSound"],
+      "steps": [
+        {"operator": "AdvanceTimeToOne", "accepted": true, "projection": {"now": 1, "revoked": false, "lastRevocationVerdict": "none"}},
+        {"operator": "RefuseTerminalRevocation(RevFutureA, TargetA)", "accepted": false, "projection": {"now": 1, "revoked": false, "lastRevocationVerdict": "refused"}}
+      ],
+      "mutation": {"operator": "UnsafeAcceptFutureRevocation", "defined_in_model": true, "obligation": "TerminalRevocationStateSound"}
+    },
+    {
+      "id": "consequence-indeterminate-reconcile",
+      "claim_id": "ambiguous-effect-is-never-auto-retried",
+      "model": "formal/ep_consequence_lifecycle.tla",
+      "adapter": "consequence-lifecycle",
+      "scenario": "consequence-indeterminate-reconcile",
+      "kind": "sound",
+      "runtime_sources": ["lib/mobile/action-continuity.ts", "lib/mobile/store.ts"],
+      "obligations": ["InvokeAtMostOnce", "AuthenticatedExactReconciliation", "TerminalEffectSound"],
+      "formal_prefix": [
+        "RefuseInvalidAdmission(AdmissionWrongCAID)",
+        "RefuseInvalidAdmission(AdmissionUnauthenticated)",
+        "Admit(ExecuteOp, AdmissionExecute)",
+        "Approve(ExecuteOp, ApprovalExecute)",
+        "ReserveEscrow(ExecuteOp)",
+        "InvokeProvider",
+        "MarkIndeterminate",
+        "RefuseBlindReplay",
+        "RefuseInvalidReconciliation(ReconcileWrongCAID)",
+        "RefuseInvalidReconciliation(ReconcileWrongOperation)",
+        "RefuseInvalidReconciliation(ReconcileUnauthenticated)"
+      ],
+      "steps": [
+        {"operator": "ReconcileExact(ReconcileExecute)", "accepted": true, "projection": {"executeStage": "EFFECT", "executeInvokeCount": 1, "executeEscrowState": "CONSUMED", "remedyState": "NONE"}}
+      ]
+    },
+    {
+      "id": "consequence-blind-replay-mutation",
+      "claim_id": "ambiguous-effect-is-never-auto-retried",
+      "model": "formal/ep_consequence_lifecycle.tla",
+      "adapter": "consequence-lifecycle",
+      "scenario": "consequence-blind-replay-refused",
+      "kind": "unsafe_mutation",
+      "runtime_sources": ["lib/mobile/action-continuity.ts", "lib/mobile/store.ts"],
+      "obligations": ["InvokeAtMostOnce"],
+      "formal_prefix": [
+        "RefuseInvalidAdmission(AdmissionWrongCAID)",
+        "RefuseInvalidAdmission(AdmissionUnauthenticated)",
+        "Admit(ExecuteOp, AdmissionExecute)",
+        "Approve(ExecuteOp, ApprovalExecute)",
+        "ReserveEscrow(ExecuteOp)",
+        "InvokeProvider",
+        "MarkIndeterminate"
+      ],
+      "steps": [
+        {"operator": "RefuseBlindReplay", "accepted": false, "projection": {"executeStage": "INDETERMINATE", "executeInvokeCount": 1, "executeEscrowState": "RESERVED", "remedyState": "NONE"}}
+      ],
+      "mutation": {"operator": "UnsafeBlindReplay", "defined_in_model": true, "obligation": "InvokeAtMostOnce"}
+    }
+  ]
+}
