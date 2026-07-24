@@ -389,6 +389,23 @@
       ]
     },
     {
+      "id": "network-witness-post-poison-refusal",
+      "claim_id": "network-witness-equivocation-permanently-poisons-stream",
+      "model": "formal/ep_revocation_witness.tla",
+      "adapter": "network-witness",
+      "scenario": "network-witness-poison-clear-refused",
+      "kind": "sound",
+      "runtime_sources": ["packages/gate/src/network-witness.ts", "packages/gate/dist/network-witness.js"],
+      "obligations": ["WitnessHeadSound", "PoisonIrreversibilityState", "PoisonedStreamClosed"],
+      "steps": [
+        {"operator": "AcceptWitness(WitnessASeq1)", "accepted": true, "projection": {"headSequence": 1, "poisoned": false, "lastWitnessVerdict": "accepted"}},
+        {"operator": "AdvanceTimeToOne", "accepted": true, "projection": {"headSequence": 1, "poisoned": false, "lastWitnessVerdict": "accepted"}},
+        {"operator": "AcceptWitness(WitnessASeq2)", "accepted": true, "projection": {"headSequence": 2, "poisoned": false, "lastWitnessVerdict": "accepted"}},
+        {"operator": "PoisonWitnessStream(WitnessASeq2Conflict)", "accepted": false, "projection": {"headSequence": 2, "poisoned": true, "lastWitnessVerdict": "refused"}},
+        {"operator": "RefuseWitness(WitnessASeq3)", "accepted": false, "projection": {"headSequence": 2, "poisoned": true, "lastWitnessVerdict": "refused"}}
+      ]
+    },
+    {
       "id": "network-witness-poison-clear-mutation",
       "claim_id": "network-witness-equivocation-permanently-poisons-stream",
       "model": "formal/ep_revocation_witness.tla",
