@@ -6,15 +6,21 @@ import { describe, expect, it } from 'vitest';
 
 const ROOT = resolve(import.meta.dirname, '..');
 const pricing = readFileSync(resolve(ROOT, 'app/pricing/page.tsx'), 'utf8');
+const commercialOffer = readFileSync(resolve(ROOT, 'lib/commercial-offer.ts'), 'utf8');
 const pilot = readFileSync(resolve(ROOT, 'app/pilot/page.tsx'), 'utf8');
 const pilotMetadata = readFileSync(resolve(ROOT, 'app/pilot/layout.tsx'), 'utf8');
 const intake = readFileSync(resolve(ROOT, 'app/api/pilot/request/route.ts'), 'utf8');
 const navigation = readFileSync(resolve(ROOT, 'components/SiteNav.tsx'), 'utf8');
 
 describe('commercial offer contract', () => {
-  it('has one paid entry offer and no contradictory self-serve price', () => {
+  it('has one diagnostic entry offer and a coherent Gate expansion ladder', () => {
     expect(pricing).toContain('MANAGED_PILOT');
+    expect(pricing).toContain('GATE_IMPLEMENTATION');
     expect(pricing).toContain('PRODUCTION_GATE');
+    expect(pricing).toContain('Amelia I');
+    expect(commercialOffer).toContain('$150K');
+    expect(commercialOffer).toContain('$250K');
+    expect(commercialOffer).toContain('$500K');
     expect(pricing).not.toContain("price: '$499'");
     expect(pricing).not.toContain('Gate Cloud is in early access');
   });

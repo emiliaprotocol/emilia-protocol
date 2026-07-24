@@ -250,16 +250,23 @@ export default function HomePage() {
           <motion.div {...reveal()} style={{ maxWidth: 780 }}>
             <div style={{ fontFamily: font.mono, fontSize: 10, letterSpacing: 2, textTransform: 'uppercase', color: color.gold, marginBottom: 16 }}>Where to start</div>
             <h2 style={{ fontFamily: font.sans, fontWeight: 700, fontSize: 'clamp(26px, 3vw, 40px)', letterSpacing: -1, lineHeight: 1.15, color: color.t1, margin: 0 }}>
-              One Gate. Two practical entry points.
+              Diagnose, integrate, or adopt from code.
             </h2>
             <p style={{ fontSize: 17, color: color.t2, lineHeight: 1.72, maxWidth: 660, marginTop: 20 }}>
-              Developers can protect one privileged MCP tool without changing the rest of the
-              agent stack. Regulated operators can begin with one adverse or high-consequence
-              workflow at the actual system of record, first in observe mode and then in enforcement.
+              Amelia I can find the legacy workflow that most needs control. Engineering teams can
+              protect a known boundary directly, while developers can adopt Receipt Required around
+              one privileged tool without changing the rest of the agent stack.
             </p>
           </motion.div>
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: 16, marginTop: 32 }}>
             {[
+              {
+                label: 'Legacy diagnostic',
+                title: 'Find where approval and effect stopped matching.',
+                body: 'Amelia I reviews one governed export, produces source-linked integrity cases, and generates the Action Control Manifest template for the selected workflow.',
+                href: '/health/program-integrity',
+                cta: 'Explore Amelia I',
+              },
               {
                 label: 'Developer adoption',
                 title: 'Return Receipt Required from a dangerous tool.',

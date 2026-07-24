@@ -150,50 +150,51 @@ export default function ProgramIntegrityGate(): React.ReactElement {
           <div className={styles.heroCopy}>
             <div className={styles.kicker}>
               <HeartPulse aria-hidden="true" size={15} />
-              California public-interest reference
+              Amelia I + EMILIA Gate
             </div>
-            <h1>Make the public payment prove its authorization before it moves.</h1>
+            <h1>Find the risky workflow. Then make the next payment prove its authorization.</h1>
             <p className={styles.heroLede}>
-              EMILIA Program Integrity Gate binds a provider action, authorization,
-              destination, amount, and named approval into one exact-action record—then
-              permits one bounded execution or refuses it.
+              Amelia I reconstructs the approval-to-effect chain from a governed legacy
+              export. EMILIA Gate then binds the provider action, authorization,
+              destination, amount, and named approval before the next protected effect.
             </p>
             <p className={styles.heroBoundary}>
-              Designed to sit beside existing program-integrity analytics and payment
-              systems. It does not replace DHCS, CA-MMIS, or their controls.
+              The diagnostic is read-only and does not declare fraud. The Gate is a
+              prospective control designed to sit beside existing program-integrity and
+              payment systems—not replace DHCS, CA-MMIS, or their controls.
             </p>
             <div className={styles.heroActions}>
-              <a href="#reference-lab" className={styles.primaryAction}>
-                Run the reference gate
+              <a href="/pilot?v=health" className={styles.primaryAction}>
+                Scope the Amelia I diagnostic
                 <ArrowRight aria-hidden="true" size={16} />
               </a>
-              <a href="/govguard" className={styles.secondaryAction}>
-                Explore GovGuard
+              <a href="#reference-lab" className={styles.secondaryAction}>
+                Run the prospective Gate
               </a>
             </div>
           </div>
           <div className={styles.publicValue} aria-label="Public-interest control model">
             <div className={styles.valueTop}>
-              <span>Before public funds move</span>
+              <span>One commercial path</span>
               <ShieldCheck aria-hidden="true" size={22} />
             </div>
             <div className={styles.valueStatement}>
-              <strong>One action.</strong>
-              <strong>One accountable decision.</strong>
-              <strong>One execution right.</strong>
+              <strong>Diagnose the old record.</strong>
+              <strong>Bind the next decision.</strong>
+              <strong>Reconcile the outcome.</strong>
             </div>
             <dl className={styles.valueFacts}>
               <div>
-                <dt>Wrong fields</dt>
-                <dd>Do not execute</dd>
+                <dt>Amelia I</dt>
+                <dd>Find the boundary</dd>
               </div>
               <div>
-                <dt>Unknown outcome</dt>
-                <dd>Do not replay</dd>
+                <dt>Gate</dt>
+                <dd>Protect the effect</dd>
               </div>
               <div>
-                <dt>Outside review</dt>
-                <dd>Portable evidence</dd>
+                <dt>Assurance</dt>
+                <dd>Re-perform proof</dd>
               </div>
             </dl>
           </div>
@@ -472,14 +473,15 @@ export default function ProgramIntegrityGate(): React.ReactElement {
       <section className={styles.nextSteps} aria-labelledby="program-integrity-next-step">
         <div>
           <div className={styles.eyebrow}>Practical next step</div>
-          <h2 id="program-integrity-next-step">Test one protected workflow for 60 days.</h2>
+          <h2 id="program-integrity-next-step">Start with one read-only workflow for 60 days.</h2>
           <p>
-            Start in observe mode beside the existing program-integrity and payment stack.
-            Exercise valid, missing, mismatched, replayed, revoked, and indeterminate cases,
-            then give the portable packet to a separate authorized reviewer.
+            Begin with synthetic replay and a governed export. Amelia I surfaces the
+            approval-to-effect gaps and produces an Action Control Manifest template.
+            If the workflow justifies prospective enforcement, Gate becomes the separately
+            scoped next engagement at the real system boundary.
           </p>
           <a href="/pilot?v=gov" className={styles.pilotAction}>
-            Scope an observe-mode pilot
+            Scope the Amelia I diagnostic
             <ArrowRight aria-hidden="true" size={16} />
           </a>
         </div>

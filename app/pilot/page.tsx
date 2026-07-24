@@ -30,9 +30,9 @@ const PRESELECT = { gov: 'benefit_account_change', fin: 'wire_release', health: 
 const TERMS = [
   [MANAGED_PILOT.durationLabel, 'time-boxed engagement'],
   [MANAGED_PILOT.shortPriceLabel, 'fixed scope and price'],
-  ['Observe mode first', 'nothing blocked until you approve enforcement'],
+  ['Read-only first', 'no production path changes in the diagnostic'],
   [MANAGED_PILOT.workflowLabel, 'the consequential action you choose'],
-  ['Decision package', 'working control, evidence, and production plan'],
+  ['Decision package', 'findings, manifest template, and implementation scope'],
 ];
 
 export default function PilotPage(): React.ReactElement {
@@ -85,13 +85,13 @@ export default function PilotPage(): React.ReactElement {
           Pilot request
         </div>
         <h1 style={{ ...styles.h1, maxWidth: 600 }}>
-          One protected workflow. {MANAGED_PILOT.durationLabel}. {MANAGED_PILOT.shortPriceLabel}.
+          Find the workflow to protect. {MANAGED_PILOT.durationLabel}. {MANAGED_PILOT.shortPriceLabel}.
         </h1>
         <p style={{ ...styles.body, maxWidth: 580 }}>
-          Pick one consequential action your systems or agents take. We first measure it in observe mode,
-          then configure the action, evidence, approval, and escalation policy. Enforcement turns on only
-          after your team approves the rollout. You leave with the working control, its evidence package,
-          and a production recommendation.
+          Pick one consequential workflow and begin with synthetic replay plus a governed read-only export.
+          Amelia I reconstructs the approval-to-effect chain, surfaces source-linked integrity cases, and
+          produces the material-field map and Action Control Manifest template. You leave with evidence,
+          a Gate implementation scope, and a clear decision about whether prospective enforcement is worth it.
         </p>
 
         {/* terms strip */}
