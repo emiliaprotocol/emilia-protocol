@@ -76,7 +76,7 @@ const FORMAL_TAXONOMY: ReadonlyArray<{ coverage: FormalCoverage; detail: string 
   },
   {
     coverage: 'bounded-runtime-traced',
-    detail: 'Bounded same-team formal evidence is paired with selected governed runtime traces and refinement evidence; the bridge is not a complete refinement proof.',
+    detail: 'Bounded same-team formal evidence is paired with selected deterministic runtime scenarios under hand-authored mappings; the bridge is not a complete refinement proof.',
   },
   {
     coverage: 'bounded-formal-evidence',
@@ -150,7 +150,7 @@ const PROOF_LAYERS = [
     label: 'Selected model/runtime scenario conformance',
     method: 'Content-addressed bounded models + deterministic runtime scenarios',
     result: `${proofStats.formalRefinement.traces} scenarios across ${proofStats.formalRefinement.models} models and ${proofStats.formalRefinement.claims} claims`,
-    meaning: `The same-team harness pairs bounded formal scenarios with deterministic runtime executions under an explicit projection relation. Its ${proofStats.formalRefinement.unsafeMutationsDetected} negative controls pair a formal counterexample with a safe-runtime refusal; they do not mutate the runtime implementation. This is selected-scenario conformance, not a complete implementation refinement proof.`,
+    meaning: `The same-team harness pairs bounded formal scenarios with deterministic runtime executions under an explicit, hand-authored projection relation. Its ${proofStats.formalRefinement.unsafeMutationsDetected} negative controls pair a formal counterexample with a safe-runtime refusal; they do not mutate the runtime implementation. This is selected-scenario conformance, not a complete implementation refinement proof.`,
   },
   {
     label: 'Relational structure',
@@ -178,7 +178,7 @@ const PROOF_LAYERS = [
   },
 ];
 
-const LIMITS = ['The formal models do not prove that an AI model behaves well or that an approved action is wise, legal, or safe.', 'Selected model/runtime scenarios are same-team conformance evidence under hand-authored mappings. They are not a mechanized proof that every implementation execution refines every formal behavior.', 'The negative controls pair formal counterexamples with safe-runtime refusals; they do not inject those defects into the runtime implementation.', 'The symbolic model assumes perfect cryptography and authentic pinned roots; it does not model WebAuthn internals, parser correctness, clock arithmetic, collusion, or registry completeness.', 'JavaScript, Python, and Go are same-team ports. Their agreement demonstrates consistency, not independent construction.', 'The external Rust run is pinned interoperability evidence. Strict clean-room construction acceptance remains false until separately attested under an independently pinned key.', 'Complete mediation exists only when every protected path reaches the verifier at the actual system of record or actuator.'];
+const LIMITS = ['The formal models do not prove that an AI model behaves well or that an approved action is wise, legal, or safe.', 'Selected model/runtime scenarios are same-team conformance evidence under hand-authored mappings. They are not a mechanized proof that every implementation execution refines every formal behavior.', 'The negative controls pair formal counterexamples with safe-runtime refusals; they do not inject those defects into the runtime implementation.', 'Deterministic or in-memory scenario adapters are not production-deployment, storage-durability, provider-truth, sensor-truth, or physical-execution evidence.', 'The symbolic model assumes perfect cryptography and authentic pinned roots; it does not model WebAuthn internals, parser correctness, clock arithmetic, collusion, or registry completeness.', 'JavaScript, Python, and Go are same-team ports. Their agreement demonstrates consistency, not independent construction.', 'The external Rust run is pinned interoperability evidence. Strict clean-room construction acceptance remains false until separately attested under an independently pinned key.', 'Complete mediation exists only when every protected path reaches the verifier at the actual system of record or actuator.'];
 
 export default async function ProofPage() {
   const nonce = (await headers()).get('x-nonce') ?? '';
