@@ -7,11 +7,15 @@ from emilia_verify import (
     MAX_EFFECT_STRING_LENGTH,
     MAX_OBSERVED_EFFECTS,
     MAX_PREDICTED_EFFECTS,
+    OUTCOME_BINDING_RESULT_VERSION,
     compare_decimal_strings,
     evaluate_predicted_effects,
+    outcome_binding_result_core,
+    outcome_binding_result_digest,
     validate_predicted_effects,
     verify_outcome_attestation,
     verify_outcome_binding,
+    verify_outcome_binding_result_digest,
 )
 
 
@@ -59,6 +63,41 @@ def test_existing_real_crypto_vectors_match_js_verdicts_and_result_digests():
         assert first["outcome_binding"]["outcome"] == expected_outcome, vector["id"]
         assert first["result_digest"] == vector["expect"]["result_digest"], vector["id"]
         assert second["result_digest"] == first["result_digest"], vector["id"]
+
+
+def test_result_digest_uses_the_exact_typescript_result_core():
+    result = _exec_result(EXEC_SUITE["vectors"][0])
+    core = outcome_binding_result_core(result)
+
+    assert core == {
+        "@version": OUTCOME_BINDING_RESULT_VERSION,
+        "input_commitments": result["input_commitments"],
+        "exact_commitments": result["commitments"],
+        "valid": result["valid"],
+        "verdict": result["outcome_binding"]["outcome"],
+        "checks": result["checks"],
+        "errors": result["errors"],
+        "outcome_binding": result["outcome_binding"],
+    }
+    assert outcome_binding_result_digest(result) == result["result_digest"]
+    assert verify_outcome_binding_result_digest(result) is True
+    assert verify_outcome_binding_result_digest(result, result["result_digest"]) is True
+
+
+def test_result_digest_verification_fails_closed_on_tampering_or_malformed_claims():
+    result = _exec_result(EXEC_SUITE["vectors"][0])
+
+    tampered_outcome = copy.deepcopy(result)
+    tampered_outcome["outcome_binding"]["outcome"] = "divergent"
+    assert verify_outcome_binding_result_digest(tampered_outcome) is False
+
+    tampered_commitment = copy.deepcopy(result)
+    tampered_commitment["input_commitments"]["receipt_digest"] = "sha256:" + ("0" * 64)
+    assert verify_outcome_binding_result_digest(tampered_commitment) is False
+
+    assert verify_outcome_binding_result_digest(result, "sha256:not-a-digest") is False
+    assert verify_outcome_binding_result_digest({}, result["result_digest"]) is False
+    assert verify_outcome_binding_result_digest(None, result["result_digest"]) is False
 
 
 def test_receipt_action_nonce_and_executor_key_bindings_fail_independently():

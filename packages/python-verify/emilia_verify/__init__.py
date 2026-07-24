@@ -3601,18 +3601,22 @@ from .outcome_binding import (  # noqa: E402,F401
     OUTCOME_ATTESTATION_DOMAIN,
     OUTCOME_ATTESTATION_VERSION,
     OUTCOME_BINDING_OUTCOMES,
+    OUTCOME_BINDING_RESULT_VERSION,
     OUTCOME_BINDING_VERSION,
     PREDICATE_OPS,
     compare_decimal_strings,
     evaluate_predicted_effects,
     is_decimal_string,
     observed_effects_digest,
+    outcome_binding_result_core,
+    outcome_binding_result_digest,
     predicted_effects_digest,
     trust_receipt_digest,
     validate_predicted_effects,
     verify_outcome_attestation,
     verify_outcome_binding,
     verify_outcome_binding_core,
+    verify_outcome_binding_result_digest,
 )
 from .outcome_binding import __all__ as _outcome_binding_exports  # noqa: E402
 
