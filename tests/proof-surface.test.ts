@@ -27,6 +27,12 @@ describe('public engineering evidence surface', () => {
     expect(page).toContain('Security claims you can execute, not architecture you have to trust.');
     expect(page).toContain('Hostile-network composition');
     expect(page).toContain('Stateful enforcement under faults');
+    expect(page).toContain('Executable evidence');
+    expect(page).toContain('Formal model scope');
+    expect(page).toContain('Fully modeled');
+    expect(page).toContain('Partial formal coverage');
+    expect(page).toContain('Executable evidence only');
+    expect(page).toContain('does not mean unimplemented');
     expect(page).toContain('What this evidence does not establish.');
     expect(page).toContain('application/ld+json');
     expect(layout).toContain('Machine-Verifiable Security Case');
@@ -39,5 +45,20 @@ describe('public engineering evidence surface', () => {
     expect(read('app/sitemap.ts')).toContain("{ path: '/proof'");
     expect(read('app/gate/layout.js')).toContain("url: 'https://www.emiliaprotocol.ai/proof'");
     expect(read('README.md')).toContain('www.emiliaprotocol.ai/proof');
+  });
+
+  it('reports the bounded Authority Program model as partial, hash-bound formal evidence', () => {
+    const source = JSON.parse(read('security/claims.v1.json'));
+    const claim = source.claims.find(
+      (entry) => entry.claim_id === 'authority-program-composition-is-root-bound-and-closed',
+    );
+    const [formal] = claim.formal;
+
+    expect(formal.status).toBe('partial');
+    expect(formal.method).toBe('bounded_tla_model_checking');
+    expect(formal.model).toBe('formal/ep_authority_program.tla');
+    expect(formal.runner).toBe('formal/ep_authority_program.cfg');
+    expect(formal.obligations).toHaveLength(12);
+    expect(formal.scope).toContain('not a refinement proof');
   });
 });
