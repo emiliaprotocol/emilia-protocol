@@ -22,12 +22,20 @@
       "sha256": "5335997d7a9eb0f6a8db18c3d05d228d8e5a83b0346b6ed4d98886cc9792651e"
     },
     {
+      "path": "conformance/refinement/adapters/composed-trust-lifecycle.mjs",
+      "sha256": "cd9ddd09400e8991873ffb395c236a69785cfbd36477bc49ef675713616c0cfc"
+    },
+    {
+      "path": "conformance/refinement/adapters/composed-trust-lifecycle.mts",
+      "sha256": "66430f14f5478daa5b5a152271e126374d51f2222caa3deafef3a2b872e5297d"
+    },
+    {
       "path": "conformance/refinement/adapters/consequence-lifecycle.mjs",
-      "sha256": "d0f7a71a2795e6569fdff1f74e1de6b8e2a31898d8398bdd655cbaa12890d415"
+      "sha256": "2bcc0ddd6f7ad9ba880e98dbb874158d900d4e60d2308ebc4bdae22ecad0cf91"
     },
     {
       "path": "conformance/refinement/adapters/consequence-lifecycle.mts",
-      "sha256": "e6ec7e00149f7019a555e9b8835e1e7363fea76eb45748cf1cfd2a1fe533af8c"
+      "sha256": "6c3a17b84c4fc9e43f32d9ec3c6f1fd24e15926232c266f8e01ebe0018872b4c"
     },
     {
       "path": "conformance/refinement/adapters/grace-curtailment.mjs",
@@ -39,11 +47,11 @@
     },
     {
       "path": "conformance/refinement/adapters/index.mjs",
-      "sha256": "0bf71eca1e570eef1649472e9d8776b465ef67c8ddcbea382e98deac3a8b6a85"
+      "sha256": "0ee1ac4a893af8d13343f3ce5490c69cf21305a5b0f4dc74b514e51b0245d051"
     },
     {
       "path": "conformance/refinement/adapters/index.mts",
-      "sha256": "a8feb9dfe369ee6d1d894f30ed2e3d563536f37b6656149e52df7d123c6e2a2e"
+      "sha256": "91a8fa85925cac6d92777fc857d71045e322e4f11d4f49af1e07d315443461ca"
     },
     {
       "path": "conformance/refinement/adapters/mobile-continuity.mjs",
@@ -87,19 +95,19 @@
     },
     {
       "path": "conformance/refinement/harness.mjs",
-      "sha256": "ce73fa863b6f572af8803b088a751571b6c9c5b10bd7043accc59b19ba641596"
+      "sha256": "3eb354321494fd4a001e4e0c6b0ec134356138924e762bccc9828468d848478a"
     },
     {
       "path": "conformance/refinement/harness.mts",
-      "sha256": "660bbf5940383a7ab2fb718f59ae07e7bc9a3f34c4d1392fcc42a2a26d45189b"
+      "sha256": "9148d5a4865fab6bc263d30ae5ae00d23b248d51664a7b2392560a92aa9767d5"
     },
     {
       "path": "conformance/refinement/schema.mjs",
-      "sha256": "6eb2a963fbcc57f09fabc4457a211639912a52bee5c10b6a76dd9e73cbdb1421"
+      "sha256": "1e693b11d794e536359c7dd5cc885e89894684bb70626cfb68c9bd682bdbbaa4"
     },
     {
       "path": "conformance/refinement/schema.mts",
-      "sha256": "2a35078af3ff1c17e1a0a0eb3b67aa5231f43bb6cf1083a0c6afd4c2890fb13f"
+      "sha256": "8d516a3d8c1cf77fc1e7118cfd88b30d6ac647b84a0b3a8e3c8bf9c1a0f13214"
     },
     {
       "path": "conformance/refinement/tla-wrapper.mjs",
@@ -112,6 +120,14 @@
     {
       "path": "conformance/refinement/types.mts",
       "sha256": "4ea39c5105b5e7036806fdbc4ca8d9cacb92e3acd8f39361e1c5f7576fc3fde3"
+    },
+    {
+      "path": "formal/ep_composed_trust_lifecycle.cfg",
+      "sha256": "609f2576228e039f7c8edb05b8bd431e4e8906d4e652c3e598d093c175f3627b"
+    },
+    {
+      "path": "formal/ep_composed_trust_lifecycle.tla",
+      "sha256": "42cef5928f86e07cb359954e230bebc90c4eafa23bdafaf86bd7dab131a92d45"
     },
     {
       "path": "formal/ep_consequence_lifecycle.cfg",
@@ -139,7 +155,7 @@
     },
     {
       "path": "formal/runtime-traces.v1.json",
-      "sha256": "d56a047a43f992445ac647fcea19cd40c4de74a7098805a9995c3f3b8ac9bc94"
+      "sha256": "09c75a494a42e98ffea6b612b09bcea627925319eba4c5a99fb0dcc252d3bacf"
     },
     {
       "path": "lib/cbor-encode.js",
@@ -410,6 +426,10 @@
       "sha256": "acee368af3db92c8acaa72a21b67795c04df3913e17f79be859af7b2423014df"
     },
     {
+      "path": "packages/gate/src/aeb-consumption-store.ts",
+      "sha256": "e55405c9b031ff0ef5038b4bfed717d712684d8e19c40602b8de2be072b74960"
+    },
+    {
       "path": "packages/gate/src/aec-execution.ts",
       "sha256": "da799e756355bb76c5b03a0c302d7fd00b07dc78b7e31f6b1ad9047c06c9bbbc"
     },
@@ -434,8 +454,16 @@
       "sha256": "ee30da8e0b58111d7951e920bd9413f8f19db14f0b757b0287e33f925ed969b4"
     },
     {
+      "path": "packages/gate/src/remedy-program.ts",
+      "sha256": "ce775f51a248d86873afdab86083132968284426984fdc3651139a6e0c98af2d"
+    },
+    {
       "path": "packages/gate/src/store.ts",
       "sha256": "261ec5c9593c867649f081b26f3bcc8b42fb8ed616b4766c5913dd4a7c7ef828"
+    },
+    {
+      "path": "packages/gate/src/witness-postgres.ts",
+      "sha256": "c02d2e4d1a3a8513d98c6148df6b1d70becf805073ae0f77db0e8724fa4adc51"
     },
     {
       "path": "packages/gate/store.js",
@@ -696,6 +724,8 @@
   ],
   "limitations": [
     "Trace refinement tests selected transitions; it is not a mechanized implementation refinement proof.",
+    "The end-to-end composed model is complete only over its 36 declared finite actions; other models remain selected-trace mappings.",
+    "Declared-action coverage does not prove every runtime parameter, concurrency schedule, deployment, or external-system behavior.",
     "The formal models, adapters, and runtime implementations are maintained by the same team.",
     "Cryptographic primitives, trusted clocks, provider truth, complete mediation, and durable database semantics remain explicit acceptance roots."
   ],
@@ -712,14 +742,20 @@
       "network-witness-equivocation-permanently-poisons-stream",
       "revocation-is-pinned-effective-and-terminal"
     ],
+    "covered_transitions": 36,
     "models": [
+      "formal/ep_composed_trust_lifecycle.tla",
       "formal/ep_consequence_lifecycle.tla",
       "formal/ep_effect_profiles.tla",
       "formal/ep_revocation_witness.tla"
     ],
-    "sound_traces": 11,
-    "traces": 20,
-    "unsafe_mutations_detected": 9
+    "required_transitions": 36,
+    "sound_traces": 14,
+    "traces": 31,
+    "transition_complete_models": [
+      "formal/ep_composed_trust_lifecycle.tla"
+    ],
+    "unsafe_mutations_detected": 17
   },
   "traces": [
     {
@@ -785,6 +821,512 @@
         ]
       },
       "scenario": "aec-role-substitution-refused"
+    },
+    {
+      "adapter": "composed-trust-lifecycle",
+      "claim_id": "aec-role-substitution-refused",
+      "formal": {
+        "obligation": "ExactAECRoles",
+        "status": "counterexample_detected"
+      },
+      "id": "composed-aec-role-substitution-mutation",
+      "kind": "unsafe_mutation",
+      "matched": true,
+      "model": "formal/ep_composed_trust_lifecycle.tla",
+      "runtime": {
+        "status": "matched",
+        "steps": [
+          {
+            "accepted": false,
+            "operator": "UnsafeRoleSubstitution",
+            "projection": {
+              "aecState": "UNSATISFIED",
+              "phase": "AEB_VERIFIED"
+            }
+          }
+        ]
+      },
+      "scenario": "composed-role-substitution-mutation"
+    },
+    {
+      "adapter": "composed-trust-lifecycle",
+      "claim_id": "aec-role-substitution-refused",
+      "formal": {
+        "obligation": null,
+        "status": "matched"
+      },
+      "id": "composed-aec-role-substitution-refusal",
+      "kind": "sound",
+      "matched": true,
+      "model": "formal/ep_composed_trust_lifecycle.tla",
+      "runtime": {
+        "status": "matched",
+        "steps": [
+          {
+            "accepted": false,
+            "operator": "PresentSubstitutedAECRole",
+            "projection": {
+              "aecState": "SUBSTITUTED_REFUSED",
+              "phase": "AEC_ROLE_SUBSTITUTION_REFUSED"
+            }
+          }
+        ]
+      },
+      "scenario": "composed-role-substitution-refused"
+    },
+    {
+      "adapter": "composed-trust-lifecycle",
+      "claim_id": "ambiguous-effect-is-never-auto-retried",
+      "formal": {
+        "obligation": "ProviderAtMostOnce",
+        "status": "counterexample_detected"
+      },
+      "id": "composed-blind-replay-mutation",
+      "kind": "unsafe_mutation",
+      "matched": true,
+      "model": "formal/ep_composed_trust_lifecycle.tla",
+      "runtime": {
+        "status": "matched",
+        "steps": [
+          {
+            "accepted": false,
+            "operator": "UnsafeBlindReplay",
+            "projection": {
+              "phase": "INDETERMINATE",
+              "providerCalls": 1
+            }
+          }
+        ]
+      },
+      "scenario": "composed-blind-replay-mutation"
+    },
+    {
+      "adapter": "composed-trust-lifecycle",
+      "claim_id": "ambiguous-effect-is-never-auto-retried",
+      "formal": {
+        "obligation": "SeparateRemedyAuthority",
+        "status": "counterexample_detected"
+      },
+      "id": "composed-original-authority-remedy-mutation",
+      "kind": "unsafe_mutation",
+      "matched": true,
+      "model": "formal/ep_composed_trust_lifecycle.tla",
+      "runtime": {
+        "status": "matched",
+        "steps": [
+          {
+            "accepted": false,
+            "operator": "UnsafeOriginalAuthorityAsRemedy",
+            "projection": {
+              "phase": "DISPUTED",
+              "remedyAuthorized": false,
+              "remedyCaid": "none"
+            }
+          }
+        ]
+      },
+      "scenario": "composed-original-authority-remedy-mutation"
+    },
+    {
+      "adapter": "composed-trust-lifecycle",
+      "claim_id": "network-witness-equivocation-permanently-poisons-stream",
+      "formal": {
+        "obligation": "ReservationRequiresTrust",
+        "status": "counterexample_detected"
+      },
+      "id": "composed-poisoned-witness-reservation-mutation",
+      "kind": "unsafe_mutation",
+      "matched": true,
+      "model": "formal/ep_composed_trust_lifecycle.tla",
+      "runtime": {
+        "status": "matched",
+        "steps": [
+          {
+            "accepted": false,
+            "operator": "PoisonWitnessStream",
+            "projection": {
+              "everWitnessPoisoned": true,
+              "phase": "WITNESS_POISONED",
+              "witnessState": "POISONED"
+            }
+          },
+          {
+            "accepted": false,
+            "operator": "UnsafePoisonedWitnessReserve",
+            "projection": {
+              "escrowState": "OPEN",
+              "phase": "WITNESS_POISONED"
+            }
+          }
+        ]
+      },
+      "scenario": "composed-poisoned-witness-refused"
+    },
+    {
+      "adapter": "composed-trust-lifecycle",
+      "claim_id": "revocation-is-pinned-effective-and-terminal",
+      "formal": {
+        "obligation": null,
+        "status": "matched"
+      },
+      "id": "composed-pre-execution-revocation-refusal",
+      "kind": "sound",
+      "matched": true,
+      "model": "formal/ep_composed_trust_lifecycle.tla",
+      "runtime": {
+        "status": "matched",
+        "steps": [
+          {
+            "accepted": true,
+            "operator": "RecordPreExecutionRevocation",
+            "projection": {
+              "phase": "PRE_EXECUTION_REVOKED",
+              "revoked": true
+            }
+          },
+          {
+            "accepted": false,
+            "operator": "RefuseRevokedInvocation",
+            "projection": {
+              "phase": "REVOKED_INVOCATION_REFUSED",
+              "providerCalls": 0
+            }
+          }
+        ]
+      },
+      "scenario": "composed-revoked-invocation-refused"
+    },
+    {
+      "adapter": "composed-trust-lifecycle",
+      "claim_id": "ambiguous-effect-is-never-auto-retried",
+      "formal": {
+        "obligation": "RemedyAtMostOnce",
+        "status": "counterexample_detected"
+      },
+      "id": "composed-remedy-blind-replay-mutation",
+      "kind": "unsafe_mutation",
+      "matched": true,
+      "model": "formal/ep_composed_trust_lifecycle.tla",
+      "runtime": {
+        "status": "matched",
+        "steps": [
+          {
+            "accepted": false,
+            "operator": "UnsafeRemedyBlindReplay",
+            "projection": {
+              "phase": "REMEDY_INDETERMINATE",
+              "remedyCalls": 1
+            }
+          }
+        ]
+      },
+      "scenario": "composed-remedy-blind-replay-mutation"
+    },
+    {
+      "adapter": "composed-trust-lifecycle",
+      "claim_id": "revocation-is-pinned-effective-and-terminal",
+      "formal": {
+        "obligation": "RevokedBeforeExecutionCannotInvoke",
+        "status": "counterexample_detected"
+      },
+      "id": "composed-revoked-invocation-mutation",
+      "kind": "unsafe_mutation",
+      "matched": true,
+      "model": "formal/ep_composed_trust_lifecycle.tla",
+      "runtime": {
+        "status": "matched",
+        "steps": [
+          {
+            "accepted": true,
+            "operator": "RecordPreExecutionRevocation",
+            "projection": {
+              "phase": "PRE_EXECUTION_REVOKED",
+              "revoked": true
+            }
+          },
+          {
+            "accepted": false,
+            "operator": "UnsafeRevokedInvocation",
+            "projection": {
+              "phase": "PRE_EXECUTION_REVOKED",
+              "providerCalls": 0
+            }
+          }
+        ]
+      },
+      "scenario": "composed-revoked-invocation-mutation"
+    },
+    {
+      "adapter": "composed-trust-lifecycle",
+      "claim_id": "revocation-is-pinned-effective-and-terminal",
+      "formal": {
+        "obligation": "ReservationRequiresTrust",
+        "status": "counterexample_detected"
+      },
+      "id": "composed-stale-status-reservation-mutation",
+      "kind": "unsafe_mutation",
+      "matched": true,
+      "model": "formal/ep_composed_trust_lifecycle.tla",
+      "runtime": {
+        "status": "matched",
+        "steps": [
+          {
+            "accepted": false,
+            "operator": "RejectStaleStatus",
+            "projection": {
+              "phase": "STALE_STATUS_REFUSED",
+              "statusState": "STALE_REFUSED"
+            }
+          },
+          {
+            "accepted": false,
+            "operator": "UnsafeStaleStatusReserve",
+            "projection": {
+              "escrowState": "OPEN",
+              "phase": "STALE_STATUS_REFUSED"
+            }
+          }
+        ]
+      },
+      "scenario": "composed-stale-status-refused"
+    },
+    {
+      "adapter": "composed-trust-lifecycle",
+      "claim_id": "ambiguous-effect-is-never-auto-retried",
+      "formal": {
+        "obligation": null,
+        "status": "matched"
+      },
+      "id": "composed-trust-lifecycle-full-remedy",
+      "kind": "sound",
+      "matched": true,
+      "model": "formal/ep_composed_trust_lifecycle.tla",
+      "runtime": {
+        "status": "matched",
+        "steps": [
+          {
+            "accepted": true,
+            "operator": "BindExactCAID",
+            "projection": {
+              "caid": "caid:action",
+              "phase": "CAID_BOUND"
+            }
+          },
+          {
+            "accepted": true,
+            "operator": "VerifyAEB",
+            "projection": {
+              "aebState": "VERIFIED_ACCEPTED",
+              "phase": "AEB_VERIFIED"
+            }
+          },
+          {
+            "accepted": true,
+            "operator": "SatisfyExactAEC",
+            "projection": {
+              "aecState": "MACHINE_AND_HUMAN",
+              "phase": "AEC_SATISFIED"
+            }
+          },
+          {
+            "accepted": true,
+            "operator": "CaptureApproval",
+            "projection": {
+              "approvalBound": true,
+              "phase": "APPROVED"
+            }
+          },
+          {
+            "accepted": true,
+            "operator": "ClearActionEscrow",
+            "projection": {
+              "actionEscrowClear": true,
+              "phase": "ACTION_ESCROW_CLEAR"
+            }
+          },
+          {
+            "accepted": true,
+            "operator": "ClearModelToMatter",
+            "projection": {
+              "modelToMatterClear": true,
+              "phase": "MODEL_TO_MATTER_CLEAR"
+            }
+          },
+          {
+            "accepted": true,
+            "operator": "ClearGRACE",
+            "projection": {
+              "graceClear": true,
+              "phase": "GRACE_CLEAR"
+            }
+          },
+          {
+            "accepted": true,
+            "operator": "ClearMobileContinuity",
+            "projection": {
+              "mobileContinuityClear": true,
+              "phase": "MOBILE_CONTINUITY_CLEAR"
+            }
+          },
+          {
+            "accepted": true,
+            "operator": "ClearMobileEnrollment",
+            "projection": {
+              "mobileEnrollmentClear": true,
+              "phase": "MOBILE_ENROLLMENT_CLEAR"
+            }
+          },
+          {
+            "accepted": true,
+            "operator": "AcceptFreshStatus",
+            "projection": {
+              "phase": "STATUS_FRESH",
+              "statusState": "FRESH_NOT_REVOKED"
+            }
+          },
+          {
+            "accepted": true,
+            "operator": "AcceptCleanWitness",
+            "projection": {
+              "everWitnessPoisoned": false,
+              "phase": "WITNESS_CLEAN",
+              "witnessState": "CLEAN"
+            }
+          },
+          {
+            "accepted": true,
+            "operator": "ReserveEscrow",
+            "projection": {
+              "escrowState": "RESERVED",
+              "phase": "RESERVED"
+            }
+          },
+          {
+            "accepted": true,
+            "operator": "InvokeProvider",
+            "projection": {
+              "phase": "INVOKING",
+              "providerCalls": 1
+            }
+          },
+          {
+            "accepted": true,
+            "operator": "MarkIndeterminate",
+            "projection": {
+              "originalEffect": "INDETERMINATE",
+              "phase": "INDETERMINATE"
+            }
+          },
+          {
+            "accepted": false,
+            "operator": "RefuseBlindReplay",
+            "projection": {
+              "phase": "REPLAY_FENCED",
+              "providerCalls": 1,
+              "replayRefused": true
+            }
+          },
+          {
+            "accepted": true,
+            "operator": "ReconcileExecuted",
+            "projection": {
+              "escrowState": "CONSUMED",
+              "originalEffect": "EXECUTED",
+              "phase": "EXECUTED",
+              "reconciliationAuthenticated": true
+            }
+          },
+          {
+            "accepted": true,
+            "operator": "RecordLateRevocation",
+            "projection": {
+              "originalEffect": "EXECUTED",
+              "phase": "LATE_REVOKED",
+              "revoked": true
+            }
+          },
+          {
+            "accepted": true,
+            "operator": "OpenDispute",
+            "projection": {
+              "disputeOpen": true,
+              "phase": "DISPUTED"
+            }
+          },
+          {
+            "accepted": true,
+            "operator": "AuthorizeSeparateRemedy",
+            "projection": {
+              "phase": "REMEDY_AUTHORIZED",
+              "remedyAuthorized": true,
+              "remedyCaid": "caid:remedy"
+            }
+          },
+          {
+            "accepted": true,
+            "operator": "InvokeRemedy",
+            "projection": {
+              "phase": "REMEDY_INVOKING",
+              "remedyCalls": 1
+            }
+          },
+          {
+            "accepted": true,
+            "operator": "MarkRemedyIndeterminate",
+            "projection": {
+              "phase": "REMEDY_INDETERMINATE",
+              "remedyEffect": "INDETERMINATE"
+            }
+          },
+          {
+            "accepted": false,
+            "operator": "RefuseRemedyBlindReplay",
+            "projection": {
+              "phase": "REMEDY_REPLAY_FENCED",
+              "remedyCalls": 1,
+              "remedyReplayRefused": true
+            }
+          },
+          {
+            "accepted": true,
+            "operator": "ReconcileRemedyExecuted",
+            "projection": {
+              "originalEffect": "EXECUTED",
+              "phase": "REMEDIED",
+              "remedyEffect": "EXECUTED",
+              "remedyReconciliationAuthenticated": true
+            }
+          }
+        ]
+      },
+      "scenario": "composed-full-remedy"
+    },
+    {
+      "adapter": "composed-trust-lifecycle",
+      "claim_id": "ambiguous-effect-is-never-auto-retried",
+      "formal": {
+        "obligation": "AuthenticatedReconciliation",
+        "status": "counterexample_detected"
+      },
+      "id": "composed-unauthenticated-reconciliation-mutation",
+      "kind": "unsafe_mutation",
+      "matched": true,
+      "model": "formal/ep_composed_trust_lifecycle.tla",
+      "runtime": {
+        "status": "matched",
+        "steps": [
+          {
+            "accepted": false,
+            "operator": "UnsafeUnauthenticatedReconciliation",
+            "projection": {
+              "originalEffect": "INDETERMINATE",
+              "phase": "REPLAY_FENCED",
+              "reconciliationAuthenticated": false
+            }
+          }
+        ]
+      },
+      "scenario": "composed-unauthenticated-reconciliation-mutation"
     },
     {
       "adapter": "consequence-lifecycle",

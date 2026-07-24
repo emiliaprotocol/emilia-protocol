@@ -11,6 +11,7 @@ This document reproduces the pinned TLC checks for:
 - `ep_consequence_attempt.tla`
 - `ep_consequence_attempt_unsafe.tla` (deliberately unsafe negative control)
 - `ep_consequence_lifecycle.tla`
+- `ep_composed_trust_lifecycle.tla`
 - `ep_revocation_witness.tla`
 - `ep_effect_profiles.tla`
 
@@ -127,6 +128,12 @@ java -Xmx2G -jar ../tla2tools.jar \
   -config ep_consequence_lifecycle.cfg \
   ep_consequence_lifecycle.tla \
   2>&1 | tee tlc-consequence-lifecycle-output.txt
+
+java -Xmx2G -jar ../tla2tools.jar \
+  -workers auto \
+  -config ep_composed_trust_lifecycle.cfg \
+  ep_composed_trust_lifecycle.tla \
+  2>&1 | tee tlc-composed-trust-lifecycle-output.txt
 
 java -Xmx4G -jar ../tla2tools.jar \
   -workers auto \

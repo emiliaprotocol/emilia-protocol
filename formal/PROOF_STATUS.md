@@ -523,34 +523,42 @@ downstream exactly-once effects.
 
 ---
 
-## TLA+ — composed consequence, revocation/witness, and effect-profile closure
+## TLA+ — end-to-end consequence, adversary, and effect-profile closure
 
 **Status:** bounded same-team models and content-addressed selected runtime
 traces, verified locally on 2026-07-24 and gated in CI.
 
-Three models add bounded partial coverage for the previously explicit assurance
+Four models add bounded partial coverage for the previously explicit assurance
 gaps:
 
+- `ep_composed_trust_lifecycle.tla` is the single ordered model that carries
+  one exact CAID through AEB, exact-role AEC, approval, Action Escrow,
+  Model-to-Matter, GRACE, mobile continuity and enrollment, freshness,
+  witness admission, reservation, indeterminate execution, authenticated
+  reconciliation, late revocation, dispute, and separately authorized remedy.
+  TLC explored 29 generated / 29 distinct states to complete depth 24.
 - `ep_consequence_lifecycle.tla` composes exact CAID admission, approval,
   escrow reservation, one provider invocation, indeterminate fencing,
   authenticated reconciliation, revocation-before-start, terminal effect, and
-  separately authorized remedy. TLC explored 507 generated / 204 distinct
-  states to complete depth 23.
+  separately authorized remedy. TLC explored 875 generated / 300 distinct
+  states to complete depth 24.
 - `ep_revocation_witness.tla` checks pinned effective revocation, fresh status,
   monotonic witness heads, equivocation poisoning, permanent post-conflict
-  refusal, and exact stream isolation. TLC explored 465,814 generated / 65,781
-  distinct states to complete depth 5.
+  refusal, and exact stream isolation. TLC explored 7,664,787 generated /
+  993,413 distinct states to complete depth 6.
 - `ep_effect_profiles.tla` composes bounded Action Escrow, Model-to-Matter, AEC
   role mapping, GRACE, mobile continuity, and mobile enrollment safety. TLC
   explored 2,234,641 generated / 403,200 distinct states to complete depth 25.
 
-`formal/runtime-traces.v1.json` binds 18 governed traces across nine public
+`formal/runtime-traces.v1.json` binds 31 governed traces across nine public
 claims to the exact model/config/harness/adapter/runtime bytes. The refinement
 harness forces exact TLA+ action sequences, executes real production entry
-points, compares scalar state projections, and requires nine deliberately
+points, compares scalar state projections, and requires 17 deliberately
 unsafe mutations to produce formal counterexamples while the runtime refuses
 the corresponding operation. The deterministic result is recorded in
-`formal/results/formal-runtime-refinement.v1.json`.
+`formal/results/formal-runtime-refinement.v1.json`. For the end-to-end model,
+the manifest additionally declares 36 required transitions and fails closed
+unless every one is covered by a governed runtime trace.
 
 **Boundary:** this is bounded selected-trace refinement evidence, not a
 mechanized implementation refinement proof. It does not establish all runtime
@@ -568,4 +576,4 @@ When a property is verified by a model checker:
 
 ---
 
-_Last updated: 2026-07-24 (three bounded assurance-closure models plus 18 content-addressed selected runtime traces and nine unsafe mutations). Prior: 2026-07-22 (bounded consequence-attempt/AEB custody model added to the pinned CI gate: 27 checks across 93,724 distinct states, including consume-before-commit ordering and stale-lease-only recovery; deliberately weakened replay model falsifies `InvokeAtMostOnce`). Prior: 2026-07-21 (bounded authority-program and receipt-program models plus Conservation of Authority claim boundary). Prior: 2026-07-10 (composed reliance-path v2: 10 strict lemmas verified; no-consumption and unpinned-registry-view comparisons falsified with concrete traces; all well-formedness checks clean)._
+_Last updated: 2026-07-24 (four bounded assurance-closure models plus 31 content-addressed runtime traces, 17 unsafe mutations, and transition-complete coverage of all 36 declared actions in the end-to-end model). Prior: 2026-07-22 (bounded consequence-attempt/AEB custody model added to the pinned CI gate: 27 checks across 93,724 distinct states, including consume-before-commit ordering and stale-lease-only recovery; deliberately weakened replay model falsifies `InvokeAtMostOnce`). Prior: 2026-07-21 (bounded authority-program and receipt-program models plus Conservation of Authority claim boundary). Prior: 2026-07-10 (composed reliance-path v2: 10 strict lemmas verified; no-consumption and unpinned-registry-view comparisons falsified with concrete traces; all well-formedness checks clean)._

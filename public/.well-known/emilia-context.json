@@ -1,9 +1,9 @@
 {
   "@version": "EMILIA-REPO-CONTEXT-v1",
-  "evidence_snapshot_at": "2026-07-24T08:38:57.563Z",
+  "evidence_snapshot_at": "2026-07-24T15:46:29.554Z",
   "provenance": {
     "generator": "scripts/generate-llm-context.mjs",
-    "input_digest_sha256": "4ea86d0b8b8474de9f41c97c76fb26e221eb67734a00790938d29d8442ae1791",
+    "input_digest_sha256": "54bd656b3a31c2211552335c917ec63f9d6c769a445e16c5b9a28267f60907b1",
     "generated_from": [
       {
         "path": "docs/ai/context-source.v1.json",
@@ -17,8 +17,8 @@
       },
       {
         "path": "lib/proof-stats.json",
-        "sha256": "ccc48552bc63659424317a919354b4088835e8b67fd5c14a96782ca4f44ee283",
-        "bytes": 1431
+        "sha256": "34f83c103438147fc522734fd2d785fef6597e215dbbb03917daf079afecdd0d",
+        "bytes": 1567
       },
       {
         "path": "conformance/conformance-manifest.json",
@@ -32,13 +32,13 @@
       },
       {
         "path": "security/claims.v1.json",
-        "sha256": "4f013a40b3fa781cccc9a8a11369f26eddd626ac352867ffc434aaddf79ac08a",
-        "bytes": 182874
+        "sha256": "97ca3ef716478901ed53b9305b7e0b9b0981ac9767418e358c5481c82da9f11a",
+        "bytes": 184377
       },
       {
         "path": "security/security-case.json",
-        "sha256": "611313ad50b0d142bda305129828e1b0179c84c93626a8e41b040d48cf2fd1df",
-        "bytes": 291092
+        "sha256": "40fd5aa11b0e6fc7e44c4492e15c8a9da753e6bf8799fa84fe30d9a52c08375d",
+        "bytes": 293072
       },
       {
         "path": "lib/standards-observatory.snapshot.json",
@@ -272,7 +272,7 @@
   ],
   "current_evidence": {
     "automated_tests": {
-      "total": 7696,
+      "total": 7698,
       "files": 416,
       "policy": "all platform-applicable cases must pass; platform-specific cases may skip"
     },
@@ -301,12 +301,15 @@
       },
       "selected_trace_refinement": {
         "method": "bounded_selected_trace_refinement",
-        "models": 3,
+        "models": 4,
         "claims": 9,
-        "traces": 20,
-        "soundTraces": 11,
-        "unsafeMutationsDetected": 9,
-        "evidenceSha256": "fe692a7d6ce6d8c89dbfcae23028c9255a72a246e787d2b4efaa42e73edbf6a3",
+        "traces": 31,
+        "soundTraces": 14,
+        "unsafeMutationsDetected": 17,
+        "requiredTransitions": 36,
+        "coveredTransitions": 36,
+        "transitionCompleteModels": 1,
+        "evidenceSha256": "6f853d3b555cf35db6016f4a437fbfcd4fc5a44cab4cc809095b4656f66e6db0",
         "boundary": "selected traces; not a mechanized implementation refinement proof"
       }
     },
@@ -314,8 +317,8 @@
     "security_case": {
       "status": "passed",
       "claims": 33,
-      "evidence_files": 193,
-      "evidence_bundle_sha256": "8c7667379b8ad7b0e9ecc1c8485c5b3e1934fba769b874831031e105ad8785e2"
+      "evidence_files": 196,
+      "evidence_bundle_sha256": "417acfd8c12b12f224194ae15b674f2bd490a52d69de80036e5ceed972f25862"
     },
     "caid": {
       "core_vectors": 48,
@@ -1616,6 +1619,28 @@
             "NoBlindReplayWhileIndeterminate"
           ],
           "scope": "Bounded same-team composed lifecycle model and selected runtime traces cover response loss, indeterminate fencing, blind-replay refusal, and authenticated exact reconciliation. This is not a refinement proof; provider truth, cryptography, storage durability, and arbitrary concurrency remain acceptance roots."
+        },
+        {
+          "status": "partial",
+          "method": "bounded_tla_model_checking",
+          "model": "formal/ep_composed_trust_lifecycle.tla",
+          "runner": "formal/ep_composed_trust_lifecycle.cfg",
+          "result_evidence": "formal/results/ep-composed-trust-lifecycle.tlc.summary.txt",
+          "trace_evidence": "formal/runtime-traces.v1.json",
+          "trace_runner": "scripts/check-formal-runtime-traces.mjs",
+          "refinement_evidence": "formal/results/formal-runtime-refinement.v1.json",
+          "obligations": [
+            "ReservationRequiresTrust",
+            "ProviderAtMostOnce",
+            "RevokedBeforeExecutionCannotInvoke",
+            "AuthenticatedReconciliation",
+            "WitnessPoisonPermanent",
+            "SeparateRemedyAuthority",
+            "RemedyAtMostOnce",
+            "AuthenticatedRemedyReconciliation",
+            "RemedyDoesNotRewriteOriginal"
+          ],
+          "scope": "One bounded same-team state machine composes exact CAID, AEB, exact-role AEC, approval, Action Escrow, Model-to-Matter, GRACE, mobile continuity and enrollment, fresh status, clean witness admission, escrow, indeterminate execution, authenticated reconciliation, revocation, dispute, and separately authorized remedy. All 36 declared transitions have governed runtime traces, including eight model-defined unsafe mutations. This is still bounded selected-trace evidence, not a refinement proof or a mechanized implementation refinement proof."
         }
       ],
       "assumptions": [

@@ -3,10 +3,147 @@
   "scope": "Bounded selected traces force exact TLA+ actions and compare their abstract state projections with deterministic replays through production runtime entry points.",
   "limitations": [
     "Trace refinement tests selected transitions; it is not a mechanized implementation refinement proof.",
+    "The end-to-end composed model is complete only over its 36 declared finite actions; other models remain selected-trace mappings.",
+    "Declared-action coverage does not prove every runtime parameter, concurrency schedule, deployment, or external-system behavior.",
     "The formal models, adapters, and runtime implementations are maintained by the same team.",
     "Cryptographic primitives, trusted clocks, provider truth, complete mediation, and durable database semantics remain explicit acceptance roots."
   ],
   "models": {
+    "formal/ep_composed_trust_lifecycle.tla": {
+      "config": "formal/ep_composed_trust_lifecycle.cfg",
+      "variables": [
+        "phase",
+        "caid",
+        "aebState",
+        "aecState",
+        "approvalBound",
+        "actionEscrowClear",
+        "modelToMatterClear",
+        "graceClear",
+        "mobileContinuityClear",
+        "mobileEnrollmentClear",
+        "statusState",
+        "witnessState",
+        "everWitnessPoisoned",
+        "revoked",
+        "escrowState",
+        "providerCalls",
+        "replayRefused",
+        "reconciliationAuthenticated",
+        "originalEffect",
+        "disputeOpen",
+        "remedyCaid",
+        "remedyAuthorized",
+        "remedyCalls",
+        "remedyReplayRefused",
+        "remedyReconciliationAuthenticated",
+        "remedyEffect"
+      ],
+      "projections": {
+        "phase": "phase",
+        "caid": "caid",
+        "aebState": "aebState",
+        "aecState": "aecState",
+        "approvalBound": "approvalBound",
+        "actionEscrowClear": "actionEscrowClear",
+        "modelToMatterClear": "modelToMatterClear",
+        "graceClear": "graceClear",
+        "mobileContinuityClear": "mobileContinuityClear",
+        "mobileEnrollmentClear": "mobileEnrollmentClear",
+        "statusState": "statusState",
+        "witnessState": "witnessState",
+        "everWitnessPoisoned": "everWitnessPoisoned",
+        "revoked": "revoked",
+        "escrowState": "escrowState",
+        "providerCalls": "providerCalls",
+        "replayRefused": "replayRefused",
+        "reconciliationAuthenticated": "reconciliationAuthenticated",
+        "originalEffect": "originalEffect",
+        "disputeOpen": "disputeOpen",
+        "remedyCaid": "remedyCaid",
+        "remedyAuthorized": "remedyAuthorized",
+        "remedyCalls": "remedyCalls",
+        "remedyReplayRefused": "remedyReplayRefused",
+        "remedyReconciliationAuthenticated": "remedyReconciliationAuthenticated",
+        "remedyEffect": "remedyEffect"
+      },
+      "actions": {
+        "BindExactCAID": "BindExactCAID",
+        "VerifyAEB": "VerifyAEB",
+        "SatisfyExactAEC": "SatisfyExactAEC",
+        "CaptureApproval": "CaptureApproval",
+        "ClearActionEscrow": "ClearActionEscrow",
+        "ClearModelToMatter": "ClearModelToMatter",
+        "ClearGRACE": "ClearGRACE",
+        "ClearMobileContinuity": "ClearMobileContinuity",
+        "ClearMobileEnrollment": "ClearMobileEnrollment",
+        "AcceptFreshStatus": "AcceptFreshStatus",
+        "AcceptCleanWitness": "AcceptCleanWitness",
+        "ReserveEscrow": "ReserveEscrow",
+        "InvokeProvider": "InvokeProvider",
+        "MarkIndeterminate": "MarkIndeterminate",
+        "RefuseBlindReplay": "RefuseBlindReplay",
+        "ReconcileExecuted": "ReconcileExecuted",
+        "RecordLateRevocation": "RecordLateRevocation",
+        "OpenDispute": "OpenDispute",
+        "AuthorizeSeparateRemedy": "AuthorizeSeparateRemedy",
+        "InvokeRemedy": "InvokeRemedy",
+        "MarkRemedyIndeterminate": "MarkRemedyIndeterminate",
+        "RefuseRemedyBlindReplay": "RefuseRemedyBlindReplay",
+        "ReconcileRemedyExecuted": "ReconcileRemedyExecuted",
+        "PresentSubstitutedAECRole": "PresentSubstitutedAECRole",
+        "RejectStaleStatus": "RejectStaleStatus",
+        "PoisonWitnessStream": "PoisonWitnessStream",
+        "RecordPreExecutionRevocation": "RecordPreExecutionRevocation",
+        "RefuseRevokedInvocation": "RefuseRevokedInvocation",
+        "UnsafeRoleSubstitution": "UnsafeRoleSubstitution",
+        "UnsafeStaleStatusReserve": "UnsafeStaleStatusReserve",
+        "UnsafePoisonedWitnessReserve": "UnsafePoisonedWitnessReserve",
+        "UnsafeRevokedInvocation": "UnsafeRevokedInvocation",
+        "UnsafeBlindReplay": "UnsafeBlindReplay",
+        "UnsafeUnauthenticatedReconciliation": "UnsafeUnauthenticatedReconciliation",
+        "UnsafeOriginalAuthorityAsRemedy": "UnsafeOriginalAuthorityAsRemedy",
+        "UnsafeRemedyBlindReplay": "UnsafeRemedyBlindReplay"
+      },
+      "required_actions": [
+        "BindExactCAID",
+        "VerifyAEB",
+        "SatisfyExactAEC",
+        "CaptureApproval",
+        "ClearActionEscrow",
+        "ClearModelToMatter",
+        "ClearGRACE",
+        "ClearMobileContinuity",
+        "ClearMobileEnrollment",
+        "AcceptFreshStatus",
+        "AcceptCleanWitness",
+        "ReserveEscrow",
+        "InvokeProvider",
+        "MarkIndeterminate",
+        "RefuseBlindReplay",
+        "ReconcileExecuted",
+        "RecordLateRevocation",
+        "OpenDispute",
+        "AuthorizeSeparateRemedy",
+        "InvokeRemedy",
+        "MarkRemedyIndeterminate",
+        "RefuseRemedyBlindReplay",
+        "ReconcileRemedyExecuted",
+        "PresentSubstitutedAECRole",
+        "RejectStaleStatus",
+        "PoisonWitnessStream",
+        "RecordPreExecutionRevocation",
+        "RefuseRevokedInvocation",
+        "UnsafeRoleSubstitution",
+        "UnsafeStaleStatusReserve",
+        "UnsafePoisonedWitnessReserve",
+        "UnsafeRevokedInvocation",
+        "UnsafeBlindReplay",
+        "UnsafeUnauthenticatedReconciliation",
+        "UnsafeOriginalAuthorityAsRemedy",
+        "UnsafeRemedyBlindReplay"
+      ]
+    },
     "formal/ep_consequence_lifecycle.tla": {
       "config": "formal/ep_consequence_lifecycle.cfg",
       "variables": [
@@ -170,6 +307,615 @@
     }
   },
   "traces": [
+    {
+      "id": "composed-trust-lifecycle-full-remedy",
+      "claim_id": "ambiguous-effect-is-never-auto-retried",
+      "model": "formal/ep_composed_trust_lifecycle.tla",
+      "adapter": "composed-trust-lifecycle",
+      "scenario": "composed-full-remedy",
+      "kind": "sound",
+      "runtime_sources": [
+        "caid/impl/js/caid.mjs",
+        "packages/verify/src/aeb-adapter-contract.ts",
+        "packages/gate/src/proposal-to-effect.ts",
+        "packages/gate/src/action-escrow.ts",
+        "packages/gate/src/remedy-program.ts"
+      ],
+      "obligations": [
+        "TypeOK",
+        "ExactActionBinding",
+        "ExactAECRoles",
+        "ReservationRequiresTrust",
+        "ProviderAtMostOnce",
+        "RevokedBeforeExecutionCannotInvoke",
+        "AuthenticatedReconciliation",
+        "WitnessPoisonPermanent",
+        "SeparateRemedyAuthority",
+        "RemedyRequiresDisputedEffect",
+        "RemedyAtMostOnce",
+        "AuthenticatedRemedyReconciliation",
+        "RemedyDoesNotRewriteOriginal"
+      ],
+      "steps": [
+        {
+          "operator": "BindExactCAID",
+          "accepted": true,
+          "projection": { "phase": "CAID_BOUND", "caid": "caid:action" }
+        },
+        {
+          "operator": "VerifyAEB",
+          "accepted": true,
+          "projection": { "phase": "AEB_VERIFIED", "aebState": "VERIFIED_ACCEPTED" }
+        },
+        {
+          "operator": "SatisfyExactAEC",
+          "accepted": true,
+          "projection": { "phase": "AEC_SATISFIED", "aecState": "MACHINE_AND_HUMAN" }
+        },
+        {
+          "operator": "CaptureApproval",
+          "accepted": true,
+          "projection": { "phase": "APPROVED", "approvalBound": true }
+        },
+        {
+          "operator": "ClearActionEscrow",
+          "accepted": true,
+          "projection": { "phase": "ACTION_ESCROW_CLEAR", "actionEscrowClear": true }
+        },
+        {
+          "operator": "ClearModelToMatter",
+          "accepted": true,
+          "projection": { "phase": "MODEL_TO_MATTER_CLEAR", "modelToMatterClear": true }
+        },
+        {
+          "operator": "ClearGRACE",
+          "accepted": true,
+          "projection": { "phase": "GRACE_CLEAR", "graceClear": true }
+        },
+        {
+          "operator": "ClearMobileContinuity",
+          "accepted": true,
+          "projection": { "phase": "MOBILE_CONTINUITY_CLEAR", "mobileContinuityClear": true }
+        },
+        {
+          "operator": "ClearMobileEnrollment",
+          "accepted": true,
+          "projection": { "phase": "MOBILE_ENROLLMENT_CLEAR", "mobileEnrollmentClear": true }
+        },
+        {
+          "operator": "AcceptFreshStatus",
+          "accepted": true,
+          "projection": { "phase": "STATUS_FRESH", "statusState": "FRESH_NOT_REVOKED" }
+        },
+        {
+          "operator": "AcceptCleanWitness",
+          "accepted": true,
+          "projection": {
+            "phase": "WITNESS_CLEAN",
+            "witnessState": "CLEAN",
+            "everWitnessPoisoned": false
+          }
+        },
+        {
+          "operator": "ReserveEscrow",
+          "accepted": true,
+          "projection": { "phase": "RESERVED", "escrowState": "RESERVED" }
+        },
+        {
+          "operator": "InvokeProvider",
+          "accepted": true,
+          "projection": { "phase": "INVOKING", "providerCalls": 1 }
+        },
+        {
+          "operator": "MarkIndeterminate",
+          "accepted": true,
+          "projection": { "phase": "INDETERMINATE", "originalEffect": "INDETERMINATE" }
+        },
+        {
+          "operator": "RefuseBlindReplay",
+          "accepted": false,
+          "projection": {
+            "phase": "REPLAY_FENCED",
+            "providerCalls": 1,
+            "replayRefused": true
+          }
+        },
+        {
+          "operator": "ReconcileExecuted",
+          "accepted": true,
+          "projection": {
+            "phase": "EXECUTED",
+            "reconciliationAuthenticated": true,
+            "originalEffect": "EXECUTED",
+            "escrowState": "CONSUMED"
+          }
+        },
+        {
+          "operator": "RecordLateRevocation",
+          "accepted": true,
+          "projection": {
+            "phase": "LATE_REVOKED",
+            "revoked": true,
+            "originalEffect": "EXECUTED"
+          }
+        },
+        {
+          "operator": "OpenDispute",
+          "accepted": true,
+          "projection": { "phase": "DISPUTED", "disputeOpen": true }
+        },
+        {
+          "operator": "AuthorizeSeparateRemedy",
+          "accepted": true,
+          "projection": {
+            "phase": "REMEDY_AUTHORIZED",
+            "remedyCaid": "caid:remedy",
+            "remedyAuthorized": true
+          }
+        },
+        {
+          "operator": "InvokeRemedy",
+          "accepted": true,
+          "projection": { "phase": "REMEDY_INVOKING", "remedyCalls": 1 }
+        },
+        {
+          "operator": "MarkRemedyIndeterminate",
+          "accepted": true,
+          "projection": {
+            "phase": "REMEDY_INDETERMINATE",
+            "remedyEffect": "INDETERMINATE"
+          }
+        },
+        {
+          "operator": "RefuseRemedyBlindReplay",
+          "accepted": false,
+          "projection": {
+            "phase": "REMEDY_REPLAY_FENCED",
+            "remedyCalls": 1,
+            "remedyReplayRefused": true
+          }
+        },
+        {
+          "operator": "ReconcileRemedyExecuted",
+          "accepted": true,
+          "projection": {
+            "phase": "REMEDIED",
+            "remedyReconciliationAuthenticated": true,
+            "remedyEffect": "EXECUTED",
+            "originalEffect": "EXECUTED"
+          }
+        }
+      ]
+    },
+    {
+      "id": "composed-aec-role-substitution-refusal",
+      "claim_id": "aec-role-substitution-refused",
+      "model": "formal/ep_composed_trust_lifecycle.tla",
+      "adapter": "composed-trust-lifecycle",
+      "scenario": "composed-role-substitution-refused",
+      "kind": "sound",
+      "runtime_sources": [
+        "packages/verify/src/evidence-chain.ts",
+        "packages/gate/src/aec-execution.ts"
+      ],
+      "obligations": ["ExactAECRoles"],
+      "formal_prefix": ["BindExactCAID", "VerifyAEB"],
+      "steps": [
+        {
+          "operator": "PresentSubstitutedAECRole",
+          "accepted": false,
+          "projection": {
+            "phase": "AEC_ROLE_SUBSTITUTION_REFUSED",
+            "aecState": "SUBSTITUTED_REFUSED"
+          }
+        }
+      ]
+    },
+    {
+      "id": "composed-aec-role-substitution-mutation",
+      "claim_id": "aec-role-substitution-refused",
+      "model": "formal/ep_composed_trust_lifecycle.tla",
+      "adapter": "composed-trust-lifecycle",
+      "scenario": "composed-role-substitution-mutation",
+      "kind": "unsafe_mutation",
+      "runtime_sources": [
+        "packages/verify/src/evidence-chain.ts",
+        "packages/gate/src/aec-execution.ts"
+      ],
+      "obligations": ["ExactAECRoles"],
+      "formal_prefix": ["BindExactCAID", "VerifyAEB"],
+      "steps": [
+        {
+          "operator": "UnsafeRoleSubstitution",
+          "accepted": false,
+          "projection": { "phase": "AEB_VERIFIED", "aecState": "UNSATISFIED" }
+        }
+      ],
+      "mutation": {
+        "operator": "UnsafeRoleSubstitution",
+        "defined_in_model": true,
+        "obligation": "ExactAECRoles"
+      }
+    },
+    {
+      "id": "composed-stale-status-reservation-mutation",
+      "claim_id": "revocation-is-pinned-effective-and-terminal",
+      "model": "formal/ep_composed_trust_lifecycle.tla",
+      "adapter": "composed-trust-lifecycle",
+      "scenario": "composed-stale-status-refused",
+      "kind": "unsafe_mutation",
+      "runtime_sources": [
+        "packages/verify/src/aeb-adapter-contract.ts",
+        "packages/gate/src/proposal-to-effect.ts"
+      ],
+      "obligations": ["ReservationRequiresTrust"],
+      "formal_prefix": [
+        "BindExactCAID",
+        "VerifyAEB",
+        "SatisfyExactAEC",
+        "CaptureApproval",
+        "ClearActionEscrow",
+        "ClearModelToMatter",
+        "ClearGRACE",
+        "ClearMobileContinuity",
+        "ClearMobileEnrollment"
+      ],
+      "steps": [
+        {
+          "operator": "RejectStaleStatus",
+          "accepted": false,
+          "projection": {
+            "phase": "STALE_STATUS_REFUSED",
+            "statusState": "STALE_REFUSED"
+          }
+        },
+        {
+          "operator": "UnsafeStaleStatusReserve",
+          "accepted": false,
+          "projection": {
+            "phase": "STALE_STATUS_REFUSED",
+            "escrowState": "OPEN"
+          }
+        }
+      ],
+      "mutation": {
+        "operator": "UnsafeStaleStatusReserve",
+        "defined_in_model": true,
+        "obligation": "ReservationRequiresTrust"
+      }
+    },
+    {
+      "id": "composed-poisoned-witness-reservation-mutation",
+      "claim_id": "network-witness-equivocation-permanently-poisons-stream",
+      "model": "formal/ep_composed_trust_lifecycle.tla",
+      "adapter": "composed-trust-lifecycle",
+      "scenario": "composed-poisoned-witness-refused",
+      "kind": "unsafe_mutation",
+      "runtime_sources": [
+        "packages/gate/src/network-witness.ts",
+        "packages/gate/src/witness-postgres.ts"
+      ],
+      "obligations": ["ReservationRequiresTrust", "WitnessPoisonPermanent"],
+      "formal_prefix": [
+        "BindExactCAID",
+        "VerifyAEB",
+        "SatisfyExactAEC",
+        "CaptureApproval",
+        "ClearActionEscrow",
+        "ClearModelToMatter",
+        "ClearGRACE",
+        "ClearMobileContinuity",
+        "ClearMobileEnrollment",
+        "AcceptFreshStatus"
+      ],
+      "steps": [
+        {
+          "operator": "PoisonWitnessStream",
+          "accepted": false,
+          "projection": {
+            "phase": "WITNESS_POISONED",
+            "witnessState": "POISONED",
+            "everWitnessPoisoned": true
+          }
+        },
+        {
+          "operator": "UnsafePoisonedWitnessReserve",
+          "accepted": false,
+          "projection": {
+            "phase": "WITNESS_POISONED",
+            "escrowState": "OPEN"
+          }
+        }
+      ],
+      "mutation": {
+        "operator": "UnsafePoisonedWitnessReserve",
+        "defined_in_model": true,
+        "obligation": "ReservationRequiresTrust"
+      }
+    },
+    {
+      "id": "composed-pre-execution-revocation-refusal",
+      "claim_id": "revocation-is-pinned-effective-and-terminal",
+      "model": "formal/ep_composed_trust_lifecycle.tla",
+      "adapter": "composed-trust-lifecycle",
+      "scenario": "composed-revoked-invocation-refused",
+      "kind": "sound",
+      "runtime_sources": [
+        "packages/verify/src/revocation.ts",
+        "packages/verify/src/aeb-adapter-contract.ts",
+        "packages/gate/src/proposal-to-effect.ts"
+      ],
+      "obligations": [
+        "ReservationRequiresTrust",
+        "RevokedBeforeExecutionCannotInvoke"
+      ],
+      "formal_prefix": [
+        "BindExactCAID",
+        "VerifyAEB",
+        "SatisfyExactAEC",
+        "CaptureApproval",
+        "ClearActionEscrow",
+        "ClearModelToMatter",
+        "ClearGRACE",
+        "ClearMobileContinuity",
+        "ClearMobileEnrollment",
+        "AcceptFreshStatus",
+        "AcceptCleanWitness",
+        "ReserveEscrow"
+      ],
+      "steps": [
+        {
+          "operator": "RecordPreExecutionRevocation",
+          "accepted": true,
+          "projection": {
+            "phase": "PRE_EXECUTION_REVOKED",
+            "revoked": true
+          }
+        },
+        {
+          "operator": "RefuseRevokedInvocation",
+          "accepted": false,
+          "projection": {
+            "phase": "REVOKED_INVOCATION_REFUSED",
+            "providerCalls": 0
+          }
+        }
+      ]
+    },
+    {
+      "id": "composed-revoked-invocation-mutation",
+      "claim_id": "revocation-is-pinned-effective-and-terminal",
+      "model": "formal/ep_composed_trust_lifecycle.tla",
+      "adapter": "composed-trust-lifecycle",
+      "scenario": "composed-revoked-invocation-mutation",
+      "kind": "unsafe_mutation",
+      "runtime_sources": [
+        "packages/verify/src/revocation.ts",
+        "packages/gate/src/proposal-to-effect.ts"
+      ],
+      "obligations": ["RevokedBeforeExecutionCannotInvoke"],
+      "formal_prefix": [
+        "BindExactCAID",
+        "VerifyAEB",
+        "SatisfyExactAEC",
+        "CaptureApproval",
+        "ClearActionEscrow",
+        "ClearModelToMatter",
+        "ClearGRACE",
+        "ClearMobileContinuity",
+        "ClearMobileEnrollment",
+        "AcceptFreshStatus",
+        "AcceptCleanWitness",
+        "ReserveEscrow"
+      ],
+      "steps": [
+        {
+          "operator": "RecordPreExecutionRevocation",
+          "accepted": true,
+          "projection": {
+            "phase": "PRE_EXECUTION_REVOKED",
+            "revoked": true
+          }
+        },
+        {
+          "operator": "UnsafeRevokedInvocation",
+          "accepted": false,
+          "projection": {
+            "phase": "PRE_EXECUTION_REVOKED",
+            "providerCalls": 0
+          }
+        }
+      ],
+      "mutation": {
+        "operator": "UnsafeRevokedInvocation",
+        "defined_in_model": true,
+        "obligation": "RevokedBeforeExecutionCannotInvoke"
+      }
+    },
+    {
+      "id": "composed-blind-replay-mutation",
+      "claim_id": "ambiguous-effect-is-never-auto-retried",
+      "model": "formal/ep_composed_trust_lifecycle.tla",
+      "adapter": "composed-trust-lifecycle",
+      "scenario": "composed-blind-replay-mutation",
+      "kind": "unsafe_mutation",
+      "runtime_sources": [
+        "packages/gate/src/proposal-to-effect.ts",
+        "packages/gate/src/aeb-consumption-store.ts"
+      ],
+      "obligations": ["ProviderAtMostOnce"],
+      "formal_prefix": [
+        "BindExactCAID",
+        "VerifyAEB",
+        "SatisfyExactAEC",
+        "CaptureApproval",
+        "ClearActionEscrow",
+        "ClearModelToMatter",
+        "ClearGRACE",
+        "ClearMobileContinuity",
+        "ClearMobileEnrollment",
+        "AcceptFreshStatus",
+        "AcceptCleanWitness",
+        "ReserveEscrow",
+        "InvokeProvider",
+        "MarkIndeterminate"
+      ],
+      "steps": [
+        {
+          "operator": "UnsafeBlindReplay",
+          "accepted": false,
+          "projection": {
+            "phase": "INDETERMINATE",
+            "providerCalls": 1
+          }
+        }
+      ],
+      "mutation": {
+        "operator": "UnsafeBlindReplay",
+        "defined_in_model": true,
+        "obligation": "ProviderAtMostOnce"
+      }
+    },
+    {
+      "id": "composed-unauthenticated-reconciliation-mutation",
+      "claim_id": "ambiguous-effect-is-never-auto-retried",
+      "model": "formal/ep_composed_trust_lifecycle.tla",
+      "adapter": "composed-trust-lifecycle",
+      "scenario": "composed-unauthenticated-reconciliation-mutation",
+      "kind": "unsafe_mutation",
+      "runtime_sources": [
+        "packages/gate/src/proposal-to-effect.ts",
+        "packages/gate/src/aec-execution.ts"
+      ],
+      "obligations": ["AuthenticatedReconciliation"],
+      "formal_prefix": [
+        "BindExactCAID",
+        "VerifyAEB",
+        "SatisfyExactAEC",
+        "CaptureApproval",
+        "ClearActionEscrow",
+        "ClearModelToMatter",
+        "ClearGRACE",
+        "ClearMobileContinuity",
+        "ClearMobileEnrollment",
+        "AcceptFreshStatus",
+        "AcceptCleanWitness",
+        "ReserveEscrow",
+        "InvokeProvider",
+        "MarkIndeterminate",
+        "RefuseBlindReplay"
+      ],
+      "steps": [
+        {
+          "operator": "UnsafeUnauthenticatedReconciliation",
+          "accepted": false,
+          "projection": {
+            "phase": "REPLAY_FENCED",
+            "reconciliationAuthenticated": false,
+            "originalEffect": "INDETERMINATE"
+          }
+        }
+      ],
+      "mutation": {
+        "operator": "UnsafeUnauthenticatedReconciliation",
+        "defined_in_model": true,
+        "obligation": "AuthenticatedReconciliation"
+      }
+    },
+    {
+      "id": "composed-original-authority-remedy-mutation",
+      "claim_id": "ambiguous-effect-is-never-auto-retried",
+      "model": "formal/ep_composed_trust_lifecycle.tla",
+      "adapter": "composed-trust-lifecycle",
+      "scenario": "composed-original-authority-remedy-mutation",
+      "kind": "unsafe_mutation",
+      "runtime_sources": ["packages/gate/src/remedy-program.ts"],
+      "obligations": ["SeparateRemedyAuthority"],
+      "formal_prefix": [
+        "BindExactCAID",
+        "VerifyAEB",
+        "SatisfyExactAEC",
+        "CaptureApproval",
+        "ClearActionEscrow",
+        "ClearModelToMatter",
+        "ClearGRACE",
+        "ClearMobileContinuity",
+        "ClearMobileEnrollment",
+        "AcceptFreshStatus",
+        "AcceptCleanWitness",
+        "ReserveEscrow",
+        "InvokeProvider",
+        "MarkIndeterminate",
+        "RefuseBlindReplay",
+        "ReconcileExecuted",
+        "RecordLateRevocation",
+        "OpenDispute"
+      ],
+      "steps": [
+        {
+          "operator": "UnsafeOriginalAuthorityAsRemedy",
+          "accepted": false,
+          "projection": {
+            "phase": "DISPUTED",
+            "remedyCaid": "none",
+            "remedyAuthorized": false
+          }
+        }
+      ],
+      "mutation": {
+        "operator": "UnsafeOriginalAuthorityAsRemedy",
+        "defined_in_model": true,
+        "obligation": "SeparateRemedyAuthority"
+      }
+    },
+    {
+      "id": "composed-remedy-blind-replay-mutation",
+      "claim_id": "ambiguous-effect-is-never-auto-retried",
+      "model": "formal/ep_composed_trust_lifecycle.tla",
+      "adapter": "composed-trust-lifecycle",
+      "scenario": "composed-remedy-blind-replay-mutation",
+      "kind": "unsafe_mutation",
+      "runtime_sources": ["packages/gate/src/remedy-program.ts"],
+      "obligations": ["RemedyAtMostOnce"],
+      "formal_prefix": [
+        "BindExactCAID",
+        "VerifyAEB",
+        "SatisfyExactAEC",
+        "CaptureApproval",
+        "ClearActionEscrow",
+        "ClearModelToMatter",
+        "ClearGRACE",
+        "ClearMobileContinuity",
+        "ClearMobileEnrollment",
+        "AcceptFreshStatus",
+        "AcceptCleanWitness",
+        "ReserveEscrow",
+        "InvokeProvider",
+        "MarkIndeterminate",
+        "RefuseBlindReplay",
+        "ReconcileExecuted",
+        "RecordLateRevocation",
+        "OpenDispute",
+        "AuthorizeSeparateRemedy",
+        "InvokeRemedy",
+        "MarkRemedyIndeterminate"
+      ],
+      "steps": [
+        {
+          "operator": "UnsafeRemedyBlindReplay",
+          "accepted": false,
+          "projection": {
+            "phase": "REMEDY_INDETERMINATE",
+            "remedyCalls": 1
+          }
+        }
+      ],
+      "mutation": {
+        "operator": "UnsafeRemedyBlindReplay",
+        "defined_in_model": true,
+        "obligation": "RemedyAtMostOnce"
+      }
+    },
     {
       "id": "escrow-release-once",
       "claim_id": "action-escrow-releases-one-exact-milestone-once",
