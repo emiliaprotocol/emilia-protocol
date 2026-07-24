@@ -81,16 +81,22 @@ async function renderRuntime({ sourcePath, banner }) {
   // comment vs. a JSDoc `@license Apache-2.0` block) -- both are legitimate,
   // pre-existing conventions in this repo, so this only checks that transpiling
   // didn't silently drop the license notice, not one exact literal form.
-  const shebangMatch = result.outputText.match(/^#!.*\n/);
-  const afterShebang = shebangMatch ? result.outputText.slice(shebangMatch[0].length) : result.outputText;
-  // Only enforce preservation when the source actually had a license header
-  // to begin with -- a handful of these scripts never carried one.
-  if (/Apache-2\.0/.test(source) && !/Apache-2\.0/.test(afterShebang)) {
-    throw new Error(`${sourcePath} must retain its Apache-2.0 header`);
-  }
   const spdxLine = '// SPDX-License-Identifier: Apache-2.0\n';
-  if (result.outputText.includes(spdxLine)) {
-    return result.outputText.replace(spdxLine, `${spdxLine}${banner}`);
+  let outputText = result.outputText;
+  let shebangMatch = outputText.match(/^#!.*\n/);
+  let afterShebang = shebangMatch ? outputText.slice(shebangMatch[0].length) : outputText;
+  // TypeScript can attach a leading license comment to a type-only import and
+  // drop both during transpilation. Restore that exact SPDX line when the
+  // source carried it so generated Node 20 companions never lose licensing.
+  if (/Apache-2\.0/.test(source) && !/Apache-2\.0/.test(afterShebang)) {
+    outputText = shebangMatch
+      ? `${shebangMatch[0]}${spdxLine}${afterShebang}`
+      : `${spdxLine}${outputText}`;
+    shebangMatch = outputText.match(/^#!.*\n/);
+    afterShebang = shebangMatch ? outputText.slice(shebangMatch[0].length) : outputText;
+  }
+  if (outputText.includes(spdxLine)) {
+    return outputText.replace(spdxLine, `${spdxLine}${banner}`);
   }
   // No SPDX line comment to anchor on (e.g. a JSDoc @license block instead):
   // insert the banner right after the shebang, or at the very top otherwise.

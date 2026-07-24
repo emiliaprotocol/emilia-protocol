@@ -17,6 +17,22 @@ on:
       - 'formal/CONSERVATION_OF_AUTHORITY.md'
       - 'formal/PROOF_STATUS.md'
       - 'formal/RUN_TLC.md'
+      - 'formal/runtime-traces.v1.json'
+      - 'formal/results/*.tlc.summary.txt'
+      - 'formal/results/formal-runtime-refinement.v1.json'
+      - 'conformance/refinement/**'
+      - 'scripts/check-formal-runtime-traces.*'
+      - 'scripts/build-standalone-runtimes.mjs'
+      - 'scripts/standalone-runtime-targets.mjs'
+      - 'package.json'
+      - 'package-lock.json'
+      - 'packages/gate/**'
+      - 'packages/verify/**'
+      - 'packages/mobile/**'
+      - 'lib/mobile/**'
+      - 'lib/grace/**'
+      - 'lib/frontier/**'
+      - 'lib/integrations/action-escrow/**'
       - '.github/workflows/tlc.yml'
   pull_request:
     paths:
@@ -25,23 +41,48 @@ on:
       - 'formal/CONSERVATION_OF_AUTHORITY.md'
       - 'formal/PROOF_STATUS.md'
       - 'formal/RUN_TLC.md'
+      - 'formal/runtime-traces.v1.json'
+      - 'formal/results/*.tlc.summary.txt'
+      - 'formal/results/formal-runtime-refinement.v1.json'
+      - 'conformance/refinement/**'
+      - 'scripts/check-formal-runtime-traces.*'
+      - 'scripts/build-standalone-runtimes.mjs'
+      - 'scripts/standalone-runtime-targets.mjs'
+      - 'package.json'
+      - 'package-lock.json'
+      - 'packages/gate/**'
+      - 'packages/verify/**'
+      - 'packages/mobile/**'
+      - 'lib/mobile/**'
+      - 'lib/grace/**'
+      - 'lib/frontier/**'
+      - 'lib/integrations/action-escrow/**'
       - '.github/workflows/tlc.yml'
   workflow_dispatch:
 
 jobs:
   tlc:
-    name: Verify handshake + capability + receipt + authority + trust + remedy programs
+    name: Verify handshake, authority, consequence, and effect-profile models
     runs-on: ubuntu-latest
 
     steps:
       - name: Checkout
-        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
       - name: Set up Java
-        uses: actions/setup-java@03ad4de0992f5dab5e18fcb136590ce7c4a0ac95  # v5.6.0
+        uses: actions/setup-java@03ad4de0992f5dab5e18fcb136590ce7c4a0ac95 # v5.6.0
         with:
           distribution: temurin
           java-version: '17'
+
+      - name: Set up Node
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: 24
+          cache: npm
+
+      - name: Install runtime refinement dependencies
+        run: npm ci --ignore-scripts
 
       - name: Download tla2tools.jar (pinned release + checksum)
         # Pin to a tagged release (NOT the mutable `latest`) and verify the
@@ -256,9 +297,47 @@ jobs:
           fi
           echo "Expected replay counterexample found."
 
+      - name: Run composed consequence lifecycle model
+        working-directory: formal
+        run: |
+          java -Xmx2G -jar ../tla2tools.jar \
+            -workers auto \
+            -config ep_consequence_lifecycle.cfg \
+            ep_consequence_lifecycle.tla \
+            2>&1 | tee tlc-consequence-lifecycle-output.txt
+          grep -q "Model checking completed. No error has been found." \
+            tlc-consequence-lifecycle-output.txt
+
+      - name: Run revocation and poisoned-witness adversary model
+        working-directory: formal
+        run: |
+          java -Xmx4G -jar ../tla2tools.jar \
+            -workers auto \
+            -config ep_revocation_witness.cfg \
+            ep_revocation_witness.tla \
+            2>&1 | tee tlc-revocation-witness-output.txt
+          grep -q "Model checking completed. No error has been found." \
+            tlc-revocation-witness-output.txt
+
+      - name: Run effect-profile composition model
+        working-directory: formal
+        run: |
+          java -Xmx4G -jar ../tla2tools.jar \
+            -workers auto \
+            -config ep_effect_profiles.cfg \
+            ep_effect_profiles.tla \
+            2>&1 | tee tlc-effect-profiles-output.txt
+          grep -q "Model checking completed. No error has been found." \
+            tlc-effect-profiles-output.txt
+
+      - name: Re-run content-addressed runtime refinement and unsafe mutations
+        env:
+          TLA2TOOLS_JAR: ${{ github.workspace }}/tla2tools.jar
+        run: npm run sync:formal-traces && git diff --exit-code -- formal/results/formal-runtime-refinement.v1.json
+
       - name: Upload TLC output
         if: always()
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a  # v7.0.1
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
           name: tlc-output
           path: |
@@ -270,4 +349,7 @@ jobs:
             formal/tlc-lifecycle-remedy-output.txt
             formal/tlc-consequence-attempt-output.txt
             formal/tlc-consequence-attempt-unsafe-output.txt
+            formal/tlc-consequence-lifecycle-output.txt
+            formal/tlc-revocation-witness-output.txt
+            formal/tlc-effect-profiles-output.txt
           retention-days: 90

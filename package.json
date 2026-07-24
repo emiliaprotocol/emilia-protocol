@@ -48,6 +48,8 @@
     "security-case:emit": "node --import ./scripts/ts-loader/register.mjs scripts/verify-security-case.mjs --execute --emit security/security-case.json",
     "check:authority-claims": "node scripts/check-authority-claims.mjs",
     "check:runtime-bridge": "node scripts/check-runtime-bridge.mjs",
+    "check:formal-traces": "node scripts/check-formal-runtime-traces.mjs --check",
+    "sync:formal-traces": "node scripts/check-formal-runtime-traces.mjs --emit",
     "check:conformance-docs": "node scripts/check-conformance-doc-counts.mjs",
     "preprint:build": "SOURCE_DATE_EPOCH=1784419200 FORCE_SOURCE_DATE=1 tectonic -X compile papers/preprint/main.tex",
     "check:preprint": "node scripts/check-preprint-sync.mjs",

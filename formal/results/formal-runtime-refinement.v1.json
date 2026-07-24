@@ -1,0 +1,1969 @@
+{
+  "@version": "EP-FORMAL-RUNTIME-REFINEMENT-EVIDENCE-v1",
+  "inputs": [
+    {
+      "path": "caid/impl/js/caid.mjs",
+      "sha256": "2c23bdcdf4586d81b7d9675612a4e95edf7999ba81579906f295e67c0c12cfb6"
+    },
+    {
+      "path": "conformance/refinement/adapters/action-escrow.mjs",
+      "sha256": "855752b2215d5dba7f8ae746034b1db6130068187bb856fa93cd7b9a9492e953"
+    },
+    {
+      "path": "conformance/refinement/adapters/action-escrow.mts",
+      "sha256": "4df83687077e031cfc2c412ea6bf5f6d004da4d13553b3510a5281a9a9a9d261"
+    },
+    {
+      "path": "conformance/refinement/adapters/aec.mjs",
+      "sha256": "06a230a8101831831db585c557865fd2d2e1edf8cd7964a4c2fca5b60f72fafb"
+    },
+    {
+      "path": "conformance/refinement/adapters/aec.mts",
+      "sha256": "5335997d7a9eb0f6a8db18c3d05d228d8e5a83b0346b6ed4d98886cc9792651e"
+    },
+    {
+      "path": "conformance/refinement/adapters/consequence-lifecycle.mjs",
+      "sha256": "d0f7a71a2795e6569fdff1f74e1de6b8e2a31898d8398bdd655cbaa12890d415"
+    },
+    {
+      "path": "conformance/refinement/adapters/consequence-lifecycle.mts",
+      "sha256": "e6ec7e00149f7019a555e9b8835e1e7363fea76eb45748cf1cfd2a1fe533af8c"
+    },
+    {
+      "path": "conformance/refinement/adapters/grace-curtailment.mjs",
+      "sha256": "7bd26e0f405b891fafc78ba3ae323b36aef27064e6ce6cfe4a83cbd840e66ac5"
+    },
+    {
+      "path": "conformance/refinement/adapters/grace-curtailment.mts",
+      "sha256": "16ca55d76047d67d1a674b16375fb5646e71cf7177b27263bb525a639b87b1b6"
+    },
+    {
+      "path": "conformance/refinement/adapters/index.mjs",
+      "sha256": "0bf71eca1e570eef1649472e9d8776b465ef67c8ddcbea382e98deac3a8b6a85"
+    },
+    {
+      "path": "conformance/refinement/adapters/index.mts",
+      "sha256": "a8feb9dfe369ee6d1d894f30ed2e3d563536f37b6656149e52df7d123c6e2a2e"
+    },
+    {
+      "path": "conformance/refinement/adapters/mobile-continuity.mjs",
+      "sha256": "fa18c06ce922e7dcbc2ede9087a9800691a5669b56a939bc7bad70e3667f1524"
+    },
+    {
+      "path": "conformance/refinement/adapters/mobile-continuity.mts",
+      "sha256": "199747b65d393538f16c4829c44205cc02ae4a2dbe317cac1ee407a65d25dbee"
+    },
+    {
+      "path": "conformance/refinement/adapters/mobile-enrollment.mjs",
+      "sha256": "c37469dca755e4374443968ebcec9263d6925671bfe770b6a62391d6c4236b0b"
+    },
+    {
+      "path": "conformance/refinement/adapters/mobile-enrollment.mts",
+      "sha256": "9984bc36c89dd76d32997a6ba435e76f972961172f6d69f517c8b9c9ea8227b8"
+    },
+    {
+      "path": "conformance/refinement/adapters/model-to-matter.mjs",
+      "sha256": "a874398ee400ee8193b75322621c2c88db34cf4cd42fa0752ae77552dde1d369"
+    },
+    {
+      "path": "conformance/refinement/adapters/model-to-matter.mts",
+      "sha256": "01b134eec9a3e51d15f8a13ca922777a0451ddff1a2b19a8299861610edf2504"
+    },
+    {
+      "path": "conformance/refinement/adapters/network-witness.mjs",
+      "sha256": "04e21fd21f13d7b09dbe7343362a4a94ecff2dc1420fb8f769ff4a096ca07e6c"
+    },
+    {
+      "path": "conformance/refinement/adapters/network-witness.mts",
+      "sha256": "e7089b3dd441aeaf831ea98cace697045c167635cdf0695b60023098633a3f41"
+    },
+    {
+      "path": "conformance/refinement/adapters/revocation.mjs",
+      "sha256": "96dd52bf2ddfb62c1f1be90987a176adecc689c911d80d2ee86fde42e1137f77"
+    },
+    {
+      "path": "conformance/refinement/adapters/revocation.mts",
+      "sha256": "b5cdc7b8f7dec282b09bf912baa3fc94fadbe19b9950606c4c3c92c53a9ef630"
+    },
+    {
+      "path": "conformance/refinement/harness.mjs",
+      "sha256": "ce73fa863b6f572af8803b088a751571b6c9c5b10bd7043accc59b19ba641596"
+    },
+    {
+      "path": "conformance/refinement/harness.mts",
+      "sha256": "660bbf5940383a7ab2fb718f59ae07e7bc9a3f34c4d1392fcc42a2a26d45189b"
+    },
+    {
+      "path": "conformance/refinement/schema.mjs",
+      "sha256": "6eb2a963fbcc57f09fabc4457a211639912a52bee5c10b6a76dd9e73cbdb1421"
+    },
+    {
+      "path": "conformance/refinement/schema.mts",
+      "sha256": "2a35078af3ff1c17e1a0a0eb3b67aa5231f43bb6cf1083a0c6afd4c2890fb13f"
+    },
+    {
+      "path": "conformance/refinement/tla-wrapper.mjs",
+      "sha256": "81c375d1633f69ce6eccc960bcbf9ec90390473aec5d32ebf0910df563580f4d"
+    },
+    {
+      "path": "conformance/refinement/tla-wrapper.mts",
+      "sha256": "d6ea05f0cceb4a97fdf5ab9fa2a545c30e2cc378ddf50f5033e9767334af90e8"
+    },
+    {
+      "path": "conformance/refinement/types.mts",
+      "sha256": "4ea39c5105b5e7036806fdbc4ca8d9cacb92e3acd8f39361e1c5f7576fc3fde3"
+    },
+    {
+      "path": "formal/ep_consequence_lifecycle.cfg",
+      "sha256": "8baae7e1aa21963e17c8bfa34403e12211449321f8367b322401b01041490a27"
+    },
+    {
+      "path": "formal/ep_consequence_lifecycle.tla",
+      "sha256": "7eaa1af636a5450f02bd0909222d3b7b0f75c512dca12d8fe7c0c541f11e28a0"
+    },
+    {
+      "path": "formal/ep_effect_profiles.cfg",
+      "sha256": "927b3edce1eb520426935d7309d779e588dbdd372cf0ff72d6f20bfafc98d610"
+    },
+    {
+      "path": "formal/ep_effect_profiles.tla",
+      "sha256": "8cfc8e18895151e2fb3e1084ef57b423556ade39528fb0db14ccc002a1dce00c"
+    },
+    {
+      "path": "formal/ep_revocation_witness.cfg",
+      "sha256": "cfb13d21b1bf9ca00c35fb5321257af79c39f388954684564c6dbe63f5cf6110"
+    },
+    {
+      "path": "formal/ep_revocation_witness.tla",
+      "sha256": "838434f1c8254fdce3ec201cfb30421acc4e929a1d396c77d8387e378bfd23de"
+    },
+    {
+      "path": "formal/runtime-traces.v1.json",
+      "sha256": "d56a047a43f992445ac647fcea19cd40c4de74a7098805a9995c3f3b8ac9bc94"
+    },
+    {
+      "path": "lib/cbor-encode.js",
+      "sha256": "5bf8e71d42b1935bb67762cdc2315ca4ba10751acd85e235498a324581506c83"
+    },
+    {
+      "path": "lib/cbor-encode.ts",
+      "sha256": "9b0755fe10491927044258c7cc1eb99e1a516f0cb869cd12bdc786fcc88516b5"
+    },
+    {
+      "path": "lib/evidence/admissibility.js",
+      "sha256": "91452cf8d78cd46041517be40fee81356c2c16b7a9fb377bd519f07bb4708ced"
+    },
+    {
+      "path": "lib/evidence/admissibility.ts",
+      "sha256": "40818712c8e5d5a0011bd4ea08d7416522ced5ac544238c4ec516c0e592a985e"
+    },
+    {
+      "path": "lib/evidence/effect-predicates.js",
+      "sha256": "91933814fe94d5b324f73cecd33503fa50265ec0f1a83dd347a73ae0b8842ff7"
+    },
+    {
+      "path": "lib/evidence/effect-predicates.ts",
+      "sha256": "a7e21688137fc28eeadca7c2ca2908e3feea250a69e66fa24fb652cc15a18489"
+    },
+    {
+      "path": "lib/evidence/evidence-graph.js",
+      "sha256": "eb6ab2312e9d81b4cafab716112eacbf2816b4ee098f8964e488b55fec1f15e7"
+    },
+    {
+      "path": "lib/evidence/evidence-graph.ts",
+      "sha256": "1e40187257eccb6735edae56e0b48f5a6b1216c39d0a5e256943ded8eb96eb65"
+    },
+    {
+      "path": "lib/frontier/model-to-matter.js",
+      "sha256": "55f699e499e77d6c7e8543dc58929ec4169b47d362ae9d6f0f3240075578b587"
+    },
+    {
+      "path": "lib/frontier/model-to-matter.ts",
+      "sha256": "27a5dd1ab3ec6cdbee3c3cb9efc52c7e8fbdae4bc6df9634abd53f009744cf75"
+    },
+    {
+      "path": "lib/grace/curtailment.js",
+      "sha256": "fa1a83e9b0877757ed9ee73763f43312ed006e845a303be156fb438b9456a06e"
+    },
+    {
+      "path": "lib/grace/curtailment.ts",
+      "sha256": "c095a59290806f7a9a3a318128294a44675fbd0d19acd3cf613a9312839ba7c3"
+    },
+    {
+      "path": "lib/grace/mobile-grid.js",
+      "sha256": "d325521ecbd021630506adc746360f9ed26d426e514c140173e3743585680504"
+    },
+    {
+      "path": "lib/grace/mobile-grid.ts",
+      "sha256": "e21df5a39840c39cff43c906a019a34e63266e0d5cdb502c2d3159aa76c43024"
+    },
+    {
+      "path": "lib/grace/reference-adapters.js",
+      "sha256": "8a3c6b41f0465cb166bff8cfca8e4e17050699ed6fc651657f6fd7c254dd4a50"
+    },
+    {
+      "path": "lib/grace/reference-adapters.ts",
+      "sha256": "22729edee8ffc79c8d8777fd9be163f3410605eb1b94ea779e7f377673e3007c"
+    },
+    {
+      "path": "lib/mobile/action-continuity.js",
+      "sha256": "799c186ab13a76fc3c68bcfa25c06ce0b626c320ae11dc408a0f341a94b72990"
+    },
+    {
+      "path": "lib/mobile/action-continuity.ts",
+      "sha256": "1a83f0188f9897c534deb1c3dce5ea46141a1184dfc9e9e5a89ca2fcea5237ba"
+    },
+    {
+      "path": "lib/mobile/store.js",
+      "sha256": "6b39ba0d9a1df071c79cf3b0e63f5b7a40f5b91d5558c45f7a059bad5ae5efd8"
+    },
+    {
+      "path": "lib/mobile/store.ts",
+      "sha256": "6102c5d67470ff3ad336440edd87900b47670f7398f1aa71630e4722cd55b465"
+    },
+    {
+      "path": "lib/negotiate/evidence-challenge.js",
+      "sha256": "3295a95763eebefe39395401085a648fd3588f9ce811cef55a38f156e901b8e9"
+    },
+    {
+      "path": "lib/negotiate/evidence-challenge.ts",
+      "sha256": "b1c5679b250b02e959144d8c466b7b80a09c720240a948e3102fcf03082a16e1"
+    },
+    {
+      "path": "package-lock.json",
+      "sha256": "960082062c853face39e7168fa0e7e4f5e883e287cae034df56ba66d1a021f69"
+    },
+    {
+      "path": "package.json",
+      "sha256": "d2ebdad277a799b3f146d306aeb08ea44062805b6b117211c0cf578f2d58e7a0"
+    },
+    {
+      "path": "packages/gate/challenge-store.js",
+      "sha256": "39df0558d60fc52834d0d30f16a91ea2e1b3f0ee38cd80fe94e1e57ec25c83bf"
+    },
+    {
+      "path": "packages/gate/dist/action-control-manifest.js",
+      "sha256": "1bf8e9d744d7e440701f32cfa977c5ff4091ff2f02ea70e22087d2ae5c3c54a6"
+    },
+    {
+      "path": "packages/gate/dist/action-escrow-evidence.js",
+      "sha256": "229bcc079ad420b95faf7e4853826b57917b8c0c929318c07736ef9139027654"
+    },
+    {
+      "path": "packages/gate/dist/action-escrow-state.js",
+      "sha256": "50df9104d78ad20768df6ab00d194ccae4b7030ca4121f776c3aca50085a8463"
+    },
+    {
+      "path": "packages/gate/dist/action-escrow-verifiers.js",
+      "sha256": "c3480d329aebbd18cb1bf2d189bd4995204fe2ab49ae1da4bdc1a519d218c7ef"
+    },
+    {
+      "path": "packages/gate/dist/action-escrow.js",
+      "sha256": "887357e0a27b40cb985ecdad433ceabbf645c0ef39d63d5c335ab1cd5deafd85"
+    },
+    {
+      "path": "packages/gate/dist/action-packs.js",
+      "sha256": "4a227fe6c51d61f2c3c19e48f3af3e3dedfeb9c4c0a918094883f3d1f654ca9c"
+    },
+    {
+      "path": "packages/gate/dist/aeb-consumption-store.js",
+      "sha256": "013340d3f41951fa6431800a5671ff5f9243344d207c3529b7bba994c0c43d71"
+    },
+    {
+      "path": "packages/gate/dist/aec-execution.js",
+      "sha256": "6434db826c5b9381da74bee128d1575a303485891416890dbfd0daaccca4caf9"
+    },
+    {
+      "path": "packages/gate/dist/breakglass.js",
+      "sha256": "c7e6d7ced156f42c70a769c8bc105bda8fa562029d74e980523652941d50644e"
+    },
+    {
+      "path": "packages/gate/dist/capability-receipt.js",
+      "sha256": "0b4a0897f07c72fcdbd6d22518e61206b9e32caf2828550c0d6d62351fef749d"
+    },
+    {
+      "path": "packages/gate/dist/cf1-conformance.js",
+      "sha256": "424cfa28cabc777ddcc482b42cf4f817ff4c09ba311e4ab8705d13fbf82cc3e4"
+    },
+    {
+      "path": "packages/gate/dist/challenge-store.js",
+      "sha256": "011bddb89b3f9def9a16a6d8b8cdcb866ee0b1d356c86d7bff7c01d161fc4645"
+    },
+    {
+      "path": "packages/gate/dist/eg1-conformance.js",
+      "sha256": "77e401a70c6d17a7ba1d8c02e82247b2a47fbec637c9c665e1b2defcb72582ba"
+    },
+    {
+      "path": "packages/gate/dist/evidence.js",
+      "sha256": "f51c26db2caedd19585a9e035ad273320bc5c1bd7719b69674bf86fb34a480fa"
+    },
+    {
+      "path": "packages/gate/dist/execution-binding.js",
+      "sha256": "8dca7c6951bf1315d2ec97484c8ef66ea12a851a937920f82560370bb881dbb5"
+    },
+    {
+      "path": "packages/gate/dist/formal-runtime-map.js",
+      "sha256": "0eaa10dcf81c1f645c021392f73b587d6b8fbf61d580bc724d2e1d256d1e48c4"
+    },
+    {
+      "path": "packages/gate/dist/index.js",
+      "sha256": "4bd82e9da48a402ed2f6b6b13854cfa8157f811d7818afe70162c03647be44a0"
+    },
+    {
+      "path": "packages/gate/dist/key-registry.js",
+      "sha256": "dc171414a1223103bff07fe5591d5ee9b37e7b81c4625885c0bd9cc1be868111"
+    },
+    {
+      "path": "packages/gate/dist/network-witness.js",
+      "sha256": "674e5abb5bcc37ee93564459768ea8a627a17b8193b9704a78583b1129655fb3"
+    },
+    {
+      "path": "packages/gate/dist/proposal-to-effect-postgres.js",
+      "sha256": "4e333a2e3268b94ccd0c96353a4f1acae5c9a3c8eb7ac0569bf8139eefe455dc"
+    },
+    {
+      "path": "packages/gate/dist/proposal-to-effect-status-head-store.js",
+      "sha256": "c0852045126c01926e1f9ced8426e5456c646adc0ef8d8c53c51cfd6876fcf3d"
+    },
+    {
+      "path": "packages/gate/dist/proposal-to-effect-status.js",
+      "sha256": "bdd31c4cb92d26ce8b43319d9daedf38f8b8f06a135c844002766729bf7b9cd7"
+    },
+    {
+      "path": "packages/gate/dist/proposal-to-effect.js",
+      "sha256": "5d3bf24ceafaee60a4556a126df915763fc7017d47a781d3632e08507d715641"
+    },
+    {
+      "path": "packages/gate/dist/receipt-program.js",
+      "sha256": "a72249eead82967d0b11e632753baebfcb89c3d7702ec46b27d609c6e2dc2606"
+    },
+    {
+      "path": "packages/gate/dist/reliance-packet.js",
+      "sha256": "d928c052e467b28fc1a1973ae18d0432ac9a1c625adaaae08ebbf86826f049db"
+    },
+    {
+      "path": "packages/gate/dist/remedy-case-set-postgres.js",
+      "sha256": "ef6a9bf2907cffc247d36bcb584bcf1f8f4ce057a08e5c5e0c6d57ad2d88bb85"
+    },
+    {
+      "path": "packages/gate/dist/remedy-case-set.js",
+      "sha256": "223685f9df879be58898835713561391b2aa0c7aa8cb322a76ee2fada2f4e65d"
+    },
+    {
+      "path": "packages/gate/dist/remedy-program-adapters.js",
+      "sha256": "d74b0cd046933c502791966424afcfe069726e70476c7359d0fbc3947e99c6f2"
+    },
+    {
+      "path": "packages/gate/dist/remedy-program-postgres.js",
+      "sha256": "db006161ce7d1f8c906411a4732ece02c049f675343d6f37f60dce273c975f59"
+    },
+    {
+      "path": "packages/gate/dist/remedy-program-receipt.js",
+      "sha256": "f46497f061f4cdddb05f9b17ed735a0c0fbf92c34be6fc1e615cecb7eee1d264"
+    },
+    {
+      "path": "packages/gate/dist/remedy-program.js",
+      "sha256": "e1b40f737380dee84459d9072865adf1659a87b00388f874813f5b1977b7832d"
+    },
+    {
+      "path": "packages/gate/dist/reports/external-verification.js",
+      "sha256": "3e36cb59f4a480e8983a648c16c443b30b65fa36f33537f2c5d9a77349f05d1f"
+    },
+    {
+      "path": "packages/gate/dist/retention.js",
+      "sha256": "45521157e3cc41c01b1b26458354f955c9e2a1aef1a1c19525bfa55e2e1a99a7"
+    },
+    {
+      "path": "packages/gate/dist/runtime-monitor.js",
+      "sha256": "86bced8ff47be21af0ee1641921b53fd9a0950aba95bfee3aed6a29b5c96687c"
+    },
+    {
+      "path": "packages/gate/dist/store.js",
+      "sha256": "10f77b68b8538621f44c99671d5c98a89a903a96c62c5a40631e7b1191cbc7ed"
+    },
+    {
+      "path": "packages/gate/dist/strict-json.js",
+      "sha256": "9d2c888d03e2ed9ab45d891613882b9f9efb4109798043ee96b389f2e98dcc09"
+    },
+    {
+      "path": "packages/gate/dist/trust-program-revocation.js",
+      "sha256": "4a1a8afa68f56d23ad26a95aa954cd09b501d175e6ca918a11cd9c92b5111d9c"
+    },
+    {
+      "path": "packages/gate/dist/trust-program.js",
+      "sha256": "7b3c39ad255fda44fadc445f24dac88bdc2c36a25533e13716b7ee52595ce04c"
+    },
+    {
+      "path": "packages/gate/dist/zk-range-proof.js",
+      "sha256": "69c56e492caeeb6bcdf77782db0fe107fbb2c558bad688185574c7a38448aeb6"
+    },
+    {
+      "path": "packages/gate/evidence.js",
+      "sha256": "33cf75c394bcb986f9fb87679bc4b74d9191b13c8f1b7151c45cea7039361112"
+    },
+    {
+      "path": "packages/gate/execution-binding.js",
+      "sha256": "c582d5f664fab491dd880bc3b3765cb06d124be3914e4473df79e8d6f40631d4"
+    },
+    {
+      "path": "packages/gate/src/action-escrow.ts",
+      "sha256": "acee368af3db92c8acaa72a21b67795c04df3913e17f79be859af7b2423014df"
+    },
+    {
+      "path": "packages/gate/src/aec-execution.ts",
+      "sha256": "da799e756355bb76c5b03a0c302d7fd00b07dc78b7e31f6b1ad9047c06c9bbbc"
+    },
+    {
+      "path": "packages/gate/src/challenge-store.ts",
+      "sha256": "e64ffa948c9d073f0900bb2152eb59d78fdaa207305af60659d75401c04ea3c8"
+    },
+    {
+      "path": "packages/gate/src/execution-binding.ts",
+      "sha256": "dca2bbb9774bf9cf37a9ec905db8296f8afc5f1b58da00401762005f1959f168"
+    },
+    {
+      "path": "packages/gate/src/index.ts",
+      "sha256": "8a4d0b2b7d5513ec0fd1166c3f6e665696342759b3ac5da3bdd48024e4d7db1c"
+    },
+    {
+      "path": "packages/gate/src/network-witness.ts",
+      "sha256": "2c92412c9bbb26fafb8e246fb4965c7590135e5b25dfe5a037b4526baf9360bf"
+    },
+    {
+      "path": "packages/gate/src/proposal-to-effect.ts",
+      "sha256": "ee30da8e0b58111d7951e920bd9413f8f19db14f0b757b0287e33f925ed969b4"
+    },
+    {
+      "path": "packages/gate/src/store.ts",
+      "sha256": "261ec5c9593c867649f081b26f3bcc8b42fb8ed616b4766c5913dd4a7c7ef828"
+    },
+    {
+      "path": "packages/gate/store.js",
+      "sha256": "0fedd5970540ef928722ba5a7c4f38530f9242f541cc88dc2c7482bb0a35bb24"
+    },
+    {
+      "path": "packages/mobile/action-identity.js",
+      "sha256": "c56202809812656090b56319ab773747ce3a3e9a503c981b83ac1972871dd373"
+    },
+    {
+      "path": "packages/mobile/dist/action-identity.js",
+      "sha256": "cdc39ec5f3d265ce320cc4738f46181c57f9bf4580367a42253bc72971700d62"
+    },
+    {
+      "path": "packages/mobile/dist/attestation.js",
+      "sha256": "65979151d002335e835bc0393fc4b1d5460e32ced9357b5b298983cf414ba4f3"
+    },
+    {
+      "path": "packages/mobile/dist/enrollment.js",
+      "sha256": "7e1772188974a59845d0d04f8a9fdd121f9ead71a895401310acfa77fb7c908d"
+    },
+    {
+      "path": "packages/mobile/dist/government.js",
+      "sha256": "274feb139cf8d13d7f422d8bae56b237e65be5a3c6b87a3bc926564965d274da"
+    },
+    {
+      "path": "packages/mobile/dist/http.js",
+      "sha256": "84d15262e9b798e27ae2ef8803804d500ea3deeee6f89c344660f76e8265dcab"
+    },
+    {
+      "path": "packages/mobile/dist/index.js",
+      "sha256": "6a70c5320a7535c7c79297a3408e1699bfeceab7272736a7f45368a5d1c054d0"
+    },
+    {
+      "path": "packages/mobile/dist/presentation.js",
+      "sha256": "548553011ecdd6de556ae9bb5612b6316e8ecf46344b2306803d7e12ce2cfb59"
+    },
+    {
+      "path": "packages/mobile/dist/strict-json.js",
+      "sha256": "edb95a62949317b9f21ab2d0018f288e9f4e6e9a0c97f420e7db7f32924ab863"
+    },
+    {
+      "path": "packages/mobile/enrollment.js",
+      "sha256": "8e8b8440ec7dd25943fc7c3549c116544736b9aef6dee2ab8b5134feebe652f2"
+    },
+    {
+      "path": "packages/mobile/index.js",
+      "sha256": "6c1059b1cc14d3f80dfad9154c63d5d1bbfe1186e9f893b801e0f55357154b3c"
+    },
+    {
+      "path": "packages/mobile/presentation.js",
+      "sha256": "514a50dbb58634e6e7df01160ee2d3f34e16e06647c88efedc2cd6a90b1100a6"
+    },
+    {
+      "path": "packages/mobile/src/enrollment.ts",
+      "sha256": "d8277232a2b8c88b6d7a766201ee978489ac61f903a4c621937d9ccb61f1c2a5"
+    },
+    {
+      "path": "packages/require-receipt/dist/acquisition.js",
+      "sha256": "c46742d2ff380cec096767d400992aa38949f6588042099eaf08fd0d85837a1d"
+    },
+    {
+      "path": "packages/require-receipt/dist/gate.js",
+      "sha256": "b53a8345fd6bd8ddf15b681303277cce79b145edc2654f13a16fcf85cd6f4689"
+    },
+    {
+      "path": "packages/require-receipt/dist/index.js",
+      "sha256": "60c9c2d533a8f98eb062b99700192eee8482691e2763aa3efc0c0ce970539026"
+    },
+    {
+      "path": "packages/require-receipt/dist/jws.js",
+      "sha256": "60e79a69cc71bc57c714091f2aef8cf3df9a96e67a83f31fad4a4877052f6419"
+    },
+    {
+      "path": "packages/require-receipt/dist/strict-json.js",
+      "sha256": "bafcd3c454c7d9a048ae5f671ffd1968b20e51a566e993b8e53dc9e4e0b37096"
+    },
+    {
+      "path": "packages/require-receipt/index.js",
+      "sha256": "c53a70b0ba581c93b06b457395e32d0578a8316174b5f81514b7ab17583c6c2c"
+    },
+    {
+      "path": "packages/verify/aeb-adapter-contract.js",
+      "sha256": "1039e1f85b78d714bfdbac0ad5236195d312e66060cbc97e36c064ff85b635db"
+    },
+    {
+      "path": "packages/verify/dist/aeb-adapter-contract.js",
+      "sha256": "6dbdafad2e2e7e3ea3d3f6903f3e1b5646fb1f5d5f9d9fb545157506d963db33"
+    },
+    {
+      "path": "packages/verify/dist/aeb-native-adapters.js",
+      "sha256": "2662043d35d99e32aa9b39abd2cf9e4d6d5d1f4ecb1e49dc3e088b0cb6569800"
+    },
+    {
+      "path": "packages/verify/dist/agent-edge-continuity.js",
+      "sha256": "3c4851cae3c4a07e2ec3d38396a407476b21a6e9d70fa3b962cdf8be0a817260"
+    },
+    {
+      "path": "packages/verify/dist/agentroa.js",
+      "sha256": "c10bb89d528f4bdff01c29915914c1d0064780a4ff01a55c6c207991d838a255"
+    },
+    {
+      "path": "packages/verify/dist/authority-program.js",
+      "sha256": "11224541988a23fb43a55a8173d12504e8954727fd5114a1e49b774b799d8e52"
+    },
+    {
+      "path": "packages/verify/dist/consistency.js",
+      "sha256": "0d3fc73e8da396c42ee75a23adfe67fb7f029ce0beaffa7e89818f7fe39bce80"
+    },
+    {
+      "path": "packages/verify/dist/consumption-proof.js",
+      "sha256": "28f310fb6ead2cc05227ced5950074cb5a1fa9490ed1a4535db8e5f819a710ab"
+    },
+    {
+      "path": "packages/verify/dist/currency.js",
+      "sha256": "003a808862a1a27aa0ab8d9863edca3c2805a20786862d3b8a11b1b3a054ce30"
+    },
+    {
+      "path": "packages/verify/dist/document-action-binding.js",
+      "sha256": "07ebc2aed6b7b7cf1b0779e5679e4a0529ed5bd8009c925c77d866a574167036"
+    },
+    {
+      "path": "packages/verify/dist/effect-predicates.js",
+      "sha256": "f3658005fd83f59496bb25dd71d201e207f3b8036c96b43aaa4b8324c7155657"
+    },
+    {
+      "path": "packages/verify/dist/evidence-chain.js",
+      "sha256": "46ed2fd56562abd59494e063cc61fa08bba30b312535865b321623dfbbe879ac"
+    },
+    {
+      "path": "packages/verify/dist/evidence-record.js",
+      "sha256": "bfa0671703ec651bbff78719a57eeb10a82fbb2a7c83a3a6ca0252b86b7aaaf0"
+    },
+    {
+      "path": "packages/verify/dist/federation.js",
+      "sha256": "556442054123ab9251dfb78a586d108fc2a35084a2b98a97a09c1ee9c0dd5f70"
+    },
+    {
+      "path": "packages/verify/dist/index.js",
+      "sha256": "1288c76d75674e634d83157ebb67e8c743441a4e7ecf8226a5082b6fa87ae0a7"
+    },
+    {
+      "path": "packages/verify/dist/initiator-attestation.js",
+      "sha256": "778ff7e6419a66c870466b8ed3aaf2a1f5751518e81a8b1a8b52788fc8565f7b"
+    },
+    {
+      "path": "packages/verify/dist/orprg.js",
+      "sha256": "7d8b7d6257665b2d2a0feabf2aaf0e243e0f4466dfcb7f49baef9bd5d3af88db"
+    },
+    {
+      "path": "packages/verify/dist/outcome-binding.js",
+      "sha256": "8139845c3f9ac861024332a18aa9c9b6f46ce3d9f12d7284bd7028168bce2965"
+    },
+    {
+      "path": "packages/verify/dist/platform-attestation.js",
+      "sha256": "0cfb6818724a4f69f4c8c7ebd36b2b28e0e9bf0fbbf852eb03d25b8f5d3eae46"
+    },
+    {
+      "path": "packages/verify/dist/provenance.js",
+      "sha256": "85078b9e24a154b7f39b4c20b957a500f1aa12bc64d0b552961482950c331fa6"
+    },
+    {
+      "path": "packages/verify/dist/quorum.js",
+      "sha256": "1f15f192fc53c6c36739d8fa872e374bbf81e024304b9ec9b395641661e3d936"
+    },
+    {
+      "path": "packages/verify/dist/revocation.js",
+      "sha256": "0bcf4c633032a3b015c5e7b4d1eb54c70ff70d4a4c94240e5d6513fbf7c94aa2"
+    },
+    {
+      "path": "packages/verify/dist/status.js",
+      "sha256": "bd6810c1b2c33667168b7b509e4f91ee5ee11e592612f69da67e3c28eb1bd39e"
+    },
+    {
+      "path": "packages/verify/dist/strict-json.js",
+      "sha256": "d41f77d0ca9a66836b8bc8b27d074c7fad8d9355c10366219cd3bde001a84165"
+    },
+    {
+      "path": "packages/verify/dist/surface-binding.js",
+      "sha256": "5cbdb4140e792f9e3aa9509ad43d2f05946936062eef02d9aa13793aa7042d2f"
+    },
+    {
+      "path": "packages/verify/dist/time-attestation.js",
+      "sha256": "fc544286ac29617bbea9d51efa8588af0fd2af38f63d407699ed9fdf56ea9385"
+    },
+    {
+      "path": "packages/verify/dist/timestamp-proof.js",
+      "sha256": "f0554fcf826eec74fbb7fcae852b4fa24941765baa82f409bbc098c7ad46c085"
+    },
+    {
+      "path": "packages/verify/dist/witness.js",
+      "sha256": "c1f94019d6718b1d20e7f0688ece11cc1b2fc1708fe82e79b33a95eaec9e397d"
+    },
+    {
+      "path": "packages/verify/document-action-binding.js",
+      "sha256": "2fe1c9c8153e92610f6f811b4aa04bfe33c6bf515b330881dd14ebcec6c014d1"
+    },
+    {
+      "path": "packages/verify/effect-predicates.js",
+      "sha256": "ab54fb63074ab1871a7ab39e5e4a30908b92ba0e9487b96c75f45aed9b3898ad"
+    },
+    {
+      "path": "packages/verify/evidence-chain.js",
+      "sha256": "754e43ca6f6e57c5d86f607d751d000086fe4e8e3124037bfc3fbed96166d0ce"
+    },
+    {
+      "path": "packages/verify/index.js",
+      "sha256": "f386e365a9998f08ea4947ffd415ca353c0a82766677a8e0cf3117909cccee24"
+    },
+    {
+      "path": "packages/verify/quorum.js",
+      "sha256": "b53cd3e57f41f286e1620e26035d37d592928f0b895f93dabd3dc990093ce492"
+    },
+    {
+      "path": "packages/verify/revocation.js",
+      "sha256": "3e65eda6188378bdb3e76690ef7200741035cdfdc872b5276e3c0dde8a168c54"
+    },
+    {
+      "path": "packages/verify/src/aeb-adapter-contract.ts",
+      "sha256": "f362b5c73ace23f9cd44eab2f25dfc2f77ccc08be666a96bd8899a9233ec33b1"
+    },
+    {
+      "path": "packages/verify/src/evidence-chain.ts",
+      "sha256": "d6326fdb075ae15f4a3b8f410e20c722e833f0c904ede965c9c8f0832a203318"
+    },
+    {
+      "path": "packages/verify/src/revocation.ts",
+      "sha256": "19d73d6ae3cbbda6d2f4d4a730afa3a9ccfd76478a931bb273670a4fb82bbbfa"
+    },
+    {
+      "path": "packages/verify/status.js",
+      "sha256": "2b51e78b7a6f8bec3a7e0bdf406981cf1238da41f99852a7c04763e6a5429445"
+    },
+    {
+      "path": "packages/verify/strict-json.js",
+      "sha256": "9fea04e772a70c75d13b704adb6e157721989ab03d2b405c54a97c22ff0b00f3"
+    },
+    {
+      "path": "packages/verify/vendor/caid.mjs",
+      "sha256": "2c23bdcdf4586d81b7d9675612a4e95edf7999ba81579906f295e67c0c12cfb6"
+    },
+    {
+      "path": "scripts/build-standalone-runtimes.mjs",
+      "sha256": "25089e24b8c9f6f982a026d270576dbb83701513542188e88481af9a74738171"
+    },
+    {
+      "path": "scripts/check-formal-runtime-traces.mjs",
+      "sha256": "c89883041d3c7a8e4f2a90da52272bb84a9045998f4a3002dda22acc2bcf9cbf"
+    },
+    {
+      "path": "scripts/check-formal-runtime-traces.mts",
+      "sha256": "2855edc674f6dc31de7d40d02462c3e227a038a31db9c3db9dbb131a09148bb6"
+    },
+    {
+      "path": "scripts/standalone-runtime-targets.mjs",
+      "sha256": "2e2db11378a4d5377ef864cb400cb9db2eb6563ea98745a61d562e82f9a5d399"
+    }
+  ],
+  "limitations": [
+    "Trace refinement tests selected transitions; it is not a mechanized implementation refinement proof.",
+    "The formal models, adapters, and runtime implementations are maintained by the same team.",
+    "Cryptographic primitives, trusted clocks, provider truth, complete mediation, and durable database semantics remain explicit acceptance roots."
+  ],
+  "method": "bounded_selected_trace_refinement",
+  "summary": {
+    "claims": [
+      "action-escrow-releases-one-exact-milestone-once",
+      "aec-role-substitution-refused",
+      "ambiguous-effect-is-never-auto-retried",
+      "grace-curtailment-is-authorized-measured-and-single-use",
+      "mobile-action-continuity-is-tenant-and-executor-bound",
+      "mobile-enrollment-requires-two-verified-rows",
+      "model-to-matter-clearance-is-exact-and-single-use",
+      "network-witness-equivocation-permanently-poisons-stream",
+      "revocation-is-pinned-effective-and-terminal"
+    ],
+    "models": [
+      "formal/ep_consequence_lifecycle.tla",
+      "formal/ep_effect_profiles.tla",
+      "formal/ep_revocation_witness.tla"
+    ],
+    "sound_traces": 11,
+    "traces": 20,
+    "unsafe_mutations_detected": 9
+  },
+  "traces": [
+    {
+      "adapter": "aec",
+      "claim_id": "aec-role-substitution-refused",
+      "formal": {
+        "obligation": null,
+        "status": "matched"
+      },
+      "id": "aec-exact-role-map",
+      "kind": "sound",
+      "matched": true,
+      "model": "formal/ep_effect_profiles.tla",
+      "runtime": {
+        "status": "matched",
+        "steps": [
+          {
+            "accepted": true,
+            "operator": "PresentExactAecRoles",
+            "projection": {
+              "aecState": "exact_roles_presented"
+            }
+          },
+          {
+            "accepted": true,
+            "operator": "AcceptAec",
+            "projection": {
+              "aecState": "accepted"
+            }
+          }
+        ]
+      },
+      "scenario": "aec-exact-role-map"
+    },
+    {
+      "adapter": "aec",
+      "claim_id": "aec-role-substitution-refused",
+      "formal": {
+        "obligation": "AecRoleNonSubstitution",
+        "status": "counterexample_detected"
+      },
+      "id": "aec-role-substitution-mutation",
+      "kind": "unsafe_mutation",
+      "matched": true,
+      "model": "formal/ep_effect_profiles.tla",
+      "runtime": {
+        "status": "matched",
+        "steps": [
+          {
+            "accepted": true,
+            "operator": "PresentSubstitutedAecRole",
+            "projection": {
+              "aecState": "substitution_presented"
+            }
+          },
+          {
+            "accepted": false,
+            "operator": "RefuseAec",
+            "projection": {
+              "aecState": "refused"
+            }
+          }
+        ]
+      },
+      "scenario": "aec-role-substitution-refused"
+    },
+    {
+      "adapter": "consequence-lifecycle",
+      "claim_id": "ambiguous-effect-is-never-auto-retried",
+      "formal": {
+        "obligation": "InvokeAtMostOnce",
+        "status": "counterexample_detected"
+      },
+      "id": "consequence-blind-replay-mutation",
+      "kind": "unsafe_mutation",
+      "matched": true,
+      "model": "formal/ep_consequence_lifecycle.tla",
+      "runtime": {
+        "status": "matched",
+        "steps": [
+          {
+            "accepted": false,
+            "operator": "RefuseInvalidAdmission(AdmissionWrongCAID)",
+            "projection": {
+              "effectDigest": "NO_DIGEST",
+              "executeEscrowState": "OPEN",
+              "executeInvokeCount": 0,
+              "executeStage": "PROPOSED",
+              "reconciledBy": "NO_EVIDENCE",
+              "remedyState": "NONE"
+            }
+          },
+          {
+            "accepted": false,
+            "operator": "RefuseInvalidAdmission(AdmissionUnauthenticated)",
+            "projection": {
+              "effectDigest": "NO_DIGEST",
+              "executeEscrowState": "OPEN",
+              "executeInvokeCount": 0,
+              "executeStage": "PROPOSED",
+              "reconciledBy": "NO_EVIDENCE",
+              "remedyState": "NONE"
+            }
+          },
+          {
+            "accepted": true,
+            "operator": "Admit(ExecuteOp, AdmissionExecute)",
+            "projection": {
+              "effectDigest": "NO_DIGEST",
+              "executeEscrowState": "OPEN",
+              "executeInvokeCount": 0,
+              "executeStage": "ADMITTED",
+              "reconciledBy": "NO_EVIDENCE",
+              "remedyState": "NONE"
+            }
+          },
+          {
+            "accepted": true,
+            "operator": "Approve(ExecuteOp, ApprovalExecute)",
+            "projection": {
+              "effectDigest": "NO_DIGEST",
+              "executeEscrowState": "OPEN",
+              "executeInvokeCount": 0,
+              "executeStage": "APPROVED",
+              "reconciledBy": "NO_EVIDENCE",
+              "remedyState": "NONE"
+            }
+          },
+          {
+            "accepted": true,
+            "operator": "ReserveEscrow(ExecuteOp)",
+            "projection": {
+              "effectDigest": "NO_DIGEST",
+              "executeEscrowState": "RESERVED",
+              "executeInvokeCount": 0,
+              "executeStage": "RESERVED",
+              "reconciledBy": "NO_EVIDENCE",
+              "remedyState": "NONE"
+            }
+          },
+          {
+            "accepted": true,
+            "operator": "InvokeProvider",
+            "projection": {
+              "effectDigest": "NO_DIGEST",
+              "executeEscrowState": "RESERVED",
+              "executeInvokeCount": 1,
+              "executeStage": "INVOKING",
+              "reconciledBy": "NO_EVIDENCE",
+              "remedyState": "NONE"
+            }
+          },
+          {
+            "accepted": true,
+            "operator": "MarkIndeterminate",
+            "projection": {
+              "effectDigest": "NO_DIGEST",
+              "executeEscrowState": "RESERVED",
+              "executeInvokeCount": 1,
+              "executeStage": "INDETERMINATE",
+              "reconciledBy": "NO_EVIDENCE",
+              "remedyState": "NONE"
+            }
+          },
+          {
+            "accepted": false,
+            "operator": "RefuseBlindReplay",
+            "projection": {
+              "effectDigest": "NO_DIGEST",
+              "executeEscrowState": "RESERVED",
+              "executeInvokeCount": 1,
+              "executeStage": "INDETERMINATE",
+              "reconciledBy": "NO_EVIDENCE",
+              "remedyState": "NONE"
+            }
+          }
+        ]
+      },
+      "scenario": "consequence-blind-replay-refused"
+    },
+    {
+      "adapter": "consequence-lifecycle",
+      "claim_id": "ambiguous-effect-is-never-auto-retried",
+      "formal": {
+        "obligation": null,
+        "status": "matched"
+      },
+      "id": "consequence-indeterminate-reconcile",
+      "kind": "sound",
+      "matched": true,
+      "model": "formal/ep_consequence_lifecycle.tla",
+      "runtime": {
+        "status": "matched",
+        "steps": [
+          {
+            "accepted": false,
+            "operator": "RefuseInvalidAdmission(AdmissionWrongCAID)",
+            "projection": {
+              "effectDigest": "NO_DIGEST",
+              "executeEscrowState": "OPEN",
+              "executeInvokeCount": 0,
+              "executeStage": "PROPOSED",
+              "reconciledBy": "NO_EVIDENCE",
+              "remedyState": "NONE"
+            }
+          },
+          {
+            "accepted": false,
+            "operator": "RefuseInvalidAdmission(AdmissionUnauthenticated)",
+            "projection": {
+              "effectDigest": "NO_DIGEST",
+              "executeEscrowState": "OPEN",
+              "executeInvokeCount": 0,
+              "executeStage": "PROPOSED",
+              "reconciledBy": "NO_EVIDENCE",
+              "remedyState": "NONE"
+            }
+          },
+          {
+            "accepted": true,
+            "operator": "Admit(ExecuteOp, AdmissionExecute)",
+            "projection": {
+              "effectDigest": "NO_DIGEST",
+              "executeEscrowState": "OPEN",
+              "executeInvokeCount": 0,
+              "executeStage": "ADMITTED",
+              "reconciledBy": "NO_EVIDENCE",
+              "remedyState": "NONE"
+            }
+          },
+          {
+            "accepted": true,
+            "operator": "Approve(ExecuteOp, ApprovalExecute)",
+            "projection": {
+              "effectDigest": "NO_DIGEST",
+              "executeEscrowState": "OPEN",
+              "executeInvokeCount": 0,
+              "executeStage": "APPROVED",
+              "reconciledBy": "NO_EVIDENCE",
+              "remedyState": "NONE"
+            }
+          },
+          {
+            "accepted": true,
+            "operator": "ReserveEscrow(ExecuteOp)",
+            "projection": {
+              "effectDigest": "NO_DIGEST",
+              "executeEscrowState": "RESERVED",
+              "executeInvokeCount": 0,
+              "executeStage": "RESERVED",
+              "reconciledBy": "NO_EVIDENCE",
+              "remedyState": "NONE"
+            }
+          },
+          {
+            "accepted": true,
+            "operator": "InvokeProvider",
+            "projection": {
+              "effectDigest": "NO_DIGEST",
+              "executeEscrowState": "RESERVED",
+              "executeInvokeCount": 1,
+              "executeStage": "INVOKING",
+              "reconciledBy": "NO_EVIDENCE",
+              "remedyState": "NONE"
+            }
+          },
+          {
+            "accepted": true,
+            "operator": "MarkIndeterminate",
+            "projection": {
+              "effectDigest": "NO_DIGEST",
+              "executeEscrowState": "RESERVED",
+              "executeInvokeCount": 1,
+              "executeStage": "INDETERMINATE",
+              "reconciledBy": "NO_EVIDENCE",
+              "remedyState": "NONE"
+            }
+          },
+          {
+            "accepted": false,
+            "operator": "RefuseBlindReplay",
+            "projection": {
+              "effectDigest": "NO_DIGEST",
+              "executeEscrowState": "RESERVED",
+              "executeInvokeCount": 1,
+              "executeStage": "INDETERMINATE",
+              "reconciledBy": "NO_EVIDENCE",
+              "remedyState": "NONE"
+            }
+          },
+          {
+            "accepted": false,
+            "operator": "RefuseInvalidReconciliation(ReconcileWrongCAID)",
+            "projection": {
+              "effectDigest": "NO_DIGEST",
+              "executeEscrowState": "RESERVED",
+              "executeInvokeCount": 1,
+              "executeStage": "INDETERMINATE",
+              "reconciledBy": "NO_EVIDENCE",
+              "remedyState": "NONE"
+            }
+          },
+          {
+            "accepted": false,
+            "operator": "RefuseInvalidReconciliation(ReconcileWrongOperation)",
+            "projection": {
+              "effectDigest": "NO_DIGEST",
+              "executeEscrowState": "RESERVED",
+              "executeInvokeCount": 1,
+              "executeStage": "INDETERMINATE",
+              "reconciledBy": "NO_EVIDENCE",
+              "remedyState": "NONE"
+            }
+          },
+          {
+            "accepted": false,
+            "operator": "RefuseInvalidReconciliation(ReconcileWrongEffectDigest)",
+            "projection": {
+              "effectDigest": "NO_DIGEST",
+              "executeEscrowState": "RESERVED",
+              "executeInvokeCount": 1,
+              "executeStage": "INDETERMINATE",
+              "reconciledBy": "NO_EVIDENCE",
+              "remedyState": "NONE"
+            }
+          },
+          {
+            "accepted": false,
+            "operator": "RefuseInvalidReconciliation(ReconcileUnauthenticated)",
+            "projection": {
+              "effectDigest": "NO_DIGEST",
+              "executeEscrowState": "RESERVED",
+              "executeInvokeCount": 1,
+              "executeStage": "INDETERMINATE",
+              "reconciledBy": "NO_EVIDENCE",
+              "remedyState": "NONE"
+            }
+          },
+          {
+            "accepted": true,
+            "operator": "ReconcileExact(ReconcileExecute)",
+            "projection": {
+              "effectDigest": "sha256:5a008d03443c110476b4a05a78e5faf8076f3524d59d432eee26fc8f6c8eabef",
+              "executeEscrowState": "CONSUMED",
+              "executeInvokeCount": 1,
+              "executeStage": "EFFECT",
+              "reconciledBy": "evidence:attempt:release-1",
+              "remedyState": "NONE"
+            }
+          }
+        ]
+      },
+      "scenario": "consequence-indeterminate-reconcile"
+    },
+    {
+      "adapter": "action-escrow",
+      "claim_id": "action-escrow-releases-one-exact-milestone-once",
+      "formal": {
+        "obligation": "ActionEscrowSingleRelease",
+        "status": "counterexample_detected"
+      },
+      "id": "escrow-duplicate-release-mutation",
+      "kind": "unsafe_mutation",
+      "matched": true,
+      "model": "formal/ep_effect_profiles.tla",
+      "runtime": {
+        "status": "matched",
+        "steps": [
+          {
+            "accepted": true,
+            "operator": "SubmitExactMilestone",
+            "projection": {
+              "aeDuplicateRefused": false,
+              "aeMilestoneCaid": "caid:exact-action",
+              "aeReleaseCount": 0,
+              "aeState": "milestone_exact"
+            }
+          },
+          {
+            "accepted": true,
+            "operator": "ReserveEscrowRelease",
+            "projection": {
+              "aeDuplicateRefused": false,
+              "aeMilestoneCaid": "caid:exact-action",
+              "aeReleaseCount": 0,
+              "aeState": "release_reserved"
+            }
+          },
+          {
+            "accepted": true,
+            "operator": "ReleaseEscrow",
+            "projection": {
+              "aeDuplicateRefused": false,
+              "aeMilestoneCaid": "caid:exact-action",
+              "aeReleaseCount": 1,
+              "aeState": "released"
+            }
+          },
+          {
+            "accepted": false,
+            "operator": "AttemptDuplicateEscrowRelease",
+            "projection": {
+              "aeDuplicateRefused": true,
+              "aeMilestoneCaid": "caid:exact-action",
+              "aeReleaseCount": 1,
+              "aeState": "released"
+            }
+          }
+        ]
+      },
+      "scenario": "escrow-duplicate-release-refused"
+    },
+    {
+      "adapter": "action-escrow",
+      "claim_id": "action-escrow-releases-one-exact-milestone-once",
+      "formal": {
+        "obligation": null,
+        "status": "matched"
+      },
+      "id": "escrow-release-once",
+      "kind": "sound",
+      "matched": true,
+      "model": "formal/ep_effect_profiles.tla",
+      "runtime": {
+        "status": "matched",
+        "steps": [
+          {
+            "accepted": true,
+            "operator": "SubmitExactMilestone",
+            "projection": {
+              "aeDuplicateRefused": false,
+              "aeMilestoneCaid": "caid:exact-action",
+              "aeReleaseCount": 0,
+              "aeState": "milestone_exact"
+            }
+          },
+          {
+            "accepted": true,
+            "operator": "ReserveEscrowRelease",
+            "projection": {
+              "aeDuplicateRefused": false,
+              "aeMilestoneCaid": "caid:exact-action",
+              "aeReleaseCount": 0,
+              "aeState": "release_reserved"
+            }
+          },
+          {
+            "accepted": true,
+            "operator": "ReleaseEscrow",
+            "projection": {
+              "aeDuplicateRefused": false,
+              "aeMilestoneCaid": "caid:exact-action",
+              "aeReleaseCount": 1,
+              "aeState": "released"
+            }
+          }
+        ]
+      },
+      "scenario": "escrow-release-once"
+    },
+    {
+      "adapter": "grace",
+      "claim_id": "grace-curtailment-is-authorized-measured-and-single-use",
+      "formal": {
+        "obligation": "GraceSingleDispatch",
+        "status": "counterexample_detected"
+      },
+      "id": "grace-indeterminate-replay-mutation",
+      "kind": "unsafe_mutation",
+      "matched": true,
+      "model": "formal/ep_effect_profiles.tla",
+      "runtime": {
+        "status": "matched",
+        "steps": [
+          {
+            "accepted": true,
+            "operator": "AuthorizeGrace",
+            "projection": {
+              "graceAuthorizationVerified": true,
+              "graceDispatchCount": 0,
+              "graceEnvelopeVerified": true,
+              "graceMeterRecorded": false,
+              "graceReplayRefused": false,
+              "graceSettlementCount": 0,
+              "graceState": "authorized"
+            }
+          },
+          {
+            "accepted": true,
+            "operator": "DispatchGrace",
+            "projection": {
+              "graceAuthorizationVerified": true,
+              "graceDispatchCount": 1,
+              "graceEnvelopeVerified": true,
+              "graceMeterRecorded": false,
+              "graceReplayRefused": false,
+              "graceSettlementCount": 0,
+              "graceState": "dispatched"
+            }
+          },
+          {
+            "accepted": true,
+            "operator": "GraceTimeout",
+            "projection": {
+              "graceAuthorizationVerified": true,
+              "graceDispatchCount": 1,
+              "graceEnvelopeVerified": true,
+              "graceMeterRecorded": false,
+              "graceReplayRefused": false,
+              "graceSettlementCount": 0,
+              "graceState": "indeterminate"
+            }
+          },
+          {
+            "accepted": false,
+            "operator": "AttemptGraceReplay",
+            "projection": {
+              "graceAuthorizationVerified": true,
+              "graceDispatchCount": 1,
+              "graceEnvelopeVerified": true,
+              "graceMeterRecorded": false,
+              "graceReplayRefused": true,
+              "graceSettlementCount": 0,
+              "graceState": "indeterminate"
+            }
+          }
+        ]
+      },
+      "scenario": "grace-indeterminate-replay-refused"
+    },
+    {
+      "adapter": "grace",
+      "claim_id": "grace-curtailment-is-authorized-measured-and-single-use",
+      "formal": {
+        "obligation": null,
+        "status": "matched"
+      },
+      "id": "grace-settle-once",
+      "kind": "sound",
+      "matched": true,
+      "model": "formal/ep_effect_profiles.tla",
+      "runtime": {
+        "status": "matched",
+        "steps": [
+          {
+            "accepted": true,
+            "operator": "AuthorizeGrace",
+            "projection": {
+              "graceAuthorizationVerified": true,
+              "graceDispatchCount": 0,
+              "graceEnvelopeVerified": true,
+              "graceMeterRecorded": false,
+              "graceReplayRefused": false,
+              "graceSettlementCount": 0,
+              "graceState": "authorized"
+            }
+          },
+          {
+            "accepted": true,
+            "operator": "DispatchGrace",
+            "projection": {
+              "graceAuthorizationVerified": true,
+              "graceDispatchCount": 1,
+              "graceEnvelopeVerified": true,
+              "graceMeterRecorded": false,
+              "graceReplayRefused": false,
+              "graceSettlementCount": 0,
+              "graceState": "dispatched"
+            }
+          },
+          {
+            "accepted": true,
+            "operator": "RecordGraceMeter",
+            "projection": {
+              "graceAuthorizationVerified": true,
+              "graceDispatchCount": 1,
+              "graceEnvelopeVerified": true,
+              "graceMeterRecorded": true,
+              "graceReplayRefused": false,
+              "graceSettlementCount": 0,
+              "graceState": "metered"
+            }
+          },
+          {
+            "accepted": true,
+            "operator": "SettleGrace",
+            "projection": {
+              "graceAuthorizationVerified": true,
+              "graceDispatchCount": 1,
+              "graceEnvelopeVerified": true,
+              "graceMeterRecorded": true,
+              "graceReplayRefused": false,
+              "graceSettlementCount": 1,
+              "graceState": "settled"
+            }
+          }
+        ]
+      },
+      "scenario": "grace-settle-once"
+    },
+    {
+      "adapter": "mobile-enrollment",
+      "claim_id": "mobile-enrollment-requires-two-verified-rows",
+      "formal": {
+        "obligation": "MobileEnrollmentRequiresBothRows",
+        "status": "counterexample_detected"
+      },
+      "id": "mobile-enroll-one-row-mutation",
+      "kind": "unsafe_mutation",
+      "matched": true,
+      "model": "formal/ep_effect_profiles.tla",
+      "runtime": {
+        "status": "matched",
+        "steps": [
+          {
+            "accepted": true,
+            "operator": "VerifyWebAuthnEnrollment",
+            "projection": {
+              "enrollmentActivationCount": 0,
+              "enrollmentReplayRefused": false,
+              "enrollmentRowCount": 1,
+              "enrollmentState": "webauthn_only"
+            }
+          },
+          {
+            "accepted": false,
+            "operator": "AttemptActivateIncompleteEnrollment",
+            "projection": {
+              "enrollmentActivationCount": 0,
+              "enrollmentReplayRefused": false,
+              "enrollmentRowCount": 1,
+              "enrollmentState": "webauthn_only"
+            }
+          }
+        ]
+      },
+      "scenario": "mobile-enroll-incomplete-at-activation-refused"
+    },
+    {
+      "adapter": "mobile-enrollment",
+      "claim_id": "mobile-enrollment-requires-two-verified-rows",
+      "formal": {
+        "obligation": null,
+        "status": "matched"
+      },
+      "id": "mobile-enroll-two-rows",
+      "kind": "sound",
+      "matched": true,
+      "model": "formal/ep_effect_profiles.tla",
+      "runtime": {
+        "status": "matched",
+        "steps": [
+          {
+            "accepted": true,
+            "operator": "VerifyWebAuthnEnrollment",
+            "projection": {
+              "enrollmentActivationCount": 0,
+              "enrollmentReplayRefused": false,
+              "enrollmentRowCount": 1,
+              "enrollmentState": "webauthn_only"
+            }
+          },
+          {
+            "accepted": true,
+            "operator": "VerifyPlatformEnrollment",
+            "projection": {
+              "enrollmentActivationCount": 0,
+              "enrollmentReplayRefused": false,
+              "enrollmentRowCount": 2,
+              "enrollmentState": "ready"
+            }
+          },
+          {
+            "accepted": true,
+            "operator": "ActivateEnrollment",
+            "projection": {
+              "enrollmentActivationCount": 1,
+              "enrollmentReplayRefused": false,
+              "enrollmentRowCount": 2,
+              "enrollmentState": "active"
+            }
+          }
+        ]
+      },
+      "scenario": "mobile-enroll-two-rows"
+    },
+    {
+      "adapter": "mobile-continuity",
+      "claim_id": "mobile-action-continuity-is-tenant-and-executor-bound",
+      "formal": {
+        "obligation": "MobileTimeoutFence",
+        "status": "counterexample_detected"
+      },
+      "id": "mobile-replay-mutation",
+      "kind": "unsafe_mutation",
+      "matched": true,
+      "model": "formal/ep_effect_profiles.tla",
+      "runtime": {
+        "status": "matched",
+        "steps": [
+          {
+            "accepted": true,
+            "operator": "ReserveMobileAction",
+            "projection": {
+              "mobileExecutor": "executor:expected",
+              "mobileFenced": false,
+              "mobileOutcomeAuthenticated": false,
+              "mobileOutcomeExecutor": "none",
+              "mobileOutcomeTenant": "none",
+              "mobileProviderCalls": 0,
+              "mobileReconciliationRefused": false,
+              "mobileReplayRefused": false,
+              "mobileState": "reserved",
+              "mobileTenant": "tenant:expected"
+            }
+          },
+          {
+            "accepted": true,
+            "operator": "InvokeMobileProvider",
+            "projection": {
+              "mobileExecutor": "executor:expected",
+              "mobileFenced": false,
+              "mobileOutcomeAuthenticated": false,
+              "mobileOutcomeExecutor": "none",
+              "mobileOutcomeTenant": "none",
+              "mobileProviderCalls": 1,
+              "mobileReconciliationRefused": false,
+              "mobileReplayRefused": false,
+              "mobileState": "provider_invoked",
+              "mobileTenant": "tenant:expected"
+            }
+          },
+          {
+            "accepted": true,
+            "operator": "MobileTimeout",
+            "projection": {
+              "mobileExecutor": "executor:expected",
+              "mobileFenced": true,
+              "mobileOutcomeAuthenticated": false,
+              "mobileOutcomeExecutor": "none",
+              "mobileOutcomeTenant": "none",
+              "mobileProviderCalls": 1,
+              "mobileReconciliationRefused": false,
+              "mobileReplayRefused": false,
+              "mobileState": "indeterminate",
+              "mobileTenant": "tenant:expected"
+            }
+          },
+          {
+            "accepted": false,
+            "operator": "AttemptMobileProviderReplay",
+            "projection": {
+              "mobileExecutor": "executor:expected",
+              "mobileFenced": true,
+              "mobileOutcomeAuthenticated": false,
+              "mobileOutcomeExecutor": "none",
+              "mobileOutcomeTenant": "none",
+              "mobileProviderCalls": 1,
+              "mobileReconciliationRefused": false,
+              "mobileReplayRefused": true,
+              "mobileState": "indeterminate",
+              "mobileTenant": "tenant:expected"
+            }
+          }
+        ]
+      },
+      "scenario": "mobile-replay-refused"
+    },
+    {
+      "adapter": "mobile-continuity",
+      "claim_id": "mobile-action-continuity-is-tenant-and-executor-bound",
+      "formal": {
+        "obligation": null,
+        "status": "matched"
+      },
+      "id": "mobile-timeout-reconcile",
+      "kind": "sound",
+      "matched": true,
+      "model": "formal/ep_effect_profiles.tla",
+      "runtime": {
+        "status": "matched",
+        "steps": [
+          {
+            "accepted": true,
+            "operator": "ReserveMobileAction",
+            "projection": {
+              "mobileExecutor": "executor:expected",
+              "mobileFenced": false,
+              "mobileOutcomeAuthenticated": false,
+              "mobileOutcomeExecutor": "none",
+              "mobileOutcomeTenant": "none",
+              "mobileProviderCalls": 0,
+              "mobileReconciliationRefused": false,
+              "mobileReplayRefused": false,
+              "mobileState": "reserved",
+              "mobileTenant": "tenant:expected"
+            }
+          },
+          {
+            "accepted": true,
+            "operator": "InvokeMobileProvider",
+            "projection": {
+              "mobileExecutor": "executor:expected",
+              "mobileFenced": false,
+              "mobileOutcomeAuthenticated": false,
+              "mobileOutcomeExecutor": "none",
+              "mobileOutcomeTenant": "none",
+              "mobileProviderCalls": 1,
+              "mobileReconciliationRefused": false,
+              "mobileReplayRefused": false,
+              "mobileState": "provider_invoked",
+              "mobileTenant": "tenant:expected"
+            }
+          },
+          {
+            "accepted": true,
+            "operator": "MobileTimeout",
+            "projection": {
+              "mobileExecutor": "executor:expected",
+              "mobileFenced": true,
+              "mobileOutcomeAuthenticated": false,
+              "mobileOutcomeExecutor": "none",
+              "mobileOutcomeTenant": "none",
+              "mobileProviderCalls": 1,
+              "mobileReconciliationRefused": false,
+              "mobileReplayRefused": false,
+              "mobileState": "indeterminate",
+              "mobileTenant": "tenant:expected"
+            }
+          },
+          {
+            "accepted": true,
+            "operator": "ReconcileExactMobileOutcome",
+            "projection": {
+              "mobileExecutor": "executor:expected",
+              "mobileFenced": true,
+              "mobileOutcomeAuthenticated": true,
+              "mobileOutcomeExecutor": "executor:expected",
+              "mobileOutcomeTenant": "tenant:expected",
+              "mobileProviderCalls": 1,
+              "mobileReconciliationRefused": false,
+              "mobileReplayRefused": false,
+              "mobileState": "executed",
+              "mobileTenant": "tenant:expected"
+            }
+          }
+        ]
+      },
+      "scenario": "mobile-timeout-reconcile"
+    },
+    {
+      "adapter": "model-to-matter",
+      "claim_id": "model-to-matter-clearance-is-exact-and-single-use",
+      "formal": {
+        "obligation": null,
+        "status": "matched"
+      },
+      "id": "model-to-matter-clearance-once",
+      "kind": "sound",
+      "matched": true,
+      "model": "formal/ep_effect_profiles.tla",
+      "runtime": {
+        "status": "matched",
+        "steps": [
+          {
+            "accepted": true,
+            "operator": "PresentSixExactLegs",
+            "projection": {
+              "m2mConsumptionCount": 0,
+              "m2mPresentedCaid": "caid:exact-action",
+              "m2mState": "ready"
+            }
+          },
+          {
+            "accepted": true,
+            "operator": "ConsumeModelToMatterClearance",
+            "projection": {
+              "m2mConsumptionCount": 1,
+              "m2mPresentedCaid": "caid:exact-action",
+              "m2mState": "consumed"
+            }
+          },
+          {
+            "accepted": false,
+            "operator": "AttemptModelToMatterReplay",
+            "projection": {
+              "m2mConsumptionCount": 1,
+              "m2mPresentedCaid": "caid:exact-action",
+              "m2mState": "replay_refused"
+            }
+          }
+        ]
+      },
+      "scenario": "model-to-matter-clearance-once"
+    },
+    {
+      "adapter": "model-to-matter",
+      "claim_id": "model-to-matter-clearance-is-exact-and-single-use",
+      "formal": {
+        "obligation": "ModelToMatterExactCaid",
+        "status": "counterexample_detected"
+      },
+      "id": "model-to-matter-mismatch-mutation",
+      "kind": "unsafe_mutation",
+      "matched": true,
+      "model": "formal/ep_effect_profiles.tla",
+      "runtime": {
+        "status": "matched",
+        "steps": [
+          {
+            "accepted": true,
+            "operator": "PresentMismatchedLeg",
+            "projection": {
+              "m2mConsumptionCount": 0,
+              "m2mPresentedCaid": "caid:other-action",
+              "m2mState": "mismatch_presented"
+            }
+          },
+          {
+            "accepted": false,
+            "operator": "RefuseModelToMatterClearance",
+            "projection": {
+              "m2mConsumptionCount": 0,
+              "m2mPresentedCaid": "caid:other-action",
+              "m2mState": "refused"
+            }
+          }
+        ]
+      },
+      "scenario": "model-to-matter-mismatch-refused"
+    },
+    {
+      "adapter": "network-witness",
+      "claim_id": "network-witness-equivocation-permanently-poisons-stream",
+      "formal": {
+        "obligation": null,
+        "status": "matched"
+      },
+      "id": "network-witness-coordinate-isolation",
+      "kind": "sound",
+      "matched": true,
+      "model": "formal/ep_revocation_witness.tla",
+      "runtime": {
+        "status": "matched",
+        "steps": [
+          {
+            "accepted": true,
+            "operator": "AcceptWitness(WitnessASeq1)",
+            "projection": {
+              "acceptedStreamCount": 1
+            }
+          },
+          {
+            "accepted": true,
+            "operator": "AcceptWitness(WitnessTenantBSeq1)",
+            "projection": {
+              "acceptedStreamCount": 2
+            }
+          },
+          {
+            "accepted": true,
+            "operator": "AcceptWitness(WitnessGateBSeq1)",
+            "projection": {
+              "acceptedStreamCount": 3
+            }
+          },
+          {
+            "accepted": true,
+            "operator": "AcceptWitness(WitnessBSeq1)",
+            "projection": {
+              "acceptedStreamCount": 4
+            }
+          },
+          {
+            "accepted": true,
+            "operator": "AcceptWitness(WitnessCaptureBSeq1)",
+            "projection": {
+              "acceptedStreamCount": 5
+            }
+          }
+        ]
+      },
+      "scenario": "network-witness-coordinate-isolation"
+    },
+    {
+      "adapter": "network-witness",
+      "claim_id": "network-witness-equivocation-permanently-poisons-stream",
+      "formal": {
+        "obligation": null,
+        "status": "matched"
+      },
+      "id": "network-witness-monotonic-poison",
+      "kind": "sound",
+      "matched": true,
+      "model": "formal/ep_revocation_witness.tla",
+      "runtime": {
+        "status": "matched",
+        "steps": [
+          {
+            "accepted": true,
+            "operator": "AcceptWitness(WitnessASeq1)",
+            "projection": {
+              "headSequence": 1,
+              "lastWitnessVerdict": "accepted",
+              "poisoned": false
+            }
+          },
+          {
+            "accepted": true,
+            "operator": "AdvanceTimeToOne",
+            "projection": {
+              "headSequence": 1,
+              "lastWitnessVerdict": "accepted",
+              "poisoned": false
+            }
+          },
+          {
+            "accepted": true,
+            "operator": "AcceptWitness(WitnessASeq2)",
+            "projection": {
+              "headSequence": 2,
+              "lastWitnessVerdict": "accepted",
+              "poisoned": false
+            }
+          },
+          {
+            "accepted": false,
+            "operator": "PoisonWitnessStream(WitnessASeq2Conflict)",
+            "projection": {
+              "headSequence": 2,
+              "lastWitnessVerdict": "refused",
+              "poisoned": true
+            }
+          }
+        ]
+      },
+      "scenario": "network-witness-monotonic-poison"
+    },
+    {
+      "adapter": "network-witness",
+      "claim_id": "network-witness-equivocation-permanently-poisons-stream",
+      "formal": {
+        "obligation": "PoisonIrreversibilityState",
+        "status": "counterexample_detected"
+      },
+      "id": "network-witness-poison-clear-mutation",
+      "kind": "unsafe_mutation",
+      "matched": true,
+      "model": "formal/ep_revocation_witness.tla",
+      "runtime": {
+        "status": "matched",
+        "steps": [
+          {
+            "accepted": true,
+            "operator": "AcceptWitness(WitnessASeq1)",
+            "projection": {
+              "headSequence": 1,
+              "lastWitnessVerdict": "accepted",
+              "poisoned": false
+            }
+          },
+          {
+            "accepted": true,
+            "operator": "AdvanceTimeToOne",
+            "projection": {
+              "headSequence": 1,
+              "lastWitnessVerdict": "accepted",
+              "poisoned": false
+            }
+          },
+          {
+            "accepted": true,
+            "operator": "AcceptWitness(WitnessASeq2)",
+            "projection": {
+              "headSequence": 2,
+              "lastWitnessVerdict": "accepted",
+              "poisoned": false
+            }
+          },
+          {
+            "accepted": false,
+            "operator": "PoisonWitnessStream(WitnessASeq2Conflict)",
+            "projection": {
+              "headSequence": 2,
+              "lastWitnessVerdict": "refused",
+              "poisoned": true
+            }
+          },
+          {
+            "accepted": false,
+            "operator": "RefuseWitness(WitnessASeq3)",
+            "projection": {
+              "headSequence": 2,
+              "lastWitnessVerdict": "refused",
+              "poisoned": true
+            }
+          }
+        ]
+      },
+      "scenario": "network-witness-poison-clear-refused"
+    },
+    {
+      "adapter": "network-witness",
+      "claim_id": "network-witness-equivocation-permanently-poisons-stream",
+      "formal": {
+        "obligation": null,
+        "status": "matched"
+      },
+      "id": "network-witness-post-poison-refusal",
+      "kind": "sound",
+      "matched": true,
+      "model": "formal/ep_revocation_witness.tla",
+      "runtime": {
+        "status": "matched",
+        "steps": [
+          {
+            "accepted": true,
+            "operator": "AcceptWitness(WitnessASeq1)",
+            "projection": {
+              "headSequence": 1,
+              "lastWitnessVerdict": "accepted",
+              "poisoned": false
+            }
+          },
+          {
+            "accepted": true,
+            "operator": "AdvanceTimeToOne",
+            "projection": {
+              "headSequence": 1,
+              "lastWitnessVerdict": "accepted",
+              "poisoned": false
+            }
+          },
+          {
+            "accepted": true,
+            "operator": "AcceptWitness(WitnessASeq2)",
+            "projection": {
+              "headSequence": 2,
+              "lastWitnessVerdict": "accepted",
+              "poisoned": false
+            }
+          },
+          {
+            "accepted": false,
+            "operator": "PoisonWitnessStream(WitnessASeq2Conflict)",
+            "projection": {
+              "headSequence": 2,
+              "lastWitnessVerdict": "refused",
+              "poisoned": true
+            }
+          },
+          {
+            "accepted": false,
+            "operator": "RefuseWitness(WitnessASeq3)",
+            "projection": {
+              "headSequence": 2,
+              "lastWitnessVerdict": "refused",
+              "poisoned": true
+            }
+          }
+        ]
+      },
+      "scenario": "network-witness-poison-clear-refused"
+    },
+    {
+      "adapter": "revocation",
+      "claim_id": "revocation-is-pinned-effective-and-terminal",
+      "formal": {
+        "obligation": null,
+        "status": "matched"
+      },
+      "id": "revocation-effective-terminal",
+      "kind": "sound",
+      "matched": true,
+      "model": "formal/ep_revocation_witness.tla",
+      "runtime": {
+        "status": "matched",
+        "steps": [
+          {
+            "accepted": true,
+            "operator": "AdvanceTimeToOne",
+            "projection": {
+              "lastRevocationVerdict": "none",
+              "now": 1,
+              "revoked": false
+            }
+          },
+          {
+            "accepted": true,
+            "operator": "AcceptTerminalRevocation(RevGoodA, TargetA)",
+            "projection": {
+              "lastRevocationVerdict": "accepted",
+              "now": 1,
+              "revoked": true
+            }
+          },
+          {
+            "accepted": true,
+            "operator": "AdvanceTimeToMax",
+            "projection": {
+              "lastRevocationVerdict": "accepted",
+              "now": 4,
+              "revoked": true
+            }
+          }
+        ]
+      },
+      "scenario": "revocation-effective-terminal"
+    },
+    {
+      "adapter": "revocation",
+      "claim_id": "revocation-is-pinned-effective-and-terminal",
+      "formal": {
+        "obligation": "TerminalRevocationStateSound",
+        "status": "counterexample_detected"
+      },
+      "id": "revocation-future-mutation",
+      "kind": "unsafe_mutation",
+      "matched": true,
+      "model": "formal/ep_revocation_witness.tla",
+      "runtime": {
+        "status": "matched",
+        "steps": [
+          {
+            "accepted": true,
+            "operator": "AdvanceTimeToOne",
+            "projection": {
+              "lastRevocationVerdict": "none",
+              "now": 1,
+              "revoked": false
+            }
+          },
+          {
+            "accepted": false,
+            "operator": "RefuseTerminalRevocation(RevFutureA, TargetA)",
+            "projection": {
+              "lastRevocationVerdict": "refused",
+              "now": 1,
+              "revoked": false
+            }
+          }
+        ]
+      },
+      "scenario": "revocation-future-refused"
+    }
+  ]
+}

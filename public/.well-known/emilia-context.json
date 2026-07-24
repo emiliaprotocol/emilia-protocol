@@ -1,9 +1,9 @@
 {
   "@version": "EMILIA-REPO-CONTEXT-v1",
-  "evidence_snapshot_at": "2026-07-24T06:37:27.953Z",
+  "evidence_snapshot_at": "2026-07-24T08:38:57.563Z",
   "provenance": {
     "generator": "scripts/generate-llm-context.mjs",
-    "input_digest_sha256": "59b22c9bbcb28ad071918c25470b65ae458799d282d579679e4939db0a26d7b0",
+    "input_digest_sha256": "4ea86d0b8b8474de9f41c97c76fb26e221eb67734a00790938d29d8442ae1791",
     "generated_from": [
       {
         "path": "docs/ai/context-source.v1.json",
@@ -12,13 +12,13 @@
       },
       {
         "path": "scripts/generate-llm-context.mjs",
-        "sha256": "df8dc25a11d8a65d36e0923319d60dac4a4cff665381c7402f9e560d45cb8732",
-        "bytes": 26442
+        "sha256": "ea87f3358a9ee690858729cd58628c884b3a4d6680f3f6a6e94804c04bd43a34",
+        "bytes": 27907
       },
       {
         "path": "lib/proof-stats.json",
-        "sha256": "d19b530ae8b8a3cce9d1553b672aae71e35f94d6be80b31a087e6c4d9813f1ad",
-        "bytes": 1068
+        "sha256": "ccc48552bc63659424317a919354b4088835e8b67fd5c14a96782ca4f44ee283",
+        "bytes": 1431
       },
       {
         "path": "conformance/conformance-manifest.json",
@@ -32,13 +32,13 @@
       },
       {
         "path": "security/claims.v1.json",
-        "sha256": "5b8c025be7f757a83033a6f77b5b22e3f4cd77b1e07cd8b0548d05cafcec9ca5",
-        "bytes": 175273
+        "sha256": "4f013a40b3fa781cccc9a8a11369f26eddd626ac352867ffc434aaddf79ac08a",
+        "bytes": 182874
       },
       {
         "path": "security/security-case.json",
-        "sha256": "dfeeffa832259461612a1d3e9abeb0051f8c195f277264ca93832f9fb763c83f",
-        "bytes": 279840
+        "sha256": "611313ad50b0d142bda305129828e1b0179c84c93626a8e41b040d48cf2fd1df",
+        "bytes": 291092
       },
       {
         "path": "lib/standards-observatory.snapshot.json",
@@ -272,8 +272,8 @@
   ],
   "current_evidence": {
     "automated_tests": {
-      "total": 7689,
-      "files": 415,
+      "total": 7696,
+      "files": 416,
       "policy": "all platform-applicable cases must pass; platform-specific cases may skip"
     },
     "cross_language_conformance": {
@@ -288,6 +288,7 @@
     "formal": {
       "tla_invariants": 26,
       "tla_checker": "TLC 2.19",
+      "tla_inventory_scope": "established core model set; selected-trace refinement models are reported separately",
       "alloy_facts": 35,
       "alloy_assertions": 32,
       "alloy_version": "6.2.0 (CI)",
@@ -297,14 +298,24 @@
         "deliberatelyUnsafeCounterexamples": 2,
         "version": "1.10.0",
         "modelSha256": "174c27c35b302a9dd096eb28b40ad7df84cf0c1633a93eff829c3de3fc8bbbd3"
+      },
+      "selected_trace_refinement": {
+        "method": "bounded_selected_trace_refinement",
+        "models": 3,
+        "claims": 9,
+        "traces": 20,
+        "soundTraces": 11,
+        "unsafeMutationsDetected": 9,
+        "evidenceSha256": "fe692a7d6ce6d8c89dbfcae23028c9255a72a246e787d2b4efaa42e73edbf6a3",
+        "boundary": "selected traces; not a mechanized implementation refinement proof"
       }
     },
     "red_team_cases": 85,
     "security_case": {
       "status": "passed",
       "claims": 33,
-      "evidence_files": 179,
-      "evidence_bundle_sha256": "c80650bc0441d40ed62fb2ed99c3d0cddbf85b687d56acd9381a347c7e33985f"
+      "evidence_files": 193,
+      "evidence_bundle_sha256": "8c7667379b8ad7b0e9ecc1c8485c5b3e1934fba769b874831031e105ad8785e2"
     },
     "caid": {
       "core_vectors": 48,
@@ -1110,8 +1121,21 @@
       ],
       "formal": [
         {
-          "status": "not_modeled",
-          "gap": "Wall-clock freshness and revocation publication are outside the current symbolic models."
+          "status": "partial",
+          "method": "bounded_tla_model_checking",
+          "model": "formal/ep_revocation_witness.tla",
+          "runner": "formal/ep_revocation_witness.cfg",
+          "result_evidence": "formal/results/ep-revocation-witness.tlc.summary.txt",
+          "trace_evidence": "formal/runtime-traces.v1.json",
+          "trace_runner": "scripts/check-formal-runtime-traces.mjs",
+          "refinement_evidence": "formal/results/formal-runtime-refinement.v1.json",
+          "obligations": [
+            "TerminalRevocationStateSound",
+            "TerminalRevocationDoesNotAgeOut",
+            "TerminalRevocationIrreversible",
+            "RefusedRevocationIsInert"
+          ],
+          "scope": "Bounded same-team model and selected runtime traces cover pinned effective terminal revocation and hostile future-effective refusal. This is not a refinement proof; cryptography, trusted time, publication delivery, and durable storage remain acceptance roots."
         }
       ],
       "assumptions": [
@@ -1512,7 +1536,8 @@
       "claim_id": "ambiguous-effect-is-never-auto-retried",
       "statement": "After an external executor is invoked, an exception is treated as an indeterminate effect and the approval is consumed or frozen rather than made reusable.",
       "acceptance_roots": [
-        "the gate's durable consumption store"
+        "the gate's durable consumption store",
+        "the Proposal-to-Effect consequence-attempt store and relying-party-pinned provider-evidence verifier"
       ],
       "enforcement_path": [
         {
@@ -1525,6 +1550,12 @@
           "language": "javascript",
           "file": "packages/gate/src/aec-execution.ts",
           "symbol": "createAECExecutionGate",
+          "exported": true
+        },
+        {
+          "language": "javascript",
+          "file": "packages/gate/src/proposal-to-effect.ts",
+          "symbol": "createProposalToEffect",
           "exported": true
         },
         {
@@ -1568,10 +1599,28 @@
           "lemma": "injective_execution_with_consumption",
           "result_evidence": "formal/tamarin/results/ep_reliance_composed.summary.txt",
           "scope": "The composed lemma proves injective checked execution but does not model an external system whose effect succeeds before its response is lost."
+        },
+        {
+          "status": "partial",
+          "method": "bounded_tla_model_checking",
+          "model": "formal/ep_consequence_lifecycle.tla",
+          "runner": "formal/ep_consequence_lifecycle.cfg",
+          "result_evidence": "formal/results/ep-consequence-lifecycle.tlc.summary.txt",
+          "trace_evidence": "formal/runtime-traces.v1.json",
+          "trace_runner": "scripts/check-formal-runtime-traces.mjs",
+          "refinement_evidence": "formal/results/formal-runtime-refinement.v1.json",
+          "obligations": [
+            "InvokeAtMostOnce",
+            "AuthenticatedExactReconciliation",
+            "TerminalEffectSound",
+            "NoBlindReplayWhileIndeterminate"
+          ],
+          "scope": "Bounded same-team composed lifecycle model and selected runtime traces cover response loss, indeterminate fencing, blind-replay refusal, and authenticated exact reconciliation. This is not a refinement proof; provider truth, cryptography, storage durability, and arbitrary concurrency remain acceptance roots."
         }
       ],
       "assumptions": [
-        "the guarded effect is invoked only through gate.run or the AEC execution gate run method",
+        "the guarded effect is invoked only through gate.run, the AEC execution gate run method, or the Proposal-to-Effect controller",
+        "provider reconciliation is accepted only through a relying-party-pinned verifier bound to the same tenant, operation, attempt, CAID, action digest, and effect digest",
         "the durable backend remains fail-closed"
       ],
       "exclusions": [
@@ -1633,8 +1682,23 @@
       ],
       "formal": [
         {
-          "status": "not_modeled",
-          "gap": "TLA+, Alloy, and Tamarin do not model this SQL-backed witness-stream state machine; monotonic advance, conflict poisoning, and post-conflict refusal are executable properties."
+          "status": "partial",
+          "method": "bounded_tla_model_checking",
+          "model": "formal/ep_revocation_witness.tla",
+          "runner": "formal/ep_revocation_witness.cfg",
+          "result_evidence": "formal/results/ep-revocation-witness.tlc.summary.txt",
+          "trace_evidence": "formal/runtime-traces.v1.json",
+          "trace_runner": "scripts/check-formal-runtime-traces.mjs",
+          "refinement_evidence": "formal/results/formal-runtime-refinement.v1.json",
+          "obligations": [
+            "WitnessHeadSound",
+            "PoisonEvidenceSound",
+            "PoisonedStreamClosed",
+            "WitnessPoisonIrreversible",
+            "PoisonedWitnessHeadImmutable",
+            "PoisonedStreamCannotRestoreAcceptance"
+          ],
+          "scope": "Bounded same-team model and selected runtime traces cover monotonic witness heads, same-sequence equivocation, permanent poisoning, and post-conflict refusal. This is not a refinement proof; signature verdicts, trusted time, independent operation, and database durability remain acceptance roots."
         }
       ],
       "assumptions": [
@@ -2190,8 +2254,20 @@
       ],
       "formal": [
         {
-          "status": "not_modeled",
-          "gap": "The six-leg frontier-science profile, closed adapter schemas, and executor effect statement are executable but not represented in the current symbolic models."
+          "status": "partial",
+          "method": "bounded_tla_model_checking",
+          "model": "formal/ep_effect_profiles.tla",
+          "runner": "formal/ep_effect_profiles.cfg",
+          "result_evidence": "formal/results/ep-effect-profiles.tlc.summary.txt",
+          "trace_evidence": "formal/runtime-traces.v1.json",
+          "trace_runner": "scripts/check-formal-runtime-traces.mjs",
+          "refinement_evidence": "formal/results/formal-runtime-refinement.v1.json",
+          "obligations": [
+            "ModelToMatterSixLegClearance",
+            "ModelToMatterExactCaid",
+            "ModelToMatterSingleConsumption"
+          ],
+          "scope": "Bounded same-team model and selected runtime traces cover six exact evidence legs, exact CAID binding, mismatch refusal, and one-time clearance consumption. This is not a refinement proof; adapter truth, cryptography, executor effect truth, and durable storage remain acceptance roots."
         }
       ],
       "assumptions": [
@@ -2333,8 +2409,18 @@
       ],
       "formal": [
         {
-          "status": "not_modeled",
-          "gap": "The AEC acceptance-profile composition is outside the Tamarin/TLA+ models; it is covered by cross-language real-crypto vectors and per-port unit/property tests."
+          "status": "partial",
+          "method": "bounded_tla_model_checking",
+          "model": "formal/ep_effect_profiles.tla",
+          "runner": "formal/ep_effect_profiles.cfg",
+          "result_evidence": "formal/results/ep-effect-profiles.tlc.summary.txt",
+          "trace_evidence": "formal/runtime-traces.v1.json",
+          "trace_runner": "scripts/check-formal-runtime-traces.mjs",
+          "refinement_evidence": "formal/results/formal-runtime-refinement.v1.json",
+          "obligations": [
+            "AecRoleNonSubstitution"
+          ],
+          "scope": "Bounded same-team model and selected runtime traces cover exact AEC role mapping and substitution refusal. This is not a refinement proof; cryptographic verification, evidence-leg issuer truth, and arbitrary role cardinality remain acceptance roots."
         }
       ],
       "assumptions": [
@@ -2673,8 +2759,20 @@
       ],
       "formal": [
         {
-          "status": "not_modeled",
-          "gap": "The mixed-decision quorum projection, tenant-scoped operation key, executor-key rotation lock, retained evidence, and indeterminate reconciliation state machine are executable contracts but are not represented together in the current TLA+, Alloy, or Tamarin models."
+          "status": "partial",
+          "method": "bounded_tla_model_checking",
+          "model": "formal/ep_effect_profiles.tla",
+          "runner": "formal/ep_effect_profiles.cfg",
+          "result_evidence": "formal/results/ep-effect-profiles.tlc.summary.txt",
+          "trace_evidence": "formal/runtime-traces.v1.json",
+          "trace_runner": "scripts/check-formal-runtime-traces.mjs",
+          "refinement_evidence": "formal/results/formal-runtime-refinement.v1.json",
+          "obligations": [
+            "MobileExactTenantExecutor",
+            "MobileTimeoutFence",
+            "MobileAuthenticatedReconciliation"
+          ],
+          "scope": "Bounded same-team model and selected runtime traces cover exact tenant/executor binding, one provider invocation, timeout fencing, replay refusal, and authenticated reconciliation. This is not a refinement proof; platform identity, provider truth, durable storage, and arbitrary quorum shapes remain acceptance roots."
         }
       ],
       "assumptions": [
@@ -2811,8 +2909,19 @@
       ],
       "formal": [
         {
-          "status": "not_modeled",
-          "gap": "Native passkey registration, platform-key enrollment, adapter contracts, and atomic directory-plus-audit persistence are executable properties not represented in the current formal models."
+          "status": "partial",
+          "method": "bounded_tla_model_checking",
+          "model": "formal/ep_effect_profiles.tla",
+          "runner": "formal/ep_effect_profiles.cfg",
+          "result_evidence": "formal/results/ep-effect-profiles.tlc.summary.txt",
+          "trace_evidence": "formal/runtime-traces.v1.json",
+          "trace_runner": "scripts/check-formal-runtime-traces.mjs",
+          "refinement_evidence": "formal/results/formal-runtime-refinement.v1.json",
+          "obligations": [
+            "MobileEnrollmentRequiresBothRows",
+            "MobileEnrollmentActivatesAtMostOnce"
+          ],
+          "scope": "Bounded same-team model and selected runtime traces cover separate verified WebAuthn and platform rows, activation only after both rows, and at-most-once activation. This is not a refinement proof; native attestation, biometric ceremony, directory integrity, and transaction durability remain acceptance roots."
         }
       ],
       "assumptions": [
@@ -2897,8 +3006,21 @@
       ],
       "formal": [
         {
-          "status": "not_modeled",
-          "gap": "The exact GRACE mobile quorum, envelope arithmetic, owner-fenced dispatch, independent meter composition, Action State encoding, and one-time settlement path are executable but are not represented as one property in the current TLA+, Alloy, or Tamarin models."
+          "status": "partial",
+          "method": "bounded_tla_model_checking",
+          "model": "formal/ep_effect_profiles.tla",
+          "runner": "formal/ep_effect_profiles.cfg",
+          "result_evidence": "formal/results/ep-effect-profiles.tlc.summary.txt",
+          "trace_evidence": "formal/runtime-traces.v1.json",
+          "trace_runner": "scripts/check-formal-runtime-traces.mjs",
+          "refinement_evidence": "formal/results/formal-runtime-refinement.v1.json",
+          "obligations": [
+            "GraceAuthorizedEnvelopeBeforeDispatch",
+            "GraceMeterBeforeSettlement",
+            "GraceSingleSettlement",
+            "GraceSingleDispatch"
+          ],
+          "scope": "Bounded same-team model and selected runtime traces cover authorization and envelope checks before dispatch, meter evidence before settlement, timeout fencing, and single dispatch/settlement. This is not a refinement proof; meter truth, grid adapter truth, cryptography, and durable ownership fencing remain acceptance roots."
         }
       ],
       "assumptions": [
@@ -3072,8 +3194,19 @@
       ],
       "formal": [
         {
-          "status": "not_modeled",
-          "gap": "The complete project-source-to-custodian composition, six-row evidence flow, amendment lifecycle, durable reservation, provider reconciliation, and external effect are executable but not represented as one TLA+, Alloy, or Tamarin model."
+          "status": "partial",
+          "method": "bounded_tla_model_checking",
+          "model": "formal/ep_effect_profiles.tla",
+          "runner": "formal/ep_effect_profiles.cfg",
+          "result_evidence": "formal/results/ep-effect-profiles.tlc.summary.txt",
+          "trace_evidence": "formal/runtime-traces.v1.json",
+          "trace_runner": "scripts/check-formal-runtime-traces.mjs",
+          "refinement_evidence": "formal/results/formal-runtime-refinement.v1.json",
+          "obligations": [
+            "ActionEscrowExactMilestoneRelease",
+            "ActionEscrowSingleRelease"
+          ],
+          "scope": "Bounded same-team model and selected runtime traces cover exact milestone CAID binding, reservation before release, one release, and duplicate-release refusal. This is not a refinement proof; source-system truth, custodian/provider behavior, database durability, and the full amendment lifecycle remain acceptance roots."
         }
       ],
       "assumptions": [

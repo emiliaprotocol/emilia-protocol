@@ -362,7 +362,18 @@
         { "file": "packages/verify/revocation.test.js", "title": "rejects a mismatched signature algorithm label", "runner": "node-test" }
       ],
       "formal": [
-        { "status": "not_modeled", "gap": "Wall-clock freshness and revocation publication are outside the current symbolic models." }
+        {
+          "status": "partial",
+          "method": "bounded_tla_model_checking",
+          "model": "formal/ep_revocation_witness.tla",
+          "runner": "formal/ep_revocation_witness.cfg",
+          "result_evidence": "formal/results/ep-revocation-witness.tlc.summary.txt",
+          "trace_evidence": "formal/runtime-traces.v1.json",
+          "trace_runner": "scripts/check-formal-runtime-traces.mjs",
+          "refinement_evidence": "formal/results/formal-runtime-refinement.v1.json",
+          "obligations": ["TerminalRevocationStateSound", "TerminalRevocationDoesNotAgeOut", "TerminalRevocationIrreversible", "RefusedRevocationIsInert"],
+          "scope": "Bounded same-team model and selected runtime traces cover pinned effective terminal revocation and hostile future-effective refusal. This is not a refinement proof; cryptography, trusted time, publication delivery, and durable storage remain acceptance roots."
+        }
       ],
       "assumptions": ["the revoker key pin is current", "the verifier's trusted clock is within the relying party's tolerance when evaluating a future-effective revocation"],
       "exclusions": ["withheld revocation publications require external transparency or availability controls", "current non-revocation requires a separately authenticated and freshness-bounded status source"],
@@ -603,15 +614,20 @@
     {
       "claim_id": "ambiguous-effect-is-never-auto-retried",
       "statement": "After an external executor is invoked, an exception is treated as an indeterminate effect and the approval is consumed or frozen rather than made reusable.",
-      "acceptance_roots": ["the gate's durable consumption store"],
+      "acceptance_roots": [
+        "the gate's durable consumption store",
+        "the Proposal-to-Effect consequence-attempt store and relying-party-pinned provider-evidence verifier"
+      ],
       "enforcement_path": [
         { "language": "javascript", "file": "packages/gate/src/index.ts", "symbol": "createGate", "exported": true },
         { "language": "javascript", "file": "packages/gate/src/aec-execution.ts", "symbol": "createAECExecutionGate", "exported": true },
+        { "language": "javascript", "file": "packages/gate/src/proposal-to-effect.ts", "symbol": "createProposalToEffect", "exported": true },
         { "language": "javascript", "file": "packages/gate/src/store.ts", "symbol": "createDurableConsumptionStore", "exported": true }
       ],
       "implementations": [
         { "language": "javascript", "file": "packages/gate/src/index.ts", "export": "createGate" },
-        { "language": "javascript", "file": "packages/gate/src/aec-execution.ts", "export": "createAECExecutionGate" }
+        { "language": "javascript", "file": "packages/gate/src/aec-execution.ts", "export": "createAECExecutionGate" },
+        { "language": "javascript", "file": "packages/gate/src/proposal-to-effect.ts", "export": "createProposalToEffect" }
       ],
       "language_coverage": {
         "javascript": { "status": "covered", "evidence": "packages/gate/gate.test.js" },
@@ -626,12 +642,30 @@
         { "file": "packages/gate/gate.test.js", "title": "run() commits a successful effect and permanently refuses replay", "runner": "node-test" },
         { "file": "packages/gate/gate.test.js", "title": "run() consumes an indeterminate attempt when the executor throws", "runner": "node-test" },
         { "file": "tests/aec-execution-gate.test.ts", "title": "executes a Class-A chain once and refuses replay", "runner": "vitest" },
-        { "file": "tests/aec-execution-gate.test.ts", "title": "burns an indeterminate authorization after the effect starts", "runner": "vitest" }
+        { "file": "tests/aec-execution-gate.test.ts", "title": "burns an indeterminate authorization after the effect starts", "runner": "vitest" },
+        { "file": "packages/gate/proposal-to-effect.test.js", "title": "indeterminate effect freezes replay until authenticated provider reconciliation", "runner": "node-test" },
+        { "file": "packages/gate/proposal-to-effect.test.js", "title": "authenticated NOT_COMMITTED reconciliation permits one explicit retry", "runner": "node-test" }
       ],
       "formal": [
-        { "status": "partial", "model": "formal/tamarin/ep_reliance_composed.spthy", "runner": "formal/tamarin/run-composed.sh", "lemma": "injective_execution_with_consumption", "result_evidence": "formal/tamarin/results/ep_reliance_composed.summary.txt", "scope": "The composed lemma proves injective checked execution but does not model an external system whose effect succeeds before its response is lost." }
+        { "status": "partial", "model": "formal/tamarin/ep_reliance_composed.spthy", "runner": "formal/tamarin/run-composed.sh", "lemma": "injective_execution_with_consumption", "result_evidence": "formal/tamarin/results/ep_reliance_composed.summary.txt", "scope": "The composed lemma proves injective checked execution but does not model an external system whose effect succeeds before its response is lost." },
+        {
+          "status": "partial",
+          "method": "bounded_tla_model_checking",
+          "model": "formal/ep_consequence_lifecycle.tla",
+          "runner": "formal/ep_consequence_lifecycle.cfg",
+          "result_evidence": "formal/results/ep-consequence-lifecycle.tlc.summary.txt",
+          "trace_evidence": "formal/runtime-traces.v1.json",
+          "trace_runner": "scripts/check-formal-runtime-traces.mjs",
+          "refinement_evidence": "formal/results/formal-runtime-refinement.v1.json",
+          "obligations": ["InvokeAtMostOnce", "AuthenticatedExactReconciliation", "TerminalEffectSound", "NoBlindReplayWhileIndeterminate"],
+          "scope": "Bounded same-team composed lifecycle model and selected runtime traces cover response loss, indeterminate fencing, blind-replay refusal, and authenticated exact reconciliation. This is not a refinement proof; provider truth, cryptography, storage durability, and arbitrary concurrency remain acceptance roots."
+        }
       ],
-      "assumptions": ["the guarded effect is invoked only through gate.run or the AEC execution gate run method", "the durable backend remains fail-closed"],
+      "assumptions": [
+        "the guarded effect is invoked only through gate.run, the AEC execution gate run method, or the Proposal-to-Effect controller",
+        "provider reconciliation is accepted only through a relying-party-pinned verifier bound to the same tenant, operation, attempt, CAID, action digest, and effect digest",
+        "the durable backend remains fail-closed"
+      ],
       "exclusions": ["the protocol cannot infer whether an unavailable external system applied an effect"],
       "release_artifacts": ["gate-sdk", "security-evidence"]
     },
@@ -669,7 +703,18 @@
         }
       ],
       "formal": [
-        { "status": "not_modeled", "gap": "TLA+, Alloy, and Tamarin do not model this SQL-backed witness-stream state machine; monotonic advance, conflict poisoning, and post-conflict refusal are executable properties." }
+        {
+          "status": "partial",
+          "method": "bounded_tla_model_checking",
+          "model": "formal/ep_revocation_witness.tla",
+          "runner": "formal/ep_revocation_witness.cfg",
+          "result_evidence": "formal/results/ep-revocation-witness.tlc.summary.txt",
+          "trace_evidence": "formal/runtime-traces.v1.json",
+          "trace_runner": "scripts/check-formal-runtime-traces.mjs",
+          "refinement_evidence": "formal/results/formal-runtime-refinement.v1.json",
+          "obligations": ["WitnessHeadSound", "PoisonEvidenceSound", "PoisonedStreamClosed", "WitnessPoisonIrreversible", "PoisonedWitnessHeadImmutable", "PoisonedStreamCannotRestoreAcceptance"],
+          "scope": "Bounded same-team model and selected runtime traces cover monotonic witness heads, same-sequence equivocation, permanent poisoning, and post-conflict refusal. This is not a refinement proof; signature verdicts, trusted time, independent operation, and database durability remain acceptance roots."
+        }
       ],
       "assumptions": ["the production store linearizes advancement for one exact binary stream identifier", "the witness signing key and capture point are provisioned independently and the signed observation body commits to the action digest", "operators replace a poisoned stream only by provisioning and pinning a new stream identity"],
       "exclusions": ["a passive witness proves observation, not authorization, enforcement, physical execution, or sensor truth", "the protocol cannot distinguish benign witness failure from malicious equivocation after a conflict"],
@@ -1004,7 +1049,18 @@
         }
       ],
       "formal": [
-        { "status": "not_modeled", "gap": "The six-leg frontier-science profile, closed adapter schemas, and executor effect statement are executable but not represented in the current symbolic models." }
+        {
+          "status": "partial",
+          "method": "bounded_tla_model_checking",
+          "model": "formal/ep_effect_profiles.tla",
+          "runner": "formal/ep_effect_profiles.cfg",
+          "result_evidence": "formal/results/ep-effect-profiles.tlc.summary.txt",
+          "trace_evidence": "formal/runtime-traces.v1.json",
+          "trace_runner": "scripts/check-formal-runtime-traces.mjs",
+          "refinement_evidence": "formal/results/formal-runtime-refinement.v1.json",
+          "obligations": ["ModelToMatterSixLegClearance", "ModelToMatterExactCaid", "ModelToMatterSingleConsumption"],
+          "scope": "Bounded same-team model and selected runtime traces cover six exact evidence legs, exact CAID binding, mismatch refusal, and one-time clearance consumption. This is not a refinement proof; adapter truth, cryptography, executor effect truth, and durable storage remain acceptance roots."
+        }
       ],
       "assumptions": [
         "the relying party's profile and issuer pins are authentic and correctly configured",
@@ -1094,8 +1150,16 @@
       ],
       "formal": [
         {
-          "status": "not_modeled",
-          "gap": "The AEC acceptance-profile composition is outside the Tamarin/TLA+ models; it is covered by cross-language real-crypto vectors and per-port unit/property tests."
+          "status": "partial",
+          "method": "bounded_tla_model_checking",
+          "model": "formal/ep_effect_profiles.tla",
+          "runner": "formal/ep_effect_profiles.cfg",
+          "result_evidence": "formal/results/ep-effect-profiles.tlc.summary.txt",
+          "trace_evidence": "formal/runtime-traces.v1.json",
+          "trace_runner": "scripts/check-formal-runtime-traces.mjs",
+          "refinement_evidence": "formal/results/formal-runtime-refinement.v1.json",
+          "obligations": ["AecRoleNonSubstitution"],
+          "scope": "Bounded same-team model and selected runtime traces cover exact AEC role mapping and substitution refusal. This is not a refinement proof; cryptographic verification, evidence-leg issuer truth, and arbitrary role cardinality remain acceptance roots."
         }
       ],
       "assumptions": [
@@ -1346,7 +1410,18 @@
         }
       ],
       "formal": [
-        { "status": "not_modeled", "gap": "The mixed-decision quorum projection, tenant-scoped operation key, executor-key rotation lock, retained evidence, and indeterminate reconciliation state machine are executable contracts but are not represented together in the current TLA+, Alloy, or Tamarin models." }
+        {
+          "status": "partial",
+          "method": "bounded_tla_model_checking",
+          "model": "formal/ep_effect_profiles.tla",
+          "runner": "formal/ep_effect_profiles.cfg",
+          "result_evidence": "formal/results/ep-effect-profiles.tlc.summary.txt",
+          "trace_evidence": "formal/runtime-traces.v1.json",
+          "trace_runner": "scripts/check-formal-runtime-traces.mjs",
+          "refinement_evidence": "formal/results/formal-runtime-refinement.v1.json",
+          "obligations": ["MobileExactTenantExecutor", "MobileTimeoutFence", "MobileAuthenticatedReconciliation"],
+          "scope": "Bounded same-team model and selected runtime traces cover exact tenant/executor binding, one provider invocation, timeout fencing, replay refusal, and authenticated reconciliation. This is not a refinement proof; platform identity, provider truth, durable storage, and arbitrary quorum shapes remain acceptance roots."
+        }
       ],
       "assumptions": [
         "all consequential provider calls are mediated by the consumption endpoint and no bypass can mutate the protected system",
@@ -1445,7 +1520,18 @@
         { "file": "packages/mobile/enrollment.test.js", "title": "refuses enrollment when the agency caller is absent or not bound to the approver", "runner": "node-test" }
       ],
       "formal": [
-        { "status": "not_modeled", "gap": "Native passkey registration, platform-key enrollment, adapter contracts, and atomic directory-plus-audit persistence are executable properties not represented in the current formal models." }
+        {
+          "status": "partial",
+          "method": "bounded_tla_model_checking",
+          "model": "formal/ep_effect_profiles.tla",
+          "runner": "formal/ep_effect_profiles.cfg",
+          "result_evidence": "formal/results/ep-effect-profiles.tlc.summary.txt",
+          "trace_evidence": "formal/runtime-traces.v1.json",
+          "trace_runner": "scripts/check-formal-runtime-traces.mjs",
+          "refinement_evidence": "formal/results/formal-runtime-refinement.v1.json",
+          "obligations": ["MobileEnrollmentRequiresBothRows", "MobileEnrollmentActivatesAtMostOnce"],
+          "scope": "Bounded same-team model and selected runtime traces cover separate verified WebAuthn and platform rows, activation only after both rows, and at-most-once activation. This is not a refinement proof; native attestation, biometric ceremony, directory integrity, and transaction durability remain acceptance roots."
+        }
       ],
       "assumptions": [
         "the injected WebAuthn adapter performs full registration attestation verification and returns the authentic P-256 SPKI",
@@ -1508,7 +1594,18 @@
         }
       ],
       "formal": [
-        { "status": "not_modeled", "gap": "The exact GRACE mobile quorum, envelope arithmetic, owner-fenced dispatch, independent meter composition, Action State encoding, and one-time settlement path are executable but are not represented as one property in the current TLA+, Alloy, or Tamarin models." }
+        {
+          "status": "partial",
+          "method": "bounded_tla_model_checking",
+          "model": "formal/ep_effect_profiles.tla",
+          "runner": "formal/ep_effect_profiles.cfg",
+          "result_evidence": "formal/results/ep-effect-profiles.tlc.summary.txt",
+          "trace_evidence": "formal/runtime-traces.v1.json",
+          "trace_runner": "scripts/check-formal-runtime-traces.mjs",
+          "refinement_evidence": "formal/results/formal-runtime-refinement.v1.json",
+          "obligations": ["GraceAuthorizedEnvelopeBeforeDispatch", "GraceMeterBeforeSettlement", "GraceSingleSettlement", "GraceSingleDispatch"],
+          "scope": "Bounded same-team model and selected runtime traces cover authorization and envelope checks before dispatch, meter evidence before settlement, timeout fencing, and single dispatch/settlement. This is not a refinement proof; meter truth, grid adapter truth, cryptography, and durable ownership fencing remain acceptance roots."
+        }
       ],
       "assumptions": [
         "every protected curtailment path is completely mediated by the execution store and configured actuator",
@@ -1601,7 +1698,18 @@
         { "file": "examples/action-escrow/scenario.test.mjs", "title": "refuses project-source context relabeling even after package rehash", "runner": "node-test" }
       ],
       "formal": [
-        { "status": "not_modeled", "gap": "The complete project-source-to-custodian composition, six-row evidence flow, amendment lifecycle, durable reservation, provider reconciliation, and external effect are executable but not represented as one TLA+, Alloy, or Tamarin model." }
+        {
+          "status": "partial",
+          "method": "bounded_tla_model_checking",
+          "model": "formal/ep_effect_profiles.tla",
+          "runner": "formal/ep_effect_profiles.cfg",
+          "result_evidence": "formal/results/ep-effect-profiles.tlc.summary.txt",
+          "trace_evidence": "formal/runtime-traces.v1.json",
+          "trace_runner": "scripts/check-formal-runtime-traces.mjs",
+          "refinement_evidence": "formal/results/formal-runtime-refinement.v1.json",
+          "obligations": ["ActionEscrowExactMilestoneRelease", "ActionEscrowSingleRelease"],
+          "scope": "Bounded same-team model and selected runtime traces cover exact milestone CAID binding, reservation before release, one release, and duplicate-release refusal. This is not a refinement proof; source-system truth, custodian/provider behavior, database durability, and the full amendment lifecycle remain acceptance roots."
+        }
       ],
       "assumptions": [
         "every release path is completely mediated by the configured licensed custodian and the custodian honors the exact provider transaction, beneficiary, amount, and idempotency contract",
