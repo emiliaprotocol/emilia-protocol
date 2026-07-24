@@ -1,0 +1,42 @@
+EP-REVOCATION-WITNESS-TLC-BOUNDED-v1
+Status: public same-team bounded model result; not independently reviewed
+Method: TLC exhaustive state exploration in the configured finite scope
+Execution date: 2026-07-24
+TLC: 2.19 (TLA+ tools v1.7.4)
+TLA+ tools JAR SHA-256: 936a262061c914694dfd669a543be24573c45d5aa0ff20a8b96b23d01e050e88
+Model SHA-256: 838434f1c8254fdce3ec201cfb30421acc4e929a1d396c77d8387e378bfd23de
+Configuration SHA-256: cfb13d21b1bf9ca00c35fb5321257af79c39f388954684564c6dbe63f5cf6110
+Runner SHA-256: cfb13d21b1bf9ca00c35fb5321257af79c39f388954684564c6dbe63f5cf6110
+
+Configuration: two targets, five witness streams varying tenant, gate, witness, and capture point independently, pinned and hostile revocation/status statements, conflicting witness heads, bounded trusted time, and bounded sequence advancement.
+Obligations: 11 state invariants and 11 temporal properties.
+Result: Model checking completed. No error has been found.
+States: 7664787 generated; 993413 distinct; 0 left on queue; complete depth 6.
+
+Verified obligations:
+  ModelShape (TLC finite scope): verified
+  TypeInvariant (TLC finite scope): verified
+  TerminalRevocationStateSound (TLC finite scope): verified
+  TerminalRevocationDoesNotAgeOut (TLC finite scope): verified
+  FreshStatusRelianceSound (TLC finite scope): verified
+  TerminalRevocationOverridesStatus (TLC finite scope): verified
+  WitnessHeadSound (TLC finite scope): verified
+  PoisonEvidenceSound (TLC finite scope): verified
+  PoisonIrreversibilityState (TLC finite scope): verified
+  PoisonedStreamClosed (TLC finite scope): verified
+  AdversaryObservationsTyped (TLC finite scope): verified
+  TrustedTimeMonotonic (TLC finite scope): verified
+  TerminalRevocationIrreversible (TLC finite scope): verified
+  RefusedRevocationIsInert (TLC finite scope): verified
+  StatusRefusalCannotInstallEvidence (TLC finite scope): verified
+  WitnessSequenceMonotonic (TLC finite scope): verified
+  WitnessAdvanceAuthenticatedFreshPinned (TLC finite scope): verified
+  WitnessRefusalCannotAdvance (TLC finite scope): verified
+  WitnessPoisonIrreversible (TLC finite scope): verified
+  PoisonedWitnessHeadImmutable (TLC finite scope): verified
+  PoisonedStreamCannotRestoreAcceptance (TLC finite scope): verified
+  ExactWitnessStreamIsolation (TLC finite scope): verified
+
+Scope: bounded same-team model of pinned effective revocation, fresh signed status, monotonic witness heads, equivocation poisoning, permanent post-conflict refusal, and cross-stream isolation.
+Assumptions: signature and trust-root verdicts, trusted time, statement parsing, and durable publication are represented as finite authenticated inputs.
+Exclusions: arbitrary targets/streams/time, cryptographic internals, network delivery, storage crash semantics, independent witnesses, and complete implementation refinement. This is not a refinement proof.

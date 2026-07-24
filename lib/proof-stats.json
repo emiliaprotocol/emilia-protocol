@@ -1,13 +1,23 @@
 {
-  "generatedAt": "2026-07-24T06:37:27.953Z",
+  "generatedAt": "2026-07-24T08:38:57.563Z",
   "tests": {
-    "total": 7689,
-    "files": 415,
+    "total": 7696,
+    "files": 416,
     "policy": "all platform-applicable cases must pass; platform-specific cases may skip"
   },
   "tla": {
     "invariants": 26,
     "checker": "TLC 2.19"
+  },
+  "formalRefinement": {
+    "method": "bounded_selected_trace_refinement",
+    "models": 3,
+    "claims": 9,
+    "traces": 20,
+    "soundTraces": 11,
+    "unsafeMutationsDetected": 9,
+    "evidenceSha256": "fe692a7d6ce6d8c89dbfcae23028c9255a72a246e787d2b4efaa42e73edbf6a3",
+    "boundary": "selected traces; not a mechanized implementation refinement proof"
   },
   "alloy": {
     "facts": 35,
@@ -24,8 +34,8 @@
   "securityCase": {
     "status": "passed",
     "claims": 33,
-    "evidenceFiles": 179,
-    "evidenceBundleSha256": "c80650bc0441d40ed62fb2ed99c3d0cddbf85b687d56acd9381a347c7e33985f"
+    "evidenceFiles": 193,
+    "evidenceBundleSha256": "8c7667379b8ad7b0e9ecc1c8485c5b3e1934fba769b874831031e105ad8785e2"
   },
   "conformance": {
     "suites": 21,

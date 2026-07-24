@@ -22,8 +22,8 @@ describe('public engineering evidence surface', () => {
     const page = read('app/proof/page.js');
     const layout = read('app/proof/layout.js');
 
-    expect(page).toContain("proofStats from '@/lib/proof-stats.json'");
-    expect(page).toContain("claimSource from '@/security/claims.v1.json'");
+    expect(page).toMatch(/proofStats from ['"]@\/lib\/proof-stats\.json['"]/);
+    expect(page).toMatch(/claimSource from ['"]@\/security\/claims\.v1\.json['"]/);
     expect(page).toContain('Security claims you can execute, not architecture you have to trust.');
     expect(page).toContain('Hostile-network composition');
     expect(page).toContain('Stateful enforcement under faults');

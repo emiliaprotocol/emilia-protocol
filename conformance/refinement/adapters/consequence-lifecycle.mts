@@ -110,7 +110,7 @@ function registryEntry(
     status: "active",
     definition,
   };
-  entry.definition_digest = registryEntryDigest(entryId, entry);
+  entry.definition_digest = registryEntryDigest(entryId, entry as any);
   return entry;
 }
 
@@ -175,7 +175,10 @@ function createAebFixture(action: AnyRecord) {
       omitted_nonmaterial_fields: [],
     },
   };
-  profile.profile_digest = mappingProfileDigest("payment-release", profile);
+  profile.profile_digest = mappingProfileDigest(
+    "payment-release",
+    profile as any,
+  );
   const entries: AnyRecord = {
     "mapping:payment-release": registryEntry(
       "mapping:payment-release",
@@ -196,14 +199,14 @@ function createAebFixture(action: AnyRecord) {
     epoch: 1,
     entries,
   };
-  registry.registry_digest = unifiedRegistryDigest(registry);
+  registry.registry_digest = unifiedRegistryDigest(registry as any);
   const pin: AnyRecord = {
     version: "1",
     trust_roots: ["root:formal"],
     config: { mode: "offline" },
     max_status_age_sec: 300,
   };
-  pin.config_digest = adapterPinDigest("formal:human", pin);
+  pin.config_digest = adapterPinDigest("formal:human", pin as any);
   const evaluator = crypto.generateKeyPairSync("ed25519");
   const evaluatorPublicKey = evaluator.publicKey
     .export({ type: "spki", format: "der" })
@@ -248,7 +251,7 @@ function createAebFixture(action: AnyRecord) {
     operation_id: "operation:release-1",
     consumption_nonce: proposalToEffectConsumptionNonce(
       "operation:release-1",
-      pinnedConfigDigest(config),
+      pinnedConfigDigest(config as any),
     ),
     initiator_id: "agent:buyer",
     executor_id: SERVER_CONTEXT.executor_id,
@@ -269,7 +272,7 @@ function createAebFixture(action: AnyRecord) {
       key_id: "eval:formal",
       private_key: evaluator.privateKey,
     },
-  }).record;
+  } as any).record;
   return {
     adapters: { "formal:human": adapter },
     artifacts: { "artifact:human-approval": artifact },
@@ -501,7 +504,7 @@ function createRuntimeFixture() {
         aeb_requirement_ref: "requirement:proposal-to-effect",
         ttl_sec: 300,
         canonicalize_action(input: unknown) {
-          return { action: structuredClone(input), caid: CAID };
+          return { action: structuredClone(input) as AnyRecord, caid: CAID };
         },
       },
     },
@@ -557,7 +560,7 @@ function createRuntimeFixture() {
           operation_id: evidence?.operation_id,
           caid: evidence?.caid,
           action_digest: evidence?.action_digest,
-          evidence_digest: valid ? derivedEffectDigest : null,
+          evidence_digest: valid ? derivedEffectDigest : undefined,
           reason,
         };
       },

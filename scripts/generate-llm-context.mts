@@ -182,6 +182,8 @@ const context: any = {
     formal: {
       tla_invariants: proofStats.tla.invariants,
       tla_checker: proofStats.tla.checker,
+      tla_inventory_scope:
+        'established core model set; selected-trace refinement models are reported separately',
       alloy_facts: proofStats.alloy.facts,
       alloy_assertions: proofStats.alloy.assertions,
       alloy_version: proofStats.alloy.version,
@@ -298,7 +300,7 @@ function renderFull(web: boolean = false): string {
   lines.push(`- Cross-language conformance: ${conformance.totals.suites} suites, ${conformance.totals.vectors} current vectors, ${conformance.totals.implementations} same-team ports (JavaScript, Python, Go). This is consistency evidence, not implementation independence.`);
   lines.push(`- External Rust interoperability: ${external.conformance.status} on the time-pinned ${external.conformance.vectors}-vector set evaluated ${external.conformance.evaluated_at}; the current bundle has ${conformance.totals.vectors}. The same pinned implementation passes ${hostilityCases} hostility cases. Strict clean-room construction acceptance: ${external.construction_evidence.strict_clean_room_acceptance}.`);
   lines.push(`- Security case: ${securityCase.claim_count} executable claims, ${securityCase.evidence_file_count} evidence files, execution ${securityCase.execution.status}; bundle sha256:${securityCase.evidence_bundle_sha256}.`);
-  lines.push(`- Formal inventory: ${proofStats.tla.invariants} TLA+ invariants, ${proofStats.alloy.facts} Alloy facts, ${proofStats.alloy.assertions} Alloy assertions. Formal scope and exclusions remain claim-specific.`);
+  lines.push(`- Core formal inventory: ${proofStats.tla.invariants} TLA+ invariants, ${proofStats.alloy.facts} Alloy facts, ${proofStats.alloy.assertions} Alloy assertions. The selected-trace models are reported separately below; formal scope and exclusions remain claim-specific.`);
   lines.push(`- Formal-to-runtime selected traces: ${proofStats.formalRefinement.traces} content-addressed traces across ${proofStats.formalRefinement.models} bounded models and ${proofStats.formalRefinement.claims} public claims; ${proofStats.formalRefinement.unsafeMutationsDetected} deliberately unsafe mutations are detected by both layers. Boundary: ${proofStats.formalRefinement.boundary}.`);
   lines.push(`- Composed symbolic model: ${proofStats.tamarin.verifiedObligations} Tamarin obligations verified across challenge, CAID, two approvals, issuer and authority pins, registry view, revocation, consumption, and execution; ${proofStats.tamarin.deliberatelyUnsafeCounterexamples} deliberately unsafe variants are falsified with attack traces.`);
   lines.push(`- Red-team catalog: ${proofStats.redTeamCases} cases.`);

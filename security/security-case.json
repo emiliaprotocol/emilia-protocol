@@ -1,9 +1,9 @@
 {
   "@version": "EP-SECURITY-CASE-RESOLVED-v2",
   "source": "security/claims.v1.json",
-  "evidence_bundle_sha256": "c80650bc0441d40ed62fb2ed99c3d0cddbf85b687d56acd9381a347c7e33985f",
+  "evidence_bundle_sha256": "8c7667379b8ad7b0e9ecc1c8485c5b3e1934fba769b874831031e105ad8785e2",
   "claim_count": 33,
-  "evidence_file_count": 179,
+  "evidence_file_count": 193,
   "execution": {
     "required": true,
     "status": "passed",
@@ -43,6 +43,24 @@
           "ReservationPrecedesExternalEffect",
           "TerminalStateIsImmutable"
         ],
+        "result": "passed"
+      },
+      {
+        "runner": "bounded-selected-trace-refinement",
+        "file": "scripts/check-formal-runtime-traces.mjs",
+        "claims": [
+          "action-escrow-releases-one-exact-milestone-once",
+          "aec-role-substitution-refused",
+          "ambiguous-effect-is-never-auto-retried",
+          "grace-curtailment-is-authorized-measured-and-single-use",
+          "mobile-action-continuity-is-tenant-and-executor-bound",
+          "mobile-enrollment-requires-two-verified-rows",
+          "model-to-matter-clearance-is-exact-and-single-use",
+          "network-witness-equivocation-permanently-poisons-stream",
+          "revocation-is-pinned-effective-and-terminal"
+        ],
+        "traces": 20,
+        "unsafe_mutations_detected": 9,
         "result": "passed"
       },
       {
@@ -294,6 +312,15 @@
         "titles": [
           "accepts a higher witness sequence before any conflict",
           "permanently refuses every later sequence after same-sequence equivocation"
+        ],
+        "result": "passed"
+      },
+      {
+        "runner": "node-test",
+        "file": "packages/gate/proposal-to-effect.test.js",
+        "titles": [
+          "authenticated NOT_COMMITTED reconciliation permits one explicit retry",
+          "indeterminate effect freezes replay until authenticated provider reconciliation"
         ],
         "result": "passed"
       },
@@ -755,8 +782,8 @@
     "security-evidence": {
       "kind": "content-addressed-evidence-bundle",
       "filename": "security-case-evidence.v1",
-      "sha256": "c80650bc0441d40ed62fb2ed99c3d0cddbf85b687d56acd9381a347c7e33985f",
-      "file_count": 179
+      "sha256": "8c7667379b8ad7b0e9ecc1c8485c5b3e1934fba769b874831031e105ad8785e2",
+      "file_count": 193
     },
     "verify-sdk": {
       "kind": "npm-tarball",
@@ -919,7 +946,7 @@
         },
         {
           "artifact_id": "security-evidence",
-          "sha256": "c80650bc0441d40ed62fb2ed99c3d0cddbf85b687d56acd9381a347c7e33985f"
+          "sha256": "8c7667379b8ad7b0e9ecc1c8485c5b3e1934fba769b874831031e105ad8785e2"
         }
       ]
     },
@@ -1182,7 +1209,7 @@
         },
         {
           "artifact_id": "security-evidence",
-          "sha256": "c80650bc0441d40ed62fb2ed99c3d0cddbf85b687d56acd9381a347c7e33985f"
+          "sha256": "8c7667379b8ad7b0e9ecc1c8485c5b3e1934fba769b874831031e105ad8785e2"
         }
       ]
     },
@@ -1290,7 +1317,7 @@
         },
         {
           "artifact_id": "security-evidence",
-          "sha256": "c80650bc0441d40ed62fb2ed99c3d0cddbf85b687d56acd9381a347c7e33985f"
+          "sha256": "8c7667379b8ad7b0e9ecc1c8485c5b3e1934fba769b874831031e105ad8785e2"
         }
       ]
     },
@@ -1409,7 +1436,7 @@
         },
         {
           "artifact_id": "security-evidence",
-          "sha256": "c80650bc0441d40ed62fb2ed99c3d0cddbf85b687d56acd9381a347c7e33985f"
+          "sha256": "8c7667379b8ad7b0e9ecc1c8485c5b3e1934fba769b874831031e105ad8785e2"
         }
       ]
     },
@@ -1531,7 +1558,7 @@
         },
         {
           "artifact_id": "security-evidence",
-          "sha256": "c80650bc0441d40ed62fb2ed99c3d0cddbf85b687d56acd9381a347c7e33985f"
+          "sha256": "8c7667379b8ad7b0e9ecc1c8485c5b3e1934fba769b874831031e105ad8785e2"
         }
       ]
     },
@@ -1675,7 +1702,7 @@
       "release_artifact_hashes": [
         {
           "artifact_id": "security-evidence",
-          "sha256": "c80650bc0441d40ed62fb2ed99c3d0cddbf85b687d56acd9381a347c7e33985f"
+          "sha256": "8c7667379b8ad7b0e9ecc1c8485c5b3e1934fba769b874831031e105ad8785e2"
         }
       ]
     },
@@ -1852,7 +1879,7 @@
         },
         {
           "artifact_id": "security-evidence",
-          "sha256": "c80650bc0441d40ed62fb2ed99c3d0cddbf85b687d56acd9381a347c7e33985f"
+          "sha256": "8c7667379b8ad7b0e9ecc1c8485c5b3e1934fba769b874831031e105ad8785e2"
         }
       ]
     },
@@ -1998,7 +2025,7 @@
         },
         {
           "artifact_id": "security-evidence",
-          "sha256": "c80650bc0441d40ed62fb2ed99c3d0cddbf85b687d56acd9381a347c7e33985f"
+          "sha256": "8c7667379b8ad7b0e9ecc1c8485c5b3e1934fba769b874831031e105ad8785e2"
         }
       ]
     },
@@ -2134,8 +2161,21 @@
       ],
       "formal": [
         {
-          "status": "not_modeled",
-          "gap": "Wall-clock freshness and revocation publication are outside the current symbolic models."
+          "status": "partial",
+          "method": "bounded_tla_model_checking",
+          "model": "formal/ep_revocation_witness.tla",
+          "runner": "formal/ep_revocation_witness.cfg",
+          "result_evidence": "formal/results/ep-revocation-witness.tlc.summary.txt",
+          "trace_evidence": "formal/runtime-traces.v1.json",
+          "trace_runner": "scripts/check-formal-runtime-traces.mjs",
+          "refinement_evidence": "formal/results/formal-runtime-refinement.v1.json",
+          "obligations": [
+            "TerminalRevocationStateSound",
+            "TerminalRevocationDoesNotAgeOut",
+            "TerminalRevocationIrreversible",
+            "RefusedRevocationIsInert"
+          ],
+          "scope": "Bounded same-team model and selected runtime traces cover pinned effective terminal revocation and hostile future-effective refusal. This is not a refinement proof; cryptography, trusted time, publication delivery, and durable storage remain acceptance roots."
         }
       ],
       "assumptions": [
@@ -2157,7 +2197,7 @@
         },
         {
           "artifact_id": "security-evidence",
-          "sha256": "c80650bc0441d40ed62fb2ed99c3d0cddbf85b687d56acd9381a347c7e33985f"
+          "sha256": "8c7667379b8ad7b0e9ecc1c8485c5b3e1934fba769b874831031e105ad8785e2"
         }
       ]
     },
@@ -2338,7 +2378,7 @@
         },
         {
           "artifact_id": "security-evidence",
-          "sha256": "c80650bc0441d40ed62fb2ed99c3d0cddbf85b687d56acd9381a347c7e33985f"
+          "sha256": "8c7667379b8ad7b0e9ecc1c8485c5b3e1934fba769b874831031e105ad8785e2"
         }
       ]
     },
@@ -2551,7 +2591,7 @@
       "release_artifact_hashes": [
         {
           "artifact_id": "security-evidence",
-          "sha256": "c80650bc0441d40ed62fb2ed99c3d0cddbf85b687d56acd9381a347c7e33985f"
+          "sha256": "8c7667379b8ad7b0e9ecc1c8485c5b3e1934fba769b874831031e105ad8785e2"
         }
       ]
     },
@@ -2660,7 +2700,7 @@
         },
         {
           "artifact_id": "security-evidence",
-          "sha256": "c80650bc0441d40ed62fb2ed99c3d0cddbf85b687d56acd9381a347c7e33985f"
+          "sha256": "8c7667379b8ad7b0e9ecc1c8485c5b3e1934fba769b874831031e105ad8785e2"
         }
       ]
     },
@@ -2792,7 +2832,7 @@
         },
         {
           "artifact_id": "security-evidence",
-          "sha256": "c80650bc0441d40ed62fb2ed99c3d0cddbf85b687d56acd9381a347c7e33985f"
+          "sha256": "8c7667379b8ad7b0e9ecc1c8485c5b3e1934fba769b874831031e105ad8785e2"
         }
       ]
     },
@@ -2899,7 +2939,7 @@
         },
         {
           "artifact_id": "security-evidence",
-          "sha256": "c80650bc0441d40ed62fb2ed99c3d0cddbf85b687d56acd9381a347c7e33985f"
+          "sha256": "8c7667379b8ad7b0e9ecc1c8485c5b3e1934fba769b874831031e105ad8785e2"
         }
       ]
     },
@@ -2907,7 +2947,8 @@
       "claim_id": "ambiguous-effect-is-never-auto-retried",
       "statement": "After an external executor is invoked, an exception is treated as an indeterminate effect and the approval is consumed or frozen rather than made reusable.",
       "acceptance_roots": [
-        "the gate's durable consumption store"
+        "the gate's durable consumption store",
+        "the Proposal-to-Effect consequence-attempt store and relying-party-pinned provider-evidence verifier"
       ],
       "enforcement_path": [
         {
@@ -2920,6 +2961,12 @@
           "language": "javascript",
           "file": "packages/gate/src/aec-execution.ts",
           "symbol": "createAECExecutionGate",
+          "exported": true
+        },
+        {
+          "language": "javascript",
+          "file": "packages/gate/src/proposal-to-effect.ts",
+          "symbol": "createProposalToEffect",
           "exported": true
         },
         {
@@ -2939,6 +2986,11 @@
           "language": "javascript",
           "file": "packages/gate/src/aec-execution.ts",
           "export": "createAECExecutionGate"
+        },
+        {
+          "language": "javascript",
+          "file": "packages/gate/src/proposal-to-effect.ts",
+          "export": "createProposalToEffect"
         }
       ],
       "language_coverage": {
@@ -2993,6 +3045,16 @@
           "file": "tests/aec-execution-gate.test.ts",
           "title": "burns an indeterminate authorization after the effect starts",
           "runner": "vitest"
+        },
+        {
+          "file": "packages/gate/proposal-to-effect.test.js",
+          "title": "indeterminate effect freezes replay until authenticated provider reconciliation",
+          "runner": "node-test"
+        },
+        {
+          "file": "packages/gate/proposal-to-effect.test.js",
+          "title": "authenticated NOT_COMMITTED reconciliation permits one explicit retry",
+          "runner": "node-test"
         }
       ],
       "formal": [
@@ -3003,10 +3065,28 @@
           "lemma": "injective_execution_with_consumption",
           "result_evidence": "formal/tamarin/results/ep_reliance_composed.summary.txt",
           "scope": "The composed lemma proves injective checked execution but does not model an external system whose effect succeeds before its response is lost."
+        },
+        {
+          "status": "partial",
+          "method": "bounded_tla_model_checking",
+          "model": "formal/ep_consequence_lifecycle.tla",
+          "runner": "formal/ep_consequence_lifecycle.cfg",
+          "result_evidence": "formal/results/ep-consequence-lifecycle.tlc.summary.txt",
+          "trace_evidence": "formal/runtime-traces.v1.json",
+          "trace_runner": "scripts/check-formal-runtime-traces.mjs",
+          "refinement_evidence": "formal/results/formal-runtime-refinement.v1.json",
+          "obligations": [
+            "InvokeAtMostOnce",
+            "AuthenticatedExactReconciliation",
+            "TerminalEffectSound",
+            "NoBlindReplayWhileIndeterminate"
+          ],
+          "scope": "Bounded same-team composed lifecycle model and selected runtime traces cover response loss, indeterminate fencing, blind-replay refusal, and authenticated exact reconciliation. This is not a refinement proof; provider truth, cryptography, storage durability, and arbitrary concurrency remain acceptance roots."
         }
       ],
       "assumptions": [
-        "the guarded effect is invoked only through gate.run or the AEC execution gate run method",
+        "the guarded effect is invoked only through gate.run, the AEC execution gate run method, or the Proposal-to-Effect controller",
+        "provider reconciliation is accepted only through a relying-party-pinned verifier bound to the same tenant, operation, attempt, CAID, action digest, and effect digest",
         "the durable backend remains fail-closed"
       ],
       "exclusions": [
@@ -3023,7 +3103,7 @@
         },
         {
           "artifact_id": "security-evidence",
-          "sha256": "c80650bc0441d40ed62fb2ed99c3d0cddbf85b687d56acd9381a347c7e33985f"
+          "sha256": "8c7667379b8ad7b0e9ecc1c8485c5b3e1934fba769b874831031e105ad8785e2"
         }
       ]
     },
@@ -3128,8 +3208,23 @@
       ],
       "formal": [
         {
-          "status": "not_modeled",
-          "gap": "TLA+, Alloy, and Tamarin do not model this SQL-backed witness-stream state machine; monotonic advance, conflict poisoning, and post-conflict refusal are executable properties."
+          "status": "partial",
+          "method": "bounded_tla_model_checking",
+          "model": "formal/ep_revocation_witness.tla",
+          "runner": "formal/ep_revocation_witness.cfg",
+          "result_evidence": "formal/results/ep-revocation-witness.tlc.summary.txt",
+          "trace_evidence": "formal/runtime-traces.v1.json",
+          "trace_runner": "scripts/check-formal-runtime-traces.mjs",
+          "refinement_evidence": "formal/results/formal-runtime-refinement.v1.json",
+          "obligations": [
+            "WitnessHeadSound",
+            "PoisonEvidenceSound",
+            "PoisonedStreamClosed",
+            "WitnessPoisonIrreversible",
+            "PoisonedWitnessHeadImmutable",
+            "PoisonedStreamCannotRestoreAcceptance"
+          ],
+          "scope": "Bounded same-team model and selected runtime traces cover monotonic witness heads, same-sequence equivocation, permanent poisoning, and post-conflict refusal. This is not a refinement proof; signature verdicts, trusted time, independent operation, and database durability remain acceptance roots."
         }
       ],
       "assumptions": [
@@ -3152,7 +3247,7 @@
         },
         {
           "artifact_id": "security-evidence",
-          "sha256": "c80650bc0441d40ed62fb2ed99c3d0cddbf85b687d56acd9381a347c7e33985f"
+          "sha256": "8c7667379b8ad7b0e9ecc1c8485c5b3e1934fba769b874831031e105ad8785e2"
         }
       ]
     },
@@ -3326,7 +3421,7 @@
         },
         {
           "artifact_id": "security-evidence",
-          "sha256": "c80650bc0441d40ed62fb2ed99c3d0cddbf85b687d56acd9381a347c7e33985f"
+          "sha256": "8c7667379b8ad7b0e9ecc1c8485c5b3e1934fba769b874831031e105ad8785e2"
         }
       ]
     },
@@ -3460,7 +3555,7 @@
       "release_artifact_hashes": [
         {
           "artifact_id": "security-evidence",
-          "sha256": "c80650bc0441d40ed62fb2ed99c3d0cddbf85b687d56acd9381a347c7e33985f"
+          "sha256": "8c7667379b8ad7b0e9ecc1c8485c5b3e1934fba769b874831031e105ad8785e2"
         }
       ]
     },
@@ -3576,7 +3671,7 @@
         },
         {
           "artifact_id": "security-evidence",
-          "sha256": "c80650bc0441d40ed62fb2ed99c3d0cddbf85b687d56acd9381a347c7e33985f"
+          "sha256": "8c7667379b8ad7b0e9ecc1c8485c5b3e1934fba769b874831031e105ad8785e2"
         }
       ]
     },
@@ -3710,7 +3805,7 @@
       "release_artifact_hashes": [
         {
           "artifact_id": "security-evidence",
-          "sha256": "c80650bc0441d40ed62fb2ed99c3d0cddbf85b687d56acd9381a347c7e33985f"
+          "sha256": "8c7667379b8ad7b0e9ecc1c8485c5b3e1934fba769b874831031e105ad8785e2"
         }
       ]
     },
@@ -3927,7 +4022,7 @@
       "release_artifact_hashes": [
         {
           "artifact_id": "security-evidence",
-          "sha256": "c80650bc0441d40ed62fb2ed99c3d0cddbf85b687d56acd9381a347c7e33985f"
+          "sha256": "8c7667379b8ad7b0e9ecc1c8485c5b3e1934fba769b874831031e105ad8785e2"
         }
       ]
     },
@@ -4137,7 +4232,7 @@
       "release_artifact_hashes": [
         {
           "artifact_id": "security-evidence",
-          "sha256": "c80650bc0441d40ed62fb2ed99c3d0cddbf85b687d56acd9381a347c7e33985f"
+          "sha256": "8c7667379b8ad7b0e9ecc1c8485c5b3e1934fba769b874831031e105ad8785e2"
         }
       ]
     },
@@ -4304,8 +4399,20 @@
       ],
       "formal": [
         {
-          "status": "not_modeled",
-          "gap": "The six-leg frontier-science profile, closed adapter schemas, and executor effect statement are executable but not represented in the current symbolic models."
+          "status": "partial",
+          "method": "bounded_tla_model_checking",
+          "model": "formal/ep_effect_profiles.tla",
+          "runner": "formal/ep_effect_profiles.cfg",
+          "result_evidence": "formal/results/ep-effect-profiles.tlc.summary.txt",
+          "trace_evidence": "formal/runtime-traces.v1.json",
+          "trace_runner": "scripts/check-formal-runtime-traces.mjs",
+          "refinement_evidence": "formal/results/formal-runtime-refinement.v1.json",
+          "obligations": [
+            "ModelToMatterSixLegClearance",
+            "ModelToMatterExactCaid",
+            "ModelToMatterSingleConsumption"
+          ],
+          "scope": "Bounded same-team model and selected runtime traces cover six exact evidence legs, exact CAID binding, mismatch refusal, and one-time clearance consumption. This is not a refinement proof; adapter truth, cryptography, executor effect truth, and durable storage remain acceptance roots."
         }
       ],
       "assumptions": [
@@ -4328,7 +4435,7 @@
       "release_artifact_hashes": [
         {
           "artifact_id": "security-evidence",
-          "sha256": "c80650bc0441d40ed62fb2ed99c3d0cddbf85b687d56acd9381a347c7e33985f"
+          "sha256": "8c7667379b8ad7b0e9ecc1c8485c5b3e1934fba769b874831031e105ad8785e2"
         }
       ]
     },
@@ -4593,8 +4700,18 @@
       ],
       "formal": [
         {
-          "status": "not_modeled",
-          "gap": "The AEC acceptance-profile composition is outside the Tamarin/TLA+ models; it is covered by cross-language real-crypto vectors and per-port unit/property tests."
+          "status": "partial",
+          "method": "bounded_tla_model_checking",
+          "model": "formal/ep_effect_profiles.tla",
+          "runner": "formal/ep_effect_profiles.cfg",
+          "result_evidence": "formal/results/ep-effect-profiles.tlc.summary.txt",
+          "trace_evidence": "formal/runtime-traces.v1.json",
+          "trace_runner": "scripts/check-formal-runtime-traces.mjs",
+          "refinement_evidence": "formal/results/formal-runtime-refinement.v1.json",
+          "obligations": [
+            "AecRoleNonSubstitution"
+          ],
+          "scope": "Bounded same-team model and selected runtime traces cover exact AEC role mapping and substitution refusal. This is not a refinement proof; cryptographic verification, evidence-leg issuer truth, and arbitrary role cardinality remain acceptance roots."
         }
       ],
       "assumptions": [
@@ -4612,7 +4729,7 @@
       "release_artifact_hashes": [
         {
           "artifact_id": "security-evidence",
-          "sha256": "c80650bc0441d40ed62fb2ed99c3d0cddbf85b687d56acd9381a347c7e33985f"
+          "sha256": "8c7667379b8ad7b0e9ecc1c8485c5b3e1934fba769b874831031e105ad8785e2"
         }
       ]
     },
@@ -4824,7 +4941,7 @@
         },
         {
           "artifact_id": "security-evidence",
-          "sha256": "c80650bc0441d40ed62fb2ed99c3d0cddbf85b687d56acd9381a347c7e33985f"
+          "sha256": "8c7667379b8ad7b0e9ecc1c8485c5b3e1934fba769b874831031e105ad8785e2"
         }
       ]
     },
@@ -4973,7 +5090,7 @@
         },
         {
           "artifact_id": "security-evidence",
-          "sha256": "c80650bc0441d40ed62fb2ed99c3d0cddbf85b687d56acd9381a347c7e33985f"
+          "sha256": "8c7667379b8ad7b0e9ecc1c8485c5b3e1934fba769b874831031e105ad8785e2"
         }
       ]
     },
@@ -5152,7 +5269,7 @@
         },
         {
           "artifact_id": "security-evidence",
-          "sha256": "c80650bc0441d40ed62fb2ed99c3d0cddbf85b687d56acd9381a347c7e33985f"
+          "sha256": "8c7667379b8ad7b0e9ecc1c8485c5b3e1934fba769b874831031e105ad8785e2"
         }
       ]
     },
@@ -5275,8 +5392,20 @@
       ],
       "formal": [
         {
-          "status": "not_modeled",
-          "gap": "The mixed-decision quorum projection, tenant-scoped operation key, executor-key rotation lock, retained evidence, and indeterminate reconciliation state machine are executable contracts but are not represented together in the current TLA+, Alloy, or Tamarin models."
+          "status": "partial",
+          "method": "bounded_tla_model_checking",
+          "model": "formal/ep_effect_profiles.tla",
+          "runner": "formal/ep_effect_profiles.cfg",
+          "result_evidence": "formal/results/ep-effect-profiles.tlc.summary.txt",
+          "trace_evidence": "formal/runtime-traces.v1.json",
+          "trace_runner": "scripts/check-formal-runtime-traces.mjs",
+          "refinement_evidence": "formal/results/formal-runtime-refinement.v1.json",
+          "obligations": [
+            "MobileExactTenantExecutor",
+            "MobileTimeoutFence",
+            "MobileAuthenticatedReconciliation"
+          ],
+          "scope": "Bounded same-team model and selected runtime traces cover exact tenant/executor binding, one provider invocation, timeout fencing, replay refusal, and authenticated reconciliation. This is not a refinement proof; platform identity, provider truth, durable storage, and arbitrary quorum shapes remain acceptance roots."
         }
       ],
       "assumptions": [
@@ -5302,7 +5431,7 @@
         },
         {
           "artifact_id": "security-evidence",
-          "sha256": "c80650bc0441d40ed62fb2ed99c3d0cddbf85b687d56acd9381a347c7e33985f"
+          "sha256": "8c7667379b8ad7b0e9ecc1c8485c5b3e1934fba769b874831031e105ad8785e2"
         }
       ]
     },
@@ -5452,7 +5581,7 @@
         },
         {
           "artifact_id": "security-evidence",
-          "sha256": "c80650bc0441d40ed62fb2ed99c3d0cddbf85b687d56acd9381a347c7e33985f"
+          "sha256": "8c7667379b8ad7b0e9ecc1c8485c5b3e1934fba769b874831031e105ad8785e2"
         }
       ]
     },
@@ -5546,8 +5675,19 @@
       ],
       "formal": [
         {
-          "status": "not_modeled",
-          "gap": "Native passkey registration, platform-key enrollment, adapter contracts, and atomic directory-plus-audit persistence are executable properties not represented in the current formal models."
+          "status": "partial",
+          "method": "bounded_tla_model_checking",
+          "model": "formal/ep_effect_profiles.tla",
+          "runner": "formal/ep_effect_profiles.cfg",
+          "result_evidence": "formal/results/ep-effect-profiles.tlc.summary.txt",
+          "trace_evidence": "formal/runtime-traces.v1.json",
+          "trace_runner": "scripts/check-formal-runtime-traces.mjs",
+          "refinement_evidence": "formal/results/formal-runtime-refinement.v1.json",
+          "obligations": [
+            "MobileEnrollmentRequiresBothRows",
+            "MobileEnrollmentActivatesAtMostOnce"
+          ],
+          "scope": "Bounded same-team model and selected runtime traces cover separate verified WebAuthn and platform rows, activation only after both rows, and at-most-once activation. This is not a refinement proof; native attestation, biometric ceremony, directory integrity, and transaction durability remain acceptance roots."
         }
       ],
       "assumptions": [
@@ -5571,7 +5711,7 @@
         },
         {
           "artifact_id": "security-evidence",
-          "sha256": "c80650bc0441d40ed62fb2ed99c3d0cddbf85b687d56acd9381a347c7e33985f"
+          "sha256": "8c7667379b8ad7b0e9ecc1c8485c5b3e1934fba769b874831031e105ad8785e2"
         }
       ]
     },
@@ -5720,8 +5860,21 @@
       ],
       "formal": [
         {
-          "status": "not_modeled",
-          "gap": "The exact GRACE mobile quorum, envelope arithmetic, owner-fenced dispatch, independent meter composition, Action State encoding, and one-time settlement path are executable but are not represented as one property in the current TLA+, Alloy, or Tamarin models."
+          "status": "partial",
+          "method": "bounded_tla_model_checking",
+          "model": "formal/ep_effect_profiles.tla",
+          "runner": "formal/ep_effect_profiles.cfg",
+          "result_evidence": "formal/results/ep-effect-profiles.tlc.summary.txt",
+          "trace_evidence": "formal/runtime-traces.v1.json",
+          "trace_runner": "scripts/check-formal-runtime-traces.mjs",
+          "refinement_evidence": "formal/results/formal-runtime-refinement.v1.json",
+          "obligations": [
+            "GraceAuthorizedEnvelopeBeforeDispatch",
+            "GraceMeterBeforeSettlement",
+            "GraceSingleSettlement",
+            "GraceSingleDispatch"
+          ],
+          "scope": "Bounded same-team model and selected runtime traces cover authorization and envelope checks before dispatch, meter evidence before settlement, timeout fencing, and single dispatch/settlement. This is not a refinement proof; meter truth, grid adapter truth, cryptography, and durable ownership fencing remain acceptance roots."
         }
       ],
       "assumptions": [
@@ -5742,7 +5895,7 @@
       "release_artifact_hashes": [
         {
           "artifact_id": "security-evidence",
-          "sha256": "c80650bc0441d40ed62fb2ed99c3d0cddbf85b687d56acd9381a347c7e33985f"
+          "sha256": "8c7667379b8ad7b0e9ecc1c8485c5b3e1934fba769b874831031e105ad8785e2"
         }
       ]
     },
@@ -6103,8 +6256,19 @@
       ],
       "formal": [
         {
-          "status": "not_modeled",
-          "gap": "The complete project-source-to-custodian composition, six-row evidence flow, amendment lifecycle, durable reservation, provider reconciliation, and external effect are executable but not represented as one TLA+, Alloy, or Tamarin model."
+          "status": "partial",
+          "method": "bounded_tla_model_checking",
+          "model": "formal/ep_effect_profiles.tla",
+          "runner": "formal/ep_effect_profiles.cfg",
+          "result_evidence": "formal/results/ep-effect-profiles.tlc.summary.txt",
+          "trace_evidence": "formal/runtime-traces.v1.json",
+          "trace_runner": "scripts/check-formal-runtime-traces.mjs",
+          "refinement_evidence": "formal/results/formal-runtime-refinement.v1.json",
+          "obligations": [
+            "ActionEscrowExactMilestoneRelease",
+            "ActionEscrowSingleRelease"
+          ],
+          "scope": "Bounded same-team model and selected runtime traces cover exact milestone CAID binding, reservation before release, one release, and duplicate-release refusal. This is not a refinement proof; source-system truth, custodian/provider behavior, database durability, and the full amendment lifecycle remain acceptance roots."
         }
       ],
       "assumptions": [
@@ -6134,7 +6298,7 @@
         },
         {
           "artifact_id": "security-evidence",
-          "sha256": "c80650bc0441d40ed62fb2ed99c3d0cddbf85b687d56acd9381a347c7e33985f"
+          "sha256": "8c7667379b8ad7b0e9ecc1c8485c5b3e1934fba769b874831031e105ad8785e2"
         }
       ]
     },
@@ -6468,7 +6632,7 @@
         },
         {
           "artifact_id": "security-evidence",
-          "sha256": "c80650bc0441d40ed62fb2ed99c3d0cddbf85b687d56acd9381a347c7e33985f"
+          "sha256": "8c7667379b8ad7b0e9ecc1c8485c5b3e1934fba769b874831031e105ad8785e2"
         }
       ]
     }
@@ -6627,6 +6791,30 @@
       "sha256": "f86dbe888e00c2576043064be84b4cbd89d263d01f35a85a6e79155240047f7d"
     },
     {
+      "path": "formal/ep_consequence_lifecycle.cfg",
+      "sha256": "8baae7e1aa21963e17c8bfa34403e12211449321f8367b322401b01041490a27"
+    },
+    {
+      "path": "formal/ep_consequence_lifecycle.tla",
+      "sha256": "7eaa1af636a5450f02bd0909222d3b7b0f75c512dca12d8fe7c0c541f11e28a0"
+    },
+    {
+      "path": "formal/ep_effect_profiles.cfg",
+      "sha256": "927b3edce1eb520426935d7309d779e588dbdd372cf0ff72d6f20bfafc98d610"
+    },
+    {
+      "path": "formal/ep_effect_profiles.tla",
+      "sha256": "8cfc8e18895151e2fb3e1084ef57b423556ade39528fb0db14ccc002a1dce00c"
+    },
+    {
+      "path": "formal/ep_revocation_witness.cfg",
+      "sha256": "cfb13d21b1bf9ca00c35fb5321257af79c39f388954684564c6dbe63f5cf6110"
+    },
+    {
+      "path": "formal/ep_revocation_witness.tla",
+      "sha256": "838434f1c8254fdce3ec201cfb30421acc4e929a1d396c77d8387e378bfd23de"
+    },
+    {
       "path": "formal/outcome-authority-join.cases.json",
       "sha256": "f235cfcdc0ecf528da8545583816f7570ca56023f6ce84aa860e61999167616b"
     },
@@ -6647,12 +6835,32 @@
       "sha256": "9943276acfe674578c102bc5cabf8890cccfe9e44c0814261bc3972349d30acd"
     },
     {
+      "path": "formal/results/ep-consequence-lifecycle.tlc.summary.txt",
+      "sha256": "c54cb832e605b658aa8ee53f7ccfd52a415e65666b54dfce2d36c916a67ab925"
+    },
+    {
+      "path": "formal/results/ep-effect-profiles.tlc.summary.txt",
+      "sha256": "ed8483a5b00b629be5a26103d9e8e3b6a0f7832043919fef91ab33d6c73e50de"
+    },
+    {
+      "path": "formal/results/ep-revocation-witness.tlc.summary.txt",
+      "sha256": "c7fddd6cda05656342ca5ea39a8655aefdfbb32f40ba617a76ffaade9a43a5c3"
+    },
+    {
+      "path": "formal/results/formal-runtime-refinement.v1.json",
+      "sha256": "fe692a7d6ce6d8c89dbfcae23028c9255a72a246e787d2b4efaa42e73edbf6a3"
+    },
+    {
       "path": "formal/results/outcome-authority-join.summary.txt",
       "sha256": "653a50ab1ec4242eb9f0b279adf75153de2f298133c14471a58ec46d4ae6c81d"
     },
     {
       "path": "formal/results/receipt-program.summary.txt",
       "sha256": "f98f6f3777a31cb017db872ae3f60bca4c4ede73750b81f8791c8feef6dbe2d6"
+    },
+    {
+      "path": "formal/runtime-traces.v1.json",
+      "sha256": "d56a047a43f992445ac647fcea19cd40c4de74a7098805a9995c3f3b8ac9bc94"
     },
     {
       "path": "formal/tamarin/ep_reliance_composed.spthy",
@@ -6775,6 +6983,10 @@
       "sha256": "5ee6fb278095fd969f31efa3ca79208df75051a0459219b4a8fb6f0626c7381d"
     },
     {
+      "path": "packages/gate/proposal-to-effect.test.js",
+      "sha256": "c59b96ad6783bdbd229b0c4df374fe0efedca4d704ce5419d98bb4a53bdd368e"
+    },
+    {
       "path": "packages/gate/receipt-program.test.js",
       "sha256": "79fccaba1702f0ab25a93af7210756451441b7219e0e799879a94293c7108254"
     },
@@ -6825,6 +7037,10 @@
     {
       "path": "packages/gate/src/network-witness.ts",
       "sha256": "2c92412c9bbb26fafb8e246fb4965c7590135e5b25dfe5a037b4526baf9360bf"
+    },
+    {
+      "path": "packages/gate/src/proposal-to-effect.ts",
+      "sha256": "ee30da8e0b58111d7951e920bd9413f8f19db14f0b757b0287e33f925ed969b4"
     },
     {
       "path": "packages/gate/src/receipt-program.ts",
@@ -7063,6 +7279,10 @@
       "sha256": "a66c7f23910c1745fecee90b8a0273cbc27363b24d0dfff10af6df62cc6ae143"
     },
     {
+      "path": "scripts/check-formal-runtime-traces.mjs",
+      "sha256": "c89883041d3c7a8e4f2a90da52272bb84a9045998f4a3002dda22acc2bcf9cbf"
+    },
+    {
       "path": "scripts/check-release-chain.mjs",
       "sha256": "2812d632c63c58da1983604e3ac10de0b59f22593c7762c77a81612824a3d9f3"
     },
@@ -7084,11 +7304,11 @@
     },
     {
       "path": "scripts/verify-security-case.mjs",
-      "sha256": "1d12288c2c86b45c691bb5f1a3d318b3492118ba7f06e50ae1a0c774e54fb232"
+      "sha256": "4c97e3ca33d1b23295f3325904f0d702d5c3ae1af266fcce0eb78d5b29fbd74f"
     },
     {
       "path": "security/claims.v1.json",
-      "sha256": "5b8c025be7f757a83033a6f77b5b22e3f4cd77b1e07cd8b0548d05cafcec9ca5"
+      "sha256": "4f013a40b3fa781cccc9a8a11369f26eddd626ac352867ffc434aaddf79ac08a"
     },
     {
       "path": "security/vectors.v1.json",
