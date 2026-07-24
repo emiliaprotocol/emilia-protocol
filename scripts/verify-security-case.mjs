@@ -24,11 +24,22 @@ import { buildSuiteContract, compareResultRow, executionSuiteFile, validateResul
 // resolver CI uses so `npm run check:security-case` is not CI-environment-only.
 import "./ts-loader/register.mjs";
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
-const SOURCE = path.join(ROOT, "security", "claims.v1.json");
-const DEFAULT_RESOLVED = path.join(ROOT, "security", "security-case.json");
-const SELF = fileURLToPath(import.meta.url);
 const args = process.argv.slice(2);
 const execute = args.includes("--execute");
+const validateOnly = args.includes("--validate-only");
+const sourceIndex = args.indexOf("--source");
+const sourceArgument = sourceIndex >= 0 ? args[sourceIndex + 1] : null;
+if (sourceIndex >= 0 && !sourceArgument)
+    throw new Error("--source requires a path");
+if (sourceArgument && !validateOnly)
+    throw new Error("--source may only be used with --validate-only");
+if (execute && validateOnly)
+    throw new Error("--execute and --validate-only cannot be combined");
+const SOURCE = sourceArgument
+    ? path.resolve(sourceArgument)
+    : path.join(ROOT, "security", "claims.v1.json");
+const DEFAULT_RESOLVED = path.join(ROOT, "security", "security-case.json");
+const SELF = fileURLToPath(import.meta.url);
 const emitIndex = args.indexOf("--emit");
 const emitPath = emitIndex >= 0 ? args[emitIndex + 1] : null;
 if (emitIndex >= 0 && !emitPath)
@@ -44,12 +55,42 @@ const evidenceFiles = new Set([
 const executionPlan = new Map();
 const crossLanguageCases = new Map();
 const boundedFormalPlan = new Map();
-const formalRefinementPlan = new Map();
+const scenarioConformancePlan = new Map();
 const executionEvidence = [];
+const FORMAL_METHODS = new Set([
+    "symbolic_protocol_analysis",
+    "bounded_exhaustive_state_exploration",
+    "bounded_tla_model_checking",
+]);
+const LEGACY_RUNTIME_EVIDENCE_FIELDS = [
+    "trace_evidence",
+    "trace_runner",
+    "refinement_evidence",
+    "trace_coverage",
+    "traced_actions",
+    "traced_obligations",
+];
+const SCENARIO_CONFORMANCE_FIELDS = [
+    "scenario_evidence",
+    "scenario_runner",
+    "conformance_evidence",
+    "scenario_coverage",
+    "covered_actions",
+    "covered_obligations",
+];
 const fail = (id, message) => {
     errors.push(`[${id}] ${message}`);
 };
 const nonEmpty = (value) => typeof value === "string" && value.trim().length > 0;
+const nonEmptyStringArray = (value) => Array.isArray(value) &&
+    value.length > 0 &&
+    value.every((entry) => nonEmpty(entry));
+const statesNoRefinementProof = (value) => nonEmpty(value) &&
+    /\bnot (?:a )?(?:(?:full|mechanized implementation) )?refinement proof\b/i.test(value);
+const scenarioRows = (document) => {
+    const rows = document?.scenarios ?? document?.traces;
+    return Array.isArray(rows) ? rows : [];
+};
 const escaped = (value) => value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 function resolveFile(id, relative) {
     if (!nonEmpty(relative)) {
@@ -117,6 +158,83 @@ function hasTlaDeclaration(source, obligation) {
 }
 function hasTlaConfiguredObligation(source, obligation) {
     return new RegExp(`^\\s*(?:INVARIANT|PROPERTY)\\s+${escaped(obligation)}\\s*$`, "m").test(source);
+}
+function validateBoundedScenarioConformance(id, formal) {
+    const legacyFields = LEGACY_RUNTIME_EVIDENCE_FIELDS.filter((field) => formal[field] !== undefined);
+    if (legacyFields.length > 0) {
+        fail(id, `legacy bounded trace/refinement metadata is not accepted: ${legacyFields.join(", ")}`);
+    }
+    const hasScenarioEvidence = nonEmpty(formal.scenario_evidence);
+    const hasScenarioRunner = nonEmpty(formal.scenario_runner);
+    const hasConformanceEvidence = nonEmpty(formal.conformance_evidence);
+    const hasScenarioMetadata = formal.scenario_coverage !== undefined ||
+        formal.covered_actions !== undefined ||
+        formal.covered_obligations !== undefined;
+    if (!hasScenarioEvidence &&
+        !hasScenarioRunner &&
+        !hasConformanceEvidence &&
+        !hasScenarioMetadata) {
+        return;
+    }
+    if (!hasScenarioEvidence ||
+        !hasScenarioRunner ||
+        !hasConformanceEvidence) {
+        fail(id, "bounded selected-scenario evidence requires scenario_evidence, scenario_runner, and conformance_evidence together");
+        return;
+    }
+    if (formal.scenario_coverage !== "selected") {
+        fail(id, "bounded scenario conformance requires scenario_coverage selected");
+    }
+    if (!nonEmptyStringArray(formal.covered_actions)) {
+        fail(id, "bounded scenario conformance requires non-empty covered_actions");
+    }
+    if (!nonEmptyStringArray(formal.covered_obligations)) {
+        fail(id, "bounded scenario conformance requires non-empty covered_obligations");
+    }
+    else {
+        const obligations = new Set(Array.isArray(formal.obligations) ? formal.obligations : []);
+        if (formal.covered_obligations.some((obligation) => !obligations.has(obligation))) {
+            fail(id, "covered_obligations must be a subset of obligations");
+        }
+    }
+    if (!statesNoRefinementProof(formal.scope)) {
+        fail(id, "selected scenario conformance must state that it is not a refinement proof");
+    }
+    const scenarioFile = resolveFile(id, formal.scenario_evidence);
+    const scenarioRunnerFile = resolveFile(id, formal.scenario_runner);
+    const conformanceFile = resolveFile(id, formal.conformance_evidence);
+    if (!scenarioFile || !scenarioRunnerFile || !conformanceFile)
+        return;
+    const scenarioSource = parseStrictJson(fs.readFileSync(scenarioFile, "utf8"), formal.scenario_evidence);
+    const conformanceSource = parseStrictJson(fs.readFileSync(conformanceFile, "utf8"), formal.conformance_evidence);
+    const matching = scenarioRows(scenarioSource).filter((scenario) => scenario.claim_id === id && scenario.model === formal.model);
+    const conformed = scenarioRows(conformanceSource).filter((scenario) => scenario.claim_id === id &&
+        scenario.model === formal.model &&
+        scenario.matched === true);
+    if (scenarioSource["@version"] !==
+        "EP-RUNTIME-SCENARIO-CONFORMANCE-MANIFEST-v2") {
+        fail(id, `${formal.scenario_evidence} has an unsupported scenario manifest version`);
+    }
+    if (matching.length < 2 ||
+        !matching.some((scenario) => scenario.kind === "sound") ||
+        !matching.some((scenario) => scenario.kind === "unsafe_mutation")) {
+        fail(id, `${formal.scenario_evidence} requires one sound scenario and one unsafe mutation for ${id}`);
+    }
+    if (conformanceSource["@version"] !==
+        "EP-SELECTED-SCENARIO-CONFORMANCE-EVIDENCE-v2" ||
+        conformanceSource.method !== "bounded_selected_scenario_conformance") {
+        fail(id, `${formal.conformance_evidence} must contain executed v2 selected-scenario conformance evidence`);
+    }
+    if (conformed.length < 2 ||
+        !conformed.some((scenario) => scenario.kind === "sound" && scenario.formal?.status === "matched") ||
+        !conformed.some((scenario) => scenario.kind === "unsafe_mutation" &&
+            scenario.formal?.status === "counterexample_detected" &&
+            scenario.runtime?.steps?.at(-1)?.accepted === false)) {
+        fail(id, `${formal.conformance_evidence} requires one matched sound scenario and one detected unsafe mutation for ${id}`);
+    }
+    const planned = scenarioConformancePlan.get(formal.model) ?? new Set();
+    planned.add(id);
+    scenarioConformancePlan.set(formal.model, planned);
 }
 function planTest(id, executionSpec, suitePath = null) {
     if (!executionSpec ||
@@ -274,41 +392,46 @@ function executeBoundedFormal() {
         });
     }
 }
-function executeFormalRefinement() {
-    if (formalRefinementPlan.size === 0)
+function executeScenarioConformance() {
+    if (scenarioConformancePlan.size === 0)
         return;
     const stdout = runChecked(process.execPath, [
         "scripts/check-formal-runtime-traces.mjs",
         "--check",
         "--json",
-    ], {}, "formal runtime selected-trace refinement");
-    const result = parseStrictJson(stdout, "formal refinement runner emitted invalid JSON");
-    if (result?.method !== "bounded_selected_trace_refinement" ||
-        result?.summary?.traces < 2 ||
+    ], {}, "bounded selected-scenario conformance");
+    const result = parseStrictJson(stdout, "selected-scenario conformance runner emitted invalid JSON");
+    const executedScenarios = scenarioRows(result);
+    const scenarioCount = result?.summary?.scenarios ?? result?.summary?.traces;
+    if (result?.["@version"] !==
+        "EP-SELECTED-SCENARIO-CONFORMANCE-EVIDENCE-v2" ||
+        result?.method !== "bounded_selected_scenario_conformance" ||
+        scenarioCount < 2 ||
         result?.summary?.unsafe_mutations_detected < 1) {
-        throw new Error("formal refinement runner did not report matched sound and unsafe traces");
+        throw new Error("scenario conformance runner did not report executed v2 sound and unsafe scenarios");
     }
-    for (const [model, claims] of formalRefinementPlan) {
+    for (const [model, claims] of scenarioConformancePlan) {
         for (const claim of claims) {
-            const matching = (result.traces ?? []).filter((trace) => trace.claim_id === claim &&
-                trace.model === model &&
-                trace.matched === true);
+            const matching = executedScenarios.filter((scenario) => scenario.claim_id === claim &&
+                scenario.model === model &&
+                scenario.matched === true);
             if (matching.length < 2 ||
-                !matching.some((trace) => trace.kind === "sound" && trace.formal?.status === "matched") ||
-                !matching.some((trace) => trace.kind === "unsafe_mutation" &&
-                    trace.formal?.status === "counterexample_detected" &&
-                    trace.runtime?.steps?.at(-1)?.accepted === false)) {
-                throw new Error(`${claim}: selected-trace refinement lacks a sound trace and detected unsafe mutation`);
+                !matching.some((scenario) => scenario.kind === "sound" &&
+                    scenario.formal?.status === "matched") ||
+                !matching.some((scenario) => scenario.kind === "unsafe_mutation" &&
+                    scenario.formal?.status === "counterexample_detected" &&
+                    scenario.runtime?.steps?.at(-1)?.accepted === false)) {
+                throw new Error(`${claim}: selected-scenario conformance lacks a sound scenario and detected unsafe mutation`);
             }
         }
     }
     executionEvidence.push({
-        runner: "bounded-selected-trace-refinement",
+        runner: "bounded-selected-scenario-conformance",
         file: "scripts/check-formal-runtime-traces.mjs",
         claims: [
-            ...new Set([...formalRefinementPlan.values()].flatMap((claims) => [...claims])),
+            ...new Set([...scenarioConformancePlan.values()].flatMap((claims) => [...claims])),
         ].sort(),
-        traces: result.summary.traces,
+        scenarios: scenarioCount,
         unsafe_mutations_detected: result.summary.unsafe_mutations_detected,
         result: "passed",
     });
@@ -497,6 +620,23 @@ for (const claim of sourceCase.claims ?? []) {
             fail(id, `unknown formal status: ${formal.status}`);
             continue;
         }
+        if (!FORMAL_METHODS.has(formal.method)) {
+            fail(id, `formal method must be one of ${[...FORMAL_METHODS].join(", ")}`);
+            continue;
+        }
+        if (formal.method === "symbolic_protocol_analysis" &&
+            [...LEGACY_RUNTIME_EVIDENCE_FIELDS, ...SCENARIO_CONFORMANCE_FIELDS].some((field) => formal[field] !== undefined)) {
+            fail(id, "runtime scenario conformance metadata is only valid for bounded formal methods");
+        }
+        if (formal.method === "symbolic_protocol_analysis" &&
+            formal.status === "partial") {
+            if (!nonEmpty(formal.covered_statement)) {
+                fail(id, "partial symbolic protocol analysis requires a non-empty covered_statement");
+            }
+            if (!nonEmpty(formal.unmodeled_statement)) {
+                fail(id, "partial symbolic protocol analysis requires a non-empty unmodeled_statement");
+            }
+        }
         const modelFile = resolveFile(id, formal.model);
         const runnerFile = resolveFile(id, formal.runner);
         const resultFile = resolveFile(id, formal.result_evidence);
@@ -553,6 +693,7 @@ for (const claim of sourceCase.claims ?? []) {
                 planned.obligations.add(obligation);
             }
             boundedFormalPlan.set(key, planned);
+            validateBoundedScenarioConformance(id, formal);
             continue;
         }
         if (formal.method === "bounded_tla_model_checking") {
@@ -582,56 +723,10 @@ for (const claim of sourceCase.claims ?? []) {
             if (!nonEmpty(formal.scope) ||
                 !formal.scope.toLowerCase().includes("bounded") ||
                 !formal.scope.toLowerCase().includes("same-team") ||
-                !formal.scope.toLowerCase().includes("not a refinement proof")) {
+                !statesNoRefinementProof(formal.scope)) {
                 fail(id, "bounded TLA+ evidence requires explicit bounded, same-team, and no-refinement scope");
             }
-            const hasTraceEvidence = nonEmpty(formal.trace_evidence);
-            const hasTraceRunner = nonEmpty(formal.trace_runner);
-            const hasRefinementEvidence = nonEmpty(formal.refinement_evidence);
-            if (new Set([hasTraceEvidence, hasTraceRunner, hasRefinementEvidence])
-                .size !== 1) {
-                fail(id, "bounded TLA+ runtime trace evidence requires trace_evidence, trace_runner, and refinement_evidence together");
-            }
-            else if (hasTraceEvidence && hasTraceRunner && hasRefinementEvidence) {
-                const traceFile = resolveFile(id, formal.trace_evidence);
-                const traceRunnerFile = resolveFile(id, formal.trace_runner);
-                const refinementFile = resolveFile(id, formal.refinement_evidence);
-                if (traceFile && traceRunnerFile && refinementFile) {
-                    const traceSource = parseStrictJson(fs.readFileSync(traceFile, "utf8"), formal.trace_evidence);
-                    const refinementSource = parseStrictJson(fs.readFileSync(refinementFile, "utf8"), formal.refinement_evidence);
-                    const matching = (traceSource.traces ?? []).filter((trace) => trace.claim_id === id && trace.model === formal.model);
-                    const refined = (refinementSource.traces ?? []).filter((trace) => trace.claim_id === id &&
-                        trace.model === formal.model &&
-                        trace.matched === true);
-                    if (traceSource["@version"] !== "EP-FORMAL-RUNTIME-TRACES-v2") {
-                        fail(id, `${formal.trace_evidence} has an unsupported trace manifest version`);
-                    }
-                    if (matching.length < 2 ||
-                        !matching.some((trace) => trace.kind === "sound") ||
-                        !matching.some((trace) => trace.kind === "unsafe_mutation")) {
-                        fail(id, `${formal.trace_evidence} requires one sound trace and one unsafe mutation for ${id}`);
-                    }
-                    if (refinementSource["@version"] !==
-                        "EP-FORMAL-RUNTIME-REFINEMENT-EVIDENCE-v1" ||
-                        refinementSource.method !== "bounded_selected_trace_refinement") {
-                        fail(id, `${formal.refinement_evidence} has an unsupported refinement evidence version`);
-                    }
-                    if (refined.length < 2 ||
-                        !refined.some((trace) => trace.kind === "sound" && trace.formal?.status === "matched") ||
-                        !refined.some((trace) => trace.kind === "unsafe_mutation" &&
-                            trace.formal?.status === "counterexample_detected" &&
-                            trace.runtime?.steps?.at(-1)?.accepted === false)) {
-                        fail(id, `${formal.refinement_evidence} requires one matched sound trace and one detected unsafe mutation for ${id}`);
-                    }
-                    const traceRunnerSource = fs.readFileSync(traceRunnerFile, "utf8");
-                    if (!traceRunnerSource.includes("runFormalRuntimeRefinement")) {
-                        fail(id, `${formal.trace_runner} does not invoke the selected-trace refinement harness`);
-                    }
-                    const planned = formalRefinementPlan.get(formal.model) ?? new Set();
-                    planned.add(id);
-                    formalRefinementPlan.set(formal.model, planned);
-                }
-            }
+            validateBoundedScenarioConformance(id, formal);
             continue;
         }
         if (!nonEmpty(formal.lemma) || !hasFormalLemma(modelSource, formal.lemma))
@@ -657,10 +752,14 @@ if (errors.length) {
         console.error(`  - ${error}`);
     process.exit(1);
 }
+if (validateOnly) {
+    console.log(`SECURITY CASE: METADATA OK (${sourceCase.claims.length} claims validated)`);
+    process.exit(0);
+}
 if (execute) {
     try {
         executeBoundedFormal();
-        executeFormalRefinement();
+        executeScenarioConformance();
         executeCrossLanguage();
         executePlannedTests();
     }
