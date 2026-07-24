@@ -9,23 +9,51 @@ import claimSource from '@/security/claims.v1.json';
 const REPO = 'https://github.com/emiliaprotocol/emilia-protocol';
 const number = (value: number | string): string => Number(value).toLocaleString('en-US');
 
-type FormalCoverage = 'verified-formal-obligations' | 'partial' | 'executable-only';
+type FormalCoverage =
+  | 'verified-formal-obligations'
+  | 'bounded-runtime-traced'
+  | 'bounded-formal-evidence'
+  | 'partial-symbolic-coverage'
+  | 'executable-operational-evidence';
 
-const formalCoverage = (statuses: string[]): FormalCoverage => {
-  if (statuses.length > 0 && statuses.every((status) => status === 'verified')) {
+type FormalEvidence = {
+  status: string;
+  method?: string;
+  trace_evidence?: string;
+  trace_runner?: string;
+  refinement_evidence?: string;
+};
+
+const formalCoverage = (formal: readonly FormalEvidence[]): FormalCoverage => {
+  if (formal.length > 0 && formal.every((entry) => entry.status === 'verified')) {
     return 'verified-formal-obligations';
   }
-  if (statuses.some((status) => status === 'verified' || status === 'partial')) {
-    return 'partial';
+
+  const partial = formal.filter((entry) => entry.status === 'partial');
+  if (
+    partial.some(
+      (entry) =>
+        entry.method?.startsWith('bounded_') &&
+        entry.trace_evidence &&
+        entry.trace_runner &&
+        entry.refinement_evidence,
+    )
+  ) {
+    return 'bounded-runtime-traced';
   }
-  return 'executable-only';
+  if (partial.some((entry) => entry.method?.startsWith('bounded_'))) {
+    return 'bounded-formal-evidence';
+  }
+  if (partial.length > 0) {
+    return 'partial-symbolic-coverage';
+  }
+  return 'executable-operational-evidence';
 };
 
 const CLAIM_ROWS = claimSource.claims.map((claim) => {
-  const statuses = [...new Set((claim.formal || []).map((entry) => entry.status))];
   return {
     claim,
-    coverage: formalCoverage(statuses),
+    coverage: formalCoverage(claim.formal || []),
   };
 });
 
@@ -34,13 +62,52 @@ const FORMAL_COUNTS = CLAIM_ROWS.reduce<Record<FormalCoverage, number>>(
     counts[row.coverage] += 1;
     return counts;
   },
-  { 'verified-formal-obligations': 0, partial: 0, 'executable-only': 0 },
+  {
+    'verified-formal-obligations': 0,
+    'bounded-runtime-traced': 0,
+    'bounded-formal-evidence': 0,
+    'partial-symbolic-coverage': 0,
+    'executable-operational-evidence': 0,
+  },
 );
 
 const FORMAL_LABELS: Record<FormalCoverage, string> = {
   'verified-formal-obligations': 'Verified formal obligations',
-  partial: 'Partial formal coverage',
-  'executable-only': 'Executable evidence only',
+  'bounded-runtime-traced': 'Bounded + runtime-traced',
+  'bounded-formal-evidence': 'Bounded formal evidence',
+  'partial-symbolic-coverage': 'Partial symbolic coverage',
+  'executable-operational-evidence': 'Executable/operational evidence',
+};
+
+const FORMAL_TAXONOMY: ReadonlyArray<{ coverage: FormalCoverage; detail: string }> = [
+  {
+    coverage: 'verified-formal-obligations',
+    detail: 'Every cited formal obligation is verified. The result remains limited to each model’s stated scope and does not prove implementation refinement.',
+  },
+  {
+    coverage: 'bounded-runtime-traced',
+    detail: 'Bounded same-team formal evidence is paired with selected governed runtime traces and refinement evidence; the bridge is not a complete refinement proof.',
+  },
+  {
+    coverage: 'bounded-formal-evidence',
+    detail: 'Bounded same-team model checking or exhaustive state exploration covers stated obligations without a selected runtime trace bridge.',
+  },
+  {
+    coverage: 'partial-symbolic-coverage',
+    detail: 'A symbolic model covers part of the claim; concrete implementation behavior and external assumptions remain outside that model.',
+  },
+  {
+    coverage: 'executable-operational-evidence',
+    detail: 'The exact claim is exercised by code, tests, vectors, or operational controls; no formal model covers the claim itself.',
+  },
+];
+
+const FORMAL_BADGE_STYLES: Record<FormalCoverage, { color: string; background: string }> = {
+  'verified-formal-obligations': { color: '#166534', background: '#DCFCE7' },
+  'bounded-runtime-traced': { color: '#1D4ED8', background: '#DBEAFE' },
+  'bounded-formal-evidence': { color: '#0F766E', background: '#CCFBF1' },
+  'partial-symbolic-coverage': { color: '#92400E', background: '#FEF3C7' },
+  'executable-operational-evidence': { color: color.t3, background: '#F5F5F4' },
 };
 
 const EVIDENCE = [
@@ -315,7 +382,7 @@ export default async function ProofPage() {
             <div style={{ maxWidth: 720, marginBottom: 42 }}>
               <div style={{ ...styles.eyebrow, color: color.gold }}>Executable claim inventory</div>
               <h2 style={{ ...styles.h2, fontSize: 'clamp(26px, 3vw, 38px)' }}>Two evidence axes. No hidden “done” label.</h2>
-              <p style={styles.body}>Every row below is a resolved executable security-case claim with enforcement paths, tests, vectors, assumptions, exclusions, and hashed evidence. Formal model scope is reported separately because code evidence and mathematical models answer different questions. “Fully modeled” is not inferred from verified obligations when a claim also has implementation scope outside the model.</p>
+              <p style={styles.body}>Every row below is a resolved executable security-case claim with enforcement paths, tests, vectors, assumptions, exclusions, and hashed evidence. Formal model scope is reported separately through a five-way taxonomy derived from each claim’s formal metadata. No category asserts that the full implementation is formally modeled.</p>
             </div>
 
             <div
@@ -370,13 +437,7 @@ export default async function ProofPage() {
                   Claims resolved in the generated security case.
                 </div>
               </div>
-              {(
-                [
-                  ['verified-formal-obligations', 'Every cited formal obligation for this claim is verified; non-formal scope remains governed by the claim assumptions and exclusions.'],
-                  ['partial', 'A formal model covers part of the claim; the remaining implementation link is disclosed.'],
-                  ['executable-only', 'Validated by code, tests, vectors, or operational evidence; no complete formal model.'],
-                ] as const
-              ).map(([coverage, detail]) => (
+              {FORMAL_TAXONOMY.map(({ coverage, detail }) => (
                 <div key={coverage} style={{ background: '#FFFFFF', padding: 24, minHeight: 154 }}>
                   <div
                     style={{
@@ -388,7 +449,7 @@ export default async function ProofPage() {
                       marginBottom: 14,
                     }}
                   >
-                    Formal model scope
+                    Formal evidence taxonomy
                   </div>
                   <div
                     style={{
@@ -441,12 +502,13 @@ export default async function ProofPage() {
                 background: '#FFFFFF',
               }}
             >
-              “Executable evidence only” does not mean unimplemented. It means the exact claim is exercised by inspectable artifacts but is not represented by a complete formal model or implementation-refinement proof.
+              “Bounded + runtime-traced” does not mean a refinement proof. It identifies bounded same-team formal evidence paired with selected governed runtime traces. The separate {claimSource.claims.length}/{claimSource.claims.length} executable-evidence axis reports inspectable implementation or operational evidence for every claim.
             </p>
 
             <div style={{ borderTop: `1px solid ${color.borderHover}` }}>
               {CLAIM_ROWS.map(({ claim, coverage }) => {
                 const evidenceCount = claim.enforcement_path.length + claim.vectors.length + claim.tests.length;
+                const badgeStyle = FORMAL_BADGE_STYLES[coverage];
                 return (
                   <article
                     key={claim.claim_id}
@@ -499,8 +561,8 @@ export default async function ProofPage() {
                           style={{
                             fontFamily: font.mono,
                             fontSize: 9,
-                            color: coverage === 'verified-formal-obligations' ? '#166534' : coverage === 'partial' ? '#92400E' : color.t3,
-                            background: coverage === 'verified-formal-obligations' ? '#DCFCE7' : coverage === 'partial' ? '#FEF3C7' : '#F5F5F4',
+                            color: badgeStyle.color,
+                            background: badgeStyle.background,
                             textTransform: 'uppercase',
                             letterSpacing: 0.8,
                             padding: '5px 8px',
