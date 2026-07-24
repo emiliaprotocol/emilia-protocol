@@ -3,11 +3,12 @@
 This document tracks the honest state of all formal models in `formal/`.
 
 **Distinction that matters:**
+
 - **Specified** — the property is written down as a theorem or assertion in a model file
 - **Verified** — a model checker has run and found no counterexamples
 
-These are not the same. Specified properties describe what *should* be true.
-Verified properties describe what *has been proven* true given the model's assumptions.
+These are not the same. Specified properties describe what _should_ be true.
+Verified properties describe what _has been proven_ true given the model's assumptions.
 
 ---
 
@@ -19,6 +20,7 @@ Verified properties describe what *has been proven* true given the model's assum
 **Result:** 413,137 states generated, 45,342 distinct states — **no error found** across all 26 invariants (T1–T26)
 
 During verification, TLC identified and we fixed 4 real spec bugs:
+
 1. `DelegationAcyclicity` — invariant definition used wrong field; `GrantDelegation` guard was redundant
 2. `Consume` — could execute while signoff was in-flight (challenge_issued/viewed/approved)
 3. `Revoke`/`Expire`/`ConcurrentRevokeConsume` — did not cascade signoff termination
@@ -31,44 +33,44 @@ and fails the build on any violation.
 
 **Core state machine and delegation — 14 invariants**
 
-| Invariant (as in `ep_handshake.cfg`) | What it proves |
-|---|---|
-| `TypeInvariant` | every state variable keeps its declared type in every reachable state |
-| `ConsumeOnceSafety` | an authorization is consumed at most once |
-| `ConsumeRequiresVerified` | consumption is reachable only from a verified handshake |
-| `RevokedIsTerminal` | a revoked handshake never returns to an active/consumable state |
-| `ExpiredIsTerminal` | an expired handshake is terminal |
-| `RejectedIsTerminal` | a rejected handshake is terminal |
-| `TerminalStateIrreversibility` | no terminal state transitions back to a non-terminal one |
-| `WriteBypassSafety` | no approval-bearing write is reachable without passing the gate |
-| `PolicyRequired` | an authorization cannot proceed without its policy reference |
-| `PolicyHashMismatchDetection` | a policy-hash mismatch is detected and refused |
-| `DelegateCannotExceedPrincipal` | a delegate's authority never exceeds the principal's |
-| `DelegationAcyclicity` | the delegation chain is acyclic |
-| `EventCoverage` | every modeled transition emits its evidence event |
-| `EventCompleteness` | the evidence log is complete over the reachable state space |
+| Invariant (as in `ep_handshake.cfg`) | What it proves                                                        |
+| ------------------------------------ | --------------------------------------------------------------------- |
+| `TypeInvariant`                      | every state variable keeps its declared type in every reachable state |
+| `ConsumeOnceSafety`                  | an authorization is consumed at most once                             |
+| `ConsumeRequiresVerified`            | consumption is reachable only from a verified handshake               |
+| `RevokedIsTerminal`                  | a revoked handshake never returns to an active/consumable state       |
+| `ExpiredIsTerminal`                  | an expired handshake is terminal                                      |
+| `RejectedIsTerminal`                 | a rejected handshake is terminal                                      |
+| `TerminalStateIrreversibility`       | no terminal state transitions back to a non-terminal one              |
+| `WriteBypassSafety`                  | no approval-bearing write is reachable without passing the gate       |
+| `PolicyRequired`                     | an authorization cannot proceed without its policy reference          |
+| `PolicyHashMismatchDetection`        | a policy-hash mismatch is detected and refused                        |
+| `DelegateCannotExceedPrincipal`      | a delegate's authority never exceeds the principal's                  |
+| `DelegationAcyclicity`               | the delegation chain is acyclic                                       |
+| `EventCoverage`                      | every modeled transition emits its evidence event                     |
+| `EventCompleteness`                  | the evidence log is complete over the reachable state space           |
 
 **Accountable signoff / quorum — 6 invariants**
 
-| Invariant | What it proves |
-|---|---|
-| `SignoffRequiresVerifiedHandshake` | a signoff is valid only against a verified handshake |
-| `SignoffConsumeOnce` | a signoff is consumed at most once (no reuse across handshakes) |
-| `SignoffBindingMatch` | a signoff binds to the exact action context |
-| `SignoffTerminalIrreversible` | a terminal signoff state cannot be reversed |
-| `DenyCannotBeApproved` | a denied action can never become approved (separation of duties) |
-| `SignoffAuthorityMatch` | the signing actor is an authorized approver |
+| Invariant                          | What it proves                                                   |
+| ---------------------------------- | ---------------------------------------------------------------- |
+| `SignoffRequiresVerifiedHandshake` | a signoff is valid only against a verified handshake             |
+| `SignoffConsumeOnce`               | a signoff is consumed at most once (no reuse across handshakes)  |
+| `SignoffBindingMatch`              | a signoff binds to the exact action context                      |
+| `SignoffTerminalIrreversible`      | a terminal signoff state cannot be reversed                      |
+| `DenyCannotBeApproved`             | a denied action can never become approved (separation of duties) |
+| `SignoffAuthorityMatch`            | the signing actor is an authorized approver                      |
 
 **EP-IX identity continuity — 6 invariants**
 
-| Invariant | What it proves |
-|---|---|
-| `ContinuityTypeInvariant` | EP-IX claim/filer/challenge variables keep their declared types |
-| `ContinuityTerminalIrreversibility` | terminal continuity states cannot return to active |
-| `FrozenClaimBlocksResolution` | a frozen-pending-dispute claim cannot be approved/rejected without unfreezing |
-| `ChallengeRateLimit` | open challenges never exceed `MAX_OPEN_CHALLENGES` |
-| `SelfContestImpossible` | a filer cannot challenge their own claim |
-| `WithdrawnClaimIsTerminal` | a withdrawn claim is terminal |
+| Invariant                           | What it proves                                                                |
+| ----------------------------------- | ----------------------------------------------------------------------------- |
+| `ContinuityTypeInvariant`           | EP-IX claim/filer/challenge variables keep their declared types               |
+| `ContinuityTerminalIrreversibility` | terminal continuity states cannot return to active                            |
+| `FrozenClaimBlocksResolution`       | a frozen-pending-dispute claim cannot be approved/rejected without unfreezing |
+| `ChallengeRateLimit`                | open challenges never exceed `MAX_OPEN_CHALLENGES`                            |
+| `SelfContestImpossible`             | a filer cannot challenge their own claim                                      |
+| `WithdrawnClaimIsTerminal`          | a withdrawn claim is terminal                                                 |
 
 **26 machine-checked invariants total** — 14 core + 6 signoff/quorum + 6 EP-IX, each the exact
 identifier TLC runs. The Alloy models (`ep_quorum.als`, `ep_relations.als`, `ep_federation.als`)
@@ -94,10 +96,12 @@ Dolev-Yao attacker over the full WebAuthn / directory / log composition) than to
 claim exhaustive verification beyond one handshake.
 
 **To re-run locally:**
+
 ```
 cd formal
 java -jar tla2tools.jar -config ep_handshake.cfg ep_handshake.tla 2>&1 | tee tlc-output.txt
 ```
+
 See `formal/RUN_TLC.md` for full download and run instructions.
 TLC runs automatically in CI (`.github/workflows/tlc.yml`) on every push touching `formal/`.
 
@@ -124,25 +128,25 @@ early refusal, Gate refusal, operation-in-flight and committed replay, provider
 failure/timeout, commit uncertainty, missing execution evidence, certificate
 signing failure, and certificate persistence failure.
 
-| Checked property | What it states in this bounded model |
-|---|---|
-| `TypeInvariant` | every state variable remains in its declared finite domain |
-| `OperationStateSound` | open/reserved/committed operation states have consistent owner/outcome fields |
-| `PipelineOrderSafety` | match precedes reserve, reserve precedes effect, and effect precedes commit attempt |
-| `ReservationOwnership` | at most one attempt owns the stable operation reservation |
-| `EffectRequiresReservation` | provider entry requires exact match, Gate authorization, and owned reservation |
-| `CommitRequiresEffect` | a committed operation has a reservation owner whose provider effect was entered |
-| `ExecutedImpliesCommitted` | executed outcome requires a committed executed operation and result projection |
-| `IndeterminateLocksAuthority` | post-effect uncertainty leaves authority committed-indeterminate or reserved, never open |
-| `RefusalBeforeEffect` | a refused attempt neither wins the reservation nor enters the provider |
-| `ReplayFailClosed` | in-flight/committed replay remains refused before effect |
-| `SingleEffectOwner` | no more than one of the two contending attempts crosses the effect boundary |
-| `TerminalOutcomeComplete` | every terminal attempt has a closed outcome |
-| `CertificateOutcomeSound` | any signed/persisted certificate matches the closed outcome and result rule |
-| `CertificateEvidenceRequired` | executed/indeterminate certificates require execution evidence |
-| `TerminalAttemptStability` | terminal attempt phase, outcome, reason, and certificate state do not change |
-| `CommittedOperationStability` | committed status, owner, and outcome do not reverse |
-| `ReservationNeverReopens` | after provider ownership is reserved, it stays reserved or commits; it never automatically reopens |
+| Checked property              | What it states in this bounded model                                                               |
+| ----------------------------- | -------------------------------------------------------------------------------------------------- |
+| `TypeInvariant`               | every state variable remains in its declared finite domain                                         |
+| `OperationStateSound`         | open/reserved/committed operation states have consistent owner/outcome fields                      |
+| `PipelineOrderSafety`         | match precedes reserve, reserve precedes effect, and effect precedes commit attempt                |
+| `ReservationOwnership`        | at most one attempt owns the stable operation reservation                                          |
+| `EffectRequiresReservation`   | provider entry requires exact match, Gate authorization, and owned reservation                     |
+| `CommitRequiresEffect`        | a committed operation has a reservation owner whose provider effect was entered                    |
+| `ExecutedImpliesCommitted`    | executed outcome requires a committed executed operation and result projection                     |
+| `IndeterminateLocksAuthority` | post-effect uncertainty leaves authority committed-indeterminate or reserved, never open           |
+| `RefusalBeforeEffect`         | a refused attempt neither wins the reservation nor enters the provider                             |
+| `ReplayFailClosed`            | in-flight/committed replay remains refused before effect                                           |
+| `SingleEffectOwner`           | no more than one of the two contending attempts crosses the effect boundary                        |
+| `TerminalOutcomeComplete`     | every terminal attempt has a closed outcome                                                        |
+| `CertificateOutcomeSound`     | any signed/persisted certificate matches the closed outcome and result rule                        |
+| `CertificateEvidenceRequired` | executed/indeterminate certificates require execution evidence                                     |
+| `TerminalAttemptStability`    | terminal attempt phase, outcome, reason, and certificate state do not change                       |
+| `CommittedOperationStability` | committed status, owner, and outcome do not reverse                                                |
+| `ReservationNeverReopens`     | after provider ownership is reserved, it stays reserved or commits; it never automatically reopens |
 
 **Expected quiescence:** deadlock checking is disabled for this safety model
 because “both attempts terminal” is an expected state and no liveness claim is
@@ -302,23 +306,23 @@ Note on F21/A8 fix (2026-04-02): The original `DelegationAcyclic` fact used
 `Entity → Entity` "delegates-to" relation. Both the fact (F21) and assertion (A8)
 were fixed in this commit.
 
-| ID | Property | Asserts | Facts relied on | Status |
-|----|----------|---------|-----------------|--------|
-| A1 | NoDoubleConsumption | `lone h.consumption` per handshake | F3, F5 | **Verified (Alloy 6.2.0, 2026-07-18)** |
-| A2 | RevokedNeverConsumed | `no h: Revoked \| some h.consumption` | F9 | **Verified (Alloy 6.2.0, 2026-07-18)** |
-| A3 | ConsumedWasVerified | Every consumed handshake has a VerifiedEvent | F16, F25 | **Verified (Alloy 6.2.0, 2026-07-18)** |
-| A4 | BindingHashIsolation | Binding hashes unique across handshakes | F7, F2 | **Verified (Alloy 6.2.0, 2026-07-18)** |
-| A5 | TerminalStateIntegrity | Revoked/Expired/Rejected → no consumption | F9, F10, F11 | **Verified (Alloy 6.2.0, 2026-07-18)** |
-| A6 | WritePathExclusive | All mutations go through CanonicalWrite | F17, F18 | **Verified (Alloy 6.2.0, 2026-07-18)** |
-| A7 | DelegationScopeRespected | Delegate scope ⊆ principal scope | F19 | **Verified (Alloy 6.2.0, 2026-07-18)** |
-| A8 | NoDelegationCycles | No entity reachable from itself via delegations | F20, F21 (fixed) | **Verified (Alloy 6.2.0, 2026-07-18)** |
-| A9 | PolicyHashConsistency | Binding policy hash = policy.policyHash | F23 | **Verified (Alloy 6.2.0, 2026-07-18)** |
-| A10 | MultiActorNoDoubleConsume | At most one consumption per handshake_id | F24 | **Verified (Alloy 6.2.0, 2026-07-18)** |
-| A11 | EventStateExactCorrespondence | Terminal event appears exactly once | F25 | **Verified (Alloy 6.2.0, 2026-07-18)** |
-| A12 | SignoffBindingIntegrity | Signoff chain binding hash is consistent | F27, F28 | **Verified (Alloy 6.2.0, 2026-07-18)** |
-| A13 | SignoffConsumeOnce | At most one consumption per attestation | F29 | **Verified (Alloy 6.2.0, 2026-07-18)** |
-| A14 | SignoffRequiresHandshake | No signoff without a verified handshake | F26 | **Verified (Alloy 6.2.0, 2026-07-18)** |
-| A15 | FullChainIntegrity | handshake=challenge=attestation=consumption binding | F26, F27, F28 | **Verified (Alloy 6.2.0, 2026-07-18)** |
+| ID  | Property                      | Asserts                                             | Facts relied on  | Status                                 |
+| --- | ----------------------------- | --------------------------------------------------- | ---------------- | -------------------------------------- |
+| A1  | NoDoubleConsumption           | `lone h.consumption` per handshake                  | F3, F5           | **Verified (Alloy 6.2.0, 2026-07-18)** |
+| A2  | RevokedNeverConsumed          | `no h: Revoked \| some h.consumption`               | F9               | **Verified (Alloy 6.2.0, 2026-07-18)** |
+| A3  | ConsumedWasVerified           | Every consumed handshake has a VerifiedEvent        | F16, F25         | **Verified (Alloy 6.2.0, 2026-07-18)** |
+| A4  | BindingHashIsolation          | Binding hashes unique across handshakes             | F7, F2           | **Verified (Alloy 6.2.0, 2026-07-18)** |
+| A5  | TerminalStateIntegrity        | Revoked/Expired/Rejected → no consumption           | F9, F10, F11     | **Verified (Alloy 6.2.0, 2026-07-18)** |
+| A6  | WritePathExclusive            | All mutations go through CanonicalWrite             | F17, F18         | **Verified (Alloy 6.2.0, 2026-07-18)** |
+| A7  | DelegationScopeRespected      | Delegate scope ⊆ principal scope                    | F19              | **Verified (Alloy 6.2.0, 2026-07-18)** |
+| A8  | NoDelegationCycles            | No entity reachable from itself via delegations     | F20, F21 (fixed) | **Verified (Alloy 6.2.0, 2026-07-18)** |
+| A9  | PolicyHashConsistency         | Binding policy hash = policy.policyHash             | F23              | **Verified (Alloy 6.2.0, 2026-07-18)** |
+| A10 | MultiActorNoDoubleConsume     | At most one consumption per handshake_id            | F24              | **Verified (Alloy 6.2.0, 2026-07-18)** |
+| A11 | EventStateExactCorrespondence | Terminal event appears exactly once                 | F25              | **Verified (Alloy 6.2.0, 2026-07-18)** |
+| A12 | SignoffBindingIntegrity       | Signoff chain binding hash is consistent            | F27, F28         | **Verified (Alloy 6.2.0, 2026-07-18)** |
+| A13 | SignoffConsumeOnce            | At most one consumption per attestation             | F29              | **Verified (Alloy 6.2.0, 2026-07-18)** |
+| A14 | SignoffRequiresHandshake      | No signoff without a verified handshake             | F26              | **Verified (Alloy 6.2.0, 2026-07-18)** |
+| A15 | FullChainIntegrity            | handshake=challenge=attestation=consumption binding | F26, F27, F28    | **Verified (Alloy 6.2.0, 2026-07-18)** |
 
 ---
 
@@ -339,15 +343,15 @@ discovery surfaces. Ed25519 unforgeability is abstracted as fact C1
 tampered). Maps to `packages/verify/federation.js`. All 7 assertions verified
 with no counterexample.
 
-| ID | Property | Asserts | Facts relied on | Status |
-|----|----------|---------|-----------------|--------|
-| S1 | AcceptedIsAuthentic | accepted ⇒ signed by an advertised key over an untampered payload | C1, C2 | **Verified (Alloy 6.2.0, 2026-07-18)** |
-| S2 | TamperedNeverAccepted | a tampered receipt is never accepted | C1 | **Verified (Alloy 6.2.0, 2026-07-18)** |
-| S3 | UnadvertisedKeyRejected | a receipt signed by a key the operator does not advertise is rejected | C1 | **Verified (Alloy 6.2.0, 2026-07-18)** |
-| S4 | HistoricalKeyStillVerifies | a pre-rotation receipt (advertised historical key) is still accepted | C1, C3 | **Verified (Alloy 6.2.0, 2026-07-18)** |
-| S5 | RevokedNeverAccepted | a receipt the issuer revoked is never accepted | C4 | **Verified (Alloy 6.2.0, 2026-07-18)** |
-| S6 | NoTrustLaundering | acceptance routes only through a key owned by the receipt's own signer | C1, C2 | **Verified (Alloy 6.2.0, 2026-07-18)** |
-| S7 | PortabilityIsObserverIndependent | acceptance depends only on the receipt + its signer's surfaces, not on who verifies | C1 | **Verified (Alloy 6.2.0, 2026-07-18)** |
+| ID  | Property                         | Asserts                                                                             | Facts relied on | Status                                 |
+| --- | -------------------------------- | ----------------------------------------------------------------------------------- | --------------- | -------------------------------------- |
+| S1  | AcceptedIsAuthentic              | accepted ⇒ signed by an advertised key over an untampered payload                   | C1, C2          | **Verified (Alloy 6.2.0, 2026-07-18)** |
+| S2  | TamperedNeverAccepted            | a tampered receipt is never accepted                                                | C1              | **Verified (Alloy 6.2.0, 2026-07-18)** |
+| S3  | UnadvertisedKeyRejected          | a receipt signed by a key the operator does not advertise is rejected               | C1              | **Verified (Alloy 6.2.0, 2026-07-18)** |
+| S4  | HistoricalKeyStillVerifies       | a pre-rotation receipt (advertised historical key) is still accepted                | C1, C3          | **Verified (Alloy 6.2.0, 2026-07-18)** |
+| S5  | RevokedNeverAccepted             | a receipt the issuer revoked is never accepted                                      | C4              | **Verified (Alloy 6.2.0, 2026-07-18)** |
+| S6  | NoTrustLaundering                | acceptance routes only through a key owned by the receipt's own signer              | C1, C2          | **Verified (Alloy 6.2.0, 2026-07-18)** |
+| S7  | PortabilityIsObserverIndependent | acceptance depends only on the receipt + its signer's surfaces, not on who verifies | C1              | **Verified (Alloy 6.2.0, 2026-07-18)** |
 
 ---
 
@@ -361,14 +365,14 @@ with no counterexample.
 Models m-of-n quorum signoff. All 6 assertions verified with no counterexample and
 `showStrongQuorum` satisfiable in the 2026-07-18 CI-gated run.
 
-| ID | Property | Asserts | Status |
-|----|----------|---------|--------|
-| Q1 | SelfApprovalImpossible | the requester can never fill an approval slot | **Verified (Alloy 6.2.0, 2026-07-18)** |
-| Q2 | NoHumanFillsTwoSlots | one human occupies at most one quorum slot | **Verified (Alloy 6.2.0, 2026-07-18)** |
-| Q3 | NoKeyFillsTwoSlots | one signing key occupies at most one quorum slot | **Verified (Alloy 6.2.0, 2026-07-18)** |
-| Q4 | TwoPersonRuleHolds | a satisfied quorum has ≥2 distinct human approvers | **Verified (Alloy 6.2.0, 2026-07-18)** |
-| Q5 | OrderedChainAcyclic | an ordered approval chain has no cycle | **Verified (Alloy 6.2.0, 2026-07-18)** |
-| Q6 | OrderedChainLinear | an ordered approval chain is a single linear path | **Verified (Alloy 6.2.0, 2026-07-18)** |
+| ID  | Property               | Asserts                                            | Status                                 |
+| --- | ---------------------- | -------------------------------------------------- | -------------------------------------- |
+| Q1  | SelfApprovalImpossible | the requester can never fill an approval slot      | **Verified (Alloy 6.2.0, 2026-07-18)** |
+| Q2  | NoHumanFillsTwoSlots   | one human occupies at most one quorum slot         | **Verified (Alloy 6.2.0, 2026-07-18)** |
+| Q3  | NoKeyFillsTwoSlots     | one signing key occupies at most one quorum slot   | **Verified (Alloy 6.2.0, 2026-07-18)** |
+| Q4  | TwoPersonRuleHolds     | a satisfied quorum has ≥2 distinct human approvers | **Verified (Alloy 6.2.0, 2026-07-18)** |
+| Q5  | OrderedChainAcyclic    | an ordered approval chain has no cycle             | **Verified (Alloy 6.2.0, 2026-07-18)** |
+| Q6  | OrderedChainLinear     | an ordered approval chain is a single linear path  | **Verified (Alloy 6.2.0, 2026-07-18)** |
 
 ---
 
@@ -386,12 +390,12 @@ model that closes the "Alloy authored-not-run" gap: it was authored to the repo'
 convention but had never been executed. All 4 assertions now verified with no
 counterexample and `showChain` satisfiable in the 2026-07-18 CI-gated run.
 
-| ID | Property | Asserts | Status |
-|----|----------|---------|--------|
-| D1 | DelegationAcyclic | a valid chain is acyclic; no parent recurs | **Verified (Alloy 6.2.0, 2026-07-18)** |
-| D2 | DelegationIdsUnique | each hop's delegation_id is distinct | **Verified (Alloy 6.2.0, 2026-07-18)** |
-| D3 | LeafIsNotItsOwnAncestor | the leaf capability is never a parent in its own chain | **Verified (Alloy 6.2.0, 2026-07-18)** |
-| D4 | AuthorityNonIncreasing | authority is monotonically non-increasing root→leaf | **Verified (Alloy 6.2.0, 2026-07-18)** |
+| ID  | Property                | Asserts                                                | Status                                 |
+| --- | ----------------------- | ------------------------------------------------------ | -------------------------------------- |
+| D1  | DelegationAcyclic       | a valid chain is acyclic; no parent recurs             | **Verified (Alloy 6.2.0, 2026-07-18)** |
+| D2  | DelegationIdsUnique     | each hop's delegation_id is distinct                   | **Verified (Alloy 6.2.0, 2026-07-18)** |
+| D3  | LeafIsNotItsOwnAncestor | the leaf capability is never a parent in its own chain | **Verified (Alloy 6.2.0, 2026-07-18)** |
+| D4  | AuthorityNonIncreasing  | authority is monotonically non-increasing root→leaf    | **Verified (Alloy 6.2.0, 2026-07-18)** |
 
 ---
 
@@ -452,13 +456,13 @@ no_single_signer_fills_quorum (all-traces): verified (4 steps)
 commit_requires_signature_over_that_action (all-traces): verified (7 steps)
 ```
 
-| Lemma | Result | Meaning |
-|---|---|---|
-| `executable_quorum` | verified | A 2-of-2 quorum can commit with two distinct honest UV-gated approvers, neither the initiator, no key compromise (model not vacuous). |
+| Lemma                                              | Result   | Meaning                                                                                                                                       |
+| -------------------------------------------------- | -------- | --------------------------------------------------------------------------------------------------------------------------------------------- |
+| `executable_quorum`                                | verified | A 2-of-2 quorum can commit with two distinct honest UV-gated approvers, neither the initiator, no key compromise (model not vacuous).         |
 | `quorum_requires_two_distinct_uv_gated_signatures` | verified | Any commit of action a with uncompromised approvers H1, H2 forces H1 != H2 and a UV-then-signature over exactly a by each, before the commit. |
-| `initiator_cannot_self_approve` | verified | No commit names the initiator as either approver (Section 6 SelfApprovalImpossible / G4); the initiator identity is attacker-chosen. |
-| `no_single_signer_fills_quorum` | verified | The two committing approvers are never the same identity (distinct pinned keys entail distinct enrolled identities). |
-| `commit_requires_signature_over_that_action` | verified | No commit of a while an uncompromised named approver never signed exactly a; rules out transplanting a signature over any other action. |
+| `initiator_cannot_self_approve`                    | verified | No commit names the initiator as either approver (Section 6 SelfApprovalImpossible / G4); the initiator identity is attacker-chosen.          |
+| `no_single_signer_fills_quorum`                    | verified | The two committing approvers are never the same identity (distinct pinned keys entail distinct enrolled identities).                          |
+| `commit_requires_signature_over_that_action`       | verified | No commit of a while an uncompromised named approver never signed exactly a; rules out transplanting a signature over any other action.       |
 
 **Falsification history (honest record):** an earlier revision of this model omitted the
 initiator identity from the signed Authorization Context. Under that revision Tamarin FALSIFIED
@@ -519,11 +523,49 @@ downstream exactly-once effects.
 
 ---
 
+## TLA+ — composed consequence, revocation/witness, and effect-profile closure
+
+**Status:** bounded same-team models and content-addressed selected runtime
+traces, verified locally on 2026-07-24 and gated in CI.
+
+Three models add bounded partial coverage for the previously explicit assurance
+gaps:
+
+- `ep_consequence_lifecycle.tla` composes exact CAID admission, approval,
+  escrow reservation, one provider invocation, indeterminate fencing,
+  authenticated reconciliation, revocation-before-start, terminal effect, and
+  separately authorized remedy. TLC explored 507 generated / 204 distinct
+  states to complete depth 23.
+- `ep_revocation_witness.tla` checks pinned effective revocation, fresh status,
+  monotonic witness heads, equivocation poisoning, permanent post-conflict
+  refusal, and exact stream isolation. TLC explored 465,814 generated / 65,781
+  distinct states to complete depth 5.
+- `ep_effect_profiles.tla` composes bounded Action Escrow, Model-to-Matter, AEC
+  role mapping, GRACE, mobile continuity, and mobile enrollment safety. TLC
+  explored 2,234,641 generated / 403,200 distinct states to complete depth 25.
+
+`formal/runtime-traces.v1.json` binds 18 governed traces across nine public
+claims to the exact model/config/harness/adapter/runtime bytes. The refinement
+harness forces exact TLA+ action sequences, executes real production entry
+points, compares scalar state projections, and requires nine deliberately
+unsafe mutations to produce formal counterexamples while the runtime refuses
+the corresponding operation. The deterministic result is recorded in
+`formal/results/formal-runtime-refinement.v1.json`.
+
+**Boundary:** this is bounded selected-trace refinement evidence, not a
+mechanized implementation refinement proof. It does not establish all runtime
+executions against all formal behaviors, cryptographic correctness, trusted
+time, provider or meter truth, storage durability, independent witness
+operation, or arbitrary concurrency/cardinality.
+
+---
+
 When a property is verified by a model checker:
+
 1. Update its status from `Specified — not yet verified` to `Verified (TLC/Alloy, YYYY-MM-DD)`
 2. Commit the `.cfg` / Alloy result file alongside the status update
 3. If TLC finds a counterexample, file it as a critical bug before claiming verification
 
 ---
 
-*Last updated: 2026-07-22 (bounded consequence-attempt/AEB custody model added to the pinned CI gate: 27 checks across 93,724 distinct states, including consume-before-commit ordering and stale-lease-only recovery; deliberately weakened replay model falsifies `InvokeAtMostOnce`). Prior: 2026-07-21 (bounded authority-program and receipt-program models plus Conservation of Authority claim boundary). Prior: 2026-07-10 (composed reliance-path v2: 10 strict lemmas verified; no-consumption and unpinned-registry-view comparisons falsified with concrete traces; all well-formedness checks clean). Prior: 2026-07-06 (Tamarin quorum model added: 5 lemmas verified). Prior: 2026-07-05 (Tamarin core-receipt model added). Prior: 2026-06-11 — 26 TLA+ properties verified across 413,137 states with 0 errors; 15 relation assertions and 7 federation assertions verified with 0 counterexamples.*
+_Last updated: 2026-07-24 (three bounded assurance-closure models plus 18 content-addressed selected runtime traces and nine unsafe mutations). Prior: 2026-07-22 (bounded consequence-attempt/AEB custody model added to the pinned CI gate: 27 checks across 93,724 distinct states, including consume-before-commit ordering and stale-lease-only recovery; deliberately weakened replay model falsifies `InvokeAtMostOnce`). Prior: 2026-07-21 (bounded authority-program and receipt-program models plus Conservation of Authority claim boundary). Prior: 2026-07-10 (composed reliance-path v2: 10 strict lemmas verified; no-consumption and unpinned-registry-view comparisons falsified with concrete traces; all well-formedness checks clean)._

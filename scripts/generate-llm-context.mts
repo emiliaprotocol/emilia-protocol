@@ -100,6 +100,11 @@ assert(caidMapping.vectors?.length > 0, 'CAID mapping vectors are missing');
 assert(modelToMatter.suite === 'EP-MODEL-TO-MATTER-v1' && modelToMatter.vectors?.length > 0, 'Model-to-Matter vectors are missing');
 assert(securityCase.execution?.status === 'passed', 'resolved security case does not report a passed execution');
 assert(securityCase.claim_count === claimSource.claims?.length, 'security-case claim count differs from source');
+assert(proofStats.formalRefinement?.method === 'bounded_selected_trace_refinement', 'formal refinement method is missing or unsupported');
+assert(proofStats.formalRefinement?.models > 0, 'formal refinement model count is missing');
+assert(proofStats.formalRefinement?.claims > 0, 'formal refinement claim count is missing');
+assert(proofStats.formalRefinement?.traces > 0, 'formal refinement trace count is missing');
+assert(proofStats.formalRefinement?.unsafeMutationsDetected > 0, 'formal refinement negative controls are missing');
 assert(conformance.implementations?.every((item) => item.relationship === 'one_team_port'), 'reference ports are not uniformly labeled one_team_port');
 assert(external.conformance?.status === 'pass', 'external conformance pin does not report pass');
 assert(Number.isInteger(external.conformance?.vectors), 'external conformance vector count is missing');
@@ -181,6 +186,7 @@ const context: any = {
       alloy_assertions: proofStats.alloy.assertions,
       alloy_version: proofStats.alloy.version,
       tamarin_composed: proofStats.tamarin,
+      selected_trace_refinement: proofStats.formalRefinement,
     },
     red_team_cases: proofStats.redTeamCases,
     security_case: {
@@ -293,6 +299,7 @@ function renderFull(web: boolean = false): string {
   lines.push(`- External Rust interoperability: ${external.conformance.status} on the time-pinned ${external.conformance.vectors}-vector set evaluated ${external.conformance.evaluated_at}; the current bundle has ${conformance.totals.vectors}. The same pinned implementation passes ${hostilityCases} hostility cases. Strict clean-room construction acceptance: ${external.construction_evidence.strict_clean_room_acceptance}.`);
   lines.push(`- Security case: ${securityCase.claim_count} executable claims, ${securityCase.evidence_file_count} evidence files, execution ${securityCase.execution.status}; bundle sha256:${securityCase.evidence_bundle_sha256}.`);
   lines.push(`- Formal inventory: ${proofStats.tla.invariants} TLA+ invariants, ${proofStats.alloy.facts} Alloy facts, ${proofStats.alloy.assertions} Alloy assertions. Formal scope and exclusions remain claim-specific.`);
+  lines.push(`- Formal-to-runtime selected traces: ${proofStats.formalRefinement.traces} content-addressed traces across ${proofStats.formalRefinement.models} bounded models and ${proofStats.formalRefinement.claims} public claims; ${proofStats.formalRefinement.unsafeMutationsDetected} deliberately unsafe mutations are detected by both layers. Boundary: ${proofStats.formalRefinement.boundary}.`);
   lines.push(`- Composed symbolic model: ${proofStats.tamarin.verifiedObligations} Tamarin obligations verified across challenge, CAID, two approvals, issuer and authority pins, registry view, revocation, consumption, and execution; ${proofStats.tamarin.deliberatelyUnsafeCounterexamples} deliberately unsafe variants are falsified with attack traces.`);
   lines.push(`- Red-team catalog: ${proofStats.redTeamCases} cases.`);
   lines.push(`- CAID: ${caidCore.vectors.length} core identifier vectors plus ${caidMapping.vectors.length} mapping vectors in three same-team ports, with closed EQUIVALENT_UNDER_PROFILE / NOT_EQUIVALENT / INDETERMINATE results.`);
@@ -399,7 +406,7 @@ function renderIndex(): string {
     '',
     '## Engineering Evidence',
     '',
-    `EMILIA is implemented security infrastructure, not architecture-only: ${comma(proofStats.tests.total)} automated tests across ${comma(proofStats.tests.files)} files; ${securityCase.claim_count} executable security claims over ${securityCase.evidence_file_count} hashed evidence files; ${proofStats.tamarin.verifiedObligations} verified obligations in one composed Tamarin model, with ${proofStats.tamarin.deliberatelyUnsafeCounterexamples} deliberately weakened variants producing concrete attack traces.`,
+    `EMILIA is implemented security infrastructure, not architecture-only: ${comma(proofStats.tests.total)} automated tests across ${comma(proofStats.tests.files)} files; ${securityCase.claim_count} executable security claims over ${securityCase.evidence_file_count} hashed evidence files; ${proofStats.tamarin.verifiedObligations} verified obligations in one composed Tamarin model, with ${proofStats.tamarin.deliberatelyUnsafeCounterexamples} deliberately weakened variants producing concrete attack traces; and ${proofStats.formalRefinement.traces} content-addressed selected traces across ${proofStats.formalRefinement.models} bounded models and ${proofStats.formalRefinement.claims} claims, including ${proofStats.formalRefinement.unsafeMutationsDetected} detected unsafe mutations.`,
     '',
     `Interoperability evidence: ${conformance.totals.suites} conformance suites and ${conformance.totals.vectors} current vectors across three same-team ports; external Rust evidence covers a time-pinned ${external.conformance.vectors}-vector set plus ${hostilityCases} hostility cases. Strict clean-room construction acceptance remains false.`,
     '',
