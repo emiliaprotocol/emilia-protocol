@@ -67,6 +67,21 @@ load_lane_config() {
   shift
   (($# > 0)) || lane_die "a strict config-key allowlist is required"
   local allowed=("$@")
+  local allowed_key
+  LANE_ALLOWLISTED_CONFIG_KEYS=':'
+  LANE_LOADED_CONFIG_KEYS=':'
+  for allowed_key in "${allowed[@]}"; do
+    [[ "$allowed_key" =~ ^[A-Z][A-Z0-9_]*$ ]] \
+      || lane_die "invalid config key in command allowlist: $allowed_key"
+    if is_invocation_control_variable "$allowed_key"; then
+      lane_die "invocation control variable is not allowed in config schema: $allowed_key"
+    fi
+    [[ "$LANE_ALLOWLISTED_CONFIG_KEYS" != *":$allowed_key:"* ]] \
+      || lane_die "duplicate config key in command allowlist: $allowed_key"
+    unset "$allowed_key" 2>/dev/null \
+      || lane_die "unable to clear ambient config variable: $allowed_key"
+    LANE_ALLOWLISTED_CONFIG_KEYS+="$allowed_key:"
+  done
   local expected=${DEPLOYMENT_CONFIG_SHA256:-}
   local require_pin=${REQUIRE_DEPLOYMENT_CONFIG_PIN:-false}
   if [[ "$require_pin" == true ]]; then
@@ -154,7 +169,6 @@ PY
 
   local line key value number=0
   local seen=':'
-  LANE_LOADED_CONFIG_KEYS=':'
   while IFS= read -r line || [[ -n "$line" ]]; do
     number=$((number + 1))
     [[ -z "$line" || "$line" == \#* ]] && continue
@@ -232,6 +246,11 @@ PY
 
 require_var() {
   local name=$1
+  [[ "$name" =~ ^[A-Z][A-Z0-9_]*$ ]] \
+    || lane_die "invalid required config key: $name"
+  [[ "${LANE_ALLOWLISTED_CONFIG_KEYS:-:}" == *":$name:"* \
+      && "${LANE_LOADED_CONFIG_KEYS:-:}" == *":$name:"* ]] \
+    || lane_die "$name was not loaded from pinned config"
   [[ -n "${!name:-}" ]] || lane_die "$name is required"
 }
 
