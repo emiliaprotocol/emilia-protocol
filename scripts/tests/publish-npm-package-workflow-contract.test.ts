@@ -18,9 +18,26 @@ function workflow(): any {
 describe('reusable npm release workflow byte contract', () => {
   it('separates untrusted build code from the protected OIDC publisher', () => {
     const jobs = workflow().jobs;
+    const buildSteps = jobs.build.steps;
+    const evidenceIndex = buildSteps.findIndex(
+      (step) => step.name === 'Execute security and conformance evidence',
+    );
+    const governedIndex = buildSteps.findIndex(
+      (step) => step.name === 'Verify governed artifacts and LLM context match source',
+    );
+    const packIndex = buildSteps.findIndex((step) => step.id === 'pack');
+    const governed = buildSteps[governedIndex];
+
     expect(Object.keys(jobs)).toEqual(['build', 'publisher']);
     expect(jobs.build.permissions).toEqual({ contents: 'read' });
     expect(jobs.build.environment).toBeUndefined();
+    expect(evidenceIndex).toBeGreaterThanOrEqual(0);
+    expect(governedIndex).toBe(evidenceIndex + 1);
+    expect(packIndex).toBe(governedIndex + 1);
+    expect(governed.run.trim().split('\n').map((line) => line.trim())).toEqual([
+      'npm run check:proof-stats',
+      'npm run check:llm-context',
+    ]);
     expect(jobs.publisher.needs).toBe('build');
     expect(jobs.publisher.environment).toBe('registry-publishing-approval');
     expect(jobs.publisher.permissions).toEqual({

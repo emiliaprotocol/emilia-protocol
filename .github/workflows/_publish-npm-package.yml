@@ -176,6 +176,11 @@ jobs:
           npm run security-case:emit
           npm run conformance:manifest
 
+      - name: Verify governed artifacts and LLM context match source
+        run: |
+          npm run check:proof-stats
+          npm run check:llm-context
+
       - name: Pack twice and stage exact inert release input
         id: pack
         env:
