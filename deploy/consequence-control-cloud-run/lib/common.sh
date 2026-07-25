@@ -62,6 +62,64 @@ secret_name() {
   printf '%s' "${1%%:*}"
 }
 
+effective_iam_secret_args() {
+  local variable ref secret members=()
+  while IFS= read -r secret; do
+    members=()
+    if secret_is_used_by "$secret" actuator_secret_variables; then
+      members+=("serviceAccount:$(runtime_service_account_email "$ACTUATOR_SERVICE_ACCOUNT")")
+    fi
+    if secret_is_used_by "$secret" decision_secret_variables; then
+      members+=("serviceAccount:$(runtime_service_account_email "$DECISION_SERVICE_ACCOUNT")")
+    fi
+    local IFS=,
+    printf '%s=%s\n' "$secret" "${members[*]}"
+  done < <(
+    while IFS= read -r variable; do
+      ref=${!variable}
+      secret_name "$ref"
+      printf '\n'
+    done < <(all_secret_variables) | sort -u
+  )
+}
+
+emit_effective_iam_manifest() {
+  local output=$1 spec
+  local project_number
+  project_number=$(gcloud projects describe "$PROJECT_ID" \
+    "--project=$PROJECT_ID" --format='value(projectNumber)')
+  [[ "$project_number" =~ ^[1-9][0-9]{5,29}$ ]] \
+    || lane_die "Google Cloud project number could not be resolved"
+  local arguments=(
+    python3 "$LANE_DIR/emit-effective-iam-manifest.py"
+    "--project=$PROJECT_ID"
+    "--project-number=$project_number"
+    "--region=$REGION"
+    "--actuator-service=$ACTUATOR_SERVICE"
+    "--decision-principal=serviceAccount:$(runtime_service_account_email "$DECISION_SERVICE_ACCOUNT")"
+    "--output=$output"
+  )
+  while IFS= read -r spec; do
+    arguments+=(--secret "$spec")
+  done < <(effective_iam_secret_args)
+  "${arguments[@]}"
+}
+
+verify_effective_iam_live() {
+  local directory manifest
+  directory=$(mktemp -d)
+  manifest="$directory/effective-iam.json"
+  if ! emit_effective_iam_manifest "$manifest"; then
+    rm -rf "$directory"
+    lane_die "effective IAM manifest generation failed"
+  fi
+  if ! "$LANE_DIR/verify-effective-iam.py" --input "$manifest" --live; then
+    rm -rf "$directory"
+    lane_die "effective IAM is broader than the closed deployment allowlist"
+  fi
+  rm -rf "$directory"
+}
+
 shell_join() {
   local rendered=() item
   for item in "$@"; do
@@ -114,6 +172,24 @@ decision_secret_variables() {
     DECISION_OBSERVATION_PUBLIC_KEY_SECRET
 }
 
+all_secret_variables() {
+  {
+    actuator_secret_variables
+    decision_secret_variables
+  } | awk '!seen[$0]++'
+}
+
+secret_is_used_by() {
+  local secret=$1 group=$2 variable ref
+  while IFS= read -r variable; do
+    ref=${!variable}
+    if [[ "$(secret_name "$ref")" == "$secret" ]]; then
+      return 0
+    fi
+  done < <("$group")
+  return 1
+}
+
 validate_lane_config() {
   local required=(
     PROJECT_ID REGION RELEASE_ID
@@ -132,6 +208,8 @@ validate_lane_config() {
     DECISION_APPROVAL_ENDPOINT DECISION_PROPOSAL_TTL_SEC
     DECISION_ACTUATOR_TIMEOUT_MS DECISION_AEB_REQUIREMENT_REF
     DECISION_SHUTDOWN_GRACE_MS
+    CANARY_EVIDENCE_KEY_ID CANARY_EVIDENCE_PUBLIC_KEY_FILE
+    CANARY_MAX_AGE_SEC
   )
   local name
   while IFS= read -r name; do required+=("$name"); done < <(actuator_secret_variables)
@@ -154,12 +232,19 @@ validate_lane_config() {
     || lane_die "DECISION_INGRESS is invalid"
   [[ "$DECISION_APPROVAL_ENDPOINT" == https://* ]] \
     || lane_die "DECISION_APPROVAL_ENDPOINT must use https"
+  [[ ${#CANARY_EVIDENCE_KEY_ID} -ge 3 \
+      && ${#CANARY_EVIDENCE_KEY_ID} -le 256 \
+      && "$CANARY_EVIDENCE_KEY_ID" =~ ^[A-Za-z0-9:_.@-]+$ ]] \
+    || lane_die "CANARY_EVIDENCE_KEY_ID is invalid"
+  [[ "$CANARY_EVIDENCE_PUBLIC_KEY_FILE" == /* ]] \
+    || lane_die "CANARY_EVIDENCE_PUBLIC_KEY_FILE must be an absolute path"
 
   for name in \
     GITHUB_ISSUE_NUMBER ACTUATOR_MIN_INSTANCES ACTUATOR_MAX_INSTANCES \
     ACTUATOR_CONCURRENCY DECISION_MIN_INSTANCES DECISION_MAX_INSTANCES \
     DECISION_CONCURRENCY DECISION_PROPOSAL_TTL_SEC \
-    DECISION_ACTUATOR_TIMEOUT_MS DECISION_SHUTDOWN_GRACE_MS; do
+    DECISION_ACTUATOR_TIMEOUT_MS DECISION_SHUTDOWN_GRACE_MS \
+    CANARY_MAX_AGE_SEC; do
     validate_positive_integer "$name"
   done
   while IFS= read -r name; do validate_secret_ref "$name"; done \

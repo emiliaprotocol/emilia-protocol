@@ -41,10 +41,25 @@ for the actuator's canonical service URL. It sends that identity token in
 application-token-only fallback and no direct metadata URL handling.
 
 The actuator is deployed with `--no-allow-unauthenticated`. The deployment lane
-grants `roles/run.invoker` only to the decision runtime service account and
-never grants `allUsers` or `allAuthenticatedUsers`. The exact tagged actuator
-URL remains the request destination, while the canonical service URL remains
-the pinned ID-token audience, including during canary traffic.
+reconciles the complete `roles/run.invoker` binding to exactly the decision
+runtime service account; stale, conditional, `allUsers`, and
+`allAuthenticatedUsers` invoker bindings are removed and the resulting policy
+is read back and checked. It similarly reconciles each referenced secret's
+`roles/secretmanager.secretAccessor` binding to only the runtime identities
+that consume that secret while preserving unrelated IAM roles. The exact
+tagged actuator URL remains the request destination, while the canonical
+service URL remains the pinned ID-token audience, including during canary
+traffic.
+
+Resource-level reconciliation is not treated as sufficient proof. After the
+zero-traffic candidates exist and before every promotion step,
+`verify-effective-iam.py --live` queries Cloud Asset Policy Analyzer for the
+effective `run.routes.invoke` and `secretmanager.versions.access` permissions.
+It expands groups and service-account impersonation, includes inherited
+project/folder/organization grants, and refuses partial, conditional, public,
+aggregate, unexpanded, or non-allowlisted access. An inherited owner or admin
+grant therefore blocks promotion even when the resource policy itself looks
+closed.
 
 The decision service intentionally keeps its existing application-level
 authentication posture and `--no-invoker-iam-check`; this change does not make
@@ -86,15 +101,19 @@ approval.
 
 `deploy.sh --apply` is deliberately ordered:
 
-1. verify APIs, pre-existing secrets, service accounts, and secret-level IAM;
+1. verify APIs, pre-existing secrets, and service accounts, then close and
+   read-back-verify each secret's accessor allowlist;
 2. deploy the actuator candidate by exact digest with zero traffic and a
    revision tag;
-3. grant the decision service account `roles/run.invoker` on the actuator;
+3. close and read-back-verify actuator `roles/run.invoker` to exactly the
+   decision service account;
 4. resolve the actuator's canonical service URL for the token audience and the
    exact tag URL for the request destination;
 5. deploy the decision candidate by exact digest with zero traffic, configured
    to call the tagged actuator revision with dual-header authentication;
-6. stop without changing production traffic.
+6. run the live effective-IAM proof over the actuator and every referenced
+   secret, refusing inherited or impersonated access outside the allowlist;
+7. stop without changing production traffic.
 
 The actuator must be reachable through the configured VPC path. Cloud Run calls
 to an internal-ingress service must route through a VPC considered internal, so
@@ -103,13 +122,25 @@ egress.
 
 ## Canary contract
 
-Before any traffic shift, collect a canary evidence JSON document for the exact
-candidate revision names and image digests. It must contain these closed
+Before any traffic shift, the checked-in `run-canary.py` driver must execute
+the exact normal, forced-timeout, replay, durable-lookup, and authenticated
+reconciliation workflow and Ed25519-sign a short-lived evidence document for
+the exact candidate
+revision names and image digests. Promotion re-verifies the signature under the
+pinned canary-driver public key, freshness, project, region, revision names,
+and image digests. It then queries Cloud Run and re-derives each candidate's
+service and digest binding live. The signed document contains these closed
 observations:
 
 ```json
 {
+  "@version": "EP-CONSEQUENCE-CANARY-EVIDENCE-v1",
+  "project_id": "emilia-production",
+  "region": "us-central1",
   "evidence_status": "observed",
+  "observed_at": "2026-07-25T08:00:00Z",
+  "expires_at": "2026-07-25T08:10:00Z",
+  "nonce": "canary_nonce_...",
   "actuator_revision": "SERVICE-RELEASE",
   "decision_revision": "SERVICE-RELEASE",
   "actuator_image": "REGISTRY/IMAGE@sha256:...",
@@ -139,22 +170,55 @@ observations:
       "reason": "github_attempt_attribution_unavailable",
       "reexecuted": false
     }
+  },
+  "signature": {
+    "algorithm": "Ed25519",
+    "key_id": "canary-driver-key-2026-07",
+    "value": "base64url-signature"
   }
 }
 ```
 
-Validate it locally:
+The signature input is the UTF-8 JSON serialization of every member except
+`signature`, with keys sorted recursively and separators `,` and `:`. The
+canary driver private key is not a deployment secret and must not be readable
+by either runtime service account.
+
+Execute the live workflow and write evidence atomically:
+
+```sh
+deploy/consequence-control-cloud-run/run-canary.py \
+  --config /tmp/emilia-cloud-run.env \
+  --scenario /secure/path/current-approved-canary-scenario.json \
+  --application-token-file /secure/path/decision-application-token \
+  --private-key-file /secure/path/canary-driver-ed25519-private.pem \
+  --output /secure/path/canary-evidence.json \
+  --use-google-id-token
+```
+
+The scenario contains the current Gate-verified proposal, receipt, AEB
+evaluation, and evidence legs for the two pinned canary profiles. It cannot
+state outcomes. The driver derives outcomes and provider references from the
+authenticated service responses, rejects target substitution, validates the
+candidate tag/revision/image bindings live, verifies that its private key
+matches the pinned public key before any effect, and will not replace an
+existing evidence file without `--overwrite`.
+
+Re-validate the resulting evidence:
 
 ```sh
 deploy/consequence-control-cloud-run/verify-canary.py \
   --config /tmp/emilia-cloud-run.env \
-  --evidence /secure/path/canary-evidence.json
+  --evidence /secure/path/canary-evidence.json \
+  --live
 ```
 
-The verifier rejects templates, mismatched revisions or digests, a timeout that
-does not become `INDETERMINATE`, replay that is not refused as
-`envelope_replayed`, provider invocation counts other than one, and
-reconciliation that re-executes or overclaims GitHub attempt attribution.
+The verifier rejects unsigned, forged, stale, expired, or future-dated
+evidence; duplicate JSON members; project, region, key, revision, service, or
+digest mismatches; a timeout that does not become `INDETERMINATE`; replay that
+is not refused as `envelope_replayed`; provider invocation counts other than
+one; and reconciliation that re-executes or overclaims GitHub attempt
+attribution. `traffic.sh` always invokes this live mode for a promotion.
 
 ## Traffic and rollback
 
@@ -196,8 +260,10 @@ An apply remains blocked until all of the following exist:
 - distinct decision executor and recovery database principals;
 - a repository-scoped GitHub App installation with Issues read/write;
 - paired envelope and observation keys placed only on their intended sides;
+- a separately controlled Ed25519 canary-driver key and pinned public-key file;
 - digest-pinned actuator and decision images; and
-- an external canary driver capable of producing the closed evidence contract.
+- a current, cryptographically valid canary scenario produced through the
+  approval and AEB pipeline.
 
 No command in this tree creates database roles, secret payloads, GitHub
 credentials, images, migrations, or approval/evidence fixtures.
@@ -208,7 +274,9 @@ credentials, images, migrations, or approval/evidence fixtures.
 deploy/consequence-control-cloud-run/test.sh
 ```
 
-The test suite uses only Bash, ShellCheck, and the Python standard library. It
-renders deployment and traffic plans with fixture secret references, verifies
-credential separation and digest pinning, checks the canary contract, and does
-not call `gcloud`.
+The test suite uses Bash, ShellCheck, Python, and OpenSSL. It renders deployment
+and traffic plans with fixture secret references, verifies exact IAM
+reconciliation plus inherited effective-IAM refusal, credential separation and
+digest pinning, checks the executable signed
+fresh/stale canary evidence, and exercises live revision binding with a local
+fake `gcloud`; it does not contact Google Cloud.

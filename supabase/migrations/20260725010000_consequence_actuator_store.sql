@@ -4,27 +4,6 @@
 -- Runtime principals have EXECUTE on two narrow functions and no direct table
 -- DML. The NOLOGIN owner is separate from tenant-bound executor principals.
 
-DO $roles$
-BEGIN
-  IF NOT EXISTS (
-    SELECT 1 FROM pg_catalog.pg_roles
-    WHERE rolname = 'consequence_actuator_store_owner'
-  ) THEN
-    CREATE ROLE consequence_actuator_store_owner NOLOGIN NOBYPASSRLS;
-  END IF;
-  IF NOT EXISTS (
-    SELECT 1 FROM pg_catalog.pg_roles
-    WHERE rolname = 'consequence_actuator_executor'
-  ) THEN
-    CREATE ROLE consequence_actuator_executor NOLOGIN NOBYPASSRLS;
-  END IF;
-END
-$roles$;
-
-ALTER ROLE consequence_actuator_store_owner NOLOGIN NOBYPASSRLS;
-ALTER ROLE consequence_actuator_executor NOLOGIN NOBYPASSRLS;
-
-GRANT consequence_actuator_store_owner TO CURRENT_USER;
 GRANT USAGE, CREATE ON SCHEMA public TO consequence_actuator_store_owner;
 
 CREATE SCHEMA IF NOT EXISTS consequence_actuator_private
@@ -308,4 +287,3 @@ COMMENT ON TABLE consequence_actuator_private.tenant_principals IS
   'Deployment-provisioned mapping from tenant IDs to dedicated actuator database principals.';
 
 REVOKE CREATE ON SCHEMA public FROM consequence_actuator_store_owner;
-REVOKE consequence_actuator_store_owner FROM CURRENT_USER;

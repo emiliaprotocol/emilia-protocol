@@ -113,6 +113,32 @@ function forbidCredentialInjection(text: string, label: string): void {
   }
 }
 
+export function validateTlaSecurityCaseWorkflowText(text: string, label: string): boolean {
+  requireText(text, [
+    'TLA2TOOLS_JAR: ${{ github.workspace }}/tla2tools.jar',
+    'actions/setup-java@03ad4de0992f5dab5e18fcb136590ce7c4a0ac95',
+    'distribution: temurin',
+    "java-version: '17'",
+    'TLA_VERSION: v1.7.4',
+    'TLA_SHA256: 936a262061c914694dfd669a543be24573c45d5aa0ff20a8b96b23d01e050e88',
+    '"https://github.com/tlaplus/tlaplus/releases/download/${TLA_VERSION}/tla2tools.jar"',
+    'echo "${TLA_SHA256}  tla2tools.jar" | sha256sum -c -',
+  ], `${label} TLA+ execution guard`);
+  requireBefore(
+    text,
+    'actions/setup-java@03ad4de0992f5dab5e18fcb136590ce7c4a0ac95',
+    'npm run security-case:emit',
+    `${label} Java 17 guard`,
+  );
+  requireBefore(
+    text,
+    'echo "${TLA_SHA256}  tla2tools.jar" | sha256sum -c -',
+    'npm run security-case:emit',
+    `${label} TLA+ checksum guard`,
+  );
+  return true;
+}
+
 function validateManualPublisher(text: string, label: string, { direct }: { direct: boolean }): void {
   if (/^[ \t]{2}push:/m.test(text)) throw new Error(`${label} publishes from an automatic push trigger`);
   requireText(text, [
@@ -159,6 +185,7 @@ export function validateReusableNpmWorkflowText(text: string): boolean {
     'persist-credentials: false',
     'scripts/require-release-approval.mjs',
     '--allowed-actor FutureEnterprises',
+    'node scripts/check-npm-package-dependencies.mjs "$PACKAGE_DIR"',
     'group: registry-publish-${{ inputs.package_name }}',
   ], 'reusable npm workflow');
   const workflow: any = YAML.parse(text);
@@ -172,6 +199,13 @@ export function validateReusableNpmWorkflowText(text: string): boolean {
     throw new Error('reusable npm workflow requests permissions outside the caller release boundary');
   }
   requireBefore(text, 'scripts/require-release-approval.mjs', 'run: npm test', 'reusable npm workflow');
+  requireBefore(
+    text,
+    'node scripts/check-npm-package-dependencies.mjs "$PACKAGE_DIR"',
+    'npm publish "${{ steps.pack.outputs.tarball }}" --access public --provenance',
+    'reusable npm dependency registry guard',
+  );
+  validateTlaSecurityCaseWorkflowText(text, 'reusable npm workflow');
   forbidCredentialInjection(text, 'reusable npm workflow');
   return true;
 }
@@ -314,7 +348,7 @@ export function validateCredentialRotationGuideText(text: string): boolean {
   return true;
 }
 
-function validateNpmDirect(text: string, label: string): void {
+export function validateNpmDirect(text: string, label: string): boolean {
   requireText(text, [
     'npm run security-case:emit',
     'npm run conformance:manifest',
@@ -327,8 +361,10 @@ function validateNpmDirect(text: string, label: string): void {
     'scripts/require-release-approval.mjs',
   ], label);
   requireBefore(text, 'scripts/require-release-approval.mjs', 'run: npm test', label);
+  validateTlaSecurityCaseWorkflowText(text, label);
   validateManualPublisher(text, label, { direct: true });
   forbidCredentialInjection(text, label);
+  return true;
 }
 
 export function validatePypiDirect(text, label) {

@@ -121,6 +121,7 @@ export const STANDALONE_RUNTIME_SOURCES = [
   'scripts/check-mobile-production.mts',
   'scripts/check-mobile-release.mts',
   'scripts/check-mobile-signing-identity.mts',
+  'scripts/check-npm-package-dependencies.mts',
   'scripts/check-outcome-authority-formal.mts',
   'scripts/check-packed-package-exports.mts',
   'scripts/check-preprint-sync.mts',

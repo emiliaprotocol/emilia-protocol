@@ -11,6 +11,13 @@ const migration = readFileSync(
   ),
   'utf8',
 );
+const consumeQualification = readFileSync(
+  new URL(
+    '../supabase/migrations/20260725012000_consequence_actuator_consume_qualification.sql',
+    import.meta.url,
+  ),
+  'utf8',
+);
 
 describe('consequence actuator production store migration', () => {
   it('creates a closed one-time envelope binding with replay and idempotency fences', () => {
@@ -56,17 +63,19 @@ describe('consequence actuator production store migration', () => {
   });
 
   it('uses an owner separate from the tenant-bound runtime principal', () => {
-    expect(migration).toContain(
-      'CREATE ROLE consequence_actuator_store_owner NOLOGIN NOBYPASSRLS',
+    const roles = readFileSync('supabase/roles.sql', 'utf8');
+    expect(roles).toContain(
+      'CREATE ROLE consequence_actuator_store_owner NOLOGIN',
     );
-    expect(migration).toContain(
-      'CREATE ROLE consequence_actuator_executor NOLOGIN NOBYPASSRLS',
+    expect(roles).toContain(
+      'CREATE ROLE consequence_actuator_executor NOLOGIN',
     );
-    expect(migration).toContain(
-      'ALTER ROLE consequence_actuator_store_owner NOLOGIN NOBYPASSRLS',
+    expect(roles).toContain('NOSUPERUSER NOCREATEDB NOCREATEROLE NOREPLICATION NOBYPASSRLS');
+    expect(roles).toContain(
+      'ALTER ROLE consequence_actuator_store_owner NOLOGIN',
     );
-    expect(migration).toContain(
-      'ALTER ROLE consequence_actuator_executor NOLOGIN NOBYPASSRLS',
+    expect(roles).toContain(
+      'ALTER ROLE consequence_actuator_executor NOLOGIN',
     );
     expect(migration).toContain(
       'ALTER TABLE public.consequence_actuator_envelopes OWNER TO consequence_actuator_store_owner',
@@ -153,6 +162,33 @@ describe('consequence actuator production store migration', () => {
     expect(migration).toContain('TO consequence_actuator_executor');
     expect(migration).not.toMatch(
       /GRANT EXECUTE[\s\S]+TO (?:service_role|anon|authenticated)/,
+    );
+  });
+
+  it('qualifies every consume predicate in the forward-only production repair', () => {
+    expect(consumeQualification).toContain(
+      'UPDATE public.consequence_actuator_envelopes AS envelopes',
+    );
+    for (const column of [
+      'tenant_id',
+      'attempt_id',
+      'action_digest',
+      'caid',
+      'provider_account_id',
+      'target_digest',
+      'operation',
+      'idempotency_key',
+      'nonce',
+      'envelope_digest',
+      'state',
+    ]) {
+      expect(consumeQualification).toContain(`envelopes.${column}`);
+    }
+    expect(consumeQualification).toContain(
+      'RETURNING envelopes.envelope_digest',
+    );
+    expect(consumeQualification).toContain(
+      "LANGUAGE plpgsql SECURITY DEFINER SET search_path = ''",
     );
   });
 

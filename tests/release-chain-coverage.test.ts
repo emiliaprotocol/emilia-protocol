@@ -8,6 +8,7 @@ import {
   discoverReleaseSurfaces,
   validateCredentialRotationGuideText,
   validateGoTagWorkflowText,
+  validateNpmDirect,
   validateNpmLockData,
   validatePypiDirect,
   validateReusableNpmWorkflowText,
@@ -93,6 +94,35 @@ describe('release-chain coverage', () => {
     const workflow = readFileSync('.github/workflows/_publish-npm-package.yml', 'utf8');
     const weakened = workflow.replace('cmp "$TESTED_TARBALL" "registry-copy/$REGISTRY_TARBALL"', 'true # comparison removed');
     expect(() => validateReusableNpmWorkflowText(weakened)).toThrow(/registry-copy/);
+  });
+
+  it('refuses npm release workflows without the pinned TLA+ runtime required by the security case', () => {
+    const reusable = readFileSync('.github/workflows/_publish-npm-package.yml', 'utf8');
+    const reusableWithoutJava17 = reusable.replace("java-version: '17'", "java-version: '21'");
+    expect(() => validateReusableNpmWorkflowText(reusableWithoutJava17)).toThrow(/TLA\+ execution guard/);
+
+    const direct = readFileSync('.github/workflows/publish-verify-sdk.yml', 'utf8');
+    const directWithoutPinnedTla = direct.replace(
+      '936a262061c914694dfd669a543be24573c45d5aa0ff20a8b96b23d01e050e88',
+      'checksum-removed',
+    );
+    expect(() => validateNpmDirect(directWithoutPinnedTla, 'publish-verify-sdk.yml')).toThrow(/TLA\+/);
+  });
+
+  it('refuses reusable npm publication without a pre-publication internal dependency registry guard', () => {
+    const workflow = readFileSync('.github/workflows/_publish-npm-package.yml', 'utf8');
+    const weakened = workflow.replace(
+      'node scripts/check-npm-package-dependencies.mjs "$PACKAGE_DIR"',
+      'true # dependency registry guard removed',
+    );
+    expect(() => validateReusableNpmWorkflowText(weakened)).toThrow(/check-npm-package-dependencies/);
+
+    const misplaced = weakened.replace(
+      'npm publish "${{ steps.pack.outputs.tarball }}" --access public --provenance',
+      'npm publish "${{ steps.pack.outputs.tarball }}" --access public --provenance\n'
+      + '          node scripts/check-npm-package-dependencies.mjs "$PACKAGE_DIR"',
+    );
+    expect(() => validateReusableNpmWorkflowText(misplaced)).toThrow(/must run.*before.*npm publish/);
   });
 
   it('refuses credential-rotation guidance that restores a manual publish token', () => {

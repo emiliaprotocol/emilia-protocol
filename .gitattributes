@@ -142,6 +142,7 @@ scripts/check-license-headers.js linguist-generated=true
 scripts/check-mobile-production.mjs linguist-generated=true
 scripts/check-mobile-release.mjs linguist-generated=true
 scripts/check-mobile-signing-identity.mjs linguist-generated=true
+scripts/check-npm-package-dependencies.mjs linguist-generated=true
 scripts/check-outcome-authority-formal.mjs linguist-generated=true
 scripts/check-packed-package-exports.mjs linguist-generated=true
 scripts/check-preprint-sync.mjs linguist-generated=true

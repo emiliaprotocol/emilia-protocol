@@ -42,6 +42,8 @@ jobs:
     needs: approval
     name: Publish @emilia-protocol/verify
     runs-on: ubuntu-latest
+    env:
+      TLA2TOOLS_JAR: ${{ github.workspace }}/tla2tools.jar
     concurrency:
       group: registry-publish-npm-verify
       cancel-in-progress: false
@@ -92,6 +94,27 @@ jobs:
         uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e  # v7.0.0
         with:
           go-version: '1.22'
+
+      - name: Setup Java
+        uses: actions/setup-java@03ad4de0992f5dab5e18fcb136590ce7c4a0ac95  # v5.6.0
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - name: Download pinned TLC model checker
+        working-directory: ${{ github.workspace }}
+        env:
+          TLA_VERSION: v1.7.4
+          TLA_SHA256: 936a262061c914694dfd669a543be24573c45d5aa0ff20a8b96b23d01e050e88
+        run: |
+          curl -fsSL \
+            --retry 5 \
+            --retry-delay 2 \
+            --retry-all-errors \
+            --connect-timeout 20 \
+            -o tla2tools.jar \
+            "https://github.com/tlaplus/tlaplus/releases/download/${TLA_VERSION}/tla2tools.jar"
+          echo "${TLA_SHA256}  tla2tools.jar" | sha256sum -c -
 
       - name: Install hash-locked cross-language verifier dependency
         working-directory: ${{ github.workspace }}

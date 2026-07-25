@@ -114,43 +114,66 @@ decision_command() {
   )
 }
 
-all_secret_variables() {
-  {
-    actuator_secret_variables
-    decision_secret_variables
-  } | awk '!seen[$0]++'
+render_policy_reconciliation() {
+  local resource_kind=$1 resource=$2 role=$3
+  shift 3
+  local members=("$@") member_args=() member
+  for member in "${members[@]}"; do
+    member_args+=(--member "$member")
+  done
+  printf '# close %s %s to the exact %s member allowlist\n' \
+    "$resource_kind" "$resource" "$role"
+  if [[ "$resource_kind" == run-service ]]; then
+    shell_join gcloud run services get-iam-policy "$resource" \
+      "--project=$PROJECT_ID" "--region=$REGION" --format=json
+    shell_join python3 "$LANE_DIR/reconcile-iam-policy.py" rewrite \
+      --input '<current-policy.json>' --output '<closed-policy.json>' \
+      --role "$role" "${member_args[@]}"
+    shell_join gcloud run services set-iam-policy "$resource" \
+      '<closed-policy.json>' "--project=$PROJECT_ID" "--region=$REGION"
+  else
+    shell_join gcloud secrets get-iam-policy "$resource" \
+      "--project=$PROJECT_ID" --format=json
+    shell_join python3 "$LANE_DIR/reconcile-iam-policy.py" rewrite \
+      --input '<current-policy.json>' --output '<closed-policy.json>' \
+      --role "$role" "${member_args[@]}"
+    shell_join gcloud secrets set-iam-policy "$resource" \
+      '<closed-policy.json>' "--project=$PROJECT_ID"
+  fi
 }
 
 render_prerequisites() {
   shell_join gcloud services enable \
     run.googleapis.com secretmanager.googleapis.com iam.googleapis.com \
+    cloudasset.googleapis.com \
     "--project=$PROJECT_ID"
   shell_join gcloud iam service-accounts describe "$ACTUATOR_SA" \
     "--project=$PROJECT_ID"
   shell_join gcloud iam service-accounts describe "$DECISION_SA" \
     "--project=$PROJECT_ID"
-  local variable ref account
+  local variable ref secret members=()
   while IFS= read -r variable; do
     ref=${!variable}
     shell_join gcloud secrets describe "$(secret_name "$ref")" \
       "--project=$PROJECT_ID"
   done < <(all_secret_variables)
-  while IFS= read -r variable; do
-    ref=${!variable}
-    account=$ACTUATOR_SA
-    shell_join gcloud secrets add-iam-policy-binding "$(secret_name "$ref")" \
-      "--project=$PROJECT_ID" \
-      "--member=serviceAccount:$account" \
-      "--role=roles/secretmanager.secretAccessor"
-  done < <(actuator_secret_variables)
-  while IFS= read -r variable; do
-    ref=${!variable}
-    account=$DECISION_SA
-    shell_join gcloud secrets add-iam-policy-binding "$(secret_name "$ref")" \
-      "--project=$PROJECT_ID" \
-      "--member=serviceAccount:$account" \
-      "--role=roles/secretmanager.secretAccessor"
-  done < <(decision_secret_variables)
+  while IFS= read -r secret; do
+    members=()
+    if secret_is_used_by "$secret" actuator_secret_variables; then
+      members+=("serviceAccount:$ACTUATOR_SA")
+    fi
+    if secret_is_used_by "$secret" decision_secret_variables; then
+      members+=("serviceAccount:$DECISION_SA")
+    fi
+    render_policy_reconciliation secret "$secret" \
+      roles/secretmanager.secretAccessor "${members[@]}"
+  done < <(
+    while IFS= read -r variable; do
+      ref=${!variable}
+      secret_name "$ref"
+      printf '\n'
+    done < <(all_secret_variables) | sort -u
+  )
 }
 
 resolve_tag_url() {
@@ -177,13 +200,60 @@ resolve_service_url() {
     --format='value(status.url)'
 }
 
-grant_actuator_invoker() {
-  gcloud run services add-iam-policy-binding "$ACTUATOR_SERVICE" \
-    "--project=$PROJECT_ID" \
-    "--region=$REGION" \
-    "--member=serviceAccount:$DECISION_SA" \
-    "--role=roles/run.invoker" \
-    --quiet
+reconcile_policy() {
+  local resource_kind=$1 resource=$2 role=$3
+  shift 3
+  local members=("$@") member_args=() member
+  local current="$IAM_TMPDIR/current.json"
+  local desired="$IAM_TMPDIR/desired.json"
+  local verified="$IAM_TMPDIR/verified.json"
+  for member in "${members[@]}"; do
+    member_args+=(--member "$member")
+  done
+
+  if [[ "$resource_kind" == run-service ]]; then
+    gcloud run services get-iam-policy "$resource" \
+      "--project=$PROJECT_ID" "--region=$REGION" --format=json > "$current"
+  else
+    gcloud secrets get-iam-policy "$resource" \
+      "--project=$PROJECT_ID" --format=json > "$current"
+  fi
+  python3 "$LANE_DIR/reconcile-iam-policy.py" rewrite \
+    --input "$current" --output "$desired" --role "$role" "${member_args[@]}"
+  if [[ "$resource_kind" == run-service ]]; then
+    gcloud run services set-iam-policy "$resource" "$desired" \
+      "--project=$PROJECT_ID" "--region=$REGION" --quiet >/dev/null
+    gcloud run services get-iam-policy "$resource" \
+      "--project=$PROJECT_ID" "--region=$REGION" --format=json > "$verified"
+  else
+    gcloud secrets set-iam-policy "$resource" "$desired" \
+      "--project=$PROJECT_ID" --quiet >/dev/null
+    gcloud secrets get-iam-policy "$resource" \
+      "--project=$PROJECT_ID" --format=json > "$verified"
+  fi
+  python3 "$LANE_DIR/reconcile-iam-policy.py" check \
+    --input "$verified" --role "$role" "${member_args[@]}"
+}
+
+reconcile_secret_accessors() {
+  local variable ref secret members=()
+  while IFS= read -r secret; do
+    members=()
+    if secret_is_used_by "$secret" actuator_secret_variables; then
+      members+=("serviceAccount:$ACTUATOR_SA")
+    fi
+    if secret_is_used_by "$secret" decision_secret_variables; then
+      members+=("serviceAccount:$DECISION_SA")
+    fi
+    reconcile_policy secret "$secret" roles/secretmanager.secretAccessor \
+      "${members[@]}"
+  done < <(
+    while IFS= read -r variable; do
+      ref=${!variable}
+      secret_name "$ref"
+      printf '\n'
+    done < <(all_secret_variables) | sort -u
+  )
 }
 
 if [[ "$MODE" == render ]]; then
@@ -192,11 +262,8 @@ if [[ "$MODE" == render ]]; then
   printf '# candidate actuator: %s, zero traffic\n' "$ACTUATOR_REVISION"
   shell_join "${actuator_command[@]}"
   printf '# only the decision workload identity may pass the actuator IAM gate\n'
-  shell_join gcloud run services add-iam-policy-binding "$ACTUATOR_SERVICE" \
-    "--project=$PROJECT_ID" \
-    "--region=$REGION" \
-    "--member=serviceAccount:$DECISION_SA" \
-    "--role=roles/run.invoker"
+  render_policy_reconciliation run-service "$ACTUATOR_SERVICE" \
+    roles/run.invoker "serviceAccount:$DECISION_SA"
   printf '# resolve the canonical service URL for the Google ID-token audience\n'
   printf 'ACTUATOR_AUDIENCE=<resolved-canonical-url-for-%s>\n' \
     "$ACTUATOR_SERVICE"
@@ -207,13 +274,26 @@ if [[ "$MODE" == render ]]; then
   decision_command '${ACTUATOR_CANARY_URL}' '${ACTUATOR_AUDIENCE}'
   printf '# candidate decision: %s, zero traffic\n' "$DECISION_REVISION"
   shell_join "${DECISION_COMMAND[@]}"
+  printf '# fail closed on inherited, group-expanded, and impersonated effective IAM\n'
+  shell_join python3 "$LANE_DIR/emit-effective-iam-manifest.py" \
+    "--project=$PROJECT_ID" --project-number '<resolved-project-number>' \
+    "--region=$REGION" \
+    "--actuator-service=$ACTUATOR_SERVICE" \
+    "--decision-principal=serviceAccount:$DECISION_SA" \
+    --secret '<SECRET=EXACT_RUNTIME_PRINCIPALS>' \
+    --output '<effective-iam.json>'
+  shell_join "$LANE_DIR/verify-effective-iam.py" \
+    --input '<effective-iam.json>' --live
   printf '# stop: no production traffic is changed by deploy.sh\n'
   exit 0
 fi
 
 require_apply_approval
+IAM_TMPDIR=$(mktemp -d)
+trap 'rm -rf "$IAM_TMPDIR"' EXIT
 gcloud services enable \
   run.googleapis.com secretmanager.googleapis.com iam.googleapis.com \
+  cloudasset.googleapis.com \
   "--project=$PROJECT_ID" --quiet
 
 for account in "$ACTUATOR_SERVICE_ACCOUNT" "$DECISION_SERVICE_ACCOUNT"; do
@@ -233,26 +313,11 @@ while IFS= read -r variable; do
     "--project=$PROJECT_ID" >/dev/null
 done < <(all_secret_variables)
 
-while IFS= read -r variable; do
-  ref=${!variable}
-  gcloud secrets add-iam-policy-binding "$(secret_name "$ref")" \
-    "--project=$PROJECT_ID" \
-    "--member=serviceAccount:$ACTUATOR_SA" \
-    "--role=roles/secretmanager.secretAccessor" \
-    --quiet >/dev/null
-done < <(actuator_secret_variables)
-
-while IFS= read -r variable; do
-  ref=${!variable}
-  gcloud secrets add-iam-policy-binding "$(secret_name "$ref")" \
-    "--project=$PROJECT_ID" \
-    "--member=serviceAccount:$DECISION_SA" \
-    "--role=roles/secretmanager.secretAccessor" \
-    --quiet >/dev/null
-done < <(decision_secret_variables)
+reconcile_secret_accessors
 
 "${actuator_command[@]}"
-grant_actuator_invoker
+reconcile_policy run-service "$ACTUATOR_SERVICE" roles/run.invoker \
+  "serviceAccount:$DECISION_SA"
 ACTUATOR_AUDIENCE=$(resolve_service_url)
 ACTUATOR_CANARY_URL=$(resolve_tag_url)
 [[ "$ACTUATOR_AUDIENCE" == https://* ]] \
@@ -261,6 +326,7 @@ ACTUATOR_CANARY_URL=$(resolve_tag_url)
   || lane_die "resolved actuator candidate URL is not https"
 decision_command "$ACTUATOR_CANARY_URL" "$ACTUATOR_AUDIENCE"
 "${DECISION_COMMAND[@]}"
+verify_effective_iam_live
 
 printf 'created zero-traffic candidates: %s and %s\n' \
   "$ACTUATOR_REVISION" "$DECISION_REVISION"

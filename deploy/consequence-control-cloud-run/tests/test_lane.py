@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import base64
+import datetime as dt
 import importlib.util
 import json
 import os
@@ -12,14 +14,18 @@ LANE = Path(__file__).resolve().parents[1]
 CONFIG = LANE / "tests" / "fixture.env"
 
 
-def run(*args: str, check: bool = True) -> subprocess.CompletedProcess[str]:
+def run(
+    *args: str,
+    check: bool = True,
+    extra_env: dict[str, str] | None = None,
+) -> subprocess.CompletedProcess[str]:
     return subprocess.run(
         args,
         cwd=LANE,
         check=check,
         text=True,
         capture_output=True,
-        env={**os.environ, "DEPLOYMENT_APPROVED": ""},
+        env={**os.environ, "DEPLOYMENT_APPROVED": "", **(extra_env or {})},
     )
 
 
@@ -78,20 +84,39 @@ class RenderTests(unittest.TestCase):
 
     def test_decision_identity_is_the_only_actuator_invoker(self) -> None:
         self.assertIn(
-            "gcloud run services add-iam-policy-binding "
-            "emilia-consequence-actuator",
+            "gcloud run services get-iam-policy emilia-consequence-actuator",
             self.plan,
         )
         self.assertIn(
-            "--member=serviceAccount:emilia-decision"
+            "--member serviceAccount:emilia-decision"
             "@test-project.iam.gserviceaccount.com",
             self.plan,
         )
-        self.assertIn("--role=roles/run.invoker", self.plan)
-        self.assertNotIn(
-            "--member=serviceAccount:emilia-actuator"
-            "@test-project.iam.gserviceaccount.com --role=roles/run.invoker",
+        self.assertIn("--role roles/run.invoker", self.plan)
+        self.assertIn(
+            "gcloud run services set-iam-policy emilia-consequence-actuator",
             self.plan,
+        )
+        self.assertNotIn("add-iam-policy-binding", self.plan)
+        self.assertNotIn(
+            "--member serviceAccount:emilia-actuator"
+            "@test-project.iam.gserviceaccount.com --role roles/run.invoker",
+            self.plan,
+        )
+
+    def test_secret_access_is_reconciled_instead_of_added(self) -> None:
+        self.assertIn("gcloud secrets get-iam-policy actuator-token", self.plan)
+        self.assertIn("gcloud secrets set-iam-policy actuator-token", self.plan)
+        self.assertIn("roles/secretmanager.secretAccessor", self.plan)
+        self.assertNotIn("secrets add-iam-policy-binding", self.plan)
+
+    def test_effective_iam_is_verified_after_candidate_deployment(self) -> None:
+        self.assertIn("emit-effective-iam-manifest.py", self.plan)
+        self.assertIn("verify-effective-iam.py", self.plan)
+        self.assertIn("--live", self.plan)
+        self.assertLess(
+            self.plan.index("# candidate decision:"),
+            self.plan.index("# fail closed on inherited"),
         )
 
     def test_credential_custody_is_split(self) -> None:
@@ -199,10 +224,64 @@ class TrafficTests(unittest.TestCase):
 
 
 class CanaryTests(unittest.TestCase):
+    @classmethod
+    def setUpClass(cls) -> None:
+        cls.directory = tempfile.TemporaryDirectory(prefix="emilia-canary-tests-")
+        cls.root = Path(cls.directory.name)
+        cls.private_key = cls.root / "private.pem"
+        cls.public_key = cls.root / "public.pem"
+        subprocess.run(
+            [
+                "openssl",
+                "genpkey",
+                "-algorithm",
+                "ED25519",
+                "-out",
+                str(cls.private_key),
+            ],
+            check=True,
+            capture_output=True,
+            text=True,
+        )
+        subprocess.run(
+            [
+                "openssl",
+                "pkey",
+                "-in",
+                str(cls.private_key),
+                "-pubout",
+                "-out",
+                str(cls.public_key),
+            ],
+            check=True,
+            capture_output=True,
+            text=True,
+        )
+        cls.config = cls.root / "config.env"
+        cls.config.write_text(
+            CONFIG.read_text(encoding="utf-8").replace(
+                "/secure/test-canary-public.pem",
+                str(cls.public_key),
+            ),
+            encoding="utf-8",
+        )
+
+    @classmethod
+    def tearDownClass(cls) -> None:
+        cls.directory.cleanup()
+
     def evidence(self) -> dict:
         config = load_config()
+        observed = dt.datetime.now(dt.timezone.utc).replace(microsecond=0)
+        expires = observed + dt.timedelta(minutes=10)
         return {
+            "@version": "EP-CONSEQUENCE-CANARY-EVIDENCE-v1",
+            "project_id": config["PROJECT_ID"],
+            "region": config["REGION"],
             "evidence_status": "observed",
+            "observed_at": observed.isoformat().replace("+00:00", "Z"),
+            "expires_at": expires.isoformat().replace("+00:00", "Z"),
+            "nonce": "canary_nonce_0000000001",
             "actuator_revision": "emilia-consequence-actuator-r20260725b",
             "decision_revision": "emilia-consequence-control-r20260725b",
             "actuator_image": config["ACTUATOR_IMAGE"],
@@ -235,17 +314,71 @@ class CanaryTests(unittest.TestCase):
             },
         }
 
-    def validate(self, evidence: dict) -> subprocess.CompletedProcess[str]:
+    def sign(self, evidence: dict) -> dict:
+        result = json.loads(json.dumps(evidence))
+        result.pop("signature", None)
+        payload = self.root / "payload.json"
+        signature = self.root / "signature.bin"
+        payload.write_text(
+            json.dumps(
+                result,
+                ensure_ascii=False,
+                sort_keys=True,
+                separators=(",", ":"),
+            ),
+            encoding="utf-8",
+        )
+        subprocess.run(
+            [
+                "openssl",
+                "pkeyutl",
+                "-sign",
+                "-inkey",
+                str(self.private_key),
+                "-rawin",
+                "-in",
+                str(payload),
+                "-out",
+                str(signature),
+            ],
+            check=True,
+            capture_output=True,
+            text=True,
+        )
+        result["signature"] = {
+            "algorithm": "Ed25519",
+            "key_id": "canary-test-key",
+            "value": base64.urlsafe_b64encode(signature.read_bytes())
+            .decode("ascii")
+            .rstrip("="),
+        }
+        return result
+
+    def validate(
+        self,
+        evidence: dict,
+        *,
+        resign: bool = True,
+        live: bool = False,
+        extra_env: dict[str, str] | None = None,
+    ) -> subprocess.CompletedProcess[str]:
+        document = self.sign(evidence) if resign else evidence
         with tempfile.NamedTemporaryFile("w", encoding="utf-8") as handle:
-            json.dump(evidence, handle)
+            json.dump(document, handle)
             handle.flush()
-            return run(
+            args = [
                 str(LANE / "verify-canary.py"),
                 "--config",
-                str(CONFIG),
+                str(self.config),
                 "--evidence",
                 handle.name,
+            ]
+            if live:
+                args.append("--live")
+            return run(
+                *args,
                 check=False,
+                extra_env=extra_env,
             )
 
     def test_closed_canary_contract_is_accepted(self) -> None:
@@ -259,6 +392,15 @@ class CanaryTests(unittest.TestCase):
         result = self.validate(evidence)
         self.assertNotEqual(result.returncode, 0)
         self.assertIn("provider_invocations", result.stderr)
+
+    def test_canary_effect_target_must_match_the_deployment(self) -> None:
+        evidence = self.evidence()
+        evidence["checks"]["exact_execution"][
+            "provider_reference"
+        ] = "github:issue:attacker/decoy#999"
+        result = self.validate(evidence)
+        self.assertNotEqual(result.returncode, 0)
+        self.assertIn("provider_reference", result.stderr)
         evidence = self.evidence()
         evidence["checks"]["reconciliation"]["reexecuted"] = True
         result = self.validate(evidence)
@@ -274,6 +416,135 @@ class CanaryTests(unittest.TestCase):
         evidence["decision_image"] = evidence["decision_image"].replace("b", "c", 1)
         result = self.validate(evidence)
         self.assertNotEqual(result.returncode, 0)
+
+    def test_unsigned_and_post_signature_tampering_are_refused(self) -> None:
+        result = self.validate(self.evidence(), resign=False)
+        self.assertNotEqual(result.returncode, 0)
+        self.assertIn("signature", result.stderr)
+        evidence = self.sign(self.evidence())
+        evidence["checks"]["replay"]["provider_invocations"] = 2
+        result = self.validate(evidence, resign=False)
+        self.assertNotEqual(result.returncode, 0)
+        self.assertIn("signature", result.stderr)
+
+    def test_stale_signed_evidence_is_refused(self) -> None:
+        evidence = self.evidence()
+        observed = dt.datetime.now(dt.timezone.utc) - dt.timedelta(hours=1)
+        evidence["observed_at"] = observed.isoformat().replace("+00:00", "Z")
+        evidence["expires_at"] = (
+            observed + dt.timedelta(minutes=10)
+        ).isoformat().replace("+00:00", "Z")
+        result = self.validate(evidence)
+        self.assertNotEqual(result.returncode, 0)
+        self.assertRegex(result.stderr, r"expired|stale")
+
+    def test_live_mode_rederives_revision_service_and_image(self) -> None:
+        fake_bin = self.root / "bin"
+        fake_bin.mkdir(exist_ok=True)
+        gcloud = fake_bin / "gcloud"
+        config = load_config()
+        gcloud.write_text(
+            """#!/usr/bin/env python3
+import json
+import sys
+revision = sys.argv[4]
+if revision == "emilia-consequence-actuator-r20260725b":
+    service = "emilia-consequence-actuator"
+    image = %r
+elif revision == "emilia-consequence-control-r20260725b":
+    service = "emilia-consequence-control"
+    image = %r
+else:
+    raise SystemExit(2)
+print(json.dumps({
+    "metadata": {
+        "name": revision,
+        "labels": {"serving.knative.dev/service": service},
+    },
+    "spec": {"containers": [{"image": image}]},
+}))
+"""
+            % (config["ACTUATOR_IMAGE"], config["DECISION_IMAGE"]),
+            encoding="utf-8",
+        )
+        gcloud.chmod(0o755)
+        result = self.validate(
+            self.evidence(),
+            live=True,
+            extra_env={"PATH": f"{fake_bin}:{os.environ['PATH']}"},
+        )
+        self.assertEqual(result.returncode, 0, result.stderr)
+
+
+class IamPolicyTests(unittest.TestCase):
+    def test_rewrite_removes_stale_role_members_and_preserves_other_roles(self) -> None:
+        with tempfile.TemporaryDirectory(prefix="emilia-iam-tests-") as directory:
+            root = Path(directory)
+            source = root / "source.json"
+            target = root / "target.json"
+            source.write_text(
+                json.dumps(
+                    {
+                        "version": 3,
+                        "etag": "etag",
+                        "bindings": [
+                            {
+                                "role": "roles/run.invoker",
+                                "members": [
+                                    "allUsers",
+                                    "serviceAccount:stale@example.test",
+                                ],
+                            },
+                            {
+                                "role": "roles/viewer",
+                                "members": ["group:auditors@example.test"],
+                            },
+                        ],
+                    }
+                ),
+                encoding="utf-8",
+            )
+            member = "serviceAccount:decision@example.test"
+            result = run(
+                str(LANE / "reconcile-iam-policy.py"),
+                "rewrite",
+                "--input",
+                str(source),
+                "--output",
+                str(target),
+                "--role",
+                "roles/run.invoker",
+                "--member",
+                member,
+                check=False,
+            )
+            self.assertEqual(result.returncode, 0, result.stderr)
+            policy = json.loads(target.read_text(encoding="utf-8"))
+            self.assertIn(
+                {
+                    "role": "roles/viewer",
+                    "members": ["group:auditors@example.test"],
+                },
+                policy["bindings"],
+            )
+            invoker = [
+                binding
+                for binding in policy["bindings"]
+                if binding["role"] == "roles/run.invoker"
+            ]
+            self.assertEqual(invoker, [{"role": "roles/run.invoker", "members": [member]}])
+            checked = run(
+                str(LANE / "reconcile-iam-policy.py"),
+                "check",
+                "--input",
+                str(target),
+                "--role",
+                "roles/run.invoker",
+                "--member",
+                member,
+                check=False,
+            )
+            self.assertEqual(checked.returncode, 0, checked.stderr)
 
 
 class StaticTests(unittest.TestCase):
@@ -296,6 +567,10 @@ class StaticTests(unittest.TestCase):
         )
         self.assertIsNotNone(spec)
         self.assertIsNotNone(spec.loader)
+
+    def test_traffic_requires_live_canary_rederivation(self) -> None:
+        traffic = (LANE / "traffic.sh").read_text(encoding="utf-8")
+        self.assertIn("--live", traffic)
 
 
 if __name__ == "__main__":

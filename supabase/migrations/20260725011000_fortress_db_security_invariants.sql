@@ -6,8 +6,6 @@
 -- SECURITY DEFINER functions; Supabase API roles and service_role retain no
 -- direct table authority.
 
-GRANT consequence_actuator_store_owner TO CURRENT_USER;
-
 ALTER SCHEMA consequence_actuator_private
   OWNER TO consequence_actuator_store_owner;
 ALTER TABLE consequence_actuator_private.tenant_principals
@@ -67,5 +65,3 @@ consequence_actuator_private.consume_envelope(
   TEXT, TEXT, TEXT, TEXT, TEXT, TEXT, TEXT, TEXT, TEXT, TEXT, TEXT
 )
 TO consequence_actuator_executor;
-
-REVOKE consequence_actuator_store_owner FROM CURRENT_USER;

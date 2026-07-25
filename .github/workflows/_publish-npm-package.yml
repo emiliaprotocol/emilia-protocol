@@ -49,6 +49,8 @@ env:
 jobs:
   publish:
     runs-on: ubuntu-latest
+    env:
+      TLA2TOOLS_JAR: ${{ github.workspace }}/tla2tools.jar
     concurrency:
       group: registry-publish-${{ inputs.package_name }}
       cancel-in-progress: false
@@ -96,6 +98,26 @@ jobs:
         uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e  # v7.0.0
         with:
           go-version: '1.22'
+
+      - name: Setup Java
+        uses: actions/setup-java@03ad4de0992f5dab5e18fcb136590ce7c4a0ac95  # v5.6.0
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - name: Download pinned TLC model checker
+        env:
+          TLA_VERSION: v1.7.4
+          TLA_SHA256: 936a262061c914694dfd669a543be24573c45d5aa0ff20a8b96b23d01e050e88
+        run: |
+          curl -fsSL \
+            --retry 5 \
+            --retry-delay 2 \
+            --retry-all-errors \
+            --connect-timeout 20 \
+            -o tla2tools.jar \
+            "https://github.com/tlaplus/tlaplus/releases/download/${TLA_VERSION}/tla2tools.jar"
+          echo "${TLA_SHA256}  tla2tools.jar" | sha256sum -c -
 
       - name: Install hash-locked release tooling
         run: |
@@ -162,6 +184,11 @@ jobs:
             conformance/conformance-manifest.json
           retention-days: 90
 
+      - name: Require every internal dependency to resolve from npm
+        env:
+          PACKAGE_DIR: ${{ inputs.package_dir }}
+        run: node scripts/check-npm-package-dependencies.mjs "$PACKAGE_DIR"
+
       - name: Publish the attested tarball through npm OIDC
         env:
           PACKAGE_DIR: ${{ inputs.package_dir }}
@@ -186,6 +213,7 @@ jobs:
             if npm pack "${PACKAGE_NAME}@${VERSION}" --min-release-age=0 --json --pack-destination registry-copy > registry-copy/pack.json; then
               break
             fi
+            echo "Registry has not exposed ${PACKAGE_NAME}@${VERSION} yet (attempt ${attempt}/12); retrying in 5 seconds."
             sleep 5
           done
           REGISTRY_TARBALL=$(node -e "const r=require('./registry-copy/pack.json'); if(r.length!==1) process.exit(2); process.stdout.write(r[0].filename)")

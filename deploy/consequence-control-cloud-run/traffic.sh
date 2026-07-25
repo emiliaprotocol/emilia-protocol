@@ -108,7 +108,11 @@ esac
 require_apply_approval
 if [[ "$ACTION" != apply-rollback ]]; then
   [[ -n "$EVIDENCE" ]] || lane_die "promotion requires --evidence"
-  "$LANE_DIR/verify-canary.py" --config "$CONFIG" --evidence "$EVIDENCE"
+  verify_effective_iam_live
+  "$LANE_DIR/verify-canary.py" \
+    --config "$CONFIG" \
+    --evidence "$EVIDENCE" \
+    --live
 fi
 
 case "$ACTION" in
