@@ -21,11 +21,13 @@ import shutil
 import subprocess
 import sys
 import tarfile
+import tempfile
 from typing import Any
 
 
-SOURCE_VERSION = "EMILIA-CONSEQUENCE-IMAGE-SOURCE-v1"
+SOURCE_VERSION = "EMILIA-CONSEQUENCE-IMAGE-SOURCE-v2"
 RELEASE_VERSION = "EMILIA-CONSEQUENCE-IMAGE-RELEASE-v1"
+BUNDLE_VERSION = "EMILIA-CONSEQUENCE-IMAGE-BUNDLE-v1"
 REPOSITORY = "https://github.com/emiliaprotocol/emilia-protocol"
 SHA256_RE = re.compile(r"^[0-9a-f]{64}$")
 COMMIT_RE = re.compile(r"^[0-9a-f]{40}$")
@@ -42,6 +44,11 @@ GOVERNED_ARTIFACTS = (
     "conformance/conformance-manifest.json",
 )
 BUILD_INPUTS = (
+    "deploy/consequence-control-cloud-run/build-release-images.sh",
+    "deploy/consequence-control-cloud-run/publish-release-images.py",
+    "deploy/consequence-control-cloud-run/release-trust.py",
+    "deploy/consequence-control-cloud-run/deploy.sh",
+    "deploy/consequence-control-cloud-run/lib/common.sh",
     "deploy/consequence-control-cloud-run/Dockerfile.consequence-actuator.release",
     "Dockerfile.consequence-control",
     "Dockerfile.gate",
@@ -49,6 +56,20 @@ BUILD_INPUTS = (
     "apps/consequence-control-service/package-lock.json",
     "apps/gate-service/package-lock.json",
 )
+PACKAGE_ROOTS = {
+    "gate": ("packages/gate", "@emilia-protocol/gate"),
+    "require-receipt": (
+        "packages/require-receipt",
+        "@emilia-protocol/require-receipt",
+    ),
+    "verify": ("packages/verify", "@emilia-protocol/verify"),
+}
+PACK_RECIPE = {
+    "archive": "git-archive",
+    "lifecycle_scripts": False,
+    "npm_arguments": ["pack", "--ignore-scripts", "--json"],
+    "version": "EMILIA-NPM-PACK-GIT-BLOBS-v1",
+}
 BUILD_SOURCE_PATHS = (
     ".dockerignore",
     "Dockerfile.consequence-control",
@@ -141,6 +162,18 @@ def git(root: Path, *arguments: str) -> str:
     return result.stdout.strip()
 
 
+def git_bytes(root: Path, *arguments: str) -> bytes:
+    result = subprocess.run(
+        ["git", *arguments], cwd=root, capture_output=True, check=False
+    )
+    if result.returncode != 0:
+        die(
+            f"git {' '.join(arguments)} failed: "
+            f"{result.stderr.decode('utf-8', 'replace').strip()}"
+        )
+    return result.stdout
+
+
 def validate_commit(value: str, label: str = "commit") -> str:
     if COMMIT_RE.fullmatch(value) is None:
         die(f"{label} must be one lowercase 40-character Git SHA")
@@ -184,19 +217,88 @@ def checked_path(root: Path, relative: str, label: str) -> Path:
     return candidate
 
 
-def package_metadata(path: Path, expected_name: str) -> dict[str, str]:
+def git_blob(root: Path, commit: str, relative: str) -> tuple[str, bytes]:
+    pure = PurePosixPath(relative)
+    if pure.is_absolute() or ".." in pure.parts or str(pure) != relative:
+        die(f"Git source path is unsafe: {relative}")
+    record = git_bytes(root, "ls-tree", "-z", commit, "--", relative)
+    entries = [entry for entry in record.split(b"\0") if entry]
+    if len(entries) != 1:
+        die(f"Git source path is not exactly one tracked blob: {relative}")
+    try:
+        header, encoded_path = entries[0].split(b"\t", 1)
+        mode, kind, object_id = header.decode("ascii").split(" ")
+        tracked_path = encoded_path.decode("utf-8")
+    except (ValueError, UnicodeDecodeError) as error:
+        die(f"Git returned an invalid blob record for {relative}: {error}")
+    if tracked_path != relative or kind != "blob" or mode not in {"100644", "100755"}:
+        die(f"Git source path is not a regular tracked file: {relative}")
+    if re.fullmatch(r"[0-9a-f]{40}|[0-9a-f]{64}", object_id) is None:
+        die(f"Git returned an invalid blob ID for {relative}")
+    return object_id, git_bytes(root, "cat-file", "blob", object_id)
+
+
+def git_file_sha256(root: Path, commit: str, relative: str) -> str:
+    _, raw = git_blob(root, commit, relative)
+    return sha256_bytes(raw)
+
+
+def package_metadata(
+    path: Path,
+    expected_name: str,
+    *,
+    root: Path,
+    expected_commit: str,
+    package_root: str,
+) -> dict[str, Any]:
     require_regular(path, f"{expected_name} tarball")
     if path.stat().st_size > 128 * 1024 * 1024:
         die(f"{expected_name} tarball is unexpectedly large")
     try:
         with tarfile.open(path, "r:gz") as archive:
             members = archive.getmembers()
+            if len(members) > 10_000:
+                die(f"{expected_name} tarball has too many members")
+            names: set[str] = set()
+            bound_members: list[dict[str, Any]] = []
             for member in members:
                 pure = PurePosixPath(member.name)
                 if pure.is_absolute() or ".." in pure.parts:
                     die(f"{expected_name} tarball has an unsafe member path")
-                if member.issym() or member.islnk() or member.isdev():
-                    die(f"{expected_name} tarball has a link or device member")
+                if member.name in names:
+                    die(f"{expected_name} tarball repeats a member path")
+                names.add(member.name)
+                if member.isdir():
+                    continue
+                if not member.isfile():
+                    die(f"{expected_name} tarball has a non-regular member")
+                if not member.name.startswith("package/"):
+                    die(f"{expected_name} tarball member is outside package/")
+                relative = member.name.removeprefix("package/")
+                if not relative:
+                    die(f"{expected_name} tarball has an empty member path")
+                source_path = f"{package_root}/{relative}"
+                object_id, expected_raw = git_blob(root, expected_commit, source_path)
+                handle = archive.extractfile(member)
+                if handle is None:
+                    die(f"{expected_name} tarball member is unreadable: {member.name}")
+                raw_member = handle.read(128 * 1024 * 1024 + 1)
+                if len(raw_member) > 128 * 1024 * 1024:
+                    die(f"{expected_name} tarball member is unexpectedly large")
+                if raw_member != expected_raw:
+                    die(
+                        f"{expected_name} tarball member differs from reviewed Git blob: "
+                        f"{member.name}"
+                    )
+                bound_members.append(
+                    {
+                        "archive_path": member.name,
+                        "git_blob": object_id,
+                        "sha256": sha256_bytes(raw_member),
+                        "size": len(raw_member),
+                        "source_path": source_path,
+                    }
+                )
             package_json = [m for m in members if m.name == "package/package.json" and m.isfile()]
             if len(package_json) != 1:
                 die(f"{expected_name} tarball must contain exactly one package/package.json")
@@ -219,7 +321,9 @@ def package_metadata(path: Path, expected_name: str) -> dict[str, str]:
         die(f"{expected_name} package version is invalid")
     return {
         "filename": path.name,
+        "members": sorted(bound_members, key=lambda item: item["archive_path"]),
         "name": expected_name,
+        "recipe": {**PACK_RECIPE, "package_root": package_root},
         "sha256": sha256_file(path),
         "version": version,
     }
@@ -235,11 +339,14 @@ def source_manifest(
     tree = ensure_reviewed_checkout(root, expected_commit)
     governed: dict[str, str] = {}
     for relative in GOVERNED_ARTIFACTS:
-        path = checked_path(root, relative, f"governed artifact {relative}")
-        read_json(path, f"governed artifact {relative}")
-        governed[relative] = sha256_file(path)
+        _, raw = git_blob(root, expected_commit, relative)
+        try:
+            json.loads(raw)
+        except (UnicodeDecodeError, json.JSONDecodeError) as error:
+            die(f"governed artifact {relative} is not valid JSON: {error}")
+        governed[relative] = sha256_bytes(raw)
     inputs = {
-        relative: sha256_file(checked_path(root, relative, f"build input {relative}"))
+        relative: git_file_sha256(root, expected_commit, relative)
         for relative in BUILD_INPUTS
     }
     return {
@@ -247,11 +354,27 @@ def source_manifest(
         "build_inputs": inputs,
         "governed_artifacts": governed,
         "packages": {
-            "gate": package_metadata(gate_tarball, "@emilia-protocol/gate"),
-            "require-receipt": package_metadata(
-                require_receipt_tarball, "@emilia-protocol/require-receipt"
+            "gate": package_metadata(
+                gate_tarball,
+                "@emilia-protocol/gate",
+                root=root,
+                expected_commit=expected_commit,
+                package_root=PACKAGE_ROOTS["gate"][0],
             ),
-            "verify": package_metadata(verify_tarball, "@emilia-protocol/verify"),
+            "require-receipt": package_metadata(
+                require_receipt_tarball,
+                "@emilia-protocol/require-receipt",
+                root=root,
+                expected_commit=expected_commit,
+                package_root=PACKAGE_ROOTS["require-receipt"][0],
+            ),
+            "verify": package_metadata(
+                verify_tarball,
+                "@emilia-protocol/verify",
+                root=root,
+                expected_commit=expected_commit,
+                package_root=PACKAGE_ROOTS["verify"][0],
+            ),
         },
         "source": {
             "commit": expected_commit,
@@ -287,6 +410,49 @@ def validate_source_shape(value: Any) -> dict[str, Any]:
         "gate", "require-receipt", "verify"
     }:
         die("source manifest package set is invalid")
+    for key, (package_root, expected_name) in PACKAGE_ROOTS.items():
+        record = packages.get(key)
+        if not isinstance(record, dict) or set(record) != {
+            "filename", "members", "name", "recipe", "sha256", "version"
+        }:
+            die(f"source manifest {key} package record is invalid")
+        if record.get("name") != expected_name:
+            die(f"source manifest {key} package name is invalid")
+        filename = record.get("filename")
+        if not isinstance(filename, str) or PurePosixPath(filename).name != filename:
+            die(f"source manifest {key} package filename is invalid")
+        if SHA256_RE.fullmatch(record.get("sha256", "")) is None:
+            die(f"source manifest {key} package digest is invalid")
+        if re.fullmatch(r"[0-9]+\.[0-9]+\.[0-9]+", record.get("version", "")) is None:
+            die(f"source manifest {key} package version is invalid")
+        if record.get("recipe") != {**PACK_RECIPE, "package_root": package_root}:
+            die(f"source manifest {key} package recipe is invalid")
+        members = record.get("members")
+        if not isinstance(members, list) or not members:
+            die(f"source manifest {key} package member binding is empty")
+        if members != sorted(members, key=lambda item: item.get("archive_path", "")):
+            die(f"source manifest {key} package member binding is not canonical")
+        names: set[str] = set()
+        for member in members:
+            if not isinstance(member, dict) or set(member) != {
+                "archive_path", "git_blob", "sha256", "size", "source_path"
+            }:
+                die(f"source manifest {key} package member is invalid")
+            archive_path = member.get("archive_path")
+            source_path = member.get("source_path")
+            if (
+                not isinstance(archive_path, str)
+                or not archive_path.startswith("package/")
+                or archive_path in names
+                or not isinstance(source_path, str)
+                or source_path != f"{package_root}/{archive_path.removeprefix('package/')}"
+                or re.fullmatch(r"[0-9a-f]{40}|[0-9a-f]{64}", member.get("git_blob", "")) is None
+                or SHA256_RE.fullmatch(member.get("sha256", "")) is None
+                or not isinstance(member.get("size"), int)
+                or member["size"] < 0
+            ):
+                die(f"source manifest {key} package member binding is invalid")
+            names.add(archive_path)
     return value
 
 
@@ -303,27 +469,259 @@ def verify_source(
     if value["source"]["tree"] != tree:
         die("source manifest tree does not match the reviewed Git tree")
     for relative, expected in value["governed_artifacts"].items():
-        if sha256_file(checked_path(root, relative, relative)) != expected:
+        if git_file_sha256(root, expected_commit, relative) != expected:
             die(f"governed artifact differs from source manifest: {relative}")
     for relative, expected in value["build_inputs"].items():
-        if sha256_file(checked_path(root, relative, relative)) != expected:
+        if git_file_sha256(root, expected_commit, relative) != expected:
             die(f"build input differs from source manifest: {relative}")
-    expected_names = {
-        "gate": "@emilia-protocol/gate",
-        "require-receipt": "@emilia-protocol/require-receipt",
-        "verify": "@emilia-protocol/verify",
-    }
-    for key, expected_name in expected_names.items():
+    for key, (package_root, expected_name) in PACKAGE_ROOTS.items():
         record = value["packages"][key]
-        if not isinstance(record, dict) or set(record) != {"filename", "name", "sha256", "version"}:
-            die(f"source manifest {key} package record is invalid")
         filename = record.get("filename")
-        if not isinstance(filename, str) or PurePosixPath(filename).name != filename:
-            die(f"source manifest {key} package filename is invalid")
-        actual = package_metadata(artifact_dir / filename, expected_name)
+        actual = package_metadata(
+            artifact_dir / filename,
+            expected_name,
+            root=root,
+            expected_commit=expected_commit,
+            package_root=package_root,
+        )
         if actual != record:
             die(f"{key} tarball differs from source manifest")
     return value
+
+
+def extract_git_archive(root: Path, commit: str, paths: list[str], output: Path) -> None:
+    process = subprocess.Popen(
+        ["git", "archive", "--format=tar", commit, "--", *paths],
+        cwd=root,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
+    )
+    assert process.stdout is not None
+    try:
+        with tarfile.open(fileobj=process.stdout, mode="r|") as archive:
+            for member in archive:
+                pure = PurePosixPath(member.name)
+                if pure.is_absolute() or ".." in pure.parts:
+                    die("Git archive contains an unsafe path")
+                archive.extract(member, output, filter="data")
+        _, stderr = process.communicate()
+        if process.returncode != 0:
+            die(f"Git archive failed: {stderr.decode('utf-8', 'replace').strip()}")
+    except Exception:
+        process.kill()
+        process.wait()
+        raise
+
+
+def pack_git_package(
+    root: Path,
+    expected_commit: str,
+    package_root: str,
+    expected_name: str,
+    output_dir: Path,
+) -> Path:
+    ensure_reviewed_checkout(root, expected_commit)
+    output_dir = output_dir.resolve()
+    if not output_dir.is_dir() or output_dir.is_symlink():
+        die("package output directory must be one existing directory")
+    with tempfile.TemporaryDirectory(prefix="emilia-git-pack-") as directory:
+        snapshot = Path(directory)
+        extract_git_archive(root, expected_commit, [package_root], snapshot)
+        result = subprocess.run(
+            [
+                "npm",
+                "pack",
+                str(snapshot / package_root),
+                "--ignore-scripts",
+                "--json",
+                "--pack-destination",
+                str(output_dir),
+            ],
+            text=True,
+            capture_output=True,
+            check=False,
+            env={**os.environ, "npm_config_ignore_scripts": "true"},
+        )
+    if result.returncode != 0:
+        die(f"lifecycle-disabled npm pack failed: {result.stderr.strip()[:500]}")
+    try:
+        packed = json.loads(result.stdout)
+        if (
+            not isinstance(packed, list)
+            or len(packed) != 1
+            or not isinstance(packed[0], dict)
+            or not isinstance(packed[0].get("filename"), str)
+        ):
+            raise ValueError("npm pack returned an unexpected record")
+        filename = PurePosixPath(packed[0]["filename"])
+        if filename.name != str(filename):
+            raise ValueError("npm pack returned an unsafe filename")
+    except (json.JSONDecodeError, ValueError) as error:
+        die(f"lifecycle-disabled npm pack output is invalid: {error}")
+    path = output_dir / filename.name
+    package_metadata(
+        path,
+        expected_name,
+        root=root,
+        expected_commit=expected_commit,
+        package_root=package_root,
+    )
+    return path
+
+
+def inspect_record(path: Path, component: str, source_path: Path) -> tuple[str, dict[str, Any]]:
+    value = read_json(path, f"{component} image inspection")
+    if not isinstance(value, list) or len(value) != 1 or not isinstance(value[0], dict):
+        die(f"{component} image inspection must contain exactly one image")
+    image_id = value[0].get("Id")
+    if not isinstance(image_id, str) or re.fullmatch(r"sha256:[0-9a-f]{64}", image_id) is None:
+        die(f"{component} image inspection has an invalid image ID")
+    args = argparse.Namespace(
+        source_manifest=source_path,
+        inspect=path,
+        component=component,
+    )
+    command_verify_inspect(args)
+    return image_id, value[0]
+
+
+def bundle_manifest(
+    *,
+    root: Path,
+    bundle_dir: Path,
+    source_path: Path,
+    expected_commit: str,
+    actuator_archive: Path,
+    actuator_inspect: Path,
+    actuator_tag: str,
+    decision_archive: Path,
+    decision_inspect: Path,
+    decision_tag: str,
+) -> dict[str, Any]:
+    source = verify_source(root, source_path, bundle_dir, expected_commit)
+    tag_pattern = re.compile(r"^emilia-[a-z0-9-]+:git-([0-9a-f]{40})$")
+    artifacts: dict[str, dict[str, Any]] = {}
+    images: dict[str, dict[str, str]] = {}
+    inputs = {
+        "actuator": (actuator_archive, actuator_inspect, actuator_tag),
+        "decision": (decision_archive, decision_inspect, decision_tag),
+    }
+    files = [source_path]
+    files.extend(bundle_dir / source["packages"][key]["filename"] for key in PACKAGE_ROOTS)
+    for component, (archive, inspect, tag) in inputs.items():
+        match = tag_pattern.fullmatch(tag)
+        if match is None or match.group(1) != expected_commit:
+            die(f"{component} bundle tag is not derived from the reviewed commit")
+        image_id, _ = inspect_record(inspect, component, source_path)
+        files.extend([archive, inspect])
+        images[component] = {
+            "archive": archive.name,
+            "id": image_id,
+            "inspect": inspect.name,
+            "tag": tag,
+        }
+    for path in files:
+        resolved = path.resolve()
+        if resolved.parent != bundle_dir.resolve():
+            die("bundle artifact must be a direct child of the bundle directory")
+        require_regular(resolved, f"bundle artifact {resolved.name}")
+        artifacts[resolved.name] = {
+            "sha256": sha256_file(resolved),
+            "size": resolved.stat().st_size,
+        }
+    if len(artifacts) != len(files):
+        die("bundle artifact filenames are not unique")
+    return {
+        "@version": BUNDLE_VERSION,
+        "artifacts": dict(sorted(artifacts.items())),
+        "images": images,
+        "source": {
+            "commit": source["source"]["commit"],
+            "manifest": source_path.name,
+            "manifest_sha256": sha256_file(source_path),
+            "tree": source["source"]["tree"],
+        },
+    }
+
+
+def validate_bundle_shape(value: Any) -> dict[str, Any]:
+    if not isinstance(value, dict) or set(value) != {"@version", "artifacts", "images", "source"}:
+        die("bundle manifest shape is invalid")
+    if value.get("@version") != BUNDLE_VERSION:
+        die("bundle manifest version is invalid")
+    source = value.get("source")
+    if not isinstance(source, dict) or set(source) != {
+        "commit", "manifest", "manifest_sha256", "tree"
+    }:
+        die("bundle source binding is invalid")
+    validate_commit(source.get("commit", ""), "bundle source commit")
+    validate_commit(source.get("tree", ""), "bundle source tree")
+    if (
+        source.get("manifest") != "source-manifest.json"
+        or SHA256_RE.fullmatch(source.get("manifest_sha256", "")) is None
+    ):
+        die("bundle source-manifest binding is invalid")
+    artifacts = value.get("artifacts")
+    if not isinstance(artifacts, dict) or not artifacts:
+        die("bundle artifact set is invalid")
+    for name, record in artifacts.items():
+        if (
+            not isinstance(name, str)
+            or PurePosixPath(name).name != name
+            or not isinstance(record, dict)
+            or set(record) != {"sha256", "size"}
+            or SHA256_RE.fullmatch(record.get("sha256", "")) is None
+            or not isinstance(record.get("size"), int)
+            or record["size"] < 0
+        ):
+            die("bundle artifact record is invalid")
+    images = value.get("images")
+    if not isinstance(images, dict) or set(images) != {"actuator", "decision"}:
+        die("bundle image set is invalid")
+    for component, record in images.items():
+        if not isinstance(record, dict) or set(record) != {"archive", "id", "inspect", "tag"}:
+            die(f"bundle {component} image record is invalid")
+        if (
+            record.get("archive") not in artifacts
+            or record.get("inspect") not in artifacts
+            or re.fullmatch(r"sha256:[0-9a-f]{64}", record.get("id", "")) is None
+            or re.fullmatch(
+                rf"emilia-[a-z0-9-]+:git-{source['commit']}", record.get("tag", "")
+            ) is None
+        ):
+            die(f"bundle {component} image binding is invalid")
+    return value
+
+
+def verify_bundle(
+    root: Path, bundle_dir: Path, bundle_path: Path, expected_commit: str
+) -> dict[str, Any]:
+    bundle_dir = bundle_dir.resolve()
+    if not bundle_dir.is_dir() or bundle_dir.is_symlink():
+        die("bundle directory is unavailable")
+    bundle = validate_bundle_shape(read_json(bundle_path, "bundle manifest"))
+    if bundle["source"]["commit"] != expected_commit:
+        die("bundle commit does not match the reviewed commit")
+    expected_names = set(bundle["artifacts"]) | {bundle_path.name}
+    actual_names = {path.name for path in bundle_dir.iterdir()}
+    if actual_names != expected_names:
+        die("bundle directory contains missing or unbound artifacts")
+    for name, record in bundle["artifacts"].items():
+        path = bundle_dir / name
+        require_regular(path, f"bundle artifact {name}")
+        if path.stat().st_size != record["size"] or sha256_file(path) != record["sha256"]:
+            die(f"bundle artifact differs from manifest: {name}")
+    source_path = bundle_dir / bundle["source"]["manifest"]
+    if sha256_file(source_path) != bundle["source"]["manifest_sha256"]:
+        die("bundle source manifest differs from its binding")
+    source = verify_source(root, source_path, bundle_dir, expected_commit)
+    if source["source"]["tree"] != bundle["source"]["tree"]:
+        die("bundle Git tree differs from the accepted source manifest")
+    for component, record in bundle["images"].items():
+        image_id, _ = inspect_record(bundle_dir / record["inspect"], component, source_path)
+        if image_id != record["id"]:
+            die(f"bundle {component} image ID differs from its binding")
+    return bundle
 
 
 def expected_labels(value: dict[str, Any], manifest_path: Path) -> dict[str, str]:
@@ -444,6 +842,18 @@ def command_source(args: argparse.Namespace) -> None:
     print(sha256_file(args.output.resolve()))
 
 
+def command_pack_package(args: argparse.Namespace) -> None:
+    package_root, expected_name = PACKAGE_ROOTS[args.package]
+    path = pack_git_package(
+        args.root.resolve(),
+        args.expected_commit,
+        package_root,
+        expected_name,
+        args.output_dir.resolve(),
+    )
+    print(path)
+
+
 def command_context(args: argparse.Namespace) -> None:
     root = args.root.resolve()
     ensure_reviewed_checkout(root, args.expected_commit)
@@ -459,22 +869,7 @@ def command_context(args: argparse.Namespace) -> None:
         require_regular(source, f"Docker context {name}")
     output.mkdir(parents=True, mode=0o700)
     try:
-        process = subprocess.Popen(
-            ["git", "archive", "--format=tar", args.expected_commit, "--", *DOCKER_CONTEXT_PATHS],
-            cwd=root,
-            stdout=subprocess.PIPE,
-            stderr=subprocess.PIPE,
-        )
-        assert process.stdout is not None
-        with tarfile.open(fileobj=process.stdout, mode="r|") as archive:
-            for member in archive:
-                pure = PurePosixPath(member.name)
-                if pure.is_absolute() or ".." in pure.parts:
-                    die("Git archive contains an unsafe path")
-                archive.extract(member, output, filter="data")
-        _, stderr = process.communicate()
-        if process.returncode != 0:
-            die(f"Git archive failed: {stderr.decode('utf-8', 'replace').strip()}")
+        extract_git_archive(root, args.expected_commit, list(DOCKER_CONTEXT_PATHS), output)
         release_dir = output / "release-packages"
         release_dir.mkdir(mode=0o700)
         for name, source in tarballs.items():
@@ -486,6 +881,73 @@ def command_context(args: argparse.Namespace) -> None:
         shutil.rmtree(output, ignore_errors=True)
         raise
     print(output)
+
+
+def command_bundle(args: argparse.Namespace) -> None:
+    value = bundle_manifest(
+        root=args.root.resolve(),
+        bundle_dir=args.bundle_dir.resolve(),
+        source_path=args.source_manifest.resolve(),
+        expected_commit=args.expected_commit,
+        actuator_archive=args.actuator_archive.resolve(),
+        actuator_inspect=args.actuator_inspect.resolve(),
+        actuator_tag=args.actuator_tag,
+        decision_archive=args.decision_archive.resolve(),
+        decision_inspect=args.decision_inspect.resolve(),
+        decision_tag=args.decision_tag,
+    )
+    write_json(args.output.resolve(), value)
+    print(sha256_file(args.output.resolve()))
+
+
+def command_verify_bundle(args: argparse.Namespace) -> None:
+    verify_bundle(
+        args.root.resolve(),
+        args.bundle_dir.resolve(),
+        args.bundle_manifest.resolve(),
+        args.expected_commit,
+    )
+    print("release bundle accepted")
+
+
+def command_load_bundle(args: argparse.Namespace) -> None:
+    root = args.root.resolve()
+    bundle_dir = args.bundle_dir.resolve()
+    manifest = args.bundle_manifest.resolve()
+    bundle = verify_bundle(root, bundle_dir, manifest, args.expected_commit)
+    docker = args.docker_bin.resolve()
+    require_regular(docker, "Docker CLI")
+    if not os.access(docker, os.X_OK):
+        die("Docker CLI is not executable")
+    for component in ("actuator", "decision"):
+        record = bundle["images"][component]
+        loaded = subprocess.run(
+            [str(docker), "load", "--input", str(bundle_dir / record["archive"])],
+            text=True,
+            capture_output=True,
+            check=False,
+        )
+        if loaded.returncode != 0:
+            die(f"Docker refused the sealed {component} image archive")
+        inspected = subprocess.run(
+            [str(docker), "image", "inspect", record["tag"]],
+            text=True,
+            capture_output=True,
+            check=False,
+        )
+        if inspected.returncode != 0:
+            die(f"Docker could not inspect loaded {component} image")
+        inspect_path = bundle_dir / f"loaded-{component}-inspect.json"
+        try:
+            inspect_path.write_text(inspected.stdout, encoding="utf-8")
+            image_id, _ = inspect_record(
+                inspect_path, component, bundle_dir / bundle["source"]["manifest"]
+            )
+        finally:
+            inspect_path.unlink(missing_ok=True)
+        if image_id != record["id"]:
+            die(f"loaded {component} image differs from sealed image ID")
+    print("sealed release images loaded and verified")
 
 
 def command_labels(args: argparse.Namespace) -> None:
@@ -577,6 +1039,13 @@ def parser() -> argparse.ArgumentParser:
     source.add_argument("--output", type=Path, required=True)
     source.set_defaults(handler=command_source)
 
+    pack = commands.add_parser("pack-package")
+    pack.add_argument("--root", type=Path, required=True)
+    pack.add_argument("--expected-commit", required=True)
+    pack.add_argument("--package", choices=tuple(PACKAGE_ROOTS), required=True)
+    pack.add_argument("--output-dir", type=Path, required=True)
+    pack.set_defaults(handler=command_pack_package)
+
     context = commands.add_parser("context")
     context.add_argument("--root", type=Path, required=True)
     context.add_argument("--expected-commit", required=True)
@@ -585,6 +1054,35 @@ def parser() -> argparse.ArgumentParser:
     context.add_argument("--require-receipt-tarball", type=Path, required=True)
     context.add_argument("--output", type=Path, required=True)
     context.set_defaults(handler=command_context)
+
+    bundle = commands.add_parser("bundle")
+    bundle.add_argument("--root", type=Path, required=True)
+    bundle.add_argument("--bundle-dir", type=Path, required=True)
+    bundle.add_argument("--source-manifest", type=Path, required=True)
+    bundle.add_argument("--expected-commit", required=True)
+    bundle.add_argument("--actuator-archive", type=Path, required=True)
+    bundle.add_argument("--actuator-inspect", type=Path, required=True)
+    bundle.add_argument("--actuator-tag", required=True)
+    bundle.add_argument("--decision-archive", type=Path, required=True)
+    bundle.add_argument("--decision-inspect", type=Path, required=True)
+    bundle.add_argument("--decision-tag", required=True)
+    bundle.add_argument("--output", type=Path, required=True)
+    bundle.set_defaults(handler=command_bundle)
+
+    verify_bundle_parser = commands.add_parser("verify-bundle")
+    verify_bundle_parser.add_argument("--root", type=Path, required=True)
+    verify_bundle_parser.add_argument("--bundle-dir", type=Path, required=True)
+    verify_bundle_parser.add_argument("--bundle-manifest", type=Path, required=True)
+    verify_bundle_parser.add_argument("--expected-commit", required=True)
+    verify_bundle_parser.set_defaults(handler=command_verify_bundle)
+
+    load_bundle = commands.add_parser("load-bundle")
+    load_bundle.add_argument("--root", type=Path, required=True)
+    load_bundle.add_argument("--bundle-dir", type=Path, required=True)
+    load_bundle.add_argument("--bundle-manifest", type=Path, required=True)
+    load_bundle.add_argument("--expected-commit", required=True)
+    load_bundle.add_argument("--docker-bin", type=Path, default=Path("/usr/bin/docker"))
+    load_bundle.set_defaults(handler=command_load_bundle)
 
     labels = commands.add_parser("labels")
     labels.add_argument("--source-manifest", type=Path, required=True)

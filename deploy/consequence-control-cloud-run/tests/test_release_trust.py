@@ -24,6 +24,11 @@ GOVERNED = (
     "conformance/conformance-manifest.json",
 )
 BUILD_INPUTS = (
+    "deploy/consequence-control-cloud-run/build-release-images.sh",
+    "deploy/consequence-control-cloud-run/publish-release-images.py",
+    "deploy/consequence-control-cloud-run/release-trust.py",
+    "deploy/consequence-control-cloud-run/deploy.sh",
+    "deploy/consequence-control-cloud-run/lib/common.sh",
     "deploy/consequence-control-cloud-run/Dockerfile.consequence-actuator.release",
     "Dockerfile.consequence-control",
     "Dockerfile.gate",
@@ -68,6 +73,10 @@ elif args and args[0] == "push":
         print("tag was created concurrently", file=sys.stderr)
         raise SystemExit(1)
     path.write_text(json.dumps(state))
+elif args and args[0] == "tag":
+    source, target = args[1:3]
+    state["local"][target] = dict(state["local"][source])
+    path.write_text(json.dumps(state))
 elif args and args[0] == "pull":
     if state["pull_failures"] > 0:
         state["pull_failures"] -= 1
@@ -84,6 +93,8 @@ FAKE_GCLOUD = r'''#!/usr/bin/env python3
 import hashlib, json, os, pathlib, sys
 path = pathlib.Path(os.environ["FAKE_RELEASE_STATE"])
 state = json.loads(path.read_text())
+if sys.argv[1:3] == ["auth", "configure-docker"]:
+    raise SystemExit(0)
 tag = sys.argv[sys.argv.index("describe") + 1]
 remote = state["remote"].get(tag)
 if remote is None and tag in state["pushed"]:
@@ -123,8 +134,7 @@ def sha256(raw: bytes) -> str:
     return hashlib.sha256(raw).hexdigest()
 
 
-def package_tarball(path: Path, name: str, version: str) -> None:
-    raw = json.dumps({"name": name, "version": version}).encode()
+def package_tarball(path: Path, raw: bytes) -> None:
     metadata = tarfile.TarInfo("package/package.json")
     metadata.size = len(raw)
     metadata.mode = 0o644
@@ -146,6 +156,30 @@ class ReleaseTrustTests(unittest.TestCase):
             path = self.root / relative
             path.parent.mkdir(parents=True, exist_ok=True)
             path.write_text(f"pinned input {relative}\n", encoding="utf-8")
+        package_fixtures = {
+            "packages/verify": ("@emilia-protocol/verify", "3.15.0"),
+            "packages/gate": ("@emilia-protocol/gate", "0.16.0"),
+            "packages/require-receipt": (
+                "@emilia-protocol/require-receipt",
+                "0.7.0",
+            ),
+        }
+        self.package_bytes: dict[str, bytes] = {}
+        for package_root, (name, version) in package_fixtures.items():
+            raw = json.dumps(
+                {
+                    "name": name,
+                    "version": version,
+                    "scripts": {
+                        "prepack": "node -e \"require('fs').writeFileSync(process.env.HOSTILE_MARKER,'prepack')\"",
+                        "postpack": "node -e \"require('fs').writeFileSync(process.env.HOSTILE_MARKER,'postpack')\"",
+                    },
+                }
+            ).encode()
+            package_json = self.root / package_root / "package.json"
+            package_json.parent.mkdir(parents=True, exist_ok=True)
+            package_json.write_bytes(raw)
+            self.package_bytes[package_root] = raw
         (self.root / ".dockerignore").write_text(".git\n", encoding="utf-8")
         (self.root / "caid").mkdir()
         (self.root / "caid" / "README.md").write_text("fixture\n", encoding="utf-8")
@@ -166,11 +200,9 @@ class ReleaseTrustTests(unittest.TestCase):
         self.verify_tarball = self.artifacts / "emilia-protocol-verify-3.15.0.tgz"
         self.gate_tarball = self.artifacts / "emilia-protocol-gate-0.16.0.tgz"
         self.require_tarball = self.artifacts / "emilia-protocol-require-receipt-0.7.0.tgz"
-        package_tarball(self.verify_tarball, "@emilia-protocol/verify", "3.15.0")
-        package_tarball(self.gate_tarball, "@emilia-protocol/gate", "0.16.0")
-        package_tarball(
-            self.require_tarball, "@emilia-protocol/require-receipt", "0.7.0"
-        )
+        package_tarball(self.verify_tarball, self.package_bytes["packages/verify"])
+        package_tarball(self.gate_tarball, self.package_bytes["packages/gate"])
+        package_tarball(self.require_tarball, self.package_bytes["packages/require-receipt"])
         self.source = self.artifacts / "source-manifest.json"
 
     def tearDown(self) -> None:
@@ -284,7 +316,7 @@ class ReleaseTrustTests(unittest.TestCase):
 
     def test_nested_untracked_and_symlinked_build_inputs_are_refused(self) -> None:
         package_root = self.root / "packages" / "gate"
-        package_root.mkdir(parents=True)
+        package_root.mkdir(parents=True, exist_ok=True)
         for hostile in (package_root / "nested" / "payload.js", package_root / "escape.js"):
             with self.subTest(path=hostile.name):
                 if hostile.name == "payload.js":
@@ -329,7 +361,10 @@ class ReleaseTrustTests(unittest.TestCase):
 
     def test_package_substitution_is_refused_at_deploy_verification(self) -> None:
         self.assertEqual(self.create_source().returncode, 0)
-        package_tarball(self.verify_tarball, "@emilia-protocol/verify", "9.9.9")
+        package_tarball(
+            self.verify_tarball,
+            json.dumps({"name": "@emilia-protocol/verify", "version": "9.9.9"}).encode(),
+        )
         result = run(
             str(TRUST),
             "verify-release",
@@ -345,7 +380,72 @@ class ReleaseTrustTests(unittest.TestCase):
             self.commit,
         )
         self.assertNotEqual(result.returncode, 0)
-        self.assertIn("tarball differs", result.stderr)
+        self.assertIn("differs from reviewed Git blob", result.stderr)
+
+    def test_git_archive_pack_disables_prepack_and_postpack_mutation(self) -> None:
+        marker = self.artifacts / "lifecycle-hook-ran"
+        output = self.artifacts / "packed"
+        output.mkdir()
+        original = (self.root / "packages/verify/package.json").read_bytes()
+        result = run(
+            str(TRUST),
+            "pack-package",
+            "--root",
+            str(self.root),
+            "--expected-commit",
+            self.commit,
+            "--package",
+            "verify",
+            "--output-dir",
+            str(output),
+            env={**os.environ, "HOSTILE_MARKER": str(marker)},
+        )
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertFalse(marker.exists(), "prepack/postpack hooks must never execute")
+        self.assertEqual(
+            (self.root / "packages/verify/package.json").read_bytes(), original
+        )
+        self.assertIn("emilia-protocol-verify-3.15.0.tgz", result.stdout)
+
+    def test_bundle_verification_refuses_package_and_image_artifact_swaps(self) -> None:
+        self.assertEqual(self.create_source().returncode, 0)
+        labels_result = run(str(TRUST), "labels", "--source-manifest", str(self.source))
+        labels = dict(line.split("=", 1) for line in labels_result.stdout.splitlines())
+        actuator_tag = "us-central1-docker.pkg.dev/test-project/runtime/consequence-actuator:git-" + self.commit
+        decision_tag = "us-central1-docker.pkg.dev/test-project/runtime/consequence-control:git-" + self.commit
+        state = self.artifacts / "swap-state.json"
+        state.write_text(json.dumps({
+            "local": {
+                actuator_tag: {"id": "sha256:" + "1" * 64, "labels": {**labels, "io.emilia.image.component": "actuator"}},
+                decision_tag: {"id": "sha256:" + "2" * 64, "labels": {**labels, "io.emilia.image.component": "decision"}},
+            },
+            "remote": {}, "pushed": [], "push_count": 0,
+            "describe_failures": 0, "pull_failures": 0,
+        }))
+        environment = {**os.environ, "FAKE_RELEASE_STATE": str(state)}
+        for target in ("verify-package", "actuator-image"):
+            with self.subTest(target=target):
+                bundle = self._make_publish_bundle(
+                    actuator_tag,
+                    decision_tag,
+                    self.artifacts / f"swap-{target}",
+                    environment,
+                )
+                if target == "verify-package":
+                    source = json.loads((bundle / "source-manifest.json").read_text())
+                    path = bundle / source["packages"]["verify"]["filename"]
+                else:
+                    path = bundle / "actuator-image.tar"
+                path.chmod(0o600)
+                path.write_bytes(path.read_bytes() + b"hostile swap")
+                refused = run(
+                    str(TRUST), "verify-bundle", "--root", str(self.root),
+                    "--bundle-dir", str(bundle),
+                    "--bundle-manifest", str(bundle / "bundle-manifest.json"),
+                    "--expected-commit", self.commit,
+                )
+                self.assertNotEqual(refused.returncode, 0)
+                self.assertIn("differs from manifest", refused.stderr)
 
     def test_secret_config_cannot_choose_candidate_images(self) -> None:
         config = self.artifacts / "hostile.env"
@@ -362,8 +462,8 @@ class ReleaseTrustTests(unittest.TestCase):
         self.assertEqual(self.create_source().returncode, 0)
         labels_result = run(str(TRUST), "labels", "--source-manifest", str(self.source))
         labels = dict(line.split("=", 1) for line in labels_result.stdout.splitlines())
-        actuator_tag = "us-central1-docker.pkg.dev/test-project/runtime/actuator:git-" + self.commit
-        decision_tag = "us-central1-docker.pkg.dev/test-project/runtime/decision:git-" + self.commit
+        actuator_tag = "us-central1-docker.pkg.dev/test-project/runtime/consequence-actuator:git-" + self.commit
+        decision_tag = "us-central1-docker.pkg.dev/test-project/runtime/consequence-control:git-" + self.commit
         state = self.artifacts / "fake-state.json"
         state.write_text(
             json.dumps(
@@ -393,7 +493,11 @@ class ReleaseTrustTests(unittest.TestCase):
         first_state = json.loads(state.read_text())
         self.assertEqual(first_state["push_count"], 2)
         derived = (self.artifacts / "release-one" / "deploy.env").read_text()
-        self.assertIn("ACTUATOR_IMAGE=" + actuator_tag.rsplit(":", 1)[0] + "@sha256:", derived)
+        self.assertIn(
+            "ACTUATOR_IMAGE=us-central1-docker.pkg.dev/test-project/runtime/"
+            "consequence-actuator@sha256:",
+            derived,
+        )
 
         second = self._publish(
             actuator_tag, decision_tag, config, docker, gcloud, self.artifacts / "release-two", environment
@@ -409,8 +513,8 @@ class ReleaseTrustTests(unittest.TestCase):
         self.assertEqual(self.create_source().returncode, 0)
         labels_result = run(str(TRUST), "labels", "--source-manifest", str(self.source))
         labels = dict(line.split("=", 1) for line in labels_result.stdout.splitlines())
-        actuator_tag = "us-central1-docker.pkg.dev/test-project/runtime/actuator:git-" + self.commit
-        decision_tag = "us-central1-docker.pkg.dev/test-project/runtime/decision:git-" + self.commit
+        actuator_tag = "us-central1-docker.pkg.dev/test-project/runtime/consequence-actuator:git-" + self.commit
+        decision_tag = "us-central1-docker.pkg.dev/test-project/runtime/consequence-control:git-" + self.commit
         decision_digest = "sha256:" + "b" * 64
         state = self.artifacts / "fake-state-mismatch.json"
         state.write_text(json.dumps({
@@ -446,8 +550,8 @@ class ReleaseTrustTests(unittest.TestCase):
         self.assertEqual(self.create_source().returncode, 0)
         labels_result = run(str(TRUST), "labels", "--source-manifest", str(self.source))
         labels = dict(line.split("=", 1) for line in labels_result.stdout.splitlines())
-        actuator_tag = "us-central1-docker.pkg.dev/test-project/runtime/actuator:git-" + self.commit
-        decision_tag = "us-central1-docker.pkg.dev/test-project/runtime/decision:git-" + self.commit
+        actuator_tag = "us-central1-docker.pkg.dev/test-project/runtime/consequence-actuator:git-" + self.commit
+        decision_tag = "us-central1-docker.pkg.dev/test-project/runtime/consequence-control:git-" + self.commit
         state = self.artifacts / "fake-state-cold-rebuild.json"
         state.write_text(json.dumps({
             "local": {
@@ -477,8 +581,8 @@ class ReleaseTrustTests(unittest.TestCase):
         self.assertEqual(self.create_source().returncode, 0)
         labels_result = run(str(TRUST), "labels", "--source-manifest", str(self.source))
         labels = dict(line.split("=", 1) for line in labels_result.stdout.splitlines())
-        actuator_tag = "us-central1-docker.pkg.dev/test-project/runtime/actuator:git-" + self.commit
-        decision_tag = "us-central1-docker.pkg.dev/test-project/runtime/decision:git-" + self.commit
+        actuator_tag = "us-central1-docker.pkg.dev/test-project/runtime/consequence-actuator:git-" + self.commit
+        decision_tag = "us-central1-docker.pkg.dev/test-project/runtime/consequence-control:git-" + self.commit
         state = self.artifacts / "fake-state-race.json"
         state.write_text(json.dumps({
             "local": {
@@ -564,13 +668,57 @@ class ReleaseTrustTests(unittest.TestCase):
         self.assertIn("release preflight accepted", result.stdout)
         self.assertFalse(marker.exists(), "preflight must exit before invoking gcloud")
 
+    def _make_publish_bundle(self, actuator, decision, bundle, environment):
+        bundle.mkdir()
+        shutil.copy2(self.source, bundle / "source-manifest.json")
+        source = json.loads(self.source.read_text())
+        for record in source["packages"].values():
+            shutil.copy2(self.artifacts / record["filename"], bundle / record["filename"])
+        source_tags = {
+            "actuator": "emilia-consequence-actuator:git-" + self.commit,
+            "decision": "emilia-consequence-control:git-" + self.commit,
+        }
+        state_path = Path(environment["FAKE_RELEASE_STATE"])
+        state = json.loads(state_path.read_text())
+        state["local"][source_tags["actuator"]] = dict(state["local"][actuator])
+        state["local"][source_tags["decision"]] = dict(state["local"][decision])
+        state_path.write_text(json.dumps(state))
+        for component, remote_tag in (("actuator", actuator), ("decision", decision)):
+            (bundle / f"{component}-image.tar").write_bytes(
+                (component + self.commit).encode()
+            )
+            record = state["local"][remote_tag]
+            (bundle / f"inspect-{component}.json").write_text(
+                json.dumps([{"Id": record["id"], "Config": {"Labels": record["labels"]}}]),
+                encoding="utf-8",
+            )
+        bundled = run(
+            str(TRUST), "bundle", "--root", str(self.root),
+            "--bundle-dir", str(bundle),
+            "--source-manifest", str(bundle / "source-manifest.json"),
+            "--expected-commit", self.commit,
+            "--actuator-archive", str(bundle / "actuator-image.tar"),
+            "--actuator-inspect", str(bundle / "inspect-actuator.json"),
+            "--actuator-tag", source_tags["actuator"],
+            "--decision-archive", str(bundle / "decision-image.tar"),
+            "--decision-inspect", str(bundle / "inspect-decision.json"),
+            "--decision-tag", source_tags["decision"],
+            "--output", str(bundle / "bundle-manifest.json"),
+        )
+        self.assertEqual(bundled.returncode, 0, bundled.stderr)
+        return bundle
+
     def _publish(self, actuator, decision, config, docker, gcloud, output, environment):
+        bundle = self._make_publish_bundle(
+            actuator, decision, output.parent / (output.name + "-bundle"), environment
+        )
         github_output = output.parent / (output.name + ".outputs")
         github_output.write_text("")
         return run(
-            str(PUBLISH), "--root", str(self.root), "--source-manifest", str(self.source),
-            "--artifact-dir", str(self.artifacts), "--expected-commit", self.commit,
-            "--config", str(config), "--actuator-tag", actuator, "--decision-tag", decision,
+            str(PUBLISH), "--root", str(self.root), "--bundle-dir", str(bundle),
+            "--bundle-manifest", str(bundle / "bundle-manifest.json"),
+            "--expected-commit", self.commit, "--config", str(config),
+            "--artifact-repository", "runtime",
             "--output-dir", str(output), "--github-output", str(github_output),
             "--docker-bin", str(docker), "--gcloud-bin", str(gcloud),
             "--retry-delay-seconds", "0", env=environment,
@@ -738,6 +886,37 @@ class WorkflowTrustContractTests(unittest.TestCase):
         self.assertIn("--source-manifest", workflow)
         self.assertIn("--release-manifest", workflow)
         self.assertNotIn("CONSEQUENCE_CONTROL_DEPLOY_CONFIG_SHA256", workflow)
+
+    def test_candidate_build_has_no_production_credential_surface(self) -> None:
+        workflow = (ROOT / ".github/workflows/consequence-control-deploy.yml").read_text()
+        candidate = workflow.split("  candidate-release:", 1)[1].split("\n  deploy:", 1)[0]
+        self.assertIn("--bundle", candidate)
+        self.assertIn("permissions:\n      contents: read", candidate)
+        self.assertNotIn("environment:", candidate)
+        self.assertNotIn("id-token: write", candidate)
+        self.assertNotIn("secrets.", candidate)
+        self.assertNotIn("google-github-actions/auth", candidate)
+        self.assertNotIn("gcloud", candidate)
+
+    def test_protected_job_executes_no_candidate_build_or_package_hooks_after_auth(self) -> None:
+        workflow = (ROOT / ".github/workflows/consequence-control-deploy.yml").read_text()
+        protected = workflow.split("\n  deploy:", 1)[1]
+        auth_index = protected.index("Authenticate keylessly as the protected deploy identity")
+        before_auth = protected[:auth_index]
+        after_auth = protected[auth_index:]
+        self.assertIn("verify-bundle", before_auth)
+        self.assertIn("load-bundle", before_auth)
+        for forbidden in (
+            "npm ci",
+            "npm pack",
+            "npm run build",
+            "docker build",
+            "build-release-images.sh",
+        ):
+            self.assertNotIn(forbidden, after_auth)
+        self.assertIn("publish-release-images.py", after_auth)
+        self.assertIn("artifact-ids: ${{ needs.candidate-release.outputs.artifact-id }}", before_auth)
+        self.assertIn("artifact-digest", workflow)
 
     def test_schema_workflow_separates_candidate_data_from_trusted_live_code(self) -> None:
         workflow = (ROOT / ".github/workflows/schema-security.yml").read_text()

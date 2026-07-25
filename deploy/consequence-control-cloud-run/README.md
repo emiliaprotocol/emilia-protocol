@@ -11,13 +11,25 @@ Manager secret names pinned to numeric versions. Container images must be
 Artifact Registry-style references pinned by `@sha256:<64 lowercase hex>`.
 
 For `deploy-candidates`, those image references are not operator inputs. The
-protected workflow checks out the exact reviewed `main` commit, verifies the
-governed security case, proof statistics, and conformance manifest, packs the
-exact Verify and Gate npm artifacts, builds the actuator and decision images,
-and pushes commit-derived tags exactly once. OCI labels bind all of those
-inputs to each image digest. A GitHub-attested source manifest and release
-manifest bind the reviewed Git commit and tree to the two immutable registry
-digests. `deploy.sh --apply` re-verifies that chain before any cloud mutation.
+workflow first runs a credential-free candidate job with no environment,
+secrets, or OIDC permission. That job verifies the governed security case,
+proof statistics, and conformance manifest; packs the exact Verify, Gate, and
+Receipt Required packages from a `git archive` with lifecycle scripts disabled;
+and builds the actuator and decision images. The v2 source manifest binds every
+npm archive member to its reviewed Git blob, content digest, source path, size,
+and build recipe. A sealed bundle then binds those package artifacts, image
+archives, image IDs, inspections, and OCI labels to the exact commit and tree.
+
+Only after a separate protected job downloads that exact workflow-run artifact,
+re-verifies it, and loads the images without executing them does the job request
+the production WIF credential and deployment secret. After authentication it
+runs no npm command, package lifecycle hook, application build, Docker build, or
+candidate application code. The narrow reviewed publisher may only retag, push,
+read back, and compare the already sealed images; immutable-tag retry races are
+accepted only when the registry winner has the identical image ID and labels.
+A GitHub-attested source manifest and release manifest bind the reviewed Git
+commit and tree to the two immutable registry digests. `deploy.sh --apply`
+re-verifies that chain before any cloud mutation.
 
 ## Security boundary
 

@@ -4,33 +4,19 @@ set -euo pipefail
 LANE_DIR=$(CDPATH='' cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)
 ROOT=$(CDPATH='' cd -- "$LANE_DIR/../.." && pwd)
 TRUST="$LANE_DIR/release-trust.py"
-PUBLISH="$LANE_DIR/publish-release-images.py"
 
 MODE=
-CONFIG=
-ARTIFACT_REPOSITORY=
 EXPECTED_COMMIT=
 OUTPUT=
-GITHUB_OUTPUT_FILE=
 while (($#)); do
   case "$1" in
     --ci)
       MODE=ci
       shift
       ;;
-    --push)
-      MODE=push
+    --bundle)
+      MODE=bundle
       shift
-      ;;
-    --config)
-      (($# >= 2)) || { printf 'error: --config requires a path\n' >&2; exit 2; }
-      CONFIG=$2
-      shift 2
-      ;;
-    --artifact-repository)
-      (($# >= 2)) || { printf 'error: --artifact-repository requires a value\n' >&2; exit 2; }
-      ARTIFACT_REPOSITORY=$2
-      shift 2
       ;;
     --expected-commit)
       (($# >= 2)) || { printf 'error: --expected-commit requires a value\n' >&2; exit 2; }
@@ -42,11 +28,6 @@ while (($#)); do
       OUTPUT=$2
       shift 2
       ;;
-    --github-output)
-      (($# >= 2)) || { printf 'error: --github-output requires a path\n' >&2; exit 2; }
-      GITHUB_OUTPUT_FILE=$2
-      shift 2
-      ;;
     *)
       printf 'error: unknown argument: %s\n' "$1" >&2
       exit 2
@@ -54,23 +35,20 @@ while (($#)); do
   esac
 done
 
-[[ "$MODE" == ci || "$MODE" == push ]] || { printf 'error: exactly one of --ci or --push is required\n' >&2; exit 2; }
+[[ "$MODE" == ci || "$MODE" == bundle ]] || { printf 'error: exactly one of --ci or --bundle is required\n' >&2; exit 2; }
 [[ "$EXPECTED_COMMIT" =~ ^[0-9a-f]{40}$ ]] || { printf 'error: --expected-commit must be a lowercase Git SHA\n' >&2; exit 2; }
 [[ -n "$OUTPUT" && "$OUTPUT" == /* ]] || { printf 'error: --output must be absolute\n' >&2; exit 2; }
 [[ ! -e "$OUTPUT" ]] || { printf 'error: output already exists: %s\n' "$OUTPUT" >&2; exit 2; }
-if [[ "$MODE" == push ]]; then
-  [[ -n "$CONFIG" && "$CONFIG" == /* ]] || { printf 'error: --push requires an absolute --config\n' >&2; exit 2; }
-  [[ "$ARTIFACT_REPOSITORY" =~ ^[a-z][a-z0-9-]{0,61}[a-z0-9]$ ]] \
-    || { printf 'error: --artifact-repository must be a lowercase Google Cloud slug\n' >&2; exit 2; }
-  [[ -n "$GITHUB_OUTPUT_FILE" && "$GITHUB_OUTPUT_FILE" == /* ]] \
-    || { printf 'error: --push requires absolute --github-output\n' >&2; exit 2; }
-fi
-
 command -v docker >/dev/null
 command -v node >/dev/null
 command -v npm >/dev/null
 command -v python3 >/dev/null
 mkdir -m 700 "$OUTPUT"
+WORK=$(mktemp -d "${TMPDIR:-/tmp}/emilia-release-build.XXXXXX")
+cleanup() {
+  rm -rf -- "$WORK"
+}
+trap cleanup EXIT
 
 cd "$ROOT"
 [[ "$(git rev-parse HEAD)" == "$EXPECTED_COMMIT" ]] \
@@ -85,34 +63,10 @@ npm --prefix packages/gate run build
 git diff --exit-code -- packages/verify/dist packages/gate/dist \
   security/security-case.json lib/proof-stats.json conformance/conformance-manifest.json
 
-npm pack ./packages/verify --json --pack-destination "$OUTPUT" > "$OUTPUT/verify-pack.json"
-npm pack ./packages/gate --json --pack-destination "$OUTPUT" > "$OUTPUT/gate-pack.json"
-npm pack ./packages/require-receipt --json --pack-destination "$OUTPUT" > "$OUTPUT/require-receipt-pack.json"
-VERIFY_TARBALL=$(python3 - "$OUTPUT/verify-pack.json" "$OUTPUT" <<'PY'
-import json, pathlib, sys
-value = json.loads(pathlib.Path(sys.argv[1]).read_text())
-if not isinstance(value, list) or len(value) != 1 or not isinstance(value[0].get("filename"), str):
-    raise SystemExit("verify npm pack output is invalid")
-print(pathlib.Path(sys.argv[2], pathlib.Path(value[0]["filename"]).name))
-PY
-)
-GATE_TARBALL=$(python3 - "$OUTPUT/gate-pack.json" "$OUTPUT" <<'PY'
-import json, pathlib, sys
-value = json.loads(pathlib.Path(sys.argv[1]).read_text())
-if not isinstance(value, list) or len(value) != 1 or not isinstance(value[0].get("filename"), str):
-    raise SystemExit("gate npm pack output is invalid")
-print(pathlib.Path(sys.argv[2], pathlib.Path(value[0]["filename"]).name))
-PY
-)
-REQUIRE_RECEIPT_TARBALL=$(python3 - "$OUTPUT/require-receipt-pack.json" "$OUTPUT" <<'PY'
-import json, pathlib, sys
-value = json.loads(pathlib.Path(sys.argv[1]).read_text())
-if not isinstance(value, list) or len(value) != 1 or not isinstance(value[0].get("filename"), str):
-    raise SystemExit("require-receipt npm pack output is invalid")
-print(pathlib.Path(sys.argv[2], pathlib.Path(value[0]["filename"]).name))
-PY
-)
-SOURCE_MANIFEST="$OUTPUT/source-manifest.json"
+VERIFY_TARBALL=$("$TRUST" pack-package --root "$ROOT" --expected-commit "$EXPECTED_COMMIT" --package verify --output-dir "$WORK")
+GATE_TARBALL=$("$TRUST" pack-package --root "$ROOT" --expected-commit "$EXPECTED_COMMIT" --package gate --output-dir "$WORK")
+REQUIRE_RECEIPT_TARBALL=$("$TRUST" pack-package --root "$ROOT" --expected-commit "$EXPECTED_COMMIT" --package require-receipt --output-dir "$WORK")
+SOURCE_MANIFEST="$WORK/source-manifest.json"
 "$TRUST" source \
   --root "$ROOT" \
   --expected-commit "$EXPECTED_COMMIT" \
@@ -121,7 +75,7 @@ SOURCE_MANIFEST="$OUTPUT/source-manifest.json"
   --require-receipt-tarball "$REQUIRE_RECEIPT_TARBALL" \
   --output "$SOURCE_MANIFEST"
 
-DOCKER_CONTEXT="$OUTPUT/docker-context"
+DOCKER_CONTEXT="$WORK/docker-context"
 "$TRUST" context \
   --root "$ROOT" \
   --expected-commit "$EXPECTED_COMMIT" \
@@ -151,16 +105,9 @@ if [[ "$MODE" == ci ]]; then
   DECISION_TAG=emilia-consequence-control:ci
   GATE_TAG=emilia-gate-service:ci
 else
-  mapfile -t COORDINATES < <("$TRUST" coordinates --config "$CONFIG")
-  [[ ${#COORDINATES[@]} -eq 3 ]] || { printf 'error: deployment coordinates are incomplete\n' >&2; exit 1; }
-  PROJECT_ID=${COORDINATES[0]}
-  REGION=${COORDINATES[1]}
-  REGISTRY_HOST="${REGION}-docker.pkg.dev"
-  IMAGE_PREFIX="${REGISTRY_HOST}/${PROJECT_ID}/${ARTIFACT_REPOSITORY}"
-  ACTUATOR_TAG="${IMAGE_PREFIX}/consequence-actuator:git-${EXPECTED_COMMIT}"
-  DECISION_TAG="${IMAGE_PREFIX}/consequence-control:git-${EXPECTED_COMMIT}"
+  ACTUATOR_TAG="emilia-consequence-actuator:git-${EXPECTED_COMMIT}"
+  DECISION_TAG="emilia-consequence-control:git-${EXPECTED_COMMIT}"
   GATE_TAG=
-  gcloud auth configure-docker "$REGISTRY_HOST" --quiet
 fi
 
 docker build --file "$DOCKER_CONTEXT/deploy/consequence-control-cloud-run/Dockerfile.consequence-actuator.release" \
@@ -174,7 +121,7 @@ fi
 
 verify_inspect() {
   local component=$1 tag=$2
-  local record="$OUTPUT/inspect-$component.json"
+  local record="$WORK/inspect-$component.json"
   docker image inspect "$tag" > "$record"
   "$TRUST" verify-inspect \
     --source-manifest "$SOURCE_MANIFEST" \
@@ -188,15 +135,30 @@ if [[ "$MODE" == ci ]]; then
   exit 0
 fi
 
-"$PUBLISH" \
+install -m 400 "$SOURCE_MANIFEST" "$OUTPUT/source-manifest.json"
+install -m 400 "$VERIFY_TARBALL" "$OUTPUT/$(basename -- "$VERIFY_TARBALL")"
+install -m 400 "$GATE_TARBALL" "$OUTPUT/$(basename -- "$GATE_TARBALL")"
+install -m 400 "$REQUIRE_RECEIPT_TARBALL" "$OUTPUT/$(basename -- "$REQUIRE_RECEIPT_TARBALL")"
+docker image inspect "$ACTUATOR_TAG" > "$OUTPUT/inspect-actuator.json"
+docker image inspect "$DECISION_TAG" > "$OUTPUT/inspect-decision.json"
+docker save --output "$OUTPUT/actuator-image.tar" "$ACTUATOR_TAG"
+docker save --output "$OUTPUT/decision-image.tar" "$DECISION_TAG"
+chmod 400 "$OUTPUT/inspect-actuator.json" "$OUTPUT/inspect-decision.json" \
+  "$OUTPUT/actuator-image.tar" "$OUTPUT/decision-image.tar"
+"$TRUST" bundle \
   --root "$ROOT" \
-  --source-manifest "$SOURCE_MANIFEST" \
-  --artifact-dir "$OUTPUT" \
+  --bundle-dir "$OUTPUT" \
+  --source-manifest "$OUTPUT/source-manifest.json" \
   --expected-commit "$EXPECTED_COMMIT" \
-  --config "$CONFIG" \
+  --actuator-archive "$OUTPUT/actuator-image.tar" \
+  --actuator-inspect "$OUTPUT/inspect-actuator.json" \
   --actuator-tag "$ACTUATOR_TAG" \
+  --decision-archive "$OUTPUT/decision-image.tar" \
+  --decision-inspect "$OUTPUT/inspect-decision.json" \
   --decision-tag "$DECISION_TAG" \
-  --output-dir "$OUTPUT/published-release" \
-  --github-output "$GITHUB_OUTPUT_FILE" \
-  --docker-bin "$(command -v docker)" \
-  --gcloud-bin "$(command -v gcloud)"
+  --output "$OUTPUT/bundle-manifest.json"
+"$TRUST" verify-bundle \
+  --root "$ROOT" \
+  --bundle-dir "$OUTPUT" \
+  --bundle-manifest "$OUTPUT/bundle-manifest.json" \
+  --expected-commit "$EXPECTED_COMMIT"

@@ -20,6 +20,7 @@ ID_RE = DIGEST_RE
 TAG_RE = re.compile(
     r"^[a-z0-9.-]+/[a-z0-9._/-]+:git-([0-9a-f]{40})$"
 )
+REPOSITORY_RE = re.compile(r"^[a-z][a-z0-9-]{0,61}[a-z0-9]$")
 NOT_FOUND_RE = re.compile(r"not[_ ]found|not found|does not exist", re.IGNORECASE)
 
 
@@ -161,11 +162,23 @@ def copy_regular(source: Path, destination: Path, label: str) -> None:
             os.close(destination_fd)
 
 
-def publish_component(args, docker: str, gcloud: str, trust: Path, component: str, tag: str) -> str:
+def publish_component(
+    args,
+    docker: str,
+    gcloud: str,
+    trust: Path,
+    component: str,
+    source_tag: str,
+    tag: str,
+    source_manifest: Path,
+) -> str:
     match = TAG_RE.fullmatch(tag)
     if match is None or match.group(1) != args.expected_commit:
         fail(f"{component} tag is not derived from the reviewed commit")
-    local_id = image_id(docker, tag)
+    local_id = image_id(docker, source_tag)
+    tagged = command([docker, "tag", source_tag, tag])
+    if tagged.returncode != 0 or image_id(docker, tag) != local_id:
+        fail(f"Docker could not bind reviewed {component} image to immutable registry tag")
     digest = describe(gcloud, tag)
     if digest is None:
         pushed = command([docker, "push", tag])
@@ -192,7 +205,7 @@ def publish_component(args, docker: str, gcloud: str, trust: Path, component: st
     return verify_remote(
         docker=docker,
         trust=trust,
-        source_manifest=args.source_manifest.resolve(),
+        source_manifest=source_manifest,
         component=component,
         tag=tag,
         digest=digest,
@@ -215,12 +228,11 @@ def append_outputs(path: Path, values: dict[str, str]) -> None:
 def main() -> int:
     parser = argparse.ArgumentParser()
     parser.add_argument("--root", type=Path, required=True)
-    parser.add_argument("--source-manifest", type=Path, required=True)
-    parser.add_argument("--artifact-dir", type=Path, required=True)
+    parser.add_argument("--bundle-dir", type=Path, required=True)
+    parser.add_argument("--bundle-manifest", type=Path, required=True)
     parser.add_argument("--expected-commit", required=True)
     parser.add_argument("--config", type=Path, required=True)
-    parser.add_argument("--actuator-tag", required=True)
-    parser.add_argument("--decision-tag", required=True)
+    parser.add_argument("--artifact-repository", required=True)
     parser.add_argument("--output-dir", type=Path, required=True)
     parser.add_argument("--github-output", type=Path, required=True)
     parser.add_argument("--docker-bin", type=Path, default=Path("/usr/bin/docker"))
@@ -234,13 +246,65 @@ def main() -> int:
         docker = require_tool(args.docker_bin, "Docker CLI")
         gcloud = require_tool(args.gcloud_bin, "gcloud CLI")
         trust = Path(__file__).resolve().with_name("release-trust.py")
-        actuator = publish_component(args, docker, gcloud, trust, "actuator", args.actuator_tag)
-        decision = publish_component(args, docker, gcloud, trust, "decision", args.decision_tag)
+        if REPOSITORY_RE.fullmatch(args.artifact_repository) is None:
+            fail("artifact repository is not a lowercase Google Cloud slug")
+        bundle_dir = args.bundle_dir.resolve()
+        bundle_manifest = args.bundle_manifest.resolve()
+        verified_bundle = command([
+            str(trust), "verify-bundle", "--root", str(args.root.resolve()),
+            "--bundle-dir", str(bundle_dir), "--bundle-manifest", str(bundle_manifest),
+            "--expected-commit", args.expected_commit,
+        ])
+        if verified_bundle.returncode != 0:
+            fail(verified_bundle.stderr.strip())
+        bundle = json.loads(bundle_manifest.read_text(encoding="utf-8"))
+        source_manifest = bundle_dir / bundle["source"]["manifest"]
+        coordinates = command([str(trust), "coordinates", "--config", str(args.config.resolve())])
+        if coordinates.returncode != 0:
+            fail(coordinates.stderr.strip())
+        values = coordinates.stdout.splitlines()
+        if len(values) != 3:
+            fail("deployment coordinates are incomplete")
+        project_id, region, _release_id = values
+        registry_host = f"{region}-docker.pkg.dev"
+        configured = command([gcloud, "auth", "configure-docker", registry_host, "--quiet"])
+        if configured.returncode != 0:
+            fail("gcloud could not configure Docker for the pinned registry")
+        prefix = f"{registry_host}/{project_id}/{args.artifact_repository}"
+        actuator_tag = f"{prefix}/consequence-actuator:git-{args.expected_commit}"
+        decision_tag = f"{prefix}/consequence-control:git-{args.expected_commit}"
+        actuator = publish_component(
+            args,
+            docker,
+            gcloud,
+            trust,
+            "actuator",
+            bundle["images"]["actuator"]["tag"],
+            actuator_tag,
+            source_manifest,
+        )
+        decision = publish_component(
+            args,
+            docker,
+            gcloud,
+            trust,
+            "decision",
+            bundle["images"]["decision"]["tag"],
+            decision_tag,
+            source_manifest,
+        )
+        reverified_bundle = command([
+            str(trust), "verify-bundle", "--root", str(args.root.resolve()),
+            "--bundle-dir", str(bundle_dir), "--bundle-manifest", str(bundle_manifest),
+            "--expected-commit", args.expected_commit,
+        ])
+        if reverified_bundle.returncode != 0:
+            fail("release bundle changed during protected publication")
         output = args.output_dir.resolve()
         output.mkdir(parents=True, mode=0o700, exist_ok=False)
-        source = json.loads(args.source_manifest.read_text(encoding="utf-8"))
+        source = json.loads(source_manifest.read_text(encoding="utf-8"))
         bundled_source = output / "source-manifest.json"
-        copy_regular(args.source_manifest.resolve(), bundled_source, "source manifest")
+        copy_regular(source_manifest, bundled_source, "source manifest")
         bundled_packages: dict[str, Path] = {}
         for key, label in (
             ("verify", "Verify package"),
@@ -248,7 +312,7 @@ def main() -> int:
             ("require-receipt", "require-receipt package"),
         ):
             filename = source["packages"][key]["filename"]
-            package_source = args.artifact_dir.resolve() / filename
+            package_source = bundle_dir / filename
             package_destination = output / filename
             copy_regular(package_source, package_destination, label)
             bundled_packages[key] = package_destination

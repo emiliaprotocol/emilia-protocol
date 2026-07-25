@@ -26,23 +26,76 @@ on:
         type: string
 
 permissions:
-  attestations: write
   contents: read
-  id-token: write
 
 concurrency:
   group: consequence-control-production
   cancel-in-progress: false
 
 jobs:
-  deploy:
+  candidate-release:
     if: >-
       github.repository == 'emiliaprotocol/emilia-protocol' &&
       github.ref == 'refs/heads/main' &&
-      github.event_name == 'workflow_dispatch'
+      github.event_name == 'workflow_dispatch' &&
+      inputs.operation == 'deploy-candidates'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 60
+    permissions:
+      contents: read
+    outputs:
+      artifact-id: ${{ steps.upload.outputs.artifact-id }}
+      artifact-digest: ${{ steps.upload.outputs.artifact-digest }}
+    steps:
+      - name: Check out the exact protected revision without credentials
+        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
+
+      - name: Install the governed Node.js toolchain
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: 22.23.1
+          cache: npm
+
+      - name: Install reviewed release dependencies without lifecycle scripts
+        run: npm ci --ignore-scripts
+
+      - name: Build and seal credential-free candidate images
+        shell: bash
+        run: |
+          set -euo pipefail
+          build_dir="$RUNNER_TEMP/consequence-control-bundle"
+          deploy/consequence-control-cloud-run/build-release-images.sh \
+            --bundle \
+            --expected-commit "$GITHUB_SHA" \
+            --output "$build_dir"
+
+      - name: Upload the exact sealed release bundle
+        id: upload
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
+        with:
+          name: consequence-control-sealed-${{ github.sha }}-${{ github.run_id }}-${{ github.run_attempt }}
+          path: ${{ runner.temp }}/consequence-control-bundle
+          if-no-files-found: error
+          retention-days: 1
+
+  deploy:
+    needs: candidate-release
+    if: >-
+      always() &&
+      github.repository == 'emiliaprotocol/emilia-protocol' &&
+      github.ref == 'refs/heads/main' &&
+      github.event_name == 'workflow_dispatch' &&
+      (inputs.operation != 'deploy-candidates' || needs.candidate-release.result == 'success')
     runs-on: ubuntu-24.04
     timeout-minutes: 90
     environment: consequence-control-production
+    permissions:
+      attestations: write
+      contents: read
+      id-token: write
     env:
       EMILIA_DEPLOY_ENVIRONMENT: consequence-control-production
       EMILIA_GITHUB_WORKFLOW_SHA: ${{ github.workflow_sha }}
@@ -54,16 +107,34 @@ jobs:
           ref: ${{ github.sha }}
           persist-credentials: false
 
-      - name: Install the governed Node.js toolchain
+      - name: Download the exact sealed candidate artifact
         if: inputs.operation == 'deploy-candidates'
-        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
         with:
-          node-version: 22
-          cache: npm
+          artifact-ids: ${{ needs.candidate-release.outputs.artifact-id }}
+          path: ${{ runner.temp }}/sealed-candidate
+          merge-multiple: true
 
-      - name: Install reviewed release dependencies without lifecycle scripts
+      - name: Verify and load sealed images before authentication
         if: inputs.operation == 'deploy-candidates'
-        run: npm ci --ignore-scripts
+        shell: bash
+        env:
+          SEALED_ARTIFACT_DIGEST: ${{ needs.candidate-release.outputs.artifact-digest }}
+        run: |
+          set -euo pipefail
+          [[ "$SEALED_ARTIFACT_DIGEST" =~ ^[0-9a-f]{64}$ ]]
+          bundle_dir="$RUNNER_TEMP/sealed-candidate"
+          deploy/consequence-control-cloud-run/release-trust.py verify-bundle \
+            --root "$GITHUB_WORKSPACE" \
+            --bundle-dir "$bundle_dir" \
+            --bundle-manifest "$bundle_dir/bundle-manifest.json" \
+            --expected-commit "$GITHUB_SHA"
+          deploy/consequence-control-cloud-run/release-trust.py load-bundle \
+            --root "$GITHUB_WORKSPACE" \
+            --bundle-dir "$bundle_dir" \
+            --bundle-manifest "$bundle_dir/bundle-manifest.json" \
+            --expected-commit "$GITHUB_SHA" \
+            --docker-bin "$(command -v docker)"
 
       - name: Authenticate keylessly as the protected deploy identity
         uses: google-github-actions/auth@7c6bc770dae815cd3e89ee6cdf493a5fab2cc093 # v3
@@ -90,7 +161,7 @@ jobs:
           printf '%s\n' "$CONSEQUENCE_CONTROL_DEPLOY_CONFIG" > "$config_path"
           printf 'path=%s\n' "$config_path" >> "$GITHUB_OUTPUT"
 
-      - name: Build, label, push, and bind candidate images to the reviewed commit
+      - name: Publish sealed images and bind immutable registry digests
         if: inputs.operation == 'deploy-candidates'
         id: release-images
         shell: bash
@@ -99,13 +170,18 @@ jobs:
         run: |
           set -euo pipefail
           [[ "$ARTIFACT_REPOSITORY" =~ ^[a-z][a-z0-9-]{0,61}[a-z0-9]$ ]]
-          deploy/consequence-control-cloud-run/build-release-images.sh \
-            --push \
+          bundle_dir="$RUNNER_TEMP/sealed-candidate"
+          deploy/consequence-control-cloud-run/publish-release-images.py \
+            --root "$GITHUB_WORKSPACE" \
+            --bundle-dir "$bundle_dir" \
+            --bundle-manifest "$bundle_dir/bundle-manifest.json" \
             --config "${{ steps.deploy-config.outputs.path }}" \
             --artifact-repository "$ARTIFACT_REPOSITORY" \
             --expected-commit "$GITHUB_SHA" \
-            --output "$RUNNER_TEMP/consequence-control-release" \
-            --github-output "$GITHUB_OUTPUT"
+            --output-dir "$RUNNER_TEMP/consequence-control-release" \
+            --github-output "$GITHUB_OUTPUT" \
+            --docker-bin "$(command -v docker)" \
+            --gcloud-bin "$(command -v gcloud)"
 
       - name: Attest exact governed source and package bytes
         if: inputs.operation == 'deploy-candidates'
