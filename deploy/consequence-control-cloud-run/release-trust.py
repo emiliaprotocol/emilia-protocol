@@ -585,6 +585,74 @@ def inspect_record(path: Path, component: str, source_path: Path) -> tuple[str, 
     return image_id, value[0]
 
 
+def verify_image_archive(
+    path: Path, *, component: str, expected_tag: str, expected_id: str
+) -> None:
+    """Require one Docker-save image whose only tag and config match the seal."""
+    require_regular(path, f"{component} image archive")
+    files: dict[str, tarfile.TarInfo] = {}
+    try:
+        with tarfile.open(path, mode="r:") as archive:
+            members = archive.getmembers()
+            if not members or len(members) > 100_000:
+                die(f"{component} image archive inventory is invalid")
+            seen: set[str] = set()
+            for member in members:
+                name = member.name
+                candidate = PurePosixPath(name)
+                if (
+                    not name
+                    or candidate.is_absolute()
+                    or "\\" in name
+                    or any(part in ("", ".", "..") for part in candidate.parts)
+                    or name in seen
+                ):
+                    die(f"{component} image archive has an unsafe or duplicate member")
+                seen.add(name)
+                if member.isfile():
+                    files[name] = member
+                elif not member.isdir():
+                    die(f"{component} image archive contains a non-regular member")
+            manifest_member = files.get("manifest.json")
+            if manifest_member is None or manifest_member.size > 1024 * 1024:
+                die(f"{component} image archive has no bounded manifest")
+            manifest_handle = archive.extractfile(manifest_member)
+            if manifest_handle is None:
+                die(f"{component} image archive manifest is unavailable")
+            manifest = json.loads(manifest_handle.read())
+            if not isinstance(manifest, list) or len(manifest) != 1:
+                die(f"{component} image archive must contain exactly one image")
+            record = manifest[0]
+            if not isinstance(record, dict):
+                die(f"{component} image archive manifest record is invalid")
+            config_name = record.get("Config")
+            tags = record.get("RepoTags")
+            layers = record.get("Layers")
+            if (
+                not isinstance(config_name, str)
+                or config_name not in files
+                or tags != [expected_tag]
+                or not isinstance(layers, list)
+                or not layers
+                or len(layers) != len(set(layers))
+                or any(not isinstance(layer, str) or layer not in files for layer in layers)
+            ):
+                die(
+                    f"{component} image archive must contain exactly its sealed image and tag"
+                )
+            config_member = files[config_name]
+            if config_member.size > 16 * 1024 * 1024:
+                die(f"{component} image archive config is unbounded")
+            config_handle = archive.extractfile(config_member)
+            if config_handle is None:
+                die(f"{component} image archive config is unavailable")
+            config_digest = "sha256:" + hashlib.sha256(config_handle.read()).hexdigest()
+            if config_digest != expected_id:
+                die(f"{component} image archive config differs from its sealed image ID")
+    except (tarfile.TarError, json.JSONDecodeError, UnicodeDecodeError) as error:
+        die(f"{component} image archive is invalid: {error}")
+
+
 def bundle_manifest(
     *,
     root: Path,
@@ -613,6 +681,12 @@ def bundle_manifest(
         if match is None or match.group(1) != expected_commit:
             die(f"{component} bundle tag is not derived from the reviewed commit")
         image_id, _ = inspect_record(inspect, component, source_path)
+        verify_image_archive(
+            archive,
+            component=component,
+            expected_tag=tag,
+            expected_id=image_id,
+        )
         files.extend([archive, inspect])
         images[component] = {
             "archive": archive.name,
@@ -690,6 +764,10 @@ def validate_bundle_shape(value: Any) -> dict[str, Any]:
             ) is None
         ):
             die(f"bundle {component} image binding is invalid")
+    if len({record["id"] for record in images.values()}) != 2:
+        die("bundle actuator and decision image IDs must be distinct")
+    if len({record["tag"] for record in images.values()}) != 2:
+        die("bundle actuator and decision tags must be distinct")
     return value
 
 
@@ -721,6 +799,12 @@ def verify_bundle(
         image_id, _ = inspect_record(bundle_dir / record["inspect"], component, source_path)
         if image_id != record["id"]:
             die(f"bundle {component} image ID differs from its binding")
+        verify_image_archive(
+            bundle_dir / record["archive"],
+            component=component,
+            expected_tag=record["tag"],
+            expected_id=record["id"],
+        )
     return bundle
 
 
@@ -929,24 +1013,40 @@ def command_load_bundle(args: argparse.Namespace) -> None:
         )
         if loaded.returncode != 0:
             die(f"Docker refused the sealed {component} image archive")
-        inspected = subprocess.run(
-            [str(docker), "image", "inspect", record["tag"]],
-            text=True,
-            capture_output=True,
-            check=False,
-        )
-        if inspected.returncode != 0:
-            die(f"Docker could not inspect loaded {component} image")
-        inspect_path = bundle_dir / f"loaded-{component}-inspect.json"
-        try:
+        loaded_tags = []
+        for line in (loaded.stdout + "\n" + loaded.stderr).splitlines():
+            match = re.fullmatch(r"Loaded image: (.+)", line.strip())
+            if match is not None:
+                loaded_tags.append(match.group(1))
+            elif line.strip().startswith("Loaded image ID:"):
+                die(f"sealed {component} archive loaded an untagged image")
+        if loaded_tags != [record["tag"]]:
+            die(f"sealed {component} archive loaded an unexpected image or tag set")
+
+    sealed_ids = {
+        component: bundle["images"][component]["id"]
+        for component in ("actuator", "decision")
+    }
+    current_ids: dict[str, str] = {}
+    with tempfile.TemporaryDirectory(prefix="emilia-loaded-images-") as directory:
+        for component in ("actuator", "decision"):
+            record = bundle["images"][component]
+            inspected = subprocess.run(
+                [str(docker), "image", "inspect", record["tag"]],
+                text=True,
+                capture_output=True,
+                check=False,
+            )
+            if inspected.returncode != 0:
+                die(f"Docker could not inspect loaded {component} image")
+            inspect_path = Path(directory) / f"{component}.json"
             inspect_path.write_text(inspected.stdout, encoding="utf-8")
             image_id, _ = inspect_record(
                 inspect_path, component, bundle_dir / bundle["source"]["manifest"]
             )
-        finally:
-            inspect_path.unlink(missing_ok=True)
-        if image_id != record["id"]:
-            die(f"loaded {component} image differs from sealed image ID")
+            current_ids[component] = image_id
+    if current_ids != sealed_ids:
+        die("loaded actuator and decision image IDs differ from the sealed pair")
     print("sealed release images loaded and verified")
 
 

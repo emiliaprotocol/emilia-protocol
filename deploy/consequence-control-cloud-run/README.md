@@ -20,16 +20,45 @@ npm archive member to its reviewed Git blob, content digest, source path, size,
 and build recipe. A sealed bundle then binds those package artifacts, image
 archives, image IDs, inspections, and OCI labels to the exact commit and tree.
 
-Only after a separate protected job downloads that exact workflow-run artifact,
-re-verifies it, and loads the images without executing them does the job request
-the production WIF credential and deployment secret. After authentication it
-runs no npm command, package lifecycle hook, application build, Docker build, or
-candidate application code. The narrow reviewed publisher may only retag, push,
-read back, and compare the already sealed images; immutable-tag retry races are
-accepted only when the registry winner has the identical image ID and labels.
-A GitHub-attested source manifest and release manifest bind the reviewed Git
-commit and tree to the two immutable registry digests. `deploy.sh --apply`
-re-verifies that chain before any cloud mutation.
+A second credential-free approval job downloads the bundle by its immutable
+GitHub artifact ID, re-verifies every byte and archive member, loads both image
+archives, and then compares both resulting local tags and image IDs to the
+sealed pair together. It packages only the inert bundle and the allowlisted
+operation coordinates into a deterministic request and uploads that request as
+a second immutable artifact.
+
+The environment-protected OIDC job has no checkout and executes no script from
+this repository. Before authentication it downloads only the approved artifact
+ID and checks the exact request hash. After authentication its inline command
+surface is limited to `sha256sum` plus fixed `gcloud storage` and `gcloud
+builds submit` operations: it uploads the inert request, downloads it again to
+prove the bytes, and submits one source-free Cloud Build step whose image is
+the independently pinned executor digest and whose entrypoint is fixed. The
+executor receives only the artifact ID, artifact digest, request hash,
+operation, commit, and workflow-run identity. Pinned
+GitHub actions perform only artifact transfer, WIF authentication, CLI setup,
+request attestation, and receipt preservation.
+
+The trusted executor is a separately reviewed and independently released
+control-plane image. It contains the reviewed publisher, `deploy.sh`,
+`bootstrap-stable.sh`, and `traffic.sh`; it treats the uploaded request as data,
+re-verifies it, and preserves the existing deployment, bootstrap, rollout,
+reconciliation, immutable-tag race, attestation, and signed-receipt semantics.
+The GitHub workflow fails closed unless all of these protected variables name
+that pre-provisioned boundary exactly:
+
+- `GCP_CONSEQUENCE_CONTROL_REQUEST_BUCKET`
+- `GCP_CONSEQUENCE_CONTROL_TRUSTED_EXECUTOR_IMAGE` (digest-pinned)
+- `GCP_CONSEQUENCE_CONTROL_TRUSTED_EXECUTOR_SERVICE_ACCOUNT`
+- `GCP_CONSEQUENCE_CONTROL_TRUSTED_EXECUTOR_WORKER_POOL`
+- `GCP_CONSEQUENCE_CONTROL_PROJECT`
+- `GCP_CONSEQUENCE_CONTROL_REGION`
+
+The executor's Cloud Build service account, private worker pool, network,
+Secret Manager references, request parser, output attestations, and mutation
+permissions are provisioned outside candidate source control. The source-free
+build record is immutable and executes only the digest-pinned image; no mutable
+job definition can be swapped between approval and execution.
 
 ## Security boundary
 

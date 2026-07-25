@@ -5,6 +5,7 @@ import io
 import json
 import os
 from pathlib import Path
+import re
 import shutil
 import subprocess
 import tarfile
@@ -141,6 +142,46 @@ def package_tarball(path: Path, raw: bytes) -> None:
     metadata.mtime = 0
     with tarfile.open(path, "w:gz") as archive:
         archive.addfile(metadata, io.BytesIO(raw))
+
+
+def docker_image_archive(
+    path: Path, images: list[tuple[str, dict[str, str]]]
+) -> dict[str, str]:
+    manifest = []
+    image_ids: dict[str, str] = {}
+    members: list[tuple[str, bytes]] = []
+    for index, (tag, labels) in enumerate(images):
+        config = docker_config_bytes(tag, labels)
+        image_id = sha256(config)
+        config_name = f"{image_id}.json"
+        layer_name = f"layers/{index}-{image_id}/layer.tar"
+        members.extend(((config_name, config), (layer_name, b"fixture-layer")))
+        manifest.append(
+            {"Config": config_name, "Layers": [layer_name], "RepoTags": [tag]}
+        )
+        image_ids[tag] = "sha256:" + image_id
+    members.append(
+        (
+            "manifest.json",
+            json.dumps(manifest, sort_keys=True, separators=(",", ":")).encode(),
+        )
+    )
+    with tarfile.open(path, "w") as archive:
+        for name, raw in members:
+            metadata = tarfile.TarInfo(name)
+            metadata.size = len(raw)
+            metadata.mode = 0o600
+            metadata.mtime = 0
+            archive.addfile(metadata, io.BytesIO(raw))
+    return image_ids
+
+
+def docker_config_bytes(tag: str, labels: dict[str, str]) -> bytes:
+    return json.dumps(
+        {"config": {"Labels": labels}, "fixture_tag": tag},
+        sort_keys=True,
+        separators=(",", ":"),
+    ).encode()
 
 
 class ReleaseTrustTests(unittest.TestCase):
@@ -447,6 +488,159 @@ class ReleaseTrustTests(unittest.TestCase):
                 self.assertNotEqual(refused.returncode, 0)
                 self.assertIn("differs from manifest", refused.stderr)
 
+    def test_crafted_dual_image_archive_is_refused_even_when_resealed(self) -> None:
+        self.assertEqual(self.create_source().returncode, 0)
+        labels_result = run(str(TRUST), "labels", "--source-manifest", str(self.source))
+        labels = dict(line.split("=", 1) for line in labels_result.stdout.splitlines())
+        actuator_tag = "us-central1-docker.pkg.dev/test-project/runtime/consequence-actuator:git-" + self.commit
+        decision_tag = "us-central1-docker.pkg.dev/test-project/runtime/consequence-control:git-" + self.commit
+        state = self.artifacts / "dual-archive-state.json"
+        state.write_text(json.dumps({
+            "local": {
+                actuator_tag: {"id": "sha256:" + "1" * 64, "labels": {**labels, "io.emilia.image.component": "actuator"}},
+                decision_tag: {"id": "sha256:" + "2" * 64, "labels": {**labels, "io.emilia.image.component": "decision"}},
+            },
+            "remote": {}, "pushed": [], "push_count": 0,
+            "describe_failures": 0, "pull_failures": 0,
+        }))
+        environment = {**os.environ, "FAKE_RELEASE_STATE": str(state)}
+        bundle = self._make_publish_bundle(
+            actuator_tag, decision_tag, self.artifacts / "dual-image-bundle", environment
+        )
+        manifest_path = bundle / "bundle-manifest.json"
+        manifest = json.loads(manifest_path.read_text())
+        actuator = manifest["images"]["actuator"]
+        decision = manifest["images"]["decision"]
+        docker_image_archive(
+            bundle / decision["archive"],
+            [
+                (decision["tag"], {**labels, "io.emilia.image.component": "decision"}),
+                (actuator["tag"], {**labels, "io.emilia.image.component": "actuator"}),
+            ],
+        )
+        archive = bundle / decision["archive"]
+        manifest["artifacts"][archive.name] = {
+            "sha256": sha256(archive.read_bytes()),
+            "size": archive.stat().st_size,
+        }
+        manifest_path.write_text(json.dumps(manifest, sort_keys=True) + "\n")
+
+        refused = run(
+            str(TRUST), "verify-bundle", "--root", str(self.root),
+            "--bundle-dir", str(bundle), "--bundle-manifest", str(manifest_path),
+            "--expected-commit", self.commit,
+        )
+        self.assertNotEqual(refused.returncode, 0)
+        self.assertIn("exactly one image", refused.stderr)
+
+    def test_loader_rechecks_both_sealed_ids_after_all_archives_load(self) -> None:
+        self.assertEqual(self.create_source().returncode, 0)
+        labels_result = run(str(TRUST), "labels", "--source-manifest", str(self.source))
+        labels = dict(line.split("=", 1) for line in labels_result.stdout.splitlines())
+        actuator_tag = "us-central1-docker.pkg.dev/test-project/runtime/consequence-actuator:git-" + self.commit
+        decision_tag = "us-central1-docker.pkg.dev/test-project/runtime/consequence-control:git-" + self.commit
+        state = self.artifacts / "load-pair-state.json"
+        state.write_text(json.dumps({
+            "local": {
+                actuator_tag: {"id": "sha256:" + "1" * 64, "labels": {**labels, "io.emilia.image.component": "actuator"}},
+                decision_tag: {"id": "sha256:" + "2" * 64, "labels": {**labels, "io.emilia.image.component": "decision"}},
+            },
+            "remote": {}, "pushed": [], "push_count": 0,
+            "describe_failures": 0, "pull_failures": 0,
+        }))
+        environment = {**os.environ, "FAKE_RELEASE_STATE": str(state)}
+        bundle = self._make_publish_bundle(
+            actuator_tag, decision_tag, self.artifacts / "load-pair-bundle", environment
+        )
+        manifest = json.loads((bundle / "bundle-manifest.json").read_text())
+        load_state = self.artifacts / "hostile-load-state.json"
+        load_state.write_text(json.dumps({
+            "local": {},
+            "actuator_tag": manifest["images"]["actuator"]["tag"],
+            "decision_tag": manifest["images"]["decision"]["tag"],
+            "images": {
+                component: {
+                    "id": manifest["images"][component]["id"],
+                    "labels": {**labels, "io.emilia.image.component": component},
+                }
+                for component in ("actuator", "decision")
+            },
+        }))
+        docker = self.artifacts / "hostile-load-docker.py"
+        docker.write_text(r'''#!/usr/bin/env python3
+import json, os, pathlib, sys
+path = pathlib.Path(os.environ["HOSTILE_LOAD_STATE"])
+state = json.loads(path.read_text())
+args = sys.argv[1:]
+if args[:2] == ["load", "--input"]:
+    component = "actuator" if pathlib.Path(args[2]).name.startswith("actuator") else "decision"
+    tag = state[f"{component}_tag"]
+    state["local"][tag] = dict(state["images"][component])
+    if component == "decision":
+        state["local"][state["actuator_tag"]] = {
+            "id": state["images"]["decision"]["id"],
+            "labels": state["images"]["actuator"]["labels"],
+        }
+    path.write_text(json.dumps(state))
+    print("Loaded image: " + tag)
+elif args[:2] == ["image", "inspect"]:
+    record = state["local"].get(args[2])
+    if record is None:
+        raise SystemExit(1)
+    print(json.dumps([{"Id": record["id"], "Config": {"Labels": record["labels"]}}]))
+else:
+    raise SystemExit(2)
+''', encoding="utf-8")
+        docker.chmod(0o755)
+        refused = run(
+            str(TRUST), "load-bundle", "--root", str(self.root),
+            "--bundle-dir", str(bundle),
+            "--bundle-manifest", str(bundle / "bundle-manifest.json"),
+            "--expected-commit", self.commit, "--docker-bin", str(docker),
+            env={**os.environ, "HOSTILE_LOAD_STATE": str(load_state)},
+        )
+        self.assertNotEqual(refused.returncode, 0)
+        self.assertIn("differ from the sealed pair", refused.stderr)
+
+    def test_publisher_compares_both_loaded_ids_to_the_sealed_pair(self) -> None:
+        self.assertEqual(self.create_source().returncode, 0)
+        labels_result = run(str(TRUST), "labels", "--source-manifest", str(self.source))
+        labels = dict(line.split("=", 1) for line in labels_result.stdout.splitlines())
+        actuator_tag = "us-central1-docker.pkg.dev/test-project/runtime/consequence-actuator:git-" + self.commit
+        decision_tag = "us-central1-docker.pkg.dev/test-project/runtime/consequence-control:git-" + self.commit
+        state = self.artifacts / "publisher-pair-state.json"
+        state.write_text(json.dumps({
+            "local": {
+                actuator_tag: {"id": "sha256:" + "1" * 64, "labels": {**labels, "io.emilia.image.component": "actuator"}},
+                decision_tag: {"id": "sha256:" + "2" * 64, "labels": {**labels, "io.emilia.image.component": "decision"}},
+            },
+            "remote": {}, "pushed": [], "push_count": 0,
+            "describe_failures": 0, "pull_failures": 0,
+        }))
+        environment = {**os.environ, "FAKE_RELEASE_STATE": str(state)}
+        bundle = self._make_publish_bundle(
+            actuator_tag, decision_tag, self.artifacts / "publisher-pair-bundle", environment
+        )
+        manifest = json.loads((bundle / "bundle-manifest.json").read_text())
+        current = json.loads(state.read_text())
+        current["local"][manifest["images"]["actuator"]["tag"]]["id"] = "sha256:" + "9" * 64
+        state.write_text(json.dumps(current))
+        docker, gcloud = self._fake_registry_tools(state)
+        config = self.artifacts / "publisher-pair.env"
+        config.write_text("PROJECT_ID=test-project\nREGION=us-central1\nRELEASE_ID=r1\n")
+        github_output = self.artifacts / "publisher-pair.outputs"
+        github_output.write_text("")
+        refused = run(
+            str(PUBLISH), "--root", str(self.root), "--bundle-dir", str(bundle),
+            "--bundle-manifest", str(bundle / "bundle-manifest.json"),
+            "--expected-commit", self.commit, "--config", str(config),
+            "--artifact-repository", "runtime", "--output-dir", str(self.artifacts / "publisher-pair-output"),
+            "--github-output", str(github_output), "--docker-bin", str(docker),
+            "--gcloud-bin", str(gcloud), "--retry-delay-seconds", "0", env=environment,
+        )
+        self.assertNotEqual(refused.returncode, 0)
+        self.assertIn("differ from the sealed pair", refused.stderr)
+
     def test_secret_config_cannot_choose_candidate_images(self) -> None:
         config = self.artifacts / "hostile.env"
         config.write_text(
@@ -516,6 +710,13 @@ class ReleaseTrustTests(unittest.TestCase):
         actuator_tag = "us-central1-docker.pkg.dev/test-project/runtime/consequence-actuator:git-" + self.commit
         decision_tag = "us-central1-docker.pkg.dev/test-project/runtime/consequence-control:git-" + self.commit
         decision_digest = "sha256:" + "b" * 64
+        source_decision_tag = "emilia-consequence-control:git-" + self.commit
+        source_decision_id = "sha256:" + sha256(
+            docker_config_bytes(
+                source_decision_tag,
+                {**labels, "io.emilia.image.component": "decision"},
+            )
+        )
         state = self.artifacts / "fake-state-mismatch.json"
         state.write_text(json.dumps({
             "local": {
@@ -525,7 +726,7 @@ class ReleaseTrustTests(unittest.TestCase):
             "remote": {
                 decision_tag: {
                     "digest": decision_digest,
-                    "id": "sha256:" + "2" * 64,
+                    "id": source_decision_id,
                     "labels": {**labels, "io.emilia.image.component": "actuator"},
                 }
             },
@@ -680,18 +881,22 @@ class ReleaseTrustTests(unittest.TestCase):
         }
         state_path = Path(environment["FAKE_RELEASE_STATE"])
         state = json.loads(state_path.read_text())
-        state["local"][source_tags["actuator"]] = dict(state["local"][actuator])
-        state["local"][source_tags["decision"]] = dict(state["local"][decision])
-        state_path.write_text(json.dumps(state))
         for component, remote_tag in (("actuator", actuator), ("decision", decision)):
-            (bundle / f"{component}-image.tar").write_bytes(
-                (component + self.commit).encode()
+            labels = state["local"][remote_tag]["labels"]
+            archive_ids = docker_image_archive(
+                bundle / f"{component}-image.tar",
+                [(source_tags[component], labels)],
             )
-            record = state["local"][remote_tag]
+            record = {
+                "id": archive_ids[source_tags[component]],
+                "labels": labels,
+            }
+            state["local"][source_tags[component]] = record
             (bundle / f"inspect-{component}.json").write_text(
                 json.dumps([{"Id": record["id"], "Config": {"Labels": record["labels"]}}]),
                 encoding="utf-8",
             )
+        state_path.write_text(json.dumps(state))
         bundled = run(
             str(TRUST), "bundle", "--root", str(self.root),
             "--bundle-dir", str(bundle),
@@ -881,15 +1086,14 @@ class WorkflowTrustContractTests(unittest.TestCase):
         workflow = (ROOT / ".github/workflows/consequence-control-deploy.yml").read_text()
         self.assertIn("build-release-images.sh", workflow)
         self.assertIn("--expected-commit \"$GITHUB_SHA\"", workflow)
-        self.assertIn("subject-digest: ${{ steps.release-images.outputs.actuator_digest }}", workflow)
-        self.assertIn("subject-digest: ${{ steps.release-images.outputs.decision_digest }}", workflow)
-        self.assertIn("--source-manifest", workflow)
-        self.assertIn("--release-manifest", workflow)
+        self.assertIn("Attest the exact approved trusted-executor request", workflow)
+        self.assertIn("GCP_CONSEQUENCE_CONTROL_TRUSTED_EXECUTOR_IMAGE", workflow)
+        self.assertIn("--bundle-manifest", workflow)
         self.assertNotIn("CONSEQUENCE_CONTROL_DEPLOY_CONFIG_SHA256", workflow)
 
     def test_candidate_build_has_no_production_credential_surface(self) -> None:
         workflow = (ROOT / ".github/workflows/consequence-control-deploy.yml").read_text()
-        candidate = workflow.split("  candidate-release:", 1)[1].split("\n  deploy:", 1)[0]
+        candidate = workflow.split("  candidate-release:", 1)[1].split("\n  release-approval:", 1)[0]
         self.assertIn("--bundle", candidate)
         self.assertIn("permissions:\n      contents: read", candidate)
         self.assertNotIn("environment:", candidate)
@@ -898,24 +1102,51 @@ class WorkflowTrustContractTests(unittest.TestCase):
         self.assertNotIn("google-github-actions/auth", candidate)
         self.assertNotIn("gcloud", candidate)
 
-    def test_protected_job_executes_no_candidate_build_or_package_hooks_after_auth(self) -> None:
+    def test_every_oidc_job_has_no_checkout_local_script_or_general_interpreter(self) -> None:
         workflow = (ROOT / ".github/workflows/consequence-control-deploy.yml").read_text()
-        protected = workflow.split("\n  deploy:", 1)[1]
-        auth_index = protected.index("Authenticate keylessly as the protected deploy identity")
-        before_auth = protected[:auth_index]
-        after_auth = protected[auth_index:]
-        self.assertIn("verify-bundle", before_auth)
-        self.assertIn("load-bundle", before_auth)
-        for forbidden in (
-            "npm ci",
-            "npm pack",
-            "npm run build",
-            "docker build",
-            "build-release-images.sh",
-        ):
-            self.assertNotIn(forbidden, after_auth)
-        self.assertIn("publish-release-images.py", after_auth)
-        self.assertIn("artifact-ids: ${{ needs.candidate-release.outputs.artifact-id }}", before_auth)
+        boundaries = list(re.finditer(r"(?m)^  ([a-z0-9-]+):\n", workflow))
+        oidc_jobs: list[tuple[str, str]] = []
+        for index, boundary in enumerate(boundaries):
+            end = boundaries[index + 1].start() if index + 1 < len(boundaries) else len(workflow)
+            block = workflow[boundary.start():end]
+            if "id-token: write" in block:
+                oidc_jobs.append((boundary.group(1), block))
+        self.assertEqual([name for name, _ in oidc_jobs], ["deploy"])
+        for name, block in oidc_jobs:
+            self.assertNotIn("actions/checkout@", block, name)
+            self.assertNotIn("GITHUB_WORKSPACE", block, name)
+            self.assertNotRegex(block, r"deploy/consequence-control-cloud-run/", name)
+            self.assertNotRegex(block, r"(?:^|[\s/])[^\s]+\.(?:py|sh|mjs|mts|js|ts)(?:\s|$)", name)
+            self.assertNotRegex(
+                block,
+                r"\b(?:python3?|node|npm|npx|deno|ruby|perl|php|eval|exec|xargs)\b|"
+                r"\b(?:bash|sh)\s+-c\b|\bdocker\s+(?:run|build)\b|\bfind\b[^\n]*-exec",
+                name,
+            )
+            self.assertNotIn("secrets.", block, name)
+            for action in re.findall(r"(?m)^\s+uses:\s+([^\s#]+)", block):
+                self.assertRegex(action, r"^[^@]+@[0-9a-f]{40}$", name)
+        protected = oidc_jobs[0][1]
+        self.assertIn(
+            "artifact-ids: ${{ needs.release-approval.outputs.artifact-id }}",
+            protected,
+        )
+        self.assertIn("GCP_CONSEQUENCE_CONTROL_TRUSTED_EXECUTOR_IMAGE", protected)
+        self.assertIn("gcloud builds submit", protected)
+        self.assertNotIn("publish-release-images.py", protected)
+
+    def test_unprivileged_approval_verifies_bundle_and_dual_image_load(self) -> None:
+        workflow = (ROOT / ".github/workflows/consequence-control-deploy.yml").read_text()
+        approval = workflow.split("\n  release-approval:", 1)[1].split("\n  deploy:", 1)[0]
+        self.assertNotIn("environment:", approval)
+        self.assertNotIn("id-token: write", approval)
+        self.assertNotIn("secrets.", approval)
+        self.assertIn("verify-bundle", approval)
+        self.assertIn("load-bundle", approval)
+        self.assertIn(
+            "artifact-ids: ${{ needs.candidate-release.outputs.artifact-id }}",
+            approval,
+        )
         self.assertIn("artifact-digest", workflow)
 
     def test_schema_workflow_separates_candidate_data_from_trusted_live_code(self) -> None:

@@ -782,7 +782,7 @@ class CommandSpecificConfigHostileTests(unittest.TestCase):
         self.assertNotEqual(result.returncode, 0)
         self.assertIn("not allowed for this command", result.stderr)
 
-    def test_workflow_pins_separate_deploy_bootstrap_and_traffic_profiles(
+    def test_workflow_pins_the_independent_trusted_executor_boundary(
         self,
     ) -> None:
         workflow = (
@@ -792,27 +792,16 @@ class CommandSpecificConfigHostileTests(unittest.TestCase):
             / "consequence-control-deploy.yml"
         ).read_text(encoding="utf-8")
         for required in (
-            "CONSEQUENCE_CONTROL_DEPLOY_CONFIG",
-            "steps.release-images.outputs.derived_config_sha256",
             "build-release-images.sh",
-            "--source-manifest",
-            "--release-manifest",
-            "CONSEQUENCE_CONTROL_BOOTSTRAP_CONFIG",
-            "CONSEQUENCE_CONTROL_BOOTSTRAP_CONFIG_SHA256",
-            "CONSEQUENCE_CONTROL_TRAFFIC_CONFIG",
-            "CONSEQUENCE_CONTROL_TRAFFIC_CONFIG_SHA256",
-            "CONSEQUENCE_CONTROL_STABLE_MANIFEST",
-            "CONSEQUENCE_CONTROL_ROLLOUT_AUTHORIZATION",
-            "CONSEQUENCE_CONTROL_CANARY_EVIDENCE",
-            "CONSEQUENCE_CONTROL_ROLLOUT_TELEMETRY",
-            "CONSEQUENCE_CONTROL_CANARY_EVIDENCE_PUBLIC_KEY",
-            "CONSEQUENCE_CONTROL_ROLLOUT_TELEMETRY_PUBLIC_KEY",
-            "CONSEQUENCE_CONTROL_ROLLOUT_AUTHORIZATION_PUBLIC_KEY",
-            "CONSEQUENCE_CONTROL_STABLE_PUBLIC_KEY",
-            "CONSEQUENCE_CONTROL_ATTEMPT_STORE_ADAPTER_SHA256",
-            "CONSEQUENCE_CONTROL_ROLLOUT_ATTEMPT_DATABASE_URL",
-            "CONSEQUENCE_CONTROL_ROLLOUT_ATTEMPT_DATABASE_CA",
-            "CONSEQUENCE_CONTROL_ROLLOUT_ATTEMPT_DATABASE_CA_SHA256",
+            "release-trust.py verify-bundle",
+            "release-trust.py load-bundle",
+            "needs.release-approval.outputs.artifact-id",
+            "needs.release-approval.outputs.artifact-digest",
+            "GCP_CONSEQUENCE_CONTROL_REQUEST_BUCKET",
+            "GCP_CONSEQUENCE_CONTROL_TRUSTED_EXECUTOR_IMAGE",
+            "GCP_CONSEQUENCE_CONTROL_TRUSTED_EXECUTOR_SERVICE_ACCOUNT",
+            "GCP_CONSEQUENCE_CONTROL_TRUSTED_EXECUTOR_WORKER_POOL",
+            "gcloud builds submit",
         ):
             self.assertIn(required, workflow)
         self.assertNotIn(
@@ -827,6 +816,10 @@ class CommandSpecificConfigHostileTests(unittest.TestCase):
             "vars.CONSEQUENCE_CONTROL_CONFIG_SHA256 }}",
             workflow,
         )
+        protected = workflow.split("\n  deploy:", 1)[1]
+        self.assertNotIn("actions/checkout@", protected)
+        self.assertNotIn("deploy/consequence-control-cloud-run/", protected)
+        self.assertNotIn("secrets.", protected)
 
     def test_protected_workflow_exposes_every_guarded_traffic_transition(
         self,
@@ -846,17 +839,11 @@ class CommandSpecificConfigHostileTests(unittest.TestCase):
             "apply-rollback",
         ):
             self.assertIn(f"- {operation}", workflow)
-        self.assertIn(
-            "deploy/consequence-control-cloud-run/traffic.sh",
-            workflow,
-        )
-        self.assertIn('case "$TRAFFIC_OPERATION" in', workflow)
-        self.assertIn('"--$TRAFFIC_OPERATION"', workflow)
+        self.assertIn('case "$OPERATION" in', workflow)
+        self.assertIn("--operation=$OPERATION", workflow)
         self.assertIn("environment: consequence-control-production", workflow)
-        self.assertIn("postgres-rollout-attempt-store.sh", workflow)
-        self.assertIn("command -v psql", workflow)
-        self.assertIn("--stable-public-key", workflow)
-        self.assertIn("/tmp/emilia-consequence-control-trust", workflow)
+        self.assertIn("TRUSTED_EXECUTOR_IMAGE", workflow)
+        self.assertIn("approved-request/deployment-request.tar.gz", workflow)
 
 
 if __name__ == "__main__":

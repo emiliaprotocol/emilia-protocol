@@ -171,11 +171,14 @@ def publish_component(
     source_tag: str,
     tag: str,
     source_manifest: Path,
+    sealed_id: str,
 ) -> str:
     match = TAG_RE.fullmatch(tag)
     if match is None or match.group(1) != args.expected_commit:
         fail(f"{component} tag is not derived from the reviewed commit")
     local_id = image_id(docker, source_tag)
+    if local_id != sealed_id:
+        fail(f"loaded {component} image ID differs from the sealed bundle")
     tagged = command([docker, "tag", source_tag, tag])
     if tagged.returncode != 0 or image_id(docker, tag) != local_id:
         fail(f"Docker could not bind reviewed {component} image to immutable registry tag")
@@ -273,15 +276,30 @@ def main() -> int:
         prefix = f"{registry_host}/{project_id}/{args.artifact_repository}"
         actuator_tag = f"{prefix}/consequence-actuator:git-{args.expected_commit}"
         decision_tag = f"{prefix}/consequence-control:git-{args.expected_commit}"
+        sealed_ids = {
+            component: bundle["images"][component]["id"]
+            for component in ("actuator", "decision")
+        }
+        source_tags = {
+            component: bundle["images"][component]["tag"]
+            for component in ("actuator", "decision")
+        }
+        current_ids = {
+            component: image_id(docker, source_tags[component])
+            for component in ("actuator", "decision")
+        }
+        if current_ids != sealed_ids:
+            fail("loaded actuator and decision image IDs differ from the sealed pair")
         actuator = publish_component(
             args,
             docker,
             gcloud,
             trust,
             "actuator",
-            bundle["images"]["actuator"]["tag"],
+            source_tags["actuator"],
             actuator_tag,
             source_manifest,
+            sealed_ids["actuator"],
         )
         decision = publish_component(
             args,
@@ -289,10 +307,16 @@ def main() -> int:
             gcloud,
             trust,
             "decision",
-            bundle["images"]["decision"]["tag"],
+            source_tags["decision"],
             decision_tag,
             source_manifest,
+            sealed_ids["decision"],
         )
+        if {
+            component: image_id(docker, source_tags[component])
+            for component in ("actuator", "decision")
+        } != sealed_ids:
+            fail("loaded image pair changed during protected publication")
         reverified_bundle = command([
             str(trust), "verify-bundle", "--root", str(args.root.resolve()),
             "--bundle-dir", str(bundle_dir), "--bundle-manifest", str(bundle_manifest),

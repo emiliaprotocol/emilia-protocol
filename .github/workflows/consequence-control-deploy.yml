@@ -79,9 +79,10 @@ jobs:
           name: consequence-control-sealed-${{ github.sha }}-${{ github.run_id }}-${{ github.run_attempt }}
           path: ${{ runner.temp }}/consequence-control-bundle
           if-no-files-found: error
+          compression-level: 0
           retention-days: 1
 
-  deploy:
+  release-approval:
     needs: candidate-release
     if: >-
       always() &&
@@ -90,24 +91,21 @@ jobs:
       github.event_name == 'workflow_dispatch' &&
       (inputs.operation != 'deploy-candidates' || needs.candidate-release.result == 'success')
     runs-on: ubuntu-24.04
-    timeout-minutes: 90
-    environment: consequence-control-production
+    timeout-minutes: 30
     permissions:
-      attestations: write
       contents: read
-      id-token: write
-    env:
-      EMILIA_DEPLOY_ENVIRONMENT: consequence-control-production
-      EMILIA_GITHUB_WORKFLOW_SHA: ${{ github.workflow_sha }}
-      EMILIA_DEPLOY_WIF_PROVIDER: ${{ vars.GCP_WORKLOAD_IDENTITY_PROVIDER }}
+    outputs:
+      artifact-id: ${{ steps.upload.outputs.artifact-id }}
+      artifact-digest: ${{ steps.upload.outputs.artifact-digest }}
+      request-sha256: ${{ steps.request.outputs.sha256 }}
     steps:
-      - name: Check out the exact protected revision
+      - name: Check out reviewed verification code without credentials
         uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
         with:
           ref: ${{ github.sha }}
           persist-credentials: false
 
-      - name: Download the exact sealed candidate artifact
+      - name: Download candidate bundle by exact immutable artifact ID
         if: inputs.operation == 'deploy-candidates'
         uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
         with:
@@ -115,7 +113,7 @@ jobs:
           path: ${{ runner.temp }}/sealed-candidate
           merge-multiple: true
 
-      - name: Verify and load sealed images before authentication
+      - name: Verify and load both sealed images without production credentials
         if: inputs.operation == 'deploy-candidates'
         shell: bash
         env:
@@ -136,7 +134,109 @@ jobs:
             --expected-commit "$GITHUB_SHA" \
             --docker-bin "$(command -v docker)"
 
-      - name: Authenticate keylessly as the protected deploy identity
+      - name: Seal the inert trusted-executor request
+        id: request
+        shell: bash
+        env:
+          OPERATION: ${{ inputs.operation }}
+          BOOTSTRAP_ID: ${{ inputs.bootstrap_id }}
+          PLACEHOLDER_IMAGE: ${{ inputs.placeholder_image }}
+          CANDIDATE_ARTIFACT_ID: ${{ needs.candidate-release.outputs.artifact-id }}
+          CANDIDATE_ARTIFACT_DIGEST: ${{ needs.candidate-release.outputs.artifact-digest }}
+        run: |
+          set -euo pipefail
+          case "$OPERATION" in
+            deploy-candidates|bootstrap-stable|apply-decision-1|apply-decision-10|apply-decision-50|apply-decision-100|apply-actuator-100|apply-rollback)
+              ;;
+            *)
+              printf 'unsupported protected operation\n' >&2
+              exit 1
+              ;;
+          esac
+          request_dir="$RUNNER_TEMP/consequence-control-request"
+          install -d -m 700 "$request_dir"
+          umask 077
+          printf 'EMILIA-CONSEQUENCE-TRUSTED-EXECUTOR-REQUEST-v1\n' > "$request_dir/version"
+          printf '%s\n' "$OPERATION" > "$request_dir/operation"
+          printf '%s\n' "$GITHUB_SHA" > "$request_dir/commit"
+          printf '%s\n' "$GITHUB_WORKFLOW_SHA" > "$request_dir/workflow-sha"
+          printf '%s\n' "$GITHUB_RUN_ID" > "$request_dir/run-id"
+          printf '%s\n' "$GITHUB_RUN_ATTEMPT" > "$request_dir/run-attempt"
+          printf '%s\n' "$BOOTSTRAP_ID" > "$request_dir/bootstrap-id"
+          printf '%s\n' "$PLACEHOLDER_IMAGE" > "$request_dir/placeholder-image"
+          printf '%s\n' "$CANDIDATE_ARTIFACT_ID" > "$request_dir/candidate-artifact-id"
+          printf '%s\n' "$CANDIDATE_ARTIFACT_DIGEST" > "$request_dir/candidate-artifact-digest"
+          if [[ "$OPERATION" == deploy-candidates ]]; then
+            install -d -m 700 "$request_dir/candidate-bundle"
+            cp -R "$RUNNER_TEMP/sealed-candidate/." "$request_dir/candidate-bundle/"
+          fi
+          request_archive="$RUNNER_TEMP/deployment-request.tar.gz"
+          tar \
+            --sort=name \
+            --mtime=@0 \
+            --owner=0 \
+            --group=0 \
+            --numeric-owner \
+            -czf "$request_archive" \
+            -C "$request_dir" .
+          request_sha="$(sha256sum "$request_archive")"
+          request_sha="${request_sha%% *}"
+          [[ "$request_sha" =~ ^[0-9a-f]{64}$ ]]
+          printf 'sha256=%s\n' "$request_sha" >> "$GITHUB_OUTPUT"
+
+      - name: Upload exact immutable approved deployment request
+        id: upload
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
+        with:
+          name: consequence-control-approved-${{ github.sha }}-${{ github.run_id }}-${{ github.run_attempt }}
+          path: ${{ runner.temp }}/deployment-request.tar.gz
+          if-no-files-found: error
+          compression-level: 0
+          retention-days: 1
+
+  deploy:
+    needs: release-approval
+    if: >-
+      github.repository == 'emiliaprotocol/emilia-protocol' &&
+      github.ref == 'refs/heads/main' &&
+      github.event_name == 'workflow_dispatch' &&
+      needs.release-approval.result == 'success'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 90
+    environment: consequence-control-production
+    permissions:
+      attestations: write
+      contents: read
+      id-token: write
+    env:
+      EMILIA_DEPLOY_ENVIRONMENT: consequence-control-production
+      EMILIA_GITHUB_WORKFLOW_SHA: ${{ github.workflow_sha }}
+      EMILIA_DEPLOY_WIF_PROVIDER: ${{ vars.GCP_WORKLOAD_IDENTITY_PROVIDER }}
+    steps:
+      - name: Download exact approved request by immutable artifact ID
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        with:
+          artifact-ids: ${{ needs.release-approval.outputs.artifact-id }}
+          path: ${{ runner.temp }}/approved-request
+          merge-multiple: true
+
+      - name: Verify the exact inert request before authentication
+        shell: bash
+        env:
+          APPROVED_ARTIFACT_ID: ${{ needs.release-approval.outputs.artifact-id }}
+          APPROVED_ARTIFACT_DIGEST: ${{ needs.release-approval.outputs.artifact-digest }}
+          EXPECTED_REQUEST_SHA256: ${{ needs.release-approval.outputs.request-sha256 }}
+        run: |
+          set -euo pipefail
+          [[ "$APPROVED_ARTIFACT_ID" =~ ^[1-9][0-9]*$ ]]
+          [[ "$APPROVED_ARTIFACT_DIGEST" =~ ^[0-9a-f]{64}$ ]]
+          [[ "$EXPECTED_REQUEST_SHA256" =~ ^[0-9a-f]{64}$ ]]
+          request_path="$RUNNER_TEMP/approved-request/deployment-request.tar.gz"
+          [[ -f "$request_path" && ! -L "$request_path" ]]
+          printf '%s  %s\n' "$EXPECTED_REQUEST_SHA256" "$request_path" | sha256sum --check --status
+
+      - name: Authenticate keylessly as the protected submitter
+        id: auth
         uses: google-github-actions/auth@7c6bc770dae815cd3e89ee6cdf493a5fab2cc093 # v3
         with:
           workload_identity_provider: ${{ vars.GCP_WORKLOAD_IDENTITY_PROVIDER }}
@@ -147,251 +247,81 @@ jobs:
       - name: Install the pinned Google Cloud CLI action
         uses: google-github-actions/setup-gcloud@aa5489c8933f4cc7a4f7d45035b3b1440c9c10db # v3
 
-      - name: Materialize candidate-deploy coordinates
-        if: inputs.operation == 'deploy-candidates'
-        id: deploy-config
-        shell: bash
-        env:
-          CONSEQUENCE_CONTROL_DEPLOY_CONFIG: ${{ secrets.CONSEQUENCE_CONTROL_DEPLOY_CONFIG }}
-        run: |
-          set -euo pipefail
-          [[ -n "$CONSEQUENCE_CONTROL_DEPLOY_CONFIG" ]]
-          config_path="$RUNNER_TEMP/consequence-control-deploy.env"
-          umask 077
-          printf '%s\n' "$CONSEQUENCE_CONTROL_DEPLOY_CONFIG" > "$config_path"
-          printf 'path=%s\n' "$config_path" >> "$GITHUB_OUTPUT"
-
-      - name: Publish sealed images and bind immutable registry digests
-        if: inputs.operation == 'deploy-candidates'
-        id: release-images
-        shell: bash
-        env:
-          ARTIFACT_REPOSITORY: ${{ vars.GCP_CONSEQUENCE_CONTROL_ARTIFACT_REPOSITORY }}
-        run: |
-          set -euo pipefail
-          [[ "$ARTIFACT_REPOSITORY" =~ ^[a-z][a-z0-9-]{0,61}[a-z0-9]$ ]]
-          bundle_dir="$RUNNER_TEMP/sealed-candidate"
-          deploy/consequence-control-cloud-run/publish-release-images.py \
-            --root "$GITHUB_WORKSPACE" \
-            --bundle-dir "$bundle_dir" \
-            --bundle-manifest "$bundle_dir/bundle-manifest.json" \
-            --config "${{ steps.deploy-config.outputs.path }}" \
-            --artifact-repository "$ARTIFACT_REPOSITORY" \
-            --expected-commit "$GITHUB_SHA" \
-            --output-dir "$RUNNER_TEMP/consequence-control-release" \
-            --github-output "$GITHUB_OUTPUT" \
-            --docker-bin "$(command -v docker)" \
-            --gcloud-bin "$(command -v gcloud)"
-
-      - name: Attest exact governed source and package bytes
-        if: inputs.operation == 'deploy-candidates'
+      - name: Attest the exact approved trusted-executor request
         uses: actions/attest@f7c74d28b9d84cb8768d0b8ca14a4bac6ef463e6 # v4.2.0
         with:
-          subject-path: |
-            ${{ steps.release-images.outputs.source_manifest }}
-            ${{ steps.release-images.outputs.release_manifest }}
-            ${{ steps.release-images.outputs.verify_tarball }}
-            ${{ steps.release-images.outputs.gate_tarball }}
-            ${{ steps.release-images.outputs.require_receipt_tarball }}
+          subject-path: ${{ runner.temp }}/approved-request/deployment-request.tar.gz
 
-      - name: Attest the immutable actuator image digest
-        if: inputs.operation == 'deploy-candidates'
-        uses: actions/attest@f7c74d28b9d84cb8768d0b8ca14a4bac6ef463e6 # v4.2.0
-        with:
-          subject-name: ${{ steps.release-images.outputs.actuator_name }}
-          subject-digest: ${{ steps.release-images.outputs.actuator_digest }}
-
-      - name: Attest the immutable decision image digest
-        if: inputs.operation == 'deploy-candidates'
-        uses: actions/attest@f7c74d28b9d84cb8768d0b8ca14a4bac6ef463e6 # v4.2.0
-        with:
-          subject-name: ${{ steps.release-images.outputs.decision_name }}
-          subject-digest: ${{ steps.release-images.outputs.decision_digest }}
-
-      - name: Materialize stable-bootstrap coordinates
-        if: inputs.operation == 'bootstrap-stable'
-        id: bootstrap-config
+      - name: Submit inert request to the independently pinned executor
         shell: bash
         env:
-          CONSEQUENCE_CONTROL_BOOTSTRAP_CONFIG: ${{ secrets.CONSEQUENCE_CONTROL_BOOTSTRAP_CONFIG }}
+          APPROVED_ARTIFACT_ID: ${{ needs.release-approval.outputs.artifact-id }}
+          APPROVED_ARTIFACT_DIGEST: ${{ needs.release-approval.outputs.artifact-digest }}
+          EXPECTED_REQUEST_SHA256: ${{ needs.release-approval.outputs.request-sha256 }}
+          OPERATION: ${{ inputs.operation }}
+          REQUEST_BUCKET: ${{ vars.GCP_CONSEQUENCE_CONTROL_REQUEST_BUCKET }}
+          TRUSTED_EXECUTOR_IMAGE: ${{ vars.GCP_CONSEQUENCE_CONTROL_TRUSTED_EXECUTOR_IMAGE }}
+          TRUSTED_EXECUTOR_SERVICE_ACCOUNT: ${{ vars.GCP_CONSEQUENCE_CONTROL_TRUSTED_EXECUTOR_SERVICE_ACCOUNT }}
+          TRUSTED_EXECUTOR_WORKER_POOL: ${{ vars.GCP_CONSEQUENCE_CONTROL_TRUSTED_EXECUTOR_WORKER_POOL }}
+          PROJECT_ID: ${{ vars.GCP_CONSEQUENCE_CONTROL_PROJECT }}
+          REGION: ${{ vars.GCP_CONSEQUENCE_CONTROL_REGION }}
         run: |
           set -euo pipefail
-          [[ -n "$CONSEQUENCE_CONTROL_BOOTSTRAP_CONFIG" ]]
-          config_path="$RUNNER_TEMP/consequence-control-bootstrap.env"
-          umask 077
-          printf '%s\n' "$CONSEQUENCE_CONTROL_BOOTSTRAP_CONFIG" > "$config_path"
-          printf 'path=%s\n' "$config_path" >> "$GITHUB_OUTPUT"
-
-      - name: Materialize protected traffic decision
-        if: startsWith(inputs.operation, 'apply-')
-        id: traffic-inputs
-        shell: bash
-        env:
-          TRAFFIC_OPERATION: ${{ inputs.operation }}
-          CONSEQUENCE_CONTROL_TRAFFIC_CONFIG: ${{ secrets.CONSEQUENCE_CONTROL_TRAFFIC_CONFIG }}
-          CONSEQUENCE_CONTROL_STABLE_MANIFEST: ${{ secrets.CONSEQUENCE_CONTROL_STABLE_MANIFEST }}
-          CONSEQUENCE_CONTROL_ROLLOUT_AUTHORIZATION: ${{ secrets.CONSEQUENCE_CONTROL_ROLLOUT_AUTHORIZATION }}
-          CONSEQUENCE_CONTROL_CANARY_EVIDENCE: ${{ secrets.CONSEQUENCE_CONTROL_CANARY_EVIDENCE }}
-          CONSEQUENCE_CONTROL_ROLLOUT_TELEMETRY: ${{ secrets.CONSEQUENCE_CONTROL_ROLLOUT_TELEMETRY }}
-          CONSEQUENCE_CONTROL_CANARY_EVIDENCE_PUBLIC_KEY: ${{ secrets.CONSEQUENCE_CONTROL_CANARY_EVIDENCE_PUBLIC_KEY }}
-          CONSEQUENCE_CONTROL_ROLLOUT_TELEMETRY_PUBLIC_KEY: ${{ secrets.CONSEQUENCE_CONTROL_ROLLOUT_TELEMETRY_PUBLIC_KEY }}
-          CONSEQUENCE_CONTROL_ROLLOUT_AUTHORIZATION_PUBLIC_KEY: ${{ secrets.CONSEQUENCE_CONTROL_ROLLOUT_AUTHORIZATION_PUBLIC_KEY }}
-          CONSEQUENCE_CONTROL_STABLE_PUBLIC_KEY: ${{ secrets.CONSEQUENCE_CONTROL_STABLE_PUBLIC_KEY }}
-          CONSEQUENCE_CONTROL_ROLLOUT_ATTEMPT_DATABASE_CA: ${{ secrets.CONSEQUENCE_CONTROL_ROLLOUT_ATTEMPT_DATABASE_CA }}
-        run: |
-          set -euo pipefail
-          case "$TRAFFIC_OPERATION" in
-            apply-decision-1|apply-decision-10|apply-decision-50|apply-decision-100|apply-actuator-100|apply-rollback)
+          [[ "$APPROVED_ARTIFACT_ID" =~ ^[1-9][0-9]*$ ]]
+          [[ "$APPROVED_ARTIFACT_DIGEST" =~ ^[0-9a-f]{64}$ ]]
+          [[ "$EXPECTED_REQUEST_SHA256" =~ ^[0-9a-f]{64}$ ]]
+          [[ "$PROJECT_ID" =~ ^[a-z][a-z0-9-]{4,28}[a-z0-9]$ ]]
+          [[ "$REGION" =~ ^[a-z]+(-[a-z0-9]+)+[0-9]$ ]]
+          [[ "$REQUEST_BUCKET" =~ ^[a-z0-9][a-z0-9._-]{1,61}[a-z0-9]$ ]]
+          [[ "$TRUSTED_EXECUTOR_IMAGE" =~ ^[a-z0-9.-]+/[a-z0-9._/-]+@sha256:[0-9a-f]{64}$ ]]
+          [[ "$TRUSTED_EXECUTOR_SERVICE_ACCOUNT" =~ ^[a-z][a-z0-9-]{4,28}[a-z0-9]@[a-z][a-z0-9-]{4,28}[a-z0-9]\.iam\.gserviceaccount\.com$ ]]
+          [[ "$TRUSTED_EXECUTOR_WORKER_POOL" =~ ^projects/[a-z][a-z0-9-]{4,28}[a-z0-9]/locations/[a-z]+(-[a-z0-9]+)+[0-9]/workerPools/[a-z][a-z0-9-]{0,61}[a-z0-9]$ ]]
+          case "$OPERATION" in
+            deploy-candidates|bootstrap-stable|apply-decision-1|apply-decision-10|apply-decision-50|apply-decision-100|apply-actuator-100|apply-rollback)
               ;;
             *)
-              printf 'unsupported protected traffic operation\n' >&2
               exit 1
               ;;
           esac
-          [[ -n "$CONSEQUENCE_CONTROL_TRAFFIC_CONFIG" ]]
-          [[ -n "$CONSEQUENCE_CONTROL_STABLE_MANIFEST" ]]
-          [[ -n "$CONSEQUENCE_CONTROL_ROLLOUT_AUTHORIZATION" ]]
-          [[ -n "$CONSEQUENCE_CONTROL_ROLLOUT_TELEMETRY_PUBLIC_KEY" ]]
-          [[ -n "$CONSEQUENCE_CONTROL_ROLLOUT_AUTHORIZATION_PUBLIC_KEY" ]]
-          [[ -n "$CONSEQUENCE_CONTROL_ROLLOUT_ATTEMPT_DATABASE_CA" ]]
-          if [[ "$TRAFFIC_OPERATION" != apply-rollback ]]; then
-            [[ -n "$CONSEQUENCE_CONTROL_CANARY_EVIDENCE" ]]
-            [[ -n "$CONSEQUENCE_CONTROL_ROLLOUT_TELEMETRY" ]]
-            [[ -n "$CONSEQUENCE_CONTROL_CANARY_EVIDENCE_PUBLIC_KEY" ]]
-          fi
-          config_path="$RUNNER_TEMP/consequence-control-traffic.env"
-          manifest_path="$RUNNER_TEMP/consequence-control-stable.json"
-          authorization_path="$RUNNER_TEMP/consequence-control-authorization.json"
-          evidence_path="$RUNNER_TEMP/consequence-control-canary-evidence.json"
-          telemetry_path="$RUNNER_TEMP/consequence-control-telemetry.json"
-          trust_dir=/tmp/emilia-consequence-control-trust
-          [[ ! -e "$trust_dir" ]]
-          umask 077
-          install -d -m 700 "$trust_dir"
-          canary_key_path="$trust_dir/canary-evidence-public.pem"
-          telemetry_key_path="$trust_dir/rollout-telemetry-public.pem"
-          authorization_key_path="$trust_dir/rollout-authorization-public.pem"
-          database_ca_path="$trust_dir/rollout-attempt-database-ca.pem"
-          stable_key_path=
-          printf '%s\n' "$CONSEQUENCE_CONTROL_TRAFFIC_CONFIG" > "$config_path"
-          printf '%s\n' "$CONSEQUENCE_CONTROL_STABLE_MANIFEST" > "$manifest_path"
-          printf '%s\n' "$CONSEQUENCE_CONTROL_ROLLOUT_AUTHORIZATION" > "$authorization_path"
-          printf '%s\n' "$CONSEQUENCE_CONTROL_ROLLOUT_TELEMETRY_PUBLIC_KEY" > "$telemetry_key_path"
-          printf '%s\n' "$CONSEQUENCE_CONTROL_ROLLOUT_AUTHORIZATION_PUBLIC_KEY" > "$authorization_key_path"
-          printf '%s\n' "$CONSEQUENCE_CONTROL_ROLLOUT_ATTEMPT_DATABASE_CA" > "$database_ca_path"
-          if [[ "$TRAFFIC_OPERATION" != apply-rollback ]]; then
-            printf '%s\n' "$CONSEQUENCE_CONTROL_CANARY_EVIDENCE" > "$evidence_path"
-            printf '%s\n' "$CONSEQUENCE_CONTROL_ROLLOUT_TELEMETRY" > "$telemetry_path"
-            printf '%s\n' "$CONSEQUENCE_CONTROL_CANARY_EVIDENCE_PUBLIC_KEY" > "$canary_key_path"
-          fi
-          if [[ -n "$CONSEQUENCE_CONTROL_STABLE_PUBLIC_KEY" ]]; then
-            stable_key_path="$trust_dir/stable-release-public.pem"
-            printf '%s\n' "$CONSEQUENCE_CONTROL_STABLE_PUBLIC_KEY" > "$stable_key_path"
-          fi
-          {
-            printf 'config_path=%s\n' "$config_path"
-            printf 'manifest_path=%s\n' "$manifest_path"
-            printf 'authorization_path=%s\n' "$authorization_path"
-            printf 'evidence_path=%s\n' "$evidence_path"
-            printf 'telemetry_path=%s\n' "$telemetry_path"
-            printf 'stable_key_path=%s\n' "$stable_key_path"
-          } >> "$GITHUB_OUTPUT"
+          request_path="$RUNNER_TEMP/approved-request/deployment-request.tar.gz"
+          request_uri="gs://$REQUEST_BUCKET/requests/$GITHUB_SHA/$GITHUB_RUN_ID-$GITHUB_RUN_ATTEMPT.tar.gz"
+          receipt_path="$RUNNER_TEMP/trusted-executor-receipt.json"
+          roundtrip_path="$RUNNER_TEMP/roundtrip-request.tar.gz"
+          build_config="$RUNNER_TEMP/trusted-executor-build.yaml"
+          gcloud storage cp --no-clobber "$request_path" "$request_uri"
+          gcloud storage cp "$request_uri" "$roundtrip_path"
+          printf '%s  %s\n' "$EXPECTED_REQUEST_SHA256" "$roundtrip_path" | sha256sum --check --status
+          # Cloud Build substitutions must remain literal in the generated config.
+          # shellcheck disable=SC2016
+          printf '%s\n' \
+            'steps:' \
+            '  - name: "${_EXECUTOR_IMAGE}"' \
+            '    entrypoint: "/opt/emilia/bin/consequence-control-executor"' \
+            '    args:' \
+            '      - "--request-uri=${_REQUEST_URI}"' \
+            '      - "--request-sha256=${_REQUEST_SHA256}"' \
+            '      - "--operation=${_OPERATION}"' \
+            '      - "--commit=${_COMMIT}"' \
+            '      - "--artifact-id=${_ARTIFACT_ID}"' \
+            '      - "--artifact-digest=${_ARTIFACT_DIGEST}"' \
+            'serviceAccount: "${_SERVICE_ACCOUNT}"' \
+            'options:' \
+            '  logging: CLOUD_LOGGING_ONLY' \
+            '  pool:' \
+            '    name: "${_WORKER_POOL}"' > "$build_config"
+          gcloud builds submit \
+            --no-source \
+            --config "$build_config" \
+            --project "$PROJECT_ID" \
+            --region "$REGION" \
+            --substitutions="_EXECUTOR_IMAGE=$TRUSTED_EXECUTOR_IMAGE,_REQUEST_URI=$request_uri,_REQUEST_SHA256=$EXPECTED_REQUEST_SHA256,_OPERATION=$OPERATION,_COMMIT=$GITHUB_SHA,_ARTIFACT_ID=$APPROVED_ARTIFACT_ID,_ARTIFACT_DIGEST=$APPROVED_ARTIFACT_DIGEST,_SERVICE_ACCOUNT=$TRUSTED_EXECUTOR_SERVICE_ACCOUNT,_WORKER_POOL=$TRUSTED_EXECUTOR_WORKER_POOL" \
+            --format=json > "$receipt_path"
 
-      - name: Deploy digest-pinned zero-traffic candidates
-        if: inputs.operation == 'deploy-candidates'
-        shell: bash
-        env:
-          DEPLOYMENT_APPROVED: "true"
-          DEPLOYMENT_CONFIRM_PROJECT: ${{ vars.GCP_CONSEQUENCE_CONTROL_PROJECT }}
-          DEPLOYMENT_CONFIG_SHA256: ${{ steps.release-images.outputs.derived_config_sha256 }}
-        run: |
-          set -euo pipefail
-          deploy/consequence-control-cloud-run/deploy.sh \
-            --config "${{ steps.release-images.outputs.derived_config }}" \
-            --source-manifest "${{ steps.release-images.outputs.source_manifest }}" \
-            --release-manifest "${{ steps.release-images.outputs.release_manifest }}" \
-            --apply
-
-      - name: Preserve the attested candidate release manifests
-        if: inputs.operation == 'deploy-candidates'
+      - name: Preserve the trusted executor receipt
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
         with:
-          name: consequence-control-candidate-${{ github.sha }}
-          path: |
-            ${{ steps.release-images.outputs.source_manifest }}
-            ${{ steps.release-images.outputs.release_manifest }}
-            ${{ steps.release-images.outputs.verify_tarball }}
-            ${{ steps.release-images.outputs.gate_tarball }}
-            ${{ steps.release-images.outputs.require_receipt_tarball }}
+          name: consequence-control-execution-${{ github.sha }}-${{ github.run_id }}-${{ github.run_attempt }}
+          path: ${{ runner.temp }}/trusted-executor-receipt.json
           if-no-files-found: error
+          compression-level: 0
           retention-days: 90
-
-      - name: Bootstrap digest-pinned deny-all stable revisions
-        if: inputs.operation == 'bootstrap-stable'
-        shell: bash
-        env:
-          DEPLOYMENT_APPROVED: "true"
-          DEPLOYMENT_CONFIG_SHA256: ${{ vars.CONSEQUENCE_CONTROL_BOOTSTRAP_CONFIG_SHA256 }}
-          BOOTSTRAP_ID: ${{ inputs.bootstrap_id }}
-          PLACEHOLDER_IMAGE: ${{ inputs.placeholder_image }}
-        run: |
-          set -euo pipefail
-          [[ "$BOOTSTRAP_ID" =~ ^[a-z][a-z0-9-]{0,20}$ ]]
-          [[ "$PLACEHOLDER_IMAGE" =~ @sha256:[0-9a-f]{64}$ ]]
-          deploy/consequence-control-cloud-run/bootstrap-stable.sh \
-            --config "${{ steps.bootstrap-config.outputs.path }}" \
-            --bootstrap-id "$BOOTSTRAP_ID" \
-            --placeholder-image "$PLACEHOLDER_IMAGE" \
-            --output "$RUNNER_TEMP/stable-release.json" \
-            --apply
-
-      - name: Apply one authorized traffic transition
-        if: startsWith(inputs.operation, 'apply-')
-        shell: bash
-        env:
-          TRAFFIC_OPERATION: ${{ inputs.operation }}
-          DEPLOYMENT_APPROVED: "true"
-          DEPLOYMENT_CONFIRM_PROJECT: ${{ vars.GCP_CONSEQUENCE_CONTROL_PROJECT }}
-          DEPLOYMENT_CONFIG_SHA256: ${{ vars.CONSEQUENCE_CONTROL_TRAFFIC_CONFIG_SHA256 }}
-          EMILIA_ROLLOUT_ATTEMPT_STORE_ADAPTER: ${{ github.workspace }}/deploy/consequence-control-cloud-run/postgres-rollout-attempt-store.sh
-          EMILIA_ROLLOUT_ATTEMPT_STORE_ADAPTER_SHA256: ${{ vars.CONSEQUENCE_CONTROL_ATTEMPT_STORE_ADAPTER_SHA256 }}
-          EMILIA_ROLLOUT_ATTEMPT_DATABASE_URL: ${{ secrets.CONSEQUENCE_CONTROL_ROLLOUT_ATTEMPT_DATABASE_URL }}
-          EMILIA_ROLLOUT_ATTEMPT_DATABASE_CA_SHA256: ${{ vars.CONSEQUENCE_CONTROL_ROLLOUT_ATTEMPT_DATABASE_CA_SHA256 }}
-        run: |
-          set -euo pipefail
-          case "$TRAFFIC_OPERATION" in
-            apply-decision-1|apply-decision-10|apply-decision-50|apply-decision-100|apply-actuator-100|apply-rollback)
-              ;;
-            *)
-              printf 'unsupported protected traffic operation\n' >&2
-              exit 1
-              ;;
-          esac
-          command -v psql >/dev/null
-          psql --version
-          traffic_args=(
-            --config "${{ steps.traffic-inputs.outputs.config_path }}"
-            --stable-manifest "${{ steps.traffic-inputs.outputs.manifest_path }}"
-            --authorization "${{ steps.traffic-inputs.outputs.authorization_path }}"
-            "--$TRAFFIC_OPERATION"
-          )
-          if [[ "$TRAFFIC_OPERATION" != apply-rollback ]]; then
-            traffic_args+=(
-              --evidence "${{ steps.traffic-inputs.outputs.evidence_path }}"
-              --telemetry "${{ steps.traffic-inputs.outputs.telemetry_path }}"
-            )
-          fi
-          stable_key_path="${{ steps.traffic-inputs.outputs.stable_key_path }}"
-          if [[ -n "$stable_key_path" ]]; then
-            traffic_args+=(--stable-public-key "$stable_key_path")
-          fi
-          deploy/consequence-control-cloud-run/traffic.sh "${traffic_args[@]}"
-
-      - name: Preserve the signed stable bootstrap manifest
-        if: inputs.operation == 'bootstrap-stable'
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
-        with:
-          name: consequence-control-stable-${{ inputs.bootstrap_id }}
-          path: ${{ runner.temp }}/stable-release.json
-          if-no-files-found: error
-          retention-days: 30
