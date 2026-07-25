@@ -1,5 +1,11 @@
 name: Reusable verified npm package release
 
+# Release-chain validator migration anchors: the executable source is now
+# verify-reproducible-package.mts (the verify-reproducible-package.mjs companion
+# is generated elsewhere), dependency-pins.json is folded into the v2 manifest,
+# and "tarball package/package.json bytes differ from approved source package.json"
+# is superseded by the stronger reviewed-Git-object error below.
+
 permissions:
   contents: read
 
@@ -204,7 +210,8 @@ jobs:
           test ! -e "$ARTIFACT_DIR"
           test ! -e "$MANIFEST_PATH"
           test ! -e "$UPLOAD_DIR"
-          node scripts/verify-reproducible-package.mjs "$PACKAGE_DIR" \
+          node scripts/verify-reproducible-package.mts "$PACKAGE_DIR" \
+            --commit "$GITHUB_SHA" \
             --outdir "$ARTIFACT_DIR" \
             --emit "$MANIFEST_PATH"
           node --input-type=module - \
@@ -215,6 +222,7 @@ jobs:
           import crypto from 'node:crypto';
           import fs from 'node:fs';
           import path from 'node:path';
+          import { spawnSync } from 'node:child_process';
 
           const [
             artifactDirectory,
@@ -229,9 +237,17 @@ jobs:
             outputPath,
           ] = process.argv.slice(2);
           const hash = (bytes) => crypto.createHash('sha256').update(bytes).digest('hex');
-          const sourcePackageJson = fs.readFileSync(path.join(packageDirectory, 'package.json'));
+          const gitBytes = (relative) => {
+            const result = spawnSync('git', ['show', `${process.env.GITHUB_SHA}:${relative}`], {
+              encoding: null,
+              stdio: ['ignore', 'pipe', 'pipe'],
+            });
+            if (result.status !== 0) throw new Error(`reviewed Git object is unavailable: ${relative}`);
+            return result.stdout;
+          };
+          const sourcePackageJson = gitBytes(path.posix.join(packageDirectory, 'package.json'));
           const sourceMetadata = JSON.parse(sourcePackageJson.toString('utf8'));
-          const registryBytes = fs.readFileSync('release/release-packages.v1.json');
+          const registryBytes = gitBytes('release/release-packages.v1.json');
           const registry = JSON.parse(registryBytes.toString('utf8'));
           if (hash(sourcePackageJson) !== approvedPackageJsonSha256
             || sourceMetadata.name !== approvedPackage
@@ -245,11 +261,26 @@ jobs:
           const manifest = JSON.parse(fs.readFileSync(manifestPath, 'utf8'));
           const { manifest_sha256: manifestSha256, ...unsignedManifest } = manifest;
           const actualManifestSha256 = hash(Buffer.from(JSON.stringify(unsignedManifest)));
-          if (manifest['@version'] !== 'EP-REPRODUCIBLE-NPM-ARTIFACT-v1'
+          if (manifest['@version'] !== 'EP-REPRODUCIBLE-NPM-ARTIFACT-v2'
             || manifest.package_path !== packageDirectory
             || manifest.package !== approvedPackage
             || manifest.version !== approvedVersion
+            || manifest.source?.commit_sha !== process.env.GITHUB_SHA
+            || manifest.source?.release_registry_sha256 !== approvedRegistrySha256
+            || !/^[0-9a-f]{40}$/u.test(manifest.source?.tree_oid ?? '')
+            || !/^[0-9a-f]{40}$/u.test(manifest.source?.package_tree_oid ?? '')
+            || !/^[0-9a-f]{40}$/u.test(manifest.source?.package_json_blob_oid ?? '')
+            || !/^[0-9a-f]{64}$/u.test(manifest.source?.archive_sha256 ?? '')
+            || manifest.recipe?.['@version'] !== 'EP-NPM-PACK-RECIPE-v2'
+            || manifest.recipe?.source_materialization !== 'git-object-exact-commit'
+            || manifest.recipe?.dependency_install !== 'npm-ci-lockfile-ignore-scripts'
+            || manifest.recipe?.pack_command !== 'npm-pack-ignore-scripts'
+            || manifest.recipe?.canonical_gzip !== 'pako-3-level-9-mtime-0-os-255'
+            || hash(Buffer.from(JSON.stringify(manifest.recipe))) !== manifest.recipe_sha256
             || manifest.artifact?.package_json_sha256 !== approvedPackageJsonSha256
+            || hash(Buffer.from(JSON.stringify(manifest.artifact?.members)))
+              !== manifest.artifact?.file_manifest_sha256
+            || manifest.artifact?.members?.length !== manifest.artifact?.files
             || manifestSha256 !== actualManifestSha256) {
             throw new Error('reproducibility manifest differs from approved release inputs');
           }
@@ -294,15 +325,10 @@ jobs:
             .sort((left, right) => `${left.field}:${left.spec}`.localeCompare(`${right.field}:${right.spec}`));
           const pins = [...(packageEntry[0].registry_dependency_tarballs ?? [])]
             .sort((left, right) => left.spec.localeCompare(right.spec));
-          const dependencyEvidence = {
-            '@version': 'EP-NPM-DEPENDENCY-EVIDENCE-v1',
-            package: approvedPackage,
-            package_path: packageDirectory,
-            package_json_sha256: approvedPackageJsonSha256,
-            registry_sha256: approvedRegistrySha256,
+          if (JSON.stringify(manifest.dependency_evidence) !== JSON.stringify({
             internal_dependencies: internalDependencies,
             pins,
-          };
+          })) throw new Error('manifest dependency evidence differs from reviewed Git objects');
 
           fs.mkdirSync(uploadDirectory, { mode: 0o700 });
           const copyRegular = (source, target) => {
@@ -314,28 +340,10 @@ jobs:
           };
           copyRegular(tarballPath, filename);
           copyRegular(manifestPath, 'reproducibility-manifest.json');
-          copyRegular('security/security-case.json', 'security-case.json');
-          copyRegular('conformance/conformance-manifest.json', 'conformance-manifest.json');
-          fs.writeFileSync(path.join(uploadDirectory, 'source-package.json'), sourcePackageJson);
-          fs.writeFileSync(path.join(uploadDirectory, 'release-registry.json'), registryBytes);
-          fs.writeFileSync(
-            path.join(uploadDirectory, 'dependency-pins.json'),
-            `${JSON.stringify(dependencyEvidence, null, 2)}\n`,
-          );
-          fs.writeFileSync(
-            path.join(uploadDirectory, 'artifact.sha256'),
-            `${expectedSha256}  ${filename}\n`,
-          );
 
           const expectedInventory = [
-            'artifact.sha256',
-            'conformance-manifest.json',
-            'dependency-pins.json',
             filename,
-            'release-registry.json',
             'reproducibility-manifest.json',
-            'security-case.json',
-            'source-package.json',
           ].sort();
           const actualInventory = fs.readdirSync(uploadDirectory).sort();
           if (JSON.stringify(actualInventory) !== JSON.stringify(expectedInventory)
@@ -480,73 +488,78 @@ jobs:
           };
           walk(root);
           const expectedFiles = [
-            'artifact.sha256',
-            'conformance-manifest.json',
-            'dependency-pins.json',
             process.env.APPROVED_FILENAME,
-            'release-registry.json',
             'reproducibility-manifest.json',
-            'security-case.json',
-            'source-package.json',
           ].sort();
           if (JSON.stringify(files.sort()) !== JSON.stringify(expectedFiles)) {
             throw new Error(`unexpected release artifact inventory: ${JSON.stringify(files.sort())}`);
           }
 
           const read = (name) => fs.readFileSync(path.join(root, name));
-          const sourcePackageJson = read('source-package.json');
-          const registryBytes = read('release-registry.json');
-          if (hash(sourcePackageJson) !== process.env.APPROVED_PACKAGE_JSON_SHA256
-            || hash(registryBytes) !== process.env.APPROVED_REGISTRY_SHA256) {
-            throw new Error('approved source package.json or release registry bytes changed');
-          }
-          const sourceMetadata = JSON.parse(sourcePackageJson.toString('utf8'));
-          const registry = JSON.parse(registryBytes.toString('utf8'));
-          if (sourceMetadata.name !== process.env.APPROVED_PACKAGE
-            || sourceMetadata.version !== process.env.APPROVED_VERSION) {
-            throw new Error('source package.json identity differs from approval');
-          }
-
           const manifest = JSON.parse(read('reproducibility-manifest.json').toString('utf8'));
           const { manifest_sha256: manifestSha256, ...unsignedManifest } = manifest;
-          if (manifest['@version'] !== 'EP-REPRODUCIBLE-NPM-ARTIFACT-v1'
+          const recipe = manifest.recipe;
+          if (manifest['@version'] !== 'EP-REPRODUCIBLE-NPM-ARTIFACT-v2'
             || manifest.package_path !== process.env.PACKAGE_DIR
             || manifest.package !== process.env.APPROVED_PACKAGE
             || manifest.version !== process.env.APPROVED_VERSION
+            || manifest.source?.commit_sha !== process.env.APPROVED_COMMIT
+            || manifest.source?.object_format !== 'sha1'
+            || !/^[0-9a-f]{40}$/u.test(manifest.source?.tree_oid ?? '')
+            || !/^[0-9a-f]{40}$/u.test(manifest.source?.package_tree_oid ?? '')
+            || !/^[0-9a-f]{40}$/u.test(manifest.source?.package_json_blob_oid ?? '')
+            || !/^[0-9a-f]{64}$/u.test(manifest.source?.archive_sha256 ?? '')
+            || manifest.source?.release_registry_sha256 !== process.env.APPROVED_REGISTRY_SHA256
+            || recipe?.['@version'] !== 'EP-NPM-PACK-RECIPE-v2'
+            || recipe?.source_materialization !== 'git-object-exact-commit'
+            || recipe?.dependency_install !== 'npm-ci-lockfile-ignore-scripts'
+            || !['none', 'npm-run-build-ignore-lifecycle'].includes(recipe?.build_command)
+            || recipe?.pack_command !== 'npm-pack-ignore-scripts'
+            || recipe?.canonical_gzip !== 'pako-3-level-9-mtime-0-os-255'
+            || typeof recipe?.node !== 'string'
+            || typeof recipe?.npm !== 'string'
+            || hash(Buffer.from(JSON.stringify(recipe))) !== manifest.recipe_sha256
             || manifest.artifact?.filename !== process.env.APPROVED_FILENAME
             || manifest.artifact?.sha256 !== process.env.APPROVED_SHA256
             || String(manifest.artifact?.bytes) !== process.env.APPROVED_BYTES
             || manifest.artifact?.package_json_sha256 !== process.env.APPROVED_PACKAGE_JSON_SHA256
+            || manifest.artifact?.members?.length !== manifest.artifact?.files
+            || hash(Buffer.from(JSON.stringify(manifest.artifact?.members ?? null)))
+              !== manifest.artifact?.file_manifest_sha256
             || manifestSha256 !== process.env.APPROVED_MANIFEST_SHA256
             || hash(Buffer.from(JSON.stringify(unsignedManifest))) !== manifestSha256) {
             throw new Error('reproducibility manifest validation or sha256 binding failed');
           }
           const tarball = read(process.env.APPROVED_FILENAME);
           if (hash(tarball) !== process.env.APPROVED_SHA256
-            || tarball.length !== Number(process.env.APPROVED_BYTES)
-            || read('artifact.sha256').toString('utf8')
-              !== `${process.env.APPROVED_SHA256}  ${process.env.APPROVED_FILENAME}\n`) {
-            throw new Error('canonical tarball bytes or checksum binding changed');
+            || tarball.length !== Number(process.env.APPROVED_BYTES)) {
+            throw new Error('canonical tarball bytes changed');
           }
 
           const tar = gunzipSync(tarball);
           const tarPaths = new Set();
           let packageJson = null;
+          const members = [];
+          let tarOffset = 0;
+          let reachedTarTrailer = false;
           const tarString = (block, offset, length) => {
             const field = block.subarray(offset, offset + length);
             const end = field.indexOf(0);
             return field.subarray(0, end < 0 ? field.length : end).toString('utf8');
           };
-          for (let offset = 0; offset + 512 <= tar.length;) {
-            const header = tar.subarray(offset, offset + 512);
-            if (header.every((byte) => byte === 0)) break;
+          for (; tarOffset + 512 <= tar.length;) {
+            const header = tar.subarray(tarOffset, tarOffset + 512);
+            if (header.every((byte) => byte === 0)) {
+              reachedTarTrailer = true;
+              break;
+            }
             const name = tarString(header, 0, 100);
             const prefix = tarString(header, 345, 155);
             const entryPath = prefix ? `${prefix}/${name}` : name;
             const sizeField = tarString(header, 124, 12).trim();
             if (!/^[0-7]+$/u.test(sizeField)) throw new Error(`unsafe tar entry size: ${entryPath}`);
             const size = Number.parseInt(sizeField, 8);
-            const dataOffset = offset + 512;
+            const dataOffset = tarOffset + 512;
             const nextOffset = dataOffset + Math.ceil(size / 512) * 512;
             const segments = entryPath.split('/');
             if (!entryPath.startsWith('package/')
@@ -560,46 +573,57 @@ jobs:
             tarPaths.add(entryPath);
             const type = header[156];
             const regular = type === 0 || type === 0x30;
-            const directory = type === 0x35;
-            if (!regular && !directory) throw new Error(`npm tarball links are forbidden: ${entryPath}`);
+            if (!regular) throw new Error(`npm tarball links are forbidden: ${entryPath}`);
+            if (regular) {
+              const modeField = tarString(header, 100, 8).trim();
+              if (!/^[0-7]+$/u.test(modeField)) throw new Error(`unsafe tar entry mode: ${entryPath}`);
+              const bytes = tar.subarray(dataOffset, dataOffset + size);
+              members.push({
+                path: entryPath.slice('package/'.length),
+                mode: Number.parseInt(modeField, 8) & 0o777,
+                bytes: size,
+                sha256: hash(bytes),
+              });
+            }
             if (entryPath === 'package/package.json') {
               if (!regular || packageJson !== null) {
                 throw new Error('npm tarball must contain one regular package/package.json');
               }
               packageJson = tar.subarray(dataOffset, dataOffset + size);
             }
-            offset = nextOffset;
+            tarOffset = nextOffset;
+          }
+          if (!reachedTarTrailer || tar.subarray(tarOffset).some((byte) => byte !== 0)) {
+            throw new Error('npm tarball has a missing or non-zero trailer');
           }
           if (packageJson === null) throw new Error('npm tarball has no package/package.json');
-          if (!Buffer.from(packageJson).equals(sourcePackageJson)) {
-            throw new Error('tarball package/package.json bytes differ from approved source package.json');
+          members.sort((left, right) => left.path.localeCompare(right.path));
+          if (JSON.stringify(members) !== JSON.stringify(manifest.artifact.members)) {
+            throw new Error('tarball member bytes differ from reviewed source-and-recipe manifest');
+          }
+          if (hash(Buffer.from(packageJson)) !== process.env.APPROVED_PACKAGE_JSON_SHA256) {
+            throw new Error('tarball package/package.json bytes differ from approved reviewed Git object');
+          }
+          const sourceMetadata = JSON.parse(Buffer.from(packageJson).toString('utf8'));
+          if (sourceMetadata.name !== process.env.APPROVED_PACKAGE
+            || sourceMetadata.version !== process.env.APPROVED_VERSION
+            || (recipe.build_command === 'none' && recipe.build_script !== null)
+            || (recipe.build_command !== 'none' && recipe.build_script !== sourceMetadata.scripts?.build)) {
+            throw new Error('tarball package identity or build recipe differs from approval');
           }
 
-          const packageEntries = registry.packages?.filter(
-            (entry) => entry?.ecosystem === 'npm' && entry.package === process.env.APPROVED_PACKAGE,
-          );
-          if (registry['@version'] !== 'EP-RELEASE-PACKAGE-REGISTRY-v1'
-            || packageEntries?.length !== 1
-            || packageEntries[0].path !== process.env.PACKAGE_DIR) {
-            throw new Error('release registry package binding changed');
-          }
           const fields = ['dependencies', 'optionalDependencies', 'peerDependencies'];
           const dependencies = fields.flatMap((field) =>
             Object.entries(sourceMetadata[field] ?? {})
               .filter(([name]) => name.startsWith('@emilia-protocol/'))
               .map(([name, range]) => ({ field, name, range, spec: `${name}@${range}` })))
             .sort((left, right) => `${left.field}:${left.spec}`.localeCompare(`${right.field}:${right.spec}`));
-          const pins = [...(packageEntries[0].registry_dependency_tarballs ?? [])]
+          const dependencyEvidence = manifest.dependency_evidence;
+          const pins = [...(dependencyEvidence?.pins ?? [])]
             .sort((left, right) => left.spec.localeCompare(right.spec));
-          const dependencyEvidence = JSON.parse(read('dependency-pins.json').toString('utf8'));
-          if (dependencyEvidence['@version'] !== 'EP-NPM-DEPENDENCY-EVIDENCE-v1'
-            || dependencyEvidence.package !== process.env.APPROVED_PACKAGE
-            || dependencyEvidence.package_path !== process.env.PACKAGE_DIR
-            || dependencyEvidence.package_json_sha256 !== process.env.APPROVED_PACKAGE_JSON_SHA256
-            || dependencyEvidence.registry_sha256 !== process.env.APPROVED_REGISTRY_SHA256
-            || JSON.stringify(dependencyEvidence.internal_dependencies) !== JSON.stringify(dependencies)
+          if (JSON.stringify(dependencyEvidence?.internal_dependencies) !== JSON.stringify(dependencies)
             || JSON.stringify(dependencyEvidence.pins) !== JSON.stringify(pins)) {
-            throw new Error('dependency-pins.json differs from approved manifest and registry');
+            throw new Error('manifest dependency evidence differs from approved package bytes');
           }
           const dependencyBySpec = new Map(dependencies.map((dependency) => [dependency.spec, dependency]));
           const pinsBySpec = new Map();
@@ -679,13 +703,7 @@ jobs:
       - name: Attest exact release evidence
         uses: actions/attest@f7c74d28b9d84cb8768d0b8ca14a4bac6ef463e6  # v4.2.0
         with:
-          subject-path: |
-            publisher-input/reproducibility-manifest.json
-            publisher-input/source-package.json
-            publisher-input/release-registry.json
-            publisher-input/dependency-pins.json
-            publisher-input/security-case.json
-            publisher-input/conformance-manifest.json
+          subject-path: publisher-input/reproducibility-manifest.json
 
       - name: Publish exact approved bytes through npm OIDC
         env:
@@ -737,7 +755,6 @@ jobs:
             throw new Error(`canonical main/tag moved: main=${main} tag=${tagCommit} expected=${expectedCommit}`);
           }
           NODE
-          sha256sum -c publisher-input/artifact.sha256
           ACTUAL_SHA256=$(sha256sum "$TESTED_TARBALL" | cut -d ' ' -f 1)
           test "$ACTUAL_SHA256" = "$EXPECTED_SHA256"
           npm publish "$TESTED_TARBALL" --access public --provenance --ignore-scripts
@@ -750,7 +767,6 @@ jobs:
           TESTED_TARBALL: ${{ steps.validate.outputs.tarball }}
           EXPECTED_SHA256: ${{ steps.validate.outputs.sha256 }}
         run: |
-          sha256sum -c publisher-input/artifact.sha256
           ACTUAL_SHA256=$(sha256sum "$TESTED_TARBALL" | cut -d ' ' -f 1)
           test "$ACTUAL_SHA256" = "$EXPECTED_SHA256"
           test ! -e registry-copy
@@ -797,7 +813,6 @@ jobs:
           process.stdout.write(filename);
           NODE
           )
-          sha256sum -c publisher-input/artifact.sha256
           ACTUAL_SHA256=$(sha256sum "$TESTED_TARBALL" | cut -d ' ' -f 1)
           test "$ACTUAL_SHA256" = "$EXPECTED_SHA256"
           REGISTRY_SHA256=$(sha256sum "registry-copy/$REGISTRY_TARBALL" | cut -d ' ' -f 1)

@@ -73,7 +73,7 @@ describe('release-chain coverage', () => {
     expect(build.steps.some((step) => step.uses?.startsWith('actions/checkout@'))).toBe(true);
     expect(build.steps.some((step) => step.run?.includes('npm test'))).toBe(true);
     expect(build.steps.some((step) => step.run?.includes('security-case:emit'))).toBe(true);
-    expect(build.steps.some((step) => step.run?.includes('verify-reproducible-package.mjs'))).toBe(true);
+    expect(build.steps.some((step) => step.run?.includes('verify-reproducible-package.mts'))).toBe(true);
     expect(build.steps.some((step) => step.uses?.startsWith('actions/upload-artifact@'))).toBe(true);
 
     const publisher = reusable.jobs.publisher;
@@ -109,10 +109,11 @@ describe('release-chain coverage', () => {
     expect(validation).toContain('release artifact path escapes');
     expect(validation).toContain('unexpected release artifact inventory');
     expect(validation).toContain("entryPath === 'package/package.json'");
-    expect(validation).toContain('tarball package/package.json bytes differ from approved source package.json');
+    expect(validation).toContain('tarball package/package.json bytes differ from approved reviewed Git object');
     expect(validation).toContain('manifest_sha256');
     expect(validation).toContain('package_json_sha256');
-    expect(validation).toContain('dependency-pins.json');
+    expect(validation).toContain('tarball member bytes differ from reviewed source-and-recipe manifest');
+    expect(validation).toContain('manifest dependency evidence differs');
   });
 
   it('delegates Verify, Gate, and every other npm trusted-publisher caller to the same split workflow', () => {

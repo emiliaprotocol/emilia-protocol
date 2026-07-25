@@ -57,6 +57,9 @@ describe('reusable npm release workflow byte contract', () => {
     expect(jobs.publisher.steps.some((step) => step.uses?.startsWith('actions/checkout@')))
       .toBe(false);
     expect(jobs.publisher.steps.every((step) => !step.run?.includes('scripts/'))).toBe(true);
+    expect(jobs.publisher.steps.every(
+      (step) => !/\bnpm (?:ci|install|run|test|exec)\b/u.test(step.run ?? ''),
+    )).toBe(true);
   });
 
   it('downloads only the immutable build artifact ID and validates an exact safe inventory', () => {
@@ -81,22 +84,48 @@ describe('reusable npm release workflow byte contract', () => {
     expect(validate.run).toContain('npm tarball links are forbidden');
   });
 
-  it('binds source package.json raw bytes, manifest, tarball, dependencies, and registry bytes', () => {
+  it('binds the tarball and every member to an exact reviewed Git object and recipe', () => {
     const jobs = workflow().jobs;
     const buildPack = jobs.build.steps.find((step) => step.id === 'pack');
     expect(buildPack.run).toContain('APPROVED_PACKAGE_JSON_SHA256');
     expect(buildPack.run).toContain('manifest.artifact?.package_json_sha256');
-    expect(buildPack.run).toContain('source-package.json');
-    expect(buildPack.run).toContain('dependency-pins.json');
+    expect(buildPack.run).toContain('verify-reproducible-package.mts');
+    expect(buildPack.run).toContain('--commit "$GITHUB_SHA"');
+    expect(buildPack.run).toContain("manifest['@version'] !== 'EP-REPRODUCIBLE-NPM-ARTIFACT-v2'");
+    expect(buildPack.run).toContain("source_materialization !== 'git-object-exact-commit'");
+    expect(buildPack.run).toContain('manifest.artifact?.members');
+    expect(buildPack.run).not.toContain('source-package.json');
+    expect(buildPack.run).not.toContain('dependency-pins.json');
 
     const validate = jobs.publisher.steps.find((step) => step.id === 'validate');
     expect(validate.run).toContain(
-      'tarball package/package.json bytes differ from approved source package.json',
+      'tarball package/package.json bytes differ from approved reviewed Git object',
     );
     expect(validate.run).toContain('manifest_sha256');
-    expect(validate.run).toContain('dependency-pins.json differs');
+    expect(validate.run).toContain('tarball member bytes differ from reviewed source-and-recipe manifest');
+    expect(validate.run).toContain('manifest dependency evidence differs');
     expect(validate.run).toContain('pinned dependency bytes differ');
     expect(validate.run).toContain('internal dependency unavailable from npm');
+  });
+
+  it('uploads only the inert tarball and source-and-recipe manifest to the OIDC job', () => {
+    const jobs = workflow().jobs;
+    const buildPack = jobs.build.steps.find((step) => step.id === 'pack');
+    const validate = jobs.publisher.steps.find((step) => step.id === 'validate');
+    for (const forbidden of [
+      'source-package.json',
+      'release-registry.json',
+      'dependency-pins.json',
+      'security-case.json',
+      'conformance-manifest.json',
+    ]) {
+      expect(buildPack.run).not.toContain(forbidden);
+      expect(validate.run).not.toContain(forbidden);
+    }
+    expect(buildPack.run).toContain("'reproducibility-manifest.json'");
+    expect(validate.run).toContain("'reproducibility-manifest.json'");
+    expect(buildPack.run).not.toContain("'artifact.sha256'");
+    expect(validate.run).not.toContain("'artifact.sha256'");
   });
 
   it('rehashes after fixed canonical refs, publishes without scripts, and compares registry bytes', () => {

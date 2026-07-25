@@ -1,8 +1,19 @@
 // SPDX-License-Identifier: Apache-2.0
 import { describe, expect, it } from 'vitest';
-import { chmodSync, mkdirSync, mkdtempSync, readFileSync, rmSync, statSync, writeFileSync } from 'node:fs';
+import {
+  chmodSync,
+  mkdirSync,
+  mkdtempSync,
+  readFileSync,
+  rmSync,
+  statSync,
+  symlinkSync,
+  writeFileSync,
+} from 'node:fs';
+import { execFileSync } from 'node:child_process';
 import os from 'node:os';
 import path from 'node:path';
+import crypto from 'node:crypto';
 import { gzipSync } from 'node:zlib';
 import {
   assertArtifactBytesMatch,
@@ -13,12 +24,33 @@ import {
 import { assertPythonArtifactBytesMatch } from '../scripts/python-artifact-integrity.mjs';
 
 describe('release byte reproducibility', () => {
+  const commitFixture = (root: string): string => {
+    execFileSync('git', ['init', '-q'], { cwd: root });
+    execFileSync('git', ['config', 'user.name', 'Release Fixture'], { cwd: root });
+    execFileSync('git', ['config', 'user.email', 'release-fixture@example.test'], { cwd: root });
+    execFileSync('git', ['add', '--all'], { cwd: root });
+    execFileSync('git', ['commit', '-q', '-m', 'fixture'], { cwd: root });
+    return execFileSync('git', ['rev-parse', 'HEAD'], { cwd: root, encoding: 'utf8' }).trim();
+  };
+
+  const verifyFixture = (root: string, options: { outDir?: string | null } = {}) => {
+    const reviewedCommit = commitFixture(root);
+    return verifyReproduciblePackage(root, {
+      ...options,
+      repositoryRoot: root,
+      reviewedCommit,
+    });
+  };
+
   it('packs @emilia-protocol/verify twice to byte-identical tarballs', () => {
     const result = verifyReproduciblePackage('packages/verify');
     expect(result.name).toBe('@emilia-protocol/verify');
     expect(result.filename).toBe(`emilia-protocol-verify-${result.version}.tgz`);
     expect(result.sha256).toMatch(/^[0-9a-f]{64}$/);
     expect(result.fileCount).toBeGreaterThan(0);
+    expect(result.source.commit_sha).toBe(execFileSync('git', ['rev-parse', 'HEAD'], { encoding: 'utf8' }).trim());
+    expect(result.recipe['@version']).toBe('EP-NPM-PACK-RECIPE-v2');
+    expect(result.members).toHaveLength(result.fileCount);
   }, 90_000);
 
   it('normalizes source file modes across independent package checkouts', () => {
@@ -41,8 +73,8 @@ describe('release byte reproducibility', () => {
     try {
       const restricted = makePackage('restricted', 0o600, 0o700);
       const conventional = makePackage('conventional', 0o644, 0o755);
-      const first = verifyReproduciblePackage(restricted);
-      const second = verifyReproduciblePackage(conventional);
+      const first = verifyFixture(restricted);
+      const second = verifyFixture(conventional);
       expect(first.sha256).toBe(second.sha256);
       expect(statSync(path.join(restricted, 'index.js')).mode & 0o777).toBe(0o600);
       expect(statSync(path.join(restricted, 'cli.js')).mode & 0o777).toBe(0o700);
@@ -53,9 +85,7 @@ describe('release byte reproducibility', () => {
 
   it('rejects nondeterministic output from independent clean package builds', () => {
     const root = mkdtempSync(path.join(os.tmpdir(), 'ep-pack-nondeterministic-'));
-    const dependencyRoot = path.join(root, 'fixture-dependencies');
     const generatedPath = path.join(root, 'dist', 'generated.js');
-    mkdirSync(dependencyRoot);
     mkdirSync(path.dirname(generatedPath));
     writeFileSync(path.join(root, 'package.json'), JSON.stringify({
       name: 'nondeterministic-build-fixture',
@@ -76,8 +106,8 @@ describe('release byte reproducibility', () => {
     writeFileSync(generatedPath, 'export default "injected-frozen-output";\n');
 
     try {
-      expect(() => verifyReproduciblePackage(root, { dependencyRoot })).toThrow(
-        /package build|package (file manifests|bytes) differ/,
+      expect(() => verifyFixture(root)).toThrow(
+        /package build|package (?:file|member) manifests differ|package bytes differ/,
       );
       expect(readFileSync(generatedPath, 'utf8')).toBe('export default "injected-frozen-output";\n');
     } finally {
@@ -87,10 +117,8 @@ describe('release byte reproducibility', () => {
 
   it('rejects randomness shared through a writable repository dependency tree', () => {
     const root = mkdtempSync(path.join(os.tmpdir(), 'ep-pack-shared-seed-'));
-    const dependencyRoot = path.join(root, 'fixture-dependencies');
     const seedName = `.ep-hostile-seed-${process.pid}-${Date.now()}`;
     const repositorySeedPath = path.join(process.cwd(), 'node_modules', seedName);
-    mkdirSync(dependencyRoot);
     writeFileSync(path.join(root, 'package.json'), JSON.stringify({
       name: 'shared-seed-build-fixture',
       version: '1.0.0',
@@ -116,8 +144,8 @@ describe('release byte reproducibility', () => {
     ].join('\n'));
 
     try {
-      expect(() => verifyReproduciblePackage(root, { dependencyRoot })).toThrow(
-        /package build|package (file manifests|bytes) differ/,
+      expect(() => verifyFixture(root)).toThrow(
+        /package build|package (?:file|member) manifests differ|package bytes differ/,
       );
       expect(() => readFileSync(repositorySeedPath, 'utf8')).toThrow();
     } finally {
@@ -128,10 +156,8 @@ describe('release byte reproducibility', () => {
 
   it('rejects randomness shared through an inherited RUNNER_TEMP', () => {
     const root = mkdtempSync(path.join(os.tmpdir(), 'ep-pack-runner-temp-seed-'));
-    const dependencyRoot = path.join(root, 'fixture-dependencies');
     const sharedRunnerTemp = path.join(root, 'host-runner-temp');
     const priorRunnerTemp = process.env.RUNNER_TEMP;
-    mkdirSync(dependencyRoot);
     mkdirSync(sharedRunnerTemp);
     writeFileSync(path.join(root, 'package.json'), JSON.stringify({
       name: 'runner-temp-seed-build-fixture',
@@ -160,8 +186,8 @@ describe('release byte reproducibility', () => {
 
     process.env.RUNNER_TEMP = sharedRunnerTemp;
     try {
-      expect(() => verifyReproduciblePackage(root, { dependencyRoot })).toThrow(
-        /package build|package (file manifests|bytes) differ/,
+      expect(() => verifyFixture(root)).toThrow(
+        /package build|package (?:file|member) manifests differ|package bytes differ/,
       );
       expect(() => readFileSync(path.join(sharedRunnerTemp, 'hostile-seed'), 'utf8')).toThrow();
     } finally {
@@ -173,10 +199,8 @@ describe('release byte reproducibility', () => {
 
   it('removes an inherited GITHUB_WORKSPACE from both independent builds', () => {
     const root = mkdtempSync(path.join(os.tmpdir(), 'ep-pack-workspace-seed-'));
-    const dependencyRoot = path.join(root, 'fixture-dependencies');
     const hostWorkspace = path.join(root, 'host-workspace');
     const priorWorkspace = process.env.GITHUB_WORKSPACE;
-    mkdirSync(dependencyRoot);
     mkdirSync(hostWorkspace);
     writeFileSync(path.join(root, 'package.json'), JSON.stringify({
       name: 'workspace-seed-build-fixture',
@@ -206,8 +230,8 @@ describe('release byte reproducibility', () => {
 
     process.env.GITHUB_WORKSPACE = hostWorkspace;
     try {
-      expect(() => verifyReproduciblePackage(root, { dependencyRoot })).toThrow(
-        /package build|package (file manifests|bytes) differ/,
+      expect(() => verifyFixture(root)).toThrow(
+        /package build|package (?:file|member) manifests differ|package bytes differ/,
       );
       expect(() => readFileSync(path.join(hostWorkspace, 'hostile-seed'), 'utf8')).toThrow();
     } finally {
@@ -219,8 +243,6 @@ describe('release byte reproducibility', () => {
 
   it('rejects a deterministic build-time package version rewrite', () => {
     const root = mkdtempSync(path.join(os.tmpdir(), 'ep-pack-version-rewrite-'));
-    const dependencyRoot = path.join(root, 'fixture-dependencies');
-    mkdirSync(dependencyRoot);
     writeFileSync(path.join(root, 'package.json'), JSON.stringify({
       name: 'version-rewrite-fixture',
       version: '1.0.0',
@@ -240,7 +262,7 @@ describe('release byte reproducibility', () => {
     ].join('\n'));
 
     try {
-      expect(() => verifyReproduciblePackage(root, { dependencyRoot })).toThrow(
+      expect(() => verifyFixture(root)).toThrow(
         /mutated package\.json|package identity/i,
       );
     } finally {
@@ -265,13 +287,135 @@ describe('release byte reproducibility', () => {
     writeFileSync(path.join(root, 'index.js'), 'export const value = 1;\n');
     writeFileSync(path.join(root, 'hostile.js'), 'throw new Error("must never run");\n');
     try {
-      const packed = verifyReproduciblePackage(root, { outDir });
+      const packed = verifyFixture(root, { outDir });
       expect(() => validatePackedPackageIdentity(
         readFileSync(packed.artifactPath),
         sourceMetadata.name,
         sourceMetadata.version,
         Buffer.from(`${JSON.stringify(sourceMetadata, null, 2)}\n`),
       )).toThrow(/package\/package\.json bytes differ/i);
+    } finally {
+      rmSync(root, { recursive: true, force: true });
+    }
+  });
+
+  it('fails closed when tracked checkout bytes differ from the reviewed commit', () => {
+    const root = mkdtempSync(path.join(os.tmpdir(), 'ep-pack-checkout-mutation-'));
+    writeFileSync(path.join(root, 'package.json'), JSON.stringify({
+      name: 'checkout-mutation-fixture',
+      version: '1.0.0',
+      files: ['index.js'],
+    }));
+    writeFileSync(path.join(root, 'index.js'), 'export const value = "reviewed";\n');
+    const reviewedCommit = commitFixture(root);
+    writeFileSync(path.join(root, 'index.js'), 'export const value = "mutated-after-review";\n');
+    try {
+      expect(() => verifyReproduciblePackage(root, {
+        repositoryRoot: root,
+        reviewedCommit,
+      })).toThrow(/working checkout differs from the reviewed commit/);
+    } finally {
+      rmSync(root, { recursive: true, force: true });
+    }
+  });
+
+  it('keeps prepack and postpack restoration hooks inert', () => {
+    const root = mkdtempSync(path.join(os.tmpdir(), 'ep-pack-inert-hooks-'));
+    writeFileSync(path.join(root, 'package.json'), JSON.stringify({
+      name: 'inert-hook-fixture',
+      version: '1.0.0',
+      files: ['index.js'],
+      scripts: {
+        prepack: 'node hook.mjs prepack',
+        postpack: 'node hook.mjs postpack',
+      },
+    }));
+    const reviewedBytes = Buffer.from('export const value = "reviewed";\n');
+    writeFileSync(path.join(root, 'index.js'), reviewedBytes);
+    writeFileSync(path.join(root, 'hook.mjs'), [
+      "import { writeFileSync } from 'node:fs';",
+      "if (process.argv[2] === 'prepack') writeFileSync('index.js', 'export const value = \\\"hostile\\\";\\n');",
+      "else writeFileSync('index.js', 'export const value = \\\"reviewed\\\";\\n');",
+      "writeFileSync(`hook-${process.argv[2]}.ran`, 'yes');",
+      '',
+    ].join('\n'));
+    try {
+      const packed = verifyFixture(root);
+      const member = packed.members.find((entry) => entry.path === 'index.js');
+      expect(member.sha256).toBe(crypto.createHash('sha256').update(reviewedBytes).digest('hex'));
+      expect(() => readFileSync(path.join(root, 'hook-prepack.ran'))).toThrow();
+      expect(() => readFileSync(path.join(root, 'hook-postpack.ran'))).toThrow();
+    } finally {
+      rmSync(root, { recursive: true, force: true });
+    }
+  });
+
+  it('rejects a reviewed Git tree containing a symlink', () => {
+    const root = mkdtempSync(path.join(os.tmpdir(), 'ep-pack-source-symlink-'));
+    writeFileSync(path.join(root, 'package.json'), JSON.stringify({
+      name: 'source-symlink-fixture',
+      version: '1.0.0',
+      files: ['index.js', 'linked.js'],
+    }));
+    writeFileSync(path.join(root, 'index.js'), 'export const value = 1;\n');
+    symlinkSync('index.js', path.join(root, 'linked.js'));
+    try {
+      const reviewedCommit = commitFixture(root);
+      expect(() => verifyReproduciblePackage(root, {
+        repositoryRoot: root,
+        reviewedCommit,
+      })).toThrow(/symlink, submodule, or unsupported mode/);
+    } finally {
+      rmSync(root, { recursive: true, force: true });
+    }
+  });
+
+  it('rejects a build that injects a symlink into package runtime output', () => {
+    const root = mkdtempSync(path.join(os.tmpdir(), 'ep-pack-build-symlink-'));
+    writeFileSync(path.join(root, 'package.json'), JSON.stringify({
+      name: 'build-symlink-fixture',
+      version: '1.0.0',
+      files: ['dist'],
+      scripts: { build: 'node build.mjs' },
+    }));
+    writeFileSync(path.join(root, 'index.js'), 'export const value = 1;\n');
+    writeFileSync(path.join(root, 'build.mjs'), [
+      "import { mkdirSync, symlinkSync } from 'node:fs';",
+      "mkdirSync('dist', { recursive: true });",
+      "symlinkSync('../index.js', 'dist/index.js');",
+      '',
+    ].join('\n'));
+    try {
+      expect(() => verifyFixture(root)).toThrow(/regular file|symlink|links/i);
+    } finally {
+      rmSync(root, { recursive: true, force: true });
+    }
+  });
+
+  it('rejects symbolic refs and alternate-ref bytes instead of silently packing them', () => {
+    const root = mkdtempSync(path.join(os.tmpdir(), 'ep-pack-alternate-ref-'));
+    writeFileSync(path.join(root, 'package.json'), JSON.stringify({
+      name: 'alternate-ref-fixture',
+      version: '1.0.0',
+      files: ['index.js'],
+    }));
+    writeFileSync(path.join(root, 'index.js'), 'export const value = "main";\n');
+    const reviewedCommit = commitFixture(root);
+    execFileSync('git', ['switch', '-q', '-c', 'alternate'], { cwd: root });
+    writeFileSync(path.join(root, 'index.js'), 'export const value = "alternate";\n');
+    execFileSync('git', ['add', 'index.js'], { cwd: root });
+    execFileSync('git', ['commit', '-q', '-m', 'alternate bytes'], { cwd: root });
+    const alternateCommit = execFileSync('git', ['rev-parse', 'HEAD'], { cwd: root, encoding: 'utf8' }).trim();
+    execFileSync('git', ['checkout', '-q', reviewedCommit], { cwd: root });
+    try {
+      expect(() => verifyReproduciblePackage(root, {
+        repositoryRoot: root,
+        reviewedCommit: 'alternate',
+      })).toThrow(/exact full-length Git object id/);
+      expect(() => verifyReproduciblePackage(root, {
+        repositoryRoot: root,
+        reviewedCommit: alternateCommit,
+      })).toThrow(/working checkout differs from the reviewed commit/);
     } finally {
       rmSync(root, { recursive: true, force: true });
     }
