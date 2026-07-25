@@ -4,6 +4,7 @@ import crypto, { type KeyObject } from 'node:crypto';
 import { describe, it } from 'node:test';
 
 import { digestAeb } from '@emilia-protocol/verify/aeb-adapter-contract';
+import { canonicalize } from '@emilia-protocol/gate';
 import { computeCaid } from '../../../caid/impl/js/caid.mjs';
 import {
   CONSEQUENCE_ACTUATOR_ENVELOPE_VERSION,
@@ -83,13 +84,65 @@ function signEnvelope(
 }
 
 function executeBody(
-  envelope: unknown,
+  envelope: any,
+  signer: { privateKey: KeyObject },
   overrides: Record<string, unknown> = {},
 ) {
+  const attributionPayload = JSON.parse(canonicalize({
+    '@version': 'EP-CONSEQUENCE-PROVIDER-ATTRIBUTION-v1',
+    issuer_id: envelope.payload.issuer_id,
+    tenant_id: envelope.payload.tenant_id,
+    provider_id: 'github',
+    provider_account_id: envelope.payload.provider_account_id,
+    environment: 'production-smoke',
+    request_digest: `sha256:${'1'.repeat(64)}`,
+    attempt_id: envelope.payload.attempt_id,
+    operation_id: envelope.payload.idempotency_key,
+    caid: envelope.payload.caid,
+    action_digest: envelope.payload.action_digest,
+    target_digest: envelope.payload.target_digest,
+    operation: envelope.payload.operation,
+    envelope_digest: digestAeb(envelope),
+    effect_digest: digestAeb({
+      domain: 'EP-GITHUB-ISSUE-EFFECT-v1',
+      tenant_id: envelope.payload.tenant_id,
+      provider_id: 'github',
+      provider_account_id: envelope.payload.provider_account_id,
+      environment: 'production-smoke',
+      target_digest: envelope.payload.target_digest,
+      target: {
+        owner: ACTION.owner,
+        repo: ACTION.repo,
+        issue_number: ACTION.issue_number,
+      },
+      effect: {
+        title: ACTION.title,
+        body: ACTION.body,
+      },
+    }),
+    issued_at: envelope.payload.issued_at,
+  }));
+  const attribution = {
+    payload: attributionPayload,
+    signature: {
+      algorithm: 'Ed25519',
+      key_id: 'control-envelope-key',
+      value: crypto.sign(
+        null,
+        Buffer.concat([
+          Buffer.from('EP-CONSEQUENCE-PROVIDER-ATTRIBUTION-v1'),
+          Buffer.from([0]),
+          Buffer.from(canonicalize(attributionPayload)),
+        ]),
+        signer.privateKey,
+      ).toString('base64url'),
+    },
+  };
   return {
     action: ACTION,
     attempt_id: 'attempt:0000000000000001',
     action_digest: ACTION_DIGEST,
+    attribution,
     idempotency_key: 'operation:0000000000000001',
     envelope,
     ...overrides,
@@ -114,6 +167,7 @@ async function harness({
     tenantId: 'tenant:emilia',
     providerId: 'github',
     providerAccountId: ACTION.owner,
+    environment: 'production-smoke',
     targetDigest: TARGET_DIGEST,
     envelopeIssuerId: 'consequence-control',
     envelopeKeyId: 'control-envelope-key',
@@ -171,7 +225,10 @@ describe('hostile actuator execution boundary', () => {
       `${signed.signature.value.startsWith('A') ? 'B' : 'A'}`
       + signed.signature.value.slice(1);
 
-    const result = await fixture.runtime.execute(executeBody(signed));
+    const result = await fixture.runtime.execute(executeBody(
+      signed,
+      fixture.envelopeSigner,
+    ));
 
     assert.equal(result.status, 422);
     assert.equal(result.body.reason, 'signature_invalid');
@@ -191,11 +248,14 @@ describe('hostile actuator execution boundary', () => {
     });
 
     const result = await fixture.runtime.execute(
-      executeBody(signEnvelope(fixture.envelopeSigner, payload)),
+      executeBody(
+        signEnvelope(fixture.envelopeSigner, payload),
+        fixture.envelopeSigner,
+      ),
     );
 
     assert.equal(result.status, 422);
-    assert.equal(result.body.reason, 'target_mismatch');
+    assert.equal(result.body.reason, 'attribution_binding_mismatch');
     assert.equal(invocations, 0);
   });
 
@@ -210,18 +270,70 @@ describe('hostile actuator execution boundary', () => {
     const payload = envelopePayload();
     const signed = signEnvelope(fixture.envelopeSigner, payload);
 
-    const wrongAttempt = await fixture.runtime.execute(executeBody(signed, {
-      attempt_id: 'attempt:0000000000000002',
-    }));
+    const wrongAttempt = await fixture.runtime.execute(executeBody(
+      signed,
+      fixture.envelopeSigner,
+      {
+        attempt_id: 'attempt:0000000000000002',
+      },
+    ));
     assert.equal(wrongAttempt.status, 422);
     assert.equal(wrongAttempt.body.reason, 'attempt_mismatch');
 
-    const wrongAction = await fixture.runtime.execute(executeBody(signed, {
-      action: { ...ACTION, title: 'substituted action' },
-    }));
+    const wrongAction = await fixture.runtime.execute(executeBody(
+      signed,
+      fixture.envelopeSigner,
+      {
+        action: { ...ACTION, title: 'substituted action' },
+      },
+    ));
     assert.equal(wrongAction.status, 422);
     assert.equal(wrongAction.body.reason, 'action_refused');
     assert.equal(invocations, 0);
+  });
+
+  it('refuses request/provider attribution substitution before reservation or invocation', async () => {
+    let invocations = 0;
+    const fixture = await harness({
+      perform: async () => {
+        invocations += 1;
+        return {};
+      },
+    });
+    const payload = envelopePayload();
+    const envelope = signEnvelope(fixture.envelopeSigner, payload);
+    const body = executeBody(envelope, fixture.envelopeSigner);
+    body.attribution.payload.request_digest = `sha256:${'9'.repeat(64)}`;
+
+    const result = await fixture.runtime.execute(body);
+
+    assert.equal(result.status, 422);
+    assert.equal(result.body.reason, 'attribution_binding_mismatch');
+    assert.equal(invocations, 0);
+    assert.equal(fixture.store.size, 0);
+  });
+
+  it('refuses reconciliation environment substitution before provider observation', async () => {
+    const fixture = await harness();
+
+    const result = await fixture.runtime.observe({
+      action: ACTION,
+      operation: ACTION.action_type,
+      expected: {
+        operation_id: 'operation:0000000000000001',
+        caid: CAID,
+        action_digest: ACTION_DIGEST,
+        tenant_id: 'tenant:emilia',
+        provider_id: 'github',
+        provider_account_id: ACTION.owner,
+        environment: 'substituted-environment',
+        attempt_id: 'attempt:0000000000000001',
+        request_digest: `sha256:${'1'.repeat(64)}`,
+      },
+    });
+
+    assert.equal(result.status, 422);
+    assert.equal(result.body.reason, 'observation_binding_mismatch');
   });
 
   it('allows one winner under a replay race and permanently refuses replay', async () => {
@@ -234,7 +346,10 @@ describe('hostile actuator execution boundary', () => {
       },
     });
     const payload = envelopePayload();
-    const body = executeBody(signEnvelope(fixture.envelopeSigner, payload));
+    const body = executeBody(
+      signEnvelope(fixture.envelopeSigner, payload),
+      fixture.envelopeSigner,
+    );
 
     const raced = await Promise.all([
       fixture.runtime.execute(body),
@@ -263,7 +378,10 @@ describe('hostile actuator execution boundary', () => {
       },
     });
     const payload = envelopePayload();
-    const body = executeBody(signEnvelope(fixture.envelopeSigner, payload));
+    const body = executeBody(
+      signEnvelope(fixture.envelopeSigner, payload),
+      fixture.envelopeSigner,
+    );
 
     const first = await fixture.runtime.execute(body);
 

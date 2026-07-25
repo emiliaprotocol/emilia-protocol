@@ -198,6 +198,22 @@ describe('decision-plane actuator client', () => {
     assert.equal(captured.body.envelope.payload.attempt_id, ATTEMPT.attempt_id);
     assert.equal(captured.body.envelope.payload.action_digest, ACTION_DIGEST);
     assert.equal(
+      captured.body.attribution.payload.request_digest,
+      ATTEMPT.request_digest,
+    );
+    assert.equal(
+      captured.body.attribution.payload.envelope_digest,
+      digestAeb(captured.body.envelope),
+    );
+    assert.equal(
+      captured.body.attribution.payload.attempt_id,
+      ATTEMPT.attempt_id,
+    );
+    assert.equal(
+      captured.body.attribution.payload.operation_id,
+      PROPOSAL.operation_id,
+    );
+    assert.equal(
       Date.parse(captured.body.envelope.payload.expires_at)
         - Date.parse(captured.body.envelope.payload.issued_at),
       30_000,
@@ -212,6 +228,17 @@ describe('decision-plane actuator client', () => {
       signedBytes,
       envelopeSigner.publicKey,
       Buffer.from(captured.body.envelope.signature.value, 'base64url'),
+    ), true);
+    const attributionBytes = Buffer.concat([
+      Buffer.from('EP-CONSEQUENCE-PROVIDER-ATTRIBUTION-v1'),
+      Buffer.from([0]),
+      Buffer.from(canonicalize(captured.body.attribution.payload)),
+    ]);
+    assert.equal(crypto.verify(
+      null,
+      attributionBytes,
+      envelopeSigner.publicKey,
+      Buffer.from(captured.body.attribution.signature.value, 'base64url'),
     ), true);
     assert.equal(Object.hasOwn(captured.body, 'url'), false);
     assert.equal(Object.hasOwn(captured.body, 'key'), false);

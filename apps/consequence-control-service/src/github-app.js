@@ -16,6 +16,8 @@ import { digestAeb } from '@emilia-protocol/verify/aeb-adapter-contract';
 export const CONSEQUENCE_ACTUATOR_OBSERVATION_VERSION = 'EP-CONSEQUENCE-ACTUATOR-OBSERVATION-v1';
 export const CONSEQUENCE_ACTUATOR_RESPONSE_VERSION = 'EP-CONSEQUENCE-ACTUATOR-RESPONSE-v1';
 const OBSERVATION_SIGNATURE_DOMAIN = 'EMILIA-CONSEQUENCE-ACTUATOR-OBSERVATION-v1';
+const PROVIDER_ATTRIBUTION_VERSION = 'EP-CONSEQUENCE-PROVIDER-ATTRIBUTION-v1';
+const PROVIDER_ATTRIBUTION_SIGNATURE_DOMAIN = 'EP-CONSEQUENCE-PROVIDER-ATTRIBUTION-v1';
 const ACTION_KEYS = Object.freeze([
     'action_type', 'owner', 'repo', 'issue_number', 'title', 'body',
 ]);
@@ -44,7 +46,8 @@ const OBSERVATION_PAYLOAD_KEYS = Object.freeze([
 ]);
 const SIGNATURE_KEYS = Object.freeze(['algorithm', 'key_id', 'value']);
 const REQUEST_KEYS = Object.freeze([
-    'action', 'action_digest', 'attempt_id', 'idempotency_key', 'envelope',
+    'action', 'action_digest', 'attempt_id', 'attribution', 'idempotency_key',
+    'envelope',
 ]);
 const RESPONSE_KEYS = Object.freeze([
     '@version', 'ok', 'outcome', 'observation',
@@ -236,6 +239,32 @@ function observationSignatureInput(payload) {
         Buffer.from([0]),
         Buffer.from(digestAeb(payload), 'utf8'),
     ]);
+}
+function providerAttributionSignatureInput(payload) {
+    return Buffer.concat([
+        Buffer.from(PROVIDER_ATTRIBUTION_SIGNATURE_DOMAIN, 'utf8'),
+        Buffer.from([0]),
+        Buffer.from(canonicalize(payload), 'utf8'),
+    ]);
+}
+function githubIssueEffectDigest({ action, tenantId, providerId, providerAccountId, environment, targetDigest, }) {
+    return digestAeb({
+        domain: 'EP-GITHUB-ISSUE-EFFECT-v1',
+        tenant_id: tenantId,
+        provider_id: providerId,
+        provider_account_id: providerAccountId,
+        environment,
+        target_digest: targetDigest,
+        target: {
+            owner: action.owner,
+            repo: action.repo,
+            issue_number: action.issue_number,
+        },
+        effect: {
+            title: action.title,
+            body: action.body,
+        },
+    });
 }
 function validObservationPayload(value) {
     if (!exactKeys(value, OBSERVATION_PAYLOAD_KEYS))
@@ -568,10 +597,44 @@ export function createConsequenceActuatorClient({ endpoint, authorization, tenan
             keyId: signingKeyId,
             privateKey: signingKey,
         });
+        const attributionPayload = JSON.parse(canonicalize({
+            '@version': PROVIDER_ATTRIBUTION_VERSION,
+            issuer_id: issuer,
+            tenant_id: tenant,
+            provider_id: provider,
+            provider_account_id: providerAccount,
+            environment: consequenceEnvironment,
+            request_digest: requiredDigest(attempt.request_digest, 'request_digest'),
+            attempt_id: attemptId,
+            operation_id: idempotencyKey,
+            caid,
+            action_digest: actionDigest,
+            target_digest: targetDigest,
+            operation: configuredOperation,
+            envelope_digest: digestAeb(envelope),
+            effect_digest: githubIssueEffectDigest({
+                action,
+                tenantId: tenant,
+                providerId: provider,
+                providerAccountId: providerAccount,
+                environment: consequenceEnvironment,
+                targetDigest,
+            }),
+            issued_at: payload.issued_at,
+        }));
+        const attribution = JSON.parse(canonicalize({
+            payload: attributionPayload,
+            signature: {
+                algorithm: 'Ed25519',
+                key_id: signingKeyId,
+                value: crypto.sign(null, providerAttributionSignatureInput(attributionPayload), signingKey).toString('base64url'),
+            },
+        }));
         const request = {
             action,
             action_digest: actionDigest,
             attempt_id: attemptId,
+            attribution,
             idempotency_key: idempotencyKey,
             envelope,
         };

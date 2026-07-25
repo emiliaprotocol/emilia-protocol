@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: Apache-2.0
 import crypto from 'node:crypto';
 
+import { canonicalize } from '@emilia-protocol/gate';
 import {
   ConsequenceActuator,
   type ConsequenceActuatorPins,
@@ -19,9 +20,34 @@ import {
 } from './evidence.js';
 
 const REQUEST_KEYS = Object.freeze([
-  'action', 'action_digest', 'attempt_id', 'idempotency_key', 'envelope',
+  'action', 'action_digest', 'attempt_id', 'attribution', 'idempotency_key',
+  'envelope',
 ]);
 const ENVELOPE_KEYS = Object.freeze(['payload', 'signature']);
+const ATTRIBUTION_KEYS = Object.freeze(['payload', 'signature']);
+const ATTRIBUTION_PAYLOAD_KEYS = Object.freeze([
+  '@version',
+  'issuer_id',
+  'tenant_id',
+  'provider_id',
+  'provider_account_id',
+  'environment',
+  'request_digest',
+  'attempt_id',
+  'operation_id',
+  'caid',
+  'action_digest',
+  'target_digest',
+  'operation',
+  'envelope_digest',
+  'effect_digest',
+  'issued_at',
+]);
+const SIGNATURE_KEYS = Object.freeze(['algorithm', 'key_id', 'value']);
+const PROVIDER_ATTRIBUTION_VERSION =
+  'EP-CONSEQUENCE-PROVIDER-ATTRIBUTION-v1';
+const PROVIDER_ATTRIBUTION_SIGNATURE_DOMAIN =
+  'EP-CONSEQUENCE-PROVIDER-ATTRIBUTION-v1';
 const OBSERVE_KEYS = Object.freeze(['action', 'expected', 'operation']);
 const EXPECTED_KEYS = Object.freeze([
   'operation_id',
@@ -36,6 +62,7 @@ const EXPECTED_KEYS = Object.freeze([
 ]);
 const IDENTIFIER = /^[A-Za-z0-9][A-Za-z0-9._:@/-]{0,255}$/;
 const DIGEST = /^sha256:[a-f0-9]{64}$/;
+const BASE64URL = /^[A-Za-z0-9_-]+$/;
 
 type JsonObject = Record<string, any>;
 
@@ -47,6 +74,7 @@ export interface ConsequenceActuatorRuntimeConfig {
   tenantId: string;
   providerId: string;
   providerAccountId: string;
+  environment: string;
   targetDigest: string;
   envelopeIssuerId: string;
   envelopeKeyId: string;
@@ -64,6 +92,7 @@ export interface ConsequenceActuatorRuntimeConfig {
     input: {
       action: JsonObject;
       binding: Readonly<ConsequenceExecutionEnvelopePayload>;
+      attribution: Readonly<JsonObject>;
     },
   ) => unknown | Promise<unknown>>>;
   observationSigner: {
@@ -81,6 +110,7 @@ export interface ConsequenceActuatorRuntimeConfig {
   observeProvider(input: {
     action: JsonObject;
     expected: JsonObject;
+    operation: string;
   }): Promise<JsonObject>;
   authenticateRequest(authorization: unknown): boolean | Promise<boolean>;
   readiness?(): Promise<{ ok: boolean }>;
@@ -106,6 +136,123 @@ function currentTime(now: () => number): number {
   const value = Number(now());
   if (!Number.isSafeInteger(value)) throw new Error('actuator_clock_invalid');
   return value;
+}
+
+function attributionSignatureInput(payload: JsonObject): Buffer {
+  return Buffer.concat([
+    Buffer.from(PROVIDER_ATTRIBUTION_SIGNATURE_DOMAIN, 'utf8'),
+    Buffer.from([0]),
+    Buffer.from(canonicalize(payload), 'utf8'),
+  ]);
+}
+
+function githubIssueEffectDigest({
+  action,
+  attribution,
+  targetDigest,
+}: {
+  action: JsonObject;
+  attribution: JsonObject;
+  targetDigest: string;
+}) {
+  return digestAeb({
+    domain: 'EP-GITHUB-ISSUE-EFFECT-v1',
+    tenant_id: attribution.tenant_id,
+    provider_id: attribution.provider_id,
+    provider_account_id: attribution.provider_account_id,
+    environment: attribution.environment,
+    target_digest: targetDigest,
+    target: {
+      owner: action.owner,
+      repo: action.repo,
+      issue_number: action.issue_number,
+    },
+    effect: {
+      title: action.title,
+      body: action.body,
+    },
+  });
+}
+
+function normalizeAttributionPublicKey(
+  value: ConsequenceActuatorPins['envelopePublicKey'],
+): crypto.KeyObject {
+  let key: crypto.KeyObject;
+  try {
+    key = value instanceof crypto.KeyObject
+      ? value
+      : crypto.createPublicKey(value);
+  } catch {
+    throw new TypeError('consequence_actuator_runtime_config_invalid');
+  }
+  if (key.type !== 'public' || key.asymmetricKeyType !== 'ed25519') {
+    throw new TypeError('consequence_actuator_runtime_config_invalid');
+  }
+  return key;
+}
+
+function verifyProviderAttribution({
+  attribution,
+  envelope,
+  normalized,
+  config,
+  operation,
+  publicKey,
+}: {
+  attribution: unknown;
+  envelope: JsonObject;
+  normalized: ReturnType<ConsequenceActuatorRuntimeConfig['normalizeAction']>;
+  config: ConsequenceActuatorRuntimeConfig;
+  operation: string;
+  publicKey: crypto.KeyObject;
+}): JsonObject | null {
+  if (!exactKeys(attribution, ATTRIBUTION_KEYS)
+      || !exactKeys(attribution.payload, ATTRIBUTION_PAYLOAD_KEYS)
+      || !exactKeys(attribution.signature, SIGNATURE_KEYS)
+      || attribution.signature.algorithm !== 'Ed25519'
+      || attribution.signature.key_id !== config.envelopeKeyId
+      || typeof attribution.signature.value !== 'string'
+      || !BASE64URL.test(attribution.signature.value)) {
+    return null;
+  }
+  let signature: Buffer;
+  try {
+    signature = Buffer.from(attribution.signature.value, 'base64url');
+  } catch {
+    return null;
+  }
+  const payload = attribution.payload;
+  if (signature.byteLength !== 64
+      || signature.toString('base64url') !== attribution.signature.value
+      || !crypto.verify(
+        null,
+        attributionSignatureInput(payload),
+        publicKey,
+        signature,
+      )
+      || payload['@version'] !== PROVIDER_ATTRIBUTION_VERSION
+      || payload.issuer_id !== config.envelopeIssuerId
+      || payload.tenant_id !== config.tenantId
+      || payload.provider_id !== config.providerId
+      || payload.provider_account_id !== config.providerAccountId
+      || payload.environment !== config.environment
+      || !DIGEST.test(payload.request_digest)
+      || payload.attempt_id !== envelope.payload?.attempt_id
+      || payload.operation_id !== envelope.payload?.idempotency_key
+      || payload.caid !== normalized.caid
+      || payload.action_digest !== normalized.actionDigest
+      || payload.target_digest !== config.targetDigest
+      || payload.operation !== operation
+      || payload.envelope_digest !== digestAeb(envelope)
+      || payload.issued_at !== envelope.payload?.issued_at
+      || payload.effect_digest !== githubIssueEffectDigest({
+        action: normalized.action,
+        attribution: payload,
+        targetDigest: config.targetDigest,
+      })) {
+    return null;
+  }
+  return structuredClone(payload);
 }
 
 function response(status: number, body: JsonObject) {
@@ -146,6 +293,7 @@ export function createConsequenceActuatorRuntime(
   if (!config || !IDENTIFIER.test(config.tenantId)
       || !IDENTIFIER.test(config.providerId)
       || !IDENTIFIER.test(config.providerAccountId)
+      || !IDENTIFIER.test(config.environment)
       || !DIGEST.test(config.targetDigest)
       || !IDENTIFIER.test(config.envelopeIssuerId)
       || !IDENTIFIER.test(config.envelopeKeyId)
@@ -167,6 +315,9 @@ export function createConsequenceActuatorRuntime(
   }
   const now = config.now ?? Date.now;
   const operations = Object.freeze({ ...config.operations });
+  const attributionPublicKey = normalizeAttributionPublicKey(
+    config.envelopePublicKey,
+  );
 
   async function authenticate(authorization: unknown): Promise<boolean> {
     try {
@@ -203,6 +354,15 @@ export function createConsequenceActuatorRuntime(
     const operation = body.envelope.payload.operation;
     const perform = typeof operation === 'string' ? operations[operation] : null;
     if (!perform) return refused(422, 'operation_refused');
+    const attribution = verifyProviderAttribution({
+      attribution: body.attribution,
+      envelope: body.envelope,
+      normalized,
+      config,
+      operation,
+      publicKey: attributionPublicKey,
+    });
+    if (!attribution) return refused(422, 'attribution_binding_mismatch');
 
     const actuator = new ConsequenceActuator({
       testOnly: config.testOnly,
@@ -223,6 +383,7 @@ export function createConsequenceActuatorRuntime(
       perform: (binding) => perform({
         action: structuredClone(normalized.action),
         binding,
+        attribution: structuredClone(attribution),
       }),
     });
     const result = await actuator.execute({
@@ -291,7 +452,7 @@ export function createConsequenceActuatorRuntime(
         || expected.provider_id !== config.providerId
         || expected.provider_account_id !== config.providerAccountId
         || !DIGEST.test(expected.request_digest)
-        || !IDENTIFIER.test(expected.environment)
+        || expected.environment !== config.environment
         || !IDENTIFIER.test(expected.operation_id)
         || !IDENTIFIER.test(expected.attempt_id)) {
       return refused(422, 'observation_binding_mismatch');
@@ -301,6 +462,7 @@ export function createConsequenceActuatorRuntime(
       providerObservation = await config.observeProvider({
         action: structuredClone(normalized.action),
         expected: structuredClone(expected),
+        operation: body.operation,
       });
     } catch {
       return refused(503, 'provider_observation_unavailable');

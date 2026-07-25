@@ -1,13 +1,59 @@
 // SPDX-License-Identifier: Apache-2.0
 import crypto from 'node:crypto';
 
+import { canonicalize } from '@emilia-protocol/gate';
 import { digestAeb } from '@emilia-protocol/verify/aeb-adapter-contract';
 import { strictJsonGate } from '../../../packages/require-receipt/strict-json.js';
 
 const DEFAULT_BASE_URL = 'https://api.github.com';
 const API_VERSION = '2026-03-10';
 const MAX_RESPONSE_BYTES = 512 * 1024;
+const MAX_GITHUB_BODY_BYTES = 65_536;
+const MAX_ATTRIBUTION_MARKER_BYTES = 16 * 1024;
+const MAX_COMMENT_SCAN_PAGES = 10;
 const SAFE_SEGMENT = /^[A-Za-z0-9_.-]{1,100}$/;
+const IDENTIFIER = /^[A-Za-z0-9][A-Za-z0-9._:@/-]{0,255}$/;
+const DIGEST = /^sha256:[a-f0-9]{64}$/;
+const CAID =
+  /^caid:1:[a-z][a-z0-9-]*(?:\.[a-z][a-z0-9-]*)*\.[1-9][0-9]*:[a-z0-9]+(?:-[a-z0-9]+)*:[A-Za-z0-9_-]{43}$/;
+const BASE64URL = /^[A-Za-z0-9_-]+$/;
+const PROVIDER_ATTRIBUTION_VERSION =
+  'EP-CONSEQUENCE-PROVIDER-ATTRIBUTION-v1';
+const PROVIDER_RECORD_VERSION =
+  'EP-GITHUB-PROVIDER-ATTRIBUTION-RECORD-v1';
+const PROVIDER_RECORD_SIGNATURE_DOMAIN =
+  'EP-GITHUB-PROVIDER-ATTRIBUTION-RECORD-v1';
+const ATTRIBUTION_MARKER_PREFIX =
+  '<!-- emilia-provider-attribution-v1:';
+const ATTRIBUTION_MARKER_SUFFIX = ' -->';
+const ATTRIBUTION_BINDING_KEYS = Object.freeze([
+  '@version',
+  'issuer_id',
+  'tenant_id',
+  'provider_id',
+  'provider_account_id',
+  'environment',
+  'request_digest',
+  'attempt_id',
+  'operation_id',
+  'caid',
+  'action_digest',
+  'target_digest',
+  'operation',
+  'envelope_digest',
+  'effect_digest',
+  'issued_at',
+]);
+const PROVIDER_RECORD_PAYLOAD_KEYS = Object.freeze([
+  '@version',
+  'state',
+  'provider_record_id',
+  'recorded_at',
+  'binding',
+]);
+const SIGNATURE_KEYS = Object.freeze(['algorithm', 'key_id', 'value']);
+const SIGNED_RECORD_KEYS = Object.freeze(['@version', 'payload', 'signature']);
+const DEFINITIVE_NOT_COMMITTED_STATUSES = new Set([401, 403, 404, 409, 422]);
 const EXACT_ACTION_KEYS = Object.freeze([
   'action_type', 'owner', 'repo', 'issue_number', 'title', 'body',
 ]);
@@ -67,7 +113,7 @@ function cancelBody(body: any) {
   try { Promise.resolve(body?.cancel?.()).catch(() => {}); } catch { /* best effort */ }
 }
 
-async function boundedJson(response: any): Promise<JsonObject> {
+async function boundedJson(response: any): Promise<any> {
   const announced = Number(response?.headers?.get?.('content-length'));
   if (Number.isFinite(announced) && announced > MAX_RESPONSE_BYTES) {
     cancelBody(response?.body);
@@ -99,9 +145,7 @@ async function boundedJson(response: any): Promise<JsonObject> {
     throw new Error('github_response_invalid');
   }
   if (!strictJsonGate(text).ok) throw new Error('github_response_invalid');
-  const parsed = JSON.parse(text);
-  if (!plainObject(parsed)) throw new Error('github_response_invalid');
-  return parsed;
+  return JSON.parse(text);
 }
 
 function createAppJwt(appId: string, privateKey: crypto.KeyObject, nowMs: number): string {
@@ -220,11 +264,210 @@ function requireAction(
   return structuredClone(value);
 }
 
+function normalizeAttributionPrivateKey(value: unknown): crypto.KeyObject {
+  let key: crypto.KeyObject;
+  try {
+    key = value instanceof crypto.KeyObject
+      ? value
+      : crypto.createPrivateKey(value as crypto.PrivateKeyInput);
+  } catch {
+    throw new TypeError('github_attribution_private_key_invalid');
+  }
+  if (key.type !== 'private' || key.asymmetricKeyType !== 'ed25519') {
+    throw new TypeError('github_attribution_private_key_invalid');
+  }
+  return key;
+}
+
+function canonicalInstant(value: unknown): boolean {
+  if (typeof value !== 'string') return false;
+  const timestamp = Date.parse(value);
+  return Number.isSafeInteger(timestamp)
+    && timestamp >= 0
+    && new Date(timestamp).toISOString() === value;
+}
+
+function githubIssueEffectDigest({
+  action,
+  binding,
+  target,
+  targetDigest,
+}: {
+  action: JsonObject;
+  binding: JsonObject;
+  target: { owner: string; repo: string; issueNumber: number };
+  targetDigest: string;
+}) {
+  return digestAeb({
+    domain: 'EP-GITHUB-ISSUE-EFFECT-v1',
+    tenant_id: binding.tenant_id,
+    provider_id: binding.provider_id,
+    provider_account_id: binding.provider_account_id,
+    environment: binding.environment,
+    target_digest: targetDigest,
+    target: {
+      owner: target.owner,
+      repo: target.repo,
+      issue_number: target.issueNumber,
+    },
+    effect: {
+      title: action.title,
+      body: action.body,
+    },
+  });
+}
+
+function requireAttributionBinding(
+  value: unknown,
+  {
+    action,
+    target,
+    targetDigest,
+    issuerId,
+  }: {
+    action: JsonObject;
+    target: { owner: string; repo: string; issueNumber: number };
+    targetDigest: string;
+    issuerId: string;
+  },
+): JsonObject {
+  if (!exactKeys(value, ATTRIBUTION_BINDING_KEYS)
+      || value['@version'] !== PROVIDER_ATTRIBUTION_VERSION
+      || value.issuer_id !== issuerId
+      || !IDENTIFIER.test(value.tenant_id)
+      || value.provider_id !== 'github'
+      || !IDENTIFIER.test(value.provider_account_id)
+      || value.provider_account_id !== target.owner
+      || !IDENTIFIER.test(value.environment)
+      || !DIGEST.test(value.request_digest)
+      || !IDENTIFIER.test(value.attempt_id)
+      || !IDENTIFIER.test(value.operation_id)
+      || !CAID.test(value.caid)
+      || !DIGEST.test(value.action_digest)
+      || value.action_digest !== digestAeb(action)
+      || value.target_digest !== targetDigest
+      || !IDENTIFIER.test(value.operation)
+      || !DIGEST.test(value.envelope_digest)
+      || !DIGEST.test(value.effect_digest)
+      || !canonicalInstant(value.issued_at)
+      || value.effect_digest !== githubIssueEffectDigest({
+        action,
+        binding: value,
+        target,
+        targetDigest,
+      })) {
+    throw new Error('github_issue_attribution_refused');
+  }
+  return structuredClone(value);
+}
+
+function recordSignatureInput(payload: JsonObject): Buffer {
+  return Buffer.concat([
+    Buffer.from(PROVIDER_RECORD_SIGNATURE_DOMAIN, 'utf8'),
+    Buffer.from([0]),
+    Buffer.from(canonicalize(payload), 'utf8'),
+  ]);
+}
+
+function markerForRecord(record: JsonObject): string {
+  const encoded = Buffer.from(canonicalize(record), 'utf8').toString('base64url');
+  if (encoded.length > MAX_ATTRIBUTION_MARKER_BYTES) {
+    throw new Error('github_attribution_marker_too_large');
+  }
+  return `${ATTRIBUTION_MARKER_PREFIX}${encoded}${ATTRIBUTION_MARKER_SUFFIX}`;
+}
+
+function commentForRecord(record: JsonObject): string {
+  return [
+    'EMILIA consequence actuator provider-attribution record.',
+    '',
+    markerForRecord(record),
+  ].join('\n');
+}
+
+function parseRecordMarkers(
+  value: unknown,
+  {
+    keyId,
+    publicKey,
+  }: {
+    keyId: string;
+    publicKey: crypto.KeyObject;
+  },
+): JsonObject[] {
+  if (typeof value !== 'string' || value.length > MAX_GITHUB_BODY_BYTES * 2) {
+    return [];
+  }
+  const records: JsonObject[] = [];
+  const pattern =
+    /<!-- emilia-provider-attribution-v1:([A-Za-z0-9_-]{1,16384}) -->/g;
+  for (const match of value.matchAll(pattern)) {
+    const encoded = match[1];
+    let decoded: string;
+    try {
+      const bytes = Buffer.from(encoded, 'base64url');
+      if (bytes.toString('base64url') !== encoded) continue;
+      decoded = new TextDecoder('utf-8', { fatal: true }).decode(bytes);
+      if (!strictJsonGate(decoded).ok) continue;
+    } catch {
+      continue;
+    }
+    let candidate: JsonObject;
+    try {
+      candidate = JSON.parse(decoded);
+      if (canonicalize(candidate) !== decoded) continue;
+    } catch {
+      continue;
+    }
+    if (!exactKeys(candidate, SIGNED_RECORD_KEYS)
+        || candidate['@version'] !== PROVIDER_RECORD_VERSION
+        || !exactKeys(candidate.payload, PROVIDER_RECORD_PAYLOAD_KEYS)
+        || candidate.payload['@version'] !== PROVIDER_RECORD_VERSION
+        || !['PREPARED', 'COMMITTED', 'NOT_COMMITTED']
+          .includes(candidate.payload.state)
+        || (candidate.payload.provider_record_id !== null
+          && !IDENTIFIER.test(candidate.payload.provider_record_id))
+        || ((candidate.payload.state === 'PREPARED')
+          !== (candidate.payload.provider_record_id === null))
+        || !canonicalInstant(candidate.payload.recorded_at)
+        || !plainObject(candidate.payload.binding)
+        || !exactKeys(candidate.signature, SIGNATURE_KEYS)
+        || candidate.signature.algorithm !== 'Ed25519'
+        || candidate.signature.key_id !== keyId
+        || typeof candidate.signature.value !== 'string'
+        || !BASE64URL.test(candidate.signature.value)) {
+      continue;
+    }
+    let signature: Buffer;
+    try {
+      signature = Buffer.from(candidate.signature.value, 'base64url');
+    } catch {
+      continue;
+    }
+    if (signature.byteLength !== 64
+        || signature.toString('base64url') !== candidate.signature.value
+        || !crypto.verify(
+          null,
+          recordSignatureInput(candidate.payload),
+          publicKey,
+          signature,
+        )) {
+      continue;
+    }
+    records.push(structuredClone(candidate));
+  }
+  return records;
+}
+
 export function createGitHubIssueEffectProvider({
   owner,
   repo,
   issueNumber,
   tokenProvider,
+  attributionIssuerId,
+  attributionKeyId,
+  attributionPrivateKey,
+  targetDigest,
   forceIndeterminateAfterCommit = false,
   baseUrl,
   fetchImpl = globalThis.fetch,
@@ -235,20 +478,81 @@ export function createGitHubIssueEffectProvider({
     repo: requiredSegment(repo, 'github_repo'),
     issueNumber: requiredInteger(issueNumber, 'github_issue_number'),
   });
+  const issuerId = requiredText(
+    attributionIssuerId,
+    'github_attribution_issuer_id',
+    256,
+  );
+  const keyId = requiredText(
+    attributionKeyId,
+    'github_attribution_key_id',
+    256,
+  );
+  if (!IDENTIFIER.test(issuerId) || !IDENTIFIER.test(keyId)
+      || typeof targetDigest !== 'string' || !DIGEST.test(targetDigest)) {
+    throw new TypeError('github_issue_provider_config_invalid');
+  }
+  const signingKey = normalizeAttributionPrivateKey(attributionPrivateKey);
+  const verificationKey = crypto.createPublicKey(signingKey);
   if (!tokenProvider || typeof tokenProvider.getToken !== 'function'
       || typeof fetchImpl !== 'function' || typeof now !== 'function'
       || typeof forceIndeterminateAfterCommit !== 'boolean') {
     throw new TypeError('github_issue_provider_config_invalid');
   }
   const apiBase = normalizedBaseUrl(baseUrl);
-  const endpoint = `${apiBase}/repos/${encodeURIComponent(target.owner)}/${encodeURIComponent(target.repo)}/issues/${target.issueNumber}`;
+  const repositoryEndpoint =
+    `${apiBase}/repos/${encodeURIComponent(target.owner)}/${encodeURIComponent(target.repo)}`;
+  const issueEndpoint = `${repositoryEndpoint}/issues/${target.issueNumber}`;
+  const commentsEndpoint = `${issueEndpoint}/comments`;
 
-  async function request(method: 'GET' | 'PATCH', action: JsonObject, attemptId?: string) {
+  function outcomeError(code: string) {
+    const error: any = new Error(code);
+    error.code = code;
+    return error;
+  }
+
+  function signRecord(
+    state: 'PREPARED' | 'COMMITTED' | 'NOT_COMMITTED',
+    binding: JsonObject,
+    providerRecordId: string | null,
+  ) {
+    const timestamp = Number(now());
+    if (!Number.isSafeInteger(timestamp) || timestamp < 0) {
+      throw new Error('github_attribution_clock_invalid');
+    }
+    const payload = JSON.parse(canonicalize({
+      '@version': PROVIDER_RECORD_VERSION,
+      state,
+      provider_record_id: providerRecordId,
+      recorded_at: new Date(timestamp).toISOString(),
+      binding,
+    }));
+    return JSON.parse(canonicalize({
+      '@version': PROVIDER_RECORD_VERSION,
+      payload,
+      signature: {
+        algorithm: 'Ed25519',
+        key_id: keyId,
+        value: crypto.sign(
+          null,
+          recordSignatureInput(payload),
+          signingKey,
+        ).toString('base64url'),
+      },
+    }));
+  }
+
+  async function request(
+    method: 'GET' | 'POST' | 'PATCH',
+    endpoint: string,
+    body?: JsonObject,
+    attemptId?: string,
+  ) {
     const token = await tokenProvider.getToken();
     const response = await fetchImpl(endpoint, {
       method,
       headers: githubHeaders(token, attemptId ? { 'X-EMILIA-Attempt-ID': attemptId } : {}),
-      ...(method === 'PATCH' ? { body: JSON.stringify({ title: action.title, body: action.body }) } : {}),
+      ...(body ? { body: JSON.stringify(body) } : {}),
       redirect: 'error',
       signal: AbortSignal.timeout(15_000),
     });
@@ -256,68 +560,268 @@ export function createGitHubIssueEffectProvider({
       cancelBody(response?.body);
       throw new Error('github_redirect_refused');
     }
+    return response;
+  }
+
+  async function confirmedTerminalComment(
+    commentId: number,
+    record: JsonObject,
+    attemptId: string,
+  ): Promise<boolean> {
+    try {
+      const response = await request(
+        'PATCH',
+        `${repositoryEndpoint}/issues/comments/${commentId}`,
+        { body: commentForRecord(record) },
+        attemptId,
+      );
+      if (response?.status !== 200) {
+        cancelBody(response?.body);
+        return false;
+      }
+      const body = await boundedJson(response);
+      return plainObject(body)
+        && body.id === commentId
+        && body.body === commentForRecord(record);
+    } catch {
+      return false;
+    }
+  }
+
+  function bindingMatchesExpected(
+    record: JsonObject,
+    expected: JsonObject,
+    action: JsonObject,
+    operation: string,
+  ): boolean {
+    let binding: JsonObject;
+    try {
+      binding = requireAttributionBinding(record.payload.binding, {
+        action,
+        target,
+        targetDigest,
+        issuerId,
+      });
+    } catch {
+      return false;
+    }
+    return binding.tenant_id === expected.tenant_id
+      && binding.provider_id === expected.provider_id
+      && binding.provider_account_id === expected.provider_account_id
+      && binding.environment === expected.environment
+      && binding.request_digest === expected.request_digest
+      && binding.attempt_id === expected.attempt_id
+      && binding.operation_id === expected.operation_id
+      && binding.caid === expected.caid
+      && binding.action_digest === expected.action_digest
+      && binding.operation === operation;
+  }
+
+  async function readIssue(): Promise<JsonObject> {
+    const response = await request('GET', issueEndpoint);
     if (response?.status !== 200) {
       cancelBody(response?.body);
-      throw new Error(method === 'PATCH'
-        ? 'github_issue_outcome_indeterminate' : 'github_issue_observation_failed');
+      throw new Error('github_issue_observation_failed');
     }
-    return boundedJson(response);
+    const body = await boundedJson(response);
+    if (!plainObject(body)) throw new Error('github_issue_observation_failed');
+    return body;
+  }
+
+  async function readAttemptRecords(
+    expected: JsonObject,
+    action: JsonObject,
+    operation: string,
+  ): Promise<Array<{ record: JsonObject; commentId: number }>> {
+    const records: Array<{ record: JsonObject; commentId: number }> = [];
+    for (let page = 1; page <= MAX_COMMENT_SCAN_PAGES; page += 1) {
+      const response = await request(
+        'GET',
+        `${commentsEndpoint}?per_page=100&sort=created&direction=desc&page=${page}`,
+      );
+      if (response?.status !== 200) {
+        cancelBody(response?.body);
+        throw new Error('github_comment_observation_failed');
+      }
+      const body = await boundedJson(response);
+      if (!Array.isArray(body)) throw new Error('github_comment_observation_failed');
+      for (const comment of body) {
+        if (!plainObject(comment)
+            || !Number.isSafeInteger(comment.id)
+            || comment.id < 1) continue;
+        for (const record of parseRecordMarkers(comment.body, {
+          keyId,
+          publicKey: verificationKey,
+        })) {
+          if (!bindingMatchesExpected(record, expected, action, operation)) continue;
+          const recordId = record.payload.provider_record_id;
+          if (recordId !== null
+              && recordId !== `github:issue-comment:${comment.id}`) continue;
+          records.push({ record, commentId: comment.id });
+        }
+      }
+      if (body.length < 100) break;
+    }
+    return records;
   }
 
   return Object.freeze({
     async effect({ action: candidate, attempt }: any = {}) {
       const action = requireAction(candidate, target);
-      if (!plainObject(attempt) || typeof attempt.attempt_id !== 'string') {
-        throw new Error('github_issue_attempt_refused');
+      const binding = requireAttributionBinding(attempt, {
+        action,
+        target,
+        targetDigest,
+        issuerId,
+      });
+      const prepared = signRecord('PREPARED', binding, null);
+      let commentId: number;
+      try {
+        const response = await request(
+          'POST',
+          commentsEndpoint,
+          { body: commentForRecord(prepared) },
+          binding.attempt_id,
+        );
+        if (response?.status !== 201) {
+          cancelBody(response?.body);
+          throw outcomeError('github_issue_outcome_indeterminate');
+        }
+        const body = await boundedJson(response);
+        if (!plainObject(body)
+            || !Number.isSafeInteger(body.id)
+            || body.id < 1
+            || body.body !== commentForRecord(prepared)) {
+          throw outcomeError('github_issue_outcome_indeterminate');
+        }
+        commentId = body.id;
+      } catch (error: any) {
+        if (error?.code === 'github_issue_outcome_indeterminate') throw error;
+        if (['github_redirect_refused', 'github_response_too_large',
+          'github_response_invalid'].includes(error?.message)) {
+          throw error;
+        }
+        throw outcomeError('github_issue_outcome_indeterminate');
       }
-      const result = await request('PATCH', action, attempt.attempt_id);
+
+      const providerRecordId = `github:issue-comment:${commentId}`;
+      let response: any;
+      try {
+        response = await request(
+          'PATCH',
+          issueEndpoint,
+          { title: action.title, body: action.body },
+          binding.attempt_id,
+        );
+      } catch {
+        throw outcomeError('github_issue_outcome_indeterminate');
+      }
+      if (response?.status !== 200) {
+        const status = response?.status;
+        cancelBody(response?.body);
+        if (DEFINITIVE_NOT_COMMITTED_STATUSES.has(status)) {
+          const notCommittedRecord = signRecord(
+            'NOT_COMMITTED',
+            binding,
+            providerRecordId,
+          );
+          if (await confirmedTerminalComment(
+            commentId,
+            notCommittedRecord,
+            binding.attempt_id,
+          )) {
+            throw outcomeError('github_issue_not_committed');
+          }
+        }
+        throw outcomeError('github_issue_outcome_indeterminate');
+      }
+      const result = await boundedJson(response);
       if (result.number !== target.issueNumber
           || result.title !== action.title
           || (result.body ?? '') !== action.body) {
-        throw new Error('github_issue_outcome_indeterminate');
+        throw outcomeError('github_issue_outcome_indeterminate');
       }
+      const committedRecord = signRecord(
+        'COMMITTED',
+        binding,
+        providerRecordId,
+      );
+      await confirmedTerminalComment(
+        commentId,
+        committedRecord,
+        binding.attempt_id,
+      );
       if (forceIndeterminateAfterCommit) {
-        const error: any = new Error('github_issue_outcome_indeterminate');
-        error.code = 'github_issue_outcome_indeterminate';
-        throw error;
+        throw outcomeError('github_issue_outcome_indeterminate');
       }
       return {
         provider_status: 200,
         provider_reference: `github:issue:${target.owner}/${target.repo}#${target.issueNumber}`,
+        provider_effect_digest: binding.effect_digest,
+        provider_record_id: providerRecordId,
       };
     },
 
-    async verifyProviderEvidence({ evidence, expected, action: candidate }: any = {}) {
+    async verifyProviderEvidence({
+      evidence,
+      expected,
+      action: candidate,
+      operation,
+    }: any = {}) {
       const action = requireAction(candidate, target);
       if (!exactKeys(evidence, ['kind']) || evidence.kind !== 'github-issue-observation-v1'
-          || !plainObject(expected)) {
+          || !plainObject(expected)
+          || typeof operation !== 'string'
+          || !IDENTIFIER.test(operation)) {
         return { valid: false, reason: 'provider_evidence_shape_invalid' };
       }
       let observed: JsonObject;
       try {
-        observed = await request('GET', action);
+        observed = await readIssue();
       } catch {
         return { valid: false, reason: 'provider_evidence_unavailable' };
       }
-      const stateMatchesRequestedEffect = observed.number === target.issueNumber
-        && observed.title === action.title
-        && (observed.body ?? '') === action.body;
+      let commentRecords: Array<{ record: JsonObject; commentId: number }> = [];
+      let commentsAvailable = true;
+      try {
+        commentRecords = await readAttemptRecords(expected, action, operation);
+      } catch {
+        commentsAvailable = false;
+      }
+      const states = new Set(commentRecords.map(({ record }) => record.payload.state));
+      const conflictingTerminalRecords =
+        states.has('COMMITTED') && states.has('NOT_COMMITTED');
+      let outcome: 'COMMITTED' | 'NOT_COMMITTED' | 'ESCALATED';
+      let reason: string;
+      if (conflictingTerminalRecords) {
+        outcome = 'ESCALATED';
+        reason = 'github_attempt_attribution_conflict';
+      } else if (states.has('COMMITTED')) {
+        outcome = 'COMMITTED';
+        reason = 'github_exact_attempt_committed';
+      } else if (states.has('NOT_COMMITTED')) {
+        outcome = 'NOT_COMMITTED';
+        reason = 'github_provider_refused_before_effect';
+      } else if (states.has('PREPARED')) {
+        outcome = 'ESCALATED';
+        reason = 'github_attempt_outcome_indeterminate';
+      } else {
+        outcome = 'ESCALATED';
+        reason = commentsAvailable
+          ? 'github_attempt_attribution_unavailable'
+          : 'github_attempt_record_unavailable';
+      }
       const observedAt = new Date(Number(now())).toISOString();
-      // GitHub accepts the attempt ID as a request header but does not persist
-      // it as immutable issue evidence. An authenticated GET therefore proves
-      // current state, not which attempt caused that state. Reconciliation must
-      // remain fail-closed even when the requested bytes currently match.
-      const outcome = 'ESCALATED';
-      const reason = stateMatchesRequestedEffect
-        ? 'github_attempt_attribution_unavailable'
-        : 'github_issue_state_mismatch';
       const evidenceDigest = digestAeb({
         provider: 'github',
         repository: `${target.owner}/${target.repo}`,
         issue_number: target.issueNumber,
         title: observed.title ?? null,
         body: observed.body ?? null,
-        state_matches_requested_effect: stateMatchesRequestedEffect,
+        attempt_record_digests: commentRecords
+          .map(({ record }) => digestAeb(record))
+          .sort(),
+        comments_available: commentsAvailable,
         outcome,
         reason,
         observed_at: observedAt,

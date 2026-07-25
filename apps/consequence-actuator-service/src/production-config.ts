@@ -278,6 +278,10 @@ export async function createProductionConsequenceActuatorConfig({
     repo,
     issueNumber,
     tokenProvider,
+    attributionIssuerId: envelopeIssuerId,
+    attributionKeyId: observationKeyId,
+    attributionPrivateKey: observationPrivateKey,
+    targetDigest: configuredTargetDigest,
     fetchImpl,
   });
   const indeterminateProvider = createGitHubIssueEffectProvider({
@@ -285,22 +289,19 @@ export async function createProductionConsequenceActuatorConfig({
     repo,
     issueNumber,
     tokenProvider,
+    attributionIssuerId: envelopeIssuerId,
+    attributionKeyId: observationKeyId,
+    attributionPrivateKey: observationPrivateKey,
+    targetDigest: configuredTargetDigest,
     forceIndeterminateAfterCommit: true,
     fetchImpl,
   });
   const perform = (provider: any) => async ({
     action,
-    binding,
+    attribution,
   }: any) => provider.effect({
     action,
-    attempt: {
-      tenant_id: binding.tenant_id,
-      provider_id: 'github',
-      provider_account_id: binding.provider_account_id,
-      environment: 'production-smoke',
-      attempt_id: binding.attempt_id,
-      request_digest: binding.action_digest,
-    },
+    attempt: attribution,
   });
 
   return {
@@ -308,6 +309,7 @@ export async function createProductionConsequenceActuatorConfig({
     tenantId,
     providerId: 'github',
     providerAccountId,
+    environment: 'production-smoke',
     targetDigest: configuredTargetDigest,
     envelopeIssuerId,
     envelopeKeyId,
@@ -330,21 +332,24 @@ export async function createProductionConsequenceActuatorConfig({
       privateKey: observationPrivateKey,
       keyId: observationKeyId,
     },
-    observeProvider: async ({ action, expected }: any) => {
+    observeProvider: async ({ action, expected, operation }: any) => {
       const observation = await normalProvider.verifyProviderEvidence({
         evidence: { kind: 'github-issue-observation-v1' },
         expected,
         action,
+        operation,
       });
       if (observation?.valid !== true
-          || observation.outcome !== 'ESCALATED'
+          || typeof observation.outcome !== 'string'
+          || !['COMMITTED', 'NOT_COMMITTED', 'ESCALATED']
+            .includes(observation.outcome)
           || typeof observation.reason !== 'string'
           || typeof observation.observed_at !== 'string'
           || typeof observation.evidence_digest !== 'string') {
         throw new Error('github_provider_observation_refused');
       }
       return {
-        outcome: 'ESCALATED',
+        outcome: observation.outcome,
         reason: observation.reason,
         observed_at: observation.observed_at,
         provider_observation_digest: observation.evidence_digest,
