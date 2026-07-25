@@ -101,6 +101,7 @@ class StableBootstrapTests(unittest.TestCase):
                     f"STABLE_BOOTSTRAP_PROVENANCE_SHA256={provenance_hash}",
                     "STABLE_BOOTSTRAP_ACTUATOR_SERVICE_ACCOUNT=bootstrap-actuator",
                     "STABLE_BOOTSTRAP_DECISION_SERVICE_ACCOUNT=bootstrap-decision",
+                    "PROJECT_PARENT=organizations/987654321",
                 ]
             )
             + "\n",
@@ -109,6 +110,25 @@ class StableBootstrapTests(unittest.TestCase):
         self.output = self.root / "stable.json"
         self.state_path = self.root / "state.json"
         self.log_path = self.root / "gcloud.log"
+        self.credentials = self.root / "gha-creds.json"
+        self.credentials.write_text(
+            json.dumps(
+                {
+                    "type": "external_account",
+                    "audience": (
+                        "//iam.googleapis.com/projects/123456789/locations/"
+                        "global/workloadIdentityPools/emilia-prod/providers/"
+                        "github-prod"
+                    ),
+                    "service_account_impersonation_url": (
+                        "https://iamcredentials.googleapis.com/v1/projects/-/"
+                        "serviceAccounts/emilia-deployer@test-project."
+                        "iam.gserviceaccount.com:generateAccessToken"
+                    ),
+                }
+            ),
+            encoding="utf-8",
+        )
         self.state_path.write_text(
             json.dumps(
                 {
@@ -142,16 +162,125 @@ state_path = pathlib.Path(os.environ["FAKE_STATE"])
 state = json.loads(state_path.read_text())
 with pathlib.Path(os.environ["FAKE_LOG"]).open("a") as handle:
     handle.write(json.dumps(args) + "\\n")
+if args[:3] == ["config", "get-value", "account"]:
+    print("emilia-deployer@test-project.iam.gserviceaccount.com")
+    raise SystemExit(0)
 if args[:2] == ["services", "enable"]:
     raise SystemExit(0)
+if args[:2] == ["services", "describe"]:
+    print("ENABLED")
+    raise SystemExit(0)
 if args[:2] == ["projects", "describe"]:
-    print("123456789012")
+    if "--format=json" in args:
+        print(json.dumps({
+            "projectId": "test-project",
+            "projectNumber": "123456789012",
+            "labels": {"emilia-purpose": "consequence-control"},
+            "parent": {"type": "organization", "id": "987654321"},
+        }))
+    else:
+        print("123456789012")
     raise SystemExit(0)
 if args[:2] == ["projects", "get-ancestors"]:
     print(os.environ.get(
         "FAKE_ANCESTRY_JSON",
-        '[{"type":"project","id":"test-project"}]',
+        '[{"type":"project","id":"test-project"},'
+        '{"type":"organization","id":"987654321"}]',
     ))
+    raise SystemExit(0)
+if args[:2] == ["projects", "get-iam-policy"]:
+    print(json.dumps({
+        "version": 3,
+        "bindings": [
+            {
+                "role": (
+                    "projects/test-project/roles/"
+                    "emiliaConsequenceDeployer"
+                ),
+                "members": [
+                    "serviceAccount:emilia-deployer@"
+                    "test-project.iam.gserviceaccount.com"
+                ],
+            },
+            {
+                "role": "roles/run.invoker",
+                "members": [
+                    "serviceAccount:emilia-decision@"
+                    "test-project.iam.gserviceaccount.com"
+                ],
+                "condition": {
+                    "title": "emilia-actuator-invoker",
+                    "description": (
+                        "Decision workload may invoke only the actuator"
+                    ),
+                    "expression": (
+                        "resource.name == "
+                        "'//run.googleapis.com/projects/test-project/"
+                        "locations/us-central1/services/"
+                        "emilia-consequence-actuator'"
+                    ),
+                },
+            },
+        ],
+    }))
+    raise SystemExit(0)
+if args[:3] == ["iam", "roles", "describe"]:
+    print(json.dumps({
+        "includedPermissions": [
+            "resourcemanager.projects.get",
+            "run.services.get",
+            "run.services.update",
+        ],
+    }))
+    raise SystemExit(0)
+if args[:4] == [
+    "iam", "workload-identity-pools", "providers", "describe"
+]:
+    subject = os.environ.get(
+        "FAKE_WIF_SUBJECT",
+        (
+            "repo:emiliaprotocol/emilia-protocol:"
+            "environment:consequence-control-production"
+        ),
+    )
+    if os.environ.get("FAKE_WIF_RAW_ID_CONDITION") == "true":
+        mapping = {"google.subject": "assertion.sub"}
+        condition = "&&".join([
+            f"assertion.sub=='{subject}'",
+            "assertion.repository_id=='123456'",
+            "assertion.repository_owner_id=='654321'",
+            "assertion.ref=='refs/heads/main'",
+            (
+                "assertion.workflow_ref=='emiliaprotocol/emilia-protocol/"
+                ".github/workflows/consequence-control-deploy.yml@"
+                "refs/heads/main'"
+            ),
+        ])
+    else:
+        mapping = {
+            "google.subject": "assertion.sub",
+            "attribute.repository_id": "assertion.repository_id",
+            "attribute.repository_owner_id": "assertion.repository_owner_id",
+            "attribute.ref": "assertion.ref",
+            "attribute.workflow_ref": "assertion.workflow_ref",
+        }
+        condition = "&&".join([
+            f"assertion.sub=='{subject}'",
+            "attribute.repository_id=='123456'",
+            "attribute.repository_owner_id=='654321'",
+            "attribute.ref=='refs/heads/main'",
+            (
+                "attribute.workflow_ref=='emiliaprotocol/emilia-protocol/"
+                ".github/workflows/consequence-control-deploy.yml@"
+                "refs/heads/main'"
+            ),
+        ])
+    print(json.dumps({
+        "state": "ACTIVE",
+        "oidc": {"issuerUri": "https://token.actions.githubusercontent.com"},
+        "attributeMapping": mapping,
+        "attributeCondition": condition,
+    }))
     raise SystemExit(0)
 if args[:3] == ["iam", "service-accounts", "describe"]:
     account = args[3].split("@", 1)[0]
@@ -161,6 +290,57 @@ if args[:3] == ["iam", "service-accounts", "create"]:
     if account not in state["service_accounts"]:
         state["service_accounts"].append(account)
         state_path.write_text(json.dumps(state))
+    raise SystemExit(0)
+if args[:3] == ["iam", "service-accounts", "get-iam-policy"]:
+    account = args[3]
+    if account.startswith("emilia-deployer@"):
+        subject = os.environ.get(
+            "FAKE_WIF_SUBJECT",
+            (
+                "repo:emiliaprotocol/emilia-protocol:"
+                "environment:consequence-control-production"
+            ),
+        )
+        member = (
+            "principal://iam.googleapis.com/projects/123456789/locations/"
+            "global/workloadIdentityPools/emilia-prod/subject/" + subject
+        )
+        print(json.dumps({
+            "bindings": [{
+                "role": "roles/iam.workloadIdentityUser",
+                "members": [member],
+            }],
+        }))
+    else:
+        print(json.dumps({
+            "bindings": [{
+                "role": "roles/iam.serviceAccountUser",
+                "members": [
+                    "serviceAccount:emilia-deployer@"
+                    "test-project.iam.gserviceaccount.com"
+                ],
+            }],
+        }))
+    raise SystemExit(0)
+if args[:2] == ["secrets", "get-iam-policy"]:
+    secret = args[2]
+    members = []
+    if secret.startswith("actuator-"):
+        members.append(
+            "serviceAccount:emilia-actuator@"
+            "test-project.iam.gserviceaccount.com"
+        )
+    if secret.startswith("decision-") or secret == "actuator-token":
+        members.append(
+            "serviceAccount:emilia-decision@"
+            "test-project.iam.gserviceaccount.com"
+        )
+    print(json.dumps({
+        "bindings": [{
+            "role": "roles/secretmanager.secretAccessor",
+            "members": members,
+        }],
+    }))
     raise SystemExit(0)
 if args[:2] == ["asset", "analyze-iam-policy"]:
     print(json.dumps({
@@ -193,6 +373,9 @@ if args[:3] == ["run", "services", "update-traffic"]:
     service = args[3]
     state["promoted"].append(service)
     state_path.write_text(json.dumps(state))
+    raise SystemExit(0)
+if args[:3] == ["run", "services", "get-iam-policy"]:
+    print(json.dumps({"bindings": []}))
     raise SystemExit(0)
 if args[:3] == ["run", "revisions", "describe"]:
     revision = args[3]
@@ -317,6 +500,31 @@ else:
                 "serviceAccount:emilia-deployer@"
                 "test-project.iam.gserviceaccount.com"
             ),
+            "GITHUB_ACTIONS": "true",
+            "GITHUB_REPOSITORY": "emiliaprotocol/emilia-protocol",
+            "GITHUB_REPOSITORY_ID": "123456",
+            "GITHUB_REPOSITORY_OWNER_ID": "654321",
+            "GITHUB_REF": "refs/heads/main",
+            "GITHUB_SHA": "a" * 40,
+            "GITHUB_WORKFLOW_REF": (
+                "emiliaprotocol/emilia-protocol/.github/workflows/"
+                "consequence-control-deploy.yml@refs/heads/main"
+            ),
+            "EMILIA_GITHUB_WORKFLOW_SHA": "a" * 40,
+            "GITHUB_EVENT_NAME": "workflow_dispatch",
+            "ACTIONS_ID_TOKEN_REQUEST_URL": "https://example.invalid",
+            "ACTIONS_ID_TOKEN_REQUEST_TOKEN": "test",
+            "GOOGLE_GHA_CREDS_PATH": str(self.credentials),
+            "EMILIA_DEPLOY_ENVIRONMENT": "consequence-control-production",
+            "EMILIA_DEPLOY_WIF_PROVIDER": (
+                "projects/123456789/locations/global/"
+                "workloadIdentityPools/emilia-prod/providers/github-prod"
+            ),
+            "DEPLOYMENT_CONFIG_SHA256": hashlib.sha256(
+                self.config.read_bytes()
+            ).hexdigest(),
+            "CANARY_EVIDENCE_PUBLIC_KEY_SHA256": "0" * 64,
+            "EMILIA_IAM_ANALYZER_SCOPE": "organizations/987654321",
             **extra,
         }
 
@@ -374,7 +582,7 @@ else:
         self.assertEqual(len(analyzer_lines), 2)
         self.assertEqual(
             {line.split("--scope=", 1)[1].split()[0] for line in analyzer_lines},
-            {r"\<resolved-after-ancestry-proof\>"},
+            {"organizations/987654321"},
         )
         self.assertEqual(result.stdout.count("run services update-traffic"), 2)
         self.assertIn("httpGet.path=/v1/ready", result.stdout)
@@ -383,6 +591,77 @@ else:
             result.stdout.index("curl"),
             result.stdout.index("run services update-traffic"),
         )
+        self.assertLess(
+            result.stdout.index("--verify-protected-identity"),
+            result.stdout.index("gcloud run services list"),
+        )
+
+    def test_active_workflow_identity_mismatch_refuses_before_bootstrap(self) -> None:
+        result = subprocess.run(
+            [str(BOOTSTRAP), *self.arguments(), "--apply"],
+            cwd=LANE,
+            check=False,
+            text=True,
+            capture_output=True,
+            env=self.environment(
+                DEPLOYMENT_APPROVED="true",
+                GITHUB_REF="refs/heads/hostile",
+            ),
+        )
+        self.assertNotEqual(result.returncode, 0)
+        self.assertIn("requires refs/heads/main", result.stderr)
+        if self.log_path.exists():
+            calls = [
+                json.loads(line)
+                for line in self.log_path.read_text(encoding="utf-8").splitlines()
+            ]
+            self.assertFalse(any(call[:2] == ["run", "deploy"] for call in calls))
+            self.assertFalse(
+                any(
+                    call[:3] == ["run", "services", "update-traffic"]
+                    for call in calls
+                )
+            )
+
+    def test_invented_subject_or_unmapped_identity_claims_are_refused(
+        self,
+    ) -> None:
+        hostile_environments = (
+            {
+                "FAKE_WIF_SUBJECT": (
+                    "repo:emiliaprotocol@654321/emilia-protocol@123456:"
+                    "environment:consequence-control-production"
+                )
+            },
+            {"FAKE_WIF_RAW_ID_CONDITION": "true"},
+        )
+        for hostile_environment in hostile_environments:
+            with self.subTest(hostile_environment=hostile_environment):
+                result = subprocess.run(
+                    [str(BOOTSTRAP), *self.arguments(), "--apply"],
+                    cwd=LANE,
+                    check=False,
+                    text=True,
+                    capture_output=True,
+                    env=self.environment(
+                        DEPLOYMENT_APPROVED="true",
+                        **hostile_environment,
+                    ),
+                )
+                self.assertNotEqual(result.returncode, 0)
+                self.assertIn(
+                    "not bounded to the exact immutable protected workflow identity",
+                    result.stderr,
+                )
+                calls = [
+                    json.loads(line)
+                    for line in self.log_path.read_text(
+                        encoding="utf-8"
+                    ).splitlines()
+                ]
+                self.assertFalse(
+                    any(call[:2] == ["run", "deploy"] for call in calls)
+                )
 
     def test_render_refuses_non_covering_project_scope(self) -> None:
         result = subprocess.run(
@@ -399,7 +678,7 @@ else:
         self.assertIn("EMILIA_IAM_ANALYZER_SCOPE", result.stderr)
         self.assertNotIn("gcloud run deploy", result.stdout)
 
-    def test_preprovisioned_standalone_project_bootstraps_and_signs_manifest(
+    def test_preprovisioned_org_project_bootstraps_and_signs_manifest(
         self,
     ) -> None:
         result = subprocess.run(
@@ -480,7 +759,10 @@ else:
         ]
         self.assertEqual(len(analyses), 2)
         self.assertTrue(
-            all("--scope=projects/test-project" in call for call in analyses)
+            all(
+                "--scope=organizations/987654321" in call
+                for call in analyses
+            )
         )
         traffic = [
             call
@@ -552,7 +834,7 @@ else:
         self.assertIn("not explicitly allowlisted", result.stderr)
         self.assertFalse(self.log_path.exists())
 
-    def test_hierarchy_requires_explicit_organization_scope(self) -> None:
+    def test_folder_parent_is_refused_by_exact_org_parent_proof(self) -> None:
         ancestry = json.dumps(
             [
                 {"type": "project", "id": "test-project"},
@@ -572,10 +854,7 @@ else:
             ),
         )
         self.assertNotEqual(result.returncode, 0)
-        self.assertIn(
-            "EMILIA_IAM_ANALYZER_SCOPE=organizations/987654321",
-            result.stderr,
-        )
+        self.assertIn("wrong-parent project is forbidden", result.stderr)
         calls = [
             json.loads(line)
             for line in self.log_path.read_text(encoding="utf-8").splitlines()
@@ -616,7 +895,7 @@ else:
             any(call[:2] == ["services", "enable"] for call in calls)
         )
 
-    def test_hierarchy_uses_covering_scope_for_both_bootstrap_identities(
+    def test_folder_ancestry_cannot_bypass_exact_parent_requirement(
         self,
     ) -> None:
         ancestry = json.dumps(
@@ -638,7 +917,8 @@ else:
                 FAKE_ANCESTRY_JSON=ancestry,
             ),
         )
-        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertNotEqual(result.returncode, 0)
+        self.assertIn("wrong-parent project is forbidden", result.stderr)
         calls = [
             json.loads(line)
             for line in self.log_path.read_text(encoding="utf-8").splitlines()
@@ -648,10 +928,8 @@ else:
             for call in calls
             if call[:2] == ["asset", "analyze-iam-policy"]
         ]
-        self.assertEqual(len(analyses), 2)
-        self.assertTrue(
-            all("--scope=organizations/987654321" in call for call in analyses)
-        )
+        self.assertEqual(analyses, [])
+        self.assertFalse(any(call[:2] == ["run", "deploy"] for call in calls))
 
     def test_ancestor_grant_is_refused_before_deploy(self) -> None:
         ancestry = json.dumps(

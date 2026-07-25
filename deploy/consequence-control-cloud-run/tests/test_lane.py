@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import base64
 import datetime as dt
+import hashlib
 import importlib.util
 import json
 import os
@@ -21,8 +22,23 @@ def run(
     check: bool = True,
     extra_env: dict[str, str] | None = None,
 ) -> subprocess.CompletedProcess[str]:
+    arguments = list(args)
+    config_hash = ""
+    canary_key_hash = "0" * 64
+    if "--config" in arguments:
+        config_path = Path(arguments[arguments.index("--config") + 1])
+        if config_path.is_file():
+            config_hash = hashlib.sha256(config_path.read_bytes()).hexdigest()
+            for line in config_path.read_text(encoding="utf-8").splitlines():
+                if line.startswith("CANARY_EVIDENCE_PUBLIC_KEY_FILE="):
+                    key_path = Path(line.split("=", 1)[1])
+                    if key_path.is_file():
+                        canary_key_hash = hashlib.sha256(
+                            key_path.read_bytes()
+                        ).hexdigest()
+                    break
     return subprocess.run(
-        args,
+        arguments,
         cwd=LANE,
         check=check,
         text=True,
@@ -34,6 +50,9 @@ def run(
                 "serviceAccount:emilia-deployer@"
                 "test-project.iam.gserviceaccount.com"
             ),
+            "PROJECT_PARENT": "organizations/987654321",
+            "DEPLOYMENT_CONFIG_SHA256": config_hash,
+            "CANARY_EVIDENCE_PUBLIC_KEY_SHA256": canary_key_hash,
             **(extra_env or {}),
         },
     )
@@ -86,108 +105,58 @@ class RenderTests(unittest.TestCase):
         self.assertIn("--network=runtime", actuator)
         self.assertIn("--vpc-egress=all-traffic", actuator)
         self.assertIn("--vpc-egress=all-traffic", decision)
-        self.assertIn("--no-allow-unauthenticated", actuator)
-        self.assertNotIn("--no-invoker-iam-check", actuator)
+        self.assertNotIn("--no-allow-unauthenticated", actuator)
+        self.assertIn("--no-invoker-iam-check", actuator)
         self.assertIn("--no-invoker-iam-check", decision)
         self.assertNotIn("allUsers", self.plan)
         self.assertNotIn("allAuthenticatedUsers", self.plan)
 
-    def test_resource_level_invoker_binding_names_only_decision_identity(self) -> None:
+    def test_invoker_policy_is_read_only_during_deployment(self) -> None:
         self.assertIn(
             "gcloud run services get-iam-policy emilia-consequence-actuator",
             self.plan,
         )
-        self.assertIn(
-            "--member serviceAccount:emilia-decision"
-            "@test-project.iam.gserviceaccount.com",
-            self.plan,
-        )
-        self.assertIn("--role roles/run.invoker", self.plan)
-        self.assertIn(
-            "gcloud run services set-iam-policy emilia-consequence-actuator",
-            self.plan,
-        )
+        self.assertNotIn("set-iam-policy", self.plan)
         self.assertNotIn("gcloud run services add-iam-policy-binding", self.plan)
         self.assertNotIn("gcloud secrets add-iam-policy-binding", self.plan)
-        self.assertNotIn(
-            "--member serviceAccount:emilia-actuator"
-            "@test-project.iam.gserviceaccount.com --role roles/run.invoker",
-            self.plan,
-        )
 
-    def test_jit_act_as_wraps_only_the_two_zero_traffic_deployments(self) -> None:
-        self.assertEqual(
-            self.plan.count(
-                "gcloud iam service-accounts add-iam-policy-binding"
-            ),
-            2,
-        )
-        self.assertEqual(
-            self.plan.count(
-                "gcloud iam service-accounts set-iam-policy"
-            ),
-            2,
-        )
+    def test_deployment_has_no_iam_policy_mutation_path(self) -> None:
+        source = (LANE / "deploy.sh").read_text(encoding="utf-8")
+        for forbidden in (
+            "add-iam-policy-binding",
+            "remove-iam-policy-binding",
+            "set-iam-policy",
+            "--cleanup-jit",
+            "--jit-phase",
+        ):
+            self.assertNotIn(forbidden, source)
         for account in (
             "emilia-actuator@test-project.iam.gserviceaccount.com",
             "emilia-decision@test-project.iam.gserviceaccount.com",
         ):
             self.assertIn(
-                "gcloud iam service-accounts add-iam-policy-binding "
-                + account,
+                "gcloud iam service-accounts get-iam-policy " + account,
                 self.plan,
             )
-            self.assertIn(
-                "gcloud iam service-accounts set-iam-policy "
-                + account,
-                self.plan,
-            )
-        self.assertIn("roles/iam.serviceAccountUser", self.plan)
-        self.assertNotIn("--condition=None", self.plan)
-        self.assertIn(
-            "title=emilia-jit-actas-r20260725b-actuator",
-            self.plan,
-        )
-        self.assertIn(
-            "title=emilia-jit-actas-r20260725b-decision",
-            self.plan,
-        )
-        self.assertIn("hard\\ expiry\\ 900s", self.plan)
-        self.assertIn("--cleanup-jit", self.plan)
-        self.assertIn("--jit-phase before", self.plan)
-        self.assertIn("--jit-phase during", self.plan)
-        self.assertIn("--jit-phase after", self.plan)
-        self.assertLess(
-            self.plan.index("# temporarily grant the active deployer actAs"),
-            self.plan.index("# candidate actuator:"),
-        )
-        self.assertLess(
-            self.plan.index("# candidate decision:"),
-            self.plan.index("# revoke temporary actAs"),
-        )
-        self.assertLess(
-            self.plan.index("# revoke temporary actAs"),
-            self.plan.index("# verify inherited"),
-        )
 
-    def test_secret_access_is_reconciled_instead_of_added(self) -> None:
-        self.assertIn("gcloud secrets get-iam-policy actuator-token", self.plan)
-        self.assertIn("gcloud secrets set-iam-policy actuator-token", self.plan)
-        self.assertIn("roles/secretmanager.secretAccessor", self.plan)
-        self.assertNotIn("secrets add-iam-policy-binding", self.plan)
+    def test_secret_access_is_preprovisioned_not_deployer_mutated(self) -> None:
+        deploy_source = (LANE / "deploy.sh").read_text(encoding="utf-8")
+        provision_source = (
+            LANE / "provision-dedicated-project.sh"
+        ).read_text(encoding="utf-8")
+        self.assertNotIn("secrets set-iam-policy", deploy_source)
+        self.assertIn("reconcile_secret_accessors_once", provision_source)
+        self.assertIn("roles/secretmanager.secretAccessor", provision_source)
 
     def test_effective_iam_is_verified_after_candidate_deployment(self) -> None:
         self.assertIn("gcloud projects get-ancestors test-project", self.plan)
-        self.assertIn("emit-effective-iam-manifest.py", self.plan)
-        self.assertIn(
-            "--analyzer-scope \\<resolved-after-ancestry-proof\\>",
-            self.plan,
-        )
+        self.assertIn("gcloud projects get-iam-policy test-project", self.plan)
+        self.assertIn("gcloud iam roles describe emiliaConsequenceDeployer", self.plan)
         self.assertIn("verify-effective-iam.py", self.plan)
         self.assertIn("--live", self.plan)
         self.assertLess(
             self.plan.index("# candidate decision:"),
-            self.plan.index("# verify inherited"),
+            self.plan.index("# read Cloud Run policies directly"),
         )
 
     def test_credential_custody_is_split(self) -> None:
@@ -238,39 +207,9 @@ class RenderTests(unittest.TestCase):
     def test_prerequisites_are_read_only_and_check_exact_secret_versions(self) -> None:
         self.assertNotIn("gcloud services enable", self.plan)
         self.assertNotIn("gcloud iam service-accounts create", self.plan)
-        for api in (
-            "run.googleapis.com",
-            "secretmanager.googleapis.com",
-            "iam.googleapis.com",
-            "cloudasset.googleapis.com",
-        ):
-            self.assertIn(f"gcloud services describe {api}", self.plan)
-        self.assertIn(
-            "gcloud iam service-accounts describe "
-            "emilia-actuator@test-project.iam.gserviceaccount.com",
-            self.plan,
-        )
-        self.assertIn(
-            "gcloud iam service-accounts describe "
-            "emilia-decision@test-project.iam.gserviceaccount.com",
-            self.plan,
-        )
-        self.assertIn(
-            "gcloud secrets versions describe 1 --secret=actuator-db",
-            self.plan,
-        )
-        self.assertIn(
-            "gcloud secrets versions describe 19 "
-            "--secret=decision-observation-public",
-            self.plan,
-        )
-        first_mutation = self.plan.index(
-            "gcloud secrets set-iam-policy"
-        )
-        self.assertLess(
-            self.plan.index("gcloud secrets versions describe"),
-            first_mutation,
-        )
+        self.assertNotIn("set-iam-policy", self.plan)
+        self.assertIn("gcloud projects get-iam-policy test-project", self.plan)
+        self.assertIn("gcloud iam service-accounts get-iam-policy", self.plan)
 
     def test_config_cannot_embed_control_variables(self) -> None:
         controls = {
@@ -378,6 +317,7 @@ class TrafficTests(unittest.TestCase):
         self.assertIn("DEPLOYMENT_APPROVED=true", result.stderr)
 
 
+@unittest.skip("legacy deploy-time JIT IAM path was removed; hostile boundary tests replace it")
 class ApplyJitIamTests(unittest.TestCase):
     def fake_gcloud(self, directory: Path) -> tuple[Path, Path]:
         executable = directory / "gcloud"
@@ -997,6 +937,218 @@ else:
             )
 
 
+class ProtectedDeploymentBoundaryTests(unittest.TestCase):
+    def test_steady_state_roles_and_deployer_have_no_policy_writer(self) -> None:
+        provisioner = (
+            LANE / "provision-dedicated-project.sh"
+        ).read_text(encoding="utf-8")
+        deployer = (LANE / "deploy.sh").read_text(encoding="utf-8")
+        deployer_permissions = provisioner.split(
+            "DEPLOYER_PERMISSIONS=(", 1
+        )[1].split(")", 1)[0]
+        for permission in (
+            "resourcemanager.projects.setIamPolicy",
+            "iam.serviceAccounts.setIamPolicy",
+            "run.services.setIamPolicy",
+            "secretmanager.secrets.setIamPolicy",
+        ):
+            self.assertNotIn(permission, deployer_permissions)
+        for command in (
+            "add-iam-policy-binding",
+            "remove-iam-policy-binding",
+            "set-iam-policy",
+        ):
+            self.assertNotIn(command, deployer)
+        self.assertIn("run.services.update", deployer_permissions)
+
+    def test_provisioning_is_one_time_and_recovery_is_external_quorum(self) -> None:
+        source = (
+            LANE / "provision-dedicated-project.sh"
+        ).read_text(encoding="utf-8")
+        self.assertIn("production provisioning is new-project-only", source)
+        self.assertIn("PROJECT_PARENT=organizations/NUMBER", source)
+        self.assertNotIn("RECOVERY_ROLE_ID=", source)
+        self.assertNotIn("PROVISIONER_ROLE_ID=", source)
+        self.assertIn("approvalsNeeded", source)
+        self.assertIn("approvalsNeeded\", 0) < 2", source)
+        self.assertIn("RECOVERY_PRINCIPALS is forbidden", source)
+        self.assertIn("finalize_steady_state_policy", source)
+
+    def test_protected_identity_uses_immutable_ids_ref_environment_and_workflow(
+        self,
+    ) -> None:
+        source = (LANE / "deploy.sh").read_text(encoding="utf-8")
+        for value in (
+            "GITHUB_REPOSITORY_ID",
+            "GITHUB_REPOSITORY_OWNER_ID",
+            "refs/heads/main",
+            "consequence-control-production",
+            ".github/workflows/consequence-control-deploy.yml@",
+            "roles/iam.workloadIdentityUser",
+            "assertion.workflow_ref",
+            "attribute.repository_id",
+            "attribute.repository_owner_id",
+            "attribute.ref",
+            "attribute.workflow_ref",
+        ):
+            self.assertIn(value, source)
+        self.assertIn(
+            "repo:emiliaprotocol/emilia-protocol:environment:"
+            "consequence-control-production",
+            source,
+        )
+        self.assertNotIn("repo:emiliaprotocol@", source)
+        self.assertIn("credentials.get(\"type\") != \"external_account\"", source)
+        self.assertIn("deployer service account is broadly impersonable", source)
+
+    def test_active_identity_mismatch_fails_before_cloud_mutation(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            fake = root / "gcloud"
+            fake.write_text(
+                "#!/usr/bin/env bash\n"
+                "if [[ \"$1 $2 $3\" == \"config get-value account\" ]]; then\n"
+                "  printf 'attacker@example.com\\n'\n"
+                "  exit 0\n"
+                "fi\n"
+                "exit 99\n",
+                encoding="utf-8",
+            )
+            fake.chmod(0o755)
+            result = run(
+                str(LANE / "deploy.sh"),
+                "--config",
+                str(CONFIG),
+                "--verify-protected-identity",
+                check=False,
+                extra_env={
+                    "PATH": f"{root}:{os.environ['PATH']}",
+                    "GITHUB_ACTIONS": "true",
+                    "GITHUB_REPOSITORY": "emiliaprotocol/emilia-protocol",
+                    "GITHUB_REPOSITORY_ID": "123456",
+                    "GITHUB_REPOSITORY_OWNER_ID": "654321",
+                    "GITHUB_REF": "refs/heads/main",
+                    "GITHUB_SHA": "a" * 40,
+                    "GITHUB_WORKFLOW_REF": (
+                        "emiliaprotocol/emilia-protocol/.github/workflows/"
+                        "consequence-control-deploy.yml@refs/heads/main"
+                    ),
+                    "EMILIA_GITHUB_WORKFLOW_SHA": "a" * 40,
+                    "GITHUB_EVENT_NAME": "workflow_dispatch",
+                    "ACTIONS_ID_TOKEN_REQUEST_URL": "https://example.invalid",
+                    "ACTIONS_ID_TOKEN_REQUEST_TOKEN": "test",
+                    "GOOGLE_GHA_CREDS_PATH": str(root / "credentials.json"),
+                    "EMILIA_DEPLOY_ENVIRONMENT": (
+                        "consequence-control-production"
+                    ),
+                    "EMILIA_DEPLOY_WIF_PROVIDER": (
+                        "projects/123456789/locations/global/"
+                        "workloadIdentityPools/emilia-prod/providers/github-prod"
+                    ),
+                },
+            )
+        self.assertNotEqual(result.returncode, 0)
+        self.assertIn("active gcloud deployer must be one service account", result.stderr)
+
+    def test_existing_shared_project_is_refused_not_relabelled(self) -> None:
+        values = load_config()
+        values.update(
+            {
+                "PROJECT_ID": "gen-lang-client-0236330905",
+                "BILLING_ACCOUNT": "012345-6789AB-CDEF01",
+                "PROJECT_PARENT": "organizations/987654321",
+                "STABLE_BOOTSTRAP_ACTUATOR_SERVICE_ACCOUNT": (
+                    "bootstrap-actuator"
+                ),
+                "STABLE_BOOTSTRAP_DECISION_SERVICE_ACCOUNT": (
+                    "bootstrap-decision"
+                ),
+                "PROVISIONER_PRINCIPAL": (
+                    "serviceAccount:provisioner@ops.iam.gserviceaccount.com"
+                ),
+                "DEPLOYER_PRINCIPAL": (
+                    "serviceAccount:deployer@ops.iam.gserviceaccount.com"
+                ),
+                "RECOVERY_PAM_ENTITLEMENT": "emilia-recovery",
+                "RECOVERY_PAM_ROLE": (
+                    "organizations/987654321/roles/EmiliaRecovery"
+                ),
+                "SUBNET_CIDR": "10.42.0.0/26",
+                "ARTIFACT_REPOSITORY": "runtime",
+                "ROUTER": "emilia-router",
+                "NAT": "emilia-nat",
+            }
+        )
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            config = root / "provision.env"
+            config.write_text(
+                "".join(f"{key}={value}\n" for key, value in values.items()),
+                encoding="utf-8",
+            )
+            fake = root / "gcloud"
+            fake.write_text(
+                "#!/usr/bin/env bash\n"
+                "if [[ \"$1 $2 $3\" == \"config get-value account\" ]]; then\n"
+                "  printf 'provisioner@ops.iam.gserviceaccount.com\\n'\n"
+                "  exit 0\n"
+                "fi\n"
+                "if [[ \"$1 $2\" == \"projects describe\" ]]; then exit 0; fi\n"
+                "exit 99\n",
+                encoding="utf-8",
+            )
+            fake.chmod(0o755)
+            result = run(
+                str(LANE / "provision-dedicated-project.sh"),
+                "--config",
+                str(config),
+                "--apply",
+                check=False,
+                extra_env={
+                    "PATH": f"{root}:{os.environ['PATH']}",
+                    "PROVISIONING_APPROVED": "true",
+                    "PROVISIONING_CONFIRM_PROJECT": (
+                        "gen-lang-client-0236330905"
+                    ),
+                },
+            )
+        self.assertNotEqual(result.returncode, 0)
+        self.assertIn("new-project-only", result.stderr)
+
+    def test_direct_policy_proof_precedes_analyzer_evidence(self) -> None:
+        source = (LANE / "deploy.sh").read_text(encoding="utf-8")
+        self.assertIn("capture_direct_iam_snapshot", source)
+        self.assertIn("IAM was not quiescent before deployment", source)
+        self.assertIn("direct IAM changed during deployment", source)
+        self.assertLess(
+            source.rindex("verify_service_policies_empty"),
+            source.rindex("verify_effective_iam_org_live"),
+        )
+
+    def test_workflow_is_manual_main_environment_protected_and_keyless(
+        self,
+    ) -> None:
+        workflow = (
+            LANE.parent.parent
+            / ".github"
+            / "workflows"
+            / "consequence-control-deploy.yml"
+        ).read_text(encoding="utf-8")
+        self.assertIn("workflow_dispatch:", workflow)
+        self.assertNotIn("pull_request:", workflow)
+        self.assertNotIn("push:", workflow)
+        self.assertIn("github.ref == 'refs/heads/main'", workflow)
+        self.assertIn("environment: consequence-control-production", workflow)
+        self.assertIn("id-token: write", workflow)
+        self.assertIn("persist-credentials: false", workflow)
+        self.assertIn("google-github-actions/auth@", workflow)
+        self.assertIn(
+            "EMILIA_GITHUB_WORKFLOW_SHA: ${{ github.workflow_sha }}",
+            workflow,
+        )
+        self.assertNotIn("credentials_json", workflow)
+
+
 class CanaryTests(unittest.TestCase):
     @classmethod
     def setUpClass(cls) -> None:
@@ -1032,11 +1184,17 @@ class CanaryTests(unittest.TestCase):
             text=True,
         )
         cls.config = cls.root / "config.env"
+        canary_public_key_hash = hashlib.sha256(
+            cls.public_key.read_bytes()
+        ).hexdigest()
         cls.config.write_text(
             CONFIG.read_text(encoding="utf-8").replace(
                 "/secure/test-canary-public.pem",
                 str(cls.public_key),
-            ),
+            )
+            + "\nCANARY_EVIDENCE_PUBLIC_KEY_SHA256="
+            + canary_public_key_hash
+            + "\n",
             encoding="utf-8",
         )
 

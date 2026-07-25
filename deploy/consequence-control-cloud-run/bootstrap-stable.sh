@@ -281,6 +281,9 @@ render_plan() {
     --config "$CONFIG" \
     --image "$PLACEHOLDER_IMAGE" \
     --provenance "$PROVENANCE_FILE"
+  printf '# require the exact immutable protected GitHub workflow/WIF identity and direct current IAM proof\n'
+  shell_join "$LANE_DIR/deploy.sh" --config "$CONFIG" \
+    --verify-protected-identity
   printf '# refuse bootstrap if either Cloud Run service already exists\n'
   shell_join gcloud run services list \
     "--project=$PROJECT_ID" "--region=$REGION" \
@@ -389,11 +392,16 @@ trap 'rm -rf "${HTTP_TMPDIR:-}"' EXIT
   --image "$PLACEHOLDER_IMAGE" \
   --provenance "$PROVENANCE_FILE"
 
+"$LANE_DIR/deploy.sh" --config "$CONFIG" --verify-protected-identity
 resolve_analyzer_scope
 
-gcloud services enable \
-  run.googleapis.com iam.googleapis.com cloudasset.googleapis.com \
-  "--project=$PROJECT_ID" --quiet
+for api in run.googleapis.com iam.googleapis.com cloudasset.googleapis.com; do
+  state=$(gcloud services describe "$api" \
+    "--project=$PROJECT_ID" '--format=value(state)' 2>/dev/null) \
+    || lane_die "$api must already be ENABLED by provisioning"
+  [[ "$state" == ENABLED ]] \
+    || lane_die "$api must already be ENABLED by provisioning"
+done
 
 existing_services=$(
   gcloud run services list \

@@ -7,7 +7,6 @@ source "$LANE_DIR/lib/common.sh"
 
 CONFIG=
 MODE=render
-ACTION=provision
 while (($#)); do
   case "$1" in
     --config)
@@ -17,22 +16,10 @@ while (($#)); do
       ;;
     --render)
       MODE=render
-      ACTION=provision
       shift
       ;;
     --apply)
       MODE=apply
-      ACTION=provision
-      shift
-      ;;
-    --grant-jit-actas)
-      MODE=apply
-      ACTION=grant-jit-actas
-      shift
-      ;;
-    --revoke-jit-actas)
-      MODE=apply
-      ACTION=revoke-jit-actas
       shift
       ;;
     *)
@@ -50,49 +37,7 @@ load_lane_config "$CONFIG"
 : "${NAT:=emilia-egress-nat}"
 : "${PROJECT_PARENT:=}"
 
-PROVISIONER_ROLE_ID=emiliaConsequenceProvisioner
 DEPLOYER_ROLE_ID=emiliaConsequenceDeployer
-RECOVERY_ROLE_ID=emiliaConsequenceRecovery
-PROVISIONER_PERMISSIONS=(
-  artifactregistry.repositories.create
-  artifactregistry.repositories.get
-  artifactregistry.repositories.update
-  compute.networks.create
-  compute.networks.get
-  compute.routers.create
-  compute.routers.get
-  compute.routers.update
-  compute.routers.use
-  compute.subnetworks.create
-  compute.subnetworks.get
-  compute.subnetworks.setPrivateIpGoogleAccess
-  iam.roles.create
-  iam.roles.get
-  iam.roles.update
-  iam.serviceAccounts.create
-  iam.serviceAccounts.get
-  iam.serviceAccounts.getIamPolicy
-  iam.serviceAccounts.setIamPolicy
-  orgpolicy.policies.create
-  orgpolicy.policies.list
-  orgpolicy.policies.update
-  resourcemanager.projects.get
-  resourcemanager.projects.getIamPolicy
-  resourcemanager.projects.setIamPolicy
-  resourcemanager.projects.update
-  run.services.get
-  run.services.getIamPolicy
-  run.services.setIamPolicy
-  secretmanager.secrets.get
-  secretmanager.secrets.getIamPolicy
-  secretmanager.secrets.setIamPolicy
-  secretmanager.versions.get
-  secretmanager.versions.list
-  serviceusage.services.enable
-  serviceusage.services.get
-  serviceusage.services.list
-  serviceusage.services.use
-)
 DEPLOYER_PERMISSIONS=(
   artifactregistry.repositories.downloadArtifacts
   artifactregistry.repositories.get
@@ -104,7 +49,6 @@ DEPLOYER_PERMISSIONS=(
   compute.subnetworks.use
   iam.serviceAccounts.get
   iam.serviceAccounts.getIamPolicy
-  iam.serviceAccounts.setIamPolicy
   logging.logEntries.list
   monitoring.timeSeries.list
   resourcemanager.projects.get
@@ -115,34 +59,14 @@ DEPLOYER_PERMISSIONS=(
   run.services.get
   run.services.getIamPolicy
   run.services.list
-  run.services.setIamPolicy
   run.services.update
   secretmanager.secrets.get
   secretmanager.secrets.getIamPolicy
-  secretmanager.secrets.setIamPolicy
   secretmanager.versions.get
   secretmanager.versions.list
   serviceusage.services.get
   serviceusage.services.list
   serviceusage.services.use
-)
-RECOVERY_PERMISSIONS=(
-  iam.roles.get
-  iam.roles.list
-  iam.serviceAccounts.get
-  iam.serviceAccounts.getIamPolicy
-  iam.serviceAccounts.setIamPolicy
-  resourcemanager.projects.get
-  resourcemanager.projects.getIamPolicy
-  resourcemanager.projects.setIamPolicy
-  run.services.get
-  run.services.getIamPolicy
-  run.services.setIamPolicy
-  secretmanager.secrets.get
-  secretmanager.secrets.getIamPolicy
-  secretmanager.secrets.setIamPolicy
-  serviceusage.services.get
-  serviceusage.services.list
 )
 REQUIRED_APIS=(
   artifactregistry.googleapis.com
@@ -155,6 +79,7 @@ REQUIRED_APIS=(
   logging.googleapis.com
   monitoring.googleapis.com
   orgpolicy.googleapis.com
+  privilegedaccessmanager.googleapis.com
   run.googleapis.com
   secretmanager.googleapis.com
   serviceusage.googleapis.com
@@ -209,8 +134,9 @@ validate_provision_config() {
     PROJECT_ID BILLING_ACCOUNT REGION ACTUATOR_SERVICE_ACCOUNT
     DECISION_SERVICE_ACCOUNT STABLE_BOOTSTRAP_ACTUATOR_SERVICE_ACCOUNT
     STABLE_BOOTSTRAP_DECISION_SERVICE_ACCOUNT PROVISIONER_PRINCIPAL
-    DEPLOYER_PRINCIPAL RECOVERY_PRINCIPALS
-    NETWORK SUBNET SUBNET_CIDR ARTIFACT_REPOSITORY ROUTER NAT
+    DEPLOYER_PRINCIPAL RECOVERY_PAM_ENTITLEMENT RECOVERY_PAM_ROLE
+    ACTUATOR_SERVICE DECISION_SERVICE NETWORK SUBNET SUBNET_CIDR
+    ARTIFACT_REPOSITORY ROUTER NAT
   )
   local name member left right
   local account_names=(
@@ -256,26 +182,21 @@ validate_provision_config() {
   validate_slug ROUTER
   validate_slug NAT
   validate_subnet_cidr
-  if [[ -n "$PROJECT_PARENT" ]]; then
-    [[ "$PROJECT_PARENT" =~ ^(organizations|folders)/[1-9][0-9]*$ ]] \
-      || lane_die "PROJECT_PARENT must be organizations/NUMBER or folders/NUMBER"
-  fi
-
-  IFS=, read -r -a RECOVERY_MEMBERS <<< "$RECOVERY_PRINCIPALS"
-  ((${#RECOVERY_MEMBERS[@]} >= 2)) \
-    || lane_die "at least two distinct RECOVERY_PRINCIPALS members are required"
-  for left in "${!RECOVERY_MEMBERS[@]}"; do
-    member=${RECOVERY_MEMBERS[left]}
-    validate_principal "$member"
-    [[ "$member" != "$DEPLOYER_PRINCIPAL" ]] \
-      || lane_die "DEPLOYER_PRINCIPAL must not be a recovery principal"
-    [[ "$member" != "$PROVISIONER_PRINCIPAL" ]] \
-      || lane_die "PROVISIONER_PRINCIPAL must not be a recovery principal"
-    for ((right = 0; right < left; right++)); do
-      [[ "$member" != "${RECOVERY_MEMBERS[right]}" ]] \
-        || lane_die "duplicate recovery principal: $member"
-    done
-  done
+  [[ "$PROJECT_PARENT" =~ ^organizations/[1-9][0-9]*$ ]] \
+    || lane_die "production provisioning requires PROJECT_PARENT=organizations/NUMBER"
+  [[ -z "${RECOVERY_PRINCIPALS:-}" ]] \
+    || lane_die "RECOVERY_PRINCIPALS is forbidden; recovery must be an external multi-approval PAM entitlement"
+  [[ "$RECOVERY_PAM_ENTITLEMENT" =~ ^[a-z][a-z0-9-]{3,62}$ ]] \
+    || lane_die "RECOVERY_PAM_ENTITLEMENT must be an external PAM entitlement ID"
+  [[ "$RECOVERY_PAM_ROLE" =~ ^organizations/${PROJECT_PARENT#organizations/}/roles/[A-Za-z][A-Za-z0-9_.]{2,63}$ ]] \
+    || lane_die "RECOVERY_PAM_ROLE must be a custom role in the pinned organization"
+  validate_slug ACTUATOR_SERVICE
+  validate_slug DECISION_SERVICE
+  local variable
+  while IFS= read -r variable; do
+    require_var "$variable"
+    validate_secret_ref "$variable"
+  done < <(all_secret_variables)
 }
 
 require_active_provisioner() {
@@ -310,33 +231,6 @@ require_provision_approval() {
   command -v gcloud >/dev/null 2>&1 || lane_die "gcloud is required for apply"
 }
 
-validate_jit_expiry() {
-  require_var JIT_ACTAS_EXPIRES_AT
-  python3 - "$JIT_ACTAS_EXPIRES_AT" <<'PY' || \
-    lane_die "JIT_ACTAS_EXPIRES_AT must be UTC, future, and no more than 60 minutes away"
-from datetime import datetime, timezone
-import re
-import sys
-
-value = sys.argv[1]
-if re.fullmatch(r"[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}Z", value) is None:
-    raise SystemExit(1)
-expiry = datetime.fromisoformat(value.replace("Z", "+00:00"))
-seconds = (expiry - datetime.now(timezone.utc)).total_seconds()
-if seconds <= 0 or seconds > 3600:
-    raise SystemExit(1)
-PY
-}
-
-require_rollout_approval() {
-  [[ "${ROLLOUT_APPROVED:-}" == true ]] \
-    || lane_die "JIT actAs changes require ROLLOUT_APPROVED=true"
-  [[ "${ROLLOUT_CONFIRM_PROJECT:-}" == "$PROJECT_ID" ]] \
-    || lane_die "ROLLOUT_CONFIRM_PROJECT must exactly equal PROJECT_ID"
-  command -v gcloud >/dev/null 2>&1 || lane_die "gcloud is required for rollout IAM"
-  validate_jit_expiry
-}
-
 render_custom_role() {
   local role_id=$1 title=$2 description=$3
   shift 3
@@ -356,37 +250,19 @@ render_plan() {
     gcloud projects create "$PROJECT_ID"
     "--name=$PROJECT_NAME"
     "--labels=emilia-purpose=consequence-control"
+    "--organization=${PROJECT_PARENT#organizations/}"
   )
-  if [[ -n "$PROJECT_PARENT" ]]; then
-    project_create+=("--folder=${PROJECT_PARENT#folders/}")
-    if [[ "$PROJECT_PARENT" == organizations/* ]]; then
-      project_create=(
-        gcloud projects create "$PROJECT_ID"
-        "--name=$PROJECT_NAME"
-        "--labels=emilia-purpose=consequence-control"
-        "--organization=${PROJECT_PARENT#organizations/}"
-      )
-    fi
-  fi
 
-  printf '# create the dedicated project if absent and link explicit billing\n'
+  printf '# refuse every existing project; create one organization-parented dedicated project\n'
+  shell_join gcloud projects describe "$PROJECT_ID" --format=json
   shell_join "${project_create[@]}"
   shell_join gcloud billing projects link "$PROJECT_ID" \
     "--billing-account=$BILLING_ACCOUNT"
+  printf '# prove exact parent, ancestry, and immutable dedication label before any resource creation\n'
+  shell_join gcloud projects describe "$PROJECT_ID" --format=json
+  shell_join gcloud projects get-ancestors "$PROJECT_ID" --format=json --quiet
   printf '# enable the complete runtime and assurance control plane\n'
   shell_join gcloud services enable "${REQUIRED_APIS[@]}" "--project=$PROJECT_ID"
-  shell_join gcloud projects update "$PROJECT_ID" \
-    "--update-labels=emilia-purpose=consequence-control"
-  render_custom_role "$PROVISIONER_ROLE_ID" \
-    "EMILIA consequence provisioner" \
-    "JIT infrastructure and IAM reconciliation; never a runtime principal" \
-    "${PROVISIONER_PERMISSIONS[@]}"
-  printf '# bind and read back the exact active provisioner before completing infrastructure\n'
-  shell_join gcloud projects add-iam-policy-binding "$PROJECT_ID" \
-    "--member=$PROVISIONER_PRINCIPAL" \
-    "--role=projects/$PROJECT_ID/roles/$PROVISIONER_ROLE_ID" \
-    --condition=None
-  shell_join gcloud projects get-iam-policy "$PROJECT_ID" --format=json
 
   printf '# create isolated runtime and stable bootstrap identities without keys\n'
   shell_join gcloud iam service-accounts create "$ACTUATOR_SERVICE_ACCOUNT" \
@@ -426,66 +302,97 @@ render_plan() {
 
   render_custom_role "$DEPLOYER_ROLE_ID" \
     "EMILIA consequence deployer" \
-    "Steady-state zero-secret-payload Cloud Run deployment and observation" \
+    "Protected-workflow-only Cloud Run deployment and observation; no IAM writes" \
     "${DEPLOYER_PERMISSIONS[@]}"
-  render_custom_role "$RECOVERY_ROLE_ID" \
-    "EMILIA consequence break-glass recovery" \
-    "IAM control-plane restoration without runtime impersonation or data access" \
-    "${RECOVERY_PERMISSIONS[@]}"
   shell_join gcloud projects add-iam-policy-binding "$PROJECT_ID" \
     "--member=$DEPLOYER_PRINCIPAL" \
     "--role=projects/$PROJECT_ID/roles/$DEPLOYER_ROLE_ID" --condition=None
-
-  printf '# establish break-glass recovery custodians\n'
-  local member
-  for member in "${RECOVERY_MEMBERS[@]}"; do
-    shell_join gcloud projects add-iam-policy-binding "$PROJECT_ID" \
-      "--member=$member" \
-      "--role=projects/$PROJECT_ID/roles/$RECOVERY_ROLE_ID" \
-      --condition=None
-  done
-  printf '# verify recovery and provisioner control before owner removal\n'
-  printf '# verify-control-plane-custody: recovery, provisioner, and deployer custom bindings must be readable\n'
-  shell_join gcloud projects get-iam-policy "$PROJECT_ID" --format=json
-  printf '# reconcile exact custom-role custody and remove every project owner binding\n'
-  shell_join python3 '<rewrite-control-plane-policy-exactly>' \
-    '<current-project-policy.json>' '<closed-project-policy.json>'
-  shell_join gcloud projects set-iam-policy "$PROJECT_ID" \
-    '<closed-project-policy.json>'
-  printf '# verify-control-plane-exact: no roles/owner and exact provisioner, deployer, and recovery bindings\n'
-  shell_join gcloud projects get-iam-policy "$PROJECT_ID" --format=json
+  printf '# establish fixed runtime actAs and project-level actuator invocation for the protected deploy identity\n'
+  shell_join gcloud iam service-accounts add-iam-policy-binding \
+    "$ACTUATOR_SERVICE_ACCOUNT@$PROJECT_ID.iam.gserviceaccount.com" \
+    "--project=$PROJECT_ID" "--member=$DEPLOYER_PRINCIPAL" \
+    --role=roles/iam.serviceAccountUser --condition=None
+  shell_join gcloud iam service-accounts add-iam-policy-binding \
+    "$DECISION_SERVICE_ACCOUNT@$PROJECT_ID.iam.gserviceaccount.com" \
+    "--project=$PROJECT_ID" "--member=$DEPLOYER_PRINCIPAL" \
+    --role=roles/iam.serviceAccountUser --condition=None
+  shell_join gcloud projects add-iam-policy-binding "$PROJECT_ID" \
+    "--member=serviceAccount:$DECISION_SERVICE_ACCOUNT@$PROJECT_ID.iam.gserviceaccount.com" \
+    --role=roles/run.invoker \
+    "--condition=expression=resource.name == '//run.googleapis.com/projects/$PROJECT_ID/locations/$REGION/services/$ACTUATOR_SERVICE',title=emilia-actuator-invoker,description=Decision workload may invoke only the actuator"
+  printf '# close every configured secret directly to its exact runtime identities during one-time provisioning\n'
+  shell_join gcloud secrets get-iam-policy '<configured-secret>' \
+    "--project=$PROJECT_ID" --format=json
+  shell_join gcloud secrets set-iam-policy '<configured-secret>' \
+    '<closed-secret-policy.json>' "--project=$PROJECT_ID"
+  printf '# verify an organization-owned PAM entitlement with at least two approvals; no project recovery principal is created\n'
+  shell_join gcloud pam entitlements describe "$RECOVERY_PAM_ENTITLEMENT" \
+    --location=global "--organization=${PROJECT_PARENT#organizations/}" \
+    --format=json
   printf '# prevent automatic broad grants before removing any existing defaults\n'
   shell_join gcloud resource-manager org-policies enable-enforce \
     constraints/iam.automaticIamGrantsForDefaultServiceAccounts \
     "--project=$PROJECT_ID"
-  printf '# remove broad default Editor grants only after recovery verification\n'
+  printf '# remove broad default Editor grants before the final custody transition\n'
   shell_join gcloud projects remove-iam-policy-binding "$PROJECT_ID" \
     '--member=serviceAccount:<PROJECT_NUMBER>-compute@developer.gserviceaccount.com' \
     --role=roles/editor --condition=None
   shell_join gcloud projects remove-iam-policy-binding "$PROJECT_ID" \
     "--member=serviceAccount:$PROJECT_ID@appspot.gserviceaccount.com" \
     --role=roles/editor --condition=None
-  printf '# steady-state plan intentionally contains no service-account-user binding\n'
+  printf '# final operation reconciles exact steady-state custody and removes every owner/editor/provisioner binding\n'
+  shell_join python3 '<rewrite-control-plane-policy-exactly>' \
+    '<current-project-policy.json>' '<closed-project-policy.json>'
+  shell_join gcloud projects set-iam-policy "$PROJECT_ID" \
+    '<closed-project-policy.json>'
 }
 
-ensure_project() {
-  if ! gcloud projects describe "$PROJECT_ID" >/dev/null 2>&1; then
-    local command=(
-      gcloud projects create "$PROJECT_ID"
-      "--name=$PROJECT_NAME"
-      "--labels=emilia-purpose=consequence-control"
-    )
-    if [[ "$PROJECT_PARENT" == folders/* ]]; then
-      command+=("--folder=${PROJECT_PARENT#folders/}")
-    elif [[ "$PROJECT_PARENT" == organizations/* ]]; then
-      command+=("--organization=${PROJECT_PARENT#organizations/}")
-    fi
-    "${command[@]}" --quiet
+create_project_once() {
+  if gcloud projects describe "$PROJECT_ID" >/dev/null 2>&1; then
+    lane_die "PROJECT_ID already exists; production provisioning is new-project-only and never relabels or adopts"
   fi
+  gcloud projects create "$PROJECT_ID" \
+    "--name=$PROJECT_NAME" \
+    "--labels=emilia-purpose=consequence-control" \
+    "--organization=${PROJECT_PARENT#organizations/}" --quiet
   gcloud billing projects link "$PROJECT_ID" \
     "--billing-account=$BILLING_ACCOUNT" --quiet
-  gcloud projects update "$PROJECT_ID" \
-    "--update-labels=emilia-purpose=consequence-control" --quiet
+}
+
+verify_dedicated_project_identity() {
+  local project="$PROVISION_TMPDIR/project.json"
+  local ancestry="$PROVISION_TMPDIR/ancestry.json"
+  gcloud projects describe "$PROJECT_ID" --format=json > "$project"
+  gcloud projects get-ancestors "$PROJECT_ID" --format=json --quiet > "$ancestry"
+  python3 - "$project" "$ancestry" "$PROJECT_ID" \
+    "${PROJECT_PARENT#organizations/}" <<'PY' || \
+    lane_die "project parent, ancestry, or dedication label is not exact"
+import json
+from pathlib import Path
+import sys
+
+project_path, ancestry_path, project_id, organization_id = sys.argv[1:]
+project = json.loads(Path(project_path).read_text(encoding="utf-8"))
+ancestry = json.loads(Path(ancestry_path).read_text(encoding="utf-8"))
+if project.get("projectId") != project_id:
+    raise SystemExit("project ID mismatch")
+if project.get("labels") != {"emilia-purpose": "consequence-control"}:
+    raise SystemExit("dedication label is not exact")
+parent = project.get("parent")
+if parent != {"type": "organization", "id": organization_id}:
+    raise SystemExit("project parent is not the pinned organization")
+expected = {
+    ("project", project_id),
+    ("organization", organization_id),
+}
+actual = {
+    (entry.get("type"), entry.get("id"))
+    for entry in ancestry
+    if isinstance(entry, dict)
+}
+if actual != expected or len(ancestry) != 2:
+    raise SystemExit("project ancestry is not exactly project plus organization")
+PY
 }
 
 ensure_service_account() {
@@ -600,146 +507,106 @@ ensure_custom_role() {
   fi
 }
 
-verify_control_plane_policy() {
-  local mode=$1
-  local policy_file="$PROVISION_TMPDIR/project-policy.json"
-  gcloud projects get-iam-policy "$PROJECT_ID" \
-    --format=json > "$policy_file"
-  python3 - "$policy_file" \
-    "$mode" \
-    "projects/$PROJECT_ID/roles/$PROVISIONER_ROLE_ID" \
-    "$PROVISIONER_PRINCIPAL" \
-    "projects/$PROJECT_ID/roles/$DEPLOYER_ROLE_ID" \
-    "$DEPLOYER_PRINCIPAL" \
-    "projects/$PROJECT_ID/roles/$RECOVERY_ROLE_ID" \
-    "${RECOVERY_MEMBERS[@]}" <<'PY' || \
-    lane_die "control-plane IAM verification failed; refusing owner or default-role cleanup"
+verify_external_recovery_quorum() {
+  local organization_id=${PROJECT_PARENT#organizations/}
+  local entitlement="$PROVISION_TMPDIR/recovery-entitlement.json"
+  local role="$PROVISION_TMPDIR/recovery-role.json"
+  gcloud pam entitlements describe "$RECOVERY_PAM_ENTITLEMENT" \
+    --location=global "--organization=$organization_id" \
+    --format=json > "$entitlement" \
+    || lane_die "external organization PAM recovery entitlement is unavailable"
+  gcloud iam roles describe "${RECOVERY_PAM_ROLE##*/}" \
+    "--organization=$organization_id" --format=json > "$role" \
+    || lane_die "external organization PAM recovery role is unavailable"
+  python3 - "$entitlement" "$role" "$PROJECT_ID" \
+    "$RECOVERY_PAM_ROLE" "$PROVISIONER_PRINCIPAL" "$DEPLOYER_PRINCIPAL" <<'PY' \
+    || lane_die "external recovery is not an organization-owned multi-approval PAM boundary"
 import json
 from pathlib import Path
 import sys
 
-policy = json.loads(Path(sys.argv[1]).read_text(encoding="utf-8"))
-(
-    mode,
-    provisioner_role,
-    provisioner_principal,
-    deployer_role,
-    deployer_principal,
-    recovery_role,
-    *recovery_principals,
-) = sys.argv[2:]
-
-role_members = {
-    provisioner_role: set(),
-    deployer_role: set(),
-    recovery_role: set(),
+entitlement_path, role_path, project_id, role_name, provisioner, deployer = sys.argv[1:]
+entitlement = json.loads(Path(entitlement_path).read_text(encoding="utf-8"))
+role = json.loads(Path(role_path).read_text(encoding="utf-8"))
+access = entitlement.get("privilegedAccess", {}).get("gcpIamAccess", {})
+if access.get("resourceType") != "cloudresourcemanager.googleapis.com/Project":
+    raise SystemExit("PAM recovery resource type is not Project")
+if access.get("resource") != f"//cloudresourcemanager.googleapis.com/projects/{project_id}":
+    raise SystemExit("PAM recovery does not target the dedicated project exactly")
+bindings = access.get("roleBindings")
+if bindings != [{"role": role_name}]:
+    raise SystemExit("PAM recovery must grant exactly the pinned recovery role")
+manual = entitlement.get("approvalWorkflow", {}).get("manualApprovals", {})
+if manual.get("requireApproverJustification") is not True:
+    raise SystemExit("PAM recovery requires approver justification")
+steps = manual.get("steps")
+if not isinstance(steps, list) or len(steps) != 1:
+    raise SystemExit("PAM recovery requires one exact approval step")
+if steps[0].get("approvalsNeeded", 0) < 2:
+    raise SystemExit("PAM recovery requires at least two approvals")
+approvers = {
+    principal
+    for entry in steps[0].get("approvers", [])
+    for principal in entry.get("principals", [])
 }
-conditional_roles = set()
-owner_bindings = []
-for binding in policy.get("bindings", []):
-    members = set(binding.get("members", []))
-    role = binding.get("role")
-    if role in role_members:
-        if binding.get("condition"):
-            conditional_roles.add(role)
-        else:
-            role_members[role].update(members)
-    if role == "roles/owner":
-        owner_bindings.append(binding)
-
-if provisioner_principal not in role_members[provisioner_role]:
-    raise SystemExit("provisioner custom role is not readable")
-if mode == "provisioner":
-    raise SystemExit(0)
-if deployer_principal not in role_members[deployer_role]:
-    raise SystemExit("deployer custom role is not readable")
-missing_recovery = set(recovery_principals) - role_members[recovery_role]
-if missing_recovery:
-    raise SystemExit(
-        "recovery custom role is missing: "
-        + ", ".join(sorted(missing_recovery))
-    )
-if mode == "custody":
-    raise SystemExit(0)
-if mode != "exact":
-    raise SystemExit("unknown recovery verification mode")
-expected = {
-    provisioner_role: {provisioner_principal},
-    deployer_role: {deployer_principal},
-    recovery_role: set(recovery_principals),
+if len(approvers) < 2:
+    raise SystemExit("PAM recovery does not identify two external approvers")
+eligible = {
+    principal
+    for entry in entitlement.get("eligibleUsers", [])
+    for principal in entry.get("principals", [])
 }
-if role_members != expected or conditional_roles:
-    raise SystemExit("custom control-plane role bindings are not exact")
-if owner_bindings:
-    raise SystemExit("roles/owner remains after control-plane reconciliation")
+if not eligible or {provisioner, deployer} & (eligible | approvers):
+    raise SystemExit("provisioner/deployer must not request or approve recovery")
+if set(role.get("includedPermissions", [])) != {
+    "resourcemanager.projects.get",
+    "resourcemanager.projects.getIamPolicy",
+    "resourcemanager.projects.setIamPolicy",
+}:
+    raise SystemExit("PAM recovery role is not the exact project-IAM-only role")
 PY
 }
 
-reconcile_control_plane_policy() {
-  local current="$PROVISION_TMPDIR/control-policy-current.json"
-  local desired="$PROVISION_TMPDIR/control-policy-desired.json"
-  gcloud projects get-iam-policy "$PROJECT_ID" \
-    --format=json > "$current"
-  python3 - "$current" "$desired" \
-    "projects/$PROJECT_ID/roles/$PROVISIONER_ROLE_ID" \
-    "$PROVISIONER_PRINCIPAL" \
-    "projects/$PROJECT_ID/roles/$DEPLOYER_ROLE_ID" \
-    "$DEPLOYER_PRINCIPAL" \
-    "projects/$PROJECT_ID/roles/$RECOVERY_ROLE_ID" \
-    "${RECOVERY_MEMBERS[@]}" <<'PY' || \
-    lane_die "control-plane policy reconciliation failed"
-import json
-import os
-from pathlib import Path
-import sys
-
-(
-    source,
-    destination,
-    provisioner_role,
-    provisioner_principal,
-    deployer_role,
-    deployer_principal,
-    recovery_role,
-    *recovery_principals,
-) = sys.argv[1:]
-policy = json.loads(Path(source).read_text(encoding="utf-8"))
-managed_roles = {provisioner_role, deployer_role, recovery_role}
-bindings = []
-for binding in policy.get("bindings", []):
-    if binding.get("role") in managed_roles:
-        continue
-    if binding.get("role") == "roles/owner":
-        continue
-    bindings.append(binding)
-bindings.extend(
-    [
-        {
-            "role": provisioner_role,
-            "members": [provisioner_principal],
-        },
-        {
-            "role": deployer_role,
-            "members": [deployer_principal],
-        },
-        {
-            "role": recovery_role,
-            "members": recovery_principals,
-        },
-    ]
-)
-policy["bindings"] = bindings
-descriptor = os.open(
-    destination,
-    os.O_WRONLY | os.O_CREAT | os.O_EXCL,
-    0o600,
-)
-with os.fdopen(descriptor, "w", encoding="utf-8") as handle:
-    json.dump(policy, handle, sort_keys=True)
-    handle.write("\n")
-PY
-  gcloud projects set-iam-policy "$PROJECT_ID" "$desired" \
-    --quiet >/dev/null
+reconcile_secret_accessors_once() {
+  local variable ref secret members=() member_args=()
+  while IFS= read -r secret; do
+    members=()
+    member_args=()
+    if secret_is_used_by "$secret" actuator_secret_variables; then
+      members+=("serviceAccount:$ACTUATOR_SERVICE_ACCOUNT@$PROJECT_ID.iam.gserviceaccount.com")
+    fi
+    if secret_is_used_by "$secret" decision_secret_variables; then
+      members+=("serviceAccount:$DECISION_SERVICE_ACCOUNT@$PROJECT_ID.iam.gserviceaccount.com")
+    fi
+    for member in "${members[@]}"; do member_args+=(--member "$member"); done
+    local current="$PROVISION_TMPDIR/secret-$secret-current.json"
+    local desired="$PROVISION_TMPDIR/secret-$secret-desired.json"
+    local verified="$PROVISION_TMPDIR/secret-$secret-verified.json"
+    if ! gcloud secrets describe "$secret" \
+        "--project=$PROJECT_ID" >/dev/null 2>&1; then
+      gcloud secrets create "$secret" \
+        "--project=$PROJECT_ID" --replication-policy=automatic --quiet
+    fi
+    gcloud secrets get-iam-policy "$secret" \
+      "--project=$PROJECT_ID" --format=json > "$current"
+    python3 "$LANE_DIR/reconcile-iam-policy.py" rewrite \
+      --input "$current" --output "$desired" \
+      --role roles/secretmanager.secretAccessor "${member_args[@]}"
+    gcloud secrets set-iam-policy "$secret" "$desired" \
+      "--project=$PROJECT_ID" --quiet >/dev/null
+    gcloud secrets get-iam-policy "$secret" \
+      "--project=$PROJECT_ID" --format=json > "$verified"
+    python3 "$LANE_DIR/reconcile-iam-policy.py" check \
+      --input "$verified" --role roles/secretmanager.secretAccessor \
+      "${member_args[@]}" \
+      || lane_die "secret IAM readback is not exact: $secret"
+  done < <(
+    while IFS= read -r variable; do
+      ref=${!variable}
+      secret_name "$ref"
+      printf '\n'
+    done < <(all_secret_variables) | sort -u
+  )
 }
 
 member_has_editor() {
@@ -780,19 +647,143 @@ remove_default_editors() {
   done
 }
 
+bind_fixed_deployment_access() {
+  local account email
+  for account in "$ACTUATOR_SERVICE_ACCOUNT" "$DECISION_SERVICE_ACCOUNT"; do
+    email="$account@$PROJECT_ID.iam.gserviceaccount.com"
+    gcloud iam service-accounts add-iam-policy-binding "$email" \
+      "--project=$PROJECT_ID" "--member=$DEPLOYER_PRINCIPAL" \
+      --role=roles/iam.serviceAccountUser --condition=None --quiet >/dev/null
+  done
+  gcloud projects add-iam-policy-binding "$PROJECT_ID" \
+    "--member=serviceAccount:$DECISION_SERVICE_ACCOUNT@$PROJECT_ID.iam.gserviceaccount.com" \
+    --role=roles/run.invoker \
+    "--condition=expression=resource.name == '//run.googleapis.com/projects/$PROJECT_ID/locations/$REGION/services/$ACTUATOR_SERVICE',title=emilia-actuator-invoker,description=Decision workload may invoke only the actuator" \
+    --quiet >/dev/null
+}
+
+finalize_steady_state_policy() {
+  local current="$PROVISION_TMPDIR/project-policy-current.json"
+  local desired="$PROVISION_TMPDIR/project-policy-final.json"
+  local response="$PROVISION_TMPDIR/project-policy-response.json"
+  local project_number
+  project_number=$(gcloud projects describe "$PROJECT_ID" \
+    --format='value(projectNumber)')
+  [[ "$project_number" =~ ^[1-9][0-9]{5,29}$ ]] \
+    || lane_die "unable to resolve project number"
+  gcloud projects get-iam-policy "$PROJECT_ID" \
+    --format=json > "$current"
+  python3 - "$current" "$desired" "$PROJECT_ID" "$project_number" \
+    "$PROVISIONER_PRINCIPAL" "$DEPLOYER_PRINCIPAL" \
+    "projects/$PROJECT_ID/roles/$DEPLOYER_ROLE_ID" \
+    "serviceAccount:$DECISION_SERVICE_ACCOUNT@$PROJECT_ID.iam.gserviceaccount.com" \
+    "$REGION" "$ACTUATOR_SERVICE" <<'PY' || \
+    lane_die "unrelated direct IAM binding found; refusing final custody transition"
+import json
+import os
+from pathlib import Path
+import re
+import sys
+
+(
+    source,
+    destination,
+    project_id,
+    project_number,
+    provisioner,
+    deployer,
+    deployer_role,
+    decision,
+    region,
+    actuator_service,
+) = sys.argv[1:]
+policy = json.loads(Path(source).read_text(encoding="utf-8"))
+service_agent = re.compile(
+    rf"^serviceAccount:(service-{project_number}@|{project_number}@cloudservices[.])"
+)
+preserved = []
+for binding in policy.get("bindings", []):
+    role = binding.get("role")
+    members = binding.get("members", [])
+    condition = binding.get("condition")
+    if not isinstance(role, str) or not isinstance(members, list):
+        raise SystemExit("malformed project IAM binding")
+    if provisioner in members:
+        members = [member for member in members if member != provisioner]
+    if role == deployer_role:
+        if members != [deployer] or condition:
+            raise SystemExit("deployer custom role binding is not exact")
+        continue
+    if role == "roles/run.invoker":
+        if members != [decision]:
+            raise SystemExit("actuator invoker member is not exact")
+        continue
+    if role in {"roles/owner", "roles/editor"}:
+        unexpected = [
+            member for member in members
+            if not service_agent.match(member)
+        ]
+        if unexpected:
+            raise SystemExit(
+                f"unrelated {role} members: {', '.join(unexpected)}"
+            )
+        continue
+    if role.startswith(f"projects/{project_id}/roles/"):
+        raise SystemExit(f"unrelated project custom role binding: {role}")
+    if not role.endswith(".serviceAgent"):
+        raise SystemExit(f"unrelated project role binding: {role}")
+    if condition or not members or any(not service_agent.match(member) for member in members):
+        raise SystemExit(f"service-agent binding is not exact: {role}")
+    preserved.append(binding)
+
+invoker_condition = {
+    "title": "emilia-actuator-invoker",
+    "description": "Decision workload may invoke only the actuator",
+    "expression": (
+        "resource.name == "
+        f"'//run.googleapis.com/projects/{project_id}/locations/{region}/"
+        f"services/{actuator_service}'"
+    ),
+}
+preserved.extend(
+    [
+        {"role": deployer_role, "members": [deployer]},
+        {
+            "role": "roles/run.invoker",
+            "members": [decision],
+            "condition": invoker_condition,
+        },
+    ]
+)
+policy["version"] = 3
+policy["bindings"] = sorted(preserved, key=lambda item: item["role"])
+descriptor = os.open(destination, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600)
+with os.fdopen(descriptor, "w", encoding="utf-8") as handle:
+    json.dump(policy, handle, sort_keys=True)
+    handle.write("\n")
+PY
+  gcloud projects set-iam-policy "$PROJECT_ID" "$desired" \
+    --format=json --quiet > "$response"
+  python3 - "$desired" "$response" <<'PY' || \
+    lane_die "final project IAM response did not match the closed steady-state policy"
+import json
+from pathlib import Path
+import sys
+
+desired = json.loads(Path(sys.argv[1]).read_text(encoding="utf-8"))
+response = json.loads(Path(sys.argv[2]).read_text(encoding="utf-8"))
+desired.pop("etag", None)
+response.pop("etag", None)
+if desired != response:
+    raise SystemExit("final policy response mismatch")
+PY
+}
+
 apply_provisioning() {
-  ensure_project
+  create_project_once
+  verify_dedicated_project_identity
   gcloud services enable "${REQUIRED_APIS[@]}" \
     "--project=$PROJECT_ID" --quiet
-  ensure_custom_role "$PROVISIONER_ROLE_ID" \
-    "EMILIA consequence provisioner" \
-    "JIT infrastructure and IAM reconciliation; never a runtime principal" \
-    "${PROVISIONER_PERMISSIONS[@]}"
-  gcloud projects add-iam-policy-binding "$PROJECT_ID" \
-    "--member=$PROVISIONER_PRINCIPAL" \
-    "--role=projects/$PROJECT_ID/roles/$PROVISIONER_ROLE_ID" \
-    --condition=None --quiet
-  verify_control_plane_policy provisioner
   ensure_service_account "$ACTUATOR_SERVICE_ACCOUNT" \
     "EMILIA consequence actuator"
   ensure_service_account "$DECISION_SERVICE_ACCOUNT" \
@@ -807,57 +798,24 @@ apply_provisioning() {
   ensure_nat
   ensure_custom_role "$DEPLOYER_ROLE_ID" \
     "EMILIA consequence deployer" \
-    "Steady-state zero-secret-payload Cloud Run deployment and observation" \
+    "Protected-workflow-only Cloud Run deployment and observation; no IAM writes" \
     "${DEPLOYER_PERMISSIONS[@]}"
-  ensure_custom_role "$RECOVERY_ROLE_ID" \
-    "EMILIA consequence break-glass recovery" \
-    "IAM control-plane restoration without runtime impersonation or data access" \
-    "${RECOVERY_PERMISSIONS[@]}"
   gcloud projects add-iam-policy-binding "$PROJECT_ID" \
     "--member=$DEPLOYER_PRINCIPAL" \
     "--role=projects/$PROJECT_ID/roles/$DEPLOYER_ROLE_ID" \
     --condition=None --quiet
 
-  local member
-  for member in "${RECOVERY_MEMBERS[@]}"; do
-    gcloud projects add-iam-policy-binding "$PROJECT_ID" \
-      "--member=$member" \
-      "--role=projects/$PROJECT_ID/roles/$RECOVERY_ROLE_ID" \
-      --condition=None --quiet
-  done
-  verify_control_plane_policy custody
-  reconcile_control_plane_policy
-  verify_control_plane_policy exact
+  bind_fixed_deployment_access
+  reconcile_secret_accessors_once
+  verify_external_recovery_quorum
   gcloud resource-manager org-policies enable-enforce \
     constraints/iam.automaticIamGrantsForDefaultServiceAccounts \
     "--project=$PROJECT_ID" --quiet
   remove_default_editors
-  verify_control_plane_policy exact
+  finalize_steady_state_policy
   printf 'dedicated consequence-control project provisioned: %s\n' "$PROJECT_ID"
-  printf 'steady-state deployer has no secret payload, token minting, or persistent actAs grant\n'
-}
-
-jit_condition() {
-  printf "expression=request.time < timestamp('%s'),title=emilia-jit-actas,description=Time-bounded Cloud Run rollout" \
-    "$JIT_ACTAS_EXPIRES_AT"
-}
-
-change_jit_actas() {
-  local operation=$1 account email condition
-  condition=$(jit_condition)
-  for account in "$ACTUATOR_SERVICE_ACCOUNT" "$DECISION_SERVICE_ACCOUNT"; do
-    email="$account@$PROJECT_ID.iam.gserviceaccount.com"
-    if [[ "$operation" == grant ]]; then
-      gcloud iam service-accounts add-iam-policy-binding "$email" \
-        "--project=$PROJECT_ID" "--member=$DEPLOYER_PRINCIPAL" \
-        --role=roles/iam.serviceAccountUser "--condition=$condition" --quiet
-    else
-      gcloud iam service-accounts remove-iam-policy-binding "$email" \
-        "--project=$PROJECT_ID" "--member=$DEPLOYER_PRINCIPAL" \
-        --role=roles/iam.serviceAccountUser "--condition=$condition" --quiet
-    fi
-  done
-  printf '%s time-bounded rollout actAs on both runtime identities\n' "$operation"
+  printf 'final project policy response removed direct provisioner custody\n'
+  printf 'steady-state deployer has no IAM-policy writer and recovery is external PAM quorum only\n'
 }
 
 validate_provision_config
@@ -866,26 +824,9 @@ if [[ "$MODE" == render ]]; then
   exit 0
 fi
 
-if [[ "$ACTION" == provision ]]; then
-  require_provision_approval
-else
-  require_rollout_approval
-fi
+require_provision_approval
 require_active_provisioner
 
 PROVISION_TMPDIR=$(mktemp -d)
 trap 'rm -rf "$PROVISION_TMPDIR"' EXIT
-case "$ACTION" in
-  provision)
-    apply_provisioning
-    ;;
-  grant-jit-actas)
-    change_jit_actas grant
-    ;;
-  revoke-jit-actas)
-    change_jit_actas revoke
-    ;;
-  *)
-    lane_die "unsupported action: $ACTION"
-    ;;
-esac
+apply_provisioning
