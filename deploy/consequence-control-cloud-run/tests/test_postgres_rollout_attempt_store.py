@@ -540,18 +540,18 @@ class RolloutAttemptMigrationContractTests(unittest.TestCase):
             "REVOKE rollout_attempt_store_owner FROM CURRENT_USER",
             self.sql,
         )
-        self.assertIn(
-            "'rollout_attempt_executor',\n"
-            "      'rollout_attempt_store_owner',\n"
-            "      'MEMBER'",
-            self.sql,
-        )
-        self.assertIn(
-            "'rollout_attempt_store_owner',\n"
-            "      'rollout_attempt_executor',\n"
-            "      'MEMBER'",
-            self.sql,
-        )
+        self.assertIn("WITH RECURSIVE", self.sql)
+        self.assertIn("FROM pg_catalog.pg_auth_members", self.sql)
+        self.assertIn("executor_members(role_oid)", self.sql)
+        self.assertIn("owner_members(role_oid)", self.sql)
+        for attribute in (
+            "rolsuper",
+            "rolcreatedb",
+            "rolcreaterole",
+            "rolreplication",
+            "rolbypassrls",
+        ):
+            self.assertIn(attribute, self.sql)
         self.assertIn(
             "owner and executor roles must be membership-disjoint",
             self.sql,
@@ -609,13 +609,34 @@ class RolloutAttemptMigrationContractTests(unittest.TestCase):
         self.assertIn("terminal_operation", self.sql)
         self.assertIn("terminal outcome is malformed", self.sql)
         self.assertIn(
-            "attempt is unclaimed, already terminal, or claim binding "
+            "attempt is unclaimed, terminal conflict, or claim binding "
             "mismatched",
             self.sql,
         )
-        self.assertNotRegex(
+        self.assertIn("ON CONFLICT DO NOTHING", self.sql)
+        self.assertIn(
+            "terminals.terminal_payload = v_payload",
             self.sql,
-            r"ON\s+CONFLICT[\s\S]+DO\s+(?:NOTHING|UPDATE)",
+        )
+        self.assertIn(
+            "claims.claim_payload = v_claim",
+            self.sql,
+        )
+
+    def test_exact_response_loss_replay_is_recoverable_but_conflicts_fail(
+        self,
+    ) -> None:
+        self.assertIn(
+            "CASE WHEN v_inserted = 1 THEN 'claimed' ELSE 'recovered' END",
+            self.sql,
+        )
+        self.assertIn(
+            "v_existing_terminal.final_resource_version",
+            self.sql,
+        )
+        self.assertIn(
+            "conflicting rollout attempt claim key or digest",
+            self.sql,
         )
 
     def test_forced_rls_and_acl_expose_only_the_dedicated_rpc(self) -> None:

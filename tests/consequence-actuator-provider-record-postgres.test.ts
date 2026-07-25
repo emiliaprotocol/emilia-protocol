@@ -195,6 +195,14 @@ function providerRecord(overrides: {
   };
 }
 
+function providerAttribution(
+  record = providerRecord(),
+): Record<string, unknown> {
+  return (record.payload as {
+    provider_attribution: Record<string, unknown>;
+  }).provider_attribution;
+}
+
 async function reserveEnvelope(): Promise<void> {
   await asRole(TENANT_ALPHA_LOGIN, async (client) => {
     const now = new Date();
@@ -234,6 +242,25 @@ async function writeRecord(
       [JSON.stringify(record), digest],
     );
     return result.rows[0]?.provider_record_digest;
+  });
+}
+
+async function writeAttempt(
+  role: string,
+  attribution: Record<string, unknown>,
+  digest = ATTRIBUTION_DIGEST,
+): Promise<string> {
+  return asRole(role, async (client) => {
+    const result = await client.query<{
+      provider_attribution_digest: string;
+    }>(
+      `SELECT provider_attribution_digest
+       FROM consequence_actuator_private.record_provider_attempt(
+         $1::jsonb, $2
+       )`,
+      [JSON.stringify(attribution), digest],
+    );
+    return result.rows[0]?.provider_attribution_digest;
   });
 }
 
@@ -338,7 +365,7 @@ suite('consequence actuator provider-record migration on PostgreSQL 17', () => {
     }
   });
 
-  it('installs a FORCE-RLS append-only table with executor-only RPCs', async () => {
+  it('installs FORCE-RLS append-only tables with executor-only RPCs', async () => {
     const result = await admin.query<{
       owner: string;
       rls_enabled: boolean;
@@ -388,8 +415,179 @@ suite('consequence actuator provider-record migration on PostgreSQL 17', () => {
     }]);
   });
 
+  it('pins owner-only ACLs, policies, definer posture, and role separation', async () => {
+    const tables = await admin.query<{
+      table_name: string;
+      owner: string;
+      rls_enabled: boolean;
+      rls_forced: boolean;
+      owner_policy: boolean;
+      foreign_acl: boolean;
+    }>(`
+      SELECT
+        relation.relname AS table_name,
+        pg_catalog.pg_get_userbyid(relation.relowner) AS owner,
+        relation.relrowsecurity AS rls_enabled,
+        relation.relforcerowsecurity AS rls_forced,
+        EXISTS (
+          SELECT 1
+          FROM pg_catalog.pg_policy AS policy
+          WHERE policy.polrelid = relation.oid
+            AND policy.polroles = ARRAY[relation.relowner]::oid[]
+            AND policy.polcmd = '*'
+            AND pg_catalog.pg_get_expr(
+              policy.polqual,
+              policy.polrelid,
+              true
+            ) = 'true'
+            AND pg_catalog.pg_get_expr(
+              policy.polwithcheck,
+              policy.polrelid,
+              true
+            ) = 'true'
+        ) AS owner_policy,
+        EXISTS (
+          SELECT 1
+          FROM pg_catalog.aclexplode(COALESCE(
+            relation.relacl,
+            pg_catalog.acldefault('r', relation.relowner)
+          )) AS privilege
+          WHERE privilege.grantee <> relation.relowner
+        ) AS foreign_acl
+      FROM pg_catalog.pg_class AS relation
+      JOIN pg_catalog.pg_namespace AS namespace
+        ON namespace.oid = relation.relnamespace
+      WHERE namespace.nspname = 'consequence_actuator_private'
+        AND relation.relname = ANY($1::text[])
+      ORDER BY relation.relname
+    `, [['provider_attempts', 'provider_records']]);
+    expect(tables.rows).toEqual([
+      {
+        table_name: 'provider_attempts',
+        owner: OWNER_ROLE,
+        rls_enabled: true,
+        rls_forced: true,
+        owner_policy: true,
+        foreign_acl: false,
+      },
+      {
+        table_name: 'provider_records',
+        owner: OWNER_ROLE,
+        rls_enabled: true,
+        rls_forced: true,
+        owner_policy: true,
+        foreign_acl: false,
+      },
+    ]);
+
+    const functions = await admin.query<{
+      signature: string;
+      owner: string;
+      security_definer: boolean;
+      config: string[];
+      executor_execute: boolean;
+      foreign_execute: boolean;
+    }>(`
+      WITH expected(signature) AS (
+        SELECT pg_catalog.unnest($1::text[])
+      )
+      SELECT
+        expected.signature,
+        pg_catalog.pg_get_userbyid(procedure.proowner) AS owner,
+        procedure.prosecdef AS security_definer,
+        procedure.proconfig AS config,
+        pg_catalog.has_function_privilege(
+          '${EXECUTOR_ROLE}',
+          procedure.oid,
+          'EXECUTE'
+        ) AS executor_execute,
+        EXISTS (
+          SELECT 1
+          FROM pg_catalog.aclexplode(COALESCE(
+            procedure.proacl,
+            pg_catalog.acldefault('f', procedure.proowner)
+          )) AS privilege
+          WHERE privilege.privilege_type = 'EXECUTE'
+            AND privilege.grantee NOT IN (
+              procedure.proowner,
+              (SELECT oid FROM pg_catalog.pg_roles
+               WHERE rolname = '${EXECUTOR_ROLE}')
+            )
+        ) AS foreign_execute
+      FROM expected
+      CROSS JOIN LATERAL pg_catalog.to_regprocedure(expected.signature)
+        AS resolved(oid)
+      JOIN pg_catalog.pg_proc AS procedure
+        ON procedure.oid = resolved.oid
+      ORDER BY expected.signature
+    `, [[
+      'consequence_actuator_private.consume_envelope(text,text,text,text,text,text,text,text,text,text,text)',
+      'consequence_actuator_private.read_provider_attempt(text,text,text,text,text,text,text,text,text)',
+      'consequence_actuator_private.read_provider_record(text,text,text,text,text,text,text,text,text)',
+      'consequence_actuator_private.record_provider_attempt(jsonb,text)',
+      'consequence_actuator_private.record_provider_record(jsonb,text)',
+      'consequence_actuator_private.reserve_envelope(text,text,text,text,text,text,text,text,text,timestamptz,timestamptz,text)',
+    ]]);
+    expect(functions.rows).toHaveLength(6);
+    for (const functionContract of functions.rows) {
+      expect(functionContract).toMatchObject({
+        owner: OWNER_ROLE,
+        security_definer: true,
+        config: ['search_path=""'],
+        executor_execute: true,
+        foreign_execute: false,
+      });
+    }
+
+    const roleGraph = await admin.query<{ separated: boolean }>(`
+      WITH RECURSIVE
+      executor_members(role_oid) AS (
+        SELECT oid
+        FROM pg_catalog.pg_roles
+        WHERE rolname = '${EXECUTOR_ROLE}'
+        UNION
+        SELECT membership.member
+        FROM pg_catalog.pg_auth_members AS membership
+        JOIN executor_members AS inherited
+          ON membership.roleid = inherited.role_oid
+      ),
+      owner_members(role_oid) AS (
+        SELECT oid
+        FROM pg_catalog.pg_roles
+        WHERE rolname = '${OWNER_ROLE}'
+        UNION
+        SELECT membership.member
+        FROM pg_catalog.pg_auth_members AS membership
+        JOIN owner_members AS inherited
+          ON membership.roleid = inherited.role_oid
+      )
+      SELECT NOT EXISTS (
+        SELECT 1
+        FROM executor_members
+        JOIN pg_catalog.pg_roles AS candidate
+          ON candidate.oid = executor_members.role_oid
+        WHERE executor_members.role_oid IN (
+            SELECT owner_members.role_oid FROM owner_members
+          )
+          OR candidate.rolsuper
+          OR candidate.rolcreatedb
+          OR candidate.rolcreaterole
+          OR candidate.rolreplication
+          OR candidate.rolbypassrls
+          OR candidate.rolname IN ('anon', 'authenticated', 'service_role')
+      ) AS separated
+    `);
+    expect(roleGraph.rows).toEqual([{ separated: true }]);
+  });
+
   it('records, reads, and idempotently replays one exact terminal record', async () => {
     const record = providerRecord();
+    await expect(
+      writeAttempt(TENANT_ALPHA_LOGIN, providerAttribution(record)),
+    ).resolves.toBe(ATTRIBUTION_DIGEST);
+    await expect(
+      writeAttempt(TENANT_ALPHA_LOGIN, providerAttribution(record)),
+    ).resolves.toBe(ATTRIBUTION_DIGEST);
     await expect(
       writeRecord(TENANT_ALPHA_LOGIN, record),
     ).resolves.toBe(RECORD_DIGEST);
@@ -461,7 +659,34 @@ suite('consequence actuator provider-record migration on PostgreSQL 17', () => {
     });
   });
 
+  it('rejects an executor login that also inherits owner authority', async () => {
+    await admin.query(
+      `GRANT ${identifier(OWNER_ROLE)}
+       TO ${identifier(TENANT_ALPHA_LOGIN)} WITH INHERIT TRUE`,
+    );
+    try {
+      await expect(
+        writeAttempt(TENANT_ALPHA_LOGIN, providerAttribution()),
+      ).rejects.toMatchObject({
+        code: '42501',
+        message:
+          'dedicated least-privilege consequence actuator executor is required',
+      });
+    } finally {
+      await admin.query(
+        `REVOKE ${identifier(OWNER_ROLE)}
+         FROM ${identifier(TENANT_ALPHA_LOGIN)}`,
+      );
+    }
+  });
+
   it('denies direct table access and RPC access without executor authority', async () => {
+    await expect(asRole(
+      TENANT_ALPHA_LOGIN,
+      async (client) => client.query(
+        'SELECT * FROM consequence_actuator_private.provider_attempts',
+      ),
+    )).rejects.toMatchObject({ code: '42501' });
     await expect(asRole(
       TENANT_ALPHA_LOGIN,
       async (client) => client.query(
@@ -475,6 +700,9 @@ suite('consequence actuator provider-record migration on PostgreSQL 17', () => {
 
   it('rejects owner-level UPDATE and DELETE through the immutability trigger', async () => {
     for (const statement of [
+      `UPDATE consequence_actuator_private.provider_attempts
+       SET recorded_at = recorded_at + INTERVAL '1 second'`,
+      'DELETE FROM consequence_actuator_private.provider_attempts',
       `UPDATE consequence_actuator_private.provider_records
        SET recorded_at = recorded_at + INTERVAL '1 second'`,
       'DELETE FROM consequence_actuator_private.provider_records',

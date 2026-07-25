@@ -33,16 +33,42 @@ ALTER ROLE rollout_attempt_executor NOLOGIN
 
 DO $role_separation$
 BEGIN
-  IF pg_catalog.pg_has_role(
-      'rollout_attempt_executor',
-      'rollout_attempt_store_owner',
-      'MEMBER'
+  IF EXISTS (
+    WITH RECURSIVE
+    executor_members(role_oid) AS (
+      SELECT oid
+      FROM pg_catalog.pg_roles
+      WHERE rolname = 'rollout_attempt_executor'
+      UNION
+      SELECT membership.member
+      FROM pg_catalog.pg_auth_members AS membership
+      JOIN executor_members AS inherited
+        ON membership.roleid = inherited.role_oid
+    ),
+    owner_members(role_oid) AS (
+      SELECT oid
+      FROM pg_catalog.pg_roles
+      WHERE rolname = 'rollout_attempt_store_owner'
+      UNION
+      SELECT membership.member
+      FROM pg_catalog.pg_auth_members AS membership
+      JOIN owner_members AS inherited
+        ON membership.roleid = inherited.role_oid
     )
-    OR pg_catalog.pg_has_role(
-      'rollout_attempt_store_owner',
-      'rollout_attempt_executor',
-      'MEMBER'
-    )
+    SELECT 1
+    FROM executor_members
+    JOIN pg_catalog.pg_roles AS candidate
+      ON candidate.oid = executor_members.role_oid
+    WHERE executor_members.role_oid IN (
+        SELECT owner_members.role_oid FROM owner_members
+      )
+      OR candidate.rolsuper
+      OR candidate.rolcreatedb
+      OR candidate.rolcreaterole
+      OR candidate.rolreplication
+      OR candidate.rolbypassrls
+      OR candidate.rolname IN ('anon', 'authenticated', 'service_role')
+  )
   THEN
     RAISE EXCEPTION
       'rollout attempt owner and executor roles must be membership-disjoint'
@@ -416,6 +442,7 @@ DECLARE
   v_status TEXT;
   v_final_resource_version TEXT;
   v_inserted BIGINT;
+  v_existing_terminal rollout_attempt_private.terminals%ROWTYPE;
 BEGIN
   PERFORM rollout_attempt_private.assert_executor();
 
@@ -441,8 +468,7 @@ BEGIN
     v_claim := v_payload;
     v_claim_sha256 :=
       rollout_attempt_private.validate_claim(v_claim);
-    BEGIN
-      INSERT INTO rollout_attempt_private.claims (
+    INSERT INTO rollout_attempt_private.claims (
         claim_sha256,
         authorization_id,
         rollout_nonce,
@@ -476,17 +502,41 @@ BEGIN
         v_claim ->> 'workflow_sha',
         v_claim ->> 'wif_provider',
         v_claim
-      );
-    EXCEPTION
-      WHEN unique_violation THEN
-        RAISE EXCEPTION 'duplicate rollout attempt claim key or digest'
-          USING ERRCODE = '23505';
-    END;
+      )
+    ON CONFLICT DO NOTHING;
+    GET DIAGNOSTICS v_inserted = ROW_COUNT;
+
+    IF v_inserted = 0 AND NOT EXISTS (
+      SELECT 1
+      FROM rollout_attempt_private.claims AS claims
+      WHERE claims.claim_sha256 = v_claim_sha256
+        AND claims.claim_payload = v_claim
+    ) THEN
+      RAISE EXCEPTION 'conflicting rollout attempt claim key or digest'
+        USING ERRCODE = '23505';
+    END IF;
+
+    IF v_inserted = 0 THEN
+      SELECT terminals.*
+      INTO v_existing_terminal
+      FROM rollout_attempt_private.terminals AS terminals
+      WHERE terminals.claim_sha256 = v_claim_sha256;
+      IF FOUND THEN
+        RETURN pg_catalog.jsonb_build_object(
+          'schema', 'emilia-deployment-attempt-store-response.v1',
+          'operation', 'claim',
+          'status', v_existing_terminal.status,
+          'claim_sha256', v_claim_sha256,
+          'final_resource_version',
+            v_existing_terminal.final_resource_version
+        );
+      END IF;
+    END IF;
 
     RETURN pg_catalog.jsonb_build_object(
       'schema', 'emilia-deployment-attempt-store-response.v1',
       'operation', 'claim',
-      'status', 'claimed',
+      'status', CASE WHEN v_inserted = 1 THEN 'claimed' ELSE 'recovered' END,
       'claim_sha256', v_claim_sha256,
       'final_resource_version', NULL
     );
@@ -547,8 +597,7 @@ BEGIN
     ELSE v_outcome
   END;
 
-  BEGIN
-    INSERT INTO rollout_attempt_private.terminals (
+  INSERT INTO rollout_attempt_private.terminals (
       claim_sha256,
       terminal_operation,
       outcome,
@@ -565,17 +614,33 @@ BEGIN
       v_payload
     FROM rollout_attempt_private.claims AS claims
     WHERE claims.claim_sha256 = v_claim_sha256
-      AND claims.claim_payload = v_claim;
-    GET DIAGNOSTICS v_inserted = ROW_COUNT;
-  EXCEPTION
-    WHEN unique_violation THEN
-      RAISE EXCEPTION
-        'attempt is unclaimed, already terminal, or claim binding mismatched'
-        USING ERRCODE = '23505';
-  END;
+      AND claims.claim_payload = v_claim
+    ON CONFLICT DO NOTHING;
+  GET DIAGNOSTICS v_inserted = ROW_COUNT;
   IF v_inserted <> 1 THEN
+    IF EXISTS (
+      SELECT 1
+      FROM rollout_attempt_private.terminals AS terminals
+      JOIN rollout_attempt_private.claims AS claims
+        ON claims.claim_sha256 = terminals.claim_sha256
+      WHERE terminals.claim_sha256 = v_claim_sha256
+        AND claims.claim_payload = v_claim
+        AND terminals.terminal_operation = p_operation
+        AND terminals.outcome = v_outcome
+        AND terminals.status = v_status
+        AND terminals.final_resource_version = v_final_resource_version
+        AND terminals.terminal_payload = v_payload
+    ) THEN
+      RETURN pg_catalog.jsonb_build_object(
+        'schema', 'emilia-deployment-attempt-store-response.v1',
+        'operation', p_operation,
+        'status', v_status,
+        'claim_sha256', v_claim_sha256,
+        'final_resource_version', v_final_resource_version
+      );
+    END IF;
     RAISE EXCEPTION
-      'attempt is unclaimed, already terminal, or claim binding mismatched'
+      'attempt is unclaimed, terminal conflict, or claim binding mismatched'
       USING ERRCODE = '55000';
   END IF;
 
@@ -611,6 +676,386 @@ REVOKE rollout_attempt_executor
 REVOKE rollout_attempt_store_owner
   FROM anon, authenticated, service_role;
 REVOKE rollout_attempt_store_owner FROM CURRENT_USER;
+
+CREATE OR REPLACE FUNCTION public.gov_consequence_control_security_assertions()
+RETURNS SETOF TEXT
+LANGUAGE sql
+STABLE
+SECURITY DEFINER
+SET search_path TO 'pg_catalog', 'public'
+AS $$
+  WITH required(schema_name, table_name, owner_name, policy_name, token) AS (
+    VALUES
+      (
+        'consequence_actuator_private',
+        'provider_attempts',
+        'consequence_actuator_store_owner',
+        'consequence_actuator_provider_attempt_owner_all',
+        'contract:table:consequence_actuator_private.provider_attempts:owner-force-rls-owner-only-acl'
+      ),
+      (
+        'consequence_actuator_private',
+        'provider_records',
+        'consequence_actuator_store_owner',
+        'consequence_actuator_provider_record_owner_all',
+        'contract:table:consequence_actuator_private.provider_records:owner-force-rls-owner-only-acl'
+      ),
+      (
+        'rollout_attempt_private',
+        'claims',
+        'rollout_attempt_store_owner',
+        'rollout_attempt_claim_owner_all',
+        'contract:table:rollout_attempt_private.claims:owner-force-rls-owner-only-acl'
+      ),
+      (
+        'rollout_attempt_private',
+        'terminals',
+        'rollout_attempt_store_owner',
+        'rollout_attempt_terminal_owner_all',
+        'contract:table:rollout_attempt_private.terminals:owner-force-rls-owner-only-acl'
+      )
+  )
+  SELECT required.token
+  FROM required
+  JOIN pg_namespace AS namespace
+    ON namespace.nspname = required.schema_name
+  JOIN pg_class AS relation
+    ON relation.relnamespace = namespace.oid
+   AND relation.relname = required.table_name
+   AND relation.relkind IN ('r', 'p')
+  JOIN pg_roles AS owner_role
+    ON owner_role.rolname = required.owner_name
+  WHERE relation.relowner = owner_role.oid
+    AND relation.relrowsecurity
+    AND relation.relforcerowsecurity
+    AND EXISTS (
+      SELECT 1
+      FROM pg_policy AS policy
+      WHERE policy.polrelid = relation.oid
+        AND policy.polname = required.policy_name
+        AND policy.polcmd = '*'
+        AND policy.polroles = ARRAY[owner_role.oid]::OID[]
+        AND pg_get_expr(policy.polqual, policy.polrelid, TRUE) = 'true'
+        AND pg_get_expr(policy.polwithcheck, policy.polrelid, TRUE) = 'true'
+    )
+    AND NOT EXISTS (
+      SELECT 1
+      FROM aclexplode(
+        COALESCE(
+          relation.relacl,
+          acldefault('r', relation.relowner)
+        )
+      ) AS privilege
+      WHERE privilege.grantee <> relation.relowner
+    )
+
+  UNION ALL
+
+  SELECT required.token
+  FROM (
+    VALUES
+      (
+        'consequence_actuator_private',
+        'reserve_envelope',
+        'text,text,text,text,text,text,text,text,text,timestamp with time zone,timestamp with time zone,text',
+        'consequence_actuator_store_owner',
+        'consequence_actuator_executor',
+        'contract:function:consequence_actuator_private.reserve_envelope(text,text,text,text,text,text,text,text,text,timestamp with time zone,timestamp with time zone,text):owner-definer-empty-search-path-executor-only'
+      ),
+      (
+        'consequence_actuator_private',
+        'consume_envelope',
+        'text,text,text,text,text,text,text,text,text,text,text',
+        'consequence_actuator_store_owner',
+        'consequence_actuator_executor',
+        'contract:function:consequence_actuator_private.consume_envelope(text,text,text,text,text,text,text,text,text,text,text):owner-definer-empty-search-path-executor-only'
+      ),
+      (
+        'consequence_actuator_private',
+        'record_provider_attempt',
+        'jsonb,text',
+        'consequence_actuator_store_owner',
+        'consequence_actuator_executor',
+        'contract:function:consequence_actuator_private.record_provider_attempt(jsonb,text):owner-definer-empty-search-path-executor-only'
+      ),
+      (
+        'consequence_actuator_private',
+        'read_provider_attempt',
+        'text,text,text,text,text,text,text,text,text',
+        'consequence_actuator_store_owner',
+        'consequence_actuator_executor',
+        'contract:function:consequence_actuator_private.read_provider_attempt(text,text,text,text,text,text,text,text,text):owner-definer-empty-search-path-executor-only'
+      ),
+      (
+        'consequence_actuator_private',
+        'record_provider_record',
+        'jsonb,text',
+        'consequence_actuator_store_owner',
+        'consequence_actuator_executor',
+        'contract:function:consequence_actuator_private.record_provider_record(jsonb,text):owner-definer-empty-search-path-executor-only'
+      ),
+      (
+        'consequence_actuator_private',
+        'read_provider_record',
+        'text,text,text,text,text,text,text,text,text',
+        'consequence_actuator_store_owner',
+        'consequence_actuator_executor',
+        'contract:function:consequence_actuator_private.read_provider_record(text,text,text,text,text,text,text,text,text):owner-definer-empty-search-path-executor-only'
+      ),
+      (
+        'rollout_attempt_private',
+        'apply_operation',
+        'text,text',
+        'rollout_attempt_store_owner',
+        'rollout_attempt_executor',
+        'contract:function:rollout_attempt_private.apply_operation(text,text):owner-definer-empty-search-path-executor-only'
+      )
+  ) AS required(
+    schema_name,
+    function_name,
+    argument_types,
+    owner_name,
+    executor_name,
+    token
+  )
+  JOIN pg_namespace AS namespace
+    ON namespace.nspname = required.schema_name
+  JOIN pg_proc AS procedure
+    ON procedure.pronamespace = namespace.oid
+   AND procedure.proname = required.function_name
+   AND regexp_replace(
+     oidvectortypes(procedure.proargtypes),
+     ',[[:space:]]*',
+     ',',
+     'g'
+   ) = required.argument_types
+  JOIN pg_roles AS owner_role
+    ON owner_role.rolname = required.owner_name
+  JOIN pg_roles AS executor_role
+    ON executor_role.rolname = required.executor_name
+  WHERE procedure.proowner = owner_role.oid
+    AND procedure.prosecdef
+    AND procedure.proconfig = ARRAY['search_path=""']::TEXT[]
+    AND EXISTS (
+      SELECT 1
+      FROM aclexplode(
+        COALESCE(
+          procedure.proacl,
+          acldefault('f', procedure.proowner)
+        )
+      ) AS privilege
+      WHERE privilege.grantee = executor_role.oid
+        AND privilege.privilege_type = 'EXECUTE'
+    )
+    AND NOT EXISTS (
+      SELECT 1
+      FROM aclexplode(
+        COALESCE(
+          procedure.proacl,
+          acldefault('f', procedure.proowner)
+        )
+      ) AS privilege
+      WHERE privilege.privilege_type = 'EXECUTE'
+        AND privilege.grantee NOT IN (
+          owner_role.oid,
+          executor_role.oid
+        )
+    )
+
+  UNION ALL
+
+  SELECT
+    'contract:roles:consequence-actuator:least-privilege-membership-disjoint'
+  WHERE EXISTS (
+      SELECT 1
+      FROM pg_roles AS owner_role
+      WHERE owner_role.rolname = 'consequence_actuator_store_owner'
+        AND NOT owner_role.rolcanlogin
+        AND NOT owner_role.rolsuper
+        AND NOT owner_role.rolcreatedb
+        AND NOT owner_role.rolcreaterole
+        AND NOT owner_role.rolreplication
+        AND NOT owner_role.rolbypassrls
+    )
+    AND EXISTS (
+      SELECT 1
+      FROM pg_roles AS executor_role
+      WHERE executor_role.rolname = 'consequence_actuator_executor'
+        AND NOT executor_role.rolcanlogin
+        AND NOT executor_role.rolsuper
+        AND NOT executor_role.rolcreatedb
+        AND NOT executor_role.rolcreaterole
+        AND NOT executor_role.rolreplication
+        AND NOT executor_role.rolbypassrls
+    )
+    AND NOT EXISTS (
+      WITH RECURSIVE
+      executor_members(role_oid) AS (
+        SELECT oid
+        FROM pg_roles
+        WHERE rolname = 'consequence_actuator_executor'
+        UNION
+        SELECT membership.member
+        FROM pg_auth_members AS membership
+        JOIN executor_members AS inherited
+          ON membership.roleid = inherited.role_oid
+      ),
+      owner_members(role_oid) AS (
+        SELECT oid
+        FROM pg_roles
+        WHERE rolname = 'consequence_actuator_store_owner'
+        UNION
+        SELECT membership.member
+        FROM pg_auth_members AS membership
+        JOIN owner_members AS inherited
+          ON membership.roleid = inherited.role_oid
+      )
+      SELECT 1
+      FROM executor_members
+      JOIN pg_roles AS candidate
+        ON candidate.oid = executor_members.role_oid
+      WHERE executor_members.role_oid IN (
+          SELECT owner_members.role_oid FROM owner_members
+        )
+        OR candidate.rolsuper
+        OR candidate.rolcreatedb
+        OR candidate.rolcreaterole
+        OR candidate.rolreplication
+        OR candidate.rolbypassrls
+        OR candidate.rolname IN ('anon', 'authenticated', 'service_role')
+    )
+
+  UNION ALL
+
+  SELECT
+    'contract:roles:rollout-attempt:least-privilege-membership-disjoint'
+  WHERE EXISTS (
+      SELECT 1
+      FROM pg_roles AS owner_role
+      WHERE owner_role.rolname = 'rollout_attempt_store_owner'
+        AND NOT owner_role.rolcanlogin
+        AND NOT owner_role.rolsuper
+        AND NOT owner_role.rolcreatedb
+        AND NOT owner_role.rolcreaterole
+        AND NOT owner_role.rolreplication
+        AND NOT owner_role.rolbypassrls
+    )
+    AND EXISTS (
+      SELECT 1
+      FROM pg_roles AS executor_role
+      WHERE executor_role.rolname = 'rollout_attempt_executor'
+        AND NOT executor_role.rolcanlogin
+        AND NOT executor_role.rolsuper
+        AND NOT executor_role.rolcreatedb
+        AND NOT executor_role.rolcreaterole
+        AND NOT executor_role.rolreplication
+        AND NOT executor_role.rolbypassrls
+    )
+    AND NOT EXISTS (
+      WITH RECURSIVE
+      executor_members(role_oid) AS (
+        SELECT oid
+        FROM pg_roles
+        WHERE rolname = 'rollout_attempt_executor'
+        UNION
+        SELECT membership.member
+        FROM pg_auth_members AS membership
+        JOIN executor_members AS inherited
+          ON membership.roleid = inherited.role_oid
+      ),
+      owner_members(role_oid) AS (
+        SELECT oid
+        FROM pg_roles
+        WHERE rolname = 'rollout_attempt_store_owner'
+        UNION
+        SELECT membership.member
+        FROM pg_auth_members AS membership
+        JOIN owner_members AS inherited
+          ON membership.roleid = inherited.role_oid
+      )
+      SELECT 1
+      FROM executor_members
+      JOIN pg_roles AS candidate
+        ON candidate.oid = executor_members.role_oid
+      WHERE executor_members.role_oid IN (
+          SELECT owner_members.role_oid FROM owner_members
+        )
+        OR candidate.rolsuper
+        OR candidate.rolcreatedb
+        OR candidate.rolcreaterole
+        OR candidate.rolreplication
+        OR candidate.rolbypassrls
+        OR candidate.rolname IN ('anon', 'authenticated', 'service_role')
+    )
+
+  UNION ALL
+
+  SELECT
+    'contract:index:public.idx_security_events_single_child_per_parent:exact-unique-btree'
+  FROM pg_index AS index
+  JOIN pg_class AS index_relation
+    ON index_relation.oid = index.indexrelid
+  JOIN pg_class AS table_relation
+    ON table_relation.oid = index.indrelid
+  JOIN pg_namespace AS namespace
+    ON namespace.oid = table_relation.relnamespace
+  JOIN pg_am AS access_method
+    ON access_method.oid = index_relation.relam
+  WHERE namespace.nspname = 'public'
+    AND table_relation.relname = 'security_events'
+    AND index_relation.relname
+      = 'idx_security_events_single_child_per_parent'
+    AND access_method.amname = 'btree'
+    AND index.indisunique
+    AND index.indisvalid
+    AND index.indisready
+    AND index.indimmediate
+    AND NOT index.indisexclusion
+    AND index.indpred IS NULL
+    AND index.indnkeyatts = 2
+    AND index.indnatts = 2
+    AND pg_get_indexdef(index.indexrelid, 1, TRUE)
+      = 'COALESCE(tenant_id, ''''::text)'
+    AND pg_get_indexdef(index.indexrelid, 2, TRUE)
+      = 'COALESCE(previous_hash, ''root''::text)'
+
+  UNION ALL
+
+  SELECT
+    'contract:index:public.idx_receipts_single_child_per_parent:exact-unique-btree'
+  FROM pg_index AS index
+  JOIN pg_class AS index_relation
+    ON index_relation.oid = index.indexrelid
+  JOIN pg_class AS table_relation
+    ON table_relation.oid = index.indrelid
+  JOIN pg_namespace AS namespace
+    ON namespace.oid = table_relation.relnamespace
+  JOIN pg_am AS access_method
+    ON access_method.oid = index_relation.relam
+  WHERE namespace.nspname = 'public'
+    AND table_relation.relname = 'receipts'
+    AND index_relation.relname
+      = 'idx_receipts_single_child_per_parent'
+    AND access_method.amname = 'btree'
+    AND index.indisunique
+    AND index.indisvalid
+    AND index.indisready
+    AND index.indimmediate
+    AND NOT index.indisexclusion
+    AND index.indpred IS NULL
+    AND index.indnkeyatts = 2
+    AND index.indnatts = 2
+    AND pg_get_indexdef(index.indexrelid, 1, TRUE) = 'entity_id'
+    AND pg_get_indexdef(index.indexrelid, 2, TRUE)
+      = 'COALESCE(previous_hash, ''root''::text)';
+$$;
+
+REVOKE EXECUTE ON FUNCTION
+  public.gov_consequence_control_security_assertions()
+  FROM PUBLIC, anon, authenticated;
+GRANT EXECUTE ON FUNCTION
+  public.gov_consequence_control_security_assertions()
+  TO service_role;
 
 -- Preserve bare names for migration-journal reconciliation while also
 -- publishing canonical, schema-qualified identity signatures for exact RPC
@@ -670,6 +1115,10 @@ AS $$
         ) function_name(object_name)
         WHERE n.nspname NOT IN ('pg_catalog', 'information_schema')
           AND n.nspname !~ '^pg_(toast|temp)'
+        UNION ALL
+        SELECT security_assertions.assertion
+        FROM public.gov_consequence_control_security_assertions()
+          AS security_assertions(assertion)
       ) qualified_functions
     )
   );

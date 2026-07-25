@@ -116,9 +116,12 @@ describe('actuator production startup requirements', () => {
     const readiness = {
       principal_name: 'consequence_actuator_tenant_emilia',
       role_membership_ok: true,
+      provider_attempts_ready: true,
       provider_records_ready: true,
       reserve_envelope_ready: true,
       consume_envelope_ready: true,
+      record_provider_attempt_ready: true,
+      read_provider_attempt_ready: true,
       record_provider_record_ready: true,
       read_provider_record_ready: true,
     };
@@ -141,12 +144,19 @@ describe('actuator production startup requirements', () => {
     assert.equal(queries.length, 1);
     assert.ok(
       queries[0].includes(
+        "'consequence_actuator_private.provider_attempts'",
+      ),
+    );
+    assert.ok(
+      queries[0].includes(
         "'consequence_actuator_private.provider_records'",
       ),
     );
     for (const signature of [
       'consequence_actuator_private.reserve_envelope(text,text,text,text,text,text,text,text,text,timestamp with time zone,timestamp with time zone,text)',
       'consequence_actuator_private.consume_envelope(text,text,text,text,text,text,text,text,text,text,text)',
+      'consequence_actuator_private.record_provider_attempt(jsonb,text)',
+      'consequence_actuator_private.read_provider_attempt(text,text,text,text,text,text,text,text,text)',
       'consequence_actuator_private.record_provider_record(jsonb,text)',
       'consequence_actuator_private.read_provider_record(text,text,text,text,text,text,text,text,text)',
     ]) {
@@ -157,9 +167,12 @@ describe('actuator production startup requirements', () => {
     }
 
     for (const field of [
+      'provider_attempts_ready',
       'provider_records_ready',
       'reserve_envelope_ready',
       'consume_envelope_ready',
+      'record_provider_attempt_ready',
+      'read_provider_attempt_ready',
       'record_provider_record_ready',
       'read_provider_record_ready',
     ] as const) {
@@ -177,6 +190,11 @@ describe('actuator production startup requirements', () => {
       signature: { algorithm: 'Ed25519' },
     };
     const recordDigest = `sha256:${'a'.repeat(64)}`;
+    const attribution = {
+      payload: { attempt_id: 'attempt:0000000000000001' },
+      signature: { algorithm: 'Ed25519' },
+    };
+    const attributionDigest = `sha256:${'b'.repeat(64)}`;
     const expected = {
       tenant_id: 'tenant:emilia',
       provider_id: 'github',
@@ -191,6 +209,21 @@ describe('actuator production startup requirements', () => {
     const calls: Array<{ text: string; values: readonly unknown[] }> = [];
     const store = createPostgresProviderRecordStore(async (text, values) => {
       calls.push({ text, values });
+      if (text.includes('record_provider_attempt')) {
+        return {
+          rowCount: 1,
+          rows: [{ provider_attribution_digest: attributionDigest }],
+        };
+      }
+      if (text.includes('read_provider_attempt')) {
+        return {
+          rowCount: 1,
+          rows: [{
+            provider_attribution: attribution,
+            provider_attribution_digest: attributionDigest,
+          }],
+        };
+      }
       if (text.includes('record_provider_record')) {
         return {
           rowCount: 1,
@@ -207,6 +240,17 @@ describe('actuator production startup requirements', () => {
     });
 
     assert.deepEqual(
+      await store.writeAttempt({
+        attribution,
+        attribution_digest: attributionDigest,
+      }),
+      { attribution, attribution_digest: attributionDigest },
+    );
+    assert.deepEqual(await store.readAttempt(expected), {
+      attribution,
+      attribution_digest: attributionDigest,
+    });
+    assert.deepEqual(
       await store.write({ record, record_digest: recordDigest }),
       { record, record_digest: recordDigest },
     );
@@ -214,20 +258,33 @@ describe('actuator production startup requirements', () => {
       record,
       record_digest: recordDigest,
     });
-    assert.equal(calls.length, 2);
+    assert.equal(calls.length, 4);
     assert.match(
       calls[0].text,
-      /FROM consequence_actuator_private\.record_provider_record\(/,
+      /FROM consequence_actuator_private\.record_provider_attempt\(/,
     );
     assert.deepEqual(calls[0].values, [
+      JSON.stringify(attribution),
+      attributionDigest,
+    ]);
+    assert.match(
+      calls[1].text,
+      /FROM consequence_actuator_private\.read_provider_attempt\(/,
+    );
+    assert.deepEqual(calls[1].values, Object.values(expected));
+    assert.match(
+      calls[2].text,
+      /FROM consequence_actuator_private\.record_provider_record\(/,
+    );
+    assert.deepEqual(calls[2].values, [
       JSON.stringify(record),
       recordDigest,
     ]);
     assert.match(
-      calls[1].text,
+      calls[3].text,
       /FROM consequence_actuator_private\.read_provider_record\(/,
     );
-    assert.deepEqual(calls[1].values, Object.values(expected));
+    assert.deepEqual(calls[3].values, Object.values(expected));
     assert.equal(
       calls.some(({ text }) => /\b(?:INSERT|UPDATE|DELETE)\b/.test(text)),
       false,

@@ -250,6 +250,23 @@ suite("rollout-attempt dirty role graph on PostgreSQL 17", () => {
     ]));
   });
 
+  it("publishes catalog-derived rollout table, function, and role assertions", async () => {
+    const assertions = await admin.query<{ assertion: string }>(`
+      SELECT assertion
+      FROM public.gov_consequence_control_security_assertions()
+        AS security_assertions(assertion)
+      WHERE assertion LIKE 'contract:%rollout%'
+      ORDER BY assertion
+    `);
+
+    expect(assertions.rows.map(({ assertion }) => assertion)).toEqual([
+      "contract:function:rollout_attempt_private.apply_operation(text,text):owner-definer-empty-search-path-executor-only",
+      "contract:roles:rollout-attempt:least-privilege-membership-disjoint",
+      "contract:table:rollout_attempt_private.claims:owner-force-rls-owner-only-acl",
+      "contract:table:rollout_attempt_private.terminals:owner-force-rls-owner-only-acl",
+    ]);
+  });
+
   it("allows a clean executor login to claim an attempt", async () => {
     await createLogin(CLEAN_LOGIN);
     await admin.query(
@@ -262,6 +279,53 @@ suite("rollout-attempt dirty role graph on PostgreSQL 17", () => {
       operation: "claim",
       status: "claimed",
       claim_sha256: claim.claim_sha256,
+    });
+  });
+
+  it("recovers exact claim and terminal acknowledgements without accepting conflicts", async () => {
+    const claim = validClaim();
+    await expect(callAs(CLEAN_LOGIN, "claim", claim)).resolves.toMatchObject({
+      operation: "claim",
+      status: "recovered",
+      claim_sha256: claim.claim_sha256,
+      final_resource_version: null,
+    });
+
+    const terminal = {
+      schema: "emilia-deployment-attempt-store-operation.v1",
+      operation: "complete",
+      claim,
+      outcome: "applied",
+      final_resource_version: "resource-version-2",
+    };
+    await expect(
+      callAs(CLEAN_LOGIN, "complete", terminal),
+    ).resolves.toMatchObject({
+      operation: "complete",
+      status: "completed",
+      final_resource_version: "resource-version-2",
+    });
+    await expect(
+      callAs(CLEAN_LOGIN, "complete", terminal),
+    ).resolves.toMatchObject({
+      operation: "complete",
+      status: "completed",
+      final_resource_version: "resource-version-2",
+    });
+    await expect(callAs(CLEAN_LOGIN, "claim", claim)).resolves.toMatchObject({
+      operation: "claim",
+      status: "completed",
+      final_resource_version: "resource-version-2",
+    });
+
+    await expect(callAs(CLEAN_LOGIN, "reconcile", {
+      ...terminal,
+      operation: "reconcile",
+      outcome: "not-applied",
+    })).rejects.toMatchObject({
+      code: "55000",
+      message:
+        "attempt is unclaimed, terminal conflict, or claim binding mismatched",
     });
   });
 

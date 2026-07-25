@@ -66,6 +66,8 @@ const CONSEQUENCE_ACTUATOR_RPC_ONLY_TABLES = [
 const CONSEQUENCE_ACTUATOR_QUALIFIED_RPCS = [
     'consequence_actuator_private.reserve_envelope(text,text,text,text,text,text,text,text,text,timestamp with time zone,timestamp with time zone,text)',
     'consequence_actuator_private.consume_envelope(text,text,text,text,text,text,text,text,text,text,text)',
+    'consequence_actuator_private.record_provider_attempt(jsonb,text)',
+    'consequence_actuator_private.read_provider_attempt(text,text,text,text,text,text,text,text,text)',
     'consequence_actuator_private.record_provider_record(jsonb,text)',
     'consequence_actuator_private.read_provider_record(text,text,text,text,text,text,text,text,text)',
 ];
@@ -75,6 +77,23 @@ const ROLLOUT_ATTEMPT_QUALIFIED_TABLES = [
 ];
 const ROLLOUT_ATTEMPT_QUALIFIED_RPCS = [
     'rollout_attempt_private.apply_operation(text,text)',
+];
+const CONSEQUENCE_CONTROL_SECURITY_ASSERTIONS = [
+    'contract:table:consequence_actuator_private.provider_attempts:owner-force-rls-owner-only-acl',
+    'contract:table:consequence_actuator_private.provider_records:owner-force-rls-owner-only-acl',
+    'contract:table:rollout_attempt_private.claims:owner-force-rls-owner-only-acl',
+    'contract:table:rollout_attempt_private.terminals:owner-force-rls-owner-only-acl',
+    'contract:function:consequence_actuator_private.reserve_envelope(text,text,text,text,text,text,text,text,text,timestamp with time zone,timestamp with time zone,text):owner-definer-empty-search-path-executor-only',
+    'contract:function:consequence_actuator_private.consume_envelope(text,text,text,text,text,text,text,text,text,text,text):owner-definer-empty-search-path-executor-only',
+    'contract:function:consequence_actuator_private.record_provider_attempt(jsonb,text):owner-definer-empty-search-path-executor-only',
+    'contract:function:consequence_actuator_private.read_provider_attempt(text,text,text,text,text,text,text,text,text):owner-definer-empty-search-path-executor-only',
+    'contract:function:consequence_actuator_private.record_provider_record(jsonb,text):owner-definer-empty-search-path-executor-only',
+    'contract:function:consequence_actuator_private.read_provider_record(text,text,text,text,text,text,text,text,text):owner-definer-empty-search-path-executor-only',
+    'contract:function:rollout_attempt_private.apply_operation(text,text):owner-definer-empty-search-path-executor-only',
+    'contract:roles:consequence-actuator:least-privilege-membership-disjoint',
+    'contract:roles:rollout-attempt:least-privilege-membership-disjoint',
+    'contract:index:public.idx_security_events_single_child_per_parent:exact-unique-btree',
+    'contract:index:public.idx_receipts_single_child_per_parent:exact-unique-btree',
 ];
 // These tables are reached through server-side/service-role paths only. RLS is
 // necessary but not sufficient: a table ACL is a separate Data API gate, so
@@ -137,6 +156,7 @@ export const contract = {
     // signatures remain pinned here and are exercised by isolated PostgreSQL
     // application tests.
     requiredQualifiedTables: [
+        'consequence_actuator_private.provider_attempts',
         'consequence_actuator_private.provider_records',
         ...ROLLOUT_ATTEMPT_QUALIFIED_TABLES,
     ],
@@ -144,6 +164,7 @@ export const contract = {
         ...CONSEQUENCE_ACTUATOR_QUALIFIED_RPCS,
         ...ROLLOUT_ATTEMPT_QUALIFIED_RPCS,
     ],
+    requiredReconcileAssertions: CONSEQUENCE_CONTROL_SECURITY_ASSERTIONS,
     // Tables that SHOULD exist but are KNOWN-MISSING and tracked for a staged
     // rollout. Reported loudly as KNOWN GAP (non-fatal) so they stay visible
     // without blocking CI — but if one ever appears, remove it from here.

@@ -17,11 +17,16 @@ const actuatorStoreMigrationPath = path.join(
 describe('consequence actuator provider-record migration contract', () => {
   it('registers the private store and exact actuator RPCs in the live schema contract', () => {
     expect(contract.requiredQualifiedTables).toContain(
+      'consequence_actuator_private.provider_attempts',
+    );
+    expect(contract.requiredQualifiedTables).toContain(
       'consequence_actuator_private.provider_records',
     );
     expect(contract.requiredQualifiedRpcs).toEqual(expect.arrayContaining([
       'consequence_actuator_private.reserve_envelope(text,text,text,text,text,text,text,text,text,timestamp with time zone,timestamp with time zone,text)',
       'consequence_actuator_private.consume_envelope(text,text,text,text,text,text,text,text,text,text,text)',
+      'consequence_actuator_private.record_provider_attempt(jsonb,text)',
+      'consequence_actuator_private.read_provider_attempt(text,text,text,text,text,text,text,text,text)',
       'consequence_actuator_private.record_provider_record(jsonb,text)',
       'consequence_actuator_private.read_provider_record(text,text,text,text,text,text,text,text,text)',
     ]));
@@ -30,6 +35,9 @@ describe('consequence actuator provider-record migration contract', () => {
   it('is forward-only, private, tenant-bound, FORCE RLS, and append-only', () => {
     const migration = fs.readFileSync(migrationPath, 'utf8');
 
+    expect(migration).toContain(
+      'CREATE TABLE consequence_actuator_private.provider_attempts',
+    );
     expect(migration).toContain(
       'CREATE TABLE consequence_actuator_private.provider_records',
     );
@@ -68,6 +76,12 @@ describe('consequence actuator provider-record migration contract', () => {
     const migration = fs.readFileSync(migrationPath, 'utf8');
 
     expect(migration).toContain(
+      'consequence_actuator_private.record_provider_attempt',
+    );
+    expect(migration).toContain(
+      'consequence_actuator_private.read_provider_attempt',
+    );
+    expect(migration).toContain(
       'consequence_actuator_private.record_provider_record',
     );
     expect(migration).toContain(
@@ -82,6 +96,18 @@ describe('consequence actuator provider-record migration contract', () => {
     expect(migration).not.toMatch(
       /GRANT\s+(?:SELECT|INSERT|UPDATE|DELETE|ALL)[\s\S]+provider_records[\s\S]+TO\s+(?:anon|authenticated|service_role|consequence_actuator_executor)/i,
     );
+    expect(migration).toContain(
+      'dedicated least-privilege consequence actuator executor is required',
+    );
+    for (const attribute of [
+      'rolsuper',
+      'rolcreatedb',
+      'rolcreaterole',
+      'rolreplication',
+      'rolbypassrls',
+    ]) {
+      expect(migration).toContain(attribute);
+    }
   });
 
   it('requires exact idempotent replay and rejects conflicting terminal records', () => {
@@ -89,6 +115,8 @@ describe('consequence actuator provider-record migration contract', () => {
 
     expect(migration).toContain('ON CONFLICT DO NOTHING');
     expect(migration).toContain('provider record conflict');
+    expect(migration).toContain('provider attempt conflict');
+    expect(migration).toContain('provider record has no exact persisted attempt');
     expect(migration).toMatch(
       /provider_record_digest\s*=\s*p_provider_record_digest/,
     );

@@ -7,13 +7,62 @@
 -- not current permission, so authority enrollment remains explicit.
 
 -- Prevent concurrent appenders from producing two children for one security
--- event predecessor. The index intentionally refuses deployment if a fork
--- already exists so an operator must investigate rather than bless one branch.
-CREATE UNIQUE INDEX IF NOT EXISTS idx_security_events_single_child_per_parent
-  ON public.security_events (
-    COALESCE(tenant_id, ''),
-    COALESCE(previous_hash, 'root')
+-- event predecessor. A same-named index is not proof of the invariant: reject
+-- any wrong shape instead of allowing IF NOT EXISTS to silently bless it.
+DO $security_event_index$
+DECLARE
+  v_index REGCLASS;
+  v_exact BOOLEAN;
+BEGIN
+  v_index := pg_catalog.to_regclass(
+    'public.idx_security_events_single_child_per_parent'
   );
+  IF v_index IS NULL THEN
+    CREATE UNIQUE INDEX idx_security_events_single_child_per_parent
+      ON public.security_events (
+        COALESCE(tenant_id, ''),
+        COALESCE(previous_hash, 'root')
+      );
+    v_index := pg_catalog.to_regclass(
+      'public.idx_security_events_single_child_per_parent'
+    );
+  END IF;
+
+  SELECT
+    namespace.nspname = 'public'
+    AND table_relation.relname = 'security_events'
+    AND access_method.amname = 'btree'
+    AND index_catalog.indisunique
+    AND index_catalog.indisvalid
+    AND index_catalog.indisready
+    AND index_catalog.indimmediate
+    AND NOT index_catalog.indisexclusion
+    AND index_catalog.indpred IS NULL
+    AND index_catalog.indnkeyatts = 2
+    AND index_catalog.indnatts = 2
+    AND pg_catalog.pg_get_indexdef(index_catalog.indexrelid, 1, TRUE)
+      = 'COALESCE(tenant_id, ''''::text)'
+    AND pg_catalog.pg_get_indexdef(index_catalog.indexrelid, 2, TRUE)
+      = 'COALESCE(previous_hash, ''root''::text)'
+  INTO v_exact
+  FROM pg_catalog.pg_index AS index_catalog
+  JOIN pg_catalog.pg_class AS index_relation
+    ON index_relation.oid = index_catalog.indexrelid
+  JOIN pg_catalog.pg_class AS table_relation
+    ON table_relation.oid = index_catalog.indrelid
+  JOIN pg_catalog.pg_namespace AS namespace
+    ON namespace.oid = table_relation.relnamespace
+  JOIN pg_catalog.pg_am AS access_method
+    ON access_method.oid = index_relation.relam
+  WHERE index_catalog.indexrelid = v_index;
+
+  IF v_exact IS DISTINCT FROM TRUE THEN
+    RAISE EXCEPTION
+      'idx_security_events_single_child_per_parent has the wrong security shape'
+      USING ERRCODE = '55000';
+  END IF;
+END
+$security_event_index$;
 
 -- Public forms call a guarded server route; clients never need direct table
 -- access. These tables previously existed only out of band.
@@ -203,9 +252,58 @@ ALTER TABLE public.commits
 CREATE INDEX IF NOT EXISTS idx_commits_kid ON public.commits (kid);
 
 -- A receipt hash chain is not linear unless one predecessor has at most one
--- child for an entity. This deliberately fails on historical forks.
-CREATE UNIQUE INDEX IF NOT EXISTS idx_receipts_single_child_per_parent
-  ON public.receipts (entity_id, COALESCE(previous_hash, 'root'));
+-- child for an entity. Reject a wrong same-named index instead of skipping it.
+DO $receipt_index$
+DECLARE
+  v_index REGCLASS;
+  v_exact BOOLEAN;
+BEGIN
+  v_index := pg_catalog.to_regclass(
+    'public.idx_receipts_single_child_per_parent'
+  );
+  IF v_index IS NULL THEN
+    CREATE UNIQUE INDEX idx_receipts_single_child_per_parent
+      ON public.receipts (entity_id, COALESCE(previous_hash, 'root'));
+    v_index := pg_catalog.to_regclass(
+      'public.idx_receipts_single_child_per_parent'
+    );
+  END IF;
+
+  SELECT
+    namespace.nspname = 'public'
+    AND table_relation.relname = 'receipts'
+    AND access_method.amname = 'btree'
+    AND index_catalog.indisunique
+    AND index_catalog.indisvalid
+    AND index_catalog.indisready
+    AND index_catalog.indimmediate
+    AND NOT index_catalog.indisexclusion
+    AND index_catalog.indpred IS NULL
+    AND index_catalog.indnkeyatts = 2
+    AND index_catalog.indnatts = 2
+    AND pg_catalog.pg_get_indexdef(index_catalog.indexrelid, 1, TRUE)
+      = 'entity_id'
+    AND pg_catalog.pg_get_indexdef(index_catalog.indexrelid, 2, TRUE)
+      = 'COALESCE(previous_hash, ''root''::text)'
+  INTO v_exact
+  FROM pg_catalog.pg_index AS index_catalog
+  JOIN pg_catalog.pg_class AS index_relation
+    ON index_relation.oid = index_catalog.indexrelid
+  JOIN pg_catalog.pg_class AS table_relation
+    ON table_relation.oid = index_catalog.indrelid
+  JOIN pg_catalog.pg_namespace AS namespace
+    ON namespace.oid = table_relation.relnamespace
+  JOIN pg_catalog.pg_am AS access_method
+    ON access_method.oid = index_relation.relam
+  WHERE index_catalog.indexrelid = v_index;
+
+  IF v_exact IS DISTINCT FROM TRUE THEN
+    RAISE EXCEPTION
+      'idx_receipts_single_child_per_parent has the wrong security shape'
+      USING ERRCODE = '55000';
+  END IF;
+END
+$receipt_index$;
 
 COMMENT ON INDEX public.idx_receipts_single_child_per_parent IS
   'Prevents concurrent receipt writers from forking an entity hash chain at the same predecessor.';

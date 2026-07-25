@@ -89,6 +89,12 @@ export function evaluateContract(snap, schemaContract = defaultContract) {
         else
             fail(`QUALIFIED RPC missing: ${rpc}`);
     }
+    for (const assertion of schemaContract.requiredReconcileAssertions || []) {
+        if (qualifiedFunctions.has(assertion))
+            pass();
+        else
+            fail(`RECONCILIATION SECURITY ASSERTION failed: ${assertion}`);
+    }
     // 2. Known-gap tables (non-fatal, but tracked + must be reported)
     for (const gapEntry of schemaContract.knownGapTables) {
         // knownGapTables is currently [] in the manifest, so TS infers `never[]`;

@@ -28,6 +28,17 @@ def shell_function(name: str) -> str:
     return source[start : end + 3]
 
 
+def shell_function_before(name: str, next_name: str) -> str:
+    source = TRAFFIC.read_text(encoding="utf-8")
+    start_marker = f"{name}() {{"
+    next_marker = f"\n{next_name}() {{"
+    start = source.find(start_marker)
+    end = source.find(next_marker, start)
+    if start < 0 or end < 0:
+        raise AssertionError(f"unable to isolate {name} before {next_name}")
+    return source[start:end].rstrip() + "\n"
+
+
 def run_bash(
     script: str,
     *,
@@ -40,6 +51,84 @@ def run_bash(
         capture_output=True,
         env={**os.environ, **(environment or {})},
     )
+
+
+class AttemptStoreResponseRecoveryTests(unittest.TestCase):
+    def setUp(self) -> None:
+        self.directory = tempfile.TemporaryDirectory(
+            prefix="emilia-attempt-response-recovery-"
+        )
+        self.root = Path(self.directory.name)
+        self.adapter = self.root / "attempt-store"
+        self.count = self.root / "count"
+
+    def tearDown(self) -> None:
+        self.directory.cleanup()
+
+    def run_response_loss(
+        self,
+        operation: str,
+        status: str,
+    ) -> subprocess.CompletedProcess[str]:
+        claim_sha256 = "a" * 64
+        final_resource_version = "rv-terminal" if operation != "claim" else ""
+        response = {
+            "schema": "emilia-deployment-attempt-store-response.v1",
+            "operation": operation,
+            "status": status,
+            "claim_sha256": claim_sha256,
+            "final_resource_version": final_resource_version or None,
+        }
+        self.adapter.write_text(
+            """#!/usr/bin/env python3
+import os
+import pathlib
+import sys
+
+count_path = pathlib.Path(os.environ["ATTEMPT_COUNT"])
+count = int(count_path.read_text()) if count_path.exists() else 0
+count_path.write_text(str(count + 1))
+sys.stdin.buffer.read()
+if count == 0:
+    raise SystemExit(23)
+print(os.environ["ATTEMPT_RESPONSE"])
+""",
+            encoding="utf-8",
+        )
+        self.adapter.chmod(0o700)
+        payload = "e30="
+        script = f"""
+set -euo pipefail
+LANE_DIR={shlex.quote(str(LANE))}
+ATTEMPT_STORE_ADAPTER={shlex.quote(str(self.adapter))}
+ATTEMPT_CLAIM_SHA256={claim_sha256}
+lane_die() {{ printf 'error: %s\\n' "$*" >&2; exit 1; }}
+{shell_function_before("attempt_store_call", "attempt_outcome_payload")}
+attempt_store_call {operation} {payload} {status} {final_resource_version}
+printf '%s\\t%s\\t%s\\n' \
+  "$ATTEMPT_STORE_CALL_RETRIED" \
+  "$ATTEMPT_STORE_RESPONSE_STATUS" \
+  "$ATTEMPT_STORE_RESPONSE_FINAL"
+"""
+        return run_bash(
+            script,
+            environment={
+                "ATTEMPT_COUNT": str(self.count),
+                "ATTEMPT_RESPONSE": json.dumps(response, separators=(",", ":")),
+            },
+        )
+
+    def test_exact_claim_response_loss_is_read_back_with_same_payload(self) -> None:
+        result = self.run_response_loss("claim", "recovered")
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertEqual(result.stdout.strip(), "true\trecovered")
+        self.assertEqual(self.count.read_text(encoding="utf-8"), "2")
+
+    def test_exact_terminal_response_loss_is_read_back_with_same_payload(self) -> None:
+        result = self.run_response_loss("complete", "completed")
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertEqual(result.stdout.strip(), "true\tcompleted\trv-terminal")
+        self.assertEqual(self.count.read_text(encoding="utf-8"), "2")
 
 
 class AmbiguousUpdateReconciliationTests(unittest.TestCase):
@@ -282,7 +371,15 @@ ATTEMPT_TERMINALIZED=false
 ATTEMPT_FALLBACK_OUTCOME=indeterminate
 ATTEMPT_FINAL_RESOURCE_VERSION=
 prepare_attempt_store_adapter() {{ :; }}
-attempt_store_call() {{ :; }}
+attempt_store_call() {{
+  if [[ "$1" == claim ]]; then
+    ATTEMPT_STORE_RESPONSE_STATUS=claimed
+    ATTEMPT_STORE_RESPONSE_FINAL=
+  else
+    ATTEMPT_STORE_RESPONSE_STATUS=$3
+    ATTEMPT_STORE_RESPONSE_FINAL=$4
+  fi
+}}
 attempt_outcome_payload() {{ printf 'payload'; }}
 {shell_function("claim_deployment_attempt")}
 {shell_function("record_attempt_outcome")}

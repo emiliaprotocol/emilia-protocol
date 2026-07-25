@@ -48,7 +48,10 @@ function cleanSnapshot() {
   return {
     tables: [...tables],
     reconcile_tables: [...contract.requiredQualifiedTables],
-    reconcile_functions: [...new Set(contract.requiredQualifiedRpcs)],
+    reconcile_functions: [...new Set([
+      ...contract.requiredQualifiedRpcs,
+      ...contract.requiredReconcileAssertions,
+    ])],
     columns,
     rls: contract.rlsRequired.map((t) => ({
       t,
@@ -111,6 +114,23 @@ describe('live schema-security contract evaluator', () => {
     expect(result.failures).toContain(
       'INDEX missing: receipts.idx_receipts_single_child_per_parent',
     );
+  });
+
+  it('rejects a missing private posture or exact-index assertion token', () => {
+    for (const assertion of [
+      'contract:table:consequence_actuator_private.provider_records:owner-force-rls-owner-only-acl',
+      'contract:roles:consequence-actuator:least-privilege-membership-disjoint',
+      'contract:index:public.idx_receipts_single_child_per_parent:exact-unique-btree',
+    ]) {
+      const snapshot = cleanSnapshot();
+      snapshot.reconcile_functions = snapshot.reconcile_functions.filter(
+        (value) => value !== assertion,
+      );
+
+      expect(evaluateContract(snapshot).failures).toContain(
+        `RECONCILIATION SECURITY ASSERTION failed: ${assertion}`,
+      );
+    }
   });
 
   it('accepts the exact qualified private RPC identity signature', () => {

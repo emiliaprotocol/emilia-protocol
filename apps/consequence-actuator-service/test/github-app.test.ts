@@ -106,6 +106,7 @@ function signedAttribution(
 }
 
 function memoryProviderRecordStore() {
+  const attempts = new Map<string, any>();
   const records = new Map<string, any>();
   const key = (value: any) => JSON.stringify([
     value.tenant_id,
@@ -116,7 +117,21 @@ function memoryProviderRecordStore() {
     value.request_digest,
   ]);
   return {
+    attempts,
     records,
+    async writeAttempt(value: any) {
+      const binding = value.attribution.payload;
+      const current = attempts.get(key(binding));
+      if (current && canonicalize(current) !== canonicalize(value)) {
+        throw new Error('provider_attempt_conflict');
+      }
+      attempts.set(key(binding), structuredClone(value));
+      return structuredClone(value);
+    },
+    async readAttempt(expected: any) {
+      const value = attempts.get(key(expected));
+      return value ? structuredClone(value) : null;
+    },
     async write(value: any) {
       const binding = value.record.payload.provider_attribution.payload;
       const current = records.get(key(binding));
@@ -369,9 +384,10 @@ describe('actuator-owned GitHub App provider', () => {
     assert.equal(providerRecordStore.records.size, 1);
   });
 
-  it('keeps a lost GitHub PATCH response retryable when no terminal provider record exists', async () => {
+  it('reconciles a lost GitHub PATCH response by authenticated readback without replay', async () => {
     const attributionKeys = crypto.generateKeyPairSync('ed25519');
     const providerRecordStore = memoryProviderRecordStore();
+    const methods: string[] = [];
     let issue = {
       number: ACTION.issue_number,
       title: 'before',
@@ -379,6 +395,7 @@ describe('actuator-owned GitHub App provider', () => {
       updated_at: '2026-07-25T11:00:00.000Z',
     };
     const fetchImpl = async (url: string, options: any) => {
+      methods.push(options.method);
       if (url.endsWith('/issues/1') && options.method === 'PATCH') {
         const mutation = JSON.parse(options.body);
         issue = {
@@ -390,6 +407,9 @@ describe('actuator-owned GitHub App provider', () => {
         throw Object.assign(new Error('socket closed after commit'), {
           name: 'TimeoutError',
         });
+      }
+      if (url.endsWith('/issues/1') && options.method === 'GET') {
+        return json(issue);
       }
       throw new Error(`unexpected GitHub request: ${options.method} ${url}`);
     };
@@ -423,10 +443,16 @@ describe('actuator-owned GitHub App provider', () => {
       operation: ACTION.action_type,
     });
 
-    assert.equal(observation.valid, false);
-    assert.equal(observation.reason, 'provider_evidence_unavailable');
+    assert.equal(observation.valid, true);
+    assert.equal(observation.outcome, 'COMMITTED');
+    assert.equal(
+      observation.reason,
+      'github_authenticated_state_matches_exact_effect',
+    );
     assert.equal(issue.body, ACTION.body);
-    assert.equal(providerRecordStore.records.size, 0);
+    assert.equal(providerRecordStore.attempts.size, 1);
+    assert.equal(providerRecordStore.records.size, 1);
+    assert.deepEqual(methods, ['PATCH', 'GET']);
   });
 
   it('persists and reconciles a definitive provider refusal as NOT_COMMITTED', async () => {

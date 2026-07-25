@@ -639,11 +639,82 @@ attempt_store_call() {
   local operation=$1 payload_base64=$2 allowed_status=$3
   local expected_resource_version=${4:-}
   local response input_stream
+  ATTEMPT_STORE_CALL_RETRIED=false
+  set +e
   response=$(
     printf '%s' "$payload_base64" \
       | python3 -c 'import base64,sys; sys.stdout.buffer.write(base64.b64decode(sys.stdin.buffer.read(), validate=True))' \
       | "$ATTEMPT_STORE_ADAPTER" "$operation"
-  ) || lane_die "durable attempt-store $operation failed; no mutation permitted"
+  )
+  local first_status=$?
+  set -e
+  if ((first_status != 0)); then
+    ATTEMPT_STORE_CALL_RETRIED=true
+    response=$(
+      printf '%s' "$payload_base64" \
+        | python3 -c 'import base64,sys; sys.stdout.buffer.write(base64.b64decode(sys.stdin.buffer.read(), validate=True))' \
+        | "$ATTEMPT_STORE_ADAPTER" "$operation"
+    ) || lane_die "durable attempt-store $operation failed twice; no mutation permitted"
+  fi
+  if [[ "$operation" == claim ]]; then
+    local parsed
+    parsed=$(
+      ATTEMPT_STORE_RESPONSE="$response" \
+      python3 - "$ATTEMPT_CLAIM_SHA256" "$allowed_status" <<'PY'
+import hmac
+import json
+import os
+import re
+import sys
+
+claim_sha256, statuses = sys.argv[1:]
+allowed = set(statuses.split())
+try:
+    value = json.loads(os.environ["ATTEMPT_STORE_RESPONSE"])
+except (UnicodeDecodeError, json.JSONDecodeError) as error:
+    raise SystemExit(f"invalid attempt-store claim response: {error}")
+if not isinstance(value, dict) or set(value) != {
+    "schema",
+    "operation",
+    "status",
+    "claim_sha256",
+    "final_resource_version",
+}:
+    raise SystemExit("attempt-store claim response shape is invalid")
+if value["schema"] != "emilia-deployment-attempt-store-response.v1":
+    raise SystemExit("attempt-store claim response schema is invalid")
+if value["operation"] != "claim" or value["status"] not in allowed:
+    raise SystemExit("attempt-store claim response state is invalid")
+if (
+    not isinstance(value["claim_sha256"], str)
+    or re.fullmatch(r"[0-9a-f]{64}", value["claim_sha256"]) is None
+    or not hmac.compare_digest(value["claim_sha256"], claim_sha256)
+):
+    raise SystemExit("attempt-store claim response digest is invalid")
+terminal = value["status"] in {
+    "completed",
+    "applied",
+    "not-applied",
+    "indeterminate",
+}
+final = value["final_resource_version"]
+if terminal:
+    if (
+        not isinstance(final, str)
+        or not final
+        or any(character.isspace() for character in final)
+    ):
+        raise SystemExit("terminal claim recovery lacks resourceVersion")
+else:
+    if final is not None:
+        raise SystemExit("nonterminal claim recovery names resourceVersion")
+print(value["status"] + "\t" + ("" if final is None else final))
+PY
+    ) || lane_die "durable attempt-store claim response is invalid"
+    IFS=$'\t' read -r \
+      ATTEMPT_STORE_RESPONSE_STATUS ATTEMPT_STORE_RESPONSE_FINAL <<< "$parsed"
+    return
+  fi
   input_stream=<(printf '%s' "$response")
   local verification=(
     "$LANE_DIR/verify-rollout-telemetry.py" verify-attempt-response
@@ -662,6 +733,8 @@ attempt_store_call() {
   "${verification[@]}" \
     >/dev/null \
     || lane_die "durable attempt-store $operation response is invalid"
+  ATTEMPT_STORE_RESPONSE_STATUS=$allowed_status
+  ATTEMPT_STORE_RESPONSE_FINAL=$expected_resource_version
 }
 
 attempt_outcome_payload() {
@@ -690,11 +763,48 @@ print(base64.b64encode(json.dumps(
 
 claim_deployment_attempt() {
   prepare_attempt_store_adapter
-  attempt_store_call claim "$ATTEMPT_CLAIM_BASE64" claimed
+  attempt_store_call claim "$ATTEMPT_CLAIM_BASE64" \
+    "claimed recovered completed applied not-applied indeterminate"
   ATTEMPT_CLAIMED=true
   ATTEMPT_TERMINALIZED=false
   ATTEMPT_FALLBACK_OUTCOME=not-applied
   ATTEMPT_FINAL_RESOURCE_VERSION=$LOCK_RESOURCE_VERSION
+  case "$ATTEMPT_STORE_RESPONSE_STATUS" in
+    claimed)
+      ;;
+    recovered)
+      if [[ "$ATTEMPT_STORE_CALL_RETRIED" == true ]]; then
+        return
+      fi
+      reconcile_ambiguous_update \
+        "recovered nonterminal rollout claim; mutation was not replayed"
+      exit 0
+      ;;
+    completed|applied)
+      ATTEMPT_TERMINALIZED=true
+      describe_service "$TARGET_SERVICE" "$AMBIGUOUS_SNAPSHOT"
+      local recovered_state _recovered_generation recovered_resource_version
+      recovered_state=$(verify_service_state \
+        "$AMBIGUOUS_SNAPSHOT" "$TARGET_SERVICE" "$TARGET_POST" \
+        "$TARGET_STABLE" "$TARGET_CANDIDATE") \
+        || lane_die "durable applied attempt no longer matches provider state"
+      IFS=$'\t' read -r \
+        _recovered_generation recovered_resource_version <<< "$recovered_state"
+      [[ "$recovered_resource_version" \
+          == "$ATTEMPT_STORE_RESPONSE_FINAL" ]] \
+        || lane_die "durable applied attempt resourceVersion has drifted"
+      printf 'recovered already-applied rollout attempt at resourceVersion %s\n' \
+        "$recovered_resource_version" >&2
+      exit 0
+      ;;
+    not-applied|indeterminate)
+      ATTEMPT_TERMINALIZED=true
+      lane_die "durable rollout attempt is already terminal as $ATTEMPT_STORE_RESPONSE_STATUS; mutation was not replayed"
+      ;;
+    *)
+      lane_die "durable rollout attempt returned an unsupported state"
+      ;;
+  esac
 }
 
 record_attempt_outcome() {

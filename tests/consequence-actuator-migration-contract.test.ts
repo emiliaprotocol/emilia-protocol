@@ -77,6 +77,13 @@ describe('consequence actuator production store migration', () => {
     expect(roles).toContain(
       'ALTER ROLE consequence_actuator_executor NOLOGIN',
     );
+    expect(roles).toContain('WITH RECURSIVE');
+    expect(roles).toContain('FROM pg_catalog.pg_auth_members');
+    expect(roles).toContain('executor_members(role_oid)');
+    expect(roles).toContain('owner_members(role_oid)');
+    expect(roles).toContain(
+      "candidate.rolname IN ('anon', 'authenticated', 'service_role')",
+    );
     expect(migration).toContain(
       'ALTER TABLE public.consequence_actuator_envelopes OWNER TO consequence_actuator_store_owner',
     );

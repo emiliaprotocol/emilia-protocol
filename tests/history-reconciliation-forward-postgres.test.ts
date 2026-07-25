@@ -10,6 +10,27 @@ const migration = readFileSync(
   ),
   'utf8',
 );
+const rolloutMigration = readFileSync(
+  new URL(
+    '../supabase/migrations/20260725160000_rollout_attempt_store.sql',
+    import.meta.url,
+  ),
+  'utf8',
+);
+const assertionFunctionStart = rolloutMigration.indexOf(
+  'CREATE OR REPLACE FUNCTION public.gov_consequence_control_security_assertions()',
+);
+const assertionFunctionEnd = rolloutMigration.indexOf(
+  '\n$$;',
+  assertionFunctionStart,
+);
+if (assertionFunctionStart < 0 || assertionFunctionEnd < 0) {
+  throw new Error('consequence-control security assertion function is missing');
+}
+const assertionFunction = rolloutMigration.slice(
+  assertionFunctionStart,
+  assertionFunctionEnd + '\n$$;'.length,
+);
 const suite = process.env.INTEGRATION_POSTGRES === '1'
   ? describe.sequential
   : describe.skip;
@@ -110,7 +131,35 @@ suite('forward history reconciliation on PostgreSQL 17', () => {
         operation_id TEXT PRIMARY KEY
       );
     `);
+
+    await database.query(`
+      CREATE UNIQUE INDEX idx_security_events_single_child_per_parent
+      ON public.security_events (event_id)
+    `);
+    await expect(database.query(migration)).rejects.toMatchObject({
+      code: '55000',
+      message:
+        'idx_security_events_single_child_per_parent has the wrong security shape',
+    });
+    await database.query(
+      'DROP INDEX public.idx_security_events_single_child_per_parent',
+    );
+
+    await database.query(`
+      CREATE UNIQUE INDEX idx_receipts_single_child_per_parent
+      ON public.receipts (receipt_id)
+    `);
+    await expect(database.query(migration)).rejects.toMatchObject({
+      code: '55000',
+      message:
+        'idx_receipts_single_child_per_parent has the wrong security shape',
+    });
+    await database.query(
+      'DROP INDEX public.idx_receipts_single_child_per_parent',
+    );
+
     await database.query(migration);
+    await database.query(assertionFunction);
   });
 
   afterAll(async () => {
@@ -162,6 +211,72 @@ suite('forward history reconciliation on PostgreSQL 17', () => {
       'policy_hash',
     ]]);
     expect(columns.rows).toHaveLength(5);
+  });
+
+  it('pins the exact unique btree key shape for both parent fences', async () => {
+    const result = await database.query<{
+      name: string;
+      access_method: string;
+      unique: boolean;
+      predicate: string | null;
+      key_1: string;
+      key_2: string;
+    }>(`
+      SELECT
+        index_relation.relname AS name,
+        access_method.amname AS access_method,
+        index_catalog.indisunique AS unique,
+        pg_catalog.pg_get_expr(
+          index_catalog.indpred,
+          index_catalog.indrelid,
+          true
+        ) AS predicate,
+        pg_catalog.pg_get_indexdef(index_catalog.indexrelid, 1, true) AS key_1,
+        pg_catalog.pg_get_indexdef(index_catalog.indexrelid, 2, true) AS key_2
+      FROM pg_catalog.pg_index AS index_catalog
+      JOIN pg_catalog.pg_class AS index_relation
+        ON index_relation.oid = index_catalog.indexrelid
+      JOIN pg_catalog.pg_am AS access_method
+        ON access_method.oid = index_relation.relam
+      WHERE index_relation.relname = ANY($1::text[])
+      ORDER BY index_relation.relname
+    `, [[
+      'idx_receipts_single_child_per_parent',
+      'idx_security_events_single_child_per_parent',
+    ]]);
+
+    expect(result.rows).toEqual([
+      {
+        name: 'idx_receipts_single_child_per_parent',
+        access_method: 'btree',
+        unique: true,
+        predicate: null,
+        key_1: 'entity_id',
+        key_2: "COALESCE(previous_hash, 'root'::text)",
+      },
+      {
+        name: 'idx_security_events_single_child_per_parent',
+        access_method: 'btree',
+        unique: true,
+        predicate: null,
+        key_1: "COALESCE(tenant_id, ''::text)",
+        key_2: "COALESCE(previous_hash, 'root'::text)",
+      },
+    ]);
+  });
+
+  it('exports both exact index-shape assertions to the live schema contract', async () => {
+    const assertions = await database.query<{ assertion: string }>(`
+      SELECT assertion
+      FROM public.gov_consequence_control_security_assertions()
+        AS security_assertions(assertion)
+      WHERE assertion LIKE 'contract:index:%'
+      ORDER BY assertion
+    `);
+    expect(assertions.rows.map(({ assertion }) => assertion)).toEqual([
+      'contract:index:public.idx_receipts_single_child_per_parent:exact-unique-btree',
+      'contract:index:public.idx_security_events_single_child_per_parent:exact-unique-btree',
+    ]);
   });
 
   it('increments the organization authority epoch on each mutation', async () => {

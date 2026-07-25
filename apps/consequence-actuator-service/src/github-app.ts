@@ -446,6 +446,8 @@ export function createGitHubIssueEffectProvider({
       || typeof forceIndeterminateAfterCommit !== 'boolean'
       || typeof forceProviderResponseLossBeforeTerminalRecord !== 'boolean'
       || !providerRecordStore
+      || typeof providerRecordStore.writeAttempt !== 'function'
+      || typeof providerRecordStore.readAttempt !== 'function'
       || typeof providerRecordStore.write !== 'function'
       || typeof providerRecordStore.read !== 'function') {
     throw new TypeError('github_issue_provider_config_invalid');
@@ -506,6 +508,23 @@ export function createGitHubIssueEffectProvider({
       method: 'PATCH',
       headers: githubHeaders(token, { 'X-EMILIA-Attempt-ID': attemptId }),
       body: JSON.stringify(body),
+      redirect: 'error',
+      signal: AbortSignal.timeout(15_000),
+    });
+    if (response?.redirected === true) {
+      cancelBody(response?.body);
+      throw new Error('github_redirect_refused');
+    }
+    return response;
+  }
+
+  async function readCurrent(attemptId: string) {
+    const token = await tokenProvider.getToken();
+    const response = await fetchImpl(issueEndpoint, {
+      method: 'GET',
+      headers: githubHeaders(token, {
+        'X-EMILIA-Reconcile-Attempt-ID': attemptId,
+      }),
       redirect: 'error',
       signal: AbortSignal.timeout(15_000),
     });
@@ -659,6 +678,26 @@ export function createGitHubIssueEffectProvider({
     return value.record_digest;
   }
 
+  async function persistProviderAttempt(attribution: JsonObject) {
+    const value = Object.freeze({
+      attribution: structuredClone(attribution),
+      attribution_digest: digestAeb(attribution),
+    });
+    let stored: any;
+    try {
+      stored = await providerRecordStore.writeAttempt(value);
+    } catch {
+      throw new Error('github_provider_attempt_store_unavailable');
+    }
+    if (!exactKeys(stored, ['attribution', 'attribution_digest'])
+        || stored.attribution_digest !== value.attribution_digest
+        || canonicalize(stored.attribution)
+          !== canonicalize(value.attribution)) {
+      throw new Error('github_provider_attempt_store_unavailable');
+    }
+    return value.attribution_digest;
+  }
+
   return Object.freeze({
     async effect({ action: candidate, attempt }: any = {}) {
       const action = requireAction(candidate, target);
@@ -666,6 +705,7 @@ export function createGitHubIssueEffectProvider({
         attempt,
         action,
       );
+      await persistProviderAttempt(attribution);
       let response: any;
       try {
         response = await request(
@@ -747,6 +787,7 @@ export function createGitHubIssueEffectProvider({
           || !IDENTIFIER.test(operation)) {
         return { valid: false, reason: 'provider_evidence_shape_invalid' };
       }
+      let reconciledByReadback = false;
       let stored: any;
       try {
         stored = await providerRecordStore.read(structuredClone(expected));
@@ -754,7 +795,95 @@ export function createGitHubIssueEffectProvider({
         return { valid: false, reason: 'provider_evidence_unavailable' };
       }
       if (stored === null || stored === undefined) {
-        return { valid: false, reason: 'provider_evidence_unavailable' };
+        let persistedAttempt: any;
+        try {
+          persistedAttempt = await providerRecordStore.readAttempt(
+            structuredClone(expected),
+          );
+        } catch {
+          return { valid: false, reason: 'provider_evidence_unavailable' };
+        }
+        if (!exactKeys(
+          persistedAttempt,
+          ['attribution', 'attribution_digest'],
+        )
+            || !DIGEST.test(persistedAttempt.attribution_digest)
+            || persistedAttempt.attribution_digest
+              !== digestAeb(persistedAttempt.attribution)) {
+          return { valid: false, reason: 'provider_evidence_unavailable' };
+        }
+        let persistedBinding: JsonObject;
+        try {
+          persistedBinding = requireSignedProviderAttribution(
+            persistedAttempt.attribution,
+            action,
+          ).binding;
+        } catch {
+          return {
+            valid: false,
+            reason: 'provider_evidence_binding_mismatch',
+          };
+        }
+        if (persistedBinding.tenant_id !== expected.tenant_id
+            || persistedBinding.provider_id !== expected.provider_id
+            || persistedBinding.provider_account_id
+              !== expected.provider_account_id
+            || persistedBinding.environment !== expected.environment
+            || persistedBinding.request_digest !== expected.request_digest
+            || persistedBinding.attempt_id !== expected.attempt_id
+            || persistedBinding.operation_id !== expected.operation_id
+            || persistedBinding.caid !== expected.caid
+            || persistedBinding.action_digest !== expected.action_digest
+            || persistedBinding.operation !== operation) {
+          return {
+            valid: false,
+            reason: 'provider_evidence_binding_mismatch',
+          };
+        }
+        let response: any;
+        try {
+          response = await readCurrent(persistedBinding.attempt_id);
+        } catch {
+          return { valid: false, reason: 'provider_evidence_unavailable' };
+        }
+        if (response?.status !== 200) {
+          cancelBody(response?.body);
+          return { valid: false, reason: 'provider_evidence_unavailable' };
+        }
+        let result: JsonObject;
+        try {
+          result = await boundedJson(response);
+        } catch {
+          return { valid: false, reason: 'provider_evidence_unavailable' };
+        }
+        if (result.number !== target.issueNumber
+            || result.title !== action.title
+            || result.body !== action.body) {
+          return {
+            valid: false,
+            reason: 'github_authenticated_state_does_not_match_effect',
+          };
+        }
+        const readbackRecord = signRecord(
+          'COMMITTED',
+          persistedAttempt.attribution,
+          JSON.parse(canonicalize({
+            status: 200,
+            number: result.number,
+            title: result.title,
+            body: result.body,
+          })),
+        );
+        try {
+          await persistTerminalRecord(readbackRecord);
+        } catch {
+          return { valid: false, reason: 'provider_evidence_unavailable' };
+        }
+        stored = {
+          record: readbackRecord,
+          record_digest: digestAeb(readbackRecord),
+        };
+        reconciledByReadback = true;
       }
       if (!exactKeys(stored, ['record', 'record_digest'])
           || !DIGEST.test(stored.record_digest)
@@ -773,7 +902,9 @@ export function createGitHubIssueEffectProvider({
       const { binding, record } = verified;
       const outcome = record.payload.outcome;
       const reason = outcome === 'COMMITTED'
-        ? 'github_exact_attempt_committed'
+        ? (reconciledByReadback
+          ? 'github_authenticated_state_matches_exact_effect'
+          : 'github_exact_attempt_committed')
         : 'github_provider_refused_before_effect';
       return {
         valid: true,

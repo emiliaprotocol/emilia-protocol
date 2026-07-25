@@ -36,6 +36,20 @@ const ACTION_DEFINITION = Object.freeze({
 
 type JsonObject = Record<string, any>;
 
+const WRITE_PROVIDER_ATTEMPT_SQL = `
+  SELECT provider_attribution_digest
+  FROM consequence_actuator_private.record_provider_attempt(
+    $1::jsonb,
+    $2::text
+  )
+`;
+const READ_PROVIDER_ATTEMPT_SQL = `
+  SELECT provider_attribution, provider_attribution_digest
+  FROM consequence_actuator_private.read_provider_attempt(
+    $1::text, $2::text, $3::text, $4::text, $5::text,
+    $6::text, $7::text, $8::text, $9::text
+  )
+`;
 const WRITE_PROVIDER_RECORD_SQL = `
   SELECT provider_record_digest
   FROM consequence_actuator_private.record_provider_record(
@@ -61,6 +75,29 @@ const DATABASE_READINESS_SQL = `
     pg_catalog.to_regclass(
       'consequence_actuator_private.provider_records'
     ) IS NOT NULL AS provider_records_ready,
+    pg_catalog.to_regclass(
+      'consequence_actuator_private.provider_attempts'
+    ) IS NOT NULL AS provider_attempts_ready,
+    COALESCE(
+      pg_catalog.has_function_privilege(
+        SESSION_USER,
+        pg_catalog.to_regprocedure(
+          'consequence_actuator_private.record_provider_attempt(jsonb,text)'
+        ),
+        'EXECUTE'
+      ),
+      FALSE
+    ) AS record_provider_attempt_ready,
+    COALESCE(
+      pg_catalog.has_function_privilege(
+        SESSION_USER,
+        pg_catalog.to_regprocedure(
+          'consequence_actuator_private.read_provider_attempt(text,text,text,text,text,text,text,text,text)'
+        ),
+        'EXECUTE'
+      ),
+      FALSE
+    ) AS read_provider_attempt_ready,
     COALESCE(
       pg_catalog.has_function_privilege(
         SESSION_USER,
@@ -121,8 +158,24 @@ function providerRecordKey(value: JsonObject): string {
 }
 
 function createMemoryProviderRecordStore() {
+  const attempts = new Map<string, JsonObject>();
   const records = new Map<string, JsonObject>();
   return Object.freeze({
+    async writeAttempt(value: JsonObject) {
+      const binding = value?.attribution?.payload;
+      if (!plainObject(binding)) throw new Error('provider_attempt_invalid');
+      const key = providerRecordKey(binding);
+      const current = attempts.get(key);
+      if (current && JSON.stringify(current) !== JSON.stringify(value)) {
+        throw new Error('provider_attempt_conflict');
+      }
+      attempts.set(key, structuredClone(value));
+      return structuredClone(value);
+    },
+    async readAttempt(expected: JsonObject) {
+      const value = attempts.get(providerRecordKey(expected));
+      return value ? structuredClone(value) : null;
+    },
     async write(value: JsonObject) {
       const binding = value?.record?.payload?.provider_attribution?.payload;
       if (!plainObject(binding)) throw new Error('provider_record_invalid');
@@ -146,6 +199,49 @@ export function createPostgresProviderRecordStore(query: (
   values: readonly unknown[],
 ) => Promise<any>) {
   return Object.freeze({
+    async writeAttempt(value: JsonObject) {
+      const result = await query(WRITE_PROVIDER_ATTEMPT_SQL, [
+        JSON.stringify(value.attribution),
+        value.attribution_digest,
+      ]);
+      if (result?.rowCount !== 1
+          || !Array.isArray(result.rows)
+          || result.rows.length !== 1
+          || result.rows[0]?.provider_attribution_digest
+            !== value.attribution_digest) {
+        throw new Error('provider_attempt_acknowledgement_ambiguous');
+      }
+      return structuredClone(value);
+    },
+    async readAttempt(expected: JsonObject) {
+      const result = await query(READ_PROVIDER_ATTEMPT_SQL, [
+        expected.tenant_id,
+        expected.provider_id,
+        expected.provider_account_id,
+        expected.environment,
+        expected.request_digest,
+        expected.attempt_id,
+        expected.operation_id,
+        expected.caid,
+        expected.action_digest,
+      ]);
+      if (result?.rowCount === 0
+          && Array.isArray(result.rows)
+          && result.rows.length === 0) {
+        return null;
+      }
+      if (result?.rowCount !== 1
+          || !Array.isArray(result.rows)
+          || result.rows.length !== 1
+          || !plainObject(result.rows[0]?.provider_attribution)
+          || typeof result.rows[0]?.provider_attribution_digest !== 'string') {
+        throw new Error('provider_attempt_read_ambiguous');
+      }
+      return {
+        attribution: structuredClone(result.rows[0].provider_attribution),
+        attribution_digest: result.rows[0].provider_attribution_digest,
+      };
+    },
     async write(value: JsonObject) {
       const result = await query(WRITE_PROVIDER_RECORD_SQL, [
         JSON.stringify(value.record),
@@ -561,9 +657,12 @@ export async function createProductionConsequenceActuatorConfig({
             rows: [{
               principal_name: 'test-memory',
               role_membership_ok: true,
+              provider_attempts_ready: true,
               provider_records_ready: true,
               reserve_envelope_ready: true,
               consume_envelope_ready: true,
+              record_provider_attempt_ready: true,
+              read_provider_attempt_ready: true,
               record_provider_record_ready: true,
               read_provider_record_ready: true,
             }],
@@ -578,9 +677,12 @@ export async function createProductionConsequenceActuatorConfig({
             && (useMemoryStore
               || readiness?.principal_name === databasePrincipal)
             && readiness?.role_membership_ok === true
+            && readiness?.provider_attempts_ready === true
             && readiness?.provider_records_ready === true
             && readiness?.reserve_envelope_ready === true
             && readiness?.consume_envelope_ready === true
+            && readiness?.record_provider_attempt_ready === true
+            && readiness?.read_provider_attempt_ready === true
             && readiness?.record_provider_record_ready === true
             && readiness?.read_provider_record_ready === true
             && typeof token === 'string'
