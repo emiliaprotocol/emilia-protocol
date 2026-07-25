@@ -82,6 +82,36 @@ async function createLogin(role: string): Promise<void> {
   `);
 }
 
+async function roleExists(role: string): Promise<boolean> {
+  const result = await admin.query<{ exists: boolean }>(
+    `SELECT EXISTS (
+       SELECT 1 FROM pg_catalog.pg_roles WHERE rolname = $1
+     ) AS exists`,
+    [role],
+  );
+  return result.rows[0].exists;
+}
+
+async function roleMembershipExists(
+  member: string,
+  role: string,
+): Promise<boolean> {
+  const result = await admin.query<{ exists: boolean }>(
+    `SELECT EXISTS (
+       SELECT 1
+       FROM pg_catalog.pg_auth_members AS membership
+       JOIN pg_catalog.pg_roles AS granted_role
+         ON granted_role.oid = membership.roleid
+       JOIN pg_catalog.pg_roles AS member_role
+         ON member_role.oid = membership.member
+       WHERE granted_role.rolname = $1
+         AND member_role.rolname = $2
+     ) AS exists`,
+    [role, member],
+  );
+  return result.rows[0].exists;
+}
+
 async function callAs(
   role: string,
   operation: string,
@@ -433,11 +463,49 @@ suite("rollout-attempt dirty role graph on PostgreSQL 17", () => {
   });
 
   it("detects an arbitrary owner member after reproducing direct private-table access", async () => {
-    await admin.query(
-      `GRANT ${identifier(OWNER_ROLE)} TO ${identifier(OWNER_POLLUTION_LOGIN)}
-        WITH INHERIT TRUE`,
-    );
+    let installedByTest = false;
+    let ownerPollutionLoginCreated = false;
+    let cleanLoginCreated = false;
+    let cleanMembershipGranted = false;
+    let ownerGranted = false;
     try {
+      const schema = await admin.query<{ exists: boolean }>(`
+        SELECT pg_catalog.to_regnamespace('rollout_attempt_private') IS NOT NULL
+          AS exists
+      `);
+      installedByTest = !schema.rows[0].exists;
+      if (installedByTest) await admin.query(migration);
+
+      if (!(await roleExists(OWNER_POLLUTION_LOGIN))) {
+        await createLogin(OWNER_POLLUTION_LOGIN);
+        ownerPollutionLoginCreated = true;
+      }
+      if (!(await roleExists(CLEAN_LOGIN))) {
+        await createLogin(CLEAN_LOGIN);
+        cleanLoginCreated = true;
+      }
+      if (!(await roleMembershipExists(CLEAN_LOGIN, EXECUTOR_ROLE))) {
+        await admin.query(
+          `GRANT ${identifier(EXECUTOR_ROLE)} TO ${identifier(CLEAN_LOGIN)}
+            WITH INHERIT TRUE`,
+        );
+        cleanMembershipGranted = true;
+      }
+
+      const claim = validClaim();
+      const claimResult = await callAs(CLEAN_LOGIN, "claim", claim);
+      expect(claimResult).toMatchObject({
+        operation: "claim",
+        claim_sha256: claim.claim_sha256,
+      });
+      expect(["claimed", "recovered"]).toContain(claimResult.status);
+
+      await admin.query(
+        `GRANT ${identifier(OWNER_ROLE)} TO ${identifier(OWNER_POLLUTION_LOGIN)}
+          WITH INHERIT TRUE`,
+      );
+      ownerGranted = true;
+
       const client = new pg.Client({
         ...connection,
         user: OWNER_POLLUTION_LOGIN,
@@ -459,18 +527,46 @@ suite("rollout-attempt dirty role graph on PostgreSQL 17", () => {
           AS present
       `);
       expect(assertion.rows).toEqual([{ present: false }]);
-    } finally {
+
       await admin.query(
         `REVOKE ${identifier(OWNER_ROLE)} FROM ${identifier(OWNER_POLLUTION_LOGIN)}`,
       );
-    }
+      ownerGranted = false;
 
-    const restored = await admin.query<{ present: boolean }>(`
-      SELECT (public.gov_schema_reconcile_introspect() -> 'functions')
-        ? 'contract:roles:rollout-attempt:least-privilege-membership-disjoint'
-        AS present
-    `);
-    expect(restored.rows).toEqual([{ present: true }]);
+      const restored = await admin.query<{ present: boolean }>(`
+        SELECT (public.gov_schema_reconcile_introspect() -> 'functions')
+          ? 'contract:roles:rollout-attempt:least-privilege-membership-disjoint'
+          AS present
+      `);
+      expect(restored.rows).toEqual([{ present: true }]);
+    } finally {
+      if (ownerGranted && await roleExists(OWNER_POLLUTION_LOGIN)) {
+        await admin.query(
+          `REVOKE ${identifier(OWNER_ROLE)} FROM ${identifier(OWNER_POLLUTION_LOGIN)}`,
+        );
+      }
+      if (installedByTest) {
+        await cleanupRoleGraph();
+      } else {
+        if (
+          cleanMembershipGranted
+          && await roleExists(CLEAN_LOGIN)
+          && await roleExists(EXECUTOR_ROLE)
+        ) {
+          await admin.query(
+            `REVOKE ${identifier(EXECUTOR_ROLE)} FROM ${identifier(CLEAN_LOGIN)}`,
+          );
+        }
+        for (const [role, created] of [
+          [CLEAN_LOGIN, cleanLoginCreated],
+          [OWNER_POLLUTION_LOGIN, ownerPollutionLoginCreated],
+        ] as const) {
+          if (!created || !(await roleExists(role))) continue;
+          await admin.query(`DROP OWNED BY ${identifier(role)} CASCADE`);
+          await admin.query(`DROP ROLE ${identifier(role)}`);
+        }
+      }
+    }
   });
 
   it("recovers exact claim and terminal acknowledgements without accepting conflicts", async () => {

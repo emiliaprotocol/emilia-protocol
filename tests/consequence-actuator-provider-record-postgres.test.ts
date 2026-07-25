@@ -925,6 +925,14 @@ suite('consequence actuator provider-record migration on PostgreSQL 17', () => {
   });
 
   it('detects an arbitrary owner member after reproducing cross-tenant table access', async () => {
+    const record = providerRecord();
+    await expect(
+      writeAttempt(TENANT_ALPHA_LOGIN, providerAttribution(record)),
+    ).resolves.toBe(ATTRIBUTION_DIGEST);
+    await expect(
+      writeRecord(TENANT_ALPHA_LOGIN, record),
+    ).resolves.toBe(RECORD_DIGEST);
+
     await admin.query(
       `GRANT ${identifier(OWNER_ROLE)} TO ${identifier(OWNER_POLLUTION_LOGIN)}
         WITH INHERIT TRUE`,
