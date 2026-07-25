@@ -1,0 +1,122 @@
+{
+  "@version": "EMILIA-WIMSE-OAUTH-SPT-SOURCE-LOCK-v1",
+  "retrieved_at": "2026-07-25T06:49:31Z",
+  "retrieval_policy": {
+    "authority": "IETF archive revision snapshots",
+    "hash_suite": "sha256",
+    "revision_upgrade": "forbidden",
+    "rule": "The adapter implements only the exact revisions and native field names locked here. A newer Datatracker revision requires a new profile, vectors, and source lock."
+  },
+  "source_count": 5,
+  "sources": [
+    {
+      "id": "wimse-http-signature",
+      "revision": "draft-ietf-wimse-http-signature-03",
+      "source_url": "https://www.ietf.org/archive/id/draft-ietf-wimse-http-signature-03.txt",
+      "final_url": "https://www.ietf.org/archive/id/draft-ietf-wimse-http-signature-03.txt",
+      "http_status": 200,
+      "content_type": "text/plain; charset=utf-8",
+      "etag": "\"69d51d77-9dbd\"",
+      "last_modified": "Tue, 07 Apr 2026 15:06:31 GMT",
+      "bytes": 40381,
+      "sha256": "ec6176f41cae9e3cbf32ee6ffe5ddd1925f84e9f07d2e85353b567931e3d50f9",
+      "locked_requirements": [
+        "Validate the WIT before the HTTP message signature.",
+        "Cover @method and @request-target.",
+        "Cover Content-Type, Content-Digest, Authorization, Txn-Token, and Workload-Identity-Token when present.",
+        "Require created, expires, nonce, tag, and the request-only wimse-aud signature parameter.",
+        "Reject keyid and alg Signature-Input parameters.",
+        "Verify Content-Digest whenever a body exists."
+      ]
+    },
+    {
+      "id": "wimse-workload-credentials",
+      "revision": "draft-ietf-wimse-workload-creds-01",
+      "source_url": "https://www.ietf.org/archive/id/draft-ietf-wimse-workload-creds-01.txt",
+      "final_url": "https://www.ietf.org/archive/id/draft-ietf-wimse-workload-creds-01.txt",
+      "http_status": 200,
+      "content_type": "text/plain; charset=utf-8",
+      "etag": "\"69fa1ed3-befe\"",
+      "last_modified": "Tue, 05 May 2026 16:46:11 GMT",
+      "bytes": 48894,
+      "sha256": "bdc258c3128066f94fb22e040641852413b7a22c5fc99fd97133c7ee837a31ce",
+      "locked_requirements": [
+        "Treat WIT as an explicitly typed signed JWT.",
+        "Require an asymmetric algorithm and reject none.",
+        "Validate the workload subject as a workload identifier scoped to its URI-authority trust domain.",
+        "Bind each accepted trust domain to authorized issuers and cryptographic trust anchors out of band.",
+        "Require cnf.jwk and proof of possession of the corresponding private key."
+      ]
+    },
+    {
+      "id": "wimse-workload-proof-token",
+      "revision": "draft-ietf-wimse-wpt-01",
+      "source_url": "https://www.ietf.org/archive/id/draft-ietf-wimse-wpt-01.txt",
+      "final_url": "https://www.ietf.org/archive/id/draft-ietf-wimse-wpt-01.txt",
+      "http_status": 200,
+      "content_type": "text/plain; charset=utf-8",
+      "etag": "\"69a5e5bb-9a86\"",
+      "last_modified": "Mon, 02 Mar 2026 19:32:11 GMT",
+      "bytes": 39558,
+      "sha256": "a08af6270c8efd4a8320fb59e69bf29fe747ee14a4681be30aac9be45bf56e1e",
+      "locked_requirements": [
+        "Verify the WPT with the WIT confirmation key and require matching EdDSA algorithm pins.",
+        "Require the wpt+jwt type, audience, short expiry, unique jti, and wth.",
+        "When a Txn-Token is present, require tth over the exact ASCII token value.",
+        "When an OAuth access token is present, require ath over the exact bearer token value.",
+        "Treat WPT as proof of workload-key possession, not human authorization."
+      ]
+    },
+    {
+      "id": "oauth-transaction-tokens",
+      "revision": "draft-ietf-oauth-transaction-tokens-08",
+      "source_url": "https://www.ietf.org/archive/id/draft-ietf-oauth-transaction-tokens-08.txt",
+      "final_url": "https://www.ietf.org/archive/id/draft-ietf-oauth-transaction-tokens-08.txt",
+      "http_status": 200,
+      "content_type": "text/plain; charset=utf-8",
+      "etag": "\"69a5d83e-11440\"",
+      "last_modified": "Mon, 02 Mar 2026 18:34:38 GMT",
+      "bytes": 70720,
+      "sha256": "bbedc8808ad9678a3903bdb11140ce374bd4bb15b4056183eb061a71b8aa2928",
+      "locked_requirements": [
+        "Verify a compact signed JWT with typ txntoken+jwt.",
+        "Require iat, aud trust domain, exp, txn, sub, scope, and req_wl.",
+        "Treat tctx as immutable transaction context selected by the transaction-token service.",
+        "Validate the JWS signature, audience, and expiration before relying on token context.",
+        "Use aud plus txn as the stable native replay identity for this AEB profile."
+      ]
+    },
+    {
+      "id": "spt-transaction-tokens",
+      "revision": "draft-coetzee-oauth-spt-txn-tokens-03",
+      "source_url": "https://www.ietf.org/archive/id/draft-coetzee-oauth-spt-txn-tokens-03.txt",
+      "final_url": "https://www.ietf.org/archive/id/draft-coetzee-oauth-spt-txn-tokens-03.txt",
+      "http_status": 200,
+      "content_type": "text/plain; charset=utf-8",
+      "etag": "\"6a5cf913-7ff0\"",
+      "last_modified": "Sun, 19 Jul 2026 16:19:31 GMT",
+      "bytes": 32752,
+      "sha256": "5ebba0db429816a7fe887128f08d51c3840209bf17de74d66581ce935966e195",
+      "locked_requirements": [
+        "Select issuer keys and algorithms from a pinned trust registry rather than the token header.",
+        "Enforce iat and exp bounds, TXN audience, sender constraint, and intent binding.",
+        "Recompute spt_intent_digest as base64url SHA-256 over the specified domain separator and JCS intent.",
+        "Do not treat human_anchor as proof of human identity or an AEB human-authorization role."
+      ],
+      "source_gap": {
+        "status": "unmodeled",
+        "details": "Revision -03 describes a full-chain parent-byte commitment and a transaction-context hash but does not assign exact interoperable claim names or encodings to them.",
+        "adapter_effect": "The optional SPT TXN is verified only as a pinned signed leaf intent-binding adjunct. It cannot independently satisfy an SPT authorization, human-authorization, or full delegation-chain role."
+      }
+    }
+  ],
+  "profile_decisions": {
+    "wire_format": "No new wire format is defined. The AEB artifact is an invocation envelope containing exact native compact values and observed HTTP request fields.",
+    "wimse_audience": "The native revision-03 field is wimse-aud inside Signature-Input and therefore inside @signature-params. No Wimse-Audience HTTP header is introduced.",
+    "time_profile": "The constructor additionally requires iat, nbf, exp, bounded clock skew, and per-artifact maximum ages for every accepted compact JWT.",
+    "algorithm_profile": "This experimental version accepts only EdDSA with canonical Ed25519 SPKI keys pinned at construction.",
+    "role_profile": "The adapter emits delegated-workload with subject kind workload. WIT/WPT possession, OAuth context, SPT context, and human_anchor can never become human authorization.",
+    "action_profile": "CAID material contains only the signed HTTP action, immutable OAuth transaction context, and optional SPT intent. Issuer, identity, audience, and replay identifiers remain verified evidence metadata rather than material-action content.",
+    "missing_action": "A missing or ambiguously shaped expected action is INDETERMINATE and produces no CAID."
+  }
+}
