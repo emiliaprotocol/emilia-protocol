@@ -11,6 +11,7 @@ import re
 import subprocess
 import sys
 import tempfile
+from decimal import Decimal, InvalidOperation
 from pathlib import Path
 
 DIGEST_IMAGE = re.compile(
@@ -24,8 +25,30 @@ MAX_CLOCK_SKEW_SECONDS = 30
 CANARY_TAG_PREFIX = "canary-"
 NETWORK_INTERFACES_ANNOTATION = "run.googleapis.com/network-interfaces"
 VPC_EGRESS_ANNOTATION = "run.googleapis.com/vpc-access-egress"
-VPC_CONNECTOR_ANNOTATION = "run.googleapis.com/vpc-access-connector"
 INGRESS_ANNOTATION = "run.googleapis.com/ingress"
+EXECUTION_ENVIRONMENT_ANNOTATION = "run.googleapis.com/execution-environment"
+SESSION_AFFINITY_ANNOTATION = "run.googleapis.com/sessionAffinity"
+MIN_SCALE_ANNOTATION = "autoscaling.knative.dev/minScale"
+MAX_SCALE_ANNOTATION = "autoscaling.knative.dev/maxScale"
+INVOKER_IAM_DISABLED_ANNOTATION = "run.googleapis.com/invoker-iam-disabled"
+
+NON_BEHAVIOR_LABELS = {
+    "cloud.googleapis.com/location",
+    "run.googleapis.com/startupProbeType",
+    "serving.knative.dev/configuration",
+    "serving.knative.dev/configurationGeneration",
+    "serving.knative.dev/route",
+    "serving.knative.dev/serviceUid",
+}
+
+NON_BEHAVIOR_ANNOTATIONS = {
+    "run.googleapis.com/client-name",
+    "run.googleapis.com/client-version",
+    "run.googleapis.com/operation-id",
+    "run.googleapis.com/urls",
+    "serving.knative.dev/creator",
+    "serving.knative.dev/lastModifier",
+}
 
 ACTUATOR_SECRET_BINDINGS = {
     "EMILIA_ACTUATOR_DATABASE_URL": "ACTUATOR_DATABASE_URL_SECRET",
@@ -406,15 +429,379 @@ def require_https_url(value: object, name: str) -> str:
     return result
 
 
-def verify_live_service_tag(
+def require_positive_int(value: object, name: str) -> int:
+    if isinstance(value, bool) or not isinstance(value, int) or value <= 0:
+        raise ValueError(f"{name} must be a positive integer")
+    return value
+
+
+def require_nonnegative_int(value: object, name: str) -> int:
+    if isinstance(value, bool) or not isinstance(value, int) or value < 0:
+        raise ValueError(f"{name} must be a nonnegative integer")
+    return value
+
+
+def normalize_cpu(value: object, name: str) -> int:
+    raw = require_string(value, name)
+    try:
+        if raw.endswith("m"):
+            millicores = Decimal(raw[:-1])
+        else:
+            millicores = Decimal(raw) * 1000
+    except InvalidOperation as error:
+        raise ValueError(f"{name} must be a CPU quantity") from error
+    if (
+        not millicores.is_finite()
+        or millicores <= 0
+        or millicores != millicores.to_integral_value()
+    ):
+        raise ValueError(f"{name} must resolve to whole positive millicores")
+    return int(millicores)
+
+
+def behavior_metadata(
+    value: object,
+    name: str,
+    ignored: set[str],
+) -> dict[str, str]:
+    source = require_dict(value, name)
+    result: dict[str, str] = {}
+    for key, raw in source.items():
+        if not isinstance(key, str) or not key:
+            raise ValueError(f"{name} keys must be non-empty strings")
+        item = require_string(raw, f"{name}.{key}")
+        if key not in ignored:
+            result[key] = item
+    return result
+
+
+def expected_actuator_plain_environment(
+    config: dict[str, str],
+) -> dict[str, str]:
+    return {
+        "NODE_ENV": "production",
+        "HOST": "0.0.0.0",
+        "EMILIA_ACTUATOR_DATABASE_PRINCIPAL": config[
+            "ACTUATOR_DATABASE_PRINCIPAL"
+        ],
+        "EMILIA_ACTUATOR_TENANT_ID": config["TENANT_ID"],
+        "EMILIA_ACTUATOR_GITHUB_OWNER": config["GITHUB_OWNER"],
+        "EMILIA_ACTUATOR_GITHUB_REPO": config["GITHUB_REPO"],
+        "EMILIA_ACTUATOR_GITHUB_ISSUE_NUMBER": config["GITHUB_ISSUE_NUMBER"],
+        "EMILIA_ACTUATOR_ENVELOPE_ISSUER_ID": config["ENVELOPE_ISSUER_ID"],
+        "EMILIA_ACTUATOR_ENVELOPE_KEY_ID": config["ENVELOPE_KEY_ID"],
+        "EMILIA_ACTUATOR_OBSERVATION_ISSUER_ID": config[
+            "OBSERVATION_ISSUER_ID"
+        ],
+        "EMILIA_ACTUATOR_OBSERVATION_KEY_ID": config["OBSERVATION_KEY_ID"],
+    }
+
+
+def expected_decision_plain_environment(
+    config: dict[str, str],
+    actuator_origin: str,
+    actuator_audience: str,
+) -> dict[str, str]:
+    return {
+        "NODE_ENV": "production",
+        "HOST": "0.0.0.0",
+        "EMILIA_CONSEQUENCE_CONFIG": (
+            "apps/consequence-control-service/src/production-config.js"
+        ),
+        "EMILIA_CONSEQUENCE_TENANT_ID": config["TENANT_ID"],
+        "EMILIA_CONSEQUENCE_RELYING_PARTY_ID": config[
+            "DECISION_RELYING_PARTY_ID"
+        ],
+        "EMILIA_CONSEQUENCE_EXECUTOR_ID": config["DECISION_EXECUTOR_ID"],
+        "EMILIA_CONSEQUENCE_PRINCIPAL_ID": config["DECISION_PRINCIPAL_ID"],
+        "EMILIA_CONSEQUENCE_APPROVAL_ENDPOINT": config[
+            "DECISION_APPROVAL_ENDPOINT"
+        ],
+        "EMILIA_CONSEQUENCE_GITHUB_OWNER": config["GITHUB_OWNER"],
+        "EMILIA_CONSEQUENCE_GITHUB_REPO": config["GITHUB_REPO"],
+        "EMILIA_CONSEQUENCE_GITHUB_ISSUE_NUMBER": config[
+            "GITHUB_ISSUE_NUMBER"
+        ],
+        "EMILIA_CONSEQUENCE_PROPOSAL_TTL_SEC": config[
+            "DECISION_PROPOSAL_TTL_SEC"
+        ],
+        "EMILIA_CONSEQUENCE_ACTUATOR_ORIGIN": actuator_origin,
+        "EMILIA_CONSEQUENCE_ACTUATOR_AUDIENCE": actuator_audience,
+        "EMILIA_CONSEQUENCE_ACTUATOR_ENVELOPE_ISSUER_ID": config[
+            "ENVELOPE_ISSUER_ID"
+        ],
+        "EMILIA_CONSEQUENCE_ACTUATOR_ENVELOPE_KEY_ID": config[
+            "ENVELOPE_KEY_ID"
+        ],
+        "EMILIA_CONSEQUENCE_ACTUATOR_OBSERVATION_ISSUER_ID": config[
+            "OBSERVATION_ISSUER_ID"
+        ],
+        "EMILIA_CONSEQUENCE_ACTUATOR_EVIDENCE_KEY_ID": config[
+            "OBSERVATION_KEY_ID"
+        ],
+        "EMILIA_CONSEQUENCE_ACTUATOR_TIMEOUT_MS": config[
+            "DECISION_ACTUATOR_TIMEOUT_MS"
+        ],
+        "EMILIA_CONSEQUENCE_AEB_REQUIREMENT_REF": config[
+            "DECISION_AEB_REQUIREMENT_REF"
+        ],
+        "EMILIA_CONSEQUENCE_SHUTDOWN_GRACE_MS": config[
+            "DECISION_SHUTDOWN_GRACE_MS"
+        ],
+    }
+
+
+def parse_configured_secret(config: dict[str, str], variable: str) -> tuple[str, str]:
+    value = config[variable]
+    try:
+        secret, version = value.rsplit(":", 1)
+    except ValueError as error:
+        raise ValueError(f"{variable} must use SECRET_ID:NUMERIC_VERSION") from error
+    if not re.fullmatch(r"[A-Za-z][A-Za-z0-9_-]{0,254}", secret):
+        raise ValueError(f"{variable} has an invalid secret ID")
+    if not re.fullmatch(r"[1-9][0-9]*", version):
+        raise ValueError(f"{variable} must use a numeric secret version")
+    return secret, version
+
+
+def expected_secret_environment(
+    config: dict[str, str],
+    bindings: dict[str, str],
+) -> dict[str, dict[str, str]]:
+    result: dict[str, dict[str, str]] = {}
+    for name, variable in bindings.items():
+        secret, version = parse_configured_secret(config, variable)
+        result[name] = {
+            "secret": secret,
+            "version": version,
+        }
+    return result
+
+
+def normalize_environment(
+    container: dict,
+    revision: str,
+) -> tuple[dict[str, str], dict[str, dict[str, str]]]:
+    environment = require_list(
+        container.get("env"),
+        f"live revision {revision} container environment",
+    )
+    plain: dict[str, str] = {}
+    secret: dict[str, dict[str, str]] = {}
+    for index, item in enumerate(environment):
+        entry = require_dict(
+            item,
+            f"live revision {revision} environment[{index}]",
+        )
+        name = require_string(
+            entry.get("name"),
+            f"live revision {revision} environment[{index}].name",
+        )
+        if name in plain or name in secret:
+            raise ValueError(
+                f"live revision {revision} has duplicate environment member {name}"
+            )
+        if set(entry) == {"name", "value"}:
+            plain[name] = require_string(
+                entry["value"],
+                f"live revision {revision} environment {name}.value",
+            )
+            continue
+        if set(entry) != {"name", "valueFrom"}:
+            raise ValueError(
+                f"live revision {revision} environment {name} must be exactly "
+                "plaintext or Secret Manager backed"
+            )
+        value_from = exact_keys(
+            entry["valueFrom"],
+            {"secretKeyRef"},
+            f"live revision {revision} secret {name}.valueFrom",
+        )
+        reference = exact_keys(
+            value_from["secretKeyRef"],
+            {"key", "name"},
+            f"live revision {revision} secret {name}.secretKeyRef",
+        )
+        secret[name] = {
+            "secret": require_string(
+                reference["name"],
+                f"live revision {revision} secret {name} ID",
+            ),
+            "version": require_string(
+                reference["key"],
+                f"live revision {revision} secret {name} version",
+            ),
+        }
+    return plain, secret
+
+
+def normalize_network_interfaces(value: str, revision: str) -> list[dict]:
+    try:
+        interfaces = json.loads(
+            value,
+            object_pairs_hook=reject_duplicate_members,
+        )
+    except json.JSONDecodeError as error:
+        raise ValueError(
+            f"live revision {revision} network interfaces are not JSON"
+        ) from error
+    result = require_list(
+        interfaces,
+        f"live revision {revision} network interfaces",
+    )
+    for index, interface in enumerate(result):
+        exact_keys(
+            interface,
+            {"network", "subnetwork"},
+            f"live revision {revision} network interface[{index}]",
+        )
+    return result
+
+
+def normalize_revision_annotations(
+    metadata: dict,
+    revision: str,
+) -> tuple[dict[str, object], bool]:
+    annotations = behavior_metadata(
+        metadata.get("annotations"),
+        f"live revision {revision}.metadata.annotations",
+        NON_BEHAVIOR_ANNOTATIONS,
+    )
+    raw_session_affinity = annotations.pop(
+        SESSION_AFFINITY_ANNOTATION,
+        None,
+    )
+    if raw_session_affinity not in (None, "false", "true"):
+        raise ValueError(
+            f"live revision {revision} session affinity must be boolean"
+        )
+    if NETWORK_INTERFACES_ANNOTATION in annotations:
+        annotations[NETWORK_INTERFACES_ANNOTATION] = normalize_network_interfaces(
+            annotations[NETWORK_INTERFACES_ANNOTATION],
+            revision,
+        )
+    return annotations, raw_session_affinity == "true"
+
+
+def normalize_probe(value: object, name: str) -> dict[str, object]:
+    probe = require_dict(value, name)
+    action_names = {"grpc", "httpGet", "tcpSocket"}
+    present_actions = action_names.intersection(probe)
+    if len(present_actions) != 1:
+        raise ValueError(f"{name} must contain exactly one probe action")
+    action_name = present_actions.pop()
+    allowed = {
+        action_name,
+        "failureThreshold",
+        "initialDelaySeconds",
+        "periodSeconds",
+        "successThreshold",
+        "timeoutSeconds",
+    }
+    if set(probe) - allowed:
+        raise ValueError(f"{name} contains unexpected behavior fields")
+    action = require_dict(probe[action_name], f"{name}.{action_name}")
+    if action_name == "httpGet":
+        if set(action) - {"httpHeaders", "path", "port"}:
+            raise ValueError(f"{name}.httpGet contains unexpected fields")
+        headers = require_list(
+            action.get("httpHeaders", []),
+            f"{name}.httpGet.httpHeaders",
+        )
+        normalized_headers: list[dict[str, str]] = []
+        for index, item in enumerate(headers):
+            header = exact_keys(
+                item,
+                {"name", "value"},
+                f"{name}.httpGet.httpHeaders[{index}]",
+            )
+            normalized_headers.append(
+                {
+                    "name": require_string(
+                        header["name"],
+                        f"{name}.httpGet.httpHeaders[{index}].name",
+                    ),
+                    "value": require_string(
+                        header["value"],
+                        f"{name}.httpGet.httpHeaders[{index}].value",
+                    ),
+                }
+            )
+        normalized_action: dict[str, object] = {
+            "httpHeaders": normalized_headers,
+            "path": require_string(action.get("path", "/"), f"{name}.httpGet.path"),
+            "port": require_positive_int(
+                action.get("port"),
+                f"{name}.httpGet.port",
+            ),
+        }
+    elif action_name == "tcpSocket":
+        socket = exact_keys(action, {"port"}, f"{name}.tcpSocket")
+        normalized_action = {
+            "port": require_positive_int(
+                socket["port"],
+                f"{name}.tcpSocket.port",
+            )
+        }
+    else:
+        if set(action) - {"port", "service"}:
+            raise ValueError(f"{name}.grpc contains unexpected fields")
+        normalized_action = {
+            "port": require_positive_int(
+                action.get("port"),
+                f"{name}.grpc.port",
+            ),
+            "service": action.get("service", ""),
+        }
+        if not isinstance(normalized_action["service"], str):
+            raise ValueError(f"{name}.grpc.service must be a string")
+    return {
+        "action": action_name,
+        "configuration": normalized_action,
+        "failureThreshold": require_positive_int(
+            probe.get("failureThreshold", 3),
+            f"{name}.failureThreshold",
+        ),
+        "initialDelaySeconds": require_nonnegative_int(
+            probe.get("initialDelaySeconds", 0),
+            f"{name}.initialDelaySeconds",
+        ),
+        "periodSeconds": require_positive_int(
+            probe.get("periodSeconds", 10),
+            f"{name}.periodSeconds",
+        ),
+        "successThreshold": require_positive_int(
+            probe.get("successThreshold", 1),
+            f"{name}.successThreshold",
+        ),
+        "timeoutSeconds": require_positive_int(
+            probe.get("timeoutSeconds", 1),
+            f"{name}.timeoutSeconds",
+        ),
+    }
+
+
+def normalize_live_service(
     value: dict,
     service: str,
     tag: str,
-    revision: str,
-) -> str:
+) -> dict:
     metadata = require_dict(value.get("metadata"), f"live service {service}.metadata")
     require_equal(metadata.get("name"), service, f"live service {service} name")
+    generation = require_positive_int(
+        metadata.get("generation"),
+        f"live service {service} generation",
+    )
     status = require_dict(value.get("status"), f"live service {service}.status")
+    observed_generation = require_positive_int(
+        status.get("observedGeneration"),
+        f"live service {service} observed generation",
+    )
+    require_equal(
+        observed_generation,
+        generation,
+        f"live service {service} observed generation",
+    )
     traffic = require_list(
         status.get("traffic"),
         f"live service {service}.status.traffic",
@@ -431,241 +818,377 @@ def verify_live_service_tag(
         raise ValueError(
             f"live service {service} must expose exactly one {tag!r} traffic tag"
         )
-    match = matches[0]
-    require_equal(
-        match.get("revisionName"),
-        revision,
-        f"live service {service} tag revision",
+    tagged = exact_keys(
+        matches[0],
+        {"percent", "revisionName", "tag", "url"},
+        f"live service {service} tagged traffic entry",
     )
-    return require_https_url(
-        match.get("url"),
-        f"live service {service} tagged URL",
+    tagged_percent = require_nonnegative_int(
+        tagged["percent"],
+        f"live service {service} tagged traffic percent",
     )
+    if tagged_percent > 100:
+        raise ValueError(
+            f"live service {service} tagged traffic percent must not exceed 100"
+        )
+    return {
+        "name": service,
+        "generation": generation,
+        "observed_generation": observed_generation,
+        "labels": behavior_metadata(
+            metadata.get("labels"),
+            f"live service {service}.metadata.labels",
+            NON_BEHAVIOR_LABELS,
+        ),
+        "annotations": behavior_metadata(
+            metadata.get("annotations"),
+            f"live service {service}.metadata.annotations",
+            NON_BEHAVIOR_ANNOTATIONS,
+        ),
+        "canonical_url": require_https_url(
+            status.get("url"),
+            f"live service {service} canonical URL",
+        ),
+        "tagged_traffic": {
+            "percent": tagged_percent,
+            "revision": require_string(
+                tagged["revisionName"],
+                f"live service {service} tagged traffic revision",
+            ),
+            "tag": require_string(
+                tagged["tag"],
+                f"live service {service} tagged traffic tag",
+            ),
+            "url": require_https_url(
+                tagged["url"],
+                f"live service {service} tagged URL",
+            ),
+        },
+    }
 
 
-def canonical_service_url(value: dict, service: str) -> str:
-    status = require_dict(value.get("status"), f"live service {service}.status")
-    return require_https_url(
-        status.get("url"),
-        f"live service {service} canonical URL",
-    )
+def expected_service_projection(
+    config: dict[str, str],
+    plane: str,
+    service: str,
+    revision: str,
+    tag: str,
+    actual: dict,
+) -> dict:
+    annotations = {
+        INGRESS_ANNOTATION: config[f"{plane.upper()}_INGRESS"],
+    }
+    if plane == "decision":
+        annotations[INVOKER_IAM_DISABLED_ANNOTATION] = "true"
+    return {
+        "name": service,
+        "generation": actual["generation"],
+        "observed_generation": actual["generation"],
+        "labels": {
+            "emilia-plane": plane,
+            "emilia-release": config["RELEASE_ID"],
+        },
+        "annotations": annotations,
+        "canonical_url": actual["canonical_url"],
+        "tagged_traffic": {
+            "percent": 0,
+            "revision": revision,
+            "tag": tag,
+            "url": actual["tagged_traffic"]["url"],
+        },
+    }
 
 
-def revision_container(value: dict, revision: str) -> tuple[dict, dict, dict]:
+def expected_probe_projection(plane: str) -> dict[str, object]:
+    if plane == "actuator":
+        return {
+            "startup": {
+                "action": "tcpSocket",
+                "configuration": {"port": 8080},
+                "failureThreshold": 30,
+                "initialDelaySeconds": 0,
+                "periodSeconds": 2,
+                "successThreshold": 1,
+                "timeoutSeconds": 1,
+            },
+            "liveness": None,
+            "readiness": None,
+        }
+    return {
+        "startup": {
+            "action": "httpGet",
+            "configuration": {
+                "httpHeaders": [],
+                "path": "/v1/ready",
+                "port": 8080,
+            },
+            "failureThreshold": 30,
+            "initialDelaySeconds": 0,
+            "periodSeconds": 2,
+            "successThreshold": 1,
+            "timeoutSeconds": 1,
+        },
+        "liveness": {
+            "action": "httpGet",
+            "configuration": {
+                "httpHeaders": [],
+                "path": "/v1/live",
+                "port": 8080,
+            },
+            "failureThreshold": 3,
+            "initialDelaySeconds": 10,
+            "periodSeconds": 30,
+            "successThreshold": 1,
+            "timeoutSeconds": 2,
+        },
+        "readiness": {
+            "action": "httpGet",
+            "configuration": {
+                "httpHeaders": [],
+                "path": "/v1/ready",
+                "port": 8080,
+            },
+            "failureThreshold": 3,
+            "initialDelaySeconds": 0,
+            "periodSeconds": 5,
+            "successThreshold": 1,
+            "timeoutSeconds": 2,
+        },
+    }
+
+
+def normalize_live_revision(
+    value: dict,
+    revision: str,
+    plane: str,
+) -> dict:
     metadata = require_dict(
         value.get("metadata"),
         f"live revision {revision}.metadata",
     )
-    spec = require_dict(value.get("spec"), f"live revision {revision}.spec")
+    require_equal(metadata.get("name"), revision, "live revision name")
+    spec = exact_keys(
+        value.get("spec"),
+        {
+            "containerConcurrency",
+            "containers",
+            "serviceAccountName",
+            "timeoutSeconds",
+        },
+        f"live revision {revision}.spec",
+    )
     containers = require_list(
-        spec.get("containers"),
+        spec["containers"],
         f"live revision {revision}.spec.containers",
     )
     if len(containers) != 1:
         raise ValueError(f"live revision must have one container for {revision}")
+    container_keys = {
+        "env",
+        "image",
+        "ports",
+        "resources",
+        "startupProbe",
+    }
+    if plane == "decision":
+        container_keys.update({"livenessProbe", "readinessProbe"})
     container = require_dict(
         containers[0],
-        f"live revision {revision}.spec.containers[0]",
+        f"live revision {revision} container",
     )
-    return metadata, spec, container
-
-
-def revision_environment(container: dict, revision: str) -> dict[str, dict]:
-    environment = require_list(
-        container.get("env"),
-        f"live revision {revision} container environment",
+    if not container_keys.issubset(container) or set(container) - (
+        container_keys | {"name"}
+    ):
+        raise ValueError(
+            f"live revision {revision} container must contain exactly the "
+            "closed runtime fields"
+        )
+    if "name" in container:
+        require_string(
+            container["name"],
+            f"live revision {revision} container name",
+        )
+    resources = exact_keys(
+        container["resources"],
+        {"limits"},
+        f"live revision {revision} container resources",
     )
-    result: dict[str, dict] = {}
-    for index, item in enumerate(environment):
-        entry = require_dict(
-            item,
-            f"live revision {revision} environment[{index}]",
-        )
-        name = require_string(
-            entry.get("name"),
-            f"live revision {revision} environment[{index}].name",
-        )
-        if name in result:
-            raise ValueError(
-                f"live revision {revision} has duplicate environment member {name}"
-            )
-        result[name] = entry
-    return result
-
-
-def parse_configured_secret(config: dict[str, str], variable: str) -> tuple[str, str]:
-    value = config[variable]
-    try:
-        secret, version = value.rsplit(":", 1)
-    except ValueError as error:
-        raise ValueError(f"{variable} must use SECRET_ID:NUMERIC_VERSION") from error
-    if not re.fullmatch(r"[A-Za-z][A-Za-z0-9_-]{0,254}", secret):
-        raise ValueError(f"{variable} has an invalid secret ID")
-    if not re.fullmatch(r"[1-9][0-9]*", version):
-        raise ValueError(f"{variable} must use a numeric secret version")
-    return secret, version
-
-
-def verify_secret_bindings(
-    config: dict[str, str],
-    environment: dict[str, dict],
-    expected: dict[str, str],
-    revision: str,
-) -> None:
-    actual_names = {
-        name for name, entry in environment.items() if "valueFrom" in entry
+    limits = exact_keys(
+        resources["limits"],
+        {"cpu", "memory"},
+        f"live revision {revision} container resource limits",
+    )
+    ports = require_list(
+        container["ports"],
+        f"live revision {revision} container ports",
+    )
+    if len(ports) != 1:
+        raise ValueError(f"live revision {revision} must expose exactly one port")
+    port = exact_keys(
+        ports[0],
+        {"containerPort", "name"},
+        f"live revision {revision} container port",
+    )
+    container_port = require_positive_int(
+        port["containerPort"],
+        f"live revision {revision} container port number",
+    )
+    port_name = require_string(
+        port["name"],
+        f"live revision {revision} container port name",
+    )
+    plain_environment, secret_environment = normalize_environment(
+        container,
+        revision,
+    )
+    annotations, session_affinity = normalize_revision_annotations(
+        metadata,
+        revision,
+    )
+    return {
+        "name": revision,
+        "labels": behavior_metadata(
+            metadata.get("labels"),
+            f"live revision {revision}.metadata.labels",
+            NON_BEHAVIOR_LABELS,
+        ),
+        "annotations": annotations,
+        "session_affinity": session_affinity,
+        "service_account": require_string(
+            spec["serviceAccountName"],
+            f"live revision {revision} service account",
+        ),
+        "image": require_string(
+            container["image"],
+            f"live revision {revision} image",
+        ),
+        "plain_environment": plain_environment,
+        "secret_environment": secret_environment,
+        "resources": {
+            "cpu_millicores": normalize_cpu(
+                limits["cpu"],
+                f"live revision {revision} CPU",
+            ),
+            "memory": require_string(
+                limits["memory"],
+                f"live revision {revision} memory",
+            ),
+        },
+        "scaling": {
+            "minimum": annotations.get(MIN_SCALE_ANNOTATION),
+            "maximum": annotations.get(MAX_SCALE_ANNOTATION),
+        },
+        "concurrency": require_positive_int(
+            spec["containerConcurrency"],
+            f"live revision {revision} concurrency",
+        ),
+        "timeout": require_positive_int(
+            spec["timeoutSeconds"],
+            f"live revision {revision} timeout",
+        ),
+        "ports": [
+            {
+                "containerPort": container_port,
+                "name": port_name,
+            }
+        ],
+        "probes": {
+            "startup": normalize_probe(
+                container["startupProbe"],
+                f"live revision {revision} startup probe",
+            ),
+            "liveness": (
+                normalize_probe(
+                    container["livenessProbe"],
+                    f"live revision {revision} liveness probe",
+                )
+                if "livenessProbe" in container
+                else None
+            ),
+            "readiness": (
+                normalize_probe(
+                    container["readinessProbe"],
+                    f"live revision {revision} readiness probe",
+                )
+                if "readinessProbe" in container
+                else None
+            ),
+        },
     }
-    if actual_names != set(expected):
-        raise ValueError(
-            f"live revision {revision} secret environment must contain exactly "
-            f"{sorted(expected)}"
-        )
-    for environment_name, config_variable in expected.items():
-        entry = exact_keys(
-            environment[environment_name],
-            {"name", "valueFrom"},
-            f"live revision {revision} secret {environment_name}",
-        )
-        require_equal(
-            entry["name"],
-            environment_name,
-            f"live revision {revision} secret environment name",
-        )
-        value_from = exact_keys(
-            entry["valueFrom"],
-            {"secretKeyRef"},
-            f"live revision {revision} secret {environment_name}.valueFrom",
-        )
-        reference = exact_keys(
-            value_from["secretKeyRef"],
-            {"key", "name"},
-            f"live revision {revision} secret {environment_name}.secretKeyRef",
-        )
-        secret, version = parse_configured_secret(config, config_variable)
-        require_equal(
-            reference["name"],
-            secret,
-            f"live revision {revision} secret {environment_name} ID",
-        )
-        require_equal(
-            reference["key"],
-            version,
-            f"live revision {revision} secret {environment_name} version",
-        )
 
 
-def require_plain_environment(
-    environment: dict[str, dict],
-    name: str,
-    expected: str,
-    revision: str,
-) -> None:
-    if name not in environment:
-        raise ValueError(f"live revision {revision} is missing environment {name}")
-    entry = exact_keys(
-        environment[name],
-        {"name", "value"},
-        f"live revision {revision} environment {name}",
-    )
-    require_equal(entry["name"], name, f"live revision {revision} environment name")
-    require_equal(
-        entry["value"],
-        expected,
-        f"live revision {revision} environment {name}",
-    )
-
-
-def verify_revision_network(
-    metadata: dict,
+def expected_revision_projection(
     config: dict[str, str],
-    revision: str,
-) -> None:
-    annotations = require_dict(
-        metadata.get("annotations"),
-        f"live revision {revision}.metadata.annotations",
-    )
-    if VPC_CONNECTOR_ANNOTATION in annotations:
-        raise ValueError(f"live revision {revision} must use Direct VPC egress")
-    raw_interfaces = require_string(
-        annotations.get(NETWORK_INTERFACES_ANNOTATION),
-        f"live revision {revision} network interfaces",
-    )
-    try:
-        interfaces = json.loads(
-            raw_interfaces,
-            object_pairs_hook=reject_duplicate_members,
-        )
-    except json.JSONDecodeError as error:
-        raise ValueError(
-            f"live revision {revision} network interfaces are not JSON"
-        ) from error
-    interfaces = require_list(
-        interfaces,
-        f"live revision {revision} network interfaces",
-    )
-    if len(interfaces) != 1:
-        raise ValueError(
-            f"live revision {revision} must have exactly one network interface"
-        )
-    interface = exact_keys(
-        interfaces[0],
-        {"network", "subnetwork"},
-        f"live revision {revision} network interface",
-    )
-    require_equal(
-        interface["network"],
-        config["NETWORK"],
-        f"live revision {revision} network",
-    )
-    require_equal(
-        interface["subnetwork"],
-        config["SUBNET"],
-        f"live revision {revision} subnet",
-    )
-    require_equal(
-        annotations.get(VPC_EGRESS_ANNOTATION),
-        "all-traffic",
-        f"live revision {revision} VPC egress",
-    )
-
-
-def verify_service_ingress(
-    value: dict,
-    service: str,
-    expected: str,
-) -> None:
-    metadata = require_dict(value.get("metadata"), f"live service {service}.metadata")
-    annotations = require_dict(
-        metadata.get("annotations"),
-        f"live service {service}.metadata.annotations",
-    )
-    require_equal(
-        annotations.get(INGRESS_ANNOTATION),
-        expected,
-        f"live service {service} ingress",
-    )
-
-
-def verify_live_revision(
-    config: dict[str, str],
-    value: dict,
+    plane: str,
     revision: str,
     service: str,
-    image: str,
-) -> tuple[dict, dict[str, dict]]:
-    metadata, spec, container = revision_container(value, revision)
-    require_equal(metadata.get("name"), revision, "live revision name")
-    labels = require_dict(
-        metadata.get("labels"),
-        f"live revision {revision}.metadata.labels",
+    actuator_origin: str,
+    actuator_audience: str,
+) -> dict:
+    prefix = plane.upper()
+    plain_environment = (
+        expected_actuator_plain_environment(config)
+        if plane == "actuator"
+        else expected_decision_plain_environment(
+            config,
+            actuator_origin,
+            actuator_audience,
+        )
     )
-    require_equal(
-        labels.get("serving.knative.dev/service"),
-        service,
-        "live revision service",
+    bindings = (
+        ACTUATOR_SECRET_BINDINGS
+        if plane == "actuator"
+        else DECISION_SECRET_BINDINGS
     )
-    require_equal(container.get("image"), image, "live revision image")
-    return spec, revision_environment(container, revision)
+    timeout = 30 if plane == "actuator" else 60
+    return {
+        "name": revision,
+        "labels": {
+            "emilia-plane": plane,
+            "emilia-release": config["RELEASE_ID"],
+            "serving.knative.dev/service": service,
+        },
+        "annotations": {
+            MIN_SCALE_ANNOTATION: config[f"{prefix}_MIN_INSTANCES"],
+            MAX_SCALE_ANNOTATION: config[f"{prefix}_MAX_INSTANCES"],
+            EXECUTION_ENVIRONMENT_ANNOTATION: "gen2",
+            NETWORK_INTERFACES_ANNOTATION: [
+                {
+                    "network": config["NETWORK"],
+                    "subnetwork": config["SUBNET"],
+                }
+            ],
+            VPC_EGRESS_ANNOTATION: "all-traffic",
+        },
+        "session_affinity": False,
+        "service_account": (
+            f"{config[f'{prefix}_SERVICE_ACCOUNT']}@{config['PROJECT_ID']}"
+            ".iam.gserviceaccount.com"
+        ),
+        "image": config[f"{prefix}_IMAGE"],
+        "plain_environment": plain_environment,
+        "secret_environment": expected_secret_environment(config, bindings),
+        "resources": {
+            "cpu_millicores": normalize_cpu(
+                config[f"{prefix}_CPU"],
+                f"{prefix}_CPU",
+            ),
+            "memory": config[f"{prefix}_MEMORY"],
+        },
+        "scaling": {
+            "minimum": config[f"{prefix}_MIN_INSTANCES"],
+            "maximum": config[f"{prefix}_MAX_INSTANCES"],
+        },
+        "concurrency": int(config[f"{prefix}_CONCURRENCY"]),
+        "timeout": timeout,
+        "ports": [
+            {
+                "containerPort": 8080,
+                "name": "http1",
+            }
+        ],
+        "probes": expected_probe_projection(plane),
+    }
 
 
 def validate_live(config: dict[str, str], evidence: dict) -> None:
@@ -673,106 +1196,76 @@ def validate_live(config: dict[str, str], evidence: dict) -> None:
     decision_revision = evidence["decision_revision"]
     tag = f"{CANARY_TAG_PREFIX}{config['RELEASE_ID']}"
 
-    actuator_service = describe_live_service(config, config["ACTUATOR_SERVICE"])
-    decision_service = describe_live_service(config, config["DECISION_SERVICE"])
-    actuator_tagged_url = verify_live_service_tag(
-        actuator_service,
+    actuator_service = normalize_live_service(
+        describe_live_service(config, config["ACTUATOR_SERVICE"]),
         config["ACTUATOR_SERVICE"],
         tag,
-        actuator_revision,
     )
-    verify_live_service_tag(
-        decision_service,
+    decision_service = normalize_live_service(
+        describe_live_service(config, config["DECISION_SERVICE"]),
         config["DECISION_SERVICE"],
         tag,
-        decision_revision,
     )
-    actuator_audience = canonical_service_url(
+    require_equal(
         actuator_service,
-        config["ACTUATOR_SERVICE"],
+        expected_service_projection(
+            config,
+            "actuator",
+            config["ACTUATOR_SERVICE"],
+            actuator_revision,
+            tag,
+            actuator_service,
+        ),
+        "live actuator service projection",
     )
+    require_equal(
+        decision_service,
+        expected_service_projection(
+            config,
+            "decision",
+            config["DECISION_SERVICE"],
+            decision_revision,
+            tag,
+            decision_service,
+        ),
+        "live decision service projection",
+    )
+    actuator_tagged_url = actuator_service["tagged_traffic"]["url"]
+    actuator_audience = actuator_service["canonical_url"]
 
-    actuator_value = describe_live_revision(config, actuator_revision)
-    decision_value = describe_live_revision(config, decision_revision)
-    actuator_spec, actuator_environment = verify_live_revision(
-        config,
-        actuator_value,
+    actuator_projection = normalize_live_revision(
+        describe_live_revision(config, actuator_revision),
         actuator_revision,
-        config["ACTUATOR_SERVICE"],
-        config["ACTUATOR_IMAGE"],
+        "actuator",
     )
-    decision_spec, decision_environment = verify_live_revision(
-        config,
-        decision_value,
+    decision_projection = normalize_live_revision(
+        describe_live_revision(config, decision_revision),
         decision_revision,
-        config["DECISION_SERVICE"],
-        config["DECISION_IMAGE"],
+        "decision",
     )
     require_equal(
-        actuator_spec.get("serviceAccountName"),
-        (
-            f"{config['ACTUATOR_SERVICE_ACCOUNT']}@{config['PROJECT_ID']}"
-            ".iam.gserviceaccount.com"
+        actuator_projection,
+        expected_revision_projection(
+            config,
+            "actuator",
+            actuator_revision,
+            config["ACTUATOR_SERVICE"],
+            actuator_tagged_url,
+            actuator_audience,
         ),
-        "live actuator runtime service account",
+        "live actuator revision projection",
     )
     require_equal(
-        decision_spec.get("serviceAccountName"),
-        (
-            f"{config['DECISION_SERVICE_ACCOUNT']}@{config['PROJECT_ID']}"
-            ".iam.gserviceaccount.com"
+        decision_projection,
+        expected_revision_projection(
+            config,
+            "decision",
+            decision_revision,
+            config["DECISION_SERVICE"],
+            actuator_tagged_url,
+            actuator_audience,
         ),
-        "live decision runtime service account",
-    )
-    verify_service_ingress(
-        actuator_service,
-        config["ACTUATOR_SERVICE"],
-        config["ACTUATOR_INGRESS"],
-    )
-    verify_service_ingress(
-        decision_service,
-        config["DECISION_SERVICE"],
-        config["DECISION_INGRESS"],
-    )
-    verify_revision_network(
-        require_dict(
-            actuator_value.get("metadata"),
-            f"live revision {actuator_revision}.metadata",
-        ),
-        config,
-        actuator_revision,
-    )
-    verify_revision_network(
-        require_dict(
-            decision_value.get("metadata"),
-            f"live revision {decision_revision}.metadata",
-        ),
-        config,
-        decision_revision,
-    )
-    verify_secret_bindings(
-        config,
-        actuator_environment,
-        ACTUATOR_SECRET_BINDINGS,
-        actuator_revision,
-    )
-    verify_secret_bindings(
-        config,
-        decision_environment,
-        DECISION_SECRET_BINDINGS,
-        decision_revision,
-    )
-    require_plain_environment(
-        decision_environment,
-        "EMILIA_CONSEQUENCE_ACTUATOR_ORIGIN",
-        actuator_tagged_url,
-        decision_revision,
-    )
-    require_plain_environment(
-        decision_environment,
-        "EMILIA_CONSEQUENCE_ACTUATOR_AUDIENCE",
-        actuator_audience,
-        decision_revision,
+        "live decision revision projection",
     )
 
 
