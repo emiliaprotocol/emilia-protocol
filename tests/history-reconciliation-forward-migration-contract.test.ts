@@ -11,6 +11,22 @@ const migration = readFileSync(
 );
 
 describe('unjournaled security-invariant forward reconciliation', () => {
+  it('makes guarded inquiry storage reproducible without public table access', () => {
+    for (const table of ['partner_inquiries', 'investor_inquiries']) {
+      expect(migration).toContain(`CREATE TABLE IF NOT EXISTS public.${table}`);
+      expect(migration).toContain(`REVOKE ALL ON TABLE public.${table}`);
+    }
+    expect(migration).toContain('DROP POLICY IF EXISTS anon_insert');
+  });
+
+  it('closes the legacy fraud-review table behind RLS and server-only ACLs', () => {
+    expect(migration).toContain('ALTER TABLE public.fraud_flags ENABLE ROW LEVEL SECURITY');
+    expect(migration).toMatch(
+      /REVOKE ALL ON TABLE public\.fraud_flags[\s\S]+FROM PUBLIC, anon, authenticated/,
+    );
+    expect(migration).toContain('CREATE POLICY service_role_bypass ON public.fraud_flags');
+  });
+
   it('restores both append-only chain fork guards', () => {
     expect(migration).toContain('idx_security_events_single_child_per_parent');
     expect(migration).toContain('idx_receipts_single_child_per_parent');
@@ -47,12 +63,24 @@ describe('unjournaled security-invariant forward reconciliation', () => {
     expect(migration).not.toContain('backfilled_from');
   });
 
+  it('invalidates both registry epochs when an authority changes organization', () => {
+    expect(migration).toContain("IF TG_OP <> 'INSERT'");
+    expect(migration).toContain("IF TG_OP <> 'DELETE'");
+    expect(migration).toContain('v_new_org IS DISTINCT FROM v_old_org');
+  });
+
   it('closes table ACLs independently of RLS', () => {
     expect(migration).toMatch(
       /REVOKE ALL ON TABLE public\.authority_registry_epoch[\s\S]+FROM PUBLIC, anon, authenticated/,
     );
     expect(migration).toMatch(
       /REVOKE ALL ON TABLE public\.authorities, public\.commits, public\.consumed_gate_refs[\s\S]+FROM PUBLIC, anon, authenticated/,
+    );
+    expect(migration).toMatch(
+      /REVOKE INSERT, UPDATE, DELETE, TRUNCATE ON TABLE public\.authorities[\s\S]+FROM service_role/,
+    );
+    expect(migration).not.toMatch(
+      /GRANT SELECT, INSERT, UPDATE, DELETE ON TABLE public\.authorities/,
     );
   });
 });

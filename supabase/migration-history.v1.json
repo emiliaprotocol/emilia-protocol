@@ -5,11 +5,21 @@
   "private_remote_versions": [
     "20260723192504"
   ],
-  "pending_versions": [
+  "retroactive_pending_versions": [
+    "20260629224357",
+    "20260725143000",
+    "20260725160000"
+  ],
+  "forward_pending_versions": [
+    "20260725180000"
+  ],
+  "deployment_sequence": [
+    "20260629224357",
     "20260725143000",
     "20260725160000",
     "20260725180000"
   ],
+  "requires_include_all": true,
   "remote_versions": [
     "001",
     "002",
@@ -296,6 +306,7 @@
     "20260629213421_gov_schema_contract_introspect.sql": "a3a3167f26fb2e3472904cab048067697638fd8d2f6a6cc192a6488bb50c283a",
     "20260629215840_admin_key_rotation_dual_accept.sql": "6fb2832a9eff2bbea8116ecd10edf3b5a5a7d255f22110f225073acde5bee3fb",
     "20260629223540_api_key_revocation_reason.sql": "64be38d1158245e2297cb6ee7190f295a0a0e52804d9687e382cbb69a6748d36",
+    "20260629224357_authority_subject_columns_replay_repair.sql": "2a1c87d4eb11bd5798036a38b1063dca41eb2ffb69924afa684f67832298d1c6",
     "20260629224358_create_authorities_table.sql": "f45a6f3ef959838b2f1ab655c75afd32f328596e916b84d73c272e0698fad368",
     "20260629230612_reconcile_commits_and_immutability_triggers.sql": "0206f9087754fd05fe8c6100b41f133d50dd8d5f36eb8fe9f2774c14131a7cc2",
     "20260702010211_guarded_receipt_consumptions.sql": "d4abc98539956efc648d5c20a5c1ab7df1b8bcefabda88c9184556ddc7d9a532",
@@ -359,7 +370,7 @@
     "20260725012000_consequence_actuator_consume_qualification.sql": "a674e978fcbfd8219546960449e2382494d6a93fc85899cf91951ef9242abdf3",
     "20260725143000_consequence_actuator_provider_records.sql": "33adbed6400f843d637369ba8365db0e05445a9809824a7015564c2f2e0b6d25",
     "20260725160000_rollout_attempt_store.sql": "25b1a0f5054bd94d1e8ce9ab31ed0208a5d3c53477e8f03fdc32a99ee07b8ef3",
-    "20260725180000_reconcile_unjournaled_security_invariants.sql": "f1f9172a5bb4e793b5d76eda61e4b0185ef8099a1c69e260a21b07f294f9cf52",
+    "20260725180000_reconcile_unjournaled_security_invariants.sql": "0d978c4fe81cecc4145d3830b213f4f23248d87657969a1efe0d189cebfa6084",
     "20260725174433_disable_legacy_consequence_canary_logins.sql": "06847e72fb3706ae31b7ace2b5a6627cfd8d37696b7d34dc915679be421c0906"
   }
 }

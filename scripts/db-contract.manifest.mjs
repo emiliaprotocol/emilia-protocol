@@ -96,6 +96,9 @@ const SERVICE_ONLY_TABLES = [
     'revoked_sessions',
     'session_cutoffs',
     'authority_registry_epoch',
+    'fraud_flags',
+    'partner_inquiries',
+    'investor_inquiries',
     // Marvel durable capability store (packages/gate/capability-receipt.js):
     // spending/budget state reached only through the service-role durable store.
     'ep_capability_state',
@@ -124,7 +127,7 @@ export const contract = {
         'signoff_challenges', 'signoff_attestations', 'signoff_consumptions', 'signoff_events',
         'approver_credentials', 'protocol_events', 'security_events', 'tenants', 'tenant_members',
         'tenant_environments', 'operator_applications', 'policy_rollouts',
-        'investor_inquiries', 'partner_inquiries', 'fraud_flags', 'zk_proofs',
+        'zk_proofs',
         'authorities', 'commits', 'consumed_gate_refs',
         ...SERVICE_ONLY_TABLES,
         ...RELEASE_LOCK_TABLES,
@@ -156,6 +159,12 @@ export const contract = {
             'revoked_at', 'organization_id', 'subject_type', 'subject_ref', 'assurance_class',
             'action_scopes', 'max_amount_usd', 'currency', 'delegation_parent', 'policy_hash'],
         authority_registry_epoch: ['organization_id', 'epoch', 'updated_at'],
+        partner_inquiries: ['id', 'created_at', 'inquiry_type', 'name', 'email',
+            'organization', 'title', 'website', 'message', 'metadata_json',
+            'trust_surface', 'timeline'],
+        investor_inquiries: ['id', 'created_at', 'inquiry_type', 'name', 'email',
+            'organization', 'title', 'website', 'message', 'metadata_json',
+            'why_emilia', 'help_offer'],
         // commits: verifyCommit resolves the verification key by `kid`, so a missing
         // kid column silently breaks issuance/verification (mig 132). Guard the
         // signature-verification dependency here so the drift check catches it.
@@ -236,13 +245,15 @@ export const contract = {
         receipts: ['idx_receipts_single_child_per_parent'],
         authorities: ['idx_authorities_delegation_parent'],
         commits: ['idx_commits_kid'],
+        partner_inquiries: ['idx_partner_inquiries_email'],
+        investor_inquiries: ['idx_investor_inquiries_email'],
     },
     // Tables that MUST have RLS enabled. RLS off => hard FAIL.
     rlsRequired: [
         'entities', 'receipts', 'score_history', 'needs', 'waitlist',
         'anchor_batches', 'disputes', 'handshakes', 'signoff_challenges', 'signoff_attestations',
         'tenants', 'operator_applications', 'policy_rollouts',
-        'investor_inquiries', 'partner_inquiries', 'fraud_flags', 'authorities', 'commits',
+        'authorities', 'commits',
         'consumed_gate_refs',
         ...SERVICE_ONLY_TABLES,
         ...RELEASE_LOCK_TABLES,
@@ -272,7 +283,7 @@ export const contract = {
     ],
     // Policy rollouts remain service-readable for control-plane status, but
     // activation is RPC-only after the contract migration.
-    tableWriteGrantsNoServiceRole: ['policy_rollouts'],
+    tableWriteGrantsNoServiceRole: ['policy_rollouts', 'authorities'],
     // Column-level least-privilege on secret material. RLS gates ROWS; a column
     // GRANT is a SEPARATE gate. (2026-07 sweep: anon+authenticated held column
     // SELECT/INSERT/UPDATE on entities.private_key_encrypted — a Supabase bootstrap
@@ -310,7 +321,8 @@ export const contract = {
     // tables either rely on service_role's bypass or are RPC-only.
     serviceRolePoliciesRequired: [
         'audit_events', 'saml_consumed_assertions', 'revoked_commit_keys', 'revoked_sessions',
-        'session_cutoffs', 'authority_registry_epoch',
+        'session_cutoffs', 'authority_registry_epoch', 'fraud_flags',
+        'partner_inquiries', 'investor_inquiries',
     ],
     // SECURITY DEFINER RPCs that MUST exist and MUST NOT be anon/authenticated/
     // PUBLIC-executable. (mig 111/112.) Overloads all checked.

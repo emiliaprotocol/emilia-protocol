@@ -15,6 +15,72 @@ CREATE UNIQUE INDEX IF NOT EXISTS idx_security_events_single_child_per_parent
     COALESCE(previous_hash, 'root')
   );
 
+-- Public forms call a guarded server route; clients never need direct table
+-- access. These tables previously existed only out of band.
+CREATE TABLE IF NOT EXISTS public.partner_inquiries (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  created_at TIMESTAMPTZ NOT NULL DEFAULT pg_catalog.now(),
+  inquiry_type TEXT NOT NULL DEFAULT 'partner',
+  name TEXT NOT NULL,
+  email TEXT NOT NULL,
+  organization TEXT,
+  title TEXT,
+  website TEXT,
+  message TEXT,
+  metadata_json JSONB,
+  trust_surface TEXT,
+  timeline TEXT
+);
+CREATE INDEX IF NOT EXISTS idx_partner_inquiries_email
+  ON public.partner_inquiries (email);
+ALTER TABLE public.partner_inquiries ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS anon_insert ON public.partner_inquiries;
+DROP POLICY IF EXISTS service_role_bypass ON public.partner_inquiries;
+CREATE POLICY service_role_bypass ON public.partner_inquiries
+  FOR ALL TO service_role USING (true) WITH CHECK (true);
+REVOKE ALL ON TABLE public.partner_inquiries
+  FROM PUBLIC, anon, authenticated;
+GRANT SELECT, INSERT, UPDATE, DELETE ON TABLE public.partner_inquiries
+  TO service_role;
+
+CREATE TABLE IF NOT EXISTS public.investor_inquiries (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  created_at TIMESTAMPTZ NOT NULL DEFAULT pg_catalog.now(),
+  inquiry_type TEXT NOT NULL DEFAULT 'investor',
+  name TEXT NOT NULL,
+  email TEXT NOT NULL,
+  organization TEXT,
+  title TEXT,
+  website TEXT,
+  message TEXT,
+  metadata_json JSONB,
+  why_emilia TEXT,
+  help_offer TEXT
+);
+CREATE INDEX IF NOT EXISTS idx_investor_inquiries_email
+  ON public.investor_inquiries (email);
+ALTER TABLE public.investor_inquiries ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS anon_insert ON public.investor_inquiries;
+DROP POLICY IF EXISTS service_role_bypass ON public.investor_inquiries;
+CREATE POLICY service_role_bypass ON public.investor_inquiries
+  FOR ALL TO service_role USING (true) WITH CHECK (true);
+REVOKE ALL ON TABLE public.investor_inquiries
+  FROM PUBLIC, anon, authenticated;
+GRANT SELECT, INSERT, UPDATE, DELETE ON TABLE public.investor_inquiries
+  TO service_role;
+
+-- Fraud review is an internal control-plane surface. The original migration
+-- created the table before the repository adopted RLS-by-default and never
+-- closed its Data API grants.
+ALTER TABLE public.fraud_flags ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS service_role_bypass ON public.fraud_flags;
+CREATE POLICY service_role_bypass ON public.fraud_flags
+  FOR ALL TO service_role USING (true) WITH CHECK (true);
+REVOKE ALL ON TABLE public.fraud_flags
+  FROM PUBLIC, anon, authenticated;
+GRANT SELECT, INSERT, UPDATE, DELETE ON TABLE public.fraud_flags
+  TO service_role;
+
 -- EP-AUTHORITY-REGISTRY-v1 scope, limits, delegation, and policy binding.
 ALTER TABLE public.authorities
   ADD COLUMN IF NOT EXISTS action_scopes TEXT[],
@@ -61,18 +127,33 @@ SECURITY DEFINER
 SET search_path = ''
 AS $$
 DECLARE
-  v_org TEXT := COALESCE(NEW.organization_id, OLD.organization_id);
+  v_old_org TEXT;
+  v_new_org TEXT;
 BEGIN
-  IF v_org IS NULL THEN
-    RETURN COALESCE(NEW, OLD);
+  IF TG_OP <> 'INSERT' THEN
+    v_old_org := OLD.organization_id;
+  END IF;
+  IF TG_OP <> 'DELETE' THEN
+    v_new_org := NEW.organization_id;
   END IF;
 
-  INSERT INTO public.authority_registry_epoch (organization_id, epoch, updated_at)
-  VALUES (v_org, 1, pg_catalog.now())
-  ON CONFLICT (organization_id)
-  DO UPDATE
-    SET epoch = public.authority_registry_epoch.epoch + 1,
-        updated_at = pg_catalog.now();
+  IF v_old_org IS NOT NULL THEN
+    INSERT INTO public.authority_registry_epoch (organization_id, epoch, updated_at)
+    VALUES (v_old_org, 1, pg_catalog.now())
+    ON CONFLICT (organization_id)
+    DO UPDATE
+      SET epoch = public.authority_registry_epoch.epoch + 1,
+          updated_at = pg_catalog.now();
+  END IF;
+
+  IF v_new_org IS NOT NULL AND v_new_org IS DISTINCT FROM v_old_org THEN
+    INSERT INTO public.authority_registry_epoch (organization_id, epoch, updated_at)
+    VALUES (v_new_org, 1, pg_catalog.now())
+    ON CONFLICT (organization_id)
+    DO UPDATE
+      SET epoch = public.authority_registry_epoch.epoch + 1,
+          updated_at = pg_catalog.now();
+  END IF;
 
   RETURN COALESCE(NEW, OLD);
 END;
@@ -99,8 +180,9 @@ ON CONFLICT (organization_id) DO NOTHING;
 -- RLS and table ACLs are independent gates, so close both.
 REVOKE ALL ON TABLE public.authorities, public.commits, public.consumed_gate_refs
   FROM PUBLIC, anon, authenticated;
-GRANT SELECT, INSERT, UPDATE, DELETE ON TABLE public.authorities
-  TO service_role;
+REVOKE INSERT, UPDATE, DELETE, TRUNCATE ON TABLE public.authorities
+  FROM service_role;
+GRANT SELECT ON TABLE public.authorities TO service_role;
 GRANT SELECT, INSERT, UPDATE, DELETE ON TABLE public.commits
   TO service_role;
 GRANT SELECT, INSERT, UPDATE, DELETE ON TABLE public.consumed_gate_refs

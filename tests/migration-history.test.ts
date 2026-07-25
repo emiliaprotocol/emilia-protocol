@@ -30,7 +30,10 @@ function fixture(): string {
       as_of: '2026-07-25',
       remote_head: '002',
       private_remote_versions: ['002'],
-      pending_versions: ['003'],
+      retroactive_pending_versions: [],
+      forward_pending_versions: ['003'],
+      deployment_sequence: ['003'],
+      requires_include_all: true,
       remote_versions: ['001', '002'],
       public_files: {
         '001_first.sql': hash('select 1;\n'),
@@ -102,5 +105,80 @@ describe('migration history ledger', () => {
       'select 8;\n',
     );
     expect(() => validateMigrationHistory(root)).toThrow(/does not match SHA256SUMS/);
+  });
+
+  it('rejects impossible dates, noncanonical versions, symlinks, and extra archive files', () => {
+    const dateRoot: string = fixture();
+    const datePath: string = path.join(dateRoot, 'supabase/migration-history.v1.json');
+    const dateHistory = JSON.parse(fs.readFileSync(datePath, 'utf8'));
+    dateHistory.as_of = '2026-99-99';
+    fs.writeFileSync(datePath, `${JSON.stringify(dateHistory, null, 2)}\n`);
+    expect(() => validateMigrationHistory(dateRoot)).toThrow(/real calendar date/);
+
+    const versionRoot: string = fixture();
+    const versionPath: string = path.join(versionRoot, 'supabase/migration-history.v1.json');
+    const versionHistory = JSON.parse(fs.readFileSync(versionPath, 'utf8'));
+    versionHistory.forward_pending_versions = ['3'];
+    versionHistory.deployment_sequence = ['3'];
+    fs.writeFileSync(versionPath, `${JSON.stringify(versionHistory, null, 2)}\n`);
+    expect(() => validateMigrationHistory(versionRoot)).toThrow(/noncanonical version/);
+
+    const symlinkRoot: string = fixture();
+    const target: string = path.join(symlinkRoot, 'target.sql');
+    fs.writeFileSync(target, 'select 3;\n');
+    fs.rmSync(path.join(symlinkRoot, 'supabase/migrations/003_pending.sql'));
+    fs.symlinkSync(target, path.join(symlinkRoot, 'supabase/migrations/003_pending.sql'));
+    expect(() => validateMigrationHistory(symlinkRoot)).toThrow(/regular file, not a symlink/);
+
+    const archiveRoot: string = fixture();
+    fs.writeFileSync(
+      path.join(archiveRoot, 'supabase/migration-archive/2026-07-25-history-reconciliation/notes.txt'),
+      'not governed\n',
+    );
+    expect(() => validateMigrationHistory(archiveRoot)).toThrow(/not an allowed archive artifact/);
+  });
+
+  it('rejects private archive copies and credential forms hidden from the old scanner', () => {
+    const archiveRoot: string = fixture();
+    const archive = path.join(
+      archiveRoot,
+      'supabase/migration-archive/2026-07-25-history-reconciliation',
+    );
+    fs.writeFileSync(path.join(archive, '002_private.sql'), 'select 2;\n');
+    fs.writeFileSync(
+      path.join(archive, 'SHA256SUMS'),
+      `${hash('select 1;\n')}  001_old_alias.sql\n${hash('select 2;\n')}  002_private.sql\n`,
+    );
+    expect(() => validateMigrationHistory(archiveRoot)).toThrow(/exposes private remote version/);
+
+    for (const credentialSql of [
+      'CREATE USER operator PASSWORD $$do-not-commit$$;\n',
+      'ALTER ROLE operator /* split */ PASSWORD secret;\n',
+    ]) {
+      const root: string = fixture();
+      fs.writeFileSync(path.join(root, 'supabase/migrations/003_pending.sql'), credentialSql);
+      const historyPath: string = path.join(root, 'supabase/migration-history.v1.json');
+      const history = JSON.parse(fs.readFileSync(historyPath, 'utf8'));
+      history.public_files['003_pending.sql'] = hash(credentialSql);
+      fs.writeFileSync(historyPath, `${JSON.stringify(history, null, 2)}\n`);
+      expect(() => validateMigrationHistory(root)).toThrow(/plaintext role password/);
+    }
+  });
+
+  it('requires explicit retroactive classification and exact deployment order', () => {
+    const root: string = fixture();
+    const historyPath: string = path.join(root, 'supabase/migration-history.v1.json');
+    const history = JSON.parse(fs.readFileSync(historyPath, 'utf8'));
+    history.forward_pending_versions = [];
+    history.retroactive_pending_versions = ['003'];
+    history.deployment_sequence = ['003'];
+    fs.writeFileSync(historyPath, `${JSON.stringify(history, null, 2)}\n`);
+    expect(() => validateMigrationHistory(root)).toThrow(/retroactive pending version 003/);
+
+    history.retroactive_pending_versions = [];
+    history.forward_pending_versions = ['003'];
+    history.deployment_sequence = [];
+    fs.writeFileSync(historyPath, `${JSON.stringify(history, null, 2)}\n`);
+    expect(() => validateMigrationHistory(root)).toThrow(/deployment_sequence/);
   });
 });

@@ -23,11 +23,15 @@ Changing one without the others intentionally causes refusal.
 
 ### Backend
 
-1. Run `supabase migration list` and require exact local/remote history parity
-   before any write. Reconcile missing migrations from their reviewed source
-   artifacts; do not create empty placeholders or repair the remote ledger just
-   to make a push pass. Then run `supabase db push --dry-run` and confirm the
-   reviewed mobile migrations are the only pending production changes.
+1. Run `npm run check:migration-history`, then construct the ignored private
+   deployment workdir described by
+   `supabase/migration-archive/2026-07-25-history-reconciliation/README.md`.
+   It must contain the public executable migrations plus the one quarantined
+   private historical version. Run `supabase migration list --linked --workdir
+   <private-root>` and require exact local/remote history parity before any
+   write. Then run `supabase db push --linked --dry-run --include-all --workdir
+   <private-root>` and confirm only the ledger's declared pending migrations.
+   Never create placeholders or repair the remote journal to force parity.
 2. Apply `supabase/migrations/20260717072053_mobile_production_platform.sql` to
    the production project through the normal reviewed migration path, then
    apply

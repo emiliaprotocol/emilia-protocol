@@ -11,7 +11,8 @@ The executable ledger is `supabase/migration-history.v1.json`. It records:
 
 - the production-journal versions;
 - the exact SHA-256 of every public executable migration;
-- the migrations still pending production application; and
+- retroactive and forward migrations still pending production application,
+  with their exact deployment order; and
 - journaled versions intentionally retained only in private deployment history.
 
 Version `20260723192504` is intentionally absent from this public repository.
@@ -25,6 +26,12 @@ memberships.
 Run `npm run check:migration-history` before changing migration history. Never
 restore an archived alias to `supabase/migrations`, edit a journaled migration,
 or use migration-journal repair to hide a filesystem mismatch.
+
+Because the pending set includes retroactive repairs, production deployment
+uses an ignored private migration work directory containing the public tree
+plus the one private journaled version, and runs Supabase with `--include-all`.
+The ledger's `deployment_sequence` is the required order. A public checkout
+alone is intentionally not a complete production deployment surface.
 
 The security invariants that were still required but had no journaled
 equivalent are reintroduced idempotently by

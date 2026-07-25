@@ -99,6 +99,10 @@ suite('forward history reconciliation on PostgreSQL 17', () => {
         entity_id TEXT NOT NULL,
         previous_hash TEXT
       );
+      CREATE TABLE public.fraud_flags (
+        id TEXT PRIMARY KEY,
+        entity_id TEXT NOT NULL
+      );
     `);
     await database.query(migration);
   });
@@ -177,6 +181,21 @@ suite('forward history reconciliation on PostgreSQL 17', () => {
          WHERE organization_id = 'org:1'`,
       ).then(({ rows }) => rows[0].epoch),
     ).resolves.toBe('2');
+
+    await database.query(`
+      UPDATE public.authorities SET organization_id = 'org:2'
+      WHERE authority_id = 'authority:1'
+    `);
+    const moved = await database.query<{ organization_id: string; epoch: string }>(`
+      SELECT organization_id, epoch
+      FROM public.authority_registry_epoch
+      WHERE organization_id IN ('org:1', 'org:2')
+      ORDER BY organization_id
+    `);
+    expect(moved.rows).toEqual([
+      { organization_id: 'org:1', epoch: '3' },
+      { organization_id: 'org:2', epoch: '1' },
+    ]);
   });
 
   it('rejects security-event and receipt forks', async () => {
@@ -245,6 +264,9 @@ suite('forward history reconciliation on PostgreSQL 17', () => {
       authority_read: boolean;
       epoch_read: boolean;
       consume_execute: boolean;
+      partner_read: boolean;
+      fraud_read: boolean;
+      authority_write: boolean;
     }>(`
       SELECT
         has_table_privilege('anon', 'public.authorities', 'SELECT') AS authority_read,
@@ -253,12 +275,18 @@ suite('forward history reconciliation on PostgreSQL 17', () => {
           'anon',
           'public.consume_gate_ref_atomic(text,text,text,text,text)',
           'EXECUTE'
-        ) AS consume_execute
+        ) AS consume_execute,
+        has_table_privilege('anon', 'public.partner_inquiries', 'SELECT') AS partner_read,
+        has_table_privilege('anon', 'public.fraud_flags', 'SELECT') AS fraud_read,
+        has_table_privilege('service_role', 'public.authorities', 'INSERT') AS authority_write
     `);
     expect(privileges.rows).toEqual([{
       authority_read: false,
       epoch_read: false,
       consume_execute: false,
+      partner_read: false,
+      fraud_read: false,
+      authority_write: false,
     }]);
   });
 });
