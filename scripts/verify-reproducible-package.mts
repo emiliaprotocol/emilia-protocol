@@ -11,6 +11,7 @@ import { gzip, ungzip } from 'pako';
 
 const ROOT: string = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const npm: string = process.platform === 'win32' ? 'npm.cmd' : 'npm';
+const git: string = process.platform === 'win32' ? 'git.exe' : 'git';
 
 export function assertArtifactBytesMatch(expected: Buffer | Uint8Array | undefined, observed: Buffer | Uint8Array | undefined): string {
   const left: Buffer = Buffer.isBuffer(expected) ? expected : Buffer.from(expected ?? []);
@@ -54,6 +55,7 @@ export function verifyReproduciblePackage(packagePath: string = 'packages/verify
   const metadata: any = JSON.parse(fs.readFileSync(packageJsonPath, 'utf8'));
   const scratch: string = fs.mkdtempSync(path.join(os.tmpdir(), 'ep-repro-pack-'));
   const packEnv: any = { ...process.env, npm_config_ignore_scripts: 'true' };
+  const buildEnv: any = { ...process.env, npm_config_ignore_scripts: 'false' };
 
   function runPack(args: string[], label: string): any {
     const run = spawnSync(npm, ['pack', ...args, '--json'], {
@@ -76,9 +78,107 @@ export function verifyReproduciblePackage(packagePath: string = 'packages/verify
     return report[0];
   }
 
-  function stageCanonicalPackage(): string {
-    const inventory: any = runPack([packageDir, '--dry-run'], 'inventory');
-    const stage: string = path.join(scratch, 'canonical-input');
+  function copyEntry(source: string, target: string): void {
+    const sourceStat: fs.Stats = fs.lstatSync(source);
+    fs.mkdirSync(path.dirname(target), { recursive: true, mode: 0o755 });
+    if (sourceStat.isSymbolicLink()) {
+      fs.symlinkSync(fs.readlinkSync(source), target);
+      return;
+    }
+    if (!sourceStat.isFile()) {
+      throw new Error(`tracked package source is not a regular file: ${source}`);
+    }
+    fs.copyFileSync(source, target);
+    fs.chmodSync(target, sourceStat.mode & 0o777);
+  }
+
+  function createSourceSnapshot(): { root: string; packageRelative: string } {
+    const snapshotRoot: string = path.join(scratch, 'tracked-source');
+    const packageRelative: string = path.relative(ROOT, packageDir);
+    const packageIsInRepository: boolean = packageRelative === ''
+      || (!path.isAbsolute(packageRelative)
+        && packageRelative !== '..'
+        && !packageRelative.startsWith(`..${path.sep}`));
+    const packageJsonRelative: string = path.join(packageRelative, 'package.json');
+    const trackedPackageJson = packageIsInRepository
+      ? spawnSync(git, ['ls-files', '--error-unmatch', '--', packageJsonRelative], {
+        cwd: ROOT,
+        encoding: 'utf8',
+      })
+      : null;
+
+    fs.mkdirSync(snapshotRoot, { recursive: true, mode: 0o755 });
+    if (trackedPackageJson?.status === 0) {
+      const listed = spawnSync(git, ['ls-files', '-z', '--cached'], {
+        cwd: ROOT,
+        encoding: 'utf8',
+      });
+      if (listed.status !== 0) {
+        throw new Error(`git tracked-source inventory failed:\n${listed.stderr || listed.stdout}`);
+      }
+      for (const relative of listed.stdout.split('\0').filter(Boolean)) {
+        const source: string = path.resolve(ROOT, relative);
+        if (!source.startsWith(`${ROOT}${path.sep}`)) {
+          throw new Error(`git tracked-source inventory escapes repository root: ${relative}`);
+        }
+        copyEntry(source, path.join(snapshotRoot, relative));
+      }
+      return { root: snapshotRoot, packageRelative };
+    }
+
+    fs.cpSync(packageDir, snapshotRoot, {
+      recursive: true,
+      filter: (source: string) => {
+        const relative: string = path.relative(packageDir, source);
+        if (!relative) return true;
+        const first: string = relative.split(path.sep)[0];
+        return first !== '.git' && first !== 'node_modules';
+      },
+    });
+    return { root: snapshotRoot, packageRelative: '' };
+  }
+
+  function linkBuildDependencies(buildRoot: string, buildPackageDir: string): void {
+    const repositoryNodeModules: string = path.join(ROOT, 'node_modules');
+    const packageNodeModules: string = path.join(packageDir, 'node_modules');
+    if (fs.existsSync(repositoryNodeModules)) {
+      fs.symlinkSync(
+        repositoryNodeModules,
+        path.join(buildRoot, 'node_modules'),
+        process.platform === 'win32' ? 'junction' : 'dir',
+      );
+    }
+    if (buildPackageDir !== buildRoot && fs.existsSync(packageNodeModules)) {
+      fs.symlinkSync(
+        packageNodeModules,
+        path.join(buildPackageDir, 'node_modules'),
+        process.platform === 'win32' ? 'junction' : 'dir',
+      );
+    }
+  }
+
+  function buildPackage(source: { root: string; packageRelative: string }, label: string): string {
+    const buildRoot: string = path.join(scratch, `${label}-build`);
+    fs.cpSync(source.root, buildRoot, { recursive: true });
+    const buildPackageDir: string = path.join(buildRoot, source.packageRelative);
+    linkBuildDependencies(buildRoot, buildPackageDir);
+    if (typeof metadata.scripts?.build === 'string') {
+      fs.rmSync(path.join(buildPackageDir, 'dist'), { recursive: true, force: true });
+      const run = spawnSync(npm, ['run', 'build'], {
+        cwd: buildPackageDir,
+        encoding: 'utf8',
+        env: buildEnv,
+      });
+      if (run.status !== 0) {
+        throw new Error(`package build ${label} failed:\n${run.stderr || run.stdout}`);
+      }
+    }
+    return buildPackageDir;
+  }
+
+  function stageCanonicalPackage(builtPackageDir: string, label: string): string {
+    const inventory: any = runPack([builtPackageDir, '--dry-run'], `${label} inventory`);
+    const stage: string = path.join(scratch, `${label}-canonical-input`);
     const binValues: any[] = typeof metadata.bin === 'string'
       ? [metadata.bin]
       : metadata.bin && typeof metadata.bin === 'object'
@@ -91,8 +191,8 @@ export function verifyReproduciblePackage(packagePath: string = 'packages/verify
         throw new Error('npm pack inventory contains a malformed path');
       }
       const relative: string = entry.path.split('/').join(path.sep);
-      const source: string = path.resolve(packageDir, relative);
-      if (!source.startsWith(`${packageDir}${path.sep}`)) {
+      const source: string = path.resolve(builtPackageDir, relative);
+      if (!source.startsWith(`${builtPackageDir}${path.sep}`)) {
         throw new Error(`npm pack inventory escapes package root: ${entry.path}`);
       }
       const sourceStat = fs.lstatSync(source);
@@ -123,9 +223,9 @@ export function verifyReproduciblePackage(packagePath: string = 'packages/verify
   }
 
   try {
-    const canonicalInput: string = stageCanonicalPackage();
-    const first: any = pack(canonicalInput, 'first');
-    const second: any = pack(canonicalInput, 'second');
+    const source = createSourceSnapshot();
+    const first: any = pack(stageCanonicalPackage(buildPackage(source, 'first'), 'first'), 'first');
+    const second: any = pack(stageCanonicalPackage(buildPackage(source, 'second'), 'second'), 'second');
     if (first.filename !== second.filename) throw new Error('pack filenames differ');
     if (JSON.stringify(first.files) !== JSON.stringify(second.files)) throw new Error('pack file manifests differ');
     if (!first.bytes.equals(second.bytes)) {

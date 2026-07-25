@@ -50,6 +50,36 @@ describe('release byte reproducibility', () => {
     }
   });
 
+  it('rejects nondeterministic output from independent clean package builds', () => {
+    const root = mkdtempSync(path.join(os.tmpdir(), 'ep-pack-nondeterministic-'));
+    const generatedPath = path.join(root, 'dist', 'generated.js');
+    mkdirSync(path.dirname(generatedPath));
+    writeFileSync(path.join(root, 'package.json'), JSON.stringify({
+      name: 'nondeterministic-build-fixture',
+      version: '1.0.0',
+      files: ['dist'],
+      scripts: {
+        build: 'node build.mjs',
+        prepack: 'npm run build',
+      },
+    }));
+    writeFileSync(path.join(root, 'build.mjs'), [
+      "import { mkdirSync, writeFileSync } from 'node:fs';",
+      "import { randomBytes } from 'node:crypto';",
+      "mkdirSync('dist', { recursive: true });",
+      "writeFileSync('dist/generated.js', `export default '${randomBytes(32).toString('hex')}';\\n`);",
+      '',
+    ].join('\n'));
+    writeFileSync(generatedPath, 'export default "injected-frozen-output";\n');
+
+    try {
+      expect(() => verifyReproduciblePackage(root)).toThrow(/package (file manifests|bytes) differ/);
+      expect(readFileSync(generatedPath, 'utf8')).toBe('export default "injected-frozen-output";\n');
+    } finally {
+      rmSync(root, { recursive: true, force: true });
+    }
+  });
+
   it('canonicalizes different host gzip streams to identical publish bytes', () => {
     const tarPayload = Buffer.from('stable tar payload'.repeat(64));
     const fastHostArchive = gzipSync(tarPayload, { level: 1, mtime: 0 });
