@@ -144,6 +144,8 @@ function client(fetchImpl, {
     },
   },
   randomBytes = () => Buffer.alloc(24, 7),
+  now = () => NOW,
+  observationClockSkewMs = 5_000,
 } = {}) {
   return {
     envelopeSigner,
@@ -169,7 +171,8 @@ function client(fetchImpl, {
       identityTokenProvider,
       requestTimeoutMs: 1000,
       fetchImpl,
-      now: () => NOW,
+      now,
+      observationClockSkewMs,
       randomBytes,
       allowInsecureLoopback,
     }),
@@ -372,6 +375,67 @@ describe('decision-plane actuator client', () => {
       fixture.value.effect(input),
       /actuator_observation_refused/,
     );
+  });
+
+  it('accepts a valid observation created after the request was sent', async () => {
+    const evidenceSigner = crypto.generateKeyPairSync('ed25519');
+    let clockReads = 0;
+    const fixture = client(async (_url, options) => {
+      const request = JSON.parse(options.body);
+      return response({
+        '@version': 'EP-CONSEQUENCE-ACTUATOR-RESPONSE-v1',
+        ok: true,
+        outcome: 'COMMITTED',
+        observation: signActuatorResponseObservation({
+          payload: {
+            '@version': 'EP-CONSEQUENCE-ACTUATOR-OBSERVATION-v1',
+            issuer_id: 'consequence-actuator',
+            tenant_id: ATTEMPT.tenant_id,
+            request_digest: ATTEMPT.request_digest,
+            environment: ATTEMPT.environment,
+            attempt_id: ATTEMPT.attempt_id,
+            action_digest: ACTION_DIGEST,
+            caid: CAID,
+            provider_id: ATTEMPT.provider_id,
+            provider_account_id: ATTEMPT.provider_account_id,
+            target_digest: TARGET_DIGEST,
+            operation: ACTION.action_type,
+            idempotency_key: PROPOSAL.operation_id,
+            nonce: request.envelope.payload.nonce,
+            envelope_digest: digestAeb(request.envelope),
+            provider_attribution_digest: digestAeb(request.attribution),
+            outcome: 'COMMITTED',
+            observed_at: new Date(NOW + 750).toISOString(),
+            reason: 'provider_committed',
+            provider_reference:
+              'github:issue:emiliaprotocol/gate-smoke-target#1',
+            provider_result_digest: `sha256:${'f'.repeat(64)}`,
+          },
+          privateKey: evidenceSigner.privateKey,
+          keyId: 'actuator-evidence-key',
+        }),
+      });
+    }, {
+      evidenceSigner,
+      now: () => (clockReads++ === 0 ? NOW : NOW + 1_000),
+    });
+
+    const result = await fixture.value.effect({
+      action: ACTION,
+      proposal: {
+        ...PROPOSAL,
+        consequence: {
+          ...PROPOSAL.consequence,
+          provider_id: ATTEMPT.provider_id,
+          environment: ATTEMPT.environment,
+          request_digest: ATTEMPT.request_digest,
+        },
+      },
+      authorization: { allow: true },
+      attempt: ATTEMPT,
+    });
+
+    assert.equal(result.provider_status, 200);
   });
 
   it('keeps a signed indeterminate actuator observation nonterminal', async () => {

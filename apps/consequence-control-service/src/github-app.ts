@@ -578,6 +578,7 @@ export function createConsequenceActuatorClient({
   observationPublicKey,
   envelopeTtlMs = 30_000,
   requestTimeoutMs = 20_000,
+  observationClockSkewMs = 5_000,
   allowInsecureLoopback = false,
   fetchImpl = globalThis.fetch,
   now = Date.now,
@@ -614,6 +615,8 @@ export function createConsequenceActuatorClient({
       || envelopeTtlMs < 1 || envelopeTtlMs > 300_000
       || !Number.isSafeInteger(requestTimeoutMs)
       || requestTimeoutMs < 1 || requestTimeoutMs > 120_000
+      || !Number.isSafeInteger(observationClockSkewMs)
+      || observationClockSkewMs < 0 || observationClockSkewMs > 60_000
       || typeof fetchImpl !== 'function'
       || typeof now !== 'function'
       || typeof randomBytes !== 'function') {
@@ -861,6 +864,10 @@ export function createConsequenceActuatorClient({
     const observedAtMs = executionObservation
       ? Date.parse(executionObservation.observed_at)
       : NaN;
+    const responseCurrent = Number(now());
+    if (!Number.isSafeInteger(responseCurrent)) {
+      throw new Error('actuator_clock_invalid');
+    }
     if (!executionObservation
         || executionObservation.tenant_id !== tenant
         || executionObservation.request_digest
@@ -882,7 +889,7 @@ export function createConsequenceActuatorClient({
         || body.ok !== (body.outcome === 'COMMITTED')
         || response.status !== (body.outcome === 'COMMITTED' ? 200 : 202)
         || !Number.isFinite(observedAtMs)
-        || observedAtMs > current) {
+        || observedAtMs > responseCurrent + observationClockSkewMs) {
       throw new Error('actuator_observation_refused');
     }
     if (body.outcome === 'INDETERMINATE') {
