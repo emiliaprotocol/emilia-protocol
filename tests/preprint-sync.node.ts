@@ -26,8 +26,8 @@ const evidence = {
     version: '6.2.0',
   },
   tamarin: {
-    verified: 10,
-    falsified: 2,
+    verified: 20,
+    falsified: 8,
   },
   external: {
     commit: '7faba36010e7590727bebbc5b9dcceee60539b9b',
@@ -58,6 +58,22 @@ execution_has_honest_approvals_or_prior_compromise (all-traces): verified
 injective_execution_with_consumption (all-traces): verified
 unchecked_composition_is_injective (all-traces): falsified
 unchecked_registry_view_is_current (all-traces): falsified
+executable_six_claim_composition (exists-trace): verified
+signed_denial_remains_verifiable_evidence (exists-trace): verified
+class_a_downgrade_refused (all-traces): verified
+signed_denial_cannot_authorize (all-traces): verified
+scoped_authority_is_pinned (all-traces): verified
+reliance_requires_pinned_profile (all-traces): verified
+evidence_challenge_is_registered_and_consumed (all-traces): verified
+fresh_challenge_registration_is_unique (all-traces): verified
+aec_execution_is_action_keyed_and_fleet_fail_closed (all-traces): verified
+action_reservation_failure_is_fail_closed (all-traces): verified
+unchecked_presenter_class_is_pinned (all-traces): falsified
+unchecked_signed_denial_cannot_authorize (all-traces): falsified
+unchecked_authority_scope_is_pinned (all-traces): falsified
+unchecked_reliance_profile_is_pinned (all-traces): falsified
+unchecked_unregistered_challenge_is_registered (all-traces): falsified
+unchecked_presenter_execution_key_is_canonical (all-traces): falsified
 `;
 
 const sharedClaims = `
@@ -88,7 +104,7 @@ ${sharedClaims}
 const staging = `
 Status: LOCALLY REPRODUCIBLE; NOT APPROVED TO POST.
 Conformance 21 suites / 329 vectors.
-10 composed obligations + 2 deliberate falsifications.
+20 composed obligations + 8 deliberate falsifications.
 TLA+ 413,137 states / 26 invariants.
 32 assertions across four CI-gated models at analyzer 6.2.0.
 Rust external verifier / 164 vectors / 359 hostility cases.

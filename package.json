@@ -44,6 +44,7 @@
     "check:repository-boundary": "node scripts/check-repository-boundary.js",
     "check:demo-key": "node scripts/check-demo-key-isolation.js",
     "check:admissibility": "node scripts/check-admissibility-registry.mjs",
+    "audit:root": "node scripts/audit-root.mjs",
     "check:security-case": "node --import ./scripts/ts-loader/register.mjs scripts/verify-security-case.mjs --execute",
     "security-case:emit": "node --import ./scripts/ts-loader/register.mjs scripts/verify-security-case.mjs --execute --emit security/security-case.json",
     "check:authority-claims": "node scripts/check-authority-claims.mjs",
@@ -151,7 +152,7 @@
     "fast-uri": "3.1.4",
     "hono": "4.12.27",
     "rollup": "^4.22.5",
-    "postcss": "^8.5.12",
+    "postcss": "8.5.19",
     "qs": "^6.15.2",
     "sharp": "0.35.3",
     "ws": "^8.21.0"

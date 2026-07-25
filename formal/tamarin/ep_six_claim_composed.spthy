@@ -1,0 +1,731 @@
+/*
+ * EP-SIX-CLAIM-COMPOSED-v1
+ *
+ * Focused symbolic protocol model for six partial claims:
+ *   - class-a-downgrade-refused
+ *   - signed-denial-cannot-authorize
+ *   - scoped-authority-is-pinned
+ *   - reliance-requires-pinned-profile
+ *   - evidence-challenge-is-durably-registered-and-consumed
+ *   - aec-execution-is-action-keyed-and-fleet-fail-closed
+ *
+ * What is concrete here: signed approve/deny decisions, a distinct UV-gated
+ * Class-A assertion format, exact scope/profile/registry terms, a fresh
+ * challenge registered before exposure and represented by linear state, and a
+ * canonical action-only execution key reserved across symbolic workers.
+ *
+ * What remains external: WebAuthn internals and attestation, enrollment truth,
+ * policy authorship, amount inequalities, clocks, transparency completeness,
+ * database durability and owner fencing, crash recovery, and downstream
+ * exactly-once effects. `validity` is an exact authenticated policy token, not
+ * a wall-clock judgment. The action-reservation restriction is the explicit
+ * abstraction of one shared atomic non-expiring backend, not a database proof.
+ */
+
+theory ep_six_claim_composed
+begin
+
+builtins: signing, hashing
+
+/* -------------------------- enrollment roots --------------------------- */
+
+rule Register_RP:
+    [ Fr(~ltk) ]
+  --[ RegisterRP($RP) ]->
+    [ !RPLtk($RP, ~ltk), !RPPk($RP, pk(~ltk)), Out(pk(~ltk)) ]
+
+rule Register_Human:
+    [ Fr(~ltk) ]
+  --[ RegisterHuman($H) ]->
+    [ !HumanLtk($H, ~ltk), !HumanPk($H, pk(~ltk)), Out(pk(~ltk)) ]
+
+rule Register_Issuer:
+    [ Fr(~ltk) ]
+  --[ RegisterIssuer($I) ]->
+    [ !IssuerLtk($I, ~ltk), !IssuerPk($I, pk(~ltk)), Out(pk(~ltk)) ]
+
+rule Register_Authority:
+    [ Fr(~ltk) ]
+  --[ RegisterAuthority($A) ]->
+    [ !AuthorityLtk($A, ~ltk), !AuthorityPk($A, pk(~ltk)), Out(pk(~ltk)) ]
+
+rule Register_Revoker:
+    [ Fr(~ltk) ]
+  --[ RegisterRevoker($R) ]->
+    [ !RevokerLtk($R, ~ltk), !RevokerPk($R, pk(~ltk)), Out(pk(~ltk)) ]
+
+/* One relying-party construction pins every external root and one complete
+ * profile. Scope is exact matching over symbolic fields; no arithmetic or
+ * current-time computation is hidden in this rule. */
+rule Pin_Roots_Profile_And_Scope:
+    [ In(<V, profile, RP, H, I, A, R, role, policy, validity, currency,
+          amount, organization, delegation, epoch, head>)
+    , !RPPk(RP, pkRP), !HumanPk(H, pkH), !IssuerPk(I, pkI)
+    , !AuthorityPk(A, pkA), !RevokerPk(R, pkR) ]
+  --[ RootsPinned(V, RP, H, I, A, R)
+    , ApproverPinned(V, H, pkH, 'class_a', 'uv_required')
+    , IssuerPinned(V, I, pkI)
+    , AuthorityKeyPinned(V, A, pkA)
+    , RevokerPinned(V, R, pkR)
+    , RegistryPinned(V, A, epoch, head)
+    , AuthorityScopePinned(
+        V, A, H,
+        <'ep_scope_v1', role, policy, validity, currency, amount,
+          organization, delegation>,
+        epoch, head)
+    , ProfilePinned(
+        V, profile,
+        <'ep_reliance_profile_v1', 'class_a', 'uv_required', 'approve',
+          <'ep_scope_v1', role, policy, validity, currency, amount,
+            organization, delegation>,
+          I, A, R, epoch, head, 'registered_once', 'action_keyed'>) ]->
+    [ !PinnedRP(V, RP, pkRP)
+    , !PinnedHuman(V, H, pkH, 'class_a', 'uv_required')
+    , !PinnedIssuer(V, I, pkI)
+    , !PinnedAuthority(V, A, pkA)
+    , !PinnedRevoker(V, R, pkR)
+    , !PinnedRegistry(V, A, epoch, head)
+    , !PinnedAuthorityScope(
+        V, A, H,
+        <'ep_scope_v1', role, policy, validity, currency, amount,
+          organization, delegation>,
+        epoch, head)
+    , !PinnedProfile(
+        V, profile,
+        <'ep_reliance_profile_v1', 'class_a', 'uv_required', 'approve',
+          <'ep_scope_v1', role, policy, validity, currency, amount,
+            organization, delegation>,
+          I, A, R, epoch, head, 'registered_once', 'action_keyed'>) ]
+
+/* ---------------- challenge registration and exposure ----------------- */
+
+rule Register_Challenge:
+    [ !RPLtk(RP, ltkRP), In(<H, action, profile, audience>), Fr(~nonce) ]
+  --[ ChallengeRegistered(
+        <RP, ~nonce>,
+        <'ep_challenge_v3', RP, H, action,
+          <'caid_v1', h(action)>, profile, audience, ~nonce>,
+        sign(
+          <'ep_challenge_v3', RP, H, action,
+            <'caid_v1', h(action)>, profile, audience, ~nonce>,
+          ltkRP)) ]->
+    [ RegisteredChallenge(
+        <RP, ~nonce>,
+        <'ep_challenge_v3', RP, H, action,
+          <'caid_v1', h(action)>, profile, audience, ~nonce>,
+        sign(
+          <'ep_challenge_v3', RP, H, action,
+            <'caid_v1', h(action)>, profile, audience, ~nonce>,
+          ltkRP))
+    , ChallengeExposurePermit(
+        <RP, ~nonce>,
+        <'ep_challenge_v3', RP, H, action,
+          <'caid_v1', h(action)>, profile, audience, ~nonce>,
+        sign(
+          <'ep_challenge_v3', RP, H, action,
+            <'caid_v1', h(action)>, profile, audience, ~nonce>,
+          ltkRP)) ]
+
+rule Expose_Registered_Challenge:
+    [ ChallengeExposurePermit(challengeKey, challengeBody, challengeSig) ]
+  --[ ChallengeExposed(challengeKey, challengeBody, challengeSig) ]->
+    [ Out(<challengeBody, challengeSig>) ]
+
+/* Deliberately unsafe comparison source. The signature is authentic, but no
+ * registered state is created before exposure. */
+rule Expose_Unregistered_Challenge:
+    [ !RPLtk(RP, ltkRP), In(<H, action, profile, audience>), Fr(~nonce) ]
+  --[ UnregisteredChallengeExposed(
+        <RP, ~nonce>,
+        <'ep_challenge_v3', RP, H, action,
+          <'caid_v1', h(action)>, profile, audience, ~nonce>) ]->
+    [ Out(
+        <<'ep_challenge_v3', RP, H, action,
+           <'caid_v1', h(action)>, profile, audience, ~nonce>,
+         sign(
+           <'ep_challenge_v3', RP, H, action,
+             <'caid_v1', h(action)>, profile, audience, ~nonce>,
+           ltkRP)>) ]
+
+/* ----------------------- signed human decisions ------------------------ */
+
+rule Human_Perform_UV_Decision:
+    [ In(<<'ep_challenge_v3', RP, H, action, caid, profile, audience, nonce>,
+          challengeSig, decision>)
+    , !RPPk(RP, pkRP), !HumanPk(H, pkH) ]
+  --[ Eq(caid, <'caid_v1', h(action)>)
+    , Eq(verify(
+          challengeSig,
+          <'ep_challenge_v3', RP, H, action, caid, profile, audience, nonce>,
+          pkRP),
+         true)
+    , UVDecision(H, RP, action, caid, profile, audience, nonce, decision) ]->
+    [ UVDecisionDone(
+        H, RP, action, caid, profile, audience, nonce, decision) ]
+
+rule Human_Sign_Class_A_Decision:
+    [ UVDecisionDone(
+        H, RP, action, caid, profile, audience, nonce, decision)
+    , !HumanLtk(H, ltkH) ]
+  --[ ClassADecisionSigned(
+        H, RP, action, caid, profile, audience, nonce, decision) ]->
+    [ Out(
+        <H, 'class_a', 'uv_performed', decision,
+         sign(
+           <'ep_class_a_decision_v3', H, RP, action, caid, profile, audience,
+             nonce, decision, 'uv_performed'>,
+           ltkH)>) ]
+
+/* The same enrolled key can produce a valid bare-signature term in this
+ * comparison format. It has no UV predecessor and must never satisfy a pinned
+ * Class-A profile merely because the presenter declares Class B. */
+rule Human_Sign_Bare_Decision:
+    [ In(<<'ep_challenge_v3', RP, H, action, caid, profile, audience, nonce>,
+          challengeSig, decision>)
+    , !RPPk(RP, pkRP), !HumanLtk(H, ltkH) ]
+  --[ Eq(caid, <'caid_v1', h(action)>)
+    , Eq(verify(
+          challengeSig,
+          <'ep_challenge_v3', RP, H, action, caid, profile, audience, nonce>,
+          pkRP),
+         true)
+    , BareDecisionSigned(
+        H, RP, action, caid, profile, audience, nonce, decision) ]->
+    [ Out(
+        <H, 'class_b', 'uv_absent', decision,
+         sign(
+           <'ep_bare_decision_v3', H, RP, action, caid, profile, audience,
+             nonce, decision>,
+           ltkH)>) ]
+
+/* ---------------- authority, revocation, and receipt wrapper ----------- */
+
+rule Authority_Issue_Exact_Scope:
+    [ !AuthorityLtk(A, ltkA)
+    , In(<H, RP, action, caid, profile, audience, nonce, scope, epoch, head>) ]
+  --[ AuthorityIssued(
+        A, H, RP, action, caid, profile, audience, nonce, scope, epoch, head) ]->
+    [ Out(
+        <A, scope, epoch, head,
+         sign(
+           <'ep_authority_v3', A, H, RP, action, caid, profile, audience,
+             nonce, scope, epoch, head>,
+           ltkA)>) ]
+
+rule Revoker_Issue_Current_State:
+    [ !RevokerLtk(R, ltkR)
+    , In(<RP, H, action, caid, profile, audience, nonce>) ]
+  --[ RevocationCurrent(
+        R, RP, H, action, caid, profile, audience, nonce) ]->
+    [ Out(
+        <R,
+         sign(
+           <'ep_revocation_v3', R, RP, H, action, caid, profile, audience,
+             nonce, 'current'>,
+           ltkR)>) ]
+
+/* The issuer deliberately wraps arbitrary supplied components. Reliance
+ * independently verifies every signature and every RP pin, so no honest
+ * issuance-policy assumption is smuggled into the six lemmas. */
+rule Issuer_Wrap_Receipt:
+    [ !IssuerLtk(I, ltkI)
+    , In(<RP, H, action, caid, profile, audience, nonce, challengeSig,
+          keyClass, uvMode, decision, humanSig, A, scope, epoch, head,
+          authoritySig, R, revocationSig>) ]
+  --[ IssuerWrapped(
+        I,
+        <'ep_receipt_body_v3', RP, H, action, caid, profile, audience, nonce,
+          challengeSig, keyClass, uvMode, decision, humanSig, A, scope, epoch,
+          head, authoritySig, R, revocationSig>) ]->
+    [ Out(
+        <I,
+         <'ep_receipt_body_v3', RP, H, action, caid, profile, audience, nonce,
+           challengeSig, keyClass, uvMode, decision, humanSig, A, scope, epoch,
+           head, authoritySig, R, revocationSig>,
+         sign(
+           <'ep_receipt_v3', I,
+             <'ep_receipt_body_v3', RP, H, action, caid, profile, audience,
+               nonce, challengeSig, keyClass, uvMode, decision, humanSig, A,
+               scope, epoch, head, authoritySig, R, revocationSig>>,
+           ltkI)>) ]
+
+/* Cryptographic parsing preserves the signed decision as a variable. The
+ * strict reliance rule, not this rule, decides whether it authorizes. */
+rule Verify_Class_A_Packet_Cryptography:
+    [ In(
+        <I,
+         <'ep_receipt_body_v3', RP, H, action, caid, profile, audience, nonce,
+           challengeSig, 'class_a', 'uv_performed', decision, humanSig, A,
+           scope, epoch, head, authoritySig, R, revocationSig>,
+         issuerSig>)
+    , !RPPk(RP, pkRP), !HumanPk(H, pkH), !IssuerPk(I, pkI)
+    , !AuthorityPk(A, pkA), !RevokerPk(R, pkR) ]
+  --[ Eq(caid, <'caid_v1', h(action)>)
+    , Eq(verify(
+          challengeSig,
+          <'ep_challenge_v3', RP, H, action, caid, profile, audience, nonce>,
+          pkRP),
+         true)
+    , Eq(verify(
+          humanSig,
+          <'ep_class_a_decision_v3', H, RP, action, caid, profile, audience,
+            nonce, decision, 'uv_performed'>,
+          pkH),
+         true)
+    , Eq(verify(
+          authoritySig,
+          <'ep_authority_v3', A, H, RP, action, caid, profile, audience,
+            nonce, scope, epoch, head>,
+          pkA),
+         true)
+    , Eq(verify(
+          revocationSig,
+          <'ep_revocation_v3', R, RP, H, action, caid, profile, audience,
+            nonce, 'current'>,
+          pkR),
+         true)
+    , Eq(verify(
+          issuerSig,
+          <'ep_receipt_v3', I,
+            <'ep_receipt_body_v3', RP, H, action, caid, profile, audience,
+              nonce, challengeSig, 'class_a', 'uv_performed', decision,
+              humanSig, A, scope, epoch, head, authoritySig, R,
+              revocationSig>>,
+          pkI),
+         true)
+    , ClassAPacketCryptographicallyVerified(
+        I, H, RP, action, caid, profile, audience, nonce, decision) ]->
+    [ ClassAPacketValid(
+        I, H, RP, action, caid, profile, audience, nonce, A, R, scope, epoch,
+        head, decision, pkRP, pkH, pkI, pkA, pkR, challengeSig) ]
+
+rule Verify_Bare_Packet_Cryptography:
+    [ In(
+        <I,
+         <'ep_receipt_body_v3', RP, H, action, caid, profile, audience, nonce,
+           challengeSig, 'class_b', 'uv_absent', decision, humanSig, A, scope,
+           epoch, head, authoritySig, R, revocationSig>,
+         issuerSig>)
+    , !RPPk(RP, pkRP), !HumanPk(H, pkH), !IssuerPk(I, pkI)
+    , !AuthorityPk(A, pkA), !RevokerPk(R, pkR) ]
+  --[ Eq(caid, <'caid_v1', h(action)>)
+    , Eq(verify(
+          challengeSig,
+          <'ep_challenge_v3', RP, H, action, caid, profile, audience, nonce>,
+          pkRP),
+         true)
+    , Eq(verify(
+          humanSig,
+          <'ep_bare_decision_v3', H, RP, action, caid, profile, audience,
+            nonce, decision>,
+          pkH),
+         true)
+    , Eq(verify(
+          authoritySig,
+          <'ep_authority_v3', A, H, RP, action, caid, profile, audience,
+            nonce, scope, epoch, head>,
+          pkA),
+         true)
+    , Eq(verify(
+          revocationSig,
+          <'ep_revocation_v3', R, RP, H, action, caid, profile, audience,
+            nonce, 'current'>,
+          pkR),
+         true)
+    , Eq(verify(
+          issuerSig,
+          <'ep_receipt_v3', I,
+            <'ep_receipt_body_v3', RP, H, action, caid, profile, audience,
+              nonce, challengeSig, 'class_b', 'uv_absent', decision, humanSig,
+              A, scope, epoch, head, authoritySig, R, revocationSig>>,
+          pkI),
+         true)
+    , BarePacketCryptographicallyVerified(
+        I, H, RP, action, caid, profile, audience, nonce, decision) ]->
+    [ BarePacketValid(
+        I, H, RP, action, caid, profile, audience, nonce, A, R, scope, epoch,
+        head, decision, pkRP, pkH, pkI, pkA, pkR, challengeSig) ]
+
+rule Verify_Signed_Denial_As_Evidence:
+    [ In(<H, RP, action, caid, profile, audience, nonce, denialSig>)
+    , !HumanPk(H, pkH) ]
+  --[ Eq(verify(
+          denialSig,
+          <'ep_class_a_decision_v3', H, RP, action, caid, profile, audience,
+            nonce, 'deny', 'uv_performed'>,
+          pkH),
+         true)
+    , DenialEvidenceVerified(
+        H, RP, action, caid, profile, audience, nonce) ]->
+    [ ]
+
+/* --------------------------- strict reliance --------------------------- */
+
+rule Authorize_Strict_Reliance:
+    [ In(worker)
+    , ClassAPacketValid(
+        I, H, RP,
+        <'ep_action_v1', family, resource, operation, amount, currency,
+          organization, instance>,
+        caid, profile, V, nonce, A, R,
+        <'ep_scope_v1', role, policy, validity, currency, amount,
+          organization, delegation>,
+        epoch, head, 'approve', pkRP, pkH, pkI, pkA, pkR, challengeSig)
+    , RegisteredChallenge(
+        <RP, nonce>,
+        <'ep_challenge_v3', RP, H,
+          <'ep_action_v1', family, resource, operation, amount, currency,
+            organization, instance>,
+          caid, profile, V, nonce>,
+        challengeSig)
+    , !PinnedRP(V, RP, pkRP)
+    , !PinnedHuman(V, H, pkH, 'class_a', 'uv_required')
+    , !PinnedIssuer(V, I, pkI)
+    , !PinnedAuthority(V, A, pkA)
+    , !PinnedRevoker(V, R, pkR)
+    , !PinnedRegistry(V, A, epoch, head)
+    , !PinnedAuthorityScope(
+        V, A, H,
+        <'ep_scope_v1', role, policy, validity, currency, amount,
+          organization, delegation>,
+        epoch, head)
+    , !PinnedProfile(
+        V, profile,
+        <'ep_reliance_profile_v1', 'class_a', 'uv_required', 'approve',
+          <'ep_scope_v1', role, policy, validity, currency, amount,
+            organization, delegation>,
+          I, A, R, epoch, head, 'registered_once', 'action_keyed'>) ]
+  --[ Eq(caid,
+          <'caid_v1',
+            h(<'ep_action_v1', family, resource, operation, amount, currency,
+                organization, instance>)>)
+    , ApproverEvidenceUsed(
+        V, H, pkH, RP,
+        <'ep_action_v1', family, resource, operation, amount, currency,
+          organization, instance>,
+        caid, profile, nonce, 'class_a', 'uv_performed', 'approve')
+    , DecisionUsedForReliance(V, H, caid, nonce, 'approve')
+    , AuthorityUsed(
+        V, A, pkA, H, RP,
+        <'ep_action_v1', family, resource, operation, amount, currency,
+          organization, instance>,
+        caid, profile, nonce,
+        <'ep_scope_v1', role, policy, validity, currency, amount,
+          organization, delegation>,
+        epoch, head)
+    , ProfileUsed(
+        V, profile,
+        <'ep_reliance_profile_v1', 'class_a', 'uv_required', 'approve',
+          <'ep_scope_v1', role, policy, validity, currency, amount,
+            organization, delegation>,
+          I, A, R, epoch, head, 'registered_once', 'action_keyed'>)
+    , ChallengeConsumed(
+        <RP, nonce>,
+        <'ep_challenge_v3', RP, H,
+          <'ep_action_v1', family, resource, operation, amount, currency,
+            organization, instance>,
+          caid, profile, V, nonce>,
+        challengeSig)
+    , RelianceAuthorized(worker, V, RP, caid, profile, nonce) ]->
+    [ ExecutionCandidate(
+        worker, V, caid, <RP, nonce>, <'aec_action_key_v1', caid>) ]
+
+rule Reserve_Canonical_Action_Key:
+    [ ExecutionCandidate(worker, V, caid, challengeKey, actionKey) ]
+  --[ ActionKeyReserved(worker, actionKey, challengeKey) ]->
+    [ ReservedExecution(worker, V, caid, challengeKey, actionKey) ]
+
+rule Action_Key_Reservation_Unavailable:
+    [ ExecutionCandidate(worker, V, caid, challengeKey, actionKey) ]
+  --[ ActionKeyReservationFailed(worker, challengeKey, actionKey) ]->
+    [ ]
+
+rule Execute_Reserved_Action:
+    [ ReservedExecution(worker, V, caid, challengeKey, actionKey) ]
+  --[ Executed(worker, V, caid, challengeKey, actionKey) ]->
+    [ ]
+
+/* -------------------- load-bearing unsafe comparisons ------------------ */
+
+rule Unsafe_Trust_Presenter_Class:
+    [ BarePacketValid(
+        I, H, RP, action, caid, profile, V, nonce, A, R, scope, epoch, head,
+        'approve', pkRP, pkH, pkI, pkA, pkR, challengeSig)
+    , RegisteredChallenge(
+        <RP, nonce>,
+        <'ep_challenge_v3', RP, H, action, caid, profile, V, nonce>,
+        challengeSig)
+    , !PinnedHuman(V, H, pkH, 'class_a', 'uv_required')
+    , !PinnedProfile(V, profile, profileSpec) ]
+  --[ UncheckedClassAuthorized(
+        V, H, pkH, caid, 'class_b', 'uv_absent') ]->
+    [ ]
+
+rule Unsafe_Ignore_Decision:
+    [ ClassAPacketValid(
+        I, H, RP, action, caid, profile, V, nonce, A, R, scope, epoch, head,
+        decision, pkRP, pkH, pkI, pkA, pkR, challengeSig)
+    , RegisteredChallenge(
+        <RP, nonce>,
+        <'ep_challenge_v3', RP, H, action, caid, profile, V, nonce>,
+        challengeSig)
+    , !PinnedHuman(V, H, pkH, 'class_a', 'uv_required')
+    , !PinnedProfile(V, profile, profileSpec) ]
+  --[ UncheckedDecisionAuthorized(V, H, caid, nonce, decision) ]->
+    [ ]
+
+rule Unsafe_Ignore_Authority_Scope_And_Registry:
+    [ ClassAPacketValid(
+        I, H, RP, action, caid, profile, V, nonce, A, R, actualScope,
+        actualEpoch, actualHead, 'approve', pkRP, pkH, pkI, pkA, pkR,
+        challengeSig)
+    , RegisteredChallenge(
+        <RP, nonce>,
+        <'ep_challenge_v3', RP, H, action, caid, profile, V, nonce>,
+        challengeSig)
+    , !PinnedAuthority(V, A, pkA)
+    , !PinnedRegistry(V, A, pinnedEpoch, pinnedHead)
+    , !PinnedAuthorityScope(
+        V, A, H, pinnedScope, pinnedEpoch, pinnedHead) ]
+  --[ UncheckedAuthorityAuthorized(
+        V, A, actualScope, actualEpoch, actualHead,
+        pinnedScope, pinnedEpoch, pinnedHead) ]->
+    [ ]
+
+rule Unsafe_Trust_Presented_Profile:
+    [ ClassAPacketValid(
+        I, H, RP, action, caid, presentedProfile, V, nonce, A, R, scope,
+        epoch, head, 'approve', pkRP, pkH, pkI, pkA, pkR, challengeSig)
+    , RegisteredChallenge(
+        <RP, nonce>,
+        <'ep_challenge_v3', RP, H, action, caid, presentedProfile, V, nonce>,
+        challengeSig)
+    , !PinnedRP(V, RP, pkRP)
+    , !PinnedProfile(V, pinnedProfile, pinnedProfileSpec) ]
+  --[ UncheckedProfileAuthorized(
+        V, presentedProfile, pinnedProfile, pinnedProfileSpec) ]->
+    [ ]
+
+rule Unsafe_Accept_Unregistered_Challenge:
+    [ ClassAPacketValid(
+        I, H, RP, action, caid, profile, V, nonce, A, R, scope, epoch, head,
+        'approve', pkRP, pkH, pkI, pkA, pkR, challengeSig)
+    , !PinnedRP(V, RP, pkRP)
+    , !PinnedProfile(V, profile, profileSpec) ]
+  --[ UncheckedUnregisteredAuthorized(
+        <RP, nonce>,
+        <'ep_challenge_v3', RP, H, action, caid, profile, V, nonce>) ]->
+    [ ]
+
+rule Unsafe_Use_Presenter_Execution_Key:
+    [ In(presenterKey)
+    , ClassAPacketValid(
+        I, H, RP, action, caid, profile, V, nonce, A, R, scope, epoch, head,
+        'approve', pkRP, pkH, pkI, pkA, pkR, challengeSig)
+    , RegisteredChallenge(
+        <RP, nonce>,
+        <'ep_challenge_v3', RP, H, action, caid, profile, V, nonce>,
+        challengeSig)
+    , !PinnedRP(V, RP, pkRP)
+    , !PinnedProfile(V, profile, profileSpec) ]
+  --[ UncheckedPresenterKeyExecuted(
+        caid, <'presenter_action_key_v1', presenterKey, caid>) ]->
+    [ ]
+
+/* ------------------------------ compromise ----------------------------- */
+
+rule Reveal_Human_Key:
+    [ !HumanLtk(H, ltk) ] --[ RevealHuman(H) ]-> [ Out(ltk) ]
+
+rule Reveal_Issuer_Key:
+    [ !IssuerLtk(I, ltk) ] --[ RevealIssuer(I) ]-> [ Out(ltk) ]
+
+rule Reveal_Authority_Key:
+    [ !AuthorityLtk(A, ltk) ] --[ RevealAuthority(A) ]-> [ Out(ltk) ]
+
+rule Reveal_Revoker_Key:
+    [ !RevokerLtk(R, ltk) ] --[ RevealRevoker(R) ]-> [ Out(ltk) ]
+
+rule Reveal_RP_Key:
+    [ !RPLtk(RP, ltk) ] --[ RevealRP(RP) ]-> [ Out(ltk) ]
+
+/* ----------------------------- restrictions ---------------------------- */
+
+restriction Equality:
+  "All x y #i. Eq(x, y) @ #i ==> x = y"
+
+restriction OneHumanEnrollment:
+  "All H #i #j. RegisterHuman(H) @ #i & RegisterHuman(H) @ #j ==> #i = #j"
+
+restriction OneProfilePerVerifier:
+  "All V profile1 spec1 profile2 spec2 #i #j.
+      ProfilePinned(V, profile1, spec1) @ #i
+    & ProfilePinned(V, profile2, spec2) @ #j
+    ==> profile1 = profile2 & spec1 = spec2"
+
+/* Explicit shared-backend acceptance root across all symbolic workers. */
+restriction ActionKeyReservedOnce:
+  "All worker1 worker2 actionKey challengeKey1 challengeKey2 #i #j.
+      ActionKeyReserved(worker1, actionKey, challengeKey1) @ #i
+    & ActionKeyReserved(worker2, actionKey, challengeKey2) @ #j
+    ==> #i = #j"
+
+/* ------------------------- dedicated obligations ----------------------- */
+
+lemma executable_six_claim_composition:
+  exists-trace
+  "Ex worker V RP caid nonce #i.
+      Executed(
+        worker, V, caid, <RP, nonce>, <'aec_action_key_v1', caid>) @ #i"
+
+lemma signed_denial_remains_verifiable_evidence:
+  exists-trace
+  "Ex H RP action caid profile audience nonce #i.
+      DenialEvidenceVerified(
+        H, RP, action, caid, profile, audience, nonce) @ #i"
+
+lemma class_a_downgrade_refused:
+  "All V H pkH RP action caid profile nonce keyClass uvMode decision #i.
+      ApproverEvidenceUsed(
+        V, H, pkH, RP, action, caid, profile, nonce,
+        keyClass, uvMode, decision) @ #i
+    ==> keyClass = 'class_a'
+      & uvMode = 'uv_performed'
+      & decision = 'approve'
+      & (Ex #p.
+          ApproverPinned(
+            V, H, pkH, 'class_a', 'uv_required') @ #p
+        & #p < #i)
+      & ((Ex audience #u #s.
+            UVDecision(
+              H, RP, action, caid, profile, audience, nonce, 'approve') @ #u
+          & ClassADecisionSigned(
+              H, RP, action, caid, profile, audience, nonce, 'approve') @ #s
+          & #u < #s & #s < #i)
+         | (Ex #k. RevealHuman(H) @ #k & #k < #i))"
+
+/* Narrow symbolic statement: an authentic negative decision cannot authorize
+ * reliance. No claim is made here that every concrete runtime predicate is
+ * represented in this theory. */
+lemma signed_denial_cannot_authorize:
+  "All V H caid nonce decision #i.
+      DecisionUsedForReliance(V, H, caid, nonce, decision) @ #i
+    ==> decision = 'approve'"
+
+lemma scoped_authority_is_pinned:
+  "All V A pkA H RP action caid profile nonce scope epoch head #i.
+      AuthorityUsed(
+        V, A, pkA, H, RP, action, caid, profile, nonce,
+        scope, epoch, head) @ #i
+    ==> (Ex #k.
+          AuthorityKeyPinned(V, A, pkA) @ #k & #k < #i)
+      & (Ex #r.
+          RegistryPinned(V, A, epoch, head) @ #r & #r < #i)
+      & (Ex #p.
+          AuthorityScopePinned(
+            V, A, H, scope, epoch, head) @ #p & #p < #i)
+      & ((Ex audience #a.
+            AuthorityIssued(
+              A, H, RP, action, caid, profile, audience, nonce,
+              scope, epoch, head) @ #a
+          & #a < #i)
+         | (Ex #x. RevealAuthority(A) @ #x & #x < #i))"
+
+lemma reliance_requires_pinned_profile:
+  "All V profile spec #i.
+      ProfileUsed(V, profile, spec) @ #i
+    ==> (Ex role policy validity currency amount organization delegation
+             I A R epoch head #p.
+          spec =
+            <'ep_reliance_profile_v1', 'class_a', 'uv_required', 'approve',
+              <'ep_scope_v1', role, policy, validity, currency, amount,
+                organization, delegation>,
+              I, A, R, epoch, head, 'registered_once', 'action_keyed'>
+        & ProfilePinned(V, profile, spec) @ #p
+        & #p < #i)"
+
+lemma evidence_challenge_is_registered_and_consumed:
+  "All challengeKey challengeBody challengeSig #i.
+      ChallengeConsumed(
+        challengeKey, challengeBody, challengeSig) @ #i
+    ==> (Ex #r #x.
+          ChallengeRegistered(
+            challengeKey, challengeBody, challengeSig) @ #r
+        & ChallengeExposed(
+            challengeKey, challengeBody, challengeSig) @ #x
+        & #r < #x & #x < #i)
+      & not (Ex otherBody otherSig #j.
+          ChallengeConsumed(
+            challengeKey, otherBody, otherSig) @ #j
+        & not (#j = #i))"
+
+lemma fresh_challenge_registration_is_unique:
+  "All RP nonce body1 sig1 body2 sig2 #i #j.
+      ChallengeRegistered(<RP, nonce>, body1, sig1) @ #i
+    & ChallengeRegistered(<RP, nonce>, body2, sig2) @ #j
+    ==> #i = #j & body1 = body2 & sig1 = sig2"
+
+lemma aec_execution_is_action_keyed_and_fleet_fail_closed:
+  "All worker V caid challengeKey actionKey #i.
+      Executed(worker, V, caid, challengeKey, actionKey) @ #i
+    ==> actionKey = <'aec_action_key_v1', caid>
+      & (Ex #r.
+          ActionKeyReserved(worker, actionKey, challengeKey) @ #r
+        & #r < #i)
+      & not (Ex worker2 V2 challengeKey2 actionKey2 #j.
+          Executed(
+            worker2, V2, caid, challengeKey2, actionKey2) @ #j
+        & not (#j = #i))"
+
+lemma action_reservation_failure_is_fail_closed:
+  "All worker challengeKey actionKey #i.
+      ActionKeyReservationFailed(worker, challengeKey, actionKey) @ #i
+    ==> not (Ex worker2 V caid #j.
+          Executed(
+            worker2, V, caid, challengeKey, actionKey) @ #j)"
+
+/* Every obligation below is expected to be falsified. Each counterexample
+ * removes one load-bearing strict check while retaining authentic signatures. */
+
+lemma unchecked_presenter_class_is_pinned:
+  "All V H pkH caid keyClass uvMode #i.
+      UncheckedClassAuthorized(
+        V, H, pkH, caid, keyClass, uvMode) @ #i
+    ==> keyClass = 'class_a' & uvMode = 'uv_performed'"
+
+lemma unchecked_signed_denial_cannot_authorize:
+  "All V H caid nonce decision #i.
+      UncheckedDecisionAuthorized(V, H, caid, nonce, decision) @ #i
+    ==> decision = 'approve'"
+
+lemma unchecked_authority_scope_is_pinned:
+  "All V A actualScope actualEpoch actualHead
+       pinnedScope pinnedEpoch pinnedHead #i.
+      UncheckedAuthorityAuthorized(
+        V, A, actualScope, actualEpoch, actualHead,
+        pinnedScope, pinnedEpoch, pinnedHead) @ #i
+    ==> actualScope = pinnedScope
+      & actualEpoch = pinnedEpoch
+      & actualHead = pinnedHead"
+
+lemma unchecked_reliance_profile_is_pinned:
+  "All V presentedProfile pinnedProfile pinnedProfileSpec #i.
+      UncheckedProfileAuthorized(
+        V, presentedProfile, pinnedProfile, pinnedProfileSpec) @ #i
+    ==> presentedProfile = pinnedProfile"
+
+lemma unchecked_unregistered_challenge_is_registered:
+  "All challengeKey challengeBody #i.
+      UncheckedUnregisteredAuthorized(
+        challengeKey, challengeBody) @ #i
+    ==> (Ex challengeSig #r.
+          ChallengeRegistered(
+            challengeKey, challengeBody, challengeSig) @ #r
+        & #r < #i)"
+
+lemma unchecked_presenter_execution_key_is_canonical:
+  "All caid actionKey #i.
+      UncheckedPresenterKeyExecuted(caid, actionKey) @ #i
+    ==> actionKey = <'aec_action_key_v1', caid>"
+
+end

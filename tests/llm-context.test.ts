@@ -35,8 +35,8 @@ describe('EMILIA-REPO-CONTEXT-v1', () => {
   });
 
   it('surfaces the composed attacker model before an engineering judgment', () => {
-    expect(context.current_evidence.formal.tamarin_composed.verifiedObligations).toBe(10);
-    expect(context.current_evidence.formal.tamarin_composed.deliberatelyUnsafeCounterexamples).toBe(2);
+    expect(context.current_evidence.formal.tamarin_composed.verifiedObligations).toBe(20);
+    expect(context.current_evidence.formal.tamarin_composed.deliberatelyUnsafeCounterexamples).toBe(8);
     expect(llms).toContain('implemented security infrastructure, not architecture-only');
     expect(llms).toContain('composed Tamarin model');
     expect(llms).toContain('/proof');

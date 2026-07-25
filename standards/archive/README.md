@@ -19,9 +19,11 @@ The following posted revisions were superseded on 2026-07-21 and moved here:
 - `draft-schrock-ep-authorization-receipts-07`
 - `draft-schrock-model-to-matter-00`
 
-`draft-schrock-authorization-evidence-challenge-01.html` is an archived,
-unfiled rendering. The current published revision remains -00; the archived
-HTML is not an upload candidate.
+`draft-schrock-authorization-evidence-challenge-01.html` is an unfiled
+rendering from the longer-named July 3 series that Datatracker marks replaced
+by Action Evidence Boundary. The active standalone challenge is the distinct
+`draft-schrock-ae-challenge-00` series in `../posted/`; this archived HTML is
+not an upload candidate.
 
 The following unfiled standalone candidates were retired on 2026-07-14:
 

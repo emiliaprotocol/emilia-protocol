@@ -95,13 +95,88 @@ func TestOutcomeExistingRealCryptoVectorsMatchJSDigests(t *testing.T) {
 		if first.OutcomeBinding.Outcome != expectedOutcome {
 			t.Fatalf("%s outcome=%s want=%s errors=%v", id, first.OutcomeBinding.Outcome, expectedOutcome, first.Errors)
 		}
-		expectedDigest := getStr(getMap(vector["expect"]), "result_digest")
+		expect := getMap(vector["expect"])
+		if first.Valid != expect["valid"] {
+			t.Fatalf("%s valid=%v want=%v", id, first.Valid, expect["valid"])
+		}
+		for check, rawWant := range getMap(expect["checks"]) {
+			want, ok := rawWant.(bool)
+			if !ok || first.Checks[check] != want {
+				t.Fatalf("%s check %s=%v want=%v", id, check, first.Checks[check], rawWant)
+			}
+		}
+		expectedReasons, _ := outcomeAnySlice(expect["reasons"])
+		if Canonicalize(outcomeErrorsArray(first.OutcomeBinding.Reasons)) != Canonicalize(expectedReasons) {
+			t.Fatalf("%s reasons=%v want=%v", id, first.OutcomeBinding.Reasons, expectedReasons)
+		}
+		expectedDigest := getStr(expect, "result_digest")
 		if first.ResultDigest != expectedDigest {
 			t.Fatalf("%s digest=%s want=%s", id, first.ResultDigest, expectedDigest)
 		}
 		if second.ResultDigest != first.ResultDigest {
 			t.Fatalf("%s result digest is not deterministic", id)
 		}
+	}
+}
+
+func TestOutcomeResultDigestUsesExactTypeScriptCore(t *testing.T) {
+	suite := loadOutcomeSuite(t, "outcome-binding.exec.v1.json")
+	vector := getMap(outcomeVectors(t, suite)[0])
+	result := runOutcomeExecVector(t, suite, vector)
+
+	expectedCore := map[string]any{
+		"@version":          OutcomeBindingResultVersion,
+		"input_commitments": result.InputCommitments,
+		"exact_commitments": result.Commitments,
+		"valid":             result.Valid,
+		"verdict":           result.OutcomeBinding.Outcome,
+		"checks":            outcomeChecksMap(result.Checks),
+		"errors":            outcomeErrorsArray(result.Errors),
+		"outcome_binding":   outcomeVerdictMap(result.OutcomeBinding),
+	}
+	if got := Canonicalize(OutcomeBindingResultCore(result)); got != Canonicalize(expectedCore) {
+		t.Fatalf("result core mismatch\ngot  %s\nwant %s", got, Canonicalize(expectedCore))
+	}
+	if len(result.InputCommitments) != 6 {
+		t.Fatalf("input commitment count=%d want=6: %v", len(result.InputCommitments), result.InputCommitments)
+	}
+	if OutcomeBindingResultDigest(result) != result.ResultDigest {
+		t.Fatalf("recomputed digest=%s want=%s", OutcomeBindingResultDigest(result), result.ResultDigest)
+	}
+	if !VerifyOutcomeBindingResultDigest(result) {
+		t.Fatal("carried result digest did not verify")
+	}
+	if !VerifyOutcomeBindingResultDigest(result, result.ResultDigest) {
+		t.Fatal("explicit result digest did not verify")
+	}
+}
+
+func TestOutcomeResultDigestVerificationFailsClosed(t *testing.T) {
+	suite := loadOutcomeSuite(t, "outcome-binding.exec.v1.json")
+	result := runOutcomeExecVector(t, suite, getMap(outcomeVectors(t, suite)[0]))
+
+	tamperedOutcome := result
+	tamperedOutcome.OutcomeBinding = result.OutcomeBinding
+	tamperedOutcome.OutcomeBinding.Outcome = "divergent"
+	if VerifyOutcomeBindingResultDigest(tamperedOutcome) {
+		t.Fatal("tampered outcome verified against the original digest")
+	}
+
+	tamperedCommitment := result
+	tamperedCommitment.InputCommitments = make(map[string]any, len(result.InputCommitments))
+	for key, value := range result.InputCommitments {
+		tamperedCommitment.InputCommitments[key] = value
+	}
+	tamperedCommitment.InputCommitments["receipt_digest"] = "sha256:" + strings.Repeat("0", 64)
+	if VerifyOutcomeBindingResultDigest(tamperedCommitment) {
+		t.Fatal("tampered input commitment verified against the original digest")
+	}
+
+	if VerifyOutcomeBindingResultDigest(result, "sha256:not-a-digest") {
+		t.Fatal("malformed claimed digest was accepted")
+	}
+	if VerifyOutcomeBindingResultDigest(result, result.ResultDigest, result.ResultDigest) {
+		t.Fatal("multiple claimed digests were accepted")
 	}
 }
 

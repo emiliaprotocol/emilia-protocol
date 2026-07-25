@@ -523,10 +523,35 @@ downstream exactly-once effects.
 
 ---
 
+## Tamarin (symbolic, Dolev-Yao) : `tamarin/ep_six_claim_composed.spthy`
+
+**Status: six dedicated protocol obligations, machine-checked 2026-07-24.**
+This companion model replaces six broad lemma references with exact obligations
+for Class-A downgrade refusal, signed denial as non-authorizing evidence,
+scoped authority pins, complete reliance-profile pins,
+registration-before-exposure and one-time challenge consumption, and
+canonical action-keyed fleet execution. It also verifies fail-closed
+reservation failure and preserves six deliberately unsafe comparisons that
+Tamarin falsifies with concrete traces.
+
+The exact obligations and counterexample step counts are recorded in
+`formal/tamarin/results/ep_reliance_composed.summary.txt`; the same pinned
+container and `formal/tamarin/run-composed.sh` execute both composed theories.
+
+**Boundary:** the dedicated lemmas are verified protocol obligations, while the
+six public implementation claims remain partial symbolic analyses. Class-A and
+UV states abstract WebAuthn; exact symbolic scope terms do not prove amount
+arithmetic, clocks, policy authorship, or registry completeness; linear
+challenge and action-key restrictions assume an atomic shared backend and do
+not prove physical durability, restart recovery, privileged-operator honesty,
+or downstream business-effect exactly-once behavior.
+
+---
+
 ## TLA+ — end-to-end consequence, adversary, and effect-profile closure
 
-**Status:** bounded same-team models and content-addressed selected runtime
-traces, verified locally on 2026-07-24 and gated in CI.
+**Status:** bounded same-team models and content-addressed selected
+model/runtime scenarios, verified locally on 2026-07-24 and gated in CI.
 
 Four models add bounded partial coverage for the previously explicit assurance
 gaps:
@@ -550,17 +575,18 @@ gaps:
   role mapping, GRACE, mobile continuity, and mobile enrollment safety. TLC
   explored 2,234,641 generated / 403,200 distinct states to complete depth 25.
 
-`formal/runtime-traces.v1.json` binds 31 governed traces across nine public
-claims to the exact model/config/harness/adapter/runtime bytes. The refinement
-harness forces exact TLA+ action sequences, executes real production entry
-points, compares scalar state projections, and requires 17 deliberately
-unsafe mutations to produce formal counterexamples while the runtime refuses
-the corresponding operation. The deterministic result is recorded in
-`formal/results/formal-runtime-refinement.v1.json`. For the end-to-end model,
-the manifest additionally declares 36 required transitions and fails closed
-unless every one is covered by a governed runtime trace.
+`formal/runtime-scenarios.v2.json` binds 70 governed scenarios across 20 public
+claims and 13 bounded models to the exact
+model/config/harness/adapter/runtime bytes. The conformance harness forces
+selected TLA+ action sequences or bounded-checker inputs, executes real
+production entry points, compares declared state projections, and requires 45
+paired negative controls to produce formal counterexamples while the runtime
+refuses the corresponding operation. The deterministic result is recorded in
+`formal/results/formal-runtime-scenario-conformance.v2.json`. For the
+end-to-end model, the manifest additionally declares 28 required model actions
+and fails closed unless every one is covered by a governed runtime scenario.
 
-**Boundary:** this is bounded selected-trace refinement evidence, not a
+**Boundary:** this is bounded selected-scenario conformance evidence, not a
 mechanized implementation refinement proof. It does not establish all runtime
 executions against all formal behaviors, cryptographic correctness, trusted
 time, provider or meter truth, storage durability, independent witness
@@ -576,4 +602,4 @@ When a property is verified by a model checker:
 
 ---
 
-_Last updated: 2026-07-24 (four bounded assurance-closure models plus 31 content-addressed runtime traces, 17 unsafe mutations, and transition-complete coverage of all 36 declared actions in the end-to-end model). Prior: 2026-07-22 (bounded consequence-attempt/AEB custody model added to the pinned CI gate: 27 checks across 93,724 distinct states, including consume-before-commit ordering and stale-lease-only recovery; deliberately weakened replay model falsifies `InvokeAtMostOnce`). Prior: 2026-07-21 (bounded authority-program and receipt-program models plus Conservation of Authority claim boundary). Prior: 2026-07-10 (composed reliance-path v2: 10 strict lemmas verified; no-consumption and unpinned-registry-view comparisons falsified with concrete traces; all well-formedness checks clean)._
+_Last updated: 2026-07-24 (70 content-addressed selected model/runtime scenarios across 20 claims and 13 bounded models, 45 paired formal-counterexample/runtime-refusal controls, and action-complete coverage of all 28 declared actions in the end-to-end model). Prior: 2026-07-22 (bounded consequence-attempt/AEB custody model added to the pinned CI gate: 27 checks across 93,724 distinct states, including consume-before-commit ordering and stale-lease-only recovery; deliberately weakened replay model falsifies `InvokeAtMostOnce`). Prior: 2026-07-21 (bounded authority-program and receipt-program models plus Conservation of Authority claim boundary). Prior: 2026-07-10 (composed reliance-path v2: 10 strict lemmas verified; no-consumption and unpinned-registry-view comparisons falsified with concrete traces; all well-formedness checks clean)._

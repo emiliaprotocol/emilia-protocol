@@ -23,14 +23,20 @@ jobs:
     # registry), so this job runs on GitHub's arm64 runner and CI executes the exact
     # same image bytes the proof was verified with locally.
     runs-on: ubuntu-24.04-arm
-    timeout-minutes: 30
+    # The composed suite now proves 20 obligations independently, including
+    # deliberately unsafe comparisons that must produce counterexamples. The
+    # pinned arm64 prover completed 16 obligations before the former 30-minute
+    # ceiling terminated a healthy run, so retain the full proof surface and
+    # give it a realistic bounded execution window.
+    timeout-minutes: 60
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
       - name: Verify pinned model bytes
         working-directory: formal/tamarin
         run: |
           echo '174c27c35b302a9dd096eb28b40ad7df84cf0c1633a93eff829c3de3fc8bbbd3  ep_reliance_composed.spthy' | sha256sum -c -
-          echo 'c3708440114c4447616e237ceb0694c68dc8217e43824e5151270b286f6f35d2  run-composed.sh' | sha256sum -c -
+          echo 'd19fee48ab098a178d56d3141a0dd545998a0a136f6e3fc8cb3db1fcf6052302  ep_six_claim_composed.spthy' | sha256sum -c -
+          echo 'c04a9471d29c3d8164c52b2f2e01b38275d1fdc47ccdd587561315e8835e640f  run-composed.sh' | sha256sum -c -
       - name: Run every composed proof obligation independently
         working-directory: formal/tamarin
         shell: bash

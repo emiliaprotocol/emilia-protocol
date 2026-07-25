@@ -47,7 +47,7 @@ const cmdDigest = crypto.createHash('sha256').update(command, 'utf8').digest('he
 const ACTION = `claude-code.bash:${cmdDigest.slice(0, 16)}`;
 const challenge = JSON.stringify({
   '@version': 'AE-CHALLENGE-v1',
-  required_evidence: [{ type: 'authorization_receipt', action_type: ACTION, fresh_max_sec: 900 }],
+    required_evidence: [{ type: 'authorization_receipt', action_type: ACTION, max_age_sec: 900 }],
   note: 'mint with: node examples/claude-code/mint-poc-receipt.mjs <command>',
 });
 

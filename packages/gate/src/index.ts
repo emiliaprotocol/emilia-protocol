@@ -231,6 +231,7 @@ export {
   reconcileCapabilityOperation,
   delegateCapabilityReceipt,
 } from './capability-receipt.js';
+export * from './authority-allocation.js';
 export {
   ZK_RANGE_RECEIPT_VERSION,
   ZK_RANGE_SCHEME,

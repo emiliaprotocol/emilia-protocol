@@ -1,0 +1,41 @@
+EP-TWO-CLAIM-BOUNDED-ASSURANCE-v1
+Status: local same-team bounded model result; not deployed or independently reviewed
+Method: deterministic finite exhaustive state exploration
+Execution date: 2026-07-24
+Runtime: Node.js
+Model SHA-256: ed405114c68d01ba3d1bd8b2725658ec839f2bd673e4bc15cffae4c47adbda3f
+Runner SHA-256: cb02574ae35fd905a767ba256c468e602c7f5df0cf437dfa2fd7276641827506
+
+Configuration: all 8,192 assignments of thirteen denial predicates plus the
+fully satisfied signed-denial control, one exact scoped-authority control, and
+fifteen isolated registry, action, time, amount, currency, organization, role,
+policy, and delegation violations.
+
+Obligations:
+SignedDenialApprovalRefused (8,193 states): verified
+SignedDenialSeparationOfDutiesRefused (8,193 states): verified
+SignedDenialQuorumRefused (8,193 states): verified
+SignedDenialAssuranceRefused (8,193 states): verified
+SignedDenialAuthorityRefused (8,193 states): verified
+SignedDenialActionMaterialRefused (8,193 states): verified
+SignedDenialRelianceRefused (8,193 states): verified
+ScopedAuthorityRegistryIssuerPinned (16 states): verified
+ScopedAuthorityActionMembership (16 states): verified
+ScopedAuthorityTimeWindowOrdered (16 states): verified
+ScopedAuthorityAmountCeiling (16 states): verified
+ScopedAuthorityCurrencyPinned (16 states): verified
+ScopedAuthorityOrganizationPinned (16 states): verified
+ScopedAuthorityRolePinned (16 states): verified
+ScopedAuthorityPolicyPinned (16 states): verified
+ScopedAuthorityDelegationMonotone (16 states): verified
+
+Negative controls: ignoring the signed denial outcome produces authorization,
+and omitting each scoped-authority check produces a concrete unauthorized
+acceptance. The runner refuses a clean result unless every negative control is
+observed.
+
+Scope: bounded same-team finite exploration of the stated decision and
+authority dimensions. Signature cryptography, key enrollment, registry
+completeness, trusted time, arbitrary delegation depth, and storage durability
+remain acceptance roots. This is not a refinement proof of the TypeScript,
+Python, Go, or deployed database implementation.

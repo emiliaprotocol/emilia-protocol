@@ -7,57 +7,114 @@ import proofStats from '@/lib/proof-stats.json';
 import claimSource from '@/security/claims.v1.json';
 
 const REPO = 'https://github.com/emiliaprotocol/emilia-protocol';
+const SOURCE_REVISION = /^[0-9a-f]{40}$/i.test(process.env.VERCEL_GIT_COMMIT_SHA || '')
+  ? (process.env.VERCEL_GIT_COMMIT_SHA as string)
+  : 'main';
+const SOURCE_BLOB = `${REPO}/blob/${SOURCE_REVISION}`;
 const number = (value: number | string): string => Number(value).toLocaleString('en-US');
 
-type FormalCoverage = 'verified-formal-obligations' | 'partial' | 'executable-only';
+type FormalCoverage =
+  | 'verified-formal-obligations'
+  | 'bounded-runtime-traced'
+  | 'bounded-formal-evidence'
+  | 'partial-symbolic-coverage'
+  | 'executable-operational-evidence';
 
-const formalCoverage = (statuses: string[]): FormalCoverage => {
-  if (statuses.length > 0 && statuses.every((status) => status === 'verified')) {
-    return 'verified-formal-obligations';
-  }
-  if (statuses.some((status) => status === 'verified' || status === 'partial')) {
-    return 'partial';
-  }
-  return 'executable-only';
-};
+type ProofStatsCoverage =
+  | 'verifiedFormalObligations'
+  | 'boundedRuntimeTraced'
+  | 'boundedFormalEvidence'
+  | 'partialSymbolicCoverage'
+  | 'executableOperationalEvidence';
+
+const COVERAGE_KEYS: ReadonlyArray<{
+  stats: ProofStatsCoverage;
+  page: FormalCoverage;
+}> = [
+  { stats: 'verifiedFormalObligations', page: 'verified-formal-obligations' },
+  { stats: 'boundedRuntimeTraced', page: 'bounded-runtime-traced' },
+  { stats: 'boundedFormalEvidence', page: 'bounded-formal-evidence' },
+  { stats: 'partialSymbolicCoverage', page: 'partial-symbolic-coverage' },
+  { stats: 'executableOperationalEvidence', page: 'executable-operational-evidence' },
+];
+
+const CLAIM_COVERAGE = new Map<string, FormalCoverage>(
+  COVERAGE_KEYS.flatMap(({ stats, page }) =>
+    proofStats.formalEvidenceCoverage[stats].claimIds.map((claimId) => [claimId, page] as const),
+  ),
+);
+
+if (CLAIM_COVERAGE.size !== claimSource.claims.length) {
+  throw new Error('Generated proof taxonomy does not cover the public claim inventory');
+}
 
 const CLAIM_ROWS = claimSource.claims.map((claim) => {
-  const statuses = [...new Set((claim.formal || []).map((entry) => entry.status))];
-  return {
-    claim,
-    coverage: formalCoverage(statuses),
-  };
+  const coverage = CLAIM_COVERAGE.get(claim.claim_id);
+  if (!coverage) throw new Error(`Generated proof taxonomy omits ${claim.claim_id}`);
+  return { claim, coverage };
 });
 
-const FORMAL_COUNTS = CLAIM_ROWS.reduce<Record<FormalCoverage, number>>(
-  (counts, row) => {
-    counts[row.coverage] += 1;
-    return counts;
-  },
-  { 'verified-formal-obligations': 0, partial: 0, 'executable-only': 0 },
-);
+const FORMAL_COUNTS = Object.fromEntries(
+  COVERAGE_KEYS.map(({ stats, page }) => [
+    page,
+    proofStats.formalEvidenceCoverage[stats].count,
+  ]),
+) as Record<FormalCoverage, number>;
 
 const FORMAL_LABELS: Record<FormalCoverage, string> = {
   'verified-formal-obligations': 'Verified formal obligations',
-  partial: 'Partial formal coverage',
-  'executable-only': 'Executable evidence only',
+  'bounded-runtime-traced': 'Bounded + selected runtime scenarios',
+  'bounded-formal-evidence': 'Bounded formal evidence',
+  'partial-symbolic-coverage': 'Partial symbolic coverage',
+  'executable-operational-evidence': 'Executable/operational evidence (not formally modeled)',
+};
+
+const FORMAL_TAXONOMY: ReadonlyArray<{ coverage: FormalCoverage; detail: string }> = [
+  {
+    coverage: 'verified-formal-obligations',
+    detail: 'Every cited formal obligation is verified. The result remains limited to each model’s stated scope and does not prove implementation refinement.',
+  },
+  {
+    coverage: 'bounded-runtime-traced',
+    detail: 'Bounded same-team formal evidence is paired with selected deterministic runtime scenarios under hand-authored mappings; the bridge is not a complete refinement proof.',
+  },
+  {
+    coverage: 'bounded-formal-evidence',
+    detail: 'Bounded same-team model checking or exhaustive state exploration covers stated obligations without a selected runtime trace bridge.',
+  },
+  {
+    coverage: 'partial-symbolic-coverage',
+    detail: 'A symbolic model covers part of the claim; concrete implementation behavior and external assumptions remain outside that model.',
+  },
+  {
+    coverage: 'executable-operational-evidence',
+    detail: 'The exact claim is exercised by code, tests, vectors, or operational controls; no formal model covers the claim itself.',
+  },
+];
+
+const FORMAL_BADGE_STYLES: Record<FormalCoverage, { color: string; background: string }> = {
+  'verified-formal-obligations': { color: '#166534', background: '#DCFCE7' },
+  'bounded-runtime-traced': { color: '#1D4ED8', background: '#DBEAFE' },
+  'bounded-formal-evidence': { color: '#0F766E', background: '#CCFBF1' },
+  'partial-symbolic-coverage': { color: '#92400E', background: '#FEF3C7' },
+  'executable-operational-evidence': { color: color.t3, background: '#F5F5F4' },
 };
 
 const EVIDENCE = [
   {
-    value: proofStats.formalRefinement.traces,
-    label: 'Runtime-refined formal traces',
-    detail: `${proofStats.formalRefinement.coveredTransitions}/${proofStats.formalRefinement.requiredTransitions} declared end-to-end transitions covered; ${proofStats.formalRefinement.unsafeMutationsDetected} unsafe mutations detected`,
+    value: proofStats.formalScenarioConformance.scenarios,
+    label: 'Selected model/runtime scenarios',
+    detail: `${proofStats.formalScenarioConformance.soundScenarios} positive-path scenarios; ${proofStats.formalScenarioConformance.pairedNegativeControls} paired formal counterexamples and runtime refusals`,
   },
   {
     value: proofStats.tamarin.verifiedObligations,
-    label: 'Composed Tamarin obligations',
-    detail: `${proofStats.tamarin.deliberatelyUnsafeCounterexamples} weakened variants produce concrete attack traces`,
+    label: 'Verified Tamarin lemmas',
+    detail: `${proofStats.tamarin.allTraceObligations} all-traces obligations and ${proofStats.tamarin.existsTraceWitnesses} exists-trace witnesses across ${proofStats.tamarin.models} models`,
   },
   {
     value: proofStats.securityCase.claims,
     label: 'Executable security claims',
-    detail: `${proofStats.securityCase.evidenceFiles} hashed evidence files in one resolved case`,
+    detail: `${proofStats.securityCase.evidenceFiles} hashed evidence files in one passing generated case`,
   },
   {
     value: proofStats.conformance.vectors,
@@ -80,8 +137,8 @@ const PROOF_LAYERS = [
   {
     label: 'Hostile-network composition',
     method: 'Tamarin 1.10.0 · Dolev-Yao',
-    result: `${proofStats.tamarin.verifiedObligations} obligations verified in one model from challenge through execution`,
-    meaning: 'The attacker may control the network and obtain unrelated honest signatures. Under uncompromised pinned roots, execution still requires the exact challenge, action, two distinct approvals, issuer and authority pins, registry view, revocation state, and one-time consumption.',
+    result: `${proofStats.tamarin.verifiedObligations} lemmas verified: ${proofStats.tamarin.allTraceObligations} all-traces obligations and ${proofStats.tamarin.existsTraceWitnesses} reachability witnesses`,
+    meaning: 'The attacker may control the network and obtain unrelated honest signatures. Under uncompromised pinned roots, execution still requires the exact challenge, action, two distinct approvals, issuer and authority pins, registry view, revocation state, one-time consumption, and the dedicated six-claim boundaries.',
   },
   {
     label: 'State-machine safety',
@@ -90,10 +147,10 @@ const PROOF_LAYERS = [
     meaning: 'The bounded models cover replay resistance, terminal-state behavior, signoff binding, delegation limits, revocation and poisoned-witness refusal, effect profiles, indeterminate execution, reconciliation, and separate remedy authority.',
   },
   {
-    label: 'Formal-to-runtime selected traces',
-    method: 'Content-addressed TLA+ action forcing + production entry points',
-    result: `${proofStats.formalRefinement.traces} traces across ${proofStats.formalRefinement.models} models; ${proofStats.formalRefinement.coveredTransitions}/${proofStats.formalRefinement.requiredTransitions} declared end-to-end transitions covered`,
-    meaning: `The harness forces exact formal transition sequences, calls the corresponding production runtime APIs, compares abstract state projections, and requires both layers to reject ${proofStats.formalRefinement.unsafeMutationsDetected} governed unsafe mutations. Declared-transition coverage is complete for one bounded composed model; this is not a complete implementation refinement proof.`,
+    label: 'Selected model/runtime scenario conformance',
+    method: 'Content-addressed bounded models + deterministic runtime scenarios',
+    result: `${proofStats.formalScenarioConformance.scenarios} scenarios across ${proofStats.formalScenarioConformance.models} models and ${proofStats.formalScenarioConformance.claims} claims`,
+    meaning: `The same-team harness pairs bounded formal scenarios with deterministic runtime executions under an explicit, hand-authored projection relation. Its ${proofStats.formalScenarioConformance.pairedNegativeControls} negative controls pair a formal counterexample with a safe-runtime refusal; they do not mutate the runtime implementation. This is selected-scenario conformance, not a complete implementation refinement proof.`,
   },
   {
     label: 'Relational structure',
@@ -104,14 +161,14 @@ const PROOF_LAYERS = [
   {
     label: 'Claim-to-code traceability',
     method: 'EP-SECURITY-CASE-SOURCE-v2',
-    result: `${proofStats.securityCase.claims} claims resolved over ${proofStats.securityCase.evidenceFiles} hashed files`,
-    meaning: 'Every public security claim names its enforcement path, positive and negative vectors, language coverage, formal status or explicit gap, assumptions, exclusions, and evidence artifact hash.',
+    result: `${proofStats.securityCase.claims} claims validated over ${proofStats.securityCase.evidenceFiles} hashed files`,
+    meaning: 'Every public security claim has resolvable enforcement paths, positive and negative vectors, language coverage, formal status or explicit gap, assumptions, exclusions, and evidence hashes, and its configured executable checks pass.',
   },
   {
     label: 'Portable implementation behavior',
     method: 'Shared vectors + evaluator-controlled rebuild',
     result: `${proofStats.conformance.vectors} vectors plus ${proofStats.externalImplementation.hostilityCases} external hostility cases`,
-    meaning: 'The three reference ports are honestly labeled same-team consistency evidence. A separately authored Rust verifier is pinned to exact public source and tested against the current vector set; strict construction attestation remains separately disclosed.',
+    meaning: 'The three reference ports are honestly labeled same-team consistency evidence. A separately authored Rust verifier is tested against the pinned 16-suite/164-vector bundle and 359-case hostility campaign; newer suites are not attributed to Rust, and strict construction acceptance remains false.',
   },
   {
     label: 'Stateful enforcement under faults',
@@ -121,7 +178,7 @@ const PROOF_LAYERS = [
   },
 ];
 
-const LIMITS = ['The formal models do not prove that an AI model behaves well or that an approved action is wise, legal, or safe.', 'Formal-to-runtime refinement covers selected governed traces. It is not a mechanized proof that every implementation execution refines every formal behavior.', 'The symbolic model assumes perfect cryptography and authentic pinned roots; it does not model WebAuthn internals, parser correctness, clock arithmetic, collusion, or registry completeness.', 'JavaScript, Python, and Go are same-team ports. Their agreement demonstrates consistency, not independent construction.', 'The external Rust run is pinned interoperability evidence. Strict clean-room construction acceptance remains false until separately attested under an independently pinned key.', 'Complete mediation exists only when every protected path reaches the verifier at the actual system of record or actuator.'];
+const LIMITS = ['The formal models do not prove that an AI model behaves well or that an approved action is wise, legal, or safe.', 'Selected model/runtime scenarios are same-team conformance evidence under hand-authored mappings. They are not a mechanized proof that every implementation execution refines every formal behavior.', 'The negative controls pair formal counterexamples with safe-runtime refusals; they do not inject those defects into the runtime implementation.', 'Deterministic or in-memory scenario adapters are not production-deployment, storage-durability, provider-truth, sensor-truth, or physical-execution evidence.', 'The symbolic model assumes perfect cryptography and authentic pinned roots; it does not model WebAuthn internals, parser correctness, clock arithmetic, collusion, or registry completeness.', 'JavaScript, Python, and Go are same-team ports. Their agreement demonstrates consistency, not independent construction.', 'The external Rust run is pinned interoperability evidence. Strict clean-room construction acceptance remains false until separately attested under an independently pinned key.', 'Complete mediation exists only when every protected path reaches the verifier at the actual system of record or actuator.'];
 
 export default async function ProofPage() {
   const nonce = (await headers()).get('x-nonce') ?? '';
@@ -131,7 +188,7 @@ export default async function ProofPage() {
       {
         '@type': 'TechArticle',
         headline: 'EMILIA Protocol Engineering Evidence',
-        description: `A machine-verifiable security case with ${proofStats.securityCase.claims} executable claims, ${proofStats.tamarin.verifiedObligations} composed Tamarin obligations, and ${proofStats.conformance.vectors} conformance vectors.`,
+        description: `A machine-verifiable security case with ${proofStats.securityCase.claims} executable claims, ${proofStats.tamarin.verifiedObligations} verified Tamarin lemmas, and ${proofStats.conformance.vectors} conformance vectors.`,
         url: 'https://www.emiliaprotocol.ai/proof',
         dateModified: proofStats.generatedAt,
         author: { '@type': 'Organization', name: 'EMILIA Protocol' },
@@ -172,7 +229,7 @@ export default async function ProofPage() {
               marginTop: 26,
             }}
           >
-            EMILIA is implemented security infrastructure. This snapshot joins an executable claim-to-code case, a composed symbolic attacker model, TLA+ and Alloy checking, content-addressed formal-to-runtime traces, cross-language negative vectors, external Rust interoperability, and durable fault tests.
+            EMILIA is implemented security infrastructure. This snapshot joins an executable claim-to-code case, a composed symbolic attacker model, TLA+ and Alloy checking, selected same-team scenarios that exercise public runtime entry points and compare hand-authored projections, cross-language negative vectors, external Rust interoperability, and durable fault tests.
           </p>
           <p
             style={{
@@ -184,6 +241,7 @@ export default async function ProofPage() {
             }}
           >
             Evidence snapshot: <time dateTime={proofStats.generatedAt}>{proofStats.generatedAt}</time>
+            {' · '}Source revision: {SOURCE_REVISION === 'main' ? 'local/main preview' : SOURCE_REVISION.slice(0, 12)}
             {' · '}Generated from repository manifests; CI rejects drift.
           </p>
         </section>
@@ -315,7 +373,7 @@ export default async function ProofPage() {
             <div style={{ maxWidth: 720, marginBottom: 42 }}>
               <div style={{ ...styles.eyebrow, color: color.gold }}>Executable claim inventory</div>
               <h2 style={{ ...styles.h2, fontSize: 'clamp(26px, 3vw, 38px)' }}>Two evidence axes. No hidden “done” label.</h2>
-              <p style={styles.body}>Every row below is a resolved executable security-case claim with enforcement paths, tests, vectors, assumptions, exclusions, and hashed evidence. Formal model scope is reported separately because code evidence and mathematical models answer different questions. “Fully modeled” is not inferred from verified obligations when a claim also has implementation scope outside the model.</p>
+              <p style={styles.body}>Every row below is a claim validated by the generated security case: references resolve, cited artifacts are hashed, and configured executable checks pass. Formal model scope is reported separately through a five-way taxonomy generated only after the evidence gates run. No category asserts that the full implementation is formally modeled.</p>
             </div>
 
             <div
@@ -357,7 +415,7 @@ export default async function ProofPage() {
                     marginBottom: 10,
                   }}
                 >
-                  {claimSource.claims.length}/{claimSource.claims.length}
+                  {proofStats.securityCase.claims}/{claimSource.claims.length}
                 </div>
                 <div
                   style={{
@@ -367,16 +425,10 @@ export default async function ProofPage() {
                     color: 'rgba(250,250,249,0.7)',
                   }}
                 >
-                  Claims resolved in the generated security case.
+                  Claims validated by the passing generated security case.
                 </div>
               </div>
-              {(
-                [
-                  ['verified-formal-obligations', 'Every cited formal obligation for this claim is verified; non-formal scope remains governed by the claim assumptions and exclusions.'],
-                  ['partial', 'A formal model covers part of the claim; the remaining implementation link is disclosed.'],
-                  ['executable-only', 'Validated by code, tests, vectors, or operational evidence; no complete formal model.'],
-                ] as const
-              ).map(([coverage, detail]) => (
+              {FORMAL_TAXONOMY.map(({ coverage, detail }) => (
                 <div key={coverage} style={{ background: '#FFFFFF', padding: 24, minHeight: 154 }}>
                   <div
                     style={{
@@ -388,7 +440,7 @@ export default async function ProofPage() {
                       marginBottom: 14,
                     }}
                   >
-                    Formal model scope
+                    Formal evidence taxonomy
                   </div>
                   <div
                     style={{
@@ -441,12 +493,20 @@ export default async function ProofPage() {
                 background: '#FFFFFF',
               }}
             >
-              “Executable evidence only” does not mean unimplemented. It means the exact claim is exercised by inspectable artifacts but is not represented by a complete formal model or implementation-refinement proof.
+              “Bounded + selected runtime scenarios” does not mean a refinement proof. It identifies bounded same-team formal evidence paired with selected governed runtime scenarios under an explicit projection relation. The separate {proofStats.securityCase.claims}/{claimSource.claims.length} executable-evidence axis means references resolved, artifacts were hashed, and configured checks passed.
             </p>
 
             <div style={{ borderTop: `1px solid ${color.borderHover}` }}>
               {CLAIM_ROWS.map(({ claim, coverage }) => {
                 const evidenceCount = claim.enforcement_path.length + claim.vectors.length + claim.tests.length;
+                const badgeStyle = FORMAL_BADGE_STYLES[coverage];
+                const evidenceFiles = Array.from(
+                  new Set([
+                    ...claim.enforcement_path.map((entry) => entry.file),
+                    ...claim.tests.map((entry) => entry.file),
+                    ...claim.vectors.map((entry) => entry.suite),
+                  ]),
+                );
                 return (
                   <article
                     key={claim.claim_id}
@@ -493,20 +553,20 @@ export default async function ProofPage() {
                             border: `1px solid ${color.border}`,
                           }}
                         >
-                          Executable evidence · resolved · {evidenceCount} cited checks
+                          Executable evidence · validated · {evidenceCount} cited evidence references
                         </span>
                         <span
                           style={{
                             fontFamily: font.mono,
                             fontSize: 9,
-                            color: coverage === 'verified-formal-obligations' ? '#166534' : coverage === 'partial' ? '#92400E' : color.t3,
-                            background: coverage === 'verified-formal-obligations' ? '#DCFCE7' : coverage === 'partial' ? '#FEF3C7' : '#F5F5F4',
+                            color: badgeStyle.color,
+                            background: badgeStyle.background,
                             textTransform: 'uppercase',
                             letterSpacing: 0.8,
                             padding: '5px 8px',
                           }}
                         >
-                          Formal model · {FORMAL_LABELS[coverage]}
+                          Formal coverage · {FORMAL_LABELS[coverage]}
                         </span>
                       </div>
                     </div>
@@ -521,6 +581,86 @@ export default async function ProofPage() {
                     >
                       {claim.statement}
                     </p>
+                    <details
+                      style={{
+                        marginTop: 14,
+                        borderTop: `1px solid ${color.border}`,
+                        paddingTop: 12,
+                      }}
+                    >
+                      <summary
+                        style={{
+                          fontFamily: font.mono,
+                          fontSize: 10,
+                          color: color.t2,
+                          cursor: 'pointer',
+                          textTransform: 'uppercase',
+                          letterSpacing: 0.8,
+                        }}
+                      >
+                        Acceptance roots, assumptions, exclusions, and exact evidence
+                      </summary>
+                      <div
+                        style={{
+                          display: 'grid',
+                          gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 230px), 1fr))',
+                          gap: 24,
+                          marginTop: 18,
+                        }}
+                      >
+                        {[
+                          ['Acceptance roots', claim.acceptance_roots],
+                          ['Assumptions', claim.assumptions],
+                          ['Exclusions', claim.exclusions],
+                        ].map(([label, items]) => (
+                          <div key={label as string}>
+                            <div
+                              style={{
+                                fontFamily: font.mono,
+                                fontSize: 9,
+                                color: color.gold,
+                                textTransform: 'uppercase',
+                                letterSpacing: 0.8,
+                                marginBottom: 8,
+                              }}
+                            >
+                              {label}
+                            </div>
+                            <ul style={{ margin: 0, paddingLeft: 18, color: color.t2 }}>
+                              {(items as string[]).map((item) => (
+                                <li key={item} style={{ fontSize: 12, lineHeight: 1.55, marginBottom: 5 }}>
+                                  {item}
+                                </li>
+                              ))}
+                            </ul>
+                          </div>
+                        ))}
+                      </div>
+                      <div
+                        style={{
+                          display: 'flex',
+                          flexWrap: 'wrap',
+                          gap: '8px 14px',
+                          marginTop: 18,
+                        }}
+                      >
+                        <a
+                          href={`${SOURCE_BLOB}/security/claims.v1.json`}
+                          style={{ fontFamily: font.mono, fontSize: 10, color: color.gold }}
+                        >
+                          Exact claim manifest
+                        </a>
+                        {evidenceFiles.map((file) => (
+                          <a
+                            key={file}
+                            href={`${SOURCE_BLOB}/${file}`}
+                            style={{ fontFamily: font.mono, fontSize: 10, color: color.t2 }}
+                          >
+                            {file}
+                          </a>
+                        ))}
+                      </div>
+                    </details>
                   </article>
                 );
               })}
@@ -553,7 +693,9 @@ export default async function ProofPage() {
                 }}
               >
                 {`npm run check:security-case
-npm run check:formal-traces
+curl -fsSLo /tmp/tla2tools.jar https://github.com/tlaplus/tlaplus/releases/download/v1.7.4/tla2tools.jar
+echo "936a262061c914694dfd669a543be24573c45d5aa0ff20a8b96b23d01e050e88  /tmp/tla2tools.jar" | shasum -a 256 -c -
+TLA2TOOLS_JAR=/tmp/tla2tools.jar npm run check:formal-traces
 npm run conformance
 npm run check:proof-stats
 npm run check:llm-context`}

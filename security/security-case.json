@@ -1,13 +1,33 @@
 {
   "@version": "EP-SECURITY-CASE-RESOLVED-v2",
   "source": "security/claims.v1.json",
-  "evidence_bundle_sha256": "417acfd8c12b12f224194ae15b674f2bd490a52d69de80036e5ceed972f25862",
+  "evidence_bundle_sha256": "7cc2576f9612fabb439218f04e9cbb4ccc4b7bb23f135be9a2cfc855f0c614e5",
   "claim_count": 33,
-  "evidence_file_count": 196,
+  "evidence_file_count": 219,
   "execution": {
     "required": true,
     "status": "passed",
     "evidence": [
+      {
+        "runner": "bounded-formal",
+        "file": "formal/check-aec-execution-fleet-assurance.mjs",
+        "obligations": [
+          "CanonicalActionKeyOnly",
+          "ConstructorTrustInputsImmutable",
+          "EvidenceReadbackAcknowledgementExact",
+          "ProviderExecutionAtMostOnce",
+          "ReplicasShareConsumptionDomain",
+          "ReservationFailureCannotExecute",
+          "ReservationNeverExpires",
+          "ReservationOwnerFenced",
+          "ResponseLossFreezesReplay",
+          "RestartCannotAdoptReservation",
+          "SharedHeadAppendAtomic",
+          "TransactionScopedTrustRefused",
+          "VerifierMethodCaptured"
+        ],
+        "result": "passed"
+      },
       {
         "runner": "bounded-formal",
         "file": "formal/check-conservation-authority.mjs",
@@ -16,6 +36,42 @@
           "AuthoritativeAllocationIsRequired",
           "ConcurrentReservationsAreAtomic",
           "DelegationPathAuthorityNeverAmplifies"
+        ],
+        "result": "passed"
+      },
+      {
+        "runner": "bounded-formal",
+        "file": "formal/check-durable-consumption-owner.mjs",
+        "obligations": [
+          "AtMostOneConcurrentReservation",
+          "CommittedConsumptionNeverReopens",
+          "OnlyReservationOwnerMayCommit",
+          "OnlyReservationOwnerMayRelease",
+          "RestartCannotAdoptAbandonedReservation"
+        ],
+        "result": "passed"
+      },
+      {
+        "runner": "bounded-formal",
+        "file": "formal/check-evidence-challenge-lifecycle.mjs",
+        "obligations": [
+          "AtomicRegistrationRequired",
+          "BodyBoundStorageRequired",
+          "ConcurrentConsumptionIsOneTime",
+          "ConcurrentRegistrationIsUnique",
+          "ConsumedStatePersistsAcrossRestart",
+          "DurableStorageRequired",
+          "ExactActionDigestBound",
+          "ExpiryBound",
+          "FirstValidAttemptConsumes",
+          "FreshnessPolicyContextBound",
+          "InvalidAttemptIsInert",
+          "MissingEvidenceBound",
+          "NonceBound",
+          "PermanentConsumptionRequired",
+          "PresentationMethodBound",
+          "RegistrationPersistsAcrossRestart",
+          "RegistrationPrecedesExposure"
         ],
         "result": "passed"
       },
@@ -46,21 +102,73 @@
         "result": "passed"
       },
       {
-        "runner": "bounded-selected-trace-refinement",
+        "runner": "bounded-formal",
+        "file": "formal/check-reliance-pinned-profile.mjs",
+        "obligations": [
+          "AssuranceRequired",
+          "AuthenticatedRevocationRequired",
+          "ExactRegistryHeadRequired",
+          "FreshRevocationRequired",
+          "IssuerRequired",
+          "OrganizationAuthorityRequired",
+          "PinnedProfileRequired",
+          "PolicyRequired",
+          "RegistryEpochFloorOrdered",
+          "SignedMaterialRequired",
+          "UnconsumedStateRequired"
+        ],
+        "result": "passed"
+      },
+      {
+        "runner": "bounded-formal",
+        "file": "formal/check-two-claim-assurance.mjs",
+        "obligations": [
+          "ScopedAuthorityActionMembership",
+          "ScopedAuthorityAmountCeiling",
+          "ScopedAuthorityCurrencyPinned",
+          "ScopedAuthorityDelegationMonotone",
+          "ScopedAuthorityOrganizationPinned",
+          "ScopedAuthorityPolicyPinned",
+          "ScopedAuthorityRegistryIssuerPinned",
+          "ScopedAuthorityRolePinned",
+          "ScopedAuthorityTimeWindowOrdered",
+          "SignedDenialActionMaterialRefused",
+          "SignedDenialApprovalRefused",
+          "SignedDenialAssuranceRefused",
+          "SignedDenialAuthorityRefused",
+          "SignedDenialQuorumRefused",
+          "SignedDenialRelianceRefused",
+          "SignedDenialSeparationOfDutiesRefused"
+        ],
+        "result": "passed"
+      },
+      {
+        "runner": "bounded-selected-scenario-conformance",
         "file": "scripts/check-formal-runtime-traces.mjs",
         "claims": [
           "action-escrow-releases-one-exact-milestone-once",
+          "aec-execution-is-action-keyed-and-fleet-fail-closed",
           "aec-role-substitution-refused",
           "ambiguous-effect-is-never-auto-retried",
+          "authority-document-proof-join-is-pinned-and-non-resurrecting",
+          "authority-program-composition-is-root-bound-and-closed",
+          "conservation-of-authority-is-bounded-and-non-amplifying",
+          "durable-consumption-is-owner-fenced",
+          "evidence-challenge-is-durably-registered-and-consumed",
           "grace-curtailment-is-authorized-measured-and-single-use",
           "mobile-action-continuity-is-tenant-and-executor-bound",
           "mobile-enrollment-requires-two-verified-rows",
           "model-to-matter-clearance-is-exact-and-single-use",
           "network-witness-equivocation-permanently-poisons-stream",
-          "revocation-is-pinned-effective-and-terminal"
+          "outcome-binding-is-exact-and-fail-closed",
+          "receipt-program-is-caid-bound-budgeted-and-terminal",
+          "reliance-requires-pinned-profile",
+          "revocation-is-pinned-effective-and-terminal",
+          "scoped-authority-is-pinned",
+          "signed-denial-cannot-authorize"
         ],
-        "traces": 31,
-        "unsafe_mutations_detected": 17,
+        "scenarios": 70,
+        "paired_negative_controls": 45,
         "result": "passed"
       },
       {
@@ -277,8 +385,24 @@
       },
       {
         "runner": "node-test",
+        "file": "packages/gate/authority-allocation.test.ts",
+        "titles": [
+          "PostgreSQL boundary is durable, transaction-locked, fenced, and owner-digesting",
+          "concurrent conflicting reservations linearize and committed state stays bounded",
+          "conserves the calls dimension independently of cents",
+          "rejects aggregate sibling cents overspend",
+          "rejects child audience widening",
+          "rejects stale or missing relying-party authority pins",
+          "reservation replay and wrong owner or fence cannot mutate committed state"
+        ],
+        "result": "passed"
+      },
+      {
+        "runner": "node-test",
         "file": "packages/gate/capability-receipt.test.js",
         "titles": [
+          "a cyclic delegation chain is rejected at ingest, even when validly signed",
+          "a delegation chain naming the leaf capability as a parent is rejected as a broken link",
           "a delegation chain that grants increasing authority is rejected",
           "delegation burns parent budget before registering a spendable child",
           "delegation cannot outlive its parent, including across multiple hops"
@@ -425,7 +549,10 @@
         "file": "packages/verify/outcome-binding.test.js",
         "titles": [
           "accepts real signed receipt + pinned executor attestation + in-bounds outcome",
+          "publishes a deterministic canonical result core and verifies its digest",
           "relying-party policy can tighten but cannot replace or loosen signed intent",
+          "result digest commits each verdict-relevant result-core component independently",
+          "result digest verification rejects a verdict-only replay with the old digest",
           "result_digest binds the exact signed attestation, not only the verdict"
         ],
         "result": "passed"
@@ -520,6 +647,15 @@
       },
       {
         "runner": "vitest",
+        "file": "tests/aec-execution-fleet-assurance.test.ts",
+        "titles": [
+          "runs the complete deterministic scenario set",
+          "verifies every named boundary and exposes a paired unsafe counterexample"
+        ],
+        "result": "passed"
+      },
+      {
+        "runner": "vitest",
         "file": "tests/aec-execution-gate.test.ts",
         "titles": [
           "burns an indeterminate authorization after the effect starts",
@@ -579,10 +715,13 @@
         "file": "tests/evidence-challenge-durable.test.ts",
         "titles": [
           "atomically registers one exact challenge across 100 concurrent workers",
-          "binds registration to the entire challenge body, not only id and nonce",
+          "binds action, missing evidence, freshness/policy, expiry, nonce, and presentation method",
+          "consumes the first valid challenge attempt even when its presentation swaps the action",
           "propagates backend outage without an in-memory fallback",
           "refuses policy drift without consuming the registered challenge",
-          "survives restart and admits exactly one concurrent presentation"
+          "requires every production storage capability and permits only explicit test-only ephemeral mode",
+          "survives restart and admits exactly one concurrent presentation",
+          "uses the Postgres durable backend across adapter restart and admits one of 64 concurrent presentations"
         ],
         "result": "passed"
       },
@@ -736,6 +875,17 @@
       },
       {
         "runner": "vitest",
+        "file": "tests/two-claim-bounded-assurance.test.ts",
+        "titles": [
+          "models every pinned-scope dimension and rejects each isolated violation",
+          "models every signed-denial authorization output independently",
+          "replays a signed denial through the public Trust Receipt verifier",
+          "replays every pinned-scope refusal through public authority entry points"
+        ],
+        "result": "passed"
+      },
+      {
+        "runner": "vitest",
         "file": "tests/v1-api.test.ts",
         "titles": [
           "exports a bound Class-A denial as portable EP-SIGNOFF-v1 evidence",
@@ -768,8 +918,8 @@
       "package": "@emilia-protocol/gate",
       "version": "0.15.2",
       "filename": "emilia-protocol-gate-0.15.2.tgz",
-      "sha256": "519de4e84344d46f2ddb073ca27a01eede7437be6ca92d3231971278e1e8e839",
-      "file_count": 509
+      "sha256": "219206eeb2ecd47f0ec7b0e1e7d47310e2b09f579342ad3d2f3a25793c67d36c",
+      "file_count": 515
     },
     "mobile-sdk": {
       "kind": "npm-tarball",
@@ -782,15 +932,15 @@
     "security-evidence": {
       "kind": "content-addressed-evidence-bundle",
       "filename": "security-case-evidence.v1",
-      "sha256": "417acfd8c12b12f224194ae15b674f2bd490a52d69de80036e5ceed972f25862",
-      "file_count": 196
+      "sha256": "7cc2576f9612fabb439218f04e9cbb4ccc4b7bb23f135be9a2cfc855f0c614e5",
+      "file_count": 219
     },
     "verify-sdk": {
       "kind": "npm-tarball",
       "package": "@emilia-protocol/verify",
       "version": "3.14.0",
       "filename": "emilia-protocol-verify-3.14.0.tgz",
-      "sha256": "bb2a267ecd62cf7a155356f7093eec026923d60cac5c0e164d9682e502e50914",
+      "sha256": "ab7bf7eeffa8d2f34f85cf51369a8ea335d4bddda6df38a1aae478a2e759d0f0",
       "file_count": 230
     }
   },
@@ -942,11 +1092,11 @@
       "release_artifact_hashes": [
         {
           "artifact_id": "verify-sdk",
-          "sha256": "bb2a267ecd62cf7a155356f7093eec026923d60cac5c0e164d9682e502e50914"
+          "sha256": "ab7bf7eeffa8d2f34f85cf51369a8ea335d4bddda6df38a1aae478a2e759d0f0"
         },
         {
           "artifact_id": "security-evidence",
-          "sha256": "417acfd8c12b12f224194ae15b674f2bd490a52d69de80036e5ceed972f25862"
+          "sha256": "7cc2576f9612fabb439218f04e9cbb4ccc4b7bb23f135be9a2cfc855f0c614e5"
         }
       ]
     },
@@ -1205,11 +1355,11 @@
       "release_artifact_hashes": [
         {
           "artifact_id": "verify-sdk",
-          "sha256": "bb2a267ecd62cf7a155356f7093eec026923d60cac5c0e164d9682e502e50914"
+          "sha256": "ab7bf7eeffa8d2f34f85cf51369a8ea335d4bddda6df38a1aae478a2e759d0f0"
         },
         {
           "artifact_id": "security-evidence",
-          "sha256": "417acfd8c12b12f224194ae15b674f2bd490a52d69de80036e5ceed972f25862"
+          "sha256": "7cc2576f9612fabb439218f04e9cbb4ccc4b7bb23f135be9a2cfc855f0c614e5"
         }
       ]
     },
@@ -1291,12 +1441,13 @@
       ],
       "formal": [
         {
-          "status": "partial",
-          "model": "formal/tamarin/ep_reliance_composed.spthy",
+          "status": "verified",
+          "method": "symbolic_protocol_analysis",
+          "model": "formal/tamarin/ep_six_claim_composed.spthy",
           "runner": "formal/tamarin/run-composed.sh",
-          "lemma": "execution_has_honest_approvals_or_prior_compromise",
+          "lemma": "class_a_downgrade_refused",
           "result_evidence": "formal/tamarin/results/ep_reliance_composed.summary.txt",
-          "scope": "The composed model proves UV-gated approvals under pinned keys or prior compromise; concrete key_class parsing, WebAuthn internals, and key-directory operation remain executable or external assumptions."
+          "scope": "The exact protocol obligation proves that reliance cannot use presenter-declared bare Class-B evidence in place of the relying-party-pinned Class-A, UV-performed approval, except after prior key compromise. Concrete parser and WebAuthn implementation behavior remains separately executable evidence; this is not an implementation-refinement claim."
         }
       ],
       "assumptions": [
@@ -1313,11 +1464,11 @@
       "release_artifact_hashes": [
         {
           "artifact_id": "verify-sdk",
-          "sha256": "bb2a267ecd62cf7a155356f7093eec026923d60cac5c0e164d9682e502e50914"
+          "sha256": "ab7bf7eeffa8d2f34f85cf51369a8ea335d4bddda6df38a1aae478a2e759d0f0"
         },
         {
           "artifact_id": "security-evidence",
-          "sha256": "417acfd8c12b12f224194ae15b674f2bd490a52d69de80036e5ceed972f25862"
+          "sha256": "7cc2576f9612fabb439218f04e9cbb4ccc4b7bb23f135be9a2cfc855f0c614e5"
         }
       ]
     },
@@ -1405,16 +1556,63 @@
           "file": "packages/verify/trust-receipt.test.js",
           "title": "a signed denied receipt remains valid decision evidence but cannot authorize reliance",
           "runner": "node-test"
+        },
+        {
+          "file": "tests/two-claim-bounded-assurance.test.ts",
+          "title": "models every signed-denial authorization output independently",
+          "runner": "vitest"
+        },
+        {
+          "file": "tests/two-claim-bounded-assurance.test.ts",
+          "title": "replays a signed denial through the public Trust Receipt verifier",
+          "runner": "vitest"
         }
       ],
       "formal": [
         {
           "status": "partial",
-          "model": "formal/tamarin/ep_reliance_composed.spthy",
+          "method": "symbolic_protocol_analysis",
+          "model": "formal/tamarin/ep_six_claim_composed.spthy",
           "runner": "formal/tamarin/run-composed.sh",
-          "lemma": "execution_has_honest_approvals_or_prior_compromise",
+          "lemma": "signed_denial_cannot_authorize",
           "result_evidence": "formal/tamarin/results/ep_reliance_composed.summary.txt",
-          "scope": "The composed model requires honest approval events or prior compromise before execution; the concrete four-outcome parser and every denied-evidence projection are enforced by executable cross-language code rather than modeled as one discriminated union."
+          "covered_statement": "A signed decision used for symbolic reliance is necessarily approve; the companion executable lemma separately shows that an authentic signed denial remains verifiable evidence.",
+          "unmodeled_statement": "The concrete four-outcome parser and the full approval, separation-of-duties, quorum, assurance, authority, action-material, and reliance predicate projection remain executable cross-language evidence.",
+          "scope": "The dedicated model proves that signed denial cannot authorize while remaining independently verifiable evidence; the concrete four-outcome parser and every denied-evidence projection are enforced by executable cross-language code rather than modeled as one discriminated union."
+        },
+        {
+          "status": "partial",
+          "method": "bounded_exhaustive_state_exploration",
+          "model": "formal/two-claim-assurance.model.mjs",
+          "runner": "formal/check-two-claim-assurance.mjs",
+          "result_evidence": "formal/results/two-claim-assurance.summary.txt",
+          "obligations": [
+            "SignedDenialApprovalRefused",
+            "SignedDenialSeparationOfDutiesRefused",
+            "SignedDenialQuorumRefused",
+            "SignedDenialAssuranceRefused",
+            "SignedDenialAuthorityRefused",
+            "SignedDenialActionMaterialRefused",
+            "SignedDenialRelianceRefused"
+          ],
+          "scope": "Bounded same-team exhaustive exploration of every assignment of the thirteen denial predicates plus an approved positive control. Selected runtime scenarios replay the checked-in signed denial through the public verifier. This is not a refinement proof of the TypeScript, Python, or Go implementation.",
+          "scenario_evidence": "formal/runtime-scenarios.v2.json",
+          "scenario_runner": "scripts/check-formal-runtime-traces.mjs",
+          "conformance_evidence": "formal/results/formal-runtime-scenario-conformance.v2.json",
+          "scenario_coverage": "selected",
+          "covered_actions": [
+            "AttemptAuthorizeSignedDenial",
+            "VerifySignedDenialEvidence"
+          ],
+          "covered_obligations": [
+            "SignedDenialActionMaterialRefused",
+            "SignedDenialApprovalRefused",
+            "SignedDenialAssuranceRefused",
+            "SignedDenialAuthorityRefused",
+            "SignedDenialQuorumRefused",
+            "SignedDenialRelianceRefused",
+            "SignedDenialSeparationOfDutiesRefused"
+          ]
         }
       ],
       "assumptions": [
@@ -1432,11 +1630,11 @@
       "release_artifact_hashes": [
         {
           "artifact_id": "verify-sdk",
-          "sha256": "bb2a267ecd62cf7a155356f7093eec026923d60cac5c0e164d9682e502e50914"
+          "sha256": "ab7bf7eeffa8d2f34f85cf51369a8ea335d4bddda6df38a1aae478a2e759d0f0"
         },
         {
           "artifact_id": "security-evidence",
-          "sha256": "417acfd8c12b12f224194ae15b674f2bd490a52d69de80036e5ceed972f25862"
+          "sha256": "7cc2576f9612fabb439218f04e9cbb4ccc4b7bb23f135be9a2cfc855f0c614e5"
         }
       ]
     },
@@ -1525,6 +1723,7 @@
       "formal": [
         {
           "status": "verified",
+          "method": "symbolic_protocol_analysis",
           "model": "formal/tamarin/ep_reliance_composed.spthy",
           "runner": "formal/tamarin/run-composed.sh",
           "lemma": "initiator_cannot_self_approve",
@@ -1533,6 +1732,7 @@
         },
         {
           "status": "verified",
+          "method": "symbolic_protocol_analysis",
           "model": "formal/tamarin/ep_reliance_composed.spthy",
           "runner": "formal/tamarin/run-composed.sh",
           "lemma": "no_single_signer_fills_quorum",
@@ -1554,11 +1754,11 @@
       "release_artifact_hashes": [
         {
           "artifact_id": "verify-sdk",
-          "sha256": "bb2a267ecd62cf7a155356f7093eec026923d60cac5c0e164d9682e502e50914"
+          "sha256": "ab7bf7eeffa8d2f34f85cf51369a8ea335d4bddda6df38a1aae478a2e759d0f0"
         },
         {
           "artifact_id": "security-evidence",
-          "sha256": "417acfd8c12b12f224194ae15b674f2bd490a52d69de80036e5ceed972f25862"
+          "sha256": "7cc2576f9612fabb439218f04e9cbb4ccc4b7bb23f135be9a2cfc855f0c614e5"
         }
       ]
     },
@@ -1677,16 +1877,67 @@
           "file": "tests/authority-registry.test.ts",
           "title": "delegation cannot widen by omitting scope, ceiling, currency, policy, assurance, lifecycle, or organization",
           "runner": "vitest"
+        },
+        {
+          "file": "tests/two-claim-bounded-assurance.test.ts",
+          "title": "models every pinned-scope dimension and rejects each isolated violation",
+          "runner": "vitest"
+        },
+        {
+          "file": "tests/two-claim-bounded-assurance.test.ts",
+          "title": "replays every pinned-scope refusal through public authority entry points",
+          "runner": "vitest"
         }
       ],
       "formal": [
         {
           "status": "partial",
-          "model": "formal/tamarin/ep_reliance_composed.spthy",
+          "method": "symbolic_protocol_analysis",
+          "model": "formal/tamarin/ep_six_claim_composed.spthy",
           "runner": "formal/tamarin/run-composed.sh",
-          "lemma": "execution_requires_full_composition",
+          "lemma": "scoped_authority_is_pinned",
           "result_evidence": "formal/tamarin/results/ep_reliance_composed.summary.txt",
-          "scope": "Symbolic issuer and authority pins are composed; concrete registry scope algebra remains executable rather than symbolically modeled."
+          "covered_statement": "Authority used for reliance is bound to the relying-party-pinned authority key, registry epoch and head, and the exact symbolic role, policy, validity, currency, amount, organization, and delegation scope, unless the authority key was compromised first.",
+          "unmodeled_statement": "Concrete action, role, policy, time, currency, amount, organization, and delegation-scope algebra remains executable rather than symbolically modeled.",
+          "scope": "The dedicated model covers exact symbolic authority and registry pins across the named scope fields; amount inequalities, clock evaluation, registry completeness, and concrete scope algebra remain executable or external."
+        },
+        {
+          "status": "partial",
+          "method": "bounded_exhaustive_state_exploration",
+          "model": "formal/two-claim-assurance.model.mjs",
+          "runner": "formal/check-two-claim-assurance.mjs",
+          "result_evidence": "formal/results/two-claim-assurance.summary.txt",
+          "obligations": [
+            "ScopedAuthorityRegistryIssuerPinned",
+            "ScopedAuthorityActionMembership",
+            "ScopedAuthorityTimeWindowOrdered",
+            "ScopedAuthorityAmountCeiling",
+            "ScopedAuthorityCurrencyPinned",
+            "ScopedAuthorityOrganizationPinned",
+            "ScopedAuthorityRolePinned",
+            "ScopedAuthorityPolicyPinned",
+            "ScopedAuthorityDelegationMonotone"
+          ],
+          "scope": "Bounded same-team exploration of the exact pinned registry and action, time, amount, currency, organization, role, policy, and monotone-delegation checks. Selected runtime scenarios exercise the public proof verifier and authority resolver. This is not a refinement proof of the TypeScript implementation or the external registry.",
+          "scenario_evidence": "formal/runtime-scenarios.v2.json",
+          "scenario_runner": "scripts/check-formal-runtime-traces.mjs",
+          "conformance_evidence": "formal/results/formal-runtime-scenario-conformance.v2.json",
+          "scenario_coverage": "selected",
+          "covered_actions": [
+            "AttemptScopeBypass",
+            "EvaluateExactScopedAuthority"
+          ],
+          "covered_obligations": [
+            "ScopedAuthorityActionMembership",
+            "ScopedAuthorityAmountCeiling",
+            "ScopedAuthorityCurrencyPinned",
+            "ScopedAuthorityDelegationMonotone",
+            "ScopedAuthorityOrganizationPinned",
+            "ScopedAuthorityPolicyPinned",
+            "ScopedAuthorityRegistryIssuerPinned",
+            "ScopedAuthorityRolePinned",
+            "ScopedAuthorityTimeWindowOrdered"
+          ]
         }
       ],
       "assumptions": [
@@ -1702,7 +1953,7 @@
       "release_artifact_hashes": [
         {
           "artifact_id": "security-evidence",
-          "sha256": "417acfd8c12b12f224194ae15b674f2bd490a52d69de80036e5ceed972f25862"
+          "sha256": "7cc2576f9612fabb439218f04e9cbb4ccc4b7bb23f135be9a2cfc855f0c614e5"
         }
       ]
     },
@@ -1738,6 +1989,24 @@
           "file": "packages/gate/src/capability-receipt.ts",
           "symbol": "createPostgresCapabilityStore",
           "exported": true
+        },
+        {
+          "language": "javascript",
+          "file": "packages/gate/src/authority-allocation.ts",
+          "symbol": "validateAuthorityAllocationSnapshot",
+          "exported": true
+        },
+        {
+          "language": "javascript",
+          "file": "packages/gate/src/authority-allocation.ts",
+          "symbol": "createMemoryAuthorityAllocationStore",
+          "exported": true
+        },
+        {
+          "language": "javascript",
+          "file": "packages/gate/src/authority-allocation.ts",
+          "symbol": "createPostgresAuthorityAllocationStore",
+          "exported": true
         }
       ],
       "implementations": [
@@ -1760,6 +2029,21 @@
           "language": "javascript",
           "file": "packages/gate/src/capability-receipt.ts",
           "export": "createPostgresCapabilityStore"
+        },
+        {
+          "language": "javascript",
+          "file": "packages/gate/src/authority-allocation.ts",
+          "export": "validateAuthorityAllocationSnapshot"
+        },
+        {
+          "language": "javascript",
+          "file": "packages/gate/src/authority-allocation.ts",
+          "export": "createMemoryAuthorityAllocationStore"
+        },
+        {
+          "language": "javascript",
+          "file": "packages/gate/src/authority-allocation.ts",
+          "export": "createPostgresAuthorityAllocationStore"
         }
       ],
       "language_coverage": {
@@ -1838,7 +2122,52 @@
         },
         {
           "file": "packages/gate/capability-receipt.test.js",
+          "title": "a cyclic delegation chain is rejected at ingest, even when validly signed",
+          "runner": "node-test"
+        },
+        {
+          "file": "packages/gate/capability-receipt.test.js",
           "title": "a delegation chain that grants increasing authority is rejected",
+          "runner": "node-test"
+        },
+        {
+          "file": "packages/gate/capability-receipt.test.js",
+          "title": "a delegation chain naming the leaf capability as a parent is rejected as a broken link",
+          "runner": "node-test"
+        },
+        {
+          "file": "packages/gate/authority-allocation.test.ts",
+          "title": "rejects stale or missing relying-party authority pins",
+          "runner": "node-test"
+        },
+        {
+          "file": "packages/gate/authority-allocation.test.ts",
+          "title": "rejects child audience widening",
+          "runner": "node-test"
+        },
+        {
+          "file": "packages/gate/authority-allocation.test.ts",
+          "title": "rejects aggregate sibling cents overspend",
+          "runner": "node-test"
+        },
+        {
+          "file": "packages/gate/authority-allocation.test.ts",
+          "title": "conserves the calls dimension independently of cents",
+          "runner": "node-test"
+        },
+        {
+          "file": "packages/gate/authority-allocation.test.ts",
+          "title": "concurrent conflicting reservations linearize and committed state stays bounded",
+          "runner": "node-test"
+        },
+        {
+          "file": "packages/gate/authority-allocation.test.ts",
+          "title": "reservation replay and wrong owner or fence cannot mutate committed state",
+          "runner": "node-test"
+        },
+        {
+          "file": "packages/gate/authority-allocation.test.ts",
+          "title": "PostgreSQL boundary is durable, transaction-locked, fenced, and owner-digesting",
           "runner": "node-test"
         }
       ],
@@ -1855,7 +2184,19 @@
             "AuthoritativeAllocationIsRequired",
             "ConcurrentReservationsAreAtomic"
           ],
-          "scope": "Same-team bounded exhaustive exploration of action and audience selector sets, two independent budget dimensions, expiry, two sibling allocations, and two concurrent reservation requests; every deliberately weakened obligation produces a concrete counterexample."
+          "scope": "Same-team bounded exhaustive exploration of action and audience selector sets, two independent budget dimensions, expiry, two sibling allocations, and two concurrent reservation requests; every deliberately weakened obligation produces a concrete counterexample. The selected-scenario mapping is not a mechanized implementation refinement proof.",
+          "scenario_evidence": "formal/runtime-scenarios.v2.json",
+          "scenario_runner": "scripts/check-formal-runtime-traces.mjs",
+          "conformance_evidence": "formal/results/formal-runtime-scenario-conformance.v2.json",
+          "scenario_coverage": "selected",
+          "covered_actions": [
+            "AttemptSiblingOverallocation",
+            "InstallBalancedAllocation"
+          ],
+          "covered_obligations": [
+            "AggregateBranchBudgetIsConserved",
+            "AuthoritativeAllocationIsRequired"
+          ]
         }
       ],
       "assumptions": [
@@ -1875,11 +2216,11 @@
       "release_artifact_hashes": [
         {
           "artifact_id": "gate-sdk",
-          "sha256": "519de4e84344d46f2ddb073ca27a01eede7437be6ca92d3231971278e1e8e839"
+          "sha256": "219206eeb2ecd47f0ec7b0e1e7d47310e2b09f579342ad3d2f3a25793c67d36c"
         },
         {
           "artifact_id": "security-evidence",
-          "sha256": "417acfd8c12b12f224194ae15b674f2bd490a52d69de80036e5ceed972f25862"
+          "sha256": "7cc2576f9612fabb439218f04e9cbb4ccc4b7bb23f135be9a2cfc855f0c614e5"
         }
       ]
     },
@@ -2000,11 +2341,66 @@
       "formal": [
         {
           "status": "partial",
-          "model": "formal/tamarin/ep_reliance_composed.spthy",
+          "method": "symbolic_protocol_analysis",
+          "model": "formal/tamarin/ep_six_claim_composed.spthy",
           "runner": "formal/tamarin/run-composed.sh",
-          "lemma": "execution_requires_full_composition",
+          "lemma": "reliance_requires_pinned_profile",
           "result_evidence": "formal/tamarin/results/ep_reliance_composed.summary.txt",
-          "scope": "Challenge, approval, authority, revocation, issuer pinning, consumption, and execution are composed. Assurance arithmetic, policy authorship, clocks, and transparency completeness remain external."
+          "covered_statement": "Every profile used for symbolic reliance equals the complete relying-party-pinned Class-A, UV, approve, authority-scope, issuer, authority, revoker, registry, challenge-registration, and action-key profile.",
+          "unmodeled_statement": "Assurance arithmetic, policy authorship, clocks, transparency completeness, and concrete parser behavior remain external.",
+          "scope": "The dedicated model proves exact use of the complete pinned symbolic reliance profile. Assurance arithmetic, policy authorship, clocks, and transparency completeness remain external."
+        },
+        {
+          "status": "partial",
+          "method": "bounded_exhaustive_state_exploration",
+          "model": "formal/reliance-pinned-profile.model.mjs",
+          "runner": "formal/check-reliance-pinned-profile.mjs",
+          "result_evidence": "formal/results/reliance-pinned-profile.summary.txt",
+          "obligations": [
+            "PinnedProfileRequired",
+            "SignedMaterialRequired",
+            "AssuranceRequired",
+            "OrganizationAuthorityRequired",
+            "ExactRegistryHeadRequired",
+            "RegistryEpochFloorOrdered",
+            "PolicyRequired",
+            "AuthenticatedRevocationRequired",
+            "FreshRevocationRequired",
+            "IssuerRequired",
+            "UnconsumedStateRequired"
+          ],
+          "scope": "Bounded same-team exploration of all 9,216 combinations of ten independent reliance checks and three-by-three registry epoch/floor pairs. Twelve selected scenarios call the public reliance evaluator, one accepted and eleven fail-closed. This is not a refinement proof of the TypeScript or deployed implementation.",
+          "scenario_evidence": "formal/runtime-scenarios.v2.json",
+          "scenario_runner": "scripts/check-formal-runtime-traces.mjs",
+          "conformance_evidence": "formal/results/formal-runtime-scenario-conformance.v2.json",
+          "scenario_coverage": "selected",
+          "covered_actions": [
+            "AcceptPinnedReliance",
+            "RefuseConsumedAuthorization",
+            "RefuseInsufficientAssurance",
+            "RefuseOrganizationAuthorityMismatch",
+            "RefuseRegistryEpochRollback",
+            "RefuseRegistryHeadMismatch",
+            "RefuseStaleRevocationState",
+            "RefuseUnauthenticatedRevocationState",
+            "RefuseUnpinnedIssuer",
+            "RefuseUnpinnedPolicy",
+            "RefuseUnpinnedProfile",
+            "RefuseUnsignedMaterial"
+          ],
+          "covered_obligations": [
+            "AssuranceRequired",
+            "AuthenticatedRevocationRequired",
+            "ExactRegistryHeadRequired",
+            "FreshRevocationRequired",
+            "IssuerRequired",
+            "OrganizationAuthorityRequired",
+            "PinnedProfileRequired",
+            "PolicyRequired",
+            "RegistryEpochFloorOrdered",
+            "SignedMaterialRequired",
+            "UnconsumedStateRequired"
+          ]
         }
       ],
       "assumptions": [
@@ -2021,11 +2417,11 @@
       "release_artifact_hashes": [
         {
           "artifact_id": "verify-sdk",
-          "sha256": "bb2a267ecd62cf7a155356f7093eec026923d60cac5c0e164d9682e502e50914"
+          "sha256": "ab7bf7eeffa8d2f34f85cf51369a8ea335d4bddda6df38a1aae478a2e759d0f0"
         },
         {
           "artifact_id": "security-evidence",
-          "sha256": "417acfd8c12b12f224194ae15b674f2bd490a52d69de80036e5ceed972f25862"
+          "sha256": "7cc2576f9612fabb439218f04e9cbb4ccc4b7bb23f135be9a2cfc855f0c614e5"
         }
       ]
     },
@@ -2166,16 +2562,27 @@
           "model": "formal/ep_revocation_witness.tla",
           "runner": "formal/ep_revocation_witness.cfg",
           "result_evidence": "formal/results/ep-revocation-witness.tlc.summary.txt",
-          "trace_evidence": "formal/runtime-traces.v1.json",
-          "trace_runner": "scripts/check-formal-runtime-traces.mjs",
-          "refinement_evidence": "formal/results/formal-runtime-refinement.v1.json",
           "obligations": [
             "TerminalRevocationStateSound",
             "TerminalRevocationDoesNotAgeOut",
             "TerminalRevocationIrreversible",
             "RefusedRevocationIsInert"
           ],
-          "scope": "Bounded same-team model and selected runtime traces cover pinned effective terminal revocation and hostile future-effective refusal. This is not a refinement proof; cryptography, trusted time, publication delivery, and durable storage remain acceptance roots."
+          "scope": "Bounded same-team model and selected model/runtime scenarios cover pinned effective terminal revocation and hostile future-effective refusal. This is not a refinement proof; cryptography, trusted time, publication delivery, and durable storage remain acceptance roots.",
+          "scenario_evidence": "formal/runtime-scenarios.v2.json",
+          "scenario_runner": "scripts/check-formal-runtime-traces.mjs",
+          "conformance_evidence": "formal/results/formal-runtime-scenario-conformance.v2.json",
+          "scenario_coverage": "selected",
+          "covered_actions": [
+            "AcceptTerminalRevocation(RevGoodA, TargetA)",
+            "AdvanceTimeToMax",
+            "AdvanceTimeToOne",
+            "RefuseTerminalRevocation(RevFutureA, TargetA)"
+          ],
+          "covered_obligations": [
+            "TerminalRevocationDoesNotAgeOut",
+            "TerminalRevocationStateSound"
+          ]
         }
       ],
       "assumptions": [
@@ -2193,11 +2600,11 @@
       "release_artifact_hashes": [
         {
           "artifact_id": "verify-sdk",
-          "sha256": "bb2a267ecd62cf7a155356f7093eec026923d60cac5c0e164d9682e502e50914"
+          "sha256": "ab7bf7eeffa8d2f34f85cf51369a8ea335d4bddda6df38a1aae478a2e759d0f0"
         },
         {
           "artifact_id": "security-evidence",
-          "sha256": "417acfd8c12b12f224194ae15b674f2bd490a52d69de80036e5ceed972f25862"
+          "sha256": "7cc2576f9612fabb439218f04e9cbb4ccc4b7bb23f135be9a2cfc855f0c614e5"
         }
       ]
     },
@@ -2226,6 +2633,18 @@
           "language": "javascript",
           "file": "packages/verify/src/outcome-binding.ts",
           "symbol": "verifyOutcomeAttestation",
+          "exported": true
+        },
+        {
+          "language": "javascript",
+          "file": "packages/verify/src/outcome-binding.ts",
+          "symbol": "outcomeBindingResultDigest",
+          "exported": true
+        },
+        {
+          "language": "javascript",
+          "file": "packages/verify/src/outcome-binding.ts",
+          "symbol": "verifyOutcomeBindingResultDigest",
           "exported": true
         }
       ],
@@ -2331,6 +2750,21 @@
           "runner": "node-test"
         },
         {
+          "file": "packages/verify/outcome-binding.test.js",
+          "title": "publishes a deterministic canonical result core and verifies its digest",
+          "runner": "node-test"
+        },
+        {
+          "file": "packages/verify/outcome-binding.test.js",
+          "title": "result digest verification rejects a verdict-only replay with the old digest",
+          "runner": "node-test"
+        },
+        {
+          "file": "packages/verify/outcome-binding.test.js",
+          "title": "result digest commits each verdict-relevant result-core component independently",
+          "runner": "node-test"
+        },
+        {
           "file": "tests/outcome-authority-formal.test.ts",
           "title": "all six load-bearing obligations hold in the bounded model",
           "runner": "vitest"
@@ -2353,7 +2787,19 @@
             "ReplayResultDigestCommitsVerdict"
           ],
           "result_evidence": "formal/results/outcome-authority-join.summary.txt",
-          "scope": "Same-team bounded exhaustive exploration of 1,536 outcome states and 4,608 result encodings. It abstracts signatures and SHA-256 as ideal constructors and does not establish unbounded protocol security or implementation independence."
+          "scope": "Same-team bounded exhaustive exploration of 1,536 outcome states and 4,608 result encodings. It abstracts signatures and SHA-256 as ideal constructors and does not establish unbounded protocol security or implementation independence. The selected-scenario mapping is not a mechanized implementation refinement proof.",
+          "scenario_evidence": "formal/runtime-scenarios.v2.json",
+          "scenario_runner": "scripts/check-formal-runtime-traces.mjs",
+          "conformance_evidence": "formal/results/formal-runtime-scenario-conformance.v2.json",
+          "scenario_coverage": "selected",
+          "covered_actions": [
+            "AttemptActionDigestSubstitution",
+            "VerifyExactOutcomeBinding"
+          ],
+          "covered_obligations": [
+            "ExactActionReceiptBinding",
+            "ReplayResultDigestCommitsVerdict"
+          ]
         }
       ],
       "assumptions": [
@@ -2374,11 +2820,11 @@
       "release_artifact_hashes": [
         {
           "artifact_id": "verify-sdk",
-          "sha256": "bb2a267ecd62cf7a155356f7093eec026923d60cac5c0e164d9682e502e50914"
+          "sha256": "ab7bf7eeffa8d2f34f85cf51369a8ea335d4bddda6df38a1aae478a2e759d0f0"
         },
         {
           "artifact_id": "security-evidence",
-          "sha256": "417acfd8c12b12f224194ae15b674f2bd490a52d69de80036e5ceed972f25862"
+          "sha256": "7cc2576f9612fabb439218f04e9cbb4ccc4b7bb23f135be9a2cfc855f0c614e5"
         }
       ]
     },
@@ -2571,7 +3017,19 @@
             "RegistryPinsMandatory"
           ],
           "result_evidence": "formal/results/outcome-authority-join.summary.txt",
-          "scope": "Same-team bounded exhaustive exploration of 32,768 authority-join states and 64 rotation states. It abstracts cryptographic primitives as ideal and proves issuer acceptance only; grant scope, action authorization, delegation, registry inclusion, time provenance, and implementation independence remain outside the model."
+          "scope": "Same-team bounded exhaustive exploration of 32,768 authority-join states and 64 rotation states. It abstracts cryptographic primitives as ideal and proves issuer acceptance only; grant scope, action authorization, delegation, registry inclusion, time provenance, and implementation independence remain outside the model. The selected-scenario mapping is not a mechanized implementation refinement proof.",
+          "scenario_evidence": "formal/runtime-scenarios.v2.json",
+          "scenario_runner": "scripts/check-formal-runtime-traces.mjs",
+          "conformance_evidence": "formal/results/formal-runtime-scenario-conformance.v2.json",
+          "scenario_coverage": "selected",
+          "covered_actions": [
+            "AttemptOlderDocumentKeyResurrection",
+            "VerifyNewestDocumentProofKey"
+          ],
+          "covered_obligations": [
+            "NewestAuthorityDocumentPreventsKeyResurrection",
+            "RegistryPinsMandatory"
+          ]
         }
       ],
       "assumptions": [
@@ -2591,7 +3049,7 @@
       "release_artifact_hashes": [
         {
           "artifact_id": "security-evidence",
-          "sha256": "417acfd8c12b12f224194ae15b674f2bd490a52d69de80036e5ceed972f25862"
+          "sha256": "7cc2576f9612fabb439218f04e9cbb4ccc4b7bb23f135be9a2cfc855f0c614e5"
         }
       ]
     },
@@ -2696,11 +3154,11 @@
       "release_artifact_hashes": [
         {
           "artifact_id": "verify-sdk",
-          "sha256": "bb2a267ecd62cf7a155356f7093eec026923d60cac5c0e164d9682e502e50914"
+          "sha256": "ab7bf7eeffa8d2f34f85cf51369a8ea335d4bddda6df38a1aae478a2e759d0f0"
         },
         {
           "artifact_id": "security-evidence",
-          "sha256": "417acfd8c12b12f224194ae15b674f2bd490a52d69de80036e5ceed972f25862"
+          "sha256": "7cc2576f9612fabb439218f04e9cbb4ccc4b7bb23f135be9a2cfc855f0c614e5"
         }
       ]
     },
@@ -2795,6 +3253,26 @@
         },
         {
           "file": "tests/evidence-challenge-durable.test.ts",
+          "title": "uses the Postgres durable backend across adapter restart and admits one of 64 concurrent presentations",
+          "runner": "vitest"
+        },
+        {
+          "file": "tests/evidence-challenge-durable.test.ts",
+          "title": "requires every production storage capability and permits only explicit test-only ephemeral mode",
+          "runner": "vitest"
+        },
+        {
+          "file": "tests/evidence-challenge-durable.test.ts",
+          "title": "binds action, missing evidence, freshness/policy, expiry, nonce, and presentation method",
+          "runner": "vitest"
+        },
+        {
+          "file": "tests/evidence-challenge-durable.test.ts",
+          "title": "consumes the first valid challenge attempt even when its presentation swaps the action",
+          "runner": "vitest"
+        },
+        {
+          "file": "tests/evidence-challenge-durable.test.ts",
           "title": "refuses policy drift without consuming the registered challenge",
           "runner": "vitest"
         },
@@ -2807,11 +3285,73 @@
       "formal": [
         {
           "status": "partial",
-          "model": "formal/tamarin/ep_reliance_composed.spthy",
+          "method": "symbolic_protocol_analysis",
+          "model": "formal/tamarin/ep_six_claim_composed.spthy",
           "runner": "formal/tamarin/run-composed.sh",
-          "lemma": "injective_execution_with_consumption",
+          "lemma": "evidence_challenge_is_registered_and_consumed",
           "result_evidence": "formal/tamarin/results/ep_reliance_composed.summary.txt",
-          "scope": "The symbolic model binds and consumes a fresh relying-party challenge; durable registration and crash behavior are exercised by executable fault tests."
+          "covered_statement": "A challenge consumed by symbolic reliance is represented in the model as registered before exposure and consumed only once; a companion lemma proves fresh challenge registration uniqueness.",
+          "unmodeled_statement": "Durable registration, conditional-write behavior, process crashes, and recovery ownership are exercised by executable fault tests rather than Tamarin.",
+          "scope": "The dedicated model proves registration-before-exposure and unique symbolic consumption under linear challenge state; durable registration, conditional writes, process crashes, and recovery ownership are exercised by executable fault tests."
+        },
+        {
+          "status": "partial",
+          "method": "bounded_exhaustive_state_exploration",
+          "model": "formal/evidence-challenge-lifecycle.model.mjs",
+          "runner": "formal/check-evidence-challenge-lifecycle.mjs",
+          "result_evidence": "formal/results/evidence-challenge-lifecycle.summary.txt",
+          "obligations": [
+            "DurableStorageRequired",
+            "AtomicRegistrationRequired",
+            "BodyBoundStorageRequired",
+            "PermanentConsumptionRequired",
+            "ExactActionDigestBound",
+            "MissingEvidenceBound",
+            "FreshnessPolicyContextBound",
+            "ExpiryBound",
+            "NonceBound",
+            "PresentationMethodBound",
+            "RegistrationPrecedesExposure",
+            "RegistrationPersistsAcrossRestart",
+            "ConcurrentRegistrationIsUnique",
+            "FirstValidAttemptConsumes",
+            "InvalidAttemptIsInert",
+            "ConcurrentConsumptionIsOneTime",
+            "ConsumedStatePersistsAcrossRestart"
+          ],
+          "scope": "Bounded same-team exploration of all 1,024 wire/storage configurations plus restart, registration, first-attempt, and concurrent-consumption transitions. Selected scenarios exercise the standalone AE-CHALLENGE-v1 production APIs and PostgreSQL adapter. The challenge requests evidence and authorizes nothing. This is not a refinement proof of the TypeScript or deployed database implementation.",
+          "scenario_evidence": "formal/runtime-scenarios.v2.json",
+          "scenario_runner": "scripts/check-formal-runtime-traces.mjs",
+          "conformance_evidence": "formal/results/formal-runtime-scenario-conformance.v2.json",
+          "scenario_coverage": "selected",
+          "covered_actions": [
+            "AttemptTamperedChallengeBody",
+            "ConsumeChallengeOnce",
+            "ConsumeFirstValidAttempt",
+            "RefuseConsumedChallengeReplay",
+            "RefuseIncapableProductionStore",
+            "RegisterChallengeBeforeExposure",
+            "RestartChallengeWorkers"
+          ],
+          "covered_obligations": [
+            "AtomicRegistrationRequired",
+            "BodyBoundStorageRequired",
+            "ConcurrentConsumptionIsOneTime",
+            "ConcurrentRegistrationIsUnique",
+            "ConsumedStatePersistsAcrossRestart",
+            "DurableStorageRequired",
+            "ExactActionDigestBound",
+            "ExpiryBound",
+            "FirstValidAttemptConsumes",
+            "FreshnessPolicyContextBound",
+            "InvalidAttemptIsInert",
+            "MissingEvidenceBound",
+            "NonceBound",
+            "PermanentConsumptionRequired",
+            "PresentationMethodBound",
+            "RegistrationPersistsAcrossRestart",
+            "RegistrationPrecedesExposure"
+          ]
         }
       ],
       "assumptions": [
@@ -2828,11 +3368,11 @@
       "release_artifact_hashes": [
         {
           "artifact_id": "gate-sdk",
-          "sha256": "519de4e84344d46f2ddb073ca27a01eede7437be6ca92d3231971278e1e8e839"
+          "sha256": "219206eeb2ecd47f0ec7b0e1e7d47310e2b09f579342ad3d2f3a25793c67d36c"
         },
         {
           "artifact_id": "security-evidence",
-          "sha256": "417acfd8c12b12f224194ae15b674f2bd490a52d69de80036e5ceed972f25862"
+          "sha256": "7cc2576f9612fabb439218f04e9cbb4ccc4b7bb23f135be9a2cfc855f0c614e5"
         }
       ]
     },
@@ -2913,12 +3453,47 @@
       ],
       "formal": [
         {
-          "status": "verified",
+          "status": "partial",
+          "method": "symbolic_protocol_analysis",
           "model": "formal/tamarin/ep_reliance_composed.spthy",
           "runner": "formal/tamarin/run-composed.sh",
           "lemma": "injective_execution_with_consumption",
           "result_evidence": "formal/tamarin/results/ep_reliance_composed.summary.txt",
-          "scope": "Symbolic one-time consumption in the composed reliance path; storage crashes and conditional-write semantics are covered by executable fault tests, not Tamarin."
+          "covered_statement": "The composed symbolic path permits at most one checked execution for a consumed authorization.",
+          "unmodeled_statement": "Reservation ownership, stale-lease fencing, storage crashes, and linearizable conditional-write semantics are covered by executable fault tests rather than Tamarin.",
+          "scope": "Symbolic one-time consumption in the composed reliance path; reservation ownership, storage crashes, and conditional-write semantics are covered by executable fault tests, not Tamarin."
+        },
+        {
+          "status": "partial",
+          "method": "bounded_exhaustive_state_exploration",
+          "model": "formal/durable-consumption-owner.model.mjs",
+          "runner": "formal/check-durable-consumption-owner.mjs",
+          "result_evidence": "formal/results/durable-consumption-owner.summary.txt",
+          "obligations": [
+            "AtMostOneConcurrentReservation",
+            "OnlyReservationOwnerMayCommit",
+            "OnlyReservationOwnerMayRelease",
+            "RestartCannotAdoptAbandonedReservation",
+            "CommittedConsumptionNeverReopens"
+          ],
+          "scope": "Bounded same-team finite exploration of one backend key, two opaque reservation owners, one restarted process, commit, release, and replay. The backend's atomicity and durability remain acceptance roots. Selected runtime scenarios call the production store through a shared deterministic backend; this is not a refinement proof of database linearizability or the TypeScript implementation.",
+          "scenario_evidence": "formal/runtime-scenarios.v2.json",
+          "scenario_runner": "scripts/check-formal-runtime-traces.mjs",
+          "conformance_evidence": "formal/results/formal-runtime-scenario-conformance.v2.json",
+          "scenario_coverage": "selected",
+          "covered_actions": [
+            "AttemptRestartedProcessTerminalMutation",
+            "AttemptStaleOwnerTerminalMutation",
+            "CommitByOwner",
+            "ReserveByOwner"
+          ],
+          "covered_obligations": [
+            "AtMostOneConcurrentReservation",
+            "CommittedConsumptionNeverReopens",
+            "OnlyReservationOwnerMayCommit",
+            "OnlyReservationOwnerMayRelease",
+            "RestartCannotAdoptAbandonedReservation"
+          ]
         }
       ],
       "assumptions": [
@@ -2935,11 +3510,11 @@
       "release_artifact_hashes": [
         {
           "artifact_id": "gate-sdk",
-          "sha256": "519de4e84344d46f2ddb073ca27a01eede7437be6ca92d3231971278e1e8e839"
+          "sha256": "219206eeb2ecd47f0ec7b0e1e7d47310e2b09f579342ad3d2f3a25793c67d36c"
         },
         {
           "artifact_id": "security-evidence",
-          "sha256": "417acfd8c12b12f224194ae15b674f2bd490a52d69de80036e5ceed972f25862"
+          "sha256": "7cc2576f9612fabb439218f04e9cbb4ccc4b7bb23f135be9a2cfc855f0c614e5"
         }
       ]
     },
@@ -3060,10 +3635,13 @@
       "formal": [
         {
           "status": "partial",
+          "method": "symbolic_protocol_analysis",
           "model": "formal/tamarin/ep_reliance_composed.spthy",
           "runner": "formal/tamarin/run-composed.sh",
           "lemma": "injective_execution_with_consumption",
           "result_evidence": "formal/tamarin/results/ep_reliance_composed.summary.txt",
+          "covered_statement": "The composed symbolic path makes checked execution injective with respect to one-time authorization consumption.",
+          "unmodeled_statement": "An external effect that succeeds before its response is lost, indeterminate fencing, and provider reconciliation are modeled in bounded lifecycle and executable evidence rather than Tamarin.",
           "scope": "The composed lemma proves injective checked execution but does not model an external system whose effect succeeds before its response is lost."
         },
         {
@@ -3072,16 +3650,37 @@
           "model": "formal/ep_consequence_lifecycle.tla",
           "runner": "formal/ep_consequence_lifecycle.cfg",
           "result_evidence": "formal/results/ep-consequence-lifecycle.tlc.summary.txt",
-          "trace_evidence": "formal/runtime-traces.v1.json",
-          "trace_runner": "scripts/check-formal-runtime-traces.mjs",
-          "refinement_evidence": "formal/results/formal-runtime-refinement.v1.json",
           "obligations": [
             "InvokeAtMostOnce",
             "AuthenticatedExactReconciliation",
             "TerminalEffectSound",
             "NoBlindReplayWhileIndeterminate"
           ],
-          "scope": "Bounded same-team composed lifecycle model and selected runtime traces cover response loss, indeterminate fencing, blind-replay refusal, and authenticated exact reconciliation. This is not a refinement proof; provider truth, cryptography, storage durability, and arbitrary concurrency remain acceptance roots."
+          "scope": "Bounded same-team composed lifecycle model and selected model/runtime scenarios cover response loss, indeterminate fencing, blind-replay refusal, and authenticated exact reconciliation. This is not a refinement proof; provider truth, cryptography, storage durability, and arbitrary concurrency remain acceptance roots.",
+          "scenario_evidence": "formal/runtime-scenarios.v2.json",
+          "scenario_runner": "scripts/check-formal-runtime-traces.mjs",
+          "conformance_evidence": "formal/results/formal-runtime-scenario-conformance.v2.json",
+          "scenario_coverage": "selected",
+          "covered_actions": [
+            "Admit(ExecuteOp, AdmissionExecute)",
+            "Approve(ExecuteOp, ApprovalExecute)",
+            "InvokeProvider",
+            "MarkIndeterminate",
+            "ReconcileExact(ReconcileExecute)",
+            "RefuseBlindReplay",
+            "RefuseInvalidAdmission(AdmissionUnauthenticated)",
+            "RefuseInvalidAdmission(AdmissionWrongCAID)",
+            "RefuseInvalidReconciliation(ReconcileUnauthenticated)",
+            "RefuseInvalidReconciliation(ReconcileWrongCAID)",
+            "RefuseInvalidReconciliation(ReconcileWrongEffectDigest)",
+            "RefuseInvalidReconciliation(ReconcileWrongOperation)",
+            "ReserveEscrow(ExecuteOp)"
+          ],
+          "covered_obligations": [
+            "AuthenticatedExactReconciliation",
+            "InvokeAtMostOnce",
+            "TerminalEffectSound"
+          ]
         },
         {
           "status": "partial",
@@ -3089,9 +3688,6 @@
           "model": "formal/ep_composed_trust_lifecycle.tla",
           "runner": "formal/ep_composed_trust_lifecycle.cfg",
           "result_evidence": "formal/results/ep-composed-trust-lifecycle.tlc.summary.txt",
-          "trace_evidence": "formal/runtime-traces.v1.json",
-          "trace_runner": "scripts/check-formal-runtime-traces.mjs",
-          "refinement_evidence": "formal/results/formal-runtime-refinement.v1.json",
           "obligations": [
             "ReservationRequiresTrust",
             "ProviderAtMostOnce",
@@ -3103,7 +3699,51 @@
             "AuthenticatedRemedyReconciliation",
             "RemedyDoesNotRewriteOriginal"
           ],
-          "scope": "One bounded same-team state machine composes exact CAID, AEB, exact-role AEC, approval, Action Escrow, Model-to-Matter, GRACE, mobile continuity and enrollment, fresh status, clean witness admission, escrow, indeterminate execution, authenticated reconciliation, revocation, dispute, and separately authorized remedy. All 36 declared transitions have governed runtime traces, including eight model-defined unsafe mutations. This is still bounded selected-trace evidence, not a refinement proof or a mechanized implementation refinement proof."
+          "scope": "One bounded same-team state machine composes exact CAID, AEB, exact-role AEC, approval, Action Escrow, Model-to-Matter, GRACE, mobile continuity and enrollment, fresh status, clean witness admission, escrow, indeterminate execution, authenticated reconciliation, revocation, dispute, and separately authorized remedy. All 28 declared Next actions have governed runtime scenarios; eight deliberately unsafe comparison operators are paired separately with runtime refusals. This is bounded selected-scenario conformance evidence, not a mechanized implementation refinement proof.",
+          "scenario_evidence": "formal/runtime-scenarios.v2.json",
+          "scenario_runner": "scripts/check-formal-runtime-traces.mjs",
+          "conformance_evidence": "formal/results/formal-runtime-scenario-conformance.v2.json",
+          "scenario_coverage": "selected",
+          "covered_actions": [
+            "AcceptCleanWitness",
+            "AcceptFreshStatus",
+            "AuthorizeSeparateRemedy",
+            "BindExactCAID",
+            "CaptureApproval",
+            "ClearActionEscrow",
+            "ClearGRACE",
+            "ClearMobileContinuity",
+            "ClearMobileEnrollment",
+            "ClearModelToMatter",
+            "InvokeProvider",
+            "InvokeRemedy",
+            "MarkIndeterminate",
+            "MarkRemedyIndeterminate",
+            "OpenDispute",
+            "ReconcileExecuted",
+            "ReconcileRemedyExecuted",
+            "RecordLateRevocation",
+            "RefuseBlindReplay",
+            "RefuseRemedyBlindReplay",
+            "ReserveEscrow",
+            "SatisfyExactAEC",
+            "UnsafeBlindReplay",
+            "UnsafeOriginalAuthorityAsRemedy",
+            "UnsafeRemedyBlindReplay",
+            "UnsafeUnauthenticatedReconciliation",
+            "VerifyAEB"
+          ],
+          "covered_obligations": [
+            "AuthenticatedReconciliation",
+            "AuthenticatedRemedyReconciliation",
+            "ProviderAtMostOnce",
+            "RemedyAtMostOnce",
+            "RemedyDoesNotRewriteOriginal",
+            "ReservationRequiresTrust",
+            "RevokedBeforeExecutionCannotInvoke",
+            "SeparateRemedyAuthority",
+            "WitnessPoisonPermanent"
+          ]
         }
       ],
       "assumptions": [
@@ -3121,11 +3761,11 @@
       "release_artifact_hashes": [
         {
           "artifact_id": "gate-sdk",
-          "sha256": "519de4e84344d46f2ddb073ca27a01eede7437be6ca92d3231971278e1e8e839"
+          "sha256": "219206eeb2ecd47f0ec7b0e1e7d47310e2b09f579342ad3d2f3a25793c67d36c"
         },
         {
           "artifact_id": "security-evidence",
-          "sha256": "417acfd8c12b12f224194ae15b674f2bd490a52d69de80036e5ceed972f25862"
+          "sha256": "7cc2576f9612fabb439218f04e9cbb4ccc4b7bb23f135be9a2cfc855f0c614e5"
         }
       ]
     },
@@ -3235,9 +3875,6 @@
           "model": "formal/ep_revocation_witness.tla",
           "runner": "formal/ep_revocation_witness.cfg",
           "result_evidence": "formal/results/ep-revocation-witness.tlc.summary.txt",
-          "trace_evidence": "formal/runtime-traces.v1.json",
-          "trace_runner": "scripts/check-formal-runtime-traces.mjs",
-          "refinement_evidence": "formal/results/formal-runtime-refinement.v1.json",
           "obligations": [
             "WitnessHeadSound",
             "PoisonEvidenceSound",
@@ -3246,7 +3883,27 @@
             "PoisonedWitnessHeadImmutable",
             "PoisonedStreamCannotRestoreAcceptance"
           ],
-          "scope": "Bounded same-team model and selected runtime traces cover monotonic witness heads, same-sequence equivocation, permanent poisoning, and post-conflict refusal. This is not a refinement proof; signature verdicts, trusted time, independent operation, and database durability remain acceptance roots."
+          "scope": "Bounded same-team model and selected model/runtime scenarios cover monotonic witness heads, same-sequence equivocation, permanent poisoning, and post-conflict refusal. This is not a refinement proof; signature verdicts, trusted time, independent operation, and database durability remain acceptance roots.",
+          "scenario_evidence": "formal/runtime-scenarios.v2.json",
+          "scenario_runner": "scripts/check-formal-runtime-traces.mjs",
+          "conformance_evidence": "formal/results/formal-runtime-scenario-conformance.v2.json",
+          "scenario_coverage": "selected",
+          "covered_actions": [
+            "AcceptWitness(WitnessASeq1)",
+            "AcceptWitness(WitnessASeq2)",
+            "AcceptWitness(WitnessBSeq1)",
+            "AcceptWitness(WitnessCaptureBSeq1)",
+            "AcceptWitness(WitnessGateBSeq1)",
+            "AcceptWitness(WitnessTenantBSeq1)",
+            "AdvanceTimeToOne",
+            "PoisonWitnessStream(WitnessASeq2Conflict)",
+            "RefuseWitness(WitnessASeq3)"
+          ],
+          "covered_obligations": [
+            "PoisonEvidenceSound",
+            "PoisonedStreamClosed",
+            "WitnessHeadSound"
+          ]
         }
       ],
       "assumptions": [
@@ -3265,11 +3922,11 @@
       "release_artifact_hashes": [
         {
           "artifact_id": "gate-sdk",
-          "sha256": "519de4e84344d46f2ddb073ca27a01eede7437be6ca92d3231971278e1e8e839"
+          "sha256": "219206eeb2ecd47f0ec7b0e1e7d47310e2b09f579342ad3d2f3a25793c67d36c"
         },
         {
           "artifact_id": "security-evidence",
-          "sha256": "417acfd8c12b12f224194ae15b674f2bd490a52d69de80036e5ceed972f25862"
+          "sha256": "7cc2576f9612fabb439218f04e9cbb4ccc4b7bb23f135be9a2cfc855f0c614e5"
         }
       ]
     },
@@ -3411,16 +4068,89 @@
           "file": "packages/gate/evidence-atomic.test.js",
           "title": "atomic evidence: altered persisted bytes fail verification",
           "runner": "node-test"
+        },
+        {
+          "file": "tests/aec-execution-fleet-assurance.test.ts",
+          "title": "verifies every named boundary and exposes a paired unsafe counterexample",
+          "runner": "vitest"
+        },
+        {
+          "file": "tests/aec-execution-fleet-assurance.test.ts",
+          "title": "runs the complete deterministic scenario set",
+          "runner": "vitest"
         }
       ],
       "formal": [
         {
           "status": "partial",
-          "model": "formal/tamarin/ep_reliance_composed.spthy",
+          "method": "symbolic_protocol_analysis",
+          "model": "formal/tamarin/ep_six_claim_composed.spthy",
           "runner": "formal/tamarin/run-composed.sh",
-          "lemma": "injective_execution_with_consumption",
+          "lemma": "aec_execution_is_action_keyed_and_fleet_fail_closed",
           "result_evidence": "formal/tamarin/results/ep_reliance_composed.summary.txt",
-          "scope": "The symbolic model proves injective execution with consumption; atomic shared-head storage, restart continuity, response loss, and backend durability are covered by executable fault tests and deployment assumptions."
+          "covered_statement": "Symbolic execution uses only the canonical action-derived key, requires a prior reservation, excludes a second execution for the same action, and a companion lemma proves reservation failure cannot execute.",
+          "unmodeled_statement": "Constructor hardening, custom verifier pinning, atomic shared-head storage, restart continuity, response loss, and backend durability remain executable or deployment evidence.",
+          "scope": "The dedicated model proves action-keyed injective execution and fail-closed reservation failure under an explicit atomic shared-backend restriction; shared-head storage, restart continuity, response loss, and backend durability are covered by executable fault tests and deployment assumptions."
+        },
+        {
+          "status": "partial",
+          "method": "bounded_exhaustive_state_exploration",
+          "model": "formal/aec_execution_fleet_assurance.model.mjs",
+          "runner": "formal/check-aec-execution-fleet-assurance.mjs",
+          "result_evidence": "formal/results/aec-execution-fleet-assurance.summary.txt",
+          "obligations": [
+            "ConstructorTrustInputsImmutable",
+            "VerifierMethodCaptured",
+            "TransactionScopedTrustRefused",
+            "CanonicalActionKeyOnly",
+            "ReservationOwnerFenced",
+            "ReservationNeverExpires",
+            "SharedHeadAppendAtomic",
+            "EvidenceReadbackAcknowledgementExact",
+            "ResponseLossFreezesReplay",
+            "ReplicasShareConsumptionDomain",
+            "RestartCannotAdoptReservation",
+            "ReservationFailureCannotExecute",
+            "ProviderExecutionAtMostOnce"
+          ],
+          "scope": "Bounded same-team exploration of constructor trust pinning, captured methods, transaction-config refusal, canonical action keys, owner fencing, non-expiring reservations, atomic evidence heads, exact readback, response-loss fencing, shared fleet state, restart refusal, reservation failure, and provider at-most-once entry. Selected scenarios call the public Gate, store, and evidence APIs. This is not a refinement proof of the TypeScript or deployed database implementation.",
+          "scenario_evidence": "formal/runtime-scenarios.v2.json",
+          "scenario_runner": "scripts/check-formal-runtime-traces.mjs",
+          "conformance_evidence": "formal/results/formal-runtime-scenario-conformance.v2.json",
+          "scenario_coverage": "selected",
+          "covered_actions": [
+            "ContinueSharedHeadAfterRestart",
+            "ExecuteCanonicalActionOnReplicaA",
+            "ExecuteWithPinnedTrust",
+            "InjectTransactionTrust",
+            "LoseProviderResponse",
+            "MutateConstructorTrustInputs",
+            "RecoverAppendAfterResponseLoss",
+            "RefuseDecoyReplayOnReplicaB",
+            "RefuseProviderWhenReservationFails",
+            "RefuseReplayAfterResponseLoss",
+            "RefuseReplayAfterRestart",
+            "RejectSubstitutedReadback",
+            "ReplaceCapturedMethods",
+            "ReservationDoesNotExpire",
+            "ReserveAsOwner",
+            "RestartCannotAdopt"
+          ],
+          "covered_obligations": [
+            "CanonicalActionKeyOnly",
+            "ConstructorTrustInputsImmutable",
+            "EvidenceReadbackAcknowledgementExact",
+            "ProviderExecutionAtMostOnce",
+            "ReplicasShareConsumptionDomain",
+            "ReservationFailureCannotExecute",
+            "ReservationNeverExpires",
+            "ReservationOwnerFenced",
+            "ResponseLossFreezesReplay",
+            "RestartCannotAdoptReservation",
+            "SharedHeadAppendAtomic",
+            "TransactionScopedTrustRefused",
+            "VerifierMethodCaptured"
+          ]
         }
       ],
       "assumptions": [
@@ -3439,11 +4169,11 @@
       "release_artifact_hashes": [
         {
           "artifact_id": "gate-sdk",
-          "sha256": "519de4e84344d46f2ddb073ca27a01eede7437be6ca92d3231971278e1e8e839"
+          "sha256": "219206eeb2ecd47f0ec7b0e1e7d47310e2b09f579342ad3d2f3a25793c67d36c"
         },
         {
           "artifact_id": "security-evidence",
-          "sha256": "417acfd8c12b12f224194ae15b674f2bd490a52d69de80036e5ceed972f25862"
+          "sha256": "7cc2576f9612fabb439218f04e9cbb4ccc4b7bb23f135be9a2cfc855f0c614e5"
         }
       ]
     },
@@ -3577,7 +4307,7 @@
       "release_artifact_hashes": [
         {
           "artifact_id": "security-evidence",
-          "sha256": "417acfd8c12b12f224194ae15b674f2bd490a52d69de80036e5ceed972f25862"
+          "sha256": "7cc2576f9612fabb439218f04e9cbb4ccc4b7bb23f135be9a2cfc855f0c614e5"
         }
       ]
     },
@@ -3689,11 +4419,11 @@
       "release_artifact_hashes": [
         {
           "artifact_id": "verify-sdk",
-          "sha256": "bb2a267ecd62cf7a155356f7093eec026923d60cac5c0e164d9682e502e50914"
+          "sha256": "ab7bf7eeffa8d2f34f85cf51369a8ea335d4bddda6df38a1aae478a2e759d0f0"
         },
         {
           "artifact_id": "security-evidence",
-          "sha256": "417acfd8c12b12f224194ae15b674f2bd490a52d69de80036e5ceed972f25862"
+          "sha256": "7cc2576f9612fabb439218f04e9cbb4ccc4b7bb23f135be9a2cfc855f0c614e5"
         }
       ]
     },
@@ -3827,7 +4557,7 @@
       "release_artifact_hashes": [
         {
           "artifact_id": "security-evidence",
-          "sha256": "417acfd8c12b12f224194ae15b674f2bd490a52d69de80036e5ceed972f25862"
+          "sha256": "7cc2576f9612fabb439218f04e9cbb4ccc4b7bb23f135be9a2cfc855f0c614e5"
         }
       ]
     },
@@ -4044,7 +4774,7 @@
       "release_artifact_hashes": [
         {
           "artifact_id": "security-evidence",
-          "sha256": "417acfd8c12b12f224194ae15b674f2bd490a52d69de80036e5ceed972f25862"
+          "sha256": "7cc2576f9612fabb439218f04e9cbb4ccc4b7bb23f135be9a2cfc855f0c614e5"
         }
       ]
     },
@@ -4254,7 +4984,7 @@
       "release_artifact_hashes": [
         {
           "artifact_id": "security-evidence",
-          "sha256": "417acfd8c12b12f224194ae15b674f2bd490a52d69de80036e5ceed972f25862"
+          "sha256": "7cc2576f9612fabb439218f04e9cbb4ccc4b7bb23f135be9a2cfc855f0c614e5"
         }
       ]
     },
@@ -4426,15 +5156,28 @@
           "model": "formal/ep_effect_profiles.tla",
           "runner": "formal/ep_effect_profiles.cfg",
           "result_evidence": "formal/results/ep-effect-profiles.tlc.summary.txt",
-          "trace_evidence": "formal/runtime-traces.v1.json",
-          "trace_runner": "scripts/check-formal-runtime-traces.mjs",
-          "refinement_evidence": "formal/results/formal-runtime-refinement.v1.json",
           "obligations": [
             "ModelToMatterSixLegClearance",
             "ModelToMatterExactCaid",
             "ModelToMatterSingleConsumption"
           ],
-          "scope": "Bounded same-team model and selected runtime traces cover six exact evidence legs, exact CAID binding, mismatch refusal, and one-time clearance consumption. This is not a refinement proof; adapter truth, cryptography, executor effect truth, and durable storage remain acceptance roots."
+          "scope": "Bounded same-team model and selected model/runtime scenarios cover six exact evidence legs, exact CAID binding, mismatch refusal, and one-time clearance consumption. This is not a refinement proof; adapter truth, cryptography, executor effect truth, and durable storage remain acceptance roots.",
+          "scenario_evidence": "formal/runtime-scenarios.v2.json",
+          "scenario_runner": "scripts/check-formal-runtime-traces.mjs",
+          "conformance_evidence": "formal/results/formal-runtime-scenario-conformance.v2.json",
+          "scenario_coverage": "selected",
+          "covered_actions": [
+            "AttemptModelToMatterReplay",
+            "ConsumeModelToMatterClearance",
+            "PresentMismatchedLeg",
+            "PresentSixExactLegs",
+            "RefuseModelToMatterClearance"
+          ],
+          "covered_obligations": [
+            "ModelToMatterExactCaid",
+            "ModelToMatterSingleConsumption",
+            "ModelToMatterSixLegClearance"
+          ]
         }
       ],
       "assumptions": [
@@ -4457,7 +5200,7 @@
       "release_artifact_hashes": [
         {
           "artifact_id": "security-evidence",
-          "sha256": "417acfd8c12b12f224194ae15b674f2bd490a52d69de80036e5ceed972f25862"
+          "sha256": "7cc2576f9612fabb439218f04e9cbb4ccc4b7bb23f135be9a2cfc855f0c614e5"
         }
       ]
     },
@@ -4727,13 +5470,23 @@
           "model": "formal/ep_effect_profiles.tla",
           "runner": "formal/ep_effect_profiles.cfg",
           "result_evidence": "formal/results/ep-effect-profiles.tlc.summary.txt",
-          "trace_evidence": "formal/runtime-traces.v1.json",
-          "trace_runner": "scripts/check-formal-runtime-traces.mjs",
-          "refinement_evidence": "formal/results/formal-runtime-refinement.v1.json",
           "obligations": [
             "AecRoleNonSubstitution"
           ],
-          "scope": "Bounded same-team model and selected runtime traces cover exact AEC role mapping and substitution refusal. This is not a refinement proof; cryptographic verification, evidence-leg issuer truth, and arbitrary role cardinality remain acceptance roots."
+          "scope": "Bounded same-team model and selected model/runtime scenarios cover exact AEC role mapping and substitution refusal. This is not a refinement proof; cryptographic verification, evidence-leg issuer truth, and arbitrary role cardinality remain acceptance roots.",
+          "scenario_evidence": "formal/runtime-scenarios.v2.json",
+          "scenario_runner": "scripts/check-formal-runtime-traces.mjs",
+          "conformance_evidence": "formal/results/formal-runtime-scenario-conformance.v2.json",
+          "scenario_coverage": "selected",
+          "covered_actions": [
+            "AcceptAec",
+            "PresentExactAecRoles",
+            "PresentSubstitutedAecRole",
+            "RefuseAec"
+          ],
+          "covered_obligations": [
+            "AecRoleNonSubstitution"
+          ]
         }
       ],
       "assumptions": [
@@ -4751,7 +5504,7 @@
       "release_artifact_hashes": [
         {
           "artifact_id": "security-evidence",
-          "sha256": "417acfd8c12b12f224194ae15b674f2bd490a52d69de80036e5ceed972f25862"
+          "sha256": "7cc2576f9612fabb439218f04e9cbb4ccc4b7bb23f135be9a2cfc855f0c614e5"
         }
       ]
     },
@@ -4959,11 +5712,11 @@
       "release_artifact_hashes": [
         {
           "artifact_id": "verify-sdk",
-          "sha256": "bb2a267ecd62cf7a155356f7093eec026923d60cac5c0e164d9682e502e50914"
+          "sha256": "ab7bf7eeffa8d2f34f85cf51369a8ea335d4bddda6df38a1aae478a2e759d0f0"
         },
         {
           "artifact_id": "security-evidence",
-          "sha256": "417acfd8c12b12f224194ae15b674f2bd490a52d69de80036e5ceed972f25862"
+          "sha256": "7cc2576f9612fabb439218f04e9cbb4ccc4b7bb23f135be9a2cfc855f0c614e5"
         }
       ]
     },
@@ -5088,7 +5841,24 @@
             "NoExecutionProof",
             "EventuallyTerminates"
           ],
-          "scope": "Public same-team bounded TLC model checking across one four-stage series/parallel fold with one injected fault class. This is not a refinement proof connecting the abstraction to the TypeScript signature, JCS and CAID computation, database behavior, or injected native verifiers."
+          "scope": "Public same-team bounded TLC model checking across one four-stage series/parallel fold with one injected fault class. This is not a refinement proof connecting the abstraction to the TypeScript signature, JCS and CAID computation, database behavior, or injected native verifiers.",
+          "scenario_evidence": "formal/runtime-scenarios.v2.json",
+          "scenario_runner": "scripts/check-formal-runtime-traces.mjs",
+          "conformance_evidence": "formal/results/formal-runtime-scenario-conformance.v2.json",
+          "scenario_coverage": "selected",
+          "covered_actions": [
+            "AttemptMissingRootActionBinding",
+            "CheckStageA",
+            "CheckStageB",
+            "CheckStageC",
+            "CheckStageD",
+            "FinalizeAuthorityProgram"
+          ],
+          "covered_obligations": [
+            "ConservationOfAuthority",
+            "NoExecutionProof",
+            "ValidImpliesRootActionBinding"
+          ]
         }
       ],
       "assumptions": [
@@ -5108,11 +5878,11 @@
       "release_artifact_hashes": [
         {
           "artifact_id": "verify-sdk",
-          "sha256": "bb2a267ecd62cf7a155356f7093eec026923d60cac5c0e164d9682e502e50914"
+          "sha256": "ab7bf7eeffa8d2f34f85cf51369a8ea335d4bddda6df38a1aae478a2e759d0f0"
         },
         {
           "artifact_id": "security-evidence",
-          "sha256": "417acfd8c12b12f224194ae15b674f2bd490a52d69de80036e5ceed972f25862"
+          "sha256": "7cc2576f9612fabb439218f04e9cbb4ccc4b7bb23f135be9a2cfc855f0c614e5"
         }
       ]
     },
@@ -5287,11 +6057,11 @@
         },
         {
           "artifact_id": "verify-sdk",
-          "sha256": "bb2a267ecd62cf7a155356f7093eec026923d60cac5c0e164d9682e502e50914"
+          "sha256": "ab7bf7eeffa8d2f34f85cf51369a8ea335d4bddda6df38a1aae478a2e759d0f0"
         },
         {
           "artifact_id": "security-evidence",
-          "sha256": "417acfd8c12b12f224194ae15b674f2bd490a52d69de80036e5ceed972f25862"
+          "sha256": "7cc2576f9612fabb439218f04e9cbb4ccc4b7bb23f135be9a2cfc855f0c614e5"
         }
       ]
     },
@@ -5419,15 +6189,28 @@
           "model": "formal/ep_effect_profiles.tla",
           "runner": "formal/ep_effect_profiles.cfg",
           "result_evidence": "formal/results/ep-effect-profiles.tlc.summary.txt",
-          "trace_evidence": "formal/runtime-traces.v1.json",
-          "trace_runner": "scripts/check-formal-runtime-traces.mjs",
-          "refinement_evidence": "formal/results/formal-runtime-refinement.v1.json",
           "obligations": [
             "MobileExactTenantExecutor",
             "MobileTimeoutFence",
             "MobileAuthenticatedReconciliation"
           ],
-          "scope": "Bounded same-team model and selected runtime traces cover exact tenant/executor binding, one provider invocation, timeout fencing, replay refusal, and authenticated reconciliation. This is not a refinement proof; platform identity, provider truth, durable storage, and arbitrary quorum shapes remain acceptance roots."
+          "scope": "Bounded same-team model and selected model/runtime scenarios cover exact tenant/executor binding, one provider invocation, timeout fencing, replay refusal, and authenticated reconciliation. This is not a refinement proof; platform identity, provider truth, durable storage, and arbitrary quorum shapes remain acceptance roots.",
+          "scenario_evidence": "formal/runtime-scenarios.v2.json",
+          "scenario_runner": "scripts/check-formal-runtime-traces.mjs",
+          "conformance_evidence": "formal/results/formal-runtime-scenario-conformance.v2.json",
+          "scenario_coverage": "selected",
+          "covered_actions": [
+            "AttemptMobileProviderReplay",
+            "InvokeMobileProvider",
+            "MobileTimeout",
+            "ReconcileExactMobileOutcome",
+            "ReserveMobileAction"
+          ],
+          "covered_obligations": [
+            "MobileAuthenticatedReconciliation",
+            "MobileExactTenantExecutor",
+            "MobileTimeoutFence"
+          ]
         }
       ],
       "assumptions": [
@@ -5453,7 +6236,7 @@
         },
         {
           "artifact_id": "security-evidence",
-          "sha256": "417acfd8c12b12f224194ae15b674f2bd490a52d69de80036e5ceed972f25862"
+          "sha256": "7cc2576f9612fabb439218f04e9cbb4ccc4b7bb23f135be9a2cfc855f0c614e5"
         }
       ]
     },
@@ -5599,11 +6382,11 @@
         },
         {
           "artifact_id": "verify-sdk",
-          "sha256": "bb2a267ecd62cf7a155356f7093eec026923d60cac5c0e164d9682e502e50914"
+          "sha256": "ab7bf7eeffa8d2f34f85cf51369a8ea335d4bddda6df38a1aae478a2e759d0f0"
         },
         {
           "artifact_id": "security-evidence",
-          "sha256": "417acfd8c12b12f224194ae15b674f2bd490a52d69de80036e5ceed972f25862"
+          "sha256": "7cc2576f9612fabb439218f04e9cbb4ccc4b7bb23f135be9a2cfc855f0c614e5"
         }
       ]
     },
@@ -5702,14 +6485,25 @@
           "model": "formal/ep_effect_profiles.tla",
           "runner": "formal/ep_effect_profiles.cfg",
           "result_evidence": "formal/results/ep-effect-profiles.tlc.summary.txt",
-          "trace_evidence": "formal/runtime-traces.v1.json",
-          "trace_runner": "scripts/check-formal-runtime-traces.mjs",
-          "refinement_evidence": "formal/results/formal-runtime-refinement.v1.json",
           "obligations": [
             "MobileEnrollmentRequiresBothRows",
             "MobileEnrollmentActivatesAtMostOnce"
           ],
-          "scope": "Bounded same-team model and selected runtime traces cover separate verified WebAuthn and platform rows, activation only after both rows, and at-most-once activation. This is not a refinement proof; native attestation, biometric ceremony, directory integrity, and transaction durability remain acceptance roots."
+          "scope": "Bounded same-team model and selected model/runtime scenarios cover separate verified WebAuthn and platform rows, activation only after both rows, and at-most-once activation. This is not a refinement proof; native attestation, biometric ceremony, directory integrity, and transaction durability remain acceptance roots.",
+          "scenario_evidence": "formal/runtime-scenarios.v2.json",
+          "scenario_runner": "scripts/check-formal-runtime-traces.mjs",
+          "conformance_evidence": "formal/results/formal-runtime-scenario-conformance.v2.json",
+          "scenario_coverage": "selected",
+          "covered_actions": [
+            "ActivateEnrollment",
+            "AttemptActivateIncompleteEnrollment",
+            "VerifyPlatformEnrollment",
+            "VerifyWebAuthnEnrollment"
+          ],
+          "covered_obligations": [
+            "MobileEnrollmentActivatesAtMostOnce",
+            "MobileEnrollmentRequiresBothRows"
+          ]
         }
       ],
       "assumptions": [
@@ -5733,7 +6527,7 @@
         },
         {
           "artifact_id": "security-evidence",
-          "sha256": "417acfd8c12b12f224194ae15b674f2bd490a52d69de80036e5ceed972f25862"
+          "sha256": "7cc2576f9612fabb439218f04e9cbb4ccc4b7bb23f135be9a2cfc855f0c614e5"
         }
       ]
     },
@@ -5887,16 +6681,31 @@
           "model": "formal/ep_effect_profiles.tla",
           "runner": "formal/ep_effect_profiles.cfg",
           "result_evidence": "formal/results/ep-effect-profiles.tlc.summary.txt",
-          "trace_evidence": "formal/runtime-traces.v1.json",
-          "trace_runner": "scripts/check-formal-runtime-traces.mjs",
-          "refinement_evidence": "formal/results/formal-runtime-refinement.v1.json",
           "obligations": [
             "GraceAuthorizedEnvelopeBeforeDispatch",
             "GraceMeterBeforeSettlement",
             "GraceSingleSettlement",
             "GraceSingleDispatch"
           ],
-          "scope": "Bounded same-team model and selected runtime traces cover authorization and envelope checks before dispatch, meter evidence before settlement, timeout fencing, and single dispatch/settlement. This is not a refinement proof; meter truth, grid adapter truth, cryptography, and durable ownership fencing remain acceptance roots."
+          "scope": "Bounded same-team model and selected model/runtime scenarios cover authorization and envelope checks before dispatch, meter evidence before settlement, timeout fencing, and single dispatch/settlement. This is not a refinement proof; meter truth, grid adapter truth, cryptography, and durable ownership fencing remain acceptance roots.",
+          "scenario_evidence": "formal/runtime-scenarios.v2.json",
+          "scenario_runner": "scripts/check-formal-runtime-traces.mjs",
+          "conformance_evidence": "formal/results/formal-runtime-scenario-conformance.v2.json",
+          "scenario_coverage": "selected",
+          "covered_actions": [
+            "AttemptGraceReplay",
+            "AuthorizeGrace",
+            "DispatchGrace",
+            "GraceTimeout",
+            "RecordGraceMeter",
+            "SettleGrace"
+          ],
+          "covered_obligations": [
+            "GraceAuthorizedEnvelopeBeforeDispatch",
+            "GraceMeterBeforeSettlement",
+            "GraceSingleDispatch",
+            "GraceSingleSettlement"
+          ]
         }
       ],
       "assumptions": [
@@ -5917,7 +6726,7 @@
       "release_artifact_hashes": [
         {
           "artifact_id": "security-evidence",
-          "sha256": "417acfd8c12b12f224194ae15b674f2bd490a52d69de80036e5ceed972f25862"
+          "sha256": "7cc2576f9612fabb439218f04e9cbb4ccc4b7bb23f135be9a2cfc855f0c614e5"
         }
       ]
     },
@@ -6283,14 +7092,25 @@
           "model": "formal/ep_effect_profiles.tla",
           "runner": "formal/ep_effect_profiles.cfg",
           "result_evidence": "formal/results/ep-effect-profiles.tlc.summary.txt",
-          "trace_evidence": "formal/runtime-traces.v1.json",
-          "trace_runner": "scripts/check-formal-runtime-traces.mjs",
-          "refinement_evidence": "formal/results/formal-runtime-refinement.v1.json",
           "obligations": [
             "ActionEscrowExactMilestoneRelease",
             "ActionEscrowSingleRelease"
           ],
-          "scope": "Bounded same-team model and selected runtime traces cover exact milestone CAID binding, reservation before release, one release, and duplicate-release refusal. This is not a refinement proof; source-system truth, custodian/provider behavior, database durability, and the full amendment lifecycle remain acceptance roots."
+          "scope": "Bounded same-team model and selected model/runtime scenarios cover exact milestone CAID binding, reservation before release, one release, and duplicate-release refusal. This is not a refinement proof; source-system truth, custodian/provider behavior, database durability, and the full amendment lifecycle remain acceptance roots.",
+          "scenario_evidence": "formal/runtime-scenarios.v2.json",
+          "scenario_runner": "scripts/check-formal-runtime-traces.mjs",
+          "conformance_evidence": "formal/results/formal-runtime-scenario-conformance.v2.json",
+          "scenario_coverage": "selected",
+          "covered_actions": [
+            "AttemptDuplicateEscrowRelease",
+            "ReleaseEscrow",
+            "ReserveEscrowRelease",
+            "SubmitExactMilestone"
+          ],
+          "covered_obligations": [
+            "ActionEscrowExactMilestoneRelease",
+            "ActionEscrowSingleRelease"
+          ]
         }
       ],
       "assumptions": [
@@ -6316,11 +7136,11 @@
       "release_artifact_hashes": [
         {
           "artifact_id": "gate-sdk",
-          "sha256": "519de4e84344d46f2ddb073ca27a01eede7437be6ca92d3231971278e1e8e839"
+          "sha256": "219206eeb2ecd47f0ec7b0e1e7d47310e2b09f579342ad3d2f3a25793c67d36c"
         },
         {
           "artifact_id": "security-evidence",
-          "sha256": "417acfd8c12b12f224194ae15b674f2bd490a52d69de80036e5ceed972f25862"
+          "sha256": "7cc2576f9612fabb439218f04e9cbb4ccc4b7bb23f135be9a2cfc855f0c614e5"
         }
       ]
     },
@@ -6626,6 +7446,53 @@
             "CertificateRequiresTerminalEvidenceSignerAndAppend"
           ],
           "scope": "Same-team bounded exhaustive exploration of one receipt-program lifecycle with at most two attempted external effects; authenticated CAID, evidence, signer, and append outcomes are abstract inputs, and every deliberately weakened obligation produces a concrete counterexample. The companion TLA+ model and its independently labeled TLC result are recorded in formal/PROOF_STATUS.md and formal/results/ep-receipt-program.tlc.summary.txt."
+        },
+        {
+          "status": "partial",
+          "method": "bounded_tla_model_checking",
+          "model": "formal/ep_receipt_program.tla",
+          "runner": "formal/ep_receipt_program.cfg",
+          "result_evidence": "formal/results/ep-receipt-program.tlc.summary.txt",
+          "obligations": [
+            "TypeInvariant",
+            "OperationStateSound",
+            "PipelineOrderSafety",
+            "ReservationOwnership",
+            "EffectRequiresReservation",
+            "CommitRequiresEffect",
+            "ExecutedImpliesCommitted",
+            "IndeterminateLocksAuthority",
+            "RefusalBeforeEffect",
+            "ReplayFailClosed",
+            "SingleEffectOwner",
+            "TerminalOutcomeComplete",
+            "CertificateOutcomeSound",
+            "CertificateEvidenceRequired",
+            "TerminalAttemptStability",
+            "CommittedOperationStability",
+            "ReservationNeverReopens"
+          ],
+          "scope": "Public same-team bounded TLC model checking over two attempts sharing one operation identifier. Cryptography, database linearizability, provider truth, arbitrary concurrency, and implementation independence remain outside the model. This selected-scenario mapping is not a mechanized implementation refinement proof.",
+          "scenario_evidence": "formal/runtime-scenarios.v2.json",
+          "scenario_runner": "scripts/check-formal-runtime-traces.mjs",
+          "conformance_evidence": "formal/results/formal-runtime-scenario-conformance.v2.json",
+          "scenario_coverage": "selected",
+          "covered_actions": [
+            "AppendReceiptProgramCertificate",
+            "AttemptReceiptProgramReserveBeforeMatch",
+            "CommitReceiptProgramTerminalOutcome",
+            "InvokeReceiptProgramProvider",
+            "MatchReceiptProgramCaid",
+            "RecordReceiptProgramProviderReturn",
+            "ReserveReceiptProgramBudget"
+          ],
+          "covered_obligations": [
+            "CertificateEvidenceRequired",
+            "CertificateOutcomeSound",
+            "EffectRequiresReservation",
+            "PipelineOrderSafety",
+            "ReservationOwnership"
+          ]
         }
       ],
       "assumptions": [
@@ -6650,11 +7517,11 @@
       "release_artifact_hashes": [
         {
           "artifact_id": "gate-sdk",
-          "sha256": "519de4e84344d46f2ddb073ca27a01eede7437be6ca92d3231971278e1e8e839"
+          "sha256": "219206eeb2ecd47f0ec7b0e1e7d47310e2b09f579342ad3d2f3a25793c67d36c"
         },
         {
           "artifact_id": "security-evidence",
-          "sha256": "417acfd8c12b12f224194ae15b674f2bd490a52d69de80036e5ceed972f25862"
+          "sha256": "7cc2576f9612fabb439218f04e9cbb4ccc4b7bb23f135be9a2cfc855f0c614e5"
         }
       ]
     }
@@ -6738,7 +7605,7 @@
     },
     {
       "path": "conformance/vectors/outcome-binding.exec.v1.json",
-      "sha256": "d7a8492bb360cd6a75c227bef83ee1b8bd5f682b747fe7ef19f9cb538ecad91e"
+      "sha256": "64f759bf8004812f3521df5dc0a0f4108ccf7746fe9fbdb326ab1ac1142a25f1"
     },
     {
       "path": "conformance/vectors/platform-attestation.v1.json",
@@ -6789,8 +7656,24 @@
       "sha256": "ff3ea5fb20752360fc17f93312e0ae145f7240beb6e67dfc5e9743e2d39a0cc1"
     },
     {
+      "path": "formal/aec_execution_fleet_assurance.model.mjs",
+      "sha256": "81f2b77638c8a7a10aa6f1b3d774f3bad381c2761b5cb48d39af53ba8acc18ff"
+    },
+    {
+      "path": "formal/check-aec-execution-fleet-assurance.mjs",
+      "sha256": "2772c0fcbae7a0fb6a92200da724dd728e41895889870c699a455ee31222bff7"
+    },
+    {
       "path": "formal/check-conservation-authority.mjs",
       "sha256": "f046656ec0807913210c799f15a10a596969b1be05549111eb83c01fe2577037"
+    },
+    {
+      "path": "formal/check-durable-consumption-owner.mjs",
+      "sha256": "538094664ff10ddd240baff9668d5d119aa3a80bb56b7f4ee0c5f5abe9a10ad4"
+    },
+    {
+      "path": "formal/check-evidence-challenge-lifecycle.mjs",
+      "sha256": "8b31ab3211b437c0971ee0643eeaca8bcfab11565c12fb40b744aa467000223f"
     },
     {
       "path": "formal/check-outcome-authority-join.mjs",
@@ -6801,8 +7684,20 @@
       "sha256": "84347343d98796c5f2983170b24f34b9c4a7bdad97d2a4a3c77c98dd7dbad586"
     },
     {
+      "path": "formal/check-reliance-pinned-profile.mjs",
+      "sha256": "0f44a3b5a63035841dbfc51b49a976e384fb5b6e780e0a849c85edec5bdf39b0"
+    },
+    {
+      "path": "formal/check-two-claim-assurance.mjs",
+      "sha256": "cb02574ae35fd905a767ba256c468e602c7f5df0cf437dfa2fd7276641827506"
+    },
+    {
       "path": "formal/conservation-authority.model.mjs",
       "sha256": "f72e0764d0fa2f8c781c6ba34a112cc9290c7b19d14c918fbfabf3739c7a9581"
+    },
+    {
+      "path": "formal/durable-consumption-owner.model.mjs",
+      "sha256": "e133949ca97f2d3452e8fe0639a348d9852faa3e4da072e499e39a7983f3c5cf"
     },
     {
       "path": "formal/ep_authority_program.cfg",
@@ -6810,7 +7705,7 @@
     },
     {
       "path": "formal/ep_authority_program.tla",
-      "sha256": "f86dbe888e00c2576043064be84b4cbd89d263d01f35a85a6e79155240047f7d"
+      "sha256": "ce3de4f472612c524db0bfef58dfa9d7dae3b23bf46060bd7f436e126daa8ecd"
     },
     {
       "path": "formal/ep_composed_trust_lifecycle.cfg",
@@ -6837,12 +7732,24 @@
       "sha256": "8cfc8e18895151e2fb3e1084ef57b423556ade39528fb0db14ccc002a1dce00c"
     },
     {
+      "path": "formal/ep_receipt_program.cfg",
+      "sha256": "f353007b9707955e21c40b9b4aa2a4f8c04f4bcc6136aebfa7217af1c67bb4a2"
+    },
+    {
+      "path": "formal/ep_receipt_program.tla",
+      "sha256": "754105a77adf57d21fc4d68f54c3e312e6299ce35a61e675930506ed61b06b5f"
+    },
+    {
       "path": "formal/ep_revocation_witness.cfg",
       "sha256": "cfb13d21b1bf9ca00c35fb5321257af79c39f388954684564c6dbe63f5cf6110"
     },
     {
       "path": "formal/ep_revocation_witness.tla",
       "sha256": "838434f1c8254fdce3ec201cfb30421acc4e929a1d396c77d8387e378bfd23de"
+    },
+    {
+      "path": "formal/evidence-challenge-lifecycle.model.mjs",
+      "sha256": "ed07103b168566a5657390d0726615f4a80e9924c8570e903e13e83edebb54be"
     },
     {
       "path": "formal/outcome-authority-join.cases.json",
@@ -6857,16 +7764,28 @@
       "sha256": "dde17a1f4397fa2a1ce9265f57e92bdd61f07987a262f50fad85fb97ef399d62"
     },
     {
+      "path": "formal/reliance-pinned-profile.model.mjs",
+      "sha256": "9fd577b8e8c9cefa76c26936bd600fb26d6076ef4479e1217efc56e4e7edb26e"
+    },
+    {
+      "path": "formal/results/aec-execution-fleet-assurance.summary.txt",
+      "sha256": "dc7a9df9a06b31ad5b465af827e04670a9f1c2426448800a1a5874aeaa8ea06b"
+    },
+    {
       "path": "formal/results/conservation-authority.summary.txt",
       "sha256": "df9001b784b1fe2e0e863f049fc4ac736b009b264447fd4c6ea2f17fea3172d9"
     },
     {
+      "path": "formal/results/durable-consumption-owner.summary.txt",
+      "sha256": "7791d70ca95a9645266fa6977a3218347fa8fbfc8991710f5777cd4ecd902a46"
+    },
+    {
       "path": "formal/results/ep-authority-program.tlc.summary.txt",
-      "sha256": "9943276acfe674578c102bc5cabf8890cccfe9e44c0814261bc3972349d30acd"
+      "sha256": "da6b7be1ceb846c96d1f42cc858510a4a9b9c5e9cdc353eda718222ba88f5b05"
     },
     {
       "path": "formal/results/ep-composed-trust-lifecycle.tlc.summary.txt",
-      "sha256": "cb6b2383e67086fcc769a135b681054294c2287b4bfa96644967ceb4babc5401"
+      "sha256": "2fbd5860eec872b0c29e8b11d950135db5d8d3acba90eebdca7abf66e6b5ec92"
     },
     {
       "path": "formal/results/ep-consequence-lifecycle.tlc.summary.txt",
@@ -6877,12 +7796,20 @@
       "sha256": "ed8483a5b00b629be5a26103d9e8e3b6a0f7832043919fef91ab33d6c73e50de"
     },
     {
+      "path": "formal/results/ep-receipt-program.tlc.summary.txt",
+      "sha256": "be68547293ee9011da1dc1ac09afc244c3adc6d7f20388e24b09ecbc67858be7"
+    },
+    {
       "path": "formal/results/ep-revocation-witness.tlc.summary.txt",
       "sha256": "c7fddd6cda05656342ca5ea39a8655aefdfbb32f40ba617a76ffaade9a43a5c3"
     },
     {
-      "path": "formal/results/formal-runtime-refinement.v1.json",
-      "sha256": "6f853d3b555cf35db6016f4a437fbfcd4fc5a44cab4cc809095b4656f66e6db0"
+      "path": "formal/results/evidence-challenge-lifecycle.summary.txt",
+      "sha256": "49fc0487b6d67ed6fb22dec1c66479845624fcfb601abfb88b8c5caf23b8e5c8"
+    },
+    {
+      "path": "formal/results/formal-runtime-scenario-conformance.v2.json",
+      "sha256": "2f78e83afc6bf20397b9e6100a5a4c4605f602ebe2546c030fd1842d7cc369f3"
     },
     {
       "path": "formal/results/outcome-authority-join.summary.txt",
@@ -6893,20 +7820,36 @@
       "sha256": "f98f6f3777a31cb017db872ae3f60bca4c4ede73750b81f8791c8feef6dbe2d6"
     },
     {
-      "path": "formal/runtime-traces.v1.json",
-      "sha256": "09c75a494a42e98ffea6b612b09bcea627925319eba4c5a99fb0dcc252d3bacf"
+      "path": "formal/results/reliance-pinned-profile.summary.txt",
+      "sha256": "7a3c161dc0dccd9b4aac2d728563e43d567b4fd68bb64e288b1641251f3539e4"
+    },
+    {
+      "path": "formal/results/two-claim-assurance.summary.txt",
+      "sha256": "9f15eced5e077458978ab9b208dcaaaf123dc26f60c9418113ac59d0c68eb971"
+    },
+    {
+      "path": "formal/runtime-scenarios.v2.json",
+      "sha256": "773e10d9952792556b7723d78aa2296b8bd6a5fa8d170ef8da9c6832ee8253a5"
     },
     {
       "path": "formal/tamarin/ep_reliance_composed.spthy",
       "sha256": "174c27c35b302a9dd096eb28b40ad7df84cf0c1633a93eff829c3de3fc8bbbd3"
     },
     {
+      "path": "formal/tamarin/ep_six_claim_composed.spthy",
+      "sha256": "d19fee48ab098a178d56d3141a0dd545998a0a136f6e3fc8cb3db1fcf6052302"
+    },
+    {
       "path": "formal/tamarin/results/ep_reliance_composed.summary.txt",
-      "sha256": "8b428e674d10dd46d0d709fed5fa903ac045cc32c60c62d8404be0937aeff876"
+      "sha256": "9b3a3870985e38ad161fa7f0120b54003589b5346fe4dddbff7f78d85b0e13ce"
     },
     {
       "path": "formal/tamarin/run-composed.sh",
-      "sha256": "c3708440114c4447616e237ceb0694c68dc8217e43824e5151270b286f6f35d2"
+      "sha256": "c04a9471d29c3d8164c52b2f2e01b38275d1fdc47ccdd587561315e8835e640f"
+    },
+    {
+      "path": "formal/two-claim-assurance.model.mjs",
+      "sha256": "ed405114c68d01ba3d1bd8b2725658ec839f2bd673e4bc15cffae4c47adbda3f"
     },
     {
       "path": "lib/authority/authority-doc.ts",
@@ -6958,7 +7901,7 @@
     },
     {
       "path": "lib/negotiate/evidence-challenge.ts",
-      "sha256": "b1c5679b250b02e959144d8c466b7b80a09c720240a948e3102fcf03082a16e1"
+      "sha256": "07d16aada9de9afbc66a91097beac9c0aa49f199243de1fbc4727b5abc2e85cc"
     },
     {
       "path": "lib/signoff/decision-evidence.ts",
@@ -6995,6 +7938,10 @@
     {
       "path": "packages/gate/action-escrow.test.js",
       "sha256": "d875da0bceb720157fe5a41d05f098326aabb813c61836bd1338b54cf3f98fbd"
+    },
+    {
+      "path": "packages/gate/authority-allocation.test.ts",
+      "sha256": "412acd51b63be2a20f665f60a52f8eac2a1c41762ade8024f958bfe25035baf4"
     },
     {
       "path": "packages/gate/capability-receipt.test.js",
@@ -7053,6 +8000,10 @@
       "sha256": "da799e756355bb76c5b03a0c302d7fd00b07dc78b7e31f6b1ad9047c06c9bbbc"
     },
     {
+      "path": "packages/gate/src/authority-allocation.ts",
+      "sha256": "521489f744f0384480bcd85785dbf6696e60c49e84a95494e8d68d613f1d9fa5"
+    },
+    {
       "path": "packages/gate/src/capability-receipt.ts",
       "sha256": "ed0bad957ff4c6c65ee5447a18db9d75805d9fd4b0517da2d6d90d87a45672dc"
     },
@@ -7066,7 +8017,7 @@
     },
     {
       "path": "packages/gate/src/index.ts",
-      "sha256": "8a4d0b2b7d5513ec0fd1166c3f6e665696342759b3ac5da3bdd48024e4d7db1c"
+      "sha256": "b64665fd91ec718dfbeba993f5061761495d0d0398eb10d5c86c07371e5883b8"
     },
     {
       "path": "packages/gate/src/network-witness.ts",
@@ -7110,7 +8061,7 @@
     },
     {
       "path": "packages/go-verify/outcome_binding.go",
-      "sha256": "965542e1f4102e91afc1731d7cf86af113e4aefa83d54069dfa7b2290f57bf59"
+      "sha256": "0ea550d7d5c82a5f343675ee9bf43b446734a46ee00a324f5a8a3bd243af0be2"
     },
     {
       "path": "packages/go-verify/resolution.go",
@@ -7186,7 +8137,7 @@
     },
     {
       "path": "packages/python-verify/emilia_verify/__init__.py",
-      "sha256": "f844f5674616f2d956a81d6741cad8326e40cc5ac889bb480a7157e75b296241"
+      "sha256": "cea0860388e7f922e0a219fc067ab521e7f0911971f91ad19a8a8a50ac9dae7a"
     },
     {
       "path": "packages/python-verify/emilia_verify/authority_join.py",
@@ -7194,7 +8145,7 @@
     },
     {
       "path": "packages/python-verify/emilia_verify/outcome_binding.py",
-      "sha256": "680b5286b8c289d8f46f97bbcf4bb6532a5bf6c2b76f5987c418961ceacb1654"
+      "sha256": "d0504c71a3c77244372c768fbbdc0c55b499419c61ad5d30f17faddc9ff893c9"
     },
     {
       "path": "packages/verify/authority-program.js",
@@ -7214,7 +8165,7 @@
     },
     {
       "path": "packages/verify/outcome-binding.test.js",
-      "sha256": "0ccd5acd47fa9efdfd8c6cc7a9d110e75605a9fb86ff7e46c5c34466de445f44"
+      "sha256": "c10c63965e578ac722390bcc48f093231fe36b5eeccd882ff2a58fb325ee504c"
     },
     {
       "path": "packages/verify/platform-attestation.js",
@@ -7266,11 +8217,11 @@
     },
     {
       "path": "packages/verify/src/index.ts",
-      "sha256": "39a9f00dac9b97706ee1dab7fdb98e9545081ac685212f7a86ca3d690bbe3808"
+      "sha256": "da39062df558b31f18759894df0ce54f9f6206730c9795e383d6bd29e83266f7"
     },
     {
       "path": "packages/verify/src/outcome-binding.ts",
-      "sha256": "c797cdb260279260610c2081cb607c7343eae1fc1b09d18c186118be8c6f6826"
+      "sha256": "0d0ef70dbf9e5d2a2407b6f393169c39931422f0b7d8df438db02605a2c805f0"
     },
     {
       "path": "packages/verify/src/platform-attestation.ts",
@@ -7314,7 +8265,7 @@
     },
     {
       "path": "scripts/check-formal-runtime-traces.mjs",
-      "sha256": "c89883041d3c7a8e4f2a90da52272bb84a9045998f4a3002dda22acc2bcf9cbf"
+      "sha256": "ed740e7d7d80ac39d8ab9dd96b5cbb552153671f98c683f0654b234c2b622618"
     },
     {
       "path": "scripts/check-release-chain.mjs",
@@ -7338,15 +8289,15 @@
     },
     {
       "path": "scripts/verify-security-case.mjs",
-      "sha256": "4c97e3ca33d1b23295f3325904f0d702d5c3ae1af266fcce0eb78d5b29fbd74f"
+      "sha256": "d92bbfc774705f1c03d53703b211f2d30c97aee31d04d7cfc8af1fea6e56d091"
     },
     {
       "path": "security/claims.v1.json",
-      "sha256": "97ca3ef716478901ed53b9305b7e0b9b0981ac9767418e358c5481c82da9f11a"
+      "sha256": "91bd88b643ada63f285335b81012f84d8fba14374e873cf26261ea3b95405d09"
     },
     {
       "path": "security/vectors.v1.json",
-      "sha256": "c697fc1e58dcd8c82c45f0ea8737ef7410ee7bc2557ca117a109e199767ee7bc"
+      "sha256": "f5ffbc1b68e1d1ac89d8b702a56bd9c513a90ae004ba359b9cc440cb39826111"
     },
     {
       "path": "supabase/migrations/20260720193917_mobile_action_continuity_hardening.sql",
@@ -7359,6 +8310,10 @@
     {
       "path": "tests/action-escrow-procore.test.ts",
       "sha256": "9e7f489c8703b0161d2c01945e84893b316934131a9ff73e5b8590cd14b313d0"
+    },
+    {
+      "path": "tests/aec-execution-fleet-assurance.test.ts",
+      "sha256": "0b1afdf0f5dd4835aaa1299aa02d52ebe2b3a6e18e735d3dd95e9df00a1a5da7"
     },
     {
       "path": "tests/aec-execution-gate.test.ts",
@@ -7382,7 +8337,7 @@
     },
     {
       "path": "tests/evidence-challenge-durable.test.ts",
-      "sha256": "3ba2a34fa560113d17a30df636dabebf1766335d5354ecd45f0b5880daff78f7"
+      "sha256": "25dcab63964ef76a68a20a55b255da7f18ca85d9b3e84f99c5ef44b418b4fe5f"
     },
     {
       "path": "tests/grace-mobile-grid.test.ts",
@@ -7431,6 +8386,10 @@
     {
       "path": "tests/signoff-decision-evidence.test.ts",
       "sha256": "e71fbc74e10b51e1bbe65674a26013a94dba8d80b1ff024050f91e9515e08895"
+    },
+    {
+      "path": "tests/two-claim-bounded-assurance.test.ts",
+      "sha256": "9435fdb34bca0afb91bb0783c4217c78d456e6c7fbad24d32d338765c3a713f9"
     },
     {
       "path": "tests/v1-api.test.ts",

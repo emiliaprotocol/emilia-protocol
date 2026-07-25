@@ -1,0 +1,32 @@
+EP-RELIANCE-PINNED-PROFILE-BOUNDED-v1
+Status: local same-team bounded model result; not deployed or independently reviewed
+Method: deterministic finite exhaustive state exploration
+Execution date: 2026-07-24
+Runtime: Node.js
+Model SHA-256: 9fd577b8e8c9cefa76c26936bd600fb26d6076ef4479e1217efc56e4e7edb26e
+Runner SHA-256: 0f44a3b5a63035841dbfc51b49a976e384fb5b6e780e0a849c85edec5bdf39b0
+
+Configuration: 9,216 combinations of ten independent Boolean reliance
+requirements and three-by-three registry epoch/floor pairs.
+
+Obligations:
+PinnedProfileRequired (9,216 states): verified
+SignedMaterialRequired (9,216 states): verified
+AssuranceRequired (9,216 states): verified
+OrganizationAuthorityRequired (9,216 states): verified
+ExactRegistryHeadRequired (9,216 states): verified
+RegistryEpochFloorOrdered (9,216 states): verified
+PolicyRequired (9,216 states): verified
+AuthenticatedRevocationRequired (9,216 states): verified
+FreshRevocationRequired (9,216 states): verified
+IssuerRequired (9,216 states): verified
+UnconsumedStateRequired (9,216 states): verified
+
+Negative controls: bypassing any single reliance requirement produces a
+concrete acceptance that the complete evaluator refuses.
+
+Scope: bounded same-team exploration of the closed reliance conjunction and
+the independence of its eleven checks. Cryptographic algorithms, parser
+behavior, policy authorship, clocks, registry availability, and database
+isolation remain acceptance roots. This is not a refinement proof of the
+TypeScript or deployed implementation.

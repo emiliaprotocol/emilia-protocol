@@ -36,13 +36,14 @@ fallback; it is not authority to withhold medically necessary care.
 
 ## Engineering evidence, not architecture claims
 
-EMILIA ships a security case that reviewers can execute. The current repository resolves **30
-security claims over 159 hashed evidence files**, verifies **10 obligations in one composed Tamarin
-Dolev-Yao model**, and preserves **2 deliberately weakened variants that produce concrete replay
-and stale-registry attack traces**. The live same-team conformance corpus contains **21 suites and
+EMILIA ships a security case that reviewers can execute. The current repository resolves **33
+security claims over 219 hashed evidence files**, verifies **20 Tamarin lemmas across two composed
+Dolev-Yao models — 17 all-traces obligations and 3 exists-trace reachability witnesses** — and
+preserves **8 deliberately weakened variants that produce concrete
+attack traces when load-bearing checks are removed**. The live same-team conformance corpus contains **21 suites and
 329 current vectors**. Separately, an externally authored Rust verifier is pinned to the frozen
 **16-suite/164-vector** bundle and a **359-case hostility campaign**. The broader suite contains
-**7,000+ automated tests across 370+ files**.
+**7,728 automated tests across 419 files**.
 
 Production JavaScript and JSDoc surfaces are compiler-checked with TypeScript
 `checkJs`; the secure app has its own compatibility compiler project, while
@@ -188,9 +189,9 @@ EMILIA is an open standard, not a product moat. The core is Apache-2.0 and track
 
 | | |
 |---|---|
-| **IETF Internet-Drafts** | Posted: [authorization-receipts](https://datatracker.ietf.org/doc/draft-schrock-ep-authorization-receipts/) · [quorum](https://datatracker.ietf.org/doc/draft-schrock-ep-quorum/) · [authorization-evidence-chain](https://datatracker.ietf.org/doc/draft-schrock-ep-authorization-evidence-chain/) · [evidence-record](https://datatracker.ietf.org/doc/draft-schrock-ep-evidence-record/). |
+| **IETF Internet-Drafts** | Posted: [authorization-receipts](https://datatracker.ietf.org/doc/draft-schrock-ep-authorization-receipts/) · [quorum](https://datatracker.ietf.org/doc/draft-schrock-ep-quorum/) · [authorization-evidence-chain](https://datatracker.ietf.org/doc/draft-schrock-ep-authorization-evidence-chain/) · [authorization-evidence-challenge](https://datatracker.ietf.org/doc/draft-schrock-ae-challenge/) · [evidence-record](https://datatracker.ietf.org/doc/draft-schrock-ep-evidence-record/). |
 | **Cross-language verifiers** | JavaScript · Python · Go — all three proven to agree on adversarial conformance vectors, every push (`npm run conformance`). A consistency check across one team's ports, not clean-room independent implementations. Separately, an externally authored from-spec Rust implementation ([source public](https://github.com/jdieselny/ecr-wg/tree/main/rust/ep-cleanroom-verifier)) passes the pinned 16-suite/164-vector bundle and the pinned 359-case hostility campaign under an evaluator-controlled rebuild from an immutable source tree. Its checked-in construction evidence remains implementer-signed, not third-party-attested ([signed statement](examples/external-verification/statements/rust-cleanroom/)); strict clean-room acceptance waits for the corrected third-party-attested manifest and independently pinned attestor key. |
-| **Formal verification** | 26 TLA+ safety properties (0 errors) · 35 Alloy facts, 32 assertions across four models · a composed symbolic Dolev-Yao model covering challenge, CAID, two approvals, issuer and authority pins, registry view, revocation, consumption, and execution. Ten strict Tamarin lemmas verify; deliberately removing consumption or exact registry-view binding produces replay and stale/equivocating-view traces ([formal/tamarin/](formal/tamarin/)). |
+| **Formal-model evidence** | 26 bounded TLA+ safety properties held in their configured state spaces; this is not implementation refinement or an unbounded proof · 35 Alloy facts, 32 assertions across four models · two composed symbolic Dolev-Yao models covering challenge, CAID, two approvals, issuer and authority pins, registry view, revocation, consumption, execution, and six dedicated claim boundaries. Twenty Tamarin lemmas verify — 17 all-traces obligations and 3 exists-trace witnesses; eight deliberately weakened variants produce concrete attack traces when load-bearing checks are removed ([formal/tamarin/](formal/tamarin/)). |
 | **MCP registries** | Official MCP registry · Glama (Grade A, Official badge) · Smithery |
 | **License** | Apache-2.0 |
 
@@ -217,8 +218,8 @@ Eye observes. Handshake verifies. Signoff owns. Commit seals.
 
 | Metric | Value |
 |---|---|
-| Automated test cases | 7,000+ across 370+ files; all platform-applicable cases must pass |
-| TLA+ safety properties | 26 verified (T1–T26), 0 errors — see [PROOF_STATUS.md](formal/PROOF_STATUS.md) |
+| Automated test cases | 7,728 across 419 files; all platform-applicable cases must pass |
+| TLA+ safety properties | 26 bounded invariants held in the configured state space; not an implementation-refinement or unbounded proof — see [PROOF_STATUS.md](formal/PROOF_STATUS.md) |
 | Alloy relational assertions | 35 facts + 32 assertions across four models — verified in CI |
 | Red-team cases cataloged | 85 — [RED_TEAM_CASES.md](docs/conformance/RED_TEAM_CASES.md) |
 | Release security status | Repository security checks pass; every Strix finding on the Marvel changes is remediated with regression coverage and its review thread resolved |

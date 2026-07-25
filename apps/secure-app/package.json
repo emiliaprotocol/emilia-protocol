@@ -9,7 +9,8 @@
     "start": "expo start",
     "android": "expo start --android",
     "ios": "expo start --ios",
-    "test": "node --test lib/ep-signoff.test.mjs"
+    "test": "node --test lib/ep-signoff.test.mjs",
+    "audit:dependencies": "node ../../scripts/audit-root.mjs \"SECURE APP\" high"
   },
   "dependencies": {
     "@noble/curves": "1.9.7",

@@ -10,6 +10,7 @@ from __future__ import annotations
 
 import base64
 import hashlib
+import hmac
 import re
 import time
 from datetime import datetime, timedelta, timezone
@@ -23,6 +24,7 @@ from . import canonicalize
 OUTCOME_ATTESTATION_VERSION = "EP-OUTCOME-ATTESTATION-v1"
 OUTCOME_ATTESTATION_DOMAIN = "EP-OUTCOME-ATTESTATION-v1\0"
 OUTCOME_BINDING_VERSION = "EP-OUTCOME-BINDING-v1"
+OUTCOME_BINDING_RESULT_VERSION = "EP-OUTCOME-BINDING-RESULT-v1"
 PREDICATE_OPS = ("eq", "lte", "gte", "range", "set_eq", "count_lte", "absent")
 OUTCOME_BINDING_OUTCOMES = ("in_bounds", "divergent", "incomparable")
 MAX_PREDICTED_EFFECTS = 64
@@ -137,6 +139,71 @@ def observed_effects_digest(observed_effects: Any) -> str:
 def trust_receipt_digest(receipt: Any) -> str:
     """Digest the exact Trust Receipt object referenced by an attestation."""
     return _digest(receipt)
+
+
+def outcome_binding_result_core(result: Any) -> dict:
+    """Return the canonical TypeScript-compatible Outcome Binding result core."""
+    value = result if isinstance(result, dict) else {}
+    outcome_binding = value.get("outcome_binding")
+    if "verdict" in value:
+        verdict = value["verdict"]
+    elif (
+        isinstance(outcome_binding, dict)
+        and isinstance(outcome_binding.get("outcome"), str)
+    ):
+        verdict = outcome_binding["outcome"]
+    else:
+        verdict = None
+    if "commitments" in value:
+        exact_commitments = value["commitments"]
+    elif "exact_commitments" in value:
+        exact_commitments = value["exact_commitments"]
+    else:
+        exact_commitments = None
+    return {
+        "@version": OUTCOME_BINDING_RESULT_VERSION,
+        "input_commitments": (
+            value["input_commitments"] if "input_commitments" in value else None
+        ),
+        "exact_commitments": exact_commitments,
+        "valid": value.get("valid") if isinstance(value.get("valid"), bool) else None,
+        "verdict": verdict,
+        "checks": value["checks"] if "checks" in value else None,
+        "errors": value["errors"] if "errors" in value else None,
+        "outcome_binding": (
+            value["outcome_binding"] if "outcome_binding" in value else None
+        ),
+    }
+
+
+def outcome_binding_result_digest(result: Any) -> str:
+    """Digest the canonical Outcome Binding result core."""
+    return _digest(outcome_binding_result_core(result))
+
+
+_CLAIMED_DIGEST_UNSET = object()
+
+
+def verify_outcome_binding_result_digest(
+    result: Any, claimed_digest: Any = _CLAIMED_DIGEST_UNSET
+) -> bool:
+    """Fail closed unless the claimed digest matches the exact result core."""
+    value = result if isinstance(result, dict) else None
+    claimed = (
+        value.get("result_digest")
+        if claimed_digest is _CLAIMED_DIGEST_UNSET and value is not None
+        else claimed_digest
+    )
+    if (
+        value is None
+        or not isinstance(claimed, str)
+        or _DIGEST_RE.fullmatch(claimed) is None
+    ):
+        return False
+    try:
+        return hmac.compare_digest(claimed, outcome_binding_result_digest(value))
+    except Exception:
+        return False
 
 
 def validate_predicted_effects(predicted: Any) -> dict:
@@ -669,6 +736,8 @@ def verify_outcome_binding_core(
         "attestation_verified": False,
     }
     errors: list[str] = []
+    receipt_result: Any = None
+    attestation_result: Any = None
 
     def exact_commitments() -> dict:
         receipt_value = receipt if isinstance(receipt, dict) else {}
@@ -721,9 +790,18 @@ def verify_outcome_binding_core(
 
     def input_commitments() -> dict:
         policy_present = "policyPredictedEffects" in opts
+        receipt_value = receipt if isinstance(receipt, dict) else {}
+        action = receipt_value.get("action")
+        action_value = action if isinstance(action, dict) else {}
         return {
             "receipt_digest": _safe_digest(receipt),
             "attestation_digest": _safe_digest(attestation),
+            "signed_predictions_digest": _safe_digest(
+                action_value.get("predicted_effects")
+            ),
+            "signed_predictions_commitment": _normalize_digest(
+                action_value.get("predicted_effects_digest")
+            ),
             "policy_predictions_present": policy_present,
             "policy_predictions_digest": (
                 _safe_digest(opts.get("policyPredictedEffects"))
@@ -740,21 +818,21 @@ def verify_outcome_binding_core(
             "evaluations": [],
             "reasons": list(errors),
         }
-        digest_input = {
-            "input_commitments": input_commitments(),
-            "exact_commitments": exact_commitments(),
+        result = {
             "valid": False,
-            "verdict": outcome_binding["outcome"],
             "checks": checks,
             "errors": errors,
+            "input_commitments": input_commitments(),
+            "receipt": receipt,
+            "attestation": attestation,
+            "commitments": exact_commitments(),
+            "receipt_result": receipt_result,
+            "attestation_result": attestation_result,
             "outcome_binding": outcome_binding,
         }
         return {
-            "valid": False,
-            "checks": checks,
-            "errors": errors,
-            "outcome_binding": outcome_binding,
-            "result_digest": _digest(digest_input),
+            **result,
+            "result_digest": outcome_binding_result_digest(result),
         }
 
     if not callable(verify_receipt):
@@ -853,26 +931,21 @@ def verify_outcome_binding_core(
     outcome_binding = _combine_evaluations(signed_evaluation, policy_evaluation)
     result_errors = errors + outcome_binding["reasons"]
     valid = all(checks.values()) and outcome_binding["outcome"] == "in_bounds"
-    digest_input = {
-        "input_commitments": {
-            **input_commitments(),
-            "signed_predictions_digest": predicted_effects_digest(signed_predictions),
-        },
-        "exact_commitments": exact_commitments(),
-        "valid": valid,
-        "verdict": outcome_binding["outcome"],
-        "checks": checks,
-        "errors": result_errors,
-        "outcome_binding": outcome_binding,
-    }
-    return {
+    result = {
         "valid": valid,
         "checks": checks,
         "errors": result_errors,
+        "input_commitments": input_commitments(),
+        "receipt": receipt,
+        "attestation": attestation,
+        "commitments": exact_commitments(),
         "receipt_result": receipt_result,
         "attestation_result": attestation_result,
         "outcome_binding": outcome_binding,
-        "result_digest": _digest(digest_input),
+    }
+    return {
+        **result,
+        "result_digest": outcome_binding_result_digest(result),
     }
 
 
@@ -891,6 +964,7 @@ __all__ = [
     "OUTCOME_ATTESTATION_VERSION",
     "OUTCOME_ATTESTATION_DOMAIN",
     "OUTCOME_BINDING_VERSION",
+    "OUTCOME_BINDING_RESULT_VERSION",
     "OUTCOME_BINDING_OUTCOMES",
     "PREDICATE_OPS",
     "MAX_PREDICTED_EFFECTS",
@@ -901,6 +975,9 @@ __all__ = [
     "predicted_effects_digest",
     "observed_effects_digest",
     "trust_receipt_digest",
+    "outcome_binding_result_core",
+    "outcome_binding_result_digest",
+    "verify_outcome_binding_result_digest",
     "validate_predicted_effects",
     "evaluate_predicted_effects",
     "verify_outcome_attestation",

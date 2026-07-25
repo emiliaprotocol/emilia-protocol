@@ -29,13 +29,46 @@ describe('public engineering evidence surface', () => {
     expect(page).toContain('Stateful enforcement under faults');
     expect(page).toContain('Executable evidence');
     expect(page).toContain('Formal model scope');
-    expect(page).toContain('Fully modeled');
-    expect(page).toContain('Partial formal coverage');
-    expect(page).toContain('Executable evidence only');
-    expect(page).toContain('does not mean unimplemented');
+    expect(page).toContain('Verified formal obligations');
+    expect(page).toContain('Bounded + selected runtime scenarios');
+    expect(page).toContain('Bounded formal evidence');
+    expect(page).toContain('Partial symbolic coverage');
+    expect(page).toContain('Executable/operational evidence');
+    expect(page).toContain('does not mean a refinement proof');
+    expect(page).toContain('Acceptance roots, assumptions, exclusions, and exact evidence');
+    expect(page).toContain('Exact claim manifest');
+    expect(page).toContain('VERCEL_GIT_COMMIT_SHA');
+    expect(page).toContain('Source revision:');
     expect(page).toContain('What this evidence does not establish.');
     expect(page).toContain('application/ld+json');
     expect(layout).toContain('Machine-Verifiable Security Case');
+  });
+
+  it('renders the five-way formal-evidence taxonomy from executed generated evidence', () => {
+    const source = JSON.parse(read('security/claims.v1.json')) as {
+      claims: Array<{ claim_id: string }>;
+    };
+    const stats = JSON.parse(read('lib/proof-stats.json'));
+    const page = read('app/proof/page.js');
+
+    const categories = Object.values(stats.formalEvidenceCoverage) as Array<{
+      count: number;
+      claimIds: string[];
+    }>;
+    expect(categories.reduce((total, category) => total + category.count, 0)).toBe(
+      source.claims.length,
+    );
+    expect(
+      categories.flatMap((category) => category.claimIds).sort(),
+    ).toEqual(source.claims.map((claim) => claim.claim_id).sort());
+    expect(page).toContain('proofStats.formalEvidenceCoverage[stats].claimIds');
+    expect(page).toContain('Generated proof taxonomy does not cover the public claim inventory');
+    expect(page).not.toContain('formalCoverage(claim.formal');
+    expect(page).toContain('{proofStats.securityCase.claims}/{claimSource.claims.length}');
+    for (const claim of source.claims) {
+      expect(page).not.toContain(`'${claim.claim_id}'`);
+      expect(page).not.toContain(`"${claim.claim_id}"`);
+    }
   });
 
   it('makes the proof page discoverable from high-authority site surfaces', () => {

@@ -1,0 +1,41 @@
+EP-EVIDENCE-CHALLENGE-LIFECYCLE-BOUNDED-v1
+Status: local same-team bounded model result; not deployed or independently reviewed
+Method: deterministic finite exhaustive state exploration
+Execution date: 2026-07-24
+Runtime: Node.js
+Model SHA-256: ed07103b168566a5657390d0726615f4a80e9924c8570e903e13e83edebb54be
+Runner SHA-256: 8b31ab3211b437c0971ee0643eeaca8bcfab11565c12fb40b744aa467000223f
+
+Configuration: 1,024 independent wire/storage capability configurations plus
+bounded registration, restart, first-attempt, concurrency, and permanent
+consumption transitions.
+
+Obligations:
+DurableStorageRequired (1,024 states): verified
+AtomicRegistrationRequired (1,024 states): verified
+BodyBoundStorageRequired (1,024 states): verified
+PermanentConsumptionRequired (1,024 states): verified
+ExactActionDigestBound (1,024 states): verified
+MissingEvidenceBound (1,024 states): verified
+FreshnessPolicyContextBound (1,024 states): verified
+ExpiryBound (1,024 states): verified
+NonceBound (1,024 states): verified
+PresentationMethodBound (1,024 states): verified
+RegistrationPrecedesExposure (1,024 states): verified
+RegistrationPersistsAcrossRestart (1 transition): verified
+ConcurrentRegistrationIsUnique (1 transition): verified
+FirstValidAttemptConsumes (1 transition): verified
+InvalidAttemptIsInert (1 transition): verified
+ConcurrentConsumptionIsOneTime (1 transition): verified
+ConsumedStatePersistsAcrossRestart (1 transition): verified
+
+Negative controls: weakening any required wire/storage field, exposing before
+registration, losing state at restart, reusing a valid attempt, consuming an
+invalid attempt, or admitting concurrent consumption produces a concrete
+counterexample.
+
+Scope: bounded same-team exploration of the standalone AE-CHALLENGE-v1
+request and lifecycle. Storage-driver correctness, crash recovery, trusted
+time, canonical hashing, and policy-verifier correctness remain acceptance
+roots. The challenge requests evidence and authorizes nothing. This is not a
+refinement proof of the TypeScript or deployed database implementation.

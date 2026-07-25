@@ -1,0 +1,29 @@
+EP-DURABLE-CONSUMPTION-OWNER-BOUNDED-v1
+Status: local same-team bounded model result; not deployed or independently reviewed
+Method: deterministic finite exhaustive state exploration
+Execution date: 2026-07-24
+Runtime: Node.js
+Model SHA-256: e133949ca97f2d3452e8fe0639a348d9852faa3e4da072e499e39a7983f3c5cf
+Runner SHA-256: 538094664ff10ddd240baff9668d5d119aa3a80bb56b7f4ee0c5f5abe9a10ad4
+
+Configuration: one replay-defense key, four backend states, two opaque
+reservation owners, one restarted process without an owner token, and both
+reservation orderings.
+
+Obligations:
+AtMostOneConcurrentReservation (both owner orderings): verified
+OnlyReservationOwnerMayCommit (12 state/presenter pairs): verified
+OnlyReservationOwnerMayRelease (12 state/presenter pairs): verified
+RestartCannotAdoptAbandonedReservation (both reserved states): verified
+CommittedConsumptionNeverReopens (committed state): verified
+
+Negative controls: each obligation has a deliberately weakened comparison.
+The checker found a concrete counterexample for non-atomic reservation,
+owner-blind commit, owner-blind release, restart adoption, and committed-state
+reopening.
+
+Scope: bounded same-team model of the ownership logic implemented above an
+atomic shared backend. Backend durability and linearizability, cryptographic
+token unpredictability, business-level exactly-once effects, arbitrary
+cardinality, and implementation refinement are excluded. This is not a
+refinement proof of the TypeScript or PostgreSQL implementation.

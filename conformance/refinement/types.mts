@@ -12,6 +12,12 @@ export type RuntimeStep = {
 export type RuntimeScenarioResult = {
   scenario: string;
   steps: RuntimeStep[];
+  relation?: {
+    shared_input: unknown;
+    formal_projection: Projection;
+    runtime_projection: Projection;
+    fields: string[];
+  };
 };
 
 export type RuntimeAdapter = (

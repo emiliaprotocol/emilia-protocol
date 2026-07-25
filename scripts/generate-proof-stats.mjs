@@ -45,6 +45,20 @@ if (execution.status !== 0) {
     }
     process.exit(1);
 }
+const liveSecurityCase = spawnSync(process.execPath, [
+    "--import",
+    "./scripts/ts-loader/register.mjs",
+    "scripts/verify-security-case.mjs",
+    "--execute",
+], {
+    encoding: "utf8",
+    maxBuffer: 1e9,
+});
+if (liveSecurityCase.error)
+    throw liveSecurityCase.error;
+if (liveSecurityCase.status !== 0) {
+    throw new Error(`The live machine-verifiable security case failed:\n${liveSecurityCase.stderr || liveSecurityCase.stdout}`);
+}
 const cfg = readFileSync("formal/ep_handshake.cfg", "utf8");
 const composedLifecycleCfg = readFileSync("formal/ep_composed_trust_lifecycle.cfg", "utf8");
 const als = readFileSync("formal/ep_relations.als", "utf8");
@@ -56,45 +70,124 @@ const tamarinSummary = readFileSync("formal/tamarin/results/ep_reliance_composed
 const conformance = JSON.parse(readFileSync("conformance/conformance-manifest.json", "utf8"));
 const external = JSON.parse(readFileSync("conformance/external/rust-cleanroom-jdieselny.v1.json", "utf8"));
 const securityCase = JSON.parse(readFileSync("security/security-case.json", "utf8"));
-const refinementBytes = readFileSync("formal/results/formal-runtime-refinement.v1.json");
-const refinement = JSON.parse(refinementBytes.toString("utf8"));
-const verifiedTamarinSection = tamarinSummary.match(/Verified obligations:\n([\s\S]*?)\n\nDeliberately unsafe comparison obligations:/)?.[1];
-const unsafeTamarinSection = tamarinSummary.match(/Deliberately unsafe comparison obligations:\n([\s\S]*?)\n\nThe first counterexample/)?.[1];
-if (!verifiedTamarinSection || !unsafeTamarinSection) {
-    throw new Error("Unable to parse the composed Tamarin proof summary");
-}
-const tamarinVerified = (verifiedTamarinSection.match(/:\s+verified\b/g) || []).length;
-const tamarinCounterexamples = (unsafeTamarinSection.match(/:\s+falsified\s+-\s+found trace\b/g) || []).length;
+const claimSource = JSON.parse(readFileSync("security/claims.v1.json", "utf8"));
+const scenarioConformanceBytes = readFileSync("formal/results/formal-runtime-scenario-conformance.v2.json");
+const scenarioConformance = JSON.parse(scenarioConformanceBytes.toString("utf8"));
+const tamarinVerifiedRows = [
+    ...tamarinSummary.matchAll(/^\s{2}\S.*\((all-traces|exists-trace)\):\s+verified\b.*$/gm),
+];
+const tamarinVerified = tamarinVerifiedRows.length;
+const tamarinAllTraceObligations = tamarinVerifiedRows.filter((match) => match[1] === "all-traces").length;
+const tamarinExistsTraceWitnesses = tamarinVerifiedRows.filter((match) => match[1] === "exists-trace").length;
+const tamarinCounterexamples = (tamarinSummary.match(/^\s{2}\S.*:\s+falsified\s+-\s+found trace\b.*$/gm) || []).length;
 const tamarinVersion = tamarinSummary.match(/^Tamarin:\s+(.+)$/m)?.[1];
-const tamarinModelSha256 = tamarinSummary.match(/^Model SHA-256:\s+([a-f0-9]{64})$/m)?.[1];
+const tamarinModelHashes = [
+    ...tamarinSummary.matchAll(/^Model SHA-256:\s+([a-f0-9]{64})$/gm),
+].map((match) => match[1]);
+const tamarinRunnerHash = tamarinSummary.match(/^Runner SHA-256:\s+([a-f0-9]{64})$/m)?.[1];
+const currentTamarinModelHashes = [
+    "formal/tamarin/ep_reliance_composed.spthy",
+    "formal/tamarin/ep_six_claim_composed.spthy",
+].map((file) => createHash("sha256").update(readFileSync(file)).digest("hex"));
+const currentTamarinRunnerHash = createHash("sha256")
+    .update(readFileSync("formal/tamarin/run-composed.sh"))
+    .digest("hex");
 if (!tamarinVersion ||
-    !tamarinModelSha256 ||
+    tamarinModelHashes.length !== 2 ||
+    !isDeepStrictEqual(tamarinModelHashes, currentTamarinModelHashes) ||
+    tamarinRunnerHash !== currentTamarinRunnerHash ||
     tamarinVerified === 0 ||
+    tamarinAllTraceObligations === 0 ||
+    tamarinExistsTraceWitnesses === 0 ||
     tamarinCounterexamples === 0) {
-    throw new Error("The composed Tamarin proof summary is incomplete");
+    throw new Error("The composed Tamarin proof summary is incomplete or not bound to the current model and runner bytes");
 }
 if (securityCase.execution?.status !== "passed") {
     throw new Error("The machine-verifiable security case is not passing");
 }
-if (refinement["@version"] !== "EP-FORMAL-RUNTIME-REFINEMENT-EVIDENCE-v1" ||
-    refinement.method !== "bounded_selected_trace_refinement" ||
-    !Array.isArray(refinement.traces) ||
-    refinement.traces.length === 0 ||
-    !refinement.traces.every((trace) => trace.matched === true) ||
-    refinement.summary?.unsafe_mutations_detected < 1 ||
-    !Number.isSafeInteger(refinement.summary?.required_transitions) ||
-    refinement.summary.required_transitions < 1 ||
-    refinement.summary.covered_transitions !==
-        refinement.summary.required_transitions ||
-    !Array.isArray(refinement.summary?.transition_complete_models) ||
-    refinement.summary.transition_complete_models.length < 1) {
-    throw new Error("The formal runtime refinement evidence is missing or incomplete");
+if (scenarioConformance["@version"] !==
+    "EP-SELECTED-SCENARIO-CONFORMANCE-EVIDENCE-v2" ||
+    scenarioConformance.method !== "bounded_selected_scenario_conformance" ||
+    !Array.isArray(scenarioConformance.scenarios) ||
+    scenarioConformance.scenarios.length === 0 ||
+    !scenarioConformance.scenarios.every((scenario) => scenario.matched === true) ||
+    scenarioConformance.summary?.paired_negative_controls < 1 ||
+    !Number.isSafeInteger(scenarioConformance.summary?.required_model_actions) ||
+    scenarioConformance.summary.required_model_actions < 1 ||
+    scenarioConformance.summary.covered_model_actions !==
+        scenarioConformance.summary.required_model_actions ||
+    !Array.isArray(scenarioConformance.summary?.action_complete_models) ||
+    scenarioConformance.summary.action_complete_models.length < 1) {
+    throw new Error("The formal runtime selected-scenario conformance evidence is missing or incomplete");
 }
 if (!conformance.implementations?.every((item) => item.relationship === "one_team_port")) {
     throw new Error("Reference verifier relationship is not uniformly one_team_port");
 }
 if (external.conformance?.status !== "pass") {
     throw new Error("The pinned external implementation does not report conformance pass");
+}
+const FORMAL_EVIDENCE_CATEGORIES = Object.freeze([
+    "verifiedFormalObligations",
+    "boundedRuntimeTraced",
+    "boundedFormalEvidence",
+    "partialSymbolicCoverage",
+    "executableOperationalEvidence",
+]);
+function classifyFormalEvidence(formal) {
+    if (formal.length > 0 &&
+        formal.every((entry) => entry.status === "verified")) {
+        return "verifiedFormalObligations";
+    }
+    if (formal.some((entry) => entry.status === "partial" &&
+        entry.method?.startsWith("bounded_") &&
+        entry.scenario_coverage === "selected" &&
+        Array.isArray(entry.covered_actions) &&
+        entry.covered_actions.length > 0 &&
+        Array.isArray(entry.covered_obligations) &&
+        entry.covered_obligations.length > 0 &&
+        typeof entry.scenario_evidence === "string" &&
+        entry.scenario_evidence.length > 0 &&
+        typeof entry.scenario_runner === "string" &&
+        entry.scenario_runner.length > 0 &&
+        typeof entry.conformance_evidence === "string" &&
+        entry.conformance_evidence.length > 0)) {
+        return "boundedRuntimeTraced";
+    }
+    if (formal.some((entry) => entry.status === "partial" &&
+        [
+            "bounded_tla_model_checking",
+            "bounded_exhaustive_state_exploration",
+        ].includes(entry.method))) {
+        return "boundedFormalEvidence";
+    }
+    if (formal.some((entry) => entry.status === "partial" || entry.status === "verified")) {
+        return "partialSymbolicCoverage";
+    }
+    return "executableOperationalEvidence";
+}
+const formalEvidenceCoverage = Object.fromEntries(FORMAL_EVIDENCE_CATEGORIES.map((category) => [
+    category,
+    { count: 0, claimIds: [] },
+]));
+for (const claim of claimSource.claims ?? []) {
+    const category = classifyFormalEvidence(claim.formal ?? []);
+    formalEvidenceCoverage[category].count += 1;
+    formalEvidenceCoverage[category].claimIds.push(claim.claim_id);
+}
+for (const category of FORMAL_EVIDENCE_CATEGORIES) {
+    formalEvidenceCoverage[category].claimIds.sort();
+}
+const classifiedClaimCount = FORMAL_EVIDENCE_CATEGORIES.reduce((total, category) => total + formalEvidenceCoverage[category].count, 0);
+if (classifiedClaimCount !== claimSource.claims?.length ||
+    classifiedClaimCount !== securityCase.claim_count) {
+    throw new Error("The formal evidence taxonomy does not cover the complete security claim inventory");
+}
+const recordedRuntimeTracedClaims = formalEvidenceCoverage.boundedRuntimeTraced.claimIds;
+const executedRuntimeTracedClaims = [
+    ...scenarioConformance.summary.claims,
+].sort();
+if (!isDeepStrictEqual(recordedRuntimeTracedClaims, executedRuntimeTracedClaims)) {
+    throw new Error("Bounded runtime-traced claim metadata does not match the executed selected-scenario evidence");
 }
 const stats = {
     generatedAt: new Date().toISOString(),
@@ -108,19 +201,23 @@ const stats = {
         composedLifecycleInvariants: (composedLifecycleCfg.match(/^INVARIANT/gm) || []).length,
         checker: "TLC 2.19",
     },
-    formalRefinement: {
-        method: refinement.method,
-        models: refinement.summary.models.length,
-        claims: refinement.summary.claims.length,
-        traces: refinement.summary.traces,
-        soundTraces: refinement.summary.sound_traces,
-        unsafeMutationsDetected: refinement.summary.unsafe_mutations_detected,
-        requiredTransitions: refinement.summary.required_transitions,
-        coveredTransitions: refinement.summary.covered_transitions,
-        transitionCompleteModels: refinement.summary.transition_complete_models.length,
-        evidenceSha256: createHash("sha256").update(refinementBytes).digest("hex"),
-        boundary: "selected traces; not a mechanized implementation refinement proof",
+    formalScenarioConformance: {
+        method: scenarioConformance.method,
+        models: scenarioConformance.summary.models.length,
+        claims: scenarioConformance.summary.claims.length,
+        scenarios: scenarioConformance.summary.scenarios,
+        soundScenarios: scenarioConformance.summary.sound_scenarios,
+        pairedNegativeControls: scenarioConformance.summary.paired_negative_controls,
+        requiredModelActions: scenarioConformance.summary.required_model_actions,
+        coveredModelActions: scenarioConformance.summary.covered_model_actions,
+        actionCompleteModels: scenarioConformance.summary.action_complete_models.length,
+        formalMutationOperators: scenarioConformance.summary.formal_mutation_operators,
+        evidenceSha256: createHash("sha256")
+            .update(scenarioConformanceBytes)
+            .digest("hex"),
+        boundary: "selected model/runtime scenarios under explicit projection relations; not a mechanized implementation refinement proof",
     },
+    formalEvidenceCoverage,
     alloy: {
         // facts: the core relational model (ep_relations). assertions: total across
         // ALL FOUR models that execute headless in CI (ep_relations + ep_federation
@@ -135,11 +232,15 @@ const stats = {
         version: "6.2.0 (CI)",
     },
     tamarin: {
-        model: "EP-RELIANCE-COMPOSED-v2",
+        model: "EP-RELIANCE-COMPOSED-v2 + EP-SIX-CLAIM-COMPOSED-v1",
+        models: 2,
         verifiedObligations: tamarinVerified,
+        allTraceObligations: tamarinAllTraceObligations,
+        existsTraceWitnesses: tamarinExistsTraceWitnesses,
         deliberatelyUnsafeCounterexamples: tamarinCounterexamples,
         version: tamarinVersion,
-        modelSha256: tamarinModelSha256,
+        modelSha256: tamarinModelHashes[0],
+        focusedModelSha256: tamarinModelHashes[1],
     },
     securityCase: {
         status: securityCase.execution.status,
@@ -176,7 +277,7 @@ if (check) {
         process.exitCode = 1;
     }
     else {
-        console.log(`PROOF STATS: PASS (${stats.tests.total} test cases, ${stats.tests.files} files; ${stats.tamarin.verifiedObligations} composed Tamarin obligations; ${stats.securityCase.claims} executable security claims; ${stats.conformance.vectors} conformance vectors; ${stats.externalImplementation.hostilityCases} external hostility cases)`);
+        console.log(`PROOF STATS: PASS (${stats.tests.total} test cases, ${stats.tests.files} files; ${stats.tamarin.verifiedObligations} verified Tamarin lemmas; ${stats.securityCase.claims} executable security claims; ${stats.conformance.vectors} conformance vectors; ${stats.externalImplementation.hostilityCases} external hostility cases)`);
     }
 }
 else {

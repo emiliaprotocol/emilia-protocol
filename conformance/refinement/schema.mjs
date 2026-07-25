@@ -7,13 +7,16 @@ const TOP_KEYS = new Set([
     "scope",
     "limitations",
     "models",
-    "traces",
+    "scenarios",
 ]);
 const MODEL_KEYS = new Set([
+    "kind",
     "config",
+    "runner",
     "variables",
     "projections",
     "actions",
+    "obligation_types",
     "required_actions",
 ]);
 const TRACE_KEYS = new Set([
@@ -26,6 +29,7 @@ const TRACE_KEYS = new Set([
     "runtime_sources",
     "obligations",
     "formal_prefix",
+    "formal_init",
     "steps",
     "mutation",
 ]);
@@ -104,8 +108,9 @@ export function validateTraceManifest(input) {
     if (!isObject(input))
         throw new Error("trace manifest must be an object");
     requireClosedKeys(input, TOP_KEYS, "trace manifest");
-    if (input["@version"] !== "EP-FORMAL-RUNTIME-TRACES-v2") {
-        throw new Error("trace manifest version must be EP-FORMAL-RUNTIME-TRACES-v2");
+    if (input["@version"] !==
+        "EP-RUNTIME-SCENARIO-CONFORMANCE-MANIFEST-v2") {
+        throw new Error("scenario manifest version must be EP-RUNTIME-SCENARIO-CONFORMANCE-MANIFEST-v2");
     }
     requireString(input.scope, "trace manifest scope");
     requireStringArray(input.limitations, "trace manifest limitations");
@@ -118,7 +123,26 @@ export function validateTraceManifest(input) {
         if (!isObject(rawModel))
             throw new Error(`models.${modelPath} must be an object`);
         requireClosedKeys(rawModel, MODEL_KEYS, `models.${modelPath}`);
-        requireRelativeFile(rawModel.config, `models.${modelPath}.config`);
+        const kind = rawModel.kind ?? "tla";
+        if (kind !== "tla" && kind !== "bounded_checker") {
+            throw new Error(`models.${modelPath}.kind must be tla or bounded_checker`);
+        }
+        let config;
+        let runner;
+        if (kind === "tla") {
+            requireRelativeFile(rawModel.config, `models.${modelPath}.config`);
+            if (rawModel.runner !== undefined) {
+                throw new Error(`models.${modelPath}.runner is allowed only for bounded_checker models`);
+            }
+            config = rawModel.config;
+        }
+        else {
+            requireRelativeFile(rawModel.runner, `models.${modelPath}.runner`);
+            if (rawModel.config !== undefined) {
+                throw new Error(`models.${modelPath}.config is allowed only for tla models`);
+            }
+            runner = rawModel.runner;
+        }
         requireStringArray(rawModel.variables, `models.${modelPath}.variables`);
         for (const [index, variable] of rawModel.variables.entries()) {
             requireIdentifier(variable, `models.${modelPath}.variables[${index}]`);
@@ -144,6 +168,19 @@ export function validateTraceManifest(input) {
                 actions[name] = expression;
             }
         }
+        const obligationTypes = {};
+        if (rawModel.obligation_types !== undefined) {
+            if (!isObject(rawModel.obligation_types)) {
+                throw new Error(`models.${modelPath}.obligation_types must be an object`);
+            }
+            for (const [name, directive] of Object.entries(rawModel.obligation_types)) {
+                requireIdentifier(name, `models.${modelPath}.obligation_types.${name}`);
+                if (directive !== "INVARIANT" && directive !== "PROPERTY") {
+                    throw new Error(`models.${modelPath}.obligation_types.${name} must be INVARIANT or PROPERTY`);
+                }
+                obligationTypes[name] = directive;
+            }
+        }
         const requiredActions = rawModel.required_actions === undefined ? [] : rawModel.required_actions;
         if (!Array.isArray(requiredActions)) {
             throw new Error(`models.${modelPath}.required_actions must be an array`);
@@ -158,19 +195,22 @@ export function validateTraceManifest(input) {
             throw new Error(`models.${modelPath}.required_actions contains duplicates`);
         }
         models[modelPath] = {
-            config: rawModel.config,
+            kind,
+            ...(config ? { config } : {}),
+            ...(runner ? { runner } : {}),
             variables: rawModel.variables,
             projections,
             actions,
+            obligation_types: obligationTypes,
             required_actions: requiredActions,
         };
     }
-    if (!Array.isArray(input.traces) || input.traces.length === 0) {
-        throw new Error("trace manifest traces must be a non-empty array");
+    if (!Array.isArray(input.scenarios) || input.scenarios.length === 0) {
+        throw new Error("scenario manifest scenarios must be a non-empty array");
     }
     const ids = new Set();
-    const traces = input.traces.map((rawTrace, index) => {
-        const label = `traces[${index}]`;
+    const scenarios = input.scenarios.map((rawTrace, index) => {
+        const label = `scenarios[${index}]`;
         if (!isObject(rawTrace))
             throw new Error(`${label} must be an object`);
         requireClosedKeys(rawTrace, TRACE_KEYS, label);
@@ -184,8 +224,9 @@ export function validateTraceManifest(input) {
             throw new Error(`${label}.model is not registered`);
         requireString(rawTrace.adapter, `${label}.adapter`);
         requireString(rawTrace.scenario, `${label}.scenario`);
-        if (rawTrace.kind !== "sound" && rawTrace.kind !== "unsafe_mutation") {
-            throw new Error(`${label}.kind must be sound or unsafe_mutation`);
+        if (rawTrace.kind !== "sound" &&
+            rawTrace.kind !== "paired_negative_control") {
+            throw new Error(`${label}.kind must be sound or paired_negative_control`);
         }
         requireStringArray(rawTrace.runtime_sources, `${label}.runtime_sources`);
         rawTrace.runtime_sources.forEach((file, fileIndex) => requireRelativeFile(file, `${label}.runtime_sources[${fileIndex}]`));
@@ -196,6 +237,18 @@ export function validateTraceManifest(input) {
             throw new Error(`${label}.formal_prefix must be an array`);
         }
         formalPrefix.forEach((action, actionIndex) => requireAction(action, `${label}.formal_prefix[${actionIndex}]`));
+        let formalInit;
+        if (rawTrace.formal_init !== undefined) {
+            if (models[rawTrace.model].kind !== "tla") {
+                throw new Error(`${label}.formal_init is allowed only for tla models`);
+            }
+            requireTlaExpression(rawTrace.formal_init, `${label}.formal_init`);
+            formalInit = rawTrace.formal_init;
+        }
+        if (models[rawTrace.model].kind === "bounded_checker" &&
+            formalPrefix.length > 0) {
+            throw new Error(`${label}.formal_prefix is not supported for bounded_checker models`);
+        }
         if (!Array.isArray(rawTrace.steps) || rawTrace.steps.length === 0) {
             throw new Error(`${label}.steps must be a non-empty array`);
         }
@@ -222,7 +275,7 @@ export function validateTraceManifest(input) {
             };
         });
         let mutation;
-        if (rawTrace.kind === "unsafe_mutation") {
+        if (rawTrace.kind === "paired_negative_control") {
             if (!isObject(rawTrace.mutation))
                 throw new Error(`${label}.mutation is required`);
             requireClosedKeys(rawTrace.mutation, MUTATION_KEYS, `${label}.mutation`);
@@ -234,6 +287,9 @@ export function validateTraceManifest(input) {
                 throw new Error(`${label}.mutation.defined_in_model must be boolean`);
             }
             if (!definedInModel) {
+                if (models[rawTrace.model].kind === "bounded_checker") {
+                    throw new Error(`${label}.mutation must use the bounded checker's model-defined mutation`);
+                }
                 requireString(rawTrace.mutation.precondition, `${label}.mutation.precondition`);
                 requireProjection(rawTrace.mutation.assignments, `${label}.mutation.assignments`);
             }
@@ -262,7 +318,7 @@ export function validateTraceManifest(input) {
             };
         }
         else if (rawTrace.mutation !== undefined) {
-            throw new Error(`${label}.mutation is allowed only for unsafe_mutation traces`);
+            throw new Error(`${label}.mutation is allowed only for paired_negative_control scenarios`);
         }
         return {
             id: rawTrace.id,
@@ -274,6 +330,7 @@ export function validateTraceManifest(input) {
             runtime_sources: rawTrace.runtime_sources,
             obligations: rawTrace.obligations,
             formal_prefix: formalPrefix,
+            ...(formalInit ? { formal_init: formalInit } : {}),
             steps,
             ...(mutation ? { mutation } : {}),
         };
@@ -281,7 +338,7 @@ export function validateTraceManifest(input) {
     for (const [modelPath, model] of Object.entries(models)) {
         if (model.required_actions.length === 0)
             continue;
-        const covered = new Set(traces
+        const covered = new Set(scenarios
             .filter((trace) => trace.model === modelPath)
             .flatMap((trace) => [
             ...trace.formal_prefix,
@@ -293,11 +350,11 @@ export function validateTraceManifest(input) {
         }
     }
     return {
-        "@version": "EP-FORMAL-RUNTIME-TRACES-v2",
+        "@version": "EP-RUNTIME-SCENARIO-CONFORMANCE-MANIFEST-v2",
         scope: input.scope,
         limitations: input.limitations,
         models,
-        traces,
+        scenarios,
     };
 }
 export function canonicalProjection(projection) {

@@ -7,7 +7,7 @@ import assert from 'node:assert/strict';
 import crypto from 'node:crypto';
 import { readFileSync } from 'node:fs';
 import { issueAuthorizationReceipt } from '../issue/index.js';
-import { buildOutcomeAttestation, trustReceiptDigest, verifyOutcomeBinding, } from './index.js';
+import { buildOutcomeAttestation, OUTCOME_BINDING_RESULT_VERSION, outcomeBindingResultCore, outcomeBindingResultDigest, trustReceiptDigest, verifyOutcomeBinding, verifyOutcomeBindingResultDigest, } from './index.js';
 import { evaluatePredictedEffects, isDecimalString, predictedEffectsDigest, validatePredictedEffects, } from './effect-predicates.js';
 function keyFromByte(byte) {
     const seed = Buffer.alloc(32, byte);
@@ -133,6 +133,27 @@ test('accepts real signed receipt + pinned executor attestation + in-bounds outc
     assert.deepEqual(result.receipt, receipt);
     assert.deepEqual(result.attestation, attestation());
 });
+test('publishes a deterministic canonical result core and verifies its digest', () => {
+    const result = verify(attestation());
+    const reordered = structuredClone(result);
+    reordered.checks = Object.fromEntries(Object.entries(reordered.checks).reverse());
+    assert.deepEqual(outcomeBindingResultCore(result), {
+        '@version': OUTCOME_BINDING_RESULT_VERSION,
+        input_commitments: result.input_commitments,
+        exact_commitments: result.commitments,
+        valid: result.valid,
+        verdict: result.outcome_binding.outcome,
+        checks: result.checks,
+        errors: result.errors,
+        outcome_binding: result.outcome_binding,
+    });
+    assert.equal(outcomeBindingResultDigest(result), result.result_digest);
+    assert.deepEqual(outcomeBindingResultCore(outcomeBindingResultCore(result)), outcomeBindingResultCore(result));
+    assert.equal(outcomeBindingResultDigest(outcomeBindingResultCore(result)), result.result_digest);
+    assert.equal(outcomeBindingResultDigest(reordered), result.result_digest);
+    assert.equal(verifyOutcomeBindingResultDigest(result), true);
+    assert.equal(verifyOutcomeBindingResultDigest(result, result.result_digest), true);
+});
 test('signed human prediction is always evaluated and divergence refuses', () => {
     const result = verify(attestation([
         { effect_type: 'payment', target: 'acct:vendor-9', value: '11.00' },
@@ -155,6 +176,7 @@ test('relying-party policy can tighten but cannot replace or loosen signed inten
     assert.equal(result.outcome_binding.evaluations[0].source, 'signed_receipt');
     assert.equal(result.outcome_binding.evaluations[0].outcome, 'divergent');
     assert.equal(result.outcome_binding.evaluations[1].outcome, 'in_bounds');
+    assert.equal(verifyOutcomeBindingResultDigest(result), true);
 });
 test('policy tightening adds a second independent refusal', () => {
     const result = verify(attestation(), {
@@ -206,6 +228,51 @@ test('result_digest binds the exact signed attestation, not only the verdict', (
     assert.equal(second.outcome_binding.outcome, 'divergent');
     assert.notEqual(first.result_digest, second.result_digest);
 });
+test('result digest verification rejects a verdict-only replay with the old digest', () => {
+    const replay = structuredClone(verify(attestation()));
+    const originalDigest = replay.result_digest;
+    const replayedCore = outcomeBindingResultCore(replay);
+    replay.outcome_binding.outcome = 'divergent';
+    replayedCore.verdict = 'divergent';
+    assert.equal(replay.valid, true);
+    assert.equal(replay.result_digest, originalDigest);
+    assert.equal(verifyOutcomeBindingResultDigest(replay), false);
+    assert.equal(verifyOutcomeBindingResultDigest(replayedCore, originalDigest), false);
+});
+test('result digest commits each verdict-relevant result-core component independently', () => {
+    const base = verify(attestation());
+    const hostileMutations = [
+        ['input commitment', (value) => {
+                value.input_commitments.attestation_digest = `sha256:${'11'.repeat(32)}`;
+            }],
+        ['exact binding', (value) => {
+                value.commitments.action_hash = `sha256:${'22'.repeat(32)}`;
+            }],
+        ['acceptance bit', (value) => {
+                value.valid = false;
+            }],
+        ['verification check', (value) => {
+                value.checks.action_bound = false;
+            }],
+        ['refusal reason', (value) => {
+                value.errors.push('hostile_reason');
+            }],
+        ['evaluation', (value) => {
+                value.outcome_binding.evaluations[0].outcome = 'divergent';
+            }],
+    ];
+    for (const [target, mutate] of hostileMutations) {
+        const hostile = structuredClone(base);
+        mutate(hostile);
+        assert.equal(verifyOutcomeBindingResultDigest(hostile), false, `${target} mutation retained the old result digest`);
+    }
+});
+test('result digest verification fails closed on malformed claims', () => {
+    const result = verify(attestation());
+    assert.equal(verifyOutcomeBindingResultDigest(result, null), false);
+    assert.equal(verifyOutcomeBindingResultDigest(result, 'sha256:not-a-digest'), false);
+    assert.equal(verifyOutcomeBindingResultDigest(null), false);
+});
 test('the exported evaluator refuses unknown observed-effect members', () => {
     const result = evaluatePredictedEffects(SIGNED_PREDICTIONS, [{
             effect_type: 'payment',
@@ -234,6 +301,7 @@ for (const [name, mutate, reason] of [
         const result = verify(resigned);
         assert.equal(result.valid, false);
         assert.match(result.errors.join(' '), new RegExp(reason));
+        assert.equal(verifyOutcomeBindingResultDigest(result), true, 'digest integrity must not be confused with successful exact-binding verification');
     });
 }
 test('rejects tampered observations and an unpinned executor', () => {

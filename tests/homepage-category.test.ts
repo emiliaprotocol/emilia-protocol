@@ -59,8 +59,8 @@ describe('homepage category contract', () => {
     expect(proofStats.tests.files).toBeGreaterThan(200);
     expect(proofStats.tla.invariants).toBe(26);
     expect(proofStats.alloy.facts).toBe(35);
-    expect(proofStats.tamarin.verifiedObligations).toBe(10);
-    expect(proofStats.tamarin.deliberatelyUnsafeCounterexamples).toBe(2);
+    expect(proofStats.tamarin.verifiedObligations).toBe(20);
+    expect(proofStats.tamarin.deliberatelyUnsafeCounterexamples).toBe(8);
     expect(proofStats.securityCase.claims).toBe(securityCase.claim_count);
     expect(proofStats.conformance.vectors).toBeGreaterThan(150);
     expect(proofStats.externalImplementation.hostilityCases).toBeGreaterThan(350);
