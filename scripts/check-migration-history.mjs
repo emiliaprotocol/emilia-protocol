@@ -12,7 +12,14 @@ const MIGRATION_DIR = 'supabase/migrations';
 const ARCHIVE_DIR = 'supabase/migration-archive/2026-07-25-history-reconciliation';
 const SHA256 = /^[a-f0-9]{64}$/;
 const VERSIONED_SQL = /^((?:[0-9]{3}|[0-9]{14}))_.+\.sql$/;
-const ROLE_PASSWORD = /\b(?:create|alter)\s+(?:role|user)\b[\s\S]{0,500}?\bpassword\s+('(?:[^']|'')*'|[^\s;']+)/gi;
+const ROLE_PASSWORD = /\b(?:create|alter)\s+(?:role|user)\b[\s\S]*?\bpassword\s+('(?:[^']|'')*'|[^\s;']+)/gi;
+const WALK_SKIP = new Set([
+    '.git',
+    '.next',
+    'coverage',
+    'dist',
+    'node_modules',
+]);
 function invariant(condition, message) {
     if (!condition)
         throw new Error(message);
@@ -67,6 +74,25 @@ function containsPlaintextRolePassword(sql) {
 function assertRegularFile(absolutePath, label) {
     const stat = fs.lstatSync(absolutePath);
     invariant(!stat.isSymbolicLink() && stat.isFile(), `${label} must be a regular file, not a symlink`);
+}
+function validatePrivateVersionNonExposure(root, privateRemote) {
+    const visit = (directory) => {
+        for (const entry of fs.readdirSync(directory, { withFileTypes: true })) {
+            if (entry.isDirectory()) {
+                if (!WALK_SKIP.has(entry.name))
+                    visit(path.join(directory, entry.name));
+                continue;
+            }
+            if (!entry.isFile() || !entry.name.endsWith('.sql'))
+                continue;
+            const match = entry.name.match(VERSIONED_SQL);
+            if (!match || !privateRemote.has(match[1]))
+                continue;
+            const relative = path.relative(root, path.join(directory, entry.name));
+            invariant(false, `private remote version ${match[1]} appears in public repository path ${relative}`);
+        }
+    };
+    visit(root);
 }
 function validateArchive(root, privateRemote) {
     const archive = path.resolve(root, ARCHIVE_DIR);
@@ -174,6 +200,7 @@ export function validateMigrationHistory(root = ROOT) {
         invariant(!containsPlaintextRolePassword(sql), `${filename} contains a plaintext role password and belongs in private deployment history`);
     }
     validateArchive(root, privateRemote);
+    validatePrivateVersionNonExposure(root, privateRemote);
     return {
         publicFiles: actualFiles.length,
         remoteVersions: remote.size,

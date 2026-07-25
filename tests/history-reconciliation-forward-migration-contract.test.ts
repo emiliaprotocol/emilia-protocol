@@ -82,6 +82,12 @@ describe('unjournaled security-invariant forward reconciliation', () => {
     expect(migration).toContain(
       'REVOKE ALL ON TABLE public.ep_capability_operations',
     );
+    expect(migration).toContain(
+      'REVOKE ALL ON TABLE public.consumed_gate_refs FROM service_role',
+    );
+    expect(migration).not.toMatch(
+      /GRANT SELECT, INSERT, UPDATE, DELETE ON TABLE public\.consumed_gate_refs/,
+    );
     expect(migration).toMatch(
       /REVOKE INSERT, UPDATE, DELETE, TRUNCATE ON TABLE public\.authorities[\s\S]+FROM service_role/,
     );

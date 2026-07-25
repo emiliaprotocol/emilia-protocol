@@ -27,7 +27,10 @@ describe('authority fresh-replay repair', () => {
     ]) {
       expect(repair).toContain(`ADD COLUMN IF NOT EXISTS ${column}`);
     }
-    expect(repair).toContain('DROP CONSTRAINT');
+    expect(repair).toContain(
+      'DROP CONSTRAINT IF EXISTS authorities_role_check',
+    );
+    expect(repair).not.toContain('pg_get_constraintdef');
     expect(repair).toContain('CREATE INDEX IF NOT EXISTS idx_authorities_subject');
     expect(successor).toContain('idx_authorities_subject');
   });

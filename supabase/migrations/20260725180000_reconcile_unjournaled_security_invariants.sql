@@ -181,12 +181,11 @@ ON CONFLICT (organization_id) DO NOTHING;
 REVOKE ALL ON TABLE public.authorities FROM PUBLIC, anon, authenticated;
 REVOKE ALL ON TABLE public.commits FROM PUBLIC, anon, authenticated;
 REVOKE ALL ON TABLE public.consumed_gate_refs FROM PUBLIC, anon, authenticated;
+REVOKE ALL ON TABLE public.consumed_gate_refs FROM service_role;
 REVOKE INSERT, UPDATE, DELETE, TRUNCATE ON TABLE public.authorities
   FROM service_role;
 GRANT SELECT ON TABLE public.authorities TO service_role;
 GRANT SELECT, INSERT, UPDATE, DELETE ON TABLE public.commits
-  TO service_role;
-GRANT SELECT, INSERT, UPDATE, DELETE ON TABLE public.consumed_gate_refs
   TO service_role;
 
 -- Reassert the public ACL boundary for the durable capability store. These

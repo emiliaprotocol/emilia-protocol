@@ -278,6 +278,7 @@ export const contract = {
     // Release Lock is deliberately RPC-only; service_role may execute the
     // narrowly-granted SECURITY DEFINER functions but must not query the tables.
     tableGrantsNoServiceRoleDirect: [
+        'consumed_gate_refs',
         ...RELEASE_LOCK_TABLES,
         ...CONSEQUENCE_ACTUATOR_RPC_ONLY_TABLES,
     ],
@@ -350,6 +351,14 @@ export const contract = {
         'complete_webauthn_registration_atomic',
         'consume_trust_desk_bootstrap_atomic',
         ...RELEASE_LOCK_SERVICE_RPCS,
+    ],
+    // These public mutation roots are pinned by identity arguments as well as by
+    // name. Each exact overload must be SECURITY DEFINER, closed to public API
+    // roles, and executable by service_role.
+    requiredDefinerRpcSignatures: [
+        'public.bump_authority_registry_epoch()',
+        'public.consume_gate_ref_atomic(text,text,text,text,text)',
+        'public.revoke_commit_key_atomic(text,text,text)',
     ],
     // Functions that MUST exist (existence only). Includes the append-only
     // immutability triggers — their absence means tamper-evidence is unenforced.

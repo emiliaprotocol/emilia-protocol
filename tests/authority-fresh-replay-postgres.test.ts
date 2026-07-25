@@ -50,6 +50,11 @@ suite('authority schema fresh replay on PostgreSQL 17', () => {
       EXCEPTION WHEN duplicate_object THEN NULL; END $$;
     `);
     await database.query(legacy);
+    await database.query(`
+      ALTER TABLE public.authorities
+        ADD CONSTRAINT authorities_operator_active_check
+        CHECK (role <> 'operator' OR status = 'active')
+    `);
     await database.query(repair);
     await database.query(successor);
   });
@@ -92,5 +97,13 @@ suite('authority schema fresh replay on PostgreSQL 17', () => {
         'org:1', 'human_approver', 'approver:1'
       )
     `)).resolves.toBeDefined();
+
+    await expect(database.query(`
+      INSERT INTO public.authorities (
+        key_id, public_key, role, status
+      ) VALUES (
+        'key:preserve-check', 'public-key', 'operator', 'revoked'
+      )
+    `)).rejects.toMatchObject({ code: '23514' });
   });
 });

@@ -103,6 +103,12 @@ suite('forward history reconciliation on PostgreSQL 17', () => {
         id TEXT PRIMARY KEY,
         entity_id TEXT NOT NULL
       );
+      CREATE TABLE public.ep_capability_state (
+        capability_id TEXT PRIMARY KEY
+      );
+      CREATE TABLE public.ep_capability_operations (
+        operation_id TEXT PRIMARY KEY
+      );
     `);
     await database.query(migration);
   });
@@ -257,6 +263,22 @@ suite('forward history reconciliation on PostgreSQL 17', () => {
         'commit:revoked', 'entity:1', 'payment.release', 'v1', 'hash:binding'
       )
     `)).rejects.toMatchObject({ code: 'P0006' });
+  });
+
+  it('keeps the one-time consumption fence outside direct service-role mutation', async () => {
+    const client = await database.connect();
+    try {
+      await client.query('SET ROLE service_role');
+      await expect(
+        client.query(
+          `DELETE FROM public.consumed_gate_refs
+           WHERE gate_ref = 'commit:consume'`,
+        ),
+      ).rejects.toMatchObject({ code: '42501' });
+    } finally {
+      await client.query('RESET ROLE');
+      client.release();
+    }
   });
 
   it('keeps untrusted roles outside tables and security-definer RPCs', async () => {

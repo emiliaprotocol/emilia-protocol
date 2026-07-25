@@ -13,27 +13,11 @@ ALTER TABLE public.authorities
   ADD COLUMN IF NOT EXISTS subject_ref TEXT,
   ADD COLUMN IF NOT EXISTS assurance_class TEXT;
 
-DO $$
-DECLARE
-  v_constraint RECORD;
-BEGIN
-  FOR v_constraint IN
-    SELECT c.conname
-    FROM pg_catalog.pg_constraint c
-    JOIN pg_catalog.pg_class t ON t.oid = c.conrelid
-    JOIN pg_catalog.pg_namespace n ON n.oid = t.relnamespace
-    WHERE n.nspname = 'public'
-      AND t.relname = 'authorities'
-      AND c.contype = 'c'
-      AND pg_catalog.pg_get_constraintdef(c.oid) ILIKE '%role%'
-  LOOP
-    EXECUTE pg_catalog.format(
-      'ALTER TABLE public.authorities DROP CONSTRAINT %I',
-      v_constraint.conname
-    );
-  END LOOP;
-END;
-$$;
+-- Drop only the legacy enum constraint created by migration 033. Never infer
+-- a target from constraint text: a later role-dependent safety CHECK may be
+-- semantically unrelated and must survive replay.
+ALTER TABLE public.authorities
+  DROP CONSTRAINT IF EXISTS authorities_role_check;
 
 CREATE INDEX IF NOT EXISTS idx_authorities_subject
   ON public.authorities (

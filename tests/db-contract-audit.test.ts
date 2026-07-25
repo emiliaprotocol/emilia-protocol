@@ -23,7 +23,27 @@ function cleanSnapshot() {
   const functions = [...new Set([
     ...contract.definerRpcsServiceRoleOnly,
     ...contract.requiredRpcs,
-  ])].map((name) => ({ name, acl: 'service_role=X/postgres' }));
+  ])].map((name) => ({
+    name,
+    args: '',
+    secdef: contract.definerRpcsServiceRoleOnly.includes(name),
+    acl: 'service_role=X/postgres',
+  }));
+  for (const signature of contract.requiredDefinerRpcSignatures || []) {
+    const [, name, args] = signature.match(/^public\.([^(]+)\((.*)\)$/);
+    const current = functions.find((entry) => entry.name === name);
+    if (current) {
+      current.args = args;
+      current.secdef = true;
+    } else {
+      functions.push({
+        name,
+        args,
+        secdef: true,
+        acl: 'service_role=X/postgres',
+      });
+    }
+  }
 
   return {
     tables: [...tables],
@@ -119,6 +139,29 @@ describe('live schema-security contract evaluator', () => {
     expect(result.failures).toContain(
       `QUALIFIED RPC missing: ${exactSignature}`,
     );
+  });
+
+  it('pins exact public mutation RPC signatures, definer mode, and service execution', () => {
+    const signature = 'public.consume_gate_ref_atomic(text,text,text,text,text)';
+    expect(contract.requiredDefinerRpcSignatures).toContain(signature);
+
+    for (const mutation of [
+      (fn) => { fn.args = 'integer'; },
+      (fn) => { fn.secdef = false; },
+      (fn) => { fn.acl = 'postgres=X/postgres'; },
+      (fn) => { fn.acl = '=X/postgres,service_role=X/postgres'; },
+    ]) {
+      const snapshot = cleanSnapshot();
+      const fn = snapshot.functions.find(
+        (entry) => entry.name === 'consume_gate_ref_atomic',
+      );
+      mutation(fn);
+      expect(
+        evaluateContract(snapshot).failures.some(
+          (failure) => failure.includes(signature),
+        ),
+      ).toBe(true);
+    }
   });
 
   it('rejects a public table grant even when RLS and policies are otherwise clean', () => {

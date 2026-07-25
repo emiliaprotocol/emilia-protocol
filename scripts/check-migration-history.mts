@@ -25,7 +25,14 @@ const ARCHIVE_DIR: string = 'supabase/migration-archive/2026-07-25-history-recon
 const SHA256: RegExp = /^[a-f0-9]{64}$/;
 const VERSIONED_SQL: RegExp = /^((?:[0-9]{3}|[0-9]{14}))_.+\.sql$/;
 const ROLE_PASSWORD: RegExp =
-  /\b(?:create|alter)\s+(?:role|user)\b[\s\S]{0,500}?\bpassword\s+('(?:[^']|'')*'|[^\s;']+)/gi;
+  /\b(?:create|alter)\s+(?:role|user)\b[\s\S]*?\bpassword\s+('(?:[^']|'')*'|[^\s;']+)/gi;
+const WALK_SKIP: ReadonlySet<string> = new Set([
+  '.git',
+  '.next',
+  'coverage',
+  'dist',
+  'node_modules',
+]);
 
 function invariant(condition: unknown, message: string): asserts condition {
   if (!condition) throw new Error(message);
@@ -97,6 +104,29 @@ function containsPlaintextRolePassword(sql: string): boolean {
 function assertRegularFile(absolutePath: string, label: string): void {
   const stat: fs.Stats = fs.lstatSync(absolutePath);
   invariant(!stat.isSymbolicLink() && stat.isFile(), `${label} must be a regular file, not a symlink`);
+}
+
+function validatePrivateVersionNonExposure(
+  root: string,
+  privateRemote: Set<string>,
+): void {
+  const visit = (directory: string): void => {
+    for (const entry of fs.readdirSync(directory, { withFileTypes: true })) {
+      if (entry.isDirectory()) {
+        if (!WALK_SKIP.has(entry.name)) visit(path.join(directory, entry.name));
+        continue;
+      }
+      if (!entry.isFile() || !entry.name.endsWith('.sql')) continue;
+      const match: RegExpMatchArray | null = entry.name.match(VERSIONED_SQL);
+      if (!match || !privateRemote.has(match[1])) continue;
+      const relative: string = path.relative(root, path.join(directory, entry.name));
+      invariant(
+        false,
+        `private remote version ${match[1]} appears in public repository path ${relative}`,
+      );
+    }
+  };
+  visit(root);
 }
 
 function validateArchive(root: string, privateRemote: Set<string>): void {
@@ -249,6 +279,7 @@ export function validateMigrationHistory(root: string = ROOT): {
   }
 
   validateArchive(root, privateRemote);
+  validatePrivateVersionNonExposure(root, privateRemote);
   return {
     publicFiles: actualFiles.length,
     remoteVersions: remote.size,

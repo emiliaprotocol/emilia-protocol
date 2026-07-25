@@ -154,6 +154,7 @@ describe('migration history ledger', () => {
     for (const credentialSql of [
       'CREATE USER operator PASSWORD $$do-not-commit$$;\n',
       'ALTER ROLE operator /* split */ PASSWORD secret;\n',
+      `CREATE ROLE operator ${' '.repeat(501)} PASSWORD 'do-not-commit';\n`,
     ]) {
       const root: string = fixture();
       fs.writeFileSync(path.join(root, 'supabase/migrations/003_pending.sql'), credentialSql);
@@ -163,6 +164,16 @@ describe('migration history ledger', () => {
       fs.writeFileSync(historyPath, `${JSON.stringify(history, null, 2)}\n`);
       expect(() => validateMigrationHistory(root)).toThrow(/plaintext role password/);
     }
+
+    const docsRoot: string = fixture();
+    fs.mkdirSync(path.join(docsRoot, 'docs'), { recursive: true });
+    fs.writeFileSync(
+      path.join(docsRoot, 'docs/002_private.sql'),
+      'select 2;\n',
+    );
+    expect(() => validateMigrationHistory(docsRoot)).toThrow(
+      /private remote version 002 appears in public repository path docs/,
+    );
   });
 
   it('requires explicit retroactive classification and exact deployment order', () => {
