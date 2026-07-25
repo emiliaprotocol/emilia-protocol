@@ -109,6 +109,9 @@ class StableBootstrapTests(unittest.TestCase):
         self.output = self.root / "stable.json"
         self.state_path = self.root / "state.json"
         self.log_path = self.root / "gcloud.log"
+        self.adapter_state = self.root / "attempt-store.json"
+        self.adapter_log = self.root / "attempt-store.log"
+        self.adapter = self.root / "attempt-store"
         self.credentials = self.root / "gha-creds.json"
         self.credentials.write_text(
             json.dumps(
@@ -141,11 +144,79 @@ class StableBootstrapTests(unittest.TestCase):
             ),
             encoding="utf-8",
         )
+        self.adapter_state.write_text(
+            json.dumps({"claims": {}, "terminals": {}}),
+            encoding="utf-8",
+        )
+        self.write_attempt_store()
         self.write_fake_gcloud()
         self.write_fake_curl()
 
     def tearDown(self) -> None:
         self.directory.cleanup()
+
+    def write_attempt_store(self) -> None:
+        self.adapter.write_text(
+            """#!/usr/bin/env python3
+import json
+import os
+import pathlib
+import sys
+
+operation = sys.argv[1]
+payload = json.load(sys.stdin)
+state_path = pathlib.Path(os.environ["FAKE_ATTEMPT_STATE"])
+state = json.loads(state_path.read_text())
+claim = payload if operation == "claim" else payload["claim"]
+digest = claim["claim_sha256"]
+
+with pathlib.Path(os.environ["FAKE_ATTEMPT_LOG"]).open("a") as handle:
+    handle.write(json.dumps({
+        "operation": operation,
+        "claim_sha256": digest,
+        "authorization_id": claim["authorization_id"],
+        "service": claim["service"],
+        "request_sha256": claim["request_sha256"],
+        "pre_resource_version": claim["pre_resource_version"],
+        "outcome": payload.get("outcome") if isinstance(payload, dict) else None,
+    }, sort_keys=True) + "\\n")
+
+if operation == "claim":
+    if digest in state["claims"]:
+        print("duplicate claim", file=sys.stderr)
+        raise SystemExit(9)
+    state["claims"][digest] = claim
+    state_path.write_text(json.dumps(state, sort_keys=True))
+    response = {
+        "schema": "emilia-deployment-attempt-store-response.v1",
+        "operation": "claim",
+        "status": "claimed",
+        "claim_sha256": digest,
+        "final_resource_version": None,
+    }
+else:
+    if digest not in state["claims"] or digest in state["terminals"]:
+        print("claim is not terminalizable", file=sys.stderr)
+        raise SystemExit(9)
+    status = "completed" if operation == "complete" else payload["outcome"]
+    state["terminals"][digest] = {
+        "operation": operation,
+        "status": status,
+        "final_resource_version": payload["final_resource_version"],
+    }
+    state_path.write_text(json.dumps(state, sort_keys=True))
+    response = {
+        "schema": "emilia-deployment-attempt-store-response.v1",
+        "operation": operation,
+        "status": status,
+        "claim_sha256": digest,
+        "final_resource_version": payload["final_resource_version"],
+    }
+print(json.dumps(response, sort_keys=True, separators=(",", ":")))
+""",
+            encoding="utf-8",
+        )
+        self.adapter.chmod(0o700)
 
     def write_fake_gcloud(self) -> None:
         executable = self.bin / "gcloud"
@@ -393,14 +464,27 @@ if args[:2] == ["run", "deploy"]:
     if service in state["deployed"]:
         print("service already exists", file=sys.stderr)
         raise SystemExit(8)
+    labels_arg = next(
+        (value for value in args if value.startswith("--labels=")),
+        "",
+    )
+    labels = dict(
+        item.split("=", 1)
+        for item in labels_arg.removeprefix("--labels=").split(",")
+        if item
+    )
     state["deployed"].append(service)
+    state.setdefault("deploy_labels", {})[service] = labels
+    state.setdefault("service_labels", {})[service] = dict(labels)
+    state.setdefault("generations", {})[service] = 1
+    state.setdefault("resource_versions", {})[service] = "rv-" + service + "-1"
     state_path.write_text(json.dumps(state))
+    if os.environ.get("FAKE_DEPLOY_RESPONSE_LOSS_SERVICE") == service:
+        raise SystemExit(17)
     raise SystemExit(0)
 if args[:3] == ["run", "services", "update-traffic"]:
-    service = args[3]
-    state["promoted"].append(service)
-    state_path.write_text(json.dumps(state))
-    raise SystemExit(0)
+    print("unlocked traffic mutation is forbidden", file=sys.stderr)
+    raise SystemExit(88)
 if args[:3] == ["run", "services", "get-iam-policy"]:
     print(json.dumps({"bindings": []}))
     raise SystemExit(0)
@@ -419,9 +503,7 @@ if args[:3] == ["run", "revisions", "describe"]:
             "name": revision,
             "labels": {
                 "serving.knative.dev/service": service,
-                "emilia-plane": "bootstrap",
-                "emilia-deny-all": "true",
-                "emilia-permissionless": "true",
+                **state.get("deploy_labels", {}).get(service, {}),
             },
             "annotations": {
                 "run.googleapis.com/execution-environment": "gen2",
@@ -451,32 +533,49 @@ if args[:3] == ["run", "services", "describe"]:
         raise SystemExit(0)
     ingress = "internal" if service.endswith("actuator") else "all"
     revision = service + "-bootstrap1"
-    percent = 100 if service in state["promoted"] else 0
+    promoted = service in state["promoted"]
+    generation = state.get("generations", {}).get(service, 1)
+    resource_version = state.get("resource_versions", {}).get(
+        service, "rv-" + service + "-1"
+    )
+    tagged = {
+        "revisionName": revision,
+        "percent": 0,
+        "tag": "stable-bootstrap-bootstrap1",
+        "url": "https://" + revision + ".example.test",
+    }
+    traffic = [tagged]
+    if promoted:
+        traffic.append({"revisionName": revision, "percent": 100})
     print(json.dumps({
+        "apiVersion": "serving.knative.dev/v1",
+        "kind": "Service",
         "metadata": {
             "name": service,
-            "generation": 1,
+            "namespace": "123456789012",
+            "generation": generation,
+            "resourceVersion": resource_version,
+            "labels": state.get("service_labels", {}).get(service, {}),
             "annotations": {"run.googleapis.com/ingress": ingress},
         },
+        "spec": {"traffic": traffic},
         "status": {
             "url": "https://" + service + ".example.test",
-            "observedGeneration": 1,
+            "observedGeneration": generation,
             "conditions": [{
                 "type": "Ready",
                 "status": "True",
                 "lastTransitionTime": "2026-07-25T12:00:00Z",
             }],
-            "traffic": [{
-                "revisionName": revision,
-                "percent": percent,
-                "tag": "stable-bootstrap-bootstrap1",
-                "url": "https://" + revision + ".example.test",
-            }],
+            "traffic": traffic,
         },
     }))
     raise SystemExit(0)
 if args[:2] == ["auth", "print-identity-token"]:
     print("test-identity-token")
+    raise SystemExit(0)
+if args[:2] == ["auth", "print-access-token"]:
+    print("test-access-token")
     raise SystemExit(0)
 print("unexpected gcloud arguments: " + repr(args), file=sys.stderr)
 raise SystemExit(2)
@@ -495,6 +594,46 @@ import pathlib
 import sys
 
 args = sys.argv[1:]
+if "--request" in args and args[args.index("--request") + 1] == "PUT":
+    output = pathlib.Path(args[args.index("--output") + 1])
+    service = args[-1].rsplit("/", 1)[1]
+    state_path = pathlib.Path(os.environ["FAKE_STATE"])
+    state = json.loads(state_path.read_text())
+    body = json.load(sys.stdin)
+    current = state["resource_versions"][service]
+    if body["metadata"]["resourceVersion"] != current:
+        output.write_text('{"error":"resourceVersion conflict"}')
+        raise SystemExit(22)
+    if os.environ.get("FAKE_PUT_FAIL_SERVICE") == service:
+        output.write_text('{"error":"injected failure"}')
+        raise SystemExit(22)
+    generation = state["generations"][service] + 1
+    resource_version = "rv-" + service + "-" + str(generation)
+    state["generations"][service] = generation
+    state["resource_versions"][service] = resource_version
+    state.setdefault("service_labels", {})[service] = body["metadata"]["labels"]
+    if service not in state["promoted"]:
+        state["promoted"].append(service)
+    state_path.write_text(json.dumps(state))
+    response = {
+        **body,
+        "metadata": {
+            **body["metadata"],
+            "generation": generation,
+            "resourceVersion": resource_version,
+        },
+        "status": {
+            "observedGeneration": generation,
+            "conditions": [{"type": "Ready", "status": "True"}],
+            "traffic": body["spec"]["traffic"],
+        },
+    }
+    output.write_text(json.dumps(response))
+    if os.environ.get("FAKE_PUT_RESPONSE_LOSS_SERVICE") == service:
+        output.unlink()
+        raise SystemExit(56)
+    raise SystemExit(0)
+
 output = pathlib.Path(args[args.index("-o") + 1])
 url = args[-1]
 authenticated = any("Authorization: Bearer " in value for value in args)
@@ -517,6 +656,7 @@ else:
         executable.chmod(0o755)
 
     def environment(self, **extra: str) -> dict[str, str]:
+        adapter_hash = hashlib.sha256(self.adapter.read_bytes()).hexdigest()
         return {
             **os.environ,
             "PATH": f"{self.bin}:{os.environ['PATH']}",
@@ -550,6 +690,11 @@ else:
             "DEPLOYMENT_CONFIG_SHA256": hashlib.sha256(
                 self.config.read_bytes()
             ).hexdigest(),
+            "DEPLOYMENT_CONFIRM_PROJECT": "test-project",
+            "EMILIA_ROLLOUT_ATTEMPT_STORE_ADAPTER": str(self.adapter),
+            "EMILIA_ROLLOUT_ATTEMPT_STORE_ADAPTER_SHA256": adapter_hash,
+            "FAKE_ATTEMPT_STATE": str(self.adapter_state),
+            "FAKE_ATTEMPT_LOG": str(self.adapter_log),
             "CANARY_EVIDENCE_PUBLIC_KEY_SHA256": "0" * 64,
             "EMILIA_IAM_ANALYZER_SCOPE": "organizations/987654321",
             **extra,
@@ -611,12 +756,13 @@ else:
             {line.split("--scope=", 1)[1].split()[0] for line in analyzer_lines},
             {"organizations/987654321"},
         )
-        self.assertEqual(result.stdout.count("run services update-traffic"), 2)
+        self.assertNotIn("run services update-traffic", result.stdout)
+        self.assertIn("resourceVersion-locked", result.stdout)
         self.assertIn("httpGet.path=/v1/ready", result.stdout)
         self.assertIn("verify-stable-release.py record", result.stdout)
         self.assertLess(
-            result.stdout.index("curl"),
-            result.stdout.index("run services update-traffic"),
+            result.stdout.index("curl -fsS"),
+            result.stdout.index("curl --request PUT"),
         )
         self.assertLess(
             result.stdout.index("--verify-protected-identity"),
@@ -785,15 +931,20 @@ else:
         self.assertFalse(any(call[:2] == ["run", "deploy"] for call in calls))
 
     def test_render_refuses_non_covering_project_scope(self) -> None:
+        self.config.write_text(
+            self.config.read_text(encoding="utf-8").replace(
+                "EMILIA_IAM_ANALYZER_SCOPE=organizations/987654321",
+                "EMILIA_IAM_ANALYZER_SCOPE=projects/other-project",
+            ),
+            encoding="utf-8",
+        )
         result = subprocess.run(
             [str(BOOTSTRAP), *self.arguments(), "--render"],
             cwd=LANE,
             check=False,
             text=True,
             capture_output=True,
-            env=self.environment(
-                EMILIA_IAM_ANALYZER_SCOPE="projects/other-project",
-            ),
+            env=self.environment(),
         )
         self.assertNotEqual(result.returncode, 0)
         self.assertIn("EMILIA_IAM_ANALYZER_SCOPE", result.stderr)
@@ -885,13 +1036,15 @@ else:
                 for call in analyses
             )
         )
-        traffic = [
-            call
-            for call in calls
-            if call[:3] == ["run", "services", "update-traffic"]
-        ]
+        self.assertFalse(
+            any(
+                call[:3] == ["run", "services", "update-traffic"]
+                for call in calls
+            )
+        )
+        state = json.loads(self.state_path.read_text(encoding="utf-8"))
         self.assertEqual(
-            [call[3] for call in traffic],
+            state["promoted"],
             [ACTUATOR_SERVICE, DECISION_SERVICE],
         )
 
@@ -914,7 +1067,10 @@ else:
             json.dumps(
                 {
                     "deployed": [ACTUATOR_SERVICE],
-                    "service_accounts": [],
+                    "service_accounts": [
+                        "bootstrap-actuator",
+                        "bootstrap-decision",
+                    ],
                     "promoted": [],
                 }
             ),
@@ -929,7 +1085,11 @@ else:
             env=self.environment(DEPLOYMENT_APPROVED="true"),
         )
         self.assertNotEqual(result.returncode, 0)
-        self.assertIn("requires both Cloud Run services to be absent", result.stderr)
+        self.assertIn(
+            "existing actuator bootstrap service is not an exact authorized "
+            "partial effect",
+            result.stderr,
+        )
         calls = [
             json.loads(line)
             for line in self.log_path.read_text(encoding="utf-8").splitlines()
@@ -994,6 +1154,13 @@ else:
                 {"type": "organization", "id": "987654321"},
             ]
         )
+        self.config.write_text(
+            self.config.read_text(encoding="utf-8").replace(
+                "EMILIA_IAM_ANALYZER_SCOPE=organizations/987654321",
+                "EMILIA_IAM_ANALYZER_SCOPE=organizations/111111111",
+            ),
+            encoding="utf-8",
+        )
         result = subprocess.run(
             [str(BOOTSTRAP), *self.arguments(), "--apply"],
             cwd=LANE,
@@ -1002,7 +1169,6 @@ else:
             capture_output=True,
             env=self.environment(
                 DEPLOYMENT_APPROVED="true",
-                EMILIA_IAM_ANALYZER_SCOPE="organizations/111111111",
                 FAKE_ANCESTRY_JSON=ancestry,
             ),
         )

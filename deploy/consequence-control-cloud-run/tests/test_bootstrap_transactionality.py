@@ -45,8 +45,7 @@ class BootstrapTransactionalityTests(unittest.TestCase):
                 order.append(key)
             deduplicated[key] = line
         self.fixture.config.write_text(
-            "\n".join(deduplicated[key] for key in order)
-            + "\nEMILIA_IAM_ANALYZER_SCOPE=organizations/987654321\n",
+            "\n".join(deduplicated[key] for key in order) + "\n",
             encoding="utf-8",
         )
         self.adapter_state = self.fixture.root / "attempt-store.json"
@@ -139,6 +138,8 @@ print(json.dumps(response, sort_keys=True, separators=(",", ":")))
     def _upgrade_fake_gcloud(self) -> None:
         executable = self.fixture.bin / "gcloud"
         source = executable.read_text(encoding="utf-8")
+        if "FAKE_DEPLOY_RESPONSE_LOSS_SERVICE" in source:
+            return
         old_deploy = """if args[:2] == ["run", "deploy"]:
     service = args[2]
     if service in state["deployed"]:
@@ -297,6 +298,10 @@ if args[:2] == ["auth", "print-access-token"]:
 
     def _upgrade_fake_curl(self) -> None:
         executable = self.fixture.bin / "curl"
+        if "FAKE_PUT_RESPONSE_LOSS_SERVICE" in executable.read_text(
+            encoding="utf-8"
+        ):
+            return
         executable.write_text(
             """#!/usr/bin/env python3
 import json
