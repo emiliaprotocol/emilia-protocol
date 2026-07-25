@@ -261,7 +261,7 @@ if [[ "$MODE" == render ]]; then
   render_prerequisites
   printf '# candidate actuator: %s, zero traffic\n' "$ACTUATOR_REVISION"
   shell_join "${actuator_command[@]}"
-  printf '# only the decision workload identity may pass the actuator IAM gate\n'
+  printf '# close the resource-level invoker binding to the decision workload identity\n'
   render_policy_reconciliation run-service "$ACTUATOR_SERVICE" \
     roles/run.invoker "serviceAccount:$DECISION_SA"
   printf '# resolve the canonical service URL for the Google ID-token audience\n'
@@ -274,7 +274,7 @@ if [[ "$MODE" == render ]]; then
   decision_command '${ACTUATOR_CANARY_URL}' '${ACTUATOR_AUDIENCE}'
   printf '# candidate decision: %s, zero traffic\n' "$DECISION_REVISION"
   shell_join "${DECISION_COMMAND[@]}"
-  printf '# fail closed on inherited, group-expanded, and impersonated effective IAM\n'
+  printf '# verify inherited, group-expanded, and impersonation-derived access against the closed allowlist\n'
   shell_join python3 "$LANE_DIR/emit-effective-iam-manifest.py" \
     "--project=$PROJECT_ID" --project-number '<resolved-project-number>' \
     "--region=$REGION" \

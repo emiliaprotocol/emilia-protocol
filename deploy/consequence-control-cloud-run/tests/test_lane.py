@@ -82,7 +82,7 @@ class RenderTests(unittest.TestCase):
         self.assertNotIn("allUsers", self.plan)
         self.assertNotIn("allAuthenticatedUsers", self.plan)
 
-    def test_decision_identity_is_the_only_actuator_invoker(self) -> None:
+    def test_resource_level_invoker_binding_names_only_decision_identity(self) -> None:
         self.assertIn(
             "gcloud run services get-iam-policy emilia-consequence-actuator",
             self.plan,
@@ -116,7 +116,7 @@ class RenderTests(unittest.TestCase):
         self.assertIn("--live", self.plan)
         self.assertLess(
             self.plan.index("# candidate decision:"),
-            self.plan.index("# fail closed on inherited"),
+            self.plan.index("# verify inherited"),
         )
 
     def test_credential_custody_is_split(self) -> None:

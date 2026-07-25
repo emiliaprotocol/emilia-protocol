@@ -17,6 +17,13 @@ SPEC.loader.exec_module(emitter)
 
 DECISION = "serviceAccount:decision@test-project.iam.gserviceaccount.com"
 ACTUATOR = "serviceAccount:actuator@test-project.iam.gserviceaccount.com"
+COMPUTE_AGENT = (
+    "serviceAccount:service-123456789@compute-system.iam.gserviceaccount.com"
+)
+RUN_AGENT = (
+    "serviceAccount:"
+    "service-123456789@serverless-robot-prod.iam.gserviceaccount.com"
+)
 
 
 class EffectiveIamManifestTests(unittest.TestCase):
@@ -41,16 +48,22 @@ class EffectiveIamManifestTests(unittest.TestCase):
         )
         self.assertEqual(
             value["targets"][0]["allowedPrincipals"],
-            [DECISION],
+            sorted([DECISION, COMPUTE_AGENT, RUN_AGENT]),
         )
         self.assertEqual(
             value["targets"][2]["allowedPrincipals"],
-            sorted([ACTUATOR, DECISION]),
+            sorted([ACTUATOR, DECISION, COMPUTE_AGENT, RUN_AGENT]),
         )
         self.assertTrue(
             value["targets"][0]["resource"].endswith(
                 "/services/emilia-consequence-actuator"
             )
+        )
+
+    def test_managed_principals_are_derived_from_the_pinned_project_number(self) -> None:
+        self.assertEqual(
+            emitter.managed_control_plane_principals("123456789"),
+            (COMPUTE_AGENT, RUN_AGENT),
         )
 
     def test_aggregate_or_user_principal_is_refused(self) -> None:

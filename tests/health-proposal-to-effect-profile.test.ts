@@ -92,6 +92,14 @@ function refreshPackageDigest(controlPackage: any): any {
   return controlPackage;
 }
 
+function refreshPacketDigest(packet: any): any {
+  const body = structuredClone(packet);
+  delete body.packet_digest;
+  delete body.proof;
+  packet.packet_digest = digestAeb(body);
+  return packet;
+}
+
 function registryEntry(
   entryId: string,
   kind: string,
@@ -534,7 +542,7 @@ async function fixture() {
   };
   let mutation = async () => ({ sandbox_reference: 'sandbox:mutation:health-001' });
   let mutationCount = 0;
-  const control = createHealthcareConsequenceControl({
+  const controlOptions = {
     controller: controller as any,
     ...stores,
     assurance: {
@@ -552,7 +560,8 @@ async function fixture() {
       mutationCount += 1;
       return mutation(input);
     },
-  });
+  };
+  const control = createHealthcareConsequenceControl(controlOptions);
   const prepared = await control.prepare({
     tenant_id: TENANT,
     initiator_id: 'actor:health-reviewer',
@@ -568,6 +577,9 @@ async function fixture() {
     controlPackage,
     assuranceKeys,
     assuranceTrust,
+    controller,
+    controlOptions,
+    stores,
     prepared,
     evaluation: aeb.evaluate(),
     get mutationCount() {
@@ -920,6 +932,582 @@ describe('healthcare Proposal-to-Effect consequence control', () => {
       });
       expect(f.mutationCount, alias).toBe(0);
     }
+  });
+
+  it('fails closed across malformed preparation, execution, and reconciliation inputs', async () => {
+    expect(() => createHealthcareConsequenceControl({} as any)).toThrow(
+      'healthcare_proposal_to_effect_controller_required',
+    );
+    const f = await fixture();
+
+    expect(await f.control.prepare({} as any)).toMatchObject({
+      ok: false,
+      reason: 'tenant_required',
+    });
+    expect(await f.control.prepare({
+      tenant_id: TENANT,
+    } as any)).toMatchObject({
+      ok: false,
+      reason: 'authenticated_initiator_required',
+    });
+    expect(await f.control.prepare({
+      tenant_id: TENANT,
+      initiator_id: 'actor:health-reviewer',
+    } as any)).toMatchObject({
+      ok: false,
+      reason: 'healthcare_operation_identity_invalid',
+    });
+
+    expect(await f.control.execute({} as any)).toMatchObject({
+      ok: false,
+      reason: 'tenant_required',
+    });
+    expect(await f.control.execute({
+      tenant_id: TENANT,
+    } as any)).toMatchObject({
+      ok: false,
+      reason: 'approval_evidence_required',
+    });
+    expect(await f.control.execute({
+      tenant_id: TENANT,
+      approval_evidence: {},
+    } as any)).toMatchObject({
+      ok: false,
+      reason: 'aeb_evaluation_required',
+    });
+    expect(await f.control.execute({
+      ...executeInput(f),
+      proposal: {},
+    })).toMatchObject({
+      ok: false,
+      reason: expect.stringMatching(/proposal|integrity|invalid/),
+    });
+    expect(await f.control.execute({
+      ...executeInput(f),
+      tenant_id: 'org:other',
+    })).toMatchObject({
+      ok: false,
+      reason: 'tenant_or_environment_mismatch',
+    });
+    const changedAction = structuredClone(f.controlPackage.action);
+    changedAction.amount = '999.00';
+    expect(await f.control.execute({
+      ...executeInput(f),
+      observed_action: changedAction,
+    })).toMatchObject({
+      ok: false,
+      reason: 'execution_action_mismatch',
+    });
+
+    expect(await f.control.reconcile({} as any)).toMatchObject({
+      ok: false,
+      reason: 'tenant_required',
+    });
+    expect(await f.control.reconcile({
+      tenant_id: TENANT,
+    } as any)).toMatchObject({
+      ok: false,
+      reason: 'operation_id_required',
+    });
+    expect(await f.control.reconcile({
+      tenant_id: TENANT,
+      operation_id: OPERATION_ID,
+    } as any)).toMatchObject({
+      ok: false,
+      reason: 'aeb_evaluation_required',
+    });
+    expect(await f.control.reconcile({
+      tenant_id: TENANT,
+      operation_id: OPERATION_ID,
+      evaluation: f.evaluation,
+    } as any)).toMatchObject({
+      ok: false,
+      reason: 'authenticated_provider_evidence_required',
+    });
+
+    const executed = await f.control.execute(executeInput(f));
+    expect(await f.control.reconcile({
+      tenant_id: TENANT,
+      operation_id: OPERATION_ID,
+      proposal: f.prepared.proposal,
+      evaluation: f.evaluation,
+      provider_evidence: providerEvidence(f.prepared.proposal, executed.attempt),
+    })).toMatchObject({
+      ok: false,
+      reason: 'reconciliation_not_indeterminate',
+    });
+  });
+
+  it('fails closed when package boundaries or runtime dependencies drift', async () => {
+    const f = await fixture();
+    expect(() => createHealthcareConsequenceControl({
+      ...f.controlOptions,
+      assurance: null,
+    } as any)).toThrow('healthcare_assurance_signers_required');
+    expect(() => createHealthcareConsequenceControl({
+      ...f.controlOptions,
+      evidence_store: null,
+    } as any)).toThrow('healthcare_evidence_store_required');
+    expect(() => createHealthcareConsequenceControl({
+      ...f.controlOptions,
+      reconciliation_handle_store: null,
+    } as any)).toThrow('healthcare_reconciliation_handle_store_required');
+    expect(() => createHealthcareConsequenceControl({
+      ...f.controlOptions,
+      allow_ephemeral_stores_for_tests: false,
+    } as any)).toThrow('healthcare_durable_stores_required');
+    expect(() => createHealthcareConsequenceControl({
+      ...f.controlOptions,
+      mutate_sandbox: null,
+    } as any)).toThrow('healthcare_sandbox_mutation_required');
+
+    const packageCases: Array<[string, (value: any) => void]> = [
+      ['prospective_control_package_invalid', (value) => {
+        value.sourceRecordDigests = ['not-a-digest'];
+      }],
+      ['prospective_control_finding_boundary_invalid', (value) => {
+        value.sourceFinding.provesFraud = true;
+      }],
+      ['prospective_control_profile_invalid', (value) => {
+        value.profile.version = 2;
+      }],
+      ['prospective_control_policy_invalid', (value) => {
+        value.policy.version = 0;
+      }],
+      ['prospective_control_requirement_invalid', (value) => {
+        value.requiredControl.consumption.maximumUses = 2;
+      }],
+      ['prospective_control_phi_boundary_invalid', (value) => {
+        value.phi.rawPhiIncluded = true;
+      }],
+      ['prospective_control_package_digest_invalid', (value) => {
+        value.packageDigest = `sha256:${'0'.repeat(64)}`;
+      }],
+    ];
+    for (const [reason, mutate] of packageCases) {
+      const value = scannerPackage();
+      mutate(value);
+      if (reason !== 'prospective_control_package_digest_invalid') {
+        refreshPackageDigest(value);
+      }
+      expect(await f.control.prepare({
+        tenant_id: TENANT,
+        initiator_id: 'actor:health-reviewer',
+        proposal_id: `proposal:${reason}`,
+        operation_id: `operation:${reason}`,
+        prospective_control_package: value,
+      }), reason).toMatchObject({ ok: false, reason });
+    }
+
+    const badClock = createHealthcareConsequenceControl({
+      ...f.controlOptions,
+      now: () => Number.NaN,
+    });
+    expect(await badClock.prepare({
+      tenant_id: TENANT,
+      initiator_id: 'actor:health-reviewer',
+      proposal_id: 'proposal:bad-clock',
+      operation_id: 'operation:bad-clock',
+      prospective_control_package: scannerPackage(),
+    })).toMatchObject({
+      ok: false,
+      reason: 'healthcare_evidence_store_unavailable',
+    });
+
+    const throwingPrepare = createHealthcareConsequenceControl({
+      ...f.controlOptions,
+      controller: {
+        ...f.controller,
+        prepare() {
+          throw new Error('controller_prepare_failed');
+        },
+      },
+    } as any);
+    expect(await throwingPrepare.prepare({
+      tenant_id: TENANT,
+      initiator_id: 'actor:health-reviewer',
+      proposal_id: 'proposal:controller-failed',
+      operation_id: 'operation:controller-failed',
+      prospective_control_package: scannerPackage(),
+    })).toMatchObject({
+      ok: false,
+      reason: 'controller_prepare_failed',
+    });
+
+    const unavailableStore = {
+      ...f.stores.evidence_store,
+      async list() {
+        throw new Error('evidence_store_unavailable');
+      },
+    };
+    const listFailure = createHealthcareConsequenceControl({
+      ...f.controlOptions,
+      evidence_store: unavailableStore,
+    });
+    expect(await listFailure.execute(executeInput(f))).toMatchObject({
+      ok: false,
+      reason: 'healthcare_evidence_store_unavailable',
+    });
+    expect(await listFailure.exportAssurancePacket({
+      tenant_id: TENANT,
+      operation_id: OPERATION_ID,
+    })).toMatchObject({
+      ok: false,
+      reason: 'healthcare_evidence_store_unavailable',
+    });
+
+    const controllerRefusal = createHealthcareConsequenceControl({
+      ...f.controlOptions,
+      controller: {
+        ...f.controller,
+        async execute() {
+          return {
+            ok: false,
+            reason: 'policy_refused',
+            consequence: { state: 'RELEASED' },
+          };
+        },
+      },
+    } as any);
+    expect(await controllerRefusal.execute(executeInput(f))).toMatchObject({
+      ok: false,
+      reason: 'policy_refused',
+      retry_safe: true,
+    });
+
+    const controllerFailure = createHealthcareConsequenceControl({
+      ...f.controlOptions,
+      controller: {
+        ...f.controller,
+        async execute() {
+          throw new Error('controller_execution_failed');
+        },
+      },
+    } as any);
+    expect(await controllerFailure.execute(executeInput(f))).toMatchObject({
+      ok: false,
+      reason: 'controller_execution_failed',
+    });
+
+    expect(await f.control.exportAssurancePacket({} as any)).toMatchObject({
+      ok: false,
+      reason: 'tenant_required',
+    });
+    expect(await f.control.exportAssurancePacket({
+      tenant_id: TENANT,
+    } as any)).toMatchObject({
+      ok: false,
+      reason: 'operation_id_required',
+    });
+    expect(await f.control.exportAssurancePacket({
+      tenant_id: TENANT,
+      operation_id: 'operation:never-prepared',
+    })).toMatchObject({
+      ok: false,
+      reason: 'healthcare_assurance_packet_not_available',
+    });
+    expect(await f.stores.reconciliation_handle_store.get({
+      tenant_id: TENANT,
+      operation_id: 'operation:missing',
+    })).toBeNull();
+  });
+
+  it('validates the exact action, acquisition endpoint, and signer outputs', async () => {
+    const action = scannerPackage().action;
+    const actionCases: Array<[string, (value: any) => void]> = [
+      ['healthcare_prohibited_phi', (value) => {
+        value.reviewer_id = { patientName: 'prohibited' };
+      }],
+      ['healthcare_action_profile_mismatch', (value) => {
+        value['@version'] = 'EP-HEALTH-OTHER-v1';
+      }],
+      ['healthcare_material_field_missing:reviewer_id', (value) => {
+        value.reviewer_id = '';
+      }],
+      ['healthcare_material_action_invalid', (value) => {
+        value.amount = '0.00';
+      }],
+    ];
+    for (const [reason, mutate] of actionCases) {
+      const candidate = structuredClone(action);
+      mutate(candidate);
+      expect(() => canonicalizeHospicePaymentAction(candidate), reason).toThrow(
+        reason,
+      );
+    }
+
+    expect(() => createHospiceProposalToEffectProfile({
+      authorization_endpoint: 42 as any,
+    })).toThrow('healthcare_authorization_endpoint_invalid');
+    expect(() => createHospiceProposalToEffectProfile({
+      authorization_endpoint: 'not a URL',
+    })).toThrow('healthcare_authorization_endpoint_invalid');
+    expect(() => createHospiceProposalToEffectProfile({
+      authorization_endpoint: 'http://approval.example.test',
+    })).toThrow('healthcare_authorization_endpoint_invalid');
+    expect(() => createHospiceProposalToEffectProfile({
+      authorization_endpoint: 'https://approval.example.test',
+      ttl_sec: 0,
+    })).toThrow('healthcare_proposal_ttl_invalid');
+
+    const badReceiptFixture = await fixture();
+    const badReceiptControl = createHealthcareConsequenceControl({
+      ...badReceiptFixture.controlOptions,
+      assurance: {
+        ...badReceiptFixture.controlOptions.assurance,
+        signers: {
+          ...badReceiptFixture.controlOptions.assurance.signers,
+          receipt: {
+            ...badReceiptFixture.controlOptions.assurance.signers.receipt,
+            async sign() {
+              return 'not-a-signature';
+            },
+          },
+        },
+      },
+    });
+    await badReceiptControl.execute(executeInput(badReceiptFixture));
+    expect(await badReceiptControl.exportAssurancePacket({
+      tenant_id: TENANT,
+      operation_id: OPERATION_ID,
+    })).toMatchObject({
+      ok: false,
+      reason: 'healthcare_assurance_signing_failed',
+    });
+
+    const badEvaluatorFixture = await fixture();
+    const badEvaluatorControl = createHealthcareConsequenceControl({
+      ...badEvaluatorFixture.controlOptions,
+      assurance: {
+        ...badEvaluatorFixture.controlOptions.assurance,
+        signers: {
+          ...badEvaluatorFixture.controlOptions.assurance.signers,
+          evaluator: {
+            ...badEvaluatorFixture.controlOptions.assurance.signers.evaluator,
+            async sign() {
+              return new Uint8Array(1);
+            },
+          },
+        },
+      },
+    });
+    await badEvaluatorControl.execute(executeInput(badEvaluatorFixture));
+    expect(await badEvaluatorControl.exportAssurancePacket({
+      tenant_id: TENANT,
+      operation_id: OPERATION_ID,
+    })).toMatchObject({
+      ok: false,
+      reason: 'healthcare_assurance_signing_failed',
+    });
+  });
+
+  it('rejects every packet and trust-bundle substitution at the offline boundary', async () => {
+    const executedFixture = await fixture();
+    await executedFixture.control.execute(executeInput(executedFixture));
+    const executedPacket = await executedFixture.control.exportAssurancePacket({
+      tenant_id: TENANT,
+      operation_id: OPERATION_ID,
+    });
+
+    const reconciledFixture = await fixture();
+    reconciledFixture.setMutation(async () => {
+      throw new Error('provider_timeout_after_entry');
+    });
+    const indeterminate = await reconciledFixture.control.execute(
+      executeInput(reconciledFixture),
+    );
+    await reconciledFixture.control.reconcile({
+      tenant_id: TENANT,
+      operation_id: OPERATION_ID,
+      proposal: reconciledFixture.prepared.proposal,
+      evaluation: reconciledFixture.evaluation,
+      provider_evidence: providerEvidence(
+        reconciledFixture.prepared.proposal,
+        indeterminate.attempt,
+      ),
+    });
+    const reconciledPacket =
+      await reconciledFixture.control.exportAssurancePacket({
+        tenant_id: TENANT,
+        operation_id: OPERATION_ID,
+      });
+
+    const cases: Array<{
+      name: string;
+      packet: any;
+      reason: string;
+      redigest?: boolean;
+    }> = [
+      {
+        name: 'profile',
+        packet: structuredClone(executedPacket),
+        reason: 'packet_profile_invalid',
+      },
+      {
+        name: 'safe projection',
+        packet: structuredClone(executedPacket),
+        reason: 'packet_safe_projection_invalid',
+      },
+      {
+        name: 'proposal binding',
+        packet: structuredClone(executedPacket),
+        reason: 'packet_proposal_binding_invalid',
+      },
+      {
+        name: 'receipt binding',
+        packet: structuredClone(executedPacket),
+        reason: 'packet_receipt_binding_invalid',
+      },
+      {
+        name: 'receipt assertion envelope',
+        packet: structuredClone(executedPacket),
+        reason: 'packet_receipt_binding_invalid',
+      },
+      {
+        name: 'aeb binding',
+        packet: structuredClone(executedPacket),
+        reason: 'packet_aeb_binding_invalid',
+      },
+      {
+        name: 'aeb assertion envelope',
+        packet: structuredClone(executedPacket),
+        reason: 'packet_aeb_binding_invalid',
+      },
+      {
+        name: 'attempt binding',
+        packet: structuredClone(executedPacket),
+        reason: 'packet_attempt_binding_invalid',
+      },
+      {
+        name: 'chronology',
+        packet: structuredClone(executedPacket),
+        reason: 'packet_chronology_or_limitations_invalid',
+      },
+      {
+        name: 'unexpected reconciliation evidence',
+        packet: structuredClone(executedPacket),
+        reason: 'packet_reconciliation_evidence_unexpected',
+      },
+      {
+        name: 'terminal state',
+        packet: structuredClone(executedPacket),
+        reason: 'packet_terminal_state_mismatch',
+      },
+      {
+        name: 'prohibited PHI',
+        packet: structuredClone(executedPacket),
+        reason: 'packet_contains_prohibited_phi',
+      },
+      {
+        name: 'proof shape',
+        packet: structuredClone(executedPacket),
+        reason: 'packet_proof_shape_invalid',
+      },
+      {
+        name: 'digest',
+        packet: structuredClone(executedPacket),
+        reason: 'packet_digest_invalid',
+        redigest: false,
+      },
+      {
+        name: 'reconciliation evidence',
+        packet: structuredClone(reconciledPacket),
+        reason: 'packet_reconciliation_evidence_invalid',
+      },
+      {
+        name: 'missing reconciliation evidence',
+        packet: structuredClone(reconciledPacket),
+        reason: 'packet_reconciliation_evidence_required',
+      },
+    ];
+
+    cases[0].packet.profile.synthetic = false;
+    cases[1].packet.finding_projection.authorization_evidence = true;
+    cases[2].packet.protocol_evidence.proposal_binding.projection.operation_id =
+      'operation:health-other';
+    cases[3].packet.protocol_evidence.receipt.body.projection.action_digest =
+      `sha256:${'0'.repeat(64)}`;
+    cases[4].packet.protocol_evidence.receipt.body.tenant_id = 'org:other';
+    cases[5].packet.protocol_evidence.aeb.body.projection.verdict = 'FAILED';
+    cases[6].packet.protocol_evidence.aeb.body.tenant_id = 'org:other';
+    cases[7].packet.outcome.attempt.provider_id = 'provider:substituted';
+    cases[8].packet.chronology[0].event_type = 'EXECUTION';
+    cases[9].packet.protocol_evidence.provider =
+      structuredClone(reconciledPacket.protocol_evidence.provider);
+    cases[10].packet.outcome.decision = 'UNKNOWN';
+    cases[11].packet.profile.patientName = 'prohibited';
+    cases[12].packet.proof.signature_b64u = '!';
+    cases[13].packet.packet_digest = `sha256:${'0'.repeat(64)}`;
+    cases[14].packet.protocol_evidence.provider.body.projection.outcome =
+      'NOT_COMMITTED';
+    delete cases[15].packet.protocol_evidence.provider;
+
+    expect(checkHealthcareAssurancePacketInternalConsistency(null)).toEqual({
+      consistent: false,
+      reasons: ['packet_shape_invalid'],
+    });
+
+    for (const candidate of cases) {
+      if (candidate.redigest !== false) refreshPacketDigest(candidate.packet);
+      expect(
+        checkHealthcareAssurancePacketInternalConsistency(candidate.packet),
+        candidate.name,
+      ).toMatchObject({
+        consistent: false,
+        reasons: expect.arrayContaining([candidate.reason]),
+      });
+    }
+
+    const invalidTrust = structuredClone(executedFixture.assuranceTrust);
+    invalidTrust.receipt = structuredClone(invalidTrust.aeb);
+    expect(verifyHealthcareAssurancePacketOffline(
+      executedPacket,
+      invalidTrust,
+    )).toMatchObject({
+      valid: false,
+      reasons: expect.arrayContaining(['relying_party_trust_bundle_invalid']),
+    });
+
+    const malformedPin = structuredClone(executedFixture.assuranceTrust);
+    malformedPin.receipt.key_id = '';
+    expect(verifyHealthcareAssurancePacketOffline(
+      executedPacket,
+      malformedPin,
+    )).toMatchObject({
+      valid: false,
+      reasons: expect.arrayContaining(['relying_party_trust_bundle_invalid']),
+    });
+
+    const invalidDer = structuredClone(executedFixture.assuranceTrust);
+    invalidDer.receipt.public_key_spki_b64u =
+      Buffer.from('not-a-public-key').toString('base64url');
+    expect(verifyHealthcareAssurancePacketOffline(
+      executedPacket,
+      invalidDer,
+    )).toMatchObject({
+      valid: false,
+      reasons: expect.arrayContaining(['relying_party_trust_bundle_invalid']),
+    });
+
+    const wrongRelyingParty = structuredClone(executedFixture.assuranceTrust);
+    wrongRelyingParty.relying_party_id = 'rp:other';
+    expect(verifyHealthcareAssurancePacketOffline(
+      executedPacket,
+      wrongRelyingParty,
+    )).toMatchObject({
+      valid: false,
+      reasons: expect.arrayContaining(['relying_party_binding_invalid']),
+    });
+
+    const forgedPacket = structuredClone(executedPacket);
+    forgedPacket.proof.signature_b64u = Buffer.alloc(64, 7).toString('base64url');
+    expect(verifyHealthcareAssurancePacketOffline(
+      forgedPacket,
+      executedFixture.assuranceTrust,
+    )).toMatchObject({
+      valid: false,
+      reasons: expect.arrayContaining(['evaluator_signature_invalid']),
+    });
   });
 
   it('keeps execute and export routes authenticated, tenant-bound, and injectable', async () => {

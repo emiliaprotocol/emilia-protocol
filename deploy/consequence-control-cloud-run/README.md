@@ -33,16 +33,17 @@ The decision service receives GitHub target coordinates, but no GitHub App
 credential environment variable or secret binding.
 
 The actuator uses `internal` ingress, Direct VPC egress, Cloud Run Invoker IAM,
-and an application bearer token readable only by the two runtime service
-accounts. The decision client keeps the application token in `Authorization`
+and an application bearer token whose resource-level Secret Accessor binding is
+limited to the two runtime service accounts. The decision client keeps the
+application token in `Authorization`
 and obtains a Google-signed ID token through Application Default Credentials
 for the actuator's canonical service URL. It sends that identity token in
 `X-Serverless-Authorization`. Acquisition failure is fail-closed; there is no
 application-token-only fallback and no direct metadata URL handling.
 
-The actuator is deployed with `--no-allow-unauthenticated`. The deployment lane
-reconciles the complete `roles/run.invoker` binding to exactly the decision
-runtime service account; stale, conditional, `allUsers`, and
+The actuator is deployed with `--no-allow-unauthenticated`. At the resource
+level, the deployment lane reconciles the complete `roles/run.invoker` binding
+to exactly the decision runtime service account; stale, conditional, `allUsers`, and
 `allAuthenticatedUsers` invoker bindings are removed and the resulting policy
 is read back and checked. It similarly reconciles each referenced secret's
 `roles/secretmanager.secretAccessor` binding to only the runtime identities
@@ -57,9 +58,23 @@ zero-traffic candidates exist and before every promotion step,
 effective `run.routes.invoke` and `secretmanager.versions.access` permissions.
 It expands groups and service-account impersonation, includes inherited
 project/folder/organization grants, and refuses partial, conditional, public,
-aggregate, unexpanded, or non-allowlisted access. An inherited owner or admin
-grant therefore blocks promotion even when the resource policy itself looks
-closed.
+aggregate, unexpanded, or non-allowlisted access. The effective-IAM manifest
+requires the workload identities plus only the exact Compute Engine and Cloud
+Run service agents derived from the pinned numeric project ID for every checked
+target. Those Google-managed agents are an accepted Cloud Run control-plane
+trust boundary, not resource-level grants created by this lane: their
+predefined roles include service-account impersonation and, for the Cloud Run
+agent, route invocation. User accounts, default compute accounts, arbitrary
+service agents, inherited owners, and inherited admins remain forbidden. An
+inherited owner or admin grant therefore blocks promotion even when the
+resource policy itself looks closed.
+
+Policy Analyzer evaluates IAM allow policies and does not apply deny policies
+to its results. Deny policies may provide defense in depth, but they cannot be
+used to make this proof pass. The deployment project must therefore remove
+broad allow roles from human and default identities and use deployment roles
+that omit `run.routes.invoke`, `secretmanager.versions.access`, and service
+account token-creation permissions.
 
 The decision service intentionally keeps its existing application-level
 authentication posture and `--no-invoker-iam-check`; this change does not make

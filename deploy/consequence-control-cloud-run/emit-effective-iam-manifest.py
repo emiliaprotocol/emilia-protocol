@@ -33,6 +33,20 @@ def principal(value: str, name: str) -> str:
     return value
 
 
+def managed_control_plane_principals(project_number: str) -> tuple[str, str]:
+    """Return the project-derived control-plane principals accepted by this profile."""
+    return (
+        (
+            "serviceAccount:"
+            f"service-{project_number}@compute-system.iam.gserviceaccount.com"
+        ),
+        (
+            "serviceAccount:"
+            f"service-{project_number}@serverless-robot-prod.iam.gserviceaccount.com"
+        ),
+    )
+
+
 def secret_spec(value: str) -> tuple[str, tuple[str, ...]]:
     if "=" not in value:
         raise ManifestError("--secret must be SECRET=PRINCIPAL[,PRINCIPAL]")
@@ -71,6 +85,7 @@ def manifest(
     if SERVICE.fullmatch(actuator_service) is None:
         raise ManifestError("actuator service is invalid")
     decision = principal(decision_principal, "decision principal")
+    managed_principals = managed_control_plane_principals(project_number)
     parsed_secrets = [secret_spec(value) for value in secrets]
     names = [name for name, _principals in parsed_secrets]
     if not names:
@@ -88,7 +103,7 @@ def manifest(
                 f"//run.googleapis.com/projects/{project}/locations/{region}/"
                 f"services/{actuator_service}"
             ),
-            "allowedPrincipals": [decision],
+            "allowedPrincipals": sorted((decision, *managed_principals)),
         }
     ]
     for name, principals in sorted(parsed_secrets):
@@ -101,7 +116,9 @@ def manifest(
                     f"//secretmanager.googleapis.com/projects/{project_number}/"
                     f"secrets/{name}"
                 ),
-                "allowedPrincipals": list(principals),
+                "allowedPrincipals": sorted(
+                    set(principals) | set(managed_principals)
+                ),
             }
         )
     return {
