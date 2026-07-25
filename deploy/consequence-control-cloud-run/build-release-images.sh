@@ -4,6 +4,7 @@ set -euo pipefail
 LANE_DIR=$(CDPATH='' cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)
 ROOT=$(CDPATH='' cd -- "$LANE_DIR/../.." && pwd)
 TRUST="$LANE_DIR/release-trust.py"
+PUBLISH="$LANE_DIR/publish-release-images.py"
 
 MODE=
 CONFIG=
@@ -160,19 +161,6 @@ else
   DECISION_TAG="${IMAGE_PREFIX}/consequence-control:git-${EXPECTED_COMMIT}"
   GATE_TAG=
   gcloud auth configure-docker "$REGISTRY_HOST" --quiet
-  for protected_tag in "$ACTUATOR_TAG" "$DECISION_TAG"; do
-    if gcloud artifacts docker images describe "$protected_tag" \
-      --format=json > "$OUTPUT/existing-image.json" 2> "$OUTPUT/existing-image.err"; then
-      printf 'error: commit-derived image tag already exists and is immutable by policy: %s\n' \
-        "$protected_tag" >&2
-      exit 1
-    fi
-    if ! grep -Eiq 'NOT_FOUND|not found|does not exist' "$OUTPUT/existing-image.err"; then
-      printf 'error: image-tag existence could not be proven for %s\n' "$protected_tag" >&2
-      sed -n '1,20p' "$OUTPUT/existing-image.err" >&2
-      exit 1
-    fi
-  done
 fi
 
 docker build --file "$DOCKER_CONTEXT/deploy/consequence-control-cloud-run/Dockerfile.consequence-actuator.release" \
@@ -200,61 +188,15 @@ if [[ "$MODE" == ci ]]; then
   exit 0
 fi
 
-docker push "$ACTUATOR_TAG"
-docker push "$DECISION_TAG"
-
-resolve_digest() {
-  local tag=$1 digest
-  digest=$(gcloud artifacts docker images describe "$tag" \
-    --format='value(image_summary.digest)')
-  [[ "$digest" =~ ^sha256:[0-9a-f]{64}$ ]] \
-    || { printf 'error: registry did not return one immutable digest for %s\n' "$tag" >&2; exit 1; }
-  printf '%s@%s' "${tag%:*}" "$digest"
-}
-ACTUATOR_IMAGE=$(resolve_digest "$ACTUATOR_TAG")
-DECISION_IMAGE=$(resolve_digest "$DECISION_TAG")
-for binding in "$ACTUATOR_TAG=$ACTUATOR_IMAGE" "$DECISION_TAG=$DECISION_IMAGE"; do
-  tag=${binding%%=*}
-  expected=${binding#*=}
-  docker image inspect "$tag" --format='{{range .RepoDigests}}{{println .}}{{end}}' \
-    | grep -Fx -- "$expected" >/dev/null \
-    || { printf 'error: local pushed image digest does not match Artifact Registry: %s\n' "$tag" >&2; exit 1; }
-done
-RELEASE_MANIFEST="$OUTPUT/release-manifest.json"
-"$TRUST" release \
-  --source-manifest "$SOURCE_MANIFEST" \
-  --actuator-image "$ACTUATOR_IMAGE" \
-  --decision-image "$DECISION_IMAGE" \
-  --output "$RELEASE_MANIFEST"
-DERIVED_CONFIG="$OUTPUT/deploy.env"
-DERIVED_CONFIG_SHA256=$(
-  "$TRUST" derive-config \
-    --config "$CONFIG" \
-    --release-manifest "$RELEASE_MANIFEST" \
-    --output "$DERIVED_CONFIG"
-)
-"$TRUST" verify-release \
+"$PUBLISH" \
   --root "$ROOT" \
   --source-manifest "$SOURCE_MANIFEST" \
-  --release-manifest "$RELEASE_MANIFEST" \
   --artifact-dir "$OUTPUT" \
   --expected-commit "$EXPECTED_COMMIT" \
-  --config "$DERIVED_CONFIG"
-
-ACTUATOR_DIGEST=${ACTUATOR_IMAGE##*@}
-DECISION_DIGEST=${DECISION_IMAGE##*@}
-{
-  printf 'actuator_name=%s\n' "${ACTUATOR_IMAGE%@*}"
-  printf 'actuator_digest=%s\n' "$ACTUATOR_DIGEST"
-  printf 'actuator_image=%s\n' "$ACTUATOR_IMAGE"
-  printf 'decision_name=%s\n' "${DECISION_IMAGE%@*}"
-  printf 'decision_digest=%s\n' "$DECISION_DIGEST"
-  printf 'decision_image=%s\n' "$DECISION_IMAGE"
-  printf 'source_manifest=%s\n' "$SOURCE_MANIFEST"
-  printf 'release_manifest=%s\n' "$RELEASE_MANIFEST"
-  printf 'verify_tarball=%s\n' "$VERIFY_TARBALL"
-  printf 'gate_tarball=%s\n' "$GATE_TARBALL"
-  printf 'require_receipt_tarball=%s\n' "$REQUIRE_RECEIPT_TARBALL"
-  printf 'derived_config=%s\n' "$DERIVED_CONFIG"
-  printf 'derived_config_sha256=%s\n' "$DERIVED_CONFIG_SHA256"
-} >> "$GITHUB_OUTPUT_FILE"
+  --config "$CONFIG" \
+  --actuator-tag "$ACTUATOR_TAG" \
+  --decision-tag "$DECISION_TAG" \
+  --output-dir "$OUTPUT/published-release" \
+  --github-output "$GITHUB_OUTPUT_FILE" \
+  --docker-bin "$(command -v docker)" \
+  --gcloud-bin "$(command -v gcloud)"

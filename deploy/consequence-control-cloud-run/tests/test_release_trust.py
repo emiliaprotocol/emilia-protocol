@@ -14,6 +14,7 @@ import unittest
 LANE = Path(__file__).resolve().parents[1]
 ROOT = LANE.parents[1]
 TRUST = LANE / "release-trust.py"
+PUBLISH = LANE / "publish-release-images.py"
 SCHEMA_RECONCILE = ROOT / "scripts" / "schema-pr-candidate-reconcile.mjs"
 
 GOVERNED = (
@@ -30,14 +31,79 @@ BUILD_INPUTS = (
     "apps/gate-service/package-lock.json",
 )
 
+FAKE_DOCKER = r'''#!/usr/bin/env python3
+import json, os, pathlib, sys
+path = pathlib.Path(os.environ["FAKE_RELEASE_STATE"])
+state = json.loads(path.read_text())
+args = sys.argv[1:]
+if args[:2] == ["image", "inspect"]:
+    target = args[2]
+    record = state["local"].get(target)
+    if record is None:
+        for tag, remote in state["remote"].items():
+            if target == tag.rsplit(":", 1)[0] + "@" + remote["digest"]:
+                record = remote
+                break
+    if record is None:
+        raise SystemExit(1)
+    if "--format" in args:
+        print(record["id"])
+    else:
+        print(json.dumps([{"Id": record["id"], "Config": {"Labels": record["labels"]}}]))
+elif args and args[0] == "push":
+    tag = args[1]
+    state["push_count"] += 1
+    if tag not in state["pushed"]:
+        state["pushed"].append(tag)
+    path.write_text(json.dumps(state))
+elif args and args[0] == "pull":
+    if state["pull_failures"] > 0:
+        state["pull_failures"] -= 1
+        path.write_text(json.dumps(state))
+        print("temporary pull failure", file=sys.stderr)
+        raise SystemExit(1)
+    print(args[1])
+else:
+    print("unsupported fake docker: " + repr(args), file=sys.stderr)
+    raise SystemExit(2)
+'''
 
-def run(*arguments: str, cwd: Path | None = None) -> subprocess.CompletedProcess[str]:
+FAKE_GCLOUD = r'''#!/usr/bin/env python3
+import hashlib, json, os, pathlib, sys
+path = pathlib.Path(os.environ["FAKE_RELEASE_STATE"])
+state = json.loads(path.read_text())
+tag = sys.argv[sys.argv.index("describe") + 1]
+remote = state["remote"].get(tag)
+if remote is None and tag in state["pushed"]:
+    if state["describe_failures"] > 0:
+        state["describe_failures"] -= 1
+        path.write_text(json.dumps(state))
+        print("NOT_FOUND", file=sys.stderr)
+        raise SystemExit(1)
+    digest = "sha256:" + hashlib.sha256(tag.encode()).hexdigest()
+    local = state["local"][tag]
+    remote = {"digest": digest, "id": local["id"], "labels": local["labels"]}
+    state["remote"][tag] = remote
+    path.write_text(json.dumps(state))
+if remote is None:
+    print("NOT_FOUND", file=sys.stderr)
+    raise SystemExit(1)
+print(json.dumps({"image_summary": {"digest": remote["digest"]}}))
+'''
+
+
+def run(
+    *arguments: str,
+    cwd: Path | None = None,
+    env: dict[str, str] | None = None,
+) -> subprocess.CompletedProcess[str]:
     return subprocess.run(
         [*arguments],
         cwd=cwd,
         text=True,
         capture_output=True,
         check=False,
+        env=env,
     )
 
 
@@ -274,6 +340,107 @@ class ReleaseTrustTests(unittest.TestCase):
         result = run(str(TRUST), "coordinates", "--config", str(config))
         self.assertNotEqual(result.returncode, 0)
         self.assertIn("must not choose", result.stderr)
+
+    def test_publish_path_retries_then_reuses_only_exact_remote_images(self) -> None:
+        self.assertEqual(self.create_source().returncode, 0)
+        labels_result = run(str(TRUST), "labels", "--source-manifest", str(self.source))
+        labels = dict(line.split("=", 1) for line in labels_result.stdout.splitlines())
+        actuator_tag = "us-central1-docker.pkg.dev/test-project/runtime/actuator:git-" + self.commit
+        decision_tag = "us-central1-docker.pkg.dev/test-project/runtime/decision:git-" + self.commit
+        state = self.artifacts / "fake-state.json"
+        state.write_text(
+            json.dumps(
+                {
+                    "local": {
+                        actuator_tag: {"id": "sha256:" + "1" * 64, "labels": {**labels, "io.emilia.image.component": "actuator"}},
+                        decision_tag: {"id": "sha256:" + "2" * 64, "labels": {**labels, "io.emilia.image.component": "decision"}},
+                    },
+                    "remote": {},
+                    "pushed": [],
+                    "push_count": 0,
+                    "describe_failures": 1,
+                    "pull_failures": 1,
+                }
+            ),
+            encoding="utf-8",
+        )
+        docker, gcloud = self._fake_registry_tools(state)
+        config = self.artifacts / "candidate.env"
+        config.write_text("PROJECT_ID=test-project\nREGION=us-central1\nRELEASE_ID=r1\n")
+        environment = {**os.environ, "FAKE_RELEASE_STATE": str(state)}
+
+        first = self._publish(
+            actuator_tag, decision_tag, config, docker, gcloud, self.artifacts / "release-one", environment
+        )
+        self.assertEqual(first.returncode, 0, first.stderr)
+        first_state = json.loads(state.read_text())
+        self.assertEqual(first_state["push_count"], 2)
+        derived = (self.artifacts / "release-one" / "deploy.env").read_text()
+        self.assertIn("ACTUATOR_IMAGE=" + actuator_tag.rsplit(":", 1)[0] + "@sha256:", derived)
+
+        second = self._publish(
+            actuator_tag, decision_tag, config, docker, gcloud, self.artifacts / "release-two", environment
+        )
+        self.assertEqual(second.returncode, 0, second.stderr)
+        self.assertEqual(json.loads(state.read_text())["push_count"], 2)
+        self.assertEqual(
+            (self.artifacts / "release-one" / "release-manifest.json").read_bytes(),
+            (self.artifacts / "release-two" / "release-manifest.json").read_bytes(),
+        )
+
+    def test_publish_path_refuses_existing_tag_with_different_content(self) -> None:
+        self.assertEqual(self.create_source().returncode, 0)
+        labels_result = run(str(TRUST), "labels", "--source-manifest", str(self.source))
+        labels = dict(line.split("=", 1) for line in labels_result.stdout.splitlines())
+        actuator_tag = "us-central1-docker.pkg.dev/test-project/runtime/actuator:git-" + self.commit
+        decision_tag = "us-central1-docker.pkg.dev/test-project/runtime/decision:git-" + self.commit
+        decision_digest = "sha256:" + "b" * 64
+        state = self.artifacts / "fake-state-mismatch.json"
+        state.write_text(json.dumps({
+            "local": {
+                actuator_tag: {"id": "sha256:" + "1" * 64, "labels": {**labels, "io.emilia.image.component": "actuator"}},
+                decision_tag: {"id": "sha256:" + "2" * 64, "labels": {**labels, "io.emilia.image.component": "decision"}},
+            },
+            "remote": {
+                decision_tag: {"digest": decision_digest, "id": "sha256:" + "9" * 64, "labels": {**labels, "io.emilia.image.component": "decision"}}
+            },
+            "pushed": [], "push_count": 0, "describe_failures": 0, "pull_failures": 0,
+        }), encoding="utf-8")
+        docker, gcloud = self._fake_registry_tools(state)
+        config = self.artifacts / "candidate-mismatch.env"
+        config.write_text("PROJECT_ID=test-project\nREGION=us-central1\nRELEASE_ID=r1\n")
+        result = self._publish(
+            actuator_tag,
+            decision_tag,
+            config,
+            docker,
+            gcloud,
+            self.artifacts / "release-mismatch",
+            {**os.environ, "FAKE_RELEASE_STATE": str(state)},
+        )
+        self.assertNotEqual(result.returncode, 0)
+        self.assertIn("content differs", result.stderr)
+
+    def _publish(self, actuator, decision, config, docker, gcloud, output, environment):
+        github_output = output.parent / (output.name + ".outputs")
+        github_output.write_text("")
+        return run(
+            str(PUBLISH), "--root", str(self.root), "--source-manifest", str(self.source),
+            "--artifact-dir", str(self.artifacts), "--expected-commit", self.commit,
+            "--config", str(config), "--actuator-tag", actuator, "--decision-tag", decision,
+            "--output-dir", str(output), "--github-output", str(github_output),
+            "--docker-bin", str(docker), "--gcloud-bin", str(gcloud),
+            "--retry-delay-seconds", "0", env=environment,
+        )
+
+    def _fake_registry_tools(self, state: Path) -> tuple[Path, Path]:
+        docker = self.artifacts / "fake-docker.py"
+        gcloud = self.artifacts / "fake-gcloud.py"
+        docker.write_text(FAKE_DOCKER, encoding="utf-8")
+        gcloud.write_text(FAKE_GCLOUD, encoding="utf-8")
+        docker.chmod(0o755)
+        gcloud.chmod(0o755)
+        return docker, gcloud
 
 
 class SchemaCandidateReconciliationTests(unittest.TestCase):

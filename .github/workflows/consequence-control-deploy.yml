@@ -116,6 +116,7 @@ jobs:
             ${{ steps.release-images.outputs.release_manifest }}
             ${{ steps.release-images.outputs.verify_tarball }}
             ${{ steps.release-images.outputs.gate_tarball }}
+            ${{ steps.release-images.outputs.require_receipt_tarball }}
 
       - name: Attest the immutable actuator image digest
         if: inputs.operation == 'deploy-candidates'
@@ -245,6 +246,7 @@ jobs:
             ${{ steps.release-images.outputs.release_manifest }}
             ${{ steps.release-images.outputs.verify_tarball }}
             ${{ steps.release-images.outputs.gate_tarball }}
+            ${{ steps.release-images.outputs.require_receipt_tarball }}
           if-no-files-found: error
           retention-days: 90
 
