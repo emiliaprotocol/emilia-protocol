@@ -8,6 +8,8 @@ source "$LANE_DIR/lib/common.sh"
 CONFIG=
 ACTION=
 EVIDENCE=
+STABLE_MANIFEST=
+STABLE_PUBLIC_KEY=
 while (($#)); do
   case "$1" in
     --config)
@@ -18,6 +20,16 @@ while (($#)); do
     --evidence)
       (($# >= 2)) || lane_die "--evidence requires a path"
       EVIDENCE=$2
+      shift 2
+      ;;
+    --stable-manifest)
+      (($# >= 2)) || lane_die "--stable-manifest requires a path"
+      STABLE_MANIFEST=$2
+      shift 2
+      ;;
+    --stable-public-key)
+      (($# >= 2)) || lane_die "--stable-public-key requires a path"
+      STABLE_PUBLIC_KEY=$2
       shift 2
       ;;
     --render-promote|--render-rollback|--apply-decision-1|--apply-decision-10|--apply-decision-50|--apply-decision-100|--apply-actuator-100|--apply-rollback)
@@ -35,11 +47,40 @@ done
 [[ -n "$ACTION" ]] || lane_die "a traffic action is required"
 load_lane_config "$CONFIG"
 validate_lane_config
-require_var ACTUATOR_STABLE_REVISION
-require_var DECISION_STABLE_REVISION
 
 ACTUATOR_CANDIDATE=$(candidate_revision "$ACTUATOR_SERVICE")
 DECISION_CANDIDATE=$(candidate_revision "$DECISION_SERVICE")
+
+load_render_stable_revisions() {
+  require_var ACTUATOR_STABLE_REVISION
+  require_var DECISION_STABLE_REVISION
+}
+
+load_pinned_stable_revisions() {
+  [[ -n "$STABLE_MANIFEST" ]] \
+    || lane_die "traffic apply requires --stable-manifest"
+  [[ -n "$STABLE_PUBLIC_KEY" ]] \
+    || lane_die "traffic apply requires --stable-public-key"
+  local revisions
+  revisions=$(
+    "$LANE_DIR/verify-stable-release.py" verify \
+      --config "$CONFIG" \
+      --manifest "$STABLE_MANIFEST" \
+      --public-key "$STABLE_PUBLIC_KEY" \
+      --live \
+      --print-revisions
+  ) || lane_die "stable rollback target is invalid or has drifted"
+  IFS=$'\t' read -r ACTUATOR_STABLE_REVISION DECISION_STABLE_REVISION \
+    <<< "$revisions"
+}
+
+if [[ "$ACTION" == render-promote || "$ACTION" == render-rollback ]]; then
+  load_render_stable_revisions
+else
+  require_apply_approval
+  load_pinned_stable_revisions
+fi
+
 [[ "$ACTUATOR_STABLE_REVISION" == "$ACTUATOR_SERVICE"-* ]] \
   || lane_die "ACTUATOR_STABLE_REVISION must belong to the actuator service"
 [[ "$DECISION_STABLE_REVISION" == "$DECISION_SERVICE"-* ]] \
@@ -105,7 +146,6 @@ case "$ACTION" in
     ;;
 esac
 
-require_apply_approval
 if [[ "$ACTION" != apply-rollback ]]; then
   [[ -n "$EVIDENCE" ]] || lane_die "promotion requires --evidence"
   verify_effective_iam_live
