@@ -589,6 +589,43 @@ print(json.dumps(value))
         self.assertEqual(value["signature"]["trust"]["kms_key_uri"], kms_uri)
         self.assertEqual(value["signature"]["trust"]["protection_level"], "HSM")
 
+        rollback = subprocess.run(
+            [
+                str(TRAFFIC),
+                "--config",
+                str(kms_config),
+                "--stable-manifest",
+                str(manifest),
+                "--apply-rollback",
+            ],
+            cwd=LANE,
+            check=False,
+            text=True,
+            capture_output=True,
+            env=self.environment(DEPLOYMENT_APPROVED="true"),
+        )
+        self.assertEqual(rollback.returncode, 0, rollback.stderr)
+
+        caller_key = subprocess.run(
+            [
+                str(TRAFFIC),
+                "--config",
+                str(kms_config),
+                "--stable-manifest",
+                str(manifest),
+                "--stable-public-key",
+                str(self.public_key),
+                "--apply-rollback",
+            ],
+            cwd=LANE,
+            check=False,
+            text=True,
+            capture_output=True,
+            env=self.environment(DEPLOYMENT_APPROVED="true"),
+        )
+        self.assertNotEqual(caller_key.returncode, 0)
+        self.assertIn("forbidden when KMS trust is configured", caller_key.stderr)
+
     def test_secret_version_identity_and_enabled_state_are_witnessed(self) -> None:
         state = initial_state()
         state["revisions"][ACTUATOR_REVISION]["spec"]["containers"][0]["env"] = [

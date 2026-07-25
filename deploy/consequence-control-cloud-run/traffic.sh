@@ -79,6 +79,33 @@ done
 load_lane_config "$CONFIG"
 validate_lane_config
 
+stable_trust_arguments() {
+  if [[ -n "${STABLE_RELEASE_KMS_KEY_URI:-}" ]]; then
+    [[ -z "$STABLE_PUBLIC_KEY" ]] \
+      || lane_die "--stable-public-key is forbidden when KMS trust is configured"
+    STABLE_TRUST_MODE="kms"
+    return
+  fi
+  [[ -n "$STABLE_PUBLIC_KEY" ]] \
+    || lane_die "file trust requires --stable-public-key"
+  [[ "$STABLE_PUBLIC_KEY" == /* ]] \
+    || lane_die "--stable-public-key must be an absolute path"
+  STABLE_TRUST_MODE="file"
+}
+
+verify_stable_revisions() {
+  local command=(
+    "$LANE_DIR/verify-stable-release.py" verify
+    --config "$CONFIG"
+    --manifest "$STABLE_MANIFEST"
+  )
+  if [[ "$STABLE_TRUST_MODE" == file ]]; then
+    command+=(--public-key "$STABLE_PUBLIC_KEY")
+  fi
+  command+=(--live --print-revisions)
+  "${command[@]}"
+}
+
 ACTUATOR_CANDIDATE=$(candidate_revision "$ACTUATOR_SERVICE")
 DECISION_CANDIDATE=$(candidate_revision "$DECISION_SERVICE")
 
@@ -90,17 +117,10 @@ load_render_stable_revisions() {
 load_pinned_stable_revisions() {
   [[ -n "$STABLE_MANIFEST" ]] \
     || lane_die "traffic apply requires --stable-manifest"
-  [[ -n "$STABLE_PUBLIC_KEY" ]] \
-    || lane_die "traffic apply requires --stable-public-key"
+  stable_trust_arguments
   local revisions
-  revisions=$(
-    "$LANE_DIR/verify-stable-release.py" verify \
-      --config "$CONFIG" \
-      --manifest "$STABLE_MANIFEST" \
-      --public-key "$STABLE_PUBLIC_KEY" \
-      --live \
-      --print-revisions
-  ) || lane_die "stable rollback target is invalid or has drifted"
+  revisions=$(verify_stable_revisions) \
+    || lane_die "stable rollback target is invalid or has drifted"
   IFS=$'\t' read -r ACTUATOR_STABLE_REVISION DECISION_STABLE_REVISION \
     <<< "$revisions"
 }
@@ -207,14 +227,8 @@ capture_snapshots() {
 
 verify_current_signed_config() {
   local revisions
-  revisions=$(
-    "$LANE_DIR/verify-stable-release.py" verify \
-      --config "$CONFIG" \
-      --manifest "$STABLE_MANIFEST" \
-      --public-key "$STABLE_PUBLIC_KEY" \
-      --live \
-      --print-revisions
-  ) || lane_die "signed stable-release configuration is no longer current"
+  revisions=$(verify_stable_revisions) \
+    || lane_die "signed stable-release configuration is no longer current"
   local actuator decision
   IFS=$'\t' read -r actuator decision <<< "$revisions"
   [[ "$actuator" == "$ACTUATOR_STABLE_REVISION" \

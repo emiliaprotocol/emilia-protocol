@@ -105,6 +105,10 @@ contract. Its tagged revision is also checked through the decision service's
 ```sh
 cp deploy/consequence-control-cloud-run/config.example.env /tmp/emilia-cloud-run.env
 # Replace non-secret deployment coordinates and secret-name:version references.
+deploy/consequence-control-cloud-run/provision-dedicated-project.sh \
+  --config /tmp/emilia-cloud-run.env \
+  --render
+
 deploy/consequence-control-cloud-run/deploy.sh \
   --config /tmp/emilia-cloud-run.env \
   --render
@@ -124,6 +128,72 @@ Rendering is the default-safe operation. Applying requires both `--apply` and
 `DEPLOYMENT_APPROVED=true`. This repository change does not grant deployment
 approval.
 
+## Dedicated-project provisioning
+
+The runtime belongs in a dedicated project, not beside unrelated workloads.
+`provision-dedicated-project.sh` creates or reconciles the project, billing
+link, required APIs, exact `/26` Direct VPC subnet, Private Google Access,
+router/NAT, Artifact Registry repository, custom provisioner/deployer roles,
+runtime service accounts, and recovery ownership. It removes broad default
+Editor grants only after the configured recovery owners are read back.
+
+The config pins `BILLING_ACCOUNT`, optional `PROJECT_PARENT`,
+`DEPLOYER_PRINCIPAL`, and comma-separated `RECOVERY_PRINCIPALS`. The deployer
+must be a service account. Every recovery principal must be a real,
+independently controlled IAM identity and must differ from the deployer.
+Applying requires confirmations outside the config:
+
+```sh
+PROVISIONING_APPROVED=true \
+PROVISIONING_CONFIRM_PROJECT=emilia-production \
+deploy/consequence-control-cloud-run/provision-dedicated-project.sh \
+  --config /tmp/emilia-cloud-run.env \
+  --apply
+```
+
+Approval controls are rejected if stored in the config file. The provisioning
+script also exposes explicit `--grant-jit-actas` and `--revoke-jit-actas`
+operations. Those require `ROLLOUT_APPROVED=true`,
+`ROLLOUT_CONFIRM_PROJECT` equal to `PROJECT_ID`, and a UTC
+`JIT_ACTAS_EXPIRES_AT` no more than 60 minutes in the future.
+
+## First stable release
+
+A new dedicated project has no rollback target. Before the first candidate,
+`bootstrap-stable.sh` creates a witnessed, deny-all pair that serves only
+authenticated health routes. It refuses an existing service, mutable image
+reference, non-allowlisted digest, drifted provenance file, reused runtime
+identity, permissioned bootstrap identity, or caller-selected trust root.
+
+The bootstrap image digest must appear in
+`STABLE_BOOTSTRAP_ALLOWED_DIGESTS`; its exact provenance document is pinned by
+`STABLE_BOOTSTRAP_PROVENANCE_SHA256`. The signed stable manifest uses either:
+
+- the configured `STABLE_RELEASE_KMS_KEY_URI` and its pinned
+  `STABLE_RELEASE_KEY_ID`; or
+- `STABLE_RELEASE_PUBLIC_KEY_FILE` plus
+  `STABLE_RELEASE_PUBLIC_KEY_SHA256`, with the matching private key supplied
+  only at invocation time.
+
+The two trust modes are mutually exclusive. Cloud KMS is the production
+default:
+
+```sh
+DEPLOYMENT_APPROVED=true \
+deploy/consequence-control-cloud-run/bootstrap-stable.sh \
+  --config /tmp/emilia-cloud-run.env \
+  --bootstrap-id bootstrap1 \
+  --placeholder-image \
+    us-central1-docker.pkg.dev/emilia-production/runtime/deny-all@sha256:3333333333333333333333333333333333333333333333333333333333333333 \
+  --output /secure/emilia/stable-release.json \
+  --apply
+```
+
+The output is written only after both services are proven health-only and
+serve 100% as the witnessed pair. Subsequent traffic changes revalidate the
+signature, key metadata, lineage, complete configuration, enabled numeric
+secret versions, and live revision state.
+
 ## Apply order
 
 `deploy.sh --apply` is deliberately ordered:
@@ -132,9 +202,9 @@ approval.
    read-back-verify each secret's accessor allowlist;
 2. query and validate the complete project ancestry, requiring an explicit
    organization-wide analyzer scope when any parent hierarchy exists;
-3. resolve the one active deployer identity and temporarily grant
-   `roles/iam.serviceAccountUser` on exactly the decision and actuator runtime
-   service accounts;
+3. prove absence of effective `actAs`, then create unique release-scoped
+   `roles/iam.serviceAccountUser` grants on exactly the decision and actuator
+   runtime service accounts; each condition expires after at most 15 minutes;
 4. deploy the actuator candidate by exact digest with zero traffic and a
    revision tag;
 5. close and read-back-verify actuator `roles/run.invoker` to exactly the
@@ -152,9 +222,11 @@ approval.
 10. stop without changing production traffic.
 
 An EXIT cleanup path retries revocation if either deployment or any intervening
-step fails. The release identity must not retain project-wide
-`iam.serviceAccounts.actAs`; the live proof runs only after revocation is
-read-back-verified.
+step fails. A separately invokable `deploy.sh --cleanup-jit` recovers after a
+hard runner termination by removing release-titled or expired grants and
+proving direct and effective absence. The release identity must not retain
+project-wide `iam.serviceAccounts.actAs`; the live proof runs only after
+revocation is read-back-verified.
 
 The actuator must be reachable through the configured VPC path. Cloud Run calls
 to an internal-ingress service must route through a VPC considered internal, so
@@ -286,6 +358,38 @@ the stable actuator endpoint is ready. Traffic commands require explicit stage
 selection. A canary evidence file is mandatory for promotion, but rollback is
 not blocked on canary evidence.
 
+Every apply operation also requires the signed stable manifest. File trust
+requires its exact configured public-key path through `--stable-public-key`;
+KMS trust forbids that argument and resolves the public key from the configured
+versioned KMS URI. Promotion requires current signed canary evidence and a
+telemetry document for the exact prior stage. The default gates are a 10-minute
+dwell, at least 100 requests and three readiness samples, error rate at most
+1%, p95 latency at most 500 ms, readiness at least 99%, indeterminate rate at
+most 0.5%, sample gaps at most five minutes, and telemetry no older than 15
+minutes.
+
+Cloud Run traffic is changed through a generation/resourceVersion-locked API
+update. The only accepted promotion path is stable -> decision 1% -> 10% ->
+50% -> 100% -> actuator 100%. After each mutation, both services are read back;
+a lost response is reconciled from state and is never blindly replayed.
+
+```sh
+DEPLOYMENT_APPROVED=true \
+deploy/consequence-control-cloud-run/traffic.sh \
+  --config /tmp/emilia-cloud-run.env \
+  --evidence /secure/emilia/canary-evidence.json \
+  --telemetry /secure/emilia/rollout-telemetry.json \
+  --stable-manifest /secure/emilia/stable-release.json \
+  --apply-decision-1
+```
+
+Repeat with fresh telemetry for `--apply-decision-10`,
+`--apply-decision-50`, `--apply-decision-100`, and finally
+`--apply-actuator-100`. For file trust, add
+`--stable-public-key /secure/emilia/stable-release-ed25519-public.pem` to every
+apply. `--apply-rollback` accepts only a recognized rollout state and restores
+actuator first, then decision.
+
 ## Credential and infrastructure blockers
 
 An apply remains blocked until all of the following exist:
@@ -310,8 +414,10 @@ An apply remains blocked until all of the following exist:
 - a current, cryptographically valid canary scenario produced through the
   approval and AEB pipeline.
 
-No command in this tree creates database roles, secret payloads, GitHub
-credentials, images, migrations, or approval/evidence fixtures.
+The provisioning and stable-bootstrap commands create only infrastructure,
+identities, and deny-all stable revisions. No command in this tree creates
+database roles, secret payloads, GitHub credentials, candidate images,
+migrations, or approval/evidence fixtures.
 
 ## Focused validation
 
@@ -321,7 +427,9 @@ deploy/consequence-control-cloud-run/test.sh
 
 The test suite uses Bash, ShellCheck, Python, and OpenSSL. It renders deployment
 and traffic plans with fixture secret references, verifies exact IAM
-reconciliation plus inherited effective-IAM refusal, credential separation and
-digest pinning, checks the executable signed
-fresh/stale canary evidence, and exercises live revision binding with a local
-fake `gcloud`; it does not contact Google Cloud.
+reconciliation plus inherited effective-IAM refusal, conditional JIT expiry
+and cleanup, permissionless stable bootstrap, trust-root pinning, complete
+Cloud Run configuration, credential separation, enabled numeric secrets,
+digest/provenance pinning, signed fresh/stale canary evidence,
+generation-locked rollout transitions, telemetry/dwell gates, and live
+revision binding with a local fake `gcloud`; it does not contact Google Cloud.
