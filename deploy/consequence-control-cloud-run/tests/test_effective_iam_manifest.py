@@ -28,6 +28,10 @@ RUN_AGENT = (
 DEPLOYER = (
     "serviceAccount:emilia-deployer@test-project.iam.gserviceaccount.com"
 )
+KMS_URI = (
+    "gcp-kms://projects/test-project/locations/us-central1/"
+    "keyRings/emilia-release/cryptoKeys/stable-release/cryptoKeyVersions/1"
+)
 
 
 class EffectiveIamManifestTests(unittest.TestCase):
@@ -38,8 +42,10 @@ class EffectiveIamManifestTests(unittest.TestCase):
             region="us-central1",
             actuator_service="emilia-consequence-actuator",
             decision_service="emilia-consequence-control",
+            actuator_principal=ACTUATOR,
             decision_principal=DECISION,
             deployer_principal=DEPLOYER,
+            stable_release_kms_key_uri=KMS_URI,
             secrets=[
                 f"shared-token={DECISION},{ACTUATOR}",
                 f"actuator-key={ACTUATOR}",
@@ -56,6 +62,9 @@ class EffectiveIamManifestTests(unittest.TestCase):
                 "service-update:decision",
                 "secret:actuator-key",
                 "secret:shared-token",
+                "runtime-actAs:actuator",
+                "runtime-actAs:decision",
+                "kms-signer:stable-release",
             ],
         )
         self.assertEqual(
@@ -71,6 +80,32 @@ class EffectiveIamManifestTests(unittest.TestCase):
                 "/services/emilia-consequence-actuator"
             )
         )
+        stable_targets = {
+            target["name"]: target
+            for target in value["targets"]
+            if target["kind"] == "runtimeActAs"
+        }
+        self.assertEqual(
+            {
+                tuple(target["allowedPrincipals"])
+                for target in stable_targets.values()
+            },
+            {(DEPLOYER,)},
+        )
+        self.assertTrue(
+            all("jitGrant" not in target for target in stable_targets.values())
+        )
+        kms_target = value["targets"][-1]
+        self.assertEqual(kms_target["name"], "kms-signer:stable-release")
+        self.assertEqual(kms_target["allowedPrincipals"], [DEPLOYER])
+        self.assertEqual(
+            kms_target["resource"],
+            (
+                "//cloudkms.googleapis.com/projects/test-project/"
+                "locations/us-central1/keyRings/emilia-release/"
+                "cryptoKeys/stable-release/cryptoKeyVersions/1"
+            ),
+        )
 
     def test_manifest_closes_update_custody_for_both_exact_services(self) -> None:
         value = emitter.manifest(
@@ -79,8 +114,10 @@ class EffectiveIamManifestTests(unittest.TestCase):
             region="us-central1",
             actuator_service="emilia-consequence-actuator",
             decision_service="emilia-consequence-control",
+            actuator_principal=ACTUATOR,
             decision_principal=DECISION,
             deployer_principal=DEPLOYER,
+            stable_release_kms_key_uri=KMS_URI,
             secrets=[f"actuator-key={ACTUATOR}"],
         )
         updates = {
@@ -130,6 +167,7 @@ class EffectiveIamManifestTests(unittest.TestCase):
             actuator_principal=ACTUATOR,
             decision_principal=DECISION,
             deployer_principal=DEPLOYER,
+            stable_release_kms_key_uri=KMS_URI,
             jit_condition_title_prefix="emilia-jit-actas-r20260725b",
             jit_issued_at=issued_at.isoformat().replace("+00:00", "Z"),
             jit_expires_at=expires_at.isoformat().replace("+00:00", "Z"),
@@ -183,6 +221,7 @@ class EffectiveIamManifestTests(unittest.TestCase):
                 actuator_principal=ACTUATOR,
                 decision_principal=DECISION,
                 deployer_principal=DEPLOYER,
+                stable_release_kms_key_uri=KMS_URI,
                 jit_condition_title_prefix="emilia-jit-actas-r20260725b",
                 jit_issued_at="2026-07-25T18:00:00Z",
                 jit_expires_at="2026-07-25T18:15:01Z",
@@ -200,6 +239,8 @@ class EffectiveIamManifestTests(unittest.TestCase):
                 actuator_principal=ACTUATOR,
                 decision_principal=DECISION,
                 deployer_principal=DEPLOYER,
+                stable_release_kms_key_uri=KMS_URI,
+                jit_condition_title_prefix="emilia-jit-actas-r20260725b",
                 secrets=[f"actuator-key={ACTUATOR}"],
             )
 
@@ -210,8 +251,10 @@ class EffectiveIamManifestTests(unittest.TestCase):
             region="us-central1",
             actuator_service="emilia-consequence-actuator",
             decision_service="emilia-consequence-control",
+            actuator_principal=ACTUATOR,
             decision_principal=DECISION,
             deployer_principal=DEPLOYER,
+            stable_release_kms_key_uri=KMS_URI,
             secrets=[f"actuator-key={ACTUATOR}"],
             analyzer_scope="organizations/987654321",
         )
@@ -232,8 +275,10 @@ class EffectiveIamManifestTests(unittest.TestCase):
                         region="us-central1",
                         actuator_service="emilia-consequence-actuator",
                         decision_service="emilia-consequence-control",
+                        actuator_principal=ACTUATOR,
                         decision_principal=DECISION,
                         deployer_principal=DEPLOYER,
+                        stable_release_kms_key_uri=KMS_URI,
                         secrets=[f"actuator-key={ACTUATOR}"],
                         analyzer_scope=scope,
                     )
@@ -248,8 +293,10 @@ class EffectiveIamManifestTests(unittest.TestCase):
                         region="us-central1",
                         actuator_service="emilia-consequence-actuator",
                         decision_service="emilia-consequence-control",
+                        actuator_principal=ACTUATOR,
                         decision_principal=DECISION,
                         deployer_principal=DEPLOYER,
+                        stable_release_kms_key_uri=KMS_URI,
                         secrets=[f"secret={candidate}"],
                     )
 
@@ -261,10 +308,41 @@ class EffectiveIamManifestTests(unittest.TestCase):
                 region="us-central1",
                 actuator_service="emilia-consequence-actuator",
                 decision_service="emilia-consequence-control",
+                actuator_principal=ACTUATOR,
                 decision_principal=DECISION,
                 deployer_principal=DEPLOYER,
+                stable_release_kms_key_uri=KMS_URI,
                 secrets=[f"secret={ACTUATOR}", f"secret={ACTUATOR}"],
             )
+
+    def test_kms_signer_must_be_versioned_and_in_the_deployment_project(
+        self,
+    ) -> None:
+        for candidate in (
+            (
+                "gcp-kms://projects/other-project/locations/us-central1/"
+                "keyRings/emilia-release/cryptoKeys/stable-release/"
+                "cryptoKeyVersions/1"
+            ),
+            (
+                "gcp-kms://projects/test-project/locations/us-central1/"
+                "keyRings/emilia-release/cryptoKeys/stable-release"
+            ),
+        ):
+            with self.subTest(candidate=candidate):
+                with self.assertRaisesRegex(emitter.ManifestError, "KMS key"):
+                    emitter.manifest(
+                        project="test-project",
+                        project_number="123456789",
+                        region="us-central1",
+                        actuator_service="emilia-consequence-actuator",
+                        decision_service="emilia-consequence-control",
+                        actuator_principal=ACTUATOR,
+                        decision_principal=DECISION,
+                        deployer_principal=DEPLOYER,
+                        stable_release_kms_key_uri=candidate,
+                        secrets=[f"actuator-key={ACTUATOR}"],
+                    )
 
     def test_cli_writes_private_atomic_json(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
@@ -277,8 +355,10 @@ class EffectiveIamManifestTests(unittest.TestCase):
                     "--region=us-central1",
                     "--actuator-service=emilia-consequence-actuator",
                     "--decision-service=emilia-consequence-control",
+                    f"--actuator-principal={ACTUATOR}",
                     f"--decision-principal={DECISION}",
                     f"--deployer-principal={DEPLOYER}",
+                    f"--stable-release-kms-key-uri={KMS_URI}",
                     "--analyzer-scope=organizations/987654321",
                     "--secret",
                     f"actuator-key={ACTUATOR}",

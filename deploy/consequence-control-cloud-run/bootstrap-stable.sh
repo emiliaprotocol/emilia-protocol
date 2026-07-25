@@ -510,7 +510,9 @@ PY
 }
 
 new_authorization_token() {
-  python3 -c 'import secrets; print(secrets.token_urlsafe(32))'
+  # A fixed alphanumeric prefix prevents a valid token from being parsed as a
+  # long option when it is passed through an argparse-backed verifier.
+  python3 -c 'import secrets; print("e" + secrets.token_urlsafe(31))'
 }
 
 hash_command() {
@@ -830,10 +832,10 @@ verify_plane_state() {
     command+=(--expect-state "$expected_state")
   fi
   if [[ -n "$expected_deploy" ]]; then
-    command+=(--expect-deploy-authorization "$expected_deploy")
+    command+=("--expect-deploy-authorization=$expected_deploy")
   fi
   if [[ -n "$expected_traffic" ]]; then
-    command+=(--expect-traffic-authorization "$expected_traffic")
+    command+=("--expect-traffic-authorization=$expected_traffic")
   fi
   "${command[@]}"
 }
@@ -1320,10 +1322,10 @@ verify_plane_snapshot_state() {
     --expect-state "$expected_state"
   )
   if [[ -n "$expected_deploy" ]]; then
-    command+=(--expect-deploy-authorization "$expected_deploy")
+    command+=("--expect-deploy-authorization=$expected_deploy")
   fi
   if [[ -n "$expected_traffic" ]]; then
-    command+=(--expect-traffic-authorization "$expected_traffic")
+    command+=("--expect-traffic-authorization=$expected_traffic")
   fi
   "${command[@]}"
 }

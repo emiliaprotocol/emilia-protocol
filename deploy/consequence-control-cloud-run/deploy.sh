@@ -480,6 +480,14 @@ if not isinstance(permissions, list) or any(
     raise SystemExit("deployer role retains an IAM policy writer")
 if "run.services.update" not in permissions:
     raise SystemExit("deployer role is not the expected rollout role")
+for required_read in (
+    "cloudkms.cryptoKeyVersions.get",
+    "iam.serviceAccountKeys.list",
+):
+    if required_read not in permissions:
+        raise SystemExit(
+            f"deployer role is missing required read permission: {required_read}"
+        )
 policy = json.loads((root / "project.json").read_text(encoding="utf-8"))
 bindings = policy.get("bindings", [])
 for binding in bindings:
@@ -616,8 +624,10 @@ verify_effective_iam_org_live() {
     "--region=$REGION"
     "--actuator-service=$ACTUATOR_SERVICE"
     "--decision-service=$DECISION_SERVICE"
+    "--actuator-principal=serviceAccount:$ACTUATOR_SA"
     "--decision-principal=serviceAccount:$DECISION_SA"
     "--deployer-principal=$DEPLOYER_PRINCIPAL"
+    "--stable-release-kms-key-uri=$STABLE_RELEASE_KMS_KEY_URI"
     "--output=$manifest"
   )
   while IFS= read -r spec; do arguments+=(--secret "$spec"); done \

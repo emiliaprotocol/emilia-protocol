@@ -989,6 +989,14 @@ class ProtectedDeploymentBoundaryTests(unittest.TestCase):
         ):
             self.assertNotIn(command, deployer)
         self.assertIn("run.services.update", deployer_permissions)
+        self.assertIn(
+            "cloudkms.cryptoKeyVersions.get",
+            deployer_permissions,
+        )
+        self.assertIn(
+            "iam.serviceAccountKeys.list",
+            deployer_permissions,
+        )
 
     def test_provisioning_is_one_time_and_recovery_is_external_quorum(self) -> None:
         source = (

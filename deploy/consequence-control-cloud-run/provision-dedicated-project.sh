@@ -51,11 +51,13 @@ DEPLOYER_PERMISSIONS=(
   cloudasset.assets.analyzeIamPolicy
   cloudasset.assets.searchAllIamPolicies
   cloudasset.assets.searchAllResources
+  cloudkms.cryptoKeyVersions.get
   compute.networks.get
   compute.subnetworks.get
   compute.subnetworks.use
   iam.serviceAccounts.get
   iam.serviceAccounts.getIamPolicy
+  iam.serviceAccountKeys.list
   logging.logEntries.list
   monitoring.timeSeries.list
   resourcemanager.projects.get

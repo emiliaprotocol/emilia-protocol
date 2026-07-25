@@ -904,8 +904,11 @@ def kms_public_key(trust: dict[str, str]) -> tuple[bytes, dict[str, str]]:
         "stable-release KMS key algorithm",
     )
     protection_level = metadata.get("protectionLevel")
-    if not isinstance(protection_level, str) or not protection_level:
-        raise ValueError("stable-release KMS protection level is missing")
+    require_equal(
+        protection_level,
+        "HSM",
+        "stable-release KMS protection level",
+    )
     result = subprocess.run(
         [
             "gcloud",

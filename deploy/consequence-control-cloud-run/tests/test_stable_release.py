@@ -227,7 +227,7 @@ if args[:5] == ["kms", "keys", "versions", "describe", "3"]:
     value = {
         "state": "ENABLED",
         "algorithm": "EC_SIGN_ED25519",
-        "protectionLevel": "HSM",
+        "protectionLevel": state.get("kms_protection_level", "HSM"),
     }
 elif args[:5] == ["kms", "keys", "versions", "get-public-key", "3"]:
     print(pathlib.Path(os.environ["FAKE_KMS_PUBLIC"]).read_text(), end="")
@@ -649,6 +649,49 @@ print(json.dumps(value))
         )
         self.assertNotEqual(caller_key.returncode, 0)
         self.assertIn("forbidden when KMS trust is configured", caller_key.stderr)
+
+    def test_configured_kms_trust_refuses_software_protection(self) -> None:
+        state = initial_state()
+        state["kms_protection_level"] = "SOFTWARE"
+        self.write_state(state)
+        kms_uri = (
+            "gcp-kms://projects/test-project/locations/us-central1/"
+            "keyRings/stable/cryptoKeys/release/cryptoKeyVersions/3"
+        )
+        kms_config = self.root / "software-kms-config.env"
+        lines = [
+            line
+            for line in self.config.read_text(encoding="utf-8").splitlines()
+            if not line.startswith("STABLE_RELEASE_PUBLIC_KEY_")
+            and not line.startswith("STABLE_RELEASE_KEY_ID=")
+        ]
+        lines.extend(
+            [
+                "STABLE_RELEASE_KEY_ID=software-kms-key",
+                f"STABLE_RELEASE_KMS_KEY_URI={kms_uri}",
+            ]
+        )
+        kms_config.write_text("\n".join(lines) + "\n", encoding="utf-8")
+        result = self.run_verifier(
+            "record",
+            "--config",
+            str(kms_config),
+            "--actuator-revision",
+            ACTUATOR_REVISION,
+            "--decision-revision",
+            DECISION_REVISION,
+            "--kms-key-uri",
+            kms_uri,
+            "--key-id",
+            "software-kms-key",
+            "--output",
+            str(self.root / "software-kms-stable.json"),
+        )
+        self.assertNotEqual(result.returncode, 0)
+        self.assertIn(
+            "stable-release KMS protection level must equal 'HSM'",
+            result.stderr,
+        )
 
     def test_secret_version_identity_and_enabled_state_are_witnessed(self) -> None:
         state = initial_state()

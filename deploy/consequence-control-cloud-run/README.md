@@ -263,7 +263,10 @@ The bootstrap image digest must appear in
 
 The two trust modes are mutually exclusive. Cloud KMS is the production
 default. Provisioning creates the pinned version-1 Ed25519 key with HSM
-protection and closes its signer/verifier policy to the keyless deployer:
+protection and closes its direct signer/verifier policy to the keyless
+deployer. Protected release verification rejects any non-HSM KMS version, and
+the effective-IAM proof separately rejects signer authority inherited from the
+key ring, project, folder, or organization:
 
 ```sh
 DEPLOYMENT_CONFIG_SHA256=aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa \
@@ -295,9 +298,10 @@ traffic, and live revision state.
    user-managed keys on every protected service account;
 2. verify APIs, pre-existing secrets, service accounts, project ancestry,
    closed project/runtime/secret IAM, and quiescent direct policy snapshots;
-3. prove the provisioned runtime `actAs` bindings are exactly the single
-   keyless deployer and that its only credential path is the exact-commit WIF
-   boundary;
+3. prove effective runtime `actAs` authority for both service accounts and
+   effective signing authority for the versioned stable-release KMS key are
+   exactly the single keyless deployer, including inherited bindings, and that
+   its only credential path is the exact-commit WIF boundary;
 4. deploy the actuator candidate by exact digest with zero traffic and a
    revision tag;
 5. close and read-back-verify actuator `roles/run.invoker` to exactly the
@@ -457,8 +461,9 @@ requires its exact configured public-key path through `--stable-public-key`;
 the verifier opens it once without following symlinks, verifies safe
 ownership/mode and the hash over those exact bytes, and never reopens the path.
 KMS trust forbids the file argument and resolves the public key from the
-configured versioned KMS URI. Versioned Cloud KMS with HSM protection remains
-the production preference. Promotion requires current signed canary evidence
+configured versioned KMS URI. Protected verification requires versioned Cloud
+KMS with HSM protection; software-protected versions are refused. Promotion
+requires current signed canary evidence
 and a signed telemetry document for the exact prior stage. The telemetry
 observer is pinned by `ROLLOUT_TELEMETRY_KEY_ID`,
 `ROLLOUT_TELEMETRY_PUBLIC_KEY_FILE`, and
@@ -603,7 +608,8 @@ An apply remains blocked until all of the following exist:
 - Google Cloud credentials with permission to manage Cloud Run services,
   runtime service accounts, service-level Invoker IAM, and per-secret IAM,
   with exact-commit WIF as the only route to the deployer and exact runtime
-  `actAs` policies closed to that keyless identity;
+  `actAs` policies closed to that keyless identity, plus no inherited runtime
+  `actAs` or KMS signing authority for any other principal;
 - a distinct active provisioner identity, a distinct keyless deployer service
   account, and an organization-owned PAM entitlement requiring at least two
   independently controlled approvals;

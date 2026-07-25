@@ -308,6 +308,8 @@ if args[:2] == ["projects", "get-iam-policy"]:
 if args[:3] == ["iam", "roles", "describe"]:
     print(json.dumps({
         "includedPermissions": [
+            "cloudkms.cryptoKeyVersions.get",
+            "iam.serviceAccountKeys.list",
             "resourcemanager.projects.get",
             "run.services.get",
             "run.services.update",

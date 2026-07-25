@@ -19,6 +19,7 @@ PERMISSIONS = {
     "serviceUpdate": "run.services.update",
     "secret": "secretmanager.versions.access",
     "runtimeActAs": "iam.serviceAccounts.actAs",
+    "kmsSigner": "cloudkms.cryptoKeyVersions.useToSign",
 }
 IMPERSONATION_PERMISSIONS = {
     "iam.serviceAccounts.actAs",
@@ -55,6 +56,10 @@ PROJECT_NUMBER_PATTERN = re.compile(r"^[1-9][0-9]{5,29}$")
 CONDITION_TITLE_PATTERN = re.compile(r"^[A-Za-z0-9_.-]{1,100}$")
 SERVICE_ACCOUNT_RESOURCE_PATTERN = re.compile(
     r"^//iam\.googleapis\.com/projects/([^/]+)/serviceAccounts/([^/\s]+)$"
+)
+KMS_VERSION_RESOURCE_PATTERN = re.compile(
+    r"^//cloudkms\.googleapis\.com/projects/([^/]+)/locations/([^/]+)/"
+    r"keyRings/([^/]+)/cryptoKeys/([^/]+)/cryptoKeyVersions/([1-9][0-9]*)$"
 )
 ANCESTOR_RESOURCE_PATTERN = re.compile(
     r"^//cloudresourcemanager\.googleapis\.com/"
@@ -402,8 +407,24 @@ def verify_result(
     attached_resource = require_string(
         result["attachedResourceFullName"], f"{path}.attachedResourceFullName"
     )
+    kms_match = KMS_VERSION_RESOURCE_PATTERN.fullmatch(resource)
+    kms_ancestors: set[str] = set()
+    if kms_match is not None:
+        project, location, keyring, key, _version = kms_match.groups()
+        kms_ancestors = {
+            (
+                "//cloudkms.googleapis.com/"
+                f"projects/{project}/locations/{location}/keyRings/{keyring}"
+            ),
+            (
+                "//cloudkms.googleapis.com/"
+                f"projects/{project}/locations/{location}/keyRings/{keyring}/"
+                f"cryptoKeys/{key}"
+            ),
+        }
     if (
         attached_resource != resource
+        and attached_resource not in kms_ancestors
         and ANCESTOR_RESOURCE_PATTERN.fullmatch(attached_resource) is None
     ):
         raise VerificationError(
@@ -898,7 +919,7 @@ def validate_target_shape(target: dict[str, Any], path: str, live: bool) -> None
     if not live:
         required.add("analysis")
     if target.get("kind") == "runtimeActAs":
-        required.add("jitGrant")
+        optional.add("jitGrant")
     check_fields(target, path, required, optional)
 
 
@@ -939,7 +960,11 @@ def verify_manifest(
     permissioned_resources: set[tuple[str, str]] = set()
     jit_titles: set[str] = set()
     jit_labels: set[str] = set()
+    steady_runtime_labels: set[str] = set()
+    steady_runtime_principal: str | None = None
     actuator_count = 0
+    kms_signer_count = 0
+    kms_signer_principal: str | None = None
     secret_count = 0
     service_update_labels: set[str] = set()
     service_update_resources: set[str] = set()
@@ -959,7 +984,7 @@ def verify_manifest(
         if kind not in PERMISSIONS:
             raise VerificationError(
                 f"{path}.kind must be actuator, serviceUpdate, secret, "
-                "or runtimeActAs"
+                "runtimeActAs, or kmsSigner"
             )
         permissioned_resource = (resource, PERMISSIONS[kind])
         if name in names or permissioned_resource in permissioned_resources:
@@ -972,7 +997,7 @@ def verify_manifest(
         allowed = validate_allowlist(
             target["allowedPrincipals"],
             f"{path}.allowedPrincipals",
-            allow_empty=kind == "runtimeActAs",
+            allow_empty=kind == "runtimeActAs" and "jitGrant" in target,
         )
 
         if kind == "actuator":
@@ -1031,7 +1056,7 @@ def verify_manifest(
                     f"{path}.resource does not use manifest.projectNumber"
                 )
             jit_grant = None
-        else:
+        elif kind == "runtimeActAs":
             label = name.removeprefix("runtime-actAs:")
             if name != f"runtime-actAs:{label}" or label not in {
                 "actuator",
@@ -1052,19 +1077,63 @@ def verify_manifest(
                 raise VerificationError(
                     f"{path}.resource service account is outside manifest.projectId"
                 )
-            if allowed:
-                raise VerificationError(
-                    f"{path}.allowedPrincipals must be empty at steady state"
+            if "jitGrant" in target:
+                if allowed:
+                    raise VerificationError(
+                        f"{path}.allowedPrincipals must be empty for JIT actAs"
+                    )
+                jit_grant = validate_jit_grant(
+                    target["jitGrant"],
+                    f"{path}.jitGrant",
                 )
-            jit_grant = validate_jit_grant(
-                target["jitGrant"],
-                f"{path}.jitGrant",
-            )
-            title = jit_grant[4]["title"]
-            if title in jit_titles:
-                raise VerificationError("runtime JIT condition titles are not unique")
-            jit_titles.add(title)
-            jit_labels.add(label)
+                title = jit_grant[4]["title"]
+                if title in jit_titles:
+                    raise VerificationError(
+                        "runtime JIT condition titles are not unique"
+                    )
+                jit_titles.add(title)
+                jit_labels.add(label)
+            else:
+                if (
+                    len(allowed) != 1
+                    or not allowed[0].startswith("serviceAccount:")
+                ):
+                    raise VerificationError(
+                        f"{path}.allowedPrincipals must contain only the exact "
+                        "stable deployer service account"
+                    )
+                if (
+                    steady_runtime_principal is not None
+                    and steady_runtime_principal != allowed[0]
+                ):
+                    raise VerificationError(
+                        "both runtime actAs targets must name the same exact "
+                        "stable deployer"
+                    )
+                steady_runtime_principal = allowed[0]
+                steady_runtime_labels.add(label)
+                jit_grant = None
+        else:
+            kms_signer_count += 1
+            match = KMS_VERSION_RESOURCE_PATTERN.fullmatch(resource)
+            if (
+                name != "kms-signer:stable-release"
+                or match is None
+                or match.group(1) != project_id
+            ):
+                raise VerificationError(
+                    f"{path} is not the versioned stable-release KMS signer"
+                )
+            if (
+                len(allowed) != 1
+                or not allowed[0].startswith("serviceAccount:")
+            ):
+                raise VerificationError(
+                    f"{path}.allowedPrincipals must contain only the exact "
+                    "deployer service account"
+                )
+            kms_signer_principal = allowed[0]
+            jit_grant = None
         if (
             scope_match.group(1) == "projects"
             and scope_match.group(2) != project_id
@@ -1102,13 +1171,40 @@ def verify_manifest(
         raise VerificationError(
             "Cloud Run update custody must cover two distinct services"
         )
-    if jit_labels and jit_labels != {"actuator", "decision"}:
+    if kms_signer_count != 1:
         raise VerificationError(
-            "manifest must contain both runtime actAs targets or neither"
+            "manifest must contain exactly one versioned stable-release KMS signer"
+        )
+    if jit_labels and steady_runtime_labels:
+        raise VerificationError(
+            "manifest cannot mix JIT and stable runtime actAs targets"
+        )
+    runtime_labels = jit_labels | steady_runtime_labels
+    if runtime_labels != {"actuator", "decision"}:
+        raise VerificationError(
+            "manifest must contain both exact runtime actAs targets"
         )
     if jit_phase is not None and jit_labels != {"actuator", "decision"}:
         raise VerificationError(
             "JIT phase verification requires both runtime actAs targets"
+        )
+    if jit_phase is None and steady_runtime_labels != {"actuator", "decision"}:
+        raise VerificationError(
+            "steady-state verification requires both stable runtime actAs targets"
+        )
+    if (
+        service_update_principal is None
+        or kms_signer_principal != service_update_principal
+    ):
+        raise VerificationError(
+            "KMS signer and Cloud Run update custody must name the same deployer"
+        )
+    if (
+        steady_runtime_principal is not None
+        and steady_runtime_principal != service_update_principal
+    ):
+        raise VerificationError(
+            "runtime actAs and Cloud Run update custody must name the same deployer"
         )
 
     if live:
@@ -1146,7 +1242,7 @@ def verify_manifest(
         access_time = None
         expected_condition = None
         phase = jit_phase or "after"
-        if kind == "runtimeActAs":
+        if kind == "runtimeActAs" and target["jitGrant"] is not None:
             principal, issued_text, issued, expires, condition = target["jitGrant"]
             if phase == "during":
                 current = now or datetime.now(timezone.utc)

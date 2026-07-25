@@ -26,6 +26,12 @@ ANALYZER_SCOPE = re.compile(
     r"^(projects/[a-z][a-z0-9-]{4,28}[a-z0-9]|"
     r"organizations/[1-9][0-9]*)$"
 )
+KMS_URI = re.compile(
+    r"^gcp-kms://projects/([a-z][a-z0-9-]{4,28}[a-z0-9])/"
+    r"locations/([a-z0-9-]{1,63})/keyRings/"
+    r"([a-z][a-z0-9_-]{0,62})/cryptoKeys/"
+    r"([a-z][a-z0-9_-]{0,62})/cryptoKeyVersions/([1-9][0-9]*)$"
+)
 CONCRETE_PRINCIPAL = re.compile(
     r"^(?:user|serviceAccount):[^@\s]+@[^@\s]+$|^principal://[^\s]+$"
 )
@@ -105,6 +111,56 @@ def runtime_act_as_target(
     }
 
 
+def steady_runtime_act_as_target(
+    *,
+    label: str,
+    project: str,
+    scope: str,
+    runtime_principal: str,
+    deployer: str,
+) -> dict[str, object]:
+    account = runtime_principal.removeprefix("serviceAccount:")
+    return {
+        "name": f"runtime-actAs:{label}",
+        "kind": "runtimeActAs",
+        "scope": scope,
+        "resource": (
+            f"//iam.googleapis.com/projects/{project}/serviceAccounts/{account}"
+        ),
+        "allowedPrincipals": [deployer],
+    }
+
+
+def kms_signer_target(
+    *,
+    project: str,
+    scope: str,
+    kms_key_uri: str,
+    deployer: str,
+) -> dict[str, object]:
+    match = KMS_URI.fullmatch(kms_key_uri)
+    if match is None:
+        raise ManifestError(
+            "stable-release KMS key URI must pin one crypto key version"
+        )
+    if match.group(1) != project:
+        raise ManifestError(
+            "stable-release KMS key must belong to the deployment project"
+        )
+    return {
+        "name": "kms-signer:stable-release",
+        "kind": "kmsSigner",
+        "scope": scope,
+        "resource": (
+            "//cloudkms.googleapis.com/"
+            f"projects/{match.group(1)}/locations/{match.group(2)}/"
+            f"keyRings/{match.group(3)}/cryptoKeys/{match.group(4)}/"
+            f"cryptoKeyVersions/{match.group(5)}"
+        ),
+        "allowedPrincipals": [deployer],
+    }
+
+
 def managed_control_plane_principals(project_number: str) -> tuple[str, str]:
     """Return exact project-derived control-plane principals accepted by the profile."""
     return (
@@ -146,11 +202,12 @@ def manifest(
     region: str,
     actuator_service: str,
     decision_service: str,
+    actuator_principal: str,
     decision_principal: str,
     deployer_principal: str,
+    stable_release_kms_key_uri: str,
     secrets: list[str],
     analyzer_scope: str | None = None,
-    actuator_principal: str | None = None,
     jit_condition_title_prefix: str | None = None,
     jit_issued_at: str | None = None,
     jit_expires_at: str | None = None,
@@ -167,6 +224,7 @@ def manifest(
         raise ManifestError("decision service is invalid")
     if actuator_service == decision_service:
         raise ManifestError("actuator and decision services must be distinct")
+    actuator = principal(actuator_principal, "actuator principal")
     decision = principal(decision_principal, "decision principal")
     deployer = principal(deployer_principal, "deployer principal")
     managed_principals = managed_control_plane_principals(project_number)
@@ -234,7 +292,6 @@ def manifest(
             }
         )
     jit_coordinates = (
-        actuator_principal,
         jit_condition_title_prefix,
         jit_issued_at,
         jit_expires_at,
@@ -242,10 +299,6 @@ def manifest(
     if any(value is not None for value in jit_coordinates):
         if not all(value is not None for value in jit_coordinates):
             raise ManifestError("all JIT coordinates must be provided together")
-        actuator = principal(
-            actuator_principal or "",
-            "actuator principal",
-        )
         title_prefix = jit_condition_title_prefix or ""
         if CONDITION_TITLE.fullmatch(title_prefix) is None:
             raise ManifestError("JIT condition title prefix is invalid")
@@ -275,6 +328,28 @@ def manifest(
                 ("decision", decision),
             )
         )
+    else:
+        targets.extend(
+            steady_runtime_act_as_target(
+                label=label,
+                project=project,
+                scope=scope,
+                runtime_principal=runtime,
+                deployer=deployer,
+            )
+            for label, runtime in (
+                ("actuator", actuator),
+                ("decision", decision),
+            )
+        )
+    targets.append(
+        kms_signer_target(
+            project=project,
+            scope=scope,
+            kms_key_uri=stable_release_kms_key_uri,
+            deployer=deployer,
+        )
+    )
     return {
         "version": VERSION,
         "projectId": project,
@@ -316,9 +391,10 @@ def main() -> int:
     parser.add_argument("--region", required=True)
     parser.add_argument("--actuator-service", required=True)
     parser.add_argument("--decision-service", required=True)
-    parser.add_argument("--actuator-principal")
+    parser.add_argument("--actuator-principal", required=True)
     parser.add_argument("--decision-principal", required=True)
     parser.add_argument("--deployer-principal", required=True)
+    parser.add_argument("--stable-release-kms-key-uri", required=True)
     parser.add_argument("--jit-condition-title-prefix")
     parser.add_argument("--jit-issued-at")
     parser.add_argument("--jit-expires-at")
@@ -343,6 +419,7 @@ def main() -> int:
             actuator_principal=args.actuator_principal,
             decision_principal=args.decision_principal,
             deployer_principal=args.deployer_principal,
+            stable_release_kms_key_uri=args.stable_release_kms_key_uri,
             jit_condition_title_prefix=args.jit_condition_title_prefix,
             jit_issued_at=args.jit_issued_at,
             jit_expires_at=args.jit_expires_at,

@@ -52,6 +52,10 @@ DECISION_SA_RESOURCE = (
     "//iam.googleapis.com/projects/test-project/serviceAccounts/"
     "emilia-decision@test-project.iam.gserviceaccount.com"
 )
+KMS_RESOURCE = (
+    "//cloudkms.googleapis.com/projects/test-project/locations/us-central1/"
+    "keyRings/emilia-release/cryptoKeys/stable-release/cryptoKeyVersions/1"
+)
 JIT_ISSUED_AT = "2026-07-25T18:00:00Z"
 JIT_EXPIRES_AT = "2026-07-25T18:15:00Z"
 
@@ -173,7 +177,7 @@ def set_scope(value: dict, scope: str) -> None:
         analysis = target.get("analysis")
         if analysis is None:
             continue
-        if target["kind"] == "runtimeActAs":
+        if target["kind"] == "runtimeActAs" and "jitGrant" in target:
             for phase_analysis in analysis.values():
                 update_analysis(phase_analysis)
         else:
@@ -221,6 +225,11 @@ def active_jit_response(*, resource: str, label: str) -> dict:
 
 def jit_manifest() -> dict:
     value = manifest()
+    value["targets"] = [
+        target
+        for target in value["targets"]
+        if target["kind"] != "runtimeActAs"
+    ]
     for label, resource in (
         ("actuator", ACTUATOR_SA_RESOURCE),
         ("decision", DECISION_SA_RESOURCE),
@@ -290,6 +299,24 @@ def manifest() -> dict:
         identities=[UPDATE_DEPLOYER],
         role="projects/test-project/roles/emiliaConsequenceDeployer",
     )
+    actuator_act_as_analysis = response(
+        resource=ACTUATOR_SA_RESOURCE,
+        permission="iam.serviceAccounts.actAs",
+        identities=[UPDATE_DEPLOYER],
+        role="roles/iam.serviceAccountUser",
+    )
+    decision_act_as_analysis = response(
+        resource=DECISION_SA_RESOURCE,
+        permission="iam.serviceAccounts.actAs",
+        identities=[UPDATE_DEPLOYER],
+        role="roles/iam.serviceAccountUser",
+    )
+    kms_signer_analysis = response(
+        resource=KMS_RESOURCE,
+        permission="cloudkms.cryptoKeyVersions.useToSign",
+        identities=[UPDATE_DEPLOYER],
+        role="roles/cloudkms.signerVerifier",
+    )
     return {
         "version": VERSION,
         "projectId": "test-project",
@@ -332,6 +359,30 @@ def manifest() -> dict:
                 "allowedPrincipals": [UPDATE_DEPLOYER],
                 "analysis": decision_update_analysis,
             },
+            {
+                "name": "runtime-actAs:actuator",
+                "kind": "runtimeActAs",
+                "scope": PROJECT_SCOPE,
+                "resource": ACTUATOR_SA_RESOURCE,
+                "allowedPrincipals": [UPDATE_DEPLOYER],
+                "analysis": actuator_act_as_analysis,
+            },
+            {
+                "name": "runtime-actAs:decision",
+                "kind": "runtimeActAs",
+                "scope": PROJECT_SCOPE,
+                "resource": DECISION_SA_RESOURCE,
+                "allowedPrincipals": [UPDATE_DEPLOYER],
+                "analysis": decision_act_as_analysis,
+            },
+            {
+                "name": "kms-signer:stable-release",
+                "kind": "kmsSigner",
+                "scope": PROJECT_SCOPE,
+                "resource": KMS_RESOURCE,
+                "allowedPrincipals": [UPDATE_DEPLOYER],
+                "analysis": kms_signer_analysis,
+            },
         ],
     }
 
@@ -356,8 +407,74 @@ class EffectiveIamTests(unittest.TestCase):
                 ),
                 "service-update:actuator": (UPDATE_DEPLOYER,),
                 "service-update:decision": (UPDATE_DEPLOYER,),
+                "runtime-actAs:actuator": (UPDATE_DEPLOYER,),
+                "runtime-actAs:decision": (UPDATE_DEPLOYER,),
+                "kms-signer:stable-release": (UPDATE_DEPLOYER,),
             },
         )
+
+    def test_stable_runtime_act_as_refuses_inherited_authority(self) -> None:
+        value = manifest()
+        target = next(
+            target
+            for target in value["targets"]
+            if target["name"] == "runtime-actAs:actuator"
+        )
+        target["analysis"]["mainAnalysis"]["analysisResults"].append(
+            result(
+                resource=ACTUATOR_SA_RESOURCE,
+                permission="iam.serviceAccounts.actAs",
+                identities=["user:organization-admin@example.com"],
+                role="organizations/987654321/roles/runtimeAttacher",
+                attached_resource=(
+                    "//cloudresourcemanager.googleapis.com/"
+                    "organizations/987654321"
+                ),
+            )
+        )
+        self.assert_refused(value, "nonallowlisted effective principal")
+
+    def test_kms_signer_refuses_inherited_keyring_authority(self) -> None:
+        value = manifest()
+        target = next(
+            target
+            for target in value["targets"]
+            if target["name"] == "kms-signer:stable-release"
+        )
+        target["analysis"]["mainAnalysis"]["analysisResults"].append(
+            result(
+                resource=KMS_RESOURCE,
+                permission="cloudkms.cryptoKeyVersions.useToSign",
+                identities=["user:keyring-admin@example.com"],
+                role="roles/cloudkms.signerVerifier",
+                attached_resource=(
+                    "//cloudkms.googleapis.com/projects/test-project/"
+                    "locations/us-central1/keyRings/emilia-release"
+                ),
+            )
+        )
+        self.assert_refused(value, "nonallowlisted effective principal")
+
+    def test_kms_signer_refuses_inherited_project_authority(self) -> None:
+        value = manifest()
+        target = next(
+            target
+            for target in value["targets"]
+            if target["name"] == "kms-signer:stable-release"
+        )
+        target["analysis"]["mainAnalysis"]["analysisResults"].append(
+            result(
+                resource=KMS_RESOURCE,
+                permission="cloudkms.cryptoKeyVersions.useToSign",
+                identities=["user:project-kms-admin@example.com"],
+                role="roles/cloudkms.admin",
+                attached_resource=(
+                    "//cloudresourcemanager.googleapis.com/"
+                    "projects/test-project"
+                ),
+            )
+        )
+        self.assert_refused(value, "nonallowlisted effective principal")
 
     def test_update_custody_rejects_ancestor_group_and_impersonation_paths(
         self,
@@ -675,7 +792,11 @@ class EffectiveIamTests(unittest.TestCase):
 
     def test_inherited_group_custom_role_act_as_is_refused_during_jit(self) -> None:
         value = jit_manifest()
-        target = value["targets"][4]
+        target = next(
+            target
+            for target in value["targets"]
+            if target["name"] == "runtime-actAs:actuator"
+        )
         target["analysis"]["during"]["mainAnalysis"]["analysisResults"].append(
             result(
                 resource=ACTUATOR_SA_RESOURCE,
@@ -723,7 +844,11 @@ class EffectiveIamTests(unittest.TestCase):
         self,
     ) -> None:
         value = jit_manifest()
-        target = value["targets"][5]
+        target = next(
+            target
+            for target in value["targets"]
+            if target["name"] == "runtime-actAs:decision"
+        )
         target["analysis"]["after"] = response(
             resource=DECISION_SA_RESOURCE,
             permission="iam.serviceAccounts.actAs",

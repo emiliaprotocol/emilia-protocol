@@ -325,8 +325,10 @@ emit_effective_iam_manifest() {
     "--region=$REGION"
     "--actuator-service=$ACTUATOR_SERVICE"
     "--decision-service=$DECISION_SERVICE"
+    "--actuator-principal=serviceAccount:$(runtime_service_account_email "$ACTUATOR_SERVICE_ACCOUNT")"
     "--decision-principal=serviceAccount:$(runtime_service_account_email "$DECISION_SERVICE_ACCOUNT")"
     "--deployer-principal=$DEPLOYER_PRINCIPAL"
+    "--stable-release-kms-key-uri=$STABLE_RELEASE_KMS_KEY_URI"
     "--output=$output"
   )
   while IFS= read -r spec; do
