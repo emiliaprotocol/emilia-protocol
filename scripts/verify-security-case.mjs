@@ -366,7 +366,12 @@ function executePlannedTests() {
             runChecked("npm", ["exec", "vitest", "--", "run", planned.file, "--reporter=dot"], {}, `vitest ${planned.file}`);
         }
         else {
-            runChecked(process.execPath, ["--test", planned.file], {}, `node:test ${planned.file}`);
+            runChecked(process.execPath, [
+                "--import",
+                path.join(ROOT, "scripts", "ts-loader", "register.mjs"),
+                "--test",
+                planned.file,
+            ], {}, `node:test ${planned.file}`);
         }
         executionEvidence.push({
             runner: planned.runner,

@@ -551,7 +551,12 @@ function executePlannedTests(): void {
     } else {
       runChecked(
         process.execPath,
-        ["--test", planned.file],
+        [
+          "--import",
+          path.join(ROOT, "scripts", "ts-loader", "register.mjs"),
+          "--test",
+          planned.file,
+        ],
         {},
         `node:test ${planned.file}`,
       );

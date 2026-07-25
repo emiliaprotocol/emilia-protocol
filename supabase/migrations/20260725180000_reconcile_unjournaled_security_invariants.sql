@@ -178,8 +178,9 @@ ON CONFLICT (organization_id) DO NOTHING;
 
 -- The authority registry and commit ledger are server-side permission roots.
 -- RLS and table ACLs are independent gates, so close both.
-REVOKE ALL ON TABLE public.authorities, public.commits, public.consumed_gate_refs
-  FROM PUBLIC, anon, authenticated;
+REVOKE ALL ON TABLE public.authorities FROM PUBLIC, anon, authenticated;
+REVOKE ALL ON TABLE public.commits FROM PUBLIC, anon, authenticated;
+REVOKE ALL ON TABLE public.consumed_gate_refs FROM PUBLIC, anon, authenticated;
 REVOKE INSERT, UPDATE, DELETE, TRUNCATE ON TABLE public.authorities
   FROM service_role;
 GRANT SELECT ON TABLE public.authorities TO service_role;
@@ -187,6 +188,13 @@ GRANT SELECT, INSERT, UPDATE, DELETE ON TABLE public.commits
   TO service_role;
 GRANT SELECT, INSERT, UPDATE, DELETE ON TABLE public.consumed_gate_refs
   TO service_role;
+
+-- Reassert the public ACL boundary for the durable capability store. These
+-- tables are reached only by the server-side capability adapter.
+REVOKE ALL ON TABLE public.ep_capability_state
+  FROM PUBLIC, anon, authenticated;
+REVOKE ALL ON TABLE public.ep_capability_operations
+  FROM PUBLIC, anon, authenticated;
 
 -- Commit verification resolves custody by kid. The column was required by code
 -- and the live contract but had no journaled creating migration.

@@ -370,7 +370,7 @@
     "20260725012000_consequence_actuator_consume_qualification.sql": "a674e978fcbfd8219546960449e2382494d6a93fc85899cf91951ef9242abdf3",
     "20260725143000_consequence_actuator_provider_records.sql": "33adbed6400f843d637369ba8365db0e05445a9809824a7015564c2f2e0b6d25",
     "20260725160000_rollout_attempt_store.sql": "25b1a0f5054bd94d1e8ce9ab31ed0208a5d3c53477e8f03fdc32a99ee07b8ef3",
-    "20260725180000_reconcile_unjournaled_security_invariants.sql": "0d978c4fe81cecc4145d3830b213f4f23248d87657969a1efe0d189cebfa6084",
+    "20260725180000_reconcile_unjournaled_security_invariants.sql": "f24d9f52ae0ec4f37aae6d4ea423fc285350616cb63a07339d5edd3c27d78825",
     "20260725174433_disable_legacy_consequence_canary_logins.sql": "06847e72fb3706ae31b7ace2b5a6627cfd8d37696b7d34dc915679be421c0906"
   }
 }
