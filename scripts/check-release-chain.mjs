@@ -173,6 +173,7 @@ function validateManualPublisher(text, label, { direct, commitBound = false, pro
 }
 export function validateReusableNpmWorkflowText(text) {
     requireText(text, [
+        'environment: registry-publishing-approval',
         'npm run security-case:emit',
         'npm run conformance:manifest',
         'verify-reproducible-package.mjs',
@@ -181,14 +182,34 @@ export function validateReusableNpmWorkflowText(text) {
         'subject-path: ${{ steps.pack.outputs.tarball }}',
         'npm publish "${{ steps.pack.outputs.tarball }}" --access public --provenance',
         'cmp "$TESTED_TARBALL" "registry-copy/$REGISTRY_TARBALL"',
-        'ref: ${{ inputs.release_tag }}',
+        'ref: ${{ github.sha }}',
         'persist-credentials: false',
         'scripts/require-release-approval.mjs',
         '--allowed-actor FutureEnterprises',
+        '--expected-commit "$GITHUB_SHA"',
+        '--expected-ref "$GITHUB_REF"',
+        '--revalidate-remote',
+        'already exists; refusing to publish',
+        'response.status === 404',
+        'approvedVersion',
+        'approvedFilename',
         'node scripts/check-npm-package-dependencies.mjs "$PACKAGE_DIR"',
         'group: registry-publish-${{ inputs.package_name }}',
     ], 'reusable npm workflow');
+    if (text.includes('ref: ${{ inputs.release_tag }}')
+        || text.includes('already exists; continuing to mandatory byte verification')) {
+        throw new Error('reusable npm workflow follows mutable release input or treats an existing version as success');
+    }
     const workflow = YAML.parse(text);
+    const publish = workflow?.jobs?.publish;
+    if (workflow?.jobs?.approval
+        || publish?.environment !== 'registry-publishing-approval'
+        || publish?.permissions?.['id-token'] !== 'write'
+        || publish?.needs
+        || publish?.uses
+        || !Array.isArray(publish?.steps)) {
+        throw new Error('reusable npm OIDC publisher is not the protected execution job');
+    }
     const permissions = workflow?.permissions ?? {};
     const expectedPermissions = {
         contents: 'read',
@@ -200,8 +221,39 @@ export function validateReusableNpmWorkflowText(text) {
     }
     requireBefore(text, 'scripts/require-release-approval.mjs', 'run: npm test', 'reusable npm workflow');
     requireBefore(text, 'node scripts/check-npm-package-dependencies.mjs "$PACKAGE_DIR"', 'npm publish "${{ steps.pack.outputs.tarball }}" --access public --provenance', 'reusable npm dependency registry guard');
+    requireBefore(text, '--revalidate-remote', 'npm publish "${{ steps.pack.outputs.tarball }}" --access public --provenance', 'reusable npm remote ref guard');
     validateTlaSecurityCaseWorkflowText(text, 'reusable npm workflow');
     forbidCredentialInjection(text, 'reusable npm workflow');
+    return true;
+}
+export function validateReusableNpmCallerText(text, label) {
+    if (/^[ \t]{2}push:/m.test(text))
+        throw new Error(`${label} publishes from an automatic push trigger`);
+    requireText(text, [
+        'workflow_dispatch:',
+        'release_tag:',
+        'confirmation:',
+        'uses: ./.github/workflows/_publish-npm-package.yml',
+    ], label);
+    const workflow = YAML.parse(text);
+    const jobs = workflow?.jobs ?? {};
+    if (JSON.stringify(Object.keys(jobs)) !== JSON.stringify(['publish'])) {
+        throw new Error(`${label} must delegate only to the protected reusable publisher`);
+    }
+    const publish = jobs.publish;
+    if (publish?.uses !== './.github/workflows/_publish-npm-package.yml'
+        || publish?.needs !== undefined
+        || publish?.environment !== undefined) {
+        throw new Error(`${label} uses a detached or caller-side approval instead of the reusable protected publisher`);
+    }
+    const expectedPermissions = {
+        contents: 'read',
+        'id-token': 'write',
+        attestations: 'write',
+    };
+    if (JSON.stringify(publish?.permissions ?? {}) !== JSON.stringify(expectedPermissions)) {
+        throw new Error(`${label} does not grant the reusable publisher its exact OIDC permissions`);
+    }
     return true;
 }
 export function validateReusablePypiWorkflowText(text) {
@@ -347,12 +399,18 @@ export function validateNpmDirect(text, label) {
         'release:verify:reproducible',
         'run: npm test',
         'actions/attest@',
-        'subject-path: release-artifacts/${{ steps.pack.outputs.tarball }}',
-        'npm publish "../../release-artifacts/${{ steps.pack.outputs.tarball }}" --access public --provenance',
-        'cmp "../../release-artifacts/${{ steps.pack.outputs.tarball }}" "../../registry-copy/$REGISTRY_TARBALL"',
+        'subject-path: ${{ steps.pack.outputs.tarball }}',
+        'npm publish "${{ steps.pack.outputs.tarball }}" --access public --provenance',
+        'cmp "$TESTED_TARBALL" "registry-copy/$REGISTRY_TARBALL"',
         'scripts/require-release-approval.mjs',
+        '--revalidate-remote',
+        'already exists; refusing to publish',
+        'response.status === 404',
+        'approvedVersion',
+        'approvedFilename',
     ], label);
     requireBefore(text, 'scripts/require-release-approval.mjs', 'run: npm test', label);
+    requireBefore(text, '--revalidate-remote', 'npm publish "${{ steps.pack.outputs.tarball }}" --access public --provenance', `${label} remote ref guard`);
     validateTlaSecurityCaseWorkflowText(text, label);
     validateManualPublisher(text, label, {
         direct: true,
@@ -383,10 +441,16 @@ export function validateGateNpmWorkflowText(text, label = 'publish-gate.yml') {
         '${{ steps.pack.outputs.tarball }}.sha256',
         'EXPECTED_SHA256: ${{ steps.pack.outputs.sha256 }}',
         'sha256sum -c "$TESTED_TARBALL.sha256"',
+        '--revalidate-remote',
+        'already exists; refusing to publish',
+        'response.status === 404',
+        'approvedVersion',
+        'approvedFilename',
     ], label);
     requireBefore(text, 'scripts/require-release-approval.mjs', 'run: npm test', label);
     requireBefore(text, 'node scripts/check-npm-package-dependencies.mjs packages/gate --install-pinned', 'run: npm test', `${label} pinned dependency materialization`);
     requireBefore(text, 'node scripts/check-npm-package-dependencies.mjs packages/gate', 'npm publish "${{ steps.pack.outputs.tarball }}" --access public --provenance', `${label} dependency registry guard`);
+    requireBefore(text, '--revalidate-remote', 'npm publish "${{ steps.pack.outputs.tarball }}" --access public --provenance', `${label} remote ref guard`);
     validateTlaSecurityCaseWorkflowText(text, label);
     validateManualPublisher(text, label, {
         direct: true,
@@ -498,8 +562,7 @@ export function auditReleaseChain(root = ROOT) {
                 validateGateNpmWorkflowText(workflow, entry.workflow);
             }
             else {
-                requireText(workflow, ['uses: ./.github/workflows/_publish-npm-package.yml'], entry.workflow);
-                validateManualPublisher(workflow, entry.workflow, { direct: false });
+                validateReusableNpmCallerText(workflow, entry.workflow);
                 if (!exactInput(workflow, 'package_dir', entry.path) || !exactInput(workflow, 'package_name', entry.package)
                     || !exactInput(workflow, 'tag_prefix', entry.tag_prefix)) {
                     throw new Error(`${entry.workflow} does not bind the declared package path, name, and tag prefix`);

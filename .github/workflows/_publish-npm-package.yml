@@ -49,6 +49,7 @@ env:
 jobs:
   publish:
     runs-on: ubuntu-latest
+    environment: registry-publishing-approval
     env:
       TLA2TOOLS_JAR: ${{ github.workspace }}/tla2tools.jar
     concurrency:
@@ -59,10 +60,10 @@ jobs:
       id-token: write
       attestations: write
     steps:
-      - name: Checkout exact release source
+      - name: Checkout exact dispatched release source
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
         with:
-          ref: ${{ inputs.release_tag }}
+          ref: ${{ github.sha }}
           fetch-depth: 0
           persist-credentials: false
 
@@ -73,6 +74,7 @@ jobs:
           registry-url: https://registry.npmjs.org
 
       - name: Require owner approval bound to clean tag, package, version, and main
+        id: approval
         env:
           PACKAGE_DIR: ${{ inputs.package_dir }}
           RELEASE_TAG: ${{ inputs.release_tag }}
@@ -87,7 +89,10 @@ jobs:
             --tag-prefix "$TAG_PREFIX" \
             --package "$PACKAGE_NAME" \
             --version "$VERSION" \
-            --confirmation "$RELEASE_CONFIRMATION"
+            --confirmation "$RELEASE_CONFIRMATION" \
+            --expected-commit "$GITHUB_SHA" \
+            --expected-ref "$GITHUB_REF" \
+            --github-output "$GITHUB_OUTPUT"
 
       - name: Setup Python
         uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97  # v7.0.0
@@ -158,6 +163,8 @@ jobs:
           PACKAGE_DIR: ${{ inputs.package_dir }}
           PACKAGE_NAME: ${{ inputs.package_name }}
           ARTIFACT_ID: ${{ inputs.artifact_id }}
+          APPROVED_VERSION: ${{ steps.approval.outputs.version }}
+          APPROVED_FILENAME: ${{ steps.approval.outputs.filename }}
         run: |
           ARTIFACT_DIR="release-artifacts/$ARTIFACT_ID"
           MANIFEST_PATH="release-artifacts/$ARTIFACT_ID-reproducible.json"
@@ -167,7 +174,8 @@ jobs:
             --outdir "$ARTIFACT_DIR" \
             --emit "$MANIFEST_PATH"
           node --input-type=module - \
-            "$ARTIFACT_DIR" "$MANIFEST_PATH" "$PACKAGE_DIR" "$PACKAGE_NAME" "$GITHUB_OUTPUT" <<'NODE'
+            "$ARTIFACT_DIR" "$MANIFEST_PATH" "$PACKAGE_DIR" "$PACKAGE_NAME" \
+            "$APPROVED_VERSION" "$APPROVED_FILENAME" "$GITHUB_OUTPUT" <<'NODE'
           import crypto from 'node:crypto';
           import fs from 'node:fs';
           import path from 'node:path';
@@ -176,7 +184,9 @@ jobs:
             artifactDirectory,
             manifestPath,
             packageDirectory,
-            packageName,
+            approvedPackage,
+            approvedVersion,
+            approvedFilename,
             outputPath,
           ] = process.argv.slice(2);
           const manifest = JSON.parse(fs.readFileSync(manifestPath, 'utf8'));
@@ -185,8 +195,10 @@ jobs:
           );
           if (manifest['@version'] !== 'EP-REPRODUCIBLE-NPM-ARTIFACT-v1'
             || manifest.package_path !== packageDirectory
-            || manifest.package !== packageName
-            || manifest.version !== packageMetadata.version) {
+            || manifest.package !== approvedPackage
+            || manifest.version !== approvedVersion
+            || packageMetadata.name !== approvedPackage
+            || packageMetadata.version !== approvedVersion) {
             throw new Error('reproducibility manifest identity does not match the release input');
           }
           const {
@@ -204,6 +216,7 @@ jobs:
           const expectedSha256 = manifest.artifact.sha256;
           if (typeof filename !== 'string'
             || filename !== path.basename(filename)
+            || filename !== approvedFilename
             || !/^[a-z0-9][a-z0-9._-]*\.tgz$/u.test(filename)
             || typeof expectedSha256 !== 'string'
             || !/^[0-9a-f]{64}$/u.test(expectedSha256)) {
@@ -275,28 +288,48 @@ jobs:
           PACKAGE_NAME: ${{ inputs.package_name }}
           TESTED_TARBALL: ${{ steps.pack.outputs.tarball }}
           EXPECTED_SHA256: ${{ steps.pack.outputs.sha256 }}
+          VERSION: ${{ steps.approval.outputs.version }}
+          RELEASE_TAG: ${{ inputs.release_tag }}
+          RELEASE_CONFIRMATION: ${{ inputs.confirmation }}
+          TAG_PREFIX: ${{ inputs.tag_prefix }}
         run: |
+          node --input-type=module - "$PACKAGE_NAME" "$VERSION" <<'NODE'
+          const [packageName, version] = process.argv.slice(2);
+          const response = await fetch(
+            `https://registry.npmjs.org/${encodeURIComponent(packageName)}/${encodeURIComponent(version)}`,
+            { headers: { accept: 'application/json' } },
+          );
+          if (response.ok) {
+            throw new Error(`${packageName}@${version} already exists; refusing to publish`);
+          }
+          if (response.status === 404) process.exit(0);
+          throw new Error(`npm registry preflight failed closed with HTTP ${response.status}`);
+          NODE
+          node scripts/require-release-approval.mjs \
+            --allowed-actor FutureEnterprises \
+            --tag "$RELEASE_TAG" \
+            --tag-prefix "$TAG_PREFIX" \
+            --package "$PACKAGE_NAME" \
+            --version "$VERSION" \
+            --confirmation "$RELEASE_CONFIRMATION" \
+            --expected-commit "$GITHUB_SHA" \
+            --expected-ref "$GITHUB_REF" \
+            --revalidate-remote
           sha256sum -c "$TESTED_TARBALL.sha256"
           ACTUAL_SHA256=$(sha256sum "$TESTED_TARBALL" | cut -d ' ' -f 1)
           test "$ACTUAL_SHA256" = "$EXPECTED_SHA256"
-          VERSION=$(node -p "require('./${PACKAGE_DIR}/package.json').version")
-          if npm view "${PACKAGE_NAME}@${VERSION}" version --min-release-age=0 >/dev/null 2>&1; then
-            echo "${PACKAGE_NAME}@${VERSION} already exists; continuing to mandatory byte verification."
-          else
-            npm publish "${{ steps.pack.outputs.tarball }}" --access public --provenance
-          fi
+          npm publish "${{ steps.pack.outputs.tarball }}" --access public --provenance
 
       - name: Verify registry bytes match the attested tarball
         env:
-          PACKAGE_DIR: ${{ inputs.package_dir }}
           PACKAGE_NAME: ${{ inputs.package_name }}
           TESTED_TARBALL: ${{ steps.pack.outputs.tarball }}
           EXPECTED_SHA256: ${{ steps.pack.outputs.sha256 }}
+          VERSION: ${{ steps.approval.outputs.version }}
         run: |
           sha256sum -c "$TESTED_TARBALL.sha256"
           ACTUAL_SHA256=$(sha256sum "$TESTED_TARBALL" | cut -d ' ' -f 1)
           test "$ACTUAL_SHA256" = "$EXPECTED_SHA256"
-          VERSION=$(node -p "require('./${PACKAGE_DIR}/package.json').version")
           test ! -e registry-copy
           mkdir registry-copy
           REGISTRY_READY=false
@@ -313,7 +346,10 @@ jobs:
             echo "::error::npm did not expose ${PACKAGE_NAME}@${VERSION} after publication."
             exit 2
           fi
-          REGISTRY_TARBALL=$(node -e "const fs=require('fs'); const path=require('path'); const r=require('./registry-copy/pack.json'); if(!Array.isArray(r)||r.length!==1) process.exit(2); const filename=r[0]?.filename; if(typeof filename!=='string'||filename!==path.basename(filename)||!(/^[a-z0-9][a-z0-9._-]*\\.tgz$/u.test(filename))) process.exit(3); const archives=fs.readdirSync('registry-copy').filter((entry)=>entry.endsWith('.tgz')).sort(); if(archives.length!==1||archives[0]!==filename) process.exit(4); process.stdout.write(filename)")
+          REGISTRY_TARBALL=$(node -e "const fs=require('fs'); const path=require('path'); const r=require('./registry-copy/pack.json'); if(!Array.isArray(r)||r.length!==1) process.exit(2); const item=r[0]; const filename=item?.filename; if(item?.name!==process.env.PACKAGE_NAME||item?.version!==process.env.VERSION||typeof filename!=='string'||filename!==path.basename(filename)||!(/^[a-z0-9][a-z0-9._-]*\\.tgz$/u.test(filename))) process.exit(3); const archives=fs.readdirSync('registry-copy').filter((entry)=>entry.endsWith('.tgz')).sort(); if(archives.length!==1||archives[0]!==filename) process.exit(4); process.stdout.write(filename)")
+          sha256sum -c "$TESTED_TARBALL.sha256"
+          ACTUAL_SHA256=$(sha256sum "$TESTED_TARBALL" | cut -d ' ' -f 1)
+          test "$ACTUAL_SHA256" = "$EXPECTED_SHA256"
           REGISTRY_SHA256=$(sha256sum "registry-copy/$REGISTRY_TARBALL" | cut -d ' ' -f 1)
           test "$REGISTRY_SHA256" = "$EXPECTED_SHA256"
           cmp "$TESTED_TARBALL" "registry-copy/$REGISTRY_TARBALL"

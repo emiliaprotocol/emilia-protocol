@@ -7,6 +7,7 @@ import { describe, expect, it } from 'vitest';
 import {
   validateReleaseApproval,
   verifyReleaseGitState,
+  verifyRemoteReleaseGitState,
   verifyUnpublishedReleaseGitState,
 } from '../scripts/require-release-approval.mjs';
 
@@ -151,6 +152,79 @@ describe('registry release approval', () => {
       })).toThrow(/already exists/);
     } finally {
       fs.rmSync(dir, { recursive: true, force: true });
+    }
+  });
+
+  it('revalidates remote main and the exact remote tag against the dispatched commit', () => {
+    const root = fs.mkdtempSync(path.join(os.tmpdir(), 'ep-release-remote-'));
+    const remote = path.join(root, 'remote.git');
+    const work = path.join(root, 'work');
+    const run = (cwd, ...args) => execFileSync('git', args, { cwd, stdio: 'pipe' });
+    try {
+      run(root, 'init', '--bare', remote);
+      run(root, 'init', '--initial-branch=main', work);
+      run(work, 'config', 'user.name', 'Release Test');
+      run(work, 'config', 'user.email', 'release-test@example.invalid');
+      fs.writeFileSync(path.join(work, 'tracked.txt'), 'release\n');
+      run(work, 'add', 'tracked.txt');
+      run(work, 'commit', '-m', 'release source');
+      run(work, 'tag', '-a', '-m', 'annotated release', 'verify-v3.9.0');
+      run(work, 'remote', 'add', 'origin', remote);
+      run(work, 'push', 'origin', 'main', 'refs/tags/verify-v3.9.0');
+      const head = run(work, 'rev-parse', 'HEAD').toString().trim();
+
+      expect(verifyRemoteReleaseGitState({
+        cwd: work,
+        tag: 'verify-v3.9.0',
+        expectedCommit: head,
+      })).toMatchObject({ mainCommit: head, tagCommit: head });
+    } finally {
+      fs.rmSync(root, { recursive: true, force: true });
+    }
+  });
+
+  it('refuses a deleted or moved remote release tag and an advanced remote main', () => {
+    const root = fs.mkdtempSync(path.join(os.tmpdir(), 'ep-release-remote-race-'));
+    const remote = path.join(root, 'remote.git');
+    const work = path.join(root, 'work');
+    const run = (cwd, ...args) => execFileSync('git', args, { cwd, stdio: 'pipe' });
+    const state = (expectedCommit) => ({
+      cwd: work,
+      tag: 'verify-v3.9.0',
+      expectedCommit,
+    });
+    try {
+      run(root, 'init', '--bare', remote);
+      run(root, 'init', '--initial-branch=main', work);
+      run(work, 'config', 'user.name', 'Release Test');
+      run(work, 'config', 'user.email', 'release-test@example.invalid');
+      fs.writeFileSync(path.join(work, 'tracked.txt'), 'release\n');
+      run(work, 'add', 'tracked.txt');
+      run(work, 'commit', '-m', 'release source');
+      run(work, 'tag', 'verify-v3.9.0');
+      run(work, 'remote', 'add', 'origin', remote);
+      run(work, 'push', 'origin', 'main', 'refs/tags/verify-v3.9.0');
+      const releaseCommit = run(work, 'rev-parse', 'HEAD').toString().trim();
+
+      run(work, 'push', 'origin', ':refs/tags/verify-v3.9.0');
+      expect(() => verifyRemoteReleaseGitState(state(releaseCommit))).toThrow(/remote release tag.*unavailable/i);
+
+      fs.writeFileSync(path.join(work, 'tracked.txt'), 'new commit\n');
+      run(work, 'commit', '-am', 'new commit');
+      const newCommit = run(work, 'rev-parse', 'HEAD').toString().trim();
+      run(work, 'tag', '--force', 'verify-v3.9.0', newCommit);
+      run(work, 'push', '--force', 'origin', 'refs/tags/verify-v3.9.0');
+      expect(() => verifyRemoteReleaseGitState(state(releaseCommit))).toThrow(/remote release tag.*moved/i);
+
+      run(work, 'push', 'origin', 'main');
+      expect(() => verifyRemoteReleaseGitState({
+        cwd: work,
+        tag: 'verify-v3.9.0',
+        expectedCommit: newCommit,
+      })).not.toThrow();
+      expect(() => verifyRemoteReleaseGitState(state(releaseCommit))).toThrow(/remote protected main.*advanced|remote protected main.*moved/i);
+    } finally {
+      fs.rmSync(root, { recursive: true, force: true });
     }
   });
 });

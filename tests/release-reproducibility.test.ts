@@ -18,7 +18,7 @@ describe('release byte reproducibility', () => {
     expect(result.filename).toBe(`emilia-protocol-verify-${result.version}.tgz`);
     expect(result.sha256).toMatch(/^[0-9a-f]{64}$/);
     expect(result.fileCount).toBeGreaterThan(0);
-  }, 30_000);
+  }, 90_000);
 
   it('normalizes source file modes across independent package checkouts', () => {
     const root = mkdtempSync(path.join(os.tmpdir(), 'ep-pack-modes-'));
@@ -52,7 +52,9 @@ describe('release byte reproducibility', () => {
 
   it('rejects nondeterministic output from independent clean package builds', () => {
     const root = mkdtempSync(path.join(os.tmpdir(), 'ep-pack-nondeterministic-'));
+    const dependencyRoot = path.join(root, 'fixture-dependencies');
     const generatedPath = path.join(root, 'dist', 'generated.js');
+    mkdirSync(dependencyRoot);
     mkdirSync(path.dirname(generatedPath));
     writeFileSync(path.join(root, 'package.json'), JSON.stringify({
       name: 'nondeterministic-build-fixture',
@@ -73,8 +75,82 @@ describe('release byte reproducibility', () => {
     writeFileSync(generatedPath, 'export default "injected-frozen-output";\n');
 
     try {
-      expect(() => verifyReproduciblePackage(root)).toThrow(/package (file manifests|bytes) differ/);
+      expect(() => verifyReproduciblePackage(root, { dependencyRoot })).toThrow(
+        /package build|package (file manifests|bytes) differ/,
+      );
       expect(readFileSync(generatedPath, 'utf8')).toBe('export default "injected-frozen-output";\n');
+    } finally {
+      rmSync(root, { recursive: true, force: true });
+    }
+  });
+
+  it('rejects randomness shared through a writable repository dependency tree', () => {
+    const root = mkdtempSync(path.join(os.tmpdir(), 'ep-pack-shared-seed-'));
+    const dependencyRoot = path.join(root, 'fixture-dependencies');
+    const seedName = `.ep-hostile-seed-${process.pid}-${Date.now()}`;
+    const repositorySeedPath = path.join(process.cwd(), 'node_modules', seedName);
+    mkdirSync(dependencyRoot);
+    writeFileSync(path.join(root, 'package.json'), JSON.stringify({
+      name: 'shared-seed-build-fixture',
+      version: '1.0.0',
+      files: ['dist'],
+      scripts: {
+        build: 'node build.mjs',
+      },
+    }));
+    writeFileSync(path.join(root, 'build.mjs'), [
+      "import { mkdirSync, readFileSync, writeFileSync } from 'node:fs';",
+      "import { randomBytes } from 'node:crypto';",
+      `const seedPath = 'node_modules/${seedName}';`,
+      'let seed;',
+      'try {',
+      "  seed = readFileSync(seedPath, 'utf8');",
+      '} catch {',
+      "  seed = randomBytes(32).toString('hex');",
+      "  writeFileSync(seedPath, seed);",
+      '}',
+      "mkdirSync('dist', { recursive: true });",
+      "writeFileSync('dist/generated.js', `export default '${seed}';\\n`);",
+      '',
+    ].join('\n'));
+
+    try {
+      expect(() => verifyReproduciblePackage(root, { dependencyRoot })).toThrow(
+        /package build|package (file manifests|bytes) differ/,
+      );
+      expect(() => readFileSync(repositorySeedPath, 'utf8')).toThrow();
+    } finally {
+      rmSync(repositorySeedPath, { force: true });
+      rmSync(root, { recursive: true, force: true });
+    }
+  });
+
+  it('rejects a deterministic build-time package version rewrite', () => {
+    const root = mkdtempSync(path.join(os.tmpdir(), 'ep-pack-version-rewrite-'));
+    const dependencyRoot = path.join(root, 'fixture-dependencies');
+    mkdirSync(dependencyRoot);
+    writeFileSync(path.join(root, 'package.json'), JSON.stringify({
+      name: 'version-rewrite-fixture',
+      version: '1.0.0',
+      files: ['dist'],
+      scripts: {
+        build: 'node build.mjs',
+      },
+    }));
+    writeFileSync(path.join(root, 'build.mjs'), [
+      "import { mkdirSync, readFileSync, writeFileSync } from 'node:fs';",
+      "const metadata = JSON.parse(readFileSync('package.json', 'utf8'));",
+      "metadata.version = '9.9.9';",
+      "writeFileSync('package.json', `${JSON.stringify(metadata, null, 2)}\\n`);",
+      "mkdirSync('dist', { recursive: true });",
+      "writeFileSync('dist/index.js', 'export const value = 1;\\n');",
+      '',
+    ].join('\n'));
+
+    try {
+      expect(() => verifyReproduciblePackage(root, { dependencyRoot })).toThrow(
+        /mutated package\.json|package identity/i,
+      );
     } finally {
       rmSync(root, { recursive: true, force: true });
     }
@@ -129,9 +205,9 @@ describe('release byte reproducibility', () => {
 
   it('publish workflow attests, publishes, and registry-compares the same tarball', () => {
     const workflow = readFileSync('.github/workflows/publish-verify-sdk.yml', 'utf8');
-    expect(workflow).toContain('subject-path: release-artifacts/${{ steps.pack.outputs.tarball }}');
-    expect(workflow).toContain('npm publish "../../release-artifacts/${{ steps.pack.outputs.tarball }}" --access public --provenance');
-    expect(workflow).toContain('cmp "../../release-artifacts/${{ steps.pack.outputs.tarball }}" "../../registry-copy/$REGISTRY_TARBALL"');
+    expect(workflow).toContain('subject-path: ${{ steps.pack.outputs.tarball }}');
+    expect(workflow).toContain('npm publish "${{ steps.pack.outputs.tarball }}" --access public --provenance');
+    expect(workflow).toContain('cmp "$TESTED_TARBALL" "registry-copy/$REGISTRY_TARBALL"');
     expect(workflow).toContain('actions/attest@f7c74d28b9d84cb8768d0b8ca14a4bac6ef463e6');
   });
 

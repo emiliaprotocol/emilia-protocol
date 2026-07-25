@@ -12,6 +12,15 @@ import { gzip, ungzip } from 'pako';
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const npm = process.platform === 'win32' ? 'npm.cmd' : 'npm';
 const git = process.platform === 'win32' ? 'git.exe' : 'git';
+export function npmArtifactFilename(packageName, version) {
+    if (typeof packageName !== 'string'
+        || typeof version !== 'string'
+        || !/^(?:@[a-z0-9][a-z0-9._~-]*\/)?[a-z0-9][a-z0-9._~-]*$/u.test(packageName)
+        || !/^[0-9A-Za-z][0-9A-Za-z.+-]*$/u.test(version)) {
+        throw new Error('package identity is malformed');
+    }
+    return `${packageName.replace(/^@/u, '').replace(/\//gu, '-')}-${version}.tgz`;
+}
 export function assertArtifactBytesMatch(expected, observed) {
     const left = Buffer.isBuffer(expected) ? expected : Buffer.from(expected ?? []);
     const right = Buffer.isBuffer(observed) ? observed : Buffer.from(observed ?? []);
@@ -41,24 +50,97 @@ export function canonicalizeNpmTarball(archive) {
     gzipBytes[9] = 0xff;
     return gzipBytes;
 }
+function tarString(block, offset, length) {
+    const field = block.subarray(offset, offset + length);
+    const terminator = field.indexOf(0);
+    return field.subarray(0, terminator >= 0 ? terminator : field.length).toString('utf8');
+}
+function tarSize(block) {
+    const value = tarString(block, 124, 12).trim();
+    if (!/^[0-7]+$/u.test(value))
+        throw new Error('npm tarball contains an unsupported entry size');
+    const size = Number.parseInt(value, 8);
+    if (!Number.isSafeInteger(size) || size < 0)
+        throw new Error('npm tarball contains an unsafe entry size');
+    return size;
+}
+export function validatePackedPackageIdentity(archive, expectedName, expectedVersion) {
+    const tarBytes = Buffer.from(ungzip(archive));
+    const identities = [];
+    for (let offset = 0; offset + 512 <= tarBytes.length;) {
+        const header = tarBytes.subarray(offset, offset + 512);
+        if (header.every((value) => value === 0))
+            break;
+        const name = tarString(header, 0, 100);
+        const prefix = tarString(header, 345, 155);
+        const entryPath = prefix ? `${prefix}/${name}` : name;
+        const size = tarSize(header);
+        const dataOffset = offset + 512;
+        const nextOffset = dataOffset + Math.ceil(size / 512) * 512;
+        if (nextOffset > tarBytes.length)
+            throw new Error('npm tarball entry extends beyond the archive');
+        if (entryPath === 'package/package.json') {
+            const type = header[156];
+            if (type !== 0 && type !== 0x30) {
+                throw new Error('npm tarball package/package.json is not a regular file');
+            }
+            try {
+                identities.push(JSON.parse(tarBytes.subarray(dataOffset, dataOffset + size).toString('utf8')));
+            }
+            catch {
+                throw new Error('npm tarball package/package.json is not valid JSON');
+            }
+        }
+        offset = nextOffset;
+    }
+    if (identities.length !== 1) {
+        throw new Error(`npm tarball must contain exactly one package/package.json; found ${identities.length}`);
+    }
+    const [identity] = identities;
+    if (identity?.name !== expectedName || identity?.version !== expectedVersion) {
+        throw new Error(`npm tarball package identity differs from approved ${expectedName}@${expectedVersion}`);
+    }
+    return { name: identity.name, version: identity.version };
+}
 /**
  * @param {string} [packagePath]
- * @param {{ outDir?: string | null }} [options]
+ * @param {{ outDir?: string | null, dependencyRoot?: string | null }} [options]
  */
-export function verifyReproduciblePackage(packagePath = 'packages/verify', { outDir = null } = {}) {
+export function verifyReproduciblePackage(packagePath = 'packages/verify', { outDir = null, dependencyRoot = null, } = {}) {
     const packageDir = path.resolve(ROOT, packagePath);
     const packageJsonPath = path.join(packageDir, 'package.json');
     if (!fs.existsSync(packageJsonPath))
         throw new Error(`package.json not found: ${packageJsonPath}`);
-    const metadata = JSON.parse(fs.readFileSync(packageJsonPath, 'utf8'));
+    const packageJsonBytes = fs.readFileSync(packageJsonPath);
+    const metadata = JSON.parse(packageJsonBytes.toString('utf8'));
+    const expectedFilename = npmArtifactFilename(metadata.name, metadata.version);
     const scratch = fs.mkdtempSync(path.join(os.tmpdir(), 'ep-repro-pack-'));
-    const packEnv = { ...process.env, npm_config_ignore_scripts: 'true' };
-    const buildEnv = { ...process.env, npm_config_ignore_scripts: 'false' };
+    function isolatedEnv(label, ignoreScripts) {
+        const safeLabel = label.replace(/[^a-z0-9._-]+/giu, '-');
+        const environmentRoot = path.join(scratch, `${safeLabel}-environment`);
+        const home = path.join(environmentRoot, 'home');
+        const cache = path.join(environmentRoot, 'npm-cache');
+        const temporary = path.join(environmentRoot, 'tmp');
+        for (const directory of [home, cache, temporary]) {
+            fs.mkdirSync(directory, { recursive: true, mode: 0o700 });
+        }
+        return {
+            ...process.env,
+            HOME: home,
+            USERPROFILE: home,
+            XDG_CACHE_HOME: cache,
+            npm_config_cache: cache,
+            npm_config_ignore_scripts: ignoreScripts ? 'true' : 'false',
+            TMPDIR: temporary,
+            TMP: temporary,
+            TEMP: temporary,
+        };
+    }
     function runPack(args, label) {
         const run = spawnSync(npm, ['pack', ...args, '--json'], {
             cwd: ROOT,
             encoding: 'utf8',
-            env: packEnv,
+            env: isolatedEnv(`${label}-pack`, true),
         });
         if (run.status !== 0) {
             throw new Error(`npm pack ${label} failed:\n${run.stderr || run.stdout}`);
@@ -73,7 +155,13 @@ export function verifyReproduciblePackage(packagePath = 'packages/verify', { out
         if (!Array.isArray(report) || report.length !== 1 || typeof report[0].filename !== 'string') {
             throw new Error(`npm pack ${label} returned an unexpected report`);
         }
-        return report[0];
+        const [entry] = report;
+        if (entry.name !== metadata.name
+            || entry.version !== metadata.version
+            || entry.filename !== expectedFilename) {
+            throw new Error(`npm pack ${label} package identity differs from approved ${metadata.name}@${metadata.version} (${expectedFilename})`);
+        }
+        return entry;
     }
     function copyEntry(source, target) {
         const sourceStat = fs.lstatSync(source);
@@ -132,30 +220,79 @@ export function verifyReproduciblePackage(packagePath = 'packages/verify', { out
         });
         return { root: snapshotRoot, packageRelative: '' };
     }
-    function linkBuildDependencies(buildRoot, buildPackageDir) {
-        const repositoryNodeModules = path.join(ROOT, 'node_modules');
+    function cloneDependencyTree(sourceRoot, targetRoot) {
+        const activeDirectories = new Set();
+        const cloneEntry = (source, target) => {
+            const sourceLstat = fs.lstatSync(source);
+            const resolvedSource = sourceLstat.isSymbolicLink() ? fs.realpathSync(source) : source;
+            if (sourceLstat.isSymbolicLink()) {
+                const realSourceRoot = fs.realpathSync(sourceRoot);
+                const isInternalLink = resolvedSource === realSourceRoot
+                    || resolvedSource.startsWith(`${realSourceRoot}${path.sep}`);
+                if (isInternalLink) {
+                    const clonedTarget = path.join(targetRoot, path.relative(realSourceRoot, resolvedSource));
+                    const relativeTarget = path.relative(path.dirname(target), clonedTarget) || '.';
+                    fs.mkdirSync(path.dirname(target), { recursive: true, mode: 0o755 });
+                    fs.symlinkSync(relativeTarget, target, fs.statSync(resolvedSource).isDirectory()
+                        ? (process.platform === 'win32' ? 'junction' : 'dir')
+                        : 'file');
+                    return;
+                }
+            }
+            const sourceStat = sourceLstat.isSymbolicLink() ? fs.statSync(source) : sourceLstat;
+            if (sourceStat.isDirectory()) {
+                const realDirectory = fs.realpathSync(resolvedSource);
+                if (activeDirectories.has(realDirectory)) {
+                    throw new Error(`dependency tree contains a symlink cycle: ${source}`);
+                }
+                activeDirectories.add(realDirectory);
+                fs.mkdirSync(target, { recursive: true, mode: sourceStat.mode & 0o777 });
+                for (const entry of fs.readdirSync(resolvedSource)) {
+                    cloneEntry(path.join(resolvedSource, entry), path.join(target, entry));
+                }
+                fs.chmodSync(target, sourceStat.mode & 0o777);
+                activeDirectories.delete(realDirectory);
+                return;
+            }
+            if (!sourceStat.isFile()) {
+                throw new Error(`dependency tree entry is not a regular file or directory: ${source}`);
+            }
+            fs.mkdirSync(path.dirname(target), { recursive: true, mode: 0o755 });
+            fs.copyFileSync(resolvedSource, target, fs.constants.COPYFILE_FICLONE);
+            fs.chmodSync(target, sourceStat.mode & 0o777);
+        };
+        cloneEntry(sourceRoot, targetRoot);
+    }
+    function isolateBuildDependencies(buildRoot, buildPackageDir) {
+        const repositoryNodeModules = dependencyRoot
+            ? path.resolve(dependencyRoot)
+            : path.join(ROOT, 'node_modules');
         const packageNodeModules = path.join(packageDir, 'node_modules');
         if (fs.existsSync(repositoryNodeModules)) {
-            fs.symlinkSync(repositoryNodeModules, path.join(buildRoot, 'node_modules'), process.platform === 'win32' ? 'junction' : 'dir');
+            cloneDependencyTree(repositoryNodeModules, path.join(buildRoot, 'node_modules'));
         }
         if (buildPackageDir !== buildRoot && fs.existsSync(packageNodeModules)) {
-            fs.symlinkSync(packageNodeModules, path.join(buildPackageDir, 'node_modules'), process.platform === 'win32' ? 'junction' : 'dir');
+            cloneDependencyTree(packageNodeModules, path.join(buildPackageDir, 'node_modules'));
         }
     }
     function buildPackage(source, label) {
         const buildRoot = path.join(scratch, `${label}-build`);
         fs.cpSync(source.root, buildRoot, { recursive: true });
         const buildPackageDir = path.join(buildRoot, source.packageRelative);
-        linkBuildDependencies(buildRoot, buildPackageDir);
         if (typeof metadata.scripts?.build === 'string') {
             fs.rmSync(path.join(buildPackageDir, 'dist'), { recursive: true, force: true });
+            isolateBuildDependencies(buildRoot, buildPackageDir);
             const run = spawnSync(npm, ['run', 'build'], {
                 cwd: buildPackageDir,
                 encoding: 'utf8',
-                env: buildEnv,
+                env: isolatedEnv(`${label}-build`, false),
             });
             if (run.status !== 0) {
                 throw new Error(`package build ${label} failed:\n${run.stderr || run.stdout}`);
+            }
+            const builtPackageJson = fs.readFileSync(path.join(buildPackageDir, 'package.json'));
+            if (!builtPackageJson.equals(packageJsonBytes)) {
+                throw new Error(`package build ${label} mutated package.json`);
             }
         }
         return buildPackageDir;
@@ -195,6 +332,7 @@ export function verifyReproduciblePackage(packagePath = 'packages/verify', { out
         fs.mkdirSync(destination);
         const report = runPack([packageInput, '--pack-destination', destination], label);
         const bytes = canonicalizeNpmTarball(fs.readFileSync(path.join(destination, report.filename)));
+        validatePackedPackageIdentity(bytes, metadata.name, metadata.version);
         return {
             bytes,
             filename: report.filename,

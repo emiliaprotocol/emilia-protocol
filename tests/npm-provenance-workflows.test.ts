@@ -47,7 +47,10 @@ describe('npm publish workflows', () => {
       if (!/^[ \t]{2}workflow_dispatch:/m.test(text)) findings.push(`${name}: missing manual dispatch`);
       if (!/^[ \t]{6}release_tag:/m.test(text)) findings.push(`${name}: missing release_tag input`);
       if (!/^[ \t]{6}confirmation:/m.test(text)) findings.push(`${name}: missing confirmation input`);
-      if (!text.includes('registry-publishing-approval')) findings.push(`${name}: missing protected approval environment`);
+      if (!text.includes('registry-publishing-approval')
+        && !(usesReusableNpmGate && reusable.includes('environment: registry-publishing-approval'))) {
+        findings.push(`${name}: missing protected approval environment`);
+      }
       if (!text.includes('require-release-approval.mjs') && !(usesReusableNpmGate && reusable.includes('require-release-approval.mjs'))) {
         findings.push(`${name}: missing release approval gate`);
       }

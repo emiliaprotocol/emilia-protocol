@@ -31,6 +31,13 @@ function requireStep(steps: WorkflowStep[], name: string): WorkflowStep {
 }
 
 describe('reusable npm release workflow byte contract', () => {
+  it('puts the OIDC-capable publisher itself inside the protected environment', () => {
+    const workflow = YAML.parse(fs.readFileSync(WORKFLOW_PATH, 'utf8'));
+    expect(workflow?.jobs?.approval).toBeUndefined();
+    expect(workflow?.jobs?.publish?.environment).toBe('registry-publishing-approval');
+    expect(workflow?.jobs?.publish?.permissions?.['id-token']).toBe('write');
+  });
+
   it('consumes only the filename and SHA emitted by the reproducibility manifest', () => {
     const steps = loadPublishSteps();
     const pack = steps.find((step) => step.id === 'pack');
@@ -39,6 +46,8 @@ describe('reusable npm release workflow byte contract', () => {
     expect(pack?.run).toContain('EP-REPRODUCIBLE-NPM-ARTIFACT-v1');
     expect(pack?.run).toContain('manifest.artifact.filename');
     expect(pack?.run).toContain('manifest.artifact.sha256');
+    expect(pack?.run).toContain('approvedVersion');
+    expect(pack?.run).toContain('approvedFilename');
     expect(pack?.run).toContain('archives.length !== 1');
     expect(pack?.run).toContain('archive !== filename');
     expect(pack?.run).toContain('actualSha256 !== expectedSha256');
@@ -62,6 +71,9 @@ describe('reusable npm release workflow byte contract', () => {
     expect(publish.env?.TESTED_TARBALL).toBe(canonicalTarball);
     expect(publish.env?.EXPECTED_SHA256).toBe(canonicalSha256);
     expect(publish.run).toContain('sha256sum -c "$TESTED_TARBALL.sha256"');
+    expect(publish.run).toContain('--revalidate-remote');
+    expect(publish.run).toContain('response.status === 404');
+    expect(publish.run).toContain('already exists; refusing to publish');
     expect(publish.run).toContain(
       'npm publish "${{ steps.pack.outputs.tarball }}" --access public --provenance',
     );
@@ -70,6 +82,7 @@ describe('reusable npm release workflow byte contract', () => {
     expect(registry.env?.TESTED_TARBALL).toBe(canonicalTarball);
     expect(registry.env?.EXPECTED_SHA256).toBe(canonicalSha256);
     expect(registry.run).toContain('sha256sum -c "$TESTED_TARBALL.sha256"');
+    expect(registry.run).toMatch(/archives\.length\s*!==\s*1/);
     expect(registry.run).toContain('REGISTRY_SHA256');
     expect(registry.run).toContain('test "$REGISTRY_SHA256" = "$EXPECTED_SHA256"');
     expect(registry.run).toContain(

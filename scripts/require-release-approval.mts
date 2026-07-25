@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 // SPDX-License-Identifier: Apache-2.0
 import { execFileSync, spawnSync } from 'node:child_process';
+import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -31,6 +32,20 @@ interface GitState {
   expectedCommit?: string;
   expectedRef?: string;
   unpublished?: boolean;
+}
+
+interface RemoteGitState {
+  mainCommit: string;
+  tagCommit: string;
+  remote: string;
+}
+
+function npmArtifactFilename(packageName: string, version: string): string {
+  if (!/^(?:@[a-z0-9][a-z0-9._~-]*\/)?[a-z0-9][a-z0-9._~-]*$/u.test(packageName)
+    || !/^[0-9A-Za-z][0-9A-Za-z.+-]*$/u.test(version)) {
+    throw new Error('approved npm package identity is malformed');
+  }
+  return `${packageName.replace(/^@/u, '').replace(/\//gu, '-')}-${version}.tgz`;
 }
 
 export function validateReleaseApproval({
@@ -126,20 +141,82 @@ export function verifyUnpublishedReleaseGitState({ cwd, tag, mainRef = 'refs/rem
   return { head, tag, mainRef, unpublished: true };
 }
 
+export function verifyRemoteReleaseGitState({
+  cwd,
+  tag,
+  expectedCommit,
+  remote = 'origin',
+}: {
+  cwd: string;
+  tag: string;
+  expectedCommit: string;
+  remote?: string;
+}): RemoteGitState {
+  if (!/^[0-9a-f]{40}$/u.test(expectedCommit)) {
+    throw new Error(`remote release check requires an exact commit, received ${expectedCommit || '(missing)'}`);
+  }
+  const mainReference = 'refs/heads/main';
+  const tagReference = `refs/tags/${tag}`;
+  const peeledTagReference = `${tagReference}^{}`;
+  const query = spawnSync('git', [
+    'ls-remote',
+    '--exit-code',
+    remote,
+    mainReference,
+    tagReference,
+    peeledTagReference,
+  ], {
+    cwd,
+    encoding: 'utf8',
+    stdio: ['ignore', 'pipe', 'pipe'],
+  });
+  if (query.status !== 0) {
+    throw new Error(`remote release references are unavailable from ${remote}: ${query.stderr || query.stdout}`);
+  }
+  const references: Map<string, string[]> = new Map();
+  for (const line of query.stdout.split('\n').filter(Boolean)) {
+    const match = line.match(/^([0-9a-f]{40})\t(.+)$/u);
+    if (!match) throw new Error(`remote release reference query returned malformed output: ${line}`);
+    const [, commit, reference] = match;
+    const commits = references.get(reference) ?? [];
+    commits.push(commit);
+    references.set(reference, commits);
+  }
+  const exactReference = (reference: string, label: string): string | null => {
+    const commits = references.get(reference) ?? [];
+    if (commits.length > 1) throw new Error(`${label} is ambiguous on ${remote}`);
+    return commits[0] ?? null;
+  };
+  const mainCommit = exactReference(mainReference, 'remote protected main');
+  if (!mainCommit) throw new Error(`remote protected main is unavailable from ${remote}`);
+  if (mainCommit !== expectedCommit) {
+    throw new Error(`remote protected main moved or advanced: ${mainCommit} != ${expectedCommit}`);
+  }
+  const tagObject = exactReference(tagReference, `remote release tag ${tag}`);
+  if (!tagObject) throw new Error(`remote release tag ${tag} is unavailable from ${remote}`);
+  const tagCommit = exactReference(peeledTagReference, `peeled remote release tag ${tag}`) ?? tagObject;
+  if (tagCommit !== expectedCommit) {
+    throw new Error(`remote release tag ${tag} moved: ${tagCommit} != ${expectedCommit}`);
+  }
+  return { mainCommit, tagCommit, remote };
+}
+
 function option(argv: string[], name: string): string | null {
   const index: number = argv.indexOf(name);
   return index >= 0 ? argv[index + 1] : null;
 }
 
 export function main(argv: string[] = process.argv.slice(2), env: NodeJS.ProcessEnv = process.env): void {
+  const packageName: string | null = option(argv, '--package');
+  const version: string | null = option(argv, '--version');
   const approval: ReleaseApprovalResult = validateReleaseApproval({
     eventName: env.GITHUB_EVENT_NAME,
     actor: env.GITHUB_ACTOR,
     allowedActor: option(argv, '--allowed-actor'),
     tag: option(argv, '--tag'),
     tagPrefix: option(argv, '--tag-prefix'),
-    packageName: option(argv, '--package'),
-    version: option(argv, '--version'),
+    packageName,
+    version,
     confirmation: option(argv, '--confirmation'),
   });
   const gitState: GitState = argv.includes('--unpublished-tag')
@@ -156,6 +233,24 @@ export function main(argv: string[] = process.argv.slice(2), env: NodeJS.Process
       expectedCommit: option(argv, '--expected-commit') || env.GITHUB_SHA,
       expectedRef: option(argv, '--expected-ref') || env.GITHUB_REF,
     });
+  if (argv.includes('--revalidate-remote')) {
+    verifyRemoteReleaseGitState({
+      cwd: env.GITHUB_WORKSPACE || process.cwd(),
+      tag: approval.expectedTag,
+      expectedCommit: gitState.head,
+      remote: option(argv, '--remote') || 'origin',
+    });
+  }
+  const githubOutput: string | null = option(argv, '--github-output');
+  if (githubOutput) {
+    fs.appendFileSync(githubOutput, [
+      `package=${packageName}`,
+      `version=${version}`,
+      `filename=${npmArtifactFilename(packageName!, version!)}`,
+      `commit=${gitState.head}`,
+      '',
+    ].join('\n'));
+  }
   console.log(`RELEASE APPROVAL: PASS (${approval.expectedConfirmation}; ${gitState.head})`);
 }
 

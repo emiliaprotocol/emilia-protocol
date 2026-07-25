@@ -1,6 +1,13 @@
 // SPDX-License-Identifier: Apache-2.0
 import { describe, expect, it } from 'vitest';
-import { mkdtempSync, mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import {
+  mkdtempSync,
+  mkdirSync,
+  readFileSync,
+  readdirSync,
+  rmSync,
+  writeFileSync,
+} from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import {
@@ -12,6 +19,7 @@ import {
   validateNpmDirect,
   validateNpmLockData,
   validatePypiDirect,
+  validateReusableNpmCallerText,
   validateReusableNpmWorkflowText,
   validateReusablePypiWorkflowText,
 } from '../scripts/check-release-chain.mjs';
@@ -107,6 +115,79 @@ describe('release-chain coverage', () => {
     }
   });
 
+  it('protects the reusable OIDC publisher and removes detached approval from every npm caller', () => {
+    const workflowDirectory = path.join('.github', 'workflows');
+    const reusableText = readFileSync(
+      path.join(workflowDirectory, '_publish-npm-package.yml'),
+      'utf8',
+    );
+    const reusable = YAML.parse(reusableText);
+    expect(reusable?.jobs?.approval).toBeUndefined();
+    expect(reusable?.jobs?.publish?.environment).toBe('registry-publishing-approval');
+    expect(reusable?.jobs?.publish?.permissions?.['id-token']).toBe('write');
+
+    const callers = readdirSync(workflowDirectory)
+      .filter((name) => {
+        const text = readFileSync(path.join(workflowDirectory, name), 'utf8');
+        return text.includes('uses: ./.github/workflows/_publish-npm-package.yml');
+      })
+      .sort();
+    expect(callers).toHaveLength(17);
+    for (const name of callers) {
+      const text = readFileSync(path.join(workflowDirectory, name), 'utf8');
+      const workflow = YAML.parse(text);
+      expect(validateReusableNpmCallerText(text, name)).toBe(true);
+      expect(workflow?.jobs?.approval, `${name} has a detached approval job`).toBeUndefined();
+      expect(workflow?.jobs?.publish?.needs, `${name} still depends on detached approval`).toBeUndefined();
+      expect(workflow?.jobs?.publish?.uses).toBe('./.github/workflows/_publish-npm-package.yml');
+      expect(workflow?.jobs?.publish?.permissions?.['id-token']).toBe('write');
+    }
+  });
+
+  it('binds every reusable npm caller to protected-main selection in the called publisher', () => {
+    const reusable = readFileSync('.github/workflows/_publish-npm-package.yml', 'utf8');
+    expect(reusable).toContain('ref: ${{ github.sha }}');
+    expect(reusable).not.toContain('ref: ${{ inputs.release_tag }}');
+    expect(reusable).toContain('--expected-commit "$GITHUB_SHA"');
+    expect(reusable).toContain('--expected-ref "$GITHUB_REF"');
+    expect(reusable).toContain('--revalidate-remote');
+  });
+
+  it('fails closed on existing npm versions and revalidates refs in the publishing step', () => {
+    for (const name of [
+      '_publish-npm-package.yml',
+      'publish-gate.yml',
+      'publish-verify-sdk.yml',
+    ]) {
+      const text = readFileSync(path.join('.github/workflows', name), 'utf8');
+      const workflow = YAML.parse(text);
+      const publishRun = workflow?.jobs?.publish?.steps?.find(
+        (step) => typeof step?.run === 'string' && step.run.includes('npm publish '),
+      )?.run;
+      expect(publishRun, `${name} must contain a publishing step`).toBeTypeOf('string');
+      const preflightIndex = publishRun.indexOf('response.status === 404');
+      const remoteIndex = publishRun.indexOf('--revalidate-remote');
+      const hashIndex = publishRun.lastIndexOf('sha256sum -c "$TESTED_TARBALL.sha256"');
+      const publishIndex = publishRun.indexOf('npm publish ');
+      expect(preflightIndex).toBeLessThan(remoteIndex);
+      expect(remoteIndex, `${name} must revalidate refs in the publish step`).toBeGreaterThan(-1);
+      expect(remoteIndex).toBeLessThan(hashIndex);
+      expect(hashIndex).toBeLessThan(publishIndex);
+      const registryRun = workflow?.jobs?.publish?.steps?.find(
+        (step) => step?.name === 'Verify registry bytes match the attested tarball',
+      )?.run;
+      expect(registryRun, `${name} must contain a registry comparison step`).toBeTypeOf('string');
+      const registrySelectionIndex = registryRun.indexOf('REGISTRY_TARBALL=');
+      const registryRehashIndex = registryRun.lastIndexOf('sha256sum -c "$TESTED_TARBALL.sha256"');
+      const registryCompareIndex = registryRun.indexOf('cmp "$TESTED_TARBALL"');
+      expect(registrySelectionIndex).toBeLessThan(registryRehashIndex);
+      expect(registryRehashIndex).toBeLessThan(registryCompareIndex);
+      expect(text).toContain('already exists; refusing to publish');
+      expect(text).toContain('response.status === 404');
+      expect(text).not.toContain('already exists; continuing to mandatory byte verification');
+    }
+  });
+
   it('binds Verify and Gate checkout and release approval to the dispatch SHA and main ref', () => {
     for (const name of ['publish-verify-sdk.yml', 'publish-gate.yml']) {
       const text = readFileSync(path.join('.github/workflows', name), 'utf8');
@@ -151,7 +232,7 @@ describe('release-chain coverage', () => {
       const branchSelected = text.replace('ref: ${{ github.sha }}', 'ref: ${{ inputs.release_tag }}');
       expect(() => validate(branchSelected)).toThrow(/github\.sha/);
 
-      const forgedRef = text.replace('--expected-ref "$GITHUB_REF"', '--expected-ref "refs/heads/main"');
+      const forgedRef = text.replaceAll('--expected-ref "$GITHUB_REF"', '--expected-ref "refs/heads/main"');
       expect(() => validate(forgedRef)).toThrow(/expected-ref/);
     }
   });

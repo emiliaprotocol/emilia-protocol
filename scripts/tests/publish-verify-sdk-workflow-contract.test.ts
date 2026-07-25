@@ -10,6 +10,7 @@ interface WorkflowStep {
   run?: string;
   uses?: string;
   with?: Record<string, string>;
+  env?: Record<string, string>;
   'working-directory'?: string;
 }
 
@@ -38,16 +39,20 @@ describe('Verify SDK release workflow artifact contract', () => {
     expect(pack).toBeDefined();
     expect(pack?.['working-directory']).toBe('${{ github.workspace }}');
     expect(pack?.run).toContain('npm run release:verify:reproducible --');
-    expect(pack?.run).toContain('--outdir release-artifacts');
-    expect(pack?.run).toContain('--emit release-artifacts/verify-reproducible.json');
-    expect(pack?.run).toContain(
-      "require('./release-artifacts/verify-reproducible.json')",
-    );
-    expect(pack?.run).toContain('TARBALL_PATH="release-artifacts/$TARBALL"');
-    expect(pack?.run).toContain('sha256sum -c "$TARBALL_PATH.sha256"');
-    expect(pack?.run).toContain('echo "tarball=$TARBALL" >> "$GITHUB_OUTPUT"');
+    expect(pack?.run).toContain('ARTIFACT_DIR="release-artifacts/verify"');
+    expect(pack?.run).toContain('MANIFEST_PATH="release-artifacts/verify-reproducible.json"');
+    expect(pack?.run).toContain('--outdir "$ARTIFACT_DIR"');
+    expect(pack?.run).toContain('--emit "$MANIFEST_PATH"');
+    expect(pack?.run).toContain("manifest['@version'] !== 'EP-REPRODUCIBLE-NPM-ARTIFACT-v1'");
+    expect(pack?.run).toContain('manifestSha256 !== actualManifestSha256');
+    expect(pack?.run).toContain('approvedVersion');
+    expect(pack?.run).toContain('approvedFilename');
+    expect(pack?.run).toContain('archives.length !== 1');
+    expect(pack?.run).toContain('actualSha256 !== expectedSha256');
+    expect(pack?.run).toContain('tarball=${tarballPath}');
+    expect(pack?.run).toContain('sha256=${expectedSha256}');
 
-    const canonicalTarball = 'release-artifacts/${{ steps.pack.outputs.tarball }}';
+    const canonicalTarball = '${{ steps.pack.outputs.tarball }}';
     const attest = requireStep(steps, 'Attest exact package bytes');
     expect(attest.with?.['subject-path']).toBe(canonicalTarball);
 
@@ -56,13 +61,21 @@ describe('Verify SDK release workflow artifact contract', () => {
     expect(upload.with?.path).toContain('release-artifacts/verify-reproducible.json');
 
     const publish = requireStep(steps, 'Publish the attested tarball (OIDC + npm provenance)');
+    expect(publish.env?.EXPECTED_SHA256).toBe('${{ steps.pack.outputs.sha256 }}');
+    expect(publish.run).toContain('--revalidate-remote');
+    expect(publish.run).toContain('sha256sum -c "$TESTED_TARBALL.sha256"');
+    expect(publish.run).toContain('response.status === 404');
+    expect(publish.run).toContain('already exists; refusing to publish');
     expect(publish.run).toContain(
-      `npm publish "../../${canonicalTarball}" --access public --provenance`,
+      `npm publish "${canonicalTarball}" --access public --provenance`,
     );
 
     const registry = requireStep(steps, 'Verify registry bytes match the attested tarball');
+    expect(registry.env?.EXPECTED_SHA256).toBe('${{ steps.pack.outputs.sha256 }}');
+    expect(registry.run).toContain('sha256sum -c "$TESTED_TARBALL.sha256"');
+    expect(registry.run).toMatch(/archives\.length\s*!==\s*1/);
     expect(registry.run).toContain(
-      `cmp "../../${canonicalTarball}" "../../registry-copy/$REGISTRY_TARBALL"`,
+      'cmp "$TESTED_TARBALL" "registry-copy/$REGISTRY_TARBALL"',
     );
   });
 
@@ -74,6 +87,6 @@ describe('Verify SDK release workflow artifact contract', () => {
 
     expect(packCommands).toHaveLength(1);
     expect(packCommands[0]).toContain('npm pack "@emilia-protocol/verify@$VERSION"');
-    expect(packCommands[0]).toContain('--pack-destination ../../registry-copy');
+    expect(packCommands[0]).toContain('--pack-destination registry-copy');
   });
 });
