@@ -21,8 +21,7 @@ import {
 import { strictJsonGate } from '@emilia-protocol/require-receipt/strict-json';
 import { createStaticBearerAuthenticator } from '../../gate-service/src/auth.js';
 import {
-  createGitHubAppInstallationTokenProvider,
-  createGitHubIssueEffectProvider,
+  createConsequenceActuatorClient,
 } from './github-app.js';
 
 const BRIDGE_ADAPTER_ID = 'bridge:native';
@@ -30,6 +29,8 @@ const BRIDGE_ADAPTER_VERSION = '1';
 const NORMAL_PROFILE = 'github.issue.update.v1';
 const INDETERMINATE_PROFILE = 'github.issue.update.indeterminate-smoke.v1';
 const ACTION_TYPE = 'github.issue.update.1';
+const INDETERMINATE_OPERATION =
+  'github.issue.update.indeterminate-smoke.1';
 const ACTION_FIELDS = Object.freeze([
   'action_type', 'owner', 'repo', 'issue_number', 'title', 'body',
 ]);
@@ -430,26 +431,67 @@ export async function createProductionConsequenceControlConfig({
     },
   });
 
-  const tokenProvider = createGitHubAppInstallationTokenProvider({
-    appId: required(environment, 'EMILIA_CONSEQUENCE_GITHUB_APP_ID', 32),
-    installationId: required(environment, 'EMILIA_CONSEQUENCE_GITHUB_INSTALLATION_ID', 32),
-    privateKeyPem: required(environment, 'EMILIA_CONSEQUENCE_GITHUB_PRIVATE_KEY', 32 * 1024),
-    fetchImpl,
-  });
-  const normalProvider = createGitHubIssueEffectProvider({
+  const actuatorClientOptions = {
+    endpoint: required(environment, 'EMILIA_CONSEQUENCE_ACTUATOR_ORIGIN', 2048),
+    authorization: required(
+      environment,
+      'EMILIA_CONSEQUENCE_ACTUATOR_API_TOKEN',
+      4096,
+    ),
+    tenantId,
+    providerId: 'github',
+    providerAccountId: githubOwner,
+    environment: 'production-smoke',
     owner: githubOwner,
     repo: githubRepo,
     issueNumber: githubIssueNumber,
-    tokenProvider,
+    envelopeIssuerId: required(
+      environment,
+      'EMILIA_CONSEQUENCE_ACTUATOR_ENVELOPE_ISSUER_ID',
+      256,
+    ),
+    envelopeKeyId: required(
+      environment,
+      'EMILIA_CONSEQUENCE_ACTUATOR_ENVELOPE_KEY_ID',
+      256,
+    ),
+    envelopePrivateKey: required(
+      environment,
+      'EMILIA_CONSEQUENCE_ACTUATOR_ENVELOPE_PRIVATE_KEY',
+      32 * 1024,
+    ),
+    observationIssuerId: required(
+      environment,
+      'EMILIA_CONSEQUENCE_ACTUATOR_OBSERVATION_ISSUER_ID',
+      256,
+    ),
+    observationKeyId: required(
+      environment,
+      'EMILIA_CONSEQUENCE_ACTUATOR_EVIDENCE_KEY_ID',
+      256,
+    ),
+    observationPublicKey: required(
+      environment,
+      'EMILIA_CONSEQUENCE_ACTUATOR_EVIDENCE_PUBLIC_KEY',
+      32 * 1024,
+    ),
+    requestTimeoutMs: positiveInteger(
+      environment,
+      'EMILIA_CONSEQUENCE_ACTUATOR_TIMEOUT_MS',
+      30_000,
+    ),
     fetchImpl,
+    allowInsecureLoopback:
+      environment.NODE_ENV === 'test'
+      && environment.EMILIA_CONSEQUENCE_ACTUATOR_ALLOW_INSECURE_HTTP_FOR_TESTS === 'true',
+  };
+  const normalActuatorClient = createConsequenceActuatorClient({
+    ...actuatorClientOptions,
+    operation: ACTION_TYPE,
   });
-  const indeterminateProvider = createGitHubIssueEffectProvider({
-    owner: githubOwner,
-    repo: githubRepo,
-    issueNumber: githubIssueNumber,
-    tokenProvider,
-    forceIndeterminateAfterCommit: true,
-    fetchImpl,
+  const indeterminateActuatorClient = createConsequenceActuatorClient({
+    ...actuatorClientOptions,
+    operation: INDETERMINATE_OPERATION,
   });
 
   const adapter = createAebNativeVerificationAttestationAdapter({
@@ -539,9 +581,10 @@ export async function createProductionConsequenceControlConfig({
       statusVerifier,
       verify_provider_evidence: ({ evidence, expected }: any) => {
         const { proposal } = contextValue(storage);
-        const provider = proposal.profile_id === INDETERMINATE_PROFILE
-          ? indeterminateProvider : normalProvider;
-        return provider.verifyProviderEvidence({
+        const client = proposal.profile_id === INDETERMINATE_PROFILE
+          ? indeterminateActuatorClient
+          : normalActuatorClient;
+        return client.verifyProviderEvidence({
           evidence,
           expected,
           action: proposal.action,
@@ -569,8 +612,10 @@ export async function createProductionConsequenceControlConfig({
     },
     effectForProfile: async ({ profile_id: profileId }: any) => (
       profileId === INDETERMINATE_PROFILE
-        ? indeterminateProvider.effect
-        : normalProvider.effect
+        ? indeterminateActuatorClient.effect
+        : profileId === NORMAL_PROFILE
+          ? normalActuatorClient.effect
+          : null
     ),
     requesterAuthorization: async () => `Bearer ${approvalToken}`,
     lookupAttempt: async ({ lookup }: any) => {
@@ -579,7 +624,11 @@ export async function createProductionConsequenceControlConfig({
     },
     recoverAttempt: async ({ attempt }: any) => {
       const recovered = await consequenceStore.recover(attempt);
-      if (!recovered.recovered) throw new Error(recovered.reason);
+      if (!recovered.recovered) {
+        throw new Error('reason' in recovered
+          ? recovered.reason
+          : 'consequence_attempt_recovery_failed');
+      }
       return {
         tenant_id: attempt.tenant_id,
         attempt_id: attempt.attempt_id,
@@ -598,7 +647,11 @@ export async function createProductionConsequenceControlConfig({
       });
       if (!databaseReady) return { ok: false };
       try {
-        return { ok: typeof await tokenProvider.getToken() === 'string' };
+        const ready = await Promise.all([
+          normalActuatorClient.ready(),
+          indeterminateActuatorClient.ready(),
+        ]);
+        return { ok: ready.every(Boolean) };
       } catch {
         return { ok: false };
       }

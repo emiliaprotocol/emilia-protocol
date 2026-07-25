@@ -1,16 +1,91 @@
 // SPDX-License-Identifier: Apache-2.0
 // Generated from github-app.ts by scripts/build-standalone-runtimes.mjs. Do not edit.
 /* eslint-disable */
+/**
+ * Decision-side remote actuator client.
+ *
+ * The legacy filename is retained only because the standalone-runtime builder
+ * already owns its Node companion. This module contains no provider
+ * credentials and never invokes a provider API.
+ */
 import crypto from 'node:crypto';
-import { digestAeb } from '../../../packages/verify/aeb-adapter-contract.js';
-import { strictJsonGate } from '../../../packages/require-receipt/strict-json.js';
-const DEFAULT_BASE_URL = 'https://api.github.com';
-const API_VERSION = '2026-03-10';
-const MAX_RESPONSE_BYTES = 512 * 1024;
-const SAFE_SEGMENT = /^[A-Za-z0-9_.-]{1,100}$/;
-const EXACT_ACTION_KEYS = Object.freeze([
+import { canonicalize } from '@emilia-protocol/gate';
+import { CONSEQUENCE_ACTUATOR_ENVELOPE_VERSION, signConsequenceExecutionEnvelope, } from '@emilia-protocol/gate/consequence-actuator';
+import { strictJsonGate } from '@emilia-protocol/require-receipt/strict-json';
+import { digestAeb } from '@emilia-protocol/verify/aeb-adapter-contract';
+export const CONSEQUENCE_ACTUATOR_OBSERVATION_VERSION = 'EP-CONSEQUENCE-ACTUATOR-OBSERVATION-v1';
+export const CONSEQUENCE_ACTUATOR_RESPONSE_VERSION = 'EP-CONSEQUENCE-ACTUATOR-RESPONSE-v1';
+const OBSERVATION_SIGNATURE_DOMAIN = 'EMILIA-CONSEQUENCE-ACTUATOR-OBSERVATION-v1';
+const ACTION_KEYS = Object.freeze([
     'action_type', 'owner', 'repo', 'issue_number', 'title', 'body',
 ]);
+const OBSERVATION_KEYS = Object.freeze([
+    '@version', 'payload', 'signature',
+]);
+const OBSERVATION_PAYLOAD_KEYS = Object.freeze([
+    '@version',
+    'issuer_id',
+    'tenant_id',
+    'attempt_id',
+    'action_digest',
+    'caid',
+    'provider_id',
+    'provider_account_id',
+    'target_digest',
+    'operation',
+    'idempotency_key',
+    'nonce',
+    'envelope_digest',
+    'outcome',
+    'observed_at',
+    'reason',
+    'provider_reference',
+    'provider_result_digest',
+]);
+const SIGNATURE_KEYS = Object.freeze(['algorithm', 'key_id', 'value']);
+const REQUEST_KEYS = Object.freeze([
+    'action', 'action_digest', 'attempt_id', 'idempotency_key', 'envelope',
+]);
+const RESPONSE_KEYS = Object.freeze([
+    '@version', 'ok', 'outcome', 'observation',
+]);
+const RECONCILIATION_OBSERVATION_KEYS = Object.freeze([
+    '@version',
+    'evidence_id',
+    'observed_at',
+    'outcome',
+    'reason',
+    'tenant_id',
+    'request_digest',
+    'provider_id',
+    'provider_account_id',
+    'environment',
+    'attempt_id',
+    'operation_id',
+    'caid',
+    'action_digest',
+    'target_digest',
+    'operation',
+    'provider_observation_digest',
+    'evidence_digest',
+]);
+const RECONCILIATION_EXPECTED_KEYS = Object.freeze([
+    'operation_id',
+    'caid',
+    'action_digest',
+    'tenant_id',
+    'request_digest',
+    'provider_id',
+    'provider_account_id',
+    'environment',
+    'attempt_id',
+]);
+const RECONCILIATION_SIGNATURE_DOMAIN = 'EP-CONSEQUENCE-ACTUATOR-OBSERVATION-v1';
+const IDENTIFIER = /^[A-Za-z0-9][A-Za-z0-9._:@/-]{0,255}$/;
+const DIGEST = /^sha256:[a-f0-9]{64}$/;
+const CAID = /^caid:1:[a-z][a-z0-9-]*(?:\.[a-z][a-z0-9-]*)*\.[1-9][0-9]*:[a-z0-9]+(?:-[a-z0-9]+)*:[A-Za-z0-9_-]{43}$/;
+const BASE64URL = /^[A-Za-z0-9_-]+$/;
+const MAX_RESPONSE_BYTES = 256 * 1024;
 function plainObject(value) {
     if (!value || typeof value !== 'object' || Array.isArray(value))
         return false;
@@ -22,38 +97,75 @@ function exactKeys(value, expected) {
         return false;
     const actual = Object.keys(value).sort();
     const wanted = [...expected].sort();
-    return actual.length === wanted.length && actual.every((key, index) => key === wanted[index]);
+    return actual.length === wanted.length
+        && actual.every((key, index) => key === wanted[index]);
 }
-function requiredInteger(value, name) {
-    const number = typeof value === 'string' && /^[1-9][0-9]*$/.test(value)
-        ? Number(value) : value;
-    if (!Number.isSafeInteger(number) || number < 1) {
-        throw new TypeError(`${name}_invalid`);
-    }
-    return number;
-}
-function requiredSegment(value, name) {
-    if (typeof value !== 'string' || !SAFE_SEGMENT.test(value) || value === '.' || value === '..') {
+function requiredText(value, name, maximum = 4096) {
+    if (typeof value !== 'string' || value.length < 1
+        || value.length > maximum || value.includes('\0')) {
         throw new TypeError(`${name}_invalid`);
     }
     return value;
 }
-function requiredText(value, name, max = 65_536) {
-    if (typeof value !== 'string' || value.length === 0 || value.length > max || value.includes('\0')) {
+function requiredIdentifier(value, name) {
+    const text = requiredText(value, name, 256);
+    if (!IDENTIFIER.test(text))
         throw new TypeError(`${name}_invalid`);
-    }
-    return value;
+    return text;
 }
-function normalizedBaseUrl(value) {
-    let url;
+function requiredDigest(value, name) {
+    const text = requiredText(value, name, 71);
+    if (!DIGEST.test(text))
+        throw new TypeError(`${name}_invalid`);
+    return text;
+}
+function requiredCaid(value) {
+    const text = requiredText(value, 'caid', 512);
+    if (!CAID.test(text))
+        throw new TypeError('caid_invalid');
+    return text;
+}
+function normalizePrivateKey(value) {
+    let key;
     try {
-        url = new URL(typeof value === 'string' ? value : DEFAULT_BASE_URL);
+        key = value instanceof crypto.KeyObject ? value : crypto.createPrivateKey(value);
     }
     catch {
-        throw new TypeError('github_base_url_invalid');
+        throw new TypeError('actuator_envelope_private_key_invalid');
     }
-    if (url.protocol !== 'https:' || url.username || url.password || url.search || url.hash) {
-        throw new TypeError('github_base_url_invalid');
+    if (key.type !== 'private' || key.asymmetricKeyType !== 'ed25519') {
+        throw new TypeError('actuator_envelope_private_key_invalid');
+    }
+    return key;
+}
+function normalizePublicKey(value) {
+    let key;
+    try {
+        key = value instanceof crypto.KeyObject
+            ? (value.type === 'private' ? crypto.createPublicKey(value) : value)
+            : crypto.createPublicKey(value);
+    }
+    catch {
+        throw new TypeError('actuator_observation_public_key_invalid');
+    }
+    if (key.type !== 'public' || key.asymmetricKeyType !== 'ed25519') {
+        throw new TypeError('actuator_observation_public_key_invalid');
+    }
+    return key;
+}
+function endpointUrl(value, allowInsecureLoopback) {
+    let url;
+    try {
+        url = new URL(requiredText(value, 'actuator_endpoint', 2048));
+    }
+    catch {
+        throw new TypeError('actuator_endpoint_invalid');
+    }
+    const loopback = ['127.0.0.1', '::1', 'localhost'].includes(url.hostname);
+    if ((url.protocol !== 'https:'
+        && !(allowInsecureLoopback && loopback && url.protocol === 'http:'))
+        || url.username || url.password || url.search || url.hash) {
+        throw new TypeError('actuator_endpoint_invalid');
     }
     return url.href.replace(/\/$/, '');
 }
@@ -64,13 +176,21 @@ function cancelBody(body) {
     catch { /* best effort */ }
 }
 async function boundedJson(response) {
+    if (response?.redirected === true) {
+        cancelBody(response?.body);
+        throw new Error('actuator_redirect_refused');
+    }
+    if (!/^application\/json(?:\s*;|$)/i.test(String(response?.headers?.get?.('content-type') ?? ''))) {
+        cancelBody(response?.body);
+        throw new Error('actuator_response_invalid');
+    }
     const announced = Number(response?.headers?.get?.('content-length'));
     if (Number.isFinite(announced) && announced > MAX_RESPONSE_BYTES) {
         cancelBody(response?.body);
-        throw new Error('github_response_too_large');
+        throw new Error('actuator_response_too_large');
     }
     if (!response?.body || typeof response.body.getReader !== 'function') {
-        throw new Error('github_response_invalid');
+        throw new Error('actuator_response_invalid');
     }
     const reader = response.body.getReader();
     const chunks = [];
@@ -81,10 +201,10 @@ async function boundedJson(response) {
             if (!chunk || chunk.done === true)
                 break;
             if (!(chunk.value instanceof Uint8Array))
-                throw new Error('github_response_invalid');
+                throw new Error('actuator_response_invalid');
             total += chunk.value.byteLength;
             if (total > MAX_RESPONSE_BYTES)
-                throw new Error('github_response_too_large');
+                throw new Error('actuator_response_too_large');
             chunks.push(Buffer.from(chunk.value));
         }
     }
@@ -97,229 +217,443 @@ async function boundedJson(response) {
     }
     let text;
     try {
-        text = new TextDecoder('utf-8', { fatal: true }).decode(Buffer.concat(chunks, total));
+        text = new TextDecoder('utf-8', { fatal: true })
+            .decode(Buffer.concat(chunks, total));
     }
     catch {
-        throw new Error('github_response_invalid');
+        throw new Error('actuator_response_invalid');
     }
     if (!strictJsonGate(text).ok)
-        throw new Error('github_response_invalid');
+        throw new Error('actuator_response_invalid');
     const parsed = JSON.parse(text);
     if (!plainObject(parsed))
-        throw new Error('github_response_invalid');
+        throw new Error('actuator_response_invalid');
     return parsed;
 }
-function createAppJwt(appId, privateKey, nowMs) {
-    const header = Buffer.from(JSON.stringify({ alg: 'RS256', typ: 'JWT' })).toString('base64url');
-    const seconds = Math.floor(nowMs / 1000);
-    const payload = Buffer.from(JSON.stringify({
-        iat: seconds - 60,
-        exp: seconds + 540,
-        iss: appId,
-    })).toString('base64url');
-    const signingInput = `${header}.${payload}`;
-    const signature = crypto.sign('RSA-SHA256', Buffer.from(signingInput), privateKey).toString('base64url');
-    return `${signingInput}.${signature}`;
+function observationSignatureInput(payload) {
+    return Buffer.concat([
+        Buffer.from(OBSERVATION_SIGNATURE_DOMAIN, 'utf8'),
+        Buffer.from([0]),
+        Buffer.from(digestAeb(payload), 'utf8'),
+    ]);
 }
-export function createGitHubAppInstallationTokenProvider({ appId, installationId, privateKeyPem, baseUrl, fetchImpl = globalThis.fetch, now = Date.now, } = {}) {
-    const app = String(requiredInteger(appId, 'github_app_id'));
-    const installation = String(requiredInteger(installationId, 'github_installation_id'));
-    requiredText(privateKeyPem, 'github_private_key', 32 * 1024);
-    if (typeof fetchImpl !== 'function' || typeof now !== 'function') {
-        throw new TypeError('github_app_dependencies_invalid');
+function validObservationPayload(value) {
+    if (!exactKeys(value, OBSERVATION_PAYLOAD_KEYS))
+        return false;
+    const observedAt = typeof value.observed_at === 'string'
+        ? Date.parse(value.observed_at) : NaN;
+    return value['@version'] === CONSEQUENCE_ACTUATOR_OBSERVATION_VERSION
+        && IDENTIFIER.test(value.issuer_id)
+        && IDENTIFIER.test(value.tenant_id)
+        && IDENTIFIER.test(value.attempt_id)
+        && DIGEST.test(value.action_digest)
+        && CAID.test(value.caid)
+        && IDENTIFIER.test(value.provider_id)
+        && IDENTIFIER.test(value.provider_account_id)
+        && DIGEST.test(value.target_digest)
+        && IDENTIFIER.test(value.operation)
+        && IDENTIFIER.test(value.idempotency_key)
+        && typeof value.nonce === 'string'
+        && value.nonce.length >= 22
+        && value.nonce.length <= 128
+        && BASE64URL.test(value.nonce)
+        && DIGEST.test(value.envelope_digest)
+        && ['COMMITTED', 'INDETERMINATE'].includes(value.outcome)
+        && Number.isFinite(observedAt)
+        && typeof value.reason === 'string'
+        && value.reason.length >= 1
+        && value.reason.length <= 256
+        && typeof value.provider_reference === 'string'
+        && value.provider_reference.length >= 1
+        && value.provider_reference.length <= 512
+        && (value.provider_result_digest === null
+            || DIGEST.test(value.provider_result_digest));
+}
+function verifyObservation(evidence, { issuerId, keyId, publicKey, }) {
+    if (!exactKeys(evidence, OBSERVATION_KEYS)
+        || evidence['@version'] !== CONSEQUENCE_ACTUATOR_OBSERVATION_VERSION
+        || !validObservationPayload(evidence.payload)
+        || !exactKeys(evidence.signature, SIGNATURE_KEYS)
+        || evidence.signature.algorithm !== 'Ed25519'
+        || evidence.signature.key_id !== keyId
+        || typeof evidence.signature.value !== 'string'
+        || !BASE64URL.test(evidence.signature.value)) {
+        return null;
     }
-    let privateKey;
+    let signature;
     try {
-        privateKey = crypto.createPrivateKey(privateKeyPem);
-        if (privateKey.asymmetricKeyType !== 'rsa')
-            throw new Error('RSA required');
+        signature = Buffer.from(evidence.signature.value, 'base64url');
     }
     catch {
-        throw new TypeError('github_private_key_invalid');
+        return null;
     }
-    const apiBase = normalizedBaseUrl(baseUrl);
-    let cached = null;
-    let pending = null;
-    async function mintToken() {
-        const current = Number(now());
-        if (!Number.isFinite(current))
-            throw new Error('github_app_clock_invalid');
-        const response = await fetchImpl(`${apiBase}/app/installations/${installation}/access_tokens`, {
-            method: 'POST',
-            headers: {
-                Accept: 'application/vnd.github+json',
-                Authorization: `Bearer ${createAppJwt(app, privateKey, current)}`,
-                'User-Agent': 'emilia-consequence-control/0.1.0',
-                'X-GitHub-Api-Version': API_VERSION,
-            },
-            redirect: 'error',
-            signal: AbortSignal.timeout(10_000),
-        });
-        if (response?.status !== 201) {
-            cancelBody(response?.body);
-            throw new Error('github_installation_token_refused');
-        }
-        const body = await boundedJson(response);
-        const token = requiredText(body.token, 'github_installation_token', 4096);
-        const expiresAt = Date.parse(body.expires_at);
-        if (!Number.isFinite(expiresAt) || expiresAt <= current + 120_000) {
-            throw new Error('github_installation_token_expiry_invalid');
-        }
-        cached = { token, refreshAt: expiresAt - 60_000 };
-        return token;
+    if (signature.byteLength !== 64
+        || evidence.payload.issuer_id !== issuerId
+        || !crypto.verify(null, observationSignatureInput(evidence.payload), publicKey, signature)) {
+        return null;
     }
-    return Object.freeze({
-        async getToken() {
-            const current = Number(now());
-            if (cached && current < cached.refreshAt)
-                return cached.token;
-            if (!pending)
-                pending = mintToken().finally(() => { pending = null; });
-            return pending;
-        },
+    return structuredClone(evidence.payload);
+}
+function reconciliationSignatureInput(evidence) {
+    return Buffer.concat([
+        Buffer.from(RECONCILIATION_SIGNATURE_DOMAIN, 'utf8'),
+        Buffer.from([0]),
+        Buffer.from(canonicalize(evidence), 'utf8'),
+    ]);
+}
+function reconciliationEvidenceDigest(value) {
+    const unsigned = structuredClone(value);
+    delete unsigned.evidence_digest;
+    return digestAeb({
+        domain: RECONCILIATION_SIGNATURE_DOMAIN,
+        evidence: unsigned,
     });
 }
-function githubHeaders(token, extra = {}) {
-    requiredText(token, 'github_installation_token', 4096);
+function verifyReconciliationObservation(candidate, expected, { keyId, publicKey, targetDigest, operation, }) {
+    if (!exactKeys(candidate, ['evidence', 'signature'])
+        || !exactKeys(candidate.signature, SIGNATURE_KEYS)
+        || candidate.signature.algorithm !== 'Ed25519'
+        || candidate.signature.key_id !== keyId
+        || typeof candidate.signature.value !== 'string'
+        || !BASE64URL.test(candidate.signature.value)
+        || !exactKeys(candidate.evidence, RECONCILIATION_OBSERVATION_KEYS)) {
+        return { valid: false, reason: 'provider_evidence_shape_invalid' };
+    }
+    let signature;
+    try {
+        signature = Buffer.from(candidate.signature.value, 'base64url');
+    }
+    catch {
+        return { valid: false, reason: 'provider_evidence_signature_invalid' };
+    }
+    if (signature.byteLength !== 64
+        || !crypto.verify(null, reconciliationSignatureInput(candidate.evidence), publicKey, signature)) {
+        return { valid: false, reason: 'provider_evidence_signature_invalid' };
+    }
+    const evidence = candidate.evidence;
+    const observedAt = typeof evidence.observed_at === 'string'
+        ? Date.parse(evidence.observed_at)
+        : NaN;
+    if (evidence['@version'] !== CONSEQUENCE_ACTUATOR_OBSERVATION_VERSION
+        || !IDENTIFIER.test(evidence.evidence_id)
+        || !Number.isFinite(observedAt)
+        || new Date(observedAt).toISOString() !== evidence.observed_at
+        || !['COMMITTED', 'NOT_COMMITTED', 'ESCALATED']
+            .includes(evidence.outcome)
+        || !IDENTIFIER.test(evidence.reason)
+        || evidence.target_digest !== targetDigest
+        || evidence.operation !== operation
+        || !DIGEST.test(evidence.provider_observation_digest)
+        || !DIGEST.test(evidence.evidence_digest)
+        || evidence.evidence_digest !== reconciliationEvidenceDigest(evidence)
+        || RECONCILIATION_EXPECTED_KEYS.some((key) => evidence[key] !== expected[key])) {
+        return { valid: false, reason: 'provider_evidence_binding_mismatch' };
+    }
     return {
-        Accept: 'application/vnd.github+json',
-        Authorization: `Bearer ${token}`,
-        'Content-Type': 'application/json',
-        'User-Agent': 'emilia-consequence-control/0.1.0',
-        'X-GitHub-Api-Version': API_VERSION,
-        ...extra,
+        valid: true,
+        outcome: evidence.outcome,
+        reason: evidence.reason,
+        evidence_id: evidence.evidence_id,
+        observed_at: evidence.observed_at,
+        tenant_id: evidence.tenant_id,
+        request_digest: evidence.request_digest,
+        provider_id: evidence.provider_id,
+        provider_account_id: evidence.provider_account_id,
+        environment: evidence.environment,
+        attempt_id: evidence.attempt_id,
+        operation_id: evidence.operation_id,
+        caid: evidence.caid,
+        action_digest: evidence.action_digest,
+        evidence_digest: evidence.evidence_digest,
     };
 }
 function requireAction(value, target) {
-    if (!exactKeys(value, EXACT_ACTION_KEYS)
+    if (!exactKeys(value, ACTION_KEYS)
         || value.action_type !== 'github.issue.update.1'
         || value.owner !== target.owner
         || value.repo !== target.repo
         || value.issue_number !== target.issueNumber
-        || typeof value.title !== 'string' || value.title.length < 1 || value.title.length > 256
-        || typeof value.body !== 'string' || value.body.length > 65_536
-        || value.title.includes('\0') || value.body.includes('\0')) {
-        throw new Error('github_issue_action_refused');
+        || typeof value.title !== 'string'
+        || value.title.length < 1
+        || value.title.length > 256
+        || typeof value.body !== 'string'
+        || value.body.length > 65_536
+        || value.title.includes('\0')
+        || value.body.includes('\0')) {
+        throw new Error('actuator_action_refused');
     }
     return structuredClone(value);
 }
-export function createGitHubIssueEffectProvider({ owner, repo, issueNumber, tokenProvider, forceIndeterminateAfterCommit = false, baseUrl, fetchImpl = globalThis.fetch, now = Date.now, } = {}) {
-    const target = Object.freeze({
-        owner: requiredSegment(owner, 'github_owner'),
-        repo: requiredSegment(repo, 'github_repo'),
-        issueNumber: requiredInteger(issueNumber, 'github_issue_number'),
-    });
-    if (!tokenProvider || typeof tokenProvider.getToken !== 'function'
-        || typeof fetchImpl !== 'function' || typeof now !== 'function'
-        || typeof forceIndeterminateAfterCommit !== 'boolean') {
-        throw new TypeError('github_issue_provider_config_invalid');
-    }
-    const apiBase = normalizedBaseUrl(baseUrl);
-    const endpoint = `${apiBase}/repos/${encodeURIComponent(target.owner)}/${encodeURIComponent(target.repo)}/issues/${target.issueNumber}`;
-    async function request(method, action, attemptId) {
-        const token = await tokenProvider.getToken();
-        const response = await fetchImpl(endpoint, {
-            method,
-            headers: githubHeaders(token, attemptId ? { 'X-EMILIA-Attempt-ID': attemptId } : {}),
-            ...(method === 'PATCH' ? { body: JSON.stringify({ title: action.title, body: action.body }) } : {}),
-            redirect: 'error',
-            signal: AbortSignal.timeout(15_000),
-        });
-        if (response?.status !== 200) {
-            cancelBody(response?.body);
-            throw new Error(method === 'PATCH'
-                ? 'github_issue_outcome_indeterminate' : 'github_issue_observation_failed');
-        }
-        return boundedJson(response);
-    }
-    return Object.freeze({
-        async effect({ action: candidate, attempt } = {}) {
-            const action = requireAction(candidate, target);
-            if (!plainObject(attempt) || typeof attempt.attempt_id !== 'string') {
-                throw new Error('github_issue_attempt_refused');
-            }
-            const result = await request('PATCH', action, attempt.attempt_id);
-            if (result.number !== target.issueNumber
-                || result.title !== action.title
-                || (result.body ?? '') !== action.body) {
-                throw new Error('github_issue_outcome_indeterminate');
-            }
-            if (forceIndeterminateAfterCommit) {
-                const error = new Error('github_issue_outcome_indeterminate');
-                error.code = 'github_issue_outcome_indeterminate';
-                throw error;
-            }
-            return {
-                provider_status: 200,
-                provider_reference: `github:issue:${target.owner}/${target.repo}#${target.issueNumber}`,
-            };
+export function consequenceActuatorTargetDigest({ providerId, providerAccountId, owner, repo, issueNumber, }) {
+    return digestAeb({
+        domain: 'EP-CONSEQUENCE-ACTUATOR-TARGET-v1',
+        provider_id: requiredIdentifier(providerId, 'provider_id'),
+        provider_account_id: requiredIdentifier(providerAccountId, 'provider_account_id'),
+        target: {
+            kind: 'github.issue',
+            owner: requiredIdentifier(owner, 'github_owner'),
+            repo: requiredIdentifier(repo, 'github_repo'),
+            issue_number: issueNumber,
         },
-        async verifyProviderEvidence({ evidence, expected, action: candidate } = {}) {
-            const action = requireAction(candidate, target);
-            if (!exactKeys(evidence, ['kind']) || evidence.kind !== 'github-issue-observation-v1'
-                || !plainObject(expected)) {
-                return { valid: false, reason: 'provider_evidence_shape_invalid' };
+    });
+}
+export function createConsequenceActuatorClient({ endpoint, authorization, tenantId, providerId = 'github', providerAccountId, environment, owner, repo, issueNumber, operation, envelopeIssuerId, envelopeKeyId, envelopePrivateKey, observationIssuerId, observationKeyId, observationPublicKey, envelopeTtlMs = 30_000, requestTimeoutMs = 20_000, allowInsecureLoopback = false, fetchImpl = globalThis.fetch, now = Date.now, randomBytes = crypto.randomBytes, } = {}) {
+    const apiEndpoint = endpointUrl(endpoint, allowInsecureLoopback);
+    const bearer = requiredText(authorization, 'actuator_authorization', 4096);
+    const tenant = requiredIdentifier(tenantId, 'tenant_id');
+    const provider = requiredIdentifier(providerId, 'provider_id');
+    const providerAccount = requiredIdentifier(providerAccountId, 'provider_account_id');
+    const consequenceEnvironment = requiredIdentifier(environment, 'environment');
+    const configuredOperation = requiredIdentifier(operation, 'operation');
+    const issuer = requiredIdentifier(envelopeIssuerId, 'envelope_issuer_id');
+    const signingKeyId = requiredIdentifier(envelopeKeyId, 'envelope_key_id');
+    const signingKey = normalizePrivateKey(envelopePrivateKey);
+    const observationPins = Object.freeze({
+        issuerId: requiredIdentifier(observationIssuerId, 'observation_issuer_id'),
+        keyId: requiredIdentifier(observationKeyId, 'observation_key_id'),
+        publicKey: normalizePublicKey(observationPublicKey),
+    });
+    const target = Object.freeze({
+        owner: requiredIdentifier(owner, 'github_owner'),
+        repo: requiredIdentifier(repo, 'github_repo'),
+        issueNumber: Number(issueNumber),
+    });
+    if (!Number.isSafeInteger(target.issueNumber) || target.issueNumber < 1
+        || !Number.isSafeInteger(envelopeTtlMs)
+        || envelopeTtlMs < 1 || envelopeTtlMs > 300_000
+        || !Number.isSafeInteger(requestTimeoutMs)
+        || requestTimeoutMs < 1 || requestTimeoutMs > 120_000
+        || typeof fetchImpl !== 'function'
+        || typeof now !== 'function'
+        || typeof randomBytes !== 'function') {
+        throw new TypeError('actuator_client_config_invalid');
+    }
+    const targetDigest = consequenceActuatorTargetDigest({
+        providerId: provider,
+        providerAccountId: providerAccount,
+        ...target,
+    });
+    async function verifyProviderEvidence({ evidence, expected, action: candidate, } = {}) {
+        let action;
+        try {
+            action = requireAction(candidate, target);
+        }
+        catch {
+            return { valid: false, reason: 'provider_evidence_action_invalid' };
+        }
+        if (!plainObject(expected)
+            || digestAeb(action) !== expected.action_digest) {
+            return { valid: false, reason: 'provider_evidence_binding_mismatch' };
+        }
+        if (exactKeys(evidence, ['kind'])
+            && evidence.kind === 'consequence-actuator-observation-v1') {
+            if (!exactKeys(expected, RECONCILIATION_EXPECTED_KEYS)) {
+                return { valid: false, reason: 'provider_evidence_binding_mismatch' };
             }
-            let observed;
             try {
-                observed = await request('GET', action);
+                const response = await fetchImpl(`${apiEndpoint}/v1/observe`, {
+                    method: 'POST',
+                    headers: {
+                        authorization: `Bearer ${bearer}`,
+                        'content-type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        action,
+                        expected: structuredClone(expected),
+                        operation: configuredOperation,
+                    }),
+                    redirect: 'error',
+                    signal: AbortSignal.timeout(requestTimeoutMs),
+                });
+                const body = await boundedJson(response);
+                if (response?.status !== 200) {
+                    return { valid: false, reason: 'provider_evidence_unavailable' };
+                }
+                return verifyReconciliationObservation(body, expected, {
+                    keyId: observationPins.keyId,
+                    publicKey: observationPins.publicKey,
+                    targetDigest,
+                    operation: configuredOperation,
+                });
             }
             catch {
                 return { valid: false, reason: 'provider_evidence_unavailable' };
             }
-            const stateMatchesRequestedEffect = observed.number === target.issueNumber
-                && observed.title === action.title
-                && (observed.body ?? '') === action.body;
-            const observedAt = new Date(Number(now())).toISOString();
-            // GitHub accepts the attempt ID as a request header but does not persist
-            // it as immutable issue evidence. An authenticated GET therefore proves
-            // current state, not which attempt caused that state. Reconciliation must
-            // remain fail-closed even when the requested bytes currently match.
-            const outcome = 'ESCALATED';
-            const reason = stateMatchesRequestedEffect
-                ? 'github_attempt_attribution_unavailable'
-                : 'github_issue_state_mismatch';
-            const evidenceDigest = digestAeb({
-                provider: 'github',
-                repository: `${target.owner}/${target.repo}`,
-                issue_number: target.issueNumber,
-                title: observed.title ?? null,
-                body: observed.body ?? null,
-                state_matches_requested_effect: stateMatchesRequestedEffect,
-                outcome,
-                reason,
-                observed_at: observedAt,
-                tenant_id: expected.tenant_id,
-                request_digest: expected.request_digest,
-                provider_id: expected.provider_id,
-                provider_account_id: expected.provider_account_id,
-                environment: expected.environment,
-                attempt_id: expected.attempt_id,
-                operation_id: expected.operation_id,
-                caid: expected.caid,
-                action_digest: expected.action_digest,
+        }
+        const payload = verifyObservation(evidence, observationPins);
+        if (!payload) {
+            return { valid: false, reason: 'provider_evidence_signature_invalid' };
+        }
+        const observedAtMs = Date.parse(payload.observed_at);
+        if (payload.tenant_id !== expected.tenant_id
+            || payload.provider_id !== provider
+            || payload.provider_account_id !== expected.provider_account_id
+            || payload.provider_account_id !== providerAccount
+            || payload.attempt_id !== expected.attempt_id
+            || payload.caid !== expected.caid
+            || payload.action_digest !== expected.action_digest
+            || payload.target_digest !== targetDigest
+            || payload.operation !== configuredOperation
+            || payload.idempotency_key !== expected.operation_id
+            || !Number.isFinite(observedAtMs)
+            || observedAtMs > Number(now())) {
+            return { valid: false, reason: 'provider_evidence_binding_mismatch' };
+        }
+        const outcome = payload.outcome === 'COMMITTED' ? 'COMMITTED' : 'ESCALATED';
+        const evidenceDigest = digestAeb(evidence);
+        return {
+            valid: true,
+            outcome,
+            reason: payload.reason,
+            evidence_id: `actuator-observation:${evidenceDigest.slice('sha256:'.length)}`,
+            observed_at: payload.observed_at,
+            tenant_id: expected.tenant_id,
+            request_digest: expected.request_digest,
+            provider_id: expected.provider_id,
+            provider_account_id: expected.provider_account_id,
+            environment: expected.environment,
+            attempt_id: expected.attempt_id,
+            operation_id: expected.operation_id,
+            caid: expected.caid,
+            action_digest: expected.action_digest,
+            evidence_digest: evidenceDigest,
+        };
+    }
+    async function effect({ action: candidate, proposal, attempt, } = {}) {
+        const action = requireAction(candidate, target);
+        if (!plainObject(proposal)
+            || !plainObject(proposal.consequence)
+            || !plainObject(attempt)
+            || proposal.consequence.tenant_id !== tenant
+            || proposal.consequence.provider_id !== provider
+            || proposal.consequence.provider_account_id !== providerAccount
+            || proposal.consequence.environment !== consequenceEnvironment
+            || attempt.tenant_id !== tenant
+            || attempt.provider_id !== provider
+            || attempt.provider_account_id !== providerAccount
+            || attempt.environment !== consequenceEnvironment
+            || attempt.request_digest !== proposal.consequence.request_digest) {
+            throw new Error('actuator_effect_binding_refused');
+        }
+        const actionDigest = requiredDigest(proposal.aeb_action_digest, 'action_digest');
+        if (digestAeb(action) !== actionDigest) {
+            throw new Error('actuator_effect_action_digest_mismatch');
+        }
+        const caid = requiredCaid(proposal.caid);
+        const attemptId = requiredIdentifier(attempt.attempt_id, 'attempt_id');
+        const idempotencyKey = requiredIdentifier(proposal.operation_id, 'idempotency_key');
+        const current = Number(now());
+        if (!Number.isSafeInteger(current))
+            throw new Error('actuator_clock_invalid');
+        const nonceBytes = randomBytes(24);
+        if (!(nonceBytes instanceof Uint8Array) || nonceBytes.byteLength !== 24) {
+            throw new Error('actuator_nonce_invalid');
+        }
+        const payload = {
+            '@version': CONSEQUENCE_ACTUATOR_ENVELOPE_VERSION,
+            issuer_id: issuer,
+            tenant_id: tenant,
+            attempt_id: attemptId,
+            action_digest: actionDigest,
+            caid,
+            provider_account_id: providerAccount,
+            target_digest: targetDigest,
+            operation: configuredOperation,
+            idempotency_key: idempotencyKey,
+            nonce: Buffer.from(nonceBytes).toString('base64url'),
+            issued_at: new Date(current).toISOString(),
+            expires_at: new Date(current + envelopeTtlMs).toISOString(),
+        };
+        const envelope = signConsequenceExecutionEnvelope(payload, {
+            keyId: signingKeyId,
+            privateKey: signingKey,
+        });
+        const request = {
+            action,
+            action_digest: actionDigest,
+            attempt_id: attemptId,
+            idempotency_key: idempotencyKey,
+            envelope,
+        };
+        if (!exactKeys(request, REQUEST_KEYS)) {
+            throw new Error('actuator_request_invalid');
+        }
+        const response = await fetchImpl(`${apiEndpoint}/v1/execute`, {
+            method: 'POST',
+            headers: {
+                authorization: `Bearer ${bearer}`,
+                'content-type': 'application/json',
+            },
+            body: JSON.stringify(request),
+            redirect: 'error',
+            signal: AbortSignal.timeout(requestTimeoutMs),
+        });
+        const body = await boundedJson(response);
+        if (![200, 202].includes(response?.status)
+            || !exactKeys(body, RESPONSE_KEYS)
+            || body['@version'] !== CONSEQUENCE_ACTUATOR_RESPONSE_VERSION
+            || typeof body.ok !== 'boolean'
+            || !['COMMITTED', 'INDETERMINATE'].includes(body.outcome)) {
+            throw new Error('actuator_response_refused');
+        }
+        const verified = await verifyProviderEvidence({
+            evidence: body.observation,
+            expected: {
+                tenant_id: tenant,
+                request_digest: proposal.consequence.request_digest,
+                provider_id: provider,
+                provider_account_id: providerAccount,
+                environment: consequenceEnvironment,
+                attempt_id: attemptId,
+                operation_id: idempotencyKey,
+                caid,
+                action_digest: actionDigest,
+            },
+            action,
+        });
+        if (!verified.valid
+            || (body.outcome === 'COMMITTED') !== (verified.outcome === 'COMMITTED')
+            || body.ok !== (body.outcome === 'COMMITTED')) {
+            throw new Error('actuator_observation_refused');
+        }
+        if (body.outcome === 'INDETERMINATE') {
+            const error = new Error('actuator_provider_outcome_indeterminate');
+            error.code = 'actuator_provider_outcome_indeterminate';
+            error.providerEvidence = structuredClone(body.observation);
+            throw error;
+        }
+        return {
+            provider_status: 200,
+            provider_reference: body.observation.payload.provider_reference,
+            actuator_observation: structuredClone(body.observation),
+        };
+    }
+    async function ready() {
+        try {
+            const response = await fetchImpl(`${apiEndpoint}/v1/ready`, {
+                method: 'GET',
+                headers: { authorization: `Bearer ${bearer}` },
+                redirect: 'error',
+                signal: AbortSignal.timeout(requestTimeoutMs),
             });
-            return {
-                valid: true,
-                outcome,
-                reason,
-                evidence_id: `github-observation:${target.owner}:${target.repo}:${target.issueNumber}:${Date.parse(observedAt)}`,
-                observed_at: observedAt,
-                tenant_id: expected.tenant_id,
-                request_digest: expected.request_digest,
-                provider_id: expected.provider_id,
-                provider_account_id: expected.provider_account_id,
-                environment: expected.environment,
-                attempt_id: expected.attempt_id,
-                operation_id: expected.operation_id,
-                caid: expected.caid,
-                action_digest: expected.action_digest,
-                evidence_digest: evidenceDigest,
-            };
-        },
+            const body = await boundedJson(response);
+            return response?.status === 200
+                && exactKeys(body, ['status'])
+                && body.status === 'ok';
+        }
+        catch {
+            return false;
+        }
+    }
+    return Object.freeze({
+        effect,
+        ready,
+        verifyProviderEvidence,
+        operation: configuredOperation,
+        targetDigest,
     });
 }
 export default Object.freeze({
-    createGitHubAppInstallationTokenProvider,
-    createGitHubIssueEffectProvider,
+    consequenceActuatorTargetDigest,
+    createConsequenceActuatorClient,
 });
