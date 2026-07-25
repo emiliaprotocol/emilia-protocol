@@ -1,0 +1,52 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://emiliaprotocol.ai/schemas/clean-room/trusted-attestors.v2.schema.json",
+  "title": "EMILIA evaluator-controlled trusted attestors v2",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "@version",
+    "keys"
+  ],
+  "properties": {
+    "@version": {
+      "const": "EP-CLEAN-ROOM-TRUSTED-ATTESTORS-v2"
+    },
+    "keys": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "key_id",
+          "organization",
+          "team_id",
+          "independent",
+          "public_key_spki_base64url"
+        ],
+        "properties": {
+          "key_id": {
+            "type": "string",
+            "minLength": 1
+          },
+          "organization": {
+            "type": "string",
+            "minLength": 1
+          },
+          "team_id": {
+            "type": "string",
+            "minLength": 1
+          },
+          "independent": {
+            "const": true
+          },
+          "public_key_spki_base64url": {
+            "type": "string",
+            "pattern": "^[A-Za-z0-9_-]+$"
+          }
+        }
+      }
+    }
+  }
+}

@@ -1,0 +1,168 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://emiliaprotocol.ai/schemas/clean-room/submission.v2.schema.json",
+  "title": "EMILIA current-bundle clean-room submission v2",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "@version",
+    "implementation",
+    "runner",
+    "kit",
+    "construction"
+  ],
+  "properties": {
+    "@version": {
+      "const": "EP-CLEAN-ROOM-SUBMISSION-v2"
+    },
+    "implementation": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "implementation_id",
+        "organization",
+        "team_id",
+        "language",
+        "version",
+        "source_repository",
+        "source_commit",
+        "source_tree_oid",
+        "source_tree_path",
+        "license_spdx",
+        "build_instructions",
+        "dependencies"
+      ],
+      "properties": {
+        "implementation_id": {
+          "$ref": "#/$defs/nonEmpty"
+        },
+        "organization": {
+          "$ref": "#/$defs/nonEmpty"
+        },
+        "team_id": {
+          "$ref": "#/$defs/nonEmpty"
+        },
+        "language": {
+          "$ref": "#/$defs/nonEmpty"
+        },
+        "version": {
+          "$ref": "#/$defs/nonEmpty"
+        },
+        "source_repository": {
+          "$ref": "#/$defs/nonEmpty"
+        },
+        "source_commit": {
+          "$ref": "#/$defs/gitOid"
+        },
+        "source_tree_oid": {
+          "$ref": "#/$defs/gitOid"
+        },
+        "source_tree_path": {
+          "$ref": "#/$defs/nonEmpty"
+        },
+        "license_spdx": {
+          "$ref": "#/$defs/nonEmpty"
+        },
+        "build_instructions": {
+          "$ref": "#/$defs/nonEmpty"
+        },
+        "dependencies": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/nonEmpty"
+          }
+        }
+      }
+    },
+    "runner": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "protocol",
+        "artifact_sha256",
+        "fixed_arguments"
+      ],
+      "properties": {
+        "protocol": {
+          "const": "EP-CONFORMANCE-FILE-RUNNER-v2"
+        },
+        "artifact_sha256": {
+          "$ref": "#/$defs/sha256"
+        },
+        "fixed_arguments": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "kit": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "vector_bundle_sha256",
+        "conformance_manifest_sha256",
+        "conformance_manifest_claim_sha256",
+        "authority_document_execution_companion_sha256"
+      ],
+      "properties": {
+        "vector_bundle_sha256": {
+          "$ref": "#/$defs/sha256"
+        },
+        "conformance_manifest_sha256": {
+          "$ref": "#/$defs/sha256"
+        },
+        "conformance_manifest_claim_sha256": {
+          "$ref": "#/$defs/sha256"
+        },
+        "authority_document_execution_companion_sha256": {
+          "$ref": "#/$defs/sha256"
+        }
+      }
+    },
+    "construction": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "reference_source_access",
+        "emilia_affiliation",
+        "specification_inputs",
+        "statement"
+      ],
+      "properties": {
+        "reference_source_access": {
+          "const": "none"
+        },
+        "emilia_affiliation": {
+          "const": "none"
+        },
+        "specification_inputs": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "$ref": "#/$defs/nonEmpty"
+          }
+        },
+        "statement": {
+          "type": "string",
+          "minLength": 40
+        }
+      }
+    }
+  },
+  "$defs": {
+    "nonEmpty": {
+      "type": "string",
+      "minLength": 1
+    },
+    "sha256": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{64}$"
+    },
+    "gitOid": {
+      "type": "string",
+      "pattern": "^(?:[0-9a-f]{40}|[0-9a-f]{64})$"
+    }
+  }
+}
