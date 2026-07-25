@@ -139,64 +139,6 @@ export function validateTlaSecurityCaseWorkflowText(text: string, label: string)
   return true;
 }
 
-export function validateReleaseProvenanceWorkflowText(
-  text: string,
-  label: string = 'release.yml',
-): boolean {
-  requireText(text, [
-    'permissions: {}',
-    'name: Require an annotated release tag at the exact protected main tip',
-    'test "$(git cat-file -t "$TAG_OBJECT")" = tag',
-    'test "$TAG_COMMIT" = "$HEAD_COMMIT"',
-    'test "$TAG_COMMIT" = "$MAIN_COMMIT"',
-    '+refs/heads/main:refs/remotes/origin/main',
-    'persist-credentials: false',
-    'release_artifact_id: ${{ steps.upload.outputs.artifact-id }}',
-    'artifact-ids: ${{ needs.build.outputs.release_artifact_id }}',
-    'environment: registry-publishing-approval',
-    'name: Validate inert release-evidence inventory',
-    'actions/attest@',
-  ], label);
-  const workflow: any = YAML.parse(text);
-  const jobs: any = workflow?.jobs ?? {};
-  if (JSON.stringify(Object.keys(jobs)) !== JSON.stringify(['build', 'attest'])) {
-    throw new Error(`${label} must separate unprivileged build from inert attestation`);
-  }
-  const build: any = jobs.build;
-  const attest: any = jobs.attest;
-  if (build.environment !== undefined
-    || JSON.stringify(build.permissions ?? {}) !== JSON.stringify({ contents: 'read' })) {
-    throw new Error(`${label} release build job is not unprivileged`);
-  }
-  if (attest.needs !== 'build'
-    || attest.environment !== 'registry-publishing-approval'
-    || JSON.stringify(attest.permissions ?? {}) !== JSON.stringify({
-      contents: 'read',
-      'id-token': 'write',
-      attestations: 'write',
-    })) {
-    throw new Error(`${label} attestation authority is not isolated behind the protected environment`);
-  }
-  const buildSteps: any[] = build.steps ?? [];
-  const attestSteps: any[] = attest.steps ?? [];
-  if (!buildSteps.some((step: any) => /^actions\/checkout@[0-9a-f]{40}$/.test(step.uses ?? ''))
-    || attestSteps.some((step: any) => /^actions\/checkout@/.test(step.uses ?? ''))) {
-    throw new Error(`${label} may check out repository code only in the unprivileged build`);
-  }
-  if (buildSteps.some((step: any) => /^actions\/attest@/.test(step.uses ?? ''))
-    || attestSteps.some((step: any) => /\b(?:npm|python|go)\s+(?:ci|install|run|test|build|pack)\b/u.test(step.run ?? ''))) {
-    throw new Error(`${label} executes candidate code while holding attestation authority`);
-  }
-  const download: any = attestSteps.find(
-    (step: any) => /^actions\/download-artifact@[0-9a-f]{40}$/.test(step.uses ?? ''),
-  );
-  if (!download || download.with?.['artifact-ids'] !== '${{ needs.build.outputs.release_artifact_id }}'
-    || download.with?.name !== undefined) {
-    throw new Error(`${label} does not consume one immutable unprivileged artifact ID`);
-  }
-  return true;
-}
-
 function validateManualPublisher(
   text: string,
   label: string,
@@ -581,14 +523,13 @@ export function auditReleaseChain(root = ROOT) {
   if (fs.existsSync(path.join(root, 'scripts/publish-verify.sh'))) {
     throw new Error('direct local npm publication script is forbidden');
   }
+  if (fs.existsSync(path.join(root, WORKFLOW_DIR, 'release.yml'))) {
+    throw new Error('generic tag-triggered release provenance is forbidden; exact package publishers own provenance');
+  }
   const pythonReadme = fs.readFileSync(path.join(root, 'packages/python-verify/README.md'), 'utf8');
   if (/\btwine\s+upload\b/.test(pythonReadme)) throw new Error('direct local PyPI upload instructions are forbidden');
   validateCredentialRotationGuideText(fs.readFileSync(
     path.join(root, 'docs/operations/CREDENTIAL-ROTATION-CHECKLIST.md'),
-    'utf8',
-  ));
-  validateReleaseProvenanceWorkflowText(fs.readFileSync(
-    path.join(root, WORKFLOW_DIR, 'release.yml'),
     'utf8',
   ));
   const registryPath = path.join(root, REGISTRY);

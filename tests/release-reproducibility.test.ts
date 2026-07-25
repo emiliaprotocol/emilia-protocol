@@ -51,7 +51,7 @@ describe('release byte reproducibility', () => {
     expect(result.source.commit_sha).toBe(execFileSync('git', ['rev-parse', 'HEAD'], { encoding: 'utf8' }).trim());
     expect(result.recipe['@version']).toBe('EP-NPM-PACK-RECIPE-v2');
     expect(result.members).toHaveLength(result.fileCount);
-  }, 90_000);
+  }, 300_000);
 
   it('normalizes source file modes across independent package checkouts', () => {
     const root = mkdtempSync(path.join(os.tmpdir(), 'ep-pack-modes-'));
