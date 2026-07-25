@@ -113,7 +113,10 @@ class StableBootstrapTests(unittest.TestCase):
             json.dumps(
                 {
                     "deployed": [],
-                    "service_accounts": [],
+                    "service_accounts": [
+                        "bootstrap-actuator",
+                        "bootstrap-decision",
+                    ],
                     "promoted": [],
                 }
             ),
@@ -141,6 +144,15 @@ with pathlib.Path(os.environ["FAKE_LOG"]).open("a") as handle:
     handle.write(json.dumps(args) + "\\n")
 if args[:2] == ["services", "enable"]:
     raise SystemExit(0)
+if args[:2] == ["projects", "describe"]:
+    print("123456789012")
+    raise SystemExit(0)
+if args[:2] == ["projects", "get-ancestors"]:
+    print(os.environ.get(
+        "FAKE_ANCESTRY_JSON",
+        '[{"type":"project","id":"test-project"}]',
+    ))
+    raise SystemExit(0)
 if args[:3] == ["iam", "service-accounts", "describe"]:
     account = args[3].split("@", 1)[0]
     raise SystemExit(0 if account in state["service_accounts"] else 4)
@@ -155,11 +167,15 @@ if args[:2] == ["asset", "analyze-iam-policy"]:
         "mainAnalysis": {
             "fullyExplored": not bool(os.environ.get("FAKE_INCOMPLETE_IAM")),
             "analysisResults": (
-                [{"role": "roles/secretmanager.secretAccessor"}]
+                [{
+                    "role": "roles/secretmanager.secretAccessor",
+                    "fullyExplored": True,
+                }]
                 if os.environ.get("FAKE_EFFECTIVE_IAM")
                 else []
             ),
         },
+        "fullyExplored": not bool(os.environ.get("FAKE_PARTIAL_IAM")),
     }))
     raise SystemExit(0)
 if args[:3] == ["run", "services", "list"]:
@@ -297,6 +313,10 @@ else:
             "FAKE_STATE": str(self.state_path),
             "FAKE_LOG": str(self.log_path),
             "PLACEHOLDER_IMAGE": PLACEHOLDER_IMAGE,
+            "DEPLOYER_PRINCIPAL": (
+                "serviceAccount:emilia-deployer@"
+                "test-project.iam.gserviceaccount.com"
+            ),
             **extra,
         }
 
@@ -340,6 +360,22 @@ else:
         self.assertEqual(result.stdout.count("emilia-deny-all=true"), 2)
         self.assertIn("verify-bootstrap", result.stdout)
         self.assertIn("asset analyze-iam-policy", result.stdout)
+        self.assertIn("projects get-ancestors test-project", result.stdout)
+        self.assertEqual(
+            result.stdout.count("iam service-accounts describe"),
+            2,
+        )
+        self.assertNotIn("iam service-accounts create", result.stdout)
+        analyzer_lines = [
+            line
+            for line in result.stdout.splitlines()
+            if "asset analyze-iam-policy" in line
+        ]
+        self.assertEqual(len(analyzer_lines), 2)
+        self.assertEqual(
+            {line.split("--scope=", 1)[1].split()[0] for line in analyzer_lines},
+            {r"\<resolved-after-ancestry-proof\>"},
+        )
         self.assertEqual(result.stdout.count("run services update-traffic"), 2)
         self.assertIn("httpGet.path=/v1/ready", result.stdout)
         self.assertIn("verify-stable-release.py record", result.stdout)
@@ -348,7 +384,24 @@ else:
             result.stdout.index("run services update-traffic"),
         )
 
-    def test_fresh_project_bootstraps_without_prior_stable_and_signs_manifest(self) -> None:
+    def test_render_refuses_non_covering_project_scope(self) -> None:
+        result = subprocess.run(
+            [str(BOOTSTRAP), *self.arguments(), "--render"],
+            cwd=LANE,
+            check=False,
+            text=True,
+            capture_output=True,
+            env=self.environment(
+                EMILIA_IAM_ANALYZER_SCOPE="projects/other-project",
+            ),
+        )
+        self.assertNotEqual(result.returncode, 0)
+        self.assertIn("EMILIA_IAM_ANALYZER_SCOPE", result.stderr)
+        self.assertNotIn("gcloud run deploy", result.stdout)
+
+    def test_preprovisioned_standalone_project_bootstraps_and_signs_manifest(
+        self,
+    ) -> None:
         result = subprocess.run(
             [str(BOOTSTRAP), *self.arguments(), "--apply"],
             cwd=LANE,
@@ -411,6 +464,24 @@ else:
         )
         self.assertTrue(all("--no-traffic" in call for call in deploys))
         self.assertTrue(all(not any("--network=" in arg for arg in call) for call in deploys))
+        self.assertFalse(
+            any(
+                call[:3] == ["iam", "service-accounts", "create"]
+                for call in calls
+            )
+        )
+        self.assertTrue(
+            any(call[:2] == ["projects", "get-ancestors"] for call in calls)
+        )
+        analyses = [
+            call
+            for call in calls
+            if call[:2] == ["asset", "analyze-iam-policy"]
+        ]
+        self.assertEqual(len(analyses), 2)
+        self.assertTrue(
+            all("--scope=projects/test-project" in call for call in analyses)
+        )
         traffic = [
             call
             for call in calls
@@ -481,6 +552,142 @@ else:
         self.assertIn("not explicitly allowlisted", result.stderr)
         self.assertFalse(self.log_path.exists())
 
+    def test_hierarchy_requires_explicit_organization_scope(self) -> None:
+        ancestry = json.dumps(
+            [
+                {"type": "project", "id": "test-project"},
+                {"type": "folder", "id": "123456789"},
+                {"type": "organization", "id": "987654321"},
+            ]
+        )
+        result = subprocess.run(
+            [str(BOOTSTRAP), *self.arguments(), "--apply"],
+            cwd=LANE,
+            check=False,
+            text=True,
+            capture_output=True,
+            env=self.environment(
+                DEPLOYMENT_APPROVED="true",
+                FAKE_ANCESTRY_JSON=ancestry,
+            ),
+        )
+        self.assertNotEqual(result.returncode, 0)
+        self.assertIn(
+            "EMILIA_IAM_ANALYZER_SCOPE=organizations/987654321",
+            result.stderr,
+        )
+        calls = [
+            json.loads(line)
+            for line in self.log_path.read_text(encoding="utf-8").splitlines()
+        ]
+        self.assertFalse(
+            any(call[:2] == ["services", "enable"] for call in calls)
+        )
+        self.assertFalse(
+            any(call[:2] == ["asset", "analyze-iam-policy"] for call in calls)
+        )
+
+    def test_hierarchy_refuses_scope_for_a_different_organization(self) -> None:
+        ancestry = json.dumps(
+            [
+                {"type": "project", "id": "test-project"},
+                {"type": "organization", "id": "987654321"},
+            ]
+        )
+        result = subprocess.run(
+            [str(BOOTSTRAP), *self.arguments(), "--apply"],
+            cwd=LANE,
+            check=False,
+            text=True,
+            capture_output=True,
+            env=self.environment(
+                DEPLOYMENT_APPROVED="true",
+                EMILIA_IAM_ANALYZER_SCOPE="organizations/111111111",
+                FAKE_ANCESTRY_JSON=ancestry,
+            ),
+        )
+        self.assertNotEqual(result.returncode, 0)
+        self.assertIn("does not match actual organization", result.stderr)
+        calls = [
+            json.loads(line)
+            for line in self.log_path.read_text(encoding="utf-8").splitlines()
+        ]
+        self.assertFalse(
+            any(call[:2] == ["services", "enable"] for call in calls)
+        )
+
+    def test_hierarchy_uses_covering_scope_for_both_bootstrap_identities(
+        self,
+    ) -> None:
+        ancestry = json.dumps(
+            [
+                {"type": "project", "id": "test-project"},
+                {"type": "folder", "id": "123456789"},
+                {"type": "organization", "id": "987654321"},
+            ]
+        )
+        result = subprocess.run(
+            [str(BOOTSTRAP), *self.arguments(), "--apply"],
+            cwd=LANE,
+            check=False,
+            text=True,
+            capture_output=True,
+            env=self.environment(
+                DEPLOYMENT_APPROVED="true",
+                EMILIA_IAM_ANALYZER_SCOPE="organizations/987654321",
+                FAKE_ANCESTRY_JSON=ancestry,
+            ),
+        )
+        self.assertEqual(result.returncode, 0, result.stderr)
+        calls = [
+            json.loads(line)
+            for line in self.log_path.read_text(encoding="utf-8").splitlines()
+        ]
+        analyses = [
+            call
+            for call in calls
+            if call[:2] == ["asset", "analyze-iam-policy"]
+        ]
+        self.assertEqual(len(analyses), 2)
+        self.assertTrue(
+            all("--scope=organizations/987654321" in call for call in analyses)
+        )
+
+    def test_ancestor_grant_is_refused_before_deploy(self) -> None:
+        ancestry = json.dumps(
+            [
+                {"type": "project", "id": "test-project"},
+                {"type": "organization", "id": "987654321"},
+            ]
+        )
+        result = subprocess.run(
+            [str(BOOTSTRAP), *self.arguments(), "--apply"],
+            cwd=LANE,
+            check=False,
+            text=True,
+            capture_output=True,
+            env=self.environment(
+                DEPLOYMENT_APPROVED="true",
+                EMILIA_IAM_ANALYZER_SCOPE="organizations/987654321",
+                FAKE_ANCESTRY_JSON=ancestry,
+                FAKE_EFFECTIVE_IAM="true",
+            ),
+        )
+        self.assertNotEqual(result.returncode, 0)
+        self.assertIn("not proven permissionless", result.stderr)
+        calls = [
+            json.loads(line)
+            for line in self.log_path.read_text(encoding="utf-8").splitlines()
+        ]
+        analyses = [
+            call
+            for call in calls
+            if call[:2] == ["asset", "analyze-iam-policy"]
+        ]
+        self.assertEqual(len(analyses), 1)
+        self.assertIn("--scope=organizations/987654321", analyses[0])
+        self.assertFalse(any(call[:2] == ["run", "deploy"] for call in calls))
+
     def test_permissioned_bootstrap_identity_is_refused_before_deploy(self) -> None:
         result = subprocess.run(
             [str(BOOTSTRAP), *self.arguments(), "--apply"],
@@ -512,6 +719,28 @@ else:
             capture_output=True,
             env=self.environment(
                 DEPLOYMENT_APPROVED="true",
+                FAKE_PARTIAL_IAM="true",
+            ),
+        )
+        self.assertNotEqual(result.returncode, 0)
+        self.assertIn("not proven permissionless", result.stderr)
+        calls = [
+            json.loads(line)
+            for line in self.log_path.read_text(encoding="utf-8").splitlines()
+        ]
+        self.assertFalse(any(call[:2] == ["run", "deploy"] for call in calls))
+
+    def test_incomplete_main_analysis_cannot_claim_permissionless_identity(
+        self,
+    ) -> None:
+        result = subprocess.run(
+            [str(BOOTSTRAP), *self.arguments(), "--apply"],
+            cwd=LANE,
+            check=False,
+            text=True,
+            capture_output=True,
+            env=self.environment(
+                DEPLOYMENT_APPROVED="true",
                 FAKE_INCOMPLETE_IAM="true",
             ),
         )
@@ -522,6 +751,62 @@ else:
             for line in self.log_path.read_text(encoding="utf-8").splitlines()
         ]
         self.assertFalse(any(call[:2] == ["run", "deploy"] for call in calls))
+
+    def test_missing_preprovisioned_identity_is_refused_without_creation(
+        self,
+    ) -> None:
+        cases = (
+            (["bootstrap-decision"], "bootstrap-actuator"),
+            (["bootstrap-actuator"], "bootstrap-decision"),
+        )
+        for service_accounts, missing in cases:
+            with self.subTest(missing=missing):
+                self.state_path.write_text(
+                    json.dumps(
+                        {
+                            "deployed": [],
+                            "service_accounts": service_accounts,
+                            "promoted": [],
+                        }
+                    ),
+                    encoding="utf-8",
+                )
+                self.log_path.unlink(missing_ok=True)
+                result = subprocess.run(
+                    [str(BOOTSTRAP), *self.arguments(), "--apply"],
+                    cwd=LANE,
+                    check=False,
+                    text=True,
+                    capture_output=True,
+                    env=self.environment(DEPLOYMENT_APPROVED="true"),
+                )
+                self.assertNotEqual(result.returncode, 0)
+                self.assertIn(
+                    "must be pre-provisioned: "
+                    f"{missing}@test-project.iam.gserviceaccount.com",
+                    result.stderr,
+                )
+                calls = [
+                    json.loads(line)
+                    for line in self.log_path.read_text(
+                        encoding="utf-8"
+                    ).splitlines()
+                ]
+                self.assertFalse(
+                    any(
+                        call[:3] == ["iam", "service-accounts", "create"]
+                        for call in calls
+                    )
+                )
+                self.assertFalse(
+                    any(
+                        call[:2] == ["asset", "analyze-iam-policy"]
+                        for call in calls
+                    )
+                )
+                self.assertFalse(
+                    any(call[:2] == ["run", "deploy"] for call in calls)
+                )
 
     def test_failed_health_contract_keeps_both_revisions_at_zero_traffic(self) -> None:
         result = subprocess.run(

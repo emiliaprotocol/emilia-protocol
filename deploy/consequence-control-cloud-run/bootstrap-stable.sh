@@ -94,6 +94,13 @@ require_var STABLE_BOOTSTRAP_PROVENANCE_FILE
 require_var STABLE_BOOTSTRAP_PROVENANCE_SHA256
 require_var STABLE_BOOTSTRAP_ACTUATOR_SERVICE_ACCOUNT
 require_var STABLE_BOOTSTRAP_DECISION_SERVICE_ACCOUNT
+REQUESTED_ANALYZER_SCOPE=${EMILIA_IAM_ANALYZER_SCOPE:-}
+if [[ -n "$REQUESTED_ANALYZER_SCOPE" \
+    && "$REQUESTED_ANALYZER_SCOPE" != "projects/$PROJECT_ID" \
+    && ! "$REQUESTED_ANALYZER_SCOPE" =~ ^organizations/[1-9][0-9]*$ ]]; then
+  lane_die \
+    "EMILIA_IAM_ANALYZER_SCOPE must be projects/$PROJECT_ID or organizations/NUMBER"
+fi
 validate_slug STABLE_BOOTSTRAP_ACTUATOR_SERVICE_ACCOUNT
 validate_slug STABLE_BOOTSTRAP_DECISION_SERVICE_ACCOUNT
 [[ "$STABLE_BOOTSTRAP_ACTUATOR_SERVICE_ACCOUNT" \
@@ -152,6 +159,90 @@ validate_placeholder_image() {
 
 validate_placeholder_image "$PLACEHOLDER_IMAGE"
 
+resolve_analyzer_scope() {
+  local ancestry project_number
+  project_number=$(
+    gcloud projects describe "$PROJECT_ID" \
+      "--project=$PROJECT_ID" --format='value(projectNumber)'
+  )
+  [[ "$project_number" =~ ^[1-9][0-9]{5,29}$ ]] \
+    || lane_die "Google Cloud project number could not be resolved"
+  ancestry="$HTTP_TMPDIR/project-ancestry.json"
+  gcloud projects get-ancestors "$PROJECT_ID" \
+    --format=json --quiet > "$ancestry" \
+    || lane_die "project ancestry could not be queried"
+  RESOLVED_ANALYZER_SCOPE=$(
+    python3 - "$ancestry" "$PROJECT_ID" "$project_number" \
+      "$REQUESTED_ANALYZER_SCOPE" <<'PY'
+import json
+import re
+import sys
+
+path, project_id, project_number, requested = sys.argv[1:]
+try:
+    with open(path, encoding="utf-8") as handle:
+        entries = json.load(handle)
+except (OSError, json.JSONDecodeError) as error:
+    raise SystemExit(f"project ancestry is unavailable: {error}")
+if not isinstance(entries, list) or not entries:
+    raise SystemExit("project ancestry is empty or unavailable")
+
+projects = []
+folders = set()
+organizations = set()
+for index, entry in enumerate(entries):
+    if not isinstance(entry, dict):
+        raise SystemExit(f"project ancestry[{index}] is not an object")
+    entry_type = entry.get("type")
+    entry_id = entry.get("id")
+    if not isinstance(entry_type, str) or not isinstance(entry_id, str):
+        raise SystemExit(f"project ancestry[{index}] is incomplete")
+    if entry_type == "project":
+        projects.append(entry_id)
+    elif entry_type == "folder":
+        if re.fullmatch(r"[1-9][0-9]*", entry_id) is None:
+            raise SystemExit(f"project ancestry[{index}] has an invalid folder ID")
+        folders.add(entry_id)
+    elif entry_type == "organization":
+        if re.fullmatch(r"[1-9][0-9]*", entry_id) is None:
+            raise SystemExit(
+                f"project ancestry[{index}] has an invalid organization ID"
+            )
+        organizations.add(entry_id)
+    else:
+        raise SystemExit(f"project ancestry[{index}] has an unknown type")
+
+if len(projects) != 1 or projects[0] not in {project_id, project_number}:
+    raise SystemExit(
+        "project ancestry does not identify the deployment project exactly once"
+    )
+if not folders and not organizations:
+    expected = f"projects/{project_id}"
+    if requested and requested != expected:
+        raise SystemExit(
+            f"standalone project requires project analyzer scope {expected}"
+        )
+    print(expected)
+    raise SystemExit(0)
+if len(organizations) != 1:
+    raise SystemExit(
+        "project hierarchy exists but one covering organization is unavailable"
+    )
+expected = f"organizations/{next(iter(organizations))}"
+if not requested:
+    raise SystemExit(
+        f"project hierarchy requires EMILIA_IAM_ANALYZER_SCOPE={expected}"
+    )
+if requested != expected:
+    raise SystemExit(
+        f"EMILIA_IAM_ANALYZER_SCOPE={requested} does not match "
+        f"actual organization {expected}"
+    )
+print(expected)
+PY
+  ) || lane_die "project ancestry did not produce a safe analyzer scope"
+}
+
 placeholder_deploy_command() {
   local service=$1 account=$2 ingress=$3
   PLACEHOLDER_DEPLOY_COMMAND=(
@@ -195,17 +286,28 @@ render_plan() {
     "--project=$PROJECT_ID" "--region=$REGION" \
     "--filter=metadata.name=($ACTUATOR_SERVICE OR $DECISION_SERVICE)" \
     --format='value(metadata.name)'
-  printf '# create dedicated identities and prove they have no effective IAM access\n'
+  printf '# independently query project ancestry and resolve one covering analyzer scope\n'
+  shell_join gcloud projects describe "$PROJECT_ID" \
+    "--project=$PROJECT_ID" --format='value(projectNumber)'
+  shell_join gcloud projects get-ancestors "$PROJECT_ID" \
+    --format=json --quiet
+  printf '# require both dedicated identities to be pre-provisioned\n'
   for account in \
     "$STABLE_BOOTSTRAP_ACTUATOR_SERVICE_ACCOUNT" \
     "$STABLE_BOOTSTRAP_DECISION_SERVICE_ACCOUNT"; do
-    shell_join gcloud iam service-accounts create "$account" \
-      "--project=$PROJECT_ID" \
-      "--display-name=EMILIA permissionless stable bootstrap" \
-      --quiet
+    shell_join gcloud iam service-accounts describe \
+      "$(runtime_service_account_email "$account")" \
+      "--project=$PROJECT_ID"
+  done
+  printf '# prove both identities have no effective IAM access in the covering scope\n'
+  local render_analyzer_scope
+  render_analyzer_scope=${REQUESTED_ANALYZER_SCOPE:-<resolved-after-ancestry-proof>}
+  for account in \
+    "$STABLE_BOOTSTRAP_ACTUATOR_SERVICE_ACCOUNT" \
+    "$STABLE_BOOTSTRAP_DECISION_SERVICE_ACCOUNT"; do
     shell_join gcloud asset analyze-iam-policy \
       "--identity=serviceAccount:$(runtime_service_account_email "$account")" \
-      "--scope=projects/$PROJECT_ID" \
+      "--scope=$render_analyzer_scope" \
       --format=json
   done
   printf '# create tagged actuator bootstrap revision with zero production traffic\n'
@@ -287,6 +389,8 @@ trap 'rm -rf "${HTTP_TMPDIR:-}"' EXIT
   --image "$PLACEHOLDER_IMAGE" \
   --provenance "$PROVENANCE_FILE"
 
+resolve_analyzer_scope
+
 gcloud services enable \
   run.googleapis.com iam.googleapis.com cloudasset.googleapis.com \
   "--project=$PROJECT_ID" --quiet
@@ -300,28 +404,35 @@ existing_services=$(
 [[ -z "$existing_services" ]] \
   || lane_die "stable bootstrap requires both Cloud Run services to be absent"
 
-ensure_bootstrap_service_account() {
-  local account=$1 email analysis
+require_bootstrap_service_account() {
+  local account=$1 email
   email=$(runtime_service_account_email "$account")
   if ! gcloud iam service-accounts describe "$email" \
       "--project=$PROJECT_ID" >/dev/null 2>&1; then
-    gcloud iam service-accounts create "$account" \
-      "--project=$PROJECT_ID" \
-      "--display-name=EMILIA permissionless stable bootstrap" \
-      --quiet
+    lane_die "bootstrap service account must be pre-provisioned: $email"
   fi
+}
+
+prove_bootstrap_service_account_permissionless() {
+  local account=$1 email analysis
+  email=$(runtime_service_account_email "$account")
   analysis=$(
     gcloud asset analyze-iam-policy \
       "--identity=serviceAccount:$email" \
-      "--scope=projects/$PROJECT_ID" \
+      "--scope=$RESOLVED_ANALYZER_SCOPE" \
       --format=json
   )
   python3 -c '
 import json, sys
 value = json.load(sys.stdin)
+if not isinstance(value, dict) or value.get("fullyExplored") is not True:
+    raise SystemExit("IAM response was not fully explored")
 main = value.get("mainAnalysis")
 if not isinstance(main, dict) or main.get("fullyExplored") is not True:
-    raise SystemExit("IAM analysis was not complete")
+    raise SystemExit("main IAM analysis was not fully explored")
+errors = main.get("nonCriticalErrors", [])
+if not isinstance(errors, list) or errors:
+    raise SystemExit("main IAM analysis contains unresolved errors")
 results = main.get("analysisResults")
 if not isinstance(results, list):
     raise SystemExit("IAM analysis results are malformed")
@@ -331,8 +442,16 @@ if results:
     || lane_die "bootstrap service account is not proven permissionless: $email"
 }
 
-ensure_bootstrap_service_account "$STABLE_BOOTSTRAP_ACTUATOR_SERVICE_ACCOUNT"
-ensure_bootstrap_service_account "$STABLE_BOOTSTRAP_DECISION_SERVICE_ACCOUNT"
+for account in \
+  "$STABLE_BOOTSTRAP_ACTUATOR_SERVICE_ACCOUNT" \
+  "$STABLE_BOOTSTRAP_DECISION_SERVICE_ACCOUNT"; do
+  require_bootstrap_service_account "$account"
+done
+for account in \
+  "$STABLE_BOOTSTRAP_ACTUATOR_SERVICE_ACCOUNT" \
+  "$STABLE_BOOTSTRAP_DECISION_SERVICE_ACCOUNT"; do
+  prove_bootstrap_service_account_permissionless "$account"
+done
 
 placeholder_deploy_command \
   "$ACTUATOR_SERVICE" "$ACTUATOR_SA" "$ACTUATOR_INGRESS"
