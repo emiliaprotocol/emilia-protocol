@@ -129,7 +129,19 @@ workflow therefore requires separate
 `CONSEQUENCE_CONTROL_DEPLOY_CONFIG`/`CONSEQUENCE_CONTROL_DEPLOY_CONFIG_SHA256`
 and
 `CONSEQUENCE_CONTROL_BOOTSTRAP_CONFIG`/`CONSEQUENCE_CONTROL_BOOTSTRAP_CONFIG_SHA256`
+and
+`CONSEQUENCE_CONTROL_TRAFFIC_CONFIG`/`CONSEQUENCE_CONTROL_TRAFFIC_CONFIG_SHA256`
 secret/variable pairs.
+
+The same protected workflow is the only production traffic-mutation entry
+point. It exposes one dispatch operation for each exact transition accepted by
+`traffic.sh`: decision 1%, 10%, 50%, and 100%; actuator 100%; and rollback.
+Each dispatch materializes the signed stable manifest and a fresh,
+one-time-consumable rollout authorization from protected environment secrets.
+Promotion steps additionally require the signed canary evidence and prior-stage
+telemetry. Rollback intentionally omits those two promotion-only artifacts but
+still requires a new consumed authorization for each service transition. The
+workflow never derives the protected config digest from the config bytes.
 
 ```sh
 cp deploy/consequence-control-cloud-run/config.example.env /tmp/emilia-config-catalog.env

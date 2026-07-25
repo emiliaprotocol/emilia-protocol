@@ -782,7 +782,9 @@ class CommandSpecificConfigHostileTests(unittest.TestCase):
         self.assertNotEqual(result.returncode, 0)
         self.assertIn("not allowed for this command", result.stderr)
 
-    def test_workflow_pins_separate_deploy_and_bootstrap_profiles(self) -> None:
+    def test_workflow_pins_separate_deploy_bootstrap_and_traffic_profiles(
+        self,
+    ) -> None:
         workflow = (
             LANE.parent.parent
             / ".github"
@@ -794,6 +796,12 @@ class CommandSpecificConfigHostileTests(unittest.TestCase):
             "CONSEQUENCE_CONTROL_DEPLOY_CONFIG_SHA256",
             "CONSEQUENCE_CONTROL_BOOTSTRAP_CONFIG",
             "CONSEQUENCE_CONTROL_BOOTSTRAP_CONFIG_SHA256",
+            "CONSEQUENCE_CONTROL_TRAFFIC_CONFIG",
+            "CONSEQUENCE_CONTROL_TRAFFIC_CONFIG_SHA256",
+            "CONSEQUENCE_CONTROL_STABLE_MANIFEST",
+            "CONSEQUENCE_CONTROL_ROLLOUT_AUTHORIZATION",
+            "CONSEQUENCE_CONTROL_CANARY_EVIDENCE",
+            "CONSEQUENCE_CONTROL_ROLLOUT_TELEMETRY",
         ):
             self.assertIn(required, workflow)
         self.assertNotIn(
@@ -804,6 +812,32 @@ class CommandSpecificConfigHostileTests(unittest.TestCase):
             "vars.CONSEQUENCE_CONTROL_CONFIG_SHA256 }}",
             workflow,
         )
+
+    def test_protected_workflow_exposes_every_guarded_traffic_transition(
+        self,
+    ) -> None:
+        workflow = (
+            LANE.parent.parent
+            / ".github"
+            / "workflows"
+            / "consequence-control-deploy.yml"
+        ).read_text(encoding="utf-8")
+        for operation in (
+            "apply-decision-1",
+            "apply-decision-10",
+            "apply-decision-50",
+            "apply-decision-100",
+            "apply-actuator-100",
+            "apply-rollback",
+        ):
+            self.assertIn(f"- {operation}", workflow)
+        self.assertIn(
+            "deploy/consequence-control-cloud-run/traffic.sh",
+            workflow,
+        )
+        self.assertIn('case "$TRAFFIC_OPERATION" in', workflow)
+        self.assertIn('"--$TRAFFIC_OPERATION"', workflow)
+        self.assertIn("environment: consequence-control-production", workflow)
 
 
 if __name__ == "__main__":

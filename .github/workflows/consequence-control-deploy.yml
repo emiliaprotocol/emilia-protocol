@@ -4,12 +4,18 @@ on:
   workflow_dispatch:
     inputs:
       operation:
-        description: Zero-traffic candidate deployment or one-time stable bootstrap
+        description: Protected candidate, bootstrap, promotion, or rollback operation
         required: true
         type: choice
         options:
           - deploy-candidates
           - bootstrap-stable
+          - apply-decision-1
+          - apply-decision-10
+          - apply-decision-50
+          - apply-decision-100
+          - apply-actuator-100
+          - apply-rollback
       bootstrap_id:
         description: Required short revision ID for bootstrap-stable
         required: false
@@ -86,6 +92,55 @@ jobs:
           printf '%s\n' "$CONSEQUENCE_CONTROL_BOOTSTRAP_CONFIG" > "$config_path"
           printf 'path=%s\n' "$config_path" >> "$GITHUB_OUTPUT"
 
+      - name: Materialize protected traffic decision
+        if: startsWith(inputs.operation, 'apply-')
+        id: traffic-inputs
+        shell: bash
+        env:
+          TRAFFIC_OPERATION: ${{ inputs.operation }}
+          CONSEQUENCE_CONTROL_TRAFFIC_CONFIG: ${{ secrets.CONSEQUENCE_CONTROL_TRAFFIC_CONFIG }}
+          CONSEQUENCE_CONTROL_STABLE_MANIFEST: ${{ secrets.CONSEQUENCE_CONTROL_STABLE_MANIFEST }}
+          CONSEQUENCE_CONTROL_ROLLOUT_AUTHORIZATION: ${{ secrets.CONSEQUENCE_CONTROL_ROLLOUT_AUTHORIZATION }}
+          CONSEQUENCE_CONTROL_CANARY_EVIDENCE: ${{ secrets.CONSEQUENCE_CONTROL_CANARY_EVIDENCE }}
+          CONSEQUENCE_CONTROL_ROLLOUT_TELEMETRY: ${{ secrets.CONSEQUENCE_CONTROL_ROLLOUT_TELEMETRY }}
+        run: |
+          set -euo pipefail
+          case "$TRAFFIC_OPERATION" in
+            apply-decision-1|apply-decision-10|apply-decision-50|apply-decision-100|apply-actuator-100|apply-rollback)
+              ;;
+            *)
+              printf 'unsupported protected traffic operation\n' >&2
+              exit 1
+              ;;
+          esac
+          [[ -n "$CONSEQUENCE_CONTROL_TRAFFIC_CONFIG" ]]
+          [[ -n "$CONSEQUENCE_CONTROL_STABLE_MANIFEST" ]]
+          [[ -n "$CONSEQUENCE_CONTROL_ROLLOUT_AUTHORIZATION" ]]
+          if [[ "$TRAFFIC_OPERATION" != apply-rollback ]]; then
+            [[ -n "$CONSEQUENCE_CONTROL_CANARY_EVIDENCE" ]]
+            [[ -n "$CONSEQUENCE_CONTROL_ROLLOUT_TELEMETRY" ]]
+          fi
+          config_path="$RUNNER_TEMP/consequence-control-traffic.env"
+          manifest_path="$RUNNER_TEMP/consequence-control-stable.json"
+          authorization_path="$RUNNER_TEMP/consequence-control-authorization.json"
+          evidence_path="$RUNNER_TEMP/consequence-control-canary-evidence.json"
+          telemetry_path="$RUNNER_TEMP/consequence-control-telemetry.json"
+          umask 077
+          printf '%s\n' "$CONSEQUENCE_CONTROL_TRAFFIC_CONFIG" > "$config_path"
+          printf '%s\n' "$CONSEQUENCE_CONTROL_STABLE_MANIFEST" > "$manifest_path"
+          printf '%s\n' "$CONSEQUENCE_CONTROL_ROLLOUT_AUTHORIZATION" > "$authorization_path"
+          if [[ "$TRAFFIC_OPERATION" != apply-rollback ]]; then
+            printf '%s\n' "$CONSEQUENCE_CONTROL_CANARY_EVIDENCE" > "$evidence_path"
+            printf '%s\n' "$CONSEQUENCE_CONTROL_ROLLOUT_TELEMETRY" > "$telemetry_path"
+          fi
+          {
+            printf 'config_path=%s\n' "$config_path"
+            printf 'manifest_path=%s\n' "$manifest_path"
+            printf 'authorization_path=%s\n' "$authorization_path"
+            printf 'evidence_path=%s\n' "$evidence_path"
+            printf 'telemetry_path=%s\n' "$telemetry_path"
+          } >> "$GITHUB_OUTPUT"
+
       - name: Deploy digest-pinned zero-traffic candidates
         if: inputs.operation == 'deploy-candidates'
         shell: bash
@@ -117,6 +172,38 @@ jobs:
             --placeholder-image "$PLACEHOLDER_IMAGE" \
             --output "$RUNNER_TEMP/stable-release.json" \
             --apply
+
+      - name: Apply one authorized traffic transition
+        if: startsWith(inputs.operation, 'apply-')
+        shell: bash
+        env:
+          TRAFFIC_OPERATION: ${{ inputs.operation }}
+          DEPLOYMENT_APPROVED: "true"
+          DEPLOYMENT_CONFIRM_PROJECT: ${{ vars.GCP_CONSEQUENCE_CONTROL_PROJECT }}
+          DEPLOYMENT_CONFIG_SHA256: ${{ vars.CONSEQUENCE_CONTROL_TRAFFIC_CONFIG_SHA256 }}
+        run: |
+          set -euo pipefail
+          case "$TRAFFIC_OPERATION" in
+            apply-decision-1|apply-decision-10|apply-decision-50|apply-decision-100|apply-actuator-100|apply-rollback)
+              ;;
+            *)
+              printf 'unsupported protected traffic operation\n' >&2
+              exit 1
+              ;;
+          esac
+          traffic_args=(
+            --config "${{ steps.traffic-inputs.outputs.config_path }}"
+            --stable-manifest "${{ steps.traffic-inputs.outputs.manifest_path }}"
+            --authorization "${{ steps.traffic-inputs.outputs.authorization_path }}"
+            "--$TRAFFIC_OPERATION"
+          )
+          if [[ "$TRAFFIC_OPERATION" != apply-rollback ]]; then
+            traffic_args+=(
+              --evidence "${{ steps.traffic-inputs.outputs.evidence_path }}"
+              --telemetry "${{ steps.traffic-inputs.outputs.telemetry_path }}"
+            )
+          fi
+          deploy/consequence-control-cloud-run/traffic.sh "${traffic_args[@]}"
 
       - name: Preserve the signed stable bootstrap manifest
         if: inputs.operation == 'bootstrap-stable'
