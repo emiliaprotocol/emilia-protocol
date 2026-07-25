@@ -11,6 +11,7 @@ import crypto from 'node:crypto';
 import fs from 'node:fs';
 import path from 'node:path';
 import process from 'node:process';
+import { validateMigrationHistory } from './check-migration-history.mjs';
 
 const VERSION_RE = /^(?:[0-9]{3}|[0-9]{14})$/;
 const FILE_RE = /^(?:[0-9]{3}|[0-9]{14})_[a-z0-9][a-z0-9_]*\.sql$/;
@@ -139,6 +140,12 @@ for (const name of candidateFiles.keys()) {
   if (sha256(candidateFiles.get(name)) !== expectedHash) {
     fail(`candidate migration bytes differ from the public ledger: ${name}`);
   }
+}
+
+try {
+  validateMigrationHistory(argumentsMap['candidate-root']);
+} catch (error) {
+  fail(`candidate migration history is invalid: ${error.message}`);
 }
 
 console.log(`PR candidate reconciled: ${baseFiles.size} immutable base migrations, ${added.length} classified additions`);

@@ -8,6 +8,7 @@ import json
 import os
 from pathlib import Path
 import re
+import stat
 import subprocess
 import sys
 import tempfile
@@ -127,6 +128,39 @@ def verify_remote(
     return reference
 
 
+def copy_regular(source: Path, destination: Path, label: str) -> None:
+    read_flags = os.O_RDONLY | getattr(os, "O_CLOEXEC", 0)
+    write_flags = (
+        os.O_WRONLY
+        | os.O_CREAT
+        | os.O_EXCL
+        | getattr(os, "O_CLOEXEC", 0)
+    )
+    if hasattr(os, "O_NOFOLLOW"):
+        read_flags |= os.O_NOFOLLOW
+        write_flags |= os.O_NOFOLLOW
+    source_fd = os.open(source, read_flags)
+    destination_fd = -1
+    try:
+        metadata = os.fstat(source_fd)
+        if not stat.S_ISREG(metadata.st_mode) or metadata.st_nlink != 1:
+            fail(f"{label} must be one regular non-symlink file")
+        destination_fd = os.open(destination, write_flags, 0o600)
+        while True:
+            chunk = os.read(source_fd, 1024 * 1024)
+            if not chunk:
+                break
+            view = memoryview(chunk)
+            while view:
+                written = os.write(destination_fd, view)
+                view = view[written:]
+        os.fsync(destination_fd)
+    finally:
+        os.close(source_fd)
+        if destination_fd >= 0:
+            os.close(destination_fd)
+
+
 def publish_component(args, docker: str, gcloud: str, trust: Path, component: str, tag: str) -> str:
     match = TAG_RE.fullmatch(tag)
     if match is None or match.group(1) != args.expected_commit:
@@ -136,13 +170,25 @@ def publish_component(args, docker: str, gcloud: str, trust: Path, component: st
     if digest is None:
         pushed = command([docker, "push", tag])
         if pushed.returncode != 0:
-            fail(f"Docker push failed for {tag}: {pushed.stderr.strip()[:300]}")
-        digest = retry(
-            lambda: describe(gcloud, tag),
-            args.retry_attempts,
-            args.retry_delay_seconds,
-            f"registry digest for {tag}",
-        )
+            try:
+                digest = retry(
+                    lambda: describe(gcloud, tag),
+                    args.retry_attempts,
+                    args.retry_delay_seconds,
+                    f"concurrent registry digest for {tag}",
+                )
+            except PublishError:
+                fail(
+                    f"Docker push failed and no immutable tag could be reconciled for "
+                    f"{tag}: {pushed.stderr.strip()[:300]}"
+                )
+        else:
+            digest = retry(
+                lambda: describe(gcloud, tag),
+                args.retry_attempts,
+                args.retry_delay_seconds,
+                f"registry digest for {tag}",
+            )
     return verify_remote(
         docker=docker,
         trust=trust,
@@ -192,10 +238,24 @@ def main() -> int:
         decision = publish_component(args, docker, gcloud, trust, "decision", args.decision_tag)
         output = args.output_dir.resolve()
         output.mkdir(parents=True, mode=0o700, exist_ok=False)
+        source = json.loads(args.source_manifest.read_text(encoding="utf-8"))
+        bundled_source = output / "source-manifest.json"
+        copy_regular(args.source_manifest.resolve(), bundled_source, "source manifest")
+        bundled_packages: dict[str, Path] = {}
+        for key, label in (
+            ("verify", "Verify package"),
+            ("gate", "Gate package"),
+            ("require-receipt", "require-receipt package"),
+        ):
+            filename = source["packages"][key]["filename"]
+            package_source = args.artifact_dir.resolve() / filename
+            package_destination = output / filename
+            copy_regular(package_source, package_destination, label)
+            bundled_packages[key] = package_destination
         release = output / "release-manifest.json"
         derived = output / "deploy.env"
         created = command([
-            str(trust), "release", "--source-manifest", str(args.source_manifest.resolve()),
+            str(trust), "release", "--source-manifest", str(bundled_source),
             "--actuator-image", actuator, "--decision-image", decision, "--output", str(release),
         ])
         if created.returncode != 0:
@@ -208,13 +268,12 @@ def main() -> int:
             fail(derived_result.stderr.strip())
         verified = command([
             str(trust), "verify-release", "--root", str(args.root.resolve()),
-            "--source-manifest", str(args.source_manifest.resolve()),
-            "--release-manifest", str(release), "--artifact-dir", str(args.artifact_dir.resolve()),
+            "--source-manifest", str(bundled_source),
+            "--release-manifest", str(release), "--artifact-dir", str(output),
             "--expected-commit", args.expected_commit, "--config", str(derived),
         ])
         if verified.returncode != 0:
             fail(verified.stderr.strip())
-        source = json.loads(args.source_manifest.read_text(encoding="utf-8"))
         values = {
             "actuator_name": actuator.rsplit("@", 1)[0],
             "actuator_digest": actuator.rsplit("@", 1)[1],
@@ -222,11 +281,11 @@ def main() -> int:
             "decision_name": decision.rsplit("@", 1)[0],
             "decision_digest": decision.rsplit("@", 1)[1],
             "decision_image": decision,
-            "source_manifest": str(args.source_manifest.resolve()),
+            "source_manifest": str(bundled_source),
             "release_manifest": str(release),
-            "verify_tarball": str(args.artifact_dir.resolve() / source["packages"]["verify"]["filename"]),
-            "gate_tarball": str(args.artifact_dir.resolve() / source["packages"]["gate"]["filename"]),
-            "require_receipt_tarball": str(args.artifact_dir.resolve() / source["packages"]["require-receipt"]["filename"]),
+            "verify_tarball": str(bundled_packages["verify"]),
+            "gate_tarball": str(bundled_packages["gate"]),
+            "require_receipt_tarball": str(bundled_packages["require-receipt"]),
             "derived_config": str(derived),
             "derived_config_sha256": derived_result.stdout.strip(),
         }

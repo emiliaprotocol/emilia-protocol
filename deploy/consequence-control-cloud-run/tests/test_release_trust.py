@@ -5,6 +5,7 @@ import io
 import json
 import os
 from pathlib import Path
+import shutil
 import subprocess
 import tarfile
 import tempfile
@@ -55,6 +56,17 @@ elif args and args[0] == "push":
     state["push_count"] += 1
     if tag not in state["pushed"]:
         state["pushed"].append(tag)
+    if tag in state.get("push_race", []):
+        import hashlib
+        local = state["local"][tag]
+        state["remote"][tag] = {
+            "digest": "sha256:" + hashlib.sha256(tag.encode()).hexdigest(),
+            "id": local["id"],
+            "labels": local["labels"],
+        }
+        path.write_text(json.dumps(state))
+        print("tag was created concurrently", file=sys.stderr)
+        raise SystemExit(1)
     path.write_text(json.dumps(state))
 elif args and args[0] == "pull":
     if state["pull_failures"] > 0:
@@ -137,6 +149,11 @@ class ReleaseTrustTests(unittest.TestCase):
         (self.root / ".dockerignore").write_text(".git\n", encoding="utf-8")
         (self.root / "caid").mkdir()
         (self.root / "caid" / "README.md").write_text("fixture\n", encoding="utf-8")
+        lane = self.root / "deploy" / "consequence-control-cloud-run"
+        (lane / "lib").mkdir(parents=True, exist_ok=True)
+        for relative in ("deploy.sh", "release-trust.py"):
+            shutil.copy2(LANE / relative, lane / relative)
+        shutil.copy2(LANE / "lib" / "common.sh", lane / "lib" / "common.sh")
         run("git", "init", "-q", cwd=self.root)
         run("git", "config", "user.name", "Release Test", cwd=self.root)
         run("git", "config", "user.email", "release@example.test", cwd=self.root)
@@ -402,7 +419,11 @@ class ReleaseTrustTests(unittest.TestCase):
                 decision_tag: {"id": "sha256:" + "2" * 64, "labels": {**labels, "io.emilia.image.component": "decision"}},
             },
             "remote": {
-                decision_tag: {"digest": decision_digest, "id": "sha256:" + "9" * 64, "labels": {**labels, "io.emilia.image.component": "decision"}}
+                decision_tag: {
+                    "digest": decision_digest,
+                    "id": "sha256:" + "2" * 64,
+                    "labels": {**labels, "io.emilia.image.component": "actuator"},
+                }
             },
             "pushed": [], "push_count": 0, "describe_failures": 0, "pull_failures": 0,
         }), encoding="utf-8")
@@ -419,7 +440,129 @@ class ReleaseTrustTests(unittest.TestCase):
             {**os.environ, "FAKE_RELEASE_STATE": str(state)},
         )
         self.assertNotEqual(result.returncode, 0)
+        self.assertIn("labels differ", result.stderr)
+
+    def test_cold_rebuild_refuses_remote_with_different_image_content(self) -> None:
+        self.assertEqual(self.create_source().returncode, 0)
+        labels_result = run(str(TRUST), "labels", "--source-manifest", str(self.source))
+        labels = dict(line.split("=", 1) for line in labels_result.stdout.splitlines())
+        actuator_tag = "us-central1-docker.pkg.dev/test-project/runtime/actuator:git-" + self.commit
+        decision_tag = "us-central1-docker.pkg.dev/test-project/runtime/decision:git-" + self.commit
+        state = self.artifacts / "fake-state-cold-rebuild.json"
+        state.write_text(json.dumps({
+            "local": {
+                actuator_tag: {"id": "sha256:" + "1" * 64, "labels": {**labels, "io.emilia.image.component": "actuator"}},
+                decision_tag: {"id": "sha256:" + "2" * 64, "labels": {**labels, "io.emilia.image.component": "decision"}},
+            },
+            "remote": {
+                actuator_tag: {"digest": "sha256:" + "a" * 64, "id": "sha256:" + "7" * 64, "labels": {**labels, "io.emilia.image.component": "actuator"}},
+                decision_tag: {"digest": "sha256:" + "b" * 64, "id": "sha256:" + "8" * 64, "labels": {**labels, "io.emilia.image.component": "decision"}},
+            },
+            "pushed": [], "push_count": 0, "describe_failures": 0,
+            "pull_failures": 0, "push_race": [],
+        }), encoding="utf-8")
+        docker, gcloud = self._fake_registry_tools(state)
+        config = self.artifacts / "candidate-cold.env"
+        config.write_text("PROJECT_ID=test-project\nREGION=us-central1\nRELEASE_ID=r1\n")
+        result = self._publish(
+            actuator_tag, decision_tag, config, docker, gcloud,
+            self.artifacts / "release-cold",
+            {**os.environ, "FAKE_RELEASE_STATE": str(state)},
+        )
+        self.assertNotEqual(result.returncode, 0)
         self.assertIn("content differs", result.stderr)
+        self.assertEqual(json.loads(state.read_text())["push_count"], 0)
+
+    def test_failed_push_accepts_only_exact_concurrently_created_tag(self) -> None:
+        self.assertEqual(self.create_source().returncode, 0)
+        labels_result = run(str(TRUST), "labels", "--source-manifest", str(self.source))
+        labels = dict(line.split("=", 1) for line in labels_result.stdout.splitlines())
+        actuator_tag = "us-central1-docker.pkg.dev/test-project/runtime/actuator:git-" + self.commit
+        decision_tag = "us-central1-docker.pkg.dev/test-project/runtime/decision:git-" + self.commit
+        state = self.artifacts / "fake-state-race.json"
+        state.write_text(json.dumps({
+            "local": {
+                actuator_tag: {"id": "sha256:" + "1" * 64, "labels": {**labels, "io.emilia.image.component": "actuator"}},
+                decision_tag: {"id": "sha256:" + "2" * 64, "labels": {**labels, "io.emilia.image.component": "decision"}},
+            },
+            "remote": {}, "pushed": [], "push_count": 0,
+            "describe_failures": 0, "pull_failures": 0,
+            "push_race": [actuator_tag],
+        }), encoding="utf-8")
+        docker, gcloud = self._fake_registry_tools(state)
+        config = self.artifacts / "candidate-race.env"
+        config.write_text("PROJECT_ID=test-project\nREGION=us-central1\nRELEASE_ID=r1\n")
+        result = self._publish(
+            actuator_tag, decision_tag, config, docker, gcloud,
+            self.artifacts / "release-race",
+            {**os.environ, "FAKE_RELEASE_STATE": str(state)},
+        )
+        self.assertEqual(result.returncode, 0, result.stderr)
+        final = json.loads(state.read_text())
+        self.assertEqual(final["push_count"], 2)
+        self.assertIn(actuator_tag, final["remote"])
+
+    def test_protected_deploy_preflight_accepts_same_directory_chain_without_cloud(self) -> None:
+        self.assertEqual(self.create_source().returncode, 0)
+        actuator = "us-central1-docker.pkg.dev/test-project/runtime/actuator@sha256:" + "a" * 64
+        decision = "us-central1-docker.pkg.dev/test-project/runtime/decision@sha256:" + "b" * 64
+        release = self.artifacts / "release-manifest.json"
+        released = run(
+            str(TRUST), "release", "--source-manifest", str(self.source),
+            "--actuator-image", actuator, "--decision-image", decision,
+            "--output", str(release),
+        )
+        self.assertEqual(released.returncode, 0, released.stderr)
+        base = self.artifacts / "base-deploy.env"
+        fixture = (LANE / "tests" / "fixture.env").read_text(encoding="utf-8")
+        base.write_text("\n".join(
+            line for line in fixture.splitlines()
+            if not line.startswith(("ACTUATOR_IMAGE=", "DECISION_IMAGE="))
+        ) + "\n", encoding="utf-8")
+        derived = self.artifacts / "deploy.env"
+        derivation = run(
+            str(TRUST), "derive-config", "--config", str(base),
+            "--release-manifest", str(release), "--output", str(derived),
+        )
+        self.assertEqual(derivation.returncode, 0, derivation.stderr)
+        marker = self.artifacts / "gcloud-called"
+        fake_bin = self.artifacts / "bin"
+        fake_bin.mkdir()
+        gcloud = fake_bin / "gcloud"
+        gcloud.write_text(
+            "#!/usr/bin/env bash\nprintf called > \"$GCLOUD_MARKER\"\nexit 99\n",
+            encoding="utf-8",
+        )
+        gcloud.chmod(0o755)
+        environment = {
+            **os.environ,
+            "PATH": f"{fake_bin}:{os.environ['PATH']}",
+            "GCLOUD_MARKER": str(marker),
+            "DEPLOYMENT_CONFIG_SHA256": sha256(derived.read_bytes()),
+            "GITHUB_ACTIONS": "true",
+            "GITHUB_REPOSITORY": "emiliaprotocol/emilia-protocol",
+            "GITHUB_REPOSITORY_ID": "123",
+            "GITHUB_REPOSITORY_OWNER_ID": "456",
+            "GITHUB_REF": "refs/heads/main",
+            "GITHUB_SHA": self.commit,
+            "GITHUB_WORKFLOW_REF": "emiliaprotocol/emilia-protocol/.github/workflows/consequence-control-deploy.yml@refs/heads/main",
+            "EMILIA_GITHUB_WORKFLOW_SHA": self.commit,
+            "GITHUB_EVENT_NAME": "workflow_dispatch",
+            "ACTIONS_ID_TOKEN_REQUEST_URL": "https://example.invalid/token",
+            "ACTIONS_ID_TOKEN_REQUEST_TOKEN": "test-token",
+            "GOOGLE_GHA_CREDS_PATH": "/tmp/nonexistent-preflight-creds.json",
+            "EMILIA_DEPLOY_ENVIRONMENT": "consequence-control-production",
+            "EMILIA_DEPLOY_WIF_PROVIDER": "projects/123/locations/global/workloadIdentityPools/testpool/providers/testprovider",
+        }
+        result = run(
+            str(self.root / "deploy" / "consequence-control-cloud-run" / "deploy.sh"),
+            "--config", str(derived), "--verify-release-preflight",
+            "--source-manifest", str(self.source),
+            "--release-manifest", str(release), env=environment,
+        )
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertIn("release preflight accepted", result.stdout)
+        self.assertFalse(marker.exists(), "preflight must exit before invoking gcloud")
 
     def _publish(self, actuator, decision, config, docker, gcloud, output, environment):
         github_output = output.parent / (output.name + ".outputs")
@@ -449,20 +592,43 @@ class SchemaCandidateReconciliationTests(unittest.TestCase):
         path.parent.mkdir(parents=True, exist_ok=True)
         path.write_bytes(raw)
 
-    def ledger(self, root: Path, files: dict[str, bytes], pending: list[str]) -> None:
+    def ledger(
+        self,
+        root: Path,
+        files: dict[str, bytes],
+        pending: list[str],
+        *,
+        remote: list[str] | None = None,
+        private_remote: list[str] | None = None,
+        extra_public: dict[str, str] | None = None,
+    ) -> None:
+        remote = remote or ["001"]
+        private_remote = private_remote or []
         path = root / "supabase" / "migration-history.v1.json"
+        path.parent.mkdir(parents=True, exist_ok=True)
+        public_files = {name: sha256(raw) for name, raw in files.items()}
+        public_files.update(extra_public or {})
         path.write_text(
             json.dumps(
                 {
                     "schema_version": "EP-MIGRATION-HISTORY-v1",
-                    "retroactive_pending_versions": pending,
-                    "forward_pending_versions": [],
-                    "deployment_sequence": pending,
-                    "public_files": {name: sha256(raw) for name, raw in files.items()},
+                    "as_of": "2026-07-25",
+                    "remote_head": remote[-1],
+                    "remote_versions": remote,
+                    "private_remote_versions": private_remote,
+                    "retroactive_pending_versions": [],
+                    "forward_pending_versions": pending,
+                    "deployment_sequence": sorted(pending),
+                    "requires_include_all": True,
+                    "public_files": public_files,
                 }
             ),
             encoding="utf-8",
         )
+        archive = root / "supabase" / "migration-archive" / "2026-07-25-history-reconciliation"
+        archive.mkdir(parents=True, exist_ok=True)
+        (archive / "README.md").write_text("fixture\n", encoding="utf-8")
+        (archive / "SHA256SUMS").write_text("", encoding="utf-8")
 
     def test_candidate_preserves_base_and_classifies_addition(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
@@ -515,6 +681,52 @@ class SchemaCandidateReconciliationTests(unittest.TestCase):
             self.assertNotEqual(result.returncode, 0)
             self.assertIn(expected, result.stderr)
 
+    def test_candidate_rejects_ghost_pending_and_public_file_entries(self) -> None:
+        cases = (
+            ("ghost pending", ["20260101000000"], {}, None, "executable migration versions"),
+            ("ghost public file", [], {}, {"999_ghost.sql": "0" * 64}, "public_files must cover"),
+        )
+        for label, pending, additions, extra_public, expected in cases:
+            with self.subTest(label=label), tempfile.TemporaryDirectory() as directory:
+                base = Path(directory) / "base"
+                candidate = Path(directory) / "candidate"
+                files = {"001_base.sql": b"select 1;\n", **additions}
+                self.migration(base, "001_base.sql", files["001_base.sql"])
+                for name, raw in files.items():
+                    self.migration(candidate, name, raw)
+                self.ledger(candidate, files, pending, extra_public=extra_public)
+                result = run(
+                    "node", str(SCHEMA_RECONCILE), "--base-root", str(base),
+                    "--candidate-root", str(candidate),
+                )
+            self.assertNotEqual(result.returncode, 0)
+            self.assertIn(expected, result.stderr)
+
+    def test_candidate_rejects_incomplete_remote_private_history_relationships(self) -> None:
+        cases = (
+            ("remote without public SQL", ["001", "002"], [], "executable migration versions"),
+            ("private absent from remote", ["001"], ["002"], "not journaled remotely"),
+            ("pending overlaps remote", ["001", "20260101000000"], [], "already journaled remotely"),
+        )
+        for label, remote, private_remote, expected in cases:
+            with self.subTest(label=label), tempfile.TemporaryDirectory() as directory:
+                base = Path(directory) / "base"
+                candidate = Path(directory) / "candidate"
+                files = {"001_base.sql": b"select 1;\n"}
+                pending = ["20260101000000"] if label == "pending overlaps remote" else []
+                self.migration(base, "001_base.sql", files["001_base.sql"])
+                self.migration(candidate, "001_base.sql", files["001_base.sql"])
+                self.ledger(
+                    candidate, files, pending, remote=remote,
+                    private_remote=private_remote,
+                )
+                result = run(
+                    "node", str(SCHEMA_RECONCILE), "--base-root", str(base),
+                    "--candidate-root", str(candidate),
+                )
+            self.assertNotEqual(result.returncode, 0)
+            self.assertIn(expected, result.stderr)
+
 
 class WorkflowTrustContractTests(unittest.TestCase):
     def test_deploy_workflow_builds_and_attests_instead_of_accepting_image_secrets(self) -> None:
@@ -532,7 +744,7 @@ class WorkflowTrustContractTests(unittest.TestCase):
         self.assertIn("pull_request_target:", workflow)
         self.assertIn("candidate-reconciliation:", workflow)
         candidate_job = workflow.split("candidate-reconciliation:", 1)[1].split(
-            "schema-contract:", 1
+            "live-schema-contract:", 1
         )[0]
         self.assertIn("path: candidate-data", candidate_job)
         self.assertIn("path: trusted-base", candidate_job)
@@ -541,11 +753,20 @@ class WorkflowTrustContractTests(unittest.TestCase):
         self.assertIn("node trusted-base/scripts/schema-pr-candidate-reconcile.mjs", candidate_job)
         self.assertIn("schema-pr-candidate-reconcile.mjs", workflow)
         self.assertIn("working-directory: trusted", workflow)
-        live_job = workflow.split("schema-contract:", 1)[1]
+        self.assertIn("supabase/migration-archive/2026-07-25-history-reconciliation", candidate_job)
+        live_job = workflow.split("live-schema-contract:", 1)[1].split(
+            "schema-contract:", 1
+        )[0]
         self.assertNotIn("candidate-data", live_job)
         self.assertNotIn("MIGRATION_RECONCILE_REF: ${{ github.event.pull_request.base.sha }}", workflow)
-        job_header = workflow.split("schema-contract:", 1)[1].split("steps:", 1)[0]
+        job_header = workflow.split("live-schema-contract:", 1)[1].split("steps:", 1)[0]
         self.assertNotIn("SCHEMA_GATE_DB_URL", job_header)
+        aggregator = workflow.split("schema-contract:", 1)[1]
+        self.assertIn("needs: [candidate-reconciliation, live-schema-contract]", aggregator)
+        self.assertIn("if: always()", aggregator)
+        self.assertIn("needs.candidate-reconciliation.result", aggregator)
+        self.assertIn("needs.live-schema-contract.result", aggregator)
+        self.assertIn('"schema-security / schema-contract"', workflow)
 
     def test_ci_uses_the_same_release_image_builder(self) -> None:
         workflow = (ROOT / ".github/workflows/ci.yml").read_text()

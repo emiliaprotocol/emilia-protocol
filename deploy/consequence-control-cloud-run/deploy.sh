@@ -29,6 +29,10 @@ while (($#)); do
       MODE=verify-identity
       shift
       ;;
+    --verify-release-preflight)
+      MODE=release-preflight
+      shift
+      ;;
     --analyzer-scope)
       (($# >= 2)) || lane_die "--analyzer-scope requires a value"
       ANALYZER_SCOPE=$2
@@ -726,9 +730,9 @@ fi
 IAM_TMPDIR=$(mktemp -d)
 trap 'rm -rf "$IAM_TMPDIR"; lane_cleanup_pinned_config' EXIT
 require_protected_workflow_context
-if [[ "$MODE" == apply ]]; then
+if [[ "$MODE" == apply || "$MODE" == release-preflight ]]; then
   [[ "$SOURCE_MANIFEST" == /* && "$RELEASE_MANIFEST" == /* ]] \
-    || lane_die "apply requires absolute --source-manifest and --release-manifest paths"
+    || lane_die "$MODE requires absolute --source-manifest and --release-manifest paths"
   [[ "$(dirname -- "$SOURCE_MANIFEST")" == "$(dirname -- "$RELEASE_MANIFEST")" ]] \
     || lane_die "source and release manifests must share one private artifact directory"
   python3 "$LANE_DIR/release-trust.py" verify-release \
@@ -739,6 +743,10 @@ if [[ "$MODE" == apply ]]; then
     --expected-commit "$GITHUB_SHA" \
     --config "$CONFIG" \
     || lane_die "candidate image release trust could not be verified"
+fi
+if [[ "$MODE" == release-preflight ]]; then
+  printf 'release preflight accepted; no cloud command was invoked\n'
+  exit 0
 fi
 resolve_active_deployer
 verify_keyless_wif_boundary

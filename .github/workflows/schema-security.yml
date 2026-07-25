@@ -63,6 +63,7 @@ jobs:
           sparse-checkout: |
             supabase/migrations
             supabase/migration-history.v1.json
+            supabase/migration-archive/2026-07-25-history-reconciliation
           sparse-checkout-cone-mode: false
 
       - name: Parse candidate ledger and SQL only with trusted base code
@@ -71,7 +72,7 @@ jobs:
             --base-root trusted-base \
             --candidate-root candidate-data
 
-  schema-contract:
+  live-schema-contract:
     runs-on: ubuntu-latest
     steps:
       - name: Check out only the trusted live-contract implementation
@@ -124,3 +125,32 @@ jobs:
         env:
           SCHEMA_GATE_DB_URL: ${{ secrets.SCHEMA_GATE_DB_URL }}
         run: npm run schema:reconcile
+
+  schema-contract:
+    if: always()
+    needs: [candidate-reconciliation, live-schema-contract]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Require candidate reconciliation when applicable and live schema truth
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+          CANDIDATE_RESULT: ${{ needs.candidate-reconciliation.result }}
+          LIVE_RESULT: ${{ needs.live-schema-contract.result }}
+        run: |
+          set -euo pipefail
+          [[ "$LIVE_RESULT" == success ]] || {
+            echo "::error::live schema contract did not succeed: $LIVE_RESULT"
+            exit 1
+          }
+          if [[ "$EVENT_NAME" == pull_request_target ]]; then
+            [[ "$CANDIDATE_RESULT" == success ]] || {
+              echo "::error::candidate reconciliation did not succeed: $CANDIDATE_RESULT"
+              exit 1
+            }
+          else
+            [[ "$CANDIDATE_RESULT" == skipped ]] || {
+              echo "::error::candidate reconciliation must be skipped outside pull requests: $CANDIDATE_RESULT"
+              exit 1
+            }
+          fi
+          echo '"schema-security / schema-contract" is satisfied.'
