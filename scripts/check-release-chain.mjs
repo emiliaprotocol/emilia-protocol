@@ -122,6 +122,58 @@ export function validateTlaSecurityCaseWorkflowText(text, label) {
     requireBefore(text, 'echo "${TLA_SHA256}  tla2tools.jar" | sha256sum -c -', 'npm run security-case:emit', `${label} TLA+ checksum guard`);
     return true;
 }
+export function validateReleaseProvenanceWorkflowText(text, label = 'release.yml') {
+    requireText(text, [
+        'permissions: {}',
+        'name: Require an annotated release tag at the exact protected main tip',
+        'test "$(git cat-file -t "$TAG_OBJECT")" = tag',
+        'test "$TAG_COMMIT" = "$HEAD_COMMIT"',
+        'test "$TAG_COMMIT" = "$MAIN_COMMIT"',
+        '+refs/heads/main:refs/remotes/origin/main',
+        'persist-credentials: false',
+        'release_artifact_id: ${{ steps.upload.outputs.artifact-id }}',
+        'artifact-ids: ${{ needs.build.outputs.release_artifact_id }}',
+        'environment: registry-publishing-approval',
+        'name: Validate inert release-evidence inventory',
+        'actions/attest@',
+    ], label);
+    const workflow = YAML.parse(text);
+    const jobs = workflow?.jobs ?? {};
+    if (JSON.stringify(Object.keys(jobs)) !== JSON.stringify(['build', 'attest'])) {
+        throw new Error(`${label} must separate unprivileged build from inert attestation`);
+    }
+    const build = jobs.build;
+    const attest = jobs.attest;
+    if (build.environment !== undefined
+        || JSON.stringify(build.permissions ?? {}) !== JSON.stringify({ contents: 'read' })) {
+        throw new Error(`${label} release build job is not unprivileged`);
+    }
+    if (attest.needs !== 'build'
+        || attest.environment !== 'registry-publishing-approval'
+        || JSON.stringify(attest.permissions ?? {}) !== JSON.stringify({
+            contents: 'read',
+            'id-token': 'write',
+            attestations: 'write',
+        })) {
+        throw new Error(`${label} attestation authority is not isolated behind the protected environment`);
+    }
+    const buildSteps = build.steps ?? [];
+    const attestSteps = attest.steps ?? [];
+    if (!buildSteps.some((step) => /^actions\/checkout@[0-9a-f]{40}$/.test(step.uses ?? ''))
+        || attestSteps.some((step) => /^actions\/checkout@/.test(step.uses ?? ''))) {
+        throw new Error(`${label} may check out repository code only in the unprivileged build`);
+    }
+    if (buildSteps.some((step) => /^actions\/attest@/.test(step.uses ?? ''))
+        || attestSteps.some((step) => /\b(?:npm|python|go)\s+(?:ci|install|run|test|build|pack)\b/u.test(step.run ?? ''))) {
+        throw new Error(`${label} executes candidate code while holding attestation authority`);
+    }
+    const download = attestSteps.find((step) => /^actions\/download-artifact@[0-9a-f]{40}$/.test(step.uses ?? ''));
+    if (!download || download.with?.['artifact-ids'] !== '${{ needs.build.outputs.release_artifact_id }}'
+        || download.with?.name !== undefined) {
+        throw new Error(`${label} does not consume one immutable unprivileged artifact ID`);
+    }
+    return true;
+}
 function validateManualPublisher(text, label, { direct, commitBound = false, protectedPublisher = false, }) {
     if (/^[ \t]{2}push:/m.test(text))
         throw new Error(`${label} publishes from an automatic push trigger`);
@@ -486,6 +538,7 @@ export function auditReleaseChain(root = ROOT) {
     if (/\btwine\s+upload\b/.test(pythonReadme))
         throw new Error('direct local PyPI upload instructions are forbidden');
     validateCredentialRotationGuideText(fs.readFileSync(path.join(root, 'docs/operations/CREDENTIAL-ROTATION-CHECKLIST.md'), 'utf8'));
+    validateReleaseProvenanceWorkflowText(fs.readFileSync(path.join(root, WORKFLOW_DIR, 'release.yml'), 'utf8'));
     const registryPath = path.join(root, REGISTRY);
     const registry = JSON.parse(fs.readFileSync(registryPath, 'utf8'));
     if (registry['@version'] !== 'EP-RELEASE-PACKAGE-REGISTRY-v1' || !Array.isArray(registry.packages)) {

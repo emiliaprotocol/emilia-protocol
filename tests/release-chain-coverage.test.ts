@@ -19,10 +19,40 @@ import {
   validatePypiDirect,
   validateReusableNpmWorkflowText,
   validateReusablePypiWorkflowText,
+  validateReleaseProvenanceWorkflowText,
 } from '../scripts/check-release-chain.mjs';
 import YAML from 'yaml';
 
 describe('release-chain coverage', () => {
+  it('attests only an annotated tag at the exact protected-main tip in an inert job', () => {
+    const text = readFileSync('.github/workflows/release.yml', 'utf8');
+    expect(validateReleaseProvenanceWorkflowText(text)).toBe(true);
+
+    const unmerged = text.replace(
+      'test "$TAG_COMMIT" = "$MAIN_COMMIT"',
+      'true # unmerged tag accepted',
+    );
+    expect(() => validateReleaseProvenanceWorkflowText(unmerged)).toThrow(/MAIN_COMMIT|release controls/);
+
+    const lightweight = text.replace(
+      'test "$(git cat-file -t "$TAG_OBJECT")" = tag',
+      'true # lightweight tag accepted',
+    );
+    expect(() => validateReleaseProvenanceWorkflowText(lightweight)).toThrow(/cat-file|release controls/);
+
+    const privilegedBuild = text.replace(
+      '    permissions:\n      contents: read\n    outputs:',
+      '    permissions:\n      contents: read\n      id-token: write\n    outputs:',
+    );
+    expect(() => validateReleaseProvenanceWorkflowText(privilegedBuild)).toThrow(/unprivileged/);
+
+    const mutableArtifact = text.replace(
+      'artifact-ids: ${{ needs.build.outputs.release_artifact_id }}',
+      'name: release-evidence-input-${{ github.run_id }}-${{ github.run_attempt }}',
+    );
+    expect(() => validateReleaseProvenanceWorkflowText(mutableArtifact)).toThrow(/artifact ID|release controls/);
+  });
+
   it('every declared package uses its complete verifiable release chain', () => {
     expect(auditReleaseChain()).toEqual({ packages: 25, npm: 19, pypi: 5, go: 1 });
   });
