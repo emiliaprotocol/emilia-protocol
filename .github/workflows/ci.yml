@@ -108,6 +108,8 @@ jobs:
         with:
           version: v3.16.4
       - run: npm ci --ignore-scripts
+      - name: Verify public, private, pending, and archived migration history
+        run: npm run check:migration-history
       - name: Gate the documented Action Escrow run on minimum Node
         run: |
           npm run check:standalone-runtimes
@@ -1191,6 +1193,7 @@ jobs:
           tests/postgres-integration.test.ts
           tests/consequence-actuator-provider-record-postgres.test.ts
           tests/rollout-attempt-role-graph-postgres.test.ts
+          tests/history-reconciliation-forward-postgres.test.ts
         env:
           INTEGRATION_POSTGRES: '1'
           PGHOST: localhost

@@ -28,7 +28,7 @@ Changing one without the others intentionally causes refusal.
    artifacts; do not create empty placeholders or repair the remote ledger just
    to make a push pass. Then run `supabase db push --dry-run` and confirm the
    reviewed mobile migrations are the only pending production changes.
-2. Apply `supabase/migrations/20260715180000_mobile_production_platform.sql` to
+2. Apply `supabase/migrations/20260717072053_mobile_production_platform.sql` to
    the production project through the normal reviewed migration path, then
    apply
    `supabase/migrations/20260720181619_mobile_action_continuity.sql`, then

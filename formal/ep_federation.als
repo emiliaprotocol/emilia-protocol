@@ -14,7 +14,7 @@
  *   packages/verify/federation.js   — verifyFederatedReceiptOffline (acceptance)
  *   packages/verify/index.js        — verifyReceipt (signature soundness)
  *   app/api/discovery/keys/route.js — advertised current + historical keys
- *   supabase/migrations/094_*.sql   — entity_signing_key_history (historical)
+ *   supabase/migrations/20260612061134_094_*.sql — entity_signing_key_history
  *
  * Crypto is abstracted by its security property, not its mechanism: Ed25519
  * unforgeability is modeled as `verifiesUnder` holding for exactly the key a

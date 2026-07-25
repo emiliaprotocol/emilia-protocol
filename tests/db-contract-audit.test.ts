@@ -24,14 +24,11 @@ function cleanSnapshot() {
     ...contract.definerRpcsServiceRoleOnly,
     ...contract.requiredRpcs,
   ])].map((name) => ({ name, acl: 'service_role=X/postgres' }));
-  const qualifiedFunctions = contract.requiredQualifiedRpcs.map(
-    (name) => name.replace(/\(.*/, ''),
-  );
 
   return {
     tables: [...tables],
     reconcile_tables: [...contract.requiredQualifiedTables],
-    reconcile_functions: [...new Set(qualifiedFunctions)],
+    reconcile_functions: [...new Set(contract.requiredQualifiedRpcs)],
     columns,
     rls: contract.rlsRequired.map((t) => ({
       t,
@@ -40,7 +37,9 @@ function cleanSnapshot() {
     })),
     policies,
     functions,
-    indexes: [],
+    indexes: Object.entries(contract.requiredIndexes || {}).flatMap(
+      ([t, names]) => names.map((name) => ({ t, name })),
+    ),
     table_grants: [],
     column_grants: [],
   };
@@ -81,16 +80,44 @@ describe('live schema-security contract evaluator', () => {
     );
   });
 
-  it('rejects a missing qualified private RPC', () => {
+  it('rejects a missing safety index', () => {
     const snapshot = cleanSnapshot();
-    snapshot.reconcile_functions = snapshot.reconcile_functions.filter(
-      (name) => name !== 'rollout_attempt_private.apply_operation',
+    snapshot.indexes = snapshot.indexes.filter(
+      ({ name }) => name !== 'idx_receipts_single_child_per_parent',
     );
 
     const result = evaluateContract(snapshot);
 
     expect(result.failures).toContain(
-      'QUALIFIED RPC missing: rollout_attempt_private.apply_operation(text,text)',
+      'INDEX missing: receipts.idx_receipts_single_child_per_parent',
+    );
+  });
+
+  it('accepts the exact qualified private RPC identity signature', () => {
+    const snapshot = cleanSnapshot();
+    const exactSignature = 'rollout_attempt_private.apply_operation(text,text)';
+
+    expect(snapshot.reconcile_functions).toContain(exactSignature);
+    expect(evaluateContract(snapshot).failures).not.toContain(
+      `QUALIFIED RPC missing: ${exactSignature}`,
+    );
+  });
+
+  it('rejects a bare name and wrong overload for an exact qualified private RPC', () => {
+    const snapshot = cleanSnapshot();
+    const exactSignature = 'rollout_attempt_private.apply_operation(text,text)';
+    snapshot.reconcile_functions = snapshot.reconcile_functions.filter(
+      (name) => name !== exactSignature,
+    );
+    snapshot.reconcile_functions.push(
+      'rollout_attempt_private.apply_operation',
+      'rollout_attempt_private.apply_operation(text)',
+    );
+
+    const result = evaluateContract(snapshot);
+
+    expect(result.failures).toContain(
+      `QUALIFIED RPC missing: ${exactSignature}`,
     );
   });
 

@@ -100,6 +100,7 @@ const SERVICE_ONLY_TABLES: string[] = [
   'revoked_commit_keys',
   'revoked_sessions',
   'session_cutoffs',
+  'authority_registry_epoch',
   // Marvel durable capability store (packages/gate/capability-receipt.js):
   // spending/budget state reached only through the service-role durable store.
   'ep_capability_state',
@@ -125,6 +126,7 @@ interface DbContract {
   requiredQualifiedRpcs: string[];
   knownGapTables: string[];
   requiredColumns: Record<string, string[]>;
+  requiredIndexes: Record<string, string[]>;
   rlsRequired: string[];
   noAnonRead: string[];
   tableGrantsNoPublic: string[];
@@ -179,7 +181,9 @@ export const contract: DbContract = {
     signoff_challenges: ['quorum_policy'],
     receipts: ['receipt_id'],
     authorities: ['key_id', 'public_key', 'role', 'status', 'valid_from', 'valid_to',
-      'revoked_at', 'organization_id', 'subject_type', 'subject_ref', 'assurance_class'],
+      'revoked_at', 'organization_id', 'subject_type', 'subject_ref', 'assurance_class',
+      'action_scopes', 'max_amount_usd', 'currency', 'delegation_parent', 'policy_hash'],
+    authority_registry_epoch: ['organization_id', 'epoch', 'updated_at'],
     // commits: verifyCommit resolves the verification key by `kid`, so a missing
     // kid column silently breaks issuance/verification (mig 132). Guard the
     // signature-verification dependency here so the drift check catches it.
@@ -253,6 +257,16 @@ export const contract: DbContract = {
     approver_credentials: ['approver_id', 'organization_id', 'attested_by', 'enrollment_basis', 'directory_user_id'],
   },
 
+  // Indexes that carry a safety property rather than merely query
+  // acceleration. Missing one re-opens a replay/fork or custody-resolution
+  // failure and therefore violates the live contract.
+  requiredIndexes: {
+    security_events: ['idx_security_events_single_child_per_parent'],
+    receipts: ['idx_receipts_single_child_per_parent'],
+    authorities: ['idx_authorities_delegation_parent'],
+    commits: ['idx_commits_kid'],
+  },
+
   // Tables that MUST have RLS enabled. RLS off => hard FAIL.
   rlsRequired: [
     'entities', 'receipts', 'score_history', 'needs', 'waitlist',
@@ -276,6 +290,9 @@ export const contract: DbContract = {
   // server-only, so anon/authenticated/PUBLIC must have no direct read/write
   // privilege even if a bootstrap or restore recreates a permissive grant.
   tableGrantsNoPublic: [
+    'authorities',
+    'commits',
+    'consumed_gate_refs',
     ...SERVICE_ONLY_TABLES,
     ...RELEASE_LOCK_TABLES,
   ],
@@ -329,7 +346,8 @@ export const contract: DbContract = {
   // policy for the existing guarded-client paths. The other service-only
   // tables either rely on service_role's bypass or are RPC-only.
   serviceRolePoliciesRequired: [
-    'audit_events', 'saml_consumed_assertions', 'revoked_commit_keys', 'revoked_sessions', 'session_cutoffs',
+    'audit_events', 'saml_consumed_assertions', 'revoked_commit_keys', 'revoked_sessions',
+    'session_cutoffs', 'authority_registry_epoch',
   ],
 
   // SECURITY DEFINER RPCs that MUST exist and MUST NOT be anon/authenticated/
@@ -341,6 +359,7 @@ export const contract: DbContract = {
     'bulk_update_receipt_anchors', 'create_test_fixtures',
     'admin_begin_key_rotation', 'admin_complete_key_rotation',
     'consume_gate_ref_atomic', 'revoke_commit_key_atomic',
+    'bump_authority_registry_epoch',
     'activate_policy_rollout_authorized',
     'issue_tenant_api_key_audited',
     'consume_trust_receipt_authorized',

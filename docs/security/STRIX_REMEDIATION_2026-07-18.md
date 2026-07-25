@@ -73,8 +73,8 @@ that the current Strix run is clean or that the corresponding production paths a
 
 These remain open until verified against the target deployment and the active Strix report:
 
-- Apply `supabase/migrations/20260718145410_fortress_db_security_invariants.sql` to the target Supabase project, then run the live schema contract. No production database credentials were available during this pass.
-- Apply the new forward migrations `20260718160000_api_key_rotation_scope.sql`, `20260718161000_webauthn_registration_atomic.sql`, and `20260718162000_trust_desk_bootstrap_once.sql` before exercising the hardened production routes.
+- Apply `supabase/migrations/20260718205652_fortress_db_security_invariants.sql` to the target Supabase project, then run the live schema contract. No production database credentials were available during this pass.
+- Apply the forward migrations `20260718205653_api_key_rotation_scope.sql`, `20260718205655_webauthn_registration_atomic.sql`, and `20260718205657_trust_desk_bootstrap_once.sql` before exercising the hardened production routes.
 - Configure and verify production `SSO_STATE_SECRET`, `SSO_SESSION_SECRET`, and Upstash credentials before enabling the corresponding production paths.
 - Deploy a Vercel preview and run the release/build/security gates against that deployment. Production deployment should follow only after the preview and live migration checks pass.
 - External provider custody, licensing, and transaction settlement remain outside EMILIA’s control plane; the website and Action Escrow contract deliberately do not claim otherwise.

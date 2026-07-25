@@ -611,3 +611,71 @@ REVOKE rollout_attempt_executor
 REVOKE rollout_attempt_store_owner
   FROM anon, authenticated, service_role;
 REVOKE rollout_attempt_store_owner FROM CURRENT_USER;
+
+-- Preserve bare names for migration-journal reconciliation while also
+-- publishing canonical, schema-qualified identity signatures for exact RPC
+-- contract enforcement. Public bare names remain for compatibility with the
+-- reconciliation parser, which normalizes public.foo to foo.
+CREATE OR REPLACE FUNCTION public.gov_schema_reconcile_introspect()
+RETURNS JSONB
+LANGUAGE sql
+STABLE
+SECURITY DEFINER
+SET search_path TO 'pg_catalog', 'public'
+AS $$
+  SELECT jsonb_build_object(
+    'tables', (
+      SELECT coalesce(jsonb_agg(object_name ORDER BY object_name), '[]'::jsonb)
+      FROM (
+        SELECT CASE
+          WHEN n.nspname = 'public' THEN c.relname
+          ELSE n.nspname || '.' || c.relname
+        END AS object_name
+        FROM pg_class c
+        JOIN pg_namespace n ON n.oid = c.relnamespace
+        WHERE c.relkind IN ('r', 'p')
+          AND n.nspname NOT IN ('pg_catalog', 'information_schema')
+          AND n.nspname !~ '^pg_(toast|temp)'
+      ) qualified_tables
+    ),
+    'functions', (
+      SELECT coalesce(jsonb_agg(object_name ORDER BY object_name), '[]'::jsonb)
+      FROM (
+        SELECT DISTINCT function_name.object_name
+        FROM pg_proc p
+        JOIN pg_namespace n ON n.oid = p.pronamespace
+        CROSS JOIN LATERAL (
+          SELECT n.nspname || '.' || p.proname AS object_name
+        ) qualified_function
+        CROSS JOIN LATERAL (
+          VALUES
+            (
+              CASE
+                WHEN n.nspname = 'public' THEN p.proname
+                ELSE qualified_function.object_name
+              END
+            ),
+            (qualified_function.object_name),
+            (
+              qualified_function.object_name
+              || '('
+              || regexp_replace(
+                oidvectortypes(p.proargtypes),
+                ',[[:space:]]*',
+                ',',
+                'g'
+              )
+              || ')'
+            )
+        ) function_name(object_name)
+        WHERE n.nspname NOT IN ('pg_catalog', 'information_schema')
+          AND n.nspname !~ '^pg_(toast|temp)'
+      ) qualified_functions
+    )
+  );
+$$;
+
+REVOKE EXECUTE ON FUNCTION public.gov_schema_reconcile_introspect()
+  FROM PUBLIC, anon, authenticated;
+GRANT EXECUTE ON FUNCTION public.gov_schema_reconcile_introspect()
+  TO service_role;

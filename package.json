@@ -57,6 +57,7 @@
     "check:preprint": "node scripts/check-preprint-sync.mjs",
     "test:preprint": "node --test tests/preprint-sync.node.ts",
     "gov:check": "node scripts/gov-readiness-check.mjs",
+    "check:migration-history": "node scripts/check-migration-history.mjs",
     "gov:db-contract": "node scripts/db-contract.mjs",
     "schema:security": "node scripts/db-contract.mjs",
     "keys:inventory": "node scripts/key-inventory.mjs",

@@ -14,8 +14,8 @@ create extension if not exists pgcrypto with schema extensions;
 SQL
 
 psql "$MOBILE_TEST_DATABASE_URL" -v ON_ERROR_STOP=1 \
-  -f supabase/migrations/20260715180000_mobile_production_platform.sql \
-  -f supabase/migrations/20260717072000_mobile_sessions_device_key_index.sql \
+  -f supabase/migrations/20260717072053_mobile_production_platform.sql \
+  -f supabase/migrations/20260717072216_mobile_sessions_device_key_index.sql \
   -f supabase/migrations/20260720181619_mobile_action_continuity.sql \
   -f supabase/migrations/20260720182147_mobile_pgcrypto_schema_pin.sql \
   -f supabase/migrations/20260720182519_mobile_action_advisor_hardening.sql \

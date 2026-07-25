@@ -67,7 +67,7 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
       approverId,
       profileId: config.profileId,
       // create_mobile_pairing's p_allowed_apps is a jsonb OBJECT keyed by
-      // platform (see supabase/migrations/20260715180000_..._platform.sql),
+      // platform (see supabase/migrations/20260717072053_mobile_production_platform.sql),
       // matching this call's actual { ios, android } shape. lib/mobile/store's
       // createPairing types this param as string[], which is narrower than
       // what it actually forwards to the RPC untouched; cast at this call

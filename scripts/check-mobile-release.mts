@@ -12,6 +12,8 @@ const contains = (path: string, value: RegExp, message: string): void => {
 
 const identity: string = 'ai.emiliaprotocol.approver';
 const host: string = 'www.emiliaprotocol.ai';
+const mobilePlatformMigration: string =
+  'supabase/migrations/20260717072053_mobile_production_platform.sql';
 
 contains('examples/mobile-government/ios/project.yml', new RegExp(`PRODUCT_BUNDLE_IDENTIFIER: ${identity.replaceAll('.', '\\.')}`), 'permanent bundle identity drifted');
 contains('examples/mobile-government/ios/project.yml', /DEVELOPMENT_TEAM: 5M2Z48UQQY/, 'Apple team identity drifted');
@@ -51,18 +53,18 @@ assert.doesNotMatch(read('sdks/kotlin-mobile/sample/src/main/kotlin/ai/emiliapro
 
 contains('app/.well-known/apple-app-site-association/route.ts', new RegExp(`5M2Z48UQQY\\.${identity.replaceAll('.', '\\.')}`), 'Apple association identity drifted');
 contains('app/.well-known/assetlinks.json/route.ts', new RegExp(identity.replaceAll('.', '\\.')), 'Android association identity drifted');
-contains('supabase/migrations/20260715180000_mobile_production_platform.sql', /create or replace function revoke_mobile_session/, 'atomic credential revocation is missing');
-contains('supabase/migrations/20260715180000_mobile_production_platform.sql', /revoke all on function revoke_mobile_session\(text, uuid, timestamptz\) from anon, authenticated, public/, 'revocation RPC is publicly executable');
-contains('supabase/migrations/20260715180000_mobile_production_platform.sql', /alter table mobile_sessions enable row level security/, 'mobile session RLS is missing');
-contains('supabase/migrations/20260715180000_mobile_production_platform.sql', /create or replace function append_mobile_evidence_record/, 'portable evidence atomic append is missing');
-contains('supabase/migrations/20260715180000_mobile_production_platform.sql', /revoke all on function append_mobile_evidence_record\(text, text, jsonb, text\) from anon, authenticated, public/, 'portable evidence RPC is publicly executable');
-contains('supabase/migrations/20260715180000_mobile_production_platform.sql', /create or replace function commit_mobile_action_decision\([\s\S]*p_canonical_body text[\s\S]*returns jsonb/, 'action and evidence are not committed through the atomic RPC');
-contains('supabase/migrations/20260715180000_mobile_production_platform.sql', /p_decision_evidence jsonb/, 'terminal decision RPC does not accept portable decision evidence');
-contains('supabase/migrations/20260715180000_mobile_production_platform.sql', /insert into mobile_evidence_records\([\s\S]*return jsonb_build_object\('ok', true\)/, 'terminal action transaction does not append portable evidence');
-contains('supabase/migrations/20260715180000_mobile_production_platform.sql', /revoke all on function commit_mobile_action_decision\(text, uuid, text, text, text, text, jsonb, text, jsonb, text, timestamptz\)/, 'atomic action/evidence RPC is publicly executable');
-contains('supabase/migrations/20260715180000_mobile_production_platform.sql', /mobile_presentation_is_valid[\s\S]*EP-MOBILE-PRESENTATION-v1[\s\S]*jsonb_typeof\(field\.value\) <> 'string'/, 'database presentation schema is not closed against unseen nested fields');
-contains('supabase/migrations/20260715180000_mobile_production_platform.sql', /insert into mobile_counters\(counter_key, counter_value\)[\s\S]*p_enrollment ->> 'sign_count'/, 'registration counter baseline is not seeded in the enrollment transaction');
-contains('supabase/migrations/20260715180000_mobile_production_platform.sql', /session_id uuid not null references mobile_sessions[\s\S]*p_record ->> 'session_id' is distinct from p_session_id::text[\s\S]*reason', 'session_inactive'/, 'terminal decisions are not transactionally bound to an active mobile session');
+contains(mobilePlatformMigration, /create or replace function revoke_mobile_session/, 'atomic credential revocation is missing');
+contains(mobilePlatformMigration, /revoke all on function revoke_mobile_session\(text, uuid, timestamptz\) from anon, authenticated, public/, 'revocation RPC is publicly executable');
+contains(mobilePlatformMigration, /alter table mobile_sessions enable row level security/, 'mobile session RLS is missing');
+contains(mobilePlatformMigration, /create or replace function append_mobile_evidence_record/, 'portable evidence atomic append is missing');
+contains(mobilePlatformMigration, /revoke all on function append_mobile_evidence_record\(text, text, jsonb, text\) from anon, authenticated, public/, 'portable evidence RPC is publicly executable');
+contains(mobilePlatformMigration, /create or replace function commit_mobile_action_decision\([\s\S]*p_canonical_body text[\s\S]*returns jsonb/, 'action and evidence are not committed through the atomic RPC');
+contains(mobilePlatformMigration, /p_decision_evidence jsonb/, 'terminal decision RPC does not accept portable decision evidence');
+contains(mobilePlatformMigration, /insert into mobile_evidence_records\([\s\S]*return jsonb_build_object\('ok', true\)/, 'terminal action transaction does not append portable evidence');
+contains(mobilePlatformMigration, /revoke all on function commit_mobile_action_decision\(text, uuid, text, text, text, text, jsonb, text, jsonb, text, timestamptz\)/, 'atomic action/evidence RPC is publicly executable');
+contains(mobilePlatformMigration, /mobile_presentation_is_valid[\s\S]*EP-MOBILE-PRESENTATION-v1[\s\S]*jsonb_typeof\(field\.value\) <> 'string'/, 'database presentation schema is not closed against unseen nested fields');
+contains(mobilePlatformMigration, /insert into mobile_counters\(counter_key, counter_value\)[\s\S]*p_enrollment ->> 'sign_count'/, 'registration counter baseline is not seeded in the enrollment transaction');
+contains(mobilePlatformMigration, /session_id uuid not null references mobile_sessions[\s\S]*p_record ->> 'session_id' is distinct from p_session_id::text[\s\S]*reason', 'session_inactive'/, 'terminal decisions are not transactionally bound to an active mobile session');
 contains('supabase/migrations/20260720181619_mobile_action_continuity.sql', /create or replace function mobile_action_decision_identity_guard\([\s\S]*action_caid[\s\S]*action_digest/, 'terminal decisions are not bound to the exact CAID revision');
 contains('supabase/migrations/20260720181619_mobile_action_continuity.sql', /create or replace function consume_mobile_action\([\s\S]*consumption_nonce[\s\S]*already_consumed/, 'single-consumption and replay refusal are missing');
 contains('supabase/migrations/20260720181619_mobile_action_continuity.sql', /create or replace function consume_mobile_action\([\s\S]*target\.expires_at <= p_now[\s\S]*reason', 'expired'/, 'expired authorization can still be consumed');
@@ -84,7 +86,7 @@ contains('packages/mobile/package.json', /"action-identity\.js"/, 'published mob
 contains('scripts/check-mobile-production.mjs', /service role cannot mutate mobile trust tables directly[\s\S]*p_session_id: nonexistentSessionId/, 'production readiness does not test the read-only service role and session-bound terminal RPC');
 contains('scripts/check-mobile-production.mjs', /mobile_presentation_is_valid[\s\S]*p_decision_evidence:/, 'production readiness is stale relative to the current mobile RPC and presentation schema');
 contains('scripts/check-mobile-production.mjs', /create_mobile_demo_action_v2[\s\S]*mark_mobile_action_indeterminate[\s\S]*reconcile_mobile_action_operation[\s\S]*list_mobile_action_continuity/, 'production readiness omits the durable continuity RPCs');
-contains('supabase/migrations/20260715180000_mobile_production_platform.sql', /revoke all on mobile_kv_state,[\s\S]*from anon, authenticated/, 'public database grants were not revoked');
+contains(mobilePlatformMigration, /revoke all on mobile_kv_state,[\s\S]*from anon, authenticated/, 'public database grants were not revoked');
 for (const rpc of [
   'mobile_state_add_if_absent',
   'mobile_state_compare_and_set',
@@ -92,9 +94,9 @@ for (const rpc of [
   'touch_mobile_session',
   'create_mobile_demo_action',
 ]) {
-  contains('supabase/migrations/20260715180000_mobile_production_platform.sql', new RegExp(`create or replace function ${rpc}\\(`), `${rpc} write boundary is missing`);
+  contains(mobilePlatformMigration, new RegExp(`create or replace function ${rpc}\\(`), `${rpc} write boundary is missing`);
 }
-contains('supabase/migrations/20260715180000_mobile_production_platform.sql', /revoke insert, update, delete, truncate, references, trigger on mobile_kv_state,[\s\S]*from service_role/, 'service role can bypass the mobile RPC write boundary');
+contains(mobilePlatformMigration, /revoke insert, update, delete, truncate, references, trigger on mobile_kv_state,[\s\S]*from service_role/, 'service role can bypass the mobile RPC write boundary');
 contains('lib/write-guard.ts', /'mobile_kv_state',[\s\S]*'mobile_action_challenges'/, 'native approval tables are not runtime write-guarded');
 for (const path of [
   'app/api/v1/mobile/pairings/route.ts',

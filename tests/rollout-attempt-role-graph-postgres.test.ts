@@ -238,6 +238,18 @@ suite("rollout-attempt dirty role graph on PostgreSQL 17", () => {
     ]);
   });
 
+  it("publishes qualified bare names and exact identity signatures", async () => {
+    const snapshot = await admin.query<{ functions: string[] }>(`
+      SELECT public.gov_schema_reconcile_introspect() -> 'functions'
+        AS functions
+    `);
+
+    expect(snapshot.rows[0].functions).toEqual(expect.arrayContaining([
+      "rollout_attempt_private.apply_operation",
+      "rollout_attempt_private.apply_operation(text,text)",
+    ]));
+  });
+
   it("allows a clean executor login to claim an attempt", async () => {
     await createLogin(CLEAN_LOGIN);
     await admin.query(

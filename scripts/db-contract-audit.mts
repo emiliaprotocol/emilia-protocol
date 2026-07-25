@@ -36,7 +36,7 @@ export function evaluateContract(snap: any, schemaContract: any = defaultContrac
   const list = (value: any): any[] => (Array.isArray(value) ? value : []);
 
   const requiredSnapshotFields: readonly string[] = [
-    'tables', 'columns', 'rls', 'policies', 'functions', 'table_grants', 'column_grants',
+    'tables', 'columns', 'rls', 'policies', 'functions', 'indexes', 'table_grants', 'column_grants',
     'reconcile_tables', 'reconcile_functions',
   ];
   for (const field of requiredSnapshotFields) {
@@ -67,6 +67,11 @@ export function evaluateContract(snap: any, schemaContract: any = defaultContrac
     if (!fnsByName.has(fn.name)) fnsByName.set(fn.name, []);
     fnsByName.get(fn.name)!.push(fn);
   }
+  const indexesByTable: Map<any, Set<any>> = new Map();
+  for (const index of list(snap?.indexes)) {
+    if (!indexesByTable.has(index.t)) indexesByTable.set(index.t, new Set());
+    indexesByTable.get(index.t)!.add(index.name);
+  }
 
   // 1. Required tables
   for (const table of schemaContract.requiredTables) {
@@ -77,12 +82,7 @@ export function evaluateContract(snap: any, schemaContract: any = defaultContrac
     else fail(`QUALIFIED TABLE missing: ${table}`);
   }
   for (const rpc of schemaContract.requiredQualifiedRpcs || []) {
-    // The deployed reconciliation RPC currently returns schema-qualified
-    // function names without identity arguments. Keep exact signatures pinned
-    // in the manifest/static migration tests while requiring the corresponding
-    // private-schema function to exist in the live catalog.
-    const bareName = String(rpc).replace(/\(.*/, '');
-    if (qualifiedFunctions.has(rpc) || qualifiedFunctions.has(bareName)) pass();
+    if (qualifiedFunctions.has(rpc)) pass();
     else fail(`QUALIFIED RPC missing: ${rpc}`);
   }
 
@@ -103,6 +103,14 @@ export function evaluateContract(snap: any, schemaContract: any = defaultContrac
     const have = cols.get(table) || new Set();
     for (const column of (wanted as any[])) {
       if (have.has(column)) pass(); else fail(`COLUMN missing: ${table}.${column}`);
+    }
+  }
+
+  // 3b. Required safety indexes
+  for (const [table, wanted] of Object.entries(schemaContract.requiredIndexes || {})) {
+    const have = indexesByTable.get(table) || new Set();
+    for (const index of (wanted as any[])) {
+      if (have.has(index)) pass(); else fail(`INDEX missing: ${table}.${index}`);
     }
   }
 
