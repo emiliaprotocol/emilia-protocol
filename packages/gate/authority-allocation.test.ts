@@ -12,7 +12,7 @@ import {
   validateAuthorityAllocationSnapshot,
   type AuthorityAllocationPin,
   type AuthorityAllocationSnapshot,
-} from './src/authority-allocation.ts';
+} from './authority-allocation.js';
 
 const HEAD = `sha256:${'1'.repeat(64)}`;
 const NOW = '2026-07-24T12:00:00.000Z';

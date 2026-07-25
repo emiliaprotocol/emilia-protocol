@@ -3,7 +3,7 @@
 /* eslint-disable */
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { AUTHORITY_ALLOCATION_DDL, AUTHORITY_ALLOCATION_SQL, AUTHORITY_ALLOCATION_VERSION, AuthorityAllocationValidationError, createMemoryAuthorityAllocationStore, createPostgresAuthorityAllocationStore, isDurableAuthorityAllocationStore, validateAuthorityAllocationSnapshot, } from './src/authority-allocation.ts';
+import { AUTHORITY_ALLOCATION_DDL, AUTHORITY_ALLOCATION_SQL, AUTHORITY_ALLOCATION_VERSION, AuthorityAllocationValidationError, createMemoryAuthorityAllocationStore, createPostgresAuthorityAllocationStore, isDurableAuthorityAllocationStore, validateAuthorityAllocationSnapshot, } from './authority-allocation.js';
 const HEAD = `sha256:${'1'.repeat(64)}`;
 const NOW = '2026-07-24T12:00:00.000Z';
 const EXPIRY = '2026-07-25T12:00:00.000Z';
