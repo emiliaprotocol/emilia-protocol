@@ -45,3 +45,23 @@ ALTER ROLE rollout_attempt_store_owner NOLOGIN
   NOSUPERUSER NOCREATEDB NOCREATEROLE NOREPLICATION NOBYPASSRLS;
 ALTER ROLE rollout_attempt_executor NOLOGIN
   NOSUPERUSER NOCREATEDB NOCREATEROLE NOREPLICATION NOBYPASSRLS;
+
+DO $rollout_role_separation$
+BEGIN
+  IF pg_catalog.pg_has_role(
+      'rollout_attempt_executor',
+      'rollout_attempt_store_owner',
+      'MEMBER'
+    )
+    OR pg_catalog.pg_has_role(
+      'rollout_attempt_store_owner',
+      'rollout_attempt_executor',
+      'MEMBER'
+    )
+  THEN
+    RAISE EXCEPTION
+      'rollout attempt owner and executor roles must be membership-disjoint'
+      USING ERRCODE = '42501';
+  END IF;
+END
+$rollout_role_separation$;

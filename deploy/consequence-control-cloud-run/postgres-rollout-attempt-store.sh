@@ -394,6 +394,7 @@ run_psql() {
     PGCLIENTENCODING \
     PGDATESTYLE \
     PGGSSLIB \
+    PGGSSENCMODE \
     PGKRBSRVNAME \
     PGREQUIREPEER \
     PGSSLCERT \
@@ -411,6 +412,7 @@ run_psql() {
     PSQLRC
   export PGHOST
   PGHOST=$(<"$connection_directory/host")
+  export PGGSSENCMODE=disable
   export PGDATABASE
   PGDATABASE=$(<"$connection_directory/database")
   export PGUSER

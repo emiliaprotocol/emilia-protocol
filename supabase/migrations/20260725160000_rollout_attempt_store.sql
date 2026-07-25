@@ -31,6 +31,26 @@ ALTER ROLE rollout_attempt_store_owner NOLOGIN
 ALTER ROLE rollout_attempt_executor NOLOGIN
   NOSUPERUSER NOCREATEDB NOCREATEROLE NOREPLICATION NOBYPASSRLS;
 
+DO $role_separation$
+BEGIN
+  IF pg_catalog.pg_has_role(
+      'rollout_attempt_executor',
+      'rollout_attempt_store_owner',
+      'MEMBER'
+    )
+    OR pg_catalog.pg_has_role(
+      'rollout_attempt_store_owner',
+      'rollout_attempt_executor',
+      'MEMBER'
+    )
+  THEN
+    RAISE EXCEPTION
+      'rollout attempt owner and executor roles must be membership-disjoint'
+      USING ERRCODE = '42501';
+  END IF;
+END
+$role_separation$;
+
 GRANT rollout_attempt_store_owner TO CURRENT_USER;
 
 CREATE SCHEMA rollout_attempt_private
@@ -230,8 +250,30 @@ AS $fn$
 BEGIN
   IF SESSION_USER IN ('anon', 'authenticated', 'service_role')
     OR NOT pg_catalog.pg_has_role(SESSION_USER, 'rollout_attempt_executor', 'MEMBER')
+    OR pg_catalog.pg_has_role(
+      SESSION_USER,
+      'rollout_attempt_store_owner',
+      'MEMBER'
+    )
+    OR EXISTS (
+      SELECT 1
+      FROM pg_catalog.pg_roles AS inherited_role
+      WHERE pg_catalog.pg_has_role(
+        SESSION_USER,
+        inherited_role.oid,
+        'MEMBER'
+      )
+        AND (
+          inherited_role.rolsuper
+          OR inherited_role.rolcreatedb
+          OR inherited_role.rolcreaterole
+          OR inherited_role.rolreplication
+          OR inherited_role.rolbypassrls
+        )
+    )
   THEN
-    RAISE EXCEPTION 'dedicated rollout attempt executor is required'
+    RAISE EXCEPTION
+      'dedicated least-privilege rollout attempt executor is required'
       USING ERRCODE = '42501';
   END IF;
 END

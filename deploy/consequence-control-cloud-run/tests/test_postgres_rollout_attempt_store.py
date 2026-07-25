@@ -124,6 +124,7 @@ printf '%s\\n' "${PGOPTIONS-unset}" "${PSQLRC-unset}" \
   "${PGSSLROOTCERT-unset}" "${PGHOSTADDR-unset}" \
   "${PGSERVICE-unset}" "${PGSERVICEFILE-unset}" \
   "${PGPASSFILE-unset}" "${PGREQUIREAUTH-unset}" \
+  "${PGGSSENCMODE-unset}" \
   > "$FAKE_PSQL_ENVIRONMENT_FILE"
 if [ "${FAKE_PSQL_EXIT_CODE:-0}" -ne 0 ]; then
   printf 'fake psql failure\\n' >&2
@@ -243,14 +244,15 @@ class PostgresRolloutAttemptAdapterTests(unittest.TestCase):
                 "rollout-attempt-login",
             "secret",
             "disable",
-            "unset",
-            "unset",
-            "unset",
-            "unset",
-            "unset",
-            "unset",
-        ],
-    )
+                "unset",
+                "unset",
+                "unset",
+                "unset",
+                "unset",
+                "unset",
+                "disable",
+            ],
+        )
 
     def test_remote_database_requires_pinned_verified_tls_and_clears_ambient_libpq(
         self,
@@ -285,6 +287,7 @@ class PostgresRolloutAttemptAdapterTests(unittest.TestCase):
                     "PGSERVICEFILE": "/attacker/pg_service.conf",
                     "PGPASSFILE": "/attacker/.pgpass",
                     "PGREQUIREAUTH": "none",
+                    "PGGSSENCMODE": "prefer",
                     "PGSSLROOTCERT": "/attacker/ca.pem",
                 }
             )
@@ -316,7 +319,7 @@ class PostgresRolloutAttemptAdapterTests(unittest.TestCase):
                 values[8],
                 r"/emilia-rollout-attempt-store\.[^/]+/database-ca\.pem$",
             )
-            self.assertEqual(values[9:], ["unset"] * 5)
+            self.assertEqual(values[9:], ["unset"] * 5 + ["disable"])
 
     def test_remote_tls_downgrade_missing_or_untrusted_ca_fails_before_psql(
         self,
@@ -537,6 +540,22 @@ class RolloutAttemptMigrationContractTests(unittest.TestCase):
             "REVOKE rollout_attempt_store_owner FROM CURRENT_USER",
             self.sql,
         )
+        self.assertIn(
+            "'rollout_attempt_executor',\n"
+            "      'rollout_attempt_store_owner',\n"
+            "      'MEMBER'",
+            self.sql,
+        )
+        self.assertIn(
+            "'rollout_attempt_store_owner',\n"
+            "      'rollout_attempt_executor',\n"
+            "      'MEMBER'",
+            self.sql,
+        )
+        self.assertIn(
+            "owner and executor roles must be membership-disjoint",
+            self.sql,
+        )
 
     def test_claims_and_terminals_are_separate_append_only_relations(
         self,
@@ -642,6 +661,20 @@ class RolloutAttemptMigrationContractTests(unittest.TestCase):
         self.assertIn("SECURITY DEFINER", self.sql)
         self.assertIn("SET search_path = ''", self.sql)
         self.assertIn("emilia-deployment-attempt-store-response.v1", self.sql)
+        self.assertIn(
+            "SESSION_USER,\n"
+            "      'rollout_attempt_store_owner',\n"
+            "      'MEMBER'",
+            self.sql,
+        )
+        for attribute in (
+            "rolsuper",
+            "rolcreatedb",
+            "rolcreaterole",
+            "rolreplication",
+            "rolbypassrls",
+        ):
+            self.assertIn(attribute, self.sql)
         for denied in ("PUBLIC", "anon", "authenticated", "service_role"):
             self.assertRegex(
                 self.sql,
