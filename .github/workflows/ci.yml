@@ -451,6 +451,8 @@ jobs:
   # ── Job 5: Language governance ───────────────────────────────────
   language-governance:
     runs-on: ubuntu-latest
+    env:
+      TLA2TOOLS_JAR: ${{ github.workspace }}/tla2tools.jar
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
@@ -460,7 +462,24 @@ jobs:
           # requires Node's built-in TypeScript stripping (Node >=22.6).
           node-version: 24
           cache: npm
+      - uses: actions/setup-java@03ad4de0992f5dab5e18fcb136590ce7c4a0ac95 # v5.6.0
+        with:
+          distribution: temurin
+          java-version: '17'
       - run: npm ci --ignore-scripts
+      - name: Download pinned TLC model checker
+        env:
+          TLA_VERSION: v1.7.4
+          TLA_SHA256: 936a262061c914694dfd669a543be24573c45d5aa0ff20a8b96b23d01e050e88
+        run: |
+          curl -fsSL \
+            --retry 5 \
+            --retry-delay 2 \
+            --retry-all-errors \
+            --connect-timeout 20 \
+            -o tla2tools.jar \
+            "https://github.com/tlaplus/tlaplus/releases/download/${TLA_VERSION}/tla2tools.jar"
+          echo "${TLA_SHA256}  tla2tools.jar" | sha256sum -c -
       - name: Rebuild governed TypeScript runtimes and refuse drift
         run: |
           npm run build:ts-runtime
