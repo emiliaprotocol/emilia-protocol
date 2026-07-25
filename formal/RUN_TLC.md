@@ -10,6 +10,8 @@ This document reproduces the pinned TLC checks for:
 - `ep_lifecycle_remedy.tla`
 - `ep_consequence_attempt.tla`
 - `ep_consequence_attempt_unsafe.tla` (deliberately unsafe negative control)
+- `ep_complete_mediation.tla`
+- `ep_complete_mediation_unsafe.cfg` (deliberately unsafe negative control)
 - `ep_consequence_lifecycle.tla`
 - `ep_composed_trust_lifecycle.tla`
 - `ep_revocation_witness.tla`
@@ -120,6 +122,28 @@ if [ "$unsafe_status" -eq 0 ] ||
     tlc-consequence-attempt-unsafe-output.txt; then
   echo "The deliberately unsafe replay model did not produce its expected counterexample."
   cat tlc-consequence-attempt-unsafe-output.txt
+  exit 1
+fi
+
+java -Xmx2G -jar ../tla2tools.jar \
+  -workers auto \
+  -config ep_complete_mediation.cfg \
+  ep_complete_mediation.tla \
+  2>&1 | tee tlc-complete-mediation-output.txt
+
+set +e
+java -Xmx2G -jar ../tla2tools.jar \
+  -workers auto \
+  -config ep_complete_mediation_unsafe.cfg \
+  ep_complete_mediation.tla \
+  > tlc-complete-mediation-unsafe-output.txt 2>&1
+unsafe_status=$?
+set -e
+if [ "$unsafe_status" -eq 0 ] ||
+  ! grep -q "Invariant EffectRequiresActuator is violated" \
+    tlc-complete-mediation-unsafe-output.txt; then
+  echo "The direct-provider mutation did not produce its expected counterexample."
+  cat tlc-complete-mediation-unsafe-output.txt
   exit 1
 fi
 
