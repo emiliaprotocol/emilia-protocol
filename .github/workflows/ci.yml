@@ -1186,7 +1186,10 @@ jobs:
           cache: npm
       - run: npm ci --ignore-scripts
       - name: Run Postgres integration tests
-        run: npx vitest run tests/postgres-integration.test.ts
+        run: >-
+          npx vitest run --no-file-parallelism
+          tests/postgres-integration.test.ts
+          tests/rollout-attempt-role-graph-postgres.test.ts
         env:
           INTEGRATION_POSTGRES: '1'
           PGHOST: localhost
