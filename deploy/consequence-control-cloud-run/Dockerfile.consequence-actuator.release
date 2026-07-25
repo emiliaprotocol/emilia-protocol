@@ -1,8 +1,7 @@
 ARG NODE_IMAGE=node:22.23.1-alpine3.24@sha256:16e22a550f3863206a3f701448c45f7912c6896a62de43add43bb9c86130c3e2
 
-FROM ${NODE_IMAGE} AS dependencies
-
-WORKDIR /opt/consequence-control
+FROM ${NODE_IMAGE} AS build
+WORKDIR /opt/consequence-actuator
 
 ARG EMILIA_VERIFY_PACKAGE_SHA256
 ARG EMILIA_GATE_PACKAGE_SHA256
@@ -19,9 +18,10 @@ RUN printf '%s  %s\n' \
     && tar -xzf /opt/release-packages/gate.tgz -C packages/gate --strip-components=1 \
     && tar -xzf /opt/release-packages/require-receipt.tgz -C packages/require-receipt --strip-components=1
 
-COPY apps/consequence-control-service/package.json apps/consequence-control-service/package-lock.json apps/consequence-control-service/
-
-RUN npm ci --prefix apps/consequence-control-service --ignore-scripts --omit=dev \
+COPY apps/consequence-actuator-service apps/consequence-actuator-service
+RUN npm ci --prefix apps/consequence-actuator-service --ignore-scripts \
+    && npm run build --prefix apps/consequence-actuator-service \
+    && npm prune --prefix apps/consequence-actuator-service --omit=dev \
     && npm cache clean --force
 
 FROM ${NODE_IMAGE} AS runtime
@@ -38,7 +38,7 @@ ARG EMILIA_CONFORMANCE_MANIFEST_SHA256=local-unverified
 
 LABEL org.opencontainers.image.source="https://github.com/emiliaprotocol/emilia-protocol" \
       org.opencontainers.image.revision="${EMILIA_SOURCE_REVISION}" \
-      io.emilia.image.component="decision" \
+      io.emilia.image.component="actuator" \
       io.emilia.source.tree="${EMILIA_SOURCE_TREE}" \
       io.emilia.source.manifest.sha256="${EMILIA_SOURCE_MANIFEST_SHA256}" \
       io.emilia.package.verify.sha256="${EMILIA_VERIFY_PACKAGE_SHA256}" \
@@ -50,20 +50,15 @@ LABEL org.opencontainers.image.source="https://github.com/emiliaprotocol/emilia-
 
 ENV NODE_ENV=production \
     HOST=0.0.0.0 \
-    PORT=8080 \
-    EMILIA_CONSEQUENCE_CONFIG=/app/apps/consequence-control-service/src/production-config.js
+    PORT=8080
 
 WORKDIR /app
+COPY --from=build /opt/consequence-actuator/packages packages
+COPY --from=build /opt/consequence-actuator/apps/consequence-actuator-service/package.json apps/consequence-actuator-service/package.json
+COPY --from=build /opt/consequence-actuator/apps/consequence-actuator-service/dist apps/consequence-actuator-service/dist
+COPY --from=build /opt/consequence-actuator/apps/consequence-actuator-service/node_modules apps/consequence-actuator-service/node_modules
 
-COPY --from=dependencies /opt/consequence-control/packages packages
-COPY caid caid
-COPY apps/gate-service apps/gate-service
-COPY --from=dependencies /opt/consequence-control/apps/consequence-control-service/node_modules apps/consequence-control-service/node_modules
-COPY apps/consequence-control-service/package.json apps/consequence-control-service/package.json
-COPY apps/consequence-control-service/src apps/consequence-control-service/src
-COPY apps/consequence-control-service/test apps/consequence-control-service/test
-
-RUN ln -s /app/apps/consequence-control-service/node_modules /app/node_modules \
+RUN ln -s /app/apps/consequence-actuator-service/node_modules /app/node_modules \
     && rm -rf /usr/local/lib/node_modules/npm \
               /usr/local/lib/node_modules/corepack \
               /opt/yarn-v1.22.22 \
@@ -75,5 +70,9 @@ RUN ln -s /app/apps/consequence-control-service/node_modules /app/node_modules \
 
 USER node
 EXPOSE 8080
+STOPSIGNAL SIGTERM
 
-CMD ["node", "apps/consequence-control-service/src/server.js"]
+HEALTHCHECK --interval=10s --timeout=3s --start-period=10s --retries=3 \
+  CMD ["node", "-e", "fetch('http://127.0.0.1:' + process.env.PORT + '/v1/live', {headers:{authorization:'Bearer ' + process.env.EMILIA_ACTUATOR_API_TOKEN}}).then((r) => process.exit(r.ok ? 0 : 1)).catch(() => process.exit(1))"]
+
+CMD ["node", "apps/consequence-actuator-service/dist/server.js"]

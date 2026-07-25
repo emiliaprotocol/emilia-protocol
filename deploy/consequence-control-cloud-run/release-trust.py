@@ -17,6 +17,7 @@ import json
 import os
 from pathlib import Path, PurePosixPath
 import re
+import shutil
 import subprocess
 import sys
 import tarfile
@@ -41,13 +42,27 @@ GOVERNED_ARTIFACTS = (
     "conformance/conformance-manifest.json",
 )
 BUILD_INPUTS = (
-    "Dockerfile.consequence-actuator",
+    "deploy/consequence-control-cloud-run/Dockerfile.consequence-actuator.release",
     "Dockerfile.consequence-control",
     "Dockerfile.gate",
     "apps/consequence-actuator-service/package-lock.json",
     "apps/consequence-control-service/package-lock.json",
     "apps/gate-service/package-lock.json",
 )
+BUILD_SOURCE_PATHS = (
+    ".dockerignore",
+    "Dockerfile.consequence-control",
+    "Dockerfile.gate",
+    "deploy/consequence-control-cloud-run/Dockerfile.consequence-actuator.release",
+    "apps/consequence-actuator-service",
+    "apps/consequence-control-service",
+    "apps/gate-service",
+    "caid",
+    "packages/gate",
+    "packages/require-receipt",
+    "packages/verify",
+)
+DOCKER_CONTEXT_PATHS = BUILD_SOURCE_PATHS[:8]
 LABEL_PATHS = {
     "io.emilia.governed.security-case.sha256": "security/security-case.json",
     "io.emilia.governed.proof-stats.sha256": "lib/proof-stats.json",
@@ -146,6 +161,20 @@ def ensure_reviewed_checkout(root: Path, expected_commit: str) -> str:
         result = subprocess.run(["git", *arguments], cwd=root, check=False)
         if result.returncode != 0:
             die(f"{label} differs from the reviewed commit")
+    for ignored in (False, True):
+        command = ["git", "ls-files", "--others", "-z"]
+        if ignored:
+            command.extend(["--ignored", "--exclude-standard"])
+        else:
+            command.append("--exclude-standard")
+        command.extend(["--", *BUILD_SOURCE_PATHS])
+        result = subprocess.run(command, cwd=root, capture_output=True, check=False)
+        if result.returncode != 0:
+            die("untracked build-input enumeration failed")
+        names = [name for name in result.stdout.split(b"\0") if name]
+        if names:
+            display = names[0].decode("utf-8", "backslashreplace")
+            die(f"untracked build input is forbidden: {display}")
     return tree
 
 
@@ -201,6 +230,7 @@ def source_manifest(
     expected_commit: str,
     verify_tarball: Path,
     gate_tarball: Path,
+    require_receipt_tarball: Path,
 ) -> dict[str, Any]:
     tree = ensure_reviewed_checkout(root, expected_commit)
     governed: dict[str, str] = {}
@@ -218,6 +248,9 @@ def source_manifest(
         "governed_artifacts": governed,
         "packages": {
             "gate": package_metadata(gate_tarball, "@emilia-protocol/gate"),
+            "require-receipt": package_metadata(
+                require_receipt_tarball, "@emilia-protocol/require-receipt"
+            ),
             "verify": package_metadata(verify_tarball, "@emilia-protocol/verify"),
         },
         "source": {
@@ -250,7 +283,9 @@ def validate_source_shape(value: Any) -> dict[str, Any]:
         if not isinstance(group, dict) or any(SHA256_RE.fullmatch(v or "") is None for v in group.values()):
             die("source manifest contains an invalid file digest")
     packages = value.get("packages")
-    if not isinstance(packages, dict) or set(packages) != {"gate", "verify"}:
+    if not isinstance(packages, dict) or set(packages) != {
+        "gate", "require-receipt", "verify"
+    }:
         die("source manifest package set is invalid")
     return value
 
@@ -275,6 +310,7 @@ def verify_source(
             die(f"build input differs from source manifest: {relative}")
     expected_names = {
         "gate": "@emilia-protocol/gate",
+        "require-receipt": "@emilia-protocol/require-receipt",
         "verify": "@emilia-protocol/verify",
     }
     for key, expected_name in expected_names.items():
@@ -298,6 +334,7 @@ def expected_labels(value: dict[str, Any], manifest_path: Path) -> dict[str, str
         "io.emilia.source.manifest.sha256": sha256_file(manifest_path),
         "io.emilia.package.verify.sha256": value["packages"]["verify"]["sha256"],
         "io.emilia.package.gate.sha256": value["packages"]["gate"]["sha256"],
+        "io.emilia.package.require-receipt.sha256": value["packages"]["require-receipt"]["sha256"],
     }
     labels.update({key: value["governed_artifacts"][path] for key, path in LABEL_PATHS.items()})
     return labels
@@ -397,10 +434,58 @@ def verify_release(
 
 def command_source(args: argparse.Namespace) -> None:
     value = source_manifest(
-        args.root.resolve(), args.expected_commit, args.verify_tarball.resolve(), args.gate_tarball.resolve()
+        args.root.resolve(),
+        args.expected_commit,
+        args.verify_tarball.resolve(),
+        args.gate_tarball.resolve(),
+        args.require_receipt_tarball.resolve(),
     )
     write_json(args.output.resolve(), value)
     print(sha256_file(args.output.resolve()))
+
+
+def command_context(args: argparse.Namespace) -> None:
+    root = args.root.resolve()
+    ensure_reviewed_checkout(root, args.expected_commit)
+    output = args.output.resolve()
+    if output.exists():
+        die(f"Docker context output already exists: {output}")
+    tarballs = {
+        "verify.tgz": args.verify_tarball.resolve(),
+        "gate.tgz": args.gate_tarball.resolve(),
+        "require-receipt.tgz": args.require_receipt_tarball.resolve(),
+    }
+    for name, source in tarballs.items():
+        require_regular(source, f"Docker context {name}")
+    output.mkdir(parents=True, mode=0o700)
+    try:
+        process = subprocess.Popen(
+            ["git", "archive", "--format=tar", args.expected_commit, "--", *DOCKER_CONTEXT_PATHS],
+            cwd=root,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+        )
+        assert process.stdout is not None
+        with tarfile.open(fileobj=process.stdout, mode="r|") as archive:
+            for member in archive:
+                pure = PurePosixPath(member.name)
+                if pure.is_absolute() or ".." in pure.parts:
+                    die("Git archive contains an unsafe path")
+                archive.extract(member, output, filter="data")
+        _, stderr = process.communicate()
+        if process.returncode != 0:
+            die(f"Git archive failed: {stderr.decode('utf-8', 'replace').strip()}")
+        release_dir = output / "release-packages"
+        release_dir.mkdir(mode=0o700)
+        for name, source in tarballs.items():
+            destination = release_dir / name
+            with source.open("rb") as reader, destination.open("xb") as writer:
+                shutil.copyfileobj(reader, writer)
+            destination.chmod(0o400)
+    except Exception:
+        shutil.rmtree(output, ignore_errors=True)
+        raise
+    print(output)
 
 
 def command_labels(args: argparse.Namespace) -> None:
@@ -488,8 +573,18 @@ def parser() -> argparse.ArgumentParser:
     source.add_argument("--expected-commit", required=True)
     source.add_argument("--verify-tarball", type=Path, required=True)
     source.add_argument("--gate-tarball", type=Path, required=True)
+    source.add_argument("--require-receipt-tarball", type=Path, required=True)
     source.add_argument("--output", type=Path, required=True)
     source.set_defaults(handler=command_source)
+
+    context = commands.add_parser("context")
+    context.add_argument("--root", type=Path, required=True)
+    context.add_argument("--expected-commit", required=True)
+    context.add_argument("--verify-tarball", type=Path, required=True)
+    context.add_argument("--gate-tarball", type=Path, required=True)
+    context.add_argument("--require-receipt-tarball", type=Path, required=True)
+    context.add_argument("--output", type=Path, required=True)
+    context.set_defaults(handler=command_context)
 
     labels = commands.add_parser("labels")
     labels.add_argument("--source-manifest", type=Path, required=True)

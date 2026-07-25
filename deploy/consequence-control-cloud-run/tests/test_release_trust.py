@@ -22,7 +22,7 @@ GOVERNED = (
     "conformance/conformance-manifest.json",
 )
 BUILD_INPUTS = (
-    "Dockerfile.consequence-actuator",
+    "deploy/consequence-control-cloud-run/Dockerfile.consequence-actuator.release",
     "Dockerfile.consequence-control",
     "Dockerfile.gate",
     "apps/consequence-actuator-service/package-lock.json",
@@ -68,6 +68,9 @@ class ReleaseTrustTests(unittest.TestCase):
             path = self.root / relative
             path.parent.mkdir(parents=True, exist_ok=True)
             path.write_text(f"pinned input {relative}\n", encoding="utf-8")
+        (self.root / ".dockerignore").write_text(".git\n", encoding="utf-8")
+        (self.root / "caid").mkdir()
+        (self.root / "caid" / "README.md").write_text("fixture\n", encoding="utf-8")
         run("git", "init", "-q", cwd=self.root)
         run("git", "config", "user.name", "Release Test", cwd=self.root)
         run("git", "config", "user.email", "release@example.test", cwd=self.root)
@@ -79,8 +82,12 @@ class ReleaseTrustTests(unittest.TestCase):
         self.artifacts.mkdir()
         self.verify_tarball = self.artifacts / "emilia-protocol-verify-3.15.0.tgz"
         self.gate_tarball = self.artifacts / "emilia-protocol-gate-0.16.0.tgz"
+        self.require_tarball = self.artifacts / "emilia-protocol-require-receipt-0.7.0.tgz"
         package_tarball(self.verify_tarball, "@emilia-protocol/verify", "3.15.0")
         package_tarball(self.gate_tarball, "@emilia-protocol/gate", "0.16.0")
+        package_tarball(
+            self.require_tarball, "@emilia-protocol/require-receipt", "0.7.0"
+        )
         self.source = self.artifacts / "source-manifest.json"
 
     def tearDown(self) -> None:
@@ -98,6 +105,8 @@ class ReleaseTrustTests(unittest.TestCase):
             str(self.verify_tarball),
             "--gate-tarball",
             str(self.gate_tarball),
+            "--require-receipt-tarball",
+            str(self.require_tarball),
             "--output",
             str(self.source),
         )
@@ -189,6 +198,51 @@ class ReleaseTrustTests(unittest.TestCase):
         result = self.create_source()
         self.assertNotEqual(result.returncode, 0)
         self.assertIn("working tree differs", result.stderr)
+
+    def test_nested_untracked_and_symlinked_build_inputs_are_refused(self) -> None:
+        package_root = self.root / "packages" / "gate"
+        package_root.mkdir(parents=True)
+        for hostile in (package_root / "nested" / "payload.js", package_root / "escape.js"):
+            with self.subTest(path=hostile.name):
+                if hostile.name == "payload.js":
+                    hostile.parent.mkdir(parents=True)
+                    hostile.write_text("unreviewed\n", encoding="utf-8")
+                else:
+                    hostile.symlink_to("/tmp/unreviewed-release-input")
+                result = self.create_source()
+                self.assertNotEqual(result.returncode, 0)
+                self.assertIn("untracked build input", result.stderr)
+                if hostile.is_symlink():
+                    hostile.unlink()
+                else:
+                    hostile.unlink()
+
+    def test_docker_context_contains_tarballs_but_no_checkout_package_directories(self) -> None:
+        context = Path(self.temporary.name) / "context"
+        result = run(
+            str(TRUST),
+            "context",
+            "--root",
+            str(self.root),
+            "--expected-commit",
+            self.commit,
+            "--verify-tarball",
+            str(self.verify_tarball),
+            "--gate-tarball",
+            str(self.gate_tarball),
+            "--require-receipt-tarball",
+            str(self.require_tarball),
+            "--output",
+            str(context),
+        )
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertFalse((context / "packages" / "gate").exists())
+        self.assertFalse((context / "packages" / "verify").exists())
+        self.assertFalse((context / "packages" / "require-receipt").exists())
+        self.assertEqual(
+            (context / "release-packages" / "gate.tgz").read_bytes(),
+            self.gate_tarball.read_bytes(),
+        )
 
     def test_package_substitution_is_refused_at_deploy_verification(self) -> None:
         self.assertEqual(self.create_source().returncode, 0)
@@ -308,10 +362,20 @@ class WorkflowTrustContractTests(unittest.TestCase):
 
     def test_schema_workflow_separates_candidate_data_from_trusted_live_code(self) -> None:
         workflow = (ROOT / ".github/workflows/schema-security.yml").read_text()
-        self.assertIn("path: candidate", workflow)
-        self.assertIn("path: trusted", workflow)
+        self.assertIn("pull_request_target:", workflow)
+        self.assertIn("candidate-reconciliation:", workflow)
+        candidate_job = workflow.split("candidate-reconciliation:", 1)[1].split(
+            "schema-contract:", 1
+        )[0]
+        self.assertIn("path: candidate-data", candidate_job)
+        self.assertIn("path: trusted-base", candidate_job)
+        self.assertNotIn("npm ci", candidate_job)
+        self.assertNotIn("SCHEMA_GATE_DB_URL", candidate_job)
+        self.assertIn("node trusted-base/scripts/schema-pr-candidate-reconcile.mjs", candidate_job)
         self.assertIn("schema-pr-candidate-reconcile.mjs", workflow)
         self.assertIn("working-directory: trusted", workflow)
+        live_job = workflow.split("schema-contract:", 1)[1]
+        self.assertNotIn("candidate-data", live_job)
         self.assertNotIn("MIGRATION_RECONCILE_REF: ${{ github.event.pull_request.base.sha }}", workflow)
         job_header = workflow.split("schema-contract:", 1)[1].split("steps:", 1)[0]
         self.assertNotIn("SCHEMA_GATE_DB_URL", job_header)

@@ -6,8 +6,8 @@ name: schema-security
 # reconciliation against the live database.
 #
 # Secret policy:
-#   - pull_request: secrets are unavailable to fork PRs; skip NEUTRALLY (green)
-#     so external contributors aren't blocked by a check they can't run.
+#   - pull_request_target: the workflow and executable reconciliation code come
+#     only from the trusted base commit. Candidate SQL/ledger bytes are data.
 #   - push to main / nightly schedule: secrets are REQUIRED; their absence or any
 #     drift FAILS the workflow.
 #
@@ -30,36 +30,55 @@ permissions:
 on:
   push:
     branches: [main]
-  pull_request:
+  pull_request_target:
     branches: [main]
   schedule:
     - cron: '17 7 * * *'   # nightly 07:17 UTC drift sweep
   workflow_dispatch:
 
 concurrency:
-  group: schema-security-${{ github.ref }}
+  group: schema-security-${{ github.event.pull_request.number || github.ref }}
   cancel-in-progress: true
 
 jobs:
+  candidate-reconciliation:
+    if: github.event_name == 'pull_request_target'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out trusted base reconciliation code
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
+        with:
+          ref: ${{ github.event.pull_request.base.sha }}
+          fetch-depth: 1
+          persist-credentials: false
+          path: trusted-base
+
+      - name: Check out candidate migration bytes as data only
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+          fetch-depth: 1
+          persist-credentials: false
+          path: candidate-data
+          sparse-checkout: |
+            supabase/migrations
+            supabase/migration-history.v1.json
+          sparse-checkout-cone-mode: false
+
+      - name: Parse candidate ledger and SQL only with trusted base code
+        run: |
+          node trusted-base/scripts/schema-pr-candidate-reconcile.mjs \
+            --base-root trusted-base \
+            --candidate-root candidate-data
+
   schema-contract:
     runs-on: ubuntu-latest
     steps:
-      - name: Check out the exact PR candidate as untrusted data
+      - name: Check out only the trusted live-contract implementation
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
         with:
-          ref: ${{ github.sha }}
-          fetch-depth: 0
-          persist-credentials: false
-          path: candidate
-
-      - name: Check out the trusted live-contract implementation
-        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
-        with:
-          # A PR may change executable scripts, so production credentials are
-          # exposed only to code from its exact base commit. Main/nightly use
-          # the exact protected commit that triggered the workflow.
           ref: ${{ github.event.pull_request.base.sha || github.sha }}
-          fetch-depth: 0
+          fetch-depth: 1
           persist-credentials: false
           path: trusted
 
@@ -74,20 +93,6 @@ jobs:
         working-directory: trusted
         run: npm ci --ignore-scripts
 
-      - name: Evaluate the PR candidate migration ledger without production credentials
-        if: github.event_name == 'pull_request'
-        working-directory: candidate
-        run: |
-          npm ci --ignore-scripts
-          npm run check:migration-history
-
-      - name: Reconcile the PR candidate against the immutable base migration lineage
-        if: github.event_name == 'pull_request'
-        run: |
-          node trusted/scripts/schema-pr-candidate-reconcile.mjs \
-            --base-root trusted \
-            --candidate-root candidate
-
       - name: Secret guard (skip neutrally on fork PRs; required on main/schedule)
         id: guard
         env:
@@ -98,7 +103,7 @@ jobs:
             echo "schema_gate credential present — running schema truth checks."
           else
             echo "have_secrets=false" >> "$GITHUB_OUTPUT"
-            if [ "${{ github.event_name }}" = "pull_request" ]; then
+            if [ "${{ github.event_name }}" = "pull_request_target" ]; then
               echo "::notice::SCHEMA_GATE_DB_URL unavailable (fork PR or unset) — skipping schema-security neutrally."
             else
               echo "::error::SCHEMA_GATE_DB_URL is REQUIRED on '${{ github.event_name }}' but is missing. Prod schema truth cannot be verified — failing."

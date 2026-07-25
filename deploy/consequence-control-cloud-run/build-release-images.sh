@@ -86,6 +86,7 @@ git diff --exit-code -- packages/verify/dist packages/gate/dist \
 
 npm pack ./packages/verify --json --pack-destination "$OUTPUT" > "$OUTPUT/verify-pack.json"
 npm pack ./packages/gate --json --pack-destination "$OUTPUT" > "$OUTPUT/gate-pack.json"
+npm pack ./packages/require-receipt --json --pack-destination "$OUTPUT" > "$OUTPUT/require-receipt-pack.json"
 VERIFY_TARBALL=$(python3 - "$OUTPUT/verify-pack.json" "$OUTPUT" <<'PY'
 import json, pathlib, sys
 value = json.loads(pathlib.Path(sys.argv[1]).read_text())
@@ -102,25 +103,42 @@ if not isinstance(value, list) or len(value) != 1 or not isinstance(value[0].get
 print(pathlib.Path(sys.argv[2], pathlib.Path(value[0]["filename"]).name))
 PY
 )
+REQUIRE_RECEIPT_TARBALL=$(python3 - "$OUTPUT/require-receipt-pack.json" "$OUTPUT" <<'PY'
+import json, pathlib, sys
+value = json.loads(pathlib.Path(sys.argv[1]).read_text())
+if not isinstance(value, list) or len(value) != 1 or not isinstance(value[0].get("filename"), str):
+    raise SystemExit("require-receipt npm pack output is invalid")
+print(pathlib.Path(sys.argv[2], pathlib.Path(value[0]["filename"]).name))
+PY
+)
 SOURCE_MANIFEST="$OUTPUT/source-manifest.json"
 "$TRUST" source \
   --root "$ROOT" \
   --expected-commit "$EXPECTED_COMMIT" \
   --verify-tarball "$VERIFY_TARBALL" \
   --gate-tarball "$GATE_TARBALL" \
+  --require-receipt-tarball "$REQUIRE_RECEIPT_TARBALL" \
   --output "$SOURCE_MANIFEST"
 
+DOCKER_CONTEXT="$OUTPUT/docker-context"
+"$TRUST" context \
+  --root "$ROOT" \
+  --expected-commit "$EXPECTED_COMMIT" \
+  --verify-tarball "$VERIFY_TARBALL" \
+  --gate-tarball "$GATE_TARBALL" \
+  --require-receipt-tarball "$REQUIRE_RECEIPT_TARBALL" \
+  --output "$DOCKER_CONTEXT"
+
 mapfile -t SOURCE_LABELS < <("$TRUST" labels --source-manifest "$SOURCE_MANIFEST")
-LABEL_ARGS=()
 BUILD_ARGS=()
 for binding in "${SOURCE_LABELS[@]}"; do
-  LABEL_ARGS+=(--label "$binding")
   case "$binding" in
     org.opencontainers.image.revision=*) BUILD_ARGS+=(--build-arg "EMILIA_SOURCE_REVISION=${binding#*=}") ;;
     io.emilia.source.tree=*) BUILD_ARGS+=(--build-arg "EMILIA_SOURCE_TREE=${binding#*=}") ;;
     io.emilia.source.manifest.sha256=*) BUILD_ARGS+=(--build-arg "EMILIA_SOURCE_MANIFEST_SHA256=${binding#*=}") ;;
     io.emilia.package.verify.sha256=*) BUILD_ARGS+=(--build-arg "EMILIA_VERIFY_PACKAGE_SHA256=${binding#*=}") ;;
     io.emilia.package.gate.sha256=*) BUILD_ARGS+=(--build-arg "EMILIA_GATE_PACKAGE_SHA256=${binding#*=}") ;;
+    io.emilia.package.require-receipt.sha256=*) BUILD_ARGS+=(--build-arg "EMILIA_REQUIRE_RECEIPT_PACKAGE_SHA256=${binding#*=}") ;;
     io.emilia.governed.security-case.sha256=*) BUILD_ARGS+=(--build-arg "EMILIA_SECURITY_CASE_SHA256=${binding#*=}") ;;
     io.emilia.governed.proof-stats.sha256=*) BUILD_ARGS+=(--build-arg "EMILIA_PROOF_STATS_SHA256=${binding#*=}") ;;
     io.emilia.governed.conformance.sha256=*) BUILD_ARGS+=(--build-arg "EMILIA_CONFORMANCE_MANIFEST_SHA256=${binding#*=}") ;;
@@ -157,12 +175,13 @@ else
   done
 fi
 
-docker build --file Dockerfile.consequence-actuator --tag "$ACTUATOR_TAG" \
-  "${LABEL_ARGS[@]}" --label io.emilia.image.component=actuator .
-docker build --file Dockerfile.consequence-control --tag "$DECISION_TAG" \
-  "${BUILD_ARGS[@]}" .
+docker build --file "$DOCKER_CONTEXT/deploy/consequence-control-cloud-run/Dockerfile.consequence-actuator.release" \
+  --tag "$ACTUATOR_TAG" "${BUILD_ARGS[@]}" "$DOCKER_CONTEXT"
+docker build --file "$DOCKER_CONTEXT/Dockerfile.consequence-control" --tag "$DECISION_TAG" \
+  "${BUILD_ARGS[@]}" "$DOCKER_CONTEXT"
 if [[ "$MODE" == ci ]]; then
-  docker build --file Dockerfile.gate --tag "$GATE_TAG" "${BUILD_ARGS[@]}" .
+  docker build --file "$DOCKER_CONTEXT/Dockerfile.gate" --tag "$GATE_TAG" \
+    "${BUILD_ARGS[@]}" "$DOCKER_CONTEXT"
 fi
 
 verify_inspect() {
@@ -235,6 +254,7 @@ DECISION_DIGEST=${DECISION_IMAGE##*@}
   printf 'release_manifest=%s\n' "$RELEASE_MANIFEST"
   printf 'verify_tarball=%s\n' "$VERIFY_TARBALL"
   printf 'gate_tarball=%s\n' "$GATE_TARBALL"
+  printf 'require_receipt_tarball=%s\n' "$REQUIRE_RECEIPT_TARBALL"
   printf 'derived_config=%s\n' "$DERIVED_CONFIG"
   printf 'derived_config_sha256=%s\n' "$DERIVED_CONFIG_SHA256"
 } >> "$GITHUB_OUTPUT_FILE"
