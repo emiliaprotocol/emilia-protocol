@@ -50,6 +50,58 @@ const READ_PROVIDER_RECORD_SQL = `
     $6::text, $7::text, $8::text, $9::text
   )
 `;
+const DATABASE_READINESS_SQL = `
+  SELECT
+    SESSION_USER::TEXT AS principal_name,
+    pg_catalog.pg_has_role(
+      SESSION_USER,
+      'consequence_actuator_executor',
+      'MEMBER'
+    ) AS role_membership_ok,
+    pg_catalog.to_regclass(
+      'consequence_actuator_private.provider_records'
+    ) IS NOT NULL AS provider_records_ready,
+    COALESCE(
+      pg_catalog.has_function_privilege(
+        SESSION_USER,
+        pg_catalog.to_regprocedure(
+          'consequence_actuator_private.reserve_envelope(text,text,text,text,text,text,text,text,text,timestamp with time zone,timestamp with time zone,text)'
+        ),
+        'EXECUTE'
+      ),
+      FALSE
+    ) AS reserve_envelope_ready,
+    COALESCE(
+      pg_catalog.has_function_privilege(
+        SESSION_USER,
+        pg_catalog.to_regprocedure(
+          'consequence_actuator_private.consume_envelope(text,text,text,text,text,text,text,text,text,text,text)'
+        ),
+        'EXECUTE'
+      ),
+      FALSE
+    ) AS consume_envelope_ready,
+    COALESCE(
+      pg_catalog.has_function_privilege(
+        SESSION_USER,
+        pg_catalog.to_regprocedure(
+          'consequence_actuator_private.record_provider_record(jsonb,text)'
+        ),
+        'EXECUTE'
+      ),
+      FALSE
+    ) AS record_provider_record_ready,
+    COALESCE(
+      pg_catalog.has_function_privilege(
+        SESSION_USER,
+        pg_catalog.to_regprocedure(
+          'consequence_actuator_private.read_provider_record(text,text,text,text,text,text,text,text,text)'
+        ),
+        'EXECUTE'
+      ),
+      FALSE
+    ) AS read_provider_record_ready
+`;
 
 function plainObject(value: unknown): value is JsonObject {
   if (!value || typeof value !== 'object' || Array.isArray(value)) return false;
@@ -89,7 +141,7 @@ function createMemoryProviderRecordStore() {
   });
 }
 
-function createPostgresProviderRecordStore(query: (
+export function createPostgresProviderRecordStore(query: (
   text: string,
   values: readonly unknown[],
 ) => Promise<any>) {
@@ -509,23 +561,28 @@ export async function createProductionConsequenceActuatorConfig({
             rows: [{
               principal_name: 'test-memory',
               role_membership_ok: true,
+              provider_records_ready: true,
+              reserve_envelope_ready: true,
+              consume_envelope_ready: true,
+              record_provider_record_ready: true,
+              read_provider_record_ready: true,
             }],
-          }) : pool.query(`
-            SELECT
-              SESSION_USER::TEXT AS principal_name,
-              pg_catalog.pg_has_role(
-                SESSION_USER,
-                'consequence_actuator_executor',
-                'MEMBER'
-              ) AS role_membership_ok
-          `),
+          }) : pool.query(DATABASE_READINESS_SQL),
           tokenProvider.getToken(),
         ]);
+        const readiness = principal?.rows?.[0];
         return {
           ok: principal?.rowCount === 1
+            && Array.isArray(principal.rows)
+            && principal.rows.length === 1
             && (useMemoryStore
-              || principal.rows?.[0]?.principal_name === databasePrincipal)
-            && principal.rows?.[0]?.role_membership_ok === true
+              || readiness?.principal_name === databasePrincipal)
+            && readiness?.role_membership_ok === true
+            && readiness?.provider_records_ready === true
+            && readiness?.reserve_envelope_ready === true
+            && readiness?.consume_envelope_ready === true
+            && readiness?.record_provider_record_ready === true
+            && readiness?.read_provider_record_ready === true
             && typeof token === 'string'
             && token.length > 0,
         };

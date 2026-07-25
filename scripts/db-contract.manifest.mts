@@ -65,6 +65,13 @@ const CONSEQUENCE_ACTUATOR_RPC_ONLY_TABLES: string[] = [
   'consequence_actuator_envelopes',
 ];
 
+const CONSEQUENCE_ACTUATOR_QUALIFIED_RPCS: string[] = [
+  'consequence_actuator_private.reserve_envelope(text,text,text,text,text,text,text,text,text,timestamp with time zone,timestamp with time zone,text)',
+  'consequence_actuator_private.consume_envelope(text,text,text,text,text,text,text,text,text,text,text)',
+  'consequence_actuator_private.record_provider_record(jsonb,text)',
+  'consequence_actuator_private.read_provider_record(text,text,text,text,text,text,text,text,text)',
+];
+
 // These tables are reached through server-side/service-role paths only. RLS is
 // necessary but not sufficient: a table ACL is a separate Data API gate, so
 // the live contract checks both controls.
@@ -105,6 +112,8 @@ const SERVICE_ONLY_TABLES: string[] = [
 
 interface DbContract {
   requiredTables: string[];
+  requiredQualifiedTables: string[];
+  requiredQualifiedRpcs: string[];
   knownGapTables: string[];
   requiredColumns: Record<string, string[]>;
   rlsRequired: string[];
@@ -133,6 +142,15 @@ export const contract: DbContract = {
     'authorities', 'commits', 'consumed_gate_refs',
     ...SERVICE_ONLY_TABLES,
     ...RELEASE_LOCK_TABLES,
+  ],
+
+  // Private-schema objects are qualified so the live reconciliation snapshot
+  // cannot satisfy the contract with an unrelated public object or overload.
+  requiredQualifiedTables: [
+    'consequence_actuator_private.provider_records',
+  ],
+  requiredQualifiedRpcs: [
+    ...CONSEQUENCE_ACTUATOR_QUALIFIED_RPCS,
   ],
 
   // Tables that SHOULD exist but are KNOWN-MISSING and tracked for a staged

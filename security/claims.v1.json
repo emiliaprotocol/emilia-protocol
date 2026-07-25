@@ -1167,6 +1167,8 @@
         { "language": "javascript", "file": "packages/gate/src/consequence-actuator.ts", "symbol": "ConsequenceActuator", "exported": true },
         { "language": "javascript", "file": "apps/consequence-control-service/src/github-app.ts", "symbol": "createConsequenceActuatorClient", "exported": true },
         { "language": "javascript", "file": "apps/consequence-actuator-service/src/runtime.ts", "symbol": "createConsequenceActuatorRuntime", "exported": true },
+        { "language": "javascript", "file": "apps/consequence-actuator-service/src/github-app.ts", "symbol": "createGitHubIssueEffectProvider", "exported": true },
+        { "language": "javascript", "file": "apps/consequence-actuator-service/src/production-config.ts", "symbol": "createPostgresProviderRecordStore", "exported": true },
         { "language": "javascript", "file": "packages/gate/src/store.ts", "symbol": "createDurableConsumptionStore", "exported": true }
       ],
       "implementations": [
@@ -1175,7 +1177,9 @@
         { "language": "javascript", "file": "packages/gate/src/proposal-to-effect.ts", "export": "createProposalToEffect" },
         { "language": "javascript", "file": "packages/gate/src/consequence-actuator.ts", "export": "ConsequenceActuator" },
         { "language": "javascript", "file": "apps/consequence-control-service/src/github-app.ts", "export": "createConsequenceActuatorClient" },
-        { "language": "javascript", "file": "apps/consequence-actuator-service/src/runtime.ts", "export": "createConsequenceActuatorRuntime" }
+        { "language": "javascript", "file": "apps/consequence-actuator-service/src/runtime.ts", "export": "createConsequenceActuatorRuntime" },
+        { "language": "javascript", "file": "apps/consequence-actuator-service/src/github-app.ts", "export": "createGitHubIssueEffectProvider" },
+        { "language": "javascript", "file": "apps/consequence-actuator-service/src/production-config.ts", "export": "createPostgresProviderRecordStore" }
       ],
       "language_coverage": {
         "javascript": { "status": "covered", "evidence": "packages/gate/gate.test.js" },
@@ -1195,7 +1199,34 @@
         { "file": "packages/gate/proposal-to-effect.test.js", "title": "authenticated NOT_COMMITTED reconciliation permits one explicit retry", "runner": "node-test" },
         { "file": "packages/gate/consequence-actuator.test.js", "title": "permanently fences an indeterminate provider invocation", "runner": "node-test" },
         { "file": "apps/consequence-control-service/test/actuator-client.test.js", "title": "refuses signed evidence substituted across attempt or action bindings", "runner": "node-test" },
+        { "file": "apps/consequence-actuator-service/test/production-config.test.ts", "title": "proves the exact actuator migration surface before declaring production readiness", "runner": "node-test" },
+        { "file": "apps/consequence-actuator-service/test/production-config.test.ts", "title": "uses the production PostgreSQL provider-record adapter through exact RPC-only bindings", "runner": "node-test" },
+        { "file": "apps/consequence-actuator-service/test/provider-record-hostile.test.ts", "title": "reconciles COMMITTED after exact GitHub 200 was durably recorded but the actuator response was lost", "runner": "node-test" },
+        { "file": "apps/consequence-actuator-service/test/provider-record-hostile.test.ts", "title": "keeps a genuinely lost GitHub PATCH response retryably unavailable with no terminal attribution", "runner": "node-test" },
+        { "file": "apps/consequence-actuator-service/test/provider-record-hostile.test.ts", "title": "refuses old-envelope and cross-attempt provider-record replay", "runner": "node-test" },
+        { "file": "tests/consequence-actuator-provider-record-migration-contract.test.ts", "title": "registers the private store and exact actuator RPCs in the live schema contract", "runner": "vitest" },
+        { "file": "tests/consequence-actuator-provider-record-migration-contract.test.ts", "title": "exposes only exact append/read RPCs to the dedicated actuator service role", "runner": "vitest" },
         { "file": "tests/complete-mediation-boundary.test.ts", "title": "keeps raw provider credential material out of the decision plane", "runner": "vitest" }
+      ],
+      "operational_evidence": [
+        {
+          "file": "supabase/migrations/20260725010000_consequence_actuator_store.sql",
+          "contains": [
+            "CREATE TABLE public.consequence_actuator_envelopes",
+            "CREATE FUNCTION consequence_actuator_private.reserve_envelope",
+            "CREATE FUNCTION consequence_actuator_private.consume_envelope",
+            "TO consequence_actuator_executor"
+          ]
+        },
+        {
+          "file": "supabase/migrations/20260725143000_consequence_actuator_provider_records.sql",
+          "contains": [
+            "CREATE TABLE consequence_actuator_private.provider_records",
+            "CREATE FUNCTION consequence_actuator_private.record_provider_record",
+            "CREATE FUNCTION consequence_actuator_private.read_provider_record",
+            "TO consequence_actuator_executor"
+          ]
+        }
       ],
       "formal": [
         {

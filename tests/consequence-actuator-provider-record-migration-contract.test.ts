@@ -3,6 +3,8 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { describe, expect, it } from 'vitest';
 
+import { contract } from '../scripts/db-contract.manifest.mts';
+
 const migrationPath = path.join(
   process.cwd(),
   'supabase/migrations/20260725143000_consequence_actuator_provider_records.sql',
@@ -13,6 +15,18 @@ const actuatorStoreMigrationPath = path.join(
 );
 
 describe('consequence actuator provider-record migration contract', () => {
+  it('registers the private store and exact actuator RPCs in the live schema contract', () => {
+    expect(contract.requiredQualifiedTables).toContain(
+      'consequence_actuator_private.provider_records',
+    );
+    expect(contract.requiredQualifiedRpcs).toEqual(expect.arrayContaining([
+      'consequence_actuator_private.reserve_envelope(text,text,text,text,text,text,text,text,text,timestamp with time zone,timestamp with time zone,text)',
+      'consequence_actuator_private.consume_envelope(text,text,text,text,text,text,text,text,text,text,text)',
+      'consequence_actuator_private.record_provider_record(jsonb,text)',
+      'consequence_actuator_private.read_provider_record(text,text,text,text,text,text,text,text,text)',
+    ]));
+  });
+
   it('is forward-only, private, tenant-bound, FORCE RLS, and append-only', () => {
     const migration = fs.readFileSync(migrationPath, 'utf8');
 

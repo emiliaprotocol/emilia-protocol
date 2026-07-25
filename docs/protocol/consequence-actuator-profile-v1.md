@@ -47,9 +47,22 @@ receipt + evidence + observed action
 ```
 
 The provider callback captures the credential in actuator-local configuration
-or a credential client. Its input is only the verified, deeply frozen envelope
-payload. Provider credentials and caller-supplied credential fields are absent
-from the TypeScript contract.
+or a credential client. The TypeScript callback receives one closed input with
+exactly these members:
+
+- `binding`: the verified execution-envelope payload, deeply frozen before
+  invocation;
+- `action`: a fresh structured clone of the canonical material action;
+- `attribution`: a fresh structured clone of the verified provider-attribution
+  payload;
+- `signedAttribution`: a fresh structured clone of the closed signed
+  provider-attribution wire object; and
+- `providerAttributionDigest`: the digest independently derived from that
+  signed object.
+
+The reference production provider consumes `action` and `signedAttribution`;
+it does not receive provider credentials or caller-supplied credential fields
+through the callback contract.
 
 ## Closed execution envelope
 
