@@ -379,14 +379,17 @@ class CanaryDriverTests(unittest.TestCase):
         self.scenario = self.root / "scenario.json"
         self.scenario.write_text(json.dumps(scenario()), encoding="utf-8")
         self.config = self.root / "config.env"
-        config_text = FIXTURE_CONFIG.read_text(encoding="utf-8").replace(
+        config_text = (
+            FIXTURE_CONFIG.read_text(encoding="utf-8")
+            .replace(
                 "/secure/test-canary-public.pem",
                 str(self.public_key),
             )
-        config_text += (
-            "\nCANARY_EVIDENCE_PUBLIC_KEY_SHA256="
-            + hashlib.sha256(self.public_key.read_bytes()).hexdigest()
-            + "\n"
+            .replace(
+                "CANARY_EVIDENCE_PUBLIC_KEY_SHA256=" + "0" * 64,
+                "CANARY_EVIDENCE_PUBLIC_KEY_SHA256="
+                + hashlib.sha256(self.public_key.read_bytes()).hexdigest(),
+            )
         )
         self.config.write_text(
             config_text,
