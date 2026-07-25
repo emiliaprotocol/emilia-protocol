@@ -143,6 +143,30 @@ telemetry. Rollback intentionally omits those two promotion-only artifacts but
 still requires a new consumed authorization for each service transition. The
 workflow never derives the protected config digest from the config bytes.
 
+The protected traffic profile uses fixed, root-owned-runner paths for
+verification-key material so its independently pinned config bytes never
+depend on a generated runner directory:
+
+- `/tmp/emilia-consequence-control-trust/canary-evidence-public.pem`
+- `/tmp/emilia-consequence-control-trust/rollout-telemetry-public.pem`
+- `/tmp/emilia-consequence-control-trust/rollout-authorization-public.pem`
+- `/tmp/emilia-consequence-control-trust/stable-release-public.pem` (file trust
+  only; omit the secret and this path when the profile pins Cloud KMS)
+
+The workflow creates the previously absent directory with mode `0700`, writes
+the corresponding protected environment secrets with a `077` umask, and then
+the existing verifiers require the independently configured key IDs and
+SHA-256 values. The stable public key is passed explicitly to `traffic.sh`;
+Cloud-KMS profiles fail closed if a file key is also supplied.
+
+The durable mutation ledger uses the checked-in
+`postgres-rollout-attempt-store.sh`, whose exact SHA-256 is pinned by
+`CONSEQUENCE_CONTROL_ATTEMPT_STORE_ADAPTER_SHA256`. The workflow supplies only
+the dedicated executor database URL through
+`CONSEQUENCE_CONTROL_ROLLOUT_ATTEMPT_DATABASE_URL`, requires `psql`, and the
+traffic script single-opens and privately copies the authenticated adapter
+before any Cloud Run mutation.
+
 ```sh
 cp deploy/consequence-control-cloud-run/config.example.env /tmp/emilia-config-catalog.env
 # Build separate operation profiles from the catalog using the exact schemas
@@ -454,9 +478,14 @@ equivalent to the telemetry context and its signed consumption record must say
 issuer must atomically consume authorization IDs/nonces before signing.
 
 Immediately before the Cloud Run PUT, `traffic.sh` also requires a protected,
-hash-pinned durable attempt-store adapter. Set
+hash-pinned durable attempt-store adapter. This repository ships
+`postgres-rollout-attempt-store.sh` plus the forward-only
+`20260725160000_rollout_attempt_store.sql` migration. Set
 `EMILIA_ROLLOUT_ATTEMPT_STORE_ADAPTER` to an absolute standalone executable and
-`EMILIA_ROLLOUT_ATTEMPT_STORE_ADAPTER_SHA256` to its protected digest. The
+`EMILIA_ROLLOUT_ATTEMPT_STORE_ADAPTER_SHA256` to its protected digest, and
+supply the dedicated `rollout_attempt_executor` login through
+`EMILIA_ROLLOUT_ATTEMPT_DATABASE_URL`. The adapter parses that URL into private
+libpq environment variables; it never places credentials in process argv. The
 script opens the adapter once without following symlinks, verifies safe
 ownership/mode and exact bytes, copies those bytes privately, and invokes:
 
@@ -582,8 +611,8 @@ An apply remains blocked until all of the following exist:
 - an independently protected source for the exact deployment-config SHA-256;
 - a durable rollout-authorization issuer that atomically consumes each
   authorization ID/nonce before signing the short-lived receipt;
-- a protected, hash-pinned attempt-store adapter backed by an independently
-  credentialed atomic durable store;
+- the rollout-attempt-store migration applied to a durable PostgreSQL database,
+  a dedicated least-privilege executor login, and its protected database URL;
 - the exact protected GitHub workflow/environment/WIF/deployer path with sole
   direct `run.services.update` custody;
 - digest-pinned actuator and decision images; and

@@ -802,6 +802,12 @@ class CommandSpecificConfigHostileTests(unittest.TestCase):
             "CONSEQUENCE_CONTROL_ROLLOUT_AUTHORIZATION",
             "CONSEQUENCE_CONTROL_CANARY_EVIDENCE",
             "CONSEQUENCE_CONTROL_ROLLOUT_TELEMETRY",
+            "CONSEQUENCE_CONTROL_CANARY_EVIDENCE_PUBLIC_KEY",
+            "CONSEQUENCE_CONTROL_ROLLOUT_TELEMETRY_PUBLIC_KEY",
+            "CONSEQUENCE_CONTROL_ROLLOUT_AUTHORIZATION_PUBLIC_KEY",
+            "CONSEQUENCE_CONTROL_STABLE_PUBLIC_KEY",
+            "CONSEQUENCE_CONTROL_ATTEMPT_STORE_ADAPTER_SHA256",
+            "CONSEQUENCE_CONTROL_ROLLOUT_ATTEMPT_DATABASE_URL",
         ):
             self.assertIn(required, workflow)
         self.assertNotIn(
@@ -838,6 +844,10 @@ class CommandSpecificConfigHostileTests(unittest.TestCase):
         self.assertIn('case "$TRAFFIC_OPERATION" in', workflow)
         self.assertIn('"--$TRAFFIC_OPERATION"', workflow)
         self.assertIn("environment: consequence-control-production", workflow)
+        self.assertIn("postgres-rollout-attempt-store.sh", workflow)
+        self.assertIn("command -v psql", workflow)
+        self.assertIn("--stable-public-key", workflow)
+        self.assertIn("/tmp/emilia-consequence-control-trust", workflow)
 
 
 if __name__ == "__main__":

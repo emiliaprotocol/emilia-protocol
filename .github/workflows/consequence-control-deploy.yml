@@ -103,6 +103,10 @@ jobs:
           CONSEQUENCE_CONTROL_ROLLOUT_AUTHORIZATION: ${{ secrets.CONSEQUENCE_CONTROL_ROLLOUT_AUTHORIZATION }}
           CONSEQUENCE_CONTROL_CANARY_EVIDENCE: ${{ secrets.CONSEQUENCE_CONTROL_CANARY_EVIDENCE }}
           CONSEQUENCE_CONTROL_ROLLOUT_TELEMETRY: ${{ secrets.CONSEQUENCE_CONTROL_ROLLOUT_TELEMETRY }}
+          CONSEQUENCE_CONTROL_CANARY_EVIDENCE_PUBLIC_KEY: ${{ secrets.CONSEQUENCE_CONTROL_CANARY_EVIDENCE_PUBLIC_KEY }}
+          CONSEQUENCE_CONTROL_ROLLOUT_TELEMETRY_PUBLIC_KEY: ${{ secrets.CONSEQUENCE_CONTROL_ROLLOUT_TELEMETRY_PUBLIC_KEY }}
+          CONSEQUENCE_CONTROL_ROLLOUT_AUTHORIZATION_PUBLIC_KEY: ${{ secrets.CONSEQUENCE_CONTROL_ROLLOUT_AUTHORIZATION_PUBLIC_KEY }}
+          CONSEQUENCE_CONTROL_STABLE_PUBLIC_KEY: ${{ secrets.CONSEQUENCE_CONTROL_STABLE_PUBLIC_KEY }}
         run: |
           set -euo pipefail
           case "$TRAFFIC_OPERATION" in
@@ -116,22 +120,39 @@ jobs:
           [[ -n "$CONSEQUENCE_CONTROL_TRAFFIC_CONFIG" ]]
           [[ -n "$CONSEQUENCE_CONTROL_STABLE_MANIFEST" ]]
           [[ -n "$CONSEQUENCE_CONTROL_ROLLOUT_AUTHORIZATION" ]]
+          [[ -n "$CONSEQUENCE_CONTROL_ROLLOUT_TELEMETRY_PUBLIC_KEY" ]]
+          [[ -n "$CONSEQUENCE_CONTROL_ROLLOUT_AUTHORIZATION_PUBLIC_KEY" ]]
           if [[ "$TRAFFIC_OPERATION" != apply-rollback ]]; then
             [[ -n "$CONSEQUENCE_CONTROL_CANARY_EVIDENCE" ]]
             [[ -n "$CONSEQUENCE_CONTROL_ROLLOUT_TELEMETRY" ]]
+            [[ -n "$CONSEQUENCE_CONTROL_CANARY_EVIDENCE_PUBLIC_KEY" ]]
           fi
           config_path="$RUNNER_TEMP/consequence-control-traffic.env"
           manifest_path="$RUNNER_TEMP/consequence-control-stable.json"
           authorization_path="$RUNNER_TEMP/consequence-control-authorization.json"
           evidence_path="$RUNNER_TEMP/consequence-control-canary-evidence.json"
           telemetry_path="$RUNNER_TEMP/consequence-control-telemetry.json"
+          trust_dir=/tmp/emilia-consequence-control-trust
+          [[ ! -e "$trust_dir" ]]
           umask 077
+          install -d -m 700 "$trust_dir"
+          canary_key_path="$trust_dir/canary-evidence-public.pem"
+          telemetry_key_path="$trust_dir/rollout-telemetry-public.pem"
+          authorization_key_path="$trust_dir/rollout-authorization-public.pem"
+          stable_key_path=
           printf '%s\n' "$CONSEQUENCE_CONTROL_TRAFFIC_CONFIG" > "$config_path"
           printf '%s\n' "$CONSEQUENCE_CONTROL_STABLE_MANIFEST" > "$manifest_path"
           printf '%s\n' "$CONSEQUENCE_CONTROL_ROLLOUT_AUTHORIZATION" > "$authorization_path"
+          printf '%s\n' "$CONSEQUENCE_CONTROL_ROLLOUT_TELEMETRY_PUBLIC_KEY" > "$telemetry_key_path"
+          printf '%s\n' "$CONSEQUENCE_CONTROL_ROLLOUT_AUTHORIZATION_PUBLIC_KEY" > "$authorization_key_path"
           if [[ "$TRAFFIC_OPERATION" != apply-rollback ]]; then
             printf '%s\n' "$CONSEQUENCE_CONTROL_CANARY_EVIDENCE" > "$evidence_path"
             printf '%s\n' "$CONSEQUENCE_CONTROL_ROLLOUT_TELEMETRY" > "$telemetry_path"
+            printf '%s\n' "$CONSEQUENCE_CONTROL_CANARY_EVIDENCE_PUBLIC_KEY" > "$canary_key_path"
+          fi
+          if [[ -n "$CONSEQUENCE_CONTROL_STABLE_PUBLIC_KEY" ]]; then
+            stable_key_path="$trust_dir/stable-release-public.pem"
+            printf '%s\n' "$CONSEQUENCE_CONTROL_STABLE_PUBLIC_KEY" > "$stable_key_path"
           fi
           {
             printf 'config_path=%s\n' "$config_path"
@@ -139,6 +160,7 @@ jobs:
             printf 'authorization_path=%s\n' "$authorization_path"
             printf 'evidence_path=%s\n' "$evidence_path"
             printf 'telemetry_path=%s\n' "$telemetry_path"
+            printf 'stable_key_path=%s\n' "$stable_key_path"
           } >> "$GITHUB_OUTPUT"
 
       - name: Deploy digest-pinned zero-traffic candidates
@@ -181,6 +203,9 @@ jobs:
           DEPLOYMENT_APPROVED: "true"
           DEPLOYMENT_CONFIRM_PROJECT: ${{ vars.GCP_CONSEQUENCE_CONTROL_PROJECT }}
           DEPLOYMENT_CONFIG_SHA256: ${{ vars.CONSEQUENCE_CONTROL_TRAFFIC_CONFIG_SHA256 }}
+          EMILIA_ROLLOUT_ATTEMPT_STORE_ADAPTER: ${{ github.workspace }}/deploy/consequence-control-cloud-run/postgres-rollout-attempt-store.sh
+          EMILIA_ROLLOUT_ATTEMPT_STORE_ADAPTER_SHA256: ${{ vars.CONSEQUENCE_CONTROL_ATTEMPT_STORE_ADAPTER_SHA256 }}
+          EMILIA_ROLLOUT_ATTEMPT_DATABASE_URL: ${{ secrets.CONSEQUENCE_CONTROL_ROLLOUT_ATTEMPT_DATABASE_URL }}
         run: |
           set -euo pipefail
           case "$TRAFFIC_OPERATION" in
@@ -191,6 +216,8 @@ jobs:
               exit 1
               ;;
           esac
+          command -v psql >/dev/null
+          psql --version
           traffic_args=(
             --config "${{ steps.traffic-inputs.outputs.config_path }}"
             --stable-manifest "${{ steps.traffic-inputs.outputs.manifest_path }}"
@@ -202,6 +229,10 @@ jobs:
               --evidence "${{ steps.traffic-inputs.outputs.evidence_path }}"
               --telemetry "${{ steps.traffic-inputs.outputs.telemetry_path }}"
             )
+          fi
+          stable_key_path="${{ steps.traffic-inputs.outputs.stable_key_path }}"
+          if [[ -n "$stable_key_path" ]]; then
+            traffic_args+=(--stable-public-key "$stable_key_path")
           fi
           deploy/consequence-control-cloud-run/traffic.sh "${traffic_args[@]}"
 
