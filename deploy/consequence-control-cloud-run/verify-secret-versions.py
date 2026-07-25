@@ -24,6 +24,10 @@ INVENTORY_FIELDS = {
     "name",
     "createTime",
 }
+LIVE_NAME_RE = re.compile(
+    r"^projects/[^/]+/secrets/(?P<secret>[A-Za-z][A-Za-z0-9_-]{0,254})/"
+    r"versions/(?P<version>[1-9][0-9]*)$"
+)
 
 
 class VerificationError(ValueError):
@@ -38,6 +42,15 @@ class SecretReference:
     @property
     def value(self) -> str:
         return f"{self.secret}:{self.version}"
+
+
+def reject_duplicate_members(pairs: list[tuple[str, Any]]) -> dict[str, Any]:
+    result: dict[str, Any] = {}
+    for key, value in pairs:
+        if key in result:
+            raise VerificationError(f"duplicate JSON member: {key}")
+        result[key] = value
+    return result
 
 
 def parse_secret_reference(value: str) -> SecretReference:
@@ -89,6 +102,11 @@ def _inventory_index(inventory: Any) -> dict[tuple[str, str], dict[str, Any]]:
         inventory.get("versions"), list
     ):
         raise VerificationError("inventory must contain a versions array")
+    unsupported_root = sorted(set(inventory) - {"versions"})
+    if unsupported_root:
+        raise VerificationError(
+            "inventory has unsupported fields: " + ", ".join(unsupported_root)
+        )
 
     index: dict[tuple[str, str], dict[str, Any]] = {}
     for position, record in enumerate(inventory["versions"]):
@@ -164,7 +182,7 @@ def fetch_live_version(
         reference.version,
         f"--secret={reference.secret}",
         f"--project={project}",
-        "--format=json",
+        "--format=json(name,state,destroyTime)",
     ]
     result = runner(
         command,
@@ -173,13 +191,14 @@ def fetch_live_version(
         check=False,
     )
     if result.returncode != 0:
-        detail = (result.stderr or "").strip()
         raise VerificationError(
             f"metadata lookup failed for {reference.value}"
-            + (f": {detail}" if detail else "")
         )
     try:
-        record = json.loads(result.stdout)
+        record = json.loads(
+            result.stdout,
+            object_pairs_hook=reject_duplicate_members,
+        )
     except json.JSONDecodeError as error:
         raise VerificationError(
             f"metadata lookup returned invalid JSON for {reference.value}"
@@ -188,17 +207,37 @@ def fetch_live_version(
         raise VerificationError(
             f"metadata lookup returned invalid data for {reference.value}"
         )
-    return {
+    unsupported = sorted(set(record) - {"name", "state", "destroyTime"})
+    if unsupported:
+        raise VerificationError(
+            f"metadata lookup returned unsupported fields for {reference.value}"
+        )
+    name = record.get("name")
+    match = LIVE_NAME_RE.fullmatch(name) if isinstance(name, str) else None
+    if (
+        match is None
+        or match.group("secret") != reference.secret
+        or match.group("version") != reference.version
+    ):
+        raise VerificationError(
+            f"metadata lookup identity mismatch for {reference.value}"
+        )
+    normalized = {
         "secret": reference.secret,
         "version": reference.version,
         "state": record.get("state"),
         "destroyTime": record.get("destroyTime"),
     }
+    verify_inventory([reference], {"versions": [normalized]})
+    return normalized
 
 
 def _load_inventory(path: Path) -> Any:
     try:
-        return json.loads(path.read_text(encoding="utf-8"))
+        return json.loads(
+            path.read_text(encoding="utf-8"),
+            object_pairs_hook=reject_duplicate_members,
+        )
     except (OSError, json.JSONDecodeError) as error:
         raise VerificationError(f"unable to load inventory {path}: {error}") from error
 

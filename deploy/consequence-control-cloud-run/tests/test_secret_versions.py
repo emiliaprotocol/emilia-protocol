@@ -144,8 +144,110 @@ class SecretVersionTests(unittest.TestCase):
         self.assertEqual(result["state"], "ENABLED")
         flat = " ".join(calls[0])
         self.assertIn("versions describe 1", flat)
+        self.assertIn("--format=json(name,state,destroyTime)", calls[0])
         self.assertNotIn("versions access", flat)
         self.assertNotIn("payload", json.dumps(result).lower())
+
+    def test_live_lookup_rejects_wrong_identity_disabled_and_destroyed_metadata(
+        self,
+    ) -> None:
+        cases = [
+            {
+                "name": "projects/p/secrets/other/versions/1",
+                "state": "ENABLED",
+            },
+            {
+                "name": "projects/p/secrets/alpha/versions/2",
+                "state": "ENABLED",
+            },
+            {
+                "name": "projects/p/secrets/alpha/versions/1",
+                "state": "DISABLED",
+            },
+            {
+                "name": "projects/p/secrets/alpha/versions/1",
+                "state": "ENABLED",
+                "destroyTime": "2026-07-25T12:00:00Z",
+            },
+        ]
+        for record in cases:
+            with self.subTest(record=record):
+                def runner(command, **kwargs):
+                    return subprocess.CompletedProcess(
+                        command,
+                        0,
+                        stdout=json.dumps(record),
+                        stderr="",
+                    )
+
+                with self.assertRaises(self.module.VerificationError):
+                    self.module.fetch_live_version(
+                        "project-id",
+                        self.module.SecretReference("alpha", "1"),
+                        runner=runner,
+                    )
+
+    def test_live_lookup_never_echoes_untrusted_command_output(self) -> None:
+        def runner(command, **kwargs):
+            return subprocess.CompletedProcess(
+                command,
+                1,
+                stdout="",
+                stderr="payload-like-sensitive-output",
+            )
+
+        with self.assertRaises(self.module.VerificationError) as context:
+            self.module.fetch_live_version(
+                "project-id",
+                self.module.SecretReference("alpha", "1"),
+                runner=runner,
+            )
+
+        self.assertNotIn("payload-like-sensitive-output", str(context.exception))
+
+    def test_inventory_rejects_duplicate_members_and_top_level_smuggling(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            duplicate = Path(directory) / "duplicate.json"
+            duplicate.write_text(
+                '{"versions":[],"versions":[]}',
+                encoding="utf-8",
+            )
+            smuggled = Path(directory) / "smuggled.json"
+            smuggled.write_text(
+                json.dumps(
+                    {
+                        "versions": [
+                            {
+                                "secret": "alpha",
+                                "version": "1",
+                                "state": "ENABLED",
+                            }
+                        ],
+                        "payload": "not-allowed",
+                    }
+                ),
+                encoding="utf-8",
+            )
+            for inventory in (duplicate, smuggled):
+                result = subprocess.run(
+                    [
+                        sys.executable,
+                        str(SCRIPT),
+                        "--project",
+                        "project-id",
+                        "--reference",
+                        "alpha:1",
+                        "--inventory",
+                        str(inventory),
+                    ],
+                    text=True,
+                    capture_output=True,
+                    check=False,
+                )
+                with self.subTest(inventory=inventory.name):
+                    self.assertNotEqual(result.returncode, 0)
+                    self.assertNotIn("not-allowed", result.stdout)
+                    self.assertNotIn("not-allowed", result.stderr)
 
     def test_cli_rejects_payload_shaped_inventory_without_echoing_value(self) -> None:
         with tempfile.TemporaryDirectory() as directory:

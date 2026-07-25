@@ -1,9 +1,13 @@
 from __future__ import annotations
 
 import importlib.util
+from datetime import datetime, timezone
+import json
 import math
 from pathlib import Path
+import subprocess
 import sys
+import tempfile
 import unittest
 
 
@@ -56,6 +60,59 @@ def good_telemetry() -> dict:
                 "indeterminate": 0,
                 "readiness_samples": samples,
             },
+        },
+    }
+
+
+def service_document(
+    service: str,
+    traffic: dict[str, int],
+    *,
+    generation: int = 7,
+    observed_generation: int | None = None,
+    observed_traffic: dict[str, int] | None = None,
+    resource_version: str = "rv-7",
+    tagged_revision: str | None = None,
+) -> dict:
+    def records(value: dict[str, int], *, include_tag: bool) -> list[dict]:
+        result = [
+            {"revisionName": revision, "percent": percent}
+            for revision, percent in value.items()
+        ]
+        if include_tag and tagged_revision is not None:
+            result.append(
+                {
+                    "revisionName": tagged_revision,
+                    "percent": 0,
+                    "tag": "canary",
+                }
+            )
+        return result
+
+    return {
+        "apiVersion": "serving.knative.dev/v1",
+        "kind": "Service",
+        "metadata": {
+            "name": service,
+            "namespace": "test-project",
+            "generation": generation,
+            "resourceVersion": resource_version,
+            "labels": {"owner": "release"},
+            "annotations": {"run.googleapis.com/ingress": "internal"},
+        },
+        "spec": {
+            "template": {"spec": {"containers": [{"image": "example@sha256:abc"}]}},
+            "traffic": records(traffic, include_tag=True),
+        },
+        "status": {
+            "observedGeneration": (
+                generation if observed_generation is None else observed_generation
+            ),
+            "conditions": [{"type": "Ready", "status": "True"}],
+            "traffic": records(
+                observed_traffic if observed_traffic is not None else traffic,
+                include_tag=False,
+            ),
         },
     }
 
@@ -149,6 +206,30 @@ class RolloutTelemetryTests(unittest.TestCase):
                     self.expectations,
                     self.thresholds,
                 )
+
+    def test_current_telemetry_window_rejects_stale_and_future_evidence(self) -> None:
+        accepted = self.module.evaluate_telemetry(
+            good_telemetry(),
+            self.expectations,
+            self.thresholds,
+            now=datetime(2026, 7, 25, 12, 25, tzinfo=timezone.utc),
+            max_age_seconds=900,
+        )
+        self.assertEqual(accepted["status"], "accepted")
+
+        for evaluated_at in (
+            datetime(2026, 7, 25, 12, 25, 1, tzinfo=timezone.utc),
+            datetime(2026, 7, 25, 12, 9, 59, tzinfo=timezone.utc),
+        ):
+            with self.subTest(evaluated_at=evaluated_at):
+                with self.assertRaises(self.module.TelemetryError):
+                    self.module.evaluate_telemetry(
+                        good_telemetry(),
+                        self.expectations,
+                        self.thresholds,
+                        now=evaluated_at,
+                        max_age_seconds=900,
+                    )
 
     def test_rejects_each_operational_threshold_breach(self) -> None:
         cases = {
@@ -244,6 +325,262 @@ class RolloutTelemetryTests(unittest.TestCase):
             with self.subTest(value=value):
                 with self.assertRaises(self.module.TelemetryError):
                     self.module.parse_expectation(value)
+
+    def test_service_state_requires_exact_settled_generation_and_traffic(self) -> None:
+        document = service_document(
+            "decision",
+            {"decision-r2": 10, "decision-r1": 90},
+            tagged_revision="decision-r2",
+        )
+
+        state = self.module.evaluate_service_state(
+            document,
+            service="decision",
+            expected_traffic={"decision-r2": 10, "decision-r1": 90},
+            allowed_revisions={"decision-r1", "decision-r2"},
+        )
+
+        self.assertEqual(state.generation, 7)
+        self.assertEqual(state.observed_generation, 7)
+        self.assertEqual(state.resource_version, "rv-7")
+
+        hostile = [
+            {
+                **document,
+                "status": {**document["status"], "observedGeneration": 6},
+            },
+            {
+                **document,
+                "metadata": {**document["metadata"], "resourceVersion": ""},
+            },
+            service_document(
+                "decision",
+                {"decision-r2": 10, "decision-r1": 90},
+                observed_traffic={"decision-r2": 11, "decision-r1": 89},
+            ),
+        ]
+        latest = service_document(
+            "decision",
+            {"decision-r2": 10, "decision-r1": 90},
+        )
+        latest["spec"]["traffic"][0]["latestRevision"] = True
+        hostile.append(latest)
+        unknown_zero = service_document(
+            "decision",
+            {"decision-r2": 10, "decision-r1": 90},
+        )
+        unknown_zero["spec"]["traffic"].append(
+            {"revisionName": "attacker-r1", "percent": 0, "tag": "backdoor"}
+        )
+        hostile.append(unknown_zero)
+
+        for value in hostile:
+            with self.subTest(value=value):
+                with self.assertRaises(self.module.TelemetryError):
+                    self.module.evaluate_service_state(
+                        value,
+                        service="decision",
+                        expected_traffic={"decision-r2": 10, "decision-r1": 90},
+                        allowed_revisions={"decision-r1", "decision-r2"},
+                    )
+
+    def test_post_state_allows_only_exact_reconciliation_from_pre_state(self) -> None:
+        pending = service_document(
+            "decision",
+            {"decision-r2": 10, "decision-r1": 90},
+            generation=8,
+            observed_generation=7,
+            observed_traffic={"decision-r2": 1, "decision-r1": 99},
+            resource_version="rv-8",
+        )
+        with self.assertRaises(self.module.PendingReconciliation):
+            self.module.evaluate_service_state(
+                pending,
+                service="decision",
+                expected_traffic={"decision-r2": 10, "decision-r1": 90},
+                pending_from_traffic={"decision-r2": 1, "decision-r1": 99},
+                allowed_revisions={"decision-r1", "decision-r2"},
+                generation_after=7,
+                resource_version_not="rv-7",
+            )
+
+        failed = json.loads(json.dumps(pending))
+        failed["status"]["conditions"] = [{"type": "Ready", "status": "False"}]
+        with self.assertRaises(self.module.TelemetryError) as context:
+            self.module.evaluate_service_state(
+                failed,
+                service="decision",
+                expected_traffic={"decision-r2": 10, "decision-r1": 90},
+                pending_from_traffic={"decision-r2": 1, "decision-r1": 99},
+                allowed_revisions={"decision-r1", "decision-r2"},
+                generation_after=7,
+                resource_version_not="rv-7",
+            )
+        self.assertNotIsInstance(
+            context.exception,
+            self.module.PendingReconciliation,
+        )
+
+        pending["status"]["traffic"] = [
+            {"revisionName": "decision-r2", "percent": 50},
+            {"revisionName": "decision-r1", "percent": 50},
+        ]
+        with self.assertRaises(self.module.TelemetryError):
+            self.module.evaluate_service_state(
+                pending,
+                service="decision",
+                expected_traffic={"decision-r2": 10, "decision-r1": 90},
+                pending_from_traffic={"decision-r2": 1, "decision-r1": 99},
+                allowed_revisions={"decision-r1", "decision-r2"},
+                generation_after=7,
+                resource_version_not="rv-7",
+            )
+
+    def test_transition_contract_refuses_skips_and_actuator_before_decision(
+        self,
+    ) -> None:
+        names = {
+            "decision_service": "decision",
+            "decision_stable": "decision-r1",
+            "decision_candidate": "decision-r2",
+            "actuator_service": "actuator",
+            "actuator_stable": "actuator-r1",
+            "actuator_candidate": "actuator-r2",
+        }
+        actions = (
+            "apply-decision-1",
+            "apply-decision-10",
+            "apply-decision-50",
+            "apply-decision-100",
+            "apply-actuator-100",
+        )
+        for action in actions:
+            contract = self.module.transition_contract(
+                action,
+                decision_stable=names["decision_stable"],
+                decision_candidate=names["decision_candidate"],
+                actuator_stable=names["actuator_stable"],
+                actuator_candidate=names["actuator_candidate"],
+            )
+            transition, _, _ = self.module.evaluate_transition_pre_state(
+                action,
+                service_document("decision", contract.pre_decision),
+                service_document("actuator", contract.pre_actuator),
+                **names,
+            )
+            self.assertEqual(transition, contract)
+
+        with self.assertRaises(self.module.TelemetryError):
+            self.module.evaluate_transition_pre_state(
+                "apply-decision-10",
+                service_document("decision", {"decision-r1": 100}),
+                service_document("actuator", {"actuator-r1": 100}),
+                **names,
+            )
+        with self.assertRaises(self.module.TelemetryError):
+            self.module.evaluate_transition_pre_state(
+                "apply-actuator-100",
+                service_document(
+                    "decision", {"decision-r2": 50, "decision-r1": 50}
+                ),
+                service_document("actuator", {"actuator-r1": 100}),
+                **names,
+            )
+
+    def test_rollback_classification_enforces_reverse_dependency_order(self) -> None:
+        names = {
+            "decision_service": "decision",
+            "decision_stable": "decision-r1",
+            "decision_candidate": "decision-r2",
+            "actuator_service": "actuator",
+            "actuator_stable": "actuator-r1",
+            "actuator_candidate": "actuator-r2",
+        }
+        self.assertEqual(
+            self.module.classify_rollback_pre_state(
+                service_document("decision", {"decision-r2": 100}),
+                service_document("actuator", {"actuator-r2": 100}),
+                **names,
+            ),
+            "actuator:100",
+        )
+        self.assertEqual(
+            self.module.classify_rollback_pre_state(
+                service_document(
+                    "decision", {"decision-r2": 50, "decision-r1": 50}
+                ),
+                service_document("actuator", {"actuator-r1": 100}),
+                **names,
+            ),
+            "decision:50",
+        )
+        with self.assertRaises(self.module.TelemetryError):
+            self.module.classify_rollback_pre_state(
+                service_document(
+                    "decision", {"decision-r2": 50, "decision-r1": 50}
+                ),
+                service_document("actuator", {"actuator-r2": 100}),
+                **names,
+            )
+
+    def test_locked_update_binds_resource_version_and_preserves_only_safe_tags(
+        self,
+    ) -> None:
+        document = service_document(
+            "decision",
+            {"decision-r2": 10, "decision-r1": 90},
+            tagged_revision="decision-r2",
+        )
+
+        body, state = self.module.build_service_update(
+            document,
+            service="decision",
+            expected_traffic={"decision-r2": 10, "decision-r1": 90},
+            target_traffic={"decision-r2": 50, "decision-r1": 50},
+            allowed_revisions={"decision-r1", "decision-r2"},
+        )
+
+        self.assertEqual(body["metadata"]["resourceVersion"], state.resource_version)
+        self.assertNotIn("status", body)
+        self.assertEqual(body["metadata"]["labels"], {"owner": "release"})
+        self.assertIn(
+            {"revisionName": "decision-r2", "percent": 0, "tag": "canary"},
+            body["spec"]["traffic"],
+        )
+        self.assertIn(
+            {"revisionName": "decision-r2", "percent": 50},
+            body["spec"]["traffic"],
+        )
+
+    def test_cli_rejects_duplicate_service_json_members(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory) / "service.json"
+            path.write_text(
+                '{"apiVersion":"serving.knative.dev/v1",'
+                '"apiVersion":"serving.knative.dev/v1"}',
+                encoding="utf-8",
+            )
+            result = subprocess.run(
+                [
+                    sys.executable,
+                    str(SCRIPT),
+                    "verify-service",
+                    "--input",
+                    str(path),
+                    "--service",
+                    "decision",
+                    "--expect-traffic",
+                    "decision-r1:100",
+                    "--allowed-revision",
+                    "decision-r1",
+                ],
+                text=True,
+                capture_output=True,
+                check=False,
+            )
+
+        self.assertNotEqual(result.returncode, 0)
+        self.assertIn("duplicate JSON member", result.stderr)
 
 
 if __name__ == "__main__":

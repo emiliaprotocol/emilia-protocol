@@ -4,6 +4,7 @@
 from __future__ import annotations
 
 import argparse
+from copy import deepcopy
 from dataclasses import dataclass
 from datetime import datetime
 import json
@@ -26,6 +27,10 @@ class TelemetryError(ValueError):
     """Raised when rollout evidence is incomplete, inconsistent, or unhealthy."""
 
 
+class PendingReconciliation(TelemetryError):
+    """Raised when desired traffic is correct but Cloud Run is still reconciling."""
+
+
 @dataclass(frozen=True)
 class Thresholds:
     max_error_rate: float
@@ -36,6 +41,32 @@ class Thresholds:
     min_requests: int
     min_readiness_samples: int
     max_sample_gap_seconds: int
+
+
+@dataclass(frozen=True)
+class ServiceState:
+    service: str
+    generation: int
+    observed_generation: int
+    resource_version: str
+    traffic: dict[str, int]
+
+
+@dataclass(frozen=True)
+class Transition:
+    service: str
+    pre_decision: dict[str, int]
+    pre_actuator: dict[str, int]
+    post_traffic: dict[str, int]
+
+
+def reject_duplicate_members(pairs: list[tuple[str, Any]]) -> dict[str, Any]:
+    result: dict[str, Any] = {}
+    for key, value in pairs:
+        if key in result:
+            raise TelemetryError(f"duplicate JSON member: {key}")
+        result[key] = value
+    return result
 
 
 def _validate_thresholds(thresholds: Thresholds) -> None:
@@ -114,6 +145,11 @@ def parse_expectation(value: str) -> tuple[str, dict[str, int]]:
     if not targets or sum(targets.values()) != 100:
         raise TelemetryError(f"expected traffic for {service} must total 100")
     return service, targets
+
+
+def parse_revision_percentages(value: str) -> dict[str, int]:
+    _, targets = parse_expectation(f"service={value}")
+    return targets
 
 
 def _actual_traffic(service: str, records: Any) -> dict[str, int]:
@@ -204,6 +240,9 @@ def evaluate_telemetry(
     telemetry: Any,
     expectations: Mapping[str, Mapping[str, int]],
     thresholds: Thresholds,
+    *,
+    now: datetime | None = None,
+    max_age_seconds: int | None = None,
 ) -> dict[str, Any]:
     _validate_thresholds(thresholds)
     for service, targets in expectations.items():
@@ -237,6 +276,23 @@ def evaluate_telemetry(
         raise TelemetryError("window must be an object")
     started_at = _parse_utc_timestamp(window.get("started_at"), "window.started_at")
     ended_at = _parse_utc_timestamp(window.get("ended_at"), "window.ended_at")
+    if max_age_seconds is not None:
+        if (
+            isinstance(max_age_seconds, bool)
+            or not isinstance(max_age_seconds, int)
+            or max_age_seconds <= 0
+        ):
+            raise TelemetryError("max_age_seconds must be a positive integer")
+        evaluated_at = now or datetime.now().astimezone()
+        if evaluated_at.tzinfo is None or evaluated_at.utcoffset() is None:
+            raise TelemetryError("telemetry evaluation time must include a timezone")
+        age_seconds = (evaluated_at - ended_at).total_seconds()
+        if age_seconds < 0:
+            raise TelemetryError("telemetry window ends in the future")
+        if age_seconds > max_age_seconds:
+            raise TelemetryError(
+                f"telemetry is older than {max_age_seconds} seconds"
+            )
     dwell_seconds = int((ended_at - started_at).total_seconds())
     if dwell_seconds < thresholds.min_dwell_seconds:
         raise TelemetryError(
@@ -316,6 +372,393 @@ def evaluate_telemetry(
     }
 
 
+def _generation(value: Any, field: str) -> int:
+    if isinstance(value, int) and not isinstance(value, bool):
+        result = value
+    elif isinstance(value, str) and INTEGER_RE.fullmatch(value) is not None:
+        result = int(value)
+    else:
+        raise TelemetryError(f"{field} must be a positive canonical generation")
+    if result <= 0:
+        raise TelemetryError(f"{field} must be a positive canonical generation")
+    return result
+
+
+def _service_traffic(
+    records: Any,
+    field: str,
+    *,
+    allowed_revisions: set[str],
+) -> dict[str, int]:
+    if not isinstance(records, list) or not records:
+        raise TelemetryError(f"{field} must be a non-empty array")
+    totals: dict[str, int] = {}
+    seen_tags: set[str] = set()
+    for position, record in enumerate(records):
+        if not isinstance(record, dict):
+            raise TelemetryError(f"{field}[{position}] must be an object")
+        if record.get("latestRevision") is True or record.get("type") in {
+            "TRAFFIC_TARGET_ALLOCATION_TYPE_LATEST",
+            "LATEST",
+        }:
+            raise TelemetryError(f"{field}[{position}] must pin an exact revision")
+        revision = record.get("revisionName", record.get("revision"))
+        if not isinstance(revision, str) or NAME_RE.fullmatch(revision) is None:
+            raise TelemetryError(f"{field}[{position}] revision is invalid")
+        if revision not in allowed_revisions:
+            raise TelemetryError(f"{field} contains unexpected revision {revision}")
+        percent = _integer(record.get("percent"), f"{field}[{position}].percent")
+        if percent > 100:
+            raise TelemetryError(f"{field}[{position}].percent exceeds 100")
+        tag = record.get("tag")
+        if tag is not None:
+            if not isinstance(tag, str) or NAME_RE.fullmatch(tag) is None:
+                raise TelemetryError(f"{field}[{position}].tag is invalid")
+            if tag in seen_tags:
+                raise TelemetryError(f"{field} contains duplicate tag {tag}")
+            seen_tags.add(tag)
+        totals[revision] = totals.get(revision, 0) + percent
+        if totals[revision] > 100:
+            raise TelemetryError(f"{field} over-allocates revision {revision}")
+    if sum(totals.values()) != 100:
+        raise TelemetryError(f"{field} traffic must total 100")
+    return {revision: percent for revision, percent in totals.items() if percent}
+
+
+def _ready(service: Mapping[str, Any]) -> bool:
+    status = service.get("status")
+    if not isinstance(status, dict):
+        return False
+    conditions = status.get("conditions")
+    if not isinstance(conditions, list):
+        return False
+    return any(
+        isinstance(condition, dict)
+        and condition.get("type") == "Ready"
+        and condition.get("status") in (True, "True")
+        for condition in conditions
+    )
+
+
+def _ready_failed(service: Mapping[str, Any]) -> bool:
+    status = service.get("status")
+    if not isinstance(status, dict):
+        return True
+    conditions = status.get("conditions")
+    if not isinstance(conditions, list):
+        return True
+    return any(
+        isinstance(condition, dict)
+        and condition.get("type") == "Ready"
+        and condition.get("status") in (False, "False")
+        for condition in conditions
+    )
+
+
+def evaluate_service_state(
+    document: Any,
+    *,
+    service: str,
+    expected_traffic: Mapping[str, int],
+    allowed_revisions: set[str],
+    pending_from_traffic: Mapping[str, int] | None = None,
+    generation_after: int | None = None,
+    resource_version_not: str | None = None,
+) -> ServiceState:
+    if NAME_RE.fullmatch(service) is None:
+        raise TelemetryError("service name is invalid")
+    if not isinstance(document, dict):
+        raise TelemetryError("Cloud Run service must be an object")
+    if document.get("apiVersion") != "serving.knative.dev/v1":
+        raise TelemetryError(
+            "Cloud Run service apiVersion must be serving.knative.dev/v1"
+        )
+    if document.get("kind") != "Service":
+        raise TelemetryError("Cloud Run resource must be a Service")
+    metadata = document.get("metadata")
+    spec = document.get("spec")
+    status = document.get("status")
+    if not isinstance(metadata, dict):
+        raise TelemetryError("Cloud Run service metadata is missing")
+    if not isinstance(spec, dict):
+        raise TelemetryError("Cloud Run service spec is missing")
+    if not isinstance(status, dict):
+        raise TelemetryError("Cloud Run service status is missing")
+    if metadata.get("name") != service:
+        raise TelemetryError("Cloud Run service name does not match")
+
+    generation = _generation(metadata.get("generation"), "metadata.generation")
+    observed_generation = _generation(
+        status.get("observedGeneration"),
+        "status.observedGeneration",
+    )
+    resource_version = metadata.get("resourceVersion")
+    if (
+        not isinstance(resource_version, str)
+        or not resource_version
+        or any(character.isspace() for character in resource_version)
+    ):
+        raise TelemetryError("metadata.resourceVersion is required for locking")
+    if generation_after is not None and generation <= generation_after:
+        raise TelemetryError("Cloud Run generation did not advance")
+    if resource_version_not is not None and resource_version == resource_version_not:
+        raise TelemetryError("Cloud Run resourceVersion did not advance")
+
+    expected = dict(expected_traffic)
+    if not expected or sum(expected.values()) != 100:
+        raise TelemetryError("expected service traffic must total 100")
+    if not set(expected).issubset(allowed_revisions):
+        raise TelemetryError("expected traffic contains an unapproved revision")
+    desired = _service_traffic(
+        spec.get("traffic"),
+        "spec.traffic",
+        allowed_revisions=allowed_revisions,
+    )
+    if desired != expected:
+        raise TelemetryError(
+            f"{service} desired traffic {desired} does not match expected {expected}"
+        )
+
+    observed = _service_traffic(
+        status.get("traffic"),
+        "status.traffic",
+        allowed_revisions=allowed_revisions,
+    )
+    if observed_generation == generation:
+        if observed != expected:
+            raise TelemetryError(
+                f"{service} observed traffic {observed} does not match expected "
+                f"{expected}"
+            )
+        if not _ready(document):
+            raise TelemetryError(f"{service} is not Ready")
+    else:
+        if observed_generation > generation:
+            raise TelemetryError("status.observedGeneration exceeds generation")
+        if _ready_failed(document):
+            raise TelemetryError(f"{service} reconciliation failed")
+        pending = dict(pending_from_traffic or {})
+        if not pending or observed != pending:
+            raise TelemetryError(
+                f"{service} has an unapproved generation/observedGeneration mismatch"
+            )
+        raise PendingReconciliation(f"{service} is still reconciling")
+
+    return ServiceState(
+        service=service,
+        generation=generation,
+        observed_generation=observed_generation,
+        resource_version=resource_version,
+        traffic=observed,
+    )
+
+
+def transition_contract(
+    action: str,
+    *,
+    decision_stable: str,
+    decision_candidate: str,
+    actuator_stable: str,
+    actuator_candidate: str,
+) -> Transition:
+    decision_stable_traffic = {decision_stable: 100}
+    actuator_stable_traffic = {actuator_stable: 100}
+    contracts = {
+        "apply-decision-1": Transition(
+            "decision",
+            decision_stable_traffic,
+            actuator_stable_traffic,
+            {decision_candidate: 1, decision_stable: 99},
+        ),
+        "apply-decision-10": Transition(
+            "decision",
+            {decision_candidate: 1, decision_stable: 99},
+            actuator_stable_traffic,
+            {decision_candidate: 10, decision_stable: 90},
+        ),
+        "apply-decision-50": Transition(
+            "decision",
+            {decision_candidate: 10, decision_stable: 90},
+            actuator_stable_traffic,
+            {decision_candidate: 50, decision_stable: 50},
+        ),
+        "apply-decision-100": Transition(
+            "decision",
+            {decision_candidate: 50, decision_stable: 50},
+            actuator_stable_traffic,
+            {decision_candidate: 100},
+        ),
+        "apply-actuator-100": Transition(
+            "actuator",
+            {decision_candidate: 100},
+            actuator_stable_traffic,
+            {actuator_candidate: 100},
+        ),
+    }
+    try:
+        return contracts[action]
+    except KeyError as error:
+        raise TelemetryError(f"unsupported rollout transition: {action}") from error
+
+
+def evaluate_transition_pre_state(
+    action: str,
+    decision_document: Any,
+    actuator_document: Any,
+    *,
+    decision_service: str,
+    decision_stable: str,
+    decision_candidate: str,
+    actuator_service: str,
+    actuator_stable: str,
+    actuator_candidate: str,
+) -> tuple[Transition, ServiceState, ServiceState]:
+    transition = transition_contract(
+        action,
+        decision_stable=decision_stable,
+        decision_candidate=decision_candidate,
+        actuator_stable=actuator_stable,
+        actuator_candidate=actuator_candidate,
+    )
+    decision_state = evaluate_service_state(
+        decision_document,
+        service=decision_service,
+        expected_traffic=transition.pre_decision,
+        allowed_revisions={decision_stable, decision_candidate},
+    )
+    actuator_state = evaluate_service_state(
+        actuator_document,
+        service=actuator_service,
+        expected_traffic=transition.pre_actuator,
+        allowed_revisions={actuator_stable, actuator_candidate},
+    )
+    return transition, decision_state, actuator_state
+
+
+def classify_rollback_pre_state(
+    decision_document: Any,
+    actuator_document: Any,
+    *,
+    decision_service: str,
+    decision_stable: str,
+    decision_candidate: str,
+    actuator_service: str,
+    actuator_stable: str,
+    actuator_candidate: str,
+) -> str:
+    decision_stage: str | None = None
+    for stage, traffic in (
+        ("stable", {decision_stable: 100}),
+        ("1", {decision_candidate: 1, decision_stable: 99}),
+        ("10", {decision_candidate: 10, decision_stable: 90}),
+        ("50", {decision_candidate: 50, decision_stable: 50}),
+        ("100", {decision_candidate: 100}),
+    ):
+        try:
+            evaluate_service_state(
+                decision_document,
+                service=decision_service,
+                expected_traffic=traffic,
+                allowed_revisions={decision_stable, decision_candidate},
+            )
+            decision_stage = stage
+            break
+        except TelemetryError:
+            continue
+    if decision_stage is None:
+        raise TelemetryError("decision service is not in a rollback-safe rollout state")
+
+    actuator_stage: str | None = None
+    for stage, traffic in (
+        ("stable", {actuator_stable: 100}),
+        ("100", {actuator_candidate: 100}),
+    ):
+        try:
+            evaluate_service_state(
+                actuator_document,
+                service=actuator_service,
+                expected_traffic=traffic,
+                allowed_revisions={actuator_stable, actuator_candidate},
+            )
+            actuator_stage = stage
+            break
+        except TelemetryError:
+            continue
+    if actuator_stage is None:
+        raise TelemetryError("actuator service is not in a rollback-safe rollout state")
+    if actuator_stage == "100" and decision_stage not in {"100", "stable"}:
+        raise TelemetryError("actuator candidate cannot precede decision candidate 100")
+    if actuator_stage == "100":
+        return f"actuator:{decision_stage}"
+    if decision_stage != "stable":
+        return f"decision:{decision_stage}"
+    return "stable"
+
+
+def build_service_update(
+    document: Any,
+    *,
+    service: str,
+    expected_traffic: Mapping[str, int],
+    target_traffic: Mapping[str, int],
+    allowed_revisions: set[str],
+) -> tuple[dict[str, Any], ServiceState]:
+    state = evaluate_service_state(
+        document,
+        service=service,
+        expected_traffic=expected_traffic,
+        allowed_revisions=allowed_revisions,
+    )
+    metadata = document["metadata"]
+    namespace = metadata.get("namespace")
+    if not isinstance(namespace, str) or not namespace:
+        raise TelemetryError("metadata.namespace is required for a locked update")
+    target = dict(target_traffic)
+    if not target or sum(target.values()) != 100:
+        raise TelemetryError("target traffic must total 100")
+    if not set(target).issubset(allowed_revisions):
+        raise TelemetryError("target traffic contains an unapproved revision")
+
+    tagged: list[dict[str, Any]] = []
+    seen_tags: set[str] = set()
+    for record in document["spec"]["traffic"]:
+        tag = record.get("tag")
+        if tag is None:
+            continue
+        if tag in seen_tags:
+            raise TelemetryError(f"spec.traffic contains duplicate tag {tag}")
+        seen_tags.add(tag)
+        revision = record.get("revisionName", record.get("revision"))
+        tagged.append({"revisionName": revision, "percent": 0, "tag": tag})
+    traffic = tagged + [
+        {"revisionName": revision, "percent": percent}
+        for revision, percent in sorted(target.items())
+        if percent
+    ]
+    body = {
+        "apiVersion": "serving.knative.dev/v1",
+        "kind": "Service",
+        "metadata": {
+            "name": service,
+            "namespace": namespace,
+            "resourceVersion": state.resource_version,
+            **(
+                {"labels": deepcopy(metadata["labels"])}
+                if isinstance(metadata.get("labels"), dict)
+                else {}
+            ),
+            **(
+                {"annotations": deepcopy(metadata["annotations"])}
+                if isinstance(metadata.get("annotations"), dict)
+                else {}
+            ),
+        },
+        "spec": deepcopy(document["spec"]),
+    }
+    body["spec"]["traffic"] = traffic
+    return body, state
+
+
 def _parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
         description="Verify exact rollout traffic and structured dwell telemetry."
@@ -330,11 +773,90 @@ def _parser() -> argparse.ArgumentParser:
     parser.add_argument("--min-requests", type=int, default=100)
     parser.add_argument("--min-readiness-samples", type=int, default=3)
     parser.add_argument("--max-sample-gap-seconds", type=int, default=300)
+    parser.add_argument("--max-age-seconds", type=int, default=900)
     return parser
 
 
+def _load_json(path: Path, name: str) -> Any:
+    try:
+        return json.loads(
+            path.read_text(encoding="utf-8"),
+            object_pairs_hook=reject_duplicate_members,
+        )
+    except (OSError, json.JSONDecodeError) as error:
+        raise TelemetryError(f"unable to load {name} {path}: {error}") from error
+
+
+def _state_parser(description: str) -> argparse.ArgumentParser:
+    parser = argparse.ArgumentParser(description=description)
+    parser.add_argument("--input", type=Path, required=True)
+    parser.add_argument("--service", required=True)
+    parser.add_argument("--expect-traffic", required=True)
+    parser.add_argument("--allowed-revision", action="append", required=True)
+    parser.add_argument("--pending-from-traffic")
+    parser.add_argument("--generation-after", type=int)
+    parser.add_argument("--resource-version-not")
+    return parser
+
+
+def _service_state_main(argv: Sequence[str]) -> int:
+    parser = _state_parser("Verify one exact, settled Cloud Run service state.")
+    args = parser.parse_args(argv)
+    try:
+        state = evaluate_service_state(
+            _load_json(args.input, "service"),
+            service=args.service,
+            expected_traffic=parse_revision_percentages(args.expect_traffic),
+            allowed_revisions=set(args.allowed_revision),
+            pending_from_traffic=(
+                parse_revision_percentages(args.pending_from_traffic)
+                if args.pending_from_traffic
+                else None
+            ),
+            generation_after=args.generation_after,
+            resource_version_not=args.resource_version_not,
+        )
+    except PendingReconciliation as error:
+        print(f"pending: {error}", file=sys.stderr)
+        return 2
+    except TelemetryError as error:
+        print(f"error: {error}", file=sys.stderr)
+        return 1
+    print(f"{state.generation}\t{state.resource_version}")
+    return 0
+
+
+def _prepare_update_main(argv: Sequence[str]) -> int:
+    parser = _state_parser("Prepare a resourceVersion-locked Cloud Run update.")
+    parser.add_argument("--target-traffic", required=True)
+    parser.add_argument("--output", type=Path, required=True)
+    args = parser.parse_args(argv)
+    try:
+        body, state = build_service_update(
+            _load_json(args.input, "service"),
+            service=args.service,
+            expected_traffic=parse_revision_percentages(args.expect_traffic),
+            target_traffic=parse_revision_percentages(args.target_traffic),
+            allowed_revisions=set(args.allowed_revision),
+        )
+        args.output.write_text(
+            json.dumps(body, ensure_ascii=False, sort_keys=True, separators=(",", ":")),
+            encoding="utf-8",
+        )
+    except (OSError, TelemetryError) as error:
+        print(f"error: {error}", file=sys.stderr)
+        return 1
+    print(f"{state.generation}\t{state.resource_version}")
+    return 0
+
+
 def main(argv: Sequence[str] | None = None) -> int:
-    args = _parser().parse_args(argv)
+    arguments = list(argv if argv is not None else sys.argv[1:])
+    if arguments and arguments[0] == "verify-service":
+        return _service_state_main(arguments[1:])
+    if arguments and arguments[0] == "prepare-update":
+        return _prepare_update_main(arguments[1:])
+    args = _parser().parse_args(arguments)
     try:
         expectations: dict[str, dict[str, int]] = {}
         for raw_expectation in args.expect_traffic:
@@ -343,7 +865,10 @@ def main(argv: Sequence[str] | None = None) -> int:
                 raise TelemetryError(f"duplicate service expectation: {service}")
             expectations[service] = targets
         try:
-            telemetry = json.loads(args.input.read_text(encoding="utf-8"))
+            telemetry = json.loads(
+                args.input.read_text(encoding="utf-8"),
+                object_pairs_hook=reject_duplicate_members,
+            )
         except (OSError, json.JSONDecodeError) as error:
             raise TelemetryError(
                 f"unable to load telemetry {args.input}: {error}"
@@ -361,6 +886,7 @@ def main(argv: Sequence[str] | None = None) -> int:
                 min_readiness_samples=args.min_readiness_samples,
                 max_sample_gap_seconds=args.max_sample_gap_seconds,
             ),
+            max_age_seconds=args.max_age_seconds,
         )
     except TelemetryError as error:
         print(f"error: {error}", file=sys.stderr)
