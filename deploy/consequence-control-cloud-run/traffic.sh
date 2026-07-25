@@ -48,21 +48,6 @@ while (($#)); do
       STABLE_PUBLIC_KEY=$2
       shift 2
       ;;
-    --max-error-rate|--max-p95-latency-ms|--min-readiness-rate|--max-indeterminate-rate|--min-dwell-seconds|--min-requests|--min-readiness-samples|--max-sample-gap-seconds|--max-telemetry-age-seconds)
-      (($# >= 2)) || lane_die "$1 requires a value"
-      case "$1" in
-        --max-error-rate) MAX_ERROR_RATE=$2 ;;
-        --max-p95-latency-ms) MAX_P95_LATENCY_MS=$2 ;;
-        --min-readiness-rate) MIN_READINESS_RATE=$2 ;;
-        --max-indeterminate-rate) MAX_INDETERMINATE_RATE=$2 ;;
-        --min-dwell-seconds) MIN_DWELL_SECONDS=$2 ;;
-        --min-requests) MIN_REQUESTS=$2 ;;
-        --min-readiness-samples) MIN_READINESS_SAMPLES=$2 ;;
-        --max-sample-gap-seconds) MAX_SAMPLE_GAP_SECONDS=$2 ;;
-        --max-telemetry-age-seconds) MAX_TELEMETRY_AGE_SECONDS=$2 ;;
-      esac
-      shift 2
-      ;;
     --render-promote|--render-rollback|--apply-decision-1|--apply-decision-10|--apply-decision-50|--apply-decision-100|--apply-actuator-100|--apply-rollback)
       [[ -z "$ACTION" ]] || lane_die "select exactly one traffic action"
       ACTION=${1#--}

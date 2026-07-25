@@ -133,15 +133,20 @@ approval.
 The runtime belongs in a dedicated project, not beside unrelated workloads.
 `provision-dedicated-project.sh` creates or reconciles the project, billing
 link, required APIs, exact `/26` Direct VPC subnet, Private Google Access,
-router/NAT, Artifact Registry repository, custom provisioner/deployer roles,
-runtime service accounts, and recovery ownership. It removes broad default
-Editor grants only after the configured recovery owners are read back.
+router/NAT, Artifact Registry repository, custom provisioner/deployer/recovery
+roles, runtime service accounts, and split recovery custody. It removes
+default Editor grants and every Owner grant only after all three custom-role
+bindings are read back, then proves the managed bindings are exact.
 
 The config pins `BILLING_ACCOUNT`, optional `PROJECT_PARENT`,
-`DEPLOYER_PRINCIPAL`, and comma-separated `RECOVERY_PRINCIPALS`. The deployer
-must be a service account. Every recovery principal must be a real,
-independently controlled IAM identity and must differ from the deployer.
-Applying requires confirmations outside the config:
+`PROVISIONER_PRINCIPAL`, `DEPLOYER_PRINCIPAL`, and comma-separated
+`RECOVERY_PRINCIPALS`. The active `gcloud` identity must exactly match the
+configured provisioner. The provisioner and deployer must be distinct service
+accounts. At least two recovery principals are required; each must be a real,
+independently controlled IAM identity and must differ from both service
+accounts. The provisioner and recovery roles deliberately omit runtime
+`actAs`, route invocation, and secret-payload access. Applying requires
+confirmations outside the config:
 
 ```sh
 PROVISIONING_APPROVED=true \
@@ -191,8 +196,11 @@ deploy/consequence-control-cloud-run/bootstrap-stable.sh \
 
 The output is written only after both services are proven health-only and
 serve 100% as the witnessed pair. Subsequent traffic changes revalidate the
-signature, key metadata, lineage, complete configuration, enabled numeric
-secret versions, and live revision state.
+signature, key metadata, complete project ancestry, lineage, labels, ingress,
+Invoker-IAM mode, generation, service account, image digest, execution
+environment, VPC, CPU, memory, scaling, concurrency, timeout, port, probes,
+plain environment, numeric secret bindings, enabled secret versions, exact
+traffic, and live revision state.
 
 ## Apply order
 
@@ -223,10 +231,12 @@ secret versions, and live revision state.
 
 An EXIT cleanup path retries revocation if either deployment or any intervening
 step fails. A separately invokable `deploy.sh --cleanup-jit` recovers after a
-hard runner termination by removing release-titled or expired grants and
-proving direct and effective absence. The release identity must not retain
-project-wide `iam.serviceAccounts.actAs`; the live proof runs only after
-revocation is read-back-verified.
+hard runner termination by removing only the two condition titles derived from
+the configured `RELEASE_ID`, then proving direct and effective absence. It is
+not a project-wide expired-grant sweeper; invoke it with the exact original
+release config. The release identity must not retain project-wide
+`iam.serviceAccounts.actAs`; the live proof runs only after revocation is
+read-back-verified.
 
 The actuator must be reachable through the configured VPC path. Cloud Run calls
 to an internal-ingress service must route through a VPC considered internal, so
@@ -362,11 +372,31 @@ Every apply operation also requires the signed stable manifest. File trust
 requires its exact configured public-key path through `--stable-public-key`;
 KMS trust forbids that argument and resolves the public key from the configured
 versioned KMS URI. Promotion requires current signed canary evidence and a
-telemetry document for the exact prior stage. The default gates are a 10-minute
+signed telemetry document for the exact prior stage. The telemetry observer is
+pinned by `ROLLOUT_TELEMETRY_KEY_ID`,
+`ROLLOUT_TELEMETRY_PUBLIC_KEY_FILE`, and
+`ROLLOUT_TELEMETRY_PUBLIC_KEY_SHA256`. The observer's private key must be
+separately controlled and unreadable by both runtime identities and the
+deployer. The gates are release policy, not caller options: `traffic.sh`
+rejects attempts to relax them. They are a 10-minute
 dwell, at least 100 requests and three readiness samples, error rate at most
 1%, p95 latency at most 500 ms, readiness at least 99%, indeterminate rate at
 most 0.5%, sample gaps at most five minutes, and telemetry no older than 15
 minutes.
+
+Sign an already collected closed telemetry document before promotion:
+
+```sh
+deploy/consequence-control-cloud-run/verify-rollout-telemetry.py sign \
+  --config /tmp/emilia-cloud-run.env \
+  --input /secure/emilia/rollout-telemetry-unsigned.json \
+  --output /secure/emilia/rollout-telemetry.json \
+  --private-key-file /secure/emilia/rollout-observer-ed25519-private.pem
+```
+
+The signer checks that the private key matches the pinned public key and writes
+the signed result atomically with mode `0600`. It refuses an existing output
+unless `--force` is explicit.
 
 Cloud Run traffic is changed through a generation/resourceVersion-locked API
 update. The only accepted promotion path is stable -> decision 1% -> 10% ->
@@ -397,10 +427,12 @@ An apply remains blocked until all of the following exist:
 - Google Cloud credentials with permission to manage Cloud Run services,
   runtime service accounts, service-level Invoker IAM, and per-secret IAM,
   with `actAs` granted just in time only on the two runtime identities;
+- a distinct active provisioner service account, a distinct deployer service
+  account, and at least two independently controlled recovery principals;
 - organization-level Policy Analyzer visibility and an explicit
   `--analyzer-scope organizations/NUMBER` whenever the project has any parent
   folder or organization;
-- a `/26` or larger Direct VPC egress subnet with the routing/DNS needed for
+- the exact configured `/26` Direct VPC egress subnet with the routing/DNS needed for
   internal Cloud Run service-to-service access;
 - every configured Secret Manager secret and numeric version;
 - a dedicated actuator database login whose session user exactly matches
@@ -410,6 +442,8 @@ An apply remains blocked until all of the following exist:
 - a repository-scoped GitHub App installation with Issues read/write;
 - paired envelope and observation keys placed only on their intended sides;
 - a separately controlled Ed25519 canary-driver key and pinned public-key file;
+- a separately controlled Ed25519 rollout-observer key and pinned public-key
+  file/hash;
 - digest-pinned actuator and decision images; and
 - a current, cryptographically valid canary scenario produced through the
   approval and AEB pipeline.

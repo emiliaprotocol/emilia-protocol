@@ -777,6 +777,38 @@ class RolloutTelemetrySignatureTests(unittest.TestCase):
         ):
             self.assertIn(f"require_var {name}", traffic)
 
+    def test_traffic_promotion_refuses_caller_selected_safety_thresholds(
+        self,
+    ) -> None:
+        for option, value in (
+            ("--max-error-rate", "1"),
+            ("--max-p95-latency-ms", "999999"),
+            ("--min-readiness-rate", "0"),
+            ("--max-indeterminate-rate", "1"),
+            ("--min-dwell-seconds", "1"),
+            ("--min-requests", "1"),
+            ("--min-readiness-samples", "1"),
+            ("--max-sample-gap-seconds", "999999"),
+            ("--max-telemetry-age-seconds", "999999"),
+        ):
+            with self.subTest(option=option):
+                result = subprocess.run(
+                    [
+                        "bash",
+                        str(LANE_DIR / "traffic.sh"),
+                        "--config",
+                        "/does/not/exist",
+                        option,
+                        value,
+                        "--render-promote",
+                    ],
+                    text=True,
+                    capture_output=True,
+                    check=False,
+                )
+                self.assertNotEqual(result.returncode, 0)
+                self.assertIn(f"unknown argument: {option}", result.stderr)
+
     def test_rejects_post_signature_mutation_and_malformed_signature(self) -> None:
         self.assertEqual(self._sign().returncode, 0)
         signed = json.loads(self.signed.read_text(encoding="utf-8"))
