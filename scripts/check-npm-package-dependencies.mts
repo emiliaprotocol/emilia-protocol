@@ -386,12 +386,14 @@ export function assertInternalDependenciesPublished(
 }
 
 function main(): void {
-  const packageDirectory: string | undefined = process.argv[2];
-  const installPinned: boolean = process.argv[3] === '--install-pinned';
-  if (!packageDirectory || process.argv.length !== (installPinned ? 4 : 3)) {
+  const args: string[] = process.argv.slice(2);
+  const installPinned: boolean = args.includes('--install-pinned');
+  const packageArguments: string[] = args.filter((value: string) => value !== '--install-pinned');
+  const packageDirectory: string | undefined = packageArguments[0];
+  if (!packageDirectory || packageArguments.length !== 1 || args.length !== (installPinned ? 2 : 1)) {
     throw new Error(
       'usage: node scripts/check-npm-package-dependencies.mjs '
-      + '<package-directory> [--install-pinned]',
+      + '[--install-pinned] <package-directory>',
     );
   }
   const packagePath: string = path.resolve(process.cwd(), packageDirectory, 'package.json');

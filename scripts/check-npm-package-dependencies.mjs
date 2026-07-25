@@ -244,11 +244,13 @@ export function assertInternalDependenciesPublished(metadata, resolver = resolve
     return dependencies;
 }
 function main() {
-    const packageDirectory = process.argv[2];
-    const installPinned = process.argv[3] === '--install-pinned';
-    if (!packageDirectory || process.argv.length !== (installPinned ? 4 : 3)) {
+    const args = process.argv.slice(2);
+    const installPinned = args.includes('--install-pinned');
+    const packageArguments = args.filter((value) => value !== '--install-pinned');
+    const packageDirectory = packageArguments[0];
+    if (!packageDirectory || packageArguments.length !== 1 || args.length !== (installPinned ? 2 : 1)) {
         throw new Error('usage: node scripts/check-npm-package-dependencies.mjs '
-            + '<package-directory> [--install-pinned]');
+            + '[--install-pinned] <package-directory>');
     }
     const packagePath = path.resolve(process.cwd(), packageDirectory, 'package.json');
     const metadata = JSON.parse(fs.readFileSync(packagePath, 'utf8'));

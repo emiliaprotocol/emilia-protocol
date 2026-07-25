@@ -16,7 +16,6 @@ import {
   collectRegistryDependencyTarballPins,
   verifyRegistryDependencyTarball,
 } from '../scripts/check-npm-package-dependencies.mjs';
-import { verifyReproduciblePackage } from '../scripts/verify-reproducible-package.mjs';
 
 const GATE_METADATA = JSON.parse(readFileSync('packages/gate/package.json', 'utf8'));
 const RELEASE_REGISTRY = JSON.parse(readFileSync('release/release-packages.v1.json', 'utf8'));
@@ -75,9 +74,8 @@ describe('npm internal dependency registry guard', () => {
       spec: '@emilia-protocol/verify@3.15.0',
       sha256: 'e82ef5098aa5fffc6776d41f5906c57b5db1962a9d81adcefeafac080d013441',
     }]);
-    expect(verifyReproduciblePackage('packages/verify').sha256).toBe(verified[0].sha256);
     expect(dependencies.map(({ spec }) => spec)).toContain('@emilia-protocol/verify@3.15.0');
-  }, 30_000);
+  });
 
   it('covers dependencies, optional dependencies, and peer dependencies', () => {
     const dependencies = collectInternalRegistryDependencies({

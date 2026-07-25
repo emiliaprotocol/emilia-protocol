@@ -136,7 +136,7 @@ jobs:
       - name: Materialize pinned registry dependency bytes
         env:
           PACKAGE_DIR: ${{ inputs.package_dir }}
-        run: node scripts/check-npm-package-dependencies.mjs "$PACKAGE_DIR" --install-pinned
+        run: node scripts/check-npm-package-dependencies.mjs --install-pinned "$PACKAGE_DIR"
 
       - name: Test package
         working-directory: ${{ inputs.package_dir }}
