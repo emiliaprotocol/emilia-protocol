@@ -56,18 +56,24 @@ Resource-level reconciliation is not treated as sufficient proof. After the
 zero-traffic candidates exist and before every promotion step,
 `verify-effective-iam.py --live` queries Cloud Asset Policy Analyzer for the
 effective `run.routes.invoke` and `secretmanager.versions.access` permissions.
-It expands groups and service-account impersonation, includes inherited
-project/folder/organization grants, and refuses partial, conditional, public,
-aggregate, unexpanded, or non-allowlisted access. The effective-IAM manifest
-requires the workload identities plus only the exact Compute Engine and Cloud
-Run service agents derived from the pinned numeric project ID for every checked
-target. Those Google-managed agents are an accepted Cloud Run control-plane
-trust boundary, not resource-level grants created by this lane: their
-predefined roles include service-account impersonation and, for the Cloud Run
-agent, route invocation. User accounts, default compute accounts, arbitrary
-service agents, inherited owners, and inherited admins remain forbidden. An
-inherited owner or admin grant therefore blocks promotion even when the
-resource policy itself looks closed.
+It expands groups and service-account impersonation and refuses partial,
+conditional, public, aggregate, unexpanded, or non-allowlisted access. Before
+analysis, the verifier independently queries the project ancestry. A standalone
+project uses its exact project scope. If any folder or organization ancestry
+exists, the deployment must supply the exact covering
+`organizations/NUMBER` analyzer scope and the caller must be able to analyze
+that scope; project scope is never claimed to cover ancestor policies. Missing,
+partial, or mismatched ancestry evidence fails closed.
+
+The effective-IAM manifest requires the exact project-derived Compute Engine
+and Cloud Run service agents for every checked target, alongside the workload
+identities. This is an accepted GCP control-plane dependency, not a
+resource-level grant created by this lane. Their predefined roles include
+service-account impersonation and, for the Cloud Run agent, route invocation.
+User accounts, default compute accounts, arbitrary service agents, inherited
+owners, and inherited admins remain forbidden. An inherited owner or admin
+grant therefore blocks promotion even when the resource policy itself looks
+closed.
 
 Policy Analyzer evaluates IAM allow policies and does not apply deny policies
 to its results. Deny policies may provide defense in depth, but they cannot be
@@ -103,6 +109,12 @@ deploy/consequence-control-cloud-run/deploy.sh \
   --config /tmp/emilia-cloud-run.env \
   --render
 
+# Required as well when the project has folder or organization ancestry:
+deploy/consequence-control-cloud-run/deploy.sh \
+  --config /tmp/emilia-cloud-run.env \
+  --analyzer-scope organizations/123456789 \
+  --render
+
 deploy/consequence-control-cloud-run/traffic.sh \
   --config /tmp/emilia-cloud-run.env \
   --render-promote
@@ -118,17 +130,31 @@ approval.
 
 1. verify APIs, pre-existing secrets, and service accounts, then close and
    read-back-verify each secret's accessor allowlist;
-2. deploy the actuator candidate by exact digest with zero traffic and a
+2. query and validate the complete project ancestry, requiring an explicit
+   organization-wide analyzer scope when any parent hierarchy exists;
+3. resolve the one active deployer identity and temporarily grant
+   `roles/iam.serviceAccountUser` on exactly the decision and actuator runtime
+   service accounts;
+4. deploy the actuator candidate by exact digest with zero traffic and a
    revision tag;
-3. close and read-back-verify actuator `roles/run.invoker` to exactly the
+5. close and read-back-verify actuator `roles/run.invoker` to exactly the
    decision service account;
-4. resolve the actuator's canonical service URL for the token audience and the
+6. resolve the actuator's canonical service URL for the token audience and the
    exact tag URL for the request destination;
-5. deploy the decision candidate by exact digest with zero traffic, configured
+7. deploy the decision candidate by exact digest with zero traffic, configured
    to call the tagged actuator revision with dual-header authentication;
-6. run the live effective-IAM proof over the actuator and every referenced
+8. revoke the two temporary `actAs` grants, read back both runtime
+   service-account policies, and stop immediately unless the deployer is absent
+   from both;
+9. re-query ancestry, then run the live effective-IAM proof over the actuator
+   and every referenced
    secret, refusing inherited or impersonated access outside the allowlist;
-7. stop without changing production traffic.
+10. stop without changing production traffic.
+
+An EXIT cleanup path retries revocation if either deployment or any intervening
+step fails. The release identity must not retain project-wide
+`iam.serviceAccounts.actAs`; the live proof runs only after revocation is
+read-back-verified.
 
 The actuator must be reachable through the configured VPC path. Cloud Run calls
 to an internal-ingress service must route through a VPC considered internal, so
@@ -265,7 +291,11 @@ not blocked on canary evidence.
 An apply remains blocked until all of the following exist:
 
 - Google Cloud credentials with permission to manage Cloud Run services,
-  runtime service accounts, service-level Invoker IAM, and per-secret IAM;
+  runtime service accounts, service-level Invoker IAM, and per-secret IAM,
+  with `actAs` granted just in time only on the two runtime identities;
+- organization-level Policy Analyzer visibility and an explicit
+  `--analyzer-scope organizations/NUMBER` whenever the project has any parent
+  folder or organization;
 - a `/26` or larger Direct VPC egress subnet with the routing/DNS needed for
   internal Cloud Run service-to-service access;
 - every configured Secret Manager secret and numeric version;

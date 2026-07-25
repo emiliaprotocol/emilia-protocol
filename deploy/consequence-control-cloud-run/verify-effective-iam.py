@@ -666,6 +666,81 @@ def live_analysis(
         ) from error
 
 
+def live_analyzer_scope(
+    *,
+    project_id: str,
+    project_number: str,
+    runner: Callable[..., subprocess.CompletedProcess[str]],
+    gcloud: str,
+) -> str:
+    command = [
+        gcloud,
+        "projects",
+        "get-ancestors",
+        project_id,
+        "--format=json",
+        "--quiet",
+    ]
+    try:
+        completed = runner(
+            command,
+            check=False,
+            text=True,
+            capture_output=True,
+            timeout=60,
+        )
+    except (OSError, subprocess.TimeoutExpired) as error:
+        raise VerificationError(f"gcloud ancestry lookup failed: {error}") from error
+    if completed.returncode != 0:
+        detail = completed.stderr.strip() or "no diagnostic"
+        raise VerificationError(
+            f"gcloud ancestry lookup failed ({completed.returncode}): {detail}"
+        )
+    try:
+        entries = json.loads(completed.stdout)
+    except json.JSONDecodeError as error:
+        raise VerificationError(
+            "gcloud ancestry lookup did not return one JSON document"
+        ) from error
+    if not isinstance(entries, list) or not entries:
+        raise VerificationError("project ancestry is empty or unavailable")
+
+    projects: set[str] = set()
+    folders: set[str] = set()
+    organizations: set[str] = set()
+    for index, entry_value in enumerate(entries):
+        path = f"project ancestry[{index}]"
+        entry = require_object(entry_value, path)
+        entry_type = require_string(entry.get("type"), f"{path}.type")
+        entry_id = require_string(entry.get("id"), f"{path}.id")
+        if entry_type == "project":
+            projects.add(entry_id)
+        elif entry_type == "folder":
+            if not entry_id.isdigit() or entry_id.startswith("0"):
+                raise VerificationError(f"{path}.id is not a numeric folder ID")
+            folders.add(entry_id)
+        elif entry_type == "organization":
+            if not entry_id.isdigit() or entry_id.startswith("0"):
+                raise VerificationError(
+                    f"{path}.id is not a numeric organization ID"
+                )
+            organizations.add(entry_id)
+        else:
+            raise VerificationError(f"{path}.type is unknown: {entry_type}")
+
+    if len(projects) != 1 or not projects <= {project_id, project_number}:
+        raise VerificationError(
+            "project ancestry does not identify the deployment project exactly once"
+        )
+    if not folders and not organizations:
+        return f"projects/{project_id}"
+    if len(organizations) != 1:
+        raise VerificationError(
+            "project ancestry exists but one covering organization is unavailable"
+        )
+    return f"organizations/{next(iter(organizations))}"
+
+
 def validate_target_shape(target: dict[str, Any], path: str, live: bool) -> None:
     required = {"name", "kind", "scope", "resource", "allowedPrincipals"}
     optional = {"analysis"} if live else set()
@@ -756,6 +831,10 @@ def verify_manifest(
             raise VerificationError(
                 f"{path}.scope does not use manifest.projectId"
             )
+        if scope_match.group(1) == "folders":
+            raise VerificationError(
+                f"{path}.scope must cover the project or its organization"
+            )
 
         analysis = target.get("analysis")
         prepared.append((name, kind, scope, resource, allowed, analysis))
@@ -764,6 +843,24 @@ def verify_manifest(
         raise VerificationError("manifest must contain exactly one actuator")
     if secret_count < 1:
         raise VerificationError("manifest must contain at least one named secret")
+
+    if live:
+        expected_scope = live_analyzer_scope(
+            project_id=project_id,
+            project_number=project_number,
+            runner=runner,
+            gcloud=gcloud,
+        )
+        configured_scopes = {scope for _name, _kind, scope, *_rest in prepared}
+        if configured_scopes != {expected_scope}:
+            if expected_scope.startswith("organizations/"):
+                raise VerificationError(
+                    "project has organization or folder ancestry; an explicit "
+                    f"{expected_scope} analyzer scope is required"
+                )
+            raise VerificationError(
+                "standalone project must use its exact project analyzer scope"
+            )
 
     verified: dict[str, tuple[str, ...]] = {}
     for index, (name, kind, scope, resource, allowed, analysis) in enumerate(prepared):

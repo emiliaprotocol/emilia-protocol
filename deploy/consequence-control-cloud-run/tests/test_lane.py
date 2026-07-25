@@ -97,11 +97,53 @@ class RenderTests(unittest.TestCase):
             "gcloud run services set-iam-policy emilia-consequence-actuator",
             self.plan,
         )
-        self.assertNotIn("add-iam-policy-binding", self.plan)
+        self.assertNotIn("gcloud run services add-iam-policy-binding", self.plan)
+        self.assertNotIn("gcloud secrets add-iam-policy-binding", self.plan)
         self.assertNotIn(
             "--member serviceAccount:emilia-actuator"
             "@test-project.iam.gserviceaccount.com --role roles/run.invoker",
             self.plan,
+        )
+
+    def test_jit_act_as_wraps_only_the_two_zero_traffic_deployments(self) -> None:
+        self.assertEqual(
+            self.plan.count(
+                "gcloud iam service-accounts add-iam-policy-binding"
+            ),
+            2,
+        )
+        self.assertEqual(
+            self.plan.count(
+                "gcloud iam service-accounts remove-iam-policy-binding"
+            ),
+            2,
+        )
+        for account in (
+            "emilia-actuator@test-project.iam.gserviceaccount.com",
+            "emilia-decision@test-project.iam.gserviceaccount.com",
+        ):
+            self.assertIn(
+                "gcloud iam service-accounts add-iam-policy-binding "
+                + account,
+                self.plan,
+            )
+            self.assertIn(
+                "gcloud iam service-accounts remove-iam-policy-binding "
+                + account,
+                self.plan,
+            )
+        self.assertIn("roles/iam.serviceAccountUser", self.plan)
+        self.assertLess(
+            self.plan.index("# temporarily grant the active deployer actAs"),
+            self.plan.index("# candidate actuator:"),
+        )
+        self.assertLess(
+            self.plan.index("# candidate decision:"),
+            self.plan.index("# revoke temporary actAs"),
+        )
+        self.assertLess(
+            self.plan.index("# revoke temporary actAs"),
+            self.plan.index("# verify inherited"),
         )
 
     def test_secret_access_is_reconciled_instead_of_added(self) -> None:
@@ -111,7 +153,12 @@ class RenderTests(unittest.TestCase):
         self.assertNotIn("secrets add-iam-policy-binding", self.plan)
 
     def test_effective_iam_is_verified_after_candidate_deployment(self) -> None:
+        self.assertIn("gcloud projects get-ancestors test-project", self.plan)
         self.assertIn("emit-effective-iam-manifest.py", self.plan)
+        self.assertIn(
+            "--analyzer-scope \\<resolved-after-ancestry-proof\\>",
+            self.plan,
+        )
         self.assertIn("verify-effective-iam.py", self.plan)
         self.assertIn("--live", self.plan)
         self.assertLess(
@@ -182,6 +229,19 @@ class RenderTests(unittest.TestCase):
         self.assertNotEqual(result.returncode, 0)
         self.assertIn("pinned", result.stderr)
 
+    def test_invalid_explicit_analyzer_scope_is_refused_before_render(self) -> None:
+        result = run(
+            str(LANE / "deploy.sh"),
+            "--config",
+            str(CONFIG),
+            "--render",
+            "--analyzer-scope",
+            "folders/123456789",
+            check=False,
+        )
+        self.assertNotEqual(result.returncode, 0)
+        self.assertIn("--analyzer-scope", result.stderr)
+
 
 class TrafficTests(unittest.TestCase):
     def test_promotion_and_rollback_order(self) -> None:
@@ -221,6 +281,242 @@ class TrafficTests(unittest.TestCase):
         )
         self.assertNotEqual(result.returncode, 0)
         self.assertIn("DEPLOYMENT_APPROVED=true", result.stderr)
+
+
+class ApplyJitIamTests(unittest.TestCase):
+    def fake_gcloud(self, directory: Path) -> tuple[Path, Path]:
+        executable = directory / "gcloud"
+        log = directory / "gcloud.log"
+        state = directory / "gcloud-state.json"
+        executable.write_text(
+            """#!/usr/bin/env python3
+import json
+import os
+import sys
+from pathlib import Path
+
+args = sys.argv[1:]
+log = Path(os.environ["GCLOUD_LOG"])
+state_path = Path(os.environ["GCLOUD_STATE"])
+with log.open("a", encoding="utf-8") as handle:
+    handle.write(json.dumps(args) + "\\n")
+try:
+    state = json.loads(state_path.read_text(encoding="utf-8"))
+except FileNotFoundError:
+    state = {"grants": [], "policies": {}}
+
+def save():
+    state_path.write_text(json.dumps(state), encoding="utf-8")
+
+def output(value):
+    print(json.dumps(value, separators=(",", ":")))
+
+if args[:3] == ["config", "get-value", "account"]:
+    print("deployer@example.com")
+elif args[:2] == ["services", "enable"]:
+    pass
+elif args[:2] == ["projects", "describe"]:
+    print("123456789")
+elif args[:2] == ["projects", "get-ancestors"]:
+    output(
+        json.loads(
+            os.environ.get(
+                "ANCESTRY_JSON",
+                '[{"type":"project","id":"test-project"}]',
+            )
+        )
+    )
+elif args[:3] == ["iam", "service-accounts", "describe"]:
+    pass
+elif args[:3] == ["iam", "service-accounts", "add-iam-policy-binding"]:
+    account = args[3]
+    if account not in state["grants"]:
+        state["grants"].append(account)
+    save()
+elif args[:3] == ["iam", "service-accounts", "remove-iam-policy-binding"]:
+    account = args[3]
+    if os.environ.get("FAIL_REVOKE") == account:
+        print("forced revoke failure", file=sys.stderr)
+        raise SystemExit(1)
+    if account not in state["grants"]:
+        print("binding absent", file=sys.stderr)
+        raise SystemExit(1)
+    state["grants"].remove(account)
+    save()
+elif args[:3] == ["iam", "service-accounts", "get-iam-policy"]:
+    account = args[3]
+    bindings = []
+    if account in state["grants"]:
+        bindings.append(
+            {
+                "role": "roles/iam.serviceAccountUser",
+                "members": ["user:deployer@example.com"],
+            }
+        )
+    output({"bindings": bindings})
+elif args[:2] == ["secrets", "describe"]:
+    pass
+elif args[:2] == ["secrets", "get-iam-policy"]:
+    output(state["policies"].get("secret:" + args[2], {"bindings": []}))
+elif args[:2] == ["secrets", "set-iam-policy"]:
+    state["policies"]["secret:" + args[2]] = json.loads(
+        Path(args[3]).read_text(encoding="utf-8")
+    )
+    save()
+elif args[:2] == ["run", "deploy"]:
+    pass
+elif args[:3] == ["run", "services", "get-iam-policy"]:
+    output(state["policies"].get("run:" + args[3], {"bindings": []}))
+elif args[:3] == ["run", "services", "set-iam-policy"]:
+    state["policies"]["run:" + args[3]] = json.loads(
+        Path(args[4]).read_text(encoding="utf-8")
+    )
+    save()
+elif args[:3] == ["run", "services", "describe"]:
+    if "--format=json" in args:
+        output(
+            {
+                "status": {
+                    "traffic": [
+                        {
+                            "tag": "canary-r20260725b",
+                            "url": "https://actuator-canary.example.run",
+                        }
+                    ]
+                }
+            }
+        )
+    else:
+        print("https://actuator.example.run")
+elif args[:2] == ["asset", "analyze-iam-policy"]:
+    print("forced analyzer stop", file=sys.stderr)
+    raise SystemExit(1)
+else:
+    print("unexpected fake gcloud command: " + repr(args), file=sys.stderr)
+    raise SystemExit(1)
+""",
+            encoding="utf-8",
+        )
+        executable.chmod(0o755)
+        return log, state
+
+    def apply(
+        self,
+        *,
+        fail_revoke: str = "",
+        ancestry: list[dict[str, str]] | None = None,
+        analyzer_scope: str = "",
+    ) -> tuple[
+        subprocess.CompletedProcess[str], list[list[str]]
+    ]:
+        with tempfile.TemporaryDirectory(prefix="emilia-jit-iam-") as directory:
+            root = Path(directory)
+            log, state = self.fake_gcloud(root)
+            arguments = [
+                str(LANE / "deploy.sh"),
+                "--config",
+                str(CONFIG),
+                "--apply",
+            ]
+            if analyzer_scope:
+                arguments.extend(["--analyzer-scope", analyzer_scope])
+            result = run(
+                *arguments,
+                check=False,
+                extra_env={
+                    "DEPLOYMENT_APPROVED": "true",
+                    "PATH": f"{root}:{os.environ['PATH']}",
+                    "GCLOUD_LOG": str(log),
+                    "GCLOUD_STATE": str(state),
+                    "FAIL_REVOKE": fail_revoke,
+                    "ANCESTRY_JSON": json.dumps(
+                        ancestry
+                        if ancestry is not None
+                        else [{"type": "project", "id": "test-project"}]
+                    ),
+                },
+            )
+            calls = [
+                json.loads(line)
+                for line in log.read_text(encoding="utf-8").splitlines()
+            ]
+        return result, calls
+
+    def test_apply_revokes_and_reads_back_before_effective_analysis(self) -> None:
+        result, calls = self.apply()
+        self.assertNotEqual(result.returncode, 0)
+        adds = [
+            index
+            for index, call in enumerate(calls)
+            if call[:3]
+            == ["iam", "service-accounts", "add-iam-policy-binding"]
+        ]
+        removes = [
+            index
+            for index, call in enumerate(calls)
+            if call[:3]
+            == ["iam", "service-accounts", "remove-iam-policy-binding"]
+        ]
+        deploys = [
+            index
+            for index, call in enumerate(calls)
+            if call[:2] == ["run", "deploy"]
+        ]
+        analysis = next(
+            index
+            for index, call in enumerate(calls)
+            if call[:2] == ["asset", "analyze-iam-policy"]
+        )
+        self.assertEqual(len(adds), 2)
+        self.assertEqual(len(deploys), 2)
+        self.assertEqual(len(removes), 2)
+        self.assertLess(max(adds), min(deploys))
+        self.assertLess(max(deploys), min(removes))
+        self.assertLess(max(removes), analysis)
+        for account in (
+            "emilia-actuator@test-project.iam.gserviceaccount.com",
+            "emilia-decision@test-project.iam.gserviceaccount.com",
+        ):
+            account_reads = [
+                index
+                for index, call in enumerate(calls)
+                if call[:4]
+                == ["iam", "service-accounts", "get-iam-policy", account]
+            ]
+            self.assertGreaterEqual(len(account_reads), 2)
+            self.assertLess(max(account_reads), analysis)
+
+    def test_revoke_failure_prevents_effective_analysis(self) -> None:
+        result, calls = self.apply(
+            fail_revoke=(
+                "emilia-actuator@test-project.iam.gserviceaccount.com"
+            )
+        )
+        self.assertNotEqual(result.returncode, 0)
+        self.assertIn("revocation", result.stderr)
+        self.assertFalse(
+            any(call[:2] == ["asset", "analyze-iam-policy"] for call in calls)
+        )
+
+    def test_parent_hierarchy_requires_explicit_organization_scope(self) -> None:
+        ancestry = [
+            {"type": "project", "id": "test-project"},
+            {"type": "folder", "id": "123456789"},
+            {"type": "organization", "id": "987654321"},
+        ]
+        result, calls = self.apply(ancestry=ancestry)
+        self.assertNotEqual(result.returncode, 0)
+        self.assertIn(
+            "requires explicit --analyzer-scope organizations/987654321",
+            result.stderr,
+        )
+        self.assertFalse(
+            any(
+                call[:3]
+                == ["iam", "service-accounts", "add-iam-policy-binding"]
+                for call in calls
+            )
+        )
 
 
 class CanaryTests(unittest.TestCase):

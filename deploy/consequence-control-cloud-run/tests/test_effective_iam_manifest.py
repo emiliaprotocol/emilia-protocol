@@ -66,6 +66,37 @@ class EffectiveIamManifestTests(unittest.TestCase):
             (COMPUTE_AGENT, RUN_AGENT),
         )
 
+    def test_explicit_organization_scope_is_applied_to_every_target(self) -> None:
+        value = emitter.manifest(
+            project="test-project",
+            project_number="123456789",
+            region="us-central1",
+            actuator_service="emilia-consequence-actuator",
+            decision_principal=DECISION,
+            secrets=[f"actuator-key={ACTUATOR}"],
+            analyzer_scope="organizations/987654321",
+        )
+        self.assertEqual(
+            {target["scope"] for target in value["targets"]},
+            {"organizations/987654321"},
+        )
+
+    def test_folder_or_mismatched_project_scope_is_refused(self) -> None:
+        for scope in ("folders/123456789", "projects/other-project"):
+            with self.subTest(scope=scope):
+                with self.assertRaisesRegex(
+                    emitter.ManifestError, "scope"
+                ):
+                    emitter.manifest(
+                        project="test-project",
+                        project_number="123456789",
+                        region="us-central1",
+                        actuator_service="emilia-consequence-actuator",
+                        decision_principal=DECISION,
+                        secrets=[f"actuator-key={ACTUATOR}"],
+                        analyzer_scope=scope,
+                    )
+
     def test_aggregate_or_user_principal_is_refused(self) -> None:
         for candidate in ("allUsers", "user:owner@example.com"):
             with self.subTest(candidate=candidate):
@@ -101,6 +132,7 @@ class EffectiveIamManifestTests(unittest.TestCase):
                     "--region=us-central1",
                     "--actuator-service=emilia-consequence-actuator",
                     f"--decision-principal={DECISION}",
+                    "--analyzer-scope=organizations/987654321",
                     "--secret",
                     f"actuator-key={ACTUATOR}",
                     "--output",
@@ -115,6 +147,15 @@ class EffectiveIamManifestTests(unittest.TestCase):
             self.assertEqual(
                 json.loads(output.read_text(encoding="utf-8"))["version"],
                 "emilia-effective-iam/v1",
+            )
+            self.assertEqual(
+                {
+                    target["scope"]
+                    for target in json.loads(
+                        output.read_text(encoding="utf-8")
+                    )["targets"]
+                },
+                {"organizations/987654321"},
             )
 
 

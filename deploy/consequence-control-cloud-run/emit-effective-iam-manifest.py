@@ -21,6 +21,10 @@ SERVICE_ACCOUNT = re.compile(
     r"^serviceAccount:[a-z][a-z0-9-]{0,61}[a-z0-9]@"
     r"[a-z][a-z0-9-]{4,28}[a-z0-9]\.iam\.gserviceaccount\.com$"
 )
+ANALYZER_SCOPE = re.compile(
+    r"^(projects/[a-z][a-z0-9-]{4,28}[a-z0-9]|"
+    r"organizations/[1-9][0-9]*)$"
+)
 
 
 class ManifestError(ValueError):
@@ -34,7 +38,7 @@ def principal(value: str, name: str) -> str:
 
 
 def managed_control_plane_principals(project_number: str) -> tuple[str, str]:
-    """Return the project-derived control-plane principals accepted by this profile."""
+    """Return exact project-derived control-plane principals accepted by the profile."""
     return (
         (
             "serviceAccount:"
@@ -75,6 +79,7 @@ def manifest(
     actuator_service: str,
     decision_principal: str,
     secrets: list[str],
+    analyzer_scope: str | None = None,
 ) -> dict[str, object]:
     if PROJECT.fullmatch(project) is None:
         raise ManifestError("project is invalid")
@@ -93,7 +98,15 @@ def manifest(
     if len(names) != len(set(names)):
         raise ManifestError("secret specifications contain a duplicate")
 
-    scope = f"projects/{project}"
+    scope = analyzer_scope or f"projects/{project}"
+    if ANALYZER_SCOPE.fullmatch(scope) is None:
+        raise ManifestError(
+            "analyzer scope must be the exact project or an ancestor organization"
+        )
+    if scope.startswith("projects/") and scope != f"projects/{project}":
+        raise ManifestError(
+            "project analyzer scope does not match the deployment project"
+        )
     targets: list[dict[str, object]] = [
         {
             "name": "actuator",
@@ -162,6 +175,14 @@ def main() -> int:
     parser.add_argument("--region", required=True)
     parser.add_argument("--actuator-service", required=True)
     parser.add_argument("--decision-principal", required=True)
+    parser.add_argument(
+        "--analyzer-scope",
+        default=os.environ.get("EMILIA_IAM_ANALYZER_SCOPE"),
+        help=(
+            "projects/PROJECT for a standalone project or the explicit "
+            "organizations/NUMBER scope proven from project ancestry"
+        ),
+    )
     parser.add_argument("--secret", action="append", default=[])
     parser.add_argument("--output", required=True, type=Path)
     args = parser.parse_args()
@@ -173,6 +194,7 @@ def main() -> int:
             actuator_service=args.actuator_service,
             decision_principal=args.decision_principal,
             secrets=args.secret,
+            analyzer_scope=args.analyzer_scope,
         )
         write_atomic(args.output, value)
     except (ManifestError, OSError) as error:

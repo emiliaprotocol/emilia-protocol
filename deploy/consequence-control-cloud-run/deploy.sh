@@ -7,6 +7,7 @@ source "$LANE_DIR/lib/common.sh"
 
 CONFIG=
 MODE=render
+ANALYZER_SCOPE=
 while (($#)); do
   case "$1" in
     --config)
@@ -22,6 +23,11 @@ while (($#)); do
       MODE=apply
       shift
       ;;
+    --analyzer-scope)
+      (($# >= 2)) || lane_die "--analyzer-scope requires a value"
+      ANALYZER_SCOPE=$2
+      shift 2
+      ;;
     *)
       lane_die "unknown argument: $1"
       ;;
@@ -31,6 +37,11 @@ done
 [[ -n "$CONFIG" ]] || lane_die "--config is required"
 load_lane_config "$CONFIG"
 validate_lane_config
+if [[ -n "$ANALYZER_SCOPE" \
+      && "$ANALYZER_SCOPE" != "projects/$PROJECT_ID" \
+      && ! "$ANALYZER_SCOPE" =~ ^organizations/[1-9][0-9]*$ ]]; then
+  lane_die "--analyzer-scope must be projects/$PROJECT_ID or organizations/NUMBER"
+fi
 
 ACTUATOR_SA=$(runtime_service_account_email "$ACTUATOR_SERVICE_ACCOUNT")
 DECISION_SA=$(runtime_service_account_email "$DECISION_SERVICE_ACCOUNT")
@@ -200,6 +211,194 @@ resolve_service_url() {
     --format='value(status.url)'
 }
 
+render_jit_act_as() {
+  local action=$1 account
+  for account in "$ACTUATOR_SA" "$DECISION_SA"; do
+    shell_join gcloud iam service-accounts \
+      "${action}-iam-policy-binding" "$account" \
+      "--project=$PROJECT_ID" \
+      --member '<resolved-active-deployer-principal>' \
+      --role roles/iam.serviceAccountUser \
+      --condition=None \
+      --quiet
+    shell_join gcloud iam service-accounts get-iam-policy "$account" \
+      "--project=$PROJECT_ID" --format=json
+  done
+}
+
+resolve_deployer_principal() {
+  local account
+  account=$(gcloud config get-value account --quiet)
+  [[ -n "$account" && "$account" != "(unset)" \
+      && "$account" != *[$'\r\n\t ']* ]] \
+    || lane_die "active gcloud deployer account could not be resolved exactly"
+  case "$account" in
+    user:*|serviceAccount:*|principal://*)
+      DEPLOYER_PRINCIPAL=$account
+      ;;
+    *@*.gserviceaccount.com)
+      DEPLOYER_PRINCIPAL="serviceAccount:$account"
+      ;;
+    *@*)
+      DEPLOYER_PRINCIPAL="user:$account"
+      ;;
+    *)
+      lane_die "active gcloud deployer is not a concrete IAM principal"
+      ;;
+  esac
+}
+
+resolve_analyzer_scope() {
+  local project_number ancestry
+  project_number=$(gcloud projects describe "$PROJECT_ID" \
+    "--project=$PROJECT_ID" --format='value(projectNumber)')
+  [[ "$project_number" =~ ^[1-9][0-9]{5,29}$ ]] \
+    || lane_die "Google Cloud project number could not be resolved"
+  ancestry="$IAM_TMPDIR/project-ancestry.json"
+  gcloud projects get-ancestors "$PROJECT_ID" \
+    --format=json --quiet > "$ancestry" \
+    || lane_die "project ancestry could not be queried"
+  RESOLVED_ANALYZER_SCOPE=$(
+    python3 - "$ancestry" "$PROJECT_ID" "$project_number" "$ANALYZER_SCOPE" <<'PY'
+import json
+import re
+import sys
+
+path, project_id, project_number, requested = sys.argv[1:]
+try:
+    entries = json.load(open(path, encoding="utf-8"))
+except (OSError, json.JSONDecodeError) as error:
+    raise SystemExit(f"project ancestry is unavailable: {error}")
+if not isinstance(entries, list) or not entries:
+    raise SystemExit("project ancestry is empty or unavailable")
+
+projects = set()
+folders = set()
+organizations = set()
+for index, entry in enumerate(entries):
+    if not isinstance(entry, dict):
+        raise SystemExit(f"project ancestry[{index}] is not an object")
+    entry_type = entry.get("type")
+    entry_id = entry.get("id")
+    if not isinstance(entry_type, str) or not isinstance(entry_id, str):
+        raise SystemExit(f"project ancestry[{index}] is incomplete")
+    if entry_type == "project":
+        projects.add(entry_id)
+    elif entry_type == "folder":
+        if re.fullmatch(r"[1-9][0-9]*", entry_id) is None:
+            raise SystemExit(f"project ancestry[{index}] has an invalid folder ID")
+        folders.add(entry_id)
+    elif entry_type == "organization":
+        if re.fullmatch(r"[1-9][0-9]*", entry_id) is None:
+            raise SystemExit(
+                f"project ancestry[{index}] has an invalid organization ID"
+            )
+        organizations.add(entry_id)
+    else:
+        raise SystemExit(f"project ancestry[{index}] has an unknown type")
+
+if len(projects) != 1 or not projects <= {project_id, project_number}:
+    raise SystemExit(
+        "project ancestry does not identify the deployment project exactly once"
+    )
+if not folders and not organizations:
+    expected = f"projects/{project_id}"
+    if requested and requested != expected:
+        raise SystemExit(
+            f"standalone project requires analyzer scope {expected}, not {requested}"
+        )
+    print(expected)
+    raise SystemExit(0)
+if len(organizations) != 1:
+    raise SystemExit(
+        "project ancestry exists but one covering organization is unavailable"
+    )
+expected = f"organizations/{next(iter(organizations))}"
+if requested != expected:
+    raise SystemExit(
+        f"project ancestry requires explicit --analyzer-scope {expected}"
+    )
+print(expected)
+PY
+  ) || lane_die "project ancestry did not produce a safe analyzer scope"
+  printf 'project ancestry verified; Policy Analyzer scope=%s\n' \
+    "$RESOLVED_ANALYZER_SCOPE"
+}
+
+verify_jit_member_state() {
+  local account=$1 expected=$2
+  local policy="$IAM_TMPDIR/service-account-policy-${account%%@*}.json"
+  gcloud iam service-accounts get-iam-policy "$account" \
+    "--project=$PROJECT_ID" --format=json > "$policy" \
+    || return 1
+  python3 - "$policy" "$DEPLOYER_PRINCIPAL" "$expected" <<'PY'
+import json
+import sys
+
+path, principal, expected = sys.argv[1:]
+try:
+    policy = json.load(open(path, encoding="utf-8"))
+except (OSError, json.JSONDecodeError):
+    raise SystemExit(1)
+if not isinstance(policy, dict) or not isinstance(policy.get("bindings", []), list):
+    raise SystemExit(1)
+present = False
+for binding in policy.get("bindings", []):
+    if not isinstance(binding, dict):
+        raise SystemExit(1)
+    if binding.get("role") != "roles/iam.serviceAccountUser":
+        continue
+    members = binding.get("members")
+    if not isinstance(members, list) or not all(
+        isinstance(member, str) for member in members
+    ):
+        raise SystemExit(1)
+    present = present or principal in members
+if present != (expected == "present"):
+    raise SystemExit(1)
+PY
+}
+
+grant_jit_act_as() {
+  local account
+  for account in "$ACTUATOR_SA" "$DECISION_SA"; do
+    verify_jit_member_state "$account" absent \
+      || lane_die "deployer already has persistent actAs on $account"
+    JIT_GRANTED_ACCOUNTS+=("$account")
+    gcloud iam service-accounts add-iam-policy-binding "$account" \
+      "--project=$PROJECT_ID" \
+      "--member=$DEPLOYER_PRINCIPAL" \
+      --role=roles/iam.serviceAccountUser \
+      --condition=None \
+      --quiet >/dev/null
+    verify_jit_member_state "$account" present \
+      || lane_die "temporary actAs grant was not visible on $account"
+  done
+}
+
+revoke_jit_act_as() {
+  local account failed=false
+  for account in "${JIT_GRANTED_ACCOUNTS[@]}"; do
+    if ! gcloud iam service-accounts remove-iam-policy-binding "$account" \
+      "--project=$PROJECT_ID" \
+      "--member=$DEPLOYER_PRINCIPAL" \
+      --role=roles/iam.serviceAccountUser \
+      --condition=None \
+      --quiet >/dev/null; then
+      printf 'failed to revoke temporary actAs from %s\n' "$account" >&2
+      failed=true
+    fi
+  done
+  for account in "$ACTUATOR_SA" "$DECISION_SA"; do
+    if ! verify_jit_member_state "$account" absent; then
+      printf 'temporary actAs revocation was not proven on %s\n' "$account" >&2
+      failed=true
+    fi
+  done
+  [[ "$failed" == false ]] || return 1
+  JIT_GRANTED_ACCOUNTS=()
+}
+
 reconcile_policy() {
   local resource_kind=$1 resource=$2 role=$3
   shift 3
@@ -259,6 +458,11 @@ reconcile_secret_accessors() {
 if [[ "$MODE" == render ]]; then
   printf '# prerequisites: existing service accounts, secrets, and secret-level IAM\n'
   render_prerequisites
+  printf '# query ancestry; standalone projects use project scope, while ancestry requires an explicit organization scope\n'
+  shell_join gcloud projects get-ancestors "$PROJECT_ID" \
+    --format=json --quiet
+  printf '# temporarily grant the active deployer actAs on exactly the two runtime identities\n'
+  render_jit_act_as add
   printf '# candidate actuator: %s, zero traffic\n' "$ACTUATOR_REVISION"
   shell_join "${actuator_command[@]}"
   printf '# close the resource-level invoker binding to the decision workload identity\n'
@@ -274,9 +478,12 @@ if [[ "$MODE" == render ]]; then
   decision_command '${ACTUATOR_CANARY_URL}' '${ACTUATOR_AUDIENCE}'
   printf '# candidate decision: %s, zero traffic\n' "$DECISION_REVISION"
   shell_join "${DECISION_COMMAND[@]}"
+  printf '# revoke temporary actAs and read back both runtime service-account policies\n'
+  render_jit_act_as remove
   printf '# verify inherited, group-expanded, and impersonation-derived access against the closed allowlist\n'
   shell_join python3 "$LANE_DIR/emit-effective-iam-manifest.py" \
     "--project=$PROJECT_ID" --project-number '<resolved-project-number>' \
+    --analyzer-scope "${ANALYZER_SCOPE:-<resolved-after-ancestry-proof>}" \
     "--region=$REGION" \
     "--actuator-service=$ACTUATOR_SERVICE" \
     "--decision-principal=serviceAccount:$DECISION_SA" \
@@ -290,7 +497,19 @@ fi
 
 require_apply_approval
 IAM_TMPDIR=$(mktemp -d)
-trap 'rm -rf "$IAM_TMPDIR"' EXIT
+JIT_GRANTED_ACCOUNTS=()
+cleanup() {
+  local status=$?
+  trap - EXIT
+  if ((${#JIT_GRANTED_ACCOUNTS[@]})); then
+    if ! revoke_jit_act_as; then
+      status=1
+    fi
+  fi
+  rm -rf "$IAM_TMPDIR"
+  exit "$status"
+}
+trap cleanup EXIT
 gcloud services enable \
   run.googleapis.com secretmanager.googleapis.com iam.googleapis.com \
   cloudasset.googleapis.com \
@@ -307,6 +526,8 @@ for account in "$ACTUATOR_SERVICE_ACCOUNT" "$DECISION_SERVICE_ACCOUNT"; do
   fi
 done
 
+resolve_deployer_principal
+resolve_analyzer_scope
 while IFS= read -r variable; do
   ref=${!variable}
   gcloud secrets describe "$(secret_name "$ref")" \
@@ -315,6 +536,7 @@ done < <(all_secret_variables)
 
 reconcile_secret_accessors
 
+grant_jit_act_as
 "${actuator_command[@]}"
 reconcile_policy run-service "$ACTUATOR_SERVICE" roles/run.invoker \
   "serviceAccount:$DECISION_SA"
@@ -326,6 +548,9 @@ ACTUATOR_CANARY_URL=$(resolve_tag_url)
   || lane_die "resolved actuator candidate URL is not https"
 decision_command "$ACTUATOR_CANARY_URL" "$ACTUATOR_AUDIENCE"
 "${DECISION_COMMAND[@]}"
+revoke_jit_act_as \
+  || lane_die "temporary actAs revocation or service-account policy readback failed"
+export EMILIA_IAM_ANALYZER_SCOPE=$RESOLVED_ANALYZER_SCOPE
 verify_effective_iam_live
 
 printf 'created zero-traffic candidates: %s and %s\n' \

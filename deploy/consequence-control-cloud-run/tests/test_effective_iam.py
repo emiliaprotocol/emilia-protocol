@@ -27,6 +27,14 @@ SECRET_RESOURCE = (
 )
 DECISION = "serviceAccount:emilia-decision@test-project.iam.gserviceaccount.com"
 ACTUATOR = "serviceAccount:emilia-actuator@test-project.iam.gserviceaccount.com"
+COMPUTE_AGENT = (
+    "serviceAccount:service-123456789@compute-system.iam.gserviceaccount.com"
+)
+RUN_AGENT = (
+    "serviceAccount:"
+    "service-123456789@serverless-robot-prod.iam.gserviceaccount.com"
+)
+STANDALONE_ANCESTRY = [{"type": "project", "id": "test-project"}]
 
 
 def result(
@@ -101,7 +109,71 @@ def response(
     }
 
 
+def impersonation_analysis(
+    service_account: str,
+    identities: list[str],
+    *,
+    permission: str = "iam.serviceAccounts.actAs",
+) -> dict:
+    account = service_account.removeprefix("serviceAccount:")
+    resource = (
+        "//iam.googleapis.com/projects/test-project/serviceAccounts/" + account
+    )
+    return {
+        "analysisQuery": {
+            "scope": PROJECT_SCOPE,
+            "resourceSelector": {"fullResourceName": resource},
+            "accessSelector": {"permissions": [permission]},
+            "options": {
+                "expandGroups": True,
+                "outputGroupEdges": True,
+            },
+        },
+        "analysisResults": [
+            result(
+                resource=resource,
+                permission=permission,
+                identities=identities,
+                role="roles/run.serviceAgent",
+            )
+        ],
+        "fullyExplored": True,
+    }
+
+
+def set_scope(value: dict, scope: str) -> None:
+    for target in value["targets"]:
+        target["scope"] = scope
+        analysis = target.get("analysis")
+        if analysis is None:
+            continue
+        analysis["mainAnalysis"]["analysisQuery"]["scope"] = scope
+        for impersonation in analysis.get(
+            "serviceAccountImpersonationAnalysis", []
+        ):
+            impersonation["analysisQuery"]["scope"] = scope
+
+
 def manifest() -> dict:
+    actuator_analysis = response(
+        resource=ACTUATOR_RESOURCE,
+        permission="run.routes.invoke",
+        identities=[DECISION],
+        role="roles/run.invoker",
+    )
+    actuator_analysis["serviceAccountImpersonationAnalysis"] = [
+        impersonation_analysis(DECISION, [COMPUTE_AGENT, RUN_AGENT])
+    ]
+    secret_analysis = response(
+        resource=SECRET_RESOURCE,
+        permission="secretmanager.versions.access",
+        identities=[ACTUATOR, DECISION],
+        role="roles/secretmanager.secretAccessor",
+    )
+    secret_analysis["serviceAccountImpersonationAnalysis"] = [
+        impersonation_analysis(ACTUATOR, [COMPUTE_AGENT, RUN_AGENT]),
+        impersonation_analysis(DECISION, [COMPUTE_AGENT, RUN_AGENT]),
+    ]
     return {
         "version": VERSION,
         "projectId": "test-project",
@@ -112,26 +184,21 @@ def manifest() -> dict:
                 "kind": "actuator",
                 "scope": PROJECT_SCOPE,
                 "resource": ACTUATOR_RESOURCE,
-                "allowedPrincipals": [DECISION],
-                "analysis": response(
-                    resource=ACTUATOR_RESOURCE,
-                    permission="run.routes.invoke",
-                    identities=[DECISION],
-                    role="roles/run.invoker",
-                ),
+                "allowedPrincipals": [COMPUTE_AGENT, DECISION, RUN_AGENT],
+                "analysis": actuator_analysis,
             },
             {
                 "name": "secret:actuator-token",
                 "kind": "secret",
                 "scope": PROJECT_SCOPE,
                 "resource": SECRET_RESOURCE,
-                "allowedPrincipals": [ACTUATOR, DECISION],
-                "analysis": response(
-                    resource=SECRET_RESOURCE,
-                    permission="secretmanager.versions.access",
-                    identities=[ACTUATOR, DECISION],
-                    role="roles/secretmanager.secretAccessor",
-                ),
+                "allowedPrincipals": [
+                    ACTUATOR,
+                    COMPUTE_AGENT,
+                    DECISION,
+                    RUN_AGENT,
+                ],
+                "analysis": secret_analysis,
             },
         ],
     }
@@ -147,10 +214,25 @@ class EffectiveIamTests(unittest.TestCase):
         self.assertEqual(
             verified,
             {
-                "actuator": (DECISION,),
-                "secret:actuator-token": tuple(sorted((ACTUATOR, DECISION))),
+                "actuator": tuple(
+                    sorted((COMPUTE_AGENT, DECISION, RUN_AGENT))
+                ),
+                "secret:actuator-token": tuple(
+                    sorted(
+                        (ACTUATOR, COMPUTE_AGENT, DECISION, RUN_AGENT)
+                    )
+                ),
             },
         )
+
+    def test_managed_service_agents_are_proven_through_impersonation_paths(
+        self,
+    ) -> None:
+        verified = verify_effective_iam.verify_manifest(manifest())
+        self.assertIn(COMPUTE_AGENT, verified["actuator"])
+        self.assertIn(RUN_AGENT, verified["actuator"])
+        self.assertIn(COMPUTE_AGENT, verified["secret:actuator-token"])
+        self.assertIn(RUN_AGENT, verified["secret:actuator-token"])
 
     def test_inherited_admin_permission_is_refused(self) -> None:
         value = manifest()
@@ -405,6 +487,7 @@ class EffectiveIamTests(unittest.TestCase):
         for target in value["targets"]:
             del target["analysis"]
         outputs = [
+            json.dumps(STANDALONE_ANCESTRY),
             json.dumps(manifest()["targets"][0]["analysis"]),
             json.dumps(manifest()["targets"][1]["analysis"]),
         ]
@@ -420,9 +503,20 @@ class EffectiveIamTests(unittest.TestCase):
             runner=runner,
             gcloud="test-gcloud",
         )
-        self.assertEqual(verified["actuator"], (DECISION,))
-        first_command = runner.call_args_list[0].args[0]
-        self.assertEqual(first_command[:3], ["test-gcloud", "asset", "analyze-iam-policy"])
+        self.assertEqual(
+            verified["actuator"],
+            tuple(sorted((COMPUTE_AGENT, DECISION, RUN_AGENT))),
+        )
+        ancestry_command = runner.call_args_list[0].args[0]
+        self.assertEqual(
+            ancestry_command[:4],
+            ["test-gcloud", "projects", "get-ancestors", "test-project"],
+        )
+        first_command = runner.call_args_list[1].args[0]
+        self.assertEqual(
+            first_command[:3],
+            ["test-gcloud", "asset", "analyze-iam-policy"],
+        )
         self.assertIn("--project=test-project", first_command)
         self.assertIn(f"--full-resource-name={ACTUATOR_RESOURCE}", first_command)
         self.assertIn("--permissions=run.routes.invoke", first_command)
@@ -431,6 +525,89 @@ class EffectiveIamTests(unittest.TestCase):
         self.assertIn("--analyze-service-account-impersonation", first_command)
         self.assertIn("--show-response", first_command)
         self.assertIn("--format=json", first_command)
+
+    def test_live_organization_ancestry_requires_and_uses_organization_scope(
+        self,
+    ) -> None:
+        expected = manifest()
+        set_scope(expected, "organizations/987654321")
+        value = copy.deepcopy(expected)
+        for target in value["targets"]:
+            del target["analysis"]
+        ancestry = [
+            {"type": "project", "id": "test-project"},
+            {"type": "folder", "id": "123456789"},
+            {"type": "organization", "id": "987654321"},
+        ]
+        runner = mock.Mock(
+            side_effect=[
+                subprocess.CompletedProcess(
+                    [], 0, stdout=json.dumps(ancestry), stderr=""
+                ),
+                *[
+                    subprocess.CompletedProcess(
+                        [], 0, stdout=json.dumps(target["analysis"]), stderr=""
+                    )
+                    for target in expected["targets"]
+                ],
+            ]
+        )
+        verified = verify_effective_iam.verify_manifest(
+            value,
+            live=True,
+            runner=runner,
+            gcloud="test-gcloud",
+        )
+        self.assertIn(RUN_AGENT, verified["actuator"])
+        analyzer_command = runner.call_args_list[1].args[0]
+        self.assertIn("--organization=987654321", analyzer_command)
+        self.assertNotIn("--project=test-project", analyzer_command)
+
+    def test_live_organization_ancestry_refuses_project_scope(self) -> None:
+        value = manifest()
+        for target in value["targets"]:
+            del target["analysis"]
+        ancestry = [
+            {"type": "project", "id": "test-project"},
+            {"type": "organization", "id": "987654321"},
+        ]
+        runner = mock.Mock(
+            return_value=subprocess.CompletedProcess(
+                [], 0, stdout=json.dumps(ancestry), stderr=""
+            )
+        )
+        with self.assertRaisesRegex(
+            verify_effective_iam.VerificationError,
+            "explicit organizations/987654321 analyzer scope is required",
+        ):
+            verify_effective_iam.verify_manifest(
+                value,
+                live=True,
+                runner=runner,
+                gcloud="test-gcloud",
+            )
+        self.assertEqual(runner.call_count, 1)
+
+    def test_live_ancestry_lookup_failure_is_fail_closed(self) -> None:
+        value = manifest()
+        for target in value["targets"]:
+            del target["analysis"]
+        runner = mock.Mock(
+            return_value=subprocess.CompletedProcess(
+                [], 1, stdout="", stderr="permission denied"
+            )
+        )
+        with self.assertRaisesRegex(
+            verify_effective_iam.VerificationError,
+            "ancestry lookup failed",
+        ):
+            verify_effective_iam.verify_manifest(
+                value,
+                live=True,
+                runner=runner,
+                gcloud="test-gcloud",
+            )
+        self.assertEqual(runner.call_count, 1)
 
     def test_live_mode_validates_all_targets_before_invoking_gcloud(self) -> None:
         value = manifest()
