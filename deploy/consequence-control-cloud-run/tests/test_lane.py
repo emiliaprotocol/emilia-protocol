@@ -116,7 +116,7 @@ class RenderTests(unittest.TestCase):
         )
         self.assertEqual(
             self.plan.count(
-                "gcloud iam service-accounts remove-iam-policy-binding"
+                "gcloud iam service-accounts set-iam-policy"
             ),
             2,
         )
@@ -130,11 +130,25 @@ class RenderTests(unittest.TestCase):
                 self.plan,
             )
             self.assertIn(
-                "gcloud iam service-accounts remove-iam-policy-binding "
+                "gcloud iam service-accounts set-iam-policy "
                 + account,
                 self.plan,
             )
         self.assertIn("roles/iam.serviceAccountUser", self.plan)
+        self.assertNotIn("--condition=None", self.plan)
+        self.assertIn(
+            "title=emilia-jit-actas-r20260725b-actuator",
+            self.plan,
+        )
+        self.assertIn(
+            "title=emilia-jit-actas-r20260725b-decision",
+            self.plan,
+        )
+        self.assertIn("hard\\ expiry\\ 900s", self.plan)
+        self.assertIn("--cleanup-jit", self.plan)
+        self.assertIn("--jit-phase before", self.plan)
+        self.assertIn("--jit-phase during", self.plan)
+        self.assertIn("--jit-phase after", self.plan)
         self.assertLess(
             self.plan.index("# temporarily grant the active deployer actAs"),
             self.plan.index("# candidate actuator:"),
@@ -294,6 +308,8 @@ class ApplyJitIamTests(unittest.TestCase):
             """#!/usr/bin/env python3
 import json
 import os
+import re
+import signal
 import sys
 from pathlib import Path
 
@@ -305,13 +321,107 @@ with log.open("a", encoding="utf-8") as handle:
 try:
     state = json.loads(state_path.read_text(encoding="utf-8"))
 except FileNotFoundError:
-    state = {"grants": [], "policies": {}}
+    state = {"sa_policies": {}, "policies": {}, "before_set": {}}
 
 def save():
     state_path.write_text(json.dumps(state), encoding="utf-8")
 
 def output(value):
     print(json.dumps(value, separators=(",", ":")))
+
+def flag(prefix):
+    return next(
+        (arg.removeprefix(prefix) for arg in args if arg.startswith(prefix)),
+        None,
+    )
+
+def sa_policy(account):
+    return state["sa_policies"].setdefault(
+        account,
+        {"version": 3, "bindings": []},
+    )
+
+def analyzer_response():
+    scope_flag = next(
+        arg for arg in args
+        if arg.startswith("--project=") or arg.startswith("--organization=")
+    )
+    scope_kind, scope_id = scope_flag[2:].split("=", 1)
+    scope = (
+        ("projects/" if scope_kind == "project" else "organizations/")
+        + scope_id
+    )
+    resource = flag("--full-resource-name=")
+    permission = flag("--permissions=")
+    access_time = flag("--access-time=")
+    query = {
+        "scope": scope,
+        "resourceSelector": {"fullResourceName": resource},
+        "accessSelector": {"permissions": [permission]},
+        "options": {
+            "expandGroups": True,
+            "outputGroupEdges": True,
+            "analyzeServiceAccountImpersonation": True,
+        },
+    }
+    if access_time:
+        query["conditionContext"] = {"accessTime": access_time}
+    results = []
+    if permission != "iam.serviceAccounts.actAs":
+        print("forced analyzer stop", file=sys.stderr)
+        raise SystemExit(1)
+    account = resource.rsplit("/", 1)[-1]
+    for binding in sa_policy(account).get("bindings", []):
+        if binding.get("role") != "roles/iam.serviceAccountUser":
+            continue
+        condition = binding.get("condition")
+        if condition and not access_time:
+            evaluation = "CONDITIONAL"
+        elif condition:
+            match = re.fullmatch(
+                r"request\\.time < timestamp\\('([^']+)'\\)",
+                condition.get("expression", ""),
+            )
+            evaluation = (
+                "TRUE"
+                if match and access_time < match.group(1)
+                else "FALSE"
+            )
+            if evaluation == "FALSE":
+                continue
+        else:
+            evaluation = None
+        acl = {
+            "resources": [{"fullResourceName": resource}],
+            "accesses": [{"permission": permission}],
+        }
+        if evaluation:
+            acl["conditionEvaluation"] = {"evaluationValue": evaluation}
+        results.append(
+            {
+                "attachedResourceFullName": resource,
+                "iamBinding": binding,
+                "accessControlLists": [acl],
+                "identityList": {
+                    "identities": [
+                        {"name": member}
+                        for member in binding.get("members", [])
+                    ]
+                },
+                "fullyExplored": True,
+            }
+        )
+    output(
+        {
+            "mainAnalysis": {
+                "analysisQuery": query,
+                "analysisResults": results,
+                "fullyExplored": True,
+            },
+            "serviceAccountImpersonationAnalysis": [],
+            "fullyExplored": True,
+        }
+    )
 
 if args[:3] == ["config", "get-value", "account"]:
     print("deployer@example.com")
@@ -332,30 +442,36 @@ elif args[:3] == ["iam", "service-accounts", "describe"]:
     pass
 elif args[:3] == ["iam", "service-accounts", "add-iam-policy-binding"]:
     account = args[3]
-    if account not in state["grants"]:
-        state["grants"].append(account)
+    condition_path = flag("--condition-from-file=")
+    sa_policy(account)["bindings"].append(
+        {
+            "role": "roles/iam.serviceAccountUser",
+            "members": [flag("--member=")],
+            "condition": json.loads(
+                Path(condition_path).read_text(encoding="utf-8")
+            ),
+        }
+    )
     save()
-elif args[:3] == ["iam", "service-accounts", "remove-iam-policy-binding"]:
+elif args[:3] == ["iam", "service-accounts", "set-iam-policy"]:
     account = args[3]
-    if os.environ.get("FAIL_REVOKE") == account:
-        print("forced revoke failure", file=sys.stderr)
+    if os.environ.get("FAIL_SET_POLICY") == account:
+        print("forced set-policy failure", file=sys.stderr)
         raise SystemExit(1)
-    if account not in state["grants"]:
-        print("binding absent", file=sys.stderr)
-        raise SystemExit(1)
-    state["grants"].remove(account)
+    state["before_set"][account] = sa_policy(account)
+    state["sa_policies"][account] = json.loads(
+        Path(args[4]).read_text(encoding="utf-8")
+    )
     save()
 elif args[:3] == ["iam", "service-accounts", "get-iam-policy"]:
     account = args[3]
-    bindings = []
-    if account in state["grants"]:
-        bindings.append(
-            {
-                "role": "roles/iam.serviceAccountUser",
-                "members": ["user:deployer@example.com"],
-            }
-        )
-    output({"bindings": bindings})
+    if (
+        os.environ.get("FAIL_READBACK") == account
+        and account in state["before_set"]
+    ):
+        output(state["before_set"][account])
+    else:
+        output(sa_policy(account))
 elif args[:2] == ["secrets", "describe"]:
     pass
 elif args[:2] == ["secrets", "get-iam-policy"]:
@@ -366,6 +482,8 @@ elif args[:2] == ["secrets", "set-iam-policy"]:
     )
     save()
 elif args[:2] == ["run", "deploy"]:
+    if os.environ.get("KILL_DEPLOY_ON_RUN") == "true":
+        os.kill(os.getppid(), signal.SIGKILL)
     pass
 elif args[:3] == ["run", "services", "get-iam-policy"]:
     output(state["policies"].get("run:" + args[3], {"bindings": []}))
@@ -391,8 +509,7 @@ elif args[:3] == ["run", "services", "describe"]:
     else:
         print("https://actuator.example.run")
 elif args[:2] == ["asset", "analyze-iam-policy"]:
-    print("forced analyzer stop", file=sys.stderr)
-    raise SystemExit(1)
+    analyzer_response()
 else:
     print("unexpected fake gcloud command: " + repr(args), file=sys.stderr)
     raise SystemExit(1)
@@ -405,7 +522,8 @@ else:
     def apply(
         self,
         *,
-        fail_revoke: str = "",
+        fail_set_policy: str = "",
+        fail_readback: str = "",
         ancestry: list[dict[str, str]] | None = None,
         analyzer_scope: str = "",
     ) -> tuple[
@@ -430,7 +548,8 @@ else:
                     "PATH": f"{root}:{os.environ['PATH']}",
                     "GCLOUD_LOG": str(log),
                     "GCLOUD_STATE": str(state),
-                    "FAIL_REVOKE": fail_revoke,
+                    "FAIL_SET_POLICY": fail_set_policy,
+                    "FAIL_READBACK": fail_readback,
                     "ANCESTRY_JSON": json.dumps(
                         ancestry
                         if ancestry is not None
@@ -453,28 +572,58 @@ else:
             if call[:3]
             == ["iam", "service-accounts", "add-iam-policy-binding"]
         ]
-        removes = [
+        cleanups = [
             index
             for index, call in enumerate(calls)
             if call[:3]
-            == ["iam", "service-accounts", "remove-iam-policy-binding"]
+            == ["iam", "service-accounts", "set-iam-policy"]
         ]
         deploys = [
             index
             for index, call in enumerate(calls)
             if call[:2] == ["run", "deploy"]
         ]
-        analysis = next(
+        analyses = [
             index
             for index, call in enumerate(calls)
             if call[:2] == ["asset", "analyze-iam-policy"]
-        )
+            and "--permissions=iam.serviceAccounts.actAs" in call
+        ]
         self.assertEqual(len(adds), 2)
         self.assertEqual(len(deploys), 2)
-        self.assertEqual(len(removes), 2)
-        self.assertLess(max(adds), min(deploys))
-        self.assertLess(max(deploys), min(removes))
-        self.assertLess(max(removes), analysis)
+        self.assertEqual(len(cleanups), 2)
+        self.assertEqual(len(analyses), 6)
+        self.assertLess(max(analyses[:2]), min(adds))
+        self.assertLess(max(adds), min(analyses[2:4]))
+        self.assertLess(max(analyses[2:4]), min(deploys))
+        self.assertLess(max(deploys), min(cleanups))
+        self.assertLess(max(cleanups), min(analyses[4:]))
+        self.assertTrue(
+            all(
+                any(
+                    argument.startswith("--access-time=")
+                    for argument in calls[index]
+                )
+                for index in analyses[2:4]
+            )
+        )
+        self.assertTrue(
+            all(
+                not any(
+                    argument.startswith("--access-time=")
+                    for argument in calls[index]
+                )
+                for index in analyses[:2] + analyses[4:]
+            )
+        )
+        for index in adds:
+            self.assertTrue(
+                any(
+                    argument.startswith("--condition-from-file=")
+                    for argument in calls[index]
+                )
+            )
+            self.assertNotIn("--condition=None", calls[index])
         for account in (
             "emilia-actuator@test-project.iam.gserviceaccount.com",
             "emilia-decision@test-project.iam.gserviceaccount.com",
@@ -485,20 +634,33 @@ else:
                 if call[:4]
                 == ["iam", "service-accounts", "get-iam-policy", account]
             ]
-            self.assertGreaterEqual(len(account_reads), 2)
-            self.assertLess(max(account_reads), analysis)
+            self.assertGreaterEqual(len(account_reads), 3)
+            self.assertLess(max(account_reads), max(analyses) + 1)
 
-    def test_revoke_failure_prevents_effective_analysis(self) -> None:
+    def test_cleanup_failure_prevents_after_effective_analysis(self) -> None:
         result, calls = self.apply(
-            fail_revoke=(
+            fail_set_policy=(
                 "emilia-actuator@test-project.iam.gserviceaccount.com"
             )
         )
         self.assertNotEqual(result.returncode, 0)
-        self.assertIn("revocation", result.stderr)
-        self.assertFalse(
-            any(call[:2] == ["asset", "analyze-iam-policy"] for call in calls)
+        self.assertIn("cleanup", result.stderr)
+        act_as_analyses = [
+            call
+            for call in calls
+            if call[:2] == ["asset", "analyze-iam-policy"]
+            and "--permissions=iam.serviceAccounts.actAs" in call
+        ]
+        self.assertEqual(len(act_as_analyses), 4)
+
+    def test_cleanup_readback_failure_is_fail_closed(self) -> None:
+        result, _calls = self.apply(
+            fail_readback=(
+                "emilia-actuator@test-project.iam.gserviceaccount.com"
+            )
         )
+        self.assertNotEqual(result.returncode, 0)
+        self.assertIn("readback", result.stderr)
 
     def test_parent_hierarchy_requires_explicit_organization_scope(self) -> None:
         ancestry = [
@@ -519,6 +681,112 @@ else:
                 for call in calls
             )
         )
+
+    def test_external_cleanup_recovers_after_hard_runner_termination(self) -> None:
+        with tempfile.TemporaryDirectory(prefix="emilia-jit-kill-") as directory:
+            root = Path(directory)
+            log, state = self.fake_gcloud(root)
+            environment = {
+                "DEPLOYMENT_APPROVED": "true",
+                "PATH": f"{root}:{os.environ['PATH']}",
+                "GCLOUD_LOG": str(log),
+                "GCLOUD_STATE": str(state),
+                "KILL_DEPLOY_ON_RUN": "true",
+            }
+            killed = run(
+                str(LANE / "deploy.sh"),
+                "--config",
+                str(CONFIG),
+                "--apply",
+                check=False,
+                extra_env=environment,
+            )
+            self.assertNotEqual(killed.returncode, 0)
+            dirty = json.loads(state.read_text(encoding="utf-8"))
+            self.assertTrue(
+                any(
+                    policy.get("bindings")
+                    for policy in dirty["sa_policies"].values()
+                )
+            )
+            cleanup = run(
+                str(LANE / "deploy.sh"),
+                "--config",
+                str(CONFIG),
+                "--cleanup-jit",
+                check=False,
+                extra_env={**environment, "KILL_DEPLOY_ON_RUN": ""},
+            )
+            self.assertEqual(cleanup.returncode, 0, cleanup.stderr)
+            cleaned = json.loads(state.read_text(encoding="utf-8"))
+            self.assertTrue(
+                all(
+                    not policy.get("bindings")
+                    for policy in cleaned["sa_policies"].values()
+                )
+            )
+
+    def test_external_cleanup_removes_expired_titled_grants(self) -> None:
+        with tempfile.TemporaryDirectory(prefix="emilia-jit-expired-") as directory:
+            root = Path(directory)
+            log, state = self.fake_gcloud(root)
+            policies = {}
+            for label in ("actuator", "decision"):
+                account = (
+                    f"emilia-{label}@test-project.iam.gserviceaccount.com"
+                )
+                policies[account] = {
+                    "version": 3,
+                    "bindings": [
+                        {
+                            "role": "roles/iam.serviceAccountUser",
+                            "members": ["user:deployer@example.com"],
+                            "condition": {
+                                "title": (
+                                    "emilia-jit-actas-r20260725b-" + label
+                                ),
+                                "description": (
+                                    f"EMILIA r20260725b {label} rollout; "
+                                    "hard expiry 900s"
+                                ),
+                                "expression": (
+                                    "request.time < timestamp("
+                                    "'2020-01-01T00:00:00Z')"
+                                ),
+                            },
+                        }
+                    ],
+                }
+            state.write_text(
+                json.dumps(
+                    {
+                        "sa_policies": policies,
+                        "policies": {},
+                        "before_set": {},
+                    }
+                ),
+                encoding="utf-8",
+            )
+            cleanup = run(
+                str(LANE / "deploy.sh"),
+                "--config",
+                str(CONFIG),
+                "--cleanup-jit",
+                check=False,
+                extra_env={
+                    "PATH": f"{root}:{os.environ['PATH']}",
+                    "GCLOUD_LOG": str(log),
+                    "GCLOUD_STATE": str(state),
+                },
+            )
+            self.assertEqual(cleanup.returncode, 0, cleanup.stderr)
+            cleaned = json.loads(state.read_text(encoding="utf-8"))
+            self.assertTrue(
+                all(
+                    not policy.get("bindings")
+                    for policy in cleaned["sa_policies"].values()
+                )
+            )
 
 
 class CanaryTests(unittest.TestCase):

@@ -5,6 +5,7 @@ import json
 import subprocess
 import tempfile
 import unittest
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
 
@@ -24,6 +25,7 @@ RUN_AGENT = (
     "serviceAccount:"
     "service-123456789@serverless-robot-prod.iam.gserviceaccount.com"
 )
+DEPLOYER = "user:deployer@example.com"
 
 
 class EffectiveIamManifestTests(unittest.TestCase):
@@ -65,6 +67,89 @@ class EffectiveIamManifestTests(unittest.TestCase):
             emitter.managed_control_plane_principals("123456789"),
             (COMPUTE_AGENT, RUN_AGENT),
         )
+
+    def test_manifest_includes_both_runtime_act_as_targets_and_unique_conditions(
+        self,
+    ) -> None:
+        issued_at = datetime(2026, 7, 25, 18, 0, tzinfo=timezone.utc)
+        expires_at = issued_at + timedelta(minutes=15)
+        value = emitter.manifest(
+            project="test-project",
+            project_number="123456789",
+            region="us-central1",
+            actuator_service="emilia-consequence-actuator",
+            actuator_principal=ACTUATOR,
+            decision_principal=DECISION,
+            deployer_principal=DEPLOYER,
+            jit_condition_title_prefix="emilia-jit-actas-r20260725b",
+            jit_issued_at=issued_at.isoformat().replace("+00:00", "Z"),
+            jit_expires_at=expires_at.isoformat().replace("+00:00", "Z"),
+            secrets=[f"actuator-key={ACTUATOR}"],
+            analyzer_scope="organizations/987654321",
+        )
+        targets = {
+            target["name"]: target
+            for target in value["targets"]
+            if target["kind"] == "runtimeActAs"
+        }
+        self.assertEqual(
+            set(targets),
+            {"runtime-actAs:actuator", "runtime-actAs:decision"},
+        )
+        self.assertEqual(
+            {
+                target["resource"]
+                for target in targets.values()
+            },
+            {
+                "//iam.googleapis.com/projects/test-project/serviceAccounts/"
+                "actuator@test-project.iam.gserviceaccount.com",
+                "//iam.googleapis.com/projects/test-project/serviceAccounts/"
+                "decision@test-project.iam.gserviceaccount.com",
+            },
+        )
+        titles = {
+            target["jitGrant"]["condition"]["title"]
+            for target in targets.values()
+        }
+        self.assertEqual(len(titles), 2)
+        self.assertTrue(all("r20260725b" in title for title in titles))
+        for target in targets.values():
+            grant = target["jitGrant"]
+            self.assertEqual(grant["principal"], DEPLOYER)
+            self.assertEqual(grant["maxLifetimeSeconds"], 900)
+            self.assertEqual(grant["issuedAt"], "2026-07-25T18:00:00Z")
+            self.assertEqual(grant["expiresAt"], "2026-07-25T18:15:00Z")
+            self.assertEqual(target["allowedPrincipals"], [])
+            self.assertEqual(target["scope"], "organizations/987654321")
+
+    def test_jit_expiry_over_hard_cap_is_refused(self) -> None:
+        with self.assertRaisesRegex(emitter.ManifestError, "900 seconds"):
+            emitter.manifest(
+                project="test-project",
+                project_number="123456789",
+                region="us-central1",
+                actuator_service="emilia-consequence-actuator",
+                actuator_principal=ACTUATOR,
+                decision_principal=DECISION,
+                deployer_principal=DEPLOYER,
+                jit_condition_title_prefix="emilia-jit-actas-r20260725b",
+                jit_issued_at="2026-07-25T18:00:00Z",
+                jit_expires_at="2026-07-25T18:15:01Z",
+                secrets=[f"actuator-key={ACTUATOR}"],
+            )
+
+    def test_partial_jit_coordinates_are_refused(self) -> None:
+        with self.assertRaisesRegex(emitter.ManifestError, "JIT coordinates"):
+            emitter.manifest(
+                project="test-project",
+                project_number="123456789",
+                region="us-central1",
+                actuator_service="emilia-consequence-actuator",
+                actuator_principal=ACTUATOR,
+                decision_principal=DECISION,
+                secrets=[f"actuator-key={ACTUATOR}"],
+            )
 
     def test_explicit_organization_scope_is_applied_to_every_target(self) -> None:
         value = emitter.manifest(

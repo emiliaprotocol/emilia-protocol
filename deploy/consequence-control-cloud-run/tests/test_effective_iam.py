@@ -6,6 +6,7 @@ import json
 import subprocess
 import tempfile
 import unittest
+from datetime import datetime, timezone
 from pathlib import Path
 from unittest import mock
 
@@ -35,6 +36,17 @@ RUN_AGENT = (
     "service-123456789@serverless-robot-prod.iam.gserviceaccount.com"
 )
 STANDALONE_ANCESTRY = [{"type": "project", "id": "test-project"}]
+DEPLOYER = "user:deployer@example.com"
+ACTUATOR_SA_RESOURCE = (
+    "//iam.googleapis.com/projects/test-project/serviceAccounts/"
+    "emilia-actuator@test-project.iam.gserviceaccount.com"
+)
+DECISION_SA_RESOURCE = (
+    "//iam.googleapis.com/projects/test-project/serviceAccounts/"
+    "emilia-decision@test-project.iam.gserviceaccount.com"
+)
+JIT_ISSUED_AT = "2026-07-25T18:00:00Z"
+JIT_EXPIRES_AT = "2026-07-25T18:15:00Z"
 
 
 def result(
@@ -142,16 +154,101 @@ def impersonation_analysis(
 
 
 def set_scope(value: dict, scope: str) -> None:
-    for target in value["targets"]:
-        target["scope"] = scope
-        analysis = target.get("analysis")
-        if analysis is None:
-            continue
+    def update_analysis(analysis: dict) -> None:
         analysis["mainAnalysis"]["analysisQuery"]["scope"] = scope
         for impersonation in analysis.get(
             "serviceAccountImpersonationAnalysis", []
         ):
             impersonation["analysisQuery"]["scope"] = scope
+
+    for target in value["targets"]:
+        target["scope"] = scope
+        analysis = target.get("analysis")
+        if analysis is None:
+            continue
+        if target["kind"] == "runtimeActAs":
+            for phase_analysis in analysis.values():
+                update_analysis(phase_analysis)
+        else:
+            update_analysis(analysis)
+
+
+def empty_response(*, resource: str, permission: str) -> dict:
+    value = response(
+        resource=resource,
+        permission=permission,
+        identities=[DEPLOYER],
+        role="roles/iam.serviceAccountUser",
+    )
+    value["mainAnalysis"]["analysisResults"] = []
+    return value
+
+
+def jit_condition(label: str) -> dict[str, str]:
+    return {
+        "title": f"emilia-jit-actas-r20260725b-{label}",
+        "description": (
+            f"EMILIA r20260725b {label} rollout; hard expiry 900s"
+        ),
+        "expression": (
+            "request.time < timestamp('2026-07-25T18:15:00Z')"
+        ),
+    }
+
+
+def active_jit_response(*, resource: str, label: str) -> dict:
+    value = response(
+        resource=resource,
+        permission="iam.serviceAccounts.actAs",
+        identities=[DEPLOYER],
+        role="roles/iam.serviceAccountUser",
+    )
+    query = value["mainAnalysis"]["analysisQuery"]
+    query["conditionContext"] = {"accessTime": JIT_ISSUED_AT}
+    binding = value["mainAnalysis"]["analysisResults"][0]["iamBinding"]
+    binding["condition"] = jit_condition(label)
+    acl = value["mainAnalysis"]["analysisResults"][0]["accessControlLists"][0]
+    acl["conditionEvaluation"] = {"evaluationValue": "TRUE"}
+    return value
+
+
+def jit_manifest() -> dict:
+    value = manifest()
+    for label, resource in (
+        ("actuator", ACTUATOR_SA_RESOURCE),
+        ("decision", DECISION_SA_RESOURCE),
+    ):
+        value["targets"].append(
+            {
+                "name": f"runtime-actAs:{label}",
+                "kind": "runtimeActAs",
+                "scope": PROJECT_SCOPE,
+                "resource": resource,
+                "allowedPrincipals": [],
+                "jitGrant": {
+                    "principal": DEPLOYER,
+                    "issuedAt": JIT_ISSUED_AT,
+                    "expiresAt": JIT_EXPIRES_AT,
+                    "maxLifetimeSeconds": 900,
+                    "condition": jit_condition(label),
+                },
+                "analysis": {
+                    "before": empty_response(
+                        resource=resource,
+                        permission="iam.serviceAccounts.actAs",
+                    ),
+                    "during": active_jit_response(
+                        resource=resource,
+                        label=label,
+                    ),
+                    "after": empty_response(
+                        resource=resource,
+                        permission="iam.serviceAccounts.actAs",
+                    ),
+                },
+            }
+        )
+    return value
 
 
 def manifest() -> dict:
@@ -465,6 +562,144 @@ class EffectiveIamTests(unittest.TestCase):
             }
         ]
         self.assert_refused(value, "nonallowlisted effective principal")
+
+    def test_jit_act_as_requires_only_the_exact_conditional_deployer(self) -> None:
+        verified = verify_effective_iam.verify_manifest(
+            jit_manifest(),
+            jit_phase="during",
+            now=datetime(2026, 7, 25, 18, 1, tzinfo=timezone.utc),
+        )
+        self.assertEqual(
+            verified,
+            {
+                "runtime-actAs:actuator": (DEPLOYER,),
+                "runtime-actAs:decision": (DEPLOYER,),
+            },
+        )
+
+    def test_inherited_group_custom_role_act_as_is_refused_during_jit(self) -> None:
+        value = jit_manifest()
+        target = value["targets"][2]
+        target["analysis"]["during"]["mainAnalysis"]["analysisResults"].append(
+            result(
+                resource=ACTUATOR_SA_RESOURCE,
+                permission="iam.serviceAccounts.actAs",
+                identities=[
+                    "group:platform-admins@example.com",
+                    "user:hostile-admin@example.com",
+                ],
+                role="organizations/987654321/roles/hostileActAs",
+                attached_resource=(
+                    "//cloudresourcemanager.googleapis.com/"
+                    "organizations/987654321"
+                ),
+                members=["group:platform-admins@example.com"],
+                group_edges=[
+                    {
+                        "sourceNode": "group:platform-admins@example.com",
+                        "targetNode": "user:hostile-admin@example.com",
+                    }
+                ],
+            )
+        )
+        with self.assertRaisesRegex(
+            verify_effective_iam.VerificationError,
+            "nonallowlisted effective principal",
+        ):
+            verify_effective_iam.verify_manifest(
+                value,
+                jit_phase="during",
+                now=datetime(2026, 7, 25, 18, 1, tzinfo=timezone.utc),
+            )
+
+    def test_jit_active_phase_refuses_expired_grant(self) -> None:
+        with self.assertRaisesRegex(
+            verify_effective_iam.VerificationError,
+            "expired",
+        ):
+            verify_effective_iam.verify_manifest(
+                jit_manifest(),
+                jit_phase="during",
+                now=datetime(2026, 7, 25, 18, 15, tzinfo=timezone.utc),
+            )
+
+    def test_jit_after_phase_requires_deployer_absent_on_both_accounts(
+        self,
+    ) -> None:
+        value = jit_manifest()
+        target = value["targets"][3]
+        target["analysis"]["after"] = response(
+            resource=DECISION_SA_RESOURCE,
+            permission="iam.serviceAccounts.actAs",
+            identities=[DEPLOYER],
+            role="organizations/987654321/roles/hostileActAs",
+        )
+        with self.assertRaisesRegex(
+            verify_effective_iam.VerificationError,
+            "nonallowlisted effective principal",
+        ):
+            verify_effective_iam.verify_manifest(
+                value,
+                jit_phase="after",
+                now=datetime(2026, 7, 25, 18, 2, tzinfo=timezone.utc),
+            )
+
+    def test_live_jit_queries_both_accounts_at_organization_scope(self) -> None:
+        expected = jit_manifest()
+        set_scope(expected, "organizations/987654321")
+        value = copy.deepcopy(expected)
+        for target in value["targets"]:
+            if target["kind"] == "runtimeActAs":
+                del target["analysis"]
+        ancestry = [
+            {"type": "project", "id": "test-project"},
+            {"type": "folder", "id": "123456789"},
+            {"type": "organization", "id": "987654321"},
+        ]
+        runtime_targets = [
+            target
+            for target in expected["targets"]
+            if target["kind"] == "runtimeActAs"
+        ]
+        runner = mock.Mock(
+            side_effect=[
+                subprocess.CompletedProcess(
+                    [], 0, stdout=json.dumps(ancestry), stderr=""
+                ),
+                *[
+                    subprocess.CompletedProcess(
+                        [],
+                        0,
+                        stdout=json.dumps(target["analysis"]["during"]),
+                        stderr="",
+                    )
+                    for target in runtime_targets
+                ],
+            ]
+        )
+        verified = verify_effective_iam.verify_manifest(
+            value,
+            live=True,
+            runner=runner,
+            gcloud="test-gcloud",
+            jit_phase="during",
+            now=datetime(2026, 7, 25, 18, 1, tzinfo=timezone.utc),
+        )
+        self.assertEqual(
+            set(verified),
+            {"runtime-actAs:actuator", "runtime-actAs:decision"},
+        )
+        self.assertEqual(runner.call_count, 3)
+        for invocation in runner.call_args_list[1:]:
+            command = invocation.args[0]
+            self.assertIn("--organization=987654321", command)
+            self.assertIn(
+                "--permissions=iam.serviceAccounts.actAs",
+                command,
+            )
+            self.assertIn("--expand-groups", command)
+            self.assertIn("--output-group-edges", command)
+            self.assertIn(f"--access-time={JIT_ISSUED_AT}", command)
 
     def test_unknown_manifest_or_policy_analyzer_fields_are_refused(self) -> None:
         value = manifest()

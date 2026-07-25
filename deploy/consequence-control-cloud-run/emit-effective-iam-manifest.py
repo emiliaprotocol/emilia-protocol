@@ -8,6 +8,7 @@ import json
 import os
 import re
 import tempfile
+from datetime import datetime, timezone
 from pathlib import Path
 
 
@@ -25,6 +26,11 @@ ANALYZER_SCOPE = re.compile(
     r"^(projects/[a-z][a-z0-9-]{4,28}[a-z0-9]|"
     r"organizations/[1-9][0-9]*)$"
 )
+CONCRETE_PRINCIPAL = re.compile(
+    r"^(?:user|serviceAccount):[^@\s]+@[^@\s]+$|^principal://[^\s]+$"
+)
+CONDITION_TITLE = re.compile(r"^[A-Za-z0-9_.-]{1,100}$")
+JIT_MAX_LIFETIME_SECONDS = 900
 
 
 class ManifestError(ValueError):
@@ -35,6 +41,68 @@ def principal(value: str, name: str) -> str:
     if SERVICE_ACCOUNT.fullmatch(value) is None:
         raise ManifestError(f"{name} must be one concrete service account")
     return value
+
+
+def concrete_principal(value: str, name: str) -> str:
+    if CONCRETE_PRINCIPAL.fullmatch(value) is None:
+        raise ManifestError(f"{name} must be one concrete IAM principal")
+    return value
+
+
+def utc_timestamp(value: str, name: str) -> datetime:
+    if not value.endswith("Z"):
+        raise ManifestError(f"{name} must be a UTC timestamp ending in Z")
+    try:
+        parsed = datetime.fromisoformat(value[:-1] + "+00:00")
+    except ValueError as error:
+        raise ManifestError(f"{name} is not a valid timestamp") from error
+    if parsed.tzinfo != timezone.utc or parsed.microsecond:
+        raise ManifestError(f"{name} must use whole-second UTC precision")
+    return parsed
+
+
+def runtime_act_as_target(
+    *,
+    label: str,
+    project: str,
+    scope: str,
+    runtime_principal: str,
+    deployer: str,
+    title_prefix: str,
+    issued_at: str,
+    expires_at: str,
+) -> dict[str, object]:
+    account = runtime_principal.removeprefix("serviceAccount:")
+    title = f"{title_prefix}-{label}"
+    if CONDITION_TITLE.fullmatch(title) is None:
+        raise ManifestError(
+            f"JIT condition title for {label} must be unique and at most 100 characters"
+        )
+    description = (
+        f"EMILIA {title_prefix.removeprefix('emilia-jit-actas-')} "
+        f"{label} rollout; hard expiry {JIT_MAX_LIFETIME_SECONDS}s"
+    )
+    expression = f"request.time < timestamp('{expires_at}')"
+    return {
+        "name": f"runtime-actAs:{label}",
+        "kind": "runtimeActAs",
+        "scope": scope,
+        "resource": (
+            f"//iam.googleapis.com/projects/{project}/serviceAccounts/{account}"
+        ),
+        "allowedPrincipals": [],
+        "jitGrant": {
+            "principal": deployer,
+            "issuedAt": issued_at,
+            "expiresAt": expires_at,
+            "maxLifetimeSeconds": JIT_MAX_LIFETIME_SECONDS,
+            "condition": {
+                "title": title,
+                "description": description,
+                "expression": expression,
+            },
+        },
+    }
 
 
 def managed_control_plane_principals(project_number: str) -> tuple[str, str]:
@@ -80,6 +148,11 @@ def manifest(
     decision_principal: str,
     secrets: list[str],
     analyzer_scope: str | None = None,
+    actuator_principal: str | None = None,
+    deployer_principal: str | None = None,
+    jit_condition_title_prefix: str | None = None,
+    jit_issued_at: str | None = None,
+    jit_expires_at: str | None = None,
 ) -> dict[str, object]:
     if PROJECT.fullmatch(project) is None:
         raise ManifestError("project is invalid")
@@ -134,6 +207,53 @@ def manifest(
                 ),
             }
         )
+    jit_coordinates = (
+        actuator_principal,
+        deployer_principal,
+        jit_condition_title_prefix,
+        jit_issued_at,
+        jit_expires_at,
+    )
+    if any(value is not None for value in jit_coordinates):
+        if not all(value is not None for value in jit_coordinates):
+            raise ManifestError("all JIT coordinates must be provided together")
+        actuator = principal(
+            actuator_principal or "",
+            "actuator principal",
+        )
+        deployer = concrete_principal(
+            deployer_principal or "",
+            "deployer principal",
+        )
+        title_prefix = jit_condition_title_prefix or ""
+        if CONDITION_TITLE.fullmatch(title_prefix) is None:
+            raise ManifestError("JIT condition title prefix is invalid")
+        issued_text = jit_issued_at or ""
+        expires_text = jit_expires_at or ""
+        issued = utc_timestamp(issued_text, "JIT issued-at")
+        expires = utc_timestamp(expires_text, "JIT expires-at")
+        lifetime = int((expires - issued).total_seconds())
+        if lifetime <= 0 or lifetime > JIT_MAX_LIFETIME_SECONDS:
+            raise ManifestError(
+                "JIT expiry must be after issue time and no more than "
+                f"{JIT_MAX_LIFETIME_SECONDS} seconds later"
+            )
+        targets.extend(
+            runtime_act_as_target(
+                label=label,
+                project=project,
+                scope=scope,
+                runtime_principal=runtime,
+                deployer=deployer,
+                title_prefix=title_prefix,
+                issued_at=issued_text,
+                expires_at=expires_text,
+            )
+            for label, runtime in (
+                ("actuator", actuator),
+                ("decision", decision),
+            )
+        )
     return {
         "version": VERSION,
         "projectId": project,
@@ -174,7 +294,12 @@ def main() -> int:
     parser.add_argument("--project-number", required=True)
     parser.add_argument("--region", required=True)
     parser.add_argument("--actuator-service", required=True)
+    parser.add_argument("--actuator-principal")
     parser.add_argument("--decision-principal", required=True)
+    parser.add_argument("--deployer-principal")
+    parser.add_argument("--jit-condition-title-prefix")
+    parser.add_argument("--jit-issued-at")
+    parser.add_argument("--jit-expires-at")
     parser.add_argument(
         "--analyzer-scope",
         default=os.environ.get("EMILIA_IAM_ANALYZER_SCOPE"),
@@ -192,7 +317,12 @@ def main() -> int:
             project_number=args.project_number,
             region=args.region,
             actuator_service=args.actuator_service,
+            actuator_principal=args.actuator_principal,
             decision_principal=args.decision_principal,
+            deployer_principal=args.deployer_principal,
+            jit_condition_title_prefix=args.jit_condition_title_prefix,
+            jit_issued_at=args.jit_issued_at,
+            jit_expires_at=args.jit_expires_at,
             secrets=args.secret,
             analyzer_scope=args.analyzer_scope,
         )

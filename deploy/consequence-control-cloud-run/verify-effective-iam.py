@@ -9,6 +9,7 @@ import re
 import subprocess
 import sys
 from collections.abc import Callable
+from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
@@ -16,6 +17,7 @@ VERSION = "emilia-effective-iam/v1"
 PERMISSIONS = {
     "actuator": "run.routes.invoke",
     "secret": "secretmanager.versions.access",
+    "runtimeActAs": "iam.serviceAccounts.actAs",
 }
 IMPERSONATION_PERMISSIONS = {
     "iam.serviceAccounts.actAs",
@@ -49,13 +51,16 @@ SECRET_PATTERN = re.compile(
 )
 PROJECT_ID_PATTERN = re.compile(r"^[a-z][a-z0-9-]{4,28}[a-z0-9]$")
 PROJECT_NUMBER_PATTERN = re.compile(r"^[1-9][0-9]{5,29}$")
+CONDITION_TITLE_PATTERN = re.compile(r"^[A-Za-z0-9_.-]{1,100}$")
 SERVICE_ACCOUNT_RESOURCE_PATTERN = re.compile(
-    r"^//iam\.googleapis\.com/projects/[^/]+/serviceAccounts/[^/\s]+$"
+    r"^//iam\.googleapis\.com/projects/([^/]+)/serviceAccounts/([^/\s]+)$"
 )
 ANCESTOR_RESOURCE_PATTERN = re.compile(
     r"^//cloudresourcemanager\.googleapis\.com/"
     r"(?:projects/[^/]+|folders/[0-9]+|organizations/[0-9]+)$"
 )
+JIT_MAX_LIFETIME_SECONDS = 900
+JIT_PHASES = {"before", "during", "after"}
 
 
 class VerificationError(ValueError):
@@ -133,9 +138,14 @@ def validate_group(group: Any, path: str) -> str:
     return name
 
 
-def validate_allowlist(value: Any, path: str) -> tuple[str, ...]:
+def validate_allowlist(
+    value: Any,
+    path: str,
+    *,
+    allow_empty: bool = False,
+) -> tuple[str, ...]:
     entries = require_list(value, path)
-    if not entries:
+    if not entries and not allow_empty:
         raise VerificationError(f"{path} must contain at least one principal")
     principals = tuple(
         sorted(
@@ -146,6 +156,70 @@ def validate_allowlist(value: Any, path: str) -> tuple[str, ...]:
     if len(principals) != len(set(principals)):
         raise VerificationError(f"{path} contains a duplicate principal")
     return principals
+
+
+def utc_timestamp(value: Any, path: str) -> tuple[str, datetime]:
+    text = require_string(value, path)
+    if not text.endswith("Z"):
+        raise VerificationError(f"{path} must be a UTC timestamp ending in Z")
+    try:
+        parsed = datetime.fromisoformat(text[:-1] + "+00:00")
+    except ValueError as error:
+        raise VerificationError(f"{path} is not a valid timestamp") from error
+    if parsed.tzinfo != timezone.utc or parsed.microsecond:
+        raise VerificationError(f"{path} must use whole-second UTC precision")
+    return text, parsed
+
+
+def validate_jit_grant(
+    value: Any,
+    path: str,
+) -> tuple[str, str, datetime, datetime, dict[str, str]]:
+    grant = require_object(value, path)
+    check_fields(
+        grant,
+        path,
+        {
+            "principal",
+            "issuedAt",
+            "expiresAt",
+            "maxLifetimeSeconds",
+            "condition",
+        },
+    )
+    principal = validate_principal(grant["principal"], f"{path}.principal")
+    issued_text, issued = utc_timestamp(grant["issuedAt"], f"{path}.issuedAt")
+    expires_text, expires = utc_timestamp(grant["expiresAt"], f"{path}.expiresAt")
+    if grant["maxLifetimeSeconds"] != JIT_MAX_LIFETIME_SECONDS:
+        raise VerificationError(
+            f"{path}.maxLifetimeSeconds must be {JIT_MAX_LIFETIME_SECONDS}"
+        )
+    lifetime = int((expires - issued).total_seconds())
+    if lifetime <= 0 or lifetime > JIT_MAX_LIFETIME_SECONDS:
+        raise VerificationError(
+            f"{path} exceeds the {JIT_MAX_LIFETIME_SECONDS}-second hard expiry"
+        )
+    condition_value = require_object(grant["condition"], f"{path}.condition")
+    check_fields(
+        condition_value,
+        f"{path}.condition",
+        {"title", "description", "expression"},
+    )
+    condition = {
+        key: require_string(
+            condition_value[key],
+            f"{path}.condition.{key}",
+        )
+        for key in ("title", "description", "expression")
+    }
+    if CONDITION_TITLE_PATTERN.fullmatch(condition["title"]) is None:
+        raise VerificationError(f"{path}.condition.title is invalid")
+    expected_expression = f"request.time < timestamp('{expires_text}')"
+    if condition["expression"] != expected_expression:
+        raise VerificationError(
+            f"{path}.condition.expression does not bind the exact expiry"
+        )
+    return principal, issued_text, issued, expires, condition
 
 
 def validate_edge(value: Any, path: str) -> tuple[str, str]:
@@ -309,6 +383,7 @@ def verify_result(
     resource: str,
     permissions: set[str],
     path: str,
+    expected_condition: tuple[str, dict[str, str]] | None = None,
 ) -> set[str]:
     result = require_object(value, path)
     check_fields(
@@ -337,9 +412,24 @@ def verify_result(
     binding = require_object(result["iamBinding"], f"{path}.iamBinding")
     check_fields(binding, f"{path}.iamBinding", {"role", "members"}, {"condition"})
     require_string(binding["role"], f"{path}.iamBinding.role")
+    binding_condition: dict[str, Any] | None = None
     if "condition" in binding:
-        raise VerificationError(f"{path} contains a conditional binding")
-
+        if expected_condition is None:
+            raise VerificationError(f"{path} contains a conditional binding")
+        binding_condition = require_object(
+            binding["condition"],
+            f"{path}.iamBinding.condition",
+        )
+        check_fields(
+            binding_condition,
+            f"{path}.iamBinding.condition",
+            {"title", "description", "expression"},
+        )
+        for key in ("title", "description", "expression"):
+            require_string(
+                binding_condition[key],
+                f"{path}.iamBinding.condition.{key}",
+            )
     access_control_lists = require_list(
         result["accessControlLists"], f"{path}.accessControlLists"
     )
@@ -355,8 +445,23 @@ def verify_result(
             {"resources", "accesses"},
             {"resourceEdges", "conditionEvaluation"},
         )
-        if "conditionEvaluation" in acl:
+        condition_evaluation = acl.get("conditionEvaluation")
+        if binding_condition is None and condition_evaluation is not None:
             raise VerificationError(f"{acl_path} contains conditional analysis")
+        if binding_condition is not None:
+            evaluation = require_object(
+                condition_evaluation,
+                f"{acl_path}.conditionEvaluation",
+            )
+            check_fields(
+                evaluation,
+                f"{acl_path}.conditionEvaluation",
+                {"evaluationValue"},
+            )
+            if evaluation["evaluationValue"] != "TRUE":
+                raise VerificationError(
+                    f"{acl_path}.conditionEvaluation is not TRUE"
+                )
         if "resourceEdges" in acl:
             resource_edges = require_list(
                 acl["resourceEdges"], f"{acl_path}.resourceEdges"
@@ -385,9 +490,21 @@ def verify_result(
             )
     if not observed_permissions:
         raise VerificationError(f"{path} has no queried permission")
-    return collect_effective_identities(
+    effective = collect_effective_identities(
         result["identityList"], binding["members"], path
     )
+    if expected_condition is not None:
+        expected_principal, condition = expected_condition
+        if expected_principal in effective:
+            if binding_condition != condition:
+                raise VerificationError(
+                    f"{path} does not contain the exact intended JIT condition"
+                )
+        elif binding_condition is not None:
+            raise VerificationError(
+                f"{path} contains an unexpected conditional binding"
+            )
+    return effective
 
 
 def validate_query_options(value: Any, path: str, *, impersonation: bool) -> None:
@@ -434,6 +551,7 @@ def validate_query(
     permissions: set[str],
     path: str,
     impersonation: bool,
+    access_time: str | None = None,
 ) -> None:
     query = require_object(value, path)
     check_fields(
@@ -442,8 +560,25 @@ def validate_query(
         {"scope", "resourceSelector", "accessSelector", "options"},
         {"identitySelector", "conditionContext"},
     )
-    if "identitySelector" in query or "conditionContext" in query:
-        raise VerificationError(f"{path} contains an unsupported selector or condition")
+    if "identitySelector" in query:
+        raise VerificationError(f"{path} contains an unsupported identity selector")
+    if access_time is None:
+        if "conditionContext" in query:
+            raise VerificationError(f"{path} contains an unsupported condition")
+    else:
+        condition_context = require_object(
+            query.get("conditionContext"),
+            f"{path}.conditionContext",
+        )
+        check_fields(
+            condition_context,
+            f"{path}.conditionContext",
+            {"accessTime"},
+        )
+        if condition_context["accessTime"] != access_time:
+            raise VerificationError(
+                f"{path}.conditionContext does not use the exact JIT access time"
+            )
     resource_selector = require_object(
         query["resourceSelector"], f"{path}.resourceSelector"
     )
@@ -492,6 +627,8 @@ def verify_analysis(
     permissions: set[str],
     path: str,
     impersonation: bool,
+    access_time: str | None = None,
+    expected_condition: tuple[str, dict[str, str]] | None = None,
 ) -> set[str]:
     analysis = require_object(value, path)
     check_fields(
@@ -513,6 +650,7 @@ def verify_analysis(
         permissions=permissions,
         path=f"{path}.analysisQuery",
         impersonation=impersonation,
+        access_time=access_time,
     )
     effective: set[str] = set()
     results = require_list(analysis["analysisResults"], f"{path}.analysisResults")
@@ -523,6 +661,7 @@ def verify_analysis(
                 resource,
                 permissions,
                 f"{path}.analysisResults[{index}]",
+                expected_condition,
             )
         )
     return effective
@@ -535,6 +674,8 @@ def verify_response(
     resource: str,
     permission: str,
     path: str,
+    access_time: str | None = None,
+    expected_condition: tuple[str, dict[str, str]] | None = None,
 ) -> set[str]:
     response = require_object(value, path)
     check_fields(
@@ -551,7 +692,13 @@ def verify_response(
         permissions={permission},
         path=f"{path}.mainAnalysis",
         impersonation=False,
+        access_time=access_time,
+        expected_condition=expected_condition,
     )
+    if expected_condition is not None and expected_condition[0] not in effective:
+        raise VerificationError(
+            f"{path}.mainAnalysis is missing the intended JIT deployer"
+        )
     impersonation_analyses = require_list(
         response.get("serviceAccountImpersonationAnalysis", []),
         f"{path}.serviceAccountImpersonationAnalysis",
@@ -628,6 +775,7 @@ def live_analysis(
     permission: str,
     runner: Callable[..., subprocess.CompletedProcess[str]],
     gcloud: str,
+    access_time: str | None = None,
 ) -> Any:
     command = [
         gcloud,
@@ -643,6 +791,8 @@ def live_analysis(
         "--format=json",
         "--quiet",
     ]
+    if access_time is not None:
+        command.append(f"--access-time={access_time}")
     try:
         completed = runner(
             command,
@@ -746,6 +896,8 @@ def validate_target_shape(target: dict[str, Any], path: str, live: bool) -> None
     optional = {"analysis"} if live else set()
     if not live:
         required.add("analysis")
+    if target.get("kind") == "runtimeActAs":
+        required.add("jitGrant")
     check_fields(target, path, required, optional)
 
 
@@ -755,7 +907,11 @@ def verify_manifest(
     live: bool = False,
     runner: Callable[..., subprocess.CompletedProcess[str]] = subprocess.run,
     gcloud: str = "gcloud",
+    jit_phase: str | None = None,
+    now: datetime | None = None,
 ) -> dict[str, tuple[str, ...]]:
+    if jit_phase is not None and jit_phase not in JIT_PHASES:
+        raise VerificationError("jit_phase must be before, during, or after")
     manifest = require_object(value, "manifest")
     check_fields(
         manifest,
@@ -776,11 +932,11 @@ def verify_manifest(
     if not targets:
         raise VerificationError("manifest.targets must not be empty")
 
-    prepared: list[
-        tuple[str, str, str, str, tuple[str, ...], Any]
-    ] = []
+    prepared: list[dict[str, Any]] = []
     names: set[str] = set()
     resources: set[str] = set()
+    jit_titles: set[str] = set()
+    jit_labels: set[str] = set()
     actuator_count = 0
     secret_count = 0
 
@@ -796,13 +952,17 @@ def verify_manifest(
         if scope_match is None:
             raise VerificationError(f"{path}.scope is invalid")
         if kind not in PERMISSIONS:
-            raise VerificationError(f"{path}.kind must be 'actuator' or 'secret'")
+            raise VerificationError(
+                f"{path}.kind must be actuator, secret, or runtimeActAs"
+            )
         if name in names or resource in resources:
             raise VerificationError(f"{path} duplicates a target name or resource")
         names.add(name)
         resources.add(resource)
         allowed = validate_allowlist(
-            target["allowedPrincipals"], f"{path}.allowedPrincipals"
+            target["allowedPrincipals"],
+            f"{path}.allowedPrincipals",
+            allow_empty=kind == "runtimeActAs",
         )
 
         if kind == "actuator":
@@ -814,7 +974,8 @@ def verify_manifest(
                 raise VerificationError(
                     f"{path}.resource does not use manifest.projectId"
                 )
-        else:
+            jit_grant = None
+        elif kind == "secret":
             secret_count += 1
             match = SECRET_PATTERN.fullmatch(resource)
             if match is None or name != f"secret:{match.group(2)}":
@@ -824,6 +985,41 @@ def verify_manifest(
                 raise VerificationError(
                     f"{path}.resource does not use manifest.projectNumber"
                 )
+            jit_grant = None
+        else:
+            label = name.removeprefix("runtime-actAs:")
+            if name != f"runtime-actAs:{label}" or label not in {
+                "actuator",
+                "decision",
+            }:
+                raise VerificationError(
+                    f"{path} is not a named runtime actAs target"
+                )
+            match = SERVICE_ACCOUNT_RESOURCE_PATTERN.fullmatch(resource)
+            if match is None or match.group(1) != project_id:
+                raise VerificationError(
+                    f"{path}.resource is not a runtime service account "
+                    "in manifest.projectId"
+                )
+            if not match.group(2).endswith(
+                f"@{project_id}.iam.gserviceaccount.com"
+            ):
+                raise VerificationError(
+                    f"{path}.resource service account is outside manifest.projectId"
+                )
+            if allowed:
+                raise VerificationError(
+                    f"{path}.allowedPrincipals must be empty at steady state"
+                )
+            jit_grant = validate_jit_grant(
+                target["jitGrant"],
+                f"{path}.jitGrant",
+            )
+            title = jit_grant[4]["title"]
+            if title in jit_titles:
+                raise VerificationError("runtime JIT condition titles are not unique")
+            jit_titles.add(title)
+            jit_labels.add(label)
         if (
             scope_match.group(1) == "projects"
             and scope_match.group(2) != project_id
@@ -836,13 +1032,31 @@ def verify_manifest(
                 f"{path}.scope must cover the project or its organization"
             )
 
-        analysis = target.get("analysis")
-        prepared.append((name, kind, scope, resource, allowed, analysis))
+        prepared.append(
+            {
+                "index": index,
+                "name": name,
+                "kind": kind,
+                "scope": scope,
+                "resource": resource,
+                "allowed": allowed,
+                "analysis": target.get("analysis"),
+                "jitGrant": jit_grant,
+            }
+        )
 
     if actuator_count != 1:
         raise VerificationError("manifest must contain exactly one actuator")
     if secret_count < 1:
         raise VerificationError("manifest must contain at least one named secret")
+    if jit_labels and jit_labels != {"actuator", "decision"}:
+        raise VerificationError(
+            "manifest must contain both runtime actAs targets or neither"
+        )
+    if jit_phase is not None and jit_labels != {"actuator", "decision"}:
+        raise VerificationError(
+            "JIT phase verification requires both runtime actAs targets"
+        )
 
     if live:
         expected_scope = live_analyzer_scope(
@@ -851,7 +1065,7 @@ def verify_manifest(
             runner=runner,
             gcloud=gcloud,
         )
-        configured_scopes = {scope for _name, _kind, scope, *_rest in prepared}
+        configured_scopes = {target["scope"] for target in prepared}
         if configured_scopes != {expected_scope}:
             if expected_scope.startswith("organizations/"):
                 raise VerificationError(
@@ -862,8 +1076,48 @@ def verify_manifest(
                 "standalone project must use its exact project analyzer scope"
             )
 
+    selected = (
+        [target for target in prepared if target["kind"] == "runtimeActAs"]
+        if jit_phase is not None
+        else prepared
+    )
     verified: dict[str, tuple[str, ...]] = {}
-    for index, (name, kind, scope, resource, allowed, analysis) in enumerate(prepared):
+    for target in selected:
+        index = target["index"]
+        name = target["name"]
+        kind = target["kind"]
+        scope = target["scope"]
+        resource = target["resource"]
+        allowed = target["allowed"]
+        analysis = target["analysis"]
+        access_time = None
+        expected_condition = None
+        phase = jit_phase or "after"
+        if kind == "runtimeActAs":
+            principal, issued_text, issued, expires, condition = target["jitGrant"]
+            if phase == "during":
+                current = now or datetime.now(timezone.utc)
+                if current.tzinfo is None or current.utcoffset() is None:
+                    raise VerificationError("verification time must be timezone-aware")
+                current = current.astimezone(timezone.utc)
+                if current < issued:
+                    raise VerificationError("intended JIT grant is not active yet")
+                if current >= expires:
+                    raise VerificationError("intended JIT grant is expired")
+                allowed = (principal,)
+                access_time = issued_text
+                expected_condition = (principal, condition)
+            if not live:
+                phase_analyses = require_object(
+                    analysis,
+                    f"manifest.targets[{index}].analysis",
+                )
+                check_fields(
+                    phase_analyses,
+                    f"manifest.targets[{index}].analysis",
+                    JIT_PHASES,
+                )
+                analysis = phase_analyses[phase]
         if live:
             analysis = live_analysis(
                 scope=scope,
@@ -871,6 +1125,7 @@ def verify_manifest(
                 permission=PERMISSIONS[kind],
                 runner=runner,
                 gcloud=gcloud,
+                access_time=access_time,
             )
         effective = tuple(
             sorted(
@@ -880,6 +1135,8 @@ def verify_manifest(
                     resource=resource,
                     permission=PERMISSIONS[kind],
                     path=f"manifest.targets[{index}].analysis",
+                    access_time=access_time,
+                    expected_condition=expected_condition,
                 )
             )
         )
@@ -908,6 +1165,7 @@ def main() -> int:
         help="ignore embedded analyses and query gcloud Policy Analyzer read-only",
     )
     parser.add_argument("--gcloud", default="gcloud")
+    parser.add_argument("--jit-phase", choices=sorted(JIT_PHASES))
     args = parser.parse_args()
     try:
         manifest = json.loads(args.input.read_text(encoding="utf-8"))
@@ -915,6 +1173,7 @@ def main() -> int:
             manifest,
             live=args.live,
             gcloud=args.gcloud,
+            jit_phase=args.jit_phase,
         )
     except (OSError, json.JSONDecodeError, VerificationError) as error:
         print(f"effective IAM refused: {error}", file=sys.stderr)

@@ -23,6 +23,10 @@ while (($#)); do
       MODE=apply
       shift
       ;;
+    --cleanup-jit)
+      MODE=cleanup
+      shift
+      ;;
     --analyzer-scope)
       (($# >= 2)) || lane_die "--analyzer-scope requires a value"
       ANALYZER_SCOPE=$2
@@ -48,6 +52,12 @@ DECISION_SA=$(runtime_service_account_email "$DECISION_SERVICE_ACCOUNT")
 ACTUATOR_REVISION=$(candidate_revision "$ACTUATOR_SERVICE")
 DECISION_REVISION=$(candidate_revision "$DECISION_SERVICE")
 CANARY_TAG=$(candidate_tag)
+JIT_MAX_TTL_SECONDS=900
+JIT_TITLE_PREFIX="emilia-jit-actas-$RELEASE_ID"
+JIT_ACTUATOR_TITLE="$JIT_TITLE_PREFIX-actuator"
+JIT_DECISION_TITLE="$JIT_TITLE_PREFIX-decision"
+((${#JIT_ACTUATOR_TITLE} <= 100 && ${#JIT_DECISION_TITLE} <= 100)) \
+  || lane_die "release ID is too long for a unique JIT IAM condition title"
 
 actuator_env="NODE_ENV=production,HOST=0.0.0.0,EMILIA_ACTUATOR_DATABASE_PRINCIPAL=${ACTUATOR_DATABASE_PRINCIPAL},EMILIA_ACTUATOR_TENANT_ID=${TENANT_ID},EMILIA_ACTUATOR_GITHUB_OWNER=${GITHUB_OWNER},EMILIA_ACTUATOR_GITHUB_REPO=${GITHUB_REPO},EMILIA_ACTUATOR_GITHUB_ISSUE_NUMBER=${GITHUB_ISSUE_NUMBER},EMILIA_ACTUATOR_ENVELOPE_ISSUER_ID=${ENVELOPE_ISSUER_ID},EMILIA_ACTUATOR_ENVELOPE_KEY_ID=${ENVELOPE_KEY_ID},EMILIA_ACTUATOR_OBSERVATION_ISSUER_ID=${OBSERVATION_ISSUER_ID},EMILIA_ACTUATOR_OBSERVATION_KEY_ID=${OBSERVATION_KEY_ID}"
 actuator_secrets="EMILIA_ACTUATOR_DATABASE_URL=${ACTUATOR_DATABASE_URL_SECRET},EMILIA_ACTUATOR_API_TOKEN=${ACTUATOR_API_TOKEN_SECRET},EMILIA_ACTUATOR_ENVELOPE_PUBLIC_KEY=${ACTUATOR_ENVELOPE_PUBLIC_KEY_SECRET},EMILIA_ACTUATOR_OBSERVATION_PRIVATE_KEY=${ACTUATOR_OBSERVATION_PRIVATE_KEY_SECRET},EMILIA_ACTUATOR_GITHUB_APP_ID=${ACTUATOR_GITHUB_APP_ID_SECRET},EMILIA_ACTUATOR_GITHUB_INSTALLATION_ID=${ACTUATOR_GITHUB_INSTALLATION_ID_SECRET},EMILIA_ACTUATOR_GITHUB_PRIVATE_KEY=${ACTUATOR_GITHUB_PRIVATE_KEY_SECRET}"
@@ -211,16 +221,100 @@ resolve_service_url() {
     --format='value(status.url)'
 }
 
+jit_label_for_account() {
+  case "$1" in
+    "$ACTUATOR_SA")
+      printf 'actuator'
+      ;;
+    "$DECISION_SA")
+      printf 'decision'
+      ;;
+    *)
+      lane_die "unknown runtime service account for JIT IAM"
+      ;;
+  esac
+}
+
+jit_title() {
+  printf '%s-%s' "$JIT_TITLE_PREFIX" "$1"
+}
+
+jit_description() {
+  printf 'EMILIA %s %s rollout; hard expiry %ss' \
+    "$RELEASE_ID" "$1" "$JIT_MAX_TTL_SECONDS"
+}
+
+initialize_jit_window() {
+  local window
+  window=$(python3 - "$JIT_MAX_TTL_SECONDS" <<'PY'
+from datetime import datetime, timedelta, timezone
+import sys
+
+ttl = int(sys.argv[1])
+if ttl != 900:
+    raise SystemExit("JIT TTL must remain pinned to 900 seconds")
+issued = datetime.now(timezone.utc).replace(microsecond=0)
+expires = issued + timedelta(seconds=ttl)
+print(
+    issued.isoformat().replace("+00:00", "Z"),
+    expires.isoformat().replace("+00:00", "Z"),
+)
+PY
+  ) || lane_die "could not initialize the capped JIT IAM window"
+  read -r JIT_ISSUED_AT JIT_EXPIRES_AT <<< "$window"
+  [[ -n "$JIT_ISSUED_AT" && -n "$JIT_EXPIRES_AT" ]] \
+    || lane_die "JIT IAM window is incomplete"
+}
+
+write_jit_condition() {
+  local label=$1 output=$2 title description expression
+  title=$(jit_title "$label")
+  description=$(jit_description "$label")
+  expression="request.time < timestamp('$JIT_EXPIRES_AT')"
+  python3 - "$output" "$title" "$description" "$expression" <<'PY'
+import json
+import os
+import sys
+
+path, title, description, expression = sys.argv[1:]
+descriptor = os.open(path, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600)
+with os.fdopen(descriptor, "w", encoding="utf-8") as handle:
+    json.dump(
+        {
+            "title": title,
+            "description": description,
+            "expression": expression,
+        },
+        handle,
+        sort_keys=True,
+    )
+    handle.write("\n")
+PY
+}
+
 render_jit_act_as() {
   local action=$1 account
   for account in "$ACTUATOR_SA" "$DECISION_SA"; do
-    shell_join gcloud iam service-accounts \
-      "${action}-iam-policy-binding" "$account" \
-      "--project=$PROJECT_ID" \
-      --member '<resolved-active-deployer-principal>' \
-      --role roles/iam.serviceAccountUser \
-      --condition=None \
-      --quiet
+    local label title description
+    label=$(jit_label_for_account "$account")
+    title=$(jit_title "$label")
+    description=$(jit_description "$label")
+    if [[ "$action" == add ]]; then
+      shell_join gcloud iam service-accounts add-iam-policy-binding "$account" \
+        "--project=$PROJECT_ID" \
+        --member '<resolved-active-deployer-principal>' \
+        --role roles/iam.serviceAccountUser \
+        --condition \
+        "expression=request.time < timestamp('<capped-expiry>'),title=$title,description=$description" \
+        --quiet
+    else
+      shell_join gcloud iam service-accounts get-iam-policy "$account" \
+        "--project=$PROJECT_ID" --format=json
+      printf 'python3 <remove-only-condition-title=%s> <current-policy.json> <cleaned-policy.json>\n' \
+        "$title"
+      shell_join gcloud iam service-accounts set-iam-policy "$account" \
+        '<cleaned-policy.json>' "--project=$PROJECT_ID" --quiet
+    fi
     shell_join gcloud iam service-accounts get-iam-policy "$account" \
       "--project=$PROJECT_ID" --format=json
   done
@@ -254,6 +348,7 @@ resolve_analyzer_scope() {
     "--project=$PROJECT_ID" --format='value(projectNumber)')
   [[ "$project_number" =~ ^[1-9][0-9]{5,29}$ ]] \
     || lane_die "Google Cloud project number could not be resolved"
+  RESOLVED_PROJECT_NUMBER=$project_number
   ancestry="$IAM_TMPDIR/project-ancestry.json"
   gcloud projects get-ancestors "$PROJECT_ID" \
     --format=json --quiet > "$ancestry" \
@@ -326,77 +421,232 @@ PY
 }
 
 verify_jit_member_state() {
-  local account=$1 expected=$2
+  local account=$1 expected=$2 label title description expression
+  label=$(jit_label_for_account "$account")
+  title=$(jit_title "$label")
+  description=$(jit_description "$label")
+  expression="request.time < timestamp('$JIT_EXPIRES_AT')"
   local policy="$IAM_TMPDIR/service-account-policy-${account%%@*}.json"
   gcloud iam service-accounts get-iam-policy "$account" \
     "--project=$PROJECT_ID" --format=json > "$policy" \
     || return 1
-  python3 - "$policy" "$DEPLOYER_PRINCIPAL" "$expected" <<'PY'
+  python3 - "$policy" "$DEPLOYER_PRINCIPAL" "$expected" \
+    "$title" "$description" "$expression" <<'PY'
 import json
 import sys
 
-path, principal, expected = sys.argv[1:]
+path, principal, expected, title, description, expression = sys.argv[1:]
+try:
+    policy = json.load(open(path, encoding="utf-8"))
+except (OSError, json.JSONDecodeError):
+    raise SystemExit(1)
+if (
+    not isinstance(policy, dict)
+    or not isinstance(policy.get("bindings", []), list)
+):
+    raise SystemExit(1)
+principal_bindings = []
+title_bindings = []
+for binding in policy.get("bindings", []):
+    if not isinstance(binding, dict):
+        raise SystemExit(1)
+    members = binding.get("members")
+    if not isinstance(members, list) or not all(
+        isinstance(member, str) for member in members
+    ):
+        raise SystemExit(1)
+    condition = binding.get("condition")
+    if condition is not None and not isinstance(condition, dict):
+        raise SystemExit(1)
+    if isinstance(condition, dict) and condition.get("title") == title:
+        title_bindings.append(binding)
+    if (
+        binding.get("role") == "roles/iam.serviceAccountUser"
+        and principal in members
+    ):
+        principal_bindings.append(binding)
+if expected == "absent":
+    if principal_bindings or title_bindings:
+        raise SystemExit(1)
+elif expected == "exact":
+    exact_condition = {
+        "title": title,
+        "description": description,
+        "expression": expression,
+    }
+    exact = [
+        binding
+        for binding in principal_bindings
+        if binding.get("condition") == exact_condition
+        and binding.get("members") == [principal]
+    ]
+    if len(exact) != 1 or principal_bindings != exact or title_bindings != exact:
+        raise SystemExit(1)
+else:
+    raise SystemExit(1)
+PY
+}
+
+emit_deploy_effective_iam_manifest() {
+  local output=$1 spec
+  local arguments=(
+    python3 "$LANE_DIR/emit-effective-iam-manifest.py"
+    "--project=$PROJECT_ID"
+    "--project-number=$RESOLVED_PROJECT_NUMBER"
+    "--analyzer-scope=$RESOLVED_ANALYZER_SCOPE"
+    "--region=$REGION"
+    "--actuator-service=$ACTUATOR_SERVICE"
+    "--actuator-principal=serviceAccount:$ACTUATOR_SA"
+    "--decision-principal=serviceAccount:$DECISION_SA"
+    "--deployer-principal=$DEPLOYER_PRINCIPAL"
+    "--jit-condition-title-prefix=$JIT_TITLE_PREFIX"
+    "--jit-issued-at=$JIT_ISSUED_AT"
+    "--jit-expires-at=$JIT_EXPIRES_AT"
+    "--output=$output"
+  )
+  while IFS= read -r spec; do
+    arguments+=(--secret "$spec")
+  done < <(effective_iam_secret_args)
+  "${arguments[@]}"
+}
+
+verify_jit_effective() {
+  local phase=$1
+  "$LANE_DIR/verify-effective-iam.py" \
+    --input "$JIT_MANIFEST" --live --jit-phase "$phase"
+}
+
+cleanup_jit_account() {
+  local account=$1 label title current desired verified
+  label=$(jit_label_for_account "$account")
+  title=$(jit_title "$label")
+  current="$IAM_TMPDIR/cleanup-${label}-current.json"
+  desired="$IAM_TMPDIR/cleanup-${label}-desired.json"
+  verified="$IAM_TMPDIR/cleanup-${label}-verified.json"
+  gcloud iam service-accounts get-iam-policy "$account" \
+    "--project=$PROJECT_ID" --format=json \
+    > "$current" || return 1
+  python3 - "$current" "$desired" "$title" <<'PY' || return 1
+import json
+import os
+import sys
+
+source, destination, title = sys.argv[1:]
+try:
+    policy = json.load(open(source, encoding="utf-8"))
+except (OSError, json.JSONDecodeError):
+    raise SystemExit(1)
+if not isinstance(policy, dict):
+    raise SystemExit(1)
+bindings = policy.get("bindings", [])
+if not isinstance(bindings, list):
+    raise SystemExit(1)
+kept = []
+for binding in bindings:
+    if not isinstance(binding, dict):
+        raise SystemExit(1)
+    role = binding.get("role")
+    members = binding.get("members")
+    if not isinstance(role, str) or not isinstance(members, list) or not all(
+        isinstance(member, str) for member in members
+    ):
+        raise SystemExit(1)
+    condition = binding.get("condition")
+    if condition is not None and not isinstance(condition, dict):
+        raise SystemExit(1)
+    if isinstance(condition, dict) and condition.get("title") == title:
+        if role != "roles/iam.serviceAccountUser":
+            raise SystemExit(1)
+        continue
+    kept.append(binding)
+policy["bindings"] = kept
+descriptor = os.open(
+    destination,
+    os.O_WRONLY | os.O_CREAT | os.O_TRUNC,
+    0o600,
+)
+with os.fdopen(descriptor, "w", encoding="utf-8") as handle:
+    json.dump(policy, handle, sort_keys=True)
+    handle.write("\n")
+PY
+  if ! python3 - "$current" "$desired" <<'PY'
+import json
+import sys
+
+with open(sys.argv[1], encoding="utf-8") as current:
+    before = json.load(current)
+with open(sys.argv[2], encoding="utf-8") as desired:
+    after = json.load(desired)
+raise SystemExit(0 if before == after else 1)
+PY
+  then
+    gcloud iam service-accounts set-iam-policy "$account" "$desired" \
+      "--project=$PROJECT_ID" --quiet >/dev/null || return 1
+  fi
+  gcloud iam service-accounts get-iam-policy "$account" \
+    "--project=$PROJECT_ID" --format=json \
+    > "$verified" || return 1
+  python3 - "$verified" "$title" <<'PY' || return 1
+import json
+import sys
+
+path, title = sys.argv[1:]
 try:
     policy = json.load(open(path, encoding="utf-8"))
 except (OSError, json.JSONDecodeError):
     raise SystemExit(1)
 if not isinstance(policy, dict) or not isinstance(policy.get("bindings", []), list):
     raise SystemExit(1)
-present = False
 for binding in policy.get("bindings", []):
     if not isinstance(binding, dict):
         raise SystemExit(1)
-    if binding.get("role") != "roles/iam.serviceAccountUser":
-        continue
-    members = binding.get("members")
-    if not isinstance(members, list) or not all(
-        isinstance(member, str) for member in members
-    ):
+    condition = binding.get("condition")
+    if condition is not None and not isinstance(condition, dict):
         raise SystemExit(1)
-    present = present or principal in members
-if present != (expected == "present"):
-    raise SystemExit(1)
+    if isinstance(condition, dict) and condition.get("title") == title:
+        raise SystemExit(1)
 PY
 }
 
 grant_jit_act_as() {
-  local account
+  local account label condition_file
+  JIT_ACTIVE=true
   for account in "$ACTUATOR_SA" "$DECISION_SA"; do
     verify_jit_member_state "$account" absent \
-      || lane_die "deployer already has persistent actAs on $account"
-    JIT_GRANTED_ACCOUNTS+=("$account")
+      || lane_die "deployer already has actAs or a colliding JIT grant on $account"
+    label=$(jit_label_for_account "$account")
+    condition_file="$IAM_TMPDIR/jit-condition-${label}.json"
+    write_jit_condition "$label" "$condition_file"
     gcloud iam service-accounts add-iam-policy-binding "$account" \
       "--project=$PROJECT_ID" \
       "--member=$DEPLOYER_PRINCIPAL" \
       --role=roles/iam.serviceAccountUser \
-      --condition=None \
+      "--condition-from-file=$condition_file" \
       --quiet >/dev/null
-    verify_jit_member_state "$account" present \
-      || lane_die "temporary actAs grant was not visible on $account"
+    verify_jit_member_state "$account" exact \
+      || lane_die "exact conditional actAs grant was not visible on $account"
   done
 }
 
-revoke_jit_act_as() {
+cleanup_jit_act_as() {
   local account failed=false
-  for account in "${JIT_GRANTED_ACCOUNTS[@]}"; do
-    if ! gcloud iam service-accounts remove-iam-policy-binding "$account" \
-      "--project=$PROJECT_ID" \
-      "--member=$DEPLOYER_PRINCIPAL" \
-      --role=roles/iam.serviceAccountUser \
-      --condition=None \
-      --quiet >/dev/null; then
-      printf 'failed to revoke temporary actAs from %s\n' "$account" >&2
-      failed=true
-    fi
-  done
   for account in "$ACTUATOR_SA" "$DECISION_SA"; do
-    if ! verify_jit_member_state "$account" absent; then
-      printf 'temporary actAs revocation was not proven on %s\n' "$account" >&2
+    if ! cleanup_jit_account "$account"; then
+      printf 'JIT actAs cleanup or policy readback failed on %s\n' \
+        "$account" >&2
       failed=true
     fi
   done
   [[ "$failed" == false ]] || return 1
-  JIT_GRANTED_ACCOUNTS=()
+  JIT_ACTIVE=false
+}
+
+verify_jit_direct_absent() {
+  local account
+  for account in "$ACTUATOR_SA" "$DECISION_SA"; do
+    verify_jit_member_state "$account" absent \
+      || return 1
+  done
 }
 
 reconcile_policy() {
@@ -461,8 +711,34 @@ if [[ "$MODE" == render ]]; then
   printf '# query ancestry; standalone projects use project scope, while ancestry requires an explicit organization scope\n'
   shell_join gcloud projects get-ancestors "$PROJECT_ID" \
     --format=json --quiet
+  printf '# emit one closed manifest covering runtime actAs before, during, and after deployment\n'
+  shell_join python3 "$LANE_DIR/emit-effective-iam-manifest.py" \
+    "--project=$PROJECT_ID" --project-number '<resolved-project-number>' \
+    --analyzer-scope "${ANALYZER_SCOPE:-<resolved-after-ancestry-proof>}" \
+    "--region=$REGION" \
+    "--actuator-service=$ACTUATOR_SERVICE" \
+    "--actuator-principal=serviceAccount:$ACTUATOR_SA" \
+    "--decision-principal=serviceAccount:$DECISION_SA" \
+    --deployer-principal '<resolved-active-deployer-principal>' \
+    "--jit-condition-title-prefix=$JIT_TITLE_PREFIX" \
+    --jit-issued-at '<current-utc-time>' \
+    --jit-expires-at '<current-utc-time-plus-at-most-900s>' \
+    --secret '<SECRET=EXACT_RUNTIME_PRINCIPALS>' \
+    --output '<effective-iam.json>'
+  printf '# prove no effective actAs before opening the JIT window\n'
+  shell_join "$LANE_DIR/verify-effective-iam.py" \
+    --input '<effective-iam.json>' --live --jit-phase before
+  printf '# deterministic janitor safe after runner death\n'
+  janitor_command=("$LANE_DIR/deploy.sh" --config "$CONFIG" --cleanup-jit)
+  if [[ -n "$ANALYZER_SCOPE" ]]; then
+    janitor_command+=(--analyzer-scope "$ANALYZER_SCOPE")
+  fi
+  shell_join "${janitor_command[@]}"
   printf '# temporarily grant the active deployer actAs on exactly the two runtime identities\n'
   render_jit_act_as add
+  printf '# prove only the intended conditional deployer can actAs during the capped window\n'
+  shell_join "$LANE_DIR/verify-effective-iam.py" \
+    --input '<effective-iam.json>' --live --jit-phase during
   printf '# candidate actuator: %s, zero traffic\n' "$ACTUATOR_REVISION"
   shell_join "${actuator_command[@]}"
   printf '# close the resource-level invoker binding to the decision workload identity\n'
@@ -480,29 +756,26 @@ if [[ "$MODE" == render ]]; then
   shell_join "${DECISION_COMMAND[@]}"
   printf '# revoke temporary actAs and read back both runtime service-account policies\n'
   render_jit_act_as remove
+  printf '# prove the deployer is absent from effective actAs after cleanup\n'
+  shell_join "$LANE_DIR/verify-effective-iam.py" \
+    --input '<effective-iam.json>' --live --jit-phase after
   printf '# verify inherited, group-expanded, and impersonation-derived access against the closed allowlist\n'
-  shell_join python3 "$LANE_DIR/emit-effective-iam-manifest.py" \
-    "--project=$PROJECT_ID" --project-number '<resolved-project-number>' \
-    --analyzer-scope "${ANALYZER_SCOPE:-<resolved-after-ancestry-proof>}" \
-    "--region=$REGION" \
-    "--actuator-service=$ACTUATOR_SERVICE" \
-    "--decision-principal=serviceAccount:$DECISION_SA" \
-    --secret '<SECRET=EXACT_RUNTIME_PRINCIPALS>' \
-    --output '<effective-iam.json>'
   shell_join "$LANE_DIR/verify-effective-iam.py" \
     --input '<effective-iam.json>' --live
   printf '# stop: no production traffic is changed by deploy.sh\n'
   exit 0
 fi
 
-require_apply_approval
+if [[ "$MODE" == apply ]]; then
+  require_apply_approval
+fi
 IAM_TMPDIR=$(mktemp -d)
-JIT_GRANTED_ACCOUNTS=()
+JIT_ACTIVE=false
 cleanup() {
   local status=$?
   trap - EXIT
-  if ((${#JIT_GRANTED_ACCOUNTS[@]})); then
-    if ! revoke_jit_act_as; then
+  if [[ "$JIT_ACTIVE" == true ]]; then
+    if ! cleanup_jit_act_as; then
       status=1
     fi
   fi
@@ -510,6 +783,24 @@ cleanup() {
   exit "$status"
 }
 trap cleanup EXIT
+resolve_deployer_principal
+resolve_analyzer_scope
+initialize_jit_window
+JIT_MANIFEST="$IAM_TMPDIR/effective-iam.json"
+emit_deploy_effective_iam_manifest "$JIT_MANIFEST" \
+  || lane_die "effective IAM manifest generation failed"
+
+if [[ "$MODE" == cleanup ]]; then
+  cleanup_jit_act_as \
+    || lane_die "JIT actAs cleanup or service-account policy readback failed"
+  verify_jit_direct_absent \
+    || lane_die "JIT actAs cleanup readback did not prove direct absence"
+  verify_jit_effective after \
+    || lane_die "effective actAs absence was not proven after JIT cleanup"
+  printf 'removed release-titled JIT actAs grants and proved effective absence\n'
+  exit 0
+fi
+
 gcloud services enable \
   run.googleapis.com secretmanager.googleapis.com iam.googleapis.com \
   cloudasset.googleapis.com \
@@ -526,8 +817,6 @@ for account in "$ACTUATOR_SERVICE_ACCOUNT" "$DECISION_SERVICE_ACCOUNT"; do
   fi
 done
 
-resolve_deployer_principal
-resolve_analyzer_scope
 while IFS= read -r variable; do
   ref=${!variable}
   gcloud secrets describe "$(secret_name "$ref")" \
@@ -536,7 +825,15 @@ done < <(all_secret_variables)
 
 reconcile_secret_accessors
 
+cleanup_jit_act_as \
+  || lane_die "stale JIT actAs cleanup or policy readback failed"
+verify_jit_direct_absent \
+  || lane_die "pre-deployment JIT policy readback did not prove direct absence"
+verify_jit_effective before \
+  || lane_die "effective actAs was present before the JIT window"
 grant_jit_act_as
+verify_jit_effective during \
+  || lane_die "effective actAs did not match the exact capped JIT grant"
 "${actuator_command[@]}"
 reconcile_policy run-service "$ACTUATOR_SERVICE" roles/run.invoker \
   "serviceAccount:$DECISION_SA"
@@ -548,10 +845,14 @@ ACTUATOR_CANARY_URL=$(resolve_tag_url)
   || lane_die "resolved actuator candidate URL is not https"
 decision_command "$ACTUATOR_CANARY_URL" "$ACTUATOR_AUDIENCE"
 "${DECISION_COMMAND[@]}"
-revoke_jit_act_as \
-  || lane_die "temporary actAs revocation or service-account policy readback failed"
-export EMILIA_IAM_ANALYZER_SCOPE=$RESOLVED_ANALYZER_SCOPE
-verify_effective_iam_live
+cleanup_jit_act_as \
+  || lane_die "JIT actAs cleanup or service-account policy readback failed"
+verify_jit_direct_absent \
+  || lane_die "post-deployment JIT policy readback did not prove direct absence"
+verify_jit_effective after \
+  || lane_die "effective actAs absence was not proven after deployment"
+"$LANE_DIR/verify-effective-iam.py" --input "$JIT_MANIFEST" --live \
+  || lane_die "effective IAM is broader than the closed deployment allowlist"
 
 printf 'created zero-traffic candidates: %s and %s\n' \
   "$ACTUATOR_REVISION" "$DECISION_REVISION"
