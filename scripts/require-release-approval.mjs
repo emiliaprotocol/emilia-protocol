@@ -26,8 +26,15 @@ export function validateReleaseApproval({ eventName, actor, allowedActor, tag, t
         throw new Error(`confirmation must be exactly: ${expectedConfirmation}`);
     return { expectedTag, expectedConfirmation };
 }
-export function verifyReleaseGitState({ cwd, tag, mainRef = 'refs/remotes/origin/main' }) {
+export function verifyReleaseGitState({ cwd, tag, mainRef = 'refs/remotes/origin/main', expectedCommit, expectedRef, }) {
     const head = git(cwd, ['rev-parse', 'HEAD^{commit}']);
+    const protectedRef = 'refs/heads/main';
+    if (expectedRef !== protectedRef) {
+        throw new Error(`workflow dispatch ref ${expectedRef || '(missing)'} must be the protected main ref ${protectedRef}`);
+    }
+    if (!/^[0-9a-f]{40}$/.test(expectedCommit || '') || head !== expectedCommit) {
+        throw new Error(`release checkout ${head} does not match dispatched commit ${expectedCommit || '(missing)'}`);
+    }
     let tagCommit;
     try {
         tagCommit = git(cwd, ['rev-parse', '--verify', `refs/tags/${tag}^{commit}`]);
@@ -37,23 +44,20 @@ export function verifyReleaseGitState({ cwd, tag, mainRef = 'refs/remotes/origin
     }
     if (head !== tagCommit)
         throw new Error(`checkout HEAD ${head} does not match release tag ${tag} (${tagCommit})`);
+    let mainCommit;
     try {
-        git(cwd, ['rev-parse', '--verify', `${mainRef}^{commit}`]);
+        mainCommit = git(cwd, ['rev-parse', '--verify', `${mainRef}^{commit}`]);
     }
     catch {
         throw new Error(`protected main reference is unavailable: ${mainRef}`);
     }
-    const ancestor = spawnSync('git', ['merge-base', '--is-ancestor', head, mainRef], {
-        cwd,
-        encoding: 'utf8',
-        stdio: ['ignore', 'pipe', 'pipe'],
-    });
-    if (ancestor.status !== 0)
-        throw new Error(`release commit ${head} is not contained in ${mainRef}`);
+    if (head !== mainCommit) {
+        throw new Error(`release commit ${head} must be the exact protected main commit ${mainCommit}`);
+    }
     const dirty = git(cwd, ['status', '--porcelain', '--untracked-files=no']);
     if (dirty)
         throw new Error('release checkout contains modified tracked files');
-    return { head, tag, mainRef };
+    return { head, tag, mainRef, expectedCommit, expectedRef };
 }
 export function verifyUnpublishedReleaseGitState({ cwd, tag, mainRef = 'refs/remotes/origin/main', expectedCommit = null }) {
     const head = git(cwd, ['rev-parse', 'HEAD^{commit}']);
@@ -110,6 +114,8 @@ export function main(argv = process.argv.slice(2), env = process.env) {
             cwd: env.GITHUB_WORKSPACE || process.cwd(),
             tag: approval.expectedTag,
             mainRef: option(argv, '--main-ref') || 'refs/remotes/origin/main',
+            expectedCommit: option(argv, '--expected-commit') || env.GITHUB_SHA,
+            expectedRef: option(argv, '--expected-ref') || env.GITHUB_REF,
         });
     console.log(`RELEASE APPROVAL: PASS (${approval.expectedConfirmation}; ${gitState.head})`);
 }

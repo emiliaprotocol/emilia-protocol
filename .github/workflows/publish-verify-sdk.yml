@@ -8,7 +8,8 @@ permissions: read-all
 # attestation. Configure the trusted publisher once at:
 #   npmjs.com -> @emilia-protocol/verify -> Settings -> Trusted Publishing
 #   Organization/User: emilia-protocol (as owner) | Repository: emilia-protocol
-#   Workflow filename: publish-verify-sdk.yml | Environment: (leave blank)
+#   Workflow filename: publish-verify-sdk.yml
+#   Environment: registry-publishing-approval (required; never leave blank)
 # Requires npm >= 11.5.1 (installed below).
 
 # Opt every JavaScript-based action into the Node.js 24 runner.
@@ -31,17 +32,10 @@ on:
         type: string
 
 jobs:
-  approval:
-    runs-on: ubuntu-latest
-    environment: registry-publishing-approval
-    permissions: {}
-    steps:
-      - run: echo "Owner approved registry publication."
-
   publish:
-    needs: approval
     name: Publish @emilia-protocol/verify
     runs-on: ubuntu-latest
+    environment: registry-publishing-approval
     env:
       TLA2TOOLS_JAR: ${{ github.workspace }}/tla2tools.jar
     concurrency:
@@ -60,7 +54,7 @@ jobs:
       - name: Checkout
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
         with:
-          ref: ${{ inputs.release_tag }}
+          ref: ${{ github.sha }}
           fetch-depth: 0
           persist-credentials: false
 
@@ -83,7 +77,9 @@ jobs:
             --tag-prefix verify-v \
             --package @emilia-protocol/verify \
             --version "$VERSION" \
-            --confirmation "$RELEASE_CONFIRMATION"
+            --confirmation "$RELEASE_CONFIRMATION" \
+            --expected-commit "$GITHUB_SHA" \
+            --expected-ref "$GITHUB_REF"
 
       - name: Setup Python
         uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97  # v7.0.0

@@ -48,12 +48,73 @@ describe('registry release approval', () => {
       run('commit', '-m', 'release source');
       run('tag', 'verify-v3.9.0');
       run('checkout', '--detach', 'verify-v3.9.0');
-      expect(verifyReleaseGitState({ cwd: dir, tag: 'verify-v3.9.0', mainRef: 'refs/heads/main' })).toMatchObject({
+      const head = run('rev-parse', 'HEAD').toString().trim();
+      const releaseState = {
+        cwd: dir,
+        tag: 'verify-v3.9.0',
+        mainRef: 'refs/heads/main',
+        expectedCommit: head,
+        expectedRef: 'refs/heads/main',
+      };
+      expect(verifyReleaseGitState(releaseState)).toMatchObject({
         tag: 'verify-v3.9.0',
         mainRef: 'refs/heads/main',
       });
       fs.writeFileSync(path.join(dir, 'tracked.txt'), 'tampered\n');
-      expect(() => verifyReleaseGitState({ cwd: dir, tag: 'verify-v3.9.0', mainRef: 'refs/heads/main' })).toThrow(/modified tracked files/);
+      expect(() => verifyReleaseGitState(releaseState)).toThrow(/modified tracked files/);
+    } finally {
+      fs.rmSync(dir, { recursive: true, force: true });
+    }
+  });
+
+  it('refuses to attribute an ancestor tag commit to a newer workflow dispatch and main commit', () => {
+    const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'ep-release-ancestor-'));
+    const run = (...args) => execFileSync('git', args, { cwd: dir, stdio: 'pipe' });
+    try {
+      run('init', '--initial-branch=main');
+      run('config', 'user.name', 'Release Test');
+      run('config', 'user.email', 'release-test@example.invalid');
+      fs.writeFileSync(path.join(dir, 'tracked.txt'), 'tagged release\n');
+      run('add', 'tracked.txt');
+      run('commit', '-m', 'tagged release');
+      run('tag', 'verify-v3.9.0');
+      fs.writeFileSync(path.join(dir, 'tracked.txt'), 'newer protected main\n');
+      run('commit', '-am', 'newer protected main');
+      const dispatchedCommit = run('rev-parse', 'HEAD').toString().trim();
+      run('checkout', '--detach', 'verify-v3.9.0');
+
+      expect(() => verifyReleaseGitState({
+        cwd: dir,
+        tag: 'verify-v3.9.0',
+        mainRef: 'refs/heads/main',
+        expectedCommit: dispatchedCommit,
+        expectedRef: 'refs/heads/main',
+      })).toThrow(/dispatched commit|exact protected main commit/);
+    } finally {
+      fs.rmSync(dir, { recursive: true, force: true });
+    }
+  });
+
+  it('refuses a branch-selected dispatch even when it resolves to the release commit', () => {
+    const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'ep-release-ref-'));
+    const run = (...args) => execFileSync('git', args, { cwd: dir, stdio: 'pipe' });
+    try {
+      run('init', '--initial-branch=main');
+      run('config', 'user.name', 'Release Test');
+      run('config', 'user.email', 'release-test@example.invalid');
+      fs.writeFileSync(path.join(dir, 'tracked.txt'), 'release\n');
+      run('add', 'tracked.txt');
+      run('commit', '-m', 'release source');
+      run('tag', 'verify-v3.9.0');
+      const head = run('rev-parse', 'HEAD').toString().trim();
+
+      expect(() => verifyReleaseGitState({
+        cwd: dir,
+        tag: 'verify-v3.9.0',
+        mainRef: 'refs/heads/main',
+        expectedCommit: head,
+        expectedRef: 'refs/heads/release-bypass',
+      })).toThrow(/dispatch ref.*protected main ref/);
     } finally {
       fs.rmSync(dir, { recursive: true, force: true });
     }

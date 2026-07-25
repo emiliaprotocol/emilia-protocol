@@ -7,6 +7,7 @@ import {
   auditReleaseChain,
   discoverReleaseSurfaces,
   validateCredentialRotationGuideText,
+  validateGateNpmWorkflowText,
   validateGoTagWorkflowText,
   validateNpmDirect,
   validateNpmLockData,
@@ -14,6 +15,7 @@ import {
   validateReusableNpmWorkflowText,
   validateReusablePypiWorkflowText,
 } from '../scripts/check-release-chain.mjs';
+import YAML from 'yaml';
 
 describe('release-chain coverage', () => {
   it('every declared package uses its complete verifiable release chain', () => {
@@ -90,6 +92,70 @@ describe('release-chain coverage', () => {
     expect(() => validatePypiDirect(detached, 'publish-crewai.yml')).toThrow(/protected approval environment/);
   });
 
+  it('runs Verify and Gate OIDC publication inside the protected environment job', () => {
+    for (const name of ['publish-verify-sdk.yml', 'publish-gate.yml']) {
+      const text = readFileSync(path.join('.github/workflows', name), 'utf8');
+      const workflow = YAML.parse(text);
+      const publish = workflow?.jobs?.publish;
+      expect(workflow?.jobs?.approval, `${name} must not use a detached empty approval job`).toBeUndefined();
+      expect(publish?.environment, `${name} publish job must be protected`).toBe('registry-publishing-approval');
+      expect(publish?.permissions?.['id-token'], `${name} protected job must own OIDC`).toBe('write');
+      expect(
+        publish?.steps?.some((step) => typeof step?.run === 'string' && step.run.includes('npm publish')),
+        `${name} protected job must execute npm publish`,
+      ).toBe(true);
+    }
+  });
+
+  it('binds Verify and Gate checkout and release approval to the dispatch SHA and main ref', () => {
+    for (const name of ['publish-verify-sdk.yml', 'publish-gate.yml']) {
+      const text = readFileSync(path.join('.github/workflows', name), 'utf8');
+      expect(text).toContain('ref: ${{ github.sha }}');
+      expect(text).not.toContain('ref: ${{ inputs.release_tag }}');
+      expect(text).toContain('--expected-commit "$GITHUB_SHA"');
+      expect(text).toContain('--expected-ref "$GITHUB_REF"');
+    }
+  });
+
+  it('refuses detached approval and branch-selected checkout regressions for Verify and Gate', () => {
+    const cases = [
+      {
+        name: 'publish-verify-sdk.yml',
+        validate: (text: string) => validateNpmDirect(text, 'publish-verify-sdk.yml'),
+      },
+      {
+        name: 'publish-gate.yml',
+        validate: (text: string) => validateGateNpmWorkflowText(text),
+      },
+    ];
+    for (const { name, validate } of cases) {
+      const text = readFileSync(path.join('.github/workflows', name), 'utf8');
+      expect(validate(text)).toBe(true);
+
+      const unprotected = text
+        .replace('    environment: registry-publishing-approval\n', '')
+        .replace(
+          'jobs:\n  publish:',
+          'jobs:\n'
+          + '  approval:\n'
+          + '    runs-on: ubuntu-latest\n'
+          + '    environment: registry-publishing-approval\n'
+          + '    permissions: {}\n'
+          + '    steps:\n'
+          + '      - run: echo "detached approval"\n\n'
+          + '  publish:\n'
+          + '    needs: approval',
+        );
+      expect(() => validate(unprotected)).toThrow(/OIDC publisher.*protected approval environment/);
+
+      const branchSelected = text.replace('ref: ${{ github.sha }}', 'ref: ${{ inputs.release_tag }}');
+      expect(() => validate(branchSelected)).toThrow(/github\.sha/);
+
+      const forgedRef = text.replace('--expected-ref "$GITHUB_REF"', '--expected-ref "refs/heads/main"');
+      expect(() => validate(forgedRef)).toThrow(/expected-ref/);
+    }
+  });
+
   it('refuses a reusable publisher with its post-registry byte comparison removed', () => {
     const workflow = readFileSync('.github/workflows/_publish-npm-package.yml', 'utf8');
     const weakened = workflow.replace('cmp "$TESTED_TARBALL" "registry-copy/$REGISTRY_TARBALL"', 'true # comparison removed');
@@ -111,7 +177,7 @@ describe('release-chain coverage', () => {
 
   it('refuses reusable npm publication without a pre-publication internal dependency registry guard', () => {
     const workflow = readFileSync('.github/workflows/_publish-npm-package.yml', 'utf8');
-    const weakened = workflow.replace(
+    const weakened = workflow.replaceAll(
       'node scripts/check-npm-package-dependencies.mjs "$PACKAGE_DIR"',
       'true # dependency registry guard removed',
     );

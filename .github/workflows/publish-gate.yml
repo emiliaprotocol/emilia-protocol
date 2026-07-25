@@ -1,6 +1,13 @@
 name: Publish Gate
 
-# npm trusted publisher: @emilia-protocol/gate -> this workflow filename.
+permissions: read-all
+
+# npm trusted publisher: @emilia-protocol/gate -> publish-gate.yml.
+# The trusted publisher Environment must be registry-publishing-approval;
+# leaving it blank would let a branch-selected workflow omit the protection.
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+
 on:
   workflow_dispatch:
     inputs:
@@ -13,30 +20,256 @@ on:
         required: true
         type: string
 
-permissions:
-  contents: read
-  id-token: write
-  attestations: write
-
 jobs:
-  approval:
+  publish:
+    name: Publish @emilia-protocol/gate
     runs-on: ubuntu-latest
     environment: registry-publishing-approval
-    permissions: {}
-    steps:
-      - run: echo "Owner approved registry publication."
-
-  publish:
-    needs: approval
+    env:
+      TLA2TOOLS_JAR: ${{ github.workspace }}/tla2tools.jar
+    concurrency:
+      group: registry-publish-@emilia-protocol/gate
+      cancel-in-progress: false
     permissions:
       contents: read
       id-token: write
       attestations: write
-    uses: ./.github/workflows/_publish-npm-package.yml
-    with:
-      package_dir: packages/gate
-      package_name: '@emilia-protocol/gate'
-      artifact_id: gate
-      release_tag: ${{ inputs.release_tag }}
-      confirmation: ${{ inputs.confirmation }}
-      tag_prefix: gate-v
+
+    steps:
+      - name: Checkout exact dispatched release source
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
+        with:
+          ref: ${{ github.sha }}
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Setup Node.js
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020  # v7.0.0
+        with:
+          node-version: '24'
+          registry-url: https://registry.npmjs.org
+
+      - name: Require owner approval bound to dispatch, clean tag, package, version, and main
+        env:
+          RELEASE_TAG: ${{ inputs.release_tag }}
+          RELEASE_CONFIRMATION: ${{ inputs.confirmation }}
+        run: |
+          VERSION=$(node -p "require('./packages/gate/package.json').version")
+          node scripts/require-release-approval.mjs \
+            --allowed-actor FutureEnterprises \
+            --tag "$RELEASE_TAG" \
+            --tag-prefix gate-v \
+            --package @emilia-protocol/gate \
+            --version "$VERSION" \
+            --confirmation "$RELEASE_CONFIRMATION" \
+            --expected-commit "$GITHUB_SHA" \
+            --expected-ref "$GITHUB_REF"
+
+      - name: Setup Python
+        uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97  # v7.0.0
+        with:
+          python-version: '3.12'
+
+      - name: Setup Go
+        uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e  # v7.0.0
+        with:
+          go-version: '1.22'
+
+      - name: Setup Java
+        uses: actions/setup-java@03ad4de0992f5dab5e18fcb136590ce7c4a0ac95  # v5.6.0
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - name: Download pinned TLC model checker
+        env:
+          TLA_VERSION: v1.7.4
+          TLA_SHA256: 936a262061c914694dfd669a543be24573c45d5aa0ff20a8b96b23d01e050e88
+        run: |
+          curl -fsSL \
+            --retry 5 \
+            --retry-delay 2 \
+            --retry-all-errors \
+            --connect-timeout 20 \
+            -o tla2tools.jar \
+            "https://github.com/tlaplus/tlaplus/releases/download/${TLA_VERSION}/tla2tools.jar"
+          echo "${TLA_SHA256}  tla2tools.jar" | sha256sum -c -
+
+      - name: Install hash-locked release tooling
+        run: |
+          npm ci --prefix .github/npm-toolchain --ignore-scripts --min-release-age=0
+          echo "$GITHUB_WORKSPACE/.github/npm-toolchain/node_modules/.bin" >> "$GITHUB_PATH"
+          python -m pip install --require-hashes -r .github/workflow-requirements/cryptography.txt
+
+      - name: Install locked repository tooling
+        run: npm ci --ignore-scripts
+
+      - name: Materialize pinned registry dependency bytes
+        run: node scripts/check-npm-package-dependencies.mjs packages/gate --install-pinned
+
+      - name: Test package
+        working-directory: packages/gate
+        run: npm test
+
+      - name: Execute security and conformance evidence
+        run: |
+          npm run security-case:emit
+          npm run conformance:manifest
+
+      - name: Pack twice and retain the exact reproducible tarball
+        id: pack
+        env:
+          PACKAGE_NAME: '@emilia-protocol/gate'
+        run: |
+          ARTIFACT_DIR="release-artifacts/gate"
+          MANIFEST_PATH="release-artifacts/gate-reproducible.json"
+          test ! -e "$ARTIFACT_DIR"
+          test ! -e "$MANIFEST_PATH"
+          node scripts/verify-reproducible-package.mjs packages/gate \
+            --outdir "$ARTIFACT_DIR" \
+            --emit "$MANIFEST_PATH"
+          node --input-type=module - \
+            "$ARTIFACT_DIR" "$MANIFEST_PATH" packages/gate "$PACKAGE_NAME" "$GITHUB_OUTPUT" <<'NODE'
+          import crypto from 'node:crypto';
+          import fs from 'node:fs';
+          import path from 'node:path';
+
+          const [
+            artifactDirectory,
+            manifestPath,
+            packageDirectory,
+            packageName,
+            outputPath,
+          ] = process.argv.slice(2);
+          const manifest = JSON.parse(fs.readFileSync(manifestPath, 'utf8'));
+          const packageMetadata = JSON.parse(
+            fs.readFileSync(path.join(packageDirectory, 'package.json'), 'utf8'),
+          );
+          if (manifest['@version'] !== 'EP-REPRODUCIBLE-NPM-ARTIFACT-v1'
+            || manifest.package_path !== packageDirectory
+            || manifest.package !== packageName
+            || manifest.version !== packageMetadata.version) {
+            throw new Error('reproducibility manifest identity does not match the release input');
+          }
+          const {
+            manifest_sha256: manifestSha256,
+            ...unsignedManifest
+          } = manifest;
+          const actualManifestSha256 = crypto
+            .createHash('sha256')
+            .update(JSON.stringify(unsignedManifest))
+            .digest('hex');
+          if (manifestSha256 !== actualManifestSha256) {
+            throw new Error('reproducibility manifest sha256 mismatch');
+          }
+          const filename = manifest.artifact.filename;
+          const expectedSha256 = manifest.artifact.sha256;
+          if (typeof filename !== 'string'
+            || filename !== path.basename(filename)
+            || !/^[a-z0-9][a-z0-9._-]*\.tgz$/u.test(filename)
+            || typeof expectedSha256 !== 'string'
+            || !/^[0-9a-f]{64}$/u.test(expectedSha256)) {
+            throw new Error('reproducibility manifest contains an unsafe artifact binding');
+          }
+          const archives = fs.readdirSync(artifactDirectory)
+            .filter((entry) => entry.endsWith('.tgz'))
+            .sort();
+          if (archives.length !== 1) {
+            throw new Error(`expected exactly one canonical archive, found ${archives.length}`);
+          }
+          const [archive] = archives;
+          if (archive !== filename) {
+            throw new Error(`canonical archive differs from manifest: ${archive} != ${filename}`);
+          }
+          const tarballPath = path.join(artifactDirectory, filename);
+          if (!fs.lstatSync(tarballPath).isFile()) {
+            throw new Error('canonical archive is not a regular file');
+          }
+          const tarballBytes = fs.readFileSync(tarballPath);
+          const actualSha256 = crypto.createHash('sha256').update(tarballBytes).digest('hex');
+          if (actualSha256 !== expectedSha256
+            || tarballBytes.length !== manifest.artifact.bytes) {
+            throw new Error('canonical archive bytes differ from reproducibility manifest');
+          }
+          fs.writeFileSync(
+            `${tarballPath}.sha256`,
+            `${expectedSha256}  ${tarballPath}\n`,
+          );
+          fs.appendFileSync(
+            outputPath,
+            `tarball=${tarballPath}\nsha256=${expectedSha256}\n`,
+          );
+          NODE
+
+      - name: Attest exact npm package bytes
+        uses: actions/attest@f7c74d28b9d84cb8768d0b8ca14a4bac6ef463e6  # v4.2.0
+        with:
+          subject-path: ${{ steps.pack.outputs.tarball }}
+
+      - name: Attest release evidence
+        uses: actions/attest@f7c74d28b9d84cb8768d0b8ca14a4bac6ef463e6  # v4.2.0
+        with:
+          subject-path: |
+            security/security-case.json
+            conformance/conformance-manifest.json
+            release-artifacts/gate-reproducible.json
+
+      - name: Upload exact release evidence
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a  # v7.0.1
+        with:
+          name: gate-release-${{ inputs.release_tag }}
+          path: |
+            ${{ steps.pack.outputs.tarball }}
+            ${{ steps.pack.outputs.tarball }}.sha256
+            release-artifacts/gate-reproducible.json
+            security/security-case.json
+            conformance/conformance-manifest.json
+          retention-days: 90
+
+      - name: Require every internal dependency to resolve from npm
+        run: node scripts/check-npm-package-dependencies.mjs packages/gate
+
+      - name: Publish the attested tarball through npm OIDC
+        env:
+          TESTED_TARBALL: ${{ steps.pack.outputs.tarball }}
+          EXPECTED_SHA256: ${{ steps.pack.outputs.sha256 }}
+        run: |
+          sha256sum -c "$TESTED_TARBALL.sha256"
+          ACTUAL_SHA256=$(sha256sum "$TESTED_TARBALL" | cut -d ' ' -f 1)
+          test "$ACTUAL_SHA256" = "$EXPECTED_SHA256"
+          VERSION=$(node -p "require('./packages/gate/package.json').version")
+          if npm view "@emilia-protocol/gate@${VERSION}" version --min-release-age=0 >/dev/null 2>&1; then
+            echo "@emilia-protocol/gate@${VERSION} already exists; continuing to mandatory byte verification."
+          else
+            npm publish "${{ steps.pack.outputs.tarball }}" --access public --provenance
+          fi
+
+      - name: Verify registry bytes match the attested tarball
+        env:
+          TESTED_TARBALL: ${{ steps.pack.outputs.tarball }}
+          EXPECTED_SHA256: ${{ steps.pack.outputs.sha256 }}
+        run: |
+          sha256sum -c "$TESTED_TARBALL.sha256"
+          ACTUAL_SHA256=$(sha256sum "$TESTED_TARBALL" | cut -d ' ' -f 1)
+          test "$ACTUAL_SHA256" = "$EXPECTED_SHA256"
+          VERSION=$(node -p "require('./packages/gate/package.json').version")
+          test ! -e registry-copy
+          mkdir registry-copy
+          REGISTRY_READY=false
+          for attempt in $(seq 1 60); do
+            rm -f registry-copy/pack.json
+            if npm pack "@emilia-protocol/gate@${VERSION}" --min-release-age=0 --json --pack-destination registry-copy > registry-copy/pack.json; then
+              REGISTRY_READY=true
+              break
+            fi
+            echo "Registry has not exposed @emilia-protocol/gate@${VERSION} yet (attempt ${attempt}/60); retrying in 5 seconds."
+            sleep 5
+          done
+          if [ "$REGISTRY_READY" != "true" ]; then
+            echo "::error::npm did not expose @emilia-protocol/gate@${VERSION} within 5 minutes of publication."
+            exit 2
+          fi
+          REGISTRY_TARBALL=$(node -e "const fs=require('fs'); const path=require('path'); const r=require('./registry-copy/pack.json'); if(!Array.isArray(r)||r.length!==1) process.exit(2); const filename=r[0]?.filename; if(typeof filename!=='string'||filename!==path.basename(filename)||!(/^[a-z0-9][a-z0-9._-]*\\.tgz$/u.test(filename))) process.exit(3); const archives=fs.readdirSync('registry-copy').filter((entry)=>entry.endsWith('.tgz')).sort(); if(archives.length!==1||archives[0]!==filename) process.exit(4); process.stdout.write(filename)")
+          REGISTRY_SHA256=$(sha256sum "registry-copy/$REGISTRY_TARBALL" | cut -d ' ' -f 1)
+          test "$REGISTRY_SHA256" = "$EXPECTED_SHA256"
+          cmp "$TESTED_TARBALL" "registry-copy/$REGISTRY_TARBALL"

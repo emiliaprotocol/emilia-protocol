@@ -139,7 +139,19 @@ export function validateTlaSecurityCaseWorkflowText(text: string, label: string)
   return true;
 }
 
-function validateManualPublisher(text: string, label: string, { direct }: { direct: boolean }): void {
+function validateManualPublisher(
+  text: string,
+  label: string,
+  {
+    direct,
+    commitBound = false,
+    protectedPublisher = false,
+  }: {
+    direct: boolean;
+    commitBound?: boolean;
+    protectedPublisher?: boolean;
+  },
+): void {
   if (/^[ \t]{2}push:/m.test(text)) throw new Error(`${label} publishes from an automatic push trigger`);
   requireText(text, [
     'workflow_dispatch:',
@@ -155,12 +167,21 @@ function validateManualPublisher(text: string, label: string, { direct }: { dire
   const approvalIsProtected: boolean = dependencies.includes('approval')
     && approval?.environment === 'registry-publishing-approval'
     && Object.keys(approval?.permissions ?? {}).length === 0;
-  if (!publishIsProtected && !approvalIsProtected) {
+  if (protectedPublisher) {
+    if (!publishIsProtected || publish?.permissions?.['id-token'] !== 'write') {
+      throw new Error(`${label} does not put the OIDC publisher inside the protected approval environment`);
+    }
+    if (approval) {
+      throw new Error(`${label} uses a detached approval job instead of protecting the publisher`);
+    }
+    if (publish?.uses || !Array.isArray(publish?.steps)) {
+      throw new Error(`${label} protected publisher must execute its release steps in the environment job`);
+    }
+  } else if (!publishIsProtected && !approvalIsProtected) {
     throw new Error(`${label} does not bind publication to the protected approval environment`);
   }
   if (direct) {
     requireText(text, [
-      'ref: ${{ inputs.release_tag }}',
       'fetch-depth: 0',
       'persist-credentials: false',
       'scripts/require-release-approval.mjs',
@@ -168,6 +189,13 @@ function validateManualPublisher(text: string, label: string, { direct }: { dire
       'concurrency:',
       'cancel-in-progress: false',
     ], label);
+    if (commitBound) {
+      requireText(text, [
+        'ref: ${{ github.sha }}',
+        '--expected-commit "$GITHUB_SHA"',
+        '--expected-ref "$GITHUB_REF"',
+      ], label);
+    }
   }
 }
 
@@ -362,7 +390,56 @@ export function validateNpmDirect(text: string, label: string): boolean {
   ], label);
   requireBefore(text, 'scripts/require-release-approval.mjs', 'run: npm test', label);
   validateTlaSecurityCaseWorkflowText(text, label);
-  validateManualPublisher(text, label, { direct: true });
+  validateManualPublisher(text, label, {
+    direct: true,
+    commitBound: true,
+    protectedPublisher: true,
+  });
+  forbidCredentialInjection(text, label);
+  return true;
+}
+
+export function validateGateNpmWorkflowText(text: string, label: string = 'publish-gate.yml'): boolean {
+  requireText(text, [
+    'npm run security-case:emit',
+    'npm run conformance:manifest',
+    'node scripts/verify-reproducible-package.mjs packages/gate',
+    'working-directory: packages/gate',
+    'run: npm test',
+    'actions/attest@',
+    'subject-path: ${{ steps.pack.outputs.tarball }}',
+    'npm publish "${{ steps.pack.outputs.tarball }}" --access public --provenance',
+    'cmp "$TESTED_TARBALL" "registry-copy/$REGISTRY_TARBALL"',
+    'scripts/require-release-approval.mjs',
+    '--tag-prefix gate-v',
+    '--package @emilia-protocol/gate',
+    'node scripts/check-npm-package-dependencies.mjs packages/gate --install-pinned',
+    'node scripts/check-npm-package-dependencies.mjs packages/gate',
+    'group: registry-publish-@emilia-protocol/gate',
+    "manifest['@version'] !== 'EP-REPRODUCIBLE-NPM-ARTIFACT-v1'",
+    '${{ steps.pack.outputs.tarball }}.sha256',
+    'EXPECTED_SHA256: ${{ steps.pack.outputs.sha256 }}',
+    'sha256sum -c "$TESTED_TARBALL.sha256"',
+  ], label);
+  requireBefore(text, 'scripts/require-release-approval.mjs', 'run: npm test', label);
+  requireBefore(
+    text,
+    'node scripts/check-npm-package-dependencies.mjs packages/gate --install-pinned',
+    'run: npm test',
+    `${label} pinned dependency materialization`,
+  );
+  requireBefore(
+    text,
+    'node scripts/check-npm-package-dependencies.mjs packages/gate',
+    'npm publish "${{ steps.pack.outputs.tarball }}" --access public --provenance',
+    `${label} dependency registry guard`,
+  );
+  validateTlaSecurityCaseWorkflowText(text, label);
+  validateManualPublisher(text, label, {
+    direct: true,
+    commitBound: true,
+    protectedPublisher: true,
+  });
   forbidCredentialInjection(text, label);
   return true;
 }
@@ -470,11 +547,15 @@ export function auditReleaseChain(root = ROOT) {
     if (!fs.statSync(workflowPath).isFile() || !fs.statSync(packagePath).isDirectory()) throw new Error(`missing release input for ${entry.package}`);
     const workflow = fs.readFileSync(workflowPath, 'utf8');
     if (entry.mode === 'npm_reusable') {
-      requireText(workflow, ['uses: ./.github/workflows/_publish-npm-package.yml'], entry.workflow);
-      validateManualPublisher(workflow, entry.workflow, { direct: false });
-      if (!exactInput(workflow, 'package_dir', entry.path) || !exactInput(workflow, 'package_name', entry.package)
-        || !exactInput(workflow, 'tag_prefix', entry.tag_prefix)) {
-        throw new Error(`${entry.workflow} does not bind the declared package path, name, and tag prefix`);
+      if (entry.workflow === 'publish-gate.yml') {
+        validateGateNpmWorkflowText(workflow, entry.workflow);
+      } else {
+        requireText(workflow, ['uses: ./.github/workflows/_publish-npm-package.yml'], entry.workflow);
+        validateManualPublisher(workflow, entry.workflow, { direct: false });
+        if (!exactInput(workflow, 'package_dir', entry.path) || !exactInput(workflow, 'package_name', entry.package)
+          || !exactInput(workflow, 'tag_prefix', entry.tag_prefix)) {
+          throw new Error(`${entry.workflow} does not bind the declared package path, name, and tag prefix`);
+        }
       }
     } else if (entry.mode === 'npm_direct') {
       validateNpmDirect(workflow, entry.workflow);
