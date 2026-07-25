@@ -427,11 +427,11 @@
     },
     {
       "path": "package-lock.json",
-      "sha256": "960082062c853face39e7168fa0e7e4f5e883e287cae034df56ba66d1a021f69"
+      "sha256": "df7de619fd468b3d548b1a1a7a1daf91a2147e95b997c2d312b8bde311f2f8b8"
     },
     {
       "path": "package.json",
-      "sha256": "d2ebdad277a799b3f146d306aeb08ea44062805b6b117211c0cf578f2d58e7a0"
+      "sha256": "857fee3c34565ea940e7137d8e27facfab85aa8bf8eac822a1790c0a98eb8433"
     },
     {
       "path": "packages/gate/aec-execution.js",
@@ -439,7 +439,7 @@
     },
     {
       "path": "packages/gate/authority-allocation.test.ts",
-      "sha256": "345b640140872ce81b51234ad6cfbada8e3753927d8b16f23fd867ed28661364"
+      "sha256": "412acd51b63be2a20f665f60a52f8eac2a1c41762ade8024f958bfe25035baf4"
     },
     {
       "path": "packages/gate/challenge-store.js",
