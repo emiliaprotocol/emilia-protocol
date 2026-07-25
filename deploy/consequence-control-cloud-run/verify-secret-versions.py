@@ -5,9 +5,13 @@ from __future__ import annotations
 
 import argparse
 from dataclasses import dataclass
+import hashlib
+import hmac
 import json
+import os
 from pathlib import Path
 import re
+import stat
 import subprocess
 import sys
 from typing import Any, Callable, Iterable, Sequence
@@ -28,6 +32,7 @@ LIVE_NAME_RE = re.compile(
     r"^projects/[^/]+/secrets/(?P<secret>[A-Za-z][A-Za-z0-9_-]{0,254})/"
     r"versions/(?P<version>[1-9][0-9]*)$"
 )
+SHA256_RE = re.compile(r"^[0-9a-f]{64}$")
 
 
 class VerificationError(ValueError):
@@ -66,13 +71,52 @@ def parse_secret_reference(value: str) -> SecretReference:
     return SecretReference(secret, version)
 
 
-def load_config_references(path: Path) -> list[SecretReference]:
+def read_trusted_file(path: Path, name: str) -> bytes:
+    if not path.is_absolute():
+        raise VerificationError(f"{name} path must be absolute")
+    flags = os.O_RDONLY | getattr(os, "O_CLOEXEC", 0)
+    if hasattr(os, "O_NOFOLLOW"):
+        flags |= os.O_NOFOLLOW
     try:
-        lines = path.read_text(encoding="utf-8").splitlines()
+        descriptor = os.open(path, flags)
     except OSError as error:
-        raise VerificationError(f"unable to read config {path}: {error}") from error
+        raise VerificationError(
+            f"{name} path must name a regular non-symlink file"
+        ) from error
+    try:
+        metadata = os.fstat(descriptor)
+        if not stat.S_ISREG(metadata.st_mode) or metadata.st_nlink != 1:
+            raise VerificationError(
+                f"{name} path must name a regular non-symlink file"
+            )
+        if metadata.st_uid not in {0, os.geteuid()}:
+            raise VerificationError(f"{name} file ownership is unsafe")
+        if stat.S_IMODE(metadata.st_mode) & 0o022:
+            raise VerificationError(
+                f"{name} file mode permits group or world writes"
+            )
+        chunks: list[bytes] = []
+        while True:
+            chunk = os.read(descriptor, 1024 * 1024)
+            if not chunk:
+                break
+            chunks.append(chunk)
+        value = b"".join(chunks)
+    finally:
+        os.close(descriptor)
+    if not value:
+        raise VerificationError(f"{name} file is empty")
+    return value
+
+
+def parse_config_references(raw: bytes) -> list[SecretReference]:
+    try:
+        lines = raw.decode("utf-8").splitlines()
+    except UnicodeDecodeError as error:
+        raise VerificationError("deployment config is not UTF-8") from error
 
     references: list[SecretReference] = []
+    seen: set[str] = set()
     for number, raw_line in enumerate(lines, start=1):
         line = raw_line.strip()
         if not line or line.startswith("#"):
@@ -82,6 +126,9 @@ def load_config_references(path: Path) -> list[SecretReference]:
         key, value = line.split("=", 1)
         if CONFIG_KEY_RE.fullmatch(key) is None:
             raise VerificationError(f"invalid config key on line {number}")
+        if key in seen:
+            raise VerificationError(f"duplicate config key on line {number}")
+        seen.add(key)
         if not key.endswith("_SECRET"):
             continue
         try:
@@ -89,6 +136,32 @@ def load_config_references(path: Path) -> list[SecretReference]:
         except VerificationError as error:
             raise VerificationError(f"config line {number}: {error}") from error
     return normalize_references(references)
+
+
+def load_config_references(path: Path) -> list[SecretReference]:
+    return parse_config_references(
+        read_trusted_file(path, "deployment config")
+    )
+
+
+def load_pinned_config_references(path: Path) -> list[SecretReference]:
+    expected = os.environ.get("DEPLOYMENT_CONFIG_SHA256", "")
+    if SHA256_RE.fullmatch(expected) is None:
+        raise VerificationError(
+            "DEPLOYMENT_CONFIG_SHA256 must be injected by a protected source"
+        )
+    if path == Path("-"):
+        raw = sys.stdin.buffer.read()
+        if not raw:
+            raise VerificationError("deployment config stream is empty")
+    else:
+        raw = read_trusted_file(path, "deployment config")
+    actual = hashlib.sha256(raw).hexdigest()
+    if not hmac.compare_digest(actual, expected):
+        raise VerificationError(
+            "deployment config differs from protected SHA-256"
+        )
+    return parse_config_references(raw)
 
 
 def normalize_references(
@@ -263,7 +336,7 @@ def main(argv: Sequence[str] | None = None) -> int:
     try:
         references = [parse_secret_reference(value) for value in args.reference]
         if args.config is not None:
-            references.extend(load_config_references(args.config))
+            references.extend(load_pinned_config_references(args.config))
         references = normalize_references(references)
         if not references:
             raise VerificationError(

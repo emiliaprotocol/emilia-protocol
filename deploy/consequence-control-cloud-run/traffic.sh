@@ -13,15 +13,17 @@ TELEMETRY=
 AUTHORIZATION=
 STABLE_MANIFEST=
 STABLE_PUBLIC_KEY=
-MAX_ERROR_RATE=0.01
-MAX_P95_LATENCY_MS=500
-MIN_READINESS_RATE=0.99
-MAX_INDETERMINATE_RATE=0.005
-MIN_DWELL_SECONDS=600
-MIN_REQUESTS=100
-MIN_READINESS_SAMPLES=3
-MAX_SAMPLE_GAP_SECONDS=300
-MAX_TELEMETRY_AGE_SECONDS=900
+readonly MAX_ERROR_RATE=0.01
+readonly MAX_P95_LATENCY_MS=500
+readonly MIN_READINESS_RATE=0.99
+readonly MAX_INDETERMINATE_RATE=0.005
+readonly MIN_DWELL_SECONDS=600
+readonly MIN_REQUESTS=100
+readonly MIN_READINESS_SAMPLES=3
+readonly MAX_SAMPLE_GAP_SECONDS=300
+readonly MAX_TELEMETRY_AGE_SECONDS=900
+readonly ROLLOUT_POLL_ATTEMPTS=30
+readonly ROLLOUT_POLL_INTERVAL_SEC=2
 while (($#)); do
   case "$1" in
     --config)
@@ -70,8 +72,47 @@ done
 if [[ "$ACTION" != render-promote && "$ACTION" != render-rollback ]]; then
   export REQUIRE_DEPLOYMENT_CONFIG_PIN=true
 fi
-load_lane_config "$CONFIG"
+TRAFFIC_CONFIG_KEYS=()
+while IFS= read -r name; do
+  TRAFFIC_CONFIG_KEYS+=("$name")
+done < <(deployment_config_variables)
+load_lane_config "$CONFIG" "${TRAFFIC_CONFIG_KEYS[@]}"
 validate_lane_config
+
+require_protected_traffic_identity() {
+  local expected_workflow
+  expected_workflow="emiliaprotocol/emilia-protocol/.github/workflows/"
+  expected_workflow+="consequence-control-deploy.yml@refs/heads/main"
+  [[ "${GITHUB_ACTIONS:-}" == true ]] \
+    || lane_die "traffic mutation requires protected GitHub Actions"
+  [[ "${GITHUB_REPOSITORY:-}" == emiliaprotocol/emilia-protocol \
+      && "${GITHUB_REF:-}" == refs/heads/main \
+      && "${GITHUB_EVENT_NAME:-}" == workflow_dispatch ]] \
+    || lane_die "traffic mutation requires the protected main workflow"
+  [[ "${GITHUB_WORKFLOW_REF:-}" == "$expected_workflow" ]] \
+    || lane_die "traffic mutation workflow identity mismatch"
+  [[ "${EMILIA_GITHUB_WORKFLOW_SHA:-}" == "${GITHUB_SHA:-}" \
+      && "${GITHUB_SHA:-}" =~ ^[0-9a-f]{40}$ ]] \
+    || lane_die "traffic mutation workflow SHA is not exact"
+  [[ "${EMILIA_DEPLOY_ENVIRONMENT:-}" \
+      == consequence-control-production ]] \
+    || lane_die "traffic mutation environment identity mismatch"
+  [[ "${EMILIA_DEPLOY_WIF_PROVIDER:-}" =~ ^projects/[1-9][0-9]*/locations/global/workloadIdentityPools/[a-z][a-z0-9-]{3,31}/providers/[a-z][a-z0-9-]{3,31}$ ]] \
+    || lane_die "traffic mutation WIF provider is invalid"
+  [[ "${DEPLOYMENT_CONFIRM_PROJECT:-}" == "$PROJECT_ID" ]] \
+    || lane_die "DEPLOYMENT_CONFIRM_PROJECT must exactly equal PROJECT_ID"
+}
+
+verify_direct_traffic_custody() {
+  # deploy.sh's read-only identity mode proves the exact WIF/workflow/deployer,
+  # the sole direct custom-role binding containing run.services.update, empty
+  # service IAM, and the closed effective-IAM allowlist.
+  "$LANE_DIR/deploy.sh" \
+    --config "$CONFIG" \
+    --verify-protected-identity \
+    >/dev/null \
+    || lane_die "protected traffic deployer custody is not exact"
+}
 
 stable_trust_arguments() {
   if [[ -n "${STABLE_RELEASE_KMS_KEY_URI:-}" ]]; then
@@ -91,7 +132,7 @@ verify_stable_revisions() {
   local mode=${1:-offline}
   local command=(
     "$LANE_DIR/verify-stable-release.py" verify
-    --config "$CONFIG"
+    --config -
     --manifest "$STABLE_MANIFEST"
   )
   if [[ "$STABLE_TRUST_MODE" == file ]]; then
@@ -107,7 +148,7 @@ verify_stable_revisions() {
     lane_die "invalid stable-release verification mode"
   fi
   command+=(--print-rollout-bindings)
-  "${command[@]}"
+  lane_emit_pinned_config | "${command[@]}"
 }
 
 ACTUATOR_CANDIDATE=$(candidate_revision "$ACTUATOR_SERVICE")
@@ -205,23 +246,16 @@ case "$ACTION" in
     ;;
 esac
 
-ROLLOUT_POLL_ATTEMPTS=${ROLLOUT_POLL_ATTEMPTS:-30}
-ROLLOUT_POLL_INTERVAL_SEC=${ROLLOUT_POLL_INTERVAL_SEC:-2}
-[[ "$ROLLOUT_POLL_ATTEMPTS" =~ ^[1-9][0-9]*$ ]] \
-  || lane_die "ROLLOUT_POLL_ATTEMPTS must be a positive integer"
-[[ "$ROLLOUT_POLL_INTERVAL_SEC" =~ ^[0-9]+$ ]] \
-  || lane_die "ROLLOUT_POLL_INTERVAL_SEC must be a non-negative integer"
-
 WORK_DIR=$(mktemp -d)
-trap 'rm -rf "$WORK_DIR"' EXIT
+trap 'rm -rf "$WORK_DIR"; lane_cleanup_pinned_config' EXIT
 DECISION_SNAPSHOT="$WORK_DIR/decision.json"
 ACTUATOR_SNAPSHOT="$WORK_DIR/actuator.json"
-UPDATE_BODY="$WORK_DIR/update.json"
 UPDATE_RESPONSE="$WORK_DIR/update-response.json"
 PRE_SEND_DECISION_SNAPSHOT="$WORK_DIR/pre-send-decision.json"
 PRE_SEND_ACTUATOR_SNAPSHOT="$WORK_DIR/pre-send-actuator.json"
 POST_DECISION_SNAPSHOT="$WORK_DIR/post-decision.json"
 POST_ACTUATOR_SNAPSHOT="$WORK_DIR/post-actuator.json"
+AMBIGUOUS_SNAPSHOT="$WORK_DIR/ambiguous-target.json"
 
 describe_service() {
   local service=$1 output=$2
@@ -255,9 +289,9 @@ verify_current_signed_config() {
 }
 
 verify_secret_versions() {
-  "$LANE_DIR/verify-secret-versions.py" \
+  lane_emit_pinned_config | "$LANE_DIR/verify-secret-versions.py" \
     --project "$PROJECT_ID" \
-    --config "$CONFIG" \
+    --config - \
     --live \
     || lane_die "a configured Secret Manager version is missing or not ENABLED"
 }
@@ -266,7 +300,7 @@ rollout_context_arguments() {
   local transition=$1 decision_pre=$2 actuator_pre=$3
   local decision_post=$4 actuator_post=$5
   ROLLOUT_CONTEXT_ARGUMENTS=(
-    --config "$CONFIG"
+    --config -
     --authorization "$AUTHORIZATION"
     --transition "$transition"
     --expect-traffic "$DECISION_SERVICE=$decision_pre"
@@ -288,6 +322,14 @@ rollout_context_arguments() {
     --min-readiness-samples "$MIN_READINESS_SAMPLES"
     --max-sample-gap-seconds "$MAX_SAMPLE_GAP_SECONDS"
     --max-age-seconds "$MAX_TELEMETRY_AGE_SECONDS"
+    --deployment-config-sha256 "$DEPLOYMENT_CONFIG_SHA256"
+    --deployer-principal "$DEPLOYER_PRINCIPAL"
+    --workflow-ref "$GITHUB_WORKFLOW_REF"
+    --workflow-sha "$GITHUB_SHA"
+    --wif-provider "$EMILIA_DEPLOY_WIF_PROVIDER"
+    --request-sha256 "$REQUEST_SHA256"
+    --request-service "$TARGET_SERVICE"
+    --pre-resource-version "$LOCK_RESOURCE_VERSION"
   )
 }
 
@@ -299,9 +341,33 @@ verify_rollout_authorization() {
   rollout_context_arguments \
     "$transition" "$decision_pre" "$actuator_pre" \
     "$decision_post" "$actuator_post"
-  "$LANE_DIR/verify-rollout-telemetry.py" verify-authorization \
-    "${ROLLOUT_CONTEXT_ARGUMENTS[@]}" >/dev/null \
+  local verification parsed
+  verification=$(
+    lane_emit_pinned_config \
+      | "$LANE_DIR/verify-rollout-telemetry.py" verify-authorization \
+      "${ROLLOUT_CONTEXT_ARGUMENTS[@]}"
+  ) \
     || lane_die "rollout authorization is invalid, stale, or not consumed"
+  parsed=$(
+    python3 -c '
+import base64
+import json
+import sys
+value = json.load(sys.stdin)
+attempt = value["attempt"]
+print(attempt["claim_sha256"])
+print(base64.b64encode(json.dumps(
+    attempt,
+    sort_keys=True,
+    separators=(",", ":"),
+).encode()).decode())
+' <<< "$verification"
+  ) || lane_die "rollout authorization attempt claim is malformed"
+  ATTEMPT_CLAIM_SHA256=${parsed%%$'\n'*}
+  ATTEMPT_CLAIM_BASE64=${parsed#*$'\n'}
+  [[ "$ATTEMPT_CLAIM_SHA256" =~ ^[0-9a-f]{64}$ \
+      && -n "$ATTEMPT_CLAIM_BASE64" ]] \
+    || lane_die "rollout authorization attempt claim is incomplete"
 }
 
 verify_prior_stage_telemetry() {
@@ -309,7 +375,7 @@ verify_prior_stage_telemetry() {
   rollout_context_arguments \
     "$ACTION" "$decision_traffic" "$actuator_traffic" \
     "$POST_DECISION" "$POST_ACTUATOR"
-  "$LANE_DIR/verify-rollout-telemetry.py" \
+  lane_emit_pinned_config | "$LANE_DIR/verify-rollout-telemetry.py" \
     --input "$TELEMETRY" \
     "${ROLLOUT_CONTEXT_ARGUMENTS[@]}" \
     >/dev/null \
@@ -403,7 +469,7 @@ prepare_locked_update() {
         --target-traffic "$post_traffic" \
         --allowed-revision "$DECISION_STABLE_REVISION" \
         --allowed-revision "$DECISION_CANDIDATE" \
-        --output "$UPDATE_BODY"
+        --emit-base64
     ) || lane_die "decision pre-state forbids skipping rollout stages"
     TARGET_SERVICE=$DECISION_SERVICE
     OTHER_SERVICE=$ACTUATOR_SERVICE
@@ -428,7 +494,7 @@ prepare_locked_update() {
         --target-traffic "$post_traffic" \
         --allowed-revision "$ACTUATOR_STABLE_REVISION" \
         --allowed-revision "$ACTUATOR_CANDIDATE" \
-        --output "$UPDATE_BODY"
+        --emit-base64
     ) || lane_die "actuator pre-state forbids the requested transition"
     TARGET_SERVICE=$ACTUATOR_SERVICE
     OTHER_SERVICE=$DECISION_SERVICE
@@ -441,18 +507,205 @@ prepare_locked_update() {
     TARGET_POST_SNAPSHOT=$POST_ACTUATOR_SNAPSHOT
     OTHER_POST_SNAPSHOT=$POST_DECISION_SNAPSHOT
   fi
-  IFS=$'\t' read -r LOCK_GENERATION LOCK_RESOURCE_VERSION <<< "$lock"
+  IFS=$'\t' read -r \
+    LOCK_GENERATION LOCK_RESOURCE_VERSION REQUEST_SHA256 UPDATE_BODY_BASE64 \
+    <<< "$lock"
   IFS=$'\t' read -r OTHER_GENERATION OTHER_RESOURCE_VERSION <<< "$other_lock"
   [[ "$LOCK_GENERATION" =~ ^[1-9][0-9]*$ \
     && -n "$LOCK_RESOURCE_VERSION" \
+    && "$REQUEST_SHA256" =~ ^[0-9a-f]{64}$ \
+    && -n "$UPDATE_BODY_BASE64" \
     && "$OTHER_GENERATION" =~ ^[1-9][0-9]*$ \
     && -n "$OTHER_RESOURCE_VERSION" ]] \
     || lane_die "Cloud Run lock metadata is malformed"
   TARGET_POST=$post_traffic
 }
 
+prepare_attempt_store_adapter() {
+  [[ -n "${EMILIA_ROLLOUT_ATTEMPT_STORE_ADAPTER:-}" \
+      && "$EMILIA_ROLLOUT_ATTEMPT_STORE_ADAPTER" == /* ]] \
+    || lane_die "a protected absolute rollout attempt-store adapter is required"
+  [[ "${EMILIA_ROLLOUT_ATTEMPT_STORE_ADAPTER_SHA256:-}" =~ ^[0-9a-f]{64}$ ]] \
+    || lane_die "rollout attempt-store adapter SHA-256 is required"
+  ATTEMPT_STORE_ADAPTER="$WORK_DIR/attempt-store-adapter"
+  python3 - "$EMILIA_ROLLOUT_ATTEMPT_STORE_ADAPTER" \
+    "$ATTEMPT_STORE_ADAPTER" \
+    "$EMILIA_ROLLOUT_ATTEMPT_STORE_ADAPTER_SHA256" <<'PY' || \
+    lane_die "rollout attempt-store adapter trust check failed"
+import errno
+import hashlib
+import os
+import stat
+import sys
+
+source, destination, expected = sys.argv[1:]
+flags = os.O_RDONLY | getattr(os, "O_CLOEXEC", 0)
+if hasattr(os, "O_NOFOLLOW"):
+    flags |= os.O_NOFOLLOW
+try:
+    descriptor = os.open(source, flags)
+except OSError as error:
+    if error.errno in {errno.ELOOP, errno.EMLINK}:
+        raise SystemExit("adapter must be a regular non-symlink file")
+    raise
+try:
+    metadata = os.fstat(descriptor)
+    if not stat.S_ISREG(metadata.st_mode) or metadata.st_nlink != 1:
+        raise SystemExit("adapter must be a regular non-symlink file")
+    if metadata.st_uid not in {0, os.geteuid()}:
+        raise SystemExit("adapter ownership is unsafe")
+    if stat.S_IMODE(metadata.st_mode) & 0o022:
+        raise SystemExit("adapter permits group or world writes")
+    chunks = []
+    while True:
+        chunk = os.read(descriptor, 1024 * 1024)
+        if not chunk:
+            break
+        chunks.append(chunk)
+    raw = b"".join(chunks)
+finally:
+    os.close(descriptor)
+if not raw or hashlib.sha256(raw).hexdigest() != expected:
+    raise SystemExit("adapter bytes differ from protected SHA-256")
+output_flags = os.O_WRONLY | os.O_CREAT | os.O_EXCL
+if hasattr(os, "O_NOFOLLOW"):
+    output_flags |= os.O_NOFOLLOW
+output = os.open(destination, output_flags, 0o500)
+try:
+    view = memoryview(raw)
+    while view:
+        written = os.write(output, view)
+        view = view[written:]
+    os.fsync(output)
+finally:
+    os.close(output)
+PY
+}
+
+attempt_store_call() {
+  local operation=$1 payload_base64=$2 allowed_status=$3
+  local response input_stream
+  response=$(
+    printf '%s' "$payload_base64" \
+      | python3 -c 'import base64,sys; sys.stdout.buffer.write(base64.b64decode(sys.stdin.buffer.read(), validate=True))' \
+      | "$ATTEMPT_STORE_ADAPTER" "$operation"
+  ) || lane_die "durable attempt-store $operation failed; no mutation permitted"
+  input_stream=<(printf '%s' "$response")
+  "$LANE_DIR/verify-rollout-telemetry.py" verify-attempt-response \
+    --input "$input_stream" \
+    --operation "$operation" \
+    --claim-sha256 "$ATTEMPT_CLAIM_SHA256" \
+    --allow-status "$allowed_status" \
+    >/dev/null \
+    || lane_die "durable attempt-store $operation response is invalid"
+}
+
+attempt_outcome_payload() {
+  local operation=$1 outcome=$2 resource_version=$3
+  printf '%s' "$ATTEMPT_CLAIM_BASE64" \
+    | python3 -c '
+import base64
+import json
+import sys
+operation, outcome, resource_version = sys.argv[1:]
+claim = json.loads(base64.b64decode(sys.stdin.buffer.read(), validate=True))
+value = {
+    "schema": "emilia-deployment-attempt-store-operation.v1",
+    "operation": operation,
+    "claim": claim,
+    "outcome": outcome,
+    "final_resource_version": resource_version,
+}
+print(base64.b64encode(json.dumps(
+    value,
+    sort_keys=True,
+    separators=(",", ":"),
+).encode()).decode())
+' "$operation" "$outcome" "$resource_version"
+}
+
+claim_deployment_attempt() {
+  prepare_attempt_store_adapter
+  attempt_store_call claim "$ATTEMPT_CLAIM_BASE64" claimed
+}
+
+record_attempt_outcome() {
+  local operation=$1 outcome=$2 resource_version=$3 allowed_status payload
+  if [[ "$operation" == complete ]]; then
+    allowed_status=completed
+  else
+    allowed_status=$outcome
+  fi
+  payload=$(attempt_outcome_payload \
+    "$operation" "$outcome" "$resource_version") \
+    || lane_die "unable to encode durable attempt outcome"
+  attempt_store_call "$operation" "$payload" "$allowed_status"
+}
+
+reconcile_ambiguous_update() {
+  local reason=$1 state observed_resource_version
+  describe_service "$TARGET_SERVICE" "$AMBIGUOUS_SNAPSHOT"
+  set +e
+  state=$(
+    "$LANE_DIR/verify-rollout-telemetry.py" verify-service \
+      --input "$AMBIGUOUS_SNAPSHOT" \
+      --service "$TARGET_SERVICE" \
+      --expect-traffic "$TARGET_POST" \
+      --pending-from-traffic "$TARGET_PRE" \
+      --allowed-revision "$TARGET_STABLE" \
+      --allowed-revision "$TARGET_CANDIDATE" \
+      --generation-after "$LOCK_GENERATION" \
+      --resource-version-not "$LOCK_RESOURCE_VERSION"
+  )
+  local post_status=$?
+  set -e
+  if ((post_status == 0)); then
+    IFS=$'\t' read -r ACK_GENERATION ACK_RESOURCE_VERSION <<< "$state"
+    describe_service "$OTHER_SERVICE" "$OTHER_POST_SNAPSHOT"
+    verify_exact_service_state \
+      "$OTHER_POST_SNAPSHOT" "$OTHER_SERVICE" "$OTHER_EXPECTED" \
+      "$OTHER_STABLE" "$OTHER_CANDIDATE" \
+      "$OTHER_GENERATION" "$OTHER_RESOURCE_VERSION" >/dev/null \
+      || lane_die "ambiguous update coincided with non-target state drift"
+    record_attempt_outcome reconcile applied "$ACK_RESOURCE_VERSION"
+    ATTEMPT_RECONCILED=true
+    printf 'reconciled ambiguous Cloud Run response as applied: %s\n' \
+      "$reason" >&2
+    return 0
+  fi
+  if verify_exact_service_state \
+    "$AMBIGUOUS_SNAPSHOT" "$TARGET_SERVICE" "$TARGET_PRE" \
+    "$TARGET_STABLE" "$TARGET_CANDIDATE" \
+    "$LOCK_GENERATION" "$LOCK_RESOURCE_VERSION" >/dev/null 2>&1; then
+    record_attempt_outcome reconcile not-applied "$LOCK_RESOURCE_VERSION"
+    lane_die "Cloud Run update was not observed; authorization is durably burned and must not be replayed"
+  fi
+  observed_resource_version=$(
+    python3 - "$AMBIGUOUS_SNAPSHOT" <<'PY'
+import json
+import sys
+with open(sys.argv[1], encoding="utf-8") as handle:
+    value = json.load(handle)
+resource_version = value.get("metadata", {}).get("resourceVersion")
+if not isinstance(resource_version, str) or not resource_version or any(
+    character.isspace() for character in resource_version
+):
+    raise SystemExit(1)
+print(resource_version)
+PY
+  ) || lane_die "ambiguous Cloud Run state is unreadable; attempt remains durably burned"
+  record_attempt_outcome reconcile indeterminate "$observed_resource_version"
+  lane_die "Cloud Run update is indeterminate after reconciliation; do not replay"
+}
+
 send_locked_update() {
-  local token
+  local token actual_request_sha256
+  actual_request_sha256=$(
+    printf '%s' "$UPDATE_BODY_BASE64" \
+      | python3 -c 'import base64,hashlib,sys; print(hashlib.sha256(base64.b64decode(sys.stdin.buffer.read(), validate=True)).hexdigest())'
+  ) || lane_die "prepared Cloud Run request bytes are invalid"
+  [[ "$actual_request_sha256" == "$REQUEST_SHA256" ]] \
+    || lane_die "prepared Cloud Run request bytes changed after authorization"
   token=$(gcloud auth print-access-token --quiet) \
     || lane_die "unable to obtain a Cloud Run API access token"
   [[ "$token" =~ ^[A-Za-z0-9._~-]+$ ]] \
@@ -466,17 +719,27 @@ send_locked_update() {
   local url
   url="https://run.googleapis.com/apis/serving.knative.dev/v1/projects"
   url+="/$PROJECT_ID/locations/$REGION/services/$TARGET_SERVICE"
-  curl \
+  set +e
+  printf '%s' "$UPDATE_BODY_BASE64" \
+    | python3 -c 'import base64,sys; sys.stdout.buffer.write(base64.b64decode(sys.stdin.buffer.read(), validate=True))' \
+    | curl \
     --silent \
     --show-error \
     --fail-with-body \
     --request PUT \
     --config "$curl_config" \
-    --data-binary "@$UPDATE_BODY" \
+    --data-binary @- \
     --output "$UPDATE_RESPONSE" \
-    "$url" \
-    || lane_die "Cloud Run update outcome is unknown or refused; do not replay"
-  local ack
+    "$url"
+  local update_status
+  update_status=$?
+  set -e
+  if ((update_status != 0)); then
+    reconcile_ambiguous_update "HTTP client status $update_status"
+    return
+  fi
+  local ack ack_status
+  set +e
   ack=$(
     "$LANE_DIR/verify-rollout-telemetry.py" verify-update-ack \
       --input "$UPDATE_RESPONSE" \
@@ -487,7 +750,13 @@ send_locked_update() {
       --allowed-revision "$TARGET_CANDIDATE" \
       --generation-after "$LOCK_GENERATION" \
       --resource-version-not "$LOCK_RESOURCE_VERSION"
-  ) || lane_die "Cloud Run update acknowledgement is not bound to the request"
+  )
+  ack_status=$?
+  set -e
+  if ((ack_status != 0)); then
+    reconcile_ambiguous_update "unverifiable update acknowledgement"
+    return
+  fi
   IFS=$'\t' read -r ACK_GENERATION ACK_RESOURCE_VERSION <<< "$ack"
   [[ "$ACK_GENERATION" =~ ^[1-9][0-9]*$ \
     && -n "$ACK_RESOURCE_VERSION" ]] \
@@ -507,7 +776,7 @@ poll_exact_post_state() {
       --allowed-revision "$TARGET_STABLE" \
       --allowed-revision "$TARGET_CANDIDATE" \
       --generation-equals "$ACK_GENERATION" \
-      --resource-version-not "$LOCK_RESOURCE_VERSION" \
+      --resource-version-equals "$ACK_RESOURCE_VERSION" \
       >/dev/null 2>&1
     status=$?
     set -e
@@ -556,7 +825,7 @@ verify_pre_send_service_locks() {
 }
 
 revalidate_before_send() {
-  verify_lane_config_pin "$CONFIG"
+  verify_lane_config_pin
   verify_secret_versions
   verify_effective_iam_live
   describe_service "$DECISION_SERVICE" "$PRE_SEND_DECISION_SNAPSHOT"
@@ -564,7 +833,8 @@ revalidate_before_send() {
   verify_current_signed_config \
     "$PRE_SEND_ACTUATOR_SNAPSHOT" "$PRE_SEND_DECISION_SNAPSHOT"
   verify_pre_send_service_locks
-  verify_lane_config_pin "$CONFIG"
+  verify_direct_traffic_custody
+  verify_lane_config_pin
 }
 
 verify_post_target_state() {
@@ -581,12 +851,12 @@ verify_post_target_state() {
     --allowed-revision "$TARGET_STABLE" \
     --allowed-revision "$TARGET_CANDIDATE" \
     --generation-equals "$ACK_GENERATION" \
-    --resource-version-not "$LOCK_RESOURCE_VERSION" >/dev/null \
+    --resource-version-equals "$ACK_RESOURCE_VERSION" >/dev/null \
     || lane_die "target service changed after the acknowledged mutation"
 }
 
 verify_post_mutation_controls() {
-  verify_lane_config_pin "$CONFIG"
+  verify_lane_config_pin
   verify_current_signed_config \
     "$POST_ACTUATOR_SNAPSHOT" "$POST_DECISION_SNAPSHOT"
   verify_secret_versions
@@ -599,14 +869,21 @@ verify_post_mutation_controls() {
     "$OTHER_STABLE" "$OTHER_CANDIDATE" \
     "$OTHER_GENERATION" "$OTHER_RESOURCE_VERSION" >/dev/null \
     || lane_die "non-target service changed after mutation read-back"
-  verify_lane_config_pin "$CONFIG"
+  verify_lane_config_pin
 }
 
 apply_prepared_update() {
+  require_protected_traffic_identity
+  verify_direct_traffic_custody
   revalidate_before_send
+  claim_deployment_attempt
+  ATTEMPT_RECONCILED=false
   send_locked_update
   poll_exact_post_state
   verify_post_mutation_controls
+  if [[ "$ATTEMPT_RECONCILED" != true ]]; then
+    record_attempt_outcome complete applied "$ACK_RESOURCE_VERSION"
+  fi
 }
 
 promotion_preflight() {
@@ -617,18 +894,20 @@ promotion_preflight() {
   require_var ROLLOUT_TELEMETRY_KEY_ID
   require_var ROLLOUT_TELEMETRY_PUBLIC_KEY_FILE
   require_var ROLLOUT_TELEMETRY_PUBLIC_KEY_SHA256
+  require_var ROLLOUT_AUTHORIZATION_KEY_ID
+  require_var ROLLOUT_AUTHORIZATION_PUBLIC_KEY_FILE
+  require_var ROLLOUT_AUTHORIZATION_PUBLIC_KEY_SHA256
   verify_current_signed_config "$ACTUATOR_SNAPSHOT" "$DECISION_SNAPSHOT"
   verify_secret_versions
   verify_effective_iam_live
   "$LANE_DIR/verify-canary.py" \
-    --config "$CONFIG" \
+    --config <(lane_emit_pinned_config) \
     --evidence "$EVIDENCE" \
     --live \
     --actuator-service-snapshot "$ACTUATOR_SNAPSHOT" \
     --decision-service-snapshot "$DECISION_SNAPSHOT" \
     >/dev/null \
     || lane_die "current signed canary/config verification failed"
-  verify_prior_stage_telemetry "$PRE_DECISION" "$PRE_ACTUATOR"
 }
 
 matches_service_state() {
@@ -685,17 +964,20 @@ apply_rollback() {
   require_var ROLLOUT_TELEMETRY_KEY_ID
   require_var ROLLOUT_TELEMETRY_PUBLIC_KEY_FILE
   require_var ROLLOUT_TELEMETRY_PUBLIC_KEY_SHA256
+  require_var ROLLOUT_AUTHORIZATION_KEY_ID
+  require_var ROLLOUT_AUTHORIZATION_PUBLIC_KEY_FILE
+  require_var ROLLOUT_AUTHORIZATION_PUBLIC_KEY_SHA256
 
   if [[ "$actuator_stage" == candidate ]]; then
     [[ "$decision_stage" == 100 || "$decision_stage" == stable ]] \
       || lane_die "refusing actuator-before-decision rollout state"
+    prepare_locked_update \
+      actuator "$decision_traffic" "$ACTUATOR_CANDIDATE:100" \
+      "$ACTUATOR_STABLE_REVISION:100"
     verify_rollout_authorization \
       apply-rollback-actuator \
       "$decision_traffic" "$ACTUATOR_CANDIDATE:100" \
       "$decision_traffic" "$ACTUATOR_STABLE_REVISION:100"
-    prepare_locked_update \
-      actuator "$decision_traffic" "$ACTUATOR_CANDIDATE:100" \
-      "$ACTUATOR_STABLE_REVISION:100"
     apply_prepared_update
     if [[ "$decision_stage" != stable ]]; then
       printf '%s\n' \
@@ -704,13 +986,13 @@ apply_rollback() {
     return 0
   fi
 
+  prepare_locked_update \
+    decision "$decision_traffic" "$ACTUATOR_STABLE_REVISION:100" \
+    "$DECISION_STABLE_REVISION:100"
   verify_rollout_authorization \
     apply-rollback-decision \
     "$decision_traffic" "$ACTUATOR_STABLE_REVISION:100" \
     "$DECISION_STABLE_REVISION:100" "$ACTUATOR_STABLE_REVISION:100"
-  prepare_locked_update \
-    decision "$decision_traffic" "$ACTUATOR_STABLE_REVISION:100" \
-    "$DECISION_STABLE_REVISION:100"
   apply_prepared_update
 }
 
@@ -722,5 +1004,9 @@ else
   promotion_preflight
   prepare_locked_update \
     "$TARGET_PLANE" "$PRE_DECISION" "$PRE_ACTUATOR" "$POST_TRAFFIC"
+  verify_rollout_authorization \
+    "$ACTION" "$PRE_DECISION" "$PRE_ACTUATOR" \
+    "$POST_DECISION" "$POST_ACTUATOR"
+  verify_prior_stage_telemetry "$PRE_DECISION" "$PRE_ACTUATOR"
   apply_prepared_update
 fi

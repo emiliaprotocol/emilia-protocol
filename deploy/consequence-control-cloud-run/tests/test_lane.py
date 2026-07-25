@@ -1226,22 +1226,46 @@ class CanaryTests(unittest.TestCase):
                     "attempt_id": "attempt:canary-0001",
                     "provider_reference": "github:issue:example/canary#1",
                 },
-                "timeout": {
-                    "http_status": 202,
-                    "outcome": "INDETERMINATE",
-                    "effect_boundary_entered": True,
+                "provider_response_loss": {
+                    "initial": {
+                        "http_status": 202,
+                        "outcome": "INDETERMINATE",
+                        "effect_boundary_entered": True,
+                    },
+                    "replay": {
+                        "http_status": 409,
+                        "reason": "envelope_replayed",
+                        "provider_invocations": 1,
+                    },
+                    "reconciliation": {
+                        "http_status": 503,
+                        "valid": False,
+                        "outcome": "INDETERMINATE",
+                        "reason": "provider_evidence_unavailable",
+                        "terminalized": False,
+                        "reexecuted": False,
+                    },
+                    "durable_state": "INDETERMINATE",
                 },
-                "replay": {
-                    "http_status": 409,
-                    "reason": "envelope_replayed",
-                    "provider_invocations": 1,
-                },
-                "reconciliation": {
-                    "http_status": 200,
-                    "valid": True,
-                    "outcome": "ESCALATED",
-                    "reason": "github_attempt_attribution_unavailable",
-                    "reexecuted": False,
+                "actuator_response_loss": {
+                    "initial": {
+                        "http_status": 202,
+                        "outcome": "INDETERMINATE",
+                        "effect_boundary_entered": True,
+                    },
+                    "replay": {
+                        "http_status": 409,
+                        "reason": "envelope_replayed",
+                        "provider_invocations": 1,
+                    },
+                    "reconciliation": {
+                        "http_status": 200,
+                        "valid": True,
+                        "outcome": "COMMITTED",
+                        "evidence_digest": "sha256:" + "d" * 64,
+                        "reexecuted": False,
+                    },
+                    "durable_state": "COMMITTED",
                 },
             },
         }
@@ -1320,7 +1344,9 @@ class CanaryTests(unittest.TestCase):
 
     def test_replay_or_reexecution_drift_is_refused(self) -> None:
         evidence = self.evidence()
-        evidence["checks"]["replay"]["provider_invocations"] = 2
+        evidence["checks"]["provider_response_loss"]["replay"][
+            "provider_invocations"
+        ] = 2
         result = self.validate(evidence)
         self.assertNotEqual(result.returncode, 0)
         self.assertIn("provider_invocations", result.stderr)
@@ -1334,7 +1360,9 @@ class CanaryTests(unittest.TestCase):
         self.assertNotEqual(result.returncode, 0)
         self.assertIn("provider_reference", result.stderr)
         evidence = self.evidence()
-        evidence["checks"]["reconciliation"]["reexecuted"] = True
+        evidence["checks"]["actuator_response_loss"]["reconciliation"][
+            "reexecuted"
+        ] = True
         result = self.validate(evidence)
         self.assertNotEqual(result.returncode, 0)
         self.assertIn("reexecuted", result.stderr)
@@ -1354,7 +1382,9 @@ class CanaryTests(unittest.TestCase):
         self.assertNotEqual(result.returncode, 0)
         self.assertIn("signature", result.stderr)
         evidence = self.sign(self.evidence())
-        evidence["checks"]["replay"]["provider_invocations"] = 2
+        evidence["checks"]["provider_response_loss"]["replay"][
+            "provider_invocations"
+        ] = 2
         result = self.validate(evidence, resign=False)
         self.assertNotEqual(result.returncode, 0)
         self.assertIn("signature", result.stderr)

@@ -33,6 +33,19 @@ DECISION_STABLE_IMAGE = (
     "us-central1-docker.pkg.dev/test-project/runtime/decision@sha256:"
     + "d" * 64
 )
+DEPLOYER_PRINCIPAL = (
+    "serviceAccount:emilia-deployer@test-project.iam.gserviceaccount.com"
+)
+WORKFLOW_REF = (
+    "emiliaprotocol/emilia-protocol/.github/workflows/"
+    "consequence-control-deploy.yml@refs/heads/main"
+)
+WORKFLOW_SHA = "e" * 40
+WIF_PROVIDER = (
+    "projects/123456789/locations/global/"
+    "workloadIdentityPools/emilia-prod/providers/github-prod"
+)
+REQUEST_SHA256 = "f" * 64
 
 
 def rollout_context() -> dict:
@@ -95,6 +108,18 @@ def rollout_context() -> dict:
             "min_readiness_samples": 3,
             "max_sample_gap_seconds": 300,
             "max_age_seconds": 900,
+        },
+        "deployment": {
+            "config_sha256": "a" * 64,
+            "deployer_principal": DEPLOYER_PRINCIPAL,
+            "workflow_ref": WORKFLOW_REF,
+            "workflow_sha": WORKFLOW_SHA,
+            "wif_provider": WIF_PROVIDER,
+        },
+        "request": {
+            "service": "decision",
+            "sha256": REQUEST_SHA256,
+            "pre_resource_version": "rv-decision-7",
         },
     }
 
@@ -769,6 +794,10 @@ class RolloutTelemetrySignatureTests(unittest.TestCase):
         self.addCleanup(temporary.cleanup)
         self.root = Path(temporary.name)
         self.private_key, self.public_key = self._generate_key_pair("rollout")
+        (
+            self.authorization_private_key,
+            self.authorization_public_key,
+        ) = self._generate_key_pair("rollout-authorization")
         self.config = self._write_config(
             "rollout-test-key",
             self.public_key,
@@ -792,6 +821,9 @@ class RolloutTelemetrySignatureTests(unittest.TestCase):
             ),
         )
         telemetry = current_good_telemetry()
+        telemetry["context"]["deployment"]["config_sha256"] = hashlib.sha256(
+            self.config.read_bytes()
+        ).hexdigest()
         consumed_at = (
             datetime.fromisoformat(
                 telemetry["window"]["started_at"].replace("Z", "+00:00")
@@ -868,6 +900,9 @@ class RolloutTelemetrySignatureTests(unittest.TestCase):
         name: str = "rollout.env",
     ) -> Path:
         digest = expected_hash or hashlib.sha256(public_key.read_bytes()).hexdigest()
+        authorization_digest = hashlib.sha256(
+            self.authorization_public_key.read_bytes()
+        ).hexdigest()
         path = self.root / name
         path.write_text(
             "\n".join(
@@ -875,6 +910,7 @@ class RolloutTelemetrySignatureTests(unittest.TestCase):
                     "PROJECT_ID=test-project",
                     "REGION=us-central1",
                     "RELEASE_ID=r2",
+                    f"DEPLOYER_PRINCIPAL={DEPLOYER_PRINCIPAL}",
                     "ACTUATOR_SERVICE=actuator",
                     "DECISION_SERVICE=decision",
                     f"ACTUATOR_IMAGE={ACTUATOR_IMAGE}",
@@ -884,6 +920,11 @@ class RolloutTelemetrySignatureTests(unittest.TestCase):
                     f"ROLLOUT_TELEMETRY_KEY_ID={key_id}",
                     f"ROLLOUT_TELEMETRY_PUBLIC_KEY_FILE={public_key}",
                     f"ROLLOUT_TELEMETRY_PUBLIC_KEY_SHA256={digest}",
+                    "ROLLOUT_AUTHORIZATION_KEY_ID=authorization-test-key",
+                    "ROLLOUT_AUTHORIZATION_PUBLIC_KEY_FILE="
+                    f"{self.authorization_public_key}",
+                    "ROLLOUT_AUTHORIZATION_PUBLIC_KEY_SHA256="
+                    f"{authorization_digest}",
                     "",
                 ]
             ),
@@ -895,13 +936,7 @@ class RolloutTelemetrySignatureTests(unittest.TestCase):
         payload = self.root / "authorization-payload.json"
         signature = self.root / "authorization-signature.bin"
         payload.write_bytes(
-            json.dumps(
-                unsigned,
-                ensure_ascii=False,
-                sort_keys=True,
-                separators=(",", ":"),
-                allow_nan=False,
-            ).encode("utf-8")
+            self.module.canonical_unsigned_authorization(unsigned)
         )
         subprocess.run(
             [
@@ -909,7 +944,7 @@ class RolloutTelemetrySignatureTests(unittest.TestCase):
                 "pkeyutl",
                 "-sign",
                 "-inkey",
-                str(self.private_key),
+                str(self.authorization_private_key),
                 "-rawin",
                 "-in",
                 str(payload),
@@ -924,7 +959,7 @@ class RolloutTelemetrySignatureTests(unittest.TestCase):
             **unsigned,
             "signature": {
                 "algorithm": "Ed25519",
-                "key_id": "rollout-test-key",
+                "key_id": "authorization-test-key",
                 "value": base64.urlsafe_b64encode(
                     signature.read_bytes()
                 ).decode("ascii").rstrip("="),
@@ -1024,6 +1059,22 @@ class RolloutTelemetrySignatureTests(unittest.TestCase):
                 str(self.actuator_snapshot),
                 "--decision-snapshot",
                 str(self.decision_snapshot),
+                "--deployment-config-sha256",
+                hashlib.sha256(self.config.read_bytes()).hexdigest(),
+                "--deployer-principal",
+                DEPLOYER_PRINCIPAL,
+                "--workflow-ref",
+                WORKFLOW_REF,
+                "--workflow-sha",
+                WORKFLOW_SHA,
+                "--wif-provider",
+                WIF_PROVIDER,
+                "--request-sha256",
+                REQUEST_SHA256,
+                "--request-service",
+                "decision",
+                "--pre-resource-version",
+                "rv-decision-7",
                 *(extra or []),
             ],
             text=True,
@@ -1050,11 +1101,14 @@ class RolloutTelemetrySignatureTests(unittest.TestCase):
     def test_traffic_promotion_passes_only_configured_telemetry_trust(self) -> None:
         traffic = (LANE_DIR / "traffic.sh").read_text(encoding="utf-8")
         self.assertIn('"$LANE_DIR/verify-rollout-telemetry.py"', traffic)
-        self.assertIn('--config "$CONFIG"', traffic)
+        self.assertIn("--config -", traffic)
         for name in (
             "ROLLOUT_TELEMETRY_KEY_ID",
             "ROLLOUT_TELEMETRY_PUBLIC_KEY_FILE",
             "ROLLOUT_TELEMETRY_PUBLIC_KEY_SHA256",
+            "ROLLOUT_AUTHORIZATION_KEY_ID",
+            "ROLLOUT_AUTHORIZATION_PUBLIC_KEY_FILE",
+            "ROLLOUT_AUTHORIZATION_PUBLIC_KEY_SHA256",
         ):
             self.assertIn(f"require_var {name}", traffic)
 
@@ -1183,13 +1237,7 @@ class RolloutTelemetrySignatureTests(unittest.TestCase):
             payload = self.root / f"{label}-payload.json"
             signature = self.root / f"{label}-signature.bin"
             payload.write_bytes(
-                json.dumps(
-                    hostile,
-                    ensure_ascii=False,
-                    sort_keys=True,
-                    separators=(",", ":"),
-                    allow_nan=False,
-                ).encode("utf-8")
+                self.module.canonical_unsigned_telemetry(hostile)
             )
             subprocess.run(
                 [

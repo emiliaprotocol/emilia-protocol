@@ -11,6 +11,7 @@ import hmac
 import json
 import os
 import re
+import stat
 import subprocess
 import sys
 import tempfile
@@ -31,6 +32,54 @@ KMS_URI = re.compile(
     r"^gcp-kms://projects/([^/]+)/locations/([^/]+)/keyRings/([^/]+)/"
     r"cryptoKeys/([^/]+)/cryptoKeyVersions/([1-9][0-9]*)$"
 )
+
+
+def read_trusted_file(
+    path: Path,
+    name: str,
+    *,
+    private: bool = False,
+) -> bytes:
+    if not path.is_absolute():
+        raise ValueError(f"{name} path must be absolute")
+    flags = os.O_RDONLY | getattr(os, "O_CLOEXEC", 0)
+    if hasattr(os, "O_NOFOLLOW"):
+        flags |= os.O_NOFOLLOW
+    try:
+        descriptor = os.open(path, flags)
+    except OSError as error:
+        raise ValueError(
+            f"{name} path must name a regular non-symlink file"
+        ) from error
+    try:
+        metadata = os.fstat(descriptor)
+        if not stat.S_ISREG(metadata.st_mode) or metadata.st_nlink != 1:
+            raise ValueError(
+                f"{name} path must name a regular non-symlink file"
+            )
+        allowed_owners = {os.geteuid()} if private else {0, os.geteuid()}
+        if metadata.st_uid not in allowed_owners:
+            raise ValueError(f"{name} file ownership is unsafe")
+        mode = stat.S_IMODE(metadata.st_mode)
+        if private:
+            if mode != 0o600:
+                raise ValueError(f"{name} file mode must be exactly 0600")
+        elif mode & 0o022:
+            raise ValueError(
+                f"{name} file mode permits group or world writes"
+            )
+        chunks: list[bytes] = []
+        while True:
+            chunk = os.read(descriptor, 1024 * 1024)
+            if not chunk:
+                break
+            chunks.append(chunk)
+        value = b"".join(chunks)
+    finally:
+        os.close(descriptor)
+    if not value:
+        raise ValueError(f"{name} file is empty")
+    return value
 
 
 def reject_duplicate_members(pairs: list[tuple[str, object]]) -> dict:
@@ -63,7 +112,12 @@ def parse_config(text: str) -> dict[str, str]:
 
 
 def load_config(path: Path) -> dict[str, str]:
-    return parse_config(path.read_text(encoding="utf-8"))
+    try:
+        return parse_config(
+            read_trusted_file(path, "deployment config").decode("utf-8")
+        )
+    except UnicodeDecodeError as error:
+        raise ValueError("deployment config is not UTF-8") from error
 
 
 def load_pinned_config(path: Path) -> dict[str, str]:
@@ -72,7 +126,12 @@ def load_pinned_config(path: Path) -> dict[str, str]:
         raise ValueError(
             "DEPLOYMENT_CONFIG_SHA256 must be injected by a protected source"
         )
-    raw = path.read_bytes()
+    if path == Path("-"):
+        raw = sys.stdin.buffer.read()
+        if not raw:
+            raise ValueError("deployment config stream is empty")
+    else:
+        raw = read_trusted_file(path, "deployment config")
     actual = hashlib.sha256(raw).hexdigest()
     if not hmac.compare_digest(actual, expected):
         raise ValueError("deployment config differs from protected SHA-256")
@@ -769,13 +828,12 @@ def validate_trust_config(config: dict[str, str]) -> dict[str, str]:
         )
     if file_mode:
         path = Path(file_values["path"])
-        if not path.is_absolute() or not path.is_file():
-            raise ValueError(
-                "configured stable-release public key file is unavailable"
-            )
         if not SHA256.fullmatch(file_values["sha256"]):
             raise ValueError("STABLE_RELEASE_PUBLIC_KEY_SHA256 is invalid")
-        public_key = path.read_bytes()
+        public_key = read_trusted_file(
+            path,
+            "stable-release public key",
+        )
         require_equal(
             sha256_bytes(public_key),
             file_values["sha256"],
@@ -786,6 +844,7 @@ def validate_trust_config(config: dict[str, str]) -> dict[str, str]:
             "key_id": key_id,
             "public_key_file": str(path),
             "public_key_sha256": file_values["sha256"],
+            "public_key_base64": base64.b64encode(public_key).decode("ascii"),
         }
     if not KMS_URI.fullmatch(kms_uri):
         raise ValueError("STABLE_RELEASE_KMS_KEY_URI is invalid")
@@ -869,12 +928,17 @@ def trusted_public_key(
         if supplied_public_key is not None:
             if (
                 not supplied_public_key.is_absolute()
-                or supplied_public_key.resolve() != configured.resolve()
+                or os.path.abspath(supplied_public_key)
+                != os.path.abspath(configured)
             ):
                 raise ValueError(
                     "caller-supplied public key does not match configured trust"
                 )
-        return configured.read_bytes(), {
+        public_key = base64.b64decode(
+            trust["public_key_base64"],
+            validate=True,
+        )
+        return public_key, {
             "provider": "file",
             "key_id": trust["key_id"],
             "public_key_sha256": trust["public_key_sha256"],
@@ -1107,19 +1171,26 @@ def sign_manifest(
             if (
                 private_key is None
                 or not private_key.is_absolute()
-                or not private_key.is_file()
                 or kms_key_uri is not None
             ):
                 raise ValueError(
                     "file trust requires exactly one stable-release private key"
                 )
+            private_key_bytes = read_trusted_file(
+                private_key,
+                "stable-release private key",
+                private=True,
+            )
+            held_private_key = Path(directory) / "private.pem"
+            held_private_key.write_bytes(private_key_bytes)
+            held_private_key.chmod(0o600)
             derived_path = Path(directory) / "derived-public.pem"
             derived = subprocess.run(
                 [
                     "openssl",
                     "pkey",
                     "-in",
-                    str(private_key),
+                    str(held_private_key),
                     "-pubout",
                     "-out",
                     str(derived_path),
@@ -1138,7 +1209,7 @@ def sign_manifest(
                     "pkeyutl",
                     "-sign",
                     "-inkey",
-                    str(private_key),
+                    str(held_private_key),
                     "-rawin",
                     "-in",
                     str(payload_path),

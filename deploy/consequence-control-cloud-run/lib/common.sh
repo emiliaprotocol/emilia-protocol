@@ -8,7 +8,11 @@ lane_die() {
 
 is_invocation_control_variable() {
   case "$1" in
-    DEPLOYMENT_CONFIG_SHA256 | REQUIRE_DEPLOYMENT_CONFIG_PIN | *_APPROVED | *_CONFIRM | *_CONFIRM_* | JIT_*)
+    PATH | ACTION | MODE | CONFIG | EVIDENCE | TELEMETRY | AUTHORIZATION | \
+      STABLE_MANIFEST | STABLE_PUBLIC_KEY | UPDATE_* | *_SNAPSHOT | \
+      MAX_* | MIN_* | ROLLOUT_POLL_* | \
+      DEPLOYMENT_CONFIG_SHA256 | REQUIRE_DEPLOYMENT_CONFIG_PIN | \
+      *_APPROVED | *_CONFIRM | *_CONFIRM_* | JIT_*)
       return 0
       ;;
     *)
@@ -17,66 +21,139 @@ is_invocation_control_variable() {
   esac
 }
 
-lane_sha256_file() {
-  local file=$1 digest
-  if command -v sha256sum >/dev/null 2>&1; then
-    digest=$(sha256sum "$file") || lane_die "unable to hash deployment config"
-    printf '%s' "${digest%% *}"
-    return
-  fi
-  if command -v shasum >/dev/null 2>&1; then
-    digest=$(shasum -a 256 "$file") || lane_die "unable to hash deployment config"
-    printf '%s' "${digest%% *}"
-    return
-  fi
-  command -v openssl >/dev/null 2>&1 \
-    || lane_die "sha256sum, shasum, or openssl is required"
-  digest=$(openssl dgst -sha256 -r "$file") \
-    || lane_die "unable to hash deployment config"
-  printf '%s' "${digest%% *}"
-}
-
 verify_lane_config_pin() {
-  local file=$1 expected=${DEPLOYMENT_CONFIG_SHA256:-} actual
+  local expected=${DEPLOYMENT_CONFIG_SHA256:-} actual
   [[ "$expected" =~ ^[0-9a-f]{64}$ ]] \
     || lane_die "DEPLOYMENT_CONFIG_SHA256 must be injected by a protected source"
-  actual=$(lane_sha256_file "$file")
-  [[ "$actual" == "$expected" ]] \
+  [[ -n "${LANE_PINNED_CONFIG_BASE64:-}" ]] \
+    || lane_die "deployment config has not been pinned in memory"
+  actual=$(
+    printf '%s' "$LANE_PINNED_CONFIG_BASE64" \
+      | python3 -c 'import base64,hashlib,sys; print(hashlib.sha256(base64.b64decode(sys.stdin.buffer.read(), validate=True)).hexdigest())'
+  ) || lane_die "unable to verify retained deployment config bytes"
+  [[ "$actual" == "$expected" \
+      && "$actual" == "${LANE_PINNED_CONFIG_SHA256:-}" ]] \
     || lane_die "deployment config differs from protected SHA-256"
+}
+
+lane_cleanup_pinned_config() {
+  local temporary_parent=${TMPDIR:-/tmp}
+  temporary_parent=${temporary_parent%/}
+  if [[ -n "${LANE_PINNED_CONFIG_DIR:-}" \
+      && "$LANE_PINNED_CONFIG_DIR" != / \
+      && "$LANE_PINNED_CONFIG_DIR" == "$temporary_parent/"* ]]; then
+    rm -rf -- "$LANE_PINNED_CONFIG_DIR"
+  fi
+}
+
+lane_emit_pinned_config() {
+  [[ -n "${LANE_PINNED_CONFIG_BASE64:-}" ]] \
+    || lane_die "deployment config has not been retained"
+  printf '%s' "$LANE_PINNED_CONFIG_BASE64" \
+    | python3 -c 'import base64,sys; sys.stdout.buffer.write(base64.b64decode(sys.stdin.buffer.read(), validate=True))'
+}
+
+lane_config_key_is_allowed() {
+  local candidate=$1 allowed
+  shift
+  for allowed in "$@"; do
+    [[ "$candidate" == "$allowed" ]] && return 0
+  done
+  return 1
 }
 
 load_lane_config() {
   local file=${1:-}
-  [[ -f "$file" ]] || lane_die "config file not found: $file"
-  if [[ "${REQUIRE_DEPLOYMENT_CONFIG_PIN:-false}" != true ]]; then
-    local line key value number=0
-    while IFS= read -r line || [[ -n "$line" ]]; do
-      number=$((number + 1))
-      [[ -z "$line" || "$line" == \#* ]] && continue
-      [[ "$line" == *=* ]] || lane_die "invalid config line $number"
-      key=${line%%=*}
-      value=${line#*=}
-      [[ "$key" =~ ^[A-Z][A-Z0-9_]*$ ]] \
-        || lane_die "invalid config key on line $number"
-      if is_invocation_control_variable "$key"; then
-        lane_die "invocation control variables must not be stored in config: $key"
-      fi
-      [[ "$value" != *$'\n'* && "$value" != *$'\r'* ]] \
-        || lane_die "invalid control character on line $number"
-      printf -v "$key" '%s' "$value"
-      export "${key?}"
-    done < "$file"
-    return
+  shift
+  (($# > 0)) || lane_die "a strict config-key allowlist is required"
+  local allowed=("$@")
+  local expected=${DEPLOYMENT_CONFIG_SHA256:-}
+  local require_pin=${REQUIRE_DEPLOYMENT_CONFIG_PIN:-false}
+  if [[ "$require_pin" == true ]]; then
+    [[ "$expected" =~ ^[0-9a-f]{64}$ ]] \
+      || lane_die "DEPLOYMENT_CONFIG_SHA256 must be injected by a protected source"
+  elif [[ -n "$expected" && ! "$expected" =~ ^[0-9a-f]{64}$ ]]; then
+    lane_die "DEPLOYMENT_CONFIG_SHA256 must be lowercase SHA-256"
   fi
-  local pinned_copy
-  pinned_copy=$(mktemp)
-  chmod 600 "$pinned_copy"
-  cp "$file" "$pinned_copy" || {
-    rm -f "$pinned_copy"
-    lane_die "unable to snapshot deployment config"
+
+  lane_cleanup_pinned_config
+  LANE_PINNED_CONFIG_DIR=$(mktemp -d)
+  chmod 700 "$LANE_PINNED_CONFIG_DIR"
+  LANE_PINNED_CONFIG="$LANE_PINNED_CONFIG_DIR/config.env"
+  local metadata
+  metadata=$(
+    python3 - "$file" "$LANE_PINNED_CONFIG" "$expected" "$require_pin" <<'PY'
+import base64
+import errno
+import hashlib
+import os
+import stat
+import sys
+
+source, destination, expected, require_pin = sys.argv[1:]
+flags = os.O_RDONLY | getattr(os, "O_CLOEXEC", 0)
+if hasattr(os, "O_NOFOLLOW"):
+    flags |= os.O_NOFOLLOW
+try:
+    descriptor = os.open(source, flags)
+except OSError as error:
+    if error.errno in {errno.ELOOP, errno.EMLINK}:
+        raise SystemExit("config path must name a regular non-symlink file")
+    raise SystemExit(f"config file is unavailable: {error}")
+try:
+    metadata = os.fstat(descriptor)
+    if not stat.S_ISREG(metadata.st_mode):
+        raise SystemExit("config path must name a regular non-symlink file")
+    if metadata.st_nlink != 1:
+        raise SystemExit("config file must have exactly one filesystem link")
+    if metadata.st_uid not in {0, os.geteuid()}:
+        raise SystemExit("config file ownership is unsafe")
+    if stat.S_IMODE(metadata.st_mode) & 0o022:
+        raise SystemExit("config file mode permits group or world writes")
+    chunks = []
+    while True:
+        chunk = os.read(descriptor, 1024 * 1024)
+        if not chunk:
+            break
+        chunks.append(chunk)
+    raw = b"".join(chunks)
+finally:
+    os.close(descriptor)
+if b"\x00" in raw:
+    raise SystemExit("config contains a NUL byte")
+actual = hashlib.sha256(raw).hexdigest()
+if require_pin == "true" and actual != expected:
+    raise SystemExit("deployment config differs from protected SHA-256")
+output_flags = os.O_WRONLY | os.O_CREAT | os.O_EXCL | getattr(os, "O_CLOEXEC", 0)
+if hasattr(os, "O_NOFOLLOW"):
+    output_flags |= os.O_NOFOLLOW
+output = os.open(destination, output_flags, 0o400)
+try:
+    view = memoryview(raw)
+    while view:
+        written = os.write(output, view)
+        view = view[written:]
+    os.fsync(output)
+finally:
+    os.close(output)
+print(actual)
+print(base64.b64encode(raw).decode("ascii"))
+PY
+  ) || {
+    lane_cleanup_pinned_config
+    lane_die "unable to create single-open pinned config snapshot"
   }
-  verify_lane_config_pin "$pinned_copy"
+  LANE_PINNED_CONFIG_SHA256=${metadata%%$'\n'*}
+  LANE_PINNED_CONFIG_BASE64=${metadata#*$'\n'}
+  [[ "$LANE_PINNED_CONFIG_SHA256" =~ ^[0-9a-f]{64}$ \
+      && -n "$LANE_PINNED_CONFIG_BASE64" ]] || {
+    lane_cleanup_pinned_config
+    lane_die "pinned config snapshot metadata is invalid"
+  }
+  trap 'lane_cleanup_pinned_config' EXIT
+
   local line key value number=0
+  local seen=':'
   while IFS= read -r line || [[ -n "$line" ]]; do
     number=$((number + 1))
     [[ -z "$line" || "$line" == \#* ]] && continue
@@ -86,14 +163,23 @@ load_lane_config() {
     [[ "$key" =~ ^[A-Z][A-Z0-9_]*$ ]] \
       || lane_die "invalid config key on line $number"
     if is_invocation_control_variable "$key"; then
-      lane_die "invocation control variables must not be stored in config: $key"
+      lane_die "invocation control variables must not be stored in config; config key is not allowed: $key"
     fi
+    lane_config_key_is_allowed "$key" "${allowed[@]}" \
+      || lane_die "config key is not allowed for this command: $key"
+    [[ "$seen" != *":$key:"* ]] \
+      || lane_die "duplicate config key on line $number: $key"
+    seen+="$key:"
     [[ "$value" != *$'\n'* && "$value" != *$'\r'* ]] \
       || lane_die "invalid control character on line $number"
     printf -v "$key" '%s' "$value"
     export "${key?}"
-  done < "$pinned_copy"
-  rm -f "$pinned_copy"
+  done < <(lane_emit_pinned_config)
+  # shellcheck disable=SC2034
+  CONFIG=$LANE_PINNED_CONFIG
+  if [[ "$require_pin" == true ]]; then
+    verify_lane_config_pin
+  fi
 }
 
 require_var() {
@@ -252,6 +338,44 @@ all_secret_variables() {
     actuator_secret_variables
     decision_secret_variables
   } | awk '!seen[$0]++'
+}
+
+deployment_config_variables() {
+  printf '%s\n' \
+    PROJECT_ID PROJECT_NAME PROJECT_PARENT BILLING_ACCOUNT REGION RELEASE_ID \
+    PROVISIONER_PRINCIPAL DEPLOYER_PRINCIPAL \
+    RECOVERY_PRINCIPALS RECOVERY_PAM_ENTITLEMENT RECOVERY_PAM_ROLE \
+    EMILIA_IAM_ANALYZER_SCOPE \
+    ACTUATOR_SERVICE DECISION_SERVICE \
+    ACTUATOR_SERVICE_ACCOUNT DECISION_SERVICE_ACCOUNT \
+    STABLE_BOOTSTRAP_ACTUATOR_SERVICE_ACCOUNT \
+    STABLE_BOOTSTRAP_DECISION_SERVICE_ACCOUNT \
+    ACTUATOR_IMAGE DECISION_IMAGE \
+    NETWORK SUBNET SUBNET_CIDR ARTIFACT_REPOSITORY ROUTER NAT \
+    ACTUATOR_INGRESS DECISION_INGRESS \
+    ACTUATOR_CPU ACTUATOR_MEMORY ACTUATOR_MIN_INSTANCES \
+    ACTUATOR_MAX_INSTANCES ACTUATOR_CONCURRENCY \
+    DECISION_CPU DECISION_MEMORY DECISION_MIN_INSTANCES \
+    DECISION_MAX_INSTANCES DECISION_CONCURRENCY \
+    ACTUATOR_DATABASE_PRINCIPAL TENANT_ID GITHUB_OWNER GITHUB_REPO \
+    GITHUB_ISSUE_NUMBER ENVELOPE_ISSUER_ID ENVELOPE_KEY_ID \
+    OBSERVATION_ISSUER_ID OBSERVATION_KEY_ID \
+    DECISION_RELYING_PARTY_ID DECISION_EXECUTOR_ID DECISION_PRINCIPAL_ID \
+    DECISION_APPROVAL_ENDPOINT DECISION_PROPOSAL_TTL_SEC \
+    DECISION_ACTUATOR_TIMEOUT_MS DECISION_AEB_REQUIREMENT_REF \
+    DECISION_SHUTDOWN_GRACE_MS \
+    CANARY_EVIDENCE_KEY_ID CANARY_EVIDENCE_PUBLIC_KEY_FILE \
+    CANARY_EVIDENCE_PUBLIC_KEY_SHA256 CANARY_MAX_AGE_SEC \
+    ROLLOUT_TELEMETRY_KEY_ID ROLLOUT_TELEMETRY_PUBLIC_KEY_FILE \
+    ROLLOUT_TELEMETRY_PUBLIC_KEY_SHA256 \
+    ROLLOUT_AUTHORIZATION_KEY_ID ROLLOUT_AUTHORIZATION_PUBLIC_KEY_FILE \
+    ROLLOUT_AUTHORIZATION_PUBLIC_KEY_SHA256 \
+    STABLE_RELEASE_KEY_ID STABLE_RELEASE_KMS_KEY_URI \
+    STABLE_RELEASE_PUBLIC_KEY_FILE STABLE_RELEASE_PUBLIC_KEY_SHA256 \
+    STABLE_BOOTSTRAP_ALLOWED_DIGESTS STABLE_BOOTSTRAP_PROVENANCE_FILE \
+    STABLE_BOOTSTRAP_PROVENANCE_SHA256 \
+    ACTUATOR_STABLE_REVISION DECISION_STABLE_REVISION
+  all_secret_variables
 }
 
 configured_secret_refs() {

@@ -86,7 +86,14 @@ done
 [[ "$OUTPUT" == /* ]] || lane_die "--output must be an absolute path"
 [[ -n "$PLACEHOLDER_IMAGE" ]] || lane_die "--placeholder-image is required"
 
-load_lane_config "$CONFIG"
+if [[ "$MODE" == apply ]]; then
+  export REQUIRE_DEPLOYMENT_CONFIG_PIN=true
+fi
+BOOTSTRAP_CONFIG_KEYS=()
+while IFS= read -r name; do
+  BOOTSTRAP_CONFIG_KEYS+=("$name")
+done < <(deployment_config_variables)
+load_lane_config "$CONFIG" "${BOOTSTRAP_CONFIG_KEYS[@]}"
 validate_lane_config
 require_var STABLE_RELEASE_KEY_ID
 require_var STABLE_BOOTSTRAP_ALLOWED_DIGESTS
@@ -385,7 +392,7 @@ if [[ -n "$SIGNING_KEY_FILE" ]]; then
     || lane_die "stable-release private key must not be group/world accessible"
 fi
 HTTP_TMPDIR=$(mktemp -d)
-trap 'rm -rf "${HTTP_TMPDIR:-}"' EXIT
+trap 'rm -rf "${HTTP_TMPDIR:-}"; lane_cleanup_pinned_config' EXIT
 
 "$LANE_DIR/verify-stable-release.py" verify-bootstrap \
   --config "$CONFIG" \

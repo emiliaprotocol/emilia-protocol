@@ -56,7 +56,17 @@ ROLLOUT_CONTEXT_KEYS = {
     "pre_state",
     "post_traffic",
     "thresholds",
+    "deployment",
+    "request",
 }
+DEPLOYMENT_BINDING_KEYS = {
+    "config_sha256",
+    "deployer_principal",
+    "workflow_ref",
+    "workflow_sha",
+    "wif_provider",
+}
+REQUEST_BINDING_KEYS = {"service", "sha256", "pre_resource_version"}
 PLANE_KEYS = {"actuator", "decision"}
 REVISION_BINDING_KEYS = {"service", "revision", "image"}
 SNAPSHOT_BINDING_KEYS = {
@@ -90,6 +100,19 @@ ROLLOUT_TRANSITIONS = {
 }
 TELEMETRY_SCHEMA = "emilia-rollout-telemetry.v2"
 AUTHORIZATION_SCHEMA = "emilia-rollout-authorization.v1"
+ATTEMPT_CLAIM_SCHEMA = "emilia-deployment-attempt-claim.v1"
+ATTEMPT_STORE_RESPONSE_SCHEMA = "emilia-deployment-attempt-store-response.v1"
+ROLLOUT_TELEMETRY_KEY_ID = "ROLLOUT_TELEMETRY_KEY_ID"
+ROLLOUT_TELEMETRY_PUBLIC_KEY_FILE = "ROLLOUT_TELEMETRY_PUBLIC_KEY_FILE"
+ROLLOUT_TELEMETRY_PUBLIC_KEY_SHA256 = "ROLLOUT_TELEMETRY_PUBLIC_KEY_SHA256"
+ROLLOUT_AUTHORIZATION_KEY_ID = "ROLLOUT_AUTHORIZATION_KEY_ID"
+ROLLOUT_AUTHORIZATION_PUBLIC_KEY_FILE = "ROLLOUT_AUTHORIZATION_PUBLIC_KEY_FILE"
+ROLLOUT_AUTHORIZATION_PUBLIC_KEY_SHA256 = (
+    "ROLLOUT_AUTHORIZATION_PUBLIC_KEY_SHA256"
+)
+TELEMETRY_SIGNING_DOMAIN = b"EMILIA-ROLLOUT-TELEMETRY-V2\x00"
+AUTHORIZATION_SIGNING_DOMAIN = b"EMILIA-ROLLOUT-AUTHORIZATION-V1\x00"
+ATTEMPT_CLAIM_DOMAIN = b"EMILIA-DEPLOYMENT-ATTEMPT-CLAIM-V1\x00"
 
 
 class TelemetryError(ValueError):
@@ -137,6 +160,14 @@ class TelemetryTrust:
     public_key: bytes
 
 
+@dataclass(frozen=True)
+class AuthorizationTrust:
+    key_id: str
+    public_key_file: Path
+    public_key_sha256: str
+    public_key: bytes
+
+
 def reject_duplicate_members(pairs: list[tuple[str, Any]]) -> dict[str, Any]:
     result: dict[str, Any] = {}
     for key, value in pairs:
@@ -178,8 +209,10 @@ def parse_config(text: str) -> dict[str, str]:
 
 def load_config(path: Path) -> dict[str, str]:
     try:
-        return parse_config(path.read_text(encoding="utf-8"))
-    except OSError as error:
+        return parse_config(
+            read_trusted_file(path, "deployment config").decode("utf-8")
+        )
+    except (OSError, UnicodeDecodeError) as error:
         raise TelemetryError(f"unable to load config {path}: {error}") from error
 
 
@@ -189,10 +222,12 @@ def load_pinned_config(path: Path) -> dict[str, str]:
         raise TelemetryError(
             "DEPLOYMENT_CONFIG_SHA256 must be injected by a protected source"
         )
-    try:
-        raw = path.read_bytes()
-    except OSError as error:
-        raise TelemetryError(f"unable to load config {path}: {error}") from error
+    if path == Path("-"):
+        raw = sys.stdin.buffer.read()
+        if not raw:
+            raise TelemetryError("deployment config stream is empty")
+    else:
+        raw = read_trusted_file(path, "deployment config")
     actual = hashlib.sha256(raw).hexdigest()
     if not hmac.compare_digest(actual, expected):
         raise TelemetryError("deployment config differs from protected SHA-256")
@@ -202,27 +237,70 @@ def load_pinned_config(path: Path) -> dict[str, str]:
         raise TelemetryError("deployment config is not UTF-8") from error
 
 
-def load_telemetry_trust(config: Mapping[str, str]) -> TelemetryTrust:
-    key_id = config.get("ROLLOUT_TELEMETRY_KEY_ID", "")
-    if KEY_ID_RE.fullmatch(key_id) is None:
-        raise TelemetryError("ROLLOUT_TELEMETRY_KEY_ID is required and invalid")
-    public_key_file = Path(config.get("ROLLOUT_TELEMETRY_PUBLIC_KEY_FILE", ""))
-    if not public_key_file.is_absolute() or not public_key_file.is_file():
-        raise TelemetryError(
-            "configured rollout telemetry public-key file is unavailable"
-        )
-    expected_hash = config.get("ROLLOUT_TELEMETRY_PUBLIC_KEY_SHA256", "")
-    if SHA256_RE.fullmatch(expected_hash) is None:
-        raise TelemetryError("ROLLOUT_TELEMETRY_PUBLIC_KEY_SHA256 is invalid")
+def read_trusted_file(path: Path, name: str) -> bytes:
+    if not path.is_absolute():
+        raise TelemetryError(f"{name} path must be absolute")
+    flags = os.O_RDONLY | getattr(os, "O_CLOEXEC", 0)
+    if hasattr(os, "O_NOFOLLOW"):
+        flags |= os.O_NOFOLLOW
     try:
-        public_key = public_key_file.read_bytes()
+        descriptor = os.open(path, flags)
     except OSError as error:
         raise TelemetryError(
-            "configured rollout telemetry public-key file is unavailable"
+            f"{name} path must name a regular non-symlink file"
         ) from error
+    try:
+        metadata = os.fstat(descriptor)
+        if not stat.S_ISREG(metadata.st_mode) or metadata.st_nlink != 1:
+            raise TelemetryError(
+                f"{name} path must name a regular non-symlink file"
+            )
+        if metadata.st_uid not in {0, os.geteuid()}:
+            raise TelemetryError(f"{name} file ownership is unsafe")
+        if stat.S_IMODE(metadata.st_mode) & 0o022:
+            raise TelemetryError(
+                f"{name} file mode permits group or world writes"
+            )
+        chunks: list[bytes] = []
+        while True:
+            chunk = os.read(descriptor, 1024 * 1024)
+            if not chunk:
+                break
+            chunks.append(chunk)
+        value = b"".join(chunks)
+    finally:
+        os.close(descriptor)
+    if not value:
+        raise TelemetryError(f"{name} file is empty")
+    return value
+
+
+def _load_file_trust(
+    config: Mapping[str, str],
+    *,
+    prefix: str,
+    name: str,
+) -> tuple[str, Path, str, bytes]:
+    key_id = config.get(f"{prefix}_KEY_ID", "")
+    if KEY_ID_RE.fullmatch(key_id) is None:
+        raise TelemetryError(f"{prefix}_KEY_ID is required and invalid")
+    public_key_file = Path(config.get(f"{prefix}_PUBLIC_KEY_FILE", ""))
+    expected_hash = config.get(f"{prefix}_PUBLIC_KEY_SHA256", "")
+    if SHA256_RE.fullmatch(expected_hash) is None:
+        raise TelemetryError(f"{prefix}_PUBLIC_KEY_SHA256 is invalid")
+    public_key = read_trusted_file(public_key_file, name)
     actual_hash = hashlib.sha256(public_key).hexdigest()
     if not hmac.compare_digest(actual_hash, expected_hash):
-        raise TelemetryError("configured rollout telemetry public-key SHA-256 differs")
+        raise TelemetryError(f"configured {name} SHA-256 differs")
+    return key_id, public_key_file, expected_hash, public_key
+
+
+def load_telemetry_trust(config: Mapping[str, str]) -> TelemetryTrust:
+    key_id, public_key_file, expected_hash, public_key = _load_file_trust(
+        config,
+        prefix="ROLLOUT_TELEMETRY",
+        name="rollout telemetry public key",
+    )
     return TelemetryTrust(
         key_id=key_id,
         public_key_file=public_key_file,
@@ -231,16 +309,49 @@ def load_telemetry_trust(config: Mapping[str, str]) -> TelemetryTrust:
     )
 
 
+def load_authorization_trust(config: Mapping[str, str]) -> AuthorizationTrust:
+    key_id, public_key_file, expected_hash, public_key = _load_file_trust(
+        config,
+        prefix="ROLLOUT_AUTHORIZATION",
+        name="rollout authorization public key",
+    )
+    return AuthorizationTrust(
+        key_id=key_id,
+        public_key_file=public_key_file,
+        public_key_sha256=expected_hash,
+        public_key=public_key,
+    )
+
+
+def load_rollout_trusts(
+    config: Mapping[str, str],
+) -> tuple[TelemetryTrust, AuthorizationTrust]:
+    telemetry = load_telemetry_trust(config)
+    authorization = load_authorization_trust(config)
+    if (
+        telemetry.key_id == authorization.key_id
+        or hmac.compare_digest(
+            telemetry.public_key_sha256,
+            authorization.public_key_sha256,
+        )
+    ):
+        raise TelemetryError(
+            "rollout telemetry and authorization trust roots must be distinct"
+        )
+    return telemetry, authorization
+
+
 def canonical_unsigned_telemetry(root: Mapping[str, Any]) -> bytes:
     unsigned = {key: value for key, value in root.items() if key != "signature"}
     try:
-        return json.dumps(
+        encoded = json.dumps(
             unsigned,
             ensure_ascii=False,
             sort_keys=True,
             separators=(",", ":"),
             allow_nan=False,
         ).encode("utf-8")
+        return TELEMETRY_SIGNING_DOMAIN + encoded
     except (TypeError, ValueError) as error:
         raise TelemetryError("telemetry cannot be canonically encoded") from error
 
@@ -314,6 +425,71 @@ def validate_rollout_context(value: Any) -> dict[str, Any]:
         or NONCE_RE.fullmatch(context["rollout_nonce"]) is None
     ):
         raise TelemetryError("context.rollout_nonce is invalid")
+    deployment = exact_keys(
+        context["deployment"],
+        DEPLOYMENT_BINDING_KEYS,
+        "context.deployment",
+    )
+    if (
+        not isinstance(deployment["config_sha256"], str)
+        or SHA256_RE.fullmatch(deployment["config_sha256"]) is None
+    ):
+        raise TelemetryError("context.deployment.config_sha256 is invalid")
+    if (
+        not isinstance(deployment["deployer_principal"], str)
+        or re.fullmatch(
+            r"serviceAccount:[^@\s,]+@[^@\s,]+[.]iam[.]gserviceaccount[.]com",
+            deployment["deployer_principal"],
+        )
+        is None
+    ):
+        raise TelemetryError("context.deployment.deployer_principal is invalid")
+    if deployment["workflow_ref"] != (
+        "emiliaprotocol/emilia-protocol/.github/workflows/"
+        "consequence-control-deploy.yml@refs/heads/main"
+    ):
+        raise TelemetryError("context.deployment.workflow_ref is invalid")
+    if (
+        not isinstance(deployment["workflow_sha"], str)
+        or re.fullmatch(r"[0-9a-f]{40}", deployment["workflow_sha"]) is None
+    ):
+        raise TelemetryError("context.deployment.workflow_sha is invalid")
+    if (
+        not isinstance(deployment["wif_provider"], str)
+        or re.fullmatch(
+            r"projects/[1-9][0-9]*/locations/global/workloadIdentityPools/"
+            r"[a-z][a-z0-9-]{3,31}/providers/[a-z][a-z0-9-]{3,31}",
+            deployment["wif_provider"],
+        )
+        is None
+    ):
+        raise TelemetryError("context.deployment.wif_provider is invalid")
+    request = exact_keys(
+        context["request"],
+        REQUEST_BINDING_KEYS,
+        "context.request",
+    )
+    if (
+        not isinstance(request["service"], str)
+        or NAME_RE.fullmatch(request["service"]) is None
+    ):
+        raise TelemetryError("context.request.service is invalid")
+    if (
+        not isinstance(request["sha256"], str)
+        or SHA256_RE.fullmatch(request["sha256"]) is None
+    ):
+        raise TelemetryError("context.request.sha256 is invalid")
+    if (
+        not isinstance(request["pre_resource_version"], str)
+        or not request["pre_resource_version"]
+        or any(
+            character.isspace()
+            for character in request["pre_resource_version"]
+        )
+    ):
+        raise TelemetryError(
+            "context.request.pre_resource_version is invalid"
+        )
 
     bindings: dict[str, dict[str, dict[str, str]]] = {}
     for stage in ("candidate", "stable"):
@@ -400,6 +576,22 @@ def validate_rollout_context(value: Any) -> dict[str, Any]:
             raise TelemetryError(
                 f"context.pre_state.{plane}.resource_version is invalid"
             )
+    request_planes = [
+        plane
+        for plane in sorted(PLANE_KEYS)
+        if pre_state[plane]["service"] == request["service"]
+    ]
+    if len(request_planes) != 1:
+        raise TelemetryError(
+            "context.request.service must identify exactly one deployment plane"
+        )
+    if (
+        pre_state[request_planes[0]]["resource_version"]
+        != request["pre_resource_version"]
+    ):
+        raise TelemetryError(
+            "context.request.pre_resource_version does not match pre-state"
+        )
 
     post_traffic = exact_keys(
         context["post_traffic"],
@@ -458,6 +650,21 @@ def validate_context_deployment(
             raise TelemetryError(
                 f"context.{name} does not match pinned deployment config"
             )
+    if (
+        context["deployment"]["deployer_principal"]
+        != config.get("DEPLOYER_PRINCIPAL")
+    ):
+        raise TelemetryError(
+            "context.deployment.deployer_principal does not match pinned config"
+        )
+    protected_config_hash = os.environ.get("DEPLOYMENT_CONFIG_SHA256", "")
+    if (
+        SHA256_RE.fullmatch(protected_config_hash) is None
+        or context["deployment"]["config_sha256"] != protected_config_hash
+    ):
+        raise TelemetryError(
+            "context.deployment.config_sha256 does not match protected config"
+        )
     for plane, prefix in (("actuator", "ACTUATOR"), ("decision", "DECISION")):
         service = config.get(f"{prefix}_SERVICE")
         candidate = {
@@ -571,14 +778,14 @@ def verify_telemetry_signature(
 
 
 def canonical_unsigned_authorization(root: Mapping[str, Any]) -> bytes:
-    return canonical_json(
+    return AUTHORIZATION_SIGNING_DOMAIN + canonical_json(
         {key: value for key, value in root.items() if key != "signature"}
     )
 
 
 def verify_rollout_authorization_signature(
     root: Any,
-    trust: TelemetryTrust,
+    trust: AuthorizationTrust,
 ) -> dict[str, Any]:
     authorization = exact_keys(
         root,
@@ -692,19 +899,117 @@ def validate_consumed_authorization(
     return hashlib.sha256(canonical_json(authorization)).hexdigest()
 
 
-def _validate_private_key_file(private_key: Path) -> None:
+def build_attempt_claim(context: Mapping[str, Any]) -> dict[str, Any]:
+    validated = validate_rollout_context(dict(context))
+    key_material = {
+        "authorization_id": validated["authorization_id"],
+        "rollout_nonce": validated["rollout_nonce"],
+        "request_sha256": validated["request"]["sha256"],
+        "pre_resource_version": validated["request"]["pre_resource_version"],
+    }
+    claim_sha256 = hashlib.sha256(
+        ATTEMPT_CLAIM_DOMAIN + canonical_json(key_material)
+    ).hexdigest()
+    return {
+        "schema": ATTEMPT_CLAIM_SCHEMA,
+        "claim_sha256": claim_sha256,
+        **key_material,
+        "project_id": validated["project_id"],
+        "region": validated["region"],
+        "release_id": validated["release_id"],
+        "transition": validated["transition"],
+        "service": validated["request"]["service"],
+        "config_sha256": validated["deployment"]["config_sha256"],
+        "deployer_principal": validated["deployment"]["deployer_principal"],
+        "workflow_ref": validated["deployment"]["workflow_ref"],
+        "workflow_sha": validated["deployment"]["workflow_sha"],
+        "wif_provider": validated["deployment"]["wif_provider"],
+    }
+
+
+def validate_attempt_store_response(
+    value: Any,
+    *,
+    operation: str,
+    claim_sha256: str,
+    allowed_statuses: set[str],
+) -> dict[str, Any]:
+    response = exact_keys(
+        value,
+        {
+            "schema",
+            "operation",
+            "status",
+            "claim_sha256",
+            "final_resource_version",
+        },
+        "attempt-store response",
+    )
+    if response["schema"] != ATTEMPT_STORE_RESPONSE_SCHEMA:
+        raise TelemetryError("attempt-store response schema is unsupported")
+    if response["operation"] != operation:
+        raise TelemetryError("attempt-store response operation mismatch")
+    if response["status"] not in allowed_statuses:
+        raise TelemetryError("attempt-store response status is not allowed")
+    if (
+        not isinstance(response["claim_sha256"], str)
+        or SHA256_RE.fullmatch(response["claim_sha256"]) is None
+        or not hmac.compare_digest(response["claim_sha256"], claim_sha256)
+    ):
+        raise TelemetryError("attempt-store response claim digest mismatch")
+    final_resource_version = response["final_resource_version"]
+    if operation == "claim":
+        if final_resource_version is not None:
+            raise TelemetryError(
+                "attempt claim response must not name a final resourceVersion"
+            )
+    elif (
+        not isinstance(final_resource_version, str)
+        or not final_resource_version
+        or any(character.isspace() for character in final_resource_version)
+    ):
+        raise TelemetryError(
+            "attempt-store final resourceVersion is invalid"
+        )
+    return response
+
+
+def _read_private_key_file(private_key: Path) -> bytes:
     if not private_key.is_absolute():
         raise TelemetryError("private key path must be absolute")
+    flags = os.O_RDONLY | getattr(os, "O_CLOEXEC", 0)
+    if hasattr(os, "O_NOFOLLOW"):
+        flags |= os.O_NOFOLLOW
     try:
-        metadata = private_key.lstat()
+        descriptor = os.open(private_key, flags)
     except OSError as error:
-        raise TelemetryError("private key file is unavailable") from error
-    if not stat.S_ISREG(metadata.st_mode):
-        raise TelemetryError("private key path must name a regular non-symlink file")
-    if metadata.st_uid != os.getuid():
-        raise TelemetryError("private key file must be owned by the current user")
-    if stat.S_IMODE(metadata.st_mode) != 0o600:
-        raise TelemetryError("private key file mode must be exactly 0600")
+        raise TelemetryError(
+            "private key path must name a regular non-symlink file"
+        ) from error
+    try:
+        metadata = os.fstat(descriptor)
+        if not stat.S_ISREG(metadata.st_mode) or metadata.st_nlink != 1:
+            raise TelemetryError(
+                "private key path must name a regular non-symlink file"
+            )
+        if metadata.st_uid != os.geteuid():
+            raise TelemetryError(
+                "private key file must be owned by the current user"
+            )
+        if stat.S_IMODE(metadata.st_mode) != 0o600:
+            raise TelemetryError("private key file mode must be exactly 0600")
+        chunks: list[bytes] = []
+        while True:
+            chunk = os.read(descriptor, 1024 * 1024)
+            if not chunk:
+                break
+            chunks.append(chunk)
+        value = b"".join(chunks)
+    finally:
+        os.close(descriptor)
+    if not value:
+        raise TelemetryError("private key file is empty")
+    return value
 
 
 def sign_telemetry(
@@ -715,8 +1020,8 @@ def sign_telemetry(
 ) -> dict[str, Any]:
     unsigned = validate_unsigned_telemetry(root)
     validate_context_deployment(unsigned["context"], config)
-    trust = load_telemetry_trust(config)
-    _validate_private_key_file(private_key)
+    trust, _ = load_rollout_trusts(config)
+    private_key_bytes = _read_private_key_file(private_key)
     with tempfile.TemporaryDirectory(prefix="emilia-rollout-sign-") as directory:
         work = Path(directory)
         payload_path = work / "payload.json"
@@ -724,8 +1029,11 @@ def sign_telemetry(
         configured_public_path = work / "configured-public.pem"
         configured_der_path = work / "configured-public.der"
         derived_der_path = work / "derived-public.der"
+        private_key_path = work / "private.pem"
         payload_path.write_bytes(canonical_unsigned_telemetry(unsigned))
         configured_public_path.write_bytes(trust.public_key)
+        private_key_path.write_bytes(private_key_bytes)
+        private_key_path.chmod(0o600)
         _run_openssl(
             [
                 "openssl",
@@ -745,7 +1053,7 @@ def sign_telemetry(
                 "openssl",
                 "pkey",
                 "-in",
-                str(private_key),
+                str(private_key_path),
                 "-pubout",
                 "-outform",
                 "DER",
@@ -767,7 +1075,7 @@ def sign_telemetry(
                 "pkeyutl",
                 "-sign",
                 "-inkey",
-                str(private_key),
+                str(private_key_path),
                 "-rawin",
                 "-in",
                 str(payload_path),
@@ -1621,6 +1929,14 @@ def build_expected_rollout_context(
     decision_snapshot: Any,
     thresholds: Thresholds,
     max_age_seconds: int,
+    config_sha256: str,
+    deployer_principal: str,
+    workflow_ref: str,
+    workflow_sha: str,
+    wif_provider: str,
+    request_sha256: str,
+    request_service: str,
+    pre_resource_version: str,
 ) -> dict[str, Any]:
     services = {
         "actuator": config.get("ACTUATOR_SERVICE", ""),
@@ -1770,6 +2086,27 @@ def build_expected_rollout_context(
             "resource_version": state.resource_version,
         }
         post_traffic[plane] = dict(post_expectations[service])
+    changed_services = [
+        service
+        for service in services.values()
+        if dict(expectations[service]) != dict(post_expectations[service])
+    ]
+    if changed_services != [request_service]:
+        raise TelemetryError(
+            "request service does not match the sole traffic mutation"
+        )
+    request_planes = [
+        plane for plane, service in services.items() if service == request_service
+    ]
+    if len(request_planes) != 1:
+        raise TelemetryError(
+            "request service must identify exactly one configured service"
+        )
+    request_plane = request_planes[0]
+    if pre_state[request_plane]["resource_version"] != pre_resource_version:
+        raise TelemetryError(
+            "request pre-resourceVersion does not match the locked snapshot"
+        )
     expected = {
         "project_id": config.get("PROJECT_ID"),
         "region": config.get("REGION"),
@@ -1785,6 +2122,18 @@ def build_expected_rollout_context(
             thresholds,
             max_age_seconds=max_age_seconds,
         ),
+        "deployment": {
+            "config_sha256": config_sha256,
+            "deployer_principal": deployer_principal,
+            "workflow_ref": workflow_ref,
+            "workflow_sha": workflow_sha,
+            "wif_provider": wif_provider,
+        },
+        "request": {
+            "service": request_service,
+            "sha256": request_sha256,
+            "pre_resource_version": pre_resource_version,
+        },
     }
     validate_rollout_context(expected)
     validate_context_deployment(expected, config)
@@ -1815,6 +2164,14 @@ def _add_rollout_context_arguments(parser: argparse.ArgumentParser) -> None:
     parser.add_argument("--decision-stable-image", required=True)
     parser.add_argument("--actuator-snapshot", type=Path, required=True)
     parser.add_argument("--decision-snapshot", type=Path, required=True)
+    parser.add_argument("--deployment-config-sha256", required=True)
+    parser.add_argument("--deployer-principal", required=True)
+    parser.add_argument("--workflow-ref", required=True)
+    parser.add_argument("--workflow-sha", required=True)
+    parser.add_argument("--wif-provider", required=True)
+    parser.add_argument("--request-sha256", required=True)
+    parser.add_argument("--request-service", required=True)
+    parser.add_argument("--pre-resource-version", required=True)
     _add_threshold_arguments(parser)
 
 
@@ -1835,7 +2192,7 @@ def verify_authorization_for_rollout(
     args: argparse.Namespace,
     *,
     config: Mapping[str, str],
-    trust: TelemetryTrust,
+    trust: AuthorizationTrust,
 ) -> tuple[
     dict[str, Any],
     str,
@@ -1868,6 +2225,14 @@ def verify_authorization_for_rollout(
         decision_snapshot=_load_json(args.decision_snapshot, "decision snapshot"),
         thresholds=_thresholds_from_args(args),
         max_age_seconds=args.max_age_seconds,
+        config_sha256=args.deployment_config_sha256,
+        deployer_principal=args.deployer_principal,
+        workflow_ref=args.workflow_ref,
+        workflow_sha=args.workflow_sha,
+        wif_provider=args.wif_provider,
+        request_sha256=args.request_sha256,
+        request_service=args.request_service,
+        pre_resource_version=args.pre_resource_version,
     )
     authorization_hash = validate_consumed_authorization(
         authorization,
@@ -2000,7 +2365,9 @@ def _update_ack_main(argv: Sequence[str]) -> int:
 def _prepare_update_main(argv: Sequence[str]) -> int:
     parser = _state_parser("Prepare a resourceVersion-locked Cloud Run update.")
     parser.add_argument("--target-traffic", required=True)
-    parser.add_argument("--output", type=Path, required=True)
+    destination = parser.add_mutually_exclusive_group(required=True)
+    destination.add_argument("--output", type=Path)
+    destination.add_argument("--emit-base64", action="store_true")
     args = parser.parse_args(argv)
     try:
         body, state = build_service_update(
@@ -2010,14 +2377,70 @@ def _prepare_update_main(argv: Sequence[str]) -> int:
             target_traffic=parse_revision_percentages(args.target_traffic),
             allowed_revisions=set(args.allowed_revision),
         )
-        args.output.write_text(
-            json.dumps(body, ensure_ascii=False, sort_keys=True, separators=(",", ":")),
-            encoding="utf-8",
-        )
+        encoded = json.dumps(
+            body,
+            ensure_ascii=False,
+            sort_keys=True,
+            separators=(",", ":"),
+            allow_nan=False,
+        ).encode("utf-8")
+        digest = hashlib.sha256(encoded).hexdigest()
+        if args.output is not None:
+            flags = (
+                os.O_WRONLY
+                | os.O_CREAT
+                | os.O_EXCL
+                | getattr(os, "O_CLOEXEC", 0)
+            )
+            if hasattr(os, "O_NOFOLLOW"):
+                flags |= os.O_NOFOLLOW
+            descriptor = os.open(args.output, flags, 0o600)
+            try:
+                view = memoryview(encoded)
+                while view:
+                    written = os.write(descriptor, view)
+                    view = view[written:]
+                os.fsync(descriptor)
+            finally:
+                os.close(descriptor)
+            print(f"{state.generation}\t{state.resource_version}")
+        else:
+            print(
+                f"{state.generation}\t{state.resource_version}\t{digest}\t"
+                f"{base64.b64encode(encoded).decode('ascii')}"
+            )
     except (OSError, TelemetryError) as error:
         print(f"error: {error}", file=sys.stderr)
         return 1
-    print(f"{state.generation}\t{state.resource_version}")
+    return 0
+
+
+def _attempt_response_main(argv: Sequence[str]) -> int:
+    parser = argparse.ArgumentParser(
+        description="Verify an exact durable deployment-attempt store response."
+    )
+    parser.add_argument("--input", type=Path, required=True)
+    parser.add_argument(
+        "--operation",
+        choices=("claim", "complete", "reconcile"),
+        required=True,
+    )
+    parser.add_argument("--claim-sha256", required=True)
+    parser.add_argument("--allow-status", action="append", required=True)
+    args = parser.parse_args(argv)
+    try:
+        if SHA256_RE.fullmatch(args.claim_sha256) is None:
+            raise TelemetryError("attempt claim digest is invalid")
+        response = validate_attempt_store_response(
+            _load_json(args.input, "attempt-store response"),
+            operation=args.operation,
+            claim_sha256=args.claim_sha256,
+            allowed_statuses=set(args.allow_status),
+        )
+    except TelemetryError as error:
+        print(f"error: {error}", file=sys.stderr)
+        return 1
+    print(json.dumps(response, sort_keys=True, separators=(",", ":")))
     return 0
 
 
@@ -2041,8 +2464,8 @@ def _authorization_main(argv: Sequence[str]) -> int:
     args = _authorization_parser().parse_args(argv)
     try:
         config = load_pinned_config(args.config)
-        trust = load_telemetry_trust(config)
-        _, authorization_hash, _, _ = verify_authorization_for_rollout(
+        _, trust = load_rollout_trusts(config)
+        expected_context, authorization_hash, _, _ = verify_authorization_for_rollout(
             args,
             config=config,
             trust=trust,
@@ -2050,7 +2473,16 @@ def _authorization_main(argv: Sequence[str]) -> int:
     except TelemetryError as error:
         print(f"error: {error}", file=sys.stderr)
         return 1
-    print(authorization_hash)
+    print(
+        json.dumps(
+            {
+                "authorization_sha256": authorization_hash,
+                "attempt": build_attempt_claim(expected_context),
+            },
+            sort_keys=True,
+            separators=(",", ":"),
+        )
+    )
     return 0
 
 
@@ -2062,6 +2494,8 @@ def main(argv: Sequence[str] | None = None) -> int:
         return _update_ack_main(arguments[1:])
     if arguments and arguments[0] == "prepare-update":
         return _prepare_update_main(arguments[1:])
+    if arguments and arguments[0] == "verify-attempt-response":
+        return _attempt_response_main(arguments[1:])
     if arguments and arguments[0] == "sign":
         return _sign_main(arguments[1:])
     if arguments and arguments[0] == "verify-authorization":
@@ -2069,7 +2503,7 @@ def main(argv: Sequence[str] | None = None) -> int:
     args = _parser().parse_args(arguments)
     try:
         config = load_pinned_config(args.config)
-        trust = load_telemetry_trust(config)
+        telemetry_trust, authorization_trust = load_rollout_trusts(config)
         (
             expected_context,
             authorization_hash,
@@ -2078,11 +2512,11 @@ def main(argv: Sequence[str] | None = None) -> int:
         ) = verify_authorization_for_rollout(
             args,
             config=config,
-            trust=trust,
+            trust=authorization_trust,
         )
         telemetry = verify_telemetry_signature(
             _load_json(args.input, "signed telemetry"),
-            trust,
+            telemetry_trust,
         )
         if telemetry["context"] != expected_context:
             raise TelemetryError(

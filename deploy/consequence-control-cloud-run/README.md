@@ -102,13 +102,23 @@ contract. Its tagged revision is also checked through the decision service's
 
 ## Render without credentials
 
-Every traffic mutation and every canary, telemetry, authorization, or stable
-trust verification requires `DEPLOYMENT_CONFIG_SHA256` in the process
-environment. It is the SHA-256 of the exact config bytes and is deliberately
-forbidden inside the config. Production automation must inject it from a
-protected release variable, signed policy evaluation, or equivalent source
-that the traffic caller cannot rewrite. A caller-derived digest provides no
-trust separation and does not satisfy this contract.
+Every mutating deployment, bootstrap, provisioning, or traffic command, and
+every canary, telemetry, authorization, or stable trust verification requires
+`DEPLOYMENT_CONFIG_SHA256` in the process environment. It is the SHA-256 of the
+exact config bytes and is deliberately forbidden inside the config. Production
+automation must inject it from a protected release variable, signed policy
+evaluation, or equivalent source that the caller cannot rewrite. A
+caller-derived digest provides no trust separation and does not satisfy this
+contract.
+
+Each shell entry point accepts only its explicit deployment-config key
+allowlist. Invocation controls, `PATH`, `ACTION`, thresholds, poll limits,
+prepared requests, and artifact paths are never config keys. The loader opens
+the config once with no symlink following, requires safe ownership and mode,
+checks the protected digest over those exact bytes, and retains a private
+read-only snapshot plus an in-memory copy. Downstream verifiers consume the
+retained bytes through stdin, so replacing the original path after validation
+cannot change the authorized config.
 
 ```sh
 cp deploy/consequence-control-cloud-run/config.example.env /tmp/emilia-cloud-run.env
@@ -384,33 +394,77 @@ not blocked on canary evidence.
 
 Every apply operation also requires the signed stable manifest. File trust
 requires its exact configured public-key path through `--stable-public-key`;
-KMS trust forbids that argument and resolves the public key from the configured
-versioned KMS URI. Promotion requires current signed canary evidence and a
-signed telemetry document for the exact prior stage. The telemetry observer is
-pinned by `ROLLOUT_TELEMETRY_KEY_ID`,
+the verifier opens it once without following symlinks, verifies safe
+ownership/mode and the hash over those exact bytes, and never reopens the path.
+KMS trust forbids the file argument and resolves the public key from the
+configured versioned KMS URI. Versioned Cloud KMS with HSM protection remains
+the production preference. Promotion requires current signed canary evidence
+and a signed telemetry document for the exact prior stage. The telemetry
+observer is pinned by `ROLLOUT_TELEMETRY_KEY_ID`,
 `ROLLOUT_TELEMETRY_PUBLIC_KEY_FILE`, and
 `ROLLOUT_TELEMETRY_PUBLIC_KEY_SHA256`. The observer's private key must be
 separately controlled and unreadable by both runtime identities and the
 deployer.
 
-Telemetry schema `emilia-rollout-telemetry.v2` signs canonical JSON that binds
-the exact project, region, release, named transition, authorization ID, rollout
-nonce, candidate and stable revision/image pairs, immutable thresholds,
-post-traffic intent, and both services' pre-state generation,
-observedGeneration, and resourceVersion. Reusing it across a project, region,
-release, transition, or later rollout stage is refused even when the telemetry
+Telemetry schema `emilia-rollout-telemetry.v2` signs the
+`EMILIA-ROLLOUT-TELEMETRY-V2` domain plus canonical JSON. It binds the exact
+project, region, release, named transition, authorization ID, rollout nonce,
+candidate and stable revision/image pairs, immutable thresholds, post-traffic
+intent, both services' pre-state generation, observedGeneration, and
+resourceVersion, and the protected deployment config, deployer principal,
+workflow ref/SHA, WIF provider, final request-body SHA-256, target service, and
+pre-resourceVersion. Reusing it across a project, identity, request, release,
+transition, or later rollout stage is refused even when the telemetry
 signature itself is valid.
 
 Each mutation also requires a separate
 `emilia-rollout-authorization.v1` artifact signed by the pinned rollout
-observer authority. Its context is byte-for-byte equivalent to the telemetry
-context and its signed consumption record must say `consumed`, be unexpired,
-and be bound into telemetry by SHA-256. The external issuer must atomically
-consume authorization IDs/nonces in durable storage before signing this
-artifact. This CLI has no durable shared store and therefore cannot, by itself,
-prove global single-use; it combines the external consumption receipt with
-exact resourceVersion pre-state binding and Cloud Run optimistic concurrency.
-Without that external atomic-consumption service, apply must remain blocked.
+authorization authority configured by `ROLLOUT_AUTHORIZATION_KEY_ID`,
+`ROLLOUT_AUTHORIZATION_PUBLIC_KEY_FILE`, and
+`ROLLOUT_AUTHORIZATION_PUBLIC_KEY_SHA256`. Authorization and telemetry key IDs
+and public-key hashes must be distinct. Authorization signs the
+`EMILIA-ROLLOUT-AUTHORIZATION-V1` domain plus canonical JSON, so a signature
+from one domain cannot be replayed in the other. Its context is byte-for-byte
+equivalent to the telemetry context and its signed consumption record must say
+`consumed`, be unexpired, and be bound into telemetry by SHA-256. The external
+issuer must atomically consume authorization IDs/nonces before signing.
+
+Immediately before the Cloud Run PUT, `traffic.sh` also requires a protected,
+hash-pinned durable attempt-store adapter. Set
+`EMILIA_ROLLOUT_ATTEMPT_STORE_ADAPTER` to an absolute standalone executable and
+`EMILIA_ROLLOUT_ATTEMPT_STORE_ADAPTER_SHA256` to its protected digest. The
+script opens the adapter once without following symlinks, verifies safe
+ownership/mode and exact bytes, copies those bytes privately, and invokes:
+
+- `claim`, with an `emilia-deployment-attempt-claim.v1` JSON object keyed by
+  authorization ID, rollout nonce, request SHA-256, and pre-resourceVersion;
+- `complete`, with an `emilia-deployment-attempt-store-operation.v1` object
+  after exact post-validation; or
+- `reconcile`, with the same operation object after an ambiguous HTTP result.
+
+The adapter must atomically and durably insert the claim before returning
+`claimed`; enforce uniqueness on the four-part key (or its supplied
+`claim_sha256`); reject every duplicate claim; and compare-and-set one terminal
+outcome without changing an earlier outcome. It must read one JSON object from
+stdin and emit only this exact response shape:
+
+```json
+{
+  "schema": "emilia-deployment-attempt-store-response.v1",
+  "operation": "claim",
+  "status": "claimed",
+  "claim_sha256": "64-lowercase-hex-characters",
+  "final_resource_version": null
+}
+```
+
+`complete` must return `completed`; `reconcile` must return `applied`,
+`not-applied`, or `indeterminate`; and terminal responses must carry the exact
+final resourceVersion. Any adapter error, malformed response, duplicate claim,
+or unavailable durable store blocks the mutation. This repository intentionally
+does not fake persistence or ship a database-backed adapter: its credentials,
+atomic datastore, retention, backup, and independent access control remain
+production prerequisites.
 
 The gates are release policy, not caller options: `traffic.sh`
 rejects attempts to relax them. They are a 10-minute
@@ -436,14 +490,22 @@ strict v2 context and the SHA-256 of the externally consumed authorization.
 
 Cloud Run traffic is changed through a generation/resourceVersion-locked API
 update. The only accepted promotion path is stable -> decision 1% -> 10% ->
-50% -> 100% -> actuator 100%. After each mutation, both services are read back;
-the acknowledged target generation is pinned and the non-target service must
-retain its exact generation and resourceVersion. An ambiguous or refused PUT
-fails with an explicit do-not-replay error; the CLI never adopts a later
-matching state as proof that its own request succeeded. Config, stable release,
-IAM, secrets, and both service locks are checked immediately before the PUT,
-then config, IAM, secrets, and exact service states are checked again after
-settled read-back.
+50% -> 100% -> actuator 100%. Mutations require the exact protected main-branch
+workflow and SHA, protected environment, WIF provider, active deployer, and
+direct custom-role custody of `run.services.update`; service and effective IAM
+must remain closed. The final request is canonicalized and hashed before
+authorization, retained as immutable in-memory bytes, and streamed directly to
+the API.
+
+After each mutation, both services are read back. Full target validation is
+locked to the exact resourceVersion and generation returned by the update
+acknowledgement, while the non-target service must retain its exact generation
+and resourceVersion. An ambiguous HTTP response is reconciled once against the
+locked pre-state and intended post-state, recorded durably as `applied`,
+`not-applied`, or `indeterminate`, and never replayed with the consumed
+authorization. Config, stable release, IAM, secrets, and both service locks are
+checked immediately before the PUT, then config, IAM, secrets, and exact
+service states are checked again after settled read-back.
 
 ```sh
 DEPLOYMENT_CONFIG_SHA256=aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa \
@@ -491,9 +553,15 @@ An apply remains blocked until all of the following exist:
 - a separately controlled Ed25519 canary-driver key and pinned public-key file;
 - a separately controlled Ed25519 rollout-observer key and pinned public-key
   file/hash;
+- a distinct rollout-authorization Ed25519 authority and pinned public-key
+  file/hash;
 - an independently protected source for the exact deployment-config SHA-256;
 - a durable rollout-authorization issuer that atomically consumes each
   authorization ID/nonce before signing the short-lived receipt;
+- a protected, hash-pinned attempt-store adapter backed by an independently
+  credentialed atomic durable store;
+- the exact protected GitHub workflow/environment/WIF/deployer path with sole
+  direct `run.services.update` custody;
 - digest-pinned actuator and decision images; and
 - a current, cryptographically valid canary scenario produced through the
   approval and AEB pipeline.

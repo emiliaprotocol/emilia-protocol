@@ -29,7 +29,14 @@ while (($#)); do
 done
 
 [[ -n "$CONFIG" ]] || lane_die "--config is required"
-load_lane_config "$CONFIG"
+if [[ "$MODE" == apply ]]; then
+  export REQUIRE_DEPLOYMENT_CONFIG_PIN=true
+fi
+PROVISION_CONFIG_KEYS=()
+while IFS= read -r name; do
+  PROVISION_CONFIG_KEYS+=("$name")
+done < <(deployment_config_variables)
+load_lane_config "$CONFIG" "${PROVISION_CONFIG_KEYS[@]}"
 
 : "${PROJECT_NAME:=EMILIA consequence control}"
 : "${ARTIFACT_REPOSITORY:=runtime}"
@@ -828,5 +835,5 @@ require_provision_approval
 require_active_provisioner
 
 PROVISION_TMPDIR=$(mktemp -d)
-trap 'rm -rf "$PROVISION_TMPDIR"' EXIT
+trap 'rm -rf "$PROVISION_TMPDIR"; lane_cleanup_pinned_config' EXIT
 apply_provisioning

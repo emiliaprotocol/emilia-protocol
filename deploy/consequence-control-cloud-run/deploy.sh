@@ -39,7 +39,14 @@ while (($#)); do
 done
 
 [[ -n "$CONFIG" ]] || lane_die "--config is required"
-load_lane_config "$CONFIG"
+if [[ "$MODE" != render ]]; then
+  export REQUIRE_DEPLOYMENT_CONFIG_PIN=true
+fi
+DEPLOY_CONFIG_KEYS=()
+while IFS= read -r name; do
+  DEPLOY_CONFIG_KEYS+=("$name")
+done < <(deployment_config_variables)
+load_lane_config "$CONFIG" "${DEPLOY_CONFIG_KEYS[@]}"
 validate_lane_config
 require_var PROJECT_PARENT
 [[ "$PROJECT_PARENT" =~ ^organizations/[1-9][0-9]*$ ]] \
@@ -623,7 +630,7 @@ if [[ "$MODE" == render ]]; then
 fi
 
 IAM_TMPDIR=$(mktemp -d)
-trap 'rm -rf "$IAM_TMPDIR"' EXIT
+trap 'rm -rf "$IAM_TMPDIR"; lane_cleanup_pinned_config' EXIT
 require_protected_workflow_context
 resolve_active_deployer
 verify_keyless_wif_boundary
