@@ -123,6 +123,7 @@
     ]
   },
   "dependencies": {
+    "@emilia-protocol/gate": "file:packages/gate",
     "@emilia-protocol/require-receipt": "file:packages/require-receipt",
     "@emilia-protocol/verify": "file:packages/verify",
     "@noble/curves": "2.2.0",

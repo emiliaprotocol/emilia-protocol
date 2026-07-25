@@ -79,8 +79,9 @@ function constantTimeBearer(expected: string, authorization: unknown): boolean {
   if (typeof authorization !== 'string'
       || !authorization.startsWith('Bearer ')) return false;
   const candidate = authorization.slice('Bearer '.length);
-  const left = crypto.createHash('sha256').update(expected).digest();
-  const right = crypto.createHash('sha256').update(candidate).digest();
+  const left = Buffer.from(expected, 'utf8');
+  const right = Buffer.from(candidate, 'utf8');
+  if (left.length !== right.length) return false;
   return crypto.timingSafeEqual(left, right);
 }
 

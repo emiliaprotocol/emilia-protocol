@@ -9,7 +9,7 @@ import {
   consequenceActuatorTargetDigest,
   createConsequenceActuatorClient,
   createGoogleCloudIdentityTokenProvider,
-} from '../src/actuator-client.ts';
+} from '../src/actuator-client.js';
 
 const NOW = Date.parse('2026-07-25T12:00:00.000Z');
 const IDENTITY_AUDIENCE = 'https://emilia-consequence-actuator-abc-uc.a.run.app';
