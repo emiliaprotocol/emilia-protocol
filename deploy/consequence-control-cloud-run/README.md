@@ -10,6 +10,15 @@ The scripts never create secret payloads. They accept only existing Secret
 Manager secret names pinned to numeric versions. Container images must be
 Artifact Registry-style references pinned by `@sha256:<64 lowercase hex>`.
 
+For `deploy-candidates`, those image references are not operator inputs. The
+protected workflow checks out the exact reviewed `main` commit, verifies the
+governed security case, proof statistics, and conformance manifest, packs the
+exact Verify and Gate npm artifacts, builds the actuator and decision images,
+and pushes commit-derived tags exactly once. OCI labels bind all of those
+inputs to each image digest. A GitHub-attested source manifest and release
+manifest bind the reviewed Git commit and tree to the two immutable registry
+digests. `deploy.sh --apply` re-verifies that chain before any cloud mutation.
+
 ## Security boundary
 
 The actuator runtime receives:
@@ -107,7 +116,10 @@ every canary, telemetry, authorization, or stable trust verification requires
 `DEPLOYMENT_CONFIG_SHA256` in the process environment. It is the SHA-256 of the
 exact config bytes and is deliberately forbidden inside the config. Production
 automation must inject it from a protected release variable, signed policy
-evaluation, or equivalent source that the caller cannot rewrite. A
+evaluation, or equivalent source that the caller cannot rewrite. For candidate
+deployment, the protected workflow derives the final config and its digest only
+after inserting the two release-manifest image digests into a profile that is
+forbidden from choosing images. A
 caller-derived digest provides no trust separation and does not satisfy this
 contract.
 
@@ -125,13 +137,16 @@ separately pinned provision, deploy, bootstrap, and traffic profiles containing
 exactly the keys emitted by `provision_config_variables`,
 `deploy_config_variables`, `bootstrap_config_variables`, and
 `traffic_config_variables` in `lib/common.sh`. The protected GitHub deployment
-workflow therefore requires separate
-`CONSEQUENCE_CONTROL_DEPLOY_CONFIG`/`CONSEQUENCE_CONTROL_DEPLOY_CONFIG_SHA256`
-and
+workflow requires `CONSEQUENCE_CONTROL_DEPLOY_CONFIG` without
+`ACTUATOR_IMAGE` or `DECISION_IMAGE`, plus the protected environment variable
+`GCP_CONSEQUENCE_CONTROL_ARTIFACT_REPOSITORY`. Supplying either image in that
+secret fails closed. The workflow still requires separate
 `CONSEQUENCE_CONTROL_BOOTSTRAP_CONFIG`/`CONSEQUENCE_CONTROL_BOOTSTRAP_CONFIG_SHA256`
 and
 `CONSEQUENCE_CONTROL_TRAFFIC_CONFIG`/`CONSEQUENCE_CONTROL_TRAFFIC_CONFIG_SHA256`
-secret/variable pairs.
+secret/variable pairs. The retired `CONSEQUENCE_CONTROL_DEPLOY_CONFIG_SHA256`
+does not authorize product image bytes; the candidate config hash is generated
+from the attested release manifest inside the protected run.
 
 The same protected workflow is the only production traffic-mutation entry
 point. It exposes one dispatch operation for each exact transition accepted by
@@ -141,7 +156,9 @@ one-time-consumable rollout authorization from protected environment secrets.
 Promotion steps additionally require the signed canary evidence and prior-stage
 telemetry. Rollback intentionally omits those two promotion-only artifacts but
 still requires a new consumed authorization for each service transition. The
-workflow never derives the protected config digest from the config bytes.
+workflow never derives the protected traffic-config digest from traffic-config
+bytes; only the separately attested candidate build derives its own deploy
+projection and digest.
 
 The protected traffic profile uses fixed, root-owned-runner paths for
 verification-key material so its independently pinned config bytes never

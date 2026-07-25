@@ -8,6 +8,8 @@ source "$LANE_DIR/lib/common.sh"
 CONFIG=
 MODE=render
 ANALYZER_SCOPE=
+SOURCE_MANIFEST=
+RELEASE_MANIFEST=
 while (($#)); do
   case "$1" in
     --config)
@@ -30,6 +32,16 @@ while (($#)); do
     --analyzer-scope)
       (($# >= 2)) || lane_die "--analyzer-scope requires a value"
       ANALYZER_SCOPE=$2
+      shift 2
+      ;;
+    --source-manifest)
+      (($# >= 2)) || lane_die "--source-manifest requires a path"
+      SOURCE_MANIFEST=$2
+      shift 2
+      ;;
+    --release-manifest)
+      (($# >= 2)) || lane_die "--release-manifest requires a path"
+      RELEASE_MANIFEST=$2
       shift 2
       ;;
     *)
@@ -714,6 +726,20 @@ fi
 IAM_TMPDIR=$(mktemp -d)
 trap 'rm -rf "$IAM_TMPDIR"; lane_cleanup_pinned_config' EXIT
 require_protected_workflow_context
+if [[ "$MODE" == apply ]]; then
+  [[ "$SOURCE_MANIFEST" == /* && "$RELEASE_MANIFEST" == /* ]] \
+    || lane_die "apply requires absolute --source-manifest and --release-manifest paths"
+  [[ "$(dirname -- "$SOURCE_MANIFEST")" == "$(dirname -- "$RELEASE_MANIFEST")" ]] \
+    || lane_die "source and release manifests must share one private artifact directory"
+  python3 "$LANE_DIR/release-trust.py" verify-release \
+    --root "$(CDPATH='' cd -- "$LANE_DIR/../.." && pwd)" \
+    --source-manifest "$SOURCE_MANIFEST" \
+    --release-manifest "$RELEASE_MANIFEST" \
+    --artifact-dir "$(dirname -- "$SOURCE_MANIFEST")" \
+    --expected-commit "$GITHUB_SHA" \
+    --config "$CONFIG" \
+    || lane_die "candidate image release trust could not be verified"
+fi
 resolve_active_deployer
 verify_keyless_wif_boundary
 verify_dedicated_project

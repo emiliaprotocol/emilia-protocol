@@ -43,23 +43,55 @@ concurrency:
 jobs:
   schema-contract:
     runs-on: ubuntu-latest
-    env:
-      SCHEMA_GATE_DB_URL: ${{ secrets.SCHEMA_GATE_DB_URL }}
     steps:
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
+      - name: Check out the exact PR candidate as untrusted data
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
         with:
-          # PR reconciliation reads the exact base commit, while main/nightly
-          # continue checking the current migration tree against production.
+          ref: ${{ github.sha }}
           fetch-depth: 0
+          persist-credentials: false
+          path: candidate
+
+      - name: Check out the trusted live-contract implementation
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
+        with:
+          # A PR may change executable scripts, so production credentials are
+          # exposed only to code from its exact base commit. Main/nightly use
+          # the exact protected commit that triggered the workflow.
+          ref: ${{ github.event.pull_request.base.sha || github.sha }}
+          fetch-depth: 0
+          persist-credentials: false
+          path: trusted
+
       - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020  # v7.0.0
         with:
           # Node 24: @supabase/supabase-js needs native WebSocket (absent in Node 20).
           node-version: 24
           cache: npm
-      - run: npm ci --ignore-scripts
+          cache-dependency-path: trusted/package-lock.json
+
+      - name: Install trusted schema-gate dependencies
+        working-directory: trusted
+        run: npm ci --ignore-scripts
+
+      - name: Evaluate the PR candidate migration ledger without production credentials
+        if: github.event_name == 'pull_request'
+        working-directory: candidate
+        run: |
+          npm ci --ignore-scripts
+          npm run check:migration-history
+
+      - name: Reconcile the PR candidate against the immutable base migration lineage
+        if: github.event_name == 'pull_request'
+        run: |
+          node trusted/scripts/schema-pr-candidate-reconcile.mjs \
+            --base-root trusted \
+            --candidate-root candidate
 
       - name: Secret guard (skip neutrally on fork PRs; required on main/schedule)
         id: guard
+        env:
+          SCHEMA_GATE_DB_URL: ${{ secrets.SCHEMA_GATE_DB_URL }}
         run: |
           if [ -n "$SCHEMA_GATE_DB_URL" ]; then
             echo "have_secrets=true" >> "$GITHUB_OUTPUT"
@@ -76,10 +108,14 @@ jobs:
 
       - name: schema:security — contract vs live prod (tables, columns, RLS, no-anon policies, RPC ACLs, indexes, authority shape)
         if: steps.guard.outputs.have_secrets == 'true'
+        working-directory: trusted
+        env:
+          SCHEMA_GATE_DB_URL: ${{ secrets.SCHEMA_GATE_DB_URL }}
         run: npm run schema:security
 
       - name: schema:reconcile — migration journal vs reality (declared objects must actually exist)
         if: steps.guard.outputs.have_secrets == 'true'
+        working-directory: trusted
         env:
-          MIGRATION_RECONCILE_REF: ${{ github.event.pull_request.base.sha }}
+          SCHEMA_GATE_DB_URL: ${{ secrets.SCHEMA_GATE_DB_URL }}
         run: npm run schema:reconcile

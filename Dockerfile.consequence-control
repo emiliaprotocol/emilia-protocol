@@ -14,6 +14,26 @@ RUN npm ci --prefix apps/consequence-control-service --ignore-scripts --omit=dev
 
 FROM ${NODE_IMAGE} AS runtime
 
+ARG EMILIA_SOURCE_REVISION=local-unverified
+ARG EMILIA_SOURCE_TREE=local-unverified
+ARG EMILIA_SOURCE_MANIFEST_SHA256=local-unverified
+ARG EMILIA_VERIFY_PACKAGE_SHA256=local-unverified
+ARG EMILIA_GATE_PACKAGE_SHA256=local-unverified
+ARG EMILIA_SECURITY_CASE_SHA256=local-unverified
+ARG EMILIA_PROOF_STATS_SHA256=local-unverified
+ARG EMILIA_CONFORMANCE_MANIFEST_SHA256=local-unverified
+
+LABEL org.opencontainers.image.source="https://github.com/emiliaprotocol/emilia-protocol" \
+      org.opencontainers.image.revision="${EMILIA_SOURCE_REVISION}" \
+      io.emilia.image.component="decision" \
+      io.emilia.source.tree="${EMILIA_SOURCE_TREE}" \
+      io.emilia.source.manifest.sha256="${EMILIA_SOURCE_MANIFEST_SHA256}" \
+      io.emilia.package.verify.sha256="${EMILIA_VERIFY_PACKAGE_SHA256}" \
+      io.emilia.package.gate.sha256="${EMILIA_GATE_PACKAGE_SHA256}" \
+      io.emilia.governed.security-case.sha256="${EMILIA_SECURITY_CASE_SHA256}" \
+      io.emilia.governed.proof-stats.sha256="${EMILIA_PROOF_STATS_SHA256}" \
+      io.emilia.governed.conformance.sha256="${EMILIA_CONFORMANCE_MANIFEST_SHA256}"
+
 ENV NODE_ENV=production \
     HOST=0.0.0.0 \
     PORT=8080 \

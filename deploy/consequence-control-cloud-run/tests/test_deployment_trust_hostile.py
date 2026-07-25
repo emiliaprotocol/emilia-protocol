@@ -793,7 +793,10 @@ class CommandSpecificConfigHostileTests(unittest.TestCase):
         ).read_text(encoding="utf-8")
         for required in (
             "CONSEQUENCE_CONTROL_DEPLOY_CONFIG",
-            "CONSEQUENCE_CONTROL_DEPLOY_CONFIG_SHA256",
+            "steps.release-images.outputs.derived_config_sha256",
+            "build-release-images.sh",
+            "--source-manifest",
+            "--release-manifest",
             "CONSEQUENCE_CONTROL_BOOTSTRAP_CONFIG",
             "CONSEQUENCE_CONTROL_BOOTSTRAP_CONFIG_SHA256",
             "CONSEQUENCE_CONTROL_TRAFFIC_CONFIG",
@@ -812,6 +815,10 @@ class CommandSpecificConfigHostileTests(unittest.TestCase):
             "CONSEQUENCE_CONTROL_ROLLOUT_ATTEMPT_DATABASE_CA_SHA256",
         ):
             self.assertIn(required, workflow)
+        self.assertNotIn(
+            "CONSEQUENCE_CONTROL_DEPLOY_CONFIG_SHA256",
+            workflow,
+        )
         self.assertNotIn(
             "secrets.CONSEQUENCE_CONTROL_CONFIG }}",
             workflow,
