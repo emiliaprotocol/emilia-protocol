@@ -37,6 +37,7 @@ export function evaluateContract(snap: any, schemaContract: any = defaultContrac
 
   const requiredSnapshotFields: readonly string[] = [
     'tables', 'columns', 'rls', 'policies', 'functions', 'table_grants', 'column_grants',
+    'reconcile_tables', 'reconcile_functions',
   ];
   for (const field of requiredSnapshotFields) {
     if (Array.isArray(snap?.[field])) pass();
@@ -44,6 +45,12 @@ export function evaluateContract(snap: any, schemaContract: any = defaultContrac
   }
 
   const tables: Set<any> = new Set(list(snap?.tables));
+  const qualifiedTables: Set<string> = new Set(
+    list(snap?.reconcile_tables).map((name: any) => String(name)),
+  );
+  const qualifiedFunctions: Set<string> = new Set(
+    list(snap?.reconcile_functions).map((name: any) => String(name)),
+  );
   const cols: Map<any, Set<any>> = new Map();
   for (const column of list(snap?.columns)) {
     if (!cols.has(column.t)) cols.set(column.t, new Set());
@@ -64,6 +71,19 @@ export function evaluateContract(snap: any, schemaContract: any = defaultContrac
   // 1. Required tables
   for (const table of schemaContract.requiredTables) {
     if (tables.has(table)) pass(); else fail(`TABLE missing: ${table}`);
+  }
+  for (const table of schemaContract.requiredQualifiedTables || []) {
+    if (qualifiedTables.has(table)) pass();
+    else fail(`QUALIFIED TABLE missing: ${table}`);
+  }
+  for (const rpc of schemaContract.requiredQualifiedRpcs || []) {
+    // The deployed reconciliation RPC currently returns schema-qualified
+    // function names without identity arguments. Keep exact signatures pinned
+    // in the manifest/static migration tests while requiring the corresponding
+    // private-schema function to exist in the live catalog.
+    const bareName = String(rpc).replace(/\(.*/, '');
+    if (qualifiedFunctions.has(rpc) || qualifiedFunctions.has(bareName)) pass();
+    else fail(`QUALIFIED RPC missing: ${rpc}`);
   }
 
   // 2. Known-gap tables (non-fatal, but tracked + must be reported)

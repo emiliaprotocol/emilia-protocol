@@ -33,6 +33,7 @@ export function evaluateContract(snap, schemaContract = defaultContract) {
     const list = (value) => (Array.isArray(value) ? value : []);
     const requiredSnapshotFields = [
         'tables', 'columns', 'rls', 'policies', 'functions', 'table_grants', 'column_grants',
+        'reconcile_tables', 'reconcile_functions',
     ];
     for (const field of requiredSnapshotFields) {
         if (Array.isArray(snap?.[field]))
@@ -41,6 +42,8 @@ export function evaluateContract(snap, schemaContract = defaultContract) {
             fail(`SNAPSHOT field missing or invalid: ${field} (apply the introspection migration before running the gate)`);
     }
     const tables = new Set(list(snap?.tables));
+    const qualifiedTables = new Set(list(snap?.reconcile_tables).map((name) => String(name)));
+    const qualifiedFunctions = new Set(list(snap?.reconcile_functions).map((name) => String(name)));
     const cols = new Map();
     for (const column of list(snap?.columns)) {
         if (!cols.has(column.t))
@@ -66,6 +69,23 @@ export function evaluateContract(snap, schemaContract = defaultContract) {
             pass();
         else
             fail(`TABLE missing: ${table}`);
+    }
+    for (const table of schemaContract.requiredQualifiedTables || []) {
+        if (qualifiedTables.has(table))
+            pass();
+        else
+            fail(`QUALIFIED TABLE missing: ${table}`);
+    }
+    for (const rpc of schemaContract.requiredQualifiedRpcs || []) {
+        // The deployed reconciliation RPC currently returns schema-qualified
+        // function names without identity arguments. Keep exact signatures pinned
+        // in the manifest/static migration tests while requiring the corresponding
+        // private-schema function to exist in the live catalog.
+        const bareName = String(rpc).replace(/\(.*/, '');
+        if (qualifiedFunctions.has(rpc) || qualifiedFunctions.has(bareName))
+            pass();
+        else
+            fail(`QUALIFIED RPC missing: ${rpc}`);
     }
     // 2. Known-gap tables (non-fatal, but tracked + must be reported)
     for (const gapEntry of schemaContract.knownGapTables) {

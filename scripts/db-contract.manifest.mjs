@@ -63,6 +63,19 @@ const CONSEQUENCE_ACTUATOR_RPC_ONLY_TABLES = [
     // executor principal. Even service_role has no direct table grant.
     'consequence_actuator_envelopes',
 ];
+const CONSEQUENCE_ACTUATOR_QUALIFIED_RPCS = [
+    'consequence_actuator_private.reserve_envelope(text,text,text,text,text,text,text,text,text,timestamp with time zone,timestamp with time zone,text)',
+    'consequence_actuator_private.consume_envelope(text,text,text,text,text,text,text,text,text,text,text)',
+    'consequence_actuator_private.record_provider_record(jsonb,text)',
+    'consequence_actuator_private.read_provider_record(text,text,text,text,text,text,text,text,text)',
+];
+const ROLLOUT_ATTEMPT_QUALIFIED_TABLES = [
+    'rollout_attempt_private.claims',
+    'rollout_attempt_private.terminals',
+];
+const ROLLOUT_ATTEMPT_QUALIFIED_RPCS = [
+    'rollout_attempt_private.apply_operation(text,text)',
+];
 // These tables are reached through server-side/service-role paths only. RLS is
 // necessary but not sufficient: a table ACL is a separate Data API gate, so
 // the live contract checks both controls.
@@ -114,6 +127,18 @@ export const contract = {
         'authorities', 'commits', 'consumed_gate_refs',
         ...SERVICE_ONLY_TABLES,
         ...RELEASE_LOCK_TABLES,
+    ],
+    // Private-schema objects are qualified so the live reconciliation snapshot
+    // cannot satisfy the contract with an unrelated public object. Exact RPC
+    // signatures remain pinned here and are exercised by isolated PostgreSQL
+    // application tests.
+    requiredQualifiedTables: [
+        'consequence_actuator_private.provider_records',
+        ...ROLLOUT_ATTEMPT_QUALIFIED_TABLES,
+    ],
+    requiredQualifiedRpcs: [
+        ...CONSEQUENCE_ACTUATOR_QUALIFIED_RPCS,
+        ...ROLLOUT_ATTEMPT_QUALIFIED_RPCS,
     ],
     // Tables that SHOULD exist but are KNOWN-MISSING and tracked for a staged
     // rollout. Reported loudly as KNOWN GAP (non-fatal) so they stay visible

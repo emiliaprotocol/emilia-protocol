@@ -24,9 +24,14 @@ function cleanSnapshot() {
     ...contract.definerRpcsServiceRoleOnly,
     ...contract.requiredRpcs,
   ])].map((name) => ({ name, acl: 'service_role=X/postgres' }));
+  const qualifiedFunctions = contract.requiredQualifiedRpcs.map(
+    (name) => name.replace(/\(.*/, ''),
+  );
 
   return {
     tables: [...tables],
+    reconcile_tables: [...contract.requiredQualifiedTables],
+    reconcile_functions: [...new Set(qualifiedFunctions)],
     columns,
     rls: contract.rlsRequired.map((t) => ({
       t,
@@ -51,6 +56,42 @@ describe('live schema-security contract evaluator', () => {
 
     expect(result.failures).toEqual([]);
     expect(result.passCount).toBeGreaterThan(100);
+  });
+
+  it('governs the private rollout-attempt store and exact RPC signature', () => {
+    expect(contract.requiredQualifiedTables).toEqual(expect.arrayContaining([
+      'rollout_attempt_private.claims',
+      'rollout_attempt_private.terminals',
+    ]));
+    expect(contract.requiredQualifiedRpcs).toContain(
+      'rollout_attempt_private.apply_operation(text,text)',
+    );
+  });
+
+  it('rejects a missing qualified private table', () => {
+    const snapshot = cleanSnapshot();
+    snapshot.reconcile_tables = snapshot.reconcile_tables.filter(
+      (name) => name !== 'consequence_actuator_private.provider_records',
+    );
+
+    const result = evaluateContract(snapshot);
+
+    expect(result.failures).toContain(
+      'QUALIFIED TABLE missing: consequence_actuator_private.provider_records',
+    );
+  });
+
+  it('rejects a missing qualified private RPC', () => {
+    const snapshot = cleanSnapshot();
+    snapshot.reconcile_functions = snapshot.reconcile_functions.filter(
+      (name) => name !== 'rollout_attempt_private.apply_operation',
+    );
+
+    const result = evaluateContract(snapshot);
+
+    expect(result.failures).toContain(
+      'QUALIFIED RPC missing: rollout_attempt_private.apply_operation(text,text)',
+    );
   });
 
   it('rejects a public table grant even when RLS and policies are otherwise clean', () => {
@@ -106,5 +147,16 @@ describe('live schema-security contract evaluator', () => {
     const result = evaluateContract(snapshot);
 
     expect(result.failures.some((failure) => failure.includes('SNAPSHOT field missing or invalid: table_grants'))).toBe(true);
+  });
+
+  it('fails closed when reconciliation metadata is absent', () => {
+    const snapshot = clone(cleanSnapshot());
+    delete snapshot.reconcile_functions;
+
+    const result = evaluateContract(snapshot);
+
+    expect(result.failures).toContain(
+      'SNAPSHOT field missing or invalid: reconcile_functions (apply the introspection migration before running the gate)',
+    );
   });
 });
