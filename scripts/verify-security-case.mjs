@@ -25,6 +25,10 @@ import { validateTraceManifest } from "../conformance/refinement/schema.mjs";
 // resolver CI uses so `npm run check:security-case` is not CI-environment-only.
 import "./ts-loader/register.mjs";
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
+// Release-correspondence claims perform two clean, lifecycle-disabled package
+// builds from exact Git objects. Cold CI can exceed three minutes, so retain a
+// finite but realistic fail-closed bound for every executed evidence command.
+const EXECUTION_TIMEOUT_MS = 600_000;
 const args = process.argv.slice(2);
 const execute = args.includes("--execute");
 const validateOnly = args.includes("--validate-only");
@@ -353,7 +357,7 @@ function runChecked(command, commandArgs, options, label) {
         encoding: "utf8",
         env: { ...process.env, FORCE_COLOR: "0", NO_COLOR: "1" },
         maxBuffer: 32 * 1024 * 1024,
-        timeout: 180_000,
+        timeout: EXECUTION_TIMEOUT_MS,
     });
     if (run.status !== 0) {
         throw new Error(`${label} failed (${run.status}):\n${run.stdout || ""}${run.stderr || ""}`);
