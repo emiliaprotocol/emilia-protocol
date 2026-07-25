@@ -173,6 +173,7 @@
     "eslint": "^9.39.5",
     "eslint-config-next": "^16.2.9",
     "fast-check": "^4.9.0",
+    "google-auth-library": "10.9.1",
     "husky": "^9.0.0",
     "lint-staged": "^17.0.8",
     "pako": "3.0.1",

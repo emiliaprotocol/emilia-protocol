@@ -29,4 +29,10 @@ for (const [entry, rootDir, outDir] of builds) {
   if (result.status !== 0) process.exit(result.status ?? 1);
 }
 
+const gatePostbuild = spawnSync(process.execPath, ['postbuild-ts-nocheck.mjs'], {
+  cwd: join(root, 'packages', 'gate'),
+  stdio: 'inherit',
+});
+if (gatePostbuild.status !== 0) process.exit(gatePostbuild.status ?? 1);
+
 await buildStandaloneRuntimes();
