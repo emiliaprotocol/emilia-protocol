@@ -1,9 +1,9 @@
 {
   "@version": "EMILIA-REPO-CONTEXT-v1",
-  "evidence_snapshot_at": "2026-07-25T12:31:28.999Z",
+  "evidence_snapshot_at": "2026-07-25T19:04:49.726Z",
   "provenance": {
     "generator": "scripts/generate-llm-context.mjs",
-    "input_digest_sha256": "689aaf693fcde0bb9b2aad574f0536bbc95af60f87a485fc5bf612ff1628107d",
+    "input_digest_sha256": "0d9570828061c1eebf68b37634dfec0e3a3ae70bed66cd43d9682596c604b4ec",
     "generated_from": [
       {
         "path": "docs/ai/context-source.v1.json",
@@ -17,7 +17,7 @@
       },
       {
         "path": "lib/proof-stats.json",
-        "sha256": "759a2de88b0a50470fccf04e637a785f86453a9bf9caed94df181223250ec431",
+        "sha256": "39407a151082185da3df09a1ef9e107693f3d40779809e7a7764634b0206a325",
         "bytes": 4136
       },
       {
@@ -32,13 +32,13 @@
       },
       {
         "path": "security/claims.v1.json",
-        "sha256": "9eb0bd62d1d7168f14912e850f62666dbbd90b477392f76bb912779f5d51d33d",
-        "bytes": 224740
+        "sha256": "8576dd2bd0440465843e7e4d79eafce4850ee5320110d387cd177f10a9205270",
+        "bytes": 227798
       },
       {
         "path": "security/security-case.json",
-        "sha256": "0d43d0d4a30e911c15fa9ab589a4b176be738c76f7f3f59014ce2006b94d296b",
-        "bytes": 344315
+        "sha256": "919b9c7bcf51d19fc070c03b0eea34efcb7e837c42890142a85cc3805de7d11b",
+        "bytes": 350374
       },
       {
         "path": "lib/standards-observatory.snapshot.json",
@@ -272,8 +272,8 @@
   ],
   "current_evidence": {
     "automated_tests": {
-      "total": 7774,
-      "files": 426,
+      "total": 7849,
+      "files": 436,
       "policy": "all platform-applicable cases must pass; platform-specific cases may skip"
     },
     "cross_language_conformance": {
@@ -314,7 +314,7 @@
         "coveredModelActions": 28,
         "actionCompleteModels": 1,
         "formalMutationOperators": 46,
-        "evidenceSha256": "40e577636ad958b855c26628979cd6df79ae291a5625efb60882de126791793e",
+        "evidenceSha256": "900b1c52794a607883c8d627077d60dbf72c3170c44e3cead3717a97b2ab0bb4",
         "boundary": "selected model/runtime scenarios under explicit projection relations; not a mechanized implementation refinement proof"
       },
       "evidence_taxonomy": {
@@ -380,8 +380,8 @@
     "security_case": {
       "status": "passed",
       "claims": 33,
-      "evidence_files": 228,
-      "evidence_bundle_sha256": "86a6c6b278735943aa83d0ebacc04fe6db7b663814b8774b494588c6208aa07f"
+      "evidence_files": 235,
+      "evidence_bundle_sha256": "ae486e593815213e9c2c90be91708c1a4eb500bcbb4a80fbb31dfebf5e876b72"
     },
     "caid": {
       "core_vectors": 48,
@@ -1951,6 +1951,18 @@
           "language": "javascript",
           "file": "apps/consequence-actuator-service/src/runtime.ts",
           "symbol": "createConsequenceActuatorRuntime",
+          "exported": true
+        },
+        {
+          "language": "javascript",
+          "file": "apps/consequence-actuator-service/src/github-app.ts",
+          "symbol": "createGitHubIssueEffectProvider",
+          "exported": true
+        },
+        {
+          "language": "javascript",
+          "file": "apps/consequence-actuator-service/src/production-config.ts",
+          "symbol": "createPostgresProviderRecordStore",
           "exported": true
         },
         {

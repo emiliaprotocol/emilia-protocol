@@ -1,9 +1,9 @@
 {
   "@version": "EP-SECURITY-CASE-RESOLVED-v2",
   "source": "security/claims.v1.json",
-  "evidence_bundle_sha256": "5bbc6dc70c85610e5438abd70e555a28e513032734cd20d3449398c33ae55380",
+  "evidence_bundle_sha256": "ae486e593815213e9c2c90be91708c1a4eb500bcbb4a80fbb31dfebf5e876b72",
   "claim_count": 33,
-  "evidence_file_count": 228,
+  "evidence_file_count": 235,
   "execution": {
     "required": true,
     "status": "passed",
@@ -283,6 +283,25 @@
           "javascript",
           "python",
           "go"
+        ],
+        "result": "passed"
+      },
+      {
+        "runner": "node-test",
+        "file": "apps/consequence-actuator-service/test/production-config.test.ts",
+        "titles": [
+          "proves the exact actuator migration surface before declaring production readiness",
+          "uses the production PostgreSQL provider-record adapter through exact RPC-only bindings"
+        ],
+        "result": "passed"
+      },
+      {
+        "runner": "node-test",
+        "file": "apps/consequence-actuator-service/test/provider-record-hostile.test.ts",
+        "titles": [
+          "keeps a genuinely lost GitHub PATCH response retryably unavailable with no terminal attribution",
+          "reconciles COMMITTED after exact GitHub 200 was durably recorded but the actuator response was lost",
+          "refuses old-envelope and cross-attempt provider-record replay"
         ],
         "result": "passed"
       },
@@ -736,6 +755,15 @@
       },
       {
         "runner": "vitest",
+        "file": "tests/consequence-actuator-provider-record-migration-contract.test.ts",
+        "titles": [
+          "exposes only exact append/read RPCs to the dedicated actuator service role",
+          "registers the private store and exact actuator RPCs in the live schema contract"
+        ],
+        "result": "passed"
+      },
+      {
+        "runner": "vitest",
         "file": "tests/evidence-challenge-durable.test.ts",
         "titles": [
           "atomically registers one exact challenge across 100 concurrent workers",
@@ -956,8 +984,8 @@
     "security-evidence": {
       "kind": "content-addressed-evidence-bundle",
       "filename": "security-case-evidence.v1",
-      "sha256": "5bbc6dc70c85610e5438abd70e555a28e513032734cd20d3449398c33ae55380",
-      "file_count": 228
+      "sha256": "ae486e593815213e9c2c90be91708c1a4eb500bcbb4a80fbb31dfebf5e876b72",
+      "file_count": 235
     },
     "verify-sdk": {
       "kind": "npm-tarball",
@@ -1120,7 +1148,7 @@
         },
         {
           "artifact_id": "security-evidence",
-          "sha256": "5bbc6dc70c85610e5438abd70e555a28e513032734cd20d3449398c33ae55380"
+          "sha256": "ae486e593815213e9c2c90be91708c1a4eb500bcbb4a80fbb31dfebf5e876b72"
         }
       ]
     },
@@ -1383,7 +1411,7 @@
         },
         {
           "artifact_id": "security-evidence",
-          "sha256": "5bbc6dc70c85610e5438abd70e555a28e513032734cd20d3449398c33ae55380"
+          "sha256": "ae486e593815213e9c2c90be91708c1a4eb500bcbb4a80fbb31dfebf5e876b72"
         }
       ]
     },
@@ -1492,7 +1520,7 @@
         },
         {
           "artifact_id": "security-evidence",
-          "sha256": "5bbc6dc70c85610e5438abd70e555a28e513032734cd20d3449398c33ae55380"
+          "sha256": "ae486e593815213e9c2c90be91708c1a4eb500bcbb4a80fbb31dfebf5e876b72"
         }
       ]
     },
@@ -1658,7 +1686,7 @@
         },
         {
           "artifact_id": "security-evidence",
-          "sha256": "5bbc6dc70c85610e5438abd70e555a28e513032734cd20d3449398c33ae55380"
+          "sha256": "ae486e593815213e9c2c90be91708c1a4eb500bcbb4a80fbb31dfebf5e876b72"
         }
       ]
     },
@@ -1782,7 +1810,7 @@
         },
         {
           "artifact_id": "security-evidence",
-          "sha256": "5bbc6dc70c85610e5438abd70e555a28e513032734cd20d3449398c33ae55380"
+          "sha256": "ae486e593815213e9c2c90be91708c1a4eb500bcbb4a80fbb31dfebf5e876b72"
         }
       ]
     },
@@ -1977,7 +2005,7 @@
       "release_artifact_hashes": [
         {
           "artifact_id": "security-evidence",
-          "sha256": "5bbc6dc70c85610e5438abd70e555a28e513032734cd20d3449398c33ae55380"
+          "sha256": "ae486e593815213e9c2c90be91708c1a4eb500bcbb4a80fbb31dfebf5e876b72"
         }
       ]
     },
@@ -2244,7 +2272,7 @@
         },
         {
           "artifact_id": "security-evidence",
-          "sha256": "5bbc6dc70c85610e5438abd70e555a28e513032734cd20d3449398c33ae55380"
+          "sha256": "ae486e593815213e9c2c90be91708c1a4eb500bcbb4a80fbb31dfebf5e876b72"
         }
       ]
     },
@@ -2445,7 +2473,7 @@
         },
         {
           "artifact_id": "security-evidence",
-          "sha256": "5bbc6dc70c85610e5438abd70e555a28e513032734cd20d3449398c33ae55380"
+          "sha256": "ae486e593815213e9c2c90be91708c1a4eb500bcbb4a80fbb31dfebf5e876b72"
         }
       ]
     },
@@ -2628,7 +2656,7 @@
         },
         {
           "artifact_id": "security-evidence",
-          "sha256": "5bbc6dc70c85610e5438abd70e555a28e513032734cd20d3449398c33ae55380"
+          "sha256": "ae486e593815213e9c2c90be91708c1a4eb500bcbb4a80fbb31dfebf5e876b72"
         }
       ]
     },
@@ -2848,7 +2876,7 @@
         },
         {
           "artifact_id": "security-evidence",
-          "sha256": "5bbc6dc70c85610e5438abd70e555a28e513032734cd20d3449398c33ae55380"
+          "sha256": "ae486e593815213e9c2c90be91708c1a4eb500bcbb4a80fbb31dfebf5e876b72"
         }
       ]
     },
@@ -3073,7 +3101,7 @@
       "release_artifact_hashes": [
         {
           "artifact_id": "security-evidence",
-          "sha256": "5bbc6dc70c85610e5438abd70e555a28e513032734cd20d3449398c33ae55380"
+          "sha256": "ae486e593815213e9c2c90be91708c1a4eb500bcbb4a80fbb31dfebf5e876b72"
         }
       ]
     },
@@ -3182,7 +3210,7 @@
         },
         {
           "artifact_id": "security-evidence",
-          "sha256": "5bbc6dc70c85610e5438abd70e555a28e513032734cd20d3449398c33ae55380"
+          "sha256": "ae486e593815213e9c2c90be91708c1a4eb500bcbb4a80fbb31dfebf5e876b72"
         }
       ]
     },
@@ -3396,7 +3424,7 @@
         },
         {
           "artifact_id": "security-evidence",
-          "sha256": "5bbc6dc70c85610e5438abd70e555a28e513032734cd20d3449398c33ae55380"
+          "sha256": "ae486e593815213e9c2c90be91708c1a4eb500bcbb4a80fbb31dfebf5e876b72"
         }
       ]
     },
@@ -3538,7 +3566,7 @@
         },
         {
           "artifact_id": "security-evidence",
-          "sha256": "5bbc6dc70c85610e5438abd70e555a28e513032734cd20d3449398c33ae55380"
+          "sha256": "ae486e593815213e9c2c90be91708c1a4eb500bcbb4a80fbb31dfebf5e876b72"
         }
       ]
     },
@@ -3589,6 +3617,18 @@
         },
         {
           "language": "javascript",
+          "file": "apps/consequence-actuator-service/src/github-app.ts",
+          "symbol": "createGitHubIssueEffectProvider",
+          "exported": true
+        },
+        {
+          "language": "javascript",
+          "file": "apps/consequence-actuator-service/src/production-config.ts",
+          "symbol": "createPostgresProviderRecordStore",
+          "exported": true
+        },
+        {
+          "language": "javascript",
           "file": "packages/gate/src/store.ts",
           "symbol": "createDurableConsumptionStore",
           "exported": true
@@ -3624,6 +3664,16 @@
           "language": "javascript",
           "file": "apps/consequence-actuator-service/src/runtime.ts",
           "export": "createConsequenceActuatorRuntime"
+        },
+        {
+          "language": "javascript",
+          "file": "apps/consequence-actuator-service/src/github-app.ts",
+          "export": "createGitHubIssueEffectProvider"
+        },
+        {
+          "language": "javascript",
+          "file": "apps/consequence-actuator-service/src/production-config.ts",
+          "export": "createPostgresProviderRecordStore"
         }
       ],
       "language_coverage": {
@@ -3700,9 +3750,64 @@
           "runner": "node-test"
         },
         {
+          "file": "apps/consequence-actuator-service/test/production-config.test.ts",
+          "title": "proves the exact actuator migration surface before declaring production readiness",
+          "runner": "node-test"
+        },
+        {
+          "file": "apps/consequence-actuator-service/test/production-config.test.ts",
+          "title": "uses the production PostgreSQL provider-record adapter through exact RPC-only bindings",
+          "runner": "node-test"
+        },
+        {
+          "file": "apps/consequence-actuator-service/test/provider-record-hostile.test.ts",
+          "title": "reconciles COMMITTED after exact GitHub 200 was durably recorded but the actuator response was lost",
+          "runner": "node-test"
+        },
+        {
+          "file": "apps/consequence-actuator-service/test/provider-record-hostile.test.ts",
+          "title": "keeps a genuinely lost GitHub PATCH response retryably unavailable with no terminal attribution",
+          "runner": "node-test"
+        },
+        {
+          "file": "apps/consequence-actuator-service/test/provider-record-hostile.test.ts",
+          "title": "refuses old-envelope and cross-attempt provider-record replay",
+          "runner": "node-test"
+        },
+        {
+          "file": "tests/consequence-actuator-provider-record-migration-contract.test.ts",
+          "title": "registers the private store and exact actuator RPCs in the live schema contract",
+          "runner": "vitest"
+        },
+        {
+          "file": "tests/consequence-actuator-provider-record-migration-contract.test.ts",
+          "title": "exposes only exact append/read RPCs to the dedicated actuator service role",
+          "runner": "vitest"
+        },
+        {
           "file": "tests/complete-mediation-boundary.test.ts",
           "title": "keeps raw provider credential material out of the decision plane",
           "runner": "vitest"
+        }
+      ],
+      "operational_evidence": [
+        {
+          "file": "supabase/migrations/20260725010000_consequence_actuator_store.sql",
+          "contains": [
+            "CREATE TABLE public.consequence_actuator_envelopes",
+            "CREATE FUNCTION consequence_actuator_private.reserve_envelope",
+            "CREATE FUNCTION consequence_actuator_private.consume_envelope",
+            "TO consequence_actuator_executor"
+          ]
+        },
+        {
+          "file": "supabase/migrations/20260725143000_consequence_actuator_provider_records.sql",
+          "contains": [
+            "CREATE TABLE consequence_actuator_private.provider_records",
+            "CREATE FUNCTION consequence_actuator_private.record_provider_record",
+            "CREATE FUNCTION consequence_actuator_private.read_provider_record",
+            "TO consequence_actuator_executor"
+          ]
         }
       ],
       "formal": [
@@ -3878,7 +3983,7 @@
         },
         {
           "artifact_id": "security-evidence",
-          "sha256": "5bbc6dc70c85610e5438abd70e555a28e513032734cd20d3449398c33ae55380"
+          "sha256": "ae486e593815213e9c2c90be91708c1a4eb500bcbb4a80fbb31dfebf5e876b72"
         }
       ]
     },
@@ -4039,7 +4144,7 @@
         },
         {
           "artifact_id": "security-evidence",
-          "sha256": "5bbc6dc70c85610e5438abd70e555a28e513032734cd20d3449398c33ae55380"
+          "sha256": "ae486e593815213e9c2c90be91708c1a4eb500bcbb4a80fbb31dfebf5e876b72"
         }
       ]
     },
@@ -4286,7 +4391,7 @@
         },
         {
           "artifact_id": "security-evidence",
-          "sha256": "5bbc6dc70c85610e5438abd70e555a28e513032734cd20d3449398c33ae55380"
+          "sha256": "ae486e593815213e9c2c90be91708c1a4eb500bcbb4a80fbb31dfebf5e876b72"
         }
       ]
     },
@@ -4420,7 +4525,7 @@
       "release_artifact_hashes": [
         {
           "artifact_id": "security-evidence",
-          "sha256": "5bbc6dc70c85610e5438abd70e555a28e513032734cd20d3449398c33ae55380"
+          "sha256": "ae486e593815213e9c2c90be91708c1a4eb500bcbb4a80fbb31dfebf5e876b72"
         }
       ]
     },
@@ -4543,7 +4648,7 @@
         },
         {
           "artifact_id": "security-evidence",
-          "sha256": "5bbc6dc70c85610e5438abd70e555a28e513032734cd20d3449398c33ae55380"
+          "sha256": "ae486e593815213e9c2c90be91708c1a4eb500bcbb4a80fbb31dfebf5e876b72"
         }
       ]
     },
@@ -4677,7 +4782,7 @@
       "release_artifact_hashes": [
         {
           "artifact_id": "security-evidence",
-          "sha256": "5bbc6dc70c85610e5438abd70e555a28e513032734cd20d3449398c33ae55380"
+          "sha256": "ae486e593815213e9c2c90be91708c1a4eb500bcbb4a80fbb31dfebf5e876b72"
         }
       ]
     },
@@ -4894,7 +4999,7 @@
       "release_artifact_hashes": [
         {
           "artifact_id": "security-evidence",
-          "sha256": "5bbc6dc70c85610e5438abd70e555a28e513032734cd20d3449398c33ae55380"
+          "sha256": "ae486e593815213e9c2c90be91708c1a4eb500bcbb4a80fbb31dfebf5e876b72"
         }
       ]
     },
@@ -5104,7 +5209,7 @@
       "release_artifact_hashes": [
         {
           "artifact_id": "security-evidence",
-          "sha256": "5bbc6dc70c85610e5438abd70e555a28e513032734cd20d3449398c33ae55380"
+          "sha256": "ae486e593815213e9c2c90be91708c1a4eb500bcbb4a80fbb31dfebf5e876b72"
         }
       ]
     },
@@ -5320,7 +5425,7 @@
       "release_artifact_hashes": [
         {
           "artifact_id": "security-evidence",
-          "sha256": "5bbc6dc70c85610e5438abd70e555a28e513032734cd20d3449398c33ae55380"
+          "sha256": "ae486e593815213e9c2c90be91708c1a4eb500bcbb4a80fbb31dfebf5e876b72"
         }
       ]
     },
@@ -5624,7 +5729,7 @@
       "release_artifact_hashes": [
         {
           "artifact_id": "security-evidence",
-          "sha256": "5bbc6dc70c85610e5438abd70e555a28e513032734cd20d3449398c33ae55380"
+          "sha256": "ae486e593815213e9c2c90be91708c1a4eb500bcbb4a80fbb31dfebf5e876b72"
         }
       ]
     },
@@ -5836,7 +5941,7 @@
         },
         {
           "artifact_id": "security-evidence",
-          "sha256": "5bbc6dc70c85610e5438abd70e555a28e513032734cd20d3449398c33ae55380"
+          "sha256": "ae486e593815213e9c2c90be91708c1a4eb500bcbb4a80fbb31dfebf5e876b72"
         }
       ]
     },
@@ -6002,7 +6107,7 @@
         },
         {
           "artifact_id": "security-evidence",
-          "sha256": "5bbc6dc70c85610e5438abd70e555a28e513032734cd20d3449398c33ae55380"
+          "sha256": "ae486e593815213e9c2c90be91708c1a4eb500bcbb4a80fbb31dfebf5e876b72"
         }
       ]
     },
@@ -6181,7 +6286,7 @@
         },
         {
           "artifact_id": "security-evidence",
-          "sha256": "5bbc6dc70c85610e5438abd70e555a28e513032734cd20d3449398c33ae55380"
+          "sha256": "ae486e593815213e9c2c90be91708c1a4eb500bcbb4a80fbb31dfebf5e876b72"
         }
       ]
     },
@@ -6356,7 +6461,7 @@
         },
         {
           "artifact_id": "security-evidence",
-          "sha256": "5bbc6dc70c85610e5438abd70e555a28e513032734cd20d3449398c33ae55380"
+          "sha256": "ae486e593815213e9c2c90be91708c1a4eb500bcbb4a80fbb31dfebf5e876b72"
         }
       ]
     },
@@ -6506,7 +6611,7 @@
         },
         {
           "artifact_id": "security-evidence",
-          "sha256": "5bbc6dc70c85610e5438abd70e555a28e513032734cd20d3449398c33ae55380"
+          "sha256": "ae486e593815213e9c2c90be91708c1a4eb500bcbb4a80fbb31dfebf5e876b72"
         }
       ]
     },
@@ -6647,7 +6752,7 @@
         },
         {
           "artifact_id": "security-evidence",
-          "sha256": "5bbc6dc70c85610e5438abd70e555a28e513032734cd20d3449398c33ae55380"
+          "sha256": "ae486e593815213e9c2c90be91708c1a4eb500bcbb4a80fbb31dfebf5e876b72"
         }
       ]
     },
@@ -6846,7 +6951,7 @@
       "release_artifact_hashes": [
         {
           "artifact_id": "security-evidence",
-          "sha256": "5bbc6dc70c85610e5438abd70e555a28e513032734cd20d3449398c33ae55380"
+          "sha256": "ae486e593815213e9c2c90be91708c1a4eb500bcbb4a80fbb31dfebf5e876b72"
         }
       ]
     },
@@ -7260,7 +7365,7 @@
         },
         {
           "artifact_id": "security-evidence",
-          "sha256": "5bbc6dc70c85610e5438abd70e555a28e513032734cd20d3449398c33ae55380"
+          "sha256": "ae486e593815213e9c2c90be91708c1a4eb500bcbb4a80fbb31dfebf5e876b72"
         }
       ]
     },
@@ -7641,7 +7746,7 @@
         },
         {
           "artifact_id": "security-evidence",
-          "sha256": "5bbc6dc70c85610e5438abd70e555a28e513032734cd20d3449398c33ae55380"
+          "sha256": "ae486e593815213e9c2c90be91708c1a4eb500bcbb4a80fbb31dfebf5e876b72"
         }
       ]
     }
@@ -7649,7 +7754,7 @@
   "evidence_files": [
     {
       "path": ".github/workflows/_publish-npm-package.yml",
-      "sha256": "4ff1b4cda5edf17a04cfb248d49abeafe3ca665eb28d5e75e703e92822af2c8e"
+      "sha256": "2a0d78e6b71b31e06029886d6857e99d86675b25bf0e380d459af6c36bbc348d"
     },
     {
       "path": ".github/workflows/_publish-pypi-package.yml",
@@ -7680,8 +7785,24 @@
       "sha256": "5538d2278fdca617cddaf3b3d69d5147b502983231589ae03b52c1c53c41e2fa"
     },
     {
+      "path": "apps/consequence-actuator-service/src/github-app.ts",
+      "sha256": "f46f0d2b7123b9911e315ee9024ea9c8f8e802c677fd11ba68d147a21903aeed"
+    },
+    {
+      "path": "apps/consequence-actuator-service/src/production-config.ts",
+      "sha256": "0ced5d5b86dc810d9d0a3cc75b12a6b932d7f85294d3a714ccdd435a6f175c08"
+    },
+    {
       "path": "apps/consequence-actuator-service/src/runtime.ts",
       "sha256": "361963689b4384ca9df63b524611850285c95be0527e9bd5c4e92e2128d21fa6"
+    },
+    {
+      "path": "apps/consequence-actuator-service/test/production-config.test.ts",
+      "sha256": "1232bc9ddc76f5a986c69a55ed97b9bc0b227681ddb563ee181edb0f69cdd518"
+    },
+    {
+      "path": "apps/consequence-actuator-service/test/provider-record-hostile.test.ts",
+      "sha256": "b7b3c48fa29ca55a9e385aea9ede6d65f08f17be8e45e7f90a5e8e355da671fd"
     },
     {
       "path": "apps/consequence-control-service/src/github-app.ts",
@@ -7953,7 +8074,7 @@
     },
     {
       "path": "formal/results/formal-runtime-scenario-conformance.v2.json",
-      "sha256": "40e577636ad958b855c26628979cd6df79ae291a5625efb60882de126791793e"
+      "sha256": "900b1c52794a607883c8d627077d60dbf72c3170c44e3cead3717a97b2ab0bb4"
     },
     {
       "path": "formal/results/outcome-authority-join.summary.txt",
@@ -8441,11 +8562,11 @@
     },
     {
       "path": "scripts/verify-security-case.mjs",
-      "sha256": "d92bbfc774705f1c03d53703b211f2d30c97aee31d04d7cfc8af1fea6e56d091"
+      "sha256": "281187bc566555c65142402cf327b1fc1267687e5f19957b74fda67c399da456"
     },
     {
       "path": "security/claims.v1.json",
-      "sha256": "9eb0bd62d1d7168f14912e850f62666dbbd90b477392f76bb912779f5d51d33d"
+      "sha256": "8576dd2bd0440465843e7e4d79eafce4850ee5320110d387cd177f10a9205270"
     },
     {
       "path": "security/vectors.v1.json",
@@ -8454,6 +8575,14 @@
     {
       "path": "supabase/migrations/20260720193917_mobile_action_continuity_hardening.sql",
       "sha256": "9ba1880c03dd97a1ee1c207c80986ba7d1e7db05d380f82262e3999e436cfef0"
+    },
+    {
+      "path": "supabase/migrations/20260725010000_consequence_actuator_store.sql",
+      "sha256": "9b5328a3cf0ad199db11e1712d1fc7d9ef981bf03e47bebf6b50c29f71021b2f"
+    },
+    {
+      "path": "supabase/migrations/20260725143000_consequence_actuator_provider_records.sql",
+      "sha256": "33adbed6400f843d637369ba8365db0e05445a9809824a7015564c2f2e0b6d25"
     },
     {
       "path": "tests/action-escrow-escrow-com.test.ts",
@@ -8490,6 +8619,10 @@
     {
       "path": "tests/complete-mediation-boundary.test.ts",
       "sha256": "85e692363600358f11fff39aad942f1e09da68de2215f95e493ef7e2007b2fe0"
+    },
+    {
+      "path": "tests/consequence-actuator-provider-record-migration-contract.test.ts",
+      "sha256": "b63414d6070a69db0e8574e245d62458cb6b8a412a5124c4200c2c268ac80840"
     },
     {
       "path": "tests/evidence-challenge-durable.test.ts",
