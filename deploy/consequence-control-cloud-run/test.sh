@@ -5,7 +5,9 @@ LANE_DIR=$(CDPATH='' cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)
 
 if command -v shellcheck >/dev/null 2>&1; then
   shellcheck \
+    "$LANE_DIR/bootstrap-stable.sh" \
     "$LANE_DIR/deploy.sh" \
+    "$LANE_DIR/provision-dedicated-project.sh" \
     "$LANE_DIR/traffic.sh" \
     "$LANE_DIR/test.sh" \
     "$LANE_DIR/lib/common.sh"

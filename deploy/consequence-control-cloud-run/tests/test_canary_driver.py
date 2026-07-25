@@ -10,6 +10,8 @@ import unittest
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 
+from live_cloud_run_fixture import build_live_resources, load_env
+
 
 LANE = Path(__file__).resolve().parents[1]
 DRIVER = LANE / "run-canary.py"
@@ -305,39 +307,32 @@ raise SystemExit(0)
             """#!/usr/bin/env python3
 import json
 import os
+import pathlib
 import sys
 args = sys.argv[1:]
 if args[:3] == ["auth", "print-identity-token", "--audiences=" + os.environ["FAKE_AUDIENCE"]]:
     print("eyJhbGciOiJSUzI1NiJ9.eyJhdWQiOiJjYW5hcnkifQ.signature")
 elif args[:3] == ["run", "services", "describe"]:
-    print(json.dumps({
-        "metadata": {"name": "emilia-consequence-control"},
-        "status": {
-            "url": os.environ["FAKE_AUDIENCE"],
-            "traffic": [{
-                "tag": "canary-r20260725b",
-                "revisionName": "emilia-consequence-control-r20260725b",
-                "url": os.environ["FAKE_DECISION_URL"],
-            }],
-        },
-    }))
+    resources = json.loads(os.environ["FAKE_LIVE_RESOURCES"])
+    service = args[3]
+    resource = resources.get("services:" + service)
+    if resource is None:
+        raise SystemExit(3)
+    if service == "emilia-consequence-control":
+        counter_path = pathlib.Path(os.environ["FAKE_DECISION_DESCRIBE_COUNTER"])
+        count = int(counter_path.read_text()) if counter_path.exists() else 0
+        counter_path.write_text(str(count + 1))
+        if count == 0:
+            resource["status"]["url"] = os.environ["FAKE_AUDIENCE"]
+            resource["status"]["traffic"][0]["url"] = os.environ["FAKE_DECISION_URL"]
+    print(json.dumps(resource))
 elif args[:3] == ["run", "revisions", "describe"]:
     revision = args[3]
-    if revision == "emilia-consequence-actuator-r20260725b":
-        service = "emilia-consequence-actuator"
-        image = "us-central1-docker.pkg.dev/test-project/runtime/actuator@sha256:" + "a" * 64
-    elif revision == "emilia-consequence-control-r20260725b":
-        service = "emilia-consequence-control"
-        image = "us-central1-docker.pkg.dev/test-project/runtime/decision@sha256:" + "b" * 64
-    else:
+    resources = json.loads(os.environ["FAKE_LIVE_RESOURCES"])
+    resource = resources.get("revisions:" + revision)
+    if resource is None:
         raise SystemExit(3)
-    print(json.dumps({
-        "metadata": {
-            "name": revision,
-            "labels": {"serving.knative.dev/service": service},
-        },
-        "spec": {"containers": [{"image": image}]},
-    }))
+    print(json.dumps(resource))
 else:
     print("unexpected gcloud arguments: " + repr(args), file=sys.stderr)
     raise SystemExit(2)
@@ -353,6 +348,9 @@ else:
         extra_args: list[str] | None = None,
     ) -> subprocess.CompletedProcess[str]:
         audience = "https://emilia-consequence-control.example.run.app"
+        config = load_env(self.config)
+        resources = build_live_resources(config)
+        counter = self.root / "decision-describe-count"
         return subprocess.run(
             [
                 sys.executable,
@@ -380,6 +378,8 @@ else:
                 "PATH": f"{self.bin}:{os.environ['PATH']}",
                 "FAKE_DECISION_URL": origin,
                 "FAKE_AUDIENCE": audience,
+                "FAKE_DECISION_DESCRIBE_COUNTER": str(counter),
+                "FAKE_LIVE_RESOURCES": json.dumps(resources),
             },
         )
 

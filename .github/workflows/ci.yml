@@ -113,7 +113,7 @@ jobs:
           npm run check:standalone-runtimes
           node --test examples/action-escrow/scenario.test.mjs examples/action-escrow/standalone.test.mjs
       - name: Install the PostgreSQL client used by the live isolation test
-        run: sudo apt-get update && sudo apt-get install --yes --no-install-recommends postgresql-client
+        run: sudo apt-get update && sudo apt-get install --yes --no-install-recommends postgresql-client shellcheck
       - name: Run the complete Gate package suite
         working-directory: packages/gate
         run: npm test
@@ -132,6 +132,8 @@ jobs:
         run: |
           npm ci --ignore-scripts
           npm test
+      - name: Run the fail-closed Cloud Run deployment suite
+        run: bash deploy/consequence-control-cloud-run/test.sh
       - name: Switch to the actuator's supported Node runtime
         uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
         with:

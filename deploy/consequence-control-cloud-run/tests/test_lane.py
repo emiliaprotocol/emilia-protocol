@@ -10,6 +10,8 @@ import tempfile
 import unittest
 from pathlib import Path
 
+from live_cloud_run_fixture import build_live_resources
+
 LANE = Path(__file__).resolve().parents[1]
 CONFIG = LANE / "tests" / "fixture.env"
 
@@ -739,35 +741,35 @@ class CanaryTests(unittest.TestCase):
         fake_bin.mkdir(exist_ok=True)
         gcloud = fake_bin / "gcloud"
         config = load_config()
+        resources = build_live_resources(config)
         gcloud.write_text(
             """#!/usr/bin/env python3
 import json
+import os
 import sys
-revision = sys.argv[4]
-if revision == "emilia-consequence-actuator-r20260725b":
-    service = "emilia-consequence-actuator"
-    image = %r
-elif revision == "emilia-consequence-control-r20260725b":
-    service = "emilia-consequence-control"
-    image = %r
-else:
+args = sys.argv[1:]
+if args[:3] not in (
+    ["run", "services", "describe"],
+    ["run", "revisions", "describe"],
+):
     raise SystemExit(2)
-print(json.dumps({
-    "metadata": {
-        "name": revision,
-        "labels": {"serving.knative.dev/service": service},
-    },
-    "spec": {"containers": [{"image": image}]},
-}))
-"""
-            % (config["ACTUATOR_IMAGE"], config["DECISION_IMAGE"]),
+resource = json.loads(os.environ["FAKE_LIVE_RESOURCES"]).get(
+    args[1] + ":" + args[3]
+)
+if resource is None:
+    raise SystemExit(2)
+print(json.dumps(resource))
+""",
             encoding="utf-8",
         )
         gcloud.chmod(0o755)
         result = self.validate(
             self.evidence(),
             live=True,
-            extra_env={"PATH": f"{fake_bin}:{os.environ['PATH']}"},
+            extra_env={
+                "PATH": f"{fake_bin}:{os.environ['PATH']}",
+                "FAKE_LIVE_RESOURCES": json.dumps(resources),
+            },
         )
         self.assertEqual(result.returncode, 0, result.stderr)
 
