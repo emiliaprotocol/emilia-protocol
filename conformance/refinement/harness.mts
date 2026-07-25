@@ -25,12 +25,16 @@ const root = path.resolve(
   "..",
   "..",
 );
-const manifestPath = path.join(root, "formal", "runtime-traces.v1.json");
+const manifestPath = path.join(
+  root,
+  "formal",
+  "runtime-scenarios.v2.json",
+);
 const evidencePath = path.join(
   root,
   "formal",
   "results",
-  "formal-runtime-refinement.v1.json",
+  "formal-runtime-scenario-conformance.v2.json",
 );
 const executableEntryPoints = Object.freeze([
   "scripts/check-formal-runtime-traces.mjs",
@@ -51,16 +55,36 @@ const harnessSources = Object.freeze([
 const adapterSources: Readonly<Record<string, string>> = Object.freeze({
   "action-escrow": "conformance/refinement/adapters/action-escrow.mts",
   aec: "conformance/refinement/adapters/aec.mts",
+  "aec-execution-fleet-assurance":
+    "conformance/refinement/adapters/aec-execution-fleet-assurance.mts",
   "consequence-lifecycle":
     "conformance/refinement/adapters/consequence-lifecycle.mts",
   "composed-trust-lifecycle":
     "conformance/refinement/adapters/composed-trust-lifecycle.mts",
+  "durable-consumption-owner":
+    "conformance/refinement/adapters/durable-consumption-owner.mts",
+  "conservation-authority":
+    "conformance/refinement/adapters/five-claim-bridge.mjs",
+  "outcome-binding":
+    "conformance/refinement/adapters/five-claim-bridge.mjs",
+  "authority-document-proof-join":
+    "conformance/refinement/adapters/five-claim-bridge.mjs",
+  "authority-program":
+    "conformance/refinement/adapters/five-claim-bridge.mjs",
+  "receipt-program":
+    "conformance/refinement/adapters/five-claim-bridge.mjs",
   grace: "conformance/refinement/adapters/grace-curtailment.mts",
   "mobile-continuity": "conformance/refinement/adapters/mobile-continuity.mts",
   "mobile-enrollment": "conformance/refinement/adapters/mobile-enrollment.mts",
   "model-to-matter": "conformance/refinement/adapters/model-to-matter.mts",
   "network-witness": "conformance/refinement/adapters/network-witness.mts",
+  "evidence-challenge-lifecycle":
+    "conformance/refinement/adapters/evidence-challenge-lifecycle.mts",
+  "reliance-pinned-profile":
+    "conformance/refinement/adapters/reliance-pinned-profile.mts",
   revocation: "conformance/refinement/adapters/revocation.mts",
+  "two-claim-assurance":
+    "conformance/refinement/adapters/two-claim-assurance.mts",
 });
 
 type EvidenceInput = { path: string; sha256: string };
@@ -76,37 +100,52 @@ type TraceEvidence = {
     status: "matched";
     steps: RuntimeStep[];
   };
+  relation?: {
+    status: "matched";
+    shared_input: unknown;
+    formal_projection: Record<string, string | number | boolean>;
+    runtime_projection: Record<string, string | number | boolean>;
+    fields: string[];
+  };
+  control_semantics?: "paired_formal_counterexample_runtime_refusal";
   matched: true;
 };
 
-export type RefinementEvidence = {
-  "@version": "EP-FORMAL-RUNTIME-REFINEMENT-EVIDENCE-v1";
-  method: "bounded_selected_trace_refinement";
+export type ScenarioConformanceEvidence = {
+  "@version": "EP-SELECTED-SCENARIO-CONFORMANCE-EVIDENCE-v2";
+  method: "bounded_selected_scenario_conformance";
+  toolchain: {
+    tlc_jar_sha256: string;
+    bounded_checker_runtime: "node";
+  };
   inputs: EvidenceInput[];
-  traces: TraceEvidence[];
+  scenarios: TraceEvidence[];
   summary: {
-    traces: number;
-    sound_traces: number;
-    unsafe_mutations_detected: number;
+    scenarios: number;
+    sound_scenarios: number;
+    paired_negative_controls: number;
     claims: string[];
     models: string[];
-    required_transitions: number;
-    covered_transitions: number;
-    transition_complete_models: string[];
+    required_model_actions: number;
+    covered_model_actions: number;
+    action_complete_models: string[];
+    formal_mutation_operators: number;
   };
   limitations: string[];
 };
+export type RefinementEvidence = ScenarioConformanceEvidence;
 
 export type RuntimeTraceConformance = {
-  traces: number;
-  sound_traces: number;
-  unsafe_mutations_rejected: number;
+  scenarios: number;
+  sound_scenarios: number;
+  paired_negative_controls_rejected: number;
   claims: string[];
   results: Array<{
     id: string;
     claim_id: string;
     kind: TraceContract["kind"];
     steps: RuntimeStep[];
+    relation?: RuntimeScenarioResult["relation"];
   }>;
 };
 
@@ -240,26 +279,27 @@ function assertRuntimeMatches(
     );
   }
   if (
-    trace.kind === "unsafe_mutation" &&
+    trace.kind === "paired_negative_control" &&
     actual[actual.length - 1]?.accepted !== false
   ) {
-    throw new Error(`${trace.id}: runtime accepted the unsafe mutation`);
+    throw new Error(`${trace.id}: runtime accepted the paired negative control`);
   }
   return actual;
 }
 
 function collectInputs(manifest: TraceManifest): EvidenceInput[] {
   const files = new Set<string>([
-    "formal/runtime-traces.v1.json",
+    "formal/runtime-scenarios.v2.json",
     ...harnessSources,
     ...generatedRuntimeGovernance,
     ...executableImportClosure(executableEntryPoints),
   ]);
   for (const [model, contract] of Object.entries(manifest.models)) {
     files.add(model);
-    files.add(contract.config);
+    if (contract.config) files.add(contract.config);
+    if (contract.runner) files.add(contract.runner);
   }
-  for (const trace of manifest.traces) {
+  for (const trace of manifest.scenarios) {
     const adapterSource = adapterSources[trace.adapter];
     if (!adapterSource)
       throw new Error(`no governed source for adapter ${trace.adapter}`);
@@ -276,23 +316,45 @@ async function runRuntimeTraces(
   manifest: TraceManifest,
 ): Promise<RuntimeTraceConformance> {
   const results: RuntimeTraceConformance["results"] = [];
-  for (const trace of [...manifest.traces].sort((left, right) =>
+  for (const trace of [...manifest.scenarios].sort((left, right) =>
     left.id.localeCompare(right.id),
   )) {
-    const runtime = await getRuntimeAdapter(trace.adapter)(trace.scenario);
+    const adapterResult = await getRuntimeAdapter(trace.adapter)(
+      trace.scenario,
+    );
+    const relation = adapterResult.relation;
+    if (relation) {
+      const fields = [...relation.fields].sort();
+      if (
+        fields.length === 0 ||
+        new Set(fields).size !== fields.length ||
+        fields.some(
+          (field) =>
+            !Object.hasOwn(relation.formal_projection, field) ||
+            !Object.hasOwn(relation.runtime_projection, field) ||
+            !Object.is(
+              relation.formal_projection[field],
+              relation.runtime_projection[field],
+            ),
+        )
+      ) {
+        throw new Error(`${trace.id}: formal/runtime relation did not match`);
+      }
+    }
     results.push({
       id: trace.id,
       claim_id: trace.claim_id,
       kind: trace.kind,
-      steps: assertRuntimeMatches(trace, runtime),
+      steps: assertRuntimeMatches(trace, adapterResult),
+      ...(relation ? { relation } : {}),
     });
   }
   return {
-    traces: results.length,
-    sound_traces: results.filter((trace) => trace.kind === "sound").length,
-    unsafe_mutations_rejected: results.filter(
+    scenarios: results.length,
+    sound_scenarios: results.filter((trace) => trace.kind === "sound").length,
+    paired_negative_controls_rejected: results.filter(
       (trace) =>
-        trace.kind === "unsafe_mutation" &&
+        trace.kind === "paired_negative_control" &&
         trace.steps.at(-1)?.accepted === false,
     ).length,
     claims: [...new Set(results.map((trace) => trace.claim_id))].sort(),
@@ -307,11 +369,11 @@ export async function runRuntimeTraceConformance(): Promise<RuntimeTraceConforma
 async function buildEvidence(
   manifest: TraceManifest,
   tlcJar: string,
-): Promise<RefinementEvidence> {
+): Promise<ScenarioConformanceEvidence> {
   const runtime = await runRuntimeTraces(manifest);
   const runtimeById = new Map(runtime.results.map((trace) => [trace.id, trace]));
-  const traces: TraceEvidence[] = [];
-  for (const trace of [...manifest.traces].sort((left, right) =>
+  const scenarios: TraceEvidence[] = [];
+  for (const trace of [...manifest.scenarios].sort((left, right) =>
     left.id.localeCompare(right.id),
   )) {
     const steps = runtimeById.get(trace.id)?.steps;
@@ -322,7 +384,8 @@ async function buildEvidence(
       manifest.models[trace.model],
       tlcJar,
     );
-    traces.push({
+    const runtimeResult = runtimeById.get(trace.id);
+    scenarios.push({
       id: trace.id,
       claim_id: trace.claim_id,
       kind: trace.kind,
@@ -331,37 +394,61 @@ async function buildEvidence(
       scenario: trace.scenario,
       formal,
       runtime: { status: "matched", steps },
+      ...(runtimeResult?.relation
+        ? {
+            relation: {
+              status: "matched",
+              ...runtimeResult.relation,
+              fields: [...runtimeResult.relation.fields].sort(),
+            },
+          }
+        : {}),
+      ...(trace.kind === "paired_negative_control"
+        ? {
+            control_semantics:
+              "paired_formal_counterexample_runtime_refusal" as const,
+          }
+        : {}),
       matched: true,
     });
   }
-  const transitionCompleteModels = Object.entries(manifest.models)
+  const actionCompleteModels = Object.entries(manifest.models)
     .filter(([, model]) => model.required_actions.length > 0)
     .map(([model]) => model)
     .sort();
-  const requiredTransitions = transitionCompleteModels.reduce(
+  const requiredModelActions = actionCompleteModels.reduce(
     (total, model) =>
       total + manifest.models[model].required_actions.length,
     0,
   );
   return {
-    "@version": "EP-FORMAL-RUNTIME-REFINEMENT-EVIDENCE-v1",
-    method: "bounded_selected_trace_refinement",
+    "@version": "EP-SELECTED-SCENARIO-CONFORMANCE-EVIDENCE-v2",
+    method: "bounded_selected_scenario_conformance",
+    toolchain: {
+      tlc_jar_sha256: sha256(tlcJar),
+      bounded_checker_runtime: "node",
+    },
     inputs: collectInputs(manifest),
-    traces,
+    scenarios,
     summary: {
-      traces: traces.length,
-      sound_traces: traces.filter((trace) => trace.kind === "sound").length,
-      unsafe_mutations_detected: traces.filter(
-        (trace) =>
-          trace.kind === "unsafe_mutation" &&
-          trace.formal.status === "counterexample_detected" &&
-          trace.runtime.steps.at(-1)?.accepted === false,
+      scenarios: scenarios.length,
+      sound_scenarios: scenarios.filter(
+        (scenario) => scenario.kind === "sound",
       ).length,
-      claims: [...new Set(traces.map((trace) => trace.claim_id))].sort(),
-      models: [...new Set(traces.map((trace) => trace.model))].sort(),
-      required_transitions: requiredTransitions,
-      covered_transitions: requiredTransitions,
-      transition_complete_models: transitionCompleteModels,
+      paired_negative_controls: scenarios.filter(
+        (scenario) =>
+          scenario.kind === "paired_negative_control" &&
+          scenario.formal.status === "counterexample_detected" &&
+          scenario.runtime.steps.at(-1)?.accepted === false,
+      ).length,
+      claims: [...new Set(scenarios.map((scenario) => scenario.claim_id))].sort(),
+      models: [...new Set(scenarios.map((scenario) => scenario.model))].sort(),
+      required_model_actions: requiredModelActions,
+      covered_model_actions: requiredModelActions,
+      action_complete_models: actionCompleteModels,
+      formal_mutation_operators: manifest.scenarios.filter(
+        (scenario) => scenario.kind === "paired_negative_control",
+      ).length,
     },
     limitations: manifest.limitations,
   };
@@ -373,14 +460,14 @@ export async function runFormalRuntimeRefinement(
     emit?: boolean;
     check?: boolean;
   } = {},
-): Promise<RefinementEvidence> {
+): Promise<ScenarioConformanceEvidence> {
   const manifest = validateTraceManifest(parseJson(manifestPath));
   const prior = existsSync(evidencePath)
-    ? (parseJson(evidencePath) as RefinementEvidence)
+    ? (parseJson(evidencePath) as ScenarioConformanceEvidence)
     : null;
   if (!options.tlcJar) {
     throw new Error(
-      "formal runtime refinement requires --tlc-jar or TLA2TOOLS_JAR; committed verdicts are never trusted as their own oracle",
+      "selected-scenario conformance requires --tlc-jar or TLA2TOOLS_JAR; committed verdicts are never trusted as their own oracle",
     );
   }
   const evidence = await buildEvidence(manifest, options.tlcJar);
@@ -390,7 +477,7 @@ export async function runFormalRuntimeRefinement(
     const committed = canonicalJson(prior);
     if (rendered !== committed) {
       throw new Error(
-        "formal runtime refinement evidence drift; run sync:formal-runtime-traces",
+        "selected-scenario conformance evidence drift; run sync:formal-traces",
       );
     }
   }
@@ -417,14 +504,14 @@ if (invokedAsScript) {
       process.stdout.write(canonicalJson(evidence));
     } else {
       console.log(
-        `FORMAL RUNTIME REFINEMENT: PASS — ${evidence.summary.traces} traces, ` +
-          `${evidence.summary.unsafe_mutations_detected} unsafe mutations detected, ` +
+        `SELECTED-SCENARIO CONFORMANCE: PASS — ${evidence.summary.scenarios} scenarios, ` +
+          `${evidence.summary.paired_negative_controls} paired negative controls, ` +
           `${evidence.summary.claims.length} claims`,
       );
     }
   } catch (error) {
     console.error(
-      `FORMAL RUNTIME REFINEMENT: FAIL\n${(error as Error).message}`,
+      `SELECTED-SCENARIO CONFORMANCE: FAIL\n${(error as Error).message}`,
     );
     process.exitCode = 1;
   }

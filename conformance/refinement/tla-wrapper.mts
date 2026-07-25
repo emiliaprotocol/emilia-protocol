@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: Apache-2.0
 
+import crypto from "node:crypto";
 import { spawnSync } from "node:child_process";
 import {
   copyFileSync,
@@ -15,7 +16,163 @@ import type { ModelContract, TraceContract } from "./schema.mjs";
 export type FormalTraceResult = {
   status: "matched" | "counterexample_detected";
   obligation: string | null;
+  backend?:
+    | "bounded_exhaustive_state_exploration"
+    | "bounded_tla_model_checking";
+  checker?: string;
+  model_version?: string;
+  checks?: Array<{
+    obligation: string;
+    states_checked: number;
+    mutation_states_checked?: number;
+    mutation_counterexample_sha256: string;
+  }>;
+  control?: {
+    kind: "formal_mutation_counterexample";
+    obligation: string;
+    sound_input_refused: true;
+    mutant_input_accepted: true;
+  };
 };
+
+const boundedCheckerCache = new Map<string, Record<string, any>>();
+const TLC_CHECKER_IDENTITY = "tla2tools.jar";
+
+function canonicalize(value: unknown): unknown {
+  if (Array.isArray(value)) return value.map(canonicalize);
+  if (value !== null && typeof value === "object") {
+    return Object.fromEntries(
+      Object.entries(value as Record<string, unknown>)
+        .sort(([left], [right]) => left.localeCompare(right))
+        .map(([key, child]) => [key, canonicalize(child)]),
+    );
+  }
+  return value;
+}
+
+function witnessDigest(value: unknown): string {
+  return `sha256:${crypto
+    .createHash("sha256")
+    .update(JSON.stringify(canonicalize(value)))
+    .digest("hex")}`;
+}
+
+function runBoundedChecker(
+  root: string,
+  runner: string,
+): Record<string, any> {
+  const cacheKey = `${root}\0${runner}`;
+  const cached = boundedCheckerCache.get(cacheKey);
+  if (cached) return cached;
+  const run = spawnSync(process.execPath, [path.join(root, runner), "--json"], {
+    cwd: root,
+    encoding: "utf8",
+    env: { ...process.env, FORCE_COLOR: "0", NO_COLOR: "1" },
+    maxBuffer: 64 * 1024 * 1024,
+    timeout: 300_000,
+  });
+  if (run.status !== 0) {
+    throw new Error(
+      `${runner}: bounded checker failed\n${run.stdout ?? ""}${run.stderr ?? ""}`,
+    );
+  }
+  let result: Record<string, any>;
+  try {
+    result = JSON.parse(run.stdout ?? "");
+  } catch (error) {
+    throw new Error(
+      `${runner}: bounded checker emitted invalid JSON: ${(error as Error).message}`,
+    );
+  }
+  if (
+    result.verified !== true ||
+    result.method !== "bounded_exhaustive_state_exploration" ||
+    typeof result.model !== "string" ||
+    result.model.length === 0
+  ) {
+    throw new Error(
+      `${runner}: bounded checker did not report a verified exhaustive model`,
+    );
+  }
+  boundedCheckerCache.set(cacheKey, result);
+  return result;
+}
+
+function runBoundedFormalTrace(
+  root: string,
+  trace: TraceContract,
+  model: ModelContract,
+): FormalTraceResult {
+  const runner = model.runner;
+  if (!runner) {
+    throw new Error(`${trace.id}: bounded checker model has no runner`);
+  }
+  const result = runBoundedChecker(root, runner);
+  const checks = trace.obligations.map((obligation) => {
+    const row = result.obligations?.[obligation];
+    if (
+      row?.verified !== true ||
+      row?.counterexample !== null ||
+      row?.mutation_counterexample === null ||
+      row?.mutation_counterexample === undefined ||
+      !Number.isSafeInteger(row?.states_checked) ||
+      row.states_checked <= 0
+    ) {
+      throw new Error(
+        `${trace.id}: ${runner} did not verify ${obligation} with a concrete mutation counterexample`,
+      );
+    }
+    const mutationStatesChecked = row.mutation_states_checked;
+    if (
+      mutationStatesChecked !== undefined &&
+      (!Number.isSafeInteger(mutationStatesChecked) ||
+        mutationStatesChecked <= 0)
+    ) {
+      throw new Error(
+        `${trace.id}: ${runner} reported an invalid mutation state count for ${obligation}`,
+      );
+    }
+    return {
+      obligation,
+      states_checked: row.states_checked,
+      ...(mutationStatesChecked === undefined
+        ? {}
+        : { mutation_states_checked: mutationStatesChecked }),
+      mutation_counterexample_sha256: witnessDigest(
+        row.mutation_counterexample,
+      ),
+    };
+  });
+  const mutationObligation = trace.mutation?.obligation ?? null;
+  if (
+    trace.kind === "paired_negative_control" &&
+    (!mutationObligation ||
+      !checks.some((check) => check.obligation === mutationObligation))
+  ) {
+    throw new Error(
+      `${trace.id}: paired negative control is not bound to a checked mutation obligation`,
+    );
+  }
+  return {
+    status:
+      trace.kind === "sound" ? "matched" : "counterexample_detected",
+    obligation: trace.kind === "sound" ? null : mutationObligation,
+    backend: "bounded_exhaustive_state_exploration",
+    checker: runner,
+    model_version: result.model,
+    checks,
+    ...(trace.kind === "paired_negative_control" && mutationObligation
+      ? {
+          control: {
+            kind: "formal_mutation_counterexample" as const,
+            obligation: mutationObligation,
+            sound_input_refused: true as const,
+            mutant_input_accepted: true as const,
+          },
+        }
+      : {}),
+  };
+}
 
 function tlaScalar(value: string | number | boolean): string {
   if (typeof value === "boolean") return value ? "TRUE" : "FALSE";
@@ -50,7 +207,10 @@ function projectionClauses(
   const clauses: string[] = [];
   const offset = trace.formal_prefix.length;
   for (const [index, step] of trace.steps.entries()) {
-    if (trace.kind === "unsafe_mutation" && index === trace.steps.length - 1)
+    if (
+      trace.kind === "paired_negative_control" &&
+      index === trace.steps.length - 1
+    )
       continue;
     const expected = Object.entries(step.projection)
       .sort(([left], [right]) => left.localeCompare(right))
@@ -96,7 +256,8 @@ function buildModule(trace: TraceContract, model: ModelContract): string {
   const formalActions = [
     ...trace.formal_prefix.map((action) => model.actions[action] ?? action),
     ...trace.steps.map((step, index) =>
-      trace.kind === "unsafe_mutation" && index === trace.steps.length - 1
+      trace.kind === "paired_negative_control" &&
+      index === trace.steps.length - 1
         ? trace.mutation!.operator
         : (model.actions[step.operator] ?? step.operator),
     ),
@@ -121,6 +282,7 @@ function buildModule(trace: TraceContract, model: ModelContract): string {
     mutationDefinition(trace, model),
     "TraceInit ==",
     "  /\\ Init",
+    ...(trace.formal_init ? [`  /\\ ${trace.formal_init}`] : []),
     "  /\\ tracePc = 0",
     "",
     ...stepDefinitions,
@@ -145,13 +307,20 @@ function buildModule(trace: TraceContract, model: ModelContract): string {
   ].join("\n");
 }
 
-function buildConfig(trace: TraceContract, sourceConfig: string): string {
+function buildConfig(
+  trace: TraceContract,
+  model: ModelContract,
+  sourceConfig: string,
+): string {
   const directives = [
     configPreamble(sourceConfig),
     "SPECIFICATION TraceSpec",
     "CHECK_DEADLOCK FALSE",
     ...(trace.kind === "sound" ? ["INVARIANT TraceProjection"] : []),
-    ...trace.obligations.map((obligation) => `INVARIANT ${obligation}`),
+    ...trace.obligations.map(
+      (obligation) =>
+        `${model.obligation_types[obligation] ?? "INVARIANT"} ${obligation}`,
+    ),
     "PROPERTY TraceCompletes",
   ].filter(Boolean);
   return `${directives.join("\n\n")}\n`;
@@ -163,6 +332,12 @@ export function runFormalTrace(
   model: ModelContract,
   tlcJar: string,
 ): FormalTraceResult {
+  if (model.kind === "bounded_checker") {
+    return runBoundedFormalTrace(root, trace, model);
+  }
+  if (!model.config) {
+    throw new Error(`${trace.id}: TLA+ model has no configuration`);
+  }
   const temp = mkdtempSync(path.join(os.tmpdir(), "ep-refinement-"));
   try {
     const moduleName = traceModuleName(trace.id);
@@ -176,7 +351,11 @@ export function runFormalTrace(
     writeFileSync(moduleFile, buildModule(trace, model), "utf8");
     writeFileSync(
       configFile,
-      buildConfig(trace, readFileSync(path.join(root, model.config), "utf8")),
+      buildConfig(
+        trace,
+        model,
+        readFileSync(path.join(root, model.config), "utf8"),
+      ),
       "utf8",
     );
     const run = spawnSync(
@@ -207,7 +386,12 @@ export function runFormalTrace(
       ) {
         throw new Error(`${trace.id}: forced formal trace failed\n${output}`);
       }
-      return { status: "matched", obligation: null };
+      return {
+        status: "matched",
+        obligation: null,
+        backend: "bounded_tla_model_checking",
+        checker: TLC_CHECKER_IDENTITY,
+      };
     }
     const obligation = trace.mutation?.obligation ?? "";
     const detected =
@@ -215,10 +399,15 @@ export function runFormalTrace(
       output.includes(`Invariant ${obligation} is violated`);
     if (!detected) {
       throw new Error(
-        `${trace.id}: unsafe mutation did not falsify ${obligation}\n${output}`,
+        `${trace.id}: formal negative control did not falsify ${obligation}\n${output}`,
       );
     }
-    return { status: "counterexample_detected", obligation };
+    return {
+      status: "counterexample_detected",
+      obligation,
+      backend: "bounded_tla_model_checking",
+      checker: TLC_CHECKER_IDENTITY,
+    };
   } finally {
     rmSync(temp, { recursive: true, force: true });
   }

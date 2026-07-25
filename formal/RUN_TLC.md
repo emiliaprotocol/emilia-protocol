@@ -149,13 +149,13 @@ java -Xmx4G -jar ../tla2tools.jar \
 
 cd ..
 TLA2TOOLS_JAR="$PWD/tla2tools.jar" npm run sync:formal-traces
-git diff --exit-code -- formal/results/formal-runtime-refinement.v1.json
+git diff --exit-code -- formal/results/formal-runtime-scenario-conformance.v2.json
 ```
 
 The generated `tlc-*-output.txt` files are local/CI run artifacts. CI uploads
-them for 90 days; they are not required source files. The selected-trace
-refinement result is deterministic and checked in because it content-addresses
-the model, harness, adapters, and runtime sources.
+them for 90 days; they are not required source files. The selected-scenario
+conformance result is deterministic and checked in because it content-addresses
+the models, harness, adapters, and runtime sources.
 
 ## Interpret the output
 

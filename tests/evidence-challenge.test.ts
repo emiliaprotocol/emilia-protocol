@@ -1,10 +1,11 @@
 // SPDX-License-Identifier: Apache-2.0
 import { describe, it, expect } from 'vitest';
 import {
-  CHALLENGE_VERSION, createEvidenceChallenge, createFollowupEvidenceChallenge,
+  CHALLENGE_PRESENTATION_METHOD, CHALLENGE_VERSION,
+  createEvidenceChallenge, createFollowupEvidenceChallenge,
   evaluatePresentation, deriveRequiredEvidence,
 } from '../lib/negotiate/evidence-challenge.js';
-import { EVIDENCE_GRAPH_VERSION, artifactDigest } from '../lib/evidence/evidence-graph.js';
+import { artifactDigest } from '../lib/evidence/evidence-graph.js';
 import { getPolicyPack } from '../lib/evidence/policy-packs.js';
 
 const policy = getPolicyPack('ep:pack:wire-transfer:v1');
@@ -21,25 +22,31 @@ const verifiers = {
 
 function graphFor(types, overrides = {}) {
   const arts = types.map((t) => mk(t, overrides[t] ?? {}));
-  const auth = arts.find((a) => a.typ === 'authorization_receipt');
-  const nodes = arts.map((a) => ({ id: artifactDigest(a), type: a.typ, artifact: a }));
-  const edges = [];
-  const permit = arts.find((a) => a.typ === 'policy_permit');
-  if (permit && auth) {
-    permit.permits_receipt = artifactDigest(auth);
-    const pid = nodes.find((n) => n.type === 'policy_permit');
-    pid.id = artifactDigest(permit); pid.artifact = permit;
-    edges.push({ from: pid.id, rel: 'permits', to: artifactDigest(auth) });
-  }
-  return { '@version': EVIDENCE_GRAPH_VERSION, action_digest: artifactDigest(ACTION), nodes, edges };
-}
-
-function chainFor(types) {
   return {
     '@version': 'EP-AEC-v1',
     action: ACTION,
-    requirement: 'authorization_receipt', // presenter value is ignored
-    components: types.map((type) => ({ type, evidence: mk(type) })),
+    requirement: policy.requirement,
+    components: arts.map((artifact) => ({ type: artifact.typ, evidence: artifact })),
+  };
+}
+
+function legacyGraphFor(types, overrides = {}) {
+  const arts = types.map((t) => mk(t, overrides[t] ?? {}));
+  const authorization = arts.find((a) => a.typ === 'authorization_receipt');
+  const permit = arts.find((a) => a.typ === 'policy_permit');
+  if (permit && authorization) permit.permits_receipt = artifactDigest(authorization);
+  const nodes = arts.map((artifact) => ({
+    id: artifactDigest(artifact),
+    type: artifact.typ,
+    artifact,
+  }));
+  return {
+    '@version': 'EP-AEG-v1',
+    action_digest: artifactDigest(ACTION),
+    nodes,
+    edges: permit && authorization
+      ? [{ from: artifactDigest(permit), rel: 'permits', to: artifactDigest(authorization) }]
+      : [],
   };
 }
 
@@ -50,10 +57,10 @@ describe('AE-CHALLENGE — the negotiation loop', () => {
     expect(types).toContain('authorization_receipt');
     expect(types).toContain('policy_permit');
     expect(types).toContain('workload_identity');
-    expect(req.find((r) => r.type === 'authorization_receipt').fresh_max_sec).toBe(300);
     expect(req.find((r) => r.type === 'authorization_receipt').max_age_sec).toBe(300);
-    expect(req.find((r) => r.type === 'authorization_receipt').revocation_checked).toBe(true);
     expect(req.find((r) => r.type === 'authorization_receipt').status).toBe('current');
+    expect(req.find((r) => r.type === 'authorization_receipt').fresh_max_sec).toBeUndefined();
+    expect(req.find((r) => r.type === 'authorization_receipt').revocation_checked).toBeUndefined();
   });
 
   it('carries per-type assurance constraints when the policy supplies them', () => {
@@ -71,7 +78,7 @@ describe('AE-CHALLENGE — the negotiation loop', () => {
     expect(ch['@version']).toBe(CHALLENGE_VERSION);
     expect(ch.action_digest).toBe(artifactDigest(ACTION));
     expect(ch.policy_digest).toBe(artifactDigest(policy));
-    expect(ch.present_as).toEqual(['EP-AEC-v1']);
+    expect(ch.present_as).toEqual([CHALLENGE_PRESENTATION_METHOD]);
 
     const partial = evaluatePresentation(ch, graphFor(['authorization_receipt']), policy,
       { verifiers, as_of: AS_OF, consumedNonces: nonces, nonce: 'n2' });
@@ -89,7 +96,7 @@ describe('AE-CHALLENGE — the negotiation loop', () => {
     expect(done.next_challenge).toBeNull();
   });
 
-  it('accepts the exact EP-AEC-v1 format advertised by the challenge', () => {
+  it('advertises and accepts the active standalone draft -00 AEC presentation profile', () => {
     const ch = createEvidenceChallenge(ACTION, policy, {
       expires_at: EXPIRES,
       nonce: 'aec-presentation-nonce',
@@ -97,7 +104,7 @@ describe('AE-CHALLENGE — the negotiation loop', () => {
     });
     const result = evaluatePresentation(
       ch,
-      chainFor(['authorization_receipt', 'policy_permit', 'workload_identity']),
+      graphFor(['authorization_receipt', 'policy_permit', 'workload_identity']),
       policy,
       {
         verifiers,
@@ -107,6 +114,45 @@ describe('AE-CHALLENGE — the negotiation loop', () => {
       },
     );
     expect(result.verdict).toBe('admissible');
+    expect(ch.present_as).toEqual(['ep-aec-v1']);
+    expect(ch).not.toHaveProperty('authorization');
+    expect(ch).not.toHaveProperty('aeb');
+    expect(ch).not.toHaveProperty('aec');
+  });
+
+  it('accepts the earlier graph serialization carried by the AEC presentation profile', () => {
+    const ch = createEvidenceChallenge(ACTION, policy, {
+      expires_at: EXPIRES,
+      nonce: 'aec-graph-carriage-nonce',
+    });
+    const result = evaluatePresentation(
+      ch,
+      legacyGraphFor(['authorization_receipt', 'policy_permit', 'workload_identity']),
+      policy,
+      { verifiers, as_of: AS_OF, consumedNonces: new Set() },
+    );
+    expect(result.verdict).toBe('admissible');
+    expect(ch.present_as).toEqual(['ep-aec-v1']);
+  });
+
+  it('refuses an unadvertised presentation method', () => {
+    const ch = createEvidenceChallenge(ACTION, policy, {
+      expires_at: EXPIRES,
+      nonce: 'aec-is-not-presentation',
+    });
+    const result = evaluatePresentation(
+      ch,
+      {
+        '@version': 'EP-UNKNOWN-v1',
+        action_digest: artifactDigest(ACTION),
+        nodes: [],
+        edges: [],
+      },
+      policy,
+      { verifiers, as_of: AS_OF, consumedNonces: new Set() },
+    );
+    expect(result.verdict).toBe('refused');
+    expect(result.reasons.join(' ')).toContain('method');
   });
 
   it('binds an audience when one is minted and refuses cross-audience replay', () => {
@@ -146,7 +192,7 @@ describe('AE-CHALLENGE — the negotiation loop', () => {
   it('TOCTOU action swap: a graph binding a different action is refused outright', () => {
     const ch = createEvidenceChallenge(ACTION, policy, { expires_at: EXPIRES });
     const swapped = graphFor(['authorization_receipt', 'policy_permit', 'workload_identity']);
-    swapped.action_digest = 'sha256:' + 'e'.repeat(64);
+    swapped.action = { ...ACTION, amount: '250000.01' };
     const r = evaluatePresentation(ch, swapped, policy, { verifiers, as_of: AS_OF, consumedNonces: new Set() });
     expect(r.verdict).toBe('refused');
     expect(r.reasons.join(' ')).toContain('action swap');
@@ -295,7 +341,7 @@ describe('deriveRequiredEvidence — edge cases fail safe', () => {
     )).toEqual([{ type: 'authorization_receipt' }]);
   });
 
-  it('carries profile and proof-predicate requirements per evidence type', () => {
+  it('carries the active draft -00 profile and proof-predicate constraints', () => {
     expect(deriveRequiredEvidence({
       requirement: 'authorization_receipt',
       profiles: { authorization_receipt: 'ep-receipt-v1' },
@@ -307,11 +353,11 @@ describe('deriveRequiredEvidence — edge cases fail safe', () => {
     }]);
   });
 
-  it('a type with no freshness bound simply omits fresh_max_sec', () => {
+  it('a type with no freshness bound simply omits max_age_sec', () => {
     // workload_identity has a 3600s bound in the wire pack; a bespoke policy without
     // any freshness_sec entry omits the field entirely.
     const req = deriveRequiredEvidence({ requirement: 'authorization_receipt AND policy_permit' });
-    for (const r of req) expect(r.fresh_max_sec).toBeUndefined();
+    for (const r of req) expect(r.max_age_sec).toBeUndefined();
     expect(req.map((r) => r.type)).toEqual(['authorization_receipt', 'policy_permit']);
   });
 });

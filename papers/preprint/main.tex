@@ -7,11 +7,11 @@
 %
 % Content is a faithful carriage of papers/authorization-receipts-preprint.md,
 % with evidence-backed claims and reference revisions synchronized to repo state.
-% Canonical Markdown SHA-256: e8a1937ef10c28b5bf43012169f7811b24793ac2106d8cf0afb002ac3c588170
+% Canonical Markdown SHA-256: 8bb9a1161cfaa03e2ff94a3b2dd8e17d397d92e6965748eb437be8bb1fa6a6a3
 % Every quantitative claim is traceable to a repository artifact:
 %   - conformance 21 suites / 329 vectors -> conformance/conformance-manifest.json
 %     (totals.suites=21, totals.vectors=329)
-%     manifest_sha256=da932a6672c19ef393f61099ef0bf120220c07845cbe54c21d08eca7642fed5d
+%     manifest_sha256=f63bacf3b068ddfe94609df09e6cc4d46fceb8017e9b80ee84306310dfc410fe
 %   - all Tamarin lemma output blocks -> formal/PROOF_STATUS.md (verbatim)
 %   - TLA+ 413,137 states / 45,342 distinct / 26 invariants -> formal/PROOF_STATUS.md
 %   - Alloy 15 + 7 + 6 + 4 = 32 assertions -> formal/PROOF_STATUS.md
@@ -85,16 +85,16 @@ initiator identity, a one-time nonce, and a validity window; the enforcement
 point consumes the authorization at most once; and the receipt carries its own
 Merkle inclusion proof against a signed log checkpoint, so a relying party can
 verify it with no network access to the operator, the log, or any API. The
-primary contribution is a three-model symbolic-security analysis under a
+primary contribution is a four-model symbolic-security analysis under a
 Dolev-Yao attacker who controls the network and may request honest human
 signatures over arbitrary actions. Two focused Tamarin models machine-check the
-receipt core and a 2-of-2 quorum instance. A third model composes signed
-challenge, computed action identifier, profile/audience/initiator binding, two
-distinct user-verified approvals, scoped authority under an exact pinned registry
-view, revocation state, pinned issuer, one-time consumption, and execution in one
-trace. Ten strict composed lemmas verify; comparison lemmas without consumption
-and without exact registry-view binding are deliberately falsified with concrete
-replay and stale-view traces. Complementary TLA+ (26 invariants over 413,137
+receipt core and a 2-of-2 quorum instance. Two composed models analyze the path
+from signed challenge and computed action identifier through profile, approval,
+scoped authority, exact pinned reliance configuration, durable challenge
+consumption, action-keyed fleet execution, and one-time authorization consumption.
+Across the composed models, 17 all-traces properties and three reachability
+witnesses verify; eight deliberately weakened comparisons are falsified with
+concrete attack traces. Complementary TLA+ (26 invariants over 413,137
 states) and Alloy relational models cover the surrounding state machine. We state
 the exclusions exactly: WebAuthn internals, canonical parsers, policy authorship
 and amount arithmetic, clock freshness, transparency-log completeness, collusion,
@@ -165,19 +165,18 @@ support the judgments of such parties and conclude nothing on their own.
 \subsection{Contributions}
 
 \begin{itemize}[leftmargin=*]
-\item \textbf{A three-model symbolic-security analysis (Section 7), the paper's
+\item \textbf{A four-model symbolic-security analysis (Section 7), the paper's
 primary contribution.} Two focused Tamarin models, in which ``the signature
 verifies'' is a derived fact and not an axiom, machine-check the receipt core and
 a 2-of-2 quorum instance against a Dolev-Yao attacker who controls the network
-and may obtain honest signatures over arbitrary actions. A third model composes
-the acceptance path from challenge and computed action identifier through
-approvals, authority, exact registry view, revocation, issuer pinning,
-consumption, and execution. The strict lemmas establish exact-action
-authenticity, no cross-action/profile/audience replay, no initiator
-self-approval, no one-signer quorum, no issuer laundering, exact registry-view
-use, and injective execution under consumption. Deliberately weakened comparison
-lemmas produce concrete replay and stale-view traces. We report that
-falsification history and bound the model's exclusions exactly.
+and may obtain honest signatures over arbitrary actions. Two composed models
+analyze the path from challenge and computed action identifier through approvals,
+scoped authority, exact pinned reliance configuration, durable challenge
+consumption, action-keyed fleet execution, and one-time authorization
+consumption. Across the composed models, 17 all-traces properties and three
+reachability witnesses verify; eight deliberately weakened comparisons produce
+concrete attack traces when load-bearing restrictions are removed. We report
+that falsification history and bound the models' exclusions exactly.
 \item \textbf{The adversary model, and the argument that it is the interesting
 one (Section 2).} A threat model for named-human authorization in which the party
 that renders the action, routes the approval, and keeps the record is untrusted
@@ -699,16 +698,17 @@ carries no legal meaning.
 \section{Formal Analysis}
 
 The central formal contribution of this work is a symbolic-security analysis, under
-a Dolev-Yao attacker, of the receipt core, a 2-of-2 quorum instance, and their
-composed acceptance path through authority, registry view, revocation, consumption,
-and execution. We present that analysis first (Sections 7.1 through 7.4), then the
+a Dolev-Yao attacker, of the receipt core, a 2-of-2 quorum instance, and two
+composed acceptance models spanning authority, registry view, reliance
+configuration, challenge consumption, and fleet execution. We present that
+analysis first (Sections 7.1 through 7.4), then the
 complementary state-machine and relational model checking that surrounds it
 (Section 7.5), and finally the discipline that keeps \emph{specified} separate from
 \emph{verified} (Section 7.6).
 
 \subsection{The symbolic model and its attacker}
 
-The three Tamarin models are the EP models in which ``the signature verifies'' is a
+The four Tamarin models are the EP models in which ``the signature verifies'' is a
 \emph{derived} fact rather than an axiom. Signatures are terms in Tamarin's
 standard \code{signing} equational theory, \code{verify(sign(m, k), m, pk(k)) =
 true}, and the adversary is the standard Dolev-Yao network attacker: full control
@@ -739,11 +739,15 @@ well-formedness checks passing. \code{ep\_receipt\_core.spthy} analyzes a single
 user-verified signature, its acceptance, and one-time consumption.
 \code{ep\_quorum\_core.spthy} layers a 2-of-2 quorum on top of the same
 user-verification-gated signature discipline. \code{ep\_reliance\_composed.spthy}
-then re-derives an abstract 2-of-2 approval path together with challenge, action
+re-derives an abstract 2-of-2 approval path together with challenge, action
 identifier, profile and audience, initiator, authority, exact registry view,
-revocation, issuer pinning, consumption, and execution. It does not model full
-WebAuthn internals, directory publication, or transparency-log mechanics; Section
-7.4 states the exact composition and exclusions.
+revocation, issuer pinning, consumption, and execution.
+\code{ep\_six\_claim\_composed.spthy} focuses on Class-A downgrade refusal,
+denial non-authorization, scoped authority, relying-party-pinned profiles,
+registered challenge consumption, and canonical action-keyed fleet execution.
+The models do not cover full WebAuthn internals, directory publication, or
+transparency-log mechanics; Section 7.4 states the exact composition and
+exclusions.
 
 \subsection{Receipt core: verified lemmas and the consumption falsification}
 
@@ -872,7 +876,7 @@ identified a load-bearing binding, and the model now shows that binding is what
 carries the property. This mirrors the core model's consumption result exactly: a
 check the design depends on is shown to be depended upon.
 
-\subsection{Composed acceptance path and the exact scope}
+\subsection{Composed acceptance paths and the exact scope}
 
 The third model, \code{ep\_reliance\_composed.spthy}, puts the following in one
 symbolic trace: a signed reliance challenge; a computed action identifier binding
@@ -901,7 +905,36 @@ the prover produces a same-receipt replay. Without exact registry-head binding, 
 produces acceptance under a stale or equivocating authority view. The strict paths
 verify, demonstrating that both checks are load-bearing.
 
-The honest scope statement matters as much as the lemma list. Across the three
+The fourth model, \code{ep\_six\_claim\_composed.spthy}, narrows the second
+composed path to six enforcement claims and two companion sanity properties. Its
+machine-checked summary is:
+
+\begin{tool}
+executable_six_claim_composition (exists-trace): verified (10 steps)
+signed_denial_remains_verifiable_evidence (exists-trace): verified (7 steps)
+class_a_downgrade_refused (all-traces): verified (22 steps)
+signed_denial_cannot_authorize (all-traces): verified (2 steps)
+scoped_authority_is_pinned (all-traces): verified (49 steps)
+reliance_requires_pinned_profile (all-traces): verified (12 steps)
+evidence_challenge_is_registered_and_consumed (all-traces): verified (41 steps)
+fresh_challenge_registration_is_unique (all-traces): verified (2 steps)
+aec_execution_is_action_keyed_and_fleet_fail_closed (all-traces): verified (13 steps)
+action_reservation_failure_is_fail_closed (all-traces): verified (3 steps)
+unchecked_presenter_class_is_pinned (all-traces): falsified - found trace (13 steps)
+unchecked_signed_denial_cannot_authorize (all-traces): falsified - found trace (13 steps)
+unchecked_authority_scope_is_pinned (all-traces): falsified - found trace (15 steps)
+unchecked_reliance_profile_is_pinned (all-traces): falsified - found trace (13 steps)
+unchecked_unregistered_challenge_is_registered (all-traces): falsified - found trace (13 steps)
+unchecked_presenter_execution_key_is_canonical (all-traces): falsified - found trace (13 steps)
+\end{tool}
+
+Each unsafe comparison removes one named restriction and produces the expected
+attack trace. The challenge result is intentionally narrow: it proves
+registration-before-reliance and one-time symbolic consumption, not HTTP
+semantics or database durability. Those are separately exercised by bounded
+state exploration and executable restart/concurrency tests.
+
+The honest scope statement matters as much as the lemma list. Across the four
 models, the analysis does \textbf{not} model, and therefore proves nothing about:
 
 \begin{itemize}[leftmargin=*]
@@ -1227,12 +1260,13 @@ initiator is not signed over, are the strongest evidence that these bindings are
 load-bearing rather than decorative.
 
 We have been equally deliberate about the boundary of the claims. Two focused
-symbolic models cover the receipt core and a 2-of-2 quorum instance; a third
-composes challenge, action identifier, approvals, authority, exact registry view,
-revocation, issuer pinning, consumption, and execution. It still excludes WebAuthn
-internals, directory publication and log mechanics, arbitrary k-of-n, canonical
-parsing and amount arithmetic, policy authorship, clock freshness, collusion,
-coercion, and downstream effects. The complementary TLA+ and Alloy models cover the
+symbolic models cover the receipt core and a 2-of-2 quorum instance; two composed
+models analyze challenge, action identifier, approvals, authority, exact pinned
+reliance configuration, challenge consumption, and action-keyed fleet execution.
+They still exclude WebAuthn internals, directory publication and log mechanics,
+arbitrary k-of-n, canonical parsing and amount arithmetic, policy authorship,
+clock freshness, collusion, coercion, and downstream effects. The complementary
+TLA+ and Alloy models cover the
 surrounding state machine with signatures assumed. The cross-language ports are a
 consistency check, while the pinned external Rust verifier supplies separately
 authored interoperability and hostility evidence; its construction statement is
@@ -1247,8 +1281,9 @@ artifacts rather than testimony, and that is the entire ambition of the design.
 \section*{Artifact Availability}
 
 The following are published under the Apache-2.0 license in the EMILIA Protocol
-repository: three Tamarin symbolic models (\hexid{ep\_receipt\_core.spthy},
-\hexid{ep\_quorum\_core.spthy}, and \hexid{ep\_reliance\_composed.spthy}) with model
+repository: four Tamarin symbolic models (\hexid{ep\_receipt\_core.spthy},
+\hexid{ep\_quorum\_core.spthy}, \hexid{ep\_reliance\_composed.spthy}, and
+\hexid{ep\_six\_claim\_composed.spthy}) with model
 headers, verbatim tool output, falsification history, and re-run instructions; the
 TLA+ and Alloy models with checked configurations and a proof-status ledger that
 keeps \emph{specified} and \emph{verified} separate; the reference implementation

@@ -7,7 +7,7 @@ Core model: ep_reliance_composed.spthy
 Model SHA-256: 174c27c35b302a9dd096eb28b40ad7df84cf0c1633a93eff829c3de3fc8bbbd3
 Focused model: ep_six_claim_composed.spthy
 Model SHA-256: d19fee48ab098a178d56d3141a0dd545998a0a136f6e3fc8cb3db1fcf6052302
-Runner SHA-256: 78b98908ef8e8eaf139ed8bd71c4eb0af5585e2cd3a2dd8b1c6d20972003911e
+Runner SHA-256: c04a9471d29c3d8164c52b2f2e01b38275d1fdc47ccdd587561315e8835e640f
 Integrated command: TAMARIN_OUT_DIR=run-output-final sh ./run-composed.sh
 Focused command form: docker run --rm -v "$PWD:/work" -w /work <pinned-container> tamarin-prover --derivcheck-timeout=300 --prove=<lemma> ep_six_claim_composed.spthy
 Execution mode: one named lemma per pinned-container invocation; every completed invocation reported clean well-formedness.
@@ -49,13 +49,11 @@ Focused deliberately unsafe comparisons:
   unchecked_presenter_execution_key_is_canonical (all-traces): falsified - found trace (13 steps)
 
 Validation note:
-  The integrated runner completed every core obligation and reached all six
-  dedicated focused claim lemmas plus the focused sanity/uniqueness lemmas. It
-  was user-interrupted during the supplemental reservation-failure invocation,
-  before its focused unsafe-comparison loop. The reservation-failure lemma and
-  all six focused unsafe comparisons were separately run against the exact
-  focused model bytes and pinned container above. A single uninterrupted
-  end-to-end runner completion is not claimed by this record.
+  One uninterrupted invocation of the integrated runner completed all 20
+  verified obligations (17 all-traces theorems and 3 exists-trace witnesses)
+  and all 8 deliberately unsafe comparisons. Every unsafe comparison produced
+  the expected attack trace against the exact model and runner bytes pinned
+  above.
 
 Claim boundary:
   All six upgraded claims remain partial symbolic protocol analyses. The model

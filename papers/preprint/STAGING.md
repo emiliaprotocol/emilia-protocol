@@ -79,10 +79,10 @@ DOI. Other options if ever needed: TechRxiv (IEEE), HAL, OSF Preprints.
 ## Numbers all trace to repo artifacts (no invented figures)
 
 - Conformance 21 suites / 329 vectors → `conformance/conformance-manifest.json`.
-- Current cited drafts → `standards/STATUS.json`: Authorization Receipts -07,
-  Quorum -03, Authorization Evidence Chain -03, Evidence Record -01.
+- Current cited drafts → `standards/STATUS.json`: Authorization Receipts -08,
+  Quorum -03, Authorization Evidence Chain -04, Evidence Record -01.
 - Tamarin core/quorum/composed lemma blocks → `formal/PROOF_STATUS.md` (verbatim);
-  10 composed obligations + 2 deliberate falsifications → `lib/proof-stats.json`.
+  20 composed obligations + 8 deliberate falsifications → `lib/proof-stats.json`.
 - TLA+ 413,137 states / 26 invariants → `formal/PROOF_STATUS.md`.
 - **Alloy 15 + 7 + 6 + 4 = 32 assertions across four CI-gated models** (ep_relations,
   ep_federation, ep_quorum, ep_delegation) at analyzer 6.2.0 →

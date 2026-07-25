@@ -14,8 +14,8 @@ function readArg(name) {
     return index >= 0 ? (process.argv[index + 1] ?? null) : null;
 }
 function print(evidence) {
-    console.log(`FORMAL RUNTIME REFINEMENT: PASS — ${evidence.summary.traces} traces, ` +
-        `${evidence.summary.unsafe_mutations_detected} unsafe mutations detected, ` +
+    console.log(`SELECTED-SCENARIO CONFORMANCE: PASS — ${evidence.summary.scenarios} scenarios, ` +
+        `${evidence.summary.paired_negative_controls} paired negative controls, ` +
         `${evidence.summary.claims.length} claims`);
 }
 const invokedAsScript = process.argv[1] &&
@@ -35,7 +35,7 @@ if (invokedAsScript) {
         }
     }
     catch (error) {
-        console.error(`FORMAL RUNTIME REFINEMENT: FAIL\n${error.message}`);
+        console.error(`SELECTED-SCENARIO CONFORMANCE: FAIL\n${error.message}`);
         process.exitCode = 1;
     }
 }

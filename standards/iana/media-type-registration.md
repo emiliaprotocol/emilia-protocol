@@ -17,13 +17,11 @@ as provisional registrations.
 ## 1. application/authorization-evidence-challenge+json
 
 **Status: READY-ON-POST.** The string is fixed by draft text:
-`draft-schrock-authorization-evidence-challenge-00`, Section 2, specifies that
+`draft-schrock-ae-challenge-00`, Section 2, specifies that
 a challenge is "returned (in the HTTP binding) with status 428 and media type
 application/authorization-evidence-challenge+json". Section 5 (IANA
-Considerations) of the -00 states "A future revision will register the media
-type" — so the -01 must carry this registration text before the permanent
-registration can complete; a **provisional** registration can be requested as
-soon as the -00 is live on the datatracker.
+Considerations) requests provisional registration of this media type. The
+prepared request can therefore cite the active -00 directly.
 
 **Deployment honesty note:** the reference enforcement point returns the
 challenge object today labeled `application/json` (Express `res.json()`); this
@@ -45,7 +43,7 @@ document, value `AE-CHALLENGE-v1`, gates interpretation)
 UTF-8.
 
 **Security considerations:** See Section 4 of
-draft-schrock-authorization-evidence-challenge-00. A challenge authorizes
+draft-schrock-ae-challenge-00. A challenge authorizes
 nothing by itself: a forged challenge cannot make an action admissible, and a
 fully satisfied challenge yields a verdict under the relying party's policy,
 never a promise of execution. Challenges are single-use (nonce) and expiring,
@@ -62,7 +60,7 @@ lose the challenge semantics (single-use nonce, expiry, action digest
 binding). Consumers encountering an unrecognized `@version` value should treat
 the document as unprocessable rather than guessing.
 
-**Published specification:** draft-schrock-authorization-evidence-challenge-00,
+**Published specification:** draft-schrock-ae-challenge-00,
 "An Authorization Evidence Challenge for High-Risk Agent Actions", Section 2
 (an active individual Internet-Draft, not IETF-adopted or endorsed; intended
 status Informational).

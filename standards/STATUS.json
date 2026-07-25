@@ -1,8 +1,8 @@
 {
   "@version": "EMILIA-STANDARDS-PORTFOLIO-v1",
-  "updated": "2026-07-22",
-  "active_datatracker_count": 15,
-  "active_schrock_datatracker_count": 14,
+  "updated": "2026-07-24",
+  "active_datatracker_count": 16,
+  "active_schrock_datatracker_count": 15,
   "posted_snapshot_policy": "standards/posted contains the current published revision of every active draft-schrock-* Datatracker record. The seven XML sources in the July 22 UTC publication wave were verified byte-for-byte against the immutable IETF archive; earlier TXT snapshots remain historical conveniences, while the IETF archive is authoritative for rendered forms.",
   "status_language": {
     "active_individual_submission": "Published on the IETF Datatracker as an individual Internet-Draft. Not an RFC, not an adopted working-group item, and not IETF endorsement.",
@@ -64,6 +64,13 @@
     }
   ],
   "active_datatracker": [
+    {
+      "draft": "draft-schrock-ae-challenge",
+      "revision": "00",
+      "layer": "execution_lifecycle",
+      "role": "Machine-readable, action-bound request for missing authorization evidence; the challenge authorizes nothing",
+      "next_action": "Use as the standalone HTTP 428 acquisition and retry contract; it uses the AEC presentation profile while remaining separate from AEB enforcement and AEC satisfaction semantics"
+    },
     {
       "draft": "draft-schrock-action-evidence-boundary",
       "revision": "00",
@@ -172,16 +179,16 @@
   ],
   "replaced_datatracker": [
     {
-      "draft": "draft-schrock-agent-action-manifest",
-      "revision": "00",
-      "datatracker_state": "replaced",
-      "successor": "draft-schrock-ep-architecture-02 and draft-schrock-action-evidence-boundary-00"
-    },
-    {
       "draft": "draft-schrock-authorization-evidence-challenge",
       "revision": "00",
       "datatracker_state": "replaced",
       "successor": "draft-schrock-action-evidence-boundary-00"
+    },
+    {
+      "draft": "draft-schrock-agent-action-manifest",
+      "revision": "00",
+      "datatracker_state": "replaced",
+      "successor": "draft-schrock-ep-architecture-02 and draft-schrock-action-evidence-boundary-00"
     },
     {
       "draft": "draft-schrock-ep-action-evidence-graph",

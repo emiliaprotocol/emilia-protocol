@@ -19,6 +19,7 @@ import { fileURLToPath, pathToFileURL } from "node:url";
 import { verifyReproduciblePackage } from "./verify-reproducible-package.mjs";
 import { strictParseGate } from "../conformance/runners/strict-json.mjs";
 import { buildSuiteContract, compareResultRow, executionSuiteFile, validateResultRows, } from "../conformance/result-contract.mjs";
+import { validateTraceManifest } from "../conformance/refinement/schema.mjs";
 // The governed security case dynamically executes TypeScript-migrated source
 // whose historical import specifiers still end in .js. Register the same
 // resolver CI uses so `npm run check:security-case` is not CI-environment-only.
@@ -87,10 +88,7 @@ const nonEmptyStringArray = (value) => Array.isArray(value) &&
     value.every((entry) => nonEmpty(entry));
 const statesNoRefinementProof = (value) => nonEmpty(value) &&
     /\bnot (?:a )?(?:(?:full|mechanized implementation) )?refinement proof\b/i.test(value);
-const scenarioRows = (document) => {
-    const rows = document?.scenarios ?? document?.traces;
-    return Array.isArray(rows) ? rows : [];
-};
+const scenarioRows = (document) => Array.isArray(document?.scenarios) ? document.scenarios : [];
 const escaped = (value) => value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 function resolveFile(id, relative) {
     if (!nonEmpty(relative)) {
@@ -159,6 +157,68 @@ function hasTlaDeclaration(source, obligation) {
 function hasTlaConfiguredObligation(source, obligation) {
     return new RegExp(`^\\s*(?:INVARIANT|PROPERTY)\\s+${escaped(obligation)}\\s*$`, "m").test(source);
 }
+function validateScenarioEvidence(label, manifest, evidence) {
+    if (evidence?.traces !== undefined) {
+        throw new Error(`${label} must not contain the legacy traces array`);
+    }
+    if (evidence?.["@version"] !==
+        "EP-SELECTED-SCENARIO-CONFORMANCE-EVIDENCE-v2" ||
+        evidence?.method !== "bounded_selected_scenario_conformance") {
+        throw new Error(`${label} must contain executed v2 selected-scenario conformance evidence`);
+    }
+    if (typeof evidence?.toolchain?.tlc_jar_sha256 !== "string" ||
+        !/^[a-f0-9]{64}$/u.test(evidence.toolchain.tlc_jar_sha256) ||
+        evidence?.toolchain?.bounded_checker_runtime !== "node") {
+        throw new Error(`${label} has incomplete toolchain provenance`);
+    }
+    const scenarios = scenarioRows(evidence);
+    const manifestScenarios = scenarioRows(manifest);
+    if (scenarios.length !== manifestScenarios.length) {
+        throw new Error(`${label} scenario count does not match the manifest`);
+    }
+    const manifestById = new Map(manifestScenarios.map((scenario) => [scenario.id, scenario]));
+    const seen = new Set();
+    for (const scenario of scenarios) {
+        if (!nonEmpty(scenario?.id) || seen.has(scenario.id)) {
+            throw new Error(`${label} has a missing or duplicate scenario id`);
+        }
+        seen.add(scenario.id);
+        const planned = manifestById.get(scenario.id);
+        if (!planned ||
+            scenario.claim_id !== planned.claim_id ||
+            scenario.model !== planned.model ||
+            scenario.adapter !== planned.adapter ||
+            scenario.scenario !== planned.scenario ||
+            scenario.kind !== planned.kind ||
+            scenario.matched !== true) {
+            throw new Error(`${label} scenario ${scenario.id} is not manifest-bound`);
+        }
+    }
+    const summary = evidence?.summary;
+    const sound = scenarios.filter((scenario) => scenario.kind === "sound").length;
+    const negative = scenarios.filter((scenario) => scenario.kind === "paired_negative_control" &&
+        scenario.formal?.status === "counterexample_detected" &&
+        scenario.runtime?.steps?.at(-1)?.accepted === false &&
+        scenario.control_semantics ===
+            "paired_formal_counterexample_runtime_refusal").length;
+    const integerFields = [
+        summary?.scenarios,
+        summary?.sound_scenarios,
+        summary?.paired_negative_controls,
+        summary?.required_model_actions,
+        summary?.covered_model_actions,
+        summary?.formal_mutation_operators,
+    ];
+    if (integerFields.some((value) => !Number.isSafeInteger(value) || value < 0) ||
+        summary.scenarios !== scenarios.length ||
+        summary.sound_scenarios !== sound ||
+        summary.paired_negative_controls !== negative ||
+        summary.formal_mutation_operators !==
+            manifestScenarios.filter((scenario) => scenario.kind === "paired_negative_control").length) {
+        throw new Error(`${label} summary is missing or not re-derived`);
+    }
+    return scenarios;
+}
 function validateBoundedScenarioConformance(id, formal) {
     const legacyFields = LEGACY_RUNTIME_EVIDENCE_FIELDS.filter((field) => formal[field] !== undefined);
     if (legacyFields.length > 0) {
@@ -205,32 +265,48 @@ function validateBoundedScenarioConformance(id, formal) {
     const conformanceFile = resolveFile(id, formal.conformance_evidence);
     if (!scenarioFile || !scenarioRunnerFile || !conformanceFile)
         return;
+    if (formal.scenario_runner !==
+        "scripts/check-formal-runtime-traces.mjs") {
+        fail(id, "scenario_runner must name the canonical executed runner");
+    }
     const scenarioSource = parseStrictJson(fs.readFileSync(scenarioFile, "utf8"), formal.scenario_evidence);
     const conformanceSource = parseStrictJson(fs.readFileSync(conformanceFile, "utf8"), formal.conformance_evidence);
+    if (scenarioSource?.traces !== undefined) {
+        fail(id, `${formal.scenario_evidence} must not contain legacy traces`);
+        return;
+    }
+    try {
+        validateTraceManifest(scenarioSource);
+    }
+    catch (error) {
+        fail(id, `${formal.scenario_evidence} is invalid: ${error.message}`);
+        return;
+    }
+    let conformedRows;
+    try {
+        conformedRows = validateScenarioEvidence(formal.conformance_evidence, scenarioSource, conformanceSource);
+    }
+    catch (error) {
+        fail(id, error.message);
+        return;
+    }
     const matching = scenarioRows(scenarioSource).filter((scenario) => scenario.claim_id === id && scenario.model === formal.model);
-    const conformed = scenarioRows(conformanceSource).filter((scenario) => scenario.claim_id === id &&
+    const conformed = conformedRows.filter((scenario) => scenario.claim_id === id &&
         scenario.model === formal.model &&
         scenario.matched === true);
-    if (scenarioSource["@version"] !==
-        "EP-RUNTIME-SCENARIO-CONFORMANCE-MANIFEST-v2") {
-        fail(id, `${formal.scenario_evidence} has an unsupported scenario manifest version`);
-    }
     if (matching.length < 2 ||
         !matching.some((scenario) => scenario.kind === "sound") ||
-        !matching.some((scenario) => scenario.kind === "unsafe_mutation")) {
-        fail(id, `${formal.scenario_evidence} requires one sound scenario and one unsafe mutation for ${id}`);
-    }
-    if (conformanceSource["@version"] !==
-        "EP-SELECTED-SCENARIO-CONFORMANCE-EVIDENCE-v2" ||
-        conformanceSource.method !== "bounded_selected_scenario_conformance") {
-        fail(id, `${formal.conformance_evidence} must contain executed v2 selected-scenario conformance evidence`);
+        !matching.some((scenario) => scenario.kind === "paired_negative_control")) {
+        fail(id, `${formal.scenario_evidence} requires one sound scenario and one paired negative control for ${id}`);
     }
     if (conformed.length < 2 ||
         !conformed.some((scenario) => scenario.kind === "sound" && scenario.formal?.status === "matched") ||
-        !conformed.some((scenario) => scenario.kind === "unsafe_mutation" &&
+        !conformed.some((scenario) => scenario.kind === "paired_negative_control" &&
             scenario.formal?.status === "counterexample_detected" &&
-            scenario.runtime?.steps?.at(-1)?.accepted === false)) {
-        fail(id, `${formal.conformance_evidence} requires one matched sound scenario and one detected unsafe mutation for ${id}`);
+            scenario.runtime?.steps?.at(-1)?.accepted === false &&
+            scenario.control_semantics ===
+                "paired_formal_counterexample_runtime_refusal")) {
+        fail(id, `${formal.conformance_evidence} requires one matched sound scenario and one paired negative control for ${id}`);
     }
     const planned = scenarioConformancePlan.get(formal.model) ?? new Set();
     planned.add(id);
@@ -401,14 +477,14 @@ function executeScenarioConformance() {
         "--json",
     ], {}, "bounded selected-scenario conformance");
     const result = parseStrictJson(stdout, "selected-scenario conformance runner emitted invalid JSON");
-    const executedScenarios = scenarioRows(result);
-    const scenarioCount = result?.summary?.scenarios ?? result?.summary?.traces;
-    if (result?.["@version"] !==
-        "EP-SELECTED-SCENARIO-CONFORMANCE-EVIDENCE-v2" ||
-        result?.method !== "bounded_selected_scenario_conformance" ||
-        scenarioCount < 2 ||
-        result?.summary?.unsafe_mutations_detected < 1) {
-        throw new Error("scenario conformance runner did not report executed v2 sound and unsafe scenarios");
+    const manifestPath = path.join(ROOT, "formal", "runtime-scenarios.v2.json");
+    const manifest = parseStrictJson(fs.readFileSync(manifestPath, "utf8"), "selected-scenario manifest");
+    validateTraceManifest(manifest);
+    const executedScenarios = validateScenarioEvidence("selected-scenario runner output", manifest, result);
+    const scenarioCount = result.summary.scenarios;
+    if (scenarioCount < 2 ||
+        result.summary.paired_negative_controls < 1) {
+        throw new Error("scenario conformance runner did not report executed v2 sound and paired-negative scenarios");
     }
     for (const [model, claims] of scenarioConformancePlan) {
         for (const claim of claims) {
@@ -418,10 +494,12 @@ function executeScenarioConformance() {
             if (matching.length < 2 ||
                 !matching.some((scenario) => scenario.kind === "sound" &&
                     scenario.formal?.status === "matched") ||
-                !matching.some((scenario) => scenario.kind === "unsafe_mutation" &&
+                !matching.some((scenario) => scenario.kind === "paired_negative_control" &&
                     scenario.formal?.status === "counterexample_detected" &&
-                    scenario.runtime?.steps?.at(-1)?.accepted === false)) {
-                throw new Error(`${claim}: selected-scenario conformance lacks a sound scenario and detected unsafe mutation`);
+                    scenario.runtime?.steps?.at(-1)?.accepted === false &&
+                    scenario.control_semantics ===
+                        "paired_formal_counterexample_runtime_refusal")) {
+                throw new Error(`${claim}: selected-scenario conformance lacks a sound scenario and paired negative control`);
             }
         }
     }
@@ -432,7 +510,7 @@ function executeScenarioConformance() {
             ...new Set([...scenarioConformancePlan.values()].flatMap((claims) => [...claims])),
         ].sort(),
         scenarios: scenarioCount,
-        unsafe_mutations_detected: result.summary.unsafe_mutations_detected,
+        paired_negative_controls: result.summary.paired_negative_controls,
         result: "passed",
     });
 }

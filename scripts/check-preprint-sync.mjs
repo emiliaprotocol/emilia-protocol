@@ -172,7 +172,7 @@ function auditDraftClaims(failures, text, label, drafts) {
 }
 function auditComposedTamarinBlock(failures, text, label, evidence) {
     const start = text.indexOf('executable_composed_reliance');
-    const endMarker = 'unchecked_registry_view_is_current';
+    const endMarker = 'unchecked_presenter_execution_key_is_canonical';
     const end = text.indexOf(endMarker, start);
     if (start < 0 || end < 0) {
         failures.push(`${label} has no complete composed Tamarin result block`);
@@ -196,6 +196,26 @@ function auditFormalAndExternalClaims(failures, text, label, evidence) {
         failures.push(`${label} does not carry the pinned external verifier commit`);
     }
     auditComposedTamarinBlock(failures, text, label, evidence);
+}
+function renderedHtmlText(html) {
+    return html
+        .replace(/<style\b[\s\S]*?<\/style>/gi, ' ')
+        .replace(/<script\b[\s\S]*?<\/script>/gi, ' ')
+        .replace(/<[^>]+>/g, ' ')
+        .replace(/&quot;/g, '"')
+        .replace(/&#x27;|&#39;/g, "'")
+        .replace(/&amp;/g, '&')
+        .replace(/&lt;/g, '<')
+        .replace(/&gt;/g, '>');
+}
+function auditRenderedCopy(failures, text, label, evidence) {
+    const normalized = normalizeExtractedText(text);
+    auditConformanceClaims(failures, normalized, label, evidence, false);
+    auditComposedTamarinBlock(failures, normalized, label, evidence);
+    requireMatch(failures, normalized, /\bThe four Tamarin models\b/, `${label} does not identify the current four-model Tamarin corpus`);
+    requireMatch(failures, normalized, /\bfour Tamarin symbolic models\b/, `${label} does not carry the current four-model artifact inventory`);
+    const receiptRevision = evidence.drafts['draft-schrock-ep-authorization-receipts'];
+    requireMatch(failures, normalized, new RegExp(`draft-schrock-ep-authorization-receipts-${receiptRevision}`), `${label} does not cite the current authorization-receipts draft revision`);
 }
 export function auditPreprintClaims({ tex, pdfText, staging, evidence }) {
     const failures = [...evidence.failures];
@@ -257,15 +277,15 @@ export function checkRepository(root) {
         external: readJson(resolve(root, 'conformance/external/rust-cleanroom-jdieselny.v1.json')),
     });
     const pdfPath = resolve(root, 'papers/preprint/main.pdf');
-    return {
+    const failures = auditPreprintClaims({
+        tex: readFileSync(resolve(root, 'papers/preprint/main.tex'), 'utf8'),
+        pdfText: extractPdfText(pdfPath),
+        staging: readFileSync(resolve(root, 'papers/preprint/STAGING.md'), 'utf8'),
         evidence,
-        failures: auditPreprintClaims({
-            tex: readFileSync(resolve(root, 'papers/preprint/main.tex'), 'utf8'),
-            pdfText: extractPdfText(pdfPath),
-            staging: readFileSync(resolve(root, 'papers/preprint/STAGING.md'), 'utf8'),
-            evidence,
-        }),
-    };
+    });
+    auditRenderedCopy(failures, renderedHtmlText(readFileSync(resolve(root, 'papers/authorization-receipts-preprint.html'), 'utf8')), 'authorization-receipts-preprint.html', evidence);
+    auditRenderedCopy(failures, extractPdfText(resolve(root, 'papers/authorization-receipts-preprint.pdf')), 'authorization-receipts-preprint.pdf', evidence);
+    return { evidence, failures };
 }
 const invokedPath = process.argv[1] ? resolve(process.argv[1]) : '';
 if (invokedPath === fileURLToPath(import.meta.url)) {

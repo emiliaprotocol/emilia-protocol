@@ -39,7 +39,7 @@
     },
     {
       "path": "conformance/vectors/outcome-binding.exec.v1.json",
-      "sha256": "d7a8492bb360cd6a75c227bef83ee1b8bd5f682b747fe7ef19f9cb538ecad91e",
+      "sha256": "64f759bf8004812f3521df5dc0a0f4108ccf7746fe9fbdb326ab1ac1142a25f1",
       "vectors": 10
     },
     {
@@ -131,12 +131,12 @@
       },
       "source": {
         "files": 164,
-        "bytes": 2118599,
-        "tree_sha256": "48a4e7d5820ff754cf8f3b6b47ee2ab1692fe0bc07077e0e0028385b23b0c901"
+        "bytes": 2128121,
+        "tree_sha256": "6e76f9b3d72f43f1764b122032bb6b352c4886b281efe81d73d9b3afc7330c95"
       },
       "suites": 21,
       "vectors": 329,
-      "normalized_results_sha256": "830d293a745d49830a34621208b1fc7092ab233cc2070f3c603732bec5a0b3c0",
+      "normalized_results_sha256": "5196498692629ab7f87ccf8234105eedeefee3504c6bd8cba1ac6fad5ba03f92",
       "status": "pass"
     },
     {
@@ -149,12 +149,12 @@
       },
       "source": {
         "files": 3,
-        "bytes": 228800,
-        "tree_sha256": "7dd29c525639519225c31d655812052f3a1c5ba7fb004cca87b3d000ae68b6ad"
+        "bytes": 231722,
+        "tree_sha256": "3661011af5fa18da9ef292096df54bb069c350928252a75906054d0d2b04215a"
       },
       "suites": 21,
       "vectors": 329,
-      "normalized_results_sha256": "2dd929f840006cd5e68a12e7ab43bb21be138166140af14fe3ec280d48d5704e",
+      "normalized_results_sha256": "fed5ee761084fe9f401b13416bef665af03d9fb94c4c97d1ad669d936a5a77de",
       "status": "pass"
     },
     {
@@ -167,14 +167,14 @@
       },
       "source": {
         "files": 43,
-        "bytes": 385450,
-        "tree_sha256": "1edf51a22535539f0f2d74d2e9de977dfa539fc55b88db8eadb9a9c5edffb27b"
+        "bytes": 390986,
+        "tree_sha256": "2418bb4158de01aa8b4786dc9d0cf1016c88c74b7dba68575d7b0d07f24ba688"
       },
       "suites": 21,
       "vectors": 329,
-      "normalized_results_sha256": "2dd929f840006cd5e68a12e7ab43bb21be138166140af14fe3ec280d48d5704e",
+      "normalized_results_sha256": "fed5ee761084fe9f401b13416bef665af03d9fb94c4c97d1ad669d936a5a77de",
       "status": "pass"
     }
   ],
-  "manifest_sha256": "da932a6672c19ef393f61099ef0bf120220c07845cbe54c21d08eca7642fed5d"
+  "manifest_sha256": "f63bacf3b068ddfe94609df09e6cc4d46fceb8017e9b80ee84306310dfc410fe"
 }

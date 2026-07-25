@@ -63,10 +63,10 @@ const FORMAL_COUNTS = Object.fromEntries(
 
 const FORMAL_LABELS: Record<FormalCoverage, string> = {
   'verified-formal-obligations': 'Verified formal obligations',
-  'bounded-runtime-traced': 'Bounded + runtime-traced',
+  'bounded-runtime-traced': 'Bounded + selected runtime scenarios',
   'bounded-formal-evidence': 'Bounded formal evidence',
   'partial-symbolic-coverage': 'Partial symbolic coverage',
-  'executable-operational-evidence': 'Executable/operational evidence',
+  'executable-operational-evidence': 'Executable/operational evidence (not formally modeled)',
 };
 
 const FORMAL_TAXONOMY: ReadonlyArray<{ coverage: FormalCoverage; detail: string }> = [
@@ -102,14 +102,14 @@ const FORMAL_BADGE_STYLES: Record<FormalCoverage, { color: string; background: s
 
 const EVIDENCE = [
   {
-    value: proofStats.formalRefinement.traces,
+    value: proofStats.formalScenarioConformance.scenarios,
     label: 'Selected model/runtime scenarios',
-    detail: `${proofStats.formalRefinement.soundTraces} sound scenarios; ${proofStats.formalRefinement.unsafeMutationsDetected} paired formal counterexamples and runtime refusals`,
+    detail: `${proofStats.formalScenarioConformance.soundScenarios} positive-path scenarios; ${proofStats.formalScenarioConformance.pairedNegativeControls} paired formal counterexamples and runtime refusals`,
   },
   {
     value: proofStats.tamarin.verifiedObligations,
-    label: 'Composed Tamarin obligations',
-    detail: `${proofStats.tamarin.deliberatelyUnsafeCounterexamples} weakened variants produce concrete attack traces`,
+    label: 'Verified Tamarin lemmas',
+    detail: `${proofStats.tamarin.allTraceObligations} all-traces obligations and ${proofStats.tamarin.existsTraceWitnesses} exists-trace witnesses across ${proofStats.tamarin.models} models`,
   },
   {
     value: proofStats.securityCase.claims,
@@ -137,8 +137,8 @@ const PROOF_LAYERS = [
   {
     label: 'Hostile-network composition',
     method: 'Tamarin 1.10.0 · Dolev-Yao',
-    result: `${proofStats.tamarin.verifiedObligations} obligations verified in one model from challenge through execution`,
-    meaning: 'The attacker may control the network and obtain unrelated honest signatures. Under uncompromised pinned roots, execution still requires the exact challenge, action, two distinct approvals, issuer and authority pins, registry view, revocation state, and one-time consumption.',
+    result: `${proofStats.tamarin.verifiedObligations} lemmas verified: ${proofStats.tamarin.allTraceObligations} all-traces obligations and ${proofStats.tamarin.existsTraceWitnesses} reachability witnesses`,
+    meaning: 'The attacker may control the network and obtain unrelated honest signatures. Under uncompromised pinned roots, execution still requires the exact challenge, action, two distinct approvals, issuer and authority pins, registry view, revocation state, one-time consumption, and the dedicated six-claim boundaries.',
   },
   {
     label: 'State-machine safety',
@@ -149,8 +149,8 @@ const PROOF_LAYERS = [
   {
     label: 'Selected model/runtime scenario conformance',
     method: 'Content-addressed bounded models + deterministic runtime scenarios',
-    result: `${proofStats.formalRefinement.traces} scenarios across ${proofStats.formalRefinement.models} models and ${proofStats.formalRefinement.claims} claims`,
-    meaning: `The same-team harness pairs bounded formal scenarios with deterministic runtime executions under an explicit, hand-authored projection relation. Its ${proofStats.formalRefinement.unsafeMutationsDetected} negative controls pair a formal counterexample with a safe-runtime refusal; they do not mutate the runtime implementation. This is selected-scenario conformance, not a complete implementation refinement proof.`,
+    result: `${proofStats.formalScenarioConformance.scenarios} scenarios across ${proofStats.formalScenarioConformance.models} models and ${proofStats.formalScenarioConformance.claims} claims`,
+    meaning: `The same-team harness pairs bounded formal scenarios with deterministic runtime executions under an explicit, hand-authored projection relation. Its ${proofStats.formalScenarioConformance.pairedNegativeControls} negative controls pair a formal counterexample with a safe-runtime refusal; they do not mutate the runtime implementation. This is selected-scenario conformance, not a complete implementation refinement proof.`,
   },
   {
     label: 'Relational structure',
@@ -168,7 +168,7 @@ const PROOF_LAYERS = [
     label: 'Portable implementation behavior',
     method: 'Shared vectors + evaluator-controlled rebuild',
     result: `${proofStats.conformance.vectors} vectors plus ${proofStats.externalImplementation.hostilityCases} external hostility cases`,
-    meaning: 'The three reference ports are honestly labeled same-team consistency evidence. A separately authored Rust verifier is pinned to exact public source and tested against the current vector set; strict construction attestation remains separately disclosed.',
+    meaning: 'The three reference ports are honestly labeled same-team consistency evidence. A separately authored Rust verifier is tested against the pinned 16-suite/164-vector bundle and 359-case hostility campaign; newer suites are not attributed to Rust, and strict construction acceptance remains false.',
   },
   {
     label: 'Stateful enforcement under faults',
@@ -188,7 +188,7 @@ export default async function ProofPage() {
       {
         '@type': 'TechArticle',
         headline: 'EMILIA Protocol Engineering Evidence',
-        description: `A machine-verifiable security case with ${proofStats.securityCase.claims} executable claims, ${proofStats.tamarin.verifiedObligations} composed Tamarin obligations, and ${proofStats.conformance.vectors} conformance vectors.`,
+        description: `A machine-verifiable security case with ${proofStats.securityCase.claims} executable claims, ${proofStats.tamarin.verifiedObligations} verified Tamarin lemmas, and ${proofStats.conformance.vectors} conformance vectors.`,
         url: 'https://www.emiliaprotocol.ai/proof',
         dateModified: proofStats.generatedAt,
         author: { '@type': 'Organization', name: 'EMILIA Protocol' },
@@ -229,7 +229,7 @@ export default async function ProofPage() {
               marginTop: 26,
             }}
           >
-            EMILIA is implemented security infrastructure. This snapshot joins an executable claim-to-code case, a composed symbolic attacker model, TLA+ and Alloy checking, content-addressed formal-to-runtime traces, cross-language negative vectors, external Rust interoperability, and durable fault tests.
+            EMILIA is implemented security infrastructure. This snapshot joins an executable claim-to-code case, a composed symbolic attacker model, TLA+ and Alloy checking, selected same-team scenarios that exercise public runtime entry points and compare hand-authored projections, cross-language negative vectors, external Rust interoperability, and durable fault tests.
           </p>
           <p
             style={{
@@ -493,7 +493,7 @@ export default async function ProofPage() {
                 background: '#FFFFFF',
               }}
             >
-              “Bounded + runtime-traced” does not mean a refinement proof. It identifies bounded same-team formal evidence paired with selected governed runtime scenarios under an explicit projection relation. The separate {proofStats.securityCase.claims}/{claimSource.claims.length} executable-evidence axis means references resolved, artifacts were hashed, and configured checks passed.
+              “Bounded + selected runtime scenarios” does not mean a refinement proof. It identifies bounded same-team formal evidence paired with selected governed runtime scenarios under an explicit projection relation. The separate {proofStats.securityCase.claims}/{claimSource.claims.length} executable-evidence axis means references resolved, artifacts were hashed, and configured checks passed.
             </p>
 
             <div style={{ borderTop: `1px solid ${color.borderHover}` }}>
@@ -553,7 +553,7 @@ export default async function ProofPage() {
                             border: `1px solid ${color.border}`,
                           }}
                         >
-                          Executable evidence · validated · {evidenceCount} cited checks
+                          Executable evidence · validated · {evidenceCount} cited evidence references
                         </span>
                         <span
                           style={{
@@ -566,7 +566,7 @@ export default async function ProofPage() {
                             padding: '5px 8px',
                           }}
                         >
-                          Formal model · {FORMAL_LABELS[coverage]}
+                          Formal coverage · {FORMAL_LABELS[coverage]}
                         </span>
                       </div>
                     </div>
@@ -693,7 +693,9 @@ export default async function ProofPage() {
                 }}
               >
                 {`npm run check:security-case
-npm run check:formal-traces
+curl -fsSLo /tmp/tla2tools.jar https://github.com/tlaplus/tlaplus/releases/download/v1.7.4/tla2tools.jar
+echo "936a262061c914694dfd669a543be24573c45d5aa0ff20a8b96b23d01e050e88  /tmp/tla2tools.jar" | shasum -a 256 -c -
+TLA2TOOLS_JAR=/tmp/tla2tools.jar npm run check:formal-traces
 npm run conformance
 npm run check:proof-stats
 npm run check:llm-context`}

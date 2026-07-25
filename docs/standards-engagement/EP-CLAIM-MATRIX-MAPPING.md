@@ -216,7 +216,7 @@ remain at their stated lower evidence types.
   verifier MUST name the failing check.
 - **Implementation status**: implemented.
 - **Specification status**: specified —
-  draft-schrock-authorization-evidence-challenge.
+  draft-schrock-ae-challenge.
 - **Evidence type**: local-harness.
 - **Evidence reference**: `conformance/vectors/aec.json`; negative cases in
   every suite.

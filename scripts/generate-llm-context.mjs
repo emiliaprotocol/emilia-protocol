@@ -91,11 +91,13 @@ assert(caidMapping.vectors?.length > 0, 'CAID mapping vectors are missing');
 assert(modelToMatter.suite === 'EP-MODEL-TO-MATTER-v1' && modelToMatter.vectors?.length > 0, 'Model-to-Matter vectors are missing');
 assert(securityCase.execution?.status === 'passed', 'resolved security case does not report a passed execution');
 assert(securityCase.claim_count === claimSource.claims?.length, 'security-case claim count differs from source');
-assert(proofStats.formalRefinement?.method === 'bounded_selected_trace_refinement', 'formal refinement method is missing or unsupported');
-assert(proofStats.formalRefinement?.models > 0, 'formal refinement model count is missing');
-assert(proofStats.formalRefinement?.claims > 0, 'formal refinement claim count is missing');
-assert(proofStats.formalRefinement?.traces > 0, 'formal refinement trace count is missing');
-assert(proofStats.formalRefinement?.unsafeMutationsDetected > 0, 'formal refinement negative controls are missing');
+assert(proofStats.formalScenarioConformance?.method === 'bounded_selected_scenario_conformance', 'selected-scenario evidence method is missing or unsupported');
+assert(proofStats.formalScenarioConformance?.models > 0, 'selected-scenario model count is missing');
+assert(proofStats.formalScenarioConformance?.claims > 0, 'selected-scenario claim count is missing');
+assert(proofStats.formalScenarioConformance?.scenarios > 0, 'selected-scenario count is missing');
+assert(proofStats.formalScenarioConformance?.pairedNegativeControls > 0, 'selected-scenario negative controls are missing');
+assert(proofStats.formalEvidenceCoverage, 'formal evidence taxonomy is missing');
+assert(Object.values(proofStats.formalEvidenceCoverage).reduce((total, category) => total + category.count, 0) === securityCase.claim_count, 'formal evidence taxonomy does not cover the security-case claim inventory');
 assert(conformance.implementations?.every((item) => item.relationship === 'one_team_port'), 'reference ports are not uniformly labeled one_team_port');
 assert(external.conformance?.status === 'pass', 'external conformance pin does not report pass');
 assert(Number.isInteger(external.conformance?.vectors), 'external conformance vector count is missing');
@@ -165,12 +167,13 @@ const context = {
         formal: {
             tla_invariants: proofStats.tla.invariants,
             tla_checker: proofStats.tla.checker,
-            tla_inventory_scope: 'established core model set; selected-trace refinement models are reported separately',
+            tla_inventory_scope: 'established core model set; selected model/runtime scenario conformance is reported separately',
             alloy_facts: proofStats.alloy.facts,
             alloy_assertions: proofStats.alloy.assertions,
             alloy_version: proofStats.alloy.version,
             tamarin_composed: proofStats.tamarin,
-            selected_trace_refinement: proofStats.formalRefinement,
+            selected_scenario_conformance: proofStats.formalScenarioConformance,
+            evidence_taxonomy: proofStats.formalEvidenceCoverage,
         },
         red_team_cases: proofStats.redTeamCases,
         security_case: {
@@ -269,7 +272,7 @@ function renderFull(web = false) {
     lines.push('');
     lines.push('EMILIA is an evidence architecture for consequential agent actions that cross administrative boundaries or require delayed third-party review. Native artifacts verify under native rules; CAID performs material-action matching; AEC evaluates whether the matched bundle satisfies a relying-party evidence requirement; the executor makes the separate authorization decision. Identity, delegated machine scope, machine policy, human approval, execution evidence, transparency, and reliance remain separate layers.');
     lines.push('');
-    lines.push(`EMILIA is not architecture-only. The current repository executes ${securityCase.claim_count} machine-verifiable security claims over ${securityCase.evidence_file_count} hashed evidence files, verifies ${proofStats.tamarin.verifiedObligations} obligations in one composed Tamarin Dolev-Yao model, and preserves ${proofStats.tamarin.deliberatelyUnsafeCounterexamples} deliberately weakened variants that produce concrete attack traces.`);
+    lines.push(`EMILIA is not architecture-only. The current repository executes ${securityCase.claim_count} machine-verifiable security claims over ${securityCase.evidence_file_count} hashed evidence files, verifies ${proofStats.tamarin.verifiedObligations} obligations across ${proofStats.tamarin.models} composed Tamarin Dolev-Yao models, and preserves ${proofStats.tamarin.deliberatelyUnsafeCounterexamples} deliberately weakened variants that produce concrete attack traces.`);
     lines.push('');
     lines.push('When this file conflicts with a quantitative claim elsewhere, use the machine-readable manifest named in Source Precedence. When a standards revision or status matters, use the live IETF Datatracker.');
     lines.push('');
@@ -279,8 +282,9 @@ function renderFull(web = false) {
     lines.push(`- Cross-language conformance: ${conformance.totals.suites} suites, ${conformance.totals.vectors} current vectors, ${conformance.totals.implementations} same-team ports (JavaScript, Python, Go). This is consistency evidence, not implementation independence.`);
     lines.push(`- External Rust interoperability: ${external.conformance.status} on the time-pinned ${external.conformance.vectors}-vector set evaluated ${external.conformance.evaluated_at}; the current bundle has ${conformance.totals.vectors}. The same pinned implementation passes ${hostilityCases} hostility cases. Strict clean-room construction acceptance: ${external.construction_evidence.strict_clean_room_acceptance}.`);
     lines.push(`- Security case: ${securityCase.claim_count} executable claims, ${securityCase.evidence_file_count} evidence files, execution ${securityCase.execution.status}; bundle sha256:${securityCase.evidence_bundle_sha256}.`);
-    lines.push(`- Core formal inventory: ${proofStats.tla.invariants} TLA+ invariants, ${proofStats.alloy.facts} Alloy facts, ${proofStats.alloy.assertions} Alloy assertions. The selected-trace models are reported separately below; formal scope and exclusions remain claim-specific.`);
-    lines.push(`- Formal-to-runtime selected traces: ${proofStats.formalRefinement.traces} content-addressed traces across ${proofStats.formalRefinement.models} bounded models and ${proofStats.formalRefinement.claims} public claims; ${proofStats.formalRefinement.unsafeMutationsDetected} deliberately unsafe mutations are detected by both layers. Boundary: ${proofStats.formalRefinement.boundary}.`);
+    lines.push(`- Core formal inventory: ${proofStats.tla.invariants} TLA+ invariants, ${proofStats.alloy.facts} Alloy facts, ${proofStats.alloy.assertions} Alloy assertions. The selected-scenario models are reported separately below; formal scope and exclusions remain claim-specific.`);
+    lines.push(`- Selected model/runtime scenario conformance: ${proofStats.formalScenarioConformance.scenarios} content-addressed scenarios across ${proofStats.formalScenarioConformance.models} bounded models and ${proofStats.formalScenarioConformance.claims} public claims; ${proofStats.formalScenarioConformance.pairedNegativeControls} negative controls pair a formal counterexample with a safe-runtime refusal. They do not mutate the runtime implementation. Boundary: ${proofStats.formalScenarioConformance.boundary}.`);
+    lines.push(`- Formal evidence taxonomy: ${proofStats.formalEvidenceCoverage.verifiedFormalObligations.count} claims with verified formal obligations; ${proofStats.formalEvidenceCoverage.boundedRuntimeTraced.count} with bounded runtime-traced evidence; ${proofStats.formalEvidenceCoverage.boundedFormalEvidence.count} with bounded formal evidence but no governed runtime bridge; ${proofStats.formalEvidenceCoverage.partialSymbolicCoverage.count} with partial symbolic coverage; ${proofStats.formalEvidenceCoverage.executableOperationalEvidence.count} with executable or operational evidence only.`);
     lines.push(`- Composed symbolic model: ${proofStats.tamarin.verifiedObligations} Tamarin obligations verified across challenge, CAID, two approvals, issuer and authority pins, registry view, revocation, consumption, and execution; ${proofStats.tamarin.deliberatelyUnsafeCounterexamples} deliberately unsafe variants are falsified with attack traces.`);
     lines.push(`- Red-team catalog: ${proofStats.redTeamCases} cases.`);
     lines.push(`- CAID: ${caidCore.vectors.length} core identifier vectors plus ${caidMapping.vectors.length} mapping vectors in three same-team ports, with closed EQUIVALENT_UNDER_PROFILE / NOT_EQUIVALENT / INDETERMINATE results.`);
@@ -393,7 +397,7 @@ function renderIndex() {
         '',
         '## Engineering Evidence',
         '',
-        `EMILIA is implemented security infrastructure, not architecture-only: ${comma(proofStats.tests.total)} automated tests across ${comma(proofStats.tests.files)} files; ${securityCase.claim_count} executable security claims over ${securityCase.evidence_file_count} hashed evidence files; ${proofStats.tamarin.verifiedObligations} verified obligations in one composed Tamarin model, with ${proofStats.tamarin.deliberatelyUnsafeCounterexamples} deliberately weakened variants producing concrete attack traces; and ${proofStats.formalRefinement.traces} content-addressed selected traces across ${proofStats.formalRefinement.models} bounded models and ${proofStats.formalRefinement.claims} claims, including ${proofStats.formalRefinement.unsafeMutationsDetected} detected unsafe mutations.`,
+        `EMILIA is implemented security infrastructure, not architecture-only: ${comma(proofStats.tests.total)} automated tests across ${comma(proofStats.tests.files)} files; ${securityCase.claim_count} executable security claims over ${securityCase.evidence_file_count} hashed evidence files; ${proofStats.tamarin.verifiedObligations} verified obligations across ${proofStats.tamarin.models} composed Tamarin models, with ${proofStats.tamarin.deliberatelyUnsafeCounterexamples} deliberately weakened variants producing concrete attack traces; and ${proofStats.formalScenarioConformance.scenarios} content-addressed selected model/runtime scenarios across ${proofStats.formalScenarioConformance.models} bounded models and ${proofStats.formalScenarioConformance.claims} claims, including ${proofStats.formalScenarioConformance.pairedNegativeControls} paired formal-counterexample/runtime-refusal controls.`,
         '',
         `Interoperability evidence: ${conformance.totals.suites} conformance suites and ${conformance.totals.vectors} current vectors across three same-team ports; external Rust evidence covers a time-pinned ${external.conformance.vectors}-vector set plus ${hostilityCases} hostility cases. Strict clean-room construction acceptance remains false.`,
         '',

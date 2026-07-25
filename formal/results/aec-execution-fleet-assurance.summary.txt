@@ -1,0 +1,36 @@
+EP-AEC-EXECUTION-FLEET-ASSURANCE-BOUNDED-v1
+Status: local same-team bounded model result; not deployed or independently reviewed
+Method: deterministic finite exhaustive state exploration
+Execution date: 2026-07-24
+Runtime: Node.js
+Model SHA-256: 81f2b77638c8a7a10aa6f1b3d774f3bad381c2761b5cb48d39af53ba8acc18ff
+Runner SHA-256: 2772c0fcbae7a0fb6a92200da724dd728e41895889870c699a455ee31222bff7
+
+Configuration: 50 finite trust, owner, replica, response-loss, restart,
+readback, reservation-failure, and replay states. Each obligation has a
+deliberately weakened comparison that must produce a concrete counterexample.
+
+Obligations:
+ConstructorTrustInputsImmutable (8 states): verified
+VerifierMethodCaptured (4 states): verified
+TransactionScopedTrustRefused (3 states): verified
+CanonicalActionKeyOnly (3 states): verified
+ReservationOwnerFenced (8 states): verified
+ReservationNeverExpires (3 states): verified
+SharedHeadAppendAtomic (2 states): verified
+EvidenceReadbackAcknowledgementExact (6 states): verified
+ResponseLossFreezesReplay (2 states): verified
+ReplicasShareConsumptionDomain (2 states): verified
+RestartCannotAdoptReservation (3 states): verified
+ReservationFailureCannotExecute (2 states): verified
+ProviderExecutionAtMostOnce (4 states): verified
+
+Negative controls: every omitted constructor, replay, owner, reservation,
+evidence-head, readback, response-loss, replica, restart, and provider-entry
+guard produces a concrete unsafe trace.
+
+Scope: bounded same-team exploration over two trust values, two owners, two
+replicas, one restart, and bounded retry patterns. Backend durability,
+linearizability, provider truth, cryptography, and complete mediation remain
+acceptance roots. This is not a refinement proof of the TypeScript or deployed
+database implementation.

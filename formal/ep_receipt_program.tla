@@ -323,6 +323,24 @@ PersistCertificate(a) ==
         opStatus, opOutcome, opOwner
         >>
 
+\* Deliberately unsafe comparison operator. It is excluded from Next and is
+\* used only to demonstrate that reserving before CAID/program matching breaks
+\* PipelineOrderSafety while the runtime refuses the paired CAID mismatch.
+UnsafeReserveBeforeMatch(a) ==
+    /\ phase[a] = "receipt"
+    /\ phase' = [phase EXCEPT ![a] = "reserved"]
+    /\ authorized' = [authorized EXCEPT ![a] = TRUE]
+    /\ reserveWon' = [reserveWon EXCEPT ![a] = TRUE]
+    /\ opStatus' = "reserved"
+    /\ opOwner' = a
+    /\ UNCHANGED <<
+        outcome, reason, matched, effectEntered, commitAttempted,
+        executionEvidence, certState, certResultPresent, opOutcome
+        >>
+
+\* Deterministic alias for the bounded selected-scenario negative control.
+UnsafeReserveBeforeMatchAttempt1 == UnsafeReserveBeforeMatch("attempt1")
+
 Next ==
     \/ \E a \in Attempts : Match(a)
     \/ \E a \in Attempts, refusalReason \in {"program_invalid", "match_failed"} :

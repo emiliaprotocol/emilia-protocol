@@ -28,14 +28,14 @@ const legacyConformanceFixturePath = path.join(
 );
 const scenarioFixture = JSON.parse(
   fs.readFileSync(
-    fs.existsSync(path.join(root, "formal", "runtime-scenarios.v2.json"))
-      ? path.join(root, "formal", "runtime-scenarios.v2.json")
-      : path.join(root, "formal", "runtime-traces.v1.json"),
+    path.join(root, "formal", "runtime-scenarios.v2.json"),
     "utf8",
   ),
 );
 const legacyScenarioFixture = structuredClone(scenarioFixture);
 legacyScenarioFixture["@version"] = "EP-FORMAL-RUNTIME-TRACES-v2";
+legacyScenarioFixture.traces = legacyScenarioFixture.scenarios;
+delete legacyScenarioFixture.scenarios;
 fs.writeFileSync(
   legacyScenarioFixturePath,
   `${JSON.stringify(legacyScenarioFixture, null, 2)}\n`,
@@ -48,26 +48,12 @@ fs.writeFileSync(
 );
 const conformanceFixture = JSON.parse(
   fs.readFileSync(
-    fs.existsSync(
-      path.join(
-        root,
-        "formal",
-        "results",
-        "formal-runtime-scenario-conformance.v2.json",
-      ),
-    )
-      ? path.join(
-          root,
-          "formal",
-          "results",
-          "formal-runtime-scenario-conformance.v2.json",
-        )
-      : path.join(
-          root,
-          "formal",
-          "results",
-          "formal-runtime-refinement.v1.json",
-        ),
+    path.join(
+      root,
+      "formal",
+      "results",
+      "formal-runtime-scenario-conformance.v2.json",
+    ),
     "utf8",
   ),
 );
@@ -75,6 +61,8 @@ const legacyConformanceFixture = structuredClone(conformanceFixture);
 legacyConformanceFixture["@version"] =
   "EP-FORMAL-RUNTIME-REFINEMENT-EVIDENCE-v1";
 legacyConformanceFixture.method = "bounded_selected_trace_refinement";
+legacyConformanceFixture.traces = legacyConformanceFixture.scenarios;
+delete legacyConformanceFixture.scenarios;
 fs.writeFileSync(
   legacyConformanceFixturePath,
   `${JSON.stringify(legacyConformanceFixture, null, 2)}\n`,
@@ -272,7 +260,7 @@ describe("security-case formal metadata semantics", () => {
         sourceCase,
         (formal) => formal.scenario_coverage === "selected",
       ).scenario_evidence = path.relative(root, legacyScenarioFixturePath);
-    }, /has an unsupported scenario manifest version/);
+    }, /must not contain legacy traces|unknown fields: traces/);
     expectRejected((sourceCase) => {
       findFormal(
         sourceCase,
@@ -281,13 +269,73 @@ describe("security-case formal metadata semantics", () => {
         root,
         legacyConformanceFixturePath,
       );
-    }, /must contain executed v2 selected-scenario conformance evidence/);
+    }, /must not contain the legacy traces array|must contain executed v2 selected-scenario conformance evidence/);
     expectRejected((sourceCase) => {
       findFormal(
         sourceCase,
         (formal) => formal.method === "symbolic_protocol_analysis",
       ).scenario_coverage = "selected";
     }, /runtime scenario conformance metadata is only valid for bounded formal methods/);
+  });
+
+  it("rejects legacy negative kinds, unbound rows, weak summaries, and noncanonical runners", () => {
+    const badKindPath = path.join(
+      temporaryDirectory,
+      `scenario-bad-kind-${crypto.randomUUID()}.json`,
+    );
+    const badKind = structuredClone(scenarioFixture);
+    badKind.scenarios.find(
+      (scenario: any) =>
+        scenario.kind === "paired_negative_control",
+    ).kind = "unsafe_mutation";
+    fs.writeFileSync(badKindPath, `${JSON.stringify(badKind, null, 2)}\n`);
+    expectRejected((sourceCase) => {
+      findFormal(
+        sourceCase,
+        (formal) => formal.scenario_coverage === "selected",
+      ).scenario_evidence = path.relative(root, badKindPath);
+    }, /kind must be sound or paired_negative_control/);
+
+    const badEvidencePath = path.join(
+      temporaryDirectory,
+      `conformance-bad-id-${crypto.randomUUID()}.json`,
+    );
+    const badEvidence = structuredClone(conformanceFixture);
+    badEvidence.scenarios[0].id = "not-in-the-manifest";
+    fs.writeFileSync(
+      badEvidencePath,
+      `${JSON.stringify(badEvidence, null, 2)}\n`,
+    );
+    expectRejected((sourceCase) => {
+      findFormal(
+        sourceCase,
+        (formal) => formal.scenario_coverage === "selected",
+      ).conformance_evidence = path.relative(root, badEvidencePath);
+    }, /is not manifest-bound/);
+
+    const weakSummaryPath = path.join(
+      temporaryDirectory,
+      `conformance-weak-summary-${crypto.randomUUID()}.json`,
+    );
+    const weakSummary = structuredClone(conformanceFixture);
+    weakSummary.summary = {};
+    fs.writeFileSync(
+      weakSummaryPath,
+      `${JSON.stringify(weakSummary, null, 2)}\n`,
+    );
+    expectRejected((sourceCase) => {
+      findFormal(
+        sourceCase,
+        (formal) => formal.scenario_coverage === "selected",
+      ).conformance_evidence = path.relative(root, weakSummaryPath);
+    }, /summary is missing or not re-derived/);
+
+    expectRejected((sourceCase) => {
+      findFormal(
+        sourceCase,
+        (formal) => formal.scenario_coverage === "selected",
+      ).scenario_runner = "scripts/not-the-governed-runner.mjs";
+    }, /scenario_runner must name the canonical executed runner|evidence file not found/);
   });
 
   it("rejects covered obligations outside the formal obligation set", () => {

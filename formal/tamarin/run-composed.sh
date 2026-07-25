@@ -47,19 +47,39 @@ run_lemma() {
   lemma="$2"
   expected="$3"
   output="$OUT_DIR/$lemma.txt"
-  echo "Proving $lemma in $model (expected: $expected)"
-  docker run --rm \
-    -v "$PWD:/work" -w /work \
-    "$IMAGE" \
-    tamarin-prover --derivcheck-timeout=300 --prove="$lemma" "$model" \
-    > "$output" 2>&1
-
-  grep -Fq 'All wellformedness checks were successful.' "$output"
   if [ "$expected" = verified ]; then
-    grep -Eq "^  $lemma \\([^)]*\\): verified" "$output"
+    verdict_pattern="^  $lemma \\([^)]*\\): verified"
   else
-    grep -Eq "^  $lemma \\([^)]*\\): falsified - found trace" "$output"
+    verdict_pattern="^  $lemma \\([^)]*\\): falsified - found trace"
   fi
+  attempt=1
+  while :; do
+    echo "Proving $lemma in $model (expected: $expected; attempt $attempt/3)"
+    # Tamarin exits non-zero when lemmas outside --prove remain intentionally
+    # unproved in the rendered theory. The exact requested lemma verdict and
+    # successful wellformedness check are the fail-closed acceptance criteria.
+    if docker run --rm \
+        -v "$PWD:/work" -w /work \
+        "$IMAGE" \
+        timeout --signal=TERM --kill-after=15s 600s \
+        tamarin-prover --derivcheck-timeout=300 --prove="$lemma" "$model" \
+        > "$output" 2>&1
+    then
+      :
+    else
+      :
+    fi
+    if grep -Fq 'All wellformedness checks were successful.' "$output" \
+      && grep -Eq "$verdict_pattern" "$output"
+    then
+      break
+    fi
+    if [ "$attempt" -ge 3 ]; then
+      cat "$output"
+      return 1
+    fi
+    attempt=$((attempt + 1))
+  done
   grep -E "^  $lemma \\(" "$output" | tail -n 1
 }
 

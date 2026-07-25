@@ -189,6 +189,16 @@ Finalize ==
   /\ status' = IF ParallelAllocationAuthoritative THEN "valid" ELSE "invalid"
   /\ UNCHANGED <<checked, faultKind, faultStage, executionProven>>
 
+\* Deliberately unsafe comparison operator. It is excluded from Evaluate and
+\* exists only so the selected-scenario harness can demonstrate that accepting
+\* a program without the exact root-action binding violates the invariant.
+UnsafeAcceptWithoutRootBinding ==
+  /\ status = "checking"
+  /\ ~RootActionBindingVerified
+  /\ status' = "valid"
+  /\ checked' = Stages
+  /\ UNCHANGED <<faultKind, faultStage, executionProven>>
+
 TerminalStutter ==
   /\ status \in {"valid", "invalid"}
   /\ UNCHANGED vars

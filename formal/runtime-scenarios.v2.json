@@ -1,9 +1,9 @@
 {
-  "@version": "EP-FORMAL-RUNTIME-TRACES-v2",
-  "scope": "Bounded selected traces force exact TLA+ actions and compare their abstract state projections with deterministic replays through production runtime entry points.",
+  "@version": "EP-RUNTIME-SCENARIO-CONFORMANCE-MANIFEST-v2",
+  "scope": "Bounded selected scenarios compare explicit formal projections with deterministic calls through public runtime entry points under hand-authored same-team mappings.",
   "limitations": [
-    "Trace refinement tests selected transitions; it is not a mechanized implementation refinement proof.",
-    "The end-to-end composed model is complete only over its 36 declared finite actions; other models remain selected-trace mappings.",
+    "Selected-scenario conformance is not a mechanized implementation refinement proof.",
+    "The end-to-end composed model covers its 28 declared Next actions; formal mutation operators are reported separately and are not runtime transitions.",
     "Declared-action coverage does not prove every runtime parameter, concurrency schedule, deployment, or external-system behavior.",
     "The formal models, adapters, and runtime implementations are maintained by the same team.",
     "Cryptographic primitives, trusted clocks, provider truth, complete mediation, and durable database semantics remain explicit acceptance roots."
@@ -133,15 +133,7 @@
         "RejectStaleStatus",
         "PoisonWitnessStream",
         "RecordPreExecutionRevocation",
-        "RefuseRevokedInvocation",
-        "UnsafeRoleSubstitution",
-        "UnsafeStaleStatusReserve",
-        "UnsafePoisonedWitnessReserve",
-        "UnsafeRevokedInvocation",
-        "UnsafeBlindReplay",
-        "UnsafeUnauthenticatedReconciliation",
-        "UnsafeOriginalAuthorityAsRemedy",
-        "UnsafeRemedyBlindReplay"
+        "RefuseRevokedInvocation"
       ]
     },
     "formal/ep_consequence_lifecycle.tla": {
@@ -304,9 +296,277 @@
         "lastWitnessVerdict": "lastWitnessVerdict[StreamA]",
         "acceptedStreamCount": "AcceptedStreamCount"
       }
+    },
+    "formal/conservation-authority.model.mjs": {
+      "kind": "bounded_checker",
+      "runner": "formal/check-conservation-authority.mjs",
+      "variables": [
+        "accepted",
+        "aggregateWithinParent",
+        "allocationAuthoritative"
+      ],
+      "projections": {
+        "allocationState": "allocationState",
+        "aggregateWithinParent": "aggregateWithinParent",
+        "allocationAuthoritative": "allocationAuthoritative"
+      },
+      "actions": {
+        "InstallBalancedAllocation": "InstallBalancedAllocation",
+        "AttemptSiblingOverallocation": "AttemptSiblingOverallocation"
+      }
+    },
+    "formal/outcome-authority-join.model.mjs": {
+      "kind": "bounded_checker",
+      "runner": "formal/check-outcome-authority-join.mjs",
+      "variables": [
+        "accepted",
+        "exactBinding",
+        "issuerAccepted",
+        "newestKeyResolved"
+      ],
+      "projections": {
+        "outcomeState": "outcomeState",
+        "receiptVerified": "receiptVerified",
+        "attestationVerified": "attestationVerified",
+        "actionBound": "actionBound",
+        "resultCommitted": "resultCommitted",
+        "authorityJoinState": "authorityJoinState",
+        "documentChainVerified": "documentChainVerified",
+        "proofSignatureVerified": "proofSignatureVerified",
+        "newestKeyResolved": "newestKeyResolved",
+        "registryPinned": "registryPinned"
+      },
+      "actions": {
+        "VerifyExactOutcomeBinding": "VerifyExactOutcomeBinding",
+        "AttemptActionDigestSubstitution": "AttemptActionDigestSubstitution",
+        "VerifyNewestDocumentProofKey": "VerifyNewestDocumentProofKey",
+        "AttemptOlderDocumentKeyResurrection": "AttemptOlderDocumentKeyResurrection"
+      }
+    },
+    "formal/ep_authority_program.tla": {
+      "kind": "tla",
+      "config": "formal/ep_authority_program.cfg",
+      "variables": [
+        "status",
+        "checked",
+        "faultKind",
+        "faultStage",
+        "executionProven"
+      ],
+      "projections": {
+        "programStatus": "status",
+        "checkedStages": "Cardinality(checked)",
+        "rootActionBound": "RootActionBindingVerified",
+        "executionProven": "executionProven"
+      },
+      "actions": {
+        "CheckStageA": "CheckStage(\"stage-a\")",
+        "CheckStageB": "CheckStage(\"stage-b\")",
+        "CheckStageC": "CheckStage(\"stage-c\")",
+        "CheckStageD": "CheckStage(\"stage-d\")",
+        "FinalizeAuthorityProgram": "Finalize",
+        "AttemptMissingRootActionBinding": "UnsafeAcceptWithoutRootBinding"
+      }
+    },
+    "formal/ep_receipt_program.tla": {
+      "kind": "tla",
+      "config": "formal/ep_receipt_program.cfg",
+      "variables": [
+        "phase",
+        "outcome",
+        "reason",
+        "matched",
+        "authorized",
+        "reserveWon",
+        "effectEntered",
+        "commitAttempted",
+        "executionEvidence",
+        "certState",
+        "certResultPresent",
+        "opStatus",
+        "opOutcome",
+        "opOwner"
+      ],
+      "projections": {
+        "attemptPhase": "phase[\"attempt1\"]",
+        "attemptOutcome": "outcome[\"attempt1\"]",
+        "attemptMatched": "matched[\"attempt1\"]",
+        "attemptAuthorized": "authorized[\"attempt1\"]",
+        "attemptEffectEntered": "effectEntered[\"attempt1\"]",
+        "attemptExecutionEvidence": "executionEvidence[\"attempt1\"]",
+        "attemptCertificate": "certState[\"attempt1\"]",
+        "operationStatus": "opStatus",
+        "operationOutcome": "opOutcome"
+      },
+      "actions": {
+        "MatchReceiptProgramCaid": "Match(\"attempt1\")",
+        "ReserveReceiptProgramBudget": "Reserve(\"attempt1\")",
+        "InvokeReceiptProgramProvider": "Execute(\"attempt1\")",
+        "RecordReceiptProgramProviderReturn": "ProviderReturns(\"attempt1\")",
+        "CommitReceiptProgramTerminalOutcome": "CommitExecuted(\"attempt1\", TRUE)",
+        "AppendReceiptProgramCertificate": "PersistCertificate(\"attempt1\")",
+        "RefuseReceiptProgramCaidMismatch": "RefuseBeforeMatch(\"attempt1\", \"match_failed\")",
+        "PersistRefusalCertificate": "PersistCertificate(\"attempt1\")",
+        "AttemptReceiptProgramReserveBeforeMatch": "UnsafeReserveBeforeMatch(\"attempt1\")"
+      }
+    },
+    "formal/durable-consumption-owner.model.mjs": {
+      "kind": "bounded_checker",
+      "runner": "formal/check-durable-consumption-owner.mjs",
+      "variables": [
+        "backendState",
+        "reservationOwner",
+        "presentedOwner"
+      ],
+      "projections": {
+        "reservationState": "reservationState",
+        "competingReservationRefused": "competingReservationRefused",
+        "ownerCommitAccepted": "ownerCommitAccepted",
+        "replayRefused": "replayRefused",
+        "staleCommitRefused": "staleCommitRefused",
+        "staleReleaseRefused": "staleReleaseRefused",
+        "replacementPreserved": "replacementPreserved",
+        "restartCommitRefused": "restartCommitRefused",
+        "restartReleaseRefused": "restartReleaseRefused",
+        "reservationPreserved": "reservationPreserved"
+      },
+      "actions": {
+        "ReserveByOwner": "ReserveByOwner",
+        "CommitByOwner": "CommitByOwner",
+        "AttemptStaleOwnerTerminalMutation": "AttemptStaleOwnerTerminalMutation",
+        "AttemptRestartedProcessTerminalMutation": "AttemptRestartedProcessTerminalMutation"
+      }
+    },
+    "formal/two-claim-assurance.model.mjs": {
+      "kind": "bounded_checker",
+      "runner": "formal/check-two-claim-assurance.mjs",
+      "variables": [
+        "decision",
+        "authorizationOutputs",
+        "authorityScope"
+      ],
+      "projections": {
+        "decisionEvidenceVerified": "decisionEvidenceVerified",
+        "allAuthorizationOutputsRefused": "allAuthorizationOutputsRefused",
+        "challengeAuthorizes": "challengeAuthorizes",
+        "challengeIsReceipt": "challengeIsReceipt",
+        "pinnedIssuerAccepted": "pinnedIssuerAccepted",
+        "exactScopeAuthorized": "exactScopeAuthorized",
+        "unpinnedIssuerRefused": "unpinnedIssuerRefused",
+        "everyScopeViolationRefused": "everyScopeViolationRefused",
+        "authorized": "authorized"
+      },
+      "actions": {
+        "VerifySignedDenialEvidence": "VerifySignedDenialEvidence",
+        "AttemptAuthorizeSignedDenial": "AttemptAuthorizeSignedDenial",
+        "EvaluateExactScopedAuthority": "EvaluateExactScopedAuthority",
+        "AttemptScopeBypass": "AttemptScopeBypass"
+      }
+    },
+    "formal/aec_execution_fleet_assurance.model.mjs": {
+      "kind": "bounded_checker",
+      "runner": "formal/check-aec-execution-fleet-assurance.mjs",
+      "variables": [
+        "trustConfiguration",
+        "reservationState",
+        "evidenceHead",
+        "providerExecutions"
+      ],
+      "projections": {
+        "provider_executions": "provider_executions",
+        "trust_mutation_admitted": "trust_mutation_admitted",
+        "replacement_calls": "replacement_calls",
+        "runtime_config_refused": "runtime_config_refused",
+        "reservation_created": "reservation_created",
+        "commit_refused": "commit_refused",
+        "release_refused": "release_refused",
+        "replay_blocked": "replay_blocked",
+        "permanent_consumption": "permanent_consumption",
+        "recovered_same_record": "recovered_same_record",
+        "sequence": "sequence",
+        "predecessor_matches": "predecessor_matches",
+        "exact_readback_refused": "exact_readback_refused",
+        "reservation_failure_refused": "reservation_failure_refused",
+        "indeterminate_recorded": "indeterminate_recorded",
+        "replay_refused": "replay_refused",
+        "canonical_action_key": "canonical_action_key"
+      },
+      "actions": {
+        "ExecuteWithPinnedTrust": "ExecuteWithPinnedTrust",
+        "MutateConstructorTrustInputs": "MutateConstructorTrustInputs",
+        "ReplaceCapturedMethods": "ReplaceCapturedMethods",
+        "InjectTransactionTrust": "InjectTransactionTrust",
+        "ReserveAsOwner": "ReserveAsOwner",
+        "RestartCannotAdopt": "RestartCannotAdopt",
+        "ReservationDoesNotExpire": "ReservationDoesNotExpire",
+        "RecoverAppendAfterResponseLoss": "RecoverAppendAfterResponseLoss",
+        "ContinueSharedHeadAfterRestart": "ContinueSharedHeadAfterRestart",
+        "RejectSubstitutedReadback": "RejectSubstitutedReadback",
+        "RefuseProviderWhenReservationFails": "RefuseProviderWhenReservationFails",
+        "LoseProviderResponse": "LoseProviderResponse",
+        "RefuseReplayAfterResponseLoss": "RefuseReplayAfterResponseLoss",
+        "ExecuteCanonicalActionOnReplicaA": "ExecuteCanonicalActionOnReplicaA",
+        "RefuseDecoyReplayOnReplicaB": "RefuseDecoyReplayOnReplicaB",
+        "RefuseReplayAfterRestart": "RefuseReplayAfterRestart"
+      }
+    },
+    "formal/reliance-pinned-profile.model.mjs": {
+      "kind": "bounded_checker",
+      "runner": "formal/check-reliance-pinned-profile.mjs",
+      "variables": [
+        "profile",
+        "relianceChecks",
+        "registryEpoch",
+        "consumptionState"
+      ],
+      "projections": {
+        "relianceVerdict": "relianceVerdict",
+        "failedObligation": "failedObligation"
+      },
+      "actions": {
+        "AcceptPinnedReliance": "AcceptPinnedReliance",
+        "RefuseUnpinnedProfile": "RefuseUnpinnedProfile",
+        "RefuseUnsignedMaterial": "RefuseUnsignedMaterial",
+        "RefuseInsufficientAssurance": "RefuseInsufficientAssurance",
+        "RefuseOrganizationAuthorityMismatch": "RefuseOrganizationAuthorityMismatch",
+        "RefuseRegistryHeadMismatch": "RefuseRegistryHeadMismatch",
+        "RefuseRegistryEpochRollback": "RefuseRegistryEpochRollback",
+        "RefuseUnpinnedPolicy": "RefuseUnpinnedPolicy",
+        "RefuseUnauthenticatedRevocationState": "RefuseUnauthenticatedRevocationState",
+        "RefuseStaleRevocationState": "RefuseStaleRevocationState",
+        "RefuseUnpinnedIssuer": "RefuseUnpinnedIssuer",
+        "RefuseConsumedAuthorization": "RefuseConsumedAuthorization"
+      }
+    },
+    "formal/evidence-challenge-lifecycle.model.mjs": {
+      "kind": "bounded_checker",
+      "runner": "formal/check-evidence-challenge-lifecycle.mjs",
+      "variables": [
+        "challengeConfiguration",
+        "registrationState",
+        "consumptionState"
+      ],
+      "projections": {
+        "challengeState": "challengeState",
+        "durable": "durable",
+        "bodyBound": "bodyBound",
+        "presentation": "presentation",
+        "replayRefused": "replayRefused",
+        "wireVersion": "wireVersion",
+        "admittedAttempts": "admittedAttempts"
+      },
+      "actions": {
+        "RefuseIncapableProductionStore": "RefuseIncapableProductionStore",
+        "AttemptTamperedChallengeBody": "AttemptTamperedChallengeBody",
+        "ConsumeFirstValidAttempt": "ConsumeFirstValidAttempt",
+        "RefuseConsumedChallengeReplay": "RefuseConsumedChallengeReplay",
+        "RegisterChallengeBeforeExposure": "RegisterChallengeBeforeExposure",
+        "RestartChallengeWorkers": "RestartChallengeWorkers",
+        "ConsumeChallengeOnce": "ConsumeChallengeOnce"
+      }
     }
   },
-  "traces": [
+  "scenarios": [
     {
       "id": "composed-trust-lifecycle-full-remedy",
       "claim_id": "ambiguous-effect-is-never-auto-retried",
@@ -517,7 +777,7 @@
       "model": "formal/ep_composed_trust_lifecycle.tla",
       "adapter": "composed-trust-lifecycle",
       "scenario": "composed-role-substitution-mutation",
-      "kind": "unsafe_mutation",
+      "kind": "paired_negative_control",
       "runtime_sources": [
         "packages/verify/src/evidence-chain.ts",
         "packages/gate/src/aec-execution.ts"
@@ -543,7 +803,7 @@
       "model": "formal/ep_composed_trust_lifecycle.tla",
       "adapter": "composed-trust-lifecycle",
       "scenario": "composed-stale-status-refused",
-      "kind": "unsafe_mutation",
+      "kind": "paired_negative_control",
       "runtime_sources": [
         "packages/verify/src/aeb-adapter-contract.ts",
         "packages/gate/src/proposal-to-effect.ts"
@@ -590,7 +850,7 @@
       "model": "formal/ep_composed_trust_lifecycle.tla",
       "adapter": "composed-trust-lifecycle",
       "scenario": "composed-poisoned-witness-refused",
-      "kind": "unsafe_mutation",
+      "kind": "paired_negative_control",
       "runtime_sources": [
         "packages/gate/src/network-witness.ts",
         "packages/gate/src/witness-postgres.ts"
@@ -688,7 +948,7 @@
       "model": "formal/ep_composed_trust_lifecycle.tla",
       "adapter": "composed-trust-lifecycle",
       "scenario": "composed-revoked-invocation-mutation",
-      "kind": "unsafe_mutation",
+      "kind": "paired_negative_control",
       "runtime_sources": [
         "packages/verify/src/revocation.ts",
         "packages/gate/src/proposal-to-effect.ts"
@@ -738,7 +998,7 @@
       "model": "formal/ep_composed_trust_lifecycle.tla",
       "adapter": "composed-trust-lifecycle",
       "scenario": "composed-blind-replay-mutation",
-      "kind": "unsafe_mutation",
+      "kind": "paired_negative_control",
       "runtime_sources": [
         "packages/gate/src/proposal-to-effect.ts",
         "packages/gate/src/aeb-consumption-store.ts"
@@ -782,7 +1042,7 @@
       "model": "formal/ep_composed_trust_lifecycle.tla",
       "adapter": "composed-trust-lifecycle",
       "scenario": "composed-unauthenticated-reconciliation-mutation",
-      "kind": "unsafe_mutation",
+      "kind": "paired_negative_control",
       "runtime_sources": [
         "packages/gate/src/proposal-to-effect.ts",
         "packages/gate/src/aec-execution.ts"
@@ -828,7 +1088,7 @@
       "model": "formal/ep_composed_trust_lifecycle.tla",
       "adapter": "composed-trust-lifecycle",
       "scenario": "composed-original-authority-remedy-mutation",
-      "kind": "unsafe_mutation",
+      "kind": "paired_negative_control",
       "runtime_sources": ["packages/gate/src/remedy-program.ts"],
       "obligations": ["SeparateRemedyAuthority"],
       "formal_prefix": [
@@ -874,7 +1134,7 @@
       "model": "formal/ep_composed_trust_lifecycle.tla",
       "adapter": "composed-trust-lifecycle",
       "scenario": "composed-remedy-blind-replay-mutation",
-      "kind": "unsafe_mutation",
+      "kind": "paired_negative_control",
       "runtime_sources": ["packages/gate/src/remedy-program.ts"],
       "obligations": ["RemedyAtMostOnce"],
       "formal_prefix": [
@@ -972,7 +1232,7 @@
       "model": "formal/ep_effect_profiles.tla",
       "adapter": "action-escrow",
       "scenario": "escrow-duplicate-release-refused",
-      "kind": "unsafe_mutation",
+      "kind": "paired_negative_control",
       "runtime_sources": [
         "packages/gate/src/action-escrow.ts",
         "packages/gate/dist/action-escrow.js",
@@ -1060,7 +1320,7 @@
       "model": "formal/ep_effect_profiles.tla",
       "adapter": "aec",
       "scenario": "aec-role-substitution-refused",
-      "kind": "unsafe_mutation",
+      "kind": "paired_negative_control",
       "runtime_sources": [
         "packages/verify/evidence-chain.js",
         "packages/verify/dist/evidence-chain.js",
@@ -1166,7 +1426,7 @@
       "model": "formal/ep_effect_profiles.tla",
       "adapter": "grace",
       "scenario": "grace-indeterminate-replay-refused",
-      "kind": "unsafe_mutation",
+      "kind": "paired_negative_control",
       "runtime_sources": [
         "lib/grace/mobile-grid.ts",
         "lib/grace/curtailment.ts",
@@ -1324,7 +1584,7 @@
       "model": "formal/ep_effect_profiles.tla",
       "adapter": "mobile-continuity",
       "scenario": "mobile-replay-refused",
-      "kind": "unsafe_mutation",
+      "kind": "paired_negative_control",
       "runtime_sources": [
         "lib/mobile/action-continuity.ts",
         "lib/mobile/store.ts"
@@ -1459,7 +1719,7 @@
       "model": "formal/ep_effect_profiles.tla",
       "adapter": "mobile-enrollment",
       "scenario": "mobile-enroll-incomplete-at-activation-refused",
-      "kind": "unsafe_mutation",
+      "kind": "paired_negative_control",
       "runtime_sources": [
         "packages/mobile/enrollment.js",
         "packages/mobile/dist/enrollment.js",
@@ -1553,7 +1813,7 @@
       "model": "formal/ep_effect_profiles.tla",
       "adapter": "model-to-matter",
       "scenario": "model-to-matter-mismatch-refused",
-      "kind": "unsafe_mutation",
+      "kind": "paired_negative_control",
       "runtime_sources": [
         "lib/frontier/model-to-matter.ts",
         "packages/gate/challenge-store.js",
@@ -1755,7 +2015,7 @@
       "model": "formal/ep_revocation_witness.tla",
       "adapter": "network-witness",
       "scenario": "network-witness-poison-clear-refused",
-      "kind": "unsafe_mutation",
+      "kind": "paired_negative_control",
       "runtime_sources": [
         "packages/gate/src/network-witness.ts",
         "packages/gate/dist/network-witness.js"
@@ -1868,7 +2128,7 @@
       "model": "formal/ep_revocation_witness.tla",
       "adapter": "revocation",
       "scenario": "revocation-future-refused",
-      "kind": "unsafe_mutation",
+      "kind": "paired_negative_control",
       "runtime_sources": [
         "packages/verify/revocation.js",
         "packages/verify/dist/revocation.js",
@@ -2092,7 +2352,7 @@
       "model": "formal/ep_consequence_lifecycle.tla",
       "adapter": "consequence-lifecycle",
       "scenario": "consequence-blind-replay-refused",
-      "kind": "unsafe_mutation",
+      "kind": "paired_negative_control",
       "runtime_sources": [
         "packages/gate/src/index.ts",
         "packages/gate/dist/index.js",
@@ -2208,6 +2468,1481 @@
         "operator": "UnsafeBlindReplay",
         "defined_in_model": true,
         "obligation": "InvokeAtMostOnce"
+      }
+    },
+    {
+      "id": "conservation-authority-balanced-allocation",
+      "claim_id": "conservation-of-authority-is-bounded-and-non-amplifying",
+      "model": "formal/conservation-authority.model.mjs",
+      "adapter": "conservation-authority",
+      "scenario": "conservation-authority-balanced-allocation",
+      "kind": "sound",
+      "runtime_sources": [
+        "formal/conservation-authority.model.mjs",
+        "packages/gate/src/authority-allocation.ts",
+        "packages/gate/authority-allocation.test.ts"
+      ],
+      "obligations": [
+        "AggregateBranchBudgetIsConserved",
+        "AuthoritativeAllocationIsRequired"
+      ],
+      "steps": [
+        {
+          "operator": "InstallBalancedAllocation",
+          "accepted": true,
+          "projection": {
+            "allocationState": "accepted",
+            "aggregateWithinParent": true,
+            "allocationAuthoritative": true
+          }
+        }
+      ]
+    },
+    {
+      "id": "conservation-authority-sibling-overallocation-refused",
+      "claim_id": "conservation-of-authority-is-bounded-and-non-amplifying",
+      "model": "formal/conservation-authority.model.mjs",
+      "adapter": "conservation-authority",
+      "scenario": "conservation-authority-sibling-overallocation-refused",
+      "kind": "paired_negative_control",
+      "runtime_sources": [
+        "formal/conservation-authority.model.mjs",
+        "packages/gate/src/authority-allocation.ts",
+        "packages/gate/authority-allocation.test.ts"
+      ],
+      "obligations": [
+        "AggregateBranchBudgetIsConserved"
+      ],
+      "steps": [
+        {
+          "operator": "AttemptSiblingOverallocation",
+          "accepted": false,
+          "projection": {
+            "allocationState": "refused",
+            "aggregateWithinParent": false,
+            "allocationAuthoritative": true
+          }
+        }
+      ],
+      "mutation": {
+        "operator": "IgnoreAggregateSiblingBudget",
+        "defined_in_model": true,
+        "obligation": "AggregateBranchBudgetIsConserved"
+      }
+    },
+    {
+      "id": "outcome-binding-exact-accept",
+      "claim_id": "outcome-binding-is-exact-and-fail-closed",
+      "model": "formal/outcome-authority-join.model.mjs",
+      "adapter": "outcome-binding",
+      "scenario": "outcome-binding-exact-accept",
+      "kind": "sound",
+      "runtime_sources": [
+        "formal/outcome-authority-join.model.mjs",
+        "packages/verify/src/outcome-binding.ts",
+        "conformance/vectors/outcome-binding.exec.v1.json"
+      ],
+      "obligations": [
+        "ExactActionReceiptBinding",
+        "ReplayResultDigestCommitsVerdict"
+      ],
+      "steps": [
+        {
+          "operator": "VerifyExactOutcomeBinding",
+          "accepted": true,
+          "projection": {
+            "outcomeState": "in_bounds",
+            "receiptVerified": true,
+            "attestationVerified": true,
+            "actionBound": true,
+            "resultCommitted": true
+          }
+        }
+      ]
+    },
+    {
+      "id": "outcome-binding-action-substitution-refused",
+      "claim_id": "outcome-binding-is-exact-and-fail-closed",
+      "model": "formal/outcome-authority-join.model.mjs",
+      "adapter": "outcome-binding",
+      "scenario": "outcome-binding-action-substitution-refused",
+      "kind": "paired_negative_control",
+      "runtime_sources": [
+        "formal/outcome-authority-join.model.mjs",
+        "packages/verify/src/outcome-binding.ts",
+        "conformance/vectors/outcome-binding.exec.v1.json"
+      ],
+      "obligations": [
+        "ExactActionReceiptBinding"
+      ],
+      "steps": [
+        {
+          "operator": "AttemptActionDigestSubstitution",
+          "accepted": false,
+          "projection": {
+            "outcomeState": "incomparable",
+            "receiptVerified": true,
+            "attestationVerified": true,
+            "actionBound": false,
+            "resultCommitted": true
+          }
+        }
+      ],
+      "mutation": {
+        "operator": "IgnoreExactBinding",
+        "defined_in_model": true,
+        "obligation": "ExactActionReceiptBinding"
+      }
+    },
+    {
+      "id": "authority-document-newest-key-accept",
+      "claim_id": "authority-document-proof-join-is-pinned-and-non-resurrecting",
+      "model": "formal/outcome-authority-join.model.mjs",
+      "adapter": "authority-document-proof-join",
+      "scenario": "authority-document-newest-key-accept",
+      "kind": "sound",
+      "runtime_sources": [
+        "formal/outcome-authority-join.model.mjs",
+        "lib/authority/document-proof-join.ts",
+        "conformance/vectors/authority-document-proof-join.exec.v1.json"
+      ],
+      "obligations": [
+        "NewestAuthorityDocumentPreventsKeyResurrection",
+        "RegistryPinsMandatory"
+      ],
+      "steps": [
+        {
+          "operator": "VerifyNewestDocumentProofKey",
+          "accepted": true,
+          "projection": {
+            "authorityJoinState": "issuer_accepted",
+            "documentChainVerified": true,
+            "proofSignatureVerified": true,
+            "newestKeyResolved": true,
+            "registryPinned": true
+          }
+        }
+      ]
+    },
+    {
+      "id": "authority-document-key-resurrection-refused",
+      "claim_id": "authority-document-proof-join-is-pinned-and-non-resurrecting",
+      "model": "formal/outcome-authority-join.model.mjs",
+      "adapter": "authority-document-proof-join",
+      "scenario": "authority-document-key-resurrection-refused",
+      "kind": "paired_negative_control",
+      "runtime_sources": [
+        "formal/outcome-authority-join.model.mjs",
+        "lib/authority/document-proof-join.ts",
+        "conformance/vectors/authority-document-proof-join.exec.v1.json"
+      ],
+      "obligations": [
+        "NewestAuthorityDocumentPreventsKeyResurrection"
+      ],
+      "steps": [
+        {
+          "operator": "AttemptOlderDocumentKeyResurrection",
+          "accepted": false,
+          "projection": {
+            "authorityJoinState": "refused",
+            "documentChainVerified": true,
+            "proofSignatureVerified": true,
+            "newestKeyResolved": false,
+            "registryPinned": false
+          }
+        }
+      ],
+      "mutation": {
+        "operator": "FallBackToOlderDocument",
+        "defined_in_model": true,
+        "obligation": "NewestAuthorityDocumentPreventsKeyResurrection"
+      }
+    },
+    {
+      "id": "authority-program-complete-fold",
+      "claim_id": "authority-program-composition-is-root-bound-and-closed",
+      "model": "formal/ep_authority_program.tla",
+      "adapter": "authority-program",
+      "scenario": "authority-program-complete-fold",
+      "kind": "sound",
+      "runtime_sources": [
+        "formal/ep_authority_program.tla",
+        "packages/verify/src/authority-program.ts",
+        "conformance/vectors/authority-program.v1.json"
+      ],
+      "obligations": [
+        "ValidImpliesRootActionBinding",
+        "ConservationOfAuthority",
+        "NoExecutionProof"
+      ],
+      "formal_prefix": [],
+      "formal_init": "faultKind = \"none\" /\\ faultStage = \"stage-a\"",
+      "steps": [
+        {
+          "operator": "CheckStageA",
+          "accepted": true,
+          "projection": {
+            "programStatus": "checking",
+            "checkedStages": 1,
+            "rootActionBound": true,
+            "executionProven": false
+          }
+        },
+        {
+          "operator": "CheckStageB",
+          "accepted": true,
+          "projection": {
+            "programStatus": "checking",
+            "checkedStages": 2,
+            "rootActionBound": true,
+            "executionProven": false
+          }
+        },
+        {
+          "operator": "CheckStageC",
+          "accepted": true,
+          "projection": {
+            "programStatus": "checking",
+            "checkedStages": 3,
+            "rootActionBound": true,
+            "executionProven": false
+          }
+        },
+        {
+          "operator": "CheckStageD",
+          "accepted": true,
+          "projection": {
+            "programStatus": "checking",
+            "checkedStages": 4,
+            "rootActionBound": true,
+            "executionProven": false
+          }
+        },
+        {
+          "operator": "FinalizeAuthorityProgram",
+          "accepted": true,
+          "projection": {
+            "programStatus": "valid",
+            "checkedStages": 4,
+            "rootActionBound": true,
+            "executionProven": false
+          }
+        }
+      ]
+    },
+    {
+      "id": "authority-program-missing-root-binding-refused",
+      "claim_id": "authority-program-composition-is-root-bound-and-closed",
+      "model": "formal/ep_authority_program.tla",
+      "adapter": "authority-program",
+      "scenario": "authority-program-missing-root-binding-refused",
+      "kind": "paired_negative_control",
+      "runtime_sources": [
+        "formal/ep_authority_program.tla",
+        "packages/verify/src/authority-program.ts",
+        "conformance/vectors/authority-program.v1.json"
+      ],
+      "obligations": [
+        "ValidImpliesRootActionBinding"
+      ],
+      "formal_prefix": [],
+      "formal_init": "faultKind = \"root-action-binding\" /\\ faultStage = \"stage-a\"",
+      "steps": [
+        {
+          "operator": "AttemptMissingRootActionBinding",
+          "accepted": false,
+          "projection": {
+            "programStatus": "invalid",
+            "checkedStages": 0,
+            "rootActionBound": false,
+            "executionProven": false
+          }
+        }
+      ],
+      "mutation": {
+        "operator": "UnsafeAcceptWithoutRootBinding",
+        "defined_in_model": true,
+        "obligation": "ValidImpliesRootActionBinding"
+      }
+    },
+    {
+      "id": "receipt-program-caid-budget-terminal",
+      "claim_id": "receipt-program-is-caid-bound-budgeted-and-terminal",
+      "model": "formal/ep_receipt_program.tla",
+      "adapter": "receipt-program",
+      "scenario": "receipt-program-caid-budget-terminal",
+      "kind": "sound",
+      "runtime_sources": [
+        "formal/ep_receipt_program.tla",
+        "packages/gate/src/receipt-program.ts",
+        "packages/gate/src/capability-receipt.ts"
+      ],
+      "obligations": [
+        "PipelineOrderSafety",
+        "ReservationOwnership",
+        "EffectRequiresReservation",
+        "CertificateOutcomeSound",
+        "CertificateEvidenceRequired"
+      ],
+      "formal_prefix": [],
+      "steps": [
+        {
+          "operator": "MatchReceiptProgramCaid",
+          "accepted": true,
+          "projection": {
+            "attemptPhase": "matched",
+            "attemptOutcome": "none",
+            "attemptMatched": true,
+            "attemptAuthorized": false,
+            "attemptEffectEntered": false,
+            "attemptExecutionEvidence": false,
+            "attemptCertificate": "none",
+            "operationStatus": "open",
+            "operationOutcome": "none"
+          }
+        },
+        {
+          "operator": "ReserveReceiptProgramBudget",
+          "accepted": true,
+          "projection": {
+            "attemptPhase": "reserved",
+            "attemptOutcome": "none",
+            "attemptMatched": true,
+            "attemptAuthorized": true,
+            "attemptEffectEntered": false,
+            "attemptExecutionEvidence": false,
+            "attemptCertificate": "none",
+            "operationStatus": "reserved",
+            "operationOutcome": "none"
+          }
+        },
+        {
+          "operator": "InvokeReceiptProgramProvider",
+          "accepted": true,
+          "projection": {
+            "attemptPhase": "executing",
+            "attemptOutcome": "none",
+            "attemptMatched": true,
+            "attemptAuthorized": true,
+            "attemptEffectEntered": true,
+            "attemptExecutionEvidence": false,
+            "attemptCertificate": "none",
+            "operationStatus": "reserved",
+            "operationOutcome": "none"
+          }
+        },
+        {
+          "operator": "RecordReceiptProgramProviderReturn",
+          "accepted": true,
+          "projection": {
+            "attemptPhase": "effect_returned",
+            "attemptOutcome": "none",
+            "attemptMatched": true,
+            "attemptAuthorized": true,
+            "attemptEffectEntered": true,
+            "attemptExecutionEvidence": false,
+            "attemptCertificate": "none",
+            "operationStatus": "reserved",
+            "operationOutcome": "none"
+          }
+        },
+        {
+          "operator": "CommitReceiptProgramTerminalOutcome",
+          "accepted": true,
+          "projection": {
+            "attemptPhase": "certifying",
+            "attemptOutcome": "executed",
+            "attemptMatched": true,
+            "attemptAuthorized": true,
+            "attemptEffectEntered": true,
+            "attemptExecutionEvidence": true,
+            "attemptCertificate": "none",
+            "operationStatus": "committed",
+            "operationOutcome": "executed"
+          }
+        },
+        {
+          "operator": "AppendReceiptProgramCertificate",
+          "accepted": true,
+          "projection": {
+            "attemptPhase": "terminal",
+            "attemptOutcome": "executed",
+            "attemptMatched": true,
+            "attemptAuthorized": true,
+            "attemptEffectEntered": true,
+            "attemptExecutionEvidence": true,
+            "attemptCertificate": "persisted",
+            "operationStatus": "committed",
+            "operationOutcome": "executed"
+          }
+        }
+      ]
+    },
+    {
+      "id": "receipt-program-caid-substitution-refused",
+      "claim_id": "receipt-program-is-caid-bound-budgeted-and-terminal",
+      "model": "formal/ep_receipt_program.tla",
+      "adapter": "receipt-program",
+      "scenario": "receipt-program-caid-substitution-refused",
+      "kind": "paired_negative_control",
+      "runtime_sources": [
+        "formal/ep_receipt_program.tla",
+        "packages/gate/src/receipt-program.ts",
+        "packages/gate/src/capability-receipt.ts"
+      ],
+      "obligations": [
+        "PipelineOrderSafety"
+      ],
+      "formal_prefix": [],
+      "steps": [
+        {
+          "operator": "AttemptReceiptProgramReserveBeforeMatch",
+          "accepted": false,
+          "projection": {
+            "attemptPhase": "terminal",
+            "attemptOutcome": "refused",
+            "attemptMatched": false,
+            "attemptAuthorized": false,
+            "attemptEffectEntered": false,
+            "attemptExecutionEvidence": false,
+            "attemptCertificate": "persisted",
+            "operationStatus": "open",
+            "operationOutcome": "none"
+          }
+        }
+      ],
+      "mutation": {
+        "operator": "UnsafeReserveBeforeMatchAttempt1",
+        "defined_in_model": true,
+        "obligation": "PipelineOrderSafety"
+      }
+    },
+    {
+      "id": "durable-consumption-owner-happy-path",
+      "claim_id": "durable-consumption-is-owner-fenced",
+      "model": "formal/durable-consumption-owner.model.mjs",
+      "adapter": "durable-consumption-owner",
+      "scenario": "durable-consumption-owner-happy-path",
+      "kind": "sound",
+      "runtime_sources": [
+        "formal/durable-consumption-owner.model.mjs",
+        "packages/gate/src/store.ts",
+        "packages/gate/store-faults.test.js"
+      ],
+      "obligations": [
+        "AtMostOneConcurrentReservation",
+        "OnlyReservationOwnerMayCommit",
+        "CommittedConsumptionNeverReopens"
+      ],
+      "steps": [
+        {
+          "operator": "ReserveByOwner",
+          "accepted": true,
+          "projection": {
+            "reservationState": "RESERVED",
+            "competingReservationRefused": true,
+            "ownerCommitAccepted": false,
+            "replayRefused": false
+          }
+        },
+        {
+          "operator": "CommitByOwner",
+          "accepted": true,
+          "projection": {
+            "reservationState": "RESERVED",
+            "competingReservationRefused": true,
+            "ownerCommitAccepted": true,
+            "replayRefused": true
+          }
+        }
+      ]
+    },
+    {
+      "id": "durable-consumption-stale-owner-refused",
+      "claim_id": "durable-consumption-is-owner-fenced",
+      "model": "formal/durable-consumption-owner.model.mjs",
+      "adapter": "durable-consumption-owner",
+      "scenario": "durable-consumption-stale-owner-refused",
+      "kind": "paired_negative_control",
+      "runtime_sources": [
+        "formal/durable-consumption-owner.model.mjs",
+        "packages/gate/src/store.ts",
+        "packages/gate/store-faults.test.js"
+      ],
+      "obligations": [
+        "OnlyReservationOwnerMayCommit",
+        "OnlyReservationOwnerMayRelease"
+      ],
+      "steps": [
+        {
+          "operator": "AttemptStaleOwnerTerminalMutation",
+          "accepted": false,
+          "projection": {
+            "staleCommitRefused": true,
+            "staleReleaseRefused": true,
+            "replacementPreserved": true
+          }
+        }
+      ],
+      "mutation": {
+        "operator": "IgnoreTerminalOwnerFence",
+        "defined_in_model": true,
+        "obligation": "OnlyReservationOwnerMayCommit"
+      }
+    },
+    {
+      "id": "durable-consumption-restart-refused",
+      "claim_id": "durable-consumption-is-owner-fenced",
+      "model": "formal/durable-consumption-owner.model.mjs",
+      "adapter": "durable-consumption-owner",
+      "scenario": "durable-consumption-restart-refused",
+      "kind": "paired_negative_control",
+      "runtime_sources": [
+        "formal/durable-consumption-owner.model.mjs",
+        "packages/gate/src/store.ts",
+        "packages/gate/store-faults.test.js"
+      ],
+      "obligations": [
+        "RestartCannotAdoptAbandonedReservation"
+      ],
+      "steps": [
+        {
+          "operator": "AttemptRestartedProcessTerminalMutation",
+          "accepted": false,
+          "projection": {
+            "restartCommitRefused": true,
+            "restartReleaseRefused": true,
+            "reservationPreserved": true
+          }
+        }
+      ],
+      "mutation": {
+        "operator": "AdoptReservationAfterRestart",
+        "defined_in_model": true,
+        "obligation": "RestartCannotAdoptAbandonedReservation"
+      }
+    },
+    {
+      "id": "signed-denial-evidence-preserved",
+      "claim_id": "signed-denial-cannot-authorize",
+      "model": "formal/two-claim-assurance.model.mjs",
+      "adapter": "two-claim-assurance",
+      "scenario": "signed-denial-evidence-preserved",
+      "kind": "sound",
+      "runtime_sources": [
+        "formal/two-claim-assurance.model.mjs",
+        "packages/verify/src/index.ts",
+        "conformance/vectors/trust-receipt.exec.v1.json"
+      ],
+      "obligations": [
+        "SignedDenialApprovalRefused",
+        "SignedDenialSeparationOfDutiesRefused",
+        "SignedDenialQuorumRefused",
+        "SignedDenialAssuranceRefused",
+        "SignedDenialAuthorityRefused",
+        "SignedDenialActionMaterialRefused",
+        "SignedDenialRelianceRefused"
+      ],
+      "steps": [
+        {
+          "operator": "VerifySignedDenialEvidence",
+          "accepted": true,
+          "projection": {
+            "decisionEvidenceVerified": true,
+            "allAuthorizationOutputsRefused": true,
+            "challengeAuthorizes": false,
+            "challengeIsReceipt": false
+          }
+        }
+      ]
+    },
+    {
+      "id": "signed-denial-authorization-refused",
+      "claim_id": "signed-denial-cannot-authorize",
+      "model": "formal/two-claim-assurance.model.mjs",
+      "adapter": "two-claim-assurance",
+      "scenario": "signed-denial-authorization-refused",
+      "kind": "paired_negative_control",
+      "runtime_sources": [
+        "formal/two-claim-assurance.model.mjs",
+        "packages/verify/src/index.ts",
+        "conformance/vectors/trust-receipt.exec.v1.json"
+      ],
+      "obligations": [
+        "SignedDenialApprovalRefused",
+        "SignedDenialSeparationOfDutiesRefused",
+        "SignedDenialQuorumRefused",
+        "SignedDenialAssuranceRefused",
+        "SignedDenialAuthorityRefused",
+        "SignedDenialActionMaterialRefused",
+        "SignedDenialRelianceRefused"
+      ],
+      "steps": [
+        {
+          "operator": "AttemptAuthorizeSignedDenial",
+          "accepted": false,
+          "projection": {
+            "decisionEvidenceVerified": true,
+            "allAuthorizationOutputsRefused": true,
+            "challengeAuthorizes": false,
+            "challengeIsReceipt": false
+          }
+        }
+      ],
+      "mutation": {
+        "operator": "IgnoreSignedDecisionOutcome",
+        "defined_in_model": true,
+        "obligation": "SignedDenialApprovalRefused"
+      }
+    },
+    {
+      "id": "scoped-authority-exact-match",
+      "claim_id": "scoped-authority-is-pinned",
+      "model": "formal/two-claim-assurance.model.mjs",
+      "adapter": "two-claim-assurance",
+      "scenario": "scoped-authority-exact-match",
+      "kind": "sound",
+      "runtime_sources": [
+        "formal/two-claim-assurance.model.mjs",
+        "lib/authority/proof.ts",
+        "lib/authority/resolver.ts"
+      ],
+      "obligations": [
+        "ScopedAuthorityRegistryIssuerPinned",
+        "ScopedAuthorityActionMembership",
+        "ScopedAuthorityTimeWindowOrdered",
+        "ScopedAuthorityAmountCeiling",
+        "ScopedAuthorityCurrencyPinned",
+        "ScopedAuthorityOrganizationPinned",
+        "ScopedAuthorityRolePinned",
+        "ScopedAuthorityPolicyPinned",
+        "ScopedAuthorityDelegationMonotone"
+      ],
+      "steps": [
+        {
+          "operator": "EvaluateExactScopedAuthority",
+          "accepted": true,
+          "projection": {
+            "pinnedIssuerAccepted": true,
+            "exactScopeAuthorized": true,
+            "authorized": true
+          }
+        }
+      ]
+    },
+    {
+      "id": "scoped-authority-bypass-refused",
+      "claim_id": "scoped-authority-is-pinned",
+      "model": "formal/two-claim-assurance.model.mjs",
+      "adapter": "two-claim-assurance",
+      "scenario": "scoped-authority-bypass-refused",
+      "kind": "paired_negative_control",
+      "runtime_sources": [
+        "formal/two-claim-assurance.model.mjs",
+        "lib/authority/proof.ts",
+        "lib/authority/resolver.ts"
+      ],
+      "obligations": [
+        "ScopedAuthorityRegistryIssuerPinned",
+        "ScopedAuthorityActionMembership",
+        "ScopedAuthorityTimeWindowOrdered",
+        "ScopedAuthorityAmountCeiling",
+        "ScopedAuthorityCurrencyPinned",
+        "ScopedAuthorityOrganizationPinned",
+        "ScopedAuthorityRolePinned",
+        "ScopedAuthorityPolicyPinned",
+        "ScopedAuthorityDelegationMonotone"
+      ],
+      "steps": [
+        {
+          "operator": "AttemptScopeBypass",
+          "accepted": false,
+          "projection": {
+            "unpinnedIssuerRefused": true,
+            "everyScopeViolationRefused": true,
+            "authorized": false
+          }
+        }
+      ],
+      "mutation": {
+        "operator": "OmitRegistryIssuerPin",
+        "defined_in_model": true,
+        "obligation": "ScopedAuthorityRegistryIssuerPinned"
+      }
+    },
+    {
+      "id": "aec-fleet-pinned-boundary",
+      "claim_id": "aec-execution-is-action-keyed-and-fleet-fail-closed",
+      "model": "formal/aec_execution_fleet_assurance.model.mjs",
+      "adapter": "aec-execution-fleet-assurance",
+      "scenario": "aec-fleet-pinned-boundary",
+      "kind": "paired_negative_control",
+      "runtime_sources": [
+        "formal/aec_execution_fleet_assurance.model.mjs",
+        "packages/gate/src/aec-execution.ts",
+        "packages/gate/src/store.ts",
+        "packages/gate/src/evidence.ts"
+      ],
+      "obligations": [
+        "ConstructorTrustInputsImmutable",
+        "VerifierMethodCaptured",
+        "TransactionScopedTrustRefused"
+      ],
+      "steps": [
+        {
+          "operator": "ExecuteWithPinnedTrust",
+          "accepted": true,
+          "projection": {
+            "provider_executions": 1
+          }
+        },
+        {
+          "operator": "MutateConstructorTrustInputs",
+          "accepted": false,
+          "projection": {
+            "provider_executions": 0,
+            "trust_mutation_admitted": false
+          }
+        },
+        {
+          "operator": "ReplaceCapturedMethods",
+          "accepted": true,
+          "projection": {
+            "provider_executions": 1,
+            "replacement_calls": 0
+          }
+        },
+        {
+          "operator": "InjectTransactionTrust",
+          "accepted": false,
+          "projection": {
+            "provider_executions": 0,
+            "runtime_config_refused": true
+          }
+        }
+      ],
+      "mutation": {
+        "operator": "UseMutableConstructorTrust",
+        "defined_in_model": true,
+        "obligation": "ConstructorTrustInputsImmutable"
+      }
+    },
+    {
+      "id": "aec-fleet-owner-reservation",
+      "claim_id": "aec-execution-is-action-keyed-and-fleet-fail-closed",
+      "model": "formal/aec_execution_fleet_assurance.model.mjs",
+      "adapter": "aec-execution-fleet-assurance",
+      "scenario": "aec-fleet-owner-reservation",
+      "kind": "sound",
+      "runtime_sources": [
+        "formal/aec_execution_fleet_assurance.model.mjs",
+        "packages/gate/src/store.ts"
+      ],
+      "obligations": [
+        "ReservationOwnerFenced",
+        "ReservationNeverExpires",
+        "RestartCannotAdoptReservation"
+      ],
+      "steps": [
+        {
+          "operator": "ReserveAsOwner",
+          "accepted": true,
+          "projection": {
+            "reservation_created": true
+          }
+        },
+        {
+          "operator": "RestartCannotAdopt",
+          "accepted": false,
+          "projection": {
+            "commit_refused": true,
+            "release_refused": true
+          }
+        },
+        {
+          "operator": "ReservationDoesNotExpire",
+          "accepted": true,
+          "projection": {
+            "replay_blocked": true,
+            "permanent_consumption": true
+          }
+        }
+      ]
+    },
+    {
+      "id": "aec-fleet-atomic-evidence",
+      "claim_id": "aec-execution-is-action-keyed-and-fleet-fail-closed",
+      "model": "formal/aec_execution_fleet_assurance.model.mjs",
+      "adapter": "aec-execution-fleet-assurance",
+      "scenario": "aec-fleet-atomic-evidence",
+      "kind": "paired_negative_control",
+      "runtime_sources": [
+        "formal/aec_execution_fleet_assurance.model.mjs",
+        "packages/gate/src/evidence.ts"
+      ],
+      "obligations": [
+        "SharedHeadAppendAtomic",
+        "EvidenceReadbackAcknowledgementExact"
+      ],
+      "steps": [
+        {
+          "operator": "RecoverAppendAfterResponseLoss",
+          "accepted": true,
+          "projection": {
+            "recovered_same_record": true
+          }
+        },
+        {
+          "operator": "ContinueSharedHeadAfterRestart",
+          "accepted": true,
+          "projection": {
+            "sequence": 1,
+            "predecessor_matches": true
+          }
+        },
+        {
+          "operator": "RejectSubstitutedReadback",
+          "accepted": false,
+          "projection": {
+            "exact_readback_refused": true
+          }
+        }
+      ],
+      "mutation": {
+        "operator": "TrustSubstitutedReadback",
+        "defined_in_model": true,
+        "obligation": "EvidenceReadbackAcknowledgementExact"
+      }
+    },
+    {
+      "id": "aec-fleet-reservation-failure",
+      "claim_id": "aec-execution-is-action-keyed-and-fleet-fail-closed",
+      "model": "formal/aec_execution_fleet_assurance.model.mjs",
+      "adapter": "aec-execution-fleet-assurance",
+      "scenario": "aec-fleet-reservation-failure",
+      "kind": "paired_negative_control",
+      "runtime_sources": [
+        "formal/aec_execution_fleet_assurance.model.mjs",
+        "packages/gate/src/aec-execution.ts",
+        "packages/gate/src/store.ts"
+      ],
+      "obligations": [
+        "ReservationFailureCannotExecute"
+      ],
+      "steps": [
+        {
+          "operator": "RefuseProviderWhenReservationFails",
+          "accepted": false,
+          "projection": {
+            "provider_executions": 0,
+            "reservation_failure_refused": true
+          }
+        }
+      ],
+      "mutation": {
+        "operator": "ExecuteBeforeReservation",
+        "defined_in_model": true,
+        "obligation": "ReservationFailureCannotExecute"
+      }
+    },
+    {
+      "id": "aec-fleet-response-loss",
+      "claim_id": "aec-execution-is-action-keyed-and-fleet-fail-closed",
+      "model": "formal/aec_execution_fleet_assurance.model.mjs",
+      "adapter": "aec-execution-fleet-assurance",
+      "scenario": "aec-fleet-response-loss",
+      "kind": "paired_negative_control",
+      "runtime_sources": [
+        "formal/aec_execution_fleet_assurance.model.mjs",
+        "packages/gate/src/aec-execution.ts",
+        "packages/gate/src/store.ts",
+        "packages/gate/src/evidence.ts"
+      ],
+      "obligations": [
+        "ResponseLossFreezesReplay",
+        "ProviderExecutionAtMostOnce"
+      ],
+      "steps": [
+        {
+          "operator": "LoseProviderResponse",
+          "accepted": false,
+          "projection": {
+            "provider_executions": 1,
+            "indeterminate_recorded": true
+          }
+        },
+        {
+          "operator": "RefuseReplayAfterResponseLoss",
+          "accepted": false,
+          "projection": {
+            "provider_executions": 1,
+            "replay_refused": true
+          }
+        }
+      ],
+      "mutation": {
+        "operator": "ReleaseAfterResponseLoss",
+        "defined_in_model": true,
+        "obligation": "ResponseLossFreezesReplay"
+      }
+    },
+    {
+      "id": "aec-fleet-replica-restart",
+      "claim_id": "aec-execution-is-action-keyed-and-fleet-fail-closed",
+      "model": "formal/aec_execution_fleet_assurance.model.mjs",
+      "adapter": "aec-execution-fleet-assurance",
+      "scenario": "aec-fleet-replica-restart",
+      "kind": "paired_negative_control",
+      "runtime_sources": [
+        "formal/aec_execution_fleet_assurance.model.mjs",
+        "packages/gate/src/aec-execution.ts",
+        "packages/gate/src/store.ts",
+        "packages/gate/src/evidence.ts"
+      ],
+      "obligations": [
+        "CanonicalActionKeyOnly",
+        "ReplicasShareConsumptionDomain",
+        "RestartCannotAdoptReservation",
+        "ProviderExecutionAtMostOnce"
+      ],
+      "steps": [
+        {
+          "operator": "ExecuteCanonicalActionOnReplicaA",
+          "accepted": true,
+          "projection": {
+            "provider_executions": 1,
+            "canonical_action_key": true
+          }
+        },
+        {
+          "operator": "RefuseDecoyReplayOnReplicaB",
+          "accepted": false,
+          "projection": {
+            "provider_executions": 1,
+            "replay_refused": true
+          }
+        },
+        {
+          "operator": "RefuseReplayAfterRestart",
+          "accepted": false,
+          "projection": {
+            "provider_executions": 1,
+            "replay_refused": true
+          }
+        }
+      ],
+      "mutation": {
+        "operator": "UsePresenterSelectedReplayKey",
+        "defined_in_model": true,
+        "obligation": "CanonicalActionKeyOnly"
+      }
+    },
+    {
+      "id": "reliance-all-pinned",
+      "claim_id": "reliance-requires-pinned-profile",
+      "model": "formal/reliance-pinned-profile.model.mjs",
+      "adapter": "reliance-pinned-profile",
+      "scenario": "reliance-all-pinned",
+      "kind": "sound",
+      "runtime_sources": [
+        "formal/reliance-pinned-profile.model.mjs",
+        "packages/verify/src/reliance.ts"
+      ],
+      "obligations": [
+        "PinnedProfileRequired",
+        "SignedMaterialRequired",
+        "AssuranceRequired",
+        "OrganizationAuthorityRequired",
+        "ExactRegistryHeadRequired",
+        "RegistryEpochFloorOrdered",
+        "PolicyRequired",
+        "AuthenticatedRevocationRequired",
+        "FreshRevocationRequired",
+        "IssuerRequired",
+        "UnconsumedStateRequired"
+      ],
+      "steps": [
+        {
+          "operator": "AcceptPinnedReliance",
+          "accepted": true,
+          "projection": {
+            "relianceVerdict": "rely",
+            "failedObligation": "none"
+          }
+        }
+      ]
+    },
+    {
+      "id": "reliance-profile-refused",
+      "claim_id": "reliance-requires-pinned-profile",
+      "model": "formal/reliance-pinned-profile.model.mjs",
+      "adapter": "reliance-pinned-profile",
+      "scenario": "reliance-profile-refused",
+      "kind": "paired_negative_control",
+      "runtime_sources": [
+        "formal/reliance-pinned-profile.model.mjs",
+        "packages/verify/src/reliance.ts"
+      ],
+      "obligations": ["PinnedProfileRequired"],
+      "steps": [
+        {
+          "operator": "RefuseUnpinnedProfile",
+          "accepted": false,
+          "projection": {
+            "relianceVerdict": "do_not_rely_no_profile",
+            "failedObligation": "PinnedProfileRequired"
+          }
+        }
+      ],
+      "mutation": {
+        "operator": "BypassPinnedProfile",
+        "defined_in_model": true,
+        "obligation": "PinnedProfileRequired"
+      }
+    },
+    {
+      "id": "reliance-signed-material-refused",
+      "claim_id": "reliance-requires-pinned-profile",
+      "model": "formal/reliance-pinned-profile.model.mjs",
+      "adapter": "reliance-pinned-profile",
+      "scenario": "reliance-signed-material-refused",
+      "kind": "paired_negative_control",
+      "runtime_sources": [
+        "formal/reliance-pinned-profile.model.mjs",
+        "packages/verify/src/reliance.ts"
+      ],
+      "obligations": ["SignedMaterialRequired"],
+      "steps": [
+        {
+          "operator": "RefuseUnsignedMaterial",
+          "accepted": false,
+          "projection": {
+            "relianceVerdict": "do_not_rely_unsigned",
+            "failedObligation": "SignedMaterialRequired"
+          }
+        }
+      ],
+      "mutation": {
+        "operator": "BypassSignedMaterial",
+        "defined_in_model": true,
+        "obligation": "SignedMaterialRequired"
+      }
+    },
+    {
+      "id": "reliance-assurance-refused",
+      "claim_id": "reliance-requires-pinned-profile",
+      "model": "formal/reliance-pinned-profile.model.mjs",
+      "adapter": "reliance-pinned-profile",
+      "scenario": "reliance-assurance-refused",
+      "kind": "paired_negative_control",
+      "runtime_sources": [
+        "formal/reliance-pinned-profile.model.mjs",
+        "packages/verify/src/reliance.ts"
+      ],
+      "obligations": ["AssuranceRequired"],
+      "steps": [
+        {
+          "operator": "RefuseInsufficientAssurance",
+          "accepted": false,
+          "projection": {
+            "relianceVerdict": "do_not_rely_no_class_a",
+            "failedObligation": "AssuranceRequired"
+          }
+        }
+      ],
+      "mutation": {
+        "operator": "BypassAssurance",
+        "defined_in_model": true,
+        "obligation": "AssuranceRequired"
+      }
+    },
+    {
+      "id": "reliance-organization-authority-refused",
+      "claim_id": "reliance-requires-pinned-profile",
+      "model": "formal/reliance-pinned-profile.model.mjs",
+      "adapter": "reliance-pinned-profile",
+      "scenario": "reliance-organization-authority-refused",
+      "kind": "paired_negative_control",
+      "runtime_sources": [
+        "formal/reliance-pinned-profile.model.mjs",
+        "packages/verify/src/reliance.ts"
+      ],
+      "obligations": ["OrganizationAuthorityRequired"],
+      "steps": [
+        {
+          "operator": "RefuseOrganizationAuthorityMismatch",
+          "accepted": false,
+          "projection": {
+            "relianceVerdict": "do_not_rely_authority_organization_mismatch",
+            "failedObligation": "OrganizationAuthorityRequired"
+          }
+        }
+      ],
+      "mutation": {
+        "operator": "BypassOrganizationAuthority",
+        "defined_in_model": true,
+        "obligation": "OrganizationAuthorityRequired"
+      }
+    },
+    {
+      "id": "reliance-registry-head-refused",
+      "claim_id": "reliance-requires-pinned-profile",
+      "model": "formal/reliance-pinned-profile.model.mjs",
+      "adapter": "reliance-pinned-profile",
+      "scenario": "reliance-registry-head-refused",
+      "kind": "paired_negative_control",
+      "runtime_sources": [
+        "formal/reliance-pinned-profile.model.mjs",
+        "packages/verify/src/reliance.ts"
+      ],
+      "obligations": ["ExactRegistryHeadRequired"],
+      "steps": [
+        {
+          "operator": "RefuseRegistryHeadMismatch",
+          "accepted": false,
+          "projection": {
+            "relianceVerdict": "do_not_rely_registry_unavailable",
+            "failedObligation": "ExactRegistryHeadRequired"
+          }
+        }
+      ],
+      "mutation": {
+        "operator": "BypassRegistryHead",
+        "defined_in_model": true,
+        "obligation": "ExactRegistryHeadRequired"
+      }
+    },
+    {
+      "id": "reliance-registry-epoch-refused",
+      "claim_id": "reliance-requires-pinned-profile",
+      "model": "formal/reliance-pinned-profile.model.mjs",
+      "adapter": "reliance-pinned-profile",
+      "scenario": "reliance-registry-epoch-refused",
+      "kind": "paired_negative_control",
+      "runtime_sources": [
+        "formal/reliance-pinned-profile.model.mjs",
+        "packages/verify/src/reliance.ts"
+      ],
+      "obligations": ["RegistryEpochFloorOrdered"],
+      "steps": [
+        {
+          "operator": "RefuseRegistryEpochRollback",
+          "accepted": false,
+          "projection": {
+            "relianceVerdict": "do_not_rely_registry_unavailable",
+            "failedObligation": "RegistryEpochFloorOrdered"
+          }
+        }
+      ],
+      "mutation": {
+        "operator": "BypassRegistryEpochFloor",
+        "defined_in_model": true,
+        "obligation": "RegistryEpochFloorOrdered"
+      }
+    },
+    {
+      "id": "reliance-policy-refused",
+      "claim_id": "reliance-requires-pinned-profile",
+      "model": "formal/reliance-pinned-profile.model.mjs",
+      "adapter": "reliance-pinned-profile",
+      "scenario": "reliance-policy-refused",
+      "kind": "paired_negative_control",
+      "runtime_sources": [
+        "formal/reliance-pinned-profile.model.mjs",
+        "packages/verify/src/reliance.ts"
+      ],
+      "obligations": ["PolicyRequired"],
+      "steps": [
+        {
+          "operator": "RefuseUnpinnedPolicy",
+          "accepted": false,
+          "projection": {
+            "relianceVerdict": "do_not_rely_policy_mismatch",
+            "failedObligation": "PolicyRequired"
+          }
+        }
+      ],
+      "mutation": {
+        "operator": "BypassPolicy",
+        "defined_in_model": true,
+        "obligation": "PolicyRequired"
+      }
+    },
+    {
+      "id": "reliance-revocation-authentication-refused",
+      "claim_id": "reliance-requires-pinned-profile",
+      "model": "formal/reliance-pinned-profile.model.mjs",
+      "adapter": "reliance-pinned-profile",
+      "scenario": "reliance-revocation-authentication-refused",
+      "kind": "paired_negative_control",
+      "runtime_sources": [
+        "formal/reliance-pinned-profile.model.mjs",
+        "packages/verify/src/reliance.ts"
+      ],
+      "obligations": ["AuthenticatedRevocationRequired"],
+      "steps": [
+        {
+          "operator": "RefuseUnauthenticatedRevocationState",
+          "accepted": false,
+          "projection": {
+            "relianceVerdict": "do_not_rely_stale_revocation",
+            "failedObligation": "AuthenticatedRevocationRequired"
+          }
+        }
+      ],
+      "mutation": {
+        "operator": "BypassRevocationAuthentication",
+        "defined_in_model": true,
+        "obligation": "AuthenticatedRevocationRequired"
+      }
+    },
+    {
+      "id": "reliance-revocation-freshness-refused",
+      "claim_id": "reliance-requires-pinned-profile",
+      "model": "formal/reliance-pinned-profile.model.mjs",
+      "adapter": "reliance-pinned-profile",
+      "scenario": "reliance-revocation-freshness-refused",
+      "kind": "paired_negative_control",
+      "runtime_sources": [
+        "formal/reliance-pinned-profile.model.mjs",
+        "packages/verify/src/reliance.ts"
+      ],
+      "obligations": ["FreshRevocationRequired"],
+      "steps": [
+        {
+          "operator": "RefuseStaleRevocationState",
+          "accepted": false,
+          "projection": {
+            "relianceVerdict": "do_not_rely_stale_revocation",
+            "failedObligation": "FreshRevocationRequired"
+          }
+        }
+      ],
+      "mutation": {
+        "operator": "BypassRevocationFreshness",
+        "defined_in_model": true,
+        "obligation": "FreshRevocationRequired"
+      }
+    },
+    {
+      "id": "reliance-issuer-refused",
+      "claim_id": "reliance-requires-pinned-profile",
+      "model": "formal/reliance-pinned-profile.model.mjs",
+      "adapter": "reliance-pinned-profile",
+      "scenario": "reliance-issuer-refused",
+      "kind": "paired_negative_control",
+      "runtime_sources": [
+        "formal/reliance-pinned-profile.model.mjs",
+        "packages/verify/src/reliance.ts"
+      ],
+      "obligations": ["IssuerRequired"],
+      "steps": [
+        {
+          "operator": "RefuseUnpinnedIssuer",
+          "accepted": false,
+          "projection": {
+            "relianceVerdict": "do_not_rely_untrusted_issuer",
+            "failedObligation": "IssuerRequired"
+          }
+        }
+      ],
+      "mutation": {
+        "operator": "BypassIssuerPin",
+        "defined_in_model": true,
+        "obligation": "IssuerRequired"
+      }
+    },
+    {
+      "id": "reliance-consumed-refused",
+      "claim_id": "reliance-requires-pinned-profile",
+      "model": "formal/reliance-pinned-profile.model.mjs",
+      "adapter": "reliance-pinned-profile",
+      "scenario": "reliance-consumed-refused",
+      "kind": "paired_negative_control",
+      "runtime_sources": [
+        "formal/reliance-pinned-profile.model.mjs",
+        "packages/verify/src/reliance.ts"
+      ],
+      "obligations": ["UnconsumedStateRequired"],
+      "steps": [
+        {
+          "operator": "RefuseConsumedAuthorization",
+          "accepted": false,
+          "projection": {
+            "relianceVerdict": "do_not_rely_already_consumed",
+            "failedObligation": "UnconsumedStateRequired"
+          }
+        }
+      ],
+      "mutation": {
+        "operator": "BypassConsumptionState",
+        "defined_in_model": true,
+        "obligation": "UnconsumedStateRequired"
+      }
+    },
+    {
+      "id": "evidence-challenge-durable-once",
+      "claim_id": "evidence-challenge-is-durably-registered-and-consumed",
+      "model": "formal/evidence-challenge-lifecycle.model.mjs",
+      "adapter": "evidence-challenge-lifecycle",
+      "scenario": "evidence-challenge-durable-once",
+      "kind": "sound",
+      "runtime_sources": [
+        "formal/evidence-challenge-lifecycle.model.mjs",
+        "lib/negotiate/evidence-challenge.ts",
+        "packages/gate/src/challenge-store.ts",
+        "packages/gate/src/store-postgres.ts"
+      ],
+      "obligations": [
+        "DurableStorageRequired",
+        "AtomicRegistrationRequired",
+        "BodyBoundStorageRequired",
+        "PermanentConsumptionRequired",
+        "RegistrationPrecedesExposure",
+        "RegistrationPersistsAcrossRestart",
+        "ConcurrentRegistrationIsUnique",
+        "ConcurrentConsumptionIsOneTime",
+        "ConsumedStatePersistsAcrossRestart"
+      ],
+      "steps": [
+        {
+          "operator": "RegisterChallengeBeforeExposure",
+          "accepted": true,
+          "projection": {
+            "challengeState": "registered",
+            "wireVersion": "AE-CHALLENGE-v1"
+          }
+        },
+        {
+          "operator": "RestartChallengeWorkers",
+          "accepted": true,
+          "projection": {
+            "challengeState": "registered",
+            "durable": true
+          }
+        },
+        {
+          "operator": "ConsumeChallengeOnce",
+          "accepted": true,
+          "projection": {
+            "challengeState": "consumed",
+            "admittedAttempts": 1
+          }
+        }
+      ]
+    },
+    {
+      "id": "evidence-challenge-body-tamper-refused",
+      "claim_id": "evidence-challenge-is-durably-registered-and-consumed",
+      "model": "formal/evidence-challenge-lifecycle.model.mjs",
+      "adapter": "evidence-challenge-lifecycle",
+      "scenario": "evidence-challenge-body-tamper-refused",
+      "kind": "paired_negative_control",
+      "runtime_sources": [
+        "formal/evidence-challenge-lifecycle.model.mjs",
+        "lib/negotiate/evidence-challenge.ts",
+        "packages/gate/src/challenge-store.ts"
+      ],
+      "obligations": [
+        "BodyBoundStorageRequired",
+        "MissingEvidenceBound",
+        "FreshnessPolicyContextBound"
+      ],
+      "steps": [
+        {
+          "operator": "AttemptTamperedChallengeBody",
+          "accepted": false,
+          "projection": {
+            "challengeState": "registered",
+            "bodyBound": true
+          }
+        }
+      ],
+      "mutation": {
+        "operator": "IgnoreChallengeBodyDigest",
+        "defined_in_model": true,
+        "obligation": "BodyBoundStorageRequired"
+      }
+    },
+    {
+      "id": "evidence-challenge-production-capability-refused",
+      "claim_id": "evidence-challenge-is-durably-registered-and-consumed",
+      "model": "formal/evidence-challenge-lifecycle.model.mjs",
+      "adapter": "evidence-challenge-lifecycle",
+      "scenario": "evidence-challenge-production-capability-refused",
+      "kind": "paired_negative_control",
+      "runtime_sources": [
+        "formal/evidence-challenge-lifecycle.model.mjs",
+        "lib/negotiate/evidence-challenge.ts",
+        "packages/gate/src/challenge-store.ts"
+      ],
+      "obligations": [
+        "DurableStorageRequired",
+        "AtomicRegistrationRequired",
+        "BodyBoundStorageRequired",
+        "PermanentConsumptionRequired"
+      ],
+      "steps": [
+        {
+          "operator": "RefuseIncapableProductionStore",
+          "accepted": false,
+          "projection": {
+            "challengeState": "unregistered",
+            "durable": false
+          }
+        }
+      ],
+      "mutation": {
+        "operator": "AcceptEphemeralProductionStore",
+        "defined_in_model": true,
+        "obligation": "DurableStorageRequired"
+      }
+    },
+    {
+      "id": "evidence-challenge-first-valid-action-swap-consumes",
+      "claim_id": "evidence-challenge-is-durably-registered-and-consumed",
+      "model": "formal/evidence-challenge-lifecycle.model.mjs",
+      "adapter": "evidence-challenge-lifecycle",
+      "scenario": "evidence-challenge-first-valid-action-swap-consumes",
+      "kind": "paired_negative_control",
+      "runtime_sources": [
+        "formal/evidence-challenge-lifecycle.model.mjs",
+        "lib/negotiate/evidence-challenge.ts",
+        "packages/gate/src/challenge-store.ts",
+        "packages/gate/src/store-postgres.ts"
+      ],
+      "obligations": [
+        "ExactActionDigestBound",
+        "FirstValidAttemptConsumes",
+        "InvalidAttemptIsInert",
+        "ConcurrentConsumptionIsOneTime",
+        "ConsumedStatePersistsAcrossRestart",
+        "ExpiryBound",
+        "NonceBound",
+        "PresentationMethodBound"
+      ],
+      "steps": [
+        {
+          "operator": "ConsumeFirstValidAttempt",
+          "accepted": false,
+          "projection": {
+            "challengeState": "consumed",
+            "presentation": "action_mismatch"
+          }
+        },
+        {
+          "operator": "RefuseConsumedChallengeReplay",
+          "accepted": false,
+          "projection": {
+            "challengeState": "consumed",
+            "replayRefused": true
+          }
+        }
+      ],
+      "mutation": {
+        "operator": "DoNotConsumeFirstValidAttempt",
+        "defined_in_model": true,
+        "obligation": "FirstValidAttemptConsumes"
       }
     }
   ]

@@ -55,7 +55,7 @@
     {
       "id": "reject_tampered_registered_challenge",
       "expect": { "valid": false },
-      "execution": { "runner": "vitest", "file": "tests/evidence-challenge-durable.test.ts", "title": "binds registration to the entire challenge body, not only id and nonce" }
+      "execution": { "runner": "vitest", "file": "tests/evidence-challenge-durable.test.ts", "title": "binds action, missing evidence, freshness/policy, expiry, nonce, and presentation method" }
     },
     {
       "id": "reject_challenge_policy_drift",

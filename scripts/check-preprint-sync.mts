@@ -226,7 +226,7 @@ function auditDraftClaims(failures: string[], text: string, label: string, draft
 
 function auditComposedTamarinBlock(failures: string[], text: string, label: string, evidence: any): void {
   const start: number = text.indexOf('executable_composed_reliance');
-  const endMarker: string = 'unchecked_registry_view_is_current';
+  const endMarker: string = 'unchecked_presenter_execution_key_is_canonical';
   const end: number = text.indexOf(endMarker, start);
 
   if (start < 0 || end < 0) {
@@ -289,6 +289,48 @@ function auditFormalAndExternalClaims(failures: string[], text: string, label: s
   }
 
   auditComposedTamarinBlock(failures, text, label, evidence);
+}
+
+function renderedHtmlText(html: string): string {
+  return html
+    .replace(/<style\b[\s\S]*?<\/style>/gi, ' ')
+    .replace(/<script\b[\s\S]*?<\/script>/gi, ' ')
+    .replace(/<[^>]+>/g, ' ')
+    .replace(/&quot;/g, '"')
+    .replace(/&#x27;|&#39;/g, "'")
+    .replace(/&amp;/g, '&')
+    .replace(/&lt;/g, '<')
+    .replace(/&gt;/g, '>');
+}
+
+function auditRenderedCopy(
+  failures: string[],
+  text: string,
+  label: string,
+  evidence: any,
+): void {
+  const normalized = normalizeExtractedText(text);
+  auditConformanceClaims(failures, normalized, label, evidence, false);
+  auditComposedTamarinBlock(failures, normalized, label, evidence);
+  requireMatch(
+    failures,
+    normalized,
+    /\bThe four Tamarin models\b/,
+    `${label} does not identify the current four-model Tamarin corpus`,
+  );
+  requireMatch(
+    failures,
+    normalized,
+    /\bfour Tamarin symbolic models\b/,
+    `${label} does not carry the current four-model artifact inventory`,
+  );
+  const receiptRevision = evidence.drafts['draft-schrock-ep-authorization-receipts'];
+  requireMatch(
+    failures,
+    normalized,
+    new RegExp(`draft-schrock-ep-authorization-receipts-${receiptRevision}`),
+    `${label} does not cite the current authorization-receipts draft revision`,
+  );
 }
 
 export function auditPreprintClaims({ tex, pdfText, staging, evidence }: {
@@ -404,15 +446,28 @@ export function checkRepository(root: string): { evidence: any; failures: string
   });
   const pdfPath = resolve(root, 'papers/preprint/main.pdf');
 
-  return {
+  const failures = auditPreprintClaims({
+    tex: readFileSync(resolve(root, 'papers/preprint/main.tex'), 'utf8'),
+    pdfText: extractPdfText(pdfPath),
+    staging: readFileSync(resolve(root, 'papers/preprint/STAGING.md'), 'utf8'),
     evidence,
-    failures: auditPreprintClaims({
-      tex: readFileSync(resolve(root, 'papers/preprint/main.tex'), 'utf8'),
-      pdfText: extractPdfText(pdfPath),
-      staging: readFileSync(resolve(root, 'papers/preprint/STAGING.md'), 'utf8'),
-      evidence,
-    }),
-  };
+  });
+  auditRenderedCopy(
+    failures,
+    renderedHtmlText(
+      readFileSync(resolve(root, 'papers/authorization-receipts-preprint.html'), 'utf8'),
+    ),
+    'authorization-receipts-preprint.html',
+    evidence,
+  );
+  auditRenderedCopy(
+    failures,
+    extractPdfText(resolve(root, 'papers/authorization-receipts-preprint.pdf')),
+    'authorization-receipts-preprint.pdf',
+    evidence,
+  );
+
+  return { evidence, failures };
 }
 
 const invokedPath: string = process.argv[1] ? resolve(process.argv[1]) : '';

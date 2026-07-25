@@ -2,11 +2,11 @@
 
 > EMILIA Gate is the commercial consequence firewall that prevents consequential machine actions on protected executor paths without verifiable authority. It consumes native delegation and machine-policy evidence as independently verified inputs, joins them to exact-action human authority, reserves bounded capabilities before provider entry, preserves executed or indeterminate outcomes, refuses blind replay, and treats any remedy as a new authorized action rather than rewritten history. EMILIA Protocol is the open verification and evidence substrate underneath it; EMILIA Approver captures device-bound exact-action human decisions; EMILIA Assurance Plane provides scoped verification, re-performance, conformance reports, and deployment evidence without acting as an auditor or accredited certifier.
 
-This is a generated discovery index following the llms.txt proposal. Evidence snapshot: 2026-07-24T15:46:29.554Z. For substantive analysis, load the full or machine-readable context below before drawing conclusions from individual repository files.
+This is a generated discovery index following the llms.txt proposal. Evidence snapshot: 2026-07-25T02:09:51.605Z. For substantive analysis, load the full or machine-readable context below before drawing conclusions from individual repository files.
 
 ## Engineering Evidence
 
-EMILIA is implemented security infrastructure, not architecture-only: 7,698 automated tests across 416 files; 33 executable security claims over 196 hashed evidence files; 10 verified obligations in one composed Tamarin model, with 2 deliberately weakened variants producing concrete attack traces; and 31 content-addressed selected traces across 4 bounded models and 9 claims, including 17 detected unsafe mutations.
+EMILIA is implemented security infrastructure, not architecture-only: 7,728 automated tests across 419 files; 33 executable security claims over 219 hashed evidence files; 20 verified obligations across 2 composed Tamarin models, with 8 deliberately weakened variants producing concrete attack traces; and 70 content-addressed selected model/runtime scenarios across 13 bounded models and 20 claims, including 45 paired formal-counterexample/runtime-refusal controls.
 
 Interoperability evidence: 21 conformance suites and 329 current vectors across three same-team ports; external Rust evidence covers a time-pinned 164-vector set plus 359 hostility cases. Strict clean-room construction acceptance remains false.
 
@@ -20,6 +20,7 @@ Interoperability evidence: 21 conformance suites and 329 current vectors across 
 
 ## Specifications
 
+- [draft-schrock-ae-challenge](https://datatracker.ietf.org/doc/draft-schrock-ae-challenge/): Machine-readable, action-bound request for missing authorization evidence; the challenge authorizes nothing; snapshot revision -00, check Datatracker for current status.
 - [draft-schrock-action-evidence-boundary](https://datatracker.ietf.org/doc/draft-schrock-action-evidence-boundary/): Boundary contract joining independently verified evidence to one material action; snapshot revision -00, check Datatracker for current status.
 - [draft-schrock-canonical-action-identifier](https://datatracker.ietf.org/doc/draft-schrock-canonical-action-identifier/): Typed material-action identity and profile-bounded cross-format matching; snapshot revision -01, check Datatracker for current status.
 - [draft-schrock-emilia-eye](https://datatracker.ietf.org/doc/draft-schrock-emilia-eye/): Scope-bound advisory that can tighten but never authorize; snapshot revision -00, check Datatracker for current status.

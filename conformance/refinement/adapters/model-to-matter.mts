@@ -222,7 +222,12 @@ async function clearanceOnceScenario(): Promise<RuntimeScenarioResult> {
     effectCalls !== 1
   ) {
     throw new Error(
-      "Model-to-Matter runtime did not enforce exact single-use clearance",
+      `Model-to-Matter runtime did not enforce exact single-use clearance: ${JSON.stringify({
+        first,
+        replay,
+        effectCalls,
+        actualCaid,
+      })}`,
     );
   }
 

@@ -1,8 +1,8 @@
 {
-  "generatedAt": "2026-07-24T15:46:29.554Z",
+  "generatedAt": "2026-07-25T02:09:51.605Z",
   "tests": {
-    "total": 7698,
-    "files": 416,
+    "total": 7728,
+    "files": 419,
     "policy": "all platform-applicable cases must pass; platform-specific cases may skip"
   },
   "tla": {
@@ -10,18 +10,77 @@
     "composedLifecycleInvariants": 13,
     "checker": "TLC 2.19"
   },
-  "formalRefinement": {
-    "method": "bounded_selected_trace_refinement",
-    "models": 4,
-    "claims": 9,
-    "traces": 31,
-    "soundTraces": 14,
-    "unsafeMutationsDetected": 17,
-    "requiredTransitions": 36,
-    "coveredTransitions": 36,
-    "transitionCompleteModels": 1,
-    "evidenceSha256": "6f853d3b555cf35db6016f4a437fbfcd4fc5a44cab4cc809095b4656f66e6db0",
-    "boundary": "selected traces; not a mechanized implementation refinement proof"
+  "formalScenarioConformance": {
+    "method": "bounded_selected_scenario_conformance",
+    "models": 13,
+    "claims": 20,
+    "scenarios": 70,
+    "soundScenarios": 25,
+    "pairedNegativeControls": 45,
+    "requiredModelActions": 28,
+    "coveredModelActions": 28,
+    "actionCompleteModels": 1,
+    "formalMutationOperators": 45,
+    "evidenceSha256": "c2f13e048084126e10b186c5210d0533c534e604625141651fe7f5bd63498611",
+    "boundary": "selected model/runtime scenarios under explicit projection relations; not a mechanized implementation refinement proof"
+  },
+  "formalEvidenceCoverage": {
+    "verifiedFormalObligations": {
+      "count": 2,
+      "claimIds": [
+        "class-a-downgrade-refused",
+        "quorum-separation-of-duties"
+      ]
+    },
+    "boundedRuntimeTraced": {
+      "count": 20,
+      "claimIds": [
+        "action-escrow-releases-one-exact-milestone-once",
+        "aec-execution-is-action-keyed-and-fleet-fail-closed",
+        "aec-role-substitution-refused",
+        "ambiguous-effect-is-never-auto-retried",
+        "authority-document-proof-join-is-pinned-and-non-resurrecting",
+        "authority-program-composition-is-root-bound-and-closed",
+        "conservation-of-authority-is-bounded-and-non-amplifying",
+        "durable-consumption-is-owner-fenced",
+        "evidence-challenge-is-durably-registered-and-consumed",
+        "grace-curtailment-is-authorized-measured-and-single-use",
+        "mobile-action-continuity-is-tenant-and-executor-bound",
+        "mobile-enrollment-requires-two-verified-rows",
+        "model-to-matter-clearance-is-exact-and-single-use",
+        "network-witness-equivocation-permanently-poisons-stream",
+        "outcome-binding-is-exact-and-fail-closed",
+        "receipt-program-is-caid-bound-budgeted-and-terminal",
+        "reliance-requires-pinned-profile",
+        "revocation-is-pinned-effective-and-terminal",
+        "scoped-authority-is-pinned",
+        "signed-denial-cannot-authorize"
+      ]
+    },
+    "boundedFormalEvidence": {
+      "count": 0,
+      "claimIds": []
+    },
+    "partialSymbolicCoverage": {
+      "count": 0,
+      "claimIds": []
+    },
+    "executableOperationalEvidence": {
+      "count": 11,
+      "claimIds": [
+        "class-a-signed-decision-parity",
+        "four-outcome-resolution-preserves-meaning",
+        "go-module-release-is-tag-and-proxy-bound",
+        "mobile-ceremony-exact-binding-and-consumption",
+        "mobile-regulatory-export-separates-proof-from-runtime-assertion",
+        "npm-pypi-releases-use-verifiable-bytes",
+        "platform-attestation-result-is-rp-pinned-and-action-bound",
+        "python-release-artifacts-are-byte-reproducible",
+        "rx-sidecar-minimizes-patient-data",
+        "timestamp-proof-requires-pinned-tsa",
+        "verify-package-is-byte-reproducible"
+      ]
+    }
   },
   "alloy": {
     "facts": 35,
@@ -29,17 +88,21 @@
     "version": "6.2.0 (CI)"
   },
   "tamarin": {
-    "model": "EP-RELIANCE-COMPOSED-v2",
-    "verifiedObligations": 10,
-    "deliberatelyUnsafeCounterexamples": 2,
+    "model": "EP-RELIANCE-COMPOSED-v2 + EP-SIX-CLAIM-COMPOSED-v1",
+    "models": 2,
+    "verifiedObligations": 20,
+    "allTraceObligations": 17,
+    "existsTraceWitnesses": 3,
+    "deliberatelyUnsafeCounterexamples": 8,
     "version": "1.10.0",
-    "modelSha256": "174c27c35b302a9dd096eb28b40ad7df84cf0c1633a93eff829c3de3fc8bbbd3"
+    "modelSha256": "174c27c35b302a9dd096eb28b40ad7df84cf0c1633a93eff829c3de3fc8bbbd3",
+    "focusedModelSha256": "d19fee48ab098a178d56d3141a0dd545998a0a136f6e3fc8cb3db1fcf6052302"
   },
   "securityCase": {
     "status": "passed",
     "claims": 33,
-    "evidenceFiles": 196,
-    "evidenceBundleSha256": "417acfd8c12b12f224194ae15b674f2bd490a52d69de80036e5ceed972f25862"
+    "evidenceFiles": 219,
+    "evidenceBundleSha256": "b3a96a853184397add2eb27b05a748553edb95c586dc9dd62f1c609083430eb3"
   },
   "conformance": {
     "suites": 21,

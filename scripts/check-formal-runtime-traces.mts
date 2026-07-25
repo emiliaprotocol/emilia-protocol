@@ -6,7 +6,7 @@ import { pathToFileURL } from "node:url";
 import {
   runFormalRuntimeRefinement,
   runRuntimeTraceConformance,
-  type RefinementEvidence,
+  type ScenarioConformanceEvidence,
 } from "../conformance/refinement/harness.mjs";
 
 export { runRuntimeTraceConformance };
@@ -17,7 +17,7 @@ export async function runFormalRuntimeTraceGate(
     emit?: boolean;
     check?: boolean;
   } = {},
-): Promise<RefinementEvidence> {
+): Promise<ScenarioConformanceEvidence> {
   return runFormalRuntimeRefinement(options);
 }
 
@@ -26,10 +26,10 @@ function readArg(name: string): string | null {
   return index >= 0 ? (process.argv[index + 1] ?? null) : null;
 }
 
-function print(evidence: RefinementEvidence): void {
+function print(evidence: ScenarioConformanceEvidence): void {
   console.log(
-    `FORMAL RUNTIME REFINEMENT: PASS — ${evidence.summary.traces} traces, ` +
-      `${evidence.summary.unsafe_mutations_detected} unsafe mutations detected, ` +
+    `SELECTED-SCENARIO CONFORMANCE: PASS — ${evidence.summary.scenarios} scenarios, ` +
+      `${evidence.summary.paired_negative_controls} paired negative controls, ` +
       `${evidence.summary.claims.length} claims`,
   );
 }
@@ -52,7 +52,7 @@ if (invokedAsScript) {
     }
   } catch (error) {
     console.error(
-      `FORMAL RUNTIME REFINEMENT: FAIL\n${(error as Error).message}`,
+      `SELECTED-SCENARIO CONFORMANCE: FAIL\n${(error as Error).message}`,
     );
     process.exitCode = 1;
   }

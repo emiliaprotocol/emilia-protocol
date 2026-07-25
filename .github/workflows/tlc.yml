@@ -18,9 +18,9 @@ on:
       - 'formal/CONSERVATION_OF_AUTHORITY.md'
       - 'formal/PROOF_STATUS.md'
       - 'formal/RUN_TLC.md'
-      - 'formal/runtime-traces.v1.json'
+      - 'formal/runtime-scenarios.v2.json'
       - 'formal/results/*.tlc.summary.txt'
-      - 'formal/results/formal-runtime-refinement.v1.json'
+      - 'formal/results/formal-runtime-scenario-conformance.v2.json'
       - 'conformance/refinement/**'
       - 'scripts/check-formal-runtime-traces.*'
       - 'scripts/build-standalone-runtimes.mjs'
@@ -42,9 +42,9 @@ on:
       - 'formal/CONSERVATION_OF_AUTHORITY.md'
       - 'formal/PROOF_STATUS.md'
       - 'formal/RUN_TLC.md'
-      - 'formal/runtime-traces.v1.json'
+      - 'formal/runtime-scenarios.v2.json'
       - 'formal/results/*.tlc.summary.txt'
-      - 'formal/results/formal-runtime-refinement.v1.json'
+      - 'formal/results/formal-runtime-scenario-conformance.v2.json'
       - 'conformance/refinement/**'
       - 'scripts/check-formal-runtime-traces.*'
       - 'scripts/build-standalone-runtimes.mjs'
@@ -353,10 +353,10 @@ jobs:
           grep -q "Model checking completed. No error has been found." \
             tlc-effect-profiles-output.txt
 
-      - name: Re-run content-addressed runtime refinement and unsafe mutations
+      - name: Re-run content-addressed selected-scenario conformance and negative controls
         env:
           TLA2TOOLS_JAR: ${{ github.workspace }}/tla2tools.jar
-        run: npm run sync:formal-traces && git diff --exit-code -- formal/results/formal-runtime-refinement.v1.json
+        run: npm run sync:formal-traces && git diff --exit-code -- formal/results/formal-runtime-scenario-conformance.v2.json
 
       - name: Upload TLC output
         if: always()

@@ -30,7 +30,7 @@ describe('public engineering evidence surface', () => {
     expect(page).toContain('Executable evidence');
     expect(page).toContain('Formal model scope');
     expect(page).toContain('Verified formal obligations');
-    expect(page).toContain('Bounded + runtime-traced');
+    expect(page).toContain('Bounded + selected runtime scenarios');
     expect(page).toContain('Bounded formal evidence');
     expect(page).toContain('Partial symbolic coverage');
     expect(page).toContain('Executable/operational evidence');
