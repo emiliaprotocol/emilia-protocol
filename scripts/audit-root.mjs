@@ -7,6 +7,17 @@
 import { execFileSync } from 'node:child_process';
 
 const REVIEW_DEADLINE = '2026-08-01';
+const scope = process.argv[2] ?? 'ROOT';
+const minimumSeverity = process.argv[3] ?? 'moderate';
+const severityRank = new Map([
+  ['low', 1],
+  ['moderate', 2],
+  ['high', 3],
+  ['critical', 4],
+]);
+if (!severityRank.has(minimumSeverity)) {
+  throw new Error(`Unsupported audit severity threshold: ${minimumSeverity}`);
+}
 const ALLOWED_ADVISORIES = new Set([
   'https://github.com/advisories/GHSA-mh99-v99m-4gvg', // eslint tooling -> brace-expansion
 ]);
@@ -28,7 +39,8 @@ const observed = new Set();
 for (const vulnerability of Object.values(report.vulnerabilities ?? {})) {
   for (const cause of vulnerability.via ?? []) {
     if (typeof cause !== 'object' || cause === null) continue;
-    if (!['moderate', 'high', 'critical'].includes(cause.severity)) continue;
+    const rank = severityRank.get(cause.severity) ?? 0;
+    if (rank < severityRank.get(minimumSeverity)) continue;
     if (typeof cause.url === 'string') observed.add(cause.url);
   }
 }
@@ -41,6 +53,6 @@ if (unexpected.length > 0 || missing.length > 0 || expired) {
 }
 
 console.log(
-  `ROOT AUDIT: PASS with ${observed.size} reviewed build-tool advisory; `
+  `${scope} AUDIT: PASS at ${minimumSeverity}+ with ${observed.size} reviewed build-tool advisory; `
   + `exception expires ${REVIEW_DEADLINE}`,
 );

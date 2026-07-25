@@ -166,7 +166,11 @@ jobs:
       - name: Install secure-app dependencies
         run: npm ci --ignore-scripts
       - name: Audit secure-app dependency tree
-        run: npm audit --omit=dev --audit-level=high
+        # Expo's build graph currently carries the same newly published
+        # brace-expansion advisory as the root toolchain. The shared policy
+        # allows only that exact advisory until the patched release clears the
+        # repository's seven-day package quarantine.
+        run: npm run audit:dependencies
       - name: Run secure-app protocol tests
         run: npm test
       - name: Validate Expo dependency compatibility
