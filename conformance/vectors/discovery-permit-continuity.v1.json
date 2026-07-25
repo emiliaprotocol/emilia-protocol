@@ -1,0 +1,111 @@
+{
+  "suite": "EP-DISCOVERY-PERMIT-CONTINUITY-v1",
+  "vectors_version": "1.0.0",
+  "profile": "Discovery is non-authorizing evidence. Only a current, exact, constructor-pinned source chain may be carried into later relying-party permit evaluation.",
+  "defaults": {
+    "origin": "https://authority.example",
+    "discovery_url": "https://authority.example/.well-known/emilia-discovery-permit.json",
+    "permit_url": "https://authority.example/permits/payment-release.json",
+    "discovery_schema_digest": "sha256:1111111111111111111111111111111111111111111111111111111111111111",
+    "permit_schema_digest": "sha256:2222222222222222222222222222222222222222222222222222222222222222",
+    "mapping_digest": "sha256:3333333333333333333333333333333333333333333333333333333333333333",
+    "max_age_seconds": 300,
+    "caid": "caid:1:payment.release.1:jcs-sha256:AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA",
+    "action_digest": "sha256:4444444444444444444444444444444444444444444444444444444444444444"
+  },
+  "vectors": [
+    {
+      "id": "current_exact_source_chain_is_usable_evidence",
+      "input": "both documents exactly agree with constructor pins, CAID, action digest, and mapping digest",
+      "expect": {
+        "disposition": "current",
+        "usable_for_permit": true,
+        "authorizes_action": false
+      }
+    },
+    {
+      "id": "stale_discovery_is_closed",
+      "input": "active source documents are older than the constructor-pinned max age",
+      "expect": {
+        "disposition": "stale",
+        "usable_for_permit": false,
+        "authorizes_action": false
+      }
+    },
+    {
+      "id": "unknown_discovery_is_closed",
+      "input": "both source documents carry status unknown",
+      "expect": {
+        "disposition": "unknown",
+        "usable_for_permit": false,
+        "authorizes_action": false
+      }
+    },
+    {
+      "id": "deprecated_discovery_is_closed",
+      "input": "both source documents carry status deprecated",
+      "expect": {
+        "disposition": "deprecated",
+        "usable_for_permit": false,
+        "authorizes_action": false
+      }
+    },
+    {
+      "id": "transaction_trust_pin_injection_is_refused",
+      "input": "a transaction supplies an origin, URL, schema digest, mapping digest, max age, or redirect map",
+      "expect": {
+        "valid": false,
+        "reason": "transaction_fields_not_allowed"
+      }
+    },
+    {
+      "id": "dns_rebinding_connected_address_is_refused",
+      "input": "the pinned transport reports a connected address outside the complete approved resolution set",
+      "expect": {
+        "valid": false,
+        "reason": "connected_address_not_approved"
+      }
+    },
+    {
+      "id": "unmapped_redirect_is_refused",
+      "input": "a response attempts a redirect absent from the constructor-pinned exact redirect map",
+      "expect": {
+        "valid": false,
+        "reason": "redirect_not_pinned"
+      }
+    },
+    {
+      "id": "source_or_schema_substitution_is_refused",
+      "input": "discovery and binding disagree on source URLs or a schema digest",
+      "expect": {
+        "valid": false,
+        "reason": "source_agreement_failed"
+      }
+    },
+    {
+      "id": "mapping_substitution_is_refused",
+      "input": "the permit binding mapping digest differs from the constructor pin",
+      "expect": {
+        "valid": false,
+        "reason": "mapping_digest_mismatch"
+      }
+    },
+    {
+      "id": "caid_or_action_substitution_is_refused",
+      "input": "the binding names another CAID or the executor-owned action canonicalizes to another digest",
+      "expect": {
+        "valid": false,
+        "reason": "action_digest_mismatch"
+      }
+    },
+    {
+      "id": "native_aeb_leg_is_evidence_only",
+      "input": "a current discovery result is adapted into AEB",
+      "expect": {
+        "native_verification": "VERIFIED",
+        "authorization": "EVIDENCE_ONLY",
+        "authorizes_action": false
+      }
+    }
+  ]
+}
