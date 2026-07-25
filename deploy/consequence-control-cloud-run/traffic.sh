@@ -247,6 +247,7 @@ verify_secret_versions() {
 verify_prior_stage_telemetry() {
   local decision_traffic=$1 actuator_traffic=$2
   "$LANE_DIR/verify-rollout-telemetry.py" \
+    --config "$CONFIG" \
     --input "$TELEMETRY" \
     --expect-traffic "$DECISION_SERVICE=$decision_traffic" \
     --expect-traffic "$ACTUATOR_SERVICE=$actuator_traffic" \
@@ -442,6 +443,9 @@ apply_prepared_update() {
 promotion_preflight() {
   [[ -n "$EVIDENCE" ]] || lane_die "promotion requires --evidence"
   [[ -n "$TELEMETRY" ]] || lane_die "promotion requires --telemetry"
+  require_var ROLLOUT_TELEMETRY_KEY_ID
+  require_var ROLLOUT_TELEMETRY_PUBLIC_KEY_FILE
+  require_var ROLLOUT_TELEMETRY_PUBLIC_KEY_SHA256
   verify_current_signed_config
   verify_secret_versions
   verify_effective_iam_live

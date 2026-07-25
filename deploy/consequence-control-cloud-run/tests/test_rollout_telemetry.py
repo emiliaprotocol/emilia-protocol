@@ -1,10 +1,12 @@
 from __future__ import annotations
 
+import hashlib
 import importlib.util
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 import json
 import math
 from pathlib import Path
+import stat
 import subprocess
 import sys
 import tempfile
@@ -62,6 +64,30 @@ def good_telemetry() -> dict:
             },
         },
     }
+
+
+def current_good_telemetry() -> dict:
+    ended_at = datetime.now(timezone.utc).replace(microsecond=0) - timedelta(seconds=1)
+    started_at = ended_at - timedelta(seconds=600)
+    observed_at = [
+        started_at,
+        started_at + timedelta(seconds=300),
+        ended_at,
+    ]
+    telemetry = good_telemetry()
+    telemetry["window"] = {
+        "started_at": started_at.isoformat().replace("+00:00", "Z"),
+        "ended_at": ended_at.isoformat().replace("+00:00", "Z"),
+    }
+    for service in telemetry["services"].values():
+        service["readiness_samples"] = [
+            {
+                "observed_at": value.isoformat().replace("+00:00", "Z"),
+                "ready": True,
+            }
+            for value in observed_at
+        ]
+    return telemetry
 
 
 def service_document(
@@ -581,6 +607,301 @@ class RolloutTelemetryTests(unittest.TestCase):
 
         self.assertNotEqual(result.returncode, 0)
         self.assertIn("duplicate JSON member", result.stderr)
+
+
+class RolloutTelemetrySignatureTests(unittest.TestCase):
+    def setUp(self) -> None:
+        self.module = load_module()
+        temporary = tempfile.TemporaryDirectory()
+        self.addCleanup(temporary.cleanup)
+        self.root = Path(temporary.name)
+        self.private_key, self.public_key = self._generate_key_pair("rollout")
+        self.config = self._write_config(
+            "rollout-test-key",
+            self.public_key,
+        )
+        self.unsigned = self.root / "unsigned.json"
+        self.signed = self.root / "signed.json"
+        self._write_json(self.unsigned, current_good_telemetry())
+
+    def _generate_key_pair(self, stem: str) -> tuple[Path, Path]:
+        private_key = self.root / f"{stem}-private.pem"
+        public_key = self.root / f"{stem}-public.pem"
+        subprocess.run(
+            [
+                "openssl",
+                "genpkey",
+                "-algorithm",
+                "Ed25519",
+                "-out",
+                str(private_key),
+            ],
+            check=True,
+            capture_output=True,
+            text=True,
+        )
+        private_key.chmod(0o600)
+        subprocess.run(
+            [
+                "openssl",
+                "pkey",
+                "-in",
+                str(private_key),
+                "-pubout",
+                "-out",
+                str(public_key),
+            ],
+            check=True,
+            capture_output=True,
+            text=True,
+        )
+        return private_key, public_key
+
+    def _write_config(
+        self,
+        key_id: str,
+        public_key: Path,
+        *,
+        expected_hash: str | None = None,
+        name: str = "rollout.env",
+    ) -> Path:
+        digest = expected_hash or hashlib.sha256(public_key.read_bytes()).hexdigest()
+        path = self.root / name
+        path.write_text(
+            "\n".join(
+                [
+                    f"ROLLOUT_TELEMETRY_KEY_ID={key_id}",
+                    f"ROLLOUT_TELEMETRY_PUBLIC_KEY_FILE={public_key}",
+                    f"ROLLOUT_TELEMETRY_PUBLIC_KEY_SHA256={digest}",
+                    "",
+                ]
+            ),
+            encoding="utf-8",
+        )
+        return path
+
+    @staticmethod
+    def _write_json(path: Path, value: object) -> None:
+        path.write_text(
+            json.dumps(
+                value,
+                ensure_ascii=False,
+                sort_keys=True,
+                separators=(",", ":"),
+            ),
+            encoding="utf-8",
+        )
+
+    def _sign(
+        self,
+        *,
+        config: Path | None = None,
+        source: Path | None = None,
+        output: Path | None = None,
+        private_key: Path | None = None,
+        force: bool = False,
+        cwd: Path | None = None,
+    ) -> subprocess.CompletedProcess[str]:
+        command = [
+            sys.executable,
+            str(SCRIPT),
+            "sign",
+            "--config",
+            str(config or self.config),
+            "--input",
+            str(source or self.unsigned),
+            "--output",
+            str(output or self.signed),
+            "--private-key-file",
+            str(private_key or self.private_key),
+        ]
+        if force:
+            command.append("--force")
+        return subprocess.run(
+            command,
+            cwd=cwd,
+            text=True,
+            capture_output=True,
+            check=False,
+        )
+
+    def _verify(
+        self,
+        path: Path,
+        *,
+        config: Path | None = None,
+        extra: list[str] | None = None,
+    ) -> subprocess.CompletedProcess[str]:
+        return subprocess.run(
+            [
+                sys.executable,
+                str(SCRIPT),
+                "--config",
+                str(config or self.config),
+                "--input",
+                str(path),
+                "--expect-traffic",
+                "decision=decision-r2:10,decision-r1:90",
+                "--expect-traffic",
+                "actuator=actuator-r2:10,actuator-r1:90",
+                *(extra or []),
+            ],
+            text=True,
+            capture_output=True,
+            check=False,
+        )
+
+    def test_cli_authenticates_before_accepting_metrics_and_rejects_unsigned(
+        self,
+    ) -> None:
+        signed = self._sign()
+        self.assertEqual(signed.returncode, 0, signed.stderr)
+        self.assertEqual(stat.S_IMODE(self.signed.stat().st_mode), 0o600)
+
+        verified = self._verify(self.signed)
+        self.assertEqual(verified.returncode, 0, verified.stderr)
+        self.assertEqual(json.loads(verified.stdout)["status"], "accepted")
+
+        unsigned = self._verify(self.unsigned)
+        self.assertNotEqual(unsigned.returncode, 0)
+        self.assertIn("signed telemetry", unsigned.stderr)
+
+    def test_traffic_promotion_passes_only_configured_telemetry_trust(self) -> None:
+        traffic = (LANE_DIR / "traffic.sh").read_text(encoding="utf-8")
+        self.assertIn('"$LANE_DIR/verify-rollout-telemetry.py"', traffic)
+        self.assertIn('--config "$CONFIG"', traffic)
+        for name in (
+            "ROLLOUT_TELEMETRY_KEY_ID",
+            "ROLLOUT_TELEMETRY_PUBLIC_KEY_FILE",
+            "ROLLOUT_TELEMETRY_PUBLIC_KEY_SHA256",
+        ):
+            self.assertIn(f"require_var {name}", traffic)
+
+    def test_rejects_post_signature_mutation_and_malformed_signature(self) -> None:
+        self.assertEqual(self._sign().returncode, 0)
+        signed = json.loads(self.signed.read_text(encoding="utf-8"))
+
+        mutated = json.loads(json.dumps(signed))
+        mutated["services"]["decision"]["errors"] = 1001
+        mutated_path = self.root / "mutated.json"
+        self._write_json(mutated_path, mutated)
+        result = self._verify(mutated_path)
+        self.assertNotEqual(result.returncode, 0)
+        self.assertIn("signature is invalid", result.stderr)
+
+        malformed_values = [
+            "*",
+            self.module.encode_base64url(b"x" * 63),
+        ]
+        for position, value in enumerate(malformed_values):
+            malformed = json.loads(json.dumps(signed))
+            malformed["signature"]["value"] = value
+            malformed_path = self.root / f"malformed-{position}.json"
+            self._write_json(malformed_path, malformed)
+            with self.subTest(value=value):
+                result = self._verify(malformed_path)
+                self.assertNotEqual(result.returncode, 0)
+                self.assertIn("signature.value", result.stderr)
+
+    def test_rejects_wrong_key_hash_key_id_and_caller_key_substitution(self) -> None:
+        self.assertEqual(self._sign().returncode, 0)
+
+        wrong_hash = self._write_config(
+            "rollout-test-key",
+            self.public_key,
+            expected_hash="0" * 64,
+            name="wrong-hash.env",
+        )
+        result = self._verify(self.signed, config=wrong_hash)
+        self.assertNotEqual(result.returncode, 0)
+        self.assertIn("SHA-256 differs", result.stderr)
+
+        _, attacker_public = self._generate_key_pair("attacker")
+        attacker_config = self._write_config(
+            "rollout-test-key",
+            attacker_public,
+            name="attacker.env",
+        )
+        result = self._verify(self.signed, config=attacker_config)
+        self.assertNotEqual(result.returncode, 0)
+        self.assertIn("signature is invalid", result.stderr)
+
+        changed_id = json.loads(self.signed.read_text(encoding="utf-8"))
+        changed_id["signature"]["key_id"] = "attacker-key"
+        changed_id_path = self.root / "changed-key-id.json"
+        self._write_json(changed_id_path, changed_id)
+        result = self._verify(changed_id_path)
+        self.assertNotEqual(result.returncode, 0)
+        self.assertIn("key_id", result.stderr)
+
+        result = self._verify(
+            self.signed,
+            extra=["--public-key-file", str(attacker_public)],
+        )
+        self.assertNotEqual(result.returncode, 0)
+        self.assertIn("unrecognized arguments", result.stderr)
+
+    def test_rejects_duplicate_members_before_signature_verification(self) -> None:
+        self.assertEqual(self._sign().returncode, 0)
+        raw = self.signed.read_text(encoding="utf-8")
+        duplicate = raw.replace(
+            '"schema":"emilia-rollout-telemetry.v1"',
+            '"schema":"attacker","schema":"emilia-rollout-telemetry.v1"',
+            1,
+        )
+        duplicate_path = self.root / "duplicate.json"
+        duplicate_path.write_text(duplicate, encoding="utf-8")
+
+        result = self._verify(duplicate_path)
+        self.assertNotEqual(result.returncode, 0)
+        self.assertIn("duplicate JSON member", result.stderr)
+
+    def test_signing_requires_closed_input_matching_private_key_and_safe_output(
+        self,
+    ) -> None:
+        extra = current_good_telemetry()
+        extra["caller_public_key"] = str(self.public_key)
+        extra_path = self.root / "extra.json"
+        self._write_json(extra_path, extra)
+        result = self._sign(source=extra_path)
+        self.assertNotEqual(result.returncode, 0)
+        self.assertIn("must contain exactly", result.stderr)
+
+        attacker_private, _ = self._generate_key_pair("signer-attacker")
+        result = self._sign(private_key=attacker_private)
+        self.assertNotEqual(result.returncode, 0)
+        self.assertIn("does not match configured trust", result.stderr)
+
+        self.private_key.chmod(0o644)
+        result = self._sign()
+        self.assertNotEqual(result.returncode, 0)
+        self.assertIn("0600", result.stderr)
+        self.private_key.chmod(0o600)
+
+        result = self._sign(
+            private_key=Path(self.private_key.name),
+            cwd=self.root,
+        )
+        self.assertNotEqual(result.returncode, 0)
+        self.assertIn("absolute", result.stderr)
+
+        first = self._sign()
+        self.assertEqual(first.returncode, 0, first.stderr)
+        original = self.signed.read_bytes()
+        refused = self._sign()
+        self.assertNotEqual(refused.returncode, 0)
+        self.assertIn("refusing to overwrite", refused.stderr)
+        self.assertEqual(self.signed.read_bytes(), original)
+        replaced = self._sign(force=True)
+        self.assertEqual(replaced.returncode, 0, replaced.stderr)
+        self.assertEqual(stat.S_IMODE(self.signed.stat().st_mode), 0o600)
+
+        signed_input = self._sign(
+            source=self.signed,
+            output=self.root / "resigned.json",
+        )
+        self.assertNotEqual(signed_input.returncode, 0)
+        self.assertIn("must contain exactly", signed_input.stderr)
 
 
 if __name__ == "__main__":

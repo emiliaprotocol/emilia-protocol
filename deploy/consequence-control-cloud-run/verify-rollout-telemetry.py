@@ -4,23 +4,36 @@
 from __future__ import annotations
 
 import argparse
+import base64
+import binascii
 from copy import deepcopy
 from dataclasses import dataclass
 from datetime import datetime
+import hashlib
+import hmac
 import json
 import math
+import os
 from pathlib import Path
 import re
+import stat
+import subprocess
 import sys
+import tempfile
 from typing import Any, Mapping, Sequence
 
 
 NAME_RE = re.compile(r"^[a-z][a-z0-9-]{0,62}$")
+KEY_ID_RE = re.compile(r"^[A-Za-z0-9:_.@-]{3,256}$")
+SHA256_RE = re.compile(r"^[0-9a-f]{64}$")
 INTEGER_RE = re.compile(r"^(0|[1-9][0-9]*)$")
 UTC_TIMESTAMP_RE = re.compile(
     r"^[0-9]{4}-[0-9]{2}-[0-9]{2}T"
     r"[0-9]{2}:[0-9]{2}:[0-9]{2}(?:\.[0-9]+)?Z$"
 )
+UNSIGNED_TELEMETRY_KEYS = {"schema", "window", "services"}
+SIGNED_TELEMETRY_KEYS = {*UNSIGNED_TELEMETRY_KEYS, "signature"}
+SIGNATURE_KEYS = {"algorithm", "key_id", "value"}
 
 
 class TelemetryError(ValueError):
@@ -60,6 +73,14 @@ class Transition:
     post_traffic: dict[str, int]
 
 
+@dataclass(frozen=True)
+class TelemetryTrust:
+    key_id: str
+    public_key_file: Path
+    public_key_sha256: str
+    public_key: bytes
+
+
 def reject_duplicate_members(pairs: list[tuple[str, Any]]) -> dict[str, Any]:
     result: dict[str, Any] = {}
     for key, value in pairs:
@@ -67,6 +88,342 @@ def reject_duplicate_members(pairs: list[tuple[str, Any]]) -> dict[str, Any]:
             raise TelemetryError(f"duplicate JSON member: {key}")
         result[key] = value
     return result
+
+
+def reject_json_constant(value: str) -> Any:
+    raise TelemetryError(f"non-finite JSON number is forbidden: {value}")
+
+
+def exact_keys(value: Any, expected: set[str], name: str) -> dict[str, Any]:
+    if not isinstance(value, dict) or set(value) != expected:
+        raise TelemetryError(f"{name} must contain exactly {sorted(expected)}")
+    return value
+
+
+def load_config(path: Path) -> dict[str, str]:
+    result: dict[str, str] = {}
+    try:
+        lines = path.read_text(encoding="utf-8").splitlines()
+    except OSError as error:
+        raise TelemetryError(f"unable to load config {path}: {error}") from error
+    for number, raw in enumerate(lines, 1):
+        if not raw or raw.startswith("#"):
+            continue
+        if "=" not in raw:
+            raise TelemetryError(f"invalid config line {number}")
+        key, value = raw.split("=", 1)
+        if re.fullmatch(r"[A-Z][A-Z0-9_]*", key) is None:
+            raise TelemetryError(f"invalid config key on line {number}")
+        if key in result:
+            raise TelemetryError(f"duplicate config key on line {number}")
+        result[key] = value
+    return result
+
+
+def load_telemetry_trust(config: Mapping[str, str]) -> TelemetryTrust:
+    key_id = config.get("ROLLOUT_TELEMETRY_KEY_ID", "")
+    if KEY_ID_RE.fullmatch(key_id) is None:
+        raise TelemetryError("ROLLOUT_TELEMETRY_KEY_ID is required and invalid")
+    public_key_file = Path(config.get("ROLLOUT_TELEMETRY_PUBLIC_KEY_FILE", ""))
+    if not public_key_file.is_absolute() or not public_key_file.is_file():
+        raise TelemetryError(
+            "configured rollout telemetry public-key file is unavailable"
+        )
+    expected_hash = config.get("ROLLOUT_TELEMETRY_PUBLIC_KEY_SHA256", "")
+    if SHA256_RE.fullmatch(expected_hash) is None:
+        raise TelemetryError("ROLLOUT_TELEMETRY_PUBLIC_KEY_SHA256 is invalid")
+    try:
+        public_key = public_key_file.read_bytes()
+    except OSError as error:
+        raise TelemetryError(
+            "configured rollout telemetry public-key file is unavailable"
+        ) from error
+    actual_hash = hashlib.sha256(public_key).hexdigest()
+    if not hmac.compare_digest(actual_hash, expected_hash):
+        raise TelemetryError("configured rollout telemetry public-key SHA-256 differs")
+    return TelemetryTrust(
+        key_id=key_id,
+        public_key_file=public_key_file,
+        public_key_sha256=expected_hash,
+        public_key=public_key,
+    )
+
+
+def canonical_unsigned_telemetry(root: Mapping[str, Any]) -> bytes:
+    unsigned = {key: value for key, value in root.items() if key != "signature"}
+    try:
+        return json.dumps(
+            unsigned,
+            ensure_ascii=False,
+            sort_keys=True,
+            separators=(",", ":"),
+            allow_nan=False,
+        ).encode("utf-8")
+    except (TypeError, ValueError) as error:
+        raise TelemetryError("telemetry cannot be canonically encoded") from error
+
+
+def encode_base64url(value: bytes) -> str:
+    return base64.urlsafe_b64encode(value).decode("ascii").rstrip("=")
+
+
+def decode_base64url(value: Any, name: str) -> bytes:
+    if not isinstance(value, str) or re.fullmatch(r"[A-Za-z0-9_-]+", value) is None:
+        raise TelemetryError(f"{name} must be canonical unpadded base64url")
+    try:
+        decoded = base64.urlsafe_b64decode(value + "=" * (-len(value) % 4))
+    except (ValueError, binascii.Error) as error:
+        raise TelemetryError(
+            f"{name} must be canonical unpadded base64url"
+        ) from error
+    if encode_base64url(decoded) != value:
+        raise TelemetryError(f"{name} must be canonical unpadded base64url")
+    return decoded
+
+
+def validate_unsigned_telemetry(root: Any) -> dict[str, Any]:
+    telemetry = exact_keys(root, UNSIGNED_TELEMETRY_KEYS, "telemetry")
+    if telemetry["schema"] != "emilia-rollout-telemetry.v1":
+        raise TelemetryError("unsupported telemetry schema")
+    if not isinstance(telemetry["window"], dict):
+        raise TelemetryError("window must be an object")
+    if not isinstance(telemetry["services"], dict):
+        raise TelemetryError("services must be an object")
+    return telemetry
+
+
+def validate_signed_telemetry(
+    root: Any,
+    trust: TelemetryTrust,
+) -> tuple[dict[str, Any], bytes]:
+    telemetry = exact_keys(root, SIGNED_TELEMETRY_KEYS, "signed telemetry")
+    if telemetry["schema"] != "emilia-rollout-telemetry.v1":
+        raise TelemetryError("unsupported telemetry schema")
+    signature = exact_keys(telemetry["signature"], SIGNATURE_KEYS, "signature")
+    if signature["algorithm"] != "Ed25519":
+        raise TelemetryError("signature.algorithm must equal 'Ed25519'")
+    if signature["key_id"] != trust.key_id:
+        raise TelemetryError("signature.key_id does not match configured trust")
+    signature_bytes = decode_base64url(signature["value"], "signature.value")
+    if len(signature_bytes) != 64:
+        raise TelemetryError("signature.value must be a 64-byte Ed25519 signature")
+    unsigned = {
+        key: value for key, value in telemetry.items() if key != "signature"
+    }
+    validate_unsigned_telemetry(unsigned)
+    return unsigned, signature_bytes
+
+
+def _run_openssl(command: list[str], failure: str) -> None:
+    try:
+        result = subprocess.run(
+            command,
+            check=False,
+            stdin=subprocess.DEVNULL,
+            capture_output=True,
+            text=True,
+        )
+    except OSError as error:
+        raise TelemetryError(f"{failure}: openssl is unavailable") from error
+    if result.returncode != 0:
+        raise TelemetryError(failure)
+
+
+def verify_telemetry_signature(
+    root: Any,
+    trust: TelemetryTrust,
+) -> dict[str, Any]:
+    unsigned, signature_bytes = validate_signed_telemetry(root, trust)
+    with tempfile.TemporaryDirectory(prefix="emilia-rollout-verify-") as directory:
+        payload_path = Path(directory) / "payload.json"
+        signature_path = Path(directory) / "signature.bin"
+        public_key_path = Path(directory) / "public.pem"
+        payload_path.write_bytes(canonical_unsigned_telemetry(unsigned))
+        signature_path.write_bytes(signature_bytes)
+        public_key_path.write_bytes(trust.public_key)
+        _run_openssl(
+            [
+                "openssl",
+                "pkeyutl",
+                "-verify",
+                "-pubin",
+                "-inkey",
+                str(public_key_path),
+                "-rawin",
+                "-in",
+                str(payload_path),
+                "-sigfile",
+                str(signature_path),
+            ],
+            "rollout telemetry signature is invalid",
+        )
+    return unsigned
+
+
+def _validate_private_key_file(private_key: Path) -> None:
+    if not private_key.is_absolute():
+        raise TelemetryError("private key path must be absolute")
+    try:
+        metadata = private_key.lstat()
+    except OSError as error:
+        raise TelemetryError("private key file is unavailable") from error
+    if not stat.S_ISREG(metadata.st_mode):
+        raise TelemetryError("private key path must name a regular non-symlink file")
+    if metadata.st_uid != os.getuid():
+        raise TelemetryError("private key file must be owned by the current user")
+    if stat.S_IMODE(metadata.st_mode) != 0o600:
+        raise TelemetryError("private key file mode must be exactly 0600")
+
+
+def sign_telemetry(
+    root: Any,
+    *,
+    config: Mapping[str, str],
+    private_key: Path,
+) -> dict[str, Any]:
+    unsigned = validate_unsigned_telemetry(root)
+    trust = load_telemetry_trust(config)
+    _validate_private_key_file(private_key)
+    with tempfile.TemporaryDirectory(prefix="emilia-rollout-sign-") as directory:
+        work = Path(directory)
+        payload_path = work / "payload.json"
+        signature_path = work / "signature.bin"
+        configured_public_path = work / "configured-public.pem"
+        configured_der_path = work / "configured-public.der"
+        derived_der_path = work / "derived-public.der"
+        payload_path.write_bytes(canonical_unsigned_telemetry(unsigned))
+        configured_public_path.write_bytes(trust.public_key)
+        _run_openssl(
+            [
+                "openssl",
+                "pkey",
+                "-pubin",
+                "-in",
+                str(configured_public_path),
+                "-outform",
+                "DER",
+                "-out",
+                str(configured_der_path),
+            ],
+            "configured rollout telemetry public key is invalid",
+        )
+        _run_openssl(
+            [
+                "openssl",
+                "pkey",
+                "-in",
+                str(private_key),
+                "-pubout",
+                "-outform",
+                "DER",
+                "-out",
+                str(derived_der_path),
+            ],
+            "rollout telemetry private key is invalid",
+        )
+        if not hmac.compare_digest(
+            derived_der_path.read_bytes(),
+            configured_der_path.read_bytes(),
+        ):
+            raise TelemetryError(
+                "rollout telemetry private key does not match configured trust"
+            )
+        _run_openssl(
+            [
+                "openssl",
+                "pkeyutl",
+                "-sign",
+                "-inkey",
+                str(private_key),
+                "-rawin",
+                "-in",
+                str(payload_path),
+                "-out",
+                str(signature_path),
+            ],
+            "rollout telemetry signing failed",
+        )
+        signature_bytes = signature_path.read_bytes()
+    if len(signature_bytes) != 64:
+        raise TelemetryError("rollout telemetry signer did not produce Ed25519")
+    signed = {
+        **unsigned,
+        "signature": {
+            "algorithm": "Ed25519",
+            "key_id": trust.key_id,
+            "value": encode_base64url(signature_bytes),
+        },
+    }
+    verify_telemetry_signature(signed, trust)
+    return signed
+
+
+def write_atomic_private_json(
+    output: Path,
+    value: Mapping[str, Any],
+    *,
+    force: bool,
+) -> None:
+    try:
+        encoded = (
+            json.dumps(
+                value,
+                ensure_ascii=False,
+                sort_keys=True,
+                separators=(",", ":"),
+                allow_nan=False,
+            )
+            + "\n"
+        ).encode("utf-8")
+    except (TypeError, ValueError) as error:
+        raise TelemetryError("signed telemetry cannot be encoded") from error
+    parent = output.parent
+    if not parent.is_dir():
+        raise TelemetryError(f"output directory is unavailable: {parent}")
+    descriptor = -1
+    temporary_name = ""
+    try:
+        descriptor, temporary_name = tempfile.mkstemp(
+            dir=str(parent),
+            prefix=f".{output.name}.",
+        )
+        os.fchmod(descriptor, 0o600)
+        with os.fdopen(descriptor, "wb") as handle:
+            descriptor = -1
+            handle.write(encoded)
+            handle.flush()
+            os.fsync(handle.fileno())
+        if force:
+            os.replace(temporary_name, output)
+            temporary_name = ""
+        else:
+            try:
+                os.link(temporary_name, output)
+            except FileExistsError as error:
+                raise TelemetryError(
+                    f"refusing to overwrite existing output without --force: {output}"
+                ) from error
+            os.unlink(temporary_name)
+            temporary_name = ""
+        directory_descriptor = os.open(parent, os.O_RDONLY)
+        try:
+            os.fsync(directory_descriptor)
+        finally:
+            os.close(directory_descriptor)
+    except TelemetryError:
+        raise
+    except OSError as error:
+        raise TelemetryError(
+            f"unable to write signed telemetry {output}: {error}"
+        ) from error
+    finally:
+        if descriptor >= 0:
+            os.close(descriptor)
+        if temporary_name:
+            try:
+                os.unlink(temporary_name)
+            except FileNotFoundError:
+                pass
 
 
 def _validate_thresholds(thresholds: Thresholds) -> None:
@@ -266,10 +623,7 @@ def evaluate_telemetry(
             total += percent
         if total != 100:
             raise TelemetryError(f"expected traffic for {service} must total 100")
-    if not isinstance(telemetry, dict):
-        raise TelemetryError("telemetry must be an object")
-    if telemetry.get("schema") != "emilia-rollout-telemetry.v1":
-        raise TelemetryError("unsupported telemetry schema")
+    telemetry = validate_unsigned_telemetry(telemetry)
 
     window = telemetry.get("window")
     if not isinstance(window, dict):
@@ -761,8 +1115,12 @@ def build_service_update(
 
 def _parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
-        description="Verify exact rollout traffic and structured dwell telemetry."
+        description=(
+            "Authenticate and verify exact rollout traffic and structured dwell "
+            "telemetry."
+        )
     )
+    parser.add_argument("--config", type=Path, required=True)
     parser.add_argument("--input", type=Path, required=True)
     parser.add_argument("--expect-traffic", action="append", required=True)
     parser.add_argument("--max-error-rate", type=float, default=0.01)
@@ -777,13 +1135,26 @@ def _parser() -> argparse.ArgumentParser:
     return parser
 
 
+def _sign_parser() -> argparse.ArgumentParser:
+    parser = argparse.ArgumentParser(
+        description="Sign closed rollout telemetry with configured Ed25519 trust."
+    )
+    parser.add_argument("--config", type=Path, required=True)
+    parser.add_argument("--input", type=Path, required=True)
+    parser.add_argument("--output", type=Path, required=True)
+    parser.add_argument("--private-key-file", type=Path, required=True)
+    parser.add_argument("--force", action="store_true")
+    return parser
+
+
 def _load_json(path: Path, name: str) -> Any:
     try:
         return json.loads(
             path.read_text(encoding="utf-8"),
             object_pairs_hook=reject_duplicate_members,
+            parse_constant=reject_json_constant,
         )
-    except (OSError, json.JSONDecodeError) as error:
+    except (OSError, json.JSONDecodeError, UnicodeError) as error:
         raise TelemetryError(f"unable to load {name} {path}: {error}") from error
 
 
@@ -850,12 +1221,30 @@ def _prepare_update_main(argv: Sequence[str]) -> int:
     return 0
 
 
+def _sign_main(argv: Sequence[str]) -> int:
+    args = _sign_parser().parse_args(argv)
+    try:
+        signed = sign_telemetry(
+            _load_json(args.input, "unsigned telemetry"),
+            config=load_config(args.config),
+            private_key=args.private_key_file,
+        )
+        write_atomic_private_json(args.output, signed, force=args.force)
+    except TelemetryError as error:
+        print(f"error: {error}", file=sys.stderr)
+        return 1
+    print(f"signed rollout telemetry written to {args.output}")
+    return 0
+
+
 def main(argv: Sequence[str] | None = None) -> int:
     arguments = list(argv if argv is not None else sys.argv[1:])
     if arguments and arguments[0] == "verify-service":
         return _service_state_main(arguments[1:])
     if arguments and arguments[0] == "prepare-update":
         return _prepare_update_main(arguments[1:])
+    if arguments and arguments[0] == "sign":
+        return _sign_main(arguments[1:])
     args = _parser().parse_args(arguments)
     try:
         expectations: dict[str, dict[str, int]] = {}
@@ -864,15 +1253,10 @@ def main(argv: Sequence[str] | None = None) -> int:
             if service in expectations:
                 raise TelemetryError(f"duplicate service expectation: {service}")
             expectations[service] = targets
-        try:
-            telemetry = json.loads(
-                args.input.read_text(encoding="utf-8"),
-                object_pairs_hook=reject_duplicate_members,
-            )
-        except (OSError, json.JSONDecodeError) as error:
-            raise TelemetryError(
-                f"unable to load telemetry {args.input}: {error}"
-            ) from error
+        telemetry = verify_telemetry_signature(
+            _load_json(args.input, "signed telemetry"),
+            load_telemetry_trust(load_config(args.config)),
+        )
         result = evaluate_telemetry(
             telemetry,
             expectations,
