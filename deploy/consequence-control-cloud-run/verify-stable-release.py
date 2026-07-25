@@ -7,7 +7,9 @@ import argparse
 import base64
 import datetime as dt
 import hashlib
+import hmac
 import json
+import os
 import re
 import subprocess
 import sys
@@ -40,9 +42,9 @@ def reject_duplicate_members(pairs: list[tuple[str, object]]) -> dict:
     return result
 
 
-def load_config(path: Path) -> dict[str, str]:
+def parse_config(text: str) -> dict[str, str]:
     result: dict[str, str] = {}
-    for number, raw in enumerate(path.read_text(encoding="utf-8").splitlines(), 1):
+    for number, raw in enumerate(text.splitlines(), 1):
         if not raw or raw.startswith("#"):
             continue
         if "=" not in raw:
@@ -50,10 +52,34 @@ def load_config(path: Path) -> dict[str, str]:
         key, value = raw.split("=", 1)
         if not re.fullmatch(r"[A-Z][A-Z0-9_]*", key):
             raise ValueError(f"invalid config key on line {number}")
+        if key in {"DEPLOYMENT_CONFIG_SHA256", "REQUIRE_DEPLOYMENT_CONFIG_PIN"}:
+            raise ValueError(
+                f"protected config controls are forbidden in config: {key}"
+            )
         if key in result:
             raise ValueError(f"duplicate config key on line {number}")
         result[key] = value
     return result
+
+
+def load_config(path: Path) -> dict[str, str]:
+    return parse_config(path.read_text(encoding="utf-8"))
+
+
+def load_pinned_config(path: Path) -> dict[str, str]:
+    expected = os.environ.get("DEPLOYMENT_CONFIG_SHA256", "")
+    if SHA256.fullmatch(expected) is None:
+        raise ValueError(
+            "DEPLOYMENT_CONFIG_SHA256 must be injected by a protected source"
+        )
+    raw = path.read_bytes()
+    actual = hashlib.sha256(raw).hexdigest()
+    if not hmac.compare_digest(actual, expected):
+        raise ValueError("deployment config differs from protected SHA-256")
+    try:
+        return parse_config(raw.decode("utf-8"))
+    except UnicodeDecodeError as error:
+        raise ValueError("deployment config is not UTF-8") from error
 
 
 def exact_keys(value: object, expected: set[str], name: str) -> dict:
@@ -456,9 +482,11 @@ def extract_revision_configuration(
     service: str,
     revision: str,
     require_serving: bool = True,
+    service_value: dict | None = None,
 ) -> dict:
     revision_value = describe_revision(config, revision)
-    service_value = describe_service(config, service)
+    if service_value is None:
+        service_value = describe_service(config, service)
     metadata = revision_value.get("metadata")
     spec = revision_value.get("spec")
     if not isinstance(metadata, dict) or not isinstance(spec, dict):
@@ -1015,7 +1043,12 @@ def verify_signature(root: dict, public_key: bytes) -> None:
         raise ValueError("stable-release signature is invalid")
 
 
-def verify_live(config: dict[str, str], root: dict) -> None:
+def verify_live(
+    config: dict[str, str],
+    root: dict,
+    *,
+    service_snapshots: dict[str, dict] | None = None,
+) -> None:
     for plane in ("actuator", "decision"):
         expected = root["services"][plane]
         actual = extract_revision_configuration(
@@ -1023,6 +1056,11 @@ def verify_live(config: dict[str, str], root: dict) -> None:
             service=expected["service"],
             revision=expected["revision"],
             require_serving=False,
+            service_value=(
+                service_snapshots[plane]
+                if service_snapshots is not None
+                else None
+            ),
         )
         actual_without_rollout = {
             key: value for key, value in actual.items() if key != "rollout"
@@ -1307,7 +1345,7 @@ def stable_lineage(args: argparse.Namespace, config: dict[str, str]) -> dict:
 
 
 def record(args: argparse.Namespace) -> None:
-    config = load_config(args.config)
+    config = load_pinned_config(args.config)
     if args.output.exists():
         raise ValueError("stable-release output already exists")
     lineage = stable_lineage(args, config)
@@ -1357,7 +1395,7 @@ def record(args: argparse.Namespace) -> None:
 
 
 def verify(args: argparse.Namespace) -> dict:
-    config = load_config(args.config)
+    config = load_pinned_config(args.config)
     public_key, expected_trust = trusted_public_key(config, args.public_key)
     manifest = json.loads(
         args.manifest.read_text(encoding="utf-8"),
@@ -1366,12 +1404,24 @@ def verify(args: argparse.Namespace) -> dict:
     root = validate_manifest(config, manifest, expected_trust)
     verify_signature(root, public_key)
     if args.live:
-        verify_live(config, root)
+        snapshots = None
+        if args.actuator_service_snapshot is not None:
+            snapshots = {
+                "actuator": json.loads(
+                    args.actuator_service_snapshot.read_text(encoding="utf-8"),
+                    object_pairs_hook=reject_duplicate_members,
+                ),
+                "decision": json.loads(
+                    args.decision_service_snapshot.read_text(encoding="utf-8"),
+                    object_pairs_hook=reject_duplicate_members,
+                ),
+            }
+        verify_live(config, root, service_snapshots=snapshots)
     return root
 
 
 def verify_bootstrap(args: argparse.Namespace) -> None:
-    config = load_config(args.config)
+    config = load_pinned_config(args.config)
     configured_bootstrap_provenance(config, args.image, args.provenance)
 
 
@@ -1397,6 +1447,9 @@ def main() -> int:
     verify_parser.add_argument("--public-key", type=Path)
     verify_parser.add_argument("--live", action="store_true")
     verify_parser.add_argument("--print-revisions", action="store_true")
+    verify_parser.add_argument("--print-rollout-bindings", action="store_true")
+    verify_parser.add_argument("--actuator-service-snapshot", type=Path)
+    verify_parser.add_argument("--decision-service-snapshot", type=Path)
 
     bootstrap_parser = subparsers.add_parser("verify-bootstrap")
     bootstrap_parser.add_argument("--config", required=True, type=Path)
@@ -1405,12 +1458,32 @@ def main() -> int:
 
     args = parser.parse_args()
     try:
+        if args.command == "verify":
+            if bool(args.actuator_service_snapshot) != bool(
+                args.decision_service_snapshot
+            ):
+                raise ValueError("both service snapshots must be supplied together")
+            if (
+                args.actuator_service_snapshot is not None
+                and not args.live
+            ):
+                raise ValueError("service snapshots require --live")
+            if args.print_revisions and args.print_rollout_bindings:
+                raise ValueError("select at most one stable-release print mode")
         if args.command == "record":
             record(args)
             print(f"signed stable-release manifest written to {args.output}")
         elif args.command == "verify":
             root = verify(args)
-            if args.print_revisions:
+            if args.print_rollout_bindings:
+                print(
+                    root["services"]["actuator"]["revision"],
+                    root["services"]["actuator"]["image"],
+                    root["services"]["decision"]["revision"],
+                    root["services"]["decision"]["image"],
+                    sep="\t",
+                )
+            elif args.print_revisions:
                 print(
                     root["services"]["actuator"]["revision"],
                     root["services"]["decision"]["revision"],

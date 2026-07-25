@@ -6,7 +6,10 @@ from __future__ import annotations
 import argparse
 import base64
 import datetime as dt
+import hashlib
+import hmac
 import json
+import os
 import re
 import subprocess
 import sys
@@ -20,6 +23,7 @@ DIGEST_IMAGE = re.compile(
 DIGEST = re.compile(r"^sha256:[0-9a-f]{64}$")
 IDENTIFIER = re.compile(r"^[A-Za-z0-9:_.@-]{3,256}$")
 NONCE = re.compile(r"^[A-Za-z0-9_-]{22,128}$")
+SHA256 = re.compile(r"^[0-9a-f]{64}$")
 VERSION = "EP-CONSEQUENCE-CANARY-EVIDENCE-v1"
 MAX_CLOCK_SKEW_SECONDS = 30
 CANARY_TAG_PREFIX = "canary-"
@@ -106,9 +110,9 @@ def reject_duplicate_members(pairs: list[tuple[str, object]]) -> dict:
     return result
 
 
-def load_config(path: Path) -> dict[str, str]:
+def parse_config(value: str) -> dict[str, str]:
     result: dict[str, str] = {}
-    for number, raw in enumerate(path.read_text(encoding="utf-8").splitlines(), 1):
+    for number, raw in enumerate(value.splitlines(), 1):
         if not raw or raw.startswith("#"):
             continue
         if "=" not in raw:
@@ -116,10 +120,34 @@ def load_config(path: Path) -> dict[str, str]:
         key, value = raw.split("=", 1)
         if not re.fullmatch(r"[A-Z][A-Z0-9_]*", key):
             raise ValueError(f"invalid config key on line {number}")
+        if key in {"DEPLOYMENT_CONFIG_SHA256", "REQUIRE_DEPLOYMENT_CONFIG_PIN"}:
+            raise ValueError(
+                f"protected config controls are forbidden in config: {key}"
+            )
         if key in result:
             raise ValueError(f"duplicate config key on line {number}")
         result[key] = value
     return result
+
+
+def load_config(path: Path) -> dict[str, str]:
+    return parse_config(path.read_text(encoding="utf-8"))
+
+
+def load_pinned_config(path: Path) -> dict[str, str]:
+    expected = os.environ.get("DEPLOYMENT_CONFIG_SHA256", "")
+    if SHA256.fullmatch(expected) is None:
+        raise ValueError(
+            "DEPLOYMENT_CONFIG_SHA256 must be injected by a protected source"
+        )
+    raw = path.read_bytes()
+    actual = hashlib.sha256(raw).hexdigest()
+    if not hmac.compare_digest(actual, expected):
+        raise ValueError("deployment config differs from protected SHA-256")
+    try:
+        return parse_config(raw.decode("utf-8"))
+    except UnicodeDecodeError as error:
+        raise ValueError("deployment config is not UTF-8") from error
 
 
 def exact_keys(value: object, expected: set[str], name: str) -> dict:
@@ -179,14 +207,23 @@ def verify_signature(config: dict[str, str], root: dict) -> None:
     signature_bytes = decode_base64url(signature["value"], "signature.value")
     if len(signature_bytes) != 64:
         raise ValueError("signature.value must be a 64-byte Ed25519 signature")
-    public_key = Path(config["CANARY_EVIDENCE_PUBLIC_KEY_FILE"])
-    if not public_key.is_absolute() or not public_key.is_file():
+    public_key_path = Path(config["CANARY_EVIDENCE_PUBLIC_KEY_FILE"])
+    if not public_key_path.is_absolute() or not public_key_path.is_file():
         raise ValueError("pinned canary public key file is unavailable")
+    expected_hash = config.get("CANARY_EVIDENCE_PUBLIC_KEY_SHA256", "")
+    if SHA256.fullmatch(expected_hash) is None:
+        raise ValueError("CANARY_EVIDENCE_PUBLIC_KEY_SHA256 is invalid")
+    public_key = public_key_path.read_bytes()
+    actual_hash = hashlib.sha256(public_key).hexdigest()
+    if not hmac.compare_digest(actual_hash, expected_hash):
+        raise ValueError("pinned canary public key SHA-256 differs")
     with tempfile.TemporaryDirectory(prefix="emilia-canary-verify-") as directory:
         payload_path = Path(directory) / "payload.json"
         signature_path = Path(directory) / "signature.bin"
+        public_key_path = Path(directory) / "public.pem"
         payload_path.write_bytes(canonical_unsigned_evidence(root))
         signature_path.write_bytes(signature_bytes)
+        public_key_path.write_bytes(public_key)
         result = subprocess.run(
             [
                 "openssl",
@@ -194,7 +231,7 @@ def verify_signature(config: dict[str, str], root: dict) -> None:
                 "-verify",
                 "-pubin",
                 "-inkey",
-                str(public_key),
+                str(public_key_path),
                 "-rawin",
                 "-in",
                 str(payload_path),
@@ -1191,18 +1228,32 @@ def expected_revision_projection(
     }
 
 
-def validate_live(config: dict[str, str], evidence: dict) -> None:
+def validate_live(
+    config: dict[str, str],
+    evidence: dict,
+    *,
+    actuator_service_snapshot: dict | None = None,
+    decision_service_snapshot: dict | None = None,
+) -> None:
     actuator_revision = evidence["actuator_revision"]
     decision_revision = evidence["decision_revision"]
     tag = f"{CANARY_TAG_PREFIX}{config['RELEASE_ID']}"
 
     actuator_service = normalize_live_service(
-        describe_live_service(config, config["ACTUATOR_SERVICE"]),
+        (
+            actuator_service_snapshot
+            if actuator_service_snapshot is not None
+            else describe_live_service(config, config["ACTUATOR_SERVICE"])
+        ),
         config["ACTUATOR_SERVICE"],
         tag,
     )
     decision_service = normalize_live_service(
-        describe_live_service(config, config["DECISION_SERVICE"]),
+        (
+            decision_service_snapshot
+            if decision_service_snapshot is not None
+            else describe_live_service(config, config["DECISION_SERVICE"])
+        ),
         config["DECISION_SERVICE"],
         tag,
     )
@@ -1278,16 +1329,38 @@ def main() -> int:
         action="store_true",
         help="also re-derive candidate revision and image bindings from Cloud Run",
     )
+    parser.add_argument("--actuator-service-snapshot", type=Path)
+    parser.add_argument("--decision-service-snapshot", type=Path)
     args = parser.parse_args()
     try:
-        config = load_config(args.config)
+        if bool(args.actuator_service_snapshot) != bool(
+            args.decision_service_snapshot
+        ):
+            raise ValueError("both service snapshots must be supplied together")
+        if (args.actuator_service_snapshot or args.decision_service_snapshot) and not (
+            args.live
+        ):
+            raise ValueError("service snapshots require --live")
+        config = load_pinned_config(args.config)
         evidence = json.loads(
             args.evidence.read_text(encoding="utf-8"),
             object_pairs_hook=reject_duplicate_members,
         )
         validate(config, evidence)
         if args.live:
-            validate_live(config, evidence)
+            service_snapshots = {}
+            if args.actuator_service_snapshot is not None:
+                service_snapshots = {
+                    "actuator_service_snapshot": json.loads(
+                        args.actuator_service_snapshot.read_text(encoding="utf-8"),
+                        object_pairs_hook=reject_duplicate_members,
+                    ),
+                    "decision_service_snapshot": json.loads(
+                        args.decision_service_snapshot.read_text(encoding="utf-8"),
+                        object_pairs_hook=reject_duplicate_members,
+                    ),
+                }
+            validate_live(config, evidence, **service_snapshots)
     except (
         KeyError,
         OSError,

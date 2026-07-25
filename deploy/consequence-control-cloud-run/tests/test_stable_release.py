@@ -166,6 +166,7 @@ class StableReleaseTests(unittest.TestCase):
                     "STABLE_RELEASE_KEY_ID=stable-test-key",
                     f"STABLE_RELEASE_PUBLIC_KEY_FILE={self.public_key}",
                     f"STABLE_RELEASE_PUBLIC_KEY_SHA256={public_key_hash}",
+                    "CANARY_EVIDENCE_PUBLIC_KEY_SHA256=" + "e" * 64,
                     "STABLE_BOOTSTRAP_ACTUATOR_SERVICE_ACCOUNT=bootstrap-actuator",
                     "STABLE_BOOTSTRAP_DECISION_SERVICE_ACCOUNT=bootstrap-decision",
                 ]
@@ -283,7 +284,13 @@ print(json.dumps(value))
         )
         executable.chmod(0o755)
 
-    def environment(self, **extra: str) -> dict[str, str]:
+    def environment(
+        self,
+        *,
+        config_path: Path | None = None,
+        **extra: str,
+    ) -> dict[str, str]:
+        pinned_config = config_path or self.config
         return {
             **os.environ,
             "PATH": f"{self.bin}:{os.environ['PATH']}",
@@ -291,17 +298,23 @@ print(json.dumps(value))
             "FAKE_LOG": str(self.log_path),
             "FAKE_KMS_PRIVATE": str(self.private_key),
             "FAKE_KMS_PUBLIC": str(self.public_key),
+            "DEPLOYMENT_CONFIG_SHA256": hashlib.sha256(
+                pinned_config.read_bytes()
+            ).hexdigest(),
             **extra,
         }
 
     def run_verifier(self, *arguments: str) -> subprocess.CompletedProcess[str]:
+        config_path = self.config
+        if "--config" in arguments:
+            config_path = Path(arguments[arguments.index("--config") + 1])
         return subprocess.run(
             [sys.executable, str(VERIFIER), *arguments],
             cwd=LANE,
             check=False,
             text=True,
             capture_output=True,
-            env=self.environment(),
+            env=self.environment(config_path=config_path),
         )
 
     def verify(self, *, live: bool = False) -> subprocess.CompletedProcess[str]:
@@ -602,7 +615,10 @@ print(json.dumps(value))
             check=False,
             text=True,
             capture_output=True,
-            env=self.environment(DEPLOYMENT_APPROVED="true"),
+            env=self.environment(
+                config_path=kms_config,
+                DEPLOYMENT_APPROVED="true",
+            ),
         )
         self.assertEqual(rollback.returncode, 0, rollback.stderr)
 
@@ -621,7 +637,10 @@ print(json.dumps(value))
             check=False,
             text=True,
             capture_output=True,
-            env=self.environment(DEPLOYMENT_APPROVED="true"),
+            env=self.environment(
+                config_path=kms_config,
+                DEPLOYMENT_APPROVED="true",
+            ),
         )
         self.assertNotEqual(caller_key.returncode, 0)
         self.assertIn("forbidden when KMS trust is configured", caller_key.stderr)
@@ -757,7 +776,7 @@ print(json.dumps(value))
             env=self.environment(DEPLOYMENT_APPROVED="true"),
         )
         self.assertNotEqual(refused.returncode, 0)
-        self.assertIn("drifted", refused.stderr)
+        self.assertIn("no longer current", refused.stderr)
         calls = [
             json.loads(line)
             for line in self.log_path.read_text(encoding="utf-8").splitlines()

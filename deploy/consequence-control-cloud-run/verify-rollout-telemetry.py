@@ -25,15 +25,71 @@ from typing import Any, Mapping, Sequence
 
 NAME_RE = re.compile(r"^[a-z][a-z0-9-]{0,62}$")
 KEY_ID_RE = re.compile(r"^[A-Za-z0-9:_.@-]{3,256}$")
+NONCE_RE = re.compile(r"^[A-Za-z0-9_-]{22,128}$")
 SHA256_RE = re.compile(r"^[0-9a-f]{64}$")
+IMAGE_RE = re.compile(
+    r"^[a-z0-9.-]+(?::[0-9]+)?/[a-z0-9._/-]+@sha256:[0-9a-f]{64}$"
+)
 INTEGER_RE = re.compile(r"^(0|[1-9][0-9]*)$")
 UTC_TIMESTAMP_RE = re.compile(
     r"^[0-9]{4}-[0-9]{2}-[0-9]{2}T"
     r"[0-9]{2}:[0-9]{2}:[0-9]{2}(?:\.[0-9]+)?Z$"
 )
-UNSIGNED_TELEMETRY_KEYS = {"schema", "window", "services"}
+UNSIGNED_TELEMETRY_KEYS = {
+    "schema",
+    "context",
+    "authorization_sha256",
+    "window",
+    "services",
+}
 SIGNED_TELEMETRY_KEYS = {*UNSIGNED_TELEMETRY_KEYS, "signature"}
 SIGNATURE_KEYS = {"algorithm", "key_id", "value"}
+ROLLOUT_CONTEXT_KEYS = {
+    "project_id",
+    "region",
+    "release_id",
+    "transition",
+    "authorization_id",
+    "rollout_nonce",
+    "candidate",
+    "stable",
+    "pre_state",
+    "post_traffic",
+    "thresholds",
+}
+PLANE_KEYS = {"actuator", "decision"}
+REVISION_BINDING_KEYS = {"service", "revision", "image"}
+SNAPSHOT_BINDING_KEYS = {
+    "service",
+    "generation",
+    "observed_generation",
+    "resource_version",
+}
+THRESHOLD_KEYS = {
+    "max_error_rate",
+    "max_p95_latency_ms",
+    "min_readiness_rate",
+    "max_indeterminate_rate",
+    "min_dwell_seconds",
+    "min_requests",
+    "min_readiness_samples",
+    "max_sample_gap_seconds",
+    "max_age_seconds",
+}
+AUTHORIZATION_UNSIGNED_KEYS = {"schema", "context", "consumption"}
+AUTHORIZATION_SIGNED_KEYS = {*AUTHORIZATION_UNSIGNED_KEYS, "signature"}
+CONSUMPTION_KEYS = {"state", "consumed_at", "expires_at"}
+ROLLOUT_TRANSITIONS = {
+    "apply-decision-1",
+    "apply-decision-10",
+    "apply-decision-50",
+    "apply-decision-100",
+    "apply-actuator-100",
+    "apply-rollback-actuator",
+    "apply-rollback-decision",
+}
+TELEMETRY_SCHEMA = "emilia-rollout-telemetry.v2"
+AUTHORIZATION_SCHEMA = "emilia-rollout-authorization.v1"
 
 
 class TelemetryError(ValueError):
@@ -100,13 +156,9 @@ def exact_keys(value: Any, expected: set[str], name: str) -> dict[str, Any]:
     return value
 
 
-def load_config(path: Path) -> dict[str, str]:
+def parse_config(text: str) -> dict[str, str]:
     result: dict[str, str] = {}
-    try:
-        lines = path.read_text(encoding="utf-8").splitlines()
-    except OSError as error:
-        raise TelemetryError(f"unable to load config {path}: {error}") from error
-    for number, raw in enumerate(lines, 1):
+    for number, raw in enumerate(text.splitlines(), 1):
         if not raw or raw.startswith("#"):
             continue
         if "=" not in raw:
@@ -114,10 +166,40 @@ def load_config(path: Path) -> dict[str, str]:
         key, value = raw.split("=", 1)
         if re.fullmatch(r"[A-Z][A-Z0-9_]*", key) is None:
             raise TelemetryError(f"invalid config key on line {number}")
+        if key in {"DEPLOYMENT_CONFIG_SHA256", "REQUIRE_DEPLOYMENT_CONFIG_PIN"}:
+            raise TelemetryError(
+                f"protected config controls are forbidden in config: {key}"
+            )
         if key in result:
             raise TelemetryError(f"duplicate config key on line {number}")
         result[key] = value
     return result
+
+
+def load_config(path: Path) -> dict[str, str]:
+    try:
+        return parse_config(path.read_text(encoding="utf-8"))
+    except OSError as error:
+        raise TelemetryError(f"unable to load config {path}: {error}") from error
+
+
+def load_pinned_config(path: Path) -> dict[str, str]:
+    expected = os.environ.get("DEPLOYMENT_CONFIG_SHA256", "")
+    if SHA256_RE.fullmatch(expected) is None:
+        raise TelemetryError(
+            "DEPLOYMENT_CONFIG_SHA256 must be injected by a protected source"
+        )
+    try:
+        raw = path.read_bytes()
+    except OSError as error:
+        raise TelemetryError(f"unable to load config {path}: {error}") from error
+    actual = hashlib.sha256(raw).hexdigest()
+    if not hmac.compare_digest(actual, expected):
+        raise TelemetryError("deployment config differs from protected SHA-256")
+    try:
+        return parse_config(raw.decode("utf-8"))
+    except UnicodeDecodeError as error:
+        raise TelemetryError("deployment config is not UTF-8") from error
 
 
 def load_telemetry_trust(config: Mapping[str, str]) -> TelemetryTrust:
@@ -181,12 +263,240 @@ def decode_base64url(value: Any, name: str) -> bytes:
     return decoded
 
 
+def canonical_json(value: Mapping[str, Any]) -> bytes:
+    try:
+        return json.dumps(
+            value,
+            ensure_ascii=False,
+            sort_keys=True,
+            separators=(",", ":"),
+            allow_nan=False,
+        ).encode("utf-8")
+    except (TypeError, ValueError) as error:
+        raise TelemetryError("artifact cannot be canonically encoded") from error
+
+
+def _validate_traffic_mapping(value: Any, name: str) -> dict[str, int]:
+    if not isinstance(value, dict) or not value:
+        raise TelemetryError(f"{name} must be a non-empty object")
+    result: dict[str, int] = {}
+    for revision, percent in value.items():
+        if not isinstance(revision, str) or NAME_RE.fullmatch(revision) is None:
+            raise TelemetryError(f"{name} contains an invalid revision")
+        if (
+            isinstance(percent, bool)
+            or not isinstance(percent, int)
+            or percent < 0
+            or percent > 100
+        ):
+            raise TelemetryError(f"{name}.{revision} has an invalid percentage")
+        result[revision] = percent
+    if sum(result.values()) != 100:
+        raise TelemetryError(f"{name} traffic must total 100")
+    return result
+
+
+def validate_rollout_context(value: Any) -> dict[str, Any]:
+    context = exact_keys(value, ROLLOUT_CONTEXT_KEYS, "context")
+    for name in ("project_id", "region", "release_id"):
+        raw = context[name]
+        if not isinstance(raw, str) or NAME_RE.fullmatch(raw) is None:
+            raise TelemetryError(f"context.{name} is invalid")
+    if context["transition"] not in ROLLOUT_TRANSITIONS:
+        raise TelemetryError("context.transition is unsupported")
+    if (
+        not isinstance(context["authorization_id"], str)
+        or KEY_ID_RE.fullmatch(context["authorization_id"]) is None
+    ):
+        raise TelemetryError("context.authorization_id is invalid")
+    if (
+        not isinstance(context["rollout_nonce"], str)
+        or NONCE_RE.fullmatch(context["rollout_nonce"]) is None
+    ):
+        raise TelemetryError("context.rollout_nonce is invalid")
+
+    bindings: dict[str, dict[str, dict[str, str]]] = {}
+    for stage in ("candidate", "stable"):
+        planes = exact_keys(context[stage], PLANE_KEYS, f"context.{stage}")
+        bindings[stage] = {}
+        for plane in sorted(PLANE_KEYS):
+            binding = exact_keys(
+                planes[plane],
+                REVISION_BINDING_KEYS,
+                f"context.{stage}.{plane}",
+            )
+            service = binding["service"]
+            revision = binding["revision"]
+            image = binding["image"]
+            if (
+                not isinstance(service, str)
+                or NAME_RE.fullmatch(service) is None
+            ):
+                raise TelemetryError(
+                    f"context.{stage}.{plane}.service is invalid"
+                )
+            if (
+                not isinstance(revision, str)
+                or NAME_RE.fullmatch(revision) is None
+                or not revision.startswith(f"{service}-")
+            ):
+                raise TelemetryError(
+                    f"context.{stage}.{plane}.revision is invalid"
+                )
+            if not isinstance(image, str) or IMAGE_RE.fullmatch(image) is None:
+                raise TelemetryError(
+                    f"context.{stage}.{plane}.image is not digest pinned"
+                )
+            bindings[stage][plane] = {
+                "service": service,
+                "revision": revision,
+                "image": image,
+            }
+    for plane in PLANE_KEYS:
+        if bindings["candidate"][plane]["service"] != bindings["stable"][plane][
+            "service"
+        ]:
+            raise TelemetryError(f"context {plane} service binding differs")
+        if bindings["candidate"][plane]["revision"] == bindings["stable"][plane][
+            "revision"
+        ]:
+            raise TelemetryError(
+                f"context {plane} candidate and stable revisions must differ"
+            )
+
+    pre_state = exact_keys(
+        context["pre_state"],
+        PLANE_KEYS,
+        "context.pre_state",
+    )
+    for plane in sorted(PLANE_KEYS):
+        snapshot = exact_keys(
+            pre_state[plane],
+            SNAPSHOT_BINDING_KEYS,
+            f"context.pre_state.{plane}",
+        )
+        if snapshot["service"] != bindings["candidate"][plane]["service"]:
+            raise TelemetryError(
+                f"context.pre_state.{plane}.service does not match binding"
+            )
+        _generation(
+            snapshot["generation"],
+            f"context.pre_state.{plane}.generation",
+        )
+        observed = _generation(
+            snapshot["observed_generation"],
+            f"context.pre_state.{plane}.observed_generation",
+        )
+        if observed != snapshot["generation"]:
+            raise TelemetryError(
+                f"context.pre_state.{plane} is not fully observed"
+            )
+        resource_version = snapshot["resource_version"]
+        if (
+            not isinstance(resource_version, str)
+            or not resource_version
+            or any(character.isspace() for character in resource_version)
+        ):
+            raise TelemetryError(
+                f"context.pre_state.{plane}.resource_version is invalid"
+            )
+
+    post_traffic = exact_keys(
+        context["post_traffic"],
+        PLANE_KEYS,
+        "context.post_traffic",
+    )
+    for plane in sorted(PLANE_KEYS):
+        traffic = _validate_traffic_mapping(
+            post_traffic[plane],
+            f"context.post_traffic.{plane}",
+        )
+        allowed = {
+            bindings["candidate"][plane]["revision"],
+            bindings["stable"][plane]["revision"],
+        }
+        if not set(traffic).issubset(allowed):
+            raise TelemetryError(
+                f"context.post_traffic.{plane} contains an unbound revision"
+            )
+
+    raw_thresholds = exact_keys(
+        context["thresholds"],
+        THRESHOLD_KEYS,
+        "context.thresholds",
+    )
+    thresholds = Thresholds(
+        max_error_rate=raw_thresholds["max_error_rate"],
+        max_p95_latency_ms=raw_thresholds["max_p95_latency_ms"],
+        min_readiness_rate=raw_thresholds["min_readiness_rate"],
+        max_indeterminate_rate=raw_thresholds["max_indeterminate_rate"],
+        min_dwell_seconds=raw_thresholds["min_dwell_seconds"],
+        min_requests=raw_thresholds["min_requests"],
+        min_readiness_samples=raw_thresholds["min_readiness_samples"],
+        max_sample_gap_seconds=raw_thresholds["max_sample_gap_seconds"],
+    )
+    _validate_thresholds(thresholds)
+    _integer(
+        raw_thresholds["max_age_seconds"],
+        "context.thresholds.max_age_seconds",
+        minimum=1,
+    )
+    return context
+
+
+def validate_context_deployment(
+    context: Mapping[str, Any],
+    config: Mapping[str, str],
+) -> None:
+    expected = {
+        "project_id": config.get("PROJECT_ID"),
+        "region": config.get("REGION"),
+        "release_id": config.get("RELEASE_ID"),
+    }
+    for name, value in expected.items():
+        if context[name] != value:
+            raise TelemetryError(
+                f"context.{name} does not match pinned deployment config"
+            )
+    for plane, prefix in (("actuator", "ACTUATOR"), ("decision", "DECISION")):
+        service = config.get(f"{prefix}_SERVICE")
+        candidate = {
+            "service": service,
+            "revision": f"{service}-{config.get('RELEASE_ID')}",
+            "image": config.get(f"{prefix}_IMAGE"),
+        }
+        if context["candidate"][plane] != candidate:
+            raise TelemetryError(
+                f"context.candidate.{plane} does not match pinned deployment config"
+            )
+        if context["stable"][plane]["service"] != service:
+            raise TelemetryError(
+                f"context.stable.{plane}.service does not match pinned config"
+            )
+        configured_stable = config.get(f"{prefix}_STABLE_REVISION")
+        if configured_stable and (
+            context["stable"][plane]["revision"] != configured_stable
+        ):
+            raise TelemetryError(
+                f"context.stable.{plane}.revision does not match pinned config"
+            )
+
+
 def validate_unsigned_telemetry(root: Any) -> dict[str, Any]:
     telemetry = exact_keys(root, UNSIGNED_TELEMETRY_KEYS, "telemetry")
-    if telemetry["schema"] != "emilia-rollout-telemetry.v1":
+    if telemetry["schema"] != TELEMETRY_SCHEMA:
         raise TelemetryError("unsupported telemetry schema")
-    if not isinstance(telemetry["window"], dict):
-        raise TelemetryError("window must be an object")
+    validate_rollout_context(telemetry["context"])
+    if (
+        not isinstance(telemetry["authorization_sha256"], str)
+        or SHA256_RE.fullmatch(telemetry["authorization_sha256"]) is None
+    ):
+        raise TelemetryError("authorization_sha256 is invalid")
+    exact_keys(
+        telemetry["window"],
+        {"started_at", "ended_at"},
+        "window",
+    )
     if not isinstance(telemetry["services"], dict):
         raise TelemetryError("services must be an object")
     return telemetry
@@ -197,7 +507,7 @@ def validate_signed_telemetry(
     trust: TelemetryTrust,
 ) -> tuple[dict[str, Any], bytes]:
     telemetry = exact_keys(root, SIGNED_TELEMETRY_KEYS, "signed telemetry")
-    if telemetry["schema"] != "emilia-rollout-telemetry.v1":
+    if telemetry["schema"] != TELEMETRY_SCHEMA:
         raise TelemetryError("unsupported telemetry schema")
     signature = exact_keys(telemetry["signature"], SIGNATURE_KEYS, "signature")
     if signature["algorithm"] != "Ed25519":
@@ -260,6 +570,128 @@ def verify_telemetry_signature(
     return unsigned
 
 
+def canonical_unsigned_authorization(root: Mapping[str, Any]) -> bytes:
+    return canonical_json(
+        {key: value for key, value in root.items() if key != "signature"}
+    )
+
+
+def verify_rollout_authorization_signature(
+    root: Any,
+    trust: TelemetryTrust,
+) -> dict[str, Any]:
+    authorization = exact_keys(
+        root,
+        AUTHORIZATION_SIGNED_KEYS,
+        "signed rollout authorization",
+    )
+    if authorization["schema"] != AUTHORIZATION_SCHEMA:
+        raise TelemetryError("unsupported rollout authorization schema")
+    validate_rollout_context(authorization["context"])
+    exact_keys(
+        authorization["consumption"],
+        CONSUMPTION_KEYS,
+        "authorization.consumption",
+    )
+    signature = exact_keys(
+        authorization["signature"],
+        SIGNATURE_KEYS,
+        "authorization.signature",
+    )
+    if signature["algorithm"] != "Ed25519":
+        raise TelemetryError(
+            "authorization.signature.algorithm must equal 'Ed25519'"
+        )
+    if signature["key_id"] != trust.key_id:
+        raise TelemetryError(
+            "authorization.signature.key_id does not match configured trust"
+        )
+    signature_bytes = decode_base64url(
+        signature["value"],
+        "authorization.signature.value",
+    )
+    if len(signature_bytes) != 64:
+        raise TelemetryError(
+            "authorization.signature.value must be a 64-byte Ed25519 signature"
+        )
+    with tempfile.TemporaryDirectory(
+        prefix="emilia-rollout-authorization-verify-"
+    ) as directory:
+        payload_path = Path(directory) / "payload.json"
+        signature_path = Path(directory) / "signature.bin"
+        public_key_path = Path(directory) / "public.pem"
+        payload_path.write_bytes(canonical_unsigned_authorization(authorization))
+        signature_path.write_bytes(signature_bytes)
+        public_key_path.write_bytes(trust.public_key)
+        _run_openssl(
+            [
+                "openssl",
+                "pkeyutl",
+                "-verify",
+                "-pubin",
+                "-inkey",
+                str(public_key_path),
+                "-rawin",
+                "-in",
+                str(payload_path),
+                "-sigfile",
+                str(signature_path),
+            ],
+            "rollout authorization signature is invalid",
+        )
+    return authorization
+
+
+def validate_consumed_authorization(
+    authorization: Mapping[str, Any],
+    *,
+    expected_context: Mapping[str, Any],
+    max_age_seconds: int,
+    now: datetime | None = None,
+) -> str:
+    if authorization["context"] != expected_context:
+        raise TelemetryError(
+            "rollout authorization context does not match this exact transition"
+        )
+    consumption = authorization["consumption"]
+    if consumption["state"] != "consumed":
+        raise TelemetryError("rollout authorization is not externally consumed")
+    consumed_at = _parse_utc_timestamp(
+        consumption["consumed_at"],
+        "authorization.consumption.consumed_at",
+    )
+    expires_at = _parse_utc_timestamp(
+        consumption["expires_at"],
+        "authorization.consumption.expires_at",
+    )
+    if expires_at <= consumed_at:
+        raise TelemetryError(
+            "rollout authorization expiry must follow consumption"
+        )
+    if (
+        isinstance(max_age_seconds, bool)
+        or not isinstance(max_age_seconds, int)
+        or max_age_seconds <= 0
+    ):
+        raise TelemetryError(
+            "rollout authorization max age must be a positive integer"
+        )
+    if (expires_at - consumed_at).total_seconds() > max_age_seconds:
+        raise TelemetryError(
+            "rollout authorization validity exceeds the immutable maximum"
+        )
+    current = now or datetime.now().astimezone()
+    if current.tzinfo is None or current.utcoffset() is None:
+        raise TelemetryError(
+            "rollout authorization evaluation time must include a timezone"
+        )
+    if consumed_at > current:
+        raise TelemetryError("rollout authorization is future-dated")
+    if current > expires_at:
+        raise TelemetryError("rollout authorization is expired")
+    return hashlib.sha256(canonical_json(authorization)).hexdigest()
+
+
 def _validate_private_key_file(private_key: Path) -> None:
     if not private_key.is_absolute():
         raise TelemetryError("private key path must be absolute")
@@ -282,6 +714,7 @@ def sign_telemetry(
     private_key: Path,
 ) -> dict[str, Any]:
     unsigned = validate_unsigned_telemetry(root)
+    validate_context_deployment(unsigned["context"], config)
     trust = load_telemetry_trust(config)
     _validate_private_key_file(private_key)
     with tempfile.TemporaryDirectory(prefix="emilia-rollout-sign-") as directory:
@@ -514,8 +947,11 @@ def _actual_traffic(service: str, records: Any) -> dict[str, int]:
         raise TelemetryError(f"{service}.traffic must be a non-empty array")
     targets: dict[str, int] = {}
     for position, record in enumerate(records):
-        if not isinstance(record, dict):
-            raise TelemetryError(f"{service}.traffic[{position}] must be an object")
+        record = exact_keys(
+            record,
+            {"revision", "percent"},
+            f"{service}.traffic[{position}]",
+        )
         revision = record.get("revision")
         if not isinstance(revision, str) or NAME_RE.fullmatch(revision) is None:
             raise TelemetryError(
@@ -553,10 +989,11 @@ def _readiness_rate(
 
     observations: list[tuple[datetime, bool]] = []
     for position, sample in enumerate(samples):
-        if not isinstance(sample, dict):
-            raise TelemetryError(
-                f"{service}.readiness_samples[{position}] must be an object"
-            )
+        sample = exact_keys(
+            sample,
+            {"observed_at", "ready"},
+            f"{service}.readiness_samples[{position}]",
+        )
         observed_at = _parse_utc_timestamp(
             sample.get("observed_at"),
             f"{service}.readiness_samples[{position}].observed_at",
@@ -663,9 +1100,18 @@ def evaluate_telemetry(
 
     accepted: dict[str, Any] = {}
     for service in sorted(expectations):
-        record = services[service]
-        if not isinstance(record, dict):
-            raise TelemetryError(f"{service} telemetry must be an object")
+        record = exact_keys(
+            services[service],
+            {
+                "traffic",
+                "requests",
+                "errors",
+                "p95_latency_ms",
+                "indeterminate",
+                "readiness_samples",
+            },
+            f"{service} telemetry",
+        )
         actual = _actual_traffic(service, record.get("traffic"))
         expected = dict(expectations[service])
         if actual != expected:
@@ -719,7 +1165,7 @@ def evaluate_telemetry(
         }
 
     return {
-        "schema": "emilia-rollout-telemetry-verification.v1",
+        "schema": "emilia-rollout-telemetry-verification.v2",
         "status": "accepted",
         "dwell_seconds": dwell_seconds,
         "services": accepted,
@@ -817,7 +1263,10 @@ def evaluate_service_state(
     allowed_revisions: set[str],
     pending_from_traffic: Mapping[str, int] | None = None,
     generation_after: int | None = None,
+    generation_equals: int | None = None,
     resource_version_not: str | None = None,
+    resource_version_equals: str | None = None,
+    allow_pending: bool = False,
 ) -> ServiceState:
     if NAME_RE.fullmatch(service) is None:
         raise TelemetryError("service name is invalid")
@@ -855,8 +1304,17 @@ def evaluate_service_state(
         raise TelemetryError("metadata.resourceVersion is required for locking")
     if generation_after is not None and generation <= generation_after:
         raise TelemetryError("Cloud Run generation did not advance")
+    if generation_equals is not None and generation != generation_equals:
+        raise TelemetryError("Cloud Run generation differs from the exact lock")
     if resource_version_not is not None and resource_version == resource_version_not:
         raise TelemetryError("Cloud Run resourceVersion did not advance")
+    if (
+        resource_version_equals is not None
+        and resource_version != resource_version_equals
+    ):
+        raise TelemetryError(
+            "Cloud Run resourceVersion differs from the exact snapshot"
+        )
 
     expected = dict(expected_traffic)
     if not expected or sum(expected.values()) != 100:
@@ -896,7 +1354,8 @@ def evaluate_service_state(
             raise TelemetryError(
                 f"{service} has an unapproved generation/observedGeneration mismatch"
             )
-        raise PendingReconciliation(f"{service} is still reconciling")
+        if not allow_pending:
+            raise PendingReconciliation(f"{service} is still reconciling")
 
     return ServiceState(
         service=service,
@@ -1113,16 +1572,226 @@ def build_service_update(
     return body, state
 
 
-def _parser() -> argparse.ArgumentParser:
-    parser = argparse.ArgumentParser(
-        description=(
-            "Authenticate and verify exact rollout traffic and structured dwell "
-            "telemetry."
+def thresholds_context(
+    thresholds: Thresholds,
+    *,
+    max_age_seconds: int,
+) -> dict[str, int | float]:
+    _validate_thresholds(thresholds)
+    _integer(max_age_seconds, "max_age_seconds", minimum=1)
+    return {
+        "max_error_rate": thresholds.max_error_rate,
+        "max_p95_latency_ms": thresholds.max_p95_latency_ms,
+        "min_readiness_rate": thresholds.min_readiness_rate,
+        "max_indeterminate_rate": thresholds.max_indeterminate_rate,
+        "min_dwell_seconds": thresholds.min_dwell_seconds,
+        "min_requests": thresholds.min_requests,
+        "min_readiness_samples": thresholds.min_readiness_samples,
+        "max_sample_gap_seconds": thresholds.max_sample_gap_seconds,
+        "max_age_seconds": max_age_seconds,
+    }
+
+
+def _parse_expectations(
+    values: Sequence[str],
+    *,
+    name: str,
+) -> dict[str, dict[str, int]]:
+    expectations: dict[str, dict[str, int]] = {}
+    for raw in values:
+        service, targets = parse_expectation(raw)
+        if service in expectations:
+            raise TelemetryError(f"duplicate {name} service: {service}")
+        expectations[service] = targets
+    return expectations
+
+
+def build_expected_rollout_context(
+    *,
+    config: Mapping[str, str],
+    transition: str,
+    authorization_context: Mapping[str, Any],
+    expectations: Mapping[str, Mapping[str, int]],
+    post_expectations: Mapping[str, Mapping[str, int]],
+    actuator_stable_revision: str,
+    actuator_stable_image: str,
+    decision_stable_revision: str,
+    decision_stable_image: str,
+    actuator_snapshot: Any,
+    decision_snapshot: Any,
+    thresholds: Thresholds,
+    max_age_seconds: int,
+) -> dict[str, Any]:
+    services = {
+        "actuator": config.get("ACTUATOR_SERVICE", ""),
+        "decision": config.get("DECISION_SERVICE", ""),
+    }
+    if set(expectations) != set(services.values()):
+        raise TelemetryError(
+            "pre-state expectations must exactly name both configured services"
         )
-    )
-    parser.add_argument("--config", type=Path, required=True)
-    parser.add_argument("--input", type=Path, required=True)
-    parser.add_argument("--expect-traffic", action="append", required=True)
+    if set(post_expectations) != set(services.values()):
+        raise TelemetryError(
+            "post-state expectations must exactly name both configured services"
+        )
+    stable = {
+        "actuator": {
+            "service": services["actuator"],
+            "revision": actuator_stable_revision,
+            "image": actuator_stable_image,
+        },
+        "decision": {
+            "service": services["decision"],
+            "revision": decision_stable_revision,
+            "image": decision_stable_image,
+        },
+    }
+    candidate = {
+        plane: {
+            "service": service,
+            "revision": f"{service}-{config.get('RELEASE_ID', '')}",
+            "image": config.get(f"{plane.upper()}_IMAGE", ""),
+        }
+        for plane, service in services.items()
+    }
+    if transition.startswith("apply-") and transition not in {
+        "apply-rollback-actuator",
+        "apply-rollback-decision",
+    }:
+        contract = transition_contract(
+            transition,
+            decision_stable=stable["decision"]["revision"],
+            decision_candidate=candidate["decision"]["revision"],
+            actuator_stable=stable["actuator"]["revision"],
+            actuator_candidate=candidate["actuator"]["revision"],
+        )
+        canonical_pre = {
+            services["decision"]: contract.pre_decision,
+            services["actuator"]: contract.pre_actuator,
+        }
+        canonical_post = {
+            services["decision"]: (
+                contract.post_traffic
+                if contract.service == "decision"
+                else contract.pre_decision
+            ),
+            services["actuator"]: (
+                contract.post_traffic
+                if contract.service == "actuator"
+                else contract.pre_actuator
+            ),
+        }
+        if {
+            service: dict(traffic)
+            for service, traffic in expectations.items()
+        } != canonical_pre:
+            raise TelemetryError(
+                "pre-state traffic does not match the named rollout transition"
+            )
+        if {
+            service: dict(traffic)
+            for service, traffic in post_expectations.items()
+        } != canonical_post:
+            raise TelemetryError(
+                "post-state traffic does not match the named rollout transition"
+            )
+    elif transition == "apply-rollback-actuator":
+        decision_pre = dict(expectations[services["decision"]])
+        if decision_pre not in (
+            {candidate["decision"]["revision"]: 100},
+            {stable["decision"]["revision"]: 100},
+        ):
+            raise TelemetryError(
+                "actuator rollback requires decision at candidate or stable 100"
+            )
+        if dict(expectations[services["actuator"]]) != {
+            candidate["actuator"]["revision"]: 100
+        }:
+            raise TelemetryError(
+                "actuator rollback pre-state must be candidate 100"
+            )
+        if dict(post_expectations[services["decision"]]) != decision_pre:
+            raise TelemetryError(
+                "actuator rollback must not change decision traffic"
+            )
+        if dict(post_expectations[services["actuator"]]) != {
+            stable["actuator"]["revision"]: 100
+        }:
+            raise TelemetryError(
+                "actuator rollback post-state must be stable 100"
+            )
+    else:
+        decision_pre = dict(expectations[services["decision"]])
+        allowed_decision_pre = (
+            {candidate["decision"]["revision"]: 1, stable["decision"]["revision"]: 99},
+            {candidate["decision"]["revision"]: 10, stable["decision"]["revision"]: 90},
+            {candidate["decision"]["revision"]: 50, stable["decision"]["revision"]: 50},
+            {candidate["decision"]["revision"]: 100},
+        )
+        if decision_pre not in allowed_decision_pre:
+            raise TelemetryError(
+                "decision rollback pre-state is not a governed rollout stage"
+            )
+        actuator_stable = {stable["actuator"]["revision"]: 100}
+        if dict(expectations[services["actuator"]]) != actuator_stable:
+            raise TelemetryError(
+                "decision rollback requires actuator stable 100"
+            )
+        if dict(post_expectations[services["actuator"]]) != actuator_stable:
+            raise TelemetryError(
+                "decision rollback must not change actuator traffic"
+            )
+        if dict(post_expectations[services["decision"]]) != {
+            stable["decision"]["revision"]: 100
+        }:
+            raise TelemetryError(
+                "decision rollback post-state must be stable 100"
+            )
+    snapshots = {
+        "actuator": actuator_snapshot,
+        "decision": decision_snapshot,
+    }
+    pre_state: dict[str, dict[str, Any]] = {}
+    post_traffic: dict[str, dict[str, int]] = {}
+    for plane, service in services.items():
+        state = evaluate_service_state(
+            snapshots[plane],
+            service=service,
+            expected_traffic=expectations[service],
+            allowed_revisions={
+                stable[plane]["revision"],
+                candidate[plane]["revision"],
+            },
+        )
+        pre_state[plane] = {
+            "service": service,
+            "generation": state.generation,
+            "observed_generation": state.observed_generation,
+            "resource_version": state.resource_version,
+        }
+        post_traffic[plane] = dict(post_expectations[service])
+    expected = {
+        "project_id": config.get("PROJECT_ID"),
+        "region": config.get("REGION"),
+        "release_id": config.get("RELEASE_ID"),
+        "transition": transition,
+        "authorization_id": authorization_context.get("authorization_id"),
+        "rollout_nonce": authorization_context.get("rollout_nonce"),
+        "candidate": candidate,
+        "stable": stable,
+        "pre_state": pre_state,
+        "post_traffic": post_traffic,
+        "thresholds": thresholds_context(
+            thresholds,
+            max_age_seconds=max_age_seconds,
+        ),
+    }
+    validate_rollout_context(expected)
+    validate_context_deployment(expected, config)
+    return expected
+
+
+def _add_threshold_arguments(parser: argparse.ArgumentParser) -> None:
     parser.add_argument("--max-error-rate", type=float, default=0.01)
     parser.add_argument("--max-p95-latency-ms", type=float, default=500)
     parser.add_argument("--min-readiness-rate", type=float, default=0.99)
@@ -1132,6 +1801,102 @@ def _parser() -> argparse.ArgumentParser:
     parser.add_argument("--min-readiness-samples", type=int, default=3)
     parser.add_argument("--max-sample-gap-seconds", type=int, default=300)
     parser.add_argument("--max-age-seconds", type=int, default=900)
+
+
+def _add_rollout_context_arguments(parser: argparse.ArgumentParser) -> None:
+    parser.add_argument("--config", type=Path, required=True)
+    parser.add_argument("--authorization", type=Path, required=True)
+    parser.add_argument("--transition", choices=sorted(ROLLOUT_TRANSITIONS), required=True)
+    parser.add_argument("--expect-traffic", action="append", required=True)
+    parser.add_argument("--post-traffic", action="append", required=True)
+    parser.add_argument("--actuator-stable-revision", required=True)
+    parser.add_argument("--actuator-stable-image", required=True)
+    parser.add_argument("--decision-stable-revision", required=True)
+    parser.add_argument("--decision-stable-image", required=True)
+    parser.add_argument("--actuator-snapshot", type=Path, required=True)
+    parser.add_argument("--decision-snapshot", type=Path, required=True)
+    _add_threshold_arguments(parser)
+
+
+def _thresholds_from_args(args: argparse.Namespace) -> Thresholds:
+    return Thresholds(
+        max_error_rate=args.max_error_rate,
+        max_p95_latency_ms=args.max_p95_latency_ms,
+        min_readiness_rate=args.min_readiness_rate,
+        max_indeterminate_rate=args.max_indeterminate_rate,
+        min_dwell_seconds=args.min_dwell_seconds,
+        min_requests=args.min_requests,
+        min_readiness_samples=args.min_readiness_samples,
+        max_sample_gap_seconds=args.max_sample_gap_seconds,
+    )
+
+
+def verify_authorization_for_rollout(
+    args: argparse.Namespace,
+    *,
+    config: Mapping[str, str],
+    trust: TelemetryTrust,
+) -> tuple[
+    dict[str, Any],
+    str,
+    dict[str, dict[str, int]],
+    dict[str, Any],
+]:
+    expectations = _parse_expectations(
+        args.expect_traffic,
+        name="pre-state expectation",
+    )
+    post_expectations = _parse_expectations(
+        args.post_traffic,
+        name="post-state expectation",
+    )
+    authorization = verify_rollout_authorization_signature(
+        _load_json(args.authorization, "rollout authorization"),
+        trust,
+    )
+    expected_context = build_expected_rollout_context(
+        config=config,
+        transition=args.transition,
+        authorization_context=authorization["context"],
+        expectations=expectations,
+        post_expectations=post_expectations,
+        actuator_stable_revision=args.actuator_stable_revision,
+        actuator_stable_image=args.actuator_stable_image,
+        decision_stable_revision=args.decision_stable_revision,
+        decision_stable_image=args.decision_stable_image,
+        actuator_snapshot=_load_json(args.actuator_snapshot, "actuator snapshot"),
+        decision_snapshot=_load_json(args.decision_snapshot, "decision snapshot"),
+        thresholds=_thresholds_from_args(args),
+        max_age_seconds=args.max_age_seconds,
+    )
+    authorization_hash = validate_consumed_authorization(
+        authorization,
+        expected_context=expected_context,
+        max_age_seconds=args.max_age_seconds,
+    )
+    return expected_context, authorization_hash, expectations, authorization
+
+
+def _parser() -> argparse.ArgumentParser:
+    parser = argparse.ArgumentParser(
+        description=(
+            "Authenticate and verify exact rollout traffic and structured dwell "
+            "telemetry."
+        )
+    )
+    _add_rollout_context_arguments(parser)
+    parser.add_argument("--input", type=Path, required=True)
+    return parser
+
+
+def _authorization_parser() -> argparse.ArgumentParser:
+    parser = argparse.ArgumentParser(
+        description=(
+            "Verify one externally consumed rollout authorization against exact "
+            "deployment and Cloud Run pre-state bindings."
+        )
+    )
+    _add_rollout_context_arguments(parser)
     return parser
 
 
@@ -1166,7 +1931,9 @@ def _state_parser(description: str) -> argparse.ArgumentParser:
     parser.add_argument("--allowed-revision", action="append", required=True)
     parser.add_argument("--pending-from-traffic")
     parser.add_argument("--generation-after", type=int)
+    parser.add_argument("--generation-equals", type=int)
     parser.add_argument("--resource-version-not")
+    parser.add_argument("--resource-version-equals")
     return parser
 
 
@@ -1185,11 +1952,44 @@ def _service_state_main(argv: Sequence[str]) -> int:
                 else None
             ),
             generation_after=args.generation_after,
+            generation_equals=args.generation_equals,
             resource_version_not=args.resource_version_not,
+            resource_version_equals=args.resource_version_equals,
         )
     except PendingReconciliation as error:
         print(f"pending: {error}", file=sys.stderr)
         return 2
+    except TelemetryError as error:
+        print(f"error: {error}", file=sys.stderr)
+        return 1
+    print(f"{state.generation}\t{state.resource_version}")
+    return 0
+
+
+def _update_ack_main(argv: Sequence[str]) -> int:
+    parser = _state_parser(
+        "Verify an acknowledged resourceVersion-locked Cloud Run update."
+    )
+    args = parser.parse_args(argv)
+    if args.pending_from_traffic is None:
+        parser.error("--pending-from-traffic is required")
+    if args.generation_after is None:
+        parser.error("--generation-after is required")
+    if args.resource_version_not is None:
+        parser.error("--resource-version-not is required")
+    try:
+        state = evaluate_service_state(
+            _load_json(args.input, "update response"),
+            service=args.service,
+            expected_traffic=parse_revision_percentages(args.expect_traffic),
+            allowed_revisions=set(args.allowed_revision),
+            pending_from_traffic=parse_revision_percentages(
+                args.pending_from_traffic
+            ),
+            generation_after=args.generation_after,
+            resource_version_not=args.resource_version_not,
+            allow_pending=True,
+        )
     except TelemetryError as error:
         print(f"error: {error}", file=sys.stderr)
         return 1
@@ -1226,7 +2026,7 @@ def _sign_main(argv: Sequence[str]) -> int:
     try:
         signed = sign_telemetry(
             _load_json(args.input, "unsigned telemetry"),
-            config=load_config(args.config),
+            config=load_pinned_config(args.config),
             private_key=args.private_key_file,
         )
         write_atomic_private_json(args.output, signed, force=args.force)
@@ -1237,39 +2037,77 @@ def _sign_main(argv: Sequence[str]) -> int:
     return 0
 
 
+def _authorization_main(argv: Sequence[str]) -> int:
+    args = _authorization_parser().parse_args(argv)
+    try:
+        config = load_pinned_config(args.config)
+        trust = load_telemetry_trust(config)
+        _, authorization_hash, _, _ = verify_authorization_for_rollout(
+            args,
+            config=config,
+            trust=trust,
+        )
+    except TelemetryError as error:
+        print(f"error: {error}", file=sys.stderr)
+        return 1
+    print(authorization_hash)
+    return 0
+
+
 def main(argv: Sequence[str] | None = None) -> int:
     arguments = list(argv if argv is not None else sys.argv[1:])
     if arguments and arguments[0] == "verify-service":
         return _service_state_main(arguments[1:])
+    if arguments and arguments[0] == "verify-update-ack":
+        return _update_ack_main(arguments[1:])
     if arguments and arguments[0] == "prepare-update":
         return _prepare_update_main(arguments[1:])
     if arguments and arguments[0] == "sign":
         return _sign_main(arguments[1:])
+    if arguments and arguments[0] == "verify-authorization":
+        return _authorization_main(arguments[1:])
     args = _parser().parse_args(arguments)
     try:
-        expectations: dict[str, dict[str, int]] = {}
-        for raw_expectation in args.expect_traffic:
-            service, targets = parse_expectation(raw_expectation)
-            if service in expectations:
-                raise TelemetryError(f"duplicate service expectation: {service}")
-            expectations[service] = targets
+        config = load_pinned_config(args.config)
+        trust = load_telemetry_trust(config)
+        (
+            expected_context,
+            authorization_hash,
+            expectations,
+            authorization,
+        ) = verify_authorization_for_rollout(
+            args,
+            config=config,
+            trust=trust,
+        )
         telemetry = verify_telemetry_signature(
             _load_json(args.input, "signed telemetry"),
-            load_telemetry_trust(load_config(args.config)),
+            trust,
         )
+        if telemetry["context"] != expected_context:
+            raise TelemetryError(
+                "telemetry context does not match this exact rollout transition"
+            )
+        if telemetry["authorization_sha256"] != authorization_hash:
+            raise TelemetryError(
+                "telemetry does not bind the consumed rollout authorization"
+            )
+        consumed_at = _parse_utc_timestamp(
+            authorization["consumption"]["consumed_at"],
+            "authorization.consumption.consumed_at",
+        )
+        started_at = _parse_utc_timestamp(
+            telemetry["window"]["started_at"],
+            "window.started_at",
+        )
+        if consumed_at > started_at:
+            raise TelemetryError(
+                "telemetry window begins before authorization consumption"
+            )
         result = evaluate_telemetry(
             telemetry,
             expectations,
-            Thresholds(
-                max_error_rate=args.max_error_rate,
-                max_p95_latency_ms=args.max_p95_latency_ms,
-                min_readiness_rate=args.min_readiness_rate,
-                max_indeterminate_rate=args.max_indeterminate_rate,
-                min_dwell_seconds=args.min_dwell_seconds,
-                min_requests=args.min_requests,
-                min_readiness_samples=args.min_readiness_samples,
-                max_sample_gap_seconds=args.max_sample_gap_seconds,
-            ),
+            _thresholds_from_args(args),
             max_age_seconds=args.max_age_seconds,
         )
     except TelemetryError as error:

@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import hashlib
 import os
 import subprocess
 import sys
@@ -265,11 +266,17 @@ class CanaryDriverTests(unittest.TestCase):
         self.scenario = self.root / "scenario.json"
         self.scenario.write_text(json.dumps(scenario()), encoding="utf-8")
         self.config = self.root / "config.env"
-        self.config.write_text(
-            FIXTURE_CONFIG.read_text(encoding="utf-8").replace(
+        config_text = FIXTURE_CONFIG.read_text(encoding="utf-8").replace(
                 "/secure/test-canary-public.pem",
                 str(self.public_key),
-            ),
+            )
+        config_text += (
+            "\nCANARY_EVIDENCE_PUBLIC_KEY_SHA256="
+            + hashlib.sha256(self.public_key.read_bytes()).hexdigest()
+            + "\n"
+        )
+        self.config.write_text(
+            config_text,
             encoding="utf-8",
         )
         self.output = self.root / "evidence.json"
@@ -380,6 +387,9 @@ else:
                 "FAKE_AUDIENCE": audience,
                 "FAKE_DECISION_DESCRIBE_COUNTER": str(counter),
                 "FAKE_LIVE_RESOURCES": json.dumps(resources),
+                "DEPLOYMENT_CONFIG_SHA256": hashlib.sha256(
+                    self.config.read_bytes()
+                ).hexdigest(),
             },
         )
 

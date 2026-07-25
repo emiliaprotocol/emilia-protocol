@@ -102,9 +102,19 @@ contract. Its tagged revision is also checked through the decision service's
 
 ## Render without credentials
 
+Every traffic mutation and every canary, telemetry, authorization, or stable
+trust verification requires `DEPLOYMENT_CONFIG_SHA256` in the process
+environment. It is the SHA-256 of the exact config bytes and is deliberately
+forbidden inside the config. Production automation must inject it from a
+protected release variable, signed policy evaluation, or equivalent source
+that the traffic caller cannot rewrite. A caller-derived digest provides no
+trust separation and does not satisfy this contract.
+
 ```sh
 cp deploy/consequence-control-cloud-run/config.example.env /tmp/emilia-cloud-run.env
 # Replace non-secret deployment coordinates and secret-name:version references.
+# Fetch this value from the independently protected release policy:
+export DEPLOYMENT_CONFIG_SHA256=aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
 deploy/consequence-control-cloud-run/provision-dedicated-project.sh \
   --config /tmp/emilia-cloud-run.env \
   --render
@@ -184,6 +194,7 @@ The two trust modes are mutually exclusive. Cloud KMS is the production
 default:
 
 ```sh
+DEPLOYMENT_CONFIG_SHA256=aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa \
 DEPLOYMENT_APPROVED=true \
 deploy/consequence-control-cloud-run/bootstrap-stable.sh \
   --config /tmp/emilia-cloud-run.env \
@@ -250,10 +261,13 @@ the exact normal, forced-timeout, replay, durable-lookup, and authenticated
 reconciliation workflow and Ed25519-sign a short-lived evidence document for
 the exact candidate
 revision names and image digests. Promotion re-verifies the signature under the
-pinned canary-driver public key, freshness, project, region, revision names,
-and image digests. It then queries Cloud Run and re-derives each candidate's
-service and digest binding live. The signed document contains these closed
-observations:
+pinned canary-driver key ID, absolute public-key path, and
+`CANARY_EVIDENCE_PUBLIC_KEY_SHA256`, plus freshness, project, region, revision
+names, and image digests. The verifier reads and hashes the key once, then uses
+those exact bytes for signature verification. During traffic apply it consumes
+the already captured service snapshots rather than fetching a new service
+baseline, while still re-deriving candidate revision configuration live. The
+signed document contains these closed observations:
 
 ```json
 {
@@ -377,7 +391,28 @@ pinned by `ROLLOUT_TELEMETRY_KEY_ID`,
 `ROLLOUT_TELEMETRY_PUBLIC_KEY_FILE`, and
 `ROLLOUT_TELEMETRY_PUBLIC_KEY_SHA256`. The observer's private key must be
 separately controlled and unreadable by both runtime identities and the
-deployer. The gates are release policy, not caller options: `traffic.sh`
+deployer.
+
+Telemetry schema `emilia-rollout-telemetry.v2` signs canonical JSON that binds
+the exact project, region, release, named transition, authorization ID, rollout
+nonce, candidate and stable revision/image pairs, immutable thresholds,
+post-traffic intent, and both services' pre-state generation,
+observedGeneration, and resourceVersion. Reusing it across a project, region,
+release, transition, or later rollout stage is refused even when the telemetry
+signature itself is valid.
+
+Each mutation also requires a separate
+`emilia-rollout-authorization.v1` artifact signed by the pinned rollout
+observer authority. Its context is byte-for-byte equivalent to the telemetry
+context and its signed consumption record must say `consumed`, be unexpired,
+and be bound into telemetry by SHA-256. The external issuer must atomically
+consume authorization IDs/nonces in durable storage before signing this
+artifact. This CLI has no durable shared store and therefore cannot, by itself,
+prove global single-use; it combines the external consumption receipt with
+exact resourceVersion pre-state binding and Cloud Run optimistic concurrency.
+Without that external atomic-consumption service, apply must remain blocked.
+
+The gates are release policy, not caller options: `traffic.sh`
 rejects attempts to relax them. They are a 10-minute
 dwell, at least 100 requests and three readiness samples, error rate at most
 1%, p95 latency at most 500 ms, readiness at least 99%, indeterminate rate at
@@ -396,19 +431,28 @@ deploy/consequence-control-cloud-run/verify-rollout-telemetry.py sign \
 
 The signer checks that the private key matches the pinned public key and writes
 the signed result atomically with mode `0600`. It refuses an existing output
-unless `--force` is explicit.
+unless `--force` is explicit. The unsigned input must already contain the
+strict v2 context and the SHA-256 of the externally consumed authorization.
 
 Cloud Run traffic is changed through a generation/resourceVersion-locked API
 update. The only accepted promotion path is stable -> decision 1% -> 10% ->
 50% -> 100% -> actuator 100%. After each mutation, both services are read back;
-a lost response is reconciled from state and is never blindly replayed.
+the acknowledged target generation is pinned and the non-target service must
+retain its exact generation and resourceVersion. An ambiguous or refused PUT
+fails with an explicit do-not-replay error; the CLI never adopts a later
+matching state as proof that its own request succeeded. Config, stable release,
+IAM, secrets, and both service locks are checked immediately before the PUT,
+then config, IAM, secrets, and exact service states are checked again after
+settled read-back.
 
 ```sh
+DEPLOYMENT_CONFIG_SHA256=aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa \
 DEPLOYMENT_APPROVED=true \
 deploy/consequence-control-cloud-run/traffic.sh \
   --config /tmp/emilia-cloud-run.env \
   --evidence /secure/emilia/canary-evidence.json \
   --telemetry /secure/emilia/rollout-telemetry.json \
+  --authorization /secure/emilia/rollout-authorization.json \
   --stable-manifest /secure/emilia/stable-release.json \
   --apply-decision-1
 ```
@@ -418,7 +462,10 @@ Repeat with fresh telemetry for `--apply-decision-10`,
 `--apply-actuator-100`. For file trust, add
 `--stable-public-key /secure/emilia/stable-release-ed25519-public.pem` to every
 apply. `--apply-rollback` accepts only a recognized rollout state and restores
-actuator first, then decision.
+actuator first, then decision. A rollback invocation performs at most one
+traffic mutation; if both services require restoration, the decision step
+requires a newly consumed authorization and a second invocation after the
+actuator read-back is complete.
 
 ## Credential and infrastructure blockers
 
@@ -444,6 +491,9 @@ An apply remains blocked until all of the following exist:
 - a separately controlled Ed25519 canary-driver key and pinned public-key file;
 - a separately controlled Ed25519 rollout-observer key and pinned public-key
   file/hash;
+- an independently protected source for the exact deployment-config SHA-256;
+- a durable rollout-authorization issuer that atomically consumes each
+  authorization ID/nonce before signing the short-lived receipt;
 - digest-pinned actuator and decision images; and
 - a current, cryptographically valid canary scenario produced through the
   approval and AEB pipeline.

@@ -8,7 +8,7 @@ lane_die() {
 
 is_invocation_control_variable() {
   case "$1" in
-    *_APPROVED | *_CONFIRM | *_CONFIRM_* | JIT_*)
+    DEPLOYMENT_CONFIG_SHA256 | REQUIRE_DEPLOYMENT_CONFIG_PIN | *_APPROVED | *_CONFIRM | *_CONFIRM_* | JIT_*)
       return 0
       ;;
     *)
@@ -17,9 +17,65 @@ is_invocation_control_variable() {
   esac
 }
 
+lane_sha256_file() {
+  local file=$1 digest
+  if command -v sha256sum >/dev/null 2>&1; then
+    digest=$(sha256sum "$file") || lane_die "unable to hash deployment config"
+    printf '%s' "${digest%% *}"
+    return
+  fi
+  if command -v shasum >/dev/null 2>&1; then
+    digest=$(shasum -a 256 "$file") || lane_die "unable to hash deployment config"
+    printf '%s' "${digest%% *}"
+    return
+  fi
+  command -v openssl >/dev/null 2>&1 \
+    || lane_die "sha256sum, shasum, or openssl is required"
+  digest=$(openssl dgst -sha256 -r "$file") \
+    || lane_die "unable to hash deployment config"
+  printf '%s' "${digest%% *}"
+}
+
+verify_lane_config_pin() {
+  local file=$1 expected=${DEPLOYMENT_CONFIG_SHA256:-} actual
+  [[ "$expected" =~ ^[0-9a-f]{64}$ ]] \
+    || lane_die "DEPLOYMENT_CONFIG_SHA256 must be injected by a protected source"
+  actual=$(lane_sha256_file "$file")
+  [[ "$actual" == "$expected" ]] \
+    || lane_die "deployment config differs from protected SHA-256"
+}
+
 load_lane_config() {
   local file=${1:-}
   [[ -f "$file" ]] || lane_die "config file not found: $file"
+  if [[ "${REQUIRE_DEPLOYMENT_CONFIG_PIN:-false}" != true ]]; then
+    local line key value number=0
+    while IFS= read -r line || [[ -n "$line" ]]; do
+      number=$((number + 1))
+      [[ -z "$line" || "$line" == \#* ]] && continue
+      [[ "$line" == *=* ]] || lane_die "invalid config line $number"
+      key=${line%%=*}
+      value=${line#*=}
+      [[ "$key" =~ ^[A-Z][A-Z0-9_]*$ ]] \
+        || lane_die "invalid config key on line $number"
+      if is_invocation_control_variable "$key"; then
+        lane_die "invocation control variables must not be stored in config: $key"
+      fi
+      [[ "$value" != *$'\n'* && "$value" != *$'\r'* ]] \
+        || lane_die "invalid control character on line $number"
+      printf -v "$key" '%s' "$value"
+      export "${key?}"
+    done < "$file"
+    return
+  fi
+  local pinned_copy
+  pinned_copy=$(mktemp)
+  chmod 600 "$pinned_copy"
+  cp "$file" "$pinned_copy" || {
+    rm -f "$pinned_copy"
+    lane_die "unable to snapshot deployment config"
+  }
+  verify_lane_config_pin "$pinned_copy"
   local line key value number=0
   while IFS= read -r line || [[ -n "$line" ]]; do
     number=$((number + 1))
@@ -36,7 +92,8 @@ load_lane_config() {
       || lane_die "invalid control character on line $number"
     printf -v "$key" '%s' "$value"
     export "${key?}"
-  done < "$file"
+  done < "$pinned_copy"
+  rm -f "$pinned_copy"
 }
 
 require_var() {
@@ -234,6 +291,7 @@ validate_lane_config() {
     DECISION_ACTUATOR_TIMEOUT_MS DECISION_AEB_REQUIREMENT_REF
     DECISION_SHUTDOWN_GRACE_MS
     CANARY_EVIDENCE_KEY_ID CANARY_EVIDENCE_PUBLIC_KEY_FILE
+    CANARY_EVIDENCE_PUBLIC_KEY_SHA256
     CANARY_MAX_AGE_SEC
   )
   local name
@@ -265,6 +323,8 @@ validate_lane_config() {
     || lane_die "CANARY_EVIDENCE_KEY_ID is invalid"
   [[ "$CANARY_EVIDENCE_PUBLIC_KEY_FILE" == /* ]] \
     || lane_die "CANARY_EVIDENCE_PUBLIC_KEY_FILE must be an absolute path"
+  [[ "$CANARY_EVIDENCE_PUBLIC_KEY_SHA256" =~ ^[0-9a-f]{64}$ ]] \
+    || lane_die "CANARY_EVIDENCE_PUBLIC_KEY_SHA256 must be lowercase SHA-256"
 
   for name in \
     GITHUB_ISSUE_NUMBER ACTUATOR_MIN_INSTANCES ACTUATOR_MAX_INSTANCES \

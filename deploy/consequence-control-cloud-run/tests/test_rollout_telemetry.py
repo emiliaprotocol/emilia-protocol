@@ -1,10 +1,12 @@
 from __future__ import annotations
 
+import base64
 import hashlib
 import importlib.util
 from datetime import datetime, timedelta, timezone
 import json
 import math
+import os
 from pathlib import Path
 import stat
 import subprocess
@@ -15,6 +17,86 @@ import unittest
 
 LANE_DIR = Path(__file__).resolve().parents[1]
 SCRIPT = LANE_DIR / "verify-rollout-telemetry.py"
+ACTUATOR_IMAGE = (
+    "us-central1-docker.pkg.dev/test-project/runtime/actuator@sha256:"
+    + "a" * 64
+)
+DECISION_IMAGE = (
+    "us-central1-docker.pkg.dev/test-project/runtime/decision@sha256:"
+    + "b" * 64
+)
+ACTUATOR_STABLE_IMAGE = (
+    "us-central1-docker.pkg.dev/test-project/runtime/actuator@sha256:"
+    + "c" * 64
+)
+DECISION_STABLE_IMAGE = (
+    "us-central1-docker.pkg.dev/test-project/runtime/decision@sha256:"
+    + "d" * 64
+)
+
+
+def rollout_context() -> dict:
+    return {
+        "project_id": "test-project",
+        "region": "us-central1",
+        "release_id": "r2",
+        "transition": "apply-decision-50",
+        "authorization_id": "authorization:rollout-50",
+        "rollout_nonce": "bm9uY2Utcm9sbG91dC01MC0wMDAx",
+        "candidate": {
+            "actuator": {
+                "service": "actuator",
+                "revision": "actuator-r2",
+                "image": ACTUATOR_IMAGE,
+            },
+            "decision": {
+                "service": "decision",
+                "revision": "decision-r2",
+                "image": DECISION_IMAGE,
+            },
+        },
+        "stable": {
+            "actuator": {
+                "service": "actuator",
+                "revision": "actuator-r1",
+                "image": ACTUATOR_STABLE_IMAGE,
+            },
+            "decision": {
+                "service": "decision",
+                "revision": "decision-r1",
+                "image": DECISION_STABLE_IMAGE,
+            },
+        },
+        "pre_state": {
+            "actuator": {
+                "service": "actuator",
+                "generation": 7,
+                "observed_generation": 7,
+                "resource_version": "rv-actuator-7",
+            },
+            "decision": {
+                "service": "decision",
+                "generation": 7,
+                "observed_generation": 7,
+                "resource_version": "rv-decision-7",
+            },
+        },
+        "post_traffic": {
+            "actuator": {"actuator-r1": 100},
+            "decision": {"decision-r2": 50, "decision-r1": 50},
+        },
+        "thresholds": {
+            "max_error_rate": 0.01,
+            "max_p95_latency_ms": 500,
+            "min_readiness_rate": 0.99,
+            "max_indeterminate_rate": 0.005,
+            "min_dwell_seconds": 600,
+            "min_requests": 100,
+            "min_readiness_samples": 3,
+            "max_sample_gap_seconds": 300,
+            "max_age_seconds": 900,
+        },
+    }
 
 
 def load_module():
@@ -34,7 +116,9 @@ def good_telemetry() -> dict:
         {"observed_at": "2026-07-25T12:10:00Z", "ready": True},
     ]
     return {
-        "schema": "emilia-rollout-telemetry.v1",
+        "schema": "emilia-rollout-telemetry.v2",
+        "context": rollout_context(),
+        "authorization_sha256": "0" * 64,
         "window": {
             "started_at": "2026-07-25T12:00:00Z",
             "ended_at": "2026-07-25T12:10:00Z",
@@ -53,8 +137,7 @@ def good_telemetry() -> dict:
             },
             "actuator": {
                 "traffic": [
-                    {"revision": "actuator-r2", "percent": 10},
-                    {"revision": "actuator-r1", "percent": 90},
+                    {"revision": "actuator-r1", "percent": 100},
                 ],
                 "requests": 500,
                 "errors": 0,
@@ -148,7 +231,7 @@ class RolloutTelemetryTests(unittest.TestCase):
         self.module = load_module()
         self.expectations = {
             "decision": {"decision-r2": 10, "decision-r1": 90},
-            "actuator": {"actuator-r2": 10, "actuator-r1": 90},
+            "actuator": {"actuator-r1": 100},
         }
         self.thresholds = self.module.Thresholds(
             max_error_rate=0.01,
@@ -408,7 +491,77 @@ class RolloutTelemetryTests(unittest.TestCase):
                         service="decision",
                         expected_traffic={"decision-r2": 10, "decision-r1": 90},
                         allowed_revisions={"decision-r1", "decision-r2"},
+                )
+
+    def test_exact_snapshot_lock_rejects_preflight_races(self) -> None:
+        baseline = service_document(
+            "decision",
+            {"decision-r2": 10, "decision-r1": 90},
+            generation=7,
+            resource_version="rv-decision-7",
+        )
+        accepted = self.module.evaluate_service_state(
+            baseline,
+            service="decision",
+            expected_traffic={"decision-r2": 10, "decision-r1": 90},
+            allowed_revisions={"decision-r1", "decision-r2"},
+            generation_equals=7,
+            resource_version_equals="rv-decision-7",
+        )
+        self.assertEqual(accepted.resource_version, "rv-decision-7")
+
+        races = [
+            service_document(
+                "decision",
+                {"decision-r2": 10, "decision-r1": 90},
+                generation=8,
+                resource_version="rv-decision-8",
+            ),
+            service_document(
+                "decision",
+                {"decision-r2": 10, "decision-r1": 90},
+                generation=7,
+                resource_version="rv-concurrent-write",
+            ),
+        ]
+        for raced in races:
+            with self.subTest(metadata=raced["metadata"]):
+                with self.assertRaises(self.module.TelemetryError):
+                    self.module.evaluate_service_state(
+                        raced,
+                        service="decision",
+                        expected_traffic={
+                            "decision-r2": 10,
+                            "decision-r1": 90,
+                        },
+                        allowed_revisions={"decision-r1", "decision-r2"},
+                        generation_equals=7,
+                        resource_version_equals="rv-decision-7",
                     )
+
+    def test_traffic_snapshots_precede_preflight_and_are_rechecked_at_send(
+        self,
+    ) -> None:
+        traffic = (LANE_DIR / "traffic.sh").read_text(encoding="utf-8")
+        promotion = traffic.rsplit(
+            'if [[ "$ACTION" == apply-rollback ]]',
+            1,
+        )[1]
+        self.assertLess(
+            promotion.index("capture_snapshots"),
+            promotion.index("promotion_preflight"),
+        )
+        apply_body = traffic[
+            traffic.index("apply_prepared_update()") :
+            traffic.index("promotion_preflight()")
+        ]
+        self.assertLess(
+            apply_body.index("revalidate_before_send"),
+            apply_body.index("send_locked_update"),
+        )
+        self.assertIn("--resource-version-equals", traffic)
+        self.assertIn("verify_post_mutation_controls", apply_body)
+        self.assertIn("do not replay", traffic)
 
     def test_post_state_allows_only_exact_reconciliation_from_pre_state(self) -> None:
         pending = service_document(
@@ -620,9 +773,58 @@ class RolloutTelemetrySignatureTests(unittest.TestCase):
             "rollout-test-key",
             self.public_key,
         )
+        self.decision_snapshot = self.root / "decision-snapshot.json"
+        self.actuator_snapshot = self.root / "actuator-snapshot.json"
+        self._write_json(
+            self.decision_snapshot,
+            service_document(
+                "decision",
+                {"decision-r2": 10, "decision-r1": 90},
+                resource_version="rv-decision-7",
+            ),
+        )
+        self._write_json(
+            self.actuator_snapshot,
+            service_document(
+                "actuator",
+                {"actuator-r1": 100},
+                resource_version="rv-actuator-7",
+            ),
+        )
+        telemetry = current_good_telemetry()
+        consumed_at = (
+            datetime.fromisoformat(
+                telemetry["window"]["started_at"].replace("Z", "+00:00")
+            )
+            - timedelta(seconds=1)
+        )
+        authorization = self._sign_authorization(
+            {
+                "schema": "emilia-rollout-authorization.v1",
+                "context": telemetry["context"],
+                "consumption": {
+                    "state": "consumed",
+                    "consumed_at": consumed_at.isoformat().replace("+00:00", "Z"),
+                    "expires_at": (
+                        consumed_at + timedelta(seconds=900)
+                    ).isoformat().replace("+00:00", "Z"),
+                },
+            }
+        )
+        self.authorization = self.root / "authorization.json"
+        self._write_json(self.authorization, authorization)
+        telemetry["authorization_sha256"] = hashlib.sha256(
+            json.dumps(
+                authorization,
+                ensure_ascii=False,
+                sort_keys=True,
+                separators=(",", ":"),
+                allow_nan=False,
+            ).encode("utf-8")
+        ).hexdigest()
         self.unsigned = self.root / "unsigned.json"
         self.signed = self.root / "signed.json"
-        self._write_json(self.unsigned, current_good_telemetry())
+        self._write_json(self.unsigned, telemetry)
 
     def _generate_key_pair(self, stem: str) -> tuple[Path, Path]:
         private_key = self.root / f"{stem}-private.pem"
@@ -670,6 +872,15 @@ class RolloutTelemetrySignatureTests(unittest.TestCase):
         path.write_text(
             "\n".join(
                 [
+                    "PROJECT_ID=test-project",
+                    "REGION=us-central1",
+                    "RELEASE_ID=r2",
+                    "ACTUATOR_SERVICE=actuator",
+                    "DECISION_SERVICE=decision",
+                    f"ACTUATOR_IMAGE={ACTUATOR_IMAGE}",
+                    f"DECISION_IMAGE={DECISION_IMAGE}",
+                    "ACTUATOR_STABLE_REVISION=actuator-r1",
+                    "DECISION_STABLE_REVISION=decision-r1",
                     f"ROLLOUT_TELEMETRY_KEY_ID={key_id}",
                     f"ROLLOUT_TELEMETRY_PUBLIC_KEY_FILE={public_key}",
                     f"ROLLOUT_TELEMETRY_PUBLIC_KEY_SHA256={digest}",
@@ -679,6 +890,54 @@ class RolloutTelemetrySignatureTests(unittest.TestCase):
             encoding="utf-8",
         )
         return path
+
+    def _sign_authorization(self, unsigned: dict) -> dict:
+        payload = self.root / "authorization-payload.json"
+        signature = self.root / "authorization-signature.bin"
+        payload.write_bytes(
+            json.dumps(
+                unsigned,
+                ensure_ascii=False,
+                sort_keys=True,
+                separators=(",", ":"),
+                allow_nan=False,
+            ).encode("utf-8")
+        )
+        subprocess.run(
+            [
+                "openssl",
+                "pkeyutl",
+                "-sign",
+                "-inkey",
+                str(self.private_key),
+                "-rawin",
+                "-in",
+                str(payload),
+                "-out",
+                str(signature),
+            ],
+            check=True,
+            capture_output=True,
+            text=True,
+        )
+        return {
+            **unsigned,
+            "signature": {
+                "algorithm": "Ed25519",
+                "key_id": "rollout-test-key",
+                "value": base64.urlsafe_b64encode(
+                    signature.read_bytes()
+                ).decode("ascii").rstrip("="),
+            },
+        }
+
+    def _environment(self) -> dict[str, str]:
+        return {
+            **os.environ,
+            "DEPLOYMENT_CONFIG_SHA256": hashlib.sha256(
+                self.config.read_bytes()
+            ).hexdigest(),
+        }
 
     @staticmethod
     def _write_json(path: Path, value: object) -> None:
@@ -723,6 +982,7 @@ class RolloutTelemetrySignatureTests(unittest.TestCase):
             text=True,
             capture_output=True,
             check=False,
+            env=self._environment(),
         )
 
     def _verify(
@@ -740,15 +1000,36 @@ class RolloutTelemetrySignatureTests(unittest.TestCase):
                 str(config or self.config),
                 "--input",
                 str(path),
+                "--authorization",
+                str(self.authorization),
+                "--transition",
+                "apply-decision-50",
                 "--expect-traffic",
                 "decision=decision-r2:10,decision-r1:90",
                 "--expect-traffic",
-                "actuator=actuator-r2:10,actuator-r1:90",
+                "actuator=actuator-r1:100",
+                "--post-traffic",
+                "decision=decision-r2:50,decision-r1:50",
+                "--post-traffic",
+                "actuator=actuator-r1:100",
+                "--actuator-stable-revision",
+                "actuator-r1",
+                "--actuator-stable-image",
+                ACTUATOR_STABLE_IMAGE,
+                "--decision-stable-revision",
+                "decision-r1",
+                "--decision-stable-image",
+                DECISION_STABLE_IMAGE,
+                "--actuator-snapshot",
+                str(self.actuator_snapshot),
+                "--decision-snapshot",
+                str(self.decision_snapshot),
                 *(extra or []),
             ],
             text=True,
             capture_output=True,
             check=False,
+            env=self._environment(),
         )
 
     def test_cli_authenticates_before_accepting_metrics_and_rejects_unsigned(
@@ -846,7 +1127,7 @@ class RolloutTelemetrySignatureTests(unittest.TestCase):
         )
         result = self._verify(self.signed, config=wrong_hash)
         self.assertNotEqual(result.returncode, 0)
-        self.assertIn("SHA-256 differs", result.stderr)
+        self.assertIn("protected SHA-256", result.stderr)
 
         _, attacker_public = self._generate_key_pair("attacker")
         attacker_config = self._write_config(
@@ -856,7 +1137,7 @@ class RolloutTelemetrySignatureTests(unittest.TestCase):
         )
         result = self._verify(self.signed, config=attacker_config)
         self.assertNotEqual(result.returncode, 0)
-        self.assertIn("signature is invalid", result.stderr)
+        self.assertIn("protected SHA-256", result.stderr)
 
         changed_id = json.loads(self.signed.read_text(encoding="utf-8"))
         changed_id["signature"]["key_id"] = "attacker-key"
@@ -873,12 +1154,83 @@ class RolloutTelemetrySignatureTests(unittest.TestCase):
         self.assertNotEqual(result.returncode, 0)
         self.assertIn("unrecognized arguments", result.stderr)
 
+    def test_rejects_signed_context_transition_and_stale_stage_replay(self) -> None:
+        unsigned = json.loads(self.unsigned.read_text(encoding="utf-8"))
+        mutations = {
+            "project": lambda value: value["context"].__setitem__(
+                "project_id",
+                "other-project",
+            ),
+            "region": lambda value: value["context"].__setitem__(
+                "region",
+                "europe-west1",
+            ),
+            "release": lambda value: value["context"].__setitem__(
+                "release_id",
+                "r3",
+            ),
+            "transition": lambda value: value["context"].__setitem__(
+                "transition",
+                "apply-decision-10",
+            ),
+            "stale-stage": lambda value: value["context"]["pre_state"][
+                "decision"
+            ].__setitem__("resource_version", "rv-decision-old"),
+        }
+        for label, mutate in mutations.items():
+            hostile = json.loads(json.dumps(unsigned))
+            mutate(hostile)
+            payload = self.root / f"{label}-payload.json"
+            signature = self.root / f"{label}-signature.bin"
+            payload.write_bytes(
+                json.dumps(
+                    hostile,
+                    ensure_ascii=False,
+                    sort_keys=True,
+                    separators=(",", ":"),
+                    allow_nan=False,
+                ).encode("utf-8")
+            )
+            subprocess.run(
+                [
+                    "openssl",
+                    "pkeyutl",
+                    "-sign",
+                    "-inkey",
+                    str(self.private_key),
+                    "-rawin",
+                    "-in",
+                    str(payload),
+                    "-out",
+                    str(signature),
+                ],
+                check=True,
+                capture_output=True,
+                text=True,
+            )
+            signed = {
+                **hostile,
+                "signature": {
+                    "algorithm": "Ed25519",
+                    "key_id": "rollout-test-key",
+                    "value": base64.urlsafe_b64encode(
+                        signature.read_bytes()
+                    ).decode("ascii").rstrip("="),
+                },
+            }
+            signed_path = self.root / f"{label}-signed.json"
+            self._write_json(signed_path, signed)
+            with self.subTest(label=label):
+                result = self._verify(signed_path)
+                self.assertNotEqual(result.returncode, 0)
+                self.assertIn("context", result.stderr)
+
     def test_rejects_duplicate_members_before_signature_verification(self) -> None:
         self.assertEqual(self._sign().returncode, 0)
         raw = self.signed.read_text(encoding="utf-8")
         duplicate = raw.replace(
-            '"schema":"emilia-rollout-telemetry.v1"',
-            '"schema":"attacker","schema":"emilia-rollout-telemetry.v1"',
+            '"schema":"emilia-rollout-telemetry.v2"',
+            '"schema":"attacker","schema":"emilia-rollout-telemetry.v2"',
             1,
         )
         duplicate_path = self.root / "duplicate.json"

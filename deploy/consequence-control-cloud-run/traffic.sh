@@ -10,6 +10,7 @@ CONFIG=
 ACTION=
 EVIDENCE=
 TELEMETRY=
+AUTHORIZATION=
 STABLE_MANIFEST=
 STABLE_PUBLIC_KEY=
 MAX_ERROR_RATE=0.01
@@ -38,6 +39,11 @@ while (($#)); do
       TELEMETRY=$2
       shift 2
       ;;
+    --authorization)
+      (($# >= 2)) || lane_die "--authorization requires a path"
+      AUTHORIZATION=$2
+      shift 2
+      ;;
     --stable-manifest)
       (($# >= 2)) || lane_die "--stable-manifest requires a path"
       STABLE_MANIFEST=$2
@@ -61,6 +67,9 @@ done
 
 [[ -n "$CONFIG" ]] || lane_die "--config is required"
 [[ -n "$ACTION" ]] || lane_die "a traffic action is required"
+if [[ "$ACTION" != render-promote && "$ACTION" != render-rollback ]]; then
+  export REQUIRE_DEPLOYMENT_CONFIG_PIN=true
+fi
 load_lane_config "$CONFIG"
 validate_lane_config
 
@@ -79,6 +88,7 @@ stable_trust_arguments() {
 }
 
 verify_stable_revisions() {
+  local mode=${1:-offline}
   local command=(
     "$LANE_DIR/verify-stable-release.py" verify
     --config "$CONFIG"
@@ -87,7 +97,16 @@ verify_stable_revisions() {
   if [[ "$STABLE_TRUST_MODE" == file ]]; then
     command+=(--public-key "$STABLE_PUBLIC_KEY")
   fi
-  command+=(--live --print-revisions)
+  if [[ "$mode" == live ]]; then
+    command+=(
+      --live
+      --actuator-service-snapshot "$2"
+      --decision-service-snapshot "$3"
+    )
+  elif [[ "$mode" != offline ]]; then
+    lane_die "invalid stable-release verification mode"
+  fi
+  command+=(--print-rollout-bindings)
   "${command[@]}"
 }
 
@@ -103,11 +122,15 @@ load_pinned_stable_revisions() {
   [[ -n "$STABLE_MANIFEST" ]] \
     || lane_die "traffic apply requires --stable-manifest"
   stable_trust_arguments
-  local revisions
-  revisions=$(verify_stable_revisions) \
+  local bindings
+  bindings=$(verify_stable_revisions offline) \
     || lane_die "stable rollback target is invalid or has drifted"
-  IFS=$'\t' read -r ACTUATOR_STABLE_REVISION DECISION_STABLE_REVISION \
-    <<< "$revisions"
+  IFS=$'\t' read -r \
+    ACTUATOR_STABLE_REVISION ACTUATOR_STABLE_IMAGE \
+    DECISION_STABLE_REVISION DECISION_STABLE_IMAGE <<< "$bindings"
+  [[ -n "$ACTUATOR_STABLE_REVISION" && -n "$ACTUATOR_STABLE_IMAGE" \
+    && -n "$DECISION_STABLE_REVISION" && -n "$DECISION_STABLE_IMAGE" ]] \
+    || lane_die "stable rollback bindings are incomplete"
 }
 
 if [[ "$ACTION" == render-promote || "$ACTION" == render-rollback ]]; then
@@ -195,6 +218,10 @@ DECISION_SNAPSHOT="$WORK_DIR/decision.json"
 ACTUATOR_SNAPSHOT="$WORK_DIR/actuator.json"
 UPDATE_BODY="$WORK_DIR/update.json"
 UPDATE_RESPONSE="$WORK_DIR/update-response.json"
+PRE_SEND_DECISION_SNAPSHOT="$WORK_DIR/pre-send-decision.json"
+PRE_SEND_ACTUATOR_SNAPSHOT="$WORK_DIR/pre-send-actuator.json"
+POST_DECISION_SNAPSHOT="$WORK_DIR/post-decision.json"
+POST_ACTUATOR_SNAPSHOT="$WORK_DIR/post-actuator.json"
 
 describe_service() {
   local service=$1 output=$2
@@ -208,17 +235,23 @@ describe_service() {
 capture_snapshots() {
   describe_service "$DECISION_SERVICE" "$DECISION_SNAPSHOT"
   describe_service "$ACTUATOR_SERVICE" "$ACTUATOR_SNAPSHOT"
+  chmod 400 "$DECISION_SNAPSHOT" "$ACTUATOR_SNAPSHOT"
 }
 
 verify_current_signed_config() {
-  local revisions
-  revisions=$(verify_stable_revisions) \
+  local actuator_snapshot=$1 decision_snapshot=$2 bindings
+  bindings=$(verify_stable_revisions \
+    live "$actuator_snapshot" "$decision_snapshot") \
     || lane_die "signed stable-release configuration is no longer current"
-  local actuator decision
-  IFS=$'\t' read -r actuator decision <<< "$revisions"
-  [[ "$actuator" == "$ACTUATOR_STABLE_REVISION" \
-    && "$decision" == "$DECISION_STABLE_REVISION" ]] \
-    || lane_die "signed stable-release revisions changed during rollout"
+  local actuator_revision actuator_image decision_revision decision_image
+  IFS=$'\t' read -r \
+    actuator_revision actuator_image decision_revision decision_image \
+    <<< "$bindings"
+  [[ "$actuator_revision" == "$ACTUATOR_STABLE_REVISION" \
+    && "$actuator_image" == "$ACTUATOR_STABLE_IMAGE" \
+    && "$decision_revision" == "$DECISION_STABLE_REVISION" \
+    && "$decision_image" == "$DECISION_STABLE_IMAGE" ]] \
+    || lane_die "signed stable-release bindings changed during rollout"
 }
 
 verify_secret_versions() {
@@ -229,22 +262,56 @@ verify_secret_versions() {
     || lane_die "a configured Secret Manager version is missing or not ENABLED"
 }
 
+rollout_context_arguments() {
+  local transition=$1 decision_pre=$2 actuator_pre=$3
+  local decision_post=$4 actuator_post=$5
+  ROLLOUT_CONTEXT_ARGUMENTS=(
+    --config "$CONFIG"
+    --authorization "$AUTHORIZATION"
+    --transition "$transition"
+    --expect-traffic "$DECISION_SERVICE=$decision_pre"
+    --expect-traffic "$ACTUATOR_SERVICE=$actuator_pre"
+    --post-traffic "$DECISION_SERVICE=$decision_post"
+    --post-traffic "$ACTUATOR_SERVICE=$actuator_post"
+    --actuator-stable-revision "$ACTUATOR_STABLE_REVISION"
+    --actuator-stable-image "$ACTUATOR_STABLE_IMAGE"
+    --decision-stable-revision "$DECISION_STABLE_REVISION"
+    --decision-stable-image "$DECISION_STABLE_IMAGE"
+    --actuator-snapshot "$ACTUATOR_SNAPSHOT"
+    --decision-snapshot "$DECISION_SNAPSHOT"
+    --max-error-rate "$MAX_ERROR_RATE"
+    --max-p95-latency-ms "$MAX_P95_LATENCY_MS"
+    --min-readiness-rate "$MIN_READINESS_RATE"
+    --max-indeterminate-rate "$MAX_INDETERMINATE_RATE"
+    --min-dwell-seconds "$MIN_DWELL_SECONDS"
+    --min-requests "$MIN_REQUESTS"
+    --min-readiness-samples "$MIN_READINESS_SAMPLES"
+    --max-sample-gap-seconds "$MAX_SAMPLE_GAP_SECONDS"
+    --max-age-seconds "$MAX_TELEMETRY_AGE_SECONDS"
+  )
+}
+
+verify_rollout_authorization() {
+  local transition=$1 decision_pre=$2 actuator_pre=$3
+  local decision_post=$4 actuator_post=$5
+  [[ -n "$AUTHORIZATION" ]] \
+    || lane_die "traffic mutation requires --authorization"
+  rollout_context_arguments \
+    "$transition" "$decision_pre" "$actuator_pre" \
+    "$decision_post" "$actuator_post"
+  "$LANE_DIR/verify-rollout-telemetry.py" verify-authorization \
+    "${ROLLOUT_CONTEXT_ARGUMENTS[@]}" >/dev/null \
+    || lane_die "rollout authorization is invalid, stale, or not consumed"
+}
+
 verify_prior_stage_telemetry() {
   local decision_traffic=$1 actuator_traffic=$2
+  rollout_context_arguments \
+    "$ACTION" "$decision_traffic" "$actuator_traffic" \
+    "$POST_DECISION" "$POST_ACTUATOR"
   "$LANE_DIR/verify-rollout-telemetry.py" \
-    --config "$CONFIG" \
     --input "$TELEMETRY" \
-    --expect-traffic "$DECISION_SERVICE=$decision_traffic" \
-    --expect-traffic "$ACTUATOR_SERVICE=$actuator_traffic" \
-    --max-error-rate "$MAX_ERROR_RATE" \
-    --max-p95-latency-ms "$MAX_P95_LATENCY_MS" \
-    --min-readiness-rate "$MIN_READINESS_RATE" \
-    --max-indeterminate-rate "$MAX_INDETERMINATE_RATE" \
-    --min-dwell-seconds "$MIN_DWELL_SECONDS" \
-    --min-requests "$MIN_REQUESTS" \
-    --min-readiness-samples "$MIN_READINESS_SAMPLES" \
-    --max-sample-gap-seconds "$MAX_SAMPLE_GAP_SECONDS" \
-    --max-age-seconds "$MAX_TELEMETRY_AGE_SECONDS" \
+    "${ROLLOUT_CONTEXT_ARGUMENTS[@]}" \
     >/dev/null \
     || lane_die "prior rollout stage lacks acceptable telemetry and dwell"
 }
@@ -255,36 +322,46 @@ set_promotion_transition() {
       TARGET_PLANE=decision
       PRE_DECISION="$DECISION_STABLE_REVISION:100"
       PRE_ACTUATOR="$ACTUATOR_STABLE_REVISION:100"
-      POST_TRAFFIC="$DECISION_CANDIDATE:1,$DECISION_STABLE_REVISION:99"
+      POST_DECISION="$DECISION_CANDIDATE:1,$DECISION_STABLE_REVISION:99"
+      POST_ACTUATOR="$PRE_ACTUATOR"
       ;;
     apply-decision-10)
       TARGET_PLANE=decision
       PRE_DECISION="$DECISION_CANDIDATE:1,$DECISION_STABLE_REVISION:99"
       PRE_ACTUATOR="$ACTUATOR_STABLE_REVISION:100"
-      POST_TRAFFIC="$DECISION_CANDIDATE:10,$DECISION_STABLE_REVISION:90"
+      POST_DECISION="$DECISION_CANDIDATE:10,$DECISION_STABLE_REVISION:90"
+      POST_ACTUATOR="$PRE_ACTUATOR"
       ;;
     apply-decision-50)
       TARGET_PLANE=decision
       PRE_DECISION="$DECISION_CANDIDATE:10,$DECISION_STABLE_REVISION:90"
       PRE_ACTUATOR="$ACTUATOR_STABLE_REVISION:100"
-      POST_TRAFFIC="$DECISION_CANDIDATE:50,$DECISION_STABLE_REVISION:50"
+      POST_DECISION="$DECISION_CANDIDATE:50,$DECISION_STABLE_REVISION:50"
+      POST_ACTUATOR="$PRE_ACTUATOR"
       ;;
     apply-decision-100)
       TARGET_PLANE=decision
       PRE_DECISION="$DECISION_CANDIDATE:50,$DECISION_STABLE_REVISION:50"
       PRE_ACTUATOR="$ACTUATOR_STABLE_REVISION:100"
-      POST_TRAFFIC="$DECISION_CANDIDATE:100"
+      POST_DECISION="$DECISION_CANDIDATE:100"
+      POST_ACTUATOR="$PRE_ACTUATOR"
       ;;
     apply-actuator-100)
       TARGET_PLANE=actuator
       PRE_DECISION="$DECISION_CANDIDATE:100"
       PRE_ACTUATOR="$ACTUATOR_STABLE_REVISION:100"
-      POST_TRAFFIC="$ACTUATOR_CANDIDATE:100"
+      POST_DECISION="$PRE_DECISION"
+      POST_ACTUATOR="$ACTUATOR_CANDIDATE:100"
       ;;
     *)
       lane_die "unsupported promotion action"
       ;;
   esac
+  if [[ "$TARGET_PLANE" == decision ]]; then
+    POST_TRAFFIC=$POST_DECISION
+  else
+    POST_TRAFFIC=$POST_ACTUATOR
+  fi
 }
 
 verify_service_state() {
@@ -297,13 +374,26 @@ verify_service_state() {
     --allowed-revision "$candidate"
 }
 
+verify_exact_service_state() {
+  local input=$1 service=$2 traffic=$3 stable=$4 candidate=$5
+  local generation=$6 resource_version=$7
+  "$LANE_DIR/verify-rollout-telemetry.py" verify-service \
+    --input "$input" \
+    --service "$service" \
+    --expect-traffic "$traffic" \
+    --allowed-revision "$stable" \
+    --allowed-revision "$candidate" \
+    --generation-equals "$generation" \
+    --resource-version-equals "$resource_version"
+}
+
 prepare_locked_update() {
   local target_plane=$1 pre_decision=$2 pre_actuator=$3 post_traffic=$4
-  local lock
+  local lock other_lock
   if [[ "$target_plane" == decision ]]; then
-    verify_service_state \
+    other_lock=$(verify_service_state \
       "$ACTUATOR_SNAPSHOT" "$ACTUATOR_SERVICE" "$pre_actuator" \
-      "$ACTUATOR_STABLE_REVISION" "$ACTUATOR_CANDIDATE" >/dev/null \
+      "$ACTUATOR_STABLE_REVISION" "$ACTUATOR_CANDIDATE") \
       || lane_die "actuator pre-state forbids the requested decision transition"
     lock=$(
       "$LANE_DIR/verify-rollout-telemetry.py" prepare-update \
@@ -317,17 +407,18 @@ prepare_locked_update() {
     ) || lane_die "decision pre-state forbids skipping rollout stages"
     TARGET_SERVICE=$DECISION_SERVICE
     OTHER_SERVICE=$ACTUATOR_SERVICE
-    OTHER_SNAPSHOT=$ACTUATOR_SNAPSHOT
     OTHER_EXPECTED=$pre_actuator
     TARGET_STABLE=$DECISION_STABLE_REVISION
     TARGET_CANDIDATE=$DECISION_CANDIDATE
     OTHER_STABLE=$ACTUATOR_STABLE_REVISION
     OTHER_CANDIDATE=$ACTUATOR_CANDIDATE
     TARGET_PRE=$pre_decision
+    TARGET_POST_SNAPSHOT=$POST_DECISION_SNAPSHOT
+    OTHER_POST_SNAPSHOT=$POST_ACTUATOR_SNAPSHOT
   else
-    verify_service_state \
+    other_lock=$(verify_service_state \
       "$DECISION_SNAPSHOT" "$DECISION_SERVICE" "$pre_decision" \
-      "$DECISION_STABLE_REVISION" "$DECISION_CANDIDATE" >/dev/null \
+      "$DECISION_STABLE_REVISION" "$DECISION_CANDIDATE") \
       || lane_die "decision must be at candidate 100 before actuator promotion"
     lock=$(
       "$LANE_DIR/verify-rollout-telemetry.py" prepare-update \
@@ -341,17 +432,21 @@ prepare_locked_update() {
     ) || lane_die "actuator pre-state forbids the requested transition"
     TARGET_SERVICE=$ACTUATOR_SERVICE
     OTHER_SERVICE=$DECISION_SERVICE
-    OTHER_SNAPSHOT=$DECISION_SNAPSHOT
     OTHER_EXPECTED=$pre_decision
     TARGET_STABLE=$ACTUATOR_STABLE_REVISION
     TARGET_CANDIDATE=$ACTUATOR_CANDIDATE
     OTHER_STABLE=$DECISION_STABLE_REVISION
     OTHER_CANDIDATE=$DECISION_CANDIDATE
     TARGET_PRE=$pre_actuator
+    TARGET_POST_SNAPSHOT=$POST_ACTUATOR_SNAPSHOT
+    OTHER_POST_SNAPSHOT=$POST_DECISION_SNAPSHOT
   fi
   IFS=$'\t' read -r LOCK_GENERATION LOCK_RESOURCE_VERSION <<< "$lock"
+  IFS=$'\t' read -r OTHER_GENERATION OTHER_RESOURCE_VERSION <<< "$other_lock"
   [[ "$LOCK_GENERATION" =~ ^[1-9][0-9]*$ \
-    && -n "$LOCK_RESOURCE_VERSION" ]] \
+    && -n "$LOCK_RESOURCE_VERSION" \
+    && "$OTHER_GENERATION" =~ ^[1-9][0-9]*$ \
+    && -n "$OTHER_RESOURCE_VERSION" ]] \
     || lane_die "Cloud Run lock metadata is malformed"
   TARGET_POST=$post_traffic
 }
@@ -379,11 +474,28 @@ send_locked_update() {
     --config "$curl_config" \
     --data-binary "@$UPDATE_BODY" \
     --output "$UPDATE_RESPONSE" \
-    "$url"
+    "$url" \
+    || lane_die "Cloud Run update outcome is unknown or refused; do not replay"
+  local ack
+  ack=$(
+    "$LANE_DIR/verify-rollout-telemetry.py" verify-update-ack \
+      --input "$UPDATE_RESPONSE" \
+      --service "$TARGET_SERVICE" \
+      --expect-traffic "$TARGET_POST" \
+      --pending-from-traffic "$TARGET_PRE" \
+      --allowed-revision "$TARGET_STABLE" \
+      --allowed-revision "$TARGET_CANDIDATE" \
+      --generation-after "$LOCK_GENERATION" \
+      --resource-version-not "$LOCK_RESOURCE_VERSION"
+  ) || lane_die "Cloud Run update acknowledgement is not bound to the request"
+  IFS=$'\t' read -r ACK_GENERATION ACK_RESOURCE_VERSION <<< "$ack"
+  [[ "$ACK_GENERATION" =~ ^[1-9][0-9]*$ \
+    && -n "$ACK_RESOURCE_VERSION" ]] \
+    || lane_die "Cloud Run update acknowledgement lock is malformed"
 }
 
 poll_exact_post_state() {
-  local attempt status snapshot="$WORK_DIR/post.json"
+  local attempt status snapshot=$TARGET_POST_SNAPSHOT
   for ((attempt = 1; attempt <= ROLLOUT_POLL_ATTEMPTS; attempt++)); do
     describe_service "$TARGET_SERVICE" "$snapshot"
     set +e
@@ -394,17 +506,18 @@ poll_exact_post_state() {
       --pending-from-traffic "$TARGET_PRE" \
       --allowed-revision "$TARGET_STABLE" \
       --allowed-revision "$TARGET_CANDIDATE" \
-      --generation-after "$LOCK_GENERATION" \
+      --generation-equals "$ACK_GENERATION" \
       --resource-version-not "$LOCK_RESOURCE_VERSION" \
       >/dev/null 2>&1
     status=$?
     set -e
     if ((status == 0)); then
-      describe_service "$OTHER_SERVICE" "$OTHER_SNAPSHOT"
-      verify_service_state \
-        "$OTHER_SNAPSHOT" "$OTHER_SERVICE" "$OTHER_EXPECTED" \
-        "$OTHER_STABLE" "$OTHER_CANDIDATE" >/dev/null \
-        || lane_die "non-target service changed during the rollout transition"
+      describe_service "$OTHER_SERVICE" "$OTHER_POST_SNAPSHOT"
+      verify_exact_service_state \
+        "$OTHER_POST_SNAPSHOT" "$OTHER_SERVICE" "$OTHER_EXPECTED" \
+        "$OTHER_STABLE" "$OTHER_CANDIDATE" \
+        "$OTHER_GENERATION" "$OTHER_RESOURCE_VERSION" >/dev/null \
+        || lane_die "non-target service snapshot lock changed during transition"
       return 0
     fi
     ((status == 2)) \
@@ -416,28 +529,103 @@ poll_exact_post_state() {
   lane_die "Cloud Run did not reconcile the exact post-state in time"
 }
 
-apply_prepared_update() {
-  if ! send_locked_update; then
-    # A lost response can follow an accepted mutation. Never replay it blindly;
-    # the generation/resourceVersion-bound read-back below decides the outcome.
-    :
+verify_pre_send_service_locks() {
+  if [[ "$TARGET_SERVICE" == "$DECISION_SERVICE" ]]; then
+    verify_exact_service_state \
+      "$PRE_SEND_DECISION_SNAPSHOT" "$TARGET_SERVICE" "$TARGET_PRE" \
+      "$TARGET_STABLE" "$TARGET_CANDIDATE" \
+      "$LOCK_GENERATION" "$LOCK_RESOURCE_VERSION" >/dev/null \
+      || lane_die "target service changed after its signed preflight snapshot"
+    verify_exact_service_state \
+      "$PRE_SEND_ACTUATOR_SNAPSHOT" "$OTHER_SERVICE" "$OTHER_EXPECTED" \
+      "$OTHER_STABLE" "$OTHER_CANDIDATE" \
+      "$OTHER_GENERATION" "$OTHER_RESOURCE_VERSION" >/dev/null \
+      || lane_die "non-target service changed after preflight"
+  else
+    verify_exact_service_state \
+      "$PRE_SEND_ACTUATOR_SNAPSHOT" "$TARGET_SERVICE" "$TARGET_PRE" \
+      "$TARGET_STABLE" "$TARGET_CANDIDATE" \
+      "$LOCK_GENERATION" "$LOCK_RESOURCE_VERSION" >/dev/null \
+      || lane_die "target service changed after its signed preflight snapshot"
+    verify_exact_service_state \
+      "$PRE_SEND_DECISION_SNAPSHOT" "$OTHER_SERVICE" "$OTHER_EXPECTED" \
+      "$OTHER_STABLE" "$OTHER_CANDIDATE" \
+      "$OTHER_GENERATION" "$OTHER_RESOURCE_VERSION" >/dev/null \
+      || lane_die "non-target service changed after preflight"
   fi
+}
+
+revalidate_before_send() {
+  verify_lane_config_pin "$CONFIG"
+  verify_secret_versions
+  verify_effective_iam_live
+  describe_service "$DECISION_SERVICE" "$PRE_SEND_DECISION_SNAPSHOT"
+  describe_service "$ACTUATOR_SERVICE" "$PRE_SEND_ACTUATOR_SNAPSHOT"
+  verify_current_signed_config \
+    "$PRE_SEND_ACTUATOR_SNAPSHOT" "$PRE_SEND_DECISION_SNAPSHOT"
+  verify_pre_send_service_locks
+  verify_lane_config_pin "$CONFIG"
+}
+
+verify_post_target_state() {
+  local snapshot
+  if [[ "$TARGET_SERVICE" == "$DECISION_SERVICE" ]]; then
+    snapshot=$POST_DECISION_SNAPSHOT
+  else
+    snapshot=$POST_ACTUATOR_SNAPSHOT
+  fi
+  "$LANE_DIR/verify-rollout-telemetry.py" verify-service \
+    --input "$snapshot" \
+    --service "$TARGET_SERVICE" \
+    --expect-traffic "$TARGET_POST" \
+    --allowed-revision "$TARGET_STABLE" \
+    --allowed-revision "$TARGET_CANDIDATE" \
+    --generation-equals "$ACK_GENERATION" \
+    --resource-version-not "$LOCK_RESOURCE_VERSION" >/dev/null \
+    || lane_die "target service changed after the acknowledged mutation"
+}
+
+verify_post_mutation_controls() {
+  verify_lane_config_pin "$CONFIG"
+  verify_current_signed_config \
+    "$POST_ACTUATOR_SNAPSHOT" "$POST_DECISION_SNAPSHOT"
+  verify_secret_versions
+  verify_effective_iam_live
+  describe_service "$DECISION_SERVICE" "$POST_DECISION_SNAPSHOT"
+  describe_service "$ACTUATOR_SERVICE" "$POST_ACTUATOR_SNAPSHOT"
+  verify_post_target_state
+  verify_exact_service_state \
+    "$OTHER_POST_SNAPSHOT" "$OTHER_SERVICE" "$OTHER_EXPECTED" \
+    "$OTHER_STABLE" "$OTHER_CANDIDATE" \
+    "$OTHER_GENERATION" "$OTHER_RESOURCE_VERSION" >/dev/null \
+    || lane_die "non-target service changed after mutation read-back"
+  verify_lane_config_pin "$CONFIG"
+}
+
+apply_prepared_update() {
+  revalidate_before_send
+  send_locked_update
   poll_exact_post_state
+  verify_post_mutation_controls
 }
 
 promotion_preflight() {
   [[ -n "$EVIDENCE" ]] || lane_die "promotion requires --evidence"
   [[ -n "$TELEMETRY" ]] || lane_die "promotion requires --telemetry"
+  [[ -n "$AUTHORIZATION" ]] \
+    || lane_die "promotion requires --authorization"
   require_var ROLLOUT_TELEMETRY_KEY_ID
   require_var ROLLOUT_TELEMETRY_PUBLIC_KEY_FILE
   require_var ROLLOUT_TELEMETRY_PUBLIC_KEY_SHA256
-  verify_current_signed_config
+  verify_current_signed_config "$ACTUATOR_SNAPSHOT" "$DECISION_SNAPSHOT"
   verify_secret_versions
   verify_effective_iam_live
   "$LANE_DIR/verify-canary.py" \
     --config "$CONFIG" \
     --evidence "$EVIDENCE" \
     --live \
+    --actuator-service-snapshot "$ACTUATOR_SNAPSHOT" \
+    --decision-service-snapshot "$DECISION_SNAPSHOT" \
     >/dev/null \
     || lane_die "current signed canary/config verification failed"
   verify_prior_stage_telemetry "$PRE_DECISION" "$PRE_ACTUATOR"
@@ -467,9 +655,9 @@ EOF
 }
 
 apply_rollback() {
-  verify_current_signed_config
-  verify_secret_versions
   capture_snapshots
+  verify_current_signed_config "$ACTUATOR_SNAPSHOT" "$DECISION_SNAPSHOT"
+  verify_secret_versions
   local decision_state decision_stage decision_traffic actuator_stage
   decision_state=$(decision_rollback_stage) \
     || lane_die "decision service is not in a rollback-safe rollout state"
@@ -488,38 +676,50 @@ apply_rollback() {
     lane_die "actuator service is not in a rollback-safe rollout state"
   fi
 
+  if [[ "$actuator_stage" == stable && "$decision_stage" == stable ]]; then
+    printf 'rollback target is already serving 100%% on both services\n'
+    return 0
+  fi
+
+  verify_effective_iam_live
+  require_var ROLLOUT_TELEMETRY_KEY_ID
+  require_var ROLLOUT_TELEMETRY_PUBLIC_KEY_FILE
+  require_var ROLLOUT_TELEMETRY_PUBLIC_KEY_SHA256
+
   if [[ "$actuator_stage" == candidate ]]; then
     [[ "$decision_stage" == 100 || "$decision_stage" == stable ]] \
       || lane_die "refusing actuator-before-decision rollout state"
+    verify_rollout_authorization \
+      apply-rollback-actuator \
+      "$decision_traffic" "$ACTUATOR_CANDIDATE:100" \
+      "$decision_traffic" "$ACTUATOR_STABLE_REVISION:100"
     prepare_locked_update \
       actuator "$decision_traffic" "$ACTUATOR_CANDIDATE:100" \
       "$ACTUATOR_STABLE_REVISION:100"
     apply_prepared_update
-    if [[ "$decision_stage" == stable ]]; then
-      return 0
+    if [[ "$decision_stage" != stable ]]; then
+      printf '%s\n' \
+        "actuator rollback complete; a new consumed authorization is required for decision rollback"
     fi
-    load_pinned_stable_revisions
-    verify_current_signed_config
-    verify_secret_versions
-    capture_snapshots
+    return 0
   fi
 
-  if [[ "$decision_stage" != stable ]]; then
-    prepare_locked_update \
-      decision "$decision_traffic" "$ACTUATOR_STABLE_REVISION:100" \
-      "$DECISION_STABLE_REVISION:100"
-    apply_prepared_update
-  else
-    printf 'rollback target is already serving 100%% on both services\n'
-  fi
+  verify_rollout_authorization \
+    apply-rollback-decision \
+    "$decision_traffic" "$ACTUATOR_STABLE_REVISION:100" \
+    "$DECISION_STABLE_REVISION:100" "$ACTUATOR_STABLE_REVISION:100"
+  prepare_locked_update \
+    decision "$decision_traffic" "$ACTUATOR_STABLE_REVISION:100" \
+    "$DECISION_STABLE_REVISION:100"
+  apply_prepared_update
 }
 
 if [[ "$ACTION" == apply-rollback ]]; then
   apply_rollback
 else
   set_promotion_transition
-  promotion_preflight
   capture_snapshots
+  promotion_preflight
   prepare_locked_update \
     "$TARGET_PLANE" "$PRE_DECISION" "$PRE_ACTUATOR" "$POST_TRAFFIC"
   apply_prepared_update
