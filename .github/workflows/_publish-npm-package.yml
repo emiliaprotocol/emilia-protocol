@@ -133,6 +133,11 @@ jobs:
         working-directory: ${{ inputs.package_dir }}
         run: npm ci --ignore-scripts
 
+      - name: Materialize pinned registry dependency bytes
+        env:
+          PACKAGE_DIR: ${{ inputs.package_dir }}
+        run: node scripts/check-npm-package-dependencies.mjs "$PACKAGE_DIR" --install-pinned
+
       - name: Test package
         working-directory: ${{ inputs.package_dir }}
         run: npm test
@@ -151,14 +156,88 @@ jobs:
         id: pack
         env:
           PACKAGE_DIR: ${{ inputs.package_dir }}
+          PACKAGE_NAME: ${{ inputs.package_name }}
           ARTIFACT_ID: ${{ inputs.artifact_id }}
         run: |
+          ARTIFACT_DIR="release-artifacts/$ARTIFACT_ID"
+          MANIFEST_PATH="release-artifacts/$ARTIFACT_ID-reproducible.json"
+          test ! -e "$ARTIFACT_DIR"
+          test ! -e "$MANIFEST_PATH"
           node scripts/verify-reproducible-package.mjs "$PACKAGE_DIR" \
-            --outdir "release-artifacts/$ARTIFACT_ID" \
-            --emit "release-artifacts/$ARTIFACT_ID-reproducible.json"
-          TARBALL=$(find "release-artifacts/$ARTIFACT_ID" -maxdepth 1 -name '*.tgz' -print -quit)
-          test -n "$TARBALL"
-          echo "tarball=$TARBALL" >> "$GITHUB_OUTPUT"
+            --outdir "$ARTIFACT_DIR" \
+            --emit "$MANIFEST_PATH"
+          node --input-type=module - \
+            "$ARTIFACT_DIR" "$MANIFEST_PATH" "$PACKAGE_DIR" "$PACKAGE_NAME" "$GITHUB_OUTPUT" <<'NODE'
+          import crypto from 'node:crypto';
+          import fs from 'node:fs';
+          import path from 'node:path';
+
+          const [
+            artifactDirectory,
+            manifestPath,
+            packageDirectory,
+            packageName,
+            outputPath,
+          ] = process.argv.slice(2);
+          const manifest = JSON.parse(fs.readFileSync(manifestPath, 'utf8'));
+          const packageMetadata = JSON.parse(
+            fs.readFileSync(path.join(packageDirectory, 'package.json'), 'utf8'),
+          );
+          if (manifest['@version'] !== 'EP-REPRODUCIBLE-NPM-ARTIFACT-v1'
+            || manifest.package_path !== packageDirectory
+            || manifest.package !== packageName
+            || manifest.version !== packageMetadata.version) {
+            throw new Error('reproducibility manifest identity does not match the release input');
+          }
+          const {
+            manifest_sha256: manifestSha256,
+            ...unsignedManifest
+          } = manifest;
+          const actualManifestSha256 = crypto
+            .createHash('sha256')
+            .update(JSON.stringify(unsignedManifest))
+            .digest('hex');
+          if (manifestSha256 !== actualManifestSha256) {
+            throw new Error('reproducibility manifest sha256 mismatch');
+          }
+          const filename = manifest.artifact.filename;
+          const expectedSha256 = manifest.artifact.sha256;
+          if (typeof filename !== 'string'
+            || filename !== path.basename(filename)
+            || !/^[a-z0-9][a-z0-9._-]*\.tgz$/u.test(filename)
+            || typeof expectedSha256 !== 'string'
+            || !/^[0-9a-f]{64}$/u.test(expectedSha256)) {
+            throw new Error('reproducibility manifest contains an unsafe artifact binding');
+          }
+          const archives = fs.readdirSync(artifactDirectory)
+            .filter((entry) => entry.endsWith('.tgz'))
+            .sort();
+          if (archives.length !== 1) {
+            throw new Error(`expected exactly one canonical archive, found ${archives.length}`);
+          }
+          const [archive] = archives;
+          if (archive !== filename) {
+            throw new Error(`canonical archive differs from manifest: ${archive} != ${filename}`);
+          }
+          const tarballPath = path.join(artifactDirectory, filename);
+          if (!fs.lstatSync(tarballPath).isFile()) {
+            throw new Error('canonical archive is not a regular file');
+          }
+          const tarballBytes = fs.readFileSync(tarballPath);
+          const actualSha256 = crypto.createHash('sha256').update(tarballBytes).digest('hex');
+          if (actualSha256 !== expectedSha256
+            || tarballBytes.length !== manifest.artifact.bytes) {
+            throw new Error('canonical archive bytes differ from reproducibility manifest');
+          }
+          fs.writeFileSync(
+            `${tarballPath}.sha256`,
+            `${expectedSha256}  ${tarballPath}\n`,
+          );
+          fs.appendFileSync(
+            outputPath,
+            `tarball=${tarballPath}\nsha256=${expectedSha256}\n`,
+          );
+          NODE
 
       - name: Attest exact npm package bytes
         uses: actions/attest@f7c74d28b9d84cb8768d0b8ca14a4bac6ef463e6  # v4.2.0
@@ -179,6 +258,7 @@ jobs:
           name: ${{ inputs.artifact_id }}-release-${{ inputs.release_tag }}
           path: |
             ${{ steps.pack.outputs.tarball }}
+            ${{ steps.pack.outputs.tarball }}.sha256
             release-artifacts/${{ inputs.artifact_id }}-reproducible.json
             security/security-case.json
             conformance/conformance-manifest.json
@@ -193,7 +273,12 @@ jobs:
         env:
           PACKAGE_DIR: ${{ inputs.package_dir }}
           PACKAGE_NAME: ${{ inputs.package_name }}
+          TESTED_TARBALL: ${{ steps.pack.outputs.tarball }}
+          EXPECTED_SHA256: ${{ steps.pack.outputs.sha256 }}
         run: |
+          sha256sum -c "$TESTED_TARBALL.sha256"
+          ACTUAL_SHA256=$(sha256sum "$TESTED_TARBALL" | cut -d ' ' -f 1)
+          test "$ACTUAL_SHA256" = "$EXPECTED_SHA256"
           VERSION=$(node -p "require('./${PACKAGE_DIR}/package.json').version")
           if npm view "${PACKAGE_NAME}@${VERSION}" version --min-release-age=0 >/dev/null 2>&1; then
             echo "${PACKAGE_NAME}@${VERSION} already exists; continuing to mandatory byte verification."
@@ -206,15 +291,29 @@ jobs:
           PACKAGE_DIR: ${{ inputs.package_dir }}
           PACKAGE_NAME: ${{ inputs.package_name }}
           TESTED_TARBALL: ${{ steps.pack.outputs.tarball }}
+          EXPECTED_SHA256: ${{ steps.pack.outputs.sha256 }}
         run: |
+          sha256sum -c "$TESTED_TARBALL.sha256"
+          ACTUAL_SHA256=$(sha256sum "$TESTED_TARBALL" | cut -d ' ' -f 1)
+          test "$ACTUAL_SHA256" = "$EXPECTED_SHA256"
           VERSION=$(node -p "require('./${PACKAGE_DIR}/package.json').version")
-          mkdir -p registry-copy
+          test ! -e registry-copy
+          mkdir registry-copy
+          REGISTRY_READY=false
           for attempt in 1 2 3 4 5 6 7 8 9 10 11 12; do
+            rm -f registry-copy/pack.json
             if npm pack "${PACKAGE_NAME}@${VERSION}" --min-release-age=0 --json --pack-destination registry-copy > registry-copy/pack.json; then
+              REGISTRY_READY=true
               break
             fi
             echo "Registry has not exposed ${PACKAGE_NAME}@${VERSION} yet (attempt ${attempt}/12); retrying in 5 seconds."
             sleep 5
           done
-          REGISTRY_TARBALL=$(node -e "const r=require('./registry-copy/pack.json'); if(r.length!==1) process.exit(2); process.stdout.write(r[0].filename)")
+          if [ "$REGISTRY_READY" != "true" ]; then
+            echo "::error::npm did not expose ${PACKAGE_NAME}@${VERSION} after publication."
+            exit 2
+          fi
+          REGISTRY_TARBALL=$(node -e "const fs=require('fs'); const path=require('path'); const r=require('./registry-copy/pack.json'); if(!Array.isArray(r)||r.length!==1) process.exit(2); const filename=r[0]?.filename; if(typeof filename!=='string'||filename!==path.basename(filename)||!(/^[a-z0-9][a-z0-9._-]*\\.tgz$/u.test(filename))) process.exit(3); const archives=fs.readdirSync('registry-copy').filter((entry)=>entry.endsWith('.tgz')).sort(); if(archives.length!==1||archives[0]!==filename) process.exit(4); process.stdout.write(filename)")
+          REGISTRY_SHA256=$(sha256sum "registry-copy/$REGISTRY_TARBALL" | cut -d ' ' -f 1)
+          test "$REGISTRY_SHA256" = "$EXPECTED_SHA256"
           cmp "$TESTED_TARBALL" "registry-copy/$REGISTRY_TARBALL"
