@@ -45,7 +45,7 @@ fi
 DEPLOY_CONFIG_KEYS=()
 while IFS= read -r name; do
   DEPLOY_CONFIG_KEYS+=("$name")
-done < <(deployment_config_variables)
+done < <(deploy_config_variables)
 load_lane_config "$CONFIG" "${DEPLOY_CONFIG_KEYS[@]}"
 validate_lane_config
 require_var PROJECT_PARENT
@@ -553,8 +553,9 @@ verify_effective_iam_org_live() {
     "--analyzer-scope=$RESOLVED_ANALYZER_SCOPE"
     "--region=$REGION"
     "--actuator-service=$ACTUATOR_SERVICE"
-    "--actuator-principal=serviceAccount:$ACTUATOR_SA"
+    "--decision-service=$DECISION_SERVICE"
     "--decision-principal=serviceAccount:$DECISION_SA"
+    "--deployer-principal=$DEPLOYER_PRINCIPAL"
     "--output=$manifest"
   )
   while IFS= read -r spec; do arguments+=(--secret "$spec"); done \

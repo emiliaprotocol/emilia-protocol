@@ -23,6 +23,10 @@ ACTUATOR_RESOURCE = (
     "//run.googleapis.com/projects/test-project/locations/us-central1/"
     "services/emilia-consequence-actuator"
 )
+DECISION_RESOURCE = (
+    "//run.googleapis.com/projects/test-project/locations/us-central1/"
+    "services/emilia-consequence-control"
+)
 SECRET_RESOURCE = (
     "//secretmanager.googleapis.com/projects/123456789/secrets/actuator-token"
 )
@@ -37,6 +41,9 @@ RUN_AGENT = (
 )
 STANDALONE_ANCESTRY = [{"type": "project", "id": "test-project"}]
 DEPLOYER = "user:deployer@example.com"
+UPDATE_DEPLOYER = (
+    "serviceAccount:emilia-deployer@test-project.iam.gserviceaccount.com"
+)
 ACTUATOR_SA_RESOURCE = (
     "//iam.googleapis.com/projects/test-project/serviceAccounts/"
     "emilia-actuator@test-project.iam.gserviceaccount.com"
@@ -271,6 +278,18 @@ def manifest() -> dict:
         impersonation_analysis(ACTUATOR, [COMPUTE_AGENT, RUN_AGENT]),
         impersonation_analysis(DECISION, [COMPUTE_AGENT, RUN_AGENT]),
     ]
+    actuator_update_analysis = response(
+        resource=ACTUATOR_RESOURCE,
+        permission="run.services.update",
+        identities=[UPDATE_DEPLOYER],
+        role="projects/test-project/roles/emiliaConsequenceDeployer",
+    )
+    decision_update_analysis = response(
+        resource=DECISION_RESOURCE,
+        permission="run.services.update",
+        identities=[UPDATE_DEPLOYER],
+        role="projects/test-project/roles/emiliaConsequenceDeployer",
+    )
     return {
         "version": VERSION,
         "projectId": "test-project",
@@ -297,6 +316,22 @@ def manifest() -> dict:
                 ],
                 "analysis": secret_analysis,
             },
+            {
+                "name": "service-update:actuator",
+                "kind": "serviceUpdate",
+                "scope": PROJECT_SCOPE,
+                "resource": ACTUATOR_RESOURCE,
+                "allowedPrincipals": [UPDATE_DEPLOYER],
+                "analysis": actuator_update_analysis,
+            },
+            {
+                "name": "service-update:decision",
+                "kind": "serviceUpdate",
+                "scope": PROJECT_SCOPE,
+                "resource": DECISION_RESOURCE,
+                "allowedPrincipals": [UPDATE_DEPLOYER],
+                "analysis": decision_update_analysis,
+            },
         ],
     }
 
@@ -319,7 +354,68 @@ class EffectiveIamTests(unittest.TestCase):
                         (ACTUATOR, COMPUTE_AGENT, DECISION, RUN_AGENT)
                     )
                 ),
+                "service-update:actuator": (UPDATE_DEPLOYER,),
+                "service-update:decision": (UPDATE_DEPLOYER,),
             },
+        )
+
+    def test_update_custody_rejects_ancestor_group_and_impersonation_paths(
+        self,
+    ) -> None:
+        ancestor = manifest()
+        ancestor["targets"][2]["analysis"]["mainAnalysis"][
+            "analysisResults"
+        ].append(
+            result(
+                resource=ACTUATOR_RESOURCE,
+                permission="run.services.update",
+                identities=["user:organization-owner@example.com"],
+                role="roles/owner",
+                attached_resource=(
+                    "//cloudresourcemanager.googleapis.com/organizations/"
+                    "987654321"
+                ),
+            )
+        )
+        self.assert_refused(ancestor, "nonallowlisted effective principal")
+
+        group = manifest()
+        group["targets"][3]["analysis"] = response(
+            resource=DECISION_RESOURCE,
+            permission="run.services.update",
+            identities=[
+                "group:release@example.com",
+                UPDATE_DEPLOYER,
+                "user:attacker@example.com",
+            ],
+            role="roles/run.admin",
+            members=["group:release@example.com"],
+            group_edges=[
+                {
+                    "sourceNode": "group:release@example.com",
+                    "targetNode": UPDATE_DEPLOYER,
+                },
+                {
+                    "sourceNode": "group:release@example.com",
+                    "targetNode": "user:attacker@example.com",
+                },
+            ],
+        )
+        self.assert_refused(group, "nonallowlisted effective principal")
+
+        impersonation = manifest()
+        impersonation["targets"][2]["analysis"][
+            "serviceAccountImpersonationAnalysis"
+        ] = [
+            impersonation_analysis(
+                UPDATE_DEPLOYER,
+                ["user:impersonator@example.com"],
+                permission="iam.serviceAccounts.getAccessToken",
+            )
+        ]
+        self.assert_refused(
+            impersonation,
+            "nonallowlisted effective principal",
         )
 
     def test_managed_service_agents_are_proven_through_impersonation_paths(
@@ -579,7 +675,7 @@ class EffectiveIamTests(unittest.TestCase):
 
     def test_inherited_group_custom_role_act_as_is_refused_during_jit(self) -> None:
         value = jit_manifest()
-        target = value["targets"][2]
+        target = value["targets"][4]
         target["analysis"]["during"]["mainAnalysis"]["analysisResults"].append(
             result(
                 resource=ACTUATOR_SA_RESOURCE,
@@ -627,7 +723,7 @@ class EffectiveIamTests(unittest.TestCase):
         self,
     ) -> None:
         value = jit_manifest()
-        target = value["targets"][3]
+        target = value["targets"][5]
         target["analysis"]["after"] = response(
             resource=DECISION_SA_RESOURCE,
             permission="iam.serviceAccounts.actAs",
@@ -721,10 +817,13 @@ class EffectiveIamTests(unittest.TestCase):
         value = manifest()
         for target in value["targets"]:
             del target["analysis"]
+        expected = manifest()
         outputs = [
             json.dumps(STANDALONE_ANCESTRY),
-            json.dumps(manifest()["targets"][0]["analysis"]),
-            json.dumps(manifest()["targets"][1]["analysis"]),
+            *(
+                json.dumps(target["analysis"])
+                for target in expected["targets"]
+            ),
         ]
         runner = mock.Mock(
             side_effect=[

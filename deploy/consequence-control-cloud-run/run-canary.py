@@ -5,7 +5,11 @@ from __future__ import annotations
 
 import argparse
 import base64
+from contextlib import contextmanager
 import datetime as dt
+import errno
+import hashlib
+import hmac
 import json
 import os
 import re
@@ -18,7 +22,7 @@ import urllib.error
 import urllib.parse
 import urllib.request
 from pathlib import Path
-from typing import Any
+from typing import Any, Iterator
 
 
 VERSION = "EP-CONSEQUENCE-CANARY-EVIDENCE-v1"
@@ -106,9 +110,9 @@ def load_json_file(path: Path, name: str) -> object:
         raise CanaryError(f"{name} must be strict UTF-8 JSON") from error
 
 
-def load_config(path: Path) -> dict[str, str]:
+def parse_config(raw: bytes) -> dict[str, str]:
     try:
-        lines = read_bounded(path, "config").decode("utf-8").splitlines()
+        lines = raw.decode("utf-8").splitlines()
     except UnicodeDecodeError as error:
         raise CanaryError("config must be UTF-8") from error
     result: dict[str, str] = {}
@@ -155,6 +159,89 @@ def load_config(path: Path) -> dict[str, str]:
     if max_age <= 0:
         raise CanaryError("CANARY_MAX_AGE_SEC must be positive")
     return result
+
+
+def read_pinned_config(path: Path) -> tuple[bytes, str]:
+    expected = os.environ.get("DEPLOYMENT_CONFIG_SHA256", "")
+    if re.fullmatch(r"[0-9a-f]{64}", expected) is None:
+        raise CanaryError(
+            "DEPLOYMENT_CONFIG_SHA256 must be injected by a protected source"
+        )
+    if not path.is_absolute():
+        raise CanaryError("config path must be absolute")
+    flags = os.O_RDONLY | getattr(os, "O_CLOEXEC", 0)
+    if hasattr(os, "O_NOFOLLOW"):
+        flags |= os.O_NOFOLLOW
+    try:
+        descriptor = os.open(path, flags)
+    except OSError as error:
+        if error.errno in {errno.ELOOP, errno.EMLINK}:
+            raise CanaryError(
+                "config path must name a regular non-symlink file"
+            ) from error
+        raise CanaryError("config is unavailable") from error
+    try:
+        metadata = os.fstat(descriptor)
+        if not stat.S_ISREG(metadata.st_mode) or metadata.st_nlink != 1:
+            raise CanaryError(
+                "config path must name a single-link regular non-symlink file"
+            )
+        if metadata.st_uid not in {0, os.geteuid()}:
+            raise CanaryError("config ownership is unsafe")
+        if stat.S_IMODE(metadata.st_mode) & 0o022:
+            raise CanaryError("config mode permits group or world writes")
+        chunks: list[bytes] = []
+        size = 0
+        while True:
+            chunk = os.read(descriptor, 1024 * 1024)
+            if not chunk:
+                break
+            size += len(chunk)
+            if size > MAX_FILE_BYTES:
+                raise CanaryError("config is too large")
+            chunks.append(chunk)
+        raw = b"".join(chunks)
+    finally:
+        os.close(descriptor)
+    if not raw:
+        raise CanaryError("config is empty")
+    actual = hashlib.sha256(raw).hexdigest()
+    if not hmac.compare_digest(actual, expected):
+        raise CanaryError("deployment config differs from protected SHA-256")
+    return raw, actual
+
+
+def write_retained_config(directory: Path, raw: bytes) -> Path:
+    snapshot = directory / "config.env"
+    flags = (
+        os.O_WRONLY
+        | os.O_CREAT
+        | os.O_EXCL
+        | getattr(os, "O_CLOEXEC", 0)
+    )
+    if hasattr(os, "O_NOFOLLOW"):
+        flags |= os.O_NOFOLLOW
+    descriptor = os.open(snapshot, flags, 0o400)
+    try:
+        view = memoryview(raw)
+        while view:
+            written = os.write(descriptor, view)
+            view = view[written:]
+        os.fsync(descriptor)
+    finally:
+        os.close(descriptor)
+    return snapshot
+
+
+@contextmanager
+def retained_config(path: Path) -> Iterator[tuple[dict[str, str], Path]]:
+    raw, _actual = read_pinned_config(path)
+    config = parse_config(raw)
+    with tempfile.TemporaryDirectory(prefix="emilia-canary-config-") as name:
+        directory = Path(name)
+        directory.chmod(0o700)
+        snapshot = write_retained_config(directory, raw)
+        yield config, snapshot
 
 
 def secure_file(path: Path, name: str) -> Path:
@@ -1321,74 +1408,76 @@ def parse_args() -> argparse.Namespace:
 def main() -> int:
     args = parse_args()
     try:
-        config = load_config(args.config)
-        maximum_age = int(config["CANARY_MAX_AGE_SEC"])
-        if args.ttl_seconds > maximum_age:
-            raise CanaryError(
-                "ttl-seconds exceeds the configured CANARY_MAX_AGE_SEC"
+        with retained_config(args.config) as (config, retained_config_path):
+            maximum_age = int(config["CANARY_MAX_AGE_SEC"])
+            if args.ttl_seconds > maximum_age:
+                raise CanaryError(
+                    "ttl-seconds exceeds the configured CANARY_MAX_AGE_SEC"
+                )
+            if args.identity_service_account and not args.use_google_id_token:
+                raise CanaryError(
+                    "--identity-service-account requires --use-google-id-token"
+                )
+            if args.output.exists() and not args.overwrite:
+                raise CanaryError(
+                    "output already exists; use --overwrite to replace it"
+                )
+            token = application_token(args.application_token_file)
+            signing_key = private_key_file(args.private_key_file, config)
+            validate_signing_key_pair(
+                signing_key,
+                Path(config["CANARY_EVIDENCE_PUBLIC_KEY_FILE"]),
             )
-        if args.identity_service_account and not args.use_google_id_token:
-            raise CanaryError(
-                "--identity-service-account requires --use-google-id-token"
+            scenario = load_scenario(args.scenario, config)
+
+            decision_origin, audience = preflight(
+                config,
+                args.allow_insecure_loopback,
             )
-        if args.output.exists() and not args.overwrite:
-            raise CanaryError("output already exists; use --overwrite to replace it")
-        token = application_token(args.application_token_file)
-        signing_key = private_key_file(args.private_key_file, config)
-        validate_signing_key_pair(
-            signing_key,
-            Path(config["CANARY_EVIDENCE_PUBLIC_KEY_FILE"]),
-        )
-        scenario = load_scenario(args.scenario, config)
+            identity_token = (
+                google_identity_token(audience, args.identity_service_account)
+                if args.use_google_id_token
+                else None
+            )
+            client = JsonClient(
+                decision_origin,
+                token,
+                identity_token,
+                args.timeout_seconds,
+            )
+            checks = run_workflow(client, scenario, config)
 
-        decision_origin, audience = preflight(
-            config,
-            args.allow_insecure_loopback,
-        )
-        identity_token = (
-            google_identity_token(audience, args.identity_service_account)
-            if args.use_google_id_token
-            else None
-        )
-        client = JsonClient(
-            decision_origin,
-            token,
-            identity_token,
-            args.timeout_seconds,
-        )
-        checks = run_workflow(client, scenario, config)
-
-        observed_at = dt.datetime.now(dt.timezone.utc).replace(microsecond=0)
-        expires_at = observed_at + dt.timedelta(seconds=args.ttl_seconds)
-        unsigned = {
-            "@version": VERSION,
-            "project_id": config["PROJECT_ID"],
-            "region": config["REGION"],
-            "evidence_status": "observed",
-            "observed_at": observed_at.isoformat().replace("+00:00", "Z"),
-            "expires_at": expires_at.isoformat().replace("+00:00", "Z"),
-            "nonce": f"canary_nonce_{secrets.token_urlsafe(24)}",
-            "actuator_revision": (
-                f"{config['ACTUATOR_SERVICE']}-{config['RELEASE_ID']}"
-            ),
-            "decision_revision": (
-                f"{config['DECISION_SERVICE']}-{config['RELEASE_ID']}"
-            ),
-            "actuator_image": config["ACTUATOR_IMAGE"],
-            "decision_image": config["DECISION_IMAGE"],
-            "checks": checks,
-        }
-        signed = sign_evidence(
-            unsigned,
-            signing_key,
-            config["CANARY_EVIDENCE_KEY_ID"],
-        )
-        write_verified_evidence(
-            args.output,
-            signed,
-            args.config,
-            args.overwrite,
-        )
+            observed_at = dt.datetime.now(dt.timezone.utc).replace(microsecond=0)
+            expires_at = observed_at + dt.timedelta(seconds=args.ttl_seconds)
+            unsigned = {
+                "@version": VERSION,
+                "project_id": config["PROJECT_ID"],
+                "region": config["REGION"],
+                "evidence_status": "observed",
+                "observed_at": observed_at.isoformat().replace("+00:00", "Z"),
+                "expires_at": expires_at.isoformat().replace("+00:00", "Z"),
+                "nonce": f"canary_nonce_{secrets.token_urlsafe(24)}",
+                "actuator_revision": (
+                    f"{config['ACTUATOR_SERVICE']}-{config['RELEASE_ID']}"
+                ),
+                "decision_revision": (
+                    f"{config['DECISION_SERVICE']}-{config['RELEASE_ID']}"
+                ),
+                "actuator_image": config["ACTUATOR_IMAGE"],
+                "decision_image": config["DECISION_IMAGE"],
+                "checks": checks,
+            }
+            signed = sign_evidence(
+                unsigned,
+                signing_key,
+                config["CANARY_EVIDENCE_KEY_ID"],
+            )
+            write_verified_evidence(
+                args.output,
+                signed,
+                retained_config_path,
+                args.overwrite,
+            )
     except (
         CanaryError,
         KeyError,

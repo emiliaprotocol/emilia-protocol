@@ -154,6 +154,7 @@ PY
 
   local line key value number=0
   local seen=':'
+  LANE_LOADED_CONFIG_KEYS=':'
   while IFS= read -r line || [[ -n "$line" ]]; do
     number=$((number + 1))
     [[ -z "$line" || "$line" == \#* ]] && continue
@@ -174,12 +175,59 @@ PY
       || lane_die "invalid control character on line $number"
     printf -v "$key" '%s' "$value"
     export "${key?}"
+    LANE_LOADED_CONFIG_KEYS+="$key:"
   done < <(lane_emit_pinned_config)
   # shellcheck disable=SC2034
   CONFIG=$LANE_PINNED_CONFIG
   if [[ "$require_pin" == true ]]; then
     verify_lane_config_pin
   fi
+}
+
+prepare_deploy_config_projection() {
+  [[ -n "${LANE_PINNED_CONFIG_DIR:-}" \
+      && -d "$LANE_PINNED_CONFIG_DIR" ]] \
+    || lane_die "deployment config snapshot directory is unavailable"
+  DEPLOY_CONFIG_PROJECTION="$LANE_PINNED_CONFIG_DIR/deploy.env"
+  local projection projection_base64
+  projection=$(
+    local name
+    while IFS= read -r name; do
+      if [[ "${LANE_LOADED_CONFIG_KEYS:-:}" == *":$name:"* ]]; then
+        printf '%s=%s\n' "$name" "${!name}"
+      fi
+    done < <(deploy_config_variables)
+  ) || lane_die "unable to prepare deploy config projection"
+  projection_base64=$(
+    printf '%s\n' "$projection" \
+      | python3 -c 'import base64,sys; print(base64.b64encode(sys.stdin.buffer.read()).decode("ascii"))'
+  ) || lane_die "unable to encode deploy config projection"
+  DEPLOY_CONFIG_PROJECTION_SHA256=$(
+    python3 - "$DEPLOY_CONFIG_PROJECTION" "$projection_base64" <<'PY'
+import base64
+import hashlib
+import os
+import sys
+
+destination = sys.argv[1]
+raw = base64.b64decode(sys.argv[2], validate=True)
+flags = os.O_WRONLY | os.O_CREAT | os.O_EXCL | getattr(os, "O_CLOEXEC", 0)
+if hasattr(os, "O_NOFOLLOW"):
+    flags |= os.O_NOFOLLOW
+descriptor = os.open(destination, flags, 0o400)
+try:
+    view = memoryview(raw)
+    while view:
+        written = os.write(descriptor, view)
+        view = view[written:]
+    os.fsync(descriptor)
+finally:
+    os.close(descriptor)
+print(hashlib.sha256(raw).hexdigest())
+PY
+  ) || lane_die "unable to retain deploy config projection"
+  [[ "$DEPLOY_CONFIG_PROJECTION_SHA256" =~ ^[0-9a-f]{64}$ ]] \
+    || lane_die "deploy config projection hash is invalid"
 }
 
 require_var() {
@@ -257,7 +305,9 @@ emit_effective_iam_manifest() {
     "--project-number=$project_number"
     "--region=$REGION"
     "--actuator-service=$ACTUATOR_SERVICE"
+    "--decision-service=$DECISION_SERVICE"
     "--decision-principal=serviceAccount:$(runtime_service_account_email "$DECISION_SERVICE_ACCOUNT")"
+    "--deployer-principal=$DEPLOYER_PRINCIPAL"
     "--output=$output"
   )
   while IFS= read -r spec; do
@@ -340,18 +390,13 @@ all_secret_variables() {
   } | awk '!seen[$0]++'
 }
 
-deployment_config_variables() {
+runtime_config_variables() {
   printf '%s\n' \
-    PROJECT_ID PROJECT_NAME PROJECT_PARENT BILLING_ACCOUNT REGION RELEASE_ID \
-    PROVISIONER_PRINCIPAL DEPLOYER_PRINCIPAL \
-    RECOVERY_PRINCIPALS RECOVERY_PAM_ENTITLEMENT RECOVERY_PAM_ROLE \
-    EMILIA_IAM_ANALYZER_SCOPE \
+    PROJECT_ID REGION RELEASE_ID DEPLOYER_PRINCIPAL \
     ACTUATOR_SERVICE DECISION_SERVICE \
     ACTUATOR_SERVICE_ACCOUNT DECISION_SERVICE_ACCOUNT \
-    STABLE_BOOTSTRAP_ACTUATOR_SERVICE_ACCOUNT \
-    STABLE_BOOTSTRAP_DECISION_SERVICE_ACCOUNT \
     ACTUATOR_IMAGE DECISION_IMAGE \
-    NETWORK SUBNET SUBNET_CIDR ARTIFACT_REPOSITORY ROUTER NAT \
+    NETWORK SUBNET \
     ACTUATOR_INGRESS DECISION_INGRESS \
     ACTUATOR_CPU ACTUATOR_MEMORY ACTUATOR_MIN_INSTANCES \
     ACTUATOR_MAX_INSTANCES ACTUATOR_CONCURRENCY \
@@ -365,17 +410,58 @@ deployment_config_variables() {
     DECISION_ACTUATOR_TIMEOUT_MS DECISION_AEB_REQUIREMENT_REF \
     DECISION_SHUTDOWN_GRACE_MS \
     CANARY_EVIDENCE_KEY_ID CANARY_EVIDENCE_PUBLIC_KEY_FILE \
-    CANARY_EVIDENCE_PUBLIC_KEY_SHA256 CANARY_MAX_AGE_SEC \
+    CANARY_EVIDENCE_PUBLIC_KEY_SHA256 CANARY_MAX_AGE_SEC
+  all_secret_variables
+}
+
+deploy_config_variables() {
+  {
+    runtime_config_variables
+    printf '%s\n' \
+      PROJECT_PARENT PROVISIONER_PRINCIPAL EMILIA_IAM_ANALYZER_SCOPE
+  } | awk '!seen[$0]++'
+}
+
+traffic_config_variables() {
+  {
+    deploy_config_variables
+    printf '%s\n' \
     ROLLOUT_TELEMETRY_KEY_ID ROLLOUT_TELEMETRY_PUBLIC_KEY_FILE \
     ROLLOUT_TELEMETRY_PUBLIC_KEY_SHA256 \
     ROLLOUT_AUTHORIZATION_KEY_ID ROLLOUT_AUTHORIZATION_PUBLIC_KEY_FILE \
     ROLLOUT_AUTHORIZATION_PUBLIC_KEY_SHA256 \
     STABLE_RELEASE_KEY_ID STABLE_RELEASE_KMS_KEY_URI \
     STABLE_RELEASE_PUBLIC_KEY_FILE STABLE_RELEASE_PUBLIC_KEY_SHA256 \
+    ACTUATOR_STABLE_REVISION DECISION_STABLE_REVISION
+  } | awk '!seen[$0]++'
+}
+
+bootstrap_config_variables() {
+  {
+    deploy_config_variables
+    printf '%s\n' \
+    STABLE_RELEASE_KEY_ID STABLE_RELEASE_KMS_KEY_URI \
+    STABLE_RELEASE_PUBLIC_KEY_FILE STABLE_RELEASE_PUBLIC_KEY_SHA256 \
     STABLE_BOOTSTRAP_ALLOWED_DIGESTS STABLE_BOOTSTRAP_PROVENANCE_FILE \
     STABLE_BOOTSTRAP_PROVENANCE_SHA256 \
-    ACTUATOR_STABLE_REVISION DECISION_STABLE_REVISION
-  all_secret_variables
+    STABLE_BOOTSTRAP_ACTUATOR_SERVICE_ACCOUNT \
+    STABLE_BOOTSTRAP_DECISION_SERVICE_ACCOUNT
+  } | awk '!seen[$0]++'
+}
+
+provision_config_variables() {
+  {
+    printf '%s\n' \
+      PROJECT_ID PROJECT_NAME PROJECT_PARENT BILLING_ACCOUNT REGION \
+      PROVISIONER_PRINCIPAL DEPLOYER_PRINCIPAL \
+      RECOVERY_PRINCIPALS RECOVERY_PAM_ENTITLEMENT RECOVERY_PAM_ROLE \
+      ACTUATOR_SERVICE DECISION_SERVICE \
+      ACTUATOR_SERVICE_ACCOUNT DECISION_SERVICE_ACCOUNT \
+      STABLE_BOOTSTRAP_ACTUATOR_SERVICE_ACCOUNT \
+      STABLE_BOOTSTRAP_DECISION_SERVICE_ACCOUNT \
+      NETWORK SUBNET SUBNET_CIDR ARTIFACT_REPOSITORY ROUTER NAT
+    all_secret_variables
+  } | awk '!seen[$0]++'
 }
 
 configured_secret_refs() {

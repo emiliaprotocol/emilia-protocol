@@ -40,7 +40,6 @@ jobs:
       EMILIA_DEPLOY_ENVIRONMENT: consequence-control-production
       EMILIA_GITHUB_WORKFLOW_SHA: ${{ github.workflow_sha }}
       EMILIA_DEPLOY_WIF_PROVIDER: ${{ vars.GCP_WORKLOAD_IDENTITY_PROVIDER }}
-      DEPLOYMENT_CONFIG_SHA256: ${{ vars.CONSEQUENCE_CONTROL_CONFIG_SHA256 }}
     steps:
       - name: Check out the exact protected revision
         uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
@@ -59,17 +58,32 @@ jobs:
       - name: Install the pinned Google Cloud CLI action
         uses: google-github-actions/setup-gcloud@aa5489c8933f4cc7a4f7d45035b3b1440c9c10db # v3
 
-      - name: Materialize non-payload deployment coordinates
-        id: config
+      - name: Materialize candidate-deploy coordinates
+        if: inputs.operation == 'deploy-candidates'
+        id: deploy-config
         shell: bash
         env:
-          CONSEQUENCE_CONTROL_CONFIG: ${{ secrets.CONSEQUENCE_CONTROL_CONFIG }}
+          CONSEQUENCE_CONTROL_DEPLOY_CONFIG: ${{ secrets.CONSEQUENCE_CONTROL_DEPLOY_CONFIG }}
         run: |
           set -euo pipefail
-          [[ -n "$CONSEQUENCE_CONTROL_CONFIG" ]]
-          config_path="$RUNNER_TEMP/consequence-control.env"
+          [[ -n "$CONSEQUENCE_CONTROL_DEPLOY_CONFIG" ]]
+          config_path="$RUNNER_TEMP/consequence-control-deploy.env"
           umask 077
-          printf '%s\n' "$CONSEQUENCE_CONTROL_CONFIG" > "$config_path"
+          printf '%s\n' "$CONSEQUENCE_CONTROL_DEPLOY_CONFIG" > "$config_path"
+          printf 'path=%s\n' "$config_path" >> "$GITHUB_OUTPUT"
+
+      - name: Materialize stable-bootstrap coordinates
+        if: inputs.operation == 'bootstrap-stable'
+        id: bootstrap-config
+        shell: bash
+        env:
+          CONSEQUENCE_CONTROL_BOOTSTRAP_CONFIG: ${{ secrets.CONSEQUENCE_CONTROL_BOOTSTRAP_CONFIG }}
+        run: |
+          set -euo pipefail
+          [[ -n "$CONSEQUENCE_CONTROL_BOOTSTRAP_CONFIG" ]]
+          config_path="$RUNNER_TEMP/consequence-control-bootstrap.env"
+          umask 077
+          printf '%s\n' "$CONSEQUENCE_CONTROL_BOOTSTRAP_CONFIG" > "$config_path"
           printf 'path=%s\n' "$config_path" >> "$GITHUB_OUTPUT"
 
       - name: Deploy digest-pinned zero-traffic candidates
@@ -78,10 +92,11 @@ jobs:
         env:
           DEPLOYMENT_APPROVED: "true"
           DEPLOYMENT_CONFIRM_PROJECT: ${{ vars.GCP_CONSEQUENCE_CONTROL_PROJECT }}
+          DEPLOYMENT_CONFIG_SHA256: ${{ vars.CONSEQUENCE_CONTROL_DEPLOY_CONFIG_SHA256 }}
         run: |
           set -euo pipefail
           deploy/consequence-control-cloud-run/deploy.sh \
-            --config "${{ steps.config.outputs.path }}" \
+            --config "${{ steps.deploy-config.outputs.path }}" \
             --apply
 
       - name: Bootstrap digest-pinned deny-all stable revisions
@@ -89,6 +104,7 @@ jobs:
         shell: bash
         env:
           DEPLOYMENT_APPROVED: "true"
+          DEPLOYMENT_CONFIG_SHA256: ${{ vars.CONSEQUENCE_CONTROL_BOOTSTRAP_CONFIG_SHA256 }}
           BOOTSTRAP_ID: ${{ inputs.bootstrap_id }}
           PLACEHOLDER_IMAGE: ${{ inputs.placeholder_image }}
         run: |
@@ -96,7 +112,7 @@ jobs:
           [[ "$BOOTSTRAP_ID" =~ ^[a-z][a-z0-9-]{0,20}$ ]]
           [[ "$PLACEHOLDER_IMAGE" =~ @sha256:[0-9a-f]{64}$ ]]
           deploy/consequence-control-cloud-run/bootstrap-stable.sh \
-            --config "${{ steps.config.outputs.path }}" \
+            --config "${{ steps.bootstrap-config.outputs.path }}" \
             --bootstrap-id "$BOOTSTRAP_ID" \
             --placeholder-image "$PLACEHOLDER_IMAGE" \
             --output "$RUNNER_TEMP/stable-release.json" \

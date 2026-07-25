@@ -15,6 +15,7 @@ from live_cloud_run_fixture import build_live_resources
 
 LANE = Path(__file__).resolve().parents[1]
 CONFIG = LANE / "tests" / "fixture.env"
+TRAFFIC_CONFIG = LANE / "tests" / "traffic.fixture.env"
 
 
 def run(
@@ -282,7 +283,7 @@ class TrafficTests(unittest.TestCase):
         promote = run(
             str(LANE / "traffic.sh"),
             "--config",
-            str(CONFIG),
+            str(TRAFFIC_CONFIG),
             "--render-promote",
         ).stdout
         self.assertLess(
@@ -297,7 +298,7 @@ class TrafficTests(unittest.TestCase):
         rollback = run(
             str(LANE / "traffic.sh"),
             "--config",
-            str(CONFIG),
+            str(TRAFFIC_CONFIG),
             "--render-rollback",
         ).stdout
         self.assertLess(
@@ -309,7 +310,7 @@ class TrafficTests(unittest.TestCase):
         result = run(
             str(LANE / "traffic.sh"),
             "--config",
-            str(CONFIG),
+            str(TRAFFIC_CONFIG),
             "--apply-rollback",
             check=False,
         )
@@ -1051,7 +1052,24 @@ class ProtectedDeploymentBoundaryTests(unittest.TestCase):
         self.assertIn("active gcloud deployer must be one service account", result.stderr)
 
     def test_existing_shared_project_is_refused_not_relabelled(self) -> None:
-        values = load_config()
+        allowed_result = subprocess.run(
+            [
+                "bash",
+                "-c",
+                'source "$1"; provision_config_variables',
+                "bash",
+                str(LANE / "lib" / "common.sh"),
+            ],
+            check=True,
+            text=True,
+            capture_output=True,
+        )
+        allowed = set(allowed_result.stdout.splitlines())
+        values = {
+            key: value
+            for key, value in load_config().items()
+            if key in allowed
+        }
         values.update(
             {
                 "PROJECT_ID": "gen-lang-client-0236330905",

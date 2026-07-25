@@ -292,6 +292,69 @@ class FileTrustHostileTests(unittest.TestCase):
         ):
             self.rollout.load_rollout_trusts(config)
 
+    def test_same_ed25519_key_in_pem_and_der_is_not_two_roots(self) -> None:
+        private_key = self.root / "shared-private.pem"
+        public_pem = self.root / "shared-public.pem"
+        public_der = self.root / "shared-public.der"
+        subprocess.run(
+            [
+                "openssl",
+                "genpkey",
+                "-algorithm",
+                "ED25519",
+                "-out",
+                str(private_key),
+            ],
+            check=True,
+            capture_output=True,
+        )
+        subprocess.run(
+            [
+                "openssl",
+                "pkey",
+                "-in",
+                str(private_key),
+                "-pubout",
+                "-out",
+                str(public_pem),
+            ],
+            check=True,
+            capture_output=True,
+        )
+        subprocess.run(
+            [
+                "openssl",
+                "pkey",
+                "-pubin",
+                "-in",
+                str(public_pem),
+                "-outform",
+                "DER",
+                "-out",
+                str(public_der),
+            ],
+            check=True,
+            capture_output=True,
+        )
+        self.assertNotEqual(public_pem.read_bytes(), public_der.read_bytes())
+        config = {
+            "ROLLOUT_TELEMETRY_KEY_ID": "telemetry-key",
+            "ROLLOUT_TELEMETRY_PUBLIC_KEY_FILE": str(public_pem),
+            "ROLLOUT_TELEMETRY_PUBLIC_KEY_SHA256": hashlib.sha256(
+                public_pem.read_bytes()
+            ).hexdigest(),
+            "ROLLOUT_AUTHORIZATION_KEY_ID": "authorization-key",
+            "ROLLOUT_AUTHORIZATION_PUBLIC_KEY_FILE": str(public_der),
+            "ROLLOUT_AUTHORIZATION_PUBLIC_KEY_SHA256": hashlib.sha256(
+                public_der.read_bytes()
+            ).hexdigest(),
+        }
+        with self.assertRaisesRegex(
+            self.rollout.TelemetryError,
+            "must be distinct",
+        ):
+            self.rollout.load_rollout_trusts(config)
+
 
 class AuthorizationAndMutationHostileTests(unittest.TestCase):
     def setUp(self) -> None:
@@ -499,6 +562,44 @@ class AuthorizationAndMutationHostileTests(unittest.TestCase):
                         allowed_statuses={"claimed"},
                     )
 
+    def test_attempt_terminal_response_must_echo_exact_expected_post_version(
+        self,
+    ) -> None:
+        claim = self.rollout.build_attempt_claim(self.closed_context())
+        accepted = {
+            "schema": self.rollout.ATTEMPT_STORE_RESPONSE_SCHEMA,
+            "operation": "complete",
+            "status": "completed",
+            "claim_sha256": claim["claim_sha256"],
+            "final_resource_version": "rv-decision-8",
+        }
+        self.assertEqual(
+            self.rollout.validate_attempt_store_response(
+                accepted,
+                operation="complete",
+                claim_sha256=claim["claim_sha256"],
+                allowed_statuses={"completed"},
+                expected_final_resource_version="rv-decision-8",
+            ),
+            accepted,
+        )
+        with self.assertRaisesRegex(
+            self.rollout.TelemetryError,
+            "resourceVersion",
+        ):
+            self.rollout.validate_attempt_store_response(
+                {**accepted, "final_resource_version": "rv-attacker"},
+                operation="complete",
+                claim_sha256=claim["claim_sha256"],
+                allowed_statuses={"completed"},
+                expected_final_resource_version="rv-decision-8",
+            )
+        traffic = TRAFFIC.read_text(encoding="utf-8")
+        self.assertIn(
+            '--expected-final-resource-version "$expected_resource_version"',
+            traffic,
+        )
+
     def test_prepared_body_is_held_in_memory_and_streamed_without_path_reread(
         self,
     ) -> None:
@@ -622,6 +723,87 @@ class AuthorizationAndMutationHostileTests(unittest.TestCase):
                 generation_equals=8,
                 resource_version_equals="rv-acknowledged",
             )
+
+
+class CommandSpecificConfigHostileTests(unittest.TestCase):
+    def config_keys(self, function: str) -> set[str]:
+        result = subprocess.run(
+            [
+                "bash",
+                "-c",
+                'source "$1"; "$2"',
+                "bash",
+                str(COMMON),
+                function,
+            ],
+            text=True,
+            capture_output=True,
+            check=False,
+        )
+        self.assertEqual(result.returncode, 0, result.stderr)
+        return set(result.stdout.splitlines())
+
+    def test_each_mutating_command_has_a_distinct_closed_config_schema(
+        self,
+    ) -> None:
+        deploy = self.config_keys("deploy_config_variables")
+        traffic = self.config_keys("traffic_config_variables")
+        bootstrap = self.config_keys("bootstrap_config_variables")
+        provision = self.config_keys("provision_config_variables")
+        self.assertNotEqual(deploy, traffic)
+        self.assertNotEqual(deploy, bootstrap)
+        self.assertNotEqual(deploy, provision)
+        self.assertIn("ACTUATOR_STABLE_REVISION", traffic)
+        self.assertNotIn("ACTUATOR_STABLE_REVISION", deploy)
+        self.assertIn("STABLE_BOOTSTRAP_ALLOWED_DIGESTS", bootstrap)
+        self.assertNotIn("STABLE_BOOTSTRAP_ALLOWED_DIGESTS", traffic)
+        self.assertIn("BILLING_ACCOUNT", provision)
+        self.assertNotIn("BILLING_ACCOUNT", deploy)
+
+    def test_deploy_rejects_a_provision_only_config_key(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            config = Path(directory) / "deploy.env"
+            config.write_text(
+                FIXTURE.read_text(encoding="utf-8")
+                + "\nBILLING_ACCOUNT=000000-000000-000000\n",
+                encoding="utf-8",
+            )
+            result = subprocess.run(
+                [str(DEPLOY), "--config", str(config), "--render"],
+                cwd=LANE,
+                text=True,
+                capture_output=True,
+                check=False,
+                env={
+                    **os.environ,
+                    "PROJECT_PARENT": "organizations/987654321",
+                },
+            )
+        self.assertNotEqual(result.returncode, 0)
+        self.assertIn("not allowed for this command", result.stderr)
+
+    def test_workflow_pins_separate_deploy_and_bootstrap_profiles(self) -> None:
+        workflow = (
+            LANE.parent.parent
+            / ".github"
+            / "workflows"
+            / "consequence-control-deploy.yml"
+        ).read_text(encoding="utf-8")
+        for required in (
+            "CONSEQUENCE_CONTROL_DEPLOY_CONFIG",
+            "CONSEQUENCE_CONTROL_DEPLOY_CONFIG_SHA256",
+            "CONSEQUENCE_CONTROL_BOOTSTRAP_CONFIG",
+            "CONSEQUENCE_CONTROL_BOOTSTRAP_CONFIG_SHA256",
+        ):
+            self.assertIn(required, workflow)
+        self.assertNotIn(
+            "secrets.CONSEQUENCE_CONTROL_CONFIG }}",
+            workflow,
+        )
+        self.assertNotIn(
+            "vars.CONSEQUENCE_CONTROL_CONFIG_SHA256 }}",
+            workflow,
+        )
 
 
 if __name__ == "__main__":

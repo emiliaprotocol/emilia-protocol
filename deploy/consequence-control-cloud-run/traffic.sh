@@ -75,8 +75,9 @@ fi
 TRAFFIC_CONFIG_KEYS=()
 while IFS= read -r name; do
   TRAFFIC_CONFIG_KEYS+=("$name")
-done < <(deployment_config_variables)
+done < <(traffic_config_variables)
 load_lane_config "$CONFIG" "${TRAFFIC_CONFIG_KEYS[@]}"
+prepare_deploy_config_projection
 validate_lane_config
 
 require_protected_traffic_identity() {
@@ -107,8 +108,9 @@ verify_direct_traffic_custody() {
   # deploy.sh's read-only identity mode proves the exact WIF/workflow/deployer,
   # the sole direct custom-role binding containing run.services.update, empty
   # service IAM, and the closed effective-IAM allowlist.
+  DEPLOYMENT_CONFIG_SHA256="$DEPLOY_CONFIG_PROJECTION_SHA256" \
   "$LANE_DIR/deploy.sh" \
-    --config "$CONFIG" \
+    --config "$DEPLOY_CONFIG_PROJECTION" \
     --verify-protected-identity \
     >/dev/null \
     || lane_die "protected traffic deployer custody is not exact"
@@ -584,6 +586,7 @@ PY
 
 attempt_store_call() {
   local operation=$1 payload_base64=$2 allowed_status=$3
+  local expected_resource_version=${4:-}
   local response input_stream
   response=$(
     printf '%s' "$payload_base64" \
@@ -591,11 +594,21 @@ attempt_store_call() {
       | "$ATTEMPT_STORE_ADAPTER" "$operation"
   ) || lane_die "durable attempt-store $operation failed; no mutation permitted"
   input_stream=<(printf '%s' "$response")
-  "$LANE_DIR/verify-rollout-telemetry.py" verify-attempt-response \
-    --input "$input_stream" \
-    --operation "$operation" \
-    --claim-sha256 "$ATTEMPT_CLAIM_SHA256" \
-    --allow-status "$allowed_status" \
+  local verification=(
+    "$LANE_DIR/verify-rollout-telemetry.py" verify-attempt-response
+    --input "$input_stream"
+    --operation "$operation"
+    --claim-sha256 "$ATTEMPT_CLAIM_SHA256"
+    --allow-status "$allowed_status"
+  )
+  if [[ "$operation" != claim ]]; then
+    [[ -n "$expected_resource_version" ]] \
+      || lane_die "terminal attempt-store response requires an exact expected resourceVersion"
+    verification+=(
+      --expected-final-resource-version "$expected_resource_version"
+    )
+  fi
+  "${verification[@]}" \
     >/dev/null \
     || lane_die "durable attempt-store $operation response is invalid"
 }
@@ -639,7 +652,8 @@ record_attempt_outcome() {
   payload=$(attempt_outcome_payload \
     "$operation" "$outcome" "$resource_version") \
     || lane_die "unable to encode durable attempt outcome"
-  attempt_store_call "$operation" "$payload" "$allowed_status"
+  attempt_store_call \
+    "$operation" "$payload" "$allowed_status" "$resource_version"
 }
 
 reconcile_ambiguous_update() {

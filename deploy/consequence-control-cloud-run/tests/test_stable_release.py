@@ -167,8 +167,14 @@ class StableReleaseTests(unittest.TestCase):
                     f"STABLE_RELEASE_PUBLIC_KEY_FILE={self.public_key}",
                     f"STABLE_RELEASE_PUBLIC_KEY_SHA256={public_key_hash}",
                     "CANARY_EVIDENCE_PUBLIC_KEY_SHA256=" + "e" * 64,
-                    "STABLE_BOOTSTRAP_ACTUATOR_SERVICE_ACCOUNT=bootstrap-actuator",
-                    "STABLE_BOOTSTRAP_DECISION_SERVICE_ACCOUNT=bootstrap-decision",
+                    (
+                        "ACTUATOR_STABLE_REVISION="
+                        "emilia-consequence-actuator-r20260724a"
+                    ),
+                    (
+                        "DECISION_STABLE_REVISION="
+                        "emilia-consequence-control-r20260724a"
+                    ),
                 ]
             )
             + "\n",

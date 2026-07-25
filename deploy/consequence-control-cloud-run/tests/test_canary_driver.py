@@ -120,10 +120,12 @@ class FakeDecision:
         replay_reason: str = "envelope_replayed",
         provider_loss_reason: str = "provider_evidence_unavailable",
         actuator_loss_outcome: str = "COMMITTED",
+        on_first_request=None,
     ) -> None:
         self.replay_reason = replay_reason
         self.provider_loss_reason = provider_loss_reason
         self.actuator_loss_outcome = actuator_loss_outcome
+        self.on_first_request = on_first_request
         self.actuator_loss_committed = False
         self.requests: list[dict] = []
         self.server = ThreadingHTTPServer(("127.0.0.1", 0), self.handler())
@@ -151,6 +153,8 @@ class FakeDecision:
             def do_POST(self) -> None:
                 length = int(self.headers.get("content-length", "0"))
                 body = json.loads(self.rfile.read(length))
+                if not fixture.requests and fixture.on_first_request is not None:
+                    fixture.on_first_request()
                 fixture.requests.append(
                     {
                         "path": self.path,
@@ -462,11 +466,26 @@ else:
         origin: str,
         *,
         extra_args: list[str] | None = None,
+        config_sha256: str | None = None,
     ) -> subprocess.CompletedProcess[str]:
         audience = "https://emilia-consequence-control.example.run.app"
         config = load_env(self.config)
         resources = build_live_resources(config)
         counter = self.root / "decision-describe-count"
+        environment = {
+            **os.environ,
+            "PATH": f"{self.bin}:{os.environ['PATH']}",
+            "FAKE_DECISION_URL": origin,
+            "FAKE_AUDIENCE": audience,
+            "FAKE_DECISION_DESCRIBE_COUNTER": str(counter),
+            "FAKE_LIVE_RESOURCES": json.dumps(resources),
+        }
+        if config_sha256 is not None:
+            environment["DEPLOYMENT_CONFIG_SHA256"] = config_sha256
+        else:
+            environment["DEPLOYMENT_CONFIG_SHA256"] = hashlib.sha256(
+                self.config.read_bytes()
+            ).hexdigest()
         return subprocess.run(
             [
                 sys.executable,
@@ -489,17 +508,7 @@ else:
             check=False,
             text=True,
             capture_output=True,
-            env={
-                **os.environ,
-                "PATH": f"{self.bin}:{os.environ['PATH']}",
-                "FAKE_DECISION_URL": origin,
-                "FAKE_AUDIENCE": audience,
-                "FAKE_DECISION_DESCRIBE_COUNTER": str(counter),
-                "FAKE_LIVE_RESOURCES": json.dumps(resources),
-                "DEPLOYMENT_CONFIG_SHA256": hashlib.sha256(
-                    self.config.read_bytes()
-                ).hexdigest(),
-            },
+            env=environment,
         )
 
     def test_executes_live_workflow_and_writes_closed_signed_evidence(self) -> None:
@@ -630,6 +639,48 @@ else:
         self.assertNotEqual(result.returncode, 0)
         self.assertIn("application token", result.stderr)
         self.assertEqual(server.requests, [])
+
+    def test_config_hash_pin_is_mandatory_before_any_network_request(self) -> None:
+        with FakeDecision() as server:
+            result = self.run_driver(server.origin, config_sha256="")
+        self.assertNotEqual(result.returncode, 0)
+        self.assertIn("DEPLOYMENT_CONFIG_SHA256", result.stderr)
+        self.assertEqual(server.requests, [])
+        self.assertFalse(self.output.exists())
+
+    def test_config_hash_pin_mismatch_refuses_before_any_network_request(
+        self,
+    ) -> None:
+        with FakeDecision() as server:
+            result = self.run_driver(
+                server.origin,
+                config_sha256="0" * 64,
+            )
+        self.assertNotEqual(result.returncode, 0)
+        self.assertIn("protected SHA-256", result.stderr)
+        self.assertEqual(server.requests, [])
+        self.assertFalse(self.output.exists())
+
+    def test_same_uid_config_path_swap_cannot_change_retained_bytes(self) -> None:
+        original_hash = hashlib.sha256(self.config.read_bytes()).hexdigest()
+
+        def replace_config_path() -> None:
+            replacement = self.root / "attacker.env"
+            replacement.write_text(
+                "PROJECT_ID=attacker-project\n",
+                encoding="utf-8",
+            )
+            os.replace(replacement, self.config)
+
+        with FakeDecision(on_first_request=replace_config_path) as server:
+            result = self.run_driver(
+                server.origin,
+                config_sha256=original_hash,
+            )
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertGreater(len(server.requests), 0)
+        evidence = json.loads(self.output.read_text(encoding="utf-8"))
+        self.assertEqual(evidence["project_id"], "test-project")
 
 
 if __name__ == "__main__":

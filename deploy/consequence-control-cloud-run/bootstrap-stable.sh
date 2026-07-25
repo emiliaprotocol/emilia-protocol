@@ -92,8 +92,9 @@ fi
 BOOTSTRAP_CONFIG_KEYS=()
 while IFS= read -r name; do
   BOOTSTRAP_CONFIG_KEYS+=("$name")
-done < <(deployment_config_variables)
+done < <(bootstrap_config_variables)
 load_lane_config "$CONFIG" "${BOOTSTRAP_CONFIG_KEYS[@]}"
+prepare_deploy_config_projection
 validate_lane_config
 require_var STABLE_RELEASE_KEY_ID
 require_var STABLE_BOOTSTRAP_ALLOWED_DIGESTS
@@ -289,7 +290,9 @@ render_plan() {
     --image "$PLACEHOLDER_IMAGE" \
     --provenance "$PROVENANCE_FILE"
   printf '# require the exact immutable protected GitHub workflow/WIF identity and direct current IAM proof\n'
-  shell_join "$LANE_DIR/deploy.sh" --config "$CONFIG" \
+  shell_join env \
+    "DEPLOYMENT_CONFIG_SHA256=$DEPLOY_CONFIG_PROJECTION_SHA256" \
+    "$LANE_DIR/deploy.sh" --config "$DEPLOY_CONFIG_PROJECTION" \
     --verify-protected-identity
   printf '# refuse bootstrap if either Cloud Run service already exists\n'
   shell_join gcloud run services list \
@@ -399,7 +402,10 @@ trap 'rm -rf "${HTTP_TMPDIR:-}"; lane_cleanup_pinned_config' EXIT
   --image "$PLACEHOLDER_IMAGE" \
   --provenance "$PROVENANCE_FILE"
 
-"$LANE_DIR/deploy.sh" --config "$CONFIG" --verify-protected-identity
+DEPLOYMENT_CONFIG_SHA256="$DEPLOY_CONFIG_PROJECTION_SHA256" \
+  "$LANE_DIR/deploy.sh" \
+  --config "$DEPLOY_CONFIG_PROJECTION" \
+  --verify-protected-identity
 resolve_analyzer_scope
 
 for api in run.googleapis.com iam.googleapis.com cloudasset.googleapis.com; do

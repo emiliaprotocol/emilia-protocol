@@ -275,6 +275,48 @@ def read_trusted_file(path: Path, name: str) -> bytes:
     return value
 
 
+def normalized_ed25519_public_key_fingerprint(
+    public_key: bytes,
+    name: str,
+) -> str:
+    canonical_der: bytes | None = None
+    for encoding in ("PEM", "DER"):
+        try:
+            result = subprocess.run(
+                [
+                    "openssl",
+                    "pkey",
+                    "-pubin",
+                    "-inform",
+                    encoding,
+                    "-outform",
+                    "DER",
+                ],
+                input=public_key,
+                capture_output=True,
+                check=False,
+            )
+        except OSError as error:
+            raise TelemetryError(
+                "OpenSSL is unavailable for Ed25519 trust normalization"
+            ) from error
+        if result.returncode == 0:
+            canonical_der = result.stdout
+            break
+    if canonical_der is None:
+        raise TelemetryError(f"{name} is not a valid public key")
+    ed25519_spki_prefix = bytes.fromhex("302a300506032b6570032100")
+    if (
+        len(canonical_der) != len(ed25519_spki_prefix) + 32
+        or not canonical_der.startswith(ed25519_spki_prefix)
+    ):
+        raise TelemetryError(f"{name} must contain one Ed25519 public key")
+    key_material = canonical_der[len(ed25519_spki_prefix):]
+    return hashlib.sha256(
+        b"EMILIA-ED25519-PUBLIC-KEY-FINGERPRINT-v1\x00" + key_material
+    ).hexdigest()
+
+
 def _load_file_trust(
     config: Mapping[str, str],
     *,
@@ -328,13 +370,22 @@ def load_rollout_trusts(
 ) -> tuple[TelemetryTrust, AuthorizationTrust]:
     telemetry = load_telemetry_trust(config)
     authorization = load_authorization_trust(config)
-    if (
-        telemetry.key_id == authorization.key_id
-        or hmac.compare_digest(
-            telemetry.public_key_sha256,
-            authorization.public_key_sha256,
-        )
+    if telemetry.key_id == authorization.key_id or hmac.compare_digest(
+        telemetry.public_key_sha256,
+        authorization.public_key_sha256,
     ):
+        raise TelemetryError(
+            "rollout telemetry and authorization trust roots must be distinct"
+        )
+    telemetry_fingerprint = normalized_ed25519_public_key_fingerprint(
+        telemetry.public_key,
+        "rollout telemetry public key",
+    )
+    authorization_fingerprint = normalized_ed25519_public_key_fingerprint(
+        authorization.public_key,
+        "rollout authorization public key",
+    )
+    if hmac.compare_digest(telemetry_fingerprint, authorization_fingerprint):
         raise TelemetryError(
             "rollout telemetry and authorization trust roots must be distinct"
         )
@@ -933,6 +984,7 @@ def validate_attempt_store_response(
     operation: str,
     claim_sha256: str,
     allowed_statuses: set[str],
+    expected_final_resource_version: str | None = None,
 ) -> dict[str, Any]:
     response = exact_keys(
         value,
@@ -959,18 +1011,37 @@ def validate_attempt_store_response(
         raise TelemetryError("attempt-store response claim digest mismatch")
     final_resource_version = response["final_resource_version"]
     if operation == "claim":
+        if expected_final_resource_version is not None:
+            raise TelemetryError(
+                "attempt claim must not expect a final resourceVersion"
+            )
         if final_resource_version is not None:
             raise TelemetryError(
                 "attempt claim response must not name a final resourceVersion"
             )
-    elif (
-        not isinstance(final_resource_version, str)
-        or not final_resource_version
-        or any(character.isspace() for character in final_resource_version)
-    ):
-        raise TelemetryError(
-            "attempt-store final resourceVersion is invalid"
-        )
+    else:
+        if (
+            not isinstance(expected_final_resource_version, str)
+            or not expected_final_resource_version
+            or any(
+                character.isspace()
+                for character in expected_final_resource_version
+            )
+        ):
+            raise TelemetryError(
+                "expected attempt-store final resourceVersion is invalid"
+            )
+        if (
+            not isinstance(final_resource_version, str)
+            or not hmac.compare_digest(
+                final_resource_version,
+                expected_final_resource_version,
+            )
+        ):
+            raise TelemetryError(
+                "attempt-store final resourceVersion does not match the "
+                "exact expected post resourceVersion"
+            )
     return response
 
 
@@ -2427,6 +2498,7 @@ def _attempt_response_main(argv: Sequence[str]) -> int:
     )
     parser.add_argument("--claim-sha256", required=True)
     parser.add_argument("--allow-status", action="append", required=True)
+    parser.add_argument("--expected-final-resource-version")
     args = parser.parse_args(argv)
     try:
         if SHA256_RE.fullmatch(args.claim_sha256) is None:
@@ -2436,6 +2508,7 @@ def _attempt_response_main(argv: Sequence[str]) -> int:
             operation=args.operation,
             claim_sha256=args.claim_sha256,
             allowed_statuses=set(args.allow_status),
+            expected_final_resource_version=args.expected_final_resource_version,
         )
     except TelemetryError as error:
         print(f"error: {error}", file=sys.stderr)

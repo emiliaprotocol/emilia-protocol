@@ -16,6 +16,7 @@ from typing import Any
 VERSION = "emilia-effective-iam/v1"
 PERMISSIONS = {
     "actuator": "run.routes.invoke",
+    "serviceUpdate": "run.services.update",
     "secret": "secretmanager.versions.access",
     "runtimeActAs": "iam.serviceAccounts.actAs",
 }
@@ -935,10 +936,14 @@ def verify_manifest(
     prepared: list[dict[str, Any]] = []
     names: set[str] = set()
     resources: set[str] = set()
+    permissioned_resources: set[tuple[str, str]] = set()
     jit_titles: set[str] = set()
     jit_labels: set[str] = set()
     actuator_count = 0
     secret_count = 0
+    service_update_labels: set[str] = set()
+    service_update_resources: set[str] = set()
+    service_update_principal: str | None = None
 
     for index, target_value in enumerate(targets):
         path = f"manifest.targets[{index}]"
@@ -953,12 +958,17 @@ def verify_manifest(
             raise VerificationError(f"{path}.scope is invalid")
         if kind not in PERMISSIONS:
             raise VerificationError(
-                f"{path}.kind must be actuator, secret, or runtimeActAs"
+                f"{path}.kind must be actuator, serviceUpdate, secret, "
+                "or runtimeActAs"
             )
-        if name in names or resource in resources:
-            raise VerificationError(f"{path} duplicates a target name or resource")
+        permissioned_resource = (resource, PERMISSIONS[kind])
+        if name in names or permissioned_resource in permissioned_resources:
+            raise VerificationError(
+                f"{path} duplicates a target name or permissioned resource"
+            )
         names.add(name)
         resources.add(resource)
+        permissioned_resources.add(permissioned_resource)
         allowed = validate_allowlist(
             target["allowedPrincipals"],
             f"{path}.allowedPrincipals",
@@ -974,6 +984,41 @@ def verify_manifest(
                 raise VerificationError(
                     f"{path}.resource does not use manifest.projectId"
                 )
+            jit_grant = None
+        elif kind == "serviceUpdate":
+            label = name.removeprefix("service-update:")
+            match = ACTUATOR_PATTERN.fullmatch(resource)
+            if (
+                name != f"service-update:{label}"
+                or label not in {"actuator", "decision"}
+                or match is None
+            ):
+                raise VerificationError(
+                    f"{path} is not a named Cloud Run update-custody target"
+                )
+            if match.group(1) != project_id:
+                raise VerificationError(
+                    f"{path}.resource does not use manifest.projectId"
+                )
+            if (
+                len(allowed) != 1
+                or not allowed[0].startswith("serviceAccount:")
+            ):
+                raise VerificationError(
+                    f"{path}.allowedPrincipals must contain only the exact "
+                    "deployer service account"
+                )
+            if (
+                service_update_principal is not None
+                and service_update_principal != allowed[0]
+            ):
+                raise VerificationError(
+                    "both Cloud Run update-custody targets must name the same "
+                    "exact deployer"
+                )
+            service_update_principal = allowed[0]
+            service_update_labels.add(label)
+            service_update_resources.add(resource)
             jit_grant = None
         elif kind == "secret":
             secret_count += 1
@@ -1049,6 +1094,14 @@ def verify_manifest(
         raise VerificationError("manifest must contain exactly one actuator")
     if secret_count < 1:
         raise VerificationError("manifest must contain at least one named secret")
+    if service_update_labels != {"actuator", "decision"}:
+        raise VerificationError(
+            "manifest must contain both exact Cloud Run update-custody targets"
+        )
+    if len(service_update_resources) != 2:
+        raise VerificationError(
+            "Cloud Run update custody must cover two distinct services"
+        )
     if jit_labels and jit_labels != {"actuator", "decision"}:
         raise VerificationError(
             "manifest must contain both runtime actAs targets or neither"

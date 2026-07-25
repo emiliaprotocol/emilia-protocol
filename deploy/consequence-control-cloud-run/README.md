@@ -120,27 +120,39 @@ read-only snapshot plus an in-memory copy. Downstream verifiers consume the
 retained bytes through stdin, so replacing the original path after validation
 cannot change the authorized config.
 
+`config.example.env` is a catalog, not one accepted all-command file. Maintain
+separately pinned provision, deploy, bootstrap, and traffic profiles containing
+exactly the keys emitted by `provision_config_variables`,
+`deploy_config_variables`, `bootstrap_config_variables`, and
+`traffic_config_variables` in `lib/common.sh`. The protected GitHub deployment
+workflow therefore requires separate
+`CONSEQUENCE_CONTROL_DEPLOY_CONFIG`/`CONSEQUENCE_CONTROL_DEPLOY_CONFIG_SHA256`
+and
+`CONSEQUENCE_CONTROL_BOOTSTRAP_CONFIG`/`CONSEQUENCE_CONTROL_BOOTSTRAP_CONFIG_SHA256`
+secret/variable pairs.
+
 ```sh
-cp deploy/consequence-control-cloud-run/config.example.env /tmp/emilia-cloud-run.env
-# Replace non-secret deployment coordinates and secret-name:version references.
+cp deploy/consequence-control-cloud-run/config.example.env /tmp/emilia-config-catalog.env
+# Build separate operation profiles from the catalog using the exact schemas
+# above, then replace non-secret coordinates and secret-name:version references.
 # Fetch this value from the independently protected release policy:
 export DEPLOYMENT_CONFIG_SHA256=aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
 deploy/consequence-control-cloud-run/provision-dedicated-project.sh \
-  --config /tmp/emilia-cloud-run.env \
+  --config /tmp/emilia-provision.env \
   --render
 
 deploy/consequence-control-cloud-run/deploy.sh \
-  --config /tmp/emilia-cloud-run.env \
+  --config /tmp/emilia-deploy.env \
   --render
 
 # Required as well when the project has folder or organization ancestry:
 deploy/consequence-control-cloud-run/deploy.sh \
-  --config /tmp/emilia-cloud-run.env \
+  --config /tmp/emilia-deploy.env \
   --analyzer-scope organizations/123456789 \
   --render
 
 deploy/consequence-control-cloud-run/traffic.sh \
-  --config /tmp/emilia-cloud-run.env \
+  --config /tmp/emilia-traffic.env \
   --render-promote
 ```
 
@@ -207,7 +219,7 @@ default:
 DEPLOYMENT_CONFIG_SHA256=aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa \
 DEPLOYMENT_APPROVED=true \
 deploy/consequence-control-cloud-run/bootstrap-stable.sh \
-  --config /tmp/emilia-cloud-run.env \
+  --config /tmp/emilia-bootstrap.env \
   --bootstrap-id bootstrap1 \
   --placeholder-image \
     us-central1-docker.pkg.dev/emilia-production/runtime/deny-all@sha256:3333333333333333333333333333333333333333333333333333333333333333 \
@@ -335,7 +347,7 @@ Execute the live workflow and write evidence atomically:
 
 ```sh
 deploy/consequence-control-cloud-run/run-canary.py \
-  --config /tmp/emilia-cloud-run.env \
+  --config /tmp/emilia-deploy.env \
   --scenario /secure/path/current-approved-canary-scenario.json \
   --application-token-file /secure/path/decision-application-token \
   --private-key-file /secure/path/canary-driver-ed25519-private.pem \
@@ -511,7 +523,7 @@ service states are checked again after settled read-back.
 DEPLOYMENT_CONFIG_SHA256=aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa \
 DEPLOYMENT_APPROVED=true \
 deploy/consequence-control-cloud-run/traffic.sh \
-  --config /tmp/emilia-cloud-run.env \
+  --config /tmp/emilia-traffic.env \
   --evidence /secure/emilia/canary-evidence.json \
   --telemetry /secure/emilia/rollout-telemetry.json \
   --authorization /secure/emilia/rollout-authorization.json \

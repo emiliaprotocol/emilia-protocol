@@ -145,11 +145,12 @@ def manifest(
     project_number: str,
     region: str,
     actuator_service: str,
+    decision_service: str,
     decision_principal: str,
+    deployer_principal: str,
     secrets: list[str],
     analyzer_scope: str | None = None,
     actuator_principal: str | None = None,
-    deployer_principal: str | None = None,
     jit_condition_title_prefix: str | None = None,
     jit_issued_at: str | None = None,
     jit_expires_at: str | None = None,
@@ -162,7 +163,12 @@ def manifest(
         raise ManifestError("region is invalid")
     if SERVICE.fullmatch(actuator_service) is None:
         raise ManifestError("actuator service is invalid")
+    if SERVICE.fullmatch(decision_service) is None:
+        raise ManifestError("decision service is invalid")
+    if actuator_service == decision_service:
+        raise ManifestError("actuator and decision services must be distinct")
     decision = principal(decision_principal, "decision principal")
+    deployer = principal(deployer_principal, "deployer principal")
     managed_principals = managed_control_plane_principals(project_number)
     parsed_secrets = [secret_spec(value) for value in secrets]
     names = [name for name, _principals in parsed_secrets]
@@ -190,7 +196,27 @@ def manifest(
                 f"services/{actuator_service}"
             ),
             "allowedPrincipals": sorted((decision, *managed_principals)),
-        }
+        },
+        {
+            "name": "service-update:actuator",
+            "kind": "serviceUpdate",
+            "scope": scope,
+            "resource": (
+                f"//run.googleapis.com/projects/{project}/locations/{region}/"
+                f"services/{actuator_service}"
+            ),
+            "allowedPrincipals": [deployer],
+        },
+        {
+            "name": "service-update:decision",
+            "kind": "serviceUpdate",
+            "scope": scope,
+            "resource": (
+                f"//run.googleapis.com/projects/{project}/locations/{region}/"
+                f"services/{decision_service}"
+            ),
+            "allowedPrincipals": [deployer],
+        },
     ]
     for name, principals in sorted(parsed_secrets):
         targets.append(
@@ -209,7 +235,6 @@ def manifest(
         )
     jit_coordinates = (
         actuator_principal,
-        deployer_principal,
         jit_condition_title_prefix,
         jit_issued_at,
         jit_expires_at,
@@ -220,10 +245,6 @@ def manifest(
         actuator = principal(
             actuator_principal or "",
             "actuator principal",
-        )
-        deployer = concrete_principal(
-            deployer_principal or "",
-            "deployer principal",
         )
         title_prefix = jit_condition_title_prefix or ""
         if CONDITION_TITLE.fullmatch(title_prefix) is None:
@@ -294,9 +315,10 @@ def main() -> int:
     parser.add_argument("--project-number", required=True)
     parser.add_argument("--region", required=True)
     parser.add_argument("--actuator-service", required=True)
+    parser.add_argument("--decision-service", required=True)
     parser.add_argument("--actuator-principal")
     parser.add_argument("--decision-principal", required=True)
-    parser.add_argument("--deployer-principal")
+    parser.add_argument("--deployer-principal", required=True)
     parser.add_argument("--jit-condition-title-prefix")
     parser.add_argument("--jit-issued-at")
     parser.add_argument("--jit-expires-at")
@@ -317,6 +339,7 @@ def main() -> int:
             project_number=args.project_number,
             region=args.region,
             actuator_service=args.actuator_service,
+            decision_service=args.decision_service,
             actuator_principal=args.actuator_principal,
             decision_principal=args.decision_principal,
             deployer_principal=args.deployer_principal,

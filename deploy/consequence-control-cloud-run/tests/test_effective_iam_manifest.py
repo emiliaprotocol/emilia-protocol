@@ -25,7 +25,9 @@ RUN_AGENT = (
     "serviceAccount:"
     "service-123456789@serverless-robot-prod.iam.gserviceaccount.com"
 )
-DEPLOYER = "user:deployer@example.com"
+DEPLOYER = (
+    "serviceAccount:emilia-deployer@test-project.iam.gserviceaccount.com"
+)
 
 
 class EffectiveIamManifestTests(unittest.TestCase):
@@ -35,7 +37,9 @@ class EffectiveIamManifestTests(unittest.TestCase):
             project_number="123456789",
             region="us-central1",
             actuator_service="emilia-consequence-actuator",
+            decision_service="emilia-consequence-control",
             decision_principal=DECISION,
+            deployer_principal=DEPLOYER,
             secrets=[
                 f"shared-token={DECISION},{ACTUATOR}",
                 f"actuator-key={ACTUATOR}",
@@ -46,20 +50,64 @@ class EffectiveIamManifestTests(unittest.TestCase):
         self.assertEqual(value["projectNumber"], "123456789")
         self.assertEqual(
             [target["name"] for target in value["targets"]],
-            ["actuator", "secret:actuator-key", "secret:shared-token"],
+            [
+                "actuator",
+                "service-update:actuator",
+                "service-update:decision",
+                "secret:actuator-key",
+                "secret:shared-token",
+            ],
         )
         self.assertEqual(
             value["targets"][0]["allowedPrincipals"],
             sorted([DECISION, COMPUTE_AGENT, RUN_AGENT]),
         )
         self.assertEqual(
-            value["targets"][2]["allowedPrincipals"],
+            value["targets"][4]["allowedPrincipals"],
             sorted([ACTUATOR, DECISION, COMPUTE_AGENT, RUN_AGENT]),
         )
         self.assertTrue(
             value["targets"][0]["resource"].endswith(
                 "/services/emilia-consequence-actuator"
             )
+        )
+
+    def test_manifest_closes_update_custody_for_both_exact_services(self) -> None:
+        value = emitter.manifest(
+            project="test-project",
+            project_number="123456789",
+            region="us-central1",
+            actuator_service="emilia-consequence-actuator",
+            decision_service="emilia-consequence-control",
+            decision_principal=DECISION,
+            deployer_principal=DEPLOYER,
+            secrets=[f"actuator-key={ACTUATOR}"],
+        )
+        updates = {
+            target["name"]: target
+            for target in value["targets"]
+            if target["kind"] == "serviceUpdate"
+        }
+        self.assertEqual(
+            set(updates),
+            {"service-update:actuator", "service-update:decision"},
+        )
+        self.assertEqual(
+            {
+                tuple(target["allowedPrincipals"])
+                for target in updates.values()
+            },
+            {(DEPLOYER,)},
+        )
+        self.assertEqual(
+            {
+                target["resource"].rsplit("/", 1)[-1]
+                for target in updates.values()
+            },
+            {
+                "emilia-consequence-actuator",
+                "emilia-consequence-control",
+            },
         )
 
     def test_managed_principals_are_derived_from_the_pinned_project_number(self) -> None:
@@ -78,6 +126,7 @@ class EffectiveIamManifestTests(unittest.TestCase):
             project_number="123456789",
             region="us-central1",
             actuator_service="emilia-consequence-actuator",
+            decision_service="emilia-consequence-control",
             actuator_principal=ACTUATOR,
             decision_principal=DECISION,
             deployer_principal=DEPLOYER,
@@ -130,6 +179,7 @@ class EffectiveIamManifestTests(unittest.TestCase):
                 project_number="123456789",
                 region="us-central1",
                 actuator_service="emilia-consequence-actuator",
+                decision_service="emilia-consequence-control",
                 actuator_principal=ACTUATOR,
                 decision_principal=DECISION,
                 deployer_principal=DEPLOYER,
@@ -146,8 +196,10 @@ class EffectiveIamManifestTests(unittest.TestCase):
                 project_number="123456789",
                 region="us-central1",
                 actuator_service="emilia-consequence-actuator",
+                decision_service="emilia-consequence-control",
                 actuator_principal=ACTUATOR,
                 decision_principal=DECISION,
+                deployer_principal=DEPLOYER,
                 secrets=[f"actuator-key={ACTUATOR}"],
             )
 
@@ -157,7 +209,9 @@ class EffectiveIamManifestTests(unittest.TestCase):
             project_number="123456789",
             region="us-central1",
             actuator_service="emilia-consequence-actuator",
+            decision_service="emilia-consequence-control",
             decision_principal=DECISION,
+            deployer_principal=DEPLOYER,
             secrets=[f"actuator-key={ACTUATOR}"],
             analyzer_scope="organizations/987654321",
         )
@@ -177,7 +231,9 @@ class EffectiveIamManifestTests(unittest.TestCase):
                         project_number="123456789",
                         region="us-central1",
                         actuator_service="emilia-consequence-actuator",
+                        decision_service="emilia-consequence-control",
                         decision_principal=DECISION,
+                        deployer_principal=DEPLOYER,
                         secrets=[f"actuator-key={ACTUATOR}"],
                         analyzer_scope=scope,
                     )
@@ -191,7 +247,9 @@ class EffectiveIamManifestTests(unittest.TestCase):
                         project_number="123456789",
                         region="us-central1",
                         actuator_service="emilia-consequence-actuator",
+                        decision_service="emilia-consequence-control",
                         decision_principal=DECISION,
+                        deployer_principal=DEPLOYER,
                         secrets=[f"secret={candidate}"],
                     )
 
@@ -202,7 +260,9 @@ class EffectiveIamManifestTests(unittest.TestCase):
                 project_number="123456789",
                 region="us-central1",
                 actuator_service="emilia-consequence-actuator",
+                decision_service="emilia-consequence-control",
                 decision_principal=DECISION,
+                deployer_principal=DEPLOYER,
                 secrets=[f"secret={ACTUATOR}", f"secret={ACTUATOR}"],
             )
 
@@ -216,7 +276,9 @@ class EffectiveIamManifestTests(unittest.TestCase):
                     "--project-number=123456789",
                     "--region=us-central1",
                     "--actuator-service=emilia-consequence-actuator",
+                    "--decision-service=emilia-consequence-control",
                     f"--decision-principal={DECISION}",
+                    f"--deployer-principal={DEPLOYER}",
                     "--analyzer-scope=organizations/987654321",
                     "--secret",
                     f"actuator-key={ACTUATOR}",
