@@ -7,6 +7,7 @@ import { afterAll, describe, expect, it } from "vitest";
 const root = path.resolve(import.meta.dirname, "..");
 const verifier = path.join(root, "scripts", "verify-security-case.mjs");
 const loader = path.join(root, "scripts", "ts-loader", "register.mjs");
+const MULTI_PROCESS_TEST_TIMEOUT_MS = 15_000;
 const temporaryDirectory = fs.mkdtempSync(
   path.join(root, ".ep-security-formal-semantics-"),
 );
@@ -40,8 +41,7 @@ fs.writeFileSync(
   legacyScenarioFixturePath,
   `${JSON.stringify(legacyScenarioFixture, null, 2)}\n`,
 );
-scenarioFixture["@version"] =
-  "EP-RUNTIME-SCENARIO-CONFORMANCE-MANIFEST-v2";
+scenarioFixture["@version"] = "EP-RUNTIME-SCENARIO-CONFORMANCE-MANIFEST-v2";
 fs.writeFileSync(
   scenarioFixturePath,
   `${JSON.stringify(scenarioFixture, null, 2)}\n`,
@@ -67,8 +67,7 @@ fs.writeFileSync(
   legacyConformanceFixturePath,
   `${JSON.stringify(legacyConformanceFixture, null, 2)}\n`,
 );
-conformanceFixture["@version"] =
-  "EP-SELECTED-SCENARIO-CONFORMANCE-EVIDENCE-v2";
+conformanceFixture["@version"] = "EP-SELECTED-SCENARIO-CONFORMANCE-EVIDENCE-v2";
 conformanceFixture.method = "bounded_selected_scenario_conformance";
 fs.writeFileSync(
   conformanceFixturePath,
@@ -126,10 +125,7 @@ function normalizedSourceCase(): any {
   return sourceCase;
 }
 
-function findFormal(
-  sourceCase: any,
-  predicate: (formal: any) => boolean,
-): any {
+function findFormal(sourceCase: any, predicate: (formal: any) => boolean): any {
   for (const claim of sourceCase.claims) {
     const formal = (claim.formal ?? []).find(predicate);
     if (formal) return formal;
@@ -147,14 +143,7 @@ function runMutatedCase(mutate: (sourceCase: any) => void) {
   fs.writeFileSync(sourcePath, `${JSON.stringify(sourceCase, null, 2)}\n`);
   return spawnSync(
     process.execPath,
-    [
-      "--import",
-      loader,
-      verifier,
-      "--source",
-      sourcePath,
-      "--validate-only",
-    ],
+    ["--import", loader, verifier, "--source", sourcePath, "--validate-only"],
     { cwd: root, encoding: "utf8" },
   );
 }
@@ -248,95 +237,102 @@ describe("security-case formal metadata semantics", () => {
     }, /bounded scenario conformance requires non-empty covered_obligations/);
   });
 
-  it("rejects legacy trace/refinement metadata and v1 evidence", () => {
-    expectRejected((sourceCase) => {
-      findFormal(
-        sourceCase,
-        (formal) => formal.scenario_coverage === "selected",
-      ).trace_evidence = "formal/runtime-traces.v1.json";
-    }, /legacy bounded trace\/refinement metadata is not accepted/);
-    expectRejected((sourceCase) => {
-      findFormal(
-        sourceCase,
-        (formal) => formal.scenario_coverage === "selected",
-      ).scenario_evidence = path.relative(root, legacyScenarioFixturePath);
-    }, /must not contain legacy traces|unknown fields: traces/);
-    expectRejected((sourceCase) => {
-      findFormal(
-        sourceCase,
-        (formal) => formal.scenario_coverage === "selected",
-      ).conformance_evidence = path.relative(
-        root,
-        legacyConformanceFixturePath,
+  it(
+    "rejects legacy trace/refinement metadata and v1 evidence",
+    () => {
+      expectRejected((sourceCase) => {
+        findFormal(
+          sourceCase,
+          (formal) => formal.scenario_coverage === "selected",
+        ).trace_evidence = "formal/runtime-traces.v1.json";
+      }, /legacy bounded trace\/refinement metadata is not accepted/);
+      expectRejected((sourceCase) => {
+        findFormal(
+          sourceCase,
+          (formal) => formal.scenario_coverage === "selected",
+        ).scenario_evidence = path.relative(root, legacyScenarioFixturePath);
+      }, /must not contain legacy traces|unknown fields: traces/);
+      expectRejected((sourceCase) => {
+        findFormal(
+          sourceCase,
+          (formal) => formal.scenario_coverage === "selected",
+        ).conformance_evidence = path.relative(
+          root,
+          legacyConformanceFixturePath,
+        );
+      }, /must not contain the legacy traces array|must contain executed v2 selected-scenario conformance evidence/);
+      expectRejected((sourceCase) => {
+        findFormal(
+          sourceCase,
+          (formal) => formal.method === "symbolic_protocol_analysis",
+        ).scenario_coverage = "selected";
+      }, /runtime scenario conformance metadata is only valid for bounded formal methods/);
+    },
+    MULTI_PROCESS_TEST_TIMEOUT_MS,
+  );
+
+  it(
+    "rejects legacy negative kinds, unbound rows, weak summaries, and noncanonical runners",
+    () => {
+      const badKindPath = path.join(
+        temporaryDirectory,
+        `scenario-bad-kind-${crypto.randomUUID()}.json`,
       );
-    }, /must not contain the legacy traces array|must contain executed v2 selected-scenario conformance evidence/);
-    expectRejected((sourceCase) => {
-      findFormal(
-        sourceCase,
-        (formal) => formal.method === "symbolic_protocol_analysis",
-      ).scenario_coverage = "selected";
-    }, /runtime scenario conformance metadata is only valid for bounded formal methods/);
-  });
+      const badKind = structuredClone(scenarioFixture);
+      badKind.scenarios.find(
+        (scenario: any) => scenario.kind === "paired_negative_control",
+      ).kind = "unsafe_mutation";
+      fs.writeFileSync(badKindPath, `${JSON.stringify(badKind, null, 2)}\n`);
+      expectRejected((sourceCase) => {
+        findFormal(
+          sourceCase,
+          (formal) => formal.scenario_coverage === "selected",
+        ).scenario_evidence = path.relative(root, badKindPath);
+      }, /kind must be sound or paired_negative_control/);
 
-  it("rejects legacy negative kinds, unbound rows, weak summaries, and noncanonical runners", () => {
-    const badKindPath = path.join(
-      temporaryDirectory,
-      `scenario-bad-kind-${crypto.randomUUID()}.json`,
-    );
-    const badKind = structuredClone(scenarioFixture);
-    badKind.scenarios.find(
-      (scenario: any) =>
-        scenario.kind === "paired_negative_control",
-    ).kind = "unsafe_mutation";
-    fs.writeFileSync(badKindPath, `${JSON.stringify(badKind, null, 2)}\n`);
-    expectRejected((sourceCase) => {
-      findFormal(
-        sourceCase,
-        (formal) => formal.scenario_coverage === "selected",
-      ).scenario_evidence = path.relative(root, badKindPath);
-    }, /kind must be sound or paired_negative_control/);
+      const badEvidencePath = path.join(
+        temporaryDirectory,
+        `conformance-bad-id-${crypto.randomUUID()}.json`,
+      );
+      const badEvidence = structuredClone(conformanceFixture);
+      badEvidence.scenarios[0].id = "not-in-the-manifest";
+      fs.writeFileSync(
+        badEvidencePath,
+        `${JSON.stringify(badEvidence, null, 2)}\n`,
+      );
+      expectRejected((sourceCase) => {
+        findFormal(
+          sourceCase,
+          (formal) => formal.scenario_coverage === "selected",
+        ).conformance_evidence = path.relative(root, badEvidencePath);
+      }, /is not manifest-bound/);
 
-    const badEvidencePath = path.join(
-      temporaryDirectory,
-      `conformance-bad-id-${crypto.randomUUID()}.json`,
-    );
-    const badEvidence = structuredClone(conformanceFixture);
-    badEvidence.scenarios[0].id = "not-in-the-manifest";
-    fs.writeFileSync(
-      badEvidencePath,
-      `${JSON.stringify(badEvidence, null, 2)}\n`,
-    );
-    expectRejected((sourceCase) => {
-      findFormal(
-        sourceCase,
-        (formal) => formal.scenario_coverage === "selected",
-      ).conformance_evidence = path.relative(root, badEvidencePath);
-    }, /is not manifest-bound/);
+      const weakSummaryPath = path.join(
+        temporaryDirectory,
+        `conformance-weak-summary-${crypto.randomUUID()}.json`,
+      );
+      const weakSummary = structuredClone(conformanceFixture);
+      weakSummary.summary = {};
+      fs.writeFileSync(
+        weakSummaryPath,
+        `${JSON.stringify(weakSummary, null, 2)}\n`,
+      );
+      expectRejected((sourceCase) => {
+        findFormal(
+          sourceCase,
+          (formal) => formal.scenario_coverage === "selected",
+        ).conformance_evidence = path.relative(root, weakSummaryPath);
+      }, /summary is missing or not re-derived/);
 
-    const weakSummaryPath = path.join(
-      temporaryDirectory,
-      `conformance-weak-summary-${crypto.randomUUID()}.json`,
-    );
-    const weakSummary = structuredClone(conformanceFixture);
-    weakSummary.summary = {};
-    fs.writeFileSync(
-      weakSummaryPath,
-      `${JSON.stringify(weakSummary, null, 2)}\n`,
-    );
-    expectRejected((sourceCase) => {
-      findFormal(
-        sourceCase,
-        (formal) => formal.scenario_coverage === "selected",
-      ).conformance_evidence = path.relative(root, weakSummaryPath);
-    }, /summary is missing or not re-derived/);
-
-    expectRejected((sourceCase) => {
-      findFormal(
-        sourceCase,
-        (formal) => formal.scenario_coverage === "selected",
-      ).scenario_runner = "scripts/not-the-governed-runner.mjs";
-    }, /scenario_runner must name the canonical executed runner|evidence file not found/);
-  });
+      expectRejected((sourceCase) => {
+        findFormal(
+          sourceCase,
+          (formal) => formal.scenario_coverage === "selected",
+        ).scenario_runner = "scripts/not-the-governed-runner.mjs";
+      }, /scenario_runner must name the canonical executed runner|evidence file not found/);
+    },
+    MULTI_PROCESS_TEST_TIMEOUT_MS,
+  );
 
   it("rejects covered obligations outside the formal obligation set", () => {
     expectRejected((sourceCase) => {
@@ -354,10 +350,7 @@ describe("security-case formal metadata semantics", () => {
       );
       formal.scenario_evidence = path.relative(root, scenarioFixturePath);
       formal.scenario_runner = "scripts/check-formal-runtime-traces.mjs";
-      formal.conformance_evidence = path.relative(
-        root,
-        conformanceFixturePath,
-      );
+      formal.conformance_evidence = path.relative(root, conformanceFixturePath);
       formal.scenario_coverage = "selected";
       formal.covered_actions = ["RepresentativeRuntimeAction"];
       formal.covered_obligations = ["UndeclaredFormalObligation"];
