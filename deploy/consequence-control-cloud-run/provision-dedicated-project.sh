@@ -42,11 +42,6 @@ while (($#)); do
 done
 
 [[ -n "$CONFIG" ]] || lane_die "--config is required"
-if grep -Eq \
-    '^(PROVISIONING_APPROVED|PROVISIONING_CONFIRM_PROJECT|ROLLOUT_APPROVED|ROLLOUT_CONFIRM_PROJECT)=' \
-    "$CONFIG"; then
-  lane_die "approval controls must not be stored in the provisioning config"
-fi
 load_lane_config "$CONFIG"
 
 : "${PROJECT_NAME:=EMILIA consequence control}"
@@ -57,6 +52,7 @@ load_lane_config "$CONFIG"
 
 PROVISIONER_ROLE_ID=emiliaConsequenceProvisioner
 DEPLOYER_ROLE_ID=emiliaConsequenceDeployer
+RECOVERY_ROLE_ID=emiliaConsequenceRecovery
 PROVISIONER_PERMISSIONS=(
   artifactregistry.repositories.create
   artifactregistry.repositories.get
@@ -108,6 +104,7 @@ DEPLOYER_PERMISSIONS=(
   compute.subnetworks.use
   iam.serviceAccounts.get
   iam.serviceAccounts.getIamPolicy
+  iam.serviceAccounts.setIamPolicy
   logging.logEntries.list
   monitoring.timeSeries.list
   resourcemanager.projects.get
@@ -118,14 +115,34 @@ DEPLOYER_PERMISSIONS=(
   run.services.get
   run.services.getIamPolicy
   run.services.list
+  run.services.setIamPolicy
   run.services.update
   secretmanager.secrets.get
   secretmanager.secrets.getIamPolicy
+  secretmanager.secrets.setIamPolicy
   secretmanager.versions.get
   secretmanager.versions.list
   serviceusage.services.get
   serviceusage.services.list
   serviceusage.services.use
+)
+RECOVERY_PERMISSIONS=(
+  iam.roles.get
+  iam.roles.list
+  iam.serviceAccounts.get
+  iam.serviceAccounts.getIamPolicy
+  iam.serviceAccounts.setIamPolicy
+  resourcemanager.projects.get
+  resourcemanager.projects.getIamPolicy
+  resourcemanager.projects.setIamPolicy
+  run.services.get
+  run.services.getIamPolicy
+  run.services.setIamPolicy
+  secretmanager.secrets.get
+  secretmanager.secrets.getIamPolicy
+  secretmanager.secrets.setIamPolicy
+  serviceusage.services.get
+  serviceusage.services.list
 )
 REQUIRED_APIS=(
   artifactregistry.googleapis.com
@@ -190,22 +207,49 @@ PY
 validate_provision_config() {
   local required=(
     PROJECT_ID BILLING_ACCOUNT REGION ACTUATOR_SERVICE_ACCOUNT
-    DECISION_SERVICE_ACCOUNT DEPLOYER_PRINCIPAL RECOVERY_PRINCIPALS
+    DECISION_SERVICE_ACCOUNT STABLE_BOOTSTRAP_ACTUATOR_SERVICE_ACCOUNT
+    STABLE_BOOTSTRAP_DECISION_SERVICE_ACCOUNT PROVISIONER_PRINCIPAL
+    DEPLOYER_PRINCIPAL RECOVERY_PRINCIPALS
     NETWORK SUBNET SUBNET_CIDR ARTIFACT_REPOSITORY ROUTER NAT
   )
-  local name member
+  local name member left right
+  local account_names=(
+    ACTUATOR_SERVICE_ACCOUNT
+    DECISION_SERVICE_ACCOUNT
+    STABLE_BOOTSTRAP_ACTUATOR_SERVICE_ACCOUNT
+    STABLE_BOOTSTRAP_DECISION_SERVICE_ACCOUNT
+  )
+  local account_values=()
   for name in "${required[@]}"; do require_var "$name"; done
+  account_values=(
+    "$ACTUATOR_SERVICE_ACCOUNT"
+    "$DECISION_SERVICE_ACCOUNT"
+    "$STABLE_BOOTSTRAP_ACTUATOR_SERVICE_ACCOUNT"
+    "$STABLE_BOOTSTRAP_DECISION_SERVICE_ACCOUNT"
+  )
   validate_project_id
   [[ "$BILLING_ACCOUNT" =~ ^[A-Fa-f0-9]{6}-[A-Fa-f0-9]{6}-[A-Fa-f0-9]{6}$ ]] \
     || lane_die "BILLING_ACCOUNT must use the canonical XXXXXX-XXXXXX-XXXXXX form"
   validate_region
-  validate_account_id ACTUATOR_SERVICE_ACCOUNT
-  validate_account_id DECISION_SERVICE_ACCOUNT
-  [[ "$ACTUATOR_SERVICE_ACCOUNT" != "$DECISION_SERVICE_ACCOUNT" ]] \
-    || lane_die "runtime service accounts must be distinct"
+  for name in "${account_names[@]}"; do
+    validate_account_id "$name"
+  done
+  for left in "${!account_values[@]}"; do
+    for right in "${!account_values[@]}"; do
+      ((right > left)) || continue
+      [[ "${account_values[left]}" != "${account_values[right]}" ]] \
+        || lane_die "runtime and stable bootstrap service accounts must all be distinct"
+    done
+  done
   [[ "$DEPLOYER_PRINCIPAL" == serviceAccount:* ]] \
     || lane_die "DEPLOYER_PRINCIPAL must be a serviceAccount principal"
   validate_principal "$DEPLOYER_PRINCIPAL"
+  [[ "$DEPLOYER_PRINCIPAL" =~ ^serviceAccount:[^[:space:],@]+@[^[:space:],@]+\.iam\.gserviceaccount\.com$ ]] \
+    || lane_die "DEPLOYER_PRINCIPAL must be an exact serviceAccount IAM principal"
+  [[ "$PROVISIONER_PRINCIPAL" =~ ^(user:[^[:space:],@]+@[^[:space:],@]+|serviceAccount:[^[:space:],@]+@[^[:space:],@]+\.iam\.gserviceaccount\.com)$ ]] \
+    || lane_die "PROVISIONER_PRINCIPAL must be an exact user or serviceAccount IAM principal"
+  [[ "$PROVISIONER_PRINCIPAL" != "$DEPLOYER_PRINCIPAL" ]] \
+    || lane_die "PROVISIONER_PRINCIPAL and DEPLOYER_PRINCIPAL must be distinct"
   validate_slug NETWORK
   validate_slug SUBNET
   validate_slug ARTIFACT_REPOSITORY
@@ -218,13 +262,44 @@ validate_provision_config() {
   fi
 
   IFS=, read -r -a RECOVERY_MEMBERS <<< "$RECOVERY_PRINCIPALS"
-  ((${#RECOVERY_MEMBERS[@]} > 0)) \
-    || lane_die "at least one RECOVERY_PRINCIPALS member is required"
-  for member in "${RECOVERY_MEMBERS[@]}"; do
+  ((${#RECOVERY_MEMBERS[@]} >= 2)) \
+    || lane_die "at least two distinct RECOVERY_PRINCIPALS members are required"
+  for left in "${!RECOVERY_MEMBERS[@]}"; do
+    member=${RECOVERY_MEMBERS[left]}
     validate_principal "$member"
     [[ "$member" != "$DEPLOYER_PRINCIPAL" ]] \
-      || lane_die "DEPLOYER_PRINCIPAL must not be a recovery owner"
+      || lane_die "DEPLOYER_PRINCIPAL must not be a recovery principal"
+    [[ "$member" != "$PROVISIONER_PRINCIPAL" ]] \
+      || lane_die "PROVISIONER_PRINCIPAL must not be a recovery principal"
+    for ((right = 0; right < left; right++)); do
+      [[ "$member" != "${RECOVERY_MEMBERS[right]}" ]] \
+        || lane_die "duplicate recovery principal: $member"
+    done
   done
+}
+
+require_active_provisioner() {
+  local account active_principal
+  account=$(gcloud config get-value account --quiet)
+  [[ -n "$account" && "$account" != "(unset)" \
+      && "$account" != *[$'\r\n\t ']* ]] \
+    || lane_die "active gcloud provisioner account could not be resolved exactly"
+  case "$account" in
+    user:*|serviceAccount:*)
+      active_principal=$account
+      ;;
+    *@*.gserviceaccount.com)
+      active_principal="serviceAccount:$account"
+      ;;
+    *@*)
+      active_principal="user:$account"
+      ;;
+    *)
+      lane_die "active gcloud provisioner is not a concrete IAM principal"
+      ;;
+  esac
+  [[ "$active_principal" == "$PROVISIONER_PRINCIPAL" ]] \
+    || lane_die "active gcloud identity $active_principal does not exactly match PROVISIONER_PRINCIPAL $PROVISIONER_PRINCIPAL"
 }
 
 require_provision_approval() {
@@ -302,14 +377,32 @@ render_plan() {
   shell_join gcloud services enable "${REQUIRED_APIS[@]}" "--project=$PROJECT_ID"
   shell_join gcloud projects update "$PROJECT_ID" \
     "--update-labels=emilia-purpose=consequence-control"
+  render_custom_role "$PROVISIONER_ROLE_ID" \
+    "EMILIA consequence provisioner" \
+    "JIT infrastructure and IAM reconciliation; never a runtime principal" \
+    "${PROVISIONER_PERMISSIONS[@]}"
+  printf '# bind and read back the exact active provisioner before completing infrastructure\n'
+  shell_join gcloud projects add-iam-policy-binding "$PROJECT_ID" \
+    "--member=$PROVISIONER_PRINCIPAL" \
+    "--role=projects/$PROJECT_ID/roles/$PROVISIONER_ROLE_ID" \
+    --condition=None
+  shell_join gcloud projects get-iam-policy "$PROJECT_ID" --format=json
 
-  printf '# create isolated runtime identities without keys\n'
+  printf '# create isolated runtime and stable bootstrap identities without keys\n'
   shell_join gcloud iam service-accounts create "$ACTUATOR_SERVICE_ACCOUNT" \
     "--project=$PROJECT_ID" \
     "--display-name=EMILIA consequence actuator"
   shell_join gcloud iam service-accounts create "$DECISION_SERVICE_ACCOUNT" \
     "--project=$PROJECT_ID" \
     "--display-name=EMILIA consequence decision"
+  shell_join gcloud iam service-accounts create \
+    "$STABLE_BOOTSTRAP_ACTUATOR_SERVICE_ACCOUNT" \
+    "--project=$PROJECT_ID" \
+    "--display-name=EMILIA permissionless stable bootstrap actuator"
+  shell_join gcloud iam service-accounts create \
+    "$STABLE_BOOTSTRAP_DECISION_SERVICE_ACCOUNT" \
+    "--project=$PROJECT_ID" \
+    "--display-name=EMILIA permissionless stable bootstrap decision"
 
   printf '# create a digest-oriented Artifact Registry repository\n'
   shell_join gcloud artifacts repositories create "$ARTIFACT_REPOSITORY" \
@@ -331,26 +424,35 @@ render_plan() {
     --nat-all-subnet-ip-ranges --auto-allocate-nat-external-ips \
     --enable-logging --log-filter=ERRORS_ONLY
 
-  render_custom_role "$PROVISIONER_ROLE_ID" \
-    "EMILIA consequence provisioner" \
-    "JIT infrastructure and IAM reconciliation; never a runtime principal" \
-    "${PROVISIONER_PERMISSIONS[@]}"
   render_custom_role "$DEPLOYER_ROLE_ID" \
     "EMILIA consequence deployer" \
     "Steady-state zero-secret-payload Cloud Run deployment and observation" \
     "${DEPLOYER_PERMISSIONS[@]}"
+  render_custom_role "$RECOVERY_ROLE_ID" \
+    "EMILIA consequence break-glass recovery" \
+    "IAM control-plane restoration without runtime impersonation or data access" \
+    "${RECOVERY_PERMISSIONS[@]}"
   shell_join gcloud projects add-iam-policy-binding "$PROJECT_ID" \
     "--member=$DEPLOYER_PRINCIPAL" \
     "--role=projects/$PROJECT_ID/roles/$DEPLOYER_ROLE_ID" --condition=None
 
-  printf '# establish explicit recovery owners\n'
+  printf '# establish break-glass recovery custodians\n'
   local member
   for member in "${RECOVERY_MEMBERS[@]}"; do
     shell_join gcloud projects add-iam-policy-binding "$PROJECT_ID" \
-      "--member=$member" --role=roles/owner --condition=None
+      "--member=$member" \
+      "--role=projects/$PROJECT_ID/roles/$RECOVERY_ROLE_ID" \
+      --condition=None
   done
-  printf '# verify explicit recovery owners before cleanup\n'
-  printf '# verify-recovery-owner: each configured member must be an unconditional owner\n'
+  printf '# verify recovery and provisioner control before owner removal\n'
+  printf '# verify-control-plane-custody: recovery, provisioner, and deployer custom bindings must be readable\n'
+  shell_join gcloud projects get-iam-policy "$PROJECT_ID" --format=json
+  printf '# reconcile exact custom-role custody and remove every project owner binding\n'
+  shell_join python3 '<rewrite-control-plane-policy-exactly>' \
+    '<current-project-policy.json>' '<closed-project-policy.json>'
+  shell_join gcloud projects set-iam-policy "$PROJECT_ID" \
+    '<closed-project-policy.json>'
+  printf '# verify-control-plane-exact: no roles/owner and exact provisioner, deployer, and recovery bindings\n'
   shell_join gcloud projects get-iam-policy "$PROJECT_ID" --format=json
   printf '# prevent automatic broad grants before removing any existing defaults\n'
   shell_join gcloud resource-manager org-policies enable-enforce \
@@ -498,26 +600,146 @@ ensure_custom_role() {
   fi
 }
 
-verify_recovery_owners() {
+verify_control_plane_policy() {
+  local mode=$1
   local policy_file="$PROVISION_TMPDIR/project-policy.json"
   gcloud projects get-iam-policy "$PROJECT_ID" \
     --format=json > "$policy_file"
-  python3 - "$policy_file" "${RECOVERY_MEMBERS[@]}" <<'PY' || \
-    lane_die "recovery owner verification failed; refusing default grant cleanup"
+  python3 - "$policy_file" \
+    "$mode" \
+    "projects/$PROJECT_ID/roles/$PROVISIONER_ROLE_ID" \
+    "$PROVISIONER_PRINCIPAL" \
+    "projects/$PROJECT_ID/roles/$DEPLOYER_ROLE_ID" \
+    "$DEPLOYER_PRINCIPAL" \
+    "projects/$PROJECT_ID/roles/$RECOVERY_ROLE_ID" \
+    "${RECOVERY_MEMBERS[@]}" <<'PY' || \
+    lane_die "control-plane IAM verification failed; refusing owner or default-role cleanup"
 import json
 from pathlib import Path
 import sys
 
 policy = json.loads(Path(sys.argv[1]).read_text(encoding="utf-8"))
-owners = set()
+(
+    mode,
+    provisioner_role,
+    provisioner_principal,
+    deployer_role,
+    deployer_principal,
+    recovery_role,
+    *recovery_principals,
+) = sys.argv[2:]
+
+role_members = {
+    provisioner_role: set(),
+    deployer_role: set(),
+    recovery_role: set(),
+}
+conditional_roles = set()
+owner_bindings = []
 for binding in policy.get("bindings", []):
-    if binding.get("role") == "roles/owner" and not binding.get("condition"):
-        owners.update(binding.get("members", []))
-missing = [member for member in sys.argv[2:] if member not in owners]
-if missing:
-    print("missing unconditional recovery owners: " + ", ".join(missing), file=sys.stderr)
-    raise SystemExit(1)
+    members = set(binding.get("members", []))
+    role = binding.get("role")
+    if role in role_members:
+        if binding.get("condition"):
+            conditional_roles.add(role)
+        else:
+            role_members[role].update(members)
+    if role == "roles/owner":
+        owner_bindings.append(binding)
+
+if provisioner_principal not in role_members[provisioner_role]:
+    raise SystemExit("provisioner custom role is not readable")
+if mode == "provisioner":
+    raise SystemExit(0)
+if deployer_principal not in role_members[deployer_role]:
+    raise SystemExit("deployer custom role is not readable")
+missing_recovery = set(recovery_principals) - role_members[recovery_role]
+if missing_recovery:
+    raise SystemExit(
+        "recovery custom role is missing: "
+        + ", ".join(sorted(missing_recovery))
+    )
+if mode == "custody":
+    raise SystemExit(0)
+if mode != "exact":
+    raise SystemExit("unknown recovery verification mode")
+expected = {
+    provisioner_role: {provisioner_principal},
+    deployer_role: {deployer_principal},
+    recovery_role: set(recovery_principals),
+}
+if role_members != expected or conditional_roles:
+    raise SystemExit("custom control-plane role bindings are not exact")
+if owner_bindings:
+    raise SystemExit("roles/owner remains after control-plane reconciliation")
 PY
+}
+
+reconcile_control_plane_policy() {
+  local current="$PROVISION_TMPDIR/control-policy-current.json"
+  local desired="$PROVISION_TMPDIR/control-policy-desired.json"
+  gcloud projects get-iam-policy "$PROJECT_ID" \
+    --format=json > "$current"
+  python3 - "$current" "$desired" \
+    "projects/$PROJECT_ID/roles/$PROVISIONER_ROLE_ID" \
+    "$PROVISIONER_PRINCIPAL" \
+    "projects/$PROJECT_ID/roles/$DEPLOYER_ROLE_ID" \
+    "$DEPLOYER_PRINCIPAL" \
+    "projects/$PROJECT_ID/roles/$RECOVERY_ROLE_ID" \
+    "${RECOVERY_MEMBERS[@]}" <<'PY' || \
+    lane_die "control-plane policy reconciliation failed"
+import json
+import os
+from pathlib import Path
+import sys
+
+(
+    source,
+    destination,
+    provisioner_role,
+    provisioner_principal,
+    deployer_role,
+    deployer_principal,
+    recovery_role,
+    *recovery_principals,
+) = sys.argv[1:]
+policy = json.loads(Path(source).read_text(encoding="utf-8"))
+managed_roles = {provisioner_role, deployer_role, recovery_role}
+bindings = []
+for binding in policy.get("bindings", []):
+    if binding.get("role") in managed_roles:
+        continue
+    if binding.get("role") == "roles/owner":
+        continue
+    bindings.append(binding)
+bindings.extend(
+    [
+        {
+            "role": provisioner_role,
+            "members": [provisioner_principal],
+        },
+        {
+            "role": deployer_role,
+            "members": [deployer_principal],
+        },
+        {
+            "role": recovery_role,
+            "members": recovery_principals,
+        },
+    ]
+)
+policy["bindings"] = bindings
+descriptor = os.open(
+    destination,
+    os.O_WRONLY | os.O_CREAT | os.O_EXCL,
+    0o600,
+)
+with os.fdopen(descriptor, "w", encoding="utf-8") as handle:
+    json.dump(policy, handle, sort_keys=True)
+    handle.write("\n")
+PY
+  gcloud projects set-iam-policy "$PROJECT_ID" "$desired" \
+    --quiet >/dev/null
 }
 
 member_has_editor() {
@@ -562,22 +784,35 @@ apply_provisioning() {
   ensure_project
   gcloud services enable "${REQUIRED_APIS[@]}" \
     "--project=$PROJECT_ID" --quiet
-  ensure_service_account "$ACTUATOR_SERVICE_ACCOUNT" \
-    "EMILIA consequence actuator"
-  ensure_service_account "$DECISION_SERVICE_ACCOUNT" \
-    "EMILIA consequence decision"
-  ensure_artifact_repository
-  ensure_network
-  ensure_subnet
-  ensure_nat
   ensure_custom_role "$PROVISIONER_ROLE_ID" \
     "EMILIA consequence provisioner" \
     "JIT infrastructure and IAM reconciliation; never a runtime principal" \
     "${PROVISIONER_PERMISSIONS[@]}"
+  gcloud projects add-iam-policy-binding "$PROJECT_ID" \
+    "--member=$PROVISIONER_PRINCIPAL" \
+    "--role=projects/$PROJECT_ID/roles/$PROVISIONER_ROLE_ID" \
+    --condition=None --quiet
+  verify_control_plane_policy provisioner
+  ensure_service_account "$ACTUATOR_SERVICE_ACCOUNT" \
+    "EMILIA consequence actuator"
+  ensure_service_account "$DECISION_SERVICE_ACCOUNT" \
+    "EMILIA consequence decision"
+  ensure_service_account "$STABLE_BOOTSTRAP_ACTUATOR_SERVICE_ACCOUNT" \
+    "EMILIA permissionless stable bootstrap actuator"
+  ensure_service_account "$STABLE_BOOTSTRAP_DECISION_SERVICE_ACCOUNT" \
+    "EMILIA permissionless stable bootstrap decision"
+  ensure_artifact_repository
+  ensure_network
+  ensure_subnet
+  ensure_nat
   ensure_custom_role "$DEPLOYER_ROLE_ID" \
     "EMILIA consequence deployer" \
     "Steady-state zero-secret-payload Cloud Run deployment and observation" \
     "${DEPLOYER_PERMISSIONS[@]}"
+  ensure_custom_role "$RECOVERY_ROLE_ID" \
+    "EMILIA consequence break-glass recovery" \
+    "IAM control-plane restoration without runtime impersonation or data access" \
+    "${RECOVERY_PERMISSIONS[@]}"
   gcloud projects add-iam-policy-binding "$PROJECT_ID" \
     "--member=$DEPLOYER_PRINCIPAL" \
     "--role=projects/$PROJECT_ID/roles/$DEPLOYER_ROLE_ID" \
@@ -586,14 +821,18 @@ apply_provisioning() {
   local member
   for member in "${RECOVERY_MEMBERS[@]}"; do
     gcloud projects add-iam-policy-binding "$PROJECT_ID" \
-      "--member=$member" --role=roles/owner --condition=None --quiet
+      "--member=$member" \
+      "--role=projects/$PROJECT_ID/roles/$RECOVERY_ROLE_ID" \
+      --condition=None --quiet
   done
-  verify_recovery_owners
+  verify_control_plane_policy custody
+  reconcile_control_plane_policy
+  verify_control_plane_policy exact
   gcloud resource-manager org-policies enable-enforce \
     constraints/iam.automaticIamGrantsForDefaultServiceAccounts \
     "--project=$PROJECT_ID" --quiet
   remove_default_editors
-  verify_recovery_owners
+  verify_control_plane_policy exact
   printf 'dedicated consequence-control project provisioned: %s\n' "$PROJECT_ID"
   printf 'steady-state deployer has no secret payload, token minting, or persistent actAs grant\n'
 }
@@ -632,6 +871,7 @@ if [[ "$ACTION" == provision ]]; then
 else
   require_rollout_approval
 fi
+require_active_provisioner
 
 PROVISION_TMPDIR=$(mktemp -d)
 trap 'rm -rf "$PROVISION_TMPDIR"' EXIT

@@ -27,7 +27,15 @@ def run(
         check=check,
         text=True,
         capture_output=True,
-        env={**os.environ, "DEPLOYMENT_APPROVED": "", **(extra_env or {})},
+        env={
+            **os.environ,
+            "DEPLOYMENT_APPROVED": "",
+            "DEPLOYER_PRINCIPAL": (
+                "serviceAccount:emilia-deployer@"
+                "test-project.iam.gserviceaccount.com"
+            ),
+            **(extra_env or {}),
+        },
     )
 
 
@@ -227,6 +235,77 @@ class RenderTests(unittest.TestCase):
             "EMILIA_CONSEQUENCE_ACTUATOR_API_TOKEN=actuator-token:2", self.plan
         )
 
+    def test_prerequisites_are_read_only_and_check_exact_secret_versions(self) -> None:
+        self.assertNotIn("gcloud services enable", self.plan)
+        self.assertNotIn("gcloud iam service-accounts create", self.plan)
+        for api in (
+            "run.googleapis.com",
+            "secretmanager.googleapis.com",
+            "iam.googleapis.com",
+            "cloudasset.googleapis.com",
+        ):
+            self.assertIn(f"gcloud services describe {api}", self.plan)
+        self.assertIn(
+            "gcloud iam service-accounts describe "
+            "emilia-actuator@test-project.iam.gserviceaccount.com",
+            self.plan,
+        )
+        self.assertIn(
+            "gcloud iam service-accounts describe "
+            "emilia-decision@test-project.iam.gserviceaccount.com",
+            self.plan,
+        )
+        self.assertIn(
+            "gcloud secrets versions describe 1 --secret=actuator-db",
+            self.plan,
+        )
+        self.assertIn(
+            "gcloud secrets versions describe 19 "
+            "--secret=decision-observation-public",
+            self.plan,
+        )
+        first_mutation = self.plan.index(
+            "gcloud secrets set-iam-policy"
+        )
+        self.assertLess(
+            self.plan.index("gcloud secrets versions describe"),
+            first_mutation,
+        )
+
+    def test_config_cannot_embed_control_variables(self) -> None:
+        controls = {
+            "DEPLOYMENT_APPROVED": "true",
+            "PROVISIONING_APPROVED": "true",
+            "PROVISIONING_CONFIRM_PROJECT": "test-project",
+            "ROLLOUT_APPROVED": "true",
+            "ROLLOUT_CONFIRM_PROJECT": "test-project",
+            "JIT_ACTAS_EXPIRES_AT": "2099-01-01T00:00:00Z",
+            "JIT_ACTIVE": "true",
+            "JIT_MAX_TTL_SECONDS": "999999",
+            "ATTACKER_APPROVED": "true",
+            "ATTACKER_CONFIRM_PROJECT": "test-project",
+        }
+        source = CONFIG.read_text(encoding="utf-8")
+        for name, value in controls.items():
+            with self.subTest(name=name):
+                with tempfile.NamedTemporaryFile(
+                    "w", encoding="utf-8"
+                ) as handle:
+                    handle.write(source + f"\n{name}={value}\n")
+                    handle.flush()
+                    result = run(
+                        str(LANE / "deploy.sh"),
+                        "--config",
+                        handle.name,
+                        "--render",
+                        check=False,
+                    )
+                self.assertNotEqual(result.returncode, 0)
+                self.assertIn(
+                    "control variables must not be stored",
+                    result.stderr,
+                )
+
     def test_mutable_image_is_refused(self) -> None:
         source = CONFIG.read_text(encoding="utf-8").replace(
             load_config()["ACTUATOR_IMAGE"],
@@ -424,9 +503,20 @@ def analyzer_response():
     )
 
 if args[:3] == ["config", "get-value", "account"]:
-    print("deployer@example.com")
+    print(
+        os.environ.get(
+            "ACTIVE_GCLOUD_ACCOUNT",
+            "emilia-deployer@test-project.iam.gserviceaccount.com",
+        )
+    )
 elif args[:2] == ["services", "enable"]:
     pass
+elif args[:2] == ["services", "describe"]:
+    api = args[2]
+    if os.environ.get("DISABLED_API") == api:
+        print("DISABLED")
+    else:
+        print("ENABLED")
 elif args[:2] == ["projects", "describe"]:
     print("123456789")
 elif args[:2] == ["projects", "get-ancestors"]:
@@ -439,7 +529,9 @@ elif args[:2] == ["projects", "get-ancestors"]:
         )
     )
 elif args[:3] == ["iam", "service-accounts", "describe"]:
-    pass
+    if os.environ.get("MISSING_SERVICE_ACCOUNT") == args[3]:
+        print("service account not found", file=sys.stderr)
+        raise SystemExit(1)
 elif args[:3] == ["iam", "service-accounts", "add-iam-policy-binding"]:
     account = args[3]
     condition_path = flag("--condition-from-file=")
@@ -472,6 +564,13 @@ elif args[:3] == ["iam", "service-accounts", "get-iam-policy"]:
         output(state["before_set"][account])
     else:
         output(sa_policy(account))
+elif args[:3] == ["secrets", "versions", "describe"]:
+    version = args[3]
+    secret = flag("--secret=")
+    if os.environ.get("DISABLED_SECRET_REF") == secret + ":" + version:
+        print("DISABLED")
+    else:
+        print("ENABLED")
 elif args[:2] == ["secrets", "describe"]:
     pass
 elif args[:2] == ["secrets", "get-iam-policy"]:
@@ -526,6 +625,12 @@ else:
         fail_readback: str = "",
         ancestry: list[dict[str, str]] | None = None,
         analyzer_scope: str = "",
+        active_account: str = (
+            "emilia-deployer@test-project.iam.gserviceaccount.com"
+        ),
+        disabled_api: str = "",
+        disabled_secret_ref: str = "",
+        missing_service_account: str = "",
     ) -> tuple[
         subprocess.CompletedProcess[str], list[list[str]]
     ]:
@@ -550,6 +655,10 @@ else:
                     "GCLOUD_STATE": str(state),
                     "FAIL_SET_POLICY": fail_set_policy,
                     "FAIL_READBACK": fail_readback,
+                    "ACTIVE_GCLOUD_ACCOUNT": active_account,
+                    "DISABLED_API": disabled_api,
+                    "DISABLED_SECRET_REF": disabled_secret_ref,
+                    "MISSING_SERVICE_ACCOUNT": missing_service_account,
                     "ANCESTRY_JSON": json.dumps(
                         ancestry
                         if ancestry is not None
@@ -624,6 +733,28 @@ else:
                 )
             )
             self.assertNotIn("--condition=None", calls[index])
+        secret_version_reads = [
+            index
+            for index, call in enumerate(calls)
+            if call[:3] == ["secrets", "versions", "describe"]
+        ]
+        mutations = [
+            index
+            for index, call in enumerate(calls)
+            if call[:3]
+            in (
+                ["iam", "service-accounts", "add-iam-policy-binding"],
+                ["iam", "service-accounts", "set-iam-policy"],
+                ["run", "services", "set-iam-policy"],
+            )
+            or call[:2]
+            in (
+                ["secrets", "set-iam-policy"],
+                ["run", "deploy"],
+            )
+        ]
+        self.assertEqual(len(secret_version_reads), 19)
+        self.assertLess(max(secret_version_reads), min(mutations))
         for account in (
             "emilia-actuator@test-project.iam.gserviceaccount.com",
             "emilia-decision@test-project.iam.gserviceaccount.com",
@@ -636,6 +767,83 @@ else:
             ]
             self.assertGreaterEqual(len(account_reads), 3)
             self.assertLess(max(account_reads), max(analyses) + 1)
+
+    def test_active_gcloud_identity_must_exactly_match_configured_deployer(
+        self,
+    ) -> None:
+        result, calls = self.apply(active_account="attacker@example.com")
+
+        self.assertNotEqual(result.returncode, 0)
+        self.assertIn("does not exactly match DEPLOYER_PRINCIPAL", result.stderr)
+        self.assertFalse(any(call[:2] == ["run", "deploy"] for call in calls))
+        self.assertFalse(
+            any(
+                call[:3]
+                in (
+                    ["iam", "service-accounts", "add-iam-policy-binding"],
+                    ["iam", "service-accounts", "set-iam-policy"],
+                    ["run", "services", "set-iam-policy"],
+                )
+                or call[:2] == ["secrets", "set-iam-policy"]
+                for call in calls
+            )
+        )
+
+    def test_disabled_api_refuses_before_identity_or_iam_mutation(self) -> None:
+        result, calls = self.apply(disabled_api="run.googleapis.com")
+
+        self.assertNotEqual(result.returncode, 0)
+        self.assertIn("run.googleapis.com must already be ENABLED", result.stderr)
+        self.assertFalse(
+            any(
+                call[:3]
+                == ["iam", "service-accounts", "add-iam-policy-binding"]
+                or call[:2] == ["run", "deploy"]
+                for call in calls
+            )
+        )
+        self.assertNotIn(["services", "enable"], [call[:2] for call in calls])
+
+    def test_missing_runtime_identity_is_never_created_by_deploy(self) -> None:
+        account = "emilia-actuator@test-project.iam.gserviceaccount.com"
+        result, calls = self.apply(missing_service_account=account)
+
+        self.assertNotEqual(result.returncode, 0)
+        self.assertIn("must already exist", result.stderr)
+        self.assertFalse(
+            any(
+                call[:3] == ["iam", "service-accounts", "create"]
+                for call in calls
+            )
+        )
+        self.assertFalse(any(call[:2] == ["run", "deploy"] for call in calls))
+
+    def test_disabled_numeric_secret_version_refuses_before_any_mutation(
+        self,
+    ) -> None:
+        result, calls = self.apply(disabled_secret_ref="actuator-db:1")
+
+        self.assertNotEqual(result.returncode, 0)
+        self.assertIn(
+            "secret version actuator-db:1 must already be present and ENABLED",
+            result.stderr,
+        )
+        self.assertFalse(
+            any(
+                call[:3]
+                in (
+                    ["iam", "service-accounts", "add-iam-policy-binding"],
+                    ["iam", "service-accounts", "set-iam-policy"],
+                    ["run", "services", "set-iam-policy"],
+                )
+                or call[:2]
+                in (
+                    ["secrets", "set-iam-policy"],
+                    ["run", "deploy"],
+                )
+                for call in calls
+            )
+        )
 
     def test_cleanup_failure_prevents_after_effective_analysis(self) -> None:
         result, calls = self.apply(

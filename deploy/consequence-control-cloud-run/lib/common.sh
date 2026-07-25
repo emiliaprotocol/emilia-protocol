@@ -6,6 +6,17 @@ lane_die() {
   exit 1
 }
 
+is_invocation_control_variable() {
+  case "$1" in
+    *_APPROVED | *_CONFIRM | *_CONFIRM_* | JIT_*)
+      return 0
+      ;;
+    *)
+      return 1
+      ;;
+  esac
+}
+
 load_lane_config() {
   local file=${1:-}
   [[ -f "$file" ]] || lane_die "config file not found: $file"
@@ -18,6 +29,9 @@ load_lane_config() {
     value=${line#*=}
     [[ "$key" =~ ^[A-Z][A-Z0-9_]*$ ]] \
       || lane_die "invalid config key on line $number"
+    if is_invocation_control_variable "$key"; then
+      lane_die "invocation control variables must not be stored in config: $key"
+    fi
     [[ "$value" != *$'\n'* && "$value" != *$'\r'* ]] \
       || lane_die "invalid control character on line $number"
     printf -v "$key" '%s' "$value"
@@ -60,6 +74,10 @@ validate_secret_ref() {
 
 secret_name() {
   printf '%s' "${1%%:*}"
+}
+
+secret_version() {
+  printf '%s' "${1##*:}"
 }
 
 effective_iam_secret_args() {
@@ -179,6 +197,13 @@ all_secret_variables() {
   } | awk '!seen[$0]++'
 }
 
+configured_secret_refs() {
+  local variable
+  while IFS= read -r variable; do
+    printf '%s\n' "${!variable}"
+  done < <(all_secret_variables) | sort -u
+}
+
 secret_is_used_by() {
   local secret=$1 group=$2 variable ref
   while IFS= read -r variable; do
@@ -192,7 +217,7 @@ secret_is_used_by() {
 
 validate_lane_config() {
   local required=(
-    PROJECT_ID REGION RELEASE_ID
+    PROJECT_ID REGION RELEASE_ID DEPLOYER_PRINCIPAL
     ACTUATOR_SERVICE DECISION_SERVICE
     ACTUATOR_SERVICE_ACCOUNT DECISION_SERVICE_ACCOUNT
     ACTUATOR_IMAGE DECISION_IMAGE NETWORK SUBNET
@@ -222,6 +247,8 @@ validate_lane_config() {
   validate_slug DECISION_SERVICE_ACCOUNT
   [[ "$ACTUATOR_SERVICE_ACCOUNT" != "$DECISION_SERVICE_ACCOUNT" ]] \
     || lane_die "runtime service accounts must be distinct"
+  [[ "$DEPLOYER_PRINCIPAL" =~ ^serviceAccount:[^[:space:],@]+@[^[:space:],@]+\.iam\.gserviceaccount\.com$ ]] \
+    || lane_die "DEPLOYER_PRINCIPAL must be an exact serviceAccount IAM principal"
   validate_release
   validate_image_digest ACTUATOR_IMAGE
   validate_image_digest DECISION_IMAGE

@@ -58,6 +58,16 @@ JIT_ACTUATOR_TITLE="$JIT_TITLE_PREFIX-actuator"
 JIT_DECISION_TITLE="$JIT_TITLE_PREFIX-decision"
 ((${#JIT_ACTUATOR_TITLE} <= 100 && ${#JIT_DECISION_TITLE} <= 100)) \
   || lane_die "release ID is too long for a unique JIT IAM condition title"
+DEPLOY_REQUIRED_APIS=(
+  artifactregistry.googleapis.com
+  cloudasset.googleapis.com
+  cloudresourcemanager.googleapis.com
+  compute.googleapis.com
+  iam.googleapis.com
+  run.googleapis.com
+  secretmanager.googleapis.com
+  serviceusage.googleapis.com
+)
 
 actuator_env="NODE_ENV=production,HOST=0.0.0.0,EMILIA_ACTUATOR_DATABASE_PRINCIPAL=${ACTUATOR_DATABASE_PRINCIPAL},EMILIA_ACTUATOR_TENANT_ID=${TENANT_ID},EMILIA_ACTUATOR_GITHUB_OWNER=${GITHUB_OWNER},EMILIA_ACTUATOR_GITHUB_REPO=${GITHUB_REPO},EMILIA_ACTUATOR_GITHUB_ISSUE_NUMBER=${GITHUB_ISSUE_NUMBER},EMILIA_ACTUATOR_ENVELOPE_ISSUER_ID=${ENVELOPE_ISSUER_ID},EMILIA_ACTUATOR_ENVELOPE_KEY_ID=${ENVELOPE_KEY_ID},EMILIA_ACTUATOR_OBSERVATION_ISSUER_ID=${OBSERVATION_ISSUER_ID},EMILIA_ACTUATOR_OBSERVATION_KEY_ID=${OBSERVATION_KEY_ID}"
 actuator_secrets="EMILIA_ACTUATOR_DATABASE_URL=${ACTUATOR_DATABASE_URL_SECRET},EMILIA_ACTUATOR_API_TOKEN=${ACTUATOR_API_TOKEN_SECRET},EMILIA_ACTUATOR_ENVELOPE_PUBLIC_KEY=${ACTUATOR_ENVELOPE_PUBLIC_KEY_SECRET},EMILIA_ACTUATOR_OBSERVATION_PRIVATE_KEY=${ACTUATOR_OBSERVATION_PRIVATE_KEY_SECRET},EMILIA_ACTUATOR_GITHUB_APP_ID=${ACTUATOR_GITHUB_APP_ID_SECRET},EMILIA_ACTUATOR_GITHUB_INSTALLATION_ID=${ACTUATOR_GITHUB_INSTALLATION_ID_SECRET},EMILIA_ACTUATOR_GITHUB_PRIVATE_KEY=${ACTUATOR_GITHUB_PRIVATE_KEY_SECRET}"
@@ -164,20 +174,25 @@ render_policy_reconciliation() {
 }
 
 render_prerequisites() {
-  shell_join gcloud services enable \
-    run.googleapis.com secretmanager.googleapis.com iam.googleapis.com \
-    cloudasset.googleapis.com \
-    "--project=$PROJECT_ID"
+  local api variable ref secret version
+  shell_join gcloud config get-value account --quiet
+  printf '# require the normalized active gcloud identity to equal %s exactly\n' \
+    "$DEPLOYER_PRINCIPAL"
+  for api in "${DEPLOY_REQUIRED_APIS[@]}"; do
+    shell_join gcloud services describe "$api" \
+      "--project=$PROJECT_ID" "--format=value(state)"
+  done
   shell_join gcloud iam service-accounts describe "$ACTUATOR_SA" \
     "--project=$PROJECT_ID"
   shell_join gcloud iam service-accounts describe "$DECISION_SA" \
     "--project=$PROJECT_ID"
-  local variable ref secret members=()
-  while IFS= read -r variable; do
-    ref=${!variable}
-    shell_join gcloud secrets describe "$(secret_name "$ref")" \
-      "--project=$PROJECT_ID"
-  done < <(all_secret_variables)
+  while IFS= read -r ref; do
+    secret=$(secret_name "$ref")
+    version=$(secret_version "$ref")
+    shell_join gcloud secrets versions describe "$version" \
+      "--secret=$secret" "--project=$PROJECT_ID" "--format=value(state)"
+  done < <(configured_secret_refs)
+  local members=()
   while IFS= read -r secret; do
     members=()
     if secret_is_used_by "$secret" actuator_secret_variables; then
@@ -302,7 +317,7 @@ render_jit_act_as() {
     if [[ "$action" == add ]]; then
       shell_join gcloud iam service-accounts add-iam-policy-binding "$account" \
         "--project=$PROJECT_ID" \
-        --member '<resolved-active-deployer-principal>' \
+        "--member=$DEPLOYER_PRINCIPAL" \
         --role roles/iam.serviceAccountUser \
         --condition \
         "expression=request.time < timestamp('<capped-expiry>'),title=$title,description=$description" \
@@ -321,25 +336,55 @@ render_jit_act_as() {
 }
 
 resolve_deployer_principal() {
-  local account
+  local account active_principal
   account=$(gcloud config get-value account --quiet)
   [[ -n "$account" && "$account" != "(unset)" \
       && "$account" != *[$'\r\n\t ']* ]] \
     || lane_die "active gcloud deployer account could not be resolved exactly"
   case "$account" in
     user:*|serviceAccount:*|principal://*)
-      DEPLOYER_PRINCIPAL=$account
+      active_principal=$account
       ;;
     *@*.gserviceaccount.com)
-      DEPLOYER_PRINCIPAL="serviceAccount:$account"
+      active_principal="serviceAccount:$account"
       ;;
     *@*)
-      DEPLOYER_PRINCIPAL="user:$account"
+      active_principal="user:$account"
       ;;
     *)
       lane_die "active gcloud deployer is not a concrete IAM principal"
       ;;
   esac
+  [[ "$active_principal" == "$DEPLOYER_PRINCIPAL" ]] \
+    || lane_die "active gcloud identity $active_principal does not exactly match DEPLOYER_PRINCIPAL $DEPLOYER_PRINCIPAL"
+}
+
+verify_deployment_prerequisites() {
+  local api state account ref secret version
+  for api in "${DEPLOY_REQUIRED_APIS[@]}"; do
+    state=$(
+      gcloud services describe "$api" \
+        "--project=$PROJECT_ID" "--format=value(state)" 2>/dev/null
+    ) || lane_die "$api must already be ENABLED by provisioning"
+    [[ "$state" == ENABLED ]] \
+      || lane_die "$api must already be ENABLED by provisioning"
+  done
+  for account in "$ACTUATOR_SA" "$DECISION_SA"; do
+    gcloud iam service-accounts describe "$account" \
+      "--project=$PROJECT_ID" >/dev/null 2>&1 \
+      || lane_die "runtime service account $account must already exist from provisioning"
+  done
+  while IFS= read -r ref; do
+    secret=$(secret_name "$ref")
+    version=$(secret_version "$ref")
+    state=$(
+      gcloud secrets versions describe "$version" \
+        "--secret=$secret" "--project=$PROJECT_ID" \
+        "--format=value(state)" 2>/dev/null
+    ) || lane_die "secret version $ref must already be present and ENABLED"
+    [[ "$state" == ENABLED ]] \
+      || lane_die "secret version $ref must already be present and ENABLED"
+  done < <(configured_secret_refs)
 }
 
 resolve_analyzer_scope() {
@@ -719,7 +764,7 @@ if [[ "$MODE" == render ]]; then
     "--actuator-service=$ACTUATOR_SERVICE" \
     "--actuator-principal=serviceAccount:$ACTUATOR_SA" \
     "--decision-principal=serviceAccount:$DECISION_SA" \
-    --deployer-principal '<resolved-active-deployer-principal>' \
+    "--deployer-principal=$DEPLOYER_PRINCIPAL" \
     "--jit-condition-title-prefix=$JIT_TITLE_PREFIX" \
     --jit-issued-at '<current-utc-time>' \
     --jit-expires-at '<current-utc-time-plus-at-most-900s>' \
@@ -784,6 +829,7 @@ cleanup() {
 }
 trap cleanup EXIT
 resolve_deployer_principal
+verify_deployment_prerequisites
 resolve_analyzer_scope
 initialize_jit_window
 JIT_MANIFEST="$IAM_TMPDIR/effective-iam.json"
@@ -800,28 +846,6 @@ if [[ "$MODE" == cleanup ]]; then
   printf 'removed release-titled JIT actAs grants and proved effective absence\n'
   exit 0
 fi
-
-gcloud services enable \
-  run.googleapis.com secretmanager.googleapis.com iam.googleapis.com \
-  cloudasset.googleapis.com \
-  "--project=$PROJECT_ID" --quiet
-
-for account in "$ACTUATOR_SERVICE_ACCOUNT" "$DECISION_SERVICE_ACCOUNT"; do
-  email=$(runtime_service_account_email "$account")
-  if ! gcloud iam service-accounts describe "$email" \
-      "--project=$PROJECT_ID" >/dev/null 2>&1; then
-    gcloud iam service-accounts create "$account" \
-      "--project=$PROJECT_ID" \
-      "--display-name=EMILIA consequence runtime $account" \
-      --quiet
-  fi
-done
-
-while IFS= read -r variable; do
-  ref=${!variable}
-  gcloud secrets describe "$(secret_name "$ref")" \
-    "--project=$PROJECT_ID" >/dev/null
-done < <(all_secret_variables)
 
 reconcile_secret_accessors
 
