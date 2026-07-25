@@ -840,7 +840,9 @@ class CommandSpecificConfigHostileTests(unittest.TestCase):
         ):
             self.assertIn(f"- {operation}", workflow)
         self.assertIn('case "$OPERATION" in', workflow)
-        self.assertIn("--operation=$OPERATION", workflow)
+        self.assertIn("--operation=${_OPERATION}", workflow)
+        self.assertIn("_OPERATION=$OPERATION", workflow)
+        self.assertIn('entrypoint: "/opt/emilia/bin/consequence-control-executor"', workflow)
         self.assertIn("environment: consequence-control-production", workflow)
         self.assertIn("TRUSTED_EXECUTOR_IMAGE", workflow)
         self.assertIn("approved-request/deployment-request.tar.gz", workflow)
