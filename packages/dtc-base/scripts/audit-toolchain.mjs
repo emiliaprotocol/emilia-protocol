@@ -6,6 +6,7 @@
 import { execFileSync } from 'node:child_process';
 
 const REVIEW_DEADLINE = '2026-08-21';
+const YOUNG_FIX_REVIEW_DEADLINE = '2026-08-01';
 const ALLOWED_HIGH_ADVISORIES = new Set([
   'https://github.com/advisories/GHSA-xcpc-8h2w-3j85', // hardhat -> adm-zip
   'https://github.com/advisories/GHSA-5c6j-r48x-rmvq', // hardhat -> mocha -> serialize-javascript
@@ -13,6 +14,12 @@ const ALLOWED_HIGH_ADVISORIES = new Set([
   'https://github.com/advisories/GHSA-vrm6-8vpv-qv8q', // hardhat -> undici
   'https://github.com/advisories/GHSA-v9p9-hfj2-hcw8', // hardhat -> undici
   'https://github.com/advisories/GHSA-vxpw-j846-p89q', // hardhat -> undici
+  // Fixed by brace-expansion 5.0.8, published 2026-07-23. The repository's
+  // seven-day release-age quarantine intentionally prevents adopting it yet.
+  'https://github.com/advisories/GHSA-mh99-v99m-4gvg',
+]);
+const YOUNG_FIX_ADVISORIES = new Set([
+  'https://github.com/advisories/GHSA-mh99-v99m-4gvg',
 ]);
 
 if (Date.now() >= Date.parse(`${REVIEW_DEADLINE}T00:00:00Z`)) {
@@ -42,10 +49,21 @@ for (const vulnerability of Object.values(report.vulnerabilities ?? {})) {
 }
 
 const criticalCount = report.metadata?.vulnerabilities?.critical ?? 0;
+const expiredYoungFixes = [...YOUNG_FIX_ADVISORIES].filter(
+  (url) => observedHigh.has(url)
+    && Date.now() >= Date.parse(`${YOUNG_FIX_REVIEW_DEADLINE}T00:00:00Z`),
+);
 const unexpected = [...observedHigh].filter((url) => !ALLOWED_HIGH_ADVISORIES.has(url));
 const missing = [...ALLOWED_HIGH_ADVISORIES].filter((url) => !observedHigh.has(url));
-if (criticalCount > 0 || unexpected.length > 0 || missing.length > 0) {
-  throw new Error(JSON.stringify({ criticalCount, unexpected, missing }, null, 2));
+if (
+  criticalCount > 0
+  || expiredYoungFixes.length > 0
+  || unexpected.length > 0
+  || missing.length > 0
+) {
+  throw new Error(
+    JSON.stringify({ criticalCount, expiredYoungFixes, unexpected, missing }, null, 2),
+  );
 }
 
 console.log(

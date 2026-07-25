@@ -26,7 +26,10 @@ jobs:
           node-version: 20
       - run: npm ci --ignore-scripts
       - name: Check for known vulnerabilities (root)
-        run: npm audit --audit-level=moderate
+        # The only accepted root advisory is a newly published brace-expansion
+        # issue in build/lint tooling whose fix is still inside our seven-day
+        # package quarantine. The policy script pins the exact advisory and expires.
+        run: npm run audit:root
       # mcp-server ships a bundled stdio runtime and keeps the MCP SDK/build tools
       # as development-only inputs. Audit the dependencies that actually ship to
       # users; bundle parity is enforced by the mcp-server-pack CI job.
