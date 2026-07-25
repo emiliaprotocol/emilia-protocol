@@ -18,6 +18,10 @@ const severityRank = new Map([
 if (!severityRank.has(minimumSeverity)) {
   throw new Error(`Unsupported audit severity threshold: ${minimumSeverity}`);
 }
+const minimumRank = severityRank.get(minimumSeverity);
+if (minimumRank === undefined) {
+  throw new Error(`Unsupported audit severity threshold: ${minimumSeverity}`);
+}
 const ALLOWED_ADVISORIES = new Set([
   'https://github.com/advisories/GHSA-mh99-v99m-4gvg', // eslint tooling -> brace-expansion
 ]);
@@ -40,7 +44,7 @@ for (const vulnerability of Object.values(report.vulnerabilities ?? {})) {
   for (const cause of vulnerability.via ?? []) {
     if (typeof cause !== 'object' || cause === null) continue;
     const rank = severityRank.get(cause.severity) ?? 0;
-    if (rank < severityRank.get(minimumSeverity)) continue;
+    if (rank < minimumRank) continue;
     if (typeof cause.url === 'string') observed.add(cause.url);
   }
 }
