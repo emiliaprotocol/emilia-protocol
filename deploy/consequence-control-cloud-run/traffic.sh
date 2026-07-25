@@ -249,7 +249,46 @@ case "$ACTION" in
 esac
 
 WORK_DIR=$(mktemp -d)
-trap 'rm -rf "$WORK_DIR"; lane_cleanup_pinned_config' EXIT
+ATTEMPT_CLAIMED=false
+ATTEMPT_TERMINALIZED=false
+ATTEMPT_FALLBACK_OUTCOME=not-applied
+ATTEMPT_FINAL_RESOURCE_VERSION=
+
+traffic_exit_handler() {
+  local status=$1 terminal_status=0
+  local outcome resource_version
+  trap - EXIT
+  set +e
+  if [[ "${ATTEMPT_CLAIMED:-false}" == true \
+      && "${ATTEMPT_TERMINALIZED:-false}" != true ]]; then
+    outcome=${ATTEMPT_FALLBACK_OUTCOME:-indeterminate}
+    case "$outcome" in
+      applied|not-applied|indeterminate) ;;
+      *) outcome=indeterminate ;;
+    esac
+    resource_version=${ATTEMPT_FINAL_RESOURCE_VERSION:-${LOCK_RESOURCE_VERSION:-}}
+    if [[ -n "$resource_version" ]]; then
+      (
+        record_attempt_outcome reconcile "$outcome" "$resource_version"
+      )
+      terminal_status=$?
+    else
+      terminal_status=1
+    fi
+    if ((terminal_status != 0)); then
+      printf '%s\n' \
+        "error: unable to durably terminalize claimed deployment attempt" >&2
+    fi
+  fi
+  rm -rf -- "$WORK_DIR"
+  lane_cleanup_pinned_config
+  if ((terminal_status != 0)); then
+    exit 1
+  fi
+  exit "$status"
+}
+
+trap 'traffic_exit_handler "$?"' EXIT
 DECISION_SNAPSHOT="$WORK_DIR/decision.json"
 ACTUATOR_SNAPSHOT="$WORK_DIR/actuator.json"
 UPDATE_RESPONSE="$WORK_DIR/update-response.json"
@@ -259,12 +298,17 @@ POST_DECISION_SNAPSHOT="$WORK_DIR/post-decision.json"
 POST_ACTUATOR_SNAPSHOT="$WORK_DIR/post-actuator.json"
 AMBIGUOUS_SNAPSHOT="$WORK_DIR/ambiguous-target.json"
 
-describe_service() {
+try_describe_service() {
   local service=$1 output=$2
   gcloud run services describe "$service" \
     "--project=$PROJECT_ID" \
     "--region=$REGION" \
-    --format=json > "$output" \
+    --format=json > "$output"
+}
+
+describe_service() {
+  local service=$1 output=$2
+  try_describe_service "$service" "$output" \
     || lane_die "unable to describe Cloud Run service $service"
 }
 
@@ -296,6 +340,13 @@ verify_secret_versions() {
     --config - \
     --live \
     || lane_die "a configured Secret Manager version is missing or not ENABLED"
+}
+
+verify_mutation_secret_versions() {
+  if [[ "$ACTION" == apply-rollback ]]; then
+    return 0
+  fi
+  verify_secret_versions
 }
 
 rollout_context_arguments() {
@@ -640,6 +691,10 @@ print(base64.b64encode(json.dumps(
 claim_deployment_attempt() {
   prepare_attempt_store_adapter
   attempt_store_call claim "$ATTEMPT_CLAIM_BASE64" claimed
+  ATTEMPT_CLAIMED=true
+  ATTEMPT_TERMINALIZED=false
+  ATTEMPT_FALLBACK_OUTCOME=not-applied
+  ATTEMPT_FINAL_RESOURCE_VERSION=$LOCK_RESOURCE_VERSION
 }
 
 record_attempt_outcome() {
@@ -654,48 +709,62 @@ record_attempt_outcome() {
     || lane_die "unable to encode durable attempt outcome"
   attempt_store_call \
     "$operation" "$payload" "$allowed_status" "$resource_version"
+  ATTEMPT_TERMINALIZED=true
 }
 
 reconcile_ambiguous_update() {
-  local reason=$1 state observed_resource_version
-  describe_service "$TARGET_SERVICE" "$AMBIGUOUS_SNAPSHOT"
-  set +e
-  state=$(
-    "$LANE_DIR/verify-rollout-telemetry.py" verify-service \
-      --input "$AMBIGUOUS_SNAPSHOT" \
-      --service "$TARGET_SERVICE" \
-      --expect-traffic "$TARGET_POST" \
-      --pending-from-traffic "$TARGET_PRE" \
-      --allowed-revision "$TARGET_STABLE" \
-      --allowed-revision "$TARGET_CANDIDATE" \
-      --generation-after "$LOCK_GENERATION" \
-      --resource-version-not "$LOCK_RESOURCE_VERSION"
-  )
-  local post_status=$?
-  set -e
-  if ((post_status == 0)); then
-    IFS=$'\t' read -r ACK_GENERATION ACK_RESOURCE_VERSION <<< "$state"
-    describe_service "$OTHER_SERVICE" "$OTHER_POST_SNAPSHOT"
-    verify_exact_service_state \
-      "$OTHER_POST_SNAPSHOT" "$OTHER_SERVICE" "$OTHER_EXPECTED" \
-      "$OTHER_STABLE" "$OTHER_CANDIDATE" \
-      "$OTHER_GENERATION" "$OTHER_RESOURCE_VERSION" >/dev/null \
-      || lane_die "ambiguous update coincided with non-target state drift"
-    record_attempt_outcome reconcile applied "$ACK_RESOURCE_VERSION"
-    ATTEMPT_RECONCILED=true
-    printf 'reconciled ambiguous Cloud Run response as applied: %s\n' \
-      "$reason" >&2
-    return 0
-  fi
-  if verify_exact_service_state \
-    "$AMBIGUOUS_SNAPSHOT" "$TARGET_SERVICE" "$TARGET_PRE" \
-    "$TARGET_STABLE" "$TARGET_CANDIDATE" \
-    "$LOCK_GENERATION" "$LOCK_RESOURCE_VERSION" >/dev/null 2>&1; then
-    record_attempt_outcome reconcile not-applied "$LOCK_RESOURCE_VERSION"
-    lane_die "Cloud Run update was not observed; authorization is durably burned and must not be replayed"
-  fi
-  observed_resource_version=$(
-    python3 - "$AMBIGUOUS_SNAPSHOT" <<'PY'
+  local reason=$1 attempt state observed_resource_version post_status
+  for ((attempt = 1; attempt <= ROLLOUT_POLL_ATTEMPTS; attempt++)); do
+    if ! try_describe_service "$TARGET_SERVICE" "$AMBIGUOUS_SNAPSHOT"; then
+      if ((attempt < ROLLOUT_POLL_ATTEMPTS)); then
+        sleep "$ROLLOUT_POLL_INTERVAL_SEC"
+        continue
+      fi
+      lane_die "Cloud Run state remained unreadable through reconciliation; do not replay"
+    fi
+    set +e
+    state=$(
+      "$LANE_DIR/verify-rollout-telemetry.py" verify-service \
+        --input "$AMBIGUOUS_SNAPSHOT" \
+        --service "$TARGET_SERVICE" \
+        --expect-traffic "$TARGET_POST" \
+        --pending-from-traffic "$TARGET_PRE" \
+        --allowed-revision "$TARGET_STABLE" \
+        --allowed-revision "$TARGET_CANDIDATE" \
+        --generation-after "$LOCK_GENERATION" \
+        --resource-version-not "$LOCK_RESOURCE_VERSION"
+    )
+    post_status=$?
+    set -e
+    if ((post_status == 0)); then
+      IFS=$'\t' read -r ACK_GENERATION ACK_RESOURCE_VERSION <<< "$state"
+      ATTEMPT_FALLBACK_OUTCOME=indeterminate
+      ATTEMPT_FINAL_RESOURCE_VERSION=$ACK_RESOURCE_VERSION
+      describe_service "$OTHER_SERVICE" "$OTHER_POST_SNAPSHOT"
+      verify_exact_service_state \
+        "$OTHER_POST_SNAPSHOT" "$OTHER_SERVICE" "$OTHER_EXPECTED" \
+        "$OTHER_STABLE" "$OTHER_CANDIDATE" \
+        "$OTHER_GENERATION" "$OTHER_RESOURCE_VERSION" >/dev/null \
+        || lane_die "ambiguous update coincided with non-target state drift"
+      record_attempt_outcome reconcile applied "$ACK_RESOURCE_VERSION"
+      ATTEMPT_RECONCILED=true
+      printf 'reconciled ambiguous Cloud Run response as applied: %s\n' \
+        "$reason" >&2
+      return 0
+    fi
+    if verify_exact_service_state \
+      "$AMBIGUOUS_SNAPSHOT" "$TARGET_SERVICE" "$TARGET_PRE" \
+      "$TARGET_STABLE" "$TARGET_CANDIDATE" \
+      "$LOCK_GENERATION" "$LOCK_RESOURCE_VERSION" >/dev/null 2>&1; then
+      if ((attempt < ROLLOUT_POLL_ATTEMPTS)); then
+        sleep "$ROLLOUT_POLL_INTERVAL_SEC"
+        continue
+      fi
+      record_attempt_outcome reconcile not-applied "$LOCK_RESOURCE_VERSION"
+      lane_die "Cloud Run update was not observed through the bounded reconciliation window; authorization is durably burned and must not be replayed"
+    fi
+    observed_resource_version=$(
+      python3 - "$AMBIGUOUS_SNAPSHOT" <<'PY'
 import json
 import sys
 with open(sys.argv[1], encoding="utf-8") as handle:
@@ -707,9 +776,17 @@ if not isinstance(resource_version, str) or not resource_version or any(
     raise SystemExit(1)
 print(resource_version)
 PY
-  ) || lane_die "ambiguous Cloud Run state is unreadable; attempt remains durably burned"
-  record_attempt_outcome reconcile indeterminate "$observed_resource_version"
-  lane_die "Cloud Run update is indeterminate after reconciliation; do not replay"
+    ) || lane_die "ambiguous Cloud Run state is unreadable; do not replay"
+    ATTEMPT_FALLBACK_OUTCOME=indeterminate
+    ATTEMPT_FINAL_RESOURCE_VERSION=$observed_resource_version
+    if ((post_status == 2 && attempt < ROLLOUT_POLL_ATTEMPTS)); then
+      sleep "$ROLLOUT_POLL_INTERVAL_SEC"
+      continue
+    fi
+    record_attempt_outcome reconcile indeterminate "$observed_resource_version"
+    lane_die "Cloud Run update is indeterminate after bounded reconciliation; do not replay"
+  done
+  lane_die "Cloud Run reconciliation exhausted unexpectedly; do not replay"
 }
 
 send_locked_update() {
@@ -733,6 +810,7 @@ send_locked_update() {
   local url
   url="https://run.googleapis.com/apis/serving.knative.dev/v1/projects"
   url+="/$PROJECT_ID/locations/$REGION/services/$TARGET_SERVICE"
+  ATTEMPT_FALLBACK_OUTCOME=indeterminate
   set +e
   printf '%s' "$UPDATE_BODY_BASE64" \
     | python3 -c 'import base64,sys; sys.stdout.buffer.write(base64.b64decode(sys.stdin.buffer.read(), validate=True))' \
@@ -775,6 +853,7 @@ send_locked_update() {
   [[ "$ACK_GENERATION" =~ ^[1-9][0-9]*$ \
     && -n "$ACK_RESOURCE_VERSION" ]] \
     || lane_die "Cloud Run update acknowledgement lock is malformed"
+  ATTEMPT_FINAL_RESOURCE_VERSION=$ACK_RESOURCE_VERSION
 }
 
 poll_exact_post_state() {
@@ -801,6 +880,8 @@ poll_exact_post_state() {
         "$OTHER_STABLE" "$OTHER_CANDIDATE" \
         "$OTHER_GENERATION" "$OTHER_RESOURCE_VERSION" >/dev/null \
         || lane_die "non-target service snapshot lock changed during transition"
+      ATTEMPT_FALLBACK_OUTCOME=applied
+      ATTEMPT_FINAL_RESOURCE_VERSION=$ACK_RESOURCE_VERSION
       return 0
     fi
     ((status == 2)) \
@@ -840,7 +921,7 @@ verify_pre_send_service_locks() {
 
 revalidate_before_send() {
   verify_lane_config_pin
-  verify_secret_versions
+  verify_mutation_secret_versions
   verify_effective_iam_live
   describe_service "$DECISION_SERVICE" "$PRE_SEND_DECISION_SNAPSHOT"
   describe_service "$ACTUATOR_SERVICE" "$PRE_SEND_ACTUATOR_SNAPSHOT"
@@ -873,7 +954,7 @@ verify_post_mutation_controls() {
   verify_lane_config_pin
   verify_current_signed_config \
     "$POST_ACTUATOR_SNAPSHOT" "$POST_DECISION_SNAPSHOT"
-  verify_secret_versions
+  verify_mutation_secret_versions
   verify_effective_iam_live
   describe_service "$DECISION_SERVICE" "$POST_DECISION_SNAPSHOT"
   describe_service "$ACTUATOR_SERVICE" "$POST_ACTUATOR_SNAPSHOT"
@@ -950,7 +1031,6 @@ EOF
 apply_rollback() {
   capture_snapshots
   verify_current_signed_config "$ACTUATOR_SNAPSHOT" "$DECISION_SNAPSHOT"
-  verify_secret_versions
   local decision_state decision_stage decision_traffic actuator_stage
   decision_state=$(decision_rollback_stage) \
     || lane_die "decision service is not in a rollback-safe rollout state"
