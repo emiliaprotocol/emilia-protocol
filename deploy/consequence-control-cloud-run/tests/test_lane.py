@@ -458,6 +458,18 @@ elif args[:2] == ["services", "describe"]:
         print("DISABLED")
     else:
         print("ENABLED")
+elif args[:3] == ["resource-manager", "org-policies", "describe"]:
+    constraint = args[3]
+    output(
+        {
+            "constraint": constraint,
+            "booleanPolicy": {
+                "enforced": (
+                    os.environ.get("UNENFORCED_ORG_POLICY") != constraint
+                )
+            },
+        }
+    )
 elif args[:2] == ["projects", "describe"]:
     print("123456789")
 elif args[:2] == ["projects", "get-ancestors"]:
@@ -473,6 +485,22 @@ elif args[:3] == ["iam", "service-accounts", "describe"]:
     if os.environ.get("MISSING_SERVICE_ACCOUNT") == args[3]:
         print("service account not found", file=sys.stderr)
         raise SystemExit(1)
+elif args[:4] == ["iam", "service-accounts", "keys", "list"]:
+    account = flag("--iam-account=")
+    if os.environ.get("USER_MANAGED_KEY_ACCOUNT") == account:
+        output(
+            [
+                {
+                    "name": "projects/test/serviceAccounts/"
+                    + account
+                    + "/keys/hostile",
+                    "keyType": "USER_MANAGED",
+                    "keyOrigin": "USER_PROVIDED",
+                }
+            ]
+        )
+    else:
+        output([])
 elif args[:3] == ["iam", "service-accounts", "add-iam-policy-binding"]:
     account = args[3]
     condition_path = flag("--condition-from-file=")
@@ -974,6 +1002,18 @@ class ProtectedDeploymentBoundaryTests(unittest.TestCase):
         self.assertIn("approvalsNeeded\", 0) < 2", source)
         self.assertIn("RECOVERY_PRINCIPALS is forbidden", source)
         self.assertIn("finalize_steady_state_policy", source)
+        self.assertIn(
+            "constraints/iam.disableServiceAccountKeyCreation",
+            source,
+        )
+        self.assertIn(
+            "constraints/iam.disableServiceAccountKeyUpload",
+            source,
+        )
+        self.assertIn("verify_service_accounts_are_keyless", source)
+        self.assertIn("--default-algorithm=ec-sign-ed25519", source)
+        self.assertIn("--protection-level=hsm", source)
+        self.assertIn("roles/cloudkms.signerVerifier", source)
 
     def test_protected_identity_uses_immutable_ids_ref_environment_and_workflow(
         self,
@@ -987,10 +1027,12 @@ class ProtectedDeploymentBoundaryTests(unittest.TestCase):
             ".github/workflows/consequence-control-deploy.yml@",
             "roles/iam.workloadIdentityUser",
             "assertion.workflow_ref",
+            "assertion.workflow_sha",
             "attribute.repository_id",
             "attribute.repository_owner_id",
             "attribute.ref",
             "attribute.workflow_ref",
+            "attribute.workflow_sha",
         ):
             self.assertIn(value, source)
         self.assertIn(
@@ -1001,6 +1043,15 @@ class ProtectedDeploymentBoundaryTests(unittest.TestCase):
         self.assertNotIn("repo:emiliaprotocol@", source)
         self.assertIn("credentials.get(\"type\") != \"external_account\"", source)
         self.assertIn("deployer service account is broadly impersonable", source)
+        self.assertIn(
+            "constraints/iam.disableServiceAccountKeyCreation",
+            source,
+        )
+        self.assertIn(
+            "constraints/iam.disableServiceAccountKeyUpload",
+            source,
+        )
+        self.assertIn("user-managed service-account key exists", source)
 
     def test_active_identity_mismatch_fails_before_cloud_mutation(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
@@ -1085,11 +1136,17 @@ class ProtectedDeploymentBoundaryTests(unittest.TestCase):
                     "serviceAccount:provisioner@ops.iam.gserviceaccount.com"
                 ),
                 "DEPLOYER_PRINCIPAL": (
-                    "serviceAccount:deployer@ops.iam.gserviceaccount.com"
+                    "serviceAccount:deployer@gen-lang-client-0236330905."
+                    "iam.gserviceaccount.com"
                 ),
                 "RECOVERY_PAM_ENTITLEMENT": "emilia-recovery",
                 "RECOVERY_PAM_ROLE": (
                     "organizations/987654321/roles/EmiliaRecovery"
+                ),
+                "STABLE_RELEASE_KMS_KEY_URI": (
+                    "gcp-kms://projects/gen-lang-client-0236330905/"
+                    "locations/us-central1/keyRings/emilia-release/"
+                    "cryptoKeys/stable-release/cryptoKeyVersions/1"
                 ),
                 "SUBNET_CIDR": "10.42.0.0/26",
                 "ARTIFACT_REPOSITORY": "runtime",
@@ -1210,9 +1267,11 @@ class CanaryTests(unittest.TestCase):
                 "/secure/test-canary-public.pem",
                 str(cls.public_key),
             )
-            + "\nCANARY_EVIDENCE_PUBLIC_KEY_SHA256="
-            + canary_public_key_hash
-            + "\n",
+            .replace(
+                "CANARY_EVIDENCE_PUBLIC_KEY_SHA256=" + "0" * 64,
+                "CANARY_EVIDENCE_PUBLIC_KEY_SHA256="
+                + canary_public_key_hash,
+            ),
             encoding="utf-8",
         )
 

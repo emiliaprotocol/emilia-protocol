@@ -101,7 +101,6 @@ class StableBootstrapTests(unittest.TestCase):
                     f"STABLE_BOOTSTRAP_PROVENANCE_SHA256={provenance_hash}",
                     "STABLE_BOOTSTRAP_ACTUATOR_SERVICE_ACCOUNT=bootstrap-actuator",
                     "STABLE_BOOTSTRAP_DECISION_SERVICE_ACCOUNT=bootstrap-decision",
-                    "PROJECT_PARENT=organizations/987654321",
                 ]
             )
             + "\n",
@@ -163,12 +162,23 @@ state = json.loads(state_path.read_text())
 with pathlib.Path(os.environ["FAKE_LOG"]).open("a") as handle:
     handle.write(json.dumps(args) + "\\n")
 if args[:3] == ["config", "get-value", "account"]:
-    print("emilia-deployer@test-project.iam.gserviceaccount.com")
+    print(os.environ.get(
+        "FAKE_ACTIVE_ACCOUNT",
+        "emilia-deployer@test-project.iam.gserviceaccount.com",
+    ))
     raise SystemExit(0)
 if args[:2] == ["services", "enable"]:
     raise SystemExit(0)
 if args[:2] == ["services", "describe"]:
     print("ENABLED")
+    raise SystemExit(0)
+if args[:3] == ["resource-manager", "org-policies", "describe"]:
+    constraint = args[3]
+    enforced = os.environ.get("FAKE_UNENFORCED_KEY_POLICY") != constraint
+    print(json.dumps({
+        "constraint": constraint,
+        "booleanPolicy": {"enforced": enforced},
+    }))
     raise SystemExit(0)
 if args[:2] == ["projects", "describe"]:
     if "--format=json" in args:
@@ -263,6 +273,7 @@ if args[:4] == [
             "attribute.repository_owner_id": "assertion.repository_owner_id",
             "attribute.ref": "assertion.ref",
             "attribute.workflow_ref": "assertion.workflow_ref",
+            "attribute.workflow_sha": "assertion.workflow_sha",
         }
         condition = "&&".join([
             f"assertion.sub=='{subject}'",
@@ -274,6 +285,7 @@ if args[:4] == [
                 ".github/workflows/consequence-control-deploy.yml@"
                 "refs/heads/main'"
             ),
+            "attribute.workflow_sha=='" + "a" * 40 + "'",
         ])
     print(json.dumps({
         "state": "ACTIVE",
@@ -285,6 +297,21 @@ if args[:4] == [
 if args[:3] == ["iam", "service-accounts", "describe"]:
     account = args[3].split("@", 1)[0]
     raise SystemExit(0 if account in state["service_accounts"] else 4)
+if args[:4] == ["iam", "service-accounts", "keys", "list"]:
+    account = next(
+        value.split("=", 1)[1]
+        for value in args
+        if value.startswith("--iam-account=")
+    )
+    if os.environ.get("FAKE_USER_MANAGED_KEY_ACCOUNT") == account:
+        print(json.dumps([{
+            "name": "projects/test/serviceAccounts/" + account + "/keys/hostile",
+            "keyType": "USER_MANAGED",
+            "keyOrigin": "USER_PROVIDED",
+        }]))
+    else:
+        print("[]")
+    raise SystemExit(0)
 if args[:3] == ["iam", "service-accounts", "create"]:
     account = args[3]
     if account not in state["service_accounts"]:
@@ -662,6 +689,100 @@ else:
                 self.assertFalse(
                     any(call[:2] == ["run", "deploy"] for call in calls)
                 )
+
+    def test_user_managed_deployer_key_is_refused_before_bootstrap(self) -> None:
+        result = subprocess.run(
+            [str(BOOTSTRAP), *self.arguments(), "--apply"],
+            cwd=LANE,
+            check=False,
+            text=True,
+            capture_output=True,
+            env=self.environment(
+                DEPLOYMENT_APPROVED="true",
+                FAKE_USER_MANAGED_KEY_ACCOUNT=(
+                    "emilia-deployer@test-project.iam.gserviceaccount.com"
+                ),
+            ),
+        )
+        self.assertNotEqual(result.returncode, 0)
+        self.assertIn(
+            "not bounded to the exact immutable protected workflow identity",
+            result.stderr,
+        )
+        calls = [
+            json.loads(line)
+            for line in self.log_path.read_text(encoding="utf-8").splitlines()
+        ]
+        self.assertFalse(any(call[:2] == ["run", "deploy"] for call in calls))
+
+    def test_deployer_outside_dedicated_project_is_refused(self) -> None:
+        hostile_config = self.root / "external-deployer.env"
+        hostile_config.write_text(
+            self.config.read_text(encoding="utf-8").replace(
+                (
+                    "DEPLOYER_PRINCIPAL=serviceAccount:emilia-deployer@"
+                    "test-project.iam.gserviceaccount.com"
+                ),
+                (
+                    "DEPLOYER_PRINCIPAL=serviceAccount:emilia-deployer@"
+                    "external-project.iam.gserviceaccount.com"
+                ),
+            ),
+            encoding="utf-8",
+        )
+        arguments = self.arguments()
+        arguments[1] = str(hostile_config)
+        result = subprocess.run(
+            [str(BOOTSTRAP), *arguments, "--apply"],
+            cwd=LANE,
+            check=False,
+            text=True,
+            capture_output=True,
+            env=self.environment(
+                DEPLOYMENT_APPROVED="true",
+                FAKE_ACTIVE_ACCOUNT=(
+                    "emilia-deployer@external-project.iam.gserviceaccount.com"
+                ),
+                DEPLOYMENT_CONFIG_SHA256=hashlib.sha256(
+                    hostile_config.read_bytes()
+                ).hexdigest(),
+            ),
+        )
+        self.assertNotEqual(result.returncode, 0)
+        self.assertIn(
+            "protected deployer service account must belong to PROJECT_ID",
+            result.stderr,
+        )
+        calls = [
+            json.loads(line)
+            for line in self.log_path.read_text(encoding="utf-8").splitlines()
+        ]
+        self.assertFalse(any(call[:2] == ["run", "deploy"] for call in calls))
+
+    def test_unenforced_key_policy_is_refused_before_bootstrap(self) -> None:
+        result = subprocess.run(
+            [str(BOOTSTRAP), *self.arguments(), "--apply"],
+            cwd=LANE,
+            check=False,
+            text=True,
+            capture_output=True,
+            env=self.environment(
+                DEPLOYMENT_APPROVED="true",
+                FAKE_UNENFORCED_KEY_POLICY=(
+                    "constraints/iam.disableServiceAccountKeyCreation"
+                ),
+            ),
+        )
+        self.assertNotEqual(result.returncode, 0)
+        self.assertIn(
+            "not bounded to the exact immutable protected workflow identity",
+            result.stderr,
+        )
+        calls = [
+            json.loads(line)
+            for line in self.log_path.read_text(encoding="utf-8").splitlines()
+        ]
+        self.assertFalse(any(call[:2] == ["run", "deploy"] for call in calls))
 
     def test_render_refuses_non_covering_project_scope(self) -> None:
         result = subprocess.run(

@@ -70,9 +70,11 @@ CANARY_TAG=$(candidate_tag)
 DEPLOY_REQUIRED_APIS=(
   artifactregistry.googleapis.com
   cloudasset.googleapis.com
+  cloudkms.googleapis.com
   cloudresourcemanager.googleapis.com
   compute.googleapis.com
   iam.googleapis.com
+  orgpolicy.googleapis.com
   run.googleapis.com
   secretmanager.googleapis.com
   serviceusage.googleapis.com
@@ -220,8 +222,13 @@ verify_keyless_wif_boundary() {
   local deployer_email=${DEPLOYER_PRINCIPAL#serviceAccount:}
   local deployer_project=${deployer_email#*@}
   deployer_project=${deployer_project%.iam.gserviceaccount.com}
+  [[ "$deployer_project" == "$PROJECT_ID" ]] \
+    || lane_die "protected deployer service account must belong to PROJECT_ID"
   local provider="$IAM_TMPDIR/wif-provider.json"
   local policy="$IAM_TMPDIR/deployer-service-account-policy.json"
+  local key_creation_policy="$IAM_TMPDIR/disable-key-creation-policy.json"
+  local key_upload_policy="$IAM_TMPDIR/disable-key-upload-policy.json"
+  local account key_file key_files=()
   gcloud iam workload-identity-pools providers describe "$WIF_PROVIDER_ID" \
     "--workload-identity-pool=$WIF_POOL_ID" \
     "--project=$WIF_PROJECT_NUMBER" --location=global --format=json \
@@ -229,11 +236,33 @@ verify_keyless_wif_boundary() {
   gcloud iam service-accounts get-iam-policy "$deployer_email" \
     "--project=$deployer_project" --format=json > "$policy" \
     || lane_die "deployer service-account trust policy is unreadable"
+  gcloud resource-manager org-policies describe \
+    constraints/iam.disableServiceAccountKeyCreation \
+    "--project=$PROJECT_ID" --effective --format=json \
+    > "$key_creation_policy" \
+    || lane_die "effective service-account key-creation policy is unreadable"
+  gcloud resource-manager org-policies describe \
+    constraints/iam.disableServiceAccountKeyUpload \
+    "--project=$PROJECT_ID" --effective --format=json \
+    > "$key_upload_policy" \
+    || lane_die "effective service-account key-upload policy is unreadable"
+  for account in \
+    "$deployer_email" "$ACTUATOR_SA" "$DECISION_SA" \
+    "$(runtime_service_account_email "$STABLE_BOOTSTRAP_ACTUATOR_SERVICE_ACCOUNT")" \
+    "$(runtime_service_account_email "$STABLE_BOOTSTRAP_DECISION_SERVICE_ACCOUNT")"; do
+    key_file="$IAM_TMPDIR/keys-${account%%@*}.json"
+    gcloud iam service-accounts keys list \
+      "--iam-account=$account" "--project=$PROJECT_ID" --format=json \
+      > "$key_file" \
+      || lane_die "service-account key inventory is unreadable: $account"
+    key_files+=("$account=$key_file")
+  done
   python3 - "$provider" "$policy" "$GOOGLE_GHA_CREDS_PATH" \
     "$EMILIA_DEPLOY_WIF_PROVIDER" "$WIF_PROJECT_NUMBER" "$WIF_POOL_ID" \
     "$(expected_wif_subject)" "$DEPLOYER_PRINCIPAL" \
     "$GITHUB_REPOSITORY_ID" "$GITHUB_REPOSITORY_OWNER_ID" \
-    "$EXPECTED_GITHUB_WORKFLOW_REF" <<'PY' || \
+    "$EXPECTED_GITHUB_WORKFLOW_REF" "$GITHUB_SHA" \
+    "$key_creation_policy" "$key_upload_policy" "${key_files[@]}" <<'PY' || \
     lane_die "deployer is not bounded to the exact immutable protected workflow identity"
 import json
 from pathlib import Path
@@ -251,10 +280,41 @@ import sys
     repository_id,
     owner_id,
     workflow_ref,
+    workflow_sha,
+    key_creation_policy_path,
+    key_upload_policy_path,
+    *key_inventory_specs,
 ) = sys.argv[1:]
 provider = json.loads(Path(provider_path).read_text(encoding="utf-8"))
 policy = json.loads(Path(policy_path).read_text(encoding="utf-8"))
 credentials = json.loads(Path(credentials_path).read_text(encoding="utf-8"))
+for policy_path, constraint in (
+    (
+        key_creation_policy_path,
+        "constraints/iam.disableServiceAccountKeyCreation",
+    ),
+    (
+        key_upload_policy_path,
+        "constraints/iam.disableServiceAccountKeyUpload",
+    ),
+):
+    key_policy = json.loads(Path(policy_path).read_text(encoding="utf-8"))
+    if key_policy.get("constraint") != constraint:
+        raise SystemExit(f"effective key policy mismatch: {constraint}")
+    if key_policy.get("booleanPolicy", {}).get("enforced") is not True:
+        raise SystemExit(f"effective key policy is not enforced: {constraint}")
+for inventory_spec in key_inventory_specs:
+    account, separator, inventory_path = inventory_spec.partition("=")
+    if not separator or not account or not inventory_path:
+        raise SystemExit("service-account key inventory descriptor is malformed")
+    inventory = json.loads(Path(inventory_path).read_text(encoding="utf-8"))
+    if not isinstance(inventory, list):
+        raise SystemExit(f"service-account key inventory is malformed: {account}")
+    for key in inventory:
+        if not isinstance(key, dict):
+            raise SystemExit(f"service-account key record is malformed: {account}")
+        if key.get("keyType") == "USER_MANAGED" or key.get("keyOrigin") == "USER_PROVIDED":
+            raise SystemExit(f"user-managed service-account key exists: {account}")
 if provider.get("state") != "ACTIVE":
     raise SystemExit("WIF provider is not ACTIVE")
 if provider.get("oidc", {}).get("issuerUri", "").rstrip("/") != (
@@ -268,6 +328,7 @@ if mapping != {
     "attribute.repository_owner_id": "assertion.repository_owner_id",
     "attribute.ref": "assertion.ref",
     "attribute.workflow_ref": "assertion.workflow_ref",
+    "attribute.workflow_sha": "assertion.workflow_sha",
 }:
     raise SystemExit("WIF attribute mapping is not closed")
 condition = provider.get("attributeCondition", "")
@@ -278,6 +339,7 @@ expected_condition = "&&".join(
         f"attribute.repository_owner_id=='{owner_id}'",
         "attribute.ref=='refs/heads/main'",
         f"attribute.workflow_ref=='{workflow_ref}'",
+        f"attribute.workflow_sha=='{workflow_sha}'",
     ]
 )
 if "".join(condition.split()) != expected_condition:
@@ -595,6 +657,15 @@ render_plan() {
     --project='<pool-project-number>' --location=global --format=json
   shell_join gcloud iam service-accounts get-iam-policy \
     "${DEPLOYER_PRINCIPAL#serviceAccount:}" --format=json
+  shell_join gcloud resource-manager org-policies describe \
+    constraints/iam.disableServiceAccountKeyCreation \
+    "--project=$PROJECT_ID" --effective --format=json
+  shell_join gcloud resource-manager org-policies describe \
+    constraints/iam.disableServiceAccountKeyUpload \
+    "--project=$PROJECT_ID" --effective --format=json
+  shell_join gcloud iam service-accounts keys list \
+    '--iam-account=<each protected service account>' \
+    "--project=$PROJECT_ID" --format=json
   printf '# direct current project/custom-role/runtime-SA/secret IAM snapshots must be exact and quiescent\n'
   shell_join gcloud projects describe "$PROJECT_ID" --format=json
   shell_join gcloud projects get-ancestors "$PROJECT_ID" --format=json --quiet

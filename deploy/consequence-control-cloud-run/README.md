@@ -209,19 +209,25 @@ approval.
 The runtime belongs in a dedicated project, not beside unrelated workloads.
 `provision-dedicated-project.sh` creates or reconciles the project, billing
 link, required APIs, exact `/26` Direct VPC subnet, Private Google Access,
-router/NAT, Artifact Registry repository, custom provisioner/deployer/recovery
-roles, runtime service accounts, and split recovery custody. It removes
-default Editor grants and every Owner grant only after all three custom-role
-bindings are read back, then proves the managed bindings are exact.
+router/NAT, Artifact Registry repository, the exact deployer role, runtime
+service accounts, the HSM-backed Ed25519 stable-release signer, and externally
+governed recovery custody. Before workload APIs or service accounts are
+created, it enforces the no-default-grant, no-service-account-key-creation, and
+no-service-account-key-upload organization policies. It then proves that the
+deployer, runtime, and bootstrap identities have no user-managed keys. It
+removes default Editor grants and every Owner grant only after the closed
+steady-state policy is read back and the organization-owned PAM entitlement is
+proven exact.
 
-The config pins `BILLING_ACCOUNT`, optional `PROJECT_PARENT`,
-`PROVISIONER_PRINCIPAL`, `DEPLOYER_PRINCIPAL`, and comma-separated
-`RECOVERY_PRINCIPALS`. The active `gcloud` identity must exactly match the
-configured provisioner. The provisioner and deployer must be distinct service
-accounts. At least two recovery principals are required; each must be a real,
-independently controlled IAM identity and must differ from both service
-accounts. The provisioner and recovery roles deliberately omit runtime
-`actAs`, route invocation, and secret-payload access. Applying requires
+The config pins `BILLING_ACCOUNT`, organization `PROJECT_PARENT`,
+`PROVISIONER_PRINCIPAL`, `DEPLOYER_PRINCIPAL`,
+`RECOVERY_PAM_ENTITLEMENT`, and organization custom
+`RECOVERY_PAM_ROLE`. The active `gcloud` identity must exactly match the
+configured provisioner. The provisioner and deployer must be distinct
+identities, and the keyless deployer service account must belong to the
+dedicated project. Recovery is not granted directly to project principals: the
+pre-existing organization-owned PAM entitlement must require at least two
+approvals and grant only the pinned recovery role. Applying requires
 confirmations outside the config:
 
 ```sh
@@ -233,10 +239,9 @@ deploy/consequence-control-cloud-run/provision-dedicated-project.sh \
 ```
 
 Approval controls are rejected if stored in the config file. The provisioning
-script also exposes explicit `--grant-jit-actas` and `--revoke-jit-actas`
-operations. Those require `ROLLOUT_APPROVED=true`,
-`ROLLOUT_CONFIRM_PROJECT` equal to `PROJECT_ID`, and a UTC
-`JIT_ACTAS_EXPIRES_AT` no more than 60 minutes in the future.
+script has no JIT-grant operation and creates no recovery principal. Any
+emergency elevation is issued and revoked by the independently administered
+organization PAM service under the entitlement's own approval policy.
 
 ## First stable release
 
@@ -257,7 +262,8 @@ The bootstrap image digest must appear in
   only at invocation time.
 
 The two trust modes are mutually exclusive. Cloud KMS is the production
-default:
+default. Provisioning creates the pinned version-1 Ed25519 key with HSM
+protection and closes its signer/verifier policy to the keyless deployer:
 
 ```sh
 DEPLOYMENT_CONFIG_SHA256=aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa \
@@ -283,13 +289,15 @@ traffic, and live revision state.
 
 `deploy.sh --apply` is deliberately ordered:
 
-1. verify APIs, pre-existing secrets, and service accounts, then close and
-   read-back-verify each secret's accessor allowlist;
-2. query and validate the complete project ancestry, requiring an explicit
-   organization-wide analyzer scope when any parent hierarchy exists;
-3. prove absence of effective `actAs`, then create unique release-scoped
-   `roles/iam.serviceAccountUser` grants on exactly the decision and actuator
-   runtime service accounts; each condition expires after at most 15 minutes;
+1. prove the exact protected GitHub workflow, current main-branch commit SHA,
+   WIF provider mapping/condition, external-account credential audience,
+   target-project deployer identity, enforced no-key policies, and absence of
+   user-managed keys on every protected service account;
+2. verify APIs, pre-existing secrets, service accounts, project ancestry,
+   closed project/runtime/secret IAM, and quiescent direct policy snapshots;
+3. prove the provisioned runtime `actAs` bindings are exactly the single
+   keyless deployer and that its only credential path is the exact-commit WIF
+   boundary;
 4. deploy the actuator candidate by exact digest with zero traffic and a
    revision tag;
 5. close and read-back-verify actuator `roles/run.invoker` to exactly the
@@ -298,22 +306,18 @@ traffic, and live revision state.
    exact tag URL for the request destination;
 7. deploy the decision candidate by exact digest with zero traffic, configured
    to call the tagged actuator revision with dual-header authentication;
-8. revoke the two temporary `actAs` grants, read back both runtime
-   service-account policies, and stop immediately unless the deployer is absent
-   from both;
-9. re-query ancestry, then run the live effective-IAM proof over the actuator
+8. re-read the complete direct IAM snapshot and refuse any policy change during
+   deployment;
+9. run the live effective-IAM proof over the actuator
    and every referenced
    secret, refusing inherited or impersonated access outside the allowlist;
 10. stop without changing production traffic.
 
-An EXIT cleanup path retries revocation if either deployment or any intervening
-step fails. A separately invokable `deploy.sh --cleanup-jit` recovers after a
-hard runner termination by removing only the two condition titles derived from
-the configured `RELEASE_ID`, then proving direct and effective absence. It is
-not a project-wide expired-grant sweeper; invoke it with the exact original
-release config. The release identity must not retain project-wide
-`iam.serviceAccounts.actAs`; the live proof runs only after revocation is
-read-back-verified.
+There is no JIT IAM mutation in the protected deployment path. The provisioned
+runtime service-account policies must remain byte-for-byte closed to the single
+keyless deployer. For each approved release commit, an external identity
+administrator must update the WIF provider condition to that exact
+`workflow_sha`; branch-only trust is rejected.
 
 The actuator must be reachable through the configured VPC path. Cloud Run calls
 to an internal-ingress service must route through a VPC considered internal, so
@@ -552,7 +556,8 @@ strict v2 context and the SHA-256 of the externally consumed authorization.
 Cloud Run traffic is changed through a generation/resourceVersion-locked API
 update. The only accepted promotion path is stable -> decision 1% -> 10% ->
 50% -> 100% -> actuator 100%. Mutations require the exact protected main-branch
-workflow and SHA, protected environment, WIF provider, active deployer, and
+workflow and commit SHA, protected environment, WIF provider, active keyless
+deployer, enforced no-key policies, empty user-managed-key inventories, and
 direct custom-role custody of `run.services.update`; service and effective IAM
 must remain closed. The final request is canonicalized and hashed before
 authorization, retained as immutable in-memory bytes, and streamed directly to
@@ -561,8 +566,9 @@ the API.
 After each mutation, both services are read back. Full target validation is
 locked to the exact resourceVersion and generation returned by the update
 acknowledgement, while the non-target service must retain its exact generation
-and resourceVersion. An ambiguous HTTP response is reconciled once against the
-locked pre-state and intended post-state, recorded durably as `applied`,
+and resourceVersion. An ambiguous HTTP response is polled through the bounded
+reconciliation window against the locked pre-state and intended post-state,
+then recorded durably as `applied`,
 `not-applied`, or `indeterminate`, and never replayed with the consumed
 authorization. Config, stable release, IAM, secrets, and both service locks are
 checked immediately before the PUT, then config, IAM, secrets, and exact
@@ -596,9 +602,13 @@ An apply remains blocked until all of the following exist:
 
 - Google Cloud credentials with permission to manage Cloud Run services,
   runtime service accounts, service-level Invoker IAM, and per-secret IAM,
-  with `actAs` granted just in time only on the two runtime identities;
-- a distinct active provisioner service account, a distinct deployer service
-  account, and at least two independently controlled recovery principals;
+  with exact-commit WIF as the only route to the deployer and exact runtime
+  `actAs` policies closed to that keyless identity;
+- a distinct active provisioner identity, a distinct keyless deployer service
+  account, and an organization-owned PAM entitlement requiring at least two
+  independently controlled approvals;
+- effective organization policies disabling service-account key creation and
+  upload, plus zero user-managed keys on every protected service account;
 - organization-level Policy Analyzer visibility and an explicit
   `--analyzer-scope organizations/NUMBER` whenever the project has any parent
   folder or organization;
@@ -621,8 +631,9 @@ An apply remains blocked until all of the following exist:
   authorization ID/nonce before signing the short-lived receipt;
 - the rollout-attempt-store migration applied to a durable PostgreSQL database,
   a dedicated least-privilege executor login, and its protected database URL;
-- the exact protected GitHub workflow/environment/WIF/deployer path with sole
-  direct `run.services.update` custody;
+- the exact protected GitHub workflow/environment/WIF/deployer path, externally
+  pinned to the approved `workflow_sha`, with sole direct
+  `run.services.update` custody;
 - digest-pinned actuator and decision images; and
 - a current, cryptographically valid canary scenario produced through the
   approval and AEB pipeline.
@@ -640,8 +651,8 @@ deploy/consequence-control-cloud-run/test.sh
 
 The test suite uses Bash, ShellCheck, Python, and OpenSSL. It renders deployment
 and traffic plans with fixture secret references, verifies exact IAM
-reconciliation plus inherited effective-IAM refusal, conditional JIT expiry
-and cleanup, permissionless stable bootstrap, trust-root pinning, complete
+reconciliation plus inherited effective-IAM refusal, exact-commit WIF and
+keyless custody, permissionless stable bootstrap, trust-root pinning, complete
 Cloud Run configuration, credential separation, enabled numeric secrets,
 digest/provenance pinning, signed fresh/stale canary evidence,
 generation-locked rollout transitions, telemetry/dwell gates, and live

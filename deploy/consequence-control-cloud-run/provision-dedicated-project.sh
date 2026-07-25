@@ -79,6 +79,7 @@ REQUIRED_APIS=(
   artifactregistry.googleapis.com
   cloudasset.googleapis.com
   cloudbilling.googleapis.com
+  cloudkms.googleapis.com
   cloudresourcemanager.googleapis.com
   compute.googleapis.com
   iam.googleapis.com
@@ -90,6 +91,17 @@ REQUIRED_APIS=(
   run.googleapis.com
   secretmanager.googleapis.com
   serviceusage.googleapis.com
+)
+KEYLESS_CONTROL_APIS=(
+  cloudresourcemanager.googleapis.com
+  iam.googleapis.com
+  orgpolicy.googleapis.com
+  serviceusage.googleapis.com
+)
+KEYLESS_ORG_CONSTRAINTS=(
+  constraints/iam.automaticIamGrantsForDefaultServiceAccounts
+  constraints/iam.disableServiceAccountKeyCreation
+  constraints/iam.disableServiceAccountKeyUpload
 )
 
 csv_join() {
@@ -144,6 +156,7 @@ validate_provision_config() {
     DEPLOYER_PRINCIPAL RECOVERY_PAM_ENTITLEMENT RECOVERY_PAM_ROLE
     ACTUATOR_SERVICE DECISION_SERVICE NETWORK SUBNET SUBNET_CIDR
     ARTIFACT_REPOSITORY ROUTER NAT
+    STABLE_RELEASE_KMS_KEY_URI
   )
   local name member left right
   local account_names=(
@@ -179,6 +192,9 @@ validate_provision_config() {
   validate_principal "$DEPLOYER_PRINCIPAL"
   [[ "$DEPLOYER_PRINCIPAL" =~ ^serviceAccount:[^[:space:],@]+@[^[:space:],@]+\.iam\.gserviceaccount\.com$ ]] \
     || lane_die "DEPLOYER_PRINCIPAL must be an exact serviceAccount IAM principal"
+  [[ "$DEPLOYER_PRINCIPAL" == \
+      serviceAccount:*@"$PROJECT_ID".iam.gserviceaccount.com ]] \
+    || lane_die "DEPLOYER_PRINCIPAL must belong to the dedicated PROJECT_ID"
   [[ "$PROVISIONER_PRINCIPAL" =~ ^(user:[^[:space:],@]+@[^[:space:],@]+|serviceAccount:[^[:space:],@]+@[^[:space:],@]+\.iam\.gserviceaccount\.com)$ ]] \
     || lane_die "PROVISIONER_PRINCIPAL must be an exact user or serviceAccount IAM principal"
   [[ "$PROVISIONER_PRINCIPAL" != "$DEPLOYER_PRINCIPAL" ]] \
@@ -197,6 +213,19 @@ validate_provision_config() {
     || lane_die "RECOVERY_PAM_ENTITLEMENT must be an external PAM entitlement ID"
   [[ "$RECOVERY_PAM_ROLE" =~ ^organizations/${PROJECT_PARENT#organizations/}/roles/[A-Za-z][A-Za-z0-9_.]{2,63}$ ]] \
     || lane_die "RECOVERY_PAM_ROLE must be a custom role in the pinned organization"
+  if [[ "$STABLE_RELEASE_KMS_KEY_URI" =~ ^gcp-kms://projects/([^/]+)/locations/([^/]+)/keyRings/([a-z][a-z0-9_-]{0,62})/cryptoKeys/([a-z][a-z0-9_-]{0,62})/cryptoKeyVersions/([1-9][0-9]*)$ ]]; then
+    STABLE_KMS_PROJECT=${BASH_REMATCH[1]}
+    STABLE_KMS_LOCATION=${BASH_REMATCH[2]}
+    STABLE_KMS_KEYRING=${BASH_REMATCH[3]}
+    STABLE_KMS_KEY=${BASH_REMATCH[4]}
+    STABLE_KMS_VERSION=${BASH_REMATCH[5]}
+  else
+    lane_die "STABLE_RELEASE_KMS_KEY_URI must pin one versioned Cloud KMS key"
+  fi
+  [[ "$STABLE_KMS_PROJECT" == "$PROJECT_ID" \
+      && "$STABLE_KMS_LOCATION" == "$REGION" \
+      && "$STABLE_KMS_VERSION" == 1 ]] \
+    || lane_die "stable-release KMS must be version 1 in the dedicated project and region"
   validate_slug ACTUATOR_SERVICE
   validate_slug DECISION_SERVICE
   local variable
@@ -268,10 +297,25 @@ render_plan() {
   printf '# prove exact parent, ancestry, and immutable dedication label before any resource creation\n'
   shell_join gcloud projects describe "$PROJECT_ID" --format=json
   shell_join gcloud projects get-ancestors "$PROJECT_ID" --format=json --quiet
+  printf '# enable only the keyless-policy control plane first\n'
+  shell_join gcloud services enable "${KEYLESS_CONTROL_APIS[@]}" \
+    "--project=$PROJECT_ID"
+  printf '# forbid default broad grants and every user-managed service-account key before enabling workload APIs\n'
+  local constraint
+  for constraint in "${KEYLESS_ORG_CONSTRAINTS[@]}"; do
+    shell_join gcloud resource-manager org-policies enable-enforce \
+      "$constraint" "--project=$PROJECT_ID"
+    shell_join gcloud resource-manager org-policies describe \
+      "$constraint" "--project=$PROJECT_ID" --effective --format=json
+  done
   printf '# enable the complete runtime and assurance control plane\n'
   shell_join gcloud services enable "${REQUIRED_APIS[@]}" "--project=$PROJECT_ID"
 
-  printf '# create isolated runtime and stable bootstrap identities without keys\n'
+  printf '# create the isolated deploy, runtime, and stable-bootstrap identities without keys\n'
+  shell_join gcloud iam service-accounts create \
+    "$(deployer_service_account_id)" \
+    "--project=$PROJECT_ID" \
+    "--display-name=EMILIA protected consequence deployer"
   shell_join gcloud iam service-accounts create "$ACTUATOR_SERVICE_ACCOUNT" \
     "--project=$PROJECT_ID" \
     "--display-name=EMILIA consequence actuator"
@@ -286,6 +330,22 @@ render_plan() {
     "$STABLE_BOOTSTRAP_DECISION_SERVICE_ACCOUNT" \
     "--project=$PROJECT_ID" \
     "--display-name=EMILIA permissionless stable bootstrap decision"
+  shell_join gcloud iam service-accounts keys list \
+    '--iam-account=<each protected service account>' \
+    "--project=$PROJECT_ID" --format=json
+  printf '# create and close the HSM-backed Ed25519 stable-release signer to the keyless deployer\n'
+  shell_join gcloud kms keyrings create "$STABLE_KMS_KEYRING" \
+    "--project=$PROJECT_ID" "--location=$STABLE_KMS_LOCATION"
+  shell_join gcloud kms keys create "$STABLE_KMS_KEY" \
+    "--project=$PROJECT_ID" "--location=$STABLE_KMS_LOCATION" \
+    "--keyring=$STABLE_KMS_KEYRING" --purpose=asymmetric-signing \
+    --default-algorithm=ec-sign-ed25519 --protection-level=hsm
+  shell_join gcloud kms keys versions describe "$STABLE_KMS_VERSION" \
+    "--project=$PROJECT_ID" "--location=$STABLE_KMS_LOCATION" \
+    "--keyring=$STABLE_KMS_KEYRING" "--key=$STABLE_KMS_KEY" --format=json
+  shell_join gcloud kms keys set-iam-policy "$STABLE_KMS_KEY" \
+    '<closed-kms-policy.json>' "--project=$PROJECT_ID" \
+    "--location=$STABLE_KMS_LOCATION" "--keyring=$STABLE_KMS_KEYRING"
 
   printf '# create a digest-oriented Artifact Registry repository\n'
   shell_join gcloud artifacts repositories create "$ARTIFACT_REPOSITORY" \
@@ -336,10 +396,6 @@ render_plan() {
   shell_join gcloud pam entitlements describe "$RECOVERY_PAM_ENTITLEMENT" \
     --location=global "--organization=${PROJECT_PARENT#organizations/}" \
     --format=json
-  printf '# prevent automatic broad grants before removing any existing defaults\n'
-  shell_join gcloud resource-manager org-policies enable-enforce \
-    constraints/iam.automaticIamGrantsForDefaultServiceAccounts \
-    "--project=$PROJECT_ID"
   printf '# remove broad default Editor grants before the final custody transition\n'
   shell_join gcloud projects remove-iam-policy-binding "$PROJECT_ID" \
     '--member=serviceAccount:<PROJECT_NUMBER>-compute@developer.gserviceaccount.com' \
@@ -410,6 +466,137 @@ ensure_service_account() {
     gcloud iam service-accounts create "$account" \
       "--project=$PROJECT_ID" "--display-name=$display_name" --quiet
   fi
+}
+
+deployer_service_account_id() {
+  local email=${DEPLOYER_PRINCIPAL#serviceAccount:}
+  printf '%s' "${email%%@*}"
+}
+
+enforce_keyless_org_policies() {
+  local constraint policy_file
+  for constraint in "${KEYLESS_ORG_CONSTRAINTS[@]}"; do
+    gcloud resource-manager org-policies enable-enforce "$constraint" \
+      "--project=$PROJECT_ID" --quiet
+    policy_file="$PROVISION_TMPDIR/policy-${constraint##*/}.json"
+    gcloud resource-manager org-policies describe "$constraint" \
+      "--project=$PROJECT_ID" --effective --format=json > "$policy_file" \
+      || lane_die "effective organization policy is unreadable: $constraint"
+    python3 - "$policy_file" "$constraint" <<'PY' || \
+      lane_die "effective organization policy is not enforced: $constraint"
+import json
+from pathlib import Path
+import sys
+
+policy = json.loads(Path(sys.argv[1]).read_text(encoding="utf-8"))
+if policy.get("constraint") != sys.argv[2]:
+    raise SystemExit("constraint mismatch")
+if policy.get("booleanPolicy", {}).get("enforced") is not True:
+    raise SystemExit("boolean policy is not enforced")
+PY
+  done
+}
+
+verify_service_accounts_are_keyless() {
+  local account email inventory
+  local accounts=(
+    "$(deployer_service_account_id)"
+    "$ACTUATOR_SERVICE_ACCOUNT"
+    "$DECISION_SERVICE_ACCOUNT"
+    "$STABLE_BOOTSTRAP_ACTUATOR_SERVICE_ACCOUNT"
+    "$STABLE_BOOTSTRAP_DECISION_SERVICE_ACCOUNT"
+  )
+  for account in "${accounts[@]}"; do
+    email="$account@$PROJECT_ID.iam.gserviceaccount.com"
+    inventory="$PROVISION_TMPDIR/keys-$account.json"
+    gcloud iam service-accounts keys list \
+      "--iam-account=$email" "--project=$PROJECT_ID" --format=json \
+      > "$inventory" \
+      || lane_die "service-account key inventory is unreadable: $email"
+    python3 - "$inventory" "$email" <<'PY' || \
+      lane_die "user-managed service-account key is forbidden: $email"
+import json
+from pathlib import Path
+import sys
+
+inventory = json.loads(Path(sys.argv[1]).read_text(encoding="utf-8"))
+if not isinstance(inventory, list):
+    raise SystemExit("key inventory is malformed")
+for key in inventory:
+    if not isinstance(key, dict):
+        raise SystemExit("key record is malformed")
+    if key.get("keyType") == "USER_MANAGED" or key.get("keyOrigin") == "USER_PROVIDED":
+        raise SystemExit(f"user-managed key exists for {sys.argv[2]}")
+PY
+  done
+}
+
+ensure_stable_release_kms_key() {
+  local metadata="$PROVISION_TMPDIR/stable-kms-version.json"
+  local current="$PROVISION_TMPDIR/stable-kms-current-policy.json"
+  local desired="$PROVISION_TMPDIR/stable-kms-desired-policy.json"
+  local verified="$PROVISION_TMPDIR/stable-kms-verified-policy.json"
+  if ! gcloud kms keyrings describe "$STABLE_KMS_KEYRING" \
+      "--project=$PROJECT_ID" "--location=$STABLE_KMS_LOCATION" \
+      >/dev/null 2>&1; then
+    gcloud kms keyrings create "$STABLE_KMS_KEYRING" \
+      "--project=$PROJECT_ID" "--location=$STABLE_KMS_LOCATION" --quiet
+  fi
+  if ! gcloud kms keys describe "$STABLE_KMS_KEY" \
+      "--project=$PROJECT_ID" "--location=$STABLE_KMS_LOCATION" \
+      "--keyring=$STABLE_KMS_KEYRING" >/dev/null 2>&1; then
+    gcloud kms keys create "$STABLE_KMS_KEY" \
+      "--project=$PROJECT_ID" "--location=$STABLE_KMS_LOCATION" \
+      "--keyring=$STABLE_KMS_KEYRING" --purpose=asymmetric-signing \
+      --default-algorithm=ec-sign-ed25519 --protection-level=hsm --quiet
+  fi
+  gcloud kms keys versions describe "$STABLE_KMS_VERSION" \
+    "--project=$PROJECT_ID" "--location=$STABLE_KMS_LOCATION" \
+    "--keyring=$STABLE_KMS_KEYRING" "--key=$STABLE_KMS_KEY" \
+    --format=json > "$metadata" \
+    || lane_die "stable-release KMS version is unreadable"
+  python3 - "$metadata" "$STABLE_RELEASE_KMS_KEY_URI" <<'PY' || \
+    lane_die "stable-release KMS version is not the pinned HSM Ed25519 signer"
+import json
+from pathlib import Path
+import sys
+
+metadata = json.loads(Path(sys.argv[1]).read_text(encoding="utf-8"))
+expected_name = sys.argv[2].removeprefix("gcp-kms://")
+if metadata.get("name") != expected_name:
+    raise SystemExit("KMS version resource mismatch")
+if metadata.get("state") != "ENABLED":
+    raise SystemExit("KMS version is not enabled")
+if metadata.get("algorithm") != "EC_SIGN_ED25519":
+    raise SystemExit("KMS algorithm mismatch")
+if metadata.get("protectionLevel") != "HSM":
+    raise SystemExit("KMS signer is not HSM protected")
+PY
+  gcloud kms keys get-iam-policy "$STABLE_KMS_KEY" \
+    "--project=$PROJECT_ID" "--location=$STABLE_KMS_LOCATION" \
+    "--keyring=$STABLE_KMS_KEYRING" --format=json > "$current"
+  python3 "$LANE_DIR/reconcile-iam-policy.py" rewrite \
+    --input "$current" --output "$desired" \
+    --role roles/cloudkms.signerVerifier --member "$DEPLOYER_PRINCIPAL"
+  gcloud kms keys set-iam-policy "$STABLE_KMS_KEY" "$desired" \
+    "--project=$PROJECT_ID" "--location=$STABLE_KMS_LOCATION" \
+    "--keyring=$STABLE_KMS_KEYRING" --quiet >/dev/null
+  gcloud kms keys get-iam-policy "$STABLE_KMS_KEY" \
+    "--project=$PROJECT_ID" "--location=$STABLE_KMS_LOCATION" \
+    "--keyring=$STABLE_KMS_KEYRING" --format=json > "$verified"
+  python3 - "$verified" "$DEPLOYER_PRINCIPAL" <<'PY' || \
+    lane_die "stable-release KMS IAM is not closed to the keyless deployer"
+import json
+from pathlib import Path
+import sys
+
+policy = json.loads(Path(sys.argv[1]).read_text(encoding="utf-8"))
+if policy.get("bindings") != [{
+    "role": "roles/cloudkms.signerVerifier",
+    "members": [sys.argv[2]],
+}]:
+    raise SystemExit("unexpected KMS IAM binding")
+PY
 }
 
 ensure_artifact_repository() {
@@ -789,8 +976,13 @@ PY
 apply_provisioning() {
   create_project_once
   verify_dedicated_project_identity
+  gcloud services enable "${KEYLESS_CONTROL_APIS[@]}" \
+    "--project=$PROJECT_ID" --quiet
+  enforce_keyless_org_policies
   gcloud services enable "${REQUIRED_APIS[@]}" \
     "--project=$PROJECT_ID" --quiet
+  ensure_service_account "$(deployer_service_account_id)" \
+    "EMILIA protected consequence deployer"
   ensure_service_account "$ACTUATOR_SERVICE_ACCOUNT" \
     "EMILIA consequence actuator"
   ensure_service_account "$DECISION_SERVICE_ACCOUNT" \
@@ -799,6 +991,8 @@ apply_provisioning() {
     "EMILIA permissionless stable bootstrap actuator"
   ensure_service_account "$STABLE_BOOTSTRAP_DECISION_SERVICE_ACCOUNT" \
     "EMILIA permissionless stable bootstrap decision"
+  verify_service_accounts_are_keyless
+  ensure_stable_release_kms_key
   ensure_artifact_repository
   ensure_network
   ensure_subnet
@@ -815,9 +1009,8 @@ apply_provisioning() {
   bind_fixed_deployment_access
   reconcile_secret_accessors_once
   verify_external_recovery_quorum
-  gcloud resource-manager org-policies enable-enforce \
-    constraints/iam.automaticIamGrantsForDefaultServiceAccounts \
-    "--project=$PROJECT_ID" --quiet
+  enforce_keyless_org_policies
+  verify_service_accounts_are_keyless
   remove_default_editors
   finalize_steady_state_policy
   printf 'dedicated consequence-control project provisioned: %s\n' "$PROJECT_ID"
