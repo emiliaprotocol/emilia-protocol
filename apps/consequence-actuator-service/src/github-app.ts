@@ -8,9 +8,6 @@ import { strictJsonGate } from '../../../packages/require-receipt/strict-json.js
 const DEFAULT_BASE_URL = 'https://api.github.com';
 const API_VERSION = '2026-03-10';
 const MAX_RESPONSE_BYTES = 512 * 1024;
-const MAX_GITHUB_BODY_BYTES = 65_536;
-const MAX_ATTRIBUTION_MARKER_BYTES = 16 * 1024;
-const MAX_COMMENT_SCAN_PAGES = 10;
 const SAFE_SEGMENT = /^[A-Za-z0-9_.-]{1,100}$/;
 const IDENTIFIER = /^[A-Za-z0-9][A-Za-z0-9._:@/-]{0,255}$/;
 const DIGEST = /^sha256:[a-f0-9]{64}$/;
@@ -20,12 +17,11 @@ const BASE64URL = /^[A-Za-z0-9_-]+$/;
 const PROVIDER_ATTRIBUTION_VERSION =
   'EP-CONSEQUENCE-PROVIDER-ATTRIBUTION-v1';
 const PROVIDER_RECORD_VERSION =
-  'EP-GITHUB-PROVIDER-ATTRIBUTION-RECORD-v1';
+  'EP-GITHUB-PROVIDER-ATTRIBUTION-RECORD-v2';
 const PROVIDER_RECORD_SIGNATURE_DOMAIN =
-  'EP-GITHUB-PROVIDER-ATTRIBUTION-RECORD-v1';
-const ATTRIBUTION_MARKER_PREFIX =
-  '<!-- emilia-provider-attribution-v1:';
-const ATTRIBUTION_MARKER_SUFFIX = ' -->';
+  'EP-GITHUB-PROVIDER-ATTRIBUTION-RECORD-v2';
+const PROVIDER_ATTRIBUTION_SIGNATURE_DOMAIN =
+  'EP-CONSEQUENCE-PROVIDER-ATTRIBUTION-v1';
 const ATTRIBUTION_BINDING_KEYS = Object.freeze([
   '@version',
   'issuer_id',
@@ -40,18 +36,22 @@ const ATTRIBUTION_BINDING_KEYS = Object.freeze([
   'action_digest',
   'target_digest',
   'operation',
+  'nonce',
   'envelope_digest',
   'effect_digest',
   'issued_at',
 ]);
 const PROVIDER_RECORD_PAYLOAD_KEYS = Object.freeze([
   '@version',
-  'state',
+  'outcome',
   'provider_record_id',
   'recorded_at',
-  'binding',
+  'provider_response',
+  'provider_attribution',
+  'provider_attribution_digest',
 ]);
 const SIGNATURE_KEYS = Object.freeze(['algorithm', 'key_id', 'value']);
+const ATTRIBUTION_KEYS = Object.freeze(['payload', 'signature']);
 const SIGNED_RECORD_KEYS = Object.freeze(['@version', 'payload', 'signature']);
 const DEFINITIVE_NOT_COMMITTED_STATUSES = new Set([401, 403, 404, 409, 422]);
 const EXACT_ACTION_KEYS = Object.freeze([
@@ -347,6 +347,10 @@ function requireAttributionBinding(
       || value.action_digest !== digestAeb(action)
       || value.target_digest !== targetDigest
       || !IDENTIFIER.test(value.operation)
+      || typeof value.nonce !== 'string'
+      || value.nonce.length < 22
+      || value.nonce.length > 128
+      || !BASE64URL.test(value.nonce)
       || !DIGEST.test(value.envelope_digest)
       || !DIGEST.test(value.effect_digest)
       || !canonicalInstant(value.issued_at)
@@ -369,94 +373,12 @@ function recordSignatureInput(payload: JsonObject): Buffer {
   ]);
 }
 
-function markerForRecord(record: JsonObject): string {
-  const encoded = Buffer.from(canonicalize(record), 'utf8').toString('base64url');
-  if (encoded.length > MAX_ATTRIBUTION_MARKER_BYTES) {
-    throw new Error('github_attribution_marker_too_large');
-  }
-  return `${ATTRIBUTION_MARKER_PREFIX}${encoded}${ATTRIBUTION_MARKER_SUFFIX}`;
-}
-
-function commentForRecord(record: JsonObject): string {
-  return [
-    'EMILIA consequence actuator provider-attribution record.',
-    '',
-    markerForRecord(record),
-  ].join('\n');
-}
-
-function parseRecordMarkers(
-  value: unknown,
-  {
-    keyId,
-    publicKey,
-  }: {
-    keyId: string;
-    publicKey: crypto.KeyObject;
-  },
-): JsonObject[] {
-  if (typeof value !== 'string' || value.length > MAX_GITHUB_BODY_BYTES * 2) {
-    return [];
-  }
-  const records: JsonObject[] = [];
-  const pattern =
-    /<!-- emilia-provider-attribution-v1:([A-Za-z0-9_-]{1,16384}) -->/g;
-  for (const match of value.matchAll(pattern)) {
-    const encoded = match[1];
-    let decoded: string;
-    try {
-      const bytes = Buffer.from(encoded, 'base64url');
-      if (bytes.toString('base64url') !== encoded) continue;
-      decoded = new TextDecoder('utf-8', { fatal: true }).decode(bytes);
-      if (!strictJsonGate(decoded).ok) continue;
-    } catch {
-      continue;
-    }
-    let candidate: JsonObject;
-    try {
-      candidate = JSON.parse(decoded);
-      if (canonicalize(candidate) !== decoded) continue;
-    } catch {
-      continue;
-    }
-    if (!exactKeys(candidate, SIGNED_RECORD_KEYS)
-        || candidate['@version'] !== PROVIDER_RECORD_VERSION
-        || !exactKeys(candidate.payload, PROVIDER_RECORD_PAYLOAD_KEYS)
-        || candidate.payload['@version'] !== PROVIDER_RECORD_VERSION
-        || !['PREPARED', 'COMMITTED', 'NOT_COMMITTED']
-          .includes(candidate.payload.state)
-        || (candidate.payload.provider_record_id !== null
-          && !IDENTIFIER.test(candidate.payload.provider_record_id))
-        || ((candidate.payload.state === 'PREPARED')
-          !== (candidate.payload.provider_record_id === null))
-        || !canonicalInstant(candidate.payload.recorded_at)
-        || !plainObject(candidate.payload.binding)
-        || !exactKeys(candidate.signature, SIGNATURE_KEYS)
-        || candidate.signature.algorithm !== 'Ed25519'
-        || candidate.signature.key_id !== keyId
-        || typeof candidate.signature.value !== 'string'
-        || !BASE64URL.test(candidate.signature.value)) {
-      continue;
-    }
-    let signature: Buffer;
-    try {
-      signature = Buffer.from(candidate.signature.value, 'base64url');
-    } catch {
-      continue;
-    }
-    if (signature.byteLength !== 64
-        || signature.toString('base64url') !== candidate.signature.value
-        || !crypto.verify(
-          null,
-          recordSignatureInput(candidate.payload),
-          publicKey,
-          signature,
-        )) {
-      continue;
-    }
-    records.push(structuredClone(candidate));
-  }
-  return records;
+function providerAttributionSignatureInput(payload: JsonObject): Buffer {
+  return Buffer.concat([
+    Buffer.from(PROVIDER_ATTRIBUTION_SIGNATURE_DOMAIN, 'utf8'),
+    Buffer.from([0]),
+    Buffer.from(canonicalize(payload), 'utf8'),
+  ]);
 }
 
 export function createGitHubIssueEffectProvider({
@@ -467,8 +389,12 @@ export function createGitHubIssueEffectProvider({
   attributionIssuerId,
   attributionKeyId,
   attributionPrivateKey,
+  providerAttributionKeyId,
+  providerAttributionPublicKey,
   targetDigest,
+  providerRecordStore,
   forceIndeterminateAfterCommit = false,
+  forceProviderResponseLossBeforeTerminalRecord = false,
   baseUrl,
   fetchImpl = globalThis.fetch,
   now = Date.now,
@@ -488,22 +414,46 @@ export function createGitHubIssueEffectProvider({
     'github_attribution_key_id',
     256,
   );
+  const providerAttributionSignerKeyId = requiredText(
+    providerAttributionKeyId,
+    'github_provider_attribution_key_id',
+    256,
+  );
   if (!IDENTIFIER.test(issuerId) || !IDENTIFIER.test(keyId)
+      || !IDENTIFIER.test(providerAttributionSignerKeyId)
       || typeof targetDigest !== 'string' || !DIGEST.test(targetDigest)) {
     throw new TypeError('github_issue_provider_config_invalid');
   }
   const signingKey = normalizeAttributionPrivateKey(attributionPrivateKey);
   const verificationKey = crypto.createPublicKey(signingKey);
+  let providerAttributionVerificationKey: crypto.KeyObject;
+  try {
+    providerAttributionVerificationKey =
+      providerAttributionPublicKey instanceof crypto.KeyObject
+        ? (providerAttributionPublicKey.type === 'private'
+          ? crypto.createPublicKey(providerAttributionPublicKey)
+          : providerAttributionPublicKey)
+        : crypto.createPublicKey(providerAttributionPublicKey);
+  } catch {
+    throw new TypeError('github_issue_provider_config_invalid');
+  }
+  if (providerAttributionVerificationKey.type !== 'public'
+      || providerAttributionVerificationKey.asymmetricKeyType !== 'ed25519') {
+    throw new TypeError('github_issue_provider_config_invalid');
+  }
   if (!tokenProvider || typeof tokenProvider.getToken !== 'function'
       || typeof fetchImpl !== 'function' || typeof now !== 'function'
-      || typeof forceIndeterminateAfterCommit !== 'boolean') {
+      || typeof forceIndeterminateAfterCommit !== 'boolean'
+      || typeof forceProviderResponseLossBeforeTerminalRecord !== 'boolean'
+      || !providerRecordStore
+      || typeof providerRecordStore.write !== 'function'
+      || typeof providerRecordStore.read !== 'function') {
     throw new TypeError('github_issue_provider_config_invalid');
   }
   const apiBase = normalizedBaseUrl(baseUrl);
-  const repositoryEndpoint =
-    `${apiBase}/repos/${encodeURIComponent(target.owner)}/${encodeURIComponent(target.repo)}`;
-  const issueEndpoint = `${repositoryEndpoint}/issues/${target.issueNumber}`;
-  const commentsEndpoint = `${issueEndpoint}/comments`;
+  const issueEndpoint =
+    `${apiBase}/repos/${encodeURIComponent(target.owner)}/${encodeURIComponent(target.repo)}`
+    + `/issues/${target.issueNumber}`;
 
   function outcomeError(code: string) {
     const error: any = new Error(code);
@@ -512,20 +462,28 @@ export function createGitHubIssueEffectProvider({
   }
 
   function signRecord(
-    state: 'PREPARED' | 'COMMITTED' | 'NOT_COMMITTED',
-    binding: JsonObject,
-    providerRecordId: string | null,
+    outcome: 'COMMITTED' | 'NOT_COMMITTED',
+    providerAttribution: JsonObject,
+    providerResponse: JsonObject,
   ) {
     const timestamp = Number(now());
     if (!Number.isSafeInteger(timestamp) || timestamp < 0) {
       throw new Error('github_attribution_clock_invalid');
     }
+    const providerAttributionDigest = digestAeb(providerAttribution);
+    const providerRecordId =
+      `github-provider-record:${digestAeb({
+        provider_attribution_digest: providerAttributionDigest,
+        provider_response: providerResponse,
+      }).slice('sha256:'.length)}`;
     const payload = JSON.parse(canonicalize({
       '@version': PROVIDER_RECORD_VERSION,
-      state,
+      outcome,
       provider_record_id: providerRecordId,
       recorded_at: new Date(timestamp).toISOString(),
-      binding,
+      provider_response: providerResponse,
+      provider_attribution: providerAttribution,
+      provider_attribution_digest: providerAttributionDigest,
     }));
     return JSON.parse(canonicalize({
       '@version': PROVIDER_RECORD_VERSION,
@@ -542,17 +500,12 @@ export function createGitHubIssueEffectProvider({
     }));
   }
 
-  async function request(
-    method: 'GET' | 'POST' | 'PATCH',
-    endpoint: string,
-    body?: JsonObject,
-    attemptId?: string,
-  ) {
+  async function request(body: JsonObject, attemptId: string) {
     const token = await tokenProvider.getToken();
-    const response = await fetchImpl(endpoint, {
-      method,
-      headers: githubHeaders(token, attemptId ? { 'X-EMILIA-Attempt-ID': attemptId } : {}),
-      ...(body ? { body: JSON.stringify(body) } : {}),
+    const response = await fetchImpl(issueEndpoint, {
+      method: 'PATCH',
+      headers: githubHeaders(token, { 'X-EMILIA-Attempt-ID': attemptId }),
+      body: JSON.stringify(body),
       redirect: 'error',
       signal: AbortSignal.timeout(15_000),
     });
@@ -563,157 +516,170 @@ export function createGitHubIssueEffectProvider({
     return response;
   }
 
-  async function confirmedTerminalComment(
-    commentId: number,
-    record: JsonObject,
-    attemptId: string,
-  ): Promise<boolean> {
-    try {
-      const response = await request(
-        'PATCH',
-        `${repositoryEndpoint}/issues/comments/${commentId}`,
-        { body: commentForRecord(record) },
-        attemptId,
-      );
-      if (response?.status !== 200) {
-        cancelBody(response?.body);
-        return false;
-      }
-      const body = await boundedJson(response);
-      return plainObject(body)
-        && body.id === commentId
-        && body.body === commentForRecord(record);
-    } catch {
-      return false;
+  function requireSignedProviderAttribution(
+    value: unknown,
+    action: JsonObject,
+  ): { attribution: JsonObject; binding: JsonObject } {
+    if (!exactKeys(value, ATTRIBUTION_KEYS)
+        || !exactKeys(value.signature, SIGNATURE_KEYS)
+        || value.signature.algorithm !== 'Ed25519'
+        || value.signature.key_id !== providerAttributionSignerKeyId
+        || typeof value.signature.value !== 'string'
+        || !BASE64URL.test(value.signature.value)) {
+      throw new Error('github_issue_attribution_refused');
     }
+    let signature: Buffer;
+    try {
+      signature = Buffer.from(value.signature.value, 'base64url');
+    } catch {
+      throw new Error('github_issue_attribution_refused');
+    }
+    const binding = requireAttributionBinding(value.payload, {
+      action,
+      target,
+      targetDigest,
+      issuerId,
+    });
+    if (signature.byteLength !== 64
+        || signature.toString('base64url') !== value.signature.value
+        || !crypto.verify(
+          null,
+          providerAttributionSignatureInput(binding),
+          providerAttributionVerificationKey,
+          signature,
+        )) {
+      throw new Error('github_issue_attribution_refused');
+    }
+    return {
+      attribution: JSON.parse(canonicalize(value)),
+      binding,
+    };
   }
 
-  function bindingMatchesExpected(
+  function verifyStoredRecord(
     record: JsonObject,
     expected: JsonObject,
     action: JsonObject,
     operation: string,
-  ): boolean {
-    let binding: JsonObject;
+  ): JsonObject | null {
+    if (!exactKeys(record, SIGNED_RECORD_KEYS)
+        || record['@version'] !== PROVIDER_RECORD_VERSION
+        || !exactKeys(record.payload, PROVIDER_RECORD_PAYLOAD_KEYS)
+        || record.payload['@version'] !== PROVIDER_RECORD_VERSION
+        || !['COMMITTED', 'NOT_COMMITTED'].includes(record.payload.outcome)
+        || !IDENTIFIER.test(record.payload.provider_record_id)
+        || !canonicalInstant(record.payload.recorded_at)
+        || !DIGEST.test(record.payload.provider_attribution_digest)
+        || record.payload.provider_attribution_digest
+          !== digestAeb(record.payload.provider_attribution)
+        || !exactKeys(record.signature, SIGNATURE_KEYS)
+        || record.signature.algorithm !== 'Ed25519'
+        || record.signature.key_id !== keyId
+        || typeof record.signature.value !== 'string'
+        || !BASE64URL.test(record.signature.value)) {
+      return null;
+    }
+    let recordSignature: Buffer;
     try {
-      binding = requireAttributionBinding(record.payload.binding, {
+      recordSignature = Buffer.from(record.signature.value, 'base64url');
+    } catch {
+      return null;
+    }
+    if (recordSignature.byteLength !== 64
+        || recordSignature.toString('base64url') !== record.signature.value
+        || !crypto.verify(
+          null,
+          recordSignatureInput(record.payload),
+          verificationKey,
+          recordSignature,
+        )) {
+      return null;
+    }
+    let providerAttribution: {
+      attribution: JsonObject;
+      binding: JsonObject;
+    };
+    try {
+      providerAttribution = requireSignedProviderAttribution(
+        record.payload.provider_attribution,
         action,
-        target,
-        targetDigest,
-        issuerId,
-      });
-    } catch {
-      return false;
-    }
-    return binding.tenant_id === expected.tenant_id
-      && binding.provider_id === expected.provider_id
-      && binding.provider_account_id === expected.provider_account_id
-      && binding.environment === expected.environment
-      && binding.request_digest === expected.request_digest
-      && binding.attempt_id === expected.attempt_id
-      && binding.operation_id === expected.operation_id
-      && binding.caid === expected.caid
-      && binding.action_digest === expected.action_digest
-      && binding.operation === operation;
-  }
-
-  async function readIssue(): Promise<JsonObject> {
-    const response = await request('GET', issueEndpoint);
-    if (response?.status !== 200) {
-      cancelBody(response?.body);
-      throw new Error('github_issue_observation_failed');
-    }
-    const body = await boundedJson(response);
-    if (!plainObject(body)) throw new Error('github_issue_observation_failed');
-    return body;
-  }
-
-  async function readAttemptRecords(
-    expected: JsonObject,
-    action: JsonObject,
-    operation: string,
-  ): Promise<Array<{ record: JsonObject; commentId: number }>> {
-    const records: Array<{ record: JsonObject; commentId: number }> = [];
-    for (let page = 1; page <= MAX_COMMENT_SCAN_PAGES; page += 1) {
-      const response = await request(
-        'GET',
-        `${commentsEndpoint}?per_page=100&sort=created&direction=desc&page=${page}`,
       );
-      if (response?.status !== 200) {
-        cancelBody(response?.body);
-        throw new Error('github_comment_observation_failed');
-      }
-      const body = await boundedJson(response);
-      if (!Array.isArray(body)) throw new Error('github_comment_observation_failed');
-      for (const comment of body) {
-        if (!plainObject(comment)
-            || !Number.isSafeInteger(comment.id)
-            || comment.id < 1) continue;
-        for (const record of parseRecordMarkers(comment.body, {
-          keyId,
-          publicKey: verificationKey,
-        })) {
-          if (!bindingMatchesExpected(record, expected, action, operation)) continue;
-          const recordId = record.payload.provider_record_id;
-          if (recordId !== null
-              && recordId !== `github:issue-comment:${comment.id}`) continue;
-          records.push({ record, commentId: comment.id });
-        }
-      }
-      if (body.length < 100) break;
+    } catch {
+      return null;
     }
-    return records;
+    const binding = providerAttribution.binding;
+    if (binding.tenant_id !== expected.tenant_id
+      || binding.provider_id !== expected.provider_id
+      || binding.provider_account_id !== expected.provider_account_id
+      || binding.environment !== expected.environment
+      || binding.request_digest !== expected.request_digest
+      || binding.attempt_id !== expected.attempt_id
+      || binding.operation_id !== expected.operation_id
+      || binding.caid !== expected.caid
+      || binding.action_digest !== expected.action_digest
+      || binding.operation !== operation) {
+      return null;
+    }
+    const response = record.payload.provider_response;
+    if (!plainObject(response)) return null;
+    if (record.payload.outcome === 'COMMITTED') {
+      if (!exactKeys(response, ['status', 'number', 'title', 'body'])
+          || response.status !== 200
+          || response.number !== target.issueNumber
+          || response.title !== action.title
+          || response.body !== action.body) {
+        return null;
+      }
+    } else if (!exactKeys(response, ['status'])
+        || !DEFINITIVE_NOT_COMMITTED_STATUSES.has(response.status)) {
+      return null;
+    }
+    return {
+      record: structuredClone(record),
+      binding,
+    };
+  }
+
+  async function persistTerminalRecord(record: JsonObject) {
+    const value = Object.freeze({
+      record: structuredClone(record),
+      record_digest: digestAeb(record),
+    });
+    let stored: any;
+    try {
+      stored = await providerRecordStore.write(value);
+    } catch {
+      throw new Error('github_provider_record_store_unavailable');
+    }
+    if (!exactKeys(stored, ['record', 'record_digest'])
+        || stored.record_digest !== value.record_digest
+        || canonicalize(stored.record) !== canonicalize(value.record)) {
+      throw new Error('github_provider_record_store_unavailable');
+    }
+    return value.record_digest;
   }
 
   return Object.freeze({
     async effect({ action: candidate, attempt }: any = {}) {
       const action = requireAction(candidate, target);
-      const binding = requireAttributionBinding(attempt, {
+      const { attribution, binding } = requireSignedProviderAttribution(
+        attempt,
         action,
-        target,
-        targetDigest,
-        issuerId,
-      });
-      const prepared = signRecord('PREPARED', binding, null);
-      let commentId: number;
+      );
+      let response: any;
       try {
-        const response = await request(
-          'POST',
-          commentsEndpoint,
-          { body: commentForRecord(prepared) },
+        response = await request(
+          { title: action.title, body: action.body },
           binding.attempt_id,
         );
-        if (response?.status !== 201) {
-          cancelBody(response?.body);
-          throw outcomeError('github_issue_outcome_indeterminate');
-        }
-        const body = await boundedJson(response);
-        if (!plainObject(body)
-            || !Number.isSafeInteger(body.id)
-            || body.id < 1
-            || body.body !== commentForRecord(prepared)) {
-          throw outcomeError('github_issue_outcome_indeterminate');
-        }
-        commentId = body.id;
       } catch (error: any) {
-        if (error?.code === 'github_issue_outcome_indeterminate') throw error;
-        if (['github_redirect_refused', 'github_response_too_large',
-          'github_response_invalid'].includes(error?.message)) {
+        if (error?.message === 'github_redirect_refused') {
           throw error;
         }
         throw outcomeError('github_issue_outcome_indeterminate');
       }
-
-      const providerRecordId = `github:issue-comment:${commentId}`;
-      let response: any;
-      try {
-        response = await request(
-          'PATCH',
-          issueEndpoint,
-          { title: action.title, body: action.body },
-          binding.attempt_id,
-        );
-      } catch {
+      if (forceProviderResponseLossBeforeTerminalRecord) {
+        cancelBody(response?.body);
         throw outcomeError('github_issue_outcome_indeterminate');
       }
       if (response?.status !== 200) {
@@ -722,35 +688,40 @@ export function createGitHubIssueEffectProvider({
         if (DEFINITIVE_NOT_COMMITTED_STATUSES.has(status)) {
           const notCommittedRecord = signRecord(
             'NOT_COMMITTED',
-            binding,
-            providerRecordId,
+            attribution,
+            { status },
           );
-          if (await confirmedTerminalComment(
-            commentId,
-            notCommittedRecord,
-            binding.attempt_id,
-          )) {
-            throw outcomeError('github_issue_not_committed');
-          }
+          await persistTerminalRecord(notCommittedRecord);
+          throw outcomeError('github_issue_not_committed');
         }
         throw outcomeError('github_issue_outcome_indeterminate');
       }
-      const result = await boundedJson(response);
+      let result: JsonObject;
+      try {
+        result = await boundedJson(response);
+      } catch (error: any) {
+        if (['github_response_too_large', 'github_response_invalid']
+          .includes(error?.message)) {
+          throw error;
+        }
+        throw outcomeError('github_issue_outcome_indeterminate');
+      }
       if (result.number !== target.issueNumber
           || result.title !== action.title
-          || (result.body ?? '') !== action.body) {
+          || result.body !== action.body) {
         throw outcomeError('github_issue_outcome_indeterminate');
       }
       const committedRecord = signRecord(
         'COMMITTED',
-        binding,
-        providerRecordId,
+        attribution,
+        JSON.parse(canonicalize({
+          status: 200,
+          number: result.number,
+          title: result.title,
+          body: result.body,
+        })),
       );
-      await confirmedTerminalComment(
-        commentId,
-        committedRecord,
-        binding.attempt_id,
-      );
+      const providerRecordDigest = await persistTerminalRecord(committedRecord);
       if (forceIndeterminateAfterCommit) {
         throw outcomeError('github_issue_outcome_indeterminate');
       }
@@ -758,7 +729,8 @@ export function createGitHubIssueEffectProvider({
         provider_status: 200,
         provider_reference: `github:issue:${target.owner}/${target.repo}#${target.issueNumber}`,
         provider_effect_digest: binding.effect_digest,
-        provider_record_id: providerRecordId,
+        provider_record_id: committedRecord.payload.provider_record_id,
+        provider_record_digest: providerRecordDigest,
       };
     },
 
@@ -775,82 +747,57 @@ export function createGitHubIssueEffectProvider({
           || !IDENTIFIER.test(operation)) {
         return { valid: false, reason: 'provider_evidence_shape_invalid' };
       }
-      let observed: JsonObject;
+      let stored: any;
       try {
-        observed = await readIssue();
+        stored = await providerRecordStore.read(structuredClone(expected));
       } catch {
         return { valid: false, reason: 'provider_evidence_unavailable' };
       }
-      let commentRecords: Array<{ record: JsonObject; commentId: number }> = [];
-      let commentsAvailable = true;
-      try {
-        commentRecords = await readAttemptRecords(expected, action, operation);
-      } catch {
-        commentsAvailable = false;
+      if (stored === null || stored === undefined) {
+        return { valid: false, reason: 'provider_evidence_unavailable' };
       }
-      const states = new Set(commentRecords.map(({ record }) => record.payload.state));
-      const conflictingTerminalRecords =
-        states.has('COMMITTED') && states.has('NOT_COMMITTED');
-      let outcome: 'COMMITTED' | 'NOT_COMMITTED' | 'ESCALATED';
-      let reason: string;
-      if (conflictingTerminalRecords) {
-        outcome = 'ESCALATED';
-        reason = 'github_attempt_attribution_conflict';
-      } else if (states.has('COMMITTED')) {
-        outcome = 'COMMITTED';
-        reason = 'github_exact_attempt_committed';
-      } else if (states.has('NOT_COMMITTED')) {
-        outcome = 'NOT_COMMITTED';
-        reason = 'github_provider_refused_before_effect';
-      } else if (states.has('PREPARED')) {
-        outcome = 'ESCALATED';
-        reason = 'github_attempt_outcome_indeterminate';
-      } else {
-        outcome = 'ESCALATED';
-        reason = commentsAvailable
-          ? 'github_attempt_attribution_unavailable'
-          : 'github_attempt_record_unavailable';
+      if (!exactKeys(stored, ['record', 'record_digest'])
+          || !DIGEST.test(stored.record_digest)
+          || stored.record_digest !== digestAeb(stored.record)) {
+        return { valid: false, reason: 'provider_evidence_binding_mismatch' };
       }
-      const observedAt = new Date(Number(now())).toISOString();
-      const evidenceDigest = digestAeb({
-        provider: 'github',
-        repository: `${target.owner}/${target.repo}`,
-        issue_number: target.issueNumber,
-        title: observed.title ?? null,
-        body: observed.body ?? null,
-        attempt_record_digests: commentRecords
-          .map(({ record }) => digestAeb(record))
-          .sort(),
-        comments_available: commentsAvailable,
-        outcome,
-        reason,
-        observed_at: observedAt,
-        tenant_id: expected.tenant_id,
-        request_digest: expected.request_digest,
-        provider_id: expected.provider_id,
-        provider_account_id: expected.provider_account_id,
-        environment: expected.environment,
-        attempt_id: expected.attempt_id,
-        operation_id: expected.operation_id,
-        caid: expected.caid,
-        action_digest: expected.action_digest,
-      });
+      const verified = verifyStoredRecord(
+        stored.record,
+        expected,
+        action,
+        operation,
+      );
+      if (!verified) {
+        return { valid: false, reason: 'provider_evidence_binding_mismatch' };
+      }
+      const { binding, record } = verified;
+      const outcome = record.payload.outcome;
+      const reason = outcome === 'COMMITTED'
+        ? 'github_exact_attempt_committed'
+        : 'github_provider_refused_before_effect';
       return {
         valid: true,
         outcome,
         reason,
-        evidence_id: `github-observation:${target.owner}:${target.repo}:${target.issueNumber}:${Date.parse(observedAt)}`,
-        observed_at: observedAt,
-        tenant_id: expected.tenant_id,
-        request_digest: expected.request_digest,
-        provider_id: expected.provider_id,
-        provider_account_id: expected.provider_account_id,
-        environment: expected.environment,
-        attempt_id: expected.attempt_id,
-        operation_id: expected.operation_id,
-        caid: expected.caid,
-        action_digest: expected.action_digest,
-        evidence_digest: evidenceDigest,
+        evidence_id:
+          `github-observation:${stored.record_digest.slice('sha256:'.length)}`,
+        observed_at: record.payload.recorded_at,
+        tenant_id: binding.tenant_id,
+        request_digest: binding.request_digest,
+        provider_id: binding.provider_id,
+        provider_account_id: binding.provider_account_id,
+        environment: binding.environment,
+        attempt_id: binding.attempt_id,
+        operation_id: binding.operation_id,
+        caid: binding.caid,
+        action_digest: binding.action_digest,
+        target_digest: binding.target_digest,
+        operation: binding.operation,
+        nonce: binding.nonce,
+        envelope_digest: binding.envelope_digest,
+        provider_attribution_digest:
+          record.payload.provider_attribution_digest,
+        evidence_digest: stored.record_digest,
       };
     },
   });

@@ -26,10 +26,15 @@ EXACT_ATTEMPT = {
     "attempt_id": "attempt:exact-canary",
     "request_digest": "sha256:" + "d" * 64,
 }
-TIMEOUT_ATTEMPT = {
+PROVIDER_RESPONSE_LOSS_ATTEMPT = {
     **EXACT_ATTEMPT,
-    "attempt_id": "attempt:timeout-canary",
+    "attempt_id": "attempt:provider-response-loss",
     "request_digest": "sha256:" + "e" * 64,
+}
+ACTUATOR_RESPONSE_LOSS_ATTEMPT = {
+    **EXACT_ATTEMPT,
+    "attempt_id": "attempt:actuator-response-loss",
+    "request_digest": "sha256:" + "f" * 64,
 }
 
 
@@ -67,10 +72,15 @@ def scenario() -> dict:
         "github.issue.update.v1",
         EXACT_ATTEMPT,
     )
-    timeout = proposal(
-        "proposal:timeout-canary",
+    provider_response_loss = proposal(
+        "proposal:provider-response-loss",
         "github.issue.update.indeterminate-smoke.v1",
-        TIMEOUT_ATTEMPT,
+        PROVIDER_RESPONSE_LOSS_ATTEMPT,
+    )
+    actuator_response_loss = proposal(
+        "proposal:actuator-response-loss",
+        "github.issue.update.actuator-response-loss-smoke.v1",
+        ACTUATOR_RESPONSE_LOSS_ATTEMPT,
     )
     return {
         "exact_execution": {
@@ -82,10 +92,19 @@ def scenario() -> dict:
                 "evidence": {"artifacts": {}, "statuses": {}},
             },
         },
-        "timeout": {
-            "proposal_id": timeout["proposal_id"],
+        "provider_response_loss": {
+            "proposal_id": provider_response_loss["proposal_id"],
             "request": {
-                "proposal": timeout,
+                "proposal": provider_response_loss,
+                "receipt": {"@version": "EP-RECEIPT-v1"},
+                "evaluation": {"verdict": "SATISFIED"},
+                "evidence": {"artifacts": {}, "statuses": {}},
+            },
+        },
+        "actuator_response_loss": {
+            "proposal_id": actuator_response_loss["proposal_id"],
+            "request": {
+                "proposal": actuator_response_loss,
                 "receipt": {"@version": "EP-RECEIPT-v1"},
                 "evaluation": {"verdict": "SATISFIED"},
                 "evidence": {"artifacts": {}, "statuses": {}},
@@ -99,10 +118,13 @@ class FakeDecision:
         self,
         *,
         replay_reason: str = "envelope_replayed",
-        reconciliation_reason: str = "github_attempt_attribution_unavailable",
+        provider_loss_reason: str = "provider_evidence_unavailable",
+        actuator_loss_outcome: str = "COMMITTED",
     ) -> None:
         self.replay_reason = replay_reason
-        self.reconciliation_reason = reconciliation_reason
+        self.provider_loss_reason = provider_loss_reason
+        self.actuator_loss_outcome = actuator_loss_outcome
+        self.actuator_loss_committed = False
         self.requests: list[dict] = []
         self.server = ThreadingHTTPServer(("127.0.0.1", 0), self.handler())
         self.thread = threading.Thread(target=self.server.serve_forever, daemon=True)
@@ -167,51 +189,54 @@ class FakeDecision:
                         },
                     )
                     return
-                if self.path.endswith("/proposal:timeout-canary/attempts/lookup"):
+                if self.path.endswith(
+                    "/proposal:provider-response-loss/attempts/lookup"
+                ):
                     self.send(
                         200,
                         {
                             "status": "found",
                             "state": "INDETERMINATE",
-                            "attempt": TIMEOUT_ATTEMPT,
+                            "attempt": PROVIDER_RESPONSE_LOSS_ATTEMPT,
                         },
                     )
                     return
-                if self.path.endswith("/proposal:timeout-canary/reconcile"):
+                if self.path.endswith(
+                    "/proposal:provider-response-loss/reconcile"
+                ):
                     self.send(
-                        200,
+                        503,
                         {
-                            "status": "reconciled",
+                            "status": "refused",
                             "result": {
-                                "ok": True,
-                                "state": "ESCALATED",
-                                "outcome": "ESCALATED",
-                                "reason": fixture.reconciliation_reason,
-                                "reexecuted": False,
-                                "consequence": {
-                                    "state": "ESCALATED",
-                                    "attempt": TIMEOUT_ATTEMPT,
-                                },
+                                "ok": False,
+                                "reason": fixture.provider_loss_reason,
                             },
                         },
                     )
                     return
-                if self.path.endswith("/proposal:timeout-canary/execute"):
-                    timeout_calls = sum(
+                if self.path.endswith(
+                    "/proposal:provider-response-loss/execute"
+                ):
+                    provider_loss_calls = sum(
                         request["path"].endswith(
-                            "/proposal:timeout-canary/execute"
+                            "/proposal:provider-response-loss/execute"
                         )
                         for request in fixture.requests
                     )
-                    if timeout_calls == 1:
+                    if provider_loss_calls == 1:
                         self.send(
                             202,
                             {
                                 "status": "indeterminate",
                                 "retry_allowed": False,
                                 "attempt": {
-                                    "tenant_id": TIMEOUT_ATTEMPT["tenant_id"],
-                                    "attempt_id": TIMEOUT_ATTEMPT["attempt_id"],
+                                    "tenant_id": (
+                                        PROVIDER_RESPONSE_LOSS_ATTEMPT["tenant_id"]
+                                    ),
+                                    "attempt_id": (
+                                        PROVIDER_RESPONSE_LOSS_ATTEMPT["attempt_id"]
+                                    ),
                                 },
                                 "error": {
                                     "code": "provider_outcome_indeterminate"
@@ -229,7 +254,91 @@ class FakeDecision:
                                     "invoked": False,
                                     "consequence": {
                                         "state": "INDETERMINATE",
-                                        "attempt": TIMEOUT_ATTEMPT,
+                                        "attempt": PROVIDER_RESPONSE_LOSS_ATTEMPT,
+                                    },
+                                },
+                            },
+                        )
+                    return
+                if self.path.endswith(
+                    "/proposal:actuator-response-loss/attempts/lookup"
+                ):
+                    self.send(
+                        200,
+                        {
+                            "status": "found",
+                            "state": (
+                                "COMMITTED"
+                                if fixture.actuator_loss_committed
+                                else "INDETERMINATE"
+                            ),
+                            "attempt": ACTUATOR_RESPONSE_LOSS_ATTEMPT,
+                        },
+                    )
+                    return
+                if self.path.endswith(
+                    "/proposal:actuator-response-loss/reconcile"
+                ):
+                    fixture.actuator_loss_committed = (
+                        fixture.actuator_loss_outcome == "COMMITTED"
+                    )
+                    self.send(
+                        200,
+                        {
+                            "status": "reconciled",
+                            "result": {
+                                "ok": True,
+                                "state": fixture.actuator_loss_outcome,
+                                "outcome": fixture.actuator_loss_outcome,
+                                "evidence_digest": "sha256:" + "a" * 64,
+                                "consequence": {
+                                    "state": fixture.actuator_loss_outcome,
+                                    "attempt": ACTUATOR_RESPONSE_LOSS_ATTEMPT,
+                                },
+                            },
+                        },
+                    )
+                    return
+                if self.path.endswith(
+                    "/proposal:actuator-response-loss/execute"
+                ):
+                    actuator_loss_calls = sum(
+                        request["path"].endswith(
+                            "/proposal:actuator-response-loss/execute"
+                        )
+                        for request in fixture.requests
+                    )
+                    if actuator_loss_calls == 1:
+                        self.send(
+                            202,
+                            {
+                                "status": "indeterminate",
+                                "retry_allowed": False,
+                                "attempt": {
+                                    "tenant_id": (
+                                        ACTUATOR_RESPONSE_LOSS_ATTEMPT["tenant_id"]
+                                    ),
+                                    "attempt_id": (
+                                        ACTUATOR_RESPONSE_LOSS_ATTEMPT["attempt_id"]
+                                    ),
+                                },
+                                "error": {
+                                    "code": "provider_outcome_indeterminate"
+                                },
+                            },
+                        )
+                    else:
+                        self.send(
+                            409,
+                            {
+                                "status": "refused",
+                                "result": {
+                                    "ok": False,
+                                    "reason": fixture.replay_reason,
+                                    "invoked": False,
+                                    "consequence": {
+                                        "state": "INDETERMINATE",
+                                        "attempt": ACTUATOR_RESPONSE_LOSS_ATTEMPT,
                                     },
                                 },
                             },
@@ -417,9 +526,23 @@ else:
             },
         )
         self.assertEqual(evidence["checks"]["exact_execution"]["outcome"], "COMMITTED")
-        self.assertEqual(evidence["checks"]["timeout"]["outcome"], "INDETERMINATE")
-        self.assertEqual(evidence["checks"]["replay"]["provider_invocations"], 1)
-        self.assertEqual(evidence["checks"]["reconciliation"]["outcome"], "ESCALATED")
+        provider_loss = evidence["checks"]["provider_response_loss"]
+        self.assertEqual(provider_loss["initial"]["outcome"], "INDETERMINATE")
+        self.assertEqual(provider_loss["replay"]["provider_invocations"], 1)
+        self.assertEqual(
+            provider_loss["reconciliation"]["reason"],
+            "provider_evidence_unavailable",
+        )
+        self.assertFalse(provider_loss["reconciliation"]["terminalized"])
+        self.assertEqual(provider_loss["durable_state"], "INDETERMINATE")
+        actuator_loss = evidence["checks"]["actuator_response_loss"]
+        self.assertEqual(actuator_loss["initial"]["outcome"], "INDETERMINATE")
+        self.assertEqual(actuator_loss["replay"]["provider_invocations"], 1)
+        self.assertEqual(
+            actuator_loss["reconciliation"]["outcome"],
+            "COMMITTED",
+        )
+        self.assertEqual(actuator_loss["durable_state"], "COMMITTED")
         self.assertEqual(evidence["signature"]["algorithm"], "Ed25519")
         self.assertEqual(evidence["signature"]["key_id"], "canary-test-key")
         self.assertTrue(all(
@@ -431,14 +554,17 @@ else:
             == "Bearer eyJhbGciOiJSUzI1NiJ9.eyJhdWQiOiJjYW5hcnkifQ.signature"
             for request in server.requests
         ))
-        reconcile = next(
-            request for request in server.requests
+        reconciliations = [
+            request
+            for request in server.requests
             if request["path"].endswith("/reconcile")
-        )
-        self.assertEqual(
-            reconcile["body"]["provider_evidence"],
-            {"kind": "consequence-actuator-observation-v1"},
-        )
+        ]
+        self.assertEqual(len(reconciliations), 2)
+        for reconciliation in reconciliations:
+            self.assertEqual(
+                reconciliation["body"]["provider_evidence"],
+                {"kind": "consequence-actuator-observation-v1"},
+            )
 
     def test_replay_mismatch_fails_closed_without_evidence(self) -> None:
         with FakeDecision(replay_reason="aeb_consumption_conflict") as server:
@@ -450,21 +576,28 @@ else:
             request["path"].endswith("/reconcile") for request in server.requests
         ))
 
-    def test_reconciliation_claim_must_come_from_response(self) -> None:
-        with FakeDecision(reconciliation_reason="operator_asserted_success") as server:
+    def test_provider_response_loss_must_remain_retryably_unavailable(self) -> None:
+        with FakeDecision(provider_loss_reason="operator_asserted_success") as server:
             result = self.run_driver(server.origin)
         self.assertNotEqual(result.returncode, 0)
-        self.assertIn("github_attempt_attribution_unavailable", result.stderr)
+        self.assertIn("provider_evidence_unavailable", result.stderr)
+        self.assertFalse(self.output.exists())
+
+    def test_actuator_response_loss_must_reconcile_exactly_committed(self) -> None:
+        with FakeDecision(actuator_loss_outcome="ESCALATED") as server:
+            result = self.run_driver(server.origin)
+        self.assertNotEqual(result.returncode, 0)
+        self.assertIn("COMMITTED", result.stderr)
         self.assertFalse(self.output.exists())
 
     def test_scenario_refuses_operator_entered_outcome_fields(self) -> None:
         value = scenario()
-        value["timeout"]["outcome"] = "INDETERMINATE"
+        value["provider_response_loss"]["outcome"] = "INDETERMINATE"
         self.scenario.write_text(json.dumps(value), encoding="utf-8")
         with FakeDecision() as server:
             result = self.run_driver(server.origin)
         self.assertNotEqual(result.returncode, 0)
-        self.assertIn("scenario.timeout", result.stderr)
+        self.assertIn("scenario.provider_response_loss", result.stderr)
         self.assertEqual(server.requests, [])
         self.assertFalse(self.output.exists())
 

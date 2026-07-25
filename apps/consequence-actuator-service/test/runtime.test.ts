@@ -102,6 +102,7 @@ function executeBody(
     action_digest: envelope.payload.action_digest,
     target_digest: envelope.payload.target_digest,
     operation: envelope.payload.operation,
+    nonce: envelope.payload.nonce,
     envelope_digest: digestAeb(envelope),
     effect_digest: digestAeb({
       domain: 'EP-GITHUB-ISSUE-EFFECT-v1',
@@ -151,8 +152,31 @@ function executeBody(
 
 async function harness({
   perform = async () => ({ provider_status: 200 }),
+  observeProvider = async () => ({
+    outcome: 'COMMITTED',
+    reason: 'github_exact_attempt_committed',
+    observed_at: new Date(NOW).toISOString(),
+    ...{
+      tenant_id: 'tenant:emilia',
+      request_digest: `sha256:${'1'.repeat(64)}`,
+      provider_id: 'github',
+      provider_account_id: ACTION.owner,
+      environment: 'production-smoke',
+      attempt_id: 'attempt:0000000000000001',
+      operation_id: 'operation:0000000000000001',
+      caid: CAID,
+      action_digest: ACTION_DIGEST,
+      target_digest: TARGET_DIGEST,
+      operation: ACTION.action_type,
+      nonce: Buffer.alloc(24, 7).toString('base64url'),
+      envelope_digest: `sha256:${'c'.repeat(64)}`,
+      provider_attribution_digest: `sha256:${'d'.repeat(64)}`,
+    },
+    provider_observation_digest: `sha256:${'b'.repeat(64)}`,
+  }),
 }: {
   perform?: (binding: Readonly<ConsequenceExecutionEnvelopePayload>) => Promise<unknown>;
+  observeProvider?: () => Promise<Record<string, unknown>>;
 } = {}) {
   const envelopeSigner = crypto.generateKeyPairSync('ed25519');
   const evidenceSigner = crypto.generateKeyPairSync('ed25519');
@@ -192,12 +216,7 @@ async function harness({
       privateKey: evidenceSigner.privateKey,
       keyId: 'actuator-evidence-key',
     },
-    observeProvider: async () => ({
-      outcome: 'ESCALATED',
-      reason: 'github_attempt_attribution_unavailable',
-      observed_at: new Date(NOW).toISOString(),
-      provider_observation_digest: `sha256:${'b'.repeat(64)}`,
-    }),
+    observeProvider,
     authenticateRequest: async () => true,
     readiness: async () => ({ ok: true }),
     now: () => NOW,
@@ -395,5 +414,63 @@ describe('hostile actuator execution boundary', () => {
     assert.equal(replay.status, 409);
     assert.equal(replay.body.reason, 'envelope_replayed');
     assert.equal(invocations, 1);
+  });
+
+  it('signs the sent envelope nonce and digest plus request, environment, and provider-attribution digest', async () => {
+    const fixture = await harness();
+    const payload = envelopePayload();
+    const body = executeBody(
+      signEnvelope(fixture.envelopeSigner, payload),
+      fixture.envelopeSigner,
+    );
+
+    const result = await fixture.runtime.execute(body);
+
+    assert.equal(result.status, 200);
+    assert.equal(result.body.observation.payload.nonce, payload.nonce);
+    assert.equal(
+      result.body.observation.payload.envelope_digest,
+      digestAeb(body.envelope),
+    );
+    assert.equal(
+      result.body.observation.payload.request_digest,
+      body.attribution.payload.request_digest,
+    );
+    assert.equal(
+      result.body.observation.payload.environment,
+      body.attribution.payload.environment,
+    );
+    assert.equal(
+      result.body.observation.payload.provider_attribution_digest,
+      digestAeb(body.attribution),
+    );
+  });
+
+  it('returns retryable unavailable evidence without manufacturing ESCALATED', async () => {
+    const fixture = await harness({
+      observeProvider: async () => {
+        throw new Error('transient_provider_store_unavailable');
+      },
+    });
+
+    const result = await fixture.runtime.observe({
+      action: ACTION,
+      operation: ACTION.action_type,
+      expected: {
+        operation_id: 'operation:0000000000000001',
+        caid: CAID,
+        action_digest: ACTION_DIGEST,
+        tenant_id: 'tenant:emilia',
+        provider_id: 'github',
+        provider_account_id: ACTION.owner,
+        environment: 'production-smoke',
+        attempt_id: 'attempt:0000000000000001',
+        request_digest: `sha256:${'1'.repeat(64)}`,
+      },
+    });
+
+    assert.equal(result.status, 503);
+    assert.equal(result.body.reason, 'provider_observation_unavailable');
+    assert.equal(Object.hasOwn(result.body, 'outcome'), false);
   });
 });

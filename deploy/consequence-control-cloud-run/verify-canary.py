@@ -269,6 +269,36 @@ def validate_freshness(
         raise ValueError("canary evidence is stale")
 
 
+def validate_indeterminate_initial(value: object, name: str) -> None:
+    initial = exact_keys(
+        value,
+        {"http_status", "outcome", "effect_boundary_entered"},
+        name,
+    )
+    require_equal(initial["http_status"], 202, f"{name}.http_status")
+    require_equal(initial["outcome"], "INDETERMINATE", f"{name}.outcome")
+    require_equal(
+        initial["effect_boundary_entered"],
+        True,
+        f"{name}.effect_boundary_entered",
+    )
+
+
+def validate_replay(value: object, name: str) -> None:
+    replay = exact_keys(
+        value,
+        {"http_status", "reason", "provider_invocations"},
+        name,
+    )
+    require_equal(replay["http_status"], 409, f"{name}.http_status")
+    require_equal(replay["reason"], "envelope_replayed", f"{name}.reason")
+    require_equal(
+        replay["provider_invocations"],
+        1,
+        f"{name}.provider_invocations",
+    )
+
+
 def validate(config: dict[str, str], evidence: object) -> None:
     root = exact_keys(
         evidence,
@@ -322,7 +352,11 @@ def validate(config: dict[str, str], evidence: object) -> None:
 
     checks = exact_keys(
         root["checks"],
-        {"exact_execution", "timeout", "replay", "reconciliation"},
+        {
+            "exact_execution",
+            "provider_response_loss",
+            "actuator_response_loss",
+        },
         "checks",
     )
     execution = exact_keys(
@@ -356,47 +390,123 @@ def validate(config: dict[str, str], evidence: object) -> None:
         "exact_execution.provider_reference",
     )
 
-    timeout = exact_keys(
-        checks["timeout"],
-        {"http_status", "outcome", "effect_boundary_entered"},
-        "checks.timeout",
+    provider_loss = exact_keys(
+        checks["provider_response_loss"],
+        {"initial", "replay", "reconciliation", "durable_state"},
+        "checks.provider_response_loss",
     )
-    require_equal(timeout["http_status"], 202, "timeout.http_status")
-    require_equal(timeout["outcome"], "INDETERMINATE", "timeout.outcome")
+    validate_indeterminate_initial(
+        provider_loss["initial"],
+        "provider_response_loss.initial",
+    )
+    validate_replay(
+        provider_loss["replay"],
+        "provider_response_loss.replay",
+    )
+    provider_loss_reconciliation = exact_keys(
+        provider_loss["reconciliation"],
+        {
+            "http_status",
+            "valid",
+            "outcome",
+            "reason",
+            "terminalized",
+            "reexecuted",
+        },
+        "provider_response_loss.reconciliation",
+    )
     require_equal(
-        timeout["effect_boundary_entered"],
+        provider_loss_reconciliation["http_status"],
+        503,
+        "provider_response_loss.reconciliation.http_status",
+    )
+    require_equal(
+        provider_loss_reconciliation["valid"],
+        False,
+        "provider_response_loss.reconciliation.valid",
+    )
+    require_equal(
+        provider_loss_reconciliation["outcome"],
+        "INDETERMINATE",
+        "provider_response_loss.reconciliation.outcome",
+    )
+    require_equal(
+        provider_loss_reconciliation["reason"],
+        "provider_evidence_unavailable",
+        "provider_response_loss.reconciliation.reason",
+    )
+    require_equal(
+        provider_loss_reconciliation["terminalized"],
+        False,
+        "provider_response_loss.reconciliation.terminalized",
+    )
+    require_equal(
+        provider_loss_reconciliation["reexecuted"],
+        False,
+        "provider_response_loss.reconciliation.reexecuted",
+    )
+    require_equal(
+        provider_loss["durable_state"],
+        "INDETERMINATE",
+        "provider_response_loss.durable_state",
+    )
+
+    actuator_loss = exact_keys(
+        checks["actuator_response_loss"],
+        {"initial", "replay", "reconciliation", "durable_state"},
+        "checks.actuator_response_loss",
+    )
+    validate_indeterminate_initial(
+        actuator_loss["initial"],
+        "actuator_response_loss.initial",
+    )
+    validate_replay(
+        actuator_loss["replay"],
+        "actuator_response_loss.replay",
+    )
+    actuator_loss_reconciliation = exact_keys(
+        actuator_loss["reconciliation"],
+        {
+            "http_status",
+            "valid",
+            "outcome",
+            "evidence_digest",
+            "reexecuted",
+        },
+        "actuator_response_loss.reconciliation",
+    )
+    require_equal(
+        actuator_loss_reconciliation["http_status"],
+        200,
+        "actuator_response_loss.reconciliation.http_status",
+    )
+    require_equal(
+        actuator_loss_reconciliation["valid"],
         True,
-        "timeout.effect_boundary_entered",
-    )
-
-    replay = exact_keys(
-        checks["replay"],
-        {"http_status", "reason", "provider_invocations"},
-        "checks.replay",
-    )
-    require_equal(replay["http_status"], 409, "replay.http_status")
-    require_equal(replay["reason"], "envelope_replayed", "replay.reason")
-    require_equal(replay["provider_invocations"], 1, "replay.provider_invocations")
-
-    reconciliation = exact_keys(
-        checks["reconciliation"],
-        {"http_status", "valid", "outcome", "reason", "reexecuted"},
-        "checks.reconciliation",
+        "actuator_response_loss.reconciliation.valid",
     )
     require_equal(
-        reconciliation["http_status"], 200, "reconciliation.http_status"
+        actuator_loss_reconciliation["outcome"],
+        "COMMITTED",
+        "actuator_response_loss.reconciliation.outcome",
     )
-    require_equal(reconciliation["valid"], True, "reconciliation.valid")
+    evidence_digest = actuator_loss_reconciliation["evidence_digest"]
+    if not isinstance(evidence_digest, str) or not DIGEST.fullmatch(
+        evidence_digest
+    ):
+        raise ValueError(
+            "actuator_response_loss.reconciliation.evidence_digest "
+            "must be sha256"
+        )
     require_equal(
-        reconciliation["outcome"], "ESCALATED", "reconciliation.outcome"
+        actuator_loss_reconciliation["reexecuted"],
+        False,
+        "actuator_response_loss.reconciliation.reexecuted",
     )
     require_equal(
-        reconciliation["reason"],
-        "github_attempt_attribution_unavailable",
-        "reconciliation.reason",
-    )
-    require_equal(
-        reconciliation["reexecuted"], False, "reconciliation.reexecuted"
+        actuator_loss["durable_state"],
+        "COMMITTED",
+        "actuator_response_loss.durable_state",
     )
 
 

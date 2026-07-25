@@ -30,6 +30,9 @@ const OBSERVATION_KEYS = Object.freeze([
   'action_digest',
   'target_digest',
   'operation',
+  'nonce',
+  'envelope_digest',
+  'provider_attribution_digest',
   'provider_observation_digest',
 ]);
 
@@ -105,6 +108,12 @@ export function createSignedObservationEvidence({
       || !DIGEST.test(observation.action_digest)
       || !DIGEST.test(observation.target_digest)
       || !identifier(observation.operation)
+      || typeof observation.nonce !== 'string'
+      || observation.nonce.length < 22
+      || observation.nonce.length > 128
+      || !/^[A-Za-z0-9_-]+$/.test(observation.nonce)
+      || !DIGEST.test(observation.envelope_digest)
+      || !DIGEST.test(observation.provider_attribution_digest)
       || !DIGEST.test(observation.provider_observation_digest)
       || !identifier(keyId)) {
     throw new TypeError('actuator_observation_invalid');

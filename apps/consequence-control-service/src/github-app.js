@@ -28,6 +28,8 @@ const OBSERVATION_PAYLOAD_KEYS = Object.freeze([
     '@version',
     'issuer_id',
     'tenant_id',
+    'request_digest',
+    'environment',
     'attempt_id',
     'action_digest',
     'caid',
@@ -38,6 +40,7 @@ const OBSERVATION_PAYLOAD_KEYS = Object.freeze([
     'idempotency_key',
     'nonce',
     'envelope_digest',
+    'provider_attribution_digest',
     'outcome',
     'observed_at',
     'reason',
@@ -69,6 +72,9 @@ const RECONCILIATION_OBSERVATION_KEYS = Object.freeze([
     'action_digest',
     'target_digest',
     'operation',
+    'nonce',
+    'envelope_digest',
+    'provider_attribution_digest',
     'provider_observation_digest',
     'evidence_digest',
 ]);
@@ -274,6 +280,8 @@ function validObservationPayload(value) {
     return value['@version'] === CONSEQUENCE_ACTUATOR_OBSERVATION_VERSION
         && IDENTIFIER.test(value.issuer_id)
         && IDENTIFIER.test(value.tenant_id)
+        && DIGEST.test(value.request_digest)
+        && IDENTIFIER.test(value.environment)
         && IDENTIFIER.test(value.attempt_id)
         && DIGEST.test(value.action_digest)
         && CAID.test(value.caid)
@@ -287,6 +295,7 @@ function validObservationPayload(value) {
         && value.nonce.length <= 128
         && BASE64URL.test(value.nonce)
         && DIGEST.test(value.envelope_digest)
+        && DIGEST.test(value.provider_attribution_digest)
         && ['COMMITTED', 'INDETERMINATE'].includes(value.outcome)
         && Number.isFinite(observedAt)
         && typeof value.reason === 'string'
@@ -367,11 +376,17 @@ function verifyReconciliationObservation(candidate, expected, { keyId, publicKey
         || !IDENTIFIER.test(evidence.evidence_id)
         || !Number.isFinite(observedAt)
         || new Date(observedAt).toISOString() !== evidence.observed_at
-        || !['COMMITTED', 'NOT_COMMITTED', 'ESCALATED']
+        || !['COMMITTED', 'NOT_COMMITTED']
             .includes(evidence.outcome)
         || !IDENTIFIER.test(evidence.reason)
         || evidence.target_digest !== targetDigest
         || evidence.operation !== operation
+        || typeof evidence.nonce !== 'string'
+        || evidence.nonce.length < 22
+        || evidence.nonce.length > 128
+        || !BASE64URL.test(evidence.nonce)
+        || !DIGEST.test(evidence.envelope_digest)
+        || !DIGEST.test(evidence.provider_attribution_digest)
         || !DIGEST.test(evidence.provider_observation_digest)
         || !DIGEST.test(evidence.evidence_digest)
         || evidence.evidence_digest !== reconciliationEvidenceDigest(evidence)
@@ -515,36 +530,47 @@ export function createConsequenceActuatorClient({ endpoint, authorization, tenan
         }
         const observedAtMs = Date.parse(payload.observed_at);
         if (payload.tenant_id !== expected.tenant_id
+            || payload.request_digest !== expected.request_digest
             || payload.provider_id !== provider
             || payload.provider_account_id !== expected.provider_account_id
             || payload.provider_account_id !== providerAccount
+            || payload.environment !== expected.environment
             || payload.attempt_id !== expected.attempt_id
             || payload.caid !== expected.caid
             || payload.action_digest !== expected.action_digest
             || payload.target_digest !== targetDigest
             || payload.operation !== configuredOperation
             || payload.idempotency_key !== expected.operation_id
+            || (expected.nonce !== undefined
+                && payload.nonce !== expected.nonce)
+            || (expected.envelope_digest !== undefined
+                && payload.envelope_digest !== expected.envelope_digest)
+            || (expected.provider_attribution_digest !== undefined
+                && payload.provider_attribution_digest
+                    !== expected.provider_attribution_digest)
             || !Number.isFinite(observedAtMs)
             || observedAtMs > Number(now())) {
             return { valid: false, reason: 'provider_evidence_binding_mismatch' };
         }
-        const outcome = payload.outcome === 'COMMITTED' ? 'COMMITTED' : 'ESCALATED';
+        if (payload.outcome !== 'COMMITTED') {
+            return { valid: false, reason: 'provider_evidence_unavailable' };
+        }
         const evidenceDigest = digestAeb(evidence);
         return {
             valid: true,
-            outcome,
+            outcome: 'COMMITTED',
             reason: payload.reason,
             evidence_id: `actuator-observation:${evidenceDigest.slice('sha256:'.length)}`,
             observed_at: payload.observed_at,
-            tenant_id: expected.tenant_id,
-            request_digest: expected.request_digest,
-            provider_id: expected.provider_id,
-            provider_account_id: expected.provider_account_id,
-            environment: expected.environment,
-            attempt_id: expected.attempt_id,
-            operation_id: expected.operation_id,
-            caid: expected.caid,
-            action_digest: expected.action_digest,
+            tenant_id: payload.tenant_id,
+            request_digest: payload.request_digest,
+            provider_id: payload.provider_id,
+            provider_account_id: payload.provider_account_id,
+            environment: payload.environment,
+            attempt_id: payload.attempt_id,
+            operation_id: payload.idempotency_key,
+            caid: payload.caid,
+            action_digest: payload.action_digest,
             evidence_digest: evidenceDigest,
         };
     }
@@ -611,6 +637,7 @@ export function createConsequenceActuatorClient({ endpoint, authorization, tenan
             action_digest: actionDigest,
             target_digest: targetDigest,
             operation: configuredOperation,
+            nonce: payload.nonce,
             envelope_digest: digestAeb(envelope),
             effect_digest: githubIssueEffectDigest({
                 action,
@@ -630,6 +657,7 @@ export function createConsequenceActuatorClient({ endpoint, authorization, tenan
                 value: crypto.sign(null, providerAttributionSignatureInput(attributionPayload), signingKey).toString('base64url'),
             },
         }));
+        const providerAttributionDigest = digestAeb(attribution);
         const request = {
             action,
             action_digest: actionDigest,
@@ -659,24 +687,32 @@ export function createConsequenceActuatorClient({ endpoint, authorization, tenan
             || !['COMMITTED', 'INDETERMINATE'].includes(body.outcome)) {
             throw new Error('actuator_response_refused');
         }
-        const verified = await verifyProviderEvidence({
-            evidence: body.observation,
-            expected: {
-                tenant_id: tenant,
-                request_digest: proposal.consequence.request_digest,
-                provider_id: provider,
-                provider_account_id: providerAccount,
-                environment: consequenceEnvironment,
-                attempt_id: attemptId,
-                operation_id: idempotencyKey,
-                caid,
-                action_digest: actionDigest,
-            },
-            action,
-        });
-        if (!verified.valid
-            || (body.outcome === 'COMMITTED') !== (verified.outcome === 'COMMITTED')
-            || body.ok !== (body.outcome === 'COMMITTED')) {
+        const executionObservation = verifyObservation(body.observation, observationPins);
+        const observedAtMs = executionObservation
+            ? Date.parse(executionObservation.observed_at)
+            : NaN;
+        if (!executionObservation
+            || executionObservation.tenant_id !== tenant
+            || executionObservation.request_digest
+                !== proposal.consequence.request_digest
+            || executionObservation.provider_id !== provider
+            || executionObservation.provider_account_id !== providerAccount
+            || executionObservation.environment !== consequenceEnvironment
+            || executionObservation.attempt_id !== attemptId
+            || executionObservation.caid !== caid
+            || executionObservation.action_digest !== actionDigest
+            || executionObservation.target_digest !== targetDigest
+            || executionObservation.operation !== configuredOperation
+            || executionObservation.idempotency_key !== idempotencyKey
+            || executionObservation.nonce !== payload.nonce
+            || executionObservation.envelope_digest !== digestAeb(envelope)
+            || executionObservation.provider_attribution_digest
+                !== providerAttributionDigest
+            || executionObservation.outcome !== body.outcome
+            || body.ok !== (body.outcome === 'COMMITTED')
+            || response.status !== (body.outcome === 'COMMITTED' ? 200 : 202)
+            || !Number.isFinite(observedAtMs)
+            || observedAtMs > current) {
             throw new Error('actuator_observation_refused');
         }
         if (body.outcome === 'INDETERMINATE') {

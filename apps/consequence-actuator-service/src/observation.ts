@@ -21,6 +21,8 @@ export interface ConsequenceActuatorObservationPayload {
   '@version': typeof CONSEQUENCE_ACTUATOR_OBSERVATION_VERSION;
   issuer_id: string;
   tenant_id: string;
+  request_digest: string;
+  environment: string;
   attempt_id: string;
   action_digest: string;
   caid: string;
@@ -31,6 +33,7 @@ export interface ConsequenceActuatorObservationPayload {
   idempotency_key: string;
   nonce: string;
   envelope_digest: string;
+  provider_attribution_digest: string;
   outcome: 'COMMITTED' | 'INDETERMINATE';
   observed_at: string;
   reason: string;
@@ -43,6 +46,8 @@ function validPayload(value: ConsequenceActuatorObservationPayload): boolean {
   return value?.['@version'] === CONSEQUENCE_ACTUATOR_OBSERVATION_VERSION
     && IDENTIFIER.test(value.issuer_id)
     && IDENTIFIER.test(value.tenant_id)
+    && DIGEST.test(value.request_digest)
+    && IDENTIFIER.test(value.environment)
     && IDENTIFIER.test(value.attempt_id)
     && DIGEST.test(value.action_digest)
     && CAID.test(value.caid)
@@ -56,6 +61,7 @@ function validPayload(value: ConsequenceActuatorObservationPayload): boolean {
     && value.nonce.length <= 128
     && BASE64URL.test(value.nonce)
     && DIGEST.test(value.envelope_digest)
+    && DIGEST.test(value.provider_attribution_digest)
     && ['COMMITTED', 'INDETERMINATE'].includes(value.outcome)
     && Number.isFinite(observedAt)
     && typeof value.reason === 'string'

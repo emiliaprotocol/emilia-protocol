@@ -15,8 +15,10 @@ import {
 import { createConsequenceActuatorObservationSigner } from './observation.js';
 
 const NORMAL_OPERATION = 'github.issue.update.1';
-const INDETERMINATE_OPERATION =
+const PROVIDER_RESPONSE_LOSS_OPERATION =
   'github.issue.update.indeterminate-smoke.1';
+const ACTUATOR_RESPONSE_LOSS_OPERATION =
+  'github.issue.update.actuator-response-loss-smoke.1';
 const ACTION_FIELDS = Object.freeze([
   'action_type', 'owner', 'repo', 'issue_number', 'title', 'body',
 ]);
@@ -34,10 +36,107 @@ const ACTION_DEFINITION = Object.freeze({
 
 type JsonObject = Record<string, any>;
 
+const WRITE_PROVIDER_RECORD_SQL = `
+  SELECT provider_record_digest
+  FROM consequence_actuator_private.record_provider_record(
+    $1::jsonb,
+    $2::text
+  )
+`;
+const READ_PROVIDER_RECORD_SQL = `
+  SELECT provider_record, provider_record_digest
+  FROM consequence_actuator_private.read_provider_record(
+    $1::text, $2::text, $3::text, $4::text, $5::text,
+    $6::text, $7::text, $8::text, $9::text
+  )
+`;
+
 function plainObject(value: unknown): value is JsonObject {
   if (!value || typeof value !== 'object' || Array.isArray(value)) return false;
   const prototype = Object.getPrototypeOf(value);
   return prototype === Object.prototype || prototype === null;
+}
+
+function providerRecordKey(value: JsonObject): string {
+  return JSON.stringify([
+    value.tenant_id,
+    value.provider_id,
+    value.provider_account_id,
+    value.environment,
+    value.attempt_id,
+    value.request_digest,
+  ]);
+}
+
+function createMemoryProviderRecordStore() {
+  const records = new Map<string, JsonObject>();
+  return Object.freeze({
+    async write(value: JsonObject) {
+      const binding = value?.record?.payload?.provider_attribution?.payload;
+      if (!plainObject(binding)) throw new Error('provider_record_invalid');
+      const key = providerRecordKey(binding);
+      const current = records.get(key);
+      if (current && JSON.stringify(current) !== JSON.stringify(value)) {
+        throw new Error('provider_record_conflict');
+      }
+      records.set(key, structuredClone(value));
+      return structuredClone(value);
+    },
+    async read(expected: JsonObject) {
+      const value = records.get(providerRecordKey(expected));
+      return value ? structuredClone(value) : null;
+    },
+  });
+}
+
+function createPostgresProviderRecordStore(query: (
+  text: string,
+  values: readonly unknown[],
+) => Promise<any>) {
+  return Object.freeze({
+    async write(value: JsonObject) {
+      const result = await query(WRITE_PROVIDER_RECORD_SQL, [
+        JSON.stringify(value.record),
+        value.record_digest,
+      ]);
+      if (result?.rowCount !== 1
+          || !Array.isArray(result.rows)
+          || result.rows.length !== 1
+          || result.rows[0]?.provider_record_digest !== value.record_digest) {
+        throw new Error('provider_record_acknowledgement_ambiguous');
+      }
+      return structuredClone(value);
+    },
+    async read(expected: JsonObject) {
+      const result = await query(READ_PROVIDER_RECORD_SQL, [
+        expected.tenant_id,
+        expected.provider_id,
+        expected.provider_account_id,
+        expected.environment,
+        expected.request_digest,
+        expected.attempt_id,
+        expected.operation_id,
+        expected.caid,
+        expected.action_digest,
+      ]);
+      if (result?.rowCount === 0
+          && Array.isArray(result.rows)
+          && result.rows.length === 0) {
+        return null;
+      }
+      if (result?.rowCount !== 1
+          || !Array.isArray(result.rows)
+          || result.rows.length !== 1
+          || !plainObject(result.rows[0]?.provider_record)
+          || typeof result.rows[0]?.provider_record_digest !== 'string') {
+        throw new Error('provider_record_read_ambiguous');
+      }
+      return {
+        record: structuredClone(result.rows[0].provider_record),
+        record_digest: result.rows[0].provider_record_digest,
+      };
+    },
+  });
 }
 
 function required(
@@ -240,8 +339,10 @@ export async function createProductionConsequenceActuatorConfig({
 
   let pool: any = null;
   let store: any;
+  let providerRecordStore: any;
   if (useMemoryStore) {
     store = createMemoryConsequenceActuatorStore();
+    providerRecordStore = createMemoryProviderRecordStore();
   } else {
     const ResolvedPool = PoolClass ?? (await import('pg')).default.Pool;
     pool = new ResolvedPool({
@@ -258,6 +359,9 @@ export async function createProductionConsequenceActuatorConfig({
       executorPrincipal: databasePrincipal!,
       executorPool,
     });
+    providerRecordStore = createPostgresProviderRecordStore(
+      executorPool.query,
+    );
   }
   const tokenProvider = createGitHubAppInstallationTokenProvider({
     appId: required(environment, 'EMILIA_ACTUATOR_GITHUB_APP_ID', 32),
@@ -281,10 +385,13 @@ export async function createProductionConsequenceActuatorConfig({
     attributionIssuerId: envelopeIssuerId,
     attributionKeyId: observationKeyId,
     attributionPrivateKey: observationPrivateKey,
+    providerAttributionKeyId: envelopeKeyId,
+    providerAttributionPublicKey: envelopePublicKey,
     targetDigest: configuredTargetDigest,
+    providerRecordStore,
     fetchImpl,
   });
-  const indeterminateProvider = createGitHubIssueEffectProvider({
+  const providerResponseLossProvider = createGitHubIssueEffectProvider({
     owner: providerAccountId,
     repo,
     issueNumber,
@@ -292,16 +399,34 @@ export async function createProductionConsequenceActuatorConfig({
     attributionIssuerId: envelopeIssuerId,
     attributionKeyId: observationKeyId,
     attributionPrivateKey: observationPrivateKey,
+    providerAttributionKeyId: envelopeKeyId,
+    providerAttributionPublicKey: envelopePublicKey,
     targetDigest: configuredTargetDigest,
+    providerRecordStore,
+    forceProviderResponseLossBeforeTerminalRecord: true,
+    fetchImpl,
+  });
+  const actuatorResponseLossProvider = createGitHubIssueEffectProvider({
+    owner: providerAccountId,
+    repo,
+    issueNumber,
+    tokenProvider,
+    attributionIssuerId: envelopeIssuerId,
+    attributionKeyId: observationKeyId,
+    attributionPrivateKey: observationPrivateKey,
+    providerAttributionKeyId: envelopeKeyId,
+    providerAttributionPublicKey: envelopePublicKey,
+    targetDigest: configuredTargetDigest,
+    providerRecordStore,
     forceIndeterminateAfterCommit: true,
     fetchImpl,
   });
   const perform = (provider: any) => async ({
     action,
-    attribution,
+    signedAttribution,
   }: any) => provider.effect({
     action,
-    attempt: attribution,
+    attempt: signedAttribution,
   });
 
   return {
@@ -325,7 +450,10 @@ export async function createProductionConsequenceActuatorConfig({
     }),
     operations: Object.freeze({
       [NORMAL_OPERATION]: perform(normalProvider),
-      [INDETERMINATE_OPERATION]: perform(indeterminateProvider),
+      [PROVIDER_RESPONSE_LOSS_OPERATION]:
+        perform(providerResponseLossProvider),
+      [ACTUATOR_RESPONSE_LOSS_OPERATION]:
+        perform(actuatorResponseLossProvider),
     }),
     observationSigner,
     reconciliationEvidence: {
@@ -341,7 +469,7 @@ export async function createProductionConsequenceActuatorConfig({
       });
       if (observation?.valid !== true
           || typeof observation.outcome !== 'string'
-          || !['COMMITTED', 'NOT_COMMITTED', 'ESCALATED']
+          || !['COMMITTED', 'NOT_COMMITTED']
             .includes(observation.outcome)
           || typeof observation.reason !== 'string'
           || typeof observation.observed_at !== 'string'
@@ -352,6 +480,21 @@ export async function createProductionConsequenceActuatorConfig({
         outcome: observation.outcome,
         reason: observation.reason,
         observed_at: observation.observed_at,
+        tenant_id: observation.tenant_id,
+        request_digest: observation.request_digest,
+        provider_id: observation.provider_id,
+        provider_account_id: observation.provider_account_id,
+        environment: observation.environment,
+        attempt_id: observation.attempt_id,
+        operation_id: observation.operation_id,
+        caid: observation.caid,
+        action_digest: observation.action_digest,
+        target_digest: observation.target_digest,
+        operation: observation.operation,
+        nonce: observation.nonce,
+        envelope_digest: observation.envelope_digest,
+        provider_attribution_digest:
+          observation.provider_attribution_digest,
         provider_observation_digest: observation.evidence_digest,
       };
     },

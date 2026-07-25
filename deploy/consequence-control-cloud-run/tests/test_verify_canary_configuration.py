@@ -48,6 +48,197 @@ def plain_environment(values: dict[str, str]) -> list[dict]:
     return [{"name": name, "value": value} for name, value in values.items()]
 
 
+def valid_canary_evidence(config: dict[str, str]) -> dict:
+    return {
+        "@version": "EP-CONSEQUENCE-CANARY-EVIDENCE-v1",
+        "project_id": config["PROJECT_ID"],
+        "region": config["REGION"],
+        "evidence_status": "observed",
+        "observed_at": "2026-07-25T12:00:00+00:00",
+        "expires_at": "2026-07-25T12:05:00+00:00",
+        "nonce": "bm9uY2U6MDAwMDAwMDAwMDAwMDAwMQ",
+        "actuator_revision": (
+            f"{config['ACTUATOR_SERVICE']}-{config['RELEASE_ID']}"
+        ),
+        "decision_revision": (
+            f"{config['DECISION_SERVICE']}-{config['RELEASE_ID']}"
+        ),
+        "actuator_image": config["ACTUATOR_IMAGE"],
+        "decision_image": config["DECISION_IMAGE"],
+        "checks": {
+            "exact_execution": {
+                "http_status": 200,
+                "outcome": "COMMITTED",
+                "action_digest": "sha256:" + "a" * 64,
+                "attempt_id": "attempt:exact-canary",
+                "provider_reference": (
+                    f"github:issue:{config['GITHUB_OWNER']}/"
+                    f"{config['GITHUB_REPO']}#{config['GITHUB_ISSUE_NUMBER']}"
+                ),
+            },
+            "provider_response_loss": {
+                "initial": {
+                    "http_status": 202,
+                    "outcome": "INDETERMINATE",
+                    "effect_boundary_entered": True,
+                },
+                "replay": {
+                    "http_status": 409,
+                    "reason": "envelope_replayed",
+                    "provider_invocations": 1,
+                },
+                "reconciliation": {
+                    "http_status": 503,
+                    "valid": False,
+                    "outcome": "INDETERMINATE",
+                    "reason": "provider_evidence_unavailable",
+                    "terminalized": False,
+                    "reexecuted": False,
+                },
+                "durable_state": "INDETERMINATE",
+            },
+            "actuator_response_loss": {
+                "initial": {
+                    "http_status": 202,
+                    "outcome": "INDETERMINATE",
+                    "effect_boundary_entered": True,
+                },
+                "replay": {
+                    "http_status": 409,
+                    "reason": "envelope_replayed",
+                    "provider_invocations": 1,
+                },
+                "reconciliation": {
+                    "http_status": 200,
+                    "valid": True,
+                    "outcome": "COMMITTED",
+                    "evidence_digest": "sha256:" + "b" * 64,
+                    "reexecuted": False,
+                },
+                "durable_state": "COMMITTED",
+            },
+        },
+        "signature": {
+            "algorithm": "Ed25519",
+            "key_id": config["CANARY_EVIDENCE_KEY_ID"],
+            "value": "c" * 86,
+        },
+    }
+
+
+class EvidenceContractTests(unittest.TestCase):
+    def setUp(self) -> None:
+        self.config = verify_canary.load_config(FIXTURE)
+        self.evidence = valid_canary_evidence(self.config)
+
+    def verify(self, evidence: dict | None = None) -> None:
+        with (
+            mock.patch.object(verify_canary, "verify_signature") as signature,
+            mock.patch.object(verify_canary, "validate_freshness") as freshness,
+        ):
+            verify_canary.validate(
+                self.config,
+                evidence if evidence is not None else self.evidence,
+            )
+        signature.assert_called_once()
+        freshness.assert_called_once()
+
+    def test_requires_both_corrected_uncertainty_boundaries(self) -> None:
+        self.verify()
+
+    def test_provider_response_loss_cannot_make_a_terminal_claim(self) -> None:
+        baseline = copy.deepcopy(self.evidence)
+        mutations = {
+            "outcome": lambda value: value["checks"]["provider_response_loss"][
+                "reconciliation"
+            ].__setitem__("outcome", "ESCALATED"),
+            "terminalized": lambda value: value["checks"][
+                "provider_response_loss"
+            ]["reconciliation"].__setitem__("terminalized", True),
+            "available": lambda value: value["checks"]["provider_response_loss"][
+                "reconciliation"
+            ].__setitem__("http_status", 200),
+            "durable": lambda value: value["checks"][
+                "provider_response_loss"
+            ].__setitem__("durable_state", "COMMITTED"),
+        }
+        for label, mutate in mutations.items():
+            with self.subTest(label=label):
+                candidate = copy.deepcopy(baseline)
+                mutate(candidate)
+                with self.assertRaises(ValueError):
+                    self.verify(candidate)
+
+    def test_actuator_response_loss_requires_exact_committed_convergence(self) -> None:
+        baseline = copy.deepcopy(self.evidence)
+        mutations = {
+            "outcome": lambda value: value["checks"]["actuator_response_loss"][
+                "reconciliation"
+            ].__setitem__("outcome", "ESCALATED"),
+            "invalid": lambda value: value["checks"]["actuator_response_loss"][
+                "reconciliation"
+            ].__setitem__("valid", False),
+            "unavailable": lambda value: value["checks"][
+                "actuator_response_loss"
+            ]["reconciliation"].__setitem__("http_status", 503),
+            "durable": lambda value: value["checks"][
+                "actuator_response_loss"
+            ].__setitem__("durable_state", "INDETERMINATE"),
+        }
+        for label, mutate in mutations.items():
+            with self.subTest(label=label):
+                candidate = copy.deepcopy(baseline)
+                mutate(candidate)
+                with self.assertRaises(ValueError):
+                    self.verify(candidate)
+
+    def test_exact_execution_and_each_replay_check_remain_closed(self) -> None:
+        baseline = copy.deepcopy(self.evidence)
+        mutations = {
+            "exact": lambda value: value["checks"]["exact_execution"].__setitem__(
+                "outcome",
+                "INDETERMINATE",
+            ),
+            "provider-replay": lambda value: value["checks"][
+                "provider_response_loss"
+            ]["replay"].__setitem__("reason", "aeb_consumption_conflict"),
+            "actuator-replay": lambda value: value["checks"][
+                "actuator_response_loss"
+            ]["replay"].__setitem__("provider_invocations", 2),
+        }
+        for label, mutate in mutations.items():
+            with self.subTest(label=label):
+                candidate = copy.deepcopy(baseline)
+                mutate(candidate)
+                with self.assertRaises(ValueError):
+                    self.verify(candidate)
+
+    def test_obsolete_automatic_escalation_schema_is_rejected(self) -> None:
+        candidate = copy.deepcopy(self.evidence)
+        candidate["checks"] = {
+            "exact_execution": candidate["checks"]["exact_execution"],
+            "timeout": {
+                "http_status": 202,
+                "outcome": "INDETERMINATE",
+                "effect_boundary_entered": True,
+            },
+            "replay": {
+                "http_status": 409,
+                "reason": "envelope_replayed",
+                "provider_invocations": 1,
+            },
+            "reconciliation": {
+                "http_status": 200,
+                "valid": True,
+                "outcome": "ESCALATED",
+                "reason": "github_attempt_attribution_unavailable",
+                "reexecuted": False,
+            },
+        }
+        with self.assertRaisesRegex(ValueError, "checks"):
+            self.verify(candidate)
+
+
 class LiveConfigurationTests(unittest.TestCase):
     def setUp(self) -> None:
         self.config = verify_canary.load_config(FIXTURE)

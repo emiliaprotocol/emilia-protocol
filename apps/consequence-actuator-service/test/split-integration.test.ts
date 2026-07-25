@@ -60,6 +60,7 @@ it('executes and reconciles across the authenticated split deployment boundary',
   const envelopeKeys = crypto.generateKeyPairSync('ed25519');
   const evidenceKeys = crypto.generateKeyPairSync('ed25519');
   const now = Date.parse('2026-07-25T12:00:00.000Z');
+  let durableProviderObservation: Record<string, unknown> | null = null;
   const runtime = createConsequenceActuatorRuntime({
     testOnly: true,
     tenantId: 'tenant:emilia',
@@ -81,10 +82,39 @@ it('executes and reconciles across the authenticated split deployment boundary',
       };
     },
     operations: {
-      [ACTION.action_type]: async () => ({
-        provider_status: 200,
-        provider_reference: 'github:issue:emiliaprotocol/gate-smoke-target#1',
-      }),
+      [ACTION.action_type]: async ({
+        attribution,
+        providerAttributionDigest,
+      }) => {
+        durableProviderObservation = {
+          outcome: 'COMMITTED',
+          reason: 'github_exact_attempt_committed',
+          observed_at: new Date(now).toISOString(),
+          tenant_id: attribution.tenant_id,
+          request_digest: attribution.request_digest,
+          provider_id: attribution.provider_id,
+          provider_account_id: attribution.provider_account_id,
+          environment: attribution.environment,
+          attempt_id: attribution.attempt_id,
+          operation_id: attribution.operation_id,
+          caid: attribution.caid,
+          action_digest: attribution.action_digest,
+          target_digest: attribution.target_digest,
+          operation: attribution.operation,
+          nonce: attribution.nonce,
+          envelope_digest: attribution.envelope_digest,
+          provider_attribution_digest: providerAttributionDigest,
+          provider_observation_digest: digestAeb({
+            provider_status: 200,
+            provider_attribution_digest: providerAttributionDigest,
+          }),
+        };
+        return {
+          provider_status: 200,
+          provider_reference:
+            'github:issue:emiliaprotocol/gate-smoke-target#1',
+        };
+      },
     },
     observationSigner: createConsequenceActuatorObservationSigner({
       issuerId: 'consequence-actuator',
@@ -95,12 +125,12 @@ it('executes and reconciles across the authenticated split deployment boundary',
       privateKey: evidenceKeys.privateKey,
       keyId: 'actuator-evidence-key',
     },
-    observeProvider: async () => ({
-      outcome: 'ESCALATED',
-      reason: 'github_attempt_attribution_unavailable',
-      observed_at: new Date(now).toISOString(),
-      provider_observation_digest: `sha256:${'b'.repeat(64)}`,
-    }),
+    observeProvider: async () => {
+      if (!durableProviderObservation) {
+        throw new Error('provider observation unavailable');
+      }
+      return structuredClone(durableProviderObservation);
+    },
     authenticateRequest: async (authorization) => (
       authorization === 'Bearer split-test-token-000000000000000000000000000'
     ),
@@ -183,6 +213,8 @@ it('executes and reconciles across the authenticated split deployment boundary',
     action: ACTION,
   });
   assert.equal(reconciled.valid, true);
-  assert.equal(reconciled.outcome, 'ESCALATED');
+  assert.equal(reconciled.outcome, 'COMMITTED');
   assert.equal(reconciled.attempt_id, attempt.attempt_id);
+  assert.equal(reconciled.request_digest, attempt.request_digest);
+  assert.equal(reconciled.environment, attempt.environment);
 });

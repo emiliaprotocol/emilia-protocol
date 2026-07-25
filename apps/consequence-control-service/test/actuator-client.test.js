@@ -92,6 +92,23 @@ function signObservationEvidence({ observation, privateKey, keyId }) {
   };
 }
 
+function signActuatorResponseObservation({ payload, privateKey, keyId }) {
+  const signatureInput = Buffer.concat([
+    Buffer.from('EMILIA-CONSEQUENCE-ACTUATOR-OBSERVATION-v1', 'utf8'),
+    Buffer.from([0]),
+    Buffer.from(digestAeb(payload), 'utf8'),
+  ]);
+  return {
+    '@version': 'EP-CONSEQUENCE-ACTUATOR-OBSERVATION-v1',
+    payload,
+    signature: {
+      algorithm: 'Ed25519',
+      key_id: keyId,
+      value: crypto.sign(null, signatureInput, privateKey).toString('base64url'),
+    },
+  };
+}
+
 function observation(evidenceSigner, overrides = {}) {
   return signObservationEvidence({
     observation: {
@@ -103,6 +120,9 @@ function observation(evidenceSigner, overrides = {}) {
       ...EXPECTED,
       target_digest: TARGET_DIGEST,
       operation: ACTION.action_type,
+      nonce: Buffer.alloc(24, 7).toString('base64url'),
+      envelope_digest: `sha256:${'c'.repeat(64)}`,
+      provider_attribution_digest: `sha256:${'d'.repeat(64)}`,
       provider_observation_digest: `sha256:${'b'.repeat(64)}`,
       ...overrides,
     },
@@ -123,6 +143,7 @@ function client(fetchImpl, {
       return IDENTITY_TOKEN;
     },
   },
+  randomBytes = () => Buffer.alloc(24, 7),
 } = {}) {
   return {
     envelopeSigner,
@@ -149,7 +170,7 @@ function client(fetchImpl, {
       requestTimeoutMs: 1000,
       fetchImpl,
       now: () => NOW,
-      randomBytes: () => Buffer.alloc(24, 7),
+      randomBytes,
       allowInsecureLoopback,
     }),
   };
@@ -204,6 +225,10 @@ describe('decision-plane actuator client', () => {
     assert.equal(
       captured.body.attribution.payload.envelope_digest,
       digestAeb(captured.body.envelope),
+    );
+    assert.equal(
+      captured.body.attribution.payload.nonce,
+      captured.body.envelope.payload.nonce,
     );
     assert.equal(
       captured.body.attribution.payload.attempt_id,
@@ -278,6 +303,177 @@ describe('decision-plane actuator client', () => {
       assert.equal(verified.valid, false);
       assert.equal(verified.reason, 'provider_evidence_binding_mismatch');
     }
+  });
+
+  it('refuses a signed observation replayed from an older execution envelope', async () => {
+    const evidenceSigner = crypto.generateKeyPairSync('ed25519');
+    let oldObservation;
+    let nonceByte = 6;
+    const fixture = client(async (_url, options) => {
+      const request = JSON.parse(options.body);
+      if (!oldObservation) {
+        const attributionDigest = digestAeb(request.attribution);
+        oldObservation = signActuatorResponseObservation({
+          payload: {
+            '@version': 'EP-CONSEQUENCE-ACTUATOR-OBSERVATION-v1',
+            issuer_id: 'consequence-actuator',
+            tenant_id: ATTEMPT.tenant_id,
+            request_digest: ATTEMPT.request_digest,
+            environment: ATTEMPT.environment,
+            attempt_id: ATTEMPT.attempt_id,
+            action_digest: ACTION_DIGEST,
+            caid: CAID,
+            provider_id: ATTEMPT.provider_id,
+            provider_account_id: ATTEMPT.provider_account_id,
+            target_digest: TARGET_DIGEST,
+            operation: ACTION.action_type,
+            idempotency_key: PROPOSAL.operation_id,
+            nonce: request.envelope.payload.nonce,
+            envelope_digest: digestAeb(request.envelope),
+            provider_attribution_digest: attributionDigest,
+            outcome: 'COMMITTED',
+            observed_at: new Date(NOW).toISOString(),
+            reason: 'provider_committed',
+            provider_reference: 'github:issue:emiliaprotocol/gate-smoke-target#1',
+            provider_result_digest: `sha256:${'f'.repeat(64)}`,
+          },
+          privateKey: evidenceSigner.privateKey,
+          keyId: 'actuator-evidence-key',
+        });
+      }
+      return response({
+        '@version': 'EP-CONSEQUENCE-ACTUATOR-RESPONSE-v1',
+        ok: true,
+        outcome: 'COMMITTED',
+        observation: oldObservation,
+      });
+    }, {
+      evidenceSigner,
+      randomBytes: () => Buffer.alloc(24, ++nonceByte),
+    });
+    const input = {
+      action: ACTION,
+      proposal: {
+        ...PROPOSAL,
+        consequence: {
+          ...PROPOSAL.consequence,
+          provider_id: ATTEMPT.provider_id,
+          environment: ATTEMPT.environment,
+          request_digest: ATTEMPT.request_digest,
+        },
+      },
+      authorization: { allow: true },
+      attempt: ATTEMPT,
+    };
+
+    const first = await fixture.value.effect(input);
+    assert.equal(first.provider_status, 200);
+    await assert.rejects(
+      fixture.value.effect(input),
+      /actuator_observation_refused/,
+    );
+  });
+
+  it('keeps a signed indeterminate actuator observation nonterminal', async () => {
+    const evidenceSigner = crypto.generateKeyPairSync('ed25519');
+    const fixture = client(async () => {
+      throw new Error('provider observation must not be called');
+    }, { evidenceSigner });
+    const evidence = signActuatorResponseObservation({
+      payload: {
+        '@version': 'EP-CONSEQUENCE-ACTUATOR-OBSERVATION-v1',
+        issuer_id: 'consequence-actuator',
+        tenant_id: ATTEMPT.tenant_id,
+        request_digest: ATTEMPT.request_digest,
+        environment: ATTEMPT.environment,
+        attempt_id: ATTEMPT.attempt_id,
+        action_digest: ACTION_DIGEST,
+        caid: CAID,
+        provider_id: ATTEMPT.provider_id,
+        provider_account_id: ATTEMPT.provider_account_id,
+        target_digest: TARGET_DIGEST,
+        operation: ACTION.action_type,
+        idempotency_key: PROPOSAL.operation_id,
+        nonce: Buffer.alloc(24, 7).toString('base64url'),
+        envelope_digest: `sha256:${'c'.repeat(64)}`,
+        provider_attribution_digest: `sha256:${'d'.repeat(64)}`,
+        outcome: 'INDETERMINATE',
+        observed_at: new Date(NOW).toISOString(),
+        reason: 'provider_outcome_indeterminate',
+        provider_reference: 'github:issue:emiliaprotocol/gate-smoke-target#1',
+        provider_result_digest: null,
+      },
+      privateKey: evidenceSigner.privateKey,
+      keyId: 'actuator-evidence-key',
+    });
+
+    const verified = await fixture.value.verifyProviderEvidence({
+      evidence,
+      expected: EXPECTED,
+      action: ACTION,
+    });
+
+    assert.equal(verified.valid, false);
+    assert.equal(verified.reason, 'provider_evidence_unavailable');
+  });
+
+  it('accepts a bound 202 transport response only as nonterminal indeterminate', async () => {
+    const evidenceSigner = crypto.generateKeyPairSync('ed25519');
+    const fixture = client(async (_url, options) => {
+      const request = JSON.parse(options.body);
+      const providerAttributionDigest = digestAeb(request.attribution);
+      return response({
+        '@version': 'EP-CONSEQUENCE-ACTUATOR-RESPONSE-v1',
+        ok: false,
+        outcome: 'INDETERMINATE',
+        observation: signActuatorResponseObservation({
+          payload: {
+            '@version': 'EP-CONSEQUENCE-ACTUATOR-OBSERVATION-v1',
+            issuer_id: 'consequence-actuator',
+            tenant_id: ATTEMPT.tenant_id,
+            request_digest: ATTEMPT.request_digest,
+            environment: ATTEMPT.environment,
+            attempt_id: ATTEMPT.attempt_id,
+            action_digest: ACTION_DIGEST,
+            caid: CAID,
+            provider_id: ATTEMPT.provider_id,
+            provider_account_id: ATTEMPT.provider_account_id,
+            target_digest: TARGET_DIGEST,
+            operation: ACTION.action_type,
+            idempotency_key: PROPOSAL.operation_id,
+            nonce: request.envelope.payload.nonce,
+            envelope_digest: digestAeb(request.envelope),
+            provider_attribution_digest: providerAttributionDigest,
+            outcome: 'INDETERMINATE',
+            observed_at: new Date(NOW).toISOString(),
+            reason: 'provider_outcome_indeterminate',
+            provider_reference:
+              'github:issue:emiliaprotocol/gate-smoke-target#1',
+            provider_result_digest: null,
+          },
+          privateKey: evidenceSigner.privateKey,
+          keyId: 'actuator-evidence-key',
+        }),
+      }, 202);
+    }, { evidenceSigner });
+
+    await assert.rejects(
+      fixture.value.effect({
+        action: ACTION,
+        proposal: {
+          ...PROPOSAL,
+          consequence: {
+            ...PROPOSAL.consequence,
+            provider_id: ATTEMPT.provider_id,
+            environment: ATTEMPT.environment,
+            request_digest: ATTEMPT.request_digest,
+          },
+        },
+        authorization: { allow: true },
+        attempt: ATTEMPT,
+      }),
+      /actuator_provider_outcome_indeterminate/,
+    );
   });
 
   it('refuses redirected actuator responses and never follows them', async () => {

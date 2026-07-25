@@ -23,7 +23,10 @@ from typing import Any
 
 VERSION = "EP-CONSEQUENCE-CANARY-EVIDENCE-v1"
 NORMAL_PROFILE = "github.issue.update.v1"
-TIMEOUT_PROFILE = "github.issue.update.indeterminate-smoke.v1"
+PROVIDER_RESPONSE_LOSS_PROFILE = "github.issue.update.indeterminate-smoke.v1"
+ACTUATOR_RESPONSE_LOSS_PROFILE = (
+    "github.issue.update.actuator-response-loss-smoke.v1"
+)
 OBSERVATION_SENTINEL = {"kind": "consequence-actuator-observation-v1"}
 MAX_FILE_BYTES = 2 * 1024 * 1024
 MAX_HTTP_BYTES = 2 * 1024 * 1024
@@ -345,7 +348,11 @@ def load_scenario(
 ) -> dict[str, dict[str, Any]]:
     root = exact_keys(
         load_json_file(path, "scenario"),
-        {"exact_execution", "timeout"},
+        {
+            "exact_execution",
+            "provider_response_loss",
+            "actuator_response_loss",
+        },
         "scenario",
     )
     return {
@@ -355,10 +362,16 @@ def load_scenario(
             NORMAL_PROFILE,
             config,
         ),
-        "timeout": validate_request(
-            root["timeout"],
-            "scenario.timeout",
-            TIMEOUT_PROFILE,
+        "provider_response_loss": validate_request(
+            root["provider_response_loss"],
+            "scenario.provider_response_loss",
+            PROVIDER_RESPONSE_LOSS_PROFILE,
+            config,
+        ),
+        "actuator_response_loss": validate_request(
+            root["actuator_response_loss"],
+            "scenario.actuator_response_loss",
+            ACTUATOR_RESPONSE_LOSS_PROFILE,
             config,
         ),
     }
@@ -747,30 +760,31 @@ def validate_exact_execution(
     }
 
 
-def validate_timeout(
+def validate_indeterminate_execution(
     status: int,
     body: dict[str, Any],
     request: dict[str, Any],
+    name: str,
 ) -> dict[str, Any]:
-    require_equal(status, 202, "timeout HTTP status")
-    require_equal(body.get("status"), "indeterminate", "timeout status")
-    require_equal(body.get("retry_allowed"), False, "timeout retry_allowed")
-    error = object_value(body.get("error"), "timeout error")
+    require_equal(status, 202, f"{name} HTTP status")
+    require_equal(body.get("status"), "indeterminate", f"{name} status")
+    require_equal(body.get("retry_allowed"), False, f"{name} retry_allowed")
+    error = object_value(body.get("error"), f"{name} error")
     require_equal(
         error.get("code"),
         "provider_outcome_indeterminate",
-        "timeout error.code",
+        f"{name} error.code",
     )
-    attempt = attempt_binding(body.get("attempt"), "timeout attempt", full=False)
-    proposal = object_value(request["proposal"], "timeout proposal")
+    attempt = attempt_binding(body.get("attempt"), f"{name} attempt", full=False)
+    proposal = object_value(request["proposal"], f"{name} proposal")
     consequence = object_value(
         proposal.get("consequence"),
-        "timeout proposal consequence",
+        f"{name} proposal consequence",
     )
     require_equal(
         attempt.get("tenant_id"),
         consequence.get("tenant_id"),
-        "timeout attempt tenant binding",
+        f"{name} attempt tenant binding",
     )
     return attempt
 
@@ -778,6 +792,8 @@ def validate_timeout(
 def lookup_attempt(
     client: JsonClient,
     scenario: dict[str, Any],
+    expected_state: str,
+    name: str,
 ) -> dict[str, Any]:
     proposal_id = scenario["proposal_id"]
     request = scenario["request"]
@@ -785,17 +801,17 @@ def lookup_attempt(
         proposal_path(proposal_id, "attempts/lookup"),
         {"proposal": request["proposal"]},
     )
-    require_equal(status, 200, "attempt lookup HTTP status")
-    require_equal(body.get("status"), "found", "attempt lookup status")
-    require_equal(body.get("state"), "INDETERMINATE", "attempt lookup state")
+    require_equal(status, 200, f"{name} attempt lookup HTTP status")
+    require_equal(body.get("status"), "found", f"{name} attempt lookup status")
+    require_equal(body.get("state"), expected_state, f"{name} attempt lookup state")
     attempt = attempt_binding(
         body.get("attempt"),
-        "attempt lookup binding",
+        f"{name} attempt lookup binding",
         full=True,
     )
     proposal_consequence = object_value(
         request["proposal"].get("consequence"),
-        "timeout proposal consequence",
+        f"{name} proposal consequence",
     )
     for field in (
         "tenant_id",
@@ -807,7 +823,7 @@ def lookup_attempt(
         require_equal(
             attempt.get(field),
             proposal_consequence.get(field),
-            f"attempt lookup proposal binding.{field}",
+            f"{name} attempt lookup proposal binding.{field}",
         )
     return attempt
 
@@ -816,32 +832,37 @@ def validate_replay(
     status: int,
     body: dict[str, Any],
     expected_attempt: dict[str, Any],
+    name: str,
 ) -> dict[str, Any]:
-    require_equal(status, 409, "replay HTTP status")
-    require_equal(body.get("status"), "refused", "replay status")
-    result = object_value(body.get("result"), "replay result")
-    require_equal(result.get("ok"), False, "replay result.ok")
+    require_equal(status, 409, f"{name} replay HTTP status")
+    require_equal(body.get("status"), "refused", f"{name} replay status")
+    result = object_value(body.get("result"), f"{name} replay result")
+    require_equal(result.get("ok"), False, f"{name} replay result.ok")
     require_equal(
         result.get("reason"),
         "envelope_replayed",
-        "replay reason (must be envelope_replayed)",
+        f"{name} replay reason (must be envelope_replayed)",
     )
-    require_equal(result.get("invoked"), False, "replay invoked")
+    require_equal(result.get("invoked"), False, f"{name} replay invoked")
     consequence = object_value(
         result.get("consequence"),
-        "replay consequence",
+        f"{name} replay consequence",
     )
     require_equal(
         consequence.get("state"),
         "INDETERMINATE",
-        "replay consequence.state",
+        f"{name} replay consequence.state",
     )
     attempt = attempt_binding(
         consequence.get("attempt"),
-        "replay attempt",
+        f"{name} replay attempt",
         full=True,
     )
-    assert_attempt_equal(attempt, expected_attempt, "replay attempt binding")
+    assert_attempt_equal(
+        attempt,
+        expected_attempt,
+        f"{name} replay attempt binding",
+    )
     return {
         "http_status": status,
         "reason": result["reason"],
@@ -851,49 +872,98 @@ def validate_replay(
     }
 
 
-def validate_reconciliation(
+def validate_unavailable_reconciliation(
+    status: int,
+    body: dict[str, Any],
+) -> dict[str, Any]:
+    require_equal(status, 503, "provider-response-loss reconciliation HTTP status")
+    require_equal(
+        body.get("status"),
+        "refused",
+        "provider-response-loss reconciliation status",
+    )
+    result = object_value(
+        body.get("result"),
+        "provider-response-loss reconciliation result",
+    )
+    require_equal(
+        result.get("ok"),
+        False,
+        "provider-response-loss reconciliation result.ok",
+    )
+    require_equal(
+        result.get("reason"),
+        "provider_evidence_unavailable",
+        "provider-response-loss reconciliation reason",
+    )
+    return {
+        "http_status": status,
+        "valid": False,
+        "outcome": "INDETERMINATE",
+        "reason": result["reason"],
+        "terminalized": False,
+        "reexecuted": False,
+    }
+
+
+def validate_committed_reconciliation(
     status: int,
     body: dict[str, Any],
     expected_attempt: dict[str, Any],
 ) -> dict[str, Any]:
-    require_equal(status, 200, "reconciliation HTTP status")
-    require_equal(body.get("status"), "reconciled", "reconciliation status")
-    result = object_value(body.get("result"), "reconciliation result")
-    require_equal(result.get("ok"), True, "reconciliation result.ok")
-    require_equal(result.get("state"), "ESCALATED", "reconciliation state")
-    require_equal(result.get("outcome"), "ESCALATED", "reconciliation outcome")
+    require_equal(status, 200, "actuator-response-loss reconciliation HTTP status")
     require_equal(
-        result.get("reason"),
-        "github_attempt_attribution_unavailable",
-        "reconciliation reason "
-        "(must be github_attempt_attribution_unavailable)",
+        body.get("status"),
+        "reconciled",
+        "actuator-response-loss reconciliation status",
     )
-    require_equal(result.get("reexecuted"), False, "reconciliation reexecuted")
+    result = object_value(
+        body.get("result"),
+        "actuator-response-loss reconciliation result",
+    )
+    require_equal(
+        result.get("ok"),
+        True,
+        "actuator-response-loss reconciliation result.ok",
+    )
+    require_equal(
+        result.get("state"),
+        "COMMITTED",
+        "actuator-response-loss reconciliation state",
+    )
+    require_equal(
+        result.get("outcome"),
+        "COMMITTED",
+        "actuator-response-loss reconciliation outcome",
+    )
     consequence = object_value(
         result.get("consequence"),
-        "reconciliation consequence",
+        "actuator-response-loss reconciliation consequence",
     )
     require_equal(
         consequence.get("state"),
-        "ESCALATED",
-        "reconciliation consequence.state",
+        "COMMITTED",
+        "actuator-response-loss reconciliation consequence.state",
     )
     attempt = attempt_binding(
         consequence.get("attempt"),
-        "reconciliation attempt",
+        "actuator-response-loss reconciliation attempt",
         full=True,
     )
     assert_attempt_equal(
         attempt,
         expected_attempt,
-        "reconciliation attempt binding",
+        "actuator-response-loss reconciliation attempt binding",
     )
     return {
         "http_status": status,
         "valid": result["ok"],
         "outcome": result["outcome"],
-        "reason": result["reason"],
-        "reexecuted": result["reexecuted"],
+        "evidence_digest": require_digest(
+            result.get("evidence_digest"),
+            "actuator-response-loss reconciliation evidence_digest",
+        ),
+        "reexecuted": False,
     }
 
 
@@ -914,70 +984,174 @@ def run_workflow(
         config,
     )
 
-    timeout = scenario["timeout"]
-    timeout_status, timeout_body = client.post(
-        proposal_path(timeout["proposal_id"], "execute"),
-        timeout["request"],
+    provider_loss = scenario["provider_response_loss"]
+    provider_loss_status, provider_loss_body = client.post(
+        proposal_path(provider_loss["proposal_id"], "execute"),
+        provider_loss["request"],
     )
-    timeout_attempt = validate_timeout(
-        timeout_status,
-        timeout_body,
-        timeout["request"],
+    provider_loss_attempt = validate_indeterminate_execution(
+        provider_loss_status,
+        provider_loss_body,
+        provider_loss["request"],
+        "provider response loss",
     )
-    durable_attempt = lookup_attempt(client, timeout)
+    provider_loss_durable = lookup_attempt(
+        client,
+        provider_loss,
+        "INDETERMINATE",
+        "provider response loss",
+    )
     require_equal(
-        timeout_attempt.get("tenant_id"),
-        durable_attempt.get("tenant_id"),
-        "timeout durable tenant binding",
+        provider_loss_attempt.get("tenant_id"),
+        provider_loss_durable.get("tenant_id"),
+        "provider response loss durable tenant binding",
     )
     require_equal(
-        timeout_attempt.get("attempt_id"),
-        durable_attempt.get("attempt_id"),
-        "timeout durable attempt binding",
+        provider_loss_attempt.get("attempt_id"),
+        provider_loss_durable.get("attempt_id"),
+        "provider response loss durable attempt binding",
     )
-
-    replay_status, replay_body = client.post(
-        proposal_path(timeout["proposal_id"], "execute"),
-        timeout["request"],
+    provider_loss_replay_status, provider_loss_replay_body = client.post(
+        proposal_path(provider_loss["proposal_id"], "execute"),
+        provider_loss["request"],
     )
-    replay_check = validate_replay(
-        replay_status,
-        replay_body,
-        durable_attempt,
+    provider_loss_replay = validate_replay(
+        provider_loss_replay_status,
+        provider_loss_replay_body,
+        provider_loss_durable,
+        "provider response loss",
     )
-    after_replay = lookup_attempt(client, timeout)
+    provider_loss_after_replay = lookup_attempt(
+        client,
+        provider_loss,
+        "INDETERMINATE",
+        "provider response loss after replay",
+    )
     assert_attempt_equal(
-        after_replay,
-        durable_attempt,
-        "post-replay durable attempt",
+        provider_loss_after_replay,
+        provider_loss_durable,
+        "provider response loss post-replay durable attempt",
+    )
+    provider_loss_request = provider_loss["request"]
+    provider_loss_reconciliation_request = {
+        "proposal": provider_loss_request["proposal"],
+        "evaluation": provider_loss_request["evaluation"],
+        "attempt": provider_loss_durable,
+        "provider_evidence": OBSERVATION_SENTINEL,
+        "evidence": provider_loss_request["evidence"],
+    }
+    provider_loss_reconciliation_status, provider_loss_reconciliation_body = (
+        client.post(
+            proposal_path(provider_loss["proposal_id"], "reconcile"),
+            provider_loss_reconciliation_request,
+        )
+    )
+    provider_loss_reconciliation = validate_unavailable_reconciliation(
+        provider_loss_reconciliation_status,
+        provider_loss_reconciliation_body,
+    )
+    provider_loss_after_reconciliation = lookup_attempt(
+        client,
+        provider_loss,
+        "INDETERMINATE",
+        "provider response loss after unavailable reconciliation",
+    )
+    assert_attempt_equal(
+        provider_loss_after_reconciliation,
+        provider_loss_durable,
+        "provider response loss post-reconciliation durable attempt",
     )
 
-    request = timeout["request"]
-    reconciliation_request = {
-        "proposal": request["proposal"],
-        "evaluation": request["evaluation"],
-        "attempt": durable_attempt,
+    actuator_loss = scenario["actuator_response_loss"]
+    actuator_loss_status, actuator_loss_body = client.post(
+        proposal_path(actuator_loss["proposal_id"], "execute"),
+        actuator_loss["request"],
+    )
+    actuator_loss_attempt = validate_indeterminate_execution(
+        actuator_loss_status,
+        actuator_loss_body,
+        actuator_loss["request"],
+        "actuator response loss",
+    )
+    actuator_loss_durable = lookup_attempt(
+        client,
+        actuator_loss,
+        "INDETERMINATE",
+        "actuator response loss",
+    )
+    require_equal(
+        actuator_loss_attempt.get("tenant_id"),
+        actuator_loss_durable.get("tenant_id"),
+        "actuator response loss durable tenant binding",
+    )
+    require_equal(
+        actuator_loss_attempt.get("attempt_id"),
+        actuator_loss_durable.get("attempt_id"),
+        "actuator response loss durable attempt binding",
+    )
+    actuator_loss_replay_status, actuator_loss_replay_body = client.post(
+        proposal_path(actuator_loss["proposal_id"], "execute"),
+        actuator_loss["request"],
+    )
+    actuator_loss_replay = validate_replay(
+        actuator_loss_replay_status,
+        actuator_loss_replay_body,
+        actuator_loss_durable,
+        "actuator response loss",
+    )
+    actuator_loss_request = actuator_loss["request"]
+    actuator_loss_reconciliation_request = {
+        "proposal": actuator_loss_request["proposal"],
+        "evaluation": actuator_loss_request["evaluation"],
+        "attempt": actuator_loss_durable,
         "provider_evidence": OBSERVATION_SENTINEL,
-        "evidence": request["evidence"],
+        "evidence": actuator_loss_request["evidence"],
     }
-    reconciliation_status, reconciliation_body = client.post(
-        proposal_path(timeout["proposal_id"], "reconcile"),
-        reconciliation_request,
+    actuator_loss_reconciliation_status, actuator_loss_reconciliation_body = (
+        client.post(
+            proposal_path(actuator_loss["proposal_id"], "reconcile"),
+            actuator_loss_reconciliation_request,
+        )
     )
-    reconciliation_check = validate_reconciliation(
-        reconciliation_status,
-        reconciliation_body,
-        durable_attempt,
+    actuator_loss_reconciliation = validate_committed_reconciliation(
+        actuator_loss_reconciliation_status,
+        actuator_loss_reconciliation_body,
+        actuator_loss_durable,
     )
+    actuator_loss_after_reconciliation = lookup_attempt(
+        client,
+        actuator_loss,
+        "COMMITTED",
+        "actuator response loss after reconciliation",
+    )
+    assert_attempt_equal(
+        actuator_loss_after_reconciliation,
+        actuator_loss_durable,
+        "actuator response loss committed durable attempt",
+    )
+
     return {
         "exact_execution": exact_check,
-        "timeout": {
-            "http_status": timeout_status,
-            "outcome": "INDETERMINATE",
-            "effect_boundary_entered": True,
+        "provider_response_loss": {
+            "initial": {
+                "http_status": provider_loss_status,
+                "outcome": "INDETERMINATE",
+                "effect_boundary_entered": True,
+            },
+            "replay": provider_loss_replay,
+            "reconciliation": provider_loss_reconciliation,
+            "durable_state": "INDETERMINATE",
         },
-        "replay": replay_check,
-        "reconciliation": reconciliation_check,
+        "actuator_response_loss": {
+            "initial": {
+                "http_status": actuator_loss_status,
+                "outcome": "INDETERMINATE",
+                "effect_boundary_entered": True,
+            },
+            "replay": actuator_loss_replay,
+            "reconciliation": actuator_loss_reconciliation,
+            "durable_state": "COMMITTED",
+        },
     }
 
 

@@ -14,9 +14,11 @@ import { createConsequenceActuatorClient, createGoogleCloudIdentityTokenProvider
 const BRIDGE_ADAPTER_ID = 'bridge:native';
 const BRIDGE_ADAPTER_VERSION = '1';
 const NORMAL_PROFILE = 'github.issue.update.v1';
-const INDETERMINATE_PROFILE = 'github.issue.update.indeterminate-smoke.v1';
+const PROVIDER_RESPONSE_LOSS_PROFILE = 'github.issue.update.indeterminate-smoke.v1';
+const ACTUATOR_RESPONSE_LOSS_PROFILE = 'github.issue.update.actuator-response-loss-smoke.v1';
 const ACTION_TYPE = 'github.issue.update.1';
-const INDETERMINATE_OPERATION = 'github.issue.update.indeterminate-smoke.1';
+const PROVIDER_RESPONSE_LOSS_OPERATION = 'github.issue.update.indeterminate-smoke.1';
+const ACTUATOR_RESPONSE_LOSS_OPERATION = 'github.issue.update.actuator-response-loss-smoke.1';
 const ACTION_FIELDS = Object.freeze([
     'action_type', 'owner', 'repo', 'issue_number', 'title', 'body',
 ]);
@@ -380,9 +382,13 @@ export async function createProductionConsequenceControlConfig({ environment = p
         ...actuatorClientOptions,
         operation: ACTION_TYPE,
     });
-    const indeterminateActuatorClient = createConsequenceActuatorClient({
+    const providerResponseLossActuatorClient = createConsequenceActuatorClient({
         ...actuatorClientOptions,
-        operation: INDETERMINATE_OPERATION,
+        operation: PROVIDER_RESPONSE_LOSS_OPERATION,
+    });
+    const actuatorResponseLossActuatorClient = createConsequenceActuatorClient({
+        ...actuatorClientOptions,
+        operation: ACTUATOR_RESPONSE_LOSS_OPERATION,
     });
     const adapter = createAebNativeVerificationAttestationAdapter({
         id: BRIDGE_ADAPTER_ID,
@@ -450,7 +456,8 @@ export async function createProductionConsequenceControlConfig({ environment = p
         },
         profiles: {
             [NORMAL_PROFILE]: profile(NORMAL_PROFILE),
-            [INDETERMINATE_PROFILE]: profile(INDETERMINATE_PROFILE),
+            [PROVIDER_RESPONSE_LOSS_PROFILE]: profile(PROVIDER_RESPONSE_LOSS_PROFILE),
+            [ACTUATOR_RESPONSE_LOSS_PROFILE]: profile(ACTUATOR_RESPONSE_LOSS_PROFILE),
         },
         aeb: {
             config: aebConfig,
@@ -467,9 +474,11 @@ export async function createProductionConsequenceControlConfig({ environment = p
             statusVerifier,
             verify_provider_evidence: ({ evidence, expected }) => {
                 const { proposal } = contextValue(storage);
-                const client = proposal.profile_id === INDETERMINATE_PROFILE
-                    ? indeterminateActuatorClient
-                    : normalActuatorClient;
+                const client = proposal.profile_id === PROVIDER_RESPONSE_LOSS_PROFILE
+                    ? providerResponseLossActuatorClient
+                    : proposal.profile_id === ACTUATOR_RESPONSE_LOSS_PROFILE
+                        ? actuatorResponseLossActuatorClient
+                        : normalActuatorClient;
                 return client.verifyProviderEvidence({
                     evidence,
                     expected,
@@ -485,7 +494,11 @@ export async function createProductionConsequenceControlConfig({ environment = p
         authenticateRequest,
         authorizeProfile: async (candidate, profileId, action) => {
             if (candidate?.id !== principalId
-                || ![NORMAL_PROFILE, INDETERMINATE_PROFILE].includes(profileId))
+                || ![
+                    NORMAL_PROFILE,
+                    PROVIDER_RESPONSE_LOSS_PROFILE,
+                    ACTUATOR_RESPONSE_LOSS_PROFILE,
+                ].includes(profileId))
                 return false;
             try {
                 const normalized = canonicalizeAction(action);
@@ -497,11 +510,13 @@ export async function createProductionConsequenceControlConfig({ environment = p
                 return false;
             }
         },
-        effectForProfile: async ({ profile_id: profileId }) => (profileId === INDETERMINATE_PROFILE
-            ? indeterminateActuatorClient.effect
-            : profileId === NORMAL_PROFILE
-                ? normalActuatorClient.effect
-                : null),
+        effectForProfile: async ({ profile_id: profileId }) => (profileId === PROVIDER_RESPONSE_LOSS_PROFILE
+            ? providerResponseLossActuatorClient.effect
+            : profileId === ACTUATOR_RESPONSE_LOSS_PROFILE
+                ? actuatorResponseLossActuatorClient.effect
+                : profileId === NORMAL_PROFILE
+                    ? normalActuatorClient.effect
+                    : null),
         requesterAuthorization: async () => `Bearer ${approvalToken}`,
         lookupAttempt: async ({ lookup }) => {
             const reference = await consequenceStore.lookup(lookup);
@@ -533,7 +548,8 @@ export async function createProductionConsequenceControlConfig({ environment = p
             try {
                 const ready = await Promise.all([
                     normalActuatorClient.ready(),
-                    indeterminateActuatorClient.ready(),
+                    providerResponseLossActuatorClient.ready(),
+                    actuatorResponseLossActuatorClient.ready(),
                 ]);
                 return { ok: ready.every(Boolean) };
             }

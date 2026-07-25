@@ -7,6 +7,7 @@ import {
   createGitHubAppInstallationTokenProvider,
   createGitHubIssueEffectProvider,
 } from '../src/github-app.ts';
+import { canonicalize } from '@emilia-protocol/gate';
 import { digestAeb } from '@emilia-protocol/verify/aeb-adapter-contract';
 
 const NOW = Date.parse('2026-07-25T12:00:00.000Z');
@@ -21,6 +22,7 @@ const ACTION = Object.freeze({
 const ATTEMPT = Object.freeze({
   attempt_id: 'attempt:0000000000000001',
 });
+const NONCE = 'bm9uY2U6MDAwMDAwMDAwMDAwMDAwMQ';
 const EXPECTED = Object.freeze({
   operation_id: 'operation:0000000000000001',
   caid: `caid:1:github.issue.update.1:jcs-sha256:${'A'.repeat(43)}`,
@@ -74,11 +76,62 @@ const BOUND_ATTEMPT = Object.freeze({
   action_digest: EXPECTED.action_digest,
   target_digest: TARGET_DIGEST,
   operation: ACTION.action_type,
+  nonce: NONCE,
   envelope_digest: `sha256:${'3'.repeat(64)}`,
   effect_digest: EFFECT_DIGEST,
   issued_at: new Date(NOW - 1_000).toISOString(),
 });
 const ATTRIBUTION_KEYS = crypto.generateKeyPairSync('ed25519');
+
+function signedAttribution(
+  keys = ATTRIBUTION_KEYS,
+  payload = BOUND_ATTEMPT,
+) {
+  return JSON.parse(canonicalize({
+    payload,
+    signature: {
+      algorithm: 'Ed25519',
+      key_id: 'control-envelope-key',
+      value: crypto.sign(
+        null,
+        Buffer.concat([
+          Buffer.from('EP-CONSEQUENCE-PROVIDER-ATTRIBUTION-v1'),
+          Buffer.from([0]),
+          Buffer.from(canonicalize(payload)),
+        ]),
+        keys.privateKey,
+      ).toString('base64url'),
+    },
+  }));
+}
+
+function memoryProviderRecordStore() {
+  const records = new Map<string, any>();
+  const key = (value: any) => JSON.stringify([
+    value.tenant_id,
+    value.provider_id,
+    value.provider_account_id,
+    value.environment,
+    value.attempt_id,
+    value.request_digest,
+  ]);
+  return {
+    records,
+    async write(value: any) {
+      const binding = value.record.payload.provider_attribution.payload;
+      const current = records.get(key(binding));
+      if (current && canonicalize(current) !== canonicalize(value)) {
+        throw new Error('provider_record_conflict');
+      }
+      records.set(key(binding), structuredClone(value));
+      return structuredClone(value);
+    },
+    async read(expected: any) {
+      const value = records.get(key(expected));
+      return value ? structuredClone(value) : null;
+    },
+  };
+}
 
 function json(body: unknown, status = 200) {
   return new Response(JSON.stringify(body), {
@@ -89,7 +142,8 @@ function json(body: unknown, status = 200) {
 
 function attributionProviderOptions(
   fetchImpl: (url: string, options: any) => Promise<any>,
-  privateKey: crypto.KeyObject,
+  keys: { privateKey: crypto.KeyObject; publicKey: crypto.KeyObject },
+  providerRecordStore = memoryProviderRecordStore(),
 ) {
   return {
     owner: ACTION.owner,
@@ -99,9 +153,12 @@ function attributionProviderOptions(
       getToken: async () => 'ghs_installation_token_abcdefghijklmnopqrstuvwxyz',
     },
     attributionKeyId: 'actuator-evidence-key',
-    attributionPrivateKey: privateKey,
+    attributionPrivateKey: keys.privateKey,
     attributionIssuerId: BOUND_ATTEMPT.issuer_id,
+    providerAttributionKeyId: 'control-envelope-key',
+    providerAttributionPublicKey: keys.publicKey,
     targetDigest: TARGET_DIGEST,
+    providerRecordStore,
     fetchImpl,
     now: () => NOW,
   };
@@ -168,17 +225,14 @@ describe('actuator-owned GitHub App provider', () => {
       attributionIssuerId: BOUND_ATTEMPT.issuer_id,
       attributionKeyId: 'actuator-evidence-key',
       attributionPrivateKey: ATTRIBUTION_KEYS.privateKey,
+      providerAttributionKeyId: 'control-envelope-key',
+      providerAttributionPublicKey: ATTRIBUTION_KEYS.publicKey,
       targetDigest: TARGET_DIGEST,
+      providerRecordStore: memoryProviderRecordStore(),
       now: () => NOW,
       fetchImpl: async (url: string, options: any) => {
         calls.push({ url, options });
         const requestBody = options.body ? JSON.parse(options.body) : {};
-        if (url.endsWith('/issues/1/comments') && options.method === 'POST') {
-          return json({ id: 7000, body: requestBody.body }, 201);
-        }
-        if (url.endsWith('/issues/comments/7000') && options.method === 'PATCH') {
-          return json({ id: 7000, body: requestBody.body });
-        }
         return json({
           number: ACTION.issue_number,
           title: requestBody.title,
@@ -189,11 +243,11 @@ describe('actuator-owned GitHub App provider', () => {
 
     const result = await provider.effect({
       action: ACTION,
-      attempt: BOUND_ATTEMPT,
+      attempt: signedAttribution(),
     });
 
     assert.equal(result.provider_status, 200);
-    assert.equal(calls.length, 3);
+    assert.equal(calls.length, 1);
     const mutation = calls.find(({ url, options }) => (
       url.endsWith('/issues/1') && options.method === 'PATCH'
     ))!;
@@ -213,14 +267,15 @@ describe('actuator-owned GitHub App provider', () => {
     await assert.rejects(
       provider.effect({
         action: { ...ACTION, repo: 'substituted-target' },
-        attempt: BOUND_ATTEMPT,
+        attempt: signedAttribution(),
       }),
       /github_issue_action_refused/,
     );
-    assert.equal(calls.length, 3);
+    assert.equal(calls.length, 1);
   });
 
-  it('returns action/attempt-bound observation material without overstating attribution', async () => {
+  it('returns retryable unavailable evidence when no exact durable provider record exists', async () => {
+    let fetchCalled = false;
     const provider = createGitHubIssueEffectProvider({
       owner: ACTION.owner,
       repo: ACTION.repo,
@@ -231,17 +286,15 @@ describe('actuator-owned GitHub App provider', () => {
       attributionIssuerId: BOUND_ATTEMPT.issuer_id,
       attributionKeyId: 'actuator-evidence-key',
       attributionPrivateKey: ATTRIBUTION_KEYS.privateKey,
+      providerAttributionKeyId: 'control-envelope-key',
+      providerAttributionPublicKey: ATTRIBUTION_KEYS.publicKey,
       targetDigest: TARGET_DIGEST,
+      providerRecordStore: memoryProviderRecordStore(),
       now: () => NOW,
-      fetchImpl: async (url: string) => (
-        url.includes('/comments?')
-          ? json([])
-          : json({
-            number: ACTION.issue_number,
-            title: ACTION.title,
-            body: ACTION.body,
-          })
-      ),
+      fetchImpl: async () => {
+        fetchCalled = true;
+        throw new Error('provider observation must use the private record store');
+      },
     });
 
     const observation = await provider.verifyProviderEvidence({
@@ -251,36 +304,21 @@ describe('actuator-owned GitHub App provider', () => {
       operation: ACTION.action_type,
     });
 
-    assert.equal(observation.valid, true);
-    assert.equal(observation.outcome, 'ESCALATED');
-    assert.equal(
-      observation.reason,
-      'github_attempt_attribution_unavailable',
-    );
-    assert.match(
-      observation.evidence_digest,
-      /^sha256:[a-f0-9]{64}$/,
-    );
+    assert.equal(observation.valid, false);
+    assert.equal(observation.reason, 'provider_evidence_unavailable');
+    assert.equal(fetchCalled, false);
   });
 
   it('reconciles the exact committed attempt after the signed actuator response is lost and the service restarts', async () => {
     const attributionKeys = crypto.generateKeyPairSync('ed25519');
+    const providerRecordStore = memoryProviderRecordStore();
     let issue = {
       number: ACTION.issue_number,
       title: 'before',
       body: 'before',
       updated_at: '2026-07-25T11:00:00.000Z',
     };
-    const comments: Array<{ id: number; body: string }> = [];
     const fetchImpl = async (url: string, options: any) => {
-      if (url.endsWith('/issues/1/comments') && options.method === 'POST') {
-        const comment = {
-          id: 7001,
-          body: JSON.parse(options.body).body,
-        };
-        comments.push(comment);
-        return json(comment, 201);
-      }
       if (url.endsWith('/issues/1') && options.method === 'PATCH') {
         const mutation = JSON.parse(options.body);
         issue = {
@@ -291,30 +329,31 @@ describe('actuator-owned GitHub App provider', () => {
         };
         return json(issue);
       }
-      if (url.endsWith('/issues/comments/7001') && options.method === 'PATCH') {
-        comments[0] = { id: 7001, body: JSON.parse(options.body).body };
-        return json(comments[0]);
-      }
-      if (url.endsWith('/issues/1') && options.method === 'GET') {
-        return json(issue);
-      }
-      if (url.includes('/issues/1/comments?') && options.method === 'GET') {
-        return json(comments);
-      }
       throw new Error(`unexpected GitHub request: ${options.method} ${url}`);
     };
     const firstProcess = createGitHubIssueEffectProvider({
-      ...attributionProviderOptions(fetchImpl, attributionKeys.privateKey),
+      ...attributionProviderOptions(
+        fetchImpl,
+        attributionKeys,
+        providerRecordStore,
+      ),
       forceIndeterminateAfterCommit: true,
     });
 
     await assert.rejects(
-      firstProcess.effect({ action: ACTION, attempt: BOUND_ATTEMPT }),
+      firstProcess.effect({
+        action: ACTION,
+        attempt: signedAttribution(attributionKeys),
+      }),
       /github_issue_outcome_indeterminate/,
     );
 
     const restartedProcess = createGitHubIssueEffectProvider(
-      attributionProviderOptions(fetchImpl, attributionKeys.privateKey),
+      attributionProviderOptions(
+        fetchImpl,
+        attributionKeys,
+        providerRecordStore,
+      ),
     );
     const observation = await restartedProcess.verifyProviderEvidence({
       evidence: { kind: 'github-issue-observation-v1' },
@@ -327,40 +366,19 @@ describe('actuator-owned GitHub App provider', () => {
     assert.equal(observation.outcome, 'COMMITTED');
     assert.equal(observation.reason, 'github_exact_attempt_committed');
     assert.equal(issue.body, ACTION.body);
-    assert.equal(comments.length, 1);
-
-    comments[0] = { id: 7999, body: comments[0].body };
-    const replayedRecord = await restartedProcess.verifyProviderEvidence({
-      evidence: { kind: 'github-issue-observation-v1' },
-      action: ACTION,
-      expected: EXPECTED,
-      operation: ACTION.action_type,
-    });
-    assert.equal(replayedRecord.outcome, 'ESCALATED');
-    assert.equal(
-      replayedRecord.reason,
-      'github_attempt_attribution_unavailable',
-    );
+    assert.equal(providerRecordStore.records.size, 1);
   });
 
-  it('keeps the attempt ESCALATED when the GitHub mutation response is lost before terminal attribution', async () => {
+  it('keeps a lost GitHub PATCH response retryable when no terminal provider record exists', async () => {
     const attributionKeys = crypto.generateKeyPairSync('ed25519');
+    const providerRecordStore = memoryProviderRecordStore();
     let issue = {
       number: ACTION.issue_number,
       title: 'before',
       body: 'before',
       updated_at: '2026-07-25T11:00:00.000Z',
     };
-    const comments: Array<{ id: number; body: string }> = [];
     const fetchImpl = async (url: string, options: any) => {
-      if (url.endsWith('/issues/1/comments') && options.method === 'POST') {
-        const comment = {
-          id: 7001,
-          body: JSON.parse(options.body).body,
-        };
-        comments.push(comment);
-        return json(comment, 201);
-      }
       if (url.endsWith('/issues/1') && options.method === 'PATCH') {
         const mutation = JSON.parse(options.body);
         issue = {
@@ -373,25 +391,30 @@ describe('actuator-owned GitHub App provider', () => {
           name: 'TimeoutError',
         });
       }
-      if (url.endsWith('/issues/1') && options.method === 'GET') {
-        return json(issue);
-      }
-      if (url.includes('/issues/1/comments?') && options.method === 'GET') {
-        return json(comments);
-      }
       throw new Error(`unexpected GitHub request: ${options.method} ${url}`);
     };
     const firstProcess = createGitHubIssueEffectProvider(
-      attributionProviderOptions(fetchImpl, attributionKeys.privateKey),
+      attributionProviderOptions(
+        fetchImpl,
+        attributionKeys,
+        providerRecordStore,
+      ),
     );
 
     await assert.rejects(
-      firstProcess.effect({ action: ACTION, attempt: BOUND_ATTEMPT }),
+      firstProcess.effect({
+        action: ACTION,
+        attempt: signedAttribution(attributionKeys),
+      }),
       /github_issue_outcome_indeterminate/,
     );
 
     const restartedProcess = createGitHubIssueEffectProvider(
-      attributionProviderOptions(fetchImpl, attributionKeys.privateKey),
+      attributionProviderOptions(
+        fetchImpl,
+        attributionKeys,
+        providerRecordStore,
+      ),
     );
     const observation = await restartedProcess.verifyProviderEvidence({
       evidence: { kind: 'github-issue-observation-v1' },
@@ -400,54 +423,43 @@ describe('actuator-owned GitHub App provider', () => {
       operation: ACTION.action_type,
     });
 
-    assert.equal(observation.valid, true);
-    assert.equal(observation.outcome, 'ESCALATED');
-    assert.equal(observation.reason, 'github_attempt_outcome_indeterminate');
+    assert.equal(observation.valid, false);
+    assert.equal(observation.reason, 'provider_evidence_unavailable');
     assert.equal(issue.body, ACTION.body);
-    assert.equal(comments.length, 1);
+    assert.equal(providerRecordStore.records.size, 0);
   });
 
   it('persists and reconciles a definitive provider refusal as NOT_COMMITTED', async () => {
     const attributionKeys = crypto.generateKeyPairSync('ed25519');
-    const issue = {
-      number: ACTION.issue_number,
-      title: 'before',
-      body: 'before',
-      updated_at: '2026-07-25T11:00:00.000Z',
-    };
-    const comments: Array<{ id: number; body: string }> = [];
+    const providerRecordStore = memoryProviderRecordStore();
     const fetchImpl = async (url: string, options: any) => {
-      if (url.endsWith('/issues/1/comments') && options.method === 'POST') {
-        const comment = { id: 7002, body: JSON.parse(options.body).body };
-        comments.push(comment);
-        return json(comment, 201);
-      }
       if (url.endsWith('/issues/1') && options.method === 'PATCH') {
         return json({ message: 'validation failed' }, 422);
-      }
-      if (url.endsWith('/issues/comments/7002') && options.method === 'PATCH') {
-        comments[0] = { id: 7002, body: JSON.parse(options.body).body };
-        return json(comments[0]);
-      }
-      if (url.endsWith('/issues/1') && options.method === 'GET') {
-        return json(issue);
-      }
-      if (url.includes('/issues/1/comments?') && options.method === 'GET') {
-        return json(comments);
       }
       throw new Error(`unexpected GitHub request: ${options.method} ${url}`);
     };
     const provider = createGitHubIssueEffectProvider(
-      attributionProviderOptions(fetchImpl, attributionKeys.privateKey),
+      attributionProviderOptions(
+        fetchImpl,
+        attributionKeys,
+        providerRecordStore,
+      ),
     );
 
     await assert.rejects(
-      provider.effect({ action: ACTION, attempt: BOUND_ATTEMPT }),
+      provider.effect({
+        action: ACTION,
+        attempt: signedAttribution(attributionKeys),
+      }),
       /github_issue_not_committed/,
     );
 
     const restartedProcess = createGitHubIssueEffectProvider(
-      attributionProviderOptions(fetchImpl, attributionKeys.privateKey),
+      attributionProviderOptions(
+        fetchImpl,
+        attributionKeys,
+        providerRecordStore,
+      ),
     );
     const observation = await restartedProcess.verifyProviderEvidence({
       evidence: { kind: 'github-issue-observation-v1' },
@@ -461,39 +473,29 @@ describe('actuator-owned GitHub App provider', () => {
     assert.equal(observation.reason, 'github_provider_refused_before_effect');
   });
 
-  it('keeps a prepared attempt ESCALATED after a genuine timeout and rejects marker substitution', async () => {
+  it('does not let request/environment substitution turn missing evidence into a terminal outcome', async () => {
     const attributionKeys = crypto.generateKeyPairSync('ed25519');
-    const issue = {
-      number: ACTION.issue_number,
-      title: 'before',
-      body: 'before',
-      updated_at: '2026-07-25T11:00:00.000Z',
-    };
-    const comments: Array<{ id: number; body: string }> = [];
+    const providerRecordStore = memoryProviderRecordStore();
     const fetchImpl = async (url: string, options: any) => {
-      if (url.endsWith('/issues/1/comments') && options.method === 'POST') {
-        const comment = { id: 7003, body: JSON.parse(options.body).body };
-        comments.push(comment);
-        return json(comment, 201);
-      }
       if (url.endsWith('/issues/1') && options.method === 'PATCH') {
         throw Object.assign(new Error('provider timed out before acknowledgement'), {
           name: 'TimeoutError',
         });
       }
-      if (url.endsWith('/issues/1') && options.method === 'GET') {
-        return json(issue);
-      }
-      if (url.includes('/issues/1/comments?') && options.method === 'GET') {
-        return json(comments);
-      }
       throw new Error(`unexpected GitHub request: ${options.method} ${url}`);
     };
     const provider = createGitHubIssueEffectProvider(
-      attributionProviderOptions(fetchImpl, attributionKeys.privateKey),
+      attributionProviderOptions(
+        fetchImpl,
+        attributionKeys,
+        providerRecordStore,
+      ),
     );
     await assert.rejects(
-      provider.effect({ action: ACTION, attempt: BOUND_ATTEMPT }),
+      provider.effect({
+        action: ACTION,
+        attempt: signedAttribution(attributionKeys),
+      }),
       /github_issue_outcome_indeterminate/,
     );
 
@@ -503,8 +505,8 @@ describe('actuator-owned GitHub App provider', () => {
       expected: EXPECTED,
       operation: ACTION.action_type,
     });
-    assert.equal(exact.outcome, 'ESCALATED');
-    assert.equal(exact.reason, 'github_attempt_outcome_indeterminate');
+    assert.equal(exact.valid, false);
+    assert.equal(exact.reason, 'provider_evidence_unavailable');
 
     const substituted = await provider.verifyProviderEvidence({
       evidence: { kind: 'github-issue-observation-v1' },
@@ -512,11 +514,13 @@ describe('actuator-owned GitHub App provider', () => {
       expected: {
         ...EXPECTED,
         request_digest: `sha256:${'9'.repeat(64)}`,
+        environment: 'substituted-production',
       },
       operation: ACTION.action_type,
     });
-    assert.notEqual(substituted.outcome, 'COMMITTED');
-    assert.notEqual(substituted.outcome, 'NOT_COMMITTED');
+    assert.equal(substituted.valid, false);
+    assert.equal(substituted.reason, 'provider_evidence_unavailable');
+    assert.equal(providerRecordStore.records.size, 0);
   });
 
   it('refuses redirects even if a mock presents a successful JSON response', async () => {
@@ -533,7 +537,10 @@ describe('actuator-owned GitHub App provider', () => {
       attributionIssuerId: BOUND_ATTEMPT.issuer_id,
       attributionKeyId: 'actuator-evidence-key',
       attributionPrivateKey: ATTRIBUTION_KEYS.privateKey,
+      providerAttributionKeyId: 'control-envelope-key',
+      providerAttributionPublicKey: ATTRIBUTION_KEYS.publicKey,
       targetDigest: TARGET_DIGEST,
+      providerRecordStore: memoryProviderRecordStore(),
       fetchImpl: async () => ({
         status: 200,
         redirected: true,
@@ -544,7 +551,7 @@ describe('actuator-owned GitHub App provider', () => {
     });
 
     await assert.rejects(
-      provider.effect({ action: ACTION, attempt: BOUND_ATTEMPT }),
+      provider.effect({ action: ACTION, attempt: signedAttribution() }),
       /github_redirect_refused/,
     );
   });
@@ -560,9 +567,12 @@ describe('actuator-owned GitHub App provider', () => {
       attributionIssuerId: BOUND_ATTEMPT.issuer_id,
       attributionKeyId: 'actuator-evidence-key',
       attributionPrivateKey: ATTRIBUTION_KEYS.privateKey,
+      providerAttributionKeyId: 'control-envelope-key',
+      providerAttributionPublicKey: ATTRIBUTION_KEYS.publicKey,
       targetDigest: TARGET_DIGEST,
+      providerRecordStore: memoryProviderRecordStore(),
       fetchImpl: async () => new Response('{}', {
-        status: 201,
+        status: 200,
         headers: {
           'content-type': 'application/json',
           'content-length': String(600 * 1024),
@@ -571,7 +581,7 @@ describe('actuator-owned GitHub App provider', () => {
     });
 
     await assert.rejects(
-      provider.effect({ action: ACTION, attempt: BOUND_ATTEMPT }),
+      provider.effect({ action: ACTION, attempt: signedAttribution() }),
       /github_response_too_large/,
     );
   });

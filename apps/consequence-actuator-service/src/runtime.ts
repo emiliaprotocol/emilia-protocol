@@ -39,6 +39,7 @@ const ATTRIBUTION_PAYLOAD_KEYS = Object.freeze([
   'action_digest',
   'target_digest',
   'operation',
+  'nonce',
   'envelope_digest',
   'effect_digest',
   'issued_at',
@@ -93,6 +94,8 @@ export interface ConsequenceActuatorRuntimeConfig {
       action: JsonObject;
       binding: Readonly<ConsequenceExecutionEnvelopePayload>;
       attribution: Readonly<JsonObject>;
+      signedAttribution: Readonly<JsonObject>;
+      providerAttributionDigest: string;
     },
   ) => unknown | Promise<unknown>>>;
   observationSigner: {
@@ -243,6 +246,7 @@ function verifyProviderAttribution({
       || payload.action_digest !== normalized.actionDigest
       || payload.target_digest !== config.targetDigest
       || payload.operation !== operation
+      || payload.nonce !== envelope.payload?.nonce
       || payload.envelope_digest !== digestAeb(envelope)
       || payload.issued_at !== envelope.payload?.issued_at
       || payload.effect_digest !== githubIssueEffectDigest({
@@ -384,6 +388,8 @@ export function createConsequenceActuatorRuntime(
         action: structuredClone(normalized.action),
         binding,
         attribution: structuredClone(attribution),
+        signedAttribution: structuredClone(body.attribution),
+        providerAttributionDigest: digestAeb(body.attribution),
       }),
     });
     const result = await actuator.execute({
@@ -402,6 +408,8 @@ export function createConsequenceActuatorRuntime(
     const providerResult = committed ? result.result : null;
     const observation = config.observationSigner.sign({
       tenant_id: config.tenantId,
+      request_digest: attribution.request_digest,
+      environment: attribution.environment,
       attempt_id: body.attempt_id,
       action_digest: body.action_digest,
       caid: normalized.caid,
@@ -412,6 +420,7 @@ export function createConsequenceActuatorRuntime(
       idempotency_key: body.idempotency_key,
       nonce: payload.nonce,
       envelope_digest: result.envelopeDigest!,
+      provider_attribution_digest: digestAeb(body.attribution),
       outcome: committed ? 'COMMITTED' : 'INDETERMINATE',
       observed_at: new Date(currentTime(now)).toISOString(),
       reason: committed ? 'provider_committed' : result.reason,
@@ -468,10 +477,28 @@ export function createConsequenceActuatorRuntime(
       return refused(503, 'provider_observation_unavailable');
     }
     if (!plainObject(providerObservation)
-        || !['COMMITTED', 'NOT_COMMITTED', 'ESCALATED']
+        || !['COMMITTED', 'NOT_COMMITTED']
           .includes(providerObservation.outcome)
         || !IDENTIFIER.test(providerObservation.reason)
         || typeof providerObservation.observed_at !== 'string'
+        || providerObservation.tenant_id !== expected.tenant_id
+        || providerObservation.request_digest !== expected.request_digest
+        || providerObservation.provider_id !== expected.provider_id
+        || providerObservation.provider_account_id
+          !== expected.provider_account_id
+        || providerObservation.environment !== expected.environment
+        || providerObservation.attempt_id !== expected.attempt_id
+        || providerObservation.operation_id !== expected.operation_id
+        || providerObservation.caid !== expected.caid
+        || providerObservation.action_digest !== expected.action_digest
+        || providerObservation.target_digest !== config.targetDigest
+        || providerObservation.operation !== body.operation
+        || typeof providerObservation.nonce !== 'string'
+        || providerObservation.nonce.length < 22
+        || providerObservation.nonce.length > 128
+        || !BASE64URL.test(providerObservation.nonce)
+        || !DIGEST.test(providerObservation.envelope_digest)
+        || !DIGEST.test(providerObservation.provider_attribution_digest)
         || !DIGEST.test(providerObservation.provider_observation_digest)) {
       return refused(503, 'provider_observation_invalid');
     }
@@ -492,17 +519,21 @@ export function createConsequenceActuatorRuntime(
           observed_at: providerObservation.observed_at,
           outcome: providerObservation.outcome,
           reason: providerObservation.reason,
-          tenant_id: expected.tenant_id,
-          request_digest: expected.request_digest,
-          provider_id: expected.provider_id,
-          provider_account_id: expected.provider_account_id,
-          environment: expected.environment,
-          attempt_id: expected.attempt_id,
-          operation_id: expected.operation_id,
-          caid: expected.caid,
-          action_digest: expected.action_digest,
-          target_digest: config.targetDigest,
-          operation: body.operation,
+          tenant_id: providerObservation.tenant_id,
+          request_digest: providerObservation.request_digest,
+          provider_id: providerObservation.provider_id,
+          provider_account_id: providerObservation.provider_account_id,
+          environment: providerObservation.environment,
+          attempt_id: providerObservation.attempt_id,
+          operation_id: providerObservation.operation_id,
+          caid: providerObservation.caid,
+          action_digest: providerObservation.action_digest,
+          target_digest: providerObservation.target_digest,
+          operation: providerObservation.operation,
+          nonce: providerObservation.nonce,
+          envelope_digest: providerObservation.envelope_digest,
+          provider_attribution_digest:
+            providerObservation.provider_attribution_digest,
           provider_observation_digest:
             providerObservation.provider_observation_digest,
         },
