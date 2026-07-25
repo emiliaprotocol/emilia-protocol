@@ -21,12 +21,14 @@ const EXECUTOR_ROLE = "rollout_attempt_executor";
 const CLEAN_LOGIN = "rollout_attempt_clean_test_login";
 const OWNER_LOGIN = "rollout_attempt_owner_test_login";
 const OWNER_BRIDGE = "rollout_attempt_owner_test_bridge";
+const OWNER_POLLUTION_LOGIN = "rollout_attempt_owner_pollution_login";
 const BYPASS_LOGIN = "rollout_attempt_bypass_test_login";
 const BYPASS_BRIDGE = "rollout_attempt_bypass_test_bridge";
 const LOGIN_PASSWORD = "ep-role-graph-test-password";
 const TEST_ROLES = [
   CLEAN_LOGIN,
   OWNER_LOGIN,
+  OWNER_POLLUTION_LOGIN,
   BYPASS_LOGIN,
   OWNER_BRIDGE,
   BYPASS_BRIDGE,
@@ -155,7 +157,7 @@ suite("rollout-attempt dirty role graph on PostgreSQL 17", () => {
         pg_catalog.current_setting('server_version_num') AS server_version_num,
         current_setting('is_superuser')::boolean AS is_superuser
     `);
-    expect(environment.rows[0].database).toBe("ep_test");
+    expect(environment.rows[0].database).toBe(connection.database);
     expect(
       Number.parseInt(environment.rows[0].server_version_num, 10),
     ).toBeGreaterThanOrEqual(170000);
@@ -216,6 +218,51 @@ suite("rollout-attempt dirty role graph on PostgreSQL 17", () => {
     }
   });
 
+  it("rejects an arbitrary login inheriting the owner during migration", async () => {
+    await createLogin(OWNER_POLLUTION_LOGIN);
+    await admin.query(
+      `GRANT ${identifier(OWNER_ROLE)} TO ${identifier(OWNER_POLLUTION_LOGIN)}
+        WITH INHERIT TRUE`,
+    );
+
+    try {
+      await expect(admin.query(migration)).rejects.toMatchObject({
+        code: "42501",
+        message:
+          "rollout attempt owner and executor roles must be membership-disjoint",
+      });
+    } finally {
+      await admin.query(
+        `REVOKE ${identifier(OWNER_ROLE)} FROM ${identifier(OWNER_POLLUTION_LOGIN)}`,
+      );
+    }
+  });
+
+  it("rejects a BYPASSRLS-contaminated executor graph during migration", async () => {
+    await createLogin(BYPASS_LOGIN);
+    await admin.query(`
+      CREATE ROLE ${identifier(BYPASS_BRIDGE)} NOLOGIN
+        NOSUPERUSER NOCREATEDB NOCREATEROLE NOREPLICATION BYPASSRLS;
+      GRANT ${identifier(BYPASS_BRIDGE)} TO ${identifier(BYPASS_LOGIN)}
+        WITH INHERIT TRUE;
+      GRANT ${identifier(EXECUTOR_ROLE)} TO ${identifier(BYPASS_LOGIN)}
+        WITH INHERIT TRUE;
+    `);
+
+    try {
+      await expect(admin.query(migration)).rejects.toMatchObject({
+        code: "42501",
+        message:
+          "rollout attempt owner and executor roles must be membership-disjoint",
+      });
+    } finally {
+      await admin.query(`
+        REVOKE ${identifier(BYPASS_BRIDGE)} FROM ${identifier(BYPASS_LOGIN)};
+        REVOKE ${identifier(EXECUTOR_ROLE)} FROM ${identifier(BYPASS_LOGIN)};
+      `);
+    }
+  });
+
   it("installs after the role graph is clean", async () => {
     await admin.query(migration);
     const installed = await admin.query<{
@@ -264,7 +311,110 @@ suite("rollout-attempt dirty role graph on PostgreSQL 17", () => {
       "contract:roles:rollout-attempt:least-privilege-membership-disjoint",
       "contract:table:rollout_attempt_private.claims:owner-force-rls-owner-only-acl",
       "contract:table:rollout_attempt_private.terminals:owner-force-rls-owner-only-acl",
+      "contract:trigger:rollout_attempt_private.claims.rollout_attempt_claims_no_truncate:exact-before-truncate-statement-append-only",
+      "contract:trigger:rollout_attempt_private.claims.rollout_attempt_claims_no_update_delete:exact-before-update-delete-row-append-only",
+      "contract:trigger:rollout_attempt_private.terminals.rollout_attempt_terminals_no_truncate:exact-before-truncate-statement-append-only",
+      "contract:trigger:rollout_attempt_private.terminals.rollout_attempt_terminals_no_update_delete:exact-before-update-delete-row-append-only",
     ]);
+  });
+
+  it("removes the live contract token when any rollout append-only trigger is dropped", async () => {
+    const expected = [
+      [
+        "rollout_attempt_private",
+        "claims",
+        "rollout_attempt_claims_no_update_delete",
+        "contract:trigger:rollout_attempt_private.claims.rollout_attempt_claims_no_update_delete:exact-before-update-delete-row-append-only",
+      ],
+      [
+        "rollout_attempt_private",
+        "claims",
+        "rollout_attempt_claims_no_truncate",
+        "contract:trigger:rollout_attempt_private.claims.rollout_attempt_claims_no_truncate:exact-before-truncate-statement-append-only",
+      ],
+      [
+        "rollout_attempt_private",
+        "terminals",
+        "rollout_attempt_terminals_no_update_delete",
+        "contract:trigger:rollout_attempt_private.terminals.rollout_attempt_terminals_no_update_delete:exact-before-update-delete-row-append-only",
+      ],
+      [
+        "rollout_attempt_private",
+        "terminals",
+        "rollout_attempt_terminals_no_truncate",
+        "contract:trigger:rollout_attempt_private.terminals.rollout_attempt_terminals_no_truncate:exact-before-truncate-statement-append-only",
+      ],
+    ] as const;
+
+    for (const [schemaName, tableName, triggerName, token] of expected) {
+      const definition = await admin.query<{ definition: string }>(`
+        SELECT pg_catalog.pg_get_triggerdef(trigger.oid, TRUE) AS definition
+        FROM pg_catalog.pg_trigger AS trigger
+        JOIN pg_catalog.pg_class AS relation
+          ON relation.oid = trigger.tgrelid
+        JOIN pg_catalog.pg_namespace AS namespace
+          ON namespace.oid = relation.relnamespace
+        WHERE namespace.nspname = $1
+          AND relation.relname = $2
+          AND trigger.tgname = $3
+          AND NOT trigger.tgisinternal
+      `, [schemaName, tableName, triggerName]);
+      expect(definition.rows).toHaveLength(1);
+
+      await admin.query(
+        `DROP TRIGGER ${identifier(triggerName)} ON ${identifier(schemaName)}.${identifier(tableName)}`,
+      );
+      const missing = await admin.query<{ present: boolean }>(`
+        SELECT (public.gov_schema_reconcile_introspect() -> 'functions')
+          ? $1 AS present
+      `, [token]);
+      expect(missing.rows).toEqual([{ present: false }]);
+
+      await admin.query(definition.rows[0].definition);
+      const restored = await admin.query<{ present: boolean }>(`
+        SELECT (public.gov_schema_reconcile_introspect() -> 'functions')
+          ? $1 AS present
+      `, [token]);
+      expect(restored.rows).toEqual([{ present: true }]);
+    }
+  });
+
+  it("requires the exact rollout rejection-function definition and SECURITY DEFINER posture", async () => {
+    const signature = "rollout_attempt_private.reject_append_only_mutation()";
+    const original = await admin.query<{ definition: string }>(`
+      SELECT pg_catalog.pg_get_functiondef($1::regprocedure) AS definition
+    `, [signature]);
+    const triggerTokenCount = async (): Promise<number> => admin.query<{
+      count: number;
+    }>(`
+      SELECT count(*)::integer AS count
+      FROM pg_catalog.jsonb_array_elements_text(
+        public.gov_schema_reconcile_introspect() -> 'functions'
+      ) AS value(token)
+      WHERE token LIKE 'contract:trigger:rollout_attempt_private.%'
+    `).then(({ rows }) => rows[0].count);
+
+    expect(await triggerTokenCount()).toBe(4);
+    await admin.query(`ALTER FUNCTION ${signature} SECURITY INVOKER`);
+    expect(await triggerTokenCount()).toBe(0);
+    await admin.query(`ALTER FUNCTION ${signature} SECURITY DEFINER`);
+    expect(await triggerTokenCount()).toBe(4);
+
+    await admin.query(`
+      CREATE OR REPLACE FUNCTION ${signature}
+      RETURNS TRIGGER
+      LANGUAGE plpgsql
+      SECURITY DEFINER
+      SET search_path = ''
+      AS $mutated$
+      BEGIN
+        RAISE EXCEPTION 'mutated rejection body' USING ERRCODE = '55000';
+      END
+      $mutated$
+    `);
+    expect(await triggerTokenCount()).toBe(0);
+    await admin.query(original.rows[0].definition);
+    expect(await triggerTokenCount()).toBe(4);
   });
 
   it("allows a clean executor login to claim an attempt", async () => {
@@ -280,6 +430,47 @@ suite("rollout-attempt dirty role graph on PostgreSQL 17", () => {
       status: "claimed",
       claim_sha256: claim.claim_sha256,
     });
+  });
+
+  it("detects an arbitrary owner member after reproducing direct private-table access", async () => {
+    await admin.query(
+      `GRANT ${identifier(OWNER_ROLE)} TO ${identifier(OWNER_POLLUTION_LOGIN)}
+        WITH INHERIT TRUE`,
+    );
+    try {
+      const client = new pg.Client({
+        ...connection,
+        user: OWNER_POLLUTION_LOGIN,
+        password: LOGIN_PASSWORD,
+      });
+      await client.connect();
+      try {
+        const exposed = await client.query<{ count: string }>(
+          "SELECT count(*)::text AS count FROM rollout_attempt_private.claims",
+        );
+        expect(Number.parseInt(exposed.rows[0].count, 10)).toBeGreaterThan(0);
+      } finally {
+        await client.end();
+      }
+
+      const assertion = await admin.query<{ present: boolean }>(`
+        SELECT (public.gov_schema_reconcile_introspect() -> 'functions')
+          ? 'contract:roles:rollout-attempt:least-privilege-membership-disjoint'
+          AS present
+      `);
+      expect(assertion.rows).toEqual([{ present: false }]);
+    } finally {
+      await admin.query(
+        `REVOKE ${identifier(OWNER_ROLE)} FROM ${identifier(OWNER_POLLUTION_LOGIN)}`,
+      );
+    }
+
+    const restored = await admin.query<{ present: boolean }>(`
+      SELECT (public.gov_schema_reconcile_introspect() -> 'functions')
+        ? 'contract:roles:rollout-attempt:least-privilege-membership-disjoint'
+        AS present
+    `);
+    expect(restored.rows).toEqual([{ present: true }]);
   });
 
   it("recovers exact claim and terminal acknowledgements without accepting conflicts", async () => {
@@ -342,30 +533,68 @@ suite("rollout-attempt dirty role graph on PostgreSQL 17", () => {
         WITH INHERIT TRUE;
     `);
 
-    await expect(
-      callAs(OWNER_LOGIN, "claim", validClaim()),
-    ).rejects.toMatchObject({
-      code: "42501",
-      message: "dedicated least-privilege rollout attempt executor is required",
-    });
+    try {
+      const assertion = await admin.query<{ present: boolean }>(`
+        SELECT (public.gov_schema_reconcile_introspect() -> 'functions')
+          ? 'contract:roles:rollout-attempt:least-privilege-membership-disjoint'
+          AS present
+      `);
+      expect(assertion.rows).toEqual([{ present: false }]);
+      await expect(
+        callAs(OWNER_LOGIN, "claim", validClaim()),
+      ).rejects.toMatchObject({
+        code: "42501",
+        message: "dedicated least-privilege rollout attempt executor is required",
+      });
+    } finally {
+      await admin.query(`
+        REVOKE ${identifier(OWNER_ROLE)} FROM ${identifier(OWNER_BRIDGE)};
+        REVOKE ${identifier(OWNER_BRIDGE)} FROM ${identifier(OWNER_LOGIN)};
+        REVOKE ${identifier(EXECUTOR_ROLE)} FROM ${identifier(OWNER_LOGIN)};
+      `);
+    }
+
+    const restored = await admin.query<{ present: boolean }>(`
+      SELECT (public.gov_schema_reconcile_introspect() -> 'functions')
+        ? 'contract:roles:rollout-attempt:least-privilege-membership-disjoint'
+        AS present
+    `);
+    expect(restored.rows).toEqual([{ present: true }]);
   });
 
   it("rejects an executor login inheriting BYPASSRLS", async () => {
-    await createLogin(BYPASS_LOGIN);
     await admin.query(`
-      CREATE ROLE ${identifier(BYPASS_BRIDGE)} NOLOGIN
-        NOSUPERUSER NOCREATEDB NOCREATEROLE NOREPLICATION BYPASSRLS;
       GRANT ${identifier(BYPASS_BRIDGE)} TO ${identifier(BYPASS_LOGIN)}
         WITH INHERIT TRUE;
       GRANT ${identifier(EXECUTOR_ROLE)} TO ${identifier(BYPASS_LOGIN)}
         WITH INHERIT TRUE;
     `);
 
-    await expect(
-      callAs(BYPASS_LOGIN, "claim", validClaim()),
-    ).rejects.toMatchObject({
-      code: "42501",
-      message: "dedicated least-privilege rollout attempt executor is required",
-    });
+    try {
+      const assertion = await admin.query<{ present: boolean }>(`
+        SELECT (public.gov_schema_reconcile_introspect() -> 'functions')
+          ? 'contract:roles:rollout-attempt:least-privilege-membership-disjoint'
+          AS present
+      `);
+      expect(assertion.rows).toEqual([{ present: false }]);
+      await expect(
+        callAs(BYPASS_LOGIN, "claim", validClaim()),
+      ).rejects.toMatchObject({
+        code: "42501",
+        message: "dedicated least-privilege rollout attempt executor is required",
+      });
+    } finally {
+      await admin.query(`
+        REVOKE ${identifier(BYPASS_BRIDGE)} FROM ${identifier(BYPASS_LOGIN)};
+        REVOKE ${identifier(EXECUTOR_ROLE)} FROM ${identifier(BYPASS_LOGIN)};
+      `);
+    }
+
+    const restored = await admin.query<{ present: boolean }>(`
+      SELECT (public.gov_schema_reconcile_introspect() -> 'functions')
+        ? 'contract:roles:rollout-attempt:least-privilege-membership-disjoint'
+        AS present
+    `);
+    expect(restored.rows).toEqual([{ present: true }]);
   });
 });

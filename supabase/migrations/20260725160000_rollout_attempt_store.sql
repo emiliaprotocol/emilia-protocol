@@ -68,6 +68,34 @@ BEGIN
       OR candidate.rolreplication
       OR candidate.rolbypassrls
       OR candidate.rolname IN ('anon', 'authenticated', 'service_role')
+      OR EXISTS (
+        SELECT 1
+        FROM pg_catalog.pg_roles AS inherited_role
+        WHERE pg_catalog.pg_has_role(
+            executor_members.role_oid,
+            inherited_role.oid,
+            'MEMBER'
+          )
+          AND (
+            inherited_role.rolsuper
+            OR inherited_role.rolcreatedb
+            OR inherited_role.rolcreaterole
+            OR inherited_role.rolreplication
+            OR inherited_role.rolbypassrls
+            OR inherited_role.rolname IN (
+              'rollout_attempt_store_owner',
+              'anon',
+              'authenticated',
+              'service_role'
+            )
+          )
+      )
+    UNION ALL
+    SELECT 1
+    FROM pg_catalog.pg_auth_members AS membership
+    JOIN pg_catalog.pg_roles AS owner_role
+      ON owner_role.oid IN (membership.roleid, membership.member)
+    WHERE owner_role.rolname = 'rollout_attempt_store_owner'
   )
   THEN
     RAISE EXCEPTION
@@ -864,6 +892,212 @@ AS $$
 
   UNION ALL
 
+  SELECT required.token
+  FROM (
+    VALUES
+      (
+        'consequence_actuator_private',
+        'provider_attempts',
+        'consequence_actuator_provider_attempts_immutable',
+        27,
+        'consequence_actuator_private',
+        'reject_provider_record_mutation',
+        'consequence_actuator_store_owner',
+        $provider_trigger_body$
+BEGIN
+  RAISE EXCEPTION 'consequence actuator provider records are immutable'
+    USING ERRCODE = '55000';
+END
+$provider_trigger_body$,
+        'contract:trigger:consequence_actuator_private.provider_attempts.consequence_actuator_provider_attempts_immutable:exact-before-update-delete-row-append-only'
+      ),
+      (
+        'consequence_actuator_private',
+        'provider_attempts',
+        'consequence_actuator_provider_attempts_no_truncate',
+        34,
+        'consequence_actuator_private',
+        'reject_provider_record_mutation',
+        'consequence_actuator_store_owner',
+        $provider_trigger_body$
+BEGIN
+  RAISE EXCEPTION 'consequence actuator provider records are immutable'
+    USING ERRCODE = '55000';
+END
+$provider_trigger_body$,
+        'contract:trigger:consequence_actuator_private.provider_attempts.consequence_actuator_provider_attempts_no_truncate:exact-before-truncate-statement-append-only'
+      ),
+      (
+        'consequence_actuator_private',
+        'provider_records',
+        'consequence_actuator_provider_records_immutable',
+        27,
+        'consequence_actuator_private',
+        'reject_provider_record_mutation',
+        'consequence_actuator_store_owner',
+        $provider_trigger_body$
+BEGIN
+  RAISE EXCEPTION 'consequence actuator provider records are immutable'
+    USING ERRCODE = '55000';
+END
+$provider_trigger_body$,
+        'contract:trigger:consequence_actuator_private.provider_records.consequence_actuator_provider_records_immutable:exact-before-update-delete-row-append-only'
+      ),
+      (
+        'consequence_actuator_private',
+        'provider_records',
+        'consequence_actuator_provider_records_no_truncate',
+        34,
+        'consequence_actuator_private',
+        'reject_provider_record_mutation',
+        'consequence_actuator_store_owner',
+        $provider_trigger_body$
+BEGIN
+  RAISE EXCEPTION 'consequence actuator provider records are immutable'
+    USING ERRCODE = '55000';
+END
+$provider_trigger_body$,
+        'contract:trigger:consequence_actuator_private.provider_records.consequence_actuator_provider_records_no_truncate:exact-before-truncate-statement-append-only'
+      ),
+      (
+        'rollout_attempt_private',
+        'claims',
+        'rollout_attempt_claims_no_update_delete',
+        27,
+        'rollout_attempt_private',
+        'reject_append_only_mutation',
+        'rollout_attempt_store_owner',
+        $rollout_trigger_body$
+BEGIN
+  RAISE EXCEPTION 'rollout attempt records are append-only'
+    USING ERRCODE = '55000';
+END
+$rollout_trigger_body$,
+        'contract:trigger:rollout_attempt_private.claims.rollout_attempt_claims_no_update_delete:exact-before-update-delete-row-append-only'
+      ),
+      (
+        'rollout_attempt_private',
+        'claims',
+        'rollout_attempt_claims_no_truncate',
+        34,
+        'rollout_attempt_private',
+        'reject_append_only_mutation',
+        'rollout_attempt_store_owner',
+        $rollout_trigger_body$
+BEGIN
+  RAISE EXCEPTION 'rollout attempt records are append-only'
+    USING ERRCODE = '55000';
+END
+$rollout_trigger_body$,
+        'contract:trigger:rollout_attempt_private.claims.rollout_attempt_claims_no_truncate:exact-before-truncate-statement-append-only'
+      ),
+      (
+        'rollout_attempt_private',
+        'terminals',
+        'rollout_attempt_terminals_no_update_delete',
+        27,
+        'rollout_attempt_private',
+        'reject_append_only_mutation',
+        'rollout_attempt_store_owner',
+        $rollout_trigger_body$
+BEGIN
+  RAISE EXCEPTION 'rollout attempt records are append-only'
+    USING ERRCODE = '55000';
+END
+$rollout_trigger_body$,
+        'contract:trigger:rollout_attempt_private.terminals.rollout_attempt_terminals_no_update_delete:exact-before-update-delete-row-append-only'
+      ),
+      (
+        'rollout_attempt_private',
+        'terminals',
+        'rollout_attempt_terminals_no_truncate',
+        34,
+        'rollout_attempt_private',
+        'reject_append_only_mutation',
+        'rollout_attempt_store_owner',
+        $rollout_trigger_body$
+BEGIN
+  RAISE EXCEPTION 'rollout attempt records are append-only'
+    USING ERRCODE = '55000';
+END
+$rollout_trigger_body$,
+        'contract:trigger:rollout_attempt_private.terminals.rollout_attempt_terminals_no_truncate:exact-before-truncate-statement-append-only'
+      )
+  ) AS required(
+    table_schema,
+    table_name,
+    trigger_name,
+    trigger_type,
+    function_schema,
+    function_name,
+    owner_name,
+    function_body,
+    token
+  )
+  JOIN pg_namespace AS table_namespace
+    ON table_namespace.nspname = required.table_schema
+  JOIN pg_class AS relation
+    ON relation.relnamespace = table_namespace.oid
+   AND relation.relname = required.table_name
+   AND relation.relkind IN ('r', 'p')
+  JOIN pg_trigger AS trigger
+    ON trigger.tgrelid = relation.oid
+   AND trigger.tgname = required.trigger_name
+  JOIN pg_proc AS procedure
+    ON procedure.oid = trigger.tgfoid
+   AND procedure.proname = required.function_name
+  JOIN pg_namespace AS function_namespace
+    ON function_namespace.oid = procedure.pronamespace
+   AND function_namespace.nspname = required.function_schema
+  JOIN pg_roles AS owner_role
+    ON owner_role.rolname = required.owner_name
+  JOIN pg_language AS language
+    ON language.oid = procedure.prolang
+  WHERE NOT trigger.tgisinternal
+    AND trigger.tgenabled = 'O'
+    AND trigger.tgtype = required.trigger_type
+    AND trigger.tgnargs = 0
+    AND trigger.tgattr::TEXT = ''
+    AND trigger.tgqual IS NULL
+    AND trigger.tgoldtable IS NULL
+    AND trigger.tgnewtable IS NULL
+    AND procedure.proowner = owner_role.oid
+    AND procedure.prokind = 'f'
+    AND procedure.pronargs = 0
+    AND procedure.prorettype = 'pg_catalog.trigger'::regtype
+    AND procedure.prosecdef
+    AND NOT procedure.proleakproof
+    AND NOT procedure.proisstrict
+    AND procedure.provolatile = 'v'
+    AND procedure.proparallel = 'u'
+    AND procedure.proconfig = ARRAY['search_path=""']::TEXT[]
+    AND procedure.prosrc = required.function_body
+    AND language.lanname = 'plpgsql'
+    AND EXISTS (
+      SELECT 1
+      FROM aclexplode(
+        COALESCE(
+          procedure.proacl,
+          acldefault('f', procedure.proowner)
+        )
+      ) AS privilege
+      WHERE privilege.grantee = owner_role.oid
+        AND privilege.privilege_type = 'EXECUTE'
+    )
+    AND NOT EXISTS (
+      SELECT 1
+      FROM aclexplode(
+        COALESCE(
+          procedure.proacl,
+          acldefault('f', procedure.proowner)
+        )
+      ) AS privilege
+      WHERE privilege.privilege_type = 'EXECUTE'
+        AND privilege.grantee <> owner_role.oid
+    )
+
+  UNION ALL
+
   SELECT
     'contract:roles:consequence-actuator:least-privilege-membership-disjoint'
   WHERE EXISTS (
@@ -923,6 +1157,34 @@ AS $$
         OR candidate.rolreplication
         OR candidate.rolbypassrls
         OR candidate.rolname IN ('anon', 'authenticated', 'service_role')
+        OR EXISTS (
+          SELECT 1
+          FROM pg_roles AS inherited_role
+          WHERE pg_has_role(
+              executor_members.role_oid,
+              inherited_role.oid,
+              'MEMBER'
+            )
+            AND (
+              inherited_role.rolsuper
+              OR inherited_role.rolcreatedb
+              OR inherited_role.rolcreaterole
+              OR inherited_role.rolreplication
+              OR inherited_role.rolbypassrls
+              OR inherited_role.rolname IN (
+                'consequence_actuator_store_owner',
+                'anon',
+                'authenticated',
+                'service_role'
+              )
+            )
+        )
+      UNION ALL
+      SELECT 1
+      FROM pg_auth_members AS membership
+      JOIN pg_roles AS owner_role
+        ON owner_role.oid IN (membership.roleid, membership.member)
+      WHERE owner_role.rolname = 'consequence_actuator_store_owner'
     )
 
   UNION ALL
@@ -986,6 +1248,34 @@ AS $$
         OR candidate.rolreplication
         OR candidate.rolbypassrls
         OR candidate.rolname IN ('anon', 'authenticated', 'service_role')
+        OR EXISTS (
+          SELECT 1
+          FROM pg_roles AS inherited_role
+          WHERE pg_has_role(
+              executor_members.role_oid,
+              inherited_role.oid,
+              'MEMBER'
+            )
+            AND (
+              inherited_role.rolsuper
+              OR inherited_role.rolcreatedb
+              OR inherited_role.rolcreaterole
+              OR inherited_role.rolreplication
+              OR inherited_role.rolbypassrls
+              OR inherited_role.rolname IN (
+                'rollout_attempt_store_owner',
+                'anon',
+                'authenticated',
+                'service_role'
+              )
+            )
+        )
+      UNION ALL
+      SELECT 1
+      FROM pg_auth_members AS membership
+      JOIN pg_roles AS owner_role
+        ON owner_role.oid IN (membership.roleid, membership.member)
+      WHERE owner_role.rolname = 'rollout_attempt_store_owner'
     )
 
   UNION ALL

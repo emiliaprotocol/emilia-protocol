@@ -384,7 +384,7 @@ describe('actuator-owned GitHub App provider', () => {
     assert.equal(providerRecordStore.records.size, 1);
   });
 
-  it('reconciles a lost GitHub PATCH response by authenticated readback without replay', async () => {
+  it('keeps a response-lost GitHub PATCH indeterminate without blind replay or ambiguous readback', async () => {
     const attributionKeys = crypto.generateKeyPairSync('ed25519');
     const providerRecordStore = memoryProviderRecordStore();
     const methods: string[] = [];
@@ -443,16 +443,62 @@ describe('actuator-owned GitHub App provider', () => {
       operation: ACTION.action_type,
     });
 
-    assert.equal(observation.valid, true);
-    assert.equal(observation.outcome, 'COMMITTED');
-    assert.equal(
-      observation.reason,
-      'github_authenticated_state_matches_exact_effect',
-    );
+    assert.equal(observation.valid, false);
+    assert.equal(observation.reason, 'provider_evidence_unavailable');
     assert.equal(issue.body, ACTION.body);
     assert.equal(providerRecordStore.attempts.size, 1);
-    assert.equal(providerRecordStore.records.size, 1);
-    assert.deepEqual(methods, ['PATCH', 'GET']);
+    assert.equal(providerRecordStore.records.size, 0);
+    assert.deepEqual(methods, ['PATCH']);
+  });
+
+  it('does not attribute a pre-existing matching GitHub state to a failed PATCH', async () => {
+    const attributionKeys = crypto.generateKeyPairSync('ed25519');
+    const providerRecordStore = memoryProviderRecordStore();
+    const methods: string[] = [];
+    const fetchImpl = async (url: string, options: any) => {
+      methods.push(options.method);
+      if (url.endsWith('/issues/1') && options.method === 'PATCH') {
+        throw Object.assign(new Error('socket closed before mutation'), {
+          name: 'TimeoutError',
+        });
+      }
+      if (url.endsWith('/issues/1') && options.method === 'GET') {
+        return json({
+          number: ACTION.issue_number,
+          title: ACTION.title,
+          body: ACTION.body,
+        });
+      }
+      throw new Error(`unexpected GitHub request: ${options.method} ${url}`);
+    };
+    const provider = createGitHubIssueEffectProvider(
+      attributionProviderOptions(
+        fetchImpl,
+        attributionKeys,
+        providerRecordStore,
+      ),
+    );
+
+    await assert.rejects(
+      provider.effect({
+        action: ACTION,
+        attempt: signedAttribution(attributionKeys),
+      }),
+      /github_issue_outcome_indeterminate/,
+    );
+
+    const observation = await provider.verifyProviderEvidence({
+      evidence: { kind: 'github-issue-observation-v1' },
+      action: ACTION,
+      expected: EXPECTED,
+      operation: ACTION.action_type,
+    });
+
+    assert.equal(observation.valid, false);
+    assert.equal(observation.reason, 'provider_evidence_unavailable');
+    assert.equal(providerRecordStore.attempts.size, 1);
+    assert.equal(providerRecordStore.records.size, 0);
+    assert.deepEqual(methods, ['PATCH']);
   });
 
   it('persists and reconciles a definitive provider refusal as NOT_COMMITTED', async () => {

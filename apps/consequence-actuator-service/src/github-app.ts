@@ -518,23 +518,6 @@ export function createGitHubIssueEffectProvider({
     return response;
   }
 
-  async function readCurrent(attemptId: string) {
-    const token = await tokenProvider.getToken();
-    const response = await fetchImpl(issueEndpoint, {
-      method: 'GET',
-      headers: githubHeaders(token, {
-        'X-EMILIA-Reconcile-Attempt-ID': attemptId,
-      }),
-      redirect: 'error',
-      signal: AbortSignal.timeout(15_000),
-    });
-    if (response?.redirected === true) {
-      cancelBody(response?.body);
-      throw new Error('github_redirect_refused');
-    }
-    return response;
-  }
-
   function requireSignedProviderAttribution(
     value: unknown,
     action: JsonObject,
@@ -787,7 +770,6 @@ export function createGitHubIssueEffectProvider({
           || !IDENTIFIER.test(operation)) {
         return { valid: false, reason: 'provider_evidence_shape_invalid' };
       }
-      let reconciledByReadback = false;
       let stored: any;
       try {
         stored = await providerRecordStore.read(structuredClone(expected));
@@ -840,50 +822,12 @@ export function createGitHubIssueEffectProvider({
             reason: 'provider_evidence_binding_mismatch',
           };
         }
-        let response: any;
-        try {
-          response = await readCurrent(persistedBinding.attempt_id);
-        } catch {
-          return { valid: false, reason: 'provider_evidence_unavailable' };
-        }
-        if (response?.status !== 200) {
-          cancelBody(response?.body);
-          return { valid: false, reason: 'provider_evidence_unavailable' };
-        }
-        let result: JsonObject;
-        try {
-          result = await boundedJson(response);
-        } catch {
-          return { valid: false, reason: 'provider_evidence_unavailable' };
-        }
-        if (result.number !== target.issueNumber
-            || result.title !== action.title
-            || result.body !== action.body) {
-          return {
-            valid: false,
-            reason: 'github_authenticated_state_does_not_match_effect',
-          };
-        }
-        const readbackRecord = signRecord(
-          'COMMITTED',
-          persistedAttempt.attribution,
-          JSON.parse(canonicalize({
-            status: 200,
-            number: result.number,
-            title: result.title,
-            body: result.body,
-          })),
-        );
-        try {
-          await persistTerminalRecord(readbackRecord);
-        } catch {
-          return { valid: false, reason: 'provider_evidence_unavailable' };
-        }
-        stored = {
-          record: readbackRecord,
-          record_digest: digestAeb(readbackRecord),
-        };
-        reconciledByReadback = true;
+        // GitHub's issue-update response does not echo an authenticated
+        // idempotency or operation identifier. A later GET can prove only the
+        // issue's current state, not which PATCH produced it. Preserve the
+        // durable attempt for investigation, but remain indeterminate until an
+        // exact terminal response from this operation is available.
+        return { valid: false, reason: 'provider_evidence_unavailable' };
       }
       if (!exactKeys(stored, ['record', 'record_digest'])
           || !DIGEST.test(stored.record_digest)
@@ -902,9 +846,7 @@ export function createGitHubIssueEffectProvider({
       const { binding, record } = verified;
       const outcome = record.payload.outcome;
       const reason = outcome === 'COMMITTED'
-        ? (reconciledByReadback
-          ? 'github_authenticated_state_matches_exact_effect'
-          : 'github_exact_attempt_committed')
+        ? 'github_exact_attempt_committed'
         : 'github_provider_refused_before_effect';
       return {
         valid: true,

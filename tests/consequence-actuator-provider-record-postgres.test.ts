@@ -17,6 +17,41 @@ const providerMigration = readFileSync(
   ),
   'utf8',
 );
+const rolloutMigration = readFileSync(
+  new URL(
+    '../supabase/migrations/20260725160000_rollout_attempt_store.sql',
+    import.meta.url,
+  ),
+  'utf8',
+);
+const assertionFunctionStart = rolloutMigration.indexOf(
+  'CREATE OR REPLACE FUNCTION public.gov_consequence_control_security_assertions()',
+);
+const assertionFunctionEnd = rolloutMigration.indexOf(
+  '\n$$;',
+  assertionFunctionStart,
+);
+if (assertionFunctionStart < 0 || assertionFunctionEnd < 0) {
+  throw new Error('consequence-control security assertion function is missing');
+}
+const assertionFunction = rolloutMigration.slice(
+  assertionFunctionStart,
+  assertionFunctionEnd + '\n$$;'.length,
+);
+const reconcileFunctionStart = rolloutMigration.indexOf(
+  'CREATE OR REPLACE FUNCTION public.gov_schema_reconcile_introspect()',
+);
+const reconcileFunctionEnd = rolloutMigration.indexOf(
+  '\n$$;',
+  reconcileFunctionStart,
+);
+if (reconcileFunctionStart < 0 || reconcileFunctionEnd < 0) {
+  throw new Error('schema reconciliation introspection function is missing');
+}
+const reconcileFunction = rolloutMigration.slice(
+  reconcileFunctionStart,
+  reconcileFunctionEnd + '\n$$;'.length,
+);
 const suite = process.env.INTEGRATION_POSTGRES === '1'
   ? describe.sequential
   : describe.skip;
@@ -27,12 +62,16 @@ const TENANT_ALPHA_LOGIN = 'provider_record_tenant_alpha_login';
 const TENANT_BETA_LOGIN = 'provider_record_tenant_beta_login';
 const UNMAPPED_LOGIN = 'provider_record_unmapped_login';
 const UNTRUSTED_LOGIN = 'provider_record_untrusted_login';
+const OWNER_POLLUTION_LOGIN = 'provider_record_owner_pollution_login';
+const BYPASS_BRIDGE = 'provider_record_bypass_bridge';
 const LOGIN_PASSWORD = 'ep-provider-record-test-password';
 const TEST_ROLES = [
   TENANT_ALPHA_LOGIN,
   TENANT_BETA_LOGIN,
   UNMAPPED_LOGIN,
   UNTRUSTED_LOGIN,
+  OWNER_POLLUTION_LOGIN,
+  BYPASS_BRIDGE,
   EXECUTOR_ROLE,
   OWNER_ROLE,
 ];
@@ -277,7 +316,7 @@ suite('consequence actuator provider-record migration on PostgreSQL 17', () => {
         pg_catalog.current_setting('server_version_num') AS server_version_num,
         current_setting('is_superuser')::boolean AS is_superuser
     `);
-    expect(environment.rows[0].database).toBe('ep_test');
+    expect(environment.rows[0].database).toBe(connection.database);
     expect(Number.parseInt(
       environment.rows[0].server_version_num,
       10,
@@ -322,6 +361,7 @@ suite('consequence actuator provider-record migration on PostgreSQL 17', () => {
       TENANT_BETA_LOGIN,
       UNMAPPED_LOGIN,
       UNTRUSTED_LOGIN,
+      OWNER_POLLUTION_LOGIN,
     ]) {
       await createLogin(role);
     }
@@ -331,9 +371,35 @@ suite('consequence actuator provider-record migration on PostgreSQL 17', () => {
            ${identifier(TENANT_BETA_LOGIN)},
            ${identifier(UNMAPPED_LOGIN)}
         WITH INHERIT TRUE;
+      CREATE ROLE ${identifier(BYPASS_BRIDGE)} NOLOGIN
+        NOSUPERUSER NOCREATEDB NOCREATEROLE NOREPLICATION BYPASSRLS;
     `);
 
     await admin.query(actuatorMigration);
+    await admin.query(
+      `GRANT ${identifier(BYPASS_BRIDGE)} TO ${identifier(TENANT_ALPHA_LOGIN)}
+        WITH INHERIT TRUE`,
+    );
+    await expect(admin.query(providerMigration)).rejects.toMatchObject({
+      code: '42501',
+      message:
+        'consequence actuator owner must be isolated and executor memberships least-privilege',
+    });
+    await admin.query(
+      `REVOKE ${identifier(BYPASS_BRIDGE)} FROM ${identifier(TENANT_ALPHA_LOGIN)}`,
+    );
+    await admin.query(
+      `GRANT ${identifier(OWNER_ROLE)} TO ${identifier(OWNER_POLLUTION_LOGIN)}
+        WITH INHERIT TRUE`,
+    );
+    await expect(admin.query(providerMigration)).rejects.toMatchObject({
+      code: '42501',
+      message:
+        'consequence actuator owner must be isolated and executor memberships least-privilege',
+    });
+    await admin.query(
+      `REVOKE ${identifier(OWNER_ROLE)} FROM ${identifier(OWNER_POLLUTION_LOGIN)}`,
+    );
     const migrationClient = await admin.connect();
     try {
       await migrationClient.query(providerMigration);
@@ -344,6 +410,8 @@ suite('consequence actuator provider-record migration on PostgreSQL 17', () => {
         migrationClient.release();
       }
     }
+    await admin.query(assertionFunction);
+    await admin.query(reconcileFunction);
     await admin.query(`
       SET ROLE ${identifier(OWNER_ROLE)};
       INSERT INTO consequence_actuator_private.tenant_principals (
@@ -413,6 +481,103 @@ suite('consequence actuator provider-record migration on PostgreSQL 17', () => {
       service_record: false,
       public_record: false,
     }]);
+  });
+
+  it('removes the live contract token when any provider append-only trigger is dropped', async () => {
+    const expected = [
+      [
+        'provider_attempts',
+        'consequence_actuator_provider_attempts_immutable',
+        'contract:trigger:consequence_actuator_private.provider_attempts.consequence_actuator_provider_attempts_immutable:exact-before-update-delete-row-append-only',
+      ],
+      [
+        'provider_attempts',
+        'consequence_actuator_provider_attempts_no_truncate',
+        'contract:trigger:consequence_actuator_private.provider_attempts.consequence_actuator_provider_attempts_no_truncate:exact-before-truncate-statement-append-only',
+      ],
+      [
+        'provider_records',
+        'consequence_actuator_provider_records_immutable',
+        'contract:trigger:consequence_actuator_private.provider_records.consequence_actuator_provider_records_immutable:exact-before-update-delete-row-append-only',
+      ],
+      [
+        'provider_records',
+        'consequence_actuator_provider_records_no_truncate',
+        'contract:trigger:consequence_actuator_private.provider_records.consequence_actuator_provider_records_no_truncate:exact-before-truncate-statement-append-only',
+      ],
+    ] as const;
+
+    for (const [tableName, triggerName, token] of expected) {
+      const definition = await admin.query<{ definition: string }>(`
+        SELECT pg_catalog.pg_get_triggerdef(trigger.oid, TRUE) AS definition
+        FROM pg_catalog.pg_trigger AS trigger
+        JOIN pg_catalog.pg_class AS relation
+          ON relation.oid = trigger.tgrelid
+        JOIN pg_catalog.pg_namespace AS namespace
+          ON namespace.oid = relation.relnamespace
+        WHERE namespace.nspname = 'consequence_actuator_private'
+          AND relation.relname = $1
+          AND trigger.tgname = $2
+          AND NOT trigger.tgisinternal
+      `, [tableName, triggerName]);
+      expect(definition.rows).toHaveLength(1);
+
+      await admin.query(
+        `DROP TRIGGER ${identifier(triggerName)} ON consequence_actuator_private.${identifier(tableName)}`,
+      );
+      const missing = await admin.query<{ present: boolean }>(`
+        SELECT (public.gov_schema_reconcile_introspect() -> 'functions')
+          ? $1 AS present
+      `, [token]);
+      expect(missing.rows).toEqual([{ present: false }]);
+
+      await admin.query(definition.rows[0].definition);
+      const restored = await admin.query<{ present: boolean }>(`
+        SELECT (public.gov_schema_reconcile_introspect() -> 'functions')
+          ? $1 AS present
+      `, [token]);
+      expect(restored.rows).toEqual([{ present: true }]);
+    }
+  });
+
+  it('requires the exact provider rejection-function definition and SECURITY DEFINER posture', async () => {
+    const signature =
+      'consequence_actuator_private.reject_provider_record_mutation()';
+    const original = await admin.query<{ definition: string }>(`
+      SELECT pg_catalog.pg_get_functiondef($1::regprocedure) AS definition
+    `, [signature]);
+    const triggerTokenCount = async (): Promise<number> => admin.query<{
+      count: number;
+    }>(`
+      SELECT count(*)::integer AS count
+      FROM pg_catalog.jsonb_array_elements_text(
+        public.gov_schema_reconcile_introspect() -> 'functions'
+      ) AS value(token)
+      WHERE token LIKE
+        'contract:trigger:consequence_actuator_private.%'
+    `).then(({ rows }) => rows[0].count);
+
+    expect(await triggerTokenCount()).toBe(4);
+    await admin.query(`ALTER FUNCTION ${signature} SECURITY INVOKER`);
+    expect(await triggerTokenCount()).toBe(0);
+    await admin.query(`ALTER FUNCTION ${signature} SECURITY DEFINER`);
+    expect(await triggerTokenCount()).toBe(4);
+
+    await admin.query(`
+      CREATE OR REPLACE FUNCTION ${signature}
+      RETURNS TRIGGER
+      LANGUAGE plpgsql
+      SECURITY DEFINER
+      SET search_path = ''
+      AS $mutated$
+      BEGIN
+        RAISE EXCEPTION 'mutated rejection body' USING ERRCODE = '55000';
+      END
+      $mutated$
+    `);
+    expect(await triggerTokenCount()).toBe(0);
+    await admin.query(original.rows[0].definition);
+    expect(await triggerTokenCount()).toBe(4);
   });
 
   it('pins owner-only ACLs, policies, definer posture, and role separation', async () => {
@@ -680,6 +845,39 @@ suite('consequence actuator provider-record migration on PostgreSQL 17', () => {
     }
   });
 
+  it('removes the live role token for a BYPASSRLS-contaminated executor graph', async () => {
+    await admin.query(
+      `GRANT ${identifier(BYPASS_BRIDGE)} TO ${identifier(TENANT_ALPHA_LOGIN)}
+        WITH INHERIT TRUE`,
+    );
+    try {
+      const assertion = await admin.query<{ present: boolean }>(`
+        SELECT (public.gov_schema_reconcile_introspect() -> 'functions')
+          ? 'contract:roles:consequence-actuator:least-privilege-membership-disjoint'
+          AS present
+      `);
+      expect(assertion.rows).toEqual([{ present: false }]);
+      await expect(
+        writeAttempt(TENANT_ALPHA_LOGIN, providerAttribution()),
+      ).rejects.toMatchObject({
+        code: '42501',
+        message:
+          'dedicated least-privilege consequence actuator executor is required',
+      });
+    } finally {
+      await admin.query(
+        `REVOKE ${identifier(BYPASS_BRIDGE)} FROM ${identifier(TENANT_ALPHA_LOGIN)}`,
+      );
+    }
+
+    const restored = await admin.query<{ present: boolean }>(`
+      SELECT (public.gov_schema_reconcile_introspect() -> 'functions')
+        ? 'contract:roles:consequence-actuator:least-privilege-membership-disjoint'
+        AS present
+    `);
+    expect(restored.rows).toEqual([{ present: true }]);
+  });
+
   it('denies direct table access and RPC access without executor authority', async () => {
     await expect(asRole(
       TENANT_ALPHA_LOGIN,
@@ -724,5 +922,41 @@ suite('consequence actuator provider-record migration on PostgreSQL 17', () => {
         }
       }
     }
+  });
+
+  it('detects an arbitrary owner member after reproducing cross-tenant table access', async () => {
+    await admin.query(
+      `GRANT ${identifier(OWNER_ROLE)} TO ${identifier(OWNER_POLLUTION_LOGIN)}
+        WITH INHERIT TRUE`,
+    );
+    try {
+      const exposed = await asRole(
+        OWNER_POLLUTION_LOGIN,
+        async (client) => client.query<{ tenant_id: string }>(`
+          SELECT tenant_id
+          FROM consequence_actuator_private.provider_records
+          ORDER BY tenant_id
+        `),
+      );
+      expect(exposed.rows.map(({ tenant_id }) => tenant_id)).toContain(TENANT_ALPHA);
+
+      const assertion = await admin.query<{ present: boolean }>(`
+        SELECT (public.gov_schema_reconcile_introspect() -> 'functions')
+          ? 'contract:roles:consequence-actuator:least-privilege-membership-disjoint'
+          AS present
+      `);
+      expect(assertion.rows).toEqual([{ present: false }]);
+    } finally {
+      await admin.query(
+        `REVOKE ${identifier(OWNER_ROLE)} FROM ${identifier(OWNER_POLLUTION_LOGIN)}`,
+      );
+    }
+
+    const restored = await admin.query<{ present: boolean }>(`
+      SELECT (public.gov_schema_reconcile_introspect() -> 'functions')
+        ? 'contract:roles:consequence-actuator:least-privilege-membership-disjoint'
+        AS present
+    `);
+    expect(restored.rows).toEqual([{ present: true }]);
   });
 });

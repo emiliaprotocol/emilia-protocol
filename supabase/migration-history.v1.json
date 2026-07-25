@@ -368,8 +368,8 @@
     "20260725010000_consequence_actuator_store.sql": "9b5328a3cf0ad199db11e1712d1fc7d9ef981bf03e47bebf6b50c29f71021b2f",
     "20260725011000_fortress_db_security_invariants.sql": "64870e1f2ad078648f9fbb9d74105acf56d0f673c896a361ee295ef6a3b1a01f",
     "20260725012000_consequence_actuator_consume_qualification.sql": "a674e978fcbfd8219546960449e2382494d6a93fc85899cf91951ef9242abdf3",
-    "20260725143000_consequence_actuator_provider_records.sql": "c94630a8cce665068f494590263aa76bf14fd63bc2c86a16ae9577bfd6e7affb",
-    "20260725160000_rollout_attempt_store.sql": "20fe491f2f7d62c754a18f8d24bb1b3c36c4d7df649733b1c13c32ca4da0d76e",
+    "20260725143000_consequence_actuator_provider_records.sql": "260cbb848c55a2587daf867b1f70bca06e3c6d224c8b075bb9dee8b34382d0b5",
+    "20260725160000_rollout_attempt_store.sql": "d185358703ab51d8652627f48eed62fdcf42ee5e540f2becefe359a914e98e59",
     "20260725180000_reconcile_unjournaled_security_invariants.sql": "8efb635be6052e7a4643ff35f661ddd5028ca0cbb41312070ce98bde2eac1e34",
     "20260725174433_disable_legacy_consequence_canary_logins.sql": "06847e72fb3706ae31b7ace2b5a6627cfd8d37696b7d34dc915679be421c0906"
   }

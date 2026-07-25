@@ -133,6 +133,24 @@ describe('live schema-security contract evaluator', () => {
     }
   });
 
+  it('requires every exact consequence-control append-only trigger assertion', () => {
+    const triggerAssertions = contract.requiredReconcileAssertions.filter(
+      (value) => value.startsWith('contract:trigger:'),
+    );
+    expect(triggerAssertions).toHaveLength(8);
+
+    for (const assertion of triggerAssertions) {
+      const snapshot = cleanSnapshot();
+      snapshot.reconcile_functions = snapshot.reconcile_functions.filter(
+        (value) => value !== assertion,
+      );
+
+      expect(evaluateContract(snapshot).failures).toContain(
+        `RECONCILIATION SECURITY ASSERTION failed: ${assertion}`,
+      );
+    }
+  });
+
   it('accepts the exact qualified private RPC identity signature', () => {
     const snapshot = cleanSnapshot();
     const exactSignature = 'rollout_attempt_private.apply_operation(text,text)';

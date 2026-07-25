@@ -2,7 +2,8 @@
 -- Cluster-scoped roles used by the consequence actuator.
 --
 -- Supabase applies custom roles separately from schema migrations. Keep these
--- roles NOLOGIN and grant them only to deployment-provisioned database logins.
+-- Owner roles are NOLOGIN and membership-free. Grant only the executor roles
+-- to deployment-provisioned, tenant-bound database logins.
 
 DO $roles$
 BEGIN
@@ -83,6 +84,34 @@ BEGIN
       OR candidate.rolreplication
       OR candidate.rolbypassrls
       OR candidate.rolname IN ('anon', 'authenticated', 'service_role')
+      OR EXISTS (
+        SELECT 1
+        FROM pg_catalog.pg_roles AS inherited_role
+        WHERE pg_catalog.pg_has_role(
+            executor_members.role_oid,
+            inherited_role.oid,
+            'MEMBER'
+          )
+          AND (
+            inherited_role.rolsuper
+            OR inherited_role.rolcreatedb
+            OR inherited_role.rolcreaterole
+            OR inherited_role.rolreplication
+            OR inherited_role.rolbypassrls
+            OR inherited_role.rolname IN (
+              'consequence_actuator_store_owner',
+              'anon',
+              'authenticated',
+              'service_role'
+            )
+          )
+      )
+    UNION ALL
+    SELECT 1
+    FROM pg_catalog.pg_auth_members AS membership
+    JOIN pg_catalog.pg_roles AS owner_role
+      ON owner_role.oid IN (membership.roleid, membership.member)
+    WHERE owner_role.rolname = 'consequence_actuator_store_owner'
   )
   THEN
     RAISE EXCEPTION
@@ -129,6 +158,34 @@ BEGIN
       OR candidate.rolreplication
       OR candidate.rolbypassrls
       OR candidate.rolname IN ('anon', 'authenticated', 'service_role')
+      OR EXISTS (
+        SELECT 1
+        FROM pg_catalog.pg_roles AS inherited_role
+        WHERE pg_catalog.pg_has_role(
+            executor_members.role_oid,
+            inherited_role.oid,
+            'MEMBER'
+          )
+          AND (
+            inherited_role.rolsuper
+            OR inherited_role.rolcreatedb
+            OR inherited_role.rolcreaterole
+            OR inherited_role.rolreplication
+            OR inherited_role.rolbypassrls
+            OR inherited_role.rolname IN (
+              'rollout_attempt_store_owner',
+              'anon',
+              'authenticated',
+              'service_role'
+            )
+          )
+      )
+    UNION ALL
+    SELECT 1
+    FROM pg_catalog.pg_auth_members AS membership
+    JOIN pg_catalog.pg_roles AS owner_role
+      ON owner_role.oid IN (membership.roleid, membership.member)
+    WHERE owner_role.rolname = 'rollout_attempt_store_owner'
   )
   THEN
     RAISE EXCEPTION

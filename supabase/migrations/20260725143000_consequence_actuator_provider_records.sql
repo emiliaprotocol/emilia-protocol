@@ -6,6 +6,71 @@
 -- envelope and read it back only under the complete attempt binding. Client
 -- roles and the generic Supabase service_role receive no table or RPC access.
 
+DO $role_isolation$
+BEGIN
+  IF EXISTS (
+    WITH RECURSIVE executor_members(role_oid) AS (
+      SELECT oid
+      FROM pg_catalog.pg_roles
+      WHERE rolname = 'consequence_actuator_executor'
+      UNION
+      SELECT membership.member
+      FROM pg_catalog.pg_auth_members AS membership
+      JOIN executor_members AS inherited
+        ON membership.roleid = inherited.role_oid
+    )
+    SELECT 1
+    FROM executor_members
+    JOIN pg_catalog.pg_roles AS candidate
+      ON candidate.oid = executor_members.role_oid
+    WHERE candidate.rolsuper
+      OR candidate.rolcreatedb
+      OR candidate.rolcreaterole
+      OR candidate.rolreplication
+      OR candidate.rolbypassrls
+      OR candidate.rolname IN (
+        'consequence_actuator_store_owner',
+        'anon',
+        'authenticated',
+        'service_role'
+      )
+      OR EXISTS (
+        SELECT 1
+        FROM pg_catalog.pg_roles AS inherited_role
+        WHERE pg_catalog.pg_has_role(
+            executor_members.role_oid,
+            inherited_role.oid,
+            'MEMBER'
+          )
+          AND (
+            inherited_role.rolsuper
+            OR inherited_role.rolcreatedb
+            OR inherited_role.rolcreaterole
+            OR inherited_role.rolreplication
+            OR inherited_role.rolbypassrls
+            OR inherited_role.rolname IN (
+              'consequence_actuator_store_owner',
+              'anon',
+              'authenticated',
+              'service_role'
+            )
+          )
+      )
+    UNION ALL
+    SELECT 1
+    FROM pg_catalog.pg_auth_members AS membership
+    JOIN pg_catalog.pg_roles AS owner_role
+      ON owner_role.oid IN (membership.roleid, membership.member)
+    WHERE owner_role.rolname = 'consequence_actuator_store_owner'
+  )
+  THEN
+    RAISE EXCEPTION
+      'consequence actuator owner must be isolated and executor memberships least-privilege'
+      USING ERRCODE = '42501';
+  END IF;
+END
+$role_isolation$;
+
 SET ROLE consequence_actuator_store_owner;
 
 CREATE OR REPLACE FUNCTION consequence_actuator_private.assert_tenant_principal(
@@ -836,7 +901,7 @@ GRANT EXECUTE ON FUNCTION consequence_actuator_private.read_provider_record(
 ) TO consequence_actuator_executor;
 
 COMMENT ON TABLE consequence_actuator_private.provider_attempts IS
-  'Private immutable signed provider attempts persisted before invocation so authenticated readback can reconcile response loss without replay.';
+  'Private immutable signed provider attempts persisted before invocation so response loss remains attributable as indeterminate without blind replay.';
 COMMENT ON TABLE consequence_actuator_private.provider_records IS
   'Private immutable exact terminal provider responses and signed attribution, append-only and tenant-bound to consequence actuator envelopes.';
 
