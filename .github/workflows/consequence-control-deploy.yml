@@ -274,7 +274,18 @@ jobs:
           [[ "$REGION" =~ ^[a-z]+(-[a-z0-9]+)+[0-9]$ ]]
           [[ "$REQUEST_BUCKET" =~ ^[a-z0-9][a-z0-9._-]{1,61}[a-z0-9]$ ]]
           [[ "$TRUSTED_EXECUTOR_IMAGE" =~ ^[a-z0-9.-]+/[a-z0-9._/-]+@sha256:[0-9a-f]{64}$ ]]
-          [[ "$TRUSTED_EXECUTOR_SERVICE_ACCOUNT" =~ ^[a-z][a-z0-9-]{4,28}[a-z0-9]@[a-z][a-z0-9-]{4,28}[a-z0-9]\.iam\.gserviceaccount\.com$ ]]
+          [[ "$TRUSTED_EXECUTOR_SERVICE_ACCOUNT" =~ ^projects/([a-z][a-z0-9-]{4,28}[a-z0-9])/serviceAccounts/([a-z][a-z0-9-]{4,28}[a-z0-9])@([a-z][a-z0-9-]{4,28}[a-z0-9])\.iam\.gserviceaccount\.com$ ]] || {
+            printf 'trusted executor service account must be a canonical Cloud Build resource\n' >&2
+            exit 1
+          }
+          [[ "${BASH_REMATCH[1]}" == "$PROJECT_ID" ]] || {
+            printf 'trusted executor service-account resource must belong to PROJECT_ID\n' >&2
+            exit 1
+          }
+          [[ "${BASH_REMATCH[3]}" == "$PROJECT_ID" ]] || {
+            printf 'trusted executor service-account email must belong to PROJECT_ID\n' >&2
+            exit 1
+          }
           [[ "$TRUSTED_EXECUTOR_WORKER_POOL" =~ ^projects/[a-z][a-z0-9-]{4,28}[a-z0-9]/locations/[a-z]+(-[a-z0-9]+)+[0-9]/workerPools/[a-z][a-z0-9-]{0,61}[a-z0-9]$ ]]
           case "$OPERATION" in
             deploy-candidates|bootstrap-stable|apply-decision-1|apply-decision-10|apply-decision-50|apply-decision-100|apply-actuator-100|apply-rollback)

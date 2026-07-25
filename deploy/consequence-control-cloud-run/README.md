@@ -54,6 +54,13 @@ that pre-provisioned boundary exactly:
 - `GCP_CONSEQUENCE_CONTROL_PROJECT`
 - `GCP_CONSEQUENCE_CONTROL_REGION`
 
+`GCP_CONSEQUENCE_CONTROL_TRUSTED_EXECUTOR_SERVICE_ACCOUNT` must be the exact
+Cloud Build resource
+`projects/PROJECT_ID/serviceAccounts/ACCOUNT@PROJECT_ID.iam.gserviceaccount.com`,
+not a bare service-account email. Both project components must equal
+`GCP_CONSEQUENCE_CONTROL_PROJECT`; the validated resource passes through
+unchanged to Cloud Build's `serviceAccount` field.
+
 The executor's Cloud Build service account, private worker pool, network,
 Secret Manager references, request parser, output attestations, and mutation
 permissions are provisioned outside candidate source control. The source-free

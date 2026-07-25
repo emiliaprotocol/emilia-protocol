@@ -726,6 +726,38 @@ class AuthorizationAndMutationHostileTests(unittest.TestCase):
 
 
 class CommandSpecificConfigHostileTests(unittest.TestCase):
+    def validate_trusted_executor_service_account(
+        self,
+        service_account: str,
+        *,
+        project_id: str = "test-project",
+    ) -> subprocess.CompletedProcess[str]:
+        workflow = (
+            LANE.parent.parent
+            / ".github"
+            / "workflows"
+            / "consequence-control-deploy.yml"
+        ).read_text(encoding="utf-8")
+        start = workflow.index(
+            '[[ "$TRUSTED_EXECUTOR_SERVICE_ACCOUNT" =~'
+        )
+        end = workflow.index(
+            '[[ "$TRUSTED_EXECUTOR_WORKER_POOL" =~',
+            start,
+        )
+        validation = workflow[start:end]
+        return subprocess.run(
+            ["bash", "-euo", "pipefail", "-c", validation],
+            text=True,
+            capture_output=True,
+            check=False,
+            env={
+                **os.environ,
+                "PROJECT_ID": project_id,
+                "TRUSTED_EXECUTOR_SERVICE_ACCOUNT": service_account,
+            },
+        )
+
     def config_keys(self, function: str) -> set[str]:
         result = subprocess.run(
             [
@@ -820,6 +852,72 @@ class CommandSpecificConfigHostileTests(unittest.TestCase):
         self.assertNotIn("actions/checkout@", protected)
         self.assertNotIn("deploy/consequence-control-cloud-run/", protected)
         self.assertNotIn("secrets.", protected)
+
+    def test_workflow_passes_the_canonical_executor_service_account_unchanged(
+        self,
+    ) -> None:
+        workflow = (
+            LANE.parent.parent
+            / ".github"
+            / "workflows"
+            / "consequence-control-deploy.yml"
+        ).read_text(encoding="utf-8")
+        self.assertIn(
+            'serviceAccount: "${_SERVICE_ACCOUNT}"',
+            workflow,
+        )
+        self.assertIn(
+            "_SERVICE_ACCOUNT=$TRUSTED_EXECUTOR_SERVICE_ACCOUNT",
+            workflow,
+        )
+        self.assertIn(
+            '[[ "${BASH_REMATCH[1]}" == "$PROJECT_ID" ]] || {',
+            workflow,
+        )
+        self.assertIn(
+            '[[ "${BASH_REMATCH[3]}" == "$PROJECT_ID" ]] || {',
+            workflow,
+        )
+
+    def test_executor_service_account_accepts_exact_canonical_resource(
+        self,
+    ) -> None:
+        result = self.validate_trusted_executor_service_account(
+            "projects/test-project/serviceAccounts/"
+            "trusted-executor@test-project.iam.gserviceaccount.com"
+        )
+        self.assertEqual(result.returncode, 0, result.stderr)
+
+    def test_executor_service_account_rejects_bare_email(self) -> None:
+        result = self.validate_trusted_executor_service_account(
+            "trusted-executor@test-project.iam.gserviceaccount.com"
+        )
+        self.assertNotEqual(result.returncode, 0)
+
+    def test_executor_service_account_rejects_wrong_resource_project(
+        self,
+    ) -> None:
+        result = self.validate_trusted_executor_service_account(
+            "projects/attacker-project/serviceAccounts/"
+            "trusted-executor@test-project.iam.gserviceaccount.com"
+        )
+        self.assertNotEqual(result.returncode, 0)
+
+    def test_executor_service_account_rejects_wrong_email_project(
+        self,
+    ) -> None:
+        result = self.validate_trusted_executor_service_account(
+            "projects/test-project/serviceAccounts/"
+            "trusted-executor@attacker-project.iam.gserviceaccount.com"
+        )
+        self.assertNotEqual(result.returncode, 0)
+
+    def test_executor_service_account_rejects_malformed_resource(self) -> None:
+        result = self.validate_trusted_executor_service_account(
+            "//iam.googleapis.com/projects/test-project/serviceAccounts/"
+            "trusted-executor@test-project.iam.gserviceaccount.com"
+        )
+        self.assertNotEqual(result.returncode, 0)
 
     def test_protected_workflow_exposes_every_guarded_traffic_transition(
         self,
