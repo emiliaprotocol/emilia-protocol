@@ -178,9 +178,12 @@ export function validateReusableNpmWorkflowText(text) {
         'npm run conformance:manifest',
         'verify-reproducible-package.mjs',
         'run: npm test',
+        'actions/upload-artifact@',
+        'actions/download-artifact@',
+        'artifact-ids: ${{ needs.build.outputs.release_artifact_id }}',
         'actions/attest@',
-        'subject-path: ${{ steps.pack.outputs.tarball }}',
-        'npm publish "${{ steps.pack.outputs.tarball }}" --access public --provenance',
+        'subject-path: ${{ steps.validate.outputs.tarball }}',
+        'npm publish "$TESTED_TARBALL" --access public --provenance --ignore-scripts',
         'cmp "$TESTED_TARBALL" "registry-copy/$REGISTRY_TARBALL"',
         'ref: ${{ github.sha }}',
         'persist-credentials: false',
@@ -188,40 +191,67 @@ export function validateReusableNpmWorkflowText(text) {
         '--allowed-actor FutureEnterprises',
         '--expected-commit "$GITHUB_SHA"',
         '--expected-ref "$GITHUB_REF"',
-        '--revalidate-remote',
+        '--package-json "$PACKAGE_DIR/package.json"',
+        'package_json_sha256',
+        'tarball package/package.json bytes differ from approved source package.json',
+        'duplicate npm tarball path',
+        'npm tarball links are forbidden',
+        'unexpected release artifact inventory',
+        'duplicate release artifact path',
+        'release artifact path escapes extraction root',
+        'release artifact symlink is forbidden',
+        'dependency-pins.json',
+        'internal dependency unavailable from npm',
+        'git ls-remote --exit-code https://github.com/emiliaprotocol/emilia-protocol.git',
         'already exists; refusing to publish',
-        'response.status === 404',
-        'approvedVersion',
-        'approvedFilename',
-        'node scripts/check-npm-package-dependencies.mjs "$PACKAGE_DIR"',
+        'response.status !== 404',
+        'node scripts/check-npm-package-dependencies.mjs --install-pinned "$PACKAGE_DIR"',
         'group: registry-publish-${{ inputs.package_name }}',
     ], 'reusable npm workflow');
     if (text.includes('ref: ${{ inputs.release_tag }}')
-        || text.includes('already exists; continuing to mandatory byte verification')) {
+        || text.includes('already exists; continuing to mandatory byte verification')
+        || /\bgit ls-remote\b[^\n]*(?:\borigin\b|remote\.origin|git config)/u.test(text)) {
         throw new Error('reusable npm workflow follows mutable release input or treats an existing version as success');
     }
     const workflow = YAML.parse(text);
-    const publish = workflow?.jobs?.publish;
-    if (workflow?.jobs?.approval
-        || publish?.environment !== 'registry-publishing-approval'
-        || publish?.permissions?.['id-token'] !== 'write'
-        || publish?.needs
-        || publish?.uses
-        || !Array.isArray(publish?.steps)) {
-        throw new Error('reusable npm OIDC publisher is not the protected execution job');
+    const jobs = workflow?.jobs ?? {};
+    const build = jobs.build;
+    const publisher = jobs.publisher;
+    if (JSON.stringify(Object.keys(jobs)) !== JSON.stringify(['build', 'publisher'])) {
+        throw new Error('reusable npm workflow must contain only unprivileged build and protected publisher jobs');
     }
     const permissions = workflow?.permissions ?? {};
-    const expectedPermissions = {
-        contents: 'read',
-        'id-token': 'write',
-        attestations: 'write',
-    };
+    const expectedPermissions = { contents: 'read' };
     if (JSON.stringify(permissions) !== JSON.stringify(expectedPermissions)) {
-        throw new Error('reusable npm workflow requests permissions outside the caller release boundary');
+        throw new Error('reusable npm workflow grants OIDC outside the protected publisher');
+    }
+    if (build?.environment !== undefined
+        || JSON.stringify(build?.permissions ?? {}) !== JSON.stringify({ contents: 'read' })
+        || !Array.isArray(build?.steps)
+        || build.steps.some((step) => step.uses?.startsWith('actions/attest@'))) {
+        throw new Error('reusable npm build job is not unprivileged');
+    }
+    if (publisher?.needs !== 'build'
+        || publisher?.environment !== 'registry-publishing-approval'
+        || JSON.stringify(publisher?.permissions ?? {}) !== JSON.stringify({
+            contents: 'read',
+            'id-token': 'write',
+            attestations: 'write',
+        })
+        || !Array.isArray(publisher?.steps)
+        || publisher.steps.some((step) => step.uses?.startsWith('actions/checkout@'))
+        || publisher.steps.some((step) => typeof step.run === 'string'
+            && (step.run.includes('scripts/')
+                || /\bnpm (?:test|run|ci|install|exec)\b/u.test(step.run)))) {
+        throw new Error('reusable npm publisher is not an inert protected OIDC job');
+    }
+    const download = publisher.steps.find((step) => /^actions\/download-artifact@[0-9a-f]{40}$/u.test(step.uses ?? ''));
+    if (download?.with?.['artifact-ids'] !== '${{ needs.build.outputs.release_artifact_id }}'
+        || download?.with?.name !== undefined) {
+        throw new Error('reusable npm publisher does not download the immutable exact artifact ID');
     }
     requireBefore(text, 'scripts/require-release-approval.mjs', 'run: npm test', 'reusable npm workflow');
-    requireBefore(text, 'node scripts/check-npm-package-dependencies.mjs "$PACKAGE_DIR"', 'npm publish "${{ steps.pack.outputs.tarball }}" --access public --provenance', 'reusable npm dependency registry guard');
-    requireBefore(text, '--revalidate-remote', 'npm publish "${{ steps.pack.outputs.tarball }}" --access public --provenance', 'reusable npm remote ref guard');
+    requireBefore(text, 'git ls-remote --exit-code https://github.com/emiliaprotocol/emilia-protocol.git', 'npm publish "$TESTED_TARBALL" --access public --provenance --ignore-scripts', 'reusable npm remote ref guard');
     validateTlaSecurityCaseWorkflowText(text, 'reusable npm workflow');
     forbidCredentialInjection(text, 'reusable npm workflow');
     return true;
@@ -393,72 +423,10 @@ export function validateCredentialRotationGuideText(text) {
     return true;
 }
 export function validateNpmDirect(text, label) {
-    requireText(text, [
-        'npm run security-case:emit',
-        'npm run conformance:manifest',
-        'release:verify:reproducible',
-        'run: npm test',
-        'actions/attest@',
-        'subject-path: ${{ steps.pack.outputs.tarball }}',
-        'npm publish "${{ steps.pack.outputs.tarball }}" --access public --provenance',
-        'cmp "$TESTED_TARBALL" "registry-copy/$REGISTRY_TARBALL"',
-        'scripts/require-release-approval.mjs',
-        '--revalidate-remote',
-        'already exists; refusing to publish',
-        'response.status === 404',
-        'approvedVersion',
-        'approvedFilename',
-    ], label);
-    requireBefore(text, 'scripts/require-release-approval.mjs', 'run: npm test', label);
-    requireBefore(text, '--revalidate-remote', 'npm publish "${{ steps.pack.outputs.tarball }}" --access public --provenance', `${label} remote ref guard`);
-    validateTlaSecurityCaseWorkflowText(text, label);
-    validateManualPublisher(text, label, {
-        direct: true,
-        commitBound: true,
-        protectedPublisher: true,
-    });
-    forbidCredentialInjection(text, label);
-    return true;
+    return validateReusableNpmCallerText(text, label);
 }
 export function validateGateNpmWorkflowText(text, label = 'publish-gate.yml') {
-    requireText(text, [
-        'npm run security-case:emit',
-        'npm run conformance:manifest',
-        'node scripts/verify-reproducible-package.mjs packages/gate',
-        'working-directory: packages/gate',
-        'run: npm test',
-        'actions/attest@',
-        'subject-path: ${{ steps.pack.outputs.tarball }}',
-        'npm publish "${{ steps.pack.outputs.tarball }}" --access public --provenance',
-        'cmp "$TESTED_TARBALL" "registry-copy/$REGISTRY_TARBALL"',
-        'scripts/require-release-approval.mjs',
-        '--tag-prefix gate-v',
-        '--package @emilia-protocol/gate',
-        'node scripts/check-npm-package-dependencies.mjs packages/gate --install-pinned',
-        'node scripts/check-npm-package-dependencies.mjs packages/gate',
-        'group: registry-publish-@emilia-protocol/gate',
-        "manifest['@version'] !== 'EP-REPRODUCIBLE-NPM-ARTIFACT-v1'",
-        '${{ steps.pack.outputs.tarball }}.sha256',
-        'EXPECTED_SHA256: ${{ steps.pack.outputs.sha256 }}',
-        'sha256sum -c "$TESTED_TARBALL.sha256"',
-        '--revalidate-remote',
-        'already exists; refusing to publish',
-        'response.status === 404',
-        'approvedVersion',
-        'approvedFilename',
-    ], label);
-    requireBefore(text, 'scripts/require-release-approval.mjs', 'run: npm test', label);
-    requireBefore(text, 'node scripts/check-npm-package-dependencies.mjs packages/gate --install-pinned', 'run: npm test', `${label} pinned dependency materialization`);
-    requireBefore(text, 'node scripts/check-npm-package-dependencies.mjs packages/gate', 'npm publish "${{ steps.pack.outputs.tarball }}" --access public --provenance', `${label} dependency registry guard`);
-    requireBefore(text, '--revalidate-remote', 'npm publish "${{ steps.pack.outputs.tarball }}" --access public --provenance', `${label} remote ref guard`);
-    validateTlaSecurityCaseWorkflowText(text, label);
-    validateManualPublisher(text, label, {
-        direct: true,
-        commitBound: true,
-        protectedPublisher: true,
-    });
-    forbidCredentialInjection(text, label);
-    return true;
+    return validateReusableNpmCallerText(text, label);
 }
 export function validatePypiDirect(text, label) {
     requireText(text, [
@@ -557,20 +525,13 @@ export function auditReleaseChain(root = ROOT) {
         if (!fs.statSync(workflowPath).isFile() || !fs.statSync(packagePath).isDirectory())
             throw new Error(`missing release input for ${entry.package}`);
         const workflow = fs.readFileSync(workflowPath, 'utf8');
-        if (entry.mode === 'npm_reusable') {
-            if (entry.workflow === 'publish-gate.yml') {
-                validateGateNpmWorkflowText(workflow, entry.workflow);
+        if (entry.mode === 'npm_reusable' || entry.mode === 'npm_direct') {
+            validateReusableNpmCallerText(workflow, entry.workflow);
+            if (!exactInput(workflow, 'package_dir', entry.path)
+                || !exactInput(workflow, 'package_name', entry.package)
+                || !exactInput(workflow, 'tag_prefix', entry.tag_prefix)) {
+                throw new Error(`${entry.workflow} does not bind the declared package path, name, and tag prefix`);
             }
-            else {
-                validateReusableNpmCallerText(workflow, entry.workflow);
-                if (!exactInput(workflow, 'package_dir', entry.path) || !exactInput(workflow, 'package_name', entry.package)
-                    || !exactInput(workflow, 'tag_prefix', entry.tag_prefix)) {
-                    throw new Error(`${entry.workflow} does not bind the declared package path, name, and tag prefix`);
-                }
-            }
-        }
-        else if (entry.mode === 'npm_direct') {
-            validateNpmDirect(workflow, entry.workflow);
         }
         else if (entry.mode === 'pypi_direct') {
             validatePypiDirect(workflow, entry.workflow);
@@ -587,7 +548,9 @@ export function auditReleaseChain(root = ROOT) {
             validateGoTagWorkflowText(workflow);
             requireText(workflow, [entry.path, entry.package, entry.tag_prefix], entry.workflow);
         }
-        if (!workflow.includes(`--tag-prefix ${entry.tag_prefix}`) && !entry.mode.endsWith('_reusable')) {
+        if (!workflow.includes(`--tag-prefix ${entry.tag_prefix}`)
+            && !entry.mode.endsWith('_reusable')
+            && entry.ecosystem !== 'npm') {
             throw new Error(`${entry.workflow} does not bind release tag prefix ${entry.tag_prefix}`);
         }
         if (entry.ecosystem === 'npm') {

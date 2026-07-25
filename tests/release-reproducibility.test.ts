@@ -7,6 +7,7 @@ import { gzipSync } from 'node:zlib';
 import {
   assertArtifactBytesMatch,
   canonicalizeNpmTarball,
+  validatePackedPackageIdentity,
   verifyReproduciblePackage,
 } from '../scripts/verify-reproducible-package.mjs';
 import { assertPythonArtifactBytesMatch } from '../scripts/python-artifact-integrity.mjs';
@@ -125,6 +126,97 @@ describe('release byte reproducibility', () => {
     }
   });
 
+  it('rejects randomness shared through an inherited RUNNER_TEMP', () => {
+    const root = mkdtempSync(path.join(os.tmpdir(), 'ep-pack-runner-temp-seed-'));
+    const dependencyRoot = path.join(root, 'fixture-dependencies');
+    const sharedRunnerTemp = path.join(root, 'host-runner-temp');
+    const priorRunnerTemp = process.env.RUNNER_TEMP;
+    mkdirSync(dependencyRoot);
+    mkdirSync(sharedRunnerTemp);
+    writeFileSync(path.join(root, 'package.json'), JSON.stringify({
+      name: 'runner-temp-seed-build-fixture',
+      version: '1.0.0',
+      files: ['dist'],
+      scripts: {
+        build: 'node build.mjs',
+      },
+    }));
+    writeFileSync(path.join(root, 'build.mjs'), [
+      "import { mkdirSync, readFileSync, writeFileSync } from 'node:fs';",
+      "import { randomBytes } from 'node:crypto';",
+      "import path from 'node:path';",
+      "const seedPath = path.join(process.env.RUNNER_TEMP, 'hostile-seed');",
+      'let seed;',
+      'try {',
+      "  seed = readFileSync(seedPath, 'utf8');",
+      '} catch {',
+      "  seed = randomBytes(32).toString('hex');",
+      "  writeFileSync(seedPath, seed);",
+      '}',
+      "mkdirSync('dist', { recursive: true });",
+      "writeFileSync('dist/generated.js', `export default '${seed}';\\n`);",
+      '',
+    ].join('\n'));
+
+    process.env.RUNNER_TEMP = sharedRunnerTemp;
+    try {
+      expect(() => verifyReproduciblePackage(root, { dependencyRoot })).toThrow(
+        /package build|package (file manifests|bytes) differ/,
+      );
+      expect(() => readFileSync(path.join(sharedRunnerTemp, 'hostile-seed'), 'utf8')).toThrow();
+    } finally {
+      if (priorRunnerTemp === undefined) delete process.env.RUNNER_TEMP;
+      else process.env.RUNNER_TEMP = priorRunnerTemp;
+      rmSync(root, { recursive: true, force: true });
+    }
+  });
+
+  it('removes an inherited GITHUB_WORKSPACE from both independent builds', () => {
+    const root = mkdtempSync(path.join(os.tmpdir(), 'ep-pack-workspace-seed-'));
+    const dependencyRoot = path.join(root, 'fixture-dependencies');
+    const hostWorkspace = path.join(root, 'host-workspace');
+    const priorWorkspace = process.env.GITHUB_WORKSPACE;
+    mkdirSync(dependencyRoot);
+    mkdirSync(hostWorkspace);
+    writeFileSync(path.join(root, 'package.json'), JSON.stringify({
+      name: 'workspace-seed-build-fixture',
+      version: '1.0.0',
+      files: ['dist'],
+      scripts: {
+        build: 'node build.mjs',
+      },
+    }));
+    writeFileSync(path.join(root, 'build.mjs'), [
+      "import { mkdirSync, readFileSync, writeFileSync } from 'node:fs';",
+      "import { randomBytes } from 'node:crypto';",
+      "import path from 'node:path';",
+      "const seedPath = process.env.GITHUB_WORKSPACE",
+      "  ? path.join(process.env.GITHUB_WORKSPACE, 'hostile-seed')",
+      '  : null;',
+      'let seed;',
+      'try {',
+      "  seed = seedPath ? readFileSync(seedPath, 'utf8') : null;",
+      '} catch {}',
+      "if (!seed) seed = randomBytes(32).toString('hex');",
+      'if (seedPath) writeFileSync(seedPath, seed);',
+      "mkdirSync('dist', { recursive: true });",
+      "writeFileSync('dist/generated.js', `export default '${seed}';\\n`);",
+      '',
+    ].join('\n'));
+
+    process.env.GITHUB_WORKSPACE = hostWorkspace;
+    try {
+      expect(() => verifyReproduciblePackage(root, { dependencyRoot })).toThrow(
+        /package build|package (file manifests|bytes) differ/,
+      );
+      expect(() => readFileSync(path.join(hostWorkspace, 'hostile-seed'), 'utf8')).toThrow();
+    } finally {
+      if (priorWorkspace === undefined) delete process.env.GITHUB_WORKSPACE;
+      else process.env.GITHUB_WORKSPACE = priorWorkspace;
+      rmSync(root, { recursive: true, force: true });
+    }
+  });
+
   it('rejects a deterministic build-time package version rewrite', () => {
     const root = mkdtempSync(path.join(os.tmpdir(), 'ep-pack-version-rewrite-'));
     const dependencyRoot = path.join(root, 'fixture-dependencies');
@@ -151,6 +243,35 @@ describe('release byte reproducibility', () => {
       expect(() => verifyReproduciblePackage(root, { dependencyRoot })).toThrow(
         /mutated package\.json|package identity/i,
       );
+    } finally {
+      rmSync(root, { recursive: true, force: true });
+    }
+  });
+
+  it.each([
+    ['dependency', { dependencies: { hostile: '9.9.9' } }],
+    ['export', { exports: { '.': './hostile.js' } }],
+    ['script', { scripts: { postinstall: 'node hostile.js' } }],
+  ])('rejects a tarball package.json %s mutation even when name/version match', (_label, mutation) => {
+    const root = mkdtempSync(path.join(os.tmpdir(), 'ep-pack-package-json-raw-'));
+    const outDir = path.join(root, 'out');
+    const sourceMetadata = {
+      name: 'raw-package-json-fixture',
+      version: '1.0.0',
+      files: ['index.js', 'hostile.js'],
+    };
+    const mutatedMetadata = { ...sourceMetadata, ...mutation };
+    writeFileSync(path.join(root, 'package.json'), `${JSON.stringify(mutatedMetadata, null, 2)}\n`);
+    writeFileSync(path.join(root, 'index.js'), 'export const value = 1;\n');
+    writeFileSync(path.join(root, 'hostile.js'), 'throw new Error("must never run");\n');
+    try {
+      const packed = verifyReproduciblePackage(root, { outDir });
+      expect(() => validatePackedPackageIdentity(
+        readFileSync(packed.artifactPath),
+        sourceMetadata.name,
+        sourceMetadata.version,
+        Buffer.from(`${JSON.stringify(sourceMetadata, null, 2)}\n`),
+      )).toThrow(/package\/package\.json bytes differ/i);
     } finally {
       rmSync(root, { recursive: true, force: true });
     }
@@ -204,9 +325,11 @@ describe('release byte reproducibility', () => {
   });
 
   it('publish workflow attests, publishes, and registry-compares the same tarball', () => {
-    const workflow = readFileSync('.github/workflows/publish-verify-sdk.yml', 'utf8');
-    expect(workflow).toContain('subject-path: ${{ steps.pack.outputs.tarball }}');
-    expect(workflow).toContain('npm publish "${{ steps.pack.outputs.tarball }}" --access public --provenance');
+    const workflow = readFileSync('.github/workflows/_publish-npm-package.yml', 'utf8');
+    expect(workflow).toContain('subject-path: ${{ steps.validate.outputs.tarball }}');
+    expect(workflow).toContain(
+      'npm publish "$TESTED_TARBALL" --access public --provenance --ignore-scripts',
+    );
     expect(workflow).toContain('cmp "$TESTED_TARBALL" "registry-copy/$REGISTRY_TARBALL"');
     expect(workflow).toContain('actions/attest@f7c74d28b9d84cb8768d0b8ca14a4bac6ef463e6');
   });

@@ -72,9 +72,11 @@ export function validatePackedPackageIdentity(
   archive: Buffer | Uint8Array,
   expectedName: string,
   expectedVersion: string,
-): { name: string; version: string } {
+  expectedPackageJsonBytes: Buffer | Uint8Array,
+): { name: string; version: string; packageJsonSha256: string } {
   const tarBytes: Buffer = Buffer.from(ungzip(archive));
   const identities: any[] = [];
+  const packageJsonEntries: Buffer[] = [];
   for (let offset = 0; offset + 512 <= tarBytes.length;) {
     const header: Buffer = tarBytes.subarray(offset, offset + 512);
     if (header.every((value: number) => value === 0)) break;
@@ -90,8 +92,10 @@ export function validatePackedPackageIdentity(
       if (type !== 0 && type !== 0x30) {
         throw new Error('npm tarball package/package.json is not a regular file');
       }
+      const packageJsonBytes: Buffer = tarBytes.subarray(dataOffset, dataOffset + size);
+      packageJsonEntries.push(packageJsonBytes);
       try {
-        identities.push(JSON.parse(tarBytes.subarray(dataOffset, dataOffset + size).toString('utf8')));
+        identities.push(JSON.parse(packageJsonBytes.toString('utf8')));
       } catch {
         throw new Error('npm tarball package/package.json is not valid JSON');
       }
@@ -107,7 +111,21 @@ export function validatePackedPackageIdentity(
       `npm tarball package identity differs from approved ${expectedName}@${expectedVersion}`,
     );
   }
-  return { name: identity.name, version: identity.version };
+  const expectedBytes: Buffer = Buffer.from(expectedPackageJsonBytes);
+  const [actualBytes] = packageJsonEntries;
+  if (!actualBytes.equals(expectedBytes)) {
+    const expectedSha256: string = crypto.createHash('sha256').update(expectedBytes).digest('hex');
+    const actualSha256: string = crypto.createHash('sha256').update(actualBytes).digest('hex');
+    throw new Error(
+      `npm tarball package/package.json bytes differ from source package.json: `
+      + `${actualSha256} != ${expectedSha256}`,
+    );
+  }
+  return {
+    name: identity.name,
+    version: identity.version,
+    packageJsonSha256: crypto.createHash('sha256').update(actualBytes).digest('hex'),
+  };
 }
 
 /**
@@ -129,33 +147,67 @@ export function verifyReproduciblePackage(
   const expectedFilename: string = npmArtifactFilename(metadata.name, metadata.version);
   const scratch: string = fs.mkdtempSync(path.join(os.tmpdir(), 'ep-repro-pack-'));
 
-  function isolatedEnv(label: string, ignoreScripts: boolean): NodeJS.ProcessEnv {
+  function isolatedEnv(
+    label: string,
+    ignoreScripts: boolean,
+    workingDirectory: string,
+  ): NodeJS.ProcessEnv {
     const safeLabel: string = label.replace(/[^a-z0-9._-]+/giu, '-');
     const environmentRoot: string = path.join(scratch, `${safeLabel}-environment`);
     const home: string = path.join(environmentRoot, 'home');
     const cache: string = path.join(environmentRoot, 'npm-cache');
     const temporary: string = path.join(environmentRoot, 'tmp');
-    for (const directory of [home, cache, temporary]) {
+    const prefix: string = path.join(environmentRoot, 'npm-prefix');
+    const userConfig: string = path.join(environmentRoot, 'npmrc');
+    for (const directory of [home, cache, temporary, prefix]) {
       fs.mkdirSync(directory, { recursive: true, mode: 0o700 });
     }
-    return {
-      ...process.env,
+    fs.writeFileSync(userConfig, '', { mode: 0o600 });
+    const controlledPath: string = [
+      path.dirname(process.execPath),
+      ...(process.platform === 'win32'
+        ? [
+            path.join(process.env.SYSTEMROOT || 'C:\\Windows', 'System32'),
+            process.env.SYSTEMROOT || 'C:\\Windows',
+          ]
+        : ['/usr/bin', '/bin']),
+    ].join(path.delimiter);
+    const environment: NodeJS.ProcessEnv = {
       HOME: home,
       USERPROFILE: home,
       XDG_CACHE_HOME: cache,
+      PATH: controlledPath,
+      PWD: workingDirectory,
+      INIT_CWD: workingDirectory,
+      RUNNER_TEMP: temporary,
       npm_config_cache: cache,
+      npm_config_prefix: prefix,
+      npm_config_userconfig: userConfig,
+      npm_config_tmp: temporary,
       npm_config_ignore_scripts: ignoreScripts ? 'true' : 'false',
+      npm_config_audit: 'false',
+      npm_config_fund: 'false',
+      npm_config_update_notifier: 'false',
       TMPDIR: temporary,
       TMP: temporary,
       TEMP: temporary,
     };
+    for (const key of ['CI', 'LANG', 'LC_ALL', 'SOURCE_DATE_EPOCH', 'TZ']) {
+      if (process.env[key] !== undefined) environment[key] = process.env[key];
+    }
+    if (process.platform === 'win32') {
+      for (const key of ['COMSPEC', 'PATHEXT', 'SYSTEMROOT', 'WINDIR']) {
+        if (process.env[key] !== undefined) environment[key] = process.env[key];
+      }
+    }
+    return environment;
   }
 
   function runPack(args: string[], label: string): any {
     const run = spawnSync(npm, ['pack', ...args, '--json'], {
       cwd: ROOT,
       encoding: 'utf8',
-      env: isolatedEnv(`${label}-pack`, true),
+      env: isolatedEnv(`${label}-pack`, true, ROOT),
     });
     if (run.status !== 0) {
       throw new Error(`npm pack ${label} failed:\n${run.stderr || run.stdout}`);
@@ -320,7 +372,7 @@ export function verifyReproduciblePackage(
       const run = spawnSync(npm, ['run', 'build'], {
         cwd: buildPackageDir,
         encoding: 'utf8',
-        env: isolatedEnv(`${label}-build`, false),
+        env: isolatedEnv(`${label}-build`, false, buildPackageDir),
       });
       if (run.status !== 0) {
         throw new Error(`package build ${label} failed:\n${run.stderr || run.stdout}`);
@@ -371,12 +423,18 @@ export function verifyReproduciblePackage(
     const bytes: Buffer = canonicalizeNpmTarball(
       fs.readFileSync(path.join(destination, report.filename)),
     );
-    validatePackedPackageIdentity(bytes, metadata.name, metadata.version);
+    const identity = validatePackedPackageIdentity(
+      bytes,
+      metadata.name,
+      metadata.version,
+      packageJsonBytes,
+    );
     return {
       bytes,
       filename: report.filename,
       files: (report.files || []).map((entry: any) => `${entry.path}:${entry.size}:${entry.mode}`).sort(),
       sha256: crypto.createHash('sha256').update(bytes).digest('hex'),
+      packageJsonSha256: identity.packageJsonSha256,
     };
   }
 
@@ -405,6 +463,7 @@ export function verifyReproduciblePackage(
       bytes: first.bytes.length,
       fileCount: first.files.length,
       fileManifestSha256: crypto.createHash('sha256').update(JSON.stringify(first.files)).digest('hex'),
+      packageJsonSha256: first.packageJsonSha256,
       ...(artifactPath ? { artifactPath } : {}),
     };
   } finally {
@@ -446,6 +505,7 @@ if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.me
         bytes: result.bytes,
         files: result.fileCount,
         file_manifest_sha256: result.fileManifestSha256,
+        package_json_sha256: result.packageJsonSha256,
       },
     };
     manifest.manifest_sha256 = crypto.createHash('sha256').update(JSON.stringify(manifest)).digest('hex');

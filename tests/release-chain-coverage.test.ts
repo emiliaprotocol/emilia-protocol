@@ -4,7 +4,6 @@ import {
   mkdtempSync,
   mkdirSync,
   readFileSync,
-  readdirSync,
   rmSync,
   writeFileSync,
 } from 'node:fs';
@@ -14,12 +13,10 @@ import {
   auditReleaseChain,
   discoverReleaseSurfaces,
   validateCredentialRotationGuideText,
-  validateGateNpmWorkflowText,
   validateGoTagWorkflowText,
   validateNpmDirect,
   validateNpmLockData,
   validatePypiDirect,
-  validateReusableNpmCallerText,
   validateReusableNpmWorkflowText,
   validateReusablePypiWorkflowText,
 } from '../scripts/check-release-chain.mjs';
@@ -33,6 +30,122 @@ describe('release-chain coverage', () => {
   it('every declared npm and PyPI package uses reproducible registry-byte verification', () => {
     const result = auditReleaseChain();
     expect(result).toMatchObject({ npm: 19, pypi: 5 });
+  });
+
+  it('keeps all npm package code in an unprivileged job and OIDC only in the protected publisher', () => {
+    const reusableText = readFileSync('.github/workflows/_publish-npm-package.yml', 'utf8');
+    const reusable = YAML.parse(reusableText);
+    expect(Object.keys(reusable.jobs)).toEqual(['build', 'publisher']);
+
+    const build = reusable.jobs.build;
+    expect(build.environment).toBeUndefined();
+    expect(build.permissions).toEqual({ contents: 'read' });
+    expect(build.steps.some((step) => step.uses?.startsWith('actions/checkout@'))).toBe(true);
+    expect(build.steps.some((step) => step.run?.includes('npm test'))).toBe(true);
+    expect(build.steps.some((step) => step.run?.includes('security-case:emit'))).toBe(true);
+    expect(build.steps.some((step) => step.run?.includes('verify-reproducible-package.mjs'))).toBe(true);
+    expect(build.steps.some((step) => step.uses?.startsWith('actions/upload-artifact@'))).toBe(true);
+
+    const publisher = reusable.jobs.publisher;
+    expect(publisher.needs).toBe('build');
+    expect(publisher.environment).toBe('registry-publishing-approval');
+    expect(publisher.permissions).toEqual({
+      contents: 'read',
+      'id-token': 'write',
+      attestations: 'write',
+    });
+    expect(publisher.steps.some((step) => step.uses?.startsWith('actions/download-artifact@'))).toBe(true);
+    expect(publisher.steps.some((step) => step.run?.includes('npm publish'))).toBe(true);
+    expect(publisher.steps.some((step) => step.uses?.startsWith('actions/checkout@'))).toBe(false);
+    expect(publisher.steps.every((step) => !step.run?.includes('scripts/'))).toBe(true);
+    expect(publisher.steps.every((step) => !/\bnpm (?:test|run|ci|install|exec)\b/u.test(step.run ?? ''))).toBe(true);
+  });
+
+  it('downloads one immutable artifact ID and rejects unsafe or inexact publisher inputs', () => {
+    const reusableText = readFileSync('.github/workflows/_publish-npm-package.yml', 'utf8');
+    const reusable = YAML.parse(reusableText);
+    const download = reusable.jobs.publisher.steps.find(
+      (step) => step.uses?.startsWith('actions/download-artifact@'),
+    );
+    expect(download.with?.['artifact-ids']).toBe('${{ needs.build.outputs.release_artifact_id }}');
+    expect(download.with?.name).toBeUndefined();
+    const validation = reusable.jobs.publisher.steps.find(
+      (step) => step.name === 'Validate exact inert release artifact',
+    )?.run;
+    expect(validation).toContain('lstatSync');
+    expect(validation).toContain('isSymbolicLink');
+    expect(validation).toContain('isFile');
+    expect(validation).toContain('duplicate release artifact path');
+    expect(validation).toContain('release artifact path escapes');
+    expect(validation).toContain('unexpected release artifact inventory');
+    expect(validation).toContain("entryPath === 'package/package.json'");
+    expect(validation).toContain('tarball package/package.json bytes differ from approved source package.json');
+    expect(validation).toContain('manifest_sha256');
+    expect(validation).toContain('package_json_sha256');
+    expect(validation).toContain('dependency-pins.json');
+  });
+
+  it('delegates Verify, Gate, and every other npm trusted-publisher caller to the same split workflow', () => {
+    const registry = JSON.parse(readFileSync('release/release-packages.v1.json', 'utf8'));
+    const npmEntries = registry.packages.filter((entry) => entry.ecosystem === 'npm');
+    expect(npmEntries).toHaveLength(19);
+    for (const entry of npmEntries) {
+      const text = readFileSync(path.join('.github/workflows', entry.workflow), 'utf8');
+      const workflow = YAML.parse(text);
+      expect(Object.keys(workflow.jobs), entry.workflow).toEqual(['publish']);
+      expect(workflow.jobs.publish.uses, entry.workflow)
+        .toBe('./.github/workflows/_publish-npm-package.yml');
+      expect(workflow.jobs.publish.permissions, entry.workflow).toEqual({
+        contents: 'read',
+        'id-token': 'write',
+        attestations: 'write',
+      });
+    }
+  });
+
+  it('uses the fixed canonical GitHub repository immediately before the irreversible publish', () => {
+    const text = readFileSync('.github/workflows/_publish-npm-package.yml', 'utf8');
+    const workflow = YAML.parse(text);
+    const publishRun = workflow.jobs.publisher.steps.find(
+      (step) => step.run?.includes('npm publish'),
+    )?.run;
+    expect(publishRun).toContain(
+      'git ls-remote --exit-code https://github.com/emiliaprotocol/emilia-protocol.git',
+    );
+    expect(publishRun).not.toMatch(/\bgit ls-remote\b[^\n]*(?:origin|remote\.origin|git config)/u);
+    expect(publishRun.indexOf('git ls-remote')).toBeLessThan(publishRun.lastIndexOf('sha256sum'));
+    expect(publishRun.lastIndexOf('sha256sum')).toBeLessThan(publishRun.indexOf('npm publish'));
+  });
+
+  it('rejects OIDC leakage, publisher checkout, mutable artifact selection, and unsafe extraction', () => {
+    const text = readFileSync('.github/workflows/_publish-npm-package.yml', 'utf8');
+    const oidcBuild = text.replace(
+      '  build:\n    name: Build and verify ${{ inputs.package_name }}\n    runs-on: ubuntu-latest\n    permissions:\n      contents: read',
+      '  build:\n    name: Build and verify ${{ inputs.package_name }}\n    runs-on: ubuntu-latest\n    permissions:\n      contents: read\n      id-token: write',
+    );
+    expect(() => validateReusableNpmWorkflowText(oidcBuild)).toThrow(/build job is not unprivileged/);
+
+    const publisherCheckout = text.replace(
+      '    steps:\n      - name: Setup Node.js for npm OIDC',
+      '    steps:\n'
+      + '      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1\n'
+      + '      - name: Setup Node.js for npm OIDC',
+    );
+    expect(() => validateReusableNpmWorkflowText(publisherCheckout)).toThrow(/inert protected OIDC job/);
+
+    const mutableDownload = text.replace(
+      'artifact-ids: ${{ needs.build.outputs.release_artifact_id }}',
+      'name: npm-release-${{ inputs.artifact_id }}-${{ github.sha }}',
+    );
+    expect(() => validateReusableNpmWorkflowText(mutableDownload)).toThrow(
+      /artifact ID|missing release controls/,
+    );
+
+    const unsafeExtraction = text.replace(
+      'release artifact symlink is forbidden',
+      'symlink accepted',
+    );
+    expect(() => validateReusableNpmWorkflowText(unsafeExtraction)).toThrow(/release controls/);
   });
 
   it('Go release isolates tag write authority and verifies the public proxy origin', () => {
@@ -100,141 +213,22 @@ describe('release-chain coverage', () => {
     expect(() => validatePypiDirect(detached, 'publish-crewai.yml')).toThrow(/protected approval environment/);
   });
 
-  it('runs Verify and Gate OIDC publication inside the protected environment job', () => {
-    for (const name of ['publish-verify-sdk.yml', 'publish-gate.yml']) {
-      const text = readFileSync(path.join('.github/workflows', name), 'utf8');
-      const workflow = YAML.parse(text);
-      const publish = workflow?.jobs?.publish;
-      expect(workflow?.jobs?.approval, `${name} must not use a detached empty approval job`).toBeUndefined();
-      expect(publish?.environment, `${name} publish job must be protected`).toBe('registry-publishing-approval');
-      expect(publish?.permissions?.['id-token'], `${name} protected job must own OIDC`).toBe('write');
-      expect(
-        publish?.steps?.some((step) => typeof step?.run === 'string' && step.run.includes('npm publish')),
-        `${name} protected job must execute npm publish`,
-      ).toBe(true);
-    }
-  });
-
-  it('protects the reusable OIDC publisher and removes detached approval from every npm caller', () => {
-    const workflowDirectory = path.join('.github', 'workflows');
-    const reusableText = readFileSync(
-      path.join(workflowDirectory, '_publish-npm-package.yml'),
-      'utf8',
+  it('refuses a caller-side detached approval or extra executable job', () => {
+    const caller = readFileSync('.github/workflows/publish-verify-sdk.yml', 'utf8');
+    const detached = caller.replace(
+      'jobs:\n  publish:',
+      'jobs:\n'
+      + '  approval:\n'
+      + '    runs-on: ubuntu-latest\n'
+      + '    environment: registry-publishing-approval\n'
+      + '    permissions: {}\n'
+      + '    steps:\n'
+      + '      - run: echo detached\n'
+      + '  publish:',
     );
-    const reusable = YAML.parse(reusableText);
-    expect(reusable?.jobs?.approval).toBeUndefined();
-    expect(reusable?.jobs?.publish?.environment).toBe('registry-publishing-approval');
-    expect(reusable?.jobs?.publish?.permissions?.['id-token']).toBe('write');
-
-    const callers = readdirSync(workflowDirectory)
-      .filter((name) => {
-        const text = readFileSync(path.join(workflowDirectory, name), 'utf8');
-        return text.includes('uses: ./.github/workflows/_publish-npm-package.yml');
-      })
-      .sort();
-    expect(callers).toHaveLength(17);
-    for (const name of callers) {
-      const text = readFileSync(path.join(workflowDirectory, name), 'utf8');
-      const workflow = YAML.parse(text);
-      expect(validateReusableNpmCallerText(text, name)).toBe(true);
-      expect(workflow?.jobs?.approval, `${name} has a detached approval job`).toBeUndefined();
-      expect(workflow?.jobs?.publish?.needs, `${name} still depends on detached approval`).toBeUndefined();
-      expect(workflow?.jobs?.publish?.uses).toBe('./.github/workflows/_publish-npm-package.yml');
-      expect(workflow?.jobs?.publish?.permissions?.['id-token']).toBe('write');
-    }
-  });
-
-  it('binds every reusable npm caller to protected-main selection in the called publisher', () => {
-    const reusable = readFileSync('.github/workflows/_publish-npm-package.yml', 'utf8');
-    expect(reusable).toContain('ref: ${{ github.sha }}');
-    expect(reusable).not.toContain('ref: ${{ inputs.release_tag }}');
-    expect(reusable).toContain('--expected-commit "$GITHUB_SHA"');
-    expect(reusable).toContain('--expected-ref "$GITHUB_REF"');
-    expect(reusable).toContain('--revalidate-remote');
-  });
-
-  it('fails closed on existing npm versions and revalidates refs in the publishing step', () => {
-    for (const name of [
-      '_publish-npm-package.yml',
-      'publish-gate.yml',
-      'publish-verify-sdk.yml',
-    ]) {
-      const text = readFileSync(path.join('.github/workflows', name), 'utf8');
-      const workflow = YAML.parse(text);
-      const publishRun = workflow?.jobs?.publish?.steps?.find(
-        (step) => typeof step?.run === 'string' && step.run.includes('npm publish '),
-      )?.run;
-      expect(publishRun, `${name} must contain a publishing step`).toBeTypeOf('string');
-      const preflightIndex = publishRun.indexOf('response.status === 404');
-      const remoteIndex = publishRun.indexOf('--revalidate-remote');
-      const hashIndex = publishRun.lastIndexOf('sha256sum -c "$TESTED_TARBALL.sha256"');
-      const publishIndex = publishRun.indexOf('npm publish ');
-      expect(preflightIndex).toBeLessThan(remoteIndex);
-      expect(remoteIndex, `${name} must revalidate refs in the publish step`).toBeGreaterThan(-1);
-      expect(remoteIndex).toBeLessThan(hashIndex);
-      expect(hashIndex).toBeLessThan(publishIndex);
-      const registryRun = workflow?.jobs?.publish?.steps?.find(
-        (step) => step?.name === 'Verify registry bytes match the attested tarball',
-      )?.run;
-      expect(registryRun, `${name} must contain a registry comparison step`).toBeTypeOf('string');
-      const registrySelectionIndex = registryRun.indexOf('REGISTRY_TARBALL=');
-      const registryRehashIndex = registryRun.lastIndexOf('sha256sum -c "$TESTED_TARBALL.sha256"');
-      const registryCompareIndex = registryRun.indexOf('cmp "$TESTED_TARBALL"');
-      expect(registrySelectionIndex).toBeLessThan(registryRehashIndex);
-      expect(registryRehashIndex).toBeLessThan(registryCompareIndex);
-      expect(text).toContain('already exists; refusing to publish');
-      expect(text).toContain('response.status === 404');
-      expect(text).not.toContain('already exists; continuing to mandatory byte verification');
-    }
-  });
-
-  it('binds Verify and Gate checkout and release approval to the dispatch SHA and main ref', () => {
-    for (const name of ['publish-verify-sdk.yml', 'publish-gate.yml']) {
-      const text = readFileSync(path.join('.github/workflows', name), 'utf8');
-      expect(text).toContain('ref: ${{ github.sha }}');
-      expect(text).not.toContain('ref: ${{ inputs.release_tag }}');
-      expect(text).toContain('--expected-commit "$GITHUB_SHA"');
-      expect(text).toContain('--expected-ref "$GITHUB_REF"');
-    }
-  });
-
-  it('refuses detached approval and branch-selected checkout regressions for Verify and Gate', () => {
-    const cases = [
-      {
-        name: 'publish-verify-sdk.yml',
-        validate: (text: string) => validateNpmDirect(text, 'publish-verify-sdk.yml'),
-      },
-      {
-        name: 'publish-gate.yml',
-        validate: (text: string) => validateGateNpmWorkflowText(text),
-      },
-    ];
-    for (const { name, validate } of cases) {
-      const text = readFileSync(path.join('.github/workflows', name), 'utf8');
-      expect(validate(text)).toBe(true);
-
-      const unprotected = text
-        .replace('    environment: registry-publishing-approval\n', '')
-        .replace(
-          'jobs:\n  publish:',
-          'jobs:\n'
-          + '  approval:\n'
-          + '    runs-on: ubuntu-latest\n'
-          + '    environment: registry-publishing-approval\n'
-          + '    permissions: {}\n'
-          + '    steps:\n'
-          + '      - run: echo "detached approval"\n\n'
-          + '  publish:\n'
-          + '    needs: approval',
-        );
-      expect(() => validate(unprotected)).toThrow(/OIDC publisher.*protected approval environment/);
-
-      const branchSelected = text.replace('ref: ${{ github.sha }}', 'ref: ${{ inputs.release_tag }}');
-      expect(() => validate(branchSelected)).toThrow(/github\.sha/);
-
-      const forgedRef = text.replaceAll('--expected-ref "$GITHUB_REF"', '--expected-ref "refs/heads/main"');
-      expect(() => validate(forgedRef)).toThrow(/expected-ref/);
-    }
+    expect(() => validateNpmDirect(detached, 'publish-verify-sdk.yml')).toThrow(
+      /delegate only/,
+    );
   });
 
   it('refuses a reusable publisher with its post-registry byte comparison removed', () => {
@@ -247,29 +241,15 @@ describe('release-chain coverage', () => {
     const reusable = readFileSync('.github/workflows/_publish-npm-package.yml', 'utf8');
     const reusableWithoutJava17 = reusable.replace("java-version: '17'", "java-version: '21'");
     expect(() => validateReusableNpmWorkflowText(reusableWithoutJava17)).toThrow(/TLA\+ execution guard/);
-
-    const direct = readFileSync('.github/workflows/publish-verify-sdk.yml', 'utf8');
-    const directWithoutPinnedTla = direct.replace(
-      '936a262061c914694dfd669a543be24573c45d5aa0ff20a8b96b23d01e050e88',
-      'checksum-removed',
-    );
-    expect(() => validateNpmDirect(directWithoutPinnedTla, 'publish-verify-sdk.yml')).toThrow(/TLA\+/);
   });
 
   it('refuses reusable npm publication without a pre-publication internal dependency registry guard', () => {
     const workflow = readFileSync('.github/workflows/_publish-npm-package.yml', 'utf8');
-    const weakened = workflow.replaceAll(
-      'node scripts/check-npm-package-dependencies.mjs "$PACKAGE_DIR"',
-      'true # dependency registry guard removed',
+    const weakened = workflow.replace(
+      'internal dependency unavailable from npm',
+      'dependency check removed',
     );
-    expect(() => validateReusableNpmWorkflowText(weakened)).toThrow(/check-npm-package-dependencies/);
-
-    const misplaced = weakened.replace(
-      'npm publish "${{ steps.pack.outputs.tarball }}" --access public --provenance',
-      'npm publish "${{ steps.pack.outputs.tarball }}" --access public --provenance\n'
-      + '          node scripts/check-npm-package-dependencies.mjs "$PACKAGE_DIR"',
-    );
-    expect(() => validateReusableNpmWorkflowText(misplaced)).toThrow(/must run.*before.*npm publish/);
+    expect(() => validateReusableNpmWorkflowText(weakened)).toThrow(/dependency/);
   });
 
   it('refuses credential-rotation guidance that restores a manual publish token', () => {

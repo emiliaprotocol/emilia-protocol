@@ -4,14 +4,6 @@ import path from 'node:path';
 import { describe, expect, it } from 'vitest';
 import YAML from 'yaml';
 
-interface WorkflowStep {
-  name?: string;
-  id?: string;
-  run?: string;
-  env?: Record<string, string>;
-  with?: Record<string, string>;
-}
-
 const WORKFLOW_PATH = path.join(
   process.cwd(),
   '.github',
@@ -19,94 +11,89 @@ const WORKFLOW_PATH = path.join(
   '_publish-npm-package.yml',
 );
 
-function loadPublishSteps(): WorkflowStep[] {
-  const workflow = YAML.parse(fs.readFileSync(WORKFLOW_PATH, 'utf8'));
-  return workflow?.jobs?.publish?.steps ?? [];
-}
-
-function requireStep(steps: WorkflowStep[], name: string): WorkflowStep {
-  const step = steps.find((candidate) => candidate.name === name);
-  expect(step, `missing workflow step: ${name}`).toBeDefined();
-  return step!;
+function workflow(): any {
+  return YAML.parse(fs.readFileSync(WORKFLOW_PATH, 'utf8'));
 }
 
 describe('reusable npm release workflow byte contract', () => {
-  it('puts the OIDC-capable publisher itself inside the protected environment', () => {
-    const workflow = YAML.parse(fs.readFileSync(WORKFLOW_PATH, 'utf8'));
-    expect(workflow?.jobs?.approval).toBeUndefined();
-    expect(workflow?.jobs?.publish?.environment).toBe('registry-publishing-approval');
-    expect(workflow?.jobs?.publish?.permissions?.['id-token']).toBe('write');
+  it('separates untrusted build code from the protected OIDC publisher', () => {
+    const jobs = workflow().jobs;
+    expect(Object.keys(jobs)).toEqual(['build', 'publisher']);
+    expect(jobs.build.permissions).toEqual({ contents: 'read' });
+    expect(jobs.build.environment).toBeUndefined();
+    expect(jobs.publisher.needs).toBe('build');
+    expect(jobs.publisher.environment).toBe('registry-publishing-approval');
+    expect(jobs.publisher.permissions).toEqual({
+      contents: 'read',
+      'id-token': 'write',
+      attestations: 'write',
+    });
+    expect(jobs.publisher.steps.some((step) => step.uses?.startsWith('actions/checkout@')))
+      .toBe(false);
+    expect(jobs.publisher.steps.every((step) => !step.run?.includes('scripts/'))).toBe(true);
   });
 
-  it('consumes only the filename and SHA emitted by the reproducibility manifest', () => {
-    const steps = loadPublishSteps();
-    const pack = steps.find((step) => step.id === 'pack');
-    expect(pack).toBeDefined();
-    expect(pack?.run).not.toMatch(/\bfind\b/);
-    expect(pack?.run).toContain('EP-REPRODUCIBLE-NPM-ARTIFACT-v1');
-    expect(pack?.run).toContain('manifest.artifact.filename');
-    expect(pack?.run).toContain('manifest.artifact.sha256');
-    expect(pack?.run).toContain('approvedVersion');
-    expect(pack?.run).toContain('approvedFilename');
-    expect(pack?.run).toContain('archives.length !== 1');
-    expect(pack?.run).toContain('archive !== filename');
-    expect(pack?.run).toContain('actualSha256 !== expectedSha256');
-    expect(pack?.run).toContain('tarball=${tarballPath}');
-    expect(pack?.run).toContain('sha256=${expectedSha256}');
+  it('downloads only the immutable build artifact ID and validates an exact safe inventory', () => {
+    const jobs = workflow().jobs;
+    const download = jobs.publisher.steps.find(
+      (step) => step.uses?.startsWith('actions/download-artifact@'),
+    );
+    expect(download.with).toMatchObject({
+      'artifact-ids': '${{ needs.build.outputs.release_artifact_id }}',
+      path: 'publisher-input',
+    });
+    expect(download.with.name).toBeUndefined();
+
+    const validate = jobs.publisher.steps.find(
+      (step) => step.name === 'Validate exact inert release artifact',
+    );
+    expect(validate.run).toContain('unexpected release artifact inventory');
+    expect(validate.run).toContain('duplicate release artifact path');
+    expect(validate.run).toContain('release artifact path escapes extraction root');
+    expect(validate.run).toContain('release artifact symlink is forbidden');
+    expect(validate.run).toContain('duplicate npm tarball path');
+    expect(validate.run).toContain('npm tarball links are forbidden');
   });
 
-  it('attests, uploads, publishes, and compares the same SHA-checked path', () => {
-    const steps = loadPublishSteps();
-    const canonicalTarball = '${{ steps.pack.outputs.tarball }}';
-    const canonicalSha256 = '${{ steps.pack.outputs.sha256 }}';
+  it('binds source package.json raw bytes, manifest, tarball, dependencies, and registry bytes', () => {
+    const jobs = workflow().jobs;
+    const buildPack = jobs.build.steps.find((step) => step.id === 'pack');
+    expect(buildPack.run).toContain('APPROVED_PACKAGE_JSON_SHA256');
+    expect(buildPack.run).toContain('manifest.artifact?.package_json_sha256');
+    expect(buildPack.run).toContain('source-package.json');
+    expect(buildPack.run).toContain('dependency-pins.json');
 
-    const attest = requireStep(steps, 'Attest exact npm package bytes');
-    expect(attest.with?.['subject-path']).toBe(canonicalTarball);
+    const validate = jobs.publisher.steps.find((step) => step.id === 'validate');
+    expect(validate.run).toContain(
+      'tarball package/package.json bytes differ from approved source package.json',
+    );
+    expect(validate.run).toContain('manifest_sha256');
+    expect(validate.run).toContain('dependency-pins.json differs');
+    expect(validate.run).toContain('pinned dependency bytes differ');
+    expect(validate.run).toContain('internal dependency unavailable from npm');
+  });
 
-    const upload = requireStep(steps, 'Upload exact release evidence');
-    expect(upload.with?.path).toContain(canonicalTarball);
-    expect(upload.with?.path).toContain(`${canonicalTarball}.sha256`);
-
-    const publish = requireStep(steps, 'Publish the attested tarball through npm OIDC');
-    expect(publish.env?.TESTED_TARBALL).toBe(canonicalTarball);
-    expect(publish.env?.EXPECTED_SHA256).toBe(canonicalSha256);
-    expect(publish.run).toContain('sha256sum -c "$TESTED_TARBALL.sha256"');
-    expect(publish.run).toContain('--revalidate-remote');
-    expect(publish.run).toContain('response.status === 404');
+  it('rehashes after fixed canonical refs, publishes without scripts, and compares registry bytes', () => {
+    const jobs = workflow().jobs;
+    const publish = jobs.publisher.steps.find((step) => step.run?.includes('npm publish'));
+    const registry = jobs.publisher.steps.find(
+      (step) => step.name === 'Verify registry bytes match exact tested tarball',
+    );
     expect(publish.run).toContain('already exists; refusing to publish');
     expect(publish.run).toContain(
-      'npm publish "${{ steps.pack.outputs.tarball }}" --access public --provenance',
+      'git ls-remote --exit-code https://github.com/emiliaprotocol/emilia-protocol.git',
     );
-
-    const registry = requireStep(steps, 'Verify registry bytes match the attested tarball');
-    expect(registry.env?.TESTED_TARBALL).toBe(canonicalTarball);
-    expect(registry.env?.EXPECTED_SHA256).toBe(canonicalSha256);
-    expect(registry.run).toContain('sha256sum -c "$TESTED_TARBALL.sha256"');
-    expect(registry.run).toMatch(/archives\.length\s*!==\s*1/);
-    expect(registry.run).toContain('REGISTRY_SHA256');
-    expect(registry.run).toContain('test "$REGISTRY_SHA256" = "$EXPECTED_SHA256"');
-    expect(registry.run).toContain(
-      'cmp "$TESTED_TARBALL" "registry-copy/$REGISTRY_TARBALL"',
+    expect(publish.run.indexOf('git ls-remote')).toBeLessThan(
+      publish.run.lastIndexOf('sha256sum'),
     );
-  });
-
-  it('materializes pinned registry dependencies before tests and re-verifies them before publish', () => {
-    const steps = loadPublishSteps();
-    const materializeIndex = steps.findIndex(
-      (step) => step.name === 'Materialize pinned registry dependency bytes',
+    expect(publish.run.lastIndexOf('sha256sum')).toBeLessThan(
+      publish.run.indexOf('npm publish'),
     );
-    const testIndex = steps.findIndex((step) => step.name === 'Test package');
-    const verifyIndex = steps.findIndex(
-      (step) => step.name === 'Require every internal dependency to resolve from npm',
+    expect(publish.run).toContain(
+      'npm publish "$TESTED_TARBALL" --access public --provenance --ignore-scripts',
     );
-    const publishIndex = steps.findIndex(
-      (step) => step.name === 'Publish the attested tarball through npm OIDC',
-    );
-
-    expect(materializeIndex).toBeGreaterThan(-1);
-    expect(materializeIndex).toBeLessThan(testIndex);
-    expect(steps[materializeIndex]?.run).toContain('--install-pinned');
-    expect(verifyIndex).toBeGreaterThan(testIndex);
-    expect(verifyIndex).toBeLessThan(publishIndex);
+    expect(registry.run).toContain('--ignore-scripts');
+    expect(registry.run).toContain('archives.length !== 1');
+    expect(registry.run).toContain('cmp "$TESTED_TARBALL" "registry-copy/$REGISTRY_TARBALL"');
   });
 });

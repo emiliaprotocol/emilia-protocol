@@ -1,9 +1,13 @@
 #!/usr/bin/env node
 // SPDX-License-Identifier: Apache-2.0
 import { execFileSync, spawnSync } from 'node:child_process';
+import crypto from 'node:crypto';
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
+
+export const CANONICAL_RELEASE_REPOSITORY: string =
+  'https://github.com/emiliaprotocol/emilia-protocol.git';
 
 function git(cwd: string, args: string[]): string {
   return execFileSync('git', args, { cwd, encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'] }).trim();
@@ -37,8 +41,42 @@ interface GitState {
 interface RemoteGitState {
   mainCommit: string;
   tagCommit: string;
-  remote: string;
+  repositoryUrl: string;
 }
+
+interface RemoteReferenceQueryResult {
+  status: number | null;
+  stdout: string;
+  stderr: string;
+}
+
+type RemoteReferenceQuery = (
+  repositoryUrl: string,
+  references: string[],
+  cwd: string,
+) => RemoteReferenceQueryResult;
+
+const queryRemoteReferences: RemoteReferenceQuery = (
+  repositoryUrl: string,
+  references: string[],
+  cwd: string,
+): RemoteReferenceQueryResult => {
+  const result = spawnSync('git', [
+    'ls-remote',
+    '--exit-code',
+    repositoryUrl,
+    ...references,
+  ], {
+    cwd,
+    encoding: 'utf8',
+    stdio: ['ignore', 'pipe', 'pipe'],
+  });
+  return {
+    status: result.status,
+    stdout: result.stdout ?? '',
+    stderr: result.stderr ?? '',
+  };
+};
 
 function npmArtifactFilename(packageName: string, version: string): string {
   if (!/^(?:@[a-z0-9][a-z0-9._~-]*\/)?[a-z0-9][a-z0-9._~-]*$/u.test(packageName)
@@ -145,12 +183,12 @@ export function verifyRemoteReleaseGitState({
   cwd,
   tag,
   expectedCommit,
-  remote = 'origin',
+  referenceQuery = queryRemoteReferences,
 }: {
   cwd: string;
   tag: string;
   expectedCommit: string;
-  remote?: string;
+  referenceQuery?: RemoteReferenceQuery;
 }): RemoteGitState {
   if (!/^[0-9a-f]{40}$/u.test(expectedCommit)) {
     throw new Error(`remote release check requires an exact commit, received ${expectedCommit || '(missing)'}`);
@@ -158,20 +196,16 @@ export function verifyRemoteReleaseGitState({
   const mainReference = 'refs/heads/main';
   const tagReference = `refs/tags/${tag}`;
   const peeledTagReference = `${tagReference}^{}`;
-  const query = spawnSync('git', [
-    'ls-remote',
-    '--exit-code',
-    remote,
+  const repositoryUrl: string = CANONICAL_RELEASE_REPOSITORY;
+  const query: RemoteReferenceQueryResult = referenceQuery(repositoryUrl, [
     mainReference,
     tagReference,
     peeledTagReference,
-  ], {
-    cwd,
-    encoding: 'utf8',
-    stdio: ['ignore', 'pipe', 'pipe'],
-  });
+  ], cwd);
   if (query.status !== 0) {
-    throw new Error(`remote release references are unavailable from ${remote}: ${query.stderr || query.stdout}`);
+    throw new Error(
+      `remote release references are unavailable from ${repositoryUrl}: ${query.stderr || query.stdout}`,
+    );
   }
   const references: Map<string, string[]> = new Map();
   for (const line of query.stdout.split('\n').filter(Boolean)) {
@@ -184,21 +218,21 @@ export function verifyRemoteReleaseGitState({
   }
   const exactReference = (reference: string, label: string): string | null => {
     const commits = references.get(reference) ?? [];
-    if (commits.length > 1) throw new Error(`${label} is ambiguous on ${remote}`);
+    if (commits.length > 1) throw new Error(`${label} is ambiguous on ${repositoryUrl}`);
     return commits[0] ?? null;
   };
   const mainCommit = exactReference(mainReference, 'remote protected main');
-  if (!mainCommit) throw new Error(`remote protected main is unavailable from ${remote}`);
+  if (!mainCommit) throw new Error(`remote protected main is unavailable from ${repositoryUrl}`);
   if (mainCommit !== expectedCommit) {
     throw new Error(`remote protected main moved or advanced: ${mainCommit} != ${expectedCommit}`);
   }
   const tagObject = exactReference(tagReference, `remote release tag ${tag}`);
-  if (!tagObject) throw new Error(`remote release tag ${tag} is unavailable from ${remote}`);
+  if (!tagObject) throw new Error(`remote release tag ${tag} is unavailable from ${repositoryUrl}`);
   const tagCommit = exactReference(peeledTagReference, `peeled remote release tag ${tag}`) ?? tagObject;
   if (tagCommit !== expectedCommit) {
     throw new Error(`remote release tag ${tag} moved: ${tagCommit} != ${expectedCommit}`);
   }
-  return { mainCommit, tagCommit, remote };
+  return { mainCommit, tagCommit, repositoryUrl };
 }
 
 function option(argv: string[], name: string): string | null {
@@ -207,6 +241,9 @@ function option(argv: string[], name: string): string | null {
 }
 
 export function main(argv: string[] = process.argv.slice(2), env: NodeJS.ProcessEnv = process.env): void {
+  if (argv.includes('--remote')) {
+    throw new Error('remote release repository is fixed and cannot be overridden');
+  }
   const packageName: string | null = option(argv, '--package');
   const version: string | null = option(argv, '--version');
   const approval: ReleaseApprovalResult = validateReleaseApproval({
@@ -238,8 +275,32 @@ export function main(argv: string[] = process.argv.slice(2), env: NodeJS.Process
       cwd: env.GITHUB_WORKSPACE || process.cwd(),
       tag: approval.expectedTag,
       expectedCommit: gitState.head,
-      remote: option(argv, '--remote') || 'origin',
     });
+  }
+  const packageJsonArgument: string | null = option(argv, '--package-json');
+  let packageJsonSha256: string | null = null;
+  if (packageJsonArgument) {
+    const packageJsonPath: string = path.resolve(
+      env.GITHUB_WORKSPACE || process.cwd(),
+      packageJsonArgument,
+    );
+    const packageJsonStat: fs.Stats = fs.lstatSync(packageJsonPath);
+    if (!packageJsonStat.isFile() || packageJsonStat.isSymbolicLink()) {
+      throw new Error(`approved package.json is not a regular file: ${packageJsonArgument}`);
+    }
+    const packageJsonBytes: Buffer = fs.readFileSync(packageJsonPath);
+    let packageMetadata: any;
+    try {
+      packageMetadata = JSON.parse(packageJsonBytes.toString('utf8'));
+    } catch {
+      throw new Error(`approved package.json is not valid JSON: ${packageJsonArgument}`);
+    }
+    if (packageMetadata?.name !== packageName || packageMetadata?.version !== version) {
+      throw new Error(
+        `approved package.json identity differs from ${packageName}@${version}`,
+      );
+    }
+    packageJsonSha256 = crypto.createHash('sha256').update(packageJsonBytes).digest('hex');
   }
   const githubOutput: string | null = option(argv, '--github-output');
   if (githubOutput) {
@@ -248,6 +309,7 @@ export function main(argv: string[] = process.argv.slice(2), env: NodeJS.Process
       `version=${version}`,
       `filename=${npmArtifactFilename(packageName!, version!)}`,
       `commit=${gitState.head}`,
+      ...(packageJsonSha256 ? [`package_json_sha256=${packageJsonSha256}`] : []),
       '',
     ].join('\n'));
   }

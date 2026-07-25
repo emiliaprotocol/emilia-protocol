@@ -1,29 +1,13 @@
 name: Publish Verify SDK
 
-permissions: read-all
-
-# npm Trusted Publishing (OIDC) — NO long-lived NPM_TOKEN. On each run npm
-# verifies the OIDC claim (owner / repo / workflow filename) and issues a
-# short-lived credential, and `--provenance` attaches a signed provenance
-# attestation. Configure the trusted publisher once at:
-#   npmjs.com -> @emilia-protocol/verify -> Settings -> Trusted Publishing
-#   Organization/User: emilia-protocol (as owner) | Repository: emilia-protocol
-#   Workflow filename: publish-verify-sdk.yml
-#   Environment: registry-publishing-approval (required; never leave blank)
-# Requires npm >= 11.5.1 (installed below).
-
-# Opt every JavaScript-based action into the Node.js 24 runner.
-# GitHub forces this default in June 2026; doing it now eliminates the
-# deprecation-warning noise on every run and surfaces any Node-24 incompat
-# early. Affects actions/checkout, actions/setup-node, actions/upload-artifact, etc.
-env:
-  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
-
+# npm trusted publisher identity remains this caller workflow:
+# @emilia-protocol/verify -> publish-verify-sdk.yml, protected by the
+# registry-publishing-approval environment inside the reusable publisher job.
 on:
   workflow_dispatch:
     inputs:
       release_tag:
-        description: Exact tag, for example verify-v3.10.0
+        description: Exact tag, for example verify-v3.15.0
         required: true
         type: string
       confirmation:
@@ -31,302 +15,22 @@ on:
         required: true
         type: string
 
+permissions:
+  contents: read
+  id-token: write
+  attestations: write
+
 jobs:
   publish:
-    name: Publish @emilia-protocol/verify
-    runs-on: ubuntu-latest
-    environment: registry-publishing-approval
-    env:
-      TLA2TOOLS_JAR: ${{ github.workspace }}/tla2tools.jar
-    concurrency:
-      group: registry-publish-npm-verify
-      cancel-in-progress: false
     permissions:
       contents: read
-      id-token: write   # REQUIRED for npm trusted publishing (OIDC) + provenance
+      id-token: write
       attestations: write
-
-    defaults:
-      run:
-        working-directory: packages/verify
-
-    steps:
-      - name: Checkout
-        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
-        with:
-          ref: ${{ github.sha }}
-          fetch-depth: 0
-          persist-credentials: false
-
-      - name: Setup Node.js
-        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020  # v7.0.0
-        with:
-          node-version: "24"
-          registry-url: https://registry.npmjs.org
-
-      - name: Require owner approval bound to clean tag, package, version, and main
-        id: approval
-        working-directory: ${{ github.workspace }}
-        env:
-          RELEASE_TAG: ${{ inputs.release_tag }}
-          RELEASE_CONFIRMATION: ${{ inputs.confirmation }}
-        run: |
-          VERSION=$(node -p "require('./packages/verify/package.json').version")
-          node scripts/require-release-approval.mjs \
-            --allowed-actor FutureEnterprises \
-            --tag "$RELEASE_TAG" \
-            --tag-prefix verify-v \
-            --package @emilia-protocol/verify \
-            --version "$VERSION" \
-            --confirmation "$RELEASE_CONFIRMATION" \
-            --expected-commit "$GITHUB_SHA" \
-            --expected-ref "$GITHUB_REF" \
-            --github-output "$GITHUB_OUTPUT"
-
-      - name: Setup Python
-        uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97  # v7.0.0
-        with:
-          python-version: '3.12'
-
-      - name: Setup Go
-        uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e  # v7.0.0
-        with:
-          go-version: '1.22'
-
-      - name: Setup Java
-        uses: actions/setup-java@03ad4de0992f5dab5e18fcb136590ce7c4a0ac95  # v5.6.0
-        with:
-          distribution: temurin
-          java-version: '17'
-
-      - name: Download pinned TLC model checker
-        working-directory: ${{ github.workspace }}
-        env:
-          TLA_VERSION: v1.7.4
-          TLA_SHA256: 936a262061c914694dfd669a543be24573c45d5aa0ff20a8b96b23d01e050e88
-        run: |
-          curl -fsSL \
-            --retry 5 \
-            --retry-delay 2 \
-            --retry-all-errors \
-            --connect-timeout 20 \
-            -o tla2tools.jar \
-            "https://github.com/tlaplus/tlaplus/releases/download/${TLA_VERSION}/tla2tools.jar"
-          echo "${TLA_SHA256}  tla2tools.jar" | sha256sum -c -
-
-      - name: Install hash-locked cross-language verifier dependency
-        working-directory: ${{ github.workspace }}
-        run: python -m pip install --require-hashes -r .github/workflow-requirements/cryptography.txt
-
-      - name: Install hash-locked npm (>= 11.5.1 for OIDC publishing)
-        working-directory: ${{ github.workspace }}
-        run: |
-          npm ci --prefix .github/npm-toolchain --ignore-scripts --min-release-age=0
-          echo "$GITHUB_WORKSPACE/.github/npm-toolchain/node_modules/.bin" >> "$GITHUB_PATH"
-
-      # The published verifier remains zero-dependency. Its test suite also
-      # exercises the optional PQ adapter, so install the repository's locked
-      # development tooling without running lifecycle scripts.
-      - name: Install locked test tooling
-        working-directory: ${{ github.workspace }}
-        run: npm ci --ignore-scripts
-
-      - name: Run tests
-        run: npm test
-
-      - name: Resolve repository security and conformance manifests
-        working-directory: ${{ github.workspace }}
-        run: |
-          npm run security-case:emit
-          npm run conformance:manifest
-
-      - name: Pack twice and retain the exact reproducible tarball
-        id: pack
-        working-directory: ${{ github.workspace }}
-        env:
-          PACKAGE_NAME: '@emilia-protocol/verify'
-          APPROVED_VERSION: ${{ steps.approval.outputs.version }}
-          APPROVED_FILENAME: ${{ steps.approval.outputs.filename }}
-        run: |
-          ARTIFACT_DIR="release-artifacts/verify"
-          MANIFEST_PATH="release-artifacts/verify-reproducible.json"
-          test ! -e "$ARTIFACT_DIR"
-          test ! -e "$MANIFEST_PATH"
-          npm run release:verify:reproducible -- \
-            --outdir "$ARTIFACT_DIR" \
-            --emit "$MANIFEST_PATH"
-          node --input-type=module - \
-            "$ARTIFACT_DIR" "$MANIFEST_PATH" packages/verify "$PACKAGE_NAME" \
-            "$APPROVED_VERSION" "$APPROVED_FILENAME" "$GITHUB_OUTPUT" <<'NODE'
-          import crypto from 'node:crypto';
-          import fs from 'node:fs';
-          import path from 'node:path';
-
-          const [
-            artifactDirectory,
-            manifestPath,
-            packageDirectory,
-            approvedPackage,
-            approvedVersion,
-            approvedFilename,
-            outputPath,
-          ] = process.argv.slice(2);
-          const manifest = JSON.parse(fs.readFileSync(manifestPath, 'utf8'));
-          const packageMetadata = JSON.parse(
-            fs.readFileSync(path.join(packageDirectory, 'package.json'), 'utf8'),
-          );
-          if (manifest['@version'] !== 'EP-REPRODUCIBLE-NPM-ARTIFACT-v1'
-            || manifest.package_path !== packageDirectory
-            || manifest.package !== approvedPackage
-            || manifest.version !== approvedVersion
-            || packageMetadata.name !== approvedPackage
-            || packageMetadata.version !== approvedVersion) {
-            throw new Error('reproducibility manifest identity does not match the approved release');
-          }
-          const {
-            manifest_sha256: manifestSha256,
-            ...unsignedManifest
-          } = manifest;
-          const actualManifestSha256 = crypto
-            .createHash('sha256')
-            .update(JSON.stringify(unsignedManifest))
-            .digest('hex');
-          if (manifestSha256 !== actualManifestSha256) {
-            throw new Error('reproducibility manifest sha256 mismatch');
-          }
-          const filename = manifest.artifact.filename;
-          const expectedSha256 = manifest.artifact.sha256;
-          if (typeof filename !== 'string'
-            || filename !== path.basename(filename)
-            || filename !== approvedFilename
-            || !/^[a-z0-9][a-z0-9._-]*\.tgz$/u.test(filename)
-            || typeof expectedSha256 !== 'string'
-            || !/^[0-9a-f]{64}$/u.test(expectedSha256)) {
-            throw new Error('reproducibility manifest contains an unsafe artifact binding');
-          }
-          const archives = fs.readdirSync(artifactDirectory)
-            .filter((entry) => entry.endsWith('.tgz'))
-            .sort();
-          if (archives.length !== 1) {
-            throw new Error(`expected exactly one canonical archive, found ${archives.length}`);
-          }
-          const [archive] = archives;
-          if (archive !== filename) {
-            throw new Error(`canonical archive differs from manifest: ${archive} != ${filename}`);
-          }
-          const tarballPath = path.join(artifactDirectory, filename);
-          if (!fs.lstatSync(tarballPath).isFile()) {
-            throw new Error('canonical archive is not a regular file');
-          }
-          const tarballBytes = fs.readFileSync(tarballPath);
-          const actualSha256 = crypto.createHash('sha256').update(tarballBytes).digest('hex');
-          if (actualSha256 !== expectedSha256
-            || tarballBytes.length !== manifest.artifact.bytes) {
-            throw new Error('canonical archive bytes differ from reproducibility manifest');
-          }
-          fs.writeFileSync(
-            `${tarballPath}.sha256`,
-            `${expectedSha256}  ${tarballPath}\n`,
-          );
-          fs.appendFileSync(
-            outputPath,
-            `tarball=${tarballPath}\nsha256=${expectedSha256}\n`,
-          );
-          NODE
-
-      - name: Attest exact package bytes
-        uses: actions/attest@f7c74d28b9d84cb8768d0b8ca14a4bac6ef463e6  # v4.2.0
-        with:
-          subject-path: ${{ steps.pack.outputs.tarball }}
-
-      - name: Attest release evidence
-        uses: actions/attest@f7c74d28b9d84cb8768d0b8ca14a4bac6ef463e6  # v4.2.0
-        with:
-          subject-path: |
-            security/security-case.json
-            conformance/conformance-manifest.json
-            release-artifacts/verify-reproducible.json
-
-      - name: Upload exact package and checksum
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a  # v7.0.1
-        with:
-          name: verify-package-${{ inputs.release_tag }}
-          path: |
-            ${{ steps.pack.outputs.tarball }}
-            ${{ steps.pack.outputs.tarball }}.sha256
-            release-artifacts/verify-reproducible.json
-            security/security-case.json
-            conformance/conformance-manifest.json
-          retention-days: 90
-
-      - name: Publish the attested tarball (OIDC + npm provenance)
-        working-directory: ${{ github.workspace }}
-        env:
-          PACKAGE_NAME: '@emilia-protocol/verify'
-          VERSION: ${{ steps.approval.outputs.version }}
-          TESTED_TARBALL: ${{ steps.pack.outputs.tarball }}
-          EXPECTED_SHA256: ${{ steps.pack.outputs.sha256 }}
-          RELEASE_TAG: ${{ inputs.release_tag }}
-          RELEASE_CONFIRMATION: ${{ inputs.confirmation }}
-        run: |
-          node --input-type=module - "$PACKAGE_NAME" "$VERSION" <<'NODE'
-          const [packageName, version] = process.argv.slice(2);
-          const response = await fetch(
-            `https://registry.npmjs.org/${encodeURIComponent(packageName)}/${encodeURIComponent(version)}`,
-            { headers: { accept: 'application/json' } },
-          );
-          if (response.ok) {
-            throw new Error(`${packageName}@${version} already exists; refusing to publish`);
-          }
-          if (response.status === 404) process.exit(0);
-          throw new Error(`npm registry preflight failed closed with HTTP ${response.status}`);
-          NODE
-          node scripts/require-release-approval.mjs \
-            --allowed-actor FutureEnterprises \
-            --tag "$RELEASE_TAG" \
-            --tag-prefix verify-v \
-            --package "$PACKAGE_NAME" \
-            --version "$VERSION" \
-            --confirmation "$RELEASE_CONFIRMATION" \
-            --expected-commit "$GITHUB_SHA" \
-            --expected-ref "$GITHUB_REF" \
-            --revalidate-remote
-          sha256sum -c "$TESTED_TARBALL.sha256"
-          ACTUAL_SHA256=$(sha256sum "$TESTED_TARBALL" | cut -d ' ' -f 1)
-          test "$ACTUAL_SHA256" = "$EXPECTED_SHA256"
-          npm publish "${{ steps.pack.outputs.tarball }}" --access public --provenance
-
-      - name: Verify registry bytes match the attested tarball
-        working-directory: ${{ github.workspace }}
-        env:
-          PACKAGE_NAME: '@emilia-protocol/verify'
-          VERSION: ${{ steps.approval.outputs.version }}
-          TESTED_TARBALL: ${{ steps.pack.outputs.tarball }}
-          EXPECTED_SHA256: ${{ steps.pack.outputs.sha256 }}
-        run: |
-          sha256sum -c "$TESTED_TARBALL.sha256"
-          ACTUAL_SHA256=$(sha256sum "$TESTED_TARBALL" | cut -d ' ' -f 1)
-          test "$ACTUAL_SHA256" = "$EXPECTED_SHA256"
-          test ! -e registry-copy
-          mkdir registry-copy
-          REGISTRY_READY=false
-          for attempt in $(seq 1 60); do
-            rm -f registry-copy/pack.json
-            if npm pack "@emilia-protocol/verify@$VERSION" --min-release-age=0 --json --pack-destination registry-copy > registry-copy/pack.json; then
-              REGISTRY_READY=true
-              break
-            fi
-            echo "Registry has not exposed @emilia-protocol/verify@$VERSION yet (attempt $attempt/60); retrying in 5 seconds."
-            sleep 5
-          done
-          if [ "$REGISTRY_READY" != "true" ]; then
-            echo "::error::npm did not expose @emilia-protocol/verify@$VERSION within 5 minutes of publication."
-            exit 2
-          fi
-          REGISTRY_TARBALL=$(node -e "const fs=require('fs'); const path=require('path'); const r=require('./registry-copy/pack.json'); if(!Array.isArray(r)||r.length!==1) process.exit(2); const item=r[0]; const filename=item?.filename; if(item?.name!==process.env.PACKAGE_NAME||item?.version!==process.env.VERSION||typeof filename!=='string'||filename!==path.basename(filename)||!(/^[a-z0-9][a-z0-9._-]*\\.tgz$/u.test(filename))) process.exit(3); const archives=fs.readdirSync('registry-copy').filter((entry)=>entry.endsWith('.tgz')).sort(); if(archives.length!==1||archives[0]!==filename) process.exit(4); process.stdout.write(filename)")
-          sha256sum -c "$TESTED_TARBALL.sha256"
-          ACTUAL_SHA256=$(sha256sum "$TESTED_TARBALL" | cut -d ' ' -f 1)
-          test "$ACTUAL_SHA256" = "$EXPECTED_SHA256"
-          REGISTRY_SHA256=$(sha256sum "registry-copy/$REGISTRY_TARBALL" | cut -d ' ' -f 1)
-          test "$REGISTRY_SHA256" = "$EXPECTED_SHA256"
-          cmp "$TESTED_TARBALL" "registry-copy/$REGISTRY_TARBALL"
+    uses: ./.github/workflows/_publish-npm-package.yml
+    with:
+      package_dir: packages/verify
+      package_name: '@emilia-protocol/verify'
+      artifact_id: verify
+      release_tag: ${{ inputs.release_tag }}
+      confirmation: ${{ inputs.confirmation }}
+      tag_prefix: verify-v
