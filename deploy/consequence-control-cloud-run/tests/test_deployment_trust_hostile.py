@@ -808,6 +808,8 @@ class CommandSpecificConfigHostileTests(unittest.TestCase):
             "CONSEQUENCE_CONTROL_STABLE_PUBLIC_KEY",
             "CONSEQUENCE_CONTROL_ATTEMPT_STORE_ADAPTER_SHA256",
             "CONSEQUENCE_CONTROL_ROLLOUT_ATTEMPT_DATABASE_URL",
+            "CONSEQUENCE_CONTROL_ROLLOUT_ATTEMPT_DATABASE_CA",
+            "CONSEQUENCE_CONTROL_ROLLOUT_ATTEMPT_DATABASE_CA_SHA256",
         ):
             self.assertIn(required, workflow)
         self.assertNotIn(

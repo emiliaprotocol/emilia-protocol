@@ -107,6 +107,7 @@ jobs:
           CONSEQUENCE_CONTROL_ROLLOUT_TELEMETRY_PUBLIC_KEY: ${{ secrets.CONSEQUENCE_CONTROL_ROLLOUT_TELEMETRY_PUBLIC_KEY }}
           CONSEQUENCE_CONTROL_ROLLOUT_AUTHORIZATION_PUBLIC_KEY: ${{ secrets.CONSEQUENCE_CONTROL_ROLLOUT_AUTHORIZATION_PUBLIC_KEY }}
           CONSEQUENCE_CONTROL_STABLE_PUBLIC_KEY: ${{ secrets.CONSEQUENCE_CONTROL_STABLE_PUBLIC_KEY }}
+          CONSEQUENCE_CONTROL_ROLLOUT_ATTEMPT_DATABASE_CA: ${{ secrets.CONSEQUENCE_CONTROL_ROLLOUT_ATTEMPT_DATABASE_CA }}
         run: |
           set -euo pipefail
           case "$TRAFFIC_OPERATION" in
@@ -122,6 +123,7 @@ jobs:
           [[ -n "$CONSEQUENCE_CONTROL_ROLLOUT_AUTHORIZATION" ]]
           [[ -n "$CONSEQUENCE_CONTROL_ROLLOUT_TELEMETRY_PUBLIC_KEY" ]]
           [[ -n "$CONSEQUENCE_CONTROL_ROLLOUT_AUTHORIZATION_PUBLIC_KEY" ]]
+          [[ -n "$CONSEQUENCE_CONTROL_ROLLOUT_ATTEMPT_DATABASE_CA" ]]
           if [[ "$TRAFFIC_OPERATION" != apply-rollback ]]; then
             [[ -n "$CONSEQUENCE_CONTROL_CANARY_EVIDENCE" ]]
             [[ -n "$CONSEQUENCE_CONTROL_ROLLOUT_TELEMETRY" ]]
@@ -139,12 +141,14 @@ jobs:
           canary_key_path="$trust_dir/canary-evidence-public.pem"
           telemetry_key_path="$trust_dir/rollout-telemetry-public.pem"
           authorization_key_path="$trust_dir/rollout-authorization-public.pem"
+          database_ca_path="$trust_dir/rollout-attempt-database-ca.pem"
           stable_key_path=
           printf '%s\n' "$CONSEQUENCE_CONTROL_TRAFFIC_CONFIG" > "$config_path"
           printf '%s\n' "$CONSEQUENCE_CONTROL_STABLE_MANIFEST" > "$manifest_path"
           printf '%s\n' "$CONSEQUENCE_CONTROL_ROLLOUT_AUTHORIZATION" > "$authorization_path"
           printf '%s\n' "$CONSEQUENCE_CONTROL_ROLLOUT_TELEMETRY_PUBLIC_KEY" > "$telemetry_key_path"
           printf '%s\n' "$CONSEQUENCE_CONTROL_ROLLOUT_AUTHORIZATION_PUBLIC_KEY" > "$authorization_key_path"
+          printf '%s\n' "$CONSEQUENCE_CONTROL_ROLLOUT_ATTEMPT_DATABASE_CA" > "$database_ca_path"
           if [[ "$TRAFFIC_OPERATION" != apply-rollback ]]; then
             printf '%s\n' "$CONSEQUENCE_CONTROL_CANARY_EVIDENCE" > "$evidence_path"
             printf '%s\n' "$CONSEQUENCE_CONTROL_ROLLOUT_TELEMETRY" > "$telemetry_path"
@@ -206,6 +210,7 @@ jobs:
           EMILIA_ROLLOUT_ATTEMPT_STORE_ADAPTER: ${{ github.workspace }}/deploy/consequence-control-cloud-run/postgres-rollout-attempt-store.sh
           EMILIA_ROLLOUT_ATTEMPT_STORE_ADAPTER_SHA256: ${{ vars.CONSEQUENCE_CONTROL_ATTEMPT_STORE_ADAPTER_SHA256 }}
           EMILIA_ROLLOUT_ATTEMPT_DATABASE_URL: ${{ secrets.CONSEQUENCE_CONTROL_ROLLOUT_ATTEMPT_DATABASE_URL }}
+          EMILIA_ROLLOUT_ATTEMPT_DATABASE_CA_SHA256: ${{ vars.CONSEQUENCE_CONTROL_ROLLOUT_ATTEMPT_DATABASE_CA_SHA256 }}
         run: |
           set -euo pipefail
           case "$TRAFFIC_OPERATION" in

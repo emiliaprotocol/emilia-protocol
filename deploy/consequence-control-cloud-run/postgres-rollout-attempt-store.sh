@@ -60,7 +60,7 @@ except ValueError as error:
     raise SystemExit(f"invalid PostgreSQL port: {error}")
 database = urllib.parse.unquote(parsed.path[1:]) if parsed.path.startswith("/") else ""
 components = {
-    "host": parsed.hostname or "",
+    "host": (parsed.hostname or "").lower(),
     "port": "" if port is None else str(port),
     "database": database,
     "user": urllib.parse.unquote(parsed.username or ""),
@@ -99,7 +99,76 @@ for name, component in components.items():
         os.fsync(descriptor)
     finally:
         os.close(descriptor)
+loopback = components["host"] in {"127.0.0.1", "::1", "localhost"}
+if not loopback:
+    if components.get("sslmode") != "verify-full":
+        raise SystemExit("remote PostgreSQL requires sslmode=verify-full")
+    root = components.get("sslrootcert", "")
+    if not root or not pathlib.PurePath(root).is_absolute():
+        raise SystemExit("remote PostgreSQL requires an absolute sslrootcert")
 PY
+PINNED_DATABASE_CA=
+if [[ -s "$connection_directory/sslrootcert" ]]; then
+  database_ca_source=$(<"$connection_directory/sslrootcert")
+  database_ca_sha256=${EMILIA_ROLLOUT_ATTEMPT_DATABASE_CA_SHA256:-}
+  [[ "$database_ca_source" == /* ]] \
+    || die "PostgreSQL sslrootcert must be absolute"
+  [[ "$database_ca_sha256" =~ ^[0-9a-f]{64}$ ]] \
+    || die "EMILIA_ROLLOUT_ATTEMPT_DATABASE_CA_SHA256 is required"
+  PINNED_DATABASE_CA="$temporary_directory/database-ca.pem"
+  "$python_bin" - \
+    "$database_ca_source" \
+    "$PINNED_DATABASE_CA" \
+    "$database_ca_sha256" <<'PY' \
+    || die "PostgreSQL CA trust check failed"
+import errno
+import hashlib
+import os
+import stat
+import sys
+
+source, destination, expected = sys.argv[1:]
+flags = os.O_RDONLY | getattr(os, "O_CLOEXEC", 0)
+if hasattr(os, "O_NOFOLLOW"):
+    flags |= os.O_NOFOLLOW
+try:
+    descriptor = os.open(source, flags)
+except OSError as error:
+    if error.errno in {errno.ELOOP, errno.EMLINK}:
+        raise SystemExit("PostgreSQL CA must be a regular non-symlink file")
+    raise
+try:
+    metadata = os.fstat(descriptor)
+    if not stat.S_ISREG(metadata.st_mode) or metadata.st_nlink != 1:
+        raise SystemExit("PostgreSQL CA must be a regular single-link file")
+    if metadata.st_uid not in {0, os.geteuid()}:
+        raise SystemExit("PostgreSQL CA ownership is unsafe")
+    if stat.S_IMODE(metadata.st_mode) & 0o022:
+        raise SystemExit("PostgreSQL CA permits group or world writes")
+    chunks = []
+    while True:
+        chunk = os.read(descriptor, 1024 * 1024)
+        if not chunk:
+            break
+        chunks.append(chunk)
+    raw = b"".join(chunks)
+finally:
+    os.close(descriptor)
+if not raw or hashlib.sha256(raw).hexdigest() != expected:
+    raise SystemExit("PostgreSQL CA differs from protected SHA-256")
+output_flags = os.O_WRONLY | os.O_CREAT | os.O_EXCL
+if hasattr(os, "O_NOFOLLOW"):
+    output_flags |= os.O_NOFOLLOW
+output = os.open(destination, output_flags, 0o400)
+try:
+    view = memoryview(raw)
+    while view:
+        view = view[os.write(output, view):]
+    os.fsync(output)
+finally:
+    os.close(output)
+PY
+fi
 tee "$input_file" >/dev/null || die "unable to read operation JSON"
 input_size=$(wc -c < "$input_file")
 input_size=${input_size//[[:space:]]/}
@@ -311,6 +380,7 @@ IFS=$'\t' read -r \
 run_psql() {
   unset \
     PGHOST \
+    PGHOSTADDR \
     PGPORT \
     PGDATABASE \
     PGUSER \
@@ -320,6 +390,24 @@ run_psql() {
     PGSERVICEFILE \
     PGOPTIONS \
     PGAPPNAME \
+    PGCONNECT_TIMEOUT \
+    PGCLIENTENCODING \
+    PGDATESTYLE \
+    PGGSSLIB \
+    PGKRBSRVNAME \
+    PGREQUIREPEER \
+    PGSSLCERT \
+    PGSSLKEY \
+    PGSSLROOTCERT \
+    PGSSLCRL \
+    PGSSLCRLDIR \
+    PGSSLMODE \
+    PGREQUIREAUTH \
+    PGCHANNELBINDING \
+    PGTARGETSESSIONATTRS \
+    PGLOADBALANCEHOSTS \
+    PGREALM \
+    PGTCPUSER_TIMEOUT \
     PSQLRC
   export PGHOST
   PGHOST=$(<"$connection_directory/host")
@@ -341,12 +429,14 @@ run_psql() {
     fi
   done <<'EOF'
 sslmode	PGSSLMODE
-sslrootcert	PGSSLROOTCERT
 connect_timeout	PGCONNECT_TIMEOUT
 channel_binding	PGCHANNELBINDING
 target_session_attrs	PGTARGETSESSIONATTRS
 application_name	PGAPPNAME
 EOF
+  if [[ -n "$PINNED_DATABASE_CA" ]]; then
+    export PGSSLROOTCERT="$PINNED_DATABASE_CA"
+  fi
   "$psql_bin" \
     -X \
     --set=ON_ERROR_STOP=1 \

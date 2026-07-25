@@ -150,6 +150,7 @@ depend on a generated runner directory:
 - `/tmp/emilia-consequence-control-trust/canary-evidence-public.pem`
 - `/tmp/emilia-consequence-control-trust/rollout-telemetry-public.pem`
 - `/tmp/emilia-consequence-control-trust/rollout-authorization-public.pem`
+- `/tmp/emilia-consequence-control-trust/rollout-attempt-database-ca.pem`
 - `/tmp/emilia-consequence-control-trust/stable-release-public.pem` (file trust
   only; omit the secret and this path when the profile pins Cloud KMS)
 
@@ -166,6 +167,13 @@ the dedicated executor database URL through
 `CONSEQUENCE_CONTROL_ROLLOUT_ATTEMPT_DATABASE_URL`, requires `psql`, and the
 traffic script single-opens and privately copies the authenticated adapter
 before any Cloud Run mutation.
+
+Remote attempt-store URLs must use `sslmode=verify-full` and pin the absolute
+CA path above with
+`CONSEQUENCE_CONTROL_ROLLOUT_ATTEMPT_DATABASE_CA_SHA256`. The adapter clears
+all ambient libpq connection, TLS, service, password-file, and options
+variables before exporting only the parsed protected URL. Loopback connections
+may omit verified TLS solely for disposable local tests.
 
 ```sh
 cp deploy/consequence-control-cloud-run/config.example.env /tmp/emilia-config-catalog.env

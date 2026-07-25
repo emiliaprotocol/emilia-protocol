@@ -12,6 +12,7 @@ import stat
 import subprocess
 import tempfile
 import unittest
+import urllib.parse
 
 
 LANE = Path(__file__).resolve().parents[1]
@@ -25,8 +26,8 @@ MIGRATION = (
 )
 ROLES = REPOSITORY / "supabase" / "roles.sql"
 DATABASE_URL = (
-    "postgresql://rollout-attempt-login:secret@db.test/emilia"
-    "?sslmode=require"
+    "postgresql://rollout-attempt-login:secret@127.0.0.1:5432/emilia"
+    "?sslmode=disable"
 )
 CLAIM_DOMAIN = b"EMILIA-DEPLOYMENT-ATTEMPT-CLAIM-V1\x00"
 
@@ -120,6 +121,9 @@ command cat > "$FAKE_PSQL_STDIN_FILE"
 printf '%s\\n' "${PGOPTIONS-unset}" "${PSQLRC-unset}" \
   "${PGHOST-unset}" "${PGPORT-unset}" "${PGDATABASE-unset}" \
   "${PGUSER-unset}" "${PGPASSWORD-unset}" "${PGSSLMODE-unset}" \
+  "${PGSSLROOTCERT-unset}" "${PGHOSTADDR-unset}" \
+  "${PGSERVICE-unset}" "${PGSERVICEFILE-unset}" \
+  "${PGPASSFILE-unset}" "${PGREQUIREAUTH-unset}" \
   > "$FAKE_PSQL_ENVIRONMENT_FILE"
 if [ "${FAKE_PSQL_EXIT_CODE:-0}" -ne 0 ]; then
   printf 'fake psql failure\\n' >&2
@@ -199,6 +203,7 @@ class PostgresRolloutAttemptAdapterTests(unittest.TestCase):
         self.assertTrue(ADAPTER.stat().st_mode & stat.S_IXUSR)
         self.assertIn("set -euo pipefail", source)
         self.assertIn("EMILIA_ROLLOUT_ATTEMPT_DATABASE_URL", source)
+        self.assertIn("remote PostgreSQL requires sslmode=verify-full", source)
         self.assertRegex(source, r"(?:^|\s)-X(?:\s|$)")
         self.assertIn("ON_ERROR_STOP=1", source)
         self.assertNotIn("eval ", source)
@@ -232,14 +237,147 @@ class PostgresRolloutAttemptAdapterTests(unittest.TestCase):
             [
                 "unset",
                 "unset",
+                "127.0.0.1",
+                "5432",
+                "emilia",
+                "rollout-attempt-login",
+            "secret",
+            "disable",
+            "unset",
+            "unset",
+            "unset",
+            "unset",
+            "unset",
+            "unset",
+        ],
+    )
+
+    def test_remote_database_requires_pinned_verified_tls_and_clears_ambient_libpq(
+        self,
+    ) -> None:
+        expected = response(
+            "claim", "claimed", self.claim["claim_sha256"], None
+        )
+        raw = encode(self.claim)
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            ca = root / "database-ca.pem"
+            ca.write_text(
+                "-----BEGIN CERTIFICATE-----\n"
+                "dGVzdC1jYS1waW4=\n"
+                "-----END CERTIFICATE-----\n",
+                encoding="utf-8",
+            )
+            ca.chmod(0o600)
+            digest = hashlib.sha256(ca.read_bytes()).hexdigest()
+            url = (
+                "postgresql://rollout-attempt-login:secret@db.test/emilia"
+                "?sslmode=verify-full&sslrootcert="
+                f"{urllib.parse.quote(str(ca), safe='')}"
+            )
+            environment = self.fake.environment(encode(expected))
+            environment.update(
+                {
+                    "EMILIA_ROLLOUT_ATTEMPT_DATABASE_URL": url,
+                    "EMILIA_ROLLOUT_ATTEMPT_DATABASE_CA_SHA256": digest,
+                    "PGHOSTADDR": "203.0.113.9",
+                    "PGSERVICE": "attacker",
+                    "PGSERVICEFILE": "/attacker/pg_service.conf",
+                    "PGPASSFILE": "/attacker/.pgpass",
+                    "PGREQUIREAUTH": "none",
+                    "PGSSLROOTCERT": "/attacker/ca.pem",
+                }
+            )
+            result = subprocess.run(
+                [str(ADAPTER), "claim"],
+                input=raw,
+                text=True,
+                capture_output=True,
+                check=False,
+                cwd=LANE,
+                env=environment,
+            )
+            self.assertEqual(result.returncode, 0, result.stderr)
+            values = self.fake.pg_environment.read_text(
+                encoding="utf-8"
+            ).splitlines()
+            self.assertEqual(values[:8], [
+                "unset",
+                "unset",
                 "db.test",
                 "unset",
                 "emilia",
                 "rollout-attempt-login",
                 "secret",
-                "require",
-            ],
-        )
+                "verify-full",
+            ])
+            self.assertNotEqual(values[8], str(ca))
+            self.assertRegex(
+                values[8],
+                r"/emilia-rollout-attempt-store\.[^/]+/database-ca\.pem$",
+            )
+            self.assertEqual(values[9:], ["unset"] * 5)
+
+    def test_remote_tls_downgrade_missing_or_untrusted_ca_fails_before_psql(
+        self,
+    ) -> None:
+        raw = encode(self.claim)
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            ca = root / "database-ca.pem"
+            ca.write_text("test CA", encoding="utf-8")
+            ca.chmod(0o600)
+            symlink = root / "database-ca-link.pem"
+            symlink.symlink_to(ca)
+            digest = hashlib.sha256(ca.read_bytes()).hexdigest()
+            cases = (
+                (
+                    "postgresql://u:p@db.test/emilia?sslmode=require",
+                    digest,
+                ),
+                (
+                    "postgresql://u:p@db.test/emilia?sslmode=verify-full",
+                    digest,
+                ),
+                (
+                    "postgresql://u:p@db.test/emilia"
+                    "?sslmode=verify-full&sslrootcert="
+                    f"{urllib.parse.quote(str(ca), safe='')}",
+                    "0" * 64,
+                ),
+                (
+                    "postgresql://u:p@db.test/emilia"
+                    "?sslmode=verify-full&sslrootcert="
+                    f"{urllib.parse.quote(str(symlink), safe='')}",
+                    digest,
+                ),
+            )
+            for url, pinned_digest in cases:
+                with self.subTest(url=url, pinned_digest=pinned_digest[:8]):
+                    fake = FakePsql()
+                    self.fake.close()
+                    self.fake = fake
+                    environment = self.fake.environment("")
+                    environment.update(
+                        {
+                            "EMILIA_ROLLOUT_ATTEMPT_DATABASE_URL": url,
+                            "EMILIA_ROLLOUT_ATTEMPT_DATABASE_CA_SHA256": (
+                                pinned_digest
+                            ),
+                        }
+                    )
+                    result = subprocess.run(
+                        [str(ADAPTER), "claim"],
+                        input=raw,
+                        text=True,
+                        capture_output=True,
+                        check=False,
+                        cwd=LANE,
+                        env=environment,
+                    )
+                    self.assertNotEqual(result.returncode, 0)
+                    self.assertEqual(result.stdout, "")
+                    self.assert_psql_not_called()
 
     def test_complete_and_reconcile_echo_only_exact_terminal_response(
         self,
