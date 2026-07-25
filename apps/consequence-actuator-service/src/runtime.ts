@@ -40,6 +40,10 @@ const DIGEST = /^sha256:[a-f0-9]{64}$/;
 type JsonObject = Record<string, any>;
 
 export interface ConsequenceActuatorRuntimeConfig {
+  /**
+   * Explicitly permits the non-durable memory store in tests.
+   */
+  testOnly?: true;
   tenantId: string;
   providerId: string;
   providerAccountId: string;
@@ -201,6 +205,7 @@ export function createConsequenceActuatorRuntime(
     if (!perform) return refused(422, 'operation_refused');
 
     const actuator = new ConsequenceActuator({
+      testOnly: config.testOnly,
       pins: {
         tenantId: config.tenantId,
         caid: normalized.caid,

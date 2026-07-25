@@ -61,6 +61,8 @@ const adapterSources: Readonly<Record<string, string>> = Object.freeze({
     "conformance/refinement/adapters/consequence-lifecycle.mts",
   "composed-trust-lifecycle":
     "conformance/refinement/adapters/composed-trust-lifecycle.mts",
+  "complete-mediation":
+    "conformance/refinement/adapters/complete-mediation.mts",
   "durable-consumption-owner":
     "conformance/refinement/adapters/durable-consumption-owner.mts",
   "conservation-authority":

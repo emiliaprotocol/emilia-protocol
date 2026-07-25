@@ -61,6 +61,7 @@ it('executes and reconciles across the authenticated split deployment boundary',
   const evidenceKeys = crypto.generateKeyPairSync('ed25519');
   const now = Date.parse('2026-07-25T12:00:00.000Z');
   const runtime = createConsequenceActuatorRuntime({
+    testOnly: true,
     tenantId: 'tenant:emilia',
     providerId: 'github',
     providerAccountId: ACTION.owner,
@@ -116,6 +117,13 @@ it('executes and reconciles across the authenticated split deployment boundary',
   const client = createConsequenceActuatorClient({
     endpoint: `http://127.0.0.1:${address.port}`,
     authorization: 'split-test-token-000000000000000000000000000',
+    identityTokenAudience: 'https://actuator.test.run.app',
+    identityTokenProvider: {
+      async fetchIdToken(audience: string) {
+        assert.equal(audience, 'https://actuator.test.run.app');
+        return 'test-header.test-payload.test-signature';
+      },
+    },
     tenantId: 'tenant:emilia',
     providerId: 'github',
     providerAccountId: ACTION.owner,

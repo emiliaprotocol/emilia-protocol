@@ -303,6 +303,7 @@ export async function createProductionConsequenceActuatorConfig({
   });
 
   return {
+    ...(useMemoryStore ? { testOnly: true as const } : {}),
     tenantId,
     providerId: 'github',
     providerAccountId,

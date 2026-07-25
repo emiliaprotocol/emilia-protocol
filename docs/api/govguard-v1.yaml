@@ -216,6 +216,76 @@ paths:
         '422': { description: Authorization or authority requirement unsatisfied }
         '503': { description: Durable state or verifier dependency unavailable }
 
+  /api/v1/adapters/health/hospice-claim/execute:
+    post:
+      tags: [Adapter Prechecks]
+      summary: Control one prospective PHI-free hospice payment consequence
+      description: |
+        Runs the `prepare`, `execute`, or authenticated `reconcile` phase of
+        the tenant-bound Proposal-to-Effect lifecycle. A scanner finding is
+        triage provenance only; exact approval, AEB evaluation, Gate policy,
+        material execution binding, one-time reservation, and provider outcome
+        evidence remain separate requirements.
+      operationId: executeHealthHospiceClaim
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required: [organization_id, operation]
+              properties:
+                organization_id: { type: string }
+                operation: { type: string, enum: [prepare, execute, reconcile] }
+                proposal_id: { type: string }
+                operation_id: { type: string }
+                prospective_control_package: { type: object }
+                proposal: { type: object }
+                approval_evidence: { type: object }
+                evaluation: { type: object }
+                observed_action: { type: object }
+                provider_evidence: { type: object }
+      responses:
+        '200': { description: Exact action executed once or reconciled to a terminal result }
+        '201': { description: Exact proposal and approval challenge prepared }
+        '400': { description: "Malformed, incomplete, unsupported, or prohibited-PHI request" }
+        '401': { description: Authentication required }
+        '403': { description: Tenant or local authority binding refused }
+        '409': { description: "Exact-action mismatch, replay, or lifecycle conflict" }
+        '422': { description: "Approval, AEB, Gate, execution, or reconciliation requirement failed" }
+        '503': { description: Durable consequence-control dependency unavailable }
+
+  /api/v1/adapters/health/hospice-claim/export:
+    get:
+      tags: [Adapter Prechecks]
+      summary: Export a PHI-free hospice consequence assurance packet
+      description: |
+        Returns append-only evidence for one exact tenant and operation. It
+        records the control path; it is not a clinical judgment, fraud finding,
+        payment-correctness determination, or proof of provider truth.
+      operationId: exportHealthHospiceClaimAssurance
+      security:
+        - BearerAuth: []
+      parameters:
+        - in: query
+          name: organization_id
+          required: true
+          schema: { type: string }
+        - in: query
+          name: operation_id
+          required: true
+          schema: { type: string }
+      responses:
+        '200': { description: PHI-free assurance packet returned as JSON }
+        '400': { description: Required tenant or operation binding is missing }
+        '401': { description: Authentication required }
+        '403': { description: Tenant binding refused }
+        '404': { description: No packet exists for the exact tenant and operation }
+        '503': { description: Durable evidence or export dependency unavailable }
+
   /api/v1/adapters/health/hospice-claim/reconcile:
     post:
       tags: [Adapter Prechecks]

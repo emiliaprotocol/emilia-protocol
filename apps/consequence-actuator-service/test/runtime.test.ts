@@ -110,6 +110,7 @@ async function harness({
     privateKey: evidenceSigner.privateKey,
   });
   const runtime = createConsequenceActuatorRuntime({
+    testOnly: true,
     tenantId: 'tenant:emilia',
     providerId: 'github',
     providerAccountId: ACTION.owner,

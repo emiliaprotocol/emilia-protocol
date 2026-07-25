@@ -149,6 +149,12 @@ export interface ConsequenceActuatorConsumption
 }
 
 export interface ConsequenceActuatorStore {
+  /** Explicit marker for the built-in non-production test store. */
+  readonly testOnly?: true;
+  readonly durable: boolean;
+  readonly atomic: boolean;
+  readonly ownershipFenced: boolean;
+  readonly permanentConsumption: boolean;
   reserve(reservation: ConsequenceActuatorReservation): Promise<boolean>;
   consume(consumption: ConsequenceActuatorConsumption): Promise<boolean>;
 }
@@ -257,6 +263,7 @@ interface VerifyOptions {
 interface ConsequenceActuatorOptions<TResult> {
   pins: ConsequenceActuatorPins;
   store: ConsequenceActuatorStore;
+  readonly testOnly?: true;
   perform: (
     binding: Readonly<ConsequenceExecutionEnvelopePayload>,
   ) => TResult | Promise<TResult>;
@@ -713,6 +720,17 @@ export class ConsequenceActuator<TResult = unknown> {
         'consequence actuator requires reserve/consume storage and a provider callback',
       );
     }
+    const productionCapable = options.store.durable === true
+      && options.store.atomic === true
+      && options.store.ownershipFenced === true
+      && options.store.permanentConsumption === true;
+    const explicitTestStore = options.store.testOnly === true
+      && options.testOnly === true;
+    if (!productionCapable && !explicitTestStore) {
+      throw new TypeError(
+        'consequence actuator requires durable, atomic, ownership-fenced storage with permanent consumption; a non-production store requires testOnly: true',
+      );
+    }
     this.#normalizedPins = normalizePins(options.pins);
     this.pins = this.#normalizedPins.visible;
     this.#reserve = options.store.reserve.bind(options.store);
@@ -862,9 +880,11 @@ function sameReservation(
  */
 export class MemoryConsequenceActuatorStore
 implements ConsequenceActuatorStore {
+  readonly testOnly = true as const;
   readonly durable = false;
   readonly atomic = true;
-  readonly permanentConsumption = true;
+  readonly ownershipFenced = false;
+  readonly permanentConsumption = false;
 
   readonly #records = new Map<string, MemoryConsequenceActuatorSnapshot>();
   readonly #idempotency = new Map<string, string>();
@@ -1005,6 +1025,7 @@ export class PostgresConsequenceActuatorStore
 implements ConsequenceActuatorStore {
   readonly durable = true;
   readonly atomic = true;
+  readonly ownershipFenced = true;
   readonly permanentConsumption = true;
   readonly tenantId: string;
   readonly executorPrincipal: string;

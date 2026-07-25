@@ -13,7 +13,7 @@ import {
   pinDiscoveryPermitTrust,
   type DiscoveryPermitDocumentProvenance,
   type DiscoveryPermitTrustPinsInput,
-} from './src/discovery-permit-contract.js';
+} from './discovery-permit-contract.js';
 
 const NOW = '2026-07-24T12:00:00Z';
 const CAID = `caid:1:payment.release.1:jcs-sha256:${'A'.repeat(43)}`;

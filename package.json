@@ -2,7 +2,7 @@
   "name": "emilia-protocol",
   "version": "1.0.0",
   "private": true,
-  "description": "EMILIA Protocol \u2014 an open verification protocol and consequence firewall for exact, authorized machine actions.",
+  "description": "EMILIA Protocol — an open verification protocol and consequence firewall for exact, authorized machine actions.",
   "homepage": "https://www.emiliaprotocol.ai",
   "repository": {
     "type": "git",
@@ -51,6 +51,7 @@
     "check:runtime-bridge": "node scripts/check-runtime-bridge.mjs",
     "check:formal-traces": "node scripts/check-formal-runtime-traces.mjs --check",
     "sync:formal-traces": "node scripts/check-formal-runtime-traces.mjs --emit",
+    "check:packed-package-exports": "node scripts/check-packed-package-exports.mjs",
     "check:conformance-docs": "node scripts/check-conformance-doc-counts.mjs",
     "preprint:build": "SOURCE_DATE_EPOCH=1784419200 FORCE_SOURCE_DATE=1 tectonic -X compile papers/preprint/main.tex",
     "check:preprint": "node scripts/check-preprint-sync.mjs",
@@ -102,6 +103,10 @@
     "conformance:clean-room:selftest": "node scripts/check-frozen-clean-room.mjs && node scripts/test-clean-room-intake.mjs",
     "conformance:clean-room:contract": "node scripts/test-clean-room-intake.mjs",
     "conformance:clean-room:kit": "node scripts/build-clean-room-kit.mjs",
+    "conformance:clean-room:v2:kit": "node scripts/build-clean-room-kit-v2.mjs",
+    "conformance:clean-room:v2:verify": "node scripts/verify-clean-room-submission-v2.mjs",
+    "conformance:external:v2:evaluate": "node scripts/evaluate-external-implementation-v2.mjs",
+    "conformance:clean-room:v2:selftest": "vitest run tests/clean-room-v2.test.ts",
     "conformance:signoffs": "node conformance/run-signoffs.mjs",
     "conformance:federation": "node conformance/federation.mjs",
     "conformance:operator2": "node conformance/operator2/verify-live.mjs"
@@ -164,6 +169,7 @@
     "@types/node": "^26.1.1",
     "@types/react": "^19.2.17",
     "@vitest/coverage-v8": "^4.1.10",
+    "brace-expansion": "5.0.8",
     "eslint": "^9.39.5",
     "eslint-config-next": "^16.2.9",
     "fast-check": "^4.9.0",
@@ -172,8 +178,8 @@
     "pako": "3.0.1",
     "pg": "^8.22.0",
     "qrcode": "1.5.4",
-    "typescript": "^5.9.3",
     "tsx": "^4.19.3",
+    "typescript": "^5.9.3",
     "vitest": "^4.1.0",
     "yaml": "2.9.0"
   }

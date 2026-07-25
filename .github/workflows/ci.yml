@@ -117,6 +117,13 @@ jobs:
       - name: Run the complete Gate package suite
         working-directory: packages/gate
         run: npm test
+      - name: Rebuild and refuse stale checked-in package runtimes
+        run: |
+          npm --prefix packages/verify run build
+          npm --prefix packages/gate run build
+          git diff --exit-code -- packages/verify/dist packages/gate/dist
+      - name: Import every Verify and Gate export from packed tarballs
+        run: npm run check:packed-package-exports
       - name: Run the hardened Gate service suite
         working-directory: apps/gate-service
         run: npm test
@@ -124,6 +131,19 @@ jobs:
         working-directory: apps/consequence-control-service
         run: |
           npm ci --ignore-scripts
+          npm test
+      - name: Switch to the actuator's supported Node runtime
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: apps/consequence-actuator-service/package-lock.json
+      - name: Run the credential-owning consequence-actuator service suite
+        working-directory: apps/consequence-actuator-service
+        run: |
+          npm ci --ignore-scripts
+          npm run typecheck
+          npm run build
           npm test
       - name: Verify the SQL contract and live cross-tenant isolation
         env:
@@ -152,6 +172,12 @@ jobs:
           docker run --rm emilia-consequence-control:ci \
             node --input-type=module --eval \
             "await import('/app/apps/consequence-control-service/src/production-config.js'); await import('/app/apps/consequence-control-service/src/server.js');"
+      - name: Build and import-smoke the credential-owning actuator image
+        run: |
+          docker build --file Dockerfile.consequence-actuator --tag emilia-consequence-actuator:ci .
+          docker run --rm emilia-consequence-actuator:ci \
+            node --input-type=module --eval \
+            "await import('/app/apps/consequence-actuator-service/dist/production-config.js'); await import('/app/apps/consequence-actuator-service/dist/server.js');"
       - name: Refuse high or critical runtime vulnerabilities
         uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
         with:
@@ -167,6 +193,16 @@ jobs:
         with:
           version: v0.72.0
           image-ref: emilia-consequence-control:ci
+          scanners: vuln
+          vuln-type: os,library
+          severity: HIGH,CRITICAL
+          exit-code: '1'
+          hide-progress: true
+      - name: Refuse high or critical consequence-actuator vulnerabilities
+        uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
+        with:
+          version: v0.72.0
+          image-ref: emilia-consequence-actuator:ci
           scanners: vuln
           vuln-type: os,library
           severity: HIGH,CRITICAL

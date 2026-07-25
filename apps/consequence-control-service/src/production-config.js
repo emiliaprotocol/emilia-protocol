@@ -10,7 +10,7 @@ import { createPostgresProposalToEffectStatusHeadStore, createProposalToEffectSt
 import { createAebNativeVerificationAttestationAdapter, digestAeb, } from '@emilia-protocol/verify/aeb-adapter-contract';
 import { strictJsonGate } from '@emilia-protocol/require-receipt/strict-json';
 import { createStaticBearerAuthenticator } from '../../gate-service/src/auth.js';
-import { createConsequenceActuatorClient, } from './github-app.js';
+import { createConsequenceActuatorClient, createGoogleCloudIdentityTokenProvider, } from './actuator-client.js';
 const BRIDGE_ADAPTER_ID = 'bridge:native';
 const BRIDGE_ADAPTER_VERSION = '1';
 const NORMAL_PROFILE = 'github.issue.update.v1';
@@ -271,7 +271,7 @@ export async function verifyDatabasePrincipalSeparation({ executorPool, recovery
         return false;
     }
 }
-export async function createProductionConsequenceControlConfig({ environment = process.env, PoolClass = null, fetchImpl = globalThis.fetch, } = {}) {
+export async function createProductionConsequenceControlConfig({ environment = process.env, PoolClass = null, fetchImpl = globalThis.fetch, identityTokenProvider = null, } = {}) {
     const executorDatabaseUrl = required(environment, 'EMILIA_CONSEQUENCE_EXECUTOR_DATABASE_URL');
     const recoveryDatabaseUrl = required(environment, 'EMILIA_CONSEQUENCE_RECOVERY_DATABASE_URL');
     if (executorDatabaseUrl === recoveryDatabaseUrl) {
@@ -348,8 +348,15 @@ export async function createProductionConsequenceControlConfig({ environment = p
                 && snapshot.request_digest === proposal.consequence.request_digest;
         },
     });
+    const identityTokenAudience = required(environment, 'EMILIA_CONSEQUENCE_ACTUATOR_AUDIENCE', 2048);
+    const actuatorIdentityTokenProvider = identityTokenProvider
+        ?? createGoogleCloudIdentityTokenProvider({
+            audience: identityTokenAudience,
+        });
     const actuatorClientOptions = {
         endpoint: required(environment, 'EMILIA_CONSEQUENCE_ACTUATOR_ORIGIN', 2048),
+        identityTokenAudience,
+        identityTokenProvider: actuatorIdentityTokenProvider,
         authorization: required(environment, 'EMILIA_CONSEQUENCE_ACTUATOR_API_TOKEN', 4096),
         tenantId,
         providerId: 'github',

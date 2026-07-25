@@ -175,9 +175,49 @@ All text bindings have database byte-length checks (256 bytes for ordinary
 identifiers, 512 for CAID, and 22–128 for the canonical base64url nonce), with
 digest and nonce syntax checks repeated inside both runtime RPCs.
 
+## Split-service deployment
+
+The reference managed deployment uses two separately configured services:
+
+- `apps/consequence-control-service` owns policy evaluation, Proposal-to-Effect
+  custody, the envelope signing key, and the actuator observation verification
+  key. It has no provider credential and no provider API implementation.
+- `apps/consequence-actuator-service` owns the provider credential, the
+  dedicated actuator database principal, the envelope verification key, and
+  its own observation signing key. It cannot create an authorization receipt or
+  an AEB authorization decision.
+
+The decision service sends only the closed material action and signed execution
+envelope. The actuator verifies the action digest, CAID, tenant, attempt,
+provider account, target, operation, idempotency key, nonce, and expiry before
+the atomic reservation and provider invocation.
+
+An invoked effect returns a signed
+`EP-CONSEQUENCE-ACTUATOR-OBSERVATION-v1` record. That record binds the same
+execution tuple, the envelope digest, an actuator-local observation time, the
+closed `COMMITTED | INDETERMINATE` outcome, and an optional provider-result
+digest. The decision service verifies the actuator's pinned key and exact
+binding before it uses the record as Proposal-to-Effect evidence.
+
+Reconciliation is a separate authenticated observation operation. A provider
+read can establish current provider state, but it MUST NOT attribute that state
+to an execution attempt unless the provider exposes authenticated,
+attempt-bound evidence. The GitHub issue reference profile therefore escalates
+an ambiguous current-state match instead of inventing attempt attribution.
+
+Running both roles in one process, sharing the provider credential with the
+decision service, accepting a presenter-selected actuator key, or granting
+either runtime direct table mutation authority does not conform to the managed
+complete-mediation profile.
+
 ## Reference implementation
 
 - `packages/gate/src/consequence-actuator.ts`
 - `packages/gate/consequence-actuator.test.ts`
+- `apps/consequence-control-service/src/actuator-client.ts`
+- `apps/consequence-actuator-service/src/runtime.ts`
+- `apps/consequence-actuator-service/src/observation.ts`
+- `apps/consequence-actuator-service/src/production-config.ts`
+- `Dockerfile.consequence-actuator`
 - `supabase/migrations/20260725010000_consequence_actuator_store.sql`
 - `tests/consequence-actuator-migration-contract.test.ts`

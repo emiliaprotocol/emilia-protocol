@@ -7,11 +7,11 @@ import {
   DISCOVERY_PERMIT_DISCOVERY_VERSION,
   digestDiscoveryPermit,
   type DiscoveryPermitTrustPinsInput,
-} from '../verify/src/discovery-permit-contract.js';
+} from '@emilia-protocol/verify/discovery-permit-contract';
 import {
   DiscoveryPermitResolver,
   type AddressPinnedTransport,
-} from './src/discovery-permit-resolver.js';
+} from './discovery-permit-resolver.js';
 
 const NOW = Date.parse('2026-07-24T12:00:00Z');
 const CAID = `caid:1:payment.release.1:jcs-sha256:${'A'.repeat(43)}`;

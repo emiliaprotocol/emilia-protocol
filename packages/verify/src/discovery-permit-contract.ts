@@ -8,7 +8,7 @@
  * the complete source/action/mapping join.
  */
 
-import crypto from 'node:crypto';
+import crypto, { type KeyObject } from 'node:crypto';
 
 import {
   canonicalizeAeb,
@@ -20,6 +20,10 @@ import {
 export const DISCOVERY_PERMIT_DISCOVERY_VERSION = 'EP-DISCOVERY-PERMIT-DISCOVERY-v1';
 export const DISCOVERY_PERMIT_BINDING_VERSION = 'EP-DISCOVERY-PERMIT-BINDING-v1';
 export const DISCOVERY_PERMIT_RESOLUTION_VERSION = 'EP-DISCOVERY-PERMIT-RESOLUTION-v1';
+export const DISCOVERY_PERMIT_RESOLVER_ATTESTATION_VERSION =
+  'EP-DISCOVERY-PERMIT-RESOLVER-ATTESTATION-v1';
+export const DISCOVERY_PERMIT_RESOLVER_ATTESTATION_DOMAIN =
+  `${DISCOVERY_PERMIT_RESOLVER_ATTESTATION_VERSION}\0`;
 
 export type DiscoveryPermitDigest = AebDigest;
 export type DiscoveryPermitJson = AebJson;
@@ -113,6 +117,48 @@ export interface DiscoveryPermitResolution {
   provenance: DiscoveryPermitProvenance;
 }
 
+export interface DiscoveryPermitResolverAttestationBody {
+  '@type': typeof DISCOVERY_PERMIT_RESOLVER_ATTESTATION_VERSION;
+  resolver_id: string;
+  evaluated_at: string;
+  expires_at: string;
+  configuration_digest: DiscoveryPermitDigest;
+  caid: string;
+  action_digest: DiscoveryPermitDigest;
+  source_digest: DiscoveryPermitDigest;
+  provenance_digest: DiscoveryPermitDigest;
+  resolution_digest: DiscoveryPermitDigest;
+  resolution: DiscoveryPermitResolution;
+}
+
+export interface DiscoveryPermitResolverAttestation
+  extends DiscoveryPermitResolverAttestationBody {
+  signature: {
+    alg: 'Ed25519';
+    key_id: string;
+    value: string;
+  };
+}
+
+export interface DiscoveryPermitResolverAttestationSigner {
+  key_id: string;
+  private_key: KeyObject;
+}
+
+export interface DiscoveryPermitResolverPin {
+  resolver_id: string;
+  key_id: string;
+  public_key: string;
+}
+
+export interface SignDiscoveryPermitResolverAttestationOptions {
+  resolver_id: string;
+  evaluated_at: string;
+  expires_at: string;
+  configuration_digest: DiscoveryPermitDigest;
+  resolution: DiscoveryPermitResolution;
+}
+
 export interface EvaluateDiscoveryPermitContinuityOptions {
   pins: DiscoveryPermitTrustPins | DiscoveryPermitTrustPinsInput;
   discovery: unknown;
@@ -121,6 +167,12 @@ export interface EvaluateDiscoveryPermitContinuityOptions {
   action: unknown;
   now: number | string | Date;
   provenance: DiscoveryPermitProvenance;
+}
+
+export interface RederiveDiscoveryPermitResolutionOptions {
+  pins: DiscoveryPermitTrustPins | DiscoveryPermitTrustPinsInput;
+  resolution: unknown;
+  now: number | string | Date;
 }
 
 export class DiscoveryPermitContractError extends Error {
@@ -186,6 +238,21 @@ const RESOLUTION_KEYS = new Set([
   'age_seconds',
   'provenance',
 ]);
+const RESOLVER_ATTESTATION_KEYS = new Set([
+  '@type',
+  'resolver_id',
+  'evaluated_at',
+  'expires_at',
+  'configuration_digest',
+  'caid',
+  'action_digest',
+  'source_digest',
+  'provenance_digest',
+  'resolution_digest',
+  'resolution',
+  'signature',
+]);
+const RESOLVER_SIGNATURE_KEYS = new Set(['alg', 'key_id', 'value']);
 
 function fail(code: string, message = code): never {
   throw new DiscoveryPermitContractError(code, message);
@@ -476,13 +543,13 @@ export function digestDiscoveryPermitRaw(
   return `sha256:${crypto.createHash('sha256').update(bytes).digest('hex')}`;
 }
 
-/**
- * Join the two source documents to constructor pins and the executor-owned
- * CAID/action. This function never returns action authorization.
- */
-export function evaluateDiscoveryPermitContinuity(
-  options: EvaluateDiscoveryPermitContinuityOptions,
-): DiscoveryPermitResolution {
+function deriveDiscoveryPermitResolution(options: {
+  pins: DiscoveryPermitTrustPins | DiscoveryPermitTrustPinsInput;
+  discovery: unknown;
+  binding: unknown;
+  now: number | string | Date;
+  provenance: DiscoveryPermitProvenance;
+}): DiscoveryPermitResolution {
   const pins = pinDiscoveryPermitTrust(options.pins);
   if (!discoveryShape(options.discovery)) fail('discovery_shape_invalid');
   if (!bindingShape(options.binding)) fail('binding_shape_invalid');
@@ -509,16 +576,6 @@ export function evaluateDiscoveryPermitContinuity(
     || discovery.mapping_digest !== binding.mapping_digest) {
     fail('mapping_digest_mismatch');
   }
-  if (typeof options.caid !== 'string' || !CAID_RE.test(options.caid)) fail('caid_invalid');
-  if (binding.caid !== options.caid) fail('caid_mismatch');
-
-  let actionDigest: DiscoveryPermitDigest;
-  try {
-    actionDigest = digestDiscoveryPermit(options.action);
-  } catch {
-    fail('action_not_canonicalizable');
-  }
-  if (binding.action_digest !== actionDigest) fail('action_digest_mismatch');
 
   validateProvenance(options.provenance, discovery, binding, pins);
 
@@ -547,6 +604,27 @@ export function evaluateDiscoveryPermitContinuity(
     age_seconds: ageSeconds,
     provenance: clone(options.provenance),
   });
+}
+
+/**
+ * Join the two source documents to constructor pins and the executor-owned
+ * CAID/action. This function never returns action authorization.
+ */
+export function evaluateDiscoveryPermitContinuity(
+  options: EvaluateDiscoveryPermitContinuityOptions,
+): DiscoveryPermitResolution {
+  const resolution = deriveDiscoveryPermitResolution(options);
+  if (typeof options.caid !== 'string' || !CAID_RE.test(options.caid)) fail('caid_invalid');
+  if (resolution.binding.caid !== options.caid) fail('caid_mismatch');
+
+  let actionDigest: DiscoveryPermitDigest;
+  try {
+    actionDigest = digestDiscoveryPermit(options.action);
+  } catch {
+    fail('action_not_canonicalizable');
+  }
+  if (resolution.binding.action_digest !== actionDigest) fail('action_digest_mismatch');
+  return resolution;
 }
 
 /**
@@ -602,4 +680,158 @@ export function isDiscoveryPermitResolution(
     || !provenanceShape(provenance.permit, 'permit')) return false;
   return provenance.discovery.canonical_digest === digestDiscoveryPermit(value.discovery)
     && provenance.permit.canonical_digest === digestDiscoveryPermit(value.binding);
+}
+
+/**
+ * Recompute a serialized resolution from the source documents and provenance
+ * under relying-party pins. This authenticates no presenter by itself; callers
+ * must first verify the resolver attestation that carries the resolution.
+ */
+export function rederiveDiscoveryPermitResolutionFromPinnedDocuments(
+  options: RederiveDiscoveryPermitResolutionOptions,
+): DiscoveryPermitResolution {
+  if (!isDiscoveryPermitResolution(options.resolution)) fail('resolution_shape_invalid');
+  return deriveDiscoveryPermitResolution({
+    pins: options.pins,
+    discovery: options.resolution.discovery,
+    binding: options.resolution.binding,
+    now: options.now,
+    provenance: options.resolution.provenance,
+  });
+}
+
+function resolverAttestationBody(
+  attestation: DiscoveryPermitResolverAttestation,
+): DiscoveryPermitResolverAttestationBody {
+  const { signature: _signature, ...body } = attestation;
+  return body;
+}
+
+function resolverAttestationSigningBytes(
+  body: DiscoveryPermitResolverAttestationBody,
+): Buffer {
+  return Buffer.from(
+    `${DISCOVERY_PERMIT_RESOLVER_ATTESTATION_DOMAIN}${canonicalizeDiscoveryPermit(body)}`,
+    'utf8',
+  );
+}
+
+export function isDiscoveryPermitResolverAttestation(
+  value: unknown,
+): value is DiscoveryPermitResolverAttestation {
+  if (!hasExactKeys(value, RESOLVER_ATTESTATION_KEYS)
+    || value['@type'] !== DISCOVERY_PERMIT_RESOLVER_ATTESTATION_VERSION
+    || typeof value.resolver_id !== 'string'
+    || value.resolver_id.length === 0
+    || !Number.isFinite(parseInstant(value.evaluated_at))
+    || !Number.isFinite(parseInstant(value.expires_at))
+    || parseInstant(value.expires_at) <= parseInstant(value.evaluated_at)
+    || !isDigest(value.configuration_digest)
+    || typeof value.caid !== 'string'
+    || !CAID_RE.test(value.caid)
+    || !isDigest(value.action_digest)
+    || !isDigest(value.source_digest)
+    || !isDigest(value.provenance_digest)
+    || !isDigest(value.resolution_digest)
+    || !isDiscoveryPermitResolution(value.resolution)
+    || !hasExactKeys(value.signature, RESOLVER_SIGNATURE_KEYS)
+    || value.signature.alg !== 'Ed25519'
+    || typeof value.signature.key_id !== 'string'
+    || value.signature.key_id.length === 0
+    || typeof value.signature.value !== 'string'
+    || !/^[A-Za-z0-9_-]+$/.test(value.signature.value)) {
+    return false;
+  }
+  return true;
+}
+
+/**
+ * Produce a domain-separated Ed25519 resolver statement over the exact
+ * resolution body and every relying-party-relevant join digest.
+ */
+export function signDiscoveryPermitResolverAttestation(
+  options: SignDiscoveryPermitResolverAttestationOptions,
+  signer: DiscoveryPermitResolverAttestationSigner,
+): DiscoveryPermitResolverAttestation {
+  if (typeof options?.resolver_id !== 'string' || options.resolver_id.length === 0) {
+    fail('resolver_id_invalid');
+  }
+  if (!isDigest(options.configuration_digest)) fail('configuration_digest_invalid');
+  if (!isDiscoveryPermitResolution(options.resolution)) fail('resolution_shape_invalid');
+  if (typeof signer?.key_id !== 'string'
+    || signer.key_id.length === 0
+    || !(signer.private_key instanceof crypto.KeyObject)
+    || signer.private_key.type !== 'private'
+    || signer.private_key.asymmetricKeyType !== 'ed25519') {
+    fail('resolver_signer_invalid');
+  }
+
+  const evaluatedAt = parseInstant(options.evaluated_at);
+  const expiresAt = parseInstant(options.expires_at);
+  const issuedAt = parseInstant(options.resolution.discovery.issued_at);
+  if (!Number.isFinite(evaluatedAt)
+    || !Number.isFinite(expiresAt)
+    || expiresAt <= evaluatedAt
+    || issuedAt > evaluatedAt
+    || Math.floor((evaluatedAt - issuedAt) / 1000) !== options.resolution.age_seconds) {
+    fail('resolver_attestation_evaluation_mismatch');
+  }
+
+  const resolution = clone(options.resolution);
+  const body: DiscoveryPermitResolverAttestationBody = {
+    '@type': DISCOVERY_PERMIT_RESOLVER_ATTESTATION_VERSION,
+    resolver_id: options.resolver_id,
+    evaluated_at: options.evaluated_at,
+    expires_at: options.expires_at,
+    configuration_digest: options.configuration_digest,
+    caid: resolution.binding.caid,
+    action_digest: resolution.binding.action_digest,
+    source_digest: digestDiscoveryPermit(resolution.source),
+    provenance_digest: digestDiscoveryPermit(resolution.provenance),
+    resolution_digest: digestDiscoveryPermit(resolution),
+    resolution,
+  };
+  const signature = crypto.sign(
+    null,
+    resolverAttestationSigningBytes(body),
+    signer.private_key,
+  ).toString('base64url');
+  return deepFreeze({
+    ...body,
+    signature: {
+      alg: 'Ed25519',
+      key_id: signer.key_id,
+      value: signature,
+    },
+  });
+}
+
+export function verifyDiscoveryPermitResolverAttestationSignature(
+  attestation: unknown,
+  pin: DiscoveryPermitResolverPin,
+): attestation is DiscoveryPermitResolverAttestation {
+  if (!isDiscoveryPermitResolverAttestation(attestation)
+    || typeof pin?.resolver_id !== 'string'
+    || pin.resolver_id !== attestation.resolver_id
+    || typeof pin.key_id !== 'string'
+    || pin.key_id !== attestation.signature.key_id
+    || typeof pin.public_key !== 'string'
+    || pin.public_key.length === 0) {
+    return false;
+  }
+  try {
+    const publicKey = crypto.createPublicKey(pin.public_key);
+    if (publicKey.type !== 'public' || publicKey.asymmetricKeyType !== 'ed25519') return false;
+    const signature = Buffer.from(attestation.signature.value, 'base64url');
+    if (signature.length !== 64
+      || signature.toString('base64url') !== attestation.signature.value) return false;
+    return crypto.verify(
+      null,
+      resolverAttestationSigningBytes(resolverAttestationBody(attestation)),
+      publicKey,
+      signature,
+    );
+  } catch {
+    return false;
+  }
 }

@@ -2,6 +2,7 @@
 
 import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
+import { contract } from '../scripts/db-contract.manifest.mjs';
 
 const migration = readFileSync(
   new URL(
@@ -97,6 +98,36 @@ describe('consequence actuator production store migration', () => {
     );
     expect(migration).not.toMatch(
       /GRANT\s+(?:ALL|SELECT|INSERT|UPDATE|DELETE)\s+ON\s+(?:TABLE\s+)?public\.consequence_actuator_envelopes\s+TO\s+(?:service_role|consequence_actuator_executor)/i,
+    );
+  });
+
+  it('promotes the RPC-only actuator table into the live schema contract', () => {
+    expect(contract.requiredTables).toContain('consequence_actuator_envelopes');
+    expect(contract.rlsRequired).toContain('consequence_actuator_envelopes');
+    expect(contract.noAnonRead).toContain('consequence_actuator_envelopes');
+    expect(contract.noAnonWrite).toContain('consequence_actuator_envelopes');
+    expect(contract.tableGrantsNoPublic).toContain(
+      'consequence_actuator_envelopes',
+    );
+    expect(contract.tableGrantsNoServiceRoleDirect).toContain(
+      'consequence_actuator_envelopes',
+    );
+    expect(contract.requiredColumns.consequence_actuator_envelopes).toEqual(
+      expect.arrayContaining([
+        'tenant_id',
+        'attempt_id',
+        'action_digest',
+        'caid',
+        'provider_account_id',
+        'target_digest',
+        'operation',
+        'idempotency_key',
+        'nonce',
+        'expires_at',
+        'envelope_digest',
+        'state',
+        'outcome',
+      ]),
     );
   });
 

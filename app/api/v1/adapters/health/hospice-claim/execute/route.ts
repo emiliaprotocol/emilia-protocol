@@ -19,27 +19,30 @@ import { resolveAuthorizedOrg } from '@/lib/tenant-binding.js';
 
 const MAX_BODY_BYTES = 512 * 1024;
 const IDENTIFIER_RE = /^[A-Za-z0-9][A-Za-z0-9:_.@/-]{2,255}$/;
-const PROHIBITED_PHI_FIELDS = new Set([
-  'account_number',
+const PROHIBITED_PHI_FIELD_ALIASES = new Set([
+  'accountnumber',
   'address',
-  'authorization_form',
-  'bank_account',
-  'beneficiary_id',
+  'authorizationform',
+  'bankaccount',
+  'beneficiaryid',
   'bic',
   'cin',
-  'clinical_note',
-  'date_of_birth',
+  'clinicalnote',
+  'dateofbirth',
   'diagnosis',
-  'diagnosis_text',
+  'diagnosistext',
   'dob',
   'email',
-  'medicare_beneficiary_identifier',
-  'member_name',
-  'patient_name',
+  'medicarebeneficiaryidentifier',
+  'membername',
+  'patientname',
   'phone',
-  'routing_number',
+  'routingnumber',
   'ssn',
   'telephone',
+  'freetext',
+  'freeformtext',
+  'freetextnote',
 ]);
 
 export const HEALTHCARE_CONTROL_KEY = Symbol.for(
@@ -63,6 +66,10 @@ function identifier(value: unknown): value is string {
   return typeof value === 'string' && IDENTIFIER_RE.test(value);
 }
 
+function normalizedFieldAlias(value: string): string {
+  return value.normalize('NFKC').toLowerCase().replace(/[^a-z0-9]/g, '');
+}
+
 function prohibitedPhi(
   value: unknown,
   depth = 0,
@@ -80,7 +87,7 @@ function prohibitedPhi(
   if (!isObject(value)) return null;
   for (const [key, entry] of Object.entries(value)) {
     budget.entries += 1;
-    if (PROHIBITED_PHI_FIELDS.has(key)) return key;
+    if (PROHIBITED_PHI_FIELD_ALIASES.has(normalizedFieldAlias(key))) return key;
     const found = prohibitedPhi(entry, depth + 1, budget);
     if (found) return found;
   }

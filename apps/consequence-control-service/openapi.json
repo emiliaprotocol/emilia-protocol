@@ -3,7 +3,11 @@
   "info": {
     "title": "EMILIA Consequence-Control Service",
     "version": "0.1.1",
-    "description": "Authenticated Proposal-to-Effect custody. An indeterminate provider outcome is non-replayable, restart-discoverable by its verified proposal binding, and requires authenticated reconciliation."
+    "description": "Authenticated Proposal-to-Effect custody. An indeterminate provider outcome is non-replayable, restart-discoverable by its verified proposal binding, and requires authenticated reconciliation.",
+    "license": {
+      "name": "Apache-2.0",
+      "identifier": "Apache-2.0"
+    }
   },
   "servers": [
     {
@@ -87,6 +91,8 @@
     "/v1/live": {
       "get": {
         "operationId": "live",
+        "summary": "Report process liveness",
+        "security": [],
         "responses": {
           "200": { "description": "Process is live" }
         }
@@ -95,6 +101,8 @@
     "/v1/ready": {
       "get": {
         "operationId": "ready",
+        "summary": "Report dependency readiness",
+        "security": [],
         "responses": {
           "200": { "description": "Database and provider credentials are ready" },
           "503": { "description": "A dependency is unavailable" }
@@ -104,6 +112,7 @@
     "/v1/proposals": {
       "post": {
         "operationId": "prepareProposal",
+        "summary": "Prepare an exact server-bound proposal",
         "security": [{ "bearerAuth": [] }],
         "requestBody": {
           "required": true,
@@ -133,6 +142,7 @@
     "/v1/proposals/{proposal_id}/approval-requests": {
       "post": {
         "operationId": "beginProposalApproval",
+        "summary": "Begin approval acquisition for a proposal",
         "security": [{ "bearerAuth": [] }],
         "parameters": [{
           "name": "proposal_id",
@@ -165,6 +175,7 @@
     "/v1/proposals/{proposal_id}/approval-requests/poll": {
       "post": {
         "operationId": "pollProposalApproval",
+        "summary": "Poll an approval-acquisition request",
         "security": [{ "bearerAuth": [] }],
         "parameters": [{
           "name": "proposal_id",
@@ -197,6 +208,7 @@
     "/v1/proposals/{proposal_id}/execute": {
       "post": {
         "operationId": "executeProposal",
+        "summary": "Execute one authorized proposal",
         "security": [{ "bearerAuth": [] }],
         "parameters": [{
           "name": "proposal_id",
@@ -234,6 +246,7 @@
     "/v1/proposals/{proposal_id}/attempts/lookup": {
       "post": {
         "operationId": "lookupProposalAttempt",
+        "summary": "Rediscover a durable consequence attempt",
         "description": "Rediscover an existing consequence attempt from the authenticated, integrity-verified proposal. The provider tuple and request digest are selected from the verified proposal, never from caller fields.",
         "security": [{ "bearerAuth": [] }],
         "parameters": [{
@@ -283,6 +296,7 @@
     "/v1/proposals/{proposal_id}/reconcile": {
       "post": {
         "operationId": "reconcileProposal",
+        "summary": "Reconcile an indeterminate consequence",
         "security": [{ "bearerAuth": [] }],
         "parameters": [{
           "name": "proposal_id",
@@ -324,6 +338,7 @@
     "/v1/proposals/{proposal_id}/repair": {
       "post": {
         "operationId": "repairProposalConsumption",
+        "summary": "Repair terminal consumption convergence",
         "security": [{ "bearerAuth": [] }],
         "parameters": [{
           "name": "proposal_id",

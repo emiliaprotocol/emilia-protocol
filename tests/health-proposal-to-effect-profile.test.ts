@@ -18,14 +18,16 @@ import {
 } from '../packages/gate/proposal-to-effect.js';
 import {
   HEALTHCARE_ASSURANCE_LIMITATIONS,
+  HEALTHCARE_ASSURANCE_TRUST_BUNDLE_VERSION,
   HOSPICE_CAID_DEFINITION,
   HOSPICE_AEB_REQUIREMENT_REF,
   HOSPICE_PROPOSAL_PROFILE_ID,
   canonicalizeHospicePaymentAction,
+  checkHealthcareAssurancePacketInternalConsistency,
   createHealthcareConsequenceControl,
   createHospiceProposalToEffectProfile,
   createMemoryHealthcareControlStores,
-  verifyHealthcareAssurancePacket,
+  verifyHealthcareAssurancePacketOffline,
 } from '../lib/health/proposal-to-effect-profile.js';
 import { createHospiceClaimExecuteHandler } from '../app/api/v1/adapters/health/hospice-claim/execute/route.js';
 import { createHospiceClaimExportHandler } from '../app/api/v1/adapters/health/hospice-claim/export/route.js';
@@ -48,6 +50,30 @@ const VECTOR_SUITE = JSON.parse(fs.readFileSync(
   new URL('../conformance/vectors/health-proposal-to-effect.v1.json', import.meta.url),
   'utf8',
 ));
+const RELYING_PARTY_ID = 'rp:healthcare-synthetic-pilot';
+
+function assuranceKey(role: 'evaluator' | 'receipt' | 'aeb' | 'provider') {
+  const keyPair = crypto.generateKeyPairSync('ed25519');
+  const key_id = `health:${role}:test`;
+  const public_key_spki_b64u = keyPair.publicKey.export({
+    type: 'spki',
+    format: 'der',
+  }).toString('base64url');
+  return {
+    key_id,
+    keyPair,
+    public_key_spki_b64u,
+    signer: {
+      algorithm: 'Ed25519' as const,
+      key_id,
+      sign(bytes: Uint8Array) {
+        return crypto.sign(null, Buffer.from(bytes), keyPair.privateKey)
+          .toString('base64url');
+      },
+    },
+    pin: { key_id, public_key_spki_b64u },
+  };
+}
 
 function vector(id: string): any {
   const found = VECTOR_SUITE.vectors.find((candidate: any) => candidate.id === id);
@@ -492,11 +518,34 @@ async function fixture() {
     now: () => Date.parse(NOW),
   });
   const stores = createMemoryHealthcareControlStores();
+  const assuranceKeys = {
+    evaluator: assuranceKey('evaluator'),
+    receipt: assuranceKey('receipt'),
+    aeb: assuranceKey('aeb'),
+    provider: assuranceKey('provider'),
+  };
+  const assuranceTrust = {
+    '@version': HEALTHCARE_ASSURANCE_TRUST_BUNDLE_VERSION,
+    relying_party_id: RELYING_PARTY_ID,
+    evaluator: assuranceKeys.evaluator.pin,
+    receipt: assuranceKeys.receipt.pin,
+    aeb: assuranceKeys.aeb.pin,
+    provider: assuranceKeys.provider.pin,
+  };
   let mutation = async () => ({ sandbox_reference: 'sandbox:mutation:health-001' });
   let mutationCount = 0;
   const control = createHealthcareConsequenceControl({
     controller: controller as any,
     ...stores,
+    assurance: {
+      relying_party_id: RELYING_PARTY_ID,
+      signers: {
+        evaluator: assuranceKeys.evaluator.signer,
+        receipt: assuranceKeys.receipt.signer,
+        aeb: assuranceKeys.aeb.signer,
+        provider: assuranceKeys.provider.signer,
+      },
+    },
     allow_ephemeral_stores_for_tests: true,
     now: () => Date.parse(NOW),
     async mutate_sandbox(input) {
@@ -517,6 +566,8 @@ async function fixture() {
     attemptStore,
     control,
     controlPackage,
+    assuranceKeys,
+    assuranceTrust,
     prepared,
     evaluation: aeb.evaluate(),
     get mutationCount() {
@@ -635,7 +686,7 @@ describe('healthcare Proposal-to-Effect consequence control', () => {
     expect(f.aebStore.states.size).toBe(0);
   });
 
-  it('executes one protected sandbox effect and exports a self-verifying scoped packet', async () => {
+  it('executes one protected sandbox effect and exports a signed, scoped terminal packet', async () => {
     const f = await fixture();
     const result = await f.control.execute(executeInput(f));
     expect(result).toMatchObject({
@@ -650,14 +701,25 @@ describe('healthcare Proposal-to-Effect consequence control', () => {
       tenant_id: TENANT,
       operation_id: OPERATION_ID,
     });
-    expect(verifyHealthcareAssurancePacket(packet)).toEqual({
+    expect(checkHealthcareAssurancePacketInternalConsistency(packet)).toEqual({
+      consistent: true,
+      reasons: [],
+    });
+    expect(verifyHealthcareAssurancePacketOffline(
+      packet,
+      f.assuranceTrust,
+    )).toEqual({
       valid: true,
       reasons: [],
     });
     expect(packet.limitations).toEqual([...HEALTHCARE_ASSURANCE_LIMITATIONS]);
     expect(packet.profile.synthetic).toBe(true);
-    expect(packet.finding.clinical_judgment).toBe(false);
+    expect(packet.finding_projection.clinical_judgment).toBe(false);
     expect(packet.limitations.join(' ')).toContain('No live Medicare');
+    expect(JSON.stringify(packet)).not.toContain('"member_ref"');
+    expect(packet.protocol_evidence).not.toHaveProperty('proposal');
+    expect(packet.protocol_evidence).not.toHaveProperty('approval_evidence');
+    expect(packet.protocol_evidence).not.toHaveProperty('aeb_evaluation');
   });
 
   it('freezes timeout-after-side-effect as INDETERMINATE and never blindly replays', async () => {
@@ -758,7 +820,106 @@ describe('healthcare Proposal-to-Effect consequence control', () => {
       decision: 'RECONCILED_EXECUTED',
       authenticated_reconciliation: true,
     });
-    expect(verifyHealthcareAssurancePacket(packet).valid).toBe(true);
+    expect(verifyHealthcareAssurancePacketOffline(
+      packet,
+      f.assuranceTrust,
+    ).valid).toBe(true);
+  });
+
+  it('rejects outcome substitution even when the attacker recomputes the packet digest', async () => {
+    const f = await fixture();
+    await f.control.execute(executeInput(f));
+    const packet = await f.control.exportAssurancePacket({
+      tenant_id: TENANT,
+      operation_id: OPERATION_ID,
+    });
+    const substituted = structuredClone(packet);
+    substituted.outcome.decision = 'RECONCILED_NOT_EXECUTED';
+    delete substituted.packet_digest;
+    const substitutedBody = structuredClone(substituted);
+    delete substitutedBody.proof;
+    substituted.packet_digest = digestAeb(substitutedBody);
+
+    expect(checkHealthcareAssurancePacketInternalConsistency(
+      substituted,
+    )).toMatchObject({
+      consistent: false,
+      reasons: expect.arrayContaining([
+        'packet_terminal_state_mismatch',
+        'packet_reconciliation_evidence_required',
+      ]),
+    });
+    expect(verifyHealthcareAssurancePacketOffline(
+      substituted,
+      f.assuranceTrust,
+    ).valid).toBe(false);
+  });
+
+  it('requires an authenticated provider-key assertion for every reconciled outcome', async () => {
+    const f = await fixture();
+    f.setMutation(async () => {
+      throw new Error('provider_timeout_after_entry');
+    });
+    const indeterminate = await f.control.execute(executeInput(f));
+    await f.control.reconcile({
+      tenant_id: TENANT,
+      operation_id: OPERATION_ID,
+      proposal: f.prepared.proposal,
+      evaluation: f.evaluation,
+      provider_evidence: providerEvidence(f.prepared.proposal, indeterminate.attempt),
+    });
+    const packet = await f.control.exportAssurancePacket({
+      tenant_id: TENANT,
+      operation_id: OPERATION_ID,
+    });
+    const missingProvider = structuredClone(packet);
+    delete missingProvider.protocol_evidence.provider;
+    delete missingProvider.packet_digest;
+    const missingProviderBody = structuredClone(missingProvider);
+    delete missingProviderBody.proof;
+    missingProvider.packet_digest = digestAeb(missingProviderBody);
+
+    expect(checkHealthcareAssurancePacketInternalConsistency(
+      missingProvider,
+    )).toMatchObject({
+      consistent: false,
+      reasons: expect.arrayContaining(['packet_reconciliation_evidence_required']),
+    });
+  });
+
+  it('keeps evaluator, receipt, AEB, and provider trust roles non-substitutable', async () => {
+    const f = await fixture();
+    await f.control.execute(executeInput(f));
+    const packet = await f.control.exportAssurancePacket({
+      tenant_id: TENANT,
+      operation_id: OPERATION_ID,
+    });
+    const roleSwappedTrust = structuredClone(f.assuranceTrust);
+    roleSwappedTrust.receipt.public_key_spki_b64u =
+      f.assuranceKeys.aeb.public_key_spki_b64u;
+
+    expect(verifyHealthcareAssurancePacketOffline(
+      packet,
+      roleSwappedTrust,
+    )).toMatchObject({
+      valid: false,
+      reasons: expect.arrayContaining(['receipt_signature_invalid']),
+    });
+  });
+
+  it('normalizes prohibited PHI aliases case-insensitively and rejects free text', async () => {
+    for (const alias of ['SSN', 'patientName', 'PATIENT-NAME', 'freeText', 'FREE_TEXT']) {
+      const f = await fixture();
+      const input = executeInput(f);
+      input.approval_evidence[alias] = 'synthetic-but-prohibited';
+      const result = await f.control.execute(input);
+      expect(result, alias).toMatchObject({
+        ok: false,
+        decision: 'REFUSED',
+        reason: 'healthcare_prohibited_phi',
+      });
+      expect(f.mutationCount, alias).toBe(0);
+    }
   });
 
   it('keeps execute and export routes authenticated, tenant-bound, and injectable', async () => {
@@ -820,7 +981,31 @@ describe('healthcare Proposal-to-Effect consequence control', () => {
     expect(exportResponse.headers.get('content-disposition')).toContain(
       'healthcare-assurance-',
     );
-    expect(verifyHealthcareAssurancePacket(await exportResponse.json()).valid).toBe(true);
+    expect(verifyHealthcareAssurancePacketOffline(
+      await exportResponse.json(),
+      f.assuranceTrust,
+    ).valid).toBe(true);
     expect(controlSpy).toHaveBeenCalledTimes(1);
+
+    const phiControlSpy = vi.fn(async () => f.control);
+    const phiHandler = createHospiceClaimExecuteHandler({
+      authenticate: async () => ({
+        entity: {
+          entity_id: 'actor:health-reviewer',
+          organization_id: TENANT,
+        },
+      }),
+      resolve_control: phiControlSpy,
+    });
+    const phiResponse = await phiHandler(postRequest(
+      '/api/v1/adapters/health/hospice-claim/execute',
+      {
+        operation: 'execute',
+        organization_id: TENANT,
+        SSN: '000-00-0000',
+      },
+    ) as any);
+    expect(phiResponse.status).toBe(400);
+    expect(phiControlSpy).not.toHaveBeenCalled();
   });
 });

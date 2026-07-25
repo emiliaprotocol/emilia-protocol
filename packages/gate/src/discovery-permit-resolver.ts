@@ -15,8 +15,8 @@ import {
   type DiscoveryPermitResolution,
   type DiscoveryPermitTrustPins,
   type DiscoveryPermitTrustPinsInput,
-} from '../../verify/src/discovery-permit-contract.js';
-import { strictJsonGate } from '../../verify/src/strict-json.js';
+} from '@emilia-protocol/verify/discovery-permit-contract';
+import { strictJsonGate } from '@emilia-protocol/verify/strict-json';
 
 export interface AddressPinnedFetchContext {
   hostname: string;

@@ -5,13 +5,16 @@ import { describe, it } from 'node:test';
 
 import { canonicalize } from '@emilia-protocol/gate';
 import { digestAeb } from '@emilia-protocol/verify/aeb-adapter-contract';
-import { createSignedObservationEvidence } from '../../consequence-actuator-service/src/evidence.ts';
 import {
   consequenceActuatorTargetDigest,
   createConsequenceActuatorClient,
+  createGoogleCloudIdentityTokenProvider,
 } from '../src/actuator-client.ts';
 
 const NOW = Date.parse('2026-07-25T12:00:00.000Z');
+const IDENTITY_AUDIENCE = 'https://emilia-consequence-actuator-abc-uc.a.run.app';
+const IDENTITY_TOKEN = 'eyJhbGciOiJSUzI1NiJ9.eyJhdWQiOiJlbWlsaWEifQ.signature';
+const OBSERVATION_DOMAIN = 'EP-CONSEQUENCE-ACTUATOR-OBSERVATION-v1';
 const ACTION = Object.freeze({
   action_type: 'github.issue.update.1',
   owner: 'emiliaprotocol',
@@ -66,8 +69,31 @@ function response(body, status = 200) {
   });
 }
 
+function signObservationEvidence({ observation, privateKey, keyId }) {
+  const evidence = JSON.parse(canonicalize({
+    ...observation,
+    evidence_digest: digestAeb({
+      domain: OBSERVATION_DOMAIN,
+      evidence: observation,
+    }),
+  }));
+  const signatureInput = Buffer.concat([
+    Buffer.from(OBSERVATION_DOMAIN, 'utf8'),
+    Buffer.from([0]),
+    Buffer.from(canonicalize(evidence), 'utf8'),
+  ]);
+  return {
+    evidence,
+    signature: {
+      algorithm: 'Ed25519',
+      key_id: keyId,
+      value: crypto.sign(null, signatureInput, privateKey).toString('base64url'),
+    },
+  };
+}
+
 function observation(evidenceSigner, overrides = {}) {
-  return createSignedObservationEvidence({
+  return signObservationEvidence({
     observation: {
       '@version': 'EP-CONSEQUENCE-ACTUATOR-OBSERVATION-v1',
       evidence_id: `observation:${'a'.repeat(64)}`,
@@ -88,12 +114,21 @@ function observation(evidenceSigner, overrides = {}) {
 function client(fetchImpl, {
   envelopeSigner = crypto.generateKeyPairSync('ed25519'),
   evidenceSigner = crypto.generateKeyPairSync('ed25519'),
+  endpoint = 'http://127.0.0.1:8789',
+  identityTokenAudience = IDENTITY_AUDIENCE,
+  allowInsecureLoopback = true,
+  identityTokenProvider = {
+    async fetchIdToken(audience) {
+      assert.equal(audience, IDENTITY_AUDIENCE);
+      return IDENTITY_TOKEN;
+    },
+  },
 } = {}) {
   return {
     envelopeSigner,
     evidenceSigner,
     value: createConsequenceActuatorClient({
-      endpoint: 'http://127.0.0.1:8789',
+      endpoint,
       authorization: 'actuator-api-token-000000000000000000000000000000',
       tenantId: ATTEMPT.tenant_id,
       providerId: ATTEMPT.provider_id,
@@ -109,11 +144,13 @@ function client(fetchImpl, {
       observationIssuerId: 'consequence-actuator',
       observationKeyId: 'actuator-evidence-key',
       observationPublicKey: evidenceSigner.publicKey,
+      identityTokenAudience,
+      identityTokenProvider,
       requestTimeoutMs: 1000,
       fetchImpl,
       now: () => NOW,
       randomBytes: () => Buffer.alloc(24, 7),
-      allowInsecureLoopback: true,
+      allowInsecureLoopback,
     }),
   };
 }
@@ -147,6 +184,15 @@ describe('decision-plane actuator client', () => {
     }));
     assert.equal(captured.url, 'http://127.0.0.1:8789/v1/execute');
     assert.equal(captured.options.redirect, 'error');
+    const requestHeaders = new Headers(captured.options.headers);
+    assert.equal(
+      requestHeaders.get('authorization'),
+      'Bearer actuator-api-token-000000000000000000000000000000',
+    );
+    assert.equal(
+      requestHeaders.get('x-serverless-authorization'),
+      `Bearer ${IDENTITY_TOKEN}`,
+    );
     assert.equal(captured.body.envelope.payload.target_digest, TARGET_DIGEST);
     assert.equal(captured.body.envelope.payload.operation, ACTION.action_type);
     assert.equal(captured.body.envelope.payload.attempt_id, ATTEMPT.attempt_id);
@@ -238,6 +284,120 @@ describe('decision-plane actuator client', () => {
         attempt: ATTEMPT,
       }),
       /actuator_redirect_refused/,
+    );
+  });
+
+  it('fails closed when the workload identity token cannot be acquired', async () => {
+    let actuatorCalls = 0;
+    const fixture = client(async () => {
+      actuatorCalls += 1;
+      throw new Error('must_not_call_actuator');
+    }, {
+      identityTokenProvider: {
+        async fetchIdToken() {
+          throw new Error('adc_unavailable');
+        },
+      },
+    });
+
+    await assert.rejects(
+      fixture.value.effect({
+        action: ACTION,
+        proposal: {
+          ...PROPOSAL,
+          consequence: {
+            ...PROPOSAL.consequence,
+            provider_id: ATTEMPT.provider_id,
+            environment: ATTEMPT.environment,
+            request_digest: ATTEMPT.request_digest,
+          },
+        },
+        authorization: { allow: true },
+        attempt: ATTEMPT,
+      }),
+      /actuator_identity_token_unavailable/,
+    );
+    assert.equal(actuatorCalls, 0);
+  });
+
+  it('requires a pinned HTTPS origin and never treats metadata as an audience', () => {
+    const baseOptions = {
+      endpoint: 'http://127.0.0.1:8789',
+      authorization: 'actuator-api-token-000000000000000000000000000000',
+      identityTokenProvider: { fetchIdToken: async () => IDENTITY_TOKEN },
+    };
+    for (const identityTokenAudience of [
+      undefined,
+      'http://metadata.google.internal',
+      'https://metadata.google.internal/computeMetadata/v1',
+      'https://user:password@example.run.app',
+    ]) {
+      assert.throws(
+        () => createConsequenceActuatorClient({
+          ...baseOptions,
+          identityTokenAudience,
+        }),
+        /actuator_identity_audience_invalid/,
+      );
+    }
+  });
+
+  it('binds the identity audience to the canonical or exact Cloud Run tag origin', () => {
+    const audienceHost = new URL(IDENTITY_AUDIENCE).hostname;
+    assert.doesNotThrow(() => client(async () => response({}), {
+      endpoint: IDENTITY_AUDIENCE,
+      allowInsecureLoopback: false,
+    }));
+    assert.doesNotThrow(() => client(async () => response({}), {
+      endpoint: `https://canary-r20260725---${audienceHost}`,
+      allowInsecureLoopback: false,
+    }));
+
+    for (const endpoint of [
+      'https://unrelated-service.run.app',
+      `https://canary-r20260725---evil-${audienceHost}`,
+      `${IDENTITY_AUDIENCE}:444`,
+      `http://canary-r20260725---${audienceHost}`,
+    ]) {
+      assert.throws(
+        () => client(async () => response({}), {
+          endpoint,
+          allowInsecureLoopback: false,
+        }),
+        /actuator_identity_endpoint_mismatch/,
+      );
+    }
+  });
+
+  it('uses ADC through the Google auth library with one exact audience pin', async () => {
+    const calls = [];
+    const provider = createGoogleCloudIdentityTokenProvider({
+      audience: `${IDENTITY_AUDIENCE}/`,
+      auth: {
+        async getIdTokenClient(audience) {
+          calls.push(['client', audience]);
+          return {
+            idTokenProvider: {
+              async fetchIdToken(requestedAudience) {
+                calls.push(['token', requestedAudience]);
+                return IDENTITY_TOKEN;
+              },
+            },
+          };
+        },
+      },
+    });
+
+    assert.equal(await provider.fetchIdToken(IDENTITY_AUDIENCE), IDENTITY_TOKEN);
+    assert.equal(await provider.fetchIdToken(`${IDENTITY_AUDIENCE}/`), IDENTITY_TOKEN);
+    assert.deepEqual(calls, [
+      ['client', IDENTITY_AUDIENCE],
+      ['token', IDENTITY_AUDIENCE],
+      ['token', IDENTITY_AUDIENCE],
+    ]);
+    await assert.rejects(
+      provider.fetchIdToken('https://different-service.run.app'),
+      /actuator_identity_audience_mismatch/,
     );
   });
 });

@@ -58,6 +58,8 @@ export { PROPOSAL_TO_EFFECT_STATUS_HEAD_STORE_VERSION, PROPOSAL_TO_EFFECT_STATUS
 export type { PostgresProposalToEffectStatusHeadStoreOptions, ProposalToEffectStatusHeadAcceptance, ProposalToEffectStatusHeadAcceptanceInput, ProposalToEffectStatusHeadPgClient, ProposalToEffectStatusHeadPgPool, ProposalToEffectStatusHeadStore, } from './proposal-to-effect-status.js';
 export { PROPOSAL_TO_EFFECT_POSTGRES_DDL, PROPOSAL_TO_EFFECT_POSTGRES_SQL, proposalToEffectAttemptDigest, createProposalToEffectPostgresStore, } from './proposal-to-effect-postgres.js';
 export { AEB_PG_CONSUMPTION_STORE_VERSION, AEB_CONSUMPTION_OPERATION_TABLE, AEB_CONSUMPTION_REPLAY_TABLE, AEB_CONSUMPTION_DDL, AEB_CONSUMPTION_SQL, createPostgresAebDurableConsumptionStore, } from './aeb-consumption-store.js';
+export * from './consequence-actuator.js';
+export * from './discovery-permit-resolver.js';
 export declare const ASSURANCE_TIERS: string[];
 /**
  * Structurally compare a PRE-COMPUTED admissibility block with a profile hash.

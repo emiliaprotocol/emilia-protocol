@@ -17,8 +17,13 @@ import {
 import {
   DISCOVERY_PERMIT_RESOLUTION_VERSION,
   digestDiscoveryPermit,
+  isDiscoveryPermitResolverAttestation,
   isDiscoveryPermitResolution,
+  pinDiscoveryPermitTrust,
+  rederiveDiscoveryPermitResolutionFromPinnedDocuments,
+  verifyDiscoveryPermitResolverAttestationSignature,
   type DiscoveryPermitResolution,
+  type DiscoveryPermitTrustPins,
 } from './discovery-permit-contract.js';
 
 export const AEB_DISCOVERY_PERMIT_ADAPTER_ID = 'native:discovery-permit-continuity';
@@ -39,6 +44,13 @@ export interface AebDiscoveryPermitConfig {
   };
   mapping_digest: AebDigest;
   max_age_seconds: number;
+  redirect_map: Record<string, string>;
+  resolver: {
+    id: string;
+    key_id: string;
+    public_key: string;
+    max_attestation_age_seconds: number;
+  };
   evidence_role: typeof DISCOVERY_PERMIT_EVIDENCE_ROLE;
 }
 
@@ -60,10 +72,18 @@ const CONFIG_KEYS = new Set([
   'schema_digests',
   'mapping_digest',
   'max_age_seconds',
+  'redirect_map',
+  'resolver',
   'evidence_role',
 ]);
 const SOURCE_KEYS = new Set(['origin', 'discovery_url', 'permit_url']);
 const SCHEMA_KEYS = new Set(['discovery', 'permit_binding']);
+const RESOLVER_KEYS = new Set([
+  'id',
+  'key_id',
+  'public_key',
+  'max_attestation_age_seconds',
+]);
 const DIGEST_RE = /^sha256:[0-9a-f]{64}$/;
 const ZERO_DIGEST = `sha256:${'0'.repeat(64)}` as AebDigest;
 
@@ -89,10 +109,39 @@ function validConfig(value: unknown): value is AebDiscoveryPermitConfig {
     || value.max_age_seconds <= 0
     || !isDigest(value.mapping_digest)
     || !exactKeys(value.source, SOURCE_KEYS)
-    || !exactKeys(value.schema_digests, SCHEMA_KEYS)) return false;
-  return Object.values(value.source).every((item) => typeof item === 'string')
-    && isDigest(value.schema_digests.discovery)
-    && isDigest(value.schema_digests.permit_binding);
+    || !exactKeys(value.schema_digests, SCHEMA_KEYS)
+    || !isObject(value.redirect_map)
+    || !exactKeys(value.resolver, RESOLVER_KEYS)
+    || typeof value.resolver.id !== 'string'
+    || value.resolver.id.length === 0
+    || typeof value.resolver.key_id !== 'string'
+    || value.resolver.key_id.length === 0
+    || typeof value.resolver.public_key !== 'string'
+    || value.resolver.public_key.length === 0
+    || !Number.isSafeInteger(value.resolver.max_attestation_age_seconds)
+    || value.resolver.max_attestation_age_seconds <= 0) return false;
+  if (!Object.values(value.source).every((item) => typeof item === 'string')
+    || !isDigest(value.schema_digests.discovery)
+    || !isDigest(value.schema_digests.permit_binding)) return false;
+  try {
+    trustPins(value as unknown as AebDiscoveryPermitConfig);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+function trustPins(config: AebDiscoveryPermitConfig): DiscoveryPermitTrustPins {
+  return pinDiscoveryPermitTrust({
+    origin: config.source.origin,
+    discovery_url: config.source.discovery_url,
+    permit_url: config.source.permit_url,
+    discovery_schema_digest: config.schema_digests.discovery,
+    permit_schema_digest: config.schema_digests.permit_binding,
+    mapping_digest: config.mapping_digest,
+    max_age_seconds: config.max_age_seconds,
+    redirect_map: config.redirect_map,
+  });
 }
 
 function configMatches(
@@ -182,11 +231,28 @@ function verifyNative(
   if (!validConfig(input.adapter_config)) {
     return baseResult(input, {}, ['adapter_config_invalid']);
   }
-  if (!isDiscoveryPermitResolution(input.artifact)) {
-    return baseResult(input, {}, ['resolution_shape_invalid']);
+  if (isDiscoveryPermitResolution(input.artifact)) {
+    return baseResult(input, {}, ['resolver_attestation_required']);
   }
-  const resolution = input.artifact;
-  if (!configMatches(input.adapter_config, resolution)) {
+  if (!isDiscoveryPermitResolverAttestation(input.artifact)) {
+    return baseResult(input, {}, ['resolver_attestation_shape_invalid']);
+  }
+
+  const attestation = input.artifact;
+  const config = input.adapter_config;
+  if (!verifyDiscoveryPermitResolverAttestationSignature(attestation, {
+    resolver_id: config.resolver.id,
+    key_id: config.resolver.key_id,
+    public_key: config.resolver.public_key,
+  })) {
+    return baseResult(input, {}, ['resolver_attestation_signature_invalid']);
+  }
+  if (attestation.configuration_digest !== digestDiscoveryPermit(config)) {
+    return baseResult(input, {}, ['resolver_attestation_config_mismatch']);
+  }
+
+  const resolution = attestation.resolution;
+  if (!configMatches(config, resolution)) {
     return baseResult(input, {
       subject: {
         id: resolution.source.origin,
@@ -194,15 +260,47 @@ function verifyNative(
       },
     }, ['adapter_config_does_not_match_resolution']);
   }
+  if (attestation.caid !== resolution.binding.caid
+    || attestation.action_digest !== resolution.binding.action_digest
+    || attestation.source_digest !== digestDiscoveryPermit(resolution.source)
+    || attestation.provenance_digest !== digestDiscoveryPermit(resolution.provenance)
+    || attestation.resolution_digest !== digestDiscoveryPermit(resolution)) {
+    return baseResult(input, {}, ['resolver_attestation_binding_mismatch']);
+  }
 
-  const evidenceDigest = digestDiscoveryPermit(resolution);
+  let signedResolution: DiscoveryPermitResolution;
+  let currentResolution: DiscoveryPermitResolution;
+  try {
+    signedResolution = rederiveDiscoveryPermitResolutionFromPinnedDocuments({
+      pins: trustPins(config),
+      resolution,
+      now: attestation.evaluated_at,
+    });
+    currentResolution = rederiveDiscoveryPermitResolutionFromPinnedDocuments({
+      pins: trustPins(config),
+      resolution,
+      now: input.now,
+    });
+  } catch {
+    return baseResult(input, {}, ['resolver_resolution_rederivation_failed']);
+  }
+  if (digestDiscoveryPermit(signedResolution) !== attestation.resolution_digest) {
+    return baseResult(input, {}, ['resolver_resolution_rederivation_mismatch']);
+  }
+
+  const evidenceDigest = digestDiscoveryPermit(attestation);
   const replayUnit = digestDiscoveryPermit({
     '@type': DISCOVERY_PERMIT_RESOLUTION_VERSION,
+    resolver_id: attestation.resolver_id,
+    evaluated_at: attestation.evaluated_at,
+    configuration_digest: attestation.configuration_digest,
     source: resolution.source,
     mapping_digest: resolution.mapping_digest,
-    caid: resolution.binding.caid,
-    action_digest: resolution.binding.action_digest,
-    permit_raw_digest: resolution.provenance.permit.raw_digest,
+    caid: attestation.caid,
+    action_digest: attestation.action_digest,
+    source_digest: attestation.source_digest,
+    provenance_digest: attestation.provenance_digest,
+    resolution_digest: attestation.resolution_digest,
   });
   const shared = {
     native_verification: 'VERIFIED' as const,
@@ -214,19 +312,33 @@ function verifyNative(
     replay_unit: replayUnit,
   };
 
-  if (resolution.disposition === 'stale') {
+  const now = Date.parse(input.now);
+  const evaluatedAt = Date.parse(attestation.evaluated_at);
+  const expiresAt = Date.parse(attestation.expires_at);
+  if (!Number.isFinite(now)
+    || evaluatedAt > now
+    || expiresAt < now
+    || now - evaluatedAt > config.resolver.max_attestation_age_seconds * 1000
+    || expiresAt - evaluatedAt > config.resolver.max_attestation_age_seconds * 1000) {
+    return baseResult(input, {
+      ...shared,
+      acceptance: 'INDETERMINATE',
+    }, ['resolver_attestation_stale', 'native_evidence_only_not_authorization']);
+  }
+
+  if (currentResolution.disposition === 'stale') {
     return baseResult(input, {
       ...shared,
       acceptance: 'INDETERMINATE',
     }, ['discovery_permit_stale', 'native_evidence_only_not_authorization']);
   }
-  if (resolution.disposition === 'unknown') {
+  if (currentResolution.disposition === 'unknown') {
     return baseResult(input, {
       ...shared,
       acceptance: 'INDETERMINATE',
     }, ['discovery_permit_unknown', 'native_evidence_only_not_authorization']);
   }
-  if (resolution.disposition === 'deprecated') {
+  if (currentResolution.disposition === 'deprecated') {
     return baseResult(input, {
       ...shared,
       acceptance: 'REJECTED',
@@ -243,9 +355,11 @@ function verifyNative(
 function mapAction(
   input: AebAdapterInput & { native: AebNativeResult },
 ): AebMappingResult {
-  if (!isDiscoveryPermitResolution(input.artifact)
+  if (!isDiscoveryPermitResolverAttestation(input.artifact)
     || !validConfig(input.adapter_config)
-    || !configMatches(input.adapter_config, input.artifact)
+    || !configMatches(input.adapter_config, input.artifact.resolution)
+    || input.artifact.configuration_digest !== digestDiscoveryPermit(input.adapter_config)
+    || input.native.evidence_digest !== digestDiscoveryPermit(input.artifact)
     || input.native.native_verification !== 'VERIFIED'
     || input.native.acceptance !== 'ACCEPTED') {
     return {
@@ -267,7 +381,8 @@ function mapAction(
       reasons: ['expected_action_not_canonicalizable'],
     };
   }
-  if (expectedDigest !== input.artifact.binding.action_digest) {
+  if (expectedDigest !== input.artifact.action_digest
+    || expectedDigest !== input.artifact.resolution.binding.action_digest) {
     return {
       mapping: 'MISMATCH',
       caid: null,
@@ -277,8 +392,8 @@ function mapAction(
   }
   return {
     mapping: 'MATCH',
-    caid: input.artifact.binding.caid,
-    action_digest: input.artifact.binding.action_digest,
+    caid: input.artifact.caid,
+    action_digest: input.artifact.action_digest,
     reasons: ['discovery_permit_continuity_match', 'evidence_only_not_authorization'],
   };
 }

@@ -7,7 +7,14 @@
     "action_version": "EP-HEALTH-PROGRAM-INTEGRITY-ACTION-v1",
     "action_type": "health.medi-cal.hospice-claim-payment.1",
     "environment": "sandbox",
-    "synthetic": true
+    "synthetic": true,
+    "assurance": {
+      "packet": "signed_terminal_safe_projection",
+      "offline_trust_roles": ["evaluator", "receipt", "aeb", "provider"],
+      "algorithm": "Ed25519",
+      "embedded_keys_accepted": false,
+      "internal_digest_is_cryptographic_trust": false
+    }
   },
   "caid_definition": {
     "action_type": "health.medi-cal.hospice-claim-payment.1",
@@ -169,6 +176,46 @@
     {
       "id": "authenticated_reconciliation_and_assurance_export",
       "expect": "RECONCILED_EXECUTED"
+    },
+    {
+      "id": "reject_outcome_substitution_with_recomputed_digest",
+      "mutation": {
+        "replace": "outcome.decision",
+        "recompute": "packet_digest"
+      },
+      "expect": "REFUSED"
+    },
+    {
+      "id": "reject_reconciled_outcome_without_provider_assertion",
+      "mutation": {
+        "remove": "protocol_evidence.provider",
+        "recompute": "packet_digest"
+      },
+      "expect": "REFUSED"
+    },
+    {
+      "id": "reject_assurance_role_key_substitution",
+      "mutation": {
+        "replace": "trust.receipt.public_key_spki_b64u",
+        "with": "trust.aeb.public_key_spki_b64u"
+      },
+      "expect": "REFUSED"
+    },
+    {
+      "id": "reject_case_variant_and_separator_phi_aliases",
+      "mutations": ["SSN", "patientName", "PATIENT-NAME", "freeText", "FREE_TEXT"],
+      "expect": "REFUSED_BEFORE_EFFECT"
+    },
+    {
+      "id": "export_allowlisted_safe_projections_only",
+      "forbidden_export_fields": [
+        "member_ref",
+        "proposal",
+        "approval_evidence",
+        "aeb_evaluation",
+        "provider_reconciliation_evidence"
+      ],
+      "expect": "SIGNED_TERMINAL_PACKET"
     }
   ]
 }

@@ -58,6 +58,13 @@ const RELEASE_LOCK_SERVICE_RPCS: string[] = [
   'release_lock_participant_evidence',
 ];
 
+const CONSEQUENCE_ACTUATOR_RPC_ONLY_TABLES: string[] = [
+  // The credential-owning actuator reaches this table only through
+  // consequence_actuator_private SECURITY DEFINER RPCs under a dedicated
+  // executor principal. Even service_role has no direct table grant.
+  'consequence_actuator_envelopes',
+];
+
 // These tables are reached through server-side/service-role paths only. RLS is
 // necessary but not sufficient: a table ACL is a separate Data API gate, so
 // the live contract checks both controls.
@@ -93,6 +100,7 @@ const SERVICE_ONLY_TABLES: string[] = [
   'approval_acquisition_requests',
   'guard_receipt_streams',
   'guard_receipt_event_bindings',
+  ...CONSEQUENCE_ACTUATOR_RPC_ONLY_TABLES,
 ];
 
 interface DbContract {
@@ -202,6 +210,10 @@ export const contract: DbContract = {
       'created_event_id', 'created_at'],
     guard_receipt_event_bindings: ['event_id', 'receipt_id', 'tenant_id',
       'environment', 'event_type', 'event_created_at', 'bound_at'],
+    consequence_actuator_envelopes: ['tenant_id', 'attempt_id', 'action_digest',
+      'caid', 'provider_account_id', 'target_digest', 'operation',
+      'idempotency_key', 'nonce', 'issued_at', 'expires_at', 'envelope_digest',
+      'state', 'reserved_at', 'consumed_at', 'outcome'],
     // enrollment_basis records whether an approver credential was bound against
     // the org's provisioned directory or operator-attested; directory_user_id
     // pins the exact scim_users row that authorized a directory-basis enrollment.
@@ -239,7 +251,10 @@ export const contract: DbContract = {
 
   // Release Lock is deliberately RPC-only; service_role may execute the
   // narrowly-granted SECURITY DEFINER functions but must not query the tables.
-  tableGrantsNoServiceRoleDirect: [...RELEASE_LOCK_TABLES],
+  tableGrantsNoServiceRoleDirect: [
+    ...RELEASE_LOCK_TABLES,
+    ...CONSEQUENCE_ACTUATOR_RPC_ONLY_TABLES,
+  ],
 
   // Policy rollouts remain service-readable for control-plane status, but
   // activation is RPC-only after the contract migration.

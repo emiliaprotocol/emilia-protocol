@@ -15,6 +15,7 @@
  * conclusion, or payment authority.
  */
 
+import crypto from 'node:crypto';
 import { computeCaid } from '../../caid/impl/js/caid.mjs';
 import type {
   ConsequenceAttemptBinding,
@@ -22,6 +23,7 @@ import type {
   ProposalToEffectProfile,
   ProposalToEffectProposal,
 } from '../../packages/gate/proposal-to-effect.js';
+import { canonicalize } from '../canonical-json.js';
 import { hashCanonicalAction } from '../guard-policies.js';
 
 type JsonObject = Record<string, any>;
@@ -36,6 +38,10 @@ export const HEALTHCARE_CONTROL_PACKAGE_VERSION =
   PROSPECTIVE_CONTROL_PACKAGE_SCHEMA;
 export const HEALTHCARE_ASSURANCE_PACKET_VERSION =
   'EMILIA-HEALTHCARE-CONSEQUENCE-ASSURANCE-PACKET-v1';
+export const HEALTHCARE_ASSURANCE_TRUST_BUNDLE_VERSION =
+  'EMILIA-HEALTHCARE-ASSURANCE-TRUST-BUNDLE-v1';
+export const HEALTHCARE_ASSURANCE_ASSERTION_VERSION =
+  'EMILIA-HEALTHCARE-ASSURANCE-ASSERTION-v1';
 export const HOSPICE_ACTION_VERSION =
   'EP-HEALTH-PROGRAM-INTEGRITY-ACTION-v1';
 export const HOSPICE_PROFILE_ID = 'medi-cal.hospice-integrity.v1';
@@ -95,28 +101,31 @@ const CAID_RE =
   /^caid:1:health\.medi-cal\.hospice-claim-payment\.1:jcs-sha256:[A-Za-z0-9_-]{43}$/;
 const MEMBER_REF_RE = /^member:sha256:[a-f0-9]{64}$/;
 const MONEY_RE = /^(?:0|[1-9][0-9]*)\.[0-9]{2}$/;
-const PROHIBITED_PHI_FIELDS = new Set([
-  'account_number',
-  'member_name',
-  'patient_name',
-  'beneficiary_id',
+const PROHIBITED_PHI_FIELD_ALIASES = new Set([
+  'accountnumber',
+  'membername',
+  'patientname',
+  'beneficiaryid',
   'bic',
   'cin',
-  'date_of_birth',
+  'dateofbirth',
   'dob',
   'address',
   'telephone',
   'phone',
   'email',
   'ssn',
-  'medicare_beneficiary_identifier',
+  'medicarebeneficiaryidentifier',
   'diagnosis',
-  'diagnosis_text',
-  'clinical_note',
-  'authorization_form',
-  'bank_account',
-  'routing_number',
-  'raw_provider_evidence',
+  'diagnosistext',
+  'clinicalnote',
+  'authorizationform',
+  'bankaccount',
+  'routingnumber',
+  'rawproviderevidence',
+  'freetext',
+  'freeformtext',
+  'freetextnote',
 ]);
 const RUNTIME_DOWNGRADE_FIELDS = new Set([
   'action_caid',
@@ -128,10 +137,22 @@ const RUNTIME_DOWNGRADE_FIELDS = new Set([
 ]);
 const EXPORTABLE_DECISIONS = new Set([
   'EXECUTED',
-  'INDETERMINATE',
   'RECONCILED_EXECUTED',
   'RECONCILED_NOT_EXECUTED',
 ]);
+const RECONCILED_DECISIONS = new Set([
+  'RECONCILED_EXECUTED',
+  'RECONCILED_NOT_EXECUTED',
+]);
+const ASSURANCE_SIGNATURE_DOMAIN =
+  'EMILIA-HEALTHCARE-CONSEQUENCE-ASSURANCE-v1';
+const ASSURANCE_ROLES = [
+  'evaluator',
+  'receipt',
+  'aeb',
+  'provider',
+] as const;
+type HealthcareAssuranceRole = typeof ASSURANCE_ROLES[number];
 
 export const HEALTHCARE_ASSURANCE_LIMITATIONS = Object.freeze([
   'This packet covers a synthetic, relying-party-governed hospice payment administrative action in a sandbox callback only.',
@@ -139,6 +160,7 @@ export const HEALTHCARE_ASSURANCE_LIMITATIONS = Object.freeze([
   'The packet does not establish medical necessity, service delivery, coding correctness, claim validity, provider or member real-world identity, or source-system truth.',
   'No live Medicare, Medi-Cal, insurer, provider, bank, or payment-rail mutation is claimed.',
   'EXECUTED means the configured protected sandbox callback completed and Proposal-to-Effect committed its exact operation; INDETERMINATE does not prove success or failure.',
+  'Field-name filtering and allowlisted projections reduce exposure but are not proof that PHI is absent; deployments must apply source-system classification, DLP, access control, and authorized privacy review.',
   'The packet supports verification and re-performance procedures; it is not an audit opinion, certification, regulatory conclusion, or clinical conclusion.',
 ] as const);
 
@@ -154,6 +176,10 @@ function clone<T>(value: T): T {
 
 function digest(value: unknown): string {
   return `sha256:${hashCanonicalAction(value as Record<string, unknown>)}`;
+}
+
+function signingBytes(domain: string, value: unknown): Buffer {
+  return Buffer.from(`${ASSURANCE_SIGNATURE_DOMAIN}:${domain}\0${canonicalize(value)}`);
 }
 
 function identifier(value: unknown): value is string {
@@ -175,6 +201,10 @@ function exactKeys(value: unknown, keys: readonly string[]): value is JsonObject
     && expected.every((key, index) => key === actual[index]);
 }
 
+function normalizedFieldAlias(value: string): string {
+  return value.normalize('NFKC').toLowerCase().replace(/[^a-z0-9]/g, '');
+}
+
 function prohibitedPhi(
   value: unknown,
   depth = 0,
@@ -192,11 +222,87 @@ function prohibitedPhi(
   if (!isPlainObject(value)) return null;
   for (const [key, entry] of Object.entries(value)) {
     budget.entries += 1;
-    if (PROHIBITED_PHI_FIELDS.has(key)) return key;
+    if (PROHIBITED_PHI_FIELD_ALIASES.has(normalizedFieldAlias(key))) return key;
     const found = prohibitedPhi(entry, depth + 1, budget);
     if (found) return found;
   }
   return null;
+}
+
+function canonicalBase64url(
+  value: unknown,
+  expectedBytes?: number,
+): Buffer | null {
+  if (typeof value !== 'string'
+      || value.length === 0
+      || !/^[A-Za-z0-9_-]+$/.test(value)) {
+    return null;
+  }
+  try {
+    const decoded = Buffer.from(value, 'base64url');
+    if ((expectedBytes !== undefined && decoded.length !== expectedBytes)
+        || decoded.toString('base64url') !== value) {
+      return null;
+    }
+    return decoded;
+  } catch {
+    return null;
+  }
+}
+
+function assuranceProofShape(value: unknown): value is JsonObject {
+  return exactKeys(value, [
+    'algorithm',
+    'key_id',
+    'signature_b64u',
+  ])
+    && value.algorithm === 'Ed25519'
+    && identifier(value.key_id)
+    && canonicalBase64url(value.signature_b64u, 64) !== null;
+}
+
+function signerShape(value: unknown): value is HealthcareAssuranceSigner {
+  return isPlainObject(value)
+    && value.algorithm === 'Ed25519'
+    && identifier(value.key_id)
+    && typeof value.sign === 'function';
+}
+
+async function signAssuranceValue(
+  domain: string,
+  value: unknown,
+  signer: HealthcareAssuranceSigner,
+): Promise<JsonObject> {
+  const signed = await signer.sign(signingBytes(domain, value));
+  const signature = typeof signed === 'string'
+    ? canonicalBase64url(signed, 64)
+    : signed instanceof Uint8Array
+      ? Buffer.from(signed)
+      : null;
+  if (!signature || signature.length !== 64) {
+    throw new Error('healthcare_assurance_signature_invalid');
+  }
+  return {
+    algorithm: 'Ed25519',
+    key_id: signer.key_id,
+    signature_b64u: signature.toString('base64url'),
+  };
+}
+
+async function signedAssuranceAssertion(
+  role: Exclude<HealthcareAssuranceRole, 'evaluator'>,
+  body: JsonObject,
+  signer: HealthcareAssuranceSigner,
+): Promise<JsonObject> {
+  const assertion = {
+    '@version': HEALTHCARE_ASSURANCE_ASSERTION_VERSION,
+    role,
+    body: clone(body),
+  };
+  return {
+    ...assertion,
+    proof: await signAssuranceValue(`assertion:${role}`, assertion, signer),
+  };
 }
 
 function refusal(reason: string, extras: JsonObject = {}): JsonObject {
@@ -464,6 +570,26 @@ export interface ProposalToEffectController {
   getReconciliationHandle(target: object): ConsequenceAttemptReference | null;
 }
 
+export interface HealthcareAssuranceSigner {
+  algorithm: 'Ed25519';
+  key_id: string;
+  sign(bytes: Uint8Array): Promise<string | Uint8Array> | string | Uint8Array;
+}
+
+export interface HealthcareAssuranceKeyPin {
+  key_id: string;
+  public_key_spki_b64u: string;
+}
+
+export interface HealthcareAssuranceTrustBundle {
+  '@version': typeof HEALTHCARE_ASSURANCE_TRUST_BUNDLE_VERSION;
+  relying_party_id: string;
+  evaluator: HealthcareAssuranceKeyPin;
+  receipt: HealthcareAssuranceKeyPin;
+  aeb: HealthcareAssuranceKeyPin;
+  provider: HealthcareAssuranceKeyPin;
+}
+
 function memoryKey(tenantId: string, operationId: string): string {
   return `${tenantId}\0${operationId}`;
 }
@@ -719,6 +845,267 @@ function projectControllerResult(value: unknown): JsonObject {
   return result;
 }
 
+function findingProjection(value: unknown): JsonObject | null {
+  if (!isPlainObject(value)
+      || !identifier(value.case_id)
+      || !DIGEST_RE.test(value.case_digest)
+      || !DIGEST_RE.test(value.package_digest)
+      || !Array.isArray(value.source_record_digests)
+      || !value.source_record_digests.every((entry: unknown) => (
+        typeof entry === 'string' && DIGEST_RE.test(entry)
+      ))) {
+    return null;
+  }
+  return {
+    case_id: value.case_id,
+    case_digest: value.case_digest,
+    package_digest: value.package_digest,
+    source_record_digests: clone(value.source_record_digests),
+    disposition: value.disposition,
+    scope: value.scope,
+    triage_provenance_only: value.triage_provenance_only === true,
+    authorization_evidence: value.authorization_evidence === true,
+    prior_authorization: value.prior_authorization === true,
+    clinical_judgment: value.clinical_judgment === true,
+    fraud_determination: value.fraud_determination === true,
+    payment_authority: value.payment_authority === true,
+  };
+}
+
+function controlProjection(value: unknown): JsonObject | null {
+  if (!isPlainObject(value)
+      || value.schema !== PROSPECTIVE_CONTROL_PACKAGE_SCHEMA
+      || !identifier(value.caseId)
+      || !DIGEST_RE.test(value.caseDigest)
+      || !DIGEST_RE.test(value.packageDigest)
+      || !CAID_RE.test(value.caid)
+      || !DIGEST_RE.test(value.actionDigest)
+      || !isPlainObject(value.policy)
+      || !identifier(value.policy.id)
+      || !Number.isSafeInteger(value.policy.version)
+      || !DIGEST_RE.test(value.policy.hash)) {
+    return null;
+  }
+  return {
+    schema: value.schema,
+    case_id: value.caseId,
+    case_digest: value.caseDigest,
+    package_digest: value.packageDigest,
+    caid: value.caid,
+    action_digest: value.actionDigest,
+    policy: {
+      id: value.policy.id,
+      version: value.policy.version,
+      hash: value.policy.hash,
+    },
+    raw_phi_included: value.phi?.rawPhiIncluded === true,
+  };
+}
+
+function proposalProjection(value: unknown): JsonObject | null {
+  if (!isPlainObject(value)
+      || !identifier(value.proposal_id)
+      || value.profile_id !== HOSPICE_PROPOSAL_PROFILE_ID
+      || !identifier(value.operation_id)
+      || !identifier(value.initiator_id)
+      || !CAID_RE.test(value.caid)
+      || !DIGEST_RE.test(value.action_digest)
+      || !DIGEST_RE.test(value.aeb_action_digest)
+      || !isPlainObject(value.aeb)
+      || value.aeb.requirement_ref !== HOSPICE_AEB_REQUIREMENT_REF
+      || !DIGEST_RE.test(value.aeb.pinned_config_digest)
+      || !DIGEST_RE.test(value.aeb.consumption_nonce)
+      || !isPlainObject(value.consequence)
+      || !identifier(value.consequence.tenant_id)
+      || !identifier(value.consequence.provider_id)
+      || !identifier(value.consequence.provider_account_id)
+      || value.consequence.environment !== 'sandbox'
+      || !identifier(value.consequence.executor_id)
+      || !DIGEST_RE.test(value.consequence.request_digest)) {
+    return null;
+  }
+  return {
+    proposal_id: value.proposal_id,
+    profile_id: value.profile_id,
+    operation_id: value.operation_id,
+    initiator_id: value.initiator_id,
+    caid: value.caid,
+    action_digest: value.action_digest,
+    aeb_action_digest: value.aeb_action_digest,
+    aeb: {
+      requirement_ref: value.aeb.requirement_ref,
+      pinned_config_digest: value.aeb.pinned_config_digest,
+      consumption_nonce: value.aeb.consumption_nonce,
+    },
+    consequence: {
+      tenant_id: value.consequence.tenant_id,
+      provider_id: value.consequence.provider_id,
+      provider_account_id: value.consequence.provider_account_id,
+      environment: value.consequence.environment,
+      executor_id: value.consequence.executor_id,
+      request_digest: value.consequence.request_digest,
+    },
+  };
+}
+
+function receiptProjection(value: unknown): JsonObject | null {
+  if (!isPlainObject(value)
+      || value['@version'] !== 'EP-RECEIPT-v1'
+      || !identifier(value.receipt_id)
+      || !CAID_RE.test(value.caid)
+      || !DIGEST_RE.test(value.action_digest)) {
+    return null;
+  }
+  return {
+    '@version': value['@version'],
+    receipt_id: value.receipt_id,
+    caid: value.caid,
+    action_digest: value.action_digest,
+  };
+}
+
+function aebProjection(value: unknown): JsonObject | null {
+  if (!isPlainObject(value)
+      || value['@type'] !== 'AEB-EVALUATION-v1'
+      || !identifier(value.operation_id)
+      || !DIGEST_RE.test(value.consumption_nonce)
+      || !isPlainObject(value.evaluator)
+      || !identifier(value.evaluator.id)
+      || !identifier(value.evaluator.key_id)
+      || !DIGEST_RE.test(value.evaluator.pinned_config_digest)
+      || !identifier(value.requirement_ref)
+      || !DIGEST_RE.test(value.requirement_digest)
+      || !DIGEST_RE.test(value.registry_digest)
+      || !CAID_RE.test(value.caid)
+      || !isPlainObject(value.composition)
+      || !DIGEST_RE.test(value.composition.action_digest)
+      || value.verdict !== 'SATISFIED'
+      || typeof value.evaluated_at !== 'string'
+      || !DIGEST_RE.test(value.evidence_digest)) {
+    return null;
+  }
+  return {
+    '@type': value['@type'],
+    operation_id: value.operation_id,
+    consumption_nonce: value.consumption_nonce,
+    evaluator: {
+      id: value.evaluator.id,
+      key_id: value.evaluator.key_id,
+      pinned_config_digest: value.evaluator.pinned_config_digest,
+    },
+    requirement_ref: value.requirement_ref,
+    requirement_digest: value.requirement_digest,
+    registry_digest: value.registry_digest,
+    caid: value.caid,
+    composition_action_digest: value.composition.action_digest,
+    verdict: value.verdict,
+    evaluated_at: value.evaluated_at,
+    evidence_digest: value.evidence_digest,
+  };
+}
+
+function providerProjection(
+  value: unknown,
+  evidenceDigest: unknown,
+): JsonObject | null {
+  if (!isPlainObject(value)
+      || value.authenticated !== true
+      || !identifier(value.evidence_id)
+      || typeof value.observed_at !== 'string'
+      || !['COMMITTED', 'NOT_COMMITTED'].includes(value.outcome)
+      || !identifier(value.operation_id)
+      || !CAID_RE.test(value.caid)
+      || !DIGEST_RE.test(value.action_digest)
+      || !identifier(value.tenant_id)
+      || !DIGEST_RE.test(value.request_digest)
+      || !identifier(value.provider_id)
+      || !identifier(value.provider_account_id)
+      || value.environment !== 'sandbox'
+      || !identifier(value.attempt_id)
+      || typeof evidenceDigest !== 'string'
+      || !DIGEST_RE.test(evidenceDigest)) {
+    return null;
+  }
+  return {
+    authenticated: true,
+    evidence_id: value.evidence_id,
+    evidence_digest: evidenceDigest,
+    observed_at: value.observed_at,
+    outcome: value.outcome,
+    operation_id: value.operation_id,
+    caid: value.caid,
+    action_digest: value.action_digest,
+    tenant_id: value.tenant_id,
+    request_digest: value.request_digest,
+    provider_id: value.provider_id,
+    provider_account_id: value.provider_account_id,
+    environment: value.environment,
+    attempt_id: value.attempt_id,
+  };
+}
+
+function assertionBody(
+  role: Exclude<HealthcareAssuranceRole, 'evaluator'>,
+  relyingPartyId: string,
+  tenantId: string,
+  operationId: string,
+  caid: string,
+  actionDigest: string,
+  artifactDigest: string,
+  projection: JsonObject,
+): JsonObject {
+  return {
+    role,
+    relying_party_id: relyingPartyId,
+    tenant_id: tenantId,
+    operation_id: operationId,
+    caid,
+    action_digest: actionDigest,
+    artifact_digest: artifactDigest,
+    projection: clone(projection),
+  };
+}
+
+function terminalProjection(
+  decision: unknown,
+  proposalToEffect: unknown,
+  attemptValue: unknown,
+  provider: JsonObject | null,
+): JsonObject | null {
+  if (typeof decision !== 'string'
+      || !EXPORTABLE_DECISIONS.has(decision)
+      || !isPlainObject(proposalToEffect)) {
+    return null;
+  }
+  const attempt = publicAttempt(attemptValue);
+  const consequenceAttempt = publicAttempt(proposalToEffect.consequence?.attempt);
+  if (!attempt || !consequenceAttempt || digest(attempt) !== digest(consequenceAttempt)) {
+    return null;
+  }
+  const reconciled = RECONCILED_DECISIONS.has(decision);
+  const expectedState = decision === 'RECONCILED_NOT_EXECUTED'
+    ? 'RELEASED'
+    : 'COMMITTED';
+  const expectedProviderOutcome = decision === 'RECONCILED_NOT_EXECUTED'
+    ? 'NOT_COMMITTED'
+    : 'COMMITTED';
+  if (proposalToEffect.consequence?.state !== expectedState
+      || (reconciled && proposalToEffect.state !== expectedState)
+      || (reconciled && proposalToEffect.outcome !== expectedProviderOutcome)
+      || (reconciled && provider?.outcome !== expectedProviderOutcome)
+      || (!reconciled && provider !== null)) {
+    return null;
+  }
+  return {
+    decision,
+    proposal_to_effect_state: expectedState,
+    provider_outcome: reconciled ? expectedProviderOutcome : null,
+    attempt,
+    authenticated_reconciliation: reconciled,
+    retry_safe: decision === 'RECONCILED_NOT_EXECUTED',
+  };
+}
+
 function verifyPreparedContext(
   events: HealthcareEvidenceEvent[],
   proposal: ProposalToEffectProposal,
@@ -753,6 +1140,15 @@ export interface HealthcareConsequenceControlOptions {
   controller: ProposalToEffectController;
   evidence_store: HealthcareEvidenceStore;
   reconciliation_handle_store: HealthcareReconciliationHandleStore;
+  assurance: {
+    relying_party_id: string;
+    signers: {
+      evaluator: HealthcareAssuranceSigner;
+      receipt: HealthcareAssuranceSigner;
+      aeb: HealthcareAssuranceSigner;
+      provider: HealthcareAssuranceSigner;
+    };
+  };
   mutate_sandbox(input: {
     tenant_id: string;
     operation_id: string;
@@ -774,6 +1170,17 @@ export function createHealthcareConsequenceControl(
       || typeof options.controller.reconcile !== 'function'
       || typeof options.controller.getReconciliationHandle !== 'function') {
     throw new Error('healthcare_proposal_to_effect_controller_required');
+  }
+  if (!options.assurance
+      || !identifier(options.assurance.relying_party_id)
+      || !isPlainObject(options.assurance.signers)
+      || !ASSURANCE_ROLES.every((role) => signerShape(
+        options.assurance.signers[role],
+      ))
+      || new Set(
+        ASSURANCE_ROLES.map((role) => options.assurance.signers[role].key_id),
+      ).size !== ASSURANCE_ROLES.length) {
+    throw new Error('healthcare_assurance_signers_required');
   }
   if (!options.evidence_store
       || options.evidence_store.appendOnly !== true
@@ -1282,8 +1689,102 @@ export function createHealthcareConsequenceControl(
         || !verifyPreparedContext(events, proposal, input.tenant_id)) {
       return refusal('healthcare_assurance_evidence_conflict');
     }
-    const packet: JsonObject = {
+    const finding = findingProjection(prepared.payload.finding);
+    const control = controlProjection(prepared.payload.control_package);
+    const proposalBinding = proposalProjection(proposal);
+    const receipt = receiptProjection(execution?.payload?.approval_evidence);
+    const aeb = aebProjection(execution?.payload?.aeb_evaluation);
+    const provider = reconciliation
+      ? providerProjection(
+        reconciliation.payload?.provider_evidence,
+        reconciliation.payload?.provider_evidence_digest,
+      )
+      : null;
+    const terminalProjectionValue = terminalProjection(
+      terminal.payload.decision,
+      terminal.payload.proposal_to_effect,
+      terminal.payload.attempt,
+      provider,
+    );
+    if (!finding || !control || !proposalBinding || !receipt || !aeb
+        || !terminalProjectionValue
+        || control.caid !== proposalBinding.caid
+        || control.action_digest !== proposalBinding.action_digest
+        || receipt.caid !== proposalBinding.caid
+        || receipt.action_digest !== proposalBinding.action_digest
+        || aeb.operation_id !== input.operation_id
+        || aeb.caid !== proposalBinding.caid
+        || aeb.requirement_ref !== proposalBinding.aeb.requirement_ref
+        || aeb.consumption_nonce !== proposalBinding.aeb.consumption_nonce
+        || (RECONCILED_DECISIONS.has(terminal.payload.decision) && !provider)) {
+      return refusal('healthcare_assurance_evidence_conflict');
+    }
+    if (prohibitedPhi({
+      finding: prepared.payload.finding,
+      control_package: prepared.payload.control_package,
+      proposal,
+      approval_evidence: execution?.payload?.approval_evidence,
+      aeb_evaluation: execution?.payload?.aeb_evaluation,
+      provider_evidence: reconciliation?.payload?.provider_evidence,
+    })) {
+      return refusal('healthcare_assurance_packet_phi_refused');
+    }
+
+    let receiptAssertion: JsonObject;
+    let aebAssertion: JsonObject;
+    let providerAssertion: JsonObject | null = null;
+    try {
+      receiptAssertion = await signedAssuranceAssertion(
+        'receipt',
+        assertionBody(
+          'receipt',
+          options.assurance.relying_party_id,
+          input.tenant_id,
+          input.operation_id,
+          proposal.caid,
+          proposal.action_digest,
+          execution!.payload.approval_evidence_digest,
+          receipt,
+        ),
+        options.assurance.signers.receipt,
+      );
+      aebAssertion = await signedAssuranceAssertion(
+        'aeb',
+        assertionBody(
+          'aeb',
+          options.assurance.relying_party_id,
+          input.tenant_id,
+          input.operation_id,
+          proposal.caid,
+          proposal.action_digest,
+          execution!.payload.aeb_evaluation_digest,
+          aeb,
+        ),
+        options.assurance.signers.aeb,
+      );
+      if (provider) {
+        providerAssertion = await signedAssuranceAssertion(
+          'provider',
+          assertionBody(
+            'provider',
+            options.assurance.relying_party_id,
+            input.tenant_id,
+            input.operation_id,
+            proposal.caid,
+            proposal.action_digest,
+            provider.evidence_digest,
+            provider,
+          ),
+          options.assurance.signers.provider,
+        );
+      }
+    } catch {
+      return refusal('healthcare_assurance_signing_failed');
+    }
+
+    const packetBody: JsonObject = {
       '@version': HEALTHCARE_ASSURANCE_PACKET_VERSION,
+      relying_party_id: options.assurance.relying_party_id,
       profile: {
         id: HOSPICE_PROPOSAL_PROFILE_ID,
         action_type: HOSPICE_ACTION_TYPE,
@@ -1292,33 +1793,18 @@ export function createHealthcareConsequenceControl(
       },
       tenant_id: input.tenant_id,
       operation_id: input.operation_id,
-      finding: clone(prepared.payload.finding),
-      control_package: clone(prepared.payload.control_package),
+      finding_projection: finding,
+      control_projection: control,
       protocol_evidence: {
-        proposal: clone(proposal),
-        proposal_digest: prepared.payload.proposal_digest,
-        approval_evidence: clone(execution?.payload?.approval_evidence ?? null),
-        approval_evidence_digest:
-          execution?.payload?.approval_evidence_digest ?? null,
-        aeb_evaluation: clone(execution?.payload?.aeb_evaluation ?? null),
-        aeb_evaluation_digest:
-          execution?.payload?.aeb_evaluation_digest ?? null,
-        proposal_to_effect: clone(terminal.payload.proposal_to_effect ?? null),
-        provider_reconciliation_evidence:
-          clone(reconciliation?.payload?.provider_evidence ?? null),
-        provider_reconciliation_evidence_digest:
-          reconciliation?.payload?.provider_evidence_digest ?? null,
+        proposal_binding: {
+          artifact_digest: prepared.payload.proposal_digest,
+          projection: proposalBinding,
+        },
+        receipt: receiptAssertion,
+        aeb: aebAssertion,
+        ...(providerAssertion ? { provider: providerAssertion } : {}),
       },
-      outcome: {
-        decision: terminal.payload.decision,
-        attempt: clone(terminal.payload.attempt),
-        reconciliation_required:
-          terminal.payload.decision === 'INDETERMINATE',
-        authenticated_reconciliation:
-          reconciliation?.payload?.authenticated_provider_evidence === true,
-        retry_safe:
-          terminal.payload.decision === 'RECONCILED_NOT_EXECUTED',
-      },
+      outcome: terminalProjectionValue,
       chronology: events.map((event) => ({
         event_id: event.event_id,
         sequence: event.sequence,
@@ -1326,18 +1812,35 @@ export function createHealthcareConsequenceControl(
         recorded_at: event.recorded_at,
       })),
       verification_scope: {
-        self_digest: true,
-        exact_action_caid_recomputable: true,
-        signatures_must_be_reverified_under_relying_party_pins: true,
+        internal_consistency_digest_only: true,
+        exact_action_bound_by_signed_safe_projection: true,
+        offline_signatures_require_relying_party_pins: true,
+        raw_evidence_intentionally_omitted: true,
         population_completeness_established: false,
       },
       limitations: [...HEALTHCARE_ASSURANCE_LIMITATIONS],
       assembled_at: terminal.recorded_at,
     };
-    if (prohibitedPhi(packet)) {
+    if (prohibitedPhi(packetBody)) {
       return refusal('healthcare_assurance_packet_phi_refused');
     }
-    packet.packet_digest = digest(packet);
+    const packet: JsonObject = {
+      ...packetBody,
+      packet_digest: digest(packetBody),
+    };
+    try {
+      packet.proof = await signAssuranceValue(
+        'packet:evaluator',
+        packet,
+        options.assurance.signers.evaluator,
+      );
+    } catch {
+      return refusal('healthcare_assurance_signing_failed');
+    }
+    const consistency = checkHealthcareAssurancePacketInternalConsistency(packet);
+    if (!consistency.consistent) {
+      return refusal('healthcare_assurance_evidence_conflict');
+    }
     return packet;
   }
 
@@ -1352,23 +1855,66 @@ export function createHealthcareConsequenceControl(
 export type HealthcareConsequenceControl =
   ReturnType<typeof createHealthcareConsequenceControl>;
 
-export function verifyHealthcareAssurancePacket(packet: unknown): {
-  valid: boolean;
+function assuranceAssertion(
+  value: unknown,
+  role: Exclude<HealthcareAssuranceRole, 'evaluator'>,
+): JsonObject | null {
+  if (!exactKeys(value, ['@version', 'body', 'proof', 'role'])
+      || value['@version'] !== HEALTHCARE_ASSURANCE_ASSERTION_VERSION
+      || value.role !== role
+      || !isPlainObject(value.body)
+      || value.body.role !== role
+      || !isPlainObject(value.body.projection)
+      || !DIGEST_RE.test(value.body.artifact_digest)
+      || !assuranceProofShape(value.proof)) {
+    return null;
+  }
+  return value;
+}
+
+/**
+ * Checks only packet shape, allowlisted projections, digests, and cross-field
+ * consistency. It does not establish signer trust or evidence authenticity.
+ */
+export function checkHealthcareAssurancePacketInternalConsistency(
+  packet: unknown,
+): {
+  consistent: boolean;
   reasons: string[];
 } {
   const reasons: string[] = [];
-  if (!isPlainObject(packet)
-      || packet['@version'] !== HEALTHCARE_ASSURANCE_PACKET_VERSION) {
-    return { valid: false, reasons: ['packet_shape_invalid'] };
+  if (!exactKeys(packet, [
+    '@version',
+    'assembled_at',
+    'chronology',
+    'control_projection',
+    'finding_projection',
+    'limitations',
+    'operation_id',
+    'outcome',
+    'packet_digest',
+    'profile',
+    'proof',
+    'protocol_evidence',
+    'relying_party_id',
+    'tenant_id',
+    'verification_scope',
+  ]) || packet['@version'] !== HEALTHCARE_ASSURANCE_PACKET_VERSION) {
+    return { consistent: false, reasons: ['packet_shape_invalid'] };
   }
   if (prohibitedPhi(packet)) reasons.push('packet_contains_prohibited_phi');
-  const unsigned = clone(packet);
-  delete unsigned.packet_digest;
+  const packetBody = clone(packet);
+  delete packetBody.packet_digest;
+  delete packetBody.proof;
   if (!DIGEST_RE.test(packet.packet_digest)
-      || packet.packet_digest !== digest(unsigned)) {
+      || packet.packet_digest !== digest(packetBody)) {
     reasons.push('packet_digest_invalid');
   }
-  if (!identifier(packet.tenant_id)
+  if (!assuranceProofShape(packet.proof)) {
+    reasons.push('packet_proof_shape_invalid');
+  }
+  if (!identifier(packet.relying_party_id)
+      || !identifier(packet.tenant_id)
       || !identifier(packet.operation_id)
       || packet.profile?.id !== HOSPICE_PROPOSAL_PROFILE_ID
       || packet.profile?.action_type !== HOSPICE_ACTION_TYPE
@@ -1376,87 +1922,254 @@ export function verifyHealthcareAssurancePacket(packet: unknown): {
       || packet.profile?.synthetic !== true) {
     reasons.push('packet_profile_invalid');
   }
-  let canonical: CanonicalHospiceAction | null = null;
-  let normalizedControl: ReturnType<typeof normalizeProspectiveControlPackage> | null = null;
-  try {
-    normalizedControl = normalizeProspectiveControlPackage(
-      packet.control_package,
-      packet.tenant_id,
-    );
-    canonical = normalizedControl.canonical;
-  } catch {
-    reasons.push('packet_action_invalid');
+
+  const finding = packet.finding_projection;
+  const control = packet.control_projection;
+  if (!isPlainObject(finding)
+      || !identifier(finding.case_id)
+      || !DIGEST_RE.test(finding.case_digest)
+      || !DIGEST_RE.test(finding.package_digest)
+      || !Array.isArray(finding.source_record_digests)
+      || !finding.source_record_digests.every((entry: unknown) => (
+        typeof entry === 'string' && DIGEST_RE.test(entry)
+      ))
+      || finding.triage_provenance_only !== true
+      || finding.authorization_evidence !== false
+      || finding.prior_authorization !== false
+      || finding.clinical_judgment !== false
+      || finding.fraud_determination !== false
+      || finding.payment_authority !== false
+      || !isPlainObject(control)
+      || control.schema !== PROSPECTIVE_CONTROL_PACKAGE_SCHEMA
+      || control.case_id !== finding.case_id
+      || control.case_digest !== finding.case_digest
+      || control.package_digest !== finding.package_digest
+      || !CAID_RE.test(control.caid)
+      || !DIGEST_RE.test(control.action_digest)
+      || control.raw_phi_included !== false) {
+    reasons.push('packet_safe_projection_invalid');
   }
-  if (normalizedControl
-      && digest(packet.finding) !== digest(normalizedControl.finding)) {
-    reasons.push('packet_finding_binding_invalid');
+
+  const proposalBinding = packet.protocol_evidence?.proposal_binding;
+  const proposal = proposalProjection(proposalBinding?.projection);
+  if (!isPlainObject(proposalBinding)
+      || !DIGEST_RE.test(proposalBinding.artifact_digest)
+      || !proposal
+      || proposal.operation_id !== packet.operation_id
+      || proposal.consequence?.tenant_id !== packet.tenant_id
+      || proposal.caid !== control?.caid
+      || proposal.action_digest !== control?.action_digest
+      || proposal.aeb_action_digest !== control?.action_digest) {
+    reasons.push('packet_proposal_binding_invalid');
   }
-  if (canonical
-      && (canonical.action.organization_id !== packet.tenant_id
-        || canonical.caid !== packet.control_package?.caid
-        || canonical.action_digest !== packet.control_package?.actionDigest
-        || canonical.caid !== packet.protocol_evidence?.proposal?.caid
-        || canonical.action_digest
-          !== packet.protocol_evidence?.proposal?.action_digest
-        || canonical.action_digest
-          !== packet.protocol_evidence?.proposal?.aeb_action_digest)) {
-    reasons.push('packet_action_binding_invalid');
+
+  const receipt = assuranceAssertion(packet.protocol_evidence?.receipt, 'receipt');
+  const aeb = assuranceAssertion(packet.protocol_evidence?.aeb, 'aeb');
+  const receiptBody = receipt?.body;
+  const aebBody = aeb?.body;
+  const receiptValue = receiptProjection(receiptBody?.projection);
+  const aebValue = aebBody?.projection;
+  for (const [role, body] of [['receipt', receiptBody], ['aeb', aebBody]] as const) {
+    if (!body
+        || body.relying_party_id !== packet.relying_party_id
+        || body.tenant_id !== packet.tenant_id
+        || body.operation_id !== packet.operation_id
+        || body.caid !== proposal?.caid
+        || body.action_digest !== proposal?.action_digest
+        || body.role !== role) {
+      reasons.push(`packet_${role}_binding_invalid`);
+    }
   }
-  if (!EXPORTABLE_DECISIONS.has(packet.outcome?.decision)
-      || packet.outcome?.reconciliation_required
-        !== (packet.outcome?.decision === 'INDETERMINATE')
-      || !Array.isArray(packet.chronology)
-      || packet.chronology.length < 2
-      || !Array.isArray(packet.limitations)
-      || digest(packet.limitations) !== digest(HEALTHCARE_ASSURANCE_LIMITATIONS)) {
-    reasons.push('packet_outcome_invalid');
+  if (!receiptValue
+      || receiptValue.caid !== proposal?.caid
+      || receiptValue.action_digest !== proposal?.action_digest) {
+    reasons.push('packet_receipt_binding_invalid');
   }
-  const packetAttempt = publicAttempt(packet.outcome?.attempt);
-  if (!packetAttempt
-      || packetAttempt.tenant_id !== packet.tenant_id
-      || packetAttempt.provider_id
-        !== packet.protocol_evidence?.proposal?.consequence?.provider_id
-      || packetAttempt.provider_account_id
-        !== packet.protocol_evidence?.proposal?.consequence?.provider_account_id
-      || packetAttempt.environment !== 'sandbox'
-      || packetAttempt.request_digest
-        !== packet.protocol_evidence?.proposal?.consequence?.request_digest) {
+  if (!isPlainObject(aebValue)
+      || aebValue['@type'] !== 'AEB-EVALUATION-v1'
+      || aebValue.operation_id !== packet.operation_id
+      || aebValue.caid !== proposal?.caid
+      || aebValue.requirement_ref !== proposal?.aeb?.requirement_ref
+      || aebValue.consumption_nonce !== proposal?.aeb?.consumption_nonce
+      || aebValue.verdict !== 'SATISFIED'
+      || !DIGEST_RE.test(aebValue.consumption_nonce)
+      || !DIGEST_RE.test(aebValue.evidence_digest)) {
+    reasons.push('packet_aeb_binding_invalid');
+  }
+
+  const decision = packet.outcome?.decision;
+  const reconciled = RECONCILED_DECISIONS.has(decision);
+  const expectedState = decision === 'RECONCILED_NOT_EXECUTED'
+    ? 'RELEASED'
+    : 'COMMITTED';
+  const expectedProviderOutcome = decision === 'RECONCILED_NOT_EXECUTED'
+    ? 'NOT_COMMITTED'
+    : decision === 'RECONCILED_EXECUTED'
+      ? 'COMMITTED'
+      : null;
+  const attempt = publicAttempt(packet.outcome?.attempt);
+  if (!EXPORTABLE_DECISIONS.has(decision)
+      || packet.outcome?.proposal_to_effect_state !== expectedState
+      || packet.outcome?.provider_outcome !== expectedProviderOutcome
+      || packet.outcome?.authenticated_reconciliation !== reconciled
+      || packet.outcome?.retry_safe !== (decision === 'RECONCILED_NOT_EXECUTED')) {
+    reasons.push('packet_terminal_state_mismatch');
+  }
+  if (!attempt
+      || attempt.tenant_id !== packet.tenant_id
+      || attempt.provider_id !== proposal?.consequence?.provider_id
+      || attempt.provider_account_id !== proposal?.consequence?.provider_account_id
+      || attempt.environment !== proposal?.consequence?.environment
+      || attempt.request_digest !== proposal?.consequence?.request_digest) {
     reasons.push('packet_attempt_binding_invalid');
   }
-  if (!DIGEST_RE.test(packet.protocol_evidence?.proposal_digest)
-      || packet.protocol_evidence.proposal_digest
-        !== digest(packet.protocol_evidence.proposal)) {
-    reasons.push('packet_proposal_digest_invalid');
-  }
-  if (!isPlainObject(packet.protocol_evidence?.approval_evidence)
-      || !DIGEST_RE.test(packet.protocol_evidence?.approval_evidence_digest)
-      || packet.protocol_evidence.approval_evidence_digest
-        !== digest(packet.protocol_evidence.approval_evidence)
-      || !isPlainObject(packet.protocol_evidence?.aeb_evaluation)
-      || !DIGEST_RE.test(packet.protocol_evidence?.aeb_evaluation_digest)
-      || packet.protocol_evidence.aeb_evaluation_digest
-        !== digest(packet.protocol_evidence.aeb_evaluation)) {
-    reasons.push('packet_approval_evidence_invalid');
-  }
-  if (packet.outcome?.authenticated_reconciliation === true) {
-    const provider = packet.protocol_evidence?.provider_reconciliation_evidence;
-    if (!isPlainObject(provider)
-        || !DIGEST_RE.test(
-          packet.protocol_evidence?.provider_reconciliation_evidence_digest,
-        )
-        || packet.protocol_evidence.provider_reconciliation_evidence_digest
-          !== digest(provider)
-        || provider.authenticated !== true
-        || provider.operation_id !== packet.operation_id
-        || provider.tenant_id !== packet.tenant_id
-        || provider.caid !== canonical?.caid
-        || provider.action_digest !== canonical?.action_digest
-        || provider.attempt_id !== packetAttempt?.attempt_id
-        || provider.request_digest !== packetAttempt?.request_digest
-        || provider.provider_id !== packetAttempt?.provider_id
-        || provider.provider_account_id !== packetAttempt?.provider_account_id
-        || provider.environment !== packetAttempt?.environment) {
+
+  const provider = assuranceAssertion(
+    packet.protocol_evidence?.provider,
+    'provider',
+  );
+  if (reconciled && !provider) {
+    reasons.push('packet_reconciliation_evidence_required');
+  } else if (!reconciled && packet.protocol_evidence?.provider !== undefined) {
+    reasons.push('packet_reconciliation_evidence_unexpected');
+  } else if (provider) {
+    const body = provider.body;
+    const projected = providerProjection(
+      body.projection,
+      body.projection?.evidence_digest,
+    );
+    if (!projected
+        || body.relying_party_id !== packet.relying_party_id
+        || body.tenant_id !== packet.tenant_id
+        || body.operation_id !== packet.operation_id
+        || body.caid !== proposal?.caid
+        || body.action_digest !== proposal?.action_digest
+        || body.artifact_digest !== projected.evidence_digest
+        || projected.outcome !== expectedProviderOutcome
+        || projected.attempt_id !== attempt?.attempt_id
+        || projected.request_digest !== attempt?.request_digest
+        || projected.provider_id !== attempt?.provider_id
+        || projected.provider_account_id !== attempt?.provider_account_id
+        || projected.environment !== attempt?.environment) {
       reasons.push('packet_reconciliation_evidence_invalid');
+    }
+  }
+
+  const expectedTerminalEvent = reconciled ? 'RECONCILIATION' : 'EXECUTION';
+  if (!Array.isArray(packet.chronology)
+      || packet.chronology.length < 2
+      || packet.chronology[0]?.event_type !== 'PREPARED'
+      || packet.chronology.at(-1)?.event_type !== expectedTerminalEvent
+      || !Array.isArray(packet.limitations)
+      || digest(packet.limitations) !== digest(HEALTHCARE_ASSURANCE_LIMITATIONS)) {
+    reasons.push('packet_chronology_or_limitations_invalid');
+  }
+  return {
+    consistent: reasons.length === 0,
+    reasons: [...new Set(reasons)],
+  };
+}
+
+function trustPin(value: unknown): crypto.KeyObject | null {
+  if (!exactKeys(value, ['key_id', 'public_key_spki_b64u'])
+      || !identifier(value.key_id)) {
+    return null;
+  }
+  const der = canonicalBase64url(value.public_key_spki_b64u);
+  if (!der) return null;
+  try {
+    const key = crypto.createPublicKey({ key: der, format: 'der', type: 'spki' });
+    return key.asymmetricKeyType === 'ed25519' ? key : null;
+  } catch {
+    return null;
+  }
+}
+
+function verifyPinnedSignature(
+  domain: string,
+  value: JsonObject,
+  proof: unknown,
+  pin: unknown,
+): boolean {
+  if (!assuranceProofShape(proof)
+      || !isPlainObject(pin)
+      || proof.key_id !== pin.key_id) {
+    return false;
+  }
+  const key = trustPin(pin);
+  const signature = canonicalBase64url(proof.signature_b64u, 64);
+  if (!key || !signature) return false;
+  try {
+    return crypto.verify(null, signingBytes(domain, value), key, signature);
+  } catch {
+    return false;
+  }
+}
+
+/** Verify the packet offline using only relying-party-pinned Ed25519 keys. */
+export function verifyHealthcareAssurancePacketOffline(
+  packet: unknown,
+  trust: unknown,
+): {
+  valid: boolean;
+  reasons: string[];
+} {
+  const reasons = [
+    ...checkHealthcareAssurancePacketInternalConsistency(packet).reasons,
+  ];
+  if (!exactKeys(trust, [
+    '@version',
+    'aeb',
+    'evaluator',
+    'provider',
+    'receipt',
+    'relying_party_id',
+  ]) || trust['@version'] !== HEALTHCARE_ASSURANCE_TRUST_BUNDLE_VERSION
+      || !identifier(trust.relying_party_id)
+      || !ASSURANCE_ROLES.every((role) => trustPin(trust[role]) !== null)
+      || new Set(ASSURANCE_ROLES.map((role) => trust[role].key_id)).size
+        !== ASSURANCE_ROLES.length
+      || new Set(
+        ASSURANCE_ROLES.map((role) => trust[role].public_key_spki_b64u),
+      ).size !== ASSURANCE_ROLES.length) {
+    reasons.push('relying_party_trust_bundle_invalid');
+  }
+  if (!isPlainObject(packet) || !isPlainObject(trust)
+      || packet.relying_party_id !== trust.relying_party_id) {
+    reasons.push('relying_party_binding_invalid');
+    return { valid: false, reasons: [...new Set(reasons)] };
+  }
+  const packetForSignature = clone(packet);
+  const packetProof = packetForSignature.proof;
+  delete packetForSignature.proof;
+  if (!verifyPinnedSignature(
+    'packet:evaluator',
+    packetForSignature,
+    packetProof,
+    trust.evaluator,
+  )) {
+    reasons.push('evaluator_signature_invalid');
+  }
+  for (const role of ['receipt', 'aeb', 'provider'] as const) {
+    const assertion = packet.protocol_evidence?.[role];
+    if (role === 'provider' && assertion === undefined
+        && !RECONCILED_DECISIONS.has(packet.outcome?.decision)) {
+      continue;
+    }
+    if (!isPlainObject(assertion)) {
+      reasons.push(`${role}_signature_invalid`);
+      continue;
+    }
+    const unsigned = clone(assertion);
+    const proof = unsigned.proof;
+    delete unsigned.proof;
+    if (!verifyPinnedSignature(
+      `assertion:${role}`,
+      unsigned,
+      proof,
+      trust[role],
+    )) {
+      reasons.push(`${role}_signature_invalid`);
     }
   }
   return { valid: reasons.length === 0, reasons: [...new Set(reasons)] };

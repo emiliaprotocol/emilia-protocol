@@ -75,6 +75,8 @@ export { PROPOSAL_TO_EFFECT_VERSION, proposalToEffectConsumptionNonce, createPro
 export { PROPOSAL_TO_EFFECT_STATUS_HEAD_STORE_VERSION, PROPOSAL_TO_EFFECT_STATUS_HEAD_TABLE, PROPOSAL_TO_EFFECT_STATUS_HEAD_SQL, createProposalToEffectStatusVerifier, createPostgresProposalToEffectStatusHeadStore, } from './proposal-to-effect-status.js';
 export { PROPOSAL_TO_EFFECT_POSTGRES_DDL, PROPOSAL_TO_EFFECT_POSTGRES_SQL, proposalToEffectAttemptDigest, createProposalToEffectPostgresStore, } from './proposal-to-effect-postgres.js';
 export { AEB_PG_CONSUMPTION_STORE_VERSION, AEB_CONSUMPTION_OPERATION_TABLE, AEB_CONSUMPTION_REPLAY_TABLE, AEB_CONSUMPTION_DDL, AEB_CONSUMPTION_SQL, createPostgresAebDurableConsumptionStore, } from './aeb-consumption-store.js';
+export * from './consequence-actuator.js';
+export * from './discovery-permit-resolver.js';
 export const ASSURANCE_TIERS = ['software', 'class_a', 'quorum'];
 const TIER_RANK = { software: 0, class_a: 1, quorum: 2 };
 const CAPABILITY_FAILURE_STATUS = 409;

@@ -1,9 +1,9 @@
 {
   "@version": "EP-SECURITY-CASE-RESOLVED-v2",
   "source": "security/claims.v1.json",
-  "evidence_bundle_sha256": "7cc2576f9612fabb439218f04e9cbb4ccc4b7bb23f135be9a2cfc855f0c614e5",
+  "evidence_bundle_sha256": "ace0e3b5d529f0cd795408db7f73b7d41147fc75c11d5efacd563460d882a20f",
   "claim_count": 33,
-  "evidence_file_count": 219,
+  "evidence_file_count": 228,
   "execution": {
     "required": true,
     "status": "passed",
@@ -167,8 +167,8 @@
           "scoped-authority-is-pinned",
           "signed-denial-cannot-authorize"
         ],
-        "scenarios": 70,
-        "paired_negative_controls": 45,
+        "scenarios": 72,
+        "paired_negative_controls": 46,
         "result": "passed"
       },
       {
@@ -283,6 +283,14 @@
           "javascript",
           "python",
           "go"
+        ],
+        "result": "passed"
+      },
+      {
+        "runner": "node-test",
+        "file": "apps/consequence-control-service/test/actuator-client.test.js",
+        "titles": [
+          "refuses signed evidence substituted across attempt or action bindings"
         ],
         "result": "passed"
       },
@@ -406,6 +414,14 @@
           "a delegation chain that grants increasing authority is rejected",
           "delegation burns parent budget before registering a spendable child",
           "delegation cannot outlive its parent, including across multiple hops"
+        ],
+        "result": "passed"
+      },
+      {
+        "runner": "node-test",
+        "file": "packages/gate/consequence-actuator.test.js",
+        "titles": [
+          "permanently fences an indeterminate provider invocation"
         ],
         "result": "passed"
       },
@@ -712,6 +728,14 @@
       },
       {
         "runner": "vitest",
+        "file": "tests/complete-mediation-boundary.test.ts",
+        "titles": [
+          "keeps raw provider credential material out of the decision plane"
+        ],
+        "result": "passed"
+      },
+      {
+        "runner": "vitest",
         "file": "tests/evidence-challenge-durable.test.ts",
         "titles": [
           "atomically registers one exact challenge across 100 concurrent workers",
@@ -916,10 +940,10 @@
     "gate-sdk": {
       "kind": "npm-tarball",
       "package": "@emilia-protocol/gate",
-      "version": "0.15.2",
-      "filename": "emilia-protocol-gate-0.15.2.tgz",
-      "sha256": "219206eeb2ecd47f0ec7b0e1e7d47310e2b09f579342ad3d2f3a25793c67d36c",
-      "file_count": 515
+      "version": "0.16.0",
+      "filename": "emilia-protocol-gate-0.16.0.tgz",
+      "sha256": "44d0fa3caf8add91cba20c1bbc49f54426af6ace7649206ee7deb32b7e078bd8",
+      "file_count": 527
     },
     "mobile-sdk": {
       "kind": "npm-tarball",
@@ -932,16 +956,16 @@
     "security-evidence": {
       "kind": "content-addressed-evidence-bundle",
       "filename": "security-case-evidence.v1",
-      "sha256": "7cc2576f9612fabb439218f04e9cbb4ccc4b7bb23f135be9a2cfc855f0c614e5",
-      "file_count": 219
+      "sha256": "ace0e3b5d529f0cd795408db7f73b7d41147fc75c11d5efacd563460d882a20f",
+      "file_count": 228
     },
     "verify-sdk": {
       "kind": "npm-tarball",
       "package": "@emilia-protocol/verify",
-      "version": "3.14.0",
-      "filename": "emilia-protocol-verify-3.14.0.tgz",
-      "sha256": "ab7bf7eeffa8d2f34f85cf51369a8ea335d4bddda6df38a1aae478a2e759d0f0",
-      "file_count": 230
+      "version": "3.15.0",
+      "filename": "emilia-protocol-verify-3.15.0.tgz",
+      "sha256": "e82ef5098aa5fffc6776d41f5906c57b5db1962a9d81adcefeafac080d013441",
+      "file_count": 248
     }
   },
   "claims": [
@@ -1092,11 +1116,11 @@
       "release_artifact_hashes": [
         {
           "artifact_id": "verify-sdk",
-          "sha256": "ab7bf7eeffa8d2f34f85cf51369a8ea335d4bddda6df38a1aae478a2e759d0f0"
+          "sha256": "e82ef5098aa5fffc6776d41f5906c57b5db1962a9d81adcefeafac080d013441"
         },
         {
           "artifact_id": "security-evidence",
-          "sha256": "7cc2576f9612fabb439218f04e9cbb4ccc4b7bb23f135be9a2cfc855f0c614e5"
+          "sha256": "ace0e3b5d529f0cd795408db7f73b7d41147fc75c11d5efacd563460d882a20f"
         }
       ]
     },
@@ -1355,11 +1379,11 @@
       "release_artifact_hashes": [
         {
           "artifact_id": "verify-sdk",
-          "sha256": "ab7bf7eeffa8d2f34f85cf51369a8ea335d4bddda6df38a1aae478a2e759d0f0"
+          "sha256": "e82ef5098aa5fffc6776d41f5906c57b5db1962a9d81adcefeafac080d013441"
         },
         {
           "artifact_id": "security-evidence",
-          "sha256": "7cc2576f9612fabb439218f04e9cbb4ccc4b7bb23f135be9a2cfc855f0c614e5"
+          "sha256": "ace0e3b5d529f0cd795408db7f73b7d41147fc75c11d5efacd563460d882a20f"
         }
       ]
     },
@@ -1464,11 +1488,11 @@
       "release_artifact_hashes": [
         {
           "artifact_id": "verify-sdk",
-          "sha256": "ab7bf7eeffa8d2f34f85cf51369a8ea335d4bddda6df38a1aae478a2e759d0f0"
+          "sha256": "e82ef5098aa5fffc6776d41f5906c57b5db1962a9d81adcefeafac080d013441"
         },
         {
           "artifact_id": "security-evidence",
-          "sha256": "7cc2576f9612fabb439218f04e9cbb4ccc4b7bb23f135be9a2cfc855f0c614e5"
+          "sha256": "ace0e3b5d529f0cd795408db7f73b7d41147fc75c11d5efacd563460d882a20f"
         }
       ]
     },
@@ -1630,11 +1654,11 @@
       "release_artifact_hashes": [
         {
           "artifact_id": "verify-sdk",
-          "sha256": "ab7bf7eeffa8d2f34f85cf51369a8ea335d4bddda6df38a1aae478a2e759d0f0"
+          "sha256": "e82ef5098aa5fffc6776d41f5906c57b5db1962a9d81adcefeafac080d013441"
         },
         {
           "artifact_id": "security-evidence",
-          "sha256": "7cc2576f9612fabb439218f04e9cbb4ccc4b7bb23f135be9a2cfc855f0c614e5"
+          "sha256": "ace0e3b5d529f0cd795408db7f73b7d41147fc75c11d5efacd563460d882a20f"
         }
       ]
     },
@@ -1754,11 +1778,11 @@
       "release_artifact_hashes": [
         {
           "artifact_id": "verify-sdk",
-          "sha256": "ab7bf7eeffa8d2f34f85cf51369a8ea335d4bddda6df38a1aae478a2e759d0f0"
+          "sha256": "e82ef5098aa5fffc6776d41f5906c57b5db1962a9d81adcefeafac080d013441"
         },
         {
           "artifact_id": "security-evidence",
-          "sha256": "7cc2576f9612fabb439218f04e9cbb4ccc4b7bb23f135be9a2cfc855f0c614e5"
+          "sha256": "ace0e3b5d529f0cd795408db7f73b7d41147fc75c11d5efacd563460d882a20f"
         }
       ]
     },
@@ -1953,7 +1977,7 @@
       "release_artifact_hashes": [
         {
           "artifact_id": "security-evidence",
-          "sha256": "7cc2576f9612fabb439218f04e9cbb4ccc4b7bb23f135be9a2cfc855f0c614e5"
+          "sha256": "ace0e3b5d529f0cd795408db7f73b7d41147fc75c11d5efacd563460d882a20f"
         }
       ]
     },
@@ -2216,11 +2240,11 @@
       "release_artifact_hashes": [
         {
           "artifact_id": "gate-sdk",
-          "sha256": "219206eeb2ecd47f0ec7b0e1e7d47310e2b09f579342ad3d2f3a25793c67d36c"
+          "sha256": "44d0fa3caf8add91cba20c1bbc49f54426af6ace7649206ee7deb32b7e078bd8"
         },
         {
           "artifact_id": "security-evidence",
-          "sha256": "7cc2576f9612fabb439218f04e9cbb4ccc4b7bb23f135be9a2cfc855f0c614e5"
+          "sha256": "ace0e3b5d529f0cd795408db7f73b7d41147fc75c11d5efacd563460d882a20f"
         }
       ]
     },
@@ -2417,11 +2441,11 @@
       "release_artifact_hashes": [
         {
           "artifact_id": "verify-sdk",
-          "sha256": "ab7bf7eeffa8d2f34f85cf51369a8ea335d4bddda6df38a1aae478a2e759d0f0"
+          "sha256": "e82ef5098aa5fffc6776d41f5906c57b5db1962a9d81adcefeafac080d013441"
         },
         {
           "artifact_id": "security-evidence",
-          "sha256": "7cc2576f9612fabb439218f04e9cbb4ccc4b7bb23f135be9a2cfc855f0c614e5"
+          "sha256": "ace0e3b5d529f0cd795408db7f73b7d41147fc75c11d5efacd563460d882a20f"
         }
       ]
     },
@@ -2600,11 +2624,11 @@
       "release_artifact_hashes": [
         {
           "artifact_id": "verify-sdk",
-          "sha256": "ab7bf7eeffa8d2f34f85cf51369a8ea335d4bddda6df38a1aae478a2e759d0f0"
+          "sha256": "e82ef5098aa5fffc6776d41f5906c57b5db1962a9d81adcefeafac080d013441"
         },
         {
           "artifact_id": "security-evidence",
-          "sha256": "7cc2576f9612fabb439218f04e9cbb4ccc4b7bb23f135be9a2cfc855f0c614e5"
+          "sha256": "ace0e3b5d529f0cd795408db7f73b7d41147fc75c11d5efacd563460d882a20f"
         }
       ]
     },
@@ -2820,11 +2844,11 @@
       "release_artifact_hashes": [
         {
           "artifact_id": "verify-sdk",
-          "sha256": "ab7bf7eeffa8d2f34f85cf51369a8ea335d4bddda6df38a1aae478a2e759d0f0"
+          "sha256": "e82ef5098aa5fffc6776d41f5906c57b5db1962a9d81adcefeafac080d013441"
         },
         {
           "artifact_id": "security-evidence",
-          "sha256": "7cc2576f9612fabb439218f04e9cbb4ccc4b7bb23f135be9a2cfc855f0c614e5"
+          "sha256": "ace0e3b5d529f0cd795408db7f73b7d41147fc75c11d5efacd563460d882a20f"
         }
       ]
     },
@@ -3049,7 +3073,7 @@
       "release_artifact_hashes": [
         {
           "artifact_id": "security-evidence",
-          "sha256": "7cc2576f9612fabb439218f04e9cbb4ccc4b7bb23f135be9a2cfc855f0c614e5"
+          "sha256": "ace0e3b5d529f0cd795408db7f73b7d41147fc75c11d5efacd563460d882a20f"
         }
       ]
     },
@@ -3154,11 +3178,11 @@
       "release_artifact_hashes": [
         {
           "artifact_id": "verify-sdk",
-          "sha256": "ab7bf7eeffa8d2f34f85cf51369a8ea335d4bddda6df38a1aae478a2e759d0f0"
+          "sha256": "e82ef5098aa5fffc6776d41f5906c57b5db1962a9d81adcefeafac080d013441"
         },
         {
           "artifact_id": "security-evidence",
-          "sha256": "7cc2576f9612fabb439218f04e9cbb4ccc4b7bb23f135be9a2cfc855f0c614e5"
+          "sha256": "ace0e3b5d529f0cd795408db7f73b7d41147fc75c11d5efacd563460d882a20f"
         }
       ]
     },
@@ -3368,11 +3392,11 @@
       "release_artifact_hashes": [
         {
           "artifact_id": "gate-sdk",
-          "sha256": "219206eeb2ecd47f0ec7b0e1e7d47310e2b09f579342ad3d2f3a25793c67d36c"
+          "sha256": "44d0fa3caf8add91cba20c1bbc49f54426af6ace7649206ee7deb32b7e078bd8"
         },
         {
           "artifact_id": "security-evidence",
-          "sha256": "7cc2576f9612fabb439218f04e9cbb4ccc4b7bb23f135be9a2cfc855f0c614e5"
+          "sha256": "ace0e3b5d529f0cd795408db7f73b7d41147fc75c11d5efacd563460d882a20f"
         }
       ]
     },
@@ -3510,11 +3534,11 @@
       "release_artifact_hashes": [
         {
           "artifact_id": "gate-sdk",
-          "sha256": "219206eeb2ecd47f0ec7b0e1e7d47310e2b09f579342ad3d2f3a25793c67d36c"
+          "sha256": "44d0fa3caf8add91cba20c1bbc49f54426af6ace7649206ee7deb32b7e078bd8"
         },
         {
           "artifact_id": "security-evidence",
-          "sha256": "7cc2576f9612fabb439218f04e9cbb4ccc4b7bb23f135be9a2cfc855f0c614e5"
+          "sha256": "ace0e3b5d529f0cd795408db7f73b7d41147fc75c11d5efacd563460d882a20f"
         }
       ]
     },
@@ -3523,7 +3547,8 @@
       "statement": "After an external executor is invoked, an exception is treated as an indeterminate effect and the approval is consumed or frozen rather than made reusable.",
       "acceptance_roots": [
         "the gate's durable consumption store",
-        "the Proposal-to-Effect consequence-attempt store and relying-party-pinned provider-evidence verifier"
+        "the Proposal-to-Effect consequence-attempt store and relying-party-pinned provider-evidence verifier",
+        "the consequence actuator's durable one-time envelope store, isolated provider credential, and pinned decision and observation keys"
       ],
       "enforcement_path": [
         {
@@ -3542,6 +3567,24 @@
           "language": "javascript",
           "file": "packages/gate/src/proposal-to-effect.ts",
           "symbol": "createProposalToEffect",
+          "exported": true
+        },
+        {
+          "language": "javascript",
+          "file": "packages/gate/src/consequence-actuator.ts",
+          "symbol": "ConsequenceActuator",
+          "exported": true
+        },
+        {
+          "language": "javascript",
+          "file": "apps/consequence-control-service/src/github-app.ts",
+          "symbol": "createConsequenceActuatorClient",
+          "exported": true
+        },
+        {
+          "language": "javascript",
+          "file": "apps/consequence-actuator-service/src/runtime.ts",
+          "symbol": "createConsequenceActuatorRuntime",
           "exported": true
         },
         {
@@ -3566,6 +3609,21 @@
           "language": "javascript",
           "file": "packages/gate/src/proposal-to-effect.ts",
           "export": "createProposalToEffect"
+        },
+        {
+          "language": "javascript",
+          "file": "packages/gate/src/consequence-actuator.ts",
+          "export": "ConsequenceActuator"
+        },
+        {
+          "language": "javascript",
+          "file": "apps/consequence-control-service/src/github-app.ts",
+          "export": "createConsequenceActuatorClient"
+        },
+        {
+          "language": "javascript",
+          "file": "apps/consequence-actuator-service/src/runtime.ts",
+          "export": "createConsequenceActuatorRuntime"
         }
       ],
       "language_coverage": {
@@ -3630,6 +3688,21 @@
           "file": "packages/gate/proposal-to-effect.test.js",
           "title": "authenticated NOT_COMMITTED reconciliation permits one explicit retry",
           "runner": "node-test"
+        },
+        {
+          "file": "packages/gate/consequence-actuator.test.js",
+          "title": "permanently fences an indeterminate provider invocation",
+          "runner": "node-test"
+        },
+        {
+          "file": "apps/consequence-control-service/test/actuator-client.test.js",
+          "title": "refuses signed evidence substituted across attempt or action bindings",
+          "runner": "node-test"
+        },
+        {
+          "file": "tests/complete-mediation-boundary.test.ts",
+          "title": "keeps raw provider credential material out of the decision plane",
+          "runner": "vitest"
         }
       ],
       "formal": [
@@ -3643,6 +3716,44 @@
           "covered_statement": "The composed symbolic path makes checked execution injective with respect to one-time authorization consumption.",
           "unmodeled_statement": "An external effect that succeeds before its response is lost, indeterminate fencing, and provider reconciliation are modeled in bounded lifecycle and executable evidence rather than Tamarin.",
           "scope": "The composed lemma proves injective checked execution but does not model an external system whose effect succeeds before its response is lost."
+        },
+        {
+          "status": "partial",
+          "method": "bounded_tla_model_checking",
+          "model": "formal/ep_complete_mediation.tla",
+          "runner": "formal/ep_complete_mediation.cfg",
+          "result_evidence": "formal/results/ep-complete-mediation.tlc.summary.txt",
+          "obligations": [
+            "ProviderAtMostOnce",
+            "EffectRequiresActuator",
+            "EffectRequiresConsumedEnvelope",
+            "EffectRequiresExactDecision",
+            "UncertainEffectBlocksReplay",
+            "TerminalReconciliationIsAuthenticated",
+            "NoEnvelopeReopenAfterInvocation"
+          ],
+          "scope": "A bounded same-team split-service model covers exact decision and envelope binding, actuator-only provider entry, permanent uncertainty fencing, authenticated terminal reconciliation, and no envelope reopening. A deliberately unsafe direct-provider transition violates EffectRequiresActuator. Selected runtime scenarios exercise the real TypeScript actuator primitive; the separate-service credential boundary is additionally enforced by executable repository tests. This is not a mechanized implementation refinement proof, an unbounded theorem, or proof that credentials cannot exist outside the managed deployment.",
+          "scenario_evidence": "formal/runtime-scenarios.v2.json",
+          "scenario_runner": "scripts/check-formal-runtime-traces.mjs",
+          "conformance_evidence": "formal/results/formal-runtime-scenario-conformance.v2.json",
+          "scenario_coverage": "selected",
+          "covered_actions": [
+            "RefuseGateBypass",
+            "AuthorizeExactAction",
+            "IssueExactEnvelope",
+            "InvokeThroughActuator",
+            "ProviderTimeout",
+            "RefuseBlindReplay",
+            "UnsafeDirectProviderCall"
+          ],
+          "covered_obligations": [
+            "ProviderAtMostOnce",
+            "EffectRequiresActuator",
+            "EffectRequiresConsumedEnvelope",
+            "EffectRequiresExactDecision",
+            "UncertainEffectBlocksReplay",
+            "NoEnvelopeReopenAfterInvocation"
+          ]
         },
         {
           "status": "partial",
@@ -3747,12 +3858,14 @@
         }
       ],
       "assumptions": [
-        "the guarded effect is invoked only through gate.run, the AEC execution gate run method, or the Proposal-to-Effect controller",
+        "the guarded effect is invoked only through gate.run, the AEC execution gate run method, the Proposal-to-Effect controller, or the separately deployed credential-owning consequence actuator",
+        "for the managed complete-mediation profile, the decision service has no provider credential or provider API implementation and the actuator accepts only the pinned signed execution envelope",
         "provider reconciliation is accepted only through a relying-party-pinned verifier bound to the same tenant, operation, attempt, CAID, action digest, and effect digest",
         "the durable backend remains fail-closed"
       ],
       "exclusions": [
-        "the protocol cannot infer whether an unavailable external system applied an effect"
+        "the protocol cannot infer whether an unavailable external system applied an effect",
+        "the managed actuator cannot prevent an independent administrator or alternate credential outside its deployment boundary from changing the provider directly"
       ],
       "release_artifacts": [
         "gate-sdk",
@@ -3761,11 +3874,11 @@
       "release_artifact_hashes": [
         {
           "artifact_id": "gate-sdk",
-          "sha256": "219206eeb2ecd47f0ec7b0e1e7d47310e2b09f579342ad3d2f3a25793c67d36c"
+          "sha256": "44d0fa3caf8add91cba20c1bbc49f54426af6ace7649206ee7deb32b7e078bd8"
         },
         {
           "artifact_id": "security-evidence",
-          "sha256": "7cc2576f9612fabb439218f04e9cbb4ccc4b7bb23f135be9a2cfc855f0c614e5"
+          "sha256": "ace0e3b5d529f0cd795408db7f73b7d41147fc75c11d5efacd563460d882a20f"
         }
       ]
     },
@@ -3922,11 +4035,11 @@
       "release_artifact_hashes": [
         {
           "artifact_id": "gate-sdk",
-          "sha256": "219206eeb2ecd47f0ec7b0e1e7d47310e2b09f579342ad3d2f3a25793c67d36c"
+          "sha256": "44d0fa3caf8add91cba20c1bbc49f54426af6ace7649206ee7deb32b7e078bd8"
         },
         {
           "artifact_id": "security-evidence",
-          "sha256": "7cc2576f9612fabb439218f04e9cbb4ccc4b7bb23f135be9a2cfc855f0c614e5"
+          "sha256": "ace0e3b5d529f0cd795408db7f73b7d41147fc75c11d5efacd563460d882a20f"
         }
       ]
     },
@@ -4169,11 +4282,11 @@
       "release_artifact_hashes": [
         {
           "artifact_id": "gate-sdk",
-          "sha256": "219206eeb2ecd47f0ec7b0e1e7d47310e2b09f579342ad3d2f3a25793c67d36c"
+          "sha256": "44d0fa3caf8add91cba20c1bbc49f54426af6ace7649206ee7deb32b7e078bd8"
         },
         {
           "artifact_id": "security-evidence",
-          "sha256": "7cc2576f9612fabb439218f04e9cbb4ccc4b7bb23f135be9a2cfc855f0c614e5"
+          "sha256": "ace0e3b5d529f0cd795408db7f73b7d41147fc75c11d5efacd563460d882a20f"
         }
       ]
     },
@@ -4307,7 +4420,7 @@
       "release_artifact_hashes": [
         {
           "artifact_id": "security-evidence",
-          "sha256": "7cc2576f9612fabb439218f04e9cbb4ccc4b7bb23f135be9a2cfc855f0c614e5"
+          "sha256": "ace0e3b5d529f0cd795408db7f73b7d41147fc75c11d5efacd563460d882a20f"
         }
       ]
     },
@@ -4419,11 +4532,11 @@
       "release_artifact_hashes": [
         {
           "artifact_id": "verify-sdk",
-          "sha256": "ab7bf7eeffa8d2f34f85cf51369a8ea335d4bddda6df38a1aae478a2e759d0f0"
+          "sha256": "e82ef5098aa5fffc6776d41f5906c57b5db1962a9d81adcefeafac080d013441"
         },
         {
           "artifact_id": "security-evidence",
-          "sha256": "7cc2576f9612fabb439218f04e9cbb4ccc4b7bb23f135be9a2cfc855f0c614e5"
+          "sha256": "ace0e3b5d529f0cd795408db7f73b7d41147fc75c11d5efacd563460d882a20f"
         }
       ]
     },
@@ -4557,7 +4670,7 @@
       "release_artifact_hashes": [
         {
           "artifact_id": "security-evidence",
-          "sha256": "7cc2576f9612fabb439218f04e9cbb4ccc4b7bb23f135be9a2cfc855f0c614e5"
+          "sha256": "ace0e3b5d529f0cd795408db7f73b7d41147fc75c11d5efacd563460d882a20f"
         }
       ]
     },
@@ -4774,7 +4887,7 @@
       "release_artifact_hashes": [
         {
           "artifact_id": "security-evidence",
-          "sha256": "7cc2576f9612fabb439218f04e9cbb4ccc4b7bb23f135be9a2cfc855f0c614e5"
+          "sha256": "ace0e3b5d529f0cd795408db7f73b7d41147fc75c11d5efacd563460d882a20f"
         }
       ]
     },
@@ -4984,7 +5097,7 @@
       "release_artifact_hashes": [
         {
           "artifact_id": "security-evidence",
-          "sha256": "7cc2576f9612fabb439218f04e9cbb4ccc4b7bb23f135be9a2cfc855f0c614e5"
+          "sha256": "ace0e3b5d529f0cd795408db7f73b7d41147fc75c11d5efacd563460d882a20f"
         }
       ]
     },
@@ -5200,7 +5313,7 @@
       "release_artifact_hashes": [
         {
           "artifact_id": "security-evidence",
-          "sha256": "7cc2576f9612fabb439218f04e9cbb4ccc4b7bb23f135be9a2cfc855f0c614e5"
+          "sha256": "ace0e3b5d529f0cd795408db7f73b7d41147fc75c11d5efacd563460d882a20f"
         }
       ]
     },
@@ -5504,7 +5617,7 @@
       "release_artifact_hashes": [
         {
           "artifact_id": "security-evidence",
-          "sha256": "7cc2576f9612fabb439218f04e9cbb4ccc4b7bb23f135be9a2cfc855f0c614e5"
+          "sha256": "ace0e3b5d529f0cd795408db7f73b7d41147fc75c11d5efacd563460d882a20f"
         }
       ]
     },
@@ -5712,11 +5825,11 @@
       "release_artifact_hashes": [
         {
           "artifact_id": "verify-sdk",
-          "sha256": "ab7bf7eeffa8d2f34f85cf51369a8ea335d4bddda6df38a1aae478a2e759d0f0"
+          "sha256": "e82ef5098aa5fffc6776d41f5906c57b5db1962a9d81adcefeafac080d013441"
         },
         {
           "artifact_id": "security-evidence",
-          "sha256": "7cc2576f9612fabb439218f04e9cbb4ccc4b7bb23f135be9a2cfc855f0c614e5"
+          "sha256": "ace0e3b5d529f0cd795408db7f73b7d41147fc75c11d5efacd563460d882a20f"
         }
       ]
     },
@@ -5878,11 +5991,11 @@
       "release_artifact_hashes": [
         {
           "artifact_id": "verify-sdk",
-          "sha256": "ab7bf7eeffa8d2f34f85cf51369a8ea335d4bddda6df38a1aae478a2e759d0f0"
+          "sha256": "e82ef5098aa5fffc6776d41f5906c57b5db1962a9d81adcefeafac080d013441"
         },
         {
           "artifact_id": "security-evidence",
-          "sha256": "7cc2576f9612fabb439218f04e9cbb4ccc4b7bb23f135be9a2cfc855f0c614e5"
+          "sha256": "ace0e3b5d529f0cd795408db7f73b7d41147fc75c11d5efacd563460d882a20f"
         }
       ]
     },
@@ -6057,11 +6170,11 @@
         },
         {
           "artifact_id": "verify-sdk",
-          "sha256": "ab7bf7eeffa8d2f34f85cf51369a8ea335d4bddda6df38a1aae478a2e759d0f0"
+          "sha256": "e82ef5098aa5fffc6776d41f5906c57b5db1962a9d81adcefeafac080d013441"
         },
         {
           "artifact_id": "security-evidence",
-          "sha256": "7cc2576f9612fabb439218f04e9cbb4ccc4b7bb23f135be9a2cfc855f0c614e5"
+          "sha256": "ace0e3b5d529f0cd795408db7f73b7d41147fc75c11d5efacd563460d882a20f"
         }
       ]
     },
@@ -6236,7 +6349,7 @@
         },
         {
           "artifact_id": "security-evidence",
-          "sha256": "7cc2576f9612fabb439218f04e9cbb4ccc4b7bb23f135be9a2cfc855f0c614e5"
+          "sha256": "ace0e3b5d529f0cd795408db7f73b7d41147fc75c11d5efacd563460d882a20f"
         }
       ]
     },
@@ -6382,11 +6495,11 @@
         },
         {
           "artifact_id": "verify-sdk",
-          "sha256": "ab7bf7eeffa8d2f34f85cf51369a8ea335d4bddda6df38a1aae478a2e759d0f0"
+          "sha256": "e82ef5098aa5fffc6776d41f5906c57b5db1962a9d81adcefeafac080d013441"
         },
         {
           "artifact_id": "security-evidence",
-          "sha256": "7cc2576f9612fabb439218f04e9cbb4ccc4b7bb23f135be9a2cfc855f0c614e5"
+          "sha256": "ace0e3b5d529f0cd795408db7f73b7d41147fc75c11d5efacd563460d882a20f"
         }
       ]
     },
@@ -6527,7 +6640,7 @@
         },
         {
           "artifact_id": "security-evidence",
-          "sha256": "7cc2576f9612fabb439218f04e9cbb4ccc4b7bb23f135be9a2cfc855f0c614e5"
+          "sha256": "ace0e3b5d529f0cd795408db7f73b7d41147fc75c11d5efacd563460d882a20f"
         }
       ]
     },
@@ -6726,7 +6839,7 @@
       "release_artifact_hashes": [
         {
           "artifact_id": "security-evidence",
-          "sha256": "7cc2576f9612fabb439218f04e9cbb4ccc4b7bb23f135be9a2cfc855f0c614e5"
+          "sha256": "ace0e3b5d529f0cd795408db7f73b7d41147fc75c11d5efacd563460d882a20f"
         }
       ]
     },
@@ -7136,11 +7249,11 @@
       "release_artifact_hashes": [
         {
           "artifact_id": "gate-sdk",
-          "sha256": "219206eeb2ecd47f0ec7b0e1e7d47310e2b09f579342ad3d2f3a25793c67d36c"
+          "sha256": "44d0fa3caf8add91cba20c1bbc49f54426af6ace7649206ee7deb32b7e078bd8"
         },
         {
           "artifact_id": "security-evidence",
-          "sha256": "7cc2576f9612fabb439218f04e9cbb4ccc4b7bb23f135be9a2cfc855f0c614e5"
+          "sha256": "ace0e3b5d529f0cd795408db7f73b7d41147fc75c11d5efacd563460d882a20f"
         }
       ]
     },
@@ -7517,11 +7630,11 @@
       "release_artifact_hashes": [
         {
           "artifact_id": "gate-sdk",
-          "sha256": "219206eeb2ecd47f0ec7b0e1e7d47310e2b09f579342ad3d2f3a25793c67d36c"
+          "sha256": "44d0fa3caf8add91cba20c1bbc49f54426af6ace7649206ee7deb32b7e078bd8"
         },
         {
           "artifact_id": "security-evidence",
-          "sha256": "7cc2576f9612fabb439218f04e9cbb4ccc4b7bb23f135be9a2cfc855f0c614e5"
+          "sha256": "ace0e3b5d529f0cd795408db7f73b7d41147fc75c11d5efacd563460d882a20f"
         }
       ]
     }
@@ -7558,6 +7671,18 @@
     {
       "path": "app/api/v1/signoffs/[signoffId]/webauthn-options/route.ts",
       "sha256": "5538d2278fdca617cddaf3b3d69d5147b502983231589ae03b52c1c53c41e2fa"
+    },
+    {
+      "path": "apps/consequence-actuator-service/src/runtime.ts",
+      "sha256": "fc915e90ddb3c12577ee71846163e3bff5a62f1e283e248ae73b5c86f317628e"
+    },
+    {
+      "path": "apps/consequence-control-service/src/github-app.ts",
+      "sha256": "334d711602a7418d3e947ed166eb29bdd1e220388955c8bc0e30062ebedb11c1"
+    },
+    {
+      "path": "apps/consequence-control-service/test/actuator-client.test.js",
+      "sha256": "ad7a3fb6a5c1877a56254b51c97d04879782f3c877f3195351bc7f070b361d1c"
     },
     {
       "path": "conformance/authority-program-profile.test.js",
@@ -7708,6 +7833,14 @@
       "sha256": "ce3de4f472612c524db0bfef58dfa9d7dae3b23bf46060bd7f436e126daa8ecd"
     },
     {
+      "path": "formal/ep_complete_mediation.cfg",
+      "sha256": "92fa472de94fd56e6302f56a41e011e787612ba2001ed1c54020582ab2d56efd"
+    },
+    {
+      "path": "formal/ep_complete_mediation.tla",
+      "sha256": "8c7542526b355bac1d3c8bad1e97e4b3be927046d163efd0ee20d62324b02b85"
+    },
+    {
       "path": "formal/ep_composed_trust_lifecycle.cfg",
       "sha256": "609f2576228e039f7c8edb05b8bd431e4e8906d4e652c3e598d093c175f3627b"
     },
@@ -7784,6 +7917,10 @@
       "sha256": "da6b7be1ceb846c96d1f42cc858510a4a9b9c5e9cdc353eda718222ba88f5b05"
     },
     {
+      "path": "formal/results/ep-complete-mediation.tlc.summary.txt",
+      "sha256": "dbe93d3a1dbc94f06bc1de00a06f784adb21b26d32eafd630c64ab2d01114d3c"
+    },
+    {
       "path": "formal/results/ep-composed-trust-lifecycle.tlc.summary.txt",
       "sha256": "2fbd5860eec872b0c29e8b11d950135db5d8d3acba90eebdca7abf66e6b5ec92"
     },
@@ -7809,7 +7946,7 @@
     },
     {
       "path": "formal/results/formal-runtime-scenario-conformance.v2.json",
-      "sha256": "2f78e83afc6bf20397b9e6100a5a4c4605f602ebe2546c030fd1842d7cc369f3"
+      "sha256": "c1b3c58bbe1324433bf7ca7c1e145f2c8763226dff4efba49700ca9758c71b7a"
     },
     {
       "path": "formal/results/outcome-authority-join.summary.txt",
@@ -7829,7 +7966,7 @@
     },
     {
       "path": "formal/runtime-scenarios.v2.json",
-      "sha256": "773e10d9952792556b7723d78aa2296b8bd6a5fa8d170ef8da9c6832ee8253a5"
+      "sha256": "0bf47fafa6d4be8ae1a72bfad7cba749fefadd1d2e34a35ace64653e549e28ca"
     },
     {
       "path": "formal/tamarin/ep_reliance_composed.spthy",
@@ -7948,6 +8085,10 @@
       "sha256": "150d6c5ef111ee3a6d63564d12a33d59c43f2b187f10d28e3a51c7498be0496c"
     },
     {
+      "path": "packages/gate/consequence-actuator.test.js",
+      "sha256": "cbb2644e7ba32261a528dc1b577b5ed98d76da3781675d6bf53afcfee77bedc6"
+    },
+    {
       "path": "packages/gate/deploy/sql/001-runtime.sql",
       "sha256": "0f3539da67d89140ed64ff71c0e44bdb088e9e53640581d543dbc9ab0dfef671"
     },
@@ -8012,12 +8153,16 @@
       "sha256": "e64ffa948c9d073f0900bb2152eb59d78fdaa207305af60659d75401c04ea3c8"
     },
     {
+      "path": "packages/gate/src/consequence-actuator.ts",
+      "sha256": "413d6a0b3f0a2fb5b516dcff34dc17d6f12f8df198b09d59ae862d824453590e"
+    },
+    {
       "path": "packages/gate/src/evidence.ts",
       "sha256": "7828614dcaddbe939ef31786d8e3aab0a68b21cab53e737cceecf1bb6387195b"
     },
     {
       "path": "packages/gate/src/index.ts",
-      "sha256": "b64665fd91ec718dfbeba993f5061761495d0d0398eb10d5c86c07371e5883b8"
+      "sha256": "22f959772447205205e45ecbeac3060609e60a29a29a48d3b6982f3d0436f683"
     },
     {
       "path": "packages/gate/src/network-witness.ts",
@@ -8217,7 +8362,7 @@
     },
     {
       "path": "packages/verify/src/index.ts",
-      "sha256": "da39062df558b31f18759894df0ce54f9f6206730c9795e383d6bd29e83266f7"
+      "sha256": "190c4cf3d860b35f8da478aa450eaafa16d8f1955157559dd9690bf1a561aef2"
     },
     {
       "path": "packages/verify/src/outcome-binding.ts",
@@ -8293,7 +8438,7 @@
     },
     {
       "path": "security/claims.v1.json",
-      "sha256": "91bd88b643ada63f285335b81012f84d8fba14374e873cf26261ea3b95405d09"
+      "sha256": "9eb0bd62d1d7168f14912e850f62666dbbd90b477392f76bb912779f5d51d33d"
     },
     {
       "path": "security/vectors.v1.json",
@@ -8334,6 +8479,10 @@
     {
       "path": "tests/authority-registry.test.ts",
       "sha256": "b593cd5e6966d08ba1966eec8d6e122ee03f324a633923efb83d36623fdce4b1"
+    },
+    {
+      "path": "tests/complete-mediation-boundary.test.ts",
+      "sha256": "85e692363600358f11fff39aad942f1e09da68de2215f95e493ef7e2007b2fe0"
     },
     {
       "path": "tests/evidence-challenge-durable.test.ts",

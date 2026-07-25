@@ -164,6 +164,7 @@ const ROUTE_POLICIES = {
   'POST /api/v1/adapters/gov/eligibility-override/precheck': { rateCategory: 'submit', useAuth: true },
   'POST /api/v1/adapters/health/hospice-claim/precheck': { rateCategory: 'submit', useAuth: true },
   'POST /api/v1/adapters/health/hospice-claim/reconcile': { rateCategory: 'submit', useAuth: true },
+  'POST /api/v1/adapters/health/hospice-claim/execute': { rateCategory: 'submit', useAuth: true },
   'POST /api/v1/adapters/fin/vendor-bank-change/precheck':   { rateCategory: 'submit', useAuth: true },
   'POST /api/v1/adapters/fin/beneficiary-creation/precheck': { rateCategory: 'submit', useAuth: true },
   'POST /api/v1/adapters/fin/payment-release/precheck':      { rateCategory: 'submit', useAuth: true },

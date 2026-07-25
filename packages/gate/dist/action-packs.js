@@ -1,3 +1,4 @@
+// @ts-nocheck
 // SPDX-License-Identifier: Apache-2.0
 // EMILIA Gate default action packs: the high-risk families that should require
 // pre-execution human authorization before a machine mutates the world.

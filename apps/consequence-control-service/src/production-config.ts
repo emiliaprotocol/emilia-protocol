@@ -22,7 +22,8 @@ import { strictJsonGate } from '@emilia-protocol/require-receipt/strict-json';
 import { createStaticBearerAuthenticator } from '../../gate-service/src/auth.js';
 import {
   createConsequenceActuatorClient,
-} from './github-app.js';
+  createGoogleCloudIdentityTokenProvider,
+} from './actuator-client.js';
 
 const BRIDGE_ADAPTER_ID = 'bridge:native';
 const BRIDGE_ADAPTER_VERSION = '1';
@@ -334,6 +335,7 @@ export async function createProductionConsequenceControlConfig({
   environment = process.env,
   PoolClass = null,
   fetchImpl = globalThis.fetch,
+  identityTokenProvider = null,
 }: any = {}) {
   const executorDatabaseUrl = required(environment, 'EMILIA_CONSEQUENCE_EXECUTOR_DATABASE_URL');
   const recoveryDatabaseUrl = required(environment, 'EMILIA_CONSEQUENCE_RECOVERY_DATABASE_URL');
@@ -431,8 +433,19 @@ export async function createProductionConsequenceControlConfig({
     },
   });
 
+  const identityTokenAudience = required(
+    environment,
+    'EMILIA_CONSEQUENCE_ACTUATOR_AUDIENCE',
+    2048,
+  );
+  const actuatorIdentityTokenProvider = identityTokenProvider
+    ?? createGoogleCloudIdentityTokenProvider({
+      audience: identityTokenAudience,
+    });
   const actuatorClientOptions = {
     endpoint: required(environment, 'EMILIA_CONSEQUENCE_ACTUATOR_ORIGIN', 2048),
+    identityTokenAudience,
+    identityTokenProvider: actuatorIdentityTokenProvider,
     authorization: required(
       environment,
       'EMILIA_CONSEQUENCE_ACTUATOR_API_TOKEN',

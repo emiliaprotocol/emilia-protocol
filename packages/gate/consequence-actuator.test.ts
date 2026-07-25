@@ -14,8 +14,9 @@ import {
   type ConsequenceActuatorConsumption,
   type ConsequenceActuatorPgQueryResult,
   type ConsequenceActuatorReservation,
+  type ConsequenceActuatorStore,
   type ConsequenceExecutionEnvelopePayload,
-} from './src/consequence-actuator.ts';
+} from './consequence-actuator.js';
 
 const NOW = Date.parse('2026-07-25T01:00:00.000Z');
 const ACTION_DIGEST = `sha256:${'a'.repeat(64)}`;
@@ -45,6 +46,21 @@ function payload(
   };
 }
 
+function actuatorPins(signer: { publicKey: KeyObject }) {
+  return {
+    tenantId: 'tenant-1',
+    caid: CAID,
+    providerAccountId: 'provider-account-1',
+    targetDigest: TARGET_DIGEST,
+    operation: 'payment.capture',
+    envelopeIssuerId: 'authorization-service',
+    envelopeKeyId: 'actuator-key-1',
+    envelopePublicKey: signer.publicKey,
+    maxEnvelopeTtlMs: 60_000,
+    clockSkewMs: 2_000,
+  };
+}
+
 function harness() {
   const signer = generateKeyPairSync('ed25519');
   const store = createMemoryConsequenceActuatorStore();
@@ -60,19 +76,9 @@ function harness() {
     return { provider_reference: 'provider-result-1' };
   };
   const actuator = new ConsequenceActuator({
-    pins: {
-      tenantId: 'tenant-1',
-      caid: CAID,
-      providerAccountId: 'provider-account-1',
-      targetDigest: TARGET_DIGEST,
-      operation: 'payment.capture',
-      envelopeIssuerId: 'authorization-service',
-      envelopeKeyId: 'actuator-key-1',
-      envelopePublicKey: signer.publicKey,
-      maxEnvelopeTtlMs: 60_000,
-      clockSkewMs: 2_000,
-    },
+    pins: actuatorPins(signer),
     store,
+    testOnly: true,
     perform: providerCall,
     now: () => NOW,
   });
@@ -111,6 +117,62 @@ function reservation(
 }
 
 describe('credential-owning consequence actuator', () => {
+  it('requires production store capabilities and an explicit memory-store test opt-in', () => {
+    const signer = generateKeyPairSync('ed25519');
+    const memoryStore = createMemoryConsequenceActuatorStore();
+    const baseOptions = {
+      pins: actuatorPins(signer),
+      store: memoryStore,
+      perform: async () => ({ provider_reference: 'provider-result-1' }),
+      now: () => NOW,
+    };
+
+    assert.equal(memoryStore.durable, false);
+    assert.equal(memoryStore.atomic, true);
+    assert.equal(memoryStore.ownershipFenced, false);
+    assert.equal(memoryStore.permanentConsumption, false);
+    assert.throws(
+      () => new ConsequenceActuator(baseOptions),
+      /durable.*atomic.*ownership-fenced.*permanent.*testOnly/i,
+    );
+    assert.doesNotThrow(
+      () => new ConsequenceActuator({ ...baseOptions, testOnly: true }),
+    );
+
+    const capableStore: ConsequenceActuatorStore = {
+      durable: true,
+      atomic: true,
+      ownershipFenced: true,
+      permanentConsumption: true,
+      async reserve() {
+        return true;
+      },
+      async consume() {
+        return true;
+      },
+    };
+    assert.doesNotThrow(
+      () => new ConsequenceActuator({ ...baseOptions, store: capableStore }),
+    );
+
+    for (const capability of [
+      'durable',
+      'atomic',
+      'ownershipFenced',
+      'permanentConsumption',
+    ] as const) {
+      assert.throws(
+        () => new ConsequenceActuator({
+          ...baseOptions,
+          store: { ...capableStore, [capability]: false },
+          testOnly: true,
+        }),
+        /durable.*atomic.*ownership-fenced.*permanent/i,
+        capability,
+      );
+    }
+  });
+
   it('pins trust and provider routing immutably and executes without a Gate-held credential', async () => {
     const { actuator, calls, signer, store } = harness();
     const body = payload();
@@ -273,17 +335,9 @@ describe('credential-owning consequence actuator', () => {
       throw new Error('provider acknowledgement lost');
     };
     const actuator = new ConsequenceActuator({
-      pins: {
-        tenantId: 'tenant-1',
-        caid: CAID,
-        providerAccountId: 'provider-account-1',
-        targetDigest: TARGET_DIGEST,
-        operation: 'payment.capture',
-        envelopeIssuerId: 'authorization-service',
-        envelopeKeyId: 'actuator-key-1',
-        envelopePublicKey: signer.publicKey,
-      },
+      pins: actuatorPins(signer),
       store,
+      testOnly: true,
       perform,
       now: () => NOW,
     });
@@ -334,6 +388,146 @@ describe('Postgres consequence actuator store', () => {
     };
   }
 
+  function statefulPool(
+    principal = 'tenant_1_consequence_executor',
+  ) {
+    const records = new Map<
+      string,
+      { envelopeDigest: string; state: 'RESERVED' | 'CONSUMED' }
+    >();
+    const idempotencyKeys = new Set<string>();
+    const pool = {
+      principal,
+      async query(
+        text: string,
+        values: readonly unknown[],
+      ): Promise<ConsequenceActuatorPgQueryResult> {
+        if (text === CONSEQUENCE_ACTUATOR_SQL.reserve) {
+          const key = JSON.stringify([values[0], values[8]]);
+          const operationKey = JSON.stringify([
+            values[0],
+            values[4],
+            values[6],
+            values[7],
+          ]);
+          const envelopeDigest = values[11];
+          assert.equal(typeof envelopeDigest, 'string');
+          if (records.has(key) || idempotencyKeys.has(operationKey)) {
+            return { rowCount: 0, rows: [] };
+          }
+          records.set(key, { envelopeDigest, state: 'RESERVED' });
+          idempotencyKeys.add(operationKey);
+          return {
+            rowCount: 1,
+            rows: [{ envelope_digest: envelopeDigest }],
+          };
+        }
+        if (text === CONSEQUENCE_ACTUATOR_SQL.consume) {
+          const key = JSON.stringify([values[0], values[8]]);
+          const envelopeDigest = values[9];
+          const current = records.get(key);
+          assert.equal(typeof envelopeDigest, 'string');
+          if (
+            current === undefined
+            || current.state !== 'RESERVED'
+            || current.envelopeDigest !== envelopeDigest
+          ) {
+            return { rowCount: 0, rows: [] };
+          }
+          records.set(key, { ...current, state: 'CONSUMED' });
+          return {
+            rowCount: 1,
+            rows: [{ envelope_digest: envelopeDigest }],
+          };
+        }
+        throw new Error('unexpected query');
+      },
+    };
+    return { pool, records };
+  }
+
+  function productionActuator(
+    signer: { publicKey: KeyObject },
+    executorPool: ReturnType<typeof statefulPool>['pool'],
+    perform: () => Promise<{ provider_reference: string }>,
+  ) {
+    const store = createPostgresConsequenceActuatorStore({
+      tenantId: 'tenant-1',
+      executorPrincipal: executorPool.principal,
+      executorPool,
+    });
+    return new ConsequenceActuator({
+      pins: actuatorPins(signer),
+      store,
+      perform,
+      now: () => NOW,
+    });
+  }
+
+  it('allows only one provider entry across concurrent production replicas', async () => {
+    const signer = generateKeyPairSync('ed25519');
+    const shared = statefulPool();
+    let providerCalls = 0;
+    const perform = async () => {
+      providerCalls += 1;
+      return { provider_reference: 'provider-result-1' };
+    };
+    const firstReplica = productionActuator(signer, shared.pool, perform);
+    const secondReplica = productionActuator(signer, shared.pool, perform);
+    const body = payload();
+    const input = {
+      envelope: signEnvelope(signer, body),
+      attemptId: body.attempt_id,
+      actionDigest: body.action_digest,
+      idempotencyKey: body.idempotency_key,
+    };
+
+    const raced = await Promise.all([
+      firstReplica.execute(input),
+      secondReplica.execute(input),
+    ]);
+
+    assert.equal(raced.filter((result) => result.ok).length, 1);
+    assert.equal(
+      raced.filter(
+        (result) => !result.ok && result.reason === 'envelope_replayed',
+      ).length,
+      1,
+    );
+    assert.equal(providerCalls, 1);
+  });
+
+  it('refuses the same envelope after a production actuator restart', async () => {
+    const signer = generateKeyPairSync('ed25519');
+    const shared = statefulPool();
+    let providerCalls = 0;
+    const perform = async () => {
+      providerCalls += 1;
+      return { provider_reference: 'provider-result-1' };
+    };
+    const body = payload();
+    const input = {
+      envelope: signEnvelope(signer, body),
+      attemptId: body.attempt_id,
+      actionDigest: body.action_digest,
+      idempotencyKey: body.idempotency_key,
+    };
+
+    const beforeRestart = productionActuator(signer, shared.pool, perform);
+    const first = await beforeRestart.execute(input);
+    assert.equal(first.ok, true);
+
+    const afterRestart = productionActuator(signer, shared.pool, perform);
+    const replay = await afterRestart.execute(input);
+
+    assert.equal(replay.ok, false);
+    if (replay.ok) assert.fail('restarted actuator replayed an envelope');
+    assert.equal(replay.reason, 'envelope_replayed');
+    assert.equal(replay.invoked, false);
+    assert.equal(providerCalls, 1);
+    assert.equal([...shared.records.values()][0]?.state, 'CONSUMED');
+  });
+
   it('requires a dedicated non-privileged executor principal and matching pool', () => {
     const servicePool = mockPool([], 'service_role');
     assert.throws(
@@ -370,6 +564,7 @@ describe('Postgres consequence actuator store', () => {
 
     assert.equal(store.durable, true);
     assert.equal(store.atomic, true);
+    assert.equal(store.ownershipFenced, true);
     assert.equal(store.permanentConsumption, true);
     assert.equal(await store.reserve(row), true);
     assert.equal(mock.calls.length, 1);

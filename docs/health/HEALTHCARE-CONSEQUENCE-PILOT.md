@@ -46,6 +46,13 @@ them:
 projection, `caid`, and `actionDigest` must all agree. The package requires raw
 PHI to be absent and `member_ref` to be a pairwise pseudonymous commitment.
 
+Field-name normalization is case-insensitive and separator-insensitive as a
+defense-in-depth control. Aliases including `SSN`, `patientName`,
+`PATIENT-NAME`, `freeText`, and `FREE_TEXT` are refused. This filtering is not
+proof that PHI is absent. A deployment still needs source-system data
+classification, DLP, access control, retention controls, and authorized privacy
+review; values can contain PHI even when their field names look harmless.
+
 The exact action contract is:
 
 ```json
@@ -163,19 +170,43 @@ injection. Production must inject:
 - a durable append-only, tenant-bound evidence store;
 - a durable server-only reconciliation-handle store;
 - current-status and authenticated-provider-evidence verifiers; and
+- four distinct KMS/HSM-backed Ed25519 assurance signers for the evaluator,
+  receipt-verifier, AEB-verifier, and provider-verifier roles; and
 - a protected callback that is technically restricted to the intended
   synthetic sandbox.
 
 ## Assurance packet
 
-The authenticated export contains the validated scanner package and
-non-authorizing finding projection, the exact Proposal-to-Effect request,
-approval and AEB evidence used for the attempt, the bounded protocol result,
-authenticated reconciliation evidence when present, chronology, limitations,
-and a deterministic packet digest.
+The authenticated export is available only for exact Proposal-to-Effect
+terminal states:
+
+- `EXECUTED` requires `COMMITTED`;
+- `RECONCILED_EXECUTED` requires `COMMITTED` plus authenticated provider
+  evidence with provider outcome `COMMITTED`; and
+- `RECONCILED_NOT_EXECUTED` requires `RELEASED` plus authenticated provider
+  evidence with provider outcome `NOT_COMMITTED`.
+
+`INDETERMINATE` remains fenced and is not exported as a terminal assurance
+packet. Outcome labels cannot substitute for the Proposal-to-Effect state.
+
+The packet contains strict allowlisted projections and cryptographic digests,
+not the raw scanner package, action, proposal, receipt, AEB evaluation, or
+provider evidence. The receipt, AEB, and reconciled-provider projections are
+signed under distinct role keys. An evaluator key signs the complete terminal
+packet. Public keys are never accepted from the packet.
+
+`checkHealthcareAssurancePacketInternalConsistency` checks shape, digest, and
+cross-field consistency only. It deliberately does not call itself a verifier
+and does not establish authenticity. A relying party performs the actual
+offline check with `verifyHealthcareAssurancePacketOffline`, supplying an
+out-of-band trust bundle that pins four distinct Ed25519 SPKI keys:
+`evaluator`, `receipt`, `aeb`, and `provider`. Role substitution, an unpinned
+key, a malformed signature, a recomputed digest after outcome substitution, or
+a reconciled outcome without the provider assertion fails closed.
 
 The packet can support re-performance under relying-party trust pins. It is not
 an audit opinion, certification, population-completeness assertion, clinical
 conclusion, or proof of a real payment. `EXECUTED` means only that the configured
 protected sandbox callback completed and Proposal-to-Effect committed that exact
-attempt. `INDETERMINATE` proves neither success nor failure.
+attempt. Safe projection and field filtering reduce exposure; they do not prove
+PHI absence.
