@@ -28,7 +28,7 @@ on:
 
   # Scheduled runs hit production (www.emiliaprotocol.ai) using
   # perf-test-entity-001 / test-responder-001 (seeded in prod Supabase) and
-  # the PERF_TEST_API_KEY secret. tests/k6/baseline.js setup() resolves
+  # the PERF_TEST_API_KEY secret. tests/k6/baseline.ts setup() resolves
   # POLICY_KEY → policy_id (UUID) via GET /api/handshake-policies once
   # before scenarios start, so the test stays decoupled from any specific
   # UUID. Smoke is ~500 reqs/night at 5 VUs × 30s — small enough to be
@@ -70,7 +70,7 @@ jobs:
           API_KEY: ${{ secrets.PERF_TEST_API_KEY }}
           ENTITY_ID: ${{ inputs.entity_id || 'perf-test-entity-001' }}
         run: |
-          k6 run tests/k6/baseline.js \
+          k6 run tests/k6/baseline.ts \
             --env BASE_URL="$BASE_URL" \
             --env API_KEY="$API_KEY" \
             --env ENTITY_ID="$ENTITY_ID" \
@@ -101,7 +101,7 @@ jobs:
         run: |
           echo "### Staircase test (10→500 VUs) — informational, not gating"
           echo "::warning::Staircase is informational only; 99% failures expected at peak against the 60/min write rate limit."
-          k6 run tests/k6/staircase.js \
+          k6 run tests/k6/staircase.ts \
             --env BASE_URL="$BASE_URL" \
             --env API_KEY="$API_KEY" \
             --env ENTITY_ID="$ENTITY_ID" \

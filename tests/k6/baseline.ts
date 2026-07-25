@@ -9,7 +9,7 @@
  * ops runbook or use the k6 Cloud schedule.
  *
  * Usage:
- *   k6 run tests/k6/baseline.js -e BASE_URL=https://www.emiliaprotocol.ai -e API_KEY=ep_live_...
+ *   k6 run tests/k6/baseline.ts -e BASE_URL=https://www.emiliaprotocol.ai -e API_KEY=ep_live_...
  *
  * Required env:
  *   BASE_URL   - Target environment base URL (no trailing slash)

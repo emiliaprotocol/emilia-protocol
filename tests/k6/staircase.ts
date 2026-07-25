@@ -9,7 +9,7 @@
  * every commit to avoid excess load on staging.
  *
  * Usage:
- *   k6 run tests/k6/staircase.js \
+ *   k6 run tests/k6/staircase.ts \
  *     -e BASE_URL=https://staging.emiliaprotocol.ai \
  *     -e API_KEY=ep_staging_...  \
  *     -e ENTITY_ID=bench-entity-001
@@ -113,7 +113,7 @@ function randomResponder() {
   return ids[Math.floor(Math.random() * ids.length)];
 }
 
-// setup() resolves POLICY_KEY → policy_id (UUID). See baseline.js comment.
+// setup() resolves POLICY_KEY → policy_id (UUID). See baseline.ts comment.
 export function setup() {
   const res = http.get(
     `${BASE_URL}/api/handshake-policies?policy_key=${encodeURIComponent(POLICY_KEY)}`,
