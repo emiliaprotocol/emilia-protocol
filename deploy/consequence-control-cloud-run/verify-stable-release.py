@@ -5,6 +5,7 @@ from __future__ import annotations
 
 import argparse
 import base64
+from copy import deepcopy
 import datetime as dt
 import hashlib
 import hmac
@@ -19,6 +20,17 @@ from pathlib import Path
 
 VERSION = "EP-CONSEQUENCE-STABLE-RELEASE-v2"
 PROVENANCE_VERSION = "EP-CONSEQUENCE-BOOTSTRAP-PROVENANCE-v1"
+BOOTSTRAP_AUTHORIZATION_VERSION = (
+    "EP-CONSEQUENCE-BOOTSTRAP-AUTHORIZATION-v1"
+)
+ATTEMPT_CLAIM_VERSION = "emilia-deployment-attempt-claim.v1"
+ATTEMPT_CLAIM_DOMAIN = b"EMILIA-DEPLOYMENT-ATTEMPT-CLAIM-V1\x00"
+BOOTSTRAP_DEPLOY_AUTHORIZATION_LABEL = (
+    "emilia-bootstrap-deploy-authorization"
+)
+BOOTSTRAP_TRAFFIC_AUTHORIZATION_LABEL = (
+    "emilia-bootstrap-traffic-authorization"
+)
 IMAGE = re.compile(
     r"^[a-z0-9.-]+(?::[0-9]+)?/[a-z0-9._/-]+@sha256:[0-9a-f]{64}$"
 )
@@ -32,6 +44,7 @@ KMS_URI = re.compile(
     r"^gcp-kms://projects/([^/]+)/locations/([^/]+)/keyRings/([^/]+)/"
     r"cryptoKeys/([^/]+)/cryptoKeyVersions/([1-9][0-9]*)$"
 )
+AUTHORIZATION_TOKEN = re.compile(r"^[A-Za-z0-9_-]{43}$")
 
 
 def read_trusted_file(
@@ -1269,6 +1282,747 @@ def sign_manifest(
     }
 
 
+def canonical_json(value: object) -> bytes:
+    return json.dumps(
+        value,
+        ensure_ascii=False,
+        sort_keys=True,
+        separators=(",", ":"),
+        allow_nan=False,
+    ).encode("utf-8")
+
+
+def load_json_file(path: Path, name: str) -> object:
+    try:
+        return json.loads(
+            read_trusted_file(path, name).decode("utf-8"),
+            object_pairs_hook=reject_duplicate_members,
+            parse_constant=lambda value: (_ for _ in ()).throw(
+                ValueError(f"{name} contains non-finite number {value}")
+            ),
+        )
+    except UnicodeDecodeError as error:
+        raise ValueError(f"{name} is not UTF-8") from error
+
+
+def write_private_json(path: Path, value: object) -> None:
+    if not path.is_absolute():
+        raise ValueError("output path must be absolute")
+    if not path.parent.is_dir():
+        raise ValueError("output directory is unavailable")
+    encoded = canonical_json(value) + b"\n"
+    descriptor = -1
+    temporary_name = ""
+    try:
+        descriptor, temporary_name = tempfile.mkstemp(
+            dir=path.parent,
+            prefix=f".{path.name}.",
+        )
+        os.fchmod(descriptor, 0o600)
+        with os.fdopen(descriptor, "wb") as handle:
+            descriptor = -1
+            handle.write(encoded)
+            handle.flush()
+            os.fsync(handle.fileno())
+        try:
+            os.link(temporary_name, path)
+        except FileExistsError as error:
+            raise ValueError(f"refusing to overwrite existing output: {path}") from error
+        os.unlink(temporary_name)
+        temporary_name = ""
+        directory_descriptor = os.open(path.parent, os.O_RDONLY)
+        try:
+            os.fsync(directory_descriptor)
+        finally:
+            os.close(directory_descriptor)
+    finally:
+        if descriptor >= 0:
+            os.close(descriptor)
+        if temporary_name:
+            try:
+                os.unlink(temporary_name)
+            except FileNotFoundError:
+                pass
+
+
+def validate_bootstrap_deployment_identity(
+    config: dict[str, str],
+    value: object,
+) -> dict:
+    deployment = exact_keys(
+        value,
+        {
+            "config_sha256",
+            "deployer_principal",
+            "workflow_ref",
+            "workflow_sha",
+            "wif_provider",
+        },
+        "bootstrap authorization deployment",
+    )
+    expected_config = os.environ.get("DEPLOYMENT_CONFIG_SHA256", "")
+    if SHA256.fullmatch(expected_config) is None:
+        raise ValueError(
+            "DEPLOYMENT_CONFIG_SHA256 must be injected by a protected source"
+        )
+    require_equal(
+        deployment["config_sha256"],
+        expected_config,
+        "bootstrap authorization deployment config SHA-256",
+    )
+    require_equal(
+        deployment["deployer_principal"],
+        config["DEPLOYER_PRINCIPAL"],
+        "bootstrap authorization deployer principal",
+    )
+    require_equal(
+        deployment["workflow_ref"],
+        (
+            "emiliaprotocol/emilia-protocol/.github/workflows/"
+            "consequence-control-deploy.yml@refs/heads/main"
+        ),
+        "bootstrap authorization workflow ref",
+    )
+    workflow_sha = deployment["workflow_sha"]
+    if not isinstance(workflow_sha, str) or re.fullmatch(
+        r"[0-9a-f]{40}",
+        workflow_sha,
+    ) is None:
+        raise ValueError("bootstrap authorization workflow SHA is invalid")
+    wif_provider = deployment["wif_provider"]
+    if not isinstance(wif_provider, str) or re.fullmatch(
+        r"projects/[1-9][0-9]*/locations/global/"
+        r"workloadIdentityPools/[a-z][a-z0-9-]{3,31}/"
+        r"providers/[a-z][a-z0-9-]{3,31}",
+        wif_provider,
+    ) is None:
+        raise ValueError("bootstrap authorization WIF provider is invalid")
+    return deployment
+
+
+def validate_bootstrap_authorization(
+    config: dict[str, str],
+    value: object,
+    *,
+    expected_trust: dict[str, str] | None,
+) -> dict:
+    required = {
+        "@version",
+        "project_id",
+        "region",
+        "bootstrap_id",
+        "image",
+        "provenance_sha256",
+        "deployment",
+        "mutations",
+    }
+    if expected_trust is not None:
+        required.add("signature")
+    root = exact_keys(value, required, "bootstrap authorization")
+    require_equal(
+        root["@version"],
+        BOOTSTRAP_AUTHORIZATION_VERSION,
+        "bootstrap authorization @version",
+    )
+    require_equal(
+        root["project_id"],
+        config["PROJECT_ID"],
+        "bootstrap authorization project",
+    )
+    require_equal(
+        root["region"],
+        config["REGION"],
+        "bootstrap authorization region",
+    )
+    bootstrap_id = root["bootstrap_id"]
+    if not isinstance(bootstrap_id, str) or REVISION.fullmatch(bootstrap_id) is None:
+        raise ValueError("bootstrap authorization bootstrap_id is invalid")
+    image = root["image"]
+    if not isinstance(image, str) or IMAGE.fullmatch(image) is None:
+        raise ValueError("bootstrap authorization image is invalid")
+    require_equal(
+        root["provenance_sha256"],
+        config["STABLE_BOOTSTRAP_PROVENANCE_SHA256"],
+        "bootstrap authorization provenance SHA-256",
+    )
+    validate_bootstrap_deployment_identity(config, root["deployment"])
+    mutations = root["mutations"]
+    if not isinstance(mutations, list) or len(mutations) != 2:
+        raise ValueError(
+            "bootstrap authorization must bind exactly two plane mutations"
+        )
+    seen_planes: set[str] = set()
+    seen_authorizations: set[str] = set()
+    seen_nonces: set[str] = set()
+    phases: set[str] = set()
+    for index, raw in enumerate(mutations):
+        mutation = exact_keys(
+            raw,
+            {
+                "authorization_id",
+                "rollout_nonce",
+                "phase",
+                "plane",
+                "mode",
+                "service",
+                "revision",
+                "transition",
+                "request_sha256",
+                "pre_resource_version",
+                "expected_traffic_percent",
+            },
+            f"bootstrap authorization mutations[{index}]",
+        )
+        plane = mutation["plane"]
+        if plane not in {"actuator", "decision"} or plane in seen_planes:
+            raise ValueError("bootstrap authorization planes must be unique and exact")
+        seen_planes.add(plane)
+        phase = mutation["phase"]
+        if phase not in {"deploy", "traffic"}:
+            raise ValueError("bootstrap authorization phase is invalid")
+        phases.add(phase)
+        if mutation["mode"] not in {"apply", "reconcile"}:
+            raise ValueError("bootstrap authorization mutation mode is invalid")
+        authorization_id = mutation["authorization_id"]
+        nonce = mutation["rollout_nonce"]
+        if (
+            not isinstance(authorization_id, str)
+            or AUTHORIZATION_TOKEN.fullmatch(authorization_id) is None
+            or authorization_id in seen_authorizations
+        ):
+            raise ValueError(
+                "bootstrap authorization mutation authorization_id is invalid"
+            )
+        if (
+            not isinstance(nonce, str)
+            or AUTHORIZATION_TOKEN.fullmatch(nonce) is None
+            or nonce in seen_nonces
+        ):
+            raise ValueError("bootstrap authorization mutation nonce is invalid")
+        seen_authorizations.add(authorization_id)
+        seen_nonces.add(nonce)
+        prefix = "ACTUATOR" if plane == "actuator" else "DECISION"
+        service = config[f"{prefix}_SERVICE"]
+        require_equal(
+            mutation["service"],
+            service,
+            f"bootstrap authorization {plane} service",
+        )
+        require_equal(
+            mutation["revision"],
+            f"{service}-{bootstrap_id}",
+            f"bootstrap authorization {plane} revision",
+        )
+        require_equal(
+            mutation["transition"],
+            (
+                "apply-actuator-100"
+                if plane == "actuator"
+                else "apply-decision-100"
+            ),
+            f"bootstrap authorization {plane} transition",
+        )
+        request_sha256 = mutation["request_sha256"]
+        if not isinstance(request_sha256, str) or SHA256.fullmatch(
+            request_sha256
+        ) is None:
+            raise ValueError(
+                "bootstrap authorization mutation request SHA-256 is invalid"
+            )
+        pre_resource_version = mutation["pre_resource_version"]
+        if (
+            not isinstance(pre_resource_version, str)
+            or not pre_resource_version
+            or len(pre_resource_version.encode()) > 512
+            or any(character.isspace() for character in pre_resource_version)
+        ):
+            raise ValueError(
+                "bootstrap authorization mutation pre_resource_version is invalid"
+            )
+        expected_percent = mutation["expected_traffic_percent"]
+        require_equal(
+            expected_percent,
+            0 if phase == "deploy" else 100,
+            "bootstrap authorization expected traffic",
+        )
+        if (
+            phase == "deploy"
+            and mutation["mode"] == "apply"
+            and pre_resource_version != "absent"
+        ):
+            raise ValueError(
+                "bootstrap deployment apply must lock the absent pre-state"
+            )
+        if phase == "traffic" and pre_resource_version == "absent":
+            raise ValueError(
+                "bootstrap traffic mutation requires a resourceVersion lock"
+            )
+    if seen_planes != {"actuator", "decision"} or len(phases) != 1:
+        raise ValueError(
+            "bootstrap authorization must bind both planes in one phase"
+        )
+    if expected_trust is not None:
+        signature = exact_keys(
+            root["signature"],
+            {"algorithm", "key_id", "trust", "value"},
+            "bootstrap authorization signature",
+        )
+        require_equal(
+            signature["algorithm"],
+            "Ed25519",
+            "bootstrap authorization signature algorithm",
+        )
+        require_equal(
+            signature["key_id"],
+            expected_trust["key_id"],
+            "bootstrap authorization signature key",
+        )
+        require_equal(
+            signature["trust"],
+            expected_trust,
+            "bootstrap authorization signature trust",
+        )
+    return root
+
+
+def authorize_bootstrap(args: argparse.Namespace) -> None:
+    config = load_pinned_config(args.config)
+    plan = validate_bootstrap_authorization(
+        config,
+        load_json_file(args.plan, "bootstrap authorization plan"),
+        expected_trust=None,
+    )
+    configured_bootstrap_provenance(
+        config,
+        plan["image"],
+        args.provenance,
+    )
+    signed = sign_manifest(
+        plan,
+        config=config,
+        private_key=args.private_key,
+        kms_key_uri=args.kms_key_uri,
+        requested_key_id=args.key_id,
+    )
+    public_key, expected_trust = trusted_public_key(config, None)
+    validate_bootstrap_authorization(
+        config,
+        signed,
+        expected_trust=expected_trust,
+    )
+    verify_signature(signed, public_key)
+    write_private_json(args.output, signed)
+
+
+def load_verified_bootstrap_authorization(
+    config: dict[str, str],
+    path: Path,
+    public_key_path: Path | None,
+) -> dict:
+    public_key, expected_trust = trusted_public_key(config, public_key_path)
+    authorization = validate_bootstrap_authorization(
+        config,
+        load_json_file(path, "signed bootstrap authorization"),
+        expected_trust=expected_trust,
+    )
+    verify_signature(authorization, public_key)
+    return authorization
+
+
+def bootstrap_attempt_claim(args: argparse.Namespace) -> str:
+    config = load_pinned_config(args.config)
+    authorization = load_verified_bootstrap_authorization(
+        config,
+        args.authorization,
+        args.public_key,
+    )
+    matches = [
+        mutation
+        for mutation in authorization["mutations"]
+        if mutation["phase"] == args.phase and mutation["plane"] == args.plane
+    ]
+    if len(matches) != 1:
+        raise ValueError("signed bootstrap authorization mutation is missing")
+    mutation = matches[0]
+    key_material = {
+        "authorization_id": mutation["authorization_id"],
+        "rollout_nonce": mutation["rollout_nonce"],
+        "request_sha256": mutation["request_sha256"],
+        "pre_resource_version": mutation["pre_resource_version"],
+    }
+    claim = {
+        "schema": ATTEMPT_CLAIM_VERSION,
+        "claim_sha256": hashlib.sha256(
+            ATTEMPT_CLAIM_DOMAIN + canonical_json(key_material)
+        ).hexdigest(),
+        **key_material,
+        "project_id": config["PROJECT_ID"],
+        "region": config["REGION"],
+        "release_id": authorization["bootstrap_id"],
+        "transition": mutation["transition"],
+        "service": mutation["service"],
+        "config_sha256": authorization["deployment"]["config_sha256"],
+        "deployer_principal": authorization["deployment"][
+            "deployer_principal"
+        ],
+        "workflow_ref": authorization["deployment"]["workflow_ref"],
+        "workflow_sha": authorization["deployment"]["workflow_sha"],
+        "wif_provider": authorization["deployment"]["wif_provider"],
+    }
+    write_private_json(args.output, claim)
+    return claim["claim_sha256"]
+
+
+def normalize_bootstrap_traffic(
+    records: object,
+    *,
+    revision: str,
+    name: str,
+) -> tuple[str, list[dict[str, object]]]:
+    if not isinstance(records, list) or not records:
+        raise ValueError(f"{name} is missing")
+    normalized: list[dict[str, object]] = []
+    total = 0
+    selected = 0
+    tagged_selected = 0
+    for index, raw in enumerate(records):
+        if not isinstance(raw, dict):
+            raise ValueError(f"{name}[{index}] is malformed")
+        target = raw.get("revisionName", raw.get("revision"))
+        percent = raw.get("percent", 0)
+        if (
+            not isinstance(target, str)
+            or REVISION.fullmatch(target) is None
+            or isinstance(percent, bool)
+            or not isinstance(percent, int)
+            or percent < 0
+            or percent > 100
+        ):
+            raise ValueError(f"{name}[{index}] is invalid")
+        if target != revision:
+            raise ValueError(f"{name} contains an unauthorized revision")
+        entry: dict[str, object] = {
+            "revisionName": target,
+            "percent": percent,
+        }
+        tag = raw.get("tag")
+        if tag is not None:
+            if not isinstance(tag, str) or not tag:
+                raise ValueError(f"{name}[{index}].tag is invalid")
+            entry["tag"] = tag
+            tagged_selected += 1
+        normalized.append(entry)
+        total += percent
+        selected += percent
+    if tagged_selected != 1:
+        raise ValueError(f"{name} must retain exactly one bootstrap tag")
+    if total == 0 and selected == 0:
+        return "zero", normalized
+    if total == 100 and selected == 100:
+        return "post", normalized
+    raise ValueError(f"{name} is neither zero-traffic nor exact 100% bootstrap")
+
+
+def validate_bootstrap_revision(
+    config: dict[str, str],
+    value: object,
+    *,
+    plane: str,
+    bootstrap_id: str,
+    image: str,
+    expected_deploy_authorization: str | None,
+) -> str:
+    if not isinstance(value, dict):
+        raise ValueError("bootstrap revision snapshot is malformed")
+    prefix = "ACTUATOR" if plane == "actuator" else "DECISION"
+    service = config[f"{prefix}_SERVICE"]
+    revision = f"{service}-{bootstrap_id}"
+    metadata = value.get("metadata")
+    spec = value.get("spec")
+    if not isinstance(metadata, dict) or not isinstance(spec, dict):
+        raise ValueError("bootstrap revision metadata or spec is missing")
+    require_equal(metadata.get("name"), revision, "bootstrap revision name")
+    labels = metadata.get("labels")
+    if not isinstance(labels, dict):
+        raise ValueError("bootstrap revision labels are missing")
+    required_labels = {
+        "serving.knative.dev/service": service,
+        "emilia-plane": "bootstrap",
+        "emilia-release": bootstrap_id,
+        "emilia-deny-all": "true",
+        "emilia-permissionless": "true",
+    }
+    for key, expected in required_labels.items():
+        require_equal(labels.get(key), expected, f"bootstrap revision label {key}")
+    deploy_authorization = labels.get(BOOTSTRAP_DEPLOY_AUTHORIZATION_LABEL)
+    if (
+        not isinstance(deploy_authorization, str)
+        or AUTHORIZATION_TOKEN.fullmatch(deploy_authorization) is None
+    ):
+        raise ValueError("bootstrap revision lacks a signed deployment authorization")
+    if expected_deploy_authorization is not None:
+        require_equal(
+            deploy_authorization,
+            expected_deploy_authorization,
+            "bootstrap revision deployment authorization",
+        )
+    expected_account = (
+        f"{config[f'STABLE_BOOTSTRAP_{prefix}_SERVICE_ACCOUNT']}"
+        f"@{config['PROJECT_ID']}.iam.gserviceaccount.com"
+    )
+    require_equal(
+        spec.get("serviceAccountName", spec.get("serviceAccount")),
+        expected_account,
+        "bootstrap revision service account",
+    )
+    require_equal(
+        integer(spec.get("containerConcurrency"), "bootstrap concurrency"),
+        1,
+        "bootstrap concurrency",
+    )
+    require_equal(
+        integer(spec.get("timeoutSeconds"), "bootstrap timeout"),
+        5,
+        "bootstrap timeout",
+    )
+    containers = spec.get("containers")
+    if (
+        not isinstance(containers, list)
+        or len(containers) != 1
+        or not isinstance(containers[0], dict)
+    ):
+        raise ValueError("bootstrap revision must contain one container")
+    container = containers[0]
+    require_equal(container.get("image"), image, "bootstrap revision image")
+    env = container.get("env", [])
+    require_equal(env, [], "bootstrap revision environment")
+    ports = container.get("ports")
+    if not isinstance(ports, list) or len(ports) != 1:
+        raise ValueError("bootstrap revision port is malformed")
+    require_equal(
+        ports[0].get("containerPort"),
+        8080,
+        "bootstrap revision port",
+    )
+    resources = container.get("resources")
+    if not isinstance(resources, dict):
+        raise ValueError("bootstrap revision resources are missing")
+    require_equal(
+        resources.get("limits"),
+        {"cpu": "1", "memory": "256Mi"},
+        "bootstrap revision resources",
+    )
+    revision_annotations = annotations(value, "bootstrap revision")
+    for forbidden in (
+        "run.googleapis.com/network-interfaces",
+        "run.googleapis.com/vpc-access-connector",
+        "run.googleapis.com/vpc-access-egress",
+    ):
+        if forbidden in revision_annotations:
+            raise ValueError("bootstrap revision must not have VPC access")
+    return deploy_authorization
+
+
+def validate_bootstrap_service_state(
+    config: dict[str, str],
+    service_value: object,
+    revision_value: object,
+    *,
+    plane: str,
+    bootstrap_id: str,
+    image: str,
+    expected_state: str | None,
+    expected_deploy_authorization: str | None,
+    expected_traffic_authorization: str | None,
+) -> tuple[str, int, str, str, str]:
+    if plane not in {"actuator", "decision"}:
+        raise ValueError("bootstrap plane is invalid")
+    if not isinstance(service_value, dict):
+        raise ValueError("bootstrap service snapshot is malformed")
+    prefix = "ACTUATOR" if plane == "actuator" else "DECISION"
+    service = config[f"{prefix}_SERVICE"]
+    revision = f"{service}-{bootstrap_id}"
+    if service_value.get("apiVersion") != "serving.knative.dev/v1":
+        raise ValueError("bootstrap service apiVersion is invalid")
+    if service_value.get("kind") != "Service":
+        raise ValueError("bootstrap service kind is invalid")
+    metadata = service_value.get("metadata")
+    spec = service_value.get("spec")
+    status = service_value.get("status")
+    if (
+        not isinstance(metadata, dict)
+        or not isinstance(spec, dict)
+        or not isinstance(status, dict)
+    ):
+        raise ValueError("bootstrap service snapshot is incomplete")
+    require_equal(metadata.get("name"), service, "bootstrap service name")
+    generation = integer(metadata.get("generation"), "bootstrap generation")
+    observed = integer(
+        status.get("observedGeneration"),
+        "bootstrap observed generation",
+    )
+    require_equal(observed, generation, "bootstrap observed generation")
+    resource_version = metadata.get("resourceVersion")
+    if (
+        not isinstance(resource_version, str)
+        or not resource_version
+        or any(character.isspace() for character in resource_version)
+    ):
+        raise ValueError("bootstrap service resourceVersion is invalid")
+    require_equal(
+        extract_ingress(service_value),
+        config[f"{prefix}_INGRESS"],
+        "bootstrap service ingress",
+    )
+    desired_state, _ = normalize_bootstrap_traffic(
+        spec.get("traffic"),
+        revision=revision,
+        name="bootstrap desired traffic",
+    )
+    observed_state, _ = normalize_bootstrap_traffic(
+        status.get("traffic"),
+        revision=revision,
+        name="bootstrap observed traffic",
+    )
+    require_equal(
+        observed_state,
+        desired_state,
+        "bootstrap observed traffic state",
+    )
+    if expected_state is not None:
+        require_equal(desired_state, expected_state, "bootstrap traffic state")
+    conditions = status.get("conditions")
+    if not isinstance(conditions, list) or not any(
+        isinstance(condition, dict)
+        and condition.get("type") == "Ready"
+        and condition.get("status") in {True, "True"}
+        for condition in conditions
+    ):
+        raise ValueError("bootstrap service is not Ready")
+    deploy_authorization = validate_bootstrap_revision(
+        config,
+        revision_value,
+        plane=plane,
+        bootstrap_id=bootstrap_id,
+        image=image,
+        expected_deploy_authorization=expected_deploy_authorization,
+    )
+    labels = metadata.get("labels", {})
+    if not isinstance(labels, dict):
+        raise ValueError("bootstrap service labels are malformed")
+    traffic_authorization = labels.get(
+        BOOTSTRAP_TRAFFIC_AUTHORIZATION_LABEL,
+        "",
+    )
+    if desired_state == "zero":
+        if traffic_authorization:
+            raise ValueError(
+                "zero-traffic bootstrap service has an unexplained traffic authorization"
+            )
+    elif (
+        not isinstance(traffic_authorization, str)
+        or AUTHORIZATION_TOKEN.fullmatch(traffic_authorization) is None
+    ):
+        raise ValueError("bootstrap traffic effect lacks a signed authorization")
+    if expected_traffic_authorization is not None:
+        require_equal(
+            traffic_authorization,
+            expected_traffic_authorization,
+            "bootstrap traffic authorization",
+        )
+    return (
+        desired_state,
+        generation,
+        resource_version,
+        deploy_authorization,
+        traffic_authorization,
+    )
+
+
+def verify_bootstrap_state(args: argparse.Namespace) -> tuple[str, int, str, str, str]:
+    config = load_pinned_config(args.config)
+    configured_bootstrap_provenance(config, args.image, args.provenance)
+    return validate_bootstrap_service_state(
+        config,
+        load_json_file(args.service_snapshot, "bootstrap service snapshot"),
+        load_json_file(args.revision_snapshot, "bootstrap revision snapshot"),
+        plane=args.plane,
+        bootstrap_id=args.bootstrap_id,
+        image=args.image,
+        expected_state=args.expect_state,
+        expected_deploy_authorization=args.expect_deploy_authorization,
+        expected_traffic_authorization=args.expect_traffic_authorization,
+    )
+
+
+def prepare_bootstrap_traffic(args: argparse.Namespace) -> tuple[int, str, str]:
+    config = load_pinned_config(args.config)
+    service_value = load_json_file(
+        args.service_snapshot,
+        "bootstrap service snapshot",
+    )
+    revision_value = load_json_file(
+        args.revision_snapshot,
+        "bootstrap revision snapshot",
+    )
+    _, generation, resource_version, _, _ = validate_bootstrap_service_state(
+        config,
+        service_value,
+        revision_value,
+        plane=args.plane,
+        bootstrap_id=args.bootstrap_id,
+        image=args.image,
+        expected_state="zero",
+        expected_deploy_authorization=None,
+        expected_traffic_authorization=None,
+    )
+    if AUTHORIZATION_TOKEN.fullmatch(args.authorization_id) is None:
+        raise ValueError("bootstrap traffic authorization ID is invalid")
+    metadata = service_value["metadata"]
+    namespace = metadata.get("namespace")
+    if not isinstance(namespace, str) or not namespace:
+        raise ValueError("bootstrap service namespace is required for locking")
+    prefix = "ACTUATOR" if args.plane == "actuator" else "DECISION"
+    service = config[f"{prefix}_SERVICE"]
+    revision = f"{service}-{args.bootstrap_id}"
+    labels = deepcopy(metadata.get("labels", {}))
+    if not isinstance(labels, dict):
+        raise ValueError("bootstrap service labels are malformed")
+    labels[BOOTSTRAP_TRAFFIC_AUTHORIZATION_LABEL] = args.authorization_id
+    tagged = []
+    for raw in service_value["spec"]["traffic"]:
+        if raw.get("tag") is not None:
+            tagged.append(
+                {
+                    "revisionName": revision,
+                    "percent": 0,
+                    "tag": raw["tag"],
+                }
+            )
+    body = {
+        "apiVersion": "serving.knative.dev/v1",
+        "kind": "Service",
+        "metadata": {
+            "name": service,
+            "namespace": namespace,
+            "resourceVersion": resource_version,
+            "labels": labels,
+            **(
+                {"annotations": deepcopy(metadata["annotations"])}
+                if isinstance(metadata.get("annotations"), dict)
+                else {}
+            ),
+        },
+        "spec": deepcopy(service_value["spec"]),
+    }
+    body["spec"]["traffic"] = tagged + [
+        {"revisionName": revision, "percent": 100}
+    ]
+    encoded = canonical_json(body) + b"\n"
+    write_private_json(args.output, body)
+    return generation, resource_version, hashlib.sha256(encoded).hexdigest()
+
+
 def configured_bootstrap_provenance(
     config: dict[str, str],
     image: str,
@@ -1527,6 +2281,100 @@ def main() -> int:
     bootstrap_parser.add_argument("--image", required=True)
     bootstrap_parser.add_argument("--provenance", type=Path)
 
+    authorize_bootstrap_parser = subparsers.add_parser(
+        "authorize-bootstrap"
+    )
+    authorize_bootstrap_parser.add_argument("--config", required=True, type=Path)
+    authorize_bootstrap_parser.add_argument("--plan", required=True, type=Path)
+    authorize_bootstrap_parser.add_argument(
+        "--provenance",
+        required=True,
+        type=Path,
+    )
+    authorize_bootstrap_parser.add_argument("--private-key", type=Path)
+    authorize_bootstrap_parser.add_argument("--kms-key-uri")
+    authorize_bootstrap_parser.add_argument("--key-id")
+    authorize_bootstrap_parser.add_argument(
+        "--output",
+        required=True,
+        type=Path,
+    )
+
+    claim_parser = subparsers.add_parser("bootstrap-claim")
+    claim_parser.add_argument("--config", required=True, type=Path)
+    claim_parser.add_argument(
+        "--authorization",
+        required=True,
+        type=Path,
+    )
+    claim_parser.add_argument(
+        "--phase",
+        choices=("deploy", "traffic"),
+        required=True,
+    )
+    claim_parser.add_argument(
+        "--plane",
+        choices=("actuator", "decision"),
+        required=True,
+    )
+    claim_parser.add_argument("--public-key", type=Path)
+    claim_parser.add_argument("--output", required=True, type=Path)
+
+    state_parser = subparsers.add_parser("verify-bootstrap-state")
+    state_parser.add_argument("--config", required=True, type=Path)
+    state_parser.add_argument(
+        "--service-snapshot",
+        required=True,
+        type=Path,
+    )
+    state_parser.add_argument(
+        "--revision-snapshot",
+        required=True,
+        type=Path,
+    )
+    state_parser.add_argument(
+        "--plane",
+        choices=("actuator", "decision"),
+        required=True,
+    )
+    state_parser.add_argument("--bootstrap-id", required=True)
+    state_parser.add_argument("--image", required=True)
+    state_parser.add_argument("--provenance", type=Path)
+    state_parser.add_argument(
+        "--expect-state",
+        choices=("zero", "post"),
+    )
+    state_parser.add_argument("--expect-deploy-authorization")
+    state_parser.add_argument("--expect-traffic-authorization")
+
+    prepare_traffic_parser = subparsers.add_parser(
+        "prepare-bootstrap-traffic"
+    )
+    prepare_traffic_parser.add_argument("--config", required=True, type=Path)
+    prepare_traffic_parser.add_argument(
+        "--service-snapshot",
+        required=True,
+        type=Path,
+    )
+    prepare_traffic_parser.add_argument(
+        "--revision-snapshot",
+        required=True,
+        type=Path,
+    )
+    prepare_traffic_parser.add_argument(
+        "--plane",
+        choices=("actuator", "decision"),
+        required=True,
+    )
+    prepare_traffic_parser.add_argument("--bootstrap-id", required=True)
+    prepare_traffic_parser.add_argument("--image", required=True)
+    prepare_traffic_parser.add_argument("--authorization-id", required=True)
+    prepare_traffic_parser.add_argument(
+        "--output",
+        required=True,
+        type=Path,
+    )
+
     args = parser.parse_args()
     try:
         if args.command == "verify":
@@ -1562,9 +2410,27 @@ def main() -> int:
                 )
             else:
                 print("signed stable-release manifest accepted")
-        else:
+        elif args.command == "verify-bootstrap":
             verify_bootstrap(args)
             print("bootstrap image provenance accepted")
+        elif args.command == "authorize-bootstrap":
+            authorize_bootstrap(args)
+            print(f"signed bootstrap authorization written to {args.output}")
+        elif args.command == "bootstrap-claim":
+            claim_sha256 = bootstrap_attempt_claim(args)
+            print(claim_sha256)
+        elif args.command == "verify-bootstrap-state":
+            print(*verify_bootstrap_state(args), sep="\t")
+        else:
+            generation, resource_version, request_sha256 = (
+                prepare_bootstrap_traffic(args)
+            )
+            print(
+                generation,
+                resource_version,
+                request_sha256,
+                sep="\t",
+            )
     except (
         KeyError,
         OSError,
