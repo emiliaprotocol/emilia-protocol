@@ -22,6 +22,7 @@ describe('reusable npm release workflow byte contract', () => {
     const evidenceIndex = buildSteps.findIndex(
       (step) => step.name === 'Execute security and conformance evidence',
     );
+    const evidence = buildSteps[evidenceIndex];
     const governedIndex = buildSteps.findIndex(
       (step) => step.name === 'Verify governed artifacts and LLM context match source',
     );
@@ -32,6 +33,14 @@ describe('reusable npm release workflow byte contract', () => {
     expect(jobs.build.permissions).toEqual({ contents: 'read' });
     expect(jobs.build.environment).toBeUndefined();
     expect(evidenceIndex).toBeGreaterThanOrEqual(0);
+    expect(evidence.env).toEqual({
+      NODE_OPTIONS:
+        '--import ${{ github.workspace }}/scripts/ts-loader/register.mjs',
+    });
+    expect(evidence.run.trim().split('\n').map((line) => line.trim())).toEqual([
+      'npm run security-case:emit',
+      'npm run conformance:manifest',
+    ]);
     expect(governedIndex).toBe(evidenceIndex + 1);
     expect(packIndex).toBe(governedIndex + 1);
     expect(governed.run.trim().split('\n').map((line) => line.trim())).toEqual([

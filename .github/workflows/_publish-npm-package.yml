@@ -172,6 +172,12 @@ jobs:
         run: npm run build
 
       - name: Execute security and conformance evidence
+        env:
+          # security-case:emit executes the TypeScript implementation entries
+          # named by the governed claims. Keep the resolver scoped to this
+          # unprivileged build step so child node:test processes resolve the
+          # source tree exactly as the main assurance job does.
+          NODE_OPTIONS: '--import ${{ github.workspace }}/scripts/ts-loader/register.mjs'
         run: |
           npm run security-case:emit
           npm run conformance:manifest
