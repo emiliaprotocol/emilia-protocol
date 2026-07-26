@@ -7,7 +7,7 @@ on:
   workflow_dispatch:
     inputs:
       release_tag:
-        description: Exact tag, for example verify-v3.15.0
+        description: Exact tag, for example verify-v3.15.1
         required: true
         type: string
       confirmation:

@@ -4,6 +4,17 @@
 All notable changes to `@emilia-protocol/gate` are documented here.
 This package follows [Semantic Versioning](https://semver.org/).
 
+## 0.16.1 (2026-07-26)
+
+### Fixed
+
+- PostgreSQL 17 role-graph checks now distinguish provider-managed
+  administrative grants from executable `INHERIT` or `SET` authority, while
+  continuing to reject every usable owner/executor or privileged-role path.
+- Forward migrations remove their own temporary owner grant without deleting
+  a managed provider's non-usable administrative grant.
+- The protected npm publisher uses an explicit local tarball file spec.
+
 ## 0.16.0 (2026-07-25)
 
 ### Added

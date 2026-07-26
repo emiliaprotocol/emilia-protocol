@@ -23,7 +23,7 @@ const RELEASE_REGISTRY = JSON.parse(readFileSync('release/release-packages.v1.js
 function registryFetcher(
   bytes: Buffer,
   {
-    filename = 'emilia-protocol-verify-3.15.0.tgz',
+    filename = 'emilia-protocol-verify-3.15.1.tgz',
     extraArchives = [],
     report = null,
   }: {
@@ -48,7 +48,7 @@ function registryFetcher(
 }
 
 describe('npm internal dependency registry guard', () => {
-  it('binds Gate 0.16.0 to the pinned Verify 3.15.0 registry tarball', () => {
+  it('binds Gate 0.16.1 to the pinned Verify 3.15.1 registry tarball', () => {
     const pins = collectRegistryDependencyTarballPins(
       GATE_METADATA,
       'packages/gate',
@@ -68,13 +68,13 @@ describe('npm internal dependency registry guard', () => {
       },
     );
 
-    expect(GATE_METADATA.version).toBe('0.16.0');
-    expect(requested).not.toContain('@emilia-protocol/verify@3.15.0');
+    expect(GATE_METADATA.version).toBe('0.16.1');
+    expect(requested).not.toContain('@emilia-protocol/verify@3.15.1');
     expect(verified).toEqual([{
-      spec: '@emilia-protocol/verify@3.15.0',
-      sha256: 'e82ef5098aa5fffc6776d41f5906c57b5db1962a9d81adcefeafac080d013441',
+      spec: '@emilia-protocol/verify@3.15.1',
+      sha256: '49a42ddef3e5d84d84072346859d8eedcedbcdba9e4d3e674cba796d2222e3c5',
     }]);
-    expect(dependencies.map(({ spec }) => spec)).toContain('@emilia-protocol/verify@3.15.0');
+    expect(dependencies.map(({ spec }) => spec)).toContain('@emilia-protocol/verify@3.15.1');
   });
 
   it('covers dependencies, optional dependencies, and peer dependencies', () => {
@@ -119,11 +119,11 @@ describe('npm internal dependency registry guard', () => {
     expect(() => collectRegistryDependencyTarballPins(
       GATE_METADATA,
       'packages/gate',
-      withPins([{ spec: '@emilia-protocol/verify@3.15.0', sha256: 'not-a-sha256' }]),
+      withPins([{ spec: '@emilia-protocol/verify@3.15.1', sha256: 'not-a-sha256' }]),
     )).toThrow(/invalid sha256/);
 
     const validPin = {
-      spec: '@emilia-protocol/verify@3.15.0',
+      spec: '@emilia-protocol/verify@3.15.1',
       sha256: 'a'.repeat(64),
     };
     expect(() => collectRegistryDependencyTarballPins(
@@ -223,7 +223,7 @@ describe('npm internal dependency registry guard', () => {
         installDirectory: root,
         installer,
       });
-      expect(installedTarball).toMatch(/emilia-protocol-verify-3\.15\.0\.tgz$/);
+      expect(installedTarball).toMatch(/emilia-protocol-verify-3\.15\.1\.tgz$/);
       expect(result).toMatchObject({
         spec: dependency.spec,
         sha256: pin.sha256,
