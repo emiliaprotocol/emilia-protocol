@@ -231,7 +231,7 @@ export default function HomePage() {
               <div className="ep-home-auth-item"><span>04</span><strong>Exact action bound</strong><em>Amount, target, parameters, expiry</em></div>
               <div className="ep-home-auth-item"><span>05</span><strong>Authority proven</strong><em>Human, quorum, freshness, revocation</em></div>
               <div className="ep-home-auth-item"><span>06</span><strong>Effect controlled</strong><em>Run once, reconcile uncertainty, authorize remedy</em></div>
-              <div className="ep-home-auth-result">No valid receipt, no mutation.</div>
+              <div className="ep-home-auth-result">Receipt verified. Mutation unlocked.</div>
             </div>
           </motion.div>
         </C>
