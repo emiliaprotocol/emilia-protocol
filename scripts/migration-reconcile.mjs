@@ -21,6 +21,7 @@ import path from 'node:path';
 import { execFileSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 import { fetchSchemaSnapshot } from './_schema-introspect.mjs';
+import { maskSqlNonCode } from './lib/sql-text.mjs';
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const MIG_DIR = path.join(ROOT, 'supabase', 'migrations');
 for (const file of ['.env.local', '.env']) {
@@ -66,7 +67,7 @@ else {
     migrationFiles = fs.readdirSync(MIG_DIR).filter((file) => file.endsWith('.sql')).sort();
     sql = migrationFiles.map((file) => fs.readFileSync(path.join(MIG_DIR, file), 'utf8')).join('\n');
 }
-const lc = sql; // keep case for identifiers; regexes are case-insensitive
+const lc = maskSqlNonCode(sql); // keep case for identifiers; regexes are case-insensitive
 const grab = (re) => { const s = new Set(); let m; while ((m = re.exec(lc)))
     s.add(m[1].toLowerCase().replace(/^public\./, '')); return s; };
 const createdTables = grab(/create\s+table\s+(?:if\s+not\s+exists\s+)?["']?([a-z_][a-z0-9_."]*)/gi);

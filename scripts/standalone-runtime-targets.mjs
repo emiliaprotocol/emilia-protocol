@@ -152,6 +152,7 @@ export const STANDALONE_RUNTIME_SOURCES = [
   'scripts/gov-readiness-check.mts',
   'scripts/import-standards-recon.mts',
   'scripts/key-inventory.mts',
+  'scripts/lib/sql-text.mts',
   'scripts/lib/standards-text.mts',
   'scripts/migrate-to-logger.ts',
   'scripts/migration-reconcile.mts',
