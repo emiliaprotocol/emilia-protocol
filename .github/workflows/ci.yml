@@ -172,6 +172,15 @@ jobs:
       - name: Verify the publishable package contents
         working-directory: packages/gate
         run: npm pack --dry-run --json
+      - name: Remove application test state before release sealing
+        run: |
+          git clean -fdx -- \
+            apps/consequence-actuator-service/dist \
+            apps/consequence-actuator-service/node_modules \
+            apps/consequence-control-service/dist \
+            apps/consequence-control-service/node_modules \
+            apps/gate-service/dist \
+            apps/gate-service/node_modules
       - name: Download pinned TLC model checker for governed image inputs
         env:
           TLA_VERSION: v1.7.4
