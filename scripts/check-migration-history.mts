@@ -186,10 +186,7 @@ export function validateMigrationHistory(root: string = ROOT): {
   invariant(Array.isArray(history.retroactive_pending_versions), 'retroactive_pending_versions must be an array');
   invariant(Array.isArray(history.forward_pending_versions), 'forward_pending_versions must be an array');
   invariant(Array.isArray(history.deployment_sequence), 'deployment_sequence must be an array');
-  invariant(
-    history.requires_include_all === (history.retroactive_pending_versions.length > 0),
-    'requires_include_all must be true exactly while retroactive migrations are pending',
-  );
+  invariant(history.requires_include_all === true, 'requires_include_all must be true while retroactive migrations are pending');
   invariant(Array.isArray(history.private_remote_versions), 'private_remote_versions must be an array');
   invariant(history.public_files && typeof history.public_files === 'object', 'public_files must be an object');
 
