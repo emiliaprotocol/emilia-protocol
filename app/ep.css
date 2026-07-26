@@ -3,6 +3,43 @@
    Provides hover, focus-visible, and transition classes.
    ═══════════════════════════════════════════════════════════ */
 
+.ep-skip-link {
+  position: fixed;
+  top: 10px;
+  left: 10px;
+  z-index: 1000;
+  padding: 10px 14px;
+  border-radius: 4px;
+  background: #0C0A09;
+  color: #FAFAF9;
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 12px;
+  text-decoration: none;
+  transform: translateY(-160%);
+  transition: transform 160ms ease;
+}
+.ep-skip-link:focus {
+  transform: translateY(0);
+}
+
+.ep-site-header {
+  position: sticky;
+  top: 0;
+  z-index: 100;
+}
+
+.ep-logo-link {
+  min-height: 44px;
+}
+
+.ep-eu-banner-close {
+  min-width: 44px;
+  min-height: 44px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
 /* ─── Nav Links ──────────────────────────────────────────── */
 .ep-nav-link {
   font-family: 'IBM Plex Sans', sans-serif;
@@ -185,6 +222,9 @@
   line-height: 1.45;
   color: #FAFAF9;
 }
+.ep-home-lede-mobile {
+  display: none;
+}
 .ep-home-calm-detail {
   max-width: 680px;
   margin: 14px 0 0;
@@ -319,6 +359,107 @@
   text-underline-offset: 4px;
 }
 
+/* ─── Auth-to-consequence handoff ───────────────────────── */
+.ep-home-auth-map {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 112px minmax(0, 1fr);
+  align-items: stretch;
+  margin-top: 40px;
+  border: 1px solid #D6D3D1;
+  border-radius: 8px;
+  overflow: hidden;
+  background: #FFFFFF;
+}
+.ep-home-auth-column {
+  min-width: 0;
+  padding: 26px;
+}
+.ep-home-auth-column-existing {
+  background: #F5F5F4;
+}
+.ep-home-auth-column-emilia {
+  background: #FFFFFF;
+  box-shadow: inset 3px 0 0 #B08D35;
+}
+.ep-home-auth-label {
+  margin-bottom: 18px;
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 1.4px;
+  text-transform: uppercase;
+  color: #78716C;
+}
+.ep-home-auth-column-emilia .ep-home-auth-label {
+  color: #8A6D28;
+}
+.ep-home-auth-item {
+  display: grid;
+  grid-template-columns: 28px minmax(0, 1fr);
+  gap: 2px 10px;
+  padding: 13px 0;
+  border-top: 1px solid #E7E5E4;
+}
+.ep-home-auth-item span {
+  grid-row: 1 / 3;
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 10px;
+  color: #A8A29E;
+}
+.ep-home-auth-item strong {
+  font-size: 14px;
+  color: #0C0A09;
+}
+.ep-home-auth-item em {
+  font-size: 12px;
+  line-height: 1.45;
+  font-style: normal;
+  color: #78716C;
+}
+.ep-home-auth-stop,
+.ep-home-auth-result {
+  margin-top: 14px;
+  padding: 12px 14px;
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 11px;
+  line-height: 1.45;
+}
+.ep-home-auth-stop {
+  border: 1px dashed #A8A29E;
+  color: #57534E;
+}
+.ep-home-auth-result {
+  border: 1px solid rgba(176, 141, 53, 0.5);
+  background: rgba(176, 141, 53, 0.07);
+  color: #6F571F;
+  font-weight: 600;
+}
+.ep-home-auth-handoff {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  border-left: 1px solid #D6D3D1;
+  border-right: 1px solid #D6D3D1;
+  background: #1C1917;
+  color: #FAFAF9;
+  text-align: center;
+}
+.ep-home-auth-handoff span {
+  max-width: 80px;
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 9px;
+  line-height: 1.45;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+  color: rgba(250, 250, 249, 0.62);
+}
+.ep-home-auth-handoff strong {
+  font-size: 24px;
+  color: #E6C97A;
+}
+
 /* ─── Endpoint/State Rows ────────────────────────────────── */
 .ep-row {
   transition: background 0.15s;
@@ -384,6 +525,8 @@
   border: none;
   color: #78716C;
   cursor: pointer;
+  min-width: 44px;
+  min-height: 44px;
   padding: 8px;
 }
 .ep-mobile-menu {
@@ -403,11 +546,11 @@
   }
   .ep-mobile-menu {
     display: none;
-    position: fixed;
+    position: absolute;
     top: 60px;
     left: 0;
     right: 0;
-    bottom: 0;
+    min-height: calc(100dvh - 60px);
     background: rgba(250,250,249,0.96);
     backdrop-filter: blur(16px);
     z-index: 99;
@@ -424,7 +567,11 @@
     font-weight: 500;
     color: #57534E;
     text-decoration: none;
-    padding: 14px 0;
+    min-height: 48px;
+    box-sizing: border-box;
+    display: flex;
+    align-items: center;
+    padding: 12px 0;
     border-bottom: 1px solid #E7E5E4;
     transition: color 0.15s;
   }
@@ -463,6 +610,25 @@
   }
   .ep-home-technical-link {
     margin-left: auto;
+  }
+  .ep-home-auth-map {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .ep-home-auth-handoff {
+    min-height: 72px;
+    flex-direction: row;
+    border: 0;
+    border-top: 1px solid #D6D3D1;
+    border-bottom: 1px solid #D6D3D1;
+  }
+  .ep-home-auth-handoff span {
+    max-width: none;
+  }
+  .ep-home-auth-handoff strong {
+    transform: rotate(90deg);
+  }
+  .ep-home-auth-column-emilia {
+    box-shadow: inset 0 3px 0 #B08D35;
   }
 
   /* Homepage sections use inline desktop grids. These named overrides keep
@@ -531,6 +697,58 @@
 }
 
 @media (max-width: 560px) {
+  .ep-nav-shell {
+    padding-right: 14px !important;
+    padding-left: 18px !important;
+    gap: 8px !important;
+  }
+  .ep-home-container {
+    padding-right: 20px !important;
+    padding-left: 20px !important;
+  }
+  .ep-eu-banner {
+    min-height: 68px;
+    align-items: stretch !important;
+    gap: 0 !important;
+    padding: 8px 48px 8px 18px !important;
+  }
+  .ep-eu-banner-dot {
+    display: none;
+  }
+  .ep-eu-banner-link {
+    width: 100%;
+    display: grid !important;
+    grid-template-columns: auto 1fr auto;
+    align-items: center !important;
+    justify-content: stretch !important;
+    gap: 2px 8px !important;
+  }
+  .ep-eu-banner-label {
+    grid-column: 1 / 3;
+    font-size: 10px;
+  }
+  .ep-eu-banner-message {
+    grid-column: 1 / 3;
+    line-height: 1.35;
+    font-size: 0;
+  }
+  .ep-eu-banner-message::before {
+    content: 'High-risk obligations provisionally deferred to Dec 2, 2027.';
+    font-size: 11px;
+  }
+  .ep-eu-banner-arrow {
+    grid-column: 3;
+    grid-row: 1 / 3;
+    align-self: center;
+  }
+  .ep-eu-banner-close {
+    right: 2px !important;
+  }
+  .ep-nav-pilot {
+    min-height: 44px;
+    padding: 0 14px !important;
+    font-size: 11px !important;
+  }
   .ep-home-calm-hero {
     min-height: 0;
     padding: 46px 0 42px;
@@ -539,18 +757,30 @@
   }
   .ep-home-calm-kicker {
     margin-bottom: 18px;
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
   }
   .ep-home-calm-kicker span {
-    display: none;
+    display: block;
+    font-size: 9px;
+    letter-spacing: 1.4px;
+    color: rgba(250, 250, 249, 0.78);
   }
   .ep-home-calm-copy h1 {
-    font-size: 36px;
-    line-height: 1.1;
+    font-size: clamp(34px, 9.5vw, 38px);
+    line-height: 1.06;
   }
   .ep-home-calm-lede {
     margin-top: 22px;
     font-size: 16px;
     line-height: 1.45;
+  }
+  .ep-home-lede-desktop {
+    display: none;
+  }
+  .ep-home-lede-mobile {
+    display: block;
   }
   .ep-home-calm-detail {
     display: none;
@@ -598,6 +828,18 @@
   .ep-home-technical-link {
     width: 100%;
     margin: 4px 0 0;
+  }
+  .ep-home-auth-bridge {
+    padding-top: 72px !important;
+  }
+  .ep-home-auth-map {
+    margin-top: 28px;
+  }
+  .ep-home-auth-column {
+    padding: 22px 20px;
+  }
+  .ep-home-auth-handoff {
+    min-height: 60px;
   }
 }
 
@@ -686,6 +928,53 @@
 
 /* ─── Assurance artifact index ───────────────────────────── */
 @media (max-width: 640px) {
+  .ep-protocol-binding-grid,
+  .ep-protocol-rollout-grid,
+  .ep-protocol-compliance-grid {
+    grid-template-columns: minmax(0, 1fr) !important;
+  }
+
+  .ep-protocol-rollout-line {
+    display: none !important;
+  }
+
+  .ep-protocol-detail-row,
+  .ep-protocol-profile-row {
+    flex-direction: column !important;
+    gap: 8px !important;
+    padding: 18px 20px !important;
+  }
+
+  .ep-protocol-detail-row > span:first-child,
+  .ep-protocol-profile-row > span:first-child {
+    min-width: 0 !important;
+    max-width: 100%;
+    overflow-wrap: anywhere;
+  }
+
+  .ep-protocol-pip-row {
+    display: grid !important;
+    grid-template-columns: auto minmax(0, 1fr) !important;
+    gap: 7px 12px !important;
+    align-items: start !important;
+    padding: 14px 18px !important;
+  }
+
+  .ep-protocol-pip-row > span:nth-child(1) {
+    min-width: 0 !important;
+  }
+
+  .ep-protocol-pip-row > span:nth-child(2) {
+    grid-column: 1 / -1;
+    grid-row: 2;
+  }
+
+  .ep-protocol-pip-row > span:nth-child(3) {
+    grid-column: 2;
+    grid-row: 1;
+    justify-self: end;
+  }
+
   .ep-pricing-assurance-grid {
     grid-template-columns: 1fr !important;
   }

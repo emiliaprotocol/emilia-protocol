@@ -109,7 +109,7 @@ const DEV_TOOLS = [
 
 // Max-width container
 const C = ({ children }: { children: React.ReactNode }) => (
-  <div style={{ maxWidth: 1120, margin: '0 auto', padding: '0 32px' }}>{children}</div>
+  <div className="ep-home-container" style={{ maxWidth: 1120, margin: '0 auto', padding: '0 32px' }}>{children}</div>
 );
 
 // Fingerprint-style inset shadow: subtle internal depth without harsh outset shadow.
@@ -158,10 +158,14 @@ export default function HomePage() {
             <p style={{ fontFamily: font.mono, fontSize: 14, fontWeight: 600, color: color.gold, margin: '22px 0 0' }}>
               Protocol proves. Gate prevents.
             </p>
-            <p className="ep-home-calm-lede">
+            <p className="ep-home-calm-lede ep-home-lede-desktop">
               EMILIA Gate sits immediately before money moves, infrastructure changes, regulated
               records update, or irreversible state changes. It verifies the exact authority and
               evidence the resource owner requires, then consumes accepted authorization once.
+            </p>
+            <p className="ep-home-calm-lede ep-home-lede-mobile">
+              Agents can have valid access and still do the wrong thing. Gate verifies exact-action
+              authority where money, code, or regulated records actually change—then lets the action run once.
             </p>
             <p className="ep-home-calm-detail">
               On every protected path the resource owner fully mediates: no valid evidence, no
@@ -196,20 +200,39 @@ export default function HomePage() {
         </C>
       </section>
 
-      {/* ── THE GAP (pain — buyer feels it in 5 seconds) ───────── */}
-      <section style={{ padding: '96px 0 0' }}>
+      {/* ── THE GAP — auth is an input; consequence control is the product ── */}
+      <section className="ep-home-auth-bridge" style={{ padding: '96px 0 0' }}>
         <C>
           <motion.div {...reveal()} style={{ maxWidth: 780 }}>
-            <div style={{ fontFamily: font.mono, fontSize: 10, letterSpacing: 2, textTransform: 'uppercase', color: color.gold, marginBottom: 16 }}>The gap</div>
+            <div style={{ fontFamily: font.mono, fontSize: 10, letterSpacing: 2, textTransform: 'uppercase', color: color.gold, marginBottom: 16 }}>Where existing auth stops</div>
             <h2 style={{ fontFamily: font.sans, fontWeight: 700, fontSize: 'clamp(26px, 3vw, 40px)', letterSpacing: -1, lineHeight: 1.15, color: color.t1, margin: 0 }}>
-              Auth gets an agent a token. It doesn&apos;t prove a human authorized the action.
+              Auth opens the door. EMILIA controls what crosses it.
             </h2>
             <p style={{ fontSize: 17, color: color.t2, lineHeight: 1.72, maxWidth: 640, marginTop: 20 }}>
-              An agent can have valid access and still do the wrong thing: change a vendor bank
-              account, release funds, delete a repo, export records, or approve a regulated
-              decision. Decision logs say what happened after the fact. EMILIA creates portable
-              evidence <em style={{ fontStyle: 'normal', color: color.t1, fontWeight: 600 }}>before</em> the mutation runs.
+              Identity, OAuth, and policy engines remain essential. They establish who the agent is
+              and what class of access it may hold. Gate answers the next question: may this exact
+              action happen now, under this authority, and what happens if the outcome is uncertain?
             </p>
+          </motion.div>
+          <motion.div className="ep-home-auth-map" {...reveal(0.08)}>
+            <div className="ep-home-auth-column ep-home-auth-column-existing">
+              <div className="ep-home-auth-label">Existing authorization stack</div>
+              <div className="ep-home-auth-item"><span>01</span><strong>Identity verified</strong><em>Who is calling?</em></div>
+              <div className="ep-home-auth-item"><span>02</span><strong>Token issued</strong><em>What broad scope is granted?</em></div>
+              <div className="ep-home-auth-item"><span>03</span><strong>Policy permits</strong><em>Is this class of call allowed?</em></div>
+              <div className="ep-home-auth-stop">The exact consequence is still unowned.</div>
+            </div>
+            <div className="ep-home-auth-handoff" aria-hidden="true">
+              <span>executor boundary</span>
+              <strong>→</strong>
+            </div>
+            <div className="ep-home-auth-column ep-home-auth-column-emilia">
+              <div className="ep-home-auth-label">EMILIA Consequence Firewall</div>
+              <div className="ep-home-auth-item"><span>04</span><strong>Exact action bound</strong><em>Amount, target, parameters, expiry</em></div>
+              <div className="ep-home-auth-item"><span>05</span><strong>Authority proven</strong><em>Human, quorum, freshness, revocation</em></div>
+              <div className="ep-home-auth-item"><span>06</span><strong>Effect controlled</strong><em>Run once, reconcile uncertainty, authorize remedy</em></div>
+              <div className="ep-home-auth-result">Receipt verified. Mutation unlocked.</div>
+            </div>
           </motion.div>
         </C>
       </section>

@@ -182,8 +182,9 @@ export default async function RootLayout({ children }: { children: React.ReactNo
         />
       </head>
       <body style={{ margin: 0, padding: 0, background: '#FAFAF9', overflowX: 'hidden' }}>
+        <a className="ep-skip-link" href="#main-content">Skip to main content</a>
         <EuAiActBanner />
-        {children}
+        <div id="main-content" tabIndex={-1}>{children}</div>
       </body>
     </html>
   );
