@@ -183,7 +183,7 @@ export function validateReusableNpmWorkflowText(text) {
         'artifact-ids: ${{ needs.build.outputs.release_artifact_id }}',
         'actions/attest@',
         'subject-path: ${{ steps.validate.outputs.tarball }}',
-        'npm publish "$TESTED_TARBALL" --access public --provenance --ignore-scripts',
+        'npm publish "./${TESTED_TARBALL#./}" --access public --provenance --ignore-scripts',
         'cmp "$TESTED_TARBALL" "registry-copy/$REGISTRY_TARBALL"',
         'ref: ${{ github.sha }}',
         'persist-credentials: false',
@@ -251,7 +251,7 @@ export function validateReusableNpmWorkflowText(text) {
         throw new Error('reusable npm publisher does not download the immutable exact artifact ID');
     }
     requireBefore(text, 'scripts/require-release-approval.mjs', 'run: npm test', 'reusable npm workflow');
-    requireBefore(text, 'git ls-remote --exit-code https://github.com/emiliaprotocol/emilia-protocol.git', 'npm publish "$TESTED_TARBALL" --access public --provenance --ignore-scripts', 'reusable npm remote ref guard');
+    requireBefore(text, 'git ls-remote --exit-code https://github.com/emiliaprotocol/emilia-protocol.git', 'npm publish "./${TESTED_TARBALL#./}" --access public --provenance --ignore-scripts', 'reusable npm remote ref guard');
     validateTlaSecurityCaseWorkflowText(text, 'reusable npm workflow');
     forbidCredentialInjection(text, 'reusable npm workflow');
     return true;

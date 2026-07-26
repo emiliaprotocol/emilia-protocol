@@ -757,7 +757,10 @@ jobs:
           NODE
           ACTUAL_SHA256=$(sha256sum "$TESTED_TARBALL" | cut -d ' ' -f 1)
           test "$ACTUAL_SHA256" = "$EXPECTED_SHA256"
-          npm publish "$TESTED_TARBALL" --access public --provenance --ignore-scripts
+          # npm treats an unprefixed relative .tgz path as a package/git spec in
+          # some releases. Force the already-validated artifact to remain a
+          # local file spec so trusted publishing cannot resolve another source.
+          npm publish "./${TESTED_TARBALL#./}" --access public --provenance --ignore-scripts
 
       - name: Verify registry bytes match exact tested tarball
         env:
