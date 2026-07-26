@@ -972,7 +972,7 @@ class SchemaCandidateReconciliationTests(unittest.TestCase):
                     "retroactive_pending_versions": [],
                     "forward_pending_versions": pending,
                     "deployment_sequence": sorted(pending),
-                    "requires_include_all": True,
+                    "requires_include_all": False,
                     "public_files": public_files,
                 }
             ),
