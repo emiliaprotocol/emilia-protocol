@@ -63,6 +63,8 @@ const TENANT_BETA_LOGIN = 'provider_record_tenant_beta_login';
 const UNMAPPED_LOGIN = 'provider_record_unmapped_login';
 const UNTRUSTED_LOGIN = 'provider_record_untrusted_login';
 const OWNER_POLLUTION_LOGIN = 'provider_record_owner_pollution_login';
+const MANAGED_ADMIN = 'provider_record_managed_admin';
+const MIGRATION_LOGIN = 'provider_record_migration_login';
 const BYPASS_BRIDGE = 'provider_record_bypass_bridge';
 const LOGIN_PASSWORD = 'ep-provider-record-test-password';
 const TEST_ROLES = [
@@ -71,6 +73,8 @@ const TEST_ROLES = [
   UNMAPPED_LOGIN,
   UNTRUSTED_LOGIN,
   OWNER_POLLUTION_LOGIN,
+  MIGRATION_LOGIN,
+  MANAGED_ADMIN,
   BYPASS_BRIDGE,
   EXECUTOR_ROLE,
   OWNER_ROLE,
@@ -122,6 +126,7 @@ async function cleanup(): Promise<void> {
       TENANT_BETA_LOGIN,
       UNMAPPED_LOGIN,
       UNTRUSTED_LOGIN,
+      MIGRATION_LOGIN,
     ]],
   );
   await admin.query(
@@ -346,6 +351,20 @@ suite('consequence actuator provider-record migration on PostgreSQL 17', () => {
         NOSUPERUSER NOCREATEDB NOCREATEROLE NOREPLICATION NOBYPASSRLS;
       CREATE ROLE ${identifier(EXECUTOR_ROLE)} NOLOGIN
         NOSUPERUSER NOCREATEDB NOCREATEROLE NOREPLICATION NOBYPASSRLS;
+      CREATE ROLE ${identifier(MANAGED_ADMIN)} NOLOGIN
+        NOSUPERUSER NOCREATEDB NOCREATEROLE NOREPLICATION NOBYPASSRLS;
+      CREATE ROLE ${identifier(MIGRATION_LOGIN)}
+        LOGIN PASSWORD '${LOGIN_PASSWORD}' SUPERUSER;
+      GRANT ${identifier(OWNER_ROLE)} TO ${identifier(MANAGED_ADMIN)}
+        WITH ADMIN TRUE, INHERIT FALSE, SET FALSE;
+      GRANT ${identifier(EXECUTOR_ROLE)} TO ${identifier(MANAGED_ADMIN)}
+        WITH ADMIN TRUE, INHERIT FALSE, SET FALSE;
+      SET ROLE ${identifier(MANAGED_ADMIN)};
+      GRANT ${identifier(OWNER_ROLE)} TO ${identifier(MIGRATION_LOGIN)}
+        WITH ADMIN TRUE, INHERIT FALSE, SET FALSE;
+      GRANT ${identifier(EXECUTOR_ROLE)} TO ${identifier(MIGRATION_LOGIN)}
+        WITH ADMIN TRUE, INHERIT FALSE, SET FALSE;
+      RESET ROLE;
     `);
     const postgresRole = await admin.query<{ exists: boolean }>(
       `SELECT EXISTS (
@@ -400,15 +419,16 @@ suite('consequence actuator provider-record migration on PostgreSQL 17', () => {
     await admin.query(
       `REVOKE ${identifier(OWNER_ROLE)} FROM ${identifier(OWNER_POLLUTION_LOGIN)}`,
     );
-    const migrationClient = await admin.connect();
+    const migrationClient = new pg.Client({
+      ...connection,
+      user: MIGRATION_LOGIN,
+      password: LOGIN_PASSWORD,
+    });
+    await migrationClient.connect();
     try {
       await migrationClient.query(providerMigration);
     } finally {
-      try {
-        await migrationClient.query('RESET ROLE');
-      } finally {
-        migrationClient.release();
-      }
+      await migrationClient.end();
     }
     await admin.query(assertionFunction);
     await admin.query(reconcileFunction);
@@ -481,6 +501,46 @@ suite('consequence actuator provider-record migration on PostgreSQL 17', () => {
       service_record: false,
       public_record: false,
     }]);
+
+    const managedGrant = await admin.query<{
+      admin_option: boolean;
+      inherit_option: boolean;
+      set_option: boolean;
+    }>(`
+      SELECT
+        membership.admin_option,
+        membership.inherit_option,
+        membership.set_option
+      FROM pg_catalog.pg_auth_members AS membership
+      JOIN pg_catalog.pg_roles AS granted_role
+        ON granted_role.oid = membership.roleid
+      JOIN pg_catalog.pg_roles AS member_role
+        ON member_role.oid = membership.member
+      JOIN pg_catalog.pg_roles AS grantor_role
+        ON grantor_role.oid = membership.grantor
+      WHERE granted_role.rolname = '${OWNER_ROLE}'
+        AND member_role.rolname = '${MIGRATION_LOGIN}'
+        AND grantor_role.rolname = '${MANAGED_ADMIN}'
+    `);
+    expect(managedGrant.rows).toEqual([{
+      admin_option: true,
+      inherit_option: false,
+      set_option: false,
+    }]);
+    const temporaryGrant = await admin.query<{ count: number }>(`
+      SELECT pg_catalog.count(*)::INTEGER AS count
+      FROM pg_catalog.pg_auth_members AS membership
+      JOIN pg_catalog.pg_roles AS granted_role
+        ON granted_role.oid = membership.roleid
+      JOIN pg_catalog.pg_roles AS member_role
+        ON member_role.oid = membership.member
+      JOIN pg_catalog.pg_roles AS grantor_role
+        ON grantor_role.oid = membership.grantor
+      WHERE granted_role.rolname = '${OWNER_ROLE}'
+        AND member_role.rolname = '${MIGRATION_LOGIN}'
+        AND grantor_role.rolname = '${MIGRATION_LOGIN}'
+    `);
+    expect(temporaryGrant.rows).toEqual([{ count: 0 }]);
   });
 
   it('removes the live contract token when any provider append-only trigger is dropped', async () => {
@@ -715,6 +775,7 @@ suite('consequence actuator provider-record migration on PostgreSQL 17', () => {
         FROM pg_catalog.pg_auth_members AS membership
         JOIN executor_members AS inherited
           ON membership.roleid = inherited.role_oid
+        WHERE membership.inherit_option OR membership.set_option
       ),
       owner_members(role_oid) AS (
         SELECT oid
@@ -725,6 +786,7 @@ suite('consequence actuator provider-record migration on PostgreSQL 17', () => {
         FROM pg_catalog.pg_auth_members AS membership
         JOIN owner_members AS inherited
           ON membership.roleid = inherited.role_oid
+        WHERE membership.inherit_option OR membership.set_option
       )
       SELECT NOT EXISTS (
         SELECT 1

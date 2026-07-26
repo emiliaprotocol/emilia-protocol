@@ -63,6 +63,17 @@ describe('consequence actuator provider-record migration contract', () => {
       /DROP\s+(?:TABLE|SCHEMA)\s+(?!IF EXISTS consequence_actuator_private\.provider_records)/i,
     );
     expect(migration).toContain('SET ROLE consequence_actuator_store_owner');
+    expect(migration).toContain(
+      'membership.inherit_option OR membership.set_option',
+    );
+    expect(migration).toContain("'USAGE'");
+    expect(migration).toContain("'SET'");
+    expect(migration).toContain(
+      'GRANT consequence_actuator_store_owner TO CURRENT_USER',
+    );
+    expect(migration).toContain(
+      'REVOKE consequence_actuator_store_owner FROM CURRENT_USER',
+    );
     const actuatorStoreMigration = fs.readFileSync(
       actuatorStoreMigrationPath,
       'utf8',
