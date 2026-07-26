@@ -2490,7 +2490,7 @@ def _attempt_response_main(argv: Sequence[str]) -> int:
     parser = argparse.ArgumentParser(
         description="Verify an exact durable deployment-attempt store response."
     )
-    parser.add_argument("--input", type=Path, required=True)
+    parser.add_argument("--input", required=True)
     parser.add_argument(
         "--operation",
         choices=("claim", "complete", "reconcile"),
@@ -2503,8 +2503,31 @@ def _attempt_response_main(argv: Sequence[str]) -> int:
     try:
         if SHA256_RE.fullmatch(args.claim_sha256) is None:
             raise TelemetryError("attempt claim digest is invalid")
+        maximum_response_bytes = 64 * 1024
+        if args.input == "-":
+            raw_response = sys.stdin.buffer.read(maximum_response_bytes + 1)
+        else:
+            try:
+                with Path(args.input).open("rb") as input_file:
+                    raw_response = input_file.read(maximum_response_bytes + 1)
+            except OSError as error:
+                raise TelemetryError(
+                    f"unable to load attempt-store response {args.input}: {error}"
+                ) from error
+        if len(raw_response) > maximum_response_bytes:
+            raise TelemetryError("attempt-store response exceeds the byte limit")
+        try:
+            response_value = json.loads(
+                raw_response.decode("utf-8"),
+                object_pairs_hook=reject_duplicate_members,
+                parse_constant=reject_json_constant,
+            )
+        except (json.JSONDecodeError, UnicodeError) as error:
+            raise TelemetryError(
+                f"unable to parse attempt-store response: {error}"
+            ) from error
         response = validate_attempt_store_response(
-            _load_json(args.input, "attempt-store response"),
+            response_value,
             operation=args.operation,
             claim_sha256=args.claim_sha256,
             allowed_statuses=set(args.allow_status),

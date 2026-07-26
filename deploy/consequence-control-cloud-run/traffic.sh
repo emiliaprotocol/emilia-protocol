@@ -638,7 +638,7 @@ PY
 attempt_store_call() {
   local operation=$1 payload_base64=$2 allowed_status=$3
   local expected_resource_version=${4:-}
-  local response input_stream
+  local response
   ATTEMPT_STORE_CALL_RETRIED=false
   set +e
   response=$(
@@ -715,10 +715,9 @@ PY
       ATTEMPT_STORE_RESPONSE_STATUS ATTEMPT_STORE_RESPONSE_FINAL <<< "$parsed"
     return
   fi
-  input_stream=<(printf '%s' "$response")
   local verification=(
     "$LANE_DIR/verify-rollout-telemetry.py" verify-attempt-response
-    --input "$input_stream"
+    --input -
     --operation "$operation"
     --claim-sha256 "$ATTEMPT_CLAIM_SHA256"
     --allow-status "$allowed_status"
@@ -730,8 +729,8 @@ PY
       --expected-final-resource-version "$expected_resource_version"
     )
   fi
-  "${verification[@]}" \
-    >/dev/null \
+  printf '%s' "$response" \
+    | "${verification[@]}" >/dev/null \
     || lane_die "durable attempt-store $operation response is invalid"
   ATTEMPT_STORE_RESPONSE_STATUS=$allowed_status
   ATTEMPT_STORE_RESPONSE_FINAL=$expected_resource_version

@@ -405,9 +405,17 @@ require_apply_approval
 if [[ -n "$SIGNING_KEY_FILE" ]]; then
   [[ -f "$SIGNING_KEY_FILE" ]] \
     || lane_die "stable-release private key is unavailable"
-  private_mode=$(stat -f '%Lp' "$SIGNING_KEY_FILE" 2>/dev/null \
-    || stat -c '%a' "$SIGNING_KEY_FILE")
-  (( (8#$private_mode & 8#077) == 0 )) \
+  if private_mode=$(stat -c '%a' "$SIGNING_KEY_FILE" 2>/dev/null); then
+    :
+  elif private_mode=$(stat -f '%Lp' "$SIGNING_KEY_FILE" 2>/dev/null); then
+    :
+  else
+    lane_die "stable-release private key permissions are unavailable"
+  fi
+  [[ "$private_mode" =~ ^[0-7]{3,4}$ ]] \
+    || lane_die "stable-release private key permissions are invalid"
+  private_mode_value=$((8#$private_mode))
+  (( (private_mode_value & 077) == 0 )) \
     || lane_die "stable-release private key must not be group/world accessible"
 fi
 HTTP_TMPDIR=$(mktemp -d)

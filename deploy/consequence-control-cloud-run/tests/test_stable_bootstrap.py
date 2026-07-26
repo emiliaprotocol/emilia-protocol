@@ -23,6 +23,15 @@ DECISION_REVISION = f"{DECISION_SERVICE}-bootstrap1"
 
 
 class StableBootstrapTests(unittest.TestCase):
+    def test_private_key_mode_probe_is_portable_and_fail_closed(self) -> None:
+        source = BOOTSTRAP.read_text(encoding="utf-8")
+        gnu_probe = "stat -c '%a'"
+        bsd_probe = "stat -f '%Lp'"
+        self.assertGreaterEqual(source.find(gnu_probe), 0)
+        self.assertGreater(source.find(bsd_probe), source.find(gnu_probe))
+        self.assertIn('[[ "$private_mode" =~ ^[0-7]{3,4}$ ]]', source)
+        self.assertNotIn("8#$private_mode & 8#077", source)
+
     def setUp(self) -> None:
         self.directory = tempfile.TemporaryDirectory(prefix="emilia-stable-bootstrap-")
         self.root = Path(self.directory.name)

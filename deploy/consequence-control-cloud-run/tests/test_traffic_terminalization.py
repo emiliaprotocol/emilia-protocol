@@ -130,6 +130,13 @@ printf '%s\\t%s\\t%s\\n' \
         self.assertEqual(result.stdout.strip(), "true\tcompleted\trv-terminal")
         self.assertEqual(self.count.read_text(encoding="utf-8"), "2")
 
+    def test_terminal_response_uses_bounded_stdin_not_process_substitution(self) -> None:
+        function = shell_function_before(
+            "attempt_store_call", "attempt_outcome_payload"
+        )
+        self.assertIn("--input -", function)
+        self.assertNotIn("<(printf", function)
+
 
 class AmbiguousUpdateReconciliationTests(unittest.TestCase):
     def setUp(self) -> None:
