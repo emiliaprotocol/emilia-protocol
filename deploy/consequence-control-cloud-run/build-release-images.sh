@@ -54,6 +54,10 @@ cd "$ROOT"
 [[ "$(git rev-parse HEAD)" == "$EXPECTED_COMMIT" ]] \
   || { printf 'error: checkout does not match expected commit\n' >&2; exit 1; }
 
+VERIFY_TARBALL=$("$TRUST" pack-package --root "$ROOT" --expected-commit "$EXPECTED_COMMIT" --package verify --output-dir "$WORK")
+GATE_TARBALL=$("$TRUST" pack-package --root "$ROOT" --expected-commit "$EXPECTED_COMMIT" --package gate --output-dir "$WORK")
+REQUIRE_RECEIPT_TARBALL=$("$TRUST" pack-package --root "$ROOT" --expected-commit "$EXPECTED_COMMIT" --package require-receipt --output-dir "$WORK")
+
 npm run check:standalone-runtimes
 npm run check:security-case
 npm run conformance:manifest:check
@@ -62,10 +66,19 @@ npm --prefix packages/verify run build
 npm --prefix packages/gate run build
 git diff --exit-code -- packages/verify/dist packages/gate/dist \
   security/security-case.json lib/proof-stats.json conformance/conformance-manifest.json
+# The package seals above reject pre-existing ignored or untracked build inputs.
+# Assurance execution may create only ignored caches or compiled test state;
+# remove that post-seal state before the trust contract validates the checkout
+# again and materializes the Docker context from reviewed Git objects.
+git clean -fdX -- \
+  apps/consequence-actuator-service \
+  apps/consequence-control-service \
+  apps/gate-service \
+  caid \
+  packages/gate \
+  packages/require-receipt \
+  packages/verify
 
-VERIFY_TARBALL=$("$TRUST" pack-package --root "$ROOT" --expected-commit "$EXPECTED_COMMIT" --package verify --output-dir "$WORK")
-GATE_TARBALL=$("$TRUST" pack-package --root "$ROOT" --expected-commit "$EXPECTED_COMMIT" --package gate --output-dir "$WORK")
-REQUIRE_RECEIPT_TARBALL=$("$TRUST" pack-package --root "$ROOT" --expected-commit "$EXPECTED_COMMIT" --package require-receipt --output-dir "$WORK")
 SOURCE_MANIFEST="$WORK/source-manifest.json"
 "$TRUST" source \
   --root "$ROOT" \

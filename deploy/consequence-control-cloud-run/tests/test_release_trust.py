@@ -1183,6 +1183,19 @@ class WorkflowTrustContractTests(unittest.TestCase):
         self.assertIn("build-release-images.sh", workflow)
         self.assertIn("--expected-commit \"$GITHUB_SHA\"", workflow)
 
+    def test_release_builder_seals_before_removing_generated_ignored_state(self) -> None:
+        builder = (
+            ROOT / "deploy/consequence-control-cloud-run/build-release-images.sh"
+        ).read_text()
+        seal = builder.index('VERIFY_TARBALL=$("$TRUST" pack-package')
+        assurance = builder.index("npm run check:security-case")
+        cleanup = builder.index("git clean -fdX --")
+        source_manifest = builder.index('SOURCE_MANIFEST="$WORK/source-manifest.json"')
+        self.assertLess(seal, assurance)
+        self.assertLess(assurance, cleanup)
+        self.assertLess(cleanup, source_manifest)
+        self.assertNotIn("git clean -fdx --", builder)
+
 
 if __name__ == "__main__":
     unittest.main()
