@@ -153,7 +153,7 @@ jobs:
         run: |
           npm ci --ignore-scripts
           npm run typecheck
-          npm run build
+          npm run build -- --outDir "$RUNNER_TEMP/consequence-actuator-service-dist"
           npm test
       - name: Verify the SQL contract and live cross-tenant isolation
         env:
