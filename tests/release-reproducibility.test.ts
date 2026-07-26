@@ -472,7 +472,7 @@ describe('release byte reproducibility', () => {
     const workflow = readFileSync('.github/workflows/_publish-npm-package.yml', 'utf8');
     expect(workflow).toContain('subject-path: ${{ steps.validate.outputs.tarball }}');
     expect(workflow).toContain(
-      'npm publish "$TESTED_TARBALL" --access public --provenance --ignore-scripts',
+      'npm publish "./${TESTED_TARBALL#./}" --access public --provenance --ignore-scripts',
     );
     expect(workflow).toContain('cmp "$TESTED_TARBALL" "registry-copy/$REGISTRY_TARBALL"');
     expect(workflow).toContain('actions/attest@f7c74d28b9d84cb8768d0b8ca14a4bac6ef463e6');
