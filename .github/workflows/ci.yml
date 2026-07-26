@@ -94,12 +94,18 @@ jobs:
   # ── Job 1b: Consequence Firewall product + deployment ───────────
   gate-product:
     runs-on: ubuntu-latest
+    env:
+      TLA2TOOLS_JAR: ${{ github.workspace }}/tla2tools.jar
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
         with:
           node-version: 20
           cache: npm
+      - uses: actions/setup-java@03ad4de0992f5dab5e18fcb136590ce7c4a0ac95 # v5.6.0
+        with:
+          distribution: temurin
+          java-version: '17'
       - uses: hashicorp/setup-terraform@dfe3c3f87815947d99a8997f908cb6525fc44e9e # v4.0.1
         with:
           terraform_version: 1.10.5
@@ -166,6 +172,19 @@ jobs:
       - name: Verify the publishable package contents
         working-directory: packages/gate
         run: npm pack --dry-run --json
+      - name: Download pinned TLC model checker for governed image inputs
+        env:
+          TLA_VERSION: v1.7.4
+          TLA_SHA256: 936a262061c914694dfd669a543be24573c45d5aa0ff20a8b96b23d01e050e88
+        run: |
+          curl -fsSL \
+            --retry 5 \
+            --retry-delay 2 \
+            --retry-all-errors \
+            --connect-timeout 20 \
+            -o "$TLA2TOOLS_JAR" \
+            "https://github.com/tlaplus/tlaplus/releases/download/${TLA_VERSION}/tla2tools.jar"
+          echo "${TLA_SHA256}  ${TLA2TOOLS_JAR}" | sha256sum -c -
       - name: Build all production images from the governed release inputs
         run: |
           deploy/consequence-control-cloud-run/build-release-images.sh \
