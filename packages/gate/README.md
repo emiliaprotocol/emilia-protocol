@@ -750,3 +750,17 @@ conformance infrastructure. `createPostgresAuthorityAllocationStore()` and
 `AUTHORITY_ALLOCATION_DDL` define the durable transactional boundary; they are
 reference code and a database contract, not evidence that any deployment uses
 or correctly operates that boundary.
+
+## Autonomy Control Plane
+
+`@emilia-protocol/gate/autonomy-control-plane-profile` compiles a closed,
+human-rooted autonomy profile into one existing Gate Trust Program per exact
+child action. It rejects action/audience/expiry widening, aggregate sibling
+budget expansion, cyclic goals, proposer/evaluator/executor role collapse,
+unpinned fitness evidence, promotion without a bounded canary, stale status,
+and rollback without a new CAID and authorization policy.
+
+The compiler validates typed authority and evidence bindings. It does not infer
+natural-language goal entailment or prove that tests, providers, storage,
+clocks, deployments, or humans are truthful. See
+`docs/protocol/autonomy-control-plane-profile-v1.md` for the complete boundary.

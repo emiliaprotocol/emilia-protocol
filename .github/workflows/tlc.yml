@@ -388,6 +388,34 @@ jobs:
           grep -q "Model checking completed. No error has been found." \
             tlc-effect-profiles-output.txt
 
+      - name: Run bounded autonomy control-plane model
+        working-directory: formal
+        run: |
+          java -Xmx2G -jar ../tla2tools.jar \
+            -workers auto \
+            -config ep_autonomy_control_plane.cfg \
+            ep_autonomy_control_plane.tla \
+            2>&1 | tee tlc-autonomy-control-plane-output.txt
+          grep -q "Model checking completed. No error has been found." \
+            tlc-autonomy-control-plane-output.txt
+
+      - name: Prove self-expansion breaks authority conservation
+        working-directory: formal
+        run: |
+          set +e
+          java -Xmx2G -jar ../tla2tools.jar \
+            -workers auto \
+            -config ep_autonomy_control_plane_unsafe.cfg \
+            ep_autonomy_control_plane.tla \
+            > tlc-autonomy-control-plane-unsafe-output.txt 2>&1
+          status=$?
+          set -e
+          if [ "$status" -eq 0 ] || ! grep -q "Invariant AuthorityNeverExpands is violated" tlc-autonomy-control-plane-unsafe-output.txt; then
+            echo "Unsafe self-expansion mutation did not produce its expected counterexample."
+            cat tlc-autonomy-control-plane-unsafe-output.txt
+            exit 1
+          fi
+
       - name: Re-run content-addressed selected-scenario conformance and negative controls
         env:
           TLA2TOOLS_JAR: ${{ github.workspace }}/tla2tools.jar
@@ -413,4 +441,6 @@ jobs:
             formal/tlc-composed-trust-lifecycle-output.txt
             formal/tlc-revocation-witness-output.txt
             formal/tlc-effect-profiles-output.txt
+            formal/tlc-autonomy-control-plane-output.txt
+            formal/tlc-autonomy-control-plane-unsafe-output.txt
           retention-days: 90

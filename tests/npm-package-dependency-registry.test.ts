@@ -48,7 +48,7 @@ function registryFetcher(
 }
 
 describe('npm internal dependency registry guard', () => {
-  it('binds Gate 0.16.1 to the pinned Verify 3.15.1 registry tarball', () => {
+  it('binds Gate 0.17.0 to the pinned Verify 3.15.1 registry tarball', () => {
     const pins = collectRegistryDependencyTarballPins(
       GATE_METADATA,
       'packages/gate',
@@ -68,7 +68,7 @@ describe('npm internal dependency registry guard', () => {
       },
     );
 
-    expect(GATE_METADATA.version).toBe('0.16.1');
+    expect(GATE_METADATA.version).toBe('0.17.0');
     expect(requested).not.toContain('@emilia-protocol/verify@3.15.1');
     expect(verified).toEqual([{
       spec: '@emilia-protocol/verify@3.15.1',

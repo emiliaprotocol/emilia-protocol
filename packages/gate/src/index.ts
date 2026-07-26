@@ -232,6 +232,7 @@ export {
   delegateCapabilityReceipt,
 } from './capability-receipt.js';
 export * from './authority-allocation.js';
+export * from './autonomy-control-plane-profile.js';
 export {
   ZK_RANGE_RECEIPT_VERSION,
   ZK_RANGE_SCHEME,

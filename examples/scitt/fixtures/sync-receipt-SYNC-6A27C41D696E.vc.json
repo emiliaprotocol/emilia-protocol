@@ -1,0 +1,111 @@
+{
+  "@context": [
+    "https://www.w3.org/ns/credentials/v2",
+    {
+      "@version": 1.1,
+      "HumanAuthorizationOriginReceipt": "sync:HumanAuthorizationOriginReceipt",
+      "SYNCAuthorizationReceipt": "sync:SYNCAuthorizationReceipt",
+      "canonicalReceiptHash": "sync:canonicalReceiptHash",
+      "chainHeadB64Url": "sync:chainHeadB64Url",
+      "evidenceManifestHashB64Url": "sync:evidenceManifestHashB64Url",
+      "exportMetadata": "sync:exportMetadata",
+      "intentHashB64Url": "sync:intentHashB64Url",
+      "policyContext": "sync:policyContext",
+      "receiptID": "sync:receiptID",
+      "receiptSealHashB64Url": "sync:receiptSealHashB64Url",
+      "receiptType": "sync:receiptType",
+      "sync": "urn:sync:vocab:v1.1:"
+    }
+  ],
+  "credentialSubject": {
+    "activePolicyModules": [
+      "gdpr.posture.v1",
+      "eu_ai_act.posture.v1",
+      "traiga.posture.v1"
+    ],
+    "authorization": {
+      "algorithm": "ES256",
+      "created_at": "2026-07-25T08:42:53Z",
+      "key_id": "9c96bea0e905554b04690e25f709aed3edf4c4b20b8326bcbcfe80c62a464182",
+      "key_scheme": "P256-SecureEnclave",
+      "payload_digest_algorithm": "SHA-256",
+      "proof_source": "secure_enclave",
+      "public_key_b64": "BPv/r89KI6Dx99By7szNyXDY6ZMeylRsXIqCEMF5anr/E/s4Aw8ZO/4yUEHEOO8o6D0cr39NIfx84hE3pQuxRLQ=",
+      "receipt_seal_hash_b64url": "mLGaAqifnjvSTkXAnPYp9dIyGSj6UkAa5UD8TMfLa4E",
+      "signature_b64url": "MEQCIBJLvcXfO4yW8_2RCWOgcdGLfAVDAAQslfuFm32XY82eAiAf7jh9arkUNsEJkUWY9aP9e8gup0V69giKf5OkJLlVTg",
+      "signature_encoding": "ecdsa_x962_der_b64url",
+      "signed_payload_digest_b64url": "j-WPS0kb26WTLG4hY5J95uoD-wGY5rxqKWfFevT5VqI",
+      "verification_mode": "offline_public_key_signature_check"
+    },
+    "canonicalPayloadHashB64Url": "UGrBO2jwzVePWM93dwasgDXK8qr81q0ki2E3k5QT9zE",
+    "canonicalReceiptHash": "SHA-256:506ac13b68f0cd578f58cf777706ac8035caf2aafcd6ad248b6137939413f731",
+    "canonicalReceiptSchemaVersion": "sync.canonical_receipt_envelope.v1.1",
+    "chainHeadB64Url": "auWCFWw8FhWDwkYzvjmnNq4mrRlCHAp3HqQ5nZk3wrk",
+    "evidence": [],
+    "evidenceManifestHashB64Url": "T1PNoYwrqgwDVLtfmj7L5e0Sq02OEbqHPC8RFhICuUU",
+    "evidenceStorage": "hash_only_no_central_upload",
+    "exportMetadata": {
+      "biometricAvailable": true,
+      "biometricTemplateExported": false,
+      "biometricType": "FaceID",
+      "exportAuthorizationAt": "2026-07-25T08:44:03Z",
+      "exportAuthorizationKeyID": "9c96bea0e905554b04690e25f709aed3edf4c4b20b8326bcbcfe80c62a464182",
+      "exportAuthorizationMethod": "local_biometric_or_device_passcode",
+      "exportAuthorizationPayloadDigestB64Url": "WpIOsUcZCuhH1uaEjEI-9xh-foZ9PbkjhtbTCPUCdk4",
+      "exportAuthorizationResult": "success",
+      "exportFormat": "vc_json",
+      "exportSchemaVersion": "sync.export_authorization.v1.1",
+      "exportedAt": "2026-07-25T08:44:03Z",
+      "exportedReceiptID": "82F6AB81-EE0B-43D0-A13C-6A27C41D696E"
+    },
+    "id": "urn:sync:human-authorization:82F6AB81-EE0B-43D0-A13C-6A27C41D696E",
+    "intent": "Authorize this receipt for the SYNC × EMILIA conformance example.",
+    "intentHash": "SHA-256:aedd3f1a65432e4af3509154d6da387ae3b1c067c978ac2d181e37f711b96b6f",
+    "intentHashB64Url": "rt0_GmVDLkrzUJFU1to4euOxwGfJeKwtGB439xG5a28",
+    "policyContext": {
+      "activePolicyModules": [
+        "gdpr.posture.v1",
+        "eu_ai_act.posture.v1",
+        "traiga.posture.v1"
+      ],
+      "complianceDetermination": "not_provided_by_sync",
+      "disclaimer": "Policy context is included for governance and audit reference only. SYNC does not provide legal advice or determine compliance.",
+      "labels": [
+        "GDPR",
+        "EU AI Act",
+        "TRAIGA"
+      ],
+      "legalDetermination": "not_provided_by_sync",
+      "mode": "governance_context_v1"
+    },
+    "policyContextDisplay": "GDPR Â· EU AI Act Â· TRAIGA",
+    "policyContextLabels": [
+      "GDPR",
+      "EU AI Act",
+      "TRAIGA"
+    ],
+    "proofSource": "secure_enclave_p256",
+    "publicReceiptID": "SYNC-6A27C41D696E",
+    "receiptChain": {
+      "chainHead": "SHA-256:6ae582156c3c161583c24633be39a736ae26ad19421c0a771ea4399d9937c2b9",
+      "currentReceiptHash": "SHA-256:80fcd7a8ee62c4cc9d07137e2fad56ae324938b1bdec850a214c0e04fe1481c3",
+      "deletionSemantics": "deletion_should_use_tombstone_records_to_preserve_chain_continuity",
+      "index": 142,
+      "linkedAt": "2026-07-25T08:42:53Z",
+      "previousReceiptHash": "SHA-256:8bd8d736e6cf88dacc9a89f8ac19e39f2218e60554d4034fe0764d500670587a",
+      "schemaVersion": "sync.local_receipt_chain.v1",
+      "storageMode": "local_append_only_metadata"
+    },
+    "receiptID": "82F6AB81-EE0B-43D0-A13C-6A27C41D696E",
+    "receiptSealHashB64Url": "mLGaAqifnjvSTkXAnPYp9dIyGSj6UkAa5UD8TMfLa4E",
+    "receiptType": "human_authorization_origin_receipt"
+  },
+  "id": "urn:sync:receipt:82F6AB81-EE0B-43D0-A13C-6A27C41D696E",
+  "issuer": "did:key:zDnaehPfWUUXnaoUmjhk75osXjsf2ZFNAnoDjubHjEiFzw8ea",
+  "type": [
+    "VerifiableCredential",
+    "SYNCAuthorizationReceipt",
+    "HumanAuthorizationOriginReceipt"
+  ],
+  "validFrom": "2026-07-25T08:42:53Z"
+}

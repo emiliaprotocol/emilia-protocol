@@ -443,11 +443,11 @@
     },
     {
       "path": "package-lock.json",
-      "sha256": "4ed49c74b8a17724eb067489f1fd7ebb32299d64a1333a7ce58a93e748f0fa94"
+      "sha256": "a5086ea226b5bc918b8e2d7a46b0486e431fa898c64013959bdbcf01d5b12371"
     },
     {
       "path": "package.json",
-      "sha256": "78b0222f4611a5c1dc6c358586c1e965fd8672334e393cb74024b79ce63d0a6e"
+      "sha256": "c06dda3ef7926ac967788979be2d0928334aab8b6dc1d2fe0315733c4ffe85c4"
     },
     {
       "path": "packages/gate/aec-execution.js",
@@ -502,6 +502,10 @@
       "sha256": "1da7d98a4f98fcffd82d03532f28761a7d351635066eb8c9901776030981fa64"
     },
     {
+      "path": "packages/gate/dist/autonomy-control-plane-profile.js",
+      "sha256": "05b27e572bd2a0a86b5e473a9b047e88eee327d31321217751f353e5db4a4c7a"
+    },
+    {
       "path": "packages/gate/dist/breakglass.js",
       "sha256": "c7e6d7ced156f42c70a769c8bc105bda8fa562029d74e980523652941d50644e"
     },
@@ -543,7 +547,7 @@
     },
     {
       "path": "packages/gate/dist/index.js",
-      "sha256": "c2bc28905effa3ce9506f19b8dfe811a18a929ba422c4edc7e525d064736549d"
+      "sha256": "b61ac5172ff476c9e286a74b91ece96ac0541af4aa37a6fb3762eb3c9adede4c"
     },
     {
       "path": "packages/gate/dist/key-registry.js",
@@ -683,7 +687,7 @@
     },
     {
       "path": "packages/gate/src/index.ts",
-      "sha256": "22f959772447205205e45ecbeac3060609e60a29a29a48d3b6982f3d0436f683"
+      "sha256": "da8da6ec65056e4f64e42a9d001809c0de98ee4e6241ecb7101782e686da8a1d"
     },
     {
       "path": "packages/gate/src/network-witness.ts",

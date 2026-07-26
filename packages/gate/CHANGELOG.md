@@ -4,6 +4,28 @@
 All notable changes to `@emilia-protocol/gate` are documented here.
 This package follows [Semantic Versioning](https://semver.org/).
 
+## 0.17.0 (2026-07-26)
+
+### Added
+
+- `./autonomy-control-plane-profile`, a closed compiler from a human-signed
+  root objective into one existing Gate Trust Program per exact child action.
+- Typed containment for child actions, audiences, expiries, per-child and
+  aggregate sibling budgets, exact code-diff bindings, independent
+  proposer/evaluator/executor roles, pinned fitness evidence, bounded canary
+  promotion, current suspension status, and separately authorized rollback.
+- A bounded TLA+ model and deliberately unsafe self-expansion configuration;
+  the safe model checks authority conservation while the negative control
+  falsifies it when an agent can grant itself a new action and budget.
+
+### Security
+
+- Unknown profile fields, cyclic goal derivation, role collapse, stale or
+  unpinned fitness/status evidence, promotion without canary evidence, and
+  rollback under a reused CAID fail closed.
+- The claim boundary explicitly excludes natural-language goal entailment,
+  provider truth, test adequacy, clocks, storage, and deployment completion.
+
 ## 0.16.1 (2026-07-26)
 
 ### Fixed

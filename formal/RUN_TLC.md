@@ -16,6 +16,8 @@ This document reproduces the pinned TLC checks for:
 - `ep_composed_trust_lifecycle.tla`
 - `ep_revocation_witness.tla`
 - `ep_effect_profiles.tla`
+- `ep_autonomy_control_plane.tla`
+- `ep_autonomy_control_plane_unsafe.cfg` (deliberately unsafe negative control)
 
 The checks are bounded safety checks. A clean run means TLC found no
 counterexample in each model's checked finite configuration; it is not a proof
@@ -170,6 +172,28 @@ java -Xmx4G -jar ../tla2tools.jar \
   -config ep_effect_profiles.cfg \
   ep_effect_profiles.tla \
   2>&1 | tee tlc-effect-profiles-output.txt
+
+java -Xmx2G -jar ../tla2tools.jar \
+  -workers auto \
+  -config ep_autonomy_control_plane.cfg \
+  ep_autonomy_control_plane.tla \
+  2>&1 | tee tlc-autonomy-control-plane-output.txt
+
+set +e
+java -Xmx2G -jar ../tla2tools.jar \
+  -workers auto \
+  -config ep_autonomy_control_plane_unsafe.cfg \
+  ep_autonomy_control_plane.tla \
+  > tlc-autonomy-control-plane-unsafe-output.txt 2>&1
+unsafe_status=$?
+set -e
+if [ "$unsafe_status" -eq 0 ] ||
+  ! grep -q "Invariant AuthorityNeverExpands is violated" \
+    tlc-autonomy-control-plane-unsafe-output.txt; then
+  echo "The self-expansion mutation did not produce its expected counterexample."
+  cat tlc-autonomy-control-plane-unsafe-output.txt
+  exit 1
+fi
 
 cd ..
 TLA2TOOLS_JAR="$PWD/tla2tools.jar" npm run sync:formal-traces
