@@ -35,6 +35,11 @@ import crypto from 'crypto';
 // ============================================================================
 
 const ITERATIONS = 1000;
+// Wall-clock assertions belong to the dedicated, non-instrumented benchmark
+// job. The root test job still exercises every benchmark path under coverage,
+// but coverage instrumentation and shared-runner contention are not valid SLO
+// measurement conditions.
+const ENFORCE_WALL_CLOCK_SLO = process.env.BENCHMARK_CI === '1';
 
 const SLO = {
   handshake_create: { p50: 60, p95: 150, p99: 300 },
@@ -494,9 +499,11 @@ describe('Benchmark: Handshake Create Latency', () => {
     reportResults('Handshake Create', stats);
 
     // SLO assertions (code-path overhead, not end-to-end)
-    expect(stats.p50).toBeLessThan(SLO.handshake_create.p50);
-    expect(stats.p95).toBeLessThan(SLO.handshake_create.p95);
-    expect(stats.p99).toBeLessThan(SLO.handshake_create.p99);
+    if (ENFORCE_WALL_CLOCK_SLO) {
+      expect(stats.p50).toBeLessThan(SLO.handshake_create.p50);
+      expect(stats.p95).toBeLessThan(SLO.handshake_create.p95);
+      expect(stats.p99).toBeLessThan(SLO.handshake_create.p99);
+    }
   }, 120_000);
 });
 
@@ -545,9 +552,11 @@ describe('Benchmark: Handshake Verify Latency', () => {
     const stats = computePercentiles(timings);
     reportResults('Handshake Verify', stats);
 
-    expect(stats.p50).toBeLessThan(SLO.handshake_verify.p50);
-    expect(stats.p95).toBeLessThan(SLO.handshake_verify.p95);
-    expect(stats.p99).toBeLessThan(SLO.handshake_verify.p99);
+    if (ENFORCE_WALL_CLOCK_SLO) {
+      expect(stats.p50).toBeLessThan(SLO.handshake_verify.p50);
+      expect(stats.p95).toBeLessThan(SLO.handshake_verify.p95);
+      expect(stats.p99).toBeLessThan(SLO.handshake_verify.p99);
+    }
   }, 120_000);
 });
 
@@ -600,9 +609,11 @@ describe('Benchmark: Consume Latency', () => {
     const stats = computePercentiles(timings);
     reportResults('Consume', stats);
 
-    expect(stats.p50).toBeLessThan(SLO.consume.p50);
-    expect(stats.p95).toBeLessThan(SLO.consume.p95);
-    expect(stats.p99).toBeLessThan(SLO.consume.p99);
+    if (ENFORCE_WALL_CLOCK_SLO) {
+      expect(stats.p50).toBeLessThan(SLO.consume.p50);
+      expect(stats.p95).toBeLessThan(SLO.consume.p95);
+      expect(stats.p99).toBeLessThan(SLO.consume.p99);
+    }
   }, 120_000);
 });
 
@@ -649,7 +660,7 @@ describe('Benchmark: Binding Hash Computation', () => {
     reportResults('Binding Hash (SHA-256)', stats);
 
     // Binding hash should be sub-millisecond: p99 < 2ms
-    expect(stats.p99).toBeLessThan(2);
+    if (ENFORCE_WALL_CLOCK_SLO) expect(stats.p99).toBeLessThan(2);
   });
 });
 
@@ -684,7 +695,7 @@ describe('Benchmark: Policy Evaluation', () => {
     reportResults('Policy Evaluation (profile + gate)', stats);
 
     // Policy evaluation is pure computation — p99 < 5ms
-    expect(stats.p99).toBeLessThan(5);
+    if (ENFORCE_WALL_CLOCK_SLO) expect(stats.p99).toBeLessThan(5);
   });
 });
 
@@ -710,7 +721,7 @@ describe('Benchmark: Component Hash Functions', () => {
 
     const stats = computePercentiles(timings);
     reportResults('computePartySetHash', stats);
-    expect(stats.p99).toBeLessThan(1);
+    if (ENFORCE_WALL_CLOCK_SLO) expect(stats.p99).toBeLessThan(1);
   });
 
   it(`measures computePayloadHash over ${ITERATIONS} iterations`, () => {
@@ -730,7 +741,7 @@ describe('Benchmark: Component Hash Functions', () => {
 
     const stats = computePercentiles(timings);
     reportResults('computePayloadHash', stats);
-    expect(stats.p99).toBeLessThan(1);
+    if (ENFORCE_WALL_CLOCK_SLO) expect(stats.p99).toBeLessThan(1);
   });
 
   it(`measures computePolicyHash over ${ITERATIONS} iterations`, () => {
@@ -753,7 +764,7 @@ describe('Benchmark: Component Hash Functions', () => {
 
     const stats = computePercentiles(timings);
     reportResults('computePolicyHash', stats);
-    expect(stats.p99).toBeLessThan(1);
+    if (ENFORCE_WALL_CLOCK_SLO) expect(stats.p99).toBeLessThan(1);
   });
 });
 

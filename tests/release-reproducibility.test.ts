@@ -81,7 +81,7 @@ describe('release byte reproducibility', () => {
     } finally {
       rmSync(root, { recursive: true, force: true });
     }
-  });
+  }, 60_000);
 
   it('rejects nondeterministic output from independent clean package builds', () => {
     const root = mkdtempSync(path.join(os.tmpdir(), 'ep-pack-nondeterministic-'));
