@@ -36,6 +36,10 @@ describe('homepage category contract', () => {
     expect(page).toContain('EMILIA Gate <span>· The Consequence Firewall</span>');
     expect(page).toContain('Stop consequential machine actions before they become irreversible.');
     expect(page).toContain('Protocol proves. Gate prevents.');
+    expect(page).toContain('Auth opens the door. EMILIA controls what crosses it.');
+    expect(page).toContain('Existing authorization stack');
+    expect(page).toContain('EMILIA Consequence Firewall');
+    expect(page).toContain('Run once, reconcile uncertainty, authorize remedy');
     expect(page).toContain('On every protected path the resource owner fully mediates: no valid evidence, no');
     expect(css).toContain('hero-human-machine-shoreline-v1.webp');
     expect(page).toContain('Proof, not promises');

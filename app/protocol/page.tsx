@@ -107,17 +107,16 @@ export default function ProtocolPage() {
 
       {/* Hero */}
       <section style={{ ...styles.section, paddingTop: 100, paddingBottom: 72 }}>
-        <div className="ep-tag ep-hero-badge">The Protocol</div>
-        <h1 className="ep-hero-text" style={styles.h1}>Trust, enforced at the action level</h1>
+        <div className="ep-tag ep-hero-badge">EMILIA Protocol</div>
+        <h1 className="ep-hero-text" style={styles.h1}>The open evidence layer behind the Consequence Firewall</h1>
         <p className="ep-hero-text" style={{ ...styles.body, maxWidth: 600 }}>
-          EMILIA Protocol (EP) is an open protocol for binding actor identity, authority, policy,
-          and exact action context into a single cryptographic ceremony — before any high-risk
-          action is allowed to proceed.
+          Identity and policy systems can remain in place. EMILIA Protocol defines how a relying
+          party requests exact-action evidence, verifies it under pinned rules, and carries
+          portable proof across approval, execution, uncertainty, and remedy.
         </p>
         <p className="ep-hero-text" style={{ ...styles.body, maxWidth: 600 }}>
-          Most authorization systems verify who is acting. EP verifies whether this specific action
-          should be allowed to proceed right now, given the full context of who is asking, what
-          authority they hold, and what policy governs the decision.
+          The Protocol proves. EMILIA Gate is the commercial product that prevents the consequence
+          at the executor or system-of-record boundary.
         </p>
       </section>
 
@@ -134,7 +133,7 @@ export default function ProtocolPage() {
             borderLeft: `1px solid ${color.border}`,
           }}>
             {ENDPOINTS.map((ep, i) => (
-              <div key={ep.name} className="ep-row-hover ep-reveal" style={{
+              <div key={ep.name} className="ep-row-hover ep-reveal ep-protocol-detail-row" style={{
                 display: 'flex', gap: 24, alignItems: 'flex-start',
                 padding: '20px 24px',
                 borderRight: `1px solid ${color.border}`,
@@ -160,7 +159,7 @@ export default function ProtocolPage() {
           borderLeft: `1px solid ${color.border}`,
         }}>
           {STATES.map((st, i) => (
-            <div key={st.state} className="ep-row-hover ep-reveal" style={{
+            <div key={st.state} className="ep-row-hover ep-reveal ep-protocol-detail-row" style={{
               display: 'flex', gap: 24, alignItems: 'center',
               padding: '14px 24px',
               borderRight: `1px solid ${color.border}`,
@@ -187,7 +186,7 @@ export default function ProtocolPage() {
           </div>
 
           {/* Border-collapse grid — same pattern the homepage used to render */}
-          <div className="ep-reveal ep-stagger-1" style={{
+          <div className="ep-reveal ep-stagger-1 ep-protocol-binding-grid" style={{
             display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)',
             borderTop: `1px solid ${color.border}`,
             borderLeft: `1px solid ${color.border}`,
@@ -246,7 +245,7 @@ export default function ProtocolPage() {
           borderLeft: `1px solid ${color.border}`,
         }}>
           {PIPS.map((p, i) => (
-            <div key={i} className="ep-row-hover" style={{
+            <div key={i} className="ep-row-hover ep-protocol-pip-row" style={{
               display: 'flex', gap: 24, alignItems: 'center',
               padding: '12px 24px',
               borderRight: `1px solid ${color.border}`,
@@ -280,7 +279,7 @@ export default function ProtocolPage() {
           marginBottom: 28,
         }}>
           {PROFILES.map((p, i) => (
-            <div key={i} className="ep-row-hover" style={{
+            <div key={i} className="ep-row-hover ep-protocol-profile-row" style={{
               display: 'flex', gap: 24, alignItems: 'flex-start',
               padding: '16px 24px',
               borderRight: `1px solid ${color.border}`,
@@ -315,11 +314,11 @@ export default function ProtocolPage() {
           </div>
           <div style={{ position: 'relative' }}>
             {/* Connecting line */}
-            <div aria-hidden style={{
+            <div className="ep-protocol-rollout-line" aria-hidden style={{
               position: 'absolute', top: 20, left: 36, right: 36,
               height: 1, background: color.border, zIndex: 0,
             }} />
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 16, position: 'relative', zIndex: 1 }}>
+            <div className="ep-protocol-rollout-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 16, position: 'relative', zIndex: 1 }}>
               {ROLLOUT.map((item, i) => (
                 <div key={i} className="ep-card-lift ep-reveal" style={{
                   background: color.card,
@@ -359,7 +358,7 @@ export default function ProtocolPage() {
               EP has formal compliance mappings for 38 NIST AI RMF subcategories across all four functions (GOVERN, MAP, MEASURE, MANAGE) and EU AI Act Articles 9–15 + 26. SOC 2 Type II preparation is underway. Every mapping cites specific EP primitives — not aspirational claims.
             </p>
           </div>
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 16 }}>
+          <div className="ep-protocol-compliance-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 16 }}>
             {COMPLIANCE.map((c, i) => (
               <div key={i} className={`ep-card-lift ep-reveal ep-stagger-${i + 1}`} style={{
                 border: `1px solid ${color.border}`,

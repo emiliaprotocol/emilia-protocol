@@ -5,16 +5,15 @@
 import type { Metadata } from 'next';
 
 export const metadata: Metadata = {
-  title: 'The Protocol — 4 Layers of Pre-Action Trust for AI Agents',
+  title: 'Open Evidence Protocol for Consequential AI-Agent Actions',
   description:
-    'EMILIA Protocol composes four primitives — Eye, Handshake, Signoff, Commit — to '
-    + 'gate every consequential AI agent action behind a verified cryptographic ceremony.',
+    'The open verification substrate behind EMILIA Gate: exact-action evidence, pinned verification, '
+    + 'one-time authorization, execution continuity, and portable proof.',
   alternates: { canonical: '/protocol' },
   openGraph: {
-    title: 'The Protocol — 4 Layers of Pre-Action Trust for AI Agents',
+    title: 'EMILIA Protocol — Open Evidence for Consequential Machine Action',
     description:
-      'Eye → Handshake → Signoff → Commit. The composable trust ceremony ' +
-      'for AI agent action authorization, formally verified.',
+      'Identity and policy remain inputs. EMILIA Protocol carries exact-action evidence across approval, execution, uncertainty, and remedy.',
     url: 'https://www.emiliaprotocol.ai/protocol',
     type: 'article',
   },

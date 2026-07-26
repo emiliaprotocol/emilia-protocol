@@ -45,7 +45,7 @@ export default function EuAiActBanner({}: Props) {
   };
 
   return (
-    <div id="ep-eu-ai-act-banner" style={{
+    <div id="ep-eu-ai-act-banner" className="ep-eu-banner" style={{
       width: '100%', boxSizing: 'border-box',
       background: '#1C1917', color: '#FAFAF9',
       borderBottom: '1px solid rgba(176,141,53,0.35)',
@@ -53,15 +53,16 @@ export default function EuAiActBanner({}: Props) {
       padding: '9px 44px 9px 16px', position: 'relative',
       fontFamily: "'IBM Plex Mono', monospace", fontSize: 12.5, letterSpacing: 0.2,
     }}>
-      <span style={{ width: 6, height: 6, borderRadius: '50%', background: '#B08D35', flexShrink: 0 }} className="ep-pulse-dot" />
-      <Link href="/eu-ai-act" style={{ color: '#FAFAF9', textDecoration: 'none', display: 'inline-flex', alignItems: 'center', gap: 8, flexWrap: 'wrap', justifyContent: 'center' }}>
-        <span style={{ color: '#B08D35', fontWeight: 600, textTransform: 'uppercase', letterSpacing: 1 }}>EU AI Act</span>
-        <span style={{ color: 'rgba(250,250,249,0.85)' }}>
+      <span style={{ width: 6, height: 6, borderRadius: '50%', background: '#B08D35', flexShrink: 0 }} className="ep-pulse-dot ep-eu-banner-dot" />
+      <Link href="/eu-ai-act" className="ep-eu-banner-link" style={{ color: '#FAFAF9', textDecoration: 'none', display: 'inline-flex', alignItems: 'center', gap: 8, flexWrap: 'wrap', justifyContent: 'center' }}>
+        <span className="ep-eu-banner-label" style={{ color: '#B08D35', fontWeight: 600, textTransform: 'uppercase', letterSpacing: 1 }}>EU AI Act</span>
+        <span className="ep-eu-banner-message" style={{ color: 'rgba(250,250,249,0.85)' }}>
           high-risk obligations provisionally deferred to <strong style={{ color: '#FAFAF9' }}>Dec 2, 2027</strong> — the requirements stand; only the clock moved
         </span>
-        <span style={{ color: '#B08D35' }}>&rarr;</span>
+        <span className="ep-eu-banner-arrow" style={{ color: '#B08D35' }}>&rarr;</span>
       </Link>
       <button
+        className="ep-eu-banner-close"
         onClick={dismiss}
         aria-label="Dismiss EU AI Act notice"
         style={{
