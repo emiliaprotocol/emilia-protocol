@@ -7,7 +7,7 @@ import { contract } from '../scripts/db-contract.manifest.mts';
 
 const migrationPath = path.join(
   process.cwd(),
-  'supabase/migrations/20260725143000_consequence_actuator_provider_records.sql',
+  'supabase/migrations/20260725203000_consequence_actuator_provider_records_managed_role_fix.sql',
 );
 const actuatorStoreMigrationPath = path.join(
   process.cwd(),
@@ -63,6 +63,17 @@ describe('consequence actuator provider-record migration contract', () => {
       /DROP\s+(?:TABLE|SCHEMA)\s+(?!IF EXISTS consequence_actuator_private\.provider_records)/i,
     );
     expect(migration).toContain('SET ROLE consequence_actuator_store_owner');
+    expect(migration).toContain(
+      'membership.inherit_option OR membership.set_option',
+    );
+    expect(migration).toContain("'USAGE'");
+    expect(migration).toContain("'SET'");
+    expect(migration).toContain(
+      'GRANT consequence_actuator_store_owner TO CURRENT_USER',
+    );
+    expect(migration).toContain(
+      'REVOKE consequence_actuator_store_owner FROM CURRENT_USER',
+    );
     const actuatorStoreMigration = fs.readFileSync(
       actuatorStoreMigrationPath,
       'utf8',

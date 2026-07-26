@@ -145,6 +145,9 @@ describe('reusable npm release workflow byte contract', () => {
       publish.run.indexOf('npm publish'),
     );
     expect(publish.run).toContain(
+      'npm publish "./${TESTED_TARBALL#./}" --access public --provenance --ignore-scripts',
+    );
+    expect(publish.run).not.toContain(
       'npm publish "$TESTED_TARBALL" --access public --provenance --ignore-scripts',
     );
     expect(registry.run).toContain('--ignore-scripts');

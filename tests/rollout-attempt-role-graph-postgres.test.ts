@@ -6,7 +6,7 @@ import { afterAll, beforeAll, describe, expect, it } from "vitest";
 
 const migration = readFileSync(
   new URL(
-    "../supabase/migrations/20260725160000_rollout_attempt_store.sql",
+    "../supabase/migrations/20260725204500_rollout_attempt_store_managed_role_fix.sql",
     import.meta.url,
   ),
   "utf8",
@@ -22,6 +22,8 @@ const CLEAN_LOGIN = "rollout_attempt_clean_test_login";
 const OWNER_LOGIN = "rollout_attempt_owner_test_login";
 const OWNER_BRIDGE = "rollout_attempt_owner_test_bridge";
 const OWNER_POLLUTION_LOGIN = "rollout_attempt_owner_pollution_login";
+const MANAGED_ADMIN = "rollout_attempt_managed_admin";
+const MIGRATION_LOGIN = "rollout_attempt_migration_login";
 const BYPASS_LOGIN = "rollout_attempt_bypass_test_login";
 const BYPASS_BRIDGE = "rollout_attempt_bypass_test_bridge";
 const LOGIN_PASSWORD = "ep-role-graph-test-password";
@@ -29,6 +31,8 @@ const TEST_ROLES = [
   CLEAN_LOGIN,
   OWNER_LOGIN,
   OWNER_POLLUTION_LOGIN,
+  MIGRATION_LOGIN,
+  MANAGED_ADMIN,
   BYPASS_LOGIN,
   OWNER_BRIDGE,
   BYPASS_BRIDGE,
@@ -57,7 +61,7 @@ async function cleanupRoleGraph(): Promise<void> {
      FROM pg_catalog.pg_stat_activity
      WHERE usename = ANY($1::text[])
        AND pid <> pg_catalog.pg_backend_pid()`,
-    [[CLEAN_LOGIN, OWNER_LOGIN, BYPASS_LOGIN]],
+    [[CLEAN_LOGIN, OWNER_LOGIN, BYPASS_LOGIN, MIGRATION_LOGIN]],
   );
   await admin.query("DROP SCHEMA IF EXISTS rollout_attempt_private CASCADE");
 
@@ -293,8 +297,34 @@ suite("rollout-attempt dirty role graph on PostgreSQL 17", () => {
     }
   });
 
-  it("installs after the role graph is clean", async () => {
-    await admin.query(migration);
+  it("installs with a provider-managed admin-only owner grant", async () => {
+    await admin.query(`
+      CREATE ROLE ${identifier(MANAGED_ADMIN)} NOLOGIN
+        NOSUPERUSER NOCREATEDB NOCREATEROLE NOREPLICATION NOBYPASSRLS;
+      CREATE ROLE ${identifier(MIGRATION_LOGIN)}
+        LOGIN PASSWORD '${LOGIN_PASSWORD}' SUPERUSER;
+      GRANT ${identifier(OWNER_ROLE)} TO ${identifier(MANAGED_ADMIN)}
+        WITH ADMIN TRUE, INHERIT FALSE, SET FALSE;
+      GRANT ${identifier(EXECUTOR_ROLE)} TO ${identifier(MANAGED_ADMIN)}
+        WITH ADMIN TRUE, INHERIT FALSE, SET FALSE;
+      SET ROLE ${identifier(MANAGED_ADMIN)};
+      GRANT ${identifier(OWNER_ROLE)} TO ${identifier(MIGRATION_LOGIN)}
+        WITH ADMIN TRUE, INHERIT FALSE, SET FALSE;
+      GRANT ${identifier(EXECUTOR_ROLE)} TO ${identifier(MIGRATION_LOGIN)}
+        WITH ADMIN TRUE, INHERIT FALSE, SET FALSE;
+      RESET ROLE;
+    `);
+    const migrationClient = new pg.Client({
+      ...connection,
+      user: MIGRATION_LOGIN,
+      password: LOGIN_PASSWORD,
+    });
+    await migrationClient.connect();
+    try {
+      await migrationClient.query(migration);
+    } finally {
+      await migrationClient.end();
+    }
     const installed = await admin.query<{
       owner: string;
       executor_can_login: boolean;
@@ -313,6 +343,46 @@ suite("rollout-attempt dirty role graph on PostgreSQL 17", () => {
         executor_can_login: false,
       },
     ]);
+
+    const managedGrant = await admin.query<{
+      admin_option: boolean;
+      inherit_option: boolean;
+      set_option: boolean;
+    }>(`
+      SELECT
+        membership.admin_option,
+        membership.inherit_option,
+        membership.set_option
+      FROM pg_catalog.pg_auth_members AS membership
+      JOIN pg_catalog.pg_roles AS granted_role
+        ON granted_role.oid = membership.roleid
+      JOIN pg_catalog.pg_roles AS member_role
+        ON member_role.oid = membership.member
+      JOIN pg_catalog.pg_roles AS grantor_role
+        ON grantor_role.oid = membership.grantor
+      WHERE granted_role.rolname = '${OWNER_ROLE}'
+        AND member_role.rolname = '${MIGRATION_LOGIN}'
+        AND grantor_role.rolname = '${MANAGED_ADMIN}'
+    `);
+    expect(managedGrant.rows).toEqual([{
+      admin_option: true,
+      inherit_option: false,
+      set_option: false,
+    }]);
+    const temporaryGrant = await admin.query<{ count: number }>(`
+      SELECT pg_catalog.count(*)::INTEGER AS count
+      FROM pg_catalog.pg_auth_members AS membership
+      JOIN pg_catalog.pg_roles AS granted_role
+        ON granted_role.oid = membership.roleid
+      JOIN pg_catalog.pg_roles AS member_role
+        ON member_role.oid = membership.member
+      JOIN pg_catalog.pg_roles AS grantor_role
+        ON grantor_role.oid = membership.grantor
+      WHERE granted_role.rolname = '${OWNER_ROLE}'
+        AND member_role.rolname = '${MIGRATION_LOGIN}'
+        AND grantor_role.rolname = '${MIGRATION_LOGIN}'
+    `);
+    expect(temporaryGrant.rows).toEqual([{ count: 0 }]);
   });
 
   it("publishes qualified bare names and exact identity signatures", async () => {

@@ -3,6 +3,17 @@
 All notable changes to `@emilia-protocol/verify` are documented here.
 This package follows [Semantic Versioning](https://semver.org/).
 
+## 3.15.1 (2026-07-26)
+
+### Fixed
+
+- The protected npm publisher now addresses its already-built, attested
+  tarball as an explicit local file, preventing npm 11 from interpreting the
+  workspace-relative path as a GitHub repository shorthand.
+
+There are no verifier API, wire-format, or runtime-behavior changes in this
+patch release.
+
 ## 3.15.0 (2026-07-25)
 
 ### Added

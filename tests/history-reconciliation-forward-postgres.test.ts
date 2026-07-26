@@ -12,7 +12,7 @@ const migration = readFileSync(
 );
 const rolloutMigration = readFileSync(
   new URL(
-    '../supabase/migrations/20260725160000_rollout_attempt_store.sql',
+    '../supabase/migrations/20260725204500_rollout_attempt_store_managed_role_fix.sql',
     import.meta.url,
   ),
   'utf8',

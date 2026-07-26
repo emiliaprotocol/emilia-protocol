@@ -20,6 +20,7 @@ import path from 'node:path';
 import { execFileSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 import { fetchSchemaSnapshot } from './_schema-introspect.mjs';
+import { maskSqlNonCode } from './lib/sql-text.mjs';
 
 const ROOT: string = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const MIG_DIR: string = path.join(ROOT, 'supabase', 'migrations');
@@ -72,7 +73,7 @@ if (reconcileRef) {
   sql = migrationFiles.map((file) => fs.readFileSync(path.join(MIG_DIR, file), 'utf8')).join('\n');
 }
 
-const lc: string = sql; // keep case for identifiers; regexes are case-insensitive
+const lc: string = maskSqlNonCode(sql); // keep case for identifiers; regexes are case-insensitive
 const grab = (re: RegExp): Set<string> => { const s: Set<string> = new Set(); let m: RegExpExecArray | null; while ((m = re.exec(lc))) s.add(m[1].toLowerCase().replace(/^public\./, '')); return s; };
 
 const createdTables = grab(/create\s+table\s+(?:if\s+not\s+exists\s+)?["']?([a-z_][a-z0-9_."]*)/gi);

@@ -22,7 +22,7 @@ MIGRATION = (
     REPOSITORY
     / "supabase"
     / "migrations"
-    / "20260725160000_rollout_attempt_store.sql"
+    / "20260725204500_rollout_attempt_store_managed_role_fix.sql"
 )
 ROLES = REPOSITORY / "supabase" / "roles.sql"
 DATABASE_URL = (
@@ -542,6 +542,12 @@ class RolloutAttemptMigrationContractTests(unittest.TestCase):
         )
         self.assertIn("WITH RECURSIVE", self.sql)
         self.assertIn("FROM pg_catalog.pg_auth_members", self.sql)
+        self.assertIn(
+            "membership.inherit_option OR membership.set_option",
+            self.sql,
+        )
+        self.assertIn("'USAGE'", self.sql)
+        self.assertIn("'SET'", self.sql)
         self.assertIn("executor_members(role_oid)", self.sql)
         self.assertIn("owner_members(role_oid)", self.sql)
         for attribute in (
@@ -674,8 +680,15 @@ class RolloutAttemptMigrationContractTests(unittest.TestCase):
         self,
     ) -> None:
         self.assertIn(
-            "pg_catalog.pg_has_role("
-            "SESSION_USER, 'rollout_attempt_executor', 'MEMBER')",
+            "SESSION_USER,\n"
+            "        'rollout_attempt_executor',\n"
+            "        'USAGE'",
+            self.sql,
+        )
+        self.assertIn(
+            "SESSION_USER,\n"
+            "        'rollout_attempt_executor',\n"
+            "        'SET'",
             self.sql,
         )
         self.assertIn("LANGUAGE plpgsql", self.sql)
@@ -685,7 +698,13 @@ class RolloutAttemptMigrationContractTests(unittest.TestCase):
         self.assertIn(
             "SESSION_USER,\n"
             "      'rollout_attempt_store_owner',\n"
-            "      'MEMBER'",
+            "      'USAGE'",
+            self.sql,
+        )
+        self.assertIn(
+            "SESSION_USER,\n"
+            "      'rollout_attempt_store_owner',\n"
+            "      'SET'",
             self.sql,
         )
         for attribute in (

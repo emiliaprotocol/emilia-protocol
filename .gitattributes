@@ -173,6 +173,7 @@ scripts/generate-proof-stats.mjs linguist-generated=true
 scripts/gov-readiness-check.mjs linguist-generated=true
 scripts/import-standards-recon.mjs linguist-generated=true
 scripts/key-inventory.mjs linguist-generated=true
+scripts/lib/sql-text.mjs linguist-generated=true
 scripts/lib/standards-text.mjs linguist-generated=true
 scripts/migrate-to-logger.js linguist-generated=true
 scripts/migration-reconcile.mjs linguist-generated=true
