@@ -1,0 +1,6 @@
+
+GRANT ep_aeb_executor, proposal_to_effect_executor TO ep_canary_executor_20260723;
+REVOKE ep_aeb_recovery, proposal_to_effect_recovery FROM ep_canary_executor_20260723;
+GRANT ep_aeb_recovery, proposal_to_effect_recovery TO ep_canary_recovery_20260723;
+REVOKE ep_aeb_executor, proposal_to_effect_executor FROM ep_canary_recovery_20260723;
+;

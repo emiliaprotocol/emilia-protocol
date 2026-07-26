@@ -6,8 +6,8 @@ name: schema-security
 # reconciliation against the live database.
 #
 # Secret policy:
-#   - pull_request: secrets are unavailable to fork PRs; skip NEUTRALLY (green)
-#     so external contributors aren't blocked by a check they can't run.
+#   - pull_request_target: the workflow and executable reconciliation code come
+#     only from the trusted base commit. Candidate SQL/ledger bytes are data.
 #   - push to main / nightly schedule: secrets are REQUIRED; their absence or any
 #     drift FAILS the workflow.
 #
@@ -30,43 +30,81 @@ permissions:
 on:
   push:
     branches: [main]
-  pull_request:
+  pull_request_target:
     branches: [main]
   schedule:
     - cron: '17 7 * * *'   # nightly 07:17 UTC drift sweep
   workflow_dispatch:
 
 concurrency:
-  group: schema-security-${{ github.ref }}
+  group: schema-security-${{ github.event.pull_request.number || github.ref }}
   cancel-in-progress: true
 
 jobs:
-  schema-contract:
+  candidate-reconciliation:
+    if: github.event_name == 'pull_request_target'
     runs-on: ubuntu-latest
-    env:
-      SCHEMA_GATE_DB_URL: ${{ secrets.SCHEMA_GATE_DB_URL }}
     steps:
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
+      - name: Check out trusted base reconciliation code
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
         with:
-          # PR reconciliation reads the exact base commit, while main/nightly
-          # continue checking the current migration tree against production.
-          fetch-depth: 0
+          ref: ${{ github.event.pull_request.base.sha }}
+          fetch-depth: 1
+          persist-credentials: false
+          path: trusted-base
+
+      - name: Check out candidate migration bytes as data only
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+          fetch-depth: 1
+          persist-credentials: false
+          path: candidate-data
+          sparse-checkout: |
+            supabase/migrations
+            supabase/migration-history.v1.json
+            supabase/migration-archive/2026-07-25-history-reconciliation
+          sparse-checkout-cone-mode: false
+
+      - name: Parse candidate ledger and SQL only with trusted base code
+        run: |
+          node trusted-base/scripts/schema-pr-candidate-reconcile.mjs \
+            --base-root trusted-base \
+            --candidate-root candidate-data
+
+  live-schema-contract:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out only the trusted live-contract implementation
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
+        with:
+          ref: ${{ github.event.pull_request.base.sha || github.sha }}
+          fetch-depth: 1
+          persist-credentials: false
+          path: trusted
+
       - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020  # v7.0.0
         with:
           # Node 24: @supabase/supabase-js needs native WebSocket (absent in Node 20).
           node-version: 24
           cache: npm
-      - run: npm ci --ignore-scripts
+          cache-dependency-path: trusted/package-lock.json
+
+      - name: Install trusted schema-gate dependencies
+        working-directory: trusted
+        run: npm ci --ignore-scripts
 
       - name: Secret guard (skip neutrally on fork PRs; required on main/schedule)
         id: guard
+        env:
+          SCHEMA_GATE_DB_URL: ${{ secrets.SCHEMA_GATE_DB_URL }}
         run: |
           if [ -n "$SCHEMA_GATE_DB_URL" ]; then
             echo "have_secrets=true" >> "$GITHUB_OUTPUT"
             echo "schema_gate credential present — running schema truth checks."
           else
             echo "have_secrets=false" >> "$GITHUB_OUTPUT"
-            if [ "${{ github.event_name }}" = "pull_request" ]; then
+            if [ "${{ github.event_name }}" = "pull_request_target" ]; then
               echo "::notice::SCHEMA_GATE_DB_URL unavailable (fork PR or unset) — skipping schema-security neutrally."
             else
               echo "::error::SCHEMA_GATE_DB_URL is REQUIRED on '${{ github.event_name }}' but is missing. Prod schema truth cannot be verified — failing."
@@ -76,10 +114,43 @@ jobs:
 
       - name: schema:security — contract vs live prod (tables, columns, RLS, no-anon policies, RPC ACLs, indexes, authority shape)
         if: steps.guard.outputs.have_secrets == 'true'
+        working-directory: trusted
+        env:
+          SCHEMA_GATE_DB_URL: ${{ secrets.SCHEMA_GATE_DB_URL }}
         run: npm run schema:security
 
       - name: schema:reconcile — migration journal vs reality (declared objects must actually exist)
         if: steps.guard.outputs.have_secrets == 'true'
+        working-directory: trusted
         env:
-          MIGRATION_RECONCILE_REF: ${{ github.event.pull_request.base.sha }}
+          SCHEMA_GATE_DB_URL: ${{ secrets.SCHEMA_GATE_DB_URL }}
         run: npm run schema:reconcile
+
+  schema-contract:
+    if: always()
+    needs: [candidate-reconciliation, live-schema-contract]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Require candidate reconciliation when applicable and live schema truth
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+          CANDIDATE_RESULT: ${{ needs.candidate-reconciliation.result }}
+          LIVE_RESULT: ${{ needs.live-schema-contract.result }}
+        run: |
+          set -euo pipefail
+          [[ "$LIVE_RESULT" == success ]] || {
+            echo "::error::live schema contract did not succeed: $LIVE_RESULT"
+            exit 1
+          }
+          if [[ "$EVENT_NAME" == pull_request_target ]]; then
+            [[ "$CANDIDATE_RESULT" == success ]] || {
+              echo "::error::candidate reconciliation did not succeed: $CANDIDATE_RESULT"
+              exit 1
+            }
+          else
+            [[ "$CANDIDATE_RESULT" == skipped ]] || {
+              echo "::error::candidate reconciliation must be skipped outside pull requests: $CANDIDATE_RESULT"
+              exit 1
+            }
+          fi
+          echo '"schema-security / schema-contract" is satisfied.'

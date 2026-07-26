@@ -23,18 +23,24 @@ Changing one without the others intentionally causes refusal.
 
 ### Backend
 
-1. Run `supabase migration list` and require exact local/remote history parity
-   before any write. Reconcile missing migrations from their reviewed source
-   artifacts; do not create empty placeholders or repair the remote ledger just
-   to make a push pass. Then run `supabase db push --dry-run` and confirm the
-   reviewed mobile migrations are the only pending production changes.
-2. Apply `supabase/migrations/20260715180000_mobile_production_platform.sql` to
-   the production project through the normal reviewed migration path, then
-   apply
-   `supabase/migrations/20260720181619_mobile_action_continuity.sql`, then
-   `supabase/migrations/20260720193917_mobile_action_continuity_hardening.sql`.
-   Do not mark any migration as applied without verifying its tables, functions,
-   RLS, grants, and live contract.
+1. Run `npm run check:migration-history`, then construct the ignored private
+   deployment workdir described by
+   `supabase/migration-archive/2026-07-25-history-reconciliation/README.md`.
+   It must contain the public executable migrations plus the one quarantined
+   private historical version. Run `supabase migration list --linked --workdir
+   <private-root>` and verify that the remote column equals the ledger's
+   `remote_versions`, while local-only rows equal `deployment_sequence`.
+   Then run `supabase db push --linked --dry-run --include-all --workdir
+   <private-root>` and require the exact same pending order. Never create
+   placeholders or repair the remote journal to force parity.
+2. After the reviewed release commit is merged, execute the same command
+   without `--dry-run` once:
+   `supabase db push --linked --include-all --workdir <private-root>`.
+   Require the CLI to apply exactly `deployment_sequence`; then rerun the
+   migration list, live schema contract, and reconciliation gate. Do not replay
+   older mobile migrations already present in `remote_versions`, and do not
+   mark any migration as applied without verifying its tables, functions, RLS,
+   grants, and live contract.
 3. Configure the production environment values documented for the deployment,
    including the canonical Android signing certificate, Apple environment, Play cloud project,
    API-key material, and production rate-limit storage.

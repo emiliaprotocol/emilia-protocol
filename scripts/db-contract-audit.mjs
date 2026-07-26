@@ -18,6 +18,7 @@ const aclAnon = (acl) => /(^|[,{])anon=[A-Za-z]*X/.test(acl);
 const aclAuth = (acl) => /(^|[,{])authenticated=[A-Za-z]*X/.test(acl);
 const aclPublic = (acl) => acl === '' || /(^|[,{])=[A-Za-z]*X/.test(acl);
 const aclUntrusted = (acl) => aclAnon(acl) || aclAuth(acl) || aclPublic(acl);
+const aclServiceRole = (acl) => /(^|[,{])service_role=[A-Za-z]*X/.test(acl);
 const roleName = (role) => String(role || '').toLowerCase();
 const hasUntrustedRole = (roles) => (roles || []).some((role) => UNTRUSTED.has(roleName(role)));
 const truthExpression = (value) => {
@@ -32,7 +33,8 @@ export function evaluateContract(snap, schemaContract = defaultContract) {
     const fail = (message) => { failures.push(message); };
     const list = (value) => (Array.isArray(value) ? value : []);
     const requiredSnapshotFields = [
-        'tables', 'columns', 'rls', 'policies', 'functions', 'table_grants', 'column_grants',
+        'tables', 'columns', 'rls', 'policies', 'functions', 'indexes', 'table_grants', 'column_grants',
+        'reconcile_tables', 'reconcile_functions',
     ];
     for (const field of requiredSnapshotFields) {
         if (Array.isArray(snap?.[field]))
@@ -41,6 +43,8 @@ export function evaluateContract(snap, schemaContract = defaultContract) {
             fail(`SNAPSHOT field missing or invalid: ${field} (apply the introspection migration before running the gate)`);
     }
     const tables = new Set(list(snap?.tables));
+    const qualifiedTables = new Set(list(snap?.reconcile_tables).map((name) => String(name)));
+    const qualifiedFunctions = new Set(list(snap?.reconcile_functions).map((name) => String(name)));
     const cols = new Map();
     for (const column of list(snap?.columns)) {
         if (!cols.has(column.t))
@@ -60,12 +64,36 @@ export function evaluateContract(snap, schemaContract = defaultContract) {
             fnsByName.set(fn.name, []);
         fnsByName.get(fn.name).push(fn);
     }
+    const indexesByTable = new Map();
+    for (const index of list(snap?.indexes)) {
+        if (!indexesByTable.has(index.t))
+            indexesByTable.set(index.t, new Set());
+        indexesByTable.get(index.t).add(index.name);
+    }
     // 1. Required tables
     for (const table of schemaContract.requiredTables) {
         if (tables.has(table))
             pass();
         else
             fail(`TABLE missing: ${table}`);
+    }
+    for (const table of schemaContract.requiredQualifiedTables || []) {
+        if (qualifiedTables.has(table))
+            pass();
+        else
+            fail(`QUALIFIED TABLE missing: ${table}`);
+    }
+    for (const rpc of schemaContract.requiredQualifiedRpcs || []) {
+        if (qualifiedFunctions.has(rpc))
+            pass();
+        else
+            fail(`QUALIFIED RPC missing: ${rpc}`);
+    }
+    for (const assertion of schemaContract.requiredReconcileAssertions || []) {
+        if (qualifiedFunctions.has(assertion))
+            pass();
+        else
+            fail(`RECONCILIATION SECURITY ASSERTION failed: ${assertion}`);
     }
     // 2. Known-gap tables (non-fatal, but tracked + must be reported)
     for (const gapEntry of schemaContract.knownGapTables) {
@@ -87,6 +115,16 @@ export function evaluateContract(snap, schemaContract = defaultContract) {
                 pass();
             else
                 fail(`COLUMN missing: ${table}.${column}`);
+        }
+    }
+    // 3b. Required safety indexes
+    for (const [table, wanted] of Object.entries(schemaContract.requiredIndexes || {})) {
+        const have = indexesByTable.get(table) || new Set();
+        for (const index of wanted) {
+            if (have.has(index))
+                pass();
+            else
+                fail(`INDEX missing: ${table}.${index}`);
         }
     }
     // 4. RLS enabled / forced
@@ -198,7 +236,37 @@ export function evaluateContract(snap, schemaContract = defaultContract) {
         else
             fail(`RPC executable by untrusted role: ${name} (${exposed.length}/${overloads.length} overloads acl=${exposed.map((fn) => fn.acl).join(' | ')})`);
     }
-    // 11. Required RPCs exist
+    // 11. Exact mutation-root signatures must preserve their definer and ACL
+    // posture. Bare-name existence is insufficient because a wrong overload or
+    // SECURITY INVOKER replacement would satisfy it.
+    for (const signature of schemaContract.requiredDefinerRpcSignatures || []) {
+        const match = String(signature).match(/^public\.([a-z_][a-z0-9_]*)\((.*)\)$/i);
+        if (!match) {
+            fail(`Invalid required definer RPC signature: ${signature}`);
+            continue;
+        }
+        const [, name, expectedArgs] = match;
+        const overload = (fnsByName.get(name) || []).find((fn) => String(fn.args || '').replace(/\s+/g, '')
+            === expectedArgs.replace(/\s+/g, ''));
+        if (!overload) {
+            fail(`EXACT RPC missing: ${signature}`);
+            continue;
+        }
+        if (overload.secdef !== true) {
+            fail(`RPC not SECURITY DEFINER: ${signature}`);
+            continue;
+        }
+        if (aclUntrusted(overload.acl || '')) {
+            fail(`RPC executable by untrusted role: ${signature}`);
+            continue;
+        }
+        if (!aclServiceRole(overload.acl || '')) {
+            fail(`RPC not executable by service_role: ${signature}`);
+            continue;
+        }
+        pass();
+    }
+    // 12. Required RPCs exist
     for (const name of schemaContract.requiredRpcs) {
         if (fnsByName.has(name))
             pass();

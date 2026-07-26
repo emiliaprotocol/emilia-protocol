@@ -142,9 +142,11 @@ publication workflow.
 - GitHub artifact attestations bound to the workflow identity and source ref;
 - a post-publication byte comparison against npm or PyPI.
 
-`release.yml` also runs for every `*-v*` tag as a repository-level provenance
-record. Every individual package workflow now carries the full artifact,
-security-case, and conformance chain itself.
+There is deliberately no generic tag-triggered provenance workflow. A generic
+`*-v*` handler cannot prove that a tag prefix, package identity, version, and
+artifact all describe the same release. Each registry-declared package workflow
+therefore owns its exact tag validation, artifact, security-case, conformance,
+OIDC publication, attestation, and post-registry byte comparison.
 
 ## Failure doctrine
 

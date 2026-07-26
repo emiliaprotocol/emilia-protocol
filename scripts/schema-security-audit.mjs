@@ -145,7 +145,8 @@ export function auditMigrationBundle(migrationFiles, schemaContract = contract) 
     // Union the statements across ALL fortress files so a new one counts, while
     // the invariant strength is unchanged — every table's revoke must still appear
     // in some fortress migration in the checked-in source.
-    const invariantFiles = files.filter((entry) => entry.file.endsWith('_fortress_db_security_invariants.sql'));
+    const invariantFiles = files.filter((entry) => entry.file.endsWith('_fortress_db_security_invariants.sql')
+        || entry.file === '20260725180000_reconcile_unjournaled_security_invariants.sql');
     const invariantStatements = invariantFiles.flatMap((entry) => statementsFor(entry.sql));
     const failures = [];
     const checks = [];

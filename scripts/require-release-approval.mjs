@@ -3,10 +3,37 @@
 // Generated from require-release-approval.mts by scripts/build-standalone-runtimes.mjs. Do not edit.
 /* eslint-disable */
 import { execFileSync, spawnSync } from 'node:child_process';
+import crypto from 'node:crypto';
+import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
+export const CANONICAL_RELEASE_REPOSITORY = 'https://github.com/emiliaprotocol/emilia-protocol.git';
 function git(cwd, args) {
     return execFileSync('git', args, { cwd, encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'] }).trim();
+}
+const queryRemoteReferences = (repositoryUrl, references, cwd) => {
+    const result = spawnSync('git', [
+        'ls-remote',
+        '--exit-code',
+        repositoryUrl,
+        ...references,
+    ], {
+        cwd,
+        encoding: 'utf8',
+        stdio: ['ignore', 'pipe', 'pipe'],
+    });
+    return {
+        status: result.status,
+        stdout: result.stdout ?? '',
+        stderr: result.stderr ?? '',
+    };
+};
+function npmArtifactFilename(packageName, version) {
+    if (!/^(?:@[a-z0-9][a-z0-9._~-]*\/)?[a-z0-9][a-z0-9._~-]*$/u.test(packageName)
+        || !/^[0-9A-Za-z][0-9A-Za-z.+-]*$/u.test(version)) {
+        throw new Error('approved npm package identity is malformed');
+    }
+    return `${packageName.replace(/^@/u, '').replace(/\//gu, '-')}-${version}.tgz`;
 }
 export function validateReleaseApproval({ eventName, actor, allowedActor, tag, tagPrefix, packageName, version, confirmation, }) {
     if (eventName !== 'workflow_dispatch')
@@ -26,8 +53,15 @@ export function validateReleaseApproval({ eventName, actor, allowedActor, tag, t
         throw new Error(`confirmation must be exactly: ${expectedConfirmation}`);
     return { expectedTag, expectedConfirmation };
 }
-export function verifyReleaseGitState({ cwd, tag, mainRef = 'refs/remotes/origin/main' }) {
+export function verifyReleaseGitState({ cwd, tag, mainRef = 'refs/remotes/origin/main', expectedCommit, expectedRef, }) {
     const head = git(cwd, ['rev-parse', 'HEAD^{commit}']);
+    const protectedRef = 'refs/heads/main';
+    if (expectedRef !== protectedRef) {
+        throw new Error(`workflow dispatch ref ${expectedRef || '(missing)'} must be the protected main ref ${protectedRef}`);
+    }
+    if (!/^[0-9a-f]{40}$/.test(expectedCommit || '') || head !== expectedCommit) {
+        throw new Error(`release checkout ${head} does not match dispatched commit ${expectedCommit || '(missing)'}`);
+    }
     let tagCommit;
     try {
         tagCommit = git(cwd, ['rev-parse', '--verify', `refs/tags/${tag}^{commit}`]);
@@ -37,23 +71,20 @@ export function verifyReleaseGitState({ cwd, tag, mainRef = 'refs/remotes/origin
     }
     if (head !== tagCommit)
         throw new Error(`checkout HEAD ${head} does not match release tag ${tag} (${tagCommit})`);
+    let mainCommit;
     try {
-        git(cwd, ['rev-parse', '--verify', `${mainRef}^{commit}`]);
+        mainCommit = git(cwd, ['rev-parse', '--verify', `${mainRef}^{commit}`]);
     }
     catch {
         throw new Error(`protected main reference is unavailable: ${mainRef}`);
     }
-    const ancestor = spawnSync('git', ['merge-base', '--is-ancestor', head, mainRef], {
-        cwd,
-        encoding: 'utf8',
-        stdio: ['ignore', 'pipe', 'pipe'],
-    });
-    if (ancestor.status !== 0)
-        throw new Error(`release commit ${head} is not contained in ${mainRef}`);
+    if (head !== mainCommit) {
+        throw new Error(`release commit ${head} must be the exact protected main commit ${mainCommit}`);
+    }
     const dirty = git(cwd, ['status', '--porcelain', '--untracked-files=no']);
     if (dirty)
         throw new Error('release checkout contains modified tracked files');
-    return { head, tag, mainRef };
+    return { head, tag, mainRef, expectedCommit, expectedRef };
 }
 export function verifyUnpublishedReleaseGitState({ cwd, tag, mainRef = 'refs/remotes/origin/main', expectedCommit = null }) {
     const head = git(cwd, ['rev-parse', 'HEAD^{commit}']);
@@ -84,19 +115,71 @@ export function verifyUnpublishedReleaseGitState({ cwd, tag, mainRef = 'refs/rem
         throw new Error('release checkout contains modified tracked files');
     return { head, tag, mainRef, unpublished: true };
 }
+export function verifyRemoteReleaseGitState({ cwd, tag, expectedCommit, referenceQuery = queryRemoteReferences, }) {
+    if (!/^[0-9a-f]{40}$/u.test(expectedCommit)) {
+        throw new Error(`remote release check requires an exact commit, received ${expectedCommit || '(missing)'}`);
+    }
+    const mainReference = 'refs/heads/main';
+    const tagReference = `refs/tags/${tag}`;
+    const peeledTagReference = `${tagReference}^{}`;
+    const repositoryUrl = CANONICAL_RELEASE_REPOSITORY;
+    const query = referenceQuery(repositoryUrl, [
+        mainReference,
+        tagReference,
+        peeledTagReference,
+    ], cwd);
+    if (query.status !== 0) {
+        throw new Error(`remote release references are unavailable from ${repositoryUrl}: ${query.stderr || query.stdout}`);
+    }
+    const references = new Map();
+    for (const line of query.stdout.split('\n').filter(Boolean)) {
+        const match = line.match(/^([0-9a-f]{40})\t(.+)$/u);
+        if (!match)
+            throw new Error(`remote release reference query returned malformed output: ${line}`);
+        const [, commit, reference] = match;
+        const commits = references.get(reference) ?? [];
+        commits.push(commit);
+        references.set(reference, commits);
+    }
+    const exactReference = (reference, label) => {
+        const commits = references.get(reference) ?? [];
+        if (commits.length > 1)
+            throw new Error(`${label} is ambiguous on ${repositoryUrl}`);
+        return commits[0] ?? null;
+    };
+    const mainCommit = exactReference(mainReference, 'remote protected main');
+    if (!mainCommit)
+        throw new Error(`remote protected main is unavailable from ${repositoryUrl}`);
+    if (mainCommit !== expectedCommit) {
+        throw new Error(`remote protected main moved or advanced: ${mainCommit} != ${expectedCommit}`);
+    }
+    const tagObject = exactReference(tagReference, `remote release tag ${tag}`);
+    if (!tagObject)
+        throw new Error(`remote release tag ${tag} is unavailable from ${repositoryUrl}`);
+    const tagCommit = exactReference(peeledTagReference, `peeled remote release tag ${tag}`) ?? tagObject;
+    if (tagCommit !== expectedCommit) {
+        throw new Error(`remote release tag ${tag} moved: ${tagCommit} != ${expectedCommit}`);
+    }
+    return { mainCommit, tagCommit, repositoryUrl };
+}
 function option(argv, name) {
     const index = argv.indexOf(name);
     return index >= 0 ? argv[index + 1] : null;
 }
 export function main(argv = process.argv.slice(2), env = process.env) {
+    if (argv.includes('--remote')) {
+        throw new Error('remote release repository is fixed and cannot be overridden');
+    }
+    const packageName = option(argv, '--package');
+    const version = option(argv, '--version');
     const approval = validateReleaseApproval({
         eventName: env.GITHUB_EVENT_NAME,
         actor: env.GITHUB_ACTOR,
         allowedActor: option(argv, '--allowed-actor'),
         tag: option(argv, '--tag'),
         tagPrefix: option(argv, '--tag-prefix'),
-        packageName: option(argv, '--package'),
-        version: option(argv, '--version'),
+        packageName,
+        version,
         confirmation: option(argv, '--confirmation'),
     });
     const gitState = argv.includes('--unpublished-tag')
@@ -110,7 +193,48 @@ export function main(argv = process.argv.slice(2), env = process.env) {
             cwd: env.GITHUB_WORKSPACE || process.cwd(),
             tag: approval.expectedTag,
             mainRef: option(argv, '--main-ref') || 'refs/remotes/origin/main',
+            expectedCommit: option(argv, '--expected-commit') || env.GITHUB_SHA,
+            expectedRef: option(argv, '--expected-ref') || env.GITHUB_REF,
         });
+    if (argv.includes('--revalidate-remote')) {
+        verifyRemoteReleaseGitState({
+            cwd: env.GITHUB_WORKSPACE || process.cwd(),
+            tag: approval.expectedTag,
+            expectedCommit: gitState.head,
+        });
+    }
+    const packageJsonArgument = option(argv, '--package-json');
+    let packageJsonSha256 = null;
+    if (packageJsonArgument) {
+        const packageJsonPath = path.resolve(env.GITHUB_WORKSPACE || process.cwd(), packageJsonArgument);
+        const packageJsonStat = fs.lstatSync(packageJsonPath);
+        if (!packageJsonStat.isFile() || packageJsonStat.isSymbolicLink()) {
+            throw new Error(`approved package.json is not a regular file: ${packageJsonArgument}`);
+        }
+        const packageJsonBytes = fs.readFileSync(packageJsonPath);
+        let packageMetadata;
+        try {
+            packageMetadata = JSON.parse(packageJsonBytes.toString('utf8'));
+        }
+        catch {
+            throw new Error(`approved package.json is not valid JSON: ${packageJsonArgument}`);
+        }
+        if (packageMetadata?.name !== packageName || packageMetadata?.version !== version) {
+            throw new Error(`approved package.json identity differs from ${packageName}@${version}`);
+        }
+        packageJsonSha256 = crypto.createHash('sha256').update(packageJsonBytes).digest('hex');
+    }
+    const githubOutput = option(argv, '--github-output');
+    if (githubOutput) {
+        fs.appendFileSync(githubOutput, [
+            `package=${packageName}`,
+            `version=${version}`,
+            `filename=${npmArtifactFilename(packageName, version)}`,
+            `commit=${gitState.head}`,
+            ...(packageJsonSha256 ? [`package_json_sha256=${packageJsonSha256}`] : []),
+            '',
+        ].join('\n'));
+    }
     console.log(`RELEASE APPROVAL: PASS (${approval.expectedConfirmation}; ${gitState.head})`);
 }
 const invokedPath = process.argv[1] ? path.resolve(process.argv[1]) : null;

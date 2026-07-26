@@ -88,13 +88,28 @@ test('deployment probes and the E2E harness use production service contracts', a
   assert.match(ciWorkflow, /severity: HIGH,CRITICAL/);
   assert.doesNotMatch(ciWorkflow, /ignore-unfixed: true/);
   assert.match(ciWorkflow, /exit-code: '1'/);
-  for (const packageName of ['gate', 'require-receipt', 'verify']) {
+  for (const [packageName, digestArgument] of [
+    ['gate', 'EMILIA_GATE_PACKAGE_SHA256'],
+    ['require-receipt', 'EMILIA_REQUIRE_RECEIPT_PACKAGE_SHA256'],
+    ['verify', 'EMILIA_VERIFY_PACKAGE_SHA256'],
+  ]) {
+    assert.ok(
+      dockerfile.includes(`"$${digestArgument}" /opt/release-packages/${packageName}.tgz`),
+      `runtime image must checksum the sealed ${packageName} package`,
+    );
     assert.match(
       dockerfile,
-      new RegExp(`ln -s \\.\\.\\/\\.\\.\\/packages\\/${packageName} \\/app\\/node_modules\\/@emilia-protocol\\/${packageName}`),
-      `runtime image must resolve @emilia-protocol/${packageName} from the exact copied source`,
+      new RegExp(
+        `tar -xzf \\/opt\\/release-packages\\/${packageName}\\.tgz -C packages\\/${packageName} --strip-components=1`,
+      ),
+      `runtime image must extract ${packageName} only from its sealed package`,
     );
   }
+  assert.doesNotMatch(
+    dockerfile,
+    /COPY --chown=[^\n]*packages\/(?:gate|require-receipt|verify)/,
+    'runtime image must not replace sealed packages with checkout source',
+  );
 });
 
 test('service package, chart, and OpenAPI share one release identity', async () => {

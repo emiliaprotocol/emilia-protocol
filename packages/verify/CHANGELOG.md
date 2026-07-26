@@ -3,6 +3,26 @@
 All notable changes to `@emilia-protocol/verify` are documented here.
 This package follows [Semantic Versioning](https://semver.org/).
 
+## 3.15.0 (2026-07-25)
+
+### Added
+
+- Revision-pinned native WIMSE, OAuth Transaction Token, SPT, and HTTP
+  signature evidence verification with exact CAID and request-target mapping.
+- Signed discovery-permit evidence that binds the resolver configuration,
+  source provenance, evaluation time, action digest, and CAID under a
+  relying-party-pinned Ed25519 key.
+- Public `./aeb-wimse-oauth-adapter`, `./aeb-discovery-permit-adapter`, and
+  `./discovery-permit-contract` package exports with conformance vectors.
+
+### Security
+
+- Discovery results are not trusted merely because their fields are internally
+  consistent. Verification requires the pinned resolver attestation and
+  rechecks source, time, configuration, action, and CAID bindings.
+- WIMSE-family evidence remains a delegated-workload evidence leg. It cannot
+  fill human authorization, quorum, or local Gate authority requirements.
+
 ## 3.14.0 (2026-07-22)
 
 ### Added

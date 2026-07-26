@@ -5,6 +5,7 @@ import { createHash } from 'node:crypto';
 import { readFileSync } from 'node:fs';
 import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { DOMParser } from '@xmldom/xmldom';
 
 const TRACKED_DRAFTS: readonly string[] = [
   'draft-schrock-ep-authorization-receipts',
@@ -292,15 +293,15 @@ function auditFormalAndExternalClaims(failures: string[], text: string, label: s
 }
 
 function renderedHtmlText(html: string): string {
-  return html
-    .replace(/<style\b[\s\S]*?<\/style>/gi, ' ')
-    .replace(/<script\b[\s\S]*?<\/script>/gi, ' ')
-    .replace(/<[^>]+>/g, ' ')
-    .replace(/&quot;/g, '"')
-    .replace(/&#x27;|&#39;/g, "'")
-    .replace(/&amp;/g, '&')
-    .replace(/&lt;/g, '<')
-    .replace(/&gt;/g, '>');
+  const document = new DOMParser().parseFromString(
+    html,
+    'application/xhtml+xml',
+  );
+  for (const tagName of ['style', 'script']) {
+    const elements = [...Array.from(document.getElementsByTagName(tagName))];
+    for (const element of elements) element.parentNode?.removeChild(element);
+  }
+  return document.documentElement?.textContent ?? '';
 }
 
 function auditRenderedCopy(

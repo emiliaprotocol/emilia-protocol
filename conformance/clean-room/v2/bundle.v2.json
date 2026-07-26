@@ -1,0 +1,150 @@
+{
+  "@version": "EP-CLEAN-ROOM-VECTOR-BUNDLE-v2",
+  "claim_scope": "source-free current-bundle conformance input; independent construction acceptance requires a separate trusted-attestor signature",
+  "source_manifest": {
+    "path": "conformance/conformance-manifest.json",
+    "sha256": "2d9968fb79b710230c864b659e4b376ff0c49165e04959ccf911a81ec8f0b94f",
+    "manifest_sha256": "c9c57832634ce9ef673ccfacbc8f8eb4966bbb2e8dab04c6e0d9074da219e92f"
+  },
+  "runner_protocol": {
+    "version": "EP-CONFORMANCE-FILE-RUNNER-v2",
+    "invocation": "runner [fixed arguments...] /absolute/path/to/execution-suite.json",
+    "result_shape": "array<{id:string,result:object}>",
+    "result_comparison": "complete typed object; reason_contains expectations require a typed reasons string array",
+    "complete_suite_required": true
+  },
+  "suites": [
+    {
+      "path": "conformance/vectors/receipts.v1.json",
+      "sha256": "888fc3a1e3e0fb5ec73e2d5cb6244869c2bb7673f42587635c64f5736b3a1fad",
+      "vectors": 13,
+      "result_contract": "typed_object"
+    },
+    {
+      "path": "conformance/vectors/signoffs.v1.json",
+      "sha256": "1bb0f771be5e66e4a9de9733ea6507e650dd685db7a5a1c6cc46046dcaa8114d",
+      "vectors": 13,
+      "result_contract": "typed_object"
+    },
+    {
+      "path": "conformance/vectors/resolution.v1.json",
+      "sha256": "3d89e9f624e8c7058876ae404c7ec1e76293b4ef178bb8901ec31e72e44b5c5c",
+      "vectors": 33,
+      "result_contract": "typed_object"
+    },
+    {
+      "path": "conformance/vectors/quorum.v1.json",
+      "sha256": "adb18af0146a509a445c9f7a1815f3df55f98092abac2be94246ed53f5fa373a",
+      "vectors": 16,
+      "result_contract": "typed_object"
+    },
+    {
+      "path": "conformance/vectors/revocation.exec.v2.json",
+      "sha256": "84df5f5a9057878f77a556faccfb0a4fb45f92f87edd02dc679294fa8367f115",
+      "vectors": 19,
+      "result_contract": "typed_object"
+    },
+    {
+      "path": "conformance/vectors/outcome-binding.v1.json",
+      "sha256": "c549c9fc53eab2e716dfb0f20957a84dd80f8cf263f8b3d8a51d86f5f3ed8152",
+      "vectors": 35,
+      "result_contract": "typed_object"
+    },
+    {
+      "path": "conformance/vectors/outcome-binding.exec.v1.json",
+      "sha256": "64f759bf8004812f3521df5dc0a0f4108ccf7746fe9fbdb326ab1ac1142a25f1",
+      "vectors": 10,
+      "result_contract": "typed_object"
+    },
+    {
+      "path": "conformance/vectors/authority-document-proof-join.v1.json",
+      "sha256": "7cee9a124ba5860805a08fc7e04a7c1a2448b0c3084725d4c8aa65a83355b73e",
+      "vectors": 26,
+      "result_contract": "typed_object",
+      "execution_path": "conformance/vectors/authority-document-proof-join.exec.v1.json",
+      "execution_sha256": "121a358459ffed223a41a79570cc5307693eaa89a59b3ad330710c5e2f286959"
+    },
+    {
+      "path": "conformance/vectors/time-attestation.v2.json",
+      "sha256": "4c2ae6f3bc7727a5944277c3af5c3e318398d558e647afd5c30cbf565c71551e",
+      "vectors": 6,
+      "result_contract": "typed_object"
+    },
+    {
+      "path": "conformance/vectors/trust-receipt.exec.v1.json",
+      "sha256": "095d50eb2199451344628fffe6e391cdad2718ad647a9dc952712eabefdecf51",
+      "vectors": 14,
+      "result_contract": "typed_object"
+    },
+    {
+      "path": "conformance/vectors/trust-receipt.timestamp-forms.v2.json",
+      "sha256": "3b3540180ab0ee47beeb488ea026ce5ed4ba9b9efa95b8eb1d60ca0255ce779c",
+      "vectors": 7,
+      "result_contract": "typed_object"
+    },
+    {
+      "path": "conformance/vectors/provenance.exec.v1.json",
+      "sha256": "5bbd268183f12950e7466f999bf3aa16412d10d50286a25146ae708e67933c53",
+      "vectors": 14,
+      "result_contract": "typed_object"
+    },
+    {
+      "path": "conformance/vectors/evidence-record.v1.json",
+      "sha256": "946550657c4dbc0375aa6f55f95301cfd43878113e1c7bcc4436db301f6de46a",
+      "vectors": 5,
+      "result_contract": "typed_object"
+    },
+    {
+      "path": "conformance/vectors/canonicalization.v1.json",
+      "sha256": "d72a1de506def5b5dcc20f60301987654ef5b5bb6ea476af926054f300c2eee2",
+      "vectors": 35,
+      "result_contract": "typed_object"
+    },
+    {
+      "path": "conformance/vectors/boundary.v1.json",
+      "sha256": "5a7bec6ed7446fadf898c5e943336c64d3a7568dc2806fe47180a18d126d5507",
+      "vectors": 5,
+      "result_contract": "typed_object"
+    },
+    {
+      "path": "conformance/vectors/aec-role.v1.json",
+      "sha256": "b0f286cab68c22b608ece3af46174fbd66e27b893b4762d12fa320ea596353f2",
+      "vectors": 30,
+      "result_contract": "typed_object"
+    },
+    {
+      "path": "conformance/vectors/currency.v2.json",
+      "sha256": "226a9e01be6186b1abca7cdb5eda713b522c87c8c66e893ba203c9e05aa97dde",
+      "vectors": 12,
+      "result_contract": "typed_object"
+    },
+    {
+      "path": "conformance/vectors/initiator-attestation.v1.json",
+      "sha256": "2274dded455f289e36ad4c9bb2225708ff8bfd66edd034b99ed98298484073e6",
+      "vectors": 11,
+      "result_contract": "typed_object"
+    },
+    {
+      "path": "conformance/vectors/consumption-proof.v1.json",
+      "sha256": "9b0ff706a2c77262131f2658e81d448a7755ba0e466405259590e8faff3f4115",
+      "vectors": 6,
+      "result_contract": "typed_object"
+    },
+    {
+      "path": "conformance/vectors/witness.v1.json",
+      "sha256": "4a226aa0605701eb7f148d6303bc6a0796bce9e8ef5343cb5f53ebd395554673",
+      "vectors": 6,
+      "result_contract": "typed_object"
+    },
+    {
+      "path": "conformance/vectors/timestamp-proof.v1.json",
+      "sha256": "b07944ca95931e20ff92f15a7830972a013812ea739cc29ff9b36adfd4ffa791",
+      "vectors": 13,
+      "result_contract": "typed_object"
+    }
+  ],
+  "totals": {
+    "suites": 21,
+    "vectors": 329
+  }
+}

@@ -1,0 +1,93 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://emiliaprotocol.ai/schemas/discovery-permit-binding-v1.schema.json",
+  "title": "EMILIA Discovery-to-Permit Binding v1",
+  "description": "A non-authorizing source-continuity binding from a pinned discovery surface to one CAID-bound action.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "@type",
+    "source",
+    "schema_digests",
+    "mapping_digest",
+    "status",
+    "issued_at",
+    "caid",
+    "action_digest"
+  ],
+  "properties": {
+    "@type": {
+      "const": "EP-DISCOVERY-PERMIT-BINDING-v1"
+    },
+    "source": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "origin",
+        "discovery_url",
+        "permit_url"
+      ],
+      "properties": {
+        "origin": {
+          "type": "string",
+          "format": "uri",
+          "pattern": "^https://"
+        },
+        "discovery_url": {
+          "type": "string",
+          "format": "uri",
+          "pattern": "^https://"
+        },
+        "permit_url": {
+          "type": "string",
+          "format": "uri",
+          "pattern": "^https://"
+        }
+      }
+    },
+    "schema_digests": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "discovery",
+        "permit_binding"
+      ],
+      "properties": {
+        "discovery": {
+          "$ref": "#/$defs/sha256Digest"
+        },
+        "permit_binding": {
+          "$ref": "#/$defs/sha256Digest"
+        }
+      }
+    },
+    "mapping_digest": {
+      "$ref": "#/$defs/sha256Digest"
+    },
+    "status": {
+      "enum": [
+        "active",
+        "unknown",
+        "deprecated"
+      ]
+    },
+    "issued_at": {
+      "type": "string",
+      "format": "date-time",
+      "pattern": "Z$"
+    },
+    "caid": {
+      "type": "string",
+      "pattern": "^caid:1:[a-z][a-z0-9-]*(?:\\.[a-z][a-z0-9-]*)*\\.[1-9][0-9]*:[a-z0-9]+(?:-[a-z0-9]+)*:[A-Za-z0-9_-]{43}$"
+    },
+    "action_digest": {
+      "$ref": "#/$defs/sha256Digest"
+    }
+  },
+  "$defs": {
+    "sha256Digest": {
+      "type": "string",
+      "pattern": "^sha256:[0-9a-f]{64}$"
+    }
+  }
+}

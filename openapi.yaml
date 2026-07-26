@@ -542,6 +542,110 @@ paths:
         '503':
           description: Durable state or a required verifier dependency is unavailable.
 
+  /api/v1/adapters/health/hospice-claim/execute:
+    post:
+      tags: [GovGuard]
+      summary: Control one prospective hospice payment consequence
+      description: |
+        Authenticated, tenant-bound Proposal-to-Effect lifecycle for a PHI-free
+        hospice payment administrative action. `prepare` creates the exact
+        proposal, approval challenge, and CAID binding. `execute` requires the
+        matching approval evidence, AEB evaluation, and observed material
+        action. `reconcile` accepts only authenticated provider evidence for an
+        existing indeterminate operation. Findings are triage provenance and
+        never authorize payment, establish fraud, or replace clinical review.
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required: [organization_id, operation]
+              properties:
+                organization_id:
+                  type: string
+                operation:
+                  type: string
+                  enum: [prepare, execute, reconcile]
+                proposal_id:
+                  type: string
+                operation_id:
+                  type: string
+                prospective_control_package:
+                  type: object
+                  description: PHI-free prospective control emitted by the scanner or another governed intake.
+                proposal:
+                  type: object
+                  description: Exact server-prepared non-authoritative proposal.
+                approval_evidence:
+                  type: object
+                  description: Exact-action approval evidence obtained through the configured acquisition rail.
+                evaluation:
+                  type: object
+                  description: Signed, relying-party-pinned AEB evaluation for the exact proposal and action.
+                observed_action:
+                  type: object
+                  description: Executor-observed material action fields used for execution binding.
+                provider_evidence:
+                  type: object
+                  description: Authenticated exact-attempt provider evidence used only for reconciliation.
+      responses:
+        '200':
+          description: Exact action executed once or authenticated reconciliation reached a terminal result.
+        '201':
+          description: Exact proposal and approval challenge prepared; execution remains unauthorized.
+        '400':
+          description: Malformed, incomplete, unsupported, or prohibited-PHI request.
+        '401':
+          description: Authentication required.
+        '403':
+          description: Tenant binding or local authority refused.
+        '409':
+          description: Exact-action mismatch, replay, or lifecycle conflict.
+        '422':
+          description: Approval, AEB, Gate, execution binding, or reconciliation requirement failed.
+        '503':
+          description: Durable state, verifier, or consequence-control dependency is unavailable.
+
+  /api/v1/adapters/health/hospice-claim/export:
+    get:
+      tags: [GovGuard]
+      summary: Export one PHI-free hospice consequence assurance packet
+      description: |
+        Returns the tenant-bound append-only evidence packet for one exact
+        operation. The packet records what the deployed control observed and
+        enforced; it is not a clinical judgment, fraud finding, payment
+        correctness determination, or proof of provider truth.
+      security:
+        - BearerAuth: []
+      parameters:
+        - in: query
+          name: organization_id
+          required: true
+          schema:
+            type: string
+        - in: query
+          name: operation_id
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: PHI-free assurance packet returned as a JSON attachment.
+        '400':
+          description: Required tenant or operation binding is missing or malformed.
+        '401':
+          description: Authentication required.
+        '403':
+          description: Tenant binding failed.
+        '404':
+          description: No assurance packet is available for the exact tenant and operation.
+        '503':
+          description: Durable evidence or export dependency is unavailable.
+
   /api/v1/adapters/health/hospice-claim/reconcile:
     post:
       tags: [GovGuard]

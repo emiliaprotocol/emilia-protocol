@@ -102,6 +102,8 @@ function canonicalize(value, seen = new WeakSet()) {
     return output;
 }
 function sha256(value) {
+    // Protocol content commitment, not password or credential storage.
+    // codeql[js/insufficient-password-hash]
     return `sha256:${crypto.createHash('sha256').update(value).digest('hex')}`;
 }
 function digest(value) {

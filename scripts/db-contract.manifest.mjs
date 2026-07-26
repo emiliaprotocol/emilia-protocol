@@ -57,6 +57,52 @@ const RELEASE_LOCK_SERVICE_RPCS = [
     'release_lock_participant_view',
     'release_lock_participant_evidence',
 ];
+const CONSEQUENCE_ACTUATOR_RPC_ONLY_TABLES = [
+    // The credential-owning actuator reaches this table only through
+    // consequence_actuator_private SECURITY DEFINER RPCs under a dedicated
+    // executor principal. Even service_role has no direct table grant.
+    'consequence_actuator_envelopes',
+];
+const CONSEQUENCE_ACTUATOR_QUALIFIED_RPCS = [
+    'consequence_actuator_private.reserve_envelope(text,text,text,text,text,text,text,text,text,timestamp with time zone,timestamp with time zone,text)',
+    'consequence_actuator_private.consume_envelope(text,text,text,text,text,text,text,text,text,text,text)',
+    'consequence_actuator_private.record_provider_attempt(jsonb,text)',
+    'consequence_actuator_private.read_provider_attempt(text,text,text,text,text,text,text,text,text)',
+    'consequence_actuator_private.record_provider_record(jsonb,text)',
+    'consequence_actuator_private.read_provider_record(text,text,text,text,text,text,text,text,text)',
+];
+const ROLLOUT_ATTEMPT_QUALIFIED_TABLES = [
+    'rollout_attempt_private.claims',
+    'rollout_attempt_private.terminals',
+];
+const ROLLOUT_ATTEMPT_QUALIFIED_RPCS = [
+    'rollout_attempt_private.apply_operation(text,text)',
+];
+const CONSEQUENCE_CONTROL_SECURITY_ASSERTIONS = [
+    'contract:table:consequence_actuator_private.provider_attempts:owner-force-rls-owner-only-acl',
+    'contract:table:consequence_actuator_private.provider_records:owner-force-rls-owner-only-acl',
+    'contract:table:rollout_attempt_private.claims:owner-force-rls-owner-only-acl',
+    'contract:table:rollout_attempt_private.terminals:owner-force-rls-owner-only-acl',
+    'contract:function:consequence_actuator_private.reserve_envelope(text,text,text,text,text,text,text,text,text,timestamp with time zone,timestamp with time zone,text):owner-definer-empty-search-path-executor-only',
+    'contract:function:consequence_actuator_private.consume_envelope(text,text,text,text,text,text,text,text,text,text,text):owner-definer-empty-search-path-executor-only',
+    'contract:function:consequence_actuator_private.record_provider_attempt(jsonb,text):owner-definer-empty-search-path-executor-only',
+    'contract:function:consequence_actuator_private.read_provider_attempt(text,text,text,text,text,text,text,text,text):owner-definer-empty-search-path-executor-only',
+    'contract:function:consequence_actuator_private.record_provider_record(jsonb,text):owner-definer-empty-search-path-executor-only',
+    'contract:function:consequence_actuator_private.read_provider_record(text,text,text,text,text,text,text,text,text):owner-definer-empty-search-path-executor-only',
+    'contract:function:rollout_attempt_private.apply_operation(text,text):owner-definer-empty-search-path-executor-only',
+    'contract:trigger:consequence_actuator_private.provider_attempts.consequence_actuator_provider_attempts_immutable:exact-before-update-delete-row-append-only',
+    'contract:trigger:consequence_actuator_private.provider_attempts.consequence_actuator_provider_attempts_no_truncate:exact-before-truncate-statement-append-only',
+    'contract:trigger:consequence_actuator_private.provider_records.consequence_actuator_provider_records_immutable:exact-before-update-delete-row-append-only',
+    'contract:trigger:consequence_actuator_private.provider_records.consequence_actuator_provider_records_no_truncate:exact-before-truncate-statement-append-only',
+    'contract:trigger:rollout_attempt_private.claims.rollout_attempt_claims_no_update_delete:exact-before-update-delete-row-append-only',
+    'contract:trigger:rollout_attempt_private.claims.rollout_attempt_claims_no_truncate:exact-before-truncate-statement-append-only',
+    'contract:trigger:rollout_attempt_private.terminals.rollout_attempt_terminals_no_update_delete:exact-before-update-delete-row-append-only',
+    'contract:trigger:rollout_attempt_private.terminals.rollout_attempt_terminals_no_truncate:exact-before-truncate-statement-append-only',
+    'contract:roles:consequence-actuator:least-privilege-membership-disjoint',
+    'contract:roles:rollout-attempt:least-privilege-membership-disjoint',
+    'contract:index:public.idx_security_events_single_child_per_parent:exact-unique-btree',
+    'contract:index:public.idx_receipts_single_child_per_parent:exact-unique-btree',
+];
 // These tables are reached through server-side/service-role paths only. RLS is
 // necessary but not sufficient: a table ACL is a separate Data API gate, so
 // the live contract checks both controls.
@@ -76,6 +122,10 @@ const SERVICE_ONLY_TABLES = [
     'revoked_commit_keys',
     'revoked_sessions',
     'session_cutoffs',
+    'authority_registry_epoch',
+    'fraud_flags',
+    'partner_inquiries',
+    'investor_inquiries',
     // Marvel durable capability store (packages/gate/capability-receipt.js):
     // spending/budget state reached only through the service-role durable store.
     'ep_capability_state',
@@ -92,6 +142,7 @@ const SERVICE_ONLY_TABLES = [
     'approval_acquisition_requests',
     'guard_receipt_streams',
     'guard_receipt_event_bindings',
+    ...CONSEQUENCE_ACTUATOR_RPC_ONLY_TABLES,
 ];
 export const contract = {
     // Tables that MUST exist. Missing => hard FAIL.
@@ -103,11 +154,25 @@ export const contract = {
         'signoff_challenges', 'signoff_attestations', 'signoff_consumptions', 'signoff_events',
         'approver_credentials', 'protocol_events', 'security_events', 'tenants', 'tenant_members',
         'tenant_environments', 'operator_applications', 'policy_rollouts',
-        'investor_inquiries', 'partner_inquiries', 'fraud_flags', 'zk_proofs',
+        'zk_proofs',
         'authorities', 'commits', 'consumed_gate_refs',
         ...SERVICE_ONLY_TABLES,
         ...RELEASE_LOCK_TABLES,
     ],
+    // Private-schema objects are qualified so the live reconciliation snapshot
+    // cannot satisfy the contract with an unrelated public object. Exact RPC
+    // signatures remain pinned here and are exercised by isolated PostgreSQL
+    // application tests.
+    requiredQualifiedTables: [
+        'consequence_actuator_private.provider_attempts',
+        'consequence_actuator_private.provider_records',
+        ...ROLLOUT_ATTEMPT_QUALIFIED_TABLES,
+    ],
+    requiredQualifiedRpcs: [
+        ...CONSEQUENCE_ACTUATOR_QUALIFIED_RPCS,
+        ...ROLLOUT_ATTEMPT_QUALIFIED_RPCS,
+    ],
+    requiredReconcileAssertions: CONSEQUENCE_CONTROL_SECURITY_ASSERTIONS,
     // Tables that SHOULD exist but are KNOWN-MISSING and tracked for a staged
     // rollout. Reported loudly as KNOWN GAP (non-fatal) so they stay visible
     // without blocking CI — but if one ever appears, remove it from here.
@@ -120,7 +185,15 @@ export const contract = {
         signoff_challenges: ['quorum_policy'],
         receipts: ['receipt_id'],
         authorities: ['key_id', 'public_key', 'role', 'status', 'valid_from', 'valid_to',
-            'revoked_at', 'organization_id', 'subject_type', 'subject_ref', 'assurance_class'],
+            'revoked_at', 'organization_id', 'subject_type', 'subject_ref', 'assurance_class',
+            'action_scopes', 'max_amount_usd', 'currency', 'delegation_parent', 'policy_hash'],
+        authority_registry_epoch: ['organization_id', 'epoch', 'updated_at'],
+        partner_inquiries: ['id', 'created_at', 'inquiry_type', 'name', 'email',
+            'organization', 'title', 'website', 'message', 'metadata_json',
+            'trust_surface', 'timeline'],
+        investor_inquiries: ['id', 'created_at', 'inquiry_type', 'name', 'email',
+            'organization', 'title', 'website', 'message', 'metadata_json',
+            'why_emilia', 'help_offer'],
         // commits: verifyCommit resolves the verification key by `kid`, so a missing
         // kid column silently breaks issuance/verification (mig 132). Guard the
         // signature-verification dependency here so the drift check catches it.
@@ -182,6 +255,10 @@ export const contract = {
             'created_event_id', 'created_at'],
         guard_receipt_event_bindings: ['event_id', 'receipt_id', 'tenant_id',
             'environment', 'event_type', 'event_created_at', 'bound_at'],
+        consequence_actuator_envelopes: ['tenant_id', 'attempt_id', 'action_digest',
+            'caid', 'provider_account_id', 'target_digest', 'operation',
+            'idempotency_key', 'nonce', 'issued_at', 'expires_at', 'envelope_digest',
+            'state', 'reserved_at', 'consumed_at', 'outcome'],
         // enrollment_basis records whether an approver credential was bound against
         // the org's provisioned directory or operator-attested; directory_user_id
         // pins the exact scim_users row that authorized a directory-basis enrollment.
@@ -189,12 +266,23 @@ export const contract = {
         // (mig 20260718180000).
         approver_credentials: ['approver_id', 'organization_id', 'attested_by', 'enrollment_basis', 'directory_user_id'],
     },
+    // Indexes that carry a safety property rather than merely query
+    // acceleration. Missing one re-opens a replay/fork or custody-resolution
+    // failure and therefore violates the live contract.
+    requiredIndexes: {
+        security_events: ['idx_security_events_single_child_per_parent'],
+        receipts: ['idx_receipts_single_child_per_parent'],
+        authorities: ['idx_authorities_delegation_parent'],
+        commits: ['idx_commits_kid'],
+        partner_inquiries: ['idx_partner_inquiries_email'],
+        investor_inquiries: ['idx_investor_inquiries_email'],
+    },
     // Tables that MUST have RLS enabled. RLS off => hard FAIL.
     rlsRequired: [
         'entities', 'receipts', 'score_history', 'needs', 'waitlist',
         'anchor_batches', 'disputes', 'handshakes', 'signoff_challenges', 'signoff_attestations',
         'tenants', 'operator_applications', 'policy_rollouts',
-        'investor_inquiries', 'partner_inquiries', 'fraud_flags', 'authorities', 'commits',
+        'authorities', 'commits',
         'consumed_gate_refs',
         ...SERVICE_ONLY_TABLES,
         ...RELEASE_LOCK_TABLES,
@@ -210,15 +298,22 @@ export const contract = {
     // server-only, so anon/authenticated/PUBLIC must have no direct read/write
     // privilege even if a bootstrap or restore recreates a permissive grant.
     tableGrantsNoPublic: [
+        'authorities',
+        'commits',
+        'consumed_gate_refs',
         ...SERVICE_ONLY_TABLES,
         ...RELEASE_LOCK_TABLES,
     ],
     // Release Lock is deliberately RPC-only; service_role may execute the
     // narrowly-granted SECURITY DEFINER functions but must not query the tables.
-    tableGrantsNoServiceRoleDirect: [...RELEASE_LOCK_TABLES],
+    tableGrantsNoServiceRoleDirect: [
+        'consumed_gate_refs',
+        ...RELEASE_LOCK_TABLES,
+        ...CONSEQUENCE_ACTUATOR_RPC_ONLY_TABLES,
+    ],
     // Policy rollouts remain service-readable for control-plane status, but
     // activation is RPC-only after the contract migration.
-    tableWriteGrantsNoServiceRole: ['policy_rollouts'],
+    tableWriteGrantsNoServiceRole: ['policy_rollouts', 'authorities'],
     // Column-level least-privilege on secret material. RLS gates ROWS; a column
     // GRANT is a SEPARATE gate. (2026-07 sweep: anon+authenticated held column
     // SELECT/INSERT/UPDATE on entities.private_key_encrypted — a Supabase bootstrap
@@ -255,7 +350,9 @@ export const contract = {
     // policy for the existing guarded-client paths. The other service-only
     // tables either rely on service_role's bypass or are RPC-only.
     serviceRolePoliciesRequired: [
-        'audit_events', 'saml_consumed_assertions', 'revoked_commit_keys', 'revoked_sessions', 'session_cutoffs',
+        'audit_events', 'saml_consumed_assertions', 'revoked_commit_keys', 'revoked_sessions',
+        'session_cutoffs', 'authority_registry_epoch', 'fraud_flags',
+        'partner_inquiries', 'investor_inquiries',
     ],
     // SECURITY DEFINER RPCs that MUST exist and MUST NOT be anon/authenticated/
     // PUBLIC-executable. (mig 111/112.) Overloads all checked.
@@ -266,6 +363,7 @@ export const contract = {
         'bulk_update_receipt_anchors', 'create_test_fixtures',
         'admin_begin_key_rotation', 'admin_complete_key_rotation',
         'consume_gate_ref_atomic', 'revoke_commit_key_atomic',
+        'bump_authority_registry_epoch',
         'activate_policy_rollout_authorized',
         'issue_tenant_api_key_audited',
         'consume_trust_receipt_authorized',
@@ -282,6 +380,14 @@ export const contract = {
         'complete_webauthn_registration_atomic',
         'consume_trust_desk_bootstrap_atomic',
         ...RELEASE_LOCK_SERVICE_RPCS,
+    ],
+    // These public mutation roots are pinned by identity arguments as well as by
+    // name. Each exact overload must be SECURITY DEFINER, closed to public API
+    // roles, and executable by service_role.
+    requiredDefinerRpcSignatures: [
+        'public.bump_authority_registry_epoch()',
+        'public.consume_gate_ref_atomic(text,text,text,text,text)',
+        'public.revoke_commit_key_atomic(text,text,text)',
     ],
     // Functions that MUST exist (existence only). Includes the append-only
     // immutability triggers — their absence means tamper-evidence is unenforced.

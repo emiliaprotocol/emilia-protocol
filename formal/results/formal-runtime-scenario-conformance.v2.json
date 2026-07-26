@@ -3,7 +3,7 @@
   "inputs": [
     {
       "path": "caid/impl/js/caid.mjs",
-      "sha256": "2c23bdcdf4586d81b7d9675612a4e95edf7999ba81579906f295e67c0c12cfb6"
+      "sha256": "a7dbd92e25924d2c57e7ef6b3b2f4cb629917262943932a48b7caa5a5ec5fff5"
     },
     {
       "path": "conformance/refinement/adapters/action-escrow.mjs",
@@ -28,6 +28,14 @@
     {
       "path": "conformance/refinement/adapters/aec.mts",
       "sha256": "5335997d7a9eb0f6a8db18c3d05d228d8e5a83b0346b6ed4d98886cc9792651e"
+    },
+    {
+      "path": "conformance/refinement/adapters/complete-mediation.mjs",
+      "sha256": "37034bb23cf7f1047820e6a29d8bc290567282b7b304adea9bdce47dbcae6bd0"
+    },
+    {
+      "path": "conformance/refinement/adapters/complete-mediation.mts",
+      "sha256": "75861fb17cc61b789a671cb4692383ca9c8278b6e0fb13c80abc9becdb753ad1"
     },
     {
       "path": "conformance/refinement/adapters/composed-trust-lifecycle.mjs",
@@ -75,11 +83,11 @@
     },
     {
       "path": "conformance/refinement/adapters/index.mjs",
-      "sha256": "13c29c195e94a1ef4d0895ce1316bb11318f93180414d2dd8abc61165a45fd92"
+      "sha256": "db40a7545a25fb6fcd61e8aebe013588d30506c35bbd6297b40d1d6ccaac0d57"
     },
     {
       "path": "conformance/refinement/adapters/index.mts",
-      "sha256": "173c313d1bc25db45c26b5f3e444f16fa1662f0d7fe2fad031f4430f53681349"
+      "sha256": "f7850eabb6621f22b96d488c03b432c8dd2fd822be16eaa5654de0eca7702700"
     },
     {
       "path": "conformance/refinement/adapters/mobile-continuity.mjs",
@@ -139,11 +147,11 @@
     },
     {
       "path": "conformance/refinement/harness.mjs",
-      "sha256": "d80b77e054353d702281eb9598eaac1c2d44154930910132585627d2f52c7e7e"
+      "sha256": "396f7988edcc44cefdf021cc2bd281121519a70552ce261fd14808e3e8233b4e"
     },
     {
       "path": "conformance/refinement/harness.mts",
-      "sha256": "b7ba76e9e68b1e187a4a34144bb93596cd24175f87960a52aceb5823e8cc186f"
+      "sha256": "190164346620b0e3bc2e3c3af50af19540a61d7f0d5588c2104350903e42b391"
     },
     {
       "path": "conformance/refinement/schema.mjs",
@@ -230,6 +238,14 @@
       "sha256": "ce3de4f472612c524db0bfef58dfa9d7dae3b23bf46060bd7f436e126daa8ecd"
     },
     {
+      "path": "formal/ep_complete_mediation.tla",
+      "sha256": "8c7542526b355bac1d3c8bad1e97e4b3be927046d163efd0ee20d62324b02b85"
+    },
+    {
+      "path": "formal/ep_complete_mediation_unsafe.cfg",
+      "sha256": "9c6927ac1f6f2312c6088c91272d01861122442f919d07252dc973dac39df688"
+    },
+    {
       "path": "formal/ep_composed_trust_lifecycle.cfg",
       "sha256": "609f2576228e039f7c8edb05b8bd431e4e8906d4e652c3e598d093c175f3627b"
     },
@@ -283,7 +299,7 @@
     },
     {
       "path": "formal/runtime-scenarios.v2.json",
-      "sha256": "773e10d9952792556b7723d78aa2296b8bd6a5fa8d170ef8da9c6832ee8253a5"
+      "sha256": "0bf47fafa6d4be8ae1a72bfad7cba749fefadd1d2e34a35ace64653e549e28ca"
     },
     {
       "path": "formal/two-claim-assurance.model.mjs",
@@ -427,11 +443,11 @@
     },
     {
       "path": "package-lock.json",
-      "sha256": "df7de619fd468b3d548b1a1a7a1daf91a2147e95b997c2d312b8bde311f2f8b8"
+      "sha256": "ff3d2fd3c311db6f4d23af3437e6904f8f76060559bcf99802525a3e38b7cbb6"
     },
     {
       "path": "package.json",
-      "sha256": "857fee3c34565ea940e7137d8e27facfab85aa8bf8eac822a1790c0a98eb8433"
+      "sha256": "78b0222f4611a5c1dc6c358586c1e965fd8672334e393cb74024b79ce63d0a6e"
     },
     {
       "path": "packages/gate/aec-execution.js",
@@ -446,8 +462,12 @@
       "sha256": "39df0558d60fc52834d0d30f16a91ea2e1b3f0ee38cd80fe94e1e57ec25c83bf"
     },
     {
+      "path": "packages/gate/consequence-actuator.js",
+      "sha256": "bb25a9dabd4701ba3687c05fffff8b3f5b8aad4b917cc0b4fce791ce89360245"
+    },
+    {
       "path": "packages/gate/dist/action-control-manifest.js",
-      "sha256": "1bf8e9d744d7e440701f32cfa977c5ff4091ff2f02ea70e22087d2ae5c3c54a6"
+      "sha256": "753af5004cca801f32070a6f0077b7d094c99a5c84b174441000ee5f3c114538"
     },
     {
       "path": "packages/gate/dist/action-escrow-evidence.js",
@@ -467,7 +487,7 @@
     },
     {
       "path": "packages/gate/dist/action-packs.js",
-      "sha256": "4a227fe6c51d61f2c3c19e48f3af3e3dedfeb9c4c0a918094883f3d1f654ca9c"
+      "sha256": "81c37ab9dc6286cf0f2bb6d519641c9c2d964108b12fcd9a95b62b6ba5df786f"
     },
     {
       "path": "packages/gate/dist/aeb-consumption-store.js",
@@ -498,6 +518,14 @@
       "sha256": "011bddb89b3f9def9a16a6d8b8cdcb866ee0b1d356c86d7bff7c01d161fc4645"
     },
     {
+      "path": "packages/gate/dist/consequence-actuator.js",
+      "sha256": "b043b51be8fbd97413edc89f7a7dde4b5b2c42be58fab26bb8b259a1bfa72104"
+    },
+    {
+      "path": "packages/gate/dist/discovery-permit-resolver.js",
+      "sha256": "838e11542010642b0d84502d2e5e88a89385190f938d7e6b6b21a243195cc9f8"
+    },
+    {
       "path": "packages/gate/dist/eg1-conformance.js",
       "sha256": "77e401a70c6d17a7ba1d8c02e82247b2a47fbec637c9c665e1b2defcb72582ba"
     },
@@ -515,7 +543,7 @@
     },
     {
       "path": "packages/gate/dist/index.js",
-      "sha256": "55d9122c0468df45df5b7333289c6205aa11f9b4426931dae56f7186e52d7588"
+      "sha256": "c2bc28905effa3ce9506f19b8dfe811a18a929ba422c4edc7e525d064736549d"
     },
     {
       "path": "packages/gate/dist/key-registry.js",
@@ -642,6 +670,10 @@
       "sha256": "e64ffa948c9d073f0900bb2152eb59d78fdaa207305af60659d75401c04ea3c8"
     },
     {
+      "path": "packages/gate/src/consequence-actuator.ts",
+      "sha256": "413d6a0b3f0a2fb5b516dcff34dc17d6f12f8df198b09d59ae862d824453590e"
+    },
+    {
       "path": "packages/gate/src/evidence.ts",
       "sha256": "7828614dcaddbe939ef31786d8e3aab0a68b21cab53e737cceecf1bb6387195b"
     },
@@ -651,7 +683,7 @@
     },
     {
       "path": "packages/gate/src/index.ts",
-      "sha256": "b64665fd91ec718dfbeba993f5061761495d0d0398eb10d5c86c07371e5883b8"
+      "sha256": "22f959772447205205e45ecbeac3060609e60a29a29a48d3b6982f3d0436f683"
     },
     {
       "path": "packages/gate/src/network-witness.ts",
@@ -774,12 +806,24 @@
       "sha256": "1039e1f85b78d714bfdbac0ad5236195d312e66060cbc97e36c064ff85b635db"
     },
     {
+      "path": "packages/verify/discovery-permit-contract.js",
+      "sha256": "e84080622e0d2c61d48ed78547262b3733d422b7c4dccfa08a1c927e2277faa2"
+    },
+    {
       "path": "packages/verify/dist/aeb-adapter-contract.js",
-      "sha256": "6dbdafad2e2e7e3ea3d3f6903f3e1b5646fb1f5d5f9d9fb545157506d963db33"
+      "sha256": "f99354d97a4d04440a36fcee08787818333f723dcb21961fa62a5d561ba8b248"
+    },
+    {
+      "path": "packages/verify/dist/aeb-discovery-permit-adapter.js",
+      "sha256": "c7956840468fae36f5b280deade5f5dbe0c1fee03a309e250b785cec08de9c8d"
     },
     {
       "path": "packages/verify/dist/aeb-native-adapters.js",
       "sha256": "2662043d35d99e32aa9b39abd2cf9e4d6d5d1f4ecb1e49dc3e088b0cb6569800"
+    },
+    {
+      "path": "packages/verify/dist/aeb-wimse-oauth-adapter.js",
+      "sha256": "66a033cfdedbaeb880456236a69dcc6805d9e8ee20913d16a661079f2caf50c0"
     },
     {
       "path": "packages/verify/dist/agent-edge-continuity.js",
@@ -810,6 +854,10 @@
       "sha256": "003a808862a1a27aa0ab8d9863edca3c2805a20786862d3b8a11b1b3a054ce30"
     },
     {
+      "path": "packages/verify/dist/discovery-permit-contract.js",
+      "sha256": "fd94db0fa55a188c1d67188dd12ebac9000e8ceed2cac2519e1c92d2f85edbbd"
+    },
+    {
       "path": "packages/verify/dist/document-action-binding.js",
       "sha256": "07ebc2aed6b7b7cf1b0779e5679e4a0529ed5bd8009c925c77d866a574167036"
     },
@@ -831,7 +879,7 @@
     },
     {
       "path": "packages/verify/dist/index.js",
-      "sha256": "fd30913a5dfcb1358eb0e882645585b26b5e78d64f2a18ab163e4d0f7470a6f8"
+      "sha256": "10c8b5e02d085bb4d90004025d6ddbf4b361ea607da9ef306e327658958e2f2c"
     },
     {
       "path": "packages/verify/dist/initiator-attestation.js",
@@ -915,7 +963,7 @@
     },
     {
       "path": "packages/verify/src/aeb-adapter-contract.ts",
-      "sha256": "f362b5c73ace23f9cd44eab2f25dfc2f77ccc08be666a96bd8899a9233ec33b1"
+      "sha256": "dd3b029c9916ffb9d1d1a3fbd1a5c3ade99dbd7de692c6bbe539a3f7e42192bc"
     },
     {
       "path": "packages/verify/src/authority-program.ts",
@@ -927,7 +975,7 @@
     },
     {
       "path": "packages/verify/src/index.ts",
-      "sha256": "da39062df558b31f18759894df0ce54f9f6206730c9795e383d6bd29e83266f7"
+      "sha256": "190c4cf3d860b35f8da478aa450eaafa16d8f1955157559dd9690bf1a561aef2"
     },
     {
       "path": "packages/verify/src/outcome-binding.ts",
@@ -951,7 +999,7 @@
     },
     {
       "path": "packages/verify/vendor/caid.mjs",
-      "sha256": "2c23bdcdf4586d81b7d9675612a4e95edf7999ba81579906f295e67c0c12cfb6"
+      "sha256": "a7dbd92e25924d2c57e7ef6b3b2f4cb629917262943932a48b7caa5a5ec5fff5"
     },
     {
       "path": "scripts/build-standalone-runtimes.mjs",
@@ -967,11 +1015,12 @@
     },
     {
       "path": "scripts/standalone-runtime-targets.mjs",
-      "sha256": "2e2db11378a4d5377ef864cb400cb9db2eb6563ea98745a61d562e82f9a5d399"
+      "sha256": "2afadc2c51ca58a77d3251d9104fb4c605c31c57eaeaa2b2b51d3ceb89014dcf"
     }
   ],
   "limitations": [
     "Selected-scenario conformance is not a mechanized implementation refinement proof.",
+    "The complete-mediation pair forces one safe actuator trace and one direct-call mutation; it does not establish deployment-wide path coverage, credential isolation, or durable-store correctness.",
     "The end-to-end composed model covers its 28 declared Next actions; formal mutation operators are reported separately and are not runtime transitions.",
     "Declared-action coverage does not prove every runtime parameter, concurrency schedule, deployment, or external-system behavior.",
     "The formal models, adapters, and runtime implementations are maintained by the same team.",
@@ -1691,6 +1740,263 @@
         ]
       },
       "scenario": "authority-program-missing-root-binding-refused"
+    },
+    {
+      "adapter": "complete-mediation",
+      "claim_id": "ambiguous-effect-is-never-auto-retried",
+      "control_semantics": "paired_formal_counterexample_runtime_refusal",
+      "formal": {
+        "backend": "bounded_tla_model_checking",
+        "checker": "tla2tools.jar",
+        "obligation": "EffectRequiresActuator",
+        "status": "counterexample_detected"
+      },
+      "id": "complete-mediation-direct-provider-bypass-mutation",
+      "kind": "paired_negative_control",
+      "matched": true,
+      "model": "formal/ep_complete_mediation.tla",
+      "relation": {
+        "fields": [
+          "binding",
+          "bypassRefused",
+          "decision",
+          "effect",
+          "envelope",
+          "providerCaller",
+          "providerCalls",
+          "reconciliationAuthenticated",
+          "replayRefused",
+          "staleRefused"
+        ],
+        "formal_projection": {
+          "binding": "NONE",
+          "bypassRefused": false,
+          "decision": "NONE",
+          "effect": "NONE",
+          "envelope": "NONE",
+          "providerCaller": "NONE",
+          "providerCalls": 0,
+          "reconciliationAuthenticated": false,
+          "replayRefused": false,
+          "staleRefused": false
+        },
+        "runtime_projection": {
+          "binding": "NONE",
+          "bypassRefused": false,
+          "decision": "NONE",
+          "effect": "NONE",
+          "envelope": "NONE",
+          "providerCaller": "NONE",
+          "providerCalls": 0,
+          "reconciliationAuthenticated": false,
+          "replayRefused": false,
+          "staleRefused": false
+        },
+        "shared_input": {
+          "formal_mutation": "UnsafeDirectProviderCall",
+          "runtime_refusal": "malformed_envelope",
+          "violated_invariant": "EffectRequiresActuator"
+        },
+        "status": "matched"
+      },
+      "runtime": {
+        "status": "matched",
+        "steps": [
+          {
+            "accepted": false,
+            "operator": "UnsafeDirectProviderCall",
+            "projection": {
+              "binding": "NONE",
+              "bypassRefused": false,
+              "decision": "NONE",
+              "effect": "NONE",
+              "envelope": "NONE",
+              "providerCaller": "NONE",
+              "providerCalls": 0,
+              "reconciliationAuthenticated": false,
+              "replayRefused": false,
+              "staleRefused": false
+            }
+          }
+        ]
+      },
+      "scenario": "complete-mediation-direct-provider-bypass-refused"
+    },
+    {
+      "adapter": "complete-mediation",
+      "claim_id": "ambiguous-effect-is-never-auto-retried",
+      "formal": {
+        "backend": "bounded_tla_model_checking",
+        "checker": "tla2tools.jar",
+        "obligation": null,
+        "status": "matched"
+      },
+      "id": "complete-mediation-indeterminate-no-replay",
+      "kind": "sound",
+      "matched": true,
+      "model": "formal/ep_complete_mediation.tla",
+      "relation": {
+        "fields": [
+          "binding",
+          "bypassRefused",
+          "decision",
+          "effect",
+          "envelope",
+          "providerCaller",
+          "providerCalls",
+          "reconciliationAuthenticated",
+          "replayRefused",
+          "staleRefused"
+        ],
+        "formal_projection": {
+          "binding": "EXACT",
+          "bypassRefused": true,
+          "decision": "ALLOWED",
+          "effect": "INDETERMINATE",
+          "envelope": "CONSUMED",
+          "providerCaller": "ACTUATOR",
+          "providerCalls": 1,
+          "reconciliationAuthenticated": false,
+          "replayRefused": true,
+          "staleRefused": false
+        },
+        "runtime_projection": {
+          "binding": "EXACT",
+          "bypassRefused": true,
+          "decision": "ALLOWED",
+          "effect": "INDETERMINATE",
+          "envelope": "CONSUMED",
+          "providerCaller": "ACTUATOR",
+          "providerCalls": 1,
+          "reconciliationAuthenticated": false,
+          "replayRefused": true,
+          "staleRefused": false
+        },
+        "shared_input": {
+          "binding": {
+            "action_digest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+            "attempt_id": "attempt-complete-mediation",
+            "caid": "caid:1:example.execute.1:jcs-sha256:AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA",
+            "idempotency_key": "operation-complete-mediation",
+            "nonce": "Y29tcGxldGUtbWVkaWF0aW9uLW5vbmNlLTAwMDE",
+            "operation": "payment.capture",
+            "provider_account_id": "provider-account-complete-mediation",
+            "target_digest": "sha256:cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc"
+          },
+          "runtime_controls": {
+            "action_substitution": "action_digest_mismatch",
+            "bypass": "malformed_envelope",
+            "expiry": "envelope_expired",
+            "indeterminate": "provider_outcome_indeterminate",
+            "replay": "envelope_replayed",
+            "signed_body_substitution": "signature_invalid",
+            "target_substitution": "target_mismatch"
+          }
+        },
+        "status": "matched"
+      },
+      "runtime": {
+        "status": "matched",
+        "steps": [
+          {
+            "accepted": false,
+            "operator": "RefuseGateBypass",
+            "projection": {
+              "binding": "NONE",
+              "bypassRefused": true,
+              "decision": "NONE",
+              "effect": "NONE",
+              "envelope": "NONE",
+              "providerCaller": "NONE",
+              "providerCalls": 0,
+              "reconciliationAuthenticated": false,
+              "replayRefused": false,
+              "staleRefused": false
+            }
+          },
+          {
+            "accepted": true,
+            "operator": "AuthorizeExactAction",
+            "projection": {
+              "binding": "NONE",
+              "bypassRefused": true,
+              "decision": "ALLOWED",
+              "effect": "NONE",
+              "envelope": "NONE",
+              "providerCaller": "NONE",
+              "providerCalls": 0,
+              "reconciliationAuthenticated": false,
+              "replayRefused": false,
+              "staleRefused": false
+            }
+          },
+          {
+            "accepted": true,
+            "operator": "IssueExactEnvelope",
+            "projection": {
+              "binding": "EXACT",
+              "bypassRefused": true,
+              "decision": "ALLOWED",
+              "effect": "NONE",
+              "envelope": "FRESH",
+              "providerCaller": "NONE",
+              "providerCalls": 0,
+              "reconciliationAuthenticated": false,
+              "replayRefused": false,
+              "staleRefused": false
+            }
+          },
+          {
+            "accepted": true,
+            "operator": "InvokeThroughActuator",
+            "projection": {
+              "binding": "EXACT",
+              "bypassRefused": true,
+              "decision": "ALLOWED",
+              "effect": "INVOKING",
+              "envelope": "CONSUMED",
+              "providerCaller": "ACTUATOR",
+              "providerCalls": 1,
+              "reconciliationAuthenticated": false,
+              "replayRefused": false,
+              "staleRefused": false
+            }
+          },
+          {
+            "accepted": true,
+            "operator": "ProviderTimeout",
+            "projection": {
+              "binding": "EXACT",
+              "bypassRefused": true,
+              "decision": "ALLOWED",
+              "effect": "INDETERMINATE",
+              "envelope": "CONSUMED",
+              "providerCaller": "ACTUATOR",
+              "providerCalls": 1,
+              "reconciliationAuthenticated": false,
+              "replayRefused": false,
+              "staleRefused": false
+            }
+          },
+          {
+            "accepted": false,
+            "operator": "RefuseBlindReplay",
+            "projection": {
+              "binding": "EXACT",
+              "bypassRefused": true,
+              "decision": "ALLOWED",
+              "effect": "INDETERMINATE",
+              "envelope": "CONSUMED",
+              "providerCaller": "ACTUATOR",
+              "providerCalls": 1,
+              "reconciliationAuthenticated": false,
+              "replayRefused": true,
+              "staleRefused": false
+            }
+          }
+        ]
+      },
+      "scenario": "complete-mediation-indeterminate-no-replay"
     },
     {
       "adapter": "composed-trust-lifecycle",
@@ -5966,12 +6272,13 @@
       "signed-denial-cannot-authorize"
     ],
     "covered_model_actions": 28,
-    "formal_mutation_operators": 45,
+    "formal_mutation_operators": 46,
     "models": [
       "formal/aec_execution_fleet_assurance.model.mjs",
       "formal/conservation-authority.model.mjs",
       "formal/durable-consumption-owner.model.mjs",
       "formal/ep_authority_program.tla",
+      "formal/ep_complete_mediation.tla",
       "formal/ep_composed_trust_lifecycle.tla",
       "formal/ep_consequence_lifecycle.tla",
       "formal/ep_effect_profiles.tla",
@@ -5982,10 +6289,10 @@
       "formal/reliance-pinned-profile.model.mjs",
       "formal/two-claim-assurance.model.mjs"
     ],
-    "paired_negative_controls": 45,
+    "paired_negative_controls": 46,
     "required_model_actions": 28,
-    "scenarios": 70,
-    "sound_scenarios": 25
+    "scenarios": 72,
+    "sound_scenarios": 26
   },
   "toolchain": {
     "bounded_checker_runtime": "node",

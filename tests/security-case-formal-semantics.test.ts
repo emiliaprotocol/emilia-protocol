@@ -7,7 +7,7 @@ import { afterAll, describe, expect, it } from "vitest";
 const root = path.resolve(import.meta.dirname, "..");
 const verifier = path.join(root, "scripts", "verify-security-case.mjs");
 const loader = path.join(root, "scripts", "ts-loader", "register.mjs");
-const MULTI_PROCESS_TEST_TIMEOUT_MS = 15_000;
+const MULTI_PROCESS_TEST_TIMEOUT_MS = 30_000;
 const temporaryDirectory = fs.mkdtempSync(
   path.join(root, ".ep-security-formal-semantics-"),
 );
@@ -144,7 +144,13 @@ function runMutatedCase(mutate: (sourceCase: any) => void) {
   return spawnSync(
     process.execPath,
     ["--import", loader, verifier, "--source", sourcePath, "--validate-only"],
-    { cwd: root, encoding: "utf8" },
+    {
+      cwd: root,
+      encoding: "utf8",
+      timeout: 10_000,
+      killSignal: "SIGKILL",
+      maxBuffer: 16 * 1024 * 1024,
+    },
   );
 }
 
@@ -168,7 +174,7 @@ describe("security-case formal metadata semantics", () => {
       "SECURITY CASE: METADATA OK",
     );
     expect(result.status).toBe(0);
-  });
+  }, MULTI_PROCESS_TEST_TIMEOUT_MS);
 
   it("rejects omitted and unknown formal methods", () => {
     expectRejected((sourceCase) => {
@@ -183,7 +189,7 @@ describe("security-case formal metadata semantics", () => {
         (formal) => formal.method === "symbolic_protocol_analysis",
       ).method = "informal_argument";
     }, /formal method must be one of/);
-  });
+  }, MULTI_PROCESS_TEST_TIMEOUT_MS);
 
   it("requires covered and unmodeled statements only for partial symbolic analysis", () => {
     expectRejected((sourceCase) => {
@@ -214,7 +220,7 @@ describe("security-case formal metadata semantics", () => {
       delete formal.unmodeled_statement;
     });
     expect(verified.status).toBe(0);
-  });
+  }, MULTI_PROCESS_TEST_TIMEOUT_MS);
 
   it("requires selected, non-empty machine-readable scenario coverage", () => {
     expectRejected((sourceCase) => {
@@ -235,7 +241,7 @@ describe("security-case formal metadata semantics", () => {
         (formal) => formal.scenario_coverage === "selected",
       ).covered_obligations = [];
     }, /bounded scenario conformance requires non-empty covered_obligations/);
-  });
+  }, MULTI_PROCESS_TEST_TIMEOUT_MS);
 
   it(
     "rejects legacy trace/refinement metadata and v1 evidence",

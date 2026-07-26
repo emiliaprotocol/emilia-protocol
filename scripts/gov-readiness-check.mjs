@@ -61,7 +61,7 @@ check('tenant-bound v1 writes require authenticated org binding', () => {
     const missing = files.filter((f) => !read(f).includes('requireBound: true'));
     if (missing.length)
         throw new Error(`missing requireBound:true in ${missing.join(', ')}`);
-    requireContains('supabase/migrations/101_entity_organization_binding.sql', 'organization_id');
+    requireContains('supabase/migrations/20260628162152_101_entity_organization_binding.sql', 'organization_id');
     return `${files.length} authenticated surfaces checked`;
 });
 check('approver enrollment requires an explicit capability', () => {
@@ -111,10 +111,10 @@ check('inline/self-signed receipt acceptance is demo-only', () => {
     return 'no non-demo API route accepts inline keys';
 });
 check('security event ledger is append-only and hash-chained', () => {
-    requireContains('supabase/migrations/110_security_events_hash_chain.sql', 'CREATE TABLE IF NOT EXISTS security_events');
-    requireContains('supabase/migrations/110_security_events_hash_chain.sql', 'prevent_security_event_mutation');
-    requireContains('supabase/migrations/110_security_events_hash_chain.sql', 'event_hash TEXT NOT NULL UNIQUE');
-    requireContains('supabase/migrations/110_security_events_hash_chain.sql', 'idx_security_events_single_child_per_parent');
+    requireContains('supabase/migrations/20260628180135_110_security_events_hash_chain.sql', 'CREATE TABLE IF NOT EXISTS security_events');
+    requireContains('supabase/migrations/20260628180135_110_security_events_hash_chain.sql', 'prevent_security_event_mutation');
+    requireContains('supabase/migrations/20260628180135_110_security_events_hash_chain.sql', 'event_hash TEXT NOT NULL UNIQUE');
+    requireContains('supabase/migrations/20260725180000_reconcile_unjournaled_security_invariants.sql', 'idx_security_events_single_child_per_parent');
     requireContains('lib/security-events.js', "error.code !== '23505'");
     requireContains('lib/security-events.js', 'verifySecurityEventChain');
     requireContains('lib/write-guard.js', "'security_events'");
@@ -130,7 +130,7 @@ check('gov-strict mode requires durable rate limiting for write surfaces', () =>
 check('SAML ACS fails closed when replay protection is unavailable', () => {
     requireContains('app/api/sso/saml/acs/route.js', 'saml_replay_cache_unavailable');
     requireContains('app/api/sso/saml/acs/route.js', 'failing closed');
-    requireContains('supabase/migrations/103_saml_consumed_assertions.sql', 'saml_consumed_assertions');
+    requireContains('supabase/migrations/20260628151330_103_saml_consumed_assertions.sql', 'saml_consumed_assertions');
     return 'SAML replay cache is a gate, not best-effort logging';
 });
 check('key custody abstraction rejects local keys in gov/prod mode', () => {

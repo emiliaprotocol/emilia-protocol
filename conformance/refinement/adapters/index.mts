@@ -6,6 +6,7 @@ import { runAecScenario } from "./aec.mjs";
 import { runAecExecutionFleetAssuranceScenario } from "./aec-execution-fleet-assurance.mjs";
 import { runConsequenceLifecycleScenario } from "./consequence-lifecycle.mjs";
 import { runComposedTrustLifecycleScenario } from "./composed-trust-lifecycle.mjs";
+import { runCompleteMediationScenario } from "./complete-mediation.mjs";
 import { runDurableConsumptionOwnerScenario } from "./durable-consumption-owner.mjs";
 import {
   runAuthorityDocumentProofJoinScenario,
@@ -30,6 +31,7 @@ const adapters: Readonly<Record<string, RuntimeAdapter>> = Object.freeze({
   "aec-execution-fleet-assurance": runAecExecutionFleetAssuranceScenario,
   "consequence-lifecycle": runConsequenceLifecycleScenario,
   "composed-trust-lifecycle": runComposedTrustLifecycleScenario,
+  "complete-mediation": runCompleteMediationScenario,
   "durable-consumption-owner": runDurableConsumptionOwnerScenario,
   "conservation-authority": runConservationAuthorityScenario,
   "outcome-binding": runOutcomeBindingScenario,

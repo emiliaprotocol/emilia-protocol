@@ -1157,18 +1157,29 @@
       "statement": "After an external executor is invoked, an exception is treated as an indeterminate effect and the approval is consumed or frozen rather than made reusable.",
       "acceptance_roots": [
         "the gate's durable consumption store",
-        "the Proposal-to-Effect consequence-attempt store and relying-party-pinned provider-evidence verifier"
+        "the Proposal-to-Effect consequence-attempt store and relying-party-pinned provider-evidence verifier",
+        "the consequence actuator's durable one-time envelope store, isolated provider credential, and pinned decision and observation keys"
       ],
       "enforcement_path": [
         { "language": "javascript", "file": "packages/gate/src/index.ts", "symbol": "createGate", "exported": true },
         { "language": "javascript", "file": "packages/gate/src/aec-execution.ts", "symbol": "createAECExecutionGate", "exported": true },
         { "language": "javascript", "file": "packages/gate/src/proposal-to-effect.ts", "symbol": "createProposalToEffect", "exported": true },
+        { "language": "javascript", "file": "packages/gate/src/consequence-actuator.ts", "symbol": "ConsequenceActuator", "exported": true },
+        { "language": "javascript", "file": "apps/consequence-control-service/src/github-app.ts", "symbol": "createConsequenceActuatorClient", "exported": true },
+        { "language": "javascript", "file": "apps/consequence-actuator-service/src/runtime.ts", "symbol": "createConsequenceActuatorRuntime", "exported": true },
+        { "language": "javascript", "file": "apps/consequence-actuator-service/src/github-app.ts", "symbol": "createGitHubIssueEffectProvider", "exported": true },
+        { "language": "javascript", "file": "apps/consequence-actuator-service/src/production-config.ts", "symbol": "createPostgresProviderRecordStore", "exported": true },
         { "language": "javascript", "file": "packages/gate/src/store.ts", "symbol": "createDurableConsumptionStore", "exported": true }
       ],
       "implementations": [
         { "language": "javascript", "file": "packages/gate/src/index.ts", "export": "createGate" },
         { "language": "javascript", "file": "packages/gate/src/aec-execution.ts", "export": "createAECExecutionGate" },
-        { "language": "javascript", "file": "packages/gate/src/proposal-to-effect.ts", "export": "createProposalToEffect" }
+        { "language": "javascript", "file": "packages/gate/src/proposal-to-effect.ts", "export": "createProposalToEffect" },
+        { "language": "javascript", "file": "packages/gate/src/consequence-actuator.ts", "export": "ConsequenceActuator" },
+        { "language": "javascript", "file": "apps/consequence-control-service/src/github-app.ts", "export": "createConsequenceActuatorClient" },
+        { "language": "javascript", "file": "apps/consequence-actuator-service/src/runtime.ts", "export": "createConsequenceActuatorRuntime" },
+        { "language": "javascript", "file": "apps/consequence-actuator-service/src/github-app.ts", "export": "createGitHubIssueEffectProvider" },
+        { "language": "javascript", "file": "apps/consequence-actuator-service/src/production-config.ts", "export": "createPostgresProviderRecordStore" }
       ],
       "language_coverage": {
         "javascript": { "status": "covered", "evidence": "packages/gate/gate.test.js" },
@@ -1185,7 +1196,37 @@
         { "file": "tests/aec-execution-gate.test.ts", "title": "executes a Class-A chain once and refuses replay", "runner": "vitest" },
         { "file": "tests/aec-execution-gate.test.ts", "title": "burns an indeterminate authorization after the effect starts", "runner": "vitest" },
         { "file": "packages/gate/proposal-to-effect.test.js", "title": "indeterminate effect freezes replay until authenticated provider reconciliation", "runner": "node-test" },
-        { "file": "packages/gate/proposal-to-effect.test.js", "title": "authenticated NOT_COMMITTED reconciliation permits one explicit retry", "runner": "node-test" }
+        { "file": "packages/gate/proposal-to-effect.test.js", "title": "authenticated NOT_COMMITTED reconciliation permits one explicit retry", "runner": "node-test" },
+        { "file": "packages/gate/consequence-actuator.test.js", "title": "permanently fences an indeterminate provider invocation", "runner": "node-test" },
+        { "file": "apps/consequence-control-service/test/actuator-client.test.js", "title": "refuses signed evidence substituted across attempt or action bindings", "runner": "node-test" },
+        { "file": "apps/consequence-actuator-service/test/production-config.test.ts", "title": "proves the exact actuator migration surface before declaring production readiness", "runner": "node-test" },
+        { "file": "apps/consequence-actuator-service/test/production-config.test.ts", "title": "uses the production PostgreSQL provider-record adapter through exact RPC-only bindings", "runner": "node-test" },
+        { "file": "apps/consequence-actuator-service/test/provider-record-hostile.test.ts", "title": "reconciles COMMITTED after exact GitHub 200 was durably recorded but the actuator response was lost", "runner": "node-test" },
+        { "file": "apps/consequence-actuator-service/test/provider-record-hostile.test.ts", "title": "keeps a genuinely lost GitHub PATCH response retryably unavailable with no terminal attribution", "runner": "node-test" },
+        { "file": "apps/consequence-actuator-service/test/provider-record-hostile.test.ts", "title": "refuses old-envelope and cross-attempt provider-record replay", "runner": "node-test" },
+        { "file": "tests/consequence-actuator-provider-record-migration-contract.test.ts", "title": "registers the private store and exact actuator RPCs in the live schema contract", "runner": "vitest" },
+        { "file": "tests/consequence-actuator-provider-record-migration-contract.test.ts", "title": "exposes only exact append/read RPCs to the dedicated actuator service role", "runner": "vitest" },
+        { "file": "tests/complete-mediation-boundary.test.ts", "title": "keeps raw provider credential material out of the decision plane", "runner": "vitest" }
+      ],
+      "operational_evidence": [
+        {
+          "file": "supabase/migrations/20260725010000_consequence_actuator_store.sql",
+          "contains": [
+            "CREATE TABLE public.consequence_actuator_envelopes",
+            "CREATE FUNCTION consequence_actuator_private.reserve_envelope",
+            "CREATE FUNCTION consequence_actuator_private.consume_envelope",
+            "TO consequence_actuator_executor"
+          ]
+        },
+        {
+          "file": "supabase/migrations/20260725143000_consequence_actuator_provider_records.sql",
+          "contains": [
+            "CREATE TABLE consequence_actuator_private.provider_records",
+            "CREATE FUNCTION consequence_actuator_private.record_provider_record",
+            "CREATE FUNCTION consequence_actuator_private.read_provider_record",
+            "TO consequence_actuator_executor"
+          ]
+        }
       ],
       "formal": [
         {
@@ -1198,6 +1239,44 @@
           "covered_statement": "The composed symbolic path makes checked execution injective with respect to one-time authorization consumption.",
           "unmodeled_statement": "An external effect that succeeds before its response is lost, indeterminate fencing, and provider reconciliation are modeled in bounded lifecycle and executable evidence rather than Tamarin.",
           "scope": "The composed lemma proves injective checked execution but does not model an external system whose effect succeeds before its response is lost."
+        },
+        {
+          "status": "partial",
+          "method": "bounded_tla_model_checking",
+          "model": "formal/ep_complete_mediation.tla",
+          "runner": "formal/ep_complete_mediation.cfg",
+          "result_evidence": "formal/results/ep-complete-mediation.tlc.summary.txt",
+          "obligations": [
+            "ProviderAtMostOnce",
+            "EffectRequiresActuator",
+            "EffectRequiresConsumedEnvelope",
+            "EffectRequiresExactDecision",
+            "UncertainEffectBlocksReplay",
+            "TerminalReconciliationIsAuthenticated",
+            "NoEnvelopeReopenAfterInvocation"
+          ],
+          "scope": "A bounded same-team split-service model covers exact decision and envelope binding, actuator-only provider entry, permanent uncertainty fencing, authenticated terminal reconciliation, and no envelope reopening. A deliberately unsafe direct-provider transition violates EffectRequiresActuator. Selected runtime scenarios exercise the real TypeScript actuator primitive; the separate-service credential boundary is additionally enforced by executable repository tests. This is not a mechanized implementation refinement proof, an unbounded theorem, or proof that credentials cannot exist outside the managed deployment.",
+          "scenario_evidence": "formal/runtime-scenarios.v2.json",
+          "scenario_runner": "scripts/check-formal-runtime-traces.mjs",
+          "conformance_evidence": "formal/results/formal-runtime-scenario-conformance.v2.json",
+          "scenario_coverage": "selected",
+          "covered_actions": [
+            "RefuseGateBypass",
+            "AuthorizeExactAction",
+            "IssueExactEnvelope",
+            "InvokeThroughActuator",
+            "ProviderTimeout",
+            "RefuseBlindReplay",
+            "UnsafeDirectProviderCall"
+          ],
+          "covered_obligations": [
+            "ProviderAtMostOnce",
+            "EffectRequiresActuator",
+            "EffectRequiresConsumedEnvelope",
+            "EffectRequiresExactDecision",
+            "UncertainEffectBlocksReplay",
+            "NoEnvelopeReopenAfterInvocation"
+          ]
         },
         {
           "status": "partial",
@@ -1302,11 +1381,15 @@
         }
       ],
       "assumptions": [
-        "the guarded effect is invoked only through gate.run, the AEC execution gate run method, or the Proposal-to-Effect controller",
+        "the guarded effect is invoked only through gate.run, the AEC execution gate run method, the Proposal-to-Effect controller, or the separately deployed credential-owning consequence actuator",
+        "for the managed complete-mediation profile, the decision service has no provider credential or provider API implementation and the actuator accepts only the pinned signed execution envelope",
         "provider reconciliation is accepted only through a relying-party-pinned verifier bound to the same tenant, operation, attempt, CAID, action digest, and effect digest",
         "the durable backend remains fail-closed"
       ],
-      "exclusions": ["the protocol cannot infer whether an unavailable external system applied an effect"],
+      "exclusions": [
+        "the protocol cannot infer whether an unavailable external system applied an effect",
+        "the managed actuator cannot prevent an independent administrator or alternate credential outside its deployment boundary from changing the provider directly"
+      ],
       "release_artifacts": ["gate-sdk", "security-evidence"]
     },
     {
@@ -1575,7 +1658,8 @@
         { "file": "tests/release-reproducibility.test.ts", "title": "rejects a one-byte registry artifact substitution", "runner": "vitest" }
       ],
       "operational_evidence": [
-        { "file": ".github/workflows/publish-verify-sdk.yml", "contains": ["actions/attest@f7c74d28b9d84cb8768d0b8ca14a4bac6ef463e6", "npm publish \"../../release-artifacts/${{ steps.pack.outputs.tarball }}\" --access public --provenance", "cmp \"../../release-artifacts/${{ steps.pack.outputs.tarball }}\" \"../../registry-copy/$REGISTRY_TARBALL\""] }
+        { "file": ".github/workflows/_publish-npm-package.yml", "contains": ["actions/attest@f7c74d28b9d84cb8768d0b8ca14a4bac6ef463e6", "npm publish \"$TESTED_TARBALL\" --access public --provenance --ignore-scripts", "cmp \"$TESTED_TARBALL\" \"registry-copy/$REGISTRY_TARBALL\""] },
+        { "file": ".github/workflows/publish-verify-sdk.yml", "contains": ["uses: ./.github/workflows/_publish-npm-package.yml", "package_name: '@emilia-protocol/verify'"] }
       ],
       "formal": [
         { "status": "not_modeled", "gap": "Hosted CI identity, npm registry behavior, and Sigstore availability are operational trust assumptions rather than protocol-state properties." }
@@ -1658,10 +1742,10 @@
         { "file": "tests/release-approval.test.ts", "title": "binds the checked-out commit to a tag contained in main", "runner": "vitest" }
       ],
       "operational_evidence": [
-        { "file": ".github/workflows/_publish-npm-package.yml", "contains": ["scripts/require-release-approval.mjs", "npm run security-case:emit", "npm run conformance:manifest", "verify-reproducible-package.mjs", "actions/attest@f7c74d28b9d84cb8768d0b8ca14a4bac6ef463e6", "npm publish \"${{ steps.pack.outputs.tarball }}\" --access public --provenance", "cmp \"$TESTED_TARBALL\" \"registry-copy/$REGISTRY_TARBALL\""] },
+        { "file": ".github/workflows/_publish-npm-package.yml", "contains": ["scripts/require-release-approval.mjs", "npm run security-case:emit", "npm run conformance:manifest", "verify-reproducible-package.mjs", "actions/attest@f7c74d28b9d84cb8768d0b8ca14a4bac6ef463e6", "npm publish \"$TESTED_TARBALL\" --access public --provenance --ignore-scripts", "cmp \"$TESTED_TARBALL\" \"registry-copy/$REGISTRY_TARBALL\""] },
         { "file": ".github/workflows/_publish-pypi-package.yml", "contains": ["verify-reproducible-wheel.mjs", "gh-action-pypi-publish@", "cmp \"${{ steps.build.outputs.wheel }}\" \"$REGISTRY_WHEEL\"", "cmp \"${{ steps.build.outputs.sdist }}\" \"$REGISTRY_SDIST\""] },
         { "file": ".github/workflows/publish-gate.yml", "contains": ["uses: ./.github/workflows/_publish-npm-package.yml", "package_name: '@emilia-protocol/gate'"] },
-        { "file": ".github/workflows/publish-verify-sdk.yml", "contains": ["npm run security-case:emit", "npm publish \"../../release-artifacts/${{ steps.pack.outputs.tarball }}\" --access public --provenance"] },
+        { "file": ".github/workflows/publish-verify-sdk.yml", "contains": ["uses: ./.github/workflows/_publish-npm-package.yml", "package_name: '@emilia-protocol/verify'"] },
         { "file": ".github/workflows/publish-python-verify.yml", "contains": ["verify-reproducible-wheel.mjs packages/python-verify", "cmp \"${{ steps.build.outputs.sdist }}\" \"$REGISTRY_SDIST\""] },
         { "file": "release/release-packages.v1.json", "contains": ["EP-RELEASE-PACKAGE-REGISTRY-v1", "@emilia-protocol/verify", "langchain-emilia"] }
       ],

@@ -4,15 +4,49 @@ FROM ${NODE_IMAGE} AS dependencies
 
 WORKDIR /opt/consequence-control
 
-COPY packages/gate packages/gate
-COPY packages/require-receipt packages/require-receipt
-COPY packages/verify packages/verify
-COPY apps/consequence-control-service apps/consequence-control-service
+ARG EMILIA_VERIFY_PACKAGE_SHA256
+ARG EMILIA_GATE_PACKAGE_SHA256
+ARG EMILIA_REQUIRE_RECEIPT_PACKAGE_SHA256
+
+COPY release-packages /opt/release-packages
+RUN printf '%s  %s\n' \
+      "$EMILIA_VERIFY_PACKAGE_SHA256" /opt/release-packages/verify.tgz \
+      "$EMILIA_GATE_PACKAGE_SHA256" /opt/release-packages/gate.tgz \
+      "$EMILIA_REQUIRE_RECEIPT_PACKAGE_SHA256" /opt/release-packages/require-receipt.tgz \
+      | sha256sum -c - \
+    && mkdir -p packages/verify packages/gate packages/require-receipt \
+    && tar -xzf /opt/release-packages/verify.tgz -C packages/verify --strip-components=1 \
+    && tar -xzf /opt/release-packages/gate.tgz -C packages/gate --strip-components=1 \
+    && tar -xzf /opt/release-packages/require-receipt.tgz -C packages/require-receipt --strip-components=1
+
+COPY apps/consequence-control-service/package.json apps/consequence-control-service/package-lock.json apps/consequence-control-service/
 
 RUN npm ci --prefix apps/consequence-control-service --ignore-scripts --omit=dev \
     && npm cache clean --force
 
 FROM ${NODE_IMAGE} AS runtime
+
+ARG EMILIA_SOURCE_REVISION=local-unverified
+ARG EMILIA_SOURCE_TREE=local-unverified
+ARG EMILIA_SOURCE_MANIFEST_SHA256=local-unverified
+ARG EMILIA_VERIFY_PACKAGE_SHA256=local-unverified
+ARG EMILIA_GATE_PACKAGE_SHA256=local-unverified
+ARG EMILIA_REQUIRE_RECEIPT_PACKAGE_SHA256=local-unverified
+ARG EMILIA_SECURITY_CASE_SHA256=local-unverified
+ARG EMILIA_PROOF_STATS_SHA256=local-unverified
+ARG EMILIA_CONFORMANCE_MANIFEST_SHA256=local-unverified
+
+LABEL org.opencontainers.image.source="https://github.com/emiliaprotocol/emilia-protocol" \
+      org.opencontainers.image.revision="${EMILIA_SOURCE_REVISION}" \
+      io.emilia.image.component="decision" \
+      io.emilia.source.tree="${EMILIA_SOURCE_TREE}" \
+      io.emilia.source.manifest.sha256="${EMILIA_SOURCE_MANIFEST_SHA256}" \
+      io.emilia.package.verify.sha256="${EMILIA_VERIFY_PACKAGE_SHA256}" \
+      io.emilia.package.gate.sha256="${EMILIA_GATE_PACKAGE_SHA256}" \
+      io.emilia.package.require-receipt.sha256="${EMILIA_REQUIRE_RECEIPT_PACKAGE_SHA256}" \
+      io.emilia.governed.security-case.sha256="${EMILIA_SECURITY_CASE_SHA256}" \
+      io.emilia.governed.proof-stats.sha256="${EMILIA_PROOF_STATS_SHA256}" \
+      io.emilia.governed.conformance.sha256="${EMILIA_CONFORMANCE_MANIFEST_SHA256}"
 
 ENV NODE_ENV=production \
     HOST=0.0.0.0 \
@@ -21,9 +55,7 @@ ENV NODE_ENV=production \
 
 WORKDIR /app
 
-COPY packages/gate packages/gate
-COPY packages/require-receipt packages/require-receipt
-COPY packages/verify packages/verify
+COPY --from=dependencies /opt/consequence-control/packages packages
 COPY caid caid
 COPY apps/gate-service apps/gate-service
 COPY --from=dependencies /opt/consequence-control/apps/consequence-control-service/node_modules apps/consequence-control-service/node_modules

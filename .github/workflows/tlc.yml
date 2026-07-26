@@ -309,6 +309,41 @@ jobs:
           fi
           echo "Expected replay counterexample found."
 
+      - name: Run complete-mediation actuator boundary model
+        working-directory: formal
+        run: |
+          java -Xmx2G -jar ../tla2tools.jar \
+            -workers auto \
+            -config ep_complete_mediation.cfg \
+            ep_complete_mediation.tla \
+            2>&1 | tee tlc-complete-mediation-output.txt
+          grep -q "Model checking completed. No error has been found." \
+            tlc-complete-mediation-output.txt
+
+      - name: Prove direct provider access breaks complete mediation
+        working-directory: formal
+        run: |
+          set +e
+          java -Xmx2G -jar ../tla2tools.jar \
+            -workers auto \
+            -config ep_complete_mediation_unsafe.cfg \
+            ep_complete_mediation.tla \
+            > tlc-complete-mediation-unsafe-output.txt 2>&1
+          status=$?
+          set -e
+          if [ "$status" -eq 0 ]; then
+            echo "Unsafe direct-provider mutation unexpectedly passed."
+            cat tlc-complete-mediation-unsafe-output.txt
+            exit 1
+          fi
+          if ! grep -q "Invariant EffectRequiresActuator is violated" \
+            tlc-complete-mediation-unsafe-output.txt; then
+            echo "Unsafe direct-provider mutation failed for an unexpected reason."
+            cat tlc-complete-mediation-unsafe-output.txt
+            exit 1
+          fi
+          echo "Expected complete-mediation counterexample found."
+
       - name: Run composed consequence lifecycle model
         working-directory: formal
         run: |
@@ -372,6 +407,8 @@ jobs:
             formal/tlc-lifecycle-remedy-output.txt
             formal/tlc-consequence-attempt-output.txt
             formal/tlc-consequence-attempt-unsafe-output.txt
+            formal/tlc-complete-mediation-output.txt
+            formal/tlc-complete-mediation-unsafe-output.txt
             formal/tlc-consequence-lifecycle-output.txt
             formal/tlc-composed-trust-lifecycle-output.txt
             formal/tlc-revocation-witness-output.txt

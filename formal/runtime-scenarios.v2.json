@@ -3,6 +3,7 @@
   "scope": "Bounded selected scenarios compare explicit formal projections with deterministic calls through public runtime entry points under hand-authored same-team mappings.",
   "limitations": [
     "Selected-scenario conformance is not a mechanized implementation refinement proof.",
+    "The complete-mediation pair forces one safe actuator trace and one direct-call mutation; it does not establish deployment-wide path coverage, credential isolation, or durable-store correctness.",
     "The end-to-end composed model covers its 28 declared Next actions; formal mutation operators are reported separately and are not runtime transitions.",
     "Declared-action coverage does not prove every runtime parameter, concurrency schedule, deployment, or external-system behavior.",
     "The formal models, adapters, and runtime implementations are maintained by the same team.",
@@ -135,6 +136,42 @@
         "RecordPreExecutionRevocation",
         "RefuseRevokedInvocation"
       ]
+    },
+    "formal/ep_complete_mediation.tla": {
+      "config": "formal/ep_complete_mediation_unsafe.cfg",
+      "variables": [
+        "decision",
+        "envelope",
+        "binding",
+        "effect",
+        "providerCalls",
+        "providerCaller",
+        "bypassRefused",
+        "staleRefused",
+        "replayRefused",
+        "reconciliationAuthenticated"
+      ],
+      "projections": {
+        "decision": "decision",
+        "envelope": "envelope",
+        "binding": "binding",
+        "effect": "effect",
+        "providerCalls": "providerCalls",
+        "providerCaller": "providerCaller",
+        "bypassRefused": "bypassRefused",
+        "staleRefused": "staleRefused",
+        "replayRefused": "replayRefused",
+        "reconciliationAuthenticated": "reconciliationAuthenticated"
+      },
+      "actions": {
+        "RefuseGateBypass": "RefuseGateBypass",
+        "AuthorizeExactAction": "AuthorizeExactAction",
+        "IssueExactEnvelope": "IssueExactEnvelope",
+        "InvokeThroughActuator": "InvokeThroughActuator",
+        "ProviderTimeout": "ProviderTimeout",
+        "RefuseBlindReplay": "RefuseBlindReplay",
+        "UnsafeDirectProviderCall": "UnsafeDirectProviderCall"
+      }
     },
     "formal/ep_consequence_lifecycle.tla": {
       "config": "formal/ep_consequence_lifecycle.cfg",
@@ -1174,6 +1211,162 @@
         "operator": "UnsafeRemedyBlindReplay",
         "defined_in_model": true,
         "obligation": "RemedyAtMostOnce"
+      }
+    },
+    {
+      "id": "complete-mediation-indeterminate-no-replay",
+      "claim_id": "ambiguous-effect-is-never-auto-retried",
+      "model": "formal/ep_complete_mediation.tla",
+      "adapter": "complete-mediation",
+      "scenario": "complete-mediation-indeterminate-no-replay",
+      "kind": "sound",
+      "runtime_sources": [
+        "packages/gate/src/consequence-actuator.ts",
+        "packages/gate/consequence-actuator.js"
+      ],
+      "obligations": [
+        "ProviderAtMostOnce",
+        "EffectRequiresActuator",
+        "EffectRequiresConsumedEnvelope",
+        "EffectRequiresExactDecision",
+        "UncertainEffectBlocksReplay",
+        "NoEnvelopeReopenAfterInvocation"
+      ],
+      "steps": [
+        {
+          "operator": "RefuseGateBypass",
+          "accepted": false,
+          "projection": {
+            "decision": "NONE",
+            "envelope": "NONE",
+            "binding": "NONE",
+            "effect": "NONE",
+            "providerCalls": 0,
+            "providerCaller": "NONE",
+            "bypassRefused": true,
+            "staleRefused": false,
+            "replayRefused": false,
+            "reconciliationAuthenticated": false
+          }
+        },
+        {
+          "operator": "AuthorizeExactAction",
+          "accepted": true,
+          "projection": {
+            "decision": "ALLOWED",
+            "envelope": "NONE",
+            "binding": "NONE",
+            "effect": "NONE",
+            "providerCalls": 0,
+            "providerCaller": "NONE",
+            "bypassRefused": true,
+            "staleRefused": false,
+            "replayRefused": false,
+            "reconciliationAuthenticated": false
+          }
+        },
+        {
+          "operator": "IssueExactEnvelope",
+          "accepted": true,
+          "projection": {
+            "decision": "ALLOWED",
+            "envelope": "FRESH",
+            "binding": "EXACT",
+            "effect": "NONE",
+            "providerCalls": 0,
+            "providerCaller": "NONE",
+            "bypassRefused": true,
+            "staleRefused": false,
+            "replayRefused": false,
+            "reconciliationAuthenticated": false
+          }
+        },
+        {
+          "operator": "InvokeThroughActuator",
+          "accepted": true,
+          "projection": {
+            "decision": "ALLOWED",
+            "envelope": "CONSUMED",
+            "binding": "EXACT",
+            "effect": "INVOKING",
+            "providerCalls": 1,
+            "providerCaller": "ACTUATOR",
+            "bypassRefused": true,
+            "staleRefused": false,
+            "replayRefused": false,
+            "reconciliationAuthenticated": false
+          }
+        },
+        {
+          "operator": "ProviderTimeout",
+          "accepted": true,
+          "projection": {
+            "decision": "ALLOWED",
+            "envelope": "CONSUMED",
+            "binding": "EXACT",
+            "effect": "INDETERMINATE",
+            "providerCalls": 1,
+            "providerCaller": "ACTUATOR",
+            "bypassRefused": true,
+            "staleRefused": false,
+            "replayRefused": false,
+            "reconciliationAuthenticated": false
+          }
+        },
+        {
+          "operator": "RefuseBlindReplay",
+          "accepted": false,
+          "projection": {
+            "decision": "ALLOWED",
+            "envelope": "CONSUMED",
+            "binding": "EXACT",
+            "effect": "INDETERMINATE",
+            "providerCalls": 1,
+            "providerCaller": "ACTUATOR",
+            "bypassRefused": true,
+            "staleRefused": false,
+            "replayRefused": true,
+            "reconciliationAuthenticated": false
+          }
+        }
+      ]
+    },
+    {
+      "id": "complete-mediation-direct-provider-bypass-mutation",
+      "claim_id": "ambiguous-effect-is-never-auto-retried",
+      "model": "formal/ep_complete_mediation.tla",
+      "adapter": "complete-mediation",
+      "scenario": "complete-mediation-direct-provider-bypass-refused",
+      "kind": "paired_negative_control",
+      "runtime_sources": [
+        "packages/gate/src/consequence-actuator.ts",
+        "packages/gate/consequence-actuator.js"
+      ],
+      "obligations": [
+        "EffectRequiresActuator"
+      ],
+      "steps": [
+        {
+          "operator": "UnsafeDirectProviderCall",
+          "accepted": false,
+          "projection": {
+            "decision": "NONE",
+            "envelope": "NONE",
+            "binding": "NONE",
+            "effect": "NONE",
+            "providerCalls": 0,
+            "providerCaller": "NONE",
+            "bypassRefused": false,
+            "staleRefused": false,
+            "replayRefused": false,
+            "reconciliationAuthenticated": false
+          }
+        }
+      ],
+      "mutation": {
+        "operator": "UnsafeDirectProviderCall",
+        "defined_in_model": true,
+        "obligation": "EffectRequiresActuator"
       }
     },
     {

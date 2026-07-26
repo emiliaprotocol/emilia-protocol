@@ -1,9 +1,9 @@
 {
   "@version": "EP-SECURITY-CASE-RESOLVED-v2",
   "source": "security/claims.v1.json",
-  "evidence_bundle_sha256": "7cc2576f9612fabb439218f04e9cbb4ccc4b7bb23f135be9a2cfc855f0c614e5",
+  "evidence_bundle_sha256": "d4c63269df798b03aa972848527b6ea5cac20d001205b96777b86cc5eef67b3e",
   "claim_count": 33,
-  "evidence_file_count": 219,
+  "evidence_file_count": 235,
   "execution": {
     "required": true,
     "status": "passed",
@@ -167,8 +167,8 @@
           "scoped-authority-is-pinned",
           "signed-denial-cannot-authorize"
         ],
-        "scenarios": 70,
-        "paired_negative_controls": 45,
+        "scenarios": 72,
+        "paired_negative_controls": 46,
         "result": "passed"
       },
       {
@@ -283,6 +283,33 @@
           "javascript",
           "python",
           "go"
+        ],
+        "result": "passed"
+      },
+      {
+        "runner": "node-test",
+        "file": "apps/consequence-actuator-service/test/production-config.test.ts",
+        "titles": [
+          "proves the exact actuator migration surface before declaring production readiness",
+          "uses the production PostgreSQL provider-record adapter through exact RPC-only bindings"
+        ],
+        "result": "passed"
+      },
+      {
+        "runner": "node-test",
+        "file": "apps/consequence-actuator-service/test/provider-record-hostile.test.ts",
+        "titles": [
+          "keeps a genuinely lost GitHub PATCH response retryably unavailable with no terminal attribution",
+          "reconciles COMMITTED after exact GitHub 200 was durably recorded but the actuator response was lost",
+          "refuses old-envelope and cross-attempt provider-record replay"
+        ],
+        "result": "passed"
+      },
+      {
+        "runner": "node-test",
+        "file": "apps/consequence-control-service/test/actuator-client.test.js",
+        "titles": [
+          "refuses signed evidence substituted across attempt or action bindings"
         ],
         "result": "passed"
       },
@@ -406,6 +433,14 @@
           "a delegation chain that grants increasing authority is rejected",
           "delegation burns parent budget before registering a spendable child",
           "delegation cannot outlive its parent, including across multiple hops"
+        ],
+        "result": "passed"
+      },
+      {
+        "runner": "node-test",
+        "file": "packages/gate/consequence-actuator.test.js",
+        "titles": [
+          "permanently fences an indeterminate provider invocation"
         ],
         "result": "passed"
       },
@@ -712,6 +747,23 @@
       },
       {
         "runner": "vitest",
+        "file": "tests/complete-mediation-boundary.test.ts",
+        "titles": [
+          "keeps raw provider credential material out of the decision plane"
+        ],
+        "result": "passed"
+      },
+      {
+        "runner": "vitest",
+        "file": "tests/consequence-actuator-provider-record-migration-contract.test.ts",
+        "titles": [
+          "exposes only exact append/read RPCs to the dedicated actuator service role",
+          "registers the private store and exact actuator RPCs in the live schema contract"
+        ],
+        "result": "passed"
+      },
+      {
+        "runner": "vitest",
         "file": "tests/evidence-challenge-durable.test.ts",
         "titles": [
           "atomically registers one exact challenge across 100 concurrent workers",
@@ -916,10 +968,10 @@
     "gate-sdk": {
       "kind": "npm-tarball",
       "package": "@emilia-protocol/gate",
-      "version": "0.15.2",
-      "filename": "emilia-protocol-gate-0.15.2.tgz",
-      "sha256": "219206eeb2ecd47f0ec7b0e1e7d47310e2b09f579342ad3d2f3a25793c67d36c",
-      "file_count": 515
+      "version": "0.16.0",
+      "filename": "emilia-protocol-gate-0.16.0.tgz",
+      "sha256": "44d0fa3caf8add91cba20c1bbc49f54426af6ace7649206ee7deb32b7e078bd8",
+      "file_count": 527
     },
     "mobile-sdk": {
       "kind": "npm-tarball",
@@ -932,16 +984,16 @@
     "security-evidence": {
       "kind": "content-addressed-evidence-bundle",
       "filename": "security-case-evidence.v1",
-      "sha256": "7cc2576f9612fabb439218f04e9cbb4ccc4b7bb23f135be9a2cfc855f0c614e5",
-      "file_count": 219
+      "sha256": "d4c63269df798b03aa972848527b6ea5cac20d001205b96777b86cc5eef67b3e",
+      "file_count": 235
     },
     "verify-sdk": {
       "kind": "npm-tarball",
       "package": "@emilia-protocol/verify",
-      "version": "3.14.0",
-      "filename": "emilia-protocol-verify-3.14.0.tgz",
-      "sha256": "ab7bf7eeffa8d2f34f85cf51369a8ea335d4bddda6df38a1aae478a2e759d0f0",
-      "file_count": 230
+      "version": "3.15.0",
+      "filename": "emilia-protocol-verify-3.15.0.tgz",
+      "sha256": "244552bbc32d2dc6b5836bf767b3736f7e43c97d7e758e350c11d4936ea59de1",
+      "file_count": 248
     }
   },
   "claims": [
@@ -1092,11 +1144,11 @@
       "release_artifact_hashes": [
         {
           "artifact_id": "verify-sdk",
-          "sha256": "ab7bf7eeffa8d2f34f85cf51369a8ea335d4bddda6df38a1aae478a2e759d0f0"
+          "sha256": "244552bbc32d2dc6b5836bf767b3736f7e43c97d7e758e350c11d4936ea59de1"
         },
         {
           "artifact_id": "security-evidence",
-          "sha256": "7cc2576f9612fabb439218f04e9cbb4ccc4b7bb23f135be9a2cfc855f0c614e5"
+          "sha256": "d4c63269df798b03aa972848527b6ea5cac20d001205b96777b86cc5eef67b3e"
         }
       ]
     },
@@ -1355,11 +1407,11 @@
       "release_artifact_hashes": [
         {
           "artifact_id": "verify-sdk",
-          "sha256": "ab7bf7eeffa8d2f34f85cf51369a8ea335d4bddda6df38a1aae478a2e759d0f0"
+          "sha256": "244552bbc32d2dc6b5836bf767b3736f7e43c97d7e758e350c11d4936ea59de1"
         },
         {
           "artifact_id": "security-evidence",
-          "sha256": "7cc2576f9612fabb439218f04e9cbb4ccc4b7bb23f135be9a2cfc855f0c614e5"
+          "sha256": "d4c63269df798b03aa972848527b6ea5cac20d001205b96777b86cc5eef67b3e"
         }
       ]
     },
@@ -1464,11 +1516,11 @@
       "release_artifact_hashes": [
         {
           "artifact_id": "verify-sdk",
-          "sha256": "ab7bf7eeffa8d2f34f85cf51369a8ea335d4bddda6df38a1aae478a2e759d0f0"
+          "sha256": "244552bbc32d2dc6b5836bf767b3736f7e43c97d7e758e350c11d4936ea59de1"
         },
         {
           "artifact_id": "security-evidence",
-          "sha256": "7cc2576f9612fabb439218f04e9cbb4ccc4b7bb23f135be9a2cfc855f0c614e5"
+          "sha256": "d4c63269df798b03aa972848527b6ea5cac20d001205b96777b86cc5eef67b3e"
         }
       ]
     },
@@ -1630,11 +1682,11 @@
       "release_artifact_hashes": [
         {
           "artifact_id": "verify-sdk",
-          "sha256": "ab7bf7eeffa8d2f34f85cf51369a8ea335d4bddda6df38a1aae478a2e759d0f0"
+          "sha256": "244552bbc32d2dc6b5836bf767b3736f7e43c97d7e758e350c11d4936ea59de1"
         },
         {
           "artifact_id": "security-evidence",
-          "sha256": "7cc2576f9612fabb439218f04e9cbb4ccc4b7bb23f135be9a2cfc855f0c614e5"
+          "sha256": "d4c63269df798b03aa972848527b6ea5cac20d001205b96777b86cc5eef67b3e"
         }
       ]
     },
@@ -1754,11 +1806,11 @@
       "release_artifact_hashes": [
         {
           "artifact_id": "verify-sdk",
-          "sha256": "ab7bf7eeffa8d2f34f85cf51369a8ea335d4bddda6df38a1aae478a2e759d0f0"
+          "sha256": "244552bbc32d2dc6b5836bf767b3736f7e43c97d7e758e350c11d4936ea59de1"
         },
         {
           "artifact_id": "security-evidence",
-          "sha256": "7cc2576f9612fabb439218f04e9cbb4ccc4b7bb23f135be9a2cfc855f0c614e5"
+          "sha256": "d4c63269df798b03aa972848527b6ea5cac20d001205b96777b86cc5eef67b3e"
         }
       ]
     },
@@ -1953,7 +2005,7 @@
       "release_artifact_hashes": [
         {
           "artifact_id": "security-evidence",
-          "sha256": "7cc2576f9612fabb439218f04e9cbb4ccc4b7bb23f135be9a2cfc855f0c614e5"
+          "sha256": "d4c63269df798b03aa972848527b6ea5cac20d001205b96777b86cc5eef67b3e"
         }
       ]
     },
@@ -2216,11 +2268,11 @@
       "release_artifact_hashes": [
         {
           "artifact_id": "gate-sdk",
-          "sha256": "219206eeb2ecd47f0ec7b0e1e7d47310e2b09f579342ad3d2f3a25793c67d36c"
+          "sha256": "44d0fa3caf8add91cba20c1bbc49f54426af6ace7649206ee7deb32b7e078bd8"
         },
         {
           "artifact_id": "security-evidence",
-          "sha256": "7cc2576f9612fabb439218f04e9cbb4ccc4b7bb23f135be9a2cfc855f0c614e5"
+          "sha256": "d4c63269df798b03aa972848527b6ea5cac20d001205b96777b86cc5eef67b3e"
         }
       ]
     },
@@ -2417,11 +2469,11 @@
       "release_artifact_hashes": [
         {
           "artifact_id": "verify-sdk",
-          "sha256": "ab7bf7eeffa8d2f34f85cf51369a8ea335d4bddda6df38a1aae478a2e759d0f0"
+          "sha256": "244552bbc32d2dc6b5836bf767b3736f7e43c97d7e758e350c11d4936ea59de1"
         },
         {
           "artifact_id": "security-evidence",
-          "sha256": "7cc2576f9612fabb439218f04e9cbb4ccc4b7bb23f135be9a2cfc855f0c614e5"
+          "sha256": "d4c63269df798b03aa972848527b6ea5cac20d001205b96777b86cc5eef67b3e"
         }
       ]
     },
@@ -2600,11 +2652,11 @@
       "release_artifact_hashes": [
         {
           "artifact_id": "verify-sdk",
-          "sha256": "ab7bf7eeffa8d2f34f85cf51369a8ea335d4bddda6df38a1aae478a2e759d0f0"
+          "sha256": "244552bbc32d2dc6b5836bf767b3736f7e43c97d7e758e350c11d4936ea59de1"
         },
         {
           "artifact_id": "security-evidence",
-          "sha256": "7cc2576f9612fabb439218f04e9cbb4ccc4b7bb23f135be9a2cfc855f0c614e5"
+          "sha256": "d4c63269df798b03aa972848527b6ea5cac20d001205b96777b86cc5eef67b3e"
         }
       ]
     },
@@ -2820,11 +2872,11 @@
       "release_artifact_hashes": [
         {
           "artifact_id": "verify-sdk",
-          "sha256": "ab7bf7eeffa8d2f34f85cf51369a8ea335d4bddda6df38a1aae478a2e759d0f0"
+          "sha256": "244552bbc32d2dc6b5836bf767b3736f7e43c97d7e758e350c11d4936ea59de1"
         },
         {
           "artifact_id": "security-evidence",
-          "sha256": "7cc2576f9612fabb439218f04e9cbb4ccc4b7bb23f135be9a2cfc855f0c614e5"
+          "sha256": "d4c63269df798b03aa972848527b6ea5cac20d001205b96777b86cc5eef67b3e"
         }
       ]
     },
@@ -3049,7 +3101,7 @@
       "release_artifact_hashes": [
         {
           "artifact_id": "security-evidence",
-          "sha256": "7cc2576f9612fabb439218f04e9cbb4ccc4b7bb23f135be9a2cfc855f0c614e5"
+          "sha256": "d4c63269df798b03aa972848527b6ea5cac20d001205b96777b86cc5eef67b3e"
         }
       ]
     },
@@ -3154,11 +3206,11 @@
       "release_artifact_hashes": [
         {
           "artifact_id": "verify-sdk",
-          "sha256": "ab7bf7eeffa8d2f34f85cf51369a8ea335d4bddda6df38a1aae478a2e759d0f0"
+          "sha256": "244552bbc32d2dc6b5836bf767b3736f7e43c97d7e758e350c11d4936ea59de1"
         },
         {
           "artifact_id": "security-evidence",
-          "sha256": "7cc2576f9612fabb439218f04e9cbb4ccc4b7bb23f135be9a2cfc855f0c614e5"
+          "sha256": "d4c63269df798b03aa972848527b6ea5cac20d001205b96777b86cc5eef67b3e"
         }
       ]
     },
@@ -3368,11 +3420,11 @@
       "release_artifact_hashes": [
         {
           "artifact_id": "gate-sdk",
-          "sha256": "219206eeb2ecd47f0ec7b0e1e7d47310e2b09f579342ad3d2f3a25793c67d36c"
+          "sha256": "44d0fa3caf8add91cba20c1bbc49f54426af6ace7649206ee7deb32b7e078bd8"
         },
         {
           "artifact_id": "security-evidence",
-          "sha256": "7cc2576f9612fabb439218f04e9cbb4ccc4b7bb23f135be9a2cfc855f0c614e5"
+          "sha256": "d4c63269df798b03aa972848527b6ea5cac20d001205b96777b86cc5eef67b3e"
         }
       ]
     },
@@ -3510,11 +3562,11 @@
       "release_artifact_hashes": [
         {
           "artifact_id": "gate-sdk",
-          "sha256": "219206eeb2ecd47f0ec7b0e1e7d47310e2b09f579342ad3d2f3a25793c67d36c"
+          "sha256": "44d0fa3caf8add91cba20c1bbc49f54426af6ace7649206ee7deb32b7e078bd8"
         },
         {
           "artifact_id": "security-evidence",
-          "sha256": "7cc2576f9612fabb439218f04e9cbb4ccc4b7bb23f135be9a2cfc855f0c614e5"
+          "sha256": "d4c63269df798b03aa972848527b6ea5cac20d001205b96777b86cc5eef67b3e"
         }
       ]
     },
@@ -3523,7 +3575,8 @@
       "statement": "After an external executor is invoked, an exception is treated as an indeterminate effect and the approval is consumed or frozen rather than made reusable.",
       "acceptance_roots": [
         "the gate's durable consumption store",
-        "the Proposal-to-Effect consequence-attempt store and relying-party-pinned provider-evidence verifier"
+        "the Proposal-to-Effect consequence-attempt store and relying-party-pinned provider-evidence verifier",
+        "the consequence actuator's durable one-time envelope store, isolated provider credential, and pinned decision and observation keys"
       ],
       "enforcement_path": [
         {
@@ -3542,6 +3595,36 @@
           "language": "javascript",
           "file": "packages/gate/src/proposal-to-effect.ts",
           "symbol": "createProposalToEffect",
+          "exported": true
+        },
+        {
+          "language": "javascript",
+          "file": "packages/gate/src/consequence-actuator.ts",
+          "symbol": "ConsequenceActuator",
+          "exported": true
+        },
+        {
+          "language": "javascript",
+          "file": "apps/consequence-control-service/src/github-app.ts",
+          "symbol": "createConsequenceActuatorClient",
+          "exported": true
+        },
+        {
+          "language": "javascript",
+          "file": "apps/consequence-actuator-service/src/runtime.ts",
+          "symbol": "createConsequenceActuatorRuntime",
+          "exported": true
+        },
+        {
+          "language": "javascript",
+          "file": "apps/consequence-actuator-service/src/github-app.ts",
+          "symbol": "createGitHubIssueEffectProvider",
+          "exported": true
+        },
+        {
+          "language": "javascript",
+          "file": "apps/consequence-actuator-service/src/production-config.ts",
+          "symbol": "createPostgresProviderRecordStore",
           "exported": true
         },
         {
@@ -3566,6 +3649,31 @@
           "language": "javascript",
           "file": "packages/gate/src/proposal-to-effect.ts",
           "export": "createProposalToEffect"
+        },
+        {
+          "language": "javascript",
+          "file": "packages/gate/src/consequence-actuator.ts",
+          "export": "ConsequenceActuator"
+        },
+        {
+          "language": "javascript",
+          "file": "apps/consequence-control-service/src/github-app.ts",
+          "export": "createConsequenceActuatorClient"
+        },
+        {
+          "language": "javascript",
+          "file": "apps/consequence-actuator-service/src/runtime.ts",
+          "export": "createConsequenceActuatorRuntime"
+        },
+        {
+          "language": "javascript",
+          "file": "apps/consequence-actuator-service/src/github-app.ts",
+          "export": "createGitHubIssueEffectProvider"
+        },
+        {
+          "language": "javascript",
+          "file": "apps/consequence-actuator-service/src/production-config.ts",
+          "export": "createPostgresProviderRecordStore"
         }
       ],
       "language_coverage": {
@@ -3630,6 +3738,76 @@
           "file": "packages/gate/proposal-to-effect.test.js",
           "title": "authenticated NOT_COMMITTED reconciliation permits one explicit retry",
           "runner": "node-test"
+        },
+        {
+          "file": "packages/gate/consequence-actuator.test.js",
+          "title": "permanently fences an indeterminate provider invocation",
+          "runner": "node-test"
+        },
+        {
+          "file": "apps/consequence-control-service/test/actuator-client.test.js",
+          "title": "refuses signed evidence substituted across attempt or action bindings",
+          "runner": "node-test"
+        },
+        {
+          "file": "apps/consequence-actuator-service/test/production-config.test.ts",
+          "title": "proves the exact actuator migration surface before declaring production readiness",
+          "runner": "node-test"
+        },
+        {
+          "file": "apps/consequence-actuator-service/test/production-config.test.ts",
+          "title": "uses the production PostgreSQL provider-record adapter through exact RPC-only bindings",
+          "runner": "node-test"
+        },
+        {
+          "file": "apps/consequence-actuator-service/test/provider-record-hostile.test.ts",
+          "title": "reconciles COMMITTED after exact GitHub 200 was durably recorded but the actuator response was lost",
+          "runner": "node-test"
+        },
+        {
+          "file": "apps/consequence-actuator-service/test/provider-record-hostile.test.ts",
+          "title": "keeps a genuinely lost GitHub PATCH response retryably unavailable with no terminal attribution",
+          "runner": "node-test"
+        },
+        {
+          "file": "apps/consequence-actuator-service/test/provider-record-hostile.test.ts",
+          "title": "refuses old-envelope and cross-attempt provider-record replay",
+          "runner": "node-test"
+        },
+        {
+          "file": "tests/consequence-actuator-provider-record-migration-contract.test.ts",
+          "title": "registers the private store and exact actuator RPCs in the live schema contract",
+          "runner": "vitest"
+        },
+        {
+          "file": "tests/consequence-actuator-provider-record-migration-contract.test.ts",
+          "title": "exposes only exact append/read RPCs to the dedicated actuator service role",
+          "runner": "vitest"
+        },
+        {
+          "file": "tests/complete-mediation-boundary.test.ts",
+          "title": "keeps raw provider credential material out of the decision plane",
+          "runner": "vitest"
+        }
+      ],
+      "operational_evidence": [
+        {
+          "file": "supabase/migrations/20260725010000_consequence_actuator_store.sql",
+          "contains": [
+            "CREATE TABLE public.consequence_actuator_envelopes",
+            "CREATE FUNCTION consequence_actuator_private.reserve_envelope",
+            "CREATE FUNCTION consequence_actuator_private.consume_envelope",
+            "TO consequence_actuator_executor"
+          ]
+        },
+        {
+          "file": "supabase/migrations/20260725143000_consequence_actuator_provider_records.sql",
+          "contains": [
+            "CREATE TABLE consequence_actuator_private.provider_records",
+            "CREATE FUNCTION consequence_actuator_private.record_provider_record",
+            "CREATE FUNCTION consequence_actuator_private.read_provider_record",
+            "TO consequence_actuator_executor"
+          ]
         }
       ],
       "formal": [
@@ -3643,6 +3821,44 @@
           "covered_statement": "The composed symbolic path makes checked execution injective with respect to one-time authorization consumption.",
           "unmodeled_statement": "An external effect that succeeds before its response is lost, indeterminate fencing, and provider reconciliation are modeled in bounded lifecycle and executable evidence rather than Tamarin.",
           "scope": "The composed lemma proves injective checked execution but does not model an external system whose effect succeeds before its response is lost."
+        },
+        {
+          "status": "partial",
+          "method": "bounded_tla_model_checking",
+          "model": "formal/ep_complete_mediation.tla",
+          "runner": "formal/ep_complete_mediation.cfg",
+          "result_evidence": "formal/results/ep-complete-mediation.tlc.summary.txt",
+          "obligations": [
+            "ProviderAtMostOnce",
+            "EffectRequiresActuator",
+            "EffectRequiresConsumedEnvelope",
+            "EffectRequiresExactDecision",
+            "UncertainEffectBlocksReplay",
+            "TerminalReconciliationIsAuthenticated",
+            "NoEnvelopeReopenAfterInvocation"
+          ],
+          "scope": "A bounded same-team split-service model covers exact decision and envelope binding, actuator-only provider entry, permanent uncertainty fencing, authenticated terminal reconciliation, and no envelope reopening. A deliberately unsafe direct-provider transition violates EffectRequiresActuator. Selected runtime scenarios exercise the real TypeScript actuator primitive; the separate-service credential boundary is additionally enforced by executable repository tests. This is not a mechanized implementation refinement proof, an unbounded theorem, or proof that credentials cannot exist outside the managed deployment.",
+          "scenario_evidence": "formal/runtime-scenarios.v2.json",
+          "scenario_runner": "scripts/check-formal-runtime-traces.mjs",
+          "conformance_evidence": "formal/results/formal-runtime-scenario-conformance.v2.json",
+          "scenario_coverage": "selected",
+          "covered_actions": [
+            "RefuseGateBypass",
+            "AuthorizeExactAction",
+            "IssueExactEnvelope",
+            "InvokeThroughActuator",
+            "ProviderTimeout",
+            "RefuseBlindReplay",
+            "UnsafeDirectProviderCall"
+          ],
+          "covered_obligations": [
+            "ProviderAtMostOnce",
+            "EffectRequiresActuator",
+            "EffectRequiresConsumedEnvelope",
+            "EffectRequiresExactDecision",
+            "UncertainEffectBlocksReplay",
+            "NoEnvelopeReopenAfterInvocation"
+          ]
         },
         {
           "status": "partial",
@@ -3747,12 +3963,14 @@
         }
       ],
       "assumptions": [
-        "the guarded effect is invoked only through gate.run, the AEC execution gate run method, or the Proposal-to-Effect controller",
+        "the guarded effect is invoked only through gate.run, the AEC execution gate run method, the Proposal-to-Effect controller, or the separately deployed credential-owning consequence actuator",
+        "for the managed complete-mediation profile, the decision service has no provider credential or provider API implementation and the actuator accepts only the pinned signed execution envelope",
         "provider reconciliation is accepted only through a relying-party-pinned verifier bound to the same tenant, operation, attempt, CAID, action digest, and effect digest",
         "the durable backend remains fail-closed"
       ],
       "exclusions": [
-        "the protocol cannot infer whether an unavailable external system applied an effect"
+        "the protocol cannot infer whether an unavailable external system applied an effect",
+        "the managed actuator cannot prevent an independent administrator or alternate credential outside its deployment boundary from changing the provider directly"
       ],
       "release_artifacts": [
         "gate-sdk",
@@ -3761,11 +3979,11 @@
       "release_artifact_hashes": [
         {
           "artifact_id": "gate-sdk",
-          "sha256": "219206eeb2ecd47f0ec7b0e1e7d47310e2b09f579342ad3d2f3a25793c67d36c"
+          "sha256": "44d0fa3caf8add91cba20c1bbc49f54426af6ace7649206ee7deb32b7e078bd8"
         },
         {
           "artifact_id": "security-evidence",
-          "sha256": "7cc2576f9612fabb439218f04e9cbb4ccc4b7bb23f135be9a2cfc855f0c614e5"
+          "sha256": "d4c63269df798b03aa972848527b6ea5cac20d001205b96777b86cc5eef67b3e"
         }
       ]
     },
@@ -3922,11 +4140,11 @@
       "release_artifact_hashes": [
         {
           "artifact_id": "gate-sdk",
-          "sha256": "219206eeb2ecd47f0ec7b0e1e7d47310e2b09f579342ad3d2f3a25793c67d36c"
+          "sha256": "44d0fa3caf8add91cba20c1bbc49f54426af6ace7649206ee7deb32b7e078bd8"
         },
         {
           "artifact_id": "security-evidence",
-          "sha256": "7cc2576f9612fabb439218f04e9cbb4ccc4b7bb23f135be9a2cfc855f0c614e5"
+          "sha256": "d4c63269df798b03aa972848527b6ea5cac20d001205b96777b86cc5eef67b3e"
         }
       ]
     },
@@ -4169,11 +4387,11 @@
       "release_artifact_hashes": [
         {
           "artifact_id": "gate-sdk",
-          "sha256": "219206eeb2ecd47f0ec7b0e1e7d47310e2b09f579342ad3d2f3a25793c67d36c"
+          "sha256": "44d0fa3caf8add91cba20c1bbc49f54426af6ace7649206ee7deb32b7e078bd8"
         },
         {
           "artifact_id": "security-evidence",
-          "sha256": "7cc2576f9612fabb439218f04e9cbb4ccc4b7bb23f135be9a2cfc855f0c614e5"
+          "sha256": "d4c63269df798b03aa972848527b6ea5cac20d001205b96777b86cc5eef67b3e"
         }
       ]
     },
@@ -4307,7 +4525,7 @@
       "release_artifact_hashes": [
         {
           "artifact_id": "security-evidence",
-          "sha256": "7cc2576f9612fabb439218f04e9cbb4ccc4b7bb23f135be9a2cfc855f0c614e5"
+          "sha256": "d4c63269df798b03aa972848527b6ea5cac20d001205b96777b86cc5eef67b3e"
         }
       ]
     },
@@ -4391,11 +4609,18 @@
       ],
       "operational_evidence": [
         {
-          "file": ".github/workflows/publish-verify-sdk.yml",
+          "file": ".github/workflows/_publish-npm-package.yml",
           "contains": [
             "actions/attest@f7c74d28b9d84cb8768d0b8ca14a4bac6ef463e6",
-            "npm publish \"../../release-artifacts/${{ steps.pack.outputs.tarball }}\" --access public --provenance",
-            "cmp \"../../release-artifacts/${{ steps.pack.outputs.tarball }}\" \"../../registry-copy/$REGISTRY_TARBALL\""
+            "npm publish \"$TESTED_TARBALL\" --access public --provenance --ignore-scripts",
+            "cmp \"$TESTED_TARBALL\" \"registry-copy/$REGISTRY_TARBALL\""
+          ]
+        },
+        {
+          "file": ".github/workflows/publish-verify-sdk.yml",
+          "contains": [
+            "uses: ./.github/workflows/_publish-npm-package.yml",
+            "package_name: '@emilia-protocol/verify'"
           ]
         }
       ],
@@ -4419,11 +4644,11 @@
       "release_artifact_hashes": [
         {
           "artifact_id": "verify-sdk",
-          "sha256": "ab7bf7eeffa8d2f34f85cf51369a8ea335d4bddda6df38a1aae478a2e759d0f0"
+          "sha256": "244552bbc32d2dc6b5836bf767b3736f7e43c97d7e758e350c11d4936ea59de1"
         },
         {
           "artifact_id": "security-evidence",
-          "sha256": "7cc2576f9612fabb439218f04e9cbb4ccc4b7bb23f135be9a2cfc855f0c614e5"
+          "sha256": "d4c63269df798b03aa972848527b6ea5cac20d001205b96777b86cc5eef67b3e"
         }
       ]
     },
@@ -4557,7 +4782,7 @@
       "release_artifact_hashes": [
         {
           "artifact_id": "security-evidence",
-          "sha256": "7cc2576f9612fabb439218f04e9cbb4ccc4b7bb23f135be9a2cfc855f0c614e5"
+          "sha256": "d4c63269df798b03aa972848527b6ea5cac20d001205b96777b86cc5eef67b3e"
         }
       ]
     },
@@ -4709,7 +4934,7 @@
             "npm run conformance:manifest",
             "verify-reproducible-package.mjs",
             "actions/attest@f7c74d28b9d84cb8768d0b8ca14a4bac6ef463e6",
-            "npm publish \"${{ steps.pack.outputs.tarball }}\" --access public --provenance",
+            "npm publish \"$TESTED_TARBALL\" --access public --provenance --ignore-scripts",
             "cmp \"$TESTED_TARBALL\" \"registry-copy/$REGISTRY_TARBALL\""
           ]
         },
@@ -4732,8 +4957,8 @@
         {
           "file": ".github/workflows/publish-verify-sdk.yml",
           "contains": [
-            "npm run security-case:emit",
-            "npm publish \"../../release-artifacts/${{ steps.pack.outputs.tarball }}\" --access public --provenance"
+            "uses: ./.github/workflows/_publish-npm-package.yml",
+            "package_name: '@emilia-protocol/verify'"
           ]
         },
         {
@@ -4774,7 +4999,7 @@
       "release_artifact_hashes": [
         {
           "artifact_id": "security-evidence",
-          "sha256": "7cc2576f9612fabb439218f04e9cbb4ccc4b7bb23f135be9a2cfc855f0c614e5"
+          "sha256": "d4c63269df798b03aa972848527b6ea5cac20d001205b96777b86cc5eef67b3e"
         }
       ]
     },
@@ -4984,7 +5209,7 @@
       "release_artifact_hashes": [
         {
           "artifact_id": "security-evidence",
-          "sha256": "7cc2576f9612fabb439218f04e9cbb4ccc4b7bb23f135be9a2cfc855f0c614e5"
+          "sha256": "d4c63269df798b03aa972848527b6ea5cac20d001205b96777b86cc5eef67b3e"
         }
       ]
     },
@@ -5200,7 +5425,7 @@
       "release_artifact_hashes": [
         {
           "artifact_id": "security-evidence",
-          "sha256": "7cc2576f9612fabb439218f04e9cbb4ccc4b7bb23f135be9a2cfc855f0c614e5"
+          "sha256": "d4c63269df798b03aa972848527b6ea5cac20d001205b96777b86cc5eef67b3e"
         }
       ]
     },
@@ -5504,7 +5729,7 @@
       "release_artifact_hashes": [
         {
           "artifact_id": "security-evidence",
-          "sha256": "7cc2576f9612fabb439218f04e9cbb4ccc4b7bb23f135be9a2cfc855f0c614e5"
+          "sha256": "d4c63269df798b03aa972848527b6ea5cac20d001205b96777b86cc5eef67b3e"
         }
       ]
     },
@@ -5712,11 +5937,11 @@
       "release_artifact_hashes": [
         {
           "artifact_id": "verify-sdk",
-          "sha256": "ab7bf7eeffa8d2f34f85cf51369a8ea335d4bddda6df38a1aae478a2e759d0f0"
+          "sha256": "244552bbc32d2dc6b5836bf767b3736f7e43c97d7e758e350c11d4936ea59de1"
         },
         {
           "artifact_id": "security-evidence",
-          "sha256": "7cc2576f9612fabb439218f04e9cbb4ccc4b7bb23f135be9a2cfc855f0c614e5"
+          "sha256": "d4c63269df798b03aa972848527b6ea5cac20d001205b96777b86cc5eef67b3e"
         }
       ]
     },
@@ -5878,11 +6103,11 @@
       "release_artifact_hashes": [
         {
           "artifact_id": "verify-sdk",
-          "sha256": "ab7bf7eeffa8d2f34f85cf51369a8ea335d4bddda6df38a1aae478a2e759d0f0"
+          "sha256": "244552bbc32d2dc6b5836bf767b3736f7e43c97d7e758e350c11d4936ea59de1"
         },
         {
           "artifact_id": "security-evidence",
-          "sha256": "7cc2576f9612fabb439218f04e9cbb4ccc4b7bb23f135be9a2cfc855f0c614e5"
+          "sha256": "d4c63269df798b03aa972848527b6ea5cac20d001205b96777b86cc5eef67b3e"
         }
       ]
     },
@@ -6057,11 +6282,11 @@
         },
         {
           "artifact_id": "verify-sdk",
-          "sha256": "ab7bf7eeffa8d2f34f85cf51369a8ea335d4bddda6df38a1aae478a2e759d0f0"
+          "sha256": "244552bbc32d2dc6b5836bf767b3736f7e43c97d7e758e350c11d4936ea59de1"
         },
         {
           "artifact_id": "security-evidence",
-          "sha256": "7cc2576f9612fabb439218f04e9cbb4ccc4b7bb23f135be9a2cfc855f0c614e5"
+          "sha256": "d4c63269df798b03aa972848527b6ea5cac20d001205b96777b86cc5eef67b3e"
         }
       ]
     },
@@ -6236,7 +6461,7 @@
         },
         {
           "artifact_id": "security-evidence",
-          "sha256": "7cc2576f9612fabb439218f04e9cbb4ccc4b7bb23f135be9a2cfc855f0c614e5"
+          "sha256": "d4c63269df798b03aa972848527b6ea5cac20d001205b96777b86cc5eef67b3e"
         }
       ]
     },
@@ -6382,11 +6607,11 @@
         },
         {
           "artifact_id": "verify-sdk",
-          "sha256": "ab7bf7eeffa8d2f34f85cf51369a8ea335d4bddda6df38a1aae478a2e759d0f0"
+          "sha256": "244552bbc32d2dc6b5836bf767b3736f7e43c97d7e758e350c11d4936ea59de1"
         },
         {
           "artifact_id": "security-evidence",
-          "sha256": "7cc2576f9612fabb439218f04e9cbb4ccc4b7bb23f135be9a2cfc855f0c614e5"
+          "sha256": "d4c63269df798b03aa972848527b6ea5cac20d001205b96777b86cc5eef67b3e"
         }
       ]
     },
@@ -6527,7 +6752,7 @@
         },
         {
           "artifact_id": "security-evidence",
-          "sha256": "7cc2576f9612fabb439218f04e9cbb4ccc4b7bb23f135be9a2cfc855f0c614e5"
+          "sha256": "d4c63269df798b03aa972848527b6ea5cac20d001205b96777b86cc5eef67b3e"
         }
       ]
     },
@@ -6726,7 +6951,7 @@
       "release_artifact_hashes": [
         {
           "artifact_id": "security-evidence",
-          "sha256": "7cc2576f9612fabb439218f04e9cbb4ccc4b7bb23f135be9a2cfc855f0c614e5"
+          "sha256": "d4c63269df798b03aa972848527b6ea5cac20d001205b96777b86cc5eef67b3e"
         }
       ]
     },
@@ -7136,11 +7361,11 @@
       "release_artifact_hashes": [
         {
           "artifact_id": "gate-sdk",
-          "sha256": "219206eeb2ecd47f0ec7b0e1e7d47310e2b09f579342ad3d2f3a25793c67d36c"
+          "sha256": "44d0fa3caf8add91cba20c1bbc49f54426af6ace7649206ee7deb32b7e078bd8"
         },
         {
           "artifact_id": "security-evidence",
-          "sha256": "7cc2576f9612fabb439218f04e9cbb4ccc4b7bb23f135be9a2cfc855f0c614e5"
+          "sha256": "d4c63269df798b03aa972848527b6ea5cac20d001205b96777b86cc5eef67b3e"
         }
       ]
     },
@@ -7517,11 +7742,11 @@
       "release_artifact_hashes": [
         {
           "artifact_id": "gate-sdk",
-          "sha256": "219206eeb2ecd47f0ec7b0e1e7d47310e2b09f579342ad3d2f3a25793c67d36c"
+          "sha256": "44d0fa3caf8add91cba20c1bbc49f54426af6ace7649206ee7deb32b7e078bd8"
         },
         {
           "artifact_id": "security-evidence",
-          "sha256": "7cc2576f9612fabb439218f04e9cbb4ccc4b7bb23f135be9a2cfc855f0c614e5"
+          "sha256": "d4c63269df798b03aa972848527b6ea5cac20d001205b96777b86cc5eef67b3e"
         }
       ]
     }
@@ -7529,7 +7754,7 @@
   "evidence_files": [
     {
       "path": ".github/workflows/_publish-npm-package.yml",
-      "sha256": "dfe255e3c960de809ab4b05ebd831188198fccc75ada2883e1ac28cfc8b8d885"
+      "sha256": "cc97e2e8b123ce601d336f6addf886319d8a5da539bb6c7390aa573f38df0994"
     },
     {
       "path": ".github/workflows/_publish-pypi-package.yml",
@@ -7537,7 +7762,7 @@
     },
     {
       "path": ".github/workflows/publish-gate.yml",
-      "sha256": "629abb37f70af11f8fca2431f248c4d03abd7d2d1c559c9b04136bf5d6a410eb"
+      "sha256": "e9f1e58df1b8f70de979c74e7dbcce8103b3f37af17f07bd3a89cec7c4ccf375"
     },
     {
       "path": ".github/workflows/publish-go-verify.yml",
@@ -7549,7 +7774,7 @@
     },
     {
       "path": ".github/workflows/publish-verify-sdk.yml",
-      "sha256": "066aa7cbbd71da89b57128c144219815ee798fd29b686d441d5362dc6d72d90a"
+      "sha256": "e7bae269cfebaeddbea7c8bd9932eaffe378f3e39fe9aaa5121660dfbc3a977e"
     },
     {
       "path": "app/api/v1/signoffs/[signoffId]/approve-webauthn/route.ts",
@@ -7558,6 +7783,34 @@
     {
       "path": "app/api/v1/signoffs/[signoffId]/webauthn-options/route.ts",
       "sha256": "5538d2278fdca617cddaf3b3d69d5147b502983231589ae03b52c1c53c41e2fa"
+    },
+    {
+      "path": "apps/consequence-actuator-service/src/github-app.ts",
+      "sha256": "d6b3c7b80b01429ea8c8f2c33d74fbf11f3c51dbf936b8ad482c7157c21840a3"
+    },
+    {
+      "path": "apps/consequence-actuator-service/src/production-config.ts",
+      "sha256": "9897535d2f98943a0dbac5da0ea8ecba62aa48fdc9dc56cf70e0beb6724fc523"
+    },
+    {
+      "path": "apps/consequence-actuator-service/src/runtime.ts",
+      "sha256": "361963689b4384ca9df63b524611850285c95be0527e9bd5c4e92e2128d21fa6"
+    },
+    {
+      "path": "apps/consequence-actuator-service/test/production-config.test.ts",
+      "sha256": "4c34f5a1710c346e41239fd0df878a39b4ef575ccb37b8ee6af03f14b403d86c"
+    },
+    {
+      "path": "apps/consequence-actuator-service/test/provider-record-hostile.test.ts",
+      "sha256": "4eefc86db4de5510e5654869cdb5ab1909cb73286f8940cb43361fabffc06d3d"
+    },
+    {
+      "path": "apps/consequence-control-service/src/github-app.ts",
+      "sha256": "0586d231417b242acc75fb4f8d870b6d4fe38e47cf13898920f532f2322d8fd5"
+    },
+    {
+      "path": "apps/consequence-control-service/test/actuator-client.test.js",
+      "sha256": "478d1fc5a972102da15b8d656a31475fd5093f5fc63fc808eb93b34c2f24f6c8"
     },
     {
       "path": "conformance/authority-program-profile.test.js",
@@ -7708,6 +7961,14 @@
       "sha256": "ce3de4f472612c524db0bfef58dfa9d7dae3b23bf46060bd7f436e126daa8ecd"
     },
     {
+      "path": "formal/ep_complete_mediation.cfg",
+      "sha256": "92fa472de94fd56e6302f56a41e011e787612ba2001ed1c54020582ab2d56efd"
+    },
+    {
+      "path": "formal/ep_complete_mediation.tla",
+      "sha256": "8c7542526b355bac1d3c8bad1e97e4b3be927046d163efd0ee20d62324b02b85"
+    },
+    {
       "path": "formal/ep_composed_trust_lifecycle.cfg",
       "sha256": "609f2576228e039f7c8edb05b8bd431e4e8906d4e652c3e598d093c175f3627b"
     },
@@ -7784,6 +8045,10 @@
       "sha256": "da6b7be1ceb846c96d1f42cc858510a4a9b9c5e9cdc353eda718222ba88f5b05"
     },
     {
+      "path": "formal/results/ep-complete-mediation.tlc.summary.txt",
+      "sha256": "dbe93d3a1dbc94f06bc1de00a06f784adb21b26d32eafd630c64ab2d01114d3c"
+    },
+    {
       "path": "formal/results/ep-composed-trust-lifecycle.tlc.summary.txt",
       "sha256": "2fbd5860eec872b0c29e8b11d950135db5d8d3acba90eebdca7abf66e6b5ec92"
     },
@@ -7809,7 +8074,7 @@
     },
     {
       "path": "formal/results/formal-runtime-scenario-conformance.v2.json",
-      "sha256": "2f78e83afc6bf20397b9e6100a5a4c4605f602ebe2546c030fd1842d7cc369f3"
+      "sha256": "8c85467bafbd91d4e4d9ff93db64046efeff062246912ce246fa02a9d487e8ca"
     },
     {
       "path": "formal/results/outcome-authority-join.summary.txt",
@@ -7829,7 +8094,7 @@
     },
     {
       "path": "formal/runtime-scenarios.v2.json",
-      "sha256": "773e10d9952792556b7723d78aa2296b8bd6a5fa8d170ef8da9c6832ee8253a5"
+      "sha256": "0bf47fafa6d4be8ae1a72bfad7cba749fefadd1d2e34a35ace64653e549e28ca"
     },
     {
       "path": "formal/tamarin/ep_reliance_composed.spthy",
@@ -7948,6 +8213,10 @@
       "sha256": "150d6c5ef111ee3a6d63564d12a33d59c43f2b187f10d28e3a51c7498be0496c"
     },
     {
+      "path": "packages/gate/consequence-actuator.test.js",
+      "sha256": "cbb2644e7ba32261a528dc1b577b5ed98d76da3781675d6bf53afcfee77bedc6"
+    },
+    {
       "path": "packages/gate/deploy/sql/001-runtime.sql",
       "sha256": "0f3539da67d89140ed64ff71c0e44bdb088e9e53640581d543dbc9ab0dfef671"
     },
@@ -8012,12 +8281,16 @@
       "sha256": "e64ffa948c9d073f0900bb2152eb59d78fdaa207305af60659d75401c04ea3c8"
     },
     {
+      "path": "packages/gate/src/consequence-actuator.ts",
+      "sha256": "413d6a0b3f0a2fb5b516dcff34dc17d6f12f8df198b09d59ae862d824453590e"
+    },
+    {
       "path": "packages/gate/src/evidence.ts",
       "sha256": "7828614dcaddbe939ef31786d8e3aab0a68b21cab53e737cceecf1bb6387195b"
     },
     {
       "path": "packages/gate/src/index.ts",
-      "sha256": "b64665fd91ec718dfbeba993f5061761495d0d0398eb10d5c86c07371e5883b8"
+      "sha256": "22f959772447205205e45ecbeac3060609e60a29a29a48d3b6982f3d0436f683"
     },
     {
       "path": "packages/gate/src/network-witness.ts",
@@ -8217,7 +8490,7 @@
     },
     {
       "path": "packages/verify/src/index.ts",
-      "sha256": "da39062df558b31f18759894df0ce54f9f6206730c9795e383d6bd29e83266f7"
+      "sha256": "190c4cf3d860b35f8da478aa450eaafa16d8f1955157559dd9690bf1a561aef2"
     },
     {
       "path": "packages/verify/src/outcome-binding.ts",
@@ -8261,7 +8534,7 @@
     },
     {
       "path": "release/release-packages.v1.json",
-      "sha256": "a66c7f23910c1745fecee90b8a0273cbc27363b24d0dfff10af6df62cc6ae143"
+      "sha256": "d19bce34144e82139b26cdf65ab41d8d9ef7787ee12e55eeebe12ac81269940f"
     },
     {
       "path": "scripts/check-formal-runtime-traces.mjs",
@@ -8269,7 +8542,7 @@
     },
     {
       "path": "scripts/check-release-chain.mjs",
-      "sha256": "2812d632c63c58da1983604e3ac10de0b59f22593c7762c77a81612824a3d9f3"
+      "sha256": "1b60c03c41b788afa21bcf4e5a1e07d694152055f174ddc5884bb55a0a3c83d2"
     },
     {
       "path": "scripts/python-artifact-integrity.mjs",
@@ -8277,11 +8550,11 @@
     },
     {
       "path": "scripts/require-release-approval.mjs",
-      "sha256": "608f335ed3828cfca3568a7202013913b2a0c69192634b22fd1f378d43cf9c9e"
+      "sha256": "add5870bf5103dbe516b4800599b01a3c28fab3ae7de8b2b04d9fc1b4cc28ace"
     },
     {
       "path": "scripts/verify-reproducible-package.mjs",
-      "sha256": "9f46c557468e0be05f253970787f6babba0655e6b740c3e4ae6b8a5e2c82b0f7"
+      "sha256": "cf8e2522f16eb489a7efd8165da0efc1a35032f368636b54c0765c1aceb0522e"
     },
     {
       "path": "scripts/verify-reproducible-wheel.mjs",
@@ -8289,11 +8562,11 @@
     },
     {
       "path": "scripts/verify-security-case.mjs",
-      "sha256": "d92bbfc774705f1c03d53703b211f2d30c97aee31d04d7cfc8af1fea6e56d091"
+      "sha256": "5dce04f7e5b509f87b0f71f3c058029a8a616499f94b9242e23be8b1e5394675"
     },
     {
       "path": "security/claims.v1.json",
-      "sha256": "91bd88b643ada63f285335b81012f84d8fba14374e873cf26261ea3b95405d09"
+      "sha256": "8576dd2bd0440465843e7e4d79eafce4850ee5320110d387cd177f10a9205270"
     },
     {
       "path": "security/vectors.v1.json",
@@ -8302,6 +8575,14 @@
     {
       "path": "supabase/migrations/20260720193917_mobile_action_continuity_hardening.sql",
       "sha256": "9ba1880c03dd97a1ee1c207c80986ba7d1e7db05d380f82262e3999e436cfef0"
+    },
+    {
+      "path": "supabase/migrations/20260725010000_consequence_actuator_store.sql",
+      "sha256": "9b5328a3cf0ad199db11e1712d1fc7d9ef981bf03e47bebf6b50c29f71021b2f"
+    },
+    {
+      "path": "supabase/migrations/20260725143000_consequence_actuator_provider_records.sql",
+      "sha256": "260cbb848c55a2587daf867b1f70bca06e3c6d224c8b075bb9dee8b34382d0b5"
     },
     {
       "path": "tests/action-escrow-escrow-com.test.ts",
@@ -8336,6 +8617,14 @@
       "sha256": "b593cd5e6966d08ba1966eec8d6e122ee03f324a633923efb83d36623fdce4b1"
     },
     {
+      "path": "tests/complete-mediation-boundary.test.ts",
+      "sha256": "85e692363600358f11fff39aad942f1e09da68de2215f95e493ef7e2007b2fe0"
+    },
+    {
+      "path": "tests/consequence-actuator-provider-record-migration-contract.test.ts",
+      "sha256": "5b3a5e2876c732bf70693385e1163fdb5d58a0480ae34f22a5000e3c4c76e9c8"
+    },
+    {
       "path": "tests/evidence-challenge-durable.test.ts",
       "sha256": "25dcab63964ef76a68a20a55b255da7f18ca85d9b3e84f99c5ef44b418b4fe5f"
     },
@@ -8365,15 +8654,15 @@
     },
     {
       "path": "tests/release-approval.test.ts",
-      "sha256": "b3a9a07fdd331b96e2e62d3626c57798935d3ab5515af4f2bf0945da5baf55a7"
+      "sha256": "0b9797843583c416c27a7bd5900213b7cf25538901457e2a89a1e3be16188d7d"
     },
     {
       "path": "tests/release-chain-coverage.test.ts",
-      "sha256": "90b0041c4f2ba38decde6cd05c5331ad20f2607fbc746954e731c7e471f44808"
+      "sha256": "fc02d9207e003d986555622aa49cf863edd8f09e42ecb5b5e5faa9b3a74cb213"
     },
     {
       "path": "tests/release-reproducibility.test.ts",
-      "sha256": "037094e75ae8178f4acb98f59248cde2af3ef844ab693cad2f5caf696b0fe392"
+      "sha256": "ca2170ab7d6abb3bd059f506ac0322b9d864c524a8f815e3321b0dad5acc549f"
     },
     {
       "path": "tests/reliance-kernel.test.ts",

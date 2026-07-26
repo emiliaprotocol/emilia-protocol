@@ -8,7 +8,20 @@
     { "package": "ep-verify", "ecosystem": "npm", "path": "packages/ep-verify", "workflow": "publish-ep-verify-npm.yml", "tag_prefix": "ep-verify-npm-v", "mode": "npm_reusable" },
     { "package": "@emilia-protocol/fire-drill", "ecosystem": "npm", "path": "packages/fire-drill", "workflow": "publish-fire-drill.yml", "tag_prefix": "fire-drill-v", "mode": "npm_reusable" },
     { "package": "@emilia-protocol/fire-drill-mcp", "ecosystem": "npm", "path": "packages/fire-drill-mcp", "workflow": "publish-fire-drill-mcp.yml", "tag_prefix": "fire-drill-mcp-v", "mode": "npm_reusable" },
-    { "package": "@emilia-protocol/gate", "ecosystem": "npm", "path": "packages/gate", "workflow": "publish-gate.yml", "tag_prefix": "gate-v", "mode": "npm_reusable" },
+    {
+      "package": "@emilia-protocol/gate",
+      "ecosystem": "npm",
+      "path": "packages/gate",
+      "workflow": "publish-gate.yml",
+      "tag_prefix": "gate-v",
+      "mode": "npm_reusable",
+      "registry_dependency_tarballs": [
+        {
+          "spec": "@emilia-protocol/verify@3.15.0",
+          "sha256": "e82ef5098aa5fffc6776d41f5906c57b5db1962a9d81adcefeafac080d013441"
+        }
+      ]
+    },
     { "package": "@emilia-protocol/issue", "ecosystem": "npm", "path": "packages/issue", "workflow": "publish-issue.yml", "tag_prefix": "issue-v", "mode": "npm_reusable" },
     { "package": "@emilia-protocol/langchain", "ecosystem": "npm", "path": "packages/langchain", "workflow": "publish-langchain.yml", "tag_prefix": "langchain-v", "mode": "npm_reusable" },
     { "package": "@emilia-protocol/mcp-guard", "ecosystem": "npm", "path": "packages/mcp-guard", "workflow": "publish-mcp-guard.yml", "tag_prefix": "mcp-guard-v", "mode": "npm_reusable" },

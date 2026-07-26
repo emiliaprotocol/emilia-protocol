@@ -15,6 +15,27 @@ describe('static schema-security migration audit', () => {
     expect(result.limitations.some((line) => line.includes('not proof that production applied'))).toBe(true);
   });
 
+  it('treats the declared unjournaled-invariant reconciliation as governed security source', () => {
+    const migrations = readMigrationBundle();
+    const target = migrations.find(
+      (migration) =>
+        migration.file === '20260725180000_reconcile_unjournaled_security_invariants.sql',
+    );
+    target.sql = target.sql.replace(
+      'REVOKE ALL ON TABLE public.fraud_flags',
+      '-- deliberately removed in fixture',
+    );
+
+    const result = auditMigrationBundle(migrations);
+
+    expect(result.status).toBe('failed');
+    expect(
+      result.failures.some(
+        (failure) => failure.name === 'public table ACL revoked: fraud_flags',
+      ),
+    ).toBe(true);
+  });
+
   it('fails if a public table grant is appended to a secret/RPC-only table', () => {
     const migrations = readMigrationBundle();
     migrations.push({

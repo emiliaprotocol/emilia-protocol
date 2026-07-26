@@ -19,6 +19,8 @@ const aclAnon = (acl: string): boolean => /(^|[,{])anon=[A-Za-z]*X/.test(acl);
 const aclAuth = (acl: string): boolean => /(^|[,{])authenticated=[A-Za-z]*X/.test(acl);
 const aclPublic = (acl: string): boolean => acl === '' || /(^|[,{])=[A-Za-z]*X/.test(acl);
 const aclUntrusted = (acl: string): boolean => aclAnon(acl) || aclAuth(acl) || aclPublic(acl);
+const aclServiceRole = (acl: string): boolean =>
+  /(^|[,{])service_role=[A-Za-z]*X/.test(acl);
 
 const roleName = (role: any): string => String(role || '').toLowerCase();
 const hasUntrustedRole = (roles: any[]): boolean => (roles || []).some((role: any) => UNTRUSTED.has(roleName(role)));
@@ -36,7 +38,8 @@ export function evaluateContract(snap: any, schemaContract: any = defaultContrac
   const list = (value: any): any[] => (Array.isArray(value) ? value : []);
 
   const requiredSnapshotFields: readonly string[] = [
-    'tables', 'columns', 'rls', 'policies', 'functions', 'table_grants', 'column_grants',
+    'tables', 'columns', 'rls', 'policies', 'functions', 'indexes', 'table_grants', 'column_grants',
+    'reconcile_tables', 'reconcile_functions',
   ];
   for (const field of requiredSnapshotFields) {
     if (Array.isArray(snap?.[field])) pass();
@@ -44,6 +47,12 @@ export function evaluateContract(snap: any, schemaContract: any = defaultContrac
   }
 
   const tables: Set<any> = new Set(list(snap?.tables));
+  const qualifiedTables: Set<string> = new Set(
+    list(snap?.reconcile_tables).map((name: any) => String(name)),
+  );
+  const qualifiedFunctions: Set<string> = new Set(
+    list(snap?.reconcile_functions).map((name: any) => String(name)),
+  );
   const cols: Map<any, Set<any>> = new Map();
   for (const column of list(snap?.columns)) {
     if (!cols.has(column.t)) cols.set(column.t, new Set());
@@ -60,10 +69,27 @@ export function evaluateContract(snap: any, schemaContract: any = defaultContrac
     if (!fnsByName.has(fn.name)) fnsByName.set(fn.name, []);
     fnsByName.get(fn.name)!.push(fn);
   }
+  const indexesByTable: Map<any, Set<any>> = new Map();
+  for (const index of list(snap?.indexes)) {
+    if (!indexesByTable.has(index.t)) indexesByTable.set(index.t, new Set());
+    indexesByTable.get(index.t)!.add(index.name);
+  }
 
   // 1. Required tables
   for (const table of schemaContract.requiredTables) {
     if (tables.has(table)) pass(); else fail(`TABLE missing: ${table}`);
+  }
+  for (const table of schemaContract.requiredQualifiedTables || []) {
+    if (qualifiedTables.has(table)) pass();
+    else fail(`QUALIFIED TABLE missing: ${table}`);
+  }
+  for (const rpc of schemaContract.requiredQualifiedRpcs || []) {
+    if (qualifiedFunctions.has(rpc)) pass();
+    else fail(`QUALIFIED RPC missing: ${rpc}`);
+  }
+  for (const assertion of schemaContract.requiredReconcileAssertions || []) {
+    if (qualifiedFunctions.has(assertion)) pass();
+    else fail(`RECONCILIATION SECURITY ASSERTION failed: ${assertion}`);
   }
 
   // 2. Known-gap tables (non-fatal, but tracked + must be reported)
@@ -83,6 +109,14 @@ export function evaluateContract(snap: any, schemaContract: any = defaultContrac
     const have = cols.get(table) || new Set();
     for (const column of (wanted as any[])) {
       if (have.has(column)) pass(); else fail(`COLUMN missing: ${table}.${column}`);
+    }
+  }
+
+  // 3b. Required safety indexes
+  for (const [table, wanted] of Object.entries(schemaContract.requiredIndexes || {})) {
+    const have = indexesByTable.get(table) || new Set();
+    for (const index of (wanted as any[])) {
+      if (have.has(index)) pass(); else fail(`INDEX missing: ${table}.${index}`);
     }
   }
 
@@ -182,7 +216,41 @@ export function evaluateContract(snap: any, schemaContract: any = defaultContrac
     else fail(`RPC executable by untrusted role: ${name} (${exposed.length}/${overloads.length} overloads acl=${exposed.map((fn) => fn.acl).join(' | ')})`);
   }
 
-  // 11. Required RPCs exist
+  // 11. Exact mutation-root signatures must preserve their definer and ACL
+  // posture. Bare-name existence is insufficient because a wrong overload or
+  // SECURITY INVOKER replacement would satisfy it.
+  for (const signature of schemaContract.requiredDefinerRpcSignatures || []) {
+    const match = String(signature).match(/^public\.([a-z_][a-z0-9_]*)\((.*)\)$/i);
+    if (!match) {
+      fail(`Invalid required definer RPC signature: ${signature}`);
+      continue;
+    }
+    const [, name, expectedArgs] = match;
+    const overload = (fnsByName.get(name) || []).find(
+      (fn) =>
+        String(fn.args || '').replace(/\s+/g, '')
+        === expectedArgs.replace(/\s+/g, ''),
+    );
+    if (!overload) {
+      fail(`EXACT RPC missing: ${signature}`);
+      continue;
+    }
+    if (overload.secdef !== true) {
+      fail(`RPC not SECURITY DEFINER: ${signature}`);
+      continue;
+    }
+    if (aclUntrusted(overload.acl || '')) {
+      fail(`RPC executable by untrusted role: ${signature}`);
+      continue;
+    }
+    if (!aclServiceRole(overload.acl || '')) {
+      fail(`RPC not executable by service_role: ${signature}`);
+      continue;
+    }
+    pass();
+  }
+
+  // 12. Required RPCs exist
   for (const name of schemaContract.requiredRpcs) {
     if (fnsByName.has(name)) pass(); else fail(`RPC missing: ${name}()`);
   }

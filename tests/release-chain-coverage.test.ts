@@ -1,6 +1,13 @@
 // SPDX-License-Identifier: Apache-2.0
 import { describe, expect, it } from 'vitest';
-import { mkdtempSync, mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import {
+  mkdtempSync,
+  existsSync,
+  mkdirSync,
+  readFileSync,
+  rmSync,
+  writeFileSync,
+} from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import {
@@ -8,13 +15,20 @@ import {
   discoverReleaseSurfaces,
   validateCredentialRotationGuideText,
   validateGoTagWorkflowText,
+  validateNpmDirect,
   validateNpmLockData,
   validatePypiDirect,
   validateReusableNpmWorkflowText,
   validateReusablePypiWorkflowText,
 } from '../scripts/check-release-chain.mjs';
+import YAML from 'yaml';
 
 describe('release-chain coverage', () => {
+  it('forbids ambiguous generic tag provenance in favor of exact package publishers', () => {
+    expect(existsSync('.github/workflows/release.yml')).toBe(false);
+    expect(auditReleaseChain()).toEqual({ packages: 25, npm: 19, pypi: 5, go: 1 });
+  });
+
   it('every declared package uses its complete verifiable release chain', () => {
     expect(auditReleaseChain()).toEqual({ packages: 25, npm: 19, pypi: 5, go: 1 });
   });
@@ -22,6 +36,123 @@ describe('release-chain coverage', () => {
   it('every declared npm and PyPI package uses reproducible registry-byte verification', () => {
     const result = auditReleaseChain();
     expect(result).toMatchObject({ npm: 19, pypi: 5 });
+  });
+
+  it('keeps all npm package code in an unprivileged job and OIDC only in the protected publisher', () => {
+    const reusableText = readFileSync('.github/workflows/_publish-npm-package.yml', 'utf8');
+    const reusable = YAML.parse(reusableText);
+    expect(Object.keys(reusable.jobs)).toEqual(['build', 'publisher']);
+
+    const build = reusable.jobs.build;
+    expect(build.environment).toBeUndefined();
+    expect(build.permissions).toEqual({ contents: 'read' });
+    expect(build.steps.some((step) => step.uses?.startsWith('actions/checkout@'))).toBe(true);
+    expect(build.steps.some((step) => step.run?.includes('npm test'))).toBe(true);
+    expect(build.steps.some((step) => step.run?.includes('security-case:emit'))).toBe(true);
+    expect(build.steps.some((step) => step.run?.includes('verify-reproducible-package.mts'))).toBe(true);
+    expect(build.steps.some((step) => step.uses?.startsWith('actions/upload-artifact@'))).toBe(true);
+
+    const publisher = reusable.jobs.publisher;
+    expect(publisher.needs).toBe('build');
+    expect(publisher.environment).toBe('registry-publishing-approval');
+    expect(publisher.permissions).toEqual({
+      contents: 'read',
+      'id-token': 'write',
+      attestations: 'write',
+    });
+    expect(publisher.steps.some((step) => step.uses?.startsWith('actions/download-artifact@'))).toBe(true);
+    expect(publisher.steps.some((step) => step.run?.includes('npm publish'))).toBe(true);
+    expect(publisher.steps.some((step) => step.uses?.startsWith('actions/checkout@'))).toBe(false);
+    expect(publisher.steps.every((step) => !step.run?.includes('scripts/'))).toBe(true);
+    expect(publisher.steps.every((step) => !/\bnpm (?:test|run|ci|install|exec)\b/u.test(step.run ?? ''))).toBe(true);
+  });
+
+  it('downloads one immutable artifact ID and rejects unsafe or inexact publisher inputs', () => {
+    const reusableText = readFileSync('.github/workflows/_publish-npm-package.yml', 'utf8');
+    const reusable = YAML.parse(reusableText);
+    const download = reusable.jobs.publisher.steps.find(
+      (step) => step.uses?.startsWith('actions/download-artifact@'),
+    );
+    expect(download.with?.['artifact-ids']).toBe('${{ needs.build.outputs.release_artifact_id }}');
+    expect(download.with?.name).toBeUndefined();
+    const validation = reusable.jobs.publisher.steps.find(
+      (step) => step.name === 'Validate exact inert release artifact',
+    )?.run;
+    expect(validation).toContain('lstatSync');
+    expect(validation).toContain('isSymbolicLink');
+    expect(validation).toContain('isFile');
+    expect(validation).toContain('duplicate release artifact path');
+    expect(validation).toContain('release artifact path escapes');
+    expect(validation).toContain('unexpected release artifact inventory');
+    expect(validation).toContain("entryPath === 'package/package.json'");
+    expect(validation).toContain('tarball package/package.json bytes differ from approved reviewed Git object');
+    expect(validation).toContain('manifest_sha256');
+    expect(validation).toContain('package_json_sha256');
+    expect(validation).toContain('tarball member bytes differ from reviewed source-and-recipe manifest');
+    expect(validation).toContain('manifest dependency evidence differs');
+  });
+
+  it('delegates Verify, Gate, and every other npm trusted-publisher caller to the same split workflow', () => {
+    const registry = JSON.parse(readFileSync('release/release-packages.v1.json', 'utf8'));
+    const npmEntries = registry.packages.filter((entry) => entry.ecosystem === 'npm');
+    expect(npmEntries).toHaveLength(19);
+    for (const entry of npmEntries) {
+      const text = readFileSync(path.join('.github/workflows', entry.workflow), 'utf8');
+      const workflow = YAML.parse(text);
+      expect(Object.keys(workflow.jobs), entry.workflow).toEqual(['publish']);
+      expect(workflow.jobs.publish.uses, entry.workflow)
+        .toBe('./.github/workflows/_publish-npm-package.yml');
+      expect(workflow.jobs.publish.permissions, entry.workflow).toEqual({
+        contents: 'read',
+        'id-token': 'write',
+        attestations: 'write',
+      });
+    }
+  });
+
+  it('uses the fixed canonical GitHub repository immediately before the irreversible publish', () => {
+    const text = readFileSync('.github/workflows/_publish-npm-package.yml', 'utf8');
+    const workflow = YAML.parse(text);
+    const publishRun = workflow.jobs.publisher.steps.find(
+      (step) => step.run?.includes('npm publish'),
+    )?.run;
+    expect(publishRun).toContain(
+      'git ls-remote --exit-code https://github.com/emiliaprotocol/emilia-protocol.git',
+    );
+    expect(publishRun).not.toMatch(/\bgit ls-remote\b[^\n]*(?:origin|remote\.origin|git config)/u);
+    expect(publishRun.indexOf('git ls-remote')).toBeLessThan(publishRun.lastIndexOf('sha256sum'));
+    expect(publishRun.lastIndexOf('sha256sum')).toBeLessThan(publishRun.indexOf('npm publish'));
+  });
+
+  it('rejects OIDC leakage, publisher checkout, mutable artifact selection, and unsafe extraction', () => {
+    const text = readFileSync('.github/workflows/_publish-npm-package.yml', 'utf8');
+    const oidcBuild = text.replace(
+      '  build:\n    name: Build and verify ${{ inputs.package_name }}\n    runs-on: ubuntu-latest\n    permissions:\n      contents: read',
+      '  build:\n    name: Build and verify ${{ inputs.package_name }}\n    runs-on: ubuntu-latest\n    permissions:\n      contents: read\n      id-token: write',
+    );
+    expect(() => validateReusableNpmWorkflowText(oidcBuild)).toThrow(/build job is not unprivileged/);
+
+    const publisherCheckout = text.replace(
+      '    steps:\n      - name: Setup Node.js for npm OIDC',
+      '    steps:\n'
+      + '      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1\n'
+      + '      - name: Setup Node.js for npm OIDC',
+    );
+    expect(() => validateReusableNpmWorkflowText(publisherCheckout)).toThrow(/inert protected OIDC job/);
+
+    const mutableDownload = text.replace(
+      'artifact-ids: ${{ needs.build.outputs.release_artifact_id }}',
+      'name: npm-release-${{ inputs.artifact_id }}-${{ github.sha }}',
+    );
+    expect(() => validateReusableNpmWorkflowText(mutableDownload)).toThrow(
+      /artifact ID|missing release controls/,
+    );
+
+    const unsafeExtraction = text.replace(
+      'release artifact symlink is forbidden',
+      'symlink accepted',
+    );
+    expect(() => validateReusableNpmWorkflowText(unsafeExtraction)).toThrow(/release controls/);
   });
 
   it('Go release isolates tag write authority and verifies the public proxy origin', () => {
@@ -89,10 +220,43 @@ describe('release-chain coverage', () => {
     expect(() => validatePypiDirect(detached, 'publish-crewai.yml')).toThrow(/protected approval environment/);
   });
 
+  it('refuses a caller-side detached approval or extra executable job', () => {
+    const caller = readFileSync('.github/workflows/publish-verify-sdk.yml', 'utf8');
+    const detached = caller.replace(
+      'jobs:\n  publish:',
+      'jobs:\n'
+      + '  approval:\n'
+      + '    runs-on: ubuntu-latest\n'
+      + '    environment: registry-publishing-approval\n'
+      + '    permissions: {}\n'
+      + '    steps:\n'
+      + '      - run: echo detached\n'
+      + '  publish:',
+    );
+    expect(() => validateNpmDirect(detached, 'publish-verify-sdk.yml')).toThrow(
+      /delegate only/,
+    );
+  });
+
   it('refuses a reusable publisher with its post-registry byte comparison removed', () => {
     const workflow = readFileSync('.github/workflows/_publish-npm-package.yml', 'utf8');
     const weakened = workflow.replace('cmp "$TESTED_TARBALL" "registry-copy/$REGISTRY_TARBALL"', 'true # comparison removed');
     expect(() => validateReusableNpmWorkflowText(weakened)).toThrow(/registry-copy/);
+  });
+
+  it('refuses npm release workflows without the pinned TLA+ runtime required by the security case', () => {
+    const reusable = readFileSync('.github/workflows/_publish-npm-package.yml', 'utf8');
+    const reusableWithoutJava17 = reusable.replace("java-version: '17'", "java-version: '21'");
+    expect(() => validateReusableNpmWorkflowText(reusableWithoutJava17)).toThrow(/TLA\+ execution guard/);
+  });
+
+  it('refuses reusable npm publication without a pre-publication internal dependency registry guard', () => {
+    const workflow = readFileSync('.github/workflows/_publish-npm-package.yml', 'utf8');
+    const weakened = workflow.replace(
+      'internal dependency unavailable from npm',
+      'dependency check removed',
+    );
+    expect(() => validateReusableNpmWorkflowText(weakened)).toThrow(/dependency/);
   });
 
   it('refuses credential-rotation guidance that restores a manual publish token', () => {

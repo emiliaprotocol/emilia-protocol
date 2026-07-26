@@ -66,9 +66,10 @@ Pure; unit-testable against fixtures. This is the only new lib code beyond the
 already-built core.
 
 ## Prod rollout runbook
-1. **Apply migration 094** to prod Supabase (additive column; zero downtime):
-   `supabase db push` (or Studio SQL) — verify `quorum_policy` exists on
-   `signoff_challenges`.
+1. Verify the already-journaled
+   `20260629212134_098_signoff_quorum_policy.sql` control through the live
+   schema contract: confirm `quorum_policy` exists on `signoff_challenges`.
+   Do not replay the archived numeric alias.
 2. Ship the `attest`/`consume` hooks behind the `quorum_policy IS NULL` guard
    (single-signoff paths are untouched; quorum paths activate only when a policy
    is set).

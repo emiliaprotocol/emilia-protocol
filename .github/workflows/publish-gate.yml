@@ -1,11 +1,13 @@
 name: Publish Gate
 
-# npm trusted publisher: @emilia-protocol/gate -> this workflow filename.
+# npm trusted publisher identity remains this caller workflow:
+# @emilia-protocol/gate -> publish-gate.yml, protected by the
+# registry-publishing-approval environment inside the reusable publisher job.
 on:
   workflow_dispatch:
     inputs:
       release_tag:
-        description: Exact tag, for example gate-v0.10.0
+        description: Exact tag, for example gate-v0.16.0
         required: true
         type: string
       confirmation:
@@ -19,15 +21,7 @@ permissions:
   attestations: write
 
 jobs:
-  approval:
-    runs-on: ubuntu-latest
-    environment: registry-publishing-approval
-    permissions: {}
-    steps:
-      - run: echo "Owner approved registry publication."
-
   publish:
-    needs: approval
     permissions:
       contents: read
       id-token: write

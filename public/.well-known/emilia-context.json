@@ -1,9 +1,9 @@
 {
   "@version": "EMILIA-REPO-CONTEXT-v1",
-  "evidence_snapshot_at": "2026-07-25T02:54:42.073Z",
+  "evidence_snapshot_at": "2026-07-26T05:38:21.284Z",
   "provenance": {
     "generator": "scripts/generate-llm-context.mjs",
-    "input_digest_sha256": "db7daebf1f1c65b64de3d428db7be14330e3cf137536e6b4f5e46eba2b80e96b",
+    "input_digest_sha256": "678ba2ece1d261b72c29b0b65a24996edc133b68719a1e27e1b6f3466b2993f3",
     "generated_from": [
       {
         "path": "docs/ai/context-source.v1.json",
@@ -17,12 +17,12 @@
       },
       {
         "path": "lib/proof-stats.json",
-        "sha256": "c667405f74f5c5383983ece3f6068d08714e981810fb40bcf87e6cb327bc9a2c",
+        "sha256": "7c767321a775533a2be31e3855bc365b78adc2d933912a599f999dbfad7ba289",
         "bytes": 4136
       },
       {
         "path": "conformance/conformance-manifest.json",
-        "sha256": "7fadd3ab30c2f291494055047294d6bb9c9fb11487917e2f9011ffa943b41ce9",
+        "sha256": "2d9968fb79b710230c864b659e4b376ff0c49165e04959ccf911a81ec8f0b94f",
         "bytes": 6361
       },
       {
@@ -32,13 +32,13 @@
       },
       {
         "path": "security/claims.v1.json",
-        "sha256": "91bd88b643ada63f285335b81012f84d8fba14374e873cf26261ea3b95405d09",
-        "bytes": 220618
+        "sha256": "8576dd2bd0440465843e7e4d79eafce4850ee5320110d387cd177f10a9205270",
+        "bytes": 227798
       },
       {
         "path": "security/security-case.json",
-        "sha256": "ae4d9cb17f4b4048dfd3824436b494377e177147dc2c5cde53967fbcf5d4d7d2",
-        "bytes": 337666
+        "sha256": "7da56b0838aacd435a2eacbf84b0fde48d392ef3eca28fba850e14ceb2842538",
+        "bytes": 350374
       },
       {
         "path": "lib/standards-observatory.snapshot.json",
@@ -272,8 +272,8 @@
   ],
   "current_evidence": {
     "automated_tests": {
-      "total": 7728,
-      "files": 419,
+      "total": 7873,
+      "files": 436,
       "policy": "all platform-applicable cases must pass; platform-specific cases may skip"
     },
     "cross_language_conformance": {
@@ -282,7 +282,7 @@
       "implementations": 3,
       "relationship": "same_team_ports",
       "claim_scope": "current same-team cross-language consistency; not independent implementation evidence",
-      "manifest_sha256": "f63bacf3b068ddfe94609df09e6cc4d46fceb8017e9b80ee84306310dfc410fe",
+      "manifest_sha256": "c9c57832634ce9ef673ccfacbc8f8eb4966bbb2e8dab04c6e0d9074da219e92f",
       "vector_bundle_sha256": "ee1021eb36de8e50448d9f12f00d16f3e24561276c9a42241e88178d5daa0d3e"
     },
     "formal": {
@@ -305,16 +305,16 @@
       },
       "selected_scenario_conformance": {
         "method": "bounded_selected_scenario_conformance",
-        "models": 13,
+        "models": 14,
         "claims": 20,
-        "scenarios": 70,
-        "soundScenarios": 25,
-        "pairedNegativeControls": 45,
+        "scenarios": 72,
+        "soundScenarios": 26,
+        "pairedNegativeControls": 46,
         "requiredModelActions": 28,
         "coveredModelActions": 28,
         "actionCompleteModels": 1,
-        "formalMutationOperators": 45,
-        "evidenceSha256": "2f78e83afc6bf20397b9e6100a5a4c4605f602ebe2546c030fd1842d7cc369f3",
+        "formalMutationOperators": 46,
+        "evidenceSha256": "8c85467bafbd91d4e4d9ff93db64046efeff062246912ce246fa02a9d487e8ca",
         "boundary": "selected model/runtime scenarios under explicit projection relations; not a mechanized implementation refinement proof"
       },
       "evidence_taxonomy": {
@@ -380,8 +380,8 @@
     "security_case": {
       "status": "passed",
       "claims": 33,
-      "evidence_files": 219,
-      "evidence_bundle_sha256": "7cc2576f9612fabb439218f04e9cbb4ccc4b7bb23f135be9a2cfc855f0c614e5"
+      "evidence_files": 235,
+      "evidence_bundle_sha256": "d4c63269df798b03aa972848527b6ea5cac20d001205b96777b86cc5eef67b3e"
     },
     "caid": {
       "core_vectors": 48,
@@ -1913,7 +1913,8 @@
       "statement": "After an external executor is invoked, an exception is treated as an indeterminate effect and the approval is consumed or frozen rather than made reusable.",
       "acceptance_roots": [
         "the gate's durable consumption store",
-        "the Proposal-to-Effect consequence-attempt store and relying-party-pinned provider-evidence verifier"
+        "the Proposal-to-Effect consequence-attempt store and relying-party-pinned provider-evidence verifier",
+        "the consequence actuator's durable one-time envelope store, isolated provider credential, and pinned decision and observation keys"
       ],
       "enforcement_path": [
         {
@@ -1932,6 +1933,36 @@
           "language": "javascript",
           "file": "packages/gate/src/proposal-to-effect.ts",
           "symbol": "createProposalToEffect",
+          "exported": true
+        },
+        {
+          "language": "javascript",
+          "file": "packages/gate/src/consequence-actuator.ts",
+          "symbol": "ConsequenceActuator",
+          "exported": true
+        },
+        {
+          "language": "javascript",
+          "file": "apps/consequence-control-service/src/github-app.ts",
+          "symbol": "createConsequenceActuatorClient",
+          "exported": true
+        },
+        {
+          "language": "javascript",
+          "file": "apps/consequence-actuator-service/src/runtime.ts",
+          "symbol": "createConsequenceActuatorRuntime",
+          "exported": true
+        },
+        {
+          "language": "javascript",
+          "file": "apps/consequence-actuator-service/src/github-app.ts",
+          "symbol": "createGitHubIssueEffectProvider",
+          "exported": true
+        },
+        {
+          "language": "javascript",
+          "file": "apps/consequence-actuator-service/src/production-config.ts",
+          "symbol": "createPostgresProviderRecordStore",
           "exported": true
         },
         {
@@ -1978,6 +2009,44 @@
           "covered_statement": "The composed symbolic path makes checked execution injective with respect to one-time authorization consumption.",
           "unmodeled_statement": "An external effect that succeeds before its response is lost, indeterminate fencing, and provider reconciliation are modeled in bounded lifecycle and executable evidence rather than Tamarin.",
           "scope": "The composed lemma proves injective checked execution but does not model an external system whose effect succeeds before its response is lost."
+        },
+        {
+          "status": "partial",
+          "method": "bounded_tla_model_checking",
+          "model": "formal/ep_complete_mediation.tla",
+          "runner": "formal/ep_complete_mediation.cfg",
+          "result_evidence": "formal/results/ep-complete-mediation.tlc.summary.txt",
+          "obligations": [
+            "ProviderAtMostOnce",
+            "EffectRequiresActuator",
+            "EffectRequiresConsumedEnvelope",
+            "EffectRequiresExactDecision",
+            "UncertainEffectBlocksReplay",
+            "TerminalReconciliationIsAuthenticated",
+            "NoEnvelopeReopenAfterInvocation"
+          ],
+          "scope": "A bounded same-team split-service model covers exact decision and envelope binding, actuator-only provider entry, permanent uncertainty fencing, authenticated terminal reconciliation, and no envelope reopening. A deliberately unsafe direct-provider transition violates EffectRequiresActuator. Selected runtime scenarios exercise the real TypeScript actuator primitive; the separate-service credential boundary is additionally enforced by executable repository tests. This is not a mechanized implementation refinement proof, an unbounded theorem, or proof that credentials cannot exist outside the managed deployment.",
+          "scenario_evidence": "formal/runtime-scenarios.v2.json",
+          "scenario_runner": "scripts/check-formal-runtime-traces.mjs",
+          "conformance_evidence": "formal/results/formal-runtime-scenario-conformance.v2.json",
+          "scenario_coverage": "selected",
+          "covered_actions": [
+            "RefuseGateBypass",
+            "AuthorizeExactAction",
+            "IssueExactEnvelope",
+            "InvokeThroughActuator",
+            "ProviderTimeout",
+            "RefuseBlindReplay",
+            "UnsafeDirectProviderCall"
+          ],
+          "covered_obligations": [
+            "ProviderAtMostOnce",
+            "EffectRequiresActuator",
+            "EffectRequiresConsumedEnvelope",
+            "EffectRequiresExactDecision",
+            "UncertainEffectBlocksReplay",
+            "NoEnvelopeReopenAfterInvocation"
+          ]
         },
         {
           "status": "partial",
@@ -2082,12 +2151,14 @@
         }
       ],
       "assumptions": [
-        "the guarded effect is invoked only through gate.run, the AEC execution gate run method, or the Proposal-to-Effect controller",
+        "the guarded effect is invoked only through gate.run, the AEC execution gate run method, the Proposal-to-Effect controller, or the separately deployed credential-owning consequence actuator",
+        "for the managed complete-mediation profile, the decision service has no provider credential or provider API implementation and the actuator accepts only the pinned signed execution envelope",
         "provider reconciliation is accepted only through a relying-party-pinned verifier bound to the same tenant, operation, attempt, CAID, action digest, and effect digest",
         "the durable backend remains fail-closed"
       ],
       "exclusions": [
-        "the protocol cannot infer whether an unavailable external system applied an effect"
+        "the protocol cannot infer whether an unavailable external system applied an effect",
+        "the managed actuator cannot prevent an independent administrator or alternate credential outside its deployment boundary from changing the provider directly"
       ]
     },
     {

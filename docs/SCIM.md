@@ -98,7 +98,7 @@ The mapping, filter, and PATCH semantics are covered by `tests/scim-core.test.ts
 (24 cases) and the full create → list → filter → deprovision → delete lifecycle,
 the auth gate, and the approver-linkage (provision-eligible / deprovision-revokes /
 re-activation-never-resurrects) by `tests/scim-routes.test.ts` (15 cases). Storage
-is `supabase/migrations/095_scim_provisioning.sql`.
+is `supabase/migrations/20260612061152_095_scim_provisioning.sql`.
 
 > **Live IdP round-trip:** the server is conformance-tested against the SCIM
 > protocol directly (our tests act as the IdP client). A live end-to-end run

@@ -34,6 +34,7 @@ const adapterSources = Object.freeze({
     "aec-execution-fleet-assurance": "conformance/refinement/adapters/aec-execution-fleet-assurance.mts",
     "consequence-lifecycle": "conformance/refinement/adapters/consequence-lifecycle.mts",
     "composed-trust-lifecycle": "conformance/refinement/adapters/composed-trust-lifecycle.mts",
+    "complete-mediation": "conformance/refinement/adapters/complete-mediation.mts",
     "durable-consumption-owner": "conformance/refinement/adapters/durable-consumption-owner.mts",
     "conservation-authority": "conformance/refinement/adapters/five-claim-bridge.mjs",
     "outcome-binding": "conformance/refinement/adapters/five-claim-bridge.mjs",

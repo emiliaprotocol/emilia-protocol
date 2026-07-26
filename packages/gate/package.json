@@ -1,6 +1,6 @@
 {
   "name": "@emilia-protocol/gate",
-  "version": "0.15.2",
+  "version": "0.16.0",
   "repository": {
     "type": "git",
     "url": "https://github.com/emiliaprotocol/emilia-protocol.git",
@@ -281,6 +281,14 @@
       "types": "./dist/aeb-consumption-store.d.ts",
       "import": "./aeb-consumption-store.js"
     },
+    "./consequence-actuator": {
+      "types": "./dist/consequence-actuator.d.ts",
+      "import": "./consequence-actuator.js"
+    },
+    "./discovery-permit-resolver": {
+      "types": "./dist/discovery-permit-resolver.d.ts",
+      "import": "./discovery-permit-resolver.js"
+    },
     "./authority-allocation": {
       "types": "./dist/authority-allocation.d.ts",
       "import": "./authority-allocation.js"
@@ -336,6 +344,8 @@
     "proposal-to-effect-status-head-store.js",
     "proposal-to-effect-postgres.js",
     "aeb-consumption-store.js",
+    "consequence-actuator.js",
+    "discovery-permit-resolver.js",
     "authority-allocation.js",
     "zk-range-proof.js",
     "reports/assurance-package.js",
@@ -411,7 +421,7 @@
   "dependencies": {
     "@noble/curves": "2.2.0",
     "@emilia-protocol/require-receipt": "0.7.0",
-    "@emilia-protocol/verify": "3.14.0"
+    "@emilia-protocol/verify": "3.15.0"
   },
   "keywords": [
     "emilia",

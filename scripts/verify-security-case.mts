@@ -33,6 +33,10 @@ const ROOT: string = path.resolve(
   path.dirname(fileURLToPath(import.meta.url)),
   "..",
 );
+// Release-correspondence claims perform two clean, lifecycle-disabled package
+// builds from exact Git objects. Cold CI can exceed three minutes, so retain a
+// finite but realistic fail-closed bound for every executed evidence command.
+const EXECUTION_TIMEOUT_MS: number = 600_000;
 const args: string[] = process.argv.slice(2);
 const execute: boolean = args.includes("--execute");
 const validateOnly: boolean = args.includes("--validate-only");
@@ -527,7 +531,7 @@ function runChecked(
     encoding: "utf8",
     env: { ...process.env, FORCE_COLOR: "0", NO_COLOR: "1" },
     maxBuffer: 32 * 1024 * 1024,
-    timeout: 180_000,
+    timeout: EXECUTION_TIMEOUT_MS,
   });
   if (run.status !== 0) {
     throw new Error(
@@ -551,7 +555,12 @@ function executePlannedTests(): void {
     } else {
       runChecked(
         process.execPath,
-        ["--test", planned.file],
+        [
+          "--import",
+          path.join(ROOT, "scripts", "ts-loader", "register.mjs"),
+          "--test",
+          planned.file,
+        ],
         {},
         `node:test ${planned.file}`,
       );

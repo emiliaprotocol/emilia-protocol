@@ -5,21 +5,61 @@
 ARG NODE_IMAGE=node:22.23.1-alpine3.24@sha256:16e22a550f3863206a3f701448c45f7912c6896a62de43add43bb9c86130c3e2
 
 FROM ${NODE_IMAGE} AS dependencies
-WORKDIR /opt/dependencies
+WORKDIR /opt/gate
+
+ARG EMILIA_VERIFY_PACKAGE_SHA256
+ARG EMILIA_GATE_PACKAGE_SHA256
+ARG EMILIA_REQUIRE_RECEIPT_PACKAGE_SHA256
 
 # apps/gate-service is dependency-light. pg backs the built-in environment
 # factory's durable Postgres stores. Cloud KMS SDKs remain operator choices in
 # a derived image that uses an explicit operator config.
-COPY apps/gate-service/package.json apps/gate-service/package-lock.json ./
-RUN npm ci --omit=dev --ignore-scripts --no-audit --no-fund \
+COPY release-packages /opt/release-packages
+RUN printf '%s  %s\n' \
+      "$EMILIA_VERIFY_PACKAGE_SHA256" /opt/release-packages/verify.tgz \
+      "$EMILIA_GATE_PACKAGE_SHA256" /opt/release-packages/gate.tgz \
+      "$EMILIA_REQUIRE_RECEIPT_PACKAGE_SHA256" /opt/release-packages/require-receipt.tgz \
+      | sha256sum -c - \
+    && mkdir -p packages/verify packages/gate packages/require-receipt \
+    && tar -xzf /opt/release-packages/verify.tgz -C packages/verify --strip-components=1 \
+    && tar -xzf /opt/release-packages/gate.tgz -C packages/gate --strip-components=1 \
+    && tar -xzf /opt/release-packages/require-receipt.tgz -C packages/require-receipt --strip-components=1
+
+COPY apps/gate-service/package.json apps/gate-service/package-lock.json apps/gate-service/
+RUN npm ci --prefix apps/gate-service --omit=dev --ignore-scripts --no-audit --no-fund \
+    && npm install --prefix apps/gate-service --omit=dev --ignore-scripts --no-audit --no-fund \
+      --no-save --package-lock=false \
+      /opt/release-packages/verify.tgz \
+      /opt/release-packages/require-receipt.tgz \
+      /opt/release-packages/gate.tgz \
     && npm cache clean --force
 
 FROM ${NODE_IMAGE} AS runtime
 
+ARG EMILIA_SOURCE_REVISION=local-unverified
+ARG EMILIA_SOURCE_TREE=local-unverified
+ARG EMILIA_SOURCE_MANIFEST_SHA256=local-unverified
+ARG EMILIA_VERIFY_PACKAGE_SHA256=local-unverified
+ARG EMILIA_GATE_PACKAGE_SHA256=local-unverified
+ARG EMILIA_REQUIRE_RECEIPT_PACKAGE_SHA256=local-unverified
+ARG EMILIA_SECURITY_CASE_SHA256=local-unverified
+ARG EMILIA_PROOF_STATS_SHA256=local-unverified
+ARG EMILIA_CONFORMANCE_MANIFEST_SHA256=local-unverified
+
 LABEL org.opencontainers.image.title="EMILIA Gate BYOC reference image" \
       org.opencontainers.image.description="Operator-built HTTP enforcement service for EMILIA Gate" \
       org.opencontainers.image.source="https://github.com/emiliaprotocol/emilia-protocol" \
-      org.opencontainers.image.licenses="Apache-2.0"
+      org.opencontainers.image.licenses="Apache-2.0" \
+      org.opencontainers.image.revision="${EMILIA_SOURCE_REVISION}" \
+      io.emilia.image.component="gate" \
+      io.emilia.source.tree="${EMILIA_SOURCE_TREE}" \
+      io.emilia.source.manifest.sha256="${EMILIA_SOURCE_MANIFEST_SHA256}" \
+      io.emilia.package.verify.sha256="${EMILIA_VERIFY_PACKAGE_SHA256}" \
+      io.emilia.package.gate.sha256="${EMILIA_GATE_PACKAGE_SHA256}" \
+      io.emilia.package.require-receipt.sha256="${EMILIA_REQUIRE_RECEIPT_PACKAGE_SHA256}" \
+      io.emilia.governed.security-case.sha256="${EMILIA_SECURITY_CASE_SHA256}" \
+      io.emilia.governed.proof-stats.sha256="${EMILIA_PROOF_STATS_SHA256}" \
+      io.emilia.governed.conformance.sha256="${EMILIA_CONFORMANCE_MANIFEST_SHA256}"
 
 RUN addgroup -S -g 10001 gate \
     && adduser -S -D -H -u 10001 -G gate gate \
@@ -36,23 +76,16 @@ RUN addgroup -S -g 10001 gate \
 
 WORKDIR /app
 
-COPY --from=dependencies --chown=10001:10001 /opt/dependencies/node_modules ./node_modules
+COPY --from=dependencies --chown=10001:10001 /opt/gate/apps/gate-service/node_modules ./node_modules
 COPY --chown=10001:10001 apps/gate-service/package.json ./apps/gate-service/package.json
 COPY --chown=10001:10001 apps/gate-service/openapi.json ./apps/gate-service/openapi.json
 COPY --chown=10001:10001 apps/gate-service/src ./apps/gate-service/src
-COPY --chown=10001:10001 packages/gate ./packages/gate
-COPY --chown=10001:10001 packages/require-receipt ./packages/require-receipt
-COPY --chown=10001:10001 packages/verify ./packages/verify
+COPY --from=dependencies --chown=10001:10001 /opt/gate/packages ./packages
 
-# The service imports the checkout directly, while the publishable Gate package
-# uses normal package specifiers. Link the exact copied sources into Node's
-# package namespace so the image exercises the same dependency boundary as a
-# clean npm consumer without fetching mutable registry bytes during the build.
-RUN mkdir -p /app/node_modules/@emilia-protocol \
-    && ln -s ../../packages/gate /app/node_modules/@emilia-protocol/gate \
-    && ln -s ../../packages/require-receipt /app/node_modules/@emilia-protocol/require-receipt \
-    && ln -s ../../packages/verify /app/node_modules/@emilia-protocol/verify \
-    && find /app/packages -type f \( -name '*.test.js' -o -name '*.test.mjs' \) -delete \
+# Relative service imports use the package trees extracted from checksum-verified
+# tarballs, while package-specifier imports use npm's installs of those same
+# sealed tarballs. No checkout package source can replace either runtime path.
+RUN find /app/packages -type f \( -name '*.test.js' -o -name '*.test.mjs' \) -delete \
     && rm -rf /app/packages/gate/deploy/helm /app/packages/gate/deploy/terraform
 
 ENV NODE_ENV=production \

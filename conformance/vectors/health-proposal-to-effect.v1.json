@@ -1,0 +1,221 @@
+{
+  "@version": "EMILIA-HEALTH-PROPOSAL-TO-EFFECT-CONFORMANCE-v1",
+  "profile": {
+    "id": "healthcare.hospice-payment.consequence-control.v1",
+    "scanner_schema": "emilia.commercial.prospective-control-package.v1",
+    "scanner_profile": "medi-cal.hospice-integrity.v1",
+    "action_version": "EP-HEALTH-PROGRAM-INTEGRITY-ACTION-v1",
+    "action_type": "health.medi-cal.hospice-claim-payment.1",
+    "environment": "sandbox",
+    "synthetic": true,
+    "assurance": {
+      "packet": "signed_terminal_safe_projection",
+      "offline_trust_roles": ["evaluator", "receipt", "aeb", "provider"],
+      "algorithm": "Ed25519",
+      "embedded_keys_accepted": false,
+      "internal_digest_is_cryptographic_trust": false
+    }
+  },
+  "caid_definition": {
+    "action_type": "health.medi-cal.hospice-claim-payment.1",
+    "required_fields": [
+      { "name": "@version", "type": "string" },
+      { "name": "profile_id", "type": "string" },
+      { "name": "organization_id", "type": "string" },
+      { "name": "provider_npi", "type": "string" },
+      { "name": "member_ref", "type": "string" },
+      { "name": "service_period_start", "type": "string" },
+      { "name": "service_period_end", "type": "string" },
+      { "name": "authorization_form_digest", "type": "digest" },
+      { "name": "amount", "type": "amount-string" },
+      { "name": "currency", "type": "enum", "values": ["USD"] },
+      { "name": "payment_destination_digest", "type": "digest" },
+      { "name": "reviewer_id", "type": "string" },
+      { "name": "authority_proof_digest", "type": "digest" },
+      { "name": "policy_id", "type": "string" },
+      { "name": "policy_version", "type": "integer" },
+      { "name": "policy_hash", "type": "digest" }
+    ],
+    "optional_fields": []
+  },
+  "cross_repo": {
+    "scanner_package": {
+      "schema": "emilia.commercial.prospective-control-package.v1",
+      "claimBoundary": "prospective_control_from_triage_not_historical_authorization_or_fraud_proof",
+      "controlPurpose": "new_future_action_pre_effect_control",
+      "retroactiveAuthorization": "none",
+      "tenantId": "org:ca-dhcs",
+      "caseId": "case:synthetic-hospice-001",
+      "caseDigest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "sourceRecordDigests": [
+        "sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+      ],
+      "sourceFinding": {
+        "code": "MISSING_APPROVAL",
+        "confidence": "deterministic",
+        "role": "retrospective_triage_evidence_only",
+        "provesHistoricalAuthorization": false,
+        "provesFraud": false,
+        "authorizesScannedExecution": false
+      },
+      "profile": {
+        "id": "medi-cal.hospice-integrity.v1",
+        "version": 1,
+        "proposalToEffect": "EMILIA-PROPOSAL-TO-EFFECT-v1"
+      },
+      "policy": {
+        "id": "policy:dhcs-hospice-payment",
+        "version": 1,
+        "hash": "sha256:7777777777777777777777777777777777777777777777777777777777777777"
+      },
+      "action": {
+        "@version": "EP-HEALTH-PROGRAM-INTEGRITY-ACTION-v1",
+        "profile_id": "medi-cal.hospice-integrity.v1",
+        "action_type": "health.medi-cal.hospice-claim-payment.1",
+        "organization_id": "org:ca-dhcs",
+        "provider_npi": "1234567890",
+        "member_ref": "member:sha256:1111111111111111111111111111111111111111111111111111111111111111",
+        "service_period_start": "2026-06-01",
+        "service_period_end": "2026-06-30",
+        "authorization_form_digest": "sha256:2222222222222222222222222222222222222222222222222222222222222222",
+        "amount": "900.00",
+        "currency": "USD",
+        "payment_destination_digest": "sha256:6666666666666666666666666666666666666666666666666666666666666666",
+        "reviewer_id": "reviewer:integrity-17",
+        "authority_proof_digest": "sha256:4444444444444444444444444444444444444444444444444444444444444444",
+        "policy_id": "policy:dhcs-hospice-payment",
+        "policy_version": 1,
+        "policy_hash": "sha256:7777777777777777777777777777777777777777777777777777777777777777"
+      },
+      "caid": "caid:1:health.medi-cal.hospice-claim-payment.1:jcs-sha256:NrSSZNCIjm7jMWQufBWCRkXixrr8zuuG2c1Zm9qjzx8",
+      "actionDigest": "sha256:36b49264d0888e6ee331642e7c15824645e2c6bafcceeb86d9cd599bdaa3cf1f",
+      "requiredControl": {
+        "approval": {
+          "required": true,
+          "receiptProfile": "EP-RECEIPT-v1",
+          "assuranceClass": "class_a"
+        },
+        "quorum": {
+          "minimumApprovals": 1,
+          "distinctApprovers": 1
+        },
+        "freshness": {
+          "actionMaxAgeSec": 300,
+          "revocationMaxStalenessSec": 900
+        },
+        "consumption": {
+          "mode": "one_time",
+          "maximumUses": 1
+        }
+      },
+      "phi": {
+        "rawPhiIncluded": false,
+        "memberReference": "pairwise_pseudonymous_commitment"
+      },
+      "packageDigest": "sha256:9f1fee4ce52821bda9a8940a8d71416269817c49f0822145ef28d5f8447ad4bc"
+    },
+    "expected": {
+      "caid": "caid:1:health.medi-cal.hospice-claim-payment.1:jcs-sha256:NrSSZNCIjm7jMWQufBWCRkXixrr8zuuG2c1Zm9qjzx8",
+      "action_digest": "sha256:36b49264d0888e6ee331642e7c15824645e2c6bafcceeb86d9cd599bdaa3cf1f",
+      "decision": "APPROVAL_REQUIRED",
+      "finding_authorizes": false
+    }
+  },
+  "vectors": [
+    {
+      "id": "accept_exact_commercial_prospective_control_package",
+      "expect": "APPROVAL_REQUIRED"
+    },
+    {
+      "id": "source_finding_is_triage_not_authorization",
+      "expect": {
+        "authorization_evidence": false,
+        "prior_authorization": false,
+        "clinical_judgment": false,
+        "fraud_determination": false,
+        "payment_authority": false
+      }
+    },
+    {
+      "id": "reject_missing_material_action_field",
+      "mutation": { "remove": "action.payment_destination_digest" },
+      "expect": "REFUSED"
+    },
+    {
+      "id": "reject_caid_action_mismatch",
+      "mutation": { "replace": "caid" },
+      "expect": "REFUSED"
+    },
+    {
+      "id": "reject_stale_or_replayed_approval_evidence",
+      "expect": "REFUSED_BEFORE_EFFECT"
+    },
+    {
+      "id": "timeout_after_side_effect",
+      "expect": {
+        "decision": "INDETERMINATE",
+        "reconciliation_required": true,
+        "retry_safe": false
+      }
+    },
+    {
+      "id": "no_blind_replay_after_indeterminate",
+      "expect": {
+        "effect_invocations": 1,
+        "second_decision": "REFUSED"
+      }
+    },
+    {
+      "id": "reject_wrong_operation_or_attempt_reconciliation",
+      "expect": "INDETERMINATE"
+    },
+    {
+      "id": "reject_unauthenticated_reconciliation",
+      "expect": "INDETERMINATE"
+    },
+    {
+      "id": "authenticated_reconciliation_and_assurance_export",
+      "expect": "RECONCILED_EXECUTED"
+    },
+    {
+      "id": "reject_outcome_substitution_with_recomputed_digest",
+      "mutation": {
+        "replace": "outcome.decision",
+        "recompute": "packet_digest"
+      },
+      "expect": "REFUSED"
+    },
+    {
+      "id": "reject_reconciled_outcome_without_provider_assertion",
+      "mutation": {
+        "remove": "protocol_evidence.provider",
+        "recompute": "packet_digest"
+      },
+      "expect": "REFUSED"
+    },
+    {
+      "id": "reject_assurance_role_key_substitution",
+      "mutation": {
+        "replace": "trust.receipt.public_key_spki_b64u",
+        "with": "trust.aeb.public_key_spki_b64u"
+      },
+      "expect": "REFUSED"
+    },
+    {
+      "id": "reject_case_variant_and_separator_phi_aliases",
+      "mutations": ["SSN", "patientName", "PATIENT-NAME", "freeText", "FREE_TEXT"],
+      "expect": "REFUSED_BEFORE_EFFECT"
+    },
+    {
+      "id": "export_allowlisted_safe_projections_only",
+      "forbidden_export_fields": [
+        "member_ref",
+        "proposal",
+        "approval_evidence",
+        "aeb_evaluation",
+        "provider_reconciliation_evidence"
+      ],
+      "expect": "SIGNED_TERMINAL_PACKET"
+    }
+  ]
+}

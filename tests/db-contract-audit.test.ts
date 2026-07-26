@@ -23,10 +23,35 @@ function cleanSnapshot() {
   const functions = [...new Set([
     ...contract.definerRpcsServiceRoleOnly,
     ...contract.requiredRpcs,
-  ])].map((name) => ({ name, acl: 'service_role=X/postgres' }));
+  ])].map((name) => ({
+    name,
+    args: '',
+    secdef: contract.definerRpcsServiceRoleOnly.includes(name),
+    acl: 'service_role=X/postgres',
+  }));
+  for (const signature of contract.requiredDefinerRpcSignatures || []) {
+    const [, name, args] = signature.match(/^public\.([^(]+)\((.*)\)$/);
+    const current = functions.find((entry) => entry.name === name);
+    if (current) {
+      current.args = args;
+      current.secdef = true;
+    } else {
+      functions.push({
+        name,
+        args,
+        secdef: true,
+        acl: 'service_role=X/postgres',
+      });
+    }
+  }
 
   return {
     tables: [...tables],
+    reconcile_tables: [...contract.requiredQualifiedTables],
+    reconcile_functions: [...new Set([
+      ...contract.requiredQualifiedRpcs,
+      ...contract.requiredReconcileAssertions,
+    ])],
     columns,
     rls: contract.rlsRequired.map((t) => ({
       t,
@@ -35,7 +60,9 @@ function cleanSnapshot() {
     })),
     policies,
     functions,
-    indexes: [],
+    indexes: Object.entries(contract.requiredIndexes || {}).flatMap(
+      ([t, names]) => names.map((name) => ({ t, name })),
+    ),
     table_grants: [],
     column_grants: [],
   };
@@ -51,6 +78,128 @@ describe('live schema-security contract evaluator', () => {
 
     expect(result.failures).toEqual([]);
     expect(result.passCount).toBeGreaterThan(100);
+  });
+
+  it('governs the private rollout-attempt store and exact RPC signature', () => {
+    expect(contract.requiredQualifiedTables).toEqual(expect.arrayContaining([
+      'rollout_attempt_private.claims',
+      'rollout_attempt_private.terminals',
+    ]));
+    expect(contract.requiredQualifiedRpcs).toContain(
+      'rollout_attempt_private.apply_operation(text,text)',
+    );
+  });
+
+  it('rejects a missing qualified private table', () => {
+    const snapshot = cleanSnapshot();
+    snapshot.reconcile_tables = snapshot.reconcile_tables.filter(
+      (name) => name !== 'consequence_actuator_private.provider_records',
+    );
+
+    const result = evaluateContract(snapshot);
+
+    expect(result.failures).toContain(
+      'QUALIFIED TABLE missing: consequence_actuator_private.provider_records',
+    );
+  });
+
+  it('rejects a missing safety index', () => {
+    const snapshot = cleanSnapshot();
+    snapshot.indexes = snapshot.indexes.filter(
+      ({ name }) => name !== 'idx_receipts_single_child_per_parent',
+    );
+
+    const result = evaluateContract(snapshot);
+
+    expect(result.failures).toContain(
+      'INDEX missing: receipts.idx_receipts_single_child_per_parent',
+    );
+  });
+
+  it('rejects a missing private posture or exact-index assertion token', () => {
+    for (const assertion of [
+      'contract:table:consequence_actuator_private.provider_records:owner-force-rls-owner-only-acl',
+      'contract:roles:consequence-actuator:least-privilege-membership-disjoint',
+      'contract:index:public.idx_receipts_single_child_per_parent:exact-unique-btree',
+    ]) {
+      const snapshot = cleanSnapshot();
+      snapshot.reconcile_functions = snapshot.reconcile_functions.filter(
+        (value) => value !== assertion,
+      );
+
+      expect(evaluateContract(snapshot).failures).toContain(
+        `RECONCILIATION SECURITY ASSERTION failed: ${assertion}`,
+      );
+    }
+  });
+
+  it('requires every exact consequence-control append-only trigger assertion', () => {
+    const triggerAssertions = contract.requiredReconcileAssertions.filter(
+      (value) => value.startsWith('contract:trigger:'),
+    );
+    expect(triggerAssertions).toHaveLength(8);
+
+    for (const assertion of triggerAssertions) {
+      const snapshot = cleanSnapshot();
+      snapshot.reconcile_functions = snapshot.reconcile_functions.filter(
+        (value) => value !== assertion,
+      );
+
+      expect(evaluateContract(snapshot).failures).toContain(
+        `RECONCILIATION SECURITY ASSERTION failed: ${assertion}`,
+      );
+    }
+  });
+
+  it('accepts the exact qualified private RPC identity signature', () => {
+    const snapshot = cleanSnapshot();
+    const exactSignature = 'rollout_attempt_private.apply_operation(text,text)';
+
+    expect(snapshot.reconcile_functions).toContain(exactSignature);
+    expect(evaluateContract(snapshot).failures).not.toContain(
+      `QUALIFIED RPC missing: ${exactSignature}`,
+    );
+  });
+
+  it('rejects a bare name and wrong overload for an exact qualified private RPC', () => {
+    const snapshot = cleanSnapshot();
+    const exactSignature = 'rollout_attempt_private.apply_operation(text,text)';
+    snapshot.reconcile_functions = snapshot.reconcile_functions.filter(
+      (name) => name !== exactSignature,
+    );
+    snapshot.reconcile_functions.push(
+      'rollout_attempt_private.apply_operation',
+      'rollout_attempt_private.apply_operation(text)',
+    );
+
+    const result = evaluateContract(snapshot);
+
+    expect(result.failures).toContain(
+      `QUALIFIED RPC missing: ${exactSignature}`,
+    );
+  });
+
+  it('pins exact public mutation RPC signatures, definer mode, and service execution', () => {
+    const signature = 'public.consume_gate_ref_atomic(text,text,text,text,text)';
+    expect(contract.requiredDefinerRpcSignatures).toContain(signature);
+
+    for (const mutation of [
+      (fn) => { fn.args = 'integer'; },
+      (fn) => { fn.secdef = false; },
+      (fn) => { fn.acl = 'postgres=X/postgres'; },
+      (fn) => { fn.acl = '=X/postgres,service_role=X/postgres'; },
+    ]) {
+      const snapshot = cleanSnapshot();
+      const fn = snapshot.functions.find(
+        (entry) => entry.name === 'consume_gate_ref_atomic',
+      );
+      mutation(fn);
+      expect(
+        evaluateContract(snapshot).failures.some(
+          (failure) => failure.includes(signature),
+        ),
+      ).toBe(true);
+    }
   });
 
   it('rejects a public table grant even when RLS and policies are otherwise clean', () => {
@@ -106,5 +255,16 @@ describe('live schema-security contract evaluator', () => {
     const result = evaluateContract(snapshot);
 
     expect(result.failures.some((failure) => failure.includes('SNAPSHOT field missing or invalid: table_grants'))).toBe(true);
+  });
+
+  it('fails closed when reconciliation metadata is absent', () => {
+    const snapshot = clone(cleanSnapshot());
+    delete snapshot.reconcile_functions;
+
+    const result = evaluateContract(snapshot);
+
+    expect(result.failures).toContain(
+      'SNAPSHOT field missing or invalid: reconcile_functions (apply the introspection migration before running the gate)',
+    );
   });
 });

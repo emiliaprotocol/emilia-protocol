@@ -343,6 +343,8 @@ export {
   AEB_CONSUMPTION_SQL,
   createPostgresAebDurableConsumptionStore,
 } from './aeb-consumption-store.js';
+export * from './consequence-actuator.js';
+export * from './discovery-permit-resolver.js';
 export const ASSURANCE_TIERS = ['software', 'class_a', 'quorum'];
 const TIER_RANK = { software: 0, class_a: 1, quorum: 2 };
 const CAPABILITY_FAILURE_STATUS = 409;

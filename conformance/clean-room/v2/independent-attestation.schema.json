@@ -1,0 +1,131 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://emiliaprotocol.ai/schemas/clean-room/independent-attestation.v2.schema.json",
+  "title": "EMILIA clean-room independent construction attestation v2",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "@version",
+    "claim",
+    "attestor",
+    "signature"
+  ],
+  "properties": {
+    "@version": {
+      "const": "EP-CLEAN-ROOM-INDEPENDENT-ATTESTATION-v2"
+    },
+    "claim": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "submission_sha256",
+        "implementation_id",
+        "implementation_organization",
+        "implementation_team_id",
+        "source_commit",
+        "runner_artifact_sha256",
+        "vector_bundle_sha256",
+        "conformance_manifest_sha256",
+        "authority_document_execution_companion_sha256",
+        "reference_source_access",
+        "emilia_affiliation",
+        "reviewed_at",
+        "statement"
+      ],
+      "properties": {
+        "submission_sha256": {
+          "$ref": "#/$defs/sha256"
+        },
+        "implementation_id": {
+          "$ref": "#/$defs/nonEmpty"
+        },
+        "implementation_organization": {
+          "$ref": "#/$defs/nonEmpty"
+        },
+        "implementation_team_id": {
+          "$ref": "#/$defs/nonEmpty"
+        },
+        "source_commit": {
+          "$ref": "#/$defs/gitOid"
+        },
+        "runner_artifact_sha256": {
+          "$ref": "#/$defs/sha256"
+        },
+        "vector_bundle_sha256": {
+          "$ref": "#/$defs/sha256"
+        },
+        "conformance_manifest_sha256": {
+          "$ref": "#/$defs/sha256"
+        },
+        "authority_document_execution_companion_sha256": {
+          "$ref": "#/$defs/sha256"
+        },
+        "reference_source_access": {
+          "const": "none"
+        },
+        "emilia_affiliation": {
+          "const": "none"
+        },
+        "reviewed_at": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "statement": {
+          "type": "string",
+          "minLength": 40
+        }
+      }
+    },
+    "attestor": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "key_id",
+        "organization",
+        "team_id"
+      ],
+      "properties": {
+        "key_id": {
+          "$ref": "#/$defs/nonEmpty"
+        },
+        "organization": {
+          "$ref": "#/$defs/nonEmpty"
+        },
+        "team_id": {
+          "$ref": "#/$defs/nonEmpty"
+        }
+      }
+    },
+    "signature": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "algorithm",
+        "value_base64url"
+      ],
+      "properties": {
+        "algorithm": {
+          "const": "Ed25519"
+        },
+        "value_base64url": {
+          "type": "string",
+          "pattern": "^[A-Za-z0-9_-]+$"
+        }
+      }
+    }
+  },
+  "$defs": {
+    "nonEmpty": {
+      "type": "string",
+      "minLength": 1
+    },
+    "sha256": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{64}$"
+    },
+    "gitOid": {
+      "type": "string",
+      "pattern": "^(?:[0-9a-f]{40}|[0-9a-f]{64})$"
+    }
+  }
+}

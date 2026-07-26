@@ -280,6 +280,35 @@ and arbitrary cardinality.
 
 ---
 
+## TLA+ — `ep_complete_mediation.tla` (split Gate/actuator boundary)
+
+**Model checker:** TLC 2.19 (TLA+ tools `v1.7.4`, rev `5a47802`)
+**Tool digest:** `936a262061c914694dfd669a543be24573c45d5aa0ff20a8b96b23d01e050e88`
+**Local execution:** 2026-07-24; the pinned CI workflow reruns both the safe
+model and its deliberately unsafe direct-provider negative control.
+**Result:** 68 states generated, 48 distinct states, complete depth 8 —
+**no error found** across 8 invariants.
+**Result evidence:** `formal/results/ep-complete-mediation.tlc.summary.txt`
+
+The model separates the policy-decision Gate from the credential-owning
+actuator. A provider effect requires an allowed exact action, a fresh
+exact-binding execution envelope, atomic envelope consumption, and invocation
+by the actuator. Provider uncertainty leaves that envelope consumed and blocks
+blind replay until authenticated reconciliation reaches a terminal result.
+
+The unsafe configuration enables one direct provider call by the Gate without
+an execution envelope. TLC falsified `EffectRequiresActuator` at state 2. CI
+requires that exact counterexample, making credential separation a
+load-bearing property instead of a diagram label.
+
+**Scope boundary:** the model is a finite safety abstraction. It is not an
+implementation refinement proof and does not establish signature soundness,
+credential-store isolation, trusted time, provider truth, database
+linearizability, or deployment policy. Those remain runtime, SQL, and
+operational acceptance roots.
+
+---
+
 ## Alloy — `ep_relations.als`
 
 **Model checker:** Alloy 6.2.0 (SAT4J solver)

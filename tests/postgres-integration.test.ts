@@ -26,7 +26,7 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const SCHEMA_FILE = path.join(__dirname, 'fixtures/integration-schema.sql');
 const ORG_QUORUM_MIGRATION_FILE = path.join(
   __dirname,
-  '../supabase/migrations/124_org_quorum_policies.sql',
+  '../supabase/migrations/20260702062015_org_quorum_policies.sql',
 );
 const POLICY_ROLLOUT_MIGRATION_FILE = path.join(
   __dirname,

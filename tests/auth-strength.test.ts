@@ -8,7 +8,7 @@ import { AUTH_STRENGTHS, resolveVerifiedAuthStrength } from '../lib/auth-strengt
 const ROOT = path.resolve(import.meta.dirname, '..');
 const AUTH_STRENGTH_MIGRATION = path.join(
   ROOT,
-  'supabase/migrations/20260718170000_explicit_api_key_auth_strength.sql',
+  'supabase/migrations/20260718231537_explicit_api_key_auth_strength.sql',
 );
 
 describe('verified authentication-strength boundary', () => {

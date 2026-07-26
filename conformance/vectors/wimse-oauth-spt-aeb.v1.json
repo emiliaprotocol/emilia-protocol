@@ -1,0 +1,258 @@
+{
+  "@version": "WIMSE-OAUTH-SPT-AEB-v1",
+  "status": "experimental",
+  "adapter": {
+    "id": "native:wimse-http-signature-oauth-txn-spt-intent",
+    "version": "1",
+    "config_version": "AEB-WIMSE-OAUTH-SPT-CONFIG-v1",
+    "mapping_version": "AEB-WIMSE-OAUTH-SPT-CAID-MAPPING-v1",
+    "mapper_id": "mapper:wimse-oauth-spt-exact-request-v1"
+  },
+  "source_lock": "standards/observatory/wimse-oauth-spt-source-lock.v1.json",
+  "profile": "docs/protocol/wimse-oauth-spt-aeb-profile-v1.md",
+  "source_revisions": [
+    "draft-ietf-wimse-http-signature-03",
+    "draft-ietf-wimse-workload-creds-01",
+    "draft-ietf-wimse-wpt-01",
+    "draft-ietf-oauth-transaction-tokens-08",
+    "draft-coetzee-oauth-spt-txn-tokens-03"
+  ],
+  "native_requirements": {
+    "algorithms": [
+      "EdDSA with Ed25519 keys"
+    ],
+    "compact_values": [
+      "Workload Identity Token JWS/JWT",
+      "Workload Proof Token JWS/JWT",
+      "OAuth Txn-Token JWS/JWT",
+      "optional SPT TXN JWS/JWT"
+    ],
+    "http_signature": {
+      "profile": "draft-ietf-wimse-http-signature-03 over RFC 9421",
+      "required_components": [
+        "@method",
+        "@request-target",
+        "content-digest",
+        "txn-token",
+        "workload-identity-token"
+      ],
+      "conditional_components": [
+        "content-type",
+        "authorization"
+      ],
+      "required_parameters": [
+        "created",
+        "expires",
+        "nonce",
+        "tag",
+        "wimse-aud"
+      ],
+      "audience_note": "The -03 native field is the signed wimse-aud Signature-Input parameter. This profile does not create a Wimse-Audience HTTP header."
+    },
+    "time": [
+      "iat",
+      "nbf",
+      "exp",
+      "constructor-pinned maximum age",
+      "bounded clock skew"
+    ],
+    "bindings": [
+      "WPT wth to the exact compact WIT",
+      "WPT tth to the exact compact OAuth Txn-Token",
+      "HTTP Content-Digest to the exact UTF-8 request body",
+      "optional SPT spt_intent_digest to the presented JCS intent"
+    ]
+  },
+  "action_projection": {
+    "required_fields": [
+      "action_type",
+      "http.method",
+      "http.request_target",
+      "http.content_digest",
+      "http.wimse_audience",
+      "transaction.scope",
+      "transaction.context"
+    ],
+    "optional_fields": [
+      "spt_intent"
+    ],
+    "excluded_evidence_metadata": [
+      "WIT issuer and workload subject",
+      "OAuth issuer, audience, subject, txn, and requesting workload",
+      "SPT human_anchor and token identifier"
+    ],
+    "missing_or_ambiguous_action": "INDETERMINATE",
+    "different_complete_action": "MISMATCH",
+    "suite": "jcs-sha256"
+  },
+  "role_boundary": {
+    "evidence_role": "delegated-workload",
+    "subject_kind": "workload",
+    "never_satisfies": [
+      "human-authorization",
+      "named-human-approval",
+      "distinct-human-quorum"
+    ],
+    "human_anchor_semantics": "An opaque SPT human_anchor remains token context and is never converted into a human AEB subject or role."
+  },
+  "replay": {
+    "native_unit_inputs": [
+      "draft-ietf-oauth-transaction-tokens-08",
+      "OAuth aud trust domain",
+      "OAuth txn identifier"
+    ],
+    "wrapper_independence": [
+      "artifact_ref",
+      "AEB operation_id",
+      "AEB consumption_nonce",
+      "WPT jti",
+      "HTTP signature nonce"
+    ],
+    "required_execution_control": "Atomically reserve the replay unit before effect."
+  },
+  "vectors": [
+    {
+      "id": "accept_real_ed25519_native_bundle",
+      "class": "positive",
+      "input": "Fresh Ed25519 WIT, WPT, OAuth Txn-Token, optional SPT TXN intent binding, and RFC 9421 WIMSE request signature under constructor pins.",
+      "expect": {
+        "native_verification": "VERIFIED",
+        "acceptance": "ACCEPTED",
+        "mapping": "MATCH",
+        "caid_recomputed": true,
+        "role": "delegated-workload",
+        "subject_kind": "workload"
+      }
+    },
+    {
+      "id": "reject_malformed_compact_jws",
+      "class": "malformed",
+      "input": "A required compact value does not contain three canonical base64url JWS segments.",
+      "expect": {
+        "native_verification": "FAILED",
+        "acceptance": "REJECTED"
+      }
+    },
+    {
+      "id": "reject_unexpected_algorithm",
+      "class": "algorithm",
+      "input": "A token header selects ES256 or none instead of constructor-pinned EdDSA.",
+      "expect": {
+        "native_verification": "FAILED",
+        "acceptance": "REJECTED"
+      }
+    },
+    {
+      "id": "reject_wrong_constructor_key",
+      "class": "key",
+      "input": "A token is genuinely signed by an attacker Ed25519 key under the pinned kid.",
+      "expect": {
+        "native_verification": "FAILED",
+        "acceptance": "REJECTED"
+      }
+    },
+    {
+      "id": "reject_wrong_audience",
+      "class": "audience",
+      "input": "WPT aud, OAuth aud, SPT aud, or signed wimse-aud differs from the corresponding constructor pin.",
+      "expect": {
+        "native_verification": "FAILED",
+        "acceptance": "REJECTED"
+      }
+    },
+    {
+      "id": "reject_wrong_workload_subject",
+      "class": "subject",
+      "input": "The signed WIT subject or its URI authority differs from the pinned workload subject or trust domain.",
+      "expect": {
+        "native_verification": "FAILED",
+        "acceptance": "REJECTED"
+      }
+    },
+    {
+      "id": "reject_expired_or_stale_token",
+      "class": "time",
+      "input": "A required iat, nbf, or exp check fails, or issuance age exceeds the constructor maximum.",
+      "expect": {
+        "native_verification": "FAILED",
+        "acceptance": "REJECTED"
+      }
+    },
+    {
+      "id": "reject_incomplete_http_coverage",
+      "class": "protected-request",
+      "input": "The signed component set omits method, request target, content digest, Txn-Token, WIT, or a present conditional header.",
+      "expect": {
+        "native_verification": "FAILED",
+        "acceptance": "REJECTED"
+      }
+    },
+    {
+      "id": "reject_content_digest_mismatch",
+      "class": "protected-request",
+      "input": "The request body bytes do not match the signed Content-Digest field.",
+      "expect": {
+        "native_verification": "FAILED",
+        "acceptance": "REJECTED"
+      }
+    },
+    {
+      "id": "reject_tth_mismatch",
+      "class": "transaction-binding",
+      "input": "A correctly signed WPT hashes a different Txn-Token in tth.",
+      "expect": {
+        "native_verification": "FAILED",
+        "acceptance": "REJECTED"
+      }
+    },
+    {
+      "id": "reject_spt_intent_mismatch",
+      "class": "transaction-binding",
+      "input": "A correctly signed optional SPT TXN contains a different spt_intent_digest.",
+      "expect": {
+        "native_verification": "FAILED",
+        "acceptance": "REJECTED"
+      }
+    },
+    {
+      "id": "indeterminate_missing_exact_action",
+      "class": "action",
+      "input": "Native evidence verifies but the relying party omits or ambiguously shapes expected_action.",
+      "expect": {
+        "native_verification": "VERIFIED",
+        "acceptance": "ACCEPTED",
+        "mapping": "INDETERMINATE",
+        "caid": null
+      }
+    },
+    {
+      "id": "reject_different_exact_action",
+      "class": "action",
+      "input": "Native evidence projects one complete action while expected_action contains different material content.",
+      "expect": {
+        "mapping": "MISMATCH",
+        "caid": null
+      }
+    },
+    {
+      "id": "reject_native_replay_across_aeb_wrappers",
+      "class": "replay",
+      "input": "The same OAuth aud and txn are presented under a different AEB artifact reference, operation, or nonce.",
+      "expect": {
+        "same_replay_unit": true,
+        "second_atomic_reservation": "REFUSED",
+        "invoke_allowed": false
+      }
+    },
+    {
+      "id": "reject_human_role_substitution",
+      "class": "role-substitution",
+      "input": "The presenter changes delegated-workload to human-authorization or relies on SPT human_anchor as a human role.",
+      "expect": {
+        "native_verification": "FAILED",
+        "acceptance": "INDETERMINATE",
+        "human_role_satisfied": false
+      }
+    }
+  ]
+}

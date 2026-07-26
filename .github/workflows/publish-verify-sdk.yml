@@ -1,28 +1,13 @@
 name: Publish Verify SDK
 
-permissions: read-all
-
-# npm Trusted Publishing (OIDC) — NO long-lived NPM_TOKEN. On each run npm
-# verifies the OIDC claim (owner / repo / workflow filename) and issues a
-# short-lived credential, and `--provenance` attaches a signed provenance
-# attestation. Configure the trusted publisher once at:
-#   npmjs.com -> @emilia-protocol/verify -> Settings -> Trusted Publishing
-#   Organization/User: emilia-protocol (as owner) | Repository: emilia-protocol
-#   Workflow filename: publish-verify-sdk.yml | Environment: (leave blank)
-# Requires npm >= 11.5.1 (installed below).
-
-# Opt every JavaScript-based action into the Node.js 24 runner.
-# GitHub forces this default in June 2026; doing it now eliminates the
-# deprecation-warning noise on every run and surfaces any Node-24 incompat
-# early. Affects actions/checkout, actions/setup-node, actions/upload-artifact, etc.
-env:
-  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
-
+# npm trusted publisher identity remains this caller workflow:
+# @emilia-protocol/verify -> publish-verify-sdk.yml, protected by the
+# registry-publishing-approval environment inside the reusable publisher job.
 on:
   workflow_dispatch:
     inputs:
       release_tag:
-        description: Exact tag, for example verify-v3.10.0
+        description: Exact tag, for example verify-v3.15.0
         required: true
         type: string
       confirmation:
@@ -30,157 +15,22 @@ on:
         required: true
         type: string
 
-jobs:
-  approval:
-    runs-on: ubuntu-latest
-    environment: registry-publishing-approval
-    permissions: {}
-    steps:
-      - run: echo "Owner approved registry publication."
+permissions:
+  contents: read
+  id-token: write
+  attestations: write
 
+jobs:
   publish:
-    needs: approval
-    name: Publish @emilia-protocol/verify
-    runs-on: ubuntu-latest
-    concurrency:
-      group: registry-publish-npm-verify
-      cancel-in-progress: false
     permissions:
       contents: read
-      id-token: write   # REQUIRED for npm trusted publishing (OIDC) + provenance
+      id-token: write
       attestations: write
-
-    defaults:
-      run:
-        working-directory: packages/verify
-
-    steps:
-      - name: Checkout
-        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
-        with:
-          ref: ${{ inputs.release_tag }}
-          fetch-depth: 0
-          persist-credentials: false
-
-      - name: Setup Node.js
-        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020  # v7.0.0
-        with:
-          node-version: "24"
-          registry-url: https://registry.npmjs.org
-
-      - name: Require owner approval bound to clean tag, package, version, and main
-        working-directory: ${{ github.workspace }}
-        env:
-          RELEASE_TAG: ${{ inputs.release_tag }}
-          RELEASE_CONFIRMATION: ${{ inputs.confirmation }}
-        run: |
-          VERSION=$(node -p "require('./packages/verify/package.json').version")
-          node scripts/require-release-approval.mjs \
-            --allowed-actor FutureEnterprises \
-            --tag "$RELEASE_TAG" \
-            --tag-prefix verify-v \
-            --package @emilia-protocol/verify \
-            --version "$VERSION" \
-            --confirmation "$RELEASE_CONFIRMATION"
-
-      - name: Setup Python
-        uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97  # v7.0.0
-        with:
-          python-version: '3.12'
-
-      - name: Setup Go
-        uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e  # v7.0.0
-        with:
-          go-version: '1.22'
-
-      - name: Install hash-locked cross-language verifier dependency
-        working-directory: ${{ github.workspace }}
-        run: python -m pip install --require-hashes -r .github/workflow-requirements/cryptography.txt
-
-      - name: Install hash-locked npm (>= 11.5.1 for OIDC publishing)
-        working-directory: ${{ github.workspace }}
-        run: |
-          npm ci --prefix .github/npm-toolchain --ignore-scripts --min-release-age=0
-          echo "$GITHUB_WORKSPACE/.github/npm-toolchain/node_modules/.bin" >> "$GITHUB_PATH"
-
-      # The published verifier remains zero-dependency. Its test suite also
-      # exercises the optional PQ adapter, so install the repository's locked
-      # development tooling without running lifecycle scripts.
-      - name: Install locked test tooling
-        working-directory: ${{ github.workspace }}
-        run: npm ci --ignore-scripts
-
-      - name: Run tests
-        run: npm test
-
-      - name: Resolve repository security and conformance manifests
-        working-directory: ${{ github.workspace }}
-        run: |
-          npm run security-case:emit
-          npm run conformance:manifest
-
-      - name: Verify reproducible package bytes
-        working-directory: ${{ github.workspace }}
-        run: npm run release:verify:reproducible
-
-      - name: Pack the exact publication artifact
-        id: pack
-        run: |
-          mkdir -p ../../release-artifacts
-          npm pack --json --pack-destination ../../release-artifacts > ../../release-artifacts/pack.json
-          TARBALL=$(node -e "const r=require('../../release-artifacts/pack.json'); if(r.length!==1) process.exit(2); process.stdout.write(r[0].filename)")
-          sha256sum "../../release-artifacts/$TARBALL" > "../../release-artifacts/$TARBALL.sha256"
-          echo "tarball=$TARBALL" >> "$GITHUB_OUTPUT"
-
-      - name: Attest exact package bytes
-        uses: actions/attest@f7c74d28b9d84cb8768d0b8ca14a4bac6ef463e6  # v4.2.0
-        with:
-          subject-path: release-artifacts/${{ steps.pack.outputs.tarball }}
-
-      - name: Attest security and conformance manifests
-        uses: actions/attest@f7c74d28b9d84cb8768d0b8ca14a4bac6ef463e6  # v4.2.0
-        with:
-          subject-path: |
-            security/security-case.json
-            conformance/conformance-manifest.json
-
-      - name: Upload exact package and checksum
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a  # v7.0.1
-        with:
-          name: verify-package-${{ inputs.release_tag }}
-          path: |
-            release-artifacts/${{ steps.pack.outputs.tarball }}
-            release-artifacts/${{ steps.pack.outputs.tarball }}.sha256
-            security/security-case.json
-            conformance/conformance-manifest.json
-          retention-days: 90
-
-      - name: Publish the attested tarball (OIDC + npm provenance)
-        run: |
-          VERSION=$(node -p "require('./package.json').version")
-          if npm view "@emilia-protocol/verify@$VERSION" version --min-release-age=0 >/dev/null 2>&1; then
-            echo "@emilia-protocol/verify@$VERSION already exists; continuing to mandatory byte verification."
-          else
-            npm publish "../../release-artifacts/${{ steps.pack.outputs.tarball }}" --access public --provenance
-          fi
-
-      - name: Verify registry bytes match the attested tarball
-        run: |
-          VERSION=$(node -p "require('./package.json').version")
-          mkdir -p ../../registry-copy
-          REGISTRY_READY=false
-          for attempt in $(seq 1 60); do
-            rm -f ../../registry-copy/pack.json
-            if npm pack "@emilia-protocol/verify@$VERSION" --min-release-age=0 --json --pack-destination ../../registry-copy > ../../registry-copy/pack.json; then
-              REGISTRY_READY=true
-              break
-            fi
-            echo "Registry has not exposed @emilia-protocol/verify@$VERSION yet (attempt $attempt/60); retrying in 5 seconds."
-            sleep 5
-          done
-          if [ "$REGISTRY_READY" != "true" ]; then
-            echo "::error::npm did not expose @emilia-protocol/verify@$VERSION within 5 minutes of publication."
-            exit 2
-          fi
-          REGISTRY_TARBALL=$(node -e "const r=require('../../registry-copy/pack.json'); if(r.length!==1) process.exit(2); process.stdout.write(r[0].filename)")
-          cmp "../../release-artifacts/${{ steps.pack.outputs.tarball }}" "../../registry-copy/$REGISTRY_TARBALL"
+    uses: ./.github/workflows/_publish-npm-package.yml
+    with:
+      package_dir: packages/verify
+      package_name: '@emilia-protocol/verify'
+      artifact_id: verify
+      release_tag: ${{ inputs.release_tag }}
+      confirmation: ${{ inputs.confirmation }}
+      tag_prefix: verify-v

@@ -18,15 +18,7 @@ permissions:
   attestations: write
 
 jobs:
-  approval:
-    runs-on: ubuntu-latest
-    environment: registry-publishing-approval
-    permissions: {}
-    steps:
-      - run: echo "Owner approved registry publication."
-
   publish:
-    needs: approval
     permissions:
       contents: read
       id-token: write

@@ -15,7 +15,7 @@ Relevant controls:
 
 - `lib/tenant-binding.js`
 - `lib/write-guard.js`
-- `supabase/migrations/101_entity_organization_binding.sql`
+- `supabase/migrations/20260628162152_101_entity_organization_binding.sql`
 - `supabase/migrations/076_rls_policies_all_tables.sql`
 - `supabase/migrations/088_apply_076_rls_policies_idempotent.sql`
 

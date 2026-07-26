@@ -4,6 +4,35 @@
 All notable changes to `@emilia-protocol/gate` are documented here.
 This package follows [Semantic Versioning](https://semver.org/).
 
+## 0.16.0 (2026-07-25)
+
+### Added
+
+- `./consequence-actuator`, a short-lived signed execution-envelope boundary
+  for separately deployed credential-owning actuators, with immutable tenant,
+  action, CAID, provider account, target, operation, attempt, idempotency,
+  nonce, and expiry bindings.
+- A PostgreSQL RPC-only permanent envelope store with tenant-principal
+  isolation, forced RLS, no direct runtime or `service_role` table authority,
+  and no release path after provider invocation.
+- `./discovery-permit-resolver`, which retrieves pinned action-control
+  discovery without redirect, network-boundary, freshness, or source drift.
+- A split managed reference deployment where the decision service owns policy
+  and envelope signing while the actuator alone owns provider credentials and
+  signs exact execution observations.
+
+### Security
+
+- A provider timeout consumes the execution envelope as `INDETERMINATE`; blind
+  replay is refused and only authenticated, attempt-bound evidence may
+  reconcile the Proposal-to-Effect lifecycle.
+- Production actuator construction requires an atomic, durable,
+  ownership-fenced, permanently consuming store. Process-local storage is
+  available only through an explicit test-only opt-in.
+- The decision process has no provider credential or provider API
+  implementation. Signed actuator observations are verified under a pinned key
+  and exact execution tuple before use as lifecycle evidence.
+
 ## 0.15.2 (2026-07-23)
 
 ### Fixed
