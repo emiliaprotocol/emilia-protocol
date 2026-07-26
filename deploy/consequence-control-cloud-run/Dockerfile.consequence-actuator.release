@@ -19,6 +19,7 @@ RUN printf '%s  %s\n' \
     && tar -xzf /opt/release-packages/require-receipt.tgz -C packages/require-receipt --strip-components=1
 
 COPY apps/consequence-actuator-service apps/consequence-actuator-service
+COPY caid/impl/js/caid.mjs caid/impl/js/caid.mjs
 RUN npm ci --prefix apps/consequence-actuator-service --ignore-scripts \
     && npm run build --prefix apps/consequence-actuator-service \
     && npm prune --prefix apps/consequence-actuator-service --omit=dev \
@@ -54,6 +55,7 @@ ENV NODE_ENV=production \
 
 WORKDIR /app
 COPY --from=build /opt/consequence-actuator/packages packages
+COPY --from=build /opt/consequence-actuator/caid/impl/js/caid.mjs caid/impl/js/caid.mjs
 COPY --from=build /opt/consequence-actuator/apps/consequence-actuator-service/package.json apps/consequence-actuator-service/package.json
 COPY --from=build /opt/consequence-actuator/apps/consequence-actuator-service/dist apps/consequence-actuator-service/dist
 COPY --from=build /opt/consequence-actuator/apps/consequence-actuator-service/node_modules apps/consequence-actuator-service/node_modules

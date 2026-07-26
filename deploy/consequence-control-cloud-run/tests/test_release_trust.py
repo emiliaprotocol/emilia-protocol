@@ -1196,6 +1196,18 @@ class WorkflowTrustContractTests(unittest.TestCase):
         self.assertLess(cleanup, source_manifest)
         self.assertNotIn("git clean -fdx --", builder)
 
+    def test_actuator_image_carries_its_exact_caid_runtime_dependency(self) -> None:
+        dockerfile = (
+            ROOT
+            / "deploy/consequence-control-cloud-run/Dockerfile.consequence-actuator.release"
+        ).read_text()
+        self.assertIn("COPY caid/impl/js/caid.mjs caid/impl/js/caid.mjs", dockerfile)
+        self.assertIn(
+            "COPY --from=build /opt/consequence-actuator/caid/impl/js/caid.mjs "
+            "caid/impl/js/caid.mjs",
+            dockerfile,
+        )
+
 
 if __name__ == "__main__":
     unittest.main()
