@@ -1,0 +1,37 @@
+{
+  "version": "EP-CONFORMANCE-AUTONOMY-CONTROL-PLANE-v1",
+  "profile": "EP-GATE-AUTONOMY-CONTROL-PLANE-PROFILE-v1",
+  "vectors": [
+    {
+      "case_id": "valid-bounded-child",
+      "polarity": "positive",
+      "mutation": null,
+      "expect": { "valid": true, "programs": 2 }
+    },
+    {
+      "case_id": "reject-new-action",
+      "polarity": "negative",
+      "mutation": { "path": "/children/0/action_type", "value": "code.delete" },
+      "expect": { "valid": false, "code": "child_authority_widening" }
+    },
+    {
+      "case_id": "reject-aggregate-budget-expansion",
+      "polarity": "negative",
+      "mutation": { "path": "/children/1/budget/cents", "value": 601 },
+      "expect": { "valid": false, "code": "aggregate_sibling_budget_exceeded" }
+    },
+    {
+      "case_id": "reject-role-collapse",
+      "polarity": "negative",
+      "mutation": { "path": "/children/0/evaluator_id", "value": "agent:builder" },
+      "expect": { "valid": false, "code": "independent_roles_required" }
+    },
+    {
+      "case_id": "reject-promotion-without-canary",
+      "polarity": "negative",
+      "mutation": { "path": "/children/1/canary", "value": null },
+      "expect": { "valid": false, "code": "promotion_requires_canary" }
+    }
+  ],
+  "claim_boundary": "Vectors cover the TypeScript profile compiler. They do not prove natural-language goal entailment, provider truth, test adequacy, or deployment completion."
+}

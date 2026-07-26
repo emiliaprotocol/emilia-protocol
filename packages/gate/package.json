@@ -1,6 +1,6 @@
 {
   "name": "@emilia-protocol/gate",
-  "version": "0.16.1",
+  "version": "0.17.0",
   "repository": {
     "type": "git",
     "url": "https://github.com/emiliaprotocol/emilia-protocol.git",
@@ -293,6 +293,10 @@
       "types": "./dist/authority-allocation.d.ts",
       "import": "./authority-allocation.js"
     },
+    "./autonomy-control-plane-profile": {
+      "types": "./dist/autonomy-control-plane-profile.d.ts",
+      "import": "./autonomy-control-plane-profile.js"
+    },
     "./zk-range-proof": {
       "types": "./dist/zk-range-proof.d.ts",
       "import": "./zk-range-proof.js"
@@ -347,6 +351,7 @@
     "consequence-actuator.js",
     "discovery-permit-resolver.js",
     "authority-allocation.js",
+    "autonomy-control-plane-profile.js",
     "zk-range-proof.js",
     "reports/assurance-package.js",
     "ep-assure.mjs",

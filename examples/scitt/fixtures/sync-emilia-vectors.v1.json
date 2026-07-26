@@ -1,0 +1,45 @@
+{
+  "profile": "sync.intent_evidence_payload.current.v1",
+  "canonicalization": {
+    "encoding": "UTF-8",
+    "json_encoder": "Swift JSONEncoder",
+    "output_formatting": [
+      "sortedKeys",
+      "withoutEscapingSlashes"
+    ],
+    "signature": "ES256 / P-256 / SHA-256 / ANSI X9.62 DER"
+  },
+  "positive": {
+    "id": "SYNC-6A27C41D696E-positive",
+    "receipt": "sync-receipt-SYNC-6A27C41D696E.vc.json",
+    "createdAtWindow": {
+      "anchorField": "credentialSubject.authorization.created_at",
+      "beforeSeconds": 5,
+      "afterSeconds": 5,
+      "expectedMatches": 1
+    },
+    "compatibilityWindowNote": "The pinned vector uses this single-source +/-5-second window. The broader production compatibility path is not exercised here.",
+    "expectedSignedPayloadDigestB64Url": "j-WPS0kb26WTLG4hY5J95uoD-wGY5rxqKWfFevT5VqI",
+    "expected": "PASS"
+  },
+  "contentMutation": {
+    "id": "SYNC-6A27C41D696E-content-mutation",
+    "base": "positive",
+    "mutation": {
+      "field": "credentialSubject.intent",
+      "value": "Authorize this receipt for the SYNC × EMILIA conformance example with a different material purpose."
+    },
+    "expected": "REFUSE"
+  },
+  "forgedKey": {
+    "id": "SYNC-6A27C41D696E-forged-key",
+    "base": "positive",
+    "replacementPublicKeyB64": "BKQ1tu+x7AhPVnKMOtZ9KtnwtI18jUdRepL8kqDfk3H1NaicRQh1crB68jkoKt1dfJx6MEzkHBW5UBMkmf1Un80=",
+    "expected": "REFUSE"
+  },
+  "missingChainContext": {
+    "id": "SYNC-6A27C41D696E-missing-chain-context",
+    "base": "positive",
+    "expected": "INDETERMINATE"
+  }
+}

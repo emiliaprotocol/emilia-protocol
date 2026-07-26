@@ -424,6 +424,7 @@ packages/gate/adapters/supabase.test.js linguist-generated=true
 packages/gate/admissibility-profile.test.js linguist-generated=true
 packages/gate/aeb-consumption-store.test.js linguist-generated=true
 packages/gate/authority-allocation.test.js linguist-generated=true
+packages/gate/autonomy-control-plane-profile.test.js linguist-generated=true
 packages/gate/breakglass.test.js linguist-generated=true
 packages/gate/business-authorization.test.js linguist-generated=true
 packages/gate/capability-gate.test.js linguist-generated=true

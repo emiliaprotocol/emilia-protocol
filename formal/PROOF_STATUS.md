@@ -621,6 +621,21 @@ executions against all formal behaviors, cryptographic correctness, trusted
 time, provider or meter truth, storage durability, independent witness
 operation, or arbitrary concurrency/cardinality.
 
+## TLA+ — `ep_autonomy_control_plane.tla`
+
+**Status:** bounded finite-control model verified locally on 2026-07-26; CI reruns it per commit. TLC generated 290 states / 170 distinct states to complete depth 7 with no safe-model counterexample. The paired unsafe configuration falsified `AuthorityNeverExpands` as required. Result evidence: `formal/results/ep-autonomy-control-plane.tlc.summary.txt`.
+
+The model checks `AuthorityNeverExpands`: a derived child action set remains a
+subset of the human-authorized root action set and its budget remains no larger
+than the root budget. It also checks that execution requires independent
+approval, task-fitness evidence, canary evidence, and a non-suspended status.
+The paired unsafe configuration enables one self-expansion transition and must
+falsify `AuthorityNeverExpands`.
+
+**Boundary:** this is a bounded control abstraction. It does not prove natural-
+language goal entailment, signature or CAID correctness, fitness-suite quality,
+trusted time, durable storage, provider truth, or implementation refinement.
+
 ---
 
 When a property is verified by a model checker:
