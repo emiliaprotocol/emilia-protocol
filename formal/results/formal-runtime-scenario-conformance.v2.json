@@ -3,7 +3,7 @@
   "inputs": [
     {
       "path": "caid/impl/js/caid.mjs",
-      "sha256": "2c23bdcdf4586d81b7d9675612a4e95edf7999ba81579906f295e67c0c12cfb6"
+      "sha256": "a7dbd92e25924d2c57e7ef6b3b2f4cb629917262943932a48b7caa5a5ec5fff5"
     },
     {
       "path": "conformance/refinement/adapters/action-escrow.mjs",
@@ -811,7 +811,7 @@
     },
     {
       "path": "packages/verify/dist/aeb-adapter-contract.js",
-      "sha256": "6dbdafad2e2e7e3ea3d3f6903f3e1b5646fb1f5d5f9d9fb545157506d963db33"
+      "sha256": "f99354d97a4d04440a36fcee08787818333f723dcb21961fa62a5d561ba8b248"
     },
     {
       "path": "packages/verify/dist/aeb-discovery-permit-adapter.js",
@@ -963,7 +963,7 @@
     },
     {
       "path": "packages/verify/src/aeb-adapter-contract.ts",
-      "sha256": "f362b5c73ace23f9cd44eab2f25dfc2f77ccc08be666a96bd8899a9233ec33b1"
+      "sha256": "dd3b029c9916ffb9d1d1a3fbd1a5c3ade99dbd7de692c6bbe539a3f7e42192bc"
     },
     {
       "path": "packages/verify/src/authority-program.ts",
@@ -999,7 +999,7 @@
     },
     {
       "path": "packages/verify/vendor/caid.mjs",
-      "sha256": "2c23bdcdf4586d81b7d9675612a4e95edf7999ba81579906f295e67c0c12cfb6"
+      "sha256": "a7dbd92e25924d2c57e7ef6b3b2f4cb629917262943932a48b7caa5a5ec5fff5"
     },
     {
       "path": "scripts/build-standalone-runtimes.mjs",
