@@ -7,7 +7,7 @@ import { contract } from '../scripts/db-contract.manifest.mts';
 
 const migrationPath = path.join(
   process.cwd(),
-  'supabase/migrations/20260725143000_consequence_actuator_provider_records.sql',
+  'supabase/migrations/20260725203000_consequence_actuator_provider_records_managed_role_fix.sql',
 );
 const actuatorStoreMigrationPath = path.join(
   process.cwd(),

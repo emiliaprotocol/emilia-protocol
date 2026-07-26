@@ -1219,7 +1219,7 @@
           ]
         },
         {
-          "file": "supabase/migrations/20260725143000_consequence_actuator_provider_records.sql",
+          "file": "supabase/migrations/20260725203000_consequence_actuator_provider_records_managed_role_fix.sql",
           "contains": [
             "CREATE TABLE consequence_actuator_private.provider_records",
             "CREATE FUNCTION consequence_actuator_private.record_provider_record",
@@ -1658,7 +1658,7 @@
         { "file": "tests/release-reproducibility.test.ts", "title": "rejects a one-byte registry artifact substitution", "runner": "vitest" }
       ],
       "operational_evidence": [
-        { "file": ".github/workflows/_publish-npm-package.yml", "contains": ["actions/attest@f7c74d28b9d84cb8768d0b8ca14a4bac6ef463e6", "npm publish \"$TESTED_TARBALL\" --access public --provenance --ignore-scripts", "cmp \"$TESTED_TARBALL\" \"registry-copy/$REGISTRY_TARBALL\""] },
+        { "file": ".github/workflows/_publish-npm-package.yml", "contains": ["actions/attest@f7c74d28b9d84cb8768d0b8ca14a4bac6ef463e6", "npm publish \"./${TESTED_TARBALL#./}\" --access public --provenance --ignore-scripts", "cmp \"$TESTED_TARBALL\" \"registry-copy/$REGISTRY_TARBALL\""] },
         { "file": ".github/workflows/publish-verify-sdk.yml", "contains": ["uses: ./.github/workflows/_publish-npm-package.yml", "package_name: '@emilia-protocol/verify'"] }
       ],
       "formal": [
@@ -1742,7 +1742,7 @@
         { "file": "tests/release-approval.test.ts", "title": "binds the checked-out commit to a tag contained in main", "runner": "vitest" }
       ],
       "operational_evidence": [
-        { "file": ".github/workflows/_publish-npm-package.yml", "contains": ["scripts/require-release-approval.mjs", "npm run security-case:emit", "npm run conformance:manifest", "verify-reproducible-package.mjs", "actions/attest@f7c74d28b9d84cb8768d0b8ca14a4bac6ef463e6", "npm publish \"$TESTED_TARBALL\" --access public --provenance --ignore-scripts", "cmp \"$TESTED_TARBALL\" \"registry-copy/$REGISTRY_TARBALL\""] },
+        { "file": ".github/workflows/_publish-npm-package.yml", "contains": ["scripts/require-release-approval.mjs", "npm run security-case:emit", "npm run conformance:manifest", "verify-reproducible-package.mjs", "actions/attest@f7c74d28b9d84cb8768d0b8ca14a4bac6ef463e6", "npm publish \"./${TESTED_TARBALL#./}\" --access public --provenance --ignore-scripts", "cmp \"$TESTED_TARBALL\" \"registry-copy/$REGISTRY_TARBALL\""] },
         { "file": ".github/workflows/_publish-pypi-package.yml", "contains": ["verify-reproducible-wheel.mjs", "gh-action-pypi-publish@", "cmp \"${{ steps.build.outputs.wheel }}\" \"$REGISTRY_WHEEL\"", "cmp \"${{ steps.build.outputs.sdist }}\" \"$REGISTRY_SDIST\""] },
         { "file": ".github/workflows/publish-gate.yml", "contains": ["uses: ./.github/workflows/_publish-npm-package.yml", "package_name: '@emilia-protocol/gate'"] },
         { "file": ".github/workflows/publish-verify-sdk.yml", "contains": ["uses: ./.github/workflows/_publish-npm-package.yml", "package_name: '@emilia-protocol/verify'"] },

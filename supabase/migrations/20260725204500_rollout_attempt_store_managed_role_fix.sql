@@ -1,3 +1,4 @@
+-- Forward-only successor for 20260725160000. The original migration remains immutable.
 -- SPDX-License-Identifier: Apache-2.0
 -- Forward-only durable rollout-attempt claim and terminal store.
 --
@@ -44,6 +45,7 @@ BEGIN
       FROM pg_catalog.pg_auth_members AS membership
       JOIN executor_members AS inherited
         ON membership.roleid = inherited.role_oid
+      WHERE membership.inherit_option OR membership.set_option
     ),
     owner_members(role_oid) AS (
       SELECT oid
@@ -54,6 +56,7 @@ BEGIN
       FROM pg_catalog.pg_auth_members AS membership
       JOIN owner_members AS inherited
         ON membership.roleid = inherited.role_oid
+      WHERE membership.inherit_option OR membership.set_option
     )
     SELECT 1
     FROM executor_members
@@ -71,10 +74,17 @@ BEGIN
       OR EXISTS (
         SELECT 1
         FROM pg_catalog.pg_roles AS inherited_role
-        WHERE pg_catalog.pg_has_role(
-            executor_members.role_oid,
-            inherited_role.oid,
-            'MEMBER'
+        WHERE (
+            pg_catalog.pg_has_role(
+              executor_members.role_oid,
+              inherited_role.oid,
+              'USAGE'
+            )
+            OR pg_catalog.pg_has_role(
+              executor_members.role_oid,
+              inherited_role.oid,
+              'SET'
+            )
           )
           AND (
             inherited_role.rolsuper
@@ -96,6 +106,7 @@ BEGIN
     JOIN pg_catalog.pg_roles AS owner_role
       ON owner_role.oid IN (membership.roleid, membership.member)
     WHERE owner_role.rolname = 'rollout_attempt_store_owner'
+      AND (membership.inherit_option OR membership.set_option)
   )
   THEN
     RAISE EXCEPTION
@@ -105,7 +116,8 @@ BEGIN
 END
 $role_separation$;
 
-GRANT rollout_attempt_store_owner TO CURRENT_USER;
+GRANT rollout_attempt_store_owner TO CURRENT_USER
+  WITH INHERIT FALSE, SET TRUE;
 
 CREATE SCHEMA rollout_attempt_private
   AUTHORIZATION rollout_attempt_store_owner;
@@ -303,19 +315,42 @@ SET search_path = ''
 AS $fn$
 BEGIN
   IF SESSION_USER IN ('anon', 'authenticated', 'service_role')
-    OR NOT pg_catalog.pg_has_role(SESSION_USER, 'rollout_attempt_executor', 'MEMBER')
+    OR NOT (
+      pg_catalog.pg_has_role(
+        SESSION_USER,
+        'rollout_attempt_executor',
+        'USAGE'
+      )
+      OR pg_catalog.pg_has_role(
+        SESSION_USER,
+        'rollout_attempt_executor',
+        'SET'
+      )
+    )
     OR pg_catalog.pg_has_role(
       SESSION_USER,
       'rollout_attempt_store_owner',
-      'MEMBER'
+      'USAGE'
+    )
+    OR pg_catalog.pg_has_role(
+      SESSION_USER,
+      'rollout_attempt_store_owner',
+      'SET'
     )
     OR EXISTS (
       SELECT 1
       FROM pg_catalog.pg_roles AS inherited_role
-      WHERE pg_catalog.pg_has_role(
-        SESSION_USER,
-        inherited_role.oid,
-        'MEMBER'
+      WHERE (
+        pg_catalog.pg_has_role(
+          SESSION_USER,
+          inherited_role.oid,
+          'USAGE'
+        )
+        OR pg_catalog.pg_has_role(
+          SESSION_USER,
+          inherited_role.oid,
+          'SET'
+        )
       )
         AND (
           inherited_role.rolsuper
@@ -1133,6 +1168,7 @@ $rollout_trigger_body$,
         FROM pg_auth_members AS membership
         JOIN executor_members AS inherited
           ON membership.roleid = inherited.role_oid
+        WHERE membership.inherit_option OR membership.set_option
       ),
       owner_members(role_oid) AS (
         SELECT oid
@@ -1143,6 +1179,7 @@ $rollout_trigger_body$,
         FROM pg_auth_members AS membership
         JOIN owner_members AS inherited
           ON membership.roleid = inherited.role_oid
+        WHERE membership.inherit_option OR membership.set_option
       )
       SELECT 1
       FROM executor_members
@@ -1160,10 +1197,17 @@ $rollout_trigger_body$,
         OR EXISTS (
           SELECT 1
           FROM pg_roles AS inherited_role
-          WHERE pg_has_role(
-              executor_members.role_oid,
-              inherited_role.oid,
-              'MEMBER'
+          WHERE (
+              pg_has_role(
+                executor_members.role_oid,
+                inherited_role.oid,
+                'USAGE'
+              )
+              OR pg_has_role(
+                executor_members.role_oid,
+                inherited_role.oid,
+                'SET'
+              )
             )
             AND (
               inherited_role.rolsuper
@@ -1185,6 +1229,7 @@ $rollout_trigger_body$,
       JOIN pg_roles AS owner_role
         ON owner_role.oid IN (membership.roleid, membership.member)
       WHERE owner_role.rolname = 'consequence_actuator_store_owner'
+        AND (membership.inherit_option OR membership.set_option)
     )
 
   UNION ALL
@@ -1224,6 +1269,7 @@ $rollout_trigger_body$,
         FROM pg_auth_members AS membership
         JOIN executor_members AS inherited
           ON membership.roleid = inherited.role_oid
+        WHERE membership.inherit_option OR membership.set_option
       ),
       owner_members(role_oid) AS (
         SELECT oid
@@ -1234,6 +1280,7 @@ $rollout_trigger_body$,
         FROM pg_auth_members AS membership
         JOIN owner_members AS inherited
           ON membership.roleid = inherited.role_oid
+        WHERE membership.inherit_option OR membership.set_option
       )
       SELECT 1
       FROM executor_members
@@ -1251,10 +1298,17 @@ $rollout_trigger_body$,
         OR EXISTS (
           SELECT 1
           FROM pg_roles AS inherited_role
-          WHERE pg_has_role(
-              executor_members.role_oid,
-              inherited_role.oid,
-              'MEMBER'
+          WHERE (
+              pg_has_role(
+                executor_members.role_oid,
+                inherited_role.oid,
+                'USAGE'
+              )
+              OR pg_has_role(
+                executor_members.role_oid,
+                inherited_role.oid,
+                'SET'
+              )
             )
             AND (
               inherited_role.rolsuper
@@ -1276,6 +1330,7 @@ $rollout_trigger_body$,
       JOIN pg_roles AS owner_role
         ON owner_role.oid IN (membership.roleid, membership.member)
       WHERE owner_role.rolname = 'rollout_attempt_store_owner'
+        AND (membership.inherit_option OR membership.set_option)
     )
 
   UNION ALL
@@ -1418,3 +1473,4 @@ REVOKE EXECUTE ON FUNCTION public.gov_schema_reconcile_introspect()
   FROM PUBLIC, anon, authenticated;
 GRANT EXECUTE ON FUNCTION public.gov_schema_reconcile_introspect()
   TO service_role;
+

@@ -22,7 +22,7 @@ MIGRATION = (
     REPOSITORY
     / "supabase"
     / "migrations"
-    / "20260725160000_rollout_attempt_store.sql"
+    / "20260725204500_rollout_attempt_store_managed_role_fix.sql"
 )
 ROLES = REPOSITORY / "supabase" / "roles.sql"
 DATABASE_URL = (
