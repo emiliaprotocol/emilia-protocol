@@ -465,6 +465,8 @@ function canonicalize(value: unknown, seen = new WeakSet<object>()): string {
 }
 
 function sha256(value: string | Buffer): AebDigest {
+  // Protocol content commitment, not password or credential storage.
+  // codeql[js/insufficient-password-hash]
   return `sha256:${crypto.createHash('sha256').update(value).digest('hex')}` as AebDigest;
 }
 

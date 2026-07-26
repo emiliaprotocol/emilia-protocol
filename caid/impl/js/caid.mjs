@@ -224,6 +224,8 @@ function checkFieldType(value, field) {
 }
 
 function sha256(canonical) {
+  // CAID content-addressing commitment, not password or credential storage.
+  // codeql[js/insufficient-password-hash]
   return createHash("sha256").update(Buffer.from(canonical, "utf8")).digest();
 }
 

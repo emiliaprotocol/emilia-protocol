@@ -30,6 +30,8 @@ function compactJws(header, claims, privateKey) {
     return `${signingInput}.${signature}`;
 }
 function sha256Base64url(value) {
+    // OAuth token-binding test commitment, not password or credential storage.
+    // codeql[js/insufficient-password-hash]
     return crypto.createHash('sha256').update(Buffer.from(value, 'ascii')).digest('base64url');
 }
 function contentDigest(body) {
