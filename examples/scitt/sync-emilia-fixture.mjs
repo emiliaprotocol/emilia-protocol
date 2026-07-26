@@ -112,13 +112,22 @@ function payloadCandidate(subject, createdAt) {
  * Resolve the transient production `createdAt` from the adjacent authorization
  * timestamp window. Exactly one digest match is required before signature
  * verification can proceed.
+ *
+ * @param {any} subject
+ * @param {{
+ *   anchor?: string,
+ *   beforeSeconds?: number,
+ *   afterSeconds?: number,
+ *   candidateCreatedAtValues?: string[],
+ * }} [options]
  */
-export function resolveCreatedAt(subject, {
-  anchor = subject.authorization?.created_at,
-  beforeSeconds = 5,
-  afterSeconds = 5,
-  candidateCreatedAtValues,
-} = {}) {
+export function resolveCreatedAt(subject, options = {}) {
+  const {
+    anchor = subject.authorization?.created_at,
+    beforeSeconds = 5,
+    afterSeconds = 5,
+    candidateCreatedAtValues,
+  } = options;
   const createdAtValues = candidateCreatedAtValues
     ?? isoSecondRange(anchor, beforeSeconds, afterSeconds);
   const candidates = [...new Set(createdAtValues)].map((createdAt) => payloadCandidate(subject, createdAt));
@@ -133,12 +142,21 @@ export function resolveCreatedAt(subject, {
 /**
  * Verify the native SYNC profile.  This returns only the cryptographic
  * presentation result; chain continuity and EMILIA admission are separate.
+ *
+ * @param {any} subject
+ * @param {{
+ *   createdAt?: string,
+ *   createdAtWindow?: {
+ *     anchor?: string,
+ *     beforeSeconds?: number,
+ *     afterSeconds?: number,
+ *     candidateCreatedAtValues?: string[],
+ *   },
+ *   expectedDigest?: string,
+ * }} [options]
  */
-export function verifyProductionProfile(subject, {
-  createdAt,
-  createdAtWindow,
-  expectedDigest,
-} = {}) {
+export function verifyProductionProfile(subject, options = {}) {
+  const { createdAt, createdAtWindow, expectedDigest } = options;
   const auth = subject.authorization;
   const resolution = createdAt
     ? { candidates: [createdAt], matches: [payloadCandidate(subject, createdAt)] }
@@ -189,7 +207,7 @@ export function verifyProductionProfile(subject, {
       selected: selected?.createdAt ?? null,
     },
     detail: failures.length === 0
-      ? `createdAt resolved uniquely (${selected.createdAt}); canonical payload, disclosed digest, and DER ES256 signature agree`
+      ? `createdAt resolved uniquely (${selected?.createdAt}); canonical payload, disclosed digest, and DER ES256 signature agree`
       : failures.join('; '),
   };
 }
