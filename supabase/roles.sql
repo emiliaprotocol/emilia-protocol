@@ -60,6 +60,7 @@ BEGIN
       FROM pg_catalog.pg_auth_members AS membership
       JOIN executor_members AS inherited
         ON membership.roleid = inherited.role_oid
+      WHERE membership.inherit_option OR membership.set_option
     ),
     owner_members(role_oid) AS (
       SELECT oid
@@ -70,6 +71,7 @@ BEGIN
       FROM pg_catalog.pg_auth_members AS membership
       JOIN owner_members AS inherited
         ON membership.roleid = inherited.role_oid
+      WHERE membership.inherit_option OR membership.set_option
     )
     SELECT 1
     FROM executor_members
@@ -87,10 +89,17 @@ BEGIN
       OR EXISTS (
         SELECT 1
         FROM pg_catalog.pg_roles AS inherited_role
-        WHERE pg_catalog.pg_has_role(
-            executor_members.role_oid,
-            inherited_role.oid,
-            'MEMBER'
+        WHERE (
+            pg_catalog.pg_has_role(
+              executor_members.role_oid,
+              inherited_role.oid,
+              'USAGE'
+            )
+            OR pg_catalog.pg_has_role(
+              executor_members.role_oid,
+              inherited_role.oid,
+              'SET'
+            )
           )
           AND (
             inherited_role.rolsuper
@@ -112,6 +121,7 @@ BEGIN
     JOIN pg_catalog.pg_roles AS owner_role
       ON owner_role.oid IN (membership.roleid, membership.member)
     WHERE owner_role.rolname = 'consequence_actuator_store_owner'
+      AND (membership.inherit_option OR membership.set_option)
   )
   THEN
     RAISE EXCEPTION
@@ -134,6 +144,7 @@ BEGIN
       FROM pg_catalog.pg_auth_members AS membership
       JOIN executor_members AS inherited
         ON membership.roleid = inherited.role_oid
+      WHERE membership.inherit_option OR membership.set_option
     ),
     owner_members(role_oid) AS (
       SELECT oid
@@ -144,6 +155,7 @@ BEGIN
       FROM pg_catalog.pg_auth_members AS membership
       JOIN owner_members AS inherited
         ON membership.roleid = inherited.role_oid
+      WHERE membership.inherit_option OR membership.set_option
     )
     SELECT 1
     FROM executor_members
@@ -161,10 +173,17 @@ BEGIN
       OR EXISTS (
         SELECT 1
         FROM pg_catalog.pg_roles AS inherited_role
-        WHERE pg_catalog.pg_has_role(
-            executor_members.role_oid,
-            inherited_role.oid,
-            'MEMBER'
+        WHERE (
+            pg_catalog.pg_has_role(
+              executor_members.role_oid,
+              inherited_role.oid,
+              'USAGE'
+            )
+            OR pg_catalog.pg_has_role(
+              executor_members.role_oid,
+              inherited_role.oid,
+              'SET'
+            )
           )
           AND (
             inherited_role.rolsuper
@@ -186,6 +205,7 @@ BEGIN
     JOIN pg_catalog.pg_roles AS owner_role
       ON owner_role.oid IN (membership.roleid, membership.member)
     WHERE owner_role.rolname = 'rollout_attempt_store_owner'
+      AND (membership.inherit_option OR membership.set_option)
   )
   THEN
     RAISE EXCEPTION
