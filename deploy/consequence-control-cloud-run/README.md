@@ -562,7 +562,7 @@ issuer must atomically consume authorization IDs/nonces before signing.
 Immediately before the Cloud Run PUT, `traffic.sh` also requires a protected,
 hash-pinned durable attempt-store adapter. This repository ships
 `postgres-rollout-attempt-store.sh` plus the forward-only
-`20260725160000_rollout_attempt_store.sql` migration. Set
+`20260725204500_rollout_attempt_store_managed_role_fix.sql` migration. Set
 `EMILIA_ROLLOUT_ATTEMPT_STORE_ADAPTER` to an absolute standalone executable and
 `EMILIA_ROLLOUT_ATTEMPT_STORE_ADAPTER_SHA256` to its protected digest, and
 supply the dedicated `rollout_attempt_executor` login through

@@ -12,14 +12,14 @@ const actuatorMigration = readFileSync(
 );
 const providerMigration = readFileSync(
   new URL(
-    '../supabase/migrations/20260725143000_consequence_actuator_provider_records.sql',
+    '../supabase/migrations/20260725203000_consequence_actuator_provider_records_managed_role_fix.sql',
     import.meta.url,
   ),
   'utf8',
 );
 const rolloutMigration = readFileSync(
   new URL(
-    '../supabase/migrations/20260725160000_rollout_attempt_store.sql',
+    '../supabase/migrations/20260725204500_rollout_attempt_store_managed_role_fix.sql',
     import.meta.url,
   ),
   'utf8',

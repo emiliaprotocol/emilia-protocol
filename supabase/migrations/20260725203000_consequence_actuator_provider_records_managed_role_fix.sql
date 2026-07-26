@@ -1,3 +1,4 @@
+-- Forward-only successor for 20260725143000. The original migration remains immutable.
 -- SPDX-License-Identifier: Apache-2.0
 -- Forward-only private terminal provider records for consequence actuators.
 --
@@ -18,6 +19,7 @@ BEGIN
       FROM pg_catalog.pg_auth_members AS membership
       JOIN executor_members AS inherited
         ON membership.roleid = inherited.role_oid
+      WHERE membership.inherit_option OR membership.set_option
     )
     SELECT 1
     FROM executor_members
@@ -37,10 +39,17 @@ BEGIN
       OR EXISTS (
         SELECT 1
         FROM pg_catalog.pg_roles AS inherited_role
-        WHERE pg_catalog.pg_has_role(
-            executor_members.role_oid,
-            inherited_role.oid,
-            'MEMBER'
+        WHERE (
+            pg_catalog.pg_has_role(
+              executor_members.role_oid,
+              inherited_role.oid,
+              'USAGE'
+            )
+            OR pg_catalog.pg_has_role(
+              executor_members.role_oid,
+              inherited_role.oid,
+              'SET'
+            )
           )
           AND (
             inherited_role.rolsuper
@@ -62,6 +71,7 @@ BEGIN
     JOIN pg_catalog.pg_roles AS owner_role
       ON owner_role.oid IN (membership.roleid, membership.member)
     WHERE owner_role.rolname = 'consequence_actuator_store_owner'
+      AND (membership.inherit_option OR membership.set_option)
   )
   THEN
     RAISE EXCEPTION
@@ -71,6 +81,12 @@ BEGIN
 END
 $role_isolation$;
 
+-- Managed PostgreSQL providers may retain an administrative-only grant on a
+-- custom role (ADMIN true, INHERIT/SET false). It cannot exercise owner
+-- authority and is not a runtime trust edge. Grant the migration principal
+-- only temporary SET authority, then remove that exact current-grantor edge.
+GRANT consequence_actuator_store_owner TO CURRENT_USER
+  WITH INHERIT FALSE, SET TRUE;
 SET ROLE consequence_actuator_store_owner;
 
 CREATE OR REPLACE FUNCTION consequence_actuator_private.assert_tenant_principal(
@@ -88,23 +104,42 @@ BEGIN
     RAISE EXCEPTION 'tenant binding required' USING ERRCODE = '22023';
   END IF;
   IF SESSION_USER IN ('anon', 'authenticated', 'service_role')
-    OR NOT pg_catalog.pg_has_role(
-      SESSION_USER,
-      'consequence_actuator_executor',
-      'MEMBER'
+    OR NOT (
+      pg_catalog.pg_has_role(
+        SESSION_USER,
+        'consequence_actuator_executor',
+        'USAGE'
+      )
+      OR pg_catalog.pg_has_role(
+        SESSION_USER,
+        'consequence_actuator_executor',
+        'SET'
+      )
     )
     OR pg_catalog.pg_has_role(
       SESSION_USER,
       'consequence_actuator_store_owner',
-      'MEMBER'
+      'USAGE'
+    )
+    OR pg_catalog.pg_has_role(
+      SESSION_USER,
+      'consequence_actuator_store_owner',
+      'SET'
     )
     OR EXISTS (
       SELECT 1
       FROM pg_catalog.pg_roles AS inherited_role
-      WHERE pg_catalog.pg_has_role(
-          SESSION_USER,
-          inherited_role.oid,
-          'MEMBER'
+      WHERE (
+          pg_catalog.pg_has_role(
+            SESSION_USER,
+            inherited_role.oid,
+            'USAGE'
+          )
+          OR pg_catalog.pg_has_role(
+            SESSION_USER,
+            inherited_role.oid,
+            'SET'
+          )
         )
         AND (
           inherited_role.rolsuper
@@ -905,5 +940,8 @@ COMMENT ON TABLE consequence_actuator_private.provider_attempts IS
 COMMENT ON TABLE consequence_actuator_private.provider_records IS
   'Private immutable exact terminal provider responses and signed attribution, append-only and tenant-bound to consequence actuator envelopes.';
 
--- Restore the migration role so the Supabase migration journal can advance.
-SET ROLE postgres;
+-- Restore the migration role, then remove only the temporary grant made by
+-- this migration. Provider-managed ADMIN-only grants remain non-usable.
+RESET ROLE;
+REVOKE consequence_actuator_store_owner FROM CURRENT_USER;
+
