@@ -35,6 +35,8 @@ function git(args, options = {}) {
         cwd: ROOT,
         encoding: options.encoding,
         maxBuffer: 32 * 1024 * 1024,
+        timeout: 120_000,
+        killSignal: 'SIGKILL',
         ...options,
     });
 }
@@ -125,9 +127,14 @@ function buildArchiveCommit(sourceCommit, files, temporary) {
     const indexPath = path.join(temporary, 'archive.index');
     const env = { ...process.env, GIT_INDEX_FILE: indexPath };
     git(['read-tree', '--empty'], { env, encoding: 'utf8' });
-    for (const file of files) {
+    for (const [index, file] of files.entries()) {
         const bytes = readAt(sourceCommit, file.sourcePath);
-        const oid = git(['hash-object', '-w', '--stdin'], { input: bytes, encoding: 'utf8' }).trim();
+        // Avoid piping blob bytes through a synchronous child's stdin. Under a
+        // saturated Vitest fork pool, Node can leave that pipe open indefinitely
+        // even though the caller supplied `input`, hanging the governed proof run.
+        const blobPath = path.join(temporary, `blob-${index}`);
+        fs.writeFileSync(blobPath, bytes, { mode: 0o600 });
+        const oid = git(['hash-object', '--no-filters', '-w', '--', blobPath], { encoding: 'utf8' }).trim();
         git(['update-index', '--add', '--cacheinfo', `${file.mode},${oid},${file.path}`], { env, encoding: 'utf8' });
     }
     const tree = git(['write-tree'], { env, encoding: 'utf8' }).trim();

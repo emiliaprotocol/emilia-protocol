@@ -47,6 +47,8 @@ function git(args: string[], options: Record<string, any> = {}): any {
     cwd: ROOT,
     encoding,
     maxBuffer: 64 * 1024 * 1024,
+    timeout: 120_000,
+    killSignal: 'SIGKILL',
     ...options,
   });
 }
@@ -151,10 +153,14 @@ function buildArchiveCommit(
     GIT_INDEX_FILE: indexPath,
   };
   git(['read-tree', '--empty'], { env });
-  for (const file of files) {
+  for (const [index, file] of files.entries()) {
+    // Avoid piping blob bytes through a synchronous child's stdin. Under a
+    // saturated Vitest fork pool, Node can leave that pipe open indefinitely
+    // even though the caller supplied `input`, hanging the governed proof run.
+    const blobPath = path.join(temporary, `blob-${index}`);
+    fs.writeFileSync(blobPath, file.content, { mode: 0o600 });
     const oid = String(git(
-      ['hash-object', '-w', '--stdin'],
-      { input: file.content },
+      ['hash-object', '--no-filters', '-w', '--', blobPath],
     )).trim();
     git(
       ['update-index', '--add', '--cacheinfo', `${file.mode},${oid},${file.path}`],
