@@ -82,10 +82,9 @@ COPY --chown=10001:10001 apps/gate-service/openapi.json ./apps/gate-service/open
 COPY --chown=10001:10001 apps/gate-service/src ./apps/gate-service/src
 COPY --from=dependencies --chown=10001:10001 /opt/gate/packages ./packages
 
-# The service imports the checkout directly, while the publishable Gate package
-# uses normal package specifiers. Link the exact copied sources into Node's
-# package namespace so the image exercises the same dependency boundary as a
-# clean npm consumer without fetching mutable registry bytes during the build.
+# Relative service imports use the package trees extracted from checksum-verified
+# tarballs, while package-specifier imports use npm's installs of those same
+# sealed tarballs. No checkout package source can replace either runtime path.
 RUN find /app/packages -type f \( -name '*.test.js' -o -name '*.test.mjs' \) -delete \
     && rm -rf /app/packages/gate/deploy/helm /app/packages/gate/deploy/terraform
 
