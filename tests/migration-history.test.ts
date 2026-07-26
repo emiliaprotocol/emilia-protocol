@@ -33,7 +33,7 @@ function fixture(): string {
       retroactive_pending_versions: [],
       forward_pending_versions: ['003'],
       deployment_sequence: ['003'],
-      requires_include_all: true,
+      requires_include_all: false,
       remote_versions: ['001', '002'],
       public_files: {
         '001_first.sql': hash('select 1;\n'),
@@ -183,12 +183,14 @@ describe('migration history ledger', () => {
     history.forward_pending_versions = [];
     history.retroactive_pending_versions = ['003'];
     history.deployment_sequence = ['003'];
+    history.requires_include_all = true;
     fs.writeFileSync(historyPath, `${JSON.stringify(history, null, 2)}\n`);
     expect(() => validateMigrationHistory(root)).toThrow(/retroactive pending version 003/);
 
     history.retroactive_pending_versions = [];
     history.forward_pending_versions = ['003'];
     history.deployment_sequence = [];
+    history.requires_include_all = false;
     fs.writeFileSync(historyPath, `${JSON.stringify(history, null, 2)}\n`);
     expect(() => validateMigrationHistory(root)).toThrow(/deployment_sequence/);
   });
