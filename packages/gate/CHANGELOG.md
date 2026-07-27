@@ -4,6 +4,14 @@
 All notable changes to `@emilia-protocol/gate` are documented here.
 This package follows [Semantic Versioning](https://semver.org/).
 
+## 0.18.1 (2026-07-27)
+
+### Fixed
+
+- Repinned the release dependency to the exact published
+  `@emilia-protocol/verify@3.16.0` registry tarball. No runtime or API behavior
+  changed from 0.18.0; the protected 0.18.0 tag was never published.
+
 ## 0.18.0 (2026-07-26)
 
 ### Added

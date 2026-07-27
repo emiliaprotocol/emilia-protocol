@@ -443,7 +443,7 @@ arbitrary-concurrency proof, or mechanized TypeScript/SQL refinement.
 
 The release metadata in this tree requires
 `@emilia-protocol/verify@3.16.0` first. Only after the exact registry tarball is
-available at the pinned digest may `@emilia-protocol/gate@0.18.0` and
+available at the pinned digest may `@emilia-protocol/gate@0.18.1` and
 `ep-qualify@0.1.0` release; those two downstream packages may then release
 independently. Package versions and workflows in a checkout do not establish
 that any package was published.

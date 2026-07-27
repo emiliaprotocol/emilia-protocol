@@ -52,10 +52,10 @@ describe('npm internal dependency registry guard', () => {
   it('requires pinned Verify 3.16.0 registry bytes before Gate or ep-qualify can release', () => {
     const expectedPin = {
       spec: '@emilia-protocol/verify@3.16.0',
-      sha256: 'd4d682281fefe95dec0a895c8ec9561c8f6675819d9426c22d390be80f09e3ea',
+      sha256: '50caa243b057708a30d459839b0ca02292aa297c1f7523ee77f3559492e08fea',
     };
     const downstream = [
-      { metadata: GATE_METADATA, directory: 'packages/gate', version: '0.18.0' },
+      { metadata: GATE_METADATA, directory: 'packages/gate', version: '0.18.1' },
       { metadata: QUALIFY_METADATA, directory: 'packages/qualify', version: '0.1.0' },
     ];
 

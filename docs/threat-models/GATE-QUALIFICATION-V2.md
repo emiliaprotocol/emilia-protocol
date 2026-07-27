@@ -126,7 +126,7 @@ restore consumed authority or rewrite prior evidence.
 | QV2-T28 | Federated parties claim global atomicity from local receipts. | State the guarantee class; require one final `local_atomic` consequence owner; treat remote state as evidence only. | No distributed commit, global freshness, or federated exactly-once implementation exists. |
 | QV2-T29 | Journal or snapshot history is edited to hide a transition. | Content-addressed immutable snapshots, append-only predecessor-digest journal, terminal immutability, and exact head verification. | A database owner or infrastructure compromise may require external anchoring and incident evidence. |
 | QV2-T30 | Public reference code is represented as a managed production control. | Explicit implementation-status mapping and public/managed boundary; require deployment-specific evidence. | Users can still deploy the reference code unsafely outside the claim. |
-| QV2-T31 | Downstream packages are released against unavailable or substituted verifier bytes, or local metadata is cited as proof of publication. | Release Verify 3.16.0 first; require Gate 0.18.0 and `ep-qualify` 0.1.0 to verify the exact pinned registry tarball before release. | Release workflows and local package versions do not establish that registry publication occurred. |
+| QV2-T31 | Downstream packages are released against unavailable or substituted verifier bytes, or local metadata is cited as proof of publication. | Release Verify 3.16.0 first; require Gate 0.18.1 and `ep-qualify` 0.1.0 to verify the exact pinned registry tarball before release. | Release workflows and local package versions do not establish that registry publication occurred. |
 
 ## 6. State-machine safety properties
 
@@ -220,7 +220,7 @@ reconciliation path, and protected-path inventory.
   invariants, 10 properties, a `COMMITTED + DIVERGED` witness, and a five-state
   unsafe late-supersession counterexample. It abstracts cryptography, provider
   truth, clocks, storage, deployment, and arbitrary concurrency.
-- The release chain orders Verify 3.16.0 before Gate 0.18.0 and `ep-qualify`
+- The release chain orders Verify 3.16.0 before Gate 0.18.1 and `ep-qualify`
   0.1.0, but the checkout does not establish that any package is live.
 - No federated coordinator, managed-production deployment, independent
   implementation, or production recovery evidence is established here.
