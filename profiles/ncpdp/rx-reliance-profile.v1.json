@@ -41,8 +41,8 @@
       "no_evidence_verdict": "rx_do_not_rely_missing_clinical_evidence"
     },
     "benefit_policy": {
-      "carrier": "the request's policy_hash pinned to the payer formulary policy; an RTBP benefit_check with checked_at and policy_hash",
-      "verified_by": "the composed kernel (policy pin) plus an Rx freshness gate on the RTBP benefit check",
+      "carrier": "the request's policy_hash pinned to the payer formulary policy; EP-RX-BENEFIT-v1 (Ed25519-signed RTBP benefit/formulary check carrying policy_hash and issued_at), bound to the action digest",
+      "verified_by": "the composed kernel (policy pin) plus verifyRxArtifact under an accepted_benefit_keys pin with an Rx freshness gate; a presenter-asserted, unsigned benefit check is never relied on",
       "mismatch_verdict": "rx_do_not_rely_policy_mismatch",
       "stale_verdict": "rx_do_not_rely_stale_benefit"
     },

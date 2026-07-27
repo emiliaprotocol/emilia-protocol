@@ -69,7 +69,7 @@ holding an appeal-ready record). `result.determination` says which.
 | `rx_do_not_rely_missing_patient_consent` | No accepted `EP-RX-CONSENT-v1` bound to this action. |
 | `rx_do_not_rely_missing_clinical_evidence` | No accepted `EP-RX-CLINICAL-v1` (diagnosis/lab) bound to this action. |
 | `rx_do_not_rely_policy_mismatch` | The request or the RTBP benefit check cites a formulary policy other than the pinned one. |
-| `rx_do_not_rely_stale_benefit` | The RTBP benefit/formulary check is missing or older than the pinned freshness bound. |
+| `rx_do_not_rely_stale_benefit` | The RTBP benefit/formulary check is missing, not signed by a pinned `accepted_benefit_keys` issuer, or older than the pinned freshness bound. |
 | `rx_do_not_rely_signed_denial_required` | A denial was presented without a signed, bound reason, so it cannot be relied on or appealed. |
 | `rx_do_not_rely_malformed_packet` | The packet uses an unknown or missing determination, or the challenge carries a malformed requirement profile. |
 
@@ -78,8 +78,9 @@ holding an appeal-ready record). `result.determination` says which.
 The prescriber-authority, formulary-policy, and revocation-freshness legs are the
 shipped **EP-RELIANCE-KERNEL-v1** underneath (`packages/verify/reliance.js`); this
 profile does not reimplement that crypto. The Rx-specific legs (patient consent,
-diagnosis/lab evidence, signed denial) are Ed25519-signed artifacts, each bound to
-the action digest and verified under a relying-party-pinned key.
+diagnosis/lab evidence, RTBP benefit check, signed denial) are Ed25519-signed
+artifacts, each bound to the action digest and verified under a
+relying-party-pinned key.
 
 - **VERIFIED vs ACCEPTED stays separate.** A signature checking out is not the
   same as the issuer key being one the relying party pinned.

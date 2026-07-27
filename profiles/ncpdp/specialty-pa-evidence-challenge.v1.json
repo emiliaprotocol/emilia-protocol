@@ -17,9 +17,11 @@
   "accepted_issuer_keys": ["<base64url SPKI: hub/EHR transparency-log checkpoint key>"],
   "accepted_consent_keys": ["<base64url SPKI: patient-consent service key>"],
   "accepted_clinical_keys": ["<base64url SPKI: EHR/lab clinical-attestation key>"],
+  "accepted_benefit_keys": ["<base64url SPKI: RTBP benefit/formulary check signing key>"],
   "accepted_payer_keys": ["<base64url SPKI: payer denial-signing key>"],
   "notes": {
     "phi": "EP-NCPDP-RX-PRIVACY-PROFILE-v1 applies: pairwise patient references, keyed source-record commitments, exact signed-artifact allowlists, and projected appeal bundles.",
+    "benefit": "benefit_policy_hash means an EP-RX-BENEFIT-v1 (policy_hash + issued_at, signed by a pinned accepted_benefit_keys issuer, bound to the action digest) must be present and within benefit_freshness_sec. A presenter-asserted, unsigned benefit check is never relied on; it reads as rx_do_not_rely_stale_benefit.",
     "denial": "If the determination is a denial, signed_denial_required means an EP-RX-DENIAL-v1 (coded reason + keyed reason commitment + generic appeal route, signed by a pinned payer key) must be present for the denial to be relied on and appealed.",
     "runnable": "See examples/ncpdp/specialty-pa-reliance-flow.mjs for a full offline flow against this challenge."
   }

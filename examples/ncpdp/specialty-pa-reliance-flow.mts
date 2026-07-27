@@ -31,7 +31,7 @@ const p256 = () => { const { publicKey, privateKey } = crypto.generateKeyPairSyn
 
 // Actors: the hub transparency log, the intake agent (Class-B), the prescriber
 // (Class-A device), the payer authority registry, and the consent / clinical /
-// payer-denial issuers.
+// benefit / payer-denial issuers.
 const logKey = ed();
 const intake = ed();
 const prescriber = p256();
@@ -39,6 +39,7 @@ const registryKey = crypto.createPrivateKey({ key: Buffer.concat([Buffer.from('3
 const registryPub = crypto.createPublicKey(registryKey as any).export({ type: 'spki', format: 'der' }).toString('base64url');
 const consentKey = ed();
 const clinicalKey = ed();
+const benefitKey = ed();
 const payerKey = ed();
 
 const NCPDP_TXN_DIGEST = 'sha256:' + sha('ncpdp:epa:synthetic-pa-request:2026-07-08');
@@ -82,7 +83,7 @@ const KEYS = {
   'ep:key:intake#1': { approver_id: 'ep:approver:intake-agent', public_key: intake.pub, key_class: 'B', valid_from: '2026-01-01T00:00:00Z', valid_to: '2027-01-01T00:00:00Z' },
   'ep:key:prescriber#1': { approver_id: 'ep:approver:prescriber', public_key: prescriber.pub, key_class: 'A', valid_from: '2026-01-01T00:00:00Z', valid_to: '2027-01-01T00:00:00Z' },
 };
-const opts = { approverKeys: KEYS, logPublicKey: logKey.pub, rpId: 'www.emiliaprotocol.ai' };
+const opts = { approverKeys: KEYS, logPublicKey: logKey.pub, rpId: 'www.emiliaprotocol.ai', allowedOrigins: ['https://www.emiliaprotocol.ai'] };
 
 // Step 2: the payer/PBM's EP-RX-EVIDENCE-CHALLENGE-v1.
 const challenge = {
@@ -102,6 +103,7 @@ const challenge = {
   accepted_issuer_keys: [logKey.pub],
   accepted_consent_keys: [consentKey.pub],
   accepted_clinical_keys: [clinicalKey.pub],
+  accepted_benefit_keys: [benefitKey.pub],
   accepted_payer_keys: [payerKey.pub],
 };
 
@@ -116,13 +118,16 @@ const prescriberAuthority = () => signAuthorityProof({
 const consent = () => signRxArtifact({ '@type': 'EP-RX-CONSENT-v1', action_hash: receipt.action_hash, privacy_key_id: privacyKeyId, subject_ref: patientRef, consent_digest: commitRxEvidence({ evidenceType: 'consent', record: { synthetic: 'consent-record' }, privacyKeyId, sectorSecret: privacyKey }), issued_at: '2026-07-08T13:50:00.000Z' }, consentKey.privateKey);
 const clinical = () => signRxArtifact({ '@type': 'EP-RX-CLINICAL-v1', action_hash: receipt.action_hash, privacy_key_id: privacyKeyId, evidence_digest: commitRxEvidence({ evidenceType: 'clinical', record: { synthetic: 'dx-lab-bundle' }, privacyKeyId, sectorSecret: privacyKey }), criteria: 'step-therapy-met', issued_at: '2026-07-08T13:52:00.000Z' }, clinicalKey.privateKey);
 const denial = () => signRxArtifact({ '@type': 'EP-RX-DENIAL-v1', action_hash: receipt.action_hash, privacy_key_id: privacyKeyId, reason_code: 'NCPDP:step-therapy-not-met', reason_digest: commitRxEvidence({ evidenceType: 'denial', record: { synthetic: 'denial-rationale' }, privacyKeyId, sectorSecret: privacyKey }), appeal_url: 'https://payer.example/appeals', issued_at: '2026-07-08T14:04:30.000Z' }, payerKey.privateKey);
-const freshBenefit = { checked_at: '2026-07-08T14:00:00.000Z', policy_hash: BENEFIT_POLICY_HASH };
+// The RTBP benefit/formulary check is an issuer-signed leg like every other
+// Rx-specific leg: a presenter-asserted blob is exactly what this profile
+// refuses to rely on (conformance vector reject_unsigned_presenter_benefit_check).
+const benefit = (policyHash = BENEFIT_POLICY_HASH, issuedAt = '2026-07-08T14:00:00.000Z') => signRxArtifact({ '@type': 'EP-RX-BENEFIT-v1', action_hash: receipt.action_hash, privacy_key_id: privacyKeyId, policy_hash: policyHash, issued_at: issuedAt }, benefitKey.privateKey);
 
 function packet(over = {}) {
   return {
     '@type': 'EP-RX-RELIANCE-PACKET-v1', action: ACTION, receipt,
     authority_proof: prescriberAuthority(), patient_consent: consent(), clinical_evidence: clinical(),
-    benefit_check: freshBenefit, revocation_state: { checked_at: '2026-07-08T14:00:00.000Z' },
+    benefit_check: benefit(), revocation_state: { checked_at: '2026-07-08T14:00:00.000Z' },
     determination: 'approve', ...over,
   };
 }
@@ -137,8 +142,8 @@ const attempts = [
   ['resubmit missing patient consent', packet({ patient_consent: undefined })],
   ['resubmit missing diagnosis/lab evidence', packet({ clinical_evidence: undefined })],
   ['prescriber authority scoped to a different action', packet({ authority_proof: signAuthorityProof({ authority_id: 'auth_prescriber', subject: 'ep:approver:prescriber', organization_id: 'clinicX', role: 'prescriber', scope: ['rx.refill.approve'], limits: {}, validity: { from: '2026-01-01T00:00:00.000Z', to: '2027-01-01T00:00:00.000Z' }, revocation: { status: 'not_revoked', checked_at: '2026-07-08T13:59:00.000Z' }, registry_head: 'sha256:' + '22'.repeat(32), registry_epoch: 9, policy_hash: BENEFIT_POLICY_HASH, issued_at: '2026-07-08T13:59:00.000Z' }, registryKey) })],
-  ['RTBP check cites the wrong formulary policy', packet({ benefit_check: { ...freshBenefit, policy_hash: 'sha256:' + sha('wrong-formulary') } })],
-  ['RTBP benefit check is stale', packet({ benefit_check: { checked_at: '2026-07-01T00:00:00.000Z', policy_hash: BENEFIT_POLICY_HASH } })],
+  ['RTBP check cites the wrong formulary policy', packet({ benefit_check: benefit('sha256:' + sha('wrong-formulary')) })],
+  ['RTBP benefit check is stale', packet({ benefit_check: benefit(BENEFIT_POLICY_HASH, '2026-07-01T00:00:00.000Z') })],
   ['payer denies but the denial is not signed', packet({ determination: 'deny', signed_denial: undefined })],
   ['APPROVE: all evidence composes', packet()],
   ['DENY: signed, reasoned, appeal-ready (rely on the denial)', packet({ determination: 'deny', signed_denial: denial() })],
