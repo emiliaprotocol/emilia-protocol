@@ -646,6 +646,79 @@ paths:
         '503':
           description: Durable evidence or export dependency is unavailable.
 
+  /api/v1/adapters/health/davinci-pas/review:
+    post:
+      tags: [GovGuard]
+      summary: Control one Da Vinci PAS medical prior-authorization determination
+      operationId: controlHealthDavinciPasReview
+      description: |
+        Authenticated, tenant-bound Proposal-to-Effect lifecycle for a
+        server-observed Da Vinci PAS 2.2.1 Claim and ClaimResponse. The caller
+        supplies only `pas_context_ref`; the relying party loads raw FHIR from
+        its authenticated system of record. `prepare` creates an exact CAID and
+        approval challenge, `execute` reserves one evidence use and provider
+        attempt before callback entry, and `reconcile` accepts only exact
+        authenticated provider evidence after an indeterminate outcome.
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required: [organization_id, operation]
+              properties:
+                organization_id: { type: string }
+                operation: { type: string, enum: [prepare, execute, reconcile] }
+                proposal_id: { type: string }
+                operation_id: { type: string }
+                pas_context_ref:
+                  type: string
+                  description: Server-side reference; raw Claim, ClaimResponse, patient, and clinical data are refused.
+                proposal: { type: object }
+                approval_evidence: { type: object }
+                evaluation: { type: object }
+                provider_evidence: { type: object }
+      responses:
+        '200': { description: Exact determination executed once or reconciled to a terminal result. }
+        '201': { description: Exact proposal and approval challenge prepared. }
+        '400': { description: Malformed request or raw PAS/clinical resource supplied. }
+        '401': { description: Authentication required. }
+        '403': { description: Tenant binding or local authority refused. }
+        '409': { description: "Source/action mismatch, replay, or lifecycle conflict." }
+        '422': { description: "Approval, AEB, Gate, execution, or reconciliation requirement failed." }
+        '503': { description: "PAS context, durable state, verifier, or consequence-control dependency unavailable." }
+
+  /api/v1/adapters/health/davinci-pas/export:
+    get:
+      tags: [GovGuard]
+      summary: Export one signed PHI-minimized PAS consequence packet
+      operationId: exportHealthDavinciPasConsequence
+      description: |
+        Returns the relying-party-signed evidence packet for one exact tenant
+        and operation. It is a synthetic reference artifact, not a clinical,
+        compliance, payer-acceptance, or production-deployment claim.
+      security:
+        - BearerAuth: []
+      parameters:
+        - in: query
+          name: organization_id
+          required: true
+          schema: { type: string }
+        - in: query
+          name: operation_id
+          required: true
+          schema: { type: string }
+      responses:
+        '200': { description: Signed PHI-minimized reliance packet returned as JSON. }
+        '400': { description: Required tenant or operation binding is missing. }
+        '401': { description: Authentication required. }
+        '403': { description: Tenant binding refused. }
+        '404': { description: No packet exists for the exact tenant and operation. }
+        '503': { description: Durable evidence or export dependency unavailable. }
+
   /api/v1/adapters/health/hospice-claim/reconcile:
     post:
       tags: [GovGuard]
