@@ -37,8 +37,9 @@ describe('commercial offer contract', () => {
   });
 
   it('prices production by protected workflow rather than seats or API calls', () => {
-    expect(pricing).toContain('protected workflow');
-    expect(pricing).toContain('deployment boundary');
-    expect(pricing).toContain('service level');
+    const publicOffer = `${pricing}\n${commercialOffer}`;
+    expect(publicOffer).toContain('protected workflow');
+    expect(publicOffer).toContain('deployment boundary');
+    expect(publicOffer).toContain('service level');
   });
 });

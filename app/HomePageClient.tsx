@@ -6,6 +6,7 @@ import SiteNav from '@/components/SiteNav';
 import SiteFooter from '@/components/SiteFooter';
 import EmailCapture from '@/components/EmailCapture';
 import ProofBlock from '@/components/ProofBlock';
+import { GATE_QUALIFICATION } from '@/lib/commercial-offer';
 import { styles, cta, color, font, radius } from '@/lib/tokens';
 import proofStats from '@/lib/proof-stats.json';
 
@@ -20,9 +21,7 @@ import proofStats from '@/lib/proof-stats.json';
 
 // Stats — independently verifiable in the repo:
 //   test cases (per lib/proof-stats.json) — `node scripts/generate-proof-stats.mjs`
-//   26 TLA+ invariants verified — formal/PROOF_STATUS.md (T1–T26)
-//   35 Alloy facts — formal/Alloy/EP.als
-//   85 red team cases — docs/conformance/RED_TEAM_CASES.md
+//   formal counts and test totals — generated from current repository manifests
 //   Apache 2.0 — LICENSE
 const TEST_CASES = Number(proofStats.tests?.total || 0).toLocaleString('en-US');
 const TAMARIN_OBLIGATIONS = String(proofStats.tamarin?.verifiedObligations || 0);
@@ -50,7 +49,7 @@ const STACK_LAYERS = [
   {
     label: 'Prevent',
     title: 'EMILIA Gate',
-    body: 'The commercial enforcement product. It challenges, verifies, reserves, invokes, reconciles, and records protected actions at an integrated execution boundary.',
+    body: 'The commercial enforcement product. It composes any required current qualification with local authorization, then reserves, invokes, reconciles, and records protected actions at an integrated execution boundary.',
     href: '/gate',
     accent: color.gold,
   },
@@ -172,7 +171,7 @@ export default function HomePage() {
               mutation.
             </p>
             <div className="ep-home-calm-actions">
-              <Link href="/gate/live" className="ep-home-hero-primary">Open the live Gate</Link>
+              <Link href="/gate/live" className="ep-home-hero-primary">Open the Gate reference</Link>
               <Link href="/gate" className="ep-home-hero-secondary">Review the architecture →</Link>
             </div>
           </motion.div>
@@ -237,6 +236,37 @@ export default function HomePage() {
         </C>
       </section>
 
+      {/* ── GATE QUALIFICATION — portable evidence, local authority ─ */}
+      <section style={{ padding: '72px 0 0' }}>
+        <C>
+          <motion.div
+            {...reveal()}
+            style={{ maxWidth: 820, borderTop: `2px solid ${color.gold}`, paddingTop: 28 }}
+          >
+            <div style={{ fontFamily: font.mono, fontSize: 10, letterSpacing: 2, textTransform: 'uppercase', color: color.gold, marginBottom: 16 }}>
+              {GATE_QUALIFICATION.name} · {GATE_QUALIFICATION.profileLabel}
+            </div>
+            <h2 style={{ fontFamily: font.sans, fontWeight: 700, fontSize: 'clamp(26px, 3vw, 40px)', letterSpacing: -1, lineHeight: 1.15, color: color.t1, margin: 0, maxWidth: 720 }}>
+              Carry evaluation evidence to the consequence boundary without turning it into permission.
+            </h2>
+            <p style={{ fontSize: 17, color: color.t2, lineHeight: 1.72, maxWidth: 720, marginTop: 20 }}>
+              Gate Qualification v2 turns accepted evaluation evidence into a portable, time-bounded
+              qualification for one exact measured candidate and assignment. At the protected request,
+              the relying party checks that qualification beside AEB, AEC, and its own local policy.
+            </p>
+            <p style={{ fontFamily: font.mono, fontSize: 14, fontWeight: 600, color: color.gold, lineHeight: 1.65, marginTop: 18 }}>
+              {GATE_QUALIFICATION.boundaryLine}
+            </p>
+            <p style={{ fontSize: 14, color: color.t3, lineHeight: 1.65, maxWidth: 700, marginTop: 12 }}>
+              {GATE_QUALIFICATION.disclaimer}
+            </p>
+            <Link href="/gate#qualification" style={{ display: 'inline-block', fontFamily: font.mono, fontSize: 12, color: color.gold, marginTop: 18 }}>
+              Review the qualification boundary →
+            </Link>
+          </motion.div>
+        </C>
+      </section>
+
       {/* ── THE INVARIANT (product) ────────────────────────────── */}
       <section style={{ padding: '72px 0 0' }}>
         <C>
@@ -261,7 +291,7 @@ export default function HomePage() {
               ))}
             </div>
             <div style={{ marginTop: 28 }}>
-              <Link href="/gate/live" className="ep-cta-secondary" style={cta.secondary}>Run the live Gate →</Link>
+              <Link href="/gate/live" className="ep-cta-secondary" style={cta.secondary}>Run the Gate reference →</Link>
             </div>
           </motion.div>
         </C>
@@ -811,15 +841,15 @@ export default function HomePage() {
               Three ways in.<br />One consequence boundary.
             </h2>
             <p style={{ fontSize: 16, color: 'rgba(250,250,249,0.6)', lineHeight: 1.6, maxWidth: 480, margin: 0 }}>
-              Protect one tool, deploy the managed Gate, or re-perform the evidence. The open
-              Protocol stays underneath every path.
+              Protect one tool, scope a customer-specific Gate deployment, or re-perform the evidence.
+              The open Protocol stays underneath every path.
             </p>
           </motion.div>
 
           <motion.div className="ep-home-grid-cta" {...reveal(0.08)} style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 16, marginTop: 44 }}>
             {[
               { kind: 'Developer', accent: color.green, title: 'Protect an MCP tool', body: 'Use the open packages to return Receipt Required before one privileged tool call. Self-hosted verification stays free.', label: 'Open the MCP guide', href: '/mcp', btn: { background: '#FAFAF9', color: '#1C1917' } },
-              { kind: 'Operator', accent: color.blue, title: 'Deploy EMILIA Gate', body: 'Managed policy, approval orchestration, evidence operations, and enterprise deployment around one consequential workflow.', label: 'See Gate pricing', href: '/pricing', btn: { background: color.gold, color: '#FAFAF9' } },
+              { kind: 'Operator', accent: color.blue, title: 'Scope EMILIA Gate', body: 'Plan policy, approval orchestration, evidence operations, and a deployment-specific operating boundary around one consequential workflow.', label: 'See Gate pricing', href: '/pricing', btn: { background: color.gold, color: '#FAFAF9' } },
               { kind: 'Assurance', accent: color.gold, title: 'Re-perform the record', body: 'Managed re-performance, conformance records, continuous evidence, and technical packages for your auditor or underwriter.', label: 'Explore Assurance', href: '/assurance', btn: null },
             ].map((d) => (
               <div key={d.kind} style={{ display: 'flex', flexDirection: 'column', border: '1px solid rgba(255,255,255,0.12)', borderTop: `3px solid ${d.accent}`, borderRadius: radius.base, padding: '28px 26px', background: 'rgba(255,255,255,0.02)' }}>

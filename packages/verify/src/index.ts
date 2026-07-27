@@ -35,6 +35,8 @@ export * from './aeb-native-adapters.js';
 export * from './agent-edge-continuity.js';
 export * from './discovery-permit-contract.js';
 export * from './status.js';
+export * from './gate-qualification.js';
+export * from './gate-qualification-promptfoo.js';
 export {
   OUTCOME_ATTESTATION_VERSION,
   OUTCOME_ATTESTATION_DOMAIN,

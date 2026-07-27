@@ -1,0 +1,25 @@
+EMILIA Gate Qualification v2 bounded TLC result
+Execution timestamp: 2026-07-27T06:02:24.106Z
+Checker: TLC 2.19 (TLA+ tools v1.7.4, rev 5a47802)
+Tool SHA-256: 936a262061c914694dfd669a543be24573c45d5aa0ff20a8b96b23d01e050e88
+
+Safe configuration: ep_gate_qualification_v2.cfg
+Safe module: ep_gate_qualification_v2.tla
+Result: Model checking completed. No error has been found.
+States: 4,048 generated; 160 distinct; 0 left on queue; complete depth 14.
+Checked: 19 state invariants and 10 transition properties.
+Reachability witness: FinalizeCommittedDiverged reached 14 distinct successor states across 16 generated successors; COMMITTED+DIVERGED is represented.
+Architecture coverage: SupersedeReserved=1:1; RejectSupersessionIdentityConflict=0:44; AdmitRemedy=3:19; AcceptNotEnteredProviderEvidence=1:2; AcceptNotEnteredEffectEvidence=2:2; FinalizeCommittedDiverged=14:16.
+
+Deliberately unsafe module: ep_gate_qualification_v2_unsafe.tla
+Expected result: Invariant SupersessionOnlyWhileReserved is violated.
+States before counterexample: 165 generated; 15 distinct; 8 left on queue; reported depth 5.
+Counterexample trace: 5 states. The unsafe transition supersedes an already-entered INDETERMINATE qualification.
+
+Safe model SHA-256: c62566b4b727e664a323281b1c5a8c9f6a16f2bc95a57b7ba47d8c89131cff19
+Configuration SHA-256: 534768b1d26095697740cce65bd06b437470a021d896f1353624fa80f32cc41c
+Unsafe model SHA-256: 6586bed37c0f15c3516746bb599bc187d8be55f6dca89c88f1dbeae936f4ccc9
+Checker SHA-256: bdca8fd42d3f34e653530be7d9c0d21ea8cd132559cd4b91977a262636752ba7
+
+Scope: accepted/current qualification, atomic tenant+operation reserve, NOT_ENTERED pre-provider state, authority consumption before INVOKING, post-entry INDETERMINATE fencing, no blind retry, exact authenticated provider/effect evidence, RESERVED-only supersession, one live tenant+operation, supersession with a new admission but the same operation/CAID/canonical action/request/authorization, refusal of same-operation identity conflicts, independent provider/effect axes (including COMMITTED+DIVERGED), accepted NOT_ENTERED evidence fencing, and a separately authorized remedy with a new operation and CAID.
+Boundary: finite same-team control abstraction only. This is not an implementation refinement or evidence that cryptography, provider truth, clocks, storage, deployment, or arbitrary concurrency are correct.

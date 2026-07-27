@@ -43,7 +43,25 @@ AgentROA and the concrete `ORPRG-JSON-JCS-ED25519-v1` profile under separate
 relying-party pins, maps their native action descriptions to one CAID only under
 exact pinned mapping profiles, and can require them beside EP Class-A or quorum
 evidence. Native verification, material-action matching, evidence satisfaction,
-local authorization, and execution are five separate steps.
+candidate qualification, local authorization, admission, and execution remain
+separate steps.
+
+## Gate Qualification v2: portable evidence, local authority
+
+> **Qualification travels. Authorization stays local. Gate controls the consequence.**
+
+Gate Qualification v2 is a public experimental implementation profile that converts accepted
+evaluation evidence into a **portable, time-bounded qualification for one exact measured candidate
+and assignment**. The qualification remains bound to the complete evaluation campaign, current
+status, qualification policy, runtime candidate measurement, assignment, and protected request.
+
+`QUALIFIED` means those evidence and binding checks passed under the relying party's pinned trust
+inputs. It does not mean `AUTHORIZED`, and it cannot reserve resources, call a provider, or establish
+an effect. The relying party separately requires any AEB and AEC evidence and applies local policy to
+the exact action; Gate separately admits the operation and controls provider entry.
+
+This profile is not an authorization, certification, deployment claim, audit opinion, or proof that
+the candidate or resulting action is wise, legal, safe, or successful.
 
 ## What it gates (consequences, not prompts)
 
@@ -52,6 +70,10 @@ deletion · secret access · destructive SQL · grid curtailment · robot/physic
 decision. It does **not** judge "good vs bad AI"; it requires authorization for the act.
 
 ## How it works
+
+When a protected workflow requires evaluated-candidate evidence, Gate first verifies that the
+qualification remains current for the exact measured candidate, assignment, and request. That pure
+decision is side-effect free and supplies only one evidence leg to local Gate composition.
 
 A guarded action runs only if its receipt is **valid** (Ed25519 / canonical JSON, pinned issuer),
 **in-scope** (bound to the exact action), **sufficiently assured** (meets the action's tier),
@@ -117,6 +139,7 @@ certs).
 | **Durable replay + evidence state** | **Postgres consumption and atomic evidence backends** | **built; ownership-fenced consumption, tenant/gate scoping, fork detection, and database immutability controls** |
 | **Bounded capability enforcement** | **Exact-action/CAID scope, atomic budget reservation, operation binding, replay refusal, authenticated reconciliation** | **built in the Gate path with memory and PostgreSQL stores; executable provider-timeout scenario and negative evidence tests** |
 | **Adjacent authorization adapters** | **AgentROA native verifier + concrete ORPRG JCS/Ed25519 verifier** | **built fail closed; shared-CAID suite composes both with genuine EP Class-A quorum evidence** |
+| **Gate Qualification v2** | **Candidate/campaign/status verifier, evaluation-only adapter, Gate composer/orchestrator, admission-store references, conformance fixtures, and bounded model** | **public experimental reference implementation; qualification is not authorization or certification, and durable operated integration remains deployment work** |
 | **Attestation verifier + coverage inventory** | **Source-pinned rebuild chain, strict TPM quote verifier, signed active probes, and five-state coverage kernel** | **verifier and kernel built; TPM interoperability uses a software fixture. No physical TPM, manufacturer EK chain, measured boot, or production-host attestation is claimed** |
 | **Network witness profile** | **Signed, privacy-minimized observation profile with durable sequence ingestion** | **local profile and testnet built; pinned sensor/capture/config, action binding, freshness, replay/rollback/equivocation refusal. No independently administered operator has produced external witness evidence** |
 | **Control plane + settlement eligibility** | **Coverage, evidence joins, outcome verification, metering, and closed settlement verdicts** | **built reference kernel and operator view; managed operation and real partner adapters remain deployment work** |
@@ -128,7 +151,9 @@ certs).
 
 **Commercial layer:** managed policy, approver-directory integrations, evidence export, deployment
 operations, continuous conformance, and warranties. The open verifier and enforcement semantics
-remain reproducible; customers pay EMILIA to operate the control across a fleet.
+remain reproducible. Operated Gate is scoped and quoted for a defined customer deployment after
+implementation acceptance; the public repository does not establish a generally available live
+service.
 
 ## Gate deployment surfaces (the land-grab order)
 
@@ -162,6 +187,10 @@ active revisions remain individual submissions as recorded in
 working-group item, or IETF endorsement. Conformance is earned by executable
 harnesses, not asserted by draft status.
 
+Gate Qualification v2 is an implementation profile over existing public formats and extension
+points. It is not a new Internet-Draft and must not be described as IETF submission, review, adoption,
+or endorsement.
+
 Formal assurance is scoped the same way. Machine-checked models establish named
 properties within their declared bounds and assumptions; they do not prove the
 deployed service, provider, or physical world. The Assurance Plane packages and
@@ -175,6 +204,11 @@ it. What it does: make legitimate infrastructure refuse unreceipted consequentia
 and let clouds/rails/regulators/insurers *require* the receipt — so bad actors get shut out of the
 rails that adopt it. Necessary, not sufficient. That is how a standard wins: first it protects the
 careful, then it becomes a procurement requirement, then unprotected systems look reckless.
+
+A portable qualification does not change that limit. It establishes only that accepted evaluation
+evidence remains current for the exact measured candidate, assignment, and request under pinned
+inputs. The resource owner still authorizes locally, and only a deployed Gate on a completely mediated
+path can control the consequence.
 
 A network TAP or packet broker does not change that boundary. It can provide a separately pinned,
 signed observation row, but a passive observer cannot block an action. The control plane therefore

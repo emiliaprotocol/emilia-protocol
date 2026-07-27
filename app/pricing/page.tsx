@@ -2,17 +2,17 @@ import type { Metadata } from 'next';
 import Link from 'next/link';
 import SiteNav from '@/components/SiteNav';
 import SiteFooter from '@/components/SiteFooter';
-import { GATE_IMPLEMENTATION, MANAGED_PILOT, PRODUCTION_GATE } from '@/lib/commercial-offer';
+import { GATE_IMPLEMENTATION, GATE_QUALIFICATION, MANAGED_PILOT, PRODUCTION_GATE } from '@/lib/commercial-offer';
 import { cta, color, font, radius } from '@/lib/tokens';
 
 export const metadata: Metadata = {
   title: 'EMILIA Gate Pricing',
   description:
-    'Use the open EMILIA Protocol for free, diagnose one legacy workflow with Amelia I, implement Gate at the consequence boundary, then operate it in production.',
+    'Use the open EMILIA Protocol for free, diagnose one legacy workflow with Amelia I, carry accepted evaluation evidence into Gate when required, and scope one customer-specific deployment.',
   alternates: { canonical: '/pricing' },
   openGraph: {
     title: 'EMILIA Gate Pricing',
-    description: 'Open proof infrastructure, a read-only Amelia I diagnostic, a prospective Gate implementation, and operated production controls.',
+    description: 'Open proof infrastructure, a read-only Amelia I diagnostic, an optional qualification entry path, a prospective Gate implementation, and deployment-specific operated controls.',
     url: 'https://www.emiliaprotocol.ai/pricing',
     type: 'website',
   },
@@ -50,6 +50,7 @@ const TIERS: Array<{
       'Open authorization-evidence formats and Gate runtime',
       'TypeScript, Python, and Go verification packages',
       'Public conformance vectors and security case',
+      `${GATE_QUALIFICATION.name} formats and verifier`,
       'MCP and SDK integration packages',
       'Self-hosted under your own trust policy',
       'Community support; your team operates policy and evidence',
@@ -81,7 +82,7 @@ const TIERS: Array<{
     price: GATE_IMPLEMENTATION.priceLabel,
     priceNote: GATE_IMPLEMENTATION.scopeLabel,
     priceIsLabel: true,
-    tagline: 'Turn the selected risk area into a fail-closed prospective control at the real executor boundary.',
+    tagline: 'Turn the selected risk area into a fail-closed prospective control at the real executor boundary, with current candidate qualification when the workflow requires it.',
     accent: color.blue,
     cta: { label: 'Design the Gate', href: '/pilot' },
     ctaStyle: 'secondary' as const,
@@ -91,6 +92,7 @@ const TIERS: Array<{
       'System-of-record action and route binding',
       'Receipt Required challenge and approval acquisition',
       'Exact-action verification and one-time consumption',
+      `Optional qualification for ${GATE_QUALIFICATION.scopeLabel}`,
       'Indeterminate outcome and no-blind-replay handling',
       'Authenticated reconciliation and remedy workflow',
       'Customer acceptance vectors and production runbook',
@@ -99,16 +101,16 @@ const TIERS: Array<{
   {
     name: PRODUCTION_GATE.name,
     price: PRODUCTION_GATE.priceLabel,
-    priceNote: 'quoted by protected workflow and operating boundary',
+    priceNote: PRODUCTION_GATE.scopeLabel,
     priceIsLabel: true,
-    tagline: 'Operate policy, approval, consumption, reconciliation, and evidence for consequential production workflows.',
+    tagline: `Operate policy, approval, consumption, reconciliation, and evidence inside one contracted deployment. ${PRODUCTION_GATE.availabilityLabel}.`,
     accent: color.gold,
-    cta: { label: 'Talk to us', href: '/partners' },
+    cta: { label: 'Scope a deployment', href: '/partners' },
     ctaStyle: 'secondary' as const,
     highlight: false,
-    available: true,
+    available: false,
     features: [
-      'Everything proven in the Gate implementation',
+      'Everything accepted in the Gate implementation',
       'Private cloud, VPC, or self-hosted deployment options',
       'SAML/OIDC identity and SCIM provisioning integration',
       'Durable consumption, reconciliation, dispute, and remedy operations',
@@ -122,6 +124,7 @@ const TIERS: Array<{
 const OPEN_CORE = [
   ['Verify receipts under your own pinned trust policy', true, true, true, true],
   ['Use public formats, packages, and conformance vectors', true, true, true, true],
+  ['Carry accepted evaluation evidence as a time-bounded qualification', true, false, true, true],
   ['Retrospective workflow diagnosis and source-linked cases', false, true, true, true],
   ['Prospective executor-bound enforcement', false, false, true, true],
   ['Managed production evidence and service operations', false, false, false, true],
@@ -157,8 +160,12 @@ export default function PricingPage(): React.ReactElement {
             Diagnose the past. Protect the next effect. Operate the boundary.
           </h1>
           <p style={{ fontSize: 18, color: color.t2, maxWidth: 620, lineHeight: 1.7, margin: 0 }}>
-            The open protocol is free. Amelia I finds the workflow that needs control. Gate then moves from a
-            scoped implementation to an operated production boundary.
+            The open protocol is free. Amelia I finds the workflow that needs control. Gate Qualification
+            can carry accepted evaluation evidence into that decision when needed. Implementation is scoped;
+            Operated Gate is quoted only for a customer-specific deployment.
+          </p>
+          <p style={{ fontFamily: font.mono, fontSize: 13, fontWeight: 600, color: color.gold, lineHeight: 1.65, margin: '18px 0 0' }}>
+            {GATE_QUALIFICATION.boundaryLine}
           </p>
         </C>
       </section>
@@ -218,6 +225,11 @@ export default function PricingPage(): React.ReactElement {
             No seat tax and no generic API-call bundle. Production pricing follows the number and risk of protected
             workflows, the deployment boundary, evidence retention, integrations, and service level.
             {' '}<Link href="/pilot/sandbox" style={{ color: color.gold }}>Run the free sandbox first &rarr;</Link>
+          </p>
+          <p style={{ fontSize: 14, color: color.t2, lineHeight: 1.65, maxWidth: 760, marginTop: 18 }}>
+            <strong style={{ color: color.t1 }}>{GATE_QUALIFICATION.name} is an open entry path, not a pricing or certification tier.</strong>{' '}
+            It carries {GATE_QUALIFICATION.outcomeLabel} into a Gate implementation when the protected
+            workflow requires evaluated-candidate evidence. {GATE_QUALIFICATION.disclaimer}
           </p>
         </C>
       </section>

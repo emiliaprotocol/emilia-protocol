@@ -6,6 +6,20 @@
     { "package": "@emilia-protocol/attest", "ecosystem": "npm", "path": "packages/attest", "workflow": "publish-attest.yml", "tag_prefix": "attest-v", "mode": "npm_reusable" },
     { "package": "@emilia-protocol/crash-test", "ecosystem": "npm", "path": "packages/crash-test", "workflow": "publish-crash-test.yml", "tag_prefix": "crash-test-v", "mode": "npm_reusable" },
     { "package": "ep-verify", "ecosystem": "npm", "path": "packages/ep-verify", "workflow": "publish-ep-verify-npm.yml", "tag_prefix": "ep-verify-npm-v", "mode": "npm_reusable" },
+    {
+      "package": "ep-qualify",
+      "ecosystem": "npm",
+      "path": "packages/qualify",
+      "workflow": "publish-ep-qualify.yml",
+      "tag_prefix": "ep-qualify-v",
+      "mode": "npm_reusable",
+      "registry_dependency_tarballs": [
+        {
+          "spec": "@emilia-protocol/verify@3.16.0",
+          "sha256": "d4d682281fefe95dec0a895c8ec9561c8f6675819d9426c22d390be80f09e3ea"
+        }
+      ]
+    },
     { "package": "@emilia-protocol/fire-drill", "ecosystem": "npm", "path": "packages/fire-drill", "workflow": "publish-fire-drill.yml", "tag_prefix": "fire-drill-v", "mode": "npm_reusable" },
     { "package": "@emilia-protocol/fire-drill-mcp", "ecosystem": "npm", "path": "packages/fire-drill-mcp", "workflow": "publish-fire-drill-mcp.yml", "tag_prefix": "fire-drill-mcp-v", "mode": "npm_reusable" },
     {
@@ -17,8 +31,8 @@
       "mode": "npm_reusable",
       "registry_dependency_tarballs": [
         {
-          "spec": "@emilia-protocol/verify@3.15.1",
-          "sha256": "49a42ddef3e5d84d84072346859d8eedcedbcdba9e4d3e674cba796d2222e3c5"
+          "spec": "@emilia-protocol/verify@3.16.0",
+          "sha256": "d4d682281fefe95dec0a895c8ec9561c8f6675819d9426c22d390be80f09e3ea"
         }
       ]
     },

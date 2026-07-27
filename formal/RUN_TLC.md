@@ -179,6 +179,15 @@ java -Xmx2G -jar ../tla2tools.jar \
   ep_autonomy_control_plane.tla \
   2>&1 | tee tlc-autonomy-control-plane-output.txt
 
+# Gate Qualification v2 uses a dedicated fail-closed wrapper. It authenticates
+# the pinned JAR, exhausts the safe graph, requires the COMMITTED+DIVERGED
+# reachability witness, and requires the deliberately unsafe model to falsify
+# SupersessionOnlyWhileReserved.
+cd ..
+TLA2TOOLS_JAR="$PWD/tla2tools.jar" \
+  node formal/check-gate-qualification-v2.mjs
+cd formal
+
 set +e
 java -Xmx2G -jar ../tla2tools.jar \
   -workers auto \
@@ -238,6 +247,9 @@ still checked over the complete reachable graph.
 and regenerates the selected-trace refinement evidence for relevant changes.
 CI fails if TLC reports an error, an unsafe mutation is not detected, runtime
 projections drift, or regenerated evidence differs from the checked-in bytes.
+The Gate Qualification v2 checker additionally fails when its unsafe model
+does not produce the expected supersession counterexample or when the safe
+model cannot reach the independent `COMMITTED+DIVERGED` terminal state.
 
 ## Troubleshooting
 

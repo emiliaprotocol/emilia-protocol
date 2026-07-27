@@ -636,6 +636,33 @@ falsify `AuthorityNeverExpands`.
 language goal entailment, signature or CAID correctness, fitness-suite quality,
 trusted time, durable storage, provider truth, or implementation refinement.
 
+## TLA+ — `ep_gate_qualification_v2.tla`
+
+**Status:** bounded finite-control model independently rerun on 2026-07-26;
+CI executes the authenticated checker for every relevant change. TLC exhausted
+4,048 generated / 160 distinct safe states to complete depth 14 with zero
+states queued. All 19 state invariants and 10 transition properties held. The
+model also reached `COMMITTED+DIVERGED`, preserving the separation between
+provider commitment and observed effect.
+
+The paired `ep_gate_qualification_v2_unsafe.tla` model deliberately permits
+post-entry supersession. TLC rejected it after 165 generated / 15 distinct
+states with a five-state counterexample to `SupersessionOnlyWhileReserved`.
+The checker fails closed unless both the safe exhaustion and this exact
+negative control occur. Result evidence is recorded in
+`formal/results/gate-qualification-v2.tlc.json` and
+`formal/results/gate-qualification-v2.tlc.summary.txt`.
+
+The model covers accepted/current qualification, atomic operation admission,
+authority consumption before invocation, post-entry indeterminate fencing,
+same-operation identity-preserving supersession, independent provider/effect
+truth, and separately authorized remedy actions.
+
+**Boundary:** finite same-team control abstraction only. This is not a
+mechanized refinement proof and does not establish cryptographic correctness,
+provider or effect truth, trusted time, durable storage, deployment behavior,
+or arbitrary concurrency/cardinality.
+
 ---
 
 When a property is verified by a model checker:
@@ -646,4 +673,4 @@ When a property is verified by a model checker:
 
 ---
 
-_Last updated: 2026-07-24 (70 content-addressed selected model/runtime scenarios across 20 claims and 13 bounded models, 45 paired formal-counterexample/runtime-refusal controls, and action-complete coverage of all 28 declared actions in the end-to-end model). Prior: 2026-07-22 (bounded consequence-attempt/AEB custody model added to the pinned CI gate: 27 checks across 93,724 distinct states, including consume-before-commit ordering and stale-lease-only recovery; deliberately weakened replay model falsifies `InvokeAtMostOnce`). Prior: 2026-07-21 (bounded authority-program and receipt-program models plus Conservation of Authority claim boundary). Prior: 2026-07-10 (composed reliance-path v2: 10 strict lemmas verified; no-consumption and unpinned-registry-view comparisons falsified with concrete traces; all well-formedness checks clean)._
+_Last updated: 2026-07-26 (Gate Qualification v2 bounded model: 19 invariants, 10 properties, independent provider/effect truth, and an expected unsafe supersession counterexample). Prior: 2026-07-24 (70 content-addressed selected model/runtime scenarios across 20 claims and 13 bounded models, 45 paired formal-counterexample/runtime-refusal controls, and action-complete coverage of all 28 declared actions in the end-to-end model). Prior: 2026-07-22 (bounded consequence-attempt/AEB custody model added to the pinned CI gate: 27 checks across 93,724 distinct states, including consume-before-commit ordering and stale-lease-only recovery; deliberately weakened replay model falsifies `InvokeAtMostOnce`). Prior: 2026-07-21 (bounded authority-program and receipt-program models plus Conservation of Authority claim boundary). Prior: 2026-07-10 (composed reliance-path v2: 10 strict lemmas verified; no-consumption and unpinned-registry-view comparisons falsified with concrete traces; all well-formedness checks clean)._

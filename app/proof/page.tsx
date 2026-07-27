@@ -2,6 +2,7 @@ import { headers } from 'next/headers';
 import Link from 'next/link';
 import SiteNav from '@/components/SiteNav';
 import SiteFooter from '@/components/SiteFooter';
+import { GATE_QUALIFICATION } from '@/lib/commercial-offer';
 import { styles, cta, color, font } from '@/lib/tokens';
 import proofStats from '@/lib/proof-stats.json';
 import claimSource from '@/security/claims.v1.json';
@@ -178,7 +179,17 @@ const PROOF_LAYERS = [
   },
 ];
 
-const LIMITS = ['The formal models do not prove that an AI model behaves well or that an approved action is wise, legal, or safe.', 'Selected model/runtime scenarios are same-team conformance evidence under hand-authored mappings. They are not a mechanized proof that every implementation execution refines every formal behavior.', 'The negative controls pair formal counterexamples with safe-runtime refusals; they do not inject those defects into the runtime implementation.', 'Deterministic or in-memory scenario adapters are not production-deployment, storage-durability, provider-truth, sensor-truth, or physical-execution evidence.', 'The symbolic model assumes perfect cryptography and authentic pinned roots; it does not model WebAuthn internals, parser correctness, clock arithmetic, collusion, or registry completeness.', 'JavaScript, Python, and Go are same-team ports. Their agreement demonstrates consistency, not independent construction.', 'The external Rust run is pinned interoperability evidence. Strict clean-room construction acceptance remains false until separately attested under an independently pinned key.', 'Complete mediation exists only when every protected path reaches the verifier at the actual system of record or actuator.'];
+const LIMITS = [
+  'The formal models do not prove that an AI model behaves well or that an approved action is wise, legal, or safe.',
+  GATE_QUALIFICATION.disclaimer,
+  'Selected model/runtime scenarios are same-team conformance evidence under hand-authored mappings. They are not a mechanized proof that every implementation execution refines every formal behavior.',
+  'The negative controls pair formal counterexamples with safe-runtime refusals; they do not inject those defects into the runtime implementation.',
+  'Deterministic or in-memory scenario adapters are not production-deployment, storage-durability, provider-truth, sensor-truth, or physical-execution evidence.',
+  'The symbolic model assumes perfect cryptography and authentic pinned roots; it does not model WebAuthn internals, parser correctness, clock arithmetic, collusion, or registry completeness.',
+  'JavaScript, Python, and Go are same-team ports. Their agreement demonstrates consistency, not independent construction.',
+  'The external Rust run is pinned interoperability evidence. Strict clean-room construction acceptance remains false until separately attested under an independently pinned key.',
+  'Complete mediation exists only when every protected path reaches the verifier at the actual system of record or actuator.',
+];
 
 export default async function ProofPage() {
   const nonce = (await headers()).get('x-nonce') ?? '';
@@ -193,7 +204,7 @@ export default async function ProofPage() {
         dateModified: proofStats.generatedAt,
         author: { '@type': 'Organization', name: 'EMILIA Protocol' },
         publisher: { '@type': 'Organization', name: 'EMILIA Protocol' },
-        about: ['AI agent authorization', 'formal verification', 'security protocol conformance'],
+        about: ['AI agent authorization', 'AI agent qualification evidence', 'formal verification', 'security protocol conformance'],
       },
       {
         '@type': 'Dataset',
@@ -302,6 +313,48 @@ export default async function ProofPage() {
               ))}
             </div>
           </div>
+        </section>
+
+        <section style={{ ...styles.sectionWide, paddingTop: 76, paddingBottom: 76 }}>
+          <div style={{ maxWidth: 800 }}>
+            <div style={{ ...styles.eyebrow, color: color.gold }}>
+              {GATE_QUALIFICATION.name} · evidence boundary
+            </div>
+            <h2 style={{ ...styles.h2, fontSize: 'clamp(26px, 3vw, 38px)', maxWidth: 760 }}>
+              Evaluation evidence can qualify a candidate without authorizing an action.
+            </h2>
+            <p style={{ ...styles.body, fontSize: 16, maxWidth: 760 }}>
+              The public experimental profile turns accepted evaluation evidence into a portable,
+              time-bounded qualification for one exact measured candidate and assignment. At request
+              time, the relying party rechecks current status, candidate measurement, assignment, and
+              protected-request binding before Gate composes that evidence with AEB, AEC, and local policy.
+            </p>
+            <p style={{ fontFamily: font.mono, fontSize: 14, fontWeight: 600, color: color.gold, lineHeight: 1.65, margin: '22px 0 0' }}>
+              {GATE_QUALIFICATION.boundaryLine}
+            </p>
+          </div>
+
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 230px), 1fr))', gap: 16, marginTop: 32 }}>
+            {[
+              ['Qualified', 'Accepted evidence matches the exact candidate, assignment, policy, validity window, and protected request.'],
+              ['Authorized', 'The resource owner separately decides whether local policy permits the exact action with its required AEB and AEC evidence.'],
+              ['Admitted and executed', 'Gate separately reserves resources, consumes one-time authority before provider entry, and records provider and effect evidence.'],
+            ].map(([label, detail]) => (
+              <div key={label} style={{ borderTop: `2px solid ${color.gold}`, padding: '18px 4px 0 0' }}>
+                <h3 style={{ ...styles.h3, fontSize: 17, margin: 0 }}>{label}</h3>
+                <p style={{ ...styles.body, fontSize: 14, color: color.t2, margin: '9px 0 0' }}>{detail}</p>
+              </div>
+            ))}
+          </div>
+
+          <p style={{ fontFamily: font.mono, fontSize: 11, color: color.t3, lineHeight: 1.65, maxWidth: 820, margin: '26px 0 0' }}>
+            {GATE_QUALIFICATION.disclaimer} Current evidence totals remain sourced from the generated
+            repository snapshot dated <time dateTime={proofStats.generatedAt}>{proofStats.generatedAt}</time>;
+            no separate qualification count is hand-maintained on this page.{' '}
+            <a href={`${SOURCE_BLOB}/docs/protocol/gate-qualification-v2.md`} style={{ color: color.gold }}>
+              Inspect the profile source.
+            </a>
+          </p>
         </section>
 
         <section style={{ ...styles.sectionWide, paddingTop: 88, paddingBottom: 80 }}>

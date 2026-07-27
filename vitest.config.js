@@ -90,6 +90,9 @@ export default defineConfig({
     exclude: [
       'e2e/**', '**/node_modules/**', 'dist/**', '.next/**', '.claude/**', '.serena/**',
       'packages/**', 'apps/**', 'examples/**', 'receipt-required-pr-kit/**', '.stryker-*-tmp/**',
+      // Gate Qualification's frozen public corpus is executed with Node's
+      // built-in runner so it can be consumed outside Vitest as-is.
+      'conformance/gate-qualification-v2.test.js',
       // This conformance source deliberately uses node:test because the public
       // vector runner executes it directly on Node. Its generated .js twin is
       // already excluded below; exclude the TypeScript source from Vitest too.

@@ -4,6 +4,41 @@
 All notable changes to `@emilia-protocol/gate` are documented here.
 This package follows [Semantic Versioning](https://semver.org/).
 
+## 0.18.0 (2026-07-26)
+
+### Added
+
+- `./gate-qualification-v2`, with pure qualification/AEB/AEC/local-policy
+  composition plus shadow, enforcement, and evidence-only reconciliation
+  orchestration around a protected adapter.
+- `./admission-store`, a unified immutable admission snapshot, CAS-owned
+  lifecycle, one-time execution right, operation/resource fencing,
+  predecessor-digest journal, supersession, and remedy reference contract.
+- `./admission-store-postgres`, a deployment-bound PostgreSQL RPC adapter for
+  the unified store with single-tenant construction, exact output validation,
+  bounded transaction retries, and ambiguous-begin readback handling.
+- Root-package re-exports, generated declarations, compatibility entry points,
+  and focused package tests for the qualification and admission modules.
+
+### Security
+
+- Qualification remains non-authorizing and cannot replace AEB, AEC, or the
+  relying party's local authorization policy.
+- Authority is consumed before provider entry; uncertain outcomes remain
+  reconciliation-required and cannot be blindly retried.
+- The checked-in memory store is an explicit test-only, non-durable reference.
+  The orchestrator and PostgreSQL adapter consume the canonical unified
+  `AdmissionStore` contract.
+- Enforcement requires authoritative immediate remeasurement of the candidate,
+  qualification status, AEB, AEC, local policy, and protected request before
+  transactional consumption. It also requires protected restart-safe custody
+  for owner and reconciliation capabilities; memory custody is test-only.
+- Qualification decisions bind the exact protected-request digest and cannot
+  be replayed across another otherwise-valid admission.
+- The PostgreSQL adapter is a single-tenant public reference. Managed
+  tenant-principal mapping, deployment migrations, federated atomicity, and
+  managed service operation are not claimed.
+
 ## 0.17.0 (2026-07-26)
 
 ### Added
