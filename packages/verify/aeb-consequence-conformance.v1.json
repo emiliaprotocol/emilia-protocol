@@ -1,0 +1,1689 @@
+{
+  "@version": "AEB-CONSEQUENCE-CONFORMANCE-v1",
+  "claim_scope": {
+    "profile": "local_atomic",
+    "guarantees": [
+      "one_linearizable_local_admission_domain",
+      "operation_and_native_replay_reserved_before_invocation",
+      "execution_authority_consumed_before_provider_entry"
+    ],
+    "exclusions": [
+      "remote_atomicity",
+      "federated_atomicity",
+      "provider_commitment",
+      "observed_effect_truth",
+      "downstream_exactly_once"
+    ]
+  },
+  "vectors": [
+    {
+      "id": "authorized_admission",
+      "input": {
+        "@version": "AEB-CONSEQUENCE-CASE-v1",
+        "id": "authorized_admission",
+        "mode": "ADMISSION",
+        "evaluated_at": "2026-07-27T12:00:00Z",
+        "operation": {
+          "operation_id": "operation:admit:1",
+          "provider_id": "provider:payments",
+          "initiator_id": "agent:initiator:1",
+          "executor_id": "executor:payments:1",
+          "caid": "caid:1:order.purchase.1:jcs-sha256:AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA",
+          "normalized_action_digest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+          "requirements": [
+            {
+              "role": "human-authorization",
+              "principal_kind": "HUMAN",
+              "minimum": 1,
+              "distinct_principals": true,
+              "exclude_initiator": true,
+              "exclude_executor": true
+            }
+          ]
+        },
+        "evidence": [
+          {
+            "wrapper_digest": "sha256:ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff",
+            "native_replay_unit": "sha256:eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee",
+            "native_verification": "VERIFIED",
+            "mapped_caid": "caid:1:order.purchase.1:jcs-sha256:AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA",
+            "mapped_action_digest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+            "role": "human-authorization",
+            "principal_kind": "HUMAN",
+            "principal_id": "human:approver:1",
+            "status": {
+              "verdict": "CURRENT",
+              "authority_pinned": true,
+              "checked_at": "2026-07-27T11:59:00Z",
+              "valid_until": "2026-07-27T13:00:00Z"
+            }
+          }
+        ],
+        "local_policy": "PERMIT",
+        "reservation": {
+          "atomicity": "local_atomic",
+          "prior_operations": [],
+          "consumed_native_replay_units": []
+        },
+        "observation": null,
+        "reconciliation": null
+      },
+      "expected": {
+        "verification": "VERIFIED",
+        "acceptance": "ACCEPTED",
+        "action_match": "MATCH",
+        "satisfaction": "SATISFIED",
+        "authorization": "AUTHORIZED",
+        "reservation": "RESERVED",
+        "custody": "RESERVED",
+        "provider_outcome": "NOT_INVOKED",
+        "effect_relation": "NOT_OBSERVED",
+        "retry": "NOT_APPLICABLE",
+        "reconciliation": "NOT_APPLICABLE",
+        "decision": "ADMIT",
+        "reasons": []
+      }
+    },
+    {
+      "id": "native_verification_failure",
+      "input": {
+        "@version": "AEB-CONSEQUENCE-CASE-v1",
+        "id": "native_verification_failure",
+        "mode": "ADMISSION",
+        "evaluated_at": "2026-07-27T12:00:00Z",
+        "operation": {
+          "operation_id": "operation:native-failure:1",
+          "provider_id": "provider:payments",
+          "initiator_id": "agent:initiator:1",
+          "executor_id": "executor:payments:1",
+          "caid": "caid:1:order.purchase.1:jcs-sha256:AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA",
+          "normalized_action_digest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+          "requirements": [
+            {
+              "role": "human-authorization",
+              "principal_kind": "HUMAN",
+              "minimum": 1,
+              "distinct_principals": true,
+              "exclude_initiator": true,
+              "exclude_executor": true
+            }
+          ]
+        },
+        "evidence": [
+          {
+            "wrapper_digest": "sha256:ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff",
+            "native_replay_unit": "sha256:eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee",
+            "native_verification": "FAILED",
+            "mapped_caid": "caid:1:order.purchase.1:jcs-sha256:AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA",
+            "mapped_action_digest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+            "role": "human-authorization",
+            "principal_kind": "HUMAN",
+            "principal_id": "human:approver:1",
+            "status": {
+              "verdict": "CURRENT",
+              "authority_pinned": true,
+              "checked_at": "2026-07-27T11:59:00Z",
+              "valid_until": "2026-07-27T13:00:00Z"
+            }
+          }
+        ],
+        "local_policy": "PERMIT",
+        "reservation": {
+          "atomicity": "local_atomic",
+          "prior_operations": [],
+          "consumed_native_replay_units": []
+        },
+        "observation": null,
+        "reconciliation": null
+      },
+      "expected": {
+        "verification": "FAILED",
+        "acceptance": "REJECTED",
+        "action_match": "INDETERMINATE",
+        "satisfaction": "UNSATISFIED",
+        "authorization": "NOT_AUTHORIZED",
+        "reservation": "NOT_ATTEMPTED",
+        "custody": "UNRESERVED",
+        "provider_outcome": "NOT_INVOKED",
+        "effect_relation": "NOT_OBSERVED",
+        "retry": "NOT_APPLICABLE",
+        "reconciliation": "NOT_APPLICABLE",
+        "decision": "REFUSE",
+        "reasons": [
+          "native_verification_failed"
+        ]
+      }
+    },
+    {
+      "id": "same_caid_different_normalized_action",
+      "input": {
+        "@version": "AEB-CONSEQUENCE-CASE-v1",
+        "id": "same_caid_different_normalized_action",
+        "mode": "ADMISSION",
+        "evaluated_at": "2026-07-27T12:00:00Z",
+        "operation": {
+          "operation_id": "operation:normalized-mismatch:1",
+          "provider_id": "provider:payments",
+          "initiator_id": "agent:initiator:1",
+          "executor_id": "executor:payments:1",
+          "caid": "caid:1:order.purchase.1:jcs-sha256:AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA",
+          "normalized_action_digest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+          "requirements": [
+            {
+              "role": "human-authorization",
+              "principal_kind": "HUMAN",
+              "minimum": 1,
+              "distinct_principals": true,
+              "exclude_initiator": true,
+              "exclude_executor": true
+            }
+          ]
+        },
+        "evidence": [
+          {
+            "wrapper_digest": "sha256:ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff",
+            "native_replay_unit": "sha256:eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee",
+            "native_verification": "VERIFIED",
+            "mapped_caid": "caid:1:order.purchase.1:jcs-sha256:AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA",
+            "mapped_action_digest": "sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+            "role": "human-authorization",
+            "principal_kind": "HUMAN",
+            "principal_id": "human:approver:1",
+            "status": {
+              "verdict": "CURRENT",
+              "authority_pinned": true,
+              "checked_at": "2026-07-27T11:59:00Z",
+              "valid_until": "2026-07-27T13:00:00Z"
+            }
+          }
+        ],
+        "local_policy": "PERMIT",
+        "reservation": {
+          "atomicity": "local_atomic",
+          "prior_operations": [],
+          "consumed_native_replay_units": []
+        },
+        "observation": null,
+        "reconciliation": null
+      },
+      "expected": {
+        "verification": "VERIFIED",
+        "acceptance": "ACCEPTED",
+        "action_match": "MISMATCH",
+        "satisfaction": "UNSATISFIED",
+        "authorization": "NOT_AUTHORIZED",
+        "reservation": "NOT_ATTEMPTED",
+        "custody": "UNRESERVED",
+        "provider_outcome": "NOT_INVOKED",
+        "effect_relation": "NOT_OBSERVED",
+        "retry": "NOT_APPLICABLE",
+        "reconciliation": "NOT_APPLICABLE",
+        "decision": "REFUSE",
+        "reasons": [
+          "normalized_action_mismatch"
+        ]
+      }
+    },
+    {
+      "id": "exact_action_mismatch",
+      "input": {
+        "@version": "AEB-CONSEQUENCE-CASE-v1",
+        "id": "exact_action_mismatch",
+        "mode": "ADMISSION",
+        "evaluated_at": "2026-07-27T12:00:00Z",
+        "operation": {
+          "operation_id": "operation:caid-mismatch:1",
+          "provider_id": "provider:payments",
+          "initiator_id": "agent:initiator:1",
+          "executor_id": "executor:payments:1",
+          "caid": "caid:1:order.purchase.1:jcs-sha256:AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA",
+          "normalized_action_digest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+          "requirements": [
+            {
+              "role": "human-authorization",
+              "principal_kind": "HUMAN",
+              "minimum": 1,
+              "distinct_principals": true,
+              "exclude_initiator": true,
+              "exclude_executor": true
+            }
+          ]
+        },
+        "evidence": [
+          {
+            "wrapper_digest": "sha256:ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff",
+            "native_replay_unit": "sha256:eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee",
+            "native_verification": "VERIFIED",
+            "mapped_caid": "caid:1:order.purchase.1:jcs-sha256:BBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBB",
+            "mapped_action_digest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+            "role": "human-authorization",
+            "principal_kind": "HUMAN",
+            "principal_id": "human:approver:1",
+            "status": {
+              "verdict": "CURRENT",
+              "authority_pinned": true,
+              "checked_at": "2026-07-27T11:59:00Z",
+              "valid_until": "2026-07-27T13:00:00Z"
+            }
+          }
+        ],
+        "local_policy": "PERMIT",
+        "reservation": {
+          "atomicity": "local_atomic",
+          "prior_operations": [],
+          "consumed_native_replay_units": []
+        },
+        "observation": null,
+        "reconciliation": null
+      },
+      "expected": {
+        "verification": "VERIFIED",
+        "acceptance": "ACCEPTED",
+        "action_match": "MISMATCH",
+        "satisfaction": "UNSATISFIED",
+        "authorization": "NOT_AUTHORIZED",
+        "reservation": "NOT_ATTEMPTED",
+        "custody": "UNRESERVED",
+        "provider_outcome": "NOT_INVOKED",
+        "effect_relation": "NOT_OBSERVED",
+        "retry": "NOT_APPLICABLE",
+        "reconciliation": "NOT_APPLICABLE",
+        "decision": "REFUSE",
+        "reasons": [
+          "exact_action_mismatch"
+        ]
+      }
+    },
+    {
+      "id": "machine_permit_missing_human_role",
+      "input": {
+        "@version": "AEB-CONSEQUENCE-CASE-v1",
+        "id": "machine_permit_missing_human_role",
+        "mode": "ADMISSION",
+        "evaluated_at": "2026-07-27T12:00:00Z",
+        "operation": {
+          "operation_id": "operation:machine-only:1",
+          "provider_id": "provider:payments",
+          "initiator_id": "agent:initiator:1",
+          "executor_id": "executor:payments:1",
+          "caid": "caid:1:order.purchase.1:jcs-sha256:AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA",
+          "normalized_action_digest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+          "requirements": [
+            {
+              "role": "machine-permit",
+              "principal_kind": "MACHINE",
+              "minimum": 1,
+              "distinct_principals": true,
+              "exclude_initiator": true,
+              "exclude_executor": true
+            },
+            {
+              "role": "human-authorization",
+              "principal_kind": "HUMAN",
+              "minimum": 1,
+              "distinct_principals": true,
+              "exclude_initiator": true,
+              "exclude_executor": true
+            }
+          ]
+        },
+        "evidence": [
+          {
+            "wrapper_digest": "sha256:ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff",
+            "native_replay_unit": "sha256:eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee",
+            "native_verification": "VERIFIED",
+            "mapped_caid": "caid:1:order.purchase.1:jcs-sha256:AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA",
+            "mapped_action_digest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+            "role": "machine-permit",
+            "principal_kind": "MACHINE",
+            "principal_id": "machine:policy:1",
+            "status": {
+              "verdict": "CURRENT",
+              "authority_pinned": true,
+              "checked_at": "2026-07-27T11:59:00Z",
+              "valid_until": "2026-07-27T13:00:00Z"
+            }
+          }
+        ],
+        "local_policy": "PERMIT",
+        "reservation": {
+          "atomicity": "local_atomic",
+          "prior_operations": [],
+          "consumed_native_replay_units": []
+        },
+        "observation": null,
+        "reconciliation": null
+      },
+      "expected": {
+        "verification": "VERIFIED",
+        "acceptance": "ACCEPTED",
+        "action_match": "MATCH",
+        "satisfaction": "UNSATISFIED",
+        "authorization": "NOT_AUTHORIZED",
+        "reservation": "NOT_ATTEMPTED",
+        "custody": "UNRESERVED",
+        "provider_outcome": "NOT_INVOKED",
+        "effect_relation": "NOT_OBSERVED",
+        "retry": "NOT_APPLICABLE",
+        "reconciliation": "NOT_APPLICABLE",
+        "decision": "REFUSE",
+        "reasons": [
+          "required_role_unsatisfied"
+        ]
+      }
+    },
+    {
+      "id": "duplicate_principal_quorum_refused",
+      "input": {
+        "@version": "AEB-CONSEQUENCE-CASE-v1",
+        "id": "duplicate_principal_quorum_refused",
+        "mode": "ADMISSION",
+        "evaluated_at": "2026-07-27T12:00:00Z",
+        "operation": {
+          "operation_id": "operation:duplicate-principal:1",
+          "provider_id": "provider:payments",
+          "initiator_id": "agent:initiator:1",
+          "executor_id": "executor:payments:1",
+          "caid": "caid:1:order.purchase.1:jcs-sha256:AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA",
+          "normalized_action_digest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+          "requirements": [
+            {
+              "role": "human-authorization",
+              "principal_kind": "HUMAN",
+              "minimum": 2,
+              "distinct_principals": true,
+              "exclude_initiator": true,
+              "exclude_executor": true
+            }
+          ]
+        },
+        "evidence": [
+          {
+            "wrapper_digest": "sha256:cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+            "native_replay_unit": "sha256:1111111111111111111111111111111111111111111111111111111111111111",
+            "native_verification": "VERIFIED",
+            "mapped_caid": "caid:1:order.purchase.1:jcs-sha256:AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA",
+            "mapped_action_digest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+            "role": "human-authorization",
+            "principal_kind": "HUMAN",
+            "principal_id": "human:approver:duplicate",
+            "status": {
+              "verdict": "CURRENT",
+              "authority_pinned": true,
+              "checked_at": "2026-07-27T11:59:00Z",
+              "valid_until": "2026-07-27T13:00:00Z"
+            }
+          },
+          {
+            "wrapper_digest": "sha256:dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd",
+            "native_replay_unit": "sha256:2222222222222222222222222222222222222222222222222222222222222222",
+            "native_verification": "VERIFIED",
+            "mapped_caid": "caid:1:order.purchase.1:jcs-sha256:AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA",
+            "mapped_action_digest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+            "role": "human-authorization",
+            "principal_kind": "HUMAN",
+            "principal_id": "human:approver:duplicate",
+            "status": {
+              "verdict": "CURRENT",
+              "authority_pinned": true,
+              "checked_at": "2026-07-27T11:59:00Z",
+              "valid_until": "2026-07-27T13:00:00Z"
+            }
+          }
+        ],
+        "local_policy": "PERMIT",
+        "reservation": {
+          "atomicity": "local_atomic",
+          "prior_operations": [],
+          "consumed_native_replay_units": []
+        },
+        "observation": null,
+        "reconciliation": null
+      },
+      "expected": {
+        "verification": "VERIFIED",
+        "acceptance": "ACCEPTED",
+        "action_match": "MATCH",
+        "satisfaction": "UNSATISFIED",
+        "authorization": "NOT_AUTHORIZED",
+        "reservation": "NOT_ATTEMPTED",
+        "custody": "UNRESERVED",
+        "provider_outcome": "NOT_INVOKED",
+        "effect_relation": "NOT_OBSERVED",
+        "retry": "NOT_APPLICABLE",
+        "reconciliation": "NOT_APPLICABLE",
+        "decision": "REFUSE",
+        "reasons": [
+          "distinct_principal_quorum_unsatisfied"
+        ]
+      }
+    },
+    {
+      "id": "initiator_self_approval_refused",
+      "input": {
+        "@version": "AEB-CONSEQUENCE-CASE-v1",
+        "id": "initiator_self_approval_refused",
+        "mode": "ADMISSION",
+        "evaluated_at": "2026-07-27T12:00:00Z",
+        "operation": {
+          "operation_id": "operation:initiator-self:1",
+          "provider_id": "provider:payments",
+          "initiator_id": "agent:initiator:1",
+          "executor_id": "executor:payments:1",
+          "caid": "caid:1:order.purchase.1:jcs-sha256:AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA",
+          "normalized_action_digest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+          "requirements": [
+            {
+              "role": "human-authorization",
+              "principal_kind": "HUMAN",
+              "minimum": 1,
+              "distinct_principals": true,
+              "exclude_initiator": true,
+              "exclude_executor": true
+            }
+          ]
+        },
+        "evidence": [
+          {
+            "wrapper_digest": "sha256:cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+            "native_replay_unit": "sha256:1111111111111111111111111111111111111111111111111111111111111111",
+            "native_verification": "VERIFIED",
+            "mapped_caid": "caid:1:order.purchase.1:jcs-sha256:AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA",
+            "mapped_action_digest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+            "role": "human-authorization",
+            "principal_kind": "HUMAN",
+            "principal_id": "agent:initiator:1",
+            "status": {
+              "verdict": "CURRENT",
+              "authority_pinned": true,
+              "checked_at": "2026-07-27T11:59:00Z",
+              "valid_until": "2026-07-27T13:00:00Z"
+            }
+          }
+        ],
+        "local_policy": "PERMIT",
+        "reservation": {
+          "atomicity": "local_atomic",
+          "prior_operations": [],
+          "consumed_native_replay_units": []
+        },
+        "observation": null,
+        "reconciliation": null
+      },
+      "expected": {
+        "verification": "VERIFIED",
+        "acceptance": "ACCEPTED",
+        "action_match": "MATCH",
+        "satisfaction": "UNSATISFIED",
+        "authorization": "NOT_AUTHORIZED",
+        "reservation": "NOT_ATTEMPTED",
+        "custody": "UNRESERVED",
+        "provider_outcome": "NOT_INVOKED",
+        "effect_relation": "NOT_OBSERVED",
+        "retry": "NOT_APPLICABLE",
+        "reconciliation": "NOT_APPLICABLE",
+        "decision": "REFUSE",
+        "reasons": [
+          "initiator_self_approval_refused"
+        ]
+      }
+    },
+    {
+      "id": "executor_self_approval_refused",
+      "input": {
+        "@version": "AEB-CONSEQUENCE-CASE-v1",
+        "id": "executor_self_approval_refused",
+        "mode": "ADMISSION",
+        "evaluated_at": "2026-07-27T12:00:00Z",
+        "operation": {
+          "operation_id": "operation:executor-self:1",
+          "provider_id": "provider:payments",
+          "initiator_id": "agent:initiator:1",
+          "executor_id": "executor:payments:1",
+          "caid": "caid:1:order.purchase.1:jcs-sha256:AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA",
+          "normalized_action_digest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+          "requirements": [
+            {
+              "role": "human-authorization",
+              "principal_kind": "HUMAN",
+              "minimum": 1,
+              "distinct_principals": true,
+              "exclude_initiator": true,
+              "exclude_executor": true
+            }
+          ]
+        },
+        "evidence": [
+          {
+            "wrapper_digest": "sha256:cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+            "native_replay_unit": "sha256:1111111111111111111111111111111111111111111111111111111111111111",
+            "native_verification": "VERIFIED",
+            "mapped_caid": "caid:1:order.purchase.1:jcs-sha256:AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA",
+            "mapped_action_digest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+            "role": "human-authorization",
+            "principal_kind": "HUMAN",
+            "principal_id": "executor:payments:1",
+            "status": {
+              "verdict": "CURRENT",
+              "authority_pinned": true,
+              "checked_at": "2026-07-27T11:59:00Z",
+              "valid_until": "2026-07-27T13:00:00Z"
+            }
+          }
+        ],
+        "local_policy": "PERMIT",
+        "reservation": {
+          "atomicity": "local_atomic",
+          "prior_operations": [],
+          "consumed_native_replay_units": []
+        },
+        "observation": null,
+        "reconciliation": null
+      },
+      "expected": {
+        "verification": "VERIFIED",
+        "acceptance": "ACCEPTED",
+        "action_match": "MATCH",
+        "satisfaction": "UNSATISFIED",
+        "authorization": "NOT_AUTHORIZED",
+        "reservation": "NOT_ATTEMPTED",
+        "custody": "UNRESERVED",
+        "provider_outcome": "NOT_INVOKED",
+        "effect_relation": "NOT_OBSERVED",
+        "retry": "NOT_APPLICABLE",
+        "reconciliation": "NOT_APPLICABLE",
+        "decision": "REFUSE",
+        "reasons": [
+          "executor_self_approval_refused"
+        ]
+      }
+    },
+    {
+      "id": "stale_evidence",
+      "input": {
+        "@version": "AEB-CONSEQUENCE-CASE-v1",
+        "id": "stale_evidence",
+        "mode": "ADMISSION",
+        "evaluated_at": "2026-07-27T12:00:00Z",
+        "operation": {
+          "operation_id": "operation:stale:1",
+          "provider_id": "provider:payments",
+          "initiator_id": "agent:initiator:1",
+          "executor_id": "executor:payments:1",
+          "caid": "caid:1:order.purchase.1:jcs-sha256:AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA",
+          "normalized_action_digest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+          "requirements": [
+            {
+              "role": "human-authorization",
+              "principal_kind": "HUMAN",
+              "minimum": 1,
+              "distinct_principals": true,
+              "exclude_initiator": true,
+              "exclude_executor": true
+            }
+          ]
+        },
+        "evidence": [
+          {
+            "wrapper_digest": "sha256:ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff",
+            "native_replay_unit": "sha256:eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee",
+            "native_verification": "VERIFIED",
+            "mapped_caid": "caid:1:order.purchase.1:jcs-sha256:AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA",
+            "mapped_action_digest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+            "role": "human-authorization",
+            "principal_kind": "HUMAN",
+            "principal_id": "human:approver:1",
+            "status": {
+              "verdict": "CURRENT",
+              "authority_pinned": true,
+              "checked_at": "2026-07-27T11:58:00Z",
+              "valid_until": "2026-07-27T11:59:59Z"
+            }
+          }
+        ],
+        "local_policy": "PERMIT",
+        "reservation": {
+          "atomicity": "local_atomic",
+          "prior_operations": [],
+          "consumed_native_replay_units": []
+        },
+        "observation": null,
+        "reconciliation": null
+      },
+      "expected": {
+        "verification": "VERIFIED",
+        "acceptance": "INDETERMINATE",
+        "action_match": "MATCH",
+        "satisfaction": "INDETERMINATE",
+        "authorization": "INDETERMINATE",
+        "reservation": "NOT_ATTEMPTED",
+        "custody": "UNRESERVED",
+        "provider_outcome": "NOT_INVOKED",
+        "effect_relation": "NOT_OBSERVED",
+        "retry": "NOT_APPLICABLE",
+        "reconciliation": "NOT_APPLICABLE",
+        "decision": "INDETERMINATE",
+        "reasons": [
+          "evidence_stale"
+        ]
+      }
+    },
+    {
+      "id": "revoked_evidence",
+      "input": {
+        "@version": "AEB-CONSEQUENCE-CASE-v1",
+        "id": "revoked_evidence",
+        "mode": "ADMISSION",
+        "evaluated_at": "2026-07-27T12:00:00Z",
+        "operation": {
+          "operation_id": "operation:revoked:1",
+          "provider_id": "provider:payments",
+          "initiator_id": "agent:initiator:1",
+          "executor_id": "executor:payments:1",
+          "caid": "caid:1:order.purchase.1:jcs-sha256:AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA",
+          "normalized_action_digest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+          "requirements": [
+            {
+              "role": "human-authorization",
+              "principal_kind": "HUMAN",
+              "minimum": 1,
+              "distinct_principals": true,
+              "exclude_initiator": true,
+              "exclude_executor": true
+            }
+          ]
+        },
+        "evidence": [
+          {
+            "wrapper_digest": "sha256:ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff",
+            "native_replay_unit": "sha256:eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee",
+            "native_verification": "VERIFIED",
+            "mapped_caid": "caid:1:order.purchase.1:jcs-sha256:AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA",
+            "mapped_action_digest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+            "role": "human-authorization",
+            "principal_kind": "HUMAN",
+            "principal_id": "human:approver:1",
+            "status": {
+              "verdict": "REVOKED",
+              "authority_pinned": true,
+              "checked_at": "2026-07-27T11:59:00Z",
+              "valid_until": "2026-07-27T13:00:00Z"
+            }
+          }
+        ],
+        "local_policy": "PERMIT",
+        "reservation": {
+          "atomicity": "local_atomic",
+          "prior_operations": [],
+          "consumed_native_replay_units": []
+        },
+        "observation": null,
+        "reconciliation": null
+      },
+      "expected": {
+        "verification": "VERIFIED",
+        "acceptance": "REJECTED",
+        "action_match": "MATCH",
+        "satisfaction": "UNSATISFIED",
+        "authorization": "NOT_AUTHORIZED",
+        "reservation": "NOT_ATTEMPTED",
+        "custody": "UNRESERVED",
+        "provider_outcome": "NOT_INVOKED",
+        "effect_relation": "NOT_OBSERVED",
+        "retry": "NOT_APPLICABLE",
+        "reconciliation": "NOT_APPLICABLE",
+        "decision": "REFUSE",
+        "reasons": [
+          "evidence_revoked"
+        ]
+      }
+    },
+    {
+      "id": "status_unavailable",
+      "input": {
+        "@version": "AEB-CONSEQUENCE-CASE-v1",
+        "id": "status_unavailable",
+        "mode": "ADMISSION",
+        "evaluated_at": "2026-07-27T12:00:00Z",
+        "operation": {
+          "operation_id": "operation:status-unavailable:1",
+          "provider_id": "provider:payments",
+          "initiator_id": "agent:initiator:1",
+          "executor_id": "executor:payments:1",
+          "caid": "caid:1:order.purchase.1:jcs-sha256:AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA",
+          "normalized_action_digest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+          "requirements": [
+            {
+              "role": "human-authorization",
+              "principal_kind": "HUMAN",
+              "minimum": 1,
+              "distinct_principals": true,
+              "exclude_initiator": true,
+              "exclude_executor": true
+            }
+          ]
+        },
+        "evidence": [
+          {
+            "wrapper_digest": "sha256:ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff",
+            "native_replay_unit": "sha256:eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee",
+            "native_verification": "VERIFIED",
+            "mapped_caid": "caid:1:order.purchase.1:jcs-sha256:AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA",
+            "mapped_action_digest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+            "role": "human-authorization",
+            "principal_kind": "HUMAN",
+            "principal_id": "human:approver:1",
+            "status": {
+              "verdict": "UNAVAILABLE",
+              "authority_pinned": true,
+              "checked_at": "2026-07-27T11:59:00Z",
+              "valid_until": "2026-07-27T13:00:00Z"
+            }
+          }
+        ],
+        "local_policy": "PERMIT",
+        "reservation": {
+          "atomicity": "local_atomic",
+          "prior_operations": [],
+          "consumed_native_replay_units": []
+        },
+        "observation": null,
+        "reconciliation": null
+      },
+      "expected": {
+        "verification": "VERIFIED",
+        "acceptance": "INDETERMINATE",
+        "action_match": "MATCH",
+        "satisfaction": "INDETERMINATE",
+        "authorization": "INDETERMINATE",
+        "reservation": "NOT_ATTEMPTED",
+        "custody": "UNRESERVED",
+        "provider_outcome": "NOT_INVOKED",
+        "effect_relation": "NOT_OBSERVED",
+        "retry": "NOT_APPLICABLE",
+        "reconciliation": "NOT_APPLICABLE",
+        "decision": "INDETERMINATE",
+        "reasons": [
+          "status_unavailable"
+        ]
+      }
+    },
+    {
+      "id": "unpinned_status_rejected",
+      "input": {
+        "@version": "AEB-CONSEQUENCE-CASE-v1",
+        "id": "unpinned_status_rejected",
+        "mode": "ADMISSION",
+        "evaluated_at": "2026-07-27T12:00:00Z",
+        "operation": {
+          "operation_id": "operation:status-unpinned:1",
+          "provider_id": "provider:payments",
+          "initiator_id": "agent:initiator:1",
+          "executor_id": "executor:payments:1",
+          "caid": "caid:1:order.purchase.1:jcs-sha256:AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA",
+          "normalized_action_digest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+          "requirements": [
+            {
+              "role": "human-authorization",
+              "principal_kind": "HUMAN",
+              "minimum": 1,
+              "distinct_principals": true,
+              "exclude_initiator": true,
+              "exclude_executor": true
+            }
+          ]
+        },
+        "evidence": [
+          {
+            "wrapper_digest": "sha256:ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff",
+            "native_replay_unit": "sha256:eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee",
+            "native_verification": "VERIFIED",
+            "mapped_caid": "caid:1:order.purchase.1:jcs-sha256:AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA",
+            "mapped_action_digest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+            "role": "human-authorization",
+            "principal_kind": "HUMAN",
+            "principal_id": "human:approver:1",
+            "status": {
+              "verdict": "CURRENT",
+              "authority_pinned": false,
+              "checked_at": "2026-07-27T11:59:00Z",
+              "valid_until": "2026-07-27T13:00:00Z"
+            }
+          }
+        ],
+        "local_policy": "PERMIT",
+        "reservation": {
+          "atomicity": "local_atomic",
+          "prior_operations": [],
+          "consumed_native_replay_units": []
+        },
+        "observation": null,
+        "reconciliation": null
+      },
+      "expected": {
+        "verification": "VERIFIED",
+        "acceptance": "REJECTED",
+        "action_match": "MATCH",
+        "satisfaction": "UNSATISFIED",
+        "authorization": "NOT_AUTHORIZED",
+        "reservation": "NOT_ATTEMPTED",
+        "custody": "UNRESERVED",
+        "provider_outcome": "NOT_INVOKED",
+        "effect_relation": "NOT_OBSERVED",
+        "retry": "NOT_APPLICABLE",
+        "reconciliation": "NOT_APPLICABLE",
+        "decision": "REFUSE",
+        "reasons": [
+          "status_authority_not_pinned"
+        ]
+      }
+    },
+    {
+      "id": "atomic_reservation_unavailable",
+      "input": {
+        "@version": "AEB-CONSEQUENCE-CASE-v1",
+        "id": "atomic_reservation_unavailable",
+        "mode": "ADMISSION",
+        "evaluated_at": "2026-07-27T12:00:00Z",
+        "operation": {
+          "operation_id": "operation:no-reservation:1",
+          "provider_id": "provider:payments",
+          "caid": "caid:1:order.purchase.1:jcs-sha256:AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA",
+          "normalized_action_digest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+          "requirements": [
+            {
+              "role": "human-authorization",
+              "principal_kind": "HUMAN",
+              "minimum": 1,
+              "distinct_principals": false,
+              "exclude_initiator": false,
+              "exclude_executor": false
+            }
+          ],
+          "initiator_id": "agent:initiator",
+          "executor_id": "workload:executor"
+        },
+        "evidence": [
+          {
+            "wrapper_digest": "sha256:ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff",
+            "native_replay_unit": "sha256:eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee",
+            "native_verification": "VERIFIED",
+            "mapped_caid": "caid:1:order.purchase.1:jcs-sha256:AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA",
+            "mapped_action_digest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+            "role": "human-authorization",
+            "principal_kind": "HUMAN",
+            "status": {
+              "verdict": "CURRENT",
+              "checked_at": "2026-07-27T11:59:00Z",
+              "valid_until": "2026-07-27T13:00:00Z",
+              "authority_pinned": true
+            },
+            "principal_id": "human:alice"
+          }
+        ],
+        "local_policy": "PERMIT",
+        "reservation": {
+          "atomicity": "unavailable",
+          "prior_operations": [],
+          "consumed_native_replay_units": []
+        },
+        "observation": null,
+        "reconciliation": null
+      },
+      "expected": {
+        "verification": "VERIFIED",
+        "action_match": "MATCH",
+        "satisfaction": "SATISFIED",
+        "authorization": "AUTHORIZED",
+        "reservation": "UNAVAILABLE",
+        "custody": "UNRESERVED",
+        "provider_outcome": "NOT_INVOKED",
+        "effect_relation": "NOT_OBSERVED",
+        "retry": "NOT_APPLICABLE",
+        "reconciliation": "NOT_APPLICABLE",
+        "decision": "REFUSE",
+        "reasons": [
+          "local_atomic_reservation_unavailable"
+        ],
+        "acceptance": "ACCEPTED"
+      }
+    },
+    {
+      "id": "operation_replay",
+      "input": {
+        "@version": "AEB-CONSEQUENCE-CASE-v1",
+        "id": "operation_replay",
+        "mode": "ADMISSION",
+        "evaluated_at": "2026-07-27T12:00:00Z",
+        "operation": {
+          "operation_id": "operation:replayed:1",
+          "provider_id": "provider:payments",
+          "caid": "caid:1:order.purchase.1:jcs-sha256:AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA",
+          "normalized_action_digest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+          "requirements": [
+            {
+              "role": "human-authorization",
+              "principal_kind": "HUMAN",
+              "minimum": 1,
+              "distinct_principals": false,
+              "exclude_initiator": false,
+              "exclude_executor": false
+            }
+          ],
+          "initiator_id": "agent:initiator",
+          "executor_id": "workload:executor"
+        },
+        "evidence": [
+          {
+            "wrapper_digest": "sha256:ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff",
+            "native_replay_unit": "sha256:eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee",
+            "native_verification": "VERIFIED",
+            "mapped_caid": "caid:1:order.purchase.1:jcs-sha256:AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA",
+            "mapped_action_digest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+            "role": "human-authorization",
+            "principal_kind": "HUMAN",
+            "status": {
+              "verdict": "CURRENT",
+              "checked_at": "2026-07-27T11:59:00Z",
+              "valid_until": "2026-07-27T13:00:00Z",
+              "authority_pinned": true
+            },
+            "principal_id": "human:alice"
+          }
+        ],
+        "local_policy": "PERMIT",
+        "reservation": {
+          "atomicity": "local_atomic",
+          "prior_operations": [
+            {
+              "operation_id": "operation:replayed:1",
+              "caid": "caid:1:order.purchase.1:jcs-sha256:AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA",
+              "normalized_action_digest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+              "custody": "TERMINAL",
+              "provider_outcome": "COMMITTED",
+              "effect_relation": "OBSERVED_AS_REQUESTED"
+            }
+          ],
+          "consumed_native_replay_units": []
+        },
+        "observation": null,
+        "reconciliation": null
+      },
+      "expected": {
+        "verification": "VERIFIED",
+        "action_match": "MATCH",
+        "satisfaction": "SATISFIED",
+        "authorization": "AUTHORIZED",
+        "reservation": "OPERATION_REPLAY",
+        "custody": "TERMINAL",
+        "provider_outcome": "COMMITTED",
+        "effect_relation": "OBSERVED_AS_REQUESTED",
+        "retry": "REFUSED",
+        "reconciliation": "NOT_REQUIRED",
+        "decision": "REFUSE",
+        "reasons": [
+          "operation_replay"
+        ],
+        "acceptance": "ACCEPTED"
+      }
+    },
+    {
+      "id": "native_evidence_rewrapped",
+      "input": {
+        "@version": "AEB-CONSEQUENCE-CASE-v1",
+        "id": "native_evidence_rewrapped",
+        "mode": "ADMISSION",
+        "evaluated_at": "2026-07-27T12:00:00Z",
+        "operation": {
+          "operation_id": "operation:rewrapped:1",
+          "provider_id": "provider:payments",
+          "caid": "caid:1:order.purchase.1:jcs-sha256:AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA",
+          "normalized_action_digest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+          "requirements": [
+            {
+              "role": "human-authorization",
+              "principal_kind": "HUMAN",
+              "minimum": 1,
+              "distinct_principals": false,
+              "exclude_initiator": false,
+              "exclude_executor": false
+            }
+          ],
+          "initiator_id": "agent:initiator",
+          "executor_id": "workload:executor"
+        },
+        "evidence": [
+          {
+            "wrapper_digest": "sha256:dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd",
+            "native_replay_unit": "sha256:eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee",
+            "native_verification": "VERIFIED",
+            "mapped_caid": "caid:1:order.purchase.1:jcs-sha256:AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA",
+            "mapped_action_digest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+            "role": "human-authorization",
+            "principal_kind": "HUMAN",
+            "status": {
+              "verdict": "CURRENT",
+              "checked_at": "2026-07-27T11:59:00Z",
+              "valid_until": "2026-07-27T13:00:00Z",
+              "authority_pinned": true
+            },
+            "principal_id": "human:alice"
+          }
+        ],
+        "local_policy": "PERMIT",
+        "reservation": {
+          "atomicity": "local_atomic",
+          "prior_operations": [],
+          "consumed_native_replay_units": [
+            "sha256:eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee"
+          ]
+        },
+        "observation": null,
+        "reconciliation": null
+      },
+      "expected": {
+        "verification": "VERIFIED",
+        "action_match": "MATCH",
+        "satisfaction": "SATISFIED",
+        "authorization": "AUTHORIZED",
+        "reservation": "NATIVE_EVIDENCE_REPLAY",
+        "custody": "UNRESERVED",
+        "provider_outcome": "NOT_INVOKED",
+        "effect_relation": "NOT_OBSERVED",
+        "retry": "REFUSED",
+        "reconciliation": "NOT_APPLICABLE",
+        "decision": "REFUSE",
+        "reasons": [
+          "native_evidence_replay"
+        ],
+        "acceptance": "ACCEPTED"
+      }
+    },
+    {
+      "id": "timeout_after_dispatch",
+      "input": {
+        "@version": "AEB-CONSEQUENCE-CASE-v1",
+        "id": "timeout_after_dispatch",
+        "mode": "INVOCATION_OBSERVATION",
+        "evaluated_at": "2026-07-27T12:00:00Z",
+        "operation": {
+          "operation_id": "operation:timeout:1",
+          "provider_id": "provider:payments",
+          "caid": "caid:1:order.purchase.1:jcs-sha256:AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA",
+          "normalized_action_digest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+          "requirements": [
+            {
+              "role": "human-authorization",
+              "principal_kind": "HUMAN",
+              "minimum": 1,
+              "distinct_principals": false,
+              "exclude_initiator": false,
+              "exclude_executor": false
+            }
+          ],
+          "initiator_id": "agent:initiator",
+          "executor_id": "workload:executor"
+        },
+        "evidence": [
+          {
+            "wrapper_digest": "sha256:ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff",
+            "native_replay_unit": "sha256:eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee",
+            "native_verification": "VERIFIED",
+            "mapped_caid": "caid:1:order.purchase.1:jcs-sha256:AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA",
+            "mapped_action_digest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+            "role": "human-authorization",
+            "principal_kind": "HUMAN",
+            "status": {
+              "verdict": "CURRENT",
+              "checked_at": "2026-07-27T11:59:00Z",
+              "valid_until": "2026-07-27T13:00:00Z",
+              "authority_pinned": true
+            },
+            "principal_id": "human:alice"
+          }
+        ],
+        "local_policy": "PERMIT",
+        "reservation": {
+          "atomicity": "local_atomic",
+          "prior_operations": [
+            {
+              "operation_id": "operation:timeout:1",
+              "caid": "caid:1:order.purchase.1:jcs-sha256:AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA",
+              "normalized_action_digest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+              "custody": "INVOKING",
+              "provider_outcome": "NOT_INVOKED",
+              "effect_relation": "NOT_OBSERVED"
+            }
+          ],
+          "consumed_native_replay_units": []
+        },
+        "observation": {
+          "source": "TIMEOUT_AFTER_DISPATCH",
+          "provider_outcome": "INDETERMINATE",
+          "effect_relation": "INDETERMINATE"
+        },
+        "reconciliation": null
+      },
+      "expected": {
+        "verification": "VERIFIED",
+        "action_match": "MATCH",
+        "satisfaction": "SATISFIED",
+        "authorization": "AUTHORIZED",
+        "reservation": "CONSUMED",
+        "custody": "INVOKING",
+        "provider_outcome": "INDETERMINATE",
+        "effect_relation": "INDETERMINATE",
+        "retry": "REFUSED",
+        "reconciliation": "REQUIRED",
+        "decision": "INDETERMINATE",
+        "reasons": [
+          "timeout_after_dispatch"
+        ],
+        "acceptance": "ACCEPTED"
+      }
+    },
+    {
+      "id": "blind_retry_refused",
+      "input": {
+        "@version": "AEB-CONSEQUENCE-CASE-v1",
+        "id": "blind_retry_refused",
+        "mode": "RETRY",
+        "evaluated_at": "2026-07-27T12:00:00Z",
+        "operation": {
+          "operation_id": "operation:blind-retry:1",
+          "provider_id": "provider:payments",
+          "caid": "caid:1:order.purchase.1:jcs-sha256:AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA",
+          "normalized_action_digest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+          "requirements": [
+            {
+              "role": "human-authorization",
+              "principal_kind": "HUMAN",
+              "minimum": 1,
+              "distinct_principals": false,
+              "exclude_initiator": false,
+              "exclude_executor": false
+            }
+          ],
+          "initiator_id": "agent:initiator",
+          "executor_id": "workload:executor"
+        },
+        "evidence": [
+          {
+            "wrapper_digest": "sha256:ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff",
+            "native_replay_unit": "sha256:eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee",
+            "native_verification": "VERIFIED",
+            "mapped_caid": "caid:1:order.purchase.1:jcs-sha256:AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA",
+            "mapped_action_digest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+            "role": "human-authorization",
+            "principal_kind": "HUMAN",
+            "status": {
+              "verdict": "CURRENT",
+              "checked_at": "2026-07-27T11:59:00Z",
+              "valid_until": "2026-07-27T13:00:00Z",
+              "authority_pinned": true
+            },
+            "principal_id": "human:alice"
+          }
+        ],
+        "local_policy": "PERMIT",
+        "reservation": {
+          "atomicity": "local_atomic",
+          "prior_operations": [
+            {
+              "operation_id": "operation:blind-retry:1",
+              "caid": "caid:1:order.purchase.1:jcs-sha256:AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA",
+              "normalized_action_digest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+              "custody": "INVOKING",
+              "provider_outcome": "INDETERMINATE",
+              "effect_relation": "INDETERMINATE"
+            }
+          ],
+          "consumed_native_replay_units": []
+        },
+        "observation": null,
+        "reconciliation": null
+      },
+      "expected": {
+        "verification": "VERIFIED",
+        "action_match": "MATCH",
+        "satisfaction": "SATISFIED",
+        "authorization": "AUTHORIZED",
+        "reservation": "OPERATION_REPLAY",
+        "custody": "INVOKING",
+        "provider_outcome": "INDETERMINATE",
+        "effect_relation": "INDETERMINATE",
+        "retry": "REFUSED",
+        "reconciliation": "REQUIRED",
+        "decision": "REFUSE",
+        "reasons": [
+          "blind_retry_refused"
+        ],
+        "acceptance": "ACCEPTED"
+      }
+    },
+    {
+      "id": "unauthenticated_reconciliation_refused",
+      "input": {
+        "@version": "AEB-CONSEQUENCE-CASE-v1",
+        "id": "unauthenticated_reconciliation_refused",
+        "mode": "RECONCILIATION",
+        "evaluated_at": "2026-07-27T12:00:00Z",
+        "operation": {
+          "operation_id": "operation:reconcile-refused:1",
+          "provider_id": "provider:payments",
+          "caid": "caid:1:order.purchase.1:jcs-sha256:AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA",
+          "normalized_action_digest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+          "requirements": [
+            {
+              "role": "human-authorization",
+              "principal_kind": "HUMAN",
+              "minimum": 1,
+              "distinct_principals": false,
+              "exclude_initiator": false,
+              "exclude_executor": false
+            }
+          ],
+          "initiator_id": "agent:initiator",
+          "executor_id": "workload:executor"
+        },
+        "evidence": [
+          {
+            "wrapper_digest": "sha256:ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff",
+            "native_replay_unit": "sha256:eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee",
+            "native_verification": "VERIFIED",
+            "mapped_caid": "caid:1:order.purchase.1:jcs-sha256:AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA",
+            "mapped_action_digest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+            "role": "human-authorization",
+            "principal_kind": "HUMAN",
+            "status": {
+              "verdict": "CURRENT",
+              "checked_at": "2026-07-27T11:59:00Z",
+              "valid_until": "2026-07-27T13:00:00Z",
+              "authority_pinned": true
+            },
+            "principal_id": "human:alice"
+          }
+        ],
+        "local_policy": "PERMIT",
+        "reservation": {
+          "atomicity": "local_atomic",
+          "prior_operations": [
+            {
+              "operation_id": "operation:reconcile-refused:1",
+              "caid": "caid:1:order.purchase.1:jcs-sha256:AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA",
+              "normalized_action_digest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+              "custody": "INVOKING",
+              "provider_outcome": "INDETERMINATE",
+              "effect_relation": "INDETERMINATE"
+            }
+          ],
+          "consumed_native_replay_units": []
+        },
+        "observation": null,
+        "reconciliation": {
+          "authenticated": false,
+          "provider_id": "provider:payments",
+          "operation_id": "operation:reconcile-refused:1",
+          "caid": "caid:1:order.purchase.1:jcs-sha256:AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA",
+          "normalized_action_digest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+          "provider_outcome": "COMMITTED",
+          "effect_relation": "OBSERVED_AS_REQUESTED"
+        }
+      },
+      "expected": {
+        "verification": "VERIFIED",
+        "action_match": "MATCH",
+        "satisfaction": "SATISFIED",
+        "authorization": "AUTHORIZED",
+        "reservation": "CONSUMED",
+        "custody": "INVOKING",
+        "provider_outcome": "INDETERMINATE",
+        "effect_relation": "INDETERMINATE",
+        "retry": "REFUSED",
+        "reconciliation": "REFUSED",
+        "decision": "REFUSE",
+        "reasons": [
+          "unauthenticated_reconciliation"
+        ],
+        "acceptance": "ACCEPTED"
+      }
+    },
+    {
+      "id": "authenticated_executed_reconciliation",
+      "input": {
+        "@version": "AEB-CONSEQUENCE-CASE-v1",
+        "id": "authenticated_executed_reconciliation",
+        "mode": "RECONCILIATION",
+        "evaluated_at": "2026-07-27T12:00:00Z",
+        "operation": {
+          "operation_id": "operation:reconcile-executed:1",
+          "provider_id": "provider:payments",
+          "caid": "caid:1:order.purchase.1:jcs-sha256:AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA",
+          "normalized_action_digest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+          "requirements": [
+            {
+              "role": "human-authorization",
+              "principal_kind": "HUMAN",
+              "minimum": 1,
+              "distinct_principals": false,
+              "exclude_initiator": false,
+              "exclude_executor": false
+            }
+          ],
+          "initiator_id": "agent:initiator",
+          "executor_id": "workload:executor"
+        },
+        "evidence": [
+          {
+            "wrapper_digest": "sha256:ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff",
+            "native_replay_unit": "sha256:eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee",
+            "native_verification": "VERIFIED",
+            "mapped_caid": "caid:1:order.purchase.1:jcs-sha256:AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA",
+            "mapped_action_digest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+            "role": "human-authorization",
+            "principal_kind": "HUMAN",
+            "status": {
+              "verdict": "CURRENT",
+              "checked_at": "2026-07-27T11:59:00Z",
+              "valid_until": "2026-07-27T13:00:00Z",
+              "authority_pinned": true
+            },
+            "principal_id": "human:alice"
+          }
+        ],
+        "local_policy": "PERMIT",
+        "reservation": {
+          "atomicity": "local_atomic",
+          "prior_operations": [
+            {
+              "operation_id": "operation:reconcile-executed:1",
+              "caid": "caid:1:order.purchase.1:jcs-sha256:AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA",
+              "normalized_action_digest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+              "custody": "INVOKING",
+              "provider_outcome": "INDETERMINATE",
+              "effect_relation": "INDETERMINATE"
+            }
+          ],
+          "consumed_native_replay_units": []
+        },
+        "observation": null,
+        "reconciliation": {
+          "authenticated": true,
+          "provider_id": "provider:payments",
+          "operation_id": "operation:reconcile-executed:1",
+          "caid": "caid:1:order.purchase.1:jcs-sha256:AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA",
+          "normalized_action_digest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+          "provider_outcome": "COMMITTED",
+          "effect_relation": "OBSERVED_AS_REQUESTED"
+        }
+      },
+      "expected": {
+        "verification": "VERIFIED",
+        "action_match": "MATCH",
+        "satisfaction": "SATISFIED",
+        "authorization": "AUTHORIZED",
+        "reservation": "CONSUMED",
+        "custody": "TERMINAL",
+        "provider_outcome": "COMMITTED",
+        "effect_relation": "OBSERVED_AS_REQUESTED",
+        "retry": "REFUSED",
+        "reconciliation": "ACCEPTED",
+        "decision": "RECONCILED",
+        "reasons": [
+          "authenticated_reconciliation"
+        ],
+        "acceptance": "ACCEPTED"
+      }
+    },
+    {
+      "id": "provider_committed_effect_diverged",
+      "input": {
+        "@version": "AEB-CONSEQUENCE-CASE-v1",
+        "id": "provider_committed_effect_diverged",
+        "mode": "INVOCATION_OBSERVATION",
+        "evaluated_at": "2026-07-27T12:00:00Z",
+        "operation": {
+          "operation_id": "operation:diverged:1",
+          "provider_id": "provider:payments",
+          "caid": "caid:1:order.purchase.1:jcs-sha256:AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA",
+          "normalized_action_digest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+          "requirements": [
+            {
+              "role": "human-authorization",
+              "principal_kind": "HUMAN",
+              "minimum": 1,
+              "distinct_principals": false,
+              "exclude_initiator": false,
+              "exclude_executor": false
+            }
+          ],
+          "initiator_id": "agent:initiator",
+          "executor_id": "workload:executor"
+        },
+        "evidence": [
+          {
+            "wrapper_digest": "sha256:ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff",
+            "native_replay_unit": "sha256:eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee",
+            "native_verification": "VERIFIED",
+            "mapped_caid": "caid:1:order.purchase.1:jcs-sha256:AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA",
+            "mapped_action_digest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+            "role": "human-authorization",
+            "principal_kind": "HUMAN",
+            "status": {
+              "verdict": "CURRENT",
+              "checked_at": "2026-07-27T11:59:00Z",
+              "valid_until": "2026-07-27T13:00:00Z",
+              "authority_pinned": true
+            },
+            "principal_id": "human:alice"
+          }
+        ],
+        "local_policy": "PERMIT",
+        "reservation": {
+          "atomicity": "local_atomic",
+          "prior_operations": [
+            {
+              "operation_id": "operation:diverged:1",
+              "caid": "caid:1:order.purchase.1:jcs-sha256:AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA",
+              "normalized_action_digest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+              "custody": "INVOKING",
+              "provider_outcome": "NOT_INVOKED",
+              "effect_relation": "NOT_OBSERVED"
+            }
+          ],
+          "consumed_native_replay_units": []
+        },
+        "observation": {
+          "source": "PROVIDER_EVIDENCE",
+          "provider_outcome": "COMMITTED",
+          "effect_relation": "DIVERGED"
+        },
+        "reconciliation": null
+      },
+      "expected": {
+        "verification": "VERIFIED",
+        "action_match": "MATCH",
+        "satisfaction": "SATISFIED",
+        "authorization": "AUTHORIZED",
+        "reservation": "CONSUMED",
+        "custody": "TERMINAL",
+        "provider_outcome": "COMMITTED",
+        "effect_relation": "DIVERGED",
+        "retry": "REFUSED",
+        "reconciliation": "NOT_REQUIRED",
+        "decision": "RECORDED",
+        "reasons": [
+          "provider_committed_effect_diverged"
+        ],
+        "acceptance": "ACCEPTED"
+      }
+    },
+    {
+      "id": "provider_unknown_effect_unknown",
+      "input": {
+        "@version": "AEB-CONSEQUENCE-CASE-v1",
+        "id": "provider_unknown_effect_unknown",
+        "mode": "INVOCATION_OBSERVATION",
+        "evaluated_at": "2026-07-27T12:00:00Z",
+        "operation": {
+          "operation_id": "operation:unknown:1",
+          "provider_id": "provider:payments",
+          "caid": "caid:1:order.purchase.1:jcs-sha256:AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA",
+          "normalized_action_digest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+          "requirements": [
+            {
+              "role": "human-authorization",
+              "principal_kind": "HUMAN",
+              "minimum": 1,
+              "distinct_principals": false,
+              "exclude_initiator": false,
+              "exclude_executor": false
+            }
+          ],
+          "initiator_id": "agent:initiator",
+          "executor_id": "workload:executor"
+        },
+        "evidence": [
+          {
+            "wrapper_digest": "sha256:ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff",
+            "native_replay_unit": "sha256:eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee",
+            "native_verification": "VERIFIED",
+            "mapped_caid": "caid:1:order.purchase.1:jcs-sha256:AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA",
+            "mapped_action_digest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+            "role": "human-authorization",
+            "principal_kind": "HUMAN",
+            "status": {
+              "verdict": "CURRENT",
+              "checked_at": "2026-07-27T11:59:00Z",
+              "valid_until": "2026-07-27T13:00:00Z",
+              "authority_pinned": true
+            },
+            "principal_id": "human:alice"
+          }
+        ],
+        "local_policy": "PERMIT",
+        "reservation": {
+          "atomicity": "local_atomic",
+          "prior_operations": [
+            {
+              "operation_id": "operation:unknown:1",
+              "caid": "caid:1:order.purchase.1:jcs-sha256:AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA",
+              "normalized_action_digest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+              "custody": "INVOKING",
+              "provider_outcome": "NOT_INVOKED",
+              "effect_relation": "NOT_OBSERVED"
+            }
+          ],
+          "consumed_native_replay_units": []
+        },
+        "observation": {
+          "source": "PROVIDER_EVIDENCE",
+          "provider_outcome": "INDETERMINATE",
+          "effect_relation": "INDETERMINATE"
+        },
+        "reconciliation": null
+      },
+      "expected": {
+        "verification": "VERIFIED",
+        "action_match": "MATCH",
+        "satisfaction": "SATISFIED",
+        "authorization": "AUTHORIZED",
+        "reservation": "CONSUMED",
+        "custody": "INVOKING",
+        "provider_outcome": "INDETERMINATE",
+        "effect_relation": "INDETERMINATE",
+        "retry": "REFUSED",
+        "reconciliation": "REQUIRED",
+        "decision": "INDETERMINATE",
+        "reasons": [
+          "provider_and_effect_indeterminate"
+        ],
+        "acceptance": "ACCEPTED"
+      }
+    },
+    {
+      "id": "provider_proven_not_committed",
+      "input": {
+        "@version": "AEB-CONSEQUENCE-CASE-v1",
+        "id": "provider_proven_not_committed",
+        "mode": "INVOCATION_OBSERVATION",
+        "evaluated_at": "2026-07-27T12:00:00Z",
+        "operation": {
+          "operation_id": "operation:not-committed:1",
+          "provider_id": "provider:payments",
+          "caid": "caid:1:order.purchase.1:jcs-sha256:AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA",
+          "normalized_action_digest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+          "requirements": [
+            {
+              "role": "human-authorization",
+              "principal_kind": "HUMAN",
+              "minimum": 1,
+              "distinct_principals": false,
+              "exclude_initiator": false,
+              "exclude_executor": false
+            }
+          ],
+          "initiator_id": "agent:initiator",
+          "executor_id": "workload:executor"
+        },
+        "evidence": [
+          {
+            "wrapper_digest": "sha256:ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff",
+            "native_replay_unit": "sha256:eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee",
+            "native_verification": "VERIFIED",
+            "mapped_caid": "caid:1:order.purchase.1:jcs-sha256:AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA",
+            "mapped_action_digest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+            "role": "human-authorization",
+            "principal_kind": "HUMAN",
+            "status": {
+              "verdict": "CURRENT",
+              "checked_at": "2026-07-27T11:59:00Z",
+              "valid_until": "2026-07-27T13:00:00Z",
+              "authority_pinned": true
+            },
+            "principal_id": "human:alice"
+          }
+        ],
+        "local_policy": "PERMIT",
+        "reservation": {
+          "atomicity": "local_atomic",
+          "prior_operations": [
+            {
+              "operation_id": "operation:not-committed:1",
+              "caid": "caid:1:order.purchase.1:jcs-sha256:AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA",
+              "normalized_action_digest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+              "custody": "INVOKING",
+              "provider_outcome": "NOT_INVOKED",
+              "effect_relation": "NOT_OBSERVED"
+            }
+          ],
+          "consumed_native_replay_units": []
+        },
+        "observation": {
+          "source": "PROVIDER_EVIDENCE",
+          "provider_outcome": "PROVEN_NOT_COMMITTED",
+          "effect_relation": "NOT_OBSERVED"
+        },
+        "reconciliation": null
+      },
+      "expected": {
+        "verification": "VERIFIED",
+        "action_match": "MATCH",
+        "satisfaction": "SATISFIED",
+        "authorization": "AUTHORIZED",
+        "reservation": "CONSUMED",
+        "custody": "TERMINAL",
+        "provider_outcome": "PROVEN_NOT_COMMITTED",
+        "effect_relation": "NOT_OBSERVED",
+        "retry": "REFUSED",
+        "reconciliation": "NOT_REQUIRED",
+        "decision": "RECORDED",
+        "reasons": [
+          "provider_proven_not_committed"
+        ],
+        "acceptance": "ACCEPTED"
+      }
+    }
+  ]
+}
+

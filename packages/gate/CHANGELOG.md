@@ -4,6 +4,30 @@
 All notable changes to `@emilia-protocol/gate` are documented here.
 This package follows [Semantic Versioning](https://semver.org/).
 
+## 0.18.2 (2026-07-27)
+
+### Added
+
+- `./referee`, a closed, non-authorizing `EP-REFEREE-RESULT-v1` self-test
+  evaluator that preserves native verification, relying-party acceptance,
+  exact-action matching, evidence satisfaction, provider outcome, and observed
+  effect as separate dimensions.
+- `./referee-runner`, a no-shell local subprocess transport with strict JSON,
+  executable SHA-256 verification, bounded input/output and time, and
+  fail-closed handling for malformed or ambiguous runner behavior.
+
+### Security
+
+- Referee results are fixed to `claim_scope: SELF_TEST` and
+  `execution_authorizing: false`; they cannot authorize, reserve, invoke, or
+  certify an action.
+- The transport is not an operating-system sandbox and makes no claim to block
+  runner network, filesystem, syscall, or descendant-process access.
+- Retained the independently published
+  `@emilia-protocol/verify@3.16.0` registry dependency. Referee does not depend
+  on the new Verify AEB-1 reference runner, so Gate keeps its release graph
+  honest instead of declaring an unnecessary coupled upgrade.
+
 ## 0.18.1 (2026-07-27)
 
 ### Fixed

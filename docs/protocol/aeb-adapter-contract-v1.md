@@ -147,3 +147,8 @@ The Node verifier exports the contract from
 entry. The executable behavior is covered by
 `packages/verify/aeb-adapter-contract.test.js` and the shared state vectors in
 `conformance/vectors/aeb-adapter.v1.json`.
+
+The public, format-neutral consequence-boundary self-assessment is
+[`AEB-1 Consequence Admission Conformance`](../conformance/AEB-1-CONSEQUENCE-ADMISSION.md).
+It adds hostile cross-state and reconciliation vectors without defining a new
+evidence format or turning a self-reported result into certification.

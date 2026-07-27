@@ -90,3 +90,17 @@ Before adding a profile:
 Passing this suite proves the profile's closed data contract and deterministic
 binding logic. It does not certify the foreign protocol, its implementation, or
 an external deployment.
+
+## Test the full consequence boundary
+
+A Receipt Required carrier profile only proves that the challenge and proof can
+be transported and rebound to the exact action. To test the larger execution
+boundary—native verification, relying-party acceptance, CAID/action matching,
+evidence satisfaction, atomic one-time reservation, dispatch uncertainty, and
+authenticated reconciliation—run the open
+[`AEB-1 Consequence Admission Conformance`](conformance/AEB-1-CONSEQUENCE-ADMISSION.md)
+pack.
+
+The two suites are complementary. A carrier can pass Receipt Required and still
+fail AEB-1 if it treats native verification as local authorization, cannot fence
+replay before dispatch, or permits blind retry after an unknown effect.

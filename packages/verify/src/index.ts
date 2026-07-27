@@ -29,6 +29,7 @@ export {
   verifyAuthorityProgram,
 } from './authority-program.js';
 export * from './aeb-adapter-contract.js';
+export * from './aeb-consequence-conformance.js';
 export * from './aeb-discovery-permit-adapter.js';
 export * from './aeb-wimse-oauth-adapter.js';
 export * from './aeb-native-adapters.js';

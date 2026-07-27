@@ -43,6 +43,17 @@ function runCliRaw(raw, extraArgs = []) {
         return { code: e.status ?? 1, out: `${e.stdout || ''}${e.stderr || ''}` };
     }
 }
+function runCommand(commandArgs) {
+    try {
+        return {
+            code: 0,
+            out: execFileSync('node', [cli, ...commandArgs], { encoding: 'utf8' }),
+        };
+    }
+    catch (e) {
+        return { code: e.status ?? 1, out: `${e.stdout || ''}${e.stderr || ''}` };
+    }
+}
 function canonicalize(value) {
     if (value === null || value === undefined)
         return JSON.stringify(value);
@@ -102,4 +113,28 @@ test('CLI rejects duplicate-member JSON before document dispatch', () => {
     const r = runCliRaw('{"@version":"EP-RECEIPT-v1","payload":{},"payload":{"forged":true}}');
     assert.strictEqual(r.code, 1);
     assert.match(r.out, /strict JSON required.*duplicate object member/i);
+});
+test('CLI emits the complete governed AEB-1 reference result', () => {
+    const result = runCommand(['aeb-conformance', '--reference']);
+    assert.strictEqual(result.code, 0, result.out);
+    const report = JSON.parse(result.out);
+    assert.strictEqual(report.summary.total, 22);
+    assert.strictEqual(report.summary.passed, 22);
+    assert.strictEqual(report.summary.failed, 0);
+    assert.strictEqual(report.claim_scope.profile, 'local_atomic');
+    assert.strictEqual(report.assurance.self_attested, true);
+    assert.strictEqual(report.assurance.certification, false);
+});
+test('CLI validates an exact AEB-1 report and rejects report tampering', () => {
+    const reference = runCommand(['aeb-conformance', '--reference']);
+    assert.strictEqual(reference.code, 0, reference.out);
+    const report = JSON.parse(reference.out);
+    const reportPath = join(dir, 'aeb-report.json');
+    writeFileSync(reportPath, JSON.stringify(report));
+    const valid = runCommand(['aeb-conformance', '--submission', reportPath]);
+    assert.strictEqual(valid.code, 0, valid.out);
+    report.rows[0].actual.decision = 'REFUSE';
+    writeFileSync(reportPath, JSON.stringify(report));
+    const tampered = runCommand(['aeb-conformance', '--submission', reportPath]);
+    assert.strictEqual(tampered.code, 2, tampered.out);
 });

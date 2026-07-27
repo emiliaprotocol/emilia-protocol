@@ -1,0 +1,61 @@
+name: AEB-1 Referee Self-Test
+
+on:
+  push:
+    paths:
+      - 'conformance/referee/**'
+      - 'scripts/run-referee-conformance.mts'
+      - 'scripts/run-referee-conformance.mjs'
+      - 'scripts/run-referee-conformance.test.mts'
+      - 'scripts/standalone-runtime-targets.mjs'
+      - '.github/actions/referee/action.yml'
+      - '.github/workflows/referee-selftest.yml'
+  pull_request:
+    paths:
+      - 'conformance/referee/**'
+      - 'scripts/run-referee-conformance.mts'
+      - 'scripts/run-referee-conformance.mjs'
+      - 'scripts/run-referee-conformance.test.mts'
+      - 'scripts/standalone-runtime-targets.mjs'
+      - '.github/actions/referee/action.yml'
+      - '.github/workflows/referee-selftest.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  reference-fixture:
+    name: Reference fixture emits SELF_TEST
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: '20'
+
+      - id: node-pin
+        name: Pin runtime Node executable bytes
+        shell: bash
+        run: |
+          node --input-type=module <<'NODE'
+          import crypto from 'node:crypto';
+          import { appendFileSync, createReadStream } from 'node:fs';
+          const hash = crypto.createHash('sha256');
+          const stream = createReadStream(process.execPath);
+          for await (const chunk of stream) hash.update(chunk);
+          appendFileSync(process.env.GITHUB_OUTPUT, `sha256=sha256:${hash.digest('hex')}\n`);
+          NODE
+
+      - name: Run the checked-in reference fixture
+        uses: ./.github/actions/referee
+        with:
+          command-json: '["node","conformance/referee/fixtures/reference-runner.mjs"]'
+          checked-in-entrypoint: conformance/referee/fixtures/reference-runner.mjs
+          executable-sha256: ${{ steps.node-pin.outputs.sha256 }}
+          report-path: artifacts/aeb-1-referee-report.json
+          artifact-name: aeb-1-referee-reference-self-test

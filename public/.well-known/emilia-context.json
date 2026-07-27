@@ -1,9 +1,9 @@
 {
   "@version": "EMILIA-REPO-CONTEXT-v1",
-  "evidence_snapshot_at": "2026-07-27T08:02:35.311Z",
+  "evidence_snapshot_at": "2026-07-27T18:07:14.032Z",
   "provenance": {
     "generator": "scripts/generate-llm-context.mjs",
-    "input_digest_sha256": "fc1e33f1156bb7c4c8c9131956ee1632e777fae855007d43a289b878d68eea05",
+    "input_digest_sha256": "f8f32bafa6d558dc64f69820c8ea8065fe943d4d976c603f55f357fe430a4fd4",
     "generated_from": [
       {
         "path": "docs/ai/context-source.v1.json",
@@ -17,12 +17,12 @@
       },
       {
         "path": "lib/proof-stats.json",
-        "sha256": "7ef6e16bcd2bfe5704a9274744b7f5c95b626554ebb7c8aac7886f9f0632e09c",
+        "sha256": "0de96d4615f1f11dae73874b8faaf87c5f49450e98c8656518f162887f0e5289",
         "bytes": 4136
       },
       {
         "path": "conformance/conformance-manifest.json",
-        "sha256": "871ff7a595994751a1ae26aef2640e01cfa02d58eb135574637e974cfccf92da",
+        "sha256": "2ae34d9fe66fcf1004f2e2cf9edb8fcef842c942104aaf7e0307a0343d21dc5a",
         "bytes": 6361
       },
       {
@@ -37,7 +37,7 @@
       },
       {
         "path": "security/security-case.json",
-        "sha256": "46c8b0f6c1be679a8700df9080419412bbf3602546c5d330118819d3729f538c",
+        "sha256": "9d27212342fa3db720b50fb14b6d2780365b62e7b73f08f29da3644afb25e3d5",
         "bytes": 350422
       },
       {
@@ -47,8 +47,8 @@
       },
       {
         "path": "standards/STATUS.json",
-        "sha256": "52a9cb465250f1762a6971925ee7fac5568a1d700c28031d6892d166654accfe",
-        "bytes": 19484
+        "sha256": "02e82f1ea805009d2fabcf4c5b54c0c099cec77b17e7819932644de3630330df",
+        "bytes": 19672
       },
       {
         "path": "caid/conformance/vectors.json",
@@ -282,7 +282,7 @@
       "implementations": 3,
       "relationship": "same_team_ports",
       "claim_scope": "current same-team cross-language consistency; not independent implementation evidence",
-      "manifest_sha256": "77bb35fb2f3ab12de6d2ed4fca137205d1e38fd2559a6df80569dd3269135cb8",
+      "manifest_sha256": "3e0e2771cb88d78fe8ae137e8d60fab361f093a69942a7ebbdcd0f4c3a7e1370",
       "vector_bundle_sha256": "ee1021eb36de8e50448d9f12f00d16f3e24561276c9a42241e88178d5daa0d3e"
     },
     "formal": {
@@ -314,7 +314,7 @@
         "coveredModelActions": 28,
         "actionCompleteModels": 1,
         "formalMutationOperators": 46,
-        "evidenceSha256": "2914c97876c4ada0773ecc869f9ef951da157628b3d55393aa4b4f6f44890df3",
+        "evidenceSha256": "64a8c31b4cc3315ea81a227526fc9f07926203801a5f55c0b03bee22ed7322b7",
         "boundary": "selected model/runtime scenarios under explicit projection relations; not a mechanized implementation refinement proof"
       },
       "evidence_taxonomy": {
@@ -381,7 +381,7 @@
       "status": "passed",
       "claims": 33,
       "evidence_files": 235,
-      "evidence_bundle_sha256": "926bdd05809c397194fa78a5bcbe06fde539f503cd18093671d395860e4eb882"
+      "evidence_bundle_sha256": "e7c7b4b258a8a9e43db3d83678b74a5bcd2034c0a850c4426a8385d46ae1c9ab"
     },
     "caid": {
       "core_vectors": 48,
@@ -4232,8 +4232,8 @@
     {
       "identifier": "draft-schrock-action-evidence-boundary",
       "revision_at_snapshot": "00",
-      "role": "Boundary contract joining independently verified evidence to one material action",
-      "next_action": "Published July 21; collect independent implementation and interoperation feedback",
+      "role": "Boundary contract joining independently verified evidence to one material action, reserving authority before invocation, and preserving indeterminate outcomes for authenticated reconciliation",
+      "next_action": "Published July 21; ship the open AEB-1 consequence-admission conformance pack, then collect independent implementation and interoperation results before revising the draft",
       "url": "https://datatracker.ietf.org/doc/draft-schrock-action-evidence-boundary/",
       "status_rule": "Check the live IETF Datatracker URL; do not infer status or revision from a local filename."
     },

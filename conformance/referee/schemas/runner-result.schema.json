@@ -1,0 +1,68 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://emiliaprotocol.ai/schemas/aeb-1/referee/runner-result.schema.json",
+  "title": "AEB-1 Referee Runner Result",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "@version",
+    "case_id",
+    "native_verification",
+    "rp_acceptance",
+    "action_relation",
+    "status",
+    "replay",
+    "admission",
+    "custody",
+    "provider_commitment",
+    "observed_effect",
+    "retry",
+    "reconciliation",
+    "reason_codes"
+  ],
+  "properties": {
+    "@version": { "const": "AEB-1-REFEREE-RUNNER-RESULT-v1" },
+    "case_id": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 128,
+      "pattern": "^[a-z0-9][a-z0-9._:-]*$"
+    },
+    "native_verification": { "enum": ["VERIFIED", "FAILED", "INDETERMINATE"] },
+    "rp_acceptance": { "enum": ["ACCEPTED", "REJECTED", "INDETERMINATE"] },
+    "action_relation": { "enum": ["EXACT_MATCH", "MISMATCH", "INDETERMINATE"] },
+    "status": { "enum": ["CURRENT", "STALE", "UNAVAILABLE", "REVOKED", "INDETERMINATE"] },
+    "replay": { "enum": ["FRESH", "REPLAY", "INDETERMINATE"] },
+    "admission": { "enum": ["ADMIT", "REFUSE", "INDETERMINATE", "NOT_APPLICABLE"] },
+    "custody": { "enum": ["UNRESERVED", "RESERVED", "INVOKING", "INDETERMINATE", "TERMINAL"] },
+    "provider_commitment": { "enum": ["NOT_INVOKED", "COMMITTED", "PROVEN_NOT_COMMITTED", "INDETERMINATE"] },
+    "observed_effect": { "enum": ["NOT_OBSERVED", "OBSERVED_AS_REQUESTED", "DIVERGED", "INDETERMINATE"] },
+    "retry": { "enum": ["NOT_APPLICABLE", "REFUSE", "REQUIRES_NEW_ADMISSION"] },
+    "reconciliation": { "enum": ["NOT_APPLICABLE", "REQUIRED", "REFUSED", "APPLIED"] },
+    "reason_codes": {
+      "type": "array",
+      "maxItems": 16,
+      "uniqueItems": true,
+      "items": {
+        "enum": [
+          "action_mismatch",
+          "effect_diverged",
+          "material_field_loss",
+          "native_replay_detected",
+          "native_verification_failed",
+          "native_verification_indeterminate",
+          "provider_crash",
+          "provider_timeout",
+          "reconciliation_binding_mismatch",
+          "reconciliation_not_authenticated",
+          "rp_acceptance_indeterminate",
+          "rp_acceptance_rejected",
+          "status_revoked",
+          "status_stale",
+          "status_unavailable",
+          "wrong_trust_root"
+        ]
+      }
+    }
+  }
+}

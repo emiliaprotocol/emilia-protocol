@@ -5,7 +5,7 @@
 // source never had (e.g. `let x = null` narrowed to exactly `null`). The fix
 // is a file-level pragma, applied here so every regeneration stays consistent
 // rather than relying on a hand-edited committed copy drifting from a fresh build.
-import { readFileSync, writeFileSync } from 'node:fs';
+import { copyFileSync, readFileSync, writeFileSync } from 'node:fs';
 
 const PRAGMA = '// @ts-nocheck\n';
 const targets = ['dist/web.js', 'dist/strict-json.js'];
@@ -28,3 +28,11 @@ for (const name of ['web', 'strict-json']) {
   sourceMap.sources = [`../packages/verify/src/${name}.ts`];
   writeFileSync(`../../lib/${name}.js.map`, JSON.stringify(sourceMap));
 }
+
+// The published CLI must carry the exact governed AEB-1 suite it evaluates.
+// Keep the package copy generated from the repository source so `npx` works
+// offline without a checkout and the two copies cannot be edited independently.
+copyFileSync(
+  '../../conformance/vectors/aeb-consequence-conformance.v1.json',
+  'aeb-consequence-conformance.v1.json',
+);

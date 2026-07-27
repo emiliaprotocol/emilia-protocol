@@ -1,0 +1,224 @@
+{
+  "@version": "AEB-1-REFEREE-MANIFEST-v1",
+  "suite_id": "aeb-1-referee-intake-v1",
+  "profile": "local_atomic",
+  "assessment": "SELF_TEST",
+  "schemas": {
+    "case": "../schemas/case.schema.json",
+    "runner_result": "../schemas/runner-result.schema.json",
+    "report": "../schemas/report.schema.json",
+    "manifest": "../schemas/manifest.schema.json"
+  },
+  "runner_pin": {
+    "executable_sha256": null,
+    "source": "RUNTIME_REQUIRED",
+    "verification": "BEFORE_EACH_SPAWN"
+  },
+  "limits": {
+    "max_cases": 32,
+    "max_case_bytes": 65536,
+    "max_result_bytes": 16384,
+    "max_stderr_bytes": 4096,
+    "max_report_bytes": 262144,
+    "max_json_depth": 16,
+    "timeout_ms": 500,
+    "deterministic_runs": 2
+  },
+  "fixtures": [
+    {
+      "case": {
+        "@version": "AEB-1-REFEREE-CASE-v1",
+        "case_id": "exact-match",
+        "phase": "ADMISSION",
+        "exact_action": { "caid": "caid:1:order.purchase.1:jcs-sha256:AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA", "normalized_action_digest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa" },
+        "native_evidence": [
+          { "evidence_id": "evidence:exact-match", "wrapper_digest": "sha256:ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff", "native_replay_identity": "sha256:eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee", "trust_root": { "root_id": "root:merchant", "state": "PINNED" }, "native_verification": "VERIFIED", "rp_acceptance": "ACCEPTED", "mapping": { "caid": "caid:1:order.purchase.1:jcs-sha256:AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA", "normalized_action_digest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa", "material_fields": "PRESERVED" }, "status": "CURRENT" }
+        ],
+        "custody": { "operation_id": "operation:exact-match", "state": "UNRESERVED", "consumed_replay_identities": [], "retry_requested": false },
+        "provider": { "commitment": "NOT_INVOKED", "observed_effect": "NOT_OBSERVED", "failure": "NONE" },
+        "reconciliation": null
+      },
+      "expected": { "@version": "AEB-1-REFEREE-RUNNER-RESULT-v1", "case_id": "exact-match", "native_verification": "VERIFIED", "rp_acceptance": "ACCEPTED", "action_relation": "EXACT_MATCH", "status": "CURRENT", "replay": "FRESH", "admission": "ADMIT", "custody": "RESERVED", "provider_commitment": "NOT_INVOKED", "observed_effect": "NOT_OBSERVED", "retry": "NOT_APPLICABLE", "reconciliation": "NOT_APPLICABLE", "reason_codes": [] }
+    },
+    {
+      "case": {
+        "@version": "AEB-1-REFEREE-CASE-v1",
+        "case_id": "exact-action-mismatch",
+        "phase": "ADMISSION",
+        "exact_action": { "caid": "caid:1:order.purchase.1:jcs-sha256:AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA", "normalized_action_digest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa" },
+        "native_evidence": [
+          { "evidence_id": "evidence:exact-action-mismatch", "wrapper_digest": "sha256:ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff", "native_replay_identity": "sha256:eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee", "trust_root": { "root_id": "root:merchant", "state": "PINNED" }, "native_verification": "VERIFIED", "rp_acceptance": "ACCEPTED", "mapping": { "caid": "caid:1:order.purchase.1:jcs-sha256:AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA", "normalized_action_digest": "sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb", "material_fields": "PRESERVED" }, "status": "CURRENT" }
+        ],
+        "custody": { "operation_id": "operation:exact-action-mismatch", "state": "UNRESERVED", "consumed_replay_identities": [], "retry_requested": false },
+        "provider": { "commitment": "NOT_INVOKED", "observed_effect": "NOT_OBSERVED", "failure": "NONE" },
+        "reconciliation": null
+      },
+      "expected": { "@version": "AEB-1-REFEREE-RUNNER-RESULT-v1", "case_id": "exact-action-mismatch", "native_verification": "VERIFIED", "rp_acceptance": "ACCEPTED", "action_relation": "MISMATCH", "status": "CURRENT", "replay": "FRESH", "admission": "REFUSE", "custody": "UNRESERVED", "provider_commitment": "NOT_INVOKED", "observed_effect": "NOT_OBSERVED", "retry": "NOT_APPLICABLE", "reconciliation": "NOT_APPLICABLE", "reason_codes": ["action_mismatch"] }
+    },
+    {
+      "case": {
+        "@version": "AEB-1-REFEREE-CASE-v1",
+        "case_id": "rp-acceptance-rejected",
+        "phase": "ADMISSION",
+        "exact_action": { "caid": "caid:1:order.purchase.1:jcs-sha256:AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA", "normalized_action_digest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa" },
+        "native_evidence": [
+          { "evidence_id": "evidence:rp-rejected", "wrapper_digest": "sha256:ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff", "native_replay_identity": "sha256:eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee", "trust_root": { "root_id": "root:merchant", "state": "PINNED" }, "native_verification": "VERIFIED", "rp_acceptance": "REJECTED", "mapping": { "caid": "caid:1:order.purchase.1:jcs-sha256:AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA", "normalized_action_digest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa", "material_fields": "PRESERVED" }, "status": "CURRENT" }
+        ],
+        "custody": { "operation_id": "operation:rp-rejected", "state": "UNRESERVED", "consumed_replay_identities": [], "retry_requested": false },
+        "provider": { "commitment": "NOT_INVOKED", "observed_effect": "NOT_OBSERVED", "failure": "NONE" },
+        "reconciliation": null
+      },
+      "expected": { "@version": "AEB-1-REFEREE-RUNNER-RESULT-v1", "case_id": "rp-acceptance-rejected", "native_verification": "VERIFIED", "rp_acceptance": "REJECTED", "action_relation": "EXACT_MATCH", "status": "CURRENT", "replay": "FRESH", "admission": "REFUSE", "custody": "UNRESERVED", "provider_commitment": "NOT_INVOKED", "observed_effect": "NOT_OBSERVED", "retry": "NOT_APPLICABLE", "reconciliation": "NOT_APPLICABLE", "reason_codes": ["rp_acceptance_rejected"] }
+    },
+    {
+      "case": {
+        "@version": "AEB-1-REFEREE-CASE-v1",
+        "case_id": "material-loss-indeterminate",
+        "phase": "ADMISSION",
+        "exact_action": { "caid": "caid:1:order.purchase.1:jcs-sha256:AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA", "normalized_action_digest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa" },
+        "native_evidence": [
+          { "evidence_id": "evidence:material-loss", "wrapper_digest": "sha256:ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff", "native_replay_identity": "sha256:eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee", "trust_root": { "root_id": "root:merchant", "state": "PINNED" }, "native_verification": "VERIFIED", "rp_acceptance": "INDETERMINATE", "mapping": { "caid": "caid:1:order.purchase.1:jcs-sha256:AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA", "normalized_action_digest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa", "material_fields": "LOST" }, "status": "CURRENT" }
+        ],
+        "custody": { "operation_id": "operation:material-loss", "state": "UNRESERVED", "consumed_replay_identities": [], "retry_requested": false },
+        "provider": { "commitment": "NOT_INVOKED", "observed_effect": "NOT_OBSERVED", "failure": "NONE" },
+        "reconciliation": null
+      },
+      "expected": { "@version": "AEB-1-REFEREE-RUNNER-RESULT-v1", "case_id": "material-loss-indeterminate", "native_verification": "VERIFIED", "rp_acceptance": "INDETERMINATE", "action_relation": "INDETERMINATE", "status": "CURRENT", "replay": "FRESH", "admission": "INDETERMINATE", "custody": "UNRESERVED", "provider_commitment": "NOT_INVOKED", "observed_effect": "NOT_OBSERVED", "retry": "NOT_APPLICABLE", "reconciliation": "NOT_APPLICABLE", "reason_codes": ["material_field_loss", "rp_acceptance_indeterminate"] }
+    },
+    {
+      "case": {
+        "@version": "AEB-1-REFEREE-CASE-v1",
+        "case_id": "wrong-root-native-failure",
+        "phase": "ADMISSION",
+        "exact_action": { "caid": "caid:1:order.purchase.1:jcs-sha256:AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA", "normalized_action_digest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa" },
+        "native_evidence": [
+          { "evidence_id": "evidence:wrong-root", "wrapper_digest": "sha256:ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff", "native_replay_identity": "sha256:eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee", "trust_root": { "root_id": "root:attacker", "state": "WRONG" }, "native_verification": "FAILED", "rp_acceptance": "REJECTED", "mapping": { "caid": null, "normalized_action_digest": null, "material_fields": "INDETERMINATE" }, "status": "CURRENT" }
+        ],
+        "custody": { "operation_id": "operation:wrong-root", "state": "UNRESERVED", "consumed_replay_identities": [], "retry_requested": false },
+        "provider": { "commitment": "NOT_INVOKED", "observed_effect": "NOT_OBSERVED", "failure": "NONE" },
+        "reconciliation": null
+      },
+      "expected": { "@version": "AEB-1-REFEREE-RUNNER-RESULT-v1", "case_id": "wrong-root-native-failure", "native_verification": "FAILED", "rp_acceptance": "REJECTED", "action_relation": "INDETERMINATE", "status": "CURRENT", "replay": "FRESH", "admission": "REFUSE", "custody": "UNRESERVED", "provider_commitment": "NOT_INVOKED", "observed_effect": "NOT_OBSERVED", "retry": "NOT_APPLICABLE", "reconciliation": "NOT_APPLICABLE", "reason_codes": ["material_field_loss", "native_verification_failed", "rp_acceptance_rejected", "wrong_trust_root"] }
+    },
+    {
+      "case": {
+        "@version": "AEB-1-REFEREE-CASE-v1",
+        "case_id": "stale-status",
+        "phase": "ADMISSION",
+        "exact_action": { "caid": "caid:1:order.purchase.1:jcs-sha256:AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA", "normalized_action_digest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa" },
+        "native_evidence": [
+          { "evidence_id": "evidence:stale-status", "wrapper_digest": "sha256:ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff", "native_replay_identity": "sha256:eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee", "trust_root": { "root_id": "root:merchant", "state": "PINNED" }, "native_verification": "VERIFIED", "rp_acceptance": "INDETERMINATE", "mapping": { "caid": "caid:1:order.purchase.1:jcs-sha256:AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA", "normalized_action_digest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa", "material_fields": "PRESERVED" }, "status": "STALE" }
+        ],
+        "custody": { "operation_id": "operation:stale-status", "state": "UNRESERVED", "consumed_replay_identities": [], "retry_requested": false },
+        "provider": { "commitment": "NOT_INVOKED", "observed_effect": "NOT_OBSERVED", "failure": "NONE" },
+        "reconciliation": null
+      },
+      "expected": { "@version": "AEB-1-REFEREE-RUNNER-RESULT-v1", "case_id": "stale-status", "native_verification": "VERIFIED", "rp_acceptance": "INDETERMINATE", "action_relation": "EXACT_MATCH", "status": "STALE", "replay": "FRESH", "admission": "INDETERMINATE", "custody": "UNRESERVED", "provider_commitment": "NOT_INVOKED", "observed_effect": "NOT_OBSERVED", "retry": "NOT_APPLICABLE", "reconciliation": "NOT_APPLICABLE", "reason_codes": ["rp_acceptance_indeterminate", "status_stale"] }
+    },
+    {
+      "case": {
+        "@version": "AEB-1-REFEREE-CASE-v1",
+        "case_id": "unavailable-status",
+        "phase": "ADMISSION",
+        "exact_action": { "caid": "caid:1:order.purchase.1:jcs-sha256:AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA", "normalized_action_digest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa" },
+        "native_evidence": [
+          { "evidence_id": "evidence:unavailable-status", "wrapper_digest": "sha256:ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff", "native_replay_identity": "sha256:eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee", "trust_root": { "root_id": "root:merchant", "state": "PINNED" }, "native_verification": "VERIFIED", "rp_acceptance": "INDETERMINATE", "mapping": { "caid": "caid:1:order.purchase.1:jcs-sha256:AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA", "normalized_action_digest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa", "material_fields": "PRESERVED" }, "status": "UNAVAILABLE" }
+        ],
+        "custody": { "operation_id": "operation:unavailable-status", "state": "UNRESERVED", "consumed_replay_identities": [], "retry_requested": false },
+        "provider": { "commitment": "NOT_INVOKED", "observed_effect": "NOT_OBSERVED", "failure": "NONE" },
+        "reconciliation": null
+      },
+      "expected": { "@version": "AEB-1-REFEREE-RUNNER-RESULT-v1", "case_id": "unavailable-status", "native_verification": "VERIFIED", "rp_acceptance": "INDETERMINATE", "action_relation": "EXACT_MATCH", "status": "UNAVAILABLE", "replay": "FRESH", "admission": "INDETERMINATE", "custody": "UNRESERVED", "provider_commitment": "NOT_INVOKED", "observed_effect": "NOT_OBSERVED", "retry": "NOT_APPLICABLE", "reconciliation": "NOT_APPLICABLE", "reason_codes": ["rp_acceptance_indeterminate", "status_unavailable"] }
+    },
+    {
+      "case": {
+        "@version": "AEB-1-REFEREE-CASE-v1",
+        "case_id": "stable-replay-identity",
+        "phase": "ADMISSION",
+        "exact_action": { "caid": "caid:1:order.purchase.1:jcs-sha256:AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA", "normalized_action_digest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa" },
+        "native_evidence": [
+          { "evidence_id": "evidence:rewrapped", "wrapper_digest": "sha256:dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd", "native_replay_identity": "sha256:eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee", "trust_root": { "root_id": "root:merchant", "state": "PINNED" }, "native_verification": "VERIFIED", "rp_acceptance": "ACCEPTED", "mapping": { "caid": "caid:1:order.purchase.1:jcs-sha256:AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA", "normalized_action_digest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa", "material_fields": "PRESERVED" }, "status": "CURRENT" }
+        ],
+        "custody": { "operation_id": "operation:rewrapped", "state": "UNRESERVED", "consumed_replay_identities": ["sha256:eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee"], "retry_requested": false },
+        "provider": { "commitment": "NOT_INVOKED", "observed_effect": "NOT_OBSERVED", "failure": "NONE" },
+        "reconciliation": null
+      },
+      "expected": { "@version": "AEB-1-REFEREE-RUNNER-RESULT-v1", "case_id": "stable-replay-identity", "native_verification": "VERIFIED", "rp_acceptance": "ACCEPTED", "action_relation": "EXACT_MATCH", "status": "CURRENT", "replay": "REPLAY", "admission": "REFUSE", "custody": "UNRESERVED", "provider_commitment": "NOT_INVOKED", "observed_effect": "NOT_OBSERVED", "retry": "NOT_APPLICABLE", "reconciliation": "NOT_APPLICABLE", "reason_codes": ["native_replay_detected"] }
+    },
+    {
+      "case": {
+        "@version": "AEB-1-REFEREE-CASE-v1",
+        "case_id": "provider-timeout",
+        "phase": "INVOCATION",
+        "exact_action": { "caid": "caid:1:order.purchase.1:jcs-sha256:AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA", "normalized_action_digest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa" },
+        "native_evidence": [
+          { "evidence_id": "evidence:provider-timeout", "wrapper_digest": "sha256:ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff", "native_replay_identity": "sha256:eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee", "trust_root": { "root_id": "root:merchant", "state": "PINNED" }, "native_verification": "VERIFIED", "rp_acceptance": "ACCEPTED", "mapping": { "caid": "caid:1:order.purchase.1:jcs-sha256:AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA", "normalized_action_digest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa", "material_fields": "PRESERVED" }, "status": "CURRENT" }
+        ],
+        "custody": { "operation_id": "operation:provider-timeout", "state": "INVOKING", "consumed_replay_identities": ["sha256:eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee"], "retry_requested": false },
+        "provider": { "commitment": "INDETERMINATE", "observed_effect": "INDETERMINATE", "failure": "TIMEOUT" },
+        "reconciliation": null
+      },
+      "expected": { "@version": "AEB-1-REFEREE-RUNNER-RESULT-v1", "case_id": "provider-timeout", "native_verification": "VERIFIED", "rp_acceptance": "ACCEPTED", "action_relation": "EXACT_MATCH", "status": "CURRENT", "replay": "REPLAY", "admission": "NOT_APPLICABLE", "custody": "INDETERMINATE", "provider_commitment": "INDETERMINATE", "observed_effect": "INDETERMINATE", "retry": "REFUSE", "reconciliation": "REQUIRED", "reason_codes": ["provider_timeout"] }
+    },
+    {
+      "case": {
+        "@version": "AEB-1-REFEREE-CASE-v1",
+        "case_id": "crash-to-indeterminate",
+        "phase": "INVOCATION",
+        "exact_action": { "caid": "caid:1:order.purchase.1:jcs-sha256:AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA", "normalized_action_digest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa" },
+        "native_evidence": [
+          { "evidence_id": "evidence:provider-crash", "wrapper_digest": "sha256:ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff", "native_replay_identity": "sha256:eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee", "trust_root": { "root_id": "root:merchant", "state": "PINNED" }, "native_verification": "VERIFIED", "rp_acceptance": "ACCEPTED", "mapping": { "caid": "caid:1:order.purchase.1:jcs-sha256:AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA", "normalized_action_digest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa", "material_fields": "PRESERVED" }, "status": "CURRENT" }
+        ],
+        "custody": { "operation_id": "operation:provider-crash", "state": "INVOKING", "consumed_replay_identities": ["sha256:eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee"], "retry_requested": false },
+        "provider": { "commitment": "INDETERMINATE", "observed_effect": "INDETERMINATE", "failure": "CRASH" },
+        "reconciliation": null
+      },
+      "expected": { "@version": "AEB-1-REFEREE-RUNNER-RESULT-v1", "case_id": "crash-to-indeterminate", "native_verification": "VERIFIED", "rp_acceptance": "ACCEPTED", "action_relation": "EXACT_MATCH", "status": "CURRENT", "replay": "REPLAY", "admission": "NOT_APPLICABLE", "custody": "INDETERMINATE", "provider_commitment": "INDETERMINATE", "observed_effect": "INDETERMINATE", "retry": "REFUSE", "reconciliation": "REQUIRED", "reason_codes": ["provider_crash"] }
+    },
+    {
+      "case": {
+        "@version": "AEB-1-REFEREE-CASE-v1",
+        "case_id": "authenticated-reconcile",
+        "phase": "RECONCILIATION",
+        "exact_action": { "caid": "caid:1:order.purchase.1:jcs-sha256:AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA", "normalized_action_digest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa" },
+        "native_evidence": [
+          { "evidence_id": "evidence:authenticated-reconcile", "wrapper_digest": "sha256:ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff", "native_replay_identity": "sha256:eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee", "trust_root": { "root_id": "root:merchant", "state": "PINNED" }, "native_verification": "VERIFIED", "rp_acceptance": "ACCEPTED", "mapping": { "caid": "caid:1:order.purchase.1:jcs-sha256:AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA", "normalized_action_digest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa", "material_fields": "PRESERVED" }, "status": "CURRENT" }
+        ],
+        "custody": { "operation_id": "operation:authenticated-reconcile", "state": "INDETERMINATE", "consumed_replay_identities": ["sha256:eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee"], "retry_requested": false },
+        "provider": { "commitment": "INDETERMINATE", "observed_effect": "INDETERMINATE", "failure": "TIMEOUT" },
+        "reconciliation": { "authenticated": true, "operation_id": "operation:authenticated-reconcile", "evidence_digest": "sha256:1111111111111111111111111111111111111111111111111111111111111111", "provider_commitment": "COMMITTED", "observed_effect": "OBSERVED_AS_REQUESTED" }
+      },
+      "expected": { "@version": "AEB-1-REFEREE-RUNNER-RESULT-v1", "case_id": "authenticated-reconcile", "native_verification": "VERIFIED", "rp_acceptance": "ACCEPTED", "action_relation": "EXACT_MATCH", "status": "CURRENT", "replay": "REPLAY", "admission": "NOT_APPLICABLE", "custody": "TERMINAL", "provider_commitment": "COMMITTED", "observed_effect": "OBSERVED_AS_REQUESTED", "retry": "NOT_APPLICABLE", "reconciliation": "APPLIED", "reason_codes": [] }
+    },
+    {
+      "case": {
+        "@version": "AEB-1-REFEREE-CASE-v1",
+        "case_id": "committed-diverged",
+        "phase": "RECONCILIATION",
+        "exact_action": { "caid": "caid:1:order.purchase.1:jcs-sha256:AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA", "normalized_action_digest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa" },
+        "native_evidence": [
+          { "evidence_id": "evidence:committed-diverged", "wrapper_digest": "sha256:ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff", "native_replay_identity": "sha256:eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee", "trust_root": { "root_id": "root:merchant", "state": "PINNED" }, "native_verification": "VERIFIED", "rp_acceptance": "ACCEPTED", "mapping": { "caid": "caid:1:order.purchase.1:jcs-sha256:AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA", "normalized_action_digest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa", "material_fields": "PRESERVED" }, "status": "CURRENT" }
+        ],
+        "custody": { "operation_id": "operation:committed-diverged", "state": "INDETERMINATE", "consumed_replay_identities": ["sha256:eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee"], "retry_requested": false },
+        "provider": { "commitment": "INDETERMINATE", "observed_effect": "INDETERMINATE", "failure": "TIMEOUT" },
+        "reconciliation": { "authenticated": true, "operation_id": "operation:committed-diverged", "evidence_digest": "sha256:2222222222222222222222222222222222222222222222222222222222222222", "provider_commitment": "COMMITTED", "observed_effect": "DIVERGED" }
+      },
+      "expected": { "@version": "AEB-1-REFEREE-RUNNER-RESULT-v1", "case_id": "committed-diverged", "native_verification": "VERIFIED", "rp_acceptance": "ACCEPTED", "action_relation": "EXACT_MATCH", "status": "CURRENT", "replay": "REPLAY", "admission": "NOT_APPLICABLE", "custody": "TERMINAL", "provider_commitment": "COMMITTED", "observed_effect": "DIVERGED", "retry": "NOT_APPLICABLE", "reconciliation": "APPLIED", "reason_codes": ["effect_diverged"] }
+    },
+    {
+      "case": {
+        "@version": "AEB-1-REFEREE-CASE-v1",
+        "case_id": "proven-not-committed",
+        "phase": "RECONCILIATION",
+        "exact_action": { "caid": "caid:1:order.purchase.1:jcs-sha256:AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA", "normalized_action_digest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa" },
+        "native_evidence": [
+          { "evidence_id": "evidence:proven-not-committed", "wrapper_digest": "sha256:ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff", "native_replay_identity": "sha256:eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee", "trust_root": { "root_id": "root:merchant", "state": "PINNED" }, "native_verification": "VERIFIED", "rp_acceptance": "ACCEPTED", "mapping": { "caid": "caid:1:order.purchase.1:jcs-sha256:AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA", "normalized_action_digest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa", "material_fields": "PRESERVED" }, "status": "CURRENT" }
+        ],
+        "custody": { "operation_id": "operation:proven-not-committed", "state": "INDETERMINATE", "consumed_replay_identities": ["sha256:eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee"], "retry_requested": false },
+        "provider": { "commitment": "INDETERMINATE", "observed_effect": "INDETERMINATE", "failure": "TIMEOUT" },
+        "reconciliation": { "authenticated": true, "operation_id": "operation:proven-not-committed", "evidence_digest": "sha256:3333333333333333333333333333333333333333333333333333333333333333", "provider_commitment": "PROVEN_NOT_COMMITTED", "observed_effect": "NOT_OBSERVED" }
+      },
+      "expected": { "@version": "AEB-1-REFEREE-RUNNER-RESULT-v1", "case_id": "proven-not-committed", "native_verification": "VERIFIED", "rp_acceptance": "ACCEPTED", "action_relation": "EXACT_MATCH", "status": "CURRENT", "replay": "REPLAY", "admission": "NOT_APPLICABLE", "custody": "TERMINAL", "provider_commitment": "PROVEN_NOT_COMMITTED", "observed_effect": "NOT_OBSERVED", "retry": "REQUIRES_NEW_ADMISSION", "reconciliation": "APPLIED", "reason_codes": [] }
+    }
+  ]
+}

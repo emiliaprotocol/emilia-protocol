@@ -27,10 +27,11 @@ represented as independent implementations.
 
 ## Standards status
 
-`draft-schrock-canonical-action-identifier-00` is a candidate Internet-Draft,
-not an RFC and not an adopted IETF work item. The candidate defines the
-identifier and the profile-bounded mapping algorithm. Filing remains a human
-Datatracker action.
+`draft-schrock-canonical-action-identifier-01` was published as an individual
+Internet-Draft on 2026-07-21. It is not an RFC, an adopted IETF working-group
+item, or IETF endorsement. The draft defines the identifier and the
+profile-bounded mapping algorithm; the IETF archive is authoritative for the
+published revision.
 
 ## Explicit boundaries
 

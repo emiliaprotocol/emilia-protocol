@@ -93,6 +93,10 @@ export default defineConfig({
       // Gate Qualification's frozen public corpus is executed with Node's
       // built-in runner so it can be consumed outside Vitest as-is.
       'conformance/gate-qualification-v2.test.js',
+      // Referee's public harness is intentionally a node:test suite so it can
+      // run without Vitest in third-party repositories and the composite
+      // GitHub Action. Keep the repository-wide Vitest collector off it.
+      'scripts/run-referee-conformance.test.mts',
       // This conformance source deliberately uses node:test because the public
       // vector runner executes it directly on Node. Its generated .js twin is
       // already excluded below; exclude the TypeScript source from Vitest too.

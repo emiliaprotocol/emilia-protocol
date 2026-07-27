@@ -1,0 +1,146 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://emiliaprotocol.ai/schemas/aeb-1/referee/report.schema.json",
+  "title": "AEB-1 Referee Self-Test Report",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "@version",
+    "assessment",
+    "suite_id",
+    "profile",
+    "manifest_digest",
+    "implementation",
+    "deterministic_runs",
+    "rows",
+    "summary",
+    "claim_boundary"
+  ],
+  "properties": {
+    "@version": { "const": "AEB-1-REFEREE-REPORT-v1" },
+    "assessment": { "const": "SELF_TEST" },
+    "suite_id": { "$ref": "#/$defs/identifier" },
+    "profile": { "const": "local_atomic" },
+    "manifest_digest": { "$ref": "#/$defs/digest" },
+    "implementation": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["command", "entrypoint", "arguments", "runner_pin"],
+      "properties": {
+        "command": { "type": "string", "minLength": 1, "maxLength": 1024, "pattern": "^[^\\u0000-\\u001f\\u007f]+$" },
+        "entrypoint": {
+          "oneOf": [
+            { "type": "null" },
+            { "type": "string", "minLength": 1, "maxLength": 1024, "pattern": "^[^\\u0000-\\u001f\\u007f]+$" }
+          ]
+        },
+        "arguments": {
+          "type": "array",
+          "maxItems": 32,
+          "items": { "type": "string", "maxLength": 4096, "pattern": "^[^\\u0000-\\u001f\\u007f]*$" }
+        },
+        "runner_pin": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["executable_sha256", "verification"],
+          "properties": {
+            "executable_sha256": { "$ref": "#/$defs/digest" },
+            "verification": { "const": "BEFORE_EACH_SPAWN" }
+          }
+        }
+      }
+    },
+    "deterministic_runs": { "type": "integer", "minimum": 2, "maximum": 4 },
+    "rows": {
+      "type": "array",
+      "minItems": 1,
+      "maxItems": 128,
+      "items": { "$ref": "#/$defs/row" }
+    },
+    "summary": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["total", "passed", "failed", "outcome"],
+      "properties": {
+        "total": { "type": "integer", "minimum": 1, "maximum": 128 },
+        "passed": { "type": "integer", "minimum": 0, "maximum": 128 },
+        "failed": { "type": "integer", "minimum": 0, "maximum": 128 },
+        "outcome": { "enum": ["PASS", "FAIL"] }
+      }
+    },
+    "claim_boundary": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["certification", "authorization", "production_deployment", "production_sandbox"],
+      "properties": {
+        "certification": { "const": false },
+        "authorization": { "const": false },
+        "production_deployment": { "const": false },
+        "production_sandbox": { "const": false }
+      }
+    }
+  },
+  "$defs": {
+    "identifier": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 128,
+      "pattern": "^[a-z0-9][a-z0-9._:-]*$"
+    },
+    "digest": {
+      "type": "string",
+      "pattern": "^sha256:[0-9a-f]{64}$"
+    },
+    "row": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "case_id",
+        "case_digest",
+        "expected_digest",
+        "actual",
+        "actual_digest",
+        "matched",
+        "error"
+      ],
+      "properties": {
+        "case_id": { "$ref": "#/$defs/identifier" },
+        "case_digest": { "$ref": "#/$defs/digest" },
+        "expected_digest": { "$ref": "#/$defs/digest" },
+        "actual": {
+          "oneOf": [
+            { "type": "null" },
+            { "$ref": "runner-result.schema.json" }
+          ]
+        },
+        "actual_digest": {
+          "oneOf": [
+            { "type": "null" },
+            { "$ref": "#/$defs/digest" }
+          ]
+        },
+        "matched": { "type": "boolean" },
+        "error": {
+          "oneOf": [
+            { "type": "null" },
+            {
+              "enum": [
+                "CASE_ID_MISMATCH",
+                "COMMAND_FAILED",
+                "EXECUTABLE_PIN_MISMATCH",
+                "INVALID_JSON",
+                "INVALID_UTF8",
+                "NONDETERMINISTIC",
+                "RESULT_MISMATCH",
+                "RESULT_SCHEMA",
+                "STDERR_LIMIT",
+                "STDOUT_LIMIT",
+                "TIMEOUT"
+              ]
+            }
+          ]
+        }
+      }
+    }
+  }
+}
