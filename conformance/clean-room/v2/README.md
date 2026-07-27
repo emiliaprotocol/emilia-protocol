@@ -2,7 +2,7 @@
 
 This directory defines a source-free, byte-pinned challenge over the exact
 21-suite, 329-vector conformance manifest at base commit
-`9d2e8e613d437d69f77b7a700ead5f7afc66a566`.
+`c7ff57e53883258d51a20b0b3c5b22a1a0f846d4`.
 
 The kit separates three results:
 
