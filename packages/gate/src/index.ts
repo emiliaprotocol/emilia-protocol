@@ -236,6 +236,8 @@ export * from './autonomy-control-plane-profile.js';
 export * from './admission-store.js';
 export * from './admission-store-postgres.js';
 export * from './gate-qualification-v2.js';
+export * from './referee.js';
+export * from './referee-runner.js';
 export {
   ZK_RANGE_RECEIPT_VERSION,
   ZK_RANGE_SCHEME,

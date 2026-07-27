@@ -10,7 +10,8 @@
  * prints every check, and exits 0 only if every document verifies. Fully
  * offline — the same guarantee as the library.
  */
-import { readFileSync } from 'node:fs';
+import { existsSync, readFileSync } from 'node:fs';
+import { fileURLToPath } from 'node:url';
 import { strictJsonGate } from './strict-json.js';
 import { verifyReceipt, verifyReceiptBundle, verifyCommitmentProof, verifyWebAuthnSignoff, verifyTrustReceipt, verifyQuorum, verifyRevocation, verifyProvenanceOffline, } from './index.js';
 const MAX_CLI_JSON_BYTES = 8 * 1024 * 1024;
@@ -59,6 +60,11 @@ Subcommands:
     packet under one pinned EP-RELIANCE-PROFILE-v1 (or every profile in a
     directory) and emit a deterministic reliance gap report.
     Exit 0 = rely (all rely in --profiles mode); 2 = any do_not_rely_*;
+    1 = operational error.
+  aeb-conformance (--reference | --submission <report.json>) [--out <path>]
+    Run the governed AEB-1 consequence-admission reference suite or validate a
+    self-attested report. A passing result is not certification, deployment
+    evidence, or authorization. Exit 0 = conformant; 2 = non-conformant;
     1 = operational error.
   revocation <statement.json> --target <target.json> --revoker-keys <keys.json>
     Offline revocation check (see below).
@@ -176,6 +182,85 @@ if (args[0] === 'reliance-gap') {
             console.error(l);
     }
     process.exit(exitCode);
+}
+// Subcommand: AEB-1 consequence-admission conformance. The governed suite is
+// copied into the published package at build time, so this remains fully
+// offline under `npx` and evaluates the same bytes as the repository source.
+// Reports are self-attested test results. They never authorize an action and
+// are not certification, an audit, or proof of complete deployment mediation.
+if (args[0] === 'aeb-conformance') {
+    const { digestAebConsequenceConformance, evaluateAebConsequenceSuite, validateAebConsequenceSubmission, } = await import('./aeb-consequence-conformance.js');
+    const { writeFileSync } = await import('node:fs');
+    const sub = args.slice(1);
+    let reference = false;
+    let submissionPath = null;
+    let outPath = null;
+    let invalid = false;
+    for (let index = 0; index < sub.length; index += 1) {
+        if (sub[index] === '--reference')
+            reference = true;
+        else if (sub[index] === '--submission')
+            submissionPath = sub[++index] ?? null;
+        else if (sub[index] === '--out')
+            outPath = sub[++index] ?? null;
+        else
+            invalid = true;
+    }
+    if (invalid || reference === Boolean(submissionPath) || (!reference && !submissionPath)) {
+        console.error('usage: verify aeb-conformance (--reference | --submission <report.json>) [--out <path>]');
+        process.exit(1);
+    }
+    const suiteCandidates = [
+        // Published CLI entrypoint: packages/verify/cli.js.
+        fileURLToPath(new URL('./aeb-consequence-conformance.v1.json', import.meta.url)),
+        // TypeScript compiler output: packages/verify/dist/cli.js.
+        fileURLToPath(new URL('../aeb-consequence-conformance.v1.json', import.meta.url)),
+    ];
+    const suitePath = suiteCandidates.find((candidate) => existsSync(candidate));
+    if (!suitePath) {
+        console.error('error: governed AEB-1 suite is missing from the installed package');
+        process.exit(1);
+    }
+    let suite;
+    try {
+        suite = loadStrictJson(suitePath);
+    }
+    catch (error) {
+        console.error(`error: governed AEB-1 suite is unavailable or invalid (${error.message})`);
+        process.exit(1);
+    }
+    let output;
+    let conformant = false;
+    try {
+        if (reference) {
+            const suiteDigest = digestAebConsequenceConformance(suite);
+            output = evaluateAebConsequenceSuite(suite, {
+                id: 'emilia-protocol.verify.aeb-1-reference',
+                version: 'AEB-1',
+                revision: suiteDigest,
+            });
+            conformant = output.summary.failed === 0;
+        }
+        else {
+            const report = loadStrictJson(submissionPath);
+            output = validateAebConsequenceSubmission(suite, report);
+            conformant = output.valid === true && output.conformant === true;
+        }
+    }
+    catch (error) {
+        console.error(`error: ${error.message}`);
+        process.exit(1);
+    }
+    const json = `${JSON.stringify(output, null, 2)}\n`;
+    if (outPath) {
+        writeFileSync(outPath, json);
+        console.log(`AEB-1 ${conformant ? 'CONFORMANT' : 'NON-CONFORMANT'} — self-test only; report written to ${outPath}`);
+    }
+    else {
+        process.stdout.write(json);
+        console.error(`AEB-1 ${conformant ? 'CONFORMANT' : 'NON-CONFORMANT'} — self-test only, not certification or authorization`);
+    }
+    process.exit(conformant ? 0 : 2);
 }
 // Subcommand: offline revocation check. Answers "do these statements revoke the
 // authorization I hold?" — FAIL-CLOSED, no EP server. Honest boundary: it cannot

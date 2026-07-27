@@ -74,9 +74,9 @@
     {
       "draft": "draft-schrock-action-evidence-boundary",
       "revision": "00",
-      "layer": "material_action_identity_mapping",
-      "role": "Boundary contract joining independently verified evidence to one material action",
-      "next_action": "Published July 21; collect independent implementation and interoperation feedback"
+      "layer": "execution_lifecycle",
+      "role": "Boundary contract joining independently verified evidence to one material action, reserving authority before invocation, and preserving indeterminate outcomes for authenticated reconciliation",
+      "next_action": "Published July 21; ship the open AEB-1 consequence-admission conformance pack, then collect independent implementation and interoperation results before revising the draft"
     },
     {
       "draft": "draft-schrock-canonical-action-identifier",

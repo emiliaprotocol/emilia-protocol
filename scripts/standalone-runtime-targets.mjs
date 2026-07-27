@@ -168,6 +168,7 @@ export const STANDALONE_RUNTIME_SOURCES = [
   'scripts/replay-protocol.ts',
   'scripts/require-release-approval.mts',
   'scripts/run-package-suites.mts',
+  'scripts/run-referee-conformance.mts',
   'scripts/schema-security-audit.mts',
   'scripts/seed-entities.ts',
   'scripts/stripe-setup.mts',

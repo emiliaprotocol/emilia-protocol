@@ -78,6 +78,7 @@
     "setup": "npm install && cp .env.example .env.local 2>/dev/null || true && echo 'Setup complete. Edit .env.local with your credentials.'",
     "prepare": "husky",
     "conformance": "node conformance/run.mjs",
+    "conformance:aeb-1": "node packages/verify/cli.js aeb-conformance --reference",
     "caid:conformance": "node caid/conformance/run.mjs",
     "m2m:conformance": "node conformance/run-model-to-matter.mjs",
     "mobile:conformance": "node mobile/conformance/run.mjs",

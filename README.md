@@ -57,6 +57,23 @@ formal scope or explicit gap, assumptions, exclusions, and evidence hash. Start 
 [human-readable evidence map](https://www.emiliaprotocol.ai/proof), then inspect the
 [resolved security case](security/security-case.json) or run `npm run check:security-case`.
 
+## AEB-1: test the evidence-to-effect boundary
+
+The open [AEB-1 Consequence Admission Conformance](docs/conformance/AEB-1-CONSEQUENCE-ADMISSION.md)
+pack tests the last control point before a consequential action: native
+verification, relying-party acceptance, exact CAID/action matching, evidence satisfaction, local
+authorization, atomic one-time reservation, `INVOKING` custody, separate
+provider-outcome and observed-effect truth, no-blind-retry behavior, and
+authenticated reconciliation.
+
+```bash
+npx @emilia-protocol/verify aeb-conformance --reference
+```
+
+It is format-neutral and self-run. A passing report is self-attested
+conformance evidence—not an audit, certification, production-deployment claim,
+or permission to execute an action.
+
 ## The engine without brakes
 
 For fifty years, software security answered one question: *who is allowed in?* Firewalls, OAuth, and passwords — all built to verify a human identity at the door.

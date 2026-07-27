@@ -1,60 +1,163 @@
-# EP Conformance Suite
+<!-- SPDX-License-Identifier: Apache-2.0 -->
 
-Canonical test fixtures and verification tests for EMILIA Protocol implementations.
+# EMILIA conformance surfaces
 
-Any implementation claiming EP compatibility **must** produce identical outputs for these inputs.
+This directory contains several evidence surfaces with different scopes. Their
+counts and claims must remain separate.
 
-## What's tested
+## Current claim ledger
 
-| Category | What it verifies |
-|----------|-----------------|
-| **Hash determinism** | Same receipt → same SHA-256 hash, regardless of key order, across languages |
-| **Sybil resistance** | Fake receipts from unestablished entities produce low effective evidence and dampened scores |
-| **Policy evaluation** | Built-in policies (strict/standard/permissive/discovery) produce correct Trust Decisions (allow/review/deny) for canonical inputs |
-| **Confidence levels** | Effective evidence thresholds map to correct confidence labels |
-| **Weight model** | v2 weights match published values and sum to 1.00 |
-| **Establishment rules** | Effective evidence ≥ 5.0 AND ≥ 3 unique submitters = established |
+| Surface | Pinned scope | Current result | Honest boundary |
+| --- | --- | --- | --- |
+| Same-team cross-language corpus | [`conformance-manifest.json`](conformance-manifest.json) | **21 suites / 329 vectors** agree across JavaScript, Python, and Go | Three ports maintained in one repository by one team; a consistency check, not three independent implementations |
+| External Rust baseline | [`external/rust-cleanroom-jdieselny.v1.json`](external/rust-cleanroom-jdieselny.v1.json) | **16 suites / 164 vectors**, plus **359 hostility cases** (353 structured and 6 raw-parser cases) | Externally authored and time-pinned; construction evidence is not yet an independently attested strict clean-room acceptance |
+| Referee / AEB-1 | A separate `AEB-1-REFEREE-MANIFEST-v1` described in [`docs/REFEREE.md`](../docs/REFEREE.md) | 13-case offline runner self-test | Not included in either corpus count; not production mediation, certification, deployment evidence, or authorization |
 
-## Files
+Do not add the Rust baseline, Referee adapters, AEB-1 cases, invariants, formal
+states, fuzz cases, or ordinary unit tests to the 21-suite/329-vector total.
+Each has its own manifest and claim boundary.
 
-- `fixtures.json` — Canonical inputs and expected outputs. Language-agnostic.
-- `conformance.test.js` — Vitest runner for the JavaScript reference implementation.
+## Same-team JavaScript / Python / Go corpus
 
-## Running
+[`suites.mjs`](suites.mjs) is the live suite catalog. The checked-in
+[`conformance-manifest.json`](conformance-manifest.json) pins every suite,
+execution companion, runner, source tree, normalized result, and total.
 
-```bash
-npx vitest run conformance/
+The 21 suites cover receipts, signoffs, four-outcome resolution, quorum,
+revocation, semantic and real-crypto outcome binding, Authority Document/Proof
+joins, time attestations, Trust Receipt profiles, provenance, evidence records,
+canonicalization, parser boundaries, AEC role acceptance, currency,
+initiator attestations, consumption proofs, witnesses, and RFC 3161 timestamp
+proofs.
+
+Run all three same-team ports over the same vectors:
+
+```sh
+npm run conformance
 ```
 
-## For other languages
+Verify that the checked-in manifest still matches the catalog, vector bytes,
+runners, source trees, and normalized outputs:
 
-Load `fixtures.json`, implement canonical JSON serialization (sorted keys, no whitespace), compute SHA-256, and compare against `expected_hash` values.
+```sh
+npm run conformance:manifest:check
+```
 
-The canonical JSON algorithm:
-1. For objects: sort keys lexicographically, recurse into values
-2. For arrays: preserve order, recurse into elements
-3. For primitives: use standard JSON serialization
-4. No whitespace between tokens
+A green run establishes agreement with the expected results for this current
+corpus. It does not establish independent implementation, production
+deployment, complete mediation, or fitness for a particular relying party.
 
-If your implementation produces the same hashes for all 4 hash fixtures, your canonical JSON + hashing is compatible.
+## External Rust evidence
 
-## Adding fixtures
+The external Rust verifier is not a fourth row in the current same-team
+manifest. Its evidence is independently scoped by
+[`external/rust-cleanroom-jdieselny.v1.json`](external/rust-cleanroom-jdieselny.v1.json),
+which pins:
 
-All fixtures are generated from the reference implementation. To add a new fixture:
+- the public source repository, commit, and tree;
+- the Rust toolchain and locked build;
+- the frozen 16-suite/164-vector bundle and result manifest; and
+- the evaluator commit, corpus digest, workflow evidence, and 359-case hostility
+  boundary.
 
-1. Define the receipt in `fixtures.json`
-2. Run the reference implementation to compute the expected hash
-3. Add the expected hash to the fixture
-4. Add a corresponding test in `conformance.test.js`
+The newer suites in the 21-suite live corpus are not attributed to Rust. The
+external result is interoperability evidence over its time-pinned input set,
+not a claim that Rust passed all 329 current vectors. Its implementation-signed
+construction statement predates the pinned hardening commit, so
+`strict_clean_room_acceptance` remains false until a qualifying independent
+attestation is pinned and verified.
 
-## Federation
+See [`clean-room/README.md`](clean-room/README.md) for the external intake and
+runner protocol and
+[`clean-room/EXTERNAL-CHALLENGE.md`](clean-room/EXTERNAL-CHALLENGE.md) for the
+hostility boundary.
 
-A live two-operator cross-verification (PIP-006) runs from `operator2/` — a
-second, separately-deployed operator whose receipts are verified against its own
-published keys and revocation surface (`node operator2/verify-live.mjs`). The
-write-up, including the honest limitation that both operators are EMILIA-run, is
-in [`docs/conformance/FEDERATION-PROOF.md`](../docs/conformance/FEDERATION-PROOF.md).
+## Referee / AEB-1 manifests stay separate
+
+[EMILIA Referee](../docs/REFEREE.md) is an offline AEB-1 self-test harness. It
+runs one locally selected runner by absolute path and fixed arguments, verifies
+the runner executable's SHA-256, exchanges one strict JSON request/result, and
+emits a non-authorizing `SELF_TEST` report. Runner reports keep native
+`VERIFIED`, RP `ACCEPTED`, CAID/action `MATCH`, and AEC `SATISFIED` separate.
+Referee records and compares those claims; it does not perform native
+verification, relying-party acceptance, mapping, or AEC composition itself.
+
+Each AEB-1 self-test uses a separate `AEB-1-REFEREE-MANIFEST-v1` containing its
+closed cases, expected results, schemas, limits, and deterministic-run policy;
+the report separately records the command, executable digest, and result
+digests. Referee manifests are not members of
+[`conformance-manifest.json`](conformance-manifest.json) and MUST NOT increase
+its 21 suites, 329 vectors, or three same-team implementation count. This also
+prevents a protocol adapter from inflating the external Rust baseline.
+
+The public consequence-boundary profile and pack are:
+
+- [`AEB-1 Consequence Admission Conformance`](../docs/conformance/AEB-1-CONSEQUENCE-ADMISSION.md)
+- [`aeb-1/`](aeb-1/)
+- [`referee/schemas/`](referee/schemas/)
+
+The public AEB-1 consequence-admission pack and the separate Referee
+external-manifest self-test live under [`aeb-1/`](aeb-1/) and
+[`referee/`](referee/), respectively. Neither enters the 21-suite manifest.
+
+A passing Referee report means only that the pinned local runner matched the 13
+checked-in cases under the manifest's exact limits and deterministic reruns. It
+is not certification, authorization, production mediation, or proof that a
+deployment completely controls every consequential action. The launcher is
+no-shell and bounded, but it is not a network, syscall, filesystem, or
+descendant-process sandbox. Do not expose its caller-selected executable
+interface as a hosted arbitrary-code endpoint.
+
+## Runner contract for another language
+
+For the current cross-language corpus, a runner receives one absolute vector
+file path and writes only one JSON array to stdout:
+
+```text
+runner [fixed arguments...] /absolute/path/to/vectors.json
+```
+
+```json
+[
+  { "id": "accept_valid", "valid": true },
+  { "id": "reject_tampered", "valid": false }
+]
+```
+
+The exact result shape is suite-specific. A runner must return every expected
+vector ID exactly once, add no IDs, emit strict JSON without diagnostic text,
+and exit nonzero on internal failure. The harness checks the complete typed
+result for suites that require more than one primary verdict.
+
+Adding a runner to the same repository does not make it independent. External
+implementations should use the source-free intake in [`clean-room/`](clean-room/)
+and publish their provenance and construction claims separately.
+
+## Adding or changing a live suite
+
+1. Add or update the language-agnostic vector file under [`vectors/`](vectors/).
+2. Add it to [`suites.mjs`](suites.mjs), including an execution companion when
+   public vectors intentionally omit proof material.
+3. Implement the complete result contract in JavaScript, Python, and Go.
+4. Run `npm run conformance`.
+5. Regenerate the manifest with `npm run conformance:manifest`.
+6. Run `npm run conformance:manifest:check`, `npm run check:conformance-docs`,
+   and `npm run check:public-conformance-claims`.
+
+Do not hand-edit counts. The live catalog and generated manifest are the
+authoritative current sources.
+
+## Other conformance surfaces
+
+- [`INVARIANTS.md`](INVARIANTS.md) covers safety-invariant replay across
+  JavaScript, Python, and Go. Invariant counts are not receipt-vector counts.
+- [`operator2/`](operator2/) exercises a live two-operator federation path. Both
+  operators are EMILIA-run, so it is not an independent-operator claim. See
+  [`docs/conformance/FEDERATION-PROOF.md`](../docs/conformance/FEDERATION-PROOF.md).
+- `fixtures.json`, `conformance.test.js`, and `verify_hashes.py` cover the older
+  trust-scoring compatibility surface. They are not part of the current
+  21-suite manifest unless named by [`suites.mjs`](suites.mjs).
 
 ## License
 
-Apache 2.0 — same as EMILIA Protocol.
+Apache-2.0, the same as EMILIA Protocol.

@@ -1,0 +1,155 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://emiliaprotocol.ai/schemas/aeb-1/referee/case.schema.json",
+  "title": "AEB-1 Referee Case",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "@version",
+    "case_id",
+    "phase",
+    "exact_action",
+    "native_evidence",
+    "custody",
+    "provider",
+    "reconciliation"
+  ],
+  "properties": {
+    "@version": { "const": "AEB-1-REFEREE-CASE-v1" },
+    "case_id": { "$ref": "#/$defs/identifier" },
+    "phase": { "enum": ["ADMISSION", "INVOCATION", "RECONCILIATION"] },
+    "exact_action": { "$ref": "#/$defs/exact_action" },
+    "native_evidence": {
+      "type": "array",
+      "minItems": 1,
+      "maxItems": 16,
+      "items": { "$ref": "#/$defs/native_evidence" }
+    },
+    "custody": { "$ref": "#/$defs/custody" },
+    "provider": { "$ref": "#/$defs/provider" },
+    "reconciliation": {
+      "oneOf": [
+        { "type": "null" },
+        { "$ref": "#/$defs/reconciliation" }
+      ]
+    }
+  },
+  "$defs": {
+    "identifier": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 128,
+      "pattern": "^[a-z0-9][a-z0-9._:-]*$"
+    },
+    "digest": {
+      "type": "string",
+      "pattern": "^sha256:[0-9a-f]{64}$"
+    },
+    "caid": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 512,
+      "pattern": "^caid:1:[a-z][a-z0-9-]*(\\.[a-z][a-z0-9-]*)*\\.[1-9][0-9]*:[a-z0-9]+(-[a-z0-9]+)*:[A-Za-z0-9_-]{43}$"
+    },
+    "exact_action": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["caid", "normalized_action_digest"],
+      "properties": {
+        "caid": { "$ref": "#/$defs/caid" },
+        "normalized_action_digest": { "$ref": "#/$defs/digest" }
+      }
+    },
+    "trust_root": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["root_id", "state"],
+      "properties": {
+        "root_id": { "$ref": "#/$defs/identifier" },
+        "state": { "enum": ["PINNED", "WRONG", "UNAVAILABLE"] }
+      }
+    },
+    "mapping": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["caid", "normalized_action_digest", "material_fields"],
+      "properties": {
+        "caid": {
+          "oneOf": [
+            { "type": "null" },
+            { "$ref": "#/$defs/caid" }
+          ]
+        },
+        "normalized_action_digest": {
+          "oneOf": [
+            { "type": "null" },
+            { "$ref": "#/$defs/digest" }
+          ]
+        },
+        "material_fields": { "enum": ["PRESERVED", "LOST", "INDETERMINATE"] }
+      }
+    },
+    "native_evidence": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "evidence_id",
+        "wrapper_digest",
+        "native_replay_identity",
+        "trust_root",
+        "native_verification",
+        "rp_acceptance",
+        "mapping",
+        "status"
+      ],
+      "properties": {
+        "evidence_id": { "$ref": "#/$defs/identifier" },
+        "wrapper_digest": { "$ref": "#/$defs/digest" },
+        "native_replay_identity": { "$ref": "#/$defs/digest" },
+        "trust_root": { "$ref": "#/$defs/trust_root" },
+        "native_verification": { "enum": ["VERIFIED", "FAILED", "INDETERMINATE"] },
+        "rp_acceptance": { "enum": ["ACCEPTED", "REJECTED", "INDETERMINATE"] },
+        "mapping": { "$ref": "#/$defs/mapping" },
+        "status": { "enum": ["CURRENT", "STALE", "UNAVAILABLE", "REVOKED"] }
+      }
+    },
+    "custody": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["operation_id", "state", "consumed_replay_identities", "retry_requested"],
+      "properties": {
+        "operation_id": { "$ref": "#/$defs/identifier" },
+        "state": { "enum": ["UNRESERVED", "RESERVED", "INVOKING", "INDETERMINATE", "TERMINAL"] },
+        "consumed_replay_identities": {
+          "type": "array",
+          "maxItems": 64,
+          "uniqueItems": true,
+          "items": { "$ref": "#/$defs/digest" }
+        },
+        "retry_requested": { "type": "boolean" }
+      }
+    },
+    "provider": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["commitment", "observed_effect", "failure"],
+      "properties": {
+        "commitment": { "enum": ["NOT_INVOKED", "COMMITTED", "PROVEN_NOT_COMMITTED", "INDETERMINATE"] },
+        "observed_effect": { "enum": ["NOT_OBSERVED", "OBSERVED_AS_REQUESTED", "DIVERGED", "INDETERMINATE"] },
+        "failure": { "enum": ["NONE", "TIMEOUT", "CRASH"] }
+      }
+    },
+    "reconciliation": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["authenticated", "operation_id", "evidence_digest", "provider_commitment", "observed_effect"],
+      "properties": {
+        "authenticated": { "type": "boolean" },
+        "operation_id": { "$ref": "#/$defs/identifier" },
+        "evidence_digest": { "$ref": "#/$defs/digest" },
+        "provider_commitment": { "enum": ["COMMITTED", "PROVEN_NOT_COMMITTED", "INDETERMINATE"] },
+        "observed_effect": { "enum": ["NOT_OBSERVED", "OBSERVED_AS_REQUESTED", "DIVERGED", "INDETERMINATE"] }
+      }
+    }
+  }
+}

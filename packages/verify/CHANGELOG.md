@@ -3,6 +3,27 @@
 All notable changes to `@emilia-protocol/verify` are documented here.
 This package follows [Semantic Versioning](https://semver.org/).
 
+## 3.16.1 (2026-07-27)
+
+### Added
+
+- `./aeb-consequence-conformance`, a closed, deterministic 22-vector AEB-1
+  reference self-test for native verification, relying-party acceptance,
+  exact-action matching, evidence
+  satisfaction, local authorization, one-time reservation, invocation custody,
+  separate provider/effect truth, and authenticated reconciliation.
+- `emilia-verify aeb-conformance --reference` emits the complete reference
+  report; `--submission <report.json>` validates an offline self-assessment.
+
+### Security
+
+- The suite fails closed on stale, revoked, unavailable, mismatched, replayed,
+  non-atomic, blindly retried, or unauthenticated evidence paths.
+- `INVOKING` remains consumed custody, provider outcome never implies observed
+  effect, and `local_atomic` never claims federated or remote atomicity.
+- Reports are explicitly self-attested and non-authorizing; they do not claim
+  audit, certification, deployment, complete mediation, or adoption.
+
 ## 3.16.0 (2026-07-26)
 
 ### Added

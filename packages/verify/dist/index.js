@@ -15,6 +15,7 @@ import { verifyOutcomeBindingCore } from './outcome-binding.js';
 export { AGENTROA_DRAFT, verifyAgentROA } from './agentroa.js';
 export { AUTHORITY_PROGRAM_VERSION, AUTHORITY_PROGRAM_DOMAIN, AUTHORITY_STAGE_RECEIPT_VERSION, AUTHORITY_STAGE_RECEIPT_DOMAIN, AUTHORITY_PROGRAM_RESULT_VERSION, authorityProgramDigest, authorityStageReceiptDigest, deriveAuthorityProgramPredecessors, verifyAuthorityProgram, } from './authority-program.js';
 export * from './aeb-adapter-contract.js';
+export * from './aeb-consequence-conformance.js';
 export * from './aeb-discovery-permit-adapter.js';
 export * from './aeb-wimse-oauth-adapter.js';
 export * from './aeb-native-adapters.js';

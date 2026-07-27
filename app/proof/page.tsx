@@ -749,6 +749,7 @@ export default async function ProofPage() {
 curl -fsSLo /tmp/tla2tools.jar https://github.com/tlaplus/tlaplus/releases/download/v1.7.4/tla2tools.jar
 echo "936a262061c914694dfd669a543be24573c45d5aa0ff20a8b96b23d01e050e88  /tmp/tla2tools.jar" | shasum -a 256 -c -
 TLA2TOOLS_JAR=/tmp/tla2tools.jar npm run check:formal-traces
+npm run conformance:aeb-1
 npm run conformance
 npm run check:proof-stats
 npm run check:llm-context`}
@@ -766,6 +767,9 @@ npm run check:llm-context`}
                 </a>
                 <Link href="/verify-live" className="ep-cta-secondary" style={cta.secondary}>
                   Repository verification snapshot
+                </Link>
+                <Link href="/conformance" className="ep-cta-secondary" style={cta.secondary}>
+                  AEB-1 consequence admission
                 </Link>
                 <a href={`${REPO}/blob/main/security/security-case.json`} className="ep-cta-secondary" style={cta.secondary}>
                   Resolved security case

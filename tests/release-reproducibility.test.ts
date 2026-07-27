@@ -51,7 +51,10 @@ describe('release byte reproducibility', () => {
     expect(result.source.commit_sha).toBe(execFileSync('git', ['rev-parse', 'HEAD'], { encoding: 'utf8' }).trim());
     expect(result.recipe['@version']).toBe('EP-NPM-PACK-RECIPE-v2');
     expect(result.members).toHaveLength(result.fileCount);
-  }, 300_000);
+  // The locked clean install honors the repository's 600-second npm fetch
+  // timeout. Keep this test's outer deadline at least as large so a slow cold
+  // registry download cannot kill the byte-comparison oracle first.
+  }, 600_000);
 
   it('normalizes source file modes across independent package checkouts', () => {
     const root = mkdtempSync(path.join(os.tmpdir(), 'ep-pack-modes-'));

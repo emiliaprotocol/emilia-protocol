@@ -389,6 +389,7 @@ export default function ProtocolPage() {
           </p>
           <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap' }}>
             <a href="/spec" className="ep-cta" style={cta.primary}>Read the Full Spec</a>
+            <a href="/conformance" className="ep-cta-secondary" style={{ ...cta.secondary, borderColor: 'rgba(255,255,255,0.15)', color: 'rgba(250,250,249,0.7)' }}>Run AEB-1 →</a>
             <a href="/partners" className="ep-cta-secondary" style={{ ...cta.secondary, borderColor: 'rgba(255,255,255,0.15)', color: 'rgba(250,250,249,0.7)' }}>Request Pilot →</a>
           </div>
         </div>

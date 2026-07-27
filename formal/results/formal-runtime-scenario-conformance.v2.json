@@ -443,11 +443,11 @@
     },
     {
       "path": "package-lock.json",
-      "sha256": "a5086ea226b5bc918b8e2d7a46b0486e431fa898c64013959bdbcf01d5b12371"
+      "sha256": "3b85ed0b2c37786b90f9b3c864cdca27da7cf6e9e59b5da0e64cb97f73cd092a"
     },
     {
       "path": "package.json",
-      "sha256": "c06dda3ef7926ac967788979be2d0928334aab8b6dc1d2fe0315733c4ffe85c4"
+      "sha256": "caa90540554ade56d0123c4e078a7acdaee83c0256bbf38255373271a943d37a"
     },
     {
       "path": "packages/gate/aec-execution.js",
@@ -559,7 +559,7 @@
     },
     {
       "path": "packages/gate/dist/index.js",
-      "sha256": "41e1c1e377173e18d97a4462aba070a9015b7c80ea30cd692063671abaa3e1f4"
+      "sha256": "be1081633dc5fd54b2864a8fabc9114c4c815aae12f5287d89f990ac881aeef1"
     },
     {
       "path": "packages/gate/dist/key-registry.js",
@@ -588,6 +588,14 @@
     {
       "path": "packages/gate/dist/receipt-program.js",
       "sha256": "a72249eead82967d0b11e632753baebfcb89c3d7702ec46b27d609c6e2dc2606"
+    },
+    {
+      "path": "packages/gate/dist/referee-runner.js",
+      "sha256": "b055150a022005f7447855808fb6768f8e694dd4ebc5a656499bd0a448025044"
+    },
+    {
+      "path": "packages/gate/dist/referee.js",
+      "sha256": "371ba518baa66d7dd970759659cb39c2c2eba973e3fff9df73084ac3ab82386d"
     },
     {
       "path": "packages/gate/dist/reliance-packet.js",
@@ -699,7 +707,7 @@
     },
     {
       "path": "packages/gate/src/index.ts",
-      "sha256": "5734144523f18e0c973657a78f9d56cfb76bcbc87892d18fe49ab55bb24aa2ee"
+      "sha256": "fe08718a642e2403a5001b0abf07079745e2903b6adc8bbf74265af4c8df4259"
     },
     {
       "path": "packages/gate/src/network-witness.ts",
@@ -830,6 +838,10 @@
       "sha256": "f99354d97a4d04440a36fcee08787818333f723dcb21961fa62a5d561ba8b248"
     },
     {
+      "path": "packages/verify/dist/aeb-consequence-conformance.js",
+      "sha256": "e1d1efbb71dc7bcd4dd5710e6a551b331ebdc4ad0f4507278b18e15071fee65b"
+    },
+    {
       "path": "packages/verify/dist/aeb-discovery-permit-adapter.js",
       "sha256": "c7956840468fae36f5b280deade5f5dbe0c1fee03a309e250b785cec08de9c8d"
     },
@@ -903,7 +915,7 @@
     },
     {
       "path": "packages/verify/dist/index.js",
-      "sha256": "ebb0e82821f4e01a797be098d6fddc1f3e5f1c1c7d99fd1230ad39caa266f60f"
+      "sha256": "e59bd7d00c8f4ebd06bd2d1e1ba238f438734c5c673bf52c3616bbf9246b0ef6"
     },
     {
       "path": "packages/verify/dist/initiator-attestation.js",
@@ -999,7 +1011,7 @@
     },
     {
       "path": "packages/verify/src/index.ts",
-      "sha256": "4565d06f77a2f1823a11dda3031a8f5ef0f4c213ccd32116a5f36b75d27e71b2"
+      "sha256": "644b74f5d3d44041777a8b83075eacc78ebaaac16ef754a02b3ac319c9ec6eb4"
     },
     {
       "path": "packages/verify/src/outcome-binding.ts",
@@ -1039,7 +1051,7 @@
     },
     {
       "path": "scripts/standalone-runtime-targets.mjs",
-      "sha256": "559ba8fb00222ebbd40bdc5c21401dc48a46e8480a5972bfb433e01dddeb248f"
+      "sha256": "a800a5618df198d18f27f14f16c85b6f51bcddcfe046eebe769302ac2bbb89f7"
     }
   ],
   "limitations": [

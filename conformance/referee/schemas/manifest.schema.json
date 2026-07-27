@@ -1,0 +1,78 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://emiliaprotocol.ai/schemas/aeb-1/referee/manifest.schema.json",
+  "title": "AEB-1 Referee Manifest",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["@version", "suite_id", "profile", "assessment", "schemas", "runner_pin", "limits", "fixtures"],
+  "properties": {
+    "@version": { "const": "AEB-1-REFEREE-MANIFEST-v1" },
+    "suite_id": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 128,
+      "pattern": "^[a-z0-9][a-z0-9._:-]*$"
+    },
+    "profile": { "const": "local_atomic" },
+    "assessment": { "const": "SELF_TEST" },
+    "schemas": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["case", "runner_result", "report", "manifest"],
+      "properties": {
+        "case": { "const": "../schemas/case.schema.json" },
+        "runner_result": { "const": "../schemas/runner-result.schema.json" },
+        "report": { "const": "../schemas/report.schema.json" },
+        "manifest": { "const": "../schemas/manifest.schema.json" }
+      }
+    },
+    "runner_pin": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["executable_sha256", "source", "verification"],
+      "properties": {
+        "executable_sha256": { "type": "null" },
+        "source": { "const": "RUNTIME_REQUIRED" },
+        "verification": { "const": "BEFORE_EACH_SPAWN" }
+      }
+    },
+    "limits": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "max_cases",
+        "max_case_bytes",
+        "max_result_bytes",
+        "max_stderr_bytes",
+        "max_report_bytes",
+        "max_json_depth",
+        "timeout_ms",
+        "deterministic_runs"
+      ],
+      "properties": {
+        "max_cases": { "type": "integer", "minimum": 1, "maximum": 128 },
+        "max_case_bytes": { "type": "integer", "minimum": 1024, "maximum": 1048576 },
+        "max_result_bytes": { "type": "integer", "minimum": 1024, "maximum": 1048576 },
+        "max_stderr_bytes": { "type": "integer", "minimum": 0, "maximum": 65536 },
+        "max_report_bytes": { "type": "integer", "minimum": 4096, "maximum": 4194304 },
+        "max_json_depth": { "type": "integer", "minimum": 4, "maximum": 64 },
+        "timeout_ms": { "type": "integer", "minimum": 100, "maximum": 30000 },
+        "deterministic_runs": { "type": "integer", "minimum": 2, "maximum": 4 }
+      }
+    },
+    "fixtures": {
+      "type": "array",
+      "minItems": 1,
+      "maxItems": 128,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["case", "expected"],
+        "properties": {
+          "case": { "$ref": "case.schema.json" },
+          "expected": { "$ref": "runner-result.schema.json" }
+        }
+      }
+    }
+  }
+}

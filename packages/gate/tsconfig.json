@@ -101,6 +101,8 @@
     "src/autonomy-control-plane-profile.ts",
     "src/admission-store.ts",
     "src/admission-store-postgres.ts",
-    "src/gate-qualification-v2.ts"
+    "src/gate-qualification-v2.ts",
+    "src/referee.ts",
+    "src/referee-runner.ts"
   ]
 }

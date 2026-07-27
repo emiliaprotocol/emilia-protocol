@@ -1,6 +1,6 @@
 {
   "name": "@emilia-protocol/gate",
-  "version": "0.18.1",
+  "version": "0.18.2",
   "repository": {
     "type": "git",
     "url": "https://github.com/emiliaprotocol/emilia-protocol.git",
@@ -309,6 +309,14 @@
       "types": "./dist/gate-qualification-v2.d.ts",
       "import": "./gate-qualification-v2.js"
     },
+    "./referee": {
+      "types": "./dist/referee.d.ts",
+      "import": "./referee.js"
+    },
+    "./referee-runner": {
+      "types": "./dist/referee-runner.d.ts",
+      "import": "./referee-runner.js"
+    },
     "./zk-range-proof": {
       "types": "./dist/zk-range-proof.d.ts",
       "import": "./zk-range-proof.js"
@@ -367,6 +375,8 @@
     "admission-store.js",
     "admission-store-postgres.js",
     "gate-qualification-v2.js",
+    "referee.js",
+    "referee-runner.js",
     "zk-range-proof.js",
     "reports/assurance-package.js",
     "ep-assure.mjs",
