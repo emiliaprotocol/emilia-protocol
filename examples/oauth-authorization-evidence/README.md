@@ -50,6 +50,9 @@ demo models the Approver Directory from Section 5.2 of the EP receipt draft:
   AS key and the EP receipt-log key;
 - only after verifying the directory snapshot does the Resource Server pass its
   entries to `verifyTrustReceipt()` as `approverKeys`.
+- the Resource Server also pins the expected directory identity and a minimum
+  signed sequence, refusing a validly signed snapshot from another directory or
+  an older directory state.
 
 The snapshot format in this lab is illustrative deployment glue, not a new
 protocol wire format. A deployment can carry equivalent authenticated directory
@@ -65,12 +68,15 @@ The lab executes one valid flow and refuses:
 - exact-action substitution;
 - mutation of `evidence_ref` inside the access token;
 - an invalid detached AS evidence signature;
+- structurally incomplete evidence even when it carries valid AS signatures;
 - stale user-confirmation evidence, even inside a fresh token;
 - EP receipt bytes that do not match the content address;
 - a validly signed EP receipt under an approver key absent from the pinned
   directory; and
 - substitution of an approver key inside a previously signed directory
-  snapshot.
+  snapshot;
+- a validly signed snapshot from a different approver directory; and
+- rollback to an older validly signed directory sequence.
 
 ## Honest limits
 

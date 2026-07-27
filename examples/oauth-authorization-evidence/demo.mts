@@ -35,6 +35,8 @@ const AS_ISSUER = 'https://as.example';
 const RESOURCE_AUDIENCE = 'https://api.merchant.example';
 const AS_KEY_ID = 'as.example#evidence-1';
 const DIRECTORY_KEY_ID = 'merchant.example#approver-directory-1';
+const DIRECTORY_ID = 'https://merchant.example/approvers';
+const DIRECTORY_SEQUENCE = 18;
 const LOG_KEY_ID = 'ep:log:merchant-example#1';
 const APPROVER_KEY_ID = 'ep:key:alice#2026-07';
 const APPROVER_ID = 'ep:approver:alice';
@@ -105,11 +107,17 @@ async function verifyDetachedEvidenceJws(evidence, publicKey) {
   return true;
 }
 
-function createDirectorySnapshot({ entry, rootPrivateKey, now }) {
+function createDirectorySnapshot({
+  entry,
+  rootPrivateKey,
+  now,
+  directoryId = DIRECTORY_ID,
+  sequence = DIRECTORY_SEQUENCE,
+}) {
   const payload = {
     profile: 'example-signed-approver-directory-snapshot',
-    directory_id: 'https://merchant.example/approvers',
-    sequence: 18,
+    directory_id: directoryId,
+    sequence,
     valid_from: new Date(now.getTime() - 60_000).toISOString(),
     valid_until: new Date(now.getTime() + 3_600_000).toISOString(),
     entries: { [APPROVER_KEY_ID]: entry },
@@ -124,11 +132,11 @@ function createDirectorySnapshot({ entry, rootPrivateKey, now }) {
   };
 }
 
-function verifyDirectorySnapshot(snapshot, pinnedDirectoryRoots, now) {
+function verifyDirectorySnapshot(snapshot, trust, now) {
   if (!snapshot || typeof snapshot !== 'object') throw new Error('missing approver directory snapshot');
   const { payload, signature } = snapshot;
   if (!payload || !signature || signature.alg !== 'Ed25519') throw new Error('malformed approver directory snapshot');
-  const root = pinnedDirectoryRoots?.[signature.kid];
+  const root = trust?.pinnedDirectoryRoots?.[signature.kid];
   if (typeof root !== 'string') throw new Error('directory root is not pinned');
   const publicKey = crypto.createPublicKey({
     key: Buffer.from(root, 'base64url'),
@@ -142,6 +150,14 @@ function verifyDirectorySnapshot(snapshot, pinnedDirectoryRoots, now) {
     Buffer.from(signature.value || '', 'base64url'),
   );
   if (!signatureOk) throw new Error('approver directory signature is invalid');
+  if (payload.directory_id !== trust?.expectedDirectoryId) {
+    throw new Error('approver directory identity does not match relying-party policy');
+  }
+  if (!Number.isSafeInteger(payload.sequence)
+      || !Number.isSafeInteger(trust?.minimumDirectorySequence)
+      || payload.sequence < trust.minimumDirectorySequence) {
+    throw new Error('approver directory sequence is stale or malformed');
+  }
   const nowMs = now.getTime();
   const from = Date.parse(payload.valid_from);
   const until = Date.parse(payload.valid_until);
@@ -217,6 +233,14 @@ export async function verifyOAuthAuthorizationEvidence({
       : [];
     if (matches.length !== 1 || !matches[0].evidence) return refusal(checks, 'missing_or_ambiguous_authorization_evidence');
     const evidence = matches[0].evidence;
+    if (typeof evidence.id !== 'string' || evidence.id.length === 0
+        || !evidence.user_confirmation || typeof evidence.user_confirmation !== 'object'
+        || typeof evidence.user_confirmation.displayed_content !== 'string'
+        || evidence.user_confirmation.displayed_content.length === 0
+        || typeof evidence.user_confirmation.user_action !== 'string'
+        || evidence.user_confirmation.user_action.length === 0) {
+      return refusal(checks, 'malformed_authorization_evidence');
+    }
 
     await verifyDetachedEvidenceJws(evidence, trust.asPublicKey);
     checks.as_evidence_signature = true;
@@ -241,7 +265,7 @@ export async function verifyOAuthAuthorizationEvidence({
     if (!receipt || receiptReference(receipt) !== reference) return refusal(checks, 'evidence_reference_digest_mismatch');
     checks.evidence_reference = true;
 
-    const approverKeys = verifyDirectorySnapshot(approverDirectory, trust.pinnedDirectoryRoots, now);
+    const approverKeys = verifyDirectorySnapshot(approverDirectory, trust, now);
     checks.approver_directory = true;
 
     const receiptReport = verifyTrustReceipt(receipt, {
@@ -322,6 +346,8 @@ export async function runOAuthAuthorizationEvidenceLab() {
     pinnedDirectoryRoots: {
       [DIRECTORY_KEY_ID]: publicKeyToSpkiB64u(directoryRoot.publicKey),
     },
+    expectedDirectoryId: DIRECTORY_ID,
+    minimumDirectorySequence: DIRECTORY_SEQUENCE,
     logPublicKey: publicKeyToSpkiB64u(log.publicKey),
   };
 
@@ -421,6 +447,21 @@ export async function runOAuthAuthorizationEvidenceLab() {
     result: await verify({ accessToken: tokenWithStaleEvidence }),
   });
 
+  const malformedEvidence = clone(evidence);
+  malformedEvidence.id = `urn:uuid:${crypto.randomUUID()}`;
+  delete malformedEvidence.user_confirmation.displayed_content;
+  malformedEvidence.as_signature = await createDetachedEvidenceJws(malformedEvidence, asKey.privateKey);
+  const tokenWithMalformedEvidence = await issueAccessToken({
+    evidence: malformedEvidence,
+    privateKey: asKey.privateKey,
+    now,
+  });
+  cases.push({
+    id: 'refuse-malformed-signed-evidence',
+    expected: 'refuse',
+    result: await verify({ accessToken: tokenWithMalformedEvidence }),
+  });
+
   const mutatedReceipt = clone(receipt);
   mutatedReceipt.action.parameters.total = '24999.00';
   cases.push({
@@ -459,6 +500,30 @@ export async function runOAuthAuthorizationEvidenceLab() {
     id: 'refuse-directory-entry-substitution',
     expected: 'refuse',
     result: await verify({ approverDirectory: modifiedDirectory }),
+  });
+
+  const wrongDirectory = createDirectorySnapshot({
+    entry: approverEntry,
+    rootPrivateKey: directoryRoot.privateKey,
+    now,
+    directoryId: 'https://other-tenant.example/approvers',
+  });
+  cases.push({
+    id: 'refuse-cross-directory-snapshot',
+    expected: 'refuse',
+    result: await verify({ approverDirectory: wrongDirectory }),
+  });
+
+  const rolledBackDirectory = createDirectorySnapshot({
+    entry: approverEntry,
+    rootPrivateKey: directoryRoot.privateKey,
+    now,
+    sequence: DIRECTORY_SEQUENCE - 1,
+  });
+  cases.push({
+    id: 'refuse-directory-sequence-rollback',
+    expected: 'refuse',
+    result: await verify({ approverDirectory: rolledBackDirectory }),
   });
 
   return {

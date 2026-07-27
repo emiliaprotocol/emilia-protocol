@@ -8,7 +8,7 @@ import {
 describe('OAuth Authorization Evidence + EP receipt composition', () => {
   it('accepts the composed artifact and refuses every cross-boundary substitution', async () => {
     const result = await runOAuthAuthorizationEvidenceLab();
-    expect(result.cases).toHaveLength(8);
+    expect(result.cases).toHaveLength(11);
     for (const testCase of result.cases) {
       expect(
         testCase.result.accepted,
