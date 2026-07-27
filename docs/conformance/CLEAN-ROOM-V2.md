@@ -1,14 +1,14 @@
 # Current-bundle clean-room v2
 
 The v2 clean-room infrastructure freezes the exact current conformance input at
-base commit `b83cc4361c8cb0a0531eda309b7d117bb9964a83`:
+base commit `65a0e0fbdc6742f2ba6d7d43009935ff49f71183`:
 
 - 21 counted suites;
 - 329 counted vectors;
 - current manifest byte SHA-256
-  `7fadd3ab30c2f291494055047294d6bb9c9fb11487917e2f9011ffa943b41ce9`;
+  `ae438e8b93f2277651e3ac600655865f992869349d85d32b9071cb9be2b17d67`;
 - current manifest canonical claim SHA-256
-  `f63bacf3b068ddfe94609df09e6cc4d46fceb8017e9b80ee84306310dfc410fe`;
+  `ae10bfa3ffd6665dc5c7704089ce3e7824b6e57a20774ba027859850044adcff`;
   and
 - Authority Document execution companion SHA-256
   `121a358459ffed223a41a79570cc5307693eaa89a59b3ad330710c5e2f286959`.
