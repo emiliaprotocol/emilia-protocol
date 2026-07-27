@@ -69,6 +69,7 @@ export const STANDALONE_RUNTIME_SOURCES = [
   'lib/grace/mobile-grid.ts',
   'lib/grace/reference-adapters.ts',
   'lib/grace/reference-scenario.ts',
+  'lib/health/davinci-pas-binding.ts',
   'lib/health/proposal-to-effect-profile.ts',
   'lib/ncpdp/privacy.ts',
   'lib/ncpdp/rx-reliance.ts',
