@@ -4,6 +4,7 @@
 
 import SiteNav from '@/components/SiteNav';
 import SiteFooter from '@/components/SiteFooter';
+import { GATE_QUALIFICATION } from '@/lib/commercial-offer';
 import { styles, cta, color, font } from '@/lib/tokens';
 
 const GATED = [
@@ -20,7 +21,7 @@ const LOOP = [
   { n: '1', title: 'Request', body: 'An agent or system requests a consequential action at the actuator boundary.' },
   { n: '2', title: 'Challenge', body: 'If the action is guarded and no valid receipt is present, the gate returns 428 Receipt Required and tells the agent exactly what to bring.' },
   { n: '3', title: 'Authorize', body: 'A directory-bound approver — or a quorum, for hard cuts — signs the exact action on an enrolled device-bound authenticator.' },
-  { n: '4', title: 'Verify', body: 'Offline, fail-closed: authority (pinned key), action-binding, assurance tier, freshness, one-time consumption — no trust in the operator.' },
+  { n: '4', title: 'Verify', body: 'Offline, fail-closed: any required current qualification, authority (pinned key), action-binding, assurance tier, freshness, and one-time consumption — no trust in the operator.' },
   { n: '5', title: 'Execute', body: 'Only a passing check reaches the actuator. Deny by default; absence of a receipt is the anomaly, not the default.' },
   { n: '6', title: 'Execution receipt', body: 'On execution the gate emits proof bound to the exact authorization decision — the artifact an auditor, regulator, or incident review replays.' },
 ];
@@ -133,10 +134,10 @@ export default function GatePage() {
               action passed or failed under its own pinned trust inputs.
             </p>
             <div style={{ display: 'flex', gap: 12, marginTop: 32, flexWrap: 'wrap' }}>
-              <a href="/gate/live" style={cta.primary}>Open live Gate</a>
-              <a href="/gate/control-plane" style={cta.secondary}>Open control plane</a>
+              <a href="/gate/live" style={cta.primary}>Open Gate reference</a>
+              <a href="/gate/control-plane" style={cta.secondary}>Open reference control plane</a>
               <a href="#loop" style={cta.secondary}>How it works</a>
-              <a href="#surfaces" style={cta.secondary}>Where it runs</a>
+              <a href="#surfaces" style={cta.secondary}>Where it integrates</a>
               <a href="/try/receipt-required" style={cta.secondary}>Try to break it</a>
               <a href="/fire-drill/cf-1" style={cta.secondary}>CF-1 conformance</a>
               <a href="/pilot?v=gate" style={cta.secondary}>Request pilot</a>
@@ -157,6 +158,44 @@ export default function GatePage() {
               verifies. The guarantee is only as strong as that mediation: every protected path must
               reach Gate at the actual system of record or actuator. Verification itself is open and
               can run offline without an EMILIA service.
+            </p>
+          </div>
+        </section>
+
+        {/* Gate Qualification v2 */}
+        <section id="qualification" style={{ ...styles.section, background: 'rgba(245,244,240,0.45)', borderTop: `1px solid ${color.border}`, borderBottom: `1px solid ${color.border}` }}>
+          <div style={styles.container}>
+            <div style={{ ...styles.eyebrow, color: color.gold }}>
+              {GATE_QUALIFICATION.name} · {GATE_QUALIFICATION.profileLabel}
+            </div>
+            <h2 style={{ ...styles.h2, marginTop: 12, maxWidth: 820 }}>
+              Carry accepted evaluation evidence without turning it into execution authority.
+            </h2>
+            <p style={{ ...styles.lead, maxWidth: 800, marginTop: 18 }}>
+              Gate Qualification v2 converts accepted evaluation evidence into a portable,
+              time-bounded qualification for one exact measured candidate and assignment. The
+              qualification stays bound to its campaign, current status, runtime measurement,
+              assignment, policy, and protected request.
+            </p>
+            <p style={{ fontFamily: font.mono, color: color.gold, fontSize: 14, fontWeight: 600, lineHeight: 1.65, marginTop: 20 }}>
+              {GATE_QUALIFICATION.boundaryLine}
+            </p>
+            <div style={{ marginTop: 28, display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: 16 }}>
+              {[
+                ['Qualified', 'The accepted campaign graph and current measurement match this exact candidate, assignment, policy, and request.'],
+                ['Authorized', 'The resource owner separately requires AEB and AEC evidence, then applies local policy to decide whether this exact action may proceed.'],
+                ['Admitted', 'Gate atomically reserves the operation and consumes one-time authority before the protected adapter can enter the provider.'],
+              ].map(([title, body]) => (
+                <div key={title} style={{ ...styles.card, padding: 24 }}>
+                  <div style={{ ...styles.h3, fontSize: 17 }}>{title}</div>
+                  <p style={{ ...styles.body, fontSize: 14, color: color.t2, marginTop: 10 }}>{body}</p>
+                </div>
+              ))}
+            </div>
+            <p style={{ ...styles.body, maxWidth: 760, marginTop: 22, fontSize: 14, color: color.t2 }}>
+              {GATE_QUALIFICATION.disclaimer} A <code>QUALIFIED</code> result is evidence the local
+              Gate may require; it cannot reserve resources, call a provider, or establish that an
+              action is wise, legal, or safe.
             </p>
           </div>
         </section>
@@ -262,7 +301,7 @@ export default function GatePage() {
           <div style={styles.container}>
             <div style={styles.eyebrow}>COMPOSE, DON&apos;T REPLACE</div>
             <h2 style={{ ...styles.h2, marginTop: 12, maxWidth: 800 }}>
-              A distinct job at each authorization layer.
+              A distinct job at each control layer.
             </h2>
             <p style={{ ...styles.lead, maxWidth: 820, marginTop: 18 }}>
               AgentROA governs calls. ORPRG proves policy permitted the effect. EMILIA proves
@@ -271,6 +310,7 @@ export default function GatePage() {
             </p>
             <div style={{ marginTop: 32, display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(230px, 1fr))', gap: 16 }}>
               {[
+                ['Evaluation qualification', 'Gate Qualification v2', 'Does accepted evaluation evidence still match this exact measured candidate, assignment, and protected request?'],
                 ['Call governance', 'AgentROA', 'Does the call remain inside the agent’s verified delegated scope?'],
                 ['Policy permit', 'ORPRG', 'Does the native policy evidence prove this effect was permitted?'],
                 ['Approver authorization + control', 'EMILIA', 'Did the directory-bound approver authorize this exact action, and may the protected executor mutate now?'],
@@ -287,6 +327,11 @@ export default function GatePage() {
               into one verdict. CAID can correlate their native action descriptions only under the
               exact mapping profiles the relying party pins. A match is not authorization, and a
               missing or lossy mapping returns <code>INDETERMINATE</code> instead of guessing.
+            </p>
+            <p style={{ ...styles.body, maxWidth: 760, marginTop: 12, fontSize: 14, color: color.t2 }}>
+              A <code>QUALIFIED</code> decision can satisfy only the qualification leg of Gate
+              composition. Local authorization, atomic admission, provider entry, and effect evidence
+              remain separate decisions.
             </p>
           </div>
         </section>
@@ -372,8 +417,8 @@ export default function GatePage() {
         {/* Surfaces */}
         <section id="surfaces" style={styles.section}>
           <div style={styles.container}>
-            <div style={styles.eyebrow}>WHERE IT RUNS</div>
-            <h2 style={{ ...styles.h2, marginTop: 12 }}>One Gate pattern, several actuator boundaries.</h2>
+            <div style={styles.eyebrow}>WHERE IT INTEGRATES</div>
+            <h2 style={{ ...styles.h2, marginTop: 12 }}>One Gate pattern, several integration boundaries.</h2>
             <div style={{ marginTop: 32, display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: 16 }}>
               {SURFACES.map((s) => (
                 <div key={s.type} style={{ ...styles.card, padding: 24 }}>

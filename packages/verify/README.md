@@ -51,6 +51,36 @@ form Web Crypto expects). Call `isSupported()` to feature-detect.
 
 ## API
 
+### Gate Qualification v2
+
+`@emilia-protocol/verify/gate-qualification` verifies a closed, signed
+qualification graph offline and returns `QUALIFIED`, `NOT_QUALIFIED`, or
+`INDETERMINATE`. The caller supplies the trusted keys, trusted time, expected
+candidate, assignment, policy, protected-request and current-status bindings;
+the evidence graph cannot select its own trust policy.
+
+```js
+import {
+  evaluateQualification,
+} from '@emilia-protocol/verify/gate-qualification';
+
+const decision = evaluateQualification(bundle, relyingPartyContext);
+```
+
+`@emilia-protocol/verify/gate-qualification-promptfoo` converts a complete,
+immutably pinned Promptfoo v3 result into `EVALUATION_ONLY` evidence. It does
+not emit a Qualification Statement and never authorizes provider entry.
+
+```js
+import {
+  adaptPromptfooQualificationArtifact,
+} from '@emilia-protocol/verify/gate-qualification-promptfoo';
+```
+
+Both modules are also re-exported from the package root. A `QUALIFIED` result
+is non-authorizing: it does not grant permission, reserve resources, consume
+authority, invoke a provider, or establish legality or business suitability.
+
 ### AEB evidence boundary — `@emilia-protocol/verify/aeb-adapter-contract`
 
 The AEB kernel verifies native evidence under relying-party-pinned adapters,

@@ -9,6 +9,12 @@
     "declaration": true,
     "declarationMap": true,
     "sourceMap": true,
+    "baseUrl": ".",
+    "paths": {
+      "@emilia-protocol/verify/gate-qualification": [
+        "../verify/dist/gate-qualification.d.ts"
+      ]
+    },
     "rootDir": "src",
     "outDir": "dist",
     "noEmitOnError": true
@@ -92,6 +98,9 @@
     "src/proposal-to-effect-postgres.ts",
     "src/aeb-consumption-store.ts",
     "src/authority-allocation.ts",
-    "src/autonomy-control-plane-profile.ts"
+    "src/autonomy-control-plane-profile.ts",
+    "src/admission-store.ts",
+    "src/admission-store-postgres.ts",
+    "src/gate-qualification-v2.ts"
   ]
 }

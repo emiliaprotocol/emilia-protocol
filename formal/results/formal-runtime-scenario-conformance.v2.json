@@ -490,6 +490,14 @@
       "sha256": "81c37ab9dc6286cf0f2bb6d519641c9c2d964108b12fcd9a95b62b6ba5df786f"
     },
     {
+      "path": "packages/gate/dist/admission-store-postgres.js",
+      "sha256": "f9ae3686b65ce70ef5046f54b7381ed2bbb1bef681b6e4eda26adaf74cac29c6"
+    },
+    {
+      "path": "packages/gate/dist/admission-store.js",
+      "sha256": "7ceb3e0b3c49ec35c0c10a7108995a56ea963382729c92fab40169986e00a81f"
+    },
+    {
       "path": "packages/gate/dist/aeb-consumption-store.js",
       "sha256": "013340d3f41951fa6431800a5671ff5f9243344d207c3529b7bba994c0c43d71"
     },
@@ -546,8 +554,12 @@
       "sha256": "0eaa10dcf81c1f645c021392f73b587d6b8fbf61d580bc724d2e1d256d1e48c4"
     },
     {
+      "path": "packages/gate/dist/gate-qualification-v2.js",
+      "sha256": "4aa2a8755a6cb1b590a2fe4df1988ad569069af1d434d8baad3798bcd902fbaa"
+    },
+    {
       "path": "packages/gate/dist/index.js",
-      "sha256": "b61ac5172ff476c9e286a74b91ece96ac0541af4aa37a6fb3762eb3c9adede4c"
+      "sha256": "41e1c1e377173e18d97a4462aba070a9015b7c80ea30cd692063671abaa3e1f4"
     },
     {
       "path": "packages/gate/dist/key-registry.js",
@@ -687,7 +699,7 @@
     },
     {
       "path": "packages/gate/src/index.ts",
-      "sha256": "da8da6ec65056e4f64e42a9d001809c0de98ee4e6241ecb7101782e686da8a1d"
+      "sha256": "5734144523f18e0c973657a78f9d56cfb76bcbc87892d18fe49ab55bb24aa2ee"
     },
     {
       "path": "packages/gate/src/network-witness.ts",
@@ -882,8 +894,16 @@
       "sha256": "556442054123ab9251dfb78a586d108fc2a35084a2b98a97a09c1ee9c0dd5f70"
     },
     {
+      "path": "packages/verify/dist/gate-qualification-promptfoo.js",
+      "sha256": "6b128fdb1577f20b17800a7da72177901e96c4e962fd38dd837523f999902955"
+    },
+    {
+      "path": "packages/verify/dist/gate-qualification.js",
+      "sha256": "31c116f7a598369579a2eca65b5db20411bdc5e63e1cee150852a2a181301498"
+    },
+    {
       "path": "packages/verify/dist/index.js",
-      "sha256": "10c8b5e02d085bb4d90004025d6ddbf4b361ea607da9ef306e327658958e2f2c"
+      "sha256": "ebb0e82821f4e01a797be098d6fddc1f3e5f1c1c7d99fd1230ad39caa266f60f"
     },
     {
       "path": "packages/verify/dist/initiator-attestation.js",
@@ -979,7 +999,7 @@
     },
     {
       "path": "packages/verify/src/index.ts",
-      "sha256": "190c4cf3d860b35f8da478aa450eaafa16d8f1955157559dd9690bf1a561aef2"
+      "sha256": "4565d06f77a2f1823a11dda3031a8f5ef0f4c213ccd32116a5f36b75d27e71b2"
     },
     {
       "path": "packages/verify/src/outcome-binding.ts",

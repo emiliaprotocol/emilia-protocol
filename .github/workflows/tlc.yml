@@ -15,6 +15,7 @@ on:
     paths:
       - 'formal/**.tla'
       - 'formal/**.cfg'
+      - 'formal/check-gate-qualification-v2.mjs'
       - 'formal/CONSERVATION_OF_AUTHORITY.md'
       - 'formal/PROOF_STATUS.md'
       - 'formal/RUN_TLC.md'
@@ -39,6 +40,7 @@ on:
     paths:
       - 'formal/**.tla'
       - 'formal/**.cfg'
+      - 'formal/check-gate-qualification-v2.mjs'
       - 'formal/CONSERVATION_OF_AUTHORITY.md'
       - 'formal/PROOF_STATUS.md'
       - 'formal/RUN_TLC.md'
@@ -108,6 +110,11 @@ jobs:
             -o tla2tools.jar \
             "https://github.com/tlaplus/tlaplus/releases/download/${TLA_VERSION}/tla2tools.jar"
           echo "${TLA_SHA256}  tla2tools.jar" | sha256sum -c -
+
+      - name: Verify Gate Qualification v2 lifecycle and negative control
+        env:
+          TLA2TOOLS_JAR: ${{ github.workspace }}/tla2tools.jar
+        run: node formal/check-gate-qualification-v2.mjs
 
       - name: Run TLC on ep_handshake.tla
         working-directory: formal

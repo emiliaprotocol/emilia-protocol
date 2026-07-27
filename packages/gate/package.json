@@ -1,6 +1,6 @@
 {
   "name": "@emilia-protocol/gate",
-  "version": "0.17.0",
+  "version": "0.18.0",
   "repository": {
     "type": "git",
     "url": "https://github.com/emiliaprotocol/emilia-protocol.git",
@@ -297,6 +297,18 @@
       "types": "./dist/autonomy-control-plane-profile.d.ts",
       "import": "./autonomy-control-plane-profile.js"
     },
+    "./admission-store": {
+      "types": "./dist/admission-store.d.ts",
+      "import": "./admission-store.js"
+    },
+    "./admission-store-postgres": {
+      "types": "./dist/admission-store-postgres.d.ts",
+      "import": "./admission-store-postgres.js"
+    },
+    "./gate-qualification-v2": {
+      "types": "./dist/gate-qualification-v2.d.ts",
+      "import": "./gate-qualification-v2.js"
+    },
     "./zk-range-proof": {
       "types": "./dist/zk-range-proof.d.ts",
       "import": "./zk-range-proof.js"
@@ -352,6 +364,9 @@
     "discovery-permit-resolver.js",
     "authority-allocation.js",
     "autonomy-control-plane-profile.js",
+    "admission-store.js",
+    "admission-store-postgres.js",
+    "gate-qualification-v2.js",
     "zk-range-proof.js",
     "reports/assurance-package.js",
     "ep-assure.mjs",
@@ -418,7 +433,8 @@
     "build": "tsc -p tsconfig.json && node postbuild-ts-nocheck.mjs",
     "prepack": "npm run build",
     "pretest": "npm run build",
-    "test": "node --test",
+    "test": "node --test && npm run test:qualification",
+    "test:qualification": "tsx --test admission-store.test.ts admission-store-postgres.test.ts gate-qualification-v2.test.ts",
     "demo": "node demo.mjs",
     "eg1": "node eg1.mjs",
     "cf1": "node cf1.mjs"
@@ -426,7 +442,7 @@
   "dependencies": {
     "@noble/curves": "2.2.0",
     "@emilia-protocol/require-receipt": "0.7.0",
-    "@emilia-protocol/verify": "3.15.1"
+    "@emilia-protocol/verify": "3.16.0"
   },
   "keywords": [
     "emilia",

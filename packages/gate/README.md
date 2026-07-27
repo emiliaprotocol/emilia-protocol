@@ -59,6 +59,57 @@ if (!out.ok) throw out.body; // 428 Receipt Required
 console.log(out.packet.verdict); // "rely"
 ```
 
+## Gate Qualification v2
+
+Gate Qualification v2 treats model or agent qualification as one input to a
+consequence-owning Gate. Qualification never substitutes for AEB, AEC, or the
+relying party's local authorization policy.
+
+```js
+import {
+  GateQualificationV2,
+  composeQualificationDecisionV2,
+  createMemoryInvocationAuthorityCustodyV2,
+} from '@emilia-protocol/gate/gate-qualification-v2';
+import {
+  createAdmissionSnapshot,
+  createMemoryAdmissionStore,
+} from '@emilia-protocol/gate/admission-store';
+import {
+  createAdmissionPostgresStore,
+} from '@emilia-protocol/gate/admission-store-postgres';
+```
+
+`composeQualificationDecisionV2()` is pure and non-mutating. In enforcement
+mode, `GateQualificationV2` requires matching qualification, AEB, AEC, and
+local-policy legs. It requires an authoritative invocation remeasurement and
+protected restart-safe capability custody, then atomically consumes authority
+before entering a caller-supplied protected adapter. Provider commitment and observed effect remain separately
+authenticated facts; an uncertain outcome stays reconciliation-required and
+cannot be retried as fresh work.
+
+`createMemoryAdmissionStore()` is a test-only, non-durable, single-process
+reference for the unified immutable snapshot, CAS-owned lifecycle, operation
+and resource fencing, journal, supersession, and remedy contracts.
+It refuses `beginInvocation()` without an explicit currentness oracle;
+`createMemoryInvocationAuthorityCustodyV2()` is likewise test-only and
+non-durable.
+`GateQualificationV2` consumes that canonical `AdmissionStore` contract and
+requires both a durable production store and durable protected authority
+custody unless explicitly constructed for tests.
+
+`createAdmissionPostgresStore()` is a deployment-bound, locally atomic and
+durable adapter to an externally installed PostgreSQL RPC contract. Each store
+instance is bound to exactly one deployment and one tenant. This public
+reference does not provide or claim managed tenant-principal mapping, a
+deployment migration, cross-tenant operation, federated atomicity, or managed
+service operation; callers remain responsible for database roles, RPC
+installation, backups, monitoring, and recovery procedures.
+
+A `QUALIFIED` verifier result by itself is non-authorizing. It does not grant
+permission, reserve or consume authority, invoke a provider, or establish
+legality or business suitability.
+
 ## Proposal to effect
 
 `@emilia-protocol/gate/proposal-to-effect` closes the loop from an agent's

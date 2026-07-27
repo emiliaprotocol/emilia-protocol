@@ -1,0 +1,40 @@
+{
+  "name": "ep-qualify",
+  "version": "0.1.0",
+  "description": "Thin offline CLI for fail-closed EMILIA Gate Qualification v2 evaluation. Prints QUALIFIED, NOT_QUALIFIED, or INDETERMINATE and exits 0 only for QUALIFIED; it does not authorize, invoke providers, or mutate state.",
+  "license": "Apache-2.0",
+  "type": "module",
+  "bin": {
+    "ep-qualify": "./cli.mjs"
+  },
+  "files": [
+    "cli.mjs",
+    "README.md"
+  ],
+  "engines": {
+    "node": ">=20.19.0"
+  },
+  "dependencies": {
+    "@emilia-protocol/verify": "3.16.0"
+  },
+  "scripts": {
+    "test": "node --test cli.test.mjs"
+  },
+  "keywords": [
+    "emilia-protocol",
+    "qualification",
+    "offline-verification",
+    "fail-closed",
+    "cli"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/emiliaprotocol/emilia-protocol.git",
+    "directory": "packages/qualify"
+  },
+  "homepage": "https://emiliaprotocol.ai",
+  "bugs": {
+    "url": "https://github.com/emiliaprotocol/emilia-protocol/issues"
+  },
+  "author": "EMILIA Protocol, Inc."
+}

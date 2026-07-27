@@ -1,0 +1,1065 @@
+// SPDX-License-Identifier: Apache-2.0
+/**
+ * Gate Qualification v2 admission custody.
+ *
+ * The immutable snapshot is the complete input to one consequential operation.
+ * Mutable lifecycle state lives in a separately CAS-owned record and every
+ * accepted transition is chained into an append-only journal.  The in-memory
+ * implementation is a linearizable reference for conformance and crash-model
+ * tests; it is deliberately not a durability claim.
+ */
+
+import crypto from 'node:crypto';
+
+export const ADMISSION_SNAPSHOT_VERSION = 'EP-GATE-ADMISSION-SNAPSHOT-v2';
+export const ADMISSION_RECORD_VERSION = 'EP-GATE-ADMISSION-RECORD-v2';
+export const ADMISSION_JOURNAL_VERSION = 'EP-GATE-ADMISSION-JOURNAL-v2';
+export const ADMISSION_CURRENTNESS_VERSION = 'EP-GATE-ADMISSION-CURRENTNESS-v2';
+
+export const ADMISSION_LIMITS = Object.freeze({
+  inputs: 128,
+  resources: 64,
+  testResults: 64,
+  agentEvidence: 32,
+  identifierBytes: 512,
+  currentnessMaxAgeMs: 5_000,
+});
+
+const SHA256 = /^sha256:[0-9a-f]{64}$/;
+const CAID = /^caid:1:[a-z][a-z0-9-]*(?:\.[a-z][a-z0-9-]*)*\.[1-9][0-9]*:jcs-sha256:[A-Za-z0-9_-]{43}$/;
+const IDENTIFIER = /^[A-Za-z0-9][A-Za-z0-9:_.@/-]{0,511}$/;
+const RFC3339 = /^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2}):(\d{2})(?:\.\d{1,9})?(?:Z|[+-]\d{2}:\d{2})$/;
+const OWNER_TOKEN = /^admission-owner:v2:[A-Za-z0-9_-]{32,128}$/;
+
+type Json = null | boolean | number | string | Json[] | { [key: string]: Json };
+export type AdmissionDigest = `sha256:${string}`;
+
+export type AdmissionInputRole =
+  | 'candidate_manifest'
+  | 'runtime_measurement'
+  | 'test_result'
+  | 'agent_evaluation_evidence'
+  | 'qualification_statement'
+  | 'qualification_status'
+  | 'aeb'
+  | 'aec'
+  | 'local_policy'
+  | 'authorization';
+
+const REQUIRED_SINGLETON_ROLES = Object.freeze([
+  'candidate_manifest',
+  'runtime_measurement',
+  'qualification_statement',
+  'qualification_status',
+  'aeb',
+  'aec',
+  'local_policy',
+  'authorization',
+] as const satisfies readonly AdmissionInputRole[]);
+const REPEATABLE_ROLES = new Set<AdmissionInputRole>([
+  'test_result',
+  'agent_evaluation_evidence',
+]);
+const ROLE_ORDER = new Map<AdmissionInputRole, number>([
+  'candidate_manifest', 'runtime_measurement', 'test_result',
+  'agent_evaluation_evidence', 'qualification_statement',
+  'qualification_status', 'aeb', 'aec', 'local_policy', 'authorization',
+].map((role, index) => [role as AdmissionInputRole, index]));
+
+export interface AdmissionInput {
+  role: AdmissionInputRole;
+  artifact_type: string;
+  subject: string;
+  payload_digest: AdmissionDigest;
+  profile_digest: AdmissionDigest;
+  verifier_id: string;
+  trust_configuration_digest: AdmissionDigest;
+  valid_until: string;
+}
+
+export type AdmissionResourceKind =
+  | 'replay'
+  | 'capability'
+  | 'budget'
+  | 'qualification_use'
+  | 'provider_operation'
+  | 'external_lease';
+
+export interface AdmissionResourceReservationInput {
+  kind: AdmissionResourceKind;
+  resource_id: string;
+  reservation_id: string;
+  digest: AdmissionDigest;
+  expires_at: string;
+}
+
+export interface CandidateCustodyBinding {
+  request_construction: 'GATE' | 'EXECUTOR_ADAPTER' | 'EXTERNAL';
+  mutation_credential_custody: 'GATE' | 'EXECUTOR_ADAPTER' | 'EXTERNAL';
+  enforcement_placement: 'SYSTEM_OF_RECORD' | 'ACTUATOR' | 'MIDDLEWARE';
+  evidence_digest: AdmissionDigest;
+}
+
+export interface QualificationStatusBinding {
+  authority_id: string;
+  sequence: number;
+  head_payload_digest: AdmissionDigest;
+  observed_at: string;
+  expires_at: string;
+}
+
+export interface ProviderBinding {
+  provider_id: string;
+  account_id: string;
+  environment: string;
+}
+
+export interface AdmissionRelation {
+  tenant_id: string;
+  admission_id: string;
+  operation_id: string;
+  snapshot_digest: AdmissionDigest;
+}
+
+export interface AdmissionSnapshotInput {
+  tenant_id: string;
+  admission_id: string;
+  operation_id: string;
+  candidate_manifest_digest: AdmissionDigest;
+  runtime_measurement_digest: AdmissionDigest;
+  candidate_custody: CandidateCustodyBinding;
+  assignment_digest: AdmissionDigest;
+  qualification_policy_digest: AdmissionDigest;
+  test_result_payload_digests: AdmissionDigest[];
+  agent_evaluation_evidence_payload_digests: AdmissionDigest[];
+  qualification_statement_payload_digest: AdmissionDigest;
+  qualification_status: QualificationStatusBinding;
+  caid: string;
+  action_digest: AdmissionDigest;
+  effect_request_digest: AdmissionDigest;
+  provider: ProviderBinding;
+  executor_adapter_digest: AdmissionDigest;
+  idempotency_key: string;
+  authorization_policy_digest: AdmissionDigest;
+  trust_epoch: number;
+  trust_configuration_digest: AdmissionDigest;
+  configuration_epoch: number;
+  configuration_digest: AdmissionDigest;
+  inputs: AdmissionInput[];
+  resource_reservations: AdmissionResourceReservationInput[];
+  admitted_at: string;
+  expires_at: string;
+  supersedes_admission_id?: string | null;
+  remedy_for?: AdmissionRelation | null;
+}
+
+export interface AdmissionSnapshotBody extends Omit<AdmissionSnapshotInput,
+  'supersedes_admission_id' | 'remedy_for'> {
+  '@version': typeof ADMISSION_SNAPSHOT_VERSION;
+  supersedes_admission_id: string | null;
+  remedy_for: Readonly<AdmissionRelation> | null;
+}
+
+export interface AdmissionSnapshot {
+  body: Readonly<AdmissionSnapshotBody>;
+  snapshot_digest: AdmissionDigest;
+}
+
+export type AdmissionState =
+  | 'RESERVED'
+  | 'RELEASED'
+  | 'EXPIRED'
+  | 'SUPERSEDED'
+  | 'INVOKING'
+  | 'INDETERMINATE'
+  | 'COMMITTED'
+  | 'PROVEN_NOT_COMMITTED';
+export type AdmissionExecutionRight = 'RESERVED' | 'RELEASED' | 'CONSUMED';
+export type AdmissionProviderAttempt =
+  | 'NOT_ENTERED'
+  | 'INVOKING'
+  | 'INDETERMINATE'
+  | 'COMMITTED'
+  | 'PROVEN_NOT_COMMITTED';
+export type AdmissionProviderOutcome = 'COMMITTED' | 'PROVEN_NOT_COMMITTED' | 'INDETERMINATE';
+export type AdmissionEffectRelation = 'OBSERVED_AS_REQUESTED' | 'DIVERGED' | 'INDETERMINATE';
+export type AdmissionResourceState = 'RESERVED' | 'RELEASED' | 'CONSUMED';
+
+export interface AdmissionEvidenceOutcome<T extends string> {
+  value: T;
+  evidence_digest: AdmissionDigest | null;
+  observed_at: string;
+}
+
+export interface AdmissionResourceReservation extends AdmissionResourceReservationInput {
+  state: AdmissionResourceState;
+}
+
+export interface AdmissionRecord {
+  '@version': typeof ADMISSION_RECORD_VERSION;
+  tenant_id: string;
+  admission_id: string;
+  operation_id: string;
+  snapshot_digest: AdmissionDigest;
+  revision: number;
+  state: AdmissionState;
+  execution_right: AdmissionExecutionRight;
+  provider_attempt: AdmissionProviderAttempt;
+  owner_digest: AdmissionDigest;
+  invocation_token_digest: AdmissionDigest | null;
+  provider_outcome: Readonly<AdmissionEvidenceOutcome<AdmissionProviderOutcome>> | null;
+  effect_relation: Readonly<AdmissionEvidenceOutcome<AdmissionEffectRelation>> | null;
+  resources: readonly Readonly<AdmissionResourceReservation>[];
+  superseded_by_admission_id: string | null;
+  refusal_reason: string | null;
+  invocation_started_at: string | null;
+  created_at: string;
+  updated_at: string;
+  predecessor_record_digest: AdmissionDigest | null;
+  record_digest: AdmissionDigest;
+}
+
+export type AdmissionJournalEvent =
+  | 'RESERVED'
+  | 'RELEASED'
+  | 'EXPIRED'
+  | 'SUPERSEDED'
+  | 'INVOKING'
+  | 'RECOVERED_INDETERMINATE'
+  | 'PROVIDER_OUTCOME'
+  | 'EFFECT_RELATION';
+
+export interface AdmissionJournalEntry {
+  '@version': typeof ADMISSION_JOURNAL_VERSION;
+  tenant_id: string;
+  admission_id: string;
+  operation_id: string;
+  sequence: number;
+  event: AdmissionJournalEvent;
+  snapshot_digest: AdmissionDigest;
+  record_digest: AdmissionDigest;
+  predecessor_digest: AdmissionDigest | null;
+  recorded_at: string;
+  entry_digest: AdmissionDigest;
+}
+
+export interface AdmissionCurrentnessObservation {
+  '@version': typeof ADMISSION_CURRENTNESS_VERSION;
+  observed_at: string;
+  qualification_status_authority_id: string;
+  qualification_status_sequence: number;
+  qualification_status_head_digest: AdmissionDigest;
+  qualification_status_expires_at: string;
+  trust_epoch: number;
+  trust_configuration_digest: AdmissionDigest;
+  configuration_epoch: number;
+  configuration_digest: AdmissionDigest;
+  runtime_measurement_digest: AdmissionDigest;
+  candidate_match: 'EXACT_MATCH' | 'MISMATCH' | 'STALE' | 'UNPINNABLE';
+  external_leases: Array<{
+    resource_id: string;
+    digest: AdmissionDigest;
+    expires_at: string;
+  }>;
+}
+
+export interface AdmissionCurrentnessOracle {
+  read(snapshot: Readonly<AdmissionSnapshot>): Promise<AdmissionCurrentnessObservation>;
+}
+
+export type AdmissionRefusalReason =
+  | 'admission_exists'
+  | 'admission_not_found'
+  | 'operation_exists'
+  | 'operation_conflict'
+  | 'revision_conflict'
+  | 'owner_conflict'
+  | 'resource_conflict'
+  | 'admission_expired'
+  | 'currentness_refused'
+  | 'execution_right_consumed'
+  | 'state_conflict'
+  | 'relation_not_found'
+  | 'relation_conflict'
+  | 'outcome_conflict'
+  | 'evidence_required'
+  | 'invocation_token_conflict';
+export type AdmissionRefusal = { ok: false; reason: AdmissionRefusalReason };
+export type AdmissionTransitionResult = { ok: true; record: Readonly<AdmissionRecord> } | AdmissionRefusal;
+export type AdmissionReserveResult = {
+  ok: true;
+  snapshot: Readonly<AdmissionSnapshot>;
+  record: Readonly<AdmissionRecord>;
+  owner_token: string;
+} | AdmissionRefusal;
+export type AdmissionBeginResult = {
+  ok: true;
+  snapshot: Readonly<AdmissionSnapshot>;
+  record: Readonly<AdmissionRecord>;
+  invocation_token: string;
+} | AdmissionRefusal;
+export type AdmissionSupersedeResult = {
+  ok: true;
+  predecessor_record: Readonly<AdmissionRecord>;
+  successor_snapshot: Readonly<AdmissionSnapshot>;
+  successor_record: Readonly<AdmissionRecord>;
+  successor_owner_token: string;
+} | AdmissionRefusal;
+export type AdmissionRecoveryResult = {
+  ok: true;
+  record: Readonly<AdmissionRecord>;
+  reconciliation_token: string;
+} | AdmissionRefusal;
+
+export interface AdmissionReference {
+  tenant_id: string;
+  admission_id: string;
+}
+export interface AdmissionOperationReference {
+  tenant_id: string;
+  operation_id: string;
+}
+export interface AdmissionCas extends AdmissionReference {
+  expected_revision: number;
+  owner_token: string;
+}
+export interface AdmissionRecoveryInput extends AdmissionReference {
+  owner_token: string;
+}
+export interface AdmissionProviderOutcomeInput extends AdmissionCas {
+  invocation_token: string;
+  value: AdmissionProviderOutcome;
+  evidence_digest: AdmissionDigest | null;
+  observed_at: string;
+}
+export interface AdmissionEffectRelationInput extends AdmissionCas {
+  invocation_token: string;
+  value: AdmissionEffectRelation;
+  evidence_digest: AdmissionDigest | null;
+  observed_at: string;
+}
+export interface AdmissionSupersedeInput extends AdmissionCas {
+  successor: AdmissionSnapshotInput;
+}
+
+export interface AdmissionInvariantCheck { ok: boolean; violations: readonly string[] }
+
+export interface AdmissionStore {
+  readonly durable: boolean;
+  readonly atomic: true;
+  readonly compareAndSwap: true;
+  readonly appendOnlyJournal: true;
+  readonly exclusiveActuation: true;
+  readonly transactionalCurrentness: true;
+  readonly testOnly?: true;
+  reserve(input: AdmissionSnapshotInput | AdmissionSnapshot): Promise<AdmissionReserveResult>;
+  release(input: AdmissionCas, reason?: string): Promise<AdmissionTransitionResult>;
+  expire(input: AdmissionCas): Promise<AdmissionTransitionResult>;
+  supersede(input: AdmissionSupersedeInput): Promise<AdmissionSupersedeResult>;
+  beginInvocation(input: AdmissionCas): Promise<AdmissionBeginResult>;
+  recoverIndeterminate(input: AdmissionRecoveryInput): Promise<AdmissionRecoveryResult>;
+  recordProviderOutcome(input: AdmissionProviderOutcomeInput): Promise<AdmissionTransitionResult>;
+  recordEffectRelation(input: AdmissionEffectRelationInput): Promise<AdmissionTransitionResult>;
+  read(input: AdmissionReference): Promise<Readonly<AdmissionRecord> | null>;
+  readByOperation(input: AdmissionOperationReference): Promise<Readonly<AdmissionRecord> | null>;
+  readSnapshot(digest: AdmissionDigest): Promise<Readonly<AdmissionSnapshot> | null>;
+  journal(input: AdmissionReference): Promise<readonly Readonly<AdmissionJournalEntry>[]>;
+  checkInvariants(): Promise<AdmissionInvariantCheck>;
+}
+
+export interface CreateMemoryAdmissionStoreOptions {
+  now?: number | string | Date | (() => number | string | Date);
+  currentnessOracle?: AdmissionCurrentnessOracle;
+  maxCurrentnessAgeMs?: number;
+  ownerTokenFactory?: () => string;
+  invocationTokenFactory?: () => string;
+}
+
+export class AdmissionStoreValidationError extends TypeError {
+  readonly code: string;
+  constructor(code: string, message: string) {
+    super(message);
+    this.name = 'AdmissionStoreValidationError';
+    this.code = code;
+  }
+}
+
+function fail(code: string, message: string): never {
+  throw new AdmissionStoreValidationError(code, message);
+}
+
+function plain(value: unknown): value is Record<string, unknown> {
+  if (value === null || typeof value !== 'object' || Array.isArray(value)) return false;
+  const proto = Object.getPrototypeOf(value);
+  return proto === Object.prototype || proto === null;
+}
+
+function canonical(value: Json): string {
+  if (value === null || typeof value === 'boolean' || typeof value === 'string') return JSON.stringify(value);
+  if (typeof value === 'number') {
+    if (!Number.isFinite(value)) fail('invalid_json', 'non-finite JSON number');
+    return JSON.stringify(value);
+  }
+  if (Array.isArray(value)) return `[${value.map((item) => canonical(item)).join(',')}]`;
+  if (!plain(value)) fail('invalid_json', 'non-plain JSON object');
+  return `{${Object.keys(value).sort().map((key) => `${JSON.stringify(key)}:${canonical(value[key] as Json)}`).join(',')}}`;
+}
+
+function hash(domain: string, value: unknown): AdmissionDigest {
+  return `sha256:${crypto.createHash('sha256').update(domain).update('\0').update(canonical(value as Json)).digest('hex')}`;
+}
+
+function deepFreeze<T>(value: T): Readonly<T> {
+  if (value !== null && typeof value === 'object' && !Object.isFrozen(value)) {
+    for (const child of Object.values(value)) deepFreeze(child);
+    Object.freeze(value);
+  }
+  return value;
+}
+
+function frozenCopy<T>(value: T): Readonly<T> {
+  return deepFreeze(structuredClone(value));
+}
+
+function identifier(value: unknown, field: string): string {
+  if (typeof value !== 'string' || !IDENTIFIER.test(value)) fail('invalid_identifier', `${field} is invalid`);
+  return value;
+}
+
+function digest(value: unknown, field: string): AdmissionDigest {
+  if (typeof value !== 'string' || !SHA256.test(value)) fail('invalid_digest', `${field} is invalid`);
+  return value as AdmissionDigest;
+}
+
+function instant(value: unknown, field: string): { iso: string; ms: number } {
+  if (typeof value !== 'string' || !RFC3339.test(value)) fail('invalid_instant', `${field} must be RFC 3339`);
+  const ms = Date.parse(value);
+  if (!Number.isFinite(ms)) fail('invalid_instant', `${field} must identify an instant`);
+  return { iso: new Date(ms).toISOString(), ms };
+}
+
+function nonNegativeInteger(value: unknown, field: string): number {
+  if (!Number.isSafeInteger(value) || (value as number) < 0) fail('invalid_integer', `${field} is invalid`);
+  return value as number;
+}
+
+function stringBytes(value: string): number { return Buffer.byteLength(value, 'utf8'); }
+
+function currentMs(source: CreateMemoryAdmissionStoreOptions['now']): number {
+  const raw = typeof source === 'function' ? source() : source;
+  if (raw === undefined) return Date.now();
+  if (raw instanceof Date) return raw.getTime();
+  if (typeof raw === 'string') return instant(raw, 'now').ms;
+  if (!Number.isFinite(raw)) fail('invalid_time', 'now is invalid');
+  return raw as number;
+}
+
+function normalizeInputs(raw: unknown, admittedAt: number): AdmissionInput[] {
+  if (!Array.isArray(raw) || raw.length > ADMISSION_LIMITS.inputs) fail('invalid_inputs', 'inputs are invalid');
+  const counts = new Map<AdmissionInputRole, number>();
+  const seen = new Set<string>();
+  const inputs = raw.map((entry, index) => {
+    if (!plain(entry)) fail('invalid_input', `inputs[${index}] is invalid`);
+    const role = entry.role as AdmissionInputRole;
+    if (!ROLE_ORDER.has(role)) fail('invalid_input_role', `inputs[${index}].role is invalid`);
+    const normalized: AdmissionInput = {
+      role,
+      artifact_type: identifier(entry.artifact_type, `inputs[${index}].artifact_type`),
+      subject: identifier(entry.subject, `inputs[${index}].subject`),
+      payload_digest: digest(entry.payload_digest, `inputs[${index}].payload_digest`),
+      profile_digest: digest(entry.profile_digest, `inputs[${index}].profile_digest`),
+      verifier_id: identifier(entry.verifier_id, `inputs[${index}].verifier_id`),
+      trust_configuration_digest: digest(entry.trust_configuration_digest, `inputs[${index}].trust_configuration_digest`),
+      valid_until: instant(entry.valid_until, `inputs[${index}].valid_until`).iso,
+    };
+    if (Date.parse(normalized.valid_until) <= admittedAt) fail('expired_input', `inputs[${index}] is expired`);
+    const key = canonical(normalized as unknown as Json);
+    if (seen.has(key)) fail('duplicate_input', `inputs[${index}] is duplicated`);
+    seen.add(key);
+    counts.set(role, (counts.get(role) ?? 0) + 1);
+    if (!REPEATABLE_ROLES.has(role) && (counts.get(role) ?? 0) > 1) fail('duplicate_input_role', `${role} is singleton`);
+    return normalized;
+  });
+  for (const role of REQUIRED_SINGLETON_ROLES) if (counts.get(role) !== 1) fail('missing_input_role', `${role} is required exactly once`);
+  for (const role of REPEATABLE_ROLES) if ((counts.get(role) ?? 0) < 1) fail('missing_input_role', `${role} is required`);
+  inputs.sort((left, right) => {
+    const role = (ROLE_ORDER.get(left.role) ?? 99) - (ROLE_ORDER.get(right.role) ?? 99);
+    if (role !== 0) return role;
+    return Buffer.from(canonical(left as unknown as Json)).compare(Buffer.from(canonical(right as unknown as Json)));
+  });
+  return inputs;
+}
+
+function normalizeDigests(raw: unknown, field: string, limit: number): AdmissionDigest[] {
+  if (!Array.isArray(raw) || raw.length < 1 || raw.length > limit) fail('invalid_digest_list', `${field} is invalid`);
+  const values = raw.map((value, index) => digest(value, `${field}[${index}]`)).sort();
+  if (new Set(values).size !== values.length) fail('duplicate_digest', `${field} contains duplicates`);
+  return values;
+}
+
+function normalizeResources(raw: unknown, admittedAt: number): AdmissionResourceReservationInput[] {
+  if (!Array.isArray(raw) || raw.length < 1 || raw.length > ADMISSION_LIMITS.resources) fail('invalid_resources', 'resource reservations are invalid');
+  const allowed = new Set<AdmissionResourceKind>(['replay', 'capability', 'budget', 'qualification_use', 'provider_operation', 'external_lease']);
+  const seen = new Set<string>();
+  const values = raw.map((entry, index) => {
+    if (!plain(entry) || !allowed.has(entry.kind as AdmissionResourceKind)) fail('invalid_resource', `resource[${index}] is invalid`);
+    const value: AdmissionResourceReservationInput = {
+      kind: entry.kind as AdmissionResourceKind,
+      resource_id: identifier(entry.resource_id, `resource[${index}].resource_id`),
+      reservation_id: identifier(entry.reservation_id, `resource[${index}].reservation_id`),
+      digest: digest(entry.digest, `resource[${index}].digest`),
+      expires_at: instant(entry.expires_at, `resource[${index}].expires_at`).iso,
+    };
+    if (Date.parse(value.expires_at) <= admittedAt) fail('expired_resource', `resource[${index}] is expired`);
+    const key = `${value.kind}\0${value.resource_id}`;
+    if (seen.has(key)) fail('duplicate_resource', `resource[${index}] is duplicated`);
+    seen.add(key);
+    return value;
+  });
+  values.sort((left, right) => Buffer.from(`${left.kind}\0${left.resource_id}`).compare(Buffer.from(`${right.kind}\0${right.resource_id}`)));
+  return values;
+}
+
+function normalizeRelation(raw: unknown): AdmissionRelation | null {
+  if (raw === undefined || raw === null) return null;
+  if (!plain(raw)) fail('invalid_relation', 'relation is invalid');
+  return {
+    tenant_id: identifier(raw.tenant_id, 'relation.tenant_id'),
+    admission_id: identifier(raw.admission_id, 'relation.admission_id'),
+    operation_id: identifier(raw.operation_id, 'relation.operation_id'),
+    snapshot_digest: digest(raw.snapshot_digest, 'relation.snapshot_digest'),
+  };
+}
+
+export function createAdmissionSnapshot(raw: AdmissionSnapshotInput): Readonly<AdmissionSnapshot> {
+  if (!plain(raw)) fail('invalid_snapshot', 'snapshot input is invalid');
+  const admitted = instant(raw.admitted_at, 'admitted_at');
+  const expires = instant(raw.expires_at, 'expires_at');
+  if (expires.ms <= admitted.ms) fail('invalid_expiration', 'expires_at must follow admitted_at');
+  const inputs = normalizeInputs(raw.inputs, admitted.ms);
+  const resources = normalizeResources(raw.resource_reservations, admitted.ms);
+  const status = raw.qualification_status;
+  if (!plain(status)) fail('invalid_status_binding', 'qualification_status is invalid');
+  const statusBinding: QualificationStatusBinding = {
+    authority_id: identifier(status.authority_id, 'qualification_status.authority_id'),
+    sequence: nonNegativeInteger(status.sequence, 'qualification_status.sequence'),
+    head_payload_digest: digest(status.head_payload_digest, 'qualification_status.head_payload_digest'),
+    observed_at: instant(status.observed_at, 'qualification_status.observed_at').iso,
+    expires_at: instant(status.expires_at, 'qualification_status.expires_at').iso,
+  };
+  const custody = raw.candidate_custody;
+  if (!plain(custody)
+      || !['GATE', 'EXECUTOR_ADAPTER', 'EXTERNAL'].includes(custody.request_construction)
+      || !['GATE', 'EXECUTOR_ADAPTER', 'EXTERNAL'].includes(custody.mutation_credential_custody)
+      || !['SYSTEM_OF_RECORD', 'ACTUATOR', 'MIDDLEWARE'].includes(custody.enforcement_placement)) {
+    fail('invalid_custody', 'candidate_custody is invalid');
+  }
+  const provider = raw.provider;
+  if (!plain(provider)) fail('invalid_provider', 'provider is invalid');
+  const body: AdmissionSnapshotBody = {
+    '@version': ADMISSION_SNAPSHOT_VERSION,
+    tenant_id: identifier(raw.tenant_id, 'tenant_id'),
+    admission_id: identifier(raw.admission_id, 'admission_id'),
+    operation_id: identifier(raw.operation_id, 'operation_id'),
+    candidate_manifest_digest: digest(raw.candidate_manifest_digest, 'candidate_manifest_digest'),
+    runtime_measurement_digest: digest(raw.runtime_measurement_digest, 'runtime_measurement_digest'),
+    candidate_custody: {
+      request_construction: custody.request_construction as CandidateCustodyBinding['request_construction'],
+      mutation_credential_custody: custody.mutation_credential_custody as CandidateCustodyBinding['mutation_credential_custody'],
+      enforcement_placement: custody.enforcement_placement as CandidateCustodyBinding['enforcement_placement'],
+      evidence_digest: digest(custody.evidence_digest, 'candidate_custody.evidence_digest'),
+    },
+    assignment_digest: digest(raw.assignment_digest, 'assignment_digest'),
+    qualification_policy_digest: digest(raw.qualification_policy_digest, 'qualification_policy_digest'),
+    test_result_payload_digests: normalizeDigests(raw.test_result_payload_digests, 'test_result_payload_digests', ADMISSION_LIMITS.testResults),
+    agent_evaluation_evidence_payload_digests: normalizeDigests(raw.agent_evaluation_evidence_payload_digests, 'agent_evaluation_evidence_payload_digests', ADMISSION_LIMITS.agentEvidence),
+    qualification_statement_payload_digest: digest(raw.qualification_statement_payload_digest, 'qualification_statement_payload_digest'),
+    qualification_status: statusBinding,
+    caid: typeof raw.caid === 'string' && CAID.test(raw.caid) ? raw.caid : fail('invalid_caid', 'caid is invalid'),
+    action_digest: digest(raw.action_digest, 'action_digest'),
+    effect_request_digest: digest(raw.effect_request_digest, 'effect_request_digest'),
+    provider: {
+      provider_id: identifier(provider.provider_id, 'provider.provider_id'),
+      account_id: identifier(provider.account_id, 'provider.account_id'),
+      environment: identifier(provider.environment, 'provider.environment'),
+    },
+    executor_adapter_digest: digest(raw.executor_adapter_digest, 'executor_adapter_digest'),
+    idempotency_key: identifier(raw.idempotency_key, 'idempotency_key'),
+    authorization_policy_digest: digest(raw.authorization_policy_digest, 'authorization_policy_digest'),
+    trust_epoch: nonNegativeInteger(raw.trust_epoch, 'trust_epoch'),
+    trust_configuration_digest: digest(raw.trust_configuration_digest, 'trust_configuration_digest'),
+    configuration_epoch: nonNegativeInteger(raw.configuration_epoch, 'configuration_epoch'),
+    configuration_digest: digest(raw.configuration_digest, 'configuration_digest'),
+    inputs,
+    resource_reservations: resources,
+    admitted_at: admitted.iso,
+    expires_at: expires.iso,
+    supersedes_admission_id: raw.supersedes_admission_id === undefined || raw.supersedes_admission_id === null
+      ? null : identifier(raw.supersedes_admission_id, 'supersedes_admission_id'),
+    remedy_for: normalizeRelation(raw.remedy_for),
+  };
+  const ceilings = [statusBinding.expires_at, ...inputs.map((input) => input.valid_until), ...resources.map((resource) => resource.expires_at)];
+  if (ceilings.some((ceiling) => expires.ms > Date.parse(ceiling))) fail('expiration_exceeds_evidence', 'expires_at exceeds an input deadline');
+  const snapshot: AdmissionSnapshot = {
+    body: frozenCopy(body),
+    snapshot_digest: hash(`${ADMISSION_SNAPSHOT_VERSION}:DIGEST`, body),
+  };
+  return frozenCopy(snapshot);
+}
+
+function validateSnapshot(raw: AdmissionSnapshot): Readonly<AdmissionSnapshot> {
+  if (!plain(raw) || !plain(raw.body)) fail('invalid_snapshot', 'snapshot is invalid');
+  const recreated = createAdmissionSnapshot(raw.body as unknown as AdmissionSnapshotInput);
+  if (raw.snapshot_digest !== recreated.snapshot_digest) fail('snapshot_digest_mismatch', 'snapshot digest does not match body');
+  return recreated;
+}
+
+function operationKey(tenant: string, operation: string): string { return JSON.stringify([tenant, operation]); }
+function admissionKey(tenant: string, admission: string): string { return JSON.stringify([tenant, admission]); }
+function resourceKey(tenant: string, resource: AdmissionResourceReservationInput): string { return JSON.stringify([tenant, resource.kind, resource.resource_id]); }
+function tokenDigest(token: string): AdmissionDigest { return hash(`${ADMISSION_RECORD_VERSION}:TOKEN`, token); }
+
+function defaultOwnerToken(): string { return `admission-owner:v2:${crypto.randomBytes(32).toString('base64url')}`; }
+function defaultInvocationToken(): string { return `admission-invocation:v2:${crypto.randomBytes(32).toString('base64url')}`; }
+function validateOwner(value: unknown): string {
+  if (typeof value !== 'string' || !OWNER_TOKEN.test(value)) fail('invalid_owner_token', 'owner token is invalid');
+  return value;
+}
+
+type MutableRecord = Omit<AdmissionRecord, 'record_digest' | 'resources'> & {
+  resources: AdmissionResourceReservation[];
+  record_digest?: AdmissionDigest;
+};
+interface Stored { record: Readonly<AdmissionRecord>; ownerToken: string }
+
+function finalizeRecord(raw: MutableRecord): Readonly<AdmissionRecord> {
+  const { record_digest: _ignored, ...body } = raw;
+  return frozenCopy({ ...body, record_digest: hash(`${ADMISSION_RECORD_VERSION}:DIGEST`, body) } as AdmissionRecord);
+}
+
+function finalizeJournal(raw: Omit<AdmissionJournalEntry, 'entry_digest'>): Readonly<AdmissionJournalEntry> {
+  return frozenCopy({ ...raw, entry_digest: hash(`${ADMISSION_JOURNAL_VERSION}:DIGEST`, raw) });
+}
+
+export function verifyAdmissionJournal(entries: readonly AdmissionJournalEntry[]): { ok: true } | { ok: false; at: number; reason: string } {
+  let predecessor: string | null = null;
+  for (let index = 0; index < entries.length; index += 1) {
+    const entry = entries[index];
+    if (entry.sequence !== index) return { ok: false, at: index, reason: 'sequence_mismatch' };
+    if (entry.predecessor_digest !== predecessor) return { ok: false, at: index, reason: 'predecessor_mismatch' };
+    const { entry_digest, ...body } = entry;
+    if (hash(`${ADMISSION_JOURNAL_VERSION}:DIGEST`, body) !== entry_digest) return { ok: false, at: index, reason: 'digest_mismatch' };
+    predecessor = entry_digest;
+  }
+  return { ok: true };
+}
+
+function exactOperationIdentity(left: AdmissionSnapshotBody, right: AdmissionSnapshotBody): boolean {
+  return left.tenant_id === right.tenant_id
+    && left.operation_id === right.operation_id
+    && left.caid === right.caid
+    && left.action_digest === right.action_digest
+    && left.effect_request_digest === right.effect_request_digest
+    && canonical(left.provider as unknown as Json) === canonical(right.provider as unknown as Json)
+    && left.executor_adapter_digest === right.executor_adapter_digest
+    && left.idempotency_key === right.idempotency_key;
+}
+
+function currentnessMatches(
+  snapshot: Readonly<AdmissionSnapshot>,
+  observation: AdmissionCurrentnessObservation,
+  now: number,
+  maxAgeMs: number,
+): boolean {
+  const body = snapshot.body;
+  const observedAt = Date.parse(observation.observed_at);
+  if (observation['@version'] !== ADMISSION_CURRENTNESS_VERSION
+      || observation.candidate_match !== 'EXACT_MATCH'
+      || !Number.isFinite(observedAt)
+      || observedAt > now
+      || now - observedAt > maxAgeMs
+      || Date.parse(observation.qualification_status_expires_at) <= now
+      || observation.qualification_status_authority_id !== body.qualification_status.authority_id
+      || observation.qualification_status_sequence !== body.qualification_status.sequence
+      || observation.qualification_status_head_digest !== body.qualification_status.head_payload_digest
+      || observation.trust_epoch !== body.trust_epoch
+      || observation.trust_configuration_digest !== body.trust_configuration_digest
+      || observation.configuration_epoch !== body.configuration_epoch
+      || observation.configuration_digest !== body.configuration_digest
+      || observation.runtime_measurement_digest !== body.runtime_measurement_digest) return false;
+  const expected = body.resource_reservations.filter((resource) => resource.kind === 'external_lease');
+  if (observation.external_leases.length !== expected.length) return false;
+  const byId = new Map(observation.external_leases.map((lease) => [lease.resource_id, lease]));
+  return expected.every((lease) => {
+    const current = byId.get(lease.resource_id);
+    return current?.digest === lease.digest && Date.parse(current.expires_at) > now;
+  });
+}
+
+/** Linearizable, explicitly test-only reference implementation. */
+export function createMemoryAdmissionStore(options: CreateMemoryAdmissionStoreOptions = {}): AdmissionStore & { readonly testOnly: true } {
+  const snapshots = new Map<string, Readonly<AdmissionSnapshot>>();
+  const records = new Map<string, Stored>();
+  const operationHeads = new Map<string, string>();
+  const resourceOwners = new Map<string, string>();
+  const journals = new Map<string, readonly Readonly<AdmissionJournalEntry>[]>();
+  const ownerFactory = options.ownerTokenFactory ?? defaultOwnerToken;
+  const invocationFactory = options.invocationTokenFactory ?? defaultInvocationToken;
+  const maxCurrentnessAgeMs = options.maxCurrentnessAgeMs
+    ?? ADMISSION_LIMITS.currentnessMaxAgeMs;
+  if (!Number.isSafeInteger(maxCurrentnessAgeMs)
+      || maxCurrentnessAgeMs < 1
+      || maxCurrentnessAgeMs > 300_000) {
+    fail('invalid_currentness_age', 'max currentness age is invalid');
+  }
+  let queue: Promise<void> = Promise.resolve();
+
+  function atomic<T>(fn: () => T | Promise<T>): Promise<T> {
+    const next = queue.then(fn, fn);
+    queue = next.then(() => undefined, () => undefined);
+    return next;
+  }
+
+  function append(key: string, ownerToken: string, draft: MutableRecord, event: AdmissionJournalEvent, at: string): Readonly<AdmissionRecord> {
+    const history = journals.get(key) ?? [];
+    if (draft.revision !== history.length) throw new Error('admission invariant: revision/journal mismatch');
+    const record = finalizeRecord(draft);
+    const previous = history.at(-1);
+    const entry = finalizeJournal({
+      '@version': ADMISSION_JOURNAL_VERSION,
+      tenant_id: record.tenant_id,
+      admission_id: record.admission_id,
+      operation_id: record.operation_id,
+      sequence: history.length,
+      event,
+      snapshot_digest: record.snapshot_digest,
+      record_digest: record.record_digest,
+      predecessor_digest: previous?.entry_digest ?? null,
+      recorded_at: at,
+    });
+    journals.set(key, [...history, entry]);
+    records.set(key, { record, ownerToken });
+    return record;
+  }
+
+  function next(current: Readonly<AdmissionRecord>, at: string, changes: Partial<MutableRecord>): MutableRecord {
+    return {
+      ...current,
+      ...changes,
+      revision: current.revision + 1,
+      updated_at: at,
+      predecessor_record_digest: current.record_digest,
+      resources: changes.resources ?? current.resources.map((resource) => ({ ...resource })),
+      record_digest: undefined,
+    };
+  }
+
+  function selectCas(input: AdmissionCas): { key: string; stored: Stored } | AdmissionRefusal {
+    const key = admissionKey(identifier(input.tenant_id, 'tenant_id'), identifier(input.admission_id, 'admission_id'));
+    const stored = records.get(key);
+    if (!stored) return { ok: false, reason: 'admission_not_found' };
+    if (stored.record.revision !== nonNegativeInteger(input.expected_revision, 'expected_revision')) return { ok: false, reason: 'revision_conflict' };
+    if (stored.ownerToken !== validateOwner(input.owner_token)) return { ok: false, reason: 'owner_conflict' };
+    return { key, stored };
+  }
+
+  function resourcesAvailable(snapshot: Readonly<AdmissionSnapshot>, ignored?: string): boolean {
+    return snapshot.body.resource_reservations.every((resource) => {
+      const owner = resourceOwners.get(resourceKey(snapshot.body.tenant_id, resource));
+      return owner === undefined || owner === ignored;
+    });
+  }
+  function claimResources(snapshot: Readonly<AdmissionSnapshot>, key: string): void {
+    for (const resource of snapshot.body.resource_reservations) resourceOwners.set(resourceKey(snapshot.body.tenant_id, resource), key);
+  }
+  function freeResources(record: Readonly<AdmissionRecord>, key: string): void {
+    for (const resource of record.resources) {
+      const rKey = resourceKey(record.tenant_id, resource);
+      if (resourceOwners.get(rKey) === key) resourceOwners.delete(rKey);
+    }
+  }
+
+  function invariantViolations(): string[] {
+    const violations: string[] = [];
+    for (const [key, stored] of records) {
+      const record = stored.record;
+      const history = journals.get(key) ?? [];
+      if (!snapshots.has(record.snapshot_digest)) violations.push(`${key}:snapshot_missing`);
+      if (!verifyAdmissionJournal(history).ok) violations.push(`${key}:journal_invalid`);
+      if (history.length !== record.revision + 1 || history.at(-1)?.record_digest !== record.record_digest) violations.push(`${key}:head_mismatch`);
+      if (record.state === 'RESERVED' && (record.execution_right !== 'RESERVED' || record.provider_attempt !== 'NOT_ENTERED')) violations.push(`${key}:reserved_invalid`);
+      if (['INVOKING', 'INDETERMINATE', 'COMMITTED', 'PROVEN_NOT_COMMITTED'].includes(record.state)
+          && (record.execution_right !== 'CONSUMED' || record.resources.some((resource) => resource.state !== 'CONSUMED'))) violations.push(`${key}:consumption_invalid`);
+      if (record.state === 'SUPERSEDED' && record.superseded_by_admission_id === null) violations.push(`${key}:supersession_missing`);
+    }
+    for (const [op, admission] of operationHeads) {
+      const stored = records.get(admission);
+      if (!stored || operationKey(stored.record.tenant_id, stored.record.operation_id) !== op) violations.push(`${op}:operation_head_invalid`);
+    }
+    return violations;
+  }
+
+  const store: AdmissionStore & { readonly testOnly: true } = {
+    testOnly: true,
+    durable: false,
+    atomic: true,
+    compareAndSwap: true,
+    appendOnlyJournal: true,
+    exclusiveActuation: true,
+    transactionalCurrentness: true,
+
+    reserve(raw) {
+      return atomic(() => {
+        const snapshot = plain(raw) && Object.hasOwn(raw, 'snapshot_digest')
+          ? validateSnapshot(raw as AdmissionSnapshot)
+          : createAdmissionSnapshot(raw as AdmissionSnapshotInput);
+        const body = snapshot.body;
+        if (body.supersedes_admission_id !== null) return { ok: false, reason: 'relation_conflict' };
+        const key = admissionKey(body.tenant_id, body.admission_id);
+        const opKey = operationKey(body.tenant_id, body.operation_id);
+        if (records.has(key)) return { ok: false, reason: 'admission_exists' };
+        if (operationHeads.has(opKey)) return { ok: false, reason: 'operation_exists' };
+        const now = currentMs(options.now);
+        if (Date.parse(body.expires_at) <= now) return { ok: false, reason: 'admission_expired' };
+        if (body.remedy_for !== null) {
+          const target = records.get(admissionKey(body.remedy_for.tenant_id, body.remedy_for.admission_id));
+          if (!target || target.record.snapshot_digest !== body.remedy_for.snapshot_digest) return { ok: false, reason: 'relation_not_found' };
+          if (!['INVOKING', 'INDETERMINATE', 'COMMITTED', 'PROVEN_NOT_COMMITTED'].includes(target.record.state)) return { ok: false, reason: 'relation_conflict' };
+          const targetSnapshot = snapshots.get(target.record.snapshot_digest);
+          if (!targetSnapshot || targetSnapshot.body.operation_id === body.operation_id || targetSnapshot.body.caid === body.caid) return { ok: false, reason: 'relation_conflict' };
+        }
+        if (!resourcesAvailable(snapshot)) return { ok: false, reason: 'resource_conflict' };
+        const owner = validateOwner(ownerFactory());
+        const at = new Date(now).toISOString();
+        snapshots.set(snapshot.snapshot_digest, snapshot);
+        operationHeads.set(opKey, key);
+        claimResources(snapshot, key);
+        const record = append(key, owner, {
+          '@version': ADMISSION_RECORD_VERSION,
+          tenant_id: body.tenant_id,
+          admission_id: body.admission_id,
+          operation_id: body.operation_id,
+          snapshot_digest: snapshot.snapshot_digest,
+          revision: 0,
+          state: 'RESERVED',
+          execution_right: 'RESERVED',
+          provider_attempt: 'NOT_ENTERED',
+          owner_digest: tokenDigest(owner),
+          invocation_token_digest: null,
+          provider_outcome: null,
+          effect_relation: null,
+          resources: body.resource_reservations.map((resource) => ({ ...resource, state: 'RESERVED' })),
+          superseded_by_admission_id: null,
+          refusal_reason: null,
+          invocation_started_at: null,
+          created_at: at,
+          updated_at: at,
+          predecessor_record_digest: null,
+        }, 'RESERVED', at);
+        return { ok: true, snapshot, record, owner_token: owner };
+      });
+    },
+
+    release(input, reason = 'released_before_invocation') {
+      return atomic(() => {
+        const selected = selectCas(input);
+        if ('ok' in selected) return selected;
+        const { key, stored } = selected;
+        if (stored.record.execution_right === 'CONSUMED') return { ok: false, reason: 'execution_right_consumed' };
+        if (stored.record.state !== 'RESERVED') return { ok: false, reason: 'state_conflict' };
+        const at = new Date(currentMs(options.now)).toISOString();
+        freeResources(stored.record, key);
+        const record = append(key, stored.ownerToken, next(stored.record, at, {
+          state: 'RELEASED', execution_right: 'RELEASED', refusal_reason: reason,
+          resources: stored.record.resources.map((resource) => ({ ...resource, state: 'RELEASED' })),
+        }), 'RELEASED', at);
+        return { ok: true, record };
+      });
+    },
+
+    expire(input) {
+      return atomic(() => {
+        const selected = selectCas(input);
+        if ('ok' in selected) return selected;
+        const { key, stored } = selected;
+        if (stored.record.state !== 'RESERVED') return { ok: false, reason: 'state_conflict' };
+        const snapshot = snapshots.get(stored.record.snapshot_digest)!;
+        const now = currentMs(options.now);
+        if (Date.parse(snapshot.body.expires_at) > now) return { ok: false, reason: 'state_conflict' };
+        const at = new Date(now).toISOString();
+        freeResources(stored.record, key);
+        const record = append(key, stored.ownerToken, next(stored.record, at, {
+          state: 'EXPIRED', execution_right: 'RELEASED', refusal_reason: 'admission_expired',
+          resources: stored.record.resources.map((resource) => ({ ...resource, state: 'RELEASED' })),
+        }), 'EXPIRED', at);
+        return { ok: true, record };
+      });
+    },
+
+    supersede(input) {
+      return atomic(() => {
+        const selected = selectCas(input);
+        if ('ok' in selected) return selected;
+        const { key, stored } = selected;
+        if (stored.record.state !== 'RESERVED' || stored.record.execution_right !== 'RESERVED') return { ok: false, reason: 'state_conflict' };
+        const predecessor = snapshots.get(stored.record.snapshot_digest)!;
+        const successor = createAdmissionSnapshot({ ...input.successor, supersedes_admission_id: stored.record.admission_id, remedy_for: null });
+        if (successor.body.admission_id === stored.record.admission_id || !exactOperationIdentity(predecessor.body, successor.body)) return { ok: false, reason: 'operation_conflict' };
+        const successorKey = admissionKey(successor.body.tenant_id, successor.body.admission_id);
+        if (records.has(successorKey)) return { ok: false, reason: 'admission_exists' };
+        const now = currentMs(options.now);
+        if (Date.parse(successor.body.expires_at) <= now) return { ok: false, reason: 'admission_expired' };
+        if (!resourcesAvailable(successor, key)) return { ok: false, reason: 'resource_conflict' };
+        const at = new Date(now).toISOString();
+        freeResources(stored.record, key);
+        const predecessorRecord = append(key, stored.ownerToken, next(stored.record, at, {
+          state: 'SUPERSEDED', execution_right: 'RELEASED', superseded_by_admission_id: successor.body.admission_id,
+          resources: stored.record.resources.map((resource) => ({ ...resource, state: 'RELEASED' })),
+        }), 'SUPERSEDED', at);
+        const owner = validateOwner(ownerFactory());
+        snapshots.set(successor.snapshot_digest, successor);
+        claimResources(successor, successorKey);
+        operationHeads.set(operationKey(successor.body.tenant_id, successor.body.operation_id), successorKey);
+        const successorRecord = append(successorKey, owner, {
+          '@version': ADMISSION_RECORD_VERSION,
+          tenant_id: successor.body.tenant_id,
+          admission_id: successor.body.admission_id,
+          operation_id: successor.body.operation_id,
+          snapshot_digest: successor.snapshot_digest,
+          revision: 0,
+          state: 'RESERVED', execution_right: 'RESERVED', provider_attempt: 'NOT_ENTERED',
+          owner_digest: tokenDigest(owner), invocation_token_digest: null,
+          provider_outcome: null, effect_relation: null,
+          resources: successor.body.resource_reservations.map((resource) => ({ ...resource, state: 'RESERVED' })),
+          superseded_by_admission_id: null, refusal_reason: null, invocation_started_at: null,
+          created_at: at, updated_at: at, predecessor_record_digest: null,
+        }, 'RESERVED', at);
+        return { ok: true, predecessor_record: predecessorRecord, successor_snapshot: successor, successor_record: successorRecord, successor_owner_token: owner };
+      });
+    },
+
+    beginInvocation(input) {
+      return atomic(async () => {
+        const selected = selectCas(input);
+        if ('ok' in selected) return selected;
+        const { key, stored } = selected;
+        if (stored.record.state !== 'RESERVED' || stored.record.execution_right !== 'RESERVED' || stored.record.provider_attempt !== 'NOT_ENTERED') return { ok: false, reason: 'state_conflict' };
+        const snapshot = snapshots.get(stored.record.snapshot_digest)!;
+        const now = currentMs(options.now);
+        if (Date.parse(snapshot.body.expires_at) <= now) return { ok: false, reason: 'admission_expired' };
+        const observation = options.currentnessOracle
+          ? await options.currentnessOracle.read(snapshot)
+          : null;
+        if (!observation || !currentnessMatches(
+          snapshot,
+          observation,
+          now,
+          maxCurrentnessAgeMs,
+        )) {
+          const at = new Date(now).toISOString();
+          freeResources(stored.record, key);
+          append(key, stored.ownerToken, next(stored.record, at, {
+            state: 'RELEASED', execution_right: 'RELEASED', refusal_reason: 'currentness_refused',
+            resources: stored.record.resources.map((resource) => ({ ...resource, state: 'RELEASED' })),
+          }), 'RELEASED', at);
+          return { ok: false, reason: 'currentness_refused' };
+        }
+        const invocationToken = invocationFactory();
+        if (typeof invocationToken !== 'string' || invocationToken.length < 48) fail('invalid_invocation_token', 'invocation token is invalid');
+        const at = new Date(now).toISOString();
+        const record = append(key, stored.ownerToken, next(stored.record, at, {
+          state: 'INVOKING', execution_right: 'CONSUMED', provider_attempt: 'INVOKING',
+          invocation_token_digest: tokenDigest(invocationToken), invocation_started_at: at,
+          resources: stored.record.resources.map((resource) => ({ ...resource, state: 'CONSUMED' })),
+        }), 'INVOKING', at);
+        return { ok: true, snapshot, record, invocation_token: invocationToken };
+      });
+    },
+
+    recoverIndeterminate(input) {
+      return atomic(() => {
+        const key = admissionKey(identifier(input.tenant_id, 'tenant_id'), identifier(input.admission_id, 'admission_id'));
+        const stored = records.get(key);
+        if (!stored) return { ok: false, reason: 'admission_not_found' };
+        if (stored.ownerToken !== validateOwner(input.owner_token)) return { ok: false, reason: 'owner_conflict' };
+        if (stored.record.state !== 'INVOKING') return { ok: false, reason: 'state_conflict' };
+        const reconciliationToken = invocationFactory();
+        if (typeof reconciliationToken !== 'string' || reconciliationToken.length < 48) fail('invalid_invocation_token', 'reconciliation token is invalid');
+        const at = new Date(currentMs(options.now)).toISOString();
+        const record = append(key, stored.ownerToken, next(stored.record, at, {
+          state: 'INDETERMINATE', provider_attempt: 'INDETERMINATE',
+          invocation_token_digest: tokenDigest(reconciliationToken),
+          provider_outcome: { value: 'INDETERMINATE', evidence_digest: null, observed_at: at },
+          refusal_reason: 'ambiguous_provider_entry',
+        }), 'RECOVERED_INDETERMINATE', at);
+        return { ok: true, record, reconciliation_token: reconciliationToken };
+      });
+    },
+
+    recordProviderOutcome(input) {
+      return atomic(() => {
+        const selected = selectCas(input);
+        if ('ok' in selected) return selected;
+        const { key, stored } = selected;
+        if (stored.record.execution_right !== 'CONSUMED' || stored.record.invocation_token_digest !== tokenDigest(input.invocation_token)) return { ok: false, reason: 'invocation_token_conflict' };
+        if (!['INVOKING', 'INDETERMINATE', 'COMMITTED', 'PROVEN_NOT_COMMITTED'].includes(stored.record.state)) return { ok: false, reason: 'state_conflict' };
+        if (!['COMMITTED', 'PROVEN_NOT_COMMITTED', 'INDETERMINATE'].includes(input.value)) fail('invalid_provider_outcome', 'provider outcome is invalid');
+        const observed = instant(input.observed_at, 'observed_at').iso;
+        const evidence = input.evidence_digest === null ? null : digest(input.evidence_digest, 'evidence_digest');
+        if (input.value !== 'INDETERMINATE' && evidence === null) return { ok: false, reason: 'evidence_required' };
+        const current = stored.record.provider_outcome;
+        if (current && current.value !== 'INDETERMINATE' && (current.value !== input.value || current.evidence_digest !== evidence)) return { ok: false, reason: 'outcome_conflict' };
+        const at = new Date(currentMs(options.now)).toISOString();
+        const record = append(key, stored.ownerToken, next(stored.record, at, {
+          state: input.value,
+          provider_attempt: input.value,
+          provider_outcome: { value: input.value, evidence_digest: evidence, observed_at: observed },
+        }), 'PROVIDER_OUTCOME', at);
+        return { ok: true, record };
+      });
+    },
+
+    recordEffectRelation(input) {
+      return atomic(() => {
+        const selected = selectCas(input);
+        if ('ok' in selected) return selected;
+        const { key, stored } = selected;
+        if (stored.record.execution_right !== 'CONSUMED' || stored.record.invocation_token_digest !== tokenDigest(input.invocation_token)) return { ok: false, reason: 'invocation_token_conflict' };
+        if (!['OBSERVED_AS_REQUESTED', 'DIVERGED', 'INDETERMINATE'].includes(input.value)) fail('invalid_effect_relation', 'effect relation is invalid');
+        const observed = instant(input.observed_at, 'observed_at').iso;
+        const evidence = input.evidence_digest === null ? null : digest(input.evidence_digest, 'evidence_digest');
+        if (input.value !== 'INDETERMINATE' && evidence === null) return { ok: false, reason: 'evidence_required' };
+        const current = stored.record.effect_relation;
+        if (current && current.value !== 'INDETERMINATE' && (current.value !== input.value || current.evidence_digest !== evidence)) return { ok: false, reason: 'outcome_conflict' };
+        const at = new Date(currentMs(options.now)).toISOString();
+        const record = append(key, stored.ownerToken, next(stored.record, at, {
+          effect_relation: { value: input.value, evidence_digest: evidence, observed_at: observed },
+        }), 'EFFECT_RELATION', at);
+        return { ok: true, record };
+      });
+    },
+
+    read(input) {
+      return atomic(() => records.get(admissionKey(identifier(input.tenant_id, 'tenant_id'), identifier(input.admission_id, 'admission_id')))?.record ?? null);
+    },
+    readByOperation(input) {
+      return atomic(() => {
+        const head = operationHeads.get(operationKey(identifier(input.tenant_id, 'tenant_id'), identifier(input.operation_id, 'operation_id')));
+        return head ? records.get(head)?.record ?? null : null;
+      });
+    },
+    readSnapshot(raw) { return atomic(() => snapshots.get(digest(raw, 'snapshot_digest')) ?? null); },
+    journal(input) {
+      return atomic(() => journals.get(admissionKey(identifier(input.tenant_id, 'tenant_id'), identifier(input.admission_id, 'admission_id'))) ?? []);
+    },
+    checkInvariants() {
+      return atomic(() => {
+        const violations = invariantViolations();
+        return { ok: violations.length === 0, violations };
+      });
+    },
+  };
+  return store;
+}
+
+export default createMemoryAdmissionStore;

@@ -3,6 +3,31 @@
 All notable changes to `@emilia-protocol/verify` are documented here.
 This package follows [Semantic Versioning](https://semver.org/).
 
+## 3.16.0 (2026-07-26)
+
+### Added
+
+- `./gate-qualification`, a zero-network, storage-independent verifier for
+  closed Gate Qualification v2 campaign graphs, runtime measurements,
+  Qualification Statements, and current Qualification Status chains.
+- `./gate-qualification-promptfoo`, a strict adapter that re-derives complete
+  Promptfoo v3 result, lineage, coverage, metric, and immutable-pin bindings
+  into evaluation-only evidence.
+- Root-package re-exports and generated declarations for both modules.
+
+### Security
+
+- Qualification requires independently supplied trust policies, expected
+  digests, trusted time, freshness bounds, and minimum model-pinning strength;
+  malformed, stale, incomplete, untrusted, or equivocated graphs fail closed.
+- Promptfoo output remains `EVALUATION_ONLY` and provider revision claims are
+  not upgraded into authenticated model identity.
+- `QUALIFIED` is explicitly non-authorizing and does not reserve, consume,
+  invoke, or mutate anything.
+- Decisions expose the signed protected-request digest; trust thresholds count
+  distinct Ed25519 key material rather than aliases; and direct Promptfoo
+  library use is bounded by byte, node, depth, and result-count ceilings.
+
 ## 3.15.1 (2026-07-26)
 
 ### Fixed

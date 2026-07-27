@@ -27,6 +27,9 @@
       ],
       "@emilia-protocol/gate/*": [
         "./packages/gate/dist/*.d.ts"
+      ],
+      "@emilia-protocol/verify/gate-qualification": [
+        "./packages/verify/src/gate-qualification.ts"
       ]
     }
   },

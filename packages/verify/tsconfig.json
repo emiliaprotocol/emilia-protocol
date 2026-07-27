@@ -48,6 +48,8 @@
     "src/aeb-native-adapters.ts",
     "src/agent-edge-continuity.ts",
     "src/status.ts",
+    "src/gate-qualification.ts",
+    "src/gate-qualification-promptfoo.ts",
     "src/index.ts",
     "src/cli.ts"
   ]

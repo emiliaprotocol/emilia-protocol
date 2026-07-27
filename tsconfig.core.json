@@ -8,6 +8,12 @@
     "target": "es2022",
     "module": "nodenext",
     "moduleResolution": "nodenext",
+    "baseUrl": ".",
+    "paths": {
+      "@emilia-protocol/verify/gate-qualification": [
+        "packages/verify/src/gate-qualification.ts"
+      ]
+    },
     "skipLibCheck": true,
     "noImplicitAny": false,
     "resolveJsonModule": true

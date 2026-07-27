@@ -1,0 +1,1504 @@
+{
+  "@version": "EP-GATE-QUALIFICATION-CONFORMANCE-v2",
+  "description": "Portable hostile, crash, concurrency, supersession, and evidence vectors for EMILIA Gate Qualification v2.",
+  "limitations": [
+    "Qualification faults describe verifier outputs at the storage-independent qualification boundary; implementations may use different artifact encodings but must preserve the expected fail-closed disposition.",
+    "The reference Admission Store is linearizable in one process and non-durable; the vectors specify externally observable transaction boundaries that durable implementations must preserve.",
+    "Provider reconciliation is evidence-only. These vectors do not grant provider credentials or authorize network effects."
+  ],
+  "base": {
+    "qualification_context": {
+      "candidate": {
+        "manifest_digest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "static": {
+          "code_digests": [
+            "sha256:1111111111111111111111111111111111111111111111111111111111111111"
+          ],
+          "dependency_digests": [
+            "sha256:2222222222222222222222222222222222222222222222222222222222222222"
+          ],
+          "prompt_template_digests": [
+            "sha256:3333333333333333333333333333333333333333333333333333333333333333"
+          ],
+          "tool_definition_digests": [
+            "sha256:4444444444444444444444444444444444444444444444444444444444444444"
+          ],
+          "effective_permissions_digest": "sha256:5555555555555555555555555555555555555555555555555555555555555555",
+          "model": {
+            "provider": "model-provider",
+            "identity": "model-family-1",
+            "version": "2026-07-01",
+            "artifact_digest": "sha256:6666666666666666666666666666666666666666666666666666666666666666",
+            "pinning_strength": "IMMUTABLE_DIGEST"
+          },
+          "retrieval_configuration_digest": "sha256:7777777777777777777777777777777777777777777777777777777777777777",
+          "builder_orchestrator_digest": "sha256:8888888888888888888888888888888888888888888888888888888888888888"
+        }
+      },
+      "runtime": {
+        "candidate_manifest_digest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "assignment_digest": "sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+        "static": {
+          "code_digests": [
+            "sha256:1111111111111111111111111111111111111111111111111111111111111111"
+          ],
+          "dependency_digests": [
+            "sha256:2222222222222222222222222222222222222222222222222222222222222222"
+          ],
+          "prompt_template_digests": [
+            "sha256:3333333333333333333333333333333333333333333333333333333333333333"
+          ],
+          "tool_definition_digests": [
+            "sha256:4444444444444444444444444444444444444444444444444444444444444444"
+          ],
+          "effective_permissions_digest": "sha256:5555555555555555555555555555555555555555555555555555555555555555",
+          "model": {
+            "provider": "model-provider",
+            "identity": "model-family-1",
+            "version": "2026-07-01",
+            "artifact_digest": "sha256:6666666666666666666666666666666666666666666666666666666666666666",
+            "pinning_strength": "IMMUTABLE_DIGEST"
+          },
+          "retrieval_configuration_digest": "sha256:7777777777777777777777777777777777777777777777777777777777777777",
+          "builder_orchestrator_digest": "sha256:8888888888888888888888888888888888888888888888888888888888888888"
+        },
+        "dynamic_retrieval_root": "sha256:9999999999999999999999999999999999999999999999999999999999999999",
+        "memory_state_digest": "sha256:0000000000000000000000000000000000000000000000000000000000000000",
+        "user_input_digest": "sha256:abababababababababababababababababababababababababababababababab",
+        "protected_request_digest": "sha256:bcbcbcbcbcbcbcbcbcbcbcbcbcbcbcbcbcbcbcbcbcbcbcbcbcbcbcbcbcbcbcbc"
+      },
+      "campaign": {
+        "assignment_digest": "sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+        "scenario_selection_commitment": "sha256:cdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcd",
+        "attempt_ceiling": 1,
+        "observed_attempts": 4,
+        "terminal_outcomes": [
+          "PASS",
+          "FAIL",
+          "ABORTED",
+          "EXPIRED"
+        ]
+      },
+      "status": {
+        "authority_id": "qualification-authority-1",
+        "sequence": 7,
+        "head_digest": "sha256:dededededededededededededededededededededededededededededededededede",
+        "state": "QUALIFIED",
+        "observed_at": "2026-07-26T17:59:30.000Z"
+      }
+    },
+    "admission_snapshot": {
+      "tenant_id": "tenant:acme",
+      "admission_id": "admission:001",
+      "operation_id": "operation:001",
+      "candidate_manifest_digest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "runtime_measurement_digest": "sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+      "candidate_custody": {
+        "request_construction": "EXECUTOR_ADAPTER",
+        "mutation_credential_custody": "EXECUTOR_ADAPTER",
+        "enforcement_placement": "ACTUATOR",
+        "evidence_digest": "sha256:cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc"
+      },
+      "assignment_digest": "sha256:dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd",
+      "qualification_policy_digest": "sha256:eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee",
+      "test_result_payload_digests": [
+        "sha256:1111111111111111111111111111111111111111111111111111111111111111"
+      ],
+      "agent_evaluation_evidence_payload_digests": [
+        "sha256:2222222222222222222222222222222222222222222222222222222222222222"
+      ],
+      "qualification_statement_payload_digest": "sha256:3333333333333333333333333333333333333333333333333333333333333333",
+      "qualification_status": {
+        "authority_id": "qualification-authority:primary",
+        "sequence": 7,
+        "head_payload_digest": "sha256:4444444444444444444444444444444444444444444444444444444444444444",
+        "observed_at": "2026-07-26T17:59:30.000Z",
+        "expires_at": "2026-07-26T18:15:00.000Z"
+      },
+      "caid": "caid:1:payment.capture.1:jcs-sha256:AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA",
+      "action_digest": "sha256:5555555555555555555555555555555555555555555555555555555555555555",
+      "effect_request_digest": "sha256:6666666666666666666666666666666666666666666666666666666666666666",
+      "provider": {
+        "provider_id": "provider:stripe",
+        "account_id": "account:merchant",
+        "environment": "production"
+      },
+      "executor_adapter_digest": "sha256:7777777777777777777777777777777777777777777777777777777777777777",
+      "idempotency_key": "idempotency:operation:001",
+      "authorization_policy_digest": "sha256:8888888888888888888888888888888888888888888888888888888888888888",
+      "trust_epoch": 4,
+      "trust_configuration_digest": "sha256:9999999999999999999999999999999999999999999999999999999999999999",
+      "configuration_epoch": 9,
+      "configuration_digest": "sha256:0000000000000000000000000000000000000000000000000000000000000000",
+      "inputs": [
+        {
+          "role": "authorization",
+          "artifact_type": "artifact.authorization",
+          "subject": "subject:authorization",
+          "payload_digest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+          "profile_digest": "sha256:abababababababababababababababababababababababababababababababab",
+          "verifier_id": "verifier:authorization",
+          "trust_configuration_digest": "sha256:9999999999999999999999999999999999999999999999999999999999999999",
+          "valid_until": "2026-07-26T18:15:00.000Z"
+        },
+        {
+          "role": "qualification_status",
+          "artifact_type": "artifact.qualification-status",
+          "subject": "subject:qualification-status",
+          "payload_digest": "sha256:4444444444444444444444444444444444444444444444444444444444444444",
+          "profile_digest": "sha256:cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+          "verifier_id": "verifier:qualification-status",
+          "trust_configuration_digest": "sha256:9999999999999999999999999999999999999999999999999999999999999999",
+          "valid_until": "2026-07-26T18:15:00.000Z"
+        },
+        {
+          "role": "candidate_manifest",
+          "artifact_type": "artifact.candidate-manifest",
+          "subject": "subject:candidate",
+          "payload_digest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+          "profile_digest": "sha256:cdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcd",
+          "verifier_id": "verifier:candidate",
+          "trust_configuration_digest": "sha256:9999999999999999999999999999999999999999999999999999999999999999",
+          "valid_until": "2026-07-26T18:15:00.000Z"
+        },
+        {
+          "role": "runtime_measurement",
+          "artifact_type": "artifact.runtime-measurement",
+          "subject": "subject:runtime",
+          "payload_digest": "sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+          "profile_digest": "sha256:dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd",
+          "verifier_id": "verifier:runtime",
+          "trust_configuration_digest": "sha256:9999999999999999999999999999999999999999999999999999999999999999",
+          "valid_until": "2026-07-26T18:15:00.000Z"
+        },
+        {
+          "role": "test_result",
+          "artifact_type": "artifact.test-result",
+          "subject": "subject:test-result",
+          "payload_digest": "sha256:1111111111111111111111111111111111111111111111111111111111111111",
+          "profile_digest": "sha256:efefefefefefefefefefefefefefefefefefefefefefefefefefefefefefefef",
+          "verifier_id": "verifier:test-result",
+          "trust_configuration_digest": "sha256:9999999999999999999999999999999999999999999999999999999999999999",
+          "valid_until": "2026-07-26T18:15:00.000Z"
+        },
+        {
+          "role": "agent_evaluation_evidence",
+          "artifact_type": "artifact.agent-evaluation",
+          "subject": "subject:agent-evaluation",
+          "payload_digest": "sha256:2222222222222222222222222222222222222222222222222222222222222222",
+          "profile_digest": "sha256:ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff",
+          "verifier_id": "verifier:agent-evaluation",
+          "trust_configuration_digest": "sha256:9999999999999999999999999999999999999999999999999999999999999999",
+          "valid_until": "2026-07-26T18:15:00.000Z"
+        },
+        {
+          "role": "qualification_statement",
+          "artifact_type": "artifact.qualification-statement",
+          "subject": "subject:qualification-statement",
+          "payload_digest": "sha256:3333333333333333333333333333333333333333333333333333333333333333",
+          "profile_digest": "sha256:1010101010101010101010101010101010101010101010101010101010101010",
+          "verifier_id": "verifier:qualification-statement",
+          "trust_configuration_digest": "sha256:9999999999999999999999999999999999999999999999999999999999999999",
+          "valid_until": "2026-07-26T18:15:00.000Z"
+        },
+        {
+          "role": "aeb",
+          "artifact_type": "artifact.aeb",
+          "subject": "subject:aeb",
+          "payload_digest": "sha256:1212121212121212121212121212121212121212121212121212121212121212",
+          "profile_digest": "sha256:1313131313131313131313131313131313131313131313131313131313131313",
+          "verifier_id": "verifier:aeb",
+          "trust_configuration_digest": "sha256:9999999999999999999999999999999999999999999999999999999999999999",
+          "valid_until": "2026-07-26T18:15:00.000Z"
+        },
+        {
+          "role": "aec",
+          "artifact_type": "artifact.aec",
+          "subject": "subject:aec",
+          "payload_digest": "sha256:1414141414141414141414141414141414141414141414141414141414141414",
+          "profile_digest": "sha256:1515151515151515151515151515151515151515151515151515151515151515",
+          "verifier_id": "verifier:aec",
+          "trust_configuration_digest": "sha256:9999999999999999999999999999999999999999999999999999999999999999",
+          "valid_until": "2026-07-26T18:15:00.000Z"
+        },
+        {
+          "role": "local_policy",
+          "artifact_type": "artifact.local-policy",
+          "subject": "subject:local-policy",
+          "payload_digest": "sha256:1616161616161616161616161616161616161616161616161616161616161616",
+          "profile_digest": "sha256:1717171717171717171717171717171717171717171717171717171717171717",
+          "verifier_id": "verifier:local-policy",
+          "trust_configuration_digest": "sha256:9999999999999999999999999999999999999999999999999999999999999999",
+          "valid_until": "2026-07-26T18:15:00.000Z"
+        }
+      ],
+      "resource_reservations": [
+        {
+          "kind": "replay",
+          "resource_id": "aeb:replay:001",
+          "reservation_id": "operation:001:replay",
+          "digest": "sha256:1818181818181818181818181818181818181818181818181818181818181818",
+          "expires_at": "2026-07-26T18:15:00.000Z"
+        },
+        {
+          "kind": "capability",
+          "resource_id": "capability:payment:001",
+          "reservation_id": "operation:001:capability",
+          "digest": "sha256:1919191919191919191919191919191919191919191919191919191919191919",
+          "expires_at": "2026-07-26T18:15:00.000Z"
+        },
+        {
+          "kind": "budget",
+          "resource_id": "budget:tenant:001",
+          "reservation_id": "operation:001:budget",
+          "digest": "sha256:2020202020202020202020202020202020202020202020202020202020202020",
+          "expires_at": "2026-07-26T18:15:00.000Z"
+        },
+        {
+          "kind": "provider_operation",
+          "resource_id": "operation:001",
+          "reservation_id": "operation:001:provider",
+          "digest": "sha256:2121212121212121212121212121212121212121212121212121212121212121",
+          "expires_at": "2026-07-26T18:15:00.000Z"
+        },
+        {
+          "kind": "external_lease",
+          "resource_id": "lease:payment:001",
+          "reservation_id": "operation:001:lease",
+          "digest": "sha256:2222222222222222222222222222222222222222222222222222222222222222",
+          "expires_at": "2026-07-26T18:15:00.000Z"
+        }
+      ],
+      "admitted_at": "2026-07-26T17:59:00.000Z",
+      "expires_at": "2026-07-26T18:10:00.000Z",
+      "supersedes_admission_id": null,
+      "remedy_for": null
+    }
+  },
+  "vectors": [
+    {
+      "id": "eligible-current-exact",
+      "family": "qualification",
+      "description": "An exact, current, accepted qualification reaches the protected adapter once.",
+      "operation": "qualification",
+      "scenario": "eligible",
+      "expected": {
+        "disposition": "ACCEPT",
+        "gate_status": "committed",
+        "admission_state": "COMMITTED",
+        "provider_invocations": 1,
+        "provider_effects": 1,
+        "portable_reason": null
+      }
+    },
+    {
+      "id": "shadow-non-actuation",
+      "family": "shadow-safety",
+      "description": "Shadow mode compares qualification decisions without a store, reservation, protected adapter, credential, or provider effect.",
+      "operation": "qualification",
+      "scenario": "shadow_non_actuation",
+      "expected": {
+        "disposition": "SHADOW",
+        "gate_status": "shadow",
+        "v2_allowed": true,
+        "legacy_calls": 1,
+        "admission_state": "ABSENT",
+        "provider_invocations": 0,
+        "provider_effects": 0
+      }
+    },
+    {
+      "id": "substitute-code",
+      "family": "identity",
+      "description": "Changing code after qualification refuses the candidate.",
+      "operation": "qualification",
+      "scenario": "identity_fault",
+      "mutation": {
+        "fault": "identity_substitution",
+        "target": "runtime.static.code_digests.0",
+        "value": "sha256:ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff"
+      },
+      "expected": {
+        "disposition": "REFUSE",
+        "gate_status": "refused",
+        "reason": "qualification_not_qualified:candidate_identity_mismatch",
+        "portable_reason": "candidate_identity_mismatch",
+        "admission_state": "ABSENT",
+        "provider_invocations": 0
+      }
+    },
+    {
+      "id": "substitute-dependency",
+      "family": "identity",
+      "description": "Changing a dependency digest refuses the candidate.",
+      "operation": "qualification",
+      "scenario": "identity_fault",
+      "mutation": {
+        "fault": "identity_substitution",
+        "target": "runtime.static.dependency_digests.0",
+        "value": "sha256:eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee"
+      },
+      "expected": {
+        "disposition": "REFUSE",
+        "reason": "qualification_not_qualified:candidate_identity_mismatch",
+        "portable_reason": "candidate_identity_mismatch",
+        "provider_invocations": 0
+      }
+    },
+    {
+      "id": "substitute-prompt-template",
+      "family": "identity",
+      "description": "Changing a prompt template digest refuses the candidate.",
+      "operation": "qualification",
+      "scenario": "identity_fault",
+      "mutation": {
+        "fault": "identity_substitution",
+        "target": "runtime.static.prompt_template_digests.0",
+        "value": "sha256:dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd"
+      },
+      "expected": {
+        "disposition": "REFUSE",
+        "portable_reason": "candidate_identity_mismatch",
+        "provider_invocations": 0
+      }
+    },
+    {
+      "id": "substitute-tool-definition",
+      "family": "identity",
+      "description": "Changing a tool definition digest refuses the candidate.",
+      "operation": "qualification",
+      "scenario": "identity_fault",
+      "mutation": {
+        "fault": "identity_substitution",
+        "target": "runtime.static.tool_definition_digests.0",
+        "value": "sha256:cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc"
+      },
+      "expected": {
+        "disposition": "REFUSE",
+        "portable_reason": "candidate_identity_mismatch",
+        "provider_invocations": 0
+      }
+    },
+    {
+      "id": "substitute-tool-permissions",
+      "family": "identity",
+      "description": "Changing effective tool permissions refuses the candidate.",
+      "operation": "qualification",
+      "scenario": "identity_fault",
+      "mutation": {
+        "fault": "identity_substitution",
+        "target": "runtime.static.effective_permissions_digest",
+        "value": "sha256:cdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcd"
+      },
+      "expected": {
+        "disposition": "REFUSE",
+        "portable_reason": "candidate_identity_mismatch",
+        "provider_invocations": 0
+      }
+    },
+    {
+      "id": "substitute-model-identity",
+      "family": "identity",
+      "description": "Changing model identity refuses the candidate.",
+      "operation": "qualification",
+      "scenario": "identity_fault",
+      "mutation": {
+        "fault": "identity_substitution",
+        "target": "runtime.static.model.identity",
+        "value": "model-family-other"
+      },
+      "expected": {
+        "disposition": "REFUSE",
+        "portable_reason": "candidate_identity_mismatch",
+        "provider_invocations": 0
+      }
+    },
+    {
+      "id": "substitute-model-artifact",
+      "family": "identity",
+      "description": "Changing the model artifact digest refuses the candidate.",
+      "operation": "qualification",
+      "scenario": "identity_fault",
+      "mutation": {
+        "fault": "identity_substitution",
+        "target": "runtime.static.model.artifact_digest",
+        "value": "sha256:cececececececececececececececececececececececececececececececece"
+      },
+      "expected": {
+        "disposition": "REFUSE",
+        "portable_reason": "candidate_identity_mismatch",
+        "provider_invocations": 0
+      }
+    },
+    {
+      "id": "refuse-mutable-model-alias",
+      "family": "identity",
+      "description": "A mutable model alias is indeterminate rather than an exact identity.",
+      "operation": "qualification",
+      "scenario": "identity_fault",
+      "mutation": {
+        "fault": "mutable_model_alias",
+        "target": "runtime.static.model.version",
+        "value": "latest"
+      },
+      "expected": {
+        "disposition": "REFUSE",
+        "reason": "qualification_not_qualified:model_identity_unpinnable",
+        "portable_reason": "model_identity_unpinnable",
+        "provider_invocations": 0
+      }
+    },
+    {
+      "id": "substitute-retrieval-configuration",
+      "family": "identity",
+      "description": "Changing retrieval configuration refuses the candidate.",
+      "operation": "qualification",
+      "scenario": "identity_fault",
+      "mutation": {
+        "fault": "identity_substitution",
+        "target": "runtime.static.retrieval_configuration_digest",
+        "value": "sha256:cfcfcfcfcfcfcfcfcfcfcfcfcfcfcfcfcfcfcfcfcfcfcfcfcfcfcfcfcfcfcfcf"
+      },
+      "expected": {
+        "disposition": "REFUSE",
+        "portable_reason": "candidate_identity_mismatch",
+        "provider_invocations": 0
+      }
+    },
+    {
+      "id": "substitute-dynamic-retrieval-root",
+      "family": "identity",
+      "description": "Changing the dynamic retrieval root refuses the candidate.",
+      "operation": "qualification",
+      "scenario": "identity_fault",
+      "mutation": {
+        "fault": "identity_substitution",
+        "target": "runtime.dynamic_retrieval_root",
+        "value": "sha256:afafafafafafafafafafafafafafafafafafafafafafafafafafafafafafafaf"
+      },
+      "expected": {
+        "disposition": "REFUSE",
+        "portable_reason": "candidate_identity_mismatch",
+        "provider_invocations": 0
+      }
+    },
+    {
+      "id": "substitute-memory-state",
+      "family": "identity",
+      "description": "Changing memory state refuses the candidate.",
+      "operation": "qualification",
+      "scenario": "identity_fault",
+      "mutation": {
+        "fault": "identity_substitution",
+        "target": "runtime.memory_state_digest",
+        "value": "sha256:bfbfbfbfbfbfbfbfbfbfbfbfbfbfbfbfbfbfbfbfbfbfbfbfbfbfbfbfbfbfbfbf"
+      },
+      "expected": {
+        "disposition": "REFUSE",
+        "portable_reason": "candidate_identity_mismatch",
+        "provider_invocations": 0
+      }
+    },
+    {
+      "id": "substitute-user-input",
+      "family": "identity",
+      "description": "Changing relevant user input refuses the candidate.",
+      "operation": "qualification",
+      "scenario": "identity_fault",
+      "mutation": {
+        "fault": "identity_substitution",
+        "target": "runtime.user_input_digest",
+        "value": "sha256:cacacacacacacacacacacacacacacacacacacacacacacacacacacacacacaca"
+      },
+      "expected": {
+        "disposition": "REFUSE",
+        "portable_reason": "candidate_identity_mismatch",
+        "provider_invocations": 0
+      }
+    },
+    {
+      "id": "substitute-builder",
+      "family": "identity",
+      "description": "Changing the builder or orchestrator refuses the candidate.",
+      "operation": "qualification",
+      "scenario": "identity_fault",
+      "mutation": {
+        "fault": "identity_substitution",
+        "target": "runtime.static.builder_orchestrator_digest",
+        "value": "sha256:dadadadadadadadadadadadadadadadadadadadadadadadadadadadadadada"
+      },
+      "expected": {
+        "disposition": "REFUSE",
+        "portable_reason": "candidate_identity_mismatch",
+        "provider_invocations": 0
+      }
+    },
+    {
+      "id": "replace-candidate-after-measurement",
+      "family": "identity",
+      "description": "Replacing the candidate manifest after measurement refuses invocation.",
+      "operation": "qualification",
+      "scenario": "identity_fault",
+      "mutation": {
+        "fault": "candidate_replacement",
+        "target": "runtime.candidate_manifest_digest",
+        "value": "sha256:edededededededededededededededededededededededededededededededededed"
+      },
+      "expected": {
+        "disposition": "REFUSE",
+        "portable_reason": "runtime_candidate_replaced",
+        "provider_invocations": 0
+      }
+    },
+    {
+      "id": "reuse-cross-assignment",
+      "family": "assignment",
+      "description": "A qualification cannot travel into a different assignment.",
+      "operation": "qualification",
+      "scenario": "assignment_fault",
+      "mutation": {
+        "fault": "cross_assignment_reuse",
+        "target": "runtime.assignment_digest",
+        "value": "sha256:efefefefefefefefefefefefefefefefefefefefefefefefefefefefefefefef"
+      },
+      "expected": {
+        "disposition": "REFUSE",
+        "portable_reason": "assignment_out_of_scope",
+        "provider_invocations": 0
+      }
+    },
+    {
+      "id": "omit-evaluation-failure",
+      "family": "evaluation-integrity",
+      "description": "A missing FAIL terminal outcome makes the campaign graph incomplete.",
+      "operation": "qualification",
+      "scenario": "campaign_fault",
+      "mutation": {
+        "fault": "omitted_terminal_outcome",
+        "target": "campaign.terminal_outcomes.1",
+        "value": "OMITTED"
+      },
+      "expected": {
+        "disposition": "REFUSE",
+        "portable_reason": "campaign_graph_incomplete",
+        "provider_invocations": 0
+      }
+    },
+    {
+      "id": "omit-aborted-evaluation",
+      "family": "evaluation-integrity",
+      "description": "A missing ABORTED terminal outcome makes the campaign graph incomplete.",
+      "operation": "qualification",
+      "scenario": "campaign_fault",
+      "mutation": {
+        "fault": "omitted_terminal_outcome",
+        "target": "campaign.terminal_outcomes.2",
+        "value": "OMITTED"
+      },
+      "expected": {
+        "disposition": "REFUSE",
+        "portable_reason": "campaign_graph_incomplete",
+        "provider_invocations": 0
+      }
+    },
+    {
+      "id": "omit-expired-evaluation",
+      "family": "evaluation-integrity",
+      "description": "A missing EXPIRED terminal outcome makes the campaign graph incomplete.",
+      "operation": "qualification",
+      "scenario": "campaign_fault",
+      "mutation": {
+        "fault": "omitted_terminal_outcome",
+        "target": "campaign.terminal_outcomes.3",
+        "value": "OMITTED"
+      },
+      "expected": {
+        "disposition": "REFUSE",
+        "portable_reason": "campaign_graph_incomplete",
+        "provider_invocations": 0
+      }
+    },
+    {
+      "id": "discard-evaluation-attempt",
+      "family": "evaluation-integrity",
+      "description": "A discarded issued attempt remains a terminal campaign fact.",
+      "operation": "qualification",
+      "scenario": "campaign_fault",
+      "mutation": {
+        "fault": "discarded_attempt",
+        "target": "campaign.observed_attempts",
+        "value": 3
+      },
+      "expected": {
+        "disposition": "REFUSE",
+        "portable_reason": "campaign_graph_incomplete",
+        "provider_invocations": 0
+      }
+    },
+    {
+      "id": "grind-challenges",
+      "family": "evaluation-integrity",
+      "description": "Attempts beyond the precommitted ceiling are challenge grinding.",
+      "operation": "qualification",
+      "scenario": "campaign_fault",
+      "mutation": {
+        "fault": "challenge_grinding",
+        "target": "campaign.observed_attempts",
+        "value": 9
+      },
+      "expected": {
+        "disposition": "REFUSE",
+        "portable_reason": "campaign_attempt_ceiling_exceeded",
+        "provider_invocations": 0
+      }
+    },
+    {
+      "id": "selectively-rerun-challenge",
+      "family": "evaluation-integrity",
+      "description": "Changing scenario selection for a selective rerun breaks campaign precommitment.",
+      "operation": "qualification",
+      "scenario": "campaign_fault",
+      "mutation": {
+        "fault": "selective_rerun",
+        "target": "campaign.scenario_selection_commitment",
+        "value": "sha256:fafafafafafafafafafafafafafafafafafafafafafafafafafafafafafafa"
+      },
+      "expected": {
+        "disposition": "REFUSE",
+        "portable_reason": "campaign_precommit_mismatch",
+        "provider_invocations": 0
+      }
+    },
+    {
+      "id": "refuse-stale-status",
+      "family": "qualification-status",
+      "description": "A stale qualification status is indeterminate and cannot reserve.",
+      "operation": "qualification",
+      "scenario": "status_fault",
+      "mutation": {
+        "fault": "status_stale",
+        "target": "status.observed_at",
+        "value": "2026-07-25T17:59:30.000Z"
+      },
+      "expected": {
+        "disposition": "REFUSE",
+        "reason": "qualification_not_qualified:qualification_status_stale",
+        "portable_reason": "qualification_status_stale",
+        "provider_invocations": 0
+      }
+    },
+    {
+      "id": "refuse-revoked-status",
+      "family": "qualification-status",
+      "description": "A revoked qualification cannot reserve.",
+      "operation": "qualification",
+      "scenario": "status_fault",
+      "mutation": {
+        "fault": "status_revoked",
+        "target": "status.state",
+        "value": "REVOKED"
+      },
+      "expected": {
+        "disposition": "REFUSE",
+        "reason": "qualification_not_qualified:qualification_status_revoked",
+        "portable_reason": "qualification_status_revoked",
+        "provider_invocations": 0
+      }
+    },
+    {
+      "id": "refuse-equivocated-status",
+      "family": "qualification-status",
+      "description": "Equivocated status heads are indeterminate and cannot reserve.",
+      "operation": "qualification",
+      "scenario": "status_fault",
+      "mutation": {
+        "fault": "status_equivocated",
+        "target": "status.head_digest",
+        "value": "sha256:fbfbfbfbfbfbfbfbfbfbfbfbfbfbfbfbfbfbfbfbfbfbfbfbfbfbfbfbfbfbfbfb"
+      },
+      "expected": {
+        "disposition": "REFUSE",
+        "reason": "qualification_not_qualified:qualification_status_equivocated",
+        "portable_reason": "qualification_status_equivocated",
+        "provider_invocations": 0
+      }
+    },
+    {
+      "id": "remeasure-prompt-substitution",
+      "family": "begin-invocation-binding",
+      "description": "A prompt change at beginInvocation refuses before provider entry.",
+      "operation": "begin_recheck",
+      "scenario": "request_substitution",
+      "mutation": {
+        "target": "currentness.runtime_measurement_digest",
+        "value": "sha256:f1f1f1f1f1f1f1f1f1f1f1f1f1f1f1f1f1f1f1f1f1f1f1f1f1f1f1f1f1f1f1f1"
+      },
+      "expected": {
+        "disposition": "REFUSE",
+        "reason": "currentness_refused",
+        "admission_state": "RELEASED",
+        "provider_invocations": 0
+      }
+    },
+    {
+      "id": "remeasure-model-substitution",
+      "family": "begin-invocation-binding",
+      "description": "A model change at beginInvocation refuses before provider entry.",
+      "operation": "begin_recheck",
+      "scenario": "request_substitution",
+      "mutation": {
+        "target": "currentness.candidate_match",
+        "value": "MISMATCH"
+      },
+      "expected": {
+        "disposition": "REFUSE",
+        "reason": "currentness_refused",
+        "admission_state": "RELEASED",
+        "provider_invocations": 0
+      }
+    },
+    {
+      "id": "remeasure-tool-substitution",
+      "family": "begin-invocation-binding",
+      "description": "A tool or permission binding change at beginInvocation refuses before provider entry.",
+      "operation": "begin_recheck",
+      "scenario": "request_substitution",
+      "mutation": {
+        "target": "currentness.trust_configuration_digest",
+        "value": "sha256:f3f3f3f3f3f3f3f3f3f3f3f3f3f3f3f3f3f3f3f3f3f3f3f3f3f3f3f3f3f3f3f3"
+      },
+      "expected": {
+        "disposition": "REFUSE",
+        "reason": "currentness_refused",
+        "admission_state": "RELEASED",
+        "provider_invocations": 0
+      }
+    },
+    {
+      "id": "substitute-protected-request",
+      "family": "begin-invocation-binding",
+      "description": "A canonical protected-request substitution refuses before provider entry.",
+      "operation": "begin_recheck",
+      "scenario": "request_substitution",
+      "mutation": {
+        "target": "body.effect_request_digest",
+        "value": "sha256:f4f4f4f4f4f4f4f4f4f4f4f4f4f4f4f4f4f4f4f4f4f4f4f4f4f4f4f4f4f4f4f4"
+      },
+      "expected": {
+        "disposition": "REFUSE",
+        "reason": "qualification_protected_request_binding_mismatch",
+        "admission_state": "ABSENT",
+        "provider_invocations": 0
+      }
+    },
+    {
+      "id": "substitute-provider-operation",
+      "family": "begin-invocation-binding",
+      "description": "A provider operation substitution refuses before provider entry.",
+      "operation": "begin_recheck",
+      "scenario": "request_substitution",
+      "mutation": {
+        "target": "body.provider.provider_id",
+        "value": "provider:other"
+      },
+      "expected": {
+        "disposition": "RECONCILE",
+        "reason": "begin_invocation_snapshot_mismatch",
+        "admission_state": "INDETERMINATE",
+        "provider_invocations": 0
+      }
+    },
+    {
+      "id": "substitute-provider-account",
+      "family": "begin-invocation-binding",
+      "description": "A provider-account substitution refuses before provider entry.",
+      "operation": "begin_recheck",
+      "scenario": "request_substitution",
+      "mutation": {
+        "target": "body.provider.account_id",
+        "value": "account:attacker"
+      },
+      "expected": {
+        "disposition": "RECONCILE",
+        "reason": "begin_invocation_snapshot_mismatch",
+        "admission_state": "INDETERMINATE",
+        "provider_invocations": 0
+      }
+    },
+    {
+      "id": "substitute-request-tenant",
+      "family": "begin-invocation-binding",
+      "description": "A tenant substitution refuses before provider entry.",
+      "operation": "begin_recheck",
+      "scenario": "request_substitution",
+      "mutation": {
+        "target": "body.tenant_id",
+        "value": "tenant:other"
+      },
+      "expected": {
+        "disposition": "RECONCILE",
+        "reason": "begin_invocation_snapshot_mismatch",
+        "admission_state": "INVOKING",
+        "provider_invocations": 0
+      }
+    },
+    {
+      "id": "substitute-operation-id",
+      "family": "begin-invocation-binding",
+      "description": "An operation-id substitution refuses before provider entry.",
+      "operation": "begin_recheck",
+      "scenario": "request_substitution",
+      "mutation": {
+        "target": "body.operation_id",
+        "value": "operation:other"
+      },
+      "expected": {
+        "disposition": "RECONCILE",
+        "reason": "begin_invocation_snapshot_mismatch",
+        "admission_state": "INDETERMINATE",
+        "provider_invocations": 0
+      }
+    },
+    {
+      "id": "substitute-caid",
+      "family": "begin-invocation-binding",
+      "description": "An exact-action CAID substitution refuses before provider entry.",
+      "operation": "begin_recheck",
+      "scenario": "request_substitution",
+      "mutation": {
+        "target": "body.caid",
+        "value": "caid:1:payment.capture.1:jcs-sha256:BBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBB"
+      },
+      "expected": {
+        "disposition": "RECONCILE",
+        "reason": "begin_invocation_snapshot_mismatch",
+        "admission_state": "INDETERMINATE",
+        "provider_invocations": 0
+      }
+    },
+    {
+      "id": "substitute-action-digest",
+      "family": "begin-invocation-binding",
+      "description": "An action digest substitution refuses before provider entry.",
+      "operation": "begin_recheck",
+      "scenario": "request_substitution",
+      "mutation": {
+        "target": "body.action_digest",
+        "value": "sha256:f5f5f5f5f5f5f5f5f5f5f5f5f5f5f5f5f5f5f5f5f5f5f5f5f5f5f5f5f5f5f5f5"
+      },
+      "expected": {
+        "disposition": "RECONCILE",
+        "reason": "begin_invocation_snapshot_mismatch",
+        "admission_state": "INDETERMINATE",
+        "provider_invocations": 0
+      }
+    },
+    {
+      "id": "transactional-currentness-before-actuation",
+      "family": "begin-invocation-binding",
+      "description": "The atomic begin transaction rechecks qualification status currentness and releases authority before provider entry on mismatch.",
+      "operation": "begin_recheck",
+      "scenario": "transactional_currentness",
+      "mutation": {
+        "target": "currentness.qualification_status_sequence",
+        "value": 8
+      },
+      "expected": {
+        "disposition": "REFUSE",
+        "reason": "currentness_refused",
+        "admission_state": "RELEASED",
+        "transactional_currentness": true,
+        "provider_invocations": 0
+      }
+    },
+    {
+      "id": "canonical-input-order",
+      "family": "canonicalization",
+      "description": "Input and reservation order cannot change the snapshot digest.",
+      "operation": "snapshot",
+      "scenario": "canonical_order",
+      "expected": {
+        "disposition": "ACCEPT",
+        "same_snapshot_digest": true,
+        "canonical_input_order": [
+          "candidate_manifest",
+          "runtime_measurement",
+          "test_result",
+          "agent_evaluation_evidence",
+          "qualification_statement",
+          "qualification_status",
+          "aeb",
+          "aec",
+          "local_policy",
+          "authorization"
+        ]
+      }
+    },
+    {
+      "id": "reject-duplicate-input",
+      "family": "canonicalization",
+      "description": "Duplicate AdmissionInput identities are rejected before digesting.",
+      "operation": "snapshot",
+      "scenario": "duplicate_input",
+      "expected": {
+        "disposition": "REFUSE",
+        "reason": "duplicate_input"
+      }
+    },
+    {
+      "id": "reject-duplicate-resource",
+      "family": "canonicalization",
+      "description": "Duplicate resource or reservation identities are rejected before digesting.",
+      "operation": "snapshot",
+      "scenario": "duplicate_resource",
+      "expected": {
+        "disposition": "REFUSE",
+        "reason": "duplicate_resource"
+      }
+    },
+    {
+      "id": "separate-near-canonical-identifiers",
+      "family": "canonicalization",
+      "description": "Distinct operation identifiers cannot collide after canonicalization.",
+      "operation": "snapshot",
+      "scenario": "binding_change",
+      "mutation": {
+        "target": "operation_id",
+        "value": "operation-01"
+      },
+      "expected": {
+        "disposition": "BINDING_CHANGED",
+        "same_snapshot_digest": false
+      }
+    },
+    {
+      "id": "bind-provider",
+      "family": "snapshot-binding",
+      "description": "Changing the authenticated provider audience changes the snapshot digest.",
+      "operation": "snapshot",
+      "scenario": "binding_change",
+      "mutation": {
+        "target": "provider.provider_id",
+        "value": "provider:other"
+      },
+      "expected": {
+        "disposition": "BINDING_CHANGED",
+        "same_snapshot_digest": false
+      }
+    },
+    {
+      "id": "bind-adapter",
+      "family": "snapshot-binding",
+      "description": "Changing the provider adapter changes the snapshot digest.",
+      "operation": "snapshot",
+      "scenario": "binding_change",
+      "mutation": {
+        "target": "executor_adapter_digest",
+        "value": "sha256:3131313131313131313131313131313131313131313131313131313131313131"
+      },
+      "expected": {
+        "disposition": "BINDING_CHANGED",
+        "same_snapshot_digest": false
+      }
+    },
+    {
+      "id": "bind-provider-account-resource",
+      "family": "snapshot-binding",
+      "description": "Changing the bound provider account changes the snapshot digest.",
+      "operation": "snapshot",
+      "scenario": "binding_change",
+      "mutation": {
+        "target": "provider.account_id",
+        "value": "account:attacker"
+      },
+      "expected": {
+        "disposition": "BINDING_CHANGED",
+        "same_snapshot_digest": false
+      }
+    },
+    {
+      "id": "bind-environment",
+      "family": "snapshot-binding",
+      "description": "Changing production to staging changes the snapshot digest.",
+      "operation": "snapshot",
+      "scenario": "binding_change",
+      "mutation": {
+        "target": "provider.environment",
+        "value": "staging"
+      },
+      "expected": {
+        "disposition": "BINDING_CHANGED",
+        "same_snapshot_digest": false
+      }
+    },
+    {
+      "id": "bind-snapshot-tenant",
+      "family": "snapshot-binding",
+      "description": "Changing the admission tenant changes the snapshot digest.",
+      "operation": "snapshot",
+      "scenario": "binding_change",
+      "mutation": {
+        "target": "tenant_id",
+        "value": "tenant:other"
+      },
+      "expected": {
+        "disposition": "BINDING_CHANGED",
+        "same_snapshot_digest": false
+      }
+    },
+    {
+      "id": "concurrent-duplicate-admission",
+      "family": "concurrency",
+      "description": "Exactly one hostile concurrent reservation wins for a tenant operation.",
+      "operation": "admission",
+      "scenario": "concurrent_reserve",
+      "expected": {
+        "winners": 1,
+        "losers": 23,
+        "loser_reason": "operation_exists",
+        "state": "RESERVED",
+        "execution_right": "RESERVED"
+      }
+    },
+    {
+      "id": "permanent-operation-replay-fence",
+      "family": "concurrency",
+      "description": "Releasing authority does not reopen tenant operation replay.",
+      "operation": "admission",
+      "scenario": "operation_replay",
+      "expected": {
+        "disposition": "REFUSE",
+        "reason": "operation_exists",
+        "original_state": "RELEASED"
+      }
+    },
+    {
+      "id": "concurrent-begin-invocation",
+      "family": "concurrency",
+      "description": "Exactly one beginInvocation CAS consumes execution authority.",
+      "operation": "admission",
+      "scenario": "concurrent_begin",
+      "expected": {
+        "winners": 1,
+        "losers": 23,
+        "loser_reason": "revision_conflict",
+        "state": "INVOKING",
+        "execution_right": "CONSUMED"
+      }
+    },
+    {
+      "id": "recovery-token-rotation",
+      "family": "retry-safety",
+      "description": "Recovery rotates the invocation capability, rejects the stale token, and accepts authenticated reconciliation with only the rotated token.",
+      "operation": "admission",
+      "scenario": "token_rotation",
+      "expected": {
+        "token_rotated": true,
+        "stale_token_disposition": "REFUSE",
+        "stale_token_reason": "invocation_token_conflict",
+        "current_token_disposition": "ACCEPT",
+        "state": "COMMITTED"
+      }
+    },
+    {
+      "id": "exhaust-replay-unit",
+      "family": "resource-fencing",
+      "description": "A reserved replay unit cannot be double-spent.",
+      "operation": "admission",
+      "scenario": "resource_exhaustion",
+      "mutation": {
+        "resource_type": "replay"
+      },
+      "expected": {
+        "disposition": "REFUSE",
+        "reason": "resource_conflict",
+        "fenced_resource": "replay"
+      }
+    },
+    {
+      "id": "exhaust-capability",
+      "family": "resource-fencing",
+      "description": "A reserved bounded capability cannot be double-spent.",
+      "operation": "admission",
+      "scenario": "resource_exhaustion",
+      "mutation": {
+        "resource_type": "capability"
+      },
+      "expected": {
+        "disposition": "REFUSE",
+        "reason": "resource_conflict",
+        "fenced_resource": "capability"
+      }
+    },
+    {
+      "id": "exhaust-budget",
+      "family": "resource-fencing",
+      "description": "A reserved budget unit cannot be double-spent.",
+      "operation": "admission",
+      "scenario": "resource_exhaustion",
+      "mutation": {
+        "resource_type": "budget"
+      },
+      "expected": {
+        "disposition": "REFUSE",
+        "reason": "resource_conflict",
+        "fenced_resource": "budget"
+      }
+    },
+    {
+      "id": "exhaust-provider-idempotency",
+      "family": "resource-fencing",
+      "description": "A provider operation identity cannot be reserved twice.",
+      "operation": "admission",
+      "scenario": "resource_exhaustion",
+      "mutation": {
+        "resource_type": "provider_operation"
+      },
+      "expected": {
+        "disposition": "REFUSE",
+        "reason": "resource_conflict",
+        "fenced_resource": "provider_operation"
+      }
+    },
+    {
+      "id": "refuse-stale-federated-lease",
+      "family": "resource-fencing",
+      "description": "A stale federated lease observation refuses transactional beginInvocation.",
+      "operation": "admission",
+      "scenario": "stale_lease",
+      "expected": {
+        "disposition": "REFUSE",
+        "reason": "currentness_refused",
+        "state": "RELEASED",
+        "execution_right": "RELEASED"
+      }
+    },
+    {
+      "id": "supersede-reserved",
+      "family": "supersession",
+      "description": "A RESERVED admission can be atomically replaced while retaining exact operation identity.",
+      "operation": "admission",
+      "scenario": "supersede_reserved",
+      "expected": {
+        "disposition": "ACCEPT",
+        "reason": null,
+        "original_state": "SUPERSEDED",
+        "successor_state": "RESERVED",
+        "same_operation": true
+      }
+    },
+    {
+      "id": "same-operation-reserved-only-supersession",
+      "family": "supersession",
+      "description": "Only a RESERVED predecessor may rotate to a new admission owner while the operation, CAID, action, effect request, provider, adapter, and idempotency key remain exact.",
+      "operation": "admission",
+      "scenario": "same_operation_reserved_only",
+      "expected": {
+        "disposition": "ACCEPT",
+        "reason": null,
+        "original_state": "SUPERSEDED",
+        "successor_state": "RESERVED",
+        "same_operation": true,
+        "successor_owner_rotated": true
+      }
+    },
+    {
+      "id": "refuse-supersession-operation-change",
+      "family": "supersession",
+      "description": "Supersession refuses any operation, CAID, action, request, provider, adapter, or idempotency substitution.",
+      "operation": "admission",
+      "scenario": "supersede_operation_change",
+      "expected": {
+        "disposition": "REFUSE",
+        "reason": "operation_conflict"
+      }
+    },
+    {
+      "id": "refuse-supersession-after-consumption",
+      "family": "supersession",
+      "description": "Consumed execution authority cannot be superseded.",
+      "operation": "admission",
+      "scenario": "supersede_consumed",
+      "expected": {
+        "disposition": "REFUSE",
+        "reason": "state_conflict",
+        "state": "INVOKING",
+        "execution_right": "CONSUMED"
+      }
+    },
+    {
+      "id": "concurrent-supersession",
+      "family": "supersession",
+      "description": "Exactly one concurrent successor wins.",
+      "operation": "admission",
+      "scenario": "supersession_race",
+      "expected": {
+        "winners": 1,
+        "losers": 15,
+        "loser_reason": "revision_conflict"
+      }
+    },
+    {
+      "id": "begin-versus-supersession-race",
+      "family": "supersession",
+      "description": "Invocation consumption and supersession have one exclusive CAS winner.",
+      "operation": "admission",
+      "scenario": "begin_supersede_race",
+      "expected": {
+        "winners": 1,
+        "exclusive_winner": true,
+        "original_state": "INVOKING",
+        "execution_right": "CONSUMED"
+      }
+    },
+    {
+      "id": "crash-after-reserve-write",
+      "family": "crash-boundary",
+      "description": "A crash after reservation leaves authority RESERVED and provider NOT_ENTERED.",
+      "operation": "crash",
+      "scenario": "after_reserve_write",
+      "expected": {
+        "state": "RESERVED",
+        "execution_right": "RESERVED",
+        "journal_events": [
+          "RESERVED"
+        ],
+        "provider_attempt": "NOT_ENTERED"
+      }
+    },
+    {
+      "id": "crash-after-release-write",
+      "family": "crash-boundary",
+      "description": "A crash after release leaves no provider attempt and no reusable operation.",
+      "operation": "crash",
+      "scenario": "after_release_write",
+      "expected": {
+        "state": "RELEASED",
+        "execution_right": "RELEASED",
+        "journal_events": [
+          "RESERVED",
+          "RELEASED"
+        ],
+        "provider_attempt": "NOT_ENTERED"
+      }
+    },
+    {
+      "id": "crash-after-supersession-write",
+      "family": "crash-boundary",
+      "description": "A crash after atomic supersession exposes old SUPERSEDED and new RESERVED together.",
+      "operation": "crash",
+      "scenario": "after_supersession_write",
+      "expected": {
+        "original_state": "SUPERSEDED",
+        "original_execution_right": "RELEASED",
+        "successor_state": "RESERVED",
+        "successor_execution_right": "RESERVED",
+        "provider_attempt": "NOT_ENTERED"
+      }
+    },
+    {
+      "id": "crash-after-begin-write",
+      "family": "crash-boundary",
+      "description": "A crash after beginInvocation commit leaves consumed authority and forbids replay.",
+      "operation": "crash",
+      "scenario": "after_begin_write",
+      "expected": {
+        "state": "INVOKING",
+        "execution_right": "CONSUMED",
+        "retry_reason": "state_conflict",
+        "provider_attempt": "INVOKING"
+      }
+    },
+    {
+      "id": "crash-after-recovery-write",
+      "family": "crash-boundary",
+      "description": "Crash recovery moves an open invocation to INDETERMINATE without reopening authority.",
+      "operation": "crash",
+      "scenario": "after_recovery_write",
+      "expected": {
+        "state": "INDETERMINATE",
+        "execution_right": "CONSUMED",
+        "retry_reason": "state_conflict"
+      }
+    },
+    {
+      "id": "crash-after-provider-outcome-write",
+      "family": "crash-boundary",
+      "description": "Provider commitment evidence alone remains separate from effect truth.",
+      "operation": "crash",
+      "scenario": "after_provider_outcome_write",
+      "expected": {
+        "state": "COMMITTED",
+        "execution_right": "CONSUMED",
+        "provider_outcome": "COMMITTED",
+        "effect_relation": null
+      }
+    },
+    {
+      "id": "crash-after-effect-outcome-write",
+      "family": "crash-boundary",
+      "description": "A terminal observed effect remains immutable and consumed after crash.",
+      "operation": "crash",
+      "scenario": "after_effect_outcome_write",
+      "expected": {
+        "state": "COMMITTED",
+        "execution_right": "CONSUMED",
+        "provider_outcome": "COMMITTED",
+        "effect_relation": "OBSERVED_AS_REQUESTED",
+        "retry_reason": "state_conflict"
+      }
+    },
+    {
+      "id": "crash-immediately-before-provider",
+      "family": "provider-boundary",
+      "description": "A crash after beginInvocation but before provider entry requires reconciliation and no retry.",
+      "operation": "provider",
+      "scenario": "crash_before_provider",
+      "expected": {
+        "disposition": "RECONCILE",
+        "first_status": "reconciliation_required",
+        "retry_status": "reconciliation_required",
+        "admission_state": "INDETERMINATE",
+        "provider_invocations": 1
+      }
+    },
+    {
+      "id": "crash-immediately-after-provider",
+      "family": "provider-boundary",
+      "description": "A crash immediately after possible provider entry requires reconciliation and no retry.",
+      "operation": "provider",
+      "scenario": "crash_after_provider",
+      "expected": {
+        "disposition": "RECONCILE",
+        "first_status": "reconciliation_required",
+        "retry_status": "reconciliation_required",
+        "admission_state": "INDETERMINATE",
+        "provider_invocations": 1
+      }
+    },
+    {
+      "id": "provider-timeout-after-possible-commit",
+      "family": "provider-boundary",
+      "description": "A provider timeout after possible commitment is indeterminate and cannot be retried.",
+      "operation": "provider",
+      "scenario": "timeout",
+      "expected": {
+        "disposition": "RECONCILE",
+        "first_status": "reconciliation_required",
+        "retry_status": "reconciliation_required",
+        "admission_state": "INDETERMINATE",
+        "provider_invocations": 1
+      }
+    },
+    {
+      "id": "reject-forged-provider-evidence",
+      "family": "provider-evidence",
+      "description": "Unauthenticated or forged provider evidence cannot establish commitment.",
+      "operation": "provider",
+      "scenario": "forged_evidence",
+      "expected": {
+        "disposition": "RECONCILE",
+        "gate_status": "reconciliation_required",
+        "reason": "provider_evidence_verification_failed:signature_invalid",
+        "admission_state": "INDETERMINATE",
+        "provider_invocations": 1
+      }
+    },
+    {
+      "id": "reject-replayed-provider-evidence",
+      "family": "provider-evidence",
+      "description": "Authenticated evidence bound to another admission is replayed evidence.",
+      "operation": "provider",
+      "scenario": "replayed_evidence",
+      "expected": {
+        "disposition": "RECONCILE",
+        "reason": "provider_evidence_binding_mismatch",
+        "provider_invocations": 1
+      }
+    },
+    {
+      "id": "committed-diverged-independent",
+      "family": "provider-evidence",
+      "description": "Provider COMMITTED and observed-effect DIVERGED are recorded as independent facts without reopening execution authority.",
+      "operation": "provider",
+      "scenario": "committed_diverged",
+      "expected": {
+        "disposition": "ACCEPT",
+        "gate_status": "committed",
+        "admission_state": "COMMITTED",
+        "provider_outcome": "COMMITTED",
+        "effect_relation": "DIVERGED",
+        "provider_invocations": 1
+      }
+    },
+    {
+      "id": "reject-committed-no-effect-contradiction",
+      "family": "provider-evidence",
+      "description": "A determinate DIVERGED relation without its required evidence digest is rejected.",
+      "operation": "provider",
+      "scenario": "contradictory_committed_no_effect",
+      "expected": {
+        "disposition": "RECONCILE",
+        "reason": "observed_effect_relation_mismatch",
+        "provider_invocations": 1
+      }
+    },
+    {
+      "id": "reject-not-committed-effect-contradiction",
+      "family": "provider-evidence",
+      "description": "A determinate observed-effect relation without its required observed-effect digest is rejected.",
+      "operation": "provider",
+      "scenario": "contradictory_not_committed_effect",
+      "expected": {
+        "disposition": "RECONCILE",
+        "reason": "observed_effect_relation_mismatch",
+        "provider_invocations": 1
+      }
+    },
+    {
+      "id": "reject-contradictory-provider-records",
+      "family": "provider-evidence",
+      "description": "A later contradictory provider outcome cannot rewrite authenticated evidence.",
+      "operation": "admission",
+      "scenario": "contradictory_provider_outcomes",
+      "expected": {
+        "disposition": "REFUSE",
+        "reason": "outcome_conflict",
+        "execution_right": "CONSUMED"
+      }
+    },
+    {
+      "id": "post-begin-no-blind-retry",
+      "family": "retry-safety",
+      "description": "A lost acknowledgement after atomic begin is recovered as consumed and reconciled through the evidence-only path without invoking the provider.",
+      "operation": "provider",
+      "scenario": "post_begin_no_blind_retry",
+      "expected": {
+        "disposition": "RECONCILE",
+        "first_status": "reconciliation_required",
+        "retry_status": "reconciliation_required",
+        "reconciliation_status": "not_committed",
+        "admission_state": "PROVEN_NOT_COMMITTED",
+        "begin_calls": 1,
+        "provider_invocations": 0,
+        "reconciliations": 1
+      }
+    },
+    {
+      "id": "no-blind-retry",
+      "family": "retry-safety",
+      "description": "Reconciliation uses the evidence-only adapter path and never invokes twice.",
+      "operation": "provider",
+      "scenario": "no_blind_retry",
+      "expected": {
+        "disposition": "RECONCILE",
+        "first_status": "reconciliation_required",
+        "retry_status": "reconciliation_required",
+        "reconciliation_status": "not_committed",
+        "admission_state": "PROVEN_NOT_COMMITTED",
+        "provider_invocations": 1,
+        "reconciliations": 1
+      }
+    }
+  ]
+}
