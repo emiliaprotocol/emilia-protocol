@@ -11,7 +11,7 @@ import {
   adaptPromptfooQualificationArtifact,
   digestPromptfooQualification,
   promptfooQualificationChallengeDigest,
-} from './src/gate-qualification-promptfoo.js';
+} from './gate-qualification-promptfoo.js';
 
 const NOW = '2026-07-26T12:30:00Z';
 const PROMPT_BYTES = 'Classify case {{case}}';

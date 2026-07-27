@@ -32,7 +32,7 @@ import {
   validateQualificationStatus,
   validateRuntimeCandidateMeasurement,
   validateTestResultReference,
-} from './src/gate-qualification.js';
+} from './gate-qualification.js';
 
 type Obj = Record<string, any>;
 interface Signer { keyid: string; publicKey: KeyObject; privateKey: KeyObject }

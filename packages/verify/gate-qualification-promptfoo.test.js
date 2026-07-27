@@ -4,7 +4,7 @@
 import assert from 'node:assert/strict';
 import crypto from 'node:crypto';
 import test from 'node:test';
-import { PROMPTFOO_QUALIFICATION_ADAPTER_VERSION, PROMPTFOO_QUALIFICATION_EVIDENCE_VERSION, PROMPTFOO_QUALIFICATION_LIMITS, PROMPTFOO_QUALIFICATION_RUN_METADATA_VERSION, adaptPromptfooQualificationArtifact, digestPromptfooQualification, promptfooQualificationChallengeDigest, } from './src/gate-qualification-promptfoo.js';
+import { PROMPTFOO_QUALIFICATION_ADAPTER_VERSION, PROMPTFOO_QUALIFICATION_EVIDENCE_VERSION, PROMPTFOO_QUALIFICATION_LIMITS, PROMPTFOO_QUALIFICATION_RUN_METADATA_VERSION, adaptPromptfooQualificationArtifact, digestPromptfooQualification, promptfooQualificationChallengeDigest, } from './gate-qualification-promptfoo.js';
 const NOW = '2026-07-26T12:30:00Z';
 const PROMPT_BYTES = 'Classify case {{case}}';
 function bytesDigest(value) {
