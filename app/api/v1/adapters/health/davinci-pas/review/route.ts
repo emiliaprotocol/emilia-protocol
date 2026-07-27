@@ -27,6 +27,17 @@ const RAW_PAS_ALIASES = new Set([
   'procedure',
   'clinicalnote',
 ]);
+const TOP_LEVEL_REQUEST_FIELDS = new Set([
+  'organization_id',
+  'operation',
+  'proposal_id',
+  'operation_id',
+  'pas_context_ref',
+  'proposal',
+  'approval_evidence',
+  'evaluation',
+  'provider_evidence',
+]);
 
 export const DAVINCI_PAS_CONTROL_KEY = Symbol.for(
   'emilia.health.davinci-pas.proposal-to-effect-control.v1',
@@ -156,6 +167,13 @@ export function createDavinciPasReviewHandler(
           400,
           'raw_pas_resources_refused',
           'Raw PAS and clinical resources must be loaded from the authenticated system of record',
+        );
+      }
+      if (Object.keys(body).some((field) => !TOP_LEVEL_REQUEST_FIELDS.has(field))) {
+        return problem(
+          400,
+          'unknown_request_field',
+          'request body contains a field outside the Da Vinci PAS review contract',
         );
       }
       if (!identifier(body.organization_id)) {

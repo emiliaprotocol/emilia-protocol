@@ -74,7 +74,13 @@ export function createDavinciPasExportHandler(
         operation_id: operationId,
       });
       if (packet?.ok === false) {
-        return problem(404, packet.reason ?? 'pas_reliance_packet_not_available', 'PAS reliance packet is not available');
+        const reason = typeof packet.reason === 'string'
+          ? packet.reason
+          : 'pas_export_unavailable';
+        if (reason === 'pas_reliance_packet_not_available') {
+          return problem(404, reason, 'PAS reliance packet is not available');
+        }
+        return problem(503, reason, 'PAS reliance packet export is unavailable');
       }
       const response = NextResponse.json(packet, { status: 200 });
       response.headers.set(

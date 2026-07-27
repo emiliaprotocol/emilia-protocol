@@ -17,8 +17,10 @@ medical prior-authorization determination to one controlled consequence:
    evidence.
 3. Gate issues an exact approval challenge and verifies the returned receipt.
    AEB separately evaluates the relying party's pinned evidence requirements.
-4. Proposal-to-Effect atomically reserves one evidence use and one provider
-   attempt before entering the protected callback.
+4. Proposal-to-Effect reserves one evidence use and one provider attempt before
+   entering the protected callback. Each durable store preserves its own
+   transaction boundary; this reference does not claim a distributed atomic
+   transaction across independently operated stores.
 5. A completed callback commits `EXECUTED`. A lost or ambiguous response enters
    `INDETERMINATE`; the same authorization cannot invoke the callback again.
 6. Only authenticated provider evidence bound to the same tenant, operation,
@@ -48,6 +50,8 @@ Production must inject:
 - a configured Proposal-to-Effect controller;
 - durable AEB consumption, consequence-attempt, evidence, and reconciliation
   stores;
+- a durable consequence-attempt recovery adapter that can rediscover stale
+  `INVOKING` custody and move it only to `INDETERMINATE` for reconciliation;
 - relying-party-pinned current-status and provider-evidence verifiers;
 - a KMS/HSM-backed packet signer;
 - a tenant-bound PAS context loader; and

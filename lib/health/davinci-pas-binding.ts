@@ -938,7 +938,7 @@ function validatePortableShape(binding: unknown, reasons: string[]): binding is 
       && binding.action.reviewer_authority_scope !== REVIEWER_AUTHORITY_SCOPE) {
     addReason(reasons, 'reviewer_authority_scope_mismatch');
   }
-  return true;
+  return reasons.length === 0;
 }
 
 /**

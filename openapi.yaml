@@ -684,6 +684,7 @@ paths:
       responses:
         '200': { description: Exact determination executed once or reconciled to a terminal result. }
         '201': { description: Exact proposal and approval challenge prepared. }
+        '202': { description: "Outcome is INDETERMINATE; reconciliation is required and blind retry is prohibited." }
         '400': { description: Malformed request or raw PAS/clinical resource supplied. }
         '401': { description: Authentication required. }
         '403': { description: Tenant binding or local authority refused. }
@@ -716,8 +717,8 @@ paths:
         '400': { description: Required tenant or operation binding is missing. }
         '401': { description: Authentication required. }
         '403': { description: Tenant binding refused. }
-        '404': { description: No packet exists for the exact tenant and operation. }
-        '503': { description: Durable evidence or export dependency unavailable. }
+        '404': { description: No exportable packet exists for the exact tenant and operation. }
+        '503': { description: "Evidence store, prepared context, signing, or export dependency unavailable." }
 
   /api/v1/adapters/health/hospice-claim/reconcile:
     post:

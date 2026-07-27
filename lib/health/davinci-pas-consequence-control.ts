@@ -17,6 +17,10 @@ import type {
 import { canonicalize } from '../canonical-json.js';
 import {
   DAVINCI_PAS_ACTION_TYPE,
+  DAVINCI_PAS_BINDING_TYPE,
+  DAVINCI_PAS_IG_VERSION,
+  DAVINCI_PAS_MEDICAL_RAIL,
+  DAVINCI_PAS_PROFILE_ID,
   type DavinciPasReviewBinding,
   buildDavinciPasReviewBinding,
   canonicalizeDavinciPasMaterialAction,
@@ -81,6 +85,92 @@ const EXPORTABLE_DECISIONS = new Set([
   'RECONCILED_EXECUTED',
   'RECONCILED_NOT_EXECUTED',
 ]);
+const PACKET_FIELDS = Object.freeze([
+  '@version',
+  'profile_id',
+  'relying_party_id',
+  'tenant_id',
+  'operation_id',
+  'generated_at',
+  'caid',
+  'action_digest',
+  'proposal_digest',
+  'binding',
+  'binding_digest',
+  'decision',
+  'reconciliation_required',
+  'retry_safe',
+  'event_count',
+  'event_digests',
+  'event_root',
+  'prepared_event_digest',
+  'terminal_event_digest',
+  'limitations',
+  'packet_digest',
+  'proof',
+] as const);
+const BINDING_FIELDS = Object.freeze([
+  '@type',
+  'profile_id',
+  'ig',
+  'rail',
+  'action',
+  'action_digest',
+  'caid',
+] as const);
+const BINDING_IG_FIELDS = Object.freeze([
+  'package',
+  'version',
+  'fhir_release',
+  'claim_profile',
+  'claim_response_profile',
+] as const);
+const PROOF_FIELDS = Object.freeze(['alg', 'key_id', 'signature_b64u'] as const);
+const BASE64URL_RE = /^[A-Za-z0-9_-]+$/;
+const ISO_INSTANT_RE =
+  /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d{1,9})?Z$/;
+const DAVINCI_PAS_CLAIM_PROFILE =
+  'http://hl7.org/fhir/us/davinci-pas/StructureDefinition/profile-claim|2.2.1';
+const DAVINCI_PAS_CLAIM_RESPONSE_PROFILE =
+  'http://hl7.org/fhir/us/davinci-pas/StructureDefinition/profile-claimresponse|2.2.1';
+const PROHIBITED_PHI_FIELD_ALIASES = new Set([
+  'accountnumber',
+  'address',
+  'authorizationform',
+  'beneficiary',
+  'beneficiaryid',
+  'beneficiaryname',
+  'bic',
+  'birthdate',
+  'cin',
+  'clinical',
+  'clinicalnote',
+  'contained',
+  'dateofbirth',
+  'diagnosis',
+  'diagnosistext',
+  'directpatientreference',
+  'dob',
+  'email',
+  'freetext',
+  'freetextnote',
+  'freeformtext',
+  'membername',
+  'medicarebeneficiaryidentifier',
+  'patient',
+  'patientname',
+  'patientreference',
+  'phone',
+  'procedure',
+  'rawclaim',
+  'rawclaimresponse',
+  'rawclinicalresource',
+  'resource',
+  'routingnumber',
+  'ssn',
+  'supportinginfo',
+  'telephone',
+]);
 const SIGNATURE_DOMAIN = `${DAVINCI_PAS_CONSEQUENCE_PACKET_VERSION}:SIGNATURE\0`;
 
 function clone<T>(value: T): T {
@@ -95,6 +185,50 @@ function isObject(value: unknown): value is JsonObject {
 
 function identifier(value: unknown): value is string {
   return typeof value === 'string' && IDENTIFIER_RE.test(value);
+}
+
+function exactKeys(value: unknown, expected: readonly string[]): value is JsonObject {
+  if (!isObject(value)) return false;
+  const actual = Object.keys(value).sort();
+  const sortedExpected = [...expected].sort();
+  return actual.length === sortedExpected.length
+    && sortedExpected.every((key, index) => key === actual[index]);
+}
+
+function validInstant(value: unknown): value is string {
+  return typeof value === 'string'
+    && ISO_INSTANT_RE.test(value)
+    && Number.isFinite(Date.parse(value));
+}
+
+function prohibitedPhi(
+  value: unknown,
+  depth = 0,
+  budget: { entries: number } = { entries: 0 },
+): string | null {
+  if (depth > 10 || budget.entries > 4096) return 'input_complexity_limit';
+  if (Array.isArray(value)) {
+    for (const entry of value) {
+      budget.entries += 1;
+      const found = prohibitedPhi(entry, depth + 1, budget);
+      if (found) return found;
+    }
+    return null;
+  }
+  if (!isObject(value)) return null;
+  for (const key of Reflect.ownKeys(value)) {
+    budget.entries += 1;
+    if (typeof key !== 'string') return 'malformed_field';
+    const normalized = key.normalize('NFKC').toLowerCase().replace(/[^a-z0-9]/g, '');
+    if (PROHIBITED_PHI_FIELD_ALIASES.has(normalized)) return key;
+    const descriptor = Object.getOwnPropertyDescriptor(value, key);
+    if (!descriptor || !Object.prototype.hasOwnProperty.call(descriptor, 'value')) {
+      return 'malformed_field';
+    }
+    const found = prohibitedPhi(descriptor.value, depth + 1, budget);
+    if (found) return found;
+  }
+  return null;
 }
 
 function digest(value: unknown): string {
@@ -121,18 +255,41 @@ function signerShape(value: unknown): value is HealthcareAssuranceSigner {
 
 function publicAttempt(value: unknown): ConsequenceAttemptBinding | null {
   if (!isObject(value)) return null;
-  const fields = [
+  const identifierFields = [
     'tenant_id',
     'provider_id',
     'provider_account_id',
     'environment',
     'attempt_id',
-    'request_digest',
   ];
-  if (!fields.every((field) => typeof value[field] === 'string')) return null;
+  if (!identifierFields.every((field) => identifier(value[field]))
+      || typeof value.request_digest !== 'string'
+      || !DIGEST_RE.test(value.request_digest)) return null;
+  const fields = [...identifierFields, 'request_digest'];
   return Object.fromEntries(
     fields.map((field) => [field, value[field]]),
   ) as unknown as ConsequenceAttemptBinding;
+}
+
+function providerEvidenceMatches(
+  value: unknown,
+  proposal: ProposalToEffectProposal,
+  attempt: ConsequenceAttemptBinding,
+): boolean {
+  return isObject(value)
+    && value.authenticated === true
+    && value.operation_id === proposal.operation_id
+    && value.caid === proposal.caid
+    && value.action_digest === proposal.action_digest
+    && value.tenant_id === attempt.tenant_id
+    && value.provider_id === attempt.provider_id
+    && value.provider_account_id === attempt.provider_account_id
+    && value.environment === attempt.environment
+    && value.attempt_id === attempt.attempt_id
+    && value.request_digest === attempt.request_digest
+    && identifier(value.evidence_id)
+    && validInstant(value.observed_at)
+    && ['COMMITTED', 'NOT_COMMITTED', 'ESCALATED'].includes(value.outcome);
 }
 
 function projectControllerResult(value: unknown): JsonObject {
@@ -212,6 +369,37 @@ export interface DavinciPasConsequenceControlOptions {
   controller: ProposalToEffectController;
   evidence_store: HealthcareEvidenceStore;
   reconciliation_handle_store: HealthcareReconciliationHandleStore;
+  /**
+   * The same owner-fenced durable consequence-attempt store used by the
+   * Proposal-to-Effect controller. Its existing lookup/recover operations are
+   * the restart path: a stale INVOKING attempt is rediscovered from the exact
+   * server-derived provider tuple, recovered only as INDETERMINATE, and then
+   * sent to authenticated reconciliation. Recovery never invokes the effect.
+   */
+  consequence_attempt_store?: {
+    durable: true;
+    lookup(input: {
+      tenant_id: string;
+      provider_id: string;
+      provider_account_id: string;
+      environment: string;
+      request_digest: ConsequenceAttemptBinding['request_digest'];
+    }): Promise<ConsequenceAttemptBinding | null>;
+    read(input: ConsequenceAttemptBinding): Promise<{
+      state: 'RESERVED' | 'INVOKING' | 'INDETERMINATE' | 'COMMITTED' | 'RELEASED' | 'ESCALATED';
+    } | null>;
+    recover(input: ConsequenceAttemptBinding): Promise<
+      | {
+        recovered: true;
+        owner: ConsequenceAttemptReference['owner'];
+        state: 'RESERVED' | 'INDETERMINATE';
+      }
+      | {
+        recovered: false;
+        reason: string;
+      }
+    >;
+  };
   assurance: {
     relying_party_id: string;
     signer: HealthcareAssuranceSigner;
@@ -256,6 +444,39 @@ function preparedContext(
   };
 }
 
+function validEvidenceStream(
+  events: unknown,
+  tenantId: string,
+  operationId: string,
+): events is HealthcareEvidenceEvent[] {
+  if (!Array.isArray(events) || events.length < 2 || events.length > 10_000) return false;
+  let previousSequence = 0;
+  for (const event of events) {
+    if (!exactKeys(event, [
+      'event_id',
+      'sequence',
+      'tenant_id',
+      'operation_id',
+      'event_type',
+      'recorded_at',
+      'payload',
+    ])
+        || typeof event.event_id !== 'string'
+        || !DIGEST_RE.test(event.event_id)
+        || !Number.isSafeInteger(event.sequence)
+        || event.sequence !== previousSequence + 1
+        || event.tenant_id !== tenantId
+        || event.operation_id !== operationId
+        || !['PREPARED', 'EXECUTION', 'RECONCILIATION'].includes(event.event_type)
+        || !validInstant(event.recorded_at)
+        || !isObject(event.payload)) {
+      return false;
+    }
+    previousSequence = event.sequence;
+  }
+  return true;
+}
+
 export function createDavinciPasConsequenceControl(
   options: DavinciPasConsequenceControlOptions,
 ) {
@@ -284,6 +505,17 @@ export function createDavinciPasConsequenceControl(
       && (options.evidence_store.durable !== true
         || options.reconciliation_handle_store.durable !== true)) {
     throw new Error('pas_durable_stores_required');
+  }
+  if (options.consequence_attempt_store
+      && (options.consequence_attempt_store.durable !== true
+        || typeof options.consequence_attempt_store.lookup !== 'function'
+        || typeof options.consequence_attempt_store.read !== 'function'
+        || typeof options.consequence_attempt_store.recover !== 'function')) {
+    throw new Error('pas_consequence_recovery_store_invalid');
+  }
+  if (options.allow_ephemeral_stores_for_tests !== true
+      && !options.consequence_attempt_store) {
+    throw new Error('pas_consequence_recovery_store_required');
   }
   if (!options.assurance
       || !identifier(options.assurance.relying_party_id)
@@ -423,6 +655,8 @@ export function createDavinciPasConsequenceControl(
       aeb_evaluation_digest: digest(input.evaluation),
       proposal_digest: digest(proposal),
       binding_digest: digest(observed),
+      action_caid: proposal.caid,
+      action_digest: proposal.action_digest,
     };
     try {
       const result = await options.controller.execute({
@@ -470,12 +704,14 @@ export function createDavinciPasConsequenceControl(
           });
         } catch {
           return {
-            ok: false,
-            decision: 'INDETERMINATE',
+            ok: true,
+            decision: 'EXECUTED',
             reason: 'pas_assurance_record_unavailable',
             operation_id: proposal.operation_id,
             action_caid: proposal.caid,
-            reconciliation_required: true,
+            attempt,
+            assurance_recorded: false,
+            reconciliation_required: false,
             retry_safe: false,
           };
         }
@@ -485,6 +721,7 @@ export function createDavinciPasConsequenceControl(
           operation_id: proposal.operation_id,
           action_caid: proposal.caid,
           attempt,
+          assurance_recorded: true,
           reconciliation_required: false,
           retry_safe: false,
         };
@@ -539,6 +776,120 @@ export function createDavinciPasConsequenceControl(
     }
   }
 
+  /**
+   * Recover only custody, never execution. The durable store first proves the
+   * exact attempt selected by the signed proposal's provider tuple and request
+   * digest. Its separately authorized recovery operation rotates stale owner
+   * material and conservatively changes INVOKING to INDETERMINATE. The returned
+   * handle is persisted before authenticated provider reconciliation proceeds.
+   */
+  async function recoverReconciliationHandle(input: {
+    tenant_id: string;
+    proposal: ProposalToEffectProposal;
+    prepared: { binding: DavinciPasReviewBinding; proposal_digest: string };
+    provider_evidence: JsonObject;
+    expected_attempt?: ConsequenceAttemptBinding | null;
+  }): Promise<
+    | {
+      ok: true;
+      attempt: ConsequenceAttemptBinding;
+      handle: ConsequenceAttemptReference;
+    }
+    | {
+      ok: false;
+      reason: string;
+    }
+  > {
+    const store = options.consequence_attempt_store;
+    if (!store) return { ok: false, reason: 'reconciliation_handle_unavailable' };
+    let located: ConsequenceAttemptBinding | null;
+    try {
+      located = publicAttempt(await store.lookup({
+        tenant_id: input.tenant_id,
+        provider_id: input.proposal.consequence.provider_id,
+        provider_account_id: input.proposal.consequence.provider_account_id,
+        environment: input.proposal.consequence.environment,
+        request_digest: input.proposal.consequence.request_digest,
+      }));
+    } catch {
+      return { ok: false, reason: 'consequence_attempt_recovery_unavailable' };
+    }
+    if (!located
+        || located.tenant_id !== input.tenant_id
+        || located.provider_id !== input.proposal.consequence.provider_id
+        || located.provider_account_id !== input.proposal.consequence.provider_account_id
+        || located.environment !== input.proposal.consequence.environment
+        || located.request_digest !== input.proposal.consequence.request_digest
+        || (input.expected_attempt
+          && digest(located) !== digest(input.expected_attempt))) {
+      return { ok: false, reason: 'consequence_attempt_recovery_binding_mismatch' };
+    }
+    if (!providerEvidenceMatches(input.provider_evidence, input.proposal, located)) {
+      return { ok: false, reason: 'provider_evidence_binding_mismatch' };
+    }
+    let sourceState: string;
+    try {
+      const snapshot = await store.read(located);
+      sourceState = snapshot?.state ?? '';
+    } catch {
+      return { ok: false, reason: 'consequence_attempt_recovery_unavailable' };
+    }
+    if (sourceState !== 'INVOKING' && sourceState !== 'INDETERMINATE') {
+      return { ok: false, reason: 'consequence_attempt_not_reconcilable' };
+    }
+    let recovered: Awaited<ReturnType<typeof store.recover>>;
+    try {
+      recovered = await store.recover(located);
+    } catch {
+      return { ok: false, reason: 'consequence_attempt_recovery_unavailable' };
+    }
+    if (!recovered.recovered || recovered.state !== 'INDETERMINATE') {
+      return {
+        ok: false,
+        reason: recovered.recovered
+          ? 'consequence_attempt_not_reconcilable'
+          : 'consequence_attempt_recovery_unavailable',
+      };
+    }
+    const handle: ConsequenceAttemptReference = {
+      tenant_id: located.tenant_id,
+      attempt_id: located.attempt_id,
+      owner: recovered.owner,
+    };
+    try {
+      await options.reconciliation_handle_store.put({
+        tenant_id: input.tenant_id,
+        operation_id: input.proposal.operation_id,
+        handle,
+      });
+    } catch {
+      return { ok: false, reason: 'reconciliation_handle_unavailable' };
+    }
+    await append({
+      tenant_id: input.tenant_id,
+      operation_id: input.proposal.operation_id,
+      event_type: 'EXECUTION',
+      recorded_at: timestamp(),
+      payload: {
+        decision: 'INDETERMINATE',
+        proposal_digest: input.prepared.proposal_digest,
+        binding_digest: digest(input.prepared.binding),
+        action_caid: input.proposal.caid,
+        action_digest: input.proposal.action_digest,
+        proposal_to_effect: {
+          consequence: { state: 'INDETERMINATE', attempt: located },
+        },
+        attempt: located,
+        recovery: {
+          from_state: sourceState,
+          method: 'durable_attempt_store',
+          effect_replayed: false,
+        },
+      },
+    }).catch(() => undefined);
+    return { ok: true, attempt: located, handle };
+  }
+
   async function reconcile(input: {
     tenant_id: string;
     operation_id: string;
@@ -564,17 +915,18 @@ export function createDavinciPasConsequenceControl(
     }
     const events = await eventsFor(input.tenant_id, input.operation_id)
       .catch(() => null);
-    if (!events || !preparedContext(events, proposal, input.tenant_id)) {
+    const prepared = events
+      ? preparedContext(events, proposal, input.tenant_id)
+      : null;
+    if (!events || !prepared) {
       return refusal('pas_prepared_context_mismatch');
     }
     const indeterminate = [...events].reverse().find((event) => (
       event.event_type === 'EXECUTION'
         && event.payload?.decision === 'INDETERMINATE'
     ));
-    const attempt = publicAttempt(indeterminate?.payload?.attempt);
-    if (!indeterminate || !attempt) return refusal('reconciliation_not_indeterminate');
-    if (input.provider_evidence.operation_id !== input.operation_id
-        || input.provider_evidence.attempt_id !== attempt.attempt_id) {
+    let attempt = publicAttempt(indeterminate?.payload?.attempt);
+    if (attempt && !providerEvidenceMatches(input.provider_evidence, proposal, attempt)) {
       return {
         ok: false,
         decision: 'INDETERMINATE',
@@ -583,16 +935,39 @@ export function createDavinciPasConsequenceControl(
         retry_safe: false,
       };
     }
-    const handle = await options.reconciliation_handle_store.get({
-      tenant_id: input.tenant_id,
-      operation_id: input.operation_id,
-    }).catch(() => null);
-    if (!handle || handle.tenant_id !== input.tenant_id
+    let handle = attempt
+      ? await options.reconciliation_handle_store.get({
+        tenant_id: input.tenant_id,
+        operation_id: input.operation_id,
+      }).catch(() => null)
+      : null;
+    if (!handle || !attempt
+        || handle.tenant_id !== input.tenant_id
         || handle.attempt_id !== attempt.attempt_id) {
+      const recovered = await recoverReconciliationHandle({
+        tenant_id: input.tenant_id,
+        proposal,
+        prepared,
+        provider_evidence: input.provider_evidence,
+        expected_attempt: attempt,
+      });
+      if (!recovered.ok) {
+        return {
+          ok: false,
+          decision: 'INDETERMINATE',
+          reason: recovered.reason,
+          reconciliation_required: true,
+          retry_safe: false,
+        };
+      }
+      attempt = recovered.attempt;
+      handle = recovered.handle;
+    }
+    if (!providerEvidenceMatches(input.provider_evidence, proposal, attempt)) {
       return {
         ok: false,
         decision: 'INDETERMINATE',
-        reason: 'reconciliation_handle_unavailable',
+        reason: 'provider_evidence_binding_mismatch',
         reconciliation_required: true,
         retry_safe: false,
       };
@@ -640,6 +1015,10 @@ export function createDavinciPasConsequenceControl(
         recorded_at: timestamp(),
         payload: {
           decision,
+          proposal_digest: prepared.proposal_digest,
+          binding_digest: digest(prepared.binding),
+          action_caid: proposal.caid,
+          action_digest: proposal.action_digest,
           provider_evidence_digest: evidenceDigest,
           authenticated_provider_evidence: true,
           proposal_to_effect: projected,
@@ -648,11 +1027,16 @@ export function createDavinciPasConsequenceControl(
       });
     } catch {
       return {
-        ok: false,
-        decision: 'INDETERMINATE',
+        ok: decision !== 'INDETERMINATE',
+        decision,
         reason: 'pas_assurance_record_unavailable',
-        reconciliation_required: true,
-        retry_safe: false,
+        operation_id: input.operation_id,
+        action_caid: proposal.caid,
+        provider_evidence_digest: evidenceDigest,
+        authenticated_provider_evidence: true,
+        assurance_recorded: false,
+        reconciliation_required: decision === 'INDETERMINATE',
+        retry_safe: decision === 'RECONCILED_NOT_EXECUTED',
       };
     }
     return {
@@ -662,6 +1046,7 @@ export function createDavinciPasConsequenceControl(
       action_caid: proposal.caid,
       provider_evidence_digest: evidenceDigest,
       authenticated_provider_evidence: true,
+      assurance_recorded: true,
       reconciliation_required: decision === 'INDETERMINATE',
       retry_safe: decision === 'RECONCILED_NOT_EXECUTED',
     };
@@ -676,18 +1061,58 @@ export function createDavinciPasConsequenceControl(
     const events = await eventsFor(input.tenant_id, input.operation_id)
       .catch(() => null);
     if (!events) return refusal('pas_evidence_store_unavailable');
-    const prepared = events.find((event) => event.event_type === 'PREPARED');
-    const terminal = [...events].reverse().find((event) => (
-      (event.event_type === 'EXECUTION' || event.event_type === 'RECONCILIATION')
-        && EXPORTABLE_DECISIONS.has(event.payload?.decision)
-    ));
-    if (!prepared || !terminal
-        || !isObject(prepared.payload?.binding)
-        || !isObject(prepared.payload?.proposal)) {
+    if (!validEvidenceStream(events, input.tenant_id, input.operation_id)) {
+      return refusal('pas_reliance_evidence_invalid');
+    }
+    let terminalIndex = -1;
+    for (let index = events.length - 1; index >= 0; index -= 1) {
+      const event = events[index];
+      if ((event.event_type === 'EXECUTION' || event.event_type === 'RECONCILIATION')
+          && EXPORTABLE_DECISIONS.has(event.payload.decision)) {
+        terminalIndex = index;
+        break;
+      }
+    }
+    const terminal = terminalIndex >= 0 ? events[terminalIndex] : null;
+    if (!terminal
+        || terminalIndex !== events.length - 1
+        || typeof terminal.payload.proposal_digest !== 'string'
+        || !DIGEST_RE.test(terminal.payload.proposal_digest)
+        || typeof terminal.payload.binding_digest !== 'string'
+        || !DIGEST_RE.test(terminal.payload.binding_digest)
+        || (terminal.payload.decision.startsWith('RECONCILED_')
+          ? terminal.event_type !== 'RECONCILIATION'
+          : terminal.event_type !== 'EXECUTION')) {
+      return refusal('pas_reliance_packet_not_available');
+    }
+    let preparedIndex = -1;
+    for (let index = terminalIndex - 1; index >= 0; index -= 1) {
+      const candidate = events[index];
+      if (candidate.event_type === 'PREPARED'
+          && candidate.payload.proposal_digest === terminal.payload.proposal_digest
+          && candidate.payload.binding_digest === terminal.payload.binding_digest) {
+        preparedIndex = index;
+        break;
+      }
+    }
+    const prepared = preparedIndex >= 0 ? events[preparedIndex] : null;
+    if (!prepared
+        || !isObject(prepared.payload.binding)
+        || !isObject(prepared.payload.proposal)
+        || digest(prepared.payload.binding) !== prepared.payload.binding_digest
+        || digest(prepared.payload.proposal) !== prepared.payload.proposal_digest) {
       return refusal('pas_reliance_packet_not_available');
     }
     const proposal = prepared.payload.proposal as ProposalToEffectProposal;
-    if (!preparedContext(events, proposal, input.tenant_id)) {
+    const selected = preparedContext([prepared], proposal, input.tenant_id);
+    if (!selected
+        || proposal.operation_id !== input.operation_id
+        || proposal.consequence?.tenant_id !== input.tenant_id
+        || terminal.payload.action_caid !== proposal.caid
+        || terminal.payload.action_digest !== proposal.action_digest
+        || selected.binding.caid !== proposal.caid
+        || selected.binding.action_digest !== proposal.action_digest
+        || terminal.payload.binding_digest !== digest(selected.binding)) {
       return refusal('pas_prepared_context_mismatch');
     }
     const eventDigests = events.map((event) => digest(event));
@@ -707,9 +1132,13 @@ export function createDavinciPasConsequenceControl(
       reconciliation_required: terminal.payload.decision === 'INDETERMINATE',
       retry_safe: terminal.payload.decision === 'RECONCILED_NOT_EXECUTED',
       event_count: events.length,
+      event_digests: eventDigests,
       event_root: digest(eventDigests),
+      prepared_event_digest: eventDigests[preparedIndex],
+      terminal_event_digest: eventDigests[terminalIndex],
       limitations: [...DAVINCI_PAS_CONSEQUENCE_LIMITATIONS],
     };
+    if (prohibitedPhi(body)) return refusal('pas_reliance_packet_phi_refused');
     const packetDigest = digest(body);
     const bytes = Buffer.from(`${SIGNATURE_DOMAIN}${canonicalize({
       packet_digest: packetDigest,
@@ -743,28 +1172,184 @@ export function verifyDavinciPasConsequencePacket(
     relying_party_id: string;
     key_id: string;
     public_key_spki_b64u: string;
+    tenant_id?: string;
+    operation_id?: string;
   },
 ): { valid: boolean; reasons: string[] } {
   const reasons: string[] = [];
-  if (!isObject(packet)
-      || packet['@version'] !== DAVINCI_PAS_CONSEQUENCE_PACKET_VERSION) {
+  const add = (reason: string) => {
+    if (!reasons.includes(reason)) reasons.push(reason);
+  };
+  const phi = prohibitedPhi(packet);
+  if (phi && phi !== 'input_complexity_limit' && phi !== 'malformed_field') {
+    add('packet_contains_prohibited_phi');
+  }
+  if (!isObject(packet)) {
     return { valid: false, reasons: ['packet_profile_invalid'] };
   }
-  if (packet.relying_party_id !== pin.relying_party_id) {
-    reasons.push('relying_party_mismatch');
+  if (phi === 'input_complexity_limit' || phi === 'malformed_field') {
+    return { valid: false, reasons: ['packet_shape_invalid'] };
   }
-  if (!isObject(packet.proof)
-      || packet.proof.alg !== 'Ed25519'
-      || packet.proof.key_id !== pin.key_id
-      || typeof packet.proof.signature_b64u !== 'string') {
-    reasons.push('packet_proof_invalid');
+  if (!exactKeys(packet, PACKET_FIELDS)) {
+    add('packet_shape_invalid');
+    return { valid: false, reasons };
   }
-  const body = clone(packet);
-  delete body.packet_digest;
-  delete body.proof;
-  const expectedDigest = digest(body);
-  if (packet.packet_digest !== expectedDigest) reasons.push('packet_digest_mismatch');
-  if (reasons.length === 0) {
+  if (packet['@version'] !== DAVINCI_PAS_CONSEQUENCE_PACKET_VERSION
+      || packet.profile_id !== DAVINCI_PAS_CONSEQUENCE_PROFILE_ID
+      || !identifier(packet.relying_party_id)) {
+    add('packet_profile_invalid');
+  }
+
+  const pinValid = isObject(pin)
+    && identifier(pin.relying_party_id)
+    && identifier(pin.key_id)
+    && typeof pin.public_key_spki_b64u === 'string'
+    && BASE64URL_RE.test(pin.public_key_spki_b64u)
+    && (pin.tenant_id === undefined || identifier(pin.tenant_id))
+    && (pin.operation_id === undefined || identifier(pin.operation_id));
+  if (!pinValid) add('verification_pin_invalid');
+  if (pinValid && packet.relying_party_id !== pin.relying_party_id) {
+    add('relying_party_mismatch');
+  }
+  if (!identifier(packet.tenant_id)) {
+    add('packet_tenant_invalid');
+  } else if (pinValid && pin.tenant_id !== undefined
+      && packet.tenant_id !== pin.tenant_id) {
+    add('packet_tenant_mismatch');
+  }
+  if (!identifier(packet.operation_id)) {
+    add('packet_operation_invalid');
+  } else if (pinValid && pin.operation_id !== undefined
+      && packet.operation_id !== pin.operation_id) {
+    add('packet_operation_mismatch');
+  }
+  if (!validInstant(packet.generated_at)
+      || typeof packet.proposal_digest !== 'string'
+      || !DIGEST_RE.test(packet.proposal_digest)
+      || !Array.isArray(packet.limitations)
+      || packet.limitations.length !== DAVINCI_PAS_CONSEQUENCE_LIMITATIONS.length
+      || !DAVINCI_PAS_CONSEQUENCE_LIMITATIONS.every(
+        (limitation, index) => packet.limitations[index] === limitation,
+      )) {
+    add('packet_shape_invalid');
+  }
+
+  const decisionSemantics: Record<string, {
+    reconciliation_required: boolean;
+    retry_safe: boolean;
+  }> = {
+    EXECUTED: { reconciliation_required: false, retry_safe: false },
+    INDETERMINATE: { reconciliation_required: true, retry_safe: false },
+    RECONCILED_EXECUTED: { reconciliation_required: false, retry_safe: false },
+    RECONCILED_NOT_EXECUTED: { reconciliation_required: false, retry_safe: true },
+  };
+  const decision = typeof packet.decision === 'string'
+    ? decisionSemantics[packet.decision]
+    : undefined;
+  if (!decision
+      || packet.reconciliation_required !== decision.reconciliation_required
+      || packet.retry_safe !== decision.retry_safe) {
+    add('packet_decision_invalid');
+  }
+
+  let canonicalBinding: ReturnType<typeof canonicalizeDavinciPasMaterialAction> | null = null;
+  const binding = packet.binding;
+  if (!exactKeys(binding, BINDING_FIELDS)
+      || binding['@type'] !== DAVINCI_PAS_BINDING_TYPE
+      || binding.profile_id !== DAVINCI_PAS_PROFILE_ID
+      || binding.rail !== DAVINCI_PAS_MEDICAL_RAIL
+      || !exactKeys(binding.ig, BINDING_IG_FIELDS)
+      || binding.ig.package !== 'hl7.fhir.us.davinci-pas'
+      || binding.ig.version !== DAVINCI_PAS_IG_VERSION
+      || binding.ig.fhir_release !== 'R4'
+      || binding.ig.claim_profile !== DAVINCI_PAS_CLAIM_PROFILE
+      || binding.ig.claim_response_profile !== DAVINCI_PAS_CLAIM_RESPONSE_PROFILE) {
+    add('packet_binding_invalid');
+  } else {
+    try {
+      canonicalBinding = canonicalizeDavinciPasMaterialAction(binding.action);
+    } catch {
+      add('packet_binding_invalid');
+    }
+  }
+  if (!canonicalBinding
+      || typeof packet.caid !== 'string'
+      || packet.caid !== binding?.caid
+      || packet.caid !== canonicalBinding.caid) {
+    add('packet_caid_invalid');
+  }
+  if (!canonicalBinding
+      || typeof packet.action_digest !== 'string'
+      || !DIGEST_RE.test(packet.action_digest)
+      || packet.action_digest !== binding?.action_digest
+      || packet.action_digest !== canonicalBinding.action_digest) {
+    add('packet_action_digest_invalid');
+  }
+  if (binding?.action?.operation_id !== packet.operation_id) {
+    add('packet_operation_mismatch');
+  }
+  try {
+    if (typeof packet.binding_digest !== 'string'
+        || !DIGEST_RE.test(packet.binding_digest)
+        || packet.binding_digest !== digest(binding)) {
+      add('packet_binding_digest_invalid');
+    }
+  } catch {
+    add('packet_binding_digest_invalid');
+  }
+
+  const eventDigests = packet.event_digests;
+  let eventRootValid = Array.isArray(eventDigests)
+    && eventDigests.length >= 2
+    && eventDigests.length <= 10_000
+    && eventDigests.every((entry: unknown) => (
+      typeof entry === 'string' && DIGEST_RE.test(entry)
+    ))
+    && Number.isSafeInteger(packet.event_count)
+    && packet.event_count === eventDigests.length
+    && typeof packet.event_root === 'string'
+    && DIGEST_RE.test(packet.event_root)
+    && typeof packet.prepared_event_digest === 'string'
+    && DIGEST_RE.test(packet.prepared_event_digest)
+    && typeof packet.terminal_event_digest === 'string'
+    && DIGEST_RE.test(packet.terminal_event_digest);
+  if (eventRootValid) {
+    const preparedIndex = eventDigests.indexOf(packet.prepared_event_digest);
+    const terminalIndex = eventDigests.lastIndexOf(packet.terminal_event_digest);
+    eventRootValid = packet.event_root === digest(eventDigests)
+      && preparedIndex >= 0
+      && terminalIndex > preparedIndex
+      && terminalIndex === eventDigests.length - 1;
+  }
+  if (!eventRootValid) add('packet_event_root_invalid');
+  if (!Number.isSafeInteger(packet.event_count)) add('packet_shape_invalid');
+
+  const proofShape = exactKeys(packet.proof, PROOF_FIELDS)
+    && packet.proof.alg === 'Ed25519'
+    && pinValid
+    && packet.proof.key_id === pin.key_id
+    && typeof packet.proof.signature_b64u === 'string'
+    && BASE64URL_RE.test(packet.proof.signature_b64u)
+    && Buffer.from(packet.proof.signature_b64u, 'base64url').byteLength === 64;
+  if (!proofShape) add('packet_proof_invalid');
+
+  let body: JsonObject | null = null;
+  let expectedDigest: string | null = null;
+  try {
+    body = clone(packet);
+    delete body.packet_digest;
+    delete body.proof;
+    expectedDigest = digest(body);
+  } catch {
+    add('packet_shape_invalid');
+  }
+  if (!body || !expectedDigest
+      || typeof packet.packet_digest !== 'string'
+      || !DIGEST_RE.test(packet.packet_digest)
+      || packet.packet_digest !== expectedDigest) {
+    add('packet_digest_mismatch');
+  }
+  if (proofShape && body && expectedDigest === packet.packet_digest) {
     try {
       const publicKey = crypto.createPublicKey({
         key: Buffer.from(pin.public_key_spki_b64u, 'base64url'),
@@ -781,10 +1366,10 @@ export function verifyDavinciPasConsequencePacket(
         publicKey,
         Buffer.from(packet.proof.signature_b64u, 'base64url'),
       )) {
-        reasons.push('packet_signature_invalid');
+        add('packet_signature_invalid');
       }
     } catch {
-      reasons.push('packet_signature_invalid');
+      add('packet_signature_invalid');
     }
   }
   return { valid: reasons.length === 0, reasons };
