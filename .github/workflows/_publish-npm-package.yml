@@ -775,7 +775,11 @@ jobs:
           test ! -e registry-copy
           mkdir registry-copy
           REGISTRY_READY=false
-          for attempt in 1 2 3 4 5 6 7 8 9 10 11 12; do
+          # npm can expose packument metadata and provenance several minutes
+          # before the corresponding tarball is available from every registry
+          # edge. Keep the release fail-closed, but allow enough time for the
+          # exact published bytes to become independently retrievable.
+          for attempt in {1..120}; do
             rm -f registry-copy/pack.json
             if npm pack "${PACKAGE_NAME}@${VERSION}" \
               --ignore-scripts \
@@ -785,7 +789,7 @@ jobs:
               REGISTRY_READY=true
               break
             fi
-            echo "Registry has not exposed ${PACKAGE_NAME}@${VERSION} yet (attempt ${attempt}/12)."
+            echo "Registry has not exposed ${PACKAGE_NAME}@${VERSION} yet (attempt ${attempt}/120)."
             sleep 5
           done
           test "$REGISTRY_READY" = "true"
