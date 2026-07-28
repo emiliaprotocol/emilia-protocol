@@ -1,5 +1,5 @@
 {
-  "@version": "CAID-CONSEQUENTIAL-ACTION-MAPPING-VECTORS-v1",
+  "@version": "CAID-CONSEQUENTIAL-ACTION-MAPPING-VECTORS-v2",
   "description": "Executable candidate mappings for 25 consequential mechanisms. Mapping is correlation, never authorization or endorsement.",
   "suite": "jcs-sha256",
   "definitions": [
@@ -38,6 +38,7 @@
       },
       "target_action_type": "consequence.invoke.1",
       "loss_policy": "no-material-field-loss",
+      "omitted_source_fields": [],
       "material_source_paths": [
         "/operation",
         "/target",
@@ -63,7 +64,7 @@
     },
     "klrc-aiagent-auth-03:native": {
       "@version": "CAID-MAPPING-PROFILE-v1",
-      "profile_id": "urn:caid:interop:klrc-aiagent-auth-03:native:1",
+      "profile_id": "urn:caid:interop:klrc-aiagent-auth-03:native:2",
       "source_format": {
         "media_type": "application/json",
         "schema": "urn:caid:interop:draft-klrc-aiagent-auth:03:native",
@@ -71,24 +72,25 @@
       },
       "target_action_type": "consequence.invoke.1",
       "loss_policy": "no-material-field-loss",
+      "omitted_source_fields": [],
       "material_source_paths": [
-        "/audit/action",
-        "/audit/resource",
-        "/mission/parameters"
+        "/__caid_unavailable__/operation",
+        "/__caid_unavailable__/target_ref",
+        "/__caid_unavailable__/parameters_digest"
       ],
       "rules": [
         {
-          "source_path": "/audit/action",
+          "source_path": "/__caid_unavailable__/operation",
           "target_field": "operation",
           "transform": "copy"
         },
         {
-          "source_path": "/audit/resource",
+          "source_path": "/__caid_unavailable__/target_ref",
           "target_field": "target_ref",
           "transform": "sha256-utf8"
         },
         {
-          "source_path": "/mission/parameters",
+          "source_path": "/__caid_unavailable__/parameters_digest",
           "target_field": "parameters_digest",
           "transform": "sha256-jcs"
         }
@@ -104,6 +106,7 @@
       },
       "target_action_type": "consequence.invoke.1",
       "loss_policy": "no-material-field-loss",
+      "omitted_source_fields": [],
       "material_source_paths": [
         "/caid_action/operation",
         "/caid_action/target",
@@ -129,7 +132,7 @@
     },
     "mcguinness-oauth-ai-agent-instance-00:native": {
       "@version": "CAID-MAPPING-PROFILE-v1",
-      "profile_id": "urn:caid:interop:mcguinness-oauth-ai-agent-instance-00:native:1",
+      "profile_id": "urn:caid:interop:mcguinness-oauth-ai-agent-instance-00:native:2",
       "source_format": {
         "media_type": "application/json",
         "schema": "urn:caid:interop:draft-mcguinness-oauth-ai-agent-instance:00:native",
@@ -137,24 +140,25 @@
       },
       "target_action_type": "consequence.invoke.1",
       "loss_policy": "no-material-field-loss",
+      "omitted_source_fields": [],
       "material_source_paths": [
-        "/scope/operation",
-        "/scope/resource",
-        "/scope/parameters"
+        "/__caid_unavailable__/operation",
+        "/__caid_unavailable__/target_ref",
+        "/__caid_unavailable__/parameters_digest"
       ],
       "rules": [
         {
-          "source_path": "/scope/operation",
+          "source_path": "/__caid_unavailable__/operation",
           "target_field": "operation",
           "transform": "copy"
         },
         {
-          "source_path": "/scope/resource",
+          "source_path": "/__caid_unavailable__/target_ref",
           "target_field": "target_ref",
           "transform": "sha256-utf8"
         },
         {
-          "source_path": "/scope/parameters",
+          "source_path": "/__caid_unavailable__/parameters_digest",
           "target_field": "parameters_digest",
           "transform": "sha256-jcs"
         }
@@ -170,6 +174,7 @@
       },
       "target_action_type": "consequence.invoke.1",
       "loss_policy": "no-material-field-loss",
+      "omitted_source_fields": [],
       "material_source_paths": [
         "/caid_action/operation",
         "/caid_action/target",
@@ -195,7 +200,7 @@
     },
     "noa-scitt-ai-agent-receipt-00:native": {
       "@version": "CAID-MAPPING-PROFILE-v1",
-      "profile_id": "urn:caid:interop:noa-scitt-ai-agent-receipt-00:native:1",
+      "profile_id": "urn:caid:interop:noa-scitt-ai-agent-receipt-00:native:2",
       "source_format": {
         "media_type": "application/json",
         "schema": "urn:caid:interop:draft-noa-scitt-ai-agent-receipt:00:native",
@@ -203,24 +208,25 @@
       },
       "target_action_type": "consequence.invoke.1",
       "loss_policy": "no-material-field-loss",
+      "omitted_source_fields": [],
       "material_source_paths": [
-        "/action/canonical",
         "/action/id",
-        "/action/parameters"
+        "/__caid_unavailable__/target_ref",
+        "/__caid_unavailable__/parameters_digest"
       ],
       "rules": [
         {
-          "source_path": "/action/canonical",
+          "source_path": "/action/id",
           "target_field": "operation",
           "transform": "copy"
         },
         {
-          "source_path": "/action/id",
+          "source_path": "/__caid_unavailable__/target_ref",
           "target_field": "target_ref",
           "transform": "sha256-utf8"
         },
         {
-          "source_path": "/action/parameters",
+          "source_path": "/__caid_unavailable__/parameters_digest",
           "target_field": "parameters_digest",
           "transform": "sha256-jcs"
         }
@@ -236,6 +242,7 @@
       },
       "target_action_type": "consequence.invoke.1",
       "loss_policy": "no-material-field-loss",
+      "omitted_source_fields": [],
       "material_source_paths": [
         "/caid_action/operation",
         "/caid_action/target",
@@ -261,7 +268,7 @@
     },
     "ietf-wimse-arch-08:native": {
       "@version": "CAID-MAPPING-PROFILE-v1",
-      "profile_id": "urn:caid:interop:ietf-wimse-arch-08:native:1",
+      "profile_id": "urn:caid:interop:ietf-wimse-arch-08:native:2",
       "source_format": {
         "media_type": "application/json",
         "schema": "urn:caid:interop:draft-ietf-wimse-arch:08:native",
@@ -269,24 +276,25 @@
       },
       "target_action_type": "consequence.invoke.1",
       "loss_policy": "no-material-field-loss",
+      "omitted_source_fields": [],
       "material_source_paths": [
-        "/security_context/operation",
-        "/security_context/target",
-        "/security_context/parameters"
+        "/__caid_unavailable__/operation",
+        "/__caid_unavailable__/target_ref",
+        "/__caid_unavailable__/parameters_digest"
       ],
       "rules": [
         {
-          "source_path": "/security_context/operation",
+          "source_path": "/__caid_unavailable__/operation",
           "target_field": "operation",
           "transform": "copy"
         },
         {
-          "source_path": "/security_context/target",
+          "source_path": "/__caid_unavailable__/target_ref",
           "target_field": "target_ref",
           "transform": "sha256-utf8"
         },
         {
-          "source_path": "/security_context/parameters",
+          "source_path": "/__caid_unavailable__/parameters_digest",
           "target_field": "parameters_digest",
           "transform": "sha256-jcs"
         }
@@ -302,6 +310,7 @@
       },
       "target_action_type": "consequence.invoke.1",
       "loss_policy": "no-material-field-loss",
+      "omitted_source_fields": [],
       "material_source_paths": [
         "/caid_action/operation",
         "/caid_action/target",
@@ -327,7 +336,7 @@
     },
     "ietf-wimse-http-signature-05:native": {
       "@version": "CAID-MAPPING-PROFILE-v1",
-      "profile_id": "urn:caid:interop:ietf-wimse-http-signature-05:native:1",
+      "profile_id": "urn:caid:interop:ietf-wimse-http-signature-05:native:2",
       "source_format": {
         "media_type": "application/json",
         "schema": "urn:caid:interop:draft-ietf-wimse-http-signature:05:native",
@@ -335,10 +344,11 @@
       },
       "target_action_type": "consequence.invoke.1",
       "loss_policy": "no-material-field-loss",
+      "omitted_source_fields": [],
       "material_source_paths": [
         "/signed_components/@method",
         "/signed_components/@request-target",
-        "/signed_components/body"
+        "/__caid_unavailable__/parameters_digest"
       ],
       "rules": [
         {
@@ -352,7 +362,7 @@
           "transform": "sha256-utf8"
         },
         {
-          "source_path": "/signed_components/body",
+          "source_path": "/__caid_unavailable__/parameters_digest",
           "target_field": "parameters_digest",
           "transform": "sha256-jcs"
         }
@@ -368,6 +378,7 @@
       },
       "target_action_type": "consequence.invoke.1",
       "loss_policy": "no-material-field-loss",
+      "omitted_source_fields": [],
       "material_source_paths": [
         "/caid_action/operation",
         "/caid_action/target",
@@ -393,7 +404,7 @@
     },
     "ietf-wimse-workload-creds-02:native": {
       "@version": "CAID-MAPPING-PROFILE-v1",
-      "profile_id": "urn:caid:interop:ietf-wimse-workload-creds-02:native:1",
+      "profile_id": "urn:caid:interop:ietf-wimse-workload-creds-02:native:2",
       "source_format": {
         "media_type": "application/json",
         "schema": "urn:caid:interop:draft-ietf-wimse-workload-creds:02:native",
@@ -401,24 +412,25 @@
       },
       "target_action_type": "consequence.invoke.1",
       "loss_policy": "no-material-field-loss",
+      "omitted_source_fields": [],
       "material_source_paths": [
-        "/authorization/operation",
-        "/authorization/target",
-        "/authorization/parameters"
+        "/__caid_unavailable__/operation",
+        "/__caid_unavailable__/target_ref",
+        "/__caid_unavailable__/parameters_digest"
       ],
       "rules": [
         {
-          "source_path": "/authorization/operation",
+          "source_path": "/__caid_unavailable__/operation",
           "target_field": "operation",
           "transform": "copy"
         },
         {
-          "source_path": "/authorization/target",
+          "source_path": "/__caid_unavailable__/target_ref",
           "target_field": "target_ref",
           "transform": "sha256-utf8"
         },
         {
-          "source_path": "/authorization/parameters",
+          "source_path": "/__caid_unavailable__/parameters_digest",
           "target_field": "parameters_digest",
           "transform": "sha256-jcs"
         }
@@ -434,6 +446,7 @@
       },
       "target_action_type": "consequence.invoke.1",
       "loss_policy": "no-material-field-loss",
+      "omitted_source_fields": [],
       "material_source_paths": [
         "/caid_action/operation",
         "/caid_action/target",
@@ -459,7 +472,7 @@
     },
     "ietf-wimse-wpt-01:native": {
       "@version": "CAID-MAPPING-PROFILE-v1",
-      "profile_id": "urn:caid:interop:ietf-wimse-wpt-01:native:1",
+      "profile_id": "urn:caid:interop:ietf-wimse-wpt-01:native:2",
       "source_format": {
         "media_type": "application/json",
         "schema": "urn:caid:interop:draft-ietf-wimse-wpt:01:native",
@@ -467,24 +480,25 @@
       },
       "target_action_type": "consequence.invoke.1",
       "loss_policy": "no-material-field-loss",
+      "omitted_source_fields": [],
       "material_source_paths": [
-        "/request/method",
-        "/request/target",
-        "/request/parameters"
+        "/__caid_unavailable__/operation",
+        "/__caid_unavailable__/target_ref",
+        "/__caid_unavailable__/parameters_digest"
       ],
       "rules": [
         {
-          "source_path": "/request/method",
+          "source_path": "/__caid_unavailable__/operation",
           "target_field": "operation",
           "transform": "copy"
         },
         {
-          "source_path": "/request/target",
+          "source_path": "/__caid_unavailable__/target_ref",
           "target_field": "target_ref",
           "transform": "sha256-utf8"
         },
         {
-          "source_path": "/request/parameters",
+          "source_path": "/__caid_unavailable__/parameters_digest",
           "target_field": "parameters_digest",
           "transform": "sha256-jcs"
         }
@@ -500,6 +514,7 @@
       },
       "target_action_type": "consequence.invoke.1",
       "loss_policy": "no-material-field-loss",
+      "omitted_source_fields": [],
       "material_source_paths": [
         "/caid_action/operation",
         "/caid_action/target",
@@ -525,7 +540,7 @@
     },
     "bu-agentproto-security-principal-binding-03:native": {
       "@version": "CAID-MAPPING-PROFILE-v1",
-      "profile_id": "urn:caid:interop:bu-agentproto-security-principal-binding-03:native:1",
+      "profile_id": "urn:caid:interop:bu-agentproto-security-principal-binding-03:native:2",
       "source_format": {
         "media_type": "application/json",
         "schema": "urn:caid:interop:draft-bu-agentproto-security-principal-binding:03:native",
@@ -533,24 +548,25 @@
       },
       "target_action_type": "consequence.invoke.1",
       "loss_policy": "no-material-field-loss",
+      "omitted_source_fields": [],
       "material_source_paths": [
-        "/action/operation",
-        "/action/target",
-        "/action/parameters"
+        "/__caid_unavailable__/operation",
+        "/__caid_unavailable__/target_ref",
+        "/__caid_unavailable__/parameters_digest"
       ],
       "rules": [
         {
-          "source_path": "/action/operation",
+          "source_path": "/__caid_unavailable__/operation",
           "target_field": "operation",
           "transform": "copy"
         },
         {
-          "source_path": "/action/target",
+          "source_path": "/__caid_unavailable__/target_ref",
           "target_field": "target_ref",
           "transform": "sha256-utf8"
         },
         {
-          "source_path": "/action/parameters",
+          "source_path": "/__caid_unavailable__/parameters_digest",
           "target_field": "parameters_digest",
           "transform": "sha256-jcs"
         }
@@ -566,6 +582,7 @@
       },
       "target_action_type": "consequence.invoke.1",
       "loss_policy": "no-material-field-loss",
+      "omitted_source_fields": [],
       "material_source_paths": [
         "/caid_action/operation",
         "/caid_action/target",
@@ -591,7 +608,7 @@
     },
     "rosomakho-oauth-txn-challenge-00:native": {
       "@version": "CAID-MAPPING-PROFILE-v1",
-      "profile_id": "urn:caid:interop:rosomakho-oauth-txn-challenge-00:native:1",
+      "profile_id": "urn:caid:interop:rosomakho-oauth-txn-challenge-00:native:2",
       "source_format": {
         "media_type": "application/json",
         "schema": "urn:caid:interop:draft-rosomakho-oauth-txn-challenge:00:native",
@@ -599,24 +616,25 @@
       },
       "target_action_type": "consequence.invoke.1",
       "loss_policy": "no-material-field-loss",
+      "omitted_source_fields": [],
       "material_source_paths": [
-        "/authorization_details/0/type",
-        "/iss",
-        "/caid_extraction/parameters"
+        "/__caid_unavailable__/operation",
+        "/__caid_unavailable__/target_ref",
+        "/__caid_unavailable__/parameters_digest"
       ],
       "rules": [
         {
-          "source_path": "/authorization_details/0/type",
+          "source_path": "/__caid_unavailable__/operation",
           "target_field": "operation",
           "transform": "copy"
         },
         {
-          "source_path": "/iss",
+          "source_path": "/__caid_unavailable__/target_ref",
           "target_field": "target_ref",
           "transform": "sha256-utf8"
         },
         {
-          "source_path": "/caid_extraction/parameters",
+          "source_path": "/__caid_unavailable__/parameters_digest",
           "target_field": "parameters_digest",
           "transform": "sha256-jcs"
         }
@@ -632,6 +650,7 @@
       },
       "target_action_type": "consequence.invoke.1",
       "loss_policy": "no-material-field-loss",
+      "omitted_source_fields": [],
       "material_source_paths": [
         "/caid_action/operation",
         "/caid_action/target",
@@ -657,7 +676,7 @@
     },
     "nelson-agent-delegation-receipts-10:native": {
       "@version": "CAID-MAPPING-PROFILE-v1",
-      "profile_id": "urn:caid:interop:nelson-agent-delegation-receipts-10:native:1",
+      "profile_id": "urn:caid:interop:nelson-agent-delegation-receipts-10:native:2",
       "source_format": {
         "media_type": "application/json",
         "schema": "urn:caid:interop:draft-nelson-agent-delegation-receipts:10:native",
@@ -665,24 +684,25 @@
       },
       "target_action_type": "consequence.invoke.1",
       "loss_policy": "no-material-field-loss",
+      "omitted_source_fields": [],
       "material_source_paths": [
-        "/scope/operations/0",
-        "/scope/resources/0",
-        "/boundaries"
+        "/scope/allowedActions/0/operation",
+        "/__caid_unavailable__/target_ref",
+        "/__caid_unavailable__/parameters_digest"
       ],
       "rules": [
         {
-          "source_path": "/scope/operations/0",
+          "source_path": "/scope/allowedActions/0/operation",
           "target_field": "operation",
           "transform": "copy"
         },
         {
-          "source_path": "/scope/resources/0",
+          "source_path": "/__caid_unavailable__/target_ref",
           "target_field": "target_ref",
           "transform": "sha256-utf8"
         },
         {
-          "source_path": "/boundaries",
+          "source_path": "/__caid_unavailable__/parameters_digest",
           "target_field": "parameters_digest",
           "transform": "sha256-jcs"
         }
@@ -698,6 +718,7 @@
       },
       "target_action_type": "consequence.invoke.1",
       "loss_policy": "no-material-field-loss",
+      "omitted_source_fields": [],
       "material_source_paths": [
         "/caid_action/operation",
         "/caid_action/target",
@@ -723,7 +744,7 @@
     },
     "jiang-oauth-intent-admission-00:native": {
       "@version": "CAID-MAPPING-PROFILE-v1",
-      "profile_id": "urn:caid:interop:jiang-oauth-intent-admission-00:native:1",
+      "profile_id": "urn:caid:interop:jiang-oauth-intent-admission-00:native:2",
       "source_format": {
         "media_type": "application/json",
         "schema": "urn:caid:interop:draft-jiang-oauth-intent-admission:00:native",
@@ -731,10 +752,11 @@
       },
       "target_action_type": "consequence.invoke.1",
       "loss_policy": "no-material-field-loss",
+      "omitted_source_fields": [],
       "material_source_paths": [
         "/authorization_details/0/actions/0",
-        "/authorization_details/0/locations/0",
-        "/authorization_details/0/constraints"
+        "/__caid_unavailable__/target_ref",
+        "/__caid_unavailable__/parameters_digest"
       ],
       "rules": [
         {
@@ -743,12 +765,12 @@
           "transform": "copy"
         },
         {
-          "source_path": "/authorization_details/0/locations/0",
+          "source_path": "/__caid_unavailable__/target_ref",
           "target_field": "target_ref",
           "transform": "sha256-utf8"
         },
         {
-          "source_path": "/authorization_details/0/constraints",
+          "source_path": "/__caid_unavailable__/parameters_digest",
           "target_field": "parameters_digest",
           "transform": "sha256-jcs"
         }
@@ -764,6 +786,7 @@
       },
       "target_action_type": "consequence.invoke.1",
       "loss_policy": "no-material-field-loss",
+      "omitted_source_fields": [],
       "material_source_paths": [
         "/caid_action/operation",
         "/caid_action/target",
@@ -789,7 +812,7 @@
     },
     "araut-oauth-transaction-tokens-for-agents-02:native": {
       "@version": "CAID-MAPPING-PROFILE-v1",
-      "profile_id": "urn:caid:interop:araut-oauth-transaction-tokens-for-agents-02:native:1",
+      "profile_id": "urn:caid:interop:araut-oauth-transaction-tokens-for-agents-02:native:2",
       "source_format": {
         "media_type": "application/json",
         "schema": "urn:caid:interop:draft-araut-oauth-transaction-tokens-for-agents:02:native",
@@ -797,24 +820,25 @@
       },
       "target_action_type": "consequence.invoke.1",
       "loss_policy": "no-material-field-loss",
+      "omitted_source_fields": [],
       "material_source_paths": [
-        "/transaction/operation",
-        "/transaction/resource",
-        "/transaction/parameters"
+        "/__caid_unavailable__/operation",
+        "/__caid_unavailable__/target_ref",
+        "/__caid_unavailable__/parameters_digest"
       ],
       "rules": [
         {
-          "source_path": "/transaction/operation",
+          "source_path": "/__caid_unavailable__/operation",
           "target_field": "operation",
           "transform": "copy"
         },
         {
-          "source_path": "/transaction/resource",
+          "source_path": "/__caid_unavailable__/target_ref",
           "target_field": "target_ref",
           "transform": "sha256-utf8"
         },
         {
-          "source_path": "/transaction/parameters",
+          "source_path": "/__caid_unavailable__/parameters_digest",
           "target_field": "parameters_digest",
           "transform": "sha256-jcs"
         }
@@ -830,6 +854,7 @@
       },
       "target_action_type": "consequence.invoke.1",
       "loss_policy": "no-material-field-loss",
+      "omitted_source_fields": [],
       "material_source_paths": [
         "/caid_action/operation",
         "/caid_action/target",
@@ -855,7 +880,7 @@
     },
     "coetzee-oauth-spt-txn-tokens-03:native": {
       "@version": "CAID-MAPPING-PROFILE-v1",
-      "profile_id": "urn:caid:interop:coetzee-oauth-spt-txn-tokens-03:native:1",
+      "profile_id": "urn:caid:interop:coetzee-oauth-spt-txn-tokens-03:native:2",
       "source_format": {
         "media_type": "application/json",
         "schema": "urn:caid:interop:draft-coetzee-oauth-spt-txn-tokens:03:native",
@@ -863,24 +888,25 @@
       },
       "target_action_type": "consequence.invoke.1",
       "loss_policy": "no-material-field-loss",
+      "omitted_source_fields": [],
       "material_source_paths": [
-        "/intent/tool",
-        "/intent/target",
-        "/intent/params"
+        "/tool",
+        "/target",
+        "/params"
       ],
       "rules": [
         {
-          "source_path": "/intent/tool",
+          "source_path": "/tool",
           "target_field": "operation",
           "transform": "copy"
         },
         {
-          "source_path": "/intent/target",
+          "source_path": "/target",
           "target_field": "target_ref",
           "transform": "sha256-utf8"
         },
         {
-          "source_path": "/intent/params",
+          "source_path": "/params",
           "target_field": "parameters_digest",
           "transform": "sha256-jcs"
         }
@@ -896,6 +922,7 @@
       },
       "target_action_type": "consequence.invoke.1",
       "loss_policy": "no-material-field-loss",
+      "omitted_source_fields": [],
       "material_source_paths": [
         "/caid_action/operation",
         "/caid_action/target",
@@ -921,7 +948,7 @@
     },
     "mcguinness-oauth-actor-profile-00:native": {
       "@version": "CAID-MAPPING-PROFILE-v1",
-      "profile_id": "urn:caid:interop:mcguinness-oauth-actor-profile-00:native:1",
+      "profile_id": "urn:caid:interop:mcguinness-oauth-actor-profile-00:native:2",
       "source_format": {
         "media_type": "application/json",
         "schema": "urn:caid:interop:draft-mcguinness-oauth-actor-profile:00:native",
@@ -929,24 +956,25 @@
       },
       "target_action_type": "consequence.invoke.1",
       "loss_policy": "no-material-field-loss",
+      "omitted_source_fields": [],
       "material_source_paths": [
-        "/authorization/operation",
-        "/authorization/target",
-        "/authorization/parameters"
+        "/__caid_unavailable__/operation",
+        "/__caid_unavailable__/target_ref",
+        "/__caid_unavailable__/parameters_digest"
       ],
       "rules": [
         {
-          "source_path": "/authorization/operation",
+          "source_path": "/__caid_unavailable__/operation",
           "target_field": "operation",
           "transform": "copy"
         },
         {
-          "source_path": "/authorization/target",
+          "source_path": "/__caid_unavailable__/target_ref",
           "target_field": "target_ref",
           "transform": "sha256-utf8"
         },
         {
-          "source_path": "/authorization/parameters",
+          "source_path": "/__caid_unavailable__/parameters_digest",
           "target_field": "parameters_digest",
           "transform": "sha256-jcs"
         }
@@ -962,6 +990,7 @@
       },
       "target_action_type": "consequence.invoke.1",
       "loss_policy": "no-material-field-loss",
+      "omitted_source_fields": [],
       "material_source_paths": [
         "/caid_action/operation",
         "/caid_action/target",
@@ -987,7 +1016,7 @@
     },
     "rampalli-cross-org-delegation-mapping-05:native": {
       "@version": "CAID-MAPPING-PROFILE-v1",
-      "profile_id": "urn:caid:interop:rampalli-cross-org-delegation-mapping-05:native:1",
+      "profile_id": "urn:caid:interop:rampalli-cross-org-delegation-mapping-05:native:2",
       "source_format": {
         "media_type": "application/json",
         "schema": "urn:caid:interop:draft-rampalli-cross-org-delegation-mapping:05:native",
@@ -995,24 +1024,25 @@
       },
       "target_action_type": "consequence.invoke.1",
       "loss_policy": "no-material-field-loss",
+      "omitted_source_fields": [],
       "material_source_paths": [
-        "/action/operation",
-        "/action/target",
-        "/action/parameters"
+        "/__caid_unavailable__/operation",
+        "/__caid_unavailable__/target_ref",
+        "/__caid_unavailable__/parameters_digest"
       ],
       "rules": [
         {
-          "source_path": "/action/operation",
+          "source_path": "/__caid_unavailable__/operation",
           "target_field": "operation",
           "transform": "copy"
         },
         {
-          "source_path": "/action/target",
+          "source_path": "/__caid_unavailable__/target_ref",
           "target_field": "target_ref",
           "transform": "sha256-utf8"
         },
         {
-          "source_path": "/action/parameters",
+          "source_path": "/__caid_unavailable__/parameters_digest",
           "target_field": "parameters_digest",
           "transform": "sha256-jcs"
         }
@@ -1028,6 +1058,7 @@
       },
       "target_action_type": "consequence.invoke.1",
       "loss_policy": "no-material-field-loss",
+      "omitted_source_fields": [],
       "material_source_paths": [
         "/caid_action/operation",
         "/caid_action/target",
@@ -1053,7 +1084,7 @@
     },
     "mih-scitt-agent-action-capsule-sel-disc-00:native": {
       "@version": "CAID-MAPPING-PROFILE-v1",
-      "profile_id": "urn:caid:interop:mih-scitt-agent-action-capsule-sel-disc-00:native:1",
+      "profile_id": "urn:caid:interop:mih-scitt-agent-action-capsule-sel-disc-00:native:2",
       "source_format": {
         "media_type": "application/json",
         "schema": "urn:caid:interop:draft-mih-scitt-agent-action-capsule-sel-disc:00:native",
@@ -1061,24 +1092,25 @@
       },
       "target_action_type": "consequence.invoke.1",
       "loss_policy": "no-material-field-loss",
+      "omitted_source_fields": [],
       "material_source_paths": [
-        "/disclosed/action/type",
-        "/disclosed/action/target",
-        "/disclosed/action/parameters"
+        "/action_type",
+        "/__caid_unavailable__/target_ref",
+        "/__caid_unavailable__/parameters_digest"
       ],
       "rules": [
         {
-          "source_path": "/disclosed/action/type",
+          "source_path": "/action_type",
           "target_field": "operation",
           "transform": "copy"
         },
         {
-          "source_path": "/disclosed/action/target",
+          "source_path": "/__caid_unavailable__/target_ref",
           "target_field": "target_ref",
           "transform": "sha256-utf8"
         },
         {
-          "source_path": "/disclosed/action/parameters",
+          "source_path": "/__caid_unavailable__/parameters_digest",
           "target_field": "parameters_digest",
           "transform": "sha256-jcs"
         }
@@ -1094,6 +1126,7 @@
       },
       "target_action_type": "consequence.invoke.1",
       "loss_policy": "no-material-field-loss",
+      "omitted_source_fields": [],
       "material_source_paths": [
         "/caid_action/operation",
         "/caid_action/target",
@@ -1119,7 +1152,7 @@
     },
     "emirdag-scitt-ai-agent-execution-00:native": {
       "@version": "CAID-MAPPING-PROFILE-v1",
-      "profile_id": "urn:caid:interop:emirdag-scitt-ai-agent-execution-00:native:1",
+      "profile_id": "urn:caid:interop:emirdag-scitt-ai-agent-execution-00:native:2",
       "source_format": {
         "media_type": "application/json",
         "schema": "urn:caid:interop:draft-emirdag-scitt-ai-agent-execution:00:native",
@@ -1127,24 +1160,25 @@
       },
       "target_action_type": "consequence.invoke.1",
       "loss_policy": "no-material-field-loss",
+      "omitted_source_fields": [],
       "material_source_paths": [
-        "/air/action_category",
-        "/air/target",
-        "/air/parameters"
+        "/action_type",
+        "/__caid_unavailable__/target_ref",
+        "/__caid_unavailable__/parameters_digest"
       ],
       "rules": [
         {
-          "source_path": "/air/action_category",
+          "source_path": "/action_type",
           "target_field": "operation",
           "transform": "copy"
         },
         {
-          "source_path": "/air/target",
+          "source_path": "/__caid_unavailable__/target_ref",
           "target_field": "target_ref",
           "transform": "sha256-utf8"
         },
         {
-          "source_path": "/air/parameters",
+          "source_path": "/__caid_unavailable__/parameters_digest",
           "target_field": "parameters_digest",
           "transform": "sha256-jcs"
         }
@@ -1160,6 +1194,7 @@
       },
       "target_action_type": "consequence.invoke.1",
       "loss_policy": "no-material-field-loss",
+      "omitted_source_fields": [],
       "material_source_paths": [
         "/caid_action/operation",
         "/caid_action/target",
@@ -1185,7 +1220,7 @@
     },
     "lee-orprg-permit-receipts-00:native": {
       "@version": "CAID-MAPPING-PROFILE-v1",
-      "profile_id": "urn:caid:interop:lee-orprg-permit-receipts-00:native:1",
+      "profile_id": "urn:caid:interop:lee-orprg-permit-receipts-00:native:2",
       "source_format": {
         "media_type": "application/json",
         "schema": "urn:caid:interop:draft-lee-orprg-permit-receipts:00:native",
@@ -1193,6 +1228,7 @@
       },
       "target_action_type": "consequence.invoke.1",
       "loss_policy": "no-material-field-loss",
+      "omitted_source_fields": [],
       "material_source_paths": [
         "/__caid_unavailable__/operation",
         "/__caid_unavailable__/target_ref",
@@ -1226,6 +1262,7 @@
       },
       "target_action_type": "consequence.invoke.1",
       "loss_policy": "no-material-field-loss",
+      "omitted_source_fields": [],
       "material_source_paths": [
         "/caid_action/operation",
         "/caid_action/target",
@@ -1251,7 +1288,7 @@
     },
     "baur-pap-02:native": {
       "@version": "CAID-MAPPING-PROFILE-v1",
-      "profile_id": "urn:caid:interop:baur-pap-02:native:1",
+      "profile_id": "urn:caid:interop:baur-pap-02:native:2",
       "source_format": {
         "media_type": "application/json",
         "schema": "urn:caid:interop:draft-baur-pap:02:native",
@@ -1259,24 +1296,25 @@
       },
       "target_action_type": "consequence.invoke.1",
       "loss_policy": "no-material-field-loss",
+      "omitted_source_fields": [],
       "material_source_paths": [
-        "/scope/actions/0/action",
-        "/scope/actions/0/object",
-        "/scope/actions/0/conditions"
+        "/action",
+        "/__caid_unavailable__/target_ref",
+        "/__caid_unavailable__/parameters_digest"
       ],
       "rules": [
         {
-          "source_path": "/scope/actions/0/action",
+          "source_path": "/action",
           "target_field": "operation",
           "transform": "copy"
         },
         {
-          "source_path": "/scope/actions/0/object",
+          "source_path": "/__caid_unavailable__/target_ref",
           "target_field": "target_ref",
           "transform": "sha256-utf8"
         },
         {
-          "source_path": "/scope/actions/0/conditions",
+          "source_path": "/__caid_unavailable__/parameters_digest",
           "target_field": "parameters_digest",
           "transform": "sha256-jcs"
         }
@@ -1292,6 +1330,7 @@
       },
       "target_action_type": "consequence.invoke.1",
       "loss_policy": "no-material-field-loss",
+      "omitted_source_fields": [],
       "material_source_paths": [
         "/caid_action/operation",
         "/caid_action/target",
@@ -1317,18 +1356,40 @@
     },
     "pidlisnyi-aps-03:native": {
       "@version": "CAID-MAPPING-PROFILE-v1",
-      "profile_id": "urn:caid:interop:pidlisnyi-aps-03:native:1",
+      "profile_id": "urn:caid:interop:pidlisnyi-aps-03:native:2",
       "source_format": {
         "media_type": "application/json",
         "schema": "urn:caid:interop:draft-pidlisnyi-aps:03:native",
         "version": "03"
       },
       "target_action_type": "consequence.invoke.1",
-      "loss_policy": "no-material-field-loss",
+      "loss_policy": "declared-source-semantic-loss",
+      "omitted_source_fields": [
+        {
+          "source_path": "/action_ref/profile",
+          "reason": "APS commits the native ActionRefV2 profile tag; the local CAID action does not carry that source identifier field."
+        },
+        {
+          "source_path": "/action_ref/agent_id",
+          "reason": "APS deliberately makes the acting agent part of action_ref; CAID keeps actor identity outside material action identity."
+        },
+        {
+          "source_path": "/action_ref/scope_required",
+          "reason": "APS commits required authority scopes; CAID keeps authorization scope outside material action identity."
+        },
+        {
+          "source_path": "/action_ref/issued_at",
+          "reason": "APS commits intent issuance time; CAID keeps freshness outside material action identity."
+        },
+        {
+          "source_path": "/action_ref/nonce",
+          "reason": "APS commits a replay-resistant nonce; CAID keeps replay state outside material action identity."
+        }
+      ],
       "material_source_paths": [
         "/action_ref/action_type",
         "/action_ref/target",
-        "/action_ref/payload"
+        "/action_ref/payload_ref"
       ],
       "rules": [
         {
@@ -1342,9 +1403,9 @@
           "transform": "sha256-utf8"
         },
         {
-          "source_path": "/action_ref/payload",
+          "source_path": "/action_ref/payload_ref",
           "target_field": "parameters_digest",
-          "transform": "sha256-jcs"
+          "transform": "sha256-hex-to-digest"
         }
       ]
     },
@@ -1358,6 +1419,7 @@
       },
       "target_action_type": "consequence.invoke.1",
       "loss_policy": "no-material-field-loss",
+      "omitted_source_fields": [],
       "material_source_paths": [
         "/caid_action/operation",
         "/caid_action/target",
@@ -1383,7 +1445,7 @@
     },
     "howe-vcon-agent-session-00:native": {
       "@version": "CAID-MAPPING-PROFILE-v1",
-      "profile_id": "urn:caid:interop:howe-vcon-agent-session-00:native:1",
+      "profile_id": "urn:caid:interop:howe-vcon-agent-session-00:native:2",
       "source_format": {
         "media_type": "application/json",
         "schema": "urn:caid:interop:draft-howe-vcon-agent-session:00:native",
@@ -1391,24 +1453,25 @@
       },
       "target_action_type": "consequence.invoke.1",
       "loss_policy": "no-material-field-loss",
+      "omitted_source_fields": [],
       "material_source_paths": [
-        "/tool_call/name",
-        "/tool_call/target",
-        "/tool_call/arguments"
+        "/__caid_unavailable__/operation",
+        "/__caid_unavailable__/target_ref",
+        "/__caid_unavailable__/parameters_digest"
       ],
       "rules": [
         {
-          "source_path": "/tool_call/name",
+          "source_path": "/__caid_unavailable__/operation",
           "target_field": "operation",
           "transform": "copy"
         },
         {
-          "source_path": "/tool_call/target",
+          "source_path": "/__caid_unavailable__/target_ref",
           "target_field": "target_ref",
           "transform": "sha256-utf8"
         },
         {
-          "source_path": "/tool_call/arguments",
+          "source_path": "/__caid_unavailable__/parameters_digest",
           "target_field": "parameters_digest",
           "transform": "sha256-jcs"
         }
@@ -1424,6 +1487,7 @@
       },
       "target_action_type": "consequence.invoke.1",
       "loss_policy": "no-material-field-loss",
+      "omitted_source_fields": [],
       "material_source_paths": [
         "/caid_action/operation",
         "/caid_action/target",
@@ -1449,7 +1513,7 @@
     },
     "pei-opsawg-agentops-observability-00:native": {
       "@version": "CAID-MAPPING-PROFILE-v1",
-      "profile_id": "urn:caid:interop:pei-opsawg-agentops-observability-00:native:1",
+      "profile_id": "urn:caid:interop:pei-opsawg-agentops-observability-00:native:2",
       "source_format": {
         "media_type": "application/json",
         "schema": "urn:caid:interop:draft-pei-opsawg-agentops-observability:00:native",
@@ -1457,24 +1521,25 @@
       },
       "target_action_type": "consequence.invoke.1",
       "loss_policy": "no-material-field-loss",
+      "omitted_source_fields": [],
       "material_source_paths": [
-        "/event/action",
-        "/event/resource",
-        "/event/parameters"
+        "/action/kind",
+        "/__caid_unavailable__/target_ref",
+        "/__caid_unavailable__/parameters_digest"
       ],
       "rules": [
         {
-          "source_path": "/event/action",
+          "source_path": "/action/kind",
           "target_field": "operation",
           "transform": "copy"
         },
         {
-          "source_path": "/event/resource",
+          "source_path": "/__caid_unavailable__/target_ref",
           "target_field": "target_ref",
           "transform": "sha256-utf8"
         },
         {
-          "source_path": "/event/parameters",
+          "source_path": "/__caid_unavailable__/parameters_digest",
           "target_field": "parameters_digest",
           "transform": "sha256-jcs"
         }
@@ -1490,6 +1555,7 @@
       },
       "target_action_type": "consequence.invoke.1",
       "loss_policy": "no-material-field-loss",
+      "omitted_source_fields": [],
       "material_source_paths": [
         "/caid_action/operation",
         "/caid_action/target",
@@ -1515,7 +1581,7 @@
     },
     "dunbar-dmsc-gw-scenarios-gap-analysis-02:native": {
       "@version": "CAID-MAPPING-PROFILE-v1",
-      "profile_id": "urn:caid:interop:dunbar-dmsc-gw-scenarios-gap-analysis-02:native:1",
+      "profile_id": "urn:caid:interop:dunbar-dmsc-gw-scenarios-gap-analysis-02:native:2",
       "source_format": {
         "media_type": "application/json",
         "schema": "urn:caid:interop:draft-dunbar-dmsc-gw-scenarios-gap-analysis:02:native",
@@ -1523,24 +1589,25 @@
       },
       "target_action_type": "consequence.invoke.1",
       "loss_policy": "no-material-field-loss",
+      "omitted_source_fields": [],
       "material_source_paths": [
-        "/authorization/operation",
-        "/authorization/target",
-        "/authorization/parameters"
+        "/__caid_unavailable__/operation",
+        "/__caid_unavailable__/target_ref",
+        "/__caid_unavailable__/parameters_digest"
       ],
       "rules": [
         {
-          "source_path": "/authorization/operation",
+          "source_path": "/__caid_unavailable__/operation",
           "target_field": "operation",
           "transform": "copy"
         },
         {
-          "source_path": "/authorization/target",
+          "source_path": "/__caid_unavailable__/target_ref",
           "target_field": "target_ref",
           "transform": "sha256-utf8"
         },
         {
-          "source_path": "/authorization/parameters",
+          "source_path": "/__caid_unavailable__/parameters_digest",
           "target_field": "parameters_digest",
           "transform": "sha256-jcs"
         }
@@ -1556,6 +1623,7 @@
       },
       "target_action_type": "consequence.invoke.1",
       "loss_policy": "no-material-field-loss",
+      "omitted_source_fields": [],
       "material_source_paths": [
         "/caid_action/operation",
         "/caid_action/target",
@@ -1581,7 +1649,7 @@
     },
     "soden-wellknown-mcp-commerce-00:native": {
       "@version": "CAID-MAPPING-PROFILE-v1",
-      "profile_id": "urn:caid:interop:soden-wellknown-mcp-commerce-00:native:1",
+      "profile_id": "urn:caid:interop:soden-wellknown-mcp-commerce-00:native:2",
       "source_format": {
         "media_type": "application/json",
         "schema": "urn:caid:interop:draft-soden-wellknown-mcp-commerce:00:native",
@@ -1589,24 +1657,25 @@
       },
       "target_action_type": "consequence.invoke.1",
       "loss_policy": "no-material-field-loss",
+      "omitted_source_fields": [],
       "material_source_paths": [
-        "/commerce/tool",
-        "/commerce/endpoint",
-        "/commerce/parameters"
+        "/__caid_unavailable__/operation",
+        "/__caid_unavailable__/target_ref",
+        "/__caid_unavailable__/parameters_digest"
       ],
       "rules": [
         {
-          "source_path": "/commerce/tool",
+          "source_path": "/__caid_unavailable__/operation",
           "target_field": "operation",
           "transform": "copy"
         },
         {
-          "source_path": "/commerce/endpoint",
+          "source_path": "/__caid_unavailable__/target_ref",
           "target_field": "target_ref",
           "transform": "sha256-utf8"
         },
         {
-          "source_path": "/commerce/parameters",
+          "source_path": "/__caid_unavailable__/parameters_digest",
           "target_field": "parameters_digest",
           "transform": "sha256-jcs"
         }
@@ -1622,6 +1691,7 @@
       },
       "target_action_type": "consequence.invoke.1",
       "loss_policy": "no-material-field-loss",
+      "omitted_source_fields": [],
       "material_source_paths": [
         "/caid_action/operation",
         "/caid_action/target",
@@ -1647,7 +1717,7 @@
     },
     "hopley-x402-compliance-receipt-02:native": {
       "@version": "CAID-MAPPING-PROFILE-v1",
-      "profile_id": "urn:caid:interop:hopley-x402-compliance-receipt-02:native:1",
+      "profile_id": "urn:caid:interop:hopley-x402-compliance-receipt-02:native:2",
       "source_format": {
         "media_type": "application/json",
         "schema": "urn:caid:interop:draft-hopley-x402-compliance-receipt:02:native",
@@ -1655,24 +1725,25 @@
       },
       "target_action_type": "consequence.invoke.1",
       "loss_policy": "no-material-field-loss",
+      "omitted_source_fields": [],
       "material_source_paths": [
-        "/payment/action",
-        "/payment/target",
-        "/payment/parameters"
+        "/__caid_unavailable__/operation",
+        "/__caid_unavailable__/target_ref",
+        "/__caid_unavailable__/parameters_digest"
       ],
       "rules": [
         {
-          "source_path": "/payment/action",
+          "source_path": "/__caid_unavailable__/operation",
           "target_field": "operation",
           "transform": "copy"
         },
         {
-          "source_path": "/payment/target",
+          "source_path": "/__caid_unavailable__/target_ref",
           "target_field": "target_ref",
           "transform": "sha256-utf8"
         },
         {
-          "source_path": "/payment/parameters",
+          "source_path": "/__caid_unavailable__/parameters_digest",
           "target_field": "parameters_digest",
           "transform": "sha256-jcs"
         }
@@ -1688,6 +1759,7 @@
       },
       "target_action_type": "consequence.invoke.1",
       "loss_policy": "no-material-field-loss",
+      "omitted_source_fields": [],
       "material_source_paths": [
         "/caid_action/operation",
         "/caid_action/target",
@@ -1724,11 +1796,7 @@
     },
     "klrc-aiagent-auth-03:native": {
       "draft": "draft-klrc-aiagent-auth",
-      "revision": "03",
-      "audit": {
-        "action": "medical.coverage.determine",
-        "resource": "urn:claim:example:2026:00042"
-      }
+      "revision": "03"
     },
     "klrc-aiagent-auth-03:carry": {
       "draft": "draft-klrc-aiagent-auth",
@@ -1764,7 +1832,7 @@
       "draft": "draft-noa-scitt-ai-agent-receipt",
       "revision": "00",
       "action": {
-        "canonical": "medical.coverage.determine"
+        "id": "medical.coverage.determine"
       }
     },
     "noa-scitt-ai-agent-receipt-00:carry": {
@@ -1802,12 +1870,7 @@
       "revision": "05",
       "signed_components": {
         "@method": "medical.coverage.determine",
-        "@request-target": "urn:claim:example:2026:00042",
-        "body": {
-          "requested_service": "J3490",
-          "amount": "1280.00",
-          "currency": "USD"
-        }
+        "@request-target": "urn:claim:example:2026:00042"
       }
     },
     "ietf-wimse-http-signature-05:carry": {
@@ -1842,11 +1905,7 @@
     },
     "ietf-wimse-wpt-01:native": {
       "draft": "draft-ietf-wimse-wpt",
-      "revision": "01",
-      "request": {
-        "method": "medical.coverage.determine",
-        "target": "urn:claim:example:2026:00042"
-      }
+      "revision": "01"
     },
     "ietf-wimse-wpt-01:carry": {
       "draft": "draft-ietf-wimse-wpt",
@@ -1880,20 +1939,7 @@
     },
     "rosomakho-oauth-txn-challenge-00:native": {
       "draft": "draft-rosomakho-oauth-txn-challenge",
-      "revision": "00",
-      "authorization_details": {
-        "0": {
-          "type": "medical.coverage.determine"
-        }
-      },
-      "iss": "urn:claim:example:2026:00042",
-      "caid_extraction": {
-        "parameters": {
-          "requested_service": "J3490",
-          "amount": "1280.00",
-          "currency": "USD"
-        }
-      }
+      "revision": "00"
     },
     "rosomakho-oauth-txn-challenge-00:carry": {
       "draft": "draft-rosomakho-oauth-txn-challenge",
@@ -1912,11 +1958,10 @@
       "draft": "draft-nelson-agent-delegation-receipts",
       "revision": "10",
       "scope": {
-        "operations": {
-          "0": "medical.coverage.determine"
-        },
-        "resources": {
-          "0": "urn:claim:example:2026:00042"
+        "allowedActions": {
+          "0": {
+            "operation": "medical.coverage.determine"
+          }
         }
       }
     },
@@ -1940,14 +1985,6 @@
         "0": {
           "actions": {
             "0": "medical.coverage.determine"
-          },
-          "locations": {
-            "0": "urn:claim:example:2026:00042"
-          },
-          "constraints": {
-            "requested_service": "J3490",
-            "amount": "1280.00",
-            "currency": "USD"
           }
         }
       }
@@ -1967,11 +2004,7 @@
     },
     "araut-oauth-transaction-tokens-for-agents-02:native": {
       "draft": "draft-araut-oauth-transaction-tokens-for-agents",
-      "revision": "02",
-      "transaction": {
-        "operation": "medical.coverage.determine",
-        "resource": "urn:claim:example:2026:00042"
-      }
+      "revision": "02"
     },
     "araut-oauth-transaction-tokens-for-agents-02:carry": {
       "draft": "draft-araut-oauth-transaction-tokens-for-agents",
@@ -1989,9 +2022,12 @@
     "coetzee-oauth-spt-txn-tokens-03:native": {
       "draft": "draft-coetzee-oauth-spt-txn-tokens",
       "revision": "03",
-      "intent": {
-        "tool": "medical.coverage.determine",
-        "target": "urn:claim:example:2026:00042"
+      "tool": "medical.coverage.determine",
+      "target": "urn:claim:example:2026:00042",
+      "params": {
+        "requested_service": "J3490",
+        "amount": "1280.00",
+        "currency": "USD"
       }
     },
     "coetzee-oauth-spt-txn-tokens-03:carry": {
@@ -2044,12 +2080,7 @@
     "mih-scitt-agent-action-capsule-sel-disc-00:native": {
       "draft": "draft-mih-scitt-agent-action-capsule-sel-disc",
       "revision": "00",
-      "disclosed": {
-        "action": {
-          "type": "medical.coverage.determine",
-          "target": "urn:claim:example:2026:00042"
-        }
-      }
+      "action_type": "medical.coverage.determine"
     },
     "mih-scitt-agent-action-capsule-sel-disc-00:carry": {
       "draft": "draft-mih-scitt-agent-action-capsule-sel-disc",
@@ -2067,10 +2098,7 @@
     "emirdag-scitt-ai-agent-execution-00:native": {
       "draft": "draft-emirdag-scitt-ai-agent-execution",
       "revision": "00",
-      "air": {
-        "action_category": "medical.coverage.determine",
-        "target": "urn:claim:example:2026:00042"
-      }
+      "action_type": "medical.coverage.determine"
     },
     "emirdag-scitt-ai-agent-execution-00:carry": {
       "draft": "draft-emirdag-scitt-ai-agent-execution",
@@ -2105,14 +2133,7 @@
     "baur-pap-02:native": {
       "draft": "draft-baur-pap",
       "revision": "02",
-      "scope": {
-        "actions": {
-          "0": {
-            "action": "medical.coverage.determine",
-            "object": "urn:claim:example:2026:00042"
-          }
-        }
-      }
+      "action": "medical.coverage.determine"
     },
     "baur-pap-02:carry": {
       "draft": "draft-baur-pap",
@@ -2131,13 +2152,16 @@
       "draft": "draft-pidlisnyi-aps",
       "revision": "03",
       "action_ref": {
+        "profile": "aps-action-ref-v2",
+        "agent_id": "did:key:z6MkExampleAgent",
+        "scope_required": [
+          "medical:coverage"
+        ],
+        "issued_at": "2026-04-08T12:00:00.000Z",
+        "nonce": "00112233445566778899aabbccddeeff",
         "action_type": "medical.coverage.determine",
         "target": "urn:claim:example:2026:00042",
-        "payload": {
-          "requested_service": "J3490",
-          "amount": "1280.00",
-          "currency": "USD"
-        }
+        "payload_ref": "a321fa29fd1d052864218be5785c0d18a7b691572165598f829f78e578fbd936"
       }
     },
     "pidlisnyi-aps-03:carry": {
@@ -2155,11 +2179,7 @@
     },
     "howe-vcon-agent-session-00:native": {
       "draft": "draft-howe-vcon-agent-session",
-      "revision": "00",
-      "tool_call": {
-        "name": "medical.coverage.determine",
-        "target": "urn:claim:example:2026:00042"
-      }
+      "revision": "00"
     },
     "howe-vcon-agent-session-00:carry": {
       "draft": "draft-howe-vcon-agent-session",
@@ -2177,9 +2197,8 @@
     "pei-opsawg-agentops-observability-00:native": {
       "draft": "draft-pei-opsawg-agentops-observability",
       "revision": "00",
-      "event": {
-        "action": "medical.coverage.determine",
-        "resource": "urn:claim:example:2026:00042"
+      "action": {
+        "kind": "medical.coverage.determine"
       }
     },
     "pei-opsawg-agentops-observability-00:carry": {
@@ -2214,10 +2233,7 @@
     },
     "soden-wellknown-mcp-commerce-00:native": {
       "draft": "draft-soden-wellknown-mcp-commerce",
-      "revision": "00",
-      "commerce": {
-        "endpoint": "urn:claim:example:2026:00042"
-      }
+      "revision": "00"
     },
     "soden-wellknown-mcp-commerce-00:carry": {
       "draft": "draft-soden-wellknown-mcp-commerce",
@@ -2265,7 +2281,7 @@
       },
       "expect": {
         "verdict": "INDETERMINATE",
-        "reason_contains": "right:missing_source_field:/mission/parameters"
+        "reason_contains": "right:missing_source_field:/__caid_unavailable__/operation"
       }
     },
     {
@@ -2352,7 +2368,7 @@
       },
       "expect": {
         "verdict": "INDETERMINATE",
-        "reason_contains": "right:missing_source_field:/scope/operation"
+        "reason_contains": "right:missing_source_field:/__caid_unavailable__/operation"
       }
     },
     {
@@ -2439,7 +2455,7 @@
       },
       "expect": {
         "verdict": "INDETERMINATE",
-        "reason_contains": "right:missing_source_field:/action/id"
+        "reason_contains": "right:missing_source_field:/__caid_unavailable__/target_ref"
       }
     },
     {
@@ -2526,7 +2542,7 @@
       },
       "expect": {
         "verdict": "INDETERMINATE",
-        "reason_contains": "right:missing_source_field:/security_context/operation"
+        "reason_contains": "right:missing_source_field:/__caid_unavailable__/operation"
       }
     },
     {
@@ -2612,8 +2628,8 @@
         "pin": "profile"
       },
       "expect": {
-        "verdict": "EQUIVALENT_UNDER_PROFILE",
-        "reasons": []
+        "verdict": "INDETERMINATE",
+        "reason_contains": "right:missing_source_field:/__caid_unavailable__/parameters_digest"
       }
     },
     {
@@ -2700,7 +2716,7 @@
       },
       "expect": {
         "verdict": "INDETERMINATE",
-        "reason_contains": "right:missing_source_field:/authorization/operation"
+        "reason_contains": "right:missing_source_field:/__caid_unavailable__/operation"
       }
     },
     {
@@ -2787,7 +2803,7 @@
       },
       "expect": {
         "verdict": "INDETERMINATE",
-        "reason_contains": "right:missing_source_field:/request/parameters"
+        "reason_contains": "right:missing_source_field:/__caid_unavailable__/operation"
       }
     },
     {
@@ -2874,7 +2890,7 @@
       },
       "expect": {
         "verdict": "INDETERMINATE",
-        "reason_contains": "right:missing_source_field:/action/operation"
+        "reason_contains": "right:missing_source_field:/__caid_unavailable__/operation"
       }
     },
     {
@@ -2960,8 +2976,8 @@
         "pin": "profile"
       },
       "expect": {
-        "verdict": "EQUIVALENT_UNDER_PROFILE",
-        "reasons": []
+        "verdict": "INDETERMINATE",
+        "reason_contains": "right:missing_source_field:/__caid_unavailable__/operation"
       }
     },
     {
@@ -3048,7 +3064,7 @@
       },
       "expect": {
         "verdict": "INDETERMINATE",
-        "reason_contains": "right:missing_source_field:/boundaries"
+        "reason_contains": "right:missing_source_field:/__caid_unavailable__/target_ref"
       }
     },
     {
@@ -3134,8 +3150,8 @@
         "pin": "profile"
       },
       "expect": {
-        "verdict": "EQUIVALENT_UNDER_PROFILE",
-        "reasons": []
+        "verdict": "INDETERMINATE",
+        "reason_contains": "right:missing_source_field:/__caid_unavailable__/target_ref"
       }
     },
     {
@@ -3222,7 +3238,7 @@
       },
       "expect": {
         "verdict": "INDETERMINATE",
-        "reason_contains": "right:missing_source_field:/transaction/parameters"
+        "reason_contains": "right:missing_source_field:/__caid_unavailable__/operation"
       }
     },
     {
@@ -3308,8 +3324,8 @@
         "pin": "profile"
       },
       "expect": {
-        "verdict": "INDETERMINATE",
-        "reason_contains": "right:missing_source_field:/intent/params"
+        "verdict": "EQUIVALENT_UNDER_PROFILE",
+        "reasons": []
       }
     },
     {
@@ -3396,7 +3412,7 @@
       },
       "expect": {
         "verdict": "INDETERMINATE",
-        "reason_contains": "right:missing_source_field:/authorization/operation"
+        "reason_contains": "right:missing_source_field:/__caid_unavailable__/operation"
       }
     },
     {
@@ -3483,7 +3499,7 @@
       },
       "expect": {
         "verdict": "INDETERMINATE",
-        "reason_contains": "right:missing_source_field:/action/operation"
+        "reason_contains": "right:missing_source_field:/__caid_unavailable__/operation"
       }
     },
     {
@@ -3570,7 +3586,7 @@
       },
       "expect": {
         "verdict": "INDETERMINATE",
-        "reason_contains": "right:missing_source_field:/disclosed/action/parameters"
+        "reason_contains": "right:missing_source_field:/__caid_unavailable__/target_ref"
       }
     },
     {
@@ -3657,7 +3673,7 @@
       },
       "expect": {
         "verdict": "INDETERMINATE",
-        "reason_contains": "right:missing_source_field:/air/parameters"
+        "reason_contains": "right:missing_source_field:/__caid_unavailable__/target_ref"
       }
     },
     {
@@ -3831,7 +3847,7 @@
       },
       "expect": {
         "verdict": "INDETERMINATE",
-        "reason_contains": "right:missing_source_field:/scope/actions/0/conditions"
+        "reason_contains": "right:missing_source_field:/__caid_unavailable__/target_ref"
       }
     },
     {
@@ -3917,8 +3933,8 @@
         "pin": "profile"
       },
       "expect": {
-        "verdict": "EQUIVALENT_UNDER_PROFILE",
-        "reasons": []
+        "verdict": "INDETERMINATE",
+        "reason_contains": "right:declared_source_semantic_loss"
       }
     },
     {
@@ -4005,7 +4021,7 @@
       },
       "expect": {
         "verdict": "INDETERMINATE",
-        "reason_contains": "right:missing_source_field:/tool_call/arguments"
+        "reason_contains": "right:missing_source_field:/__caid_unavailable__/operation"
       }
     },
     {
@@ -4092,7 +4108,7 @@
       },
       "expect": {
         "verdict": "INDETERMINATE",
-        "reason_contains": "right:missing_source_field:/event/parameters"
+        "reason_contains": "right:missing_source_field:/__caid_unavailable__/target_ref"
       }
     },
     {
@@ -4179,7 +4195,7 @@
       },
       "expect": {
         "verdict": "INDETERMINATE",
-        "reason_contains": "right:missing_source_field:/authorization/operation"
+        "reason_contains": "right:missing_source_field:/__caid_unavailable__/operation"
       }
     },
     {
@@ -4266,7 +4282,7 @@
       },
       "expect": {
         "verdict": "INDETERMINATE",
-        "reason_contains": "right:missing_source_field:/commerce/tool"
+        "reason_contains": "right:missing_source_field:/__caid_unavailable__/operation"
       }
     },
     {
@@ -4353,7 +4369,7 @@
       },
       "expect": {
         "verdict": "INDETERMINATE",
-        "reason_contains": "right:missing_source_field:/payment/action"
+        "reason_contains": "right:missing_source_field:/__caid_unavailable__/operation"
       }
     },
     {
