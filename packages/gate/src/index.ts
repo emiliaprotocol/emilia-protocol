@@ -238,6 +238,13 @@ export * from './admission-store-postgres.js';
 export * from './gate-qualification-v2.js';
 export * from './referee.js';
 export * from './referee-runner.js';
+export * from './loss-allocation-schedule.js';
+export * from './action-refusal-statement.js';
+export * from './open-exposure-ledger.js';
+export * from './open-exposure-ledger-postgres.js';
+export * from './coverage-reconciliation-attestation.js';
+export * from './receipt-census.js';
+export * from './loss-experience-feed.js';
 export {
   ZK_RANGE_RECEIPT_VERSION,
   ZK_RANGE_SCHEME,

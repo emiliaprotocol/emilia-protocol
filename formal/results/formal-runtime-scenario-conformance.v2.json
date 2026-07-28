@@ -443,7 +443,7 @@
     },
     {
       "path": "package-lock.json",
-      "sha256": "58b86ffe75418c4c266a5e8fa39cea7528104a10dbd8cf73e3a6ac7bf0b965cf"
+      "sha256": "eecf5c210813faaaefd94012311ed8dbb5ca362b883698a8e5c700a06344f668"
     },
     {
       "path": "package.json",
@@ -490,6 +490,10 @@
       "sha256": "81c37ab9dc6286cf0f2bb6d519641c9c2d964108b12fcd9a95b62b6ba5df786f"
     },
     {
+      "path": "packages/gate/dist/action-refusal-statement.js",
+      "sha256": "865c930a78b7ae276abf5248ba37ab8579022b9c0d799fc0f3482cdd8615ff09"
+    },
+    {
       "path": "packages/gate/dist/admission-store-postgres.js",
       "sha256": "f9ae3686b65ce70ef5046f54b7381ed2bbb1bef681b6e4eda26adaf74cac29c6"
     },
@@ -534,6 +538,10 @@
       "sha256": "b043b51be8fbd97413edc89f7a7dde4b5b2c42be58fab26bb8b259a1bfa72104"
     },
     {
+      "path": "packages/gate/dist/coverage-reconciliation-attestation.js",
+      "sha256": "d40564dd85af27a30a95eb73c3dcefdd20ad5b0974426ddc079b45245fae66a0"
+    },
+    {
       "path": "packages/gate/dist/discovery-permit-resolver.js",
       "sha256": "838e11542010642b0d84502d2e5e88a89385190f938d7e6b6b21a243195cc9f8"
     },
@@ -559,15 +567,31 @@
     },
     {
       "path": "packages/gate/dist/index.js",
-      "sha256": "be1081633dc5fd54b2864a8fabc9114c4c815aae12f5287d89f990ac881aeef1"
+      "sha256": "01deac42cec84775e62f2a47810e50b6b06dba7b1e1ca1a0dc231a2759c5106e"
     },
     {
       "path": "packages/gate/dist/key-registry.js",
       "sha256": "dc171414a1223103bff07fe5591d5ee9b37e7b81c4625885c0bd9cc1be868111"
     },
     {
+      "path": "packages/gate/dist/loss-allocation-schedule.js",
+      "sha256": "ded9e82997066321b5fcf3e48a234dc792b31426dcf5defee43e66dae5129f0f"
+    },
+    {
+      "path": "packages/gate/dist/loss-experience-feed.js",
+      "sha256": "428f103cb8464342ef664977d0f4e7e02f711e18aef11472015be708b98dad35"
+    },
+    {
       "path": "packages/gate/dist/network-witness.js",
       "sha256": "674e5abb5bcc37ee93564459768ea8a627a17b8193b9704a78583b1129655fb3"
+    },
+    {
+      "path": "packages/gate/dist/open-exposure-ledger-postgres.js",
+      "sha256": "563306adbbfba5c6981d9588e4b852b83cd1b6141e524853b6bf077b76964f4a"
+    },
+    {
+      "path": "packages/gate/dist/open-exposure-ledger.js",
+      "sha256": "36413426bcfa2946f2cea82b41990623b2dc97c4a54112c854a4a5bd32868d26"
     },
     {
       "path": "packages/gate/dist/proposal-to-effect-postgres.js",
@@ -586,6 +610,10 @@
       "sha256": "5d3bf24ceafaee60a4556a126df915763fc7017d47a781d3632e08507d715641"
     },
     {
+      "path": "packages/gate/dist/receipt-census.js",
+      "sha256": "7be83cb0b86ff05a7e6b775519506fade2e2d78b27975a69500fb8a6673d6c19"
+    },
+    {
       "path": "packages/gate/dist/receipt-program.js",
       "sha256": "a72249eead82967d0b11e632753baebfcb89c3d7702ec46b27d609c6e2dc2606"
     },
@@ -600,6 +628,10 @@
     {
       "path": "packages/gate/dist/reliance-packet.js",
       "sha256": "d928c052e467b28fc1a1973ae18d0432ac9a1c625adaaae08ebbf86826f049db"
+    },
+    {
+      "path": "packages/gate/dist/reliance-risk-crypto.js",
+      "sha256": "14f1875a66ecdce1dede610fc57176b91cc861cbf848c585444dea9fecc9696c"
     },
     {
       "path": "packages/gate/dist/remedy-case-set-postgres.js",
@@ -707,7 +739,7 @@
     },
     {
       "path": "packages/gate/src/index.ts",
-      "sha256": "fe08718a642e2403a5001b0abf07079745e2903b6adc8bbf74265af4c8df4259"
+      "sha256": "50836384f248b4c90cb3609ea76fb2651a0541d6cbb5f8c242daabcd894b960c"
     },
     {
       "path": "packages/gate/src/network-witness.ts",

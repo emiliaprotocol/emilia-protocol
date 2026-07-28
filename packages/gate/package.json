@@ -1,6 +1,6 @@
 {
   "name": "@emilia-protocol/gate",
-  "version": "0.19.0",
+  "version": "0.20.0",
   "repository": {
     "type": "git",
     "url": "https://github.com/emiliaprotocol/emilia-protocol.git",
@@ -321,6 +321,34 @@
       "types": "./dist/referee-runner.d.ts",
       "import": "./referee-runner.js"
     },
+    "./loss-allocation-schedule": {
+      "types": "./dist/loss-allocation-schedule.d.ts",
+      "import": "./loss-allocation-schedule.js"
+    },
+    "./action-refusal-statement": {
+      "types": "./dist/action-refusal-statement.d.ts",
+      "import": "./action-refusal-statement.js"
+    },
+    "./open-exposure-ledger": {
+      "types": "./dist/open-exposure-ledger.d.ts",
+      "import": "./open-exposure-ledger.js"
+    },
+    "./open-exposure-ledger-postgres": {
+      "types": "./dist/open-exposure-ledger-postgres.d.ts",
+      "import": "./open-exposure-ledger-postgres.js"
+    },
+    "./coverage-reconciliation-attestation": {
+      "types": "./dist/coverage-reconciliation-attestation.d.ts",
+      "import": "./coverage-reconciliation-attestation.js"
+    },
+    "./receipt-census": {
+      "types": "./dist/receipt-census.d.ts",
+      "import": "./receipt-census.js"
+    },
+    "./loss-experience-feed": {
+      "types": "./dist/loss-experience-feed.d.ts",
+      "import": "./loss-experience-feed.js"
+    },
     "./zk-range-proof": {
       "types": "./dist/zk-range-proof.d.ts",
       "import": "./zk-range-proof.js"
@@ -382,6 +410,13 @@
     "gate-qualification-v2.js",
     "referee.js",
     "referee-runner.js",
+    "loss-allocation-schedule.js",
+    "action-refusal-statement.js",
+    "open-exposure-ledger.js",
+    "open-exposure-ledger-postgres.js",
+    "coverage-reconciliation-attestation.js",
+    "receipt-census.js",
+    "loss-experience-feed.js",
     "zk-range-proof.js",
     "reports/assurance-package.js",
     "ep-assure.mjs",

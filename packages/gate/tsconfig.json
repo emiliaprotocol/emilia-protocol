@@ -104,6 +104,14 @@
     "src/admission-store-postgres.ts",
     "src/gate-qualification-v2.ts",
     "src/referee.ts",
-    "src/referee-runner.ts"
+    "src/referee-runner.ts",
+    "src/reliance-risk-crypto.ts",
+    "src/loss-allocation-schedule.ts",
+    "src/action-refusal-statement.ts",
+    "src/open-exposure-ledger.ts",
+    "src/open-exposure-ledger-postgres.ts",
+    "src/coverage-reconciliation-attestation.ts",
+    "src/receipt-census.ts",
+    "src/loss-experience-feed.ts"
   ]
 }
