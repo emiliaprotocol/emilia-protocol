@@ -1,8 +1,8 @@
 # Current-bundle clean-room kit v2
 
 This directory defines a source-free, byte-pinned challenge over the exact
-21-suite, 329-vector conformance manifest at base commit
-`c7ff57e53883258d51a20b0b3c5b22a1a0f846d4`.
+21-suite, 331-vector conformance manifest at the immutable source commit
+recorded in each generated kit report.
 
 The kit separates three results:
 

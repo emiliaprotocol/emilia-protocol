@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-07-28T23:25:33.967Z",
+  "generatedAt": "2026-07-29T03:01:17.000Z",
   "tests": {
     "total": 7968,
     "files": 455,
@@ -108,7 +108,7 @@
   },
   "conformance": {
     "suites": 21,
-    "vectors": 329,
+    "vectors": 331,
     "referencePorts": 3,
     "relationship": "same_team_ports"
   },

@@ -138,8 +138,10 @@ export declare function verifyReceiptBundle(bundle: any, publicKeyBase64url: str
  *
  * @param {object} receipt - Section 6.2 Trust Receipt
  * @param {object} opts
- * @param {Record<string, {approver_id:string, public_key:string, key_class?:string, valid_from?:string, valid_to?:string}>} [opts.approverKeys]
+ * @param {Record<string, {approver_id:string, public_key:string, key_class?:string, valid_from?:string, valid_to?:string, compromised_at?:string|null}>} [opts.approverKeys]
  *   - pinned approver key entries by approver_key_id (or a directory extract).
+ * @param {string} [opts.now] - optional relying-party clock used only to reject
+ *   presenter-claimed issuance more than five minutes in the future.
  *   Required for a meaningful result; the body defaults a missing/empty opts to
  *   {} and fails closed rather than throwing.
  * @param {string} [opts.logPublicKey] - trusted log Ed25519 key (base64url SPKI DER)

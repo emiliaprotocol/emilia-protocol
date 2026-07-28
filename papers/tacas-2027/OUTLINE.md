@@ -71,7 +71,7 @@ Page budgets exclude bibliography and should be treated as ceilings.
    - Dolev-Yao and symbolic-encoding assumptions; WebAuthn, directory, wall clock, and computational security exclusions.
 
 7. **Cross-language conformance and CI coupling — 2.0 pages**
-   - 21 suites, 329 vectors, three same-team reference ports.
+   - 21 suites, 331 vectors, three same-team reference ports.
    - CI jobs that execute models and cross-language vectors.
    - A worked drift example must be reconstructed from git history before submission; do not invent one from memory.
    - Explain why agreement is consistency evidence, not independent implementation evidence or formal refinement.
@@ -114,7 +114,7 @@ The submission artifact should be frozen from a clean public revision and contai
 - exact TLA+, CFG, Alloy, Tamarin, runner, and result files;
 - an immutable manifest with SHA-256 hashes and tool/container versions;
 - one command per model and one aggregate command;
-- the 329-vector conformance manifest and all three port runners;
+- the 331-vector conformance manifest and all three port runners;
 - raw outputs plus a script that regenerates every table number;
 - `CLAIM-EVIDENCE.md`, a minimal `README`, license, data-availability statement, and `CITATION.cff`;
 - a clean-machine smoke test and expected resource envelope.

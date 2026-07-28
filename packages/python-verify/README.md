@@ -32,6 +32,12 @@ Merkle anchor. It never raises on bad input — a malformed receipt returns `val
 Also exported: `verify_merkle_anchor(leaf_hash, proof, expected_root)` and
 `canonicalize(value)` (the exact canonical-JSON used for signing).
 
+`verify_trust_receipt(receipt, opts)` also accepts pinned `approverKeys`, a
+trusted `logPublicKey`, and an optional RFC 3339 `now`. A key entry containing
+`compromised_at` is terminal regardless of the receipt's claimed `issued_at`;
+when `now` is supplied, issuance more than five minutes in the future is
+refused. Omitting `now` retains offline historical verification.
+
 ## Why this exists
 A trust receipt is only as useful as the number of places that can check it. Shipping a
 verifier in the Python agent ecosystem (LangChain, CrewAI, AutoGen, LlamaIndex) means a

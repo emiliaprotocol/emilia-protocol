@@ -187,7 +187,7 @@
     },
     {
       "path": "conformance/vectors/trust-receipt.exec.v1.json",
-      "sha256": "095d50eb2199451344628fffe6e391cdad2718ad647a9dc952712eabefdecf51"
+      "sha256": "f7c88e60ebfa21788700485d72573506b824d315c8acf5a10751acb106700bcc"
     },
     {
       "path": "formal/aec_execution_fleet_assurance.model.mjs",
@@ -947,7 +947,7 @@
     },
     {
       "path": "packages/verify/dist/index.js",
-      "sha256": "e59bd7d00c8f4ebd06bd2d1e1ba238f438734c5c673bf52c3616bbf9246b0ef6"
+      "sha256": "4a36aab1e590da131f1146db4adc74af2243ce8cf724cdad7b05d1413632ce9b"
     },
     {
       "path": "packages/verify/dist/initiator-attestation.js",
@@ -1043,7 +1043,7 @@
     },
     {
       "path": "packages/verify/src/index.ts",
-      "sha256": "644b74f5d3d44041777a8b83075eacc78ebaaac16ef754a02b3ac319c9ec6eb4"
+      "sha256": "c8fc08b317f77fa0479a813539444c045313e43b8cfe01c4667eef21c6d78658"
     },
     {
       "path": "packages/verify/src/outcome-binding.ts",

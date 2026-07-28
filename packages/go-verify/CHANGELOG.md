@@ -1,5 +1,13 @@
 # Changelog
 
+## Unreleased
+
+## 2.4.1 (2026-07-29)
+
+- Trust Receipt verification treats pinned `compromised_at` as terminal and
+  supports an optional relying-party `now` for refusing future-issued receipts,
+  matching the JavaScript and Python conformance behavior.
+
 All notable changes to the Go verifier are documented here.
 
 ## 2.4.0 (2026-07-21)

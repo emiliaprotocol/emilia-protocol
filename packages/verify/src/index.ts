@@ -670,6 +670,11 @@ function parseInstant(value: any): number {
   return Number.isFinite(parsed) ? parsed : NaN;
 }
 
+// Tolerance for benign clock skew between issuer and verifier when opts.now is
+// supplied. Only ever permits a slightly-future issued_at; never widens a
+// validity window and never affects backdating.
+const NOW_SKEW_MS = 5 * 60 * 1000;
+
 function withinWindow(t: any, from: any, to: any): boolean {
   const ts = parseInstant(t);
   if (Number.isNaN(ts)) return false;
@@ -1042,8 +1047,10 @@ function trustReceiptCanonicalProfileError(receipt: any): string | null {
  *
  * @param {object} receipt - Section 6.2 Trust Receipt
  * @param {object} opts
- * @param {Record<string, {approver_id:string, public_key:string, key_class?:string, valid_from?:string, valid_to?:string}>} [opts.approverKeys]
+ * @param {Record<string, {approver_id:string, public_key:string, key_class?:string, valid_from?:string, valid_to?:string, compromised_at?:string|null}>} [opts.approverKeys]
  *   - pinned approver key entries by approver_key_id (or a directory extract).
+ * @param {string} [opts.now] - optional relying-party clock used only to reject
+ *   presenter-claimed issuance more than five minutes in the future.
  *   Required for a meaningful result; the body defaults a missing/empty opts to
  *   {} and fails closed rather than throwing.
  * @param {string} [opts.logPublicKey] - trusted log Ed25519 key (base64url SPKI DER)
@@ -1127,6 +1134,15 @@ export function verifyTrustReceipt(receipt: any, opts: Obj = {}): Obj {
     windows: false,            // step 6
   };
   const errors: string[] = [];
+  // Optional relying-party clock. Absent, verification behaves exactly as
+  // before; supplied, a claimed issuance in the future is refused. Left opt-in
+  // because offline verification of an old receipt is a supported use.
+  const verifierNow = opts.now === undefined || opts.now === null
+    ? null
+    : parseInstant(opts.now);
+  if (verifierNow !== null && Number.isNaN(verifierNow)) {
+    return { valid: false, checks, errors: ['opts.now is not a parseable instant'] };
+  }
   // PIP-007 §2 advisory report — built from contexts as presented, independent
   // of every cryptographic check. fail() carries it through early returns too.
   const attestationContexts = Array.isArray(receipt?.contexts) ? receipt.contexts : [];
@@ -1223,10 +1239,41 @@ export function verifyTrustReceipt(receipt: any, opts: Obj = {}): Obj {
       errors.push(`pinned key ${s.approver_key_id} belongs to ${keyEntry.approver_id}, not context approver ${ctx.approver}`);
       continue;
     }
+    // Key compromise is TERMINAL and RETROACTIVE, and is deliberately not a
+    // window edge. `valid_to` answers "when did this key expire", and it is
+    // compared against ctx.issued_at, which the presenter signs with this very
+    // key. A holder of a stolen key can therefore mint a receipt after the key
+    // is revoked and backdate issued_at into the window, and every window check
+    // still passes. Expiry-driven rotation can live with that; compromise
+    // cannot. `compromised_at` refuses the key outright, whatever time the
+    // presenter claims, matching the rule docs/AUTHORITY-GOVERNANCE.md §4.4
+    // already states for authority changes: compromise can be backdated in its
+    // effect window, so a revocation at t1 < t0 taints the whole span.
+    if (keyEntry.compromised_at !== undefined && keyEntry.compromised_at !== null) {
+      const compromisedAt = parseInstant(keyEntry.compromised_at);
+      if (Number.isNaN(compromisedAt)) {
+        signaturesOk = false;
+        errors.push(`pinned key ${s.approver_key_id} has an unparseable compromised_at`);
+        continue;
+      }
+      signaturesOk = false;
+      errors.push(`approver key ${s.approver_key_id} is marked compromised; no claimed issued_at can clear it`);
+      continue;
+    }
     // Key validity window must contain the context's issued_at (Section 5.2).
     if (!withinWindow(ctx.issued_at, keyEntry.valid_from, keyEntry.valid_to)) {
       signaturesOk = false;
       errors.push(`approver key ${s.approver_key_id} was not valid at issued_at`);
+      continue;
+    }
+    // The window above is only as honest as ctx.issued_at, which the presenter
+    // asserts. When the relying party supplies its own clock, refuse a claimed
+    // issuance in the future: a receipt cannot have been approved after the
+    // moment it is being verified. This does not bound backdating on its own
+    // (see compromised_at above, and opts.timestampProof for a trusted anchor).
+    if (verifierNow !== null && parseInstant(ctx.issued_at) > verifierNow + NOW_SKEW_MS) {
+      signaturesOk = false;
+      errors.push(`issued_at for ${s.approver_key_id} is in the future relative to the verifier clock`);
       continue;
     }
     const digestBytes = Buffer.from(digestHex, 'hex');
