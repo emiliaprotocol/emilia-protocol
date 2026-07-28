@@ -204,9 +204,24 @@ export const targets = [
     source_sha256: 'ea164cf92f89490f8b9ad6c7accf0726f6b33cd72925c3bcc148cb7c65286bac',
     native_binding: 'PARTIAL',
     missing_material_fields: ['operation', 'target_ref', 'parameters_digest'],
-    paths: p('/effect_request/operation', '/effect_request/target', '/effect_request/parameters', '/audience'),
-    evidence: ['Sections 7-12, pages 7-12', 'The model canonicalizes the exact external-effect request and binds its digest, scope, audience, epoch, and validity.'],
+    paths: p(
+      '/__caid_unavailable__/operation',
+      '/__caid_unavailable__/target_ref',
+      '/__caid_unavailable__/parameters_digest',
+      null,
+    ),
+    native_profile_role: 'Executable fail-closed probe. The reserved /__caid_unavailable__/* paths are deliberately absent from the fixture and are not fields defined by ORPRG revision -00.',
+    evidence: [
+      'Sections 2, 4 (REQ-2), 6-7, 9-11',
+      'ORPRG binds the full canonical external-effect request through action_digest or action_commitment under an identified canonicalization profile. Revision -00 does not define a profile-independent decomposition into operation, target_ref, and parameters_digest; that projection requires a selected effect-specific profile and the verified canonical request.',
+    ],
     request: 'Please check the canonical effect-request field projection and whether policy epoch belongs outside action identity.',
+    author_review: {
+      status: 'AUTHOR_FEEDBACK_RECORDED',
+      confirmed_at: '2026-07-28',
+      scope: 'Revision -00 and this narrow mapping disposition only; not validation of the CAID harness or broader interoperability pack, and not implementation, adoption, or endorsement.',
+      finding: 'The profile-independent result remains PARTIAL to INDETERMINATE. Policy epoch and authorization audience remain verifier context outside material action identity, while a material effect recipient remains inside the selected action profile.',
+    },
   },
   {
     draft: 'draft-baur-pap',

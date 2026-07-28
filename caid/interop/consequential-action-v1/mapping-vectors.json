@@ -1194,23 +1194,23 @@
       "target_action_type": "consequence.invoke.1",
       "loss_policy": "no-material-field-loss",
       "material_source_paths": [
-        "/effect_request/operation",
-        "/effect_request/target",
-        "/effect_request/parameters"
+        "/__caid_unavailable__/operation",
+        "/__caid_unavailable__/target_ref",
+        "/__caid_unavailable__/parameters_digest"
       ],
       "rules": [
         {
-          "source_path": "/effect_request/operation",
+          "source_path": "/__caid_unavailable__/operation",
           "target_field": "operation",
           "transform": "copy"
         },
         {
-          "source_path": "/effect_request/target",
+          "source_path": "/__caid_unavailable__/target_ref",
           "target_field": "target_ref",
           "transform": "sha256-utf8"
         },
         {
-          "source_path": "/effect_request/parameters",
+          "source_path": "/__caid_unavailable__/parameters_digest",
           "target_field": "parameters_digest",
           "transform": "sha256-jcs"
         }
@@ -3744,7 +3744,7 @@
       },
       "expect": {
         "verdict": "INDETERMINATE",
-        "reason_contains": "right:missing_source_field:/effect_request/operation"
+        "reason_contains": "right:missing_source_field:/__caid_unavailable__/operation"
       }
     },
     {

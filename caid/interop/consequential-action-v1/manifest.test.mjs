@@ -33,13 +33,46 @@ test('the public pack contains exactly 25 version-pinned, reviewable mappings', 
       assert.equal(mapping.native_verdict, 'INDETERMINATE');
       assert.ok(mapping.missing_material_fields.length > 0);
     }
-    assert.equal(mapping.author_review.status, 'PENDING_AUTHOR_REVIEW');
+    assert.ok([
+      'PENDING_AUTHOR_REVIEW',
+      'AUTHOR_FEEDBACK_RECORDED',
+    ].includes(mapping.author_review.status));
     assert.equal(mapping.author_review.endorsement_claimed, false);
     assert.ok(mapping.evidence.length > 0);
     assert.ok(mapping.evidence.every(({ locator, finding }) => locator && finding));
     assert.ok(mapping.native_profile.profile_id);
     assert.ok(mapping.carry_profile.profile_id);
   }
+});
+
+test('ORPRG records the author-confirmed narrow finding without claiming native fields or endorsement', async () => {
+  const manifest = await readJson('manifest.json');
+  const orprg = manifest.mappings.find(
+    ({ draft }) => draft === 'draft-lee-orprg-permit-receipts',
+  );
+
+  assert.ok(orprg);
+  assert.equal(orprg.native_binding, 'PARTIAL');
+  assert.equal(orprg.native_verdict, 'INDETERMINATE');
+  assert.deepEqual(
+    orprg.missing_material_fields,
+    ['operation', 'target_ref', 'parameters_digest'],
+  );
+  assert.deepEqual(
+    orprg.native_profile.material_source_paths,
+    [
+      '/__caid_unavailable__/operation',
+      '/__caid_unavailable__/target_ref',
+      '/__caid_unavailable__/parameters_digest',
+    ],
+  );
+  assert.doesNotMatch(JSON.stringify(orprg), /\/effect_request\//);
+  assert.match(orprg.native_profile_role, /not fields defined by ORPRG revision -00/);
+  assert.equal(orprg.author_review.status, 'AUTHOR_FEEDBACK_RECORDED');
+  assert.equal(orprg.author_review.confirmed_at, '2026-07-28');
+  assert.match(orprg.author_review.scope, /not validation/);
+  assert.match(orprg.author_review.scope, /not implementation, adoption, or endorsement/);
+  assert.equal(orprg.author_review.endorsement_claimed, false);
 });
 
 test('selection policy contains only the approved targets and requires Linda Dunbar DMSC', async () => {

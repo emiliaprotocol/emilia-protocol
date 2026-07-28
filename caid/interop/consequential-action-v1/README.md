@@ -20,6 +20,16 @@ No author validation or endorsement is claimed. The intended next step is
 author review: “Here is our pinned reading of your action model. What did we
 get wrong?”
 
+The ORPRG revision -00 entry records narrow author feedback received on
+2026-07-28. It removes the earlier `/effect_request/*` candidate paths: those
+are not native JSON members defined by the draft. ORPRG binds the complete
+canonical external-effect request under an identified profile, but a CAID
+projection into `operation`, `target_ref`, and `parameters_digest` requires
+that effect-specific profile and the verified canonical request. The entry
+therefore remains `PARTIAL` to `INDETERMINATE`. Policy epoch and authorization
+audience remain verifier context. This feedback is not validation of the CAID
+harness or broader pack, nor implementation, adoption, or endorsement.
+
 ## Why the local action type is not in the public registry
 
 `consequence.invoke.1` is local to this project. It commits to:

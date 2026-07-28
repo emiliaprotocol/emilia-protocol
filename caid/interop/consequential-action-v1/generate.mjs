@@ -155,13 +155,22 @@ function buildManifest() {
         : 'INDETERMINATE',
       missing_material_fields: target.missing_material_fields,
       evidence: [{ locator: target.evidence[0], finding: target.evidence[1] }],
+      ...(target.native_profile_role
+        ? { native_profile_role: target.native_profile_role }
+        : {}),
       native_profile: profile(target, 'native'),
       carry_profile: profile(target, 'carry'),
-      author_review: {
-        status: 'PENDING_AUTHOR_REVIEW',
-        endorsement_claimed: false,
-        request: target.request,
-      },
+      author_review: target.author_review
+        ? {
+            ...target.author_review,
+            endorsement_claimed: false,
+            request: target.request,
+          }
+        : {
+            status: 'PENDING_AUTHOR_REVIEW',
+            endorsement_claimed: false,
+            request: target.request,
+          },
     })),
   };
 }
