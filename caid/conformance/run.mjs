@@ -11,6 +11,8 @@ const GO_ROOT = path.join(ROOT, 'impl/go');
 
 const registry = JSON.parse(readFileSync(path.join(ROOT, 'registry/action-types.json'), 'utf8'));
 const mappingCorpus = JSON.parse(readFileSync(path.join(ROOT, 'conformance/mapping-vectors.json'), 'utf8'));
+const interopCorpusPath = path.join(ROOT, 'interop/consequential-action-v1/mapping-vectors.json');
+const interopCorpus = JSON.parse(readFileSync(interopCorpusPath, 'utf8'));
 const stable = (value) => {
   if (Array.isArray(value)) return value.map(stable);
   if (value && typeof value === 'object') {
@@ -29,7 +31,13 @@ for (const definition of mappingCorpus.definitions) {
     throw new Error(`mapping definition aliases public type ${definition.action_type} with different semantics`);
   }
 }
+for (const definition of interopCorpus.definitions) {
+  if (registry.types.some((entry) => entry.action_type === definition.action_type)) {
+    throw new Error(`interoperability-local action type ${definition.action_type} aliases the public registry`);
+  }
+}
 console.log(`PASS registry identity: ${registry.types.length} unique types; mapping definitions match exact public entries`);
+console.log(`PASS local interop identity: ${interopCorpus.definitions.length} definition does not modify the public registry`);
 
 function run(label, command, args, cwd = ROOT) {
   const result = spawnSync(command, args, {
@@ -64,4 +72,19 @@ for (const [language, output] of mappingOutputs.slice(1)) {
 }
 
 console.log('PASS cross-language mapping verdict and reason parity');
-console.log(`CAID conformance: 48 core + ${mappingCorpus.vectors.length} mapping vectors green in JS, Python, and Go.`);
+
+const interopOutputs = [
+  ['JavaScript', run(`JavaScript consequential interop: ${interopCorpus.vectors.length} vectors`, 'node', ['impl/js/run-mapping-vectors.mjs', '--corpus', interopCorpusPath, '--json'])],
+  ['Python', run(`Python consequential interop: ${interopCorpus.vectors.length} vectors`, 'python3', ['impl/python/run_mapping_vectors.py', '--corpus', interopCorpusPath, '--json'])],
+  ['Go', run(`Go consequential interop: ${interopCorpus.vectors.length} vectors`, 'go', ['run', './cmd/mapping-vectors', '--corpus', interopCorpusPath, '--json'], GO_ROOT)],
+];
+const interopBaseline = JSON.stringify(JSON.parse(interopOutputs[0][1]));
+for (const [language, output] of interopOutputs.slice(1)) {
+  if (JSON.stringify(JSON.parse(output)) !== interopBaseline) {
+    process.stderr.write(`FAIL consequential interop output divergence: JavaScript != ${language}\n`);
+    process.exit(1);
+  }
+}
+
+console.log('PASS cross-language consequential-interoperability verdict and reason parity');
+console.log(`CAID conformance: 48 core + ${mappingCorpus.vectors.length} base mapping + ${interopCorpus.vectors.length} consequential-interoperability vectors green in JS, Python, and Go.`);

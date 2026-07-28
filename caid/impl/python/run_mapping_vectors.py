@@ -12,6 +12,15 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 VECTORS = os.path.abspath(os.path.join(HERE, "..", "..", "conformance", "mapping-vectors.json"))
 
 
+def _corpus_path(argv):
+    if "--corpus" not in argv:
+        return VECTORS
+    index = argv.index("--corpus")
+    if index + 1 >= len(argv):
+        raise ValueError("--corpus requires a path")
+    return os.path.abspath(argv[index + 1])
+
+
 def _segments(pointer):
     return [part.replace("~1", "/").replace("~0", "~") for part in pointer[1:].split("/")]
 
@@ -77,7 +86,7 @@ def run_mapping_vectors(corpus):
     return results
 
 
-with open(VECTORS, "r", encoding="utf-8") as handle:
+with open(_corpus_path(sys.argv[1:]), "r", encoding="utf-8") as handle:
     results = run_mapping_vectors(json.load(handle))
 
 if "--json" in sys.argv:

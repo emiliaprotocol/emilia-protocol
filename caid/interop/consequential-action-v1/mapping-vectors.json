@@ -1,0 +1,4430 @@
+{
+  "@version": "CAID-CONSEQUENTIAL-ACTION-MAPPING-VECTORS-v1",
+  "description": "Executable candidate mappings for 25 consequential mechanisms. Mapping is correlation, never authorization or endorsement.",
+  "suite": "jcs-sha256",
+  "definitions": [
+    {
+      "action_type": "consequence.invoke.1",
+      "status": "local-experimental",
+      "risk_class": "consequential",
+      "summary": "A profile-bounded consequential action used only by this interoperability project.",
+      "required_fields": [
+        {
+          "name": "operation",
+          "type": "string"
+        },
+        {
+          "name": "target_ref",
+          "type": "digest"
+        },
+        {
+          "name": "parameters_digest",
+          "type": "digest"
+        }
+      ],
+      "optional_fields": [],
+      "digest_notes": "Operation, target, and complete material parameters are material under this local profile. Authorization audience remains verifier context.",
+      "references": []
+    }
+  ],
+  "profiles": {
+    "reference": {
+      "@version": "CAID-MAPPING-PROFILE-v1",
+      "profile_id": "urn:caid:interop:reference-consequence:1",
+      "source_format": {
+        "media_type": "application/json",
+        "schema": "urn:caid:interop:reference-consequence:1",
+        "version": "1"
+      },
+      "target_action_type": "consequence.invoke.1",
+      "loss_policy": "no-material-field-loss",
+      "material_source_paths": [
+        "/operation",
+        "/target",
+        "/parameters"
+      ],
+      "rules": [
+        {
+          "source_path": "/operation",
+          "target_field": "operation",
+          "transform": "copy"
+        },
+        {
+          "source_path": "/target",
+          "target_field": "target_ref",
+          "transform": "sha256-utf8"
+        },
+        {
+          "source_path": "/parameters",
+          "target_field": "parameters_digest",
+          "transform": "sha256-jcs"
+        }
+      ]
+    },
+    "klrc-aiagent-auth-03:native": {
+      "@version": "CAID-MAPPING-PROFILE-v1",
+      "profile_id": "urn:caid:interop:klrc-aiagent-auth-03:native:1",
+      "source_format": {
+        "media_type": "application/json",
+        "schema": "urn:caid:interop:draft-klrc-aiagent-auth:03:native",
+        "version": "03"
+      },
+      "target_action_type": "consequence.invoke.1",
+      "loss_policy": "no-material-field-loss",
+      "material_source_paths": [
+        "/audit/action",
+        "/audit/resource",
+        "/mission/parameters"
+      ],
+      "rules": [
+        {
+          "source_path": "/audit/action",
+          "target_field": "operation",
+          "transform": "copy"
+        },
+        {
+          "source_path": "/audit/resource",
+          "target_field": "target_ref",
+          "transform": "sha256-utf8"
+        },
+        {
+          "source_path": "/mission/parameters",
+          "target_field": "parameters_digest",
+          "transform": "sha256-jcs"
+        }
+      ]
+    },
+    "klrc-aiagent-auth-03:carry": {
+      "@version": "CAID-MAPPING-PROFILE-v1",
+      "profile_id": "urn:caid:interop:klrc-aiagent-auth-03:carry:1",
+      "source_format": {
+        "media_type": "application/json",
+        "schema": "urn:caid:interop:draft-klrc-aiagent-auth:03:carry",
+        "version": "03"
+      },
+      "target_action_type": "consequence.invoke.1",
+      "loss_policy": "no-material-field-loss",
+      "material_source_paths": [
+        "/caid_action/operation",
+        "/caid_action/target",
+        "/caid_action/parameters"
+      ],
+      "rules": [
+        {
+          "source_path": "/caid_action/operation",
+          "target_field": "operation",
+          "transform": "copy"
+        },
+        {
+          "source_path": "/caid_action/target",
+          "target_field": "target_ref",
+          "transform": "sha256-utf8"
+        },
+        {
+          "source_path": "/caid_action/parameters",
+          "target_field": "parameters_digest",
+          "transform": "sha256-jcs"
+        }
+      ]
+    },
+    "mcguinness-oauth-ai-agent-instance-00:native": {
+      "@version": "CAID-MAPPING-PROFILE-v1",
+      "profile_id": "urn:caid:interop:mcguinness-oauth-ai-agent-instance-00:native:1",
+      "source_format": {
+        "media_type": "application/json",
+        "schema": "urn:caid:interop:draft-mcguinness-oauth-ai-agent-instance:00:native",
+        "version": "00"
+      },
+      "target_action_type": "consequence.invoke.1",
+      "loss_policy": "no-material-field-loss",
+      "material_source_paths": [
+        "/scope/operation",
+        "/scope/resource",
+        "/scope/parameters"
+      ],
+      "rules": [
+        {
+          "source_path": "/scope/operation",
+          "target_field": "operation",
+          "transform": "copy"
+        },
+        {
+          "source_path": "/scope/resource",
+          "target_field": "target_ref",
+          "transform": "sha256-utf8"
+        },
+        {
+          "source_path": "/scope/parameters",
+          "target_field": "parameters_digest",
+          "transform": "sha256-jcs"
+        }
+      ]
+    },
+    "mcguinness-oauth-ai-agent-instance-00:carry": {
+      "@version": "CAID-MAPPING-PROFILE-v1",
+      "profile_id": "urn:caid:interop:mcguinness-oauth-ai-agent-instance-00:carry:1",
+      "source_format": {
+        "media_type": "application/json",
+        "schema": "urn:caid:interop:draft-mcguinness-oauth-ai-agent-instance:00:carry",
+        "version": "00"
+      },
+      "target_action_type": "consequence.invoke.1",
+      "loss_policy": "no-material-field-loss",
+      "material_source_paths": [
+        "/caid_action/operation",
+        "/caid_action/target",
+        "/caid_action/parameters"
+      ],
+      "rules": [
+        {
+          "source_path": "/caid_action/operation",
+          "target_field": "operation",
+          "transform": "copy"
+        },
+        {
+          "source_path": "/caid_action/target",
+          "target_field": "target_ref",
+          "transform": "sha256-utf8"
+        },
+        {
+          "source_path": "/caid_action/parameters",
+          "target_field": "parameters_digest",
+          "transform": "sha256-jcs"
+        }
+      ]
+    },
+    "noa-scitt-ai-agent-receipt-00:native": {
+      "@version": "CAID-MAPPING-PROFILE-v1",
+      "profile_id": "urn:caid:interop:noa-scitt-ai-agent-receipt-00:native:1",
+      "source_format": {
+        "media_type": "application/json",
+        "schema": "urn:caid:interop:draft-noa-scitt-ai-agent-receipt:00:native",
+        "version": "00"
+      },
+      "target_action_type": "consequence.invoke.1",
+      "loss_policy": "no-material-field-loss",
+      "material_source_paths": [
+        "/action/canonical",
+        "/action/id",
+        "/action/parameters"
+      ],
+      "rules": [
+        {
+          "source_path": "/action/canonical",
+          "target_field": "operation",
+          "transform": "copy"
+        },
+        {
+          "source_path": "/action/id",
+          "target_field": "target_ref",
+          "transform": "sha256-utf8"
+        },
+        {
+          "source_path": "/action/parameters",
+          "target_field": "parameters_digest",
+          "transform": "sha256-jcs"
+        }
+      ]
+    },
+    "noa-scitt-ai-agent-receipt-00:carry": {
+      "@version": "CAID-MAPPING-PROFILE-v1",
+      "profile_id": "urn:caid:interop:noa-scitt-ai-agent-receipt-00:carry:1",
+      "source_format": {
+        "media_type": "application/json",
+        "schema": "urn:caid:interop:draft-noa-scitt-ai-agent-receipt:00:carry",
+        "version": "00"
+      },
+      "target_action_type": "consequence.invoke.1",
+      "loss_policy": "no-material-field-loss",
+      "material_source_paths": [
+        "/caid_action/operation",
+        "/caid_action/target",
+        "/caid_action/parameters"
+      ],
+      "rules": [
+        {
+          "source_path": "/caid_action/operation",
+          "target_field": "operation",
+          "transform": "copy"
+        },
+        {
+          "source_path": "/caid_action/target",
+          "target_field": "target_ref",
+          "transform": "sha256-utf8"
+        },
+        {
+          "source_path": "/caid_action/parameters",
+          "target_field": "parameters_digest",
+          "transform": "sha256-jcs"
+        }
+      ]
+    },
+    "ietf-wimse-arch-08:native": {
+      "@version": "CAID-MAPPING-PROFILE-v1",
+      "profile_id": "urn:caid:interop:ietf-wimse-arch-08:native:1",
+      "source_format": {
+        "media_type": "application/json",
+        "schema": "urn:caid:interop:draft-ietf-wimse-arch:08:native",
+        "version": "08"
+      },
+      "target_action_type": "consequence.invoke.1",
+      "loss_policy": "no-material-field-loss",
+      "material_source_paths": [
+        "/security_context/operation",
+        "/security_context/target",
+        "/security_context/parameters"
+      ],
+      "rules": [
+        {
+          "source_path": "/security_context/operation",
+          "target_field": "operation",
+          "transform": "copy"
+        },
+        {
+          "source_path": "/security_context/target",
+          "target_field": "target_ref",
+          "transform": "sha256-utf8"
+        },
+        {
+          "source_path": "/security_context/parameters",
+          "target_field": "parameters_digest",
+          "transform": "sha256-jcs"
+        }
+      ]
+    },
+    "ietf-wimse-arch-08:carry": {
+      "@version": "CAID-MAPPING-PROFILE-v1",
+      "profile_id": "urn:caid:interop:ietf-wimse-arch-08:carry:1",
+      "source_format": {
+        "media_type": "application/json",
+        "schema": "urn:caid:interop:draft-ietf-wimse-arch:08:carry",
+        "version": "08"
+      },
+      "target_action_type": "consequence.invoke.1",
+      "loss_policy": "no-material-field-loss",
+      "material_source_paths": [
+        "/caid_action/operation",
+        "/caid_action/target",
+        "/caid_action/parameters"
+      ],
+      "rules": [
+        {
+          "source_path": "/caid_action/operation",
+          "target_field": "operation",
+          "transform": "copy"
+        },
+        {
+          "source_path": "/caid_action/target",
+          "target_field": "target_ref",
+          "transform": "sha256-utf8"
+        },
+        {
+          "source_path": "/caid_action/parameters",
+          "target_field": "parameters_digest",
+          "transform": "sha256-jcs"
+        }
+      ]
+    },
+    "ietf-wimse-http-signature-05:native": {
+      "@version": "CAID-MAPPING-PROFILE-v1",
+      "profile_id": "urn:caid:interop:ietf-wimse-http-signature-05:native:1",
+      "source_format": {
+        "media_type": "application/json",
+        "schema": "urn:caid:interop:draft-ietf-wimse-http-signature:05:native",
+        "version": "05"
+      },
+      "target_action_type": "consequence.invoke.1",
+      "loss_policy": "no-material-field-loss",
+      "material_source_paths": [
+        "/signed_components/@method",
+        "/signed_components/@request-target",
+        "/signed_components/body"
+      ],
+      "rules": [
+        {
+          "source_path": "/signed_components/@method",
+          "target_field": "operation",
+          "transform": "copy"
+        },
+        {
+          "source_path": "/signed_components/@request-target",
+          "target_field": "target_ref",
+          "transform": "sha256-utf8"
+        },
+        {
+          "source_path": "/signed_components/body",
+          "target_field": "parameters_digest",
+          "transform": "sha256-jcs"
+        }
+      ]
+    },
+    "ietf-wimse-http-signature-05:carry": {
+      "@version": "CAID-MAPPING-PROFILE-v1",
+      "profile_id": "urn:caid:interop:ietf-wimse-http-signature-05:carry:1",
+      "source_format": {
+        "media_type": "application/json",
+        "schema": "urn:caid:interop:draft-ietf-wimse-http-signature:05:carry",
+        "version": "05"
+      },
+      "target_action_type": "consequence.invoke.1",
+      "loss_policy": "no-material-field-loss",
+      "material_source_paths": [
+        "/caid_action/operation",
+        "/caid_action/target",
+        "/caid_action/parameters"
+      ],
+      "rules": [
+        {
+          "source_path": "/caid_action/operation",
+          "target_field": "operation",
+          "transform": "copy"
+        },
+        {
+          "source_path": "/caid_action/target",
+          "target_field": "target_ref",
+          "transform": "sha256-utf8"
+        },
+        {
+          "source_path": "/caid_action/parameters",
+          "target_field": "parameters_digest",
+          "transform": "sha256-jcs"
+        }
+      ]
+    },
+    "ietf-wimse-workload-creds-02:native": {
+      "@version": "CAID-MAPPING-PROFILE-v1",
+      "profile_id": "urn:caid:interop:ietf-wimse-workload-creds-02:native:1",
+      "source_format": {
+        "media_type": "application/json",
+        "schema": "urn:caid:interop:draft-ietf-wimse-workload-creds:02:native",
+        "version": "02"
+      },
+      "target_action_type": "consequence.invoke.1",
+      "loss_policy": "no-material-field-loss",
+      "material_source_paths": [
+        "/authorization/operation",
+        "/authorization/target",
+        "/authorization/parameters"
+      ],
+      "rules": [
+        {
+          "source_path": "/authorization/operation",
+          "target_field": "operation",
+          "transform": "copy"
+        },
+        {
+          "source_path": "/authorization/target",
+          "target_field": "target_ref",
+          "transform": "sha256-utf8"
+        },
+        {
+          "source_path": "/authorization/parameters",
+          "target_field": "parameters_digest",
+          "transform": "sha256-jcs"
+        }
+      ]
+    },
+    "ietf-wimse-workload-creds-02:carry": {
+      "@version": "CAID-MAPPING-PROFILE-v1",
+      "profile_id": "urn:caid:interop:ietf-wimse-workload-creds-02:carry:1",
+      "source_format": {
+        "media_type": "application/json",
+        "schema": "urn:caid:interop:draft-ietf-wimse-workload-creds:02:carry",
+        "version": "02"
+      },
+      "target_action_type": "consequence.invoke.1",
+      "loss_policy": "no-material-field-loss",
+      "material_source_paths": [
+        "/caid_action/operation",
+        "/caid_action/target",
+        "/caid_action/parameters"
+      ],
+      "rules": [
+        {
+          "source_path": "/caid_action/operation",
+          "target_field": "operation",
+          "transform": "copy"
+        },
+        {
+          "source_path": "/caid_action/target",
+          "target_field": "target_ref",
+          "transform": "sha256-utf8"
+        },
+        {
+          "source_path": "/caid_action/parameters",
+          "target_field": "parameters_digest",
+          "transform": "sha256-jcs"
+        }
+      ]
+    },
+    "ietf-wimse-wpt-01:native": {
+      "@version": "CAID-MAPPING-PROFILE-v1",
+      "profile_id": "urn:caid:interop:ietf-wimse-wpt-01:native:1",
+      "source_format": {
+        "media_type": "application/json",
+        "schema": "urn:caid:interop:draft-ietf-wimse-wpt:01:native",
+        "version": "01"
+      },
+      "target_action_type": "consequence.invoke.1",
+      "loss_policy": "no-material-field-loss",
+      "material_source_paths": [
+        "/request/method",
+        "/request/target",
+        "/request/parameters"
+      ],
+      "rules": [
+        {
+          "source_path": "/request/method",
+          "target_field": "operation",
+          "transform": "copy"
+        },
+        {
+          "source_path": "/request/target",
+          "target_field": "target_ref",
+          "transform": "sha256-utf8"
+        },
+        {
+          "source_path": "/request/parameters",
+          "target_field": "parameters_digest",
+          "transform": "sha256-jcs"
+        }
+      ]
+    },
+    "ietf-wimse-wpt-01:carry": {
+      "@version": "CAID-MAPPING-PROFILE-v1",
+      "profile_id": "urn:caid:interop:ietf-wimse-wpt-01:carry:1",
+      "source_format": {
+        "media_type": "application/json",
+        "schema": "urn:caid:interop:draft-ietf-wimse-wpt:01:carry",
+        "version": "01"
+      },
+      "target_action_type": "consequence.invoke.1",
+      "loss_policy": "no-material-field-loss",
+      "material_source_paths": [
+        "/caid_action/operation",
+        "/caid_action/target",
+        "/caid_action/parameters"
+      ],
+      "rules": [
+        {
+          "source_path": "/caid_action/operation",
+          "target_field": "operation",
+          "transform": "copy"
+        },
+        {
+          "source_path": "/caid_action/target",
+          "target_field": "target_ref",
+          "transform": "sha256-utf8"
+        },
+        {
+          "source_path": "/caid_action/parameters",
+          "target_field": "parameters_digest",
+          "transform": "sha256-jcs"
+        }
+      ]
+    },
+    "bu-agentproto-security-principal-binding-03:native": {
+      "@version": "CAID-MAPPING-PROFILE-v1",
+      "profile_id": "urn:caid:interop:bu-agentproto-security-principal-binding-03:native:1",
+      "source_format": {
+        "media_type": "application/json",
+        "schema": "urn:caid:interop:draft-bu-agentproto-security-principal-binding:03:native",
+        "version": "03"
+      },
+      "target_action_type": "consequence.invoke.1",
+      "loss_policy": "no-material-field-loss",
+      "material_source_paths": [
+        "/action/operation",
+        "/action/target",
+        "/action/parameters"
+      ],
+      "rules": [
+        {
+          "source_path": "/action/operation",
+          "target_field": "operation",
+          "transform": "copy"
+        },
+        {
+          "source_path": "/action/target",
+          "target_field": "target_ref",
+          "transform": "sha256-utf8"
+        },
+        {
+          "source_path": "/action/parameters",
+          "target_field": "parameters_digest",
+          "transform": "sha256-jcs"
+        }
+      ]
+    },
+    "bu-agentproto-security-principal-binding-03:carry": {
+      "@version": "CAID-MAPPING-PROFILE-v1",
+      "profile_id": "urn:caid:interop:bu-agentproto-security-principal-binding-03:carry:1",
+      "source_format": {
+        "media_type": "application/json",
+        "schema": "urn:caid:interop:draft-bu-agentproto-security-principal-binding:03:carry",
+        "version": "03"
+      },
+      "target_action_type": "consequence.invoke.1",
+      "loss_policy": "no-material-field-loss",
+      "material_source_paths": [
+        "/caid_action/operation",
+        "/caid_action/target",
+        "/caid_action/parameters"
+      ],
+      "rules": [
+        {
+          "source_path": "/caid_action/operation",
+          "target_field": "operation",
+          "transform": "copy"
+        },
+        {
+          "source_path": "/caid_action/target",
+          "target_field": "target_ref",
+          "transform": "sha256-utf8"
+        },
+        {
+          "source_path": "/caid_action/parameters",
+          "target_field": "parameters_digest",
+          "transform": "sha256-jcs"
+        }
+      ]
+    },
+    "rosomakho-oauth-txn-challenge-00:native": {
+      "@version": "CAID-MAPPING-PROFILE-v1",
+      "profile_id": "urn:caid:interop:rosomakho-oauth-txn-challenge-00:native:1",
+      "source_format": {
+        "media_type": "application/json",
+        "schema": "urn:caid:interop:draft-rosomakho-oauth-txn-challenge:00:native",
+        "version": "00"
+      },
+      "target_action_type": "consequence.invoke.1",
+      "loss_policy": "no-material-field-loss",
+      "material_source_paths": [
+        "/authorization_details/0/type",
+        "/iss",
+        "/caid_extraction/parameters"
+      ],
+      "rules": [
+        {
+          "source_path": "/authorization_details/0/type",
+          "target_field": "operation",
+          "transform": "copy"
+        },
+        {
+          "source_path": "/iss",
+          "target_field": "target_ref",
+          "transform": "sha256-utf8"
+        },
+        {
+          "source_path": "/caid_extraction/parameters",
+          "target_field": "parameters_digest",
+          "transform": "sha256-jcs"
+        }
+      ]
+    },
+    "rosomakho-oauth-txn-challenge-00:carry": {
+      "@version": "CAID-MAPPING-PROFILE-v1",
+      "profile_id": "urn:caid:interop:rosomakho-oauth-txn-challenge-00:carry:1",
+      "source_format": {
+        "media_type": "application/json",
+        "schema": "urn:caid:interop:draft-rosomakho-oauth-txn-challenge:00:carry",
+        "version": "00"
+      },
+      "target_action_type": "consequence.invoke.1",
+      "loss_policy": "no-material-field-loss",
+      "material_source_paths": [
+        "/caid_action/operation",
+        "/caid_action/target",
+        "/caid_action/parameters"
+      ],
+      "rules": [
+        {
+          "source_path": "/caid_action/operation",
+          "target_field": "operation",
+          "transform": "copy"
+        },
+        {
+          "source_path": "/caid_action/target",
+          "target_field": "target_ref",
+          "transform": "sha256-utf8"
+        },
+        {
+          "source_path": "/caid_action/parameters",
+          "target_field": "parameters_digest",
+          "transform": "sha256-jcs"
+        }
+      ]
+    },
+    "nelson-agent-delegation-receipts-10:native": {
+      "@version": "CAID-MAPPING-PROFILE-v1",
+      "profile_id": "urn:caid:interop:nelson-agent-delegation-receipts-10:native:1",
+      "source_format": {
+        "media_type": "application/json",
+        "schema": "urn:caid:interop:draft-nelson-agent-delegation-receipts:10:native",
+        "version": "10"
+      },
+      "target_action_type": "consequence.invoke.1",
+      "loss_policy": "no-material-field-loss",
+      "material_source_paths": [
+        "/scope/operations/0",
+        "/scope/resources/0",
+        "/boundaries"
+      ],
+      "rules": [
+        {
+          "source_path": "/scope/operations/0",
+          "target_field": "operation",
+          "transform": "copy"
+        },
+        {
+          "source_path": "/scope/resources/0",
+          "target_field": "target_ref",
+          "transform": "sha256-utf8"
+        },
+        {
+          "source_path": "/boundaries",
+          "target_field": "parameters_digest",
+          "transform": "sha256-jcs"
+        }
+      ]
+    },
+    "nelson-agent-delegation-receipts-10:carry": {
+      "@version": "CAID-MAPPING-PROFILE-v1",
+      "profile_id": "urn:caid:interop:nelson-agent-delegation-receipts-10:carry:1",
+      "source_format": {
+        "media_type": "application/json",
+        "schema": "urn:caid:interop:draft-nelson-agent-delegation-receipts:10:carry",
+        "version": "10"
+      },
+      "target_action_type": "consequence.invoke.1",
+      "loss_policy": "no-material-field-loss",
+      "material_source_paths": [
+        "/caid_action/operation",
+        "/caid_action/target",
+        "/caid_action/parameters"
+      ],
+      "rules": [
+        {
+          "source_path": "/caid_action/operation",
+          "target_field": "operation",
+          "transform": "copy"
+        },
+        {
+          "source_path": "/caid_action/target",
+          "target_field": "target_ref",
+          "transform": "sha256-utf8"
+        },
+        {
+          "source_path": "/caid_action/parameters",
+          "target_field": "parameters_digest",
+          "transform": "sha256-jcs"
+        }
+      ]
+    },
+    "jiang-oauth-intent-admission-00:native": {
+      "@version": "CAID-MAPPING-PROFILE-v1",
+      "profile_id": "urn:caid:interop:jiang-oauth-intent-admission-00:native:1",
+      "source_format": {
+        "media_type": "application/json",
+        "schema": "urn:caid:interop:draft-jiang-oauth-intent-admission:00:native",
+        "version": "00"
+      },
+      "target_action_type": "consequence.invoke.1",
+      "loss_policy": "no-material-field-loss",
+      "material_source_paths": [
+        "/authorization_details/0/actions/0",
+        "/authorization_details/0/locations/0",
+        "/authorization_details/0/constraints"
+      ],
+      "rules": [
+        {
+          "source_path": "/authorization_details/0/actions/0",
+          "target_field": "operation",
+          "transform": "copy"
+        },
+        {
+          "source_path": "/authorization_details/0/locations/0",
+          "target_field": "target_ref",
+          "transform": "sha256-utf8"
+        },
+        {
+          "source_path": "/authorization_details/0/constraints",
+          "target_field": "parameters_digest",
+          "transform": "sha256-jcs"
+        }
+      ]
+    },
+    "jiang-oauth-intent-admission-00:carry": {
+      "@version": "CAID-MAPPING-PROFILE-v1",
+      "profile_id": "urn:caid:interop:jiang-oauth-intent-admission-00:carry:1",
+      "source_format": {
+        "media_type": "application/json",
+        "schema": "urn:caid:interop:draft-jiang-oauth-intent-admission:00:carry",
+        "version": "00"
+      },
+      "target_action_type": "consequence.invoke.1",
+      "loss_policy": "no-material-field-loss",
+      "material_source_paths": [
+        "/caid_action/operation",
+        "/caid_action/target",
+        "/caid_action/parameters"
+      ],
+      "rules": [
+        {
+          "source_path": "/caid_action/operation",
+          "target_field": "operation",
+          "transform": "copy"
+        },
+        {
+          "source_path": "/caid_action/target",
+          "target_field": "target_ref",
+          "transform": "sha256-utf8"
+        },
+        {
+          "source_path": "/caid_action/parameters",
+          "target_field": "parameters_digest",
+          "transform": "sha256-jcs"
+        }
+      ]
+    },
+    "araut-oauth-transaction-tokens-for-agents-02:native": {
+      "@version": "CAID-MAPPING-PROFILE-v1",
+      "profile_id": "urn:caid:interop:araut-oauth-transaction-tokens-for-agents-02:native:1",
+      "source_format": {
+        "media_type": "application/json",
+        "schema": "urn:caid:interop:draft-araut-oauth-transaction-tokens-for-agents:02:native",
+        "version": "02"
+      },
+      "target_action_type": "consequence.invoke.1",
+      "loss_policy": "no-material-field-loss",
+      "material_source_paths": [
+        "/transaction/operation",
+        "/transaction/resource",
+        "/transaction/parameters"
+      ],
+      "rules": [
+        {
+          "source_path": "/transaction/operation",
+          "target_field": "operation",
+          "transform": "copy"
+        },
+        {
+          "source_path": "/transaction/resource",
+          "target_field": "target_ref",
+          "transform": "sha256-utf8"
+        },
+        {
+          "source_path": "/transaction/parameters",
+          "target_field": "parameters_digest",
+          "transform": "sha256-jcs"
+        }
+      ]
+    },
+    "araut-oauth-transaction-tokens-for-agents-02:carry": {
+      "@version": "CAID-MAPPING-PROFILE-v1",
+      "profile_id": "urn:caid:interop:araut-oauth-transaction-tokens-for-agents-02:carry:1",
+      "source_format": {
+        "media_type": "application/json",
+        "schema": "urn:caid:interop:draft-araut-oauth-transaction-tokens-for-agents:02:carry",
+        "version": "02"
+      },
+      "target_action_type": "consequence.invoke.1",
+      "loss_policy": "no-material-field-loss",
+      "material_source_paths": [
+        "/caid_action/operation",
+        "/caid_action/target",
+        "/caid_action/parameters"
+      ],
+      "rules": [
+        {
+          "source_path": "/caid_action/operation",
+          "target_field": "operation",
+          "transform": "copy"
+        },
+        {
+          "source_path": "/caid_action/target",
+          "target_field": "target_ref",
+          "transform": "sha256-utf8"
+        },
+        {
+          "source_path": "/caid_action/parameters",
+          "target_field": "parameters_digest",
+          "transform": "sha256-jcs"
+        }
+      ]
+    },
+    "coetzee-oauth-spt-txn-tokens-03:native": {
+      "@version": "CAID-MAPPING-PROFILE-v1",
+      "profile_id": "urn:caid:interop:coetzee-oauth-spt-txn-tokens-03:native:1",
+      "source_format": {
+        "media_type": "application/json",
+        "schema": "urn:caid:interop:draft-coetzee-oauth-spt-txn-tokens:03:native",
+        "version": "03"
+      },
+      "target_action_type": "consequence.invoke.1",
+      "loss_policy": "no-material-field-loss",
+      "material_source_paths": [
+        "/intent/tool",
+        "/intent/target",
+        "/intent/params"
+      ],
+      "rules": [
+        {
+          "source_path": "/intent/tool",
+          "target_field": "operation",
+          "transform": "copy"
+        },
+        {
+          "source_path": "/intent/target",
+          "target_field": "target_ref",
+          "transform": "sha256-utf8"
+        },
+        {
+          "source_path": "/intent/params",
+          "target_field": "parameters_digest",
+          "transform": "sha256-jcs"
+        }
+      ]
+    },
+    "coetzee-oauth-spt-txn-tokens-03:carry": {
+      "@version": "CAID-MAPPING-PROFILE-v1",
+      "profile_id": "urn:caid:interop:coetzee-oauth-spt-txn-tokens-03:carry:1",
+      "source_format": {
+        "media_type": "application/json",
+        "schema": "urn:caid:interop:draft-coetzee-oauth-spt-txn-tokens:03:carry",
+        "version": "03"
+      },
+      "target_action_type": "consequence.invoke.1",
+      "loss_policy": "no-material-field-loss",
+      "material_source_paths": [
+        "/caid_action/operation",
+        "/caid_action/target",
+        "/caid_action/parameters"
+      ],
+      "rules": [
+        {
+          "source_path": "/caid_action/operation",
+          "target_field": "operation",
+          "transform": "copy"
+        },
+        {
+          "source_path": "/caid_action/target",
+          "target_field": "target_ref",
+          "transform": "sha256-utf8"
+        },
+        {
+          "source_path": "/caid_action/parameters",
+          "target_field": "parameters_digest",
+          "transform": "sha256-jcs"
+        }
+      ]
+    },
+    "mcguinness-oauth-actor-profile-00:native": {
+      "@version": "CAID-MAPPING-PROFILE-v1",
+      "profile_id": "urn:caid:interop:mcguinness-oauth-actor-profile-00:native:1",
+      "source_format": {
+        "media_type": "application/json",
+        "schema": "urn:caid:interop:draft-mcguinness-oauth-actor-profile:00:native",
+        "version": "00"
+      },
+      "target_action_type": "consequence.invoke.1",
+      "loss_policy": "no-material-field-loss",
+      "material_source_paths": [
+        "/authorization/operation",
+        "/authorization/target",
+        "/authorization/parameters"
+      ],
+      "rules": [
+        {
+          "source_path": "/authorization/operation",
+          "target_field": "operation",
+          "transform": "copy"
+        },
+        {
+          "source_path": "/authorization/target",
+          "target_field": "target_ref",
+          "transform": "sha256-utf8"
+        },
+        {
+          "source_path": "/authorization/parameters",
+          "target_field": "parameters_digest",
+          "transform": "sha256-jcs"
+        }
+      ]
+    },
+    "mcguinness-oauth-actor-profile-00:carry": {
+      "@version": "CAID-MAPPING-PROFILE-v1",
+      "profile_id": "urn:caid:interop:mcguinness-oauth-actor-profile-00:carry:1",
+      "source_format": {
+        "media_type": "application/json",
+        "schema": "urn:caid:interop:draft-mcguinness-oauth-actor-profile:00:carry",
+        "version": "00"
+      },
+      "target_action_type": "consequence.invoke.1",
+      "loss_policy": "no-material-field-loss",
+      "material_source_paths": [
+        "/caid_action/operation",
+        "/caid_action/target",
+        "/caid_action/parameters"
+      ],
+      "rules": [
+        {
+          "source_path": "/caid_action/operation",
+          "target_field": "operation",
+          "transform": "copy"
+        },
+        {
+          "source_path": "/caid_action/target",
+          "target_field": "target_ref",
+          "transform": "sha256-utf8"
+        },
+        {
+          "source_path": "/caid_action/parameters",
+          "target_field": "parameters_digest",
+          "transform": "sha256-jcs"
+        }
+      ]
+    },
+    "rampalli-cross-org-delegation-mapping-05:native": {
+      "@version": "CAID-MAPPING-PROFILE-v1",
+      "profile_id": "urn:caid:interop:rampalli-cross-org-delegation-mapping-05:native:1",
+      "source_format": {
+        "media_type": "application/json",
+        "schema": "urn:caid:interop:draft-rampalli-cross-org-delegation-mapping:05:native",
+        "version": "05"
+      },
+      "target_action_type": "consequence.invoke.1",
+      "loss_policy": "no-material-field-loss",
+      "material_source_paths": [
+        "/action/operation",
+        "/action/target",
+        "/action/parameters"
+      ],
+      "rules": [
+        {
+          "source_path": "/action/operation",
+          "target_field": "operation",
+          "transform": "copy"
+        },
+        {
+          "source_path": "/action/target",
+          "target_field": "target_ref",
+          "transform": "sha256-utf8"
+        },
+        {
+          "source_path": "/action/parameters",
+          "target_field": "parameters_digest",
+          "transform": "sha256-jcs"
+        }
+      ]
+    },
+    "rampalli-cross-org-delegation-mapping-05:carry": {
+      "@version": "CAID-MAPPING-PROFILE-v1",
+      "profile_id": "urn:caid:interop:rampalli-cross-org-delegation-mapping-05:carry:1",
+      "source_format": {
+        "media_type": "application/json",
+        "schema": "urn:caid:interop:draft-rampalli-cross-org-delegation-mapping:05:carry",
+        "version": "05"
+      },
+      "target_action_type": "consequence.invoke.1",
+      "loss_policy": "no-material-field-loss",
+      "material_source_paths": [
+        "/caid_action/operation",
+        "/caid_action/target",
+        "/caid_action/parameters"
+      ],
+      "rules": [
+        {
+          "source_path": "/caid_action/operation",
+          "target_field": "operation",
+          "transform": "copy"
+        },
+        {
+          "source_path": "/caid_action/target",
+          "target_field": "target_ref",
+          "transform": "sha256-utf8"
+        },
+        {
+          "source_path": "/caid_action/parameters",
+          "target_field": "parameters_digest",
+          "transform": "sha256-jcs"
+        }
+      ]
+    },
+    "mih-scitt-agent-action-capsule-sel-disc-00:native": {
+      "@version": "CAID-MAPPING-PROFILE-v1",
+      "profile_id": "urn:caid:interop:mih-scitt-agent-action-capsule-sel-disc-00:native:1",
+      "source_format": {
+        "media_type": "application/json",
+        "schema": "urn:caid:interop:draft-mih-scitt-agent-action-capsule-sel-disc:00:native",
+        "version": "00"
+      },
+      "target_action_type": "consequence.invoke.1",
+      "loss_policy": "no-material-field-loss",
+      "material_source_paths": [
+        "/disclosed/action/type",
+        "/disclosed/action/target",
+        "/disclosed/action/parameters"
+      ],
+      "rules": [
+        {
+          "source_path": "/disclosed/action/type",
+          "target_field": "operation",
+          "transform": "copy"
+        },
+        {
+          "source_path": "/disclosed/action/target",
+          "target_field": "target_ref",
+          "transform": "sha256-utf8"
+        },
+        {
+          "source_path": "/disclosed/action/parameters",
+          "target_field": "parameters_digest",
+          "transform": "sha256-jcs"
+        }
+      ]
+    },
+    "mih-scitt-agent-action-capsule-sel-disc-00:carry": {
+      "@version": "CAID-MAPPING-PROFILE-v1",
+      "profile_id": "urn:caid:interop:mih-scitt-agent-action-capsule-sel-disc-00:carry:1",
+      "source_format": {
+        "media_type": "application/json",
+        "schema": "urn:caid:interop:draft-mih-scitt-agent-action-capsule-sel-disc:00:carry",
+        "version": "00"
+      },
+      "target_action_type": "consequence.invoke.1",
+      "loss_policy": "no-material-field-loss",
+      "material_source_paths": [
+        "/caid_action/operation",
+        "/caid_action/target",
+        "/caid_action/parameters"
+      ],
+      "rules": [
+        {
+          "source_path": "/caid_action/operation",
+          "target_field": "operation",
+          "transform": "copy"
+        },
+        {
+          "source_path": "/caid_action/target",
+          "target_field": "target_ref",
+          "transform": "sha256-utf8"
+        },
+        {
+          "source_path": "/caid_action/parameters",
+          "target_field": "parameters_digest",
+          "transform": "sha256-jcs"
+        }
+      ]
+    },
+    "emirdag-scitt-ai-agent-execution-00:native": {
+      "@version": "CAID-MAPPING-PROFILE-v1",
+      "profile_id": "urn:caid:interop:emirdag-scitt-ai-agent-execution-00:native:1",
+      "source_format": {
+        "media_type": "application/json",
+        "schema": "urn:caid:interop:draft-emirdag-scitt-ai-agent-execution:00:native",
+        "version": "00"
+      },
+      "target_action_type": "consequence.invoke.1",
+      "loss_policy": "no-material-field-loss",
+      "material_source_paths": [
+        "/air/action_category",
+        "/air/target",
+        "/air/parameters"
+      ],
+      "rules": [
+        {
+          "source_path": "/air/action_category",
+          "target_field": "operation",
+          "transform": "copy"
+        },
+        {
+          "source_path": "/air/target",
+          "target_field": "target_ref",
+          "transform": "sha256-utf8"
+        },
+        {
+          "source_path": "/air/parameters",
+          "target_field": "parameters_digest",
+          "transform": "sha256-jcs"
+        }
+      ]
+    },
+    "emirdag-scitt-ai-agent-execution-00:carry": {
+      "@version": "CAID-MAPPING-PROFILE-v1",
+      "profile_id": "urn:caid:interop:emirdag-scitt-ai-agent-execution-00:carry:1",
+      "source_format": {
+        "media_type": "application/json",
+        "schema": "urn:caid:interop:draft-emirdag-scitt-ai-agent-execution:00:carry",
+        "version": "00"
+      },
+      "target_action_type": "consequence.invoke.1",
+      "loss_policy": "no-material-field-loss",
+      "material_source_paths": [
+        "/caid_action/operation",
+        "/caid_action/target",
+        "/caid_action/parameters"
+      ],
+      "rules": [
+        {
+          "source_path": "/caid_action/operation",
+          "target_field": "operation",
+          "transform": "copy"
+        },
+        {
+          "source_path": "/caid_action/target",
+          "target_field": "target_ref",
+          "transform": "sha256-utf8"
+        },
+        {
+          "source_path": "/caid_action/parameters",
+          "target_field": "parameters_digest",
+          "transform": "sha256-jcs"
+        }
+      ]
+    },
+    "lee-orprg-permit-receipts-00:native": {
+      "@version": "CAID-MAPPING-PROFILE-v1",
+      "profile_id": "urn:caid:interop:lee-orprg-permit-receipts-00:native:1",
+      "source_format": {
+        "media_type": "application/json",
+        "schema": "urn:caid:interop:draft-lee-orprg-permit-receipts:00:native",
+        "version": "00"
+      },
+      "target_action_type": "consequence.invoke.1",
+      "loss_policy": "no-material-field-loss",
+      "material_source_paths": [
+        "/effect_request/operation",
+        "/effect_request/target",
+        "/effect_request/parameters"
+      ],
+      "rules": [
+        {
+          "source_path": "/effect_request/operation",
+          "target_field": "operation",
+          "transform": "copy"
+        },
+        {
+          "source_path": "/effect_request/target",
+          "target_field": "target_ref",
+          "transform": "sha256-utf8"
+        },
+        {
+          "source_path": "/effect_request/parameters",
+          "target_field": "parameters_digest",
+          "transform": "sha256-jcs"
+        }
+      ]
+    },
+    "lee-orprg-permit-receipts-00:carry": {
+      "@version": "CAID-MAPPING-PROFILE-v1",
+      "profile_id": "urn:caid:interop:lee-orprg-permit-receipts-00:carry:1",
+      "source_format": {
+        "media_type": "application/json",
+        "schema": "urn:caid:interop:draft-lee-orprg-permit-receipts:00:carry",
+        "version": "00"
+      },
+      "target_action_type": "consequence.invoke.1",
+      "loss_policy": "no-material-field-loss",
+      "material_source_paths": [
+        "/caid_action/operation",
+        "/caid_action/target",
+        "/caid_action/parameters"
+      ],
+      "rules": [
+        {
+          "source_path": "/caid_action/operation",
+          "target_field": "operation",
+          "transform": "copy"
+        },
+        {
+          "source_path": "/caid_action/target",
+          "target_field": "target_ref",
+          "transform": "sha256-utf8"
+        },
+        {
+          "source_path": "/caid_action/parameters",
+          "target_field": "parameters_digest",
+          "transform": "sha256-jcs"
+        }
+      ]
+    },
+    "baur-pap-02:native": {
+      "@version": "CAID-MAPPING-PROFILE-v1",
+      "profile_id": "urn:caid:interop:baur-pap-02:native:1",
+      "source_format": {
+        "media_type": "application/json",
+        "schema": "urn:caid:interop:draft-baur-pap:02:native",
+        "version": "02"
+      },
+      "target_action_type": "consequence.invoke.1",
+      "loss_policy": "no-material-field-loss",
+      "material_source_paths": [
+        "/scope/actions/0/action",
+        "/scope/actions/0/object",
+        "/scope/actions/0/conditions"
+      ],
+      "rules": [
+        {
+          "source_path": "/scope/actions/0/action",
+          "target_field": "operation",
+          "transform": "copy"
+        },
+        {
+          "source_path": "/scope/actions/0/object",
+          "target_field": "target_ref",
+          "transform": "sha256-utf8"
+        },
+        {
+          "source_path": "/scope/actions/0/conditions",
+          "target_field": "parameters_digest",
+          "transform": "sha256-jcs"
+        }
+      ]
+    },
+    "baur-pap-02:carry": {
+      "@version": "CAID-MAPPING-PROFILE-v1",
+      "profile_id": "urn:caid:interop:baur-pap-02:carry:1",
+      "source_format": {
+        "media_type": "application/json",
+        "schema": "urn:caid:interop:draft-baur-pap:02:carry",
+        "version": "02"
+      },
+      "target_action_type": "consequence.invoke.1",
+      "loss_policy": "no-material-field-loss",
+      "material_source_paths": [
+        "/caid_action/operation",
+        "/caid_action/target",
+        "/caid_action/parameters"
+      ],
+      "rules": [
+        {
+          "source_path": "/caid_action/operation",
+          "target_field": "operation",
+          "transform": "copy"
+        },
+        {
+          "source_path": "/caid_action/target",
+          "target_field": "target_ref",
+          "transform": "sha256-utf8"
+        },
+        {
+          "source_path": "/caid_action/parameters",
+          "target_field": "parameters_digest",
+          "transform": "sha256-jcs"
+        }
+      ]
+    },
+    "pidlisnyi-aps-03:native": {
+      "@version": "CAID-MAPPING-PROFILE-v1",
+      "profile_id": "urn:caid:interop:pidlisnyi-aps-03:native:1",
+      "source_format": {
+        "media_type": "application/json",
+        "schema": "urn:caid:interop:draft-pidlisnyi-aps:03:native",
+        "version": "03"
+      },
+      "target_action_type": "consequence.invoke.1",
+      "loss_policy": "no-material-field-loss",
+      "material_source_paths": [
+        "/action_ref/action_type",
+        "/action_ref/target",
+        "/action_ref/payload"
+      ],
+      "rules": [
+        {
+          "source_path": "/action_ref/action_type",
+          "target_field": "operation",
+          "transform": "copy"
+        },
+        {
+          "source_path": "/action_ref/target",
+          "target_field": "target_ref",
+          "transform": "sha256-utf8"
+        },
+        {
+          "source_path": "/action_ref/payload",
+          "target_field": "parameters_digest",
+          "transform": "sha256-jcs"
+        }
+      ]
+    },
+    "pidlisnyi-aps-03:carry": {
+      "@version": "CAID-MAPPING-PROFILE-v1",
+      "profile_id": "urn:caid:interop:pidlisnyi-aps-03:carry:1",
+      "source_format": {
+        "media_type": "application/json",
+        "schema": "urn:caid:interop:draft-pidlisnyi-aps:03:carry",
+        "version": "03"
+      },
+      "target_action_type": "consequence.invoke.1",
+      "loss_policy": "no-material-field-loss",
+      "material_source_paths": [
+        "/caid_action/operation",
+        "/caid_action/target",
+        "/caid_action/parameters"
+      ],
+      "rules": [
+        {
+          "source_path": "/caid_action/operation",
+          "target_field": "operation",
+          "transform": "copy"
+        },
+        {
+          "source_path": "/caid_action/target",
+          "target_field": "target_ref",
+          "transform": "sha256-utf8"
+        },
+        {
+          "source_path": "/caid_action/parameters",
+          "target_field": "parameters_digest",
+          "transform": "sha256-jcs"
+        }
+      ]
+    },
+    "howe-vcon-agent-session-00:native": {
+      "@version": "CAID-MAPPING-PROFILE-v1",
+      "profile_id": "urn:caid:interop:howe-vcon-agent-session-00:native:1",
+      "source_format": {
+        "media_type": "application/json",
+        "schema": "urn:caid:interop:draft-howe-vcon-agent-session:00:native",
+        "version": "00"
+      },
+      "target_action_type": "consequence.invoke.1",
+      "loss_policy": "no-material-field-loss",
+      "material_source_paths": [
+        "/tool_call/name",
+        "/tool_call/target",
+        "/tool_call/arguments"
+      ],
+      "rules": [
+        {
+          "source_path": "/tool_call/name",
+          "target_field": "operation",
+          "transform": "copy"
+        },
+        {
+          "source_path": "/tool_call/target",
+          "target_field": "target_ref",
+          "transform": "sha256-utf8"
+        },
+        {
+          "source_path": "/tool_call/arguments",
+          "target_field": "parameters_digest",
+          "transform": "sha256-jcs"
+        }
+      ]
+    },
+    "howe-vcon-agent-session-00:carry": {
+      "@version": "CAID-MAPPING-PROFILE-v1",
+      "profile_id": "urn:caid:interop:howe-vcon-agent-session-00:carry:1",
+      "source_format": {
+        "media_type": "application/json",
+        "schema": "urn:caid:interop:draft-howe-vcon-agent-session:00:carry",
+        "version": "00"
+      },
+      "target_action_type": "consequence.invoke.1",
+      "loss_policy": "no-material-field-loss",
+      "material_source_paths": [
+        "/caid_action/operation",
+        "/caid_action/target",
+        "/caid_action/parameters"
+      ],
+      "rules": [
+        {
+          "source_path": "/caid_action/operation",
+          "target_field": "operation",
+          "transform": "copy"
+        },
+        {
+          "source_path": "/caid_action/target",
+          "target_field": "target_ref",
+          "transform": "sha256-utf8"
+        },
+        {
+          "source_path": "/caid_action/parameters",
+          "target_field": "parameters_digest",
+          "transform": "sha256-jcs"
+        }
+      ]
+    },
+    "pei-opsawg-agentops-observability-00:native": {
+      "@version": "CAID-MAPPING-PROFILE-v1",
+      "profile_id": "urn:caid:interop:pei-opsawg-agentops-observability-00:native:1",
+      "source_format": {
+        "media_type": "application/json",
+        "schema": "urn:caid:interop:draft-pei-opsawg-agentops-observability:00:native",
+        "version": "00"
+      },
+      "target_action_type": "consequence.invoke.1",
+      "loss_policy": "no-material-field-loss",
+      "material_source_paths": [
+        "/event/action",
+        "/event/resource",
+        "/event/parameters"
+      ],
+      "rules": [
+        {
+          "source_path": "/event/action",
+          "target_field": "operation",
+          "transform": "copy"
+        },
+        {
+          "source_path": "/event/resource",
+          "target_field": "target_ref",
+          "transform": "sha256-utf8"
+        },
+        {
+          "source_path": "/event/parameters",
+          "target_field": "parameters_digest",
+          "transform": "sha256-jcs"
+        }
+      ]
+    },
+    "pei-opsawg-agentops-observability-00:carry": {
+      "@version": "CAID-MAPPING-PROFILE-v1",
+      "profile_id": "urn:caid:interop:pei-opsawg-agentops-observability-00:carry:1",
+      "source_format": {
+        "media_type": "application/json",
+        "schema": "urn:caid:interop:draft-pei-opsawg-agentops-observability:00:carry",
+        "version": "00"
+      },
+      "target_action_type": "consequence.invoke.1",
+      "loss_policy": "no-material-field-loss",
+      "material_source_paths": [
+        "/caid_action/operation",
+        "/caid_action/target",
+        "/caid_action/parameters"
+      ],
+      "rules": [
+        {
+          "source_path": "/caid_action/operation",
+          "target_field": "operation",
+          "transform": "copy"
+        },
+        {
+          "source_path": "/caid_action/target",
+          "target_field": "target_ref",
+          "transform": "sha256-utf8"
+        },
+        {
+          "source_path": "/caid_action/parameters",
+          "target_field": "parameters_digest",
+          "transform": "sha256-jcs"
+        }
+      ]
+    },
+    "dunbar-dmsc-gw-scenarios-gap-analysis-02:native": {
+      "@version": "CAID-MAPPING-PROFILE-v1",
+      "profile_id": "urn:caid:interop:dunbar-dmsc-gw-scenarios-gap-analysis-02:native:1",
+      "source_format": {
+        "media_type": "application/json",
+        "schema": "urn:caid:interop:draft-dunbar-dmsc-gw-scenarios-gap-analysis:02:native",
+        "version": "02"
+      },
+      "target_action_type": "consequence.invoke.1",
+      "loss_policy": "no-material-field-loss",
+      "material_source_paths": [
+        "/authorization/operation",
+        "/authorization/target",
+        "/authorization/parameters"
+      ],
+      "rules": [
+        {
+          "source_path": "/authorization/operation",
+          "target_field": "operation",
+          "transform": "copy"
+        },
+        {
+          "source_path": "/authorization/target",
+          "target_field": "target_ref",
+          "transform": "sha256-utf8"
+        },
+        {
+          "source_path": "/authorization/parameters",
+          "target_field": "parameters_digest",
+          "transform": "sha256-jcs"
+        }
+      ]
+    },
+    "dunbar-dmsc-gw-scenarios-gap-analysis-02:carry": {
+      "@version": "CAID-MAPPING-PROFILE-v1",
+      "profile_id": "urn:caid:interop:dunbar-dmsc-gw-scenarios-gap-analysis-02:carry:1",
+      "source_format": {
+        "media_type": "application/json",
+        "schema": "urn:caid:interop:draft-dunbar-dmsc-gw-scenarios-gap-analysis:02:carry",
+        "version": "02"
+      },
+      "target_action_type": "consequence.invoke.1",
+      "loss_policy": "no-material-field-loss",
+      "material_source_paths": [
+        "/caid_action/operation",
+        "/caid_action/target",
+        "/caid_action/parameters"
+      ],
+      "rules": [
+        {
+          "source_path": "/caid_action/operation",
+          "target_field": "operation",
+          "transform": "copy"
+        },
+        {
+          "source_path": "/caid_action/target",
+          "target_field": "target_ref",
+          "transform": "sha256-utf8"
+        },
+        {
+          "source_path": "/caid_action/parameters",
+          "target_field": "parameters_digest",
+          "transform": "sha256-jcs"
+        }
+      ]
+    },
+    "soden-wellknown-mcp-commerce-00:native": {
+      "@version": "CAID-MAPPING-PROFILE-v1",
+      "profile_id": "urn:caid:interop:soden-wellknown-mcp-commerce-00:native:1",
+      "source_format": {
+        "media_type": "application/json",
+        "schema": "urn:caid:interop:draft-soden-wellknown-mcp-commerce:00:native",
+        "version": "00"
+      },
+      "target_action_type": "consequence.invoke.1",
+      "loss_policy": "no-material-field-loss",
+      "material_source_paths": [
+        "/commerce/tool",
+        "/commerce/endpoint",
+        "/commerce/parameters"
+      ],
+      "rules": [
+        {
+          "source_path": "/commerce/tool",
+          "target_field": "operation",
+          "transform": "copy"
+        },
+        {
+          "source_path": "/commerce/endpoint",
+          "target_field": "target_ref",
+          "transform": "sha256-utf8"
+        },
+        {
+          "source_path": "/commerce/parameters",
+          "target_field": "parameters_digest",
+          "transform": "sha256-jcs"
+        }
+      ]
+    },
+    "soden-wellknown-mcp-commerce-00:carry": {
+      "@version": "CAID-MAPPING-PROFILE-v1",
+      "profile_id": "urn:caid:interop:soden-wellknown-mcp-commerce-00:carry:1",
+      "source_format": {
+        "media_type": "application/json",
+        "schema": "urn:caid:interop:draft-soden-wellknown-mcp-commerce:00:carry",
+        "version": "00"
+      },
+      "target_action_type": "consequence.invoke.1",
+      "loss_policy": "no-material-field-loss",
+      "material_source_paths": [
+        "/caid_action/operation",
+        "/caid_action/target",
+        "/caid_action/parameters"
+      ],
+      "rules": [
+        {
+          "source_path": "/caid_action/operation",
+          "target_field": "operation",
+          "transform": "copy"
+        },
+        {
+          "source_path": "/caid_action/target",
+          "target_field": "target_ref",
+          "transform": "sha256-utf8"
+        },
+        {
+          "source_path": "/caid_action/parameters",
+          "target_field": "parameters_digest",
+          "transform": "sha256-jcs"
+        }
+      ]
+    },
+    "hopley-x402-compliance-receipt-02:native": {
+      "@version": "CAID-MAPPING-PROFILE-v1",
+      "profile_id": "urn:caid:interop:hopley-x402-compliance-receipt-02:native:1",
+      "source_format": {
+        "media_type": "application/json",
+        "schema": "urn:caid:interop:draft-hopley-x402-compliance-receipt:02:native",
+        "version": "02"
+      },
+      "target_action_type": "consequence.invoke.1",
+      "loss_policy": "no-material-field-loss",
+      "material_source_paths": [
+        "/payment/action",
+        "/payment/target",
+        "/payment/parameters"
+      ],
+      "rules": [
+        {
+          "source_path": "/payment/action",
+          "target_field": "operation",
+          "transform": "copy"
+        },
+        {
+          "source_path": "/payment/target",
+          "target_field": "target_ref",
+          "transform": "sha256-utf8"
+        },
+        {
+          "source_path": "/payment/parameters",
+          "target_field": "parameters_digest",
+          "transform": "sha256-jcs"
+        }
+      ]
+    },
+    "hopley-x402-compliance-receipt-02:carry": {
+      "@version": "CAID-MAPPING-PROFILE-v1",
+      "profile_id": "urn:caid:interop:hopley-x402-compliance-receipt-02:carry:1",
+      "source_format": {
+        "media_type": "application/json",
+        "schema": "urn:caid:interop:draft-hopley-x402-compliance-receipt:02:carry",
+        "version": "02"
+      },
+      "target_action_type": "consequence.invoke.1",
+      "loss_policy": "no-material-field-loss",
+      "material_source_paths": [
+        "/caid_action/operation",
+        "/caid_action/target",
+        "/caid_action/parameters"
+      ],
+      "rules": [
+        {
+          "source_path": "/caid_action/operation",
+          "target_field": "operation",
+          "transform": "copy"
+        },
+        {
+          "source_path": "/caid_action/target",
+          "target_field": "target_ref",
+          "transform": "sha256-utf8"
+        },
+        {
+          "source_path": "/caid_action/parameters",
+          "target_field": "parameters_digest",
+          "transform": "sha256-jcs"
+        }
+      ]
+    }
+  },
+  "sources": {
+    "reference": {
+      "operation": "medical.coverage.determine",
+      "target": "urn:claim:example:2026:00042",
+      "parameters": {
+        "requested_service": "J3490",
+        "amount": "1280.00",
+        "currency": "USD"
+      }
+    },
+    "klrc-aiagent-auth-03:native": {
+      "draft": "draft-klrc-aiagent-auth",
+      "revision": "03",
+      "audit": {
+        "action": "medical.coverage.determine",
+        "resource": "urn:claim:example:2026:00042"
+      }
+    },
+    "klrc-aiagent-auth-03:carry": {
+      "draft": "draft-klrc-aiagent-auth",
+      "revision": "03",
+      "caid_action": {
+        "operation": "medical.coverage.determine",
+        "target": "urn:claim:example:2026:00042",
+        "parameters": {
+          "requested_service": "J3490",
+          "amount": "1280.00",
+          "currency": "USD"
+        }
+      }
+    },
+    "mcguinness-oauth-ai-agent-instance-00:native": {
+      "draft": "draft-mcguinness-oauth-ai-agent-instance",
+      "revision": "00"
+    },
+    "mcguinness-oauth-ai-agent-instance-00:carry": {
+      "draft": "draft-mcguinness-oauth-ai-agent-instance",
+      "revision": "00",
+      "caid_action": {
+        "operation": "medical.coverage.determine",
+        "target": "urn:claim:example:2026:00042",
+        "parameters": {
+          "requested_service": "J3490",
+          "amount": "1280.00",
+          "currency": "USD"
+        }
+      }
+    },
+    "noa-scitt-ai-agent-receipt-00:native": {
+      "draft": "draft-noa-scitt-ai-agent-receipt",
+      "revision": "00",
+      "action": {
+        "canonical": "medical.coverage.determine"
+      }
+    },
+    "noa-scitt-ai-agent-receipt-00:carry": {
+      "draft": "draft-noa-scitt-ai-agent-receipt",
+      "revision": "00",
+      "caid_action": {
+        "operation": "medical.coverage.determine",
+        "target": "urn:claim:example:2026:00042",
+        "parameters": {
+          "requested_service": "J3490",
+          "amount": "1280.00",
+          "currency": "USD"
+        }
+      }
+    },
+    "ietf-wimse-arch-08:native": {
+      "draft": "draft-ietf-wimse-arch",
+      "revision": "08"
+    },
+    "ietf-wimse-arch-08:carry": {
+      "draft": "draft-ietf-wimse-arch",
+      "revision": "08",
+      "caid_action": {
+        "operation": "medical.coverage.determine",
+        "target": "urn:claim:example:2026:00042",
+        "parameters": {
+          "requested_service": "J3490",
+          "amount": "1280.00",
+          "currency": "USD"
+        }
+      }
+    },
+    "ietf-wimse-http-signature-05:native": {
+      "draft": "draft-ietf-wimse-http-signature",
+      "revision": "05",
+      "signed_components": {
+        "@method": "medical.coverage.determine",
+        "@request-target": "urn:claim:example:2026:00042",
+        "body": {
+          "requested_service": "J3490",
+          "amount": "1280.00",
+          "currency": "USD"
+        }
+      }
+    },
+    "ietf-wimse-http-signature-05:carry": {
+      "draft": "draft-ietf-wimse-http-signature",
+      "revision": "05",
+      "caid_action": {
+        "operation": "medical.coverage.determine",
+        "target": "urn:claim:example:2026:00042",
+        "parameters": {
+          "requested_service": "J3490",
+          "amount": "1280.00",
+          "currency": "USD"
+        }
+      }
+    },
+    "ietf-wimse-workload-creds-02:native": {
+      "draft": "draft-ietf-wimse-workload-creds",
+      "revision": "02"
+    },
+    "ietf-wimse-workload-creds-02:carry": {
+      "draft": "draft-ietf-wimse-workload-creds",
+      "revision": "02",
+      "caid_action": {
+        "operation": "medical.coverage.determine",
+        "target": "urn:claim:example:2026:00042",
+        "parameters": {
+          "requested_service": "J3490",
+          "amount": "1280.00",
+          "currency": "USD"
+        }
+      }
+    },
+    "ietf-wimse-wpt-01:native": {
+      "draft": "draft-ietf-wimse-wpt",
+      "revision": "01",
+      "request": {
+        "method": "medical.coverage.determine",
+        "target": "urn:claim:example:2026:00042"
+      }
+    },
+    "ietf-wimse-wpt-01:carry": {
+      "draft": "draft-ietf-wimse-wpt",
+      "revision": "01",
+      "caid_action": {
+        "operation": "medical.coverage.determine",
+        "target": "urn:claim:example:2026:00042",
+        "parameters": {
+          "requested_service": "J3490",
+          "amount": "1280.00",
+          "currency": "USD"
+        }
+      }
+    },
+    "bu-agentproto-security-principal-binding-03:native": {
+      "draft": "draft-bu-agentproto-security-principal-binding",
+      "revision": "03"
+    },
+    "bu-agentproto-security-principal-binding-03:carry": {
+      "draft": "draft-bu-agentproto-security-principal-binding",
+      "revision": "03",
+      "caid_action": {
+        "operation": "medical.coverage.determine",
+        "target": "urn:claim:example:2026:00042",
+        "parameters": {
+          "requested_service": "J3490",
+          "amount": "1280.00",
+          "currency": "USD"
+        }
+      }
+    },
+    "rosomakho-oauth-txn-challenge-00:native": {
+      "draft": "draft-rosomakho-oauth-txn-challenge",
+      "revision": "00",
+      "authorization_details": {
+        "0": {
+          "type": "medical.coverage.determine"
+        }
+      },
+      "iss": "urn:claim:example:2026:00042",
+      "caid_extraction": {
+        "parameters": {
+          "requested_service": "J3490",
+          "amount": "1280.00",
+          "currency": "USD"
+        }
+      }
+    },
+    "rosomakho-oauth-txn-challenge-00:carry": {
+      "draft": "draft-rosomakho-oauth-txn-challenge",
+      "revision": "00",
+      "caid_action": {
+        "operation": "medical.coverage.determine",
+        "target": "urn:claim:example:2026:00042",
+        "parameters": {
+          "requested_service": "J3490",
+          "amount": "1280.00",
+          "currency": "USD"
+        }
+      }
+    },
+    "nelson-agent-delegation-receipts-10:native": {
+      "draft": "draft-nelson-agent-delegation-receipts",
+      "revision": "10",
+      "scope": {
+        "operations": {
+          "0": "medical.coverage.determine"
+        },
+        "resources": {
+          "0": "urn:claim:example:2026:00042"
+        }
+      }
+    },
+    "nelson-agent-delegation-receipts-10:carry": {
+      "draft": "draft-nelson-agent-delegation-receipts",
+      "revision": "10",
+      "caid_action": {
+        "operation": "medical.coverage.determine",
+        "target": "urn:claim:example:2026:00042",
+        "parameters": {
+          "requested_service": "J3490",
+          "amount": "1280.00",
+          "currency": "USD"
+        }
+      }
+    },
+    "jiang-oauth-intent-admission-00:native": {
+      "draft": "draft-jiang-oauth-intent-admission",
+      "revision": "00",
+      "authorization_details": {
+        "0": {
+          "actions": {
+            "0": "medical.coverage.determine"
+          },
+          "locations": {
+            "0": "urn:claim:example:2026:00042"
+          },
+          "constraints": {
+            "requested_service": "J3490",
+            "amount": "1280.00",
+            "currency": "USD"
+          }
+        }
+      }
+    },
+    "jiang-oauth-intent-admission-00:carry": {
+      "draft": "draft-jiang-oauth-intent-admission",
+      "revision": "00",
+      "caid_action": {
+        "operation": "medical.coverage.determine",
+        "target": "urn:claim:example:2026:00042",
+        "parameters": {
+          "requested_service": "J3490",
+          "amount": "1280.00",
+          "currency": "USD"
+        }
+      }
+    },
+    "araut-oauth-transaction-tokens-for-agents-02:native": {
+      "draft": "draft-araut-oauth-transaction-tokens-for-agents",
+      "revision": "02",
+      "transaction": {
+        "operation": "medical.coverage.determine",
+        "resource": "urn:claim:example:2026:00042"
+      }
+    },
+    "araut-oauth-transaction-tokens-for-agents-02:carry": {
+      "draft": "draft-araut-oauth-transaction-tokens-for-agents",
+      "revision": "02",
+      "caid_action": {
+        "operation": "medical.coverage.determine",
+        "target": "urn:claim:example:2026:00042",
+        "parameters": {
+          "requested_service": "J3490",
+          "amount": "1280.00",
+          "currency": "USD"
+        }
+      }
+    },
+    "coetzee-oauth-spt-txn-tokens-03:native": {
+      "draft": "draft-coetzee-oauth-spt-txn-tokens",
+      "revision": "03",
+      "intent": {
+        "tool": "medical.coverage.determine",
+        "target": "urn:claim:example:2026:00042"
+      }
+    },
+    "coetzee-oauth-spt-txn-tokens-03:carry": {
+      "draft": "draft-coetzee-oauth-spt-txn-tokens",
+      "revision": "03",
+      "caid_action": {
+        "operation": "medical.coverage.determine",
+        "target": "urn:claim:example:2026:00042",
+        "parameters": {
+          "requested_service": "J3490",
+          "amount": "1280.00",
+          "currency": "USD"
+        }
+      }
+    },
+    "mcguinness-oauth-actor-profile-00:native": {
+      "draft": "draft-mcguinness-oauth-actor-profile",
+      "revision": "00"
+    },
+    "mcguinness-oauth-actor-profile-00:carry": {
+      "draft": "draft-mcguinness-oauth-actor-profile",
+      "revision": "00",
+      "caid_action": {
+        "operation": "medical.coverage.determine",
+        "target": "urn:claim:example:2026:00042",
+        "parameters": {
+          "requested_service": "J3490",
+          "amount": "1280.00",
+          "currency": "USD"
+        }
+      }
+    },
+    "rampalli-cross-org-delegation-mapping-05:native": {
+      "draft": "draft-rampalli-cross-org-delegation-mapping",
+      "revision": "05"
+    },
+    "rampalli-cross-org-delegation-mapping-05:carry": {
+      "draft": "draft-rampalli-cross-org-delegation-mapping",
+      "revision": "05",
+      "caid_action": {
+        "operation": "medical.coverage.determine",
+        "target": "urn:claim:example:2026:00042",
+        "parameters": {
+          "requested_service": "J3490",
+          "amount": "1280.00",
+          "currency": "USD"
+        }
+      }
+    },
+    "mih-scitt-agent-action-capsule-sel-disc-00:native": {
+      "draft": "draft-mih-scitt-agent-action-capsule-sel-disc",
+      "revision": "00",
+      "disclosed": {
+        "action": {
+          "type": "medical.coverage.determine",
+          "target": "urn:claim:example:2026:00042"
+        }
+      }
+    },
+    "mih-scitt-agent-action-capsule-sel-disc-00:carry": {
+      "draft": "draft-mih-scitt-agent-action-capsule-sel-disc",
+      "revision": "00",
+      "caid_action": {
+        "operation": "medical.coverage.determine",
+        "target": "urn:claim:example:2026:00042",
+        "parameters": {
+          "requested_service": "J3490",
+          "amount": "1280.00",
+          "currency": "USD"
+        }
+      }
+    },
+    "emirdag-scitt-ai-agent-execution-00:native": {
+      "draft": "draft-emirdag-scitt-ai-agent-execution",
+      "revision": "00",
+      "air": {
+        "action_category": "medical.coverage.determine",
+        "target": "urn:claim:example:2026:00042"
+      }
+    },
+    "emirdag-scitt-ai-agent-execution-00:carry": {
+      "draft": "draft-emirdag-scitt-ai-agent-execution",
+      "revision": "00",
+      "caid_action": {
+        "operation": "medical.coverage.determine",
+        "target": "urn:claim:example:2026:00042",
+        "parameters": {
+          "requested_service": "J3490",
+          "amount": "1280.00",
+          "currency": "USD"
+        }
+      }
+    },
+    "lee-orprg-permit-receipts-00:native": {
+      "draft": "draft-lee-orprg-permit-receipts",
+      "revision": "00"
+    },
+    "lee-orprg-permit-receipts-00:carry": {
+      "draft": "draft-lee-orprg-permit-receipts",
+      "revision": "00",
+      "caid_action": {
+        "operation": "medical.coverage.determine",
+        "target": "urn:claim:example:2026:00042",
+        "parameters": {
+          "requested_service": "J3490",
+          "amount": "1280.00",
+          "currency": "USD"
+        }
+      }
+    },
+    "baur-pap-02:native": {
+      "draft": "draft-baur-pap",
+      "revision": "02",
+      "scope": {
+        "actions": {
+          "0": {
+            "action": "medical.coverage.determine",
+            "object": "urn:claim:example:2026:00042"
+          }
+        }
+      }
+    },
+    "baur-pap-02:carry": {
+      "draft": "draft-baur-pap",
+      "revision": "02",
+      "caid_action": {
+        "operation": "medical.coverage.determine",
+        "target": "urn:claim:example:2026:00042",
+        "parameters": {
+          "requested_service": "J3490",
+          "amount": "1280.00",
+          "currency": "USD"
+        }
+      }
+    },
+    "pidlisnyi-aps-03:native": {
+      "draft": "draft-pidlisnyi-aps",
+      "revision": "03",
+      "action_ref": {
+        "action_type": "medical.coverage.determine",
+        "target": "urn:claim:example:2026:00042",
+        "payload": {
+          "requested_service": "J3490",
+          "amount": "1280.00",
+          "currency": "USD"
+        }
+      }
+    },
+    "pidlisnyi-aps-03:carry": {
+      "draft": "draft-pidlisnyi-aps",
+      "revision": "03",
+      "caid_action": {
+        "operation": "medical.coverage.determine",
+        "target": "urn:claim:example:2026:00042",
+        "parameters": {
+          "requested_service": "J3490",
+          "amount": "1280.00",
+          "currency": "USD"
+        }
+      }
+    },
+    "howe-vcon-agent-session-00:native": {
+      "draft": "draft-howe-vcon-agent-session",
+      "revision": "00",
+      "tool_call": {
+        "name": "medical.coverage.determine",
+        "target": "urn:claim:example:2026:00042"
+      }
+    },
+    "howe-vcon-agent-session-00:carry": {
+      "draft": "draft-howe-vcon-agent-session",
+      "revision": "00",
+      "caid_action": {
+        "operation": "medical.coverage.determine",
+        "target": "urn:claim:example:2026:00042",
+        "parameters": {
+          "requested_service": "J3490",
+          "amount": "1280.00",
+          "currency": "USD"
+        }
+      }
+    },
+    "pei-opsawg-agentops-observability-00:native": {
+      "draft": "draft-pei-opsawg-agentops-observability",
+      "revision": "00",
+      "event": {
+        "action": "medical.coverage.determine",
+        "resource": "urn:claim:example:2026:00042"
+      }
+    },
+    "pei-opsawg-agentops-observability-00:carry": {
+      "draft": "draft-pei-opsawg-agentops-observability",
+      "revision": "00",
+      "caid_action": {
+        "operation": "medical.coverage.determine",
+        "target": "urn:claim:example:2026:00042",
+        "parameters": {
+          "requested_service": "J3490",
+          "amount": "1280.00",
+          "currency": "USD"
+        }
+      }
+    },
+    "dunbar-dmsc-gw-scenarios-gap-analysis-02:native": {
+      "draft": "draft-dunbar-dmsc-gw-scenarios-gap-analysis",
+      "revision": "02"
+    },
+    "dunbar-dmsc-gw-scenarios-gap-analysis-02:carry": {
+      "draft": "draft-dunbar-dmsc-gw-scenarios-gap-analysis",
+      "revision": "02",
+      "caid_action": {
+        "operation": "medical.coverage.determine",
+        "target": "urn:claim:example:2026:00042",
+        "parameters": {
+          "requested_service": "J3490",
+          "amount": "1280.00",
+          "currency": "USD"
+        }
+      }
+    },
+    "soden-wellknown-mcp-commerce-00:native": {
+      "draft": "draft-soden-wellknown-mcp-commerce",
+      "revision": "00",
+      "commerce": {
+        "endpoint": "urn:claim:example:2026:00042"
+      }
+    },
+    "soden-wellknown-mcp-commerce-00:carry": {
+      "draft": "draft-soden-wellknown-mcp-commerce",
+      "revision": "00",
+      "caid_action": {
+        "operation": "medical.coverage.determine",
+        "target": "urn:claim:example:2026:00042",
+        "parameters": {
+          "requested_service": "J3490",
+          "amount": "1280.00",
+          "currency": "USD"
+        }
+      }
+    },
+    "hopley-x402-compliance-receipt-02:native": {
+      "draft": "draft-hopley-x402-compliance-receipt",
+      "revision": "02"
+    },
+    "hopley-x402-compliance-receipt-02:carry": {
+      "draft": "draft-hopley-x402-compliance-receipt",
+      "revision": "02",
+      "caid_action": {
+        "operation": "medical.coverage.determine",
+        "target": "urn:claim:example:2026:00042",
+        "parameters": {
+          "requested_service": "J3490",
+          "amount": "1280.00",
+          "currency": "USD"
+        }
+      }
+    }
+  },
+  "vectors": [
+    {
+      "id": "klrc-aiagent-auth-03:native",
+      "left": {
+        "source": "reference",
+        "profile": "reference",
+        "pin": "profile"
+      },
+      "right": {
+        "source": "klrc-aiagent-auth-03:native",
+        "profile": "klrc-aiagent-auth-03:native",
+        "pin": "profile"
+      },
+      "expect": {
+        "verdict": "INDETERMINATE",
+        "reason_contains": "right:missing_source_field:/mission/parameters"
+      }
+    },
+    {
+      "id": "klrc-aiagent-auth-03:carry",
+      "left": {
+        "source": "reference",
+        "profile": "reference",
+        "pin": "profile"
+      },
+      "right": {
+        "source": "klrc-aiagent-auth-03:carry",
+        "profile": "klrc-aiagent-auth-03:carry",
+        "pin": "profile"
+      },
+      "expect": {
+        "verdict": "EQUIVALENT_UNDER_PROFILE",
+        "reasons": []
+      }
+    },
+    {
+      "id": "klrc-aiagent-auth-03:mutation",
+      "left": {
+        "source": "reference",
+        "profile": "reference",
+        "pin": "profile"
+      },
+      "right": {
+        "source": "klrc-aiagent-auth-03:carry",
+        "profile": "klrc-aiagent-auth-03:carry",
+        "pin": "profile"
+      },
+      "mutations": [
+        {
+          "side": "right",
+          "target": "source",
+          "op": "set",
+          "path": "/caid_action/parameters/amount",
+          "value": "1280.01"
+        }
+      ],
+      "expect": {
+        "verdict": "NOT_EQUIVALENT",
+        "reasons": [
+          "material_projection_mismatch"
+        ]
+      }
+    },
+    {
+      "id": "klrc-aiagent-auth-03:missing",
+      "left": {
+        "source": "reference",
+        "profile": "reference",
+        "pin": "profile"
+      },
+      "right": {
+        "source": "klrc-aiagent-auth-03:carry",
+        "profile": "klrc-aiagent-auth-03:carry",
+        "pin": "profile"
+      },
+      "mutations": [
+        {
+          "side": "right",
+          "target": "source",
+          "op": "delete",
+          "path": "/caid_action/parameters"
+        }
+      ],
+      "expect": {
+        "verdict": "INDETERMINATE",
+        "reason_contains": "right:missing_source_field:/caid_action/parameters"
+      }
+    },
+    {
+      "id": "mcguinness-oauth-ai-agent-instance-00:native",
+      "left": {
+        "source": "reference",
+        "profile": "reference",
+        "pin": "profile"
+      },
+      "right": {
+        "source": "mcguinness-oauth-ai-agent-instance-00:native",
+        "profile": "mcguinness-oauth-ai-agent-instance-00:native",
+        "pin": "profile"
+      },
+      "expect": {
+        "verdict": "INDETERMINATE",
+        "reason_contains": "right:missing_source_field:/scope/operation"
+      }
+    },
+    {
+      "id": "mcguinness-oauth-ai-agent-instance-00:carry",
+      "left": {
+        "source": "reference",
+        "profile": "reference",
+        "pin": "profile"
+      },
+      "right": {
+        "source": "mcguinness-oauth-ai-agent-instance-00:carry",
+        "profile": "mcguinness-oauth-ai-agent-instance-00:carry",
+        "pin": "profile"
+      },
+      "expect": {
+        "verdict": "EQUIVALENT_UNDER_PROFILE",
+        "reasons": []
+      }
+    },
+    {
+      "id": "mcguinness-oauth-ai-agent-instance-00:mutation",
+      "left": {
+        "source": "reference",
+        "profile": "reference",
+        "pin": "profile"
+      },
+      "right": {
+        "source": "mcguinness-oauth-ai-agent-instance-00:carry",
+        "profile": "mcguinness-oauth-ai-agent-instance-00:carry",
+        "pin": "profile"
+      },
+      "mutations": [
+        {
+          "side": "right",
+          "target": "source",
+          "op": "set",
+          "path": "/caid_action/parameters/amount",
+          "value": "1280.01"
+        }
+      ],
+      "expect": {
+        "verdict": "NOT_EQUIVALENT",
+        "reasons": [
+          "material_projection_mismatch"
+        ]
+      }
+    },
+    {
+      "id": "mcguinness-oauth-ai-agent-instance-00:missing",
+      "left": {
+        "source": "reference",
+        "profile": "reference",
+        "pin": "profile"
+      },
+      "right": {
+        "source": "mcguinness-oauth-ai-agent-instance-00:carry",
+        "profile": "mcguinness-oauth-ai-agent-instance-00:carry",
+        "pin": "profile"
+      },
+      "mutations": [
+        {
+          "side": "right",
+          "target": "source",
+          "op": "delete",
+          "path": "/caid_action/parameters"
+        }
+      ],
+      "expect": {
+        "verdict": "INDETERMINATE",
+        "reason_contains": "right:missing_source_field:/caid_action/parameters"
+      }
+    },
+    {
+      "id": "noa-scitt-ai-agent-receipt-00:native",
+      "left": {
+        "source": "reference",
+        "profile": "reference",
+        "pin": "profile"
+      },
+      "right": {
+        "source": "noa-scitt-ai-agent-receipt-00:native",
+        "profile": "noa-scitt-ai-agent-receipt-00:native",
+        "pin": "profile"
+      },
+      "expect": {
+        "verdict": "INDETERMINATE",
+        "reason_contains": "right:missing_source_field:/action/id"
+      }
+    },
+    {
+      "id": "noa-scitt-ai-agent-receipt-00:carry",
+      "left": {
+        "source": "reference",
+        "profile": "reference",
+        "pin": "profile"
+      },
+      "right": {
+        "source": "noa-scitt-ai-agent-receipt-00:carry",
+        "profile": "noa-scitt-ai-agent-receipt-00:carry",
+        "pin": "profile"
+      },
+      "expect": {
+        "verdict": "EQUIVALENT_UNDER_PROFILE",
+        "reasons": []
+      }
+    },
+    {
+      "id": "noa-scitt-ai-agent-receipt-00:mutation",
+      "left": {
+        "source": "reference",
+        "profile": "reference",
+        "pin": "profile"
+      },
+      "right": {
+        "source": "noa-scitt-ai-agent-receipt-00:carry",
+        "profile": "noa-scitt-ai-agent-receipt-00:carry",
+        "pin": "profile"
+      },
+      "mutations": [
+        {
+          "side": "right",
+          "target": "source",
+          "op": "set",
+          "path": "/caid_action/parameters/amount",
+          "value": "1280.01"
+        }
+      ],
+      "expect": {
+        "verdict": "NOT_EQUIVALENT",
+        "reasons": [
+          "material_projection_mismatch"
+        ]
+      }
+    },
+    {
+      "id": "noa-scitt-ai-agent-receipt-00:missing",
+      "left": {
+        "source": "reference",
+        "profile": "reference",
+        "pin": "profile"
+      },
+      "right": {
+        "source": "noa-scitt-ai-agent-receipt-00:carry",
+        "profile": "noa-scitt-ai-agent-receipt-00:carry",
+        "pin": "profile"
+      },
+      "mutations": [
+        {
+          "side": "right",
+          "target": "source",
+          "op": "delete",
+          "path": "/caid_action/parameters"
+        }
+      ],
+      "expect": {
+        "verdict": "INDETERMINATE",
+        "reason_contains": "right:missing_source_field:/caid_action/parameters"
+      }
+    },
+    {
+      "id": "ietf-wimse-arch-08:native",
+      "left": {
+        "source": "reference",
+        "profile": "reference",
+        "pin": "profile"
+      },
+      "right": {
+        "source": "ietf-wimse-arch-08:native",
+        "profile": "ietf-wimse-arch-08:native",
+        "pin": "profile"
+      },
+      "expect": {
+        "verdict": "INDETERMINATE",
+        "reason_contains": "right:missing_source_field:/security_context/operation"
+      }
+    },
+    {
+      "id": "ietf-wimse-arch-08:carry",
+      "left": {
+        "source": "reference",
+        "profile": "reference",
+        "pin": "profile"
+      },
+      "right": {
+        "source": "ietf-wimse-arch-08:carry",
+        "profile": "ietf-wimse-arch-08:carry",
+        "pin": "profile"
+      },
+      "expect": {
+        "verdict": "EQUIVALENT_UNDER_PROFILE",
+        "reasons": []
+      }
+    },
+    {
+      "id": "ietf-wimse-arch-08:mutation",
+      "left": {
+        "source": "reference",
+        "profile": "reference",
+        "pin": "profile"
+      },
+      "right": {
+        "source": "ietf-wimse-arch-08:carry",
+        "profile": "ietf-wimse-arch-08:carry",
+        "pin": "profile"
+      },
+      "mutations": [
+        {
+          "side": "right",
+          "target": "source",
+          "op": "set",
+          "path": "/caid_action/parameters/amount",
+          "value": "1280.01"
+        }
+      ],
+      "expect": {
+        "verdict": "NOT_EQUIVALENT",
+        "reasons": [
+          "material_projection_mismatch"
+        ]
+      }
+    },
+    {
+      "id": "ietf-wimse-arch-08:missing",
+      "left": {
+        "source": "reference",
+        "profile": "reference",
+        "pin": "profile"
+      },
+      "right": {
+        "source": "ietf-wimse-arch-08:carry",
+        "profile": "ietf-wimse-arch-08:carry",
+        "pin": "profile"
+      },
+      "mutations": [
+        {
+          "side": "right",
+          "target": "source",
+          "op": "delete",
+          "path": "/caid_action/parameters"
+        }
+      ],
+      "expect": {
+        "verdict": "INDETERMINATE",
+        "reason_contains": "right:missing_source_field:/caid_action/parameters"
+      }
+    },
+    {
+      "id": "ietf-wimse-http-signature-05:native",
+      "left": {
+        "source": "reference",
+        "profile": "reference",
+        "pin": "profile"
+      },
+      "right": {
+        "source": "ietf-wimse-http-signature-05:native",
+        "profile": "ietf-wimse-http-signature-05:native",
+        "pin": "profile"
+      },
+      "expect": {
+        "verdict": "EQUIVALENT_UNDER_PROFILE",
+        "reasons": []
+      }
+    },
+    {
+      "id": "ietf-wimse-http-signature-05:carry",
+      "left": {
+        "source": "reference",
+        "profile": "reference",
+        "pin": "profile"
+      },
+      "right": {
+        "source": "ietf-wimse-http-signature-05:carry",
+        "profile": "ietf-wimse-http-signature-05:carry",
+        "pin": "profile"
+      },
+      "expect": {
+        "verdict": "EQUIVALENT_UNDER_PROFILE",
+        "reasons": []
+      }
+    },
+    {
+      "id": "ietf-wimse-http-signature-05:mutation",
+      "left": {
+        "source": "reference",
+        "profile": "reference",
+        "pin": "profile"
+      },
+      "right": {
+        "source": "ietf-wimse-http-signature-05:carry",
+        "profile": "ietf-wimse-http-signature-05:carry",
+        "pin": "profile"
+      },
+      "mutations": [
+        {
+          "side": "right",
+          "target": "source",
+          "op": "set",
+          "path": "/caid_action/parameters/amount",
+          "value": "1280.01"
+        }
+      ],
+      "expect": {
+        "verdict": "NOT_EQUIVALENT",
+        "reasons": [
+          "material_projection_mismatch"
+        ]
+      }
+    },
+    {
+      "id": "ietf-wimse-http-signature-05:missing",
+      "left": {
+        "source": "reference",
+        "profile": "reference",
+        "pin": "profile"
+      },
+      "right": {
+        "source": "ietf-wimse-http-signature-05:carry",
+        "profile": "ietf-wimse-http-signature-05:carry",
+        "pin": "profile"
+      },
+      "mutations": [
+        {
+          "side": "right",
+          "target": "source",
+          "op": "delete",
+          "path": "/caid_action/parameters"
+        }
+      ],
+      "expect": {
+        "verdict": "INDETERMINATE",
+        "reason_contains": "right:missing_source_field:/caid_action/parameters"
+      }
+    },
+    {
+      "id": "ietf-wimse-workload-creds-02:native",
+      "left": {
+        "source": "reference",
+        "profile": "reference",
+        "pin": "profile"
+      },
+      "right": {
+        "source": "ietf-wimse-workload-creds-02:native",
+        "profile": "ietf-wimse-workload-creds-02:native",
+        "pin": "profile"
+      },
+      "expect": {
+        "verdict": "INDETERMINATE",
+        "reason_contains": "right:missing_source_field:/authorization/operation"
+      }
+    },
+    {
+      "id": "ietf-wimse-workload-creds-02:carry",
+      "left": {
+        "source": "reference",
+        "profile": "reference",
+        "pin": "profile"
+      },
+      "right": {
+        "source": "ietf-wimse-workload-creds-02:carry",
+        "profile": "ietf-wimse-workload-creds-02:carry",
+        "pin": "profile"
+      },
+      "expect": {
+        "verdict": "EQUIVALENT_UNDER_PROFILE",
+        "reasons": []
+      }
+    },
+    {
+      "id": "ietf-wimse-workload-creds-02:mutation",
+      "left": {
+        "source": "reference",
+        "profile": "reference",
+        "pin": "profile"
+      },
+      "right": {
+        "source": "ietf-wimse-workload-creds-02:carry",
+        "profile": "ietf-wimse-workload-creds-02:carry",
+        "pin": "profile"
+      },
+      "mutations": [
+        {
+          "side": "right",
+          "target": "source",
+          "op": "set",
+          "path": "/caid_action/parameters/amount",
+          "value": "1280.01"
+        }
+      ],
+      "expect": {
+        "verdict": "NOT_EQUIVALENT",
+        "reasons": [
+          "material_projection_mismatch"
+        ]
+      }
+    },
+    {
+      "id": "ietf-wimse-workload-creds-02:missing",
+      "left": {
+        "source": "reference",
+        "profile": "reference",
+        "pin": "profile"
+      },
+      "right": {
+        "source": "ietf-wimse-workload-creds-02:carry",
+        "profile": "ietf-wimse-workload-creds-02:carry",
+        "pin": "profile"
+      },
+      "mutations": [
+        {
+          "side": "right",
+          "target": "source",
+          "op": "delete",
+          "path": "/caid_action/parameters"
+        }
+      ],
+      "expect": {
+        "verdict": "INDETERMINATE",
+        "reason_contains": "right:missing_source_field:/caid_action/parameters"
+      }
+    },
+    {
+      "id": "ietf-wimse-wpt-01:native",
+      "left": {
+        "source": "reference",
+        "profile": "reference",
+        "pin": "profile"
+      },
+      "right": {
+        "source": "ietf-wimse-wpt-01:native",
+        "profile": "ietf-wimse-wpt-01:native",
+        "pin": "profile"
+      },
+      "expect": {
+        "verdict": "INDETERMINATE",
+        "reason_contains": "right:missing_source_field:/request/parameters"
+      }
+    },
+    {
+      "id": "ietf-wimse-wpt-01:carry",
+      "left": {
+        "source": "reference",
+        "profile": "reference",
+        "pin": "profile"
+      },
+      "right": {
+        "source": "ietf-wimse-wpt-01:carry",
+        "profile": "ietf-wimse-wpt-01:carry",
+        "pin": "profile"
+      },
+      "expect": {
+        "verdict": "EQUIVALENT_UNDER_PROFILE",
+        "reasons": []
+      }
+    },
+    {
+      "id": "ietf-wimse-wpt-01:mutation",
+      "left": {
+        "source": "reference",
+        "profile": "reference",
+        "pin": "profile"
+      },
+      "right": {
+        "source": "ietf-wimse-wpt-01:carry",
+        "profile": "ietf-wimse-wpt-01:carry",
+        "pin": "profile"
+      },
+      "mutations": [
+        {
+          "side": "right",
+          "target": "source",
+          "op": "set",
+          "path": "/caid_action/parameters/amount",
+          "value": "1280.01"
+        }
+      ],
+      "expect": {
+        "verdict": "NOT_EQUIVALENT",
+        "reasons": [
+          "material_projection_mismatch"
+        ]
+      }
+    },
+    {
+      "id": "ietf-wimse-wpt-01:missing",
+      "left": {
+        "source": "reference",
+        "profile": "reference",
+        "pin": "profile"
+      },
+      "right": {
+        "source": "ietf-wimse-wpt-01:carry",
+        "profile": "ietf-wimse-wpt-01:carry",
+        "pin": "profile"
+      },
+      "mutations": [
+        {
+          "side": "right",
+          "target": "source",
+          "op": "delete",
+          "path": "/caid_action/parameters"
+        }
+      ],
+      "expect": {
+        "verdict": "INDETERMINATE",
+        "reason_contains": "right:missing_source_field:/caid_action/parameters"
+      }
+    },
+    {
+      "id": "bu-agentproto-security-principal-binding-03:native",
+      "left": {
+        "source": "reference",
+        "profile": "reference",
+        "pin": "profile"
+      },
+      "right": {
+        "source": "bu-agentproto-security-principal-binding-03:native",
+        "profile": "bu-agentproto-security-principal-binding-03:native",
+        "pin": "profile"
+      },
+      "expect": {
+        "verdict": "INDETERMINATE",
+        "reason_contains": "right:missing_source_field:/action/operation"
+      }
+    },
+    {
+      "id": "bu-agentproto-security-principal-binding-03:carry",
+      "left": {
+        "source": "reference",
+        "profile": "reference",
+        "pin": "profile"
+      },
+      "right": {
+        "source": "bu-agentproto-security-principal-binding-03:carry",
+        "profile": "bu-agentproto-security-principal-binding-03:carry",
+        "pin": "profile"
+      },
+      "expect": {
+        "verdict": "EQUIVALENT_UNDER_PROFILE",
+        "reasons": []
+      }
+    },
+    {
+      "id": "bu-agentproto-security-principal-binding-03:mutation",
+      "left": {
+        "source": "reference",
+        "profile": "reference",
+        "pin": "profile"
+      },
+      "right": {
+        "source": "bu-agentproto-security-principal-binding-03:carry",
+        "profile": "bu-agentproto-security-principal-binding-03:carry",
+        "pin": "profile"
+      },
+      "mutations": [
+        {
+          "side": "right",
+          "target": "source",
+          "op": "set",
+          "path": "/caid_action/parameters/amount",
+          "value": "1280.01"
+        }
+      ],
+      "expect": {
+        "verdict": "NOT_EQUIVALENT",
+        "reasons": [
+          "material_projection_mismatch"
+        ]
+      }
+    },
+    {
+      "id": "bu-agentproto-security-principal-binding-03:missing",
+      "left": {
+        "source": "reference",
+        "profile": "reference",
+        "pin": "profile"
+      },
+      "right": {
+        "source": "bu-agentproto-security-principal-binding-03:carry",
+        "profile": "bu-agentproto-security-principal-binding-03:carry",
+        "pin": "profile"
+      },
+      "mutations": [
+        {
+          "side": "right",
+          "target": "source",
+          "op": "delete",
+          "path": "/caid_action/parameters"
+        }
+      ],
+      "expect": {
+        "verdict": "INDETERMINATE",
+        "reason_contains": "right:missing_source_field:/caid_action/parameters"
+      }
+    },
+    {
+      "id": "rosomakho-oauth-txn-challenge-00:native",
+      "left": {
+        "source": "reference",
+        "profile": "reference",
+        "pin": "profile"
+      },
+      "right": {
+        "source": "rosomakho-oauth-txn-challenge-00:native",
+        "profile": "rosomakho-oauth-txn-challenge-00:native",
+        "pin": "profile"
+      },
+      "expect": {
+        "verdict": "EQUIVALENT_UNDER_PROFILE",
+        "reasons": []
+      }
+    },
+    {
+      "id": "rosomakho-oauth-txn-challenge-00:carry",
+      "left": {
+        "source": "reference",
+        "profile": "reference",
+        "pin": "profile"
+      },
+      "right": {
+        "source": "rosomakho-oauth-txn-challenge-00:carry",
+        "profile": "rosomakho-oauth-txn-challenge-00:carry",
+        "pin": "profile"
+      },
+      "expect": {
+        "verdict": "EQUIVALENT_UNDER_PROFILE",
+        "reasons": []
+      }
+    },
+    {
+      "id": "rosomakho-oauth-txn-challenge-00:mutation",
+      "left": {
+        "source": "reference",
+        "profile": "reference",
+        "pin": "profile"
+      },
+      "right": {
+        "source": "rosomakho-oauth-txn-challenge-00:carry",
+        "profile": "rosomakho-oauth-txn-challenge-00:carry",
+        "pin": "profile"
+      },
+      "mutations": [
+        {
+          "side": "right",
+          "target": "source",
+          "op": "set",
+          "path": "/caid_action/parameters/amount",
+          "value": "1280.01"
+        }
+      ],
+      "expect": {
+        "verdict": "NOT_EQUIVALENT",
+        "reasons": [
+          "material_projection_mismatch"
+        ]
+      }
+    },
+    {
+      "id": "rosomakho-oauth-txn-challenge-00:missing",
+      "left": {
+        "source": "reference",
+        "profile": "reference",
+        "pin": "profile"
+      },
+      "right": {
+        "source": "rosomakho-oauth-txn-challenge-00:carry",
+        "profile": "rosomakho-oauth-txn-challenge-00:carry",
+        "pin": "profile"
+      },
+      "mutations": [
+        {
+          "side": "right",
+          "target": "source",
+          "op": "delete",
+          "path": "/caid_action/parameters"
+        }
+      ],
+      "expect": {
+        "verdict": "INDETERMINATE",
+        "reason_contains": "right:missing_source_field:/caid_action/parameters"
+      }
+    },
+    {
+      "id": "nelson-agent-delegation-receipts-10:native",
+      "left": {
+        "source": "reference",
+        "profile": "reference",
+        "pin": "profile"
+      },
+      "right": {
+        "source": "nelson-agent-delegation-receipts-10:native",
+        "profile": "nelson-agent-delegation-receipts-10:native",
+        "pin": "profile"
+      },
+      "expect": {
+        "verdict": "INDETERMINATE",
+        "reason_contains": "right:missing_source_field:/boundaries"
+      }
+    },
+    {
+      "id": "nelson-agent-delegation-receipts-10:carry",
+      "left": {
+        "source": "reference",
+        "profile": "reference",
+        "pin": "profile"
+      },
+      "right": {
+        "source": "nelson-agent-delegation-receipts-10:carry",
+        "profile": "nelson-agent-delegation-receipts-10:carry",
+        "pin": "profile"
+      },
+      "expect": {
+        "verdict": "EQUIVALENT_UNDER_PROFILE",
+        "reasons": []
+      }
+    },
+    {
+      "id": "nelson-agent-delegation-receipts-10:mutation",
+      "left": {
+        "source": "reference",
+        "profile": "reference",
+        "pin": "profile"
+      },
+      "right": {
+        "source": "nelson-agent-delegation-receipts-10:carry",
+        "profile": "nelson-agent-delegation-receipts-10:carry",
+        "pin": "profile"
+      },
+      "mutations": [
+        {
+          "side": "right",
+          "target": "source",
+          "op": "set",
+          "path": "/caid_action/parameters/amount",
+          "value": "1280.01"
+        }
+      ],
+      "expect": {
+        "verdict": "NOT_EQUIVALENT",
+        "reasons": [
+          "material_projection_mismatch"
+        ]
+      }
+    },
+    {
+      "id": "nelson-agent-delegation-receipts-10:missing",
+      "left": {
+        "source": "reference",
+        "profile": "reference",
+        "pin": "profile"
+      },
+      "right": {
+        "source": "nelson-agent-delegation-receipts-10:carry",
+        "profile": "nelson-agent-delegation-receipts-10:carry",
+        "pin": "profile"
+      },
+      "mutations": [
+        {
+          "side": "right",
+          "target": "source",
+          "op": "delete",
+          "path": "/caid_action/parameters"
+        }
+      ],
+      "expect": {
+        "verdict": "INDETERMINATE",
+        "reason_contains": "right:missing_source_field:/caid_action/parameters"
+      }
+    },
+    {
+      "id": "jiang-oauth-intent-admission-00:native",
+      "left": {
+        "source": "reference",
+        "profile": "reference",
+        "pin": "profile"
+      },
+      "right": {
+        "source": "jiang-oauth-intent-admission-00:native",
+        "profile": "jiang-oauth-intent-admission-00:native",
+        "pin": "profile"
+      },
+      "expect": {
+        "verdict": "EQUIVALENT_UNDER_PROFILE",
+        "reasons": []
+      }
+    },
+    {
+      "id": "jiang-oauth-intent-admission-00:carry",
+      "left": {
+        "source": "reference",
+        "profile": "reference",
+        "pin": "profile"
+      },
+      "right": {
+        "source": "jiang-oauth-intent-admission-00:carry",
+        "profile": "jiang-oauth-intent-admission-00:carry",
+        "pin": "profile"
+      },
+      "expect": {
+        "verdict": "EQUIVALENT_UNDER_PROFILE",
+        "reasons": []
+      }
+    },
+    {
+      "id": "jiang-oauth-intent-admission-00:mutation",
+      "left": {
+        "source": "reference",
+        "profile": "reference",
+        "pin": "profile"
+      },
+      "right": {
+        "source": "jiang-oauth-intent-admission-00:carry",
+        "profile": "jiang-oauth-intent-admission-00:carry",
+        "pin": "profile"
+      },
+      "mutations": [
+        {
+          "side": "right",
+          "target": "source",
+          "op": "set",
+          "path": "/caid_action/parameters/amount",
+          "value": "1280.01"
+        }
+      ],
+      "expect": {
+        "verdict": "NOT_EQUIVALENT",
+        "reasons": [
+          "material_projection_mismatch"
+        ]
+      }
+    },
+    {
+      "id": "jiang-oauth-intent-admission-00:missing",
+      "left": {
+        "source": "reference",
+        "profile": "reference",
+        "pin": "profile"
+      },
+      "right": {
+        "source": "jiang-oauth-intent-admission-00:carry",
+        "profile": "jiang-oauth-intent-admission-00:carry",
+        "pin": "profile"
+      },
+      "mutations": [
+        {
+          "side": "right",
+          "target": "source",
+          "op": "delete",
+          "path": "/caid_action/parameters"
+        }
+      ],
+      "expect": {
+        "verdict": "INDETERMINATE",
+        "reason_contains": "right:missing_source_field:/caid_action/parameters"
+      }
+    },
+    {
+      "id": "araut-oauth-transaction-tokens-for-agents-02:native",
+      "left": {
+        "source": "reference",
+        "profile": "reference",
+        "pin": "profile"
+      },
+      "right": {
+        "source": "araut-oauth-transaction-tokens-for-agents-02:native",
+        "profile": "araut-oauth-transaction-tokens-for-agents-02:native",
+        "pin": "profile"
+      },
+      "expect": {
+        "verdict": "INDETERMINATE",
+        "reason_contains": "right:missing_source_field:/transaction/parameters"
+      }
+    },
+    {
+      "id": "araut-oauth-transaction-tokens-for-agents-02:carry",
+      "left": {
+        "source": "reference",
+        "profile": "reference",
+        "pin": "profile"
+      },
+      "right": {
+        "source": "araut-oauth-transaction-tokens-for-agents-02:carry",
+        "profile": "araut-oauth-transaction-tokens-for-agents-02:carry",
+        "pin": "profile"
+      },
+      "expect": {
+        "verdict": "EQUIVALENT_UNDER_PROFILE",
+        "reasons": []
+      }
+    },
+    {
+      "id": "araut-oauth-transaction-tokens-for-agents-02:mutation",
+      "left": {
+        "source": "reference",
+        "profile": "reference",
+        "pin": "profile"
+      },
+      "right": {
+        "source": "araut-oauth-transaction-tokens-for-agents-02:carry",
+        "profile": "araut-oauth-transaction-tokens-for-agents-02:carry",
+        "pin": "profile"
+      },
+      "mutations": [
+        {
+          "side": "right",
+          "target": "source",
+          "op": "set",
+          "path": "/caid_action/parameters/amount",
+          "value": "1280.01"
+        }
+      ],
+      "expect": {
+        "verdict": "NOT_EQUIVALENT",
+        "reasons": [
+          "material_projection_mismatch"
+        ]
+      }
+    },
+    {
+      "id": "araut-oauth-transaction-tokens-for-agents-02:missing",
+      "left": {
+        "source": "reference",
+        "profile": "reference",
+        "pin": "profile"
+      },
+      "right": {
+        "source": "araut-oauth-transaction-tokens-for-agents-02:carry",
+        "profile": "araut-oauth-transaction-tokens-for-agents-02:carry",
+        "pin": "profile"
+      },
+      "mutations": [
+        {
+          "side": "right",
+          "target": "source",
+          "op": "delete",
+          "path": "/caid_action/parameters"
+        }
+      ],
+      "expect": {
+        "verdict": "INDETERMINATE",
+        "reason_contains": "right:missing_source_field:/caid_action/parameters"
+      }
+    },
+    {
+      "id": "coetzee-oauth-spt-txn-tokens-03:native",
+      "left": {
+        "source": "reference",
+        "profile": "reference",
+        "pin": "profile"
+      },
+      "right": {
+        "source": "coetzee-oauth-spt-txn-tokens-03:native",
+        "profile": "coetzee-oauth-spt-txn-tokens-03:native",
+        "pin": "profile"
+      },
+      "expect": {
+        "verdict": "INDETERMINATE",
+        "reason_contains": "right:missing_source_field:/intent/params"
+      }
+    },
+    {
+      "id": "coetzee-oauth-spt-txn-tokens-03:carry",
+      "left": {
+        "source": "reference",
+        "profile": "reference",
+        "pin": "profile"
+      },
+      "right": {
+        "source": "coetzee-oauth-spt-txn-tokens-03:carry",
+        "profile": "coetzee-oauth-spt-txn-tokens-03:carry",
+        "pin": "profile"
+      },
+      "expect": {
+        "verdict": "EQUIVALENT_UNDER_PROFILE",
+        "reasons": []
+      }
+    },
+    {
+      "id": "coetzee-oauth-spt-txn-tokens-03:mutation",
+      "left": {
+        "source": "reference",
+        "profile": "reference",
+        "pin": "profile"
+      },
+      "right": {
+        "source": "coetzee-oauth-spt-txn-tokens-03:carry",
+        "profile": "coetzee-oauth-spt-txn-tokens-03:carry",
+        "pin": "profile"
+      },
+      "mutations": [
+        {
+          "side": "right",
+          "target": "source",
+          "op": "set",
+          "path": "/caid_action/parameters/amount",
+          "value": "1280.01"
+        }
+      ],
+      "expect": {
+        "verdict": "NOT_EQUIVALENT",
+        "reasons": [
+          "material_projection_mismatch"
+        ]
+      }
+    },
+    {
+      "id": "coetzee-oauth-spt-txn-tokens-03:missing",
+      "left": {
+        "source": "reference",
+        "profile": "reference",
+        "pin": "profile"
+      },
+      "right": {
+        "source": "coetzee-oauth-spt-txn-tokens-03:carry",
+        "profile": "coetzee-oauth-spt-txn-tokens-03:carry",
+        "pin": "profile"
+      },
+      "mutations": [
+        {
+          "side": "right",
+          "target": "source",
+          "op": "delete",
+          "path": "/caid_action/parameters"
+        }
+      ],
+      "expect": {
+        "verdict": "INDETERMINATE",
+        "reason_contains": "right:missing_source_field:/caid_action/parameters"
+      }
+    },
+    {
+      "id": "mcguinness-oauth-actor-profile-00:native",
+      "left": {
+        "source": "reference",
+        "profile": "reference",
+        "pin": "profile"
+      },
+      "right": {
+        "source": "mcguinness-oauth-actor-profile-00:native",
+        "profile": "mcguinness-oauth-actor-profile-00:native",
+        "pin": "profile"
+      },
+      "expect": {
+        "verdict": "INDETERMINATE",
+        "reason_contains": "right:missing_source_field:/authorization/operation"
+      }
+    },
+    {
+      "id": "mcguinness-oauth-actor-profile-00:carry",
+      "left": {
+        "source": "reference",
+        "profile": "reference",
+        "pin": "profile"
+      },
+      "right": {
+        "source": "mcguinness-oauth-actor-profile-00:carry",
+        "profile": "mcguinness-oauth-actor-profile-00:carry",
+        "pin": "profile"
+      },
+      "expect": {
+        "verdict": "EQUIVALENT_UNDER_PROFILE",
+        "reasons": []
+      }
+    },
+    {
+      "id": "mcguinness-oauth-actor-profile-00:mutation",
+      "left": {
+        "source": "reference",
+        "profile": "reference",
+        "pin": "profile"
+      },
+      "right": {
+        "source": "mcguinness-oauth-actor-profile-00:carry",
+        "profile": "mcguinness-oauth-actor-profile-00:carry",
+        "pin": "profile"
+      },
+      "mutations": [
+        {
+          "side": "right",
+          "target": "source",
+          "op": "set",
+          "path": "/caid_action/parameters/amount",
+          "value": "1280.01"
+        }
+      ],
+      "expect": {
+        "verdict": "NOT_EQUIVALENT",
+        "reasons": [
+          "material_projection_mismatch"
+        ]
+      }
+    },
+    {
+      "id": "mcguinness-oauth-actor-profile-00:missing",
+      "left": {
+        "source": "reference",
+        "profile": "reference",
+        "pin": "profile"
+      },
+      "right": {
+        "source": "mcguinness-oauth-actor-profile-00:carry",
+        "profile": "mcguinness-oauth-actor-profile-00:carry",
+        "pin": "profile"
+      },
+      "mutations": [
+        {
+          "side": "right",
+          "target": "source",
+          "op": "delete",
+          "path": "/caid_action/parameters"
+        }
+      ],
+      "expect": {
+        "verdict": "INDETERMINATE",
+        "reason_contains": "right:missing_source_field:/caid_action/parameters"
+      }
+    },
+    {
+      "id": "rampalli-cross-org-delegation-mapping-05:native",
+      "left": {
+        "source": "reference",
+        "profile": "reference",
+        "pin": "profile"
+      },
+      "right": {
+        "source": "rampalli-cross-org-delegation-mapping-05:native",
+        "profile": "rampalli-cross-org-delegation-mapping-05:native",
+        "pin": "profile"
+      },
+      "expect": {
+        "verdict": "INDETERMINATE",
+        "reason_contains": "right:missing_source_field:/action/operation"
+      }
+    },
+    {
+      "id": "rampalli-cross-org-delegation-mapping-05:carry",
+      "left": {
+        "source": "reference",
+        "profile": "reference",
+        "pin": "profile"
+      },
+      "right": {
+        "source": "rampalli-cross-org-delegation-mapping-05:carry",
+        "profile": "rampalli-cross-org-delegation-mapping-05:carry",
+        "pin": "profile"
+      },
+      "expect": {
+        "verdict": "EQUIVALENT_UNDER_PROFILE",
+        "reasons": []
+      }
+    },
+    {
+      "id": "rampalli-cross-org-delegation-mapping-05:mutation",
+      "left": {
+        "source": "reference",
+        "profile": "reference",
+        "pin": "profile"
+      },
+      "right": {
+        "source": "rampalli-cross-org-delegation-mapping-05:carry",
+        "profile": "rampalli-cross-org-delegation-mapping-05:carry",
+        "pin": "profile"
+      },
+      "mutations": [
+        {
+          "side": "right",
+          "target": "source",
+          "op": "set",
+          "path": "/caid_action/parameters/amount",
+          "value": "1280.01"
+        }
+      ],
+      "expect": {
+        "verdict": "NOT_EQUIVALENT",
+        "reasons": [
+          "material_projection_mismatch"
+        ]
+      }
+    },
+    {
+      "id": "rampalli-cross-org-delegation-mapping-05:missing",
+      "left": {
+        "source": "reference",
+        "profile": "reference",
+        "pin": "profile"
+      },
+      "right": {
+        "source": "rampalli-cross-org-delegation-mapping-05:carry",
+        "profile": "rampalli-cross-org-delegation-mapping-05:carry",
+        "pin": "profile"
+      },
+      "mutations": [
+        {
+          "side": "right",
+          "target": "source",
+          "op": "delete",
+          "path": "/caid_action/parameters"
+        }
+      ],
+      "expect": {
+        "verdict": "INDETERMINATE",
+        "reason_contains": "right:missing_source_field:/caid_action/parameters"
+      }
+    },
+    {
+      "id": "mih-scitt-agent-action-capsule-sel-disc-00:native",
+      "left": {
+        "source": "reference",
+        "profile": "reference",
+        "pin": "profile"
+      },
+      "right": {
+        "source": "mih-scitt-agent-action-capsule-sel-disc-00:native",
+        "profile": "mih-scitt-agent-action-capsule-sel-disc-00:native",
+        "pin": "profile"
+      },
+      "expect": {
+        "verdict": "INDETERMINATE",
+        "reason_contains": "right:missing_source_field:/disclosed/action/parameters"
+      }
+    },
+    {
+      "id": "mih-scitt-agent-action-capsule-sel-disc-00:carry",
+      "left": {
+        "source": "reference",
+        "profile": "reference",
+        "pin": "profile"
+      },
+      "right": {
+        "source": "mih-scitt-agent-action-capsule-sel-disc-00:carry",
+        "profile": "mih-scitt-agent-action-capsule-sel-disc-00:carry",
+        "pin": "profile"
+      },
+      "expect": {
+        "verdict": "EQUIVALENT_UNDER_PROFILE",
+        "reasons": []
+      }
+    },
+    {
+      "id": "mih-scitt-agent-action-capsule-sel-disc-00:mutation",
+      "left": {
+        "source": "reference",
+        "profile": "reference",
+        "pin": "profile"
+      },
+      "right": {
+        "source": "mih-scitt-agent-action-capsule-sel-disc-00:carry",
+        "profile": "mih-scitt-agent-action-capsule-sel-disc-00:carry",
+        "pin": "profile"
+      },
+      "mutations": [
+        {
+          "side": "right",
+          "target": "source",
+          "op": "set",
+          "path": "/caid_action/parameters/amount",
+          "value": "1280.01"
+        }
+      ],
+      "expect": {
+        "verdict": "NOT_EQUIVALENT",
+        "reasons": [
+          "material_projection_mismatch"
+        ]
+      }
+    },
+    {
+      "id": "mih-scitt-agent-action-capsule-sel-disc-00:missing",
+      "left": {
+        "source": "reference",
+        "profile": "reference",
+        "pin": "profile"
+      },
+      "right": {
+        "source": "mih-scitt-agent-action-capsule-sel-disc-00:carry",
+        "profile": "mih-scitt-agent-action-capsule-sel-disc-00:carry",
+        "pin": "profile"
+      },
+      "mutations": [
+        {
+          "side": "right",
+          "target": "source",
+          "op": "delete",
+          "path": "/caid_action/parameters"
+        }
+      ],
+      "expect": {
+        "verdict": "INDETERMINATE",
+        "reason_contains": "right:missing_source_field:/caid_action/parameters"
+      }
+    },
+    {
+      "id": "emirdag-scitt-ai-agent-execution-00:native",
+      "left": {
+        "source": "reference",
+        "profile": "reference",
+        "pin": "profile"
+      },
+      "right": {
+        "source": "emirdag-scitt-ai-agent-execution-00:native",
+        "profile": "emirdag-scitt-ai-agent-execution-00:native",
+        "pin": "profile"
+      },
+      "expect": {
+        "verdict": "INDETERMINATE",
+        "reason_contains": "right:missing_source_field:/air/parameters"
+      }
+    },
+    {
+      "id": "emirdag-scitt-ai-agent-execution-00:carry",
+      "left": {
+        "source": "reference",
+        "profile": "reference",
+        "pin": "profile"
+      },
+      "right": {
+        "source": "emirdag-scitt-ai-agent-execution-00:carry",
+        "profile": "emirdag-scitt-ai-agent-execution-00:carry",
+        "pin": "profile"
+      },
+      "expect": {
+        "verdict": "EQUIVALENT_UNDER_PROFILE",
+        "reasons": []
+      }
+    },
+    {
+      "id": "emirdag-scitt-ai-agent-execution-00:mutation",
+      "left": {
+        "source": "reference",
+        "profile": "reference",
+        "pin": "profile"
+      },
+      "right": {
+        "source": "emirdag-scitt-ai-agent-execution-00:carry",
+        "profile": "emirdag-scitt-ai-agent-execution-00:carry",
+        "pin": "profile"
+      },
+      "mutations": [
+        {
+          "side": "right",
+          "target": "source",
+          "op": "set",
+          "path": "/caid_action/parameters/amount",
+          "value": "1280.01"
+        }
+      ],
+      "expect": {
+        "verdict": "NOT_EQUIVALENT",
+        "reasons": [
+          "material_projection_mismatch"
+        ]
+      }
+    },
+    {
+      "id": "emirdag-scitt-ai-agent-execution-00:missing",
+      "left": {
+        "source": "reference",
+        "profile": "reference",
+        "pin": "profile"
+      },
+      "right": {
+        "source": "emirdag-scitt-ai-agent-execution-00:carry",
+        "profile": "emirdag-scitt-ai-agent-execution-00:carry",
+        "pin": "profile"
+      },
+      "mutations": [
+        {
+          "side": "right",
+          "target": "source",
+          "op": "delete",
+          "path": "/caid_action/parameters"
+        }
+      ],
+      "expect": {
+        "verdict": "INDETERMINATE",
+        "reason_contains": "right:missing_source_field:/caid_action/parameters"
+      }
+    },
+    {
+      "id": "lee-orprg-permit-receipts-00:native",
+      "left": {
+        "source": "reference",
+        "profile": "reference",
+        "pin": "profile"
+      },
+      "right": {
+        "source": "lee-orprg-permit-receipts-00:native",
+        "profile": "lee-orprg-permit-receipts-00:native",
+        "pin": "profile"
+      },
+      "expect": {
+        "verdict": "INDETERMINATE",
+        "reason_contains": "right:missing_source_field:/effect_request/operation"
+      }
+    },
+    {
+      "id": "lee-orprg-permit-receipts-00:carry",
+      "left": {
+        "source": "reference",
+        "profile": "reference",
+        "pin": "profile"
+      },
+      "right": {
+        "source": "lee-orprg-permit-receipts-00:carry",
+        "profile": "lee-orprg-permit-receipts-00:carry",
+        "pin": "profile"
+      },
+      "expect": {
+        "verdict": "EQUIVALENT_UNDER_PROFILE",
+        "reasons": []
+      }
+    },
+    {
+      "id": "lee-orprg-permit-receipts-00:mutation",
+      "left": {
+        "source": "reference",
+        "profile": "reference",
+        "pin": "profile"
+      },
+      "right": {
+        "source": "lee-orprg-permit-receipts-00:carry",
+        "profile": "lee-orprg-permit-receipts-00:carry",
+        "pin": "profile"
+      },
+      "mutations": [
+        {
+          "side": "right",
+          "target": "source",
+          "op": "set",
+          "path": "/caid_action/parameters/amount",
+          "value": "1280.01"
+        }
+      ],
+      "expect": {
+        "verdict": "NOT_EQUIVALENT",
+        "reasons": [
+          "material_projection_mismatch"
+        ]
+      }
+    },
+    {
+      "id": "lee-orprg-permit-receipts-00:missing",
+      "left": {
+        "source": "reference",
+        "profile": "reference",
+        "pin": "profile"
+      },
+      "right": {
+        "source": "lee-orprg-permit-receipts-00:carry",
+        "profile": "lee-orprg-permit-receipts-00:carry",
+        "pin": "profile"
+      },
+      "mutations": [
+        {
+          "side": "right",
+          "target": "source",
+          "op": "delete",
+          "path": "/caid_action/parameters"
+        }
+      ],
+      "expect": {
+        "verdict": "INDETERMINATE",
+        "reason_contains": "right:missing_source_field:/caid_action/parameters"
+      }
+    },
+    {
+      "id": "baur-pap-02:native",
+      "left": {
+        "source": "reference",
+        "profile": "reference",
+        "pin": "profile"
+      },
+      "right": {
+        "source": "baur-pap-02:native",
+        "profile": "baur-pap-02:native",
+        "pin": "profile"
+      },
+      "expect": {
+        "verdict": "INDETERMINATE",
+        "reason_contains": "right:missing_source_field:/scope/actions/0/conditions"
+      }
+    },
+    {
+      "id": "baur-pap-02:carry",
+      "left": {
+        "source": "reference",
+        "profile": "reference",
+        "pin": "profile"
+      },
+      "right": {
+        "source": "baur-pap-02:carry",
+        "profile": "baur-pap-02:carry",
+        "pin": "profile"
+      },
+      "expect": {
+        "verdict": "EQUIVALENT_UNDER_PROFILE",
+        "reasons": []
+      }
+    },
+    {
+      "id": "baur-pap-02:mutation",
+      "left": {
+        "source": "reference",
+        "profile": "reference",
+        "pin": "profile"
+      },
+      "right": {
+        "source": "baur-pap-02:carry",
+        "profile": "baur-pap-02:carry",
+        "pin": "profile"
+      },
+      "mutations": [
+        {
+          "side": "right",
+          "target": "source",
+          "op": "set",
+          "path": "/caid_action/parameters/amount",
+          "value": "1280.01"
+        }
+      ],
+      "expect": {
+        "verdict": "NOT_EQUIVALENT",
+        "reasons": [
+          "material_projection_mismatch"
+        ]
+      }
+    },
+    {
+      "id": "baur-pap-02:missing",
+      "left": {
+        "source": "reference",
+        "profile": "reference",
+        "pin": "profile"
+      },
+      "right": {
+        "source": "baur-pap-02:carry",
+        "profile": "baur-pap-02:carry",
+        "pin": "profile"
+      },
+      "mutations": [
+        {
+          "side": "right",
+          "target": "source",
+          "op": "delete",
+          "path": "/caid_action/parameters"
+        }
+      ],
+      "expect": {
+        "verdict": "INDETERMINATE",
+        "reason_contains": "right:missing_source_field:/caid_action/parameters"
+      }
+    },
+    {
+      "id": "pidlisnyi-aps-03:native",
+      "left": {
+        "source": "reference",
+        "profile": "reference",
+        "pin": "profile"
+      },
+      "right": {
+        "source": "pidlisnyi-aps-03:native",
+        "profile": "pidlisnyi-aps-03:native",
+        "pin": "profile"
+      },
+      "expect": {
+        "verdict": "EQUIVALENT_UNDER_PROFILE",
+        "reasons": []
+      }
+    },
+    {
+      "id": "pidlisnyi-aps-03:carry",
+      "left": {
+        "source": "reference",
+        "profile": "reference",
+        "pin": "profile"
+      },
+      "right": {
+        "source": "pidlisnyi-aps-03:carry",
+        "profile": "pidlisnyi-aps-03:carry",
+        "pin": "profile"
+      },
+      "expect": {
+        "verdict": "EQUIVALENT_UNDER_PROFILE",
+        "reasons": []
+      }
+    },
+    {
+      "id": "pidlisnyi-aps-03:mutation",
+      "left": {
+        "source": "reference",
+        "profile": "reference",
+        "pin": "profile"
+      },
+      "right": {
+        "source": "pidlisnyi-aps-03:carry",
+        "profile": "pidlisnyi-aps-03:carry",
+        "pin": "profile"
+      },
+      "mutations": [
+        {
+          "side": "right",
+          "target": "source",
+          "op": "set",
+          "path": "/caid_action/parameters/amount",
+          "value": "1280.01"
+        }
+      ],
+      "expect": {
+        "verdict": "NOT_EQUIVALENT",
+        "reasons": [
+          "material_projection_mismatch"
+        ]
+      }
+    },
+    {
+      "id": "pidlisnyi-aps-03:missing",
+      "left": {
+        "source": "reference",
+        "profile": "reference",
+        "pin": "profile"
+      },
+      "right": {
+        "source": "pidlisnyi-aps-03:carry",
+        "profile": "pidlisnyi-aps-03:carry",
+        "pin": "profile"
+      },
+      "mutations": [
+        {
+          "side": "right",
+          "target": "source",
+          "op": "delete",
+          "path": "/caid_action/parameters"
+        }
+      ],
+      "expect": {
+        "verdict": "INDETERMINATE",
+        "reason_contains": "right:missing_source_field:/caid_action/parameters"
+      }
+    },
+    {
+      "id": "howe-vcon-agent-session-00:native",
+      "left": {
+        "source": "reference",
+        "profile": "reference",
+        "pin": "profile"
+      },
+      "right": {
+        "source": "howe-vcon-agent-session-00:native",
+        "profile": "howe-vcon-agent-session-00:native",
+        "pin": "profile"
+      },
+      "expect": {
+        "verdict": "INDETERMINATE",
+        "reason_contains": "right:missing_source_field:/tool_call/arguments"
+      }
+    },
+    {
+      "id": "howe-vcon-agent-session-00:carry",
+      "left": {
+        "source": "reference",
+        "profile": "reference",
+        "pin": "profile"
+      },
+      "right": {
+        "source": "howe-vcon-agent-session-00:carry",
+        "profile": "howe-vcon-agent-session-00:carry",
+        "pin": "profile"
+      },
+      "expect": {
+        "verdict": "EQUIVALENT_UNDER_PROFILE",
+        "reasons": []
+      }
+    },
+    {
+      "id": "howe-vcon-agent-session-00:mutation",
+      "left": {
+        "source": "reference",
+        "profile": "reference",
+        "pin": "profile"
+      },
+      "right": {
+        "source": "howe-vcon-agent-session-00:carry",
+        "profile": "howe-vcon-agent-session-00:carry",
+        "pin": "profile"
+      },
+      "mutations": [
+        {
+          "side": "right",
+          "target": "source",
+          "op": "set",
+          "path": "/caid_action/parameters/amount",
+          "value": "1280.01"
+        }
+      ],
+      "expect": {
+        "verdict": "NOT_EQUIVALENT",
+        "reasons": [
+          "material_projection_mismatch"
+        ]
+      }
+    },
+    {
+      "id": "howe-vcon-agent-session-00:missing",
+      "left": {
+        "source": "reference",
+        "profile": "reference",
+        "pin": "profile"
+      },
+      "right": {
+        "source": "howe-vcon-agent-session-00:carry",
+        "profile": "howe-vcon-agent-session-00:carry",
+        "pin": "profile"
+      },
+      "mutations": [
+        {
+          "side": "right",
+          "target": "source",
+          "op": "delete",
+          "path": "/caid_action/parameters"
+        }
+      ],
+      "expect": {
+        "verdict": "INDETERMINATE",
+        "reason_contains": "right:missing_source_field:/caid_action/parameters"
+      }
+    },
+    {
+      "id": "pei-opsawg-agentops-observability-00:native",
+      "left": {
+        "source": "reference",
+        "profile": "reference",
+        "pin": "profile"
+      },
+      "right": {
+        "source": "pei-opsawg-agentops-observability-00:native",
+        "profile": "pei-opsawg-agentops-observability-00:native",
+        "pin": "profile"
+      },
+      "expect": {
+        "verdict": "INDETERMINATE",
+        "reason_contains": "right:missing_source_field:/event/parameters"
+      }
+    },
+    {
+      "id": "pei-opsawg-agentops-observability-00:carry",
+      "left": {
+        "source": "reference",
+        "profile": "reference",
+        "pin": "profile"
+      },
+      "right": {
+        "source": "pei-opsawg-agentops-observability-00:carry",
+        "profile": "pei-opsawg-agentops-observability-00:carry",
+        "pin": "profile"
+      },
+      "expect": {
+        "verdict": "EQUIVALENT_UNDER_PROFILE",
+        "reasons": []
+      }
+    },
+    {
+      "id": "pei-opsawg-agentops-observability-00:mutation",
+      "left": {
+        "source": "reference",
+        "profile": "reference",
+        "pin": "profile"
+      },
+      "right": {
+        "source": "pei-opsawg-agentops-observability-00:carry",
+        "profile": "pei-opsawg-agentops-observability-00:carry",
+        "pin": "profile"
+      },
+      "mutations": [
+        {
+          "side": "right",
+          "target": "source",
+          "op": "set",
+          "path": "/caid_action/parameters/amount",
+          "value": "1280.01"
+        }
+      ],
+      "expect": {
+        "verdict": "NOT_EQUIVALENT",
+        "reasons": [
+          "material_projection_mismatch"
+        ]
+      }
+    },
+    {
+      "id": "pei-opsawg-agentops-observability-00:missing",
+      "left": {
+        "source": "reference",
+        "profile": "reference",
+        "pin": "profile"
+      },
+      "right": {
+        "source": "pei-opsawg-agentops-observability-00:carry",
+        "profile": "pei-opsawg-agentops-observability-00:carry",
+        "pin": "profile"
+      },
+      "mutations": [
+        {
+          "side": "right",
+          "target": "source",
+          "op": "delete",
+          "path": "/caid_action/parameters"
+        }
+      ],
+      "expect": {
+        "verdict": "INDETERMINATE",
+        "reason_contains": "right:missing_source_field:/caid_action/parameters"
+      }
+    },
+    {
+      "id": "dunbar-dmsc-gw-scenarios-gap-analysis-02:native",
+      "left": {
+        "source": "reference",
+        "profile": "reference",
+        "pin": "profile"
+      },
+      "right": {
+        "source": "dunbar-dmsc-gw-scenarios-gap-analysis-02:native",
+        "profile": "dunbar-dmsc-gw-scenarios-gap-analysis-02:native",
+        "pin": "profile"
+      },
+      "expect": {
+        "verdict": "INDETERMINATE",
+        "reason_contains": "right:missing_source_field:/authorization/operation"
+      }
+    },
+    {
+      "id": "dunbar-dmsc-gw-scenarios-gap-analysis-02:carry",
+      "left": {
+        "source": "reference",
+        "profile": "reference",
+        "pin": "profile"
+      },
+      "right": {
+        "source": "dunbar-dmsc-gw-scenarios-gap-analysis-02:carry",
+        "profile": "dunbar-dmsc-gw-scenarios-gap-analysis-02:carry",
+        "pin": "profile"
+      },
+      "expect": {
+        "verdict": "EQUIVALENT_UNDER_PROFILE",
+        "reasons": []
+      }
+    },
+    {
+      "id": "dunbar-dmsc-gw-scenarios-gap-analysis-02:mutation",
+      "left": {
+        "source": "reference",
+        "profile": "reference",
+        "pin": "profile"
+      },
+      "right": {
+        "source": "dunbar-dmsc-gw-scenarios-gap-analysis-02:carry",
+        "profile": "dunbar-dmsc-gw-scenarios-gap-analysis-02:carry",
+        "pin": "profile"
+      },
+      "mutations": [
+        {
+          "side": "right",
+          "target": "source",
+          "op": "set",
+          "path": "/caid_action/parameters/amount",
+          "value": "1280.01"
+        }
+      ],
+      "expect": {
+        "verdict": "NOT_EQUIVALENT",
+        "reasons": [
+          "material_projection_mismatch"
+        ]
+      }
+    },
+    {
+      "id": "dunbar-dmsc-gw-scenarios-gap-analysis-02:missing",
+      "left": {
+        "source": "reference",
+        "profile": "reference",
+        "pin": "profile"
+      },
+      "right": {
+        "source": "dunbar-dmsc-gw-scenarios-gap-analysis-02:carry",
+        "profile": "dunbar-dmsc-gw-scenarios-gap-analysis-02:carry",
+        "pin": "profile"
+      },
+      "mutations": [
+        {
+          "side": "right",
+          "target": "source",
+          "op": "delete",
+          "path": "/caid_action/parameters"
+        }
+      ],
+      "expect": {
+        "verdict": "INDETERMINATE",
+        "reason_contains": "right:missing_source_field:/caid_action/parameters"
+      }
+    },
+    {
+      "id": "soden-wellknown-mcp-commerce-00:native",
+      "left": {
+        "source": "reference",
+        "profile": "reference",
+        "pin": "profile"
+      },
+      "right": {
+        "source": "soden-wellknown-mcp-commerce-00:native",
+        "profile": "soden-wellknown-mcp-commerce-00:native",
+        "pin": "profile"
+      },
+      "expect": {
+        "verdict": "INDETERMINATE",
+        "reason_contains": "right:missing_source_field:/commerce/tool"
+      }
+    },
+    {
+      "id": "soden-wellknown-mcp-commerce-00:carry",
+      "left": {
+        "source": "reference",
+        "profile": "reference",
+        "pin": "profile"
+      },
+      "right": {
+        "source": "soden-wellknown-mcp-commerce-00:carry",
+        "profile": "soden-wellknown-mcp-commerce-00:carry",
+        "pin": "profile"
+      },
+      "expect": {
+        "verdict": "EQUIVALENT_UNDER_PROFILE",
+        "reasons": []
+      }
+    },
+    {
+      "id": "soden-wellknown-mcp-commerce-00:mutation",
+      "left": {
+        "source": "reference",
+        "profile": "reference",
+        "pin": "profile"
+      },
+      "right": {
+        "source": "soden-wellknown-mcp-commerce-00:carry",
+        "profile": "soden-wellknown-mcp-commerce-00:carry",
+        "pin": "profile"
+      },
+      "mutations": [
+        {
+          "side": "right",
+          "target": "source",
+          "op": "set",
+          "path": "/caid_action/parameters/amount",
+          "value": "1280.01"
+        }
+      ],
+      "expect": {
+        "verdict": "NOT_EQUIVALENT",
+        "reasons": [
+          "material_projection_mismatch"
+        ]
+      }
+    },
+    {
+      "id": "soden-wellknown-mcp-commerce-00:missing",
+      "left": {
+        "source": "reference",
+        "profile": "reference",
+        "pin": "profile"
+      },
+      "right": {
+        "source": "soden-wellknown-mcp-commerce-00:carry",
+        "profile": "soden-wellknown-mcp-commerce-00:carry",
+        "pin": "profile"
+      },
+      "mutations": [
+        {
+          "side": "right",
+          "target": "source",
+          "op": "delete",
+          "path": "/caid_action/parameters"
+        }
+      ],
+      "expect": {
+        "verdict": "INDETERMINATE",
+        "reason_contains": "right:missing_source_field:/caid_action/parameters"
+      }
+    },
+    {
+      "id": "hopley-x402-compliance-receipt-02:native",
+      "left": {
+        "source": "reference",
+        "profile": "reference",
+        "pin": "profile"
+      },
+      "right": {
+        "source": "hopley-x402-compliance-receipt-02:native",
+        "profile": "hopley-x402-compliance-receipt-02:native",
+        "pin": "profile"
+      },
+      "expect": {
+        "verdict": "INDETERMINATE",
+        "reason_contains": "right:missing_source_field:/payment/action"
+      }
+    },
+    {
+      "id": "hopley-x402-compliance-receipt-02:carry",
+      "left": {
+        "source": "reference",
+        "profile": "reference",
+        "pin": "profile"
+      },
+      "right": {
+        "source": "hopley-x402-compliance-receipt-02:carry",
+        "profile": "hopley-x402-compliance-receipt-02:carry",
+        "pin": "profile"
+      },
+      "expect": {
+        "verdict": "EQUIVALENT_UNDER_PROFILE",
+        "reasons": []
+      }
+    },
+    {
+      "id": "hopley-x402-compliance-receipt-02:mutation",
+      "left": {
+        "source": "reference",
+        "profile": "reference",
+        "pin": "profile"
+      },
+      "right": {
+        "source": "hopley-x402-compliance-receipt-02:carry",
+        "profile": "hopley-x402-compliance-receipt-02:carry",
+        "pin": "profile"
+      },
+      "mutations": [
+        {
+          "side": "right",
+          "target": "source",
+          "op": "set",
+          "path": "/caid_action/parameters/amount",
+          "value": "1280.01"
+        }
+      ],
+      "expect": {
+        "verdict": "NOT_EQUIVALENT",
+        "reasons": [
+          "material_projection_mismatch"
+        ]
+      }
+    },
+    {
+      "id": "hopley-x402-compliance-receipt-02:missing",
+      "left": {
+        "source": "reference",
+        "profile": "reference",
+        "pin": "profile"
+      },
+      "right": {
+        "source": "hopley-x402-compliance-receipt-02:carry",
+        "profile": "hopley-x402-compliance-receipt-02:carry",
+        "pin": "profile"
+      },
+      "mutations": [
+        {
+          "side": "right",
+          "target": "source",
+          "op": "delete",
+          "path": "/caid_action/parameters"
+        }
+      ],
+      "expect": {
+        "verdict": "INDETERMINATE",
+        "reason_contains": "right:missing_source_field:/caid_action/parameters"
+      }
+    }
+  ]
+}
