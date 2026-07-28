@@ -58,8 +58,10 @@
       ]
     },
     "boundedFormalEvidence": {
-      "count": 0,
-      "claimIds": []
+      "count": 1,
+      "claimIds": [
+        "reliance-risk-plane-bounds-open-exposure-and-preserves-uncertainty"
+      ]
     },
     "partialSymbolicCoverage": {
       "count": 0,
@@ -100,9 +102,9 @@
   },
   "securityCase": {
     "status": "passed",
-    "claims": 33,
-    "evidenceFiles": 235,
-    "evidenceBundleSha256": "b48523234753383585e99161b520e99f5c308a7e6937af91b6ad92abe16f7c1a"
+    "claims": 34,
+    "evidenceFiles": 251,
+    "evidenceBundleSha256": "eee83620eb5bc1e2768fa212e4cc31b0f3cd66917f8ef44eb0c8e89afdd3629a"
   },
   "conformance": {
     "suites": 21,
