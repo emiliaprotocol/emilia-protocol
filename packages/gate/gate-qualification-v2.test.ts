@@ -26,7 +26,7 @@ import {
   type ProtectedInvocationV2,
   type ProviderEvidenceV2,
   type ProviderEvidenceVerificationV2,
-} from './src/gate-qualification-v2.js';
+} from './gate-qualification-v2.js';
 
 const NOW = '2026-07-26T12:00:00.000Z';
 const EXPIRES = '2026-07-26T12:10:00.000Z';

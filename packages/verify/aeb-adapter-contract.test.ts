@@ -20,7 +20,7 @@ import {
   reconcileAebExecutionDurable,
   signAebNativeVerificationAttestation,
   verifyAebEvaluation,
-} from './src/aeb-adapter-contract.js';
+} from './aeb-adapter-contract.js';
 
 const vectors = JSON.parse(fs.readFileSync(new URL('../../conformance/vectors/aeb-adapter.v1.json', import.meta.url), 'utf8'));
 

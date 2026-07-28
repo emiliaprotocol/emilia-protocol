@@ -244,11 +244,26 @@ test('authorizes a compensating action, never a rewrite of the original action',
     assert.equal(result.state.active_remedy.consequence_mode, 'receipt-program');
     assert.equal(result.state.active_remedy.capability_template_digest, HASH('6'));
     assert.equal(result.state.active_remedy.escrow_profile_digest, null);
+    assert.equal(result.program_digest, HASH('d'));
     const other = kernel();
     await createAndDispute(other);
     const over = await authorize(other, 10_001);
     assert.equal(over.ok, false);
     assert.equal(over.reason, 'remedy_limit_exceeded');
+    assert.equal(over.program_digest, HASH('d'));
+});
+test('the verifier cannot substitute the relying-party remedy program citation', async () => {
+    const subject = kernel({
+        verifyRemedyAuthorization: async (input) => ({
+            ...verifiedAuthorization(input),
+            program_digest: HASH('a'),
+        }),
+    });
+    await createAndDispute(subject);
+    const result = await authorize(subject, 4_000);
+    assert.equal(result.ok, false);
+    assert.equal(result.reason, 'remedy_authorization_invalid');
+    assert.equal(result.program_digest, HASH('d'));
 });
 test('requires exactly one downstream effect-claim owner for every remedy', async () => {
     const subject = kernel();

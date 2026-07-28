@@ -1221,26 +1221,52 @@ export function verifyAebEvaluation(record, options) {
     }
 }
 export function authorizeAebExecution(record, options) {
+    const pinnedProgramDigest = validDigest(record?.evaluator?.pinned_config_digest)
+        ? record.evaluator.pinned_config_digest
+        : null;
+    const programDigest = pinnedProgramDigest
+        ?? digest({
+            version: AEB_EVALUATION_VERSION,
+            decision: 'execution_authorization',
+            requirements: [
+                'verified_evaluation',
+                'execution_mode',
+                'satisfied_evidence',
+                'local_authorization',
+                'one_time_consumption',
+            ],
+        });
+    const decision = (state, reason, reservation_key) => ({
+        allowed: state === 'AUTHORIZED',
+        invoke_allowed: state === 'AUTHORIZED',
+        state,
+        reason,
+        program_digest: programDigest,
+        ...(reservation_key ? { reservation_key } : {}),
+    });
+    if (pinnedProgramDigest === null) {
+        return decision('REFUSED', 'authorization_program_digest_required');
+    }
     const reservationKey = aebReservationKey(record);
     if (options.verification?.valid !== true)
-        return { allowed: false, invoke_allowed: false, state: 'REFUSED', reason: 'evaluation_not_verified' };
+        return decision('REFUSED', 'evaluation_not_verified');
     if (options.verification.execution_authorizing !== true)
-        return { allowed: false, invoke_allowed: false, state: 'REFUSED', reason: 'execution_verification_required' };
+        return decision('REFUSED', 'execution_verification_required');
     if (record.verdict === 'INDETERMINATE')
-        return { allowed: false, invoke_allowed: false, state: 'RECONCILIATION_REQUIRED', reason: 'evidence_indeterminate' };
+        return decision('RECONCILIATION_REQUIRED', 'evidence_indeterminate');
     if (record.verdict !== 'SATISFIED')
-        return { allowed: false, invoke_allowed: false, state: 'REFUSED', reason: 'evidence_requirement_not_satisfied' };
+        return decision('REFUSED', 'evidence_requirement_not_satisfied');
     if (record.authority_constraints?.one_time_consumption !== true)
-        return { allowed: false, invoke_allowed: false, state: 'REFUSED', reason: 'one_time_consumption_not_required' };
+        return decision('REFUSED', 'one_time_consumption_not_required');
     if (!options.local_authorization)
-        return { allowed: false, invoke_allowed: false, state: 'REFUSED', reason: 'local_authorization_denied' };
+        return decision('REFUSED', 'local_authorization_denied');
     if (!options.store.reserve(reservationKey, sortedUnique([
         ...aebNativeReplayKeys(record),
         ...(options.additional_replay_keys ?? []),
     ]))) {
-        return { allowed: false, invoke_allowed: false, state: 'REFUSED', reason: 'consumption_conflict' };
+        return decision('REFUSED', 'consumption_conflict');
     }
-    return { allowed: true, invoke_allowed: true, state: 'AUTHORIZED', reason: 'reserved_for_execution', reservation_key: reservationKey };
+    return decision('AUTHORIZED', 'reserved_for_execution', reservationKey);
 }
 /** Stable native approval identities that must be fenced with the operation reservation. */
 export function aebNativeReplayKeys(record) {
@@ -1280,39 +1306,62 @@ function secureDurableStore(store) {
 }
 /** Production authorization path for shared Postgres/Redis/DynamoDB-backed custody. */
 export async function authorizeAebExecutionDurable(record, options) {
+    const pinnedProgramDigest = validDigest(record?.evaluator?.pinned_config_digest)
+        ? record.evaluator.pinned_config_digest
+        : null;
+    const programDigest = pinnedProgramDigest
+        ?? digest({
+            version: AEB_EVALUATION_VERSION,
+            decision: 'execution_authorization',
+            requirements: [
+                'verified_evaluation',
+                'execution_mode',
+                'satisfied_evidence',
+                'local_authorization',
+                'one_time_consumption',
+            ],
+        });
+    const decision = (state, reason, reservation_key) => ({
+        allowed: state === 'AUTHORIZED',
+        invoke_allowed: state === 'AUTHORIZED',
+        state,
+        reason,
+        program_digest: programDigest,
+        ...(reservation_key ? { reservation_key } : {}),
+    });
+    if (pinnedProgramDigest === null) {
+        return decision('REFUSED', 'authorization_program_digest_required');
+    }
     const reservationKey = aebReservationKey(record);
     if (options.verification?.valid !== true)
-        return { allowed: false, invoke_allowed: false, state: 'REFUSED', reason: 'evaluation_not_verified' };
+        return decision('REFUSED', 'evaluation_not_verified');
     if (options.verification.execution_authorizing !== true)
-        return { allowed: false, invoke_allowed: false, state: 'REFUSED', reason: 'execution_verification_required' };
+        return decision('REFUSED', 'execution_verification_required');
     if (record.verdict === 'INDETERMINATE')
-        return { allowed: false, invoke_allowed: false, state: 'RECONCILIATION_REQUIRED', reason: 'evidence_indeterminate' };
+        return decision('RECONCILIATION_REQUIRED', 'evidence_indeterminate');
     if (record.verdict !== 'SATISFIED')
-        return { allowed: false, invoke_allowed: false, state: 'REFUSED', reason: 'evidence_requirement_not_satisfied' };
+        return decision('REFUSED', 'evidence_requirement_not_satisfied');
     if (record.authority_constraints?.one_time_consumption !== true)
-        return { allowed: false, invoke_allowed: false, state: 'REFUSED', reason: 'one_time_consumption_not_required' };
+        return decision('REFUSED', 'one_time_consumption_not_required');
     if (!options.local_authorization)
-        return { allowed: false, invoke_allowed: false, state: 'REFUSED', reason: 'local_authorization_denied' };
+        return decision('REFUSED', 'local_authorization_denied');
     if (!secureDurableStore(options.store))
-        return { allowed: false, invoke_allowed: false, state: 'REFUSED', reason: 'secure_consumption_store_required' };
+        return decision('REFUSED', 'secure_consumption_store_required');
     try {
         const reservation = await options.store.reserve(reservationKey, sortedUnique([
             ...aebNativeReplayKeys(record),
             ...(options.additional_replay_keys ?? []),
         ]));
         if (reservation !== true && reservation !== 'RESERVED') {
-            return {
-                allowed: false,
-                invoke_allowed: false,
-                state: 'REFUSED',
-                reason: reservation === 'NATIVE_REPLAY_CONFLICT' ? 'native_replay_conflict' : 'consumption_conflict',
-            };
+            return decision('REFUSED', reservation === 'NATIVE_REPLAY_CONFLICT'
+                ? 'native_replay_conflict'
+                : 'consumption_conflict');
         }
     }
     catch {
-        return { allowed: false, invoke_allowed: false, state: 'REFUSED', reason: 'consumption_store_unavailable' };
+        return decision('REFUSED', 'consumption_store_unavailable');
     }
-    return { allowed: true, invoke_allowed: true, state: 'AUTHORIZED', reason: 'reserved_for_execution', reservation_key: reservationKey };
+    return decision('AUTHORIZED', 'reserved_for_execution', reservationKey);
 }
 export async function reconcileAebExecutionDurable(store, reservationKey, outcome) {
     if (!secureDurableStore(store))

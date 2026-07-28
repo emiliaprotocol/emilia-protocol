@@ -5,6 +5,7 @@
  * contract. Qualification is evidence, not authorization: only a complete
  * immutable AdmissionSnapshot may cross the one-time invocation boundary.
  */
+import crypto from 'node:crypto';
 import { createAdmissionSnapshot } from './admission-store.js';
 export const GATE_QUALIFICATION_V2_VERSION = 'EP-GATE-QUALIFICATION-v2';
 const DIGEST = /^sha256:[0-9a-f]{64}$/;
@@ -22,6 +23,14 @@ const REQUIRED_QUALIFICATION_CHECKS = Object.freeze([
     'assignment_in_scope',
     'protected_request_bound',
 ]);
+const GATE_QUALIFICATION_V2_PROGRAM_DIGEST = `sha256:${crypto
+    .createHash('sha256')
+    .update(JSON.stringify({
+    version: GATE_QUALIFICATION_V2_VERSION,
+    checks: REQUIRED_QUALIFICATION_CHECKS,
+    requirements: ['qualification', 'aeb', 'aec', 'local_policy'],
+}))
+    .digest('hex')}`;
 const DEFAULT_ADAPTER_TIMEOUT_MS = 30_000;
 const MAX_ADAPTER_TIMEOUT_MS = 300_000;
 /** Explicitly test-only custody. Production callers must supply durable KMS-backed custody. */
@@ -215,6 +224,12 @@ function validateLocalPolicy(leg, snapshot, reasons) {
     if (!validString(leg.policyId)) {
         addReason(reasons, 'localPolicy_policy_missing');
     }
+    if (!validDigest(leg.policyDigest)) {
+        addReason(reasons, 'localPolicy_program_digest_missing');
+    }
+    else if (leg.policyDigest !== snapshot.body.authorization_policy_digest) {
+        addReason(reasons, 'localPolicy_program_digest_mismatch');
+    }
     if (leg.caid !== snapshot.body.caid
         || leg.actionDigest !== snapshot.body.action_digest) {
         addReason(reasons, 'localPolicy_binding_mismatch');
@@ -276,6 +291,7 @@ function emptyDecision(reasons) {
         caid: '',
         actionDigest: '',
         snapshotDigest: '',
+        programDigest: GATE_QUALIFICATION_V2_PROGRAM_DIGEST,
         effectKey: '',
         requirements: deepFreeze({
             qualificationEvidenceDigest: '',
@@ -305,6 +321,7 @@ function composeCanonical(snapshot, qualification) {
         caid: snapshot.body.caid,
         actionDigest: snapshot.body.action_digest,
         snapshotDigest: snapshot.snapshot_digest,
+        programDigest: snapshot.body.authorization_policy_digest,
         effectKey: actuationKey(snapshot),
         requirements: deepFreeze({
             qualificationEvidenceDigest: snapshot.body.qualification_statement_payload_digest,
@@ -437,6 +454,15 @@ function authorityKey(tenantId, admissionId) {
 }
 function reconciliationRequired(admissionId, reason) {
     return deepFreeze({ status: 'reconciliation_required', reason, admissionId });
+}
+function refused(reason, decision, programDigest = decision?.programDigest
+    ?? GATE_QUALIFICATION_V2_PROGRAM_DIGEST) {
+    return deepFreeze({
+        status: 'refused',
+        reason,
+        programDigest,
+        ...(decision ? { decision } : {}),
+    });
 }
 export class GateQualificationV2 {
     mode;
@@ -614,7 +640,7 @@ export class GateQualificationV2 {
     }
     async #existingAdmissionResult(snapshot, storeReason, decision) {
         if (storeReason !== 'admission_exists') {
-            return deepFreeze({ status: 'refused', reason: storeReason, decision });
+            return refused(storeReason, decision);
         }
         try {
             const record = await this.#store.read(reference(snapshot));
@@ -627,7 +653,7 @@ export class GateQualificationV2 {
         catch {
             return reconciliationRequired(snapshot.body.admission_id, 'admission_read_ambiguous');
         }
-        return deepFreeze({ status: 'refused', reason: storeReason, decision });
+        return refused(storeReason, decision);
     }
     async #verifyProviderEvidence(rawEvidence, snapshot) {
         let verification;
@@ -769,11 +795,7 @@ export class GateQualificationV2 {
         if (this.mode === 'shadow')
             return this.#shadow(input, decision);
         if (!checked.ok || !decision.allow) {
-            return deepFreeze({
-                status: 'refused',
-                reason: decision.reasons[0] ?? 'qualification_refused',
-                decision,
-            });
+            return refused(decision.reasons[0] ?? 'qualification_refused', decision);
         }
         const snapshot = checked.snapshot;
         let reserved;
@@ -781,11 +803,7 @@ export class GateQualificationV2 {
             reserved = await this.#store.reserve(snapshot);
         }
         catch {
-            return deepFreeze({
-                status: 'refused',
-                reason: 'admission_reserve_failed',
-                decision,
-            });
+            return refused('admission_reserve_failed', decision);
         }
         if (!reserved.ok) {
             return this.#existingAdmissionResult(snapshot, reserved.reason, decision);
@@ -804,11 +822,7 @@ export class GateQualificationV2 {
             catch {
                 // No provider entry occurred; the reservation remains closed.
             }
-            return deepFreeze({
-                status: 'refused',
-                reason: 'reserve_snapshot_mismatch',
-                decision,
-            });
+            return refused('reserve_snapshot_mismatch', decision);
         }
         // Reread the candidate, qualification status, AEB, AEC, local policy and
         // protected-request binding from authoritative sources immediately before
@@ -829,11 +843,7 @@ export class GateQualificationV2 {
             catch {
                 // No execution right was consumed and no provider entry occurred.
             }
-            return deepFreeze({
-                status: 'refused',
-                reason: 'invocation_remeasurement_failed',
-                decision,
-            });
+            return refused('invocation_remeasurement_failed', decision);
         }
         const refreshedDecision = composeCanonical(reserved.snapshot, frozenCopy(refreshedBundle));
         if (!refreshedDecision.allow) {
@@ -847,12 +857,7 @@ export class GateQualificationV2 {
             catch {
                 // No execution right was consumed and no provider entry occurred.
             }
-            return deepFreeze({
-                status: 'refused',
-                reason: refreshedDecision.reasons[0]
-                    ?? 'invocation_remeasurement_refused',
-                decision: refreshedDecision,
-            });
+            return refused(refreshedDecision.reasons[0] ?? 'invocation_remeasurement_refused', refreshedDecision);
         }
         let begun;
         try {
@@ -870,11 +875,7 @@ export class GateQualificationV2 {
                 || begun.reason === 'revision_conflict') {
                 return this.#beginAmbiguity(reserved.snapshot, reserved.owner_token);
             }
-            return deepFreeze({
-                status: 'refused',
-                reason: begun.reason,
-                decision,
-            });
+            return refused(begun.reason, decision);
         }
         const begunSnapshot = canonicalSnapshot(begun.snapshot);
         if (!begunSnapshot.ok || !deeplyFrozen(begun.snapshot)
@@ -914,14 +915,11 @@ export class GateQualificationV2 {
     /** Evidence-only reconciliation. This method has no mutation-adapter path. */
     async reconcile(input) {
         if (this.mode !== 'enforce') {
-            return deepFreeze({
-                status: 'refused',
-                reason: 'reconciliation_unavailable_in_shadow',
-            });
+            return refused('reconciliation_unavailable_in_shadow');
         }
         if (!input || !validString(input.tenant_id)
             || !validString(input.admission_id)) {
-            return deepFreeze({ status: 'refused', reason: 'admission_reference_invalid' });
+            return refused('admission_reference_invalid');
         }
         let record;
         try {
@@ -931,13 +929,10 @@ export class GateQualificationV2 {
             return reconciliationRequired(input.admission_id, 'admission_read_ambiguous');
         }
         if (!record) {
-            return deepFreeze({ status: 'refused', reason: 'admission_not_found' });
+            return refused('admission_not_found');
         }
         if (record.execution_right !== 'CONSUMED') {
-            return deepFreeze({
-                status: 'refused',
-                reason: 'reconciliation_not_required',
-            });
+            return refused('reconciliation_not_required');
         }
         let snapshot;
         try {
@@ -982,10 +977,7 @@ export class GateQualificationV2 {
         const effectUnresolved = !record.effect_relation
             || record.effect_relation.value === 'INDETERMINATE';
         if (!providerUnresolved && !effectUnresolved) {
-            return deepFreeze({
-                status: 'refused',
-                reason: 'reconciliation_not_required',
-            });
+            return refused('reconciliation_not_required', undefined, snapshot.body.authorization_policy_digest);
         }
         const base = protectedInvocation(snapshot, authority.invocationToken);
         let rawEvidence;

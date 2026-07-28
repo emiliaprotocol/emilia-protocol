@@ -338,6 +338,8 @@ export interface AebExecutionDecision {
     invoke_allowed: boolean;
     state: 'AUTHORIZED' | 'REFUSED' | 'RECONCILIATION_REQUIRED';
     reason: string;
+    /** Relying-party-pinned AEB program/configuration that made the decision. */
+    program_digest: AebDigest;
     reservation_key?: string;
 }
 export interface AebConsumptionStore {

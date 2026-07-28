@@ -112,7 +112,6 @@ const STORED_DISPUTE_KEYS = new Set([
 const ATTEMPT_KEYS = new Set([
   'evidence_id', 'evidence_digest', 'dispute_id', 'original_operation_id',
   'remedy_operation_id', 'remedy_caid', 'remedy_action_digest',
-  'program_digest',
   'consequence_mode', 'capability_template_digest', 'escrow_profile_digest',
   'destination_binding_digest', 'units', 'unit', 'authorized_at',
   'request_digest', 'status', 'claim_token_digest', 'claimed_at',
@@ -341,7 +340,6 @@ function validAttempt(value: unknown): value is DataRecord {
       || !validId(value.remedy_operation_id)
       || typeof value.remedy_caid !== 'string' || !CAID.test(value.remedy_caid)
       || typeof value.remedy_action_digest !== 'string' || !DIGEST.test(value.remedy_action_digest)
-      || typeof value.program_digest !== 'string' || !DIGEST.test(value.program_digest)
       || !validRemedyOwner(value)
       || typeof value.destination_binding_digest !== 'string' || !DIGEST.test(value.destination_binding_digest)
       || !Number.isSafeInteger(value.units) || value.units < 1
@@ -402,13 +400,6 @@ function validState(value: unknown, tenantId?: string, instanceId?: string): val
       || typeof value.create_request_digest !== 'string' || !DIGEST.test(value.create_request_digest)) {
     return false;
   }
-  const attempts = [
-    ...(value.active_remedy === null ? [] : [value.active_remedy]),
-    ...value.remedies,
-  ];
-  if (attempts.some((attempt: DataRecord) => (
-    attempt.program_digest !== value.remedy_profile_digest
-  ))) return false;
   if (value.revocation !== null && (!exactKeys(value.revocation, STORED_REVOCATION_KEYS)
       || !validId(value.revocation.evidence_id)
       || typeof value.revocation.evidence_digest !== 'string' || !DIGEST.test(value.revocation.evidence_digest)
@@ -1044,67 +1035,75 @@ export function createRemedyProgramKernel(options: RemedyProgramKernelConfig) {
     const loaded = await load(value.tenantId, value.instanceId);
     if (!loaded.ok) return loaded;
     const state = loaded.state as DataRecord;
+    const decided = (ok: boolean, reason?: string, fields: DataRecord = {}) => pass({
+      ok,
+      ...(reason ? { reason } : {}),
+      program_digest: state.remedy_profile_digest,
+      ...fields,
+    }) as RemedyProgramResult;
     const requestDigest = digest(value);
-    if (state.status === 'original_proved_no_effect') return fail('remedy_case_terminal');
+    if (state.status === 'original_proved_no_effect') return decided(false, 'remedy_case_terminal');
     if (state.original.outcome === 'indeterminate'
         && state.original_reconciliation?.outcome !== 'executed') {
-      return fail('original_effect_indeterminate');
+      return decided(false, 'original_effect_indeterminate');
     }
     const priorOperation = allAttempts(state).find((attempt) => (
       attempt.remedy_operation_id === value.authorization.remedy_operation_id
     ));
     if (priorOperation) {
       return priorOperation.request_digest === requestDigest
-        ? pass({ ok: true, idempotent: true, state }) as RemedyProgramResult
-        : fail('remedy_operation_replayed');
+        ? decided(true, undefined, { idempotent: true, state })
+        : decided(false, 'remedy_operation_replayed');
     }
-    if (state.remaining_units === 0) return fail('remedy_limit_exhausted');
-    if (['remedied', 'resolved_no_remedy'].includes(state.status)) return fail('remedy_case_terminal');
+    if (state.remaining_units === 0) return decided(false, 'remedy_limit_exhausted');
+    if (['remedied', 'resolved_no_remedy'].includes(state.status)) {
+      return decided(false, 'remedy_case_terminal');
+    }
     if (state.active_remedy !== null) {
       return state.status === 'remedy_indeterminate'
-        ? fail('remedy_indeterminate') : fail('remedy_already_active');
+        ? decided(false, 'remedy_indeterminate')
+        : decided(false, 'remedy_already_active');
     }
     if (!['disputed', 'partially_remedied'].includes(state.status) || state.dispute === null) {
-      return fail('remedy_case_unavailable');
+      return decided(false, 'remedy_case_unavailable');
     }
     if (evidenceUsed(state, value.authorization.evidence_id, value.authorization.evidence_digest)) {
-      return fail('evidence_replayed');
+      return decided(false, 'evidence_replayed');
     }
     const at = transitionTime(state);
-    if (typeof at !== 'number') return at;
+    if (typeof at !== 'number') return decided(false, at.reason);
     if (instant(value.authorization.authorized_at) > at
         || instant(value.authorization.authorized_at) < instant(state.dispute.opened_at)) {
-      return fail('remedy_authorization_time_invalid');
+      return decided(false, 'remedy_authorization_time_invalid');
     }
     const disputeRemaining = state.dispute.requested_units - state.remedied_units;
     if (value.authorization.units > state.remaining_units || value.authorization.units > disputeRemaining) {
-      return fail('remedy_limit_exceeded');
+      return decided(false, 'remedy_limit_exceeded');
     }
     if (value.authorization.remedy_operation_id === state.original.operation_id
         || value.authorization.remedy_action_digest === state.original.action_digest) {
-      return fail('remedy_must_be_compensating');
+      return decided(false, 'remedy_must_be_compensating');
     }
     const verified = await invoke(verifyRemedyAuthorization, {
       authorization: clone(value.authorization), expected: expectedContext(state),
     });
     if (!verified || verified.ok !== true || !exactKeys(verified, VERIFIED_AUTHORIZATION_KEYS)) {
-      return fail('remedy_authorization_invalid');
+      return decided(false, 'remedy_authorization_invalid');
     }
     if (!validRemedyOwner(verified as DataRecord)) {
-      return fail('remedy_owner_invalid');
+      return decided(false, 'remedy_owner_invalid');
     }
     if ([...AUTHORIZATION_KEYS].some((key) => !same(verified[key], value.authorization[key]))
         || verified.dispute_id !== state.dispute.dispute_id
         || verified.original_operation_id !== state.original.operation_id
         || verified.destination_binding_digest !== state.destination_binding_digest
         || verified.unit !== state.unit) {
-      return fail('remedy_authorization_binding_mismatch');
+      return decided(false, 'remedy_authorization_binding_mismatch');
     }
     const next = touch(state, at);
     next.status = 'remedy_authorized';
     next.active_remedy = {
       ...withoutOk(verified as DataRecord),
-      program_digest: state.remedy_profile_digest,
       request_digest: requestDigest,
       status: 'authorized',
       claim_token_digest: null,
@@ -1118,7 +1117,9 @@ export function createRemedyProgramKernel(options: RemedyProgramKernelConfig) {
     };
     consumeEvidence(next, verified.evidence_id, verified.evidence_digest);
     const committed = await commit(state, next);
-    return committed.ok ? pass({ ok: true, state: committed.state }) as RemedyProgramResult : committed;
+    return committed.ok
+      ? decided(true, undefined, { state: committed.state })
+      : decided(false, committed.reason);
   }
 
   async function claimRemedy(input: unknown): Promise<RemedyProgramResult> {

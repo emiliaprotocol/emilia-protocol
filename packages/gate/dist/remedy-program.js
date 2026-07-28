@@ -972,63 +972,71 @@ export function createRemedyProgramKernel(options) {
         if (!loaded.ok)
             return loaded;
         const state = loaded.state;
+        const decided = (ok, reason, fields = {}) => pass({
+            ok,
+            ...(reason ? { reason } : {}),
+            program_digest: state.remedy_profile_digest,
+            ...fields,
+        });
         const requestDigest = digest(value);
         if (state.status === 'original_proved_no_effect')
-            return fail('remedy_case_terminal');
+            return decided(false, 'remedy_case_terminal');
         if (state.original.outcome === 'indeterminate'
             && state.original_reconciliation?.outcome !== 'executed') {
-            return fail('original_effect_indeterminate');
+            return decided(false, 'original_effect_indeterminate');
         }
         const priorOperation = allAttempts(state).find((attempt) => (attempt.remedy_operation_id === value.authorization.remedy_operation_id));
         if (priorOperation) {
             return priorOperation.request_digest === requestDigest
-                ? pass({ ok: true, idempotent: true, state })
-                : fail('remedy_operation_replayed');
+                ? decided(true, undefined, { idempotent: true, state })
+                : decided(false, 'remedy_operation_replayed');
         }
         if (state.remaining_units === 0)
-            return fail('remedy_limit_exhausted');
-        if (['remedied', 'resolved_no_remedy'].includes(state.status))
-            return fail('remedy_case_terminal');
+            return decided(false, 'remedy_limit_exhausted');
+        if (['remedied', 'resolved_no_remedy'].includes(state.status)) {
+            return decided(false, 'remedy_case_terminal');
+        }
         if (state.active_remedy !== null) {
             return state.status === 'remedy_indeterminate'
-                ? fail('remedy_indeterminate') : fail('remedy_already_active');
+                ? decided(false, 'remedy_indeterminate')
+                : decided(false, 'remedy_already_active');
         }
         if (!['disputed', 'partially_remedied'].includes(state.status) || state.dispute === null) {
-            return fail('remedy_case_unavailable');
+            return decided(false, 'remedy_case_unavailable');
         }
         if (evidenceUsed(state, value.authorization.evidence_id, value.authorization.evidence_digest)) {
-            return fail('evidence_replayed');
+            return decided(false, 'evidence_replayed');
         }
         const at = transitionTime(state);
         if (typeof at !== 'number')
-            return at;
+            return decided(false, at.reason);
         if (instant(value.authorization.authorized_at) > at
             || instant(value.authorization.authorized_at) < instant(state.dispute.opened_at)) {
-            return fail('remedy_authorization_time_invalid');
+            return decided(false, 'remedy_authorization_time_invalid');
         }
         const disputeRemaining = state.dispute.requested_units - state.remedied_units;
         if (value.authorization.units > state.remaining_units || value.authorization.units > disputeRemaining) {
-            return fail('remedy_limit_exceeded');
+            return decided(false, 'remedy_limit_exceeded');
         }
         if (value.authorization.remedy_operation_id === state.original.operation_id
             || value.authorization.remedy_action_digest === state.original.action_digest) {
-            return fail('remedy_must_be_compensating');
+            return decided(false, 'remedy_must_be_compensating');
         }
         const verified = await invoke(verifyRemedyAuthorization, {
             authorization: clone(value.authorization), expected: expectedContext(state),
         });
         if (!verified || verified.ok !== true || !exactKeys(verified, VERIFIED_AUTHORIZATION_KEYS)) {
-            return fail('remedy_authorization_invalid');
+            return decided(false, 'remedy_authorization_invalid');
         }
         if (!validRemedyOwner(verified)) {
-            return fail('remedy_owner_invalid');
+            return decided(false, 'remedy_owner_invalid');
         }
         if ([...AUTHORIZATION_KEYS].some((key) => !same(verified[key], value.authorization[key]))
             || verified.dispute_id !== state.dispute.dispute_id
             || verified.original_operation_id !== state.original.operation_id
             || verified.destination_binding_digest !== state.destination_binding_digest
             || verified.unit !== state.unit) {
-            return fail('remedy_authorization_binding_mismatch');
+            return decided(false, 'remedy_authorization_binding_mismatch');
         }
         const next = touch(state, at);
         next.status = 'remedy_authorized';
@@ -1047,7 +1055,9 @@ export function createRemedyProgramKernel(options) {
         };
         consumeEvidence(next, verified.evidence_id, verified.evidence_digest);
         const committed = await commit(state, next);
-        return committed.ok ? pass({ ok: true, state: committed.state }) : committed;
+        return committed.ok
+            ? decided(true, undefined, { state: committed.state })
+            : decided(false, committed.reason);
     }
     async function claimRemedy(input) {
         const parsed = operationInput(input, CLAIM_KEYS, 'remedy_claim_input_invalid');
