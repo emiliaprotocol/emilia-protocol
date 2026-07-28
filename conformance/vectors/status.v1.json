@@ -1,0 +1,902 @@
+{
+  "suite_note": "EP-STATUS-v1 conformance vectors. Protocol-independent: a status target is a generic (type, id, digest, usage) tuple, so any specification with a signed artifact and a content digest can bind to it without adopting EMILIA receipts. Covers the freshness-bounded negative answer, the revoker authority certificate, append-only chaining, and the indeterminate outcome.",
+  "version": "EP-STATUS-v1",
+  "generated_by": "conformance/generate-status-vectors.mjs",
+  "authority_pin": {
+    "authority_domain": "status.example",
+    "authority_id": "authority:example",
+    "key_id": "authority-key-1",
+    "public_key": "MCowBQYDK2VwAyEAI7pLlQUyR6d6qf0FueJ4-7eRWTtJcEUg9qb-z_Y8oB8"
+  },
+  "vectors": [
+    {
+      "id": "authority-certificate-verifies",
+      "kind": "revoker_authority",
+      "description": "A signed revoker authority certificate verifies under the pinned authority key. This is the artifact answering \"was this party entitled to revoke\", which the revocation-statement draft assigns to relying-party pinning policy and does not itself carry.",
+      "certificate": {
+        "@version": "EP-REVOKER-AUTHORITY-v1",
+        "certificate_id": "cert-1",
+        "authority_domain": "status.example",
+        "authority_id": "authority:example",
+        "revoker_id": "revoker:ops",
+        "revoker_key": {
+          "algorithm": "Ed25519",
+          "key_id": "ep:revoker-key:sha256:7e07c74ba8fc03f872f49aaa9c53601d083d10c699462529e3e110590273cf6f",
+          "public_key": "MCowBQYDK2VwAyEAVP1W2gT2Z6ullkPViwxLxstRhnfzWcxXAAjwm1oXi-I"
+        },
+        "scope": {
+          "allowed_target_types": [
+            "receipt",
+            "commit"
+          ],
+          "allowed_usages": [
+            "authorization",
+            "execution"
+          ]
+        },
+        "issued_at": "2026-01-01T00:00:00.000Z",
+        "expires_at": "2027-01-01T00:00:00.000Z",
+        "proof": {
+          "algorithm": "Ed25519",
+          "key_id": "authority-key-1",
+          "signature_b64u": "m2pNPOIoIt_fmaPP3RdlF2UGl4qzhm41jkfZ-j7Jc6lTSXKPeROmeXYOvqZutopuBXFIRJ3fN2USyMtmgXRjCg"
+        }
+      },
+      "authority_pin": {
+        "authority_domain": "status.example",
+        "authority_id": "authority:example",
+        "key_id": "authority-key-1",
+        "public_key": "MCowBQYDK2VwAyEAI7pLlQUyR6d6qf0FueJ4-7eRWTtJcEUg9qb-z_Y8oB8"
+      },
+      "now": "2026-01-01T01:00:00.000Z",
+      "expect": {
+        "valid": true
+      },
+      "observed": {
+        "valid": true,
+        "reasons": []
+      }
+    },
+    {
+      "id": "authority-certificate-wrong-pin-refused",
+      "kind": "revoker_authority",
+      "description": "The same certificate under a different pinned authority key is refused. Attribution is not authority.",
+      "certificate": {
+        "@version": "EP-REVOKER-AUTHORITY-v1",
+        "certificate_id": "cert-1",
+        "authority_domain": "status.example",
+        "authority_id": "authority:example",
+        "revoker_id": "revoker:ops",
+        "revoker_key": {
+          "algorithm": "Ed25519",
+          "key_id": "ep:revoker-key:sha256:7e07c74ba8fc03f872f49aaa9c53601d083d10c699462529e3e110590273cf6f",
+          "public_key": "MCowBQYDK2VwAyEAVP1W2gT2Z6ullkPViwxLxstRhnfzWcxXAAjwm1oXi-I"
+        },
+        "scope": {
+          "allowed_target_types": [
+            "receipt",
+            "commit"
+          ],
+          "allowed_usages": [
+            "authorization",
+            "execution"
+          ]
+        },
+        "issued_at": "2026-01-01T00:00:00.000Z",
+        "expires_at": "2027-01-01T00:00:00.000Z",
+        "proof": {
+          "algorithm": "Ed25519",
+          "key_id": "authority-key-1",
+          "signature_b64u": "m2pNPOIoIt_fmaPP3RdlF2UGl4qzhm41jkfZ-j7Jc6lTSXKPeROmeXYOvqZutopuBXFIRJ3fN2USyMtmgXRjCg"
+        }
+      },
+      "authority_pin": {
+        "authority_domain": "status.example",
+        "authority_id": "authority:example",
+        "key_id": "authority-key-1",
+        "public_key": "MCowBQYDK2VwAyEAo2ouNetuWsx0iF_bRny3CIBfEr85Az66VH4Qogl-2ew"
+      },
+      "now": "2026-01-01T01:00:00.000Z",
+      "expect": {
+        "valid": false,
+        "reason_contains": "revoker_authority"
+      },
+      "observed": {
+        "valid": false,
+        "reasons": [
+          "invalid_revoker_authority_signature"
+        ]
+      }
+    },
+    {
+      "id": "authority-certificate-outside-validity-refused",
+      "kind": "revoker_authority",
+      "description": "A certificate evaluated after expires_at is refused rather than silently accepted.",
+      "certificate": {
+        "@version": "EP-REVOKER-AUTHORITY-v1",
+        "certificate_id": "cert-1",
+        "authority_domain": "status.example",
+        "authority_id": "authority:example",
+        "revoker_id": "revoker:ops",
+        "revoker_key": {
+          "algorithm": "Ed25519",
+          "key_id": "ep:revoker-key:sha256:7e07c74ba8fc03f872f49aaa9c53601d083d10c699462529e3e110590273cf6f",
+          "public_key": "MCowBQYDK2VwAyEAVP1W2gT2Z6ullkPViwxLxstRhnfzWcxXAAjwm1oXi-I"
+        },
+        "scope": {
+          "allowed_target_types": [
+            "receipt",
+            "commit"
+          ],
+          "allowed_usages": [
+            "authorization",
+            "execution"
+          ]
+        },
+        "issued_at": "2026-01-01T00:00:00.000Z",
+        "expires_at": "2027-01-01T00:00:00.000Z",
+        "proof": {
+          "algorithm": "Ed25519",
+          "key_id": "authority-key-1",
+          "signature_b64u": "m2pNPOIoIt_fmaPP3RdlF2UGl4qzhm41jkfZ-j7Jc6lTSXKPeROmeXYOvqZutopuBXFIRJ3fN2USyMtmgXRjCg"
+        }
+      },
+      "authority_pin": {
+        "authority_domain": "status.example",
+        "authority_id": "authority:example",
+        "key_id": "authority-key-1",
+        "public_key": "MCowBQYDK2VwAyEAI7pLlQUyR6d6qf0FueJ4-7eRWTtJcEUg9qb-z_Y8oB8"
+      },
+      "now": "2027-06-01T00:00:00.000Z",
+      "expect": {
+        "valid": false,
+        "reason_contains": "not_valid_at_time"
+      },
+      "observed": {
+        "valid": false,
+        "reasons": [
+          "revoker_authority_not_valid_at_time"
+        ]
+      }
+    },
+    {
+      "id": "status-current-not-revoked",
+      "kind": "status",
+      "description": "A signed head asserts not_revoked with an explicit next_update. This is the separately authenticated status evidence the revocation-statement draft requires and does not define.",
+      "target": {
+        "type": "receipt",
+        "id": "urn:example:artifact:7f3a",
+        "digest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "usage": "authorization"
+      },
+      "status": {
+        "@version": "EP-STATUS-v1",
+        "authority_domain": "status.example",
+        "revoker_authority_digest": "sha256:435265c139e375d0232fc4f92deeacb22631168a016d8bb05fbe1581484b8876",
+        "target": {
+          "type": "receipt",
+          "id": "urn:example:artifact:7f3a",
+          "digest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+          "usage": "authorization"
+        },
+        "status": "not_revoked",
+        "sequence": 0,
+        "previous_status_digest": null,
+        "issued_at": "2026-01-01T00:00:00.000Z",
+        "next_update": "2026-01-01T01:00:00.000Z",
+        "proof": {
+          "algorithm": "Ed25519",
+          "key_id": "ep:revoker-key:sha256:7e07c74ba8fc03f872f49aaa9c53601d083d10c699462529e3e110590273cf6f",
+          "signature_b64u": "C5AFA4Gk1RkU8WuZOVgtslB2A9Wiw3sdi9fqjeM7QK_yK1Rm62i9NNcb7W9B-60unwAj1BLilV8PHIUaT-0XDQ"
+        }
+      },
+      "certificate": {
+        "@version": "EP-REVOKER-AUTHORITY-v1",
+        "certificate_id": "cert-1",
+        "authority_domain": "status.example",
+        "authority_id": "authority:example",
+        "revoker_id": "revoker:ops",
+        "revoker_key": {
+          "algorithm": "Ed25519",
+          "key_id": "ep:revoker-key:sha256:7e07c74ba8fc03f872f49aaa9c53601d083d10c699462529e3e110590273cf6f",
+          "public_key": "MCowBQYDK2VwAyEAVP1W2gT2Z6ullkPViwxLxstRhnfzWcxXAAjwm1oXi-I"
+        },
+        "scope": {
+          "allowed_target_types": [
+            "receipt",
+            "commit"
+          ],
+          "allowed_usages": [
+            "authorization",
+            "execution"
+          ]
+        },
+        "issued_at": "2026-01-01T00:00:00.000Z",
+        "expires_at": "2027-01-01T00:00:00.000Z",
+        "proof": {
+          "algorithm": "Ed25519",
+          "key_id": "authority-key-1",
+          "signature_b64u": "m2pNPOIoIt_fmaPP3RdlF2UGl4qzhm41jkfZ-j7Jc6lTSXKPeROmeXYOvqZutopuBXFIRJ3fN2USyMtmgXRjCg"
+        }
+      },
+      "authority_pin": {
+        "authority_domain": "status.example",
+        "authority_id": "authority:example",
+        "key_id": "authority-key-1",
+        "public_key": "MCowBQYDK2VwAyEAI7pLlQUyR6d6qf0FueJ4-7eRWTtJcEUg9qb-z_Y8oB8"
+      },
+      "now": "2026-01-01T00:00:00.000Z",
+      "expect": {
+        "outcome": "current_not_revoked",
+        "valid": true
+      },
+      "observed": {
+        "outcome": "current_not_revoked",
+        "valid": true,
+        "reasons": []
+      }
+    },
+    {
+      "id": "status-stale-is-indeterminate-not-negative",
+      "kind": "status",
+      "description": "Evaluated past next_update, the same head does not become a negative answer. It becomes indeterminate. Absence of fresh evidence is never proof of non-revocation.",
+      "target": {
+        "type": "receipt",
+        "id": "urn:example:artifact:7f3a",
+        "digest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "usage": "authorization"
+      },
+      "status": {
+        "@version": "EP-STATUS-v1",
+        "authority_domain": "status.example",
+        "revoker_authority_digest": "sha256:435265c139e375d0232fc4f92deeacb22631168a016d8bb05fbe1581484b8876",
+        "target": {
+          "type": "receipt",
+          "id": "urn:example:artifact:7f3a",
+          "digest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+          "usage": "authorization"
+        },
+        "status": "not_revoked",
+        "sequence": 0,
+        "previous_status_digest": null,
+        "issued_at": "2026-01-01T00:00:00.000Z",
+        "next_update": "2026-01-01T01:00:00.000Z",
+        "proof": {
+          "algorithm": "Ed25519",
+          "key_id": "ep:revoker-key:sha256:7e07c74ba8fc03f872f49aaa9c53601d083d10c699462529e3e110590273cf6f",
+          "signature_b64u": "C5AFA4Gk1RkU8WuZOVgtslB2A9Wiw3sdi9fqjeM7QK_yK1Rm62i9NNcb7W9B-60unwAj1BLilV8PHIUaT-0XDQ"
+        }
+      },
+      "certificate": {
+        "@version": "EP-REVOKER-AUTHORITY-v1",
+        "certificate_id": "cert-1",
+        "authority_domain": "status.example",
+        "authority_id": "authority:example",
+        "revoker_id": "revoker:ops",
+        "revoker_key": {
+          "algorithm": "Ed25519",
+          "key_id": "ep:revoker-key:sha256:7e07c74ba8fc03f872f49aaa9c53601d083d10c699462529e3e110590273cf6f",
+          "public_key": "MCowBQYDK2VwAyEAVP1W2gT2Z6ullkPViwxLxstRhnfzWcxXAAjwm1oXi-I"
+        },
+        "scope": {
+          "allowed_target_types": [
+            "receipt",
+            "commit"
+          ],
+          "allowed_usages": [
+            "authorization",
+            "execution"
+          ]
+        },
+        "issued_at": "2026-01-01T00:00:00.000Z",
+        "expires_at": "2027-01-01T00:00:00.000Z",
+        "proof": {
+          "algorithm": "Ed25519",
+          "key_id": "authority-key-1",
+          "signature_b64u": "m2pNPOIoIt_fmaPP3RdlF2UGl4qzhm41jkfZ-j7Jc6lTSXKPeROmeXYOvqZutopuBXFIRJ3fN2USyMtmgXRjCg"
+        }
+      },
+      "authority_pin": {
+        "authority_domain": "status.example",
+        "authority_id": "authority:example",
+        "key_id": "authority-key-1",
+        "public_key": "MCowBQYDK2VwAyEAI7pLlQUyR6d6qf0FueJ4-7eRWTtJcEUg9qb-z_Y8oB8"
+      },
+      "now": "2026-01-01T02:00:00.000Z",
+      "expect": {
+        "outcome": "indeterminate"
+      },
+      "observed": {
+        "outcome": "indeterminate",
+        "valid": false,
+        "reasons": [
+          "status_stale"
+        ]
+      }
+    },
+    {
+      "id": "status-target-mismatch-refused",
+      "kind": "status",
+      "description": "A head for one target must not answer for another. Binds (type, id, digest, usage).",
+      "target": {
+        "type": "receipt",
+        "id": "urn:example:artifact:0000",
+        "digest": "sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+        "usage": "authorization"
+      },
+      "status": {
+        "@version": "EP-STATUS-v1",
+        "authority_domain": "status.example",
+        "revoker_authority_digest": "sha256:435265c139e375d0232fc4f92deeacb22631168a016d8bb05fbe1581484b8876",
+        "target": {
+          "type": "receipt",
+          "id": "urn:example:artifact:7f3a",
+          "digest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+          "usage": "authorization"
+        },
+        "status": "not_revoked",
+        "sequence": 0,
+        "previous_status_digest": null,
+        "issued_at": "2026-01-01T00:00:00.000Z",
+        "next_update": "2026-01-01T01:00:00.000Z",
+        "proof": {
+          "algorithm": "Ed25519",
+          "key_id": "ep:revoker-key:sha256:7e07c74ba8fc03f872f49aaa9c53601d083d10c699462529e3e110590273cf6f",
+          "signature_b64u": "C5AFA4Gk1RkU8WuZOVgtslB2A9Wiw3sdi9fqjeM7QK_yK1Rm62i9NNcb7W9B-60unwAj1BLilV8PHIUaT-0XDQ"
+        }
+      },
+      "certificate": {
+        "@version": "EP-REVOKER-AUTHORITY-v1",
+        "certificate_id": "cert-1",
+        "authority_domain": "status.example",
+        "authority_id": "authority:example",
+        "revoker_id": "revoker:ops",
+        "revoker_key": {
+          "algorithm": "Ed25519",
+          "key_id": "ep:revoker-key:sha256:7e07c74ba8fc03f872f49aaa9c53601d083d10c699462529e3e110590273cf6f",
+          "public_key": "MCowBQYDK2VwAyEAVP1W2gT2Z6ullkPViwxLxstRhnfzWcxXAAjwm1oXi-I"
+        },
+        "scope": {
+          "allowed_target_types": [
+            "receipt",
+            "commit"
+          ],
+          "allowed_usages": [
+            "authorization",
+            "execution"
+          ]
+        },
+        "issued_at": "2026-01-01T00:00:00.000Z",
+        "expires_at": "2027-01-01T00:00:00.000Z",
+        "proof": {
+          "algorithm": "Ed25519",
+          "key_id": "authority-key-1",
+          "signature_b64u": "m2pNPOIoIt_fmaPP3RdlF2UGl4qzhm41jkfZ-j7Jc6lTSXKPeROmeXYOvqZutopuBXFIRJ3fN2USyMtmgXRjCg"
+        }
+      },
+      "authority_pin": {
+        "authority_domain": "status.example",
+        "authority_id": "authority:example",
+        "key_id": "authority-key-1",
+        "public_key": "MCowBQYDK2VwAyEAI7pLlQUyR6d6qf0FueJ4-7eRWTtJcEUg9qb-z_Y8oB8"
+      },
+      "now": "2026-01-01T00:00:00.000Z",
+      "expect": {
+        "valid": false
+      },
+      "observed": {
+        "outcome": "indeterminate",
+        "valid": false,
+        "reasons": [
+          "status_target_mismatch"
+        ]
+      }
+    },
+    {
+      "id": "status-revoked-is-terminal",
+      "kind": "status",
+      "description": "A revoked head carries no next_update and does not expire. Passage of time cannot turn REVOKED back into acceptable.",
+      "target": {
+        "type": "receipt",
+        "id": "urn:example:artifact:7f3a",
+        "digest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "usage": "authorization"
+      },
+      "status": {
+        "@version": "EP-STATUS-v1",
+        "authority_domain": "status.example",
+        "revoker_authority_digest": "sha256:435265c139e375d0232fc4f92deeacb22631168a016d8bb05fbe1581484b8876",
+        "target": {
+          "type": "receipt",
+          "id": "urn:example:artifact:7f3a",
+          "digest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+          "usage": "authorization"
+        },
+        "status": "revoked",
+        "sequence": 1,
+        "previous_status_digest": "sha256:f24118d9c911d51f8ed3a01bdfdc369c8a01ddad38d388102448e9f1357e9e5d",
+        "issued_at": "2026-01-01T01:00:00.000Z",
+        "next_update": null,
+        "proof": {
+          "algorithm": "Ed25519",
+          "key_id": "ep:revoker-key:sha256:7e07c74ba8fc03f872f49aaa9c53601d083d10c699462529e3e110590273cf6f",
+          "signature_b64u": "3MjfldA1APOTdw0Ypi8gw2G1L17H5PgwxzibHfAndoMMA-4t40t2xryQxqCvgX0AHe5YvE-p-c0JEwpHvdhqAQ"
+        }
+      },
+      "certificate": {
+        "@version": "EP-REVOKER-AUTHORITY-v1",
+        "certificate_id": "cert-1",
+        "authority_domain": "status.example",
+        "authority_id": "authority:example",
+        "revoker_id": "revoker:ops",
+        "revoker_key": {
+          "algorithm": "Ed25519",
+          "key_id": "ep:revoker-key:sha256:7e07c74ba8fc03f872f49aaa9c53601d083d10c699462529e3e110590273cf6f",
+          "public_key": "MCowBQYDK2VwAyEAVP1W2gT2Z6ullkPViwxLxstRhnfzWcxXAAjwm1oXi-I"
+        },
+        "scope": {
+          "allowed_target_types": [
+            "receipt",
+            "commit"
+          ],
+          "allowed_usages": [
+            "authorization",
+            "execution"
+          ]
+        },
+        "issued_at": "2026-01-01T00:00:00.000Z",
+        "expires_at": "2027-01-01T00:00:00.000Z",
+        "proof": {
+          "algorithm": "Ed25519",
+          "key_id": "authority-key-1",
+          "signature_b64u": "m2pNPOIoIt_fmaPP3RdlF2UGl4qzhm41jkfZ-j7Jc6lTSXKPeROmeXYOvqZutopuBXFIRJ3fN2USyMtmgXRjCg"
+        }
+      },
+      "authority_pin": {
+        "authority_domain": "status.example",
+        "authority_id": "authority:example",
+        "key_id": "authority-key-1",
+        "public_key": "MCowBQYDK2VwAyEAI7pLlQUyR6d6qf0FueJ4-7eRWTtJcEUg9qb-z_Y8oB8"
+      },
+      "previous_status": {
+        "@version": "EP-STATUS-v1",
+        "authority_domain": "status.example",
+        "revoker_authority_digest": "sha256:435265c139e375d0232fc4f92deeacb22631168a016d8bb05fbe1581484b8876",
+        "target": {
+          "type": "receipt",
+          "id": "urn:example:artifact:7f3a",
+          "digest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+          "usage": "authorization"
+        },
+        "status": "not_revoked",
+        "sequence": 0,
+        "previous_status_digest": null,
+        "issued_at": "2026-01-01T00:00:00.000Z",
+        "next_update": "2026-01-01T01:00:00.000Z",
+        "proof": {
+          "algorithm": "Ed25519",
+          "key_id": "ep:revoker-key:sha256:7e07c74ba8fc03f872f49aaa9c53601d083d10c699462529e3e110590273cf6f",
+          "signature_b64u": "C5AFA4Gk1RkU8WuZOVgtslB2A9Wiw3sdi9fqjeM7QK_yK1Rm62i9NNcb7W9B-60unwAj1BLilV8PHIUaT-0XDQ"
+        }
+      },
+      "now": "2030-01-01T00:00:00.000Z",
+      "expect": {
+        "outcome": "revoked",
+        "valid": true
+      },
+      "observed": {
+        "outcome": "revoked",
+        "valid": true,
+        "reasons": []
+      }
+    },
+    {
+      "id": "status-rollback-refused",
+      "kind": "status",
+      "description": "Replaying the earlier not_revoked head against an accepted later head is refused. The chain is append-only: sequence must advance and previous_status_digest must match.",
+      "target": {
+        "type": "receipt",
+        "id": "urn:example:artifact:7f3a",
+        "digest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "usage": "authorization"
+      },
+      "status": {
+        "@version": "EP-STATUS-v1",
+        "authority_domain": "status.example",
+        "revoker_authority_digest": "sha256:435265c139e375d0232fc4f92deeacb22631168a016d8bb05fbe1581484b8876",
+        "target": {
+          "type": "receipt",
+          "id": "urn:example:artifact:7f3a",
+          "digest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+          "usage": "authorization"
+        },
+        "status": "not_revoked",
+        "sequence": 0,
+        "previous_status_digest": null,
+        "issued_at": "2026-01-01T00:00:00.000Z",
+        "next_update": "2026-01-01T01:00:00.000Z",
+        "proof": {
+          "algorithm": "Ed25519",
+          "key_id": "ep:revoker-key:sha256:7e07c74ba8fc03f872f49aaa9c53601d083d10c699462529e3e110590273cf6f",
+          "signature_b64u": "C5AFA4Gk1RkU8WuZOVgtslB2A9Wiw3sdi9fqjeM7QK_yK1Rm62i9NNcb7W9B-60unwAj1BLilV8PHIUaT-0XDQ"
+        }
+      },
+      "certificate": {
+        "@version": "EP-REVOKER-AUTHORITY-v1",
+        "certificate_id": "cert-1",
+        "authority_domain": "status.example",
+        "authority_id": "authority:example",
+        "revoker_id": "revoker:ops",
+        "revoker_key": {
+          "algorithm": "Ed25519",
+          "key_id": "ep:revoker-key:sha256:7e07c74ba8fc03f872f49aaa9c53601d083d10c699462529e3e110590273cf6f",
+          "public_key": "MCowBQYDK2VwAyEAVP1W2gT2Z6ullkPViwxLxstRhnfzWcxXAAjwm1oXi-I"
+        },
+        "scope": {
+          "allowed_target_types": [
+            "receipt",
+            "commit"
+          ],
+          "allowed_usages": [
+            "authorization",
+            "execution"
+          ]
+        },
+        "issued_at": "2026-01-01T00:00:00.000Z",
+        "expires_at": "2027-01-01T00:00:00.000Z",
+        "proof": {
+          "algorithm": "Ed25519",
+          "key_id": "authority-key-1",
+          "signature_b64u": "m2pNPOIoIt_fmaPP3RdlF2UGl4qzhm41jkfZ-j7Jc6lTSXKPeROmeXYOvqZutopuBXFIRJ3fN2USyMtmgXRjCg"
+        }
+      },
+      "authority_pin": {
+        "authority_domain": "status.example",
+        "authority_id": "authority:example",
+        "key_id": "authority-key-1",
+        "public_key": "MCowBQYDK2VwAyEAI7pLlQUyR6d6qf0FueJ4-7eRWTtJcEUg9qb-z_Y8oB8"
+      },
+      "previous_status": {
+        "@version": "EP-STATUS-v1",
+        "authority_domain": "status.example",
+        "revoker_authority_digest": "sha256:435265c139e375d0232fc4f92deeacb22631168a016d8bb05fbe1581484b8876",
+        "target": {
+          "type": "receipt",
+          "id": "urn:example:artifact:7f3a",
+          "digest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+          "usage": "authorization"
+        },
+        "status": "revoked",
+        "sequence": 1,
+        "previous_status_digest": "sha256:f24118d9c911d51f8ed3a01bdfdc369c8a01ddad38d388102448e9f1357e9e5d",
+        "issued_at": "2026-01-01T01:00:00.000Z",
+        "next_update": null,
+        "proof": {
+          "algorithm": "Ed25519",
+          "key_id": "ep:revoker-key:sha256:7e07c74ba8fc03f872f49aaa9c53601d083d10c699462529e3e110590273cf6f",
+          "signature_b64u": "3MjfldA1APOTdw0Ypi8gw2G1L17H5PgwxzibHfAndoMMA-4t40t2xryQxqCvgX0AHe5YvE-p-c0JEwpHvdhqAQ"
+        }
+      },
+      "now": "2026-01-01T01:00:00.000Z",
+      "expect": {
+        "valid": false,
+        "reason_contains": "sequence"
+      },
+      "observed": {
+        "outcome": "indeterminate",
+        "valid": false,
+        "reasons": [
+          "status_stale",
+          "terminal_revocation",
+          "sequence_not_monotonic"
+        ]
+      }
+    },
+    {
+      "id": "status-outside-revoker-scope-refused",
+      "kind": "issuance_refusal",
+      "description": "A revoker whose certificate scope excludes this target type cannot mint a status head for it. Scope is enforced at issuance, not left to the reader.",
+      "refusal": "target is outside the revoker authority certificate scope",
+      "expect": {
+        "refused": true
+      }
+    },
+    {
+      "id": "status-tampered-signature-refused",
+      "kind": "status",
+      "description": "Flipping the status field after signing fails signature verification. The state is inside the signed payload.",
+      "target": {
+        "type": "receipt",
+        "id": "urn:example:artifact:7f3a",
+        "digest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "usage": "authorization"
+      },
+      "status": {
+        "@version": "EP-STATUS-v1",
+        "authority_domain": "status.example",
+        "revoker_authority_digest": "sha256:435265c139e375d0232fc4f92deeacb22631168a016d8bb05fbe1581484b8876",
+        "target": {
+          "type": "receipt",
+          "id": "urn:example:artifact:7f3a",
+          "digest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+          "usage": "authorization"
+        },
+        "status": "revoked",
+        "sequence": 0,
+        "previous_status_digest": null,
+        "issued_at": "2026-01-01T00:00:00.000Z",
+        "next_update": "2026-01-01T01:00:00.000Z",
+        "proof": {
+          "algorithm": "Ed25519",
+          "key_id": "ep:revoker-key:sha256:7e07c74ba8fc03f872f49aaa9c53601d083d10c699462529e3e110590273cf6f",
+          "signature_b64u": "C5AFA4Gk1RkU8WuZOVgtslB2A9Wiw3sdi9fqjeM7QK_yK1Rm62i9NNcb7W9B-60unwAj1BLilV8PHIUaT-0XDQ"
+        }
+      },
+      "certificate": {
+        "@version": "EP-REVOKER-AUTHORITY-v1",
+        "certificate_id": "cert-1",
+        "authority_domain": "status.example",
+        "authority_id": "authority:example",
+        "revoker_id": "revoker:ops",
+        "revoker_key": {
+          "algorithm": "Ed25519",
+          "key_id": "ep:revoker-key:sha256:7e07c74ba8fc03f872f49aaa9c53601d083d10c699462529e3e110590273cf6f",
+          "public_key": "MCowBQYDK2VwAyEAVP1W2gT2Z6ullkPViwxLxstRhnfzWcxXAAjwm1oXi-I"
+        },
+        "scope": {
+          "allowed_target_types": [
+            "receipt",
+            "commit"
+          ],
+          "allowed_usages": [
+            "authorization",
+            "execution"
+          ]
+        },
+        "issued_at": "2026-01-01T00:00:00.000Z",
+        "expires_at": "2027-01-01T00:00:00.000Z",
+        "proof": {
+          "algorithm": "Ed25519",
+          "key_id": "authority-key-1",
+          "signature_b64u": "m2pNPOIoIt_fmaPP3RdlF2UGl4qzhm41jkfZ-j7Jc6lTSXKPeROmeXYOvqZutopuBXFIRJ3fN2USyMtmgXRjCg"
+        }
+      },
+      "authority_pin": {
+        "authority_domain": "status.example",
+        "authority_id": "authority:example",
+        "key_id": "authority-key-1",
+        "public_key": "MCowBQYDK2VwAyEAI7pLlQUyR6d6qf0FueJ4-7eRWTtJcEUg9qb-z_Y8oB8"
+      },
+      "now": "2026-01-01T00:00:00.000Z",
+      "expect": {
+        "valid": false,
+        "reason_contains": "signature"
+      },
+      "observed": {
+        "outcome": "indeterminate",
+        "valid": false,
+        "reasons": [
+          "invalid_status_signature",
+          "revoked_status_has_next_update"
+        ]
+      }
+    },
+    {
+      "id": "foreign-registered-type-accepted-under-pinned-registry",
+      "kind": "status",
+      "description": "A non-EMILIA artifact kind (\"mandate\"/\"settlement\") mints and verifies end to end when the relying party pins a registry containing it. This is the extension path: an author binds their own artifact kind without adopting EMILIA receipts and without waiting for a new revision of this specification.",
+      "target": {
+        "type": "mandate",
+        "id": "urn:example:mandate:44b1",
+        "digest": "sha256:cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+        "usage": "settlement"
+      },
+      "status": {
+        "@version": "EP-STATUS-v1",
+        "authority_domain": "status.example",
+        "revoker_authority_digest": "sha256:20035a454fa82bf0f689caffba3712d88879210cc57f443f8e16f14b051561b2",
+        "target": {
+          "type": "mandate",
+          "id": "urn:example:mandate:44b1",
+          "digest": "sha256:cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+          "usage": "settlement"
+        },
+        "status": "not_revoked",
+        "sequence": 0,
+        "previous_status_digest": null,
+        "issued_at": "2026-01-01T00:00:00.000Z",
+        "next_update": "2026-01-01T01:00:00.000Z",
+        "proof": {
+          "algorithm": "Ed25519",
+          "key_id": "ep:revoker-key:sha256:7e07c74ba8fc03f872f49aaa9c53601d083d10c699462529e3e110590273cf6f",
+          "signature_b64u": "TxSyAbJiJaNL6qRMkMqbfY0fu3qpkdn24ouahsLJTnc34Qzuw3loRVCLP2DK8G1IjjNQG79AJtFe-nBZVn54DA"
+        }
+      },
+      "certificate": {
+        "@version": "EP-REVOKER-AUTHORITY-v1",
+        "certificate_id": "cert-foreign",
+        "authority_domain": "status.example",
+        "authority_id": "authority:example",
+        "revoker_id": "revoker:mandates",
+        "revoker_key": {
+          "algorithm": "Ed25519",
+          "key_id": "ep:revoker-key:sha256:7e07c74ba8fc03f872f49aaa9c53601d083d10c699462529e3e110590273cf6f",
+          "public_key": "MCowBQYDK2VwAyEAVP1W2gT2Z6ullkPViwxLxstRhnfzWcxXAAjwm1oXi-I"
+        },
+        "scope": {
+          "allowed_target_types": [
+            "mandate"
+          ],
+          "allowed_usages": [
+            "settlement"
+          ]
+        },
+        "issued_at": "2026-01-01T00:00:00.000Z",
+        "expires_at": "2027-01-01T00:00:00.000Z",
+        "proof": {
+          "algorithm": "Ed25519",
+          "key_id": "authority-key-1",
+          "signature_b64u": "fd3DCMiP4hPw67WbnD3EU7mUEY0a-qwfK3rcTCWzUnS9EPqvla_XudoJTXcJMYNOUc5xRkZtE3DAKQzzfeqcAg"
+        }
+      },
+      "authority_pin": {
+        "authority_domain": "status.example",
+        "authority_id": "authority:example",
+        "key_id": "authority-key-1",
+        "public_key": "MCowBQYDK2VwAyEAI7pLlQUyR6d6qf0FueJ4-7eRWTtJcEUg9qb-z_Y8oB8"
+      },
+      "target_registry": {
+        "types": [
+          "mandate"
+        ],
+        "usages": [
+          "settlement"
+        ]
+      },
+      "now": "2026-01-01T00:00:00.000Z",
+      "expect": {
+        "outcome": "current_not_revoked",
+        "valid": true
+      },
+      "observed": {
+        "outcome": "current_not_revoked",
+        "valid": true,
+        "reasons": []
+      }
+    },
+    {
+      "id": "foreign-type-refused-without-pinned-registry",
+      "kind": "status",
+      "description": "The exact same signed head is refused when no registry is pinned. Extension is a configured, auditable act by the relying party, never a verifier widening its own vocabulary. The default stays fail-closed and conformant with the published core set.",
+      "target": {
+        "type": "mandate",
+        "id": "urn:example:mandate:44b1",
+        "digest": "sha256:cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+        "usage": "settlement"
+      },
+      "status": {
+        "@version": "EP-STATUS-v1",
+        "authority_domain": "status.example",
+        "revoker_authority_digest": "sha256:20035a454fa82bf0f689caffba3712d88879210cc57f443f8e16f14b051561b2",
+        "target": {
+          "type": "mandate",
+          "id": "urn:example:mandate:44b1",
+          "digest": "sha256:cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+          "usage": "settlement"
+        },
+        "status": "not_revoked",
+        "sequence": 0,
+        "previous_status_digest": null,
+        "issued_at": "2026-01-01T00:00:00.000Z",
+        "next_update": "2026-01-01T01:00:00.000Z",
+        "proof": {
+          "algorithm": "Ed25519",
+          "key_id": "ep:revoker-key:sha256:7e07c74ba8fc03f872f49aaa9c53601d083d10c699462529e3e110590273cf6f",
+          "signature_b64u": "TxSyAbJiJaNL6qRMkMqbfY0fu3qpkdn24ouahsLJTnc34Qzuw3loRVCLP2DK8G1IjjNQG79AJtFe-nBZVn54DA"
+        }
+      },
+      "certificate": {
+        "@version": "EP-REVOKER-AUTHORITY-v1",
+        "certificate_id": "cert-foreign",
+        "authority_domain": "status.example",
+        "authority_id": "authority:example",
+        "revoker_id": "revoker:mandates",
+        "revoker_key": {
+          "algorithm": "Ed25519",
+          "key_id": "ep:revoker-key:sha256:7e07c74ba8fc03f872f49aaa9c53601d083d10c699462529e3e110590273cf6f",
+          "public_key": "MCowBQYDK2VwAyEAVP1W2gT2Z6ullkPViwxLxstRhnfzWcxXAAjwm1oXi-I"
+        },
+        "scope": {
+          "allowed_target_types": [
+            "mandate"
+          ],
+          "allowed_usages": [
+            "settlement"
+          ]
+        },
+        "issued_at": "2026-01-01T00:00:00.000Z",
+        "expires_at": "2027-01-01T00:00:00.000Z",
+        "proof": {
+          "algorithm": "Ed25519",
+          "key_id": "authority-key-1",
+          "signature_b64u": "fd3DCMiP4hPw67WbnD3EU7mUEY0a-qwfK3rcTCWzUnS9EPqvla_XudoJTXcJMYNOUc5xRkZtE3DAKQzzfeqcAg"
+        }
+      },
+      "authority_pin": {
+        "authority_domain": "status.example",
+        "authority_id": "authority:example",
+        "key_id": "authority-key-1",
+        "public_key": "MCowBQYDK2VwAyEAI7pLlQUyR6d6qf0FueJ4-7eRWTtJcEUg9qb-z_Y8oB8"
+      },
+      "now": "2026-01-01T00:00:00.000Z",
+      "expect": {
+        "outcome": "indeterminate"
+      },
+      "observed": {
+        "outcome": "indeterminate",
+        "valid": false,
+        "reasons": [
+          "invalid_status_structure"
+        ]
+      }
+    },
+    {
+      "id": "status-missing-evidence-is-indeterminate",
+      "kind": "status",
+      "description": "No status artifact at all yields indeterminate, never current_not_revoked. This is the single most important refusal in the suite: a relying party with no evidence has learned nothing, not good news.",
+      "target": {
+        "type": "receipt",
+        "id": "urn:example:artifact:7f3a",
+        "digest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "usage": "authorization"
+      },
+      "status": null,
+      "certificate": {
+        "@version": "EP-REVOKER-AUTHORITY-v1",
+        "certificate_id": "cert-1",
+        "authority_domain": "status.example",
+        "authority_id": "authority:example",
+        "revoker_id": "revoker:ops",
+        "revoker_key": {
+          "algorithm": "Ed25519",
+          "key_id": "ep:revoker-key:sha256:7e07c74ba8fc03f872f49aaa9c53601d083d10c699462529e3e110590273cf6f",
+          "public_key": "MCowBQYDK2VwAyEAVP1W2gT2Z6ullkPViwxLxstRhnfzWcxXAAjwm1oXi-I"
+        },
+        "scope": {
+          "allowed_target_types": [
+            "receipt",
+            "commit"
+          ],
+          "allowed_usages": [
+            "authorization",
+            "execution"
+          ]
+        },
+        "issued_at": "2026-01-01T00:00:00.000Z",
+        "expires_at": "2027-01-01T00:00:00.000Z",
+        "proof": {
+          "algorithm": "Ed25519",
+          "key_id": "authority-key-1",
+          "signature_b64u": "m2pNPOIoIt_fmaPP3RdlF2UGl4qzhm41jkfZ-j7Jc6lTSXKPeROmeXYOvqZutopuBXFIRJ3fN2USyMtmgXRjCg"
+        }
+      },
+      "authority_pin": {
+        "authority_domain": "status.example",
+        "authority_id": "authority:example",
+        "key_id": "authority-key-1",
+        "public_key": "MCowBQYDK2VwAyEAI7pLlQUyR6d6qf0FueJ4-7eRWTtJcEUg9qb-z_Y8oB8"
+      },
+      "now": "2026-01-01T00:00:00.000Z",
+      "expect": {
+        "outcome": "indeterminate"
+      },
+      "observed": {
+        "outcome": "indeterminate",
+        "valid": false,
+        "reasons": [
+          "invalid_status_structure"
+        ]
+      }
+    }
+  ]
+}

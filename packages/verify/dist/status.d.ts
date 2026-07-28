@@ -20,9 +20,24 @@ export interface RevokerAuthorityPin {
     key_id: string;
     public_key: string;
 }
+/** A relying-party-pinned target vocabulary.
+ *
+ * draft-schrock-ep-revocation-statement-00 enumerates three recognized target
+ * types and says extending the set is "a matter for a future version, not for
+ * unilateral verifier behavior." This carries that constraint: the core three
+ * are always recognized, and a wider set is honored only when the relying
+ * party pins one here, the same way it pins revoker keys. A verifier never
+ * widens its own vocabulary, and an unconfigured verifier behaves exactly as
+ * the published version specifies. */
+export interface StatusTargetRegistry {
+    readonly types?: readonly string[];
+    readonly usages?: readonly string[];
+}
 export interface RevokerAuthorityOptions {
     authorityPin?: RevokerAuthorityPin;
     now?: number | string | Date;
+    /** Pinned target vocabulary. Omitted means the core set only (fail-closed). */
+    targetRegistry?: StatusTargetRegistry;
 }
 export interface StatusVerificationOptions extends RevokerAuthorityOptions {
     certificate?: unknown;

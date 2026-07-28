@@ -25,7 +25,27 @@ import {
   type StatusTarget,
   type StatusTargetType,
   type StatusTargetUsage,
+  type StatusTargetRegistry,
 } from '../../packages/verify/status.js';
+
+// Kept byte-identical to the resolver in packages/verify/src/status.ts. The
+// end-to-end conformance vectors (mint a registered foreign type here, accept
+// it there under the same pinned registry) fail if these two ever drift.
+const REGISTERED_NAME = /^[a-z][a-z0-9]*(?:[.-][a-z0-9]+)*$/;
+function issuanceVocabulary(
+  registry: StatusTargetRegistry | undefined,
+  key: 'types' | 'usages',
+): readonly string[] {
+  const core = key === 'types' ? STATUS_TARGET_TYPES : STATUS_TARGET_USAGES;
+  const extra = registry ? registry[key] : undefined;
+  if (!Array.isArray(extra) || extra.length === 0) return core;
+  const out: string[] = [...core];
+  for (const name of extra) {
+    if (typeof name === 'string' && name.length <= 64 && REGISTERED_NAME.test(name)
+        && !out.includes(name)) out.push(name);
+  }
+  return out;
+}
 
 type Obj = Record<string, unknown>;
 
@@ -45,6 +65,7 @@ const AUTHORITY_INPUT_KEYS = [
   'issuedAt',
   'expiresAt',
   'signer',
+  'targetRegistry',
 ] as const;
 const STATUS_INPUT_KEYS = [
   'authorityPin',
@@ -55,6 +76,7 @@ const STATUS_INPUT_KEYS = [
   'nextUpdate',
   'previousStatus',
   'signer',
+  'targetRegistry',
 ] as const;
 const AUTHORITY_PIN_KEYS = ['authority_domain', 'authority_id', 'key_id', 'public_key'] as const;
 const SCOPE_KEYS = ['allowed_target_types', 'allowed_usages'] as const;
@@ -158,6 +180,8 @@ export interface BuildRevokerAuthorityCertificateInput {
   readonly issuedAt: string;
   readonly expiresAt: string;
   readonly signer: ExternalEd25519Signer;
+  /** Relying-party-pinned target vocabulary; omitted means the core set only. */
+  readonly targetRegistry?: StatusTargetRegistry;
 }
 
 export interface BuildStatusArtifactInput {
@@ -170,6 +194,8 @@ export interface BuildStatusArtifactInput {
   /** The issuer's authoritative current head, not presenter-selected state. */
   readonly previousStatus?: unknown;
   readonly signer: ExternalEd25519Signer;
+  /** Relying-party-pinned target vocabulary; omitted means the core set only. */
+  readonly targetRegistry?: StatusTargetRegistry;
 }
 
 export class StatusIssuanceError extends Error {
@@ -339,7 +365,7 @@ function validateAuthorityPin(value: unknown): asserts value is RevokerAuthority
   }
 }
 
-function validateScope(value: unknown): asserts value is {
+function validateScope(value: unknown, registry?: StatusTargetRegistry): asserts value is {
   allowed_target_types: StatusTargetType[];
   allowed_usages: StatusTargetUsage[];
 } {
@@ -356,20 +382,23 @@ function validateScope(value: unknown): asserts value is {
     }
     return true;
   };
-  validateMembers(value.allowed_target_types, STATUS_TARGET_TYPES, 'scope.allowed_target_types');
-  validateMembers(value.allowed_usages, STATUS_TARGET_USAGES, 'scope.allowed_usages');
+  validateMembers(value.allowed_target_types, issuanceVocabulary(registry, 'types'), 'scope.allowed_target_types');
+  validateMembers(value.allowed_usages, issuanceVocabulary(registry, 'usages'), 'scope.allowed_usages');
 }
 
-function validateTarget(value: unknown): asserts value is StatusTarget {
+function validateTarget(
+  value: unknown,
+  registry?: StatusTargetRegistry,
+): asserts value is StatusTarget {
   closedObject(value, 'target', TARGET_KEYS);
-  if (typeof value.type !== 'string' || !STATUS_TARGET_TYPES.includes(value.type as StatusTargetType)) {
+  if (typeof value.type !== 'string' || !issuanceVocabulary(registry, 'types').includes(value.type)) {
     fail('invalid_target', 'target.type is unsupported');
   }
   identifier(value.id, 'target.id');
   if (typeof value.digest !== 'string' || !DIGEST.test(value.digest)) {
     fail('invalid_target', 'target.digest must be a lowercase sha256 digest');
   }
-  if (typeof value.usage !== 'string' || !STATUS_TARGET_USAGES.includes(value.usage as StatusTargetUsage)) {
+  if (typeof value.usage !== 'string' || !issuanceVocabulary(registry, 'usages').includes(value.usage)) {
     fail('invalid_target', 'target.usage is unsupported');
   }
 }
@@ -444,10 +473,12 @@ function certificateForStatus(
   certificate: unknown,
   authorityPin: RevokerAuthorityPin,
   issuedAt: string,
+  registry?: StatusTargetRegistry,
 ): RevokerAuthorityCertificate {
   const result = verifyRevokerAuthorityCertificate(certificate, {
     authorityPin,
     now: issuedAt,
+    targetRegistry: registry,
   });
   if (!result.valid) {
     fail(
@@ -464,6 +495,7 @@ function validatePreviousStatus(
   certificate: RevokerAuthorityCertificate,
   certificateDigest: string,
   issuedAtMs: number,
+  registry?: StatusTargetRegistry,
 ): asserts value is StatusArtifact {
   closedObject(value, 'previousStatus', STATUS_KEYS);
   if (value['@version'] !== STATUS_VERSION
@@ -471,7 +503,7 @@ function validatePreviousStatus(
       || value.revoker_authority_digest !== certificateDigest) {
     fail('invalid_previous_status', 'previousStatus is not bound to the same authority certificate');
   }
-  validateTarget(value.target);
+  validateTarget(value.target, registry);
   if (!targetEqual(value.target, target)) {
     fail('invalid_previous_status', 'previousStatus is not bound to the exact target');
   }
@@ -526,11 +558,16 @@ function validatePreviousStatus(
 export async function buildRevokerAuthorityCertificate(
   input: BuildRevokerAuthorityCertificateInput,
 ): Promise<RevokerAuthorityCertificate> {
-  closedObject(input, 'certificate input', AUTHORITY_INPUT_KEYS);
+  closedObject(
+    input,
+    'certificate input',
+    AUTHORITY_INPUT_KEYS,
+    AUTHORITY_INPUT_KEYS.filter((key) => key !== 'targetRegistry'),
+  );
   validateAuthorityPin(input.authorityPin);
   identifier(input.certificateId, 'certificateId');
   identifier(input.revokerId, 'revokerId');
-  validateScope(input.scope);
+  validateScope(input.scope, input.targetRegistry);
   const issuedAtMs = instant(input.issuedAt, 'issuedAt');
   const expiresAtMs = instant(input.expiresAt, 'expiresAt');
   if (issuedAtMs >= expiresAtMs) {
@@ -574,6 +611,7 @@ export async function buildRevokerAuthorityCertificate(
   const verification = verifyRevokerAuthorityCertificate(artifact, {
     authorityPin: input.authorityPin,
     now: input.issuedAt,
+    targetRegistry: input.targetRegistry,
   });
   if (!verification.valid) {
     fail(
@@ -592,15 +630,20 @@ export async function buildStatusArtifact(
     input,
     'status input',
     STATUS_INPUT_KEYS,
-    STATUS_INPUT_KEYS.filter((key) => key !== 'previousStatus'),
+    STATUS_INPUT_KEYS.filter((key) => key !== 'previousStatus' && key !== 'targetRegistry'),
   );
   validateAuthorityPin(input.authorityPin);
-  validateTarget(input.target);
+  validateTarget(input.target, input.targetRegistry);
   if (input.status !== 'not_revoked' && input.status !== 'revoked') {
     fail('invalid_status', 'status must be not_revoked or revoked');
   }
   const issuedAtMs = instant(input.issuedAt, 'issuedAt');
-  const certificate = certificateForStatus(input.certificate, input.authorityPin, input.issuedAt);
+  const certificate = certificateForStatus(
+    input.certificate,
+    input.authorityPin,
+    input.issuedAt,
+    input.targetRegistry,
+  );
   const certificateDigest = revokerAuthorityCertificateDigest(certificate);
   if (!certificate.scope.allowed_target_types.includes(input.target.type)
       || !certificate.scope.allowed_usages.includes(input.target.usage)) {
@@ -631,6 +674,7 @@ export async function buildStatusArtifact(
       certificate,
       certificateDigest,
       issuedAtMs,
+      input.targetRegistry,
     );
     if (input.previousStatus.sequence >= Number.MAX_SAFE_INTEGER) {
       fail('sequence_exhausted', 'previousStatus.sequence cannot be incremented safely');
@@ -679,6 +723,7 @@ export async function buildStatusArtifact(
     certificate,
     previousStatus: input.previousStatus,
     now: input.issuedAt,
+    targetRegistry: input.targetRegistry,
   });
   const expectedOutcome = input.status === 'revoked' ? 'revoked' : 'current_not_revoked';
   if (!verification.valid || verification.outcome !== expectedOutcome) {

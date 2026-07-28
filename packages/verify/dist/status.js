@@ -251,15 +251,44 @@ function validCertificateProof(value) {
         && identifier(value.key_id)
         && canonicalBase64url(value.signature_b64u, 64) !== null;
 }
-function validTarget(value) {
+/** Registered target-type and usage names: lowercase, dotted or hyphenated
+ * ASCII segments, bounded. The shape is deliberately narrow so a registered
+ * name cannot carry whitespace, control characters, mixed case, or a non-ASCII
+ * homograph of a core name (Cyrillic "recеipt" is not "receipt"). */
+const REGISTERED_NAME = /^[a-z][a-z0-9]*(?:[.-][a-z0-9]+)*$/;
+/** The vocabulary a relying party recognizes for this evaluation.
+ *
+ * The core set is the three types enumerated by
+ * draft-schrock-ep-revocation-statement. A relying party MAY pin a wider
+ * registry, exactly as it pins revoker keys: extension is a configured,
+ * auditable act, never a verifier deciding on its own to accept an unknown
+ * name. With no registry configured the behavior is unchanged and any other
+ * type is refused, so the default remains fail-closed. */
+function vocabulary(registry, key) {
+    const core = key === 'types' ? STATUS_TARGET_TYPES : STATUS_TARGET_USAGES;
+    const extra = registry ? registry[key] : undefined;
+    if (!Array.isArray(extra) || extra.length === 0)
+        return core;
+    const registered = [...core];
+    for (const name of extra) {
+        // A malformed registry entry is ignored rather than trusted. It can only
+        // ever widen what is accepted, so silently dropping it fails closed.
+        if (typeof name === 'string' && name.length <= 64 && REGISTERED_NAME.test(name)
+            && !registered.includes(name)) {
+            registered.push(name);
+        }
+    }
+    return registered;
+}
+function validTarget(value, registry) {
     return exactObject(value, TARGET_KEYS)
         && typeof value.type === 'string'
-        && STATUS_TARGET_TYPES.includes(value.type)
+        && vocabulary(registry, 'types').includes(value.type)
         && identifier(value.id)
         && typeof value.digest === 'string'
         && DIGEST.test(value.digest)
         && typeof value.usage === 'string'
-        && STATUS_TARGET_USAGES.includes(value.usage);
+        && vocabulary(registry, 'usages').includes(value.usage);
 }
 function validScopeArray(value, allowed) {
     return densePlainArray(value)
@@ -291,9 +320,9 @@ function certificateStructure(value) {
         return false;
     return true;
 }
-function certificateScope(value) {
-    return validScopeArray(value.scope.allowed_target_types, STATUS_TARGET_TYPES)
-        && validScopeArray(value.scope.allowed_usages, STATUS_TARGET_USAGES);
+function certificateScope(value, registry) {
+    return validScopeArray(value.scope.allowed_target_types, vocabulary(registry, 'types'))
+        && validScopeArray(value.scope.allowed_usages, vocabulary(registry, 'usages'));
 }
 function validAuthorityPin(value) {
     return record(value)
@@ -303,13 +332,13 @@ function validAuthorityPin(value) {
         && typeof value.public_key === 'string'
         && loadEd25519Key(value.public_key) !== null;
 }
-function statusStructure(value) {
+function statusStructure(value, registry) {
     return exactObject(value, STATUS_KEYS)
         && value['@version'] === STATUS_VERSION
         && authorityDomain(value.authority_domain)
         && typeof value.revoker_authority_digest === 'string'
         && DIGEST.test(value.revoker_authority_digest)
-        && validTarget(value.target)
+        && validTarget(value.target, registry)
         && (value.status === 'not_revoked' || value.status === 'revoked')
         && Number.isSafeInteger(value.sequence)
         && value.sequence >= 0
@@ -384,7 +413,7 @@ function verifyRevokerAuthorityCertificateCore(certificate, options = {}) {
         return { valid: false, checks, reasons, certificate_digest: certificateDigest };
     }
     checks.structure = true;
-    if (!certificateScope(certificate)) {
+    if (!certificateScope(certificate, options.targetRegistry)) {
         addReason(reasons, 'invalid_revoker_authority_scope');
     }
     else {
@@ -499,14 +528,14 @@ function previousStatusChecks(candidate, previous, certificate, checks, reasons)
 function verifyStatusArtifactCore(expectedTarget, status, options = {}) {
     const result = indeterminateStatus();
     result.status_digest = safeDigest(status);
-    if (!statusStructure(status)) {
+    if (!statusStructure(status, options.targetRegistry)) {
         addReason(result.reasons, 'invalid_status_structure');
         return result;
     }
     result.checks.structure = true;
     result.sequence = status.sequence;
     result.next_update = status.next_update;
-    if (!validTarget(expectedTarget) || !targetEqual(expectedTarget, status.target)) {
+    if (!validTarget(expectedTarget, options.targetRegistry) || !targetEqual(expectedTarget, status.target)) {
         addReason(result.reasons, 'status_target_mismatch');
     }
     else {
@@ -516,6 +545,7 @@ function verifyStatusArtifactCore(expectedTarget, status, options = {}) {
     const certificateResult = verifyRevokerAuthorityCertificate(options.certificate, {
         authorityPin: options.authorityPin,
         now: certificateAt,
+        targetRegistry: options.targetRegistry,
     });
     if (!certificateResult.valid || !certificateStructure(options.certificate)) {
         addReason(result.reasons, 'invalid_revoker_authority_certificate');
