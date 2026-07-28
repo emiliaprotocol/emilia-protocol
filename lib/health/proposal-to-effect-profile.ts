@@ -178,6 +178,15 @@ function digest(value: unknown): string {
   return `sha256:${hashCanonicalAction(value as Record<string, unknown>)}`;
 }
 
+const HOSPICE_RELIANCE_PROGRAM_DIGEST = digest({
+  '@version': HEALTHCARE_CONSEQUENCE_PROFILE_VERSION,
+  profile_id: HOSPICE_PROPOSAL_PROFILE_ID,
+  action_type: HOSPICE_ACTION_TYPE,
+  action_version: HOSPICE_ACTION_VERSION,
+  aeb_requirement_ref: HOSPICE_AEB_REQUIREMENT_REF,
+  action_fields: HOSPICE_ACTION_FIELDS,
+});
+
 function signingBytes(domain: string, value: unknown): Buffer {
   return Buffer.from(`${ASSURANCE_SIGNATURE_DOMAIN}:${domain}\0${canonicalize(value)}`);
 }
@@ -306,7 +315,13 @@ async function signedAssuranceAssertion(
 }
 
 function refusal(reason: string, extras: JsonObject = {}): JsonObject {
-  return { ok: false, decision: 'REFUSED', reason, ...extras };
+  return {
+    ok: false,
+    decision: 'REFUSED',
+    reason,
+    ...extras,
+    program_digest: HOSPICE_RELIANCE_PROGRAM_DIGEST,
+  };
 }
 
 function safeReason(error: unknown, fallback: string): string {

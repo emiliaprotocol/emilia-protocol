@@ -195,6 +195,7 @@ function bundle(value, overrides = {}) {
         localPolicy: {
             decision: 'allow',
             policyId: 'policy:payments-production-v1',
+            policyDigest: value.body.authorization_policy_digest,
             evidenceDigest: roleDigest(value, 'local_policy'),
             caid: value.body.caid,
             actionDigest: value.body.action_digest,
@@ -338,6 +339,7 @@ describe('Gate Qualification v2 pure composition', () => {
         assert.equal(decision.allow, true);
         assert.deepEqual(decision.reasons, []);
         assert.equal(decision.snapshotDigest, value.snapshot_digest);
+        assert.equal(decision.programDigest, value.body.authorization_policy_digest);
         assert.equal(decision.effectKey, JSON.stringify([value.body.tenant_id, value.body.operation_id]));
         assert.equal(Object.isFrozen(decision), true);
         const denied = composeQualificationDecisionV2({
@@ -390,6 +392,27 @@ describe('Gate Qualification v2 pure composition', () => {
             }),
         });
         assert.ok(aebMismatch.reasons.includes('aeb_snapshot_binding_mismatch'));
+    });
+    it('fails closed when the local authorization policy citation is missing or substituted', () => {
+        const value = snapshot();
+        const missing = composeQualificationDecisionV2({
+            snapshot: value,
+            qualification: bundle(value, {
+                localPolicy: { policyDigest: undefined },
+            }),
+        });
+        assert.equal(missing.allow, false);
+        assert.equal(missing.programDigest, value.body.authorization_policy_digest);
+        assert.ok(missing.reasons.includes('localPolicy_program_digest_missing'));
+        const substituted = composeQualificationDecisionV2({
+            snapshot: value,
+            qualification: bundle(value, {
+                localPolicy: { policyDigest: d('attacker-authorization-policy') },
+            }),
+        });
+        assert.equal(substituted.allow, false);
+        assert.equal(substituted.programDigest, value.body.authorization_policy_digest);
+        assert.ok(substituted.reasons.includes('localPolicy_program_digest_mismatch'));
     });
     it('requires a new admission and operation for a remedy before store access', () => {
         const value = snapshot({
@@ -538,6 +561,7 @@ describe('Gate Qualification v2 custody orchestration', () => {
         if (result.status !== 'refused')
             assert.fail('expected refusal');
         assert.equal(result.reason, 'currentness_refused');
+        assert.equal(result.programDigest, value.body.authorization_policy_digest);
         assert.equal(h.counts.invoke, 0);
     });
     it('rereads every authority leg immediately before begin and refuses changed evidence', async () => {

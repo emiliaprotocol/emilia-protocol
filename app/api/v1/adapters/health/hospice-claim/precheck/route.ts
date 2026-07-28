@@ -17,6 +17,7 @@ import { createProgramIntegrityEngine } from '@/lib/health/program-integrity.js'
 const MAX_BODY_BYTES = 256 * 1024;
 const PROFILE_ID = 'medi-cal.hospice-integrity.v1';
 const ACTION_TYPE = 'health.medi-cal.hospice-claim-payment.1';
+const DIGEST_RE = /^sha256:[a-f0-9]{64}$/;
 
 const REQUIRED_ACTION_FIELDS = Object.freeze([
   'profile_id',
@@ -119,6 +120,10 @@ function safeToken(value: unknown): string | null {
 
 function safeDecision(value: unknown, fallback: string | null = 'REFUSED'): string | null {
   return typeof value === 'string' && SAFE_DECISIONS.has(value) ? value : fallback;
+}
+
+function safeDigest(value: unknown): string | null {
+  return typeof value === 'string' && DIGEST_RE.test(value) ? value : null;
 }
 
 function safeStatus(value: unknown): string | undefined {
@@ -297,11 +302,14 @@ function responseForPrecheck(prepared: any, checked: any, authorization: unknown
 
   const caid = safeToken(checked.action_caid) || safeToken(prepared.action_caid);
   const decision = safeDecision(checked.decision, checked.ok ? null : 'REFUSED');
-  if (!caid || !decision) return engineContractFailure();
+  const programDigest = safeDigest(checked.program_digest)
+    || safeDigest(prepared.program_digest);
+  if (!caid || !decision || !programDigest) return engineContractFailure();
 
   const payload: Record<string, unknown> = {
     ok: checked.ok === true && decision === 'READY',
     decision,
+    program_digest: programDigest,
     caid,
     action_caid: caid,
     requirements: safeRequirements(checked.requirements, prepared.requirements),

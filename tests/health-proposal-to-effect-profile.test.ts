@@ -653,6 +653,7 @@ describe('healthcare Proposal-to-Effect consequence control', () => {
       ok: false,
       decision: 'REFUSED',
       reason: 'healthcare_action_shape_invalid',
+      program_digest: expect.stringMatching(/^sha256:[a-f0-9]{64}$/),
     });
 
     const wrongCaid = refreshPackageDigest({
@@ -693,6 +694,7 @@ describe('healthcare Proposal-to-Effect consequence control', () => {
       ok: false,
       decision: 'REFUSED',
       reason: 'approval_evidence_stale_or_mismatched',
+      program_digest: expect.stringMatching(/^sha256:[a-f0-9]{64}$/),
     });
     expect(f.mutationCount).toBe(0);
     expect(f.aebStore.states.size).toBe(0);

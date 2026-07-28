@@ -462,6 +462,7 @@ packages/gate/proposal-to-effect.test.js linguist-generated=true
 packages/gate/receipt-program.test.js linguist-generated=true
 packages/gate/redteam.test.js linguist-generated=true
 packages/gate/referee.test.js linguist-generated=true
+packages/gate/reliance-program.test.js linguist-generated=true
 packages/gate/reliance-security.test.js linguist-generated=true
 packages/gate/remedy-case-set-postgres.test.js linguist-generated=true
 packages/gate/remedy-case-set.test.js linguist-generated=true

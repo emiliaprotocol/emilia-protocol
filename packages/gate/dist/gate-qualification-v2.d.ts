@@ -15,6 +15,8 @@ export interface BoundRequirementDecisionV2 {
 export interface BoundLocalPolicyDecisionV2 {
     readonly decision: 'allow' | 'deny';
     readonly policyId: string;
+    /** Digest of the relying-party authorization policy that made this decision. */
+    readonly policyDigest?: AdmissionDigestV2;
     readonly caid: string;
     readonly actionDigest: AdmissionDigestV2;
     readonly evidenceDigest: AdmissionDigestV2;
@@ -41,6 +43,7 @@ export interface GateQualificationDecisionV2 {
     readonly caid: string;
     readonly actionDigest: string;
     readonly snapshotDigest: string;
+    readonly programDigest: AdmissionDigestV2;
     readonly effectKey: string;
     readonly requirements: Readonly<{
         qualificationEvidenceDigest: string;
@@ -156,6 +159,7 @@ export type GateQualificationExecutionResultV2 = {
 } | {
     readonly status: 'refused';
     readonly reason: string;
+    readonly programDigest: AdmissionDigestV2;
     readonly decision?: Readonly<GateQualificationDecisionV2>;
 } | {
     readonly status: 'reconciliation_required';

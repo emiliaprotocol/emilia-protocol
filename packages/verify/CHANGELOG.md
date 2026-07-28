@@ -3,6 +3,22 @@
 All notable changes to `@emilia-protocol/verify` are documented here.
 This package follows [Semantic Versioning](https://semver.org/).
 
+## 3.17.0 (2026-07-28)
+
+### Added
+
+- AEB execution and Agent Edge Continuity authorization results now carry the
+  exact relying-party-pinned `program_digest` that governed the decision.
+
+### Security
+
+- Positive execution authorization refuses when the evaluator's pinned
+  configuration digest is absent. Historical verification, evidence
+  satisfaction, and local authorization remain separate from executable
+  authority.
+- Refusal and reconciliation-required results retain an auditable policy
+  citation without upgrading either result into authorization.
+
 ## 3.16.1 (2026-07-27)
 
 ### Added

@@ -59,6 +59,48 @@ if (!out.ok) throw out.body; // 428 Receipt Required
 console.log(out.packet.verdict); // "rely"
 ```
 
+## Customer-owned Reliance Programs
+
+`@emilia-protocol/gate/reliance-program` turns a relying party's signed policy
+source into the existing Gate Trust Program wire format. It does not add a
+second authorization engine. An Admissibility Profile remains the acceptance
+bar for one evidence role; a Reliance Program composes those hash-pinned bars
+across stages and selects exactly one consequence owner.
+
+```js
+import {
+  compileRelianceProgram,
+  createAdmissibilityProfileTrustAdapter,
+  signRelianceProgram,
+} from '@emilia-protocol/gate/reliance-program';
+
+const signed = signRelianceProgram(customerOwnedSource, rpPrivateKey);
+const compiled = compileRelianceProgram(signed, {
+  trustedKeys: {
+    'rp-key-1': {
+      relying_party_id: 'payer:example',
+      public_key: rpPublicKey,
+    },
+  },
+  profiles: relyingPartyPinnedAdmissibilityProfiles,
+});
+
+// `compiled.program` is EP-GATE-TRUST-PROGRAM-PROFILE-v1.
+// The adapter runs the already-shipped profile evaluator under a constructor-
+// pinned profile; the presenter supplies evidence, never policy or trust roots.
+const verifier = createAdmissibilityProfileTrustAdapter({
+  profile: relyingPartyPinnedAdmissibilityProfiles[0],
+  evaluate: evaluateAdmissibilityProfile,
+  project: projectVerifiedPrincipalsAndTimes,
+  now: () => new Date().toISOString(),
+});
+```
+
+The signed source, its `source_digest`, the compiled `program_digest`, and the
+compiler trace remain distinct. Compilation proves a deterministic policy
+mapping; it does not prove that evidence is sufficient, authorize an action, or
+claim an external effect occurred.
+
 ## Gate Qualification v2
 
 Gate Qualification v2 treats model or agent qualification as one input to a
