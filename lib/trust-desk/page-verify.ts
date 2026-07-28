@@ -128,9 +128,14 @@ function verifyDoc(doc, getArtifact): PageVerifyFound {
         .createHmac('sha256', key)
         .update(`${claim.payload_hash}.${claim.signed_at}`, 'utf8')
         .digest('hex');
+      const claimed = typeof claim.signature === 'string' ? claim.signature : '';
+      const expectedBuf = Buffer.from(expected, 'utf8');
+      const claimedBuf = Buffer.from(claimed, 'utf8');
+      const signatureOk = expectedBuf.length === claimedBuf.length
+        && crypto.timingSafeEqual(expectedBuf, claimedBuf);
       checks.signature = {
-        ok: expected === claim.signature,
-        detail: expected === claim.signature ? 'verified' : 'HMAC mismatch',
+        ok: signatureOk,
+        detail: signatureOk ? 'verified' : 'HMAC mismatch',
       };
     } else {
       checks.signature = { ok: null, detail: 'signing key unavailable' };

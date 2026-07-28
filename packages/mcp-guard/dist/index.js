@@ -438,9 +438,13 @@ export function withMcpGuard(handler, options = {}) {
         catch {
             fromResolver = { destructiveHint: true };
         }
+        // An external resolver may only ever ESCALATE. `readOnlyHint` is deliberately
+        // not forwarded: it is presenter-authored metadata, and forwarding it let a
+        // remote hint outrank the operator's own `policy` function, whose result is
+        // evaluated after the readOnlyHint downgrade branch. Locally authored
+        // `annotations[name].readOnlyHint` is unaffected and still honoured below.
         const externalHints = fromResolver && typeof fromResolver === 'object' ? {
             ...(fromResolver.destructiveHint === true ? { destructiveHint: true } : {}),
-            ...(fromResolver.readOnlyHint === true ? { readOnlyHint: true } : {}),
         } : {};
         return { ...externalHints, ...(annotations[name] || {}) };
     };
@@ -651,9 +655,13 @@ export function withMcpReceiptGuard(handler, options = {}) {
         catch {
             fromResolver = { destructiveHint: true };
         }
+        // An external resolver may only ever ESCALATE. `readOnlyHint` is deliberately
+        // not forwarded: it is presenter-authored metadata, and forwarding it let a
+        // remote hint outrank the operator's own `policy` function, whose result is
+        // evaluated after the readOnlyHint downgrade branch. Locally authored
+        // `annotations[name].readOnlyHint` is unaffected and still honoured below.
         const externalHints = fromResolver && typeof fromResolver === 'object' ? {
             ...(fromResolver.destructiveHint === true ? { destructiveHint: true } : {}),
-            ...(fromResolver.readOnlyHint === true ? { readOnlyHint: true } : {}),
         } : {};
         return { ...externalHints, ...(annotations[name] || {}) };
     };
