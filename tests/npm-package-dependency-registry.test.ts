@@ -55,7 +55,7 @@ describe('npm internal dependency registry guard', () => {
       sha256: '50caa243b057708a30d459839b0ca02292aa297c1f7523ee77f3559492e08fea',
     };
     const downstream = [
-      { metadata: GATE_METADATA, directory: 'packages/gate', version: '0.18.2' },
+      { metadata: GATE_METADATA, directory: 'packages/gate', version: '0.19.0' },
       { metadata: QUALIFY_METADATA, directory: 'packages/qualify', version: '0.1.0' },
     ];
 
