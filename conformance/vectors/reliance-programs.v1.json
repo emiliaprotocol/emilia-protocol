@@ -1,0 +1,502 @@
+{
+  "suite": "EP-RELIANCE-PROGRAM-CONFORMANCE-v1",
+  "source_version": "EP-RELIANCE-PROGRAM-SOURCE-v1",
+  "envelope_version": "EP-RELIANCE-PROGRAM-v1",
+  "compiled_version": "EP-GATE-TRUST-PROGRAM-PROFILE-v1",
+  "vectors_version": "1.0.0",
+  "artifact_classification": "public_experimental_synthetic_reference",
+  "description": "Fixture-driven signing, verification, and compilation catalog for customer-owned Reliance Programs. Mutations are JSON Pointer operations applied by the test runner; vector identifiers do not select hard-coded outcomes.",
+  "claim_limitations": [
+    "The fixtures, profile bodies, keys, and vectors are synthetic, PHI-free reference artifacts.",
+    "Passing establishes only in-repository signer, verifier, and compiler behavior for these cases.",
+    "The payer fixture is not payer-live and does not establish Da Vinci PAS conformance, clinical correctness, reviewer licensure, or legal compliance.",
+    "The auditor fixture does not establish auditor independence, an audit opinion, or satisfaction of a professional standard.",
+    "The MCP fixture does not establish server or tool safety, delegated authority, platform genuineness, complete mediation, or occurrence of an external effect.",
+    "No independent implementation or cross-vendor interoperability result is claimed."
+  ],
+  "fixture_count": 3,
+  "profile_count": 10,
+  "vector_count": 12,
+  "required_coverage": [
+    "payer_davinci_pas_adverse_determination",
+    "auditor_proof_of_human_authorization",
+    "platform_mcp_clearance",
+    "profile_substitution",
+    "missing_signature",
+    "raw_trusted_key_refused",
+    "relying_party_identity_mismatch",
+    "unknown_source_field",
+    "unknown_envelope_field",
+    "action_drift",
+    "caid_drift",
+    "disconnected_stage"
+  ],
+  "fixtures": [
+    {
+      "id": "payer_davinci_pas_adverse_determination",
+      "path": "examples/reliance-programs/payer-davinci-pas-adverse-determination.v1.json",
+      "owner_key_seed_hex_byte": "a1"
+    },
+    {
+      "id": "auditor_proof_of_human_authorization",
+      "path": "examples/reliance-programs/auditor-proof-of-human-authorization.v1.json",
+      "owner_key_seed_hex_byte": "b2"
+    },
+    {
+      "id": "platform_mcp_clearance",
+      "path": "examples/reliance-programs/platform-mcp-clearance.v1.json",
+      "owner_key_seed_hex_byte": "c3"
+    }
+  ],
+  "profiles": [
+    {
+      "id": "rp.synthetic-payer.davinci-pas-mapping.v1",
+      "version": 1,
+      "authored_by": "org:synthetic-payer.example",
+      "requires": [
+        {
+          "evidence": "davinci_pas_action_mapping",
+          "max_staleness_sec": 300
+        }
+      ],
+      "verdicts": [
+        "admissible",
+        "missing_evidence",
+        "stale",
+        "conflicted",
+        "unverifiable"
+      ],
+      "profile_hash": "sha256:cf12843f1ef6319f4f45a2434300f6193d289bc3d3dd72150f114aef4b2d6cbc"
+    },
+    {
+      "id": "rp.synthetic-payer.licensed-adverse-review.v1",
+      "version": 1,
+      "authored_by": "org:synthetic-payer.example",
+      "requires": [
+        {
+          "evidence": "human_authorization",
+          "min_assurance": "high",
+          "max_staleness_sec": 300,
+          "checks": [
+            "signature_valid",
+            "revocation_checked"
+          ]
+        }
+      ],
+      "verdicts": [
+        "admissible",
+        "missing_evidence",
+        "stale",
+        "conflicted",
+        "unverifiable"
+      ],
+      "profile_hash": "sha256:a7daceb344c5fa2b3cca743598d059352f62f4977325e9bf58a408063d768633"
+    },
+    {
+      "id": "rp.synthetic-payer.reviewer-authority-status.v1",
+      "version": 1,
+      "authored_by": "org:synthetic-payer.example",
+      "requires": [
+        {
+          "evidence": "reviewer_authority",
+          "min_assurance": "high",
+          "max_staleness_sec": 60,
+          "checks": [
+            "signature_valid",
+            "revocation_checked"
+          ]
+        }
+      ],
+      "verdicts": [
+        "admissible",
+        "missing_evidence",
+        "stale",
+        "conflicted",
+        "unverifiable"
+      ],
+      "profile_hash": "sha256:74cea62fc8aee5f2d9ec2de082ad393521b82acef80a2dbaaa5883e497f4df46"
+    },
+    {
+      "id": "rp.synthetic-auditor.native-artifact-verification.v1",
+      "version": 1,
+      "authored_by": "org:synthetic-audit-firm.example",
+      "requires": [
+        {
+          "evidence": "authorization_receipt",
+          "min_assurance": "high",
+          "max_staleness_sec": 86400,
+          "checks": [
+            "signature_valid"
+          ]
+        }
+      ],
+      "verdicts": [
+        "admissible",
+        "missing_evidence",
+        "stale",
+        "conflicted",
+        "unverifiable"
+      ],
+      "profile_hash": "sha256:3c0491c5f025f9b262e88b6c1a046b477c47eac4a411846c5077dab7a3351b21"
+    },
+    {
+      "id": "rp.synthetic-auditor.human-authorization-binding.v1",
+      "version": 1,
+      "authored_by": "org:synthetic-audit-firm.example",
+      "requires": [
+        {
+          "evidence": "human_authorization",
+          "min_assurance": "high",
+          "max_staleness_sec": 3600,
+          "checks": [
+            "signature_valid",
+            "revocation_checked"
+          ]
+        }
+      ],
+      "verdicts": [
+        "admissible",
+        "missing_evidence",
+        "stale",
+        "conflicted",
+        "unverifiable"
+      ],
+      "profile_hash": "sha256:66aca46a538748cac527d72db1b90313b584ea6929c7cfbfaf552c07e995191f"
+    },
+    {
+      "id": "rp.synthetic-auditor.reperformance.v1",
+      "version": 1,
+      "authored_by": "org:synthetic-audit-firm.example",
+      "requires": [
+        {
+          "evidence": "external_verification_statement",
+          "max_staleness_sec": 86400,
+          "checks": [
+            "signature_valid"
+          ]
+        }
+      ],
+      "verdicts": [
+        "admissible",
+        "missing_evidence",
+        "stale",
+        "conflicted",
+        "unverifiable"
+      ],
+      "profile_hash": "sha256:15a53988cf59a2febda4c4e8abb00ba5557b00fa9fdd7ba92ba6a6779922ba98"
+    },
+    {
+      "id": "rp.synthetic-platform.mcp-request-binding.v1",
+      "version": 1,
+      "authored_by": "org:synthetic-platform.example",
+      "requires": [
+        {
+          "evidence": "mcp_request_binding",
+          "max_staleness_sec": 120
+        }
+      ],
+      "verdicts": [
+        "admissible",
+        "missing_evidence",
+        "stale",
+        "conflicted",
+        "unverifiable"
+      ],
+      "profile_hash": "sha256:ec7fe7814b27ff51a07fac939dd4fbe0128977e3f1e9ff342f81b5aa1ca5985f"
+    },
+    {
+      "id": "rp.synthetic-platform.delegated-authority.v1",
+      "version": 1,
+      "authored_by": "org:synthetic-platform.example",
+      "requires": [
+        {
+          "evidence": "delegated_authority",
+          "min_assurance": "high",
+          "max_staleness_sec": 120,
+          "checks": [
+            "signature_valid",
+            "revocation_checked"
+          ]
+        }
+      ],
+      "verdicts": [
+        "admissible",
+        "missing_evidence",
+        "stale",
+        "conflicted",
+        "unverifiable"
+      ],
+      "profile_hash": "sha256:9da9399c8a5721f43d0a4f32206a27ecd3255b895f59c74a76c95b7256407430"
+    },
+    {
+      "id": "rp.synthetic-platform.human-mcp-clearance.v1",
+      "version": 1,
+      "authored_by": "org:synthetic-platform.example",
+      "requires": [
+        {
+          "evidence": "human_authorization",
+          "min_assurance": "high",
+          "max_staleness_sec": 300,
+          "checks": [
+            "signature_valid",
+            "revocation_checked"
+          ]
+        }
+      ],
+      "verdicts": [
+        "admissible",
+        "missing_evidence",
+        "stale",
+        "conflicted",
+        "unverifiable"
+      ],
+      "profile_hash": "sha256:53fa4a30bb3e64907bb50efaa58b53d487be7b28307f73f4504a9583de7682bd"
+    },
+    {
+      "id": "rp.synthetic-platform.platform-posture.v1",
+      "version": 1,
+      "authored_by": "org:synthetic-platform.example",
+      "requires": [
+        {
+          "evidence": "platform_attestation",
+          "min_assurance": "high",
+          "max_staleness_sec": 120,
+          "checks": [
+            "signature_valid",
+            "revocation_checked"
+          ]
+        }
+      ],
+      "verdicts": [
+        "admissible",
+        "missing_evidence",
+        "stale",
+        "conflicted",
+        "unverifiable"
+      ],
+      "profile_hash": "sha256:5413bcf6da9503a1d09b656e097b3630404d67823d7d571e398d4a4d7515162c"
+    }
+  ],
+  "vectors": [
+    {
+      "id": "accept_payer_davinci_pas_adverse_determination",
+      "covers": [
+        "payer_davinci_pas_adverse_determination"
+      ],
+      "fixture": "payer_davinci_pas_adverse_determination",
+      "phase": "positive",
+      "mutations": [],
+      "expect": {
+        "accepted": true
+      }
+    },
+    {
+      "id": "accept_auditor_proof_of_human_authorization",
+      "covers": [
+        "auditor_proof_of_human_authorization"
+      ],
+      "fixture": "auditor_proof_of_human_authorization",
+      "phase": "positive",
+      "mutations": [],
+      "expect": {
+        "accepted": true
+      }
+    },
+    {
+      "id": "accept_platform_mcp_clearance",
+      "covers": [
+        "platform_mcp_clearance"
+      ],
+      "fixture": "platform_mcp_clearance",
+      "phase": "positive",
+      "mutations": [],
+      "expect": {
+        "accepted": true
+      }
+    },
+    {
+      "id": "reject_self_consistent_profile_substitution",
+      "covers": [
+        "profile_substitution"
+      ],
+      "fixture": "payer_davinci_pas_adverse_determination",
+      "phase": "compile_profile_catalog",
+      "mutations": [
+        {
+          "op": "replace",
+          "path": "/1/requires/0/min_assurance",
+          "value": "basic"
+        },
+        {
+          "op": "replace",
+          "path": "/1/profile_hash",
+          "value": "sha256:e7da6d833d30ec84e6d8e643f326e44228a2edc92d69564062501a82a5b95a82"
+        }
+      ],
+      "expect": {
+        "accepted": false
+      }
+    },
+    {
+      "id": "reject_missing_signature",
+      "covers": [
+        "missing_signature"
+      ],
+      "fixture": "auditor_proof_of_human_authorization",
+      "phase": "verify_envelope",
+      "mutations": [
+        {
+          "op": "remove",
+          "path": "/signature"
+        }
+      ],
+      "expect": {
+        "accepted": false
+      }
+    },
+    {
+      "id": "reject_raw_public_key_without_relying_party_identity",
+      "covers": [
+        "raw_trusted_key_refused"
+      ],
+      "fixture": "payer_davinci_pas_adverse_determination",
+      "phase": "verify_trust_config",
+      "mutations": [
+        {
+          "op": "replace",
+          "path": "/key:synthetic-payer:reliance-program:v1",
+          "value": "raw-public-key-is-not-a-trust-entry"
+        }
+      ],
+      "expect": {
+        "accepted": false
+      }
+    },
+    {
+      "id": "reject_key_pinned_for_different_relying_party",
+      "covers": [
+        "relying_party_identity_mismatch"
+      ],
+      "fixture": "payer_davinci_pas_adverse_determination",
+      "phase": "verify_trust_config",
+      "mutations": [
+        {
+          "op": "replace",
+          "path": "/key:synthetic-payer:reliance-program:v1/relying_party_id",
+          "value": "org:synthetic-attacker.example"
+        }
+      ],
+      "expect": {
+        "accepted": false
+      }
+    },
+    {
+      "id": "reject_unknown_source_profile_field",
+      "covers": [
+        "unknown_source_field"
+      ],
+      "fixture": "platform_mcp_clearance",
+      "phase": "sign_source",
+      "mutations": [
+        {
+          "op": "add",
+          "path": "/stages/0/profiles/0/presenter_selected_key",
+          "value": "attacker-key"
+        }
+      ],
+      "expect": {
+        "accepted": false
+      }
+    },
+    {
+      "id": "reject_unknown_unsigned_envelope_field",
+      "covers": [
+        "unknown_envelope_field"
+      ],
+      "fixture": "platform_mcp_clearance",
+      "phase": "verify_envelope",
+      "mutations": [
+        {
+          "op": "add",
+          "path": "/unsigned_extension",
+          "value": {
+            "clearance": true
+          }
+        }
+      ],
+      "expect": {
+        "accepted": false
+      }
+    },
+    {
+      "id": "reject_action_drift_after_signing",
+      "covers": [
+        "action_drift"
+      ],
+      "fixture": "auditor_proof_of_human_authorization",
+      "phase": "verify_envelope",
+      "mutations": [
+        {
+          "op": "replace",
+          "path": "/source/action_digest",
+          "value": "sha256:eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee"
+        }
+      ],
+      "expect": {
+        "accepted": false
+      }
+    },
+    {
+      "id": "reject_caid_drift_after_signing",
+      "covers": [
+        "caid_drift"
+      ],
+      "fixture": "platform_mcp_clearance",
+      "phase": "verify_envelope",
+      "mutations": [
+        {
+          "op": "replace",
+          "path": "/source/root_caid",
+          "value": "caid:1:mcp.tool-call.1:jcs-sha256:ZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZ"
+        }
+      ],
+      "expect": {
+        "accepted": false
+      }
+    },
+    {
+      "id": "reject_disconnected_source_stage",
+      "covers": [
+        "disconnected_stage"
+      ],
+      "fixture": "payer_davinci_pas_adverse_determination",
+      "phase": "compile_source",
+      "mutations": [
+        {
+          "op": "add",
+          "path": "/stages/-",
+          "value": {
+            "stage_id": "decorative-disconnected-stage",
+            "depends_on": [],
+            "rule": {
+              "mode": "all",
+              "distinct_subjects": false,
+              "distinct_keys": false
+            },
+            "profiles": [
+              {
+                "profile_id": "rp.synthetic-payer.davinci-pas-mapping.v1",
+                "profile_hash": "sha256:cf12843f1ef6319f4f45a2434300f6193d289bc3d3dd72150f114aef4b2d6cbc",
+                "evaluation_max_age_sec": 300,
+                "revocation_required": false
+              }
+            ]
+          }
+        }
+      ],
+      "expect": {
+        "accepted": false
+      }
+    }
+  ]
+}

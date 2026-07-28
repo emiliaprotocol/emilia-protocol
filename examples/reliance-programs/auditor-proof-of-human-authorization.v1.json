@@ -1,0 +1,79 @@
+{
+  "@version": "EP-RELIANCE-PROGRAM-SOURCE-v1",
+  "program_id": "rp.synthetic-auditor.proof-of-human-authorization.v1",
+  "version": 1,
+  "relying_party": {
+    "id": "org:synthetic-audit-firm.example",
+    "key_id": "key:synthetic-audit-firm:reliance-program:v1"
+  },
+  "root_caid": "caid:1:audit.human-authorization-proof.1:jcs-sha256:AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA",
+  "action_digest": "sha256:1222222222222222222222222222222222222222222222222222222222222222",
+  "valid_from": "2026-07-28T00:00:00.000Z",
+  "expires_at": "2026-10-28T00:00:00.000Z",
+  "stages": [
+    {
+      "stage_id": "native-artifact-verification",
+      "depends_on": [],
+      "rule": {
+        "mode": "all",
+        "distinct_subjects": false,
+        "distinct_keys": false
+      },
+      "profiles": [
+        {
+          "profile_id": "rp.synthetic-auditor.native-artifact-verification.v1",
+          "profile_hash": "sha256:3c0491c5f025f9b262e88b6c1a046b477c47eac4a411846c5077dab7a3351b21",
+          "evaluation_max_age_sec": 86400,
+          "revocation_required": false
+        }
+      ]
+    },
+    {
+      "stage_id": "exact-human-authorization-binding",
+      "depends_on": [
+        "native-artifact-verification"
+      ],
+      "rule": {
+        "mode": "all",
+        "distinct_subjects": true,
+        "distinct_keys": true
+      },
+      "profiles": [
+        {
+          "profile_id": "rp.synthetic-auditor.human-authorization-binding.v1",
+          "profile_hash": "sha256:66aca46a538748cac527d72db1b90313b584ea6929c7cfbfaf552c07e995191f",
+          "evaluation_max_age_sec": 3600,
+          "revocation_required": true
+        }
+      ]
+    },
+    {
+      "stage_id": "auditor-reperformance",
+      "depends_on": [
+        "native-artifact-verification"
+      ],
+      "rule": {
+        "mode": "all",
+        "distinct_subjects": false,
+        "distinct_keys": false
+      },
+      "profiles": [
+        {
+          "profile_id": "rp.synthetic-auditor.reperformance.v1",
+          "profile_hash": "sha256:15a53988cf59a2febda4c4e8abb00ba5557b00fa9fdd7ba92ba6a6779922ba98",
+          "evaluation_max_age_sec": 86400,
+          "revocation_required": false
+        }
+      ]
+    }
+  ],
+  "execution": {
+    "depends_on": [
+      "exact-human-authorization-binding",
+      "auditor-reperformance"
+    ],
+    "consequence_mode": "receipt-program",
+    "capability_template_digest": "sha256:5222222222222222222222222222222222222222222222222222222222222222",
+    "escrow_profile_digest": null
+  }
+}

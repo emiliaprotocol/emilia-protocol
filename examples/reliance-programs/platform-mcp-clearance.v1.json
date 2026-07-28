@@ -1,0 +1,99 @@
+{
+  "@version": "EP-RELIANCE-PROGRAM-SOURCE-v1",
+  "program_id": "rp.synthetic-platform.mcp-clearance.v1",
+  "version": 1,
+  "relying_party": {
+    "id": "org:synthetic-platform.example",
+    "key_id": "key:synthetic-platform:reliance-program:v1"
+  },
+  "root_caid": "caid:1:mcp.tool-call.1:jcs-sha256:MMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMM",
+  "action_digest": "sha256:1333333333333333333333333333333333333333333333333333333333333333",
+  "valid_from": "2026-07-28T00:00:00.000Z",
+  "expires_at": "2026-08-04T00:00:00.000Z",
+  "stages": [
+    {
+      "stage_id": "request-and-tool-binding",
+      "depends_on": [],
+      "rule": {
+        "mode": "all",
+        "distinct_subjects": false,
+        "distinct_keys": false
+      },
+      "profiles": [
+        {
+          "profile_id": "rp.synthetic-platform.mcp-request-binding.v1",
+          "profile_hash": "sha256:ec7fe7814b27ff51a07fac939dd4fbe0128977e3f1e9ff342f81b5aa1ca5985f",
+          "evaluation_max_age_sec": 120,
+          "revocation_required": false
+        }
+      ]
+    },
+    {
+      "stage_id": "delegated-authority-current",
+      "depends_on": [
+        "request-and-tool-binding"
+      ],
+      "rule": {
+        "mode": "all",
+        "distinct_subjects": false,
+        "distinct_keys": false
+      },
+      "profiles": [
+        {
+          "profile_id": "rp.synthetic-platform.delegated-authority.v1",
+          "profile_hash": "sha256:9da9399c8a5721f43d0a4f32206a27ecd3255b895f59c74a76c95b7256407430",
+          "evaluation_max_age_sec": 120,
+          "revocation_required": true
+        }
+      ]
+    },
+    {
+      "stage_id": "human-clearance",
+      "depends_on": [
+        "request-and-tool-binding"
+      ],
+      "rule": {
+        "mode": "all",
+        "distinct_subjects": true,
+        "distinct_keys": true
+      },
+      "profiles": [
+        {
+          "profile_id": "rp.synthetic-platform.human-mcp-clearance.v1",
+          "profile_hash": "sha256:53fa4a30bb3e64907bb50efaa58b53d487be7b28307f73f4504a9583de7682bd",
+          "evaluation_max_age_sec": 300,
+          "revocation_required": true
+        }
+      ]
+    },
+    {
+      "stage_id": "platform-posture-current",
+      "depends_on": [
+        "request-and-tool-binding"
+      ],
+      "rule": {
+        "mode": "all",
+        "distinct_subjects": false,
+        "distinct_keys": false
+      },
+      "profiles": [
+        {
+          "profile_id": "rp.synthetic-platform.platform-posture.v1",
+          "profile_hash": "sha256:5413bcf6da9503a1d09b656e097b3630404d67823d7d571e398d4a4d7515162c",
+          "evaluation_max_age_sec": 120,
+          "revocation_required": true
+        }
+      ]
+    }
+  ],
+  "execution": {
+    "depends_on": [
+      "delegated-authority-current",
+      "human-clearance",
+      "platform-posture-current"
+    ],
+    "consequence_mode": "receipt-program",
+    "capability_template_digest": "sha256:6333333333333333333333333333333333333333333333333333333333333333",
+    "escrow_profile_digest": null
+  }
+}

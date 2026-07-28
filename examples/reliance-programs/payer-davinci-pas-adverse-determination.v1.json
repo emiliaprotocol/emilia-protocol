@@ -1,0 +1,78 @@
+{
+  "@version": "EP-RELIANCE-PROGRAM-SOURCE-v1",
+  "program_id": "rp.synthetic-payer.davinci-pas-adverse-determination.v1",
+  "version": 1,
+  "relying_party": {
+    "id": "org:synthetic-payer.example",
+    "key_id": "key:synthetic-payer:reliance-program:v1"
+  },
+  "root_caid": "caid:1:health.medical-prior-authorization-review.1:jcs-sha256:PPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPP",
+  "action_digest": "sha256:1111111111111111111111111111111111111111111111111111111111111111",
+  "valid_from": "2026-07-28T00:00:00.000Z",
+  "expires_at": "2026-08-28T00:00:00.000Z",
+  "stages": [
+    {
+      "stage_id": "pas-structure-and-mapping",
+      "depends_on": [],
+      "rule": {
+        "mode": "all",
+        "distinct_subjects": false,
+        "distinct_keys": false
+      },
+      "profiles": [
+        {
+          "profile_id": "rp.synthetic-payer.davinci-pas-mapping.v1",
+          "profile_hash": "sha256:cf12843f1ef6319f4f45a2434300f6193d289bc3d3dd72150f114aef4b2d6cbc",
+          "evaluation_max_age_sec": 300,
+          "revocation_required": false
+        }
+      ]
+    },
+    {
+      "stage_id": "licensed-human-adverse-review",
+      "depends_on": [
+        "pas-structure-and-mapping"
+      ],
+      "rule": {
+        "mode": "all",
+        "distinct_subjects": true,
+        "distinct_keys": true
+      },
+      "profiles": [
+        {
+          "profile_id": "rp.synthetic-payer.licensed-adverse-review.v1",
+          "profile_hash": "sha256:a7daceb344c5fa2b3cca743598d059352f62f4977325e9bf58a408063d768633",
+          "evaluation_max_age_sec": 300,
+          "revocation_required": true
+        }
+      ]
+    },
+    {
+      "stage_id": "reviewer-authority-current",
+      "depends_on": [
+        "licensed-human-adverse-review"
+      ],
+      "rule": {
+        "mode": "all",
+        "distinct_subjects": false,
+        "distinct_keys": false
+      },
+      "profiles": [
+        {
+          "profile_id": "rp.synthetic-payer.reviewer-authority-status.v1",
+          "profile_hash": "sha256:74cea62fc8aee5f2d9ec2de082ad393521b82acef80a2dbaaa5883e497f4df46",
+          "evaluation_max_age_sec": 60,
+          "revocation_required": true
+        }
+      ]
+    }
+  ],
+  "execution": {
+    "depends_on": [
+      "reviewer-authority-current"
+    ],
+    "consequence_mode": "receipt-program",
+    "capability_template_digest": "sha256:5111111111111111111111111111111111111111111111111111111111111111",
+    "escrow_profile_digest": null
+  }
+}
