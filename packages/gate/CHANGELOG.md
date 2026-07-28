@@ -19,6 +19,10 @@ This package follows [Semantic Versioning](https://semver.org/).
 
 ### Security
 
+- Gate now pins the independently published
+  `@emilia-protocol/verify@3.17.0` registry tarball. Reliance Program decision
+  citations therefore execute against the exact AEB/AEC verifier release whose
+  bytes are recorded in the governed package registry.
 - Compilation requires an Ed25519 signer whose pinned key is bound to the
   named relying party, recomputes every profile self-hash, and refuses unknown
   fields, substituted profiles, disconnected stages, action drift, and

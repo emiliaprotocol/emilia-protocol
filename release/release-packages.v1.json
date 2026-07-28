@@ -31,8 +31,8 @@
       "mode": "npm_reusable",
       "registry_dependency_tarballs": [
         {
-          "spec": "@emilia-protocol/verify@3.16.0",
-          "sha256": "50caa243b057708a30d459839b0ca02292aa297c1f7523ee77f3559492e08fea"
+          "spec": "@emilia-protocol/verify@3.17.0",
+          "sha256": "c14fc3136c78aa1daa8a57fddbaaec1b32c2a3cec0159b1b0ea130370c3f9d16"
         }
       ]
     },

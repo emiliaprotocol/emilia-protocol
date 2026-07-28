@@ -457,7 +457,7 @@
   "dependencies": {
     "@noble/curves": "2.2.0",
     "@emilia-protocol/require-receipt": "0.7.0",
-    "@emilia-protocol/verify": "3.16.0"
+    "@emilia-protocol/verify": "3.17.0"
   },
   "keywords": [
     "emilia",
