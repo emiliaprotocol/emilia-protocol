@@ -20,7 +20,7 @@ import {
   reconcileAebExecutionDurable,
   signAebNativeVerificationAttestation,
   verifyAebEvaluation,
-} from './aeb-adapter-contract.js';
+} from './src/aeb-adapter-contract.js';
 
 const vectors = JSON.parse(fs.readFileSync(new URL('../../conformance/vectors/aeb-adapter.v1.json', import.meta.url), 'utf8'));
 
@@ -497,10 +497,32 @@ test('AEB freezes indeterminate execution and consumes a satisfied authorization
   });
   assert.equal(authorized.state, 'AUTHORIZED');
   assert.equal(authorized.invoke_allowed, true);
+  assert.equal(
+    authorized.program_digest,
+    satisfied.record.evaluator.pinned_config_digest,
+  );
   assert.equal(reconcileAebExecution(store, authorized.reservation_key, 'COMMITTED').state, 'CONSUMED');
-  assert.equal(authorizeAebExecution(satisfied.record, {
+  const replay = authorizeAebExecution(satisfied.record, {
     verification: { valid: true, execution_authorizing: true }, local_authorization: true, store,
-  }).reason, 'consumption_conflict');
+  });
+  assert.equal(replay.reason, 'consumption_conflict');
+  assert.equal(replay.program_digest, satisfied.record.evaluator.pinned_config_digest);
+});
+
+test('AEB refuses positive authorization when the relying-party program digest is absent', () => {
+  const satisfied = evaluate(setup());
+  const missingProgram = structuredClone(satisfied.record);
+  missingProgram.evaluator.pinned_config_digest = '';
+  const store = new InMemoryAebConsumptionStore();
+  const result = authorizeAebExecution(missingProgram, {
+    verification: { valid: true, execution_authorizing: true },
+    local_authorization: true,
+    store,
+  });
+  assert.equal(result.state, 'REFUSED');
+  assert.equal(result.invoke_allowed, false);
+  assert.equal(result.reason, 'authorization_program_digest_required');
+  assert.match(result.program_digest, /^sha256:[0-9a-f]{64}$/);
 });
 
 test('AEB treats a material CAID mismatch as unsatisfied', () => {

@@ -7,6 +7,7 @@
  * and never accepted from the agent-facing request body.
  */
 
+import crypto from 'node:crypto';
 import { NextRequest, NextResponse } from 'next/server';
 import { authEntityId } from '@/lib/auth-projections.js';
 import { epProblem } from '@/lib/errors.js';
@@ -17,6 +18,11 @@ import { authenticateRequest } from '@/lib/supabase.js';
 import { resolveAuthorizedOrg } from '@/lib/tenant-binding.js';
 
 const MAX_BODY_BYTES = 512 * 1024;
+const DIGEST_RE = /^sha256:[a-f0-9]{64}$/;
+const DAVINCI_PAS_ROUTE_PROGRAM_DIGEST = `sha256:${crypto
+  .createHash('sha256')
+  .update('EMILIA-DAVINCI-PAS-CONSEQUENCE-HTTP-BOUNDARY-v1')
+  .digest('hex')}`;
 const IDENTIFIER_RE = /^[A-Za-z0-9][A-Za-z0-9:_.@/-]{2,255}$/;
 const RAW_PAS_ALIASES = new Set([
   'claim',
@@ -133,12 +139,20 @@ function project(result: Record<string, any>): Record<string, unknown> {
     'proposal',
     'authorization',
     'challenge',
+    'program_digest',
   ];
-  return Object.fromEntries(
+  const projected = Object.fromEntries(
     allowed
       .filter((field) => Object.hasOwn(result, field))
       .map((field) => [field, structuredClone(result[field])]),
   );
+  if (projected.decision === 'REFUSED') {
+    projected.program_digest = typeof projected.program_digest === 'string'
+        && DIGEST_RE.test(projected.program_digest)
+      ? projected.program_digest
+      : DAVINCI_PAS_ROUTE_PROGRAM_DIGEST;
+  }
+  return projected;
 }
 
 export function createDavinciPasReviewHandler(

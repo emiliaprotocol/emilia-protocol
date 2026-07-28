@@ -235,8 +235,23 @@ function digest(value: unknown): string {
   return `sha256:${crypto.createHash('sha256').update(canonicalize(value)).digest('hex')}`;
 }
 
+const DAVINCI_PAS_RELIANCE_PROGRAM_DIGEST = digest({
+  '@version': DAVINCI_PAS_CONSEQUENCE_CONTROL_VERSION,
+  profile_id: DAVINCI_PAS_CONSEQUENCE_PROFILE_ID,
+  action_type: DAVINCI_PAS_ACTION_TYPE,
+  aeb_requirement_ref: DAVINCI_PAS_AEB_REQUIREMENT_REF,
+  required_action_fields: REQUIRED_ACTION_FIELDS,
+  optional_action_fields: OPTIONAL_ACTION_FIELDS,
+});
+
 function refusal(reason: string, extras: JsonObject = {}): JsonObject {
-  return { ok: false, decision: 'REFUSED', reason, ...extras };
+  return {
+    ok: false,
+    decision: 'REFUSED',
+    reason,
+    ...extras,
+    program_digest: DAVINCI_PAS_RELIANCE_PROGRAM_DIGEST,
+  };
 }
 
 function safeReason(error: unknown, fallback: string): string {

@@ -119,6 +119,23 @@ const STATEFUL_REQUIREMENTS = Object.freeze([
   'single_use_consumption',
 ]);
 
+function statefulRelianceProgramDigest(
+  profileId = PROFILE_ID,
+  actionType = ACTION_TYPE,
+) {
+  return digest({
+    '@version': 'EP-HEALTH-PROGRAM-INTEGRITY-RELIANCE-PROGRAM-v1',
+    profile_id: profileId,
+    action_type: actionType,
+    action_version: ACTION_VERSION,
+    requirements: STATEFUL_REQUIREMENTS,
+    action_schema: STATEFUL_CAID_DEFINITION.required_fields,
+  });
+}
+
+const DEFAULT_STATEFUL_RELIANCE_PROGRAM_DIGEST =
+  statefulRelianceProgramDigest();
+
 const PROHIBITED_PHI_FIELDS = new Set([
   'member_name',
   'patient_name',
@@ -1009,12 +1026,17 @@ function findProhibitedPhi(value: any): string | null {
   return null;
 }
 
-function statefulRefusal(reason: string, extras: any = {}): any {
+function statefulRefusal(
+  reason: string,
+  extras: any = {},
+  programDigest = DEFAULT_STATEFUL_RELIANCE_PROGRAM_DIGEST,
+): any {
   return {
     ok: false,
     decision: 'REFUSED',
     reason,
     ...extras,
+    program_digest: programDigest,
   };
 }
 
@@ -1045,32 +1067,42 @@ function validateStatefulAction(action: any, {
   profileId = PROFILE_ID,
   actionType = ACTION_TYPE,
   permitCallerCaid = false,
+  programDigest = DEFAULT_STATEFUL_RELIANCE_PROGRAM_DIGEST,
 }: {
   profileId?: string;
   actionType?: string;
   permitCallerCaid?: boolean;
+  programDigest?: string;
 } = {}): any {
-  if (!isRecord(action)) return statefulRefusal('invalid_action');
+  if (!isRecord(action)) return statefulRefusal('invalid_action', {}, programDigest);
   const prohibited = findProhibitedPhi(action);
-  if (prohibited) return statefulRefusal('prohibited_phi', { prohibited_field: prohibited });
+  if (prohibited) {
+    return statefulRefusal(
+      'prohibited_phi',
+      { prohibited_field: prohibited },
+      programDigest,
+    );
+  }
   if (!permitCallerCaid && Object.prototype.hasOwnProperty.call(action, 'action_caid')) {
-    return statefulRefusal('caller_selected_caid_refused');
+    return statefulRefusal('caller_selected_caid_refused', {}, programDigest);
   }
   if ([...RUNTIME_DOWNGRADE_FIELDS].some((field) => (
     Object.prototype.hasOwnProperty.call(action, field)
   ))) {
-    return statefulRefusal('runtime_downgrade_refused');
+    return statefulRefusal('runtime_downgrade_refused', {}, programDigest);
   }
   if (action['@version'] !== ACTION_VERSION
       || action.profile_id !== profileId) {
-    return statefulRefusal('unsupported_action_profile');
+    return statefulRefusal('unsupported_action_profile', {}, programDigest);
   }
   if (action.action_type !== actionType) {
     const grammarValid = typeof action.action_type === 'string'
       && /^(?:[a-z][a-z0-9-]*\.)+[1-9][0-9]*$/.test(action.action_type);
-    return statefulRefusal(grammarValid
-      ? 'unsupported_action_profile'
-      : 'unsupported_action_type');
+    return statefulRefusal(
+      grammarValid ? 'unsupported_action_profile' : 'unsupported_action_type',
+      {},
+      programDigest,
+    );
   }
   const requiredStrings = [
     'organization_id',
@@ -1090,7 +1122,7 @@ function validateStatefulAction(action: any, {
   if (requiredStrings.some((field) => (
     typeof action[field] !== 'string' || action[field].length === 0
   ))) {
-    return statefulRefusal('invalid_action');
+    return statefulRefusal('invalid_action', {}, programDigest);
   }
   if (!/^\d{10}$/.test(action.provider_npi)
       || !/^member:sha256:[0-9a-f]{64}$/.test(action.member_ref)
@@ -1107,7 +1139,7 @@ function validateStatefulAction(action: any, {
       || !Number.isSafeInteger(action.policy_version)
       || action.policy_version < 1
       || !isSha256Digest(action.policy_hash)) {
-    return statefulRefusal('invalid_action');
+    return statefulRefusal('invalid_action', {}, programDigest);
   }
   return null;
 }
@@ -1117,6 +1149,7 @@ function computeStatefulActionBinding(action: any, options: {
   profileId?: string;
   actionType?: string;
   permitCallerCaid?: boolean;
+  programDigest?: string;
 } = {}): any {
   const validation = validateStatefulAction(action, options);
   if (validation) return validation;
@@ -1126,7 +1159,11 @@ function computeStatefulActionBinding(action: any, options: {
     definitions: [STATEFUL_CAID_DEFINITION],
   });
   if (!computed.caid || !computed.digest) {
-    return statefulRefusal('action_caid_generation_failed');
+    return statefulRefusal(
+      'action_caid_generation_failed',
+      {},
+      options.programDigest,
+    );
   }
   const parsed = parseCaid(computed.caid);
   const verified = verifyCaid(cleanAction, computed.caid, {
@@ -1135,7 +1172,11 @@ function computeStatefulActionBinding(action: any, options: {
   if (!parsed.ok
       || parsed.caid.action_type !== ACTION_TYPE
       || !verified.valid) {
-    return statefulRefusal('action_caid_generation_failed');
+    return statefulRefusal(
+      'action_caid_generation_failed',
+      {},
+      options.programDigest,
+    );
   }
   return {
     ok: true,
@@ -1212,6 +1253,10 @@ export function verifyProgramIntegrityEvidencePacket(packet: any): { valid: bool
 export function createProgramIntegrityEngine(config: any = {}): any {
   const profileId = config.profile_id || PROFILE_ID;
   const actionType = config.action_type || ACTION_TYPE;
+  const programDigest = statefulRelianceProgramDigest(profileId, actionType);
+  const refuse = (reason: string, extras: any = {}) => (
+    statefulRefusal(reason, extras, programDigest)
+  );
   const now = typeof config.now === 'function'
     ? config.now
     : () => new Date().toISOString();
@@ -1241,10 +1286,12 @@ export function createProgramIntegrityEngine(config: any = {}): any {
     const binding = computeStatefulActionBinding(action, {
       profileId,
       actionType,
+      programDigest,
     });
     if (!binding.ok) return binding;
     return {
       ok: true,
+      program_digest: programDigest,
       action_caid: binding.action_caid,
       action_digest: binding.action_digest,
       requirements: [...STATEFUL_REQUIREMENTS],
@@ -1263,21 +1310,22 @@ export function createProgramIntegrityEngine(config: any = {}): any {
   async function precheck({ action, authorization }: { action?: any; authorization?: any } = {}): Promise<any> {
     if (isRecord(action)
         && Object.prototype.hasOwnProperty.call(action, 'action_caid')) {
-      return statefulRefusal('caller_selected_caid_refused');
+      return refuse('caller_selected_caid_refused');
     }
     const binding = computeStatefulActionBinding(action, {
       profileId,
       actionType,
+      programDigest,
     });
     if (!binding.ok) {
       if (binding.reason === 'unsupported_action_profile') {
-        return statefulRefusal('action_caid_mismatch');
+        return refuse('action_caid_mismatch');
       }
       return binding;
     }
     const authorizationPhi = findProhibitedPhi(authorization);
     if (authorizationPhi) {
-      return statefulRefusal('prohibited_phi', {
+      return refuse('prohibited_phi', {
         prohibited_field: authorizationPhi,
         action_caid: binding.action_caid,
       });
@@ -1288,7 +1336,7 @@ export function createProgramIntegrityEngine(config: any = {}): any {
         || authorization.organization_id !== action.organization_id
         || authorization.action_caid !== binding.action_caid
         || !isSha256Digest(authorization.authorization_evidence_digest)) {
-      return statefulRefusal('action_caid_mismatch', {
+      return refuse('action_caid_mismatch', {
         action_caid: binding.action_caid,
       });
     }
@@ -1297,7 +1345,7 @@ export function createProgramIntegrityEngine(config: any = {}): any {
     const expiresAt = parseInstant(authorization.expires_at);
     if (current === null || issuedAt === null || expiresAt === null
         || issuedAt > current || expiresAt <= current) {
-      return statefulRefusal('authorization_expired', {
+      return refuse('authorization_expired', {
         action_caid: binding.action_caid,
       });
     }
@@ -1314,7 +1362,7 @@ export function createProgramIntegrityEngine(config: any = {}): any {
         at: now(),
       });
     } catch {
-      return statefulRefusal('reviewer_authority_unavailable', {
+      return refuse('reviewer_authority_unavailable', {
         action_caid: binding.action_caid,
       });
     }
@@ -1333,13 +1381,13 @@ export function createProgramIntegrityEngine(config: any = {}): any {
         || validUntil <= current
         || authority.revoked_at !== null
         || authority.snapshot_digest !== action.authority_proof_digest) {
-      return statefulRefusal('reviewer_authority_unsatisfied', {
+      return refuse('reviewer_authority_unsatisfied', {
         action_caid: binding.action_caid,
       });
     }
 
     if (!ephemeral && !stateStore) {
-      return statefulRefusal('state_storage_unavailable', {
+      return refuse('state_storage_unavailable', {
         action_caid: binding.action_caid,
       });
     }
@@ -1353,12 +1401,19 @@ export function createProgramIntegrityEngine(config: any = {}): any {
     const existing = await readOperation(operationId);
     if (existing) {
       if (existing.action_caid !== binding.action_caid) {
-        return statefulRefusal('operation_action_mismatch');
+        return refuse('operation_action_mismatch');
+      }
+      if (existing.program_digest !== programDigest) {
+        return refuse('operation_program_digest_mismatch', {
+          operation_id: operationId,
+          action_caid: binding.action_caid,
+        });
       }
       if (existing.decision === 'READY') {
         return {
           ok: true,
           decision: 'READY',
+          program_digest: programDigest,
           action_caid: binding.action_caid,
           operation_id: operationId,
           idempotency_key: idempotencyKey,
@@ -1367,7 +1422,7 @@ export function createProgramIntegrityEngine(config: any = {}): any {
           idempotent: true,
         };
       }
-      return statefulRefusal('replay_refused', {
+      return refuse('replay_refused', {
         action_caid: binding.action_caid,
         operation_id: operationId,
       });
@@ -1382,19 +1437,21 @@ export function createProgramIntegrityEngine(config: any = {}): any {
       authorization_digest: digest(authorization),
       authority_snapshot_digest: authority.snapshot_digest,
       provider_snapshot_digest: config.provider_snapshot_digest || null,
+      program_digest: programDigest,
       decision: 'READY',
       outcome: null,
       provider_evidence_digest: null,
       evidence_summary: statefulEvidenceSummary(),
     };
     if (!await writeOperation(operationId, operation)) {
-      return statefulRefusal('state_storage_unavailable', {
+      return refuse('state_storage_unavailable', {
         action_caid: binding.action_caid,
       });
     }
     return {
       ok: true,
       decision: 'READY',
+      program_digest: programDigest,
       action_caid: binding.action_caid,
       operation_id: operationId,
       idempotency_key: idempotencyKey,
@@ -1405,9 +1462,14 @@ export function createProgramIntegrityEngine(config: any = {}): any {
 
   async function execute({ operation_id: operationId, action }: { operation_id?: any; action?: any } = {}): Promise<any> {
     const operation = await readOperation(operationId);
-    if (!operation) return statefulRefusal('operation_not_found');
+    if (!operation) return refuse('operation_not_found');
+    if (operation.program_digest !== programDigest) {
+      return refuse('operation_program_digest_mismatch', {
+        operation_id: operationId,
+      });
+    }
     if (operation.decision !== 'READY') {
-      return statefulRefusal('replay_refused', {
+      return refuse('replay_refused', {
         operation_id: operationId,
         action_caid: operation.action_caid,
         previous_decision: operation.decision,
@@ -1416,11 +1478,12 @@ export function createProgramIntegrityEngine(config: any = {}): any {
     const binding = computeStatefulActionBinding(action, {
       profileId,
       actionType,
+      programDigest,
     });
     if (!binding.ok
         || binding.action_caid !== operation.action_caid
         || binding.action_digest !== operation.action_digest) {
-      return statefulRefusal('execution_action_mismatch', {
+      return refuse('execution_action_mismatch', {
         operation_id: operationId,
         action_caid: operation.action_caid,
       });
@@ -1491,7 +1554,7 @@ export function createProgramIntegrityEngine(config: any = {}): any {
     operation.decision = 'REFUSED';
     operation.outcome = 'not_executed';
     await writeOperation(operationId, operation);
-    return statefulRefusal('provider_refused', {
+    return refuse('provider_refused', {
       operation_id: operationId,
       action_caid: operation.action_caid,
     });
@@ -1499,10 +1562,15 @@ export function createProgramIntegrityEngine(config: any = {}): any {
 
   async function reconcile({ operation_id: operationId, evidence }: { operation_id?: any; evidence?: any } = {}): Promise<any> {
     const operation = await readOperation(operationId);
-    if (!operation) return statefulRefusal('operation_not_found');
+    if (!operation) return refuse('operation_not_found');
+    if (operation.program_digest !== programDigest) {
+      return refuse('operation_program_digest_mismatch', {
+        operation_id: operationId,
+      });
+    }
     const evidencePhi = findProhibitedPhi(evidence);
     if (evidencePhi) {
-      return statefulRefusal('prohibited_phi', {
+      return refuse('prohibited_phi', {
         prohibited_field: evidencePhi,
         operation_id: operationId,
         action_caid: operation.action_caid,
@@ -1513,7 +1581,7 @@ export function createProgramIntegrityEngine(config: any = {}): any {
         || operation.decision === 'RECONCILED_FAILED') {
       const evidenceDigest = digest(evidence);
       if (evidenceDigest !== operation.provider_evidence_digest) {
-        return statefulRefusal('reconciliation_conflict', {
+        return refuse('reconciliation_conflict', {
           operation_id: operationId,
           action_caid: operation.action_caid,
           previous_decision: operation.decision,
@@ -1532,7 +1600,7 @@ export function createProgramIntegrityEngine(config: any = {}): any {
       };
     }
     if (operation.decision !== 'INDETERMINATE') {
-      return statefulRefusal('reconciliation_not_allowed', {
+      return refuse('reconciliation_not_allowed', {
         operation_id: operationId,
         action_caid: operation.action_caid,
         previous_decision: operation.decision,
@@ -1559,7 +1627,7 @@ export function createProgramIntegrityEngine(config: any = {}): any {
         || evidence.action_caid !== operation.action_caid
         || evidence.idempotency_key !== operation.idempotency_key
         || !['executed', 'not_executed'].includes(evidence.outcome)) {
-      return statefulRefusal('provider_evidence_invalid', {
+      return refuse('provider_evidence_invalid', {
         operation_id: operationId,
         action_caid: operation.action_caid,
         previous_decision: 'INDETERMINATE',
@@ -1589,10 +1657,15 @@ export function createProgramIntegrityEngine(config: any = {}): any {
 
   async function exportEvidence({ operation_id: operationId }: { operation_id?: any } = {}): Promise<any> {
     const operation = await readOperation(operationId);
-    if (!operation) return statefulRefusal('operation_not_found');
+    if (!operation) return refuse('operation_not_found');
+    if (operation.program_digest !== programDigest) {
+      return refuse('operation_program_digest_mismatch', {
+        operation_id: operationId,
+      });
+    }
     if (!['EXECUTED', 'INDETERMINATE', 'RECONCILED_EXECUTED', 'RECONCILED_FAILED']
       .includes(operation.decision)) {
-      return statefulRefusal('evidence_not_available');
+      return refuse('evidence_not_available');
     }
     const packet: any = {
       '@version': EVIDENCE_PACKET_VERSION,

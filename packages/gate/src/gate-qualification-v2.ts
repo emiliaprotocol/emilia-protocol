@@ -6,6 +6,7 @@
  * immutable AdmissionSnapshot may cross the one-time invocation boundary.
  */
 
+import crypto from 'node:crypto';
 import { createAdmissionSnapshot } from './admission-store.js';
 import type {
   AdmissionSnapshot,
@@ -30,6 +31,14 @@ const REQUIRED_QUALIFICATION_CHECKS = Object.freeze([
   'assignment_in_scope',
   'protected_request_bound',
 ] as const);
+const GATE_QUALIFICATION_V2_PROGRAM_DIGEST = `sha256:${crypto
+  .createHash('sha256')
+  .update(JSON.stringify({
+    version: GATE_QUALIFICATION_V2_VERSION,
+    checks: REQUIRED_QUALIFICATION_CHECKS,
+    requirements: ['qualification', 'aeb', 'aec', 'local_policy'],
+  }))
+  .digest('hex')}` as const;
 const DEFAULT_ADAPTER_TIMEOUT_MS = 30_000;
 const MAX_ADAPTER_TIMEOUT_MS = 300_000;
 
@@ -56,6 +65,8 @@ export interface BoundRequirementDecisionV2 {
 export interface BoundLocalPolicyDecisionV2 {
   readonly decision: 'allow' | 'deny';
   readonly policyId: string;
+  /** Digest of the relying-party authorization policy that made this decision. */
+  readonly policyDigest?: AdmissionDigestV2;
   readonly caid: string;
   readonly actionDigest: AdmissionDigestV2;
   readonly evidenceDigest: AdmissionDigestV2;
@@ -85,6 +96,7 @@ export interface GateQualificationDecisionV2 {
   readonly caid: string;
   readonly actionDigest: string;
   readonly snapshotDigest: string;
+  readonly programDigest: AdmissionDigestV2;
   readonly effectKey: string;
   readonly requirements: Readonly<{
     qualificationEvidenceDigest: string;
@@ -222,6 +234,7 @@ export type GateQualificationExecutionResultV2 =
   | {
       readonly status: 'refused';
       readonly reason: string;
+      readonly programDigest: AdmissionDigestV2;
       readonly decision?: Readonly<GateQualificationDecisionV2>;
     }
   | {
@@ -505,6 +518,11 @@ function validateLocalPolicy(
   if (!validString(leg.policyId)) {
     addReason(reasons, 'localPolicy_policy_missing');
   }
+  if (!validDigest(leg.policyDigest)) {
+    addReason(reasons, 'localPolicy_program_digest_missing');
+  } else if (leg.policyDigest !== snapshot.body.authorization_policy_digest) {
+    addReason(reasons, 'localPolicy_program_digest_mismatch');
+  }
   if (leg.caid !== snapshot.body.caid
       || leg.actionDigest !== snapshot.body.action_digest) {
     addReason(reasons, 'localPolicy_binding_mismatch');
@@ -580,6 +598,7 @@ function emptyDecision(reasons: readonly string[]): GateQualificationDecisionV2 
     caid: '',
     actionDigest: '',
     snapshotDigest: '',
+    programDigest: GATE_QUALIFICATION_V2_PROGRAM_DIGEST,
     effectKey: '',
     requirements: deepFreeze({
       qualificationEvidenceDigest: '',
@@ -613,6 +632,7 @@ function composeCanonical(
     caid: snapshot.body.caid,
     actionDigest: snapshot.body.action_digest,
     snapshotDigest: snapshot.snapshot_digest,
+    programDigest: snapshot.body.authorization_policy_digest,
     effectKey: actuationKey(snapshot),
     requirements: deepFreeze({
       qualificationEvidenceDigest:
@@ -783,6 +803,20 @@ function reconciliationRequired(
   reason: string,
 ): Readonly<GateQualificationExecutionResultV2> {
   return deepFreeze({ status: 'reconciliation_required', reason, admissionId });
+}
+
+function refused(
+  reason: string,
+  decision?: Readonly<GateQualificationDecisionV2>,
+  programDigest: AdmissionDigestV2 = decision?.programDigest
+    ?? GATE_QUALIFICATION_V2_PROGRAM_DIGEST,
+): Readonly<GateQualificationExecutionResultV2> {
+  return deepFreeze({
+    status: 'refused',
+    reason,
+    programDigest,
+    ...(decision ? { decision } : {}),
+  });
 }
 
 export class GateQualificationV2 {
@@ -1022,7 +1056,7 @@ export class GateQualificationV2 {
     decision: Readonly<GateQualificationDecisionV2>,
   ): Promise<GateQualificationExecutionResultV2> {
     if (storeReason !== 'admission_exists') {
-      return deepFreeze({ status: 'refused', reason: storeReason, decision });
+      return refused(storeReason, decision);
     }
     try {
       const record = await this.#store!.read(reference(snapshot));
@@ -1037,7 +1071,7 @@ export class GateQualificationV2 {
         'admission_read_ambiguous',
       );
     }
-    return deepFreeze({ status: 'refused', reason: storeReason, decision });
+    return refused(storeReason, decision);
   }
 
   async #verifyProviderEvidence(
@@ -1228,11 +1262,10 @@ export class GateQualificationV2 {
       : emptyDecision(['admission_snapshot_invalid']);
     if (this.mode === 'shadow') return this.#shadow(input, decision);
     if (!checked.ok || !decision.allow) {
-      return deepFreeze({
-        status: 'refused',
-        reason: decision.reasons[0] ?? 'qualification_refused',
+      return refused(
+        decision.reasons[0] ?? 'qualification_refused',
         decision,
-      });
+      );
     }
 
     const snapshot = checked.snapshot;
@@ -1240,11 +1273,7 @@ export class GateQualificationV2 {
     try {
       reserved = await this.#store!.reserve(snapshot);
     } catch {
-      return deepFreeze({
-        status: 'refused',
-        reason: 'admission_reserve_failed',
-        decision,
-      });
+      return refused('admission_reserve_failed', decision);
     }
     if (!reserved.ok) {
       return this.#existingAdmissionResult(snapshot, reserved.reason, decision);
@@ -1263,11 +1292,7 @@ export class GateQualificationV2 {
       } catch {
         // No provider entry occurred; the reservation remains closed.
       }
-      return deepFreeze({
-        status: 'refused',
-        reason: 'reserve_snapshot_mismatch',
-        decision,
-      });
+      return refused('reserve_snapshot_mismatch', decision);
     }
 
     // Reread the candidate, qualification status, AEB, AEC, local policy and
@@ -1290,11 +1315,7 @@ export class GateQualificationV2 {
       } catch {
         // No execution right was consumed and no provider entry occurred.
       }
-      return deepFreeze({
-        status: 'refused',
-        reason: 'invocation_remeasurement_failed',
-        decision,
-      });
+      return refused('invocation_remeasurement_failed', decision);
     }
     const refreshedDecision = composeCanonical(
       reserved.snapshot,
@@ -1310,12 +1331,10 @@ export class GateQualificationV2 {
       } catch {
         // No execution right was consumed and no provider entry occurred.
       }
-      return deepFreeze({
-        status: 'refused',
-        reason: refreshedDecision.reasons[0]
-          ?? 'invocation_remeasurement_refused',
-        decision: refreshedDecision,
-      });
+      return refused(
+        refreshedDecision.reasons[0] ?? 'invocation_remeasurement_refused',
+        refreshedDecision,
+      );
     }
 
     let begun: Awaited<ReturnType<AdmissionStore['beginInvocation']>>;
@@ -1333,11 +1352,7 @@ export class GateQualificationV2 {
           || begun.reason === 'revision_conflict') {
         return this.#beginAmbiguity(reserved.snapshot, reserved.owner_token);
       }
-      return deepFreeze({
-        status: 'refused',
-        reason: begun.reason,
-        decision,
-      });
+      return refused(begun.reason, decision);
     }
 
     const begunSnapshot = canonicalSnapshot(begun.snapshot);
@@ -1404,14 +1419,11 @@ export class GateQualificationV2 {
     >>,
   ): Promise<GateQualificationExecutionResultV2> {
     if (this.mode !== 'enforce') {
-      return deepFreeze({
-        status: 'refused',
-        reason: 'reconciliation_unavailable_in_shadow',
-      });
+      return refused('reconciliation_unavailable_in_shadow');
     }
     if (!input || !validString(input.tenant_id)
         || !validString(input.admission_id)) {
-      return deepFreeze({ status: 'refused', reason: 'admission_reference_invalid' });
+      return refused('admission_reference_invalid');
     }
 
     let record: StoreRecordV2 | null;
@@ -1424,13 +1436,10 @@ export class GateQualificationV2 {
       );
     }
     if (!record) {
-      return deepFreeze({ status: 'refused', reason: 'admission_not_found' });
+      return refused('admission_not_found');
     }
     if (record.execution_right !== 'CONSUMED') {
-      return deepFreeze({
-        status: 'refused',
-        reason: 'reconciliation_not_required',
-      });
+      return refused('reconciliation_not_required');
     }
 
     let snapshot: Readonly<AdmissionSnapshot> | null;
@@ -1499,10 +1508,11 @@ export class GateQualificationV2 {
     const effectUnresolved = !record.effect_relation
       || record.effect_relation.value === 'INDETERMINATE';
     if (!providerUnresolved && !effectUnresolved) {
-      return deepFreeze({
-        status: 'refused',
-        reason: 'reconciliation_not_required',
-      });
+      return refused(
+        'reconciliation_not_required',
+        undefined,
+        snapshot.body.authorization_policy_digest,
+      );
     }
 
     const base = protectedInvocation(snapshot, authority.invocationToken);

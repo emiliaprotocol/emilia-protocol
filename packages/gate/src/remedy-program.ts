@@ -112,6 +112,7 @@ const STORED_DISPUTE_KEYS = new Set([
 const ATTEMPT_KEYS = new Set([
   'evidence_id', 'evidence_digest', 'dispute_id', 'original_operation_id',
   'remedy_operation_id', 'remedy_caid', 'remedy_action_digest',
+  'program_digest',
   'consequence_mode', 'capability_template_digest', 'escrow_profile_digest',
   'destination_binding_digest', 'units', 'unit', 'authorized_at',
   'request_digest', 'status', 'claim_token_digest', 'claimed_at',
@@ -340,6 +341,7 @@ function validAttempt(value: unknown): value is DataRecord {
       || !validId(value.remedy_operation_id)
       || typeof value.remedy_caid !== 'string' || !CAID.test(value.remedy_caid)
       || typeof value.remedy_action_digest !== 'string' || !DIGEST.test(value.remedy_action_digest)
+      || typeof value.program_digest !== 'string' || !DIGEST.test(value.program_digest)
       || !validRemedyOwner(value)
       || typeof value.destination_binding_digest !== 'string' || !DIGEST.test(value.destination_binding_digest)
       || !Number.isSafeInteger(value.units) || value.units < 1
@@ -400,6 +402,13 @@ function validState(value: unknown, tenantId?: string, instanceId?: string): val
       || typeof value.create_request_digest !== 'string' || !DIGEST.test(value.create_request_digest)) {
     return false;
   }
+  const attempts = [
+    ...(value.active_remedy === null ? [] : [value.active_remedy]),
+    ...value.remedies,
+  ];
+  if (attempts.some((attempt: DataRecord) => (
+    attempt.program_digest !== value.remedy_profile_digest
+  ))) return false;
   if (value.revocation !== null && (!exactKeys(value.revocation, STORED_REVOCATION_KEYS)
       || !validId(value.revocation.evidence_id)
       || typeof value.revocation.evidence_digest !== 'string' || !DIGEST.test(value.revocation.evidence_digest)
@@ -1095,6 +1104,7 @@ export function createRemedyProgramKernel(options: RemedyProgramKernelConfig) {
     next.status = 'remedy_authorized';
     next.active_remedy = {
       ...withoutOk(verified as DataRecord),
+      program_digest: state.remedy_profile_digest,
       request_digest: requestDigest,
       status: 'authorized',
       claim_token_digest: null,

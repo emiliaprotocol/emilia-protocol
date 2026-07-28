@@ -42,6 +42,7 @@ import { POST as reconcile } from '../app/api/v1/adapters/health/hospice-claim/r
 
 const CAID = `caid:${'a'.repeat(64)}`;
 const DIGEST = (digit) => `sha256:${digit.repeat(64)}`;
+const PROGRAM_DIGEST = DIGEST('9');
 
 const ACTION = Object.freeze({
   '@version': 'EP-HEALTH-PROGRAM-INTEGRITY-ACTION-v1',
@@ -134,6 +135,7 @@ describe('health hospice claim program-integrity routes', () => {
     mocks.createProgramIntegrityEngine.mockReturnValue(mocks.engine);
     mocks.engine.prepare.mockReset().mockResolvedValue({
       ok: true,
+      program_digest: PROGRAM_DIGEST,
       action_caid: CAID,
       requirements: ['engine_requirement'],
       evidence_summary: {
@@ -145,6 +147,7 @@ describe('health hospice claim program-integrity routes', () => {
     mocks.engine.precheck.mockReset().mockResolvedValue({
       ok: true,
       decision: 'READY',
+      program_digest: PROGRAM_DIGEST,
       action_caid: CAID,
       operation_id: 'health-op-1',
       idempotency_key: 'health-idem-1',
@@ -253,6 +256,7 @@ describe('health hospice claim program-integrity routes', () => {
     expect(result).toMatchObject({
       ok: true,
       decision: 'READY',
+      program_digest: PROGRAM_DIGEST,
       caid: CAID,
       action_caid: CAID,
       operation_id: 'health-op-1',
@@ -280,6 +284,7 @@ describe('health hospice claim program-integrity routes', () => {
     mocks.engine.precheck.mockResolvedValue({
       ok: false,
       decision: 'REFUSED',
+      program_digest: PROGRAM_DIGEST,
       reason: 'reviewer_authority_unsatisfied',
       action_caid: CAID,
       evidence_summary: { status: 'unsatisfied', authority_status: 'missing' },
@@ -295,12 +300,36 @@ describe('health hospice claim program-integrity routes', () => {
     expect(result).toMatchObject({
       ok: false,
       decision: 'REFUSED',
+      program_digest: PROGRAM_DIGEST,
       reason: 'reviewer_authority_unsatisfied',
       caid: CAID,
       reconciliation_required: false,
     });
     expect(result).not.toHaveProperty('authorization');
     expect(result).not.toHaveProperty('action');
+  });
+
+  it('fails closed when the engine omits the reliance-program digest', async () => {
+    mocks.engine.precheck.mockResolvedValue({
+      ok: true,
+      decision: 'READY',
+      action_caid: CAID,
+      operation_id: 'health-op-1',
+      idempotency_key: 'health-idem-1',
+    });
+    mocks.engine.prepare.mockResolvedValue({
+      ok: true,
+      action_caid: CAID,
+    });
+
+    const response = await precheck(request(
+      '/api/v1/adapters/health/hospice-claim/precheck',
+      body(),
+    ));
+    expect(response.status).toBe(503);
+    expect(await responseBody(response)).toMatchObject({
+      type: expect.stringContaining('program_integrity_engine_unavailable'),
+    });
   });
 
   it('rejects caller-side fail-open downgrade flags', async () => {
@@ -348,6 +377,7 @@ describe('health hospice claim program-integrity routes', () => {
     mocks.engine.reconcile.mockResolvedValue({
       ok: false,
       decision: 'REFUSED',
+      program_digest: PROGRAM_DIGEST,
       reason: 'replay_refused',
       previous_decision: 'INDETERMINATE',
       action_caid: CAID,
@@ -363,6 +393,7 @@ describe('health hospice claim program-integrity routes', () => {
     expect(result).toMatchObject({
       ok: false,
       decision: 'REFUSED',
+      program_digest: PROGRAM_DIGEST,
       reason: 'replay_refused',
       previous_decision: 'INDETERMINATE',
       reconciliation_required: true,
@@ -396,6 +427,7 @@ describe('health hospice claim program-integrity routes', () => {
     mocks.engine.reconcile.mockResolvedValue({
       ok: false,
       decision: 'REFUSED',
+      program_digest: PROGRAM_DIGEST,
       reason: 'provider_evidence_invalid',
       previous_decision: 'INDETERMINATE',
       action_caid: CAID,
@@ -411,6 +443,7 @@ describe('health hospice claim program-integrity routes', () => {
     expect(result).toMatchObject({
       ok: false,
       decision: 'REFUSED',
+      program_digest: PROGRAM_DIGEST,
       reason: 'provider_evidence_invalid',
       provider_evidence_verified: false,
     });

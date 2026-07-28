@@ -909,6 +909,12 @@ export function authorizeAgentContinuityExecution(
       invoke_allowed: false,
       state: 'REFUSED',
       reason: 'continuity_not_verified',
+      program_digest: validDigest(options.aeb_record.evaluator.pinned_config_digest)
+        ? options.aeb_record.evaluator.pinned_config_digest
+        : digestAeb({
+          version: AGENT_CONTINUITY_VERSION,
+          decision: 'continuity_execution',
+        }),
       continuity,
     };
   }
@@ -918,6 +924,12 @@ export function authorizeAgentContinuityExecution(
       invoke_allowed: false,
       state: 'REFUSED',
       reason: 'pre_execution_continuity_required',
+      program_digest: validDigest(options.aeb_record.evaluator.pinned_config_digest)
+        ? options.aeb_record.evaluator.pinned_config_digest
+        : digestAeb({
+          version: AGENT_CONTINUITY_VERSION,
+          decision: 'continuity_execution',
+        }),
       continuity,
     };
   }
@@ -947,6 +959,12 @@ export async function authorizeAgentContinuityExecutionDurable(
       invoke_allowed: false,
       state: 'REFUSED',
       reason: 'continuity_not_verified',
+      program_digest: validDigest(options.aeb_record.evaluator.pinned_config_digest)
+        ? options.aeb_record.evaluator.pinned_config_digest
+        : digestAeb({
+          version: AGENT_CONTINUITY_VERSION,
+          decision: 'continuity_execution',
+        }),
       continuity,
     };
   }
@@ -956,6 +974,12 @@ export async function authorizeAgentContinuityExecutionDurable(
       invoke_allowed: false,
       state: 'REFUSED',
       reason: 'pre_execution_continuity_required',
+      program_digest: validDigest(options.aeb_record.evaluator.pinned_config_digest)
+        ? options.aeb_record.evaluator.pinned_config_digest
+        : digestAeb({
+          version: AGENT_CONTINUITY_VERSION,
+          decision: 'continuity_execution',
+        }),
       continuity,
     };
   }

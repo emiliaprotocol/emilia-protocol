@@ -16,6 +16,7 @@ import { createProgramIntegrityEngine } from '@/lib/health/program-integrity.js'
 const MAX_BODY_BYTES = 256 * 1024;
 const PROFILE_ID = 'medi-cal.hospice-integrity.v1';
 const ACTION_TYPE = 'health.medi-cal.hospice-claim-payment.1';
+const DIGEST_RE = /^sha256:[a-f0-9]{64}$/;
 const PROVIDER_EVIDENCE_VERSION = 'EP-HEALTH-PROGRAM-INTEGRITY-PROVIDER-EVIDENCE-v1';
 const SAFE_TERMINAL_DECISIONS = new Set<string>(['RECONCILED_EXECUTED', 'RECONCILED_FAILED']);
 const SAFE_DECISIONS = new Set<string>(['REFUSED', 'INDETERMINATE', ...SAFE_TERMINAL_DECISIONS]);
@@ -82,6 +83,10 @@ function safeReason(value: unknown): string {
 
 function safeDecision(value: unknown, fallback: string | null = 'REFUSED'): string | null {
   return typeof value === 'string' && SAFE_DECISIONS.has(value) ? value : fallback;
+}
+
+function safeDigest(value: unknown): string | null {
+  return typeof value === 'string' && DIGEST_RE.test(value) ? value : null;
 }
 
 function safeStatus(value: unknown): string | undefined {
@@ -204,6 +209,10 @@ function responseForReconciliation(result: any, operationId: string): NextRespon
   if (!decision) {
     return problem(503, 'program_integrity_engine_invalid_result', 'Program integrity returned an invalid reconciliation result');
   }
+  const programDigest = safeDigest(result.program_digest);
+  if (decision === 'REFUSED' && !programDigest) {
+    return problem(503, 'program_integrity_engine_invalid_result', 'Program integrity refusal omitted its reliance program digest');
+  }
 
   const actionCaid = safeToken(result.action_caid);
   const summary = safeEvidenceSummary(result.evidence_summary, { authorizationPresent: true });
@@ -218,6 +227,7 @@ function responseForReconciliation(result: any, operationId: string): NextRespon
     reconciliation_required?: boolean;
     provider_evidence_verified?: boolean;
     idempotent?: boolean;
+    program_digest?: string;
   } = {
     ok: result.ok === true && SAFE_TERMINAL_DECISIONS.has(decision),
     decision,
@@ -225,6 +235,7 @@ function responseForReconciliation(result: any, operationId: string): NextRespon
     evidence_summary: summary,
   };
   if (actionCaid) base.action_caid = actionCaid;
+  if (programDigest) base.program_digest = programDigest;
 
   if (!result.ok) {
     base.reason = safeReason(result.reason);

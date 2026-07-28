@@ -603,7 +603,12 @@ describe('Da Vinci PAS consequence control', () => {
     drifted.claim_response.item[0].adjudication[0].extension[0]
       .extension[0].valueCodeableConcept.coding[0].code = 'A2';
     const result = await f.control.execute(executeInput(f, drifted));
-    expect(result).toMatchObject({ ok: false, decision: 'REFUSED', reason: 'pas_execution_binding_mismatch' });
+    expect(result).toMatchObject({
+      ok: false,
+      decision: 'REFUSED',
+      reason: 'pas_execution_binding_mismatch',
+      program_digest: expect.stringMatching(/^sha256:[a-f0-9]{64}$/),
+    });
     expect(f.mutationCount).toBe(0);
   });
 
@@ -620,6 +625,7 @@ describe('Da Vinci PAS consequence control', () => {
     const replay = await f.control.execute(executeInput(f));
     expect(replay.ok).toBe(false);
     expect(replay.decision).toBe('REFUSED');
+    expect(replay.program_digest).toMatch(/^sha256:[a-f0-9]{64}$/);
     expect(f.mutationCount).toBe(1);
   });
 

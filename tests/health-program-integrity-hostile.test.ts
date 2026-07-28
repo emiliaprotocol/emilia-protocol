@@ -113,6 +113,7 @@ function expectRefusal(result, reason) {
     ok: false,
     decision: 'REFUSED',
     reason,
+    program_digest: expect.stringMatching(/^sha256:[0-9a-f]{64}$/),
   });
 }
 
@@ -166,6 +167,7 @@ async function prepareReady(harness, action = ACTION, authorizationOver = {}) {
   });
   expect(ready.operation_id).toEqual(expect.any(String));
   expect(ready.idempotency_key).toEqual(expect.any(String));
+  expect(ready.program_digest).toMatch(/^sha256:[0-9a-f]{64}$/);
   return { prepared, authorization, ready };
 }
 
@@ -508,6 +510,7 @@ describe('Health Program Integrity hostile contract', () => {
 
     stored = {
       action_caid: collisionPrepared.action_caid,
+      program_digest: collisionPrepared.program_digest,
       decision: 'EXECUTED',
     };
     const replay = await collision.engine.precheck({

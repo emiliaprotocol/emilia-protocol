@@ -8,6 +8,7 @@
  * durable stores and provider trust pins under HEALTHCARE_CONTROL_KEY.
  */
 
+import crypto from 'node:crypto';
 import { NextRequest, NextResponse } from 'next/server';
 import { authEntityId } from '@/lib/auth-projections.js';
 import { epProblem } from '@/lib/errors.js';
@@ -19,6 +20,11 @@ import { resolveAuthorizedOrg } from '@/lib/tenant-binding.js';
 
 const MAX_BODY_BYTES = 512 * 1024;
 const IDENTIFIER_RE = /^[A-Za-z0-9][A-Za-z0-9:_.@/-]{2,255}$/;
+const DIGEST_RE = /^sha256:[a-f0-9]{64}$/;
+const HEALTHCARE_ROUTE_PROGRAM_DIGEST = `sha256:${crypto
+  .createHash('sha256')
+  .update('EMILIA-HEALTHCARE-CONSEQUENCE-HTTP-BOUNDARY-v1')
+  .digest('hex')}`;
 const PROHIBITED_PHI_FIELD_ALIASES = new Set([
   'accountnumber',
   'address',
@@ -123,9 +129,17 @@ function resultStatus(result: Record<string, any>): number {
 }
 
 function executionProjection(result: Record<string, any>): Record<string, unknown> {
+  const decision = typeof result.decision === 'string'
+    ? result.decision
+    : 'REFUSED';
+  const programDigest = typeof result.program_digest === 'string'
+      && DIGEST_RE.test(result.program_digest)
+    ? result.program_digest
+    : HEALTHCARE_ROUTE_PROGRAM_DIGEST;
   return {
     ok: result.ok === true,
-    decision: typeof result.decision === 'string' ? result.decision : 'REFUSED',
+    decision,
+    ...(decision === 'REFUSED' ? { program_digest: programDigest } : {}),
     ...(identifier(result.reason) ? { reason: result.reason } : {}),
     ...(identifier(result.operation_id) ? { operation_id: result.operation_id } : {}),
     ...(identifier(result.action_caid) ? { action_caid: result.action_caid } : {}),
@@ -152,7 +166,12 @@ function preparationProjection(result: Record<string, any>): Record<string, unkn
       || !isObject(result.proposal)
       || !isObject(result.authorization)
       || !isObject(result.challenge)) {
-    return { ok: false, decision: 'REFUSED', reason: 'healthcare_control_invalid_result' };
+    return {
+      ok: false,
+      decision: 'REFUSED',
+      reason: 'healthcare_control_invalid_result',
+      program_digest: HEALTHCARE_ROUTE_PROGRAM_DIGEST,
+    };
   }
   return {
     ok: true,

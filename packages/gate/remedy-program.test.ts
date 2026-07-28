@@ -6,7 +6,7 @@ import {
   REMEDY_PROGRAM_VERSION,
   createRemedyMemoryStore,
   createRemedyProgramKernel,
-} from './remedy-program.js';
+} from './src/remedy-program.js';
 
 const NOW = Date.parse('2026-07-21T18:30:00.000Z');
 const HASH = (char: string) => `sha256:${char.repeat(64)}`;
@@ -272,12 +272,26 @@ test('authorizes a compensating action, never a rewrite of the original action',
   assert.equal(result.state.active_remedy.consequence_mode, 'receipt-program');
   assert.equal(result.state.active_remedy.capability_template_digest, HASH('6'));
   assert.equal(result.state.active_remedy.escrow_profile_digest, null);
+  assert.equal(result.state.active_remedy.program_digest, HASH('d'));
 
   const other = kernel();
   await createAndDispute(other);
   const over = await authorize(other, 10_001);
   assert.equal(over.ok, false);
   assert.equal(over.reason, 'remedy_limit_exceeded');
+});
+
+test('the verifier cannot substitute the relying-party remedy program citation', async () => {
+  const subject = kernel({
+    verifyRemedyAuthorization: async (input: any) => ({
+      ...verifiedAuthorization(input),
+      program_digest: HASH('a'),
+    }),
+  });
+  await createAndDispute(subject);
+  const result = await authorize(subject, 4_000);
+  assert.equal(result.ok, false);
+  assert.equal(result.reason, 'remedy_authorization_invalid');
 });
 
 test('requires exactly one downstream effect-claim owner for every remedy', async () => {
