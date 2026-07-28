@@ -1671,3 +1671,688 @@ GRANT EXECUTE ON FUNCTION open_exposure_private.read_exposure(JSONB),
 
 RESET ROLE;
 REVOKE ep_open_exposure_store_owner FROM CURRENT_USER;
+
+-- Emit only catalog-proven live-contract assertions. A missing or mutated
+-- control removes its token from the schema-gate snapshot and therefore fails
+-- the declarative contract; migration history alone cannot satisfy this gate.
+CREATE OR REPLACE FUNCTION public.gov_open_exposure_security_assertions()
+RETURNS SETOF TEXT
+LANGUAGE sql
+STABLE
+SECURITY DEFINER
+SET search_path = ''
+AS $assertions$
+  SELECT required.token
+  FROM (
+    VALUES
+      (
+        'tenant_principals',
+        'open_exposure_principals_owner_only',
+        'contract:table:open_exposure_private.tenant_principals:owner-force-rls-owner-only-acl'
+      ),
+      (
+        'ceilings',
+        'open_exposure_ceilings_owner_only',
+        'contract:table:open_exposure_private.ceilings:owner-force-rls-owner-only-acl'
+      ),
+      (
+        'exposures',
+        'open_exposure_rows_owner_only',
+        'contract:table:open_exposure_private.exposures:owner-force-rls-owner-only-acl'
+      ),
+      (
+        'history',
+        'open_exposure_history_owner_only',
+        'contract:table:open_exposure_private.history:owner-force-rls-owner-only-acl'
+      ),
+      (
+        'reconciliation_tokens',
+        'open_exposure_reconciliation_tokens_owner_only',
+        'contract:table:open_exposure_private.reconciliation_tokens:owner-force-rls-owner-only-acl'
+      )
+  ) AS required(table_name, policy_name, token)
+  JOIN pg_catalog.pg_namespace AS namespace
+    ON namespace.nspname = 'open_exposure_private'
+  JOIN pg_catalog.pg_class AS relation
+    ON relation.relnamespace = namespace.oid
+   AND relation.relname = required.table_name
+   AND relation.relkind IN ('r', 'p')
+  JOIN pg_catalog.pg_roles AS owner_role
+    ON owner_role.rolname = 'ep_open_exposure_store_owner'
+  WHERE relation.relowner = owner_role.oid
+    AND relation.relrowsecurity
+    AND relation.relforcerowsecurity
+    AND EXISTS (
+      SELECT 1
+      FROM pg_catalog.pg_policy AS policy
+      WHERE policy.polrelid = relation.oid
+        AND policy.polname = required.policy_name
+        AND policy.polcmd = '*'
+        AND policy.polroles = ARRAY[owner_role.oid]::OID[]
+        AND pg_catalog.pg_get_expr(
+          policy.polqual, policy.polrelid, TRUE
+        ) = 'true'
+        AND pg_catalog.pg_get_expr(
+          policy.polwithcheck, policy.polrelid, TRUE
+        ) = 'true'
+    )
+    AND NOT EXISTS (
+      SELECT 1
+      FROM pg_catalog.aclexplode(
+        COALESCE(
+          relation.relacl,
+          pg_catalog.acldefault('r', relation.relowner)
+        )
+      ) AS privilege
+      WHERE privilege.grantee <> relation.relowner
+    )
+
+  UNION ALL
+
+  SELECT required.token
+  FROM (
+    VALUES
+      (
+        'register_ceiling', 'v', 'ep_open_exposure_policy_admin',
+        'contract:function:open_exposure_private.register_ceiling(jsonb):owner-definer-empty-search-path-policy-admin-only'
+      ),
+      (
+        'reserve', 'v', 'ep_open_exposure_origin',
+        'contract:function:open_exposure_private.reserve(jsonb):owner-definer-empty-search-path-origin-only'
+      ),
+      (
+        'begin_invocation', 'v', 'ep_open_exposure_executor',
+        'contract:function:open_exposure_private.begin_invocation(jsonb):owner-definer-empty-search-path-executor-only'
+      ),
+      (
+        'mark_indeterminate', 'v', 'ep_open_exposure_executor',
+        'contract:function:open_exposure_private.mark_indeterminate(jsonb):owner-definer-empty-search-path-executor-only'
+      ),
+      (
+        'reconcile', 'v', 'ep_open_exposure_reconciler',
+        'contract:function:open_exposure_private.reconcile(jsonb):owner-definer-empty-search-path-reconciler-only'
+      ),
+      (
+        'read_exposure', 's', 'ep_open_exposure_reader',
+        'contract:function:open_exposure_private.read_exposure(jsonb):owner-definer-empty-search-path-reader-only'
+      ),
+      (
+        'read_history', 's', 'ep_open_exposure_reader',
+        'contract:function:open_exposure_private.read_history(jsonb):owner-definer-empty-search-path-reader-only'
+      ),
+      (
+        'sum_open', 's', 'ep_open_exposure_reader',
+        'contract:function:open_exposure_private.sum_open(jsonb):owner-definer-empty-search-path-reader-only'
+      ),
+      (
+        'list_aging', 's', 'ep_open_exposure_reader',
+        'contract:function:open_exposure_private.list_aging(jsonb):owner-definer-empty-search-path-reader-only'
+      ),
+      (
+        'list_deadlines', 's', 'ep_open_exposure_reader',
+        'contract:function:open_exposure_private.list_deadlines(jsonb):owner-definer-empty-search-path-reader-only'
+      )
+  ) AS required(function_name, volatility, executor_name, token)
+  JOIN pg_catalog.pg_namespace AS namespace
+    ON namespace.nspname = 'open_exposure_private'
+  JOIN pg_catalog.pg_proc AS procedure
+    ON procedure.pronamespace = namespace.oid
+   AND procedure.proname = required.function_name
+   AND pg_catalog.regexp_replace(
+     pg_catalog.oidvectortypes(procedure.proargtypes),
+     ',[[:space:]]*',
+     ',',
+     'g'
+   ) = 'jsonb'
+  JOIN pg_catalog.pg_roles AS owner_role
+    ON owner_role.rolname = 'ep_open_exposure_store_owner'
+  JOIN pg_catalog.pg_roles AS executor_role
+    ON executor_role.rolname = required.executor_name
+  WHERE procedure.proowner = owner_role.oid
+    AND procedure.prokind = 'f'
+    AND procedure.prosecdef
+    AND procedure.provolatile = required.volatility::pg_catalog."char"
+    AND procedure.proconfig = ARRAY['search_path=""']::TEXT[]
+    AND EXISTS (
+      SELECT 1
+      FROM pg_catalog.aclexplode(
+        COALESCE(
+          procedure.proacl,
+          pg_catalog.acldefault('f', procedure.proowner)
+        )
+      ) AS privilege
+      WHERE privilege.grantee = executor_role.oid
+        AND privilege.privilege_type = 'EXECUTE'
+    )
+    AND NOT EXISTS (
+      SELECT 1
+      FROM pg_catalog.aclexplode(
+        COALESCE(
+          procedure.proacl,
+          pg_catalog.acldefault('f', procedure.proowner)
+        )
+      ) AS privilege
+      WHERE privilege.privilege_type = 'EXECUTE'
+        AND privilege.grantee NOT IN (owner_role.oid, executor_role.oid)
+    )
+
+  UNION ALL
+
+  SELECT required.token
+  FROM (
+    VALUES
+      (
+        'ceilings',
+        'open_exposure_ceilings_immutable_trigger',
+        'contract:trigger:open_exposure_private.ceilings.open_exposure_ceilings_immutable_trigger:exact-before-update-delete-row-owner-only-immutable'
+      ),
+      (
+        'history',
+        'open_exposure_history_immutable_trigger',
+        'contract:trigger:open_exposure_private.history.open_exposure_history_immutable_trigger:exact-before-update-delete-row-owner-only-immutable'
+      ),
+      (
+        'reconciliation_tokens',
+        'open_exposure_reconciliation_tokens_immutable_trigger',
+        'contract:trigger:open_exposure_private.reconciliation_tokens.open_exposure_reconciliation_tokens_immutable_trigger:exact-before-update-delete-row-owner-only-immutable'
+      )
+  ) AS required(table_name, trigger_name, token)
+  JOIN pg_catalog.pg_namespace AS table_namespace
+    ON table_namespace.nspname = 'open_exposure_private'
+  JOIN pg_catalog.pg_class AS relation
+    ON relation.relnamespace = table_namespace.oid
+   AND relation.relname = required.table_name
+   AND relation.relkind IN ('r', 'p')
+  JOIN pg_catalog.pg_trigger AS trigger
+    ON trigger.tgrelid = relation.oid
+   AND trigger.tgname = required.trigger_name
+  JOIN pg_catalog.pg_proc AS procedure
+    ON procedure.oid = trigger.tgfoid
+   AND procedure.proname = 'immutable_guard'
+  JOIN pg_catalog.pg_namespace AS function_namespace
+    ON function_namespace.oid = procedure.pronamespace
+   AND function_namespace.nspname = 'open_exposure_private'
+  JOIN pg_catalog.pg_roles AS owner_role
+    ON owner_role.rolname = 'ep_open_exposure_store_owner'
+  JOIN pg_catalog.pg_language AS language
+    ON language.oid = procedure.prolang
+  WHERE NOT trigger.tgisinternal
+    AND trigger.tgenabled = 'O'
+    AND trigger.tgtype = 27
+    AND trigger.tgnargs = 0
+    AND trigger.tgattr::TEXT = ''
+    AND trigger.tgqual IS NULL
+    AND trigger.tgoldtable IS NULL
+    AND trigger.tgnewtable IS NULL
+    AND procedure.proowner = owner_role.oid
+    AND procedure.prokind = 'f'
+    AND procedure.pronargs = 0
+    AND procedure.prorettype = 'pg_catalog.trigger'::pg_catalog.regtype
+    AND NOT procedure.prosecdef
+    AND procedure.provolatile = 'v'
+    AND procedure.proparallel = 'u'
+    AND procedure.proconfig = ARRAY['search_path=""']::TEXT[]
+    AND procedure.prosrc = $immutable_body$
+BEGIN
+  RAISE EXCEPTION '% rows are immutable', TG_TABLE_NAME
+    USING ERRCODE = 'check_violation';
+END
+$immutable_body$
+    AND language.lanname = 'plpgsql'
+    AND NOT EXISTS (
+      SELECT 1
+      FROM pg_catalog.aclexplode(
+        COALESCE(
+          procedure.proacl,
+          pg_catalog.acldefault('f', procedure.proowner)
+        )
+      ) AS privilege
+      WHERE privilege.privilege_type = 'EXECUTE'
+        AND privilege.grantee <> owner_role.oid
+    )
+
+  UNION ALL
+
+  SELECT
+    'contract:trigger:open_exposure_private.tenant_principals.open_exposure_principal_separation_trigger:owner-before-insert-update-row-custody-disjoint'
+  FROM pg_catalog.pg_namespace AS table_namespace
+  JOIN pg_catalog.pg_class AS relation
+    ON relation.relnamespace = table_namespace.oid
+   AND relation.relname = 'tenant_principals'
+   AND relation.relkind IN ('r', 'p')
+  JOIN pg_catalog.pg_trigger AS trigger
+    ON trigger.tgrelid = relation.oid
+   AND trigger.tgname = 'open_exposure_principal_separation_trigger'
+  JOIN pg_catalog.pg_proc AS procedure
+    ON procedure.oid = trigger.tgfoid
+   AND procedure.proname = 'principal_separation_guard'
+  JOIN pg_catalog.pg_namespace AS function_namespace
+    ON function_namespace.oid = procedure.pronamespace
+   AND function_namespace.nspname = 'open_exposure_private'
+  JOIN pg_catalog.pg_roles AS owner_role
+    ON owner_role.rolname = 'ep_open_exposure_store_owner'
+  WHERE table_namespace.nspname = 'open_exposure_private'
+    AND NOT trigger.tgisinternal
+    AND trigger.tgenabled = 'O'
+    AND trigger.tgtype = 23
+    AND trigger.tgnargs = 0
+    AND trigger.tgqual IS NULL
+    AND procedure.proowner = owner_role.oid
+    AND NOT procedure.prosecdef
+    AND procedure.prorettype = 'pg_catalog.trigger'::pg_catalog.regtype
+    AND procedure.proconfig = ARRAY['search_path=""']::TEXT[]
+    AND pg_catalog.strpos(
+      procedure.prosrc,
+      'open exposure custody principals must be distinct'
+    ) > 0
+    AND pg_catalog.strpos(
+      procedure.prosrc,
+      'existing.authority_kind IN (''ORIGIN'', ''EXECUTOR'', ''RECONCILER'')'
+    ) > 0
+    AND NOT EXISTS (
+      SELECT 1
+      FROM pg_catalog.aclexplode(
+        COALESCE(
+          procedure.proacl,
+          pg_catalog.acldefault('f', procedure.proowner)
+        )
+      ) AS privilege
+      WHERE privilege.privilege_type = 'EXECUTE'
+        AND privilege.grantee <> owner_role.oid
+    )
+
+  UNION ALL
+
+  SELECT
+    'contract:trigger:open_exposure_private.exposures.open_exposure_record_guard_trigger:owner-before-update-delete-row-live-transition-guard'
+  FROM pg_catalog.pg_namespace AS table_namespace
+  JOIN pg_catalog.pg_class AS relation
+    ON relation.relnamespace = table_namespace.oid
+   AND relation.relname = 'exposures'
+   AND relation.relkind IN ('r', 'p')
+  JOIN pg_catalog.pg_trigger AS trigger
+    ON trigger.tgrelid = relation.oid
+   AND trigger.tgname = 'open_exposure_record_guard_trigger'
+  JOIN pg_catalog.pg_proc AS procedure
+    ON procedure.oid = trigger.tgfoid
+   AND procedure.proname = 'exposure_guard'
+  JOIN pg_catalog.pg_namespace AS function_namespace
+    ON function_namespace.oid = procedure.pronamespace
+   AND function_namespace.nspname = 'open_exposure_private'
+  JOIN pg_catalog.pg_roles AS owner_role
+    ON owner_role.rolname = 'ep_open_exposure_store_owner'
+  WHERE table_namespace.nspname = 'open_exposure_private'
+    AND NOT trigger.tgisinternal
+    AND trigger.tgenabled = 'O'
+    AND trigger.tgtype = 27
+    AND trigger.tgnargs = 0
+    AND trigger.tgqual IS NULL
+    AND procedure.proowner = owner_role.oid
+    AND NOT procedure.prosecdef
+    AND procedure.prorettype = 'pg_catalog.trigger'::pg_catalog.regtype
+    AND procedure.proconfig = ARRAY['search_path=""']::TEXT[]
+    AND pg_catalog.strpos(
+      procedure.prosrc, 'open exposure records cannot be deleted'
+    ) > 0
+    AND pg_catalog.strpos(
+      procedure.prosrc,
+      'OLD.program_version IS DISTINCT FROM NEW.program_version'
+    ) > 0
+    AND pg_catalog.strpos(
+      procedure.prosrc,
+      'OLD.authorization_expires_at IS DISTINCT FROM NEW.authorization_expires_at'
+    ) > 0
+    AND pg_catalog.strpos(
+      procedure.prosrc,
+      'open exposure invocation permit digest is immutable'
+    ) > 0
+    AND pg_catalog.strpos(
+      procedure.prosrc, 'open exposure revision chain is invalid'
+    ) > 0
+    AND pg_catalog.strpos(
+      procedure.prosrc, 'open exposure transition is invalid'
+    ) > 0
+    AND NOT EXISTS (
+      SELECT 1
+      FROM pg_catalog.aclexplode(
+        COALESCE(
+          procedure.proacl,
+          pg_catalog.acldefault('f', procedure.proowner)
+        )
+      ) AS privilege
+      WHERE privilege.privilege_type = 'EXECUTE'
+        AND privilege.grantee <> owner_role.oid
+    )
+
+  UNION ALL
+
+  SELECT
+    'contract:roles:open-exposure:least-privilege-membership-disjoint'
+  WHERE (
+      SELECT pg_catalog.count(*)
+      FROM pg_catalog.pg_roles AS role
+      WHERE role.rolname IN (
+          'ep_open_exposure_store_owner',
+          'ep_open_exposure_policy_admin',
+          'ep_open_exposure_origin',
+          'ep_open_exposure_executor',
+          'ep_open_exposure_reconciler',
+          'ep_open_exposure_reader'
+        )
+        AND NOT role.rolcanlogin
+        AND NOT role.rolsuper
+        AND NOT role.rolcreatedb
+        AND NOT role.rolcreaterole
+        AND NOT role.rolreplication
+        AND NOT role.rolbypassrls
+    ) = 6
+    AND NOT EXISTS (
+      WITH RECURSIVE operation_members(
+        root_role_oid, root_role_name, member_oid
+      ) AS (
+        SELECT role.oid, role.rolname, role.oid
+        FROM pg_catalog.pg_roles AS role
+        WHERE role.rolname IN (
+          'ep_open_exposure_policy_admin',
+          'ep_open_exposure_origin',
+          'ep_open_exposure_executor',
+          'ep_open_exposure_reconciler',
+          'ep_open_exposure_reader'
+        )
+        UNION
+        SELECT operation_members.root_role_oid,
+          operation_members.root_role_name,
+          membership.member
+        FROM pg_catalog.pg_auth_members AS membership
+        JOIN operation_members
+          ON membership.roleid = operation_members.member_oid
+        WHERE membership.inherit_option OR membership.set_option
+      ), owner_members(member_oid) AS (
+        SELECT role.oid
+        FROM pg_catalog.pg_roles AS role
+        WHERE role.rolname = 'ep_open_exposure_store_owner'
+        UNION
+        SELECT membership.member
+        FROM pg_catalog.pg_auth_members AS membership
+        JOIN owner_members
+          ON membership.roleid = owner_members.member_oid
+        WHERE membership.inherit_option OR membership.set_option
+      )
+      SELECT 1
+      FROM operation_members AS member_path
+      JOIN pg_catalog.pg_roles AS member_role
+        ON member_role.oid = member_path.member_oid
+      WHERE member_role.rolsuper
+        OR member_role.rolcreatedb
+        OR member_role.rolcreaterole
+        OR member_role.rolreplication
+        OR member_role.rolbypassrls
+        OR member_role.rolname IN (
+          'anon', 'authenticated', 'service_role', 'schema_gate'
+        )
+        OR member_path.member_oid IN (
+          SELECT owner_members.member_oid FROM owner_members
+        )
+        OR 1 < (
+          SELECT pg_catalog.count(DISTINCT sibling.root_role_oid)
+          FROM operation_members AS sibling
+          WHERE sibling.member_oid = member_path.member_oid
+        )
+        OR EXISTS (
+          SELECT 1
+          FROM pg_catalog.pg_roles AS inherited_role
+          WHERE inherited_role.oid <> member_path.member_oid
+            AND (
+              pg_catalog.pg_has_role(
+                member_path.member_oid, inherited_role.oid, 'USAGE'
+              )
+              OR pg_catalog.pg_has_role(
+                member_path.member_oid, inherited_role.oid, 'SET'
+              )
+            )
+            AND (
+              inherited_role.rolsuper
+              OR inherited_role.rolcreatedb
+              OR inherited_role.rolcreaterole
+              OR inherited_role.rolreplication
+              OR inherited_role.rolbypassrls
+              OR inherited_role.rolname IN (
+                'ep_open_exposure_store_owner',
+                'anon',
+                'authenticated',
+                'service_role',
+                'schema_gate'
+              )
+            )
+        )
+      UNION ALL
+      SELECT 1
+      FROM owner_members
+      JOIN pg_catalog.pg_roles AS owner_role
+        ON owner_role.rolname = 'ep_open_exposure_store_owner'
+      WHERE owner_members.member_oid <> owner_role.oid
+      UNION ALL
+      SELECT 1
+      FROM pg_catalog.pg_roles AS owner_role
+      JOIN pg_catalog.pg_roles AS inherited_role
+        ON inherited_role.oid <> owner_role.oid
+       AND (
+         pg_catalog.pg_has_role(owner_role.oid, inherited_role.oid, 'USAGE')
+         OR pg_catalog.pg_has_role(owner_role.oid, inherited_role.oid, 'SET')
+       )
+      WHERE owner_role.rolname = 'ep_open_exposure_store_owner'
+        AND (
+          inherited_role.rolsuper
+          OR inherited_role.rolcreatedb
+          OR inherited_role.rolcreaterole
+          OR inherited_role.rolreplication
+          OR inherited_role.rolbypassrls
+          OR inherited_role.rolname IN (
+            'anon', 'authenticated', 'service_role', 'schema_gate'
+          )
+        )
+    )
+
+  UNION ALL
+
+  SELECT required.token
+  FROM (
+    VALUES
+      (
+        'ceilings',
+        'open_exposure_ceiling_scope_idx',
+        TRUE,
+        6,
+        6,
+        ARRAY[
+          'tenant_id', 'currency', 'window_start', 'window_end',
+          'scope', 'scope_value'
+        ]::TEXT[],
+        NULL::TEXT,
+        'contract:index:open_exposure_private.open_exposure_ceiling_scope_idx:exact-unique-btree'
+      ),
+      (
+        'exposures',
+        'open_exposure_open_aggregate_idx',
+        FALSE,
+        7,
+        8,
+        ARRAY[
+          'tenant_id', 'currency', 'window_start', 'window_end',
+          'program_id', 'counterparty_id', 'action_class', 'amount_minor'
+        ]::TEXT[],
+        'status = ANY (ARRAY[''RESERVED''::text, ''INVOKING''::text, ''INDETERMINATE''::text])',
+        'contract:index:open_exposure_private.open_exposure_open_aggregate_idx:exact-partial-btree-include'
+      ),
+      (
+        'exposures',
+        'open_exposure_aging_idx',
+        FALSE,
+        4,
+        4,
+        ARRAY['tenant_id', 'status', 'reserved_at', 'exposure_id']::TEXT[],
+        'status = ANY (ARRAY[''RESERVED''::text, ''INVOKING''::text, ''INDETERMINATE''::text])',
+        'contract:index:open_exposure_private.open_exposure_aging_idx:exact-partial-btree'
+      ),
+      (
+        'exposures',
+        'open_exposure_deadline_idx',
+        FALSE,
+        5,
+        5,
+        ARRAY[
+          'tenant_id', 'status', 'invoke_by', 'reconcile_by', 'exposure_id'
+        ]::TEXT[],
+        'status = ANY (ARRAY[''RESERVED''::text, ''INVOKING''::text, ''INDETERMINATE''::text])',
+        'contract:index:open_exposure_private.open_exposure_deadline_idx:exact-partial-btree'
+      ),
+      (
+        'history',
+        'open_exposure_history_read_idx',
+        FALSE,
+        3,
+        3,
+        ARRAY['tenant_id', 'exposure_id', 'sequence']::TEXT[],
+        NULL::TEXT,
+        'contract:index:open_exposure_private.open_exposure_history_read_idx:exact-btree'
+      )
+  ) AS required(
+    table_name,
+    index_name,
+    is_unique,
+    key_attributes,
+    total_attributes,
+    attributes,
+    predicate,
+    token
+  )
+  JOIN pg_catalog.pg_namespace AS namespace
+    ON namespace.nspname = 'open_exposure_private'
+  JOIN pg_catalog.pg_class AS table_relation
+    ON table_relation.relnamespace = namespace.oid
+   AND table_relation.relname = required.table_name
+   AND table_relation.relkind IN ('r', 'p')
+  JOIN pg_catalog.pg_index AS index
+    ON index.indrelid = table_relation.oid
+  JOIN pg_catalog.pg_class AS index_relation
+    ON index_relation.oid = index.indexrelid
+   AND index_relation.relname = required.index_name
+   AND index_relation.relkind = 'i'
+  JOIN pg_catalog.pg_am AS access_method
+    ON access_method.oid = index_relation.relam
+  WHERE access_method.amname = 'btree'
+    AND index.indisunique = required.is_unique
+    AND index.indisvalid
+    AND index.indisready
+    AND index.indislive
+    AND index.indimmediate
+    AND NOT index.indisexclusion
+    AND NOT index.indnullsnotdistinct
+    AND index.indnkeyatts = required.key_attributes
+    AND index.indnatts = required.total_attributes
+    AND ARRAY(
+      SELECT pg_catalog.pg_get_indexdef(
+        index.indexrelid, attribute_number, TRUE
+      )
+      FROM pg_catalog.generate_series(
+        1, index.indnatts
+      ) AS attribute_number
+      ORDER BY attribute_number
+    ) = required.attributes
+    AND (
+      (required.predicate IS NULL AND index.indpred IS NULL)
+      OR pg_catalog.pg_get_expr(
+        index.indpred, index.indrelid, TRUE
+      ) = required.predicate
+    );
+$assertions$;
+
+REVOKE ALL ON FUNCTION public.gov_open_exposure_security_assertions()
+  FROM PUBLIC, anon, authenticated, schema_gate;
+GRANT EXECUTE ON FUNCTION public.gov_open_exposure_security_assertions()
+  TO service_role;
+
+-- Preserve the existing consequence-control assertion feed and publish Open
+-- Exposure identities and assertions through the same least-privilege live
+-- snapshot used by SCHEMA_GATE_DB_URL.
+CREATE OR REPLACE FUNCTION public.gov_schema_reconcile_introspect()
+RETURNS JSONB
+LANGUAGE sql
+STABLE
+SECURITY DEFINER
+SET search_path = ''
+AS $reconcile$
+  SELECT pg_catalog.jsonb_build_object(
+    'tables', (
+      SELECT COALESCE(
+        pg_catalog.jsonb_agg(object_name ORDER BY object_name),
+        '[]'::JSONB
+      )
+      FROM (
+        SELECT CASE
+          WHEN namespace.nspname = 'public' THEN relation.relname
+          ELSE namespace.nspname || '.' || relation.relname
+        END AS object_name
+        FROM pg_catalog.pg_class AS relation
+        JOIN pg_catalog.pg_namespace AS namespace
+          ON namespace.oid = relation.relnamespace
+        WHERE relation.relkind IN ('r', 'p')
+          AND namespace.nspname NOT IN ('pg_catalog', 'information_schema')
+          AND namespace.nspname !~ '^pg_(toast|temp)'
+      ) AS qualified_tables
+    ),
+    'functions', (
+      SELECT COALESCE(
+        pg_catalog.jsonb_agg(object_name ORDER BY object_name),
+        '[]'::JSONB
+      )
+      FROM (
+        SELECT DISTINCT function_name.object_name
+        FROM pg_catalog.pg_proc AS procedure
+        JOIN pg_catalog.pg_namespace AS namespace
+          ON namespace.oid = procedure.pronamespace
+        CROSS JOIN LATERAL (
+          SELECT namespace.nspname || '.' || procedure.proname AS object_name
+        ) AS qualified_function
+        CROSS JOIN LATERAL (
+          VALUES
+            (
+              CASE
+                WHEN namespace.nspname = 'public' THEN procedure.proname
+                ELSE qualified_function.object_name
+              END
+            ),
+            (qualified_function.object_name),
+            (
+              qualified_function.object_name
+              || '('
+              || pg_catalog.regexp_replace(
+                pg_catalog.oidvectortypes(procedure.proargtypes),
+                ',[[:space:]]*',
+                ',',
+                'g'
+              )
+              || ')'
+            )
+        ) AS function_name(object_name)
+        WHERE namespace.nspname NOT IN (
+          'pg_catalog', 'information_schema'
+        )
+          AND namespace.nspname !~ '^pg_(toast|temp)'
+        UNION ALL
+        SELECT consequence_assertions.assertion
+        FROM public.gov_consequence_control_security_assertions()
+          AS consequence_assertions(assertion)
+        UNION ALL
+        SELECT open_exposure_assertions.assertion
+        FROM public.gov_open_exposure_security_assertions()
+          AS open_exposure_assertions(assertion)
+      ) AS qualified_functions
+    )
+  );
+$reconcile$;
+
+REVOKE ALL ON FUNCTION public.gov_schema_reconcile_introspect()
+  FROM PUBLIC, anon, authenticated, service_role, schema_gate;
+GRANT EXECUTE ON FUNCTION public.gov_schema_reconcile_introspect()
+  TO service_role, schema_gate;

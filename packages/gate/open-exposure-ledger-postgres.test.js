@@ -347,7 +347,10 @@ test('migration enforces RPC-only custody, immutable history, open-status sums, 
     assert.match(migration, /CREATE INDEX[\s\S]+tenant_id, status, invoke_by, reconcile_by/);
     assert.match(migration, /REVOKE ALL ON ALL TABLES IN SCHEMA open_exposure_private[\s\S]+service_role/);
     assert.match(migration, /REVOKE ALL ON ALL FUNCTIONS IN SCHEMA open_exposure_private[\s\S]+service_role/);
-    assert.doesNotMatch(migration, /GRANT[^;]+TO service_role/);
+    const privateGrants = migration.match(/GRANT[^;]+(?:SCHEMA open_exposure_private|open_exposure_private\.)[^;]+;/g) ?? [];
+    for (const grant of privateGrants) {
+        assert.doesNotMatch(grant, /TO[^;]*\bservice_role\b/);
+    }
     assert.doesNotMatch(migration, /open_exposure_(?:blind_)?release/i);
     assert.match(migration, /GRANT EXECUTE ON FUNCTION open_exposure_private\.reserve\(JSONB\)[\s\S]+TO ep_open_exposure_origin/);
     assert.match(migration, /GRANT EXECUTE ON FUNCTION open_exposure_private\.reconcile\(JSONB\)[\s\S]+TO ep_open_exposure_reconciler/);

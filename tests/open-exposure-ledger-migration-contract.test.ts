@@ -3,6 +3,7 @@
 import crypto from 'node:crypto';
 import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
+import { contract } from '../scripts/db-contract.manifest.mjs';
 
 const migrationUrl = new URL(
   '../supabase/migrations/20260728210700_open_exposure_ledger.sql',
@@ -69,6 +70,57 @@ describe('Open Exposure Ledger PostgreSQL contract', () => {
       expect(grant, `missing grant for ${functionName}`).toBeDefined();
       expect(grant).toMatch(/TO ep_open_exposure_reader/);
       expect(grant).not.toMatch(/ep_open_exposure_(?:origin|executor|reconciler)/);
+    }
+  });
+
+  it('publishes the exact live contract without widening schema-gate authority', () => {
+    expect(contract.requiredQualifiedTables).toEqual(expect.arrayContaining([
+      'open_exposure_private.tenant_principals',
+      'open_exposure_private.ceilings',
+      'open_exposure_private.exposures',
+      'open_exposure_private.history',
+      'open_exposure_private.reconciliation_tokens',
+    ]));
+    expect(contract.requiredQualifiedRpcs).toEqual(expect.arrayContaining([
+      'open_exposure_private.register_ceiling(jsonb)',
+      'open_exposure_private.reserve(jsonb)',
+      'open_exposure_private.begin_invocation(jsonb)',
+      'open_exposure_private.mark_indeterminate(jsonb)',
+      'open_exposure_private.reconcile(jsonb)',
+      'open_exposure_private.read_exposure(jsonb)',
+      'open_exposure_private.read_history(jsonb)',
+      'open_exposure_private.sum_open(jsonb)',
+      'open_exposure_private.list_aging(jsonb)',
+      'open_exposure_private.list_deadlines(jsonb)',
+    ]));
+    expect(contract.requiredReconcileAssertions.filter(
+      (value) => value.includes(':open_exposure_private.')
+        || value === 'contract:roles:open-exposure:least-privilege-membership-disjoint',
+    )).toHaveLength(26);
+
+    expect(migration).toMatch(
+      /CREATE OR REPLACE FUNCTION public\.gov_open_exposure_security_assertions\(\)[\s\S]+SECURITY DEFINER[\s\S]+SET search_path = ''/,
+    );
+    expect(migration).toMatch(
+      /REVOKE ALL ON FUNCTION public\.gov_open_exposure_security_assertions\(\)[^;]+FROM PUBLIC, anon, authenticated, schema_gate/,
+    );
+    expect(migration).toMatch(
+      /GRANT EXECUTE ON FUNCTION public\.gov_open_exposure_security_assertions\(\)[^;]+TO service_role/,
+    );
+    expect(migration).toMatch(
+      /FROM public\.gov_consequence_control_security_assertions\(\)[\s\S]+FROM public\.gov_open_exposure_security_assertions\(\)/,
+    );
+    expect(migration).toMatch(
+      /GRANT EXECUTE ON FUNCTION public\.gov_schema_reconcile_introspect\(\)[\s\S]+TO service_role, schema_gate/,
+    );
+    expect(migration).not.toMatch(
+      /GRANT EXECUTE ON FUNCTION public\.gov_open_exposure_security_assertions\(\)[^;]+TO schema_gate/,
+    );
+    const privateGrants = migration.match(
+      /GRANT[^;]+(?:SCHEMA open_exposure_private|open_exposure_private\.)[^;]+;/g,
+    ) ?? [];
+    for (const grant of privateGrants) {
+      expect(grant).not.toMatch(/TO[^;]*\bservice_role\b/);
     }
   });
 
