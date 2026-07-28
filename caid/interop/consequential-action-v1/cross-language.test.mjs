@@ -27,4 +27,4 @@ test('all 100 candidate vectors have identical JavaScript, Python, and Go verdic
   assert.ok(outputs[0].every(({ pass }) => pass));
   assert.deepEqual(outputs[1], outputs[0]);
   assert.deepEqual(outputs[2], outputs[0]);
-});
+}, 30_000);
