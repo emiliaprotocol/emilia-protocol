@@ -120,7 +120,9 @@ Be precise about the claim. A receipt this package issues proves, with offline c
 - a **named key** signed off on **this exact action** (the action hash binds every parameter — change one byte and verification fails);
 - the signoff was made **under the stated policy** (the context commits to the policy hash);
 - the signoff happened **before execution**, inside the stated validity window;
-- the receipt is **included in a log checkpoint** signed by the named log key, so it can't be silently backdated or altered after the fact.
+- the receipt is **included in a log checkpoint** signed by the named log key, so it can't be silently altered after the fact.
+
+The checkpoint commits to the tree, not to a clock: it carries `tree_size`, `root_hash`, `log_key_id`, and `merkle_alg`, and no timestamp. It therefore proves ordering within the log and non-alteration. It does **not** by itself prove *when* a receipt was made, and the timestamps inside the context are asserted by the signer. Bounding claimed time against an independent clock is the job of a trusted timestamp proof or a freshness/currency check, which a relying party supplies.
 
 The receipt proves those things. It does **not** prove that **the human is who the key claims to be**. Binding a key to a real, identity-proofed person is a separate layer — the **Approver Directory** plus **Class-A device-bound (WebAuthn) signoffs**. A Class-B/C software-key signoff (what this CLI issues) proves a key authorized the action; it does not prove a specific enrolled human held that key.
 

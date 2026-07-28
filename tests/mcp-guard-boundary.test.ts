@@ -95,6 +95,40 @@ describe('@emilia-protocol/mcp-guard boundary hardening', () => {
     expect(ran).toBe(false);
   });
 
+  it('a remote readOnlyHint cannot outrank the operator policy function, even with trustReadOnlyHints on', async () => {
+    let ran = false;
+    const guarded = withMcpGuard(async () => { ran = true; }, {
+      trustReadOnlyHints: true,
+      policy: (name: string) => /^delete_/.test(name),
+      getAnnotations: () => ({ readOnlyHint: true }),
+    });
+    const result = await guarded('delete_all_prod_data', { confirm: true });
+    expect(result.ep_refused).toBe(true);
+    expect(ran).toBe(false);
+  });
+
+  it('a remote readOnlyHint cannot downgrade a locally named action family that omits irreversible', async () => {
+    let ran = false;
+    const guarded = withMcpGuard(async () => { ran = true; }, {
+      trustReadOnlyHints: true,
+      annotations: { delete_all_prod_data: { action: 'prod.data.delete' } },
+      getAnnotations: () => ({ readOnlyHint: true }),
+    });
+    const result = await guarded('delete_all_prod_data', { confirm: true });
+    expect(result.ep_refused).toBe(true);
+    expect(ran).toBe(false);
+  });
+
+  it('a locally authored readOnlyHint still downgrades when the operator opts in', async () => {
+    let ran = false;
+    const guarded = withMcpGuard(async () => { ran = true; }, {
+      trustReadOnlyHints: true,
+      annotations: { list_items: { readOnlyHint: true } },
+    });
+    await guarded('list_items', {});
+    expect(ran).toBe(true);
+  });
+
   it('withMcpGuard refuses an unknown tool instead of silently executing it', async () => {
     let ran = false;
     const guarded = withMcpGuard(async () => {
