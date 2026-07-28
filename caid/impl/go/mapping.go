@@ -29,21 +29,30 @@ var mappingFieldRe = regexp.MustCompile(`^[a-z][a-z0-9_]*$`)
 var pointerIndexRe = regexp.MustCompile(`^(0|[1-9][0-9]*)$`)
 
 var mappingTransforms = map[string]bool{
-	"copy":        true,
-	"sha256-utf8": true,
-	"sha256-jcs":  true,
+	"copy":                 true,
+	"sha256-utf8":          true,
+	"sha256-jcs":           true,
+	"sha256-hex-to-digest": true,
+}
+
+var mappingLossPolicies = map[string]bool{
+	"no-material-field-loss":        true,
+	"declared-source-semantic-loss": true,
 }
 
 var mappingProfileKeys = map[string]bool{
 	"@version": true, "profile_id": true, "source_format": true,
 	"target_action_type": true, "loss_policy": true,
-	"material_source_paths": true, "rules": true,
+	"omitted_source_fields": true, "material_source_paths": true, "rules": true,
 }
 var mappingSourceFormatKeys = map[string]bool{
 	"media_type": true, "schema": true, "version": true,
 }
 var mappingRuleKeys = map[string]bool{
 	"source_path": true, "target_field": true, "transform": true,
+}
+var mappingOmittedSourceFieldKeys = map[string]bool{
+	"source_path": true, "reason": true,
 }
 
 const maxMappingRules = 128
@@ -195,14 +204,20 @@ func validateMappingProfile(profile map[string]interface{}, definitions []interf
 	sourceFormat, sourceOK := profile["source_format"].(map[string]interface{})
 	rules, rulesOK := profile["rules"].([]interface{})
 	material, materialOK := mappingStringSlice(profile["material_source_paths"])
+	omissions := []interface{}{}
+	omissionsOK := true
+	if rawOmissions, present := profile["omitted_source_fields"]; present {
+		omissions, omissionsOK = rawOmissions.([]interface{})
+	}
 	actionType, typeOK := profile["target_action_type"].(string)
+	lossPolicy, lossPolicyOK := profile["loss_policy"].(string)
 	if !mappingString(profile["profile_id"], 512) || !sourceOK ||
 		!mappingHasOnlyKeys(sourceFormat, mappingSourceFormatKeys) ||
 		!mappingString(sourceFormat["media_type"], 512) ||
 		!mappingString(sourceFormat["schema"], 512) ||
 		!mappingString(sourceFormat["version"], 512) ||
 		!typeOK || actionType == "" ||
-		profile["loss_policy"] != "no-material-field-loss" ||
+		!lossPolicyOK || !mappingLossPolicies[lossPolicy] || !omissionsOK ||
 		!rulesOK || len(rules) == 0 || len(rules) > maxMappingRules ||
 		!materialOK || len(material) == 0 {
 		return []string{"invalid_mapping_profile"}
@@ -248,6 +263,26 @@ func validateMappingProfile(profile map[string]interface{}, definitions []interf
 				break
 			}
 		}
+	}
+
+	omittedSeen := map[string]bool{}
+	for _, raw := range omissions {
+		omission, ok := raw.(map[string]interface{})
+		if !ok || !mappingHasOnlyKeys(omission, mappingOmittedSourceFieldKeys) {
+			reasons = append(reasons, "invalid_mapping_profile")
+			break
+		}
+		sourcePath, sourceOK := omission["source_path"].(string)
+		if !sourceOK || !validPointer(sourcePath) || !mappingString(omission["reason"], 2048) ||
+			omittedSeen[sourcePath] || ruleSources[sourcePath] {
+			reasons = append(reasons, "invalid_mapping_profile")
+			break
+		}
+		omittedSeen[sourcePath] = true
+	}
+	if (lossPolicy == "no-material-field-loss" && len(omittedSeen) != 0) ||
+		(lossPolicy == "declared-source-semantic-loss" && len(omittedSeen) == 0) {
+		reasons = append(reasons, "invalid_mapping_profile")
 	}
 
 	definition := mappingDefinition(actionType, definitions)
@@ -296,6 +331,15 @@ func applyMappingTransform(value interface{}, transform string) (interface{}, bo
 		}
 		sum := sha256.Sum256([]byte(canonical.Canonical))
 		return "sha256:" + hex.EncodeToString(sum[:]), true, ""
+	case "sha256-hex-to-digest":
+		text, ok := value.(string)
+		if !ok || len(text) != 64 {
+			return nil, false, "source_value_type_mismatch"
+		}
+		if _, err := hex.DecodeString(text); err != nil || strings.ToLower(text) != text {
+			return nil, false, "source_value_type_mismatch"
+		}
+		return "sha256:" + text, true, ""
 	default:
 		return nil, false, "unknown_transform"
 	}
@@ -337,6 +381,9 @@ func MapAction(source interface{}, opts MapActionOptions) (result MapActionResul
 	}
 	if sourceDigest == "" {
 		reasons = append(reasons, "source_not_canonicalizable")
+	}
+	if lossPolicy, _ := opts.Profile["loss_policy"].(string); lossPolicy == "declared-source-semantic-loss" {
+		reasons = append(reasons, "declared_source_semantic_loss")
 	}
 	reasons = dedupe(reasons)
 	if len(reasons) > 0 {

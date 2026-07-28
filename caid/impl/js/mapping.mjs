@@ -17,13 +17,19 @@ export const MAPPING_VERDICTS = Object.freeze({
 });
 
 const FIELD_RE = /^[a-z][a-z0-9_]*$/;
-const TRANSFORMS = new Set(['copy', 'sha256-utf8', 'sha256-jcs']);
+const TRANSFORMS = new Set([
+  'copy', 'sha256-utf8', 'sha256-jcs', 'sha256-hex-to-digest',
+]);
+const LOSS_POLICIES = new Set([
+  'no-material-field-loss', 'declared-source-semantic-loss',
+]);
 const PROFILE_KEYS = new Set([
   '@version', 'profile_id', 'source_format', 'target_action_type',
-  'loss_policy', 'material_source_paths', 'rules',
+  'loss_policy', 'omitted_source_fields', 'material_source_paths', 'rules',
 ]);
 const SOURCE_FORMAT_KEYS = new Set(['media_type', 'schema', 'version']);
 const RULE_KEYS = new Set(['source_path', 'target_field', 'transform']);
+const OMITTED_SOURCE_FIELD_KEYS = new Set(['source_path', 'reason']);
 const MAX_RULES = 128;
 const MAX_POINTER_BYTES = 2048;
 const own = (obj, key) => Object.prototype.hasOwnProperty.call(obj, key);
@@ -88,12 +94,14 @@ function validateProfile(profile, definitions) {
       || !hasOnlyKeys(profile, PROFILE_KEYS)) {
     return ['invalid_mapping_profile'];
   }
+  const omissions = profile.omitted_source_fields ?? [];
   if (!validString(profile.profile_id) || !hasOnlyKeys(profile.source_format, SOURCE_FORMAT_KEYS)
       || !validString(profile.source_format.media_type)
       || !validString(profile.source_format.schema)
       || !validString(profile.source_format.version)
       || !validString(profile.target_action_type)
-      || profile.loss_policy !== 'no-material-field-loss'
+      || !LOSS_POLICIES.has(profile.loss_policy)
+      || !Array.isArray(omissions)
       || !Array.isArray(profile.rules) || profile.rules.length === 0
       || profile.rules.length > MAX_RULES
       || !Array.isArray(profile.material_source_paths)
@@ -120,6 +128,23 @@ function validateProfile(profile, definitions) {
   if (new Set(material).size !== material.length
       || material.some((path) => !validPointer(path))
       || [...new Set(ruleSources)].sort().join('\n') !== [...material].sort().join('\n')) {
+    reasons.push('invalid_mapping_profile');
+  }
+
+  const omittedPaths = new Set();
+  for (const omission of omissions) {
+    if (!hasOnlyKeys(omission, OMITTED_SOURCE_FIELD_KEYS)
+        || !validPointer(omission.source_path)
+        || !validString(omission.reason, 2048)
+        || omittedPaths.has(omission.source_path)
+        || ruleSources.includes(omission.source_path)) {
+      reasons.push('invalid_mapping_profile');
+      break;
+    }
+    omittedPaths.add(omission.source_path);
+  }
+  if ((profile.loss_policy === 'no-material-field-loss' && omittedPaths.size !== 0)
+      || (profile.loss_policy === 'declared-source-semantic-loss' && omittedPaths.size === 0)) {
     reasons.push('invalid_mapping_profile');
   }
 
@@ -154,6 +179,12 @@ function applyTransform(value, transform) {
     const canonical = canonicalize(value);
     if (!canonical.ok) return { ok: false, reason: 'source_value_not_canonicalizable' };
     return { ok: true, value: 'sha256:' + digest(Buffer.from(canonical.canonical, 'utf8')) };
+  }
+  if (transform === 'sha256-hex-to-digest') {
+    if (typeof value !== 'string' || !/^[0-9a-f]{64}$/.test(value)) {
+      return { ok: false, reason: 'source_value_type_mismatch' };
+    }
+    return { ok: true, value: 'sha256:' + value };
   }
   return { ok: false, reason: 'unknown_transform' };
 }
@@ -214,6 +245,9 @@ export function mapAction(source, {
     if (!isObject(source)) reasons.push('source_not_object');
     const sourceDigest = isObject(source) ? hashJson(source) : null;
     if (!sourceDigest) reasons.push('source_not_canonicalizable');
+    if (profile?.loss_policy === 'declared-source-semantic-loss') {
+      reasons.push('declared_source_semantic_loss');
+    }
     if (reasons.length) {
       return { ok: false, reasons: [...new Set(reasons)], profile_hash: profileHash, source_digest: sourceDigest };
     }

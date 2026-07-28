@@ -18,13 +18,15 @@ INDETERMINATE = "INDETERMINATE"
 
 _FIELD_RE = re.compile(r"^[a-z][a-z0-9_]*$")
 _INDEX_RE = re.compile(r"^(0|[1-9][0-9]*)$")
-_TRANSFORMS = frozenset(["copy", "sha256-utf8", "sha256-jcs"])
+_TRANSFORMS = frozenset(["copy", "sha256-utf8", "sha256-jcs", "sha256-hex-to-digest"])
+_LOSS_POLICIES = frozenset(["no-material-field-loss", "declared-source-semantic-loss"])
 _PROFILE_KEYS = frozenset([
     "@version", "profile_id", "source_format", "target_action_type",
-    "loss_policy", "material_source_paths", "rules",
+    "loss_policy", "omitted_source_fields", "material_source_paths", "rules",
 ])
 _SOURCE_FORMAT_KEYS = frozenset(["media_type", "schema", "version"])
 _RULE_KEYS = frozenset(["source_path", "target_field", "transform"])
+_OMITTED_SOURCE_FIELD_KEYS = frozenset(["source_path", "reason"])
 _MAX_RULES = 128
 _MAX_POINTER_BYTES = 2048
 
@@ -125,6 +127,7 @@ def _validate_profile(profile, definitions):
     source_format = profile.get("source_format")
     rules = profile.get("rules")
     material = profile.get("material_source_paths")
+    omissions = profile.get("omitted_source_fields", [])
     if (
         not _valid_string(profile.get("profile_id"))
         or not _has_only_keys(source_format, _SOURCE_FORMAT_KEYS)
@@ -132,7 +135,8 @@ def _validate_profile(profile, definitions):
         or not _valid_string(source_format.get("schema"))
         or not _valid_string(source_format.get("version"))
         or not _valid_string(profile.get("target_action_type"))
-        or profile.get("loss_policy") != "no-material-field-loss"
+        or profile.get("loss_policy") not in _LOSS_POLICIES
+        or not isinstance(omissions, list)
         or not isinstance(rules, list)
         or not (1 <= len(rules) <= _MAX_RULES)
         or not isinstance(material, list)
@@ -161,6 +165,24 @@ def _validate_profile(profile, definitions):
         len(set(material)) != len(material)
         or any(not _valid_pointer(item) for item in material)
         or sorted(set(rule_sources)) != sorted(material)
+    ):
+        reasons.append("invalid_mapping_profile")
+
+    omitted_paths = set()
+    for omission in omissions:
+        if (
+            not _has_only_keys(omission, _OMITTED_SOURCE_FIELD_KEYS)
+            or not _valid_pointer(omission.get("source_path"))
+            or not _valid_string(omission.get("reason"), 2048)
+            or omission["source_path"] in omitted_paths
+            or omission["source_path"] in rule_sources
+        ):
+            reasons.append("invalid_mapping_profile")
+            break
+        omitted_paths.add(omission["source_path"])
+    if (
+        (profile.get("loss_policy") == "no-material-field-loss" and omitted_paths)
+        or (profile.get("loss_policy") == "declared-source-semantic-loss" and not omitted_paths)
     ):
         reasons.append("invalid_mapping_profile")
 
@@ -196,6 +218,10 @@ def _apply_transform(value, transform):
             "ok": True,
             "value": "sha256:" + _digest(result["canonical"].encode("utf-8", "surrogatepass")),
         }
+    if transform == "sha256-hex-to-digest":
+        if not isinstance(value, str) or re.fullmatch(r"[0-9a-f]{64}", value) is None:
+            return {"ok": False, "reason": "source_value_type_mismatch"}
+        return {"ok": True, "value": "sha256:" + value}
     return {"ok": False, "reason": "unknown_transform"}
 
 
@@ -231,6 +257,8 @@ def map_action(
         source_digest = _hash_json(source) if isinstance(source, dict) else None
         if source_digest is None:
             reasons.append("source_not_canonicalizable")
+        if isinstance(profile, dict) and profile.get("loss_policy") == "declared-source-semantic-loss":
+            reasons.append("declared_source_semantic_loss")
         reasons = list(dict.fromkeys(reasons))
         if reasons:
             return {
