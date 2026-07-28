@@ -1,6 +1,6 @@
 {
   "name": "@emilia-protocol/gate",
-  "version": "0.18.2",
+  "version": "0.19.0",
   "repository": {
     "type": "git",
     "url": "https://github.com/emiliaprotocol/emilia-protocol.git",
@@ -225,6 +225,10 @@
       "types": "./dist/trust-program.d.ts",
       "import": "./trust-program.js"
     },
+    "./reliance-program": {
+      "types": "./dist/reliance-program.d.ts",
+      "import": "./reliance-program.js"
+    },
     "./trust-program-adapters": {
       "types": "./dist/trust-program-adapters.d.ts",
       "import": "./trust-program-adapters.js"
@@ -354,6 +358,7 @@
     "capability-receipt.js",
     "receipt-program.js",
     "trust-program.js",
+    "reliance-program.js",
     "trust-program-adapters.js",
     "trust-program-postgres.js",
     "trust-program-revocation.js",

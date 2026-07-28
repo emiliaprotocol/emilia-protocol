@@ -4,6 +4,29 @@
 All notable changes to `@emilia-protocol/gate` are documented here.
 This package follows [Semantic Versioning](https://semver.org/).
 
+## 0.19.0 (2026-07-28)
+
+### Added
+
+- `./reliance-program`, a closed, relying-party-signed source policy and
+  deterministic compiler to the existing
+  `EP-GATE-TRUST-PROGRAM-PROFILE-v1` wire format.
+- Admissibility Profile references as digest-pinned program fragments, with a
+  relying-party-owned evaluator adapter that prevents presenters from choosing
+  the acceptance bar.
+- A public JSON Schema, compiler trace, and explicit consequence ownership by
+  either a receipt program or Action Escrow.
+
+### Security
+
+- Compilation requires an Ed25519 signer whose pinned key is bound to the
+  named relying party, recomputes every profile self-hash, and refuses unknown
+  fields, substituted profiles, disconnected stages, action drift, and
+  ambiguous consequence ownership.
+- Compilation proves only that the signed source maps to the existing Trust
+  Program. It does not assert evidence sufficiency, authorization, provider
+  outcome, observed effect, or deployment completion.
+
 ## 0.18.2 (2026-07-27)
 
 ### Added

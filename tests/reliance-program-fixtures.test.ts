@@ -7,7 +7,7 @@ import {
   compileRelianceProgram,
   signRelianceProgram,
   verifyRelianceProgram,
-} from '@emilia-protocol/gate/reliance-program';
+} from '../packages/gate/reliance-program.js';
 
 type JsonRecord = Record<string, any>;
 type Mutation = {
