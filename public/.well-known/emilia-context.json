@@ -1,9 +1,9 @@
 {
   "@version": "EMILIA-REPO-CONTEXT-v1",
-  "evidence_snapshot_at": "2026-07-28T21:22:42.154Z",
+  "evidence_snapshot_at": "2026-07-28T23:25:33.967Z",
   "provenance": {
     "generator": "scripts/generate-llm-context.mjs",
-    "input_digest_sha256": "7457dde7c35ff9392104b505cd6b1131f2aadc09194f8b263bc44f7c8b07262e",
+    "input_digest_sha256": "e06b444414ec3c0f4f40f58f2b10536d824e1543dd4c40d4d6868f07a7e8b4d2",
     "generated_from": [
       {
         "path": "docs/ai/context-source.v1.json",
@@ -17,7 +17,7 @@
       },
       {
         "path": "lib/proof-stats.json",
-        "sha256": "6cb1e59295775ccd1065a40bc7958b42b8ca44687a8714966b749a439a065b2c",
+        "sha256": "d553f4cd401fdd70044d3ed69ba9aed1ffea894f96c48e0e612d8deafb121364",
         "bytes": 4220
       },
       {
@@ -272,8 +272,8 @@
   ],
   "current_evidence": {
     "automated_tests": {
-      "total": 7953,
-      "files": 451,
+      "total": 7968,
+      "files": 455,
       "policy": "all platform-applicable cases must pass; platform-specific cases may skip"
     },
     "cross_language_conformance": {
@@ -314,7 +314,7 @@
         "coveredModelActions": 28,
         "actionCompleteModels": 1,
         "formalMutationOperators": 46,
-        "evidenceSha256": "13b48cb9c5f53429d94224bbdbeda747b749bba48a91df2071eaaeee6f50eae3",
+        "evidenceSha256": "f98479bf2493b54d7f88ad011baae2372f8d34e53b8f41842e594c81ab8d594f",
         "boundary": "selected model/runtime scenarios under explicit projection relations; not a mechanized implementation refinement proof"
       },
       "evidence_taxonomy": {
