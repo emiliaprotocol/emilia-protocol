@@ -1,7 +1,8 @@
 {
   "@version": "EP-LOSS-ALLOCATION-SCHEDULE-CONFORMANCE-v1",
   "description": "Deterministic shared JCS and Ed25519 proof with digest-bound current, stale, and revoked outcomes.",
-  "claim_boundary": "signed_terms_not_legal_adjudication_or_payment",
+  "claim_boundary": "signed_terms_not_legal_liability_adjudication_enforceability_insurance_coverage_solvency_authorization_or_payment",
+  "seed_hex": "4242424242424242424242424242424242424242424242424242424242424242",
   "verification_time": "2026-07-28T13:00:00Z",
   "stale_verification_time": "2026-07-29T12:00:00Z",
   "profile_id": "rp:admissibility:loss-allocation-conformance:v1",
@@ -21,11 +22,11 @@
   },
   "current_status": {
     "outcome": "current_not_revoked",
-    "target_digest": "sha256:803227a8b0676991f501396a1c05389fd3961b1329d4bd4a8078464f6e56edc4"
+    "target_digest": "sha256:941ee6268dfc90c9c437591a3eaae9e8fcf71464a152d64799b4f1a984265ef2"
   },
   "artifact": {
     "@version": "EP-LOSS-ALLOCATION-SCHEDULE-v1",
-    "claim_boundary": "signed_terms_not_legal_adjudication_or_payment",
+    "claim_boundary": "signed_terms_not_legal_liability_adjudication_enforceability_insurance_coverage_solvency_authorization_or_payment",
     "expires_at": "2026-07-29T12:00:00Z",
     "issued_at": "2026-07-28T12:00:00Z",
     "issuer": {
@@ -70,13 +71,13 @@
     "proof": {
       "algorithm": "Ed25519",
       "key_id": "loss-allocation-vector-key-1",
-      "body_digest": "sha256:8b58bc427bf3f0bc3d1914d2c0f6062bd458abc3e34a15d22c8abaccd0e303a1",
-      "signature_b64u": "sk235P7aSsYLf9GyCGwUAojxN1TLCU8hRRTPKrliMiBXi9Y-Zf4K_ON4LwrVdqKJ2OdICbUcGJsbuQvfwZImDg"
+      "body_digest": "sha256:48acf9a15bfd4006502764095741980dd801029a60710545febb9e88825073e2",
+      "signature_b64u": "Q1Ysu-1heWW1MQVAHUgkwZ_C_Fa92UVxYsBSvDHwQiX4FFLD8d0n3kYBYOgwkwsQ3QYX7QJMdtDIm8aI0WL-AA"
     }
   },
   "expected": {
     "valid": true,
-    "schedule_digest": "sha256:803227a8b0676991f501396a1c05389fd3961b1329d4bd4a8078464f6e56edc4",
+    "schedule_digest": "sha256:941ee6268dfc90c9c437591a3eaae9e8fcf71464a152d64799b4f1a984265ef2",
     "rules_digest": "sha256:abe795ec2e70e04bc90d8e9abb92b7300462d6fbece83d6dfd39f88c6f7997f5",
     "profile_hash": "sha256:cbcaca6b0448ed93ec29dee0e95ae4219cc4ddf6607d60df1cc589496bfb5e70",
     "stale_reason": "schedule_stale",

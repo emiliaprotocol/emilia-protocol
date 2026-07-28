@@ -2,8 +2,10 @@
 /** Runtime trace that projects the memory exposure implementation into the bounded risk-plane model. */
 import {
   createMemoryOpenExposureLedger,
-  type OpenExposureAuth,
-  type OpenExposureCeilingInput,
+} from '../../../packages/gate/dist/open-exposure-ledger.js';
+import type {
+  OpenExposureAuth,
+  OpenExposureCeilingInput,
 } from '../../../packages/gate/src/open-exposure-ledger.js';
 import { evaluateRelianceRiskState } from '../../../formal/reliance-risk-plane.model.mjs';
 
@@ -19,6 +21,7 @@ function auth(role: OpenExposureAuth['role'], authorityId: string): OpenExposure
 export async function runRelianceRiskRefinementTrace() {
   const ledger = createMemoryOpenExposureLedger({
     authenticate: ({ tenantId, auth: input }) => input.credential === `${tenantId}:${input.role}:${input.authorityId}`,
+    clock: () => '2026-07-28T12:01:00.000Z',
   });
   const scopes = [
     ['TENANT', '*'], ['PROGRAM', 'program-a'], ['COUNTERPARTY', 'merchant-a'], ['ACTION_CLASS', 'payment.release'],
@@ -33,7 +36,12 @@ export async function runRelianceRiskRefinementTrace() {
   }
   const reservation = {
     tenantId: 'tenant-a', exposureId: 'exposure-refinement', operationToken: token,
-    programId: 'program-a', counterpartyId: 'merchant-a', actionClass: 'payment.release',
+    programId: 'program-a', programVersion: 'program-a@1.0.0',
+    programSourceDigest: D('6'), programDigest: D('7'),
+    caid: `caid:1:payment.release.1:jcs-sha256:${'A'.repeat(43)}`,
+    actionDigest: D('8'), admissionSnapshotDigest: D('9'),
+    authorizationDigest: D('a'), authorizationExpiresAt: '2026-07-28T12:05:00.000Z',
+    counterpartyId: 'merchant-a', actionClass: 'payment.release',
     amountMinor: 60n, currency: 'USD', windowStart: START, windowEnd: END,
     reservedAt: '2026-07-28T12:00:00.000Z', invokeBy: '2026-07-28T12:05:00.000Z',
     reconcileBy: '2026-07-28T13:00:00.000Z', originAuthorityId: 'origin-a',
@@ -43,7 +51,14 @@ export async function runRelianceRiskRefinementTrace() {
   const reserved = await ledger.reserve(reservation, auth('ORIGIN', 'origin-a'));
   const invoking = await ledger.beginInvocation({
     tenantId: 'tenant-a', exposureId: reservation.exposureId, operationToken: token,
-    invokedAt: '2026-07-28T12:01:00.000Z',
+    programVersion: reservation.programVersion,
+    programSourceDigest: reservation.programSourceDigest,
+    programDigest: reservation.programDigest,
+    caid: reservation.caid,
+    actionDigest: reservation.actionDigest,
+    admissionSnapshotDigest: reservation.admissionSnapshotDigest,
+    authorizationDigest: reservation.authorizationDigest,
+    authorizationExpiresAt: reservation.authorizationExpiresAt,
   }, auth('EXECUTOR', 'executor-a'));
   const uncertain = await ledger.markIndeterminate({
     tenantId: 'tenant-a', exposureId: reservation.exposureId, operationToken: token,
@@ -51,7 +66,14 @@ export async function runRelianceRiskRefinementTrace() {
   }, auth('EXECUTOR', 'executor-a'));
   const blindRetry = await ledger.beginInvocation({
     tenantId: 'tenant-a', exposureId: reservation.exposureId, operationToken: token,
-    invokedAt: '2026-07-28T12:03:00.000Z',
+    programVersion: reservation.programVersion,
+    programSourceDigest: reservation.programSourceDigest,
+    programDigest: reservation.programDigest,
+    caid: reservation.caid,
+    actionDigest: reservation.actionDigest,
+    admissionSnapshotDigest: reservation.admissionSnapshotDigest,
+    authorizationDigest: reservation.authorizationDigest,
+    authorizationExpiresAt: reservation.authorizationExpiresAt,
   }, auth('EXECUTOR', 'executor-a'));
   const wrongReconciler = await ledger.reconcile({
     tenantId: 'tenant-a', exposureId: reservation.exposureId, operationToken: token,
@@ -64,8 +86,17 @@ export async function runRelianceRiskRefinementTrace() {
     outcome: 'PROVEN_NOT_COMMITTED', evidenceDigest: D('5'), observedAt: '2026-07-28T12:11:00.000Z',
   }, auth('RECONCILER', 'reconciler-a'));
 
+  const exactProgramBound = reserved.ok
+    && reserved.record.programDigest === reservation.programDigest
+    && reserved.record.programSourceDigest === reservation.programSourceDigest;
+  const exactAuthorizationBound = invoking.ok
+    && invoking.record.authorizationDigest === reservation.authorizationDigest
+    && invoking.record.actionDigest === reservation.actionDigest
+    && invoking.record.caid === reservation.caid;
   const model = evaluateRelianceRiskState({
-    program_accepted: true, authorization_accepted: true, capacity_available: true,
+    program_accepted: exactProgramBound,
+    authorization_accepted: exactAuthorizationBound,
+    capacity_available: reserved.ok,
     exposure_reserved: reserved.ok, indeterminate: uncertain.ok,
     exposure_open: uncertain.ok && uncertain.record.status === 'INDETERMINATE',
     blind_retry_requested: true, reconciler_independent: true,
@@ -75,7 +106,7 @@ export async function runRelianceRiskRefinementTrace() {
   });
   return Object.freeze({
     version: 'EP-RELIANCE-RISK-PLANE-REFINEMENT-TRACE-v1',
+    exactProgramBound, exactAuthorizationBound,
     reserved, invoking, uncertain, blindRetry, wrongReconciler, reconciled, model,
   });
 }
-

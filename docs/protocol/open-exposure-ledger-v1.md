@@ -34,12 +34,26 @@ different windows are never added.
 Each reservation binds:
 
 - tenant, exposure, and idempotent operation-token digest;
-- program, counterparty, and action class;
+- program identifier and exact `program_version`, `program_source_digest`, and
+  `program_digest`;
+- exact CAID, `action_digest`, `admission_snapshot_digest`,
+  `authorization_digest`, and canonical `authorization_expires_at`;
+- counterparty and action class;
 - amount, currency, fixed window, reservation time, invocation deadline, and
   reconciliation deadline;
 - distinct origin, executor, and reconciliation authority identifiers;
 - one reservation-evidence digest; and
 - the four ceiling digests applied by the reservation transaction.
+
+These execution and authorization pins are immutable. They are included in the
+reservation digest, current-record digest, and every history-entry digest, and
+the executor MUST present an exact copy before invocation can begin. The CAID
+and signed-artifact digests identify supplied bytes and claims only; their
+presence does not create authorization or widen any artifact's claim scope.
+
+`invoke_by` MUST be no later than both `window_end` and
+`authorization_expires_at`. An authorization expiry does not release an
+existing reservation; it only prevents new effect entry.
 
 Each fixed tenant/currency/window configuration MUST contain exactly one
 matching ceiling at each scope:
@@ -111,6 +125,19 @@ All database transactions are limited to local validation, row locking,
 aggregation, and writes. Network calls, provider calls, and artifact
 verification occur outside the transaction.
 
+`beginInvocation` is the effect-entry linearization point. The first accepted
+`RESERVED` to `INVOKING` transition returns one unpredictable invocation permit
+and stores only its domain-separated, reservation-bound digest in the record
+and history. Possession of that permit authorizes only this single configured
+effect entry; it is not evidence of provider receipt, commitment, payment, or
+external authorization.
+
+The in-memory store obtains invocation time from its injected monotonic clock.
+The PostgreSQL store uses `transaction_timestamp()` inside the row-locking
+transaction. Caller-supplied invocation time is forbidden. A start after
+`invoke_by` or `authorization_expires_at` returns `invocation_expired` without
+issuing a permit.
+
 ## 5. Idempotency and retry rules
 
 Operation and reconciliation tokens are high-entropy caller-generated tokens.
@@ -120,17 +147,22 @@ records.
 - Reusing an operation token with the exact reservation semantics returns the
   original reservation as an idempotent replay.
 - Reusing it with changed semantics returns `operation_token_conflict`.
-- Repeating the exact `beginInvocation` transition is idempotent only while the
-  row is still `INVOKING` with the same invocation time.
-- Calling `beginInvocation` after `INDETERMINATE` returns
-  `reconciliation_required`; it never authorizes another provider attempt.
+- Exactly one racing `beginInvocation` call may transition `RESERVED` to
+  `INVOKING` and receive the raw invocation permit.
+- Every replay once the row is `INVOKING` or `INDETERMINATE` returns the
+  non-authorizing `reconciliation_required` result. The raw permit is never
+  returned again.
+- Any mismatch in the immutable execution or authorization pins returns
+  `immutable_binding_conflict` before effect entry.
 - Reusing a reconciliation token with the exact reconciliation request returns
   the original response.
 - Reusing it with any changed exposure, outcome, evidence, or observation time
   returns `reconciliation_token_conflict`.
 
-An ambiguous acknowledgement MAY be recovered by an authenticated read or an
-exact idempotent replay. An ambiguous provider effect MUST NOT be retried.
+An ambiguous acknowledgement MUST be recovered through the independent
+reconciliation path or a READER observation; replaying `beginInvocation` is
+never an authority-recovery mechanism. An ambiguous provider effect MUST NOT be
+retried.
 
 ## 6. Authority separation
 
@@ -139,11 +171,13 @@ They are not interchangeable:
 
 - `POLICY_ADMIN` creates immutable ceilings.
 - `ORIGIN` reserves exposure and must match `originAuthorityId`.
-- `EXECUTOR` moves the record to `INVOKING` or `INDETERMINATE` and must match
-  `executorAuthorityId`.
+- `EXECUTOR` moves its authority-bound record to `INVOKING` or
+  `INDETERMINATE` and must match `executorAuthorityId`; it receives no
+  tenant-wide read RPC.
 - `RECONCILER` records indeterminate or terminal reconciliation and must match
   `reconciliationAuthorityId`.
-- `READER` performs tenant-scoped reads and operational queries.
+- `READER` alone performs tenant-wide reads, history, aging, deadline, and sum
+  queries.
 
 The PostgreSQL store authenticates `SESSION_USER` against a private
 tenant/authority mapping and a dedicated `NOLOGIN`, `NOBYPASSRLS` custody role.
@@ -162,9 +196,11 @@ administrative bootstrap principal, not a runtime custody principal.
 open. A later reconciliation token may provide a terminal outcome.
 
 Every accepted transition appends a tenant/exposure sequence entry containing
-the event, record digest, evidence digest, timestamp, and predecessor-entry
-digest. History rows cannot be updated or deleted. Current records preserve a
-revision number and predecessor-record digest; terminal records cannot change.
+the event, all immutable execution and authorization pins, invocation-permit
+digest when issued, record digest, evidence digest, timestamp, and
+predecessor-entry digest. History rows cannot be updated or deleted. Current
+records preserve a revision number and predecessor-record digest; terminal
+records cannot change.
 
 History is tamper-evident custody evidence under this implementation. It is not
 by itself proof that a provider committed an effect or that an observed effect
@@ -181,14 +217,16 @@ reservation age reaches the requested threshold.
 `listDeadlines` uses `invoke_by` for `RESERVED` rows and `reconcile_by` for
 `INVOKING` or `INDETERMINATE` rows, ordered by `(deadline, exposure_id)`.
 
-All queries are tenant scoped and authenticated. They report ledger state, not
-external effect truth.
+All broad queries are tenant scoped, authenticated, and restricted to the
+configured `READER` authority. Custody roles receive only their mutation RPCs.
+Queries report ledger state, not external effect truth.
 
 ## 9. Reference stores
 
 `createMemoryOpenExposureLedger` is a linearizable in-process reference store
 for conformance, race, and hostile-state tests. It is explicitly non-durable
-and test-only.
+and test-only. Callers may inject an absolute UTC monotonic clock; the default
+uses Node's monotonic clock source, and any observed regression fails closed.
 
 `createOpenExposurePostgresLedger` is deployment- and tenant-bound. Each
 mutation is one call to a private PostgreSQL function. The migration applies
@@ -196,4 +234,3 @@ RLS and `FORCE ROW LEVEL SECURITY` to every private table, revokes all direct
 table access from runtime roles, grants only role-specific RPC execution, uses
 composite and partial indexes for open aggregates and operational scans, and
 keeps transactions short.
-

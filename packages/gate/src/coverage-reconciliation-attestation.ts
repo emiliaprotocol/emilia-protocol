@@ -12,9 +12,18 @@ const PERIOD_KEYS = ['start', 'end'] as const;
 const POPULATION_KEYS = ['inventory_id', 'population_root', 'count'] as const;
 const JOIN_KEYS = ['matched', 'effect_without_receipt', 'receipt_without_effect', 'indeterminate', 'excluded', 'exception'] as const;
 const ANCHOR_KEYS = ['method', 'evidence_digest'] as const;
-const BODY_KEYS = ['@version', 'attestation_id', 'relying_party_id', 'program', 'period', 'coverage_report_hash', 'system_of_record', 'receipt_population', 'joins', 'issued_at', 'expires_at', 'timestamp_anchor', 'claim_boundary'] as const;
+const BODY_KEYS = ['@version', 'attestation_id', 'relying_party_id', 'program', 'period', 'coverage_report_hash', 'census_digest', 'system_of_record', 'receipt_population', 'joins', 'issued_at', 'expires_at', 'timestamp_anchor', 'claim_boundary'] as const;
 
 function count(value: unknown): value is number { return Number.isSafeInteger(value) && Number(value) >= 0; }
+function sameProgram(actual: RiskRecord, expected: RiskRecord): boolean {
+  return actual.program_id === expected.program_id && actual.version === expected.version
+    && actual.source_digest === expected.source_digest && actual.program_digest === expected.program_digest;
+}
+function validExpectedProgram(value: unknown): value is RiskRecord {
+  return riskExact(value, PROGRAM_KEYS) && riskIdentifier(value.program_id)
+    && Number.isSafeInteger(value.version) && value.version >= 1
+    && RISK_DIGEST.test(value.source_digest) && RISK_DIGEST.test(value.program_digest);
+}
 function validate(value: unknown): asserts value is RiskRecord {
   if (!riskExact(value, BODY_KEYS) || value['@version'] !== COVERAGE_RECONCILIATION_ATTESTATION_VERSION
       || !riskIdentifier(value.attestation_id) || !riskIdentifier(value.relying_party_id)
@@ -22,6 +31,7 @@ function validate(value: unknown): asserts value is RiskRecord {
       || !Number.isSafeInteger(value.program.version) || value.program.version < 1
       || !RISK_DIGEST.test(value.program.source_digest) || !RISK_DIGEST.test(value.program.program_digest)
       || !riskExact(value.period, PERIOD_KEYS) || !RISK_DIGEST.test(value.coverage_report_hash)
+      || !RISK_DIGEST.test(value.census_digest)
       || !riskExact(value.system_of_record, POPULATION_KEYS) || !riskExact(value.receipt_population, POPULATION_KEYS)
       || !riskExact(value.joins, JOIN_KEYS) || value.claim_boundary !== COVERAGE_RECONCILIATION_CLAIM_BOUNDARY) {
     throw new TypeError('coverage reconciliation attestation shape is invalid');
@@ -54,7 +64,8 @@ export function signCoverageReconciliationAttestation(input: RiskRecord, signer:
 }
 
 export function verifyCoverageReconciliationAttestation(attestation: unknown, options: {
-  trusted_keys?: TrustedRiskKeys; now?: string | number; expected_program_digest?: string;
+  trusted_keys?: TrustedRiskKeys; now?: string | number; expected_program?: RiskRecord;
+  expected_census_digest?: string; expected_relying_party_id?: string;
 } = {}) {
   const refuse = (reason: string, verified = false, attestationDigest: string | null = null) => ({
     accepted: false,
@@ -74,9 +85,23 @@ export function verifyCoverageReconciliationAttestation(attestation: unknown, op
   }
   const now = options.now === undefined ? Date.now() : (typeof options.now === 'string' ? Date.parse(options.now) : Number(options.now));
   if (!Number.isFinite(now)) return refuse('verification_time_invalid', true, signed.artifact_digest);
+  if (now < riskInstant(payload.issued_at)) return refuse('attestation_not_yet_issued', true, signed.artifact_digest);
   if (now >= riskInstant(payload.expires_at)) return refuse('attestation_expired', true, signed.artifact_digest);
-  if (options.expected_program_digest !== undefined && options.expected_program_digest !== payload.program.program_digest) {
-    return refuse('program_digest_mismatch', true, signed.artifact_digest);
+  if (options.expected_program === undefined || options.expected_census_digest === undefined
+      || options.expected_relying_party_id === undefined) {
+    return refuse('context_binding_required', true, signed.artifact_digest);
+  }
+  if (!validExpectedProgram(options.expected_program)) {
+    return refuse('expected_program_invalid', true, signed.artifact_digest);
+  }
+  if (!sameProgram(payload.program, options.expected_program)) {
+    return refuse('program_binding_mismatch', true, signed.artifact_digest);
+  }
+  if (options.expected_census_digest !== payload.census_digest) {
+    return refuse('census_digest_mismatch', true, signed.artifact_digest);
+  }
+  if (options.expected_relying_party_id !== payload.relying_party_id) {
+    return refuse('relying_party_mismatch', true, signed.artifact_digest);
   }
   return { accepted: true, verified: true, reason: null, attestation_digest: signed.artifact_digest, claim_boundary: COVERAGE_RECONCILIATION_CLAIM_BOUNDARY };
 }

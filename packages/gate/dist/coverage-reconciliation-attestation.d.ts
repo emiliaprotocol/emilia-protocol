@@ -10,7 +10,9 @@ export declare function signCoverageReconciliationAttestation(input: RiskRecord,
 export declare function verifyCoverageReconciliationAttestation(attestation: unknown, options?: {
     trusted_keys?: TrustedRiskKeys;
     now?: string | number;
-    expected_program_digest?: string;
+    expected_program?: RiskRecord;
+    expected_census_digest?: string;
+    expected_relying_party_id?: string;
 }): {
     accepted: boolean;
     verified: boolean;

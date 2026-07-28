@@ -15,8 +15,9 @@ This package follows [Semantic Versioning](https://semver.org/).
   independent reconciliation for indeterminate execution.
 - Exact-action signed refusal statements with atomic replay acceptance and
   optional delivery, custody, and transparency evidence references.
-- Period Coverage Reconciliation Attestations, privacy-bounded Receipt Census
-  aggregates, and signed external Loss Experience Feeds.
+- Period Coverage Reconciliation Attestations, governed-taxonomy Receipt Census
+  aggregates with coarse primary suppression, and signed external Loss
+  Experience Feeds with trusted correction lineage.
 - A bounded composed lifecycle model and runtime-refinement trace covering
   admission, exposure reservation, invocation, uncertainty, reconciliation,
   refusal, and terminal-state preservation.

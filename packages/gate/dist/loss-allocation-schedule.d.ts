@@ -1,6 +1,6 @@
 import { type RiskRecord, type TrustedRiskKeys } from './reliance-risk-crypto.js';
 export declare const LOSS_ALLOCATION_SCHEDULE_VERSION = "EP-LOSS-ALLOCATION-SCHEDULE-v1";
-export declare const LOSS_ALLOCATION_SCHEDULE_CLAIM_BOUNDARY = "signed_terms_not_legal_adjudication_or_payment";
+export declare const LOSS_ALLOCATION_SCHEDULE_CLAIM_BOUNDARY = "signed_terms_not_legal_liability_adjudication_enforceability_insurance_coverage_solvency_authorization_or_payment";
 export interface LossAllocationProgramBinding {
     program_id: string;
     version: number;
@@ -49,5 +49,5 @@ export declare function verifyLossAllocationSchedule(artifact: unknown, options?
 export declare function createLossAllocationAdmissibilityProfilePin(artifact: unknown, { profileId, evaluationMaxAgeSec, }: {
     profileId: string;
     evaluationMaxAgeSec: number;
-}): RiskRecord;
+}, verification: VerifyLossAllocationScheduleOptions): RiskRecord;
 //# sourceMappingURL=loss-allocation-schedule.d.ts.map

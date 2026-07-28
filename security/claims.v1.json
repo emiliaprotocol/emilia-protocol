@@ -2809,7 +2809,7 @@
     },
     {
       "claim_id": "reliance-risk-plane-bounds-open-exposure-and-preserves-uncertainty",
-      "statement": "For an exact Reliance Program and separately admitted action, the reference reliance risk plane verifies a separately signed loss-allocation schedule without treating it as authorization, reserves aggregate open exposure before provider invocation, preserves that exposure through invoking and indeterminate outcomes, refuses blind retry, and permits terminal closeout only through the configured independent reconciliation authority. Exact-action refusal statements, period coverage reconciliations, privacy-bounded receipt censuses, and signed loss-experience feeds remain non-authorizing evidence artifacts with explicit claim boundaries.",
+      "statement": "For an exact Reliance Program and separately admitted action, the reference reliance risk plane verifies a separately signed loss-allocation schedule without treating it as authorization, reserves aggregate open exposure before provider invocation, preserves that exposure through invoking and indeterminate outcomes, refuses blind retry, and permits terminal closeout only through the configured independent reconciliation authority. Exact-action refusal statements, period coverage reconciliations, governed-taxonomy receipt censuses with coarse primary suppression, and signed loss-experience feeds with trusted current-head correction lineage remain non-authorizing evidence artifacts with explicit claim boundaries.",
       "acceptance_roots": [
         "the relying party provisions the exact Reliance Program, loss-schedule issuer roots and current status, exposure ceilings, tenant principal mapping, and distinct origin, executor, and reconciliation authorities",
         "every protected provider path reserves through the durable Open Exposure Ledger before provider invocation",
@@ -2847,7 +2847,7 @@
         { "file": "packages/gate/loss-allocation-schedule.test.js", "title": "requires a digest-bound current status and refuses not-yet-valid, stale, and revoked schedules", "runner": "node-test" },
         { "file": "packages/gate/action-refusal-statement.test.js", "title": "replay-checked acceptance consumes the relying-party nonce once and expiry fails closed", "runner": "node-test" },
         { "file": "packages/gate/coverage-reconciliation-attestation.test.js", "title": "signs a bounded reconciliation and conserves both supplied populations", "runner": "node-test" },
-        { "file": "packages/gate/loss-experience-feed.test.js", "title": "rejects raw payloads, impossible supersession, future reports, and issuer substitution", "runner": "node-test" },
+        { "file": "packages/gate/loss-experience-feed.test.js", "title": "accepts a correction only when a trusted lineage resolver proves the current head", "runner": "node-test" },
         { "file": "tests/reliance-risk-plane-refinement.test.ts", "title": "runtime exposure transitions refine the bounded no-blind-retry composition", "runner": "vitest" }
       ],
       "formal": [
@@ -2881,6 +2881,7 @@
       "exclusions": [
         "EMILIA does not bear or allocate loss, adjudicate disputes, establish legal enforceability, verify insurance coverage, causation or solvency, or move money",
         "coverage reconciliation signs only supplied population roots and conserving counts and does not prove population completeness",
+        "receipt census primary suppression does not establish differential privacy or prevent differencing across overlapping releases",
         "loss-experience records are externally reported observations, not verified or adjudicated losses",
         "the in-memory exposure ledger is test-only and non-durable; production custody requires the PostgreSQL contract or an equivalent independently assessed implementation",
         "no independent implementation, external deployment, insurer adoption, premium credit, or loss-data network is claimed"

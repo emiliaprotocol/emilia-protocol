@@ -10,7 +10,7 @@
 import { canonicalize } from './execution-binding.js';
 import { RISK_DIGEST, riskDigest, riskExact, riskFreeze, riskIdentifier, riskInstant, riskRecord, signRiskBody, verifyRiskBody, } from './reliance-risk-crypto.js';
 export const LOSS_ALLOCATION_SCHEDULE_VERSION = 'EP-LOSS-ALLOCATION-SCHEDULE-v1';
-export const LOSS_ALLOCATION_SCHEDULE_CLAIM_BOUNDARY = 'signed_terms_not_legal_adjudication_or_payment';
+export const LOSS_ALLOCATION_SCHEDULE_CLAIM_BOUNDARY = 'signed_terms_not_legal_liability_adjudication_enforceability_insurance_coverage_solvency_authorization_or_payment';
 const SOURCE_KEYS = [
     'schedule_id', 'relying_party_id', 'program', 'issued_at', 'valid_from',
     'expires_at', 'status_target', 'rules', 'claim_boundary',
@@ -68,6 +68,7 @@ function validateRules(value) {
         refuse('schedule_rules_invalid', 'loss-allocation rules must be a bounded non-empty array');
     }
     const classes = new Map();
+    let previousFailureClass = null;
     for (const rule of value) {
         if (!riskExact(rule, RULE_KEYS)
             || typeof rule.failure_class !== 'string' || !FAILURE_CLASS.test(rule.failure_class)
@@ -85,6 +86,10 @@ function validateRules(value) {
         if (previous !== undefined) {
             refuse(previous === canonicalRule ? 'duplicate_failure_rule' : 'conflicting_failure_rule', 'duplicate or conflicting failure class is not allowed');
         }
+        if (previousFailureClass !== null && previousFailureClass > rule.failure_class) {
+            refuse('rules_not_canonical_order', 'failure rules must be strictly ordered by ASCII failure class');
+        }
+        previousFailureClass = rule.failure_class;
         classes.set(rule.failure_class, canonicalRule);
     }
 }
@@ -245,20 +250,21 @@ export function verifyLossAllocationSchedule(artifact, options = {}) {
     const now = verificationTime(options.now);
     if (!Number.isFinite(now))
         return fail('verification_time_invalid', true, artifactDigest);
+    if (now < riskInstant(body.issued_at)) {
+        return fail('schedule_not_yet_issued', true, artifactDigest);
+    }
     if (now < riskInstant(body.valid_from)) {
         return fail('schedule_not_yet_valid', true, artifactDigest);
     }
     if (now >= riskInstant(body.expires_at)) {
         return fail('schedule_stale', true, artifactDigest);
     }
-    if (options.expected_relying_party_id !== undefined) {
-        if (!riskIdentifier(options.expected_relying_party_id)
-            || options.expected_relying_party_id !== body.relying_party_id) {
-            return fail('relying_party_binding_mismatch', true, artifactDigest);
-        }
-    }
-    else if (body.issuer.id !== body.relying_party_id) {
+    if (options.expected_relying_party_id === undefined) {
         return fail('relying_party_binding_required', true, artifactDigest);
+    }
+    if (!riskIdentifier(options.expected_relying_party_id)
+        || options.expected_relying_party_id !== body.relying_party_id) {
+        return fail('relying_party_binding_mismatch', true, artifactDigest);
     }
     if (options.expected_program === undefined) {
         return fail('program_binding_required', true, artifactDigest);
@@ -293,8 +299,12 @@ export function verifyLossAllocationSchedule(artifact, options = {}) {
  * and exact rules are pinned here; final program digests are deliberately
  * excluded to avoid a profile/program/schedule digest cycle.
  */
-export function createLossAllocationAdmissibilityProfilePin(artifact, { profileId, evaluationMaxAgeSec, }) {
+export function createLossAllocationAdmissibilityProfilePin(artifact, { profileId, evaluationMaxAgeSec, }, verification) {
     const signed = signedParts(artifact);
+    const verified = verifyLossAllocationSchedule(artifact, verification);
+    if (verified.accepted !== true) {
+        refuse('schedule_verification_required', `cannot pin an unaccepted schedule: ${verified.reason}`);
+    }
     if (!riskIdentifier(profileId)
         || !Number.isSafeInteger(evaluationMaxAgeSec)
         || evaluationMaxAgeSec < 1 || evaluationMaxAgeSec > 31_536_000) {

@@ -34,7 +34,7 @@ customer-owned Reliance Program
   -> EXECUTED / PROVEN_NOT_EXECUTED / INDETERMINATE
   -> independent reconciliation and closeout
   -> bounded-period coverage reconciliation
-  -> privacy-bounded receipt census + externally reported loss feed
+  -> governed-taxonomy census with primary suppression + externally reported loss feed
 ```
 
 ## The non-collapsing state axes
@@ -97,6 +97,7 @@ A coverage reconciliation attestation signs:
 
 - the bounded period and pinned program;
 - the existing declared-surface coverage report hash;
+- the exact governed receipt census digest;
 - system-of-record and receipt inventory identifiers, roots, and counts;
 - conserved join counts for matches, bypasses, orphans, uncertainty,
   exclusions, and declared exceptions; and
@@ -105,11 +106,25 @@ A coverage reconciliation attestation signs:
 The signer asserts the supplied populations. Population completeness requires
 separate system-of-record evidence and cannot be inferred from this artifact.
 
-The Receipt Census emits only aggregate buckets at or above a configured
-minimum count. Suppressed buckets are disclosed only as aggregate counts. No
-raw action, receipt, patient, member, or other payload belongs in the census.
-Loss-experience records carry externally reported facts and provenance; EMILIA
-does not infer causation, coverage, adjudication, or amount.
+The Receipt Census emits only aggregate buckets whose action and outcome labels
+belong to a relying-party-pinned closed taxonomy and whose counts meet a
+configured minimum. Suppressed buckets are disclosed only as aggregate counts.
+No raw action, receipt, patient, member, or other payload belongs in the census.
+The implementation does not detect identifiers encoded inside an allowed
+taxonomy string; safe taxonomy vocabulary remains a relying-party control.
+This is coarse primary suppression, not differential privacy: it does not by
+itself prevent differencing, complementary-cell disclosure, repeated-query
+attacks, or an untruthful source inventory. Deployments releasing overlapping
+censuses need separate query budgets, secondary suppression, and access audit.
+
+Loss-experience corrections are accepted only through a relying-party-owned
+atomic lineage transaction. The store locks/loads the exact digest-bound
+current predecessor heads, runs EMILIA's validator before mutation, and commits
+all successors only when every reporter, relying-party, program, receipt,
+action-class, currency, and opaque-lineage binding passes. One predecessor can
+therefore produce at most one accepted current successor. Loss-experience
+records still carry externally reported facts and provenance; EMILIA does not
+infer causation, coverage, adjudication, or amount.
 
 ## Rollout and blast radius
 
@@ -133,4 +148,3 @@ unsafe single-guard variant and a concrete counterexample. This is a finite,
 same-team model: database linearizability, cryptography, identity proofing,
 legal enforceability, solvency, causation, payment, and source-population
 completeness remain outside its claim.
-

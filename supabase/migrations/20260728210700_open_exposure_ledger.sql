@@ -100,6 +100,8 @@ REVOKE ALL ON SCHEMA open_exposure_private
 GRANT USAGE ON SCHEMA extensions TO ep_open_exposure_store_owner;
 GRANT EXECUTE ON FUNCTION extensions.digest(BYTEA, TEXT)
   TO ep_open_exposure_store_owner;
+GRANT EXECUTE ON FUNCTION extensions.gen_random_bytes(INTEGER)
+  TO ep_open_exposure_store_owner;
 
 SET ROLE ep_open_exposure_store_owner;
 
@@ -171,6 +173,26 @@ CREATE TABLE open_exposure_private.exposures (
     CHECK (reservation_digest ~ '^sha256:[0-9a-f]{64}$'),
   program_id TEXT COLLATE "C" NOT NULL
     CHECK (pg_catalog.octet_length(program_id) BETWEEN 1 AND 512),
+  program_version TEXT COLLATE "C" NOT NULL
+    CHECK (
+      pg_catalog.octet_length(program_version) BETWEEN 1 AND 512
+      AND program_version ~ '^[A-Za-z0-9][A-Za-z0-9:_.@/-]*$'
+    ),
+  program_source_digest TEXT COLLATE "C" NOT NULL
+    CHECK (program_source_digest ~ '^sha256:[0-9a-f]{64}$'),
+  program_digest TEXT COLLATE "C" NOT NULL
+    CHECK (program_digest ~ '^sha256:[0-9a-f]{64}$'),
+  caid TEXT COLLATE "C" NOT NULL
+    CHECK (
+      caid ~ '^caid:1:[a-z][a-z0-9-]*(\.[a-z][a-z0-9-]*)*\.[1-9][0-9]*:jcs-sha256:[A-Za-z0-9_-]{43}$'
+    ),
+  action_digest TEXT COLLATE "C" NOT NULL
+    CHECK (action_digest ~ '^sha256:[0-9a-f]{64}$'),
+  admission_snapshot_digest TEXT COLLATE "C" NOT NULL
+    CHECK (admission_snapshot_digest ~ '^sha256:[0-9a-f]{64}$'),
+  authorization_digest TEXT COLLATE "C" NOT NULL
+    CHECK (authorization_digest ~ '^sha256:[0-9a-f]{64}$'),
+  authorization_expires_at TIMESTAMPTZ NOT NULL,
   counterparty_id TEXT COLLATE "C" NOT NULL
     CHECK (pg_catalog.octet_length(counterparty_id) BETWEEN 1 AND 512),
   action_class TEXT COLLATE "C" NOT NULL
@@ -194,6 +216,11 @@ CREATE TABLE open_exposure_private.exposures (
     'CLOSED_COMMITTED', 'CLOSED_PROVEN_NOT_COMMITTED'
   )),
   invoked_at TIMESTAMPTZ,
+  invocation_permit_digest TEXT COLLATE "C"
+    CHECK (
+      invocation_permit_digest IS NULL
+      OR invocation_permit_digest ~ '^sha256:[0-9a-f]{64}$'
+    ),
   indeterminate_evidence_digest TEXT COLLATE "C"
     CHECK (
       indeterminate_evidence_digest IS NULL
@@ -221,10 +248,20 @@ CREATE TABLE open_exposure_private.exposures (
   CHECK (window_start < window_end),
   CHECK (reserved_at >= window_start AND reserved_at < window_end),
   CHECK (reserved_at <= invoke_by AND invoke_by <= reconcile_by),
+  CHECK (invoke_by <= window_end),
+  CHECK (reserved_at <= authorization_expires_at),
+  CHECK (invoke_by <= authorization_expires_at),
   CHECK (origin_authority_id <> executor_authority_id),
   CHECK (reconciliation_authority_id <> origin_authority_id),
   CHECK (reconciliation_authority_id <> executor_authority_id),
   CHECK (pg_catalog.array_length(ceiling_digests, 1) = 4),
+  CHECK ((invoked_at IS NULL) = (invocation_permit_digest IS NULL)),
+  CHECK (
+    (status = 'RESERVED' AND invocation_permit_digest IS NULL)
+    OR (status IN ('INVOKING', 'INDETERMINATE', 'CLOSED_COMMITTED')
+      AND invocation_permit_digest IS NOT NULL)
+    OR status = 'CLOSED_PROVEN_NOT_COMMITTED'
+  ),
   CHECK (
     (status IN ('RESERVED', 'INVOKING')
       AND reconciliation_outcome IS NULL
@@ -254,6 +291,24 @@ CREATE TABLE open_exposure_private.history (
     'RECONCILED_INDETERMINATE', 'CLOSED_COMMITTED',
     'CLOSED_PROVEN_NOT_COMMITTED'
   )),
+  program_version TEXT COLLATE "C" NOT NULL,
+  program_source_digest TEXT COLLATE "C" NOT NULL
+    CHECK (program_source_digest ~ '^sha256:[0-9a-f]{64}$'),
+  program_digest TEXT COLLATE "C" NOT NULL
+    CHECK (program_digest ~ '^sha256:[0-9a-f]{64}$'),
+  caid TEXT COLLATE "C" NOT NULL,
+  action_digest TEXT COLLATE "C" NOT NULL
+    CHECK (action_digest ~ '^sha256:[0-9a-f]{64}$'),
+  admission_snapshot_digest TEXT COLLATE "C" NOT NULL
+    CHECK (admission_snapshot_digest ~ '^sha256:[0-9a-f]{64}$'),
+  authorization_digest TEXT COLLATE "C" NOT NULL
+    CHECK (authorization_digest ~ '^sha256:[0-9a-f]{64}$'),
+  authorization_expires_at TIMESTAMPTZ NOT NULL,
+  invocation_permit_digest TEXT COLLATE "C"
+    CHECK (
+      invocation_permit_digest IS NULL
+      OR invocation_permit_digest ~ '^sha256:[0-9a-f]{64}$'
+    ),
   record_digest TEXT COLLATE "C" NOT NULL
     CHECK (record_digest ~ '^sha256:[0-9a-f]{64}$'),
   evidence_digest TEXT COLLATE "C" NOT NULL
@@ -511,6 +566,14 @@ BEGIN
     OR OLD.operation_token_digest IS DISTINCT FROM NEW.operation_token_digest
     OR OLD.reservation_digest IS DISTINCT FROM NEW.reservation_digest
     OR OLD.program_id IS DISTINCT FROM NEW.program_id
+    OR OLD.program_version IS DISTINCT FROM NEW.program_version
+    OR OLD.program_source_digest IS DISTINCT FROM NEW.program_source_digest
+    OR OLD.program_digest IS DISTINCT FROM NEW.program_digest
+    OR OLD.caid IS DISTINCT FROM NEW.caid
+    OR OLD.action_digest IS DISTINCT FROM NEW.action_digest
+    OR OLD.admission_snapshot_digest IS DISTINCT FROM NEW.admission_snapshot_digest
+    OR OLD.authorization_digest IS DISTINCT FROM NEW.authorization_digest
+    OR OLD.authorization_expires_at IS DISTINCT FROM NEW.authorization_expires_at
     OR OLD.counterparty_id IS DISTINCT FROM NEW.counterparty_id
     OR OLD.action_class IS DISTINCT FROM NEW.action_class
     OR OLD.amount_minor IS DISTINCT FROM NEW.amount_minor
@@ -529,12 +592,24 @@ BEGIN
     RAISE EXCEPTION 'open exposure reservation fields are immutable'
       USING ERRCODE = 'check_violation';
   END IF;
+  IF OLD.invocation_permit_digest IS DISTINCT FROM NEW.invocation_permit_digest
+    AND NOT (
+      OLD.status = 'RESERVED'
+      AND NEW.status = 'INVOKING'
+      AND OLD.invocation_permit_digest IS NULL
+      AND NEW.invocation_permit_digest IS NOT NULL
+    )
+  THEN
+    RAISE EXCEPTION 'open exposure invocation permit digest is immutable'
+      USING ERRCODE = 'check_violation';
+  END IF;
   IF OLD.revision = 0
     AND NEW.revision = 0
     AND OLD.record_digest = 'sha256:' || pg_catalog.repeat('0', 64)
     AND NEW.record_digest <> OLD.record_digest
     AND OLD.status IS NOT DISTINCT FROM NEW.status
     AND OLD.invoked_at IS NOT DISTINCT FROM NEW.invoked_at
+    AND OLD.invocation_permit_digest IS NOT DISTINCT FROM NEW.invocation_permit_digest
     AND OLD.indeterminate_evidence_digest IS NOT DISTINCT FROM NEW.indeterminate_evidence_digest
     AND OLD.reconciliation_outcome IS NOT DISTINCT FROM NEW.reconciliation_outcome
     AND OLD.reconciliation_evidence_digest IS NOT DISTINCT FROM NEW.reconciliation_evidence_digest
@@ -588,6 +663,16 @@ AS $fn$
     'operation_token_digest', p_record.operation_token_digest,
     'reservation_digest', p_record.reservation_digest,
     'program_id', p_record.program_id,
+    'program_version', p_record.program_version,
+    'program_source_digest', p_record.program_source_digest,
+    'program_digest', p_record.program_digest,
+    'caid', p_record.caid,
+    'action_digest', p_record.action_digest,
+    'admission_snapshot_digest', p_record.admission_snapshot_digest,
+    'authorization_digest', p_record.authorization_digest,
+    'authorization_expires_at', open_exposure_private.iso(
+      p_record.authorization_expires_at
+    ),
     'counterparty_id', p_record.counterparty_id,
     'action_class', p_record.action_class,
     'amount_minor', p_record.amount_minor::TEXT,
@@ -606,6 +691,7 @@ AS $fn$
     'status', p_record.status,
     'invoked_at', CASE WHEN p_record.invoked_at IS NULL THEN NULL
       ELSE open_exposure_private.iso(p_record.invoked_at) END,
+    'invocation_permit_digest', p_record.invocation_permit_digest,
     'indeterminate_evidence_digest', p_record.indeterminate_evidence_digest,
     'reconciliation_outcome', p_record.reconciliation_outcome,
     'reconciliation_evidence_digest', p_record.reconciliation_evidence_digest,
@@ -688,6 +774,17 @@ BEGIN
     'exposure_id', p_record.exposure_id,
     'sequence', v_sequence,
     'event', p_event,
+    'program_version', p_record.program_version,
+    'program_source_digest', p_record.program_source_digest,
+    'program_digest', p_record.program_digest,
+    'caid', p_record.caid,
+    'action_digest', p_record.action_digest,
+    'admission_snapshot_digest', p_record.admission_snapshot_digest,
+    'authorization_digest', p_record.authorization_digest,
+    'authorization_expires_at', open_exposure_private.iso(
+      p_record.authorization_expires_at
+    ),
+    'invocation_permit_digest', p_record.invocation_permit_digest,
     'record_digest', p_record.record_digest,
     'evidence_digest', p_evidence_digest,
     'recorded_at', open_exposure_private.iso(p_recorded_at),
@@ -697,10 +794,17 @@ BEGIN
     'EP-OPEN-EXPOSURE-HISTORY-SQL-v1', v_body
   );
   INSERT INTO open_exposure_private.history (
-    tenant_id, exposure_id, sequence, event, record_digest,
+    tenant_id, exposure_id, sequence, event,
+    program_version, program_source_digest, program_digest, caid,
+    action_digest, admission_snapshot_digest, authorization_digest,
+    authorization_expires_at, invocation_permit_digest, record_digest,
     evidence_digest, recorded_at, predecessor_entry_digest, entry_digest
   ) VALUES (
     p_record.tenant_id, p_record.exposure_id, v_sequence, p_event,
+    p_record.program_version, p_record.program_source_digest,
+    p_record.program_digest, p_record.caid, p_record.action_digest,
+    p_record.admission_snapshot_digest, p_record.authorization_digest,
+    p_record.authorization_expires_at, p_record.invocation_permit_digest,
     p_record.record_digest, p_evidence_digest, p_recorded_at,
     v_predecessor, v_entry_digest
   );
@@ -812,11 +916,37 @@ BEGIN
     OR p_payload ->> 'authority_id' <> p_payload ->> 'origin_authority_id'
     OR p_payload ->> 'operation_token_digest' !~ '^sha256:[0-9a-f]{64}$'
     OR p_payload ->> 'reservation_evidence_digest' !~ '^sha256:[0-9a-f]{64}$'
+    OR pg_catalog.octet_length(p_payload ->> 'program_version') NOT BETWEEN 1 AND 512
+    OR p_payload ->> 'program_version' !~ '^[A-Za-z0-9][A-Za-z0-9:_.@/-]*$'
+    OR p_payload ->> 'program_source_digest' !~ '^sha256:[0-9a-f]{64}$'
+    OR p_payload ->> 'program_digest' !~ '^sha256:[0-9a-f]{64}$'
+    OR p_payload ->> 'caid'
+      !~ '^caid:1:[a-z][a-z0-9-]*(\.[a-z][a-z0-9-]*)*\.[1-9][0-9]*:jcs-sha256:[A-Za-z0-9_-]{43}$'
+    OR p_payload ->> 'action_digest' !~ '^sha256:[0-9a-f]{64}$'
+    OR p_payload ->> 'admission_snapshot_digest' !~ '^sha256:[0-9a-f]{64}$'
+    OR p_payload ->> 'authorization_digest' !~ '^sha256:[0-9a-f]{64}$'
     OR (p_payload ->> 'amount_minor') !~ '^[1-9][0-9]{0,18}$'
     OR p_payload ->> 'currency' !~ '^[A-Z]{3}$'
     OR p_payload ->> 'origin_authority_id' = p_payload ->> 'executor_authority_id'
     OR p_payload ->> 'reconciliation_authority_id' = p_payload ->> 'origin_authority_id'
     OR p_payload ->> 'reconciliation_authority_id' = p_payload ->> 'executor_authority_id'
+    OR open_exposure_private.iso((p_payload ->> 'window_start')::TIMESTAMPTZ)
+      <> p_payload ->> 'window_start'
+    OR open_exposure_private.iso((p_payload ->> 'window_end')::TIMESTAMPTZ)
+      <> p_payload ->> 'window_end'
+    OR open_exposure_private.iso((p_payload ->> 'reserved_at')::TIMESTAMPTZ)
+      <> p_payload ->> 'reserved_at'
+    OR open_exposure_private.iso((p_payload ->> 'invoke_by')::TIMESTAMPTZ)
+      <> p_payload ->> 'invoke_by'
+    OR open_exposure_private.iso((p_payload ->> 'reconcile_by')::TIMESTAMPTZ)
+      <> p_payload ->> 'reconcile_by'
+    OR open_exposure_private.iso(
+      (p_payload ->> 'authorization_expires_at')::TIMESTAMPTZ
+    ) <> p_payload ->> 'authorization_expires_at'
+    OR (p_payload ->> 'invoke_by')::TIMESTAMPTZ
+      > (p_payload ->> 'window_end')::TIMESTAMPTZ
+    OR (p_payload ->> 'invoke_by')::TIMESTAMPTZ
+      > (p_payload ->> 'authorization_expires_at')::TIMESTAMPTZ
   THEN
     RAISE EXCEPTION 'open exposure reservation payload is invalid' USING ERRCODE = '22023';
   END IF;
@@ -906,17 +1036,25 @@ BEGIN
 
   INSERT INTO open_exposure_private.exposures (
     tenant_id, exposure_id, operation_token_digest, reservation_digest,
-    program_id, counterparty_id, action_class, amount_minor, currency,
+    program_id, program_version, program_source_digest, program_digest,
+    caid, action_digest, admission_snapshot_digest, authorization_digest,
+    authorization_expires_at, counterparty_id, action_class, amount_minor, currency,
     window_start, window_end, reserved_at, invoke_by, reconcile_by,
     origin_authority_id, executor_authority_id, reconciliation_authority_id,
     reservation_evidence_digest, ceiling_digests, revision, status,
-    invoked_at, indeterminate_evidence_digest, reconciliation_outcome,
+    invoked_at, invocation_permit_digest, indeterminate_evidence_digest, reconciliation_outcome,
     reconciliation_evidence_digest, last_changed_at,
     predecessor_record_digest, record_digest
   ) VALUES (
     p_payload ->> 'tenant_id', p_payload ->> 'exposure_id',
     p_payload ->> 'operation_token_digest', v_reservation_digest,
-    p_payload ->> 'program_id', p_payload ->> 'counterparty_id',
+    p_payload ->> 'program_id', p_payload ->> 'program_version',
+    p_payload ->> 'program_source_digest', p_payload ->> 'program_digest',
+    p_payload ->> 'caid', p_payload ->> 'action_digest',
+    p_payload ->> 'admission_snapshot_digest',
+    p_payload ->> 'authorization_digest',
+    (p_payload ->> 'authorization_expires_at')::TIMESTAMPTZ,
+    p_payload ->> 'counterparty_id',
     p_payload ->> 'action_class', v_amount, p_payload ->> 'currency',
     (p_payload ->> 'window_start')::TIMESTAMPTZ,
     (p_payload ->> 'window_end')::TIMESTAMPTZ,
@@ -928,7 +1066,7 @@ BEGIN
     p_payload ->> 'reservation_evidence_digest',
     (SELECT pg_catalog.array_agg(value ORDER BY value COLLATE "C")
       FROM pg_catalog.unnest(v_ceiling_digests) AS value),
-    0, 'RESERVED', NULL, NULL, NULL, NULL,
+    0, 'RESERVED', NULL, NULL, NULL, NULL, NULL,
     (p_payload ->> 'reserved_at')::TIMESTAMPTZ, NULL,
     'sha256:' || pg_catalog.repeat('0', 64)
   ) RETURNING * INTO v_record;
@@ -956,12 +1094,30 @@ AS $fn$
 DECLARE
   v_record open_exposure_private.exposures%ROWTYPE;
   v_invoked_at TIMESTAMPTZ;
+  v_invocation_permit TEXT;
+  v_invocation_permit_digest TEXT;
 BEGIN
   PERFORM open_exposure_private.assert_principal(
     p_payload ->> 'tenant_id', p_payload ->> 'authority_kind',
     p_payload ->> 'authority_id', 'EXECUTOR'
   );
-  v_invoked_at := (p_payload ->> 'invoked_at')::TIMESTAMPTZ;
+  IF pg_catalog.octet_length(p_payload ->> 'program_version') NOT BETWEEN 1 AND 512
+    OR p_payload ->> 'program_version' !~ '^[A-Za-z0-9][A-Za-z0-9:_.@/-]*$'
+    OR p_payload ->> 'program_source_digest' !~ '^sha256:[0-9a-f]{64}$'
+    OR p_payload ->> 'program_digest' !~ '^sha256:[0-9a-f]{64}$'
+    OR p_payload ->> 'caid'
+      !~ '^caid:1:[a-z][a-z0-9-]*(\.[a-z][a-z0-9-]*)*\.[1-9][0-9]*:jcs-sha256:[A-Za-z0-9_-]{43}$'
+    OR p_payload ->> 'action_digest' !~ '^sha256:[0-9a-f]{64}$'
+    OR p_payload ->> 'admission_snapshot_digest' !~ '^sha256:[0-9a-f]{64}$'
+    OR p_payload ->> 'authorization_digest' !~ '^sha256:[0-9a-f]{64}$'
+    OR open_exposure_private.iso(
+      (p_payload ->> 'authorization_expires_at')::TIMESTAMPTZ
+    ) <> p_payload ->> 'authorization_expires_at'
+  THEN
+    RAISE EXCEPTION 'open exposure invocation binding is invalid'
+      USING ERRCODE = '22023';
+  END IF;
+  v_invoked_at := pg_catalog.transaction_timestamp();
   SELECT exposures.* INTO v_record
   FROM open_exposure_private.exposures AS exposures
   WHERE exposures.tenant_id = p_payload ->> 'tenant_id'
@@ -976,15 +1132,21 @@ BEGIN
   IF v_record.operation_token_digest <> p_payload ->> 'operation_token_digest' THEN
     RETURN pg_catalog.jsonb_build_object('ok', FALSE, 'reason', 'operation_token_conflict');
   END IF;
-  IF v_record.status = 'INVOKING' THEN
-    RETURN CASE WHEN v_record.invoked_at = v_invoked_at
-      THEN pg_catalog.jsonb_build_object(
-        'ok', TRUE, 'replayed', TRUE,
-        'record', open_exposure_private.record_json(v_record)
-      )
-      ELSE pg_catalog.jsonb_build_object('ok', FALSE, 'reason', 'state_conflict') END;
+  IF v_record.program_version <> p_payload ->> 'program_version'
+    OR v_record.program_source_digest <> p_payload ->> 'program_source_digest'
+    OR v_record.program_digest <> p_payload ->> 'program_digest'
+    OR v_record.caid <> p_payload ->> 'caid'
+    OR v_record.action_digest <> p_payload ->> 'action_digest'
+    OR v_record.admission_snapshot_digest <> p_payload ->> 'admission_snapshot_digest'
+    OR v_record.authorization_digest <> p_payload ->> 'authorization_digest'
+    OR v_record.authorization_expires_at
+      <> (p_payload ->> 'authorization_expires_at')::TIMESTAMPTZ
+  THEN
+    RETURN pg_catalog.jsonb_build_object(
+      'ok', FALSE, 'reason', 'immutable_binding_conflict'
+    );
   END IF;
-  IF v_record.status = 'INDETERMINATE' THEN
+  IF v_record.status IN ('INVOKING', 'INDETERMINATE') THEN
     RETURN pg_catalog.jsonb_build_object('ok', FALSE, 'reason', 'reconciliation_required');
   END IF;
   IF v_record.status IN ('CLOSED_COMMITTED', 'CLOSED_PROVEN_NOT_COMMITTED') THEN
@@ -992,14 +1154,42 @@ BEGIN
   END IF;
   IF v_record.status <> 'RESERVED'
     OR v_invoked_at < v_record.reserved_at
-    OR v_invoked_at > v_record.invoke_by
   THEN
     RETURN pg_catalog.jsonb_build_object('ok', FALSE, 'reason', 'state_conflict');
   END IF;
+  IF v_invoked_at > v_record.invoke_by
+    OR v_invoked_at > v_record.authorization_expires_at
+  THEN
+    RETURN pg_catalog.jsonb_build_object('ok', FALSE, 'reason', 'invocation_expired');
+  END IF;
+
+  v_invocation_permit := 'open-exposure-invoke:v1:'
+    || pg_catalog.encode(extensions.gen_random_bytes(32), 'hex');
+  v_invocation_permit_digest := open_exposure_private.sha256(
+    'EP-OPEN-EXPOSURE-INVOCATION-PERMIT-SQL-v1',
+    pg_catalog.jsonb_build_object(
+      'permit', v_invocation_permit,
+      'tenant_id', v_record.tenant_id,
+      'exposure_id', v_record.exposure_id,
+      'operation_token_digest', v_record.operation_token_digest,
+      'reservation_digest', v_record.reservation_digest,
+      'program_version', v_record.program_version,
+      'program_source_digest', v_record.program_source_digest,
+      'program_digest', v_record.program_digest,
+      'caid', v_record.caid,
+      'action_digest', v_record.action_digest,
+      'admission_snapshot_digest', v_record.admission_snapshot_digest,
+      'authorization_digest', v_record.authorization_digest,
+      'authorization_expires_at', open_exposure_private.iso(
+        v_record.authorization_expires_at
+      )
+    )
+  );
 
   UPDATE open_exposure_private.exposures AS exposures
   SET revision = exposures.revision + 1,
     status = 'INVOKING', invoked_at = v_invoked_at,
+    invocation_permit_digest = v_invocation_permit_digest,
     last_changed_at = v_invoked_at,
     predecessor_record_digest = exposures.record_digest,
     record_digest = open_exposure_private.sha256(
@@ -1008,6 +1198,7 @@ BEGIN
         || pg_catalog.jsonb_build_object(
           'next_revision', exposures.revision + 1,
           'next_status', 'INVOKING',
+          'invocation_permit_digest', v_invocation_permit_digest,
           'changed_at', open_exposure_private.iso(v_invoked_at)
         )
     )
@@ -1019,6 +1210,7 @@ BEGIN
   );
   RETURN pg_catalog.jsonb_build_object(
     'ok', TRUE, 'replayed', FALSE,
+    'invocation_permit', v_invocation_permit,
     'record', open_exposure_private.record_json(v_record)
   );
 END
@@ -1245,7 +1437,7 @@ DECLARE
 BEGIN
   PERFORM open_exposure_private.assert_principal(
     p_payload ->> 'tenant_id', p_payload ->> 'authority_kind',
-    p_payload ->> 'authority_id', NULL
+    p_payload ->> 'authority_id', 'READER'
   );
   SELECT exposures.* INTO v_record
   FROM open_exposure_private.exposures AS exposures
@@ -1270,7 +1462,7 @@ DECLARE
 BEGIN
   PERFORM open_exposure_private.assert_principal(
     p_payload ->> 'tenant_id', p_payload ->> 'authority_kind',
-    p_payload ->> 'authority_id', NULL
+    p_payload ->> 'authority_id', 'READER'
   );
   SELECT COALESCE(
     pg_catalog.jsonb_agg(
@@ -1280,6 +1472,17 @@ BEGIN
         'exposure_id', history.exposure_id,
         'sequence', history.sequence,
         'event', history.event,
+        'program_version', history.program_version,
+        'program_source_digest', history.program_source_digest,
+        'program_digest', history.program_digest,
+        'caid', history.caid,
+        'action_digest', history.action_digest,
+        'admission_snapshot_digest', history.admission_snapshot_digest,
+        'authorization_digest', history.authorization_digest,
+        'authorization_expires_at', open_exposure_private.iso(
+          history.authorization_expires_at
+        ),
+        'invocation_permit_digest', history.invocation_permit_digest,
         'record_digest', history.record_digest,
         'evidence_digest', history.evidence_digest,
         'recorded_at', open_exposure_private.iso(history.recorded_at),
@@ -1308,7 +1511,7 @@ DECLARE
 BEGIN
   PERFORM open_exposure_private.assert_principal(
     p_payload ->> 'tenant_id', p_payload ->> 'authority_kind',
-    p_payload ->> 'authority_id', NULL
+    p_payload ->> 'authority_id', 'READER'
   );
   WITH selected AS MATERIALIZED (
     SELECT exposures.*
@@ -1367,7 +1570,7 @@ DECLARE
 BEGIN
   PERFORM open_exposure_private.assert_principal(
     p_payload ->> 'tenant_id', p_payload ->> 'authority_kind',
-    p_payload ->> 'authority_id', NULL
+    p_payload ->> 'authority_id', 'READER'
   );
   v_limit := (p_payload ->> 'limit')::INTEGER;
   v_minimum_age := (p_payload ->> 'minimum_age_ms')::BIGINT;
@@ -1404,7 +1607,7 @@ DECLARE
 BEGIN
   PERFORM open_exposure_private.assert_principal(
     p_payload ->> 'tenant_id', p_payload ->> 'authority_kind',
-    p_payload ->> 'authority_id', NULL
+    p_payload ->> 'authority_id', 'READER'
   );
   v_limit := (p_payload ->> 'limit')::INTEGER;
   IF v_limit NOT BETWEEN 1 AND 10000 THEN
@@ -1464,9 +1667,7 @@ GRANT EXECUTE ON FUNCTION open_exposure_private.read_exposure(JSONB),
   open_exposure_private.sum_open(JSONB),
   open_exposure_private.list_aging(JSONB),
   open_exposure_private.list_deadlines(JSONB)
-  TO ep_open_exposure_origin, ep_open_exposure_executor,
-    ep_open_exposure_reconciler, ep_open_exposure_policy_admin,
-    ep_open_exposure_reader;
+  TO ep_open_exposure_reader;
 
 RESET ROLE;
 REVOKE ep_open_exposure_store_owner FROM CURRENT_USER;

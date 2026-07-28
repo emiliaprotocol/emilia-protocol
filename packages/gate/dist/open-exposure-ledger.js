@@ -10,6 +10,7 @@
  * is not a durability claim.
  */
 import crypto from 'node:crypto';
+import { performance } from 'node:perf_hooks';
 export const OPEN_EXPOSURE_LEDGER_VERSION = 'EP-OPEN-EXPOSURE-LEDGER-v1';
 export const OPEN_EXPOSURE_HISTORY_VERSION = 'EP-OPEN-EXPOSURE-HISTORY-v1';
 export class OpenExposureValidationError extends TypeError {
@@ -25,6 +26,7 @@ const CURRENCY = /^[A-Z]{3}$/;
 const SHA256 = /^sha256:[0-9a-f]{64}$/;
 const OPERATION_TOKEN = /^open-exposure-op:v1:[A-Za-z0-9_-]{32,128}$/;
 const RECONCILIATION_TOKEN = /^open-exposure-reconcile:v1:[A-Za-z0-9_-]{32,128}$/;
+const CAID = /^caid:1:[a-z][a-z0-9-]*(?:\.[a-z][a-z0-9-]*)*\.[1-9][0-9]*:jcs-sha256:[A-Za-z0-9_-]{43}$/;
 const OPEN_STATUSES = new Set([
     'RESERVED', 'INVOKING', 'INDETERMINATE',
 ]);
@@ -139,6 +141,7 @@ function validateReservation(input) {
         tenantId: input.tenantId,
         exposureId: input.exposureId,
         programId: input.programId,
+        programVersion: input.programVersion,
         counterpartyId: input.counterpartyId,
         actionClass: input.actionClass,
         originAuthorityId: input.originAuthorityId,
@@ -146,6 +149,17 @@ function validateReservation(input) {
         reconciliationAuthorityId: input.reconciliationAuthorityId,
     }))
         identifier(value, field);
+    if (typeof input.caid !== 'string' || !CAID.test(input.caid)) {
+        fail('invalid_caid', 'caid is invalid');
+    }
+    for (const [field, value] of Object.entries({
+        programSourceDigest: input.programSourceDigest,
+        programDigest: input.programDigest,
+        actionDigest: input.actionDigest,
+        admissionSnapshotDigest: input.admissionSnapshotDigest,
+        authorizationDigest: input.authorizationDigest,
+    }))
+        sha256(value, field);
     if (!OPERATION_TOKEN.test(input.operationToken))
         fail('invalid_operation_token', 'operationToken is invalid');
     positiveBigInt(input.amountMinor, 'amountMinor');
@@ -155,14 +169,43 @@ function validateReservation(input) {
     const reservedAt = instant(input.reservedAt, 'reservedAt');
     const invokeBy = instant(input.invokeBy, 'invokeBy');
     const reconcileBy = instant(input.reconcileBy, 'reconcileBy');
+    const authorizationExpiresAt = instant(input.authorizationExpiresAt, 'authorizationExpiresAt');
     if (reservedAt < instant(input.windowStart, 'windowStart')
         || reservedAt >= instant(input.windowEnd, 'windowEnd')) {
         fail('invalid_time', 'reservedAt must be inside the ceiling window');
     }
-    if (invokeBy < reservedAt || reconcileBy < invokeBy) {
+    if (invokeBy < reservedAt || reconcileBy < invokeBy
+        || invokeBy > instant(input.windowEnd, 'windowEnd')
+        || invokeBy > authorizationExpiresAt
+        || authorizationExpiresAt < reservedAt) {
         fail('invalid_time', 'deadlines must be monotonic');
     }
     sha256(input.reservationEvidenceDigest, 'reservationEvidenceDigest');
+}
+function validateInvocationBinding(input) {
+    identifier(input.programVersion, 'programVersion');
+    if (typeof input.caid !== 'string' || !CAID.test(input.caid)) {
+        fail('invalid_caid', 'caid is invalid');
+    }
+    for (const [field, value] of Object.entries({
+        programSourceDigest: input.programSourceDigest,
+        programDigest: input.programDigest,
+        actionDigest: input.actionDigest,
+        admissionSnapshotDigest: input.admissionSnapshotDigest,
+        authorizationDigest: input.authorizationDigest,
+    }))
+        sha256(value, field);
+    instant(input.authorizationExpiresAt, 'authorizationExpiresAt');
+}
+function invocationBindingMatches(record, input) {
+    return record.programVersion === input.programVersion
+        && record.programSourceDigest === input.programSourceDigest
+        && record.programDigest === input.programDigest
+        && record.caid === input.caid
+        && record.actionDigest === input.actionDigest
+        && record.admissionSnapshotDigest === input.admissionSnapshotDigest
+        && record.authorizationDigest === input.authorizationDigest
+        && record.authorizationExpiresAt === input.authorizationExpiresAt;
 }
 function validateReference(input) {
     identifier(input.tenantId, 'tenantId');
@@ -170,6 +213,23 @@ function validateReference(input) {
 }
 function tokenDigest(token) {
     return digest('EP-OPEN-EXPOSURE-TOKEN-v1', token);
+}
+function permitDigest(record, permit) {
+    return digest('EP-OPEN-EXPOSURE-INVOCATION-PERMIT-v1', {
+        permit,
+        tenantId: record.tenantId,
+        exposureId: record.exposureId,
+        operationTokenDigest: record.operationTokenDigest,
+        reservationDigest: record.reservationDigest,
+        programVersion: record.programVersion,
+        programSourceDigest: record.programSourceDigest,
+        programDigest: record.programDigest,
+        caid: record.caid,
+        actionDigest: record.actionDigest,
+        admissionSnapshotDigest: record.admissionSnapshotDigest,
+        authorizationDigest: record.authorizationDigest,
+        authorizationExpiresAt: record.authorizationExpiresAt,
+    });
 }
 function key(...parts) {
     return parts.join('\u0000');
@@ -209,6 +269,26 @@ function addBreakdown(source) {
 export function createMemoryOpenExposureLedger(options) {
     if (!options || typeof options.authenticate !== 'function') {
         fail('authenticator_required', 'authenticate is required');
+    }
+    if (options.clock !== undefined && typeof options.clock !== 'function') {
+        fail('clock_invalid', 'clock must be a function');
+    }
+    const readClock = options.clock ?? (() => (new Date(performance.timeOrigin + performance.now()).toISOString()));
+    let lastClockMs = null;
+    function trustedNow() {
+        let value;
+        try {
+            value = readClock();
+        }
+        catch (cause) {
+            throw new OpenExposureValidationError('clock_failed', `trusted clock failed${cause instanceof Error ? `: ${cause.message}` : ''}`);
+        }
+        const parsed = instant(value, 'clock');
+        if (lastClockMs !== null && parsed < lastClockMs) {
+            fail('clock_regressed', 'trusted clock regressed');
+        }
+        lastClockMs = parsed;
+        return value;
     }
     const ceilingsById = new Map();
     const ceilingsByScope = new Map();
@@ -257,6 +337,15 @@ export function createMemoryOpenExposureLedger(options) {
             exposureId: record.exposureId,
             sequence: existing.length,
             event,
+            programVersion: record.programVersion,
+            programSourceDigest: record.programSourceDigest,
+            programDigest: record.programDigest,
+            caid: record.caid,
+            actionDigest: record.actionDigest,
+            admissionSnapshotDigest: record.admissionSnapshotDigest,
+            authorizationDigest: record.authorizationDigest,
+            authorizationExpiresAt: record.authorizationExpiresAt,
+            invocationPermitDigest: record.invocationPermitDigest,
             recordDigest: record.recordDigest,
             evidenceDigest,
             recordedAt,
@@ -386,6 +475,14 @@ export function createMemoryOpenExposureLedger(options) {
                     operationTokenDigest,
                     reservationDigest,
                     programId: input.programId,
+                    programVersion: input.programVersion,
+                    programSourceDigest: input.programSourceDigest,
+                    programDigest: input.programDigest,
+                    caid: input.caid,
+                    actionDigest: input.actionDigest,
+                    admissionSnapshotDigest: input.admissionSnapshotDigest,
+                    authorizationDigest: input.authorizationDigest,
+                    authorizationExpiresAt: input.authorizationExpiresAt,
                     counterpartyId: input.counterpartyId,
                     actionClass: input.actionClass,
                     amountMinor: input.amountMinor,
@@ -403,6 +500,7 @@ export function createMemoryOpenExposureLedger(options) {
                     revision: 0,
                     status: 'RESERVED',
                     invokedAt: null,
+                    invocationPermitDigest: null,
                     indeterminateEvidenceDigest: null,
                     reconciliationOutcome: null,
                     reconciliationEvidenceDigest: null,
@@ -419,7 +517,7 @@ export function createMemoryOpenExposureLedger(options) {
             validateReference(input);
             if (!OPERATION_TOKEN.test(input.operationToken))
                 fail('invalid_operation_token', 'operationToken is invalid');
-            instant(input.invokedAt, 'invokedAt');
+            validateInvocationBinding(input);
             const initial = recordFor(input);
             if (!initial) {
                 const denied = await authenticated(input.tenantId, auth, 'EXECUTOR');
@@ -435,30 +533,39 @@ export function createMemoryOpenExposureLedger(options) {
                 if (!operationMatches(current, input.operationToken)) {
                     return { ok: false, reason: 'operation_token_conflict' };
                 }
-                if (current.status === 'INVOKING') {
-                    return current.invokedAt === input.invokedAt
-                        ? { ok: true, record: current, replayed: true }
-                        : { ok: false, reason: 'state_conflict' };
+                if (!invocationBindingMatches(current, input)) {
+                    return { ok: false, reason: 'immutable_binding_conflict' };
                 }
-                if (current.status === 'INDETERMINATE') {
+                if (current.status === 'INVOKING' || current.status === 'INDETERMINATE') {
                     return { ok: false, reason: 'reconciliation_required' };
                 }
                 if (!isOpen(current))
                     return { ok: false, reason: 'already_closed' };
                 if (current.status !== 'RESERVED')
                     return { ok: false, reason: 'state_conflict' };
-                if (instant(input.invokedAt, 'invokedAt') < instant(current.reservedAt, 'reservedAt')
-                    || instant(input.invokedAt, 'invokedAt') > instant(current.invokeBy, 'invokeBy')) {
+                const invokedAt = trustedNow();
+                if (instant(invokedAt, 'clock') > instant(current.invokeBy, 'invokeBy')
+                    || instant(invokedAt, 'clock') > instant(current.authorizationExpiresAt, 'authorizationExpiresAt')) {
+                    return { ok: false, reason: 'invocation_expired' };
+                }
+                if (instant(invokedAt, 'clock') < instant(current.reservedAt, 'reservedAt')) {
                     return { ok: false, reason: 'state_conflict' };
                 }
+                const invocationPermit = `open-exposure-invoke:v1:${crypto.randomBytes(32).toString('hex')}`;
                 const next = replaceRecord(current, {
                     status: 'INVOKING',
-                    invokedAt: input.invokedAt,
-                    lastChangedAt: input.invokedAt,
+                    invokedAt,
+                    invocationPermitDigest: permitDigest(current, invocationPermit),
+                    lastChangedAt: invokedAt,
                 });
                 records.set(key(input.tenantId, input.exposureId), next);
-                appendHistory(next, 'INVOKING', current.reservationEvidenceDigest, input.invokedAt);
-                return { ok: true, record: next, replayed: false };
+                appendHistory(next, 'INVOKING', current.reservationEvidenceDigest, invokedAt);
+                return {
+                    ok: true,
+                    record: next,
+                    replayed: false,
+                    invocationPermit,
+                };
             });
         },
         async markIndeterminate(input, auth) {
@@ -584,14 +691,14 @@ export function createMemoryOpenExposureLedger(options) {
         },
         async read(input, auth) {
             validateReference(input);
-            const denied = await authenticated(input.tenantId, auth);
+            const denied = await authenticated(input.tenantId, auth, 'READER');
             if (denied)
                 return denied;
             return { ok: true, record: recordFor(input) };
         },
         async history(input, auth) {
             validateReference(input);
-            const denied = await authenticated(input.tenantId, auth);
+            const denied = await authenticated(input.tenantId, auth, 'READER');
             if (denied)
                 return denied;
             return {
@@ -610,7 +717,7 @@ export function createMemoryOpenExposureLedger(options) {
                 identifier(input.counterpartyId, 'counterpartyId');
             if (input.actionClass !== undefined)
                 identifier(input.actionClass, 'actionClass');
-            const denied = await authenticated(input.tenantId, auth);
+            const denied = await authenticated(input.tenantId, auth, 'READER');
             if (denied)
                 return denied;
             const selected = [...records.values()].filter((record) => (record.tenantId === input.tenantId
@@ -651,7 +758,7 @@ export function createMemoryOpenExposureLedger(options) {
             if (!Number.isSafeInteger(input.limit) || input.limit < 1 || input.limit > 10_000) {
                 fail('invalid_limit', 'limit is invalid');
             }
-            const denied = await authenticated(input.tenantId, auth);
+            const denied = await authenticated(input.tenantId, auth, 'READER');
             if (denied)
                 return denied;
             const selected = [...records.values()]
@@ -669,7 +776,7 @@ export function createMemoryOpenExposureLedger(options) {
             if (!Number.isSafeInteger(input.limit) || input.limit < 1 || input.limit > 10_000) {
                 fail('invalid_limit', 'limit is invalid');
             }
-            const denied = await authenticated(input.tenantId, auth);
+            const denied = await authenticated(input.tenantId, auth, 'READER');
             if (denied)
                 return denied;
             const deadline = (record) => (record.status === 'RESERVED' ? record.invokeBy : record.reconcileBy);

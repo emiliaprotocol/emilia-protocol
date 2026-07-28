@@ -1,9 +1,9 @@
 {
   "@version": "EP-SECURITY-CASE-RESOLVED-v2",
   "source": "security/claims.v1.json",
-  "evidence_bundle_sha256": "b48523234753383585e99161b520e99f5c308a7e6937af91b6ad92abe16f7c1a",
-  "claim_count": 33,
-  "evidence_file_count": 235,
+  "evidence_bundle_sha256": "eee83620eb5bc1e2768fa212e4cc31b0f3cd66917f8ef44eb0c8e89afdd3629a",
+  "claim_count": 34,
+  "evidence_file_count": 251,
   "execution": {
     "required": true,
     "status": "passed",
@@ -116,6 +116,24 @@
           "RegistryEpochFloorOrdered",
           "SignedMaterialRequired",
           "UnconsumedStateRequired"
+        ],
+        "result": "passed"
+      },
+      {
+        "runner": "bounded-formal",
+        "file": "formal/check-reliance-risk-plane.mjs",
+        "obligations": [
+          "AuthorizationRequired",
+          "CoverageDoesNotProveCompleteness",
+          "ExposureCapacityRequired",
+          "IndependentReconcilerRequired",
+          "IndeterminateRemainsOpen",
+          "LossScheduleNeverAuthorizes",
+          "NoBlindRetryFromIndeterminate",
+          "ProgramAcceptedBeforeReserve",
+          "RefusalNeverAuthorizes",
+          "ReservationRequiredBeforeInvoke",
+          "TerminalStateNotSuperseded"
         ],
         "result": "passed"
       },
@@ -412,6 +430,14 @@
       },
       {
         "runner": "node-test",
+        "file": "packages/gate/action-refusal-statement.test.js",
+        "titles": [
+          "replay-checked acceptance consumes the relying-party nonce once and expiry fails closed"
+        ],
+        "result": "passed"
+      },
+      {
+        "runner": "node-test",
         "file": "packages/gate/authority-allocation.test.ts",
         "titles": [
           "PostgreSQL boundary is durable, transaction-locked, fenced, and owner-digesting",
@@ -446,6 +472,14 @@
       },
       {
         "runner": "node-test",
+        "file": "packages/gate/coverage-reconciliation-attestation.test.js",
+        "titles": [
+          "signs a bounded reconciliation and conserves both supplied populations"
+        ],
+        "result": "passed"
+      },
+      {
+        "runner": "node-test",
         "file": "packages/gate/evidence-atomic.test.js",
         "titles": [
           "atomic evidence: a backend cannot claim success without persisting the record",
@@ -467,10 +501,43 @@
       },
       {
         "runner": "node-test",
+        "file": "packages/gate/loss-allocation-schedule.test.js",
+        "titles": [
+          "requires a digest-bound current status and refuses not-yet-valid, stale, and revoked schedules"
+        ],
+        "result": "passed"
+      },
+      {
+        "runner": "node-test",
+        "file": "packages/gate/loss-experience-feed.test.js",
+        "titles": [
+          "rejects raw payloads, impossible supersession, future reports, and issuer substitution"
+        ],
+        "result": "passed"
+      },
+      {
+        "runner": "node-test",
         "file": "packages/gate/network-witness.test.js",
         "titles": [
           "accepts a higher witness sequence before any conflict",
           "permanently refuses every later sequence after same-sequence equivocation"
+        ],
+        "result": "passed"
+      },
+      {
+        "runner": "node-test",
+        "file": "packages/gate/open-exposure-ledger-postgres.test.js",
+        "titles": [
+          "migration enforces RPC-only custody, immutable history, open-status sums, and locked ceilings"
+        ],
+        "result": "passed"
+      },
+      {
+        "runner": "node-test",
+        "file": "packages/gate/open-exposure-ledger.test.js",
+        "titles": [
+          "indeterminate custody stays open, blocks blind invocation retry, and closes only on authenticated evidence",
+          "origin, executor, and reconciliation authorities are distinct and role-bound"
         ],
         "result": "passed"
       },
@@ -911,6 +978,14 @@
       },
       {
         "runner": "vitest",
+        "file": "tests/reliance-risk-plane-refinement.test.ts",
+        "titles": [
+          "runtime exposure transitions refine the bounded no-blind-retry composition"
+        ],
+        "result": "passed"
+      },
+      {
+        "runner": "vitest",
         "file": "tests/role-non-substitution.test.ts",
         "titles": [
           "NEGATIVE: a bare operator-signed envelope is not a human ceremony"
@@ -968,10 +1043,10 @@
     "gate-sdk": {
       "kind": "npm-tarball",
       "package": "@emilia-protocol/gate",
-      "version": "0.19.0",
-      "filename": "emilia-protocol-gate-0.19.0.tgz",
-      "sha256": "dbee074d7ca634e25a8fda26f83053b91f798f5e9a63abec8d2c5a2afa055a1e",
-      "file_count": 569
+      "version": "0.20.0",
+      "filename": "emilia-protocol-gate-0.20.0.tgz",
+      "sha256": "27e109a5d5556330ca155be6e201293e7bf9915534d938531a1a234ad50c5fce",
+      "file_count": 616
     },
     "mobile-sdk": {
       "kind": "npm-tarball",
@@ -984,8 +1059,8 @@
     "security-evidence": {
       "kind": "content-addressed-evidence-bundle",
       "filename": "security-case-evidence.v1",
-      "sha256": "b48523234753383585e99161b520e99f5c308a7e6937af91b6ad92abe16f7c1a",
-      "file_count": 235
+      "sha256": "eee83620eb5bc1e2768fa212e4cc31b0f3cd66917f8ef44eb0c8e89afdd3629a",
+      "file_count": 251
     },
     "verify-sdk": {
       "kind": "npm-tarball",
@@ -1148,7 +1223,7 @@
         },
         {
           "artifact_id": "security-evidence",
-          "sha256": "b48523234753383585e99161b520e99f5c308a7e6937af91b6ad92abe16f7c1a"
+          "sha256": "eee83620eb5bc1e2768fa212e4cc31b0f3cd66917f8ef44eb0c8e89afdd3629a"
         }
       ]
     },
@@ -1411,7 +1486,7 @@
         },
         {
           "artifact_id": "security-evidence",
-          "sha256": "b48523234753383585e99161b520e99f5c308a7e6937af91b6ad92abe16f7c1a"
+          "sha256": "eee83620eb5bc1e2768fa212e4cc31b0f3cd66917f8ef44eb0c8e89afdd3629a"
         }
       ]
     },
@@ -1520,7 +1595,7 @@
         },
         {
           "artifact_id": "security-evidence",
-          "sha256": "b48523234753383585e99161b520e99f5c308a7e6937af91b6ad92abe16f7c1a"
+          "sha256": "eee83620eb5bc1e2768fa212e4cc31b0f3cd66917f8ef44eb0c8e89afdd3629a"
         }
       ]
     },
@@ -1686,7 +1761,7 @@
         },
         {
           "artifact_id": "security-evidence",
-          "sha256": "b48523234753383585e99161b520e99f5c308a7e6937af91b6ad92abe16f7c1a"
+          "sha256": "eee83620eb5bc1e2768fa212e4cc31b0f3cd66917f8ef44eb0c8e89afdd3629a"
         }
       ]
     },
@@ -1810,7 +1885,7 @@
         },
         {
           "artifact_id": "security-evidence",
-          "sha256": "b48523234753383585e99161b520e99f5c308a7e6937af91b6ad92abe16f7c1a"
+          "sha256": "eee83620eb5bc1e2768fa212e4cc31b0f3cd66917f8ef44eb0c8e89afdd3629a"
         }
       ]
     },
@@ -2005,7 +2080,7 @@
       "release_artifact_hashes": [
         {
           "artifact_id": "security-evidence",
-          "sha256": "b48523234753383585e99161b520e99f5c308a7e6937af91b6ad92abe16f7c1a"
+          "sha256": "eee83620eb5bc1e2768fa212e4cc31b0f3cd66917f8ef44eb0c8e89afdd3629a"
         }
       ]
     },
@@ -2268,11 +2343,11 @@
       "release_artifact_hashes": [
         {
           "artifact_id": "gate-sdk",
-          "sha256": "dbee074d7ca634e25a8fda26f83053b91f798f5e9a63abec8d2c5a2afa055a1e"
+          "sha256": "27e109a5d5556330ca155be6e201293e7bf9915534d938531a1a234ad50c5fce"
         },
         {
           "artifact_id": "security-evidence",
-          "sha256": "b48523234753383585e99161b520e99f5c308a7e6937af91b6ad92abe16f7c1a"
+          "sha256": "eee83620eb5bc1e2768fa212e4cc31b0f3cd66917f8ef44eb0c8e89afdd3629a"
         }
       ]
     },
@@ -2473,7 +2548,7 @@
         },
         {
           "artifact_id": "security-evidence",
-          "sha256": "b48523234753383585e99161b520e99f5c308a7e6937af91b6ad92abe16f7c1a"
+          "sha256": "eee83620eb5bc1e2768fa212e4cc31b0f3cd66917f8ef44eb0c8e89afdd3629a"
         }
       ]
     },
@@ -2656,7 +2731,7 @@
         },
         {
           "artifact_id": "security-evidence",
-          "sha256": "b48523234753383585e99161b520e99f5c308a7e6937af91b6ad92abe16f7c1a"
+          "sha256": "eee83620eb5bc1e2768fa212e4cc31b0f3cd66917f8ef44eb0c8e89afdd3629a"
         }
       ]
     },
@@ -2876,7 +2951,7 @@
         },
         {
           "artifact_id": "security-evidence",
-          "sha256": "b48523234753383585e99161b520e99f5c308a7e6937af91b6ad92abe16f7c1a"
+          "sha256": "eee83620eb5bc1e2768fa212e4cc31b0f3cd66917f8ef44eb0c8e89afdd3629a"
         }
       ]
     },
@@ -3101,7 +3176,7 @@
       "release_artifact_hashes": [
         {
           "artifact_id": "security-evidence",
-          "sha256": "b48523234753383585e99161b520e99f5c308a7e6937af91b6ad92abe16f7c1a"
+          "sha256": "eee83620eb5bc1e2768fa212e4cc31b0f3cd66917f8ef44eb0c8e89afdd3629a"
         }
       ]
     },
@@ -3210,7 +3285,7 @@
         },
         {
           "artifact_id": "security-evidence",
-          "sha256": "b48523234753383585e99161b520e99f5c308a7e6937af91b6ad92abe16f7c1a"
+          "sha256": "eee83620eb5bc1e2768fa212e4cc31b0f3cd66917f8ef44eb0c8e89afdd3629a"
         }
       ]
     },
@@ -3420,11 +3495,11 @@
       "release_artifact_hashes": [
         {
           "artifact_id": "gate-sdk",
-          "sha256": "dbee074d7ca634e25a8fda26f83053b91f798f5e9a63abec8d2c5a2afa055a1e"
+          "sha256": "27e109a5d5556330ca155be6e201293e7bf9915534d938531a1a234ad50c5fce"
         },
         {
           "artifact_id": "security-evidence",
-          "sha256": "b48523234753383585e99161b520e99f5c308a7e6937af91b6ad92abe16f7c1a"
+          "sha256": "eee83620eb5bc1e2768fa212e4cc31b0f3cd66917f8ef44eb0c8e89afdd3629a"
         }
       ]
     },
@@ -3562,11 +3637,11 @@
       "release_artifact_hashes": [
         {
           "artifact_id": "gate-sdk",
-          "sha256": "dbee074d7ca634e25a8fda26f83053b91f798f5e9a63abec8d2c5a2afa055a1e"
+          "sha256": "27e109a5d5556330ca155be6e201293e7bf9915534d938531a1a234ad50c5fce"
         },
         {
           "artifact_id": "security-evidence",
-          "sha256": "b48523234753383585e99161b520e99f5c308a7e6937af91b6ad92abe16f7c1a"
+          "sha256": "eee83620eb5bc1e2768fa212e4cc31b0f3cd66917f8ef44eb0c8e89afdd3629a"
         }
       ]
     },
@@ -3979,11 +4054,11 @@
       "release_artifact_hashes": [
         {
           "artifact_id": "gate-sdk",
-          "sha256": "dbee074d7ca634e25a8fda26f83053b91f798f5e9a63abec8d2c5a2afa055a1e"
+          "sha256": "27e109a5d5556330ca155be6e201293e7bf9915534d938531a1a234ad50c5fce"
         },
         {
           "artifact_id": "security-evidence",
-          "sha256": "b48523234753383585e99161b520e99f5c308a7e6937af91b6ad92abe16f7c1a"
+          "sha256": "eee83620eb5bc1e2768fa212e4cc31b0f3cd66917f8ef44eb0c8e89afdd3629a"
         }
       ]
     },
@@ -4140,11 +4215,11 @@
       "release_artifact_hashes": [
         {
           "artifact_id": "gate-sdk",
-          "sha256": "dbee074d7ca634e25a8fda26f83053b91f798f5e9a63abec8d2c5a2afa055a1e"
+          "sha256": "27e109a5d5556330ca155be6e201293e7bf9915534d938531a1a234ad50c5fce"
         },
         {
           "artifact_id": "security-evidence",
-          "sha256": "b48523234753383585e99161b520e99f5c308a7e6937af91b6ad92abe16f7c1a"
+          "sha256": "eee83620eb5bc1e2768fa212e4cc31b0f3cd66917f8ef44eb0c8e89afdd3629a"
         }
       ]
     },
@@ -4387,11 +4462,11 @@
       "release_artifact_hashes": [
         {
           "artifact_id": "gate-sdk",
-          "sha256": "dbee074d7ca634e25a8fda26f83053b91f798f5e9a63abec8d2c5a2afa055a1e"
+          "sha256": "27e109a5d5556330ca155be6e201293e7bf9915534d938531a1a234ad50c5fce"
         },
         {
           "artifact_id": "security-evidence",
-          "sha256": "b48523234753383585e99161b520e99f5c308a7e6937af91b6ad92abe16f7c1a"
+          "sha256": "eee83620eb5bc1e2768fa212e4cc31b0f3cd66917f8ef44eb0c8e89afdd3629a"
         }
       ]
     },
@@ -4525,7 +4600,7 @@
       "release_artifact_hashes": [
         {
           "artifact_id": "security-evidence",
-          "sha256": "b48523234753383585e99161b520e99f5c308a7e6937af91b6ad92abe16f7c1a"
+          "sha256": "eee83620eb5bc1e2768fa212e4cc31b0f3cd66917f8ef44eb0c8e89afdd3629a"
         }
       ]
     },
@@ -4648,7 +4723,7 @@
         },
         {
           "artifact_id": "security-evidence",
-          "sha256": "b48523234753383585e99161b520e99f5c308a7e6937af91b6ad92abe16f7c1a"
+          "sha256": "eee83620eb5bc1e2768fa212e4cc31b0f3cd66917f8ef44eb0c8e89afdd3629a"
         }
       ]
     },
@@ -4782,7 +4857,7 @@
       "release_artifact_hashes": [
         {
           "artifact_id": "security-evidence",
-          "sha256": "b48523234753383585e99161b520e99f5c308a7e6937af91b6ad92abe16f7c1a"
+          "sha256": "eee83620eb5bc1e2768fa212e4cc31b0f3cd66917f8ef44eb0c8e89afdd3629a"
         }
       ]
     },
@@ -4999,7 +5074,7 @@
       "release_artifact_hashes": [
         {
           "artifact_id": "security-evidence",
-          "sha256": "b48523234753383585e99161b520e99f5c308a7e6937af91b6ad92abe16f7c1a"
+          "sha256": "eee83620eb5bc1e2768fa212e4cc31b0f3cd66917f8ef44eb0c8e89afdd3629a"
         }
       ]
     },
@@ -5209,7 +5284,7 @@
       "release_artifact_hashes": [
         {
           "artifact_id": "security-evidence",
-          "sha256": "b48523234753383585e99161b520e99f5c308a7e6937af91b6ad92abe16f7c1a"
+          "sha256": "eee83620eb5bc1e2768fa212e4cc31b0f3cd66917f8ef44eb0c8e89afdd3629a"
         }
       ]
     },
@@ -5425,7 +5500,7 @@
       "release_artifact_hashes": [
         {
           "artifact_id": "security-evidence",
-          "sha256": "b48523234753383585e99161b520e99f5c308a7e6937af91b6ad92abe16f7c1a"
+          "sha256": "eee83620eb5bc1e2768fa212e4cc31b0f3cd66917f8ef44eb0c8e89afdd3629a"
         }
       ]
     },
@@ -5729,7 +5804,7 @@
       "release_artifact_hashes": [
         {
           "artifact_id": "security-evidence",
-          "sha256": "b48523234753383585e99161b520e99f5c308a7e6937af91b6ad92abe16f7c1a"
+          "sha256": "eee83620eb5bc1e2768fa212e4cc31b0f3cd66917f8ef44eb0c8e89afdd3629a"
         }
       ]
     },
@@ -5941,7 +6016,7 @@
         },
         {
           "artifact_id": "security-evidence",
-          "sha256": "b48523234753383585e99161b520e99f5c308a7e6937af91b6ad92abe16f7c1a"
+          "sha256": "eee83620eb5bc1e2768fa212e4cc31b0f3cd66917f8ef44eb0c8e89afdd3629a"
         }
       ]
     },
@@ -6107,7 +6182,7 @@
         },
         {
           "artifact_id": "security-evidence",
-          "sha256": "b48523234753383585e99161b520e99f5c308a7e6937af91b6ad92abe16f7c1a"
+          "sha256": "eee83620eb5bc1e2768fa212e4cc31b0f3cd66917f8ef44eb0c8e89afdd3629a"
         }
       ]
     },
@@ -6286,7 +6361,7 @@
         },
         {
           "artifact_id": "security-evidence",
-          "sha256": "b48523234753383585e99161b520e99f5c308a7e6937af91b6ad92abe16f7c1a"
+          "sha256": "eee83620eb5bc1e2768fa212e4cc31b0f3cd66917f8ef44eb0c8e89afdd3629a"
         }
       ]
     },
@@ -6461,7 +6536,7 @@
         },
         {
           "artifact_id": "security-evidence",
-          "sha256": "b48523234753383585e99161b520e99f5c308a7e6937af91b6ad92abe16f7c1a"
+          "sha256": "eee83620eb5bc1e2768fa212e4cc31b0f3cd66917f8ef44eb0c8e89afdd3629a"
         }
       ]
     },
@@ -6611,7 +6686,7 @@
         },
         {
           "artifact_id": "security-evidence",
-          "sha256": "b48523234753383585e99161b520e99f5c308a7e6937af91b6ad92abe16f7c1a"
+          "sha256": "eee83620eb5bc1e2768fa212e4cc31b0f3cd66917f8ef44eb0c8e89afdd3629a"
         }
       ]
     },
@@ -6752,7 +6827,7 @@
         },
         {
           "artifact_id": "security-evidence",
-          "sha256": "b48523234753383585e99161b520e99f5c308a7e6937af91b6ad92abe16f7c1a"
+          "sha256": "eee83620eb5bc1e2768fa212e4cc31b0f3cd66917f8ef44eb0c8e89afdd3629a"
         }
       ]
     },
@@ -6951,7 +7026,7 @@
       "release_artifact_hashes": [
         {
           "artifact_id": "security-evidence",
-          "sha256": "b48523234753383585e99161b520e99f5c308a7e6937af91b6ad92abe16f7c1a"
+          "sha256": "eee83620eb5bc1e2768fa212e4cc31b0f3cd66917f8ef44eb0c8e89afdd3629a"
         }
       ]
     },
@@ -7361,11 +7436,11 @@
       "release_artifact_hashes": [
         {
           "artifact_id": "gate-sdk",
-          "sha256": "dbee074d7ca634e25a8fda26f83053b91f798f5e9a63abec8d2c5a2afa055a1e"
+          "sha256": "27e109a5d5556330ca155be6e201293e7bf9915534d938531a1a234ad50c5fce"
         },
         {
           "artifact_id": "security-evidence",
-          "sha256": "b48523234753383585e99161b520e99f5c308a7e6937af91b6ad92abe16f7c1a"
+          "sha256": "eee83620eb5bc1e2768fa212e4cc31b0f3cd66917f8ef44eb0c8e89afdd3629a"
         }
       ]
     },
@@ -7742,11 +7817,213 @@
       "release_artifact_hashes": [
         {
           "artifact_id": "gate-sdk",
-          "sha256": "dbee074d7ca634e25a8fda26f83053b91f798f5e9a63abec8d2c5a2afa055a1e"
+          "sha256": "27e109a5d5556330ca155be6e201293e7bf9915534d938531a1a234ad50c5fce"
         },
         {
           "artifact_id": "security-evidence",
-          "sha256": "b48523234753383585e99161b520e99f5c308a7e6937af91b6ad92abe16f7c1a"
+          "sha256": "eee83620eb5bc1e2768fa212e4cc31b0f3cd66917f8ef44eb0c8e89afdd3629a"
+        }
+      ]
+    },
+    {
+      "claim_id": "reliance-risk-plane-bounds-open-exposure-and-preserves-uncertainty",
+      "statement": "For an exact Reliance Program and separately admitted action, the reference reliance risk plane verifies a separately signed loss-allocation schedule without treating it as authorization, reserves aggregate open exposure before provider invocation, preserves that exposure through invoking and indeterminate outcomes, refuses blind retry, and permits terminal closeout only through the configured independent reconciliation authority. Exact-action refusal statements, period coverage reconciliations, privacy-bounded receipt censuses, and signed loss-experience feeds remain non-authorizing evidence artifacts with explicit claim boundaries.",
+      "acceptance_roots": [
+        "the relying party provisions the exact Reliance Program, loss-schedule issuer roots and current status, exposure ceilings, tenant principal mapping, and distinct origin, executor, and reconciliation authorities",
+        "every protected provider path reserves through the durable Open Exposure Ledger before provider invocation",
+        "the supplied system-of-record, receipt, census, and loss inventories are authentic and complete enough for the relying party's stated use"
+      ],
+      "enforcement_path": [
+        {
+          "language": "javascript",
+          "file": "packages/gate/src/loss-allocation-schedule.ts",
+          "symbol": "verifyLossAllocationSchedule",
+          "exported": true
+        },
+        {
+          "language": "javascript",
+          "file": "packages/gate/src/open-exposure-ledger.ts",
+          "symbol": "createMemoryOpenExposureLedger",
+          "exported": true
+        },
+        {
+          "language": "javascript",
+          "file": "packages/gate/src/open-exposure-ledger-postgres.ts",
+          "symbol": "createOpenExposurePostgresLedger",
+          "exported": true
+        },
+        {
+          "language": "javascript",
+          "file": "packages/gate/src/action-refusal-statement.ts",
+          "symbol": "verifyActionRefusalStatement",
+          "exported": true
+        },
+        {
+          "language": "javascript",
+          "file": "packages/gate/src/coverage-reconciliation-attestation.ts",
+          "symbol": "verifyCoverageReconciliationAttestation",
+          "exported": true
+        },
+        {
+          "language": "javascript",
+          "file": "packages/gate/src/loss-experience-feed.ts",
+          "symbol": "verifyLossExperienceFeed",
+          "exported": true
+        }
+      ],
+      "implementations": [
+        {
+          "language": "javascript",
+          "file": "packages/gate/src/loss-allocation-schedule.ts",
+          "export": "verifyLossAllocationSchedule"
+        },
+        {
+          "language": "javascript",
+          "file": "packages/gate/src/open-exposure-ledger.ts",
+          "export": "createMemoryOpenExposureLedger"
+        },
+        {
+          "language": "javascript",
+          "file": "packages/gate/src/open-exposure-ledger-postgres.ts",
+          "export": "createOpenExposurePostgresLedger"
+        },
+        {
+          "language": "javascript",
+          "file": "packages/gate/src/action-refusal-statement.ts",
+          "export": "verifyActionRefusalStatement"
+        },
+        {
+          "language": "javascript",
+          "file": "packages/gate/src/coverage-reconciliation-attestation.ts",
+          "export": "verifyCoverageReconciliationAttestation"
+        },
+        {
+          "language": "javascript",
+          "file": "packages/gate/src/loss-experience-feed.ts",
+          "export": "verifyLossExperienceFeed"
+        }
+      ],
+      "language_coverage": {
+        "javascript": {
+          "status": "covered",
+          "evidence": "security/vectors.v1.json"
+        },
+        "python": {
+          "status": "gap",
+          "reason": "No Python implementation of the stateful Open Exposure Ledger or signed reliance-risk artifacts is claimed."
+        },
+        "go": {
+          "status": "gap",
+          "reason": "No Go implementation of the stateful Open Exposure Ledger or signed reliance-risk artifacts is claimed."
+        }
+      },
+      "vectors": [
+        {
+          "suite": "security/vectors.v1.json",
+          "case_id": "accept_reliance_risk_plane_indeterminate_closeout",
+          "polarity": "positive",
+          "expect": {
+            "valid": true
+          }
+        },
+        {
+          "suite": "security/vectors.v1.json",
+          "case_id": "reject_reliance_risk_plane_role_collapse",
+          "polarity": "negative",
+          "expect": {
+            "valid": false
+          }
+        }
+      ],
+      "tests": [
+        {
+          "file": "packages/gate/open-exposure-ledger.test.js",
+          "title": "indeterminate custody stays open, blocks blind invocation retry, and closes only on authenticated evidence",
+          "runner": "node-test"
+        },
+        {
+          "file": "packages/gate/open-exposure-ledger.test.js",
+          "title": "origin, executor, and reconciliation authorities are distinct and role-bound",
+          "runner": "node-test"
+        },
+        {
+          "file": "packages/gate/open-exposure-ledger-postgres.test.js",
+          "title": "migration enforces RPC-only custody, immutable history, open-status sums, and locked ceilings",
+          "runner": "node-test"
+        },
+        {
+          "file": "packages/gate/loss-allocation-schedule.test.js",
+          "title": "requires a digest-bound current status and refuses not-yet-valid, stale, and revoked schedules",
+          "runner": "node-test"
+        },
+        {
+          "file": "packages/gate/action-refusal-statement.test.js",
+          "title": "replay-checked acceptance consumes the relying-party nonce once and expiry fails closed",
+          "runner": "node-test"
+        },
+        {
+          "file": "packages/gate/coverage-reconciliation-attestation.test.js",
+          "title": "signs a bounded reconciliation and conserves both supplied populations",
+          "runner": "node-test"
+        },
+        {
+          "file": "packages/gate/loss-experience-feed.test.js",
+          "title": "rejects raw payloads, impossible supersession, future reports, and issuer substitution",
+          "runner": "node-test"
+        },
+        {
+          "file": "tests/reliance-risk-plane-refinement.test.ts",
+          "title": "runtime exposure transitions refine the bounded no-blind-retry composition",
+          "runner": "vitest"
+        }
+      ],
+      "formal": [
+        {
+          "status": "partial",
+          "method": "bounded_exhaustive_state_exploration",
+          "model": "formal/reliance-risk-plane.model.mjs",
+          "runner": "formal/check-reliance-risk-plane.mjs",
+          "result_evidence": "formal/results/reliance-risk-plane.summary.txt",
+          "obligations": [
+            "ProgramAcceptedBeforeReserve",
+            "AuthorizationRequired",
+            "ExposureCapacityRequired",
+            "ReservationRequiredBeforeInvoke",
+            "IndeterminateRemainsOpen",
+            "NoBlindRetryFromIndeterminate",
+            "IndependentReconcilerRequired",
+            "RefusalNeverAuthorizes",
+            "LossScheduleNeverAuthorizes",
+            "CoverageDoesNotProveCompleteness",
+            "TerminalStateNotSuperseded"
+          ],
+          "scope": "Same-team bounded exhaustive exploration of 16,384 abstract states plus one runtime-refinement trace. Each removed guard produces a counterexample. This is not a mechanized implementation refinement proof and does not model cryptography, database linearizability, legal enforceability, insurer behavior, source-population completeness, causation, solvency, or payment."
+        }
+      ],
+      "assumptions": [
+        "the deployment completely mediates protected provider paths through one authoritative exposure reservation before invocation",
+        "the PostgreSQL deployment applies the checked migration under a non-owner runtime role and preserves transaction isolation, clocks, and durable history",
+        "trusted issuers, relying-party keys, current-status sources, timestamp evidence, inventories, and reconciliation evidence remain correctly provisioned and truthful"
+      ],
+      "exclusions": [
+        "EMILIA does not bear or allocate loss, adjudicate disputes, establish legal enforceability, verify insurance coverage, causation or solvency, or move money",
+        "coverage reconciliation signs only supplied population roots and conserving counts and does not prove population completeness",
+        "loss-experience records are externally reported observations, not verified or adjudicated losses",
+        "the in-memory exposure ledger is test-only and non-durable; production custody requires the PostgreSQL contract or an equivalent independently assessed implementation",
+        "no independent implementation, external deployment, insurer adoption, premium credit, or loss-data network is claimed"
+      ],
+      "release_artifacts": [
+        "gate-sdk",
+        "security-evidence"
+      ],
+      "release_artifact_hashes": [
+        {
+          "artifact_id": "gate-sdk",
+          "sha256": "27e109a5d5556330ca155be6e201293e7bf9915534d938531a1a234ad50c5fce"
+        },
+        {
+          "artifact_id": "security-evidence",
+          "sha256": "eee83620eb5bc1e2768fa212e4cc31b0f3cd66917f8ef44eb0c8e89afdd3629a"
         }
       ]
     }
@@ -7941,6 +8218,10 @@
       "sha256": "0f44a3b5a63035841dbfc51b49a976e384fb5b6e780e0a849c85edec5bdf39b0"
     },
     {
+      "path": "formal/check-reliance-risk-plane.mjs",
+      "sha256": "64bc1596f90db449cc21de325e64fd8ee078f9e4b24251e7f771cd6839d4cc42"
+    },
+    {
       "path": "formal/check-two-claim-assurance.mjs",
       "sha256": "cb02574ae35fd905a767ba256c468e602c7f5df0cf437dfa2fd7276641827506"
     },
@@ -8029,6 +8310,10 @@
       "sha256": "9fd577b8e8c9cefa76c26936bd600fb26d6076ef4479e1217efc56e4e7edb26e"
     },
     {
+      "path": "formal/reliance-risk-plane.model.mjs",
+      "sha256": "30c56763ce70ec6776ecb4571a2175e87ccd9957008c8d3985d90ecea8c06c74"
+    },
+    {
       "path": "formal/results/aec-execution-fleet-assurance.summary.txt",
       "sha256": "dc7a9df9a06b31ad5b465af827e04670a9f1c2426448800a1a5874aeaa8ea06b"
     },
@@ -8074,7 +8359,7 @@
     },
     {
       "path": "formal/results/formal-runtime-scenario-conformance.v2.json",
-      "sha256": "13b48cb9c5f53429d94224bbdbeda747b749bba48a91df2071eaaeee6f50eae3"
+      "sha256": "10dbe5cfac359b87285b255faebe08b888b2f361583243ea97ba76487f645ea7"
     },
     {
       "path": "formal/results/outcome-authority-join.summary.txt",
@@ -8087,6 +8372,10 @@
     {
       "path": "formal/results/reliance-pinned-profile.summary.txt",
       "sha256": "7a3c161dc0dccd9b4aac2d728563e43d567b4fd68bb64e288b1641251f3539e4"
+    },
+    {
+      "path": "formal/results/reliance-risk-plane.summary.txt",
+      "sha256": "44698684718516fcbacb34c84440eaa38aeb4d8f07b53fe92f11eb37bde082b5"
     },
     {
       "path": "formal/results/two-claim-assurance.summary.txt",
@@ -8205,6 +8494,10 @@
       "sha256": "d875da0bceb720157fe5a41d05f098326aabb813c61836bd1338b54cf3f98fbd"
     },
     {
+      "path": "packages/gate/action-refusal-statement.test.js",
+      "sha256": "de108d2d62cda2993a43596a56d2dc2594fc14490229b1c00d9b1282324f4f2d"
+    },
+    {
       "path": "packages/gate/authority-allocation.test.ts",
       "sha256": "412acd51b63be2a20f665f60a52f8eac2a1c41762ade8024f958bfe25035baf4"
     },
@@ -8215,6 +8508,10 @@
     {
       "path": "packages/gate/consequence-actuator.test.js",
       "sha256": "cbb2644e7ba32261a528dc1b577b5ed98d76da3781675d6bf53afcfee77bedc6"
+    },
+    {
+      "path": "packages/gate/coverage-reconciliation-attestation.test.js",
+      "sha256": "ccb602c69fed2f8f10d412c71a4efff983f517f11536fcc299817f9fbdbd5c6e"
     },
     {
       "path": "packages/gate/deploy/sql/001-runtime.sql",
@@ -8229,8 +8526,24 @@
       "sha256": "b7a299b7d7d8a6ae2f80c7585cc697b3e13d5af6f004ed7fd03ba785f59fe46f"
     },
     {
+      "path": "packages/gate/loss-allocation-schedule.test.js",
+      "sha256": "249934dd29bd8aae924da7a546f66fbab5243b6813b7de8feebcab76cf1d4ff0"
+    },
+    {
+      "path": "packages/gate/loss-experience-feed.test.js",
+      "sha256": "21a4a8ebab430792de0febdd39c2818bb6dbdb34c62e5a4aab82ead7d84c5745"
+    },
+    {
       "path": "packages/gate/network-witness.test.js",
       "sha256": "5ee6fb278095fd969f31efa3ca79208df75051a0459219b4a8fb6f0626c7381d"
+    },
+    {
+      "path": "packages/gate/open-exposure-ledger-postgres.test.js",
+      "sha256": "5b41e3344379f0c2dc72b8a28fd7c61d585dc8323cd0b16a87b08f777d06a47f"
+    },
+    {
+      "path": "packages/gate/open-exposure-ledger.test.js",
+      "sha256": "11517dcbac0b250f6922f8b9288a6bf2f62813d7b6dcb4ad9c680af33a4f494a"
     },
     {
       "path": "packages/gate/proposal-to-effect.test.js",
@@ -8265,6 +8578,10 @@
       "sha256": "acee368af3db92c8acaa72a21b67795c04df3913e17f79be859af7b2423014df"
     },
     {
+      "path": "packages/gate/src/action-refusal-statement.ts",
+      "sha256": "db9b19f7cb49c41d91266b241252ba14141527afebc6fa49b5ce41f41503f9df"
+    },
+    {
       "path": "packages/gate/src/aec-execution.ts",
       "sha256": "da799e756355bb76c5b03a0c302d7fd00b07dc78b7e31f6b1ad9047c06c9bbbc"
     },
@@ -8285,16 +8602,36 @@
       "sha256": "413d6a0b3f0a2fb5b516dcff34dc17d6f12f8df198b09d59ae862d824453590e"
     },
     {
+      "path": "packages/gate/src/coverage-reconciliation-attestation.ts",
+      "sha256": "3ef7640e10d9abe1a65f720a12ad4366a5243a6e74a9e68a3d8140340734be67"
+    },
+    {
       "path": "packages/gate/src/evidence.ts",
       "sha256": "7828614dcaddbe939ef31786d8e3aab0a68b21cab53e737cceecf1bb6387195b"
     },
     {
       "path": "packages/gate/src/index.ts",
-      "sha256": "fe08718a642e2403a5001b0abf07079745e2903b6adc8bbf74265af4c8df4259"
+      "sha256": "50836384f248b4c90cb3609ea76fb2651a0541d6cbb5f8c242daabcd894b960c"
+    },
+    {
+      "path": "packages/gate/src/loss-allocation-schedule.ts",
+      "sha256": "230cbfb25514ad90def8bc8c7dfb6e5abdaadbcfe98422b9b58a00fdebab61c2"
+    },
+    {
+      "path": "packages/gate/src/loss-experience-feed.ts",
+      "sha256": "5f72ec8b0ecc49a420a58e1a32f08f13b76635e9ffd6acab35343074f479f710"
     },
     {
       "path": "packages/gate/src/network-witness.ts",
       "sha256": "2c92412c9bbb26fafb8e246fb4965c7590135e5b25dfe5a037b4526baf9360bf"
+    },
+    {
+      "path": "packages/gate/src/open-exposure-ledger-postgres.ts",
+      "sha256": "720cf306c0d309ab64017712d7f02565f94f0165e1ddd35eef25c069fd33539e"
+    },
+    {
+      "path": "packages/gate/src/open-exposure-ledger.ts",
+      "sha256": "67f27016d6f7473b0f9c53e0c909fe30a3c03c0a158816262fe8b0d12b67257d"
     },
     {
       "path": "packages/gate/src/proposal-to-effect.ts",
@@ -8566,11 +8903,11 @@
     },
     {
       "path": "security/claims.v1.json",
-      "sha256": "e972b8f624ee3edb7dd3248d7b302e110cb82518e60f43c2e35850e34e2cbb80"
+      "sha256": "f55ec3a4fdf12e800849d8e0276b1a26fa3dfb5774fbbd75111fd2c93b33c4fe"
     },
     {
       "path": "security/vectors.v1.json",
-      "sha256": "f5ffbc1b68e1d1ac89d8b702a56bd9c513a90ae004ba359b9cc440cb39826111"
+      "sha256": "c961e07001aad0e6f8e514f1f5e4a9f0f93a5097aaae1ff57aae2fc5f7d2790f"
     },
     {
       "path": "supabase/migrations/20260720193917_mobile_action_continuity_hardening.sql",
@@ -8667,6 +9004,10 @@
     {
       "path": "tests/reliance-kernel.test.ts",
       "sha256": "934339ddab135eff04a778baef61db7f3b9fe89ef6ffa5a2cd717c5c73fcea63"
+    },
+    {
+      "path": "tests/reliance-risk-plane-refinement.test.ts",
+      "sha256": "1ea16e33016f2580a8a3eb282632a40d078495230ad4e9e492c6f8b88186984f"
     },
     {
       "path": "tests/role-non-substitution.test.ts",

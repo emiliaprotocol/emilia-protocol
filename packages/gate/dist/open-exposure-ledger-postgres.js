@@ -32,6 +32,8 @@ const IDENTIFIER = /^[A-Za-z0-9][A-Za-z0-9:_.@/-]{0,511}$/;
 const CURRENCY = /^[A-Z]{3}$/;
 const OPERATION_TOKEN = /^open-exposure-op:v1:[A-Za-z0-9_-]{32,128}$/;
 const RECONCILIATION_TOKEN = /^open-exposure-reconcile:v1:[A-Za-z0-9_-]{32,128}$/;
+const INVOCATION_PERMIT = /^open-exposure-invoke:v1:[0-9a-f]{64}$/;
+const CAID = /^caid:1:[a-z][a-z0-9-]*(?:\.[a-z][a-z0-9-]*)*\.[1-9][0-9]*:jcs-sha256:[A-Za-z0-9_-]{43}$/;
 const STATUSES = new Set([
     'RESERVED', 'INVOKING', 'INDETERMINATE',
     'CLOSED_COMMITTED', 'CLOSED_PROVEN_NOT_COMMITTED',
@@ -40,7 +42,8 @@ const REASONS = new Set([
     'unauthenticated', 'wrong_authority', 'authority_separation_required',
     'ceiling_not_configured', 'ceiling_exceeded', 'ceiling_id_conflict',
     'ceiling_scope_conflict', 'exposure_exists', 'exposure_not_found',
-    'operation_token_conflict', 'reconciliation_token_conflict',
+    'operation_token_conflict', 'immutable_binding_conflict', 'invocation_expired',
+    'reconciliation_token_conflict',
     'state_conflict', 'reconciliation_required', 'already_closed',
 ]);
 function plain(value) {
@@ -153,6 +156,14 @@ function parseRecord(value) {
         operationTokenDigest: text(value.operation_token_digest, 'operation_token_digest', SHA256),
         reservationDigest: text(value.reservation_digest, 'reservation_digest', SHA256),
         programId: text(value.program_id, 'program_id'),
+        programVersion: text(value.program_version, 'program_version'),
+        programSourceDigest: text(value.program_source_digest, 'program_source_digest', SHA256),
+        programDigest: text(value.program_digest, 'program_digest', SHA256),
+        caid: text(value.caid, 'caid', CAID),
+        actionDigest: text(value.action_digest, 'action_digest', SHA256),
+        admissionSnapshotDigest: text(value.admission_snapshot_digest, 'admission_snapshot_digest', SHA256),
+        authorizationDigest: text(value.authorization_digest, 'authorization_digest', SHA256),
+        authorizationExpiresAt: iso(value.authorization_expires_at, 'authorization_expires_at'),
         counterpartyId: text(value.counterparty_id, 'counterparty_id'),
         actionClass: text(value.action_class, 'action_class'),
         amountMinor: minor(value.amount_minor, 'amount_minor'),
@@ -170,6 +181,7 @@ function parseRecord(value) {
         revision: integer(value.revision, 'revision'),
         status: value.status,
         invokedAt: value.invoked_at === null ? null : iso(value.invoked_at, 'invoked_at'),
+        invocationPermitDigest: nullableText(value.invocation_permit_digest, 'invocation_permit_digest', SHA256),
         indeterminateEvidenceDigest: nullableText(value.indeterminate_evidence_digest, 'indeterminate_evidence_digest', SHA256),
         reconciliationOutcome: value.reconciliation_outcome,
         reconciliationEvidenceDigest: nullableText(value.reconciliation_evidence_digest, 'reconciliation_evidence_digest', SHA256),
@@ -191,6 +203,15 @@ function parseHistoryEntry(value) {
         exposureId: text(value.exposure_id, 'history exposure_id'),
         sequence: integer(value.sequence, 'history sequence'),
         event: value.event,
+        programVersion: text(value.program_version, 'history program_version'),
+        programSourceDigest: text(value.program_source_digest, 'history program_source_digest', SHA256),
+        programDigest: text(value.program_digest, 'history program_digest', SHA256),
+        caid: text(value.caid, 'history caid', CAID),
+        actionDigest: text(value.action_digest, 'history action_digest', SHA256),
+        admissionSnapshotDigest: text(value.admission_snapshot_digest, 'history admission_snapshot_digest', SHA256),
+        authorizationDigest: text(value.authorization_digest, 'history authorization_digest', SHA256),
+        authorizationExpiresAt: iso(value.authorization_expires_at, 'history authorization_expires_at'),
+        invocationPermitDigest: nullableText(value.invocation_permit_digest, 'history invocation_permit_digest', SHA256),
         recordDigest: text(value.record_digest, 'history record_digest', SHA256),
         evidenceDigest: text(value.evidence_digest, 'history evidence_digest', SHA256),
         recordedAt: iso(value.recorded_at, 'history recorded_at'),
@@ -220,9 +241,43 @@ function wireAuth(auth) {
     protocol(IDENTIFIER.test(auth.authorityId), 'auth authorityId is invalid');
     return { authority_kind: auth.role, authority_id: auth.authorityId };
 }
+function validateBindingInput(input) {
+    protocol(IDENTIFIER.test(input.programVersion), 'programVersion is invalid');
+    protocol(CAID.test(input.caid), 'caid is invalid');
+    for (const [field, value] of Object.entries({
+        programSourceDigest: input.programSourceDigest,
+        programDigest: input.programDigest,
+        actionDigest: input.actionDigest,
+        admissionSnapshotDigest: input.admissionSnapshotDigest,
+        authorizationDigest: input.authorizationDigest,
+    }))
+        protocol(SHA256.test(value), `${field} is invalid`);
+    const authorizationExpiresAt = Date.parse(input.authorizationExpiresAt);
+    protocol(Number.isFinite(authorizationExpiresAt)
+        && new Date(authorizationExpiresAt).toISOString() === input.authorizationExpiresAt, 'authorizationExpiresAt is invalid');
+}
+function wireBinding(input) {
+    validateBindingInput(input);
+    return {
+        program_version: input.programVersion,
+        program_source_digest: input.programSourceDigest,
+        program_digest: input.programDigest,
+        caid: input.caid,
+        action_digest: input.actionDigest,
+        admission_snapshot_digest: input.admissionSnapshotDigest,
+        authorization_digest: input.authorizationDigest,
+        authorization_expires_at: input.authorizationExpiresAt,
+    };
+}
 function wireReservation(input, auth) {
     protocol(OPERATION_TOKEN.test(input.operationToken), 'operationToken is invalid');
     protocol(typeof input.amountMinor === 'bigint' && input.amountMinor > 0n, 'amountMinor is invalid');
+    const invokeBy = Date.parse(input.invokeBy);
+    const windowEnd = Date.parse(input.windowEnd);
+    const authorizationExpiresAt = Date.parse(input.authorizationExpiresAt);
+    protocol(Number.isFinite(invokeBy) && new Date(invokeBy).toISOString() === input.invokeBy, 'invokeBy is invalid');
+    protocol(Number.isFinite(windowEnd) && new Date(windowEnd).toISOString() === input.windowEnd, 'windowEnd is invalid');
+    protocol(invokeBy <= windowEnd && invokeBy <= authorizationExpiresAt, 'invokeBy exceeds its immutable bound');
     const operationTokenDigest = tokenDigest(input.operationToken);
     const body = {
         version: OPEN_EXPOSURE_LEDGER_VERSION,
@@ -230,6 +285,7 @@ function wireReservation(input, auth) {
         exposure_id: input.exposureId,
         operation_token_digest: operationTokenDigest,
         program_id: input.programId,
+        ...wireBinding(input),
         counterparty_id: input.counterpartyId,
         action_class: input.actionClass,
         amount_minor: input.amountMinor.toString(10),
@@ -303,6 +359,19 @@ export function createOpenExposurePostgresLedger(options) {
             record: parseRecord(envelope.record),
         };
     }
+    async function beginMutation(payload) {
+        const envelope = await rpc(OPEN_EXPOSURE_POSTGRES_SQL.beginInvocation, payload);
+        if (envelope.ok === false)
+            return parseRefusal(envelope);
+        protocol(envelope.ok === true && envelope.replayed === false, 'ledger RPC returned an authorizing invocation replay');
+        const invocationPermit = text(envelope.invocation_permit, 'invocation_permit', INVOCATION_PERMIT);
+        return {
+            ok: true,
+            replayed: false,
+            invocationPermit,
+            record: parseRecord(envelope.record),
+        };
+    }
     function referencePayload(input, auth) {
         return {
             version: OPEN_EXPOSURE_LEDGER_VERSION,
@@ -364,10 +433,10 @@ export function createOpenExposurePostgresLedger(options) {
             if (roleDenied)
                 return roleDenied;
             protocol(OPERATION_TOKEN.test(input.operationToken), 'operationToken is invalid');
-            return recordMutation(OPEN_EXPOSURE_POSTGRES_SQL.beginInvocation, {
+            return beginMutation({
                 ...referencePayload(input, auth),
                 operation_token_digest: tokenDigest(input.operationToken),
-                invoked_at: input.invokedAt,
+                ...wireBinding(input),
             });
         },
         async markIndeterminate(input, auth) {
@@ -412,6 +481,9 @@ export function createOpenExposurePostgresLedger(options) {
             const tenantDenied = tenantRefusal(input.tenantId);
             if (tenantDenied)
                 return tenantDenied;
+            const roleDenied = roleRefusal(auth, 'READER');
+            if (roleDenied)
+                return roleDenied;
             const envelope = await rpc(OPEN_EXPOSURE_POSTGRES_SQL.read, referencePayload(input, auth));
             if (envelope.ok === false)
                 return parseRefusal(envelope);
@@ -422,6 +494,9 @@ export function createOpenExposurePostgresLedger(options) {
             const tenantDenied = tenantRefusal(input.tenantId);
             if (tenantDenied)
                 return tenantDenied;
+            const roleDenied = roleRefusal(auth, 'READER');
+            if (roleDenied)
+                return roleDenied;
             const envelope = await rpc(OPEN_EXPOSURE_POSTGRES_SQL.history, referencePayload(input, auth));
             if (envelope.ok === false)
                 return parseRefusal(envelope);
@@ -432,6 +507,9 @@ export function createOpenExposurePostgresLedger(options) {
             const tenantDenied = tenantRefusal(input.tenantId);
             if (tenantDenied)
                 return tenantDenied;
+            const roleDenied = roleRefusal(auth, 'READER');
+            if (roleDenied)
+                return roleDenied;
             const envelope = await rpc(OPEN_EXPOSURE_POSTGRES_SQL.sumOpen, {
                 version: OPEN_EXPOSURE_LEDGER_VERSION,
                 tenant_id: input.tenantId,
@@ -459,6 +537,9 @@ export function createOpenExposurePostgresLedger(options) {
             const tenantDenied = tenantRefusal(input.tenantId);
             if (tenantDenied)
                 return tenantDenied;
+            const roleDenied = roleRefusal(auth, 'READER');
+            if (roleDenied)
+                return roleDenied;
             const envelope = await rpc(OPEN_EXPOSURE_POSTGRES_SQL.listAging, {
                 version: OPEN_EXPOSURE_LEDGER_VERSION,
                 tenant_id: input.tenantId,
@@ -476,6 +557,9 @@ export function createOpenExposurePostgresLedger(options) {
             const tenantDenied = tenantRefusal(input.tenantId);
             if (tenantDenied)
                 return tenantDenied;
+            const roleDenied = roleRefusal(auth, 'READER');
+            if (roleDenied)
+                return roleDenied;
             const envelope = await rpc(OPEN_EXPOSURE_POSTGRES_SQL.listDeadlines, {
                 version: OPEN_EXPOSURE_LEDGER_VERSION,
                 tenant_id: input.tenantId,

@@ -56,6 +56,43 @@ describe('Open Exposure Ledger PostgreSQL contract', () => {
     expect(migration).not.toMatch(/open_exposure_(?:blind_)?release/i);
   });
 
+  it('grants tenant-wide query RPCs only to the reader role', () => {
+    const grants = migration.match(/GRANT EXECUTE ON FUNCTION[\s\S]*?;/g) ?? [];
+    for (const functionName of [
+      'read_exposure',
+      'read_history',
+      'sum_open',
+      'list_aging',
+      'list_deadlines',
+    ]) {
+      const grant = grants.find((statement) => statement.includes(`.${functionName}(JSONB)`));
+      expect(grant, `missing grant for ${functionName}`).toBeDefined();
+      expect(grant).toMatch(/TO ep_open_exposure_reader/);
+      expect(grant).not.toMatch(/ep_open_exposure_(?:origin|executor|reconciler)/);
+    }
+  });
+
+  it('pins effect entry to trusted time, immutable admission inputs, and one permit digest', () => {
+    for (const field of [
+      'program_version',
+      'program_source_digest',
+      'program_digest',
+      'caid',
+      'action_digest',
+      'admission_snapshot_digest',
+      'authorization_digest',
+      'authorization_expires_at',
+      'invocation_permit_digest',
+    ]) {
+      expect(migration).toMatch(new RegExp(`\\b${field}\\b`));
+    }
+    expect(migration).toContain('invoke_by <= window_end');
+    expect(migration).toContain('invoke_by <= authorization_expires_at');
+    expect(migration).toContain('extensions.gen_random_bytes(INTEGER)');
+    expect(migration).toMatch(/begin_invocation[\s\S]+transaction_timestamp\(\)/);
+    expect(migration).toMatch(/status = 'INVOKING'[\s\S]+reconciliation_required/);
+  });
+
   it('locks all hierarchical ceilings before summing every open custody state', () => {
     expect(migration).toMatch(
       /ORDER BY ceilings\.scope, ceilings\.scope_value[\s\S]+FOR UPDATE/,
@@ -80,4 +117,3 @@ describe('Open Exposure Ledger PostgreSQL contract', () => {
     expect(migration).toContain("'operation_token_conflict'");
   });
 });
-

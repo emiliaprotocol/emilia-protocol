@@ -831,9 +831,9 @@ Program and execution lifecycle:
 - `./action-refusal-statement` emits a signed exact-action technical refusal;
 - `./coverage-reconciliation-attestation` reconciles supplied effect and
   receipt populations for a bounded period;
-- `./receipt-census` emits privacy-bounded aggregates; and
-- `./loss-experience-feed` carries signed external observations with
-  supersession-only corrections.
+- `./receipt-census` emits governed-taxonomy aggregates with coarse primary suppression; and
+- `./loss-experience-feed` carries signed external observations whose
+  corrections require a trusted current-head lineage resolver.
 
 These artifacts do not create authority. EMILIA does not bear or allocate loss,
 adjudicate disputes, verify insurance coverage or solvency, or move money.

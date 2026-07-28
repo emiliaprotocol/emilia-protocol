@@ -539,7 +539,7 @@
     },
     {
       "path": "packages/gate/dist/coverage-reconciliation-attestation.js",
-      "sha256": "d40564dd85af27a30a95eb73c3dcefdd20ad5b0974426ddc079b45245fae66a0"
+      "sha256": "80a1be346da1c89ad4e71135651d36b296bc8684923aa66663b2b544aa599854"
     },
     {
       "path": "packages/gate/dist/discovery-permit-resolver.js",
@@ -575,11 +575,11 @@
     },
     {
       "path": "packages/gate/dist/loss-allocation-schedule.js",
-      "sha256": "ded9e82997066321b5fcf3e48a234dc792b31426dcf5defee43e66dae5129f0f"
+      "sha256": "ede084b7e25b7770629ec04b9fc7a6242c079ffefd7d93d2e22f778e7b6cf9f4"
     },
     {
       "path": "packages/gate/dist/loss-experience-feed.js",
-      "sha256": "428f103cb8464342ef664977d0f4e7e02f711e18aef11472015be708b98dad35"
+      "sha256": "33a5168d80246ced9a55e965f840b21fe677d90800da0579d9f5d9419b443ee4"
     },
     {
       "path": "packages/gate/dist/network-witness.js",
@@ -587,11 +587,11 @@
     },
     {
       "path": "packages/gate/dist/open-exposure-ledger-postgres.js",
-      "sha256": "563306adbbfba5c6981d9588e4b852b83cd1b6141e524853b6bf077b76964f4a"
+      "sha256": "1e89b7d0120686757c1a25feb8692c1cf85c70e96216635993aa3b007edbdefc"
     },
     {
       "path": "packages/gate/dist/open-exposure-ledger.js",
-      "sha256": "36413426bcfa2946f2cea82b41990623b2dc97c4a54112c854a4a5bd32868d26"
+      "sha256": "642231c2675539ddbd95f9d6e0fb452e73f68e603d07d70dc336be74933410f4"
     },
     {
       "path": "packages/gate/dist/proposal-to-effect-postgres.js",
@@ -611,7 +611,7 @@
     },
     {
       "path": "packages/gate/dist/receipt-census.js",
-      "sha256": "7be83cb0b86ff05a7e6b775519506fade2e2d78b27975a69500fb8a6673d6c19"
+      "sha256": "b89d2127f1050a8039b4fb162679dba881b0b33862cb679225f449ef3409a014"
     },
     {
       "path": "packages/gate/dist/receipt-program.js",

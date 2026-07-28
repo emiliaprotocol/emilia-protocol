@@ -97,6 +97,23 @@ function validationCode(run: () => unknown): string | undefined {
   }
 }
 
+function profileVerification(
+  artifact: any,
+  trusted_keys: Record<string, any>,
+  expectedProgram = program(),
+) {
+  return {
+    trusted_keys,
+    expected_relying_party_id: 'payer:example-health-plan',
+    expected_program: expectedProgram,
+    status: {
+      outcome: 'current_not_revoked',
+      target_digest: lossAllocationScheduleDigest(artifact),
+    },
+    now: NOW,
+  };
+}
+
 test('signs and verifies a JCS-canonical schedule under the shared risk-artifact proof', () => {
   const { artifact, status, trusted_keys } = harness();
   const verified = verifyLossAllocationSchedule(artifact, {
@@ -181,14 +198,33 @@ test('requires a digest-bound current status and refuses not-yet-valid, stale, a
   }).reason, 'schedule_revoked');
   assert.equal(verifyLossAllocationSchedule(artifact, {
     ...base, status, now: '2026-07-28T11:59:59Z',
-  }).reason, 'schedule_not_yet_valid');
+  }).reason, 'schedule_not_yet_issued');
   assert.equal(verifyLossAllocationSchedule(artifact, {
     ...base, status, now: '2026-07-29T12:00:00Z',
   }).reason, 'schedule_stale');
 });
 
+test('requires verifier-owned relying-party and exact-program context even for an RP-signed schedule', () => {
+  const pair = generateKeyPairSync('ed25519');
+  const source = { ...schedule(), relying_party_id: 'payer:example-health-plan' };
+  const artifact = signLossAllocationSchedule(source, {
+    issuer_id: source.relying_party_id, key_id: 'rp-loss-key', private_key: pair.privateKey,
+  });
+  const trusted_keys = {
+    'rp-loss-key': {
+      issuer_id: source.relying_party_id,
+      public_key: pair.publicKey.export({ type: 'spki', format: 'der' }).toString('base64url'),
+    },
+  };
+  assert.equal(verifyLossAllocationSchedule(artifact, {
+    trusted_keys,
+    status: { outcome: 'current_not_revoked', target_digest: lossAllocationScheduleDigest(artifact) },
+    now: NOW,
+  }).reason, 'relying_party_binding_required');
+});
+
 test('produces compact and non-circular Admissibility Profile digest pins', () => {
-  const { artifact, signer } = harness();
+  const { artifact, signer, trusted_keys } = harness();
   assert.deepEqual(lossAllocationScheduleProfileReference(artifact), {
     artifact_type: LOSS_ALLOCATION_SCHEDULE_VERSION,
     artifact_digest: lossAllocationScheduleDigest(artifact),
@@ -198,7 +234,7 @@ test('produces compact and non-circular Admissibility Profile digest pins', () =
   const pin = createLossAllocationAdmissibilityProfilePin(artifact, {
     profileId: 'rp:admissibility:loss-allocation:v1',
     evaluationMaxAgeSec: 300,
-  });
+  }, profileVerification(artifact, trusted_keys));
   assert.deepEqual(Object.keys(pin.reference).sort(), [
     'evaluation_max_age_sec', 'profile_hash', 'profile_id', 'revocation_required',
   ]);
@@ -216,7 +252,8 @@ test('produces compact and non-circular Admissibility Profile digest pins', () =
   assert.equal(createLossAllocationAdmissibilityProfilePin(rebound, {
     profileId: pin.profile.id,
     evaluationMaxAgeSec: 300,
-  }).profile.profile_hash, profileHash, 'final program digests must not create a profile-pin cycle');
+  }, profileVerification(rebound, trusted_keys, program(D('7'), D('8')))).profile.profile_hash,
+  profileHash, 'final program digests must not create a profile-pin cycle');
 
   const changed = schedule();
   changed.rules[0].responsible_party_id = 'issuer:different';
@@ -224,7 +261,14 @@ test('produces compact and non-circular Admissibility Profile digest pins', () =
   assert.notEqual(createLossAllocationAdmissibilityProfilePin(changedArtifact, {
     profileId: pin.profile.id,
     evaluationMaxAgeSec: 300,
-  }).profile.profile_hash, profileHash);
+  }, profileVerification(changedArtifact, trusted_keys)).profile.profile_hash, profileHash);
+
+  const corrupted = structuredClone(artifact);
+  corrupted.proof.signature_b64u = `${corrupted.proof.signature_b64u[0] === 'A' ? 'B' : 'A'}${corrupted.proof.signature_b64u.slice(1)}`;
+  assert.equal(validationCode(() => createLossAllocationAdmissibilityProfilePin(corrupted, {
+    profileId: pin.profile.id,
+    evaluationMaxAgeSec: 300,
+  }, profileVerification(corrupted, trusted_keys))), 'schedule_verification_required');
 });
 
 test('the generated pin compiles through unchanged Reliance Program v1 before final digest binding', () => {
@@ -232,7 +276,7 @@ test('the generated pin compiles through unchanged Reliance Program v1 before fi
   const pin = createLossAllocationAdmissibilityProfilePin(draftArtifact, {
     profileId: 'rp:admissibility:loss-allocation:v1',
     evaluationMaxAgeSec: 300,
-  });
+  }, profileVerification(draftArtifact, trusted_keys));
   const rpKeys = generateKeyPairSync('ed25519');
   const source = {
     '@version': RELIANCE_PROGRAM_SOURCE_VERSION,
@@ -276,7 +320,8 @@ test('the generated pin compiles through unchanged Reliance Program v1 before fi
   assert.equal(createLossAllocationAdmissibilityProfilePin(finalArtifact, {
     profileId: pin.profile.id,
     evaluationMaxAgeSec: 300,
-  }).profile.profile_hash, pin.profile.profile_hash);
+  }, profileVerification(finalArtifact, trusted_keys, finalProgram)).profile.profile_hash,
+  pin.profile.profile_hash);
   assert.equal(verifyLossAllocationSchedule(finalArtifact, {
     trusted_keys,
     expected_relying_party_id: 'payer:example-health-plan',
@@ -310,6 +355,11 @@ test('closed schemas, decimal monetary caps, timestamps, and claim boundary fail
   overstated.claim_boundary = 'this_moves_money';
   assert.equal(validationCode(() => signLossAllocationSchedule(overstated, signer)),
     'claim_boundary_invalid');
+
+  const reversed = schedule();
+  reversed.rules.reverse();
+  assert.equal(validationCode(() => signLossAllocationSchedule(reversed, signer)),
+    'rules_not_canonical_order');
 });
 
 test('checked-in vector verifies deterministic Ed25519 bytes and named status refusals', () => {
@@ -332,6 +382,12 @@ test('checked-in vector verifies deterministic Ed25519 bytes and named status re
   assert.equal(createLossAllocationAdmissibilityProfilePin(vector.artifact, {
     profileId: vector.profile_id,
     evaluationMaxAgeSec: vector.evaluation_max_age_sec,
+  }, {
+    trusted_keys: vector.trusted_keys,
+    expected_relying_party_id: vector.expected_relying_party_id,
+    expected_program: vector.expected_program,
+    status: vector.current_status,
+    now: vector.verification_time,
   }).profile.profile_hash, vector.expected.profile_hash);
   assert.equal(verifyLossAllocationSchedule(vector.artifact, {
     trusted_keys: vector.trusted_keys,

@@ -14,12 +14,18 @@ import {
 } from './open-exposure-ledger-postgres.js';
 import type {
   OpenExposureAuth,
+  OpenExposureBeginInput,
   OpenExposureCeilingInput,
   OpenExposureReserveInput,
 } from './open-exposure-ledger.js';
 
 const DIGEST_A = `sha256:${'a'.repeat(64)}`;
 const DIGEST_B = `sha256:${'b'.repeat(64)}`;
+const DIGEST_C = `sha256:${'c'.repeat(64)}`;
+const DIGEST_D = `sha256:${'d'.repeat(64)}`;
+const DIGEST_E = `sha256:${'e'.repeat(64)}`;
+const DIGEST_F = `sha256:${'f'.repeat(64)}`;
+const CAID = `caid:1:payment.release.1:jcs-sha256:${'A'.repeat(43)}`;
 const WINDOW_START = '2026-07-01T00:00:00.000Z';
 const WINDOW_END = '2026-08-01T00:00:00.000Z';
 
@@ -44,6 +50,14 @@ const RESERVATION: OpenExposureReserveInput = {
   exposureId: 'exposure-a',
   operationToken: `open-exposure-op:v1:${'o'.repeat(32)}`,
   programId: 'program-a',
+  programVersion: 'program-a@1.0.0',
+  programSourceDigest: DIGEST_B,
+  programDigest: DIGEST_C,
+  caid: CAID,
+  actionDigest: DIGEST_D,
+  admissionSnapshotDigest: DIGEST_E,
+  authorizationDigest: DIGEST_F,
+  authorizationExpiresAt: '2026-07-28T12:05:00.000Z',
   counterpartyId: 'counterparty-a',
   actionClass: 'payment.release',
   amountMinor: 60n,
@@ -67,6 +81,14 @@ function wireRecord(overrides: Record<string, unknown> = {}): Record<string, unk
     operation_token_digest: DIGEST_A,
     reservation_digest: DIGEST_B,
     program_id: 'program-a',
+    program_version: 'program-a@1.0.0',
+    program_source_digest: DIGEST_B,
+    program_digest: DIGEST_C,
+    caid: CAID,
+    action_digest: DIGEST_D,
+    admission_snapshot_digest: DIGEST_E,
+    authorization_digest: DIGEST_F,
+    authorization_expires_at: '2026-07-28T12:05:00.000Z',
     counterparty_id: 'counterparty-a',
     action_class: 'payment.release',
     amount_minor: '60',
@@ -84,6 +106,7 @@ function wireRecord(overrides: Record<string, unknown> = {}): Record<string, unk
     revision: 0,
     status: 'RESERVED',
     invoked_at: null,
+    invocation_permit_digest: null,
     indeterminate_evidence_digest: null,
     reconciliation_outcome: null,
     reconciliation_evidence_digest: null,
@@ -91,6 +114,22 @@ function wireRecord(overrides: Record<string, unknown> = {}): Record<string, unk
     predecessor_record_digest: null,
     record_digest: DIGEST_B,
     ...overrides,
+  };
+}
+
+function invocationInput(): OpenExposureBeginInput {
+  return {
+    tenantId: RESERVATION.tenantId,
+    exposureId: RESERVATION.exposureId,
+    operationToken: RESERVATION.operationToken,
+    programVersion: RESERVATION.programVersion,
+    programSourceDigest: RESERVATION.programSourceDigest,
+    programDigest: RESERVATION.programDigest,
+    caid: RESERVATION.caid,
+    actionDigest: RESERVATION.actionDigest,
+    admissionSnapshotDigest: RESERVATION.admissionSnapshotDigest,
+    authorizationDigest: RESERVATION.authorizationDigest,
+    authorizationExpiresAt: RESERVATION.authorizationExpiresAt,
   };
 }
 
@@ -122,9 +161,94 @@ test('reserve sends one credential-free RPC payload and parses fixed minor units
   const payload = JSON.parse(String(calls[0].params[0]));
   assert.equal(payload.amount_minor, '60');
   assert.equal(payload.authority_id, 'origin-a');
+  assert.equal(payload.program_version, RESERVATION.programVersion);
+  assert.equal(payload.program_source_digest, RESERVATION.programSourceDigest);
+  assert.equal(payload.program_digest, RESERVATION.programDigest);
+  assert.equal(payload.caid, RESERVATION.caid);
+  assert.equal(payload.action_digest, RESERVATION.actionDigest);
+  assert.equal(payload.admission_snapshot_digest, RESERVATION.admissionSnapshotDigest);
+  assert.equal(payload.authorization_digest, RESERVATION.authorizationDigest);
+  assert.equal(payload.authorization_expires_at, RESERVATION.authorizationExpiresAt);
   assert.equal(payload.operation_token, undefined);
   assert.match(payload.operation_token_digest, /^sha256:[0-9a-f]{64}$/);
   assert.equal(JSON.stringify(payload).includes('postgres-session'), false);
+});
+
+test('beginInvocation sends exact immutable pins without caller time and parses a one-use permit', async () => {
+  const calls: Array<{ text: string; params: readonly unknown[] }> = [];
+  const permit = `open-exposure-invoke:v1:${'1'.repeat(64)}`;
+  const query: OpenExposurePostgresQuery = async (text, params) => {
+    calls.push({ text, params });
+    return {
+      rowCount: 1,
+      rows: [{ result: {
+        ok: true,
+        replayed: false,
+        invocation_permit: permit,
+        record: wireRecord({
+          status: 'INVOKING',
+          revision: 1,
+          invoked_at: '2026-07-28T12:01:00.000Z',
+          invocation_permit_digest: DIGEST_A,
+        }),
+      } }],
+    };
+  };
+  const ledger = createOpenExposurePostgresLedger({ query, tenantId: 'tenant-a' });
+
+  const result = await ledger.beginInvocation(
+    invocationInput(),
+    auth('EXECUTOR', 'executor-a'),
+  );
+  assert.equal(result.ok, true);
+  if (result.ok) {
+    assert.equal(result.replayed, false);
+    assert.equal(result.invocationPermit, permit);
+    assert.equal(result.record.invocationPermitDigest, DIGEST_A);
+  }
+  assert.equal(calls[0].text, OPEN_EXPOSURE_POSTGRES_SQL.beginInvocation);
+  const payload = JSON.parse(String(calls[0].params[0]));
+  assert.equal(payload.invoked_at, undefined);
+  assert.equal(payload.program_version, RESERVATION.programVersion);
+  assert.equal(payload.program_source_digest, RESERVATION.programSourceDigest);
+  assert.equal(payload.program_digest, RESERVATION.programDigest);
+  assert.equal(payload.caid, RESERVATION.caid);
+  assert.equal(payload.action_digest, RESERVATION.actionDigest);
+  assert.equal(payload.admission_snapshot_digest, RESERVATION.admissionSnapshotDigest);
+  assert.equal(payload.authorization_digest, RESERVATION.authorizationDigest);
+  assert.equal(payload.authorization_expires_at, RESERVATION.authorizationExpiresAt);
+});
+
+test('adapter permits only READER on tenant-wide query surfaces before SQL', async () => {
+  let calls = 0;
+  const ledger = createOpenExposurePostgresLedger({
+    tenantId: 'tenant-a',
+    query: async () => {
+      calls += 1;
+      return { rowCount: 1, rows: [{ result: { ok: false, reason: 'wrong_authority' } }] };
+    },
+  });
+  const executor = auth('EXECUTOR', 'executor-a');
+  const reconciler = auth('RECONCILER', 'reconciler-a');
+
+  assert.deepEqual(await ledger.read({
+    tenantId: 'tenant-a', exposureId: 'exposure-a',
+  }, executor), { ok: false, reason: 'wrong_authority' });
+  assert.deepEqual(await ledger.history({
+    tenantId: 'tenant-a', exposureId: 'exposure-a',
+  }, reconciler), { ok: false, reason: 'wrong_authority' });
+  assert.deepEqual(await ledger.sumOpen({
+    tenantId: 'tenant-a', currency: 'USD',
+    windowStart: WINDOW_START, windowEnd: WINDOW_END,
+  }, executor), { ok: false, reason: 'wrong_authority' });
+  assert.deepEqual(await ledger.listAging({
+    tenantId: 'tenant-a', asOf: '2026-07-28T12:10:00.000Z',
+    minimumAgeMs: 0, limit: 10,
+  }, reconciler), { ok: false, reason: 'wrong_authority' });
+  assert.deepEqual(await ledger.listDeadlines({
+    tenantId: 'tenant-a', dueAtOrBefore: '2026-07-28T12:05:00.000Z', limit: 10,
+  }, executor), { ok: false, reason: 'wrong_authority' });
+  assert.equal(calls, 0);
 });
 
 test('adapter is deployment-tenant bound and refuses cross-tenant access before SQL', async () => {
@@ -250,6 +374,22 @@ test('migration enforces RPC-only custody, immutable history, open-status sums, 
   assert.match(migration, /reconciliation_authority_id <> origin_authority_id/);
   assert.match(migration, /reconciliation_authority_id <> executor_authority_id/);
   assert.match(migration, /status IN \('RESERVED', 'INVOKING', 'INDETERMINATE'\)/);
+  for (const field of [
+    'program_version',
+    'program_source_digest',
+    'program_digest',
+    'caid',
+    'action_digest',
+    'admission_snapshot_digest',
+    'authorization_digest',
+    'authorization_expires_at',
+    'invocation_permit_digest',
+  ]) assert.match(migration, new RegExp(`\\b${field}\\b`));
+  assert.match(migration, /invoke_by <= window_end/);
+  assert.match(migration, /invoke_by <= authorization_expires_at/);
+  assert.match(migration, /extensions\.gen_random_bytes\(INTEGER\)/);
+  assert.match(migration, /begin_invocation[\s\S]+transaction_timestamp\(\)/);
+  assert.match(migration, /status = 'INVOKING'[\s\S]+reconciliation_required/);
   assert.match(migration, /ORDER BY ceilings\.scope, ceilings\.scope_value[\s\S]+FOR UPDATE/);
   assert.match(migration, /COALESCE\(SUM\(exposures\.amount_minor\), 0\)/);
   assert.match(migration, /BEFORE UPDATE OR DELETE ON open_exposure_private\.history/);
@@ -263,6 +403,15 @@ test('migration enforces RPC-only custody, immutable history, open-status sums, 
   assert.doesNotMatch(migration, /open_exposure_(?:blind_)?release/i);
   assert.match(migration, /GRANT EXECUTE ON FUNCTION open_exposure_private\.reserve\(JSONB\)[\s\S]+TO ep_open_exposure_origin/);
   assert.match(migration, /GRANT EXECUTE ON FUNCTION open_exposure_private\.reconcile\(JSONB\)[\s\S]+TO ep_open_exposure_reconciler/);
+  const grants = migration.match(/GRANT EXECUTE ON FUNCTION[\s\S]*?;/g) ?? [];
+  for (const functionName of [
+    'read_exposure', 'read_history', 'sum_open', 'list_aging', 'list_deadlines',
+  ]) {
+    const grant = grants.find((statement) => statement.includes(`.${functionName}(JSONB)`));
+    assert.ok(grant, `missing grant for ${functionName}`);
+    assert.match(grant, /TO ep_open_exposure_reader/);
+    assert.doesNotMatch(grant, /ep_open_exposure_(?:origin|executor|reconciler)/);
+  }
 });
 
 test('PostgreSQL surface contains no blind release operation', () => {

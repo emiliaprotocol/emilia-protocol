@@ -13,7 +13,8 @@ one responsible party, a currency and maximum minor-unit amount, separately
 governed terms, and an optional dispute endpoint.
 
 The signed `claim_boundary` token is
-`signed_terms_not_legal_adjudication_or_payment`. It means:
+`signed_terms_not_legal_liability_adjudication_enforceability_insurance_coverage_solvency_authorization_or_payment`.
+It means:
 
 > This signed artifact records explicit responsibility terms only. It does not
 > itself make those terms legally enforceable, prove solvency, provide
@@ -50,7 +51,7 @@ The artifact uses the shared Reliance Risk Plane JCS/Ed25519 proof:
     "usage": "reliance"
   },
   "rules": [],
-  "claim_boundary": "signed_terms_not_legal_adjudication_or_payment",
+  "claim_boundary": "signed_terms_not_legal_liability_adjudication_enforceability_insurance_coverage_solvency_authorization_or_payment",
   "issuer": {
     "id": "issuer:allocation-committee",
     "key_id": "loss-allocation-key-1"

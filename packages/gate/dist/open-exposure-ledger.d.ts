@@ -31,7 +31,17 @@ export interface OpenExposureCeiling extends OpenExposureCeilingInput {
     '@version': typeof OPEN_EXPOSURE_LEDGER_VERSION;
     ceilingDigest: string;
 }
-export interface OpenExposureReserveInput {
+export interface OpenExposureInvocationBinding {
+    programVersion: string;
+    programSourceDigest: string;
+    programDigest: string;
+    caid: string;
+    actionDigest: string;
+    admissionSnapshotDigest: string;
+    authorizationDigest: string;
+    authorizationExpiresAt: string;
+}
+export interface OpenExposureReserveInput extends OpenExposureInvocationBinding {
     tenantId: string;
     exposureId: string;
     operationToken: string;
@@ -59,6 +69,14 @@ export interface OpenExposureRecord {
     operationTokenDigest: string;
     reservationDigest: string;
     programId: string;
+    programVersion: string;
+    programSourceDigest: string;
+    programDigest: string;
+    caid: string;
+    actionDigest: string;
+    admissionSnapshotDigest: string;
+    authorizationDigest: string;
+    authorizationExpiresAt: string;
     counterpartyId: string;
     actionClass: string;
     amountMinor: bigint;
@@ -76,6 +94,7 @@ export interface OpenExposureRecord {
     revision: number;
     status: OpenExposureStatus;
     invokedAt: string | null;
+    invocationPermitDigest: string | null;
     indeterminateEvidenceDigest: string | null;
     reconciliationOutcome: OpenExposureReconciliationOutcome | null;
     reconciliationEvidenceDigest: string | null;
@@ -90,13 +109,22 @@ export interface OpenExposureHistoryEntry {
     exposureId: string;
     sequence: number;
     event: OpenExposureHistoryEvent;
+    programVersion: string;
+    programSourceDigest: string;
+    programDigest: string;
+    caid: string;
+    actionDigest: string;
+    admissionSnapshotDigest: string;
+    authorizationDigest: string;
+    authorizationExpiresAt: string;
+    invocationPermitDigest: string | null;
     recordDigest: string;
     evidenceDigest: string;
     recordedAt: string;
     predecessorEntryDigest: string | null;
     entryDigest: string;
 }
-export type OpenExposureRefusalReason = 'unauthenticated' | 'wrong_authority' | 'authority_separation_required' | 'ceiling_not_configured' | 'ceiling_exceeded' | 'ceiling_id_conflict' | 'ceiling_scope_conflict' | 'exposure_exists' | 'exposure_not_found' | 'operation_token_conflict' | 'reconciliation_token_conflict' | 'state_conflict' | 'reconciliation_required' | 'already_closed';
+export type OpenExposureRefusalReason = 'unauthenticated' | 'wrong_authority' | 'authority_separation_required' | 'ceiling_not_configured' | 'ceiling_exceeded' | 'ceiling_id_conflict' | 'ceiling_scope_conflict' | 'exposure_exists' | 'exposure_not_found' | 'operation_token_conflict' | 'immutable_binding_conflict' | 'invocation_expired' | 'reconciliation_token_conflict' | 'state_conflict' | 'reconciliation_required' | 'already_closed';
 export type OpenExposureRefusal = {
     ok: false;
     reason: OpenExposureRefusalReason;
@@ -111,13 +139,18 @@ export type OpenExposureRecordResult = {
     record: Readonly<OpenExposureRecord>;
     replayed: boolean;
 } | OpenExposureRefusal;
+export type OpenExposureBeginResult = {
+    ok: true;
+    record: Readonly<OpenExposureRecord>;
+    replayed: false;
+    invocationPermit: string;
+} | OpenExposureRefusal;
 export interface OpenExposureReference {
     tenantId: string;
     exposureId: string;
 }
-export interface OpenExposureBeginInput extends OpenExposureReference {
+export interface OpenExposureBeginInput extends OpenExposureReference, OpenExposureInvocationBinding {
     operationToken: string;
-    invokedAt: string;
 }
 export interface OpenExposureIndeterminateInput extends OpenExposureReference {
     operationToken: string;
@@ -181,6 +214,8 @@ export interface OpenExposureAuthenticationInput {
 }
 export interface CreateMemoryOpenExposureLedgerOptions {
     authenticate: (input: Readonly<OpenExposureAuthenticationInput>) => boolean | Promise<boolean>;
+    /** Absolute UTC clock backed by a monotonic source. */
+    clock?: () => string;
 }
 export interface OpenExposureLedger {
     readonly durable: boolean;
@@ -191,7 +226,7 @@ export interface OpenExposureLedger {
     readonly testOnly?: true;
     registerCeiling(input: OpenExposureCeilingInput, auth: OpenExposureAuth): Promise<OpenExposureCeilingResult>;
     reserve(input: OpenExposureReserveInput, auth: OpenExposureAuth): Promise<OpenExposureRecordResult>;
-    beginInvocation(input: OpenExposureBeginInput, auth: OpenExposureAuth): Promise<OpenExposureRecordResult>;
+    beginInvocation(input: OpenExposureBeginInput, auth: OpenExposureAuth): Promise<OpenExposureBeginResult>;
     markIndeterminate(input: OpenExposureIndeterminateInput, auth: OpenExposureAuth): Promise<OpenExposureRecordResult>;
     reconcile(input: OpenExposureReconciliationInput, auth: OpenExposureAuth): Promise<OpenExposureRecordResult>;
     read(input: OpenExposureReference, auth: OpenExposureAuth): Promise<OpenExposureReadResult>;
