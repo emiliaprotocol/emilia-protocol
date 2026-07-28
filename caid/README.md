@@ -77,13 +77,16 @@ boundary.
 ## Layout
 
 - `DESIGN.md` — normative core
-- `../standards/posted/draft-schrock-canonical-action-identifier-00.xml` —
-  candidate Internet-Draft source (xml2rfc v3)
+- `../standards/posted/draft-schrock-canonical-action-identifier-01.xml` —
+  published individual Internet-Draft source (xml2rfc v3)
 - `registry/` — action-type registry seed, suites, governance
 - `impl/js`, `impl/python`, `impl/go` — reference implementations
 - `conformance/vectors.json` — 48 core identifier vectors
 - `conformance/mapping-vectors.json` — 23 cross-format mapping vectors,
   including the SILP IR to CAID `CANCEL+EMAIL` profile
+- `interop/consequential-action-v1/` — 25 candidate, revision-pinned
+  mechanism mappings with 100 positive, refusal, and abstention vectors;
+  all await author review
 - `bindings/` — one-page composition notes for existing specs (MCP, A2A,
   AP2, AuthZEN, ACTA, WIMSE, permit receipts, outcome attestation, OAuth
   agent-authorization drafts, AGTP, EMILIA receipts, Continuum)

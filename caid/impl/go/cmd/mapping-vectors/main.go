@@ -175,6 +175,14 @@ func equalStrings(left, right []string) bool {
 
 func main() {
 	vectorPath := filepath.Clean(filepath.Join("..", "..", "conformance", "mapping-vectors.json"))
+	for index, arg := range os.Args[1:] {
+		if arg == "--corpus" {
+			if index+2 >= len(os.Args) {
+				panic("--corpus requires a path")
+			}
+			vectorPath = filepath.Clean(os.Args[index+2])
+		}
+	}
 	data, err := os.ReadFile(vectorPath)
 	if err != nil {
 		panic(err)

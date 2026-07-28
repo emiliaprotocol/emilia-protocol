@@ -10,6 +10,13 @@ const HERE = path.dirname(fileURLToPath(import.meta.url));
 const VECTORS = path.resolve(HERE, '../../conformance/mapping-vectors.json');
 const clone = (value) => structuredClone(value);
 
+function corpusPath(argv = process.argv.slice(2)) {
+  const index = argv.indexOf('--corpus');
+  if (index === -1) return VECTORS;
+  if (!argv[index + 1]) throw new Error('--corpus requires a path');
+  return path.resolve(argv[index + 1]);
+}
+
 function segments(pointer) {
   return pointer.slice(1).split('/').map((part) => part.replaceAll('~1', '/').replaceAll('~0', '~'));
 }
@@ -62,7 +69,7 @@ export function runMappingVectors(corpus = JSON.parse(fs.readFileSync(VECTORS, '
 }
 
 if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
-  const results = runMappingVectors();
+  const results = runMappingVectors(JSON.parse(fs.readFileSync(corpusPath(), 'utf8')));
   if (process.argv.includes('--json')) {
     process.stdout.write(JSON.stringify(results) + '\n');
   } else {

@@ -1,0 +1,137 @@
+# Consequential Action Interoperability Project
+
+This directory contains 25 **candidate**, version-pinned mappings between
+consequential-action mechanisms and one local CAID action definition.
+
+The project asks a deliberately narrow question:
+
+> After an artifact verifies under its own specification, can its material
+> action be projected without loss into the same typed action that another
+> mechanism describes?
+
+The answer is not forced to be yes. The current review produces:
+
+- 4 `COMPLETE` candidate native extractions;
+- 13 `PARTIAL` native bindings that return `INDETERMINATE`;
+- 8 `ABSENT` native bindings that return `INDETERMINATE`; and
+- an explicitly non-normative, optional carry profile for every target.
+
+No author validation or endorsement is claimed. The intended next step is
+author review: “Here is our pinned reading of your action model. What did we
+get wrong?”
+
+## Why the local action type is not in the public registry
+
+`consequence.invoke.1` is local to this project. It commits to:
+
+- operation;
+- target;
+- complete material parameters.
+
+Authorization audience and trust configuration stay outside the action
+identifier. The action target identifies where the material operation occurs.
+
+The project does not add 25 speculative types to CAID's public registry.
+CAID explicitly permits local definition files in the same schema. A public
+type should be proposed only after domain practitioners validate its material
+fields.
+
+## What “native” means here
+
+The native side of each vector is a **human-reviewed extraction fixture** from
+the pinned draft revision. It is not a production parser and it does not test a
+draft's native signature, trust roots, or authorization semantics. Fixture-time
+native verification is a precondition.
+
+For transport formats such as HTTP Message Signatures, the extraction is the
+deterministic adapter output after native verification. For architecture and
+gap-analysis drafts that define no wire object, the native fixture deliberately
+omits the material fields and the result is `INDETERMINATE`.
+
+## What the optional carry profile means
+
+The carry profile shows one non-breaking composition path:
+
+```json
+{
+  "caid_action": {
+    "operation": "medical.coverage.determine",
+    "target": "urn:claim:example:2026:00042",
+    "parameters": {
+      "requested_service": "J3490",
+      "amount": "1280.00",
+      "currency": "USD"
+    }
+  }
+}
+```
+
+This is not a claim that any source draft defines, accepts, or should adopt that
+member. A mechanism can instead carry an equivalent native field, digest, or
+external reference under a profile its authors prefer.
+
+## Executable evidence
+
+Every target has four vectors:
+
+1. its candidate native result (`EQUIVALENT_UNDER_PROFILE` or
+   `INDETERMINATE`);
+2. an optional-carry equivalence result;
+3. a material parameter mutation returning `NOT_EQUIVALENT`; and
+4. missing material parameters returning `INDETERMINATE`.
+
+All 100 vectors run in dependency-free JavaScript, Python, and Go and must
+produce identical verdicts and refusal reasons:
+
+```sh
+npm run caid:conformance
+npx vitest run caid/interop/consequential-action-v1/*.test.mjs
+```
+
+The generator is governed:
+
+```sh
+node caid/interop/consequential-action-v1/generate.mjs --check
+```
+
+## Target set
+
+| Native result | Mechanism |
+| --- | --- |
+| PARTIAL | `draft-klrc-aiagent-auth-03` |
+| ABSENT | `draft-mcguinness-oauth-ai-agent-instance-00` |
+| PARTIAL | `draft-noa-scitt-ai-agent-receipt-00` |
+| ABSENT | `draft-ietf-wimse-arch-08` |
+| COMPLETE | `draft-ietf-wimse-http-signature-05` |
+| ABSENT | `draft-ietf-wimse-workload-creds-02` |
+| PARTIAL | `draft-ietf-wimse-wpt-01` |
+| ABSENT | `draft-bu-agentproto-security-principal-binding-03` |
+| COMPLETE | `draft-rosomakho-oauth-txn-challenge-00` |
+| PARTIAL | `draft-nelson-agent-delegation-receipts-10` |
+| COMPLETE | `draft-jiang-oauth-intent-admission-00` |
+| PARTIAL | `draft-araut-oauth-transaction-tokens-for-agents-02` |
+| PARTIAL | `draft-coetzee-oauth-spt-txn-tokens-03` |
+| ABSENT | `draft-mcguinness-oauth-actor-profile-00` |
+| PARTIAL | `draft-rampalli-cross-org-delegation-mapping-05` |
+| PARTIAL | `draft-mih-scitt-agent-action-capsule-sel-disc-00` |
+| PARTIAL | `draft-emirdag-scitt-ai-agent-execution-00` |
+| PARTIAL | `draft-lee-orprg-permit-receipts-00` |
+| PARTIAL | `draft-baur-pap-02` |
+| COMPLETE | `draft-pidlisnyi-aps-03` |
+| PARTIAL | `draft-howe-vcon-agent-session-00` |
+| PARTIAL | `draft-pei-opsawg-agentops-observability-00` |
+| ABSENT | `draft-dunbar-dmsc-gw-scenarios-gap-analysis-02` |
+| ABSENT | `draft-soden-wellknown-mcp-commerce-00` |
+| ABSENT | `draft-hopley-x402-compliance-receipt-02` |
+
+The exact source revision, official archive URL, SHA-256, evidence locator,
+candidate profiles, missing material fields, and author-review question for
+each mechanism are in `manifest.json`.
+
+## Claim boundary
+
+Mapping is content correlation, not authorization. It does not establish
+identity, authority, consent, safety, policy acceptance, execution, or outcome.
+It never converts an `INDETERMINATE` result into equivalence. Each source
+artifact must first verify under its own specification and relying-party trust
+configuration.

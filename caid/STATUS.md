@@ -1,6 +1,6 @@
 # CAID Status
 
-Updated: 2026-07-21
+Updated: 2026-07-27
 
 ## Verified implementation
 
@@ -11,6 +11,10 @@ Updated: 2026-07-21
 - 23 Action-Mapping Profile vectors passing with byte-for-byte agreement on
   verdicts and refusal reasons in all three ports, including the SILP IR to
   CAID `CANCEL+EMAIL` profile.
+- 100 candidate Consequential Action Interoperability vectors covering 25
+  revision-pinned mechanisms: native extraction, optional carry, material
+  mutation, and missing-field abstention. All pass with identical verdicts
+  and refusal reasons in the three same-team ports.
 - Closed mapping verdicts: `EQUIVALENT_UNDER_PROFILE`, `NOT_EQUIVALENT`, and
   `INDETERMINATE`. SILP correlation metadata is deliberately non-material;
   ordered entities, action associations, complete constraints, alternatives,
@@ -24,6 +28,12 @@ npm run caid:conformance
 
 These are cross-language ports maintained by the same project. They are not
 represented as independent implementations.
+
+The 25 interoperability mappings are candidates pending author review. Four
+have complete extraction fixtures under their pinned profiles, thirteen are
+partial, and eight define no complete native action artifact. The latter
+twenty-one fail closed as `INDETERMINATE`; optional carry-profile success is
+not represented as native support or author endorsement.
 
 ## Standards status
 
@@ -46,4 +56,4 @@ sources. A mapping result never becomes authorization.
 - Deterministic CBOR implementation (`cbor-sha256` is defined, not shipped).
 - IANA registry creation and policy.
 - External clean-room implementation of CAID itself.
-- Public binding proposals to adjacent protocols.
+- Author validation of the 25 candidate adjacent-protocol mappings.
