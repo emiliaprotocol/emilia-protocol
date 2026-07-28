@@ -49,17 +49,35 @@ function registryFetcher(
 }
 
 describe('npm internal dependency registry guard', () => {
-  it('requires pinned Verify 3.16.0 registry bytes before Gate or ep-qualify can release', () => {
-    const expectedPin = {
-      spec: '@emilia-protocol/verify@3.16.0',
-      sha256: '50caa243b057708a30d459839b0ca02292aa297c1f7523ee77f3559492e08fea',
-    };
+  it('requires each downstream package to pin its exact published Verify registry bytes', () => {
     const downstream = [
-      { metadata: GATE_METADATA, directory: 'packages/gate', version: '0.19.0' },
-      { metadata: QUALIFY_METADATA, directory: 'packages/qualify', version: '0.1.0' },
+      {
+        metadata: GATE_METADATA,
+        directory: 'packages/gate',
+        version: '0.19.0',
+        verifyVersion: '3.17.0',
+        verifySha256: 'c14fc3136c78aa1daa8a57fddbaaec1b32c2a3cec0159b1b0ea130370c3f9d16',
+      },
+      {
+        metadata: QUALIFY_METADATA,
+        directory: 'packages/qualify',
+        version: '0.1.0',
+        verifyVersion: '3.16.0',
+        verifySha256: '50caa243b057708a30d459839b0ca02292aa297c1f7523ee77f3559492e08fea',
+      },
     ];
 
-    for (const { metadata, directory, version } of downstream) {
+    for (const {
+      metadata,
+      directory,
+      version,
+      verifyVersion,
+      verifySha256,
+    } of downstream) {
+      const expectedPin = {
+        spec: `@emilia-protocol/verify@${verifyVersion}`,
+        sha256: verifySha256,
+      };
       const pins = collectRegistryDependencyTarballPins(
         metadata,
         directory,
@@ -80,21 +98,21 @@ describe('npm internal dependency registry guard', () => {
       );
 
       expect(metadata.version).toBe(version);
-      expect(metadata.dependencies['@emilia-protocol/verify']).toBe('3.16.0');
+      expect(metadata.dependencies['@emilia-protocol/verify']).toBe(verifyVersion);
       expect(pins).toEqual([expectedPin]);
-      expect(requested).not.toContain('@emilia-protocol/verify@3.16.0');
+      expect(requested).not.toContain(expectedPin.spec);
       expect(verified).toEqual([expectedPin]);
       expect(dependencies.map(({ spec }) => spec))
-        .toContain('@emilia-protocol/verify@3.16.0');
+        .toContain(expectedPin.spec);
 
       expect(() => assertInternalDependenciesPublished(
         metadata,
         () => true,
         pins,
         () => {
-          throw new Error('registry tarball unavailable for @emilia-protocol/verify@3.16.0');
+          throw new Error(`registry tarball unavailable for ${expectedPin.spec}`);
         },
-      )).toThrow(/registry tarball unavailable.*3\.16\.0/);
+      )).toThrow(new RegExp(`registry tarball unavailable.*${verifyVersion.replaceAll('.', '\\.')}`));
     }
   });
 
@@ -140,11 +158,11 @@ describe('npm internal dependency registry guard', () => {
     expect(() => collectRegistryDependencyTarballPins(
       GATE_METADATA,
       'packages/gate',
-      withPins([{ spec: '@emilia-protocol/verify@3.16.0', sha256: 'not-a-sha256' }]),
+      withPins([{ spec: '@emilia-protocol/verify@3.17.0', sha256: 'not-a-sha256' }]),
     )).toThrow(/invalid sha256/);
 
     const validPin = {
-      spec: '@emilia-protocol/verify@3.16.0',
+      spec: '@emilia-protocol/verify@3.17.0',
       sha256: 'a'.repeat(64),
     };
     expect(() => collectRegistryDependencyTarballPins(
