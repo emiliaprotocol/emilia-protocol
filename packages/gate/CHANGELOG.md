@@ -4,6 +4,35 @@
 All notable changes to `@emilia-protocol/gate` are documented here.
 This package follows [Semantic Versioning](https://semver.org/).
 
+## 0.20.0 (2026-07-28)
+
+### Added
+
+- A separately signed Loss-Allocation Schedule pinned to an exact Reliance
+  Program through a relying-party-owned Admissibility Profile.
+- An Open Exposure Ledger with aggregate ceilings across tenant, program,
+  counterparty, and action class; durable PostgreSQL custody; and mandatory
+  independent reconciliation for indeterminate execution.
+- Exact-action signed refusal statements with atomic replay acceptance and
+  optional delivery, custody, and transparency evidence references.
+- Period Coverage Reconciliation Attestations, governed-taxonomy Receipt Census
+  aggregates with coarse primary suppression, and signed external Loss
+  Experience Feeds with trusted correction lineage.
+- A bounded composed lifecycle model and runtime-refinement trace covering
+  admission, exposure reservation, invocation, uncertainty, reconciliation,
+  refusal, and terminal-state preservation.
+
+### Security
+
+- Loss schedules, refusal statements, coverage attestations, and loss feeds
+  remain separate from authorization and cannot create execution authority.
+- Open exposure remains reserved through `INVOKING` and `INDETERMINATE`; there
+  is no blind release or retry, and origin, executor, and reconciler authority
+  must remain distinct.
+- Coverage and census artifacts reconcile only supplied populations. They do
+  not establish completeness, causation, insurance coverage, legal liability,
+  adjudicated loss, solvency, or payment.
+
 ## 0.19.0 (2026-07-28)
 
 ### Added

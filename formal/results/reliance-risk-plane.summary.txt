@@ -1,0 +1,20 @@
+EP-RELIANCE-RISK-PLANE-BOUNDED-MODEL-v1: PASS
+Status: public same-team bounded model result; not independently reviewed
+Method: deterministic finite exhaustive state exploration
+Execution date: 2026-07-28
+Runtime: Node.js
+Model SHA-256: 30c56763ce70ec6776ecb4571a2175e87ccd9957008c8d3985d90ecea8c06c74
+Runner SHA-256: 64bc1596f90db449cc21de325e64fd8ee078f9e4b24251e7f771cd6839d4cc42
+
+ProgramAcceptedBeforeReserve (16384 states): verified
+AuthorizationRequired (16384 states): verified
+ExposureCapacityRequired (16384 states): verified
+ReservationRequiredBeforeInvoke (16384 states): verified
+IndeterminateRemainsOpen (16384 states): verified
+NoBlindRetryFromIndeterminate (16384 states): verified
+IndependentReconcilerRequired (16384 states): verified
+RefusalNeverAuthorizes (16384 states): verified
+LossScheduleNeverAuthorizes (16384 states): verified
+CoverageDoesNotProveCompleteness (16384 states): verified
+TerminalStateNotSuperseded (16384 states): verified
+Each obligation also has a deliberately weakened configuration with a concrete counterexample.

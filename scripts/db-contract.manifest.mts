@@ -83,6 +83,56 @@ const ROLLOUT_ATTEMPT_QUALIFIED_RPCS: string[] = [
   'rollout_attempt_private.apply_operation(text,text)',
 ];
 
+const OPEN_EXPOSURE_QUALIFIED_TABLES: string[] = [
+  'open_exposure_private.tenant_principals',
+  'open_exposure_private.ceilings',
+  'open_exposure_private.exposures',
+  'open_exposure_private.history',
+  'open_exposure_private.reconciliation_tokens',
+];
+
+const OPEN_EXPOSURE_QUALIFIED_RPCS: string[] = [
+  'open_exposure_private.register_ceiling(jsonb)',
+  'open_exposure_private.reserve(jsonb)',
+  'open_exposure_private.begin_invocation(jsonb)',
+  'open_exposure_private.mark_indeterminate(jsonb)',
+  'open_exposure_private.reconcile(jsonb)',
+  'open_exposure_private.read_exposure(jsonb)',
+  'open_exposure_private.read_history(jsonb)',
+  'open_exposure_private.sum_open(jsonb)',
+  'open_exposure_private.list_aging(jsonb)',
+  'open_exposure_private.list_deadlines(jsonb)',
+];
+
+const OPEN_EXPOSURE_SECURITY_ASSERTIONS: string[] = [
+  'contract:table:open_exposure_private.tenant_principals:owner-force-rls-owner-only-acl',
+  'contract:table:open_exposure_private.ceilings:owner-force-rls-owner-only-acl',
+  'contract:table:open_exposure_private.exposures:owner-force-rls-owner-only-acl',
+  'contract:table:open_exposure_private.history:owner-force-rls-owner-only-acl',
+  'contract:table:open_exposure_private.reconciliation_tokens:owner-force-rls-owner-only-acl',
+  'contract:function:open_exposure_private.register_ceiling(jsonb):owner-definer-empty-search-path-policy-admin-only',
+  'contract:function:open_exposure_private.reserve(jsonb):owner-definer-empty-search-path-origin-only',
+  'contract:function:open_exposure_private.begin_invocation(jsonb):owner-definer-empty-search-path-executor-only',
+  'contract:function:open_exposure_private.mark_indeterminate(jsonb):owner-definer-empty-search-path-executor-only',
+  'contract:function:open_exposure_private.reconcile(jsonb):owner-definer-empty-search-path-reconciler-only',
+  'contract:function:open_exposure_private.read_exposure(jsonb):owner-definer-empty-search-path-reader-only',
+  'contract:function:open_exposure_private.read_history(jsonb):owner-definer-empty-search-path-reader-only',
+  'contract:function:open_exposure_private.sum_open(jsonb):owner-definer-empty-search-path-reader-only',
+  'contract:function:open_exposure_private.list_aging(jsonb):owner-definer-empty-search-path-reader-only',
+  'contract:function:open_exposure_private.list_deadlines(jsonb):owner-definer-empty-search-path-reader-only',
+  'contract:trigger:open_exposure_private.tenant_principals.open_exposure_principal_separation_trigger:owner-before-insert-update-row-custody-disjoint',
+  'contract:trigger:open_exposure_private.ceilings.open_exposure_ceilings_immutable_trigger:exact-before-update-delete-row-owner-only-immutable',
+  'contract:trigger:open_exposure_private.exposures.open_exposure_record_guard_trigger:owner-before-update-delete-row-live-transition-guard',
+  'contract:trigger:open_exposure_private.history.open_exposure_history_immutable_trigger:exact-before-update-delete-row-owner-only-immutable',
+  'contract:trigger:open_exposure_private.reconciliation_tokens.open_exposure_reconciliation_tokens_immutable_trigger:exact-before-update-delete-row-owner-only-immutable',
+  'contract:roles:open-exposure:least-privilege-membership-disjoint',
+  'contract:index:open_exposure_private.open_exposure_ceiling_scope_idx:exact-unique-btree',
+  'contract:index:open_exposure_private.open_exposure_open_aggregate_idx:exact-partial-btree-include',
+  'contract:index:open_exposure_private.open_exposure_aging_idx:exact-partial-btree',
+  'contract:index:open_exposure_private.open_exposure_deadline_idx:exact-partial-btree',
+  'contract:index:open_exposure_private.open_exposure_history_read_idx:exact-btree',
+];
+
 const CONSEQUENCE_CONTROL_SECURITY_ASSERTIONS: string[] = [
   'contract:table:consequence_actuator_private.provider_attempts:owner-force-rls-owner-only-acl',
   'contract:table:consequence_actuator_private.provider_records:owner-force-rls-owner-only-acl',
@@ -196,12 +246,17 @@ export const contract: DbContract = {
     'consequence_actuator_private.provider_attempts',
     'consequence_actuator_private.provider_records',
     ...ROLLOUT_ATTEMPT_QUALIFIED_TABLES,
+    ...OPEN_EXPOSURE_QUALIFIED_TABLES,
   ],
   requiredQualifiedRpcs: [
     ...CONSEQUENCE_ACTUATOR_QUALIFIED_RPCS,
     ...ROLLOUT_ATTEMPT_QUALIFIED_RPCS,
+    ...OPEN_EXPOSURE_QUALIFIED_RPCS,
   ],
-  requiredReconcileAssertions: CONSEQUENCE_CONTROL_SECURITY_ASSERTIONS,
+  requiredReconcileAssertions: [
+    ...CONSEQUENCE_CONTROL_SECURITY_ASSERTIONS,
+    ...OPEN_EXPOSURE_SECURITY_ASSERTIONS,
+  ],
 
   // Tables that SHOULD exist but are KNOWN-MISSING and tracked for a staged
   // rollout. Reported loudly as KNOWN GAP (non-fatal) so they stay visible

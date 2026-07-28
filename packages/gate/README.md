@@ -820,6 +820,28 @@ consequential actions by default**, so the parties with leverage (clouds, paymen
 insurers) can *require* a receipt — and "no receipt" becomes like "no TLS cert" or "unsigned binary":
 not always illegal, just untrusted. Necessary, not sufficient.
 
+## Reliance risk plane
+
+Gate `0.20.0` adds a consequence-risk plane around the existing Reliance
+Program and execution lifecycle:
+
+- `./loss-allocation-schedule` verifies separately signed, exact-program terms;
+- `./open-exposure-ledger` and `./open-exposure-ledger-postgres` reserve and
+  aggregate open exposure before provider invocation;
+- `./action-refusal-statement` emits a signed exact-action technical refusal;
+- `./coverage-reconciliation-attestation` reconciles supplied effect and
+  receipt populations for a bounded period;
+- `./receipt-census` emits governed-taxonomy aggregates with coarse primary suppression; and
+- `./loss-experience-feed` carries signed external observations whose
+  corrections require a trusted current-head lineage resolver.
+
+These artifacts do not create authority. EMILIA does not bear or allocate loss,
+adjudicate disputes, verify insurance coverage or solvency, or move money.
+Open exposure is an operational ceiling: an `INDETERMINATE` provider outcome
+stays open until an independent reconciler supplies authenticated evidence.
+See `docs/architecture/RELIANCE-RISK-PLANE.md` for the composed state model and
+claim boundaries.
+
 ## Standards
 
 The mechanism is specified in `draft-schrock-ep-enforcement-point` (the Receipt-Required rail) over

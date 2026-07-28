@@ -1,0 +1,80 @@
+{
+  "@version": "EP-LOSS-EXPERIENCE-FEED-CONFORMANCE-v1",
+  "description": "Synthetic PHI-free deterministic external loss-observation vector.",
+  "seed_hex": "4444444444444444444444444444444444444444444444444444444444444444",
+  "trusted_keys": {
+    "loss-feed-vector-key-1": {
+      "issuer_id": "carrier:synthetic",
+      "public_key": "MCowBQYDK2VwAyEA11l5O7wTooGagnx2rbb7qKSa7gB_SfLQmS2ZuCWtLEg"
+    }
+  },
+  "verification_time": "2026-07-02T00:00:00Z",
+  "expected_program": {
+    "program_id": "rp.synthetic-payer.pas.1",
+    "version": 1,
+    "source_digest": "sha256:1111111111111111111111111111111111111111111111111111111111111111",
+    "program_digest": "sha256:2222222222222222222222222222222222222222222222222222222222222222"
+  },
+  "expected_census_digest": "sha256:f1ee21ccf0eb605af6a1f49ee4994bcb5a7f5886ca1e53f99007fe78145d79fe",
+  "expected_taxonomy_digest": "sha256:3c29200004c72c7fc73e56ede8609bf2368a27fa13a1808d1663529ec017fefd",
+  "expected_relying_party_id": "payer:synthetic",
+  "expected_action_classes": [
+    "health.prior-authorization"
+  ],
+  "artifact": {
+    "@version": "EP-LOSS-EXPERIENCE-FEED-v1",
+    "census_digest": "sha256:f1ee21ccf0eb605af6a1f49ee4994bcb5a7f5886ca1e53f99007fe78145d79fe",
+    "claim_boundary": "externally_reported_observation_not_verified_causation_not_insurance_coverage_not_legal_liability_not_adjudicated_loss_not_solvency_not_payment_not_authorization",
+    "expires_at": "2026-09-01T01:00:00Z",
+    "feed_id": "loss-feed:synthetic:2026-06",
+    "issued_at": "2026-07-01T01:00:00Z",
+    "issuer": {
+      "id": "carrier:synthetic",
+      "key_id": "loss-feed-vector-key-1"
+    },
+    "period": {
+      "end": "2026-07-01T00:00:00Z",
+      "start": "2026-06-01T00:00:00Z"
+    },
+    "program": {
+      "program_digest": "sha256:2222222222222222222222222222222222222222222222222222222222222222",
+      "program_id": "rp.synthetic-payer.pas.1",
+      "source_digest": "sha256:1111111111111111111111111111111111111111111111111111111111111111",
+      "version": 1
+    },
+    "records": [
+      {
+        "action_class": "health.prior-authorization",
+        "classification": "LOSS_REPORTED",
+        "currency": "USD",
+        "event_type": "OBSERVED",
+        "lineage_digest": "sha256:8888888888888888888888888888888888888888888888888888888888888888",
+        "occurred_at": "2026-06-15T12:00:00Z",
+        "receipt_digest": "sha256:4444444444444444444444444444444444444444444444444444444444444444",
+        "record_id": "loss-event:synthetic:001",
+        "reported_amount_minor": "12500",
+        "reported_at": "2026-06-20T12:00:00Z",
+        "source_record_digest": "sha256:5555555555555555555555555555555555555555555555555555555555555555",
+        "supersedes_record_digest": null
+      }
+    ],
+    "relying_party_id": "payer:synthetic",
+    "reporting_party_id": "carrier:synthetic",
+    "source_inventory_digest": "sha256:3333333333333333333333333333333333333333333333333333333333333333",
+    "taxonomy_digest": "sha256:3c29200004c72c7fc73e56ede8609bf2368a27fa13a1808d1663529ec017fefd",
+    "timestamp_anchor": null,
+    "proof": {
+      "algorithm": "Ed25519",
+      "key_id": "loss-feed-vector-key-1",
+      "body_digest": "sha256:5d6b1d54d20375121553ef141a4c50cffd9ed6d736e431055b3a7e766257339c",
+      "signature_b64u": "lJ5FxWEi7rGWVTXTQmoKeD9_IaT4O0TZ5lcxuCnA4VrNEwd1BAbMxmlvC7kzWcraARZgIqrpd9X19SD-KQvRAw"
+    }
+  },
+  "expected": {
+    "accepted": true,
+    "verified": true,
+    "reason": null,
+    "feed_digest": "sha256:80a37271af8421d981f8530ea48c2df4d4669300bb18940f2943180953d0bacb",
+    "claim_boundary": "externally_reported_observation_not_verified_causation_not_insurance_coverage_not_legal_liability_not_adjudicated_loss_not_solvency_not_payment_not_authorization"
+  }
+}

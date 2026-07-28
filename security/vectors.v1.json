@@ -341,6 +341,16 @@
       "id": "accept_receipt_program_expected_digest_refusal",
       "expect": { "valid": true },
       "execution": { "runner": "node-test", "file": "packages/gate/receipt-program.test.js", "title": "expected program digest mismatch emits a verifiable recoverable refusal" }
+    },
+    {
+      "id": "accept_reliance_risk_plane_indeterminate_closeout",
+      "expect": { "valid": true },
+      "execution": { "runner": "node-test", "file": "packages/gate/open-exposure-ledger.test.js", "title": "indeterminate custody stays open, blocks blind invocation retry, and closes only on authenticated evidence" }
+    },
+    {
+      "id": "reject_reliance_risk_plane_role_collapse",
+      "expect": { "valid": false },
+      "execution": { "runner": "node-test", "file": "packages/gate/open-exposure-ledger.test.js", "title": "origin, executor, and reconciliation authorities are distinct and role-bound" }
     }
   ]
 }

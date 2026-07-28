@@ -1,0 +1,144 @@
+{
+  "@version": "EP-ACTION-REFUSAL-STATEMENT-CONFORMANCE-v1",
+  "artifact_version": "EP-ACTION-REFUSAL-STATEMENT-v1",
+  "description": "Deterministic Ed25519/JCS exact-action technical refusal vector.",
+  "artifact_classification": "public_experimental_synthetic_phi_free_reference",
+  "claim_limitations": [
+    "This synthetic PHI-free vector proves only deterministic signing and verification for the explicit technical refusal fields.",
+    "The statement is not a legal or adverse-benefit denial and grants no authorization.",
+    "It does not establish legal enforceability, solvency, payment, coverage, causation, external effect, or business correctness.",
+    "Absent delivery and custody references remain NOT_EVIDENCED; referenced evidence is not externally verified by this verifier.",
+    "An external transparency anchor is not a Sabey probe-run transparency result, and this technical action refusal is not a Kamimura content-refusal event.",
+    "No independent implementation or cross-vendor interoperability result is claimed."
+  ],
+  "seed_hex": "4242424242424242424242424242424242424242424242424242424242424242",
+  "trusted_keys": {
+    "gate-refusal-key-1": {
+      "issuer_id": "gate:synthetic-payer:prod",
+      "public_key": "MCowBQYDK2VwAyEAIVL40Zt5HSRFMkLhXy6rbLfP-ntqXtMAl5YOBpiB2xI"
+    }
+  },
+  "positive": {
+    "now": "2026-07-28T18:00:00.000Z",
+    "expected": {
+      "caid": "caid:1:health.prior-authorization-determination.1:jcs-sha256:AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA",
+      "action_digest": "sha256:1111111111111111111111111111111111111111111111111111111111111111",
+      "relying_party_id": "payer:synthetic-example",
+      "program_id": "rp.synthetic-payer.pas-adverse-determination.1",
+      "program_version": 1,
+      "source_digest": "sha256:2222222222222222222222222222222222222222222222222222222222222222",
+      "program_digest": "sha256:3333333333333333333333333333333333333333333333333333333333333333",
+      "nonce": "CAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAg"
+    },
+    "statement": {
+      "@version": "EP-ACTION-REFUSAL-STATEMENT-v1",
+      "action_digest": "sha256:1111111111111111111111111111111111111111111111111111111111111111",
+      "caid": "caid:1:health.prior-authorization-determination.1:jcs-sha256:AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA",
+      "challenge_digests": [
+        "sha256:6666666666666666666666666666666666666666666666666666666666666666",
+        "sha256:7777777777777777777777777777777777777777777777777777777777777777"
+      ],
+      "claim_boundary": "technical_refusal_not_legal_or_benefit_determination",
+      "custody": null,
+      "delivery": null,
+      "evidence_digests": [
+        "sha256:4444444444444444444444444444444444444444444444444444444444444444",
+        "sha256:5555555555555555555555555555555555555555555555555555555555555555"
+      ],
+      "expires_at": "2026-07-28T18:04:00.000Z",
+      "failed_requirement_ids": [
+        "licensed-review",
+        "reviewer-authority"
+      ],
+      "issuer": {
+        "id": "gate:synthetic-payer:prod",
+        "key_id": "gate-refusal-key-1"
+      },
+      "nonce": "CAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAg",
+      "program": {
+        "program_digest": "sha256:3333333333333333333333333333333333333333333333333333333333333333",
+        "program_id": "rp.synthetic-payer.pas-adverse-determination.1",
+        "source_digest": "sha256:2222222222222222222222222222222222222222222222222222222222222222",
+        "version": 1
+      },
+      "refusal_class": "evidence_unsatisfied",
+      "refusal_id": "refusal:synthetic-pas:vector-001",
+      "refused_at": "2026-07-28T17:59:00.000Z",
+      "relying_party_id": "payer:synthetic-example",
+      "semantics": {
+        "authorization": "NOT_EVALUATED",
+        "match": "MATCH",
+        "satisfaction": "NOT_SATISFIED",
+        "verification": "VERIFIED"
+      },
+      "transparency_anchor": null,
+      "proof": {
+        "algorithm": "Ed25519",
+        "key_id": "gate-refusal-key-1",
+        "body_digest": "sha256:4882690aa70a70291b34f22437e263717d0fc6c39133a615578b1e60efe93c32",
+        "signature_b64u": "VGvtvpbLP3_-AYnzk_bZwEmX8iLj-MwGyQ_dujmCkSxqScGtUesQF6OGrDLnCK1HR5Yp2HwxqomE5Xymqui0CQ"
+      }
+    },
+    "refusal_digest": "sha256:f7c25c9802ec41dd9e6baa21b1f99ab8565c80e497750a54cb663c46ff0a500b",
+    "expect": {
+      "accepted": true,
+      "verified": true,
+      "reason": null,
+      "refusal_digest": "sha256:f7c25c9802ec41dd9e6baa21b1f99ab8565c80e497750a54cb663c46ff0a500b",
+      "relying_party_id": "payer:synthetic-example",
+      "nonce": "CAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAg",
+      "semantics": {
+        "authorization": "NOT_EVALUATED",
+        "match": "MATCH",
+        "satisfaction": "NOT_SATISFIED",
+        "verification": "VERIFIED"
+      },
+      "delivery_evidence": "NOT_EVIDENCED",
+      "custody_evidence": "NOT_EVIDENCED",
+      "transparency_anchor": "NOT_REFERENCED",
+      "claim_boundary": "technical_refusal_not_legal_or_benefit_determination"
+    }
+  },
+  "mutations": [
+    {
+      "id": "tamper_action_digest",
+      "path": "/action_digest",
+      "value": "sha256:9999999999999999999999999999999999999999999999999999999999999999",
+      "expect": {
+        "accepted": false,
+        "reason": "digest_mismatch"
+      }
+    },
+    {
+      "id": "tamper_program_digest",
+      "path": "/program/program_digest",
+      "value": "sha256:9999999999999999999999999999999999999999999999999999999999999999",
+      "expect": {
+        "accepted": false,
+        "reason": "digest_mismatch"
+      }
+    },
+    {
+      "id": "tamper_failed_requirement",
+      "path": "/failed_requirement_ids/1",
+      "value": "attacker-requirement",
+      "expect": {
+        "accepted": false,
+        "reason": "digest_mismatch"
+      }
+    },
+    {
+      "id": "tamper_signature",
+      "path": "/proof/signature_b64u",
+      "value": "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA",
+      "expect": {
+        "accepted": false,
+        "reason": "signature_invalid"
+      }
+    }
+  ],
+  "replay_expect": {
+    "accepted": false,
+    "reason": "statement_replay"
+  }
+}

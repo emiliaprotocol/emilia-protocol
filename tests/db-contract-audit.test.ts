@@ -90,6 +90,28 @@ describe('live schema-security contract evaluator', () => {
     );
   });
 
+  it('governs every Open Exposure table and exact custody RPC signature', () => {
+    expect(contract.requiredQualifiedTables).toEqual(expect.arrayContaining([
+      'open_exposure_private.tenant_principals',
+      'open_exposure_private.ceilings',
+      'open_exposure_private.exposures',
+      'open_exposure_private.history',
+      'open_exposure_private.reconciliation_tokens',
+    ]));
+    expect(contract.requiredQualifiedRpcs).toEqual(expect.arrayContaining([
+      'open_exposure_private.register_ceiling(jsonb)',
+      'open_exposure_private.reserve(jsonb)',
+      'open_exposure_private.begin_invocation(jsonb)',
+      'open_exposure_private.mark_indeterminate(jsonb)',
+      'open_exposure_private.reconcile(jsonb)',
+      'open_exposure_private.read_exposure(jsonb)',
+      'open_exposure_private.read_history(jsonb)',
+      'open_exposure_private.sum_open(jsonb)',
+      'open_exposure_private.list_aging(jsonb)',
+      'open_exposure_private.list_deadlines(jsonb)',
+    ]));
+  });
+
   it('rejects a missing qualified private table', () => {
     const snapshot = cleanSnapshot();
     snapshot.reconcile_tables = snapshot.reconcile_tables.filter(
@@ -135,11 +157,31 @@ describe('live schema-security contract evaluator', () => {
 
   it('requires every exact consequence-control append-only trigger assertion', () => {
     const triggerAssertions = contract.requiredReconcileAssertions.filter(
-      (value) => value.startsWith('contract:trigger:'),
+      (value) => value.startsWith('contract:trigger:consequence_actuator_private.')
+        || value.startsWith('contract:trigger:rollout_attempt_private.'),
     );
     expect(triggerAssertions).toHaveLength(8);
 
     for (const assertion of triggerAssertions) {
+      const snapshot = cleanSnapshot();
+      snapshot.reconcile_functions = snapshot.reconcile_functions.filter(
+        (value) => value !== assertion,
+      );
+
+      expect(evaluateContract(snapshot).failures).toContain(
+        `RECONCILIATION SECURITY ASSERTION failed: ${assertion}`,
+      );
+    }
+  });
+
+  it('requires every Open Exposure live trigger, role, and index assertion', () => {
+    const openExposureAssertions = contract.requiredReconcileAssertions.filter(
+      (value) => value.includes(':open_exposure_private.')
+        || value === 'contract:roles:open-exposure:least-privilege-membership-disjoint',
+    );
+    expect(openExposureAssertions).toHaveLength(26);
+
+    for (const assertion of openExposureAssertions) {
       const snapshot = cleanSnapshot();
       snapshot.reconcile_functions = snapshot.reconcile_functions.filter(
         (value) => value !== assertion,

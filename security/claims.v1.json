@@ -2806,6 +2806,87 @@
         "a pre-execution failure while registering a newly delegated child capability still requires reconciliation of that delegation operation"
       ],
       "release_artifacts": ["gate-sdk", "security-evidence"]
+    },
+    {
+      "claim_id": "reliance-risk-plane-bounds-open-exposure-and-preserves-uncertainty",
+      "statement": "For an exact Reliance Program and separately admitted action, the reference reliance risk plane verifies a separately signed loss-allocation schedule without treating it as authorization, reserves aggregate open exposure before provider invocation, preserves that exposure through invoking and indeterminate outcomes, refuses blind retry, and permits terminal closeout only through the configured independent reconciliation authority. Exact-action refusal statements, period coverage reconciliations, governed-taxonomy receipt censuses with coarse primary suppression, and signed loss-experience feeds with trusted current-head correction lineage remain non-authorizing evidence artifacts with explicit claim boundaries.",
+      "acceptance_roots": [
+        "the relying party provisions the exact Reliance Program, loss-schedule issuer roots and current status, exposure ceilings, tenant principal mapping, and distinct origin, executor, and reconciliation authorities",
+        "every protected provider path reserves through the durable Open Exposure Ledger before provider invocation",
+        "the supplied system-of-record, receipt, census, and loss inventories are authentic and complete enough for the relying party's stated use"
+      ],
+      "enforcement_path": [
+        { "language": "javascript", "file": "packages/gate/src/loss-allocation-schedule.ts", "symbol": "verifyLossAllocationSchedule", "exported": true },
+        { "language": "javascript", "file": "packages/gate/src/open-exposure-ledger.ts", "symbol": "createMemoryOpenExposureLedger", "exported": true },
+        { "language": "javascript", "file": "packages/gate/src/open-exposure-ledger-postgres.ts", "symbol": "createOpenExposurePostgresLedger", "exported": true },
+        { "language": "javascript", "file": "packages/gate/src/action-refusal-statement.ts", "symbol": "verifyActionRefusalStatement", "exported": true },
+        { "language": "javascript", "file": "packages/gate/src/coverage-reconciliation-attestation.ts", "symbol": "verifyCoverageReconciliationAttestation", "exported": true },
+        { "language": "javascript", "file": "packages/gate/src/loss-experience-feed.ts", "symbol": "verifyLossExperienceFeed", "exported": true }
+      ],
+      "implementations": [
+        { "language": "javascript", "file": "packages/gate/src/loss-allocation-schedule.ts", "export": "verifyLossAllocationSchedule" },
+        { "language": "javascript", "file": "packages/gate/src/open-exposure-ledger.ts", "export": "createMemoryOpenExposureLedger" },
+        { "language": "javascript", "file": "packages/gate/src/open-exposure-ledger-postgres.ts", "export": "createOpenExposurePostgresLedger" },
+        { "language": "javascript", "file": "packages/gate/src/action-refusal-statement.ts", "export": "verifyActionRefusalStatement" },
+        { "language": "javascript", "file": "packages/gate/src/coverage-reconciliation-attestation.ts", "export": "verifyCoverageReconciliationAttestation" },
+        { "language": "javascript", "file": "packages/gate/src/loss-experience-feed.ts", "export": "verifyLossExperienceFeed" }
+      ],
+      "language_coverage": {
+        "javascript": { "status": "covered", "evidence": "security/vectors.v1.json" },
+        "python": { "status": "gap", "reason": "No Python implementation of the stateful Open Exposure Ledger or signed reliance-risk artifacts is claimed." },
+        "go": { "status": "gap", "reason": "No Go implementation of the stateful Open Exposure Ledger or signed reliance-risk artifacts is claimed." }
+      },
+      "vectors": [
+        { "suite": "security/vectors.v1.json", "case_id": "accept_reliance_risk_plane_indeterminate_closeout", "polarity": "positive", "expect": { "valid": true } },
+        { "suite": "security/vectors.v1.json", "case_id": "reject_reliance_risk_plane_role_collapse", "polarity": "negative", "expect": { "valid": false } }
+      ],
+      "tests": [
+        { "file": "packages/gate/open-exposure-ledger.test.js", "title": "indeterminate custody stays open, blocks blind invocation retry, and closes only on authenticated evidence", "runner": "node-test" },
+        { "file": "packages/gate/open-exposure-ledger.test.js", "title": "origin, executor, and reconciliation authorities are distinct and role-bound", "runner": "node-test" },
+        { "file": "packages/gate/open-exposure-ledger-postgres.test.js", "title": "migration enforces RPC-only custody, immutable history, open-status sums, and locked ceilings", "runner": "node-test" },
+        { "file": "packages/gate/loss-allocation-schedule.test.js", "title": "requires a digest-bound current status and refuses not-yet-valid, stale, and revoked schedules", "runner": "node-test" },
+        { "file": "packages/gate/action-refusal-statement.test.js", "title": "replay-checked acceptance consumes the relying-party nonce once and expiry fails closed", "runner": "node-test" },
+        { "file": "packages/gate/coverage-reconciliation-attestation.test.js", "title": "signs a bounded reconciliation and conserves both supplied populations", "runner": "node-test" },
+        { "file": "packages/gate/loss-experience-feed.test.js", "title": "accepts a correction only when a trusted lineage resolver proves the current head", "runner": "node-test" },
+        { "file": "tests/reliance-risk-plane-refinement.test.ts", "title": "runtime exposure transitions refine the bounded no-blind-retry composition", "runner": "vitest" }
+      ],
+      "formal": [
+        {
+          "status": "partial",
+          "method": "bounded_exhaustive_state_exploration",
+          "model": "formal/reliance-risk-plane.model.mjs",
+          "runner": "formal/check-reliance-risk-plane.mjs",
+          "result_evidence": "formal/results/reliance-risk-plane.summary.txt",
+          "obligations": [
+            "ProgramAcceptedBeforeReserve",
+            "AuthorizationRequired",
+            "ExposureCapacityRequired",
+            "ReservationRequiredBeforeInvoke",
+            "IndeterminateRemainsOpen",
+            "NoBlindRetryFromIndeterminate",
+            "IndependentReconcilerRequired",
+            "RefusalNeverAuthorizes",
+            "LossScheduleNeverAuthorizes",
+            "CoverageDoesNotProveCompleteness",
+            "TerminalStateNotSuperseded"
+          ],
+          "scope": "Same-team bounded exhaustive exploration of 16,384 abstract states plus one runtime-refinement trace. Each removed guard produces a counterexample. This is not a mechanized implementation refinement proof and does not model cryptography, database linearizability, legal enforceability, insurer behavior, source-population completeness, causation, solvency, or payment."
+        }
+      ],
+      "assumptions": [
+        "the deployment completely mediates protected provider paths through one authoritative exposure reservation before invocation",
+        "the PostgreSQL deployment applies the checked migration under a non-owner runtime role and preserves transaction isolation, clocks, and durable history",
+        "trusted issuers, relying-party keys, current-status sources, timestamp evidence, inventories, and reconciliation evidence remain correctly provisioned and truthful"
+      ],
+      "exclusions": [
+        "EMILIA does not bear or allocate loss, adjudicate disputes, establish legal enforceability, verify insurance coverage, causation or solvency, or move money",
+        "coverage reconciliation signs only supplied population roots and conserving counts and does not prove population completeness",
+        "receipt census primary suppression does not establish differential privacy or prevent differencing across overlapping releases",
+        "loss-experience records are externally reported observations, not verified or adjudicated losses",
+        "the in-memory exposure ledger is test-only and non-durable; production custody requires the PostgreSQL contract or an equivalent independently assessed implementation",
+        "no independent implementation, external deployment, insurer adoption, premium credit, or loss-data network is claimed"
+      ],
+      "release_artifacts": ["gate-sdk", "security-evidence"]
     }
   ]
 }
