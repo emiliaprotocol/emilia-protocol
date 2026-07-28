@@ -1,0 +1,66 @@
+{
+  "@type": "EMILIA-DAVINCI-PAS-CONSEQUENCE-CONFORMANCE-v1",
+  "status": "synthetic_reference",
+  "profile_id": "healthcare.davinci-pas-review.consequence-control.v1",
+  "action_type": "health.medical-prior-authorization-review.1",
+  "aeb_requirement_ref": "requirement:healthcare-davinci-pas-consequence-control",
+  "fixed_denial": {
+    "operation_id": "operation:pas-review-001",
+    "expected_caid": "caid:1:health.medical-prior-authorization-review.1:jcs-sha256:NtDho67FgeyLnoTIGmUNB_H75_I-lyQ4vDdujzGJQkw",
+    "expected_action_digest": "sha256:36d0e1a3aec581ec8b9e84c81a650d07f1fbe7f23e972438bc376e8f3189424c",
+    "expected_outcome": "denied",
+    "reviewer_required": true,
+    "portable_raw_phi": false
+  },
+  "lifecycle_vectors": [
+    {
+      "id": "exact_server_observation_executes_once",
+      "expect": {
+        "decision": "EXECUTED",
+        "effect_invocations": 1,
+        "retry_safe": false
+      }
+    },
+    {
+      "id": "source_drift_refused_before_provider_entry",
+      "expect": {
+        "decision": "REFUSED",
+        "reason": "pas_execution_binding_mismatch",
+        "effect_invocations": 0
+      }
+    },
+    {
+      "id": "timeout_after_provider_entry_is_indeterminate",
+      "expect": {
+        "decision": "INDETERMINATE",
+        "reconciliation_required": true,
+        "retry_safe": false
+      }
+    },
+    {
+      "id": "blind_replay_after_indeterminate_refused",
+      "expect": {
+        "effect_invocations": 1
+      }
+    },
+    {
+      "id": "authenticated_exact_provider_evidence_reconciles",
+      "expect": {
+        "decision": "RECONCILED_EXECUTED",
+        "authenticated_provider_evidence": true
+      }
+    },
+    {
+      "id": "raw_fhir_refused_at_agent_boundary",
+      "expect": {
+        "http_status": 400,
+        "reason": "raw_pas_resources_refused"
+      }
+    }
+  ],
+  "limitations": [
+    "Synthetic reference only; no live payer, provider, EHR, or utilization-management integration is claimed.",
+    "The binding does not establish medical necessity, clinical correctness, source-system truth, or regulatory compliance.",
+    "INDETERMINATE proves neither success nor failure and cannot be blindly retried."
+  ]
+}

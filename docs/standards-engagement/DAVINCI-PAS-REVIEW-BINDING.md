@@ -131,11 +131,19 @@ production/EHR integration.
 ## Reference artifacts
 
 - `lib/health/davinci-pas-binding.ts` — deterministic projector and verifier.
+- `lib/health/davinci-pas-consequence-control.ts` — reserve-before-entry,
+  one-time execution, indeterminate freeze, authenticated reconciliation, and
+  signed PHI-minimized reliance packet over the same exact PAS action.
+- `docs/health/DAVINCI-PAS-CONSEQUENCE-CONTROL.md` — executable synthetic
+  lifecycle and deployment boundary.
 - `profiles/health/davinci-pas-review-binding.v1.json` — machine-readable
   profile and claim boundaries.
 - `tests/davinci-pas-binding.test.ts` — action substitution,
   reviewer/authority omission, altered ClaimResponse, replay/CAID mismatch,
   patient mismatch, and PHI-leakage attacks.
+- `tests/davinci-pas-consequence-control.test.ts` — provider-entry custody,
+  no-blind-replay, reconciliation, signature, authentication, and tenant
+  boundary attacks.
 
 ## Primary sources
 

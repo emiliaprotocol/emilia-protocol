@@ -60,7 +60,16 @@ function refusal(checks, reason) {
   return { accepted: false, checks, reason };
 }
 
-/** Verify the record/evidence join without deciding whether the new state is lawful. */
+/**
+ * Verify the record/evidence join without deciding whether the new state is lawful.
+ *
+ * @param {{
+ *   signedRecord?: any,
+ *   expectedAction?: any,
+ *   artifactStore?: Map<string, any>,
+ *   trust?: any,
+ * }} [input]
+ */
 export function verifyAuthorizationTransition({
   signedRecord,
   expectedAction,

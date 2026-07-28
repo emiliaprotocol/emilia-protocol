@@ -111,7 +111,15 @@
   "replay": {
     "operation_id_bound": true,
     "caid_bound": true,
-    "verifier_input": "The caller supplies its expected operation/CAID and durable consumed-CAID state. The pure verifier refuses a consumed CAID but does not persist consumption."
+    "verifier_input": "The pure binding verifier accepts relying-party state and does not persist consumption.",
+    "consequence_control": {
+      "profile_id": "healthcare.davinci-pas-review.consequence-control.v1",
+      "aeb_requirement_ref": "requirement:healthcare-davinci-pas-consequence-control",
+      "durable_one_time_consumption": true,
+      "reserve_before_provider_entry": true,
+      "no_blind_replay_after_indeterminate": true,
+      "authenticated_reconciliation": true
+    }
   },
   "pharmacy_rail": {
     "separate": true,
@@ -130,6 +138,12 @@
     "No legal, regulatory, clinical, medical-necessity, privacy-compliance, or payer-policy determination.",
     "No claim of HL7, Da Vinci, CMS, California, or NCPDP endorsement."
   ],
-  "reference_implementation": "lib/health/davinci-pas-binding.ts",
-  "tests": "tests/davinci-pas-binding.test.ts"
+  "reference_implementation": [
+    "lib/health/davinci-pas-binding.ts",
+    "lib/health/davinci-pas-consequence-control.ts"
+  ],
+  "tests": [
+    "tests/davinci-pas-binding.test.ts",
+    "tests/davinci-pas-consequence-control.test.ts"
+  ]
 }

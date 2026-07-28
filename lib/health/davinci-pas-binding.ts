@@ -108,6 +108,12 @@ export interface DavinciPasVerificationResult {
   reasons: string[];
 }
 
+export interface CanonicalDavinciPasAction {
+  action: DavinciPasMaterialAction;
+  action_digest: string;
+  caid: string;
+}
+
 const CAID_DEFINITION = Object.freeze({
   action_type: DAVINCI_PAS_ACTION_TYPE,
   required_fields: [
@@ -932,7 +938,48 @@ function validatePortableShape(binding: unknown, reasons: string[]): binding is 
       && binding.action.reviewer_authority_scope !== REVIEWER_AUTHORITY_SCOPE) {
     addReason(reasons, 'reviewer_authority_scope_mismatch');
   }
-  return true;
+  return reasons.length === 0;
+}
+
+/**
+ * Canonicalize the PHI-free material action used by Proposal-to-Effect at both
+ * proposal creation and the protected callback boundary. The action must
+ * satisfy the same closed shape and CAID definition as a complete PAS binding.
+ */
+export function canonicalizeDavinciPasMaterialAction(
+  input: unknown,
+): CanonicalDavinciPasAction {
+  const computed = computeCaid(input, {
+    suite: 'jcs-sha256',
+    definitions: [CAID_DEFINITION],
+  });
+  if (typeof computed?.caid !== 'string' || !validDigest(computed.digest)) {
+    throw new Error('pas_action_caid_generation_failed');
+  }
+  const candidate = {
+    '@type': DAVINCI_PAS_BINDING_TYPE,
+    profile_id: DAVINCI_PAS_PROFILE_ID,
+    ig: {
+      package: 'hl7.fhir.us.davinci-pas',
+      version: DAVINCI_PAS_IG_VERSION,
+      fhir_release: 'R4',
+      claim_profile: CLAIM_PROFILE,
+      claim_response_profile: CLAIM_RESPONSE_PROFILE,
+    },
+    rail: DAVINCI_PAS_MEDICAL_RAIL,
+    action: input,
+    action_digest: computed.digest,
+    caid: computed.caid,
+  };
+  const reasons: string[] = [];
+  if (!validatePortableShape(candidate, reasons)) {
+    throw new Error(reasons[0] ?? 'pas_action_invalid');
+  }
+  return {
+    action: canonicalClone(candidate.action),
+    action_digest: candidate.action_digest,
+    caid: candidate.caid,
+  };
 }
 
 /**
@@ -1018,6 +1065,7 @@ const davinciPasBinding = {
   DAVINCI_PAS_IG_VERSION,
   DAVINCI_PAS_MEDICAL_RAIL,
   buildDavinciPasReviewBinding,
+  canonicalizeDavinciPasMaterialAction,
   digestPasValue,
   verifyDavinciPasReviewBinding,
 };
