@@ -5,6 +5,7 @@ import { describe, expect, it } from 'vitest';
 import {
   DAVINCI_PAS_ACTION_TYPE,
   buildDavinciPasReviewBinding,
+  canonicalizeDavinciPasMaterialAction,
   digestPasValue,
   verifyDavinciPasReviewBinding,
 } from '../lib/health/davinci-pas-binding.js';
@@ -381,6 +382,241 @@ describe('Da Vinci PAS medical-review binding', () => {
       reasons: expect.arrayContaining([
         'portable_output_not_canonical_json',
         'portable_binding_invalid',
+      ]),
+    });
+  });
+
+  it('rejects every non-canonical JSON class before it can influence a PAS digest', () => {
+    const cyclic: Record<string, unknown> = {};
+    cyclic.self = cyclic;
+    const shared: Record<string, unknown> = { value: 1 };
+    const sparse = Array(1);
+    const extended = [1] as Array<number> & { extra?: number };
+    extended.extra = 2;
+    const accessorArray = [1];
+    Object.defineProperty(accessorArray, '0', { enumerable: true, get: () => 1 });
+    const accessorObject = {};
+    Object.defineProperty(accessorObject, 'secret', { enumerable: true, get: () => 'value' });
+    const symbolKey = { safe: true } as Record<PropertyKey, unknown>;
+    symbolKey[Symbol('hidden')] = true;
+    let deep: Record<string, unknown> = {};
+    for (let index = 0; index < 70; index += 1) deep = { child: deep };
+
+    for (const value of [
+      Number.NaN,
+      '\ud800',
+      '\udc00',
+      new Date('2026-07-27T00:00:00Z'),
+      cyclic,
+      { left: shared, right: shared },
+      sparse,
+      extended,
+      accessorArray,
+      accessorObject,
+      symbolKey,
+      deep,
+      'x'.repeat((4 * 1024 * 1024) + 1),
+    ]) {
+      expect(() => digestPasValue(value)).toThrow(TypeError);
+    }
+  });
+
+  it('reports the full PAS resource contract instead of accepting partial FHIR', () => {
+    const input = serverInput();
+    input.claim.meta.profile = [];
+    input.claim_response.meta.profile = [];
+    input.claim.use = 'claim';
+    input.claim_response.use = 'claim';
+    input.claim.status = 'draft';
+    input.claim_response.status = 'draft';
+    input.claim_response.type.coding[0].code = 'institutional';
+    input.claim.identifier = [];
+    input.claim.id = 'contains spaces';
+    input.claim_response.outcome = 'queued';
+    (input.claim_response as any).error = [{ code: 'processing' }];
+    delete (input.claim as any).provider;
+    delete (input.claim as any).patient;
+    delete (input.claim_response as any).patient;
+    delete (input.claim as any).insurer;
+    delete (input.claim_response as any).insurer;
+    delete (input.claim_response as any).request;
+    input.claim.item = [];
+    input.claim_response.item = [];
+
+    expect(buildDavinciPasReviewBinding(input)).toEqual({
+      ok: false,
+      reasons: expect.arrayContaining([
+        'claim_profile_mismatch',
+        'claim_response_profile_mismatch',
+        'claim_use_mismatch',
+        'claim_response_use_mismatch',
+        'claim_status_not_active',
+        'claim_response_status_not_active',
+        'claim_response_type_mismatch',
+        'claim_identifier_required',
+        'claim_id_invalid',
+        'claim_response_outcome_not_complete',
+        'claim_response_error_present',
+        'claim_provider_reference_required',
+        'claim_patient_reference_required',
+        'claim_response_patient_reference_required',
+        'claim_insurer_reference_required',
+        'claim_response_insurer_reference_required',
+        'claim_response_request_required',
+        'claim_items_required',
+        'claim_response_items_required',
+      ]),
+    });
+  });
+
+  it('rejects malformed and ambiguous PAS item decisions', () => {
+    const mixed = serverInput();
+    const secondClaimItem = clone(mixed.claim.item[0]);
+    secondClaimItem.sequence = 2;
+    mixed.claim.item.push(secondClaimItem);
+    const secondResponseItem = clone(mixed.claim_response.item[0]);
+    secondResponseItem.itemSequence = 2;
+    secondResponseItem.adjudication[0].extension[0]
+      .extension[0].valueCodeableConcept.coding[0].code = 'A1';
+    mixed.claim_response.item.push(secondResponseItem);
+    mixed.reviewer.authority_evidence.claim_response_digest = digestPasValue(mixed.claim_response);
+    const mixedResult = buildDavinciPasReviewBinding(mixed);
+    expect(mixedResult.ok).toBe(true);
+    if (!mixedResult.ok) throw new Error(mixedResult.reasons.join(','));
+    expect(mixedResult.binding.action.decision_outcome).toBe('mixed');
+
+    const malformed = serverInput();
+    malformed.claim.item = [{ sequence: 0 } as any];
+    malformed.claim_response.item = [{ itemSequence: 0 } as any];
+    expect(buildDavinciPasReviewBinding(malformed)).toEqual({
+      ok: false,
+      reasons: expect.arrayContaining(['claim_item_invalid', 'claim_response_item_invalid']),
+    });
+
+    const duplicate = serverInput();
+    duplicate.claim.item.push(clone(duplicate.claim.item[0]));
+    duplicate.claim_response.item.push(clone(duplicate.claim_response.item[0]));
+    expect(buildDavinciPasReviewBinding(duplicate)).toEqual({
+      ok: false,
+      reasons: expect.arrayContaining([
+        'claim_item_sequence_duplicate',
+        'claim_response_item_sequence_duplicate',
+      ]),
+    });
+
+    const mismatched = serverInput();
+    mismatched.claim_response.item[0].itemSequence = 2;
+    expect(buildDavinciPasReviewBinding(mismatched)).toEqual({
+      ok: false,
+      reasons: expect.arrayContaining(['claim_response_item_sequence_mismatch']),
+    });
+
+    const ambiguous = serverInput();
+    const actionCode = ambiguous.claim_response.item[0].adjudication[0]
+      .extension[0].extension[0].valueCodeableConcept.coding;
+    actionCode.push({ system: X12_REVIEW_ACTION_SYSTEM, code: 'A2' });
+    expect(buildDavinciPasReviewBinding(ambiguous)).toEqual({
+      ok: false,
+      reasons: expect.arrayContaining(['review_action_code_invalid']),
+    });
+  });
+
+  it('fails closed across every adverse-review identity and authority binding', () => {
+    const input = serverInput();
+    input.reviewer.reviewer_ref = 'bad ref';
+    input.claim_response.extension[0].extension[0].valueBoolean = false;
+    input.claim_response.extension[0].extension[1].valueIdentifier.value = '1234567890';
+    input.reviewer.identity_evidence.status = 'verified';
+    input.reviewer.identity_evidence.subject_ref = 'reviewer:other';
+    input.reviewer.identity_evidence.evidence_digest = 'not-a-digest';
+    input.reviewer.identity_evidence.fhir_reviewer_digest = `sha256:${'d'.repeat(64)}`;
+    input.reviewer.authority_evidence.status = 'verified';
+    input.reviewer.authority_evidence.subject_ref = 'reviewer:other';
+    input.reviewer.authority_evidence.evidence_digest = 'not-a-digest';
+    input.reviewer.authority_evidence.scope = 'medical_prior_authorization.observe';
+    input.reviewer.authority_evidence.policy_digest = `sha256:${'e'.repeat(64)}`;
+    input.reviewer.authority_evidence.claim_response_digest = `sha256:${'f'.repeat(64)}`;
+
+    expect(buildDavinciPasReviewBinding(input)).toEqual({
+      ok: false,
+      reasons: expect.arrayContaining([
+        'reviewer_ref_invalid',
+        'fhir_human_review_required',
+        'fhir_reviewer_identity_required',
+        'reviewer_identity_not_accepted',
+        'reviewer_identity_subject_mismatch',
+        'reviewer_identity_digest_invalid',
+        'reviewer_identity_fhir_mismatch',
+        'reviewer_authority_not_accepted',
+        'reviewer_authority_subject_mismatch',
+        'reviewer_authority_digest_invalid',
+        'reviewer_authority_scope_mismatch',
+        'reviewer_authority_policy_mismatch',
+        'reviewer_authority_claim_response_mismatch',
+      ]),
+    });
+  });
+
+  it('rejects malformed portable actions at both verifier and protected callback seams', () => {
+    const input = serverInput();
+    const binding = clone(requireBinding(input)) as any;
+    binding.debug = true;
+    delete binding.ig.claim_profile;
+    binding.rail = 'ncpdp-pharmacy';
+    binding.action.action_type = 'health.substituted';
+    binding.action.ig_version = '0.0.0';
+    binding.action.pairwise_patient_ref = 'Patient/direct-member-123';
+    binding.action.operation_id = 'bad operation';
+    binding.action.claim_digest = 'bad';
+    binding.action.decision_outcome = 'automatic-denial';
+    delete binding.action.reviewer_ref;
+    binding.action.reviewer_authority_scope = 'medical_prior_authorization.observe';
+    binding.action_digest = 'bad';
+
+    expect(verifyDavinciPasReviewBinding(binding, input)).toEqual({
+      valid: false,
+      reasons: expect.arrayContaining([
+        'portable_output_unknown_field',
+        'portable_output_missing_field',
+        'ig_profile_mismatch',
+        'medical_rail_mismatch',
+        'action_type_mismatch',
+        'ig_version_mismatch',
+        'patient_reference_not_pairwise',
+        'operation_id_invalid',
+        'portable_digest_invalid',
+        'action_digest_invalid',
+        'decision_outcome_invalid',
+        'reviewer_authority_scope_mismatch',
+      ]),
+    });
+
+    expect(() => canonicalizeDavinciPasMaterialAction({
+      ...requireBinding(input).action,
+      patient_name: 'Direct Patient Name',
+    })).toThrow('portable_phi_field');
+  });
+
+  it('maps non-canonical trusted resources to deterministic verifier refusals', () => {
+    const input = serverInput();
+    const binding = requireBinding(input);
+    const cyclicClaim: Record<string, unknown> = {};
+    cyclicClaim.self = cyclicClaim;
+    const cyclicResponse: Record<string, unknown> = {};
+    cyclicResponse.self = cyclicResponse;
+
+    expect(verifyDavinciPasReviewBinding(binding, {
+      ...input,
+      expected_operation_id: 'operation:substituted',
+      claim: cyclicClaim,
+      claim_response: cyclicResponse,
+    })).toEqual({
+      valid: false,
+      reasons: expect.arrayContaining([
+        'expected_operation_id_mismatch',
+        'claim_digest_mismatch',
+        'claim_response_digest_mismatch',
+        'action_projection_mismatch',
       ]),
     });
   });

@@ -620,6 +620,86 @@ describe('Da Vinci PAS durability and semantic security', () => {
     expect(mutate).toHaveBeenCalledTimes(1);
   });
 
+  it('refuses every protected-callback substitution before the PAS mutation', async () => {
+    const context = rawPasContext();
+    const built = buildDavinciPasReviewBinding(context);
+    if (!built.ok) throw new Error(built.reasons.join(','));
+    const proposal = proposalFor(built.binding, 'callback-binding');
+    const baselineAttempt = attemptFor(proposal);
+    const cases: Array<{
+      name: string;
+      mutate(input: { action: any; proposal: any; attempt: any }): void;
+    }> = [
+      {
+        name: 'callback proposal operation',
+        mutate(input) { input.proposal.operation_id = 'operation:pas-substituted'; },
+      },
+      {
+        name: 'callback proposal CAID',
+        mutate(input) { input.proposal.caid = materialBinding('f').caid; },
+      },
+      {
+        name: 'callback action',
+        mutate(input) { input.action.policy_version = '2026-08'; },
+      },
+      {
+        name: 'attempt tenant',
+        mutate(input) { input.attempt.tenant_id = 'org:other-tenant'; },
+      },
+      {
+        name: 'attempt provider',
+        mutate(input) { input.attempt.provider_id = 'provider:other'; },
+      },
+      {
+        name: 'attempt provider account',
+        mutate(input) { input.attempt.provider_account_id = 'account:other'; },
+      },
+      {
+        name: 'attempt environment',
+        mutate(input) { input.attempt.environment = 'production'; },
+      },
+      {
+        name: 'attempt request digest',
+        mutate(input) { input.attempt.request_digest = `sha256:${'0'.repeat(64)}`; },
+      },
+    ];
+
+    for (const candidate of cases) {
+      const controller = defaultController();
+      controller.execute.mockImplementation(async (_input: any, effect: any) => {
+        const callback = {
+          action: structuredClone(proposal.action),
+          authorization: { allow: true },
+          attempt: structuredClone(baselineAttempt),
+          proposal: structuredClone(proposal),
+        };
+        candidate.mutate(callback);
+        await effect(callback);
+        return {
+          ok: true,
+          consequence: { state: 'COMMITTED', attempt: callback.attempt },
+        };
+      });
+      const fixture = makeControl({
+        initialEvents: [preparedEvent(1, built.binding, proposal)],
+        controller,
+      });
+
+      await expect(fixture.control.execute({
+        tenant_id: TENANT,
+        proposal,
+        approval_evidence: { receipt_id: 'receipt:pas-durability-test' },
+        evaluation: { verdict: 'SATISFIED' },
+        server_observed_pas: context,
+      }), candidate.name).resolves.toMatchObject({
+        ok: false,
+        decision: 'REFUSED',
+        reason: 'pas_protected_callback_binding_mismatch',
+      });
+      expect(fixture.mutate, candidate.name).not.toHaveBeenCalled();
+    }
+  });
+
   it('preserves reconciled terminal truth when the assurance event append fails', async () => {
     const binding = materialBinding('d');
     const proposal = proposalFor(binding, 'reconciled');
