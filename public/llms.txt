@@ -6,7 +6,7 @@ This is a generated discovery index following the llms.txt proposal. Evidence sn
 
 ## Engineering Evidence
 
-EMILIA is implemented security infrastructure, not architecture-only: 7,953 automated tests across 451 files; 33 executable security claims over 235 hashed evidence files; 20 verified obligations across 2 composed Tamarin models, with 8 deliberately weakened variants producing concrete attack traces; and 72 content-addressed selected model/runtime scenarios across 14 bounded models and 20 claims, including 46 paired formal-counterexample/runtime-refusal controls.
+EMILIA is implemented security infrastructure, not architecture-only: 7,953 automated tests across 451 files; 34 executable security claims over 251 hashed evidence files; 20 verified obligations across 2 composed Tamarin models, with 8 deliberately weakened variants producing concrete attack traces; and 72 content-addressed selected model/runtime scenarios across 14 bounded models and 20 claims, including 46 paired formal-counterexample/runtime-refusal controls.
 
 Interoperability evidence: 21 conformance suites and 329 current vectors across three same-team ports; external Rust evidence covers a time-pinned 164-vector set plus 359 hostility cases. Strict clean-room construction acceptance remains false.
 
