@@ -951,7 +951,7 @@
     },
     {
       "path": "packages/verify/dist/status.js",
-      "sha256": "bd6810c1b2c33667168b7b509e4f91ee5ee11e592612f69da67e3c28eb1bd39e"
+      "sha256": "377510a9a9043b9e6d5f73617bcab47f62b48aa4f2e0bda865842ee1836d04f6"
     },
     {
       "path": "packages/verify/dist/strict-json.js",
