@@ -5,6 +5,15 @@ This package follows [Semantic Versioning](https://semver.org/).
 
 ## Unreleased
 
+## 3.18.1 (2026-07-29)
+
+### Fixed
+
+- The reusable npm release workflow now checks the reviewed security case and
+  conformance manifest in place instead of regenerating them immediately
+  before the proof and reproducibility gates. This preserves the clean,
+  commit-bound checkout those gates are designed to require.
+
 ## 3.18.0 (2026-07-29)
 
 ### Added
