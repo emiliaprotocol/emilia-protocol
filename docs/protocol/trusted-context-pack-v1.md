@@ -26,6 +26,15 @@ native memory provider
 ApertoMemory is the first provider plug-in. The Gate kernel remains
 provider-neutral.
 
+The source format is the independent IETF Internet-Draft
+[`draft-ferro-apertomemory`](https://datatracker.ietf.org/doc/draft-ferro-apertomemory/).
+ApertoMemory remains independently governed and authoritative for its native
+format and read-time semantics. The downstream Memory-to-Action Composition
+Profile is hosted by EMILIA because EMILIA owns the evidence-to-action and
+consequence boundary. The profile requires reciprocal informative references;
+neither reference makes one project a component of, or an endorsement by, the
+other.
+
 ## Three separate decisions
 
 | Decision | Result | Does not establish |
@@ -100,6 +109,15 @@ The provider plug-in does **not** decrypt `.amem` objects or independently
 implement the raw CBOR/COSE format. Native format verification remains owned by
 the ApertoMemory consumer. The checked-in `v0` record is a composition profile
 over the current draft, not an ApertoMemory standard or endorsement.
+
+For source commitments, the adapter hashes the exact complete sealed-object
+CBOR supplied by ApertoMemory. Keys 1-4 are mandatory and reserved OPTIONAL key
+5 (`dek_wrap_ref`) may also be present; all present source bytes are covered.
+The composition field `custody_present` is adapter-derived and is not presented
+as a native assertion from vector 007. The source-fidelity acceptance cases are
+paired exactly as 007 (positive custody), 008 (unproven custody), 011
+(non-owner signer), 012 (unaccepted named author), and 014 (empty/malformed
+custody map with recall isolation).
 
 ## Privacy boundary
 

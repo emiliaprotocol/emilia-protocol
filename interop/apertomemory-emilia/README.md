@@ -1,4 +1,4 @@
-# ApertoMemory / EMILIA composition records
+# ApertoMemory / EMILIA Memory-to-Action Composition Profile v0.1
 
 This directory closes two concrete composition outputs discussed with the
 ApertoMemory authors:
@@ -12,6 +12,29 @@ ApertoMemory authors:
 The first record is a composition vector over existing ApertoMemory semantics.
 The second is an EMILIA discussion profile; ApertoMemory -02 does not currently
 define or claim it.
+
+## Independent source authority and reciprocal references
+
+[ApertoMemory](https://datatracker.ietf.org/doc/draft-ferro-apertomemory/)
+is an independent IETF Internet-Draft and remains authoritative for sealed
+objects, read-time trust, authorship, and custody semantics. This downstream
+profile is hosted by EMILIA because it defines the subsequent evidence,
+exact-action, admission, and outcome boundaries. It does not incorporate
+ApertoMemory into EMILIA or imply an ApertoMemory endorsement.
+
+Publication of this profile requires reciprocal informative references:
+EMILIA cites the independent ApertoMemory draft and ApertoMemory may cite this
+composition profile. Each implementation and specification remains
+independently versioned and governed.
+
+## Exact source commitment
+
+The source commitment is SHA-256 over the complete deterministic-CBOR sealed
+object exactly as supplied by ApertoMemory. The mandatory map has keys 1-4;
+the data model also permits reserved OPTIONAL key 5 (`dek_wrap_ref`). The
+commitment therefore covers every source byte and every map member actually
+present, rather than assuming that only keys 1-4 can occur or reserializing the
+object through an EMILIA JSON representation.
 
 ## Boundary
 
@@ -41,6 +64,22 @@ simpler owner-key path:
 The result also binds a digest of the current keyring snapshot. This is
 required because ApertoMemory trust is derived at read time and may change when
 the vault owner's accepted-key set changes.
+
+`custody_present` is a composition-layer derived fact: it reports whether the
+adapter obtained a populated custody map while evaluating the object. It is
+not represented as an assertion from vector 007's native `expect` block. The
+native assertions remain `trust`, `authorship`, `author_key_id`, and
+`signer_key_id`.
+
+The first source-fidelity acceptance set has the following exact pairing:
+
+| Official v2 vector | Native case |
+| --- | --- |
+| `007-custody-attested` | positive custody-attested result; the proven original author is reported rather than the resealing custodian |
+| `008-custody-unproven` | custody lacks field 4; result degrades to unverified/unknown with no proven author |
+| `011-custody-from-non-owner-MUST-NOT-BE-HONOURED` | a non-owner signer attempts to assert custody; result degrades to unverified/unknown |
+| `012-custody-naming-an-unaccepted-key` | accepted signer names an author absent from the current keyring; result degrades to unverified/unknown |
+| `014-empty-custody-map` | malformed/empty custody map degrades without aborting the remaining recall |
 
 ## Output 2: proposed memory-projection record
 
