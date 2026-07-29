@@ -40,6 +40,29 @@ const TIERS = [
   { tier: 'quorum', body: 'm-of-n distinct humans — the cryptographic two-person rule.' },
 ];
 
+const RISK_PLANE = [
+  {
+    title: 'RP policy · loss schedule',
+    body: 'The relying party pins a separately signed loss-allocation schedule to the exact Reliance Program as an admissibility-profile policy input. The schedule never authorizes execution.',
+  },
+  {
+    title: 'Open Exposure Ledger',
+    body: 'Before provider invocation, the durable ledger atomically reserves declared exposure against configured ceilings. INVOKING and INDETERMINATE stay open until independent reconciliation.',
+  },
+  {
+    title: 'Exact-action refusal',
+    body: 'A signed statement binds the technical refusal to the exact action, failed requirements, challenge, nonce, custody, and time. It is not a legal or adverse-benefit denial.',
+  },
+  {
+    title: 'Coverage attestation',
+    body: 'A bounded-period attestation signs the supplied system-of-record and receipt roots, counts, joins, exceptions, and uncertainty. It does not prove that either population is complete.',
+  },
+  {
+    title: 'Receipt census + loss feed',
+    body: 'Governed aggregate receipt buckets use coarse primary suppression. Signed loss-experience records preserve external provenance and correction lineage without becoming adjudicated losses.',
+  },
+];
+
 const DEMO = [
   ['read_status', 'passes through'],
   ['release_payment, no receipt', '428 Receipt Required'],
@@ -197,6 +220,48 @@ export default function GatePage() {
               Gate may require; it cannot reserve resources, call a provider, or establish that an
               action is wise, legal, or safe.
             </p>
+          </div>
+        </section>
+
+        {/* Reliance Risk Plane */}
+        <section id="reliance-risk-plane" style={styles.section}>
+          <div style={styles.container}>
+            <div style={{ ...styles.eyebrow, color: color.gold }}>RELIANCE RISK PLANE · GATE 0.20.0</div>
+            <h2 style={{ ...styles.h2, marginTop: 12, maxWidth: 860 }}>
+              Bound unresolved exposure without turning risk evidence into authorization.
+            </h2>
+            <p style={{ ...styles.lead, maxWidth: 820, marginTop: 18 }}>
+              Gate now carries customer-owned responsibility terms, declared open exposure, exact
+              technical refusals, and bounded loss evidence alongside the existing authorization
+              lifecycle. Each artifact stays a separate evidence leg under the relying party&rsquo;s
+              pinned program and authorities.
+            </p>
+            <div style={{ marginTop: 32, display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: 16 }}>
+              {RISK_PLANE.map(({ title, body }) => (
+                <div key={title} style={{ ...styles.card, padding: 24, borderTop: `3px solid ${color.gold}` }}>
+                  <div style={{ ...styles.h3, fontSize: 17 }}>{title}</div>
+                  <p style={{ ...styles.body, fontSize: 14, color: color.t2, marginTop: 10 }}>{body}</p>
+                </div>
+              ))}
+            </div>
+            <p style={{ ...styles.body, maxWidth: 840, marginTop: 24, fontSize: 14, color: color.t2 }}>
+              <strong style={{ color: color.t1 }}>The boundary:</strong> EMILIA does not insure,
+              bear or allocate loss, adjudicate disputes or losses, establish legal enforceability,
+              prove coverage, causation, solvency, or population completeness, or move money.
+            </p>
+            <div style={{ display: 'flex', gap: 16, marginTop: 22, flexWrap: 'wrap' }}>
+              <a href="/proof#reliance-risk-plane" style={{ fontFamily: font.mono, fontSize: 12, color: color.gold }}>
+                Inspect the executable claim &rarr;
+              </a>
+              <a
+                href="https://github.com/emiliaprotocol/emilia-protocol/blob/main/docs/architecture/RELIANCE-RISK-PLANE.md"
+                target="_blank"
+                rel="noopener noreferrer"
+                style={{ fontFamily: font.mono, fontSize: 12, color: color.t2 }}
+              >
+                Read the architecture contract &rarr;
+              </a>
+            </div>
           </div>
         </section>
 

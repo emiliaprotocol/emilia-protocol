@@ -8,11 +8,11 @@ import { cta, color, font, radius } from '@/lib/tokens';
 export const metadata: Metadata = {
   title: 'EMILIA Gate Pricing',
   description:
-    'Use the open EMILIA Protocol for free, diagnose one legacy workflow with Amelia I, carry accepted evaluation evidence into Gate when required, and scope one customer-specific deployment.',
+    'Use the open EMILIA Protocol for free, diagnose one legacy workflow, and scope customer-specific Gate enforcement with optional qualification and reliance-risk controls.',
   alternates: { canonical: '/pricing' },
   openGraph: {
     title: 'EMILIA Gate Pricing',
-    description: 'Open proof infrastructure, a read-only Amelia I diagnostic, an optional qualification entry path, a prospective Gate implementation, and deployment-specific operated controls.',
+    description: 'Open proof infrastructure, a read-only diagnostic, customer-specific Gate implementation, and deployment-scoped enforcement, exposure, reconciliation, and evidence operations.',
     url: 'https://www.emiliaprotocol.ai/pricing',
     type: 'website',
   },
@@ -82,7 +82,7 @@ const TIERS: Array<{
     price: GATE_IMPLEMENTATION.priceLabel,
     priceNote: GATE_IMPLEMENTATION.scopeLabel,
     priceIsLabel: true,
-    tagline: 'Turn the selected risk area into a fail-closed prospective control at the real executor boundary, with current candidate qualification when the workflow requires it.',
+    tagline: 'Turn the selected risk area into a fail-closed prospective control, with optional qualification and reliance-risk policy at the real executor boundary.',
     accent: color.blue,
     cta: { label: 'Design the Gate', href: '/pilot' },
     ctaStyle: 'secondary' as const,
@@ -93,8 +93,9 @@ const TIERS: Array<{
       'Receipt Required challenge and approval acquisition',
       'Exact-action verification and one-time consumption',
       `Optional qualification for ${GATE_QUALIFICATION.scopeLabel}`,
-      'Indeterminate outcome and no-blind-replay handling',
-      'Authenticated reconciliation and remedy workflow',
+      'Customer-owned Reliance Program and separately signed loss-schedule policy',
+      'Open-exposure ceilings, no-blind-replay handling, and independent reconciliation',
+      'Technical-refusal, population-reconciliation, receipt-census, and loss-feed artifacts',
       'Customer acceptance vectors and production runbook',
     ],
   },
@@ -113,7 +114,7 @@ const TIERS: Array<{
       'Everything accepted in the Gate implementation',
       'Private cloud, VPC, or self-hosted deployment options',
       'SAML/OIDC identity and SCIM provisioning integration',
-      'Durable consumption, reconciliation, dispute, and remedy operations',
+      'Durable consumption, open-exposure, reconciliation, dispute, and remedy operations',
       'Evidence retention, export, observability, and SIEM integration',
       'Negotiated support, service level, and deployment warranty',
     ],
@@ -230,6 +231,13 @@ export default function PricingPage(): React.ReactElement {
             <strong style={{ color: color.t1 }}>{GATE_QUALIFICATION.name} is an open entry path, not a pricing or certification tier.</strong>{' '}
             It carries {GATE_QUALIFICATION.outcomeLabel} into a Gate implementation when the protected
             workflow requires evaluated-candidate evidence. {GATE_QUALIFICATION.disclaimer}
+          </p>
+          <p style={{ fontSize: 14, color: color.t2, lineHeight: 1.65, maxWidth: 820, marginTop: 14 }}>
+            <strong style={{ color: color.t1 }}>Reliance Risk Plane scope is also deployment-specific.</strong>{' '}
+            EMILIA can verify customer-supplied loss terms, reserve declared open exposure, and emit
+            bounded risk evidence. EMILIA does not insure, bear or allocate loss, adjudicate disputes
+            or losses, prove coverage, causation, solvency, or population completeness, or move money.{' '}
+            <Link href="/gate#reliance-risk-plane" style={{ color: color.gold }}>See the shipped boundary &rarr;</Link>
           </p>
         </C>
       </section>

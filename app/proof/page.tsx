@@ -182,6 +182,7 @@ const PROOF_LAYERS = [
 const LIMITS = [
   'The formal models do not prove that an AI model behaves well or that an approved action is wise, legal, or safe.',
   GATE_QUALIFICATION.disclaimer,
+  'The Reliance Risk Plane does not insure, bear or allocate loss, adjudicate disputes or losses, prove coverage, causation, solvency, or population completeness, or move money.',
   'Selected model/runtime scenarios are same-team conformance evidence under hand-authored mappings. They are not a mechanized proof that every implementation execution refines every formal behavior.',
   'The negative controls pair formal counterexamples with safe-runtime refusals; they do not inject those defects into the runtime implementation.',
   'Deterministic or in-memory scenario adapters are not production-deployment, storage-durability, provider-truth, sensor-truth, or physical-execution evidence.',
@@ -355,6 +356,55 @@ export default async function ProofPage() {
               Inspect the profile source.
             </a>
           </p>
+        </section>
+
+        <section
+          id="reliance-risk-plane"
+          style={{
+            borderTop: `1px solid ${color.border}`,
+            borderBottom: `1px solid ${color.border}`,
+            background: '#1C1917',
+            color: '#FAFAF9',
+          }}
+        >
+          <div style={{ ...styles.sectionWide, paddingTop: 76, paddingBottom: 76 }}>
+            <div style={{ ...styles.eyebrow, color: color.gold }}>SHIPPED CLAIM · GATE 0.20.0</div>
+            <h2 style={{ ...styles.h2, color: '#FAFAF9', fontSize: 'clamp(26px, 3vw, 38px)', maxWidth: 820 }}>
+              The Reliance Risk Plane has an executable claim, not an insurance claim.
+            </h2>
+            <p style={{ fontSize: 16, lineHeight: 1.72, color: 'rgba(250,250,249,0.72)', maxWidth: 820, marginTop: 18 }}>
+              The generated security case traces the loss-schedule verifier, durable exposure
+              custody, exact-action refusal, coverage reconciliation, receipt census, and
+              loss-experience feed to implementation paths, positive and negative vectors, tests,
+              assumptions, exclusions, and evidence hashes.
+            </p>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 240px), 1fr))', gap: 16, marginTop: 32 }}>
+              {[
+                ['Preventive path', 'Declared exposure is reserved before provider invocation, remains open through uncertain outcomes, and closes only through the configured independent reconciliation authority.'],
+                ['Non-authorizing artifacts', 'A loss schedule, refusal statement, coverage attestation, receipt census, or loss feed cannot create authority for an action.'],
+                ['Current implementation scope', 'The stateful risk plane and signed risk artifacts are implemented in JavaScript. No Python or Go implementation, external deployment, insurer adoption, or loss-data network is claimed.'],
+              ].map(([label, detail]) => (
+                <div key={label} style={{ borderTop: `2px solid ${color.gold}`, padding: '18px 4px 0 0' }}>
+                  <h3 style={{ ...styles.h3, fontSize: 17, color: '#FAFAF9', margin: 0 }}>{label}</h3>
+                  <p style={{ fontSize: 14, lineHeight: 1.65, color: 'rgba(250,250,249,0.68)', margin: '9px 0 0' }}>{detail}</p>
+                </div>
+              ))}
+            </div>
+            <p style={{ fontFamily: font.mono, fontSize: 11, lineHeight: 1.65, color: 'rgba(250,250,249,0.58)', maxWidth: 900, margin: '26px 0 0' }}>
+              Coverage reconciliation proves only the supplied roots and conserving counts. Receipt
+              census suppression is not differential privacy. Loss records are externally reported
+              observations, not verified or adjudicated losses. A refusal is exact technical-action
+              evidence, not a legal or adverse-benefit denial.
+            </p>
+            <div style={{ display: 'flex', gap: 16, flexWrap: 'wrap', marginTop: 22 }}>
+              <a href={`${SOURCE_BLOB}/security/claims.v1.json`} style={{ fontFamily: font.mono, fontSize: 11, color: color.gold }}>
+                Open the exact claim manifest &rarr;
+              </a>
+              <a href={`${SOURCE_BLOB}/docs/architecture/RELIANCE-RISK-PLANE.md`} style={{ fontFamily: font.mono, fontSize: 11, color: 'rgba(250,250,249,0.72)' }}>
+                Read the bounded architecture &rarr;
+              </a>
+            </div>
+          </div>
         </section>
 
         <section style={{ ...styles.sectionWide, paddingTop: 88, paddingBottom: 80 }}>
