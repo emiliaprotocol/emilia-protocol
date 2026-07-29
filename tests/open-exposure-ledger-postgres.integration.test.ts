@@ -331,6 +331,12 @@ suite('Open Exposure Ledger migration on clean PostgreSQL 17', () => {
     await database.query(`
       CREATE SCHEMA extensions;
       CREATE EXTENSION pgcrypto WITH SCHEMA extensions;
+      CREATE OR REPLACE FUNCTION public.gov_consequence_control_security_assertions()
+        RETURNS TABLE(assertion TEXT)
+        LANGUAGE sql
+        AS $predecessor$
+          SELECT NULL::TEXT WHERE FALSE
+        $predecessor$;
     `);
     await database.query(migration);
 

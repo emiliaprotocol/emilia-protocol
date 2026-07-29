@@ -375,6 +375,6 @@
     "20260725203000_consequence_actuator_provider_records_managed_role_fix.sql": "57689addd3a65b50e7e693c2ace4a01a5a7a7c22e7bdd3d4d735bc9bf448bc6c",
     "20260725204500_rollout_attempt_store_managed_role_fix.sql": "8a93a8ed5aaff3b0d61ef846ffb44832195323df57719afd74b2c720b1550d92",
     "20260725210000_schema_contract_identity_arguments.sql": "4b501f8fe32311c461eb287ea9cea89ae5b528d06f96832777911f4f53ffe86f",
-    "20260728210700_open_exposure_ledger.sql": "dd7fbfc7a2f21fb0a03e0108ca1a099bfdd547d3357e1005d4d41f778093dead"
+    "20260728210700_open_exposure_ledger.sql": "8ca555e9eae2adcb6853690f6cbd850606164c8872c707d68a7904fc745d7c71"
   }
 }
