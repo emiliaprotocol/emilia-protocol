@@ -8,6 +8,7 @@ import {
 } from "../../../packages/mobile/index.js";
 import { FLEX_ENVELOPE_VERSION } from "../../../lib/grace/curtailment.js";
 import {
+  buildGraceOutcomePredictions,
   buildCurtailmentControlledAction,
   buildCurtailmentPresentation,
   createCurtailmentAction,
@@ -15,6 +16,7 @@ import {
   graceDigest,
   verifyGraceMobileAuthorization,
 } from "../../../lib/grace/mobile-grid.js";
+import { predictedEffectsDigest } from "../../../packages/verify/effect-predicates.js";
 import {
   createCosaReferenceActuator,
   createFencedMemoryStore,
@@ -70,6 +72,9 @@ const policy = Object.freeze({
   policy_id: "ep:grace:mobile-curtailment:v1",
   human_approval: "class_a",
   required_approvals: 2,
+  outcome_policy_digest: predictedEffectsDigest(
+    buildGraceOutcomePredictions(action),
+  ),
   approvers: Object.freeze([
     "ep:approver:grid-operator",
     "ep:approver:facility-operator",
@@ -94,6 +99,10 @@ function ed25519FromSeed(keyId: string, byte: number) {
         .createPublicKey(privateKey as any)
         .export({ type: "spki", format: "der" })
         .toString("base64url"),
+      control_domain_id: `control-domain:${keyId}`,
+      status: "active",
+      valid_from: "2026-01-01T00:00:00.000Z",
+      valid_to: "2027-01-01T00:00:00.000Z",
     },
   };
 }
@@ -334,6 +343,7 @@ export async function runGraceScenario(
   if (scenario === "grace-settle-once") {
     const actuator = {
       verify: state.actuator.verify,
+      attestOutcome: state.actuator.attestOutcome,
       async dispatch(request: Record<string, any>) {
         const acknowledgment = await state.actuator.dispatch(request);
         steps.push({
@@ -352,6 +362,7 @@ export async function runGraceScenario(
     };
     const meter = {
       verify: state.meter.verify,
+      attestOutcome: state.meter.attestOutcome,
       async observe(input: Record<string, any>) {
         const statement = await state.meter.observe(input);
         steps.push({

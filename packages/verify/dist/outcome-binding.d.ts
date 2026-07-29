@@ -5,10 +5,26 @@ interface OutcomeOptions {
     receiptOptions?: Obj;
     policyPredictedEffects?: any[];
 }
+interface OutcomeSetOptions extends OutcomeOptions {
+    sourceKeys?: Record<string, Obj>;
+    sourceRequirements?: Obj[];
+    observationWindows?: Obj[];
+    expectedReceiptId?: string;
+    expectedReceiptDigest?: string;
+    expectedActionHash?: string;
+    expectedConsumptionNonce?: string;
+    expectedActionCaid?: string;
+    expectedOperationId?: string;
+    expectedFacilityId?: string;
+}
 export declare const OUTCOME_ATTESTATION_VERSION = "EP-OUTCOME-ATTESTATION-v1";
 export declare const OUTCOME_ATTESTATION_DOMAIN = "EP-OUTCOME-ATTESTATION-v1\0";
 export declare const OUTCOME_BINDING_VERSION = "EP-OUTCOME-BINDING-v1";
 export declare const OUTCOME_BINDING_RESULT_VERSION = "EP-OUTCOME-BINDING-RESULT-v1";
+export declare const OUTCOME_OBSERVATION_VERSION = "EP-OUTCOME-OBSERVATION-v1";
+export declare const OUTCOME_OBSERVATION_DOMAIN = "EP-OUTCOME-OBSERVATION-v1\0";
+export declare const OUTCOME_BINDING_SET_VERSION = "EP-OUTCOME-BINDING-SET-v1";
+export declare const OUTCOME_BINDING_SET_RESULT_VERSION = "EP-OUTCOME-BINDING-SET-RESULT-v1";
 /** Digest over the exact observed_effects array carried by the attestation. */
 export declare function observedEffectsDigest(observedEffects: unknown): string;
 /** Digest of the exact Trust Receipt object the attestation references. */
@@ -65,6 +81,23 @@ export declare function verifyOutcomeAttestation(attestation: Obj, opts?: Outcom
     checks: Record<string, boolean>;
     errors: string[];
 };
+/** Build a signed observation from an executor, system of record, or independent observer. */
+export declare function buildOutcomeObservation({ receipt_id, receipt_digest, action_hash, action_caid, consumption_nonce, operation_id, source, observed_from, observed_until, attested_at, observed_effects, signer, }?: Obj): Obj;
+/** Verify one signed outcome observation under a relying-party-pinned source identity. */
+export declare function verifyOutcomeObservation(observation: Obj, opts?: OutcomeSetOptions): {
+    valid: boolean;
+    checks: Record<string, boolean>;
+    errors: string[];
+};
+export declare function outcomeBindingSetResultDigest(result: unknown): string;
+/**
+ * Verify, route, and reconcile a set of signed source observations against
+ * signed predictions. This function is authorization-format neutral; callers
+ * must separately verify and bind the authorization artifact itself.
+ */
+export declare function verifyOutcomeObservationSet(predictedEffects: any[], observations: Obj[], opts?: OutcomeSetOptions): Obj;
+/** Verify a Trust Receipt and then reconcile all required signed outcome sources. */
+export declare function verifyOutcomeBindingSetCore(receipt: Obj, observations: Obj[], opts: OutcomeSetOptions | undefined, verifyReceipt: any): Obj;
 /**
  * Core composition. `verifyReceipt` must perform the full Trust Receipt
  * cryptographic verification; the main package export injects

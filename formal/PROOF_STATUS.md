@@ -577,6 +577,24 @@ or downstream business-effect exactly-once behavior.
 
 ---
 
+## Bounded checker — Outcome Binding source independence and Authority join
+
+**Status:** 11 bounded obligations verified locally on 2026-07-28, with one
+deliberately weakened counterexample per obligation. The finite model explores
+49,152 outcome-source states, 147,456 result encodings, 32,768 authority states,
+and 64 rotation states. The five source-policy obligations require distinct
+canonical keys, distinct declared control domains, current source status,
+bound observation windows, and relying-party source quorum. Exact results and
+content hashes are in `formal/results/outcome-authority-join.summary.txt`.
+
+**Boundary:** this is a same-team finite abstraction. Signatures and SHA-256
+are ideal constructors. Source status, time comparisons, control-domain identity,
+and quorum policy are relying-party inputs. It does not prove physical truth,
+organizational independence, trusted time, external witness operation, or
+independent implementation.
+
+---
+
 ## TLA+ — end-to-end consequence, adversary, and effect-profile closure
 
 **Status:** bounded same-team models and content-addressed selected
@@ -604,11 +622,11 @@ gaps:
   role mapping, GRACE, mobile continuity, and mobile enrollment safety. TLC
   explored 2,234,641 generated / 403,200 distinct states to complete depth 25.
 
-`formal/runtime-scenarios.v2.json` binds 70 governed scenarios across 20 public
+`formal/runtime-scenarios.v2.json` binds 78 governed scenarios across 21 public
 claims and 13 bounded models to the exact
 model/config/harness/adapter/runtime bytes. The conformance harness forces
 selected TLA+ action sequences or bounded-checker inputs, executes real
-production entry points, compares declared state projections, and requires 45
+production entry points, compares declared state projections, and requires 51
 paired negative controls to produce formal counterexamples while the runtime
 refuses the corresponding operation. The deterministic result is recorded in
 `formal/results/formal-runtime-scenario-conformance.v2.json`. For the

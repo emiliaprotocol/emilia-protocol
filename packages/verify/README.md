@@ -284,6 +284,49 @@ predictions, supplied policy predictions, checks, reasons, and typed outcome;
 two different signed inputs do not share a digest merely because they reach the
 same reduced verdict.
 
+### `verifyOutcomeObservationSet(predictions, observations, opts)` — experimental
+
+Reconcile executor, system-of-record, and independent-observer claims without
+letting the presenter select the trust policy. Each `sourceKeys` pin carries the
+canonical Ed25519 public key, role, source class, `control_domain_id`, status,
+validity interval, and optional compromise time. `sourceRequirements` can
+require a distinct-source quorum by canonical key and declared control domain;
+`observationWindows` binds the accepted interval and maximum attestation delay.
+
+```js
+const result = verifyOutcomeObservationSet(predictions, observations, {
+  sourceKeys,
+  sourceRequirements: [{
+    role: 'independent_observer',
+    source_class: 'revenue_meter',
+    min_distinct_sources: 2,
+    distinct_by: ['key', 'control_domain'],
+  }],
+  observationWindows: [{
+    role: 'independent_observer',
+    source_class: 'revenue_meter',
+    relation: 'exact',
+    not_before,
+    not_after,
+    max_attestation_delay_ms: 30_000,
+  }],
+  now,
+  expectedReceiptId,
+  expectedReceiptDigest,
+  expectedActionHash,
+  expectedActionCaid,
+  expectedConsumptionNonce,
+  expectedOperationId,
+});
+```
+
+The same canonical key cannot fill executor and independent-observer roles,
+even under alternate text encodings. Different keys in one declared control
+domain also do not establish independence. A declared control domain is a
+relying-party input, not proof of organizational separation or physical truth.
+Missing, non-current, non-distinct, stale, or window-mismatched evidence returns
+`lifecycle_state: 'indeterminate'`; it never authorizes blind replay.
+
 #### Advisory: the PIP-007 initiator escalation attestation — *requires 1.4.0*
 
 When the contexts carry a [PIP-007](https://github.com/emiliaprotocol/emilia-protocol/blob/main/PIPs/PIP-007-initiator-attestation.md) `initiator_attestation`, the result includes an **advisory** report:

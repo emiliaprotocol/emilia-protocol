@@ -11,6 +11,7 @@ const CLAIMS_PATH: string = path.join(ROOT, 'security', 'claims.v1.json');
 const CASES_PATH: string = path.join(ROOT, 'formal', 'outcome-authority-join.cases.json');
 const CLAIM_IDS: readonly string[] = Object.freeze([
   'outcome-binding-is-exact-and-fail-closed',
+  'multi-source-outcome-binding-enforces-independent-current-evidence',
   'authority-document-proof-join-is-pinned-and-non-resurrecting',
 ]);
 const REQUIRED_EXCLUSIONS: readonly string[] = Object.freeze([

@@ -1,6 +1,6 @@
 {
   "suite": "EP-GRACE-MOBILE-GRID-v1",
-  "description": "Executable claim vectors for the JavaScript GRACE mobile-to-COSA-to-meter-to-Action-State composition. These are vertical composition vectors, not cross-language verifier vectors or evidence of a physical grid deployment.",
+  "description": "Executable claim vectors for the JavaScript GRACE mobile-to-COSA-to-independent-meter-to-Outcome-Binding-to-Action-State composition. Settlement is downstream of the reconciled executor and meter observations. These are vertical composition vectors, not cross-language verifier vectors or evidence of a physical grid deployment.",
   "vectors": [
     {
       "id": "accept_two_person_curtailment_and_single_settlement",
@@ -9,6 +9,15 @@
         "runner": "vitest",
         "file": "tests/grace-mobile-grid.test.ts",
         "title": "executes, measures, emits a valid -02 Signed Statement, and settles once"
+      }
+    },
+    {
+      "id": "reject_missing_independent_meter_outcome_signature",
+      "expect": { "valid": false },
+      "execution": {
+        "runner": "vitest",
+        "file": "tests/grace-mobile-grid.test.ts",
+        "title": "refuses settlement when the independent meter cannot sign an Outcome Observation"
       }
     },
     {

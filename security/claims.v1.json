@@ -808,7 +808,7 @@
         },
         {
           "file": "tests/outcome-authority-formal.test.ts",
-          "title": "all six load-bearing obligations hold in the bounded model",
+          "title": "all eleven load-bearing obligations hold in the bounded model",
           "runner": "vitest"
         },
         {
@@ -858,6 +858,110 @@
       "release_artifacts": ["verify-sdk", "security-evidence"]
     },
     {
+      "claim_id": "multi-source-outcome-binding-enforces-independent-current-evidence",
+      "statement": "Multi-source Outcome Binding credits an independent-observer role only when the observation signature verifies under a relying-party-pinned, current Ed25519 key whose canonical key identity and declared control domain differ from every non-independent source. Relying-party source requirements can require distinct-source quorum by key and control domain, and observation-window policy binds the accepted observation interval and maximum attestation delay before reconciliation can be valid.",
+      "acceptance_roots": [
+        "the relying party pins each source identifier to its Ed25519 key, role, source class, control domain, status, validity interval, and any compromise time",
+        "the relying party declares source quorum, distinctness dimensions, observation-window relation, and maximum attestation delay",
+        "the relying party supplies an authentic evaluation time and exact receipt, action, CAID, operation, consumption, and facility bindings",
+        "control_domain_id is a relying-party declaration and is not cryptographic proof of organizational or physical independence"
+      ],
+      "enforcement_path": [
+        {
+          "language": "javascript",
+          "file": "packages/verify/src/outcome-binding.ts",
+          "symbol": "verifyOutcomeObservation",
+          "exported": true
+        },
+        {
+          "language": "javascript",
+          "file": "packages/verify/src/outcome-binding.ts",
+          "symbol": "verifyOutcomeObservationSet",
+          "exported": true
+        },
+        {
+          "language": "javascript",
+          "file": "packages/verify/src/outcome-binding.ts",
+          "symbol": "outcomeSourceKeyId",
+          "exported": true
+        }
+      ],
+      "implementations": [
+        { "language": "javascript", "file": "packages/verify/index.js", "export": "verifyOutcomeObservationSet" }
+      ],
+      "language_coverage": {
+        "javascript": { "status": "covered", "evidence": "conformance/vectors/outcome-binding.sources.v1.json" },
+        "python": { "status": "gap", "reason": "The multi-source independence, status, window, and quorum extension is not yet ported; the legacy exact executor-attestation path remains covered separately." },
+        "go": { "status": "gap", "reason": "The multi-source independence, status, window, and quorum extension is not yet ported; the legacy exact executor-attestation path remains covered separately." }
+      },
+      "vectors": [
+        { "suite": "conformance/vectors/outcome-binding.sources.v1.json", "case_id": "accept_executor_and_independent_observer", "polarity": "positive", "expect": { "valid": true }, "execution": { "runner": "node-test", "file": "packages/verify/outcome-binding.test.js", "title": "serialized source-policy vectors exercise independence, freshness, windows, and quorum" } },
+        { "suite": "conformance/vectors/outcome-binding.sources.v1.json", "case_id": "refuse_executor_key_reused_as_independent_observer", "polarity": "negative", "expect": { "valid": false }, "execution": { "runner": "node-test", "file": "packages/verify/outcome-binding.test.js", "title": "serialized source-policy vectors exercise independence, freshness, windows, and quorum" } },
+        { "suite": "conformance/vectors/outcome-binding.sources.v1.json", "case_id": "refuse_shared_executor_observer_control_domain", "polarity": "negative", "expect": { "valid": false }, "execution": { "runner": "node-test", "file": "packages/verify/outcome-binding.test.js", "title": "serialized source-policy vectors exercise independence, freshness, windows, and quorum" } },
+        { "suite": "conformance/vectors/outcome-binding.sources.v1.json", "case_id": "refuse_compromised_observer_key", "polarity": "negative", "expect": { "valid": false }, "execution": { "runner": "node-test", "file": "packages/verify/outcome-binding.test.js", "title": "serialized source-policy vectors exercise independence, freshness, windows, and quorum" } },
+        { "suite": "conformance/vectors/outcome-binding.sources.v1.json", "case_id": "refuse_observer_window_substitution", "polarity": "negative", "expect": { "valid": false }, "execution": { "runner": "node-test", "file": "packages/verify/outcome-binding.test.js", "title": "serialized source-policy vectors exercise independence, freshness, windows, and quorum" } },
+        { "suite": "conformance/vectors/outcome-binding.sources.v1.json", "case_id": "refuse_insufficient_distinct_observer_quorum", "polarity": "negative", "expect": { "valid": false }, "execution": { "runner": "node-test", "file": "packages/verify/outcome-binding.test.js", "title": "serialized source-policy vectors exercise independence, freshness, windows, and quorum" } }
+      ],
+      "tests": [
+        { "file": "packages/verify/outcome-binding.test.js", "title": "one Ed25519 key cannot fill executor and independent-observer roles", "runner": "node-test" },
+        { "file": "packages/verify/outcome-binding.test.js", "title": "different keys in one control domain do not establish independence", "runner": "node-test" },
+        { "file": "packages/verify/outcome-binding.test.js", "title": "compromised and expired source keys fail at the attestation instant", "runner": "node-test" },
+        { "file": "packages/verify/outcome-binding.test.js", "title": "relying-party observation windows and attestation delay are enforced", "runner": "node-test" },
+        { "file": "packages/verify/outcome-binding.test.js", "title": "a relying party can require a distinct-source quorum", "runner": "node-test" },
+        { "file": "packages/verify/outcome-binding.test.js", "title": "serialized source-policy vectors exercise independence, freshness, windows, and quorum", "runner": "node-test" },
+        { "file": "tests/outcome-authority-formal.test.ts", "title": "all eleven load-bearing obligations hold in the bounded model", "runner": "vitest" },
+        { "file": "tests/outcome-authority-formal.test.ts", "title": "every weakened invariant produces a counterexample", "runner": "vitest" }
+      ],
+      "formal": [
+        {
+          "status": "partial",
+          "method": "bounded_exhaustive_state_exploration",
+          "model": "formal/outcome-authority-join.model.mjs",
+          "runner": "formal/check-outcome-authority-join.mjs",
+          "obligations": [
+            "IndependentObserverKeyIsDistinct",
+            "IndependentObserverControlDomainIsDistinct",
+            "OutcomeSourceKeyIsCurrent",
+            "ObservationWindowIsBound",
+            "OutcomeSourceQuorumIsSatisfied"
+          ],
+          "result_evidence": "formal/results/outcome-authority-join.summary.txt",
+          "scope": "Same-team bounded exhaustive exploration of 49,152 outcome-source states and 147,456 digest encodings. Signatures and SHA-256 are ideal constructors, control-domain identity is an input, and the selected-scenario mapping is not a mechanized implementation refinement proof.",
+          "scenario_evidence": "formal/runtime-scenarios.v2.json",
+          "scenario_runner": "scripts/check-formal-runtime-traces.mjs",
+          "conformance_evidence": "formal/results/formal-runtime-scenario-conformance.v2.json",
+          "scenario_coverage": "selected",
+          "covered_actions": [
+            "VerifyIndependentCurrentOutcomeSources",
+            "RefuseReusedIndependentObserverKey",
+            "RefuseSharedObserverControlDomain",
+            "RefuseNoncurrentOutcomeSourceKey",
+            "RefuseUnboundObservationWindow",
+            "RefuseInsufficientOutcomeSourceQuorum"
+          ],
+          "covered_obligations": [
+            "IndependentObserverKeyIsDistinct",
+            "IndependentObserverControlDomainIsDistinct",
+            "OutcomeSourceKeyIsCurrent",
+            "ObservationWindowIsBound",
+            "OutcomeSourceQuorumIsSatisfied"
+          ]
+        }
+      ],
+      "assumptions": [
+        "Ed25519 signatures are unforgeable and SHA-256 collisions are infeasible",
+        "the relying party provisions authentic source pins, control-domain declarations, source requirements, observation windows, and evaluation time",
+        "each source signs the observations it actually reports; observation truth and actual operational separation are not inferred"
+      ],
+      "exclusions": [
+        "the verifier does not establish physical truth or prove that a declared control domain is organizationally independent",
+        "the profile does not supply a trusted time source for key status, observation windows, or attestation delay",
+        "no external witness or transparency operator is required or evidenced by this same-team claim",
+        "the JavaScript implementation, bounded model, checker, and vectors are same-team artifacts and are not independent implementation evidence"
+      ],
+      "release_artifacts": ["verify-sdk", "security-evidence"]
+    },
+    {
       "claim_id": "authority-document-proof-join-is-pinned-and-non-resurrecting",
       "statement": "The Authority Document-Proof join accepts only a proof issuer, not action authority, when a relying-party-anchored continuous document chain resolves the proof key from the newest document effective at the authenticated proof time, the key has the authority-proof usage and is not revoked, the proof and document identities match, and exact registry-head and minimum-epoch pins are supplied. An older document cannot resurrect an omitted key, and a revoked rotation or proof key fails closed.",
       "acceptance_roots": [
@@ -894,7 +998,7 @@
         { "file": "tests/authority-document-proof-join.test.ts", "title": "preserves proof verification but refuses absent registry and epoch pins", "runner": "vitest" },
         { "file": "tests/authority-document-proof-join.test.ts", "title": "does not resolve a proof signer through a key omitted by the effective document", "runner": "vitest" },
         { "file": "tests/authority-doc.test.ts", "title": "does not accept a rotation issuer revoked at the successor issuance time", "runner": "vitest" },
-        { "file": "tests/outcome-authority-formal.test.ts", "title": "all six load-bearing obligations hold in the bounded model", "runner": "vitest" },
+        { "file": "tests/outcome-authority-formal.test.ts", "title": "all eleven load-bearing obligations hold in the bounded model", "runner": "vitest" },
         { "file": "tests/outcome-authority-formal.test.ts", "title": "every weakened invariant produces a counterexample", "runner": "vitest" }
       ],
       "formal": [

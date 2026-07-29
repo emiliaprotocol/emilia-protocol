@@ -9,6 +9,9 @@
     },
     {
       "$ref": "#/$defs/outcomeBindingResult"
+    },
+    {
+      "$ref": "#/$defs/outcomeObservation"
     }
   ],
   "$defs": {
@@ -59,6 +62,9 @@
     "outcome": {
       "enum": ["in_bounds", "divergent", "incomparable"]
     },
+    "sourceRole": {
+      "enum": ["executor", "system_of_record", "independent_observer"]
+    },
     "predictedEffects": {
       "type": "array",
       "minItems": 1,
@@ -77,6 +83,12 @@
         },
         "target": {
           "$ref": "#/$defs/literalIdentifier"
+        },
+        "required_source_role": {
+          "$ref": "#/$defs/sourceRole"
+        },
+        "required_source_class": {
+          "$ref": "#/$defs/identifier"
         },
         "predicate": {
           "$ref": "#/$defs/predicate"
@@ -254,6 +266,64 @@
         }
       }
     },
+    "outcomeSource": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["role", "source_id", "source_class"],
+      "properties": {
+        "role": { "$ref": "#/$defs/sourceRole" },
+        "source_id": { "$ref": "#/$defs/identifier" },
+        "source_class": { "$ref": "#/$defs/identifier" },
+        "facility_id": { "$ref": "#/$defs/identifier" }
+      }
+    },
+    "outcomeSourceProof": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["algorithm", "key_id", "public_key", "signature_b64u"],
+      "properties": {
+        "algorithm": { "const": "Ed25519" },
+        "key_id": {
+          "type": "string",
+          "pattern": "^ep:outcome-source-key:sha256:[0-9a-f]{64}$"
+        },
+        "public_key": {
+          "type": "string",
+          "maxLength": 4096,
+          "pattern": "^[A-Za-z0-9_-]+$"
+        },
+        "signature_b64u": {
+          "type": "string",
+          "pattern": "^[A-Za-z0-9_-]{86}$"
+        }
+      }
+    },
+    "outcomeObservation": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "@version", "receipt_id", "receipt_digest", "action_hash",
+        "consumption_nonce", "operation_id", "source", "observed_from",
+        "observed_until", "attested_at", "observed_effects",
+        "observed_effects_digest", "proof"
+      ],
+      "properties": {
+        "@version": { "const": "EP-OUTCOME-OBSERVATION-v1" },
+        "receipt_id": { "$ref": "#/$defs/identifier" },
+        "receipt_digest": { "$ref": "#/$defs/sha256" },
+        "action_hash": { "$ref": "#/$defs/sha256" },
+        "action_caid": { "$ref": "#/$defs/identifier" },
+        "consumption_nonce": { "$ref": "#/$defs/identifier" },
+        "operation_id": { "$ref": "#/$defs/identifier" },
+        "source": { "$ref": "#/$defs/outcomeSource" },
+        "observed_from": { "$ref": "#/$defs/instant" },
+        "observed_until": { "$ref": "#/$defs/instant" },
+        "attested_at": { "$ref": "#/$defs/instant" },
+        "observed_effects": { "$ref": "#/$defs/observedEffects" },
+        "observed_effects_digest": { "$ref": "#/$defs/sha256" },
+        "proof": { "$ref": "#/$defs/outcomeSourceProof" }
+      }
+    },
     "outcomeAttestation": {
       "type": "object",
       "additionalProperties": false,
@@ -319,6 +389,15 @@
         },
         "op": {
           "$ref": "#/$defs/predicateOp"
+        },
+        "required_source_role": {
+          "$ref": "#/$defs/sourceRole"
+        },
+        "required_source_class": {
+          "oneOf": [
+            { "$ref": "#/$defs/identifier" },
+            { "type": "null" }
+          ]
         },
         "outcome": {
           "$ref": "#/$defs/outcome"

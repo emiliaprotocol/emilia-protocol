@@ -43,6 +43,36 @@
       }
     },
     {
+      "id": "outcome_reject_reused_independent_observer_key",
+      "kind": "outcome",
+      "state": { "source_keys_distinct": false },
+      "expect": { "valid": false }
+    },
+    {
+      "id": "outcome_reject_shared_observer_control_domain",
+      "kind": "outcome",
+      "state": { "control_domains_distinct": false },
+      "expect": { "valid": false }
+    },
+    {
+      "id": "outcome_reject_noncurrent_source_key",
+      "kind": "outcome",
+      "state": { "source_key_current": false },
+      "expect": { "valid": false }
+    },
+    {
+      "id": "outcome_reject_unbound_observation_window",
+      "kind": "outcome",
+      "state": { "observation_window_valid": false },
+      "expect": { "valid": false }
+    },
+    {
+      "id": "outcome_reject_insufficient_source_quorum",
+      "kind": "outcome",
+      "state": { "source_quorum_met": false },
+      "expect": { "valid": false }
+    },
+    {
       "id": "authority_accept_newest_key_with_registry_pins",
       "kind": "authority_join",
       "state": {},

@@ -114,6 +114,12 @@ XML sources were verified byte-for-byte against the IETF archive:
 7. `draft-schrock-model-to-matter-01`: the current Experimental executor-side
    application profile.
 
+Two implementation-backed candidates are staged but **not filed** as of July
+28: `draft-schrock-ep-outcome-binding-00` introduces source-routed predicted
+effects and independently pinned observations; `draft-schrock-model-to-matter-02`
+uses that result after single-use effect custody. Neither candidate claims
+physical truth, a physical deployment, partner endorsement, or IETF adoption.
+
 The published line also retains Authority Introduction-01, Quorum-03, Bounded
 Capability Receipts-00, and the other current individual drafts listed in
 `STATUS.json`. Model-to-Matter remains deliberately separate: publication does

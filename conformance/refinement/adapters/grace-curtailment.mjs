@@ -4,7 +4,8 @@
 import crypto from "node:crypto";
 import { buildMobileActionIdentity, buildMobileAuthorizationContext, hashCanonical, } from "../../../packages/mobile/index.js";
 import { FLEX_ENVELOPE_VERSION } from "../../../lib/grace/curtailment.js";
-import { buildCurtailmentControlledAction, buildCurtailmentPresentation, createCurtailmentAction, executeGraceCurtailment, graceDigest, verifyGraceMobileAuthorization, } from "../../../lib/grace/mobile-grid.js";
+import { buildGraceOutcomePredictions, buildCurtailmentControlledAction, buildCurtailmentPresentation, createCurtailmentAction, executeGraceCurtailment, graceDigest, verifyGraceMobileAuthorization, } from "../../../lib/grace/mobile-grid.js";
+import { predictedEffectsDigest } from "../../../packages/verify/effect-predicates.js";
 import { createCosaReferenceActuator, createFencedMemoryStore, createReferenceMeter, } from "../../../lib/grace/reference-adapters.js";
 const RP_ID = "www.emiliaprotocol.ai";
 const ORIGIN = "https://www.emiliaprotocol.ai";
@@ -48,6 +49,7 @@ const policy = Object.freeze({
     policy_id: "ep:grace:mobile-curtailment:v1",
     human_approval: "class_a",
     required_approvals: 2,
+    outcome_policy_digest: predictedEffectsDigest(buildGraceOutcomePredictions(action)),
     approvers: Object.freeze([
         "ep:approver:grid-operator",
         "ep:approver:facility-operator",
@@ -71,6 +73,10 @@ function ed25519FromSeed(keyId, byte) {
                 .createPublicKey(privateKey)
                 .export({ type: "spki", format: "der" })
                 .toString("base64url"),
+            control_domain_id: `control-domain:${keyId}`,
+            status: "active",
+            valid_from: "2026-01-01T00:00:00.000Z",
+            valid_to: "2027-01-01T00:00:00.000Z",
         },
     };
 }
@@ -269,6 +275,7 @@ export async function runGraceScenario(scenario) {
     if (scenario === "grace-settle-once") {
         const actuator = {
             verify: state.actuator.verify,
+            attestOutcome: state.actuator.attestOutcome,
             async dispatch(request) {
                 const acknowledgment = await state.actuator.dispatch(request);
                 steps.push({
@@ -287,6 +294,7 @@ export async function runGraceScenario(scenario) {
         };
         const meter = {
             verify: state.meter.verify,
+            attestOutcome: state.meter.attestOutcome,
             async observe(input) {
                 const statement = await state.meter.observe(input);
                 steps.push({

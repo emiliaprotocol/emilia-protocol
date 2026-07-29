@@ -2,10 +2,16 @@
 import crypto from 'node:crypto';
 import cbor from 'cbor';
 import { encodeCanonicalCborSync } from '../cbor-encode.js';
-import { canonicalize, isCanonicalizable, verifyWebAuthnSignoff } from '../../packages/verify/index.js';
+import {
+  canonicalize,
+  isCanonicalizable,
+  verifyOutcomeObservationSet,
+  verifyWebAuthnSignoff,
+} from '../../packages/verify/index.js';
+import { predictedEffectsDigest } from '../../packages/verify/effect-predicates.js';
 import { verifyQuorum } from '../../packages/verify/quorum.js';
 import { strictJsonGate } from '../../packages/verify/strict-json.js';
-import { hashCanonical } from '../../packages/mobile/index.js';
+import { buildMobileActionIdentity, hashCanonical } from '../../packages/mobile/index.js';
 import {
   normalizeControlledMobilePresentation,
   projectMobileAction,
@@ -219,6 +225,28 @@ export function actionAsEnvelopeOrder(action: any): any {
     },
     reason: null,
   };
+}
+
+/** Settlement-authority outcome policy, bound into the human-signed policy hash. */
+export function buildGraceOutcomePredictions(action: any): any[] {
+  const checked = actionAsEnvelopeOrder(action);
+  if (!checked.valid) throw new TypeError('valid curtailment action required');
+  return [
+    {
+      effect_type: 'controller_status',
+      target: action.facility,
+      required_source_role: 'executor',
+      required_source_class: 'cosa.actuator',
+      predicate: { op: 'eq', value: 'dispatched' },
+    },
+    {
+      effect_type: 'delivered_mw',
+      target: action.facility,
+      required_source_role: 'independent_observer',
+      required_source_class: 'revenue_meter',
+      predicate: { op: 'gte', value: (Number(checked.order.mw) * 0.95).toFixed(3) },
+    },
+  ];
 }
 
 function classASignoff(evidence: any): any {
@@ -594,6 +622,10 @@ export async function executeGraceCurtailment({
   }
   const containment = checkOrderWithinEnvelope(actionResult.order, envelope, spent);
   if (!containment.within) return { ok: false, verdict: 'refuse_outside_envelope', reason: containment.violations[0], containment };
+  const outcomePredictions = buildGraceOutcomePredictions(action);
+  if (policy?.outcome_policy_digest !== predictedEffectsDigest(outcomePredictions)) {
+    return { ok: false, verdict: 'refuse_outcome_policy', reason: 'outcome policy is not bound into the authorized policy bytes' };
+  }
   const authorization = verifyGraceMobileAuthorization({
     action,
     presentation,
@@ -664,6 +696,108 @@ export async function executeGraceCurtailment({
   });
   if (!compliance.computable) return { ok: false, verdict: 'effect_unconfirmed', reason: compliance.reason, retry_safe: false };
 
+  const controlledAction = buildCurtailmentControlledAction(action);
+  const actionIdentity = buildMobileActionIdentity({
+    actionReference: action.action_id,
+    action: controlledAction,
+  });
+  const observationCommon = {
+    receipt_id: `ep:grace:authorization:${action.action_id}`,
+    receipt_digest: authorization.authorization_digest,
+    action_hash: actionHash,
+    action_caid: actionIdentity.action_caid,
+    consumption_nonce: requestBody.idempotency_key,
+    operation_id: action.action_id,
+    facility_id: action.facility,
+  };
+  let outcomeObservations;
+  try {
+    outcomeObservations = [
+      actuator.attestOutcome({ ...observationCommon, acknowledgment }),
+      meter.attestOutcome({
+        ...observationCommon,
+        statement: meterStatement,
+        delivered_mw: Number(compliance.delivered_mw).toFixed(3),
+      }),
+    ];
+  } catch {
+    return {
+      ok: false,
+      verdict: 'effect_unconfirmed',
+      reason: 'outcome observation could not be signed by the pinned sources',
+      retry_safe: false,
+    };
+  }
+  const outcomeBinding = verifyOutcomeObservationSet(outcomePredictions, outcomeObservations, {
+    sourceKeys: {
+      [acknowledgment.actuator_id]: {
+        public_key: actuatorTrust.public_key_spki,
+        role: 'executor',
+        source_class: 'cosa.actuator',
+        facility_id: action.facility,
+        control_domain_id: actuatorTrust.control_domain_id,
+        status: actuatorTrust.status,
+        valid_from: actuatorTrust.valid_from,
+        valid_to: actuatorTrust.valid_to,
+        ...(actuatorTrust.compromised_at === undefined ? {} : {
+          compromised_at: actuatorTrust.compromised_at,
+        }),
+      },
+      [meterStatement.meter_id]: {
+        public_key: meterTrust.public_key_spki,
+        role: 'independent_observer',
+        source_class: 'revenue_meter',
+        facility_id: action.facility,
+        control_domain_id: meterTrust.control_domain_id,
+        status: meterTrust.status,
+        valid_from: meterTrust.valid_from,
+        valid_to: meterTrust.valid_to,
+        ...(meterTrust.compromised_at === undefined ? {} : {
+          compromised_at: meterTrust.compromised_at,
+        }),
+      },
+    },
+    sourceRequirements: [
+      {
+        role: 'executor', source_class: 'cosa.actuator',
+        min_distinct_sources: 1, distinct_by: ['key', 'control_domain'],
+      },
+      {
+        role: 'independent_observer', source_class: 'revenue_meter',
+        min_distinct_sources: 1, distinct_by: ['key', 'control_domain'],
+      },
+    ],
+    observationWindows: [
+      {
+        role: 'executor', source_class: 'cosa.actuator', relation: 'within',
+        not_before: action.window.not_before, not_after: action.window.not_after,
+        max_attestation_delay_ms: 300_000,
+      },
+      {
+        role: 'independent_observer', source_class: 'revenue_meter', relation: 'exact',
+        not_before: action.window.not_before, not_after: action.window.not_after,
+        max_attestation_delay_ms: 300_000,
+      },
+    ],
+    now: meterStatement.observed_at,
+    expectedReceiptId: observationCommon.receipt_id,
+    expectedReceiptDigest: observationCommon.receipt_digest,
+    expectedActionHash: actionHash,
+    expectedConsumptionNonce: requestBody.idempotency_key,
+    expectedActionCaid: actionIdentity.action_caid,
+    expectedOperationId: action.action_id,
+    expectedFacilityId: action.facility,
+  });
+  if (outcomeBinding.lifecycle_state !== 'reconciled') {
+    return {
+      ok: false,
+      verdict: 'effect_unconfirmed',
+      reason: 'required outcome sources did not reconcile',
+      retry_safe: false,
+      outcome_binding: outcomeBinding,
+    };
+  }
+
   const meterBody = Object.fromEntries(Object.entries(meterStatement).filter(([key]) => key !== 'signature'));
   const meterDigest = graceDigest(meterBody);
   const capsule = buildActionStateCapsule({
@@ -681,7 +815,7 @@ export async function executeGraceCurtailment({
     event_id: action.action_id,
     meter_window_digest: meterDigest,
   };
-  const settlement = compliance.compliant
+  const settlement = compliance.compliant && outcomeBinding.outcome === 'in_bounds'
     ? await runSettlementOnce(settlementClaim, settlementStore, settle)
     : { settled: false, reason: 'curtailment_under_delivered', key: null };
   const canonicalCompliance = {
@@ -700,6 +834,8 @@ export async function executeGraceCurtailment({
     dispatch_request_digest: requestDigest,
     actuator_ack_digest: graceDigest(Object.fromEntries(Object.entries(acknowledgment).filter(([key]) => key !== 'signature'))),
     meter_payload_digest: meterDigest,
+    outcome_binding_result_digest: outcomeBinding.result_digest,
+    outcome_binding_outcome: outcomeBinding.outcome,
     compliance: canonicalCompliance,
     action_state_statement_digest: actionState.statement_digest,
     settlement: {
@@ -716,6 +852,8 @@ export async function executeGraceCurtailment({
     acknowledgment,
     meter_statement: meterStatement,
     compliance,
+    outcome_observations: outcomeObservations,
+    outcome_binding: outcomeBinding,
     action_state: actionState,
     settlement,
     bundle: signGraceArtifact(bundleBody, capsuleSigner),

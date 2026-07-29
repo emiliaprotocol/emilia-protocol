@@ -367,6 +367,11 @@
         "attestationVerified": "attestationVerified",
         "actionBound": "actionBound",
         "resultCommitted": "resultCommitted",
+        "sourceKeysDistinct": "sourceKeysDistinct",
+        "controlDomainsDistinct": "controlDomainsDistinct",
+        "sourceKeyCurrent": "sourceKeyCurrent",
+        "observationWindowValid": "observationWindowValid",
+        "sourceQuorumMet": "sourceQuorumMet",
         "authorityJoinState": "authorityJoinState",
         "documentChainVerified": "documentChainVerified",
         "proofSignatureVerified": "proofSignatureVerified",
@@ -376,6 +381,12 @@
       "actions": {
         "VerifyExactOutcomeBinding": "VerifyExactOutcomeBinding",
         "AttemptActionDigestSubstitution": "AttemptActionDigestSubstitution",
+        "VerifyIndependentCurrentOutcomeSources": "VerifyIndependentCurrentOutcomeSources",
+        "RefuseReusedIndependentObserverKey": "RefuseReusedIndependentObserverKey",
+        "RefuseSharedObserverControlDomain": "RefuseSharedObserverControlDomain",
+        "RefuseNoncurrentOutcomeSourceKey": "RefuseNoncurrentOutcomeSourceKey",
+        "RefuseUnboundObservationWindow": "RefuseUnboundObservationWindow",
+        "RefuseInsufficientOutcomeSourceQuorum": "RefuseInsufficientOutcomeSourceQuorum",
         "VerifyNewestDocumentProofKey": "VerifyNewestDocumentProofKey",
         "AttemptOlderDocumentKeyResurrection": "AttemptOlderDocumentKeyResurrection"
       }
@@ -2786,6 +2797,153 @@
         "defined_in_model": true,
         "obligation": "ExactActionReceiptBinding"
       }
+    },
+    {
+      "id": "outcome-sources-independent-current-accept",
+      "claim_id": "multi-source-outcome-binding-enforces-independent-current-evidence",
+      "model": "formal/outcome-authority-join.model.mjs",
+      "adapter": "outcome-binding-sources",
+      "scenario": "outcome-sources-independent-current-accept",
+      "kind": "sound",
+      "runtime_sources": [
+        "formal/outcome-authority-join.model.mjs",
+        "packages/verify/src/outcome-binding.ts",
+        "conformance/vectors/outcome-binding.sources.v1.json"
+      ],
+      "obligations": [
+        "IndependentObserverKeyIsDistinct",
+        "IndependentObserverControlDomainIsDistinct",
+        "OutcomeSourceKeyIsCurrent",
+        "ObservationWindowIsBound",
+        "OutcomeSourceQuorumIsSatisfied"
+      ],
+      "steps": [{
+        "operator": "VerifyIndependentCurrentOutcomeSources",
+        "accepted": true,
+        "projection": {
+          "outcomeState": "reconciled",
+          "sourceKeysDistinct": true,
+          "controlDomainsDistinct": true,
+          "sourceKeyCurrent": true,
+          "observationWindowValid": true,
+          "sourceQuorumMet": true
+        }
+      }]
+    },
+    {
+      "id": "outcome-sources-reused-key-refused",
+      "claim_id": "multi-source-outcome-binding-enforces-independent-current-evidence",
+      "model": "formal/outcome-authority-join.model.mjs",
+      "adapter": "outcome-binding-sources",
+      "scenario": "outcome-sources-reused-key-refused",
+      "kind": "paired_negative_control",
+      "runtime_sources": ["formal/outcome-authority-join.model.mjs", "packages/verify/src/outcome-binding.ts", "conformance/vectors/outcome-binding.sources.v1.json"],
+      "obligations": ["IndependentObserverKeyIsDistinct"],
+      "steps": [{
+        "operator": "RefuseReusedIndependentObserverKey",
+        "accepted": false,
+        "projection": {
+          "outcomeState": "indeterminate",
+          "sourceKeysDistinct": false,
+          "controlDomainsDistinct": true,
+          "sourceKeyCurrent": true,
+          "observationWindowValid": true,
+          "sourceQuorumMet": true
+        }
+      }],
+      "mutation": { "operator": "IgnoreIndependentObserverKeyReuse", "defined_in_model": true, "obligation": "IndependentObserverKeyIsDistinct" }
+    },
+    {
+      "id": "outcome-sources-shared-domain-refused",
+      "claim_id": "multi-source-outcome-binding-enforces-independent-current-evidence",
+      "model": "formal/outcome-authority-join.model.mjs",
+      "adapter": "outcome-binding-sources",
+      "scenario": "outcome-sources-shared-domain-refused",
+      "kind": "paired_negative_control",
+      "runtime_sources": ["formal/outcome-authority-join.model.mjs", "packages/verify/src/outcome-binding.ts", "conformance/vectors/outcome-binding.sources.v1.json"],
+      "obligations": ["IndependentObserverControlDomainIsDistinct"],
+      "steps": [{
+        "operator": "RefuseSharedObserverControlDomain",
+        "accepted": false,
+        "projection": {
+          "outcomeState": "indeterminate",
+          "sourceKeysDistinct": true,
+          "controlDomainsDistinct": false,
+          "sourceKeyCurrent": true,
+          "observationWindowValid": true,
+          "sourceQuorumMet": true
+        }
+      }],
+      "mutation": { "operator": "IgnoreSharedObserverControlDomain", "defined_in_model": true, "obligation": "IndependentObserverControlDomainIsDistinct" }
+    },
+    {
+      "id": "outcome-sources-noncurrent-key-refused",
+      "claim_id": "multi-source-outcome-binding-enforces-independent-current-evidence",
+      "model": "formal/outcome-authority-join.model.mjs",
+      "adapter": "outcome-binding-sources",
+      "scenario": "outcome-sources-noncurrent-key-refused",
+      "kind": "paired_negative_control",
+      "runtime_sources": ["formal/outcome-authority-join.model.mjs", "packages/verify/src/outcome-binding.ts", "conformance/vectors/outcome-binding.sources.v1.json"],
+      "obligations": ["OutcomeSourceKeyIsCurrent"],
+      "steps": [{
+        "operator": "RefuseNoncurrentOutcomeSourceKey",
+        "accepted": false,
+        "projection": {
+          "outcomeState": "indeterminate",
+          "sourceKeysDistinct": true,
+          "controlDomainsDistinct": true,
+          "sourceKeyCurrent": false,
+          "observationWindowValid": false,
+          "sourceQuorumMet": false
+        }
+      }],
+      "mutation": { "operator": "IgnoreOutcomeSourceKeyStatus", "defined_in_model": true, "obligation": "OutcomeSourceKeyIsCurrent" }
+    },
+    {
+      "id": "outcome-sources-window-substitution-refused",
+      "claim_id": "multi-source-outcome-binding-enforces-independent-current-evidence",
+      "model": "formal/outcome-authority-join.model.mjs",
+      "adapter": "outcome-binding-sources",
+      "scenario": "outcome-sources-window-substitution-refused",
+      "kind": "paired_negative_control",
+      "runtime_sources": ["formal/outcome-authority-join.model.mjs", "packages/verify/src/outcome-binding.ts", "conformance/vectors/outcome-binding.sources.v1.json"],
+      "obligations": ["ObservationWindowIsBound"],
+      "steps": [{
+        "operator": "RefuseUnboundObservationWindow",
+        "accepted": false,
+        "projection": {
+          "outcomeState": "indeterminate",
+          "sourceKeysDistinct": true,
+          "controlDomainsDistinct": true,
+          "sourceKeyCurrent": true,
+          "observationWindowValid": false,
+          "sourceQuorumMet": true
+        }
+      }],
+      "mutation": { "operator": "IgnoreObservationWindowBinding", "defined_in_model": true, "obligation": "ObservationWindowIsBound" }
+    },
+    {
+      "id": "outcome-sources-insufficient-quorum-refused",
+      "claim_id": "multi-source-outcome-binding-enforces-independent-current-evidence",
+      "model": "formal/outcome-authority-join.model.mjs",
+      "adapter": "outcome-binding-sources",
+      "scenario": "outcome-sources-insufficient-quorum-refused",
+      "kind": "paired_negative_control",
+      "runtime_sources": ["formal/outcome-authority-join.model.mjs", "packages/verify/src/outcome-binding.ts", "conformance/vectors/outcome-binding.sources.v1.json"],
+      "obligations": ["OutcomeSourceQuorumIsSatisfied"],
+      "steps": [{
+        "operator": "RefuseInsufficientOutcomeSourceQuorum",
+        "accepted": false,
+        "projection": {
+          "outcomeState": "indeterminate",
+          "sourceKeysDistinct": true,
+          "controlDomainsDistinct": true,
+          "sourceKeyCurrent": true,
+          "observationWindowValid": true,
+          "sourceQuorumMet": false
+        }
+      }],
+      "mutation": { "operator": "IgnoreOutcomeSourceQuorum", "defined_in_model": true, "obligation": "OutcomeSourceQuorumIsSatisfied" }
     },
     {
       "id": "authority-document-newest-key-accept",

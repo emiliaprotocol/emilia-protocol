@@ -13,6 +13,7 @@ import {
   runAuthorityProgramScenario,
   runConservationAuthorityScenario,
   runOutcomeBindingScenario,
+  runOutcomeSourceScenario,
   runReceiptProgramScenario,
 } from "./five-claim-bridge.mjs";
 import { runGraceScenario } from "./grace-curtailment.mjs";
@@ -35,6 +36,7 @@ const adapters: Readonly<Record<string, RuntimeAdapter>> = Object.freeze({
   "durable-consumption-owner": runDurableConsumptionOwnerScenario,
   "conservation-authority": runConservationAuthorityScenario,
   "outcome-binding": runOutcomeBindingScenario,
+  "outcome-binding-sources": runOutcomeSourceScenario,
   "authority-document-proof-join": runAuthorityDocumentProofJoinScenario,
   "authority-program": runAuthorityProgramScenario,
   "receipt-program": runReceiptProgramScenario,

@@ -1,5 +1,6 @@
 export declare const PREDICATE_OPS: readonly string[];
 export declare const DIVERGENCE_OUTCOMES: readonly string[];
+export declare const OUTCOME_SOURCE_ROLES: readonly string[];
 export declare const MAX_PREDICTED_EFFECTS = 64;
 export declare const MAX_OBSERVED_EFFECTS = 256;
 export declare const MAX_EFFECT_STRING_LENGTH = 512;

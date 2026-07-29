@@ -56,6 +56,9 @@ export const PREDICATE_OPS = Object.freeze([
 export const DIVERGENCE_OUTCOMES = Object.freeze([
     'in_bounds', 'divergent', 'incomparable',
 ]);
+export const OUTCOME_SOURCE_ROLES = Object.freeze([
+    'executor', 'system_of_record', 'independent_observer',
+]);
 export const MAX_PREDICTED_EFFECTS = 64;
 export const MAX_OBSERVED_EFFECTS = 256;
 export const MAX_EFFECT_STRING_LENGTH = 512;
@@ -129,7 +132,9 @@ export function compareDecimalStrings(a, b) {
     return A.neg ? -mag : mag;
 }
 // ── Structural validation of the SIGNED prediction array ────────────────────
-const ENTRY_KEYS = Object.freeze(['effect_type', 'target', 'predicate']);
+const ENTRY_KEYS = Object.freeze([
+    'effect_type', 'target', 'predicate', 'required_source_role', 'required_source_class',
+]);
 const OBSERVED_ENTRY_KEYS = Object.freeze(['effect_type', 'target', 'value', 'values']);
 const PREDICATE_KEYS = Object.freeze({
     eq: ['op', 'value'],
@@ -171,6 +176,16 @@ export function validatePredictedEffects(predicted) {
         }
         if (entry.target.includes('*')) {
             return bad(`${at}.target contains "*"; EP-OUTCOME-BINDING-v1 targets are literal identifiers, not patterns`);
+        }
+        if (entry.required_source_role !== undefined
+            && !OUTCOME_SOURCE_ROLES.includes(entry.required_source_role)) {
+            return bad(`${at}.required_source_role is not a known outcome source role`);
+        }
+        if (entry.required_source_class !== undefined
+            && (typeof entry.required_source_class !== 'string'
+                || !entry.required_source_class
+                || tooLong(entry.required_source_class))) {
+            return bad(`${at}.required_source_class must be a non-empty bounded string`);
         }
         const p = entry.predicate;
         if (!p || typeof p !== 'object' || Array.isArray(p))

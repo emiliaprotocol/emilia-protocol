@@ -1,6 +1,6 @@
 {
   "@version": "EMILIA-STANDARDS-PORTFOLIO-v1",
-  "updated": "2026-07-24",
+  "updated": "2026-07-28",
   "active_datatracker_count": 16,
   "active_schrock_datatracker_count": 15,
   "posted_snapshot_policy": "standards/posted contains the current published revision of every active draft-schrock-* Datatracker record. The seven XML sources in the July 22 UTC publication wave were verified byte-for-byte against the immutable IETF archive; earlier TXT snapshots remain historical conveniences, while the IETF archive is authoritative for rendered forms.",
@@ -167,7 +167,7 @@
       "revision": "01",
       "layer": "execution_lifecycle",
       "role": "Experimental executor-side authorization-evidence clearance for model-directed physical execution",
-      "next_action": "Published July 21; do not claim deployment, scientific-safety determination, physical truth, or external endorsement without independent evidence"
+      "next_action": "Published July 21; -02 is staged, not filed, adding source-routed Outcome Binding and independent observation while preserving the no-physical-truth limitation"
     },
     {
       "draft": "draft-mih-sato-agent-accountability-composition",
@@ -312,6 +312,31 @@
       }
     ]
   },
+  "staged_candidates": [
+    {
+      "draft": "draft-schrock-ep-outcome-binding-00",
+      "source": "standards/staged/draft-schrock-ep-outcome-binding-00.xml",
+      "state": "candidate_not_filed",
+      "claim": "Source-routed predicted effects and independently pinned post-execution observations with indeterminate lifecycle and closed divergence comparison",
+      "implementation": [
+        "packages/verify/src/outcome-binding.ts",
+        "conformance/vectors/outcome-binding.sources.v1.json",
+        "lib/grace/mobile-grid.ts"
+      ],
+      "limitations": "Signed observations remain claims by pinned sources; no physical truth, sensor certification, utility acceptance, or external endorsement is claimed"
+    },
+    {
+      "draft": "draft-schrock-model-to-matter-02",
+      "source": "standards/staged/draft-schrock-model-to-matter-02.xml",
+      "state": "candidate_not_filed",
+      "claim": "Model-to-Matter revision binding expected effects to executor and independent observation sources after single-use physical-effect custody",
+      "implementation": [
+        "lib/frontier/model-to-matter.ts",
+        "tests/model-to-matter.test.ts"
+      ],
+      "limitations": "No wet-lab deployment, screening capability, scientific-safety determination, physical truth, independent implementation, or partner endorsement is claimed"
+    }
+  ],
   "retired_absorbed": [
     {
       "draft": "draft-schrock-ep-assurance-classes-00",

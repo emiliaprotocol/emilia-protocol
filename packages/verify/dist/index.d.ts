@@ -22,7 +22,7 @@ export * from './discovery-permit-contract.js';
 export * from './status.js';
 export * from './gate-qualification.js';
 export * from './gate-qualification-promptfoo.js';
-export { OUTCOME_ATTESTATION_VERSION, OUTCOME_ATTESTATION_DOMAIN, OUTCOME_BINDING_VERSION, OUTCOME_BINDING_RESULT_VERSION, OUTCOME_BINDING_OUTCOMES, buildOutcomeAttestation, verifyOutcomeAttestation, observedEffectsDigest, outcomeBindingResultCore, outcomeBindingResultDigest, trustReceiptDigest, verifyOutcomeBindingResultDigest, } from './outcome-binding.js';
+export { OUTCOME_ATTESTATION_VERSION, OUTCOME_ATTESTATION_DOMAIN, OUTCOME_BINDING_VERSION, OUTCOME_BINDING_RESULT_VERSION, OUTCOME_OBSERVATION_VERSION, OUTCOME_OBSERVATION_DOMAIN, OUTCOME_BINDING_SET_VERSION, OUTCOME_BINDING_SET_RESULT_VERSION, OUTCOME_BINDING_OUTCOMES, buildOutcomeAttestation, buildOutcomeObservation, verifyOutcomeAttestation, verifyOutcomeObservation, verifyOutcomeObservationSet, observedEffectsDigest, outcomeBindingResultCore, outcomeBindingResultDigest, outcomeBindingSetResultDigest, trustReceiptDigest, verifyOutcomeBindingResultDigest, } from './outcome-binding.js';
 export { ORPRG_JSON_JCS_PROFILE, ORPRG_ACTION_PROFILE, computeOrprgActionDigest, verifyOrprgJsonJcsPermit, verifyOrprgJsonJcsPermitAsync, createOrprgAecVerifier, } from './orprg.js';
 declare function canonicalize(value: any): string;
 /**
@@ -219,6 +219,8 @@ export declare function verifyTrustReceipt(receipt: any, opts?: Obj): Obj;
  * Receipt whose signed Action Object carries predicted_effects.
  */
 export declare function verifyOutcomeBinding(receipt: any, attestation: any, opts?: Obj): Obj;
+/** Verify a Trust Receipt against all required signed outcome sources. */
+export declare function verifyOutcomeBindingSet(receipt: any, observations: any[], opts?: Obj): Obj;
 /**
  * Surface the external agent-identity / delegation evidence (L4) that a
  * decision (L7 PDP) relied on, and OPTIONALLY enforce its freshness.
