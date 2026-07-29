@@ -914,6 +914,10 @@
       "sha256": "2662043d35d99e32aa9b39abd2cf9e4d6d5d1f4ecb1e49dc3e088b0cb6569800"
     },
     {
+      "path": "packages/verify/dist/aeb-psea-adapter.js",
+      "sha256": "f6003c0440bc1b59bf12152e80e80d811528b0c7283d93bb5b52b0b50f471dcb"
+    },
+    {
       "path": "packages/verify/dist/aeb-wimse-oauth-adapter.js",
       "sha256": "66a033cfdedbaeb880456236a69dcc6805d9e8ee20913d16a661079f2caf50c0"
     },
@@ -979,7 +983,7 @@
     },
     {
       "path": "packages/verify/dist/index.js",
-      "sha256": "60676a7c168ea8d46e4f49e10417dd1db145a204b482c8842b4d90da5936d84e"
+      "sha256": "ce245831e7976be47c82966645cccce9412d86b64fc021fc45231e0917060981"
     },
     {
       "path": "packages/verify/dist/initiator-attestation.js",
@@ -1075,7 +1079,7 @@
     },
     {
       "path": "packages/verify/src/index.ts",
-      "sha256": "1ddcd9cbc0aeb7e1b5b389ec943529944ec79e4953ad0ce8ce57a914e21145e4"
+      "sha256": "7b4e6dcfb1377ed579dd5ff562a751e2cb385f4c7b3a15a4d4a5ef2ff27f2509"
     },
     {
       "path": "packages/verify/src/outcome-binding.ts",
