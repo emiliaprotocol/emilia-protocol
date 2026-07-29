@@ -16,12 +16,17 @@ as provisional registrations.
 
 ## 1. application/authorization-evidence-challenge+json
 
-**Status: READY-ON-POST.** The string is fixed by draft text:
-`draft-schrock-ae-challenge-00`, Section 2, specifies that
+**Status: SUBMITTED / PENDING IANA REVIEW.** A clean replacement request was
+submitted on 2026-07-28 and acknowledged into IANA's queue as ticket #1456851.
+It supersedes the original vendor-tree request and accumulated corrections
+under ticket #1456611. Queue acknowledgement is not registration or approval;
+the type is not yet present in either the provisional or permanent IANA media
+type registry. The string is fixed by draft text:
+`draft-schrock-ae-challenge-01`, Section 2, specifies that
 a challenge is "returned (in the HTTP binding) with status 428 and media type
 application/authorization-evidence-challenge+json". Section 5 (IANA
 Considerations) requests provisional registration of this media type. The
-prepared request can therefore cite the active -00 directly.
+submitted request therefore cites the active -01 directly.
 
 **Deployment honesty note:** the reference enforcement point returns the
 challenge object today labeled `application/json` (Express `res.json()`); this
@@ -39,11 +44,13 @@ what is currently on the wire.
 **Optional parameters:** N/A (none defined; the `@version` member inside the
 document, value `AE-CHALLENGE-v1`, gates interpretation)
 
-**Encoding considerations:** binary. The content is JSON [RFC8259] encoded in
-UTF-8.
+**Encoding considerations:** binary. The content is one UTF-8 JSON text
+consisting of a single JSON object [RFC8259]. It is not a JSON text sequence
+and does not use record-separator framing. Binary is selected because JSON
+representations may contain lines longer than 998 octets.
 
 **Security considerations:** See Section 4 of
-draft-schrock-ae-challenge-00. A challenge authorizes
+draft-schrock-ae-challenge-01. A challenge authorizes
 nothing by itself: a forged challenge cannot make an action admissible, and a
 fully satisfied challenge yields a verdict under the relying party's policy,
 never a promise of execution. Challenges are single-use (nonce) and expiring,
@@ -60,7 +67,7 @@ lose the challenge semantics (single-use nonce, expiry, action digest
 binding). Consumers encountering an unrecognized `@version` value should treat
 the document as unprocessable rather than guessing.
 
-**Published specification:** draft-schrock-ae-challenge-00,
+**Published specification:** draft-schrock-ae-challenge-01,
 "An Authorization Evidence Challenge for High-Risk Agent Actions", Section 2
 (an active individual Internet-Draft, not IETF-adopted or endorsed; intended
 status Informational).
@@ -105,13 +112,13 @@ draft author until then)
 
 ## 2. application/ep-receipt+json
 
-**Status: PROPOSED, requires draft text in next rev.** The string is
-draft-specified — `draft-schrock-ep-authorization-receipts-05`, Section 12
-(IANA Considerations): "A future version may register the
-application/ep-receipt+json media type" — but "may register" is not a
-registration request. Do **not** file this until a -06 (or later) commits to
-the registration in its IANA Considerations. The template below is prepared so
-that revision can carry it verbatim.
+**Status: PREPARED / NOT SUBMITTED.** The active
+`draft-schrock-ep-authorization-receipts-08` IANA Considerations say that the
+document has no IANA actions and that a future version may register
+`application/ep-receipt+json`. That is not a registration request. Do **not**
+file this template until a later draft revision explicitly requests the media
+type registration. The template below is retained only as preparation for
+that future revision.
 
 ### Registration template (RFC 6838 §5.6)
 
@@ -130,7 +137,7 @@ canonicalization of an I-JSON value subset) as specified by the defining
 draft, so byte-exact transport of the canonical payload matters to verifiers.
 
 **Security considerations:** See Section 11 of
-draft-schrock-ep-authorization-receipts-05. A receipt is offline-verifiable
+draft-schrock-ep-authorization-receipts-08. A receipt is offline-verifiable
 authorization evidence: Ed25519 signatures over canonical JSON, bound to a
 specific action, with one-time consumption against replay. Verification
 proves signature, binding, and (where a log is used) log-inclusion integrity —
@@ -146,7 +153,7 @@ the defining draft before checking signatures, since divergent
 canonicalization produces divergent verdicts on identical documents.
 
 **Published specification:** draft-schrock-ep-authorization-receipts
-(revision carrying the registration text; -05 is the current revision:
+(a future revision carrying registration text; -08 is the current revision:
 "Authorization Receipts for High-Risk Agent Actions" — an active individual
 Internet-Draft, not IETF-adopted or endorsed; intended status Informational).
 

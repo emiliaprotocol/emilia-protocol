@@ -1708,7 +1708,11 @@
       "kind": "sound",
       "runtime_sources": [
         "lib/mobile/action-continuity.ts",
-        "lib/mobile/store.ts"
+        "lib/mobile/store.ts",
+        "apps/secure-app/App.tsx",
+        "apps/secure-app/lib/ep-client.ts",
+        "apps/secure-app/lib/security-boundary.mjs",
+        "apps/secure-app/lib/session.ts"
       ],
       "obligations": [
         "MobileExactTenantExecutor",
@@ -1791,7 +1795,11 @@
       "kind": "paired_negative_control",
       "runtime_sources": [
         "lib/mobile/action-continuity.ts",
-        "lib/mobile/store.ts"
+        "lib/mobile/store.ts",
+        "apps/secure-app/App.tsx",
+        "apps/secure-app/lib/ep-client.ts",
+        "apps/secure-app/lib/security-boundary.mjs",
+        "apps/secure-app/lib/session.ts"
       ],
       "obligations": ["MobileTimeoutFence"],
       "steps": [
@@ -1878,7 +1886,10 @@
         "packages/mobile/dist/enrollment.js",
         "packages/mobile/src/enrollment.ts",
         "packages/verify/index.js",
-        "packages/verify/dist/index.js"
+        "packages/verify/dist/index.js",
+        "apps/secure-app/App.tsx",
+        "apps/secure-app/lib/secure-key.ts",
+        "apps/secure-app/lib/security-boundary.mjs"
       ],
       "obligations": [
         "MobileEnrollmentRequiresBothRows",
@@ -1929,7 +1940,10 @@
         "packages/mobile/dist/enrollment.js",
         "packages/mobile/src/enrollment.ts",
         "packages/verify/index.js",
-        "packages/verify/dist/index.js"
+        "packages/verify/dist/index.js",
+        "apps/secure-app/App.tsx",
+        "apps/secure-app/lib/secure-key.ts",
+        "apps/secure-app/lib/security-boundary.mjs"
       ],
       "obligations": ["MobileEnrollmentRequiresBothRows"],
       "steps": [

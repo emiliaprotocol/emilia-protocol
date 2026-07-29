@@ -10,6 +10,7 @@ import React, { useCallback, useEffect, useState } from 'react';
 import {
   ActivityIndicator,
   Alert,
+  AppState,
   Platform,
   Pressable,
   SafeAreaView,
@@ -19,6 +20,7 @@ import {
   TextInput,
   View,
 } from 'react-native';
+import * as ScreenCapture from 'expo-screen-capture';
 import { StatusBar } from 'expo-status-bar';
 import { challengeFromContext, buildAttestation } from './lib/ep-signoff';
 import { signChallengeWithSoftwareKey, type SigningPolicy } from './lib/secure-key';
@@ -37,6 +39,7 @@ import {
 const APP_ID = 'ai.emiliaprotocol.secure';
 const RP_ID = 'www.emiliaprotocol.ai';
 const ORIGIN = `https://${RP_ID}`;
+const SCREEN_CAPTURE_KEY = 'emilia-secure-consequential-action';
 const LOCAL_SOFTWARE_POLICY: SigningPolicy = Object.freeze({
   requiredKeyProvenance: 'software_allowed',
   userVerification: 'biometric_only',
@@ -67,6 +70,23 @@ export default function App(): React.JSX.Element {
   const [actions, setActions] = useState<MobileAction[]>([]);
   const [pairingCode, setPairingCode] = useState('');
   const [busy, setBusy] = useState<string | null>('startup');
+  const [captureProtection, setCaptureProtection] = useState<'pending' | 'active' | 'failed'>('pending');
+  const [privacyShielded, setPrivacyShielded] = useState(AppState.currentState !== 'active');
+
+  useEffect(() => {
+    let mounted = true;
+    const subscription = AppState.addEventListener('change', (state) => {
+      if (mounted) setPrivacyShielded(state !== 'active');
+    });
+    ScreenCapture.preventScreenCaptureAsync(SCREEN_CAPTURE_KEY)
+      .then(() => { if (mounted) setCaptureProtection('active'); })
+      .catch(() => { if (mounted) setCaptureProtection('failed'); });
+    return () => {
+      mounted = false;
+      subscription.remove();
+      void ScreenCapture.allowScreenCaptureAsync(SCREEN_CAPTURE_KEY);
+    };
+  }, []);
 
   const refreshInbox = useCallback(async (activeSession: PairedSession): Promise<void> => {
     setBusy('refresh');
@@ -219,7 +239,7 @@ export default function App(): React.JSX.Element {
           </View>
         )}
 
-        {session ? (
+        {session && captureProtection === 'active' && !privacyShielded ? (
           <View>
             <Text style={styles.sectionTitle}>Server-authorized inbox</Text>
             {actions.length === 0 ? <Text style={styles.empty}>Nothing awaiting review.</Text> : null}
@@ -238,6 +258,16 @@ export default function App(): React.JSX.Element {
           </View>
         ) : null}
 
+        {session && (captureProtection !== 'active' || privacyShielded) ? (
+          <View style={styles.privacyCard} accessibilityRole="alert">
+            <Text style={styles.privacyTitle}>Protected inbox hidden</Text>
+            <Text style={styles.copy}>
+              Consequential-action details remain concealed until screen-capture protection is active
+              and EMILIA Secure is in the foreground.
+            </Text>
+          </View>
+        ) : null}
+
         <View style={styles.card}>
           <Text style={styles.cardTitle}>Local software-key diagnostic</Text>
           <Text style={styles.copy}>
@@ -252,6 +282,12 @@ export default function App(): React.JSX.Element {
 
         <Text style={styles.footer}>Assurance is server-derived from trusted enrollment evidence.</Text>
       </ScrollView>
+      {privacyShielded ? (
+        <View style={styles.privacyOverlay} accessibilityRole="alert">
+          <Text style={styles.privacyOverlayTitle}>EMILIA Secure</Text>
+          <Text style={styles.privacyOverlayCopy}>Protected while the app is not active.</Text>
+        </View>
+      ) : null}
     </SafeAreaView>
   );
 }
@@ -278,5 +314,10 @@ const styles = StyleSheet.create({
   rowButton: { flex: 1, marginTop: 0 },
   disabled: { color: '#d49a75', fontSize: 12, marginTop: 12 },
   empty: { color: '#6b7177', textAlign: 'center', marginBottom: 14 },
+  privacyCard: { backgroundColor: '#101b24', borderRadius: 14, padding: 18, marginBottom: 14, borderWidth: 1, borderColor: '#31546c' },
+  privacyTitle: { color: '#b9dcf2', fontSize: 17, fontWeight: '700', marginBottom: 6 },
+  privacyOverlay: { position: 'absolute', inset: 0, backgroundColor: '#0b0b0c', alignItems: 'center', justifyContent: 'center', padding: 24 },
+  privacyOverlayTitle: { color: '#f5c451', fontSize: 26, fontWeight: '700' },
+  privacyOverlayCopy: { color: '#9aa0a6', fontSize: 14, marginTop: 8 },
   footer: { color: '#6b7177', fontSize: 11, textAlign: 'center', paddingVertical: 8 },
 });

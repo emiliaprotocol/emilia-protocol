@@ -20,6 +20,7 @@ configuration.
 | User verification | Required policy choice: `biometric_only` disables device-passcode fallback; `biometric_or_device_passcode` allows the OS device-owner policy. In the latter mode Expo does not report which permitted factor succeeded, so the app records only `device_owner_authentication`. |
 | WebAuthn UP/UV | The software signer sets neither flag. A separate local-auth prompt is not authenticator-bound WebAuthn evidence, so the Class-A verifier must reject the software result. |
 | Live approval submission | Intentionally absent. No function can submit the Expo software key to a live signoff or mobile-ceremony endpoint. |
+| Display privacy | Consequential-action details render only after the platform capture guard activates. An inactive/background state presents a neutral full-screen shield for app-switcher snapshots. Capture defenses reduce disclosure but do not prove honest pixels on a compromised device. |
 | Hardware-required policy | Fails closed with `hardware_provenance_required`. There is no client override. |
 
 The repository's native Swift and Kotlin mobile SDKs implement the platform

@@ -179,7 +179,7 @@ jobs:
         working-directory: apps/secure-app
         run: |
           npx expo install --check
-          npx expo-doctor@latest
+          npx expo-doctor
       - name: Export deterministic iOS and Android bundles
         working-directory: apps/secure-app
         env:

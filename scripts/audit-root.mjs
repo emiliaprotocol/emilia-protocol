@@ -39,8 +39,39 @@ try {
   report = JSON.parse(stdout);
 }
 
+if (report === null || typeof report !== 'object' || Array.isArray(report)) {
+  throw new Error('npm audit did not return an object report');
+}
+if ('error' in report) {
+  throw new Error(`npm audit returned an error report: ${JSON.stringify(report.error)}`);
+}
+if (report.auditReportVersion !== 2) {
+  throw new Error(`unsupported npm audit report version: ${String(report.auditReportVersion)}`);
+}
+if (
+  !Object.prototype.hasOwnProperty.call(report, 'vulnerabilities')
+  || report.vulnerabilities === null
+  || typeof report.vulnerabilities !== 'object'
+  || Array.isArray(report.vulnerabilities)
+) {
+  throw new Error('npm audit report omitted the vulnerabilities map');
+}
+const summary = report.metadata?.vulnerabilities;
+if (summary === null || typeof summary !== 'object' || Array.isArray(summary)) {
+  throw new Error('npm audit report omitted the vulnerability summary');
+}
+for (const field of ['info', 'low', 'moderate', 'high', 'critical', 'total']) {
+  if (!Number.isSafeInteger(summary[field]) || summary[field] < 0) {
+    throw new Error(`npm audit report has an invalid ${field} count`);
+  }
+}
+const summedSeverityCount = summary.info + summary.low + summary.moderate + summary.high + summary.critical;
+if (summary.total !== summedSeverityCount) {
+  throw new Error('npm audit report vulnerability counts do not reconcile');
+}
+
 const observed = new Set();
-for (const vulnerability of Object.values(report.vulnerabilities ?? {})) {
+for (const vulnerability of Object.values(report.vulnerabilities)) {
   for (const cause of vulnerability.via ?? []) {
     if (typeof cause !== 'object' || cause === null) continue;
     const rank = severityRank.get(cause.severity) ?? 0;

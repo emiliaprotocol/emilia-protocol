@@ -231,4 +231,22 @@ test('owned source has no bundled bearer credential or live software-key submit 
   assert.doesNotMatch(source, /authData\[32\]\s*=\s*0x05/);
   assert.match(source, /hardware_attested_required/);
   assert.match(source, /WHEN_UNLOCKED_THIS_DEVICE_ONLY/);
+  assert.match(source, /preventScreenCaptureAsync/);
+  assert.match(source, /AppState\.addEventListener/);
+  assert.match(source, /Protected inbox hidden/);
+});
+
+test('the Expo shell binds its security boundary into the governed mobile scenarios', async () => {
+  const scenarios = JSON.parse(await readFile(
+    new URL('../../../formal/runtime-scenarios.v2.json', import.meta.url),
+    'utf8',
+  ));
+  const mobile = scenarios.scenarios.filter(({ id }) => id.startsWith('mobile-'));
+  assert.ok(mobile.length >= 4);
+  for (const scenario of mobile) {
+    assert.ok(
+      scenario.runtime_sources.includes('apps/secure-app/lib/security-boundary.mjs'),
+      `${scenario.id} must bind the Expo security boundary`,
+    );
+  }
 });
