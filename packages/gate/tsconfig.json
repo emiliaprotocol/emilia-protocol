@@ -112,6 +112,8 @@
     "src/open-exposure-ledger-postgres.ts",
     "src/coverage-reconciliation-attestation.ts",
     "src/receipt-census.ts",
-    "src/loss-experience-feed.ts"
+    "src/loss-experience-feed.ts",
+    "src/trusted-context.ts",
+    "src/apertomemory-context.ts"
   ]
 }

@@ -91,3 +91,9 @@ node --test interop/apertomemory-emilia/verify.test.mjs
 published ApertoMemory -02 trust/custody semantics, not an independent
 ApertoMemory implementation claim. `AMEM-PROJECTION-RECORD-v0` is proposed
 discussion input and is not asserted to be part of ApertoMemory -02.
+
+The provider-neutral runtime control that consumes the projection record lives
+in `packages/gate/src/trusted-context.ts`; the first provider plug-in is
+`packages/gate/src/apertomemory-context.ts`. See
+`docs/protocol/trusted-context-pack-v1.md`. Those modules preserve this
+directory's nonclaims and do not turn a projection into authorization.
