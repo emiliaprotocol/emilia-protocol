@@ -23,6 +23,14 @@ const execution = spawnSync(
     "vitest",
     "run",
     "--silent",
+    // Proof-stat measurement runs the complete integration inventory, including
+    // tests that launch real git, archive, and protocol-check subprocesses.
+    // Bound worker fan-out and give each case an explicit integration budget so
+    // CPU starvation cannot turn Vitest's five-second unit default into a false
+    // governed-evidence failure. The run still fails closed on any timeout.
+    "--maxWorkers=4",
+    "--testTimeout=60000",
+    "--hookTimeout=60000",
     "--reporter=json",
     `--outputFile=${reportPath}`,
   ],
