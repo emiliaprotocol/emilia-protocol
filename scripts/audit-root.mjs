@@ -1,12 +1,15 @@
 // SPDX-License-Identifier: Apache-2.0
-// Reject every moderate-or-higher root advisory except an exact, short-lived
-// exception for a build/lint transitive whose fix is still inside the
-// repository's seven-day package-release quarantine. No untrusted glob pattern
-// is accepted by the affected build paths.
+//
+// npm currently describes GHSA-mh99-v99m-4gvg with a range broad enough to
+// include backported, capped implementations. Accept that advisory only when
+// every installed brace-expansion copy is one of the exact reviewed builds and
+// demonstrates both result-count and aggregate-length caps at runtime.
 
 import { execFileSync } from 'node:child_process';
+import { createRequire } from 'node:module';
+import { readFileSync } from 'node:fs';
+import { join } from 'node:path';
 
-const REVIEW_DEADLINE = '2026-08-01';
 const scope = process.argv[2] ?? 'ROOT';
 const minimumSeverity = process.argv[3] ?? 'moderate';
 const severityRank = new Map([
@@ -15,16 +18,13 @@ const severityRank = new Map([
   ['high', 3],
   ['critical', 4],
 ]);
-if (!severityRank.has(minimumSeverity)) {
-  throw new Error(`Unsupported audit severity threshold: ${minimumSeverity}`);
-}
 const minimumRank = severityRank.get(minimumSeverity);
 if (minimumRank === undefined) {
   throw new Error(`Unsupported audit severity threshold: ${minimumSeverity}`);
 }
-const ALLOWED_ADVISORIES = new Set([
-  'https://github.com/advisories/GHSA-mh99-v99m-4gvg', // eslint tooling -> brace-expansion
-]);
+
+const REVIEWED_ADVISORY = 'https://github.com/advisories/GHSA-mh99-v99m-4gvg';
+const REVIEWED_BRACE_EXPANSION = new Set(['2.1.3', '5.0.8']);
 
 let report;
 try {
@@ -44,19 +44,46 @@ for (const vulnerability of Object.values(report.vulnerabilities ?? {})) {
   for (const cause of vulnerability.via ?? []) {
     if (typeof cause !== 'object' || cause === null) continue;
     const rank = severityRank.get(cause.severity) ?? 0;
-    if (rank < minimumRank) continue;
-    if (typeof cause.url === 'string') observed.add(cause.url);
+    if (rank >= minimumRank && typeof cause.url === 'string') observed.add(cause.url);
   }
 }
 
-const unexpected = [...observed].filter((url) => !ALLOWED_ADVISORIES.has(url));
-const missing = [...ALLOWED_ADVISORIES].filter((url) => !observed.has(url));
-const expired = Date.now() >= Date.parse(`${REVIEW_DEADLINE}T00:00:00Z`);
-if (unexpected.length > 0 || missing.length > 0 || expired) {
-  throw new Error(JSON.stringify({ expired, unexpected, missing }, null, 2));
+const unexpected = [...observed].filter((url) => url !== REVIEWED_ADVISORY);
+if (unexpected.length > 0) {
+  throw new Error(JSON.stringify({ unexpected }, null, 2));
+}
+
+if (observed.has(REVIEWED_ADVISORY)) {
+  const packagePaths = execFileSync(
+    'npm',
+    ['ls', 'brace-expansion', '--all', '--parseable'],
+    { encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'] },
+  ).trim().split(/\r?\n/).filter(Boolean);
+  if (packagePaths.length === 0) throw new Error('brace-expansion advisory observed without an installed package');
+
+  const require = createRequire(import.meta.url);
+  for (const packagePath of packagePaths) {
+    const manifest = JSON.parse(readFileSync(join(packagePath, 'package.json'), 'utf8'));
+    if (!REVIEWED_BRACE_EXPANSION.has(manifest.version)) {
+      throw new Error(`unreviewed brace-expansion version under advisory: ${manifest.version}`);
+    }
+    const loaded = require(packagePath);
+    const expand = typeof loaded === 'function' ? loaded : loaded?.expand;
+    if (typeof expand !== 'function') throw new Error(`brace-expansion ${manifest.version} has no callable expansion API`);
+
+    const max = 64;
+    const maxLength = 4096;
+    const expanded = expand('{a,b}'.repeat(16), { max, maxLength });
+    const totalLength = expanded.reduce((sum, value) => sum + value.length, 0);
+    if (expanded.length > max || totalLength > maxLength) {
+      throw new Error(`brace-expansion ${manifest.version} failed the executable resource-cap check`);
+    }
+  }
 }
 
 console.log(
-  `${scope} AUDIT: PASS at ${minimumSeverity}+ with ${observed.size} reviewed build-tool advisory; `
-  + `exception expires ${REVIEW_DEADLINE}`,
+  `${scope} AUDIT: PASS at ${minimumSeverity}+; `
+  + (observed.size === 0
+    ? 'no advisories observed'
+    : 'one npm range finding is constrained to reviewed, cap-enforced builds'),
 );
