@@ -106,6 +106,19 @@ permit and exposes its native replay unit, while the Gate atomically fences
 that replay unit before any effect. Inspection is never reported as a final
 native `ALLOW`.
 
+`@emilia-protocol/verify/aeb-psea-adapter` adds an optional, revision-pinned
+adapter for `draft-yossif-psea-02`. It verifies strict ES256 compact JWS/EAT
+proofs against enrolled P-256 keys; rejects unknown headers and claims; binds
+issuer, audience, operation, tier, nonce, UV, UEID, lifetime, attestation
+appraisal, and the JCS action hash; and projects the exact action into CAID.
+`verifyAndCommitPseaProof()` atomically advances the native counter and consumes
+the `jti` through a caller-supplied durable store before Gate admission. The
+adapter does not mint PSEA proofs, identify a named human beyond pinned
+enrollment, establish WYSIWYS, or replace AEC/Gate authorization and outcome
+reconciliation. The hostile fixture set is
+`conformance/vectors/psea-aeb.v1.json`; it is an EMILIA adapter suite, not an
+independent PSEA interoperability claim.
+
 ### Agent Edge Continuity — `@emilia-protocol/verify/agent-edge-continuity`
 
 `EP-AGENT-EDGE-CONTINUITY-v1` carries one material action across user,
