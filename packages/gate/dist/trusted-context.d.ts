@@ -101,7 +101,7 @@ export declare function signTrustedContextBinding(input: SignTrustedContextBindi
  * policy, signer keys, and status snapshots are all constructor-pinned.
  */
 export declare function createTrustedContextEvaluator(options: TrustedContextEvaluatorOptions): (input: RecordLike) => Readonly<{
-    state: "INDETERMINATE" | "NOT_VERIFIED";
+    state: "NOT_VERIFIED" | "INDETERMINATE";
     reason: string;
     authorizes: false;
 }> | Readonly<{
@@ -123,7 +123,7 @@ export declare function createTrustedContextAecVerifier({ evaluator }: {
     valid: boolean;
     action_digest: string | null;
     detail: Readonly<{
-        state: "INDETERMINATE" | "NOT_VERIFIED";
+        state: "NOT_VERIFIED" | "INDETERMINATE";
         reason: string;
         authorizes: false;
     }> | Readonly<{
