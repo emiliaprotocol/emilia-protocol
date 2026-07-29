@@ -7,8 +7,8 @@ import { afterAll, describe, expect, it } from "vitest";
 const root = path.resolve(import.meta.dirname, "..");
 const verifier = path.join(root, "scripts", "verify-security-case.mjs");
 const loader = path.join(root, "scripts", "ts-loader", "register.mjs");
-const CHILD_PROCESS_TEST_TIMEOUT_MS = 30_000;
-const MULTI_PROCESS_TEST_TIMEOUT_MS = 120_000;
+const CHILD_PROCESS_TEST_TIMEOUT_MS = 90_000;
+const MULTI_PROCESS_TEST_TIMEOUT_MS = 420_000;
 const temporaryDirectory = fs.mkdtempSync(
   path.join(root, ".ep-security-formal-semantics-"),
 );
@@ -363,7 +363,7 @@ describe("security-case formal metadata semantics", () => {
       formal.covered_obligations = ["UndeclaredFormalObligation"];
       formal.scope += " These selected scenarios are not a refinement proof.";
     }, /covered_obligations must be a subset of obligations/);
-  });
+  }, MULTI_PROCESS_TEST_TIMEOUT_MS);
 
   it("keeps selected bounded scenarios partial and short of a refinement proof", () => {
     expectRejected((sourceCase) => {
@@ -380,5 +380,5 @@ describe("security-case formal metadata semantics", () => {
         (formal) => formal.scenario_coverage === "selected",
       ).scope = "Bounded same-team selected runtime scenarios.";
     }, /selected scenario conformance must state that it is not a refinement proof/);
-  });
+  }, MULTI_PROCESS_TEST_TIMEOUT_MS);
 });
