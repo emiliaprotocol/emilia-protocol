@@ -3,6 +3,22 @@
 All notable changes to `@emilia-protocol/verify` are documented here.
 This package follows [Semantic Versioning](https://semver.org/).
 
+## Unreleased
+
+## 3.17.1 (2026-07-29)
+
+### Security
+
+- Trust Receipt verification now treats `compromised_at` in a pinned approver
+  key entry as terminal and retroactive instead of as another presenter-time
+  validity edge. A stolen key therefore cannot clear verification by
+  backdating the signed `issued_at`.
+- An optional relying-party `now` refuses presenter-claimed issuance more than
+  five minutes in the future while preserving offline historical verification
+  when no verifier clock is supplied.
+- JavaScript, Python, and Go apply the same rule and agree on shared negative
+  conformance vectors.
+
 ## 3.17.0 (2026-07-28)
 
 ### Added

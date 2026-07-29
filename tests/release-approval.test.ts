@@ -36,6 +36,11 @@ const valid = {
   confirmation: 'PUBLISH @emilia-protocol/verify@3.9.0',
 };
 
+// These tests intentionally create repositories and exercise real git
+// subprocesses. Keep their budget explicit so a governed nested test run does
+// not inherit Vitest's five-second unit-test default under CI load.
+const GIT_INTEGRATION_TEST_TIMEOUT_MS = 60_000;
+
 describe('registry release approval', () => {
   it('accepts an owner dispatch bound to the exact package version and tag', () => {
     expect(validateReleaseApproval(valid)).toEqual({
@@ -80,7 +85,7 @@ describe('registry release approval', () => {
     } finally {
       fs.rmSync(dir, { recursive: true, force: true });
     }
-  });
+  }, GIT_INTEGRATION_TEST_TIMEOUT_MS);
 
   it('refuses to attribute an ancestor tag commit to a newer workflow dispatch and main commit', () => {
     const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'ep-release-ancestor-'));
@@ -108,7 +113,7 @@ describe('registry release approval', () => {
     } finally {
       fs.rmSync(dir, { recursive: true, force: true });
     }
-  });
+  }, GIT_INTEGRATION_TEST_TIMEOUT_MS);
 
   it('refuses a branch-selected dispatch even when it resolves to the release commit', () => {
     const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'ep-release-ref-'));
@@ -133,7 +138,7 @@ describe('registry release approval', () => {
     } finally {
       fs.rmSync(dir, { recursive: true, force: true });
     }
-  });
+  }, GIT_INTEGRATION_TEST_TIMEOUT_MS);
 
   it('permits tag creation only from the exact clean main commit with no existing tag', () => {
     const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'ep-go-release-approval-'));
@@ -167,7 +172,7 @@ describe('registry release approval', () => {
     } finally {
       fs.rmSync(dir, { recursive: true, force: true });
     }
-  });
+  }, GIT_INTEGRATION_TEST_TIMEOUT_MS);
 
   it('revalidates remote main and the exact remote tag against the dispatched commit', () => {
     const root = fs.mkdtempSync(path.join(os.tmpdir(), 'ep-release-remote-'));
@@ -196,7 +201,7 @@ describe('registry release approval', () => {
     } finally {
       fs.rmSync(root, { recursive: true, force: true });
     }
-  });
+  }, GIT_INTEGRATION_TEST_TIMEOUT_MS);
 
   it('refuses a deleted or moved remote release tag and an advanced remote main', () => {
     const root = fs.mkdtempSync(path.join(os.tmpdir(), 'ep-release-remote-race-'));
@@ -243,7 +248,7 @@ describe('registry release approval', () => {
     } finally {
       fs.rmSync(root, { recursive: true, force: true });
     }
-  });
+  }, GIT_INTEGRATION_TEST_TIMEOUT_MS);
 
   it('ignores a rewritten origin and queries the fixed canonical repository identity', () => {
     const root = fs.mkdtempSync(path.join(os.tmpdir(), 'ep-release-rewritten-origin-'));
@@ -292,5 +297,5 @@ describe('registry release approval', () => {
     } finally {
       fs.rmSync(root, { recursive: true, force: true });
     }
-  });
+  }, GIT_INTEGRATION_TEST_TIMEOUT_MS);
 });

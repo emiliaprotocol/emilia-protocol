@@ -1,6 +1,14 @@
 <!-- SPDX-License-Identifier: Apache-2.0 -->
 # Changelog
 
+## Unreleased
+
+## 2.8.1 (2026-07-29)
+
+- Trust Receipt verification treats pinned `compromised_at` as terminal and
+  supports an optional relying-party `now` for refusing future-issued receipts,
+  matching the JavaScript and Go conformance behavior.
+
 ## 2.8.0 (2026-07-21)
 
 ### Added

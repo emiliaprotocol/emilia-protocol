@@ -1091,6 +1091,11 @@ def verify_trust_receipt(receipt: Any, opts: Optional[dict] = None) -> dict:
         return fail("Missing receipt")
     approver_keys = opts.get("approverKeys") or {}
     log_public_key = opts.get("logPublicKey")
+    verifier_now = None
+    if opts.get("now") is not None:
+        verifier_now = _instant_ms(opts.get("now"))
+        if verifier_now is None:
+            return fail("opts.now is not a parseable instant")
     contexts = receipt.get("contexts") if isinstance(receipt.get("contexts"), list) else []
     signoffs = receipt.get("signoffs") if isinstance(receipt.get("signoffs"), list) else []
     if not receipt.get("action") or not receipt.get("action_hash"):
@@ -1150,7 +1155,19 @@ def verify_trust_receipt(receipt: Any, opts: Optional[dict] = None) -> dict:
         if key_entry.get("approver_id") != ctx.get("approver"):
             signatures_ok = False
             continue
+        if key_entry.get("compromised_at") is not None:
+            if _instant_ms(key_entry.get("compromised_at")) is None:
+                signatures_ok = False
+                continue
+            # Compromise is a terminal directory fact, not a validity-window
+            # edge a holder of the stolen key can bypass by backdating issued_at.
+            signatures_ok = False
+            continue
         if not _within_window(ctx.get("issued_at"), key_entry.get("valid_from"), key_entry.get("valid_to")):
+            signatures_ok = False
+            continue
+        issued_at = _instant_ms(ctx.get("issued_at"))
+        if verifier_now is not None and (issued_at is None or issued_at > verifier_now + 5 * 60 * 1000):
             signatures_ok = False
             continue
         digest_bytes = bytes.fromhex(_hex_of(s.get("context_hash")))

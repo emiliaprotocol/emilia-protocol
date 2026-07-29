@@ -51,7 +51,7 @@ EP-OUTCOME-BINDING-v1 semantic — 35 vectors   JavaScript ✓   Python ✓   Go
 EP-OUTCOME-BINDING-v1 real-crypto — 10 vectors JavaScript ✓   Python ✓   Go ✓
 EP-AUTHORITY-DOC-PROOF-JOIN-v1 — 26 vectors   JavaScript ✓   Python ✓   Go ✓
 EP-TIME-ATTESTATION-v1         —  6 vectors   JavaScript ✓   Python ✓   Go ✓
-EP-TRUST-RECEIPT-v1 (§6.2)     — 14 vectors   JavaScript ✓   Python ✓   Go ✓
+EP-TRUST-RECEIPT-v1 (§6.2)     — 16 vectors   JavaScript ✓   Python ✓   Go ✓
 EP-TRUST-RECEIPT-v1 ts-profile —  7 vectors   JavaScript ✓   Python ✓   Go ✓
 EP-PROVENANCE-CHAIN-v1         — 14 vectors   JavaScript ✓   Python ✓   Go ✓
 EP-EVIDENCE-RECORD-v1          —  5 vectors   JavaScript ✓   Python ✓   Go ✓
@@ -64,7 +64,7 @@ EP-SMT-CONSUME-v1              —  6 vectors   JavaScript ✓   Python ✓   Go
 EP-WITNESS-v1                  —  6 vectors   JavaScript ✓   Python ✓   Go ✓
 EP-TIMESTAMP-PROOF-v1          — 13 vectors   JavaScript ✓   Python ✓   Go ✓
 
-✅ 329 vectors · 21 suites — JavaScript, Python, and Go verifiers agree.
+✅ 331 vectors · 21 suites — JavaScript, Python, and Go verifiers agree.
    (One team's three-language ports in one repository: a consistency check,
     not independent reimplementations.)
 ```

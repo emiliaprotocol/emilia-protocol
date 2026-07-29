@@ -47,6 +47,12 @@ The v2 fixed-arity `VerifyWebAuthnSignoff` and `VerifyQuorum` APIs remain
 source-compatible. Relying parties that pin browser origins use
 `VerifyWebAuthnSignoffWithOrigins` and `VerifyQuorumWithOrigins`.
 
+`VerifyTrustReceipt` accepts pinned `approverKeys`, a trusted `logPublicKey`,
+and an optional RFC 3339 `now`. A key entry containing `compromised_at` is
+terminal regardless of the receipt's claimed `issued_at`; when `now` is
+supplied, issuance more than five minutes in the future is refused. Omitting
+`now` retains offline historical verification.
+
 ## Cross-language guarantee
 
 `go test ./...` verifies the **same JS-signed receipt fixture** that the Python

@@ -162,8 +162,8 @@ func contextAuthorizes(ctx map[string]any) bool {
 }
 
 // VerifyTrustReceipt verifies an EP §6.2 Trust Receipt offline. opts keys:
-// approverKeys (map of approver_key_id -> {approver_id,public_key,key_class,valid_from,valid_to}),
-// logPublicKey (string).
+// approverKeys (map of approver_key_id -> {approver_id,public_key,key_class,valid_from,valid_to,compromised_at}),
+// logPublicKey (string), now (optional RFC3339 relying-party clock).
 func VerifyTrustReceipt(receipt map[string]any, opts map[string]any) TrustReceiptResult {
 	checks := map[string]bool{
 		"action_hash": false, "context_commitments": false, "signoff_signatures": false,
@@ -174,6 +174,16 @@ func VerifyTrustReceipt(receipt map[string]any, opts map[string]any) TrustReceip
 	}
 	approverKeys := getMap(opts["approverKeys"])
 	logPublicKey := getStr(opts, "logPublicKey")
+	var verifierNow int64
+	verifierNowSet := false
+	if rawNow, present := opts["now"]; present && rawNow != nil {
+		var ok bool
+		verifierNow, ok = parseMillis(getStr(opts, "now"))
+		if !ok {
+			return TrustReceiptResult{false, checks}
+		}
+		verifierNowSet = true
+	}
 	rpID := getStr(opts, "rpId")
 	allowedOrigins, requireOrigin := stringSliceOption(opts, "allowedOrigins")
 	contexts, _ := receipt["contexts"].([]any)
@@ -256,9 +266,26 @@ func VerifyTrustReceipt(receipt map[string]any, opts map[string]any) TrustReceip
 			signaturesOK = false
 			continue
 		}
+		if rawCompromised, present := keyEntry["compromised_at"]; present && rawCompromised != nil {
+			if _, ok := parseMillis(getStr(keyEntry, "compromised_at")); !ok {
+				signaturesOK = false
+				continue
+			}
+			// Compromise is terminal. It is not a validity-window edge that a
+			// holder of the stolen key can bypass by backdating issued_at.
+			signaturesOK = false
+			continue
+		}
 		if !withinWindowGo(getStr(ctx, "issued_at"), getStr(keyEntry, "valid_from"), getStr(keyEntry, "valid_to")) {
 			signaturesOK = false
 			continue
+		}
+		if verifierNowSet {
+			issuedAt, ok := parseMillis(getStr(ctx, "issued_at"))
+			if !ok || issuedAt > verifierNow+5*60*1000 {
+				signaturesOK = false
+				continue
+			}
 		}
 		digest, err := hex.DecodeString(hexStrip(s["context_hash"]))
 		if err != nil {

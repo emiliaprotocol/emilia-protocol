@@ -56,8 +56,8 @@
     },
     {
       "path": "conformance/vectors/trust-receipt.exec.v1.json",
-      "sha256": "095d50eb2199451344628fffe6e391cdad2718ad647a9dc952712eabefdecf51",
-      "vectors": 14
+      "sha256": "f7c88e60ebfa21788700485d72573506b824d315c8acf5a10751acb106700bcc",
+      "vectors": 16
     },
     {
       "path": "conformance/vectors/trust-receipt.timestamp-forms.v2.json",
@@ -117,7 +117,7 @@
   ],
   "totals": {
     "suites": 21,
-    "vectors": 329,
+    "vectors": 331,
     "implementations": 3
   },
   "implementations": [
@@ -131,12 +131,12 @@
       },
       "source": {
         "files": 189,
-        "bytes": 2716671,
-        "tree_sha256": "4bfa9b056c6173aa515ed644d3b9ff58199711057474c4c62a0ce585f4450a90"
+        "bytes": 2727139,
+        "tree_sha256": "95774d60ea4cb0434caed85853593b1b2ac6677676edcaa3b9ee470f9a3cdac9"
       },
       "suites": 21,
-      "vectors": 329,
-      "normalized_results_sha256": "5196498692629ab7f87ccf8234105eedeefee3504c6bd8cba1ac6fad5ba03f92",
+      "vectors": 331,
+      "normalized_results_sha256": "2d2a026c79332d239ed94dd4c395e6a7970b24d81c6ecbfe1dfea797f262b640",
       "status": "pass"
     },
     {
@@ -149,12 +149,12 @@
       },
       "source": {
         "files": 3,
-        "bytes": 231722,
-        "tree_sha256": "3661011af5fa18da9ef292096df54bb069c350928252a75906054d0d2b04215a"
+        "bytes": 232546,
+        "tree_sha256": "708a6b15e353c3a1c9b61a63fa905e90153ca13b316da43fdb2ad00e8f09d773"
       },
       "suites": 21,
-      "vectors": 329,
-      "normalized_results_sha256": "fed5ee761084fe9f401b13416bef665af03d9fb94c4c97d1ad669d936a5a77de",
+      "vectors": 331,
+      "normalized_results_sha256": "75b1ed0cbb98a2c29bc411b20e9754f68b8853fbce905a38efe6d50a578afcc6",
       "status": "pass"
     },
     {
@@ -167,14 +167,14 @@
       },
       "source": {
         "files": 43,
-        "bytes": 390986,
-        "tree_sha256": "2418bb4158de01aa8b4786dc9d0cf1016c88c74b7dba68575d7b0d07f24ba688"
+        "bytes": 392472,
+        "tree_sha256": "02a5c632b67b9a177205fa7bf1c9b288eaa6aaee77c3bc89a67a72d2be22b866"
       },
       "suites": 21,
-      "vectors": 329,
-      "normalized_results_sha256": "fed5ee761084fe9f401b13416bef665af03d9fb94c4c97d1ad669d936a5a77de",
+      "vectors": 331,
+      "normalized_results_sha256": "75b1ed0cbb98a2c29bc411b20e9754f68b8853fbce905a38efe6d50a578afcc6",
       "status": "pass"
     }
   ],
-  "manifest_sha256": "02d33c1c9c89a268988417d6af9c3632c2c895681b09f9f97d7e58f691627f5a"
+  "manifest_sha256": "6354be1680d116b6db7fd5c40067f5da0140a83366dfee083a6512ec43c3a8ae"
 }

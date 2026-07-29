@@ -88,6 +88,21 @@ const add = (id: string, expectValid: boolean, trust_receipt: any, verification:
 const valid = await mint({ amount: 82000, currency: 'USD' });
 add('accept_valid_receipt', true, valid.receipt, valid.verification);
 
+{ // A compromised key is terminal even when the stolen key backdates issued_at.
+  const m = await mint({ amount: 82000, currency: 'USD' });
+  Object.assign(m.verification.approver_keys['ep:key:dir#1'], {
+    compromised_at: '2026-06-13T11:15:00Z',
+  });
+  add('reject_terminal_compromised_key', false, m.receipt, m.verification);
+}
+
+{ // A relying-party clock refuses presenter-claimed issuance too far in the future.
+  const m = await mint({ amount: 82000, currency: 'USD' });
+  add('reject_future_issued_at_against_verifier_clock', false, m.receipt, m.verification, {
+    now: '2026-06-13T10:00:00Z',
+  });
+}
+
 { // A denial is genuine signed decision evidence, but it is not authorization.
   // Every cryptographic and temporal check is valid; only approval/quorum fails.
   const m = await mint({ amount: 82000, currency: 'USD' }, { decision: 'denied' });

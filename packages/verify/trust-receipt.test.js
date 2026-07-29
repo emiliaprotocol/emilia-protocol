@@ -220,6 +220,57 @@ test('step 3 — an approver key outside its validity window fails', () => {
     const r = verifyTrustReceipt(buildReceipt(), { approverKeys: keys, logPublicKey: logKey.pub });
     assert.equal(r.checks.signoff_signatures, false);
 });
+test('step 3 — a compromised key is refused however the presenter backdates issued_at', () => {
+    // The attack this closes: valid_to is compared against ctx.issued_at, which the
+    // presenter signs with the very key under test. A holder of a stolen key can mint
+    // a receipt after revocation and backdate issued_at into the old window, and every
+    // window check still passes. compromised_at is terminal and ignores claimed time.
+    const backdated = buildReceipt(); // signed issued_at is 2026-06-09
+    const expiredOnly = { ...KEYS, 'ep:key:controller#1': { ...KEYS['ep:key:controller#1'], valid_to: '2026-06-10T00:00:00Z' } };
+    const viaExpiry = verifyTrustReceipt(backdated, {
+        approverKeys: expiredOnly,
+        logPublicKey: logKey.pub,
+        now: '2026-06-20T00:00:00Z',
+    });
+    assert.equal(viaExpiry.checks.signoff_signatures, true);
+    assert.equal(viaExpiry.valid, true); // valid_to alone trusts the presenter's signed backdate
+    const compromised = { ...KEYS, 'ep:key:controller#1': { ...KEYS['ep:key:controller#1'], compromised_at: '2026-06-10T00:00:00Z' } };
+    const r = verifyTrustReceipt(backdated, {
+        approverKeys: compromised,
+        logPublicKey: logKey.pub,
+        now: '2026-06-20T00:00:00Z',
+    });
+    assert.equal(r.checks.signoff_signatures, false);
+    assert.equal(r.valid, false);
+    assert.ok(r.errors.some((e) => /marked compromised/.test(e)));
+});
+test('step 3 — compromise is retroactive: a receipt issued before compromised_at is still refused', () => {
+    const compromised = { ...KEYS, 'ep:key:controller#1': { ...KEYS['ep:key:controller#1'], compromised_at: '2099-01-01T00:00:00Z' } };
+    const r = verifyTrustReceipt(buildReceipt(), { approverKeys: compromised, logPublicKey: logKey.pub });
+    assert.equal(r.valid, false);
+    assert.ok(r.errors.some((e) => /marked compromised/.test(e)));
+});
+test('step 3 — an unparseable compromised_at fails closed', () => {
+    const bad = { ...KEYS, 'ep:key:controller#1': { ...KEYS['ep:key:controller#1'], compromised_at: 'not-a-date' } };
+    const r = verifyTrustReceipt(buildReceipt(), { approverKeys: bad, logPublicKey: logKey.pub });
+    assert.equal(r.valid, false);
+    assert.ok(r.errors.some((e) => /unparseable compromised_at/.test(e)));
+});
+test('opts.now refuses an issued_at claimed in the future, and is inert when absent', () => {
+    const r1 = verifyTrustReceipt(buildReceipt(), OPTS);
+    assert.equal(r1.valid, true); // unchanged default behaviour
+    const past = verifyTrustReceipt(buildReceipt(), { ...OPTS, now: '2099-01-01T00:00:00Z' });
+    assert.equal(past.valid, true); // verifying an old receipt later is supported
+    const future = verifyTrustReceipt(buildReceipt(), { ...OPTS, now: '2026-06-09T16:00:00Z' });
+    assert.equal(future.valid, false);
+    assert.equal(future.checks.signoff_signatures, false);
+    assert.ok(future.errors.some((e) => /future relative to the verifier clock/.test(e)));
+});
+test('opts.now itself fails closed when unparseable', () => {
+    const r = verifyTrustReceipt(buildReceipt(), { ...OPTS, now: 'not-a-date' });
+    assert.equal(r.valid, false);
+    assert.ok(r.errors.some((e) => /opts\.now is not a parseable instant/.test(e)));
+});
 test('step 3 — an unknown approver_key_id fails (no pinned key)', () => {
     const receipt = buildReceipt();
     receipt.signoffs[0].approver_key_id = 'ep:key:nobody#9';

@@ -188,7 +188,7 @@ not merely `valid`; authentic negative outcomes are evidence and never authority
 
 Returns `{ valid, authorizes_action, outcome, requires_successor, checks, reason? }`.
 
-### `verifyTrustReceipt(receipt, { approverKeys, logPublicKey })` — *requires 1.3.0*
+### `verifyTrustReceipt(receipt, { approverKeys, logPublicKey, now })` — *requires 1.3.0*
 
 The full offline verification algorithm from the Internet-Draft
 (draft-schrock-ep-authorization-receipts, Section 6.3) over a Section 6.2
@@ -196,12 +196,20 @@ Trust Receipt — all six steps, no network:
 
 1. Recompute the action hash from the canonical Action Object
 2. Recompute each context hash; confirm it commits to the action hash, the policy hash, and a distinct approver
-3. Verify each signoff signature (Class-A WebAuthn or Class-B Ed25519) against the pinned approver key, checking the key's validity window
+3. Verify each signoff signature (Class-A WebAuthn or Class-B Ed25519) against the pinned approver key, checking the key's validity window and refusing any key directory entry carrying `compromised_at`
 4. Separation of duties — initiator in no approver slot, approvers pairwise distinct, approval count ≥ `required_approvals`
 5. Merkle inclusion of the receipt leaf against the checkpoint root, and the checkpoint signature against the trusted log key
 6. `signed_at` / `committed_at` within `[issued_at, expires_at]`
 
 Returns `{ valid, checks, errors, attestation, strict }` and fails closed on any missing input.
+
+`valid_from` / `valid_to` express ordinary issuance and rotation windows.
+`compromised_at` is different: its presence is a terminal relying-party directory
+fact, so a stolen key cannot evade it by signing a backdated `issued_at`. When a
+relying party supplies its own RFC 3339 `now`, the verifier also refuses an
+`issued_at` more than five minutes in the future. Omitting `now` preserves
+offline historical verification; trusted timestamp evidence is still required
+when a deployment needs to prove when a receipt was actually created.
 
 #### Strict verifier mode — *requires 1.5.0*
 
