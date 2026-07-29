@@ -283,6 +283,98 @@ export function createMemoryActionRefusalReplayStore() {
         },
     });
 }
+const EXTERNAL_LEGS = ['delivery', 'custody', 'transparency_anchor'];
+/**
+ * Verify referenced delivery, custody, and transparency evidence with
+ * relying-party-pinned adapters. A digest reference alone remains explicitly
+ * unverified. This function never upgrades REFERENCED into VERIFIED by itself.
+ */
+export async function verifyActionRefusalExternalEvidence(statement, options = {}) {
+    const required = new Set(options.required ?? []);
+    if ([...required].some((leg) => !EXTERNAL_LEGS.includes(leg))) {
+        return { accepted: false, reason: 'external_evidence_requirement_invalid', legs: null };
+    }
+    const signed = verifyRiskBody(statement, ACTION_REFUSAL_STATEMENT_VERSION, options.trusted_keys);
+    if (!signed.valid || !signed.body) {
+        return { accepted: false, reason: signed.reason ?? 'refusal_invalid', legs: null };
+    }
+    try {
+        validate(signed.body);
+    }
+    catch {
+        return { accepted: false, reason: 'refusal_schema_invalid', legs: null };
+    }
+    const body = signed.body;
+    const expectedDigests = {
+        delivery: body.delivery?.custody_digest,
+        custody: body.custody?.evidence_digest,
+        transparency_anchor: body.transparency_anchor?.evidence_digest,
+    };
+    const legs = {};
+    for (const leg of EXTERNAL_LEGS) {
+        const reference = body[leg];
+        if (reference === null) {
+            legs[leg] = { status: 'ABSENT', evidence_digest: null, reason: null };
+            if (required.has(leg)) {
+                return { accepted: false, reason: `${leg}_reference_required`, legs };
+            }
+            continue;
+        }
+        const verifier = options.verifiers?.[leg];
+        if (typeof verifier !== 'function') {
+            legs[leg] = {
+                status: 'REFERENCED_NOT_EXTERNALLY_VERIFIED',
+                evidence_digest: expectedDigests[leg],
+                reason: 'verifier_not_configured',
+            };
+            if (required.has(leg)) {
+                return { accepted: false, reason: `${leg}_verifier_required`, legs };
+            }
+            continue;
+        }
+        let result;
+        try {
+            result = await verifier({
+                statement: riskClone(statement),
+                reference: riskClone(reference),
+                expected_evidence_digest: expectedDigests[leg],
+            });
+        }
+        catch {
+            legs[leg] = {
+                status: 'INDETERMINATE',
+                evidence_digest: expectedDigests[leg],
+                reason: 'verifier_unavailable',
+            };
+            return { accepted: false, reason: `${leg}_verification_indeterminate`, legs };
+        }
+        if (!riskExact(result, ['status', 'evidence_digest', 'reason'])
+            || !['VERIFIED', 'NOT_VERIFIED', 'INDETERMINATE'].includes(result.status)
+            || typeof result.evidence_digest !== 'string' || !RISK_DIGEST.test(result.evidence_digest)
+            || (result.reason !== null && typeof result.reason !== 'string')) {
+            legs[leg] = {
+                status: 'INDETERMINATE',
+                evidence_digest: expectedDigests[leg],
+                reason: 'verifier_result_invalid',
+            };
+            return { accepted: false, reason: `${leg}_verifier_result_invalid`, legs };
+        }
+        if (result.evidence_digest !== expectedDigests[leg]) {
+            legs[leg] = {
+                status: 'NOT_VERIFIED',
+                evidence_digest: result.evidence_digest,
+                reason: 'evidence_digest_mismatch',
+            };
+            return { accepted: false, reason: `${leg}_evidence_digest_mismatch`, legs };
+        }
+        legs[leg] = riskClone(result);
+        if (result.status !== 'VERIFIED') {
+            const suffix = result.status === 'INDETERMINATE' ? 'verification_indeterminate' : 'not_verified';
+            return { accepted: false, reason: `${leg}_${suffix}`, legs };
+        }
+    }
+    return { accepted: true, reason: null, legs };
+}
 export async function acceptActionRefusalStatement(statement, options = {}) {
     const verification = verifyActionRefusalStatement(statement, options);
     const refused = (reason, checked = false, durable = false) => ({
@@ -298,6 +390,16 @@ export async function acceptActionRefusalStatement(statement, options = {}) {
         return refused('refusal_digest_missing');
     if (!riskExact(options.expected, EXPECTED_KEYS))
         return refused('complete_expected_binding_required');
+    let externalEvidence = null;
+    if (options.external_evidence !== undefined) {
+        externalEvidence = await verifyActionRefusalExternalEvidence(statement, {
+            ...options.external_evidence,
+            trusted_keys: options.external_evidence.trusted_keys ?? options.trusted_keys,
+        });
+        if (!externalEvidence.accepted) {
+            return { ...refused(externalEvidence.reason), external_evidence: externalEvidence };
+        }
+    }
     const store = options.replayStore;
     if (!store || typeof store.consume !== 'function' || typeof store.durable !== 'boolean') {
         return refused('replay_store_required');
@@ -328,6 +430,7 @@ export async function acceptActionRefusalStatement(statement, options = {}) {
         accepted: true,
         replay_checked: true,
         replay_store_durable: store.durable,
+        external_evidence: externalEvidence,
     };
 }
 //# sourceMappingURL=action-refusal-statement.js.map

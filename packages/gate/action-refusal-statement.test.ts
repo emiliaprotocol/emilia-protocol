@@ -11,6 +11,7 @@ import {
   actionRefusalStatementDigest,
   createMemoryActionRefusalReplayStore,
   signActionRefusalStatement,
+  verifyActionRefusalExternalEvidence,
   verifyActionRefusalStatement,
 } from './action-refusal-statement.js';
 
@@ -134,6 +135,106 @@ test('replay-checked acceptance consumes the relying-party nonce once and expiry
   });
   assert.equal(expired.verified, false);
   assert.equal(expired.reason, 'refusal_expired');
+});
+
+test('external delivery, custody, and transparency references remain unverified until pinned adapters prove them', async () => {
+  const delivery = {
+    channel: 'https',
+    recipient_id: 'provider:synthetic-example',
+    delivered_at: '2026-07-28T18:00:00.000Z',
+    custody_digest: D('8'),
+  };
+  const custody = {
+    custodian_id: 'archive:synthetic-example',
+    acknowledged_at: '2026-07-28T18:00:01.000Z',
+    evidence_digest: D('9'),
+  };
+  const transparency_anchor = { method: 'scitt', evidence_digest: D('a') };
+  const { statement, trusted_keys, expected } = fixture({ delivery, custody, transparency_anchor });
+
+  const referenced = await verifyActionRefusalExternalEvidence(statement, {
+    trusted_keys,
+    required: ['delivery'],
+  });
+  assert.equal(referenced.accepted, false);
+  assert.equal(referenced.reason, 'delivery_verifier_required');
+  assert.equal(referenced.legs.delivery.status, 'REFERENCED_NOT_EXTERNALLY_VERIFIED');
+
+  const verifiers = Object.fromEntries([
+    ['delivery', D('8')],
+    ['custody', D('9')],
+    ['transparency_anchor', D('a')],
+  ].map(([leg, digest]) => [leg, async ({ expected_evidence_digest }) => ({
+    status: 'VERIFIED',
+    evidence_digest: digest,
+    reason: null,
+    observed_expected_digest: expected_evidence_digest,
+  })]));
+
+  // Extra adapter fields are refused. An external verifier has a closed output
+  // shape so it cannot smuggle an unreviewed trust decision into acceptance.
+  const malformed = await verifyActionRefusalExternalEvidence(statement, {
+    trusted_keys,
+    required: ['delivery'],
+    verifiers: { delivery: verifiers.delivery },
+  });
+  assert.equal(malformed.accepted, false);
+  assert.equal(malformed.reason, 'delivery_verifier_result_invalid');
+
+  const exactVerifiers = Object.fromEntries([
+    ['delivery', D('8')],
+    ['custody', D('9')],
+    ['transparency_anchor', D('a')],
+  ].map(([leg, digest]) => [leg, async () => ({
+    status: 'VERIFIED', evidence_digest: digest, reason: null,
+  })]));
+  const replayStore = createMemoryActionRefusalReplayStore();
+  const accepted = await acceptActionRefusalStatement(statement, {
+    trusted_keys,
+    expected,
+    now: NOW,
+    replayStore,
+    allowEphemeralReplayStore: true,
+    external_evidence: {
+      required: ['delivery', 'custody', 'transparency_anchor'],
+      verifiers: exactVerifiers,
+    },
+  });
+  assert.equal(accepted.accepted, true);
+  assert.equal(accepted.external_evidence.legs.delivery.status, 'VERIFIED');
+  assert.equal(accepted.external_evidence.legs.custody.status, 'VERIFIED');
+  assert.equal(accepted.external_evidence.legs.transparency_anchor.status, 'VERIFIED');
+});
+
+test('an external evidence digest mismatch fails before replay consumption', async () => {
+  const delivery = {
+    channel: 'https', recipient_id: 'provider:synthetic-example',
+    delivered_at: '2026-07-28T18:00:00.000Z', custody_digest: D('8'),
+  };
+  const { statement, trusted_keys, expected } = fixture({ delivery });
+  const replayStore = createMemoryActionRefusalReplayStore();
+  const base = {
+    trusted_keys, expected, now: NOW, replayStore, allowEphemeralReplayStore: true,
+  };
+  const mismatch = await acceptActionRefusalStatement(statement, {
+    ...base,
+    external_evidence: {
+      required: ['delivery'],
+      verifiers: { delivery: async () => ({ status: 'VERIFIED', evidence_digest: D('f'), reason: null }) },
+    },
+  });
+  assert.equal(mismatch.accepted, false);
+  assert.equal(mismatch.reason, 'delivery_evidence_digest_mismatch');
+  assert.equal(mismatch.replay_checked, false);
+
+  const accepted = await acceptActionRefusalStatement(statement, {
+    ...base,
+    external_evidence: {
+      required: ['delivery'],
+      verifiers: { delivery: async () => ({ status: 'VERIFIED', evidence_digest: D('8'), reason: null }) },
+    },
+  });
+  assert.equal(accepted.accepted, true);
 });
 
 test('tampering any exact-action or pinned-program binding invalidates the statement', () => {

@@ -61,6 +61,22 @@ assert_sql 'ALTER TABLE emilia_gate_evidence\.network_witness_checkpoints FORCE 
   'network-witness checkpoint reads must force RLS'
 assert_sql "EMILIA network-witness scope is not authorized for session login %'.*session_user" \
   'witness advancement must authorize session_user scope'
+assert_sql 'CREATE TABLE IF NOT EXISTS emilia_gate_evidence\.action_refusal_replays' \
+  'action-refusal replay state must be durable'
+assert_sql 'PRIMARY KEY \(tenant_id, gate_id, relying_party_id, nonce\)' \
+  'action-refusal replay identity must be tenant and relying-party scoped'
+assert_sql 'CREATE OR REPLACE FUNCTION emilia_gate_evidence\.consume_action_refusal' \
+  'action-refusal acceptance must use one atomic database function'
+assert_sql "'action-refusal'" \
+  'action-refusal consumption must use a dedicated authenticated runtime scope'
+assert_sql "'statement_replay'::TEXT" \
+  'action-refusal consumption must distinguish an exact replay'
+assert_sql "'nonce_equivocation'::TEXT" \
+  'action-refusal consumption must distinguish nonce equivocation'
+assert_sql 'ALTER TABLE emilia_gate_evidence\.action_refusal_replays FORCE ROW LEVEL SECURITY' \
+  'action-refusal replay state must force RLS'
+assert_sql 'REVOKE ALL ON TABLE emilia_gate_evidence\.action_refusal_replays' \
+  'runtime roles must not directly read or mutate action-refusal replay state'
 
 if grep -Eiq 'GRANT[[:space:]]+(INSERT|UPDATE|DELETE|TRUNCATE)' "$sql_file"; then
   echo 'SQL contract assertion failed: runtime SQL must not grant direct evidence writes' >&2

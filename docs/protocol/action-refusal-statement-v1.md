@@ -122,6 +122,13 @@ namespace and distinguishes an exact `statement_replay` from
 `nonce_equivocation`. The bundled memory store is non-durable and is permitted
 only with the explicit test/development opt-in. Production acceptance must use
 a durable atomic implementation; a missing or unavailable store fails closed.
+`createPostgresActionRefusalReplayStore()` is the deployment-bound reference
+adapter. It calls one `SECURITY DEFINER` database function under the
+authenticated PostgreSQL session principal. The migration stores the exact
+`tenant + gate + relying party + nonce` key immutably, distinguishes replay
+from equivocation, forces row-level security, and grants the runtime role no
+direct table access. Operators grant the runtime login the dedicated
+`action-refusal` evidence scope before enabling acceptance.
 
 Expiry is exclusive: verification at or after `expires_at` returns
 `refusal_expired`.
@@ -144,7 +151,29 @@ not transform a probe run, content-policy refusal, or transparency-log entry
 into an exact-action Gate refusal, and the refusal does not prove the external
 anchor.
 
-## 7. Conformance vector
+`verifyActionRefusalExternalEvidence()` closes the optional external-proof
+step without pretending that a digest is proof. The relying party pins a
+separate adapter for each required leg. Each adapter must return a closed
+`VERIFIED`, `NOT_VERIFIED`, or `INDETERMINATE` result and the exact evidence
+digest it checked. Missing adapters, adapter outages, malformed outputs, and
+digest substitution fail closed whenever the leg is required. When configured
+on `acceptActionRefusalStatement()`, this verification runs before nonce
+consumption so an unverifiable external reference cannot burn a valid refusal.
+
+## 7. Runtime emission
+
+`createRelianceKernel({ refusal: ... })` connects the reliance decision to the
+signed statement. A deployment-supplied context function must provide the
+compiled program identity, exact CAID/action digest, actual failed requirement
+identifiers, evaluated evidence/challenge digests, nonce, and validity window.
+The bridge does not infer any of them. For each non-allow verdict the kernel
+signs the statement, records its digest as governed evidence, and carries the
+statement and digest in the HTTP 428 challenge. If context, signing, or evidence
+recording fails, the action remains refused and the response reports
+`signed_refusal_unavailable`; no unsigned object is mislabeled as a signed
+statement. An allow path can never emit this artifact.
+
+## 8. Conformance vector
 
 [`conformance/vectors/action-refusal-statement.v1.json`](../../conformance/vectors/action-refusal-statement.v1.json)
 contains a deterministic synthetic, PHI-free Ed25519/JCS statement, its fixed

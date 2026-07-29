@@ -16,12 +16,38 @@
  */
 import { createEvidenceLog } from './evidence.js';
 import {
+  actionRefusalStatementDigest,
+} from './action-refusal-statement.js';
+import {
+  signRelianceRefusal,
+  type RelianceRefusalContext,
+  type RelianceRefusalSigner,
+} from './reliance-refusal-bridge.js';
+import {
   evaluateReliance,
   RELIANCE_PROFILE_VERSION,
   RELIANCE_VERDICTS,
 } from '@emilia-protocol/verify/reliance';
 
 type Obj = Record<string, any>;
+
+export interface RelianceRefusalRuntime {
+  signer: RelianceRefusalSigner;
+  /**
+   * Supplies deployment-owned bindings that the verifier cannot safely invent:
+   * the compiled program identity, exact CAID/action digest, failed requirement
+   * ids, evidence/challenge digests, nonce, and validity window.
+   */
+  context(args: {
+    input: Obj;
+    options: Obj;
+    profile: Obj | undefined;
+    result: Obj;
+    decision: Obj;
+    challenge: Obj;
+  }): Omit<RelianceRefusalContext, 'decision'>
+    | Promise<Omit<RelianceRefusalContext, 'decision'>>;
+}
 
 const RECEIPT_REQUIRED_STATUS = 428;
 
@@ -54,8 +80,20 @@ export function createRelianceKernel({
   profile,
   log,
   strictEvidence = true,
-}: { profile?: Obj; log?: Obj; strictEvidence?: boolean } = {}) {
+  refusal,
+}: {
+  profile?: Obj;
+  log?: Obj;
+  strictEvidence?: boolean;
+  refusal?: RelianceRefusalRuntime;
+} = {}) {
   const evidence = log || createEvidenceLog({ strict: strictEvidence });
+
+  if (refusal !== undefined
+      && (typeof refusal !== 'object' || typeof refusal.context !== 'function'
+        || typeof refusal.signer !== 'object' || refusal.signer === null)) {
+    throw new TypeError('reliance refusal runtime requires signer and context');
+  }
 
   /**
    * Evaluate + enforce one evidence packet.
@@ -101,14 +139,65 @@ export function createRelianceKernel({
       };
     }
 
+    const challenge = allow ? null : relianceChallenge(result.verdict, result.reasons, profile);
+    let refusalStatement: Obj | null = null;
+    let refusalStatementDigest: string | null = null;
+    let refusalStatementError: string | null = null;
+
+    if (!allow && refusal && challenge) {
+      try {
+        const supplied = await refusal.context({
+          input,
+          options: opts,
+          profile,
+          result,
+          decision,
+          challenge,
+        });
+        refusalStatement = signRelianceRefusal({
+          ...supplied,
+          decision: { verdict: result.verdict, reasons: result.reasons, allow: false },
+        }, refusal.signer);
+        refusalStatementDigest = actionRefusalStatementDigest(refusalStatement);
+
+        // A configured signed-refusal lane is governed evidence, not a response
+        // decoration. Record the exact signed digest before exposing the artifact.
+        await evidence.record({
+          type: 'reliance.refusal_statement',
+          verdict: result.verdict,
+          action_hash: actionHash,
+          refusal_digest: refusalStatementDigest,
+          refusal_id: refusalStatement.refusal_id,
+          relying_party_id: refusalStatement.relying_party_id,
+          program_digest: refusalStatement.program.program_digest,
+        });
+      } catch (err) {
+        refusalStatement = null;
+        refusalStatementDigest = null;
+        refusalStatementError = `signed_refusal_unavailable:${(err as { message?: string })?.message || 'failed'}`;
+      }
+    }
+
+    const responseChallenge = challenge === null ? null : {
+      ...challenge,
+      refusal_statement: refusalStatement,
+      refusal_statement_digest: refusalStatementDigest,
+      refusal_statement_error: refusalStatementError,
+    };
+
     return {
       allow,
       status: allow ? 200 : RECEIPT_REQUIRED_STATUS,
       verdict: result.verdict,
-      reasons: result.reasons,
+      reasons: refusalStatementError === null
+        ? result.reasons
+        : [...result.reasons, refusalStatementError],
       checks: result.checks,
-      challenge: allow ? null : relianceChallenge(result.verdict, result.reasons, profile),
+      challenge: responseChallenge,
       decision,
+      refusal_statement: refusalStatement,
+      refusal_statement_digest: refusalStatementDigest,
+      refusal_statement_recorded: refusalStatement !== null,
     };
   }
 

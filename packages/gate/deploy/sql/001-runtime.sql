@@ -112,6 +112,16 @@ CREATE TABLE IF NOT EXISTS emilia_gate_evidence.network_witness_checkpoints (
   PRIMARY KEY (tenant_id, gate_id, stream_key)
 );
 
+CREATE TABLE IF NOT EXISTS emilia_gate_evidence.action_refusal_replays (
+  tenant_id        TEXT NOT NULL CHECK (char_length(tenant_id) BETWEEN 1 AND 256),
+  gate_id          TEXT NOT NULL CHECK (char_length(gate_id) BETWEEN 1 AND 256),
+  relying_party_id TEXT NOT NULL CHECK (char_length(relying_party_id) BETWEEN 1 AND 256),
+  nonce            TEXT NOT NULL CHECK (char_length(nonce) BETWEEN 1 AND 256),
+  refusal_digest   TEXT NOT NULL CHECK (refusal_digest ~ '^sha256:[0-9a-f]{64}$'),
+  consumed_at      TIMESTAMPTZ NOT NULL DEFAULT clock_timestamp(),
+  PRIMARY KEY (tenant_id, gate_id, relying_party_id, nonce)
+);
+
 ALTER TABLE emilia_gate_evidence.network_witness_checkpoints
   ADD COLUMN IF NOT EXISTS equivocated BOOLEAN NOT NULL DEFAULT FALSE;
 
@@ -123,6 +133,7 @@ ALTER TABLE emilia_gate_evidence.records OWNER TO CURRENT_USER;
 ALTER TABLE emilia_gate_evidence.runtime_scope_grants OWNER TO CURRENT_USER;
 ALTER TABLE emilia_gate_evidence.network_witness_scope_grants OWNER TO CURRENT_USER;
 ALTER TABLE emilia_gate_evidence.network_witness_checkpoints OWNER TO CURRENT_USER;
+ALTER TABLE emilia_gate_evidence.action_refusal_replays OWNER TO CURRENT_USER;
 
 CREATE OR REPLACE FUNCTION emilia_gate_evidence.reject_record_mutation()
 RETURNS trigger
@@ -140,6 +151,12 @@ ALTER FUNCTION emilia_gate_evidence.reject_record_mutation() OWNER TO CURRENT_US
 DROP TRIGGER IF EXISTS evidence_records_are_immutable ON emilia_gate_evidence.records;
 CREATE TRIGGER evidence_records_are_immutable
   BEFORE UPDATE OR DELETE OR TRUNCATE ON emilia_gate_evidence.records
+  FOR EACH STATEMENT EXECUTE FUNCTION emilia_gate_evidence.reject_record_mutation();
+
+DROP TRIGGER IF EXISTS action_refusal_replays_are_immutable
+  ON emilia_gate_evidence.action_refusal_replays;
+CREATE TRIGGER action_refusal_replays_are_immutable
+  BEFORE UPDATE OR DELETE OR TRUNCATE ON emilia_gate_evidence.action_refusal_replays
   FOR EACH STATEMENT EXECUTE FUNCTION emilia_gate_evidence.reject_record_mutation();
 
 CREATE OR REPLACE FUNCTION emilia_gate_evidence.runtime_scope_authorized(
@@ -466,6 +483,74 @@ ALTER FUNCTION emilia_gate_evidence.revoke_network_witness_scope(NAME, TEXT, TEX
 ALTER FUNCTION emilia_gate_evidence.advance_network_witness_checkpoint(TEXT, TEXT, BYTEA, BIGINT, TEXT)
   OWNER TO CURRENT_USER;
 
+CREATE OR REPLACE FUNCTION emilia_gate_evidence.consume_action_refusal(
+  p_tenant_id TEXT,
+  p_gate_id TEXT,
+  p_relying_party_id TEXT,
+  p_nonce TEXT,
+  p_refusal_digest TEXT
+)
+RETURNS TABLE(accepted BOOLEAN, reason TEXT)
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = pg_catalog, pg_temp
+AS $function$
+DECLARE
+  v_inserted INTEGER;
+  v_existing_digest TEXT;
+BEGIN
+  IF p_tenant_id IS NULL OR char_length(p_tenant_id) NOT BETWEEN 1 AND 256
+     OR p_gate_id IS NULL OR char_length(p_gate_id) NOT BETWEEN 1 AND 256
+     OR p_relying_party_id IS NULL OR char_length(p_relying_party_id) NOT BETWEEN 1 AND 256
+     OR p_nonce IS NULL OR char_length(p_nonce) NOT BETWEEN 1 AND 256
+     OR p_refusal_digest IS NULL
+     OR p_refusal_digest !~ '^sha256:[0-9a-f]{64}$' THEN
+    RAISE EXCEPTION 'invalid EMILIA action refusal replay input' USING ERRCODE = '22023';
+  END IF;
+  IF p_tenant_id ~ '[[:cntrl:]]' OR p_gate_id ~ '[[:cntrl:]]'
+     OR p_relying_party_id ~ '[[:cntrl:]]' OR p_nonce ~ '[[:cntrl:]]' THEN
+    RAISE EXCEPTION 'control characters are forbidden in EMILIA action refusal replay input'
+      USING ERRCODE = '22023';
+  END IF;
+  IF NOT emilia_gate_evidence.runtime_scope_authorized(
+    p_tenant_id,
+    p_gate_id,
+    'action-refusal'
+  ) THEN
+    RAISE EXCEPTION 'EMILIA action refusal scope is not authorized for session login %', session_user
+      USING ERRCODE = '42501';
+  END IF;
+
+  INSERT INTO emilia_gate_evidence.action_refusal_replays (
+    tenant_id, gate_id, relying_party_id, nonce, refusal_digest
+  ) VALUES (
+    p_tenant_id, p_gate_id, p_relying_party_id, p_nonce, p_refusal_digest
+  ) ON CONFLICT DO NOTHING;
+  GET DIAGNOSTICS v_inserted = ROW_COUNT;
+  IF v_inserted = 1 THEN
+    RETURN QUERY SELECT TRUE, NULL::TEXT;
+    RETURN;
+  END IF;
+
+  SELECT r.refusal_digest
+    INTO STRICT v_existing_digest
+    FROM emilia_gate_evidence.action_refusal_replays AS r
+    WHERE r.tenant_id = p_tenant_id
+      AND r.gate_id = p_gate_id
+      AND r.relying_party_id = p_relying_party_id
+      AND r.nonce = p_nonce;
+
+  IF v_existing_digest = p_refusal_digest THEN
+    RETURN QUERY SELECT FALSE, 'statement_replay'::TEXT;
+  ELSE
+    RETURN QUERY SELECT FALSE, 'nonce_equivocation'::TEXT;
+  END IF;
+END
+$function$;
+
+ALTER FUNCTION emilia_gate_evidence.consume_action_refusal(TEXT, TEXT, TEXT, TEXT, TEXT)
+  OWNER TO CURRENT_USER;
+
 CREATE OR REPLACE FUNCTION emilia_gate_evidence.append_record(
   p_tenant_id TEXT,
   p_gate_id TEXT,
@@ -590,6 +675,8 @@ ALTER TABLE emilia_gate_evidence.records ENABLE ROW LEVEL SECURITY;
 ALTER TABLE emilia_gate_evidence.records FORCE ROW LEVEL SECURITY;
 ALTER TABLE emilia_gate_evidence.network_witness_checkpoints ENABLE ROW LEVEL SECURITY;
 ALTER TABLE emilia_gate_evidence.network_witness_checkpoints FORCE ROW LEVEL SECURITY;
+ALTER TABLE emilia_gate_evidence.action_refusal_replays ENABLE ROW LEVEL SECURITY;
+ALTER TABLE emilia_gate_evidence.action_refusal_replays FORCE ROW LEVEL SECURITY;
 
 DROP POLICY IF EXISTS evidence_heads_runtime_read ON emilia_gate_evidence.heads;
 CREATE POLICY evidence_heads_runtime_read
@@ -620,6 +707,8 @@ DROP POLICY IF EXISTS evidence_heads_owner_all ON emilia_gate_evidence.heads;
 DROP POLICY IF EXISTS evidence_records_owner_all ON emilia_gate_evidence.records;
 DROP POLICY IF EXISTS network_witness_owner_all
   ON emilia_gate_evidence.network_witness_checkpoints;
+DROP POLICY IF EXISTS action_refusal_replays_owner_all
+  ON emilia_gate_evidence.action_refusal_replays;
 DO $policies$
 BEGIN
   EXECUTE format(
@@ -634,6 +723,10 @@ BEGIN
     'CREATE POLICY network_witness_owner_all ON emilia_gate_evidence.network_witness_checkpoints FOR ALL TO %I USING (true) WITH CHECK (true)',
     current_user
   );
+  EXECUTE format(
+    'CREATE POLICY action_refusal_replays_owner_all ON emilia_gate_evidence.action_refusal_replays FOR ALL TO %I USING (true) WITH CHECK (true)',
+    current_user
+  );
 END
 $policies$;
 
@@ -642,7 +735,8 @@ REVOKE ALL ON TABLE
   emilia_gate_evidence.heads,
   emilia_gate_evidence.runtime_scope_grants,
   emilia_gate_evidence.network_witness_scope_grants,
-  emilia_gate_evidence.network_witness_checkpoints
+  emilia_gate_evidence.network_witness_checkpoints,
+  emilia_gate_evidence.action_refusal_replays
   FROM PUBLIC;
 REVOKE INSERT, UPDATE, DELETE, TRUNCATE, REFERENCES, TRIGGER
   ON emilia_gate_evidence.records, emilia_gate_evidence.heads
@@ -653,6 +747,8 @@ REVOKE ALL ON TABLE emilia_gate_evidence.network_witness_scope_grants
   FROM emilia_gate_evidence_runtime;
 REVOKE INSERT, UPDATE, DELETE, TRUNCATE, REFERENCES, TRIGGER
   ON emilia_gate_evidence.network_witness_checkpoints
+  FROM emilia_gate_evidence_runtime;
+REVOKE ALL ON TABLE emilia_gate_evidence.action_refusal_replays
   FROM emilia_gate_evidence_runtime;
 GRANT SELECT ON emilia_gate_evidence.records, emilia_gate_evidence.heads
   TO emilia_gate_evidence_runtime;
@@ -682,6 +778,10 @@ REVOKE ALL ON FUNCTION emilia_gate_evidence.advance_network_witness_checkpoint(T
   FROM PUBLIC, emilia_gate_evidence_runtime;
 GRANT EXECUTE ON FUNCTION emilia_gate_evidence.advance_network_witness_checkpoint(TEXT, TEXT, BYTEA, BIGINT, TEXT)
   TO emilia_gate_evidence_runtime;
+REVOKE ALL ON FUNCTION emilia_gate_evidence.consume_action_refusal(TEXT, TEXT, TEXT, TEXT, TEXT)
+  FROM PUBLIC, emilia_gate_evidence_runtime;
+GRANT EXECUTE ON FUNCTION emilia_gate_evidence.consume_action_refusal(TEXT, TEXT, TEXT, TEXT, TEXT)
+  TO emilia_gate_evidence_runtime;
 REVOKE ALL ON FUNCTION emilia_gate_evidence.append_record(TEXT, TEXT, TEXT, TEXT, JSONB, TEXT)
   FROM PUBLIC, emilia_gate_evidence_runtime;
 GRANT EXECUTE ON FUNCTION emilia_gate_evidence.append_record(TEXT, TEXT, TEXT, TEXT, JSONB, TEXT)
@@ -701,6 +801,10 @@ COMMENT ON FUNCTION emilia_gate_evidence.advance_network_witness_checkpoint(TEXT
   IS 'Atomically advance a scoped witness checkpoint or distinguish replay, rollback, and same-sequence equivocation.';
 COMMENT ON TABLE emilia_gate_evidence.network_witness_checkpoints
   IS 'Latest tenant/gate/stream network-witness sequence and statement digest; a checkpoint, not complete observation history.';
+COMMENT ON FUNCTION emilia_gate_evidence.consume_action_refusal(TEXT, TEXT, TEXT, TEXT, TEXT)
+  IS 'Atomically consume one tenant/gate/relying-party refusal nonce and distinguish replay from nonce equivocation.';
+COMMENT ON TABLE emilia_gate_evidence.action_refusal_replays
+  IS 'Immutable tenant/gate/relying-party action-refusal nonce consumption state; runtime access is function-only.';
 COMMENT ON TABLE emilia_gate_evidence.records
   IS 'Immutable tenant/gate/stream-scoped EMILIA evidence records.';
 
