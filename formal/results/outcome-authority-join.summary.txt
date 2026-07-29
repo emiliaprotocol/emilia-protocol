@@ -1,17 +1,22 @@
 EP-OUTCOME-AUTHORITY-BOUNDED-MODEL-v1
 Method: bounded_exhaustive_state_exploration
-Execution date: 2026-07-19
-Model SHA-256: 4432adf2297621cce7d92b1ad1c4d28eae9c068722dce42f7760d3310da8f65a
-Runner SHA-256: 8926897f9a71a3436cca5a2c81e0d4d440629d116ea77c24926b352c50710794
+Execution date: 2026-07-28
+Model SHA-256: 0719fc242905842088c33994c9f2c20fc6cb83b39f01e10f3020e9be0e25e60a
+Runner SHA-256: e202e03bfd8f0b224e238bda456041b058a153c391c5c3988116b1b0b61d0e40
 
-ExactActionReceiptBinding (1536 outcome states; weakened binding mutant rejected): verified
-PolicyCannotWidenSignedPredictions (1536 outcome states; policy-replacement mutant rejected): verified
-ReplayResultDigestCommitsVerdict (4608 result encodings; verdict-omission mutant rejected): verified
+ExactActionReceiptBinding (49152 outcome states; weakened binding mutant rejected): verified
+PolicyCannotWidenSignedPredictions (49152 outcome states; policy-replacement mutant rejected): verified
+ReplayResultDigestCommitsVerdict (147456 result encodings; verdict-omission mutant rejected): verified
+IndependentObserverKeyIsDistinct (49152 outcome-source states; reused-key mutant rejected): verified
+IndependentObserverControlDomainIsDistinct (49152 outcome-source states; shared-domain mutant rejected): verified
+OutcomeSourceKeyIsCurrent (49152 outcome-source states; noncurrent-key mutant rejected): verified
+ObservationWindowIsBound (49152 outcome-source states; unbound-window mutant rejected): verified
+OutcomeSourceQuorumIsSatisfied (49152 outcome-source states; insufficient-quorum mutant rejected): verified
 NewestAuthorityDocumentPreventsKeyResurrection (32768 authority states; older-document fallback mutant rejected): verified
 RevokedRotationAndProofKeysFailClosed (32768 authority states plus 64 rotation states; revocation-bypass mutants rejected): verified
 RegistryPinsMandatory (32768 authority states; optional-pin mutant rejected): verified
 
-Result: 6 of 6 bounded obligations verified; 6 of 6 deliberately weakened variants produced counterexamples.
+Result: 11 of 11 bounded obligations verified; 11 of 11 deliberately weakened variants produced counterexamples.
 
-Scope: same-team bounded exhaustive exploration of the finite abstraction in the bound model bytes above. Signatures and SHA-256 are ideal constructors. This is partial formal evidence, not an unbounded protocol proof and not independent implementation evidence.
+Scope: same-team bounded exhaustive exploration of the finite abstraction in the bound model bytes above. Signatures and SHA-256 are ideal constructors. Control-domain identity, source status, observation windows, and quorum policy are relying-party inputs. This is partial formal evidence, not an unbounded protocol proof and not independent implementation evidence.
 Exclusions: no physical-truth claim, no trusted time source, no external witness or transparency operator, and no independent implementation claim.

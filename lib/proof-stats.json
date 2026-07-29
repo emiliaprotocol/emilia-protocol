@@ -1,8 +1,8 @@
 {
-  "generatedAt": "2026-07-29T07:40:32.686Z",
+  "generatedAt": "2026-07-29T11:37:59.140Z",
   "tests": {
-    "total": 7968,
-    "files": 455,
+    "total": 7985,
+    "files": 456,
     "policy": "all platform-applicable cases must pass; platform-specific cases may skip"
   },
   "tla": {
@@ -13,15 +13,15 @@
   "formalScenarioConformance": {
     "method": "bounded_selected_scenario_conformance",
     "models": 14,
-    "claims": 20,
-    "scenarios": 72,
-    "soundScenarios": 26,
-    "pairedNegativeControls": 46,
+    "claims": 21,
+    "scenarios": 78,
+    "soundScenarios": 27,
+    "pairedNegativeControls": 51,
     "requiredModelActions": 28,
     "coveredModelActions": 28,
     "actionCompleteModels": 1,
-    "formalMutationOperators": 46,
-    "evidenceSha256": "b1ead8b829e761643c04e6c61d62fdf223581e1f828d27aa6337d61a5339721e",
+    "formalMutationOperators": 51,
+    "evidenceSha256": "7e5821745322b204256623a18aff07f7d0d5c1f52b09d6206e4c53483d6d8ef2",
     "boundary": "selected model/runtime scenarios under explicit projection relations; not a mechanized implementation refinement proof"
   },
   "formalEvidenceCoverage": {
@@ -33,7 +33,7 @@
       ]
     },
     "boundedRuntimeTraced": {
-      "count": 20,
+      "count": 21,
       "claimIds": [
         "action-escrow-releases-one-exact-milestone-once",
         "aec-execution-is-action-keyed-and-fleet-fail-closed",
@@ -48,6 +48,7 @@
         "mobile-action-continuity-is-tenant-and-executor-bound",
         "mobile-enrollment-requires-two-verified-rows",
         "model-to-matter-clearance-is-exact-and-single-use",
+        "multi-source-outcome-binding-enforces-independent-current-evidence",
         "network-witness-equivocation-permanently-poisons-stream",
         "outcome-binding-is-exact-and-fail-closed",
         "receipt-program-is-caid-bound-budgeted-and-terminal",
@@ -102,9 +103,9 @@
   },
   "securityCase": {
     "status": "passed",
-    "claims": 34,
-    "evidenceFiles": 251,
-    "evidenceBundleSha256": "11e31d971b97aaecd8eeaf9ca03a1fc5f00cbecf668f0496c583df434175f219"
+    "claims": 35,
+    "evidenceFiles": 252,
+    "evidenceBundleSha256": "21a260484e77b5b7aec837fe1b2bd60be40a354e67f30dc702fc1dc4debd8610"
   },
   "conformance": {
     "suites": 21,

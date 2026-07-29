@@ -337,6 +337,7 @@ export function validateReusablePypiWorkflowText(text: string): boolean {
     'scripts/require-release-approval.mjs',
     'group: registry-publish-pypi-${{ inputs.package_name }}',
   ], 'reusable PyPI workflow');
+  validateTlaSecurityCaseWorkflowText(text, 'reusable PyPI workflow');
   forbidCredentialInjection(text, 'reusable PyPI workflow');
   return true;
 }
@@ -440,6 +441,7 @@ export function validateGoTagWorkflowText(text: string): boolean {
   if (/\bgit\s+(?:push|tag)\b/.test(text)) {
     throw new Error('Go release workflow may not grant repository code a Git write primitive');
   }
+  validateTlaSecurityCaseWorkflowText(text, 'Go tag workflow');
   forbidCredentialInjection(text, 'Go tag workflow');
   return true;
 }
@@ -482,6 +484,7 @@ export function validatePypiDirect(text, label) {
     'scripts/require-release-approval.mjs',
   ], label);
   validateManualPublisher(text, label, { direct: true });
+  validateTlaSecurityCaseWorkflowText(text, label);
   forbidCredentialInjection(text, label);
   return true;
 }

@@ -1,15 +1,13 @@
 /**
- * EP Secure App — Class-A signoff core.
+ * EP Secure App — signoff byte-binding core.
  *
  * Pure, cross-platform (Web Crypto: Expo/React Native, browser, Node 18+). This
  * is the part that MUST be correct: the challenge the device signs is
  * SHA-256(JCS(context)) using the exact same canonicalization as
- * @emilia-protocol/verify, so an attestation this app produces verifies offline
- * under the protocol's own verifier with no special-casing.
- *
- * The actual signing is delegated to a platform signer:
- *   - on a real device, the OS secure enclave / passkey (Face ID / biometric);
- *   - in Expo Go or tests, a software signer (see ep-signoff.test.ts).
+ * @emilia-protocol/verify. Cryptographic verification does not establish key
+ * provenance or assurance class. The relying party derives those properties
+ * from its trusted enrollment directory and platform evidence, never from a
+ * client-supplied label.
  *
  * @license Apache-2.0
  */
@@ -63,22 +61,20 @@ interface BuildAttestationArgs {
 
 interface SignoffAttestation {
   '@version': string;
-  key_class: string;
   approver_id?: string;
   context: any;
   webauthn: WebAuthnData;
 }
 
 /**
- * Assemble the Class-A signoff attestation to POST to the gate. `webauthn` is
- * the platform authenticator's assertion (base64url fields), produced by signing
- * the challenge above.
+ * Assemble transport-neutral signoff evidence. It intentionally carries no
+ * key_class or assurance claim; a server may classify accepted evidence only
+ * from a separately trusted enrollment record.
  */
 export function buildAttestation({ context, webauthn, approverId }: BuildAttestationArgs): SignoffAttestation {
   if (!context || !webauthn) throw new Error('buildAttestation requires context and webauthn');
   return {
     '@version': 'EP-SIGNOFF-v1',
-    key_class: 'A',
     approver_id: approverId,
     context,
     webauthn,

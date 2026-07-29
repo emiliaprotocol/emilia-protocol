@@ -10,7 +10,7 @@
       "supportsTablet": false,
       "bundleIdentifier": "ai.emiliaprotocol.secure",
       "infoPlist": {
-        "NSFaceIDUsageDescription": "EMILIA Secure uses Face ID to approve and sign high-risk actions on your behalf."
+        "NSFaceIDUsageDescription": "EMILIA Secure uses Face ID to unlock its local software-key diagnostic. Live action approval is unavailable in this build."
       }
     },
     "android": {

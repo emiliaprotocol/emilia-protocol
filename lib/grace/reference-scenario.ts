@@ -8,11 +8,13 @@ import {
 import { FLEX_ENVELOPE_VERSION } from './curtailment.js';
 import {
   buildCurtailmentControlledAction,
+  buildGraceOutcomePredictions,
   buildCurtailmentPresentation,
   createCurtailmentAction,
   executeGraceCurtailment,
   graceDigest,
 } from './mobile-grid.js';
+import { predictedEffectsDigest } from '../../packages/verify/effect-predicates.js';
 import {
   createCosaReferenceActuator,
   createFencedMemoryStore,
@@ -37,6 +39,10 @@ function ed25519(keyId) {
     trust: {
       key_id: keyId,
       public_key_spki: pair.publicKey.export({ type: 'spki', format: 'der' }).toString('base64url'),
+      control_domain_id: `control-domain:${keyId}`,
+      status: 'active',
+      valid_from: '2026-01-01T00:00:00.000Z',
+      valid_to: '2027-01-01T00:00:00.000Z',
     },
   };
 }
@@ -147,6 +153,7 @@ function scenario() {
     human_approval: 'class_a',
     required_approvals: 2,
     approvers: ['ep:approver:grid-operator', 'ep:approver:facility-operator'],
+    outcome_policy_digest: predictedEffectsDigest(buildGraceOutcomePredictions(action)),
   };
   const first = approval({
     action, presentation, policy, approver: policy.approvers[0], role: 'grid_operator', index: 1,

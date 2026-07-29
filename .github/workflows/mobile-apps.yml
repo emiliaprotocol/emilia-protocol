@@ -92,7 +92,7 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
         with:
-          node-version: 20
+          node-version: '20.19.5'
           cache: npm
       - run: npm ci --ignore-scripts
       - name: Check release invariants
@@ -153,6 +153,56 @@ jobs:
 
   secure-app:
     runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: '20.19.5'
+          cache: npm
+          cache-dependency-path: |
+            package-lock.json
+            apps/secure-app/package-lock.json
+      - name: Install root typecheck dependencies
+        run: npm ci --ignore-scripts
+      - name: Install secure-app dependencies
+        working-directory: apps/secure-app
+        run: npm ci --ignore-scripts
+      - name: Enforce zero secure-app vulnerabilities at low severity
+        working-directory: apps/secure-app
+        run: npm run audit:dependencies
+      - name: Run secure-app protocol tests
+        working-directory: apps/secure-app
+        run: npm test
+      - name: Typecheck secure-app from the repository root
+        run: npm run typecheck:secure-app
+      - name: Validate Expo dependency compatibility
+        working-directory: apps/secure-app
+        run: |
+          npx expo install --check
+          npx expo-doctor
+      - name: Export deterministic iOS and Android bundles
+        working-directory: apps/secure-app
+        env:
+          CI: 1
+          EXPO_NO_TELEMETRY: 1
+          NODE_ENV: production
+        run: |
+          set -euo pipefail
+          for platform in ios android; do
+            first="$RUNNER_TEMP/expo-$platform-first"
+            second="$RUNNER_TEMP/expo-$platform-second"
+            npx expo export --platform "$platform" --output-dir "$first" --clear --no-bytecode
+            npx expo export --platform "$platform" --output-dir "$second" --clear --no-bytecode
+            diff --recursive --brief "$first" "$second"
+          done
+
+  secure-app-ios-native:
+    runs-on: macos-26
+    env:
+      CI: 1
+      EXPO_NO_TELEMETRY: 1
+      NODE_ENV: production
+      DEVELOPER_DIR: /Applications/Xcode_26.4.app/Contents/Developer
     defaults:
       run:
         working-directory: apps/secure-app
@@ -160,18 +210,60 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
         with:
-          node-version: 20
+          node-version: '20.19.5'
           cache: npm
           cache-dependency-path: apps/secure-app/package-lock.json
       - name: Install secure-app dependencies
         run: npm ci --ignore-scripts
-      - name: Audit secure-app dependency tree
-        # Expo's build graph currently carries the same newly published
-        # brace-expansion advisory as the root toolchain. The shared policy
-        # allows only that exact advisory until the patched release clears the
-        # repository's seven-day package quarantine.
-        run: npm run audit:dependencies
-      - name: Run secure-app protocol tests
-        run: npm test
-      - name: Validate Expo dependency compatibility
-        run: npx expo-doctor
+      - name: Generate disposable iOS native project
+        run: npx expo prebuild --platform ios --clean
+      - name: Compile iOS release app without signing
+        run: |
+          set -euo pipefail
+          workspace="$(find ios -maxdepth 1 -name '*.xcworkspace' -print -quit)"
+          test -n "$workspace"
+          scheme="$(basename "$workspace" .xcworkspace)"
+          xcodebuild \
+            -workspace "$workspace" \
+            -scheme "$scheme" \
+            -configuration Release \
+            -destination 'generic/platform=iOS Simulator' \
+            -derivedDataPath "$RUNNER_TEMP/emilia-secure-ios" \
+            CODE_SIGNING_ALLOWED=NO \
+            CODE_SIGNING_REQUIRED=NO \
+            build
+
+  secure-app-android-native:
+    runs-on: ubuntu-latest
+    env:
+      CI: 1
+      EXPO_NO_TELEMETRY: 1
+      NODE_ENV: production
+    defaults:
+      run:
+        working-directory: apps/secure-app
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: '20.19.5'
+          cache: npm
+          cache-dependency-path: apps/secure-app/package-lock.json
+      - uses: actions/setup-java@03ad4de0992f5dab5e18fcb136590ce7c4a0ac95 # v5.6.0
+        with:
+          distribution: temurin
+          java-version: '17'
+          cache: gradle
+      - name: Install secure-app dependencies
+        run: npm ci --ignore-scripts
+      - name: Generate disposable Android native project
+        run: npx expo prebuild --platform android --clean --no-install
+      - name: Compile unsigned Android release app
+        run: |
+          sed -i '/^[[:space:]]*signingConfig signingConfigs\.debug$/d' android/app/build.gradle
+          if grep -q 'signingConfig signingConfigs.debug' android/app/build.gradle; then
+            echo 'generated Android project still has a signing configuration' >&2
+            exit 1
+          fi
+          ./android/gradlew -p android :app:assembleRelease --no-daemon
+          test -f android/app/build/outputs/apk/release/app-release-unsigned.apk

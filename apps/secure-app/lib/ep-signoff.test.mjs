@@ -1,11 +1,5 @@
 /**
- * Secure App signoff core — round-trip proof.
- *
- * Proves the Class-A signoff this app produces verifies offline under the
- * protocol's own verifier (@emilia-protocol/verify), with no special-casing:
- * the app computes the challenge, a software authenticator (standing in for the
- * device secure enclave) signs it WebAuthn-style, and verifyWebAuthnSignoff
- * accepts it — and rejects a tampered context.
+ * Secure App security-boundary regression tests.
  *
  *   node --test apps/secure-app/lib/ep-signoff.test.mjs
  */
@@ -13,28 +7,32 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import crypto from 'node:crypto';
+import { readFile } from 'node:fs/promises';
 import { canonicalize, challengeFromContext, buildAttestation } from './ep-signoff.js';
+import {
+  assertSoftwareSignerAllowed,
+  authenticateForPolicy,
+  authorizationHeadersForSession,
+  createPairedSessionVault,
+  normalizeSigningPolicy,
+  validatePairedSession,
+} from './security-boundary.mjs';
 import { verifyWebAuthnSignoff } from '../../../packages/verify/index.js';
 
 const RP_ID = 'www.emiliaprotocol.ai';
 const ORIGIN = 'https://www.emiliaprotocol.ai';
+const NOW = Date.parse('2026-07-29T12:00:00Z');
 
-// A software authenticator: signs the app's challenge exactly as a WebAuthn
-// platform authenticator would (authData = rpIdHash|flags|signCount, signature
-// over authData||SHA-256(clientDataJSON)). On a real device this is the OS
-// secure enclave; here it is a P-256 key in node crypto.
-function softwareAuthenticator() {
+function authenticatorFixture({ flags = 0x05 } = {}) {
   const { publicKey, privateKey } = crypto.generateKeyPairSync('ec', { namedCurve: 'P-256' });
   const pubSpkiB64u = publicKey.export({ type: 'spki', format: 'der' }).toString('base64url');
 
   function assert_(challenge) {
     const clientDataJSON = Buffer.from(JSON.stringify({ type: 'webauthn.get', challenge, origin: ORIGIN }), 'utf8');
     const rpIdHash = crypto.createHash('sha256').update(RP_ID).digest();
-    const flags = Buffer.from([0x05]); // UP | UV
-    const signCount = Buffer.from([0, 0, 0, 0]);
-    const authData = Buffer.concat([rpIdHash, flags, signCount]);
+    const authData = Buffer.concat([rpIdHash, Buffer.from([flags]), Buffer.alloc(4)]);
     const signedData = Buffer.concat([authData, crypto.createHash('sha256').update(clientDataJSON).digest()]);
-    const signature = crypto.sign('sha256', signedData, privateKey); // DER ECDSA
+    const signature = crypto.sign('sha256', signedData, privateKey);
     return {
       authenticator_data: authData.toString('base64url'),
       client_data_json: clientDataJSON.toString('base64url'),
@@ -49,53 +47,206 @@ const sampleContext = () => ({
   action: { type: 'fin/payment-release', amount: 1_400_000, currency: 'USD' },
   approver: 'approver@example.com',
   nonce: 'a1b2c3d4',
-  not_after: '2026-06-11T13:00:00Z',
+  not_after: '2026-12-11T13:00:00Z',
 });
 
-test('canonicalize matches the verifier (recursive key sort)', () => {
-  expect_eq(canonicalize({ b: 1, a: { d: 2, c: 3 } }), '{"a":{"c":3,"d":2},"b":1}');
+const pairedSession = () => ({
+  accessToken: `ep_mobile_${'A'.repeat(43)}`,
+  expiresAt: '2026-07-30T12:00:00Z',
+  approverId: 'ep:approver:case-supervisor',
+  profileId: 'agency.high-assurance.mobile.v1',
+  platform: 'ios',
+  appId: 'ai.emiliaprotocol.secure',
 });
 
-test('the app produces a Class-A signoff that verifies offline', async () => {
-  const auth = softwareAuthenticator();
+test('canonicalize matches the verifier recursive key sort', () => {
+  assert.equal(canonicalize({ b: 1, a: { d: 2, c: 3 } }), '{"a":{"c":3,"d":2},"b":1}');
+});
+
+test('client evidence binds the context but never assigns its own assurance class', async () => {
+  const authenticator = authenticatorFixture();
   const context = sampleContext();
+  const webauthn = authenticator.assert_(await challengeFromContext(context));
+  const attestation = buildAttestation({
+    context,
+    webauthn,
+    approverId: 'approver@example.com',
+    keyClass: 'A', // hostile caller input must not become evidence
+  });
 
-  const challenge = await challengeFromContext(context);
-  const webauthn = auth.assert_(challenge);
-  const attestation = buildAttestation({ context, webauthn, approverId: 'approver@example.com' });
+  assert.deepEqual(Object.keys(attestation).sort(), ['@version', 'approver_id', 'context', 'webauthn']);
+  assert.equal(Object.hasOwn(attestation, 'key_class'), false);
 
-  // The attestation the app would POST to the gate, verified by EP's own verifier.
-  const result = verifyWebAuthnSignoff({ context: attestation.context, webauthn: attestation.webauthn }, auth.pubSpkiB64u, { rpId: RP_ID });
+  const result = verifyWebAuthnSignoff(
+    { context: attestation.context, webauthn: attestation.webauthn },
+    authenticator.pubSpkiB64u,
+    { rpId: RP_ID }
+  );
   assert.equal(result.valid, true, JSON.stringify(result));
   assert.equal(result.checks.challenge_binding, true);
-  assert.equal(result.checks.user_present, true);
-  assert.equal(result.checks.user_verified, true);
   assert.equal(result.checks.signature, true);
-  assert.equal(result.checks.rp_id_hash, true);
 });
 
-test('a tampered context fails the challenge binding', async () => {
-  const auth = softwareAuthenticator();
+test('an exportable software signature cannot synthesize WebAuthn user presence or verification', async () => {
+  const software = authenticatorFixture({ flags: 0x00 });
   const context = sampleContext();
-  const challenge = await challengeFromContext(context);
-  const webauthn = auth.assert_(challenge);
+  const webauthn = software.assert_(await challengeFromContext(context));
+  const result = verifyWebAuthnSignoff({ context, webauthn }, software.pubSpkiB64u, { rpId: RP_ID });
 
-  // Relying party flips the amount AFTER the device signed.
+  assert.equal(result.valid, false);
+  assert.equal(result.checks.challenge_binding, true);
+  assert.equal(result.checks.signature, true);
+  assert.equal(result.checks.user_present, false);
+  assert.equal(result.checks.user_verified, false);
+});
+
+test('a tampered context fails challenge binding', async () => {
+  const authenticator = authenticatorFixture();
+  const context = sampleContext();
+  const webauthn = authenticator.assert_(await challengeFromContext(context));
   const tampered = { ...context, action: { ...context.action, amount: 1 } };
-  const result = verifyWebAuthnSignoff({ context: tampered, webauthn }, auth.pubSpkiB64u, { rpId: RP_ID });
+  const result = verifyWebAuthnSignoff({ context: tampered, webauthn }, authenticator.pubSpkiB64u, { rpId: RP_ID });
   assert.equal(result.valid, false);
   assert.equal(result.checks.challenge_binding, false);
 });
 
 test('a signoff from a different key does not verify', async () => {
-  const signer = softwareAuthenticator();
-  const other = softwareAuthenticator();
+  const signer = authenticatorFixture();
+  const other = authenticatorFixture();
   const context = sampleContext();
-  const challenge = await challengeFromContext(context);
-  const webauthn = signer.assert_(challenge);
-
+  const webauthn = signer.assert_(await challengeFromContext(context));
   const result = verifyWebAuthnSignoff({ context, webauthn }, other.pubSpkiB64u, { rpId: RP_ID });
   assert.equal(result.valid, false);
 });
 
-function expect_eq(a, b) { assert.equal(a, b); }
+test('software mode requires an explicit policy and refuses hardware provenance requirements', () => {
+  assert.throws(() => normalizeSigningPolicy(undefined), /explicitly choose/);
+  assert.throws(
+    () => assertSoftwareSignerAllowed({
+      requiredKeyProvenance: 'hardware_attested_required',
+      userVerification: 'biometric_only',
+    }),
+    /hardware_provenance_required/
+  );
+  assert.deepEqual(
+    assertSoftwareSignerAllowed({
+      requiredKeyProvenance: 'software_allowed',
+      userVerification: 'biometric_only',
+    }),
+    { requiredKeyProvenance: 'software_allowed', userVerification: 'biometric_only' }
+  );
+});
+
+test('biometric-only policy disables passcode fallback and requires enrolled hardware', async () => {
+  let options = null;
+  const localAuthentication = {
+    hasHardwareAsync: async () => true,
+    isEnrolledAsync: async () => true,
+    getEnrolledLevelAsync: async () => 3,
+    authenticateAsync: async (input) => { options = input; return { success: true }; },
+  };
+  const result = await authenticateForPolicy(localAuthentication, {
+    requiredKeyProvenance: 'software_allowed',
+    userVerification: 'biometric_only',
+  });
+  assert.deepEqual(result, { ok: true, method: 'biometric', policy: 'biometric_only' });
+  assert.equal(options.disableDeviceFallback, true);
+  assert.equal(options.fallbackLabel, '');
+  assert.equal(options.biometricsSecurityLevel, 'strong');
+
+  const refused = await authenticateForPolicy({
+    ...localAuthentication,
+    isEnrolledAsync: async () => false,
+  }, {
+    requiredKeyProvenance: 'software_allowed',
+    userVerification: 'biometric_only',
+  });
+  assert.deepEqual(refused, { ok: false, reason: 'no_biometric_enrolled' });
+});
+
+test('passcode-capable policy uses device-owner authentication without claiming which factor succeeded', async () => {
+  let options = null;
+  const result = await authenticateForPolicy({
+    hasHardwareAsync: async () => false,
+    isEnrolledAsync: async () => false,
+    getEnrolledLevelAsync: async () => 1,
+    authenticateAsync: async (input) => { options = input; return { success: true }; },
+  }, {
+    requiredKeyProvenance: 'software_allowed',
+    userVerification: 'biometric_or_device_passcode',
+  });
+  assert.deepEqual(result, {
+    ok: true,
+    method: 'device_owner_authentication',
+    policy: 'biometric_or_device_passcode',
+  });
+  assert.equal(options.disableDeviceFallback, false);
+  assert.equal(options.fallbackLabel, 'Use device passcode');
+});
+
+test('paired sessions fail closed when missing, malformed, expired, or client-extended', () => {
+  assert.equal(validatePairedSession(null, NOW), null);
+  assert.equal(validatePairedSession({ ...pairedSession(), accessToken: 'public-build-token' }, NOW), null);
+  assert.equal(validatePairedSession({ ...pairedSession(), expiresAt: '2026-07-29T11:59:59Z' }, NOW), null);
+  assert.equal(validatePairedSession({ ...pairedSession(), key_class: 'A' }, NOW), null);
+  assert.throws(() => authorizationHeadersForSession(null, NOW), /paired_mobile_session_required/);
+  assert.deepEqual(authorizationHeadersForSession(pairedSession(), NOW), {
+    authorization: `Bearer ep_mobile_${'A'.repeat(43)}`,
+  });
+});
+
+test('session vault stores only valid runtime sessions and clears corrupt or expired records', async () => {
+  const records = new Map();
+  let clock = NOW;
+  const secureStore = {
+    getItemAsync: async (key) => records.get(key) ?? null,
+    setItemAsync: async (key, value) => { records.set(key, value); },
+    deleteItemAsync: async (key) => { records.delete(key); },
+  };
+  const vault = createPairedSessionVault({ secureStore, now: () => clock });
+  await vault.save(pairedSession());
+  assert.deepEqual(await vault.load(), pairedSession());
+
+  clock = Date.parse('2026-07-31T00:00:00Z');
+  assert.equal(await vault.load(), null);
+  assert.equal(records.size, 0);
+
+  records.set('ep_secure_app_mobile_session_v1', '{not-json');
+  assert.equal(await vault.load(), null);
+  assert.equal(records.size, 0);
+});
+
+test('owned source has no bundled bearer credential or live software-key submit path', async () => {
+  const paths = [
+    new URL('../App.tsx', import.meta.url),
+    new URL('../README.md', import.meta.url),
+    new URL('./ep-client.ts', import.meta.url),
+    new URL('./secure-key.ts', import.meta.url),
+    new URL('./ep-signoff.ts', import.meta.url),
+  ];
+  const source = (await Promise.all(paths.map((path) => readFile(path, 'utf8')))).join('\n');
+  assert.doesNotMatch(source, /EXPO_PUBLIC_EP_TOKEN/);
+  assert.doesNotMatch(source, /\/api\/v1\/signoffs/);
+  assert.doesNotMatch(source, /key_class\s*:\s*['"]A['"]/);
+  assert.doesNotMatch(source, /authData\[32\]\s*=\s*0x05/);
+  assert.match(source, /hardware_attested_required/);
+  assert.match(source, /WHEN_UNLOCKED_THIS_DEVICE_ONLY/);
+  assert.match(source, /preventScreenCaptureAsync/);
+  assert.match(source, /AppState\.addEventListener/);
+  assert.match(source, /Protected inbox hidden/);
+});
+
+test('the Expo shell binds its security boundary into the governed mobile scenarios', async () => {
+  const scenarios = JSON.parse(await readFile(
+    new URL('../../../formal/runtime-scenarios.v2.json', import.meta.url),
+    'utf8',
+  ));
+  const mobile = scenarios.scenarios.filter(({ id }) => id.startsWith('mobile-'));
+  assert.ok(mobile.length >= 4);
+  for (const scenario of mobile) {
+    assert.ok(
+      scenario.runtime_sources.includes('apps/secure-app/lib/security-boundary.mjs'),
+      `${scenario.id} must bind the Expo security boundary`,
+    );
+  }
+});

@@ -9,6 +9,11 @@ v2, action groups and revisions, aggregate quorum, consequence consumption,
 indeterminate provider outcomes, pinned Ed25519 reconciliation, cross-system
 alignment records, and bounded decision passports.
 
+Expo shell boundary review date: 2026-07-29. Added scope:
+`apps/secure-app`, its exportable JavaScript key, paired-session storage, and
+biometric/passcode policy semantics. The Expo shell is not one of the native
+platform-backed signers covered by the Swift/Kotlin closure below.
+
 This review covers source and unsigned local artifacts. A store-signed build is
 not acceptance-cleared until the physical-device campaign in `RELEASE.md` has
 run under the final Apple profile and Play signing certificate.
@@ -17,6 +22,10 @@ run under the final Apple profile and Play signing certificate.
 
 | Severity | Finding | Closure |
 |---|---|---|
+| Critical | The Expo shell generated an exportable P-256 key, manually set WebAuthn UP/UV, and labeled its own result Class A. A separate local-auth prompt did not make that JavaScript key a platform authenticator. | Client evidence no longer carries `key_class`; software mode is named `software_exportable`, sets neither UP nor UV, and has no live-submit path. Policies requiring hardware-attested provenance refuse before key use. The server remains the assurance authority through its active enrollment directory and separately verified WebAuthn plus platform-attestation evidence. |
+| High | An `EXPO_PUBLIC_EP_TOKEN` bearer credential could be compiled into the application bundle and reused outside an authenticated enrollment flow. | Public-token handling and the generic signoff endpoints were removed. The shell accepts only a server-minted `ep_mobile_*` session obtained at runtime from a one-time admin-created pairing code, validates exact shape and expiry, stores it with device-only SecureStore accessibility, and retains it locally if server revocation fails. Pairing is explicitly not enrollment. |
+| Medium | `disableDeviceFallback: false` silently permitted device passcode while UI and comments described a biometric ceremony. | Every software-mode operation requires an explicit `biometric_only` or `biometric_or_device_passcode` policy. Biometric-only disables fallback and requires enrolled hardware. The fallback-capable mode reports only `device_owner_authentication` because Expo does not identify which permitted factor succeeded. |
+| Medium | The Expo inbox rendered material action details without screenshot, recording, or app-switcher protection. | The shell now enables the platform screen-capture guard before rendering any inbox detail and refuses to reveal the inbox if that guard fails. AppState transitions add a full neutral overlay while inactive so app-switcher snapshots do not contain action data. These controls reduce disclosure; they do not prove honest pixels on a compromised OS. |
 | Critical | A terminal action update and its portable evidence append were separate writes. A crash after `approved` but before audit could leave an actionable state without admissible evidence. | `commit_mobile_action_decision` now validates and appends the canonical hash-chain record in the same PostgreSQL transaction that consumes the challenge and updates the protected action. Malformed evidence rolls the action back; response-loss recovery reads the exact stable record ID. |
 | High | Paired challenge, enrollment, and platform-attestation routes had no durable per-session throttle. | Added fail-closed IP and session categories backed by the existing durable rate limiter. The protected handler is not entered after an exhausted network limit. |
 | High | iOS followed redirects and buffered an unbounded response while carrying a bearer token. Production API identity was configurable at runtime. | Production host/path are pinned, redirects are refused, MIME must be JSON, and responses are capped at 1 MiB. Android enforces the same production endpoint and release builds cannot override it. Signed-artifact CI inspects both. |
@@ -82,6 +91,12 @@ run under the final Apple profile and Play signing certificate.
 
 ## Residual assumptions
 
+- The Expo shell's SecureStore-backed key and session are application-readable
+  secrets. SecureStore protects storage at rest but is not evidence that the
+  JavaScript signing key is non-exportable or hardware-backed.
+- The Expo shell can pair and read an inbox but cannot complete trusted native
+  enrollment or submit a live decision with its current dependencies. The
+  Swift/Kotlin platform paths remain separate code and acceptance surfaces.
 - Apple and Google platform verdicts are online relying-party inputs. The
   portable execution record truthfully states that they were checked; it does
   not make those vendor verdicts independently reproducible offline.
@@ -101,20 +116,28 @@ run under the final Apple profile and Play signing certificate.
 
 ## Remaining acceptance gates
 
-1. Reconcile the production migration ledger with reviewed source artifacts,
+1. Keep the Expo software-key shell in local-diagnostic/inbox-only mode. For a
+   live signer, use or integrate the native Swift/Kotlin path and complete
+   physical-device WebAuthn registration plus App Attest/Play Integrity
+   enrollment under the final app identity. Verify that the server directory,
+   not the client payload, supplies the accepted key class and provenance.
+2. Reconcile the production migration ledger with reviewed source artifacts,
    apply the mobile production migration,
    `20260720181619_mobile_action_continuity.sql`, and
    `20260720193917_mobile_action_continuity_hardening.sql` through the normal migration
    path, and pass `npm run mobile:production-readiness` against the live
    deployment.
-2. Register the Apple App ID/profile and Play app/signing identity, then run the
+3. Register the Apple App ID/profile and Play app/signing identity, then run the
    protected signed-release workflow.
-3. Register the production executor key through the admin route, then retain
+4. Register the production executor key through the admin route, then retain
    evidence for one duplicate-consumption refusal, one indeterminate timeout,
    one blind-retry refusal, and one exact pinned-evidence reconciliation.
-4. Execute the physical-device hostile and accessibility matrix from
-   `RELEASE.md`; retain its output beside the signed artifact hashes.
-5. Publish to TestFlight and Play internal testing first. Public store release
+5. Execute the physical-device hostile and accessibility matrix from
+   `RELEASE.md`, including biometric-only, explicitly passcode-capable,
+   lockout, biometric re-enrollment, backup/restore, session revocation, and
+   hardware-required/software-key refusal cases; retain its output beside the
+   signed artifact hashes.
+6. Publish to TestFlight and Play internal testing first. Public store release
    remains an owner decision after pilot, privacy, accessibility, support, and
    incident-response acceptance.
 

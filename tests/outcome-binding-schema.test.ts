@@ -57,6 +57,32 @@ const ATTESTATION = {
     signature_b64u: 'A'.repeat(86),
   },
 };
+const OBSERVATION = {
+  '@version': 'EP-OUTCOME-OBSERVATION-v1',
+  receipt_id: 'ep:receipt:outcome-1',
+  receipt_digest: DIGEST,
+  action_hash: DIGEST,
+  action_caid: 'caid:example:action-1',
+  consumption_nonce: 'nonce:1',
+  operation_id: 'operation:1',
+  source: {
+    role: 'independent_observer',
+    source_id: 'meter:1',
+    source_class: 'revenue_meter',
+    facility_id: 'facility:1',
+  },
+  observed_from: '2026-07-19T16:00:00.000Z',
+  observed_until: '2026-07-19T16:01:00.000Z',
+  attested_at: '2026-07-19T16:01:01.000Z',
+  observed_effects: OBSERVED,
+  observed_effects_digest: DIGEST,
+  proof: {
+    algorithm: 'Ed25519',
+    key_id: `ep:outcome-source-key:sha256:${'2'.repeat(64)}`,
+    public_key: 'A',
+    signature_b64u: 'A'.repeat(86),
+  },
+};
 const RESULT = {
   '@version': 'EP-OUTCOME-BINDING-v1',
   outcome: 'in_bounds',
@@ -78,6 +104,7 @@ const RESULT = {
 describe('public EP Outcome Binding schema', () => {
   it('validates the closed attestation, every predicted predicate shape, observed effects, and typed result', () => {
     expect(validateArtifact(ATTESTATION), errors(validateArtifact)).toBe(true);
+    expect(validateArtifact(OBSERVATION), errors(validateArtifact)).toBe(true);
     expect(validatePredictedEffects(PREDICTED), errors(validatePredictedEffects)).toBe(true);
     expect(validateObservedEffects(OBSERVED), errors(validateObservedEffects)).toBe(true);
     expect(validateArtifact(RESULT), errors(validateArtifact)).toBe(true);

@@ -31,7 +31,13 @@ Versioning model: Protocol spec and reference repo share the root version (1.0.x
 - **SCIM 2.0 provisioning** — RFC 7643/7644 server (`app/api/scim/v2/*`, `lib/scim/`, migration 095, `docs/SCIM.md`): Users, Groups, filtering, PATCH (both Azure deprovision shapes), per-tenant `ep_scim_` bearer tokens.
 - **AML screening** — sanctions/PEP/embargo fail-closed deny; structuring/velocity/near-threshold escalate to accountable signoff; `aml_signals` surfaced on decisions, responses, and audit records (`lib/aml/`, `docs/AML.md`). Supports live OFAC/EU/UN feeds (none connected; no production deployments).
 - **Air-gapped installer** — self-contained offline bundle (`deploy/airgap/`): no-egress `internal: true` compose, offline install + migrations, verify scripts proving health + zero-egress + offline receipt verification; CI `airgap-audit` job.
-- **Native Secure App** — Expo/React Native signing device (`apps/secure-app/`); its Class-A signoff core is CI-proven to verify under `@emilia-protocol/verify` (tamper + wrong-key rejected). Enclave attestation + app-store publish are the remaining native steps.
+- **Secure App boundary correction** — the Expo/React Native shell (`apps/secure-app/`)
+  now identifies its P-256 key as exportable software, never self-assigns Class A,
+  sets no synthetic WebAuthn UP/UV flags, and refuses hardware-provenance policy.
+  `EXPO_PUBLIC` bearer-token configuration and live software-key submission were
+  removed in favor of a server-minted one-time pairing/session path. Production
+  approval still requires server-verified native enrollment, final signed app
+  identities, and physical-device evidence.
 - **Self-serve observe-mode pilot** — `/pilot/sandbox`: provision a scoped key, run your own actions through the live adapters in observe mode, pull an automated would-have-been-held report.
 - **Amount-tiered escalation** — ≥ $50K single accountable signoff, ≥ $1M dual authorization (`lib/guard-policies.js`).
 

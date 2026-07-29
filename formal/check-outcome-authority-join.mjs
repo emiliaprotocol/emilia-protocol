@@ -110,6 +110,21 @@ function checkReplayResultDigest(outcomeStates) {
   };
 }
 
+function checkOutcomeAcceptanceFact(outcomeStates, field) {
+  const violation = outcomeStates.find((state) => (
+    state[field] !== true && evaluateOutcomeState(state).accepted
+  ));
+  const mutationCounterexample = outcomeStates.find((state) => (
+    state[field] !== true && evaluateOutcomeState({ ...state, [field]: true }).accepted
+  ));
+  return {
+    states_checked: outcomeStates.length,
+    verified: violation === undefined,
+    counterexample: witness(violation),
+    mutation_counterexample: witness(mutationCounterexample),
+  };
+}
+
 function checkNewestDocument(authorityStates) {
   const violation = authorityStates.find((state) => (
     state.proof_key_present_in_older
@@ -177,6 +192,16 @@ export function runFormalChecks() {
     ExactActionReceiptBinding: checkExactActionReceiptBinding(outcomeStates),
     PolicyCannotWidenSignedPredictions: checkPolicyCannotWiden(outcomeStates),
     ReplayResultDigestCommitsVerdict: checkReplayResultDigest(outcomeStates),
+    IndependentObserverKeyIsDistinct:
+      checkOutcomeAcceptanceFact(outcomeStates, 'source_keys_distinct'),
+    IndependentObserverControlDomainIsDistinct:
+      checkOutcomeAcceptanceFact(outcomeStates, 'control_domains_distinct'),
+    OutcomeSourceKeyIsCurrent:
+      checkOutcomeAcceptanceFact(outcomeStates, 'source_key_current'),
+    ObservationWindowIsBound:
+      checkOutcomeAcceptanceFact(outcomeStates, 'observation_window_valid'),
+    OutcomeSourceQuorumIsSatisfied:
+      checkOutcomeAcceptanceFact(outcomeStates, 'source_quorum_met'),
     NewestAuthorityDocumentPreventsKeyResurrection: checkNewestDocument(authorityStates),
     RevokedRotationAndProofKeysFailClosed:
       checkRevokedKeys(authorityStates, rotationStates),

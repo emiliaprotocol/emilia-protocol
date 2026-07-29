@@ -2,7 +2,7 @@
   "name": "@emilia-protocol/secure-app",
   "version": "0.1.0",
   "private": true,
-  "description": "EMILIA Protocol Secure App — the named human's signing device. Holds the approver key in the secure enclave and produces Class-A signoffs for high-risk actions.",
+  "description": "EMILIA mobile approval shell with runtime pairing and an explicitly non-Class-A software-key diagnostic.",
   "license": "Apache-2.0",
   "main": "index.ts",
   "scripts": {
@@ -10,23 +10,26 @@
     "android": "expo start --android",
     "ios": "expo start --ios",
     "test": "node --test lib/ep-signoff.test.mjs",
-    "audit:dependencies": "node ../../scripts/audit-root.mjs \"SECURE APP\" high"
+    "audit:dependencies": "npm audit --audit-level=low"
   },
   "dependencies": {
     "@noble/curves": "1.9.7",
     "@noble/hashes": "1.8.0",
-    "expo": "~52.0.0",
-    "expo-asset": "~11.0.5",
-    "expo-local-authentication": "~15.0.0",
-    "expo-secure-store": "~14.0.0",
-    "expo-status-bar": "~2.0.0",
-    "react": "18.3.1",
-    "react-native": "0.76.9"
+    "expo": "^56.0.0",
+    "expo-asset": "~56.0.21",
+    "expo-local-authentication": "~56.0.5",
+    "expo-screen-capture": "~56.0.4",
+    "expo-secure-store": "~56.0.4",
+    "expo-status-bar": "~56.0.4",
+    "react": "19.2.3",
+    "react-native": "0.85.3"
   },
   "overrides": {
-    "@xmldom/xmldom": "0.9.10",
     "postcss": "8.5.19",
-    "tar": "7.5.20",
     "uuid": "11.1.1"
+  },
+  "devDependencies": {
+    "babel-preset-expo": "~56.0.0",
+    "expo-doctor": "1.20.1"
   }
 }

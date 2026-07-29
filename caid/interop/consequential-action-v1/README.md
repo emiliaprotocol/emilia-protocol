@@ -9,11 +9,13 @@ The project asks a deliberately narrow question:
 > action be projected without loss into the same typed action that another
 > mechanism describes?
 
-The answer is not forced to be yes. The current review produces:
+The answer is not forced to be yes. The source-audited review produces:
 
-- 4 `COMPLETE` candidate native extractions;
-- 13 `PARTIAL` native bindings that return `INDETERMINATE`;
-- 8 `ABSENT` native bindings that return `INDETERMINATE`; and
+- 2 `COMPLETE` CAID-field extractions, of which one is lossless and one
+  deliberately returns `INDETERMINATE` because the source action identity
+  commits additional semantics;
+- 8 `PARTIAL` bindings that return `INDETERMINATE`;
+- 15 `ABSENT` bindings that return `INDETERMINATE`; and
 - an explicitly non-normative, optional carry profile for every target.
 
 No author validation or endorsement is claimed. The intended next step is
@@ -53,10 +55,27 @@ the pinned draft revision. It is not a production parser and it does not test a
 draft's native signature, trust roots, or authorization semantics. Fixture-time
 native verification is a precondition.
 
-For transport formats such as HTTP Message Signatures, the extraction is the
+Each manifest entry now classifies every material field separately. A mapped
+field records its source path, transform, and whether that path is a native
+wire field, an abstract-model field, or deterministic adapter output. An
+unavailable field has a null source path and an explanation. Candidate native
+paths are never published for fields marked unavailable.
+
+Completeness of the three local CAID fields is not sufficient for equivalence.
+If the source protocol makes additional fields material to its own action
+identity, the manifest records them under `projection_loss`, the mapping
+profile declares `declared-source-semantic-loss`, and every implementation
+returns `INDETERMINATE`. The profile never silently erases source semantics.
+
+For transport formats such as HTTP Message Signatures, an extraction may be
 deterministic adapter output after native verification. For architecture and
-gap-analysis drafts that define no wire object, the native fixture deliberately
-omits the material fields and the result is `INDETERMINATE`.
+gap-analysis drafts that define no wire object, all material source paths are
+null and the result is `INDETERMINATE`.
+
+The executable native refusal probe still needs a syntactically complete CAID
+mapping profile. It uses reserved `/__caid_unavailable__/*` sentinel paths for
+unavailable fields. Those sentinels are deliberately absent from the fixture,
+are not source-draft fields, and must produce `INDETERMINATE`.
 
 ## What the optional carry profile means
 
@@ -108,27 +127,27 @@ node caid/interop/consequential-action-v1/generate.mjs --check
 
 | Native result | Mechanism |
 | --- | --- |
-| PARTIAL | `draft-klrc-aiagent-auth-03` |
+| ABSENT | `draft-klrc-aiagent-auth-03` |
 | ABSENT | `draft-mcguinness-oauth-ai-agent-instance-00` |
 | PARTIAL | `draft-noa-scitt-ai-agent-receipt-00` |
 | ABSENT | `draft-ietf-wimse-arch-08` |
-| COMPLETE | `draft-ietf-wimse-http-signature-05` |
+| PARTIAL | `draft-ietf-wimse-http-signature-05` |
 | ABSENT | `draft-ietf-wimse-workload-creds-02` |
-| PARTIAL | `draft-ietf-wimse-wpt-01` |
+| ABSENT | `draft-ietf-wimse-wpt-01` |
 | ABSENT | `draft-bu-agentproto-security-principal-binding-03` |
-| COMPLETE | `draft-rosomakho-oauth-txn-challenge-00` |
+| ABSENT | `draft-rosomakho-oauth-txn-challenge-00` |
 | PARTIAL | `draft-nelson-agent-delegation-receipts-10` |
-| COMPLETE | `draft-jiang-oauth-intent-admission-00` |
-| PARTIAL | `draft-araut-oauth-transaction-tokens-for-agents-02` |
-| PARTIAL | `draft-coetzee-oauth-spt-txn-tokens-03` |
+| PARTIAL | `draft-jiang-oauth-intent-admission-00` |
+| ABSENT | `draft-araut-oauth-transaction-tokens-for-agents-02` |
+| COMPLETE | `draft-coetzee-oauth-spt-txn-tokens-03` |
 | ABSENT | `draft-mcguinness-oauth-actor-profile-00` |
-| PARTIAL | `draft-rampalli-cross-org-delegation-mapping-05` |
+| ABSENT | `draft-rampalli-cross-org-delegation-mapping-05` |
 | PARTIAL | `draft-mih-scitt-agent-action-capsule-sel-disc-00` |
 | PARTIAL | `draft-emirdag-scitt-ai-agent-execution-00` |
-| PARTIAL | `draft-lee-orprg-permit-receipts-00` |
+| ABSENT | `draft-lee-orprg-permit-receipts-00` |
 | PARTIAL | `draft-baur-pap-02` |
-| COMPLETE | `draft-pidlisnyi-aps-03` |
-| PARTIAL | `draft-howe-vcon-agent-session-00` |
+| COMPLETE fields / declared loss / INDETERMINATE | `draft-pidlisnyi-aps-03` |
+| ABSENT | `draft-howe-vcon-agent-session-00` |
 | PARTIAL | `draft-pei-opsawg-agentops-observability-00` |
 | ABSENT | `draft-dunbar-dmsc-gw-scenarios-gap-analysis-02` |
 | ABSENT | `draft-soden-wellknown-mcp-commerce-00` |

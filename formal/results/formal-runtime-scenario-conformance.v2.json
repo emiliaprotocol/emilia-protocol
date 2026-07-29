@@ -2,6 +2,26 @@
   "@version": "EP-SELECTED-SCENARIO-CONFORMANCE-EVIDENCE-v2",
   "inputs": [
     {
+      "path": "apps/secure-app/App.tsx",
+      "sha256": "71fcfe2b9c26f4659c84016ab2d43508f75d0cb1beb0ce49b1296552589be50d"
+    },
+    {
+      "path": "apps/secure-app/lib/ep-client.ts",
+      "sha256": "df6a8b76a6ff7caf6f532ee13f5612b1b852f4cf41571a397ca2e4b5d7a4e1e6"
+    },
+    {
+      "path": "apps/secure-app/lib/secure-key.ts",
+      "sha256": "85d66e618d5f61643d6d9ab702cd19f6d5a12cc1a0058c6f34624df15cb7ff76"
+    },
+    {
+      "path": "apps/secure-app/lib/security-boundary.mjs",
+      "sha256": "5e1b89e9c5623f16fd606134ca6a887e0182843ecedf7dd985903f2a12be3616"
+    },
+    {
+      "path": "apps/secure-app/lib/session.ts",
+      "sha256": "cd2a0fb43d46cf39196fd3eee096c55d46acdc75255b96b50411ae6f7be75d26"
+    },
+    {
       "path": "caid/impl/js/caid.mjs",
       "sha256": "a7dbd92e25924d2c57e7ef6b3b2f4cb629917262943932a48b7caa5a5ec5fff5"
     },
@@ -71,23 +91,23 @@
     },
     {
       "path": "conformance/refinement/adapters/five-claim-bridge.mjs",
-      "sha256": "799df40a0215bdb55bb8274da55ec1833eed1bc0f0da64d35c4b356607c7c0ed"
+      "sha256": "cfaa73d4313f3abc7e2720fff1fe47ccbb821219e38e01c9fb31180410e35abe"
     },
     {
       "path": "conformance/refinement/adapters/grace-curtailment.mjs",
-      "sha256": "7bd26e0f405b891fafc78ba3ae323b36aef27064e6ce6cfe4a83cbd840e66ac5"
+      "sha256": "acac8a1ebed2e7717d6d6b7fd78f09926d0578221803fad69cae1f473d5aa9d4"
     },
     {
       "path": "conformance/refinement/adapters/grace-curtailment.mts",
-      "sha256": "16ca55d76047d67d1a674b16375fb5646e71cf7177b27263bb525a639b87b1b6"
+      "sha256": "6b4d616ff81e27fce85b8a0be1b55f0728412f582c1f97c4b978116a95e06c2e"
     },
     {
       "path": "conformance/refinement/adapters/index.mjs",
-      "sha256": "db40a7545a25fb6fcd61e8aebe013588d30506c35bbd6297b40d1d6ccaac0d57"
+      "sha256": "156c61ac3879c98c55af8c55560e1e1b113ce51169ffa630e06871e9bc2514c9"
     },
     {
       "path": "conformance/refinement/adapters/index.mts",
-      "sha256": "f7850eabb6621f22b96d488c03b432c8dd2fd822be16eaa5654de0eca7702700"
+      "sha256": "e0d33edc8965317c28a2abaeca4d03328322ffbe22b83e5bb1d5334e719d0750"
     },
     {
       "path": "conformance/refinement/adapters/mobile-continuity.mjs",
@@ -147,11 +167,11 @@
     },
     {
       "path": "conformance/refinement/harness.mjs",
-      "sha256": "396f7988edcc44cefdf021cc2bd281121519a70552ce261fd14808e3e8233b4e"
+      "sha256": "e9037f21e5ed812f90175e9dd89b2199cda708801db9717a13f84c745a1e0a2a"
     },
     {
       "path": "conformance/refinement/harness.mts",
-      "sha256": "190164346620b0e3bc2e3c3af50af19540a61d7f0d5588c2104350903e42b391"
+      "sha256": "602f897e5988f191b655712c520a7c043cd39aa9ad5eae8797caad6b13a48718"
     },
     {
       "path": "conformance/refinement/schema.mjs",
@@ -186,6 +206,10 @@
       "sha256": "64f759bf8004812f3521df5dc0a0f4108ccf7746fe9fbdb326ab1ac1142a25f1"
     },
     {
+      "path": "conformance/vectors/outcome-binding.sources.v1.json",
+      "sha256": "6c966c4a2d1e478a5698024a6830e6fa0fa9bdf6e2b1f1b6f7bd7543d9879636"
+    },
+    {
       "path": "conformance/vectors/trust-receipt.exec.v1.json",
       "sha256": "f7c88e60ebfa21788700485d72573506b824d315c8acf5a10751acb106700bcc"
     },
@@ -211,7 +235,7 @@
     },
     {
       "path": "formal/check-outcome-authority-join.mjs",
-      "sha256": "8926897f9a71a3436cca5a2c81e0d4d440629d116ea77c24926b352c50710794"
+      "sha256": "e202e03bfd8f0b224e238bda456041b058a153c391c5c3988116b1b0b61d0e40"
     },
     {
       "path": "formal/check-reliance-pinned-profile.mjs",
@@ -291,7 +315,7 @@
     },
     {
       "path": "formal/outcome-authority-join.model.mjs",
-      "sha256": "4432adf2297621cce7d92b1ad1c4d28eae9c068722dce42f7760d3310da8f65a"
+      "sha256": "0719fc242905842088c33994c9f2c20fc6cb83b39f01e10f3020e9be0e25e60a"
     },
     {
       "path": "formal/reliance-pinned-profile.model.mjs",
@@ -299,7 +323,7 @@
     },
     {
       "path": "formal/runtime-scenarios.v2.json",
-      "sha256": "0bf47fafa6d4be8ae1a72bfad7cba749fefadd1d2e34a35ace64653e549e28ca"
+      "sha256": "07bbec178062c6afc74138485acb9adaa273524ce96e435ea01562dcc9dfc069"
     },
     {
       "path": "formal/two-claim-assurance.model.mjs",
@@ -387,11 +411,11 @@
     },
     {
       "path": "lib/frontier/model-to-matter.js",
-      "sha256": "55f699e499e77d6c7e8543dc58929ec4169b47d362ae9d6f0f3240075578b587"
+      "sha256": "95dce639cab359b43a674cce866e81ed81473ea8dfe9be6961e548b7bd080ed8"
     },
     {
       "path": "lib/frontier/model-to-matter.ts",
-      "sha256": "27a5dd1ab3ec6cdbee3c3cb9efc52c7e8fbdae4bc6df9634abd53f009744cf75"
+      "sha256": "c7798fcf53ed945bdc41314305d1e564015c127c7ab1e1eefaaa0f29c7b724b1"
     },
     {
       "path": "lib/grace/curtailment.js",
@@ -403,19 +427,19 @@
     },
     {
       "path": "lib/grace/mobile-grid.js",
-      "sha256": "d325521ecbd021630506adc746360f9ed26d426e514c140173e3743585680504"
+      "sha256": "59e8e6560c3ab5ed3facb8fc2bc3e2039692402e73994f8b3060579728229d72"
     },
     {
       "path": "lib/grace/mobile-grid.ts",
-      "sha256": "e21df5a39840c39cff43c906a019a34e63266e0d5cdb502c2d3159aa76c43024"
+      "sha256": "36e3c17e26d599edca3b05723bef1a141f9a647e2419d739430d159613f04ebb"
     },
     {
       "path": "lib/grace/reference-adapters.js",
-      "sha256": "8a3c6b41f0465cb166bff8cfca8e4e17050699ed6fc651657f6fd7c254dd4a50"
+      "sha256": "79ec25893974fedc6026642ac58de21086f39e113a84b084a877f80e6d725645"
     },
     {
       "path": "lib/grace/reference-adapters.ts",
-      "sha256": "22729edee8ffc79c8d8777fd9be163f3410605eb1b94ea779e7f377673e3007c"
+      "sha256": "02d641ca65f3543dffca2021af419ccd97a4fac6724c9493366586628d391293"
     },
     {
       "path": "lib/mobile/action-continuity.js",
@@ -443,11 +467,11 @@
     },
     {
       "path": "package-lock.json",
-      "sha256": "92fd406da9d72f0c104b5c953428041543a15bf9cdaef58304a664c7fa053f71"
+      "sha256": "8457b7445a7637e832bb82b723936c2c77b2ba3da7a93aa40a4efa1a8bd0008d"
     },
     {
       "path": "package.json",
-      "sha256": "caa90540554ade56d0123c4e078a7acdaee83c0256bbf38255373271a943d37a"
+      "sha256": "ffc5da0bbf0ff92b3d68190d03e715c9f45618ada65605eb342184271eea70f8"
     },
     {
       "path": "packages/gate/aec-execution.js",
@@ -923,7 +947,7 @@
     },
     {
       "path": "packages/verify/dist/effect-predicates.js",
-      "sha256": "f3658005fd83f59496bb25dd71d201e207f3b8036c96b43aaa4b8324c7155657"
+      "sha256": "e4719a53aeae57a34d9958a4fbad881285913d3b69d0eade0d6c49877ef2e1b8"
     },
     {
       "path": "packages/verify/dist/evidence-chain.js",
@@ -947,7 +971,7 @@
     },
     {
       "path": "packages/verify/dist/index.js",
-      "sha256": "4a36aab1e590da131f1146db4adc74af2243ce8cf724cdad7b05d1413632ce9b"
+      "sha256": "60676a7c168ea8d46e4f49e10417dd1db145a204b482c8842b4d90da5936d84e"
     },
     {
       "path": "packages/verify/dist/initiator-attestation.js",
@@ -959,7 +983,7 @@
     },
     {
       "path": "packages/verify/dist/outcome-binding.js",
-      "sha256": "4ad1507fc0946f3494320ed7cfc5d587d5fe359686e82875c22bf04b393f9f1a"
+      "sha256": "b69be5f8ad2bd9c7059097fd72abd9eb5ba7825a2171d3296b2731b4f64fb03a"
     },
     {
       "path": "packages/verify/dist/platform-attestation.js",
@@ -1043,11 +1067,11 @@
     },
     {
       "path": "packages/verify/src/index.ts",
-      "sha256": "c8fc08b317f77fa0479a813539444c045313e43b8cfe01c4667eef21c6d78658"
+      "sha256": "1ddcd9cbc0aeb7e1b5b389ec943529944ec79e4953ad0ce8ce57a914e21145e4"
     },
     {
       "path": "packages/verify/src/outcome-binding.ts",
-      "sha256": "0d0ef70dbf9e5d2a2407b6f393169c39931422f0b7d8df438db02605a2c805f0"
+      "sha256": "e239a2ead8ddd10650c795e99508b2cd21c1f07188fbffbea1b520b0e8598a1b"
     },
     {
       "path": "packages/verify/src/reliance.ts",
@@ -4582,9 +4606,9 @@
         "checker": "formal/check-outcome-authority-join.mjs",
         "checks": [
           {
-            "mutation_counterexample_sha256": "sha256:33937af3cdcae4c4e79d17424370d465ab4ee71d5a83b9164a41ee242278e3c4",
+            "mutation_counterexample_sha256": "sha256:cd0bae31cfe89bf9fe1a0d017fdf0db50ef2cbb72f400ba4368f67eeb1dd2182",
             "obligation": "ExactActionReceiptBinding",
-            "states_checked": 1536
+            "states_checked": 49152
           }
         ],
         "control": {
@@ -4657,14 +4681,14 @@
         "checker": "formal/check-outcome-authority-join.mjs",
         "checks": [
           {
-            "mutation_counterexample_sha256": "sha256:33937af3cdcae4c4e79d17424370d465ab4ee71d5a83b9164a41ee242278e3c4",
+            "mutation_counterexample_sha256": "sha256:cd0bae31cfe89bf9fe1a0d017fdf0db50ef2cbb72f400ba4368f67eeb1dd2182",
             "obligation": "ExactActionReceiptBinding",
-            "states_checked": 1536
+            "states_checked": 49152
           },
           {
-            "mutation_counterexample_sha256": "sha256:d0e94231ccd5a0e1b328c192dbfd70c92c904fd4058c303893d2ab4e20126d73",
+            "mutation_counterexample_sha256": "sha256:3e3819b530866378d9497ee631f9d44a5bdc2b8790d801ea0f20d3eb77ed296b",
             "obligation": "ReplayResultDigestCommitsVerdict",
-            "states_checked": 4608
+            "states_checked": 147456
           }
         ],
         "model_version": "EP-OUTCOME-AUTHORITY-BOUNDED-MODEL-v1",
@@ -4722,6 +4746,565 @@
         ]
       },
       "scenario": "outcome-binding-exact-accept"
+    },
+    {
+      "adapter": "outcome-binding-sources",
+      "claim_id": "multi-source-outcome-binding-enforces-independent-current-evidence",
+      "formal": {
+        "backend": "bounded_exhaustive_state_exploration",
+        "checker": "formal/check-outcome-authority-join.mjs",
+        "checks": [
+          {
+            "mutation_counterexample_sha256": "sha256:55597f854928e18447be0fde5b2a3514458956abdd44177ac3021d65798c3f39",
+            "obligation": "IndependentObserverKeyIsDistinct",
+            "states_checked": 49152
+          },
+          {
+            "mutation_counterexample_sha256": "sha256:ff83b143492feac25ab7d223abe70ad236ab5ebead5f14710c9eb143663a9a2b",
+            "obligation": "IndependentObserverControlDomainIsDistinct",
+            "states_checked": 49152
+          },
+          {
+            "mutation_counterexample_sha256": "sha256:7ca7dd05988c381c3f8ec29064e8e3f46b88345361b345644db4ae47b177cf90",
+            "obligation": "OutcomeSourceKeyIsCurrent",
+            "states_checked": 49152
+          },
+          {
+            "mutation_counterexample_sha256": "sha256:eab3ca121e8caebe88d9d4c0ac52d35136d3b943b63c284a6bef7f79ce4063cf",
+            "obligation": "ObservationWindowIsBound",
+            "states_checked": 49152
+          },
+          {
+            "mutation_counterexample_sha256": "sha256:830ef006cbf005d8bd7ff075aea14ad9aa33eff74f5bb671d05be1988950c754",
+            "obligation": "OutcomeSourceQuorumIsSatisfied",
+            "states_checked": 49152
+          }
+        ],
+        "model_version": "EP-OUTCOME-AUTHORITY-BOUNDED-MODEL-v1",
+        "obligation": null,
+        "status": "matched"
+      },
+      "id": "outcome-sources-independent-current-accept",
+      "kind": "sound",
+      "matched": true,
+      "model": "formal/outcome-authority-join.model.mjs",
+      "relation": {
+        "fields": [
+          "accepted",
+          "controlDomainsDistinct",
+          "observationWindowValid",
+          "sourceKeyCurrent",
+          "sourceKeysDistinct",
+          "sourceQuorumMet"
+        ],
+        "formal_projection": {
+          "accepted": true,
+          "controlDomainsDistinct": true,
+          "observationWindowValid": true,
+          "sourceKeyCurrent": true,
+          "sourceKeysDistinct": true,
+          "sourceQuorumMet": true
+        },
+        "runtime_projection": {
+          "accepted": true,
+          "controlDomainsDistinct": true,
+          "observationWindowValid": true,
+          "sourceKeyCurrent": true,
+          "sourceKeysDistinct": true,
+          "sourceQuorumMet": true
+        },
+        "shared_input": {
+          "action_digest_match": true,
+          "attestation_verified": true,
+          "consumption_nonce_match": true,
+          "control_domains_distinct": true,
+          "observation_window_valid": true,
+          "policy_outcome": "in_bounds",
+          "policy_present": false,
+          "receipt_digest_match": true,
+          "receipt_id_match": true,
+          "receipt_verified": true,
+          "signed_outcome": "in_bounds",
+          "signed_predictions_bound": true,
+          "source_key_current": true,
+          "source_keys_distinct": true,
+          "source_quorum_met": true
+        },
+        "status": "matched"
+      },
+      "runtime": {
+        "status": "matched",
+        "steps": [
+          {
+            "accepted": true,
+            "operator": "VerifyIndependentCurrentOutcomeSources",
+            "projection": {
+              "controlDomainsDistinct": true,
+              "observationWindowValid": true,
+              "outcomeState": "reconciled",
+              "sourceKeyCurrent": true,
+              "sourceKeysDistinct": true,
+              "sourceQuorumMet": true
+            }
+          }
+        ]
+      },
+      "scenario": "outcome-sources-independent-current-accept"
+    },
+    {
+      "adapter": "outcome-binding-sources",
+      "claim_id": "multi-source-outcome-binding-enforces-independent-current-evidence",
+      "control_semantics": "paired_formal_counterexample_runtime_refusal",
+      "formal": {
+        "backend": "bounded_exhaustive_state_exploration",
+        "checker": "formal/check-outcome-authority-join.mjs",
+        "checks": [
+          {
+            "mutation_counterexample_sha256": "sha256:830ef006cbf005d8bd7ff075aea14ad9aa33eff74f5bb671d05be1988950c754",
+            "obligation": "OutcomeSourceQuorumIsSatisfied",
+            "states_checked": 49152
+          }
+        ],
+        "control": {
+          "kind": "formal_mutation_counterexample",
+          "mutant_input_accepted": true,
+          "obligation": "OutcomeSourceQuorumIsSatisfied",
+          "sound_input_refused": true
+        },
+        "model_version": "EP-OUTCOME-AUTHORITY-BOUNDED-MODEL-v1",
+        "obligation": "OutcomeSourceQuorumIsSatisfied",
+        "status": "counterexample_detected"
+      },
+      "id": "outcome-sources-insufficient-quorum-refused",
+      "kind": "paired_negative_control",
+      "matched": true,
+      "model": "formal/outcome-authority-join.model.mjs",
+      "relation": {
+        "fields": [
+          "accepted",
+          "controlDomainsDistinct",
+          "observationWindowValid",
+          "sourceKeyCurrent",
+          "sourceKeysDistinct",
+          "sourceQuorumMet"
+        ],
+        "formal_projection": {
+          "accepted": false,
+          "controlDomainsDistinct": true,
+          "observationWindowValid": true,
+          "sourceKeyCurrent": true,
+          "sourceKeysDistinct": true,
+          "sourceQuorumMet": false
+        },
+        "runtime_projection": {
+          "accepted": false,
+          "controlDomainsDistinct": true,
+          "observationWindowValid": true,
+          "sourceKeyCurrent": true,
+          "sourceKeysDistinct": true,
+          "sourceQuorumMet": false
+        },
+        "shared_input": {
+          "action_digest_match": true,
+          "attestation_verified": true,
+          "consumption_nonce_match": true,
+          "control_domains_distinct": true,
+          "observation_window_valid": true,
+          "policy_outcome": "in_bounds",
+          "policy_present": false,
+          "receipt_digest_match": true,
+          "receipt_id_match": true,
+          "receipt_verified": true,
+          "signed_outcome": "in_bounds",
+          "signed_predictions_bound": true,
+          "source_key_current": true,
+          "source_keys_distinct": true,
+          "source_quorum_met": false
+        },
+        "status": "matched"
+      },
+      "runtime": {
+        "status": "matched",
+        "steps": [
+          {
+            "accepted": false,
+            "operator": "RefuseInsufficientOutcomeSourceQuorum",
+            "projection": {
+              "controlDomainsDistinct": true,
+              "observationWindowValid": true,
+              "outcomeState": "indeterminate",
+              "sourceKeyCurrent": true,
+              "sourceKeysDistinct": true,
+              "sourceQuorumMet": false
+            }
+          }
+        ]
+      },
+      "scenario": "outcome-sources-insufficient-quorum-refused"
+    },
+    {
+      "adapter": "outcome-binding-sources",
+      "claim_id": "multi-source-outcome-binding-enforces-independent-current-evidence",
+      "control_semantics": "paired_formal_counterexample_runtime_refusal",
+      "formal": {
+        "backend": "bounded_exhaustive_state_exploration",
+        "checker": "formal/check-outcome-authority-join.mjs",
+        "checks": [
+          {
+            "mutation_counterexample_sha256": "sha256:7ca7dd05988c381c3f8ec29064e8e3f46b88345361b345644db4ae47b177cf90",
+            "obligation": "OutcomeSourceKeyIsCurrent",
+            "states_checked": 49152
+          }
+        ],
+        "control": {
+          "kind": "formal_mutation_counterexample",
+          "mutant_input_accepted": true,
+          "obligation": "OutcomeSourceKeyIsCurrent",
+          "sound_input_refused": true
+        },
+        "model_version": "EP-OUTCOME-AUTHORITY-BOUNDED-MODEL-v1",
+        "obligation": "OutcomeSourceKeyIsCurrent",
+        "status": "counterexample_detected"
+      },
+      "id": "outcome-sources-noncurrent-key-refused",
+      "kind": "paired_negative_control",
+      "matched": true,
+      "model": "formal/outcome-authority-join.model.mjs",
+      "relation": {
+        "fields": [
+          "accepted",
+          "controlDomainsDistinct",
+          "observationWindowValid",
+          "sourceKeyCurrent",
+          "sourceKeysDistinct",
+          "sourceQuorumMet"
+        ],
+        "formal_projection": {
+          "accepted": false,
+          "controlDomainsDistinct": true,
+          "observationWindowValid": false,
+          "sourceKeyCurrent": false,
+          "sourceKeysDistinct": true,
+          "sourceQuorumMet": false
+        },
+        "runtime_projection": {
+          "accepted": false,
+          "controlDomainsDistinct": true,
+          "observationWindowValid": false,
+          "sourceKeyCurrent": false,
+          "sourceKeysDistinct": true,
+          "sourceQuorumMet": false
+        },
+        "shared_input": {
+          "action_digest_match": false,
+          "attestation_verified": false,
+          "consumption_nonce_match": false,
+          "control_domains_distinct": true,
+          "observation_window_valid": false,
+          "policy_outcome": "in_bounds",
+          "policy_present": false,
+          "receipt_digest_match": false,
+          "receipt_id_match": false,
+          "receipt_verified": true,
+          "signed_outcome": "in_bounds",
+          "signed_predictions_bound": true,
+          "source_key_current": false,
+          "source_keys_distinct": true,
+          "source_quorum_met": false
+        },
+        "status": "matched"
+      },
+      "runtime": {
+        "status": "matched",
+        "steps": [
+          {
+            "accepted": false,
+            "operator": "RefuseNoncurrentOutcomeSourceKey",
+            "projection": {
+              "controlDomainsDistinct": true,
+              "observationWindowValid": false,
+              "outcomeState": "indeterminate",
+              "sourceKeyCurrent": false,
+              "sourceKeysDistinct": true,
+              "sourceQuorumMet": false
+            }
+          }
+        ]
+      },
+      "scenario": "outcome-sources-noncurrent-key-refused"
+    },
+    {
+      "adapter": "outcome-binding-sources",
+      "claim_id": "multi-source-outcome-binding-enforces-independent-current-evidence",
+      "control_semantics": "paired_formal_counterexample_runtime_refusal",
+      "formal": {
+        "backend": "bounded_exhaustive_state_exploration",
+        "checker": "formal/check-outcome-authority-join.mjs",
+        "checks": [
+          {
+            "mutation_counterexample_sha256": "sha256:55597f854928e18447be0fde5b2a3514458956abdd44177ac3021d65798c3f39",
+            "obligation": "IndependentObserverKeyIsDistinct",
+            "states_checked": 49152
+          }
+        ],
+        "control": {
+          "kind": "formal_mutation_counterexample",
+          "mutant_input_accepted": true,
+          "obligation": "IndependentObserverKeyIsDistinct",
+          "sound_input_refused": true
+        },
+        "model_version": "EP-OUTCOME-AUTHORITY-BOUNDED-MODEL-v1",
+        "obligation": "IndependentObserverKeyIsDistinct",
+        "status": "counterexample_detected"
+      },
+      "id": "outcome-sources-reused-key-refused",
+      "kind": "paired_negative_control",
+      "matched": true,
+      "model": "formal/outcome-authority-join.model.mjs",
+      "relation": {
+        "fields": [
+          "accepted",
+          "controlDomainsDistinct",
+          "observationWindowValid",
+          "sourceKeyCurrent",
+          "sourceKeysDistinct",
+          "sourceQuorumMet"
+        ],
+        "formal_projection": {
+          "accepted": false,
+          "controlDomainsDistinct": true,
+          "observationWindowValid": true,
+          "sourceKeyCurrent": true,
+          "sourceKeysDistinct": false,
+          "sourceQuorumMet": true
+        },
+        "runtime_projection": {
+          "accepted": false,
+          "controlDomainsDistinct": true,
+          "observationWindowValid": true,
+          "sourceKeyCurrent": true,
+          "sourceKeysDistinct": false,
+          "sourceQuorumMet": true
+        },
+        "shared_input": {
+          "action_digest_match": true,
+          "attestation_verified": true,
+          "consumption_nonce_match": true,
+          "control_domains_distinct": true,
+          "observation_window_valid": true,
+          "policy_outcome": "in_bounds",
+          "policy_present": false,
+          "receipt_digest_match": true,
+          "receipt_id_match": true,
+          "receipt_verified": true,
+          "signed_outcome": "in_bounds",
+          "signed_predictions_bound": true,
+          "source_key_current": true,
+          "source_keys_distinct": false,
+          "source_quorum_met": true
+        },
+        "status": "matched"
+      },
+      "runtime": {
+        "status": "matched",
+        "steps": [
+          {
+            "accepted": false,
+            "operator": "RefuseReusedIndependentObserverKey",
+            "projection": {
+              "controlDomainsDistinct": true,
+              "observationWindowValid": true,
+              "outcomeState": "indeterminate",
+              "sourceKeyCurrent": true,
+              "sourceKeysDistinct": false,
+              "sourceQuorumMet": true
+            }
+          }
+        ]
+      },
+      "scenario": "outcome-sources-reused-key-refused"
+    },
+    {
+      "adapter": "outcome-binding-sources",
+      "claim_id": "multi-source-outcome-binding-enforces-independent-current-evidence",
+      "control_semantics": "paired_formal_counterexample_runtime_refusal",
+      "formal": {
+        "backend": "bounded_exhaustive_state_exploration",
+        "checker": "formal/check-outcome-authority-join.mjs",
+        "checks": [
+          {
+            "mutation_counterexample_sha256": "sha256:ff83b143492feac25ab7d223abe70ad236ab5ebead5f14710c9eb143663a9a2b",
+            "obligation": "IndependentObserverControlDomainIsDistinct",
+            "states_checked": 49152
+          }
+        ],
+        "control": {
+          "kind": "formal_mutation_counterexample",
+          "mutant_input_accepted": true,
+          "obligation": "IndependentObserverControlDomainIsDistinct",
+          "sound_input_refused": true
+        },
+        "model_version": "EP-OUTCOME-AUTHORITY-BOUNDED-MODEL-v1",
+        "obligation": "IndependentObserverControlDomainIsDistinct",
+        "status": "counterexample_detected"
+      },
+      "id": "outcome-sources-shared-domain-refused",
+      "kind": "paired_negative_control",
+      "matched": true,
+      "model": "formal/outcome-authority-join.model.mjs",
+      "relation": {
+        "fields": [
+          "accepted",
+          "controlDomainsDistinct",
+          "observationWindowValid",
+          "sourceKeyCurrent",
+          "sourceKeysDistinct",
+          "sourceQuorumMet"
+        ],
+        "formal_projection": {
+          "accepted": false,
+          "controlDomainsDistinct": false,
+          "observationWindowValid": true,
+          "sourceKeyCurrent": true,
+          "sourceKeysDistinct": true,
+          "sourceQuorumMet": true
+        },
+        "runtime_projection": {
+          "accepted": false,
+          "controlDomainsDistinct": false,
+          "observationWindowValid": true,
+          "sourceKeyCurrent": true,
+          "sourceKeysDistinct": true,
+          "sourceQuorumMet": true
+        },
+        "shared_input": {
+          "action_digest_match": true,
+          "attestation_verified": true,
+          "consumption_nonce_match": true,
+          "control_domains_distinct": false,
+          "observation_window_valid": true,
+          "policy_outcome": "in_bounds",
+          "policy_present": false,
+          "receipt_digest_match": true,
+          "receipt_id_match": true,
+          "receipt_verified": true,
+          "signed_outcome": "in_bounds",
+          "signed_predictions_bound": true,
+          "source_key_current": true,
+          "source_keys_distinct": true,
+          "source_quorum_met": true
+        },
+        "status": "matched"
+      },
+      "runtime": {
+        "status": "matched",
+        "steps": [
+          {
+            "accepted": false,
+            "operator": "RefuseSharedObserverControlDomain",
+            "projection": {
+              "controlDomainsDistinct": false,
+              "observationWindowValid": true,
+              "outcomeState": "indeterminate",
+              "sourceKeyCurrent": true,
+              "sourceKeysDistinct": true,
+              "sourceQuorumMet": true
+            }
+          }
+        ]
+      },
+      "scenario": "outcome-sources-shared-domain-refused"
+    },
+    {
+      "adapter": "outcome-binding-sources",
+      "claim_id": "multi-source-outcome-binding-enforces-independent-current-evidence",
+      "control_semantics": "paired_formal_counterexample_runtime_refusal",
+      "formal": {
+        "backend": "bounded_exhaustive_state_exploration",
+        "checker": "formal/check-outcome-authority-join.mjs",
+        "checks": [
+          {
+            "mutation_counterexample_sha256": "sha256:eab3ca121e8caebe88d9d4c0ac52d35136d3b943b63c284a6bef7f79ce4063cf",
+            "obligation": "ObservationWindowIsBound",
+            "states_checked": 49152
+          }
+        ],
+        "control": {
+          "kind": "formal_mutation_counterexample",
+          "mutant_input_accepted": true,
+          "obligation": "ObservationWindowIsBound",
+          "sound_input_refused": true
+        },
+        "model_version": "EP-OUTCOME-AUTHORITY-BOUNDED-MODEL-v1",
+        "obligation": "ObservationWindowIsBound",
+        "status": "counterexample_detected"
+      },
+      "id": "outcome-sources-window-substitution-refused",
+      "kind": "paired_negative_control",
+      "matched": true,
+      "model": "formal/outcome-authority-join.model.mjs",
+      "relation": {
+        "fields": [
+          "accepted",
+          "controlDomainsDistinct",
+          "observationWindowValid",
+          "sourceKeyCurrent",
+          "sourceKeysDistinct",
+          "sourceQuorumMet"
+        ],
+        "formal_projection": {
+          "accepted": false,
+          "controlDomainsDistinct": true,
+          "observationWindowValid": false,
+          "sourceKeyCurrent": true,
+          "sourceKeysDistinct": true,
+          "sourceQuorumMet": true
+        },
+        "runtime_projection": {
+          "accepted": false,
+          "controlDomainsDistinct": true,
+          "observationWindowValid": false,
+          "sourceKeyCurrent": true,
+          "sourceKeysDistinct": true,
+          "sourceQuorumMet": true
+        },
+        "shared_input": {
+          "action_digest_match": true,
+          "attestation_verified": true,
+          "consumption_nonce_match": true,
+          "control_domains_distinct": true,
+          "observation_window_valid": false,
+          "policy_outcome": "in_bounds",
+          "policy_present": false,
+          "receipt_digest_match": true,
+          "receipt_id_match": true,
+          "receipt_verified": true,
+          "signed_outcome": "in_bounds",
+          "signed_predictions_bound": true,
+          "source_key_current": true,
+          "source_keys_distinct": true,
+          "source_quorum_met": true
+        },
+        "status": "matched"
+      },
+      "runtime": {
+        "status": "matched",
+        "steps": [
+          {
+            "accepted": false,
+            "operator": "RefuseUnboundObservationWindow",
+            "projection": {
+              "controlDomainsDistinct": true,
+              "observationWindowValid": false,
+              "outcomeState": "indeterminate",
+              "sourceKeyCurrent": true,
+              "sourceKeysDistinct": true,
+              "sourceQuorumMet": true
+            }
+          }
+        ]
+      },
+      "scenario": "outcome-sources-window-substitution-refused"
     },
     {
       "adapter": "receipt-program",
@@ -6331,6 +6914,7 @@
       "mobile-action-continuity-is-tenant-and-executor-bound",
       "mobile-enrollment-requires-two-verified-rows",
       "model-to-matter-clearance-is-exact-and-single-use",
+      "multi-source-outcome-binding-enforces-independent-current-evidence",
       "network-witness-equivocation-permanently-poisons-stream",
       "outcome-binding-is-exact-and-fail-closed",
       "receipt-program-is-caid-bound-budgeted-and-terminal",
@@ -6340,7 +6924,7 @@
       "signed-denial-cannot-authorize"
     ],
     "covered_model_actions": 28,
-    "formal_mutation_operators": 46,
+    "formal_mutation_operators": 51,
     "models": [
       "formal/aec_execution_fleet_assurance.model.mjs",
       "formal/conservation-authority.model.mjs",
@@ -6357,10 +6941,10 @@
       "formal/reliance-pinned-profile.model.mjs",
       "formal/two-claim-assurance.model.mjs"
     ],
-    "paired_negative_controls": 46,
+    "paired_negative_controls": 51,
     "required_model_actions": 28,
-    "scenarios": 72,
-    "sound_scenarios": 26
+    "scenarios": 78,
+    "sound_scenarios": 27
   },
   "toolchain": {
     "bounded_checker_runtime": "node",
