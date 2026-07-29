@@ -329,6 +329,14 @@
       "types": "./dist/action-refusal-statement.d.ts",
       "import": "./action-refusal-statement.js"
     },
+    "./action-refusal-postgres": {
+      "types": "./dist/action-refusal-postgres.d.ts",
+      "import": "./action-refusal-postgres.js"
+    },
+    "./reliance-refusal-bridge": {
+      "types": "./dist/reliance-refusal-bridge.d.ts",
+      "import": "./reliance-refusal-bridge.js"
+    },
     "./open-exposure-ledger": {
       "types": "./dist/open-exposure-ledger.d.ts",
       "import": "./open-exposure-ledger.js"
@@ -412,6 +420,8 @@
     "referee-runner.js",
     "loss-allocation-schedule.js",
     "action-refusal-statement.js",
+    "action-refusal-postgres.js",
+    "reliance-refusal-bridge.js",
     "open-exposure-ledger.js",
     "open-exposure-ledger-postgres.js",
     "coverage-reconciliation-attestation.js",

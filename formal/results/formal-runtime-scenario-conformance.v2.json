@@ -514,8 +514,12 @@
       "sha256": "81c37ab9dc6286cf0f2bb6d519641c9c2d964108b12fcd9a95b62b6ba5df786f"
     },
     {
+      "path": "packages/gate/dist/action-refusal-postgres.js",
+      "sha256": "209d0e52a61d409275a28d39b021a2f65584ac135e0797f16319d15111c7e3f3"
+    },
+    {
       "path": "packages/gate/dist/action-refusal-statement.js",
-      "sha256": "865c930a78b7ae276abf5248ba37ab8579022b9c0d799fc0f3482cdd8615ff09"
+      "sha256": "746e4add31a91761d94e79210936fb60dd37256771935b59032b897360863f95"
     },
     {
       "path": "packages/gate/dist/admission-store-postgres.js",
@@ -591,7 +595,7 @@
     },
     {
       "path": "packages/gate/dist/index.js",
-      "sha256": "01deac42cec84775e62f2a47810e50b6b06dba7b1e1ca1a0dc231a2759c5106e"
+      "sha256": "e6f9c7524a8e4286f72d92cc3eb33800761a93b97b9815fd2ad38a2011926c2a"
     },
     {
       "path": "packages/gate/dist/key-registry.js",
@@ -652,6 +656,10 @@
     {
       "path": "packages/gate/dist/reliance-packet.js",
       "sha256": "d928c052e467b28fc1a1973ae18d0432ac9a1c625adaaae08ebbf86826f049db"
+    },
+    {
+      "path": "packages/gate/dist/reliance-refusal-bridge.js",
+      "sha256": "cb0ee231163a1404db1ce9710b0c2f56996f7aed554ac7722a561c05e0c2deab"
     },
     {
       "path": "packages/gate/dist/reliance-risk-crypto.js",
@@ -763,7 +771,7 @@
     },
     {
       "path": "packages/gate/src/index.ts",
-      "sha256": "50836384f248b4c90cb3609ea76fb2651a0541d6cbb5f8c242daabcd894b960c"
+      "sha256": "23ac0e6eaf3e060f3eaebcd4d52af4cf32e0493d08de68e6704675a1562885a2"
     },
     {
       "path": "packages/gate/src/network-witness.ts",

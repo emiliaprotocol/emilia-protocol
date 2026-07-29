@@ -45,24 +45,24 @@ const VERDICT_MAP: Readonly<Record<string, { refusal_class: string; semantics: J
     semantics: { verification: 'NOT_VERIFIED', match: 'INDETERMINATE', satisfaction: 'NOT_SATISFIED', authorization: 'NOT_EVALUATED' },
   },
 
-  // Verified evidence that does not describe this action.
+  // Verified evidence that does not describe this exact action.
   do_not_rely_scope_mismatch: {
-    refusal_class: 'action_mismatch',
-    semantics: { verification: 'VERIFIED', match: 'MISMATCH', satisfaction: 'NOT_SATISFIED', authorization: 'NOT_EVALUATED' },
+    refusal_class: 'authorization_refused',
+    semantics: { verification: 'VERIFIED', match: 'MATCH', satisfaction: 'NOT_SATISFIED', authorization: 'NOT_AUTHORIZED' },
   },
   do_not_rely_policy_mismatch: {
-    refusal_class: 'action_mismatch',
-    semantics: { verification: 'VERIFIED', match: 'MISMATCH', satisfaction: 'NOT_SATISFIED', authorization: 'NOT_EVALUATED' },
+    refusal_class: 'authorization_refused',
+    semantics: { verification: 'VERIFIED', match: 'MATCH', satisfaction: 'NOT_SATISFIED', authorization: 'NOT_AUTHORIZED' },
   },
   do_not_rely_amount_exceeded: {
-    refusal_class: 'action_mismatch',
-    semantics: { verification: 'VERIFIED', match: 'MISMATCH', satisfaction: 'NOT_SATISFIED', authorization: 'NOT_EVALUATED' },
+    refusal_class: 'authorization_refused',
+    semantics: { verification: 'VERIFIED', match: 'MATCH', satisfaction: 'NOT_SATISFIED', authorization: 'NOT_AUTHORIZED' },
   },
 
   // Evidence verified and matched, but the required set was not satisfied.
   do_not_rely_no_profile: {
-    refusal_class: 'evidence_unsatisfied',
-    semantics: { verification: 'VERIFIED', match: 'INDETERMINATE', satisfaction: 'NOT_SATISFIED', authorization: 'NOT_EVALUATED' },
+    refusal_class: 'indeterminate',
+    semantics: { verification: 'INDETERMINATE', match: 'INDETERMINATE', satisfaction: 'INDETERMINATE', authorization: 'INDETERMINATE' },
   },
   do_not_rely_no_class_a: {
     refusal_class: 'evidence_unsatisfied',
@@ -151,8 +151,8 @@ export interface RelianceRefusalContext {
   /** Digest(s) of the challenge issued. Exactly one of these two is supplied, per the statement contract. */
   challenge_digest?: string;
   challenge_digests?: string[];
-  /** Requirement ids that failed. Defaults to the kernel's verdict as a single requirement id. */
-  failed_requirement_ids?: string[];
+  /** Requirement ids that actually failed in the pinned program. Required; the bridge never invents them. */
+  failed_requirement_ids: string[];
   delivery?: Json;
   custody?: Json;
   transparency_anchor?: Json;
@@ -181,9 +181,9 @@ export function signRelianceRefusal(context: RelianceRefusalContext, signer: Rel
 
   const { refusal_class, semantics } = relianceRefusalClass(verdict);
 
-  // Default the failed requirement to the verdict itself so a refusal always
-  // names at least one, which the statement format requires.
-  const failed = context.failed_requirement_ids?.length ? context.failed_requirement_ids : [verdict];
+  if (!Array.isArray(context.failed_requirement_ids) || context.failed_requirement_ids.length === 0) {
+    throw new TypeError('reliance refusal requires explicit failed requirement ids');
+  }
 
   const input: Json = {
     refusal_id: context.refusal_id,
@@ -196,7 +196,7 @@ export function signRelianceRefusal(context: RelianceRefusalContext, signer: Rel
       source_digest: context.program.source_digest,
       program_digest: context.program.program_digest,
     },
-    failed_requirement_ids: failed,
+    failed_requirement_ids: context.failed_requirement_ids,
     evidence_digests: context.evidence_digests ?? [],
     nonce: context.nonce,
     refused_at: context.refused_at,

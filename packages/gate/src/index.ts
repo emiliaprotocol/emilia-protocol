@@ -240,6 +240,7 @@ export * from './referee.js';
 export * from './referee-runner.js';
 export * from './loss-allocation-schedule.js';
 export * from './action-refusal-statement.js';
+export * from './action-refusal-postgres.js';
 export * from './reliance-refusal-bridge.js';
 export * from './open-exposure-ledger.js';
 export * from './open-exposure-ledger-postgres.js';

@@ -7,8 +7,8 @@ import {
   signRelianceRefusal,
   relianceRefusalClass,
   MAPPED_RELIANCE_VERDICTS,
-} from './src/reliance-refusal-bridge.js';
-import { verifyActionRefusalStatement } from './src/action-refusal-statement.js';
+} from './reliance-refusal-bridge.js';
+import { verifyActionRefusalStatement } from './action-refusal-statement.js';
 
 const keys = crypto.generateKeyPairSync('ed25519');
 const SIGNER = { issuer_id: 'rp.example', key_id: 'rp-key-1', private_key: keys.privateKey };
@@ -41,6 +41,7 @@ function context(overrides = {}) {
     expires_at: '2026-07-30T00:00:00Z',
     evidence_digests: [EVIDENCE],
     challenge_digest: CHALLENGE,
+    failed_requirement_ids: ['requirement.human-quorum'],
     ...overrides,
   };
 }
@@ -51,7 +52,7 @@ test('a reliance refusal produces a signed statement that verifies offline', () 
   assert.equal(result.accepted, true, JSON.stringify(result.reasons ?? result));
   assert.equal(statement.refusal_class, 'evidence_unsatisfied');
   assert.equal(statement.semantics.satisfaction, 'NOT_SATISFIED');
-  assert.deepEqual(statement.failed_requirement_ids, ['do_not_rely_quorum_unsatisfied']);
+  assert.deepEqual(statement.failed_requirement_ids, ['requirement.human-quorum']);
 });
 
 test('an allow verdict can never be signed as a refusal', () => {
@@ -105,11 +106,38 @@ test('the caller supplies evidence digests; the bridge never invents them', () =
   assert.equal(verifyActionRefusalStatement(statement, { trusted_keys: TRUSTED, now: '2026-07-29T00:00:01Z' }).accepted, true);
 });
 
-test('explicit failed requirement ids override the verdict default', () => {
+test('explicit failed requirement ids are preserved', () => {
   const statement = signRelianceRefusal(
     context({ failed_requirement_ids: ['admissibility-01', 'admissibility-02'] }),
     SIGNER,
   );
   assert.deepEqual(statement.failed_requirement_ids, ['admissibility-01', 'admissibility-02']);
   assert.equal(verifyActionRefusalStatement(statement, { trusted_keys: TRUSTED, now: '2026-07-29T00:00:01Z' }).accepted, true);
+});
+
+test('the bridge refuses to invent a failed requirement identifier', () => {
+  assert.throws(
+    () => signRelianceRefusal(context({ failed_requirement_ids: undefined }), SIGNER),
+    /requires explicit failed requirement ids/,
+  );
+});
+
+test('scope, policy, and amount failures preserve exact-action MATCH', () => {
+  for (const verdict of [
+    'do_not_rely_scope_mismatch',
+    'do_not_rely_policy_mismatch',
+    'do_not_rely_amount_exceeded',
+  ]) {
+    const mapping = relianceRefusalClass(verdict);
+    assert.equal(mapping.refusal_class, 'authorization_refused');
+    assert.equal(mapping.semantics.match, 'MATCH');
+    assert.equal(mapping.semantics.authorization, 'NOT_AUTHORIZED');
+  }
+});
+
+test('absence of a reliance profile does not falsely claim verification', () => {
+  const mapping = relianceRefusalClass('do_not_rely_no_profile');
+  assert.equal(mapping.refusal_class, 'indeterminate');
+  assert.equal(mapping.semantics.verification, 'INDETERMINATE');
+  assert.equal(mapping.semantics.match, 'INDETERMINATE');
 });

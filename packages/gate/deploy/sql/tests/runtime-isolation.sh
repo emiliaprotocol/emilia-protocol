@@ -107,6 +107,12 @@ SELECT emilia_gate_evidence.grant_runtime_scope(
 SELECT emilia_gate_evidence.grant_runtime_scope(
   'gate_tenant_b', 'tenant-b', 'gate-b', 'stream-b'
 );
+SELECT emilia_gate_evidence.grant_runtime_scope(
+  'gate_tenant_a', 'tenant-a', 'gate-a', 'action-refusal'
+);
+SELECT emilia_gate_evidence.grant_runtime_scope(
+  'gate_tenant_b', 'tenant-b', 'gate-b', 'action-refusal'
+);
 SELECT emilia_gate_evidence.grant_network_witness_scope(
   'gate_tenant_a',
   'tenant-a',
@@ -329,6 +335,61 @@ if [[ "$witness_b" != 'true:' ]]; then
   exit 1
 fi
 
+refusal_first="$(psql_as gate_tenant_a 'gate-isolation-tenant-a' --quiet --tuples-only --no-align <<'SQL'
+SET ROLE emilia_gate_evidence_runtime;
+SELECT accepted::text || ':' || coalesce(reason, '')
+FROM emilia_gate_evidence.consume_action_refusal(
+  'tenant-a', 'gate-a', 'rp-a', 'nonce-a',
+  'sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa'
+);
+SQL
+)"
+refusal_replay="$(psql_as gate_tenant_a 'gate-isolation-tenant-a' --quiet --tuples-only --no-align <<'SQL'
+SET ROLE emilia_gate_evidence_runtime;
+SELECT accepted::text || ':' || coalesce(reason, '')
+FROM emilia_gate_evidence.consume_action_refusal(
+  'tenant-a', 'gate-a', 'rp-a', 'nonce-a',
+  'sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa'
+);
+SQL
+)"
+refusal_equivocation="$(psql_as gate_tenant_a 'gate-isolation-tenant-a' --quiet --tuples-only --no-align <<'SQL'
+SET ROLE emilia_gate_evidence_runtime;
+SELECT accepted::text || ':' || coalesce(reason, '')
+FROM emilia_gate_evidence.consume_action_refusal(
+  'tenant-a', 'gate-a', 'rp-a', 'nonce-a',
+  'sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb'
+);
+SQL
+)"
+if [[ "$refusal_first" != 'true:' \
+      || "$refusal_replay" != 'false:statement_replay' \
+      || "$refusal_equivocation" != 'false:nonce_equivocation' ]]; then
+  echo "action-refusal replay outcomes were unexpected: first=$refusal_first replay=$refusal_replay equivocation=$refusal_equivocation" >&2
+  exit 1
+fi
+
+unauthorized_refusal_output="$(mktemp)"
+if psql_as gate_tenant_b 'gate-isolation-tenant-b' --quiet >"$unauthorized_refusal_output" 2>&1 <<'SQL'
+SET ROLE emilia_gate_evidence_runtime;
+SELECT * FROM emilia_gate_evidence.consume_action_refusal(
+  'tenant-a', 'gate-a', 'rp-a', 'nonce-b',
+  'sha256:cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc'
+);
+SQL
+then
+  echo 'tenant B unexpectedly consumed tenant A action-refusal nonce' >&2
+  rm -f "$unauthorized_refusal_output"
+  exit 1
+fi
+if ! grep -Fq 'not authorized for session login gate_tenant_b' "$unauthorized_refusal_output"; then
+  echo 'cross-tenant action-refusal consumption failed for an unexpected reason' >&2
+  cat "$unauthorized_refusal_output" >&2
+  rm -f "$unauthorized_refusal_output"
+  exit 1
+fi
+rm -f "$unauthorized_refusal_output"
+
 tenant_a_rows="$(psql_as gate_tenant_a 'gate-isolation-tenant-a' --quiet --tuples-only --no-align <<'SQL'
 SET ROLE emilia_gate_evidence_runtime;
 SELECT count(*) FROM emilia_gate_evidence.records;
@@ -363,11 +424,12 @@ FROM pg_catalog.pg_class
 WHERE oid IN (
   'emilia_gate_evidence.heads'::regclass,
   'emilia_gate_evidence.records'::regclass,
-  'emilia_gate_evidence.network_witness_checkpoints'::regclass
+  'emilia_gate_evidence.network_witness_checkpoints'::regclass,
+  'emilia_gate_evidence.action_refusal_replays'::regclass
 );
 SQL
 )"
-if [[ "$rls_flags" != 'true:true,true:true,true:true' ]]; then
+if [[ "$rls_flags" != 'true:true,true:true,true:true,true:true' ]]; then
   echo "runtime tables did not enable and force RLS: $rls_flags" >&2
   exit 1
 fi
@@ -379,6 +441,8 @@ SELECT concat_ws(':',
   has_table_privilege(current_user, 'emilia_gate_evidence.runtime_scope_grants', 'SELECT'),
   has_table_privilege(current_user, 'emilia_gate_evidence.network_witness_scope_grants', 'SELECT'),
   has_table_privilege(current_user, 'emilia_gate_evidence.network_witness_checkpoints', 'INSERT'),
+  has_table_privilege(current_user, 'emilia_gate_evidence.action_refusal_replays', 'SELECT'),
+  has_table_privilege(current_user, 'emilia_gate_evidence.action_refusal_replays', 'INSERT'),
   has_function_privilege(
     current_user,
     'emilia_gate_evidence.grant_runtime_scope(name,text,text,text)',
@@ -388,11 +452,16 @@ SELECT concat_ws(':',
     current_user,
     'emilia_gate_evidence.advance_network_witness_checkpoint(text,text,bytea,bigint,text)',
     'EXECUTE'
+  ),
+  has_function_privilege(
+    current_user,
+    'emilia_gate_evidence.consume_action_refusal(text,text,text,text,text)',
+    'EXECUTE'
   )
 );
 SQL
 )"
-if [[ "$runtime_privileges" != 't:f:f:f:f:f:t' ]]; then
+if [[ "$runtime_privileges" != 't:f:f:f:f:f:f:f:t:t' ]]; then
   echo "runtime privilege split was unexpected: $runtime_privileges" >&2
   exit 1
 fi
@@ -423,4 +492,4 @@ if [[ "$tenant_a_after_revoke" != '0' || "$tenant_a_witness_after_revoke" != '0'
   exit 1
 fi
 
-echo 'Live Postgres two-login evidence and network-witness isolation passed'
+echo 'Live Postgres two-login evidence, network-witness, and action-refusal isolation passed'
