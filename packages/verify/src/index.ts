@@ -33,6 +33,7 @@ export * from './aeb-consequence-conformance.js';
 export * from './aeb-discovery-permit-adapter.js';
 export * from './aeb-wimse-oauth-adapter.js';
 export * from './aeb-native-adapters.js';
+export * from './aeb-psea-adapter.js';
 export * from './agent-edge-continuity.js';
 export * from './discovery-permit-contract.js';
 export * from './status.js';
