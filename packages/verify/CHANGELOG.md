@@ -5,6 +5,29 @@ This package follows [Semantic Versioning](https://semver.org/).
 
 ## Unreleased
 
+## 3.18.0 (2026-07-29)
+
+### Added
+
+- Independent industrial-effect evidence and effect-predicate evaluation for
+  outcome binding, preserving executor claims, mediator evidence, and
+  independently observed system-of-record evidence as separate inputs.
+- A relying-party-pinned PSEA-02 verifier and AEB adapter with exact CAID
+  matching, current-status checks, explicit source-semantic loss handling,
+  and closed `VERIFIED`, `ACCEPTED`, `SATISFIED`, and `AUTHORIZED` states.
+- PEDIGREE composition vectors that keep native PEDIGREE verification
+  authoritative while testing the separate CAID and AEB decision legs.
+
+### Security
+
+- PSEA and PEDIGREE evidence cannot authorize an action by themselves. AEB
+  still requires the relying party's pinned trust configuration, exact-action
+  match, evidence requirements, current status, and local authorization.
+- Missing or materially lossy source semantics, stale or revoked evidence,
+  indeterminate native status, and effect evidence supplied only by the
+  executor fail closed instead of being upgraded into authority or outcome
+  truth.
+
 ## 3.17.1 (2026-07-29)
 
 ### Security
