@@ -37,6 +37,11 @@ effect. It can fill only the `delegated_agent_authority` role named by the
 relying party, and only when the exact-action mapping and current-status checks
 also succeed.
 
+This candidate does not claim that a CAID digest is byte-identical to a
+PEDIGREE B9 `subject_digest`. That proposition requires the source author's
+confirmation of the exact canonical input bytes, not merely the shared use of
+SHA-256 and RFC 8785.
+
 ## Exact-action mapping
 
 PEDIGREE -00 carries a mandate and operator ceiling, not a CAID field. This
@@ -57,6 +62,10 @@ missing, the mandate language cannot be evaluated deterministically, current
 status is unavailable, or source semantics would be lost, the mapping returns
 `INDETERMINATE`. It never guesses equivalence.
 
+PEDIGREE owns the native result when revocation status is unavailable. This
+candidate does not change PEDIGREE's deployment-profile behavior. It only
+preserves `INDETERMINATE` if that is the native result supplied to AEB.
+
 ## Completion blocks are post-effect evidence
 
 PEDIGREE Section 8 defines a completion block as an executing-agent-signed,
@@ -69,13 +78,19 @@ authority that was required before execution.
 ## Executable cases
 
 [`pedigree-aeb-composition.v1.json`](../../conformance/vectors/pedigree-aeb-composition.v1.json)
-contains one positive case and three hostile cases:
+contains one positive case and five hostile cases:
 
 1. a current, strictly verified chain whose mandate and ceiling permit the
    exact observed action;
 2. a parent-swap failure that remains native `NOT_VERIFIED`;
-3. a verified chain whose mandate does not permit the exact action; and
-4. a completion block presented in the pre-action phase.
+3. a CAID mismatch that blocks even when the native mandate permits;
+4. a native mandate denial that blocks even when the CAID matches;
+5. a revoked ancestor that remains native `NOT_VERIFIED`; and
+6. a completion block presented in the pre-action phase.
+
+The CAID and mandate cases are deliberately independent. Either failure alone
+is sufficient to refuse evidence-role satisfaction; no evaluation order can
+turn one leg's success into the other leg's success.
 
 The repository test checks the ownership boundary and every expected state.
 These are synthetic composition vectors, not a PEDIGREE implementation or an

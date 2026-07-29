@@ -28,13 +28,22 @@ function evaluate(input: Record<string, any>) {
     };
   }
   const exact = input.mapped_caid !== null && input.mapped_caid === input.observed_caid;
-  if (!exact || input.mandate_decision !== 'PERMIT' || input.ceiling_decision !== 'PERMIT') {
+  if (!exact) {
     return {
       native: 'VERIFIED',
       mapping: 'NOT_EQUIVALENT',
       role: 'delegated_agent_authority',
       role_satisfaction: 'UNSATISFIED',
-      authorization: 'NOT_AUTHORIZED',
+      authorization: 'NOT_EVALUATED',
+    };
+  }
+  if (input.mandate_decision !== 'PERMIT' || input.ceiling_decision !== 'PERMIT') {
+    return {
+      native: 'VERIFIED',
+      mapping: 'EQUIVALENT_UNDER_PROFILE',
+      role: 'delegated_agent_authority',
+      role_satisfaction: 'UNSATISFIED',
+      authorization: 'NOT_EVALUATED',
     };
   }
   return {
@@ -46,12 +55,12 @@ function evaluate(input: Record<string, any>) {
   };
 }
 
-test('PEDIGREE composition vector has one positive and three hostile cases', () => {
+test('PEDIGREE composition vector has one positive and five hostile cases', () => {
   assert.equal(vector['@version'], 'EP-PEDIGREE-AEB-COMPOSITION-CONFORMANCE-v1');
   assert.equal(vector.status, 'candidate_mapping_pending_source_author_review');
-  assert.equal(vector.cases.length, 4);
+  assert.equal(vector.cases.length, 6);
   assert.equal(vector.cases.filter((item) => item.id.startsWith('positive_')).length, 1);
-  assert.equal(vector.cases.filter((item) => item.id.startsWith('negative_')).length, 3);
+  assert.equal(vector.cases.filter((item) => item.id.startsWith('negative_')).length, 5);
   for (const item of vector.cases) assert.deepEqual(evaluate(item.input), item.expect, item.id);
 });
 

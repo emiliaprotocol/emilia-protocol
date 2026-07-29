@@ -24,7 +24,9 @@
     "AEB does not reinterpret a native PEDIGREE verification result.",
     "A verified PEDIGREE leg can fill only the delegated_agent_authority role named by the relying party.",
     "PEDIGREE verification, action matching, AEC satisfaction, and local authorization remain separate propositions.",
-    "A PEDIGREE completion block from Section 8 is post-effect evidence and must never fill a pre-action authorization or delegated-authority role."
+    "A PEDIGREE completion block from Section 8 is post-effect evidence and must never fill a pre-action authorization or delegated-authority role.",
+    "A CAID digest is not asserted to be byte-identical to a PEDIGREE B9 subject_digest until the source author confirms the exact canonical input bytes.",
+    "Unavailable revocation status remains a PEDIGREE deployment-profile decision; AEB preserves an INDETERMINATE native result without reinterpreting it."
   ],
   "cases": [
     {
@@ -70,14 +72,14 @@
       }
     },
     {
-      "id": "negative_exact_action_outside_mandate",
+      "id": "negative_caid_mismatch_blocks_when_mandate_permits",
       "input": {
         "phase": "PRE_ACTION",
         "artifact_kind": "PEDIGREE_SIT",
         "native_verification": "VERIFIED",
         "parent_chain_verification": "VERIFIED",
         "revocation_status": "CURRENT_NOT_REVOKED",
-        "mandate_decision": "DENY",
+        "mandate_decision": "PERMIT",
         "ceiling_decision": "PERMIT",
         "mapped_caid": "caid:1:payment.release.1:jcs-sha256:AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA",
         "observed_caid": "caid:1:payment.release.1:jcs-sha256:w5frm5Cl8eHeCZ4DMdsVvLGOdP7XByOjOrynopvQYTo"
@@ -87,7 +89,49 @@
         "mapping": "NOT_EQUIVALENT",
         "role": "delegated_agent_authority",
         "role_satisfaction": "UNSATISFIED",
-        "authorization": "NOT_AUTHORIZED"
+        "authorization": "NOT_EVALUATED"
+      }
+    },
+    {
+      "id": "negative_native_mandate_denial_blocks_when_caid_matches",
+      "input": {
+        "phase": "PRE_ACTION",
+        "artifact_kind": "PEDIGREE_SIT",
+        "native_verification": "VERIFIED",
+        "parent_chain_verification": "VERIFIED",
+        "revocation_status": "CURRENT_NOT_REVOKED",
+        "mandate_decision": "DENY",
+        "ceiling_decision": "PERMIT",
+        "mapped_caid": "caid:1:payment.release.1:jcs-sha256:w5frm5Cl8eHeCZ4DMdsVvLGOdP7XByOjOrynopvQYTo",
+        "observed_caid": "caid:1:payment.release.1:jcs-sha256:w5frm5Cl8eHeCZ4DMdsVvLGOdP7XByOjOrynopvQYTo"
+      },
+      "expect": {
+        "native": "VERIFIED",
+        "mapping": "EQUIVALENT_UNDER_PROFILE",
+        "role": "delegated_agent_authority",
+        "role_satisfaction": "UNSATISFIED",
+        "authorization": "NOT_EVALUATED"
+      }
+    },
+    {
+      "id": "negative_revoked_ancestor_remains_native_failure",
+      "input": {
+        "phase": "PRE_ACTION",
+        "artifact_kind": "PEDIGREE_SIT",
+        "native_verification": "NOT_VERIFIED",
+        "parent_chain_verification": "ANCESTOR_REVOKED",
+        "revocation_status": "REVOKED",
+        "mandate_decision": "NOT_EVALUATED",
+        "ceiling_decision": "NOT_EVALUATED",
+        "mapped_caid": null,
+        "observed_caid": "caid:1:payment.release.1:jcs-sha256:w5frm5Cl8eHeCZ4DMdsVvLGOdP7XByOjOrynopvQYTo"
+      },
+      "expect": {
+        "native": "NOT_VERIFIED",
+        "mapping": "INDETERMINATE",
+        "role": "delegated_agent_authority",
+        "role_satisfaction": "UNSATISFIED",
+        "authorization": "NOT_EVALUATED"
       }
     },
     {
