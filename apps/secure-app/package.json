@@ -2,7 +2,7 @@
   "name": "@emilia-protocol/secure-app",
   "version": "0.1.0",
   "private": true,
-  "description": "EMILIA Protocol Secure App — the named human's signing device. Holds the approver key in the secure enclave and produces Class-A signoffs for high-risk actions.",
+  "description": "EMILIA mobile approval shell with runtime pairing and an explicitly non-Class-A software-key diagnostic.",
   "license": "Apache-2.0",
   "main": "index.ts",
   "scripts": {

@@ -1,16 +1,10 @@
 /**
- * EP Secure App — device key + biometric gate.
+ * EP Secure App — explicit exportable software-key mode.
  *
- * Production path: the named human's signing key lives in the device secure
- * enclave / passkey store, and the OS produces the WebAuthn assertion after a
- * Face ID / biometric ceremony. Enrollment registers the public key with EP
- * (second-party attestation by an org admin).
- *
- * This module provides the biometric gate (expo-local-authentication) and key
- * persistence (expo-secure-store). For Expo Go / demo where a hardware passkey
- * is unavailable, it falls back to a software P-256 key (@noble/curves) — the
- * same "simulated secure element" posture as the web /try page. The fallback is
- * clearly a DEMO key, never represented as enclave-backed.
+ * `expo-secure-store` protects the serialized key at rest, but the key is
+ * generated and used in JavaScript and is therefore exportable. This module
+ * never calls it Secure Enclave-backed, never labels it Class A, and refuses
+ * every policy that requires hardware-attested provenance.
  *
  * @license Apache-2.0
  */
@@ -19,80 +13,115 @@ import * as LocalAuthentication from 'expo-local-authentication';
 import * as SecureStore from 'expo-secure-store';
 import { p256 } from '@noble/curves/p256';
 import { sha256 } from '@noble/hashes/sha256';
+import {
+  SOFTWARE_KEY_PROVENANCE,
+  assertSoftwareSignerAllowed,
+  authenticateForPolicy,
+} from './security-boundary.mjs';
 
-const DEMO_KEY_ITEM = 'ep_secure_app_demo_priv';
+const SOFTWARE_KEY_ITEM = 'ep_secure_app_software_exportable_p256_v1';
 
-type BiometricResult =
-  | { ok: true; reason: undefined }
-  | { ok: false; reason: string };
+export interface SigningPolicy {
+  requiredKeyProvenance: 'software_allowed' | 'hardware_attested_required';
+  userVerification: 'biometric_only' | 'biometric_or_device_passcode';
+}
 
-type WebAuthnAssertion = {
+export interface WebAuthnShapedEvidence {
   authenticator_data: string;
   client_data_json: string;
   signature: string;
-};
-
-/** Require a biometric (Face ID / fingerprint) ceremony. Returns true on success. */
-export async function requireBiometric(promptMessage: string = 'Approve this action'): Promise<BiometricResult> {
-  const hasHardware = await LocalAuthentication.hasHardwareAsync();
-  const enrolled = await LocalAuthentication.isEnrolledAsync();
-  if (!hasHardware || !enrolled) {
-    // No biometric configured — on a real deployment this blocks signing.
-    return { ok: false, reason: 'no_biometric_enrolled' };
-  }
-  const res = await LocalAuthentication.authenticateAsync({ promptMessage, disableDeviceFallback: false });
-  if (res.success) return { ok: true, reason: undefined };
-  return { ok: false, reason: 'error' in res ? res.error : 'denied' };
 }
 
-/** Get-or-create the demo software signing key (Expo Go / no-passkey path). */
-async function getDemoKey(): Promise<Uint8Array> {
-  let hex = await SecureStore.getItemAsync(DEMO_KEY_ITEM);
+export interface SoftwareSignResult {
+  webauthn: WebAuthnShapedEvidence;
+  signer: {
+    key_provenance: typeof SOFTWARE_KEY_PROVENANCE;
+    assurance_authority: 'server_enrollment_required';
+    user_verification_policy: SigningPolicy['userVerification'];
+    user_verification_method: 'biometric' | 'device_owner_authentication';
+    authenticator_flags_asserted: false;
+  };
+}
+
+async function getSoftwareKey(): Promise<Uint8Array> {
+  let hex = await SecureStore.getItemAsync(SOFTWARE_KEY_ITEM);
   if (!hex) {
     hex = Buffer.from(p256.utils.randomPrivateKey()).toString('hex');
-    await SecureStore.setItemAsync(DEMO_KEY_ITEM, hex, { keychainAccessible: SecureStore.WHEN_UNLOCKED_THIS_DEVICE_ONLY });
+    await SecureStore.setItemAsync(SOFTWARE_KEY_ITEM, hex, {
+      keychainAccessible: SecureStore.WHEN_UNLOCKED_THIS_DEVICE_ONLY,
+    });
   }
+  if (!/^[0-9a-f]{64}$/.test(hex)) throw new Error('software_key_corrupt');
   return Uint8Array.from(Buffer.from(hex, 'hex'));
 }
 
-/** The enrolled public key (uncompressed P-256 point, hex) to register with EP. */
-export async function getEnrolledPublicKeyHex(): Promise<string> {
-  const priv = await getDemoKey();
-  return Buffer.from(p256.getPublicKey(priv, false)).toString('hex');
+/** Public key for local software-mode diagnostics; it is not an enrollment. */
+export async function getSoftwarePublicKeyHex(): Promise<string> {
+  const privateKey = await getSoftwareKey();
+  return Buffer.from(p256.getPublicKey(privateKey, false)).toString('hex');
 }
 
 /**
- * Sign a WebAuthn challenge with the device key after a biometric ceremony,
- * returning the assertion fields the EP verifier expects.
+ * Produce local WebAuthn-shaped evidence with an exportable software key.
  *
- * @param challenge - base64url challenge from ep-signoff.challengeFromContext
- * @param opts - rpId and origin for WebAuthn assertion
+ * The authenticator flags are deliberately zero: a separate Expo local-auth
+ * prompt is not a platform authenticator assertion and cannot honestly set
+ * WebAuthn UP/UV bits. The result is useful only for local crypto diagnostics;
+ * the Class-A verifier must reject it and no live-submit function accepts it.
  */
-export async function signChallenge(
+export async function signChallengeWithSoftwareKey(
   challenge: string,
-  { rpId, origin }: { rpId: string; origin: string }
-): Promise<WebAuthnAssertion> {
-  const gate = await requireBiometric('Approve and sign this action');
-  if (!gate.ok) throw new Error(`biometric_failed:${gate.reason || 'denied'}`);
+  {
+    rpId,
+    origin,
+    policy,
+  }: { rpId: string; origin: string; policy: SigningPolicy }
+): Promise<SoftwareSignResult> {
+  const normalizedPolicy = assertSoftwareSignerAllowed(policy) as SigningPolicy;
+  if (!/^[A-Za-z0-9_-]{43}$/.test(challenge)
+      || !/^[A-Za-z0-9.-]{1,253}$/.test(rpId)
+      || origin !== `https://${rpId}`) {
+    throw new Error('invalid_software_signing_context');
+  }
 
-  const priv = await getDemoKey();
+  const gate = await authenticateForPolicy(
+    LocalAuthentication,
+    normalizedPolicy,
+    'Authorize this local software-key signature'
+  );
+  if (!gate.ok) throw new Error(`user_verification_failed:${gate.reason || 'denied'}`);
+  const verificationMethod = gate.method === 'biometric'
+    ? 'biometric'
+    : gate.method === 'device_owner_authentication'
+      ? 'device_owner_authentication'
+      : null;
+  if (!verificationMethod) throw new Error('user_verification_method_unrecognized');
+
+  const privateKey = await getSoftwareKey();
   const clientDataJSON = Buffer.from(JSON.stringify({ type: 'webauthn.get', challenge, origin }), 'utf8');
   const rpIdHash = sha256(new TextEncoder().encode(rpId));
   const authData = new Uint8Array(37);
   authData.set(rpIdHash, 0);
-  authData[32] = 0x05; // UP | UV
-  // signCount 0 (bytes 33..36 already zero)
+  authData[32] = 0x00; // No authenticator-bound UP or UV claim.
 
   const signedData = new Uint8Array(authData.length + 32);
   signedData.set(authData, 0);
   signedData.set(sha256(clientDataJSON), authData.length);
-  const sig = p256.sign(sha256(signedData), priv); // returns Signature
-  const der = sig.toDERRawBytes();
+  const signature = p256.sign(sha256(signedData), privateKey).toDERRawBytes();
+  const b64u = (bytes: Uint8Array): string => Buffer.from(bytes).toString('base64url');
 
-  const b64u = (b: any): string => Buffer.from(b).toString('base64url');
   return {
-    authenticator_data: b64u(authData),
-    client_data_json: b64u(clientDataJSON),
-    signature: b64u(der),
+    webauthn: {
+      authenticator_data: b64u(authData),
+      client_data_json: b64u(clientDataJSON),
+      signature: b64u(signature),
+    },
+    signer: {
+      key_provenance: SOFTWARE_KEY_PROVENANCE,
+      assurance_authority: 'server_enrollment_required',
+      user_verification_policy: normalizedPolicy.userVerification,
+      user_verification_method: verificationMethod,
+      authenticator_flags_asserted: false,
+    },
   };
 }
