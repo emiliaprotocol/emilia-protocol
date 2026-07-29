@@ -54,16 +54,16 @@ describe('npm internal dependency registry guard', () => {
       {
         metadata: GATE_METADATA,
         directory: 'packages/gate',
-        version: '0.20.0',
-        verifyVersion: '3.17.0',
-        verifySha256: 'c14fc3136c78aa1daa8a57fddbaaec1b32c2a3cec0159b1b0ea130370c3f9d16',
+        version: '0.20.1',
+        verifyVersion: '3.17.1',
+        verifySha256: 'de6e741cb52501474c830d31b8da038864d09a086ac1bf160f8470db6446ae2d',
       },
       {
         metadata: QUALIFY_METADATA,
         directory: 'packages/qualify',
-        version: '0.1.0',
-        verifyVersion: '3.16.0',
-        verifySha256: '50caa243b057708a30d459839b0ca02292aa297c1f7523ee77f3559492e08fea',
+        version: '0.1.1',
+        verifyVersion: '3.17.1',
+        verifySha256: 'de6e741cb52501474c830d31b8da038864d09a086ac1bf160f8470db6446ae2d',
       },
     ];
 
@@ -158,11 +158,11 @@ describe('npm internal dependency registry guard', () => {
     expect(() => collectRegistryDependencyTarballPins(
       GATE_METADATA,
       'packages/gate',
-      withPins([{ spec: '@emilia-protocol/verify@3.17.0', sha256: 'not-a-sha256' }]),
+      withPins([{ spec: '@emilia-protocol/verify@3.17.1', sha256: 'not-a-sha256' }]),
     )).toThrow(/invalid sha256/);
 
     const validPin = {
-      spec: '@emilia-protocol/verify@3.17.0',
+      spec: '@emilia-protocol/verify@3.17.1',
       sha256: 'a'.repeat(64),
     };
     expect(() => collectRegistryDependencyTarballPins(

@@ -4,6 +4,15 @@
 All notable changes to `@emilia-protocol/gate` are documented here.
 This package follows [Semantic Versioning](https://semver.org/).
 
+## 0.20.1 (2026-07-29)
+
+### Security
+
+- Pins `@emilia-protocol/verify@3.17.1`, carrying the current-status
+  compromise boundary and the corrected backdating semantics into every
+  Gate installation. The independently published verifier tarball is
+  byte-pinned in the governed release registry.
+
 ## 0.20.0 (2026-07-28)
 
 ### Added

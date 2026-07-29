@@ -250,6 +250,25 @@ describe('release-chain coverage', () => {
     expect(() => validateReusableNpmWorkflowText(reusableWithoutJava17)).toThrow(/TLA\+ execution guard/);
   });
 
+  it('refuses PyPI release workflows without the pinned TLA+ runtime required by the security case', () => {
+    const reusable = readFileSync('.github/workflows/_publish-pypi-package.yml', 'utf8');
+    const reusableWithoutOracle = reusable.replace(
+      'TLA_SHA256: 936a262061c914694dfd669a543be24573c45d5aa0ff20a8b96b23d01e050e88',
+      'TLA_SHA256: removed',
+    );
+    expect(() => validateReusablePypiWorkflowText(reusableWithoutOracle)).toThrow(/TLA\+ execution guard/);
+
+    const direct = readFileSync('.github/workflows/publish-python-verify.yml', 'utf8');
+    const directWithoutOracle = direct.replace('TLA2TOOLS_JAR: ${{ github.workspace }}/tla2tools.jar', 'TLA2TOOLS_JAR: missing');
+    expect(() => validatePypiDirect(directWithoutOracle, 'publish-python-verify.yml')).toThrow(/TLA\+ execution guard/);
+  });
+
+  it('refuses Go release workflows without the pinned TLA+ runtime required by the security case', () => {
+    const workflow = readFileSync('.github/workflows/publish-go-verify.yml', 'utf8');
+    const weakened = workflow.replace('TLA_VERSION: v1.7.4', 'TLA_VERSION: latest');
+    expect(() => validateGoTagWorkflowText(weakened)).toThrow(/TLA\+ execution guard/);
+  });
+
   it('refuses reusable npm publication without a pre-publication internal dependency registry guard', () => {
     const workflow = readFileSync('.github/workflows/_publish-npm-package.yml', 'utf8');
     const weakened = workflow.replace(
