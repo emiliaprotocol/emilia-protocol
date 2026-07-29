@@ -101,6 +101,11 @@ export default defineConfig({
       // vector runner executes it directly on Node. Its generated .js twin is
       // already excluded below; exclude the TypeScript source from Vitest too.
       'conformance/authority-program-profile.test.ts',
+      // Trusted Context Pack's language-neutral public vectors use node:test
+      // so third-party providers can run them without Vitest. The ApertoMemory
+      // composition proof uses the same portable runner.
+      'conformance/trusted-context-pack.test.ts',
+      'interop/apertomemory-emilia/verify.test.mjs',
       // Generated Node-20 companions of .test.ts sources (e.g. under
       // conformance/): vitest must collect the .ts source only, or every
       // converted test in a companion-glob tree runs twice.

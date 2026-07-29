@@ -101,6 +101,31 @@ compiler trace remain distinct. Compilation proves a deterministic policy
 mapping; it does not prove that evidence is sufficient, authorize an action, or
 claim an external effect occurred.
 
+## Trusted Context Pack
+
+`@emilia-protocol/gate/trusted-context` controls the boundary between
+persistent agent memory and one consequential action. A provider verifies its
+native memory semantics and emits a signed, digest-only projection. Gate binds
+that projection to the exact proposed action under a relying-party policy;
+`ep-memory-projection` may then satisfy one AEC evidence role. It never becomes
+authorization by itself.
+
+```js
+import {
+  createTrustedContextAecVerifier,
+  createTrustedContextEvaluator,
+  signTrustedContextBinding,
+} from '@emilia-protocol/gate/trusted-context';
+import {
+  createApertoMemoryContextProvider,
+} from '@emilia-protocol/gate/trusted-context/apertomemory';
+```
+
+The runtime artifact contains signed projection and action-binding records,
+object/fragment digests, keyring and policy commitments, and exclusion counts.
+It does not carry decrypted memory. Current implementation details and claim
+boundaries are in `docs/protocol/trusted-context-pack-v1.md`.
+
 ## Gate Qualification v2
 
 Gate Qualification v2 treats model or agent qualification as one input to a

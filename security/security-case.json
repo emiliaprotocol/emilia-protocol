@@ -1057,8 +1057,8 @@
       "package": "@emilia-protocol/gate",
       "version": "0.20.1",
       "filename": "emilia-protocol-gate-0.20.1.tgz",
-      "sha256": "1cb10362e2cee2c8f9aa9c58fdfc6ab56fbfcedf1071bdda2dd5776aec5a0b5f",
-      "file_count": 628
+      "sha256": "5e7051e69c65b247ba95870c44c68d3efbe406fd1ec9eeba8902ac0e8e75a829",
+      "file_count": 640
     },
     "mobile-sdk": {
       "kind": "npm-tarball",
@@ -2355,7 +2355,7 @@
       "release_artifact_hashes": [
         {
           "artifact_id": "gate-sdk",
-          "sha256": "1cb10362e2cee2c8f9aa9c58fdfc6ab56fbfcedf1071bdda2dd5776aec5a0b5f"
+          "sha256": "5e7051e69c65b247ba95870c44c68d3efbe406fd1ec9eeba8902ac0e8e75a829"
         },
         {
           "artifact_id": "security-evidence",
@@ -3741,7 +3741,7 @@
       "release_artifact_hashes": [
         {
           "artifact_id": "gate-sdk",
-          "sha256": "1cb10362e2cee2c8f9aa9c58fdfc6ab56fbfcedf1071bdda2dd5776aec5a0b5f"
+          "sha256": "5e7051e69c65b247ba95870c44c68d3efbe406fd1ec9eeba8902ac0e8e75a829"
         },
         {
           "artifact_id": "security-evidence",
@@ -3883,7 +3883,7 @@
       "release_artifact_hashes": [
         {
           "artifact_id": "gate-sdk",
-          "sha256": "1cb10362e2cee2c8f9aa9c58fdfc6ab56fbfcedf1071bdda2dd5776aec5a0b5f"
+          "sha256": "5e7051e69c65b247ba95870c44c68d3efbe406fd1ec9eeba8902ac0e8e75a829"
         },
         {
           "artifact_id": "security-evidence",
@@ -4300,7 +4300,7 @@
       "release_artifact_hashes": [
         {
           "artifact_id": "gate-sdk",
-          "sha256": "1cb10362e2cee2c8f9aa9c58fdfc6ab56fbfcedf1071bdda2dd5776aec5a0b5f"
+          "sha256": "5e7051e69c65b247ba95870c44c68d3efbe406fd1ec9eeba8902ac0e8e75a829"
         },
         {
           "artifact_id": "security-evidence",
@@ -4461,7 +4461,7 @@
       "release_artifact_hashes": [
         {
           "artifact_id": "gate-sdk",
-          "sha256": "1cb10362e2cee2c8f9aa9c58fdfc6ab56fbfcedf1071bdda2dd5776aec5a0b5f"
+          "sha256": "5e7051e69c65b247ba95870c44c68d3efbe406fd1ec9eeba8902ac0e8e75a829"
         },
         {
           "artifact_id": "security-evidence",
@@ -4708,7 +4708,7 @@
       "release_artifact_hashes": [
         {
           "artifact_id": "gate-sdk",
-          "sha256": "1cb10362e2cee2c8f9aa9c58fdfc6ab56fbfcedf1071bdda2dd5776aec5a0b5f"
+          "sha256": "5e7051e69c65b247ba95870c44c68d3efbe406fd1ec9eeba8902ac0e8e75a829"
         },
         {
           "artifact_id": "security-evidence",
@@ -7682,7 +7682,7 @@
       "release_artifact_hashes": [
         {
           "artifact_id": "gate-sdk",
-          "sha256": "1cb10362e2cee2c8f9aa9c58fdfc6ab56fbfcedf1071bdda2dd5776aec5a0b5f"
+          "sha256": "5e7051e69c65b247ba95870c44c68d3efbe406fd1ec9eeba8902ac0e8e75a829"
         },
         {
           "artifact_id": "security-evidence",
@@ -8063,7 +8063,7 @@
       "release_artifact_hashes": [
         {
           "artifact_id": "gate-sdk",
-          "sha256": "1cb10362e2cee2c8f9aa9c58fdfc6ab56fbfcedf1071bdda2dd5776aec5a0b5f"
+          "sha256": "5e7051e69c65b247ba95870c44c68d3efbe406fd1ec9eeba8902ac0e8e75a829"
         },
         {
           "artifact_id": "security-evidence",
@@ -8266,7 +8266,7 @@
       "release_artifact_hashes": [
         {
           "artifact_id": "gate-sdk",
-          "sha256": "1cb10362e2cee2c8f9aa9c58fdfc6ab56fbfcedf1071bdda2dd5776aec5a0b5f"
+          "sha256": "5e7051e69c65b247ba95870c44c68d3efbe406fd1ec9eeba8902ac0e8e75a829"
         },
         {
           "artifact_id": "security-evidence",

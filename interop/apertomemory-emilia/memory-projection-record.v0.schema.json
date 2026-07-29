@@ -1,0 +1,150 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://emiliaprotocol.ai/schemas/apertomemory/memory-projection-record.v0.schema.json",
+  "title": "ApertoMemory / EMILIA memory-projection record v0",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "@version",
+    "profile_status",
+    "source_profile",
+    "projection_id",
+    "created_at",
+    "adapter",
+    "selection_context",
+    "delivered",
+    "exclusions",
+    "projection",
+    "nonclaims",
+    "proof"
+  ],
+  "properties": {
+    "@version": { "const": "AMEM-PROJECTION-RECORD-v0" },
+    "profile_status": { "const": "EMILIA_DISCUSSION_INPUT_NOT_APERTOMEMORY_CONFORMANCE" },
+    "source_profile": { "const": "draft-ferro-apertomemory-02" },
+    "projection_id": { "$ref": "#/$defs/urn" },
+    "created_at": { "$ref": "#/$defs/dateTime" },
+    "adapter": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "key_id"],
+      "properties": {
+        "id": { "$ref": "#/$defs/urn" },
+        "key_id": { "$ref": "#/$defs/nonEmpty" }
+      }
+    },
+    "selection_context": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "recall_request_digest",
+        "selection_policy_digest",
+        "keyring_snapshot_digest",
+        "trust_evaluated_at",
+        "context_frame_profile"
+      ],
+      "properties": {
+        "recall_request_digest": { "$ref": "#/$defs/sha256" },
+        "selection_policy_digest": { "$ref": "#/$defs/sha256" },
+        "keyring_snapshot_digest": { "$ref": "#/$defs/sha256" },
+        "trust_evaluated_at": { "$ref": "#/$defs/dateTime" },
+        "context_frame_profile": { "const": "AMEM-CONTEXT-FRAME-v0" }
+      }
+    },
+    "delivered": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "position",
+          "object",
+          "context_fragment_digest",
+          "derived_trust",
+          "authorship",
+          "author_key_id_b64u",
+          "custody_present"
+        ],
+        "properties": {
+          "position": { "type": "integer", "minimum": 0 },
+          "object": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["id_b64u", "scope_id_b64u", "format_version", "sealed_object_digest"],
+            "properties": {
+              "id_b64u": { "$ref": "#/$defs/b64u16" },
+              "scope_id_b64u": { "$ref": "#/$defs/b64u16" },
+              "format_version": { "const": 2 },
+              "sealed_object_digest": { "$ref": "#/$defs/sha256" }
+            }
+          },
+          "context_fragment_digest": { "$ref": "#/$defs/sha256" },
+          "derived_trust": { "enum": ["self", "trusted", "unverified"] },
+          "authorship": { "enum": ["signed", "attested", "unknown"] },
+          "author_key_id_b64u": { "oneOf": [{ "$ref": "#/$defs/b64u8" }, { "type": "null" }] },
+          "custody_present": { "type": "boolean" }
+        }
+      }
+    },
+    "exclusions": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["total", "by_reason"],
+      "properties": {
+        "total": { "type": "integer", "minimum": 0 },
+        "by_reason": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["authentication_failed", "schema_invalid", "policy_filtered", "context_limit"],
+          "properties": {
+            "authentication_failed": { "type": "integer", "minimum": 0 },
+            "schema_invalid": { "type": "integer", "minimum": 0 },
+            "policy_filtered": { "type": "integer", "minimum": 0 },
+            "context_limit": { "type": "integer", "minimum": 0 }
+          }
+        }
+      }
+    },
+    "projection": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["encoding", "byte_length", "digest"],
+      "properties": {
+        "encoding": { "const": "utf-8" },
+        "byte_length": { "type": "integer", "minimum": 0 },
+        "digest": { "$ref": "#/$defs/sha256" }
+      }
+    },
+    "nonclaims": { "$ref": "#/$defs/nonclaims" },
+    "proof": { "$ref": "#/$defs/proof" }
+  },
+  "$defs": {
+    "dateTime": { "type": "string", "format": "date-time" },
+    "nonEmpty": { "type": "string", "minLength": 1 },
+    "urn": { "type": "string", "pattern": "^urn:[A-Za-z0-9][A-Za-z0-9:.\\-]+$" },
+    "sha256": { "type": "string", "pattern": "^sha256:[0-9a-f]{64}$" },
+    "b64u8": { "type": "string", "pattern": "^[A-Za-z0-9_-]{11}$" },
+    "b64u16": { "type": "string", "pattern": "^[A-Za-z0-9_-]{22}$" },
+    "nonclaims": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["model_use", "action_linkage", "action_authorization", "execution_outcome"],
+      "properties": {
+        "model_use": { "const": "NOT_ESTABLISHED" },
+        "action_linkage": { "const": "NOT_ESTABLISHED" },
+        "action_authorization": { "const": "NOT_ESTABLISHED" },
+        "execution_outcome": { "const": "NOT_ESTABLISHED" }
+      }
+    },
+    "proof": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["alg", "key_id", "signature_b64u"],
+      "properties": {
+        "alg": { "const": "Ed25519" },
+        "key_id": { "$ref": "#/$defs/nonEmpty" },
+        "signature_b64u": { "type": "string", "pattern": "^[A-Za-z0-9_-]{86}$" }
+      }
+    }
+  }
+}

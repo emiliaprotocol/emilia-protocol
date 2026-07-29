@@ -360,6 +360,14 @@
     "./zk-range-proof": {
       "types": "./dist/zk-range-proof.d.ts",
       "import": "./zk-range-proof.js"
+    },
+    "./trusted-context": {
+      "types": "./dist/trusted-context.d.ts",
+      "import": "./trusted-context.js"
+    },
+    "./trusted-context/apertomemory": {
+      "types": "./dist/apertomemory-context.d.ts",
+      "import": "./apertomemory-context.js"
     }
   },
   "bin": {
@@ -428,6 +436,8 @@
     "receipt-census.js",
     "loss-experience-feed.js",
     "zk-range-proof.js",
+    "trusted-context.js",
+    "apertomemory-context.js",
     "reports/assurance-package.js",
     "ep-assure.mjs",
     "key-registry.js",
