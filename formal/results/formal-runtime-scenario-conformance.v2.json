@@ -2,6 +2,26 @@
   "@version": "EP-SELECTED-SCENARIO-CONFORMANCE-EVIDENCE-v2",
   "inputs": [
     {
+      "path": "apps/secure-app/App.tsx",
+      "sha256": "71fcfe2b9c26f4659c84016ab2d43508f75d0cb1beb0ce49b1296552589be50d"
+    },
+    {
+      "path": "apps/secure-app/lib/ep-client.ts",
+      "sha256": "df6a8b76a6ff7caf6f532ee13f5612b1b852f4cf41571a397ca2e4b5d7a4e1e6"
+    },
+    {
+      "path": "apps/secure-app/lib/secure-key.ts",
+      "sha256": "85d66e618d5f61643d6d9ab702cd19f6d5a12cc1a0058c6f34624df15cb7ff76"
+    },
+    {
+      "path": "apps/secure-app/lib/security-boundary.mjs",
+      "sha256": "5e1b89e9c5623f16fd606134ca6a887e0182843ecedf7dd985903f2a12be3616"
+    },
+    {
+      "path": "apps/secure-app/lib/session.ts",
+      "sha256": "cd2a0fb43d46cf39196fd3eee096c55d46acdc75255b96b50411ae6f7be75d26"
+    },
+    {
       "path": "caid/impl/js/caid.mjs",
       "sha256": "a7dbd92e25924d2c57e7ef6b3b2f4cb629917262943932a48b7caa5a5ec5fff5"
     },
@@ -303,7 +323,7 @@
     },
     {
       "path": "formal/runtime-scenarios.v2.json",
-      "sha256": "888e7b464b5ea55fff0d8e1a5d828091a1c5f0ef61c274d1318bb9d398b858ab"
+      "sha256": "07bbec178062c6afc74138485acb9adaa273524ce96e435ea01562dcc9dfc069"
     },
     {
       "path": "formal/two-claim-assurance.model.mjs",
