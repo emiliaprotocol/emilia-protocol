@@ -113,7 +113,11 @@ function forbidCredentialInjection(text: string, label: string): void {
   }
 }
 
-export function validateTlaSecurityCaseWorkflowText(text: string, label: string): boolean {
+export function validateTlaSecurityCaseWorkflowText(
+  text: string,
+  label: string,
+  evidenceCommand = 'npm run security-case:emit',
+): boolean {
   requireText(text, [
     'TLA2TOOLS_JAR: ${{ github.workspace }}/tla2tools.jar',
     'actions/setup-java@03ad4de0992f5dab5e18fcb136590ce7c4a0ac95',
@@ -127,13 +131,13 @@ export function validateTlaSecurityCaseWorkflowText(text: string, label: string)
   requireBefore(
     text,
     'actions/setup-java@03ad4de0992f5dab5e18fcb136590ce7c4a0ac95',
-    'npm run security-case:emit',
+    evidenceCommand,
     `${label} Java 17 guard`,
   );
   requireBefore(
     text,
     'echo "${TLA_SHA256}  tla2tools.jar" | sha256sum -c -',
-    'npm run security-case:emit',
+    evidenceCommand,
     `${label} TLA+ checksum guard`,
   );
   return true;
@@ -202,8 +206,8 @@ function validateManualPublisher(
 export function validateReusableNpmWorkflowText(text: string): boolean {
   requireText(text, [
     'environment: registry-publishing-approval',
-    'npm run security-case:emit',
-    'npm run conformance:manifest',
+    'npm run check:security-case',
+    'npm run conformance:manifest:check',
     'verify-reproducible-package.mjs',
     'run: npm test',
     'actions/upload-artifact@',
@@ -287,7 +291,11 @@ export function validateReusableNpmWorkflowText(text: string): boolean {
     'npm publish "./${TESTED_TARBALL#./}" --access public --provenance --ignore-scripts',
     'reusable npm remote ref guard',
   );
-  validateTlaSecurityCaseWorkflowText(text, 'reusable npm workflow');
+  validateTlaSecurityCaseWorkflowText(
+    text,
+    'reusable npm workflow',
+    'npm run check:security-case',
+  );
   forbidCredentialInjection(text, 'reusable npm workflow');
   return true;
 }

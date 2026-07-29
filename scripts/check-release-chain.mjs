@@ -107,7 +107,7 @@ function forbidCredentialInjection(text, label) {
         throw new Error(`${label} injects a long-lived publication credential`);
     }
 }
-export function validateTlaSecurityCaseWorkflowText(text, label) {
+export function validateTlaSecurityCaseWorkflowText(text, label, evidenceCommand = 'npm run security-case:emit') {
     requireText(text, [
         'TLA2TOOLS_JAR: ${{ github.workspace }}/tla2tools.jar',
         'actions/setup-java@03ad4de0992f5dab5e18fcb136590ce7c4a0ac95',
@@ -118,8 +118,8 @@ export function validateTlaSecurityCaseWorkflowText(text, label) {
         '"https://github.com/tlaplus/tlaplus/releases/download/${TLA_VERSION}/tla2tools.jar"',
         'echo "${TLA_SHA256}  tla2tools.jar" | sha256sum -c -',
     ], `${label} TLA+ execution guard`);
-    requireBefore(text, 'actions/setup-java@03ad4de0992f5dab5e18fcb136590ce7c4a0ac95', 'npm run security-case:emit', `${label} Java 17 guard`);
-    requireBefore(text, 'echo "${TLA_SHA256}  tla2tools.jar" | sha256sum -c -', 'npm run security-case:emit', `${label} TLA+ checksum guard`);
+    requireBefore(text, 'actions/setup-java@03ad4de0992f5dab5e18fcb136590ce7c4a0ac95', evidenceCommand, `${label} Java 17 guard`);
+    requireBefore(text, 'echo "${TLA_SHA256}  tla2tools.jar" | sha256sum -c -', evidenceCommand, `${label} TLA+ checksum guard`);
     return true;
 }
 function validateManualPublisher(text, label, { direct, commitBound = false, protectedPublisher = false, }) {
@@ -174,8 +174,8 @@ function validateManualPublisher(text, label, { direct, commitBound = false, pro
 export function validateReusableNpmWorkflowText(text) {
     requireText(text, [
         'environment: registry-publishing-approval',
-        'npm run security-case:emit',
-        'npm run conformance:manifest',
+        'npm run check:security-case',
+        'npm run conformance:manifest:check',
         'verify-reproducible-package.mjs',
         'run: npm test',
         'actions/upload-artifact@',
@@ -252,7 +252,7 @@ export function validateReusableNpmWorkflowText(text) {
     }
     requireBefore(text, 'scripts/require-release-approval.mjs', 'run: npm test', 'reusable npm workflow');
     requireBefore(text, 'git ls-remote --exit-code https://github.com/emiliaprotocol/emilia-protocol.git', 'npm publish "./${TESTED_TARBALL#./}" --access public --provenance --ignore-scripts', 'reusable npm remote ref guard');
-    validateTlaSecurityCaseWorkflowText(text, 'reusable npm workflow');
+    validateTlaSecurityCaseWorkflowText(text, 'reusable npm workflow', 'npm run check:security-case');
     forbidCredentialInjection(text, 'reusable npm workflow');
     return true;
 }
