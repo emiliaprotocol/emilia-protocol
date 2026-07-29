@@ -1,0 +1,144 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://emiliaprotocol.ai/schemas/apertomemory/trust-custody-result.v0.schema.json",
+  "title": "ApertoMemory / EMILIA trust-and-custody result v0",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "@version",
+    "source_profile",
+    "record_id",
+    "recorded_at",
+    "adapter",
+    "object",
+    "verification",
+    "trust_context",
+    "ai_boundary",
+    "nonclaims",
+    "proof"
+  ],
+  "properties": {
+    "@version": { "const": "AMEM-TRUST-CUSTODY-RESULT-v0" },
+    "source_profile": { "const": "draft-ferro-apertomemory-02" },
+    "record_id": { "$ref": "#/$defs/urn" },
+    "recorded_at": { "$ref": "#/$defs/dateTime" },
+    "adapter": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "key_id"],
+      "properties": {
+        "id": { "$ref": "#/$defs/urn" },
+        "key_id": { "$ref": "#/$defs/nonEmpty" }
+      }
+    },
+    "object": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id_b64u", "scope_id_b64u", "format_version", "sealed_object_digest"],
+      "properties": {
+        "id_b64u": { "$ref": "#/$defs/b64u16" },
+        "scope_id_b64u": { "$ref": "#/$defs/b64u16" },
+        "format_version": { "const": 2 },
+        "sealed_object_digest": { "$ref": "#/$defs/sha256" }
+      }
+    },
+    "verification": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "signature_verified",
+        "signer_key_id_b64u",
+        "derived_trust",
+        "trust_basis",
+        "authorship",
+        "author_key_id_b64u",
+        "claimed_author_key_id_b64u",
+        "custody"
+      ],
+      "properties": {
+        "signature_verified": { "const": true },
+        "signer_key_id_b64u": { "$ref": "#/$defs/b64u8" },
+        "derived_trust": { "enum": ["self", "trusted", "unverified"] },
+        "trust_basis": { "enum": ["owner_key", "accepted_key", "none"] },
+        "authorship": { "enum": ["signed", "attested", "unknown"] },
+        "author_key_id_b64u": { "oneOf": [{ "$ref": "#/$defs/b64u8" }, { "type": "null" }] },
+        "claimed_author_key_id_b64u": { "oneOf": [{ "$ref": "#/$defs/b64u8" }, { "type": "null" }] },
+        "custody": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "present",
+            "from_format_version",
+            "resealed_at",
+            "claimed_author_key_id_b64u",
+            "proven_author_key_id_b64u"
+          ],
+          "properties": {
+            "present": { "type": "boolean" },
+            "from_format_version": { "oneOf": [{ "type": "integer", "minimum": 1 }, { "type": "null" }] },
+            "resealed_at": { "oneOf": [{ "$ref": "#/$defs/dateTime" }, { "type": "null" }] },
+            "claimed_author_key_id_b64u": { "oneOf": [{ "$ref": "#/$defs/b64u8" }, { "type": "null" }] },
+            "proven_author_key_id_b64u": { "oneOf": [{ "$ref": "#/$defs/b64u8" }, { "type": "null" }] }
+          }
+        }
+      }
+    },
+    "trust_context": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["evaluated_at", "owner_key_id_b64u", "keyring_snapshot_digest", "accepted_key_ids_digest"],
+      "properties": {
+        "evaluated_at": { "$ref": "#/$defs/dateTime" },
+        "owner_key_id_b64u": { "$ref": "#/$defs/b64u8" },
+        "keyring_snapshot_digest": { "$ref": "#/$defs/sha256" },
+        "accepted_key_ids_digest": { "$ref": "#/$defs/sha256" }
+      }
+    },
+    "ai_boundary": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["eligible_to_cross", "crossing_label", "excluded_object_count", "validation_flags"],
+      "properties": {
+        "eligible_to_cross": { "type": "boolean" },
+        "crossing_label": { "enum": ["self", "trusted-data", "unverified-data", "withheld"] },
+        "excluded_object_count": { "type": "integer", "minimum": 0 },
+        "validation_flags": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": { "$ref": "#/$defs/nonEmpty" }
+        }
+      }
+    },
+    "nonclaims": { "$ref": "#/$defs/nonclaims" },
+    "proof": { "$ref": "#/$defs/proof" }
+  },
+  "$defs": {
+    "dateTime": { "type": "string", "format": "date-time" },
+    "nonEmpty": { "type": "string", "minLength": 1 },
+    "urn": { "type": "string", "pattern": "^urn:[A-Za-z0-9][A-Za-z0-9:.\\-]+$" },
+    "sha256": { "type": "string", "pattern": "^sha256:[0-9a-f]{64}$" },
+    "b64u8": { "type": "string", "pattern": "^[A-Za-z0-9_-]{11}$" },
+    "b64u16": { "type": "string", "pattern": "^[A-Za-z0-9_-]{22}$" },
+    "nonclaims": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["model_use", "action_linkage", "action_authorization", "execution_outcome"],
+      "properties": {
+        "model_use": { "const": "NOT_ESTABLISHED" },
+        "action_linkage": { "const": "NOT_ESTABLISHED" },
+        "action_authorization": { "const": "NOT_ESTABLISHED" },
+        "execution_outcome": { "const": "NOT_ESTABLISHED" }
+      }
+    },
+    "proof": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["alg", "key_id", "signature_b64u"],
+      "properties": {
+        "alg": { "const": "Ed25519" },
+        "key_id": { "$ref": "#/$defs/nonEmpty" },
+        "signature_b64u": { "type": "string", "pattern": "^[A-Za-z0-9_-]{86}$" }
+      }
+    }
+  }
+}

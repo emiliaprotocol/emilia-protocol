@@ -1,0 +1,165 @@
+{
+  "@version": "AMEM-EMILIA-COMPOSITION-VECTORS-v1",
+  "source_profile": "draft-ferro-apertomemory-02",
+  "adapter_pin": {
+    "adapter_id": "urn:apertomemory:adapter:reference-01",
+    "key_id": "apertomemory-adapter-key-2026-07",
+    "alg": "Ed25519",
+    "public_key_spki_b64u": "MCowBQYDK2VwAyEA08THovDNs4pMv1ARMiWEVyplc8KPSoa1ORtO4VksAAc"
+  },
+  "trust_custody": {
+    "description": "A vault-owner reseal preserves an accepted proven author. The adapter emits trusted/attested custody evidence and no model-use or action claim.",
+    "record": {
+      "@version": "AMEM-TRUST-CUSTODY-RESULT-v0",
+      "source_profile": "draft-ferro-apertomemory-02",
+      "record_id": "urn:apertomemory:trust-result:composition-01",
+      "recorded_at": "2026-07-29T17:00:00.000Z",
+      "adapter": {
+        "id": "urn:apertomemory:adapter:reference-01",
+        "key_id": "apertomemory-adapter-key-2026-07"
+      },
+      "object": {
+        "id_b64u": "Zy4ZwtYbXxZytYs8HWT9Ow",
+        "scope_id_b64u": "Q9-2eFFydjD9cu-OsDVRqw",
+        "format_version": 2,
+        "sealed_object_digest": "sha256:e9636f9b2e4f09c14a67ae5a4545dc19e576ed0ad8e1d79b48b9edc1e858f22c"
+      },
+      "verification": {
+        "signature_verified": true,
+        "signer_key_id_b64u": "lfXPfHuei1Y",
+        "derived_trust": "trusted",
+        "trust_basis": "accepted_key",
+        "authorship": "attested",
+        "author_key_id_b64u": "e7KN3MSU-w8",
+        "claimed_author_key_id_b64u": "e7KN3MSU-w8",
+        "custody": {
+          "present": true,
+          "from_format_version": 1,
+          "resealed_at": "2026-07-28T18:30:00.000Z",
+          "claimed_author_key_id_b64u": "e7KN3MSU-w8",
+          "proven_author_key_id_b64u": "e7KN3MSU-w8"
+        }
+      },
+      "trust_context": {
+        "evaluated_at": "2026-07-29T17:00:00.000Z",
+        "owner_key_id_b64u": "lfXPfHuei1Y",
+        "keyring_snapshot_digest": "sha256:dedd5fac51eac80fcd6cb39c391d50c67535e98f4165cf73936921d334b8f735",
+        "accepted_key_ids_digest": "sha256:a5b3689dc080380485b6d02a27d8c18937813b54d0adb6f62f852ffc817fe2a4"
+      },
+      "ai_boundary": {
+        "eligible_to_cross": true,
+        "crossing_label": "trusted-data",
+        "excluded_object_count": 1,
+        "validation_flags": [
+          "authentication_valid",
+          "schema_valid",
+          "trust_derived_at_read_time"
+        ]
+      },
+      "nonclaims": {
+        "model_use": "NOT_ESTABLISHED",
+        "action_linkage": "NOT_ESTABLISHED",
+        "action_authorization": "NOT_ESTABLISHED",
+        "execution_outcome": "NOT_ESTABLISHED"
+      },
+      "proof": {
+        "alg": "Ed25519",
+        "key_id": "apertomemory-adapter-key-2026-07",
+        "signature_b64u": "GsllUooy6tojeefrBdBRbqb1FYz-G1HV5DmoX8mNb0DaxdTqvfC66rr9hm2Q8IHeNwOiUsY5Wot_Cs9s-6m1Ag"
+      }
+    },
+    "expect": {
+      "valid": true,
+      "derived_trust": "trusted",
+      "authorship": "attested"
+    }
+  },
+  "projection": {
+    "description": "The adapter commits to two ordered, explicitly labelled context fragments and two exclusions without claiming that a model used the bytes.",
+    "record": {
+      "@version": "AMEM-PROJECTION-RECORD-v0",
+      "profile_status": "EMILIA_DISCUSSION_INPUT_NOT_APERTOMEMORY_CONFORMANCE",
+      "source_profile": "draft-ferro-apertomemory-02",
+      "projection_id": "urn:apertomemory:projection:composition-01",
+      "created_at": "2026-07-29T17:00:01.000Z",
+      "adapter": {
+        "id": "urn:apertomemory:adapter:reference-01",
+        "key_id": "apertomemory-adapter-key-2026-07"
+      },
+      "selection_context": {
+        "recall_request_digest": "sha256:aa71638ef2a2a71d2c7e431b455ed1784221b353609387c9faf9b6d1fec70bd2",
+        "selection_policy_digest": "sha256:dc44f9b0707b6f271225d982bdd87801d57e7e362d58fd0116724367958574f1",
+        "keyring_snapshot_digest": "sha256:dedd5fac51eac80fcd6cb39c391d50c67535e98f4165cf73936921d334b8f735",
+        "trust_evaluated_at": "2026-07-29T17:00:00.000Z",
+        "context_frame_profile": "AMEM-CONTEXT-FRAME-v0"
+      },
+      "delivered": [
+        {
+          "position": 0,
+          "object": {
+            "id_b64u": "Zy4ZwtYbXxZytYs8HWT9Ow",
+            "scope_id_b64u": "Q9-2eFFydjD9cu-OsDVRqw",
+            "format_version": 2,
+            "sealed_object_digest": "sha256:e9636f9b2e4f09c14a67ae5a4545dc19e576ed0ad8e1d79b48b9edc1e858f22c"
+          },
+          "context_fragment_digest": "sha256:f65cd2aa35a53c5d3ba870cc04cde7a102f9c59b39ebde92f8f8cad5cee43224",
+          "derived_trust": "trusted",
+          "authorship": "attested",
+          "author_key_id_b64u": "e7KN3MSU-w8",
+          "custody_present": true
+        },
+        {
+          "position": 1,
+          "object": {
+            "id_b64u": "Unp5k6tcsBUxfamH8GR9VA",
+            "scope_id_b64u": "Q9-2eFFydjD9cu-OsDVRqw",
+            "format_version": 2,
+            "sealed_object_digest": "sha256:9ebbb4c5025568ebf95a9f0a54b3acec41337d43853b6592b0a0bc87b68bd350"
+          },
+          "context_fragment_digest": "sha256:d3becd165ad0103abd9ce8859b6eba19d5751e50e4c55fdd2d2d20aaae597f61",
+          "derived_trust": "self",
+          "authorship": "signed",
+          "author_key_id_b64u": "lfXPfHuei1Y",
+          "custody_present": false
+        }
+      ],
+      "exclusions": {
+        "total": 2,
+        "by_reason": {
+          "authentication_failed": 1,
+          "schema_invalid": 0,
+          "policy_filtered": 0,
+          "context_limit": 1
+        }
+      },
+      "projection": {
+        "encoding": "utf-8",
+        "byte_length": 337,
+        "digest": "sha256:d10ab3118683cc05601faa26bf82a0c6eb316e8a78a57832d98f8ce2f8c5f95f"
+      },
+      "nonclaims": {
+        "model_use": "NOT_ESTABLISHED",
+        "action_linkage": "NOT_ESTABLISHED",
+        "action_authorization": "NOT_ESTABLISHED",
+        "execution_outcome": "NOT_ESTABLISHED"
+      },
+      "proof": {
+        "alg": "Ed25519",
+        "key_id": "apertomemory-adapter-key-2026-07",
+        "signature_b64u": "1_G1j-pL9PQsgp0_4reHVs8RIVYjweXyUgJVO_arPr0mIi2d5zAYPoixNgBlTXU6yJYT-ZZwfNfEBOBMUyb1Aw"
+      }
+    },
+    "verification_material": {
+      "projection_utf8_b64u": "W0FwZXJ0b01lbW9yeSB0cnVzdD10cnVzdGVkIGF1dGhvcnNoaXA9YXR0ZXN0ZWQgYXV0aG9yX2tleT1lN0tOM01TVS13OCBjdXN0b2R5PXRydWVdClByZWZlcmVuY2U6IHdoZW4gcGxhbm5pbmcgZGVlcCB3b3JrLCByZXNlcnZlIGEgcXVpZXQgbmluZXR5LW1pbnV0ZSBibG9jayBiZWZvcmUgbm9vbi4KWy9BcGVydG9NZW1vcnldCltBcGVydG9NZW1vcnkgdHJ1c3Q9c2VsZiBhdXRob3JzaGlwPXNpZ25lZCBhdXRob3Jfa2V5PWxmWFBmSHVlaTFZIGN1c3RvZHk9ZmFsc2VdClByZWZlcmVuY2U6IGFzayBiZWZvcmUgbW92aW5nIGEgY2FsZW5kYXIgY29tbWl0bWVudC4KWy9BcGVydG9NZW1vcnldCg",
+      "fragment_utf8_b64u": [
+        "W0FwZXJ0b01lbW9yeSB0cnVzdD10cnVzdGVkIGF1dGhvcnNoaXA9YXR0ZXN0ZWQgYXV0aG9yX2tleT1lN0tOM01TVS13OCBjdXN0b2R5PXRydWVdClByZWZlcmVuY2U6IHdoZW4gcGxhbm5pbmcgZGVlcCB3b3JrLCByZXNlcnZlIGEgcXVpZXQgbmluZXR5LW1pbnV0ZSBibG9jayBiZWZvcmUgbm9vbi4KWy9BcGVydG9NZW1vcnldCg",
+        "W0FwZXJ0b01lbW9yeSB0cnVzdD1zZWxmIGF1dGhvcnNoaXA9c2lnbmVkIGF1dGhvcl9rZXk9bGZYUGZIdWVpMVkgY3VzdG9keT1mYWxzZV0KUHJlZmVyZW5jZTogYXNrIGJlZm9yZSBtb3ZpbmcgYSBjYWxlbmRhciBjb21taXRtZW50LgpbL0FwZXJ0b01lbW9yeV0K"
+      ]
+    },
+    "expect": {
+      "valid": true,
+      "delivered_count": 2,
+      "excluded_count": 2
+    }
+  }
+}
