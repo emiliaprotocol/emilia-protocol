@@ -15,53 +15,85 @@ import { join } from "node:path";
 import { isDeepStrictEqual } from "node:util";
 
 const check: boolean = process.argv.includes("--check");
-const reportDir: string = mkdtempSync(join(tmpdir(), "ep-proof-stats-"));
-const reportPath: string = join(reportDir, "vitest.json");
-const execution = spawnSync(
-  "npx",
-  [
-    "vitest",
-    "run",
-    "--silent",
-    // Proof-stat measurement runs the complete integration inventory, including
-    // tests that launch real git, archive, and protocol-check subprocesses.
-    // Bound worker fan-out and give each case an explicit integration budget so
-    // CPU starvation cannot turn Vitest's five-second unit default into a false
-    // governed-evidence failure. The run still fails closed on any timeout.
-    "--maxWorkers=4",
-    "--testTimeout=60000",
-    "--hookTimeout=60000",
-    "--reporter=json",
-    `--outputFile=${reportPath}`,
-  ],
-  {
-    encoding: "utf8",
-    maxBuffer: 1e9,
-  },
+const bootstrapDerivedEvidence: boolean = process.argv.includes(
+  "--bootstrap-derived-evidence",
 );
-if (execution.error) throw execution.error;
-if (!existsSync(reportPath)) {
-  throw new Error(
-    `Vitest did not write its JSON report:\n${execution.stderr || execution.stdout}`,
-  );
+if (check && bootstrapDerivedEvidence) {
+  throw new Error("bootstrap-derived-evidence cannot be used in check mode");
 }
-const j = JSON.parse(readFileSync(reportPath, "utf8")) as Record<string, any>;
-rmSync(reportDir, { recursive: true, force: true });
-if (execution.status !== 0) {
-  console.error("PROOF STATS: FAIL — the measured test run did not pass");
-  for (const result of (j.testResults as any[])
-    .filter((item: any) => item.status === "failed")
-    .slice(0, 20)) {
-    console.error(result.name);
-    for (const assertion of (result.assertionResults as any[])
-      .filter((item: any) => item.status === "failed")
-      .slice(0, 10)) {
-      console.error(`  ${assertion.fullName}`);
-      for (const message of assertion.failureMessages.slice(0, 2))
-        console.error(`  ${message.split("\n")[0]}`);
-    }
+
+let j: Record<string, any>;
+if (bootstrapDerivedEvidence) {
+  // Some tests deliberately compare generated proof/LLM surfaces with the
+  // security case. When a claim is added, those tests must remain red until a
+  // ground-truth-derived candidate exists. This one-shot bootstrap updates only
+  // the derived evidence fields while retaining the last measured test count;
+  // the normal unflagged run must follow and replaces that count from a complete
+  // passing Vitest report. CI never uses this mode.
+  const recorded = JSON.parse(
+    readFileSync("lib/proof-stats.json", "utf8"),
+  ) as Record<string, any>;
+  if (
+    !Number.isSafeInteger(recorded.tests?.total) ||
+    !Number.isSafeInteger(recorded.tests?.files) ||
+    recorded.tests.total < 1 ||
+    recorded.tests.files < 1
+  ) {
+    throw new Error("recorded proof stats do not contain a reusable test measurement");
   }
-  process.exit(1);
+  j = {
+    numTotalTests: recorded.tests.total,
+    testResults: Array.from({ length: recorded.tests.files }, () => ({})),
+  };
+} else {
+  const reportDir: string = mkdtempSync(join(tmpdir(), "ep-proof-stats-"));
+  const reportPath: string = join(reportDir, "vitest.json");
+  const execution = spawnSync(
+    "npx",
+    [
+      "vitest",
+      "run",
+      "--silent",
+      // Proof-stat measurement runs the complete integration inventory, including
+      // tests that launch real git, archive, and protocol-check subprocesses.
+      // Bound worker fan-out and give each case an explicit integration budget so
+      // CPU starvation cannot turn Vitest's five-second unit default into a false
+      // governed-evidence failure. The run still fails closed on any timeout.
+      "--maxWorkers=4",
+      "--testTimeout=60000",
+      "--hookTimeout=60000",
+      "--reporter=json",
+      `--outputFile=${reportPath}`,
+    ],
+    {
+      encoding: "utf8",
+      maxBuffer: 1e9,
+    },
+  );
+  if (execution.error) throw execution.error;
+  if (!existsSync(reportPath)) {
+    throw new Error(
+      `Vitest did not write its JSON report:\n${execution.stderr || execution.stdout}`,
+    );
+  }
+  j = JSON.parse(readFileSync(reportPath, "utf8")) as Record<string, any>;
+  rmSync(reportDir, { recursive: true, force: true });
+  if (execution.status !== 0) {
+    console.error("PROOF STATS: FAIL — the measured test run did not pass");
+    for (const result of (j.testResults as any[])
+      .filter((item: any) => item.status === "failed")
+      .slice(0, 20)) {
+      console.error(result.name);
+      for (const assertion of (result.assertionResults as any[])
+        .filter((item: any) => item.status === "failed")
+        .slice(0, 10)) {
+        console.error(`  ${assertion.fullName}`);
+        for (const message of assertion.failureMessages.slice(0, 2))
+          console.error(`  ${message.split("\n")[0]}`);
+      }
+    }
+    process.exit(1);
+  }
 }
 const liveSecurityCase = spawnSync(
   process.execPath,
