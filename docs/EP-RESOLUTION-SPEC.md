@@ -5,7 +5,7 @@
 **Status:** Experimental, additive profile. This document does not change the
 frozen EP-RECEIPT-v1 or EP-SIGNOFF-v1 formats. It supplies a concrete durable
 resolution object for the transient `binding_moment` defined by
-`draft-morrison-binding-moment-envelope-00`, an active individual Internet-Draft
+`draft-morrison-binding-moment-envelope-01`, an active individual Internet-Draft
 and work in progress.
 
 Implementation: `packages/verify/resolution.js` (JavaScript),
@@ -18,8 +18,9 @@ Implementation: `packages/verify/resolution.js` (JavaScript),
 The binding-moment envelope owns the question: the briefing, answer space,
 recommendation, and two escape hatches. Its current Section 7.3 requires the
 returned resolution to distinguish option selection, answer-space revision, and
-question-space rejection, but deliberately does not mandate a returned wire
-format or persistent record.
+question-space rejection, and defines the returned resolution object. It does
+not define EP's durable device-signed evidence record or a native `declined`
+resolution distinct from option selection.
 
 EP-RESOLUTION-v1 owns the durable evidence: which role-pinned principal key
 resolved the exact envelope, for which exact action, under which WebAuthn RP ID,
@@ -117,10 +118,10 @@ challenge binding.
 For an approval to set `authorizes_action: true`, the relying party must also
 provide `expectedSelectedOption`, `expectedNonce`, `expectedInitiator`, and an
 `evaluationTime` inside the signed validity window. The verifier checks that the
-signed `selected_option` equals that local mapping. This is load-bearing: the Morrison
-envelope has human-readable option labels but no normative option-to-action
-digest map. A valid signature over "Hold" must never silently authorize
-"Release."
+signed `selected_option` equals that local mapping. This is load-bearing:
+`draft-morrison-binding-moment-envelope-01` has human-readable option labels but
+no normative option-to-action digest map. A valid signature over "Hold" must
+never silently authorize "Release."
 
 Those four acceptance inputs are optional only when verifying historical
 evidence. If one is absent, an authentic receipt can still return `valid: true`,
