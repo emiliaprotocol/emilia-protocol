@@ -3,6 +3,12 @@
 
 ## Unreleased
 
+## 2.8.2 (2026-07-29)
+
+- Reissues the unreleased 2.8.1 verifier behavior from the exact protected-main
+  commit after its immutable tag was created before the final release merge.
+  No verifier API or acceptance behavior changes from 2.8.1.
+
 ## 2.8.1 (2026-07-29)
 
 - Trust Receipt verification treats pinned `compromised_at` as terminal and
