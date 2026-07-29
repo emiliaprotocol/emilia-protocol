@@ -1,54 +1,66 @@
 // SPDX-License-Identifier: Apache-2.0
-// EP for insurers - verifiable proof a human authorized the transfer.
-// Funds-transfer-fraud / social-engineering / agentic-AI risk landing page.
+// Shipped reliance-risk evidence for insurers and assurance teams.
 
 import SiteNav from '@/components/SiteNav';
 import SiteFooter from '@/components/SiteFooter';
 import { styles, cta, color, font } from '@/lib/tokens';
 
-const BROKE = [
+const ARTIFACTS = [
   {
-    label: 'Deepfakes defeat the callback',
-    body: 'The out-of-band call-back was the gold-standard proof of authorization. '
-      + 'Now the "known number" can reach a voice-cloned executive (the Arup $25.6M '
-      + 'case). The control you mandate no longer proves a real human authorized anything.',
+    label: 'RP policy',
+    title: 'Loss-allocation schedule',
+    body: 'The relying party pins separately signed responsibility terms to the exact Reliance Program. Verification establishes the signed bytes, issuer, status, and program binding—not legal enforceability, coverage, solvency, or payment.',
   },
   {
-    label: 'AI agents break attribution',
-    body: 'Autonomous agents move money at machine speed. "The AI did it" is foreclosed '
-      + '(California AB 316 pins liability on the deployer) exactly when the deployer can '
-      + 'least prove who authorized the action. Underwriters cannot audit a model the way '
-      + 'they audit a firewall.',
+    label: 'Live control',
+    title: 'Open Exposure Ledger',
+    body: 'Declared exposure is reserved before provider invocation against configured ceilings. INVOKING and INDETERMINATE stay open; only the configured independent reconciliation authority can close them.',
+  },
+  {
+    label: 'Transaction evidence',
+    title: 'Exact-action refusal',
+    body: 'A signed refusal binds the action, program, failed requirements, challenge, nonce, custody, and time. It is technical exact-action evidence—not a legal denial, adverse-benefit denial, or coverage decision.',
+  },
+  {
+    label: 'Period evidence',
+    title: 'Coverage reconciliation',
+    body: 'The attestation signs supplied system-of-record and receipt roots, counts, joins, exclusions, exceptions, and uncertainty for a bounded period. Here “coverage” means declared-population reconciliation, not insurance coverage.',
+  },
+  {
+    label: 'Portfolio evidence',
+    title: 'Receipt census + loss feed',
+    body: 'The census emits governed aggregate buckets with coarse primary suppression. The signed loss feed preserves external provenance and correction lineage; its observations are not verified or adjudicated losses.',
   },
 ];
 
 const PILOT = [
-  ['For the insured',
-    'Run EMILIA in observe mode on one workflow (vendor bank-account changes over a '
-    + 'threshold). Every flagged action emits a receipt your underwriter - or the '
-    + 'insured’s auditor - verifies offline. The attestation becomes provable, '
-    + 'claims-ready evidence.'],
-  ['For the carrier',
-    'Accept EMILIA receipts as proof the dual-authorization / verification control was '
-    + 'followed - a premium credit or coverage condition that is, for the first time, '
-    + 'machine-auditable rather than reconstructed forensically, and that survives the '
-    + 'deepfake failure mode your actuaries are now pricing.'],
+  [
+    'For the protected operator',
+    'Select one fully mediated action, pin the Reliance Program and authorities, define declared exposure ceilings, and test refusals, uncertainty, reconciliation, and bounded-period evidence before production use.',
+  ],
+  [
+    'For the carrier or assurer',
+    'Re-perform the supplied artifacts under independently pinned inputs and decide what, if anything, they support for underwriting, control testing, or claims review. EMILIA supplies technical evidence; the relying party keeps the conclusion.',
+  ],
 ];
 
 const FAQ = [
-  ['How is this different from our existing dual-authorization requirement?',
-    'It is the same control, made provable. Instead of reconstructing whether a callback '
-    + 'happened from recorded calls and emails after a loss, you get a cryptographic '
-    + 'receipt: a named human signed the exact action (amount, payee, account) on their '
-    + 'own device, verifiable offline by anyone.'],
-  ['Why is it deepfake-resistant?',
-    'The approval is a hardware-held signature over the exact action, not a phone '
-    + 'conversation. A cloned voice cannot produce the signature, so EP-QUORUM (the '
-    + 'two-person rule) cannot be defeated the way a callback can.'],
-  ['Is it vendor lock-in?',
-    'No. EMILIA Protocol is an open protocol (Apache-2.0) published as IETF Internet-Drafts, '
-    + 'with reference verifiers in three languages (JS, Python, Go). Carrier and insured can verify '
-    + 'receipts with open-source code, with no account and no trust in EMILIA.'],
+  [
+    'Does EMILIA provide insurance or decide coverage?',
+    'No. EMILIA is technical enforcement and evidence infrastructure. It does not insure, decide policy coverage, allocate or bear loss, establish liability, adjudicate a claim, or move money.',
+  ],
+  [
+    'What does an exact-action refusal prove?',
+    'It proves that the signed technical statement binds the named action, program, failed requirements, challenge, nonce, custody, and time under the pinned verification inputs. It is not a legal denial, an adverse-benefit denial, or proof that a refusal was substantively correct.',
+  ],
+  [
+    'Does the coverage attestation prove the population was complete?',
+    'No. It signs the supplied inventory roots and conserving counts for a bounded period. Completeness needs separate system-of-record evidence. The receipt census also uses only coarse primary suppression, not differential privacy.',
+  ],
+  [
+    'Can a carrier verify the artifacts without an EMILIA callback?',
+    'Yes. The formats, verifier, vectors, and exact executable claim are public. The current stateful risk-plane and signed risk-artifact implementation is JavaScript; no insurer adoption or external deployment is claimed.',
+  ],
 ];
 
 const jsonLd = {
@@ -68,66 +80,71 @@ export default function InsurancePage() {
       <SiteNav activePage="Insurance" />
       <main style={styles.page}>
         <section style={{ ...styles.sectionWide, paddingTop: 80, paddingBottom: 56 }}>
-          <div style={styles.eyebrow}>CYBER · CRIME / FIDELITY · AGENTIC-AI RISK</div>
+          <div style={styles.eyebrow}>RELIANCE RISK PLANE · GATE 0.20.0</div>
           <h1 style={{ ...styles.h1Large, maxWidth: 900 }}>
-            Verifiable proof a human authorized the transfer.
+            Technical evidence for reliance decisions. Not an insurance decision.
           </h1>
           <p style={{ ...styles.body, maxWidth: 780, marginTop: 18, fontSize: 18 }}>
-            Your policies make dual authorization and out-of-band verification of wires and
-            payment-instruction changes conditions precedent to funds-transfer-fraud cover.
-            You deny claims and rescind policies when those controls were not followed - yet
-            the proof today is ad hoc, reconstructed forensically after a loss. There is no
-            machine-checkable artifact that a specific human authorized a specific transfer.
+            Gate 0.20.0 adds a bounded risk plane around the exact authorization lifecycle:
+            customer-owned responsibility terms, declared open-exposure custody, signed technical
+            refusals, period population reconciliation, aggregate receipt census, and externally
+            reported loss experience with correction lineage.
           </p>
           <p style={{ ...styles.body, maxWidth: 760, marginTop: 8 }}>
-            EMILIA turns that control into a cryptographic, offline-verifiable authorization
-            receipt - and a two-person rule a cloned voice cannot defeat.
+            An insurer, auditor, or customer can re-perform those artifacts under independently
+            pinned inputs. EMILIA does not supply the underwriting, legal, coverage, causation,
+            completeness, solvency, adjudication, or payment conclusion.
           </p>
           <div style={{ display: 'flex', gap: 12, marginTop: 30, flexWrap: 'wrap' }}>
-            <a href="/pilot?v=insurance" style={cta.primary}>Scope an observe-mode pilot</a>
-            <a href="/briefs/emilia-insurance-onepager.pdf" style={cta.secondary}>Read the one-pager (PDF)</a>
+            <a href="/proof#reliance-risk-plane" style={cta.primary}>Inspect the shipped proof</a>
+            <a href="/pilot?v=insurance" style={cta.secondary}>Scope one protected workflow</a>
           </div>
         </section>
 
         <section style={styles.sectionWide}>
-          <div style={styles.eyebrow}>TWO THINGS JUST BROKE THE OLD CONTROL</div>
+          <div style={styles.eyebrow}>WHAT SHIPPED</div>
           <h2 style={{ ...styles.h2, maxWidth: 760 }}>
-            The callback you require no longer proves authorization.
+            Five evidence surfaces. None can authorize an action by itself.
           </h2>
-          <div style={{ marginTop: 28, display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: 16 }}>
-            {BROKE.map((c) => (
-              <div key={c.label} style={{ ...styles.card, padding: 24, borderTop: `3px solid ${color.gold}` }}>
+          <div style={{ marginTop: 28, display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))', gap: 16 }}>
+            {ARTIFACTS.map((artifact) => (
+              <div key={artifact.title} style={{ ...styles.card, padding: 24, borderTop: `3px solid ${color.gold}` }}>
                 <div style={{ fontFamily: font.mono, fontSize: 12, color: color.gold, letterSpacing: 1.5, textTransform: 'uppercase', fontWeight: 600 }}>
-                  {c.label}
+                  {artifact.label}
                 </div>
-                <div style={{ ...styles.cardBody, marginTop: 12, fontSize: 15, lineHeight: 1.7 }}>{c.body}</div>
+                <div style={{ ...styles.h3, fontSize: 19, marginTop: 10 }}>{artifact.title}</div>
+                <div style={{ ...styles.cardBody, marginTop: 10, fontSize: 14, lineHeight: 1.7 }}>{artifact.body}</div>
               </div>
             ))}
           </div>
         </section>
 
         <section style={styles.sectionWide}>
-          <div style={styles.eyebrow}>WHAT EMILIA PROVIDES</div>
-          <h2 style={{ ...styles.h2, maxWidth: 760 }}>An authorization receipt.</h2>
+          <div style={styles.eyebrow}>THE CONTROL BOUNDARY</div>
+          <h2 style={{ ...styles.h2, maxWidth: 760 }}>Terms, authority, exposure, outcome, and recourse stay separate.</h2>
           <p style={{ ...styles.body, maxWidth: 760 }}>
-            Before a transfer or instruction change executes, a named human approves the
-            exact action - amount, payee, account - on their own device (passkey / Face ID),
-            producing a signed artifact anyone can verify offline, with no account and no
-            trust in the insured&rsquo;s systems. Alter one byte and it fails. EP-QUORUM binds
-            two distinct, device-bound humans to the action - cryptographic dual control that
-            a cloned voice cannot defeat. The portable receipt is the claims-ready artifact you
-            reconstruct by hand today, verifiable years later without the insured&rsquo;s
-            cooperation.
+            The loss schedule records customer-supplied terms. Authorization still comes from the
+            existing exact-action evidence and local policy. The Open Exposure Ledger reserves a
+            declared amount before provider entry and preserves uncertainty without granting a retry.
+            Reconciliation accepts authenticated outcome evidence; it does not decide legal loss or
+            policy coverage.
           </p>
           <p style={{ ...styles.body, maxWidth: 760, marginTop: 8, fontSize: 15, color: color.t2 }}>
-            Try it in 30 seconds, offline, no account:{' '}
-            <span style={{ fontFamily: font.mono, color: color.t1 }}>npx @emilia-protocol/crash-test</span>
+            The reference artifacts are open and reproducible:{' '}
+            <a
+              href="https://github.com/emiliaprotocol/emilia-protocol/blob/main/docs/architecture/RELIANCE-RISK-PLANE.md"
+              target="_blank"
+              rel="noopener noreferrer"
+              style={{ fontFamily: font.mono, color: color.gold }}
+            >
+              read the architecture contract
+            </a>.
           </p>
         </section>
 
         <section style={styles.sectionWide}>
           <div style={styles.eyebrow}>THE PILOT</div>
-          <h2 style={{ ...styles.h2, maxWidth: 760 }}>Observe one workflow. Prove the control.</h2>
+          <h2 style={{ ...styles.h2, maxWidth: 760 }}>Start with one exact action and one declared exposure boundary.</h2>
           <div style={{ marginTop: 28, display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: 16 }}>
             {PILOT.map(([label, body]) => (
               <div key={label} style={{ ...styles.card, padding: 24 }}>
@@ -153,10 +170,11 @@ export default function InsurancePage() {
 
         <section style={styles.section}>
           <p style={{ fontSize: 13, color: color.t3, maxWidth: 760, lineHeight: 1.6 }}>
-            EMILIA proves a named human (or quorum) authorized this exact action before it
-            executed. It does not prove the decision was correct, nor establish real-world
-            identity beyond the enrollment layer. Open protocol (Apache-2.0), IETF
-            Internet-Drafts; no production deployment claim implied.
+            EMILIA does not insure, bear or allocate loss, adjudicate disputes or losses,
+            establish legal enforceability, prove insurance coverage, causation, solvency, or
+            source-population completeness, or move money. Refusal statements are exact technical
+            evidence, not legal or adverse-benefit denials. No external deployment or insurer
+            adoption is claimed.
           </p>
         </section>
       </main>
