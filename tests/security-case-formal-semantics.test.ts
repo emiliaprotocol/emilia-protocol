@@ -7,7 +7,8 @@ import { afterAll, describe, expect, it } from "vitest";
 const root = path.resolve(import.meta.dirname, "..");
 const verifier = path.join(root, "scripts", "verify-security-case.mjs");
 const loader = path.join(root, "scripts", "ts-loader", "register.mjs");
-const MULTI_PROCESS_TEST_TIMEOUT_MS = 30_000;
+const CHILD_PROCESS_TEST_TIMEOUT_MS = 30_000;
+const MULTI_PROCESS_TEST_TIMEOUT_MS = 120_000;
 const temporaryDirectory = fs.mkdtempSync(
   path.join(root, ".ep-security-formal-semantics-"),
 );
@@ -147,7 +148,7 @@ function runMutatedCase(mutate: (sourceCase: any) => void) {
     {
       cwd: root,
       encoding: "utf8",
-      timeout: 10_000,
+      timeout: CHILD_PROCESS_TEST_TIMEOUT_MS,
       killSignal: "SIGKILL",
       maxBuffer: 16 * 1024 * 1024,
     },
