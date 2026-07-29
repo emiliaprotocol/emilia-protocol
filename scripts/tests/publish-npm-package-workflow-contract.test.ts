@@ -20,7 +20,7 @@ describe('reusable npm release workflow byte contract', () => {
     const jobs = workflow().jobs;
     const buildSteps = jobs.build.steps;
     const evidenceIndex = buildSteps.findIndex(
-      (step) => step.name === 'Execute security and conformance evidence',
+      (step) => step.name === 'Verify security and conformance evidence',
     );
     const evidence = buildSteps[evidenceIndex];
     const governedIndex = buildSteps.findIndex(
@@ -38,8 +38,8 @@ describe('reusable npm release workflow byte contract', () => {
         '--import ${{ github.workspace }}/scripts/ts-loader/register.mjs',
     });
     expect(evidence.run.trim().split('\n').map((line) => line.trim())).toEqual([
-      'npm run security-case:emit',
-      'npm run conformance:manifest',
+      'npm run check:security-case',
+      'npm run conformance:manifest:check',
     ]);
     expect(governedIndex).toBe(evidenceIndex + 1);
     expect(packIndex).toBe(governedIndex + 1);
