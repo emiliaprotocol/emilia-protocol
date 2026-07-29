@@ -11,7 +11,7 @@
  */
 import crypto from 'crypto';
 import { strictJsonGate } from './strict-json.js';
-import { verifyOutcomeBindingCore } from './outcome-binding.js';
+import { verifyOutcomeBindingCore, verifyOutcomeBindingSetCore } from './outcome-binding.js';
 export { AGENTROA_DRAFT, verifyAgentROA } from './agentroa.js';
 export { AUTHORITY_PROGRAM_VERSION, AUTHORITY_PROGRAM_DOMAIN, AUTHORITY_STAGE_RECEIPT_VERSION, AUTHORITY_STAGE_RECEIPT_DOMAIN, AUTHORITY_PROGRAM_RESULT_VERSION, authorityProgramDigest, authorityStageReceiptDigest, deriveAuthorityProgramPredecessors, verifyAuthorityProgram, } from './authority-program.js';
 export * from './aeb-adapter-contract.js';
@@ -24,7 +24,7 @@ export * from './discovery-permit-contract.js';
 export * from './status.js';
 export * from './gate-qualification.js';
 export * from './gate-qualification-promptfoo.js';
-export { OUTCOME_ATTESTATION_VERSION, OUTCOME_ATTESTATION_DOMAIN, OUTCOME_BINDING_VERSION, OUTCOME_BINDING_RESULT_VERSION, OUTCOME_BINDING_OUTCOMES, buildOutcomeAttestation, verifyOutcomeAttestation, observedEffectsDigest, outcomeBindingResultCore, outcomeBindingResultDigest, trustReceiptDigest, verifyOutcomeBindingResultDigest, } from './outcome-binding.js';
+export { OUTCOME_ATTESTATION_VERSION, OUTCOME_ATTESTATION_DOMAIN, OUTCOME_BINDING_VERSION, OUTCOME_BINDING_RESULT_VERSION, OUTCOME_OBSERVATION_VERSION, OUTCOME_OBSERVATION_DOMAIN, OUTCOME_BINDING_SET_VERSION, OUTCOME_BINDING_SET_RESULT_VERSION, OUTCOME_BINDING_OUTCOMES, buildOutcomeAttestation, buildOutcomeObservation, verifyOutcomeAttestation, verifyOutcomeObservation, verifyOutcomeObservationSet, observedEffectsDigest, outcomeBindingResultCore, outcomeBindingResultDigest, outcomeBindingSetResultDigest, trustReceiptDigest, verifyOutcomeBindingResultDigest, } from './outcome-binding.js';
 export { ORPRG_JSON_JCS_PROFILE, ORPRG_ACTION_PROFILE, computeOrprgActionDigest, verifyOrprgJsonJcsPermit, verifyOrprgJsonJcsPermitAsync, createOrprgAecVerifier, } from './orprg.js';
 const FATAL_UTF8 = new TextDecoder('utf-8', { fatal: true });
 function decodeBase64url(value) {
@@ -1524,6 +1524,10 @@ export function verifyTrustReceipt(receipt, opts = {}) {
  */
 export function verifyOutcomeBinding(receipt, attestation, opts = {}) {
     return verifyOutcomeBindingCore(receipt, attestation, opts, verifyTrustReceipt);
+}
+/** Verify a Trust Receipt against all required signed outcome sources. */
+export function verifyOutcomeBindingSet(receipt, observations, opts = {}) {
+    return verifyOutcomeBindingSetCore(receipt, observations, opts, verifyTrustReceipt);
 }
 // =============================================================================
 // PIP-008 — L4 -> L7 binding: record relied-on agent identity + freshness

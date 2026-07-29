@@ -21,9 +21,15 @@ import {
   signModelToMatterEffect,
   signModelToMatterEvidence,
   verifyModelToMatterEffect,
+  verifyModelToMatterOutcome,
   verifyModelToMatterEvidence,
   verifyModelToMatterCaid,
 } from '../lib/frontier/model-to-matter.js';
+import {
+  buildOutcomeObservation,
+  observedEffectsDigest,
+} from '../packages/verify/index.js';
+import { predictedEffectsDigest } from '../packages/verify/effect-predicates.js';
 import { createDurableChallengeStore } from '../packages/gate/challenge-store.js';
 import { createDurableConsumptionStore, createMemoryBackend } from '../packages/gate/store.js';
 
@@ -756,6 +762,128 @@ describe('EP Model-to-Matter pinned executor boundary', () => {
 });
 
 describe('EP Model-to-Matter post-execution effect receipt', () => {
+  it('requires executor and independent observations before outcome reconciliation', () => {
+    const predictions = [
+      {
+        effect_type: 'executor_status', target: 'facility:safe-demo-01',
+        required_source_role: 'executor', required_source_class: 'cloud_lab',
+        predicate: { op: 'eq', value: 'completed' },
+      },
+      {
+        effect_type: 'sensor_result', target: 'facility:safe-demo-01',
+        required_source_role: 'independent_observer', required_source_class: 'facility_sensor',
+        predicate: { op: 'eq', value: 'within_approved_bounds' },
+      },
+    ];
+    const a = action({
+      experiment: {
+        ...ACTION_INPUT.experiment,
+        expected_effects_digest: predictedEffectsDigest(predictions),
+      },
+    });
+    const clearance = {
+      '@version': M2M_CLEARANCE_VERSION,
+      verdict: 'clear_to_execute',
+      action_digest: modelToMatterActionDigest(a),
+      action_caid: modelToMatterCaid(a).caid,
+      replay_digest: digest('outcome-clearance-replay'),
+    };
+    const observerKey = crypto.generateKeyPairSync('ed25519').privateKey;
+    const receiptId = `ep:m2m:clearance:${clearance.replay_digest.slice('sha256:'.length)}`;
+    const common = {
+      receipt_id: receiptId,
+      receipt_digest: clearance.replay_digest,
+      action_hash: modelToMatterActionDigest(a),
+      action_caid: modelToMatterCaid(a).caid,
+      consumption_nonce: clearance.replay_digest,
+      operation_id: 'm2m:operation:001',
+    };
+    const executorEffects = [
+      { effect_type: 'executor_status', target: a.executor.facility_id, value: 'completed' },
+    ];
+    const observations = [
+      buildOutcomeObservation({
+        ...common,
+        source: {
+          role: 'executor', source_id: a.executor.executor_id,
+          source_class: 'cloud_lab', facility_id: a.executor.facility_id,
+        },
+        observed_from: '2026-07-11T16:01:00Z',
+        observed_until: '2026-07-11T16:01:00Z',
+        attested_at: '2026-07-11T16:01:01Z',
+        observed_effects: executorEffects,
+        signer: { privateKey: executorKey },
+      }),
+      buildOutcomeObservation({
+        ...common,
+        source: {
+          role: 'independent_observer', source_id: 'sensor:facility-safe-demo-01',
+          source_class: 'facility_sensor', facility_id: a.executor.facility_id,
+        },
+        observed_from: '2026-07-11T16:01:00Z',
+        observed_until: '2026-07-11T16:02:00Z',
+        attested_at: '2026-07-11T16:02:01Z',
+        observed_effects: [
+          { effect_type: 'sensor_result', target: a.executor.facility_id, value: 'within_approved_bounds' },
+        ],
+        signer: { privateKey: observerKey },
+      }),
+    ];
+    const effect = signModelToMatterEffect({
+      action: a,
+      clearance,
+      executor_id: a.executor.executor_id,
+      executed_at: '2026-07-11T16:01:00Z',
+      status: 'completed',
+      observed_effect_digest: observedEffectsDigest(executorEffects),
+    }, executorKey);
+    const opts = {
+      expectedOperationId: common.operation_id,
+      now: '2026-07-11T16:03:00Z',
+      pinnedExecutorKeys: [{ executor_id: a.executor.executor_id, public_key: publicKey(executorKey) }],
+      sourceKeys: {
+        [a.executor.executor_id]: {
+          public_key: publicKey(executorKey), role: 'executor',
+          source_class: 'cloud_lab', facility_id: a.executor.facility_id,
+          control_domain_id: 'control-domain:cloud-lab', status: 'active',
+          valid_from: '2026-01-01T00:00:00Z', valid_to: '2027-01-01T00:00:00Z',
+        },
+        'sensor:facility-safe-demo-01': {
+          public_key: publicKey(observerKey), role: 'independent_observer',
+          source_class: 'facility_sensor', facility_id: a.executor.facility_id,
+          control_domain_id: 'control-domain:facility-sensor', status: 'active',
+          valid_from: '2026-01-01T00:00:00Z', valid_to: '2027-01-01T00:00:00Z',
+        },
+      },
+      sourceRequirements: [
+        { role: 'executor', source_class: 'cloud_lab', min_distinct_sources: 1, distinct_by: ['key', 'control_domain'] },
+        { role: 'independent_observer', source_class: 'facility_sensor', min_distinct_sources: 1, distinct_by: ['key', 'control_domain'] },
+      ],
+      observationWindows: [
+        {
+          role: 'executor', source_class: 'cloud_lab', relation: 'exact',
+          not_before: '2026-07-11T16:01:00Z', not_after: '2026-07-11T16:01:00Z',
+          max_attestation_delay_ms: 5_000,
+        },
+        {
+          role: 'independent_observer', source_class: 'facility_sensor', relation: 'exact',
+          not_before: '2026-07-11T16:01:00Z', not_after: '2026-07-11T16:02:00Z',
+          max_attestation_delay_ms: 5_000,
+        },
+      ],
+    };
+    const result = verifyModelToMatterOutcome({
+      action: a, clearance, effect, predicted_effects: predictions, observations,
+    }, opts);
+    expect(result).toMatchObject({ accepted: true, lifecycle_state: 'reconciled', outcome: 'in_bounds' });
+    expect(result.establishes_physical_truth).toBe(false);
+
+    const missingObserver = verifyModelToMatterOutcome({
+      action: a, clearance, effect, predicted_effects: predictions, observations: observations.slice(0, 1),
+    }, opts);
+    expect(missingObserver).toMatchObject({ accepted: false, lifecycle_state: 'indeterminate', outcome: null });
+  });
+
   it('signs and verifies the executor statement against the clearance and pinned executor', () => {
     const a = action();
     const clearance = {

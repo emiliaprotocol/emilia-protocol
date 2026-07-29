@@ -8,6 +8,7 @@ import {
   validateCurtailmentAction,
   verifyGraceArtifact,
 } from './mobile-grid.js';
+import { buildOutcomeObservation } from '../../packages/verify/index.js';
 
 const ACK_MEMBERS = new Set([
   '@version', 'adapter', 'adapter_version', 'actuator_id', 'event_id',
@@ -102,6 +103,26 @@ export function createCosaReferenceActuator({
     kind: 'cosa-reference',
     simulation: true,
     verify: verifyCosaReferenceAcknowledgment,
+    attestOutcome(input: any = {}) {
+      return buildOutcomeObservation({
+        ...input,
+        source: {
+          role: 'executor',
+          source_id: input?.acknowledgment?.actuator_id || actuatorId,
+          source_class: 'cosa.actuator',
+          facility_id: input?.facility_id,
+        },
+        observed_from: input?.acknowledgment?.dispatched_at,
+        observed_until: input?.acknowledgment?.dispatched_at,
+        attested_at: input?.acknowledgment?.dispatched_at,
+        observed_effects: [{
+          effect_type: 'controller_status',
+          target: input?.facility_id,
+          value: input?.acknowledgment?.status,
+        }],
+        signer: { privateKey },
+      });
+    },
     async dispatch(request) {
       if (!record(request) || request['@version'] !== GRACE_DISPATCH_VERSION
           || !validateCurtailmentAction(request.action).valid
@@ -187,6 +208,26 @@ export function createReferenceMeter({
     kind: 'reference-meter',
     simulation: true,
     verify: verifyReferenceMeterStatement,
+    attestOutcome(input: any = {}) {
+      return buildOutcomeObservation({
+        ...input,
+        source: {
+          role: 'independent_observer',
+          source_id: input?.statement?.meter_id || meterId,
+          source_class: 'revenue_meter',
+          facility_id: input?.facility_id,
+        },
+        observed_from: input?.statement?.window?.not_before,
+        observed_until: input?.statement?.window?.not_after,
+        attested_at: input?.statement?.observed_at,
+        observed_effects: [{
+          effect_type: 'delivered_mw',
+          target: input?.facility_id,
+          value: input?.delivered_mw,
+        }],
+        signer: { privateKey },
+      });
+    },
     async observe({
       action,
       acknowledgment,

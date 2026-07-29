@@ -15,6 +15,7 @@ import {
   actionStateCapsuleId,
   buildActionStateCapsule,
   buildCurtailmentControlledAction,
+  buildGraceOutcomePredictions,
   buildCurtailmentPresentation,
   createCurtailmentAction,
   executeGraceCurtailment,
@@ -24,6 +25,7 @@ import {
   verifyActionStateSignedStatement,
   verifyGraceMobileAuthorization,
 } from '../lib/grace/mobile-grid.js';
+import { predictedEffectsDigest } from '../packages/verify/effect-predicates.js';
 import {
   createCosaReferenceActuator,
   createFencedMemoryStore,
@@ -53,6 +55,10 @@ function ed25519(keyId) {
     trust: {
       key_id: keyId,
       public_key_spki: pair.publicKey.export({ type: 'spki', format: 'der' }).toString('base64url'),
+      control_domain_id: `control-domain:${keyId}`,
+      status: 'active',
+      valid_from: '2026-01-01T00:00:00.000Z',
+      valid_to: '2027-01-01T00:00:00.000Z',
     },
   };
 }
@@ -87,6 +93,7 @@ const policy = {
   human_approval: 'class_a',
   required_approvals: 2,
   approvers: ['ep:approver:grid-operator', 'ep:approver:facility-operator'],
+  outcome_policy_digest: predictedEffectsDigest(buildGraceOutcomePredictions(action)),
 };
 
 function mobileApprover({
@@ -346,6 +353,13 @@ describe('phone to COSA to meter to Action State to settlement', () => {
     expect(result.compliance.compliant).toBe(true);
     expect(result.acknowledgment.simulation).toBe(true);
     expect(result.meter_statement.measurement_class).toBe('reference_simulation');
+    expect(result.outcome_binding).toMatchObject({
+      valid: true,
+      lifecycle_state: 'reconciled',
+      outcome: 'in_bounds',
+    });
+    expect(result.outcome_observations).toHaveLength(2);
+    expect(result.bundle.outcome_binding_result_digest).toBe(result.outcome_binding.result_digest);
     expect(result.action_state.capsule.spec_version).toBe(ACTION_STATE_SPEC_VERSION);
     expect(result.action_state.anchoring).toBe('unregistered_signed_statement');
     expect(verifyActionStateSignedStatement(result.action_state, {
@@ -366,6 +380,22 @@ describe('phone to COSA to meter to Action State to settlement', () => {
     expect(verified.capsule.effect.status).toBe('confirmed');
     expect(verified.capsule.effect.effect_attestation).toBe('gate_executed');
     expect(verified.capsule.disposition.human_disposed).toBe(true);
+  });
+
+  it('refuses settlement when the independent meter cannot sign an Outcome Observation', async () => {
+    const state = runtime();
+    const meter = {
+      observe: state.meter.observe,
+      verify: state.meter.verify,
+    };
+    const { result, settlements } = await run({ state, meter });
+    expect(result).toMatchObject({
+      ok: false,
+      verdict: 'effect_unconfirmed',
+      retry_safe: false,
+    });
+    expect(result.reason).toMatch(/outcome observation/i);
+    expect(settlements).toBe(0);
   });
 
   it('refuses an order outside the seasonal envelope before touching COSA', async () => {

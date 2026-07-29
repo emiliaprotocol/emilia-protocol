@@ -1,14 +1,14 @@
 {
   "@version": "EMILIA-REPO-CONTEXT-v1",
-  "evidence_snapshot_at": "2026-07-29T07:40:32.686Z",
+  "evidence_snapshot_at": "2026-07-29T09:16:23.635Z",
   "provenance": {
     "generator": "scripts/generate-llm-context.mjs",
-    "input_digest_sha256": "e5d280bf71c169aba7ee93e4148fdea6e833b94f96444b0e6e48275bb679e669",
+    "input_digest_sha256": "4ec54c6662f0063b1c779407dd5f92dfd7210e7d84f64d128604f7654bf119a0",
     "generated_from": [
       {
         "path": "docs/ai/context-source.v1.json",
-        "sha256": "9677606b1c0fe5277c71734f2b88bce5c507e2585973f47e7496763c60dcdb3b",
-        "bytes": 41060
+        "sha256": "7a5decccb09f841fd083a4056f7d56fb1c8e11eeb18ceb3c6b87933aeb8e0d88",
+        "bytes": 42622
       },
       {
         "path": "scripts/generate-llm-context.mjs",
@@ -17,12 +17,12 @@
       },
       {
         "path": "lib/proof-stats.json",
-        "sha256": "a4827ea0ecf25ed210c0abc128cc0406d6b7391ef84258c7bd8bfa000f0052ac",
-        "bytes": 4220
+        "sha256": "757bdea16f1c1134029097d1c79fe436fd28e2a011f3f0753b8617cbad3265a4",
+        "bytes": 4298
       },
       {
         "path": "conformance/conformance-manifest.json",
-        "sha256": "05f5050ed9e074cae5479ca920d3fc19a9cd2ad21b2aa4a3860c15ef91d583a3",
+        "sha256": "16b1c2f0df1eda86a5ca0384c31e35bd2f6fdabb5e7dd60ad069b8310cdcf6b3",
         "bytes": 6361
       },
       {
@@ -32,13 +32,13 @@
       },
       {
         "path": "security/claims.v1.json",
-        "sha256": "1f25510d8b319b78dce5da3fa1f2d7b65cad41d31543ae1a80dcc6453957eb81",
-        "bytes": 236090
+        "sha256": "640d7ad996e05252252dd852796482c6821baeb785b78d8c2e20f2a07abb001a",
+        "bytes": 245077
       },
       {
         "path": "security/security-case.json",
-        "sha256": "ff5a958282e8419361854765590645e89b67657113b0252d1da514fba6739576",
-        "bytes": 365252
+        "sha256": "c7159188b57bb809b9fc755bf4f4e24b04a83f86b769da40159d5d7e09bb7e39",
+        "bytes": 376750
       },
       {
         "path": "lib/standards-observatory.snapshot.json",
@@ -47,8 +47,8 @@
       },
       {
         "path": "standards/STATUS.json",
-        "sha256": "02e82f1ea805009d2fabcf4c5b54c0c099cec77b17e7819932644de3630330df",
-        "bytes": 19672
+        "sha256": "43afa08d361c4f27f76a231007cfbae963be0761b8e7a6bfc73ce9925dfbd1f3",
+        "bytes": 21045
       },
       {
         "path": "caid/conformance/vectors.json",
@@ -272,7 +272,7 @@
   ],
   "current_evidence": {
     "automated_tests": {
-      "total": 7968,
+      "total": 7975,
       "files": 455,
       "policy": "all platform-applicable cases must pass; platform-specific cases may skip"
     },
@@ -282,7 +282,7 @@
       "implementations": 3,
       "relationship": "same_team_ports",
       "claim_scope": "current same-team cross-language consistency; not independent implementation evidence",
-      "manifest_sha256": "6354be1680d116b6db7fd5c40067f5da0140a83366dfee083a6512ec43c3a8ae",
+      "manifest_sha256": "8a61457f762d7befa2d1e5a6872f2f33cd68aa28c6a843d4f574c2dbc3d7af27",
       "vector_bundle_sha256": "ee1021eb36de8e50448d9f12f00d16f3e24561276c9a42241e88178d5daa0d3e"
     },
     "formal": {
@@ -306,15 +306,15 @@
       "selected_scenario_conformance": {
         "method": "bounded_selected_scenario_conformance",
         "models": 14,
-        "claims": 20,
-        "scenarios": 72,
-        "soundScenarios": 26,
-        "pairedNegativeControls": 46,
+        "claims": 21,
+        "scenarios": 78,
+        "soundScenarios": 27,
+        "pairedNegativeControls": 51,
         "requiredModelActions": 28,
         "coveredModelActions": 28,
         "actionCompleteModels": 1,
-        "formalMutationOperators": 46,
-        "evidenceSha256": "b1ead8b829e761643c04e6c61d62fdf223581e1f828d27aa6337d61a5339721e",
+        "formalMutationOperators": 51,
+        "evidenceSha256": "cf05adf14ff6254097d394134cd9e637e56dc04eb8ab5736cc75d0a8c37ab2a7",
         "boundary": "selected model/runtime scenarios under explicit projection relations; not a mechanized implementation refinement proof"
       },
       "evidence_taxonomy": {
@@ -326,7 +326,7 @@
           ]
         },
         "boundedRuntimeTraced": {
-          "count": 20,
+          "count": 21,
           "claimIds": [
             "action-escrow-releases-one-exact-milestone-once",
             "aec-execution-is-action-keyed-and-fleet-fail-closed",
@@ -341,6 +341,7 @@
             "mobile-action-continuity-is-tenant-and-executor-bound",
             "mobile-enrollment-requires-two-verified-rows",
             "model-to-matter-clearance-is-exact-and-single-use",
+            "multi-source-outcome-binding-enforces-independent-current-evidence",
             "network-witness-equivocation-permanently-poisons-stream",
             "outcome-binding-is-exact-and-fail-closed",
             "receipt-program-is-caid-bound-budgeted-and-terminal",
@@ -381,9 +382,9 @@
     "red_team_cases": 85,
     "security_case": {
       "status": "passed",
-      "claims": 34,
-      "evidence_files": 251,
-      "evidence_bundle_sha256": "11e31d971b97aaecd8eeaf9ca03a1fc5f00cbecf668f0496c583df434175f219"
+      "claims": 35,
+      "evidence_files": 252,
+      "evidence_bundle_sha256": "b80186e4a76a7ef9d1df7b24c664aa636133489f594b76a4a2674b45bb550e03"
     },
     "caid": {
       "core_vectors": 48,
@@ -1505,6 +1506,129 @@
         "the profile does not supply a trusted time source; execution-time acceptance depends on a relying-party input",
         "no external witness or transparency operator is modeled or evidenced by this claim",
         "the JavaScript, Python, and Go implementations, bounded model, checker, and vectors are same-team artifacts and are not independent implementation evidence"
+      ]
+    },
+    {
+      "claim_id": "multi-source-outcome-binding-enforces-independent-current-evidence",
+      "statement": "Multi-source Outcome Binding credits an independent-observer role only when the observation signature verifies under a relying-party-pinned, current Ed25519 key whose canonical key identity and declared control domain differ from every non-independent source. Relying-party source requirements can require distinct-source quorum by key and control domain, and observation-window policy binds the accepted observation interval and maximum attestation delay before reconciliation can be valid.",
+      "acceptance_roots": [
+        "the relying party pins each source identifier to its Ed25519 key, role, source class, control domain, status, validity interval, and any compromise time",
+        "the relying party declares source quorum, distinctness dimensions, observation-window relation, and maximum attestation delay",
+        "the relying party supplies an authentic evaluation time and exact receipt, action, CAID, operation, consumption, and facility bindings",
+        "control_domain_id is a relying-party declaration and is not cryptographic proof of organizational or physical independence"
+      ],
+      "enforcement_path": [
+        {
+          "language": "javascript",
+          "file": "packages/verify/src/outcome-binding.ts",
+          "symbol": "verifyOutcomeObservation",
+          "exported": true
+        },
+        {
+          "language": "javascript",
+          "file": "packages/verify/src/outcome-binding.ts",
+          "symbol": "verifyOutcomeObservationSet",
+          "exported": true
+        },
+        {
+          "language": "javascript",
+          "file": "packages/verify/src/outcome-binding.ts",
+          "symbol": "outcomeSourceKeyId",
+          "exported": true
+        }
+      ],
+      "language_coverage": {
+        "javascript": {
+          "status": "covered",
+          "evidence": "conformance/vectors/outcome-binding.sources.v1.json"
+        },
+        "python": {
+          "status": "gap",
+          "reason": "The multi-source independence, status, window, and quorum extension is not yet ported; the legacy exact executor-attestation path remains covered separately."
+        },
+        "go": {
+          "status": "gap",
+          "reason": "The multi-source independence, status, window, and quorum extension is not yet ported; the legacy exact executor-attestation path remains covered separately."
+        }
+      },
+      "vectors": [
+        {
+          "suite": "conformance/vectors/outcome-binding.sources.v1.json",
+          "case_id": "accept_executor_and_independent_observer",
+          "polarity": "positive"
+        },
+        {
+          "suite": "conformance/vectors/outcome-binding.sources.v1.json",
+          "case_id": "refuse_executor_key_reused_as_independent_observer",
+          "polarity": "negative"
+        },
+        {
+          "suite": "conformance/vectors/outcome-binding.sources.v1.json",
+          "case_id": "refuse_shared_executor_observer_control_domain",
+          "polarity": "negative"
+        },
+        {
+          "suite": "conformance/vectors/outcome-binding.sources.v1.json",
+          "case_id": "refuse_compromised_observer_key",
+          "polarity": "negative"
+        },
+        {
+          "suite": "conformance/vectors/outcome-binding.sources.v1.json",
+          "case_id": "refuse_observer_window_substitution",
+          "polarity": "negative"
+        },
+        {
+          "suite": "conformance/vectors/outcome-binding.sources.v1.json",
+          "case_id": "refuse_insufficient_distinct_observer_quorum",
+          "polarity": "negative"
+        }
+      ],
+      "formal": [
+        {
+          "status": "partial",
+          "method": "bounded_exhaustive_state_exploration",
+          "model": "formal/outcome-authority-join.model.mjs",
+          "runner": "formal/check-outcome-authority-join.mjs",
+          "obligations": [
+            "IndependentObserverKeyIsDistinct",
+            "IndependentObserverControlDomainIsDistinct",
+            "OutcomeSourceKeyIsCurrent",
+            "ObservationWindowIsBound",
+            "OutcomeSourceQuorumIsSatisfied"
+          ],
+          "result_evidence": "formal/results/outcome-authority-join.summary.txt",
+          "scope": "Same-team bounded exhaustive exploration of 49,152 outcome-source states and 147,456 digest encodings. Signatures and SHA-256 are ideal constructors, control-domain identity is an input, and the selected-scenario mapping is not a mechanized implementation refinement proof.",
+          "scenario_evidence": "formal/runtime-scenarios.v2.json",
+          "scenario_runner": "scripts/check-formal-runtime-traces.mjs",
+          "conformance_evidence": "formal/results/formal-runtime-scenario-conformance.v2.json",
+          "scenario_coverage": "selected",
+          "covered_actions": [
+            "VerifyIndependentCurrentOutcomeSources",
+            "RefuseReusedIndependentObserverKey",
+            "RefuseSharedObserverControlDomain",
+            "RefuseNoncurrentOutcomeSourceKey",
+            "RefuseUnboundObservationWindow",
+            "RefuseInsufficientOutcomeSourceQuorum"
+          ],
+          "covered_obligations": [
+            "IndependentObserverKeyIsDistinct",
+            "IndependentObserverControlDomainIsDistinct",
+            "OutcomeSourceKeyIsCurrent",
+            "ObservationWindowIsBound",
+            "OutcomeSourceQuorumIsSatisfied"
+          ]
+        }
+      ],
+      "assumptions": [
+        "Ed25519 signatures are unforgeable and SHA-256 collisions are infeasible",
+        "the relying party provisions authentic source pins, control-domain declarations, source requirements, observation windows, and evaluation time",
+        "each source signs the observations it actually reports; observation truth and actual operational separation are not inferred"
+      ],
+      "exclusions": [
+        "the verifier does not establish physical truth or prove that a declared control domain is organizationally independent",
+        "the profile does not supply a trusted time source for key status, observation windows, or attestation delay",
+        "no external witness or transparency operator is required or evidenced by this same-team claim",
+        "the JavaScript implementation, bounded model, checker, and vectors are same-team artifacts and are not independent implementation evidence"
       ]
     },
     {
@@ -4272,7 +4396,7 @@
     "The mobile ceremony proves that a pinned enrolled credential completed a user-verified platform ceremony over exact bytes. It does not prove civil identity, comprehension, legality, wisdom, safety, or physical outcome.",
     "Apple App Attest and Google Play Integrity are online verification dependencies at mobile ceremony time. Their tokens are not silently claimed as offline-verifiable evidence; the resulting EP Class-A signoff and receipt retain only their separately specified properties.",
     "The government mobile reference apps and example.gov identifiers are implementation examples. They do not claim adoption, procurement, partnership, or endorsement by any state, agency, or government entity.",
-    "The GRACE live control room uses signed COSA and meter reference adapters. It exercises real verification and one-time state transitions but does not claim a physical grid event, production COSA integration, utility adoption, meter truth, or SCITT anchoring.",
+    "The GRACE live control room uses separately signed COSA executor and meter independent-observer Outcome Observations. Independent-source acceptance requires distinct canonical Ed25519 keys and distinct relying-party-declared control domains, current source pins, bound observation windows, and source quorum. A declared control domain is policy input, not proof of organizational independence. Settlement is downstream of a reconciled Outcome Binding result. The circuit exercises real verification and one-time state transitions but does not claim a physical grid event, production COSA integration, utility adoption, meter truth, or SCITT anchoring.",
     "Portable human-intent and approval evidence exists outside EMILIA. AuthZEN AARP includes requestable denial, asynchronous approval, an approval object with optional opaque proof or verifier state, JWS interoperability for by-value state, an exact-match baseline, and PDP re-evaluation. Mastercard's Verifiable Intent, co-developed with Google and contributed to the FIDO Alliance, also provides portable intent evidence; the cited FIDO page describes a contribution and prospective standardization, not a final FIDO specification. Comparisons must use exact guarantee profiles rather than zero-rival claims.",
     "The connected Cloud approval endpoint is an implementation prototype for one fixed large_payment_release workflow. It must not be described as a production service, customer deployment, certification, independent interoperability result, or standards adoption."
   ],
@@ -4448,7 +4572,7 @@
       "identifier": "draft-schrock-model-to-matter",
       "revision_at_snapshot": "01",
       "role": "Experimental executor-side authorization-evidence clearance for model-directed physical execution",
-      "next_action": "Published July 21; do not claim deployment, scientific-safety determination, physical truth, or external endorsement without independent evidence",
+      "next_action": "Published July 21; -02 is staged, not filed, adding source-routed Outcome Binding and independent observation while preserving the no-physical-truth limitation",
       "url": "https://datatracker.ietf.org/doc/draft-schrock-model-to-matter/",
       "status_rule": "Check the live IETF Datatracker URL; do not infer status or revision from a local filename."
     },
@@ -4462,7 +4586,7 @@
     }
   ],
   "standards_portfolio": {
-    "updated": "2026-07-24",
+    "updated": "2026-07-28",
     "decision_vocabulary": {
       "VERIFIED": "One artifact passed its native verifier under relying-party-selected trust inputs.",
       "MATCH": "Independently verified artifacts denote the same material action directly or under exact pinned mapping profiles.",
@@ -4770,7 +4894,7 @@
     },
     {
       "path": "lib/frontier/model-to-matter.ts",
-      "purpose": "executor-side Model-to-Matter clearance profile"
+      "purpose": "executor-side Model-to-Matter clearance, single-use effect custody, executor effect statement, and independently sourced post-execution outcome reconciliation"
     },
     {
       "path": "conformance/vectors/model-to-matter.v1.json",
@@ -4779,6 +4903,14 @@
     {
       "path": "standards/posted/draft-schrock-model-to-matter-01.xml",
       "purpose": "Published July 21 Experimental Model-to-Matter profile with explicit non-goals and implementation status"
+    },
+    {
+      "path": "standards/staged/draft-schrock-model-to-matter-02.xml",
+      "purpose": "Upload-ready candidate revision adding source-routed Outcome Binding, canonical-key and declared-control-domain independence, source status, observation windows, and quorum; not yet a published Internet-Draft"
+    },
+    {
+      "path": "standards/staged/draft-schrock-ep-outcome-binding-00.xml",
+      "purpose": "Upload-ready candidate defining executor, system-of-record, and independent-observer outcome sources with exact binding, canonical-key and declared-control-domain separation, source status, observation windows, quorum, and indeterminate lifecycle"
     },
     {
       "path": "examples/mobile-government",
@@ -4790,7 +4922,11 @@
     },
     {
       "path": "conformance/vectors/grace-mobile-grid.v1.json",
-      "purpose": "JavaScript-only GRACE vertical composition claims covering the accepted path plus self-approval, inactive action, replay, and meter-rule-smuggling refusals"
+      "purpose": "JavaScript-only GRACE vertical composition claims covering executor-plus-independent-meter Outcome Binding, the accepted path, self-approval, inactive action, replay, and meter-rule-smuggling refusals"
+    },
+    {
+      "path": "conformance/vectors/outcome-binding.sources.v1.json",
+      "purpose": "eight real-cryptography source-policy vectors covering accepted reconciliation, missing-source indeterminacy, independent-source divergence, canonical-key reuse, shared control domain, compromised key, window substitution, and insufficient quorum"
     },
     {
       "path": "app/grace/live",

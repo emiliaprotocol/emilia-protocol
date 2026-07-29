@@ -8,7 +8,7 @@ import { runConsequenceLifecycleScenario } from "./consequence-lifecycle.mjs";
 import { runComposedTrustLifecycleScenario } from "./composed-trust-lifecycle.mjs";
 import { runCompleteMediationScenario } from "./complete-mediation.mjs";
 import { runDurableConsumptionOwnerScenario } from "./durable-consumption-owner.mjs";
-import { runAuthorityDocumentProofJoinScenario, runAuthorityProgramScenario, runConservationAuthorityScenario, runOutcomeBindingScenario, runReceiptProgramScenario, } from "./five-claim-bridge.mjs";
+import { runAuthorityDocumentProofJoinScenario, runAuthorityProgramScenario, runConservationAuthorityScenario, runOutcomeBindingScenario, runOutcomeSourceScenario, runReceiptProgramScenario, } from "./five-claim-bridge.mjs";
 import { runGraceScenario } from "./grace-curtailment.mjs";
 import { runMobileContinuityScenario } from "./mobile-continuity.mjs";
 import { runMobileEnrollmentScenario } from "./mobile-enrollment.mjs";
@@ -28,6 +28,7 @@ const adapters = Object.freeze({
     "durable-consumption-owner": runDurableConsumptionOwnerScenario,
     "conservation-authority": runConservationAuthorityScenario,
     "outcome-binding": runOutcomeBindingScenario,
+    "outcome-binding-sources": runOutcomeSourceScenario,
     "authority-document-proof-join": runAuthorityDocumentProofJoinScenario,
     "authority-program": runAuthorityProgramScenario,
     "receipt-program": runReceiptProgramScenario,

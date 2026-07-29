@@ -69,6 +69,8 @@ const adapterSources: Readonly<Record<string, string>> = Object.freeze({
     "conformance/refinement/adapters/five-claim-bridge.mjs",
   "outcome-binding":
     "conformance/refinement/adapters/five-claim-bridge.mjs",
+  "outcome-binding-sources":
+    "conformance/refinement/adapters/five-claim-bridge.mjs",
   "authority-document-proof-join":
     "conformance/refinement/adapters/five-claim-bridge.mjs",
   "authority-program":

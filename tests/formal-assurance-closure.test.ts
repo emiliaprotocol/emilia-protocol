@@ -82,6 +82,22 @@ const FIVE_CLAIM_RUNTIME_BRIDGE = Object.freeze([
     backend: "bounded_checker",
   },
   {
+    claim: "multi-source-outcome-binding-enforces-independent-current-evidence",
+    model: "formal/outcome-authority-join.model.mjs",
+    adapter: "outcome-binding-sources",
+    runtimeSource: "packages/verify/src/outcome-binding.ts",
+    obligation: "IndependentObserverKeyIsDistinct",
+    obligations: [
+      "IndependentObserverKeyIsDistinct",
+      "IndependentObserverControlDomainIsDistinct",
+      "OutcomeSourceKeyIsCurrent",
+      "ObservationWindowIsBound",
+      "OutcomeSourceQuorumIsSatisfied",
+    ],
+    negativeControls: 5,
+    backend: "bounded_checker",
+  },
+  {
     claim: "authority-document-proof-join-is-pinned-and-non-resurrecting",
     model: "formal/outcome-authority-join.model.mjs",
     adapter: "authority-document-proof-join",
@@ -179,7 +195,7 @@ describe("formal assurance closure contract", () => {
           (scenario: any) => scenario.kind === "paired_negative_control",
         ),
         contract.claim,
-      ).toHaveLength(1);
+      ).toHaveLength(contract.negativeControls ?? 1);
       expect(
         scenarios.every((scenario: any) =>
           scenario.runtime_sources.includes(contract.runtimeSource),
@@ -193,6 +209,15 @@ describe("formal assurance closure contract", () => {
           ?.mutation?.obligation,
         contract.claim,
       ).toBe(contract.obligation);
+      if (contract.obligations) {
+        expect(
+          scenarios
+            .filter((scenario: any) => scenario.kind === "paired_negative_control")
+            .map((scenario: any) => scenario.mutation?.obligation)
+            .sort(),
+          contract.claim,
+        ).toEqual([...contract.obligations].sort());
+      }
 
       const conformed = evidence.scenarios.filter(
         (scenario: any) =>
@@ -209,13 +234,25 @@ describe("formal assurance closure contract", () => {
       expect(negative?.formal?.status, contract.claim).toBe(
         "counterexample_detected",
       );
-      expect(negative?.formal?.obligation, contract.claim).toBe(
-        contract.obligation,
+      const conformedNegatives = conformed.filter(
+        (scenario: any) => scenario.kind === "paired_negative_control",
       );
+      if (contract.obligations) {
+        expect(
+          conformedNegatives.map((scenario: any) => scenario.formal?.obligation).sort(),
+          contract.claim,
+        ).toEqual([...contract.obligations].sort());
+      } else {
+        expect(negative?.formal?.obligation, contract.claim).toBe(
+          contract.obligation,
+        );
+      }
       expect(
-        negative?.runtime?.steps?.at(-1)?.accepted,
+        conformedNegatives.every(
+          (scenario: any) => scenario.runtime?.steps?.at(-1)?.accepted === false,
+        ),
         contract.claim,
-      ).toBe(false);
+      ).toBe(true);
 
       if (contract.backend === "bounded_checker") {
         for (const scenario of conformed) {
@@ -246,21 +283,28 @@ describe("formal assurance closure contract", () => {
         expect(negative?.formal?.backend, contract.claim).toBe(
           "bounded_exhaustive_state_exploration",
         );
-        expect(
-          negative?.formal?.checks?.find(
-            (row: any) => row.obligation === contract.obligation,
-          )?.mutation_counterexample_sha256,
-          contract.claim,
-        ).toMatch(/^sha256:[0-9a-f]{64}$/);
-        expect(negative?.formal?.control, contract.claim).toMatchObject({
-          kind: "formal_mutation_counterexample",
-          obligation: contract.obligation,
-          sound_input_refused: true,
-          mutant_input_accepted: true,
-        });
-        expect(negative?.control_semantics, contract.claim).toBe(
-          "paired_formal_counterexample_runtime_refusal",
-        );
+        for (const conformedNegative of conformedNegatives) {
+          const obligation = conformedNegative.formal?.obligation;
+          expect(
+            conformedNegative.formal?.checks?.find(
+              (row: any) => row.obligation === obligation,
+            )?.mutation_counterexample_sha256,
+            `${contract.claim}:${obligation}`,
+          ).toMatch(/^sha256:[0-9a-f]{64}$/);
+          expect(
+            conformedNegative.formal?.control,
+            `${contract.claim}:${obligation}`,
+          ).toMatchObject({
+            kind: "formal_mutation_counterexample",
+            obligation,
+            sound_input_refused: true,
+            mutant_input_accepted: true,
+          });
+          expect(
+            conformedNegative.control_semantics,
+            `${contract.claim}:${obligation}`,
+          ).toBe("paired_formal_counterexample_runtime_refusal");
+        }
       }
     }
   });

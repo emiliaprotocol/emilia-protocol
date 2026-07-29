@@ -38,6 +38,7 @@ const adapterSources = Object.freeze({
     "durable-consumption-owner": "conformance/refinement/adapters/durable-consumption-owner.mts",
     "conservation-authority": "conformance/refinement/adapters/five-claim-bridge.mjs",
     "outcome-binding": "conformance/refinement/adapters/five-claim-bridge.mjs",
+    "outcome-binding-sources": "conformance/refinement/adapters/five-claim-bridge.mjs",
     "authority-document-proof-join": "conformance/refinement/adapters/five-claim-bridge.mjs",
     "authority-program": "conformance/refinement/adapters/five-claim-bridge.mjs",
     "receipt-program": "conformance/refinement/adapters/five-claim-bridge.mjs",

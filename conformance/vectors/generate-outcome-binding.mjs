@@ -10,7 +10,7 @@
 import crypto from 'node:crypto';
 import { writeFileSync } from 'node:fs';
 import { actionHash, buildContexts, buildReceiptAnchorV2, canonicalize, collectSignoffs, } from '../../packages/issue/index.js';
-import { buildOutcomeAttestation, trustReceiptDigest, verifyOutcomeBinding, } from '../../packages/verify/index.js';
+import { buildOutcomeAttestation, buildOutcomeObservation, trustReceiptDigest, verifyOutcomeBinding, verifyOutcomeObservationSet, } from '../../packages/verify/index.js';
 import { predictedEffectsDigest } from '../../packages/verify/effect-predicates.js';
 function keyFromByte(byte) {
     const seed = Buffer.alloc(32, byte);
@@ -28,6 +28,7 @@ const APPROVER_A = keyFromByte(0x61);
 const APPROVER_B = keyFromByte(0x62);
 const LOG_KEY = keyFromByte(0x63);
 const EXECUTOR_KEY = keyFromByte(0x64);
+const OBSERVER_KEY = keyFromByte(0x65);
 const ISSUED = '2026-07-19T16:00:00.000Z';
 const EXECUTED = '2026-07-19T16:01:00.000Z';
 const NOW = '2026-07-19T16:02:00.000Z';
@@ -249,3 +250,160 @@ const suite = {
 };
 writeFileSync(new URL('./outcome-binding.exec.v1.json', import.meta.url), `${JSON.stringify(suite, null, 2)}\n`);
 console.log(`wrote outcome-binding.exec.v1.json (${vectors.length} real-crypto vectors)`);
+const SOURCE_PREDICTIONS = [
+    {
+        effect_type: 'controller_status', target: 'facility:plant-7',
+        required_source_role: 'executor', required_source_class: 'cosa.actuator',
+        predicate: { op: 'eq', value: 'accepted' },
+    },
+    {
+        effect_type: 'delivered_mw', target: 'facility:plant-7',
+        required_source_role: 'independent_observer', required_source_class: 'revenue_meter',
+        predicate: { op: 'gte', value: '5.0' },
+    },
+];
+const SOURCE_COMMON = {
+    receipt_id: receipt.receipt_id,
+    receipt_digest: trustReceiptDigest(receipt),
+    action_hash: receipt.action_hash,
+    action_caid: `caid:sha256:${'66'.repeat(32)}`,
+    consumption_nonce: receipt.consumption.nonce,
+    operation_id: 'operation:plant-7:001',
+};
+function sourceObservation(role, sourceId, sourceClass, observedEffects, privateKey) {
+    return buildOutcomeObservation({
+        ...SOURCE_COMMON,
+        source: {
+            role, source_id: sourceId, source_class: sourceClass, facility_id: 'facility:plant-7',
+        },
+        observed_from: EXECUTED,
+        observed_until: '2026-07-19T16:01:30.000Z',
+        attested_at: '2026-07-19T16:01:45.000Z',
+        observed_effects: observedEffects,
+        signer: { privateKey },
+    });
+}
+const executorObservation = sourceObservation('executor', 'ep:executor:grid-1', 'cosa.actuator', [{ effect_type: 'controller_status', target: 'facility:plant-7', value: 'accepted' }], EXECUTOR_KEY);
+const meterObservation = (value = '5.2') => sourceObservation('independent_observer', 'ep:observer:meter-7', 'revenue_meter', [{ effect_type: 'delivered_mw', target: 'facility:plant-7', value }], OBSERVER_KEY);
+const selfSignedMeterObservation = sourceObservation('independent_observer', 'ep:observer:meter-7', 'revenue_meter', [{ effect_type: 'delivered_mw', target: 'facility:plant-7', value: '5.2' }], EXECUTOR_KEY);
+const sourceOptions = {
+    sourceKeys: {
+        'ep:executor:grid-1': {
+            public_key: publicKey(EXECUTOR_KEY), role: 'executor',
+            source_class: 'cosa.actuator', facility_id: 'facility:plant-7',
+            control_domain_id: 'control-domain:grid-controller', status: 'active',
+            valid_from: '2026-01-01T00:00:00.000Z', valid_to: '2027-01-01T00:00:00.000Z',
+        },
+        'ep:observer:meter-7': {
+            public_key: publicKey(OBSERVER_KEY), role: 'independent_observer',
+            source_class: 'revenue_meter', facility_id: 'facility:plant-7',
+            control_domain_id: 'control-domain:revenue-meter', status: 'active',
+            valid_from: '2026-01-01T00:00:00.000Z', valid_to: '2027-01-01T00:00:00.000Z',
+        },
+    },
+    sourceRequirements: [
+        { role: 'executor', source_class: 'cosa.actuator', min_distinct_sources: 1, distinct_by: ['key', 'control_domain'] },
+        { role: 'independent_observer', source_class: 'revenue_meter', min_distinct_sources: 1, distinct_by: ['key', 'control_domain'] },
+    ],
+    observationWindows: [
+        {
+            role: 'executor', source_class: 'cosa.actuator', relation: 'exact',
+            not_before: EXECUTED, not_after: '2026-07-19T16:01:30.000Z', max_attestation_delay_ms: 30_000,
+        },
+        {
+            role: 'independent_observer', source_class: 'revenue_meter', relation: 'exact',
+            not_before: EXECUTED, not_after: '2026-07-19T16:01:30.000Z', max_attestation_delay_ms: 30_000,
+        },
+    ],
+    now: NOW,
+    expectedReceiptId: SOURCE_COMMON.receipt_id,
+    expectedReceiptDigest: SOURCE_COMMON.receipt_digest,
+    expectedActionHash: SOURCE_COMMON.action_hash,
+    expectedConsumptionNonce: SOURCE_COMMON.consumption_nonce,
+    expectedActionCaid: SOURCE_COMMON.action_caid,
+    expectedOperationId: SOURCE_COMMON.operation_id,
+    expectedFacilityId: 'facility:plant-7',
+};
+const sourceVectors = [
+    { id: 'accept_executor_and_independent_observer', observations: [executorObservation, meterObservation()] },
+    { id: 'indeterminate_without_independent_observer', observations: [executorObservation] },
+    { id: 'divergent_independent_observer_overrides_executor_pass', observations: [executorObservation, meterObservation('3.0')] },
+    {
+        id: 'refuse_executor_key_reused_as_independent_observer',
+        observations: [executorObservation, selfSignedMeterObservation],
+        options_override: {
+            sourceKeys: {
+                ...sourceOptions.sourceKeys,
+                'ep:observer:meter-7': {
+                    ...sourceOptions.sourceKeys['ep:observer:meter-7'],
+                    public_key: publicKey(EXECUTOR_KEY),
+                },
+            },
+        },
+    },
+    {
+        id: 'refuse_shared_executor_observer_control_domain',
+        observations: [executorObservation, meterObservation()],
+        options_override: {
+            sourceKeys: {
+                ...sourceOptions.sourceKeys,
+                'ep:observer:meter-7': {
+                    ...sourceOptions.sourceKeys['ep:observer:meter-7'],
+                    control_domain_id: 'control-domain:grid-controller',
+                },
+            },
+        },
+    },
+    {
+        id: 'refuse_compromised_observer_key',
+        observations: [executorObservation, meterObservation()],
+        options_override: {
+            sourceKeys: {
+                ...sourceOptions.sourceKeys,
+                'ep:observer:meter-7': {
+                    ...sourceOptions.sourceKeys['ep:observer:meter-7'],
+                    status: 'compromised', compromised_at: '2026-07-19T16:01:40.000Z',
+                },
+            },
+        },
+    },
+    {
+        id: 'refuse_observer_window_substitution',
+        observations: [executorObservation, meterObservation()],
+        options_override: {
+            observationWindows: sourceOptions.observationWindows.map((window) => (window.role === 'independent_observer'
+                ? { ...window, not_after: '2026-07-19T16:02:00.000Z' }
+                : window)),
+        },
+    },
+    {
+        id: 'refuse_insufficient_distinct_observer_quorum',
+        observations: [executorObservation, meterObservation()],
+        options_override: {
+            sourceRequirements: sourceOptions.sourceRequirements.map((requirement) => (requirement.role === 'independent_observer'
+                ? { ...requirement, min_distinct_sources: 2 }
+                : requirement)),
+        },
+    },
+];
+for (const vector of sourceVectors) {
+    const result = verifyOutcomeObservationSet(SOURCE_PREDICTIONS, vector.observations, {
+        ...sourceOptions,
+        ...(vector.options_override || {}),
+    });
+    vector.expect = {
+        valid: result.valid,
+        lifecycle_state: result.lifecycle_state,
+        outcome: result.outcome,
+        result_digest: result.result_digest,
+    };
+}
+writeFileSync(new URL('./outcome-binding.sources.v1.json', import.meta.url), `${JSON.stringify({
+    suite: 'EP-OUTCOME-OBSERVATION-v1-real-crypto',
+    profile: 'Pinned executor and independent-observer signatures with exact action, CAID, operation, facility, time-window, and authorization bindings.',
+    vectors_version: '1.0.0',
+    count: sourceVectors.length,
+    common: { predicted_effects: SOURCE_PREDICTIONS, options: sourceOptions },
+    vectors: sourceVectors,
+}, null, 2)}\n`);
+console.log(`wrote outcome-binding.sources.v1.json (${sourceVectors.length} source-reconciliation vectors)`);

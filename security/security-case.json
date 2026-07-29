@@ -1,9 +1,9 @@
 {
   "@version": "EP-SECURITY-CASE-RESOLVED-v2",
   "source": "security/claims.v1.json",
-  "evidence_bundle_sha256": "11e31d971b97aaecd8eeaf9ca03a1fc5f00cbecf668f0496c583df434175f219",
-  "claim_count": 34,
-  "evidence_file_count": 251,
+  "evidence_bundle_sha256": "b80186e4a76a7ef9d1df7b24c664aa636133489f594b76a4a2674b45bb550e03",
+  "claim_count": 35,
+  "evidence_file_count": 252,
   "execution": {
     "required": true,
     "status": "passed",
@@ -80,7 +80,12 @@
         "file": "formal/check-outcome-authority-join.mjs",
         "obligations": [
           "ExactActionReceiptBinding",
+          "IndependentObserverControlDomainIsDistinct",
+          "IndependentObserverKeyIsDistinct",
           "NewestAuthorityDocumentPreventsKeyResurrection",
+          "ObservationWindowIsBound",
+          "OutcomeSourceKeyIsCurrent",
+          "OutcomeSourceQuorumIsSatisfied",
           "PolicyCannotWidenSignedPredictions",
           "RegistryPinsMandatory",
           "ReplayResultDigestCommitsVerdict",
@@ -177,6 +182,7 @@
           "mobile-action-continuity-is-tenant-and-executor-bound",
           "mobile-enrollment-requires-two-verified-rows",
           "model-to-matter-clearance-is-exact-and-single-use",
+          "multi-source-outcome-binding-enforces-independent-current-evidence",
           "network-witness-equivocation-permanently-poisons-stream",
           "outcome-binding-is-exact-and-fail-closed",
           "receipt-program-is-caid-bound-budgeted-and-terminal",
@@ -185,8 +191,8 @@
           "scoped-authority-is-pinned",
           "signed-denial-cannot-authorize"
         ],
-        "scenarios": 72,
-        "paired_negative_controls": 46,
+        "scenarios": 78,
+        "paired_negative_controls": 51,
         "result": "passed"
       },
       {
@@ -650,12 +656,18 @@
         "runner": "node-test",
         "file": "packages/verify/outcome-binding.test.js",
         "titles": [
+          "a relying party can require a distinct-source quorum",
           "accepts real signed receipt + pinned executor attestation + in-bounds outcome",
+          "compromised and expired source keys fail at the attestation instant",
+          "different keys in one control domain do not establish independence",
+          "one Ed25519 key cannot fill executor and independent-observer roles",
           "publishes a deterministic canonical result core and verifies its digest",
+          "relying-party observation windows and attestation delay are enforced",
           "relying-party policy can tighten but cannot replace or loosen signed intent",
           "result digest commits each verdict-relevant result-core component independently",
           "result digest verification rejects a verdict-only replay with the old digest",
-          "result_digest binds the exact signed attestation, not only the verdict"
+          "result_digest binds the exact signed attestation, not only the verdict",
+          "serialized source-policy vectors exercise independence, freshness, windows, and quorum"
         ],
         "result": "passed"
       },
@@ -905,7 +917,7 @@
         "runner": "vitest",
         "file": "tests/outcome-authority-formal.test.ts",
         "titles": [
-          "all six load-bearing obligations hold in the bounded model",
+          "all eleven load-bearing obligations hold in the bounded model",
           "every weakened invariant produces a counterexample",
           "formal case: authority_accept_newest_key_with_registry_pins",
           "formal case: authority_reject_key_omitted_by_newest_document",
@@ -1059,15 +1071,15 @@
     "security-evidence": {
       "kind": "content-addressed-evidence-bundle",
       "filename": "security-case-evidence.v1",
-      "sha256": "11e31d971b97aaecd8eeaf9ca03a1fc5f00cbecf668f0496c583df434175f219",
-      "file_count": 251
+      "sha256": "b80186e4a76a7ef9d1df7b24c664aa636133489f594b76a4a2674b45bb550e03",
+      "file_count": 252
     },
     "verify-sdk": {
       "kind": "npm-tarball",
       "package": "@emilia-protocol/verify",
       "version": "3.17.1",
       "filename": "emilia-protocol-verify-3.17.1.tgz",
-      "sha256": "de6e741cb52501474c830d31b8da038864d09a086ac1bf160f8470db6446ae2d",
+      "sha256": "cdb9e354b8c40c2558a517ee71b5e277e7ebca3479180b653be0a936d5460f1a",
       "file_count": 267
     }
   },
@@ -1219,11 +1231,11 @@
       "release_artifact_hashes": [
         {
           "artifact_id": "verify-sdk",
-          "sha256": "de6e741cb52501474c830d31b8da038864d09a086ac1bf160f8470db6446ae2d"
+          "sha256": "cdb9e354b8c40c2558a517ee71b5e277e7ebca3479180b653be0a936d5460f1a"
         },
         {
           "artifact_id": "security-evidence",
-          "sha256": "11e31d971b97aaecd8eeaf9ca03a1fc5f00cbecf668f0496c583df434175f219"
+          "sha256": "b80186e4a76a7ef9d1df7b24c664aa636133489f594b76a4a2674b45bb550e03"
         }
       ]
     },
@@ -1482,11 +1494,11 @@
       "release_artifact_hashes": [
         {
           "artifact_id": "verify-sdk",
-          "sha256": "de6e741cb52501474c830d31b8da038864d09a086ac1bf160f8470db6446ae2d"
+          "sha256": "cdb9e354b8c40c2558a517ee71b5e277e7ebca3479180b653be0a936d5460f1a"
         },
         {
           "artifact_id": "security-evidence",
-          "sha256": "11e31d971b97aaecd8eeaf9ca03a1fc5f00cbecf668f0496c583df434175f219"
+          "sha256": "b80186e4a76a7ef9d1df7b24c664aa636133489f594b76a4a2674b45bb550e03"
         }
       ]
     },
@@ -1591,11 +1603,11 @@
       "release_artifact_hashes": [
         {
           "artifact_id": "verify-sdk",
-          "sha256": "de6e741cb52501474c830d31b8da038864d09a086ac1bf160f8470db6446ae2d"
+          "sha256": "cdb9e354b8c40c2558a517ee71b5e277e7ebca3479180b653be0a936d5460f1a"
         },
         {
           "artifact_id": "security-evidence",
-          "sha256": "11e31d971b97aaecd8eeaf9ca03a1fc5f00cbecf668f0496c583df434175f219"
+          "sha256": "b80186e4a76a7ef9d1df7b24c664aa636133489f594b76a4a2674b45bb550e03"
         }
       ]
     },
@@ -1757,11 +1769,11 @@
       "release_artifact_hashes": [
         {
           "artifact_id": "verify-sdk",
-          "sha256": "de6e741cb52501474c830d31b8da038864d09a086ac1bf160f8470db6446ae2d"
+          "sha256": "cdb9e354b8c40c2558a517ee71b5e277e7ebca3479180b653be0a936d5460f1a"
         },
         {
           "artifact_id": "security-evidence",
-          "sha256": "11e31d971b97aaecd8eeaf9ca03a1fc5f00cbecf668f0496c583df434175f219"
+          "sha256": "b80186e4a76a7ef9d1df7b24c664aa636133489f594b76a4a2674b45bb550e03"
         }
       ]
     },
@@ -1881,11 +1893,11 @@
       "release_artifact_hashes": [
         {
           "artifact_id": "verify-sdk",
-          "sha256": "de6e741cb52501474c830d31b8da038864d09a086ac1bf160f8470db6446ae2d"
+          "sha256": "cdb9e354b8c40c2558a517ee71b5e277e7ebca3479180b653be0a936d5460f1a"
         },
         {
           "artifact_id": "security-evidence",
-          "sha256": "11e31d971b97aaecd8eeaf9ca03a1fc5f00cbecf668f0496c583df434175f219"
+          "sha256": "b80186e4a76a7ef9d1df7b24c664aa636133489f594b76a4a2674b45bb550e03"
         }
       ]
     },
@@ -2080,7 +2092,7 @@
       "release_artifact_hashes": [
         {
           "artifact_id": "security-evidence",
-          "sha256": "11e31d971b97aaecd8eeaf9ca03a1fc5f00cbecf668f0496c583df434175f219"
+          "sha256": "b80186e4a76a7ef9d1df7b24c664aa636133489f594b76a4a2674b45bb550e03"
         }
       ]
     },
@@ -2347,7 +2359,7 @@
         },
         {
           "artifact_id": "security-evidence",
-          "sha256": "11e31d971b97aaecd8eeaf9ca03a1fc5f00cbecf668f0496c583df434175f219"
+          "sha256": "b80186e4a76a7ef9d1df7b24c664aa636133489f594b76a4a2674b45bb550e03"
         }
       ]
     },
@@ -2544,11 +2556,11 @@
       "release_artifact_hashes": [
         {
           "artifact_id": "verify-sdk",
-          "sha256": "de6e741cb52501474c830d31b8da038864d09a086ac1bf160f8470db6446ae2d"
+          "sha256": "cdb9e354b8c40c2558a517ee71b5e277e7ebca3479180b653be0a936d5460f1a"
         },
         {
           "artifact_id": "security-evidence",
-          "sha256": "11e31d971b97aaecd8eeaf9ca03a1fc5f00cbecf668f0496c583df434175f219"
+          "sha256": "b80186e4a76a7ef9d1df7b24c664aa636133489f594b76a4a2674b45bb550e03"
         }
       ]
     },
@@ -2727,11 +2739,11 @@
       "release_artifact_hashes": [
         {
           "artifact_id": "verify-sdk",
-          "sha256": "de6e741cb52501474c830d31b8da038864d09a086ac1bf160f8470db6446ae2d"
+          "sha256": "cdb9e354b8c40c2558a517ee71b5e277e7ebca3479180b653be0a936d5460f1a"
         },
         {
           "artifact_id": "security-evidence",
-          "sha256": "11e31d971b97aaecd8eeaf9ca03a1fc5f00cbecf668f0496c583df434175f219"
+          "sha256": "b80186e4a76a7ef9d1df7b24c664aa636133489f594b76a4a2674b45bb550e03"
         }
       ]
     },
@@ -2893,7 +2905,7 @@
         },
         {
           "file": "tests/outcome-authority-formal.test.ts",
-          "title": "all six load-bearing obligations hold in the bounded model",
+          "title": "all eleven load-bearing obligations hold in the bounded model",
           "runner": "vitest"
         },
         {
@@ -2947,11 +2959,245 @@
       "release_artifact_hashes": [
         {
           "artifact_id": "verify-sdk",
-          "sha256": "de6e741cb52501474c830d31b8da038864d09a086ac1bf160f8470db6446ae2d"
+          "sha256": "cdb9e354b8c40c2558a517ee71b5e277e7ebca3479180b653be0a936d5460f1a"
         },
         {
           "artifact_id": "security-evidence",
-          "sha256": "11e31d971b97aaecd8eeaf9ca03a1fc5f00cbecf668f0496c583df434175f219"
+          "sha256": "b80186e4a76a7ef9d1df7b24c664aa636133489f594b76a4a2674b45bb550e03"
+        }
+      ]
+    },
+    {
+      "claim_id": "multi-source-outcome-binding-enforces-independent-current-evidence",
+      "statement": "Multi-source Outcome Binding credits an independent-observer role only when the observation signature verifies under a relying-party-pinned, current Ed25519 key whose canonical key identity and declared control domain differ from every non-independent source. Relying-party source requirements can require distinct-source quorum by key and control domain, and observation-window policy binds the accepted observation interval and maximum attestation delay before reconciliation can be valid.",
+      "acceptance_roots": [
+        "the relying party pins each source identifier to its Ed25519 key, role, source class, control domain, status, validity interval, and any compromise time",
+        "the relying party declares source quorum, distinctness dimensions, observation-window relation, and maximum attestation delay",
+        "the relying party supplies an authentic evaluation time and exact receipt, action, CAID, operation, consumption, and facility bindings",
+        "control_domain_id is a relying-party declaration and is not cryptographic proof of organizational or physical independence"
+      ],
+      "enforcement_path": [
+        {
+          "language": "javascript",
+          "file": "packages/verify/src/outcome-binding.ts",
+          "symbol": "verifyOutcomeObservation",
+          "exported": true
+        },
+        {
+          "language": "javascript",
+          "file": "packages/verify/src/outcome-binding.ts",
+          "symbol": "verifyOutcomeObservationSet",
+          "exported": true
+        },
+        {
+          "language": "javascript",
+          "file": "packages/verify/src/outcome-binding.ts",
+          "symbol": "outcomeSourceKeyId",
+          "exported": true
+        }
+      ],
+      "implementations": [
+        {
+          "language": "javascript",
+          "file": "packages/verify/index.js",
+          "export": "verifyOutcomeObservationSet"
+        }
+      ],
+      "language_coverage": {
+        "javascript": {
+          "status": "covered",
+          "evidence": "conformance/vectors/outcome-binding.sources.v1.json"
+        },
+        "python": {
+          "status": "gap",
+          "reason": "The multi-source independence, status, window, and quorum extension is not yet ported; the legacy exact executor-attestation path remains covered separately."
+        },
+        "go": {
+          "status": "gap",
+          "reason": "The multi-source independence, status, window, and quorum extension is not yet ported; the legacy exact executor-attestation path remains covered separately."
+        }
+      },
+      "vectors": [
+        {
+          "suite": "conformance/vectors/outcome-binding.sources.v1.json",
+          "case_id": "accept_executor_and_independent_observer",
+          "polarity": "positive",
+          "expect": {
+            "valid": true
+          },
+          "execution": {
+            "runner": "node-test",
+            "file": "packages/verify/outcome-binding.test.js",
+            "title": "serialized source-policy vectors exercise independence, freshness, windows, and quorum"
+          }
+        },
+        {
+          "suite": "conformance/vectors/outcome-binding.sources.v1.json",
+          "case_id": "refuse_executor_key_reused_as_independent_observer",
+          "polarity": "negative",
+          "expect": {
+            "valid": false
+          },
+          "execution": {
+            "runner": "node-test",
+            "file": "packages/verify/outcome-binding.test.js",
+            "title": "serialized source-policy vectors exercise independence, freshness, windows, and quorum"
+          }
+        },
+        {
+          "suite": "conformance/vectors/outcome-binding.sources.v1.json",
+          "case_id": "refuse_shared_executor_observer_control_domain",
+          "polarity": "negative",
+          "expect": {
+            "valid": false
+          },
+          "execution": {
+            "runner": "node-test",
+            "file": "packages/verify/outcome-binding.test.js",
+            "title": "serialized source-policy vectors exercise independence, freshness, windows, and quorum"
+          }
+        },
+        {
+          "suite": "conformance/vectors/outcome-binding.sources.v1.json",
+          "case_id": "refuse_compromised_observer_key",
+          "polarity": "negative",
+          "expect": {
+            "valid": false
+          },
+          "execution": {
+            "runner": "node-test",
+            "file": "packages/verify/outcome-binding.test.js",
+            "title": "serialized source-policy vectors exercise independence, freshness, windows, and quorum"
+          }
+        },
+        {
+          "suite": "conformance/vectors/outcome-binding.sources.v1.json",
+          "case_id": "refuse_observer_window_substitution",
+          "polarity": "negative",
+          "expect": {
+            "valid": false
+          },
+          "execution": {
+            "runner": "node-test",
+            "file": "packages/verify/outcome-binding.test.js",
+            "title": "serialized source-policy vectors exercise independence, freshness, windows, and quorum"
+          }
+        },
+        {
+          "suite": "conformance/vectors/outcome-binding.sources.v1.json",
+          "case_id": "refuse_insufficient_distinct_observer_quorum",
+          "polarity": "negative",
+          "expect": {
+            "valid": false
+          },
+          "execution": {
+            "runner": "node-test",
+            "file": "packages/verify/outcome-binding.test.js",
+            "title": "serialized source-policy vectors exercise independence, freshness, windows, and quorum"
+          }
+        }
+      ],
+      "tests": [
+        {
+          "file": "packages/verify/outcome-binding.test.js",
+          "title": "one Ed25519 key cannot fill executor and independent-observer roles",
+          "runner": "node-test"
+        },
+        {
+          "file": "packages/verify/outcome-binding.test.js",
+          "title": "different keys in one control domain do not establish independence",
+          "runner": "node-test"
+        },
+        {
+          "file": "packages/verify/outcome-binding.test.js",
+          "title": "compromised and expired source keys fail at the attestation instant",
+          "runner": "node-test"
+        },
+        {
+          "file": "packages/verify/outcome-binding.test.js",
+          "title": "relying-party observation windows and attestation delay are enforced",
+          "runner": "node-test"
+        },
+        {
+          "file": "packages/verify/outcome-binding.test.js",
+          "title": "a relying party can require a distinct-source quorum",
+          "runner": "node-test"
+        },
+        {
+          "file": "packages/verify/outcome-binding.test.js",
+          "title": "serialized source-policy vectors exercise independence, freshness, windows, and quorum",
+          "runner": "node-test"
+        },
+        {
+          "file": "tests/outcome-authority-formal.test.ts",
+          "title": "all eleven load-bearing obligations hold in the bounded model",
+          "runner": "vitest"
+        },
+        {
+          "file": "tests/outcome-authority-formal.test.ts",
+          "title": "every weakened invariant produces a counterexample",
+          "runner": "vitest"
+        }
+      ],
+      "formal": [
+        {
+          "status": "partial",
+          "method": "bounded_exhaustive_state_exploration",
+          "model": "formal/outcome-authority-join.model.mjs",
+          "runner": "formal/check-outcome-authority-join.mjs",
+          "obligations": [
+            "IndependentObserverKeyIsDistinct",
+            "IndependentObserverControlDomainIsDistinct",
+            "OutcomeSourceKeyIsCurrent",
+            "ObservationWindowIsBound",
+            "OutcomeSourceQuorumIsSatisfied"
+          ],
+          "result_evidence": "formal/results/outcome-authority-join.summary.txt",
+          "scope": "Same-team bounded exhaustive exploration of 49,152 outcome-source states and 147,456 digest encodings. Signatures and SHA-256 are ideal constructors, control-domain identity is an input, and the selected-scenario mapping is not a mechanized implementation refinement proof.",
+          "scenario_evidence": "formal/runtime-scenarios.v2.json",
+          "scenario_runner": "scripts/check-formal-runtime-traces.mjs",
+          "conformance_evidence": "formal/results/formal-runtime-scenario-conformance.v2.json",
+          "scenario_coverage": "selected",
+          "covered_actions": [
+            "VerifyIndependentCurrentOutcomeSources",
+            "RefuseReusedIndependentObserverKey",
+            "RefuseSharedObserverControlDomain",
+            "RefuseNoncurrentOutcomeSourceKey",
+            "RefuseUnboundObservationWindow",
+            "RefuseInsufficientOutcomeSourceQuorum"
+          ],
+          "covered_obligations": [
+            "IndependentObserverKeyIsDistinct",
+            "IndependentObserverControlDomainIsDistinct",
+            "OutcomeSourceKeyIsCurrent",
+            "ObservationWindowIsBound",
+            "OutcomeSourceQuorumIsSatisfied"
+          ]
+        }
+      ],
+      "assumptions": [
+        "Ed25519 signatures are unforgeable and SHA-256 collisions are infeasible",
+        "the relying party provisions authentic source pins, control-domain declarations, source requirements, observation windows, and evaluation time",
+        "each source signs the observations it actually reports; observation truth and actual operational separation are not inferred"
+      ],
+      "exclusions": [
+        "the verifier does not establish physical truth or prove that a declared control domain is organizationally independent",
+        "the profile does not supply a trusted time source for key status, observation windows, or attestation delay",
+        "no external witness or transparency operator is required or evidenced by this same-team claim",
+        "the JavaScript implementation, bounded model, checker, and vectors are same-team artifacts and are not independent implementation evidence"
+      ],
+      "release_artifacts": [
+        "verify-sdk",
+        "security-evidence"
+      ],
+      "release_artifact_hashes": [
+        {
+          "artifact_id": "verify-sdk",
+          "sha256": "cdb9e354b8c40c2558a517ee71b5e277e7ebca3479180b653be0a936d5460f1a"
+        },
+        {
+          "artifact_id": "security-evidence",
+          "sha256": "b80186e4a76a7ef9d1df7b24c664aa636133489f594b76a4a2674b45bb550e03"
         }
       ]
     },
@@ -3123,7 +3369,7 @@
         },
         {
           "file": "tests/outcome-authority-formal.test.ts",
-          "title": "all six load-bearing obligations hold in the bounded model",
+          "title": "all eleven load-bearing obligations hold in the bounded model",
           "runner": "vitest"
         },
         {
@@ -3176,7 +3422,7 @@
       "release_artifact_hashes": [
         {
           "artifact_id": "security-evidence",
-          "sha256": "11e31d971b97aaecd8eeaf9ca03a1fc5f00cbecf668f0496c583df434175f219"
+          "sha256": "b80186e4a76a7ef9d1df7b24c664aa636133489f594b76a4a2674b45bb550e03"
         }
       ]
     },
@@ -3281,11 +3527,11 @@
       "release_artifact_hashes": [
         {
           "artifact_id": "verify-sdk",
-          "sha256": "de6e741cb52501474c830d31b8da038864d09a086ac1bf160f8470db6446ae2d"
+          "sha256": "cdb9e354b8c40c2558a517ee71b5e277e7ebca3479180b653be0a936d5460f1a"
         },
         {
           "artifact_id": "security-evidence",
-          "sha256": "11e31d971b97aaecd8eeaf9ca03a1fc5f00cbecf668f0496c583df434175f219"
+          "sha256": "b80186e4a76a7ef9d1df7b24c664aa636133489f594b76a4a2674b45bb550e03"
         }
       ]
     },
@@ -3499,7 +3745,7 @@
         },
         {
           "artifact_id": "security-evidence",
-          "sha256": "11e31d971b97aaecd8eeaf9ca03a1fc5f00cbecf668f0496c583df434175f219"
+          "sha256": "b80186e4a76a7ef9d1df7b24c664aa636133489f594b76a4a2674b45bb550e03"
         }
       ]
     },
@@ -3641,7 +3887,7 @@
         },
         {
           "artifact_id": "security-evidence",
-          "sha256": "11e31d971b97aaecd8eeaf9ca03a1fc5f00cbecf668f0496c583df434175f219"
+          "sha256": "b80186e4a76a7ef9d1df7b24c664aa636133489f594b76a4a2674b45bb550e03"
         }
       ]
     },
@@ -4058,7 +4304,7 @@
         },
         {
           "artifact_id": "security-evidence",
-          "sha256": "11e31d971b97aaecd8eeaf9ca03a1fc5f00cbecf668f0496c583df434175f219"
+          "sha256": "b80186e4a76a7ef9d1df7b24c664aa636133489f594b76a4a2674b45bb550e03"
         }
       ]
     },
@@ -4219,7 +4465,7 @@
         },
         {
           "artifact_id": "security-evidence",
-          "sha256": "11e31d971b97aaecd8eeaf9ca03a1fc5f00cbecf668f0496c583df434175f219"
+          "sha256": "b80186e4a76a7ef9d1df7b24c664aa636133489f594b76a4a2674b45bb550e03"
         }
       ]
     },
@@ -4466,7 +4712,7 @@
         },
         {
           "artifact_id": "security-evidence",
-          "sha256": "11e31d971b97aaecd8eeaf9ca03a1fc5f00cbecf668f0496c583df434175f219"
+          "sha256": "b80186e4a76a7ef9d1df7b24c664aa636133489f594b76a4a2674b45bb550e03"
         }
       ]
     },
@@ -4600,7 +4846,7 @@
       "release_artifact_hashes": [
         {
           "artifact_id": "security-evidence",
-          "sha256": "11e31d971b97aaecd8eeaf9ca03a1fc5f00cbecf668f0496c583df434175f219"
+          "sha256": "b80186e4a76a7ef9d1df7b24c664aa636133489f594b76a4a2674b45bb550e03"
         }
       ]
     },
@@ -4719,11 +4965,11 @@
       "release_artifact_hashes": [
         {
           "artifact_id": "verify-sdk",
-          "sha256": "de6e741cb52501474c830d31b8da038864d09a086ac1bf160f8470db6446ae2d"
+          "sha256": "cdb9e354b8c40c2558a517ee71b5e277e7ebca3479180b653be0a936d5460f1a"
         },
         {
           "artifact_id": "security-evidence",
-          "sha256": "11e31d971b97aaecd8eeaf9ca03a1fc5f00cbecf668f0496c583df434175f219"
+          "sha256": "b80186e4a76a7ef9d1df7b24c664aa636133489f594b76a4a2674b45bb550e03"
         }
       ]
     },
@@ -4857,7 +5103,7 @@
       "release_artifact_hashes": [
         {
           "artifact_id": "security-evidence",
-          "sha256": "11e31d971b97aaecd8eeaf9ca03a1fc5f00cbecf668f0496c583df434175f219"
+          "sha256": "b80186e4a76a7ef9d1df7b24c664aa636133489f594b76a4a2674b45bb550e03"
         }
       ]
     },
@@ -5074,7 +5320,7 @@
       "release_artifact_hashes": [
         {
           "artifact_id": "security-evidence",
-          "sha256": "11e31d971b97aaecd8eeaf9ca03a1fc5f00cbecf668f0496c583df434175f219"
+          "sha256": "b80186e4a76a7ef9d1df7b24c664aa636133489f594b76a4a2674b45bb550e03"
         }
       ]
     },
@@ -5284,7 +5530,7 @@
       "release_artifact_hashes": [
         {
           "artifact_id": "security-evidence",
-          "sha256": "11e31d971b97aaecd8eeaf9ca03a1fc5f00cbecf668f0496c583df434175f219"
+          "sha256": "b80186e4a76a7ef9d1df7b24c664aa636133489f594b76a4a2674b45bb550e03"
         }
       ]
     },
@@ -5500,7 +5746,7 @@
       "release_artifact_hashes": [
         {
           "artifact_id": "security-evidence",
-          "sha256": "11e31d971b97aaecd8eeaf9ca03a1fc5f00cbecf668f0496c583df434175f219"
+          "sha256": "b80186e4a76a7ef9d1df7b24c664aa636133489f594b76a4a2674b45bb550e03"
         }
       ]
     },
@@ -5804,7 +6050,7 @@
       "release_artifact_hashes": [
         {
           "artifact_id": "security-evidence",
-          "sha256": "11e31d971b97aaecd8eeaf9ca03a1fc5f00cbecf668f0496c583df434175f219"
+          "sha256": "b80186e4a76a7ef9d1df7b24c664aa636133489f594b76a4a2674b45bb550e03"
         }
       ]
     },
@@ -6012,11 +6258,11 @@
       "release_artifact_hashes": [
         {
           "artifact_id": "verify-sdk",
-          "sha256": "de6e741cb52501474c830d31b8da038864d09a086ac1bf160f8470db6446ae2d"
+          "sha256": "cdb9e354b8c40c2558a517ee71b5e277e7ebca3479180b653be0a936d5460f1a"
         },
         {
           "artifact_id": "security-evidence",
-          "sha256": "11e31d971b97aaecd8eeaf9ca03a1fc5f00cbecf668f0496c583df434175f219"
+          "sha256": "b80186e4a76a7ef9d1df7b24c664aa636133489f594b76a4a2674b45bb550e03"
         }
       ]
     },
@@ -6178,11 +6424,11 @@
       "release_artifact_hashes": [
         {
           "artifact_id": "verify-sdk",
-          "sha256": "de6e741cb52501474c830d31b8da038864d09a086ac1bf160f8470db6446ae2d"
+          "sha256": "cdb9e354b8c40c2558a517ee71b5e277e7ebca3479180b653be0a936d5460f1a"
         },
         {
           "artifact_id": "security-evidence",
-          "sha256": "11e31d971b97aaecd8eeaf9ca03a1fc5f00cbecf668f0496c583df434175f219"
+          "sha256": "b80186e4a76a7ef9d1df7b24c664aa636133489f594b76a4a2674b45bb550e03"
         }
       ]
     },
@@ -6357,11 +6603,11 @@
         },
         {
           "artifact_id": "verify-sdk",
-          "sha256": "de6e741cb52501474c830d31b8da038864d09a086ac1bf160f8470db6446ae2d"
+          "sha256": "cdb9e354b8c40c2558a517ee71b5e277e7ebca3479180b653be0a936d5460f1a"
         },
         {
           "artifact_id": "security-evidence",
-          "sha256": "11e31d971b97aaecd8eeaf9ca03a1fc5f00cbecf668f0496c583df434175f219"
+          "sha256": "b80186e4a76a7ef9d1df7b24c664aa636133489f594b76a4a2674b45bb550e03"
         }
       ]
     },
@@ -6536,7 +6782,7 @@
         },
         {
           "artifact_id": "security-evidence",
-          "sha256": "11e31d971b97aaecd8eeaf9ca03a1fc5f00cbecf668f0496c583df434175f219"
+          "sha256": "b80186e4a76a7ef9d1df7b24c664aa636133489f594b76a4a2674b45bb550e03"
         }
       ]
     },
@@ -6682,11 +6928,11 @@
         },
         {
           "artifact_id": "verify-sdk",
-          "sha256": "de6e741cb52501474c830d31b8da038864d09a086ac1bf160f8470db6446ae2d"
+          "sha256": "cdb9e354b8c40c2558a517ee71b5e277e7ebca3479180b653be0a936d5460f1a"
         },
         {
           "artifact_id": "security-evidence",
-          "sha256": "11e31d971b97aaecd8eeaf9ca03a1fc5f00cbecf668f0496c583df434175f219"
+          "sha256": "b80186e4a76a7ef9d1df7b24c664aa636133489f594b76a4a2674b45bb550e03"
         }
       ]
     },
@@ -6827,7 +7073,7 @@
         },
         {
           "artifact_id": "security-evidence",
-          "sha256": "11e31d971b97aaecd8eeaf9ca03a1fc5f00cbecf668f0496c583df434175f219"
+          "sha256": "b80186e4a76a7ef9d1df7b24c664aa636133489f594b76a4a2674b45bb550e03"
         }
       ]
     },
@@ -7026,7 +7272,7 @@
       "release_artifact_hashes": [
         {
           "artifact_id": "security-evidence",
-          "sha256": "11e31d971b97aaecd8eeaf9ca03a1fc5f00cbecf668f0496c583df434175f219"
+          "sha256": "b80186e4a76a7ef9d1df7b24c664aa636133489f594b76a4a2674b45bb550e03"
         }
       ]
     },
@@ -7440,7 +7686,7 @@
         },
         {
           "artifact_id": "security-evidence",
-          "sha256": "11e31d971b97aaecd8eeaf9ca03a1fc5f00cbecf668f0496c583df434175f219"
+          "sha256": "b80186e4a76a7ef9d1df7b24c664aa636133489f594b76a4a2674b45bb550e03"
         }
       ]
     },
@@ -7821,7 +8067,7 @@
         },
         {
           "artifact_id": "security-evidence",
-          "sha256": "11e31d971b97aaecd8eeaf9ca03a1fc5f00cbecf668f0496c583df434175f219"
+          "sha256": "b80186e4a76a7ef9d1df7b24c664aa636133489f594b76a4a2674b45bb550e03"
         }
       ]
     },
@@ -8024,7 +8270,7 @@
         },
         {
           "artifact_id": "security-evidence",
-          "sha256": "11e31d971b97aaecd8eeaf9ca03a1fc5f00cbecf668f0496c583df434175f219"
+          "sha256": "b80186e4a76a7ef9d1df7b24c664aa636133489f594b76a4a2674b45bb550e03"
         }
       ]
     }
@@ -8128,7 +8374,7 @@
     },
     {
       "path": "conformance/vectors/grace-mobile-grid.v1.json",
-      "sha256": "be4a5cefea9c2446e9d86d824c193748db06929fc285880327393d838f59298f"
+      "sha256": "a6d4c0ded4e7cde3c3ed3104334a7c361f762b91acac062707d03ad3d2cc34d8"
     },
     {
       "path": "conformance/vectors/model-to-matter.v1.json",
@@ -8137,6 +8383,10 @@
     {
       "path": "conformance/vectors/outcome-binding.exec.v1.json",
       "sha256": "64f759bf8004812f3521df5dc0a0f4108ccf7746fe9fbdb326ab1ac1142a25f1"
+    },
+    {
+      "path": "conformance/vectors/outcome-binding.sources.v1.json",
+      "sha256": "6c966c4a2d1e478a5698024a6830e6fa0fa9bdf6e2b1f1b6f7bd7543d9879636"
     },
     {
       "path": "conformance/vectors/platform-attestation.v1.json",
@@ -8208,7 +8458,7 @@
     },
     {
       "path": "formal/check-outcome-authority-join.mjs",
-      "sha256": "8926897f9a71a3436cca5a2c81e0d4d440629d116ea77c24926b352c50710794"
+      "sha256": "e202e03bfd8f0b224e238bda456041b058a153c391c5c3988116b1b0b61d0e40"
     },
     {
       "path": "formal/check-receipt-program.mjs",
@@ -8296,11 +8546,11 @@
     },
     {
       "path": "formal/outcome-authority-join.cases.json",
-      "sha256": "f235cfcdc0ecf528da8545583816f7570ca56023f6ce84aa860e61999167616b"
+      "sha256": "c913bb47d2af4513fbb7d51e1e4721db430b837e1fe7ae40ab74180b423b8e36"
     },
     {
       "path": "formal/outcome-authority-join.model.mjs",
-      "sha256": "4432adf2297621cce7d92b1ad1c4d28eae9c068722dce42f7760d3310da8f65a"
+      "sha256": "0719fc242905842088c33994c9f2c20fc6cb83b39f01e10f3020e9be0e25e60a"
     },
     {
       "path": "formal/receipt-program.model.mjs",
@@ -8360,11 +8610,11 @@
     },
     {
       "path": "formal/results/formal-runtime-scenario-conformance.v2.json",
-      "sha256": "b1ead8b829e761643c04e6c61d62fdf223581e1f828d27aa6337d61a5339721e"
+      "sha256": "cf05adf14ff6254097d394134cd9e637e56dc04eb8ab5736cc75d0a8c37ab2a7"
     },
     {
       "path": "formal/results/outcome-authority-join.summary.txt",
-      "sha256": "653a50ab1ec4242eb9f0b279adf75153de2f298133c14471a58ec46d4ae6c81d"
+      "sha256": "2d268c9d85499e7887322b056cd6b861f876e38a0dc8fceba2616b049f49a500"
     },
     {
       "path": "formal/results/receipt-program.summary.txt",
@@ -8384,7 +8634,7 @@
     },
     {
       "path": "formal/runtime-scenarios.v2.json",
-      "sha256": "0bf47fafa6d4be8ae1a72bfad7cba749fefadd1d2e34a35ace64653e549e28ca"
+      "sha256": "888e7b464b5ea55fff0d8e1a5d828091a1c5f0ef61c274d1318bb9d398b858ab"
     },
     {
       "path": "formal/tamarin/ep_reliance_composed.spthy",
@@ -8424,11 +8674,11 @@
     },
     {
       "path": "lib/frontier/model-to-matter.ts",
-      "sha256": "27a5dd1ab3ec6cdbee3c3cb9efc52c7e8fbdae4bc6df9634abd53f009744cf75"
+      "sha256": "c7798fcf53ed945bdc41314305d1e564015c127c7ab1e1eefaaa0f29c7b724b1"
     },
     {
       "path": "lib/grace/mobile-grid.ts",
-      "sha256": "e21df5a39840c39cff43c906a019a34e63266e0d5cdb502c2d3159aa76c43024"
+      "sha256": "36e3c17e26d599edca3b05723bef1a141f9a647e2419d739430d159613f04ebb"
     },
     {
       "path": "lib/guard-signoff.ts",
@@ -8776,7 +9026,7 @@
     },
     {
       "path": "packages/verify/outcome-binding.test.js",
-      "sha256": "c10c63965e578ac722390bcc48f093231fe36b5eeccd882ff2a58fb325ee504c"
+      "sha256": "1f244a14bf4e81caf9c8e0dd33a187c18a474c20e30cde9bfb90d244cc5513cd"
     },
     {
       "path": "packages/verify/platform-attestation.js",
@@ -8828,11 +9078,11 @@
     },
     {
       "path": "packages/verify/src/index.ts",
-      "sha256": "c8fc08b317f77fa0479a813539444c045313e43b8cfe01c4667eef21c6d78658"
+      "sha256": "1ddcd9cbc0aeb7e1b5b389ec943529944ec79e4953ad0ce8ce57a914e21145e4"
     },
     {
       "path": "packages/verify/src/outcome-binding.ts",
-      "sha256": "0d0ef70dbf9e5d2a2407b6f393169c39931422f0b7d8df438db02605a2c805f0"
+      "sha256": "e239a2ead8ddd10650c795e99508b2cd21c1f07188fbffbea1b520b0e8598a1b"
     },
     {
       "path": "packages/verify/src/platform-attestation.ts",
@@ -8904,7 +9154,7 @@
     },
     {
       "path": "security/claims.v1.json",
-      "sha256": "1f25510d8b319b78dce5da3fa1f2d7b65cad41d31543ae1a80dcc6453957eb81"
+      "sha256": "640d7ad996e05252252dd852796482c6821baeb785b78d8c2e20f2a07abb001a"
     },
     {
       "path": "security/vectors.v1.json",
@@ -8968,7 +9218,7 @@
     },
     {
       "path": "tests/grace-mobile-grid.test.ts",
-      "sha256": "8d81c870c9c77240c821acd8e176fa753c363b90237169f6bdec78723804b832"
+      "sha256": "a3ea54fa425175090ee1da3051ca742ef921f5b1e40c25c569fe925864a1b90a"
     },
     {
       "path": "tests/mobile-action-continuity-routes.test.ts",
@@ -8980,7 +9230,7 @@
     },
     {
       "path": "tests/model-to-matter.test.ts",
-      "sha256": "a919f6fbc5c3b6a3c35073686a2f1eed0148d8f69f5abc7c6c06e3c6fc2ae555"
+      "sha256": "1bb908dd142890c162f625fab6a4115b719551b9d6cddeef2e21f748d051709c"
     },
     {
       "path": "tests/ncpdp-privacy.test.ts",
@@ -8988,7 +9238,7 @@
     },
     {
       "path": "tests/outcome-authority-formal.test.ts",
-      "sha256": "a635be72aa6bd43cf1bf9532bec1d4b556244e8995bd4fd1ba916e89633a1e99"
+      "sha256": "362359c36d077ca81ecdea1ea5b641abcf092ce39fd0146b1e6e04a15c195896"
     },
     {
       "path": "tests/release-approval.test.ts",

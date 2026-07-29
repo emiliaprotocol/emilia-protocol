@@ -39,10 +39,14 @@ import { verifyAuthorityProgram } from "../../../packages/verify/dist/authority-
 import {
   canonicalize as verifyCanonicalize,
   verifyOutcomeBinding,
+  verifyOutcomeObservationSet,
 } from "../../../packages/verify/dist/index.js";
 
 const OUTCOME_VECTORS = readJson(
   new URL("../../vectors/outcome-binding.exec.v1.json", import.meta.url),
+);
+const OUTCOME_SOURCE_VECTORS = readJson(
+  new URL("../../vectors/outcome-binding.sources.v1.json", import.meta.url),
 );
 const AUTHORITY_JOIN_VECTORS = readJson(
   new URL(
@@ -323,6 +327,115 @@ export async function runOutcomeBindingScenario(scenario) {
         },
       },
     ],
+    relation: relation(sharedInput, formalProjection, runtimeProjection),
+  };
+}
+
+export async function runOutcomeSourceScenario(scenario) {
+  const vectorsByScenario = Object.freeze({
+    "outcome-sources-independent-current-accept":
+      "accept_executor_and_independent_observer",
+    "outcome-sources-reused-key-refused":
+      "refuse_executor_key_reused_as_independent_observer",
+    "outcome-sources-shared-domain-refused":
+      "refuse_shared_executor_observer_control_domain",
+    "outcome-sources-noncurrent-key-refused":
+      "refuse_compromised_observer_key",
+    "outcome-sources-window-substitution-refused":
+      "refuse_observer_window_substitution",
+    "outcome-sources-insufficient-quorum-refused":
+      "refuse_insufficient_distinct_observer_quorum",
+  });
+  const vectorId = vectorsByScenario[scenario] ?? null;
+  if (!vectorId) {
+    throw new Error(`unsupported outcome-source refinement scenario: ${scenario}`);
+  }
+  const vector = OUTCOME_SOURCE_VECTORS.vectors.find(
+    (candidate) => candidate.id === vectorId,
+  );
+  assertBridge(vector, `outcome-source vector ${vectorId} is missing`);
+  const result = verifyOutcomeObservationSet(
+    OUTCOME_SOURCE_VECTORS.common.predicted_effects,
+    vector.observations,
+    {
+      ...OUTCOME_SOURCE_VECTORS.common.options,
+      ...(vector.options_override ?? {}),
+    },
+  );
+  const errors = result.errors ?? [];
+  const sourceKeysDistinct = !errors.some((error) =>
+    error.includes("independent_source_key_reused"),
+  );
+  const controlDomainsDistinct = !errors.some((error) =>
+    error.includes("independent_control_domain_reused"),
+  );
+  const sourceKeyCurrent = !errors.some((error) =>
+    error.includes("outcome_source_key_not_current"),
+  );
+  const observationWindowValid = result.checks?.observation_windows === true;
+  const sourceQuorumMet = result.checks?.source_requirements === true;
+  const sharedInput = {
+    receipt_verified: true,
+    attestation_verified: result.checks?.observations_verified === true,
+    signed_predictions_bound: result.checks?.predictions_valid === true,
+    receipt_id_match: result.checks?.exact_bindings === true,
+    receipt_digest_match: result.checks?.exact_bindings === true,
+    action_digest_match: result.checks?.exact_bindings === true,
+    consumption_nonce_match: result.checks?.exact_bindings === true,
+    source_keys_distinct: sourceKeysDistinct,
+    control_domains_distinct: controlDomainsDistinct,
+    source_key_current: sourceKeyCurrent,
+    observation_window_valid: observationWindowValid,
+    source_quorum_met: sourceQuorumMet,
+    signed_outcome: result.outcome ?? "in_bounds",
+    policy_present: false,
+    policy_outcome: "in_bounds",
+  };
+  const formal = evaluateOutcomeState(sharedInput);
+  const formalProjection = {
+    accepted: formal.accepted,
+    sourceKeysDistinct: formal.state.source_keys_distinct,
+    controlDomainsDistinct: formal.state.control_domains_distinct,
+    sourceKeyCurrent: formal.state.source_key_current,
+    observationWindowValid: formal.state.observation_window_valid,
+    sourceQuorumMet: formal.state.source_quorum_met,
+  };
+  const runtimeProjection = {
+    accepted: result.valid,
+    sourceKeysDistinct,
+    controlDomainsDistinct,
+    sourceKeyCurrent,
+    observationWindowValid,
+    sourceQuorumMet,
+  };
+  const operators = Object.freeze({
+    "outcome-sources-independent-current-accept":
+      "VerifyIndependentCurrentOutcomeSources",
+    "outcome-sources-reused-key-refused":
+      "RefuseReusedIndependentObserverKey",
+    "outcome-sources-shared-domain-refused":
+      "RefuseSharedObserverControlDomain",
+    "outcome-sources-noncurrent-key-refused":
+      "RefuseNoncurrentOutcomeSourceKey",
+    "outcome-sources-window-substitution-refused":
+      "RefuseUnboundObservationWindow",
+    "outcome-sources-insufficient-quorum-refused":
+      "RefuseInsufficientOutcomeSourceQuorum",
+  });
+  return {
+    scenario,
+    steps: [{
+      operator: operators[scenario],
+      accepted: result.valid,
+      projection: {
+        outcomeState: result.valid ? "reconciled" : "indeterminate",
+        sourceKeysDistinct,
+        controlDomainsDistinct,
+        sourceKeyCurrent,
+        observationWindowValid,
+        sourceQuorumMet,
+      },
+    }],
     relation: relation(sharedInput, formalProjection, runtimeProjection),
   };
 }

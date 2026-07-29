@@ -1,0 +1,265 @@
+<?xml version="1.0" encoding="utf-8"?>
+<rfc xmlns:xi="http://www.w3.org/2001/XInclude"
+     docName="draft-schrock-ep-outcome-binding-00"
+     category="exp" ipr="trust200902" submissionType="IETF"
+     version="3" tocInclude="true" sortRefs="true" symRefs="true">
+  <front>
+    <title abbrev="Outcome Binding">Outcome Binding for Authorized Actions and Independently Observed Effects</title>
+    <seriesInfo name="Internet-Draft" value="draft-schrock-ep-outcome-binding-00"/>
+    <author fullname="Iman Schrock">
+      <organization>EMILIA Protocol, Inc.</organization>
+      <address><postal><country>US</country></postal><email>team@emiliaprotocol.ai</email></address>
+    </author>
+    <date year="2026" month="July" day="28"/>
+    <area>sec</area>
+    <keyword>AI agents</keyword><keyword>outcomes</keyword>
+    <keyword>independent observation</keyword><keyword>physical effects</keyword>
+    <abstract>
+      <t>Authorization proves what action was permitted; it does not prove what
+      happened after execution. An executor-signed result improves attribution
+      but remains a claim by the party that acted. This document specifies a
+      source-routed Outcome Binding profile. Signed predicted effects identify
+      the source role and source class required to evaluate each predicate.
+      Executors, systems of record, and independent observers sign closed
+      observation objects bound to the same authorization, action digest,
+      Canonical Action Identifier, consumption nonce, operation, facility, and
+      observation window. A deterministic verifier separates evidence
+      availability from comparison: missing or unauthenticated required sources
+      yield an indeterminate lifecycle state; authentic observations yield the
+      closed comparison result in_bounds, divergent, or incomparable. The
+      profile improves consequence reconciliation without claiming physical
+      truth, sensor correctness, or legal finality.</t>
+    </abstract>
+  </front>
+  <middle>
+    <section anchor="intro"><name>Introduction</name>
+      <t>A valid authorization, an accepted dispatch, and an observed effect are
+      different facts. Treating a controller acknowledgment as proof of a
+      physical outcome permits the actor that caused an effect to be its only
+      witness. Treating absent evidence as an unfavorable measurement similarly
+      collapses uncertainty into a false result.</t>
+      <t>This profile keeps those axes separate. It extends the original
+      executor-attestation comparison with independently pinned source roles,
+      exact cross-source bindings, and an explicit indeterminate lifecycle.
+      Existing EP-OUTCOME-ATTESTATION-v1 objects remain valid and default to the
+      executor source role.</t>
+      <section anchor="requirements"><name>Requirements Language</name>
+        <t>The key words "MUST", "MUST NOT", "REQUIRED", "SHALL", "SHALL NOT",
+        "SHOULD", "SHOULD NOT", "RECOMMENDED", "NOT RECOMMENDED", "MAY", and
+        "OPTIONAL" in this document are to be interpreted as described in
+        BCP 14 <xref target="RFC2119"/> <xref target="RFC8174"/> when, and only when,
+        they appear in all capitals, as shown here.</t>
+      </section>
+    </section>
+
+    <section anchor="terms"><name>Terms and State Separation</name>
+      <dl>
+        <dt>Executor</dt><dd>The party that attempts the authorized effect.</dd>
+        <dt>System of record</dt><dd>A source authoritative for a bounded digital
+        state, but not necessarily independent of the executor.</dd>
+        <dt>Independent observer</dt><dd>A separately pinned source whose
+        canonical public key identity and relying-party-declared control domain
+        differ from every source that performed or controlled the action, such
+        as a revenue meter, telemetry provider, or external measurement
+        service. A declaration is policy input; it is not cryptographic proof
+        of organizational or physical independence.</dd>
+        <dt>Indeterminate</dt><dd>The lifecycle state used when required evidence
+        is missing, unauthenticated, unpinned, or not exactly bound. It is not a
+        comparison outcome and MUST NOT authorize blind retry.</dd>
+        <dt>Incomparable</dt><dd>A comparison result reached only after authentic,
+        bound evidence exists but cannot be evaluated under the closed predicate
+        language.</dd>
+      </dl>
+    </section>
+
+    <section anchor="predictions"><name>Source-Routed Predicted Effects</name>
+      <t>predicted_effects is a non-empty array covered by the authorization
+      signature or an explicitly identified additive relying-party policy. Its
+      digest is SHA-256 over JCS <xref target="RFC8785"/> bytes. Every entry has
+      effect_type, literal target, and a closed predicate. An entry MAY also have
+      required_source_role and required_source_class. The role is one of
+      executor, system_of_record, or independent_observer. When omitted, the
+      role defaults to executor for compatibility with
+      EP-OUTCOME-ATTESTATION-v1.</t>
+      <sourcecode type="json"><![CDATA[
+[
+  { "effect_type": "controller_status",
+    "target": "facility:plant-7",
+    "required_source_role": "executor",
+    "required_source_class": "cosa.actuator",
+    "predicate": { "op": "eq", "value": "dispatched" } },
+  { "effect_type": "delivered_mw",
+    "target": "facility:plant-7",
+    "required_source_role": "independent_observer",
+    "required_source_class": "revenue_meter",
+    "predicate": { "op": "gte", "value": "5.000" } }
+]
+]]></sourcecode>
+      <t>The closed predicate set is eq, lte, gte, range, set_eq, count_lte,
+      and absent. Comparison values are strings. Targets are literal; wildcard
+      semantics are not defined. Unknown members, unknown operations, and
+      numeric comparison operands MUST be refused.</t>
+    </section>
+
+    <section anchor="observation"><name>Outcome Observation</name>
+      <t>EP-OUTCOME-OBSERVATION-v1 is a closed I-JSON
+      <xref target="RFC7493"/> object signed with Ed25519
+      <xref target="RFC8032"/> under the domain string
+      "EP-OUTCOME-OBSERVATION-v1" followed by a zero octet. The signed body is:</t>
+      <sourcecode type="json"><![CDATA[
+{
+  "@version": "EP-OUTCOME-OBSERVATION-v1",
+  "receipt_id": "ep:receipt:...",
+  "receipt_digest": "sha256:...",
+  "action_hash": "sha256:...",
+  "action_caid": "caid:...",
+  "consumption_nonce": "nonce:...",
+  "operation_id": "operation:...",
+  "source": {
+    "role": "independent_observer",
+    "source_id": "meter:plant-7",
+    "source_class": "revenue_meter",
+    "facility_id": "facility:plant-7"
+  },
+  "observed_from": "2026-07-28T17:00:00Z",
+  "observed_until": "2026-07-28T17:05:00Z",
+  "attested_at": "2026-07-28T17:05:01Z",
+  "observed_effects": [
+    { "effect_type": "delivered_mw",
+      "target": "facility:plant-7", "value": "5.200" }
+  ],
+  "observed_effects_digest": "sha256:...",
+  "proof": {
+    "algorithm": "Ed25519",
+    "key_id": "ep:outcome-source-key:sha256:...",
+    "public_key": "...",
+    "signature_b64u": "..."
+  }
+}
+]]></sourcecode>
+      <t>The verifier MUST pin source_id, public key, role, source_class,
+      control_domain_id, status, valid_from, valid_to, and any required
+      facility. A compromised source pin MUST also carry compromised_at. The
+      verifier MUST parse the pinned and presented keys as Ed25519 SubjectPublicKeyInfo,
+      compare their canonical DER encodings, and derive key identity from those
+      bytes rather than from caller-provided key text or key_id. It MUST verify
+      observed_from is not after observed_until, observed_until is not after
+      attested_at, and attested_at is not in the verifier's future. A valid
+      signature without an accepted, current pin is verified but not accepted.</t>
+    </section>
+
+    <section anchor="source-policy"><name>Relying-Party Source Policy</name>
+      <t>The relying party supplies source requirements independently of the
+      observation presenter. A requirement selects a role and optional source
+      class, sets min_distinct_sources, and selects one or both distinctness
+      dimensions: key or control_domain. It MAY further restrict accepted
+      source identifiers. min_distinct_sources MUST be between 1 and 16.</t>
+      <sourcecode type="json"><![CDATA[
+{ "role": "independent_observer",
+  "source_class": "revenue_meter",
+  "min_distinct_sources": 2,
+  "distinct_by": ["key", "control_domain"] }
+]]></sourcecode>
+      <t>An independent_observer observation MUST use a canonical key identity
+      and control_domain_id distinct from every accepted non-independent source,
+      even when min_distinct_sources is one. Re-encoding the same Ed25519 key
+      MUST NOT create a distinct source. Different keys under the same declared
+      control domain MUST NOT satisfy independence or a control-domain quorum.</t>
+      <t>The relying party MAY also supply an observation-window requirement by
+      role and optional source class. relation is exact, within, or covers and
+      compares observed_from and observed_until with the required not_before
+      and not_after. max_attestation_delay_ms limits the interval from
+      observed_until to attested_at and MUST NOT exceed 86400000. A presenter
+      MUST NOT widen, replace, or select these requirements.</t>
+    </section>
+
+    <section anchor="algorithm"><name>Verification and Reconciliation</name>
+      <ol>
+        <li>Verify the authorization under its native rules and recompute the
+        predicted-effects commitment.</li>
+        <li>Verify every observation signature against the canonical Ed25519
+        key in its source pin. Refuse a source whose pin is malformed,
+        compromised at or before attested_at, not yet valid, or expired at
+        attested_at. A retired key MAY verify a historical observation only
+        when attested_at remains inside its pinned validity interval.</li>
+        <li>Require exact equality of receipt identifier and digest, action
+        digest, optional CAID, consumption nonce, operation identifier, required
+        facility, and source metadata.</li>
+        <li>Enforce independent-observer canonical-key and declared-control-domain
+        separation from every accepted non-independent source.</li>
+        <li>Enforce every relying-party source quorum and observation-window
+        requirement. Missing, non-current, non-distinct, late, or window-mismatched
+        evidence returns lifecycle_state=indeterminate and outcome=null.</li>
+        <li>Group predictions by required source role and class. If any group
+        lacks an accepted observation, return lifecycle_state=indeterminate and
+        outcome=null.</li>
+        <li>Evaluate each group against only the matching accepted observations.
+        Aggregate with precedence divergent, then incomparable, then in_bounds.</li>
+      </ol>
+      <t>A reconciled in_bounds result MAY satisfy an additive reliance policy.
+      A divergent result MUST NOT be rewritten as success. An incomparable
+      result MUST NOT be treated as missing evidence. An indeterminate state
+      MUST enter authenticated reconciliation; it MUST NOT trigger blind replay
+      of a potentially completed consequence.</t>
+    </section>
+
+    <section anchor="industrial"><name>Industrial Curtailment Profile</name>
+      <t>A grid-curtailment deployment SHOULD require at least two sources: an
+      executor-class controller acknowledgment and an independent meter-class
+      observation. The controller statement establishes accepted dispatch, not
+      delivered power. The meter statement establishes what the pinned meter
+      claimed over the bound interval, not market eligibility or tariff rules.
+      Baseline and settlement policy remain relying-party policy.</t>
+      <t>Settlement MUST be downstream of reconciliation. A controller pass with
+      a divergent meter result is a reconciled divergence and MUST NOT settle.
+      An unavailable meter is indeterminate and MUST NOT settle or cause a blind
+      redispatch. Action State or another external evidence capsule MAY carry
+      the result digest; such a carrier is not required for core verification.</t>
+    </section>
+
+    <section anchor="security"><name>Security Considerations</name>
+      <t>Independent means separately pinned with a distinct canonical key and
+      a distinct relying-party-declared control domain. A second key controlled
+      by the executor is not independent, and control_domain_id alone does not
+      prove otherwise. Multiple sources can collude or share faulty inputs.
+      Sensors can be biased, replayed, or installed at the wrong boundary. This
+      profile proves signed claims and exact joins, not physical truth.
+      Deployments need calibration, key governance, custody, authenticated time,
+      anti-replay state, and dispute procedures appropriate to the consequence.</t>
+      <t>Source substitution, facility substitution, action substitution, CAID
+      substitution, operation substitution, and window substitution MUST fail
+      closed. Result digests MUST cover lifecycle state, comparison outcome,
+      checks, errors, input commitments, and source evaluations.</t>
+    </section>
+
+    <section anchor="privacy"><name>Privacy Considerations</name>
+      <t>Observations can expose facilities, operations, timing, and sensitive
+      effects. Implementations SHOULD minimize identifiers, keep raw telemetry
+      outside portable artifacts, and disclose only commitments and bounded
+      values necessary for the relying purpose.</t>
+    </section>
+    <section anchor="iana"><name>IANA Considerations</name><t>This document has no IANA actions.</t></section>
+    <section anchor="implementation"><name>Implementation Status</name>
+      <t>An Apache-2.0 TypeScript reference implementation includes legacy
+      executor-attestation compatibility, source-routed predictions, signed
+      multi-source observations, exact binding checks, deterministic result
+      digests, eight real-cryptography source-policy vectors, five hostile
+      independence/freshness/window/quorum cases, eleven bounded obligations
+      with deliberately weakened counterexamples, Model-to-Matter composition,
+      and a synthetic GRACE controller-plus-meter settlement path. The bounded
+      model and implementation are same-team artifacts, not an unbounded proof
+      or independent implementation. The GRACE path is
+      a reference simulation and is not evidence of a physical deployment,
+      utility acceptance, meter certification, or partner endorsement.</t>
+    </section>
+  </middle>
+  <back>
+    <references><name>Normative References</name>
+      <xi:include href="https://bib.ietf.org/public/rfc/bibxml/reference.RFC.2119.xml"/>
+      <xi:include href="https://bib.ietf.org/public/rfc/bibxml/reference.RFC.7493.xml"/>
+      <xi:include href="https://bib.ietf.org/public/rfc/bibxml/reference.RFC.8032.xml"/>
+      <xi:include href="https://bib.ietf.org/public/rfc/bibxml/reference.RFC.8174.xml"/>
+      <xi:include href="https://bib.ietf.org/public/rfc/bibxml/reference.RFC.8785.xml"/>
+    </references>
+  </back>
+</rfc>

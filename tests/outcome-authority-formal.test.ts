@@ -21,13 +21,18 @@ describe(`bounded formal cases ${suite['@version']} (${suite.vectors.length} vec
   }
 });
 
-it('all six load-bearing obligations hold in the bounded model', () => {
+it('all eleven load-bearing obligations hold in the bounded model', () => {
   const result = runFormalChecks();
   expect(result.verified).toBe(true);
   expect(Object.keys(result.obligations)).toEqual([
     'ExactActionReceiptBinding',
     'PolicyCannotWidenSignedPredictions',
     'ReplayResultDigestCommitsVerdict',
+    'IndependentObserverKeyIsDistinct',
+    'IndependentObserverControlDomainIsDistinct',
+    'OutcomeSourceKeyIsCurrent',
+    'ObservationWindowIsBound',
+    'OutcomeSourceQuorumIsSatisfied',
     'NewestAuthorityDocumentPreventsKeyResurrection',
     'RevokedRotationAndProofKeysFailClosed',
     'RegistryPinsMandatory',
@@ -48,5 +53,5 @@ it('every weakened invariant produces a counterexample', () => {
 it('security claims preserve required exclusions and partial formal scope', () => {
   const result = runOutcomeAuthorityFormalGate();
   expect(result.verified).toBe(true);
-  expect(result.claims).toHaveLength(2);
+  expect(result.claims).toHaveLength(3);
 });
