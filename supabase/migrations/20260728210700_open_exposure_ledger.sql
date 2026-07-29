@@ -34,18 +34,38 @@ BEGIN
 END
 $roles$;
 
-ALTER ROLE ep_open_exposure_store_owner NOLOGIN
-  NOSUPERUSER NOCREATEDB NOCREATEROLE NOREPLICATION NOBYPASSRLS;
-ALTER ROLE ep_open_exposure_origin NOLOGIN
-  NOSUPERUSER NOCREATEDB NOCREATEROLE NOREPLICATION NOBYPASSRLS;
-ALTER ROLE ep_open_exposure_executor NOLOGIN
-  NOSUPERUSER NOCREATEDB NOCREATEROLE NOREPLICATION NOBYPASSRLS;
-ALTER ROLE ep_open_exposure_reconciler NOLOGIN
-  NOSUPERUSER NOCREATEDB NOCREATEROLE NOREPLICATION NOBYPASSRLS;
-ALTER ROLE ep_open_exposure_policy_admin NOLOGIN
-  NOSUPERUSER NOCREATEDB NOCREATEROLE NOREPLICATION NOBYPASSRLS;
-ALTER ROLE ep_open_exposure_reader NOLOGIN
-  NOSUPERUSER NOCREATEDB NOCREATEROLE NOREPLICATION NOBYPASSRLS;
+-- Managed PostgreSQL providers commonly grant CREATEROLE without true
+-- SUPERUSER. Such a migration role may create the least-privilege roles above,
+-- but PostgreSQL reserves ALTER ... NOSUPERUSER/NOREPLICATION/NOBYPASSRLS for
+-- a superuser even when those attributes are already false. Validate the
+-- complete posture instead of performing a redundant privileged ALTER. This
+-- also fails closed if a same-named role was provisioned out of band with more
+-- authority than this store permits.
+DO $least_privilege_roles$
+BEGIN
+  IF (
+    SELECT pg_catalog.count(*)
+    FROM pg_catalog.pg_roles AS role
+    WHERE role.rolname IN (
+        'ep_open_exposure_store_owner',
+        'ep_open_exposure_origin',
+        'ep_open_exposure_executor',
+        'ep_open_exposure_reconciler',
+        'ep_open_exposure_policy_admin',
+        'ep_open_exposure_reader'
+      )
+      AND NOT role.rolcanlogin
+      AND NOT role.rolsuper
+      AND NOT role.rolcreatedb
+      AND NOT role.rolcreaterole
+      AND NOT role.rolreplication
+      AND NOT role.rolbypassrls
+  ) <> 6 THEN
+    RAISE EXCEPTION 'open exposure roles must exist with least-privilege posture'
+      USING ERRCODE = '42501';
+  END IF;
+END
+$least_privilege_roles$;
 
 DO $role_separation$
 DECLARE

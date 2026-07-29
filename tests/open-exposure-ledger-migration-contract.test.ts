@@ -24,6 +24,23 @@ describe('Open Exposure Ledger PostgreSQL contract', () => {
     expect(history.deployment_sequence).toContain('20260728210700');
     expect(history.public_files['20260728210700_open_exposure_ledger.sql'])
       .toBe(migrationHash);
+    expect(migration).toContain('DO $least_privilege_roles$');
+    expect(migration).toContain(
+      "open exposure roles must exist with least-privilege posture",
+    );
+    expect(migration).not.toMatch(
+      /ALTER ROLE ep_open_exposure_[^;]+(?:NOSUPERUSER|NOREPLICATION|NOBYPASSRLS)/s,
+    );
+    for (const attribute of [
+      'rolcanlogin',
+      'rolsuper',
+      'rolcreatedb',
+      'rolcreaterole',
+      'rolreplication',
+      'rolbypassrls',
+    ]) {
+      expect(migration).toContain(`NOT role.${attribute}`);
+    }
   });
 
   it('forces RLS and removes direct generic/runtime table authority', () => {
