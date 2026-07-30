@@ -48,7 +48,8 @@ describe('release-chain coverage', () => {
     expect(build.permissions).toEqual({ contents: 'read' });
     expect(build.steps.some((step) => step.uses?.startsWith('actions/checkout@'))).toBe(true);
     expect(build.steps.some((step) => step.run?.includes('npm test'))).toBe(true);
-    expect(build.steps.some((step) => step.run?.includes('security-case:emit'))).toBe(true);
+    expect(build.steps.some((step) => step.run?.includes('check:security-case'))).toBe(true);
+    expect(build.steps.some((step) => step.run?.includes('conformance:manifest:check'))).toBe(true);
     expect(build.steps.some((step) => step.run?.includes('verify-reproducible-package.mts'))).toBe(true);
     expect(build.steps.some((step) => step.uses?.startsWith('actions/upload-artifact@'))).toBe(true);
 

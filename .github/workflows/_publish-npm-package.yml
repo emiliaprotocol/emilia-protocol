@@ -177,16 +177,18 @@ jobs:
         working-directory: ${{ inputs.package_dir }}
         run: npm run build
 
-      - name: Execute security and conformance evidence
+      - name: Verify security and conformance evidence
         env:
-          # security-case:emit executes the TypeScript implementation entries
+          # check:security-case executes the TypeScript implementation entries
           # named by the governed claims. Keep the resolver scoped to this
           # unprivileged build step so child node:test processes resolve the
-          # source tree exactly as the main assurance job does.
+          # source tree exactly as the main assurance job does. Release jobs
+          # must verify reviewed artifacts without rewriting the checkout:
+          # later reproducibility and proof gates intentionally refuse drift.
           NODE_OPTIONS: '--import ${{ github.workspace }}/scripts/ts-loader/register.mjs'
         run: |
-          npm run security-case:emit
-          npm run conformance:manifest
+          npm run check:security-case
+          npm run conformance:manifest:check
 
       - name: Verify governed artifacts and LLM context match source
         run: |
