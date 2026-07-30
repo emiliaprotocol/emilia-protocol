@@ -36,6 +36,18 @@ commitment therefore covers every source byte and every map member actually
 present, rather than assuming that only keys 1-4 can occur or reserializing the
 object through an EMILIA JSON representation.
 
+The portable records deliberately do not repeat cleartext `id` or `scope_id`:
+the digest is the only object linkage. This avoids turning stable source
+identifiers into a cross-context correlation surface. For official vector 007,
+the committed input is exactly 278 published bytes and the required digest is
+`sha256:025672610783f255e7b0866325796200f85eded589462522f6e0cf6516f63620`.
+
+ApertoMemory's native key identifiers are eight-byte values rendered as hex in
+its vectors. Fields ending in `_b64u` are explicitly an EMILIA composition
+representation of those same eight bytes, not an ApertoMemory wire-format
+claim. The adapter neither invents nor substitutes key identifiers for the
+source-anchored cases.
+
 ## Boundary
 
 The records deliberately keep four questions separate:
@@ -66,10 +78,16 @@ required because ApertoMemory trust is derived at read time and may change when
 the vault owner's accepted-key set changes.
 
 `custody_present` is a composition-layer derived fact: it reports whether the
-adapter obtained a populated custody map while evaluating the object. It is
+adapter encountered a custody map while evaluating the object, including an
+empty malformed map that must degrade without aborting recall. It is
 not represented as an assertion from vector 007's native `expect` block. The
 native assertions remain `trust`, `authorship`, `author_key_id`, and
 `signer_key_id`.
+
+Custody field 3 (`migrated_at`) remains inside the encrypted ApertoMemory
+payload. It is not re-exported as cleartext `resealed_at` in either portable
+composition record. The adapter carries only the minimum custody facts needed
+to preserve the read-time authorship decision.
 
 The first source-fidelity acceptance set has the following exact pairing:
 
@@ -111,8 +129,10 @@ inside or alongside the record is not a trust anchor.
 
 - `trust-custody-result.v0.schema.json` — strict JSON Schema for output 1
 - `memory-projection-record.v0.schema.json` — strict JSON Schema for output 2
-- `apertomemory-emilia.v1.json` — deterministic positive vectors and pinned
-  adapter key
+- `apertomemory-source-fixtures.v2.json` — the five exact published source
+  objects and native expected outcomes used by the composition vectors
+- `apertomemory-emilia.v1.json` — deterministic positive and negative
+  composition vectors plus the pinned adapter key
 - `generate.mjs` — deterministic vector generator
 - `verify.mjs` — structural, semantic, and signature verifier
 - `verify.test.mjs` — positive and hostile mutation tests
