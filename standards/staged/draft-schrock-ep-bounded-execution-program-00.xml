@@ -1,0 +1,844 @@
+<?xml version="1.0" encoding="utf-8"?>
+<rfc xmlns:xi="http://www.w3.org/2001/XInclude"
+     docName="draft-schrock-ep-bounded-execution-program-00"
+     category="exp" ipr="trust200902" submissionType="IETF"
+     version="3" tocInclude="true" sortRefs="true" symRefs="true">
+  <front>
+    <title abbrev="EP Bounded Execution">Bounded Execution Programs for Consequential Agent Actions</title>
+    <seriesInfo name="Internet-Draft" value="draft-schrock-ep-bounded-execution-program-00"/>
+    <author fullname="Iman Schrock">
+      <organization>EMILIA Protocol, Inc.</organization>
+      <address>
+        <postal><country>US</country></postal>
+        <email>team@emiliaprotocol.ai</email>
+      </address>
+    </author>
+    <date year="2026" month="July" day="30"/>
+    <area>sec</area>
+    <keyword>AI agents</keyword>
+    <keyword>authorization</keyword>
+    <keyword>bounded autonomy</keyword>
+    <keyword>execution programs</keyword>
+    <abstract>
+      <t>An authorization for one action does not by itself authorize an
+      open-ended agent plan. This document defines an Experimental profile for
+      a signed, finite, versioned directed acyclic graph of consequential action
+      occurrences. The program binds a total retained-history ceiling. Each node
+      binds an exact action or a pinned action-matching profile, an action-
+      specific Trust Program, outcome-specific dependencies, an occurrence
+      ceiling, and fixed charges against aggregate attempt budgets.</t>
+      <t>A conforming program-aware admission store evaluates reachability and
+      budgets in the same linearizable transaction domain as the ordinary
+      one-time execution right. It uses store-owned authorizer trust roots,
+      clock, authenticated profile-match verification, and current program
+      status; seals a deterministic execution-program resource into the
+      AdmissionSnapshot; and fences the program's independent authorization
+      digest against ordinary-path admission. The profile does not establish
+      that natural-language intent was understood, that a plan is safe or
+      lawful, that provider or effect evidence is true, or that every mutation
+      path was mediated.</t>
+    </abstract>
+  </front>
+
+  <middle>
+    <section anchor="introduction">
+      <name>Introduction</name>
+      <t>Consequential agents often need authority for a bounded sequence of
+      related actions. Requiring a new authorization ceremony for every action
+      can be impractical, but treating a goal, generated plan, profile name, or
+      signature as open-ended authority removes the boundary that a gate is
+      supposed to enforce.</t>
+      <t>This document defines <tt>EP-BOUNDED-EXECUTION-PROGRAM-v1</tt>. An
+      authorizer signs one closed graph whose action occurrences, dependency
+      outcomes, node and total-history ceilings, attempt budgets, validity
+      interval, and supersession lineage are explicit. The runtime answers one narrow
+      question: is this exact occurrence reachable now under this exact signed
+      program, while all occurrence and attempt-budget limits remain
+      available?</t>
+      <t>The signed object and the runtime state machine are inseparable. A
+      signed graph without shared state cannot prevent replay or concurrent
+      over-reservation. A runtime ledger without a verified signed graph has no
+      portable authority boundary.</t>
+
+      <section anchor="requirements-language">
+        <name>Requirements Language</name>
+        <t>The key words "MUST", "MUST NOT", "REQUIRED", "SHALL", "SHALL
+        NOT", "SHOULD", "SHOULD NOT", "RECOMMENDED", "NOT RECOMMENDED",
+        "MAY", and "OPTIONAL" in this document are to be interpreted as
+        described in BCP 14 <xref target="RFC2119"/>
+        <xref target="RFC8174"/>
+        when, and only when, they appear in all capitals, as shown here.</t>
+        <t>BCP 14 is indexed by the RFC Editor at <xref target="BCP14"/>.</t>
+      </section>
+
+      <section anchor="scope">
+        <name>Scope and Layer Boundaries</name>
+        <t>This profile adds cross-action reachability and aggregate attempt
+        accounting to an admission system. It does not replace the independent
+        authorization artifact bound by <tt>authorization_digest</tt>, the
+        action-specific evidence evaluation bound by
+        <tt>trust_program_digest</tt>, an AdmissionSnapshot's one-time execution
+        right, or any bounded capability receipt required for delegated scope
+        and resource authority.</t>
+        <t>A program authorizer decides which graph and limits to sign. An
+        action verifier decides whether the evidence required for one action is
+        satisfied. The program-aware admission store decides whether one
+        occurrence is currently reachable and atomically reserves or consumes
+        its runtime rights. An effect or outcome verifier remains responsible
+        for claims about what happened after provider entry.</t>
+        <t><tt>authorization_digest</tt> is an exact byte commitment used for
+        binding and exclusion. It does not by itself prove that a human
+        ceremony occurred, who participated, consent, comprehension,
+        presentation integrity, or legal authority. Those claims require their
+        own authenticated evidence and relying-party acceptance rules.</t>
+      </section>
+    </section>
+
+    <section anchor="terminology">
+      <name>Terminology</name>
+      <dl newline="false" spacing="normal">
+        <dt>Execution Program:</dt>
+        <dd>The immutable signed artifact defined in <xref target="program"/>.</dd>
+        <dt>Program digest:</dt>
+        <dd>The domain-independent SHA-256 JCS digest of the complete signed
+        body with the attached <tt>proof</tt> member omitted.</dd>
+        <dt>Node:</dt>
+        <dd>A named action selector, Trust Program digest, dependency set,
+        occurrence ceiling, and fixed budget-charge set.</dd>
+        <dt>Occurrence:</dt>
+        <dd>One uniquely identified retained runtime record for an attempt to
+        execute a node. Release does not remove it from total history.</dd>
+        <dt>AdmissionSnapshot:</dt>
+        <dd>A closed, immutable object that binds all verified inputs,
+        resources, action identity, provider binding, and the one-time
+        execution right for one consequential operation.</dd>
+        <dt>Ordinary path:</dt>
+        <dd>An admission reserve, begin, release, or expiry path that does not
+        participate in the execution-program transaction.</dd>
+        <dt>Program-aware path:</dt>
+        <dd>An admission path that atomically evaluates and transitions both
+        the ordinary admission state and the execution-program state.</dd>
+        <dt>Provider entry:</dt>
+        <dd>The boundary after which an external consequence might have
+        occurred. The execution right and attempt charges are consumed before
+        the invocation capability is released across this boundary.</dd>
+        <dt>Terminal provider outcome:</dt>
+        <dd>Either <tt>COMMITTED</tt> or <tt>PROVEN_NOT_COMMITTED</tt>.</dd>
+        <dt>Current program status:</dt>
+        <dd>A store-authoritative <tt>ACTIVE</tt>, <tt>SUSPENDED</tt>, or
+        <tt>REVOKED</tt> observation for the exact program version and digest.</dd>
+      </dl>
+    </section>
+
+    <section anchor="program">
+      <name>Closed Signed Program</name>
+      <t>The unsigned construction input is a closed I-JSON object
+      <xref target="RFC7493"/> containing exactly the following members:</t>
+      <sourcecode type="json"><![CDATA[
+{
+  "program_id": "program:production-remediation:01",
+  "tenant_id": "tenant:example",
+  "version": 1,
+  "subject_id": "agent:operations:01",
+  "audience": "gate:production:01",
+  "objective_digest": "sha256:<64 lowercase hexadecimal digits>",
+  "authorization_digest": "sha256:<64 lowercase hexadecimal digits>",
+  "presentation_digest": "sha256:<64 lowercase hexadecimal digits>",
+  "supersedes_program_digest": null,
+  "issued_at": "2026-07-30T19:55:00.000Z",
+  "valid_from": "2026-07-30T20:00:00.000Z",
+  "expires_at": "2026-07-30T21:00:00.000Z",
+  "max_total_occurrences": 64,
+  "budgets": [
+    { "budget_id": "attempts", "unit": "attempt", "limit": 3 }
+  ],
+  "nodes": [ "<one or more nodes as defined below>" ]
+}
+]]></sourcecode>
+      <t><tt>program_id</tt>, <tt>tenant_id</tt>, <tt>subject_id</tt>, and
+      <tt>audience</tt> are nonempty identifiers. An identifier MUST match:</t>
+      <sourcecode type="text"><![CDATA[
+^[A-Za-z0-9][A-Za-z0-9:_.@/+\-]{0,511}$
+]]></sourcecode>
+      <t>A digest in this document is the string <tt>sha256:</tt> followed by
+      exactly 64 lowercase hexadecimal digits. Version and numeric limits MUST
+      be positive I-JSON safe integers. Version 1 MUST have a null
+      <tt>supersedes_program_digest</tt>; a later version MUST contain the exact
+      predecessor program digest.</t>
+      <t><tt>objective_digest</tt> binds authorizer-selected objective bytes. It
+      does not prove that natural-language intent was understood or correctly
+      compiled. <tt>authorization_digest</tt> binds the independently verified
+      authorization evidence on which the program relies.
+      <tt>presentation_digest</tt> binds the approval or presentation material
+      selected by the authorizer; it does not prove display integrity, human
+      comprehension, or informed consent.</t>
+      <t>The three times use the RFC 3339 <xref target="RFC3339"/> date-time
+      production restricted to UTC with a trailing <tt>Z</tt>. They MUST satisfy
+      <tt>issued_at &lt;= valid_from &lt; expires_at</tt>. Expiration is
+      exclusive.</t>
+      <t><tt>max_total_occurrences</tt> is REQUIRED and MUST be a positive safe
+      integer no greater than 1000000. It limits all retained occurrence
+      records for the program, including occurrences later released before
+      provider entry. Omission is a schema error.</t>
+
+      <section anchor="budgets">
+        <name>Budgets</name>
+        <t><tt>budgets</tt> contains between 1 and 64 closed objects. Each has
+        exactly <tt>budget_id</tt>, <tt>unit</tt>, and <tt>limit</tt>.
+        <tt>budget_id</tt> and <tt>unit</tt> are identifiers. Budget identifiers
+        MUST be unique. <tt>budget_id</tt>, not <tt>unit</tt>, identifies the
+        independent accounting dimension. Multiple budget dimensions MAY use
+        the same <tt>unit</tt> label without sharing a limit or accounting
+        state. The unit is a signed descriptive label and MUST NOT be used as
+        an alias key. <tt>limit</tt> MUST be a positive safe integer no greater
+        than 9007199254740991.</t>
+        <t>A budget is an attempt-accounting dimension, not proof of economic
+        settlement or resource availability. A node's fixed charge is consumed
+        at provider entry even if the later result is indeterminate.</t>
+      </section>
+
+      <section anchor="nodes">
+        <name>Nodes</name>
+        <t><tt>nodes</tt> contains between 1 and 256 closed node objects. Node
+        identifiers MUST be unique. The complete dependency graph MUST be
+        acyclic and contain at least one root.</t>
+        <sourcecode type="json"><![CDATA[
+{
+  "node_id": "remediate",
+  "action": {
+    "mode": "profile",
+    "profile_id": "profile:terraform-reviewed-plan",
+    "profile_digest": "sha256:<64 lowercase hexadecimal digits>"
+  },
+  "trust_program_digest": "sha256:<64 lowercase hexadecimal digits>",
+  "depends_on": [
+    { "node_id": "inspect", "outcomes": ["COMMITTED"] }
+  ],
+  "max_occurrences": 1,
+  "charges": [
+    { "budget_id": "attempts", "amount": 1 }
+  ]
+}
+]]></sourcecode>
+        <t><tt>trust_program_digest</tt> pins the action-specific Trust Program
+        that MUST govern the corresponding AdmissionSnapshot.
+        <tt>max_occurrences</tt> MUST be a positive safe integer no greater than
+        1000000.</t>
+        <t><tt>depends_on</tt> contains at most 64 unique predecessor node
+        identifiers. Each dependency contains one or both unique strings
+        <tt>COMMITTED</tt> and <tt>PROVEN_NOT_COMMITTED</tt>. Every predecessor
+        MUST exist. Self-dependencies and cycles MUST be refused. Reserved,
+        released, invoking, expired, and indeterminate states are not dependency
+        outcomes.</t>
+        <t><tt>charges</tt> contains between 1 and 64 objects with unique budget
+        identifiers. Every identifier MUST name a declared budget. Each
+        <tt>amount</tt> MUST be positive and MUST NOT exceed that budget's total
+        program limit.</t>
+      </section>
+
+      <section anchor="action-selectors">
+        <name>Action Selectors</name>
+        <t>A node's <tt>action</tt> member has exactly one of two closed
+        shapes:</t>
+        <sourcecode type="json"><![CDATA[
+{ "mode": "exact", "caid": "caid:1:...",
+  "action_digest": "sha256:<64 lowercase hexadecimal digits>" }
+]]></sourcecode>
+        <sourcecode type="json"><![CDATA[
+{ "mode": "profile", "profile_id": "profile:...",
+  "profile_digest": "sha256:<64 lowercase hexadecimal digits>" }
+]]></sourcecode>
+        <t>In exact mode, both the Canonical Action Identifier (CAID) and action
+        digest MUST exactly equal the AdmissionSnapshot values. This version
+        accepts the following closed CAID syntax, using the core ABNF rules from
+        <xref target="RFC5234"/>:</t>
+        <sourcecode type="abnf"><![CDATA[
+caid           = "caid:1:" action-name "." action-version
+                 ":jcs-sha256:" digest43
+action-name    = component *("." component)
+component      = LCALPHA *(LCALPHA / DIGIT / "-")
+action-version = %x31-39 *DIGIT
+digest43       = 43base64url-char
+base64url-char = ALPHA / DIGIT / "-" / "_"
+LCALPHA        = %x61-7A
+]]></sourcecode>
+        <t>Action-name interpretation is defined by the selected CAID profile;
+        this document does not create a CAID registry.</t>
+        <t>Profile mode does not make <tt>profile_id</tt> self-authenticating.
+        A caller-supplied <tt>MATCH</tt> flag or result object is not evidence
+        and MUST NOT satisfy a node. The caller instead supplies an opaque
+        evidence artifact to the store's configured authenticated action-match
+        verifier. That verifier MUST authenticate the artifact under its pinned
+        evidence profile and return a closed <tt>valid: true</tt>,
+        <tt>result: MATCH</tt> result that exactly binds tenant, profile ID and
+        digest, program subject, operation ID, CAID, action digest, verifier ID,
+        evidence payload digest, evidence trust-configuration digest, trust
+        epoch, and AdmissionSnapshot trust-configuration digest.</t>
+        <t>The AdmissionSnapshot MUST already contain that evidence payload in
+        its singleton <tt>aeb</tt> input. The input subject MUST equal the
+        program subject, and its profile digest, verifier identifier, payload
+        digest, and trust-configuration digest MUST equal the authenticated
+        result. Missing evidence, a missing configured verifier, verifier
+        failure, an open result, or any substitution MUST fail closed.</t>
+      </section>
+
+      <section anchor="closed-shapes">
+        <name>Closed-Shape Processing</name>
+        <t>Unknown members, omitted required members, duplicate identifiers,
+        duplicate dependency outcomes, malformed values, non-safe integers,
+        unknown outcomes, missing predecessors, and cyclic graphs MUST be
+        refused at every signed-object boundary. Implementations MUST NOT
+        silently discard unknown members before signature or schema
+        validation.</t>
+      </section>
+    </section>
+
+    <section anchor="canonical-signature">
+      <name>Canonicalization, Signature, and Program Digest</name>
+      <t>Before signing, an implementation MUST validate the complete
+      construction input and then normalize it as follows:</t>
+      <ol spacing="normal">
+        <li>Convert each accepted UTC instant to RFC 3339 UTC form with exactly
+        three fractional-second digits.</li>
+        <li>Sort budgets by the UTF-8 byte order of <tt>budget_id</tt>.</li>
+        <li>Sort nodes by the UTF-8 byte order of <tt>node_id</tt>.</li>
+        <li>Sort dependencies by the UTF-8 byte order of predecessor
+        <tt>node_id</tt>.</li>
+        <li>Sort charges by the UTF-8 byte order of <tt>budget_id</tt>.</li>
+        <li>Sort each dependency's terminal outcome strings in ascending byte
+        order.</li>
+      </ol>
+      <t>The signer adds the fixed version, claim boundary, and issuer:</t>
+      <sourcecode type="json"><![CDATA[
+{
+  "@version": "EP-BOUNDED-EXECUTION-PROGRAM-v1",
+  "<normalized program members>": "...",
+  "claim_boundary": "<CLAIM_BOUNDARY>",
+  "issuer": { "id": "customer:example", "key_id": "key:example" }
+}
+]]></sourcecode>
+      <t>In that example, <tt>CLAIM_BOUNDARY</tt> is the concatenation, with no
+      intervening octets, of the following two ASCII strings:</t>
+      <sourcecode type="text"><![CDATA[
+"typed_reachability_and_attempt_budget_not_" ||
+"intent_safety_effect_truth_or_complete_mediation"
+]]></sourcecode>
+      <t>The <tt>||</tt> notation in this display means byte concatenation; it
+      is not part of the member value.</t>
+      <t>Let <tt>body_jcs</tt> be the UTF-8 encoding of the JSON Canonicalization
+      Scheme (JCS) <xref target="RFC8785"/> representation of that complete
+      body. The signer computes:</t>
+      <sourcecode type="text"><![CDATA[
+body_digest = "sha256:" || lowercase_hex(SHA-256(body_jcs))
+signature_input = UTF8("EP-BOUNDED-EXECUTION-PROGRAM-v1")
+                  || 0x00 || body_jcs
+signature = Ed25519-Sign(authorizer_private_key, signature_input)
+]]></sourcecode>
+      <t>The signer attaches one closed proof object:</t>
+      <sourcecode type="json"><![CDATA[
+{
+  "algorithm": "Ed25519",
+  "key_id": "key:example",
+  "body_digest": "sha256:<64 lowercase hexadecimal digits>",
+  "signature_b64u": "<canonical unpadded base64url>"
+}
+]]></sourcecode>
+      <t><tt>proof.key_id</tt> MUST equal <tt>issuer.key_id</tt>. The signature
+      uses Ed25519 <xref target="RFC8032"/>. The signature value uses the URL-
+      and filename-safe Base64 alphabet without padding
+      <xref target="RFC4648"/> and MUST decode to exactly 64 octets.</t>
+      <t>The <tt>program_digest</tt> is <tt>body_digest</tt>: the prefixed
+      lowercase SHA-256 digest of the JCS body with <tt>proof</tt> omitted. It
+      identifies the authorizer, program, and every signed boundary. It is not
+      the digest of the proof-bearing artifact.</t>
+    </section>
+
+    <section anchor="verification">
+      <name>Verification and Registration</name>
+      <t>The program-aware store MUST own its program-authorizer verification
+      policy and clock. The registration caller MUST NOT nominate trusted keys,
+      expected authorizer identity, verification time, key role, or key status.
+      The store policy binds each key identifier to an issuer identifier,
+      canonical Ed25519 public key, the exact role
+      <tt>program_authorizer</tt>, and one of <tt>ACTIVE</tt>,
+      <tt>SUSPENDED</tt>, or <tt>REVOKED</tt>. Only a pin whose role is
+      <tt>program_authorizer</tt> and whose key status is <tt>ACTIVE</tt> is
+      eligible to register or supersede a v1 program.</t>
+      <t>The artifact's <tt>issuer.key_id</tt> can select only among those
+      store-owned eligible pins; it cannot create or alter a trust root. The
+      store derives the expected authorizer identity from the selected pin and
+      obtains verification time from its own clock.</t>
+      <t>The caller supplies one closed relying-party context containing exactly:</t>
+      <ul spacing="normal">
+        <li>expected program identifier;</li>
+        <li>expected tenant identifier;</li>
+        <li>expected authorization digest;</li>
+        <li>expected audience.</li>
+      </ul>
+      <t>Unknown or caller-added trust and clock members MUST be refused as an
+      invalid context. The store MUST validate the proof envelope, recompute
+      the body digest, require the exact pinned issuer and key, parse the key as
+      Ed25519, and verify the signature over the domain-separated canonical
+      body. All caller context values MUST exactly equal the signed values.
+      Acceptance is valid only while
+      <tt>valid_from &lt;= store_now &lt; expires_at</tt>. A valid signature over an
+      invalid, noncanonical, open-shaped, context-substituted, inactive-key, or
+      time-invalid program MUST be refused.</t>
+
+      <section anchor="authorization-fence">
+        <name>Authorization-Digest Ordinary-Path Fence</name>
+        <t>Registration and ordinary admission reserve MUST serialize on a
+        durable fence keyed by the admission transaction domain,
+        <tt>tenant_id</tt>, and <tt>authorization_digest</tt>. The digest is the
+        exact <tt>payload_digest</tt> of the AdmissionSnapshot input whose role
+        is <tt>authorization</tt>.</t>
+        <t>When registering version 1, the store MUST atomically:</t>
+        <ol spacing="normal">
+          <li>refuse if another execution program owns the fence;</li>
+          <li>refuse if an ordinary admission using that authorization digest
+          still has an unconsumed reserved execution right;</li>
+          <li>create the active program state; and</li>
+          <li>make the authorization fence program-required and bind it to the
+          program digest.</li>
+        </ol>
+        <t>An ordinary reserve that observes a program-required fence MUST
+        refuse with <tt>program_required</tt> and make no state change. The
+        registration and ordinary-reserve decisions MUST use the same
+        serialization mechanism so that neither can race past the other. Once
+        program-required, the fence MUST NOT reopen merely because an
+        occurrence is released, expires, reaches a terminal outcome, or the
+        program is superseded.</t>
+        <t>This fence prevents the independent authorization artifact from
+        being reused to bypass program reachability and budgets through an
+        ordinary reserve path. It does not prove that all provider mutation
+        paths pass through this admission store.</t>
+      </section>
+
+      <section anchor="program-status">
+        <name>Store-Authoritative Current Status</name>
+        <t>The store MUST obtain current program status from its configured
+        authoritative source at reservation and again immediately before
+        provider entry. The caller MUST NOT supply or select this source or its
+        observation. A closed <tt>EP-BOUNDED-EXECUTION-PROGRAM-STATUS-v1</tt>
+        observation contains the exact tenant ID, program ID, program digest,
+        version, status, nonnegative sequence, observation time, and expiry.</t>
+        <t>A program-capable store without a configured authoritative status
+        source MUST fail closed with
+        <tt>program_status_indeterminate</tt>; locally initialized
+        <tt>ACTIVE</tt> state is not current-status evidence. The validation
+        instant MUST be sampled after the source returns. Expiry and maximum
+        observation age MUST be evaluated against that post-response instant,
+        so a response that becomes stale while the source is queried cannot
+        authorize reservation or provider entry.</t>
+        <t>Status is one of <tt>ACTIVE</tt>, <tt>SUSPENDED</tt>, or
+        <tt>REVOKED</tt>. Only a current <tt>ACTIVE</tt> observation permits
+        reservation or begin. <tt>SUSPENDED</tt> refuses with
+        <tt>program_suspended</tt>. <tt>REVOKED</tt> refuses with
+        <tt>program_revoked</tt> and is sticky: a later observation MUST NOT
+        reopen that runtime.</t>
+        <t>The store MUST fail closed with
+        <tt>program_status_indeterminate</tt> when the source is unavailable or
+        throws; the observation is missing, malformed, open-shaped, future-
+        dated, stale, or expired; any program identity differs; the sequence
+        regresses; or a repeated sequence conflicts with the previously
+        recorded status or times. The maximum observation age is store policy
+        and MUST NOT be caller-selectable.</t>
+        <t>A status, program-validity, or status-currentness refusal at reserve
+        creates no occurrence or admission state. The same refusal at begin,
+        while the occurrence is still pre-entry <tt>RESERVED</tt>, MUST
+        atomically release the ordinary execution right and resources, the
+        node occurrence capacity, and every reserved budget charge, and mark
+        the occurrence <tt>RELEASED</tt>. Its occurrence identifier and total-
+        history count remain fenced. Work already <tt>INVOKING</tt> or
+        <tt>INDETERMINATE</tt> remains reconcilable.</t>
+      </section>
+    </section>
+
+    <section anchor="admission-binding">
+      <name>Deterministic AdmissionSnapshot Binding</name>
+      <t>A program occurrence MUST be represented inside its immutable
+      AdmissionSnapshot by exactly one resource whose kind is
+      <tt>execution_program</tt>. The resource is derived from this closed
+      binding object:</t>
+      <sourcecode type="json"><![CDATA[
+{
+  "@version": "EP-BOUNDED-EXECUTION-PROGRAM-ADMISSION-BINDING-v1",
+  "tenant_id": "tenant:example",
+  "program_digest": "sha256:<64 lowercase hexadecimal digits>",
+  "node_id": "remediate",
+  "occurrence_id": "occurrence:remediate:01",
+  "expires_at": "2026-07-30T20:10:00.000Z"
+}
+]]></sourcecode>
+      <t>The resource fields are computed exactly as follows:</t>
+      <sourcecode type="text"><![CDATA[
+identity_tuple = [tenant_id, program_digest, node_id, occurrence_id]
+identity_domain =
+  "EP-BOUNDED-EXECUTION-PROGRAM-ADMISSION-" ||
+  "BINDING-v1:IDENTITY"
+identity_input = UTF8(identity_domain) || 0x00 ||
+                 UTF8(JCS(identity_tuple))
+identity_digest =
+  "sha256:" || lowercase_hex(SHA-256(identity_input))
+
+kind = "execution_program"
+resource_id = "execution-program:" || identity_digest
+reservation_id = "execution-program-reservation:" ||
+                 identity_digest
+digest_input =
+  UTF8("EP-BOUNDED-EXECUTION-PROGRAM-ADMISSION-BINDING-v1:DIGEST") ||
+  0x00 || UTF8(JCS(binding_object))
+digest = "sha256:" || lowercase_hex(SHA-256(digest_input))
+expires_at = binding_object.expires_at
+]]></sourcecode>
+      <t>The binding's <tt>tenant_id</tt>, <tt>program_digest</tt>,
+      <tt>node_id</tt>, and <tt>occurrence_id</tt> MUST equal the values being
+      reserved. Its <tt>expires_at</tt> MUST equal the AdmissionSnapshot expiry.
+      The resource participates in the AdmissionSnapshot's normal resource
+      sorting and snapshot-digest computation.</t>
+      <t>The identity digest is over a structured JCS array, not a delimiter-
+      joined string. The resulting resource and reservation identifiers are
+      fixed-length digest keys. Implementations MUST NOT substitute raw caller-
+      controlled identifiers, ambiguous delimiter concatenation, or another
+      tuple encoding.</t>
+      <t>If the caller supplies mutable AdmissionSnapshot input without this
+      resource, the program-aware store MUST add the resource and then compute
+      the snapshot digest. If the caller supplies a precomputed immutable
+      AdmissionSnapshot, the store MUST accept it only when it already contains
+      exactly the expected resource. A snapshot with no binding, more than one
+      execution-program resource, or a nonidentical binding MUST be refused
+      with no state change.</t>
+      <t>Before adding or accepting the binding, the store MUST also require:
+      the candidate-manifest subject to equal the signed
+      <tt>subject_id</tt>; the authorization input payload digest to equal the
+      signed <tt>authorization_digest</tt>; the AdmissionSnapshot authorization
+      policy digest to equal the node's <tt>trust_program_digest</tt>; and the
+      exact or profile action match defined in <xref target="action-selectors"/>.</t>
+      <t>The normalized AdmissionSnapshot expiry MUST be no later than the
+      signed program expiry. A later admission expiry MUST refuse with
+      <tt>program_expiration_mismatch</tt> before any occurrence, budget,
+      resource, operation-head, or journal state is created. Equality is
+      permitted because both expirations are exclusive.</t>
+    </section>
+
+    <section anchor="runtime">
+      <name>Program-Aware Runtime</name>
+      <t>Registration of an accepted version 1 program creates one active
+      runtime state. It records store-clock status metadata, initializes
+      <tt>total_occurrences</tt> to zero, initializes reserved and consumed
+      values to zero for every independent <tt>budget_id</tt> while retaining
+      each signed unit label, and contains no occurrences.</t>
+      <t>The program state, occurrence state, authorization-digest fence,
+      AdmissionSnapshot, ordinary resource reservations, and one-time execution
+      right MUST share one linearizable transaction domain. A compensating
+      sequence across independent stores is not atomic and does not conform to
+      this profile.</t>
+      <sourcecode type="text"><![CDATA[
+RESERVED -> INVOKING -> COMMITTED
+                    \-> PROVEN_NOT_COMMITTED
+                    \-> INDETERMINATE -> COMMITTED
+                                      \-> PROVEN_NOT_COMMITTED
+RESERVED -> RELEASED
+]]></sourcecode>
+
+      <section anchor="reservation">
+        <name>Reservation</name>
+        <t>A program-aware reservation MUST atomically verify all of the
+        following:</t>
+        <ul spacing="normal">
+          <li>the active program digest, tenant, version, validity interval,
+          fresh store-authoritative <tt>ACTIVE</tt> status, and authorization-
+          digest fence;</li>
+          <li>node existence and exact Trust Program digest;</li>
+          <li>the exact CAID and action digest, or store-verifier-authenticated
+          profile evidence with every binding in
+          <xref target="action-selectors"/>;</li>
+          <li>every outcome-specific dependency;</li>
+          <li>an unused occurrence identifier;</li>
+          <li><tt>total_occurrences &lt; max_total_occurrences</tt>;</li>
+          <li>the remaining non-released node occurrence ceiling;</li>
+          <li>for every node charge,
+          <tt>reserved + consumed + amount &lt;= limit</tt>;</li>
+          <li>AdmissionSnapshot expiry no later than program expiry;</li>
+          <li>the deterministic AdmissionSnapshot binding in
+          <xref target="admission-binding"/>; and</li>
+          <li>all ordinary AdmissionSnapshot and resource-reservation
+          requirements.</li>
+        </ul>
+        <t>On success, the store permanently fences the occurrence identifier,
+        creates a <tt>RESERVED</tt> occurrence, increments
+        <tt>total_occurrences</tt> and the node's non-released count, increments
+        each named budget dimension's reserved value, and reserves the ordinary
+        admission and all of its resources. A refusal MUST make no state change
+        except that accepting a newer authoritative status observation updates
+        the program's status metadata before returning its corresponding
+        refusal.</t>
+        <t>An occurrence in <tt>RELEASED</tt> no longer counts against the
+        node's occurrence ceiling, but its occurrence identifier remains
+        fenced and MUST NOT be reused.</t>
+      </section>
+
+      <section anchor="total-history">
+        <name>Total-History and Indexed Reachability Fences</name>
+        <t><tt>total_occurrences</tt> is monotonic for one program digest. It
+        increments exactly once for every successful occurrence reservation and
+        MUST NOT decrement when an occurrence is released, expires before
+        provider entry, begins, reaches a terminal outcome, or is reconciled.
+        The store MUST refuse further reservation with
+        <tt>program_total_occurrence_exhausted</tt> when it reaches the signed
+        <tt>max_total_occurrences</tt>.</t>
+        <t>The total ceiling bounds retained history, not concurrent work. The
+        per-node <tt>max_occurrences</tt> ceiling separately counts non-released
+        occurrences and restores capacity on pre-entry release. A released
+        occurrence therefore restores node and budget capacity but never total-
+        history capacity.</t>
+        <t>Occurrence identifiers remain permanently fenced within the program.
+        A conforming transaction store SHOULD maintain atomic per-node counts
+        and per-node terminal-outcome counts so reservation and dependency
+        decisions do not require an unbounded scan. Those indexes MUST reconcile
+        exactly with retained occurrence records and MUST be updated in the same
+        transaction as their source transition.</t>
+      </section>
+
+      <section anchor="begin-release">
+        <name>Begin, Release, and Expiry</name>
+        <t>The ordinary begin, release, and expiry paths MUST refuse a
+        program-linked admission with <tt>program_required</tt>. Conversely, a
+        program-aware begin, release, or expiry path MUST refuse an admission
+        that lacks the exact execution-program association.</t>
+        <t>Program-aware begin MUST recheck store-authoritative program status,
+        program validity, and ordinary admission currentness, then atomically
+        consume the ordinary one-time execution right, move each node charge
+        from reserved to consumed, and set the occurrence to
+        <tt>INVOKING</tt> before releasing an invocation capability. If program
+        status is suspended, revoked, stale, unavailable, malformed, or expired,
+        or if ordinary currentness fails before provider entry, the store MUST
+        atomically release the ordinary reservation and resources, node
+        capacity, and reserved budget charges. The occurrence remains in total
+        history as <tt>RELEASED</tt>.</t>
+        <t>Once begin succeeds, provider refusal, timeout, or uncertainty MUST
+        NOT restore the occurrence or its attempt-budget charges. This rule
+        prevents a retry from converting uncertainty after provider entry into
+        unbounded authority.</t>
+        <t>Program-aware release and expiry are permitted only from
+        <tt>RESERVED</tt>. They decrement every reserved node charge, release
+        the ordinary execution right and resources, and set the occurrence to
+        <tt>RELEASED</tt>. Release after begin MUST be refused because the
+        execution right and charges are already consumed.</t>
+      </section>
+
+      <section anchor="outcomes">
+        <name>Outcomes, Dependencies, and Reconciliation</name>
+        <t><tt>COMMITTED</tt> and <tt>PROVEN_NOT_COMMITTED</tt> are terminal
+        provider outcomes. <tt>INDETERMINATE</tt> records uncertainty after
+        provider entry and retains all consumed charges. Reconciliation MAY
+        move an indeterminate occurrence to either terminal outcome.
+        Reconciliation does not itself prove when the provider event occurred.</t>
+        <t>A dependency is satisfied only when at least one occurrence of each
+        named predecessor has a terminal state explicitly listed by that
+        dependency. Terminality alone is insufficient:
+        <tt>PROVEN_NOT_COMMITTED</tt> does not satisfy a dependency that lists
+        only <tt>COMMITTED</tt>.</t>
+        <t><tt>DIVERGED</tt>, if represented by an effect-reconciliation layer,
+        is an observed-effect relation rather than a provider outcome. It MUST
+        NOT rewrite occurrence state, historical authorization, budgets, or
+        reachability and does not identify why an effect differed.</t>
+      </section>
+    </section>
+
+    <section anchor="supersession">
+      <name>Supersession and Replanning</name>
+      <t>Programs are immutable. Replanning creates a newly signed and
+      independently accepted version. The predecessor MUST be the active head.
+      A successor MUST bind its exact program digest, have exactly
+      <tt>predecessor.version + 1</tt>, and preserve the predecessor's tenant ID,
+      program ID, subject ID, audience, objective digest, presentation digest,
+      and program-authorizer identity. These are frozen identity and intent
+      bindings for v1 supersession.</t>
+      <t>The successor MUST carry a distinct authorization digest that differs
+      from the predecessor and has never previously been registered in the
+      store's authorization-owner domain. The caller MUST supply that fresh
+      digest in the closed relying-party registration context. Reuse, a skipped
+      version, changed frozen binding, changed authorizer, wrong predecessor,
+      or an already-owned authorization digest MUST fail closed.</t>
+      <t>Any predecessor occurrence still in <tt>RESERVED</tt> MUST block
+      supersession. On successful supersession, the store atomically marks the
+      predecessor <tt>SUPERSEDED</tt>, installs the successor as the active
+      head, and binds the successor's authorization digest into the ordinary-
+      path fence. The predecessor then refuses new reservations and new
+      invocation starts.</t>
+      <t>Already invoking or indeterminate predecessor work remains
+      reconcilable. The successor starts with zero reserved and consumed
+      budgets, <tt>total_occurrences</tt> zero, fresh node and terminal indexes,
+      and no occurrences. Budget, occurrence, evidence, and terminal state MUST
+      NOT silently carry forward. A successor can depend on earlier effects
+      only through separately verified evidence explicitly admitted by the
+      successor's own action-specific Trust Program.</t>
+    </section>
+
+    <section anchor="errors">
+      <name>Refusal Semantics</name>
+      <t>Reservation and registration refusals are fail-closed and MUST NOT
+      create occurrence, budget, admission, resource, operation-head, journal,
+      or execution-right state. A store MAY retain a newer authenticated
+      program-status observation. A begin refusal caused by program status,
+      program expiry, or admission currentness deliberately performs the atomic
+      pre-entry release defined in <xref target="program-status"/>. Implementations
+      MAY expose a more detailed local error vocabulary. The following reasons
+      define interoperable semantic classes used by the reference profile:</t>
+      <table>
+        <name>Selected Refusal Reasons</name>
+        <thead><tr><th>Reason</th><th>Meaning</th></tr></thead>
+        <tbody>
+          <tr><td><tt>context_binding_required</tt></td><td>Mandatory relying-party verification context is absent.</td></tr>
+          <tr><td><tt>program_required</tt></td><td>An ordinary path attempted to use program-fenced authority or a linked admission.</td></tr>
+          <tr><td><tt>program_binding_mismatch</tt></td><td>A signed, authorization, action, Trust Program, subject, or AdmissionSnapshot binding differs.</td></tr>
+          <tr><td><tt>program_node_unreachable</tt></td><td>At least one outcome-specific dependency is unsatisfied.</td></tr>
+          <tr><td><tt>program_occurrence_conflict</tt></td><td>The occurrence identifier was already fenced.</td></tr>
+          <tr><td><tt>program_occurrence_exhausted</tt></td><td>The node occurrence ceiling is unavailable.</td></tr>
+          <tr><td><tt>program_total_occurrence_exhausted</tt></td><td>The retained total-history ceiling is exhausted.</td></tr>
+          <tr><td><tt>program_budget_exhausted</tt></td><td>At least one aggregate attempt budget is unavailable.</td></tr>
+          <tr><td><tt>program_expiration_mismatch</tt></td><td>The admission expires after the program.</td></tr>
+          <tr><td><tt>program_suspended</tt></td><td>The authoritative current status is suspended.</td></tr>
+          <tr><td><tt>program_revoked</tt></td><td>The authoritative current status is revoked.</td></tr>
+          <tr><td><tt>program_status_indeterminate</tt></td><td>Current status is unavailable, stale, malformed, expired, or conflicting.</td></tr>
+          <tr><td><tt>program_reserved_work_exists</tt></td><td>Reserved predecessor work blocks supersession.</td></tr>
+          <tr><td><tt>program_supersession_invalid</tt></td><td>Version, predecessor, authorizer, frozen identity or intent, or fresh authorization requirements differ.</td></tr>
+        </tbody>
+      </table>
+    </section>
+
+    <section anchor="security">
+      <name>Security Considerations</name>
+      <t>The principal threats are open-ended authority, graph substitution,
+      action substitution, profile-name trust, authorization reuse, ordinary-
+      path bypass, replay, reserve-release history exhaustion, concurrent over-
+      reservation, delimiter aliasing, stale or caller-selected status, budget
+      restoration after provider entry, and unsafe retry after an indeterminate
+      outcome. Closed signed shapes, store-owned trust and clock, authenticated
+      profile evidence, current status, total-history and occurrence fences,
+      structured resource keys, the authorization-digest fence, and one
+      linearizable state domain address those threats at the admission
+      boundary.</t>
+      <t>Private signing keys and store-owned out-of-band key pins require
+      lifecycle, rotation, compromise, role, suspension, revocation, and audit
+      controls. A caller MUST NOT be able to extend the trust-root set or choose
+      the verification clock. A signature establishes that an eligible pinned
+      key signed canonical bytes. It does not establish that the key holder
+      understood the objective, that a presentation was faithful, that a
+      profile is safe, or that the selected limits are appropriate.</t>
+      <t>Profile matching is security-critical. The store MUST configure the
+      authenticated verifier and pin both the profile identifier and digest.
+      Free-form model assertions, caller-authored <tt>MATCH</tt> objects, an
+      unverified profile name, or evidence not sealed into the singleton AEB
+      input MUST NOT satisfy a node.</t>
+      <t>The total-history ceiling intentionally does not restore capacity on
+      release. This bounds retained state but also lets an authorized requester
+      consume the signed history allowance through repeated reserve-release
+      cycles. Authorizers SHOULD choose the ceiling and admission rate controls
+      for that denial-of-service exposure; implementations MUST NOT evade it by
+      deleting records or decrementing <tt>total_occurrences</tt>.</t>
+      <t>The authorization-digest fence closes bypass only within its shared
+      transaction and enforcement domain. A deployment with another mutation
+      credential, provider path, replica, or store outside that domain does not
+      have complete mediation. Such a deployment MUST NOT claim program-wide
+      enforcement merely because the signed object verifies.</t>
+      <t><tt>INDETERMINATE</tt> is material uncertainty, not failure and not
+      permission to retry. Reconciliation can change the recorded provider
+      outcome but cannot reconstruct event order from evidence that does not
+      establish it.</t>
+    </section>
+
+    <section anchor="privacy">
+      <name>Privacy Considerations</name>
+      <t>Programs and AdmissionSnapshots can reveal objectives, tenant and
+      subject identifiers, action relationships, provider operations, timing,
+      budgets, and incident-response structure. Implementations SHOULD use
+      pseudonymous identifiers where accountability permits, minimize program
+      duration and graph detail, disclose digests instead of underlying
+      evidence when appropriate, and enforce access controls and retention
+      periods for runtime records.</t>
+      <t>Digesting low-entropy or guessable material does not make it secret.
+      Sensitive objective, authorization, and presentation material SHOULD use
+      confidentiality and selective-disclosure controls outside this profile.</t>
+    </section>
+
+    <section anchor="implementation-status">
+      <name>Implementation Status</name>
+      <t>An Apache-2.0 same-team reference implementation defines closed program
+      construction, normalization, Ed25519 signing, verification, program
+      digests, mandatory total-history fencing, structured deterministic
+      AdmissionSnapshot resource binding, store-owned program trust and clock,
+      authenticated action-match verification, current-status processing,
+      in-memory and PostgreSQL program-aware admission surfaces, and
+      language-neutral syntax and runtime vectors. The repository also contains
+      bounded state-machine analysis.</t>
+      <t>These artifacts are implementation and regression evidence for this
+      Experimental profile. They are not evidence of an independent
+      implementation, cross-vendor interoperability, a durable production
+      deployment, complete mediation, unbounded formal proof, standardization,
+      certification, or legal effect.</t>
+    </section>
+
+    <section anchor="reporting">
+      <name>Operational Reporting (Informative)</name>
+      <t>The separate signed <tt>EP-BOUNDED-EXECUTION-REPORT-v1</tt> artifact can
+      authenticate a relying-party-generated snapshot of the runtime state and
+      retained occurrence inventory for one verified program. It is not an
+      authorization and is not required to execute this protocol.</t>
+      <t>That report's boundary is Gate-recorded program occurrences only. It
+      does not prove external effect truth, event chronology, program safety,
+      complete mediation of mutation paths, the absence of actions performed
+      outside Gate, or that an action was "executed outside the plan". An
+      outside-plan claim requires a separately signed external inventory root
+      with its own population-completeness and capture-topology boundary.</t>
+    </section>
+
+    <section anchor="iana">
+      <name>IANA Considerations</name>
+      <t>This document has no IANA actions. Protocol identifiers, resource-kind
+      strings, refusal reasons, and action-profile identifiers in this revision
+      are closed by the profile and are not IANA registries. A future revision
+      can request registries or media types after implementation and
+      interoperability experience justifies them.</t>
+    </section>
+
+    <section anchor="claim-boundary">
+      <name>Claim Boundary</name>
+      <t>Verification can establish that a pinned authorizer signed one
+      canonical program. A conforming runtime can establish that it admitted or
+      refused an occurrence according to that program's typed reachability,
+      current-status, total-history, node-occurrence, attempt-budget,
+      AdmissionSnapshot-binding, and supersession rules within one transaction
+      domain.</t>
+      <t>It does not establish that natural-language intent was understood or
+      correctly compiled; that an action profile is sound; that a plan is safe,
+      lawful, optimal, or free of prompt injection; that provider evidence,
+      observed effects, or production event chronology are true; that every
+      mutation path was mediated; that no action occurred outside Gate or the
+      program; or why an observed effect diverged.</t>
+    </section>
+  </middle>
+
+  <back>
+    <references>
+      <name>Normative References</name>
+      <reference anchor="BCP14" target="https://www.rfc-editor.org/info/bcp14">
+        <front>
+          <title>Key Words for Use in RFCs to Indicate Requirement Levels</title>
+          <author><organization>Internet Engineering Task Force</organization></author>
+          <date year="2017"/>
+        </front>
+        <seriesInfo name="BCP" value="14"/>
+      </reference>
+      <xi:include href="https://bib.ietf.org/public/rfc/bibxml/reference.RFC.2119.xml"/>
+      <xi:include href="https://bib.ietf.org/public/rfc/bibxml/reference.RFC.3339.xml"/>
+      <xi:include href="https://bib.ietf.org/public/rfc/bibxml/reference.RFC.4648.xml"/>
+      <xi:include href="https://bib.ietf.org/public/rfc/bibxml/reference.RFC.5234.xml"/>
+      <xi:include href="https://bib.ietf.org/public/rfc/bibxml/reference.RFC.7493.xml"/>
+      <xi:include href="https://bib.ietf.org/public/rfc/bibxml/reference.RFC.8032.xml"/>
+      <xi:include href="https://bib.ietf.org/public/rfc/bibxml/reference.RFC.8174.xml"/>
+      <xi:include href="https://bib.ietf.org/public/rfc/bibxml/reference.RFC.8785.xml"/>
+    </references>
+  </back>
+</rfc>

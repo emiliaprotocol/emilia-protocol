@@ -26,8 +26,12 @@ describe('reusable npm release workflow byte contract', () => {
     const governedIndex = buildSteps.findIndex(
       (step) => step.name === 'Verify governed artifacts and LLM context match source',
     );
+    const formalIndex = buildSteps.findIndex(
+      (step) => step.name === 'Reproduce bounded-execution formal evidence before Gate release',
+    );
     const packIndex = buildSteps.findIndex((step) => step.id === 'pack');
     const governed = buildSteps[governedIndex];
+    const formal = buildSteps[formalIndex];
 
     expect(Object.keys(jobs)).toEqual(['build', 'publisher']);
     expect(jobs.build.permissions).toEqual({ contents: 'read' });
@@ -39,14 +43,21 @@ describe('reusable npm release workflow byte contract', () => {
     });
     expect(evidence.run.trim().split('\n').map((line) => line.trim())).toEqual([
       'npm run check:security-case',
+      'npm run check:bounded-execution-artifacts',
       'npm run conformance:manifest:check',
     ]);
     expect(governedIndex).toBe(evidenceIndex + 1);
-    expect(packIndex).toBe(governedIndex + 1);
+    expect(formalIndex).toBe(governedIndex + 1);
+    expect(packIndex).toBe(formalIndex + 1);
     expect(governed.run.trim().split('\n').map((line) => line.trim())).toEqual([
       'npm run check:proof-stats',
       'npm run check:llm-context',
     ]);
+    expect(formal.if).toBe("inputs.package_name == '@emilia-protocol/gate'");
+    expect(formal.env).toEqual({
+      TLA2TOOLS_JAR: '${{ github.workspace }}/tla2tools.jar',
+    });
+    expect(formal.run).toBe('node formal/check-bounded-execution-program-v1.mjs --check');
     expect(jobs.publisher.needs).toBe('build');
     expect(jobs.publisher.environment).toBe('registry-publishing-approval');
     expect(jobs.publisher.permissions).toEqual({

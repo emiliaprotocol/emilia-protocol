@@ -233,6 +233,8 @@ export {
 } from './capability-receipt.js';
 export * from './authority-allocation.js';
 export * from './autonomy-control-plane-profile.js';
+export * from './bounded-execution-program.js';
+export * from './bounded-execution-report.js';
 export * from './admission-store.js';
 export * from './admission-store-postgres.js';
 export * from './gate-qualification-v2.js';

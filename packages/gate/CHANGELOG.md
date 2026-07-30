@@ -6,11 +6,27 @@ This package follows [Semantic Versioning](https://semver.org/).
 
 ## Unreleased
 
+## 0.22.0 (2026-07-30)
+
 ### Added
 
 - `./coverage-reconciliation-runner`, which verifies independently signed,
   privacy-minimized source inventories, joins exact CAID/action-digest pairs,
   derives conserving counts, and emits a report-bound period attestation.
+- `./bounded-execution-program`, a canonical signed finite action DAG with
+  exact-action or pinned-profile nodes, typed terminal dependencies, retained-
+  occurrence ceilings, multidimensional attempt budgets, suspension,
+  revocation, and fresh signed supersession.
+- `./bounded-execution-report`, a signed point-in-time, program-to-date record
+  of Gate-observed occurrences and budget use with an explicit boundary around
+  external effects and actions outside Gate.
+- Program-aware in-memory and PostgreSQL AdmissionStore operations that bind
+  each occurrence into the immutable admission snapshot and consume the
+  one-time execution right in the same transaction as program state.
+- The versioned PostgreSQL reference schema in
+  `sql/gate-qualification-v2.sql`, deterministic reference vectors, runtime-
+  refinement traces, and a bounded TLC model with two intentional negative
+  controls.
 
 ### Security
 
@@ -19,6 +35,11 @@ This package follows [Semantic Versioning](https://semver.org/).
   cross-population CAID/digest conflicts, same-operator source populations, and
   report substitution fail closed. The artifact remains evidence about two
   supplied populations and does not prove either source was complete.
+- Program-authorizer keys, roles, status, verification time, action-profile
+  matchers, and current program status are store-owned policy. The signed
+  program constrains separately authorized actions; it does not prove human
+  ceremony, safe intent, provider or effect truth, complete mediation, or the
+  absence of actions outside Gate.
 
 ## 0.22.2 (2026-07-31)
 

@@ -681,6 +681,35 @@ mechanized refinement proof and does not establish cryptographic correctness,
 provider or effect truth, trusted time, durable storage, deployment behavior,
 or arbitrary concurrency/cardinality.
 
+## TLA+ — `ep_bounded_execution_program_v1.tla`
+
+**Status:** bounded finite-control model rerun locally on 2026-07-30;
+CI executes the checksum-pinned authenticated checker for every relevant
+change. TLC exhausted 5,722,136 generated / 531,820 distinct safe states to
+complete depth 19 with zero states queued. All 20 state invariants and 11
+transition properties held.
+
+The model covers a closed three-node DAG, outcome-specific dependency
+reachability, per-node and total occurrence ceilings, two-dimensional atomic
+attempt budgets, pre-entry release, consumed `INDETERMINATE` attempts,
+deterministic admission binding, ordinary-authorization fencing, pre-entry
+suspension/revocation/expiry, expiry clamping, fresh-context exact-version
+supersession, and reconciliation of post-entry uncertainty.
+
+Two deliberately unsafe models must fail. The unsigned-successor model
+falsifies `OnlySignedProgramsCanBeActive` in three trace states. The ordinary-
+authorization bypass model falsifies `AuthorizationFenceConsistent` in three
+trace states. The checker fails closed unless the safe exhaustion and both
+exact negative controls occur. Result evidence is recorded in
+`formal/results/bounded-execution-program-v1.tlc.json` and
+`formal/results/bounded-execution-program-v1.tlc.summary.txt`.
+
+**Boundary:** finite same-team control abstraction only. This is not an
+implementation refinement proof and does not establish cryptographic
+correctness, store-pinned trust-root retrieval, structured resource-digest byte
+construction, runtime-index correctness, provider/effect truth, trusted time,
+durable storage, complete mediation, or arbitrary concurrency/cardinality.
+
 ---
 
 When a property is verified by a model checker:
@@ -691,4 +720,4 @@ When a property is verified by a model checker:
 
 ---
 
-_Last updated: 2026-07-26 (Gate Qualification v2 bounded model: 19 invariants, 10 properties, independent provider/effect truth, and an expected unsafe supersession counterexample). Prior: 2026-07-24 (70 content-addressed selected model/runtime scenarios across 20 claims and 13 bounded models, 45 paired formal-counterexample/runtime-refusal controls, and action-complete coverage of all 28 declared actions in the end-to-end model). Prior: 2026-07-22 (bounded consequence-attempt/AEB custody model added to the pinned CI gate: 27 checks across 93,724 distinct states, including consume-before-commit ordering and stale-lease-only recovery; deliberately weakened replay model falsifies `InvokeAtMostOnce`). Prior: 2026-07-21 (bounded authority-program and receipt-program models plus Conservation of Authority claim boundary). Prior: 2026-07-10 (composed reliance-path v2: 10 strict lemmas verified; no-consumption and unpinned-registry-view comparisons falsified with concrete traces; all well-formedness checks clean)._
+_Last updated: 2026-07-30 (Bounded Execution Program v1: 20 invariants, 11 transition properties, 531,820 distinct safe states, and required unsigned-successor plus authorization-fence counterexamples). Prior: 2026-07-26 (Gate Qualification v2 bounded model: 19 invariants, 10 properties, independent provider/effect truth, and an expected unsafe supersession counterexample). Prior: 2026-07-24 (70 content-addressed selected model/runtime scenarios across 20 claims and 13 bounded models, 45 paired formal-counterexample/runtime-refusal controls, and action-complete coverage of all 28 declared actions in the end-to-end model). Prior: 2026-07-22 (bounded consequence-attempt/AEB custody model added to the pinned CI gate: 27 checks across 93,724 distinct states, including consume-before-commit ordering and stale-lease-only recovery; deliberately weakened replay model falsifies `InvokeAtMostOnce`). Prior: 2026-07-21 (bounded authority-program and receipt-program models plus Conservation of Authority claim boundary). Prior: 2026-07-10 (composed reliance-path v2: 10 strict lemmas verified; no-consumption and unpinned-registry-view comparisons falsified with concrete traces; all well-formedness checks clean)._

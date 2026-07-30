@@ -1,0 +1,369 @@
+{
+  "model": "EP-BOUNDED-EXECUTION-PROGRAM-V1-TLC-BOUNDED-v1",
+  "method": "authenticated_tlc_exhaustive_bounded_state_exploration",
+  "execution_timestamp": "2026-07-30T09:14:16.489Z",
+  "oracle": {
+    "tla_tools_version": "v1.7.4",
+    "tlc_version": "2.19",
+    "revision": "5a47802",
+    "jar_sha256": "936a262061c914694dfd669a543be24573c45d5aa0ff20a8b96b23d01e050e88",
+    "workers": 1,
+    "seed": 1,
+    "coverage_interval_minutes": 1
+  },
+  "safe": {
+    "module": "ep_bounded_execution_program_v1.tla",
+    "configuration": "ep_bounded_execution_program_v1.cfg",
+    "result": "no_error",
+    "exit_code": 0,
+    "tlc_version": "2.19",
+    "tlc_revision": "5a47802",
+    "generated_states": 5722136,
+    "distinct_states": 531820,
+    "queued_states": 0,
+    "depth": 19,
+    "violation": null,
+    "counterexample_states": 0,
+    "action_coverage": {
+      "Init": {
+        "distinct_successor_states": 1,
+        "generated_successor_states": 1
+      },
+      "ReserveOrdinaryAuthorization": {
+        "distinct_successor_states": 1,
+        "generated_successor_states": 1
+      },
+      "ReleaseOrdinaryAuthorization": {
+        "distinct_successor_states": 1,
+        "generated_successor_states": 1
+      },
+      "ConsumeOrdinaryAuthorization": {
+        "distinct_successor_states": 1,
+        "generated_successor_states": 1
+      },
+      "RegisterOriginalProgram": {
+        "distinct_successor_states": 3,
+        "generated_successor_states": 3
+      },
+      "ReserveOccurrence": {
+        "distinct_successor_states": 10890,
+        "generated_successor_states": 24756
+      },
+      "WitnessDependentReachable": {
+        "distinct_successor_states": 0,
+        "generated_successor_states": 48828
+      },
+      "WitnessLeafReachable": {
+        "distinct_successor_states": 0,
+        "generated_successor_states": 11952
+      },
+      "ReleaseOccurrence": {
+        "distinct_successor_states": 11424,
+        "generated_successor_states": 24648
+      },
+      "BeginInvocation": {
+        "distinct_successor_states": 15126,
+        "generated_successor_states": 24648
+      },
+      "MarkIndeterminate": {
+        "distinct_successor_states": 17394,
+        "generated_successor_states": 274716
+      },
+      "RecordTerminalOutcome": {
+        "distinct_successor_states": 43140,
+        "generated_successor_states": 549432
+      },
+      "ReconcileActiveIndeterminate": {
+        "distinct_successor_states": 0,
+        "generated_successor_states": 49296
+      },
+      "ReconcileSupersededIndeterminate": {
+        "distinct_successor_states": 0,
+        "generated_successor_states": 280656
+      },
+      "DeactivateProgram": {
+        "distinct_successor_states": 169506,
+        "generated_successor_states": 216102
+      },
+      "ExpireProgram": {
+        "distinct_successor_states": 254259,
+        "generated_successor_states": 277557
+      },
+      "SupersedeSigned": {
+        "distinct_successor_states": 10074,
+        "generated_successor_states": 10074
+      },
+      "RejectIndeterminateDependency": {
+        "distinct_successor_states": 0,
+        "generated_successor_states": 2844
+      },
+      "RejectOccurrenceCeiling": {
+        "distinct_successor_states": 0,
+        "generated_successor_states": 2124
+      },
+      "RejectBudgetExhaustion": {
+        "distinct_successor_states": 0,
+        "generated_successor_states": 1800
+      },
+      "RejectUnsignedSupersession": {
+        "distinct_successor_states": 0,
+        "generated_successor_states": 10074
+      },
+      "RejectReusedSupersessionContext": {
+        "distinct_successor_states": 0,
+        "generated_successor_states": 10074
+      },
+      "WitnessSuspendedProgram": {
+        "distinct_successor_states": 0,
+        "generated_successor_states": 169506
+      },
+      "WitnessRevokedProgram": {
+        "distinct_successor_states": 0,
+        "generated_successor_states": 169506
+      },
+      "WitnessExpiredProgram": {
+        "distinct_successor_states": 0,
+        "generated_successor_states": 254259
+      },
+      "WitnessUnavailableAfterProviderEntry": {
+        "distinct_successor_states": 0,
+        "generated_successor_states": 795648
+      },
+      "RejectRegistrationWithOrdinaryReservation": {
+        "distinct_successor_states": 0,
+        "generated_successor_states": 1
+      },
+      "RejectOrdinaryReserveAfterRegistration": {
+        "distinct_successor_states": 0,
+        "generated_successor_states": 531816
+      },
+      "RejectRelinkedAdmission": {
+        "distinct_successor_states": 0,
+        "generated_successor_states": 1957164
+      },
+      "RejectOrdinaryPathForLinkedAdmission": {
+        "distinct_successor_states": 0,
+        "generated_successor_states": 24648
+      }
+    }
+  },
+  "unsafe": {
+    "module": "ep_bounded_execution_program_v1_unsafe.tla",
+    "configuration": "ep_bounded_execution_program_v1.cfg",
+    "result": "expected_invariant_violation",
+    "exit_code": 12,
+    "tlc_version": "2.19",
+    "tlc_revision": "5a47802",
+    "generated_states": 18,
+    "distinct_states": 14,
+    "queued_states": 10,
+    "depth": 3,
+    "violation": "OnlySignedProgramsCanBeActive",
+    "counterexample_states": 3,
+    "action_coverage": {
+      "UnsafeActivateUnsigned": {
+        "distinct_successor_states": 1,
+        "generated_successor_states": 2
+      }
+    }
+  },
+  "authorization_fence_unsafe": {
+    "module": "ep_bounded_execution_program_v1_authorization_fence_unsafe.tla",
+    "configuration": "ep_bounded_execution_program_v1.cfg",
+    "result": "expected_invariant_violation",
+    "exit_code": 12,
+    "tlc_version": "2.19",
+    "tlc_revision": "5a47802",
+    "generated_states": 7,
+    "distinct_states": 6,
+    "queued_states": 3,
+    "depth": 3,
+    "violation": "AuthorizationFenceConsistent",
+    "counterexample_states": 3,
+    "action_coverage": {
+      "UnsafeRegisterOverOrdinaryReservation": {
+        "distinct_successor_states": 1,
+        "generated_successor_states": 2
+      }
+    }
+  },
+  "obligations": {
+    "invariants": [
+      "TypeInvariant",
+      "ClosedDAG",
+      "SingleActiveHead",
+      "OnlySignedProgramsCanBeActive",
+      "AuthorizationFenceConsistent",
+      "OrdinaryReservationBlocksProgramRegistration",
+      "FencedAuthorizationBlocksOrdinaryReserve",
+      "SupersessionChainValid",
+      "UnregisteredProgramsAreFresh",
+      "OccurrenceBindingsComplete",
+      "ProgramAdmissionBindingExact",
+      "OccurrenceCeilingsHold",
+      "TotalOccurrencesBounded",
+      "AdmissionExpiryWithinProgramExpiry",
+      "BudgetConservation",
+      "BudgetAccountingExact",
+      "AdmittedNodesHaveTerminalDependencies",
+      "IndeterminateNeverSatisfiesDependency",
+      "SupersededProgramsHaveNoReservedWork",
+      "UnavailableProgramsHaveNoReservedWork"
+    ],
+    "properties": [
+      "ReserveChargesEveryDimension",
+      "BeginConsumesEveryDimension",
+      "ReleaseRestoresEveryDimension",
+      "ConsumedBudgetNeverRefunds",
+      "ClosedOccurrencesNeverReopen",
+      "AdmissionBindingNeverRelinks",
+      "BeginRequiresAvailableProgram",
+      "DeactivationReleasesPreEntryPreservesPostEntry",
+      "ProgramExpiryDoesNotStrandReservations",
+      "ProgramRegistrationFencesAuthorizationAtomically",
+      "SignedSupersessionStartsFresh"
+    ]
+  },
+  "coverage_obligations": [
+    {
+      "action": "ReserveOrdinaryAuthorization",
+      "minimum_distinct_successor_states": 1,
+      "minimum_generated_successor_states": 1
+    },
+    {
+      "action": "RegisterOriginalProgram",
+      "minimum_distinct_successor_states": 1,
+      "minimum_generated_successor_states": 1
+    },
+    {
+      "action": "ReserveOccurrence",
+      "minimum_distinct_successor_states": 1,
+      "minimum_generated_successor_states": 1
+    },
+    {
+      "action": "WitnessDependentReachable",
+      "maximum_distinct_successor_states": 0,
+      "minimum_generated_successor_states": 1
+    },
+    {
+      "action": "WitnessLeafReachable",
+      "maximum_distinct_successor_states": 0,
+      "minimum_generated_successor_states": 1
+    },
+    {
+      "action": "ReleaseOccurrence",
+      "minimum_distinct_successor_states": 1,
+      "minimum_generated_successor_states": 1
+    },
+    {
+      "action": "BeginInvocation",
+      "minimum_distinct_successor_states": 1,
+      "minimum_generated_successor_states": 1
+    },
+    {
+      "action": "MarkIndeterminate",
+      "minimum_distinct_successor_states": 1,
+      "minimum_generated_successor_states": 1
+    },
+    {
+      "action": "DeactivateProgram",
+      "minimum_distinct_successor_states": 1,
+      "minimum_generated_successor_states": 1
+    },
+    {
+      "action": "ExpireProgram",
+      "minimum_distinct_successor_states": 1,
+      "minimum_generated_successor_states": 1
+    },
+    {
+      "action": "ReconcileSupersededIndeterminate",
+      "minimum_generated_successor_states": 1
+    },
+    {
+      "action": "SupersedeSigned",
+      "minimum_distinct_successor_states": 1,
+      "minimum_generated_successor_states": 1
+    },
+    {
+      "action": "RejectIndeterminateDependency",
+      "maximum_distinct_successor_states": 0,
+      "minimum_generated_successor_states": 1
+    },
+    {
+      "action": "RejectOccurrenceCeiling",
+      "maximum_distinct_successor_states": 0,
+      "minimum_generated_successor_states": 1
+    },
+    {
+      "action": "RejectBudgetExhaustion",
+      "maximum_distinct_successor_states": 0,
+      "minimum_generated_successor_states": 1
+    },
+    {
+      "action": "RejectUnsignedSupersession",
+      "maximum_distinct_successor_states": 0,
+      "minimum_generated_successor_states": 1
+    },
+    {
+      "action": "RejectReusedSupersessionContext",
+      "maximum_distinct_successor_states": 0,
+      "minimum_generated_successor_states": 1
+    },
+    {
+      "action": "WitnessSuspendedProgram",
+      "maximum_distinct_successor_states": 0,
+      "minimum_generated_successor_states": 1
+    },
+    {
+      "action": "WitnessRevokedProgram",
+      "maximum_distinct_successor_states": 0,
+      "minimum_generated_successor_states": 1
+    },
+    {
+      "action": "WitnessExpiredProgram",
+      "maximum_distinct_successor_states": 0,
+      "minimum_generated_successor_states": 1
+    },
+    {
+      "action": "WitnessUnavailableAfterProviderEntry",
+      "maximum_distinct_successor_states": 0,
+      "minimum_generated_successor_states": 1
+    },
+    {
+      "action": "RejectRelinkedAdmission",
+      "maximum_distinct_successor_states": 0,
+      "minimum_generated_successor_states": 1
+    },
+    {
+      "action": "RejectOrdinaryPathForLinkedAdmission",
+      "maximum_distinct_successor_states": 0,
+      "minimum_generated_successor_states": 1
+    },
+    {
+      "action": "RejectRegistrationWithOrdinaryReservation",
+      "maximum_distinct_successor_states": 0,
+      "minimum_generated_successor_states": 1
+    },
+    {
+      "action": "RejectOrdinaryReserveAfterRegistration",
+      "maximum_distinct_successor_states": 0,
+      "minimum_generated_successor_states": 1
+    }
+  ],
+  "hashes": {
+    "safe_model": "715d146490fff4b4def01e32a0c2c2d1757631a46b9a34790d82daca0b39595d",
+    "configuration": "fb2ac29bf7072bf802b94c151baf8af46f9d4b1227f4bd6cccc2a724d984770f",
+    "unsafe_model": "6b60e5908d8eb6376732caf8d706fc6b980b729cf18b65cf55a7e721ceec5dfc",
+    "authorization_fence_unsafe_model": "d312111d752ae530861e15a069ff3533e514655590c5ef7b06cf24fcb5809cf8",
+    "checker": "15851e131227e65e6eadf64b7789067f531b2b9dd8fabbfbaf0eb640c7091e04"
+  },
+  "verified": true,
+  "limitations": [
+    "Finite same-team control abstraction, not an unbounded theorem.",
+    "No mechanized refinement to the TypeScript AdmissionStore or provider implementation.",
+    "Signature validity, canonical predecessor digests, clocks, and linearizable durable storage are abstract inputs.",
+    "Fresh supersession verification is modeled with opaque context identities; store-pinned key retrieval and trust-root contents are not modeled.",
+    "Structured execution-program resource-digest byte construction and concrete runtime occurrence indexes are not modeled; only binding equality and configured occurrence bounds are checked.",
+    "The scope has one tenant, one authorization digest, three program versions, three DAG nodes, two budget dimensions, two expiry values, and four occurrence identifiers."
+  ]
+}

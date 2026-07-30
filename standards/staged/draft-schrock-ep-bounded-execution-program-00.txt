@@ -1,0 +1,1232 @@
+
+
+
+
+Network Working Group                                         I. Schrock
+Internet-Draft                                     EMILIA Protocol, Inc.
+Intended status: Experimental                               30 July 2026
+Expires: 31 January 2027
+
+
+       Bounded Execution Programs for Consequential Agent Actions
+             draft-schrock-ep-bounded-execution-program-00
+
+Abstract
+
+   An authorization for one action does not by itself authorize an open-
+   ended agent plan.  This document defines an Experimental profile for
+   a signed, finite, versioned directed acyclic graph of consequential
+   action occurrences.  The program binds a total retained-history
+   ceiling.  Each node binds an exact action or a pinned action-matching
+   profile, an action- specific Trust Program, outcome-specific
+   dependencies, an occurrence ceiling, and fixed charges against
+   aggregate attempt budgets.
+
+   A conforming program-aware admission store evaluates reachability and
+   budgets in the same linearizable transaction domain as the ordinary
+   one-time execution right.  It uses store-owned authorizer trust
+   roots, clock, authenticated profile-match verification, and current
+   program status; seals a deterministic execution-program resource into
+   the AdmissionSnapshot; and fences the program's independent
+   authorization digest against ordinary-path admission.  The profile
+   does not establish that natural-language intent was understood, that
+   a plan is safe or lawful, that provider or effect evidence is true,
+   or that every mutation path was mediated.
+
+Status of This Memo
+
+   This Internet-Draft is submitted in full conformance with the
+   provisions of BCP 78 and BCP 79.
+
+   Internet-Drafts are working documents of the Internet Engineering
+   Task Force (IETF).  Note that other groups may also distribute
+   working documents as Internet-Drafts.  The list of current Internet-
+   Drafts is at https://datatracker.ietf.org/drafts/current/.
+
+   Internet-Drafts are draft documents valid for a maximum of six months
+   and may be updated, replaced, or obsoleted by other documents at any
+   time.  It is inappropriate to use Internet-Drafts as reference
+   material or to cite them other than as "work in progress."
+
+   This Internet-Draft will expire on 31 January 2027.
+
+
+
+
+Schrock                  Expires 31 January 2027                [Page 1]
+
+Internet-Draft            EP Bounded Execution                 July 2026
+
+
+Copyright Notice
+
+   Copyright (c) 2026 IETF Trust and the persons identified as the
+   document authors.  All rights reserved.
+
+   This document is subject to BCP 78 and the IETF Trust's Legal
+   Provisions Relating to IETF Documents (https://trustee.ietf.org/
+   license-info) in effect on the date of publication of this document.
+   Please review these documents carefully, as they describe your rights
+   and restrictions with respect to this document.  Code Components
+   extracted from this document must include Revised BSD License text as
+   described in Section 4.e of the Trust Legal Provisions and are
+   provided without warranty as described in the Revised BSD License.
+
+Table of Contents
+
+   1.  Introduction  . . . . . . . . . . . . . . . . . . . . . . . .   3
+     1.1.  Requirements Language . . . . . . . . . . . . . . . . . .   3
+     1.2.  Scope and Layer Boundaries  . . . . . . . . . . . . . . .   3
+   2.  Terminology . . . . . . . . . . . . . . . . . . . . . . . . .   4
+   3.  Closed Signed Program . . . . . . . . . . . . . . . . . . . .   4
+     3.1.  Budgets . . . . . . . . . . . . . . . . . . . . . . . . .   6
+     3.2.  Nodes . . . . . . . . . . . . . . . . . . . . . . . . . .   6
+     3.3.  Action Selectors  . . . . . . . . . . . . . . . . . . . .   7
+     3.4.  Closed-Shape Processing . . . . . . . . . . . . . . . . .   8
+   4.  Canonicalization, Signature, and Program Digest . . . . . . .   8
+   5.  Verification and Registration . . . . . . . . . . . . . . . .   9
+     5.1.  Authorization-Digest Ordinary-Path Fence  . . . . . . . .  10
+     5.2.  Store-Authoritative Current Status  . . . . . . . . . . .  11
+   6.  Deterministic AdmissionSnapshot Binding . . . . . . . . . . .  12
+   7.  Program-Aware Runtime . . . . . . . . . . . . . . . . . . . .  13
+     7.1.  Reservation . . . . . . . . . . . . . . . . . . . . . . .  13
+     7.2.  Total-History and Indexed Reachability Fences . . . . . .  14
+     7.3.  Begin, Release, and Expiry  . . . . . . . . . . . . . . .  15
+     7.4.  Outcomes, Dependencies, and Reconciliation  . . . . . . .  16
+   8.  Supersession and Replanning . . . . . . . . . . . . . . . . .  16
+   9.  Refusal Semantics . . . . . . . . . . . . . . . . . . . . . .  17
+   10. Security Considerations . . . . . . . . . . . . . . . . . . .  18
+   11. Privacy Considerations  . . . . . . . . . . . . . . . . . . .  19
+   12. Implementation Status . . . . . . . . . . . . . . . . . . . .  20
+   13. Operational Reporting (Informative) . . . . . . . . . . . . .  20
+   14. IANA Considerations . . . . . . . . . . . . . . . . . . . . .  20
+   15. Claim Boundary  . . . . . . . . . . . . . . . . . . . . . . .  21
+   16. Normative References  . . . . . . . . . . . . . . . . . . . .  21
+   Author's Address  . . . . . . . . . . . . . . . . . . . . . . . .  22
+
+
+
+
+
+
+Schrock                  Expires 31 January 2027                [Page 2]
+
+Internet-Draft            EP Bounded Execution                 July 2026
+
+
+1.  Introduction
+
+   Consequential agents often need authority for a bounded sequence of
+   related actions.  Requiring a new authorization ceremony for every
+   action can be impractical, but treating a goal, generated plan,
+   profile name, or signature as open-ended authority removes the
+   boundary that a gate is supposed to enforce.
+
+   This document defines EP-BOUNDED-EXECUTION-PROGRAM-v1.  An authorizer
+   signs one closed graph whose action occurrences, dependency outcomes,
+   node and total-history ceilings, attempt budgets, validity interval,
+   and supersession lineage are explicit.  The runtime answers one
+   narrow question: is this exact occurrence reachable now under this
+   exact signed program, while all occurrence and attempt-budget limits
+   remain available?
+
+   The signed object and the runtime state machine are inseparable.  A
+   signed graph without shared state cannot prevent replay or concurrent
+   over-reservation.  A runtime ledger without a verified signed graph
+   has no portable authority boundary.
+
+1.1.  Requirements Language
+
+   The key words "MUST", "MUST NOT", "REQUIRED", "SHALL", "SHALL NOT",
+   "SHOULD", "SHOULD NOT", "RECOMMENDED", "NOT RECOMMENDED", "MAY", and
+   "OPTIONAL" in this document are to be interpreted as described in BCP
+   14 [RFC2119] [RFC8174] when, and only when, they appear in all
+   capitals, as shown here.
+
+   BCP 14 is indexed by the RFC Editor at [BCP14].
+
+1.2.  Scope and Layer Boundaries
+
+   This profile adds cross-action reachability and aggregate attempt
+   accounting to an admission system.  It does not replace the
+   independent authorization artifact bound by authorization_digest, the
+   action-specific evidence evaluation bound by trust_program_digest, an
+   AdmissionSnapshot's one-time execution right, or any bounded
+   capability receipt required for delegated scope and resource
+   authority.
+
+   A program authorizer decides which graph and limits to sign.  An
+   action verifier decides whether the evidence required for one action
+   is satisfied.  The program-aware admission store decides whether one
+   occurrence is currently reachable and atomically reserves or consumes
+   its runtime rights.  An effect or outcome verifier remains
+   responsible for claims about what happened after provider entry.
+
+
+
+
+Schrock                  Expires 31 January 2027                [Page 3]
+
+Internet-Draft            EP Bounded Execution                 July 2026
+
+
+   authorization_digest is an exact byte commitment used for binding and
+   exclusion.  It does not by itself prove that a human ceremony
+   occurred, who participated, consent, comprehension, presentation
+   integrity, or legal authority.  Those claims require their own
+   authenticated evidence and relying-party acceptance rules.
+
+2.  Terminology
+
+   Execution Program:  The immutable signed artifact defined in
+      Section 3.
+
+   Program digest:  The domain-independent SHA-256 JCS digest of the
+      complete signed body with the attached proof member omitted.
+
+   Node:  A named action selector, Trust Program digest, dependency set,
+      occurrence ceiling, and fixed budget-charge set.
+
+   Occurrence:  One uniquely identified retained runtime record for an
+      attempt to execute a node.  Release does not remove it from total
+      history.
+
+   AdmissionSnapshot:  A closed, immutable object that binds all
+      verified inputs, resources, action identity, provider binding, and
+      the one-time execution right for one consequential operation.
+
+   Ordinary path:  An admission reserve, begin, release, or expiry path
+      that does not participate in the execution-program transaction.
+
+   Program-aware path:  An admission path that atomically evaluates and
+      transitions both the ordinary admission state and the execution-
+      program state.
+
+   Provider entry:  The boundary after which an external consequence
+      might have occurred.  The execution right and attempt charges are
+      consumed before the invocation capability is released across this
+      boundary.
+
+   Terminal provider outcome:  Either COMMITTED or PROVEN_NOT_COMMITTED.
+
+   Current program status:  A store-authoritative ACTIVE, SUSPENDED, or
+      REVOKED observation for the exact program version and digest.
+
+3.  Closed Signed Program
+
+   The unsigned construction input is a closed I-JSON object [RFC7493]
+   containing exactly the following members:
+
+
+
+
+
+Schrock                  Expires 31 January 2027                [Page 4]
+
+Internet-Draft            EP Bounded Execution                 July 2026
+
+
+   {
+     "program_id": "program:production-remediation:01",
+     "tenant_id": "tenant:example",
+     "version": 1,
+     "subject_id": "agent:operations:01",
+     "audience": "gate:production:01",
+     "objective_digest": "sha256:<64 lowercase hexadecimal digits>",
+     "authorization_digest": "sha256:<64 lowercase hexadecimal digits>",
+     "presentation_digest": "sha256:<64 lowercase hexadecimal digits>",
+     "supersedes_program_digest": null,
+     "issued_at": "2026-07-30T19:55:00.000Z",
+     "valid_from": "2026-07-30T20:00:00.000Z",
+     "expires_at": "2026-07-30T21:00:00.000Z",
+     "max_total_occurrences": 64,
+     "budgets": [
+       { "budget_id": "attempts", "unit": "attempt", "limit": 3 }
+     ],
+     "nodes": [ "<one or more nodes as defined below>" ]
+   }
+
+   program_id, tenant_id, subject_id, and audience are nonempty
+   identifiers.  An identifier MUST match:
+
+   ^[A-Za-z0-9][A-Za-z0-9:_.@/+\-]{0,511}$
+
+   A digest in this document is the string sha256: followed by exactly
+   64 lowercase hexadecimal digits.  Version and numeric limits MUST be
+   positive I-JSON safe integers.  Version 1 MUST have a null
+   supersedes_program_digest; a later version MUST contain the exact
+   predecessor program digest.
+
+   objective_digest binds authorizer-selected objective bytes.  It does
+   not prove that natural-language intent was understood or correctly
+   compiled. authorization_digest binds the independently verified
+   authorization evidence on which the program relies.
+   presentation_digest binds the approval or presentation material
+   selected by the authorizer; it does not prove display integrity,
+   human comprehension, or informed consent.
+
+   The three times use the RFC 3339 [RFC3339] date-time production
+   restricted to UTC with a trailing Z.  They MUST satisfy issued_at <=
+   valid_from < expires_at.  Expiration is exclusive.
+
+   max_total_occurrences is REQUIRED and MUST be a positive safe integer
+   no greater than 1000000.  It limits all retained occurrence records
+   for the program, including occurrences later released before provider
+   entry.  Omission is a schema error.
+
+
+
+
+Schrock                  Expires 31 January 2027                [Page 5]
+
+Internet-Draft            EP Bounded Execution                 July 2026
+
+
+3.1.  Budgets
+
+   budgets contains between 1 and 64 closed objects.  Each has exactly
+   budget_id, unit, and limit.  budget_id and unit are identifiers.
+   Budget identifiers MUST be unique. budget_id, not unit, identifies
+   the independent accounting dimension.  Multiple budget dimensions MAY
+   use the same unit label without sharing a limit or accounting state.
+   The unit is a signed descriptive label and MUST NOT be used as an
+   alias key. limit MUST be a positive safe integer no greater than
+   9007199254740991.
+
+   A budget is an attempt-accounting dimension, not proof of economic
+   settlement or resource availability.  A node's fixed charge is
+   consumed at provider entry even if the later result is indeterminate.
+
+3.2.  Nodes
+
+   nodes contains between 1 and 256 closed node objects.  Node
+   identifiers MUST be unique.  The complete dependency graph MUST be
+   acyclic and contain at least one root.
+
+   {
+     "node_id": "remediate",
+     "action": {
+       "mode": "profile",
+       "profile_id": "profile:terraform-reviewed-plan",
+       "profile_digest": "sha256:<64 lowercase hexadecimal digits>"
+     },
+     "trust_program_digest": "sha256:<64 lowercase hexadecimal digits>",
+     "depends_on": [
+       { "node_id": "inspect", "outcomes": ["COMMITTED"] }
+     ],
+     "max_occurrences": 1,
+     "charges": [
+       { "budget_id": "attempts", "amount": 1 }
+     ]
+   }
+
+   trust_program_digest pins the action-specific Trust Program that MUST
+   govern the corresponding AdmissionSnapshot.  max_occurrences MUST be
+   a positive safe integer no greater than 1000000.
+
+   depends_on contains at most 64 unique predecessor node identifiers.
+   Each dependency contains one or both unique strings COMMITTED and
+   PROVEN_NOT_COMMITTED.  Every predecessor MUST exist.  Self-
+   dependencies and cycles MUST be refused.  Reserved, released,
+   invoking, expired, and indeterminate states are not dependency
+   outcomes.
+
+
+
+Schrock                  Expires 31 January 2027                [Page 6]
+
+Internet-Draft            EP Bounded Execution                 July 2026
+
+
+   charges contains between 1 and 64 objects with unique budget
+   identifiers.  Every identifier MUST name a declared budget.  Each
+   amount MUST be positive and MUST NOT exceed that budget's total
+   program limit.
+
+3.3.  Action Selectors
+
+   A node's action member has exactly one of two closed shapes:
+
+   { "mode": "exact", "caid": "caid:1:...",
+     "action_digest": "sha256:<64 lowercase hexadecimal digits>" }
+
+   { "mode": "profile", "profile_id": "profile:...",
+     "profile_digest": "sha256:<64 lowercase hexadecimal digits>" }
+
+   In exact mode, both the Canonical Action Identifier (CAID) and action
+   digest MUST exactly equal the AdmissionSnapshot values.  This version
+   accepts the following closed CAID syntax, using the core ABNF rules
+   from [RFC5234]:
+
+   caid           = "caid:1:" action-name "." action-version
+                    ":jcs-sha256:" digest43
+   action-name    = component *("." component)
+   component      = LCALPHA *(LCALPHA / DIGIT / "-")
+   action-version = %x31-39 *DIGIT
+   digest43       = 43base64url-char
+   base64url-char = ALPHA / DIGIT / "-" / "_"
+   LCALPHA        = %x61-7A
+
+   Action-name interpretation is defined by the selected CAID profile;
+   this document does not create a CAID registry.
+
+   Profile mode does not make profile_id self-authenticating.  A caller-
+   supplied MATCH flag or result object is not evidence and MUST NOT
+   satisfy a node.  The caller instead supplies an opaque evidence
+   artifact to the store's configured authenticated action-match
+   verifier.  That verifier MUST authenticate the artifact under its
+   pinned evidence profile and return a closed valid: true, result:
+   MATCH result that exactly binds tenant, profile ID and digest,
+   program subject, operation ID, CAID, action digest, verifier ID,
+   evidence payload digest, evidence trust-configuration digest, trust
+   epoch, and AdmissionSnapshot trust-configuration digest.
+
+
+
+
+
+
+
+
+
+Schrock                  Expires 31 January 2027                [Page 7]
+
+Internet-Draft            EP Bounded Execution                 July 2026
+
+
+   The AdmissionSnapshot MUST already contain that evidence payload in
+   its singleton aeb input.  The input subject MUST equal the program
+   subject, and its profile digest, verifier identifier, payload digest,
+   and trust-configuration digest MUST equal the authenticated result.
+   Missing evidence, a missing configured verifier, verifier failure, an
+   open result, or any substitution MUST fail closed.
+
+3.4.  Closed-Shape Processing
+
+   Unknown members, omitted required members, duplicate identifiers,
+   duplicate dependency outcomes, malformed values, non-safe integers,
+   unknown outcomes, missing predecessors, and cyclic graphs MUST be
+   refused at every signed-object boundary.  Implementations MUST NOT
+   silently discard unknown members before signature or schema
+   validation.
+
+4.  Canonicalization, Signature, and Program Digest
+
+   Before signing, an implementation MUST validate the complete
+   construction input and then normalize it as follows:
+
+   1.  Convert each accepted UTC instant to RFC 3339 UTC form with
+       exactly three fractional-second digits.
+
+   2.  Sort budgets by the UTF-8 byte order of budget_id.
+
+   3.  Sort nodes by the UTF-8 byte order of node_id.
+
+   4.  Sort dependencies by the UTF-8 byte order of predecessor node_id.
+
+   5.  Sort charges by the UTF-8 byte order of budget_id.
+
+   6.  Sort each dependency's terminal outcome strings in ascending byte
+       order.
+
+   The signer adds the fixed version, claim boundary, and issuer:
+
+   {
+     "@version": "EP-BOUNDED-EXECUTION-PROGRAM-v1",
+     "<normalized program members>": "...",
+     "claim_boundary": "<CLAIM_BOUNDARY>",
+     "issuer": { "id": "customer:example", "key_id": "key:example" }
+   }
+
+   In that example, CLAIM_BOUNDARY is the concatenation, with no
+   intervening octets, of the following two ASCII strings:
+
+
+
+
+
+Schrock                  Expires 31 January 2027                [Page 8]
+
+Internet-Draft            EP Bounded Execution                 July 2026
+
+
+   "typed_reachability_and_attempt_budget_not_" ||
+   "intent_safety_effect_truth_or_complete_mediation"
+
+   The || notation in this display means byte concatenation; it is not
+   part of the member value.
+
+   Let body_jcs be the UTF-8 encoding of the JSON Canonicalization
+   Scheme (JCS) [RFC8785] representation of that complete body.  The
+   signer computes:
+
+   body_digest = "sha256:" || lowercase_hex(SHA-256(body_jcs))
+   signature_input = UTF8("EP-BOUNDED-EXECUTION-PROGRAM-v1")
+                     || 0x00 || body_jcs
+   signature = Ed25519-Sign(authorizer_private_key, signature_input)
+
+   The signer attaches one closed proof object:
+
+   {
+     "algorithm": "Ed25519",
+     "key_id": "key:example",
+     "body_digest": "sha256:<64 lowercase hexadecimal digits>",
+     "signature_b64u": "<canonical unpadded base64url>"
+   }
+
+   proof.key_id MUST equal issuer.key_id.  The signature uses Ed25519
+   [RFC8032].  The signature value uses the URL- and filename-safe
+   Base64 alphabet without padding [RFC4648] and MUST decode to exactly
+   64 octets.
+
+   The program_digest is body_digest: the prefixed lowercase SHA-256
+   digest of the JCS body with proof omitted.  It identifies the
+   authorizer, program, and every signed boundary.  It is not the digest
+   of the proof-bearing artifact.
+
+5.  Verification and Registration
+
+   The program-aware store MUST own its program-authorizer verification
+   policy and clock.  The registration caller MUST NOT nominate trusted
+   keys, expected authorizer identity, verification time, key role, or
+   key status.  The store policy binds each key identifier to an issuer
+   identifier, canonical Ed25519 public key, the exact role
+   program_authorizer, and one of ACTIVE, SUSPENDED, or REVOKED.  Only a
+   pin whose role is program_authorizer and whose key status is ACTIVE
+   is eligible to register or supersede a v1 program.
+
+
+
+
+
+
+
+Schrock                  Expires 31 January 2027                [Page 9]
+
+Internet-Draft            EP Bounded Execution                 July 2026
+
+
+   The artifact's issuer.key_id can select only among those store-owned
+   eligible pins; it cannot create or alter a trust root.  The store
+   derives the expected authorizer identity from the selected pin and
+   obtains verification time from its own clock.
+
+   The caller supplies one closed relying-party context containing
+   exactly:
+
+   *  expected program identifier;
+
+   *  expected tenant identifier;
+
+   *  expected authorization digest;
+
+   *  expected audience.
+
+   Unknown or caller-added trust and clock members MUST be refused as an
+   invalid context.  The store MUST validate the proof envelope,
+   recompute the body digest, require the exact pinned issuer and key,
+   parse the key as Ed25519, and verify the signature over the domain-
+   separated canonical body.  All caller context values MUST exactly
+   equal the signed values.  Acceptance is valid only while valid_from
+   <= store_now < expires_at.  A valid signature over an invalid,
+   noncanonical, open-shaped, context-substituted, inactive-key, or
+   time-invalid program MUST be refused.
+
+5.1.  Authorization-Digest Ordinary-Path Fence
+
+   Registration and ordinary admission reserve MUST serialize on a
+   durable fence keyed by the admission transaction domain, tenant_id,
+   and authorization_digest.  The digest is the exact payload_digest of
+   the AdmissionSnapshot input whose role is authorization.
+
+   When registering version 1, the store MUST atomically:
+
+   1.  refuse if another execution program owns the fence;
+
+   2.  refuse if an ordinary admission using that authorization digest
+       still has an unconsumed reserved execution right;
+
+   3.  create the active program state; and
+
+   4.  make the authorization fence program-required and bind it to the
+       program digest.
+
+   An ordinary reserve that observes a program-required fence MUST
+   refuse with program_required and make no state change.  The
+   registration and ordinary-reserve decisions MUST use the same
+
+
+
+Schrock                  Expires 31 January 2027               [Page 10]
+
+Internet-Draft            EP Bounded Execution                 July 2026
+
+
+   serialization mechanism so that neither can race past the other.
+   Once program-required, the fence MUST NOT reopen merely because an
+   occurrence is released, expires, reaches a terminal outcome, or the
+   program is superseded.
+
+   This fence prevents the independent authorization artifact from being
+   reused to bypass program reachability and budgets through an ordinary
+   reserve path.  It does not prove that all provider mutation paths
+   pass through this admission store.
+
+5.2.  Store-Authoritative Current Status
+
+   The store MUST obtain current program status from its configured
+   authoritative source at reservation and again immediately before
+   provider entry.  The caller MUST NOT supply or select this source or
+   its observation.  A closed EP-BOUNDED-EXECUTION-PROGRAM-STATUS-v1
+   observation contains the exact tenant ID, program ID, program digest,
+   version, status, nonnegative sequence, observation time, and expiry.
+
+   A program-capable store without a configured authoritative status
+   source MUST fail closed with program_status_indeterminate; locally
+   initialized ACTIVE state is not current-status evidence.  The
+   validation instant MUST be sampled after the source returns.  Expiry
+   and maximum observation age MUST be evaluated against that post-
+   response instant, so a response that becomes stale while the source
+   is queried cannot authorize reservation or provider entry.
+
+   Status is one of ACTIVE, SUSPENDED, or REVOKED.  Only a current
+   ACTIVE observation permits reservation or begin.  SUSPENDED refuses
+   with program_suspended.  REVOKED refuses with program_revoked and is
+   sticky: a later observation MUST NOT reopen that runtime.
+
+   The store MUST fail closed with program_status_indeterminate when the
+   source is unavailable or throws; the observation is missing,
+   malformed, open-shaped, future- dated, stale, or expired; any program
+   identity differs; the sequence regresses; or a repeated sequence
+   conflicts with the previously recorded status or times.  The maximum
+   observation age is store policy and MUST NOT be caller-selectable.
+
+   A status, program-validity, or status-currentness refusal at reserve
+   creates no occurrence or admission state.  The same refusal at begin,
+   while the occurrence is still pre-entry RESERVED, MUST atomically
+   release the ordinary execution right and resources, the node
+   occurrence capacity, and every reserved budget charge, and mark the
+   occurrence RELEASED.  Its occurrence identifier and total- history
+   count remain fenced.  Work already INVOKING or INDETERMINATE remains
+   reconcilable.
+
+
+
+
+Schrock                  Expires 31 January 2027               [Page 11]
+
+Internet-Draft            EP Bounded Execution                 July 2026
+
+
+6.  Deterministic AdmissionSnapshot Binding
+
+   A program occurrence MUST be represented inside its immutable
+   AdmissionSnapshot by exactly one resource whose kind is
+   execution_program.  The resource is derived from this closed binding
+   object:
+
+   {
+     "@version": "EP-BOUNDED-EXECUTION-PROGRAM-ADMISSION-BINDING-v1",
+     "tenant_id": "tenant:example",
+     "program_digest": "sha256:<64 lowercase hexadecimal digits>",
+     "node_id": "remediate",
+     "occurrence_id": "occurrence:remediate:01",
+     "expires_at": "2026-07-30T20:10:00.000Z"
+   }
+
+   The resource fields are computed exactly as follows:
+
+   identity_tuple = [tenant_id, program_digest, node_id, occurrence_id]
+   identity_domain =
+     "EP-BOUNDED-EXECUTION-PROGRAM-ADMISSION-" ||
+     "BINDING-v1:IDENTITY"
+   identity_input = UTF8(identity_domain) || 0x00 ||
+                    UTF8(JCS(identity_tuple))
+   identity_digest =
+     "sha256:" || lowercase_hex(SHA-256(identity_input))
+
+   kind = "execution_program"
+   resource_id = "execution-program:" || identity_digest
+   reservation_id = "execution-program-reservation:" ||
+                    identity_digest
+   digest_input =
+     UTF8("EP-BOUNDED-EXECUTION-PROGRAM-ADMISSION-BINDING-v1:DIGEST") ||
+     0x00 || UTF8(JCS(binding_object))
+   digest = "sha256:" || lowercase_hex(SHA-256(digest_input))
+   expires_at = binding_object.expires_at
+
+   The binding's tenant_id, program_digest, node_id, and occurrence_id
+   MUST equal the values being reserved.  Its expires_at MUST equal the
+   AdmissionSnapshot expiry.  The resource participates in the
+   AdmissionSnapshot's normal resource sorting and snapshot-digest
+   computation.
+
+   The identity digest is over a structured JCS array, not a delimiter-
+   joined string.  The resulting resource and reservation identifiers
+   are fixed-length digest keys.  Implementations MUST NOT substitute
+   raw caller- controlled identifiers, ambiguous delimiter
+   concatenation, or another tuple encoding.
+
+
+
+Schrock                  Expires 31 January 2027               [Page 12]
+
+Internet-Draft            EP Bounded Execution                 July 2026
+
+
+   If the caller supplies mutable AdmissionSnapshot input without this
+   resource, the program-aware store MUST add the resource and then
+   compute the snapshot digest.  If the caller supplies a precomputed
+   immutable AdmissionSnapshot, the store MUST accept it only when it
+   already contains exactly the expected resource.  A snapshot with no
+   binding, more than one execution-program resource, or a nonidentical
+   binding MUST be refused with no state change.
+
+   Before adding or accepting the binding, the store MUST also require:
+   the candidate-manifest subject to equal the signed subject_id; the
+   authorization input payload digest to equal the signed
+   authorization_digest; the AdmissionSnapshot authorization policy
+   digest to equal the node's trust_program_digest; and the exact or
+   profile action match defined in Section 3.3.
+
+   The normalized AdmissionSnapshot expiry MUST be no later than the
+   signed program expiry.  A later admission expiry MUST refuse with
+   program_expiration_mismatch before any occurrence, budget, resource,
+   operation-head, or journal state is created.  Equality is permitted
+   because both expirations are exclusive.
+
+7.  Program-Aware Runtime
+
+   Registration of an accepted version 1 program creates one active
+   runtime state.  It records store-clock status metadata, initializes
+   total_occurrences to zero, initializes reserved and consumed values
+   to zero for every independent budget_id while retaining each signed
+   unit label, and contains no occurrences.
+
+   The program state, occurrence state, authorization-digest fence,
+   AdmissionSnapshot, ordinary resource reservations, and one-time
+   execution right MUST share one linearizable transaction domain.  A
+   compensating sequence across independent stores is not atomic and
+   does not conform to this profile.
+
+   RESERVED -> INVOKING -> COMMITTED
+                       \-> PROVEN_NOT_COMMITTED
+                       \-> INDETERMINATE -> COMMITTED
+                                         \-> PROVEN_NOT_COMMITTED
+   RESERVED -> RELEASED
+
+7.1.  Reservation
+
+   A program-aware reservation MUST atomically verify all of the
+   following:
+
+
+
+
+
+
+Schrock                  Expires 31 January 2027               [Page 13]
+
+Internet-Draft            EP Bounded Execution                 July 2026
+
+
+   *  the active program digest, tenant, version, validity interval,
+      fresh store-authoritative ACTIVE status, and authorization- digest
+      fence;
+
+   *  node existence and exact Trust Program digest;
+
+   *  the exact CAID and action digest, or store-verifier-authenticated
+      profile evidence with every binding in Section 3.3;
+
+   *  every outcome-specific dependency;
+
+   *  an unused occurrence identifier;
+
+   *  total_occurrences < max_total_occurrences;
+
+   *  the remaining non-released node occurrence ceiling;
+
+   *  for every node charge, reserved + consumed + amount <= limit;
+
+   *  AdmissionSnapshot expiry no later than program expiry;
+
+   *  the deterministic AdmissionSnapshot binding in Section 6; and
+
+   *  all ordinary AdmissionSnapshot and resource-reservation
+      requirements.
+
+   On success, the store permanently fences the occurrence identifier,
+   creates a RESERVED occurrence, increments total_occurrences and the
+   node's non-released count, increments each named budget dimension's
+   reserved value, and reserves the ordinary admission and all of its
+   resources.  A refusal MUST make no state change except that accepting
+   a newer authoritative status observation updates the program's status
+   metadata before returning its corresponding refusal.
+
+   An occurrence in RELEASED no longer counts against the node's
+   occurrence ceiling, but its occurrence identifier remains fenced and
+   MUST NOT be reused.
+
+7.2.  Total-History and Indexed Reachability Fences
+
+   total_occurrences is monotonic for one program digest.  It increments
+   exactly once for every successful occurrence reservation and MUST NOT
+   decrement when an occurrence is released, expires before provider
+   entry, begins, reaches a terminal outcome, or is reconciled.  The
+   store MUST refuse further reservation with
+   program_total_occurrence_exhausted when it reaches the signed
+   max_total_occurrences.
+
+
+
+
+Schrock                  Expires 31 January 2027               [Page 14]
+
+Internet-Draft            EP Bounded Execution                 July 2026
+
+
+   The total ceiling bounds retained history, not concurrent work.  The
+   per-node max_occurrences ceiling separately counts non-released
+   occurrences and restores capacity on pre-entry release.  A released
+   occurrence therefore restores node and budget capacity but never
+   total- history capacity.
+
+   Occurrence identifiers remain permanently fenced within the program.
+   A conforming transaction store SHOULD maintain atomic per-node counts
+   and per-node terminal-outcome counts so reservation and dependency
+   decisions do not require an unbounded scan.  Those indexes MUST
+   reconcile exactly with retained occurrence records and MUST be
+   updated in the same transaction as their source transition.
+
+7.3.  Begin, Release, and Expiry
+
+   The ordinary begin, release, and expiry paths MUST refuse a program-
+   linked admission with program_required.  Conversely, a program-aware
+   begin, release, or expiry path MUST refuse an admission that lacks
+   the exact execution-program association.
+
+   Program-aware begin MUST recheck store-authoritative program status,
+   program validity, and ordinary admission currentness, then atomically
+   consume the ordinary one-time execution right, move each node charge
+   from reserved to consumed, and set the occurrence to INVOKING before
+   releasing an invocation capability.  If program status is suspended,
+   revoked, stale, unavailable, malformed, or expired, or if ordinary
+   currentness fails before provider entry, the store MUST atomically
+   release the ordinary reservation and resources, node capacity, and
+   reserved budget charges.  The occurrence remains in total history as
+   RELEASED.
+
+   Once begin succeeds, provider refusal, timeout, or uncertainty MUST
+   NOT restore the occurrence or its attempt-budget charges.  This rule
+   prevents a retry from converting uncertainty after provider entry
+   into unbounded authority.
+
+   Program-aware release and expiry are permitted only from RESERVED.
+   They decrement every reserved node charge, release the ordinary
+   execution right and resources, and set the occurrence to RELEASED.
+   Release after begin MUST be refused because the execution right and
+   charges are already consumed.
+
+
+
+
+
+
+
+
+
+
+Schrock                  Expires 31 January 2027               [Page 15]
+
+Internet-Draft            EP Bounded Execution                 July 2026
+
+
+7.4.  Outcomes, Dependencies, and Reconciliation
+
+   COMMITTED and PROVEN_NOT_COMMITTED are terminal provider outcomes.
+   INDETERMINATE records uncertainty after provider entry and retains
+   all consumed charges.  Reconciliation MAY move an indeterminate
+   occurrence to either terminal outcome.  Reconciliation does not
+   itself prove when the provider event occurred.
+
+   A dependency is satisfied only when at least one occurrence of each
+   named predecessor has a terminal state explicitly listed by that
+   dependency.  Terminality alone is insufficient: PROVEN_NOT_COMMITTED
+   does not satisfy a dependency that lists only COMMITTED.
+
+   DIVERGED, if represented by an effect-reconciliation layer, is an
+   observed-effect relation rather than a provider outcome.  It MUST NOT
+   rewrite occurrence state, historical authorization, budgets, or
+   reachability and does not identify why an effect differed.
+
+8.  Supersession and Replanning
+
+   Programs are immutable.  Replanning creates a newly signed and
+   independently accepted version.  The predecessor MUST be the active
+   head.  A successor MUST bind its exact program digest, have exactly
+   predecessor.version + 1, and preserve the predecessor's tenant ID,
+   program ID, subject ID, audience, objective digest, presentation
+   digest, and program-authorizer identity.  These are frozen identity
+   and intent bindings for v1 supersession.
+
+   The successor MUST carry a distinct authorization digest that differs
+   from the predecessor and has never previously been registered in the
+   store's authorization-owner domain.  The caller MUST supply that
+   fresh digest in the closed relying-party registration context.
+   Reuse, a skipped version, changed frozen binding, changed authorizer,
+   wrong predecessor, or an already-owned authorization digest MUST fail
+   closed.
+
+   Any predecessor occurrence still in RESERVED MUST block supersession.
+   On successful supersession, the store atomically marks the
+   predecessor SUPERSEDED, installs the successor as the active head,
+   and binds the successor's authorization digest into the ordinary-
+   path fence.  The predecessor then refuses new reservations and new
+   invocation starts.
+
+
+
+
+
+
+
+
+
+Schrock                  Expires 31 January 2027               [Page 16]
+
+Internet-Draft            EP Bounded Execution                 July 2026
+
+
+   Already invoking or indeterminate predecessor work remains
+   reconcilable.  The successor starts with zero reserved and consumed
+   budgets, total_occurrences zero, fresh node and terminal indexes, and
+   no occurrences.  Budget, occurrence, evidence, and terminal state
+   MUST NOT silently carry forward.  A successor can depend on earlier
+   effects only through separately verified evidence explicitly admitted
+   by the successor's own action-specific Trust Program.
+
+9.  Refusal Semantics
+
+   Reservation and registration refusals are fail-closed and MUST NOT
+   create occurrence, budget, admission, resource, operation-head,
+   journal, or execution-right state.  A store MAY retain a newer
+   authenticated program-status observation.  A begin refusal caused by
+   program status, program expiry, or admission currentness deliberately
+   performs the atomic pre-entry release defined in Section 5.2.
+   Implementations MAY expose a more detailed local error vocabulary.
+   The following reasons define interoperable semantic classes used by
+   the reference profile:
+
+     +====================================+==========================+
+     | Reason                             | Meaning                  |
+     +====================================+==========================+
+     | context_binding_required           | Mandatory relying-party  |
+     |                                    | verification context is  |
+     |                                    | absent.                  |
+     +------------------------------------+--------------------------+
+     | program_required                   | An ordinary path         |
+     |                                    | attempted to use         |
+     |                                    | program-fenced authority |
+     |                                    | or a linked admission.   |
+     +------------------------------------+--------------------------+
+     | program_binding_mismatch           | A signed, authorization, |
+     |                                    | action, Trust Program,   |
+     |                                    | subject, or              |
+     |                                    | AdmissionSnapshot        |
+     |                                    | binding differs.         |
+     +------------------------------------+--------------------------+
+     | program_node_unreachable           | At least one outcome-    |
+     |                                    | specific dependency is   |
+     |                                    | unsatisfied.             |
+     +------------------------------------+--------------------------+
+     | program_occurrence_conflict        | The occurrence           |
+     |                                    | identifier was already   |
+     |                                    | fenced.                  |
+     +------------------------------------+--------------------------+
+     | program_occurrence_exhausted       | The node occurrence      |
+     |                                    | ceiling is unavailable.  |
+
+
+
+Schrock                  Expires 31 January 2027               [Page 17]
+
+Internet-Draft            EP Bounded Execution                 July 2026
+
+
+     +------------------------------------+--------------------------+
+     | program_total_occurrence_exhausted | The retained total-      |
+     |                                    | history ceiling is       |
+     |                                    | exhausted.               |
+     +------------------------------------+--------------------------+
+     | program_budget_exhausted           | At least one aggregate   |
+     |                                    | attempt budget is        |
+     |                                    | unavailable.             |
+     +------------------------------------+--------------------------+
+     | program_expiration_mismatch        | The admission expires    |
+     |                                    | after the program.       |
+     +------------------------------------+--------------------------+
+     | program_suspended                  | The authoritative        |
+     |                                    | current status is        |
+     |                                    | suspended.               |
+     +------------------------------------+--------------------------+
+     | program_revoked                    | The authoritative        |
+     |                                    | current status is        |
+     |                                    | revoked.                 |
+     +------------------------------------+--------------------------+
+     | program_status_indeterminate       | Current status is        |
+     |                                    | unavailable, stale,      |
+     |                                    | malformed, expired, or   |
+     |                                    | conflicting.             |
+     +------------------------------------+--------------------------+
+     | program_reserved_work_exists       | Reserved predecessor     |
+     |                                    | work blocks              |
+     |                                    | supersession.            |
+     +------------------------------------+--------------------------+
+     | program_supersession_invalid       | Version, predecessor,    |
+     |                                    | authorizer, frozen       |
+     |                                    | identity or intent, or   |
+     |                                    | fresh authorization      |
+     |                                    | requirements differ.     |
+     +------------------------------------+--------------------------+
+
+                     Table 1: Selected Refusal Reasons
+
+10.  Security Considerations
+
+   The principal threats are open-ended authority, graph substitution,
+   action substitution, profile-name trust, authorization reuse,
+   ordinary- path bypass, replay, reserve-release history exhaustion,
+   concurrent over- reservation, delimiter aliasing, stale or caller-
+   selected status, budget restoration after provider entry, and unsafe
+   retry after an indeterminate outcome.  Closed signed shapes, store-
+   owned trust and clock, authenticated profile evidence, current
+   status, total-history and occurrence fences, structured resource
+
+
+
+Schrock                  Expires 31 January 2027               [Page 18]
+
+Internet-Draft            EP Bounded Execution                 July 2026
+
+
+   keys, the authorization-digest fence, and one linearizable state
+   domain address those threats at the admission boundary.
+
+   Private signing keys and store-owned out-of-band key pins require
+   lifecycle, rotation, compromise, role, suspension, revocation, and
+   audit controls.  A caller MUST NOT be able to extend the trust-root
+   set or choose the verification clock.  A signature establishes that
+   an eligible pinned key signed canonical bytes.  It does not establish
+   that the key holder understood the objective, that a presentation was
+   faithful, that a profile is safe, or that the selected limits are
+   appropriate.
+
+   Profile matching is security-critical.  The store MUST configure the
+   authenticated verifier and pin both the profile identifier and
+   digest.  Free-form model assertions, caller-authored MATCH objects,
+   an unverified profile name, or evidence not sealed into the singleton
+   AEB input MUST NOT satisfy a node.
+
+   The total-history ceiling intentionally does not restore capacity on
+   release.  This bounds retained state but also lets an authorized
+   requester consume the signed history allowance through repeated
+   reserve-release cycles.  Authorizers SHOULD choose the ceiling and
+   admission rate controls for that denial-of-service exposure;
+   implementations MUST NOT evade it by deleting records or decrementing
+   total_occurrences.
+
+   The authorization-digest fence closes bypass only within its shared
+   transaction and enforcement domain.  A deployment with another
+   mutation credential, provider path, replica, or store outside that
+   domain does not have complete mediation.  Such a deployment MUST NOT
+   claim program-wide enforcement merely because the signed object
+   verifies.
+
+   INDETERMINATE is material uncertainty, not failure and not permission
+   to retry.  Reconciliation can change the recorded provider outcome
+   but cannot reconstruct event order from evidence that does not
+   establish it.
+
+11.  Privacy Considerations
+
+   Programs and AdmissionSnapshots can reveal objectives, tenant and
+   subject identifiers, action relationships, provider operations,
+   timing, budgets, and incident-response structure.  Implementations
+   SHOULD use pseudonymous identifiers where accountability permits,
+   minimize program duration and graph detail, disclose digests instead
+   of underlying evidence when appropriate, and enforce access controls
+   and retention periods for runtime records.
+
+
+
+
+Schrock                  Expires 31 January 2027               [Page 19]
+
+Internet-Draft            EP Bounded Execution                 July 2026
+
+
+   Digesting low-entropy or guessable material does not make it secret.
+   Sensitive objective, authorization, and presentation material SHOULD
+   use confidentiality and selective-disclosure controls outside this
+   profile.
+
+12.  Implementation Status
+
+   An Apache-2.0 same-team reference implementation defines closed
+   program construction, normalization, Ed25519 signing, verification,
+   program digests, mandatory total-history fencing, structured
+   deterministic AdmissionSnapshot resource binding, store-owned program
+   trust and clock, authenticated action-match verification, current-
+   status processing, in-memory and PostgreSQL program-aware admission
+   surfaces, and language-neutral syntax and runtime vectors.  The
+   repository also contains bounded state-machine analysis.
+
+   These artifacts are implementation and regression evidence for this
+   Experimental profile.  They are not evidence of an independent
+   implementation, cross-vendor interoperability, a durable production
+   deployment, complete mediation, unbounded formal proof,
+   standardization, certification, or legal effect.
+
+13.  Operational Reporting (Informative)
+
+   The separate signed EP-BOUNDED-EXECUTION-REPORT-v1 artifact can
+   authenticate a relying-party-generated snapshot of the runtime state
+   and retained occurrence inventory for one verified program.  It is
+   not an authorization and is not required to execute this protocol.
+
+   That report's boundary is Gate-recorded program occurrences only.  It
+   does not prove external effect truth, event chronology, program
+   safety, complete mediation of mutation paths, the absence of actions
+   performed outside Gate, or that an action was "executed outside the
+   plan".  An outside-plan claim requires a separately signed external
+   inventory root with its own population-completeness and capture-
+   topology boundary.
+
+14.  IANA Considerations
+
+   This document has no IANA actions.  Protocol identifiers, resource-
+   kind strings, refusal reasons, and action-profile identifiers in this
+   revision are closed by the profile and are not IANA registries.  A
+   future revision can request registries or media types after
+   implementation and interoperability experience justifies them.
+
+
+
+
+
+
+
+Schrock                  Expires 31 January 2027               [Page 20]
+
+Internet-Draft            EP Bounded Execution                 July 2026
+
+
+15.  Claim Boundary
+
+   Verification can establish that a pinned authorizer signed one
+   canonical program.  A conforming runtime can establish that it
+   admitted or refused an occurrence according to that program's typed
+   reachability, current-status, total-history, node-occurrence,
+   attempt-budget, AdmissionSnapshot-binding, and supersession rules
+   within one transaction domain.
+
+   It does not establish that natural-language intent was understood or
+   correctly compiled; that an action profile is sound; that a plan is
+   safe, lawful, optimal, or free of prompt injection; that provider
+   evidence, observed effects, or production event chronology are true;
+   that every mutation path was mediated; that no action occurred
+   outside Gate or the program; or why an observed effect diverged.
+
+16.  Normative References
+
+   [BCP14]    Internet Engineering Task Force, "Key Words for Use in
+              RFCs to Indicate Requirement Levels", BCP 14, 2017,
+              <https://www.rfc-editor.org/info/bcp14>.
+
+   [RFC2119]  Bradner, S., "Key words for use in RFCs to Indicate
+              Requirement Levels", BCP 14, RFC 2119,
+              DOI 10.17487/RFC2119, March 1997,
+              <https://www.rfc-editor.org/info/rfc2119>.
+
+   [RFC3339]  Klyne, G. and C. Newman, "Date and Time on the Internet:
+              Timestamps", RFC 3339, DOI 10.17487/RFC3339, July 2002,
+              <https://www.rfc-editor.org/info/rfc3339>.
+
+   [RFC4648]  Josefsson, S., "The Base16, Base32, and Base64 Data
+              Encodings", RFC 4648, DOI 10.17487/RFC4648, October 2006,
+              <https://www.rfc-editor.org/info/rfc4648>.
+
+   [RFC5234]  Crocker, D., Ed. and P. Overell, "Augmented BNF for Syntax
+              Specifications: ABNF", STD 68, RFC 5234,
+              DOI 10.17487/RFC5234, January 2008,
+              <https://www.rfc-editor.org/info/rfc5234>.
+
+   [RFC7493]  Bray, T., Ed., "The I-JSON Message Format", RFC 7493,
+              DOI 10.17487/RFC7493, March 2015,
+              <https://www.rfc-editor.org/info/rfc7493>.
+
+   [RFC8032]  Josefsson, S. and I. Liusvaara, "Edwards-Curve Digital
+              Signature Algorithm (EdDSA)", RFC 8032,
+              DOI 10.17487/RFC8032, January 2017,
+              <https://www.rfc-editor.org/info/rfc8032>.
+
+
+
+Schrock                  Expires 31 January 2027               [Page 21]
+
+Internet-Draft            EP Bounded Execution                 July 2026
+
+
+   [RFC8174]  Leiba, B., "Ambiguity of Uppercase vs Lowercase in RFC
+              2119 Key Words", BCP 14, RFC 8174, DOI 10.17487/RFC8174,
+              May 2017, <https://www.rfc-editor.org/info/rfc8174>.
+
+   [RFC8785]  Rundgren, A., Jordan, B., and S. Erdtman, "JSON
+              Canonicalization Scheme (JCS)", RFC 8785,
+              DOI 10.17487/RFC8785, June 2020,
+              <https://www.rfc-editor.org/info/rfc8785>.
+
+Author's Address
+
+   Iman Schrock
+   EMILIA Protocol, Inc.
+   United States of America
+   Email: team@emiliaprotocol.ai
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+Schrock                  Expires 31 January 2027               [Page 22]

@@ -1,0 +1,30 @@
+EP-BOUNDED-EXECUTION-PROGRAM-v1 bounded TLC result
+Execution timestamp: 2026-07-30T09:14:16.489Z
+Checker: TLC 2.19 (TLA+ tools v1.7.4, rev 5a47802)
+Tool SHA-256: 936a262061c914694dfd669a543be24573c45d5aa0ff20a8b96b23d01e050e88
+
+Safe configuration: ep_bounded_execution_program_v1.cfg
+Safe module: ep_bounded_execution_program_v1.tla
+Result: Model checking completed. No error has been found.
+States: 5,722,136 generated; 531,820 distinct; 0 left on queue; complete depth 19.
+Checked: 20 state invariants and 11 transition properties.
+Required action coverage: ReserveOrdinaryAuthorization=1:1; RegisterOriginalProgram=3:3; ReserveOccurrence=10890:24756; WitnessDependentReachable=0:48828; WitnessLeafReachable=0:11952; ReleaseOccurrence=11424:24648; BeginInvocation=15126:24648; MarkIndeterminate=17394:274716; DeactivateProgram=169506:216102; ExpireProgram=254259:277557; ReconcileSupersededIndeterminate=0:280656; SupersedeSigned=10074:10074; RejectIndeterminateDependency=0:2844; RejectOccurrenceCeiling=0:2124; RejectBudgetExhaustion=0:1800; RejectUnsignedSupersession=0:10074; RejectReusedSupersessionContext=0:10074; WitnessSuspendedProgram=0:169506; WitnessRevokedProgram=0:169506; WitnessExpiredProgram=0:254259; WitnessUnavailableAfterProviderEntry=0:795648; RejectRelinkedAdmission=0:1957164; RejectOrdinaryPathForLinkedAdmission=0:24648; RejectRegistrationWithOrdinaryReservation=0:1; RejectOrdinaryReserveAfterRegistration=0:531816.
+
+Deliberately unsafe module: ep_bounded_execution_program_v1_unsafe.tla
+Expected result: Invariant OnlySignedProgramsCanBeActive is violated.
+States before counterexample: 18 generated; 14 distinct; 10 left on queue; reported depth 3.
+Counterexample trace: 3 states. The unsafe transition activates a predecessor-bound but unsigned successor.
+
+Authorization-fence unsafe module: ep_bounded_execution_program_v1_authorization_fence_unsafe.tla
+Expected result: Invariant AuthorizationFenceConsistent is violated.
+States before counterexample: 7 generated; 6 distinct; 3 left on queue; reported depth 3.
+Counterexample trace: 3 states. The unsafe transition registers a program while an ordinary reservation still owns the same tenant and authorization digest.
+
+Safe model SHA-256: 715d146490fff4b4def01e32a0c2c2d1757631a46b9a34790d82daca0b39595d
+Configuration SHA-256: fb2ac29bf7072bf802b94c151baf8af46f9d4b1227f4bd6cccc2a724d984770f
+Unsafe model SHA-256: 6b60e5908d8eb6376732caf8d706fc6b980b729cf18b65cf55a7e721ceec5dfc
+Authorization-fence unsafe model SHA-256: d312111d752ae530861e15a069ff3533e514655590c5ef7b06cf24fcb5809cf8
+Checker SHA-256: 15851e131227e65e6eadf64b7789067f531b2b9dd8fabbfbaf0eb640c7091e04
+
+Scope: one closed three-node DAG; outcome-specific reachability; per-node occurrence ceilings; two-dimensional atomic reserve, consume, and pre-entry release accounting; consumed INDETERMINATE attempts that cannot satisfy dependencies; deterministic immutable AdmissionSnapshot program bindings with relink and ordinary-path refusal; atomic tenant plus authorization-digest registration fencing, pre-existing ordinary reservation refusal, and post-registration ordinary-reserve refusal; pre-entry SUSPENDED, REVOKED, and expiry release with post-entry consumption preservation; admission-to-program expiry clamping; a configured total occurrence bound; fresh-context supersession; terminal reconciliation after supersession; and trusted-signature plus exact predecessor/version binding for fresh-budget supersession.
+Boundary: finite same-team control abstraction only. This is not an implementation refinement or evidence that cryptography, provider truth, clocks, storage, deployment, or arbitrary concurrency are correct. Store-pinned trust-root retrieval, structured resource-digest byte construction, and runtime index implementation are outside refinement.

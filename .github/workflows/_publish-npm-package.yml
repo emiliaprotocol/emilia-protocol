@@ -188,12 +188,19 @@ jobs:
           NODE_OPTIONS: '--import ${{ github.workspace }}/scripts/ts-loader/register.mjs'
         run: |
           npm run check:security-case
+          npm run check:bounded-execution-artifacts
           npm run conformance:manifest:check
 
       - name: Verify governed artifacts and LLM context match source
         run: |
           npm run check:proof-stats
           npm run check:llm-context
+
+      - name: Reproduce bounded-execution formal evidence before Gate release
+        if: inputs.package_name == '@emilia-protocol/gate'
+        env:
+          TLA2TOOLS_JAR: ${{ github.workspace }}/tla2tools.jar
+        run: node formal/check-bounded-execution-program-v1.mjs --check
 
       - name: Pack twice and stage exact inert release input
         id: pack
