@@ -1,0 +1,33 @@
+{
+  "valid": true,
+  "checks": {
+    "action_hash": true,
+    "context_commitments": true,
+    "signoff_signatures": true,
+    "sod": true,
+    "inclusion": true,
+    "checkpoint_signature": true,
+    "windows": true
+  },
+  "errors": [],
+  "attestation": {
+    "present": true,
+    "consistent": true,
+    "issues": []
+  },
+  "strict": {
+    "enabled": true,
+    "valid": true,
+    "checks": {
+      "pinned_keys": true,
+      "rp_id": true,
+      "origin": true,
+      "user_presence": true,
+      "user_verification": true,
+      "key_windows": true,
+      "policy_hash": true,
+      "no_unsigned": true
+    },
+    "errors": []
+  }
+}

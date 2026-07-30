@@ -25,6 +25,13 @@ A checkpoint is `{ log_key_id, root_hash, tree_size, log_signature }`
 `packages/verify/trust-receipt.test.js:129`). Verification is a single Ed25519
 check against **one** pinned log key:
 
+The signature input is byte-pinned: remove `log_signature`, serialize exactly
+`{log_key_id, root_hash, tree_size}` as UTF-8 JCS, compute SHA-256 over those
+bytes, and verify Ed25519 over the resulting raw 32-byte digest. Verifiers MUST
+NOT sign or verify the JSON text directly, include `log_signature` in the
+preimage, substitute a hex/base64 rendering of the digest, or infer a different
+field order. The executable implementation below is the reference construction.
+
 ```
 // packages/verify/index.js:921-932
 if (logPublicKey && lp.checkpoint.log_signature) {

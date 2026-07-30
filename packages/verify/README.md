@@ -211,7 +211,12 @@ Trust Receipt — all six steps, no network:
 2. Recompute each context hash; confirm it commits to the action hash, the policy hash, and a distinct approver
 3. Verify each signoff signature (Class-A WebAuthn or Class-B Ed25519) against the pinned approver key, checking the key's validity window and refusing any key directory entry carrying `compromised_at`
 4. Separation of duties — initiator in no approver slot, approvers pairwise distinct, approval count ≥ `required_approvals`
-5. Merkle inclusion of the receipt leaf against the checkpoint root, and the checkpoint signature against the trusted log key
+5. Merkle inclusion of the receipt leaf against the checkpoint root, and the
+   checkpoint signature against the trusted log key. The signature is Ed25519
+   over the raw 32-byte SHA-256 digest of the UTF-8 JCS serialization of the
+   checkpoint after removing `log_signature` (exact current-profile object:
+   `{log_key_id, root_hash, tree_size}`). It is not a signature over the JSON
+   text or an encoded digest string.
 6. `signed_at` / `committed_at` within `[issued_at, expires_at]`
 
 Returns `{ valid, checks, errors, attestation, strict }` and fails closed on any missing input.

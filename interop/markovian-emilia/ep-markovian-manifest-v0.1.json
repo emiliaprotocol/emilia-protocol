@@ -1,0 +1,43 @@
+{
+  "profile": "EP-MARKOVIAN-ACTION-EXCHANGE-v0.1",
+  "state": "prepared_for_explicit_sender_approval",
+  "generated_at": "2026-07-29T22:11:05.158Z",
+  "source": {
+    "repository": "https://github.com/emiliaprotocol/emilia-protocol",
+    "ref": "refs/heads/main",
+    "commit": "284e0652b4ee502ed7f02dd42ce97d4f83788c4a"
+  },
+  "files": {
+    "ep-markovian-action-receipt-v0.1.json": {
+      "sha256": "213a9e8350ab3421c878b683d33d4c27fc5a5cd8cb521f137e8e95a41c99bd83",
+      "bytes": 3239
+    },
+    "ep-markovian-verification-v0.1.json": {
+      "sha256": "b27248d23524eed1c098c26a653d76ff92b6ef2c155c313e78bea79382b3cb93",
+      "bytes": 475
+    },
+    "ep-markovian-offline-result-v0.1.json": {
+      "sha256": "7b1408f84fe54117c9d5763fb80871a738e81f8b62c7a097729676118f5da173",
+      "bytes": 636
+    }
+  },
+  "receipt": {
+    "receipt_id": "ep:receipt:markovian-cross-run-20260729-001",
+    "action_hash": "sha256:099cc6cd4ed082001c20028b6674ae2693a26a17bdc0cebb55e6fec4c3ad1139",
+    "approver_key_id": "ep:key:interop:iman-schrock:markovian-20260729#1",
+    "key_class": "B",
+    "issued_at": "2026-07-29T22:11:05.158Z",
+    "expires_at": "2026-08-05T22:11:05.158Z"
+  },
+  "claim_boundary": {
+    "proves": "The pinned Class-B software key signed the exact action and the receipt verifies offline under the supplied public material.",
+    "does_not_prove": "Independent enrollment or device-bound presence of Iman Schrock. Identity is asserted for this interop exchange and must not be described as Class-A human authentication."
+  },
+  "requested_markovian_return": [
+    "typed_leaf",
+    "leaf_construction_identifier",
+    "inclusion_receipt",
+    "cosigned_checkpoint",
+    "consistency_proof_from_inclusion_head_to_next_witnessed_head"
+  ]
+}

@@ -1,0 +1,79 @@
+{
+  "receipt_id": "ep:receipt:markovian-cross-run-20260729-001",
+  "action": {
+    "ep_version": "1.0",
+    "action_type": "transparency.log.append",
+    "organization_id": "emilia-protocol",
+    "target": {
+      "system": "markovian.public-transparency-log",
+      "resource": "github.com/emiliaprotocol/emilia-protocol@284e0652b4ee502ed7f02dd42ce97d4f83788c4a"
+    },
+    "parameters": {
+      "source_repository": "https://github.com/emiliaprotocol/emilia-protocol",
+      "source_ref": "refs/heads/main",
+      "source_commit": "284e0652b4ee502ed7f02dd42ce97d4f83788c4a",
+      "source_commit_subject": "feat(gate): add provider-neutral Trusted Context Pack",
+      "requested_record": "EP-RECEIPT-v1",
+      "requested_return": [
+        "typed_leaf",
+        "leaf_construction_identifier",
+        "inclusion_receipt",
+        "cosigned_checkpoint",
+        "consistency_proof_from_inclusion_head_to_next_witnessed_head"
+      ],
+      "publication_scope": "public_interop_evidence_only"
+    },
+    "initiator": "ep:entity:emilia-interop-operator",
+    "policy_id": "ep:policy:markovian-cross-run@v0.1",
+    "requested_at": "2026-07-29T22:11:05.158Z"
+  },
+  "action_hash": "sha256:099cc6cd4ed082001c20028b6674ae2693a26a17bdc0cebb55e6fec4c3ad1139",
+  "contexts": [
+    {
+      "ep_version": "1.0",
+      "context_type": "ep.signoff.v1",
+      "action_hash": "sha256:099cc6cd4ed082001c20028b6674ae2693a26a17bdc0cebb55e6fec4c3ad1139",
+      "policy_id": "ep:policy:markovian-cross-run@v0.1",
+      "policy_hash": "sha256:e05ed401f9684ad05fdc7d2709fa1647155469e89aa2bbb958142d35cdca1b35",
+      "initiator": "ep:entity:emilia-interop-operator",
+      "approver": "ep:approver:iman-schrock",
+      "approver_index": 1,
+      "required_approvals": 1,
+      "nonce": "077NRs3Ki0i3FT_NGGqHPg",
+      "issued_at": "2026-07-29T22:11:05.158Z",
+      "expires_at": "2026-08-05T22:11:05.158Z",
+      "initiator_attestation": {
+        "escalation_trigger": "novelty",
+        "policy_basis": "ep:policy:markovian-cross-run@v0.1",
+        "statement": "First external transparency-log cross-run; the exact public artifact and destination require explicit approval."
+      }
+    }
+  ],
+  "signoffs": [
+    {
+      "context_hash": "sha256:960c6834c4f61cd3871864379bca7b8465ef0318961576e4c7f89f5f87645e42",
+      "key_class": "B",
+      "approver_key_id": "ep:key:interop:iman-schrock:markovian-20260729#1",
+      "signed_at": "2026-07-29T22:11:05.158Z",
+      "signature": "Zfg0m96VwnLQLg0LZIQlK7CtAg5rSihT_-coHAUAnPoNq-fsBofA0joamxRqNDFTraQoiQvNydf1EfBm4CdjAA"
+    }
+  ],
+  "consumption": {
+    "nonce": "RiOB4qKZtIND-YFhDALDCg",
+    "state": "COMMITTED",
+    "committed_at": "2026-07-29T22:11:05.158Z"
+  },
+  "log_proof": {
+    "alg": "EP-MERKLE-v2",
+    "leaf_hash": "sha256:50f5d42ddf776d1d21dca5c93c11826aa4dbdb0a8a7a1c2912c552f9072db957",
+    "leaf_index": 0,
+    "inclusion_path": [],
+    "checkpoint": {
+      "tree_size": 1,
+      "root_hash": "sha256:50f5d42ddf776d1d21dca5c93c11826aa4dbdb0a8a7a1c2912c552f9072db957",
+      "log_key_id": "ep:log:emilia-markovian-cross-run#1",
+      "merkle_alg": "EP-MERKLE-v2",
+      "log_signature": "gLzAXeGnE2ALXcLXzrcq1dC6eoAGHT2RDnv9lv_Cqqg0SWL3KAWD2bZ6MDLlWv8nMn2-_NFTYAcxqbGvCGnODQ"
+    }
+  }
+}

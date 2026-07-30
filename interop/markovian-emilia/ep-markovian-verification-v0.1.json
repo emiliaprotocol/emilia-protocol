@@ -1,0 +1,13 @@
+{
+  "@version": "EP-AUTHORIZATION-RECEIPT-VERIFICATION-v1",
+  "approver_keys": {
+    "ep:key:interop:iman-schrock:markovian-20260729#1": {
+      "approver_id": "ep:approver:iman-schrock",
+      "public_key": "MCowBQYDK2VwAyEAivlmQCDmViNI8qvTr12OQBooOBnQzjC22VHYshafGWc",
+      "key_class": "B",
+      "valid_from": "2026-07-29T00:00:00Z",
+      "valid_to": "2026-08-31T23:59:59Z"
+    }
+  },
+  "log_public_key": "MCowBQYDK2VwAyEAYacVWX3JNVIkSDhShFH25txImQGi7tn6WFeZ51dLE5M"
+}
