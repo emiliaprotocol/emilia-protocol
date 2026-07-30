@@ -86,8 +86,9 @@ Table of Contents
    10. Privacy Considerations  . . . . . . . . . . . . . . . . . . .   9
    11. IANA Considerations . . . . . . . . . . . . . . . . . . . . .   9
    12. Implementation Status . . . . . . . . . . . . . . . . . . . .   9
-   13. Normative References  . . . . . . . . . . . . . . . . . . . .  10
-   14. Informative References  . . . . . . . . . . . . . . . . . . .  10
+   13. Acknowledgments . . . . . . . . . . . . . . . . . . . . . . .  10
+   14. Normative References  . . . . . . . . . . . . . . . . . . . .  10
+   15. Informative References  . . . . . . . . . . . . . . . . . . .  11
    Authors' Addresses  . . . . . . . . . . . . . . . . . . . . . . .  11
 
 1.  Introduction
@@ -99,7 +100,6 @@ Table of Contents
    request.  Conversely, a projection record cannot repair invalid
    source provenance.  It can only preserve the source decision and bind
    it to the bytes emitted by a named adapter.
-
 
 
 
@@ -516,7 +516,12 @@ Internet-Draft          Memory Projection Records              July 2026
    and custody results.  That bounded check is not blanket conformance
    and establishes none of the nonclaims in Section 2.
 
-13.  Normative References
+13.  Acknowledgments
+
+   The authors thank Matteo Clementel for his review and contributions
+   to the memory-projection boundary.
+
+14.  Normative References
 
    [RFC2119]  Bradner, S., "Key words for use in RFCs to Indicate
               Requirement Levels", BCP 14, RFC 2119,
@@ -549,11 +554,6 @@ Internet-Draft          Memory Projection Records              July 2026
               DOI 10.17487/RFC8785, June 2020,
               <https://www.rfc-editor.org/info/rfc8785>.
 
-14.  Informative References
-
-
-
-
 
 
 
@@ -561,6 +561,8 @@ Ferro & Schrock          Expires 30 January 2027               [Page 10]
 
 Internet-Draft          Memory Projection Records              July 2026
 
+
+15.  Informative References
 
    [AMEM-EMILIA-INTEROP]
               Schrock, I., "ApertoMemory / EMILIA Memory-to-Action
@@ -586,8 +588,6 @@ Authors' Addresses
    EMILIA Protocol, Inc.
    United States of America
    Email: team@emiliaprotocol.ai
-
-
 
 
 

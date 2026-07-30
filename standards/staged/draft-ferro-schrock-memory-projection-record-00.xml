@@ -349,6 +349,11 @@ MEMORY-PROJECTION-RECORD-v1\0 || JCS(record without proof)
       Section 2.</t>
     </section>
 
+    <section anchor="acknowledgments"><name>Acknowledgments</name>
+      <t>The authors thank Matteo Clementel for his review and contributions
+      to the memory-projection boundary.</t>
+    </section>
+
   </middle>
   <back>
     <references><name>Normative References</name>
