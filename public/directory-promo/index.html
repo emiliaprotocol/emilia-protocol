@@ -28,7 +28,7 @@
   Paired prompts: <a href="/directory-promo/PROMPTS.txt">PROMPTS.txt</a> · Verify a receipt yourself: <a href="/verify">/verify</a></p>
 
   <figure>
-    <img src="/directory-promo/01-desktop-trust-evaluate.png" alt="Claude Desktop verifying an EMILIA receipt without exposing trust profile internals">
+    <img src="/directory-promo/01-desktop-trust-evaluate.png" alt="Claude Desktop verifying an EMILIA receipt with the public read-only connector">
     <figcaption><b>01 — Receipt verification in Claude Desktop.</b>
       <div class="prompt">Prompt: “Verify this EMILIA receipt and explain whether the signed action was altered.”</div>
     </figcaption>
@@ -48,8 +48,8 @@
 
   <figure>
     <img src="/directory-promo/04-signoff-approved-class-a.png" alt="Signed and approved — key class A; receipt verifies offline">
-    <figcaption><b>04 — The artifact ep_verify_signoff verifies.</b> Device-held passkey signed the exact action; verifies offline.
-      <div class="prompt">Pair: “Did a named human approve this exact action on their own device? Verify this signoff.”</div>
+    <figcaption><b>04 — The artifact ep_verify_signoff verifies.</b> A WebAuthn assertion records user presence and verification and is bound to the exact action.
+      <div class="prompt">Pair: “Verify the WebAuthn ceremony and exact-action binding in this signoff.” The result does not by itself establish legal identity, authority, perception, or relying-party acceptance.</div>
     </figcaption>
   </figure>
 </main>
