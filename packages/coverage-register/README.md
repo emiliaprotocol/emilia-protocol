@@ -12,8 +12,10 @@ It is meant to be citable without citing this package.
 ## Run it
 
 ```bash
-node fetch-snapshot.mjs --out snapshot.json --limit 200 --as-of 2026-07-29
+node fetch-snapshot.mjs --out snapshot.json --limit 200
 node build-edition.mjs --snapshot snapshot.json --out edition.json
+node build-edition.mjs --snapshot snapshot.json --reviews reviews.json --out reviewed-edition.json
+node build-edition.mjs --snapshot snapshot.json --reviews reviews.json --publication approval.json --out approved-edition.json
 node build-edition.mjs --snapshot snapshot.json --reproduce edition.json
 node --test test.mjs
 ```
@@ -25,8 +27,8 @@ probed, or invoked.** Everything else is offline and deterministic.
 ## The four hard rules, enforced in code
 
 **1. No probing.** Verdicts come from what a target published about itself.
-Calling a third party's advertised money-movement tool to see whether it refuses
-is a CFAA fact pattern, not a research method.
+Calling a third party's advertised tool to see whether it refuses is outside the
+register's declaration-only scope.
 
 **2. Verdicts are document claims.** `assertVerdictIsDocumentClaim` rejects any
 sentence containing "vulnerable", "insecure", "does not require", and similar,
@@ -36,14 +38,31 @@ true given an assumption about someone's runtime cannot ship.
 **3. Undated is refused.** `deriveVerdict` throws without an explicit
 `YYYY-MM-DD`, and `buildEdition` throws without `provenance.as_of`. The clock is
 never read during derivation, so an edition re-derives identically years later.
+Publication approval is also refused for a truncated snapshot.
 
-**4. Nothing publishes on machine output.** Findings start as `candidate`. A
-human promotes them to `confirmed` by reading the declaration. Any edition with
-an unreviewed candidate is stamped `DRAFT`.
+**4. Nothing publishes on machine output.** Machine matches are explicitly
+`DECLARATION_SILENT_CANDIDATE`, not findings. A declaration-bound human review
+may confirm or reject a candidate. Any edition with an unreviewed candidate is
+stamped `DRAFT`.
 
 ```js
-buildEdition(snapshot, { review: { 'vendor/server': 'confirmed' } });
+buildEdition(snapshot, {
+  review: {
+    'vendor/server': {
+      state: 'confirmed',
+      declaration_digest: 'sha256:…',
+      reviewer: 'github:reviewer-handle',
+      reviewed_at: '2026-07-29T23:55:00Z',
+      rationale: 'The declaration advertises payment release and contains no human-authorization precondition.',
+    },
+  },
+});
 ```
+
+Review completion still does not authorize publication. A reviewed edition emits
+an `assessment_digest`. A separate approval file must bind that digest and name
+the accountable approver, approval timestamp, correction URI and correction SLA.
+Without it, the edition is `REVIEWED_NOT_APPROVED` and must not be published.
 
 ## Precision, measured not assumed
 
@@ -65,15 +84,24 @@ Real false positives that drove each fix, all from live data:
 - A screenplay tool's file export scored as bulk data export. Fixed by requiring
   bulk/data qualifiers.
 
-The one surviving error reads `"debug deployment"` as a deploy capability. This
-is why rule 4 exists.
+The one surviving error read `"debug deployment"` as a deploy capability. This
+is why rule 4 exists and why negative publication requires a digest-bound review
+record with reviewer, timestamp and rationale.
 
 ## Anti-inflation
 
 One vendor republishing identical boilerplate across many entries would inflate
 every count. `boilerplateDigest` hashes the prose without the target name, so
 twins collapse; each edition reports `distinct_declarations` beside `total`, and
-`findings_distinct_declarations` beside the finding count.
+`findings_distinct_declarations` beside confirmed findings.
+
+## Public-repository boundary
+
+Merging into a public repository is publication. This package therefore carries
+no live registry snapshot or named machine-generated edition as a fixture. Tests
+use synthetic targets. A real snapshot, candidate edition and review records
+must stay outside the repository until the publication owner explicitly approves
+the exact reviewed edition and the correction process is staffed.
 
 ## Files
 
@@ -84,7 +112,7 @@ twins collapse; each edition reports `distinct_declarations` beside `total`, and
 | `edition.mjs` | Deterministic edition assembly, review gate, reproduce |
 | `fetch-snapshot.mjs` | The only network code |
 | `build-edition.mjs` | CLI to build or reproduce |
-| `test.mjs` | 26 tests |
+| `test.mjs` | Synthetic unit and hostile-boundary tests |
 
 Categories are never redefined here. They are imported from the shipped
 enforcement manifest so the register cannot drift from what the Gate enforces.

@@ -25,41 +25,59 @@ export const RUBRIC_VERSION = 'EP-COVERAGE-RUBRIC-v1';
  * None of them is a statement about runtime behaviour. This distinction is the
  * whole basis on which the register is defensible: a target whose runtime does
  * require human approval, but whose published declaration does not say so, is
- * accurately described by DECLARATION_SILENT. The sentence stays true either
- * way, and the target can change it by publishing.
+ * never converted into a runtime claim. Machine matches remain candidates until
+ * a declaration-bound human review confirms or rejects them.
  */
 export const VERDICTS = Object.freeze({
-  NO_CONSEQUENTIAL_ACTION_DECLARED: {
-    id: 'NO_CONSEQUENTIAL_ACTION_DECLARED',
+  NO_MATCHING_CATEGORY_SIGNAL: {
+    id: 'NO_MATCHING_CATEGORY_SIGNAL',
     sentence:
-      'As published on {date}, this declaration does not advertise a capability in any of the seven consequential-action categories.',
+      'As published on {date}, the assessed registry fields contained no signal matching the seven consequential-action categories.',
     is_finding: false,
+    requires_review: false,
   },
-  DECLARED_AUTHORIZATION: {
-    id: 'DECLARED_AUTHORIZATION',
+  DECLARED_AUTHORIZATION_SIGNAL: {
+    id: 'DECLARED_AUTHORIZATION_SIGNAL',
     sentence:
-      'As published on {date}, this declaration advertises {categories} and states a human-authorization precondition.',
+      'As published on {date}, the assessed registry fields contained signals for {categories} and language stating a human-authorization precondition.',
     is_finding: false,
+    requires_review: false,
   },
-  DECLARATION_SILENT: {
-    id: 'DECLARATION_SILENT',
+  DECLARATION_SILENT_CANDIDATE: {
+    id: 'DECLARATION_SILENT_CANDIDATE',
     sentence:
-      'As published on {date}, this declaration advertises {categories} and states no human-authorization precondition.',
+      'As published on {date}, an automated scan found signals for {categories} and no matching human-authorization phrase; this is an unreviewed candidate, not a finding.',
+    is_finding: false,
+    requires_review: true,
+  },
+  DECLARATION_SILENT_CONFIRMED: {
+    id: 'DECLARATION_SILENT_CONFIRMED',
+    sentence:
+      'As published on {date}, human review confirmed that the assessed registry fields advertise {categories} without stating a human-authorization precondition.',
     is_finding: true,
+    requires_review: false,
+  },
+  CANDIDATE_REJECTED: {
+    id: 'CANDIDATE_REJECTED',
+    sentence:
+      'As published on {date}, human review rejected the automated {categories} candidate; no authorization-coverage finding is recorded.',
+    is_finding: false,
+    requires_review: false,
   },
   INDETERMINATE: {
     id: 'INDETERMINATE',
     sentence:
       'As published on {date}, this declaration could not be classified against the rubric and is recorded as indeterminate.',
     is_finding: false,
+    requires_review: false,
   },
 });
 
 /**
  * Phrases that, present in a declaration, constitute a declared human
  * authorization precondition. Deliberately generous: a target gets the benefit
- * of any reasonable reading, because a false DECLARATION_SILENT costs more than
- * a missed finding.
+ * of any reasonable reading, because a false confirmed gap costs more than a
+ * missed candidate.
  */
 export const AUTHORIZATION_PHRASES = Object.freeze([
   'human approval',

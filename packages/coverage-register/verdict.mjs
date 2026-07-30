@@ -8,10 +8,10 @@
  *   1. A verdict never asserts anything about runtime behaviour. Every emitted
  *      sentence is a statement about a document as published on a date. See
  *      `assertVerdictIsDocumentClaim`.
- *   2. A verdict always carries the exact quoted span that produced it, plus a
- *      digest over the precise declaration bytes classified. Without the span a
+ *   2. A candidate always carries the exact quoted span that produced it, plus a
+ *      digest over the canonical assessed text. Without the span a
  *      target cannot see what to fix; without the digest nobody can prove which
- *      revision was assessed.
+ *      field projection was assessed.
  */
 
 import crypto from 'node:crypto';
@@ -127,7 +127,7 @@ export function deriveVerdict(server, asOf) {
   if (categories.length === 0) {
     return finalize({
       ...base,
-      verdict: 'NO_CONSEQUENTIAL_ACTION_DECLARED',
+      verdict: 'NO_MATCHING_CATEGORY_SIGNAL',
       categories: [],
       evidence: [],
       ...(readOnly ? { self_described_read_only: true } : {}),
@@ -142,7 +142,7 @@ export function deriveVerdict(server, asOf) {
 
   return finalize({
     ...base,
-    verdict: authorization.length > 0 ? 'DECLARED_AUTHORIZATION' : 'DECLARATION_SILENT',
+    verdict: authorization.length > 0 ? 'DECLARED_AUTHORIZATION_SIGNAL' : 'DECLARATION_SILENT_CANDIDATE',
     categories,
     evidence,
     authorization_evidence: authorization,
@@ -164,11 +164,23 @@ function finalize(v) {
   return Object.freeze({
     ...v,
     is_finding: VERDICTS[v.verdict].is_finding,
+    requires_review: VERDICTS[v.verdict].requires_review,
     sentence,
     remedy: VERDICTS[v.verdict].is_finding
       ? 'Publish a human-authorization precondition in the registry declaration. The verdict changes on the next edition.'
       : null,
   });
+}
+
+/** Apply a declaration-bound human disposition to an automated candidate. */
+export function applyHumanReview(verdict, review) {
+  if (verdict.verdict !== 'DECLARATION_SILENT_CANDIDATE' || verdict.requires_review !== true) {
+    throw new Error(`review supplied for non-candidate verdict ${verdict.verdict}`);
+  }
+  const reviewedVerdict = review.state === 'confirmed'
+    ? 'DECLARATION_SILENT_CONFIRMED'
+    : 'CANDIDATE_REJECTED';
+  return finalize({ ...verdict, verdict: reviewedVerdict, review });
 }
 
 /**

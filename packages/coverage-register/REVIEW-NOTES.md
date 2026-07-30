@@ -3,7 +3,7 @@
 `feat/agent-authorization-coverage-register`
 
 Sol, this is a new package plus one standards document. Nothing existing was
-modified, so the blast radius is additive. Tests: **26/26 passing** via
+modified, so the blast radius is additive. Tests: **34/34 passing** via
 `node --test packages/coverage-register/test.mjs`.
 
 ## What this is
@@ -21,10 +21,9 @@ someone can cite the vocabulary without citing us.
 ## Why the design is defensive in the places it is
 
 **No target is ever contacted.** Only the public registry index is read.
-Invoking a third party's declared money-movement tool to observe whether it
-refuses is the fact pattern that got a competitor's logged-in surface enjoined
-under the CFAA. `fetch-snapshot.mjs` is the only network code in the package and
-its provenance block says so in writing.
+Invoking a third party's declared tool to observe whether it refuses is outside
+this register's declaration-only scope. `fetch-snapshot.mjs` is the only network
+code in the package and refuses redirects away from its pinned origin.
 
 **Every verdict is a claim about a document, never about a runtime.**
 `assertVerdictIsDocumentClaim` throws on "vulnerable", "insecure", "does not
@@ -54,19 +53,21 @@ keyword sets: 5 findings, roughly 80% precision. The survivor reads
 `"debug deployment"` as a deploy capability, which it is not.
 
 **Eighty percent is not good enough to attach a dated verdict to a named
-company.** So `buildEdition` marks every finding `candidate` and stamps the
-edition `DRAFT`; a human must promote each to `confirmed`. Nothing is publishable
-on machine output. This mirrors the discipline already used for the six verified
-Fire Drill reports, which cite a real handler by file and symbol.
+company.** So `buildEdition` marks every machine match
+`DECLARATION_SILENT_CANDIDATE`, explicitly not a finding, and stamps the edition
+`DRAFT`. A human disposition is bound to the exact declaration digest and
+records reviewer, timestamp and rationale. Confirmed gaps become findings;
+rejected candidates become non-findings.
 
 If you think the gate is too strict, that is the argument to have. I would rather
 ship a smaller reviewed edition than a larger one containing a verdict we have to
 retract.
 
-## Merging is not publishing
+## Merging is publication
 
-Merging this adds a generator, a rubric, and tests. It publishes nothing. There
-is no route, no page, and no deployment in this branch, which is deliberate.
+This is a public repository, so merging files is publication even without a web
+route. The branch therefore carries no live snapshot or named candidate edition;
+the test corpus is synthetic.
 
 Publishing a dated verdict about a named third party is a decision for Iman, not
 a side effect of a merge. If we do go there, three things need to exist first and
@@ -79,7 +80,7 @@ none is in this branch:
    all, or whether the target class should move up to the frameworks and gateways
    sitting in the action path.
 
-## Live numbers, for context
+## Development-sample numbers, not for publication
 
 200 registry rows, deduped to 109 targets, `as_of 2026-07-29`:
 
@@ -89,9 +90,8 @@ none is in this branch:
   bug: zero of the 200 raw rows contain any authorization phrase at all
 - 107 distinct declarations across 109 targets
 
-`snapshot-sample.json` and `edition-sample.json` are committed as fixtures so the
-reproduce path is exercisable without network access. Drop them if you would
-rather not carry sample data.
+The live development snapshot and named candidate edition are intentionally not
+committed. Reproduction behavior is exercised with synthetic fixtures in tests.
 
 ## Open questions for you
 

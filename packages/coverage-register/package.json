@@ -3,7 +3,7 @@
   "version": "0.1.0",
   "private": true,
   "type": "module",
-  "description": "Builds dated, reproducible editions of the Agent Authorization Coverage register from public registry declarations. Reads no target server; publishes nothing without human review.",
+  "description": "Builds dated, reproducible editions of the Agent Authorization Coverage register from public registry declarations. Reads no target server; requires digest-bound review and separate publication approval.",
   "license": "Apache-2.0",
   "exports": {
     ".": "./edition.mjs",

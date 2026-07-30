@@ -16,10 +16,9 @@ Rubric identifier: `EP-COVERAGE-RUBRIC-v1`
 A rubric verdict is a statement about **a declaration, as published on a date**.
 
 It is not a statement about runtime behaviour, and it must never be written as
-one. A system whose runtime genuinely does require human approval, but whose
-published declaration does not say so, is correctly described as
-`DECLARATION_SILENT`. That sentence is true either way, which is exactly why it
-is the only kind of sentence this rubric permits.
+one. A system whose runtime genuinely requires human approval may still omit
+that fact from its registry prose. The rubric records only the captured fields
+and must not turn a missing keyword match into a runtime conclusion.
 
 A verdict is therefore **not** a vulnerability report, not a security finding,
 and not an accusation. It is a dated observation about a document.
@@ -57,9 +56,11 @@ squeezed into the nearest label.
 
 | Verdict | Meaning | Finding? |
 | --- | --- | --- |
-| `NO_CONSEQUENTIAL_ACTION_DECLARED` | The declaration advertises nothing in the seven categories. | No |
-| `DECLARED_AUTHORIZATION` | It advertises at least one category and states a human authorization precondition. | No |
-| `DECLARATION_SILENT` | It advertises at least one category and states no such precondition. | Yes |
+| `NO_MATCHING_CATEGORY_SIGNAL` | The assessed registry fields contain no signal matching the seven categories. This is not a conclusion that no consequential capability exists. | No |
+| `DECLARED_AUTHORIZATION_SIGNAL` | The assessed fields contain a category signal and language stating a human authorization precondition. | No |
+| `DECLARATION_SILENT_CANDIDATE` | Automation found a category signal and no matching authorization phrase. Human review is required; this is not a finding. | No |
+| `DECLARATION_SILENT_CONFIRMED` | Human review, bound to the exact declaration digest, confirmed that the assessed fields advertise a category without stating a human-authorization precondition. | Yes |
+| `CANDIDATE_REJECTED` | Human review rejected the automated candidate. | No |
 | `INDETERMINATE` | It could not be classified. | No |
 
 Each verdict renders to one sentence, and every sentence opens with
@@ -68,13 +69,14 @@ reproducible and must not be published.
 
 ## 4. Evidence obligations
 
-Every finding carries:
+Every candidate and confirmed finding carries:
 
 - the **exact quoted span** of the declaration that produced it, and the term
   matched, so the subject can see precisely what to change;
-- a **digest of the exact declaration bytes** assessed, so there is never a
-  dispute about which revision was read;
-- the **remedy**, which for `DECLARATION_SILENT` is always the same: publish the
+- a **digest of the canonical assessed text** (name, title and description in a
+  fixed projection), plus the source-snapshot digest, so there is never a
+  dispute about which captured fields were read;
+- the **remedy**, which for `DECLARATION_SILENT_CONFIRMED` is always the same: publish the
   precondition, and the verdict changes in the next edition.
 
 A finding without a quoted span is not a finding. It is an opinion.
@@ -96,9 +98,20 @@ mutation-shaped keywords: **roughly 80%**, with the surviving error reading
 Eighty percent is not publishable against a named party. Therefore:
 
 **Machine output produces candidates. A human confirms or rejects each one by
-reading the declaration. Only confirmed findings may be published.**
+reading the declaration. Only confirmed findings may be published.** A review
+record binds the disposition to the declaration digest and records a stable
+reviewer identifier, UTC review timestamp and substantive rationale. A review
+cannot be silently reused after the declaration changes.
 
 An edition containing any unreviewed candidate is `DRAFT` and must not ship.
+Because a public Git repository is itself a publication surface, live snapshots
+and named candidate editions must not be committed there merely because no web
+route exists.
+
+Completing human review does not itself authorize publication. Publication
+requires a separate accountable approval bound to the reviewed assessment
+digest, with a named correction channel and response SLA. A reviewed edition
+without that approval remains non-public.
 
 ## 6. Corrections
 
@@ -109,7 +122,7 @@ argument. A disputed verdict is corrected publicly within 24 hours or withdrawn.
 One uncorrected wrong verdict about a named party costs more than an entire
 register is worth. That asymmetry is the reason for every rule above.
 
-## 7. Reaching `DECLARED_AUTHORIZATION`
+## 7. Reaching `DECLARED_AUTHORIZATION_SIGNAL`
 
 Publish, in the declaration itself, that a human authorization precondition
 applies to the consequential capabilities. Any of these phrasings is honoured:

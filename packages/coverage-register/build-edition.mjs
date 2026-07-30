@@ -4,6 +4,8 @@
  * network.
  *
  *   node build-edition.mjs --snapshot snapshot.json --out edition.json
+ *   node build-edition.mjs --snapshot snapshot.json --reviews reviews.json --out reviewed-edition.json
+ *   node build-edition.mjs --snapshot snapshot.json --reviews reviews.json --publication approval.json --out approved-edition.json
  *   node build-edition.mjs --snapshot snapshot.json --reproduce edition.json
  */
 
@@ -36,22 +38,28 @@ async function main() {
     process.exit(1);
   }
 
-  const edition = buildEdition(snapshot);
+  const reviewsPath = arg('reviews');
+  const publicationPath = arg('publication');
+  const review = reviewsPath ? await read(reviewsPath) : {};
+  const publication = publicationPath ? await read(publicationPath) : null;
+  const edition = buildEdition(snapshot, { review, publication });
   const out = arg('out', 'edition.json');
   await fs.writeFile(out, canonicalJson(edition), 'utf8');
 
   const c = edition.counts;
   console.log(`edition ${edition.as_of} -> ${out}`);
   console.log(`  targets                     ${c.total}`);
-  console.log(`  declares consequential      ${c.DECLARATION_SILENT + c.DECLARED_AUTHORIZATION}`);
-  console.log(`  ... states authorization    ${c.DECLARED_AUTHORIZATION}`);
-  console.log(`  ... declaration silent     ${c.DECLARATION_SILENT}`);
-  console.log(`  no consequential action     ${c.NO_CONSEQUENTIAL_ACTION_DECLARED}`);
+  console.log(`  matching category signal    ${c.DECLARATION_SILENT_CANDIDATE + c.DECLARATION_SILENT_CONFIRMED + c.CANDIDATE_REJECTED + c.DECLARED_AUTHORIZATION_SIGNAL}`);
+  console.log(`  authorization signal        ${c.DECLARED_AUTHORIZATION_SIGNAL}`);
+  console.log(`  unreviewed candidates       ${c.DECLARATION_SILENT_CANDIDATE}`);
+  console.log(`  confirmed gaps              ${c.DECLARATION_SILENT_CONFIRMED}`);
+  console.log(`  rejected candidates         ${c.CANDIDATE_REJECTED}`);
+  console.log(`  no matching category signal ${c.NO_MATCHING_CATEGORY_SIGNAL}`);
   console.log(`  indeterminate               ${c.INDETERMINATE}`);
   console.log(`  edition digest              ${edition.edition_digest}`);
   console.log('\nby category:');
   for (const [id, row] of Object.entries(edition.by_category)) {
-    console.log(`  ${id.padEnd(36)} ${String(row.declared).padStart(5)}  ${String(row.pct_of_corpus).padStart(6)}%  auth-declared ${row.declared_with_authorization}`);
+    console.log(`  ${id.padEnd(36)} ${String(row.matching_signal).padStart(5)}  ${String(row.pct_with_matching_signal).padStart(6)}%  auth-signal ${row.authorization_signal}  confirmed-gap ${row.confirmed_gap}`);
   }
 }
 

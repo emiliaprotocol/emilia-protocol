@@ -5,12 +5,11 @@
  *
  * It does not contact, probe, or invoke any target server. That restriction is
  * not a style preference. Calling a third party's advertised tool to observe
- * whether it refuses is the fact pattern that got a competitor's entire
- * logged-in surface enjoined and its collected data ordered destroyed under the
- * CFAA. The register is built from what targets published about themselves, and
- * it stays that way.
+ * whether it refuses would exceed this register's declaration-only scope. The
+ * register is built from what targets published about themselves, and it stays
+ * that way.
  *
- *   node fetch-snapshot.mjs --out snapshot.json [--limit 200] [--as-of YYYY-MM-DD]
+ *   node fetch-snapshot.mjs --out snapshot.json [--limit 200]
  */
 
 import fs from 'node:fs/promises';
@@ -26,7 +25,8 @@ function arg(name, fallback = null) {
 async function main() {
   const out = arg('out', 'snapshot.json');
   const limit = Number(arg('limit', '0')) || Infinity;
-  const asOf = arg('as-of') ?? new Date().toISOString().slice(0, 10);
+  const retrievedAt = new Date().toISOString();
+  const asOf = retrievedAt.slice(0, 10);
 
   const rows = [];
   let cursor = null;
@@ -37,9 +37,14 @@ async function main() {
     url.searchParams.set('limit', String(PAGE));
     if (cursor) url.searchParams.set('cursor', cursor);
 
-    const res = await fetch(url, { headers: { accept: 'application/json' } });
+    const res = await fetch(url, { headers: { accept: 'application/json' }, redirect: 'manual' });
+    if (res.status >= 300 && res.status < 400) throw new Error('registry redirect refused; snapshot fetch is pinned to one origin');
     if (!res.ok) throw new Error(`registry responded ${res.status} ${res.statusText}`);
-    const body = await res.json();
+    const contentType = res.headers.get('content-type') ?? '';
+    if (!contentType.toLowerCase().includes('json')) throw new Error(`registry returned unexpected content type ${contentType || '(missing)'}`);
+    const responseText = await res.text();
+    if (Buffer.byteLength(responseText, 'utf8') > 5_000_000) throw new Error('registry page exceeded the 5 MB safety limit');
+    const body = JSON.parse(responseText);
 
     const batch = body.servers ?? [];
     if (batch.length === 0) break;
@@ -58,6 +63,7 @@ async function main() {
     provenance: {
       source: REGISTRY,
       as_of: asOf,
+      retrieved_at: retrievedAt,
       rows_fetched: trimmed.length,
       pages_fetched: pages,
       truncated: Number.isFinite(limit) && rows.length >= limit,
