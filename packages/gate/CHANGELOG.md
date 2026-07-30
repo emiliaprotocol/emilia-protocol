@@ -4,6 +4,28 @@
 All notable changes to `@emilia-protocol/gate` are documented here.
 This package follows [Semantic Versioning](https://semver.org/).
 
+## 0.21.0 (2026-07-29)
+
+### Added
+
+- Signed action-refusal delivery from the live reliance boundary, with a
+  durable PostgreSQL acceptance store for atomic replay refusal, tenant
+  isolation, custody references, and delivery evidence.
+- PEDIGREE composition that preserves native verification and keeps completion
+  evidence structurally separate from pre-action authorization.
+- A relying-party-pinned Trusted Context admission pack and optional
+  ApertoMemory adapter for encrypted context evidence without allowing memory
+  evidence to authorize an action by itself.
+
+### Security
+
+- Pins `@emilia-protocol/verify@3.18.2`, carrying the PSEA-02 adapter,
+  independent industrial effect-evidence predicates, and the current
+  PEDIGREE/AEB composition vectors into Gate.
+- Refusals remain fail-closed, exact-action bound, and non-authorizing. Trusted
+  context remains an optional evidence leg; Gate still owns the final local
+  authorization and one-time consequence-admission decision.
+
 ## 0.20.1 (2026-07-29)
 
 ### Security

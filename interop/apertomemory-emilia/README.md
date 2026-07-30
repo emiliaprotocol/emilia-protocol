@@ -129,8 +129,9 @@ inside or alongside the record is not a trust anchor.
 
 - `trust-custody-result.v0.schema.json` — strict JSON Schema for output 1
 - `memory-projection-record.v0.schema.json` — strict JSON Schema for output 2
-- `apertomemory-source-fixtures.v2.json` — the five exact published source
-  objects and native expected outcomes used by the composition vectors
+- `apertomemory-source-fixtures.v2.json` — six exact published objects: five
+  custody cases plus one projection-support case, with the native expected
+  outcomes used by the composition vectors
 - `apertomemory-emilia.v1.json` — deterministic positive and negative
   composition vectors plus the pinned adapter key
 - `generate.mjs` — deterministic vector generator
