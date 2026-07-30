@@ -1,0 +1,616 @@
+
+
+
+
+Network Working Group                                           A. Ferro
+Internet-Draft                                              ApertoMemory
+Intended status: Experimental                                 I. Schrock
+Expires: 30 January 2027                           EMILIA Protocol, Inc.
+                                                            29 July 2026
+
+
+  Signed Memory Projection Records for Verifiable AI Context Delivery
+            draft-ferro-schrock-memory-projection-record-00
+
+Abstract
+
+   Encrypted and signed memory objects can establish source integrity,
+   authorship, and read-time trust without establishing which exact
+   bytes a memory adapter selected and delivered to a downstream AI
+   system.  This document specifies a provider-neutral signed Memory
+   Projection Record.  The record commits to the recall request and
+   selection policy, the read-time keyring snapshot, the ordered source
+   objects and exact context fragments delivered, the complete
+   projection bytes, and summarized exclusions.  It deliberately does
+   not claim that a model received, used, or weighted the projection,
+   that an action was authorized, or that an outcome occurred.
+   ApertoMemory is one source profile; other memory formats can use the
+   same projection boundary.
+
+Status of This Memo
+
+   This Internet-Draft is submitted in full conformance with the
+   provisions of BCP 78 and BCP 79.
+
+   Internet-Drafts are working documents of the Internet Engineering
+   Task Force (IETF).  Note that other groups may also distribute
+   working documents as Internet-Drafts.  The list of current Internet-
+   Drafts is at https://datatracker.ietf.org/drafts/current/.
+
+   Internet-Drafts are draft documents valid for a maximum of six months
+   and may be updated, replaced, or obsoleted by other documents at any
+   time.  It is inappropriate to use Internet-Drafts as reference
+   material or to cite them other than as "work in progress."
+
+   This Internet-Draft will expire on 30 January 2027.
+
+Copyright Notice
+
+   Copyright (c) 2026 IETF Trust and the persons identified as the
+   document authors.  All rights reserved.
+
+
+
+
+
+Ferro & Schrock          Expires 30 January 2027                [Page 1]
+
+Internet-Draft          Memory Projection Records              July 2026
+
+
+   This document is subject to BCP 78 and the IETF Trust's Legal
+   Provisions Relating to IETF Documents (https://trustee.ietf.org/
+   license-info) in effect on the date of publication of this document.
+   Please review these documents carefully, as they describe your rights
+   and restrictions with respect to this document.  Code Components
+   extracted from this document must include Revised BSD License text as
+   described in Section 4.e of the Trust Legal Provisions and are
+   provided without warranty as described in the Revised BSD License.
+
+Table of Contents
+
+   1.  Introduction  . . . . . . . . . . . . . . . . . . . . . . . .   2
+     1.1.  Requirements Language . . . . . . . . . . . . . . . . . .   3
+   2.  Scope and Nonclaims . . . . . . . . . . . . . . . . . . . . .   3
+   3.  Terminology . . . . . . . . . . . . . . . . . . . . . . . . .   4
+   4.  Memory Projection Record  . . . . . . . . . . . . . . . . . .   4
+     4.1.  Identity and Time . . . . . . . . . . . . . . . . . . . .   5
+     4.2.  Selection Context . . . . . . . . . . . . . . . . . . . .   6
+     4.3.  Delivered Entries and Projection Bytes  . . . . . . . . .   6
+     4.4.  Exclusions  . . . . . . . . . . . . . . . . . . . . . . .   6
+   5.  Canonicalization and Signature  . . . . . . . . . . . . . . .   7
+   6.  Producer Algorithm  . . . . . . . . . . . . . . . . . . . . .   7
+   7.  Verifier Algorithm  . . . . . . . . . . . . . . . . . . . . .   7
+   8.  Composition with Downstream Systems . . . . . . . . . . . . .   8
+   9.  Security Considerations . . . . . . . . . . . . . . . . . . .   9
+   10. Privacy Considerations  . . . . . . . . . . . . . . . . . . .   9
+   11. IANA Considerations . . . . . . . . . . . . . . . . . . . . .   9
+   12. Implementation Status . . . . . . . . . . . . . . . . . . . .   9
+   13. Normative References  . . . . . . . . . . . . . . . . . . . .  10
+   14. Informative References  . . . . . . . . . . . . . . . . . . .  10
+   Authors' Addresses  . . . . . . . . . . . . . . . . . . . . . . .  11
+
+1.  Introduction
+
+   A memory-object format and a context-delivery record answer different
+   questions.  A memory-object format can prove that an object verified
+   under a key accepted at read time.  It does not, by itself, identify
+   the set, order, framing, or exact bytes selected for a particular AI
+   request.  Conversely, a projection record cannot repair invalid
+   source provenance.  It can only preserve the source decision and bind
+   it to the bytes emitted by a named adapter.
+
+
+
+
+
+
+
+
+
+
+Ferro & Schrock          Expires 30 January 2027                [Page 2]
+
+Internet-Draft          Memory Projection Records              July 2026
+
+
+   This document defines the join between those layers.  A projection
+   producer signs one closed record after the projection bytes and their
+   ordered fragments are finalized.  A verifier recomputes the source-
+   object, fragment, and complete-projection commitments and verifies
+   the adapter signature under a relying-party-pinned key.  The
+   resulting fact is narrow: the producer attests that it emitted the
+   committed projection under the committed selection context.
+
+   The source memory profile remains authoritative for its own object,
+   cryptographic, trust, authorship, and custody semantics.  In
+   particular, ApertoMemory [I-D.ferro-apertomemory] remains
+   authoritative for sealed Memory Objects and its read-time trust
+   derivation.  This document does not redefine those semantics.  It
+   defines a joint, provider-neutral artifact above that boundary.
+
+1.1.  Requirements Language
+
+   The key words "MUST", "MUST NOT", "REQUIRED", "SHALL", "SHALL NOT",
+   "SHOULD", "SHOULD NOT", "RECOMMENDED", "NOT RECOMMENDED", "MAY", and
+   "OPTIONAL" in this document are to be interpreted as described in BCP
+   14 [RFC2119] [RFC8174] when, and only when, they appear in all
+   capitals, as shown here.
+
+2.  Scope and Nonclaims
+
+   A conforming Memory Projection Record establishes all of the
+   following:
+
+   *  the adapter identity and pinned signing key used to produce the
+      record;
+
+   *  commitments to the recall request, selection policy, source-
+      profile trust snapshot, and framing profile;
+
+   *  the ordered list of source objects selected, with the trust and
+      authorship results supplied by the source profile;
+
+   *  the exact bytes of each framed context fragment and of the
+      complete emitted projection; and
+
+   *  the number of objects excluded for each closed exclusion reason.
+
+   A projection record does not establish transport receipt, insertion
+   into a model context window, model use or weighting, action linkage,
+   action authorization, execution, or outcome.  A downstream system MAY
+   bind the projection digest into a separate request, authorization, or
+   outcome protocol.  Such a binding is outside this document.
+
+
+
+
+Ferro & Schrock          Expires 30 January 2027                [Page 3]
+
+Internet-Draft          Memory Projection Records              July 2026
+
+
+3.  Terminology
+
+   Source profile  The independently governed memory format and
+      verification rules from which object identity, trust, authorship,
+      and custody facts are derived.
+
+   Projection producer  The adapter that selects source objects, frames
+      exact context fragments, constructs the complete projection, and
+      signs the Memory Projection Record.
+
+   Projection  The exact byte string emitted by the producer for
+      downstream context delivery.
+
+   Context fragment  The exact framed bytes contributed by one selected
+      source object at one position in the projection.
+
+   Trust snapshot  A commitment to the source-profile trust state used
+      when the selection decision was made.  For ApertoMemory this is a
+      read-time keyring snapshot, because trust is derived rather than
+      stored in the object.
+
+4.  Memory Projection Record
+
+   MEMORY-PROJECTION-RECORD-v1 is a closed I-JSON object [RFC7493].  The
+   top-level members are shown below.  Member order in a JSON
+   serialization has no significance.  Unknown members MUST be refused
+   until a later version defines an extension mechanism.
+
+   {
+     "@version": "MEMORY-PROJECTION-RECORD-v1",
+     "source_profile": "draft-ferro-apertomemory-02",
+     "projection_id": "urn:memory-projection:example:1234",
+     "created_at": "2026-07-29T17:00:01.000Z",
+     "adapter": {
+       "id": "urn:memory-adapter:example:1",
+       "key_id": "adapter-key-2026-07"
+     },
+     "selection_context": {
+       "recall_request_digest": "sha256:...",
+       "selection_policy_digest": "sha256:...",
+       "trust_snapshot_digest": "sha256:...",
+       "trust_evaluated_at": "2026-07-29T17:00:00.000Z",
+       "context_frame_profile": "urn:context-frame:example:v1"
+     },
+     "delivered": [
+       {
+         "position": 0,
+         "object": {
+
+
+
+Ferro & Schrock          Expires 30 January 2027                [Page 4]
+
+Internet-Draft          Memory Projection Records              July 2026
+
+
+           "format_version": 2,
+           "sealed_object_digest": "sha256:..."
+         },
+         "context_fragment_digest": "sha256:...",
+         "derived_trust": "trusted",
+         "authorship": "attested",
+         "author_key_id_b64u": "Y8HonACcWtc",
+         "custody_present": true
+       }
+     ],
+     "exclusions": {
+       "total": 2,
+       "by_reason": {
+         "authentication_failed": 1,
+         "schema_invalid": 0,
+         "policy_filtered": 0,
+         "context_limit": 1
+       }
+     },
+     "projection": {
+       "encoding": "utf-8",
+       "byte_length": 314,
+       "digest": "sha256:..."
+     },
+     "nonclaims": {
+       "model_use": "NOT_ESTABLISHED",
+       "action_linkage": "NOT_ESTABLISHED",
+       "action_authorization": "NOT_ESTABLISHED",
+       "execution_outcome": "NOT_ESTABLISHED"
+     },
+     "proof": {
+       "alg": "Ed25519",
+       "key_id": "adapter-key-2026-07",
+       "signature_b64u": "..."
+     }
+   }
+
+4.1.  Identity and Time
+
+   @version MUST equal MEMORY-PROJECTION-RECORD-v1. projection_id MUST
+   be a globally unique URI. created_at and trust_evaluated_at MUST be
+   UTC timestamps conforming to [RFC3339]. adapter.id identifies the
+   producer; adapter.key_id selects a key from relying-party policy.
+   proof.key_id MUST equal adapter.key_id.
+
+   The relying party MUST set a maximum acceptable interval between
+   trust_evaluated_at, created_at, and its verification time.  A valid
+   signature does not make a stale trust decision current.
+
+
+
+Ferro & Schrock          Expires 30 January 2027                [Page 5]
+
+Internet-Draft          Memory Projection Records              July 2026
+
+
+4.2.  Selection Context
+
+   recall_request_digest is SHA-256 over the exact request bytes under a
+   profile that defines their serialization. selection_policy_digest is
+   SHA-256 over the exact policy bytes that determined eligibility,
+   filtering, ordering, and limits. trust_snapshot_digest is SHA-256
+   over the source-profile-defined trust snapshot. context_frame_profile
+   names the deterministic transformation from one opened source object
+   and its labels to one context fragment.
+
+   The cleartext request, policy, and trust snapshot need not be carried
+   in the record.  A verifier that relies on any of them MUST possess
+   the exact bytes and their applicable serialization profiles and MUST
+   recompute the corresponding digest.
+
+4.3.  Delivered Entries and Projection Bytes
+
+   delivered is an array in projection order. position MUST equal the
+   zero-based array index and MUST NOT repeat. sealed_object_digest is
+   SHA-256 over the exact complete source-object bytes as supplied,
+   without parsing or reserialization. format_version is interpreted
+   only by the named source profile.
+
+   context_fragment_digest is SHA-256 over the exact bytes of the
+   fragment emitted for that entry, including framing labels,
+   separators, and line endings.  The complete projection is the
+   bytewise concatenation of those fragments in ascending position.
+   projection.byte_length and projection.digest MUST equal the length
+   and SHA-256 digest of that complete byte string.  This version
+   supports only UTF-8 projection bytes; projection.encoding MUST equal
+   utf-8.
+
+   derived_trust, authorship, author_key_id_b64u, and custody_present
+   preserve the source-profile result used at selection time.  They MUST
+   NOT be recomputed under rules invented by the projection producer.
+   For an ApertoMemory source, the source profile remains solely
+   authoritative for those values.  Unverified content MUST use
+   authorship unknown and a null author key.  Attested authorship
+   requires custody_present true.
+
+4.4.  Exclusions
+
+   exclusions.total MUST equal the sum of the closed by_reason counters.
+   authentication_failed counts objects refused by source
+   authentication; schema_invalid counts source objects the source
+   profile refuses; policy_filtered counts otherwise valid objects
+   excluded by policy; and context_limit counts otherwise eligible
+   objects omitted due to a projection limit.  A producer MUST NOT map
+
+
+
+Ferro & Schrock          Expires 30 January 2027                [Page 6]
+
+Internet-Draft          Memory Projection Records              July 2026
+
+
+   an unknown reason into a semantically different counter.  This
+   version does not disclose excluded object identifiers, reducing
+   correlation and content-oracle risk.
+
+5.  Canonicalization and Signature
+
+   Every member except proof is inside the signature boundary.  The
+   producer removes proof, canonicalizes the remaining object with JCS
+   [RFC8785], prefixes the following UTF-8 domain string and one zero
+   octet, and signs the resulting bytes with Ed25519 [RFC8032]:
+
+   MEMORY-PROJECTION-RECORD-v1\0 || JCS(record without proof)
+
+   proof.alg MUST equal Ed25519. signature_b64u is the unpadded
+   base64url encoding [RFC4648] of the 64-byte signature.  The public
+   key MUST come from relying-party policy or an authenticated key-
+   distribution mechanism outside the record.  A key carried with the
+   record is not a trust anchor.
+
+6.  Producer Algorithm
+
+   1.  Open and verify candidate objects using their native source
+       profile.  Record the trust snapshot and evaluation time.
+
+   2.  Commit to the recall request and complete selection policy before
+       selecting objects.
+
+   3.  Apply authentication, schema, policy, ordering, and size rules.
+       Count every excluded candidate under exactly one exclusion
+       reason.
+
+   4.  Construct each final context fragment, hash its exact bytes, and
+       append its entry in order.  After this step the fragments MUST
+       NOT be mutated without rebuilding the record.
+
+   5.  Concatenate the fragments, compute projection.byte_length and
+       projection.digest, construct the nonclaims, and sign the closed
+       record.
+
+   6.  Return or make available the projection bytes and record as one
+       logical result.  A failure after signing but before downstream
+       delivery MUST NOT be reported as proof that a model received the
+       bytes.
+
+7.  Verifier Algorithm
+
+
+
+
+
+
+Ferro & Schrock          Expires 30 January 2027                [Page 7]
+
+Internet-Draft          Memory Projection Records              July 2026
+
+
+   1.  Require the exact top-level and nested member sets defined by
+       this version.  Validate types, enumerations, timestamps, and
+       digest syntax.
+
+   2.  Resolve adapter.key_id under relying-party policy, verify that it
+       is current for created_at, and verify the Ed25519 signature over
+       the domain-separated JCS bytes.
+
+   3.  Enforce freshness policy for created_at and trust_evaluated_at
+       and reject a duplicate projection_id when policy requires single
+       use.
+
+   4.  If relying on the request, policy, or trust snapshot, recompute
+       its digest under the named profile.
+
+   5.  Verify each exact source-object digest under its native source
+       profile.  Preserve, rather than reinterpret, the native trust,
+       authorship, and custody result.
+
+   6.  Require sequential positions.  Recompute every fragment digest
+       from the exact fragment bytes, concatenate those bytes in order,
+       and verify the complete length and digest.
+
+   7.  Verify that exclusions.total equals the sum of the closed reason
+       counters and that all four nonclaims equal NOT_ESTABLISHED.
+
+   A verifier MUST refuse mutation, omission, duplication, or reordering
+   of a delivered entry; a fragment or projection mismatch; an unpinned,
+   expired, or compromised adapter key; a stale trust evaluation; a
+   count mismatch; an unknown field; an altered nonclaim; or an invalid
+   signature.
+
+8.  Composition with Downstream Systems
+
+   A downstream protocol may bind projection.digest and projection_id
+   into a model invocation, action proposal, authorization, admission
+   decision, execution receipt, or outcome record.  That downstream
+   protocol is authoritative for its own semantics.  The Memory
+   Projection Record MUST remain valid and useful without requiring any
+   particular agent, authorization, or outcome framework.
+
+   EMILIA Trusted Context, AEC, Gate, and Outcome Binding are one
+   consumer profile.  They may use the projection as one evidence leg
+   and independently bind the actual action and consequence.  They are
+   not part of the neutral projection-record wire format and do not
+   authorize changes to the source profile or projection record.
+
+
+
+
+
+Ferro & Schrock          Expires 30 January 2027                [Page 8]
+
+Internet-Draft          Memory Projection Records              July 2026
+
+
+9.  Security Considerations
+
+   A signed projection can preserve poisoned content with high
+   integrity.  Producers MUST therefore apply the native source profile
+   fail closed and MUST keep unverified content distinguishable from
+   self or trusted content.  The projection signature proves an adapter
+   statement, not the correctness of a memory, trust policy, keyring,
+   framing policy, or model behavior.
+
+   Stable object identifiers and excluded-object lists create
+   correlation and membership oracles.  This version commits to exact
+   source bytes and carries aggregate exclusion counts rather than
+   cleartext source identifiers.  Deployments SHOULD use pairwise
+   adapter identifiers where appropriate and SHOULD minimize retention
+   of request, policy, and projection material.
+
+   Replay can cause an old but valid projection to be applied under a
+   new request.  Relying parties MUST enforce freshness and SHOULD
+   register projection_id atomically when single use is required.  A
+   stale or revoked source keyring, adapter key, or policy MUST NOT be
+   made current merely by replaying a valid historical signature.
+
+10.  Privacy Considerations
+
+   Memory projections can contain highly sensitive personal facts and
+   can reveal selection behavior even when source objects remain
+   encrypted.  Records SHOULD carry commitments rather than cleartext
+   requests, policies, trust snapshots, or excluded identifiers.  The
+   projection bytes SHOULD be disclosed only to the intended downstream
+   recipient.  Logs SHOULD avoid storing raw projection or fragment
+   bytes unless operationally required.
+
+11.  IANA Considerations
+
+   This document has no IANA actions.
+
+12.  Implementation Status
+
+   An Apache-2.0 executable discussion profile [AMEM-EMILIA-INTEROP]
+   currently implements AMEM-PROJECTION-RECORD-v0.  It signs the ordered
+   projection with Ed25519, verifies exact sealed-object, fragment, and
+   complete-projection digests, preserves ApertoMemory read-time trust
+   and custody results, and exercises positive and hostile mutation
+   vectors.  The implementation uses the domain AMEM-EMILIA-PROJECTION-
+   RECORD-v0 and marks each record as discussion input rather than
+   ApertoMemory conformance.
+
+
+
+
+
+Ferro & Schrock          Expires 30 January 2027                [Page 9]
+
+Internet-Draft          Memory Projection Records              July 2026
+
+
+   The v0 executable profile is implementation input to this -00.  It is
+   not asserted to conform to MEMORY-PROJECTION-RECORD-v1 until the
+   neutral field set, domain string, and reciprocal tests in this
+   document are implemented and independently reviewed.  ApertoMemory
+   and EMILIA have independently reproduced five source-fact cases from
+   the ApertoMemory reference implementation and matched their exact
+   source-object digests and native trust, authorship, signer, author,
+   and custody results.  That bounded check is not blanket conformance
+   and establishes none of the nonclaims in Section 2.
+
+13.  Normative References
+
+   [RFC2119]  Bradner, S., "Key words for use in RFCs to Indicate
+              Requirement Levels", BCP 14, RFC 2119,
+              DOI 10.17487/RFC2119, March 1997,
+              <https://www.rfc-editor.org/info/rfc2119>.
+
+   [RFC3339]  Klyne, G. and C. Newman, "Date and Time on the Internet:
+              Timestamps", RFC 3339, DOI 10.17487/RFC3339, July 2002,
+              <https://www.rfc-editor.org/info/rfc3339>.
+
+   [RFC4648]  Josefsson, S., "The Base16, Base32, and Base64 Data
+              Encodings", RFC 4648, DOI 10.17487/RFC4648, October 2006,
+              <https://www.rfc-editor.org/info/rfc4648>.
+
+   [RFC7493]  Bray, T., Ed., "The I-JSON Message Format", RFC 7493,
+              DOI 10.17487/RFC7493, March 2015,
+              <https://www.rfc-editor.org/info/rfc7493>.
+
+   [RFC8032]  Josefsson, S. and I. Liusvaara, "Edwards-Curve Digital
+              Signature Algorithm (EdDSA)", RFC 8032,
+              DOI 10.17487/RFC8032, January 2017,
+              <https://www.rfc-editor.org/info/rfc8032>.
+
+   [RFC8174]  Leiba, B., "Ambiguity of Uppercase vs Lowercase in RFC
+              2119 Key Words", BCP 14, RFC 8174, DOI 10.17487/RFC8174,
+              May 2017, <https://www.rfc-editor.org/info/rfc8174>.
+
+   [RFC8785]  Rundgren, A., Jordan, B., and S. Erdtman, "JSON
+              Canonicalization Scheme (JCS)", RFC 8785,
+              DOI 10.17487/RFC8785, June 2020,
+              <https://www.rfc-editor.org/info/rfc8785>.
+
+14.  Informative References
+
+
+
+
+
+
+
+Ferro & Schrock          Expires 30 January 2027               [Page 10]
+
+Internet-Draft          Memory Projection Records              July 2026
+
+
+   [AMEM-EMILIA-INTEROP]
+              Schrock, I., "ApertoMemory / EMILIA Memory-to-Action
+              Composition Profile", July 2026, <https://github.com/
+              emilia-protocol/emilia-protocol/tree/main/interop/
+              apertomemory-emilia>.
+
+   [I-D.ferro-apertomemory]
+              Ferro, A., "The ApertoMemory Format: Portable, Client-
+              Side-Encrypted AI Memory", Work in Progress, Internet-
+              Draft, draft-ferro-apertomemory-02, 22 July 2026,
+              <https://datatracker.ietf.org/doc/draft-ferro-
+              apertomemory/>.
+
+Authors' Addresses
+
+   Andrea Ferro
+   ApertoMemory
+   Email: irn@irn3.com
+
+
+   Iman Schrock
+   EMILIA Protocol, Inc.
+   United States of America
+   Email: team@emiliaprotocol.ai
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+Ferro & Schrock          Expires 30 January 2027               [Page 11]
