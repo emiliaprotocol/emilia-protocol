@@ -91,6 +91,14 @@
         ceremony occurred, who participated, consent, comprehension,
         presentation integrity, or legal authority. Those claims require their
         own authenticated evidence and relying-party acceptance rules.</t>
+        <t>This profile is complementary to software-supply-chain frameworks
+        such as in-toto. In-toto verifies signed layouts and signed evidence
+        that designated functionaries performed supply-chain steps. This
+        profile instead governs live consequence admission: it controls a
+        one-time execution right under current authorization, occurrence
+        ceilings, aggregate attempt budgets, post-entry uncertainty, and
+        authenticated reconciliation. It does not replace in-toto or claim
+        that no other system can express ordered work.</t>
       </section>
     </section>
 

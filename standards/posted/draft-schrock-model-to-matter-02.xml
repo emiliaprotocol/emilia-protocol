@@ -107,6 +107,11 @@
       relying-party-declared control domain distinct from every executor or
       other non-independent source. A second key in the executor's control
       domain is not independent.</t>
+      <t>The <tt>independent_observer</tt> role is a relying-party policy
+      classification. Successful verification establishes only the configured
+      identity, source, and distinctness predicates. It does not independently
+      establish source ownership or organizational, economic, physical, or
+      legal independence.</t>
       <t>The executor's acceptance profile MUST pin source status and validity,
       source quorum, distinctness dimensions, and any required observation
       window and maximum attestation delay. Those requirements are verifier
@@ -147,6 +152,10 @@
       operational controls, source calibration, key governance, bounded
       observation windows, incident response, and legal review appropriate to
       the physical consequence.</t>
+      <t>Absence of an observed effect applies only within the declared source,
+      facility, observation window, and capture perimeter. It does not
+      establish population completeness, exclude an unobserved execution path,
+      or prove that no physical action occurred.</t>
       <t>Exact action, CAID, clearance, operation, executor, facility, source,
       and time bindings are mandatory. Evidence for different operations or
       facilities MUST NOT be joined. An effect status of indeterminate and an

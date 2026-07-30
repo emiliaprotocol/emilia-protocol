@@ -179,6 +179,14 @@ trusted keys, or turn a refusal into clearance.
   made a scientifically correct judgment.
 - An effect statement proves what the pinned executor signed. It does not
   independently prove sensor integrity or physical truth.
+- An `independent_observer` role is a relying-party policy classification.
+  Verification proves only the configured identity, source, and distinctness
+  predicates; it does not establish organizational, economic, physical, or
+  legal independence.
+- Absence of an observed effect applies only within the declared source,
+  facility, observation window, and capture perimeter. It does not establish
+  population completeness, exclude an unobserved execution path, or prove that
+  no physical action occurred.
 - The action-level clearance store must be shared, durable, and retained without
   automatic TTL reopening. A lost clearance response remains consumed and needs
   operator reconciliation; availability never silently becomes a second grant.

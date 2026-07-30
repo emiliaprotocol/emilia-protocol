@@ -29,6 +29,14 @@ prove that a human ceremony occurred, who participated, whether a person
 consented or understood, or what was displayed. Those claims require their own
 verified evidence and relying-party acceptance rules.
 
+This profile is complementary to software-supply-chain frameworks such as
+in-toto. In-toto verifies signed layouts and signed evidence that designated
+functionaries performed supply-chain steps. This profile instead governs live
+consequence admission: it controls a one-time execution right under current
+authorization, occurrence ceilings, aggregate attempt budgets, post-entry
+uncertainty, and authenticated reconciliation. It does not replace in-toto or
+claim that no other system can express ordered work.
+
 Normative `MUST`, `MUST NOT`, `SHOULD`, and `MAY` are used as described by
 BCP 14 when shown in capitals.
 
