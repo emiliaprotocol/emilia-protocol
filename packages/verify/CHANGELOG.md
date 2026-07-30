@@ -5,6 +5,14 @@ This package follows [Semantic Versioning](https://semver.org/).
 
 ## Unreleased
 
+## 3.18.2 (2026-07-29)
+
+### Documentation
+
+- Specify the exact current-profile checkpoint object and signing input used
+  by `verifyTrustReceipt`, including that Ed25519 signs the raw SHA-256 digest
+  of the UTF-8 JCS bytes rather than JSON text or an encoded digest string.
+
 ## 3.18.1 (2026-07-29)
 
 ### Fixed
