@@ -3,9 +3,9 @@ EMILIA Protocol — MCP Directory promotional screenshots + paired prompts
 01-desktop-verify-receipt.png  (Claude Desktop, live connector output)
 Prompt: "Verify this EMILIA receipt and explain whether the signed action was
 altered."
-Shows: ep_verify_receipt — offline verification of the signed action and anchor,
-without exposing trust-profile or policy-evaluation internals over the public
-MCP connector.
+Shows: ep_verify_receipt — offline verification of the signed action and anchor.
+The no-auth public connector exposes exactly this tool and ep_verify_signoff;
+trust-profile and policy-evaluation APIs require authenticated API access.
 
 02-connector-read-only-tools.png  (claude.ai connector settings)
 Shows: the EMILIA Guard connector installed on claude.ai — verification tools
@@ -21,5 +21,7 @@ altered?" → valid: true; change the amount → valid: false.
 04-signoff-approved-class-a.png  (the artifact ep_verify_signoff verifies)
 Shows: "Signed and approved — key class A": a device-held passkey signed the
 exact action; the receipt now verifies offline, no EP server required.
-Pair with ep_verify_signoff: "Did a named human approve this exact action on
-their own device?" → six checks pass.
+Pair with ep_verify_signoff: "Verify the WebAuthn ceremony and exact-action
+binding in this signoff." → six cryptographic checks pass. The result does not
+by itself establish legal identity, authority, perception, or relying-party
+acceptance.
