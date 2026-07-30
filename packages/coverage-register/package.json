@@ -1,0 +1,23 @@
+{
+  "name": "@emilia-protocol/coverage-register",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Builds dated, reproducible editions of the Agent Authorization Coverage register from public registry declarations. Reads no target server; publishes nothing without human review.",
+  "license": "Apache-2.0",
+  "exports": {
+    ".": "./edition.mjs",
+    "./rubric.mjs": "./rubric.mjs",
+    "./verdict.mjs": "./verdict.mjs",
+    "./edition.mjs": "./edition.mjs"
+  },
+  "scripts": {
+    "test": "node --test test.mjs",
+    "snapshot": "node fetch-snapshot.mjs --out snapshot.json",
+    "build": "node build-edition.mjs --snapshot snapshot.json --out edition.json",
+    "reproduce": "node build-edition.mjs --snapshot snapshot.json --reproduce edition.json"
+  },
+  "engines": {
+    "node": ">=20"
+  }
+}
