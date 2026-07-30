@@ -1,0 +1,48 @@
+{
+  "source": "draft-ferro-apertomemory-02 test-vectors/v2/apertomemory-v2-test-vectors.json",
+  "commitment_method": "SHA-256 over the exact complete sealed_object CBOR bytes decoded from the published hexadecimal octets, without parsing or reserialization.",
+  "key_id_representation": "ApertoMemory native 8-byte hexadecimal key identifiers are encoded as unpadded base64url only in the EMILIA composition record fields ending in _b64u.",
+  "projection_support": {
+    "003-sealed-object-v2": {
+      "sealed_object_hex": "a40150a0a1a2a3a4a5a6a7a8a9aaabacadaeaf02500102030405060708090a0b0c0d0e0f1003020458d7d08343a10103a1054c000102030405060708090a0b58c018fc7823aaf178650694df38911f9052ca81dbdb7bc5287b79287a544f429099ad68298bb7eb717dff303032a3fd108636854bd16eda2abd2eb8564a519b349f72b8b4de2ab020456ce63cbe4c2686922ed574e1d4d1427ea8e47afc1ea0de28c48a3989cb6c1a1d00986005a979c0ef06e6f6abb72f0340f8aa493403ec9db990207a957ab5e1029b6e2b2d2008f55f6c390020c568cf9f4b650cead5eba20f504308d81e98b41136e70461ef627723743acdb33512f3a8a731ea9b74dd31a2",
+      "native_expect": { "trust": "self", "authorship": "signed", "author_key_id": "63c1e89c009c5ad7", "signature_verified": true }
+    }
+  },
+  "vectors": {
+    "007-custody-attested": {
+      "sealed_object_hex": "a40150a0a1a2a3a4a5a6a7a8a9aaabacadaeaf02500102030405060708090a0b0c0d0e0f1003020458ecd08343a10103a1054c000102030405060708090a0b58d518fc7823aaf178650694df38911f9052ca81f0db7bc5287b7e3e69525d07839ff966298bbfee3d3fc4221332b2f8189d3ed6384b23429f72194b764b99f5f93fded173b26bb221492efb71e02741d57df44b3c1e4feedb7f323fc6896dc2194cac87190b2e0bb9bd0080409b1bf0537cd192ea0cc4223b01c14a1bf715585cb389c0af223df0fa10c584249a8430b1afeb436cb3ce71d5d2f45018765d7ba55c88e1a0c297baf1d5851ca6fa43bcf0185f985837f77459522685d8f3f417e353637336a5dfb0c41c0837329df154dc17864b2e25cd",
+      "signer_key_id_hex": "63c1e89c009c5ad7",
+      "claimed_author_key_id_hex": "d05309cbd3b55f3b",
+      "proven_author_key_id_hex": "d05309cbd3b55f3b",
+      "native_expect": { "trust": "trusted", "authorship": "attested", "author_key_id": "d05309cbd3b55f3b", "signer_key_id": "63c1e89c009c5ad7" }
+    },
+    "008-custody-unproven": {
+      "sealed_object_hex": "a40150a0a1a2a3a4a5a6a7a8a9aaabacadaeaf02500102030405060708090a0b0c0d0e0f1003020458e8d08343a10103a1054c000102030405060708090a0b58d118fc7823aaf178650694df38911f9052ca81ecdb7bc5287b44297d505b468c9ee460239dfae77830d2700b32a9f6519a349d26452658c61e901dfdee3b3aceccff191d7fcb1f8128e1d77eed230b887ea5251d52be28757de606d064f0c5241761ea56ed0f1e07d44f63885febf899ad2c1d8206159915723a4d494fdd7d57387c9d2cc12c430807c176a92872b99b89893b8405f9cd4a8bc68de92a1d3c9c95fc433345b6e28a7d3fed057d33f2895a9ba28dd037fdc05067b2911b4103ae33d25cc52807e637bcbaecf0dfedeceac26a",
+      "signer_key_id_hex": "63c1e89c009c5ad7",
+      "claimed_author_key_id_hex": "d05309cbd3b55f3b",
+      "proven_author_key_id_hex": null,
+      "native_expect": { "trust": "unverified", "authorship": "unknown", "author_key_id": null, "claimed_author_key_id": "d05309cbd3b55f3b" }
+    },
+    "011-custody-from-non-owner-MUST-NOT-BE-HONOURED": {
+      "sealed_object_hex": "a40150a0a1a2a3a4a5a6a7a8a9aaabacadaeaf02500102030405060708090a0b0c0d0e0f1003020458d2d08343a10103a1054c000102030405060708090a0b58bb18fc7823aaf17865b5063e6f423695beca81d6db7bc52866102a67534c2419d561c28a351646d0591f031e73abf51cc2399a21056118d473aaa4c98e9eea80ac28d0d0b4a6d256440d379298ea6fe4518e99277445d5f22095660be4f7e97849fe8c9602321f81e6d6da48ed307635b6bb662f9678086b8f271fed3175ce1b4ff068ae82c2c7e7fa90f824c6057500517f5142f0587144042a30cb6bb61c847d9b174af246f69c09333eb13c359667cc3816a951ba703867020b71",
+      "signer_key_id_hex": "d05309cbd3b55f3b",
+      "claimed_author_key_id_hex": "d05309cbd3b55f3b",
+      "proven_author_key_id_hex": null,
+      "native_expect": { "trust": "unverified", "authorship": "unknown", "author_key_id": null }
+    },
+    "012-custody-naming-an-unaccepted-key": {
+      "sealed_object_hex": "a40150a0a1a2a3a4a5a6a7a8a9aaabacadaeaf02500102030405060708090a0b0c0d0e0f1003020458d2d08343a10103a1054c000102030405060708090a0b58bb18fc7823aaf178650694df38911f9052ca81d6db7bc52866102a67534c2419d561c28a351646d0591f031e73abf51cc2399a21056118d473aa175b6fc939a9a9c4d0d0b4a6d256440d379298ea6fe4518e2ab5951206db2579660be4f7e97849fe31fa5441c1b002eeda48194430044012757ba7d1cf4eddcd930fddf812172c0970e0f8b087dd187cde1624175e76cd17cb5d090609c5e34e0b1b222600b5e4e9e5a03c697cf4665d4fbe20490d031d747e0c1ae7ea6d733556ab",
+      "signer_key_id_hex": "63c1e89c009c5ad7",
+      "claimed_author_key_id_hex": "63c1e89c009c5ad7",
+      "proven_author_key_id_hex": null,
+      "native_expect": { "trust": "unverified", "authorship": "unknown", "author_key_id": null }
+    },
+    "014-empty-custody-map": {
+      "sealed_object_hex": "a40150a0a1a2a3a4a5a6a7a8a9aaabacadaeaf02500102030405060708090a0b0c0d0e0f1003020458b6d08343a10103a1054c000102030405060708090a0b589f18fc7823aaf178650694df38911f9052ca81badb7bc52866102a67534c2419d561c28a351646d0591f031e73abf51cc2399a21056118d473aa175b6fc939a9a9c4d0d0b4a6d256440d379298ee36a5b5e5bdc22cb17fb691d4a1a01e4d72f72560f79a310c111d646dfa7fd95da19ebaa070d392256e0c8aa3715e08468e068960eaf51dfa9b5f8c08adc100a9f2d45601119cb9bf22a90dca1ceaf96201cf",
+      "signer_key_id_hex": "63c1e89c009c5ad7",
+      "claimed_author_key_id_hex": null,
+      "proven_author_key_id_hex": null,
+      "native_expect": { "trust": "unverified", "authorship": "unknown", "author_key_id": null }
+    }
+  }
+}

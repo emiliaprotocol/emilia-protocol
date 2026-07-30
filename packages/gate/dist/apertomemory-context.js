@@ -47,7 +47,7 @@ const DELIVERED_KEYS = new Set([
     'author_key_id_b64u',
     'custody_present',
 ]);
-const OBJECT_KEYS = new Set(['id_b64u', 'scope_id_b64u', 'format_version', 'sealed_object_digest']);
+const OBJECT_KEYS = new Set(['format_version', 'sealed_object_digest']);
 const EXCLUSION_KEYS = new Set(['total', 'by_reason']);
 const EXCLUSION_REASON_KEYS = new Set([
     'authentication_failed',
@@ -129,8 +129,6 @@ function result(state, reason) {
 }
 function validObjectRef(value) {
     return exactKeys(value, OBJECT_KEYS)
-        && b64u(value.id_b64u, 16)
-        && b64u(value.scope_id_b64u, 16)
         && value.format_version === 2
         && DIGEST.test(value.sealed_object_digest);
 }

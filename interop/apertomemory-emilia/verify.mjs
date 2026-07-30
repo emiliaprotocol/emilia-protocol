@@ -87,9 +87,7 @@ function nullableB64u(value, length, path) {
 }
 
 function validateObjectRef(value, path) {
-  exactKeys(value, ['id_b64u', 'scope_id_b64u', 'format_version', 'sealed_object_digest'], path);
-  b64uBytes(value.id_b64u, 16, `${path}.id_b64u`);
-  b64uBytes(value.scope_id_b64u, 16, `${path}.scope_id_b64u`);
+  exactKeys(value, ['format_version', 'sealed_object_digest'], path);
   if (value.format_version !== 2) fail(`${path}.format_version must be 2`);
   digest(value.sealed_object_digest, `${path}.sealed_object_digest`);
 }
@@ -159,9 +157,11 @@ function validateTrustAuthorship({
   oneOf(authorship, ['signed', 'attested', 'unknown'], `${path}.authorship`);
 
   if (custody.present) {
-    if (signerKey !== ownerKey) fail(`${path}: a custody result must be signed by the vault owner key`);
     if (derivedTrust === 'self') fail(`${path}: a resealed custody result cannot derive self trust`);
     if (derivedTrust === 'trusted') {
+      if (signerKey !== ownerKey) {
+        fail(`${path}: honoured custody must be signed by the vault owner key`);
+      }
       if (trustBasis !== 'accepted_key' || authorship !== 'attested') {
         fail(`${path}: trusted custody requires accepted_key and attested authorship`);
       }
@@ -196,7 +196,6 @@ function validateCustody(value, path) {
     [
       'present',
       'from_format_version',
-      'resealed_at',
       'claimed_author_key_id_b64u',
       'proven_author_key_id_b64u',
     ],
@@ -206,14 +205,11 @@ function validateCustody(value, path) {
   nullableB64u(value.claimed_author_key_id_b64u, 8, `${path}.claimed_author_key_id_b64u`);
   nullableB64u(value.proven_author_key_id_b64u, 8, `${path}.proven_author_key_id_b64u`);
   if (value.present) {
-    integer(value.from_format_version, `${path}.from_format_version`, 1);
-    dateTime(value.resealed_at, `${path}.resealed_at`);
-    if (value.claimed_author_key_id_b64u === null) {
-      fail(`${path}.claimed_author_key_id_b64u is required when custody is present`);
+    if (value.from_format_version !== null) {
+      integer(value.from_format_version, `${path}.from_format_version`, 1);
     }
   } else if (
     value.from_format_version !== null ||
-    value.resealed_at !== null ||
     value.claimed_author_key_id_b64u !== null ||
     value.proven_author_key_id_b64u !== null
   ) {

@@ -70,12 +70,13 @@
           "object": {
             "type": "object",
             "additionalProperties": false,
-            "required": ["id_b64u", "scope_id_b64u", "format_version", "sealed_object_digest"],
+            "required": ["format_version", "sealed_object_digest"],
             "properties": {
-              "id_b64u": { "$ref": "#/$defs/b64u16" },
-              "scope_id_b64u": { "$ref": "#/$defs/b64u16" },
               "format_version": { "const": 2 },
-              "sealed_object_digest": { "$ref": "#/$defs/sha256" }
+              "sealed_object_digest": {
+                "$ref": "#/$defs/sha256",
+                "description": "SHA-256 over the exact complete sealed-object CBOR bytes as supplied, without parsing or reserialization."
+              }
             }
           },
           "context_fragment_digest": { "$ref": "#/$defs/sha256" },
@@ -124,7 +125,6 @@
     "urn": { "type": "string", "pattern": "^urn:[A-Za-z0-9][A-Za-z0-9:.\\-]+$" },
     "sha256": { "type": "string", "pattern": "^sha256:[0-9a-f]{64}$" },
     "b64u8": { "type": "string", "pattern": "^[A-Za-z0-9_-]{11}$" },
-    "b64u16": { "type": "string", "pattern": "^[A-Za-z0-9_-]{22}$" },
     "nonclaims": {
       "type": "object",
       "additionalProperties": false,
