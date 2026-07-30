@@ -19,7 +19,7 @@ This package follows [Semantic Versioning](https://semver.org/).
 
 ### Security
 
-- Pins `@emilia-protocol/verify@3.18.1`, carrying the PSEA-02 adapter,
+- Pins `@emilia-protocol/verify@3.18.2`, carrying the PSEA-02 adapter,
   independent industrial effect-evidence predicates, and the current
   PEDIGREE/AEB composition vectors into Gate.
 - Refusals remain fail-closed, exact-action bound, and non-authorizing. Trusted
