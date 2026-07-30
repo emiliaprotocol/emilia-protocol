@@ -96,6 +96,7 @@ export default function InsurancePage() {
             completeness, solvency, adjudication, or payment conclusion.
           </p>
           <div style={{ display: 'flex', gap: 12, marginTop: 30, flexWrap: 'wrap' }}>
+            <a href="/gate/consequence-coverage" style={cta.primary}>Run the coverage lab</a>
             <a href="/proof#reliance-risk-plane" style={cta.primary}>Inspect the shipped proof</a>
             <a href="/pilot?v=insurance" style={cta.secondary}>Scope one protected workflow</a>
           </div>

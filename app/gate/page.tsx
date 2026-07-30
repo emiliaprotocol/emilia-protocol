@@ -158,6 +158,7 @@ export default function GatePage() {
             </p>
             <div style={{ display: 'flex', gap: 12, marginTop: 32, flexWrap: 'wrap' }}>
               <a href="/gate/live" style={cta.primary}>Open Gate reference</a>
+              <a href="/gate/consequence-coverage" style={cta.secondary}>Find bypassed effects</a>
               <a href="/gate/control-plane" style={cta.secondary}>Open reference control plane</a>
               <a href="#loop" style={cta.secondary}>How it works</a>
               <a href="#surfaces" style={cta.secondary}>Where it integrates</a>

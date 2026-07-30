@@ -5892,6 +5892,61 @@ paths:
         '429': { description: Public reference-run rate exceeded }
         '503': { description: Gate reference scenario unavailable }
 
+  /api/v1/gate/coverage-scenario:
+    get:
+      tags: [EMILIA Gate]
+      operationId: runGateCoverageReferenceScenario
+      summary: Reconcile two independently signed synthetic action populations
+      description: |
+        Runs the real source-inventory signing, verifier-owned context pinning,
+        exact CAID/action-digest join, conserving-count derivation, and
+        report-bound coverage attestation over synthetic records. It surfaces
+        one system-of-record effect without a matching Gate receipt. It proves
+        only reconciliation of the two supplied signed populations and makes no
+        source-completeness, production-payer, patient-record, or external-effect
+        claim.
+      security: []
+      responses:
+        '200':
+          description: Signed synthetic population reconciliation and bypass finding
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: false
+                required: [ok, reference_only, period, summary, bypass, findings, sources, report_hash, attestation_body_digest, claim_boundary]
+                properties:
+                  ok: { type: boolean, enum: [true] }
+                  reference_only: { type: boolean, enum: [true] }
+                  period:
+                    type: object
+                    additionalProperties: false
+                    required: [start, end]
+                    properties:
+                      start: { type: string, format: date-time }
+                      end: { type: string, format: date-time }
+                  summary:
+                    type: object
+                    additionalProperties: false
+                    required: [matched, effect_without_receipt, receipt_without_effect, indeterminate, excluded, exception]
+                    properties:
+                      matched: { type: integer, minimum: 0 }
+                      effect_without_receipt: { type: integer, minimum: 0 }
+                      receipt_without_effect: { type: integer, minimum: 0 }
+                      indeterminate: { type: integer, minimum: 0 }
+                      excluded: { type: integer, minimum: 0 }
+                      exception: { type: integer, minimum: 0 }
+                  bypass: { type: object }
+                  findings: { type: object }
+                  sources: { type: object }
+                  report_hash: { type: string, pattern: '^sha256:[0-9a-f]{64}$' }
+                  attestation_body_digest: { type: string, pattern: '^sha256:[0-9a-f]{64}$' }
+                  claim_boundary:
+                    type: string
+                    enum: [deterministic_join_of_two_verified_supplied_populations_not_source_completeness]
+        '429': { description: Public reference-run rate exceeded }
+        '503': { description: Coverage reference scenario unavailable }
+
   /api/v1/gate/control-plane-scenario:
     get:
       tags: [EMILIA Gate]

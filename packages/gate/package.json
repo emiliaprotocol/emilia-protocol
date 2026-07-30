@@ -354,6 +354,10 @@
       "types": "./dist/coverage-reconciliation-attestation.d.ts",
       "import": "./coverage-reconciliation-attestation.js"
     },
+    "./coverage-reconciliation-runner": {
+      "types": "./dist/coverage-reconciliation-runner.d.ts",
+      "import": "./coverage-reconciliation-runner.js"
+    },
     "./receipt-census": {
       "types": "./dist/receipt-census.d.ts",
       "import": "./receipt-census.js"
@@ -440,6 +444,7 @@
     "open-exposure-ledger.js",
     "open-exposure-ledger-postgres.js",
     "coverage-reconciliation-attestation.js",
+    "coverage-reconciliation-runner.js",
     "receipt-census.js",
     "loss-experience-feed.js",
     "zk-range-proof.js",

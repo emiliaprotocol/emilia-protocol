@@ -909,6 +909,9 @@ Program and execution lifecycle:
 - `./action-refusal-statement` emits a signed exact-action technical refusal;
 - `./coverage-reconciliation-attestation` reconciles supplied effect and
   receipt populations for a bounded period;
+- `./coverage-reconciliation-runner` verifies independently signed minimized
+  source inventories, joins exact CAID/action pairs, derives conserving counts,
+  and emits the report-bound attestation;
 - `./receipt-census` emits governed-taxonomy aggregates with coarse primary suppression; and
 - `./loss-experience-feed` carries signed external observations whose
   corrections require a trusted current-head lineage resolver.

@@ -4,6 +4,22 @@
 All notable changes to `@emilia-protocol/gate` are documented here.
 This package follows [Semantic Versioning](https://semver.org/).
 
+## Unreleased
+
+### Added
+
+- `./coverage-reconciliation-runner`, which verifies independently signed,
+  privacy-minimized source inventories, joins exact CAID/action-digest pairs,
+  derives conserving counts, and emits a report-bound period attestation.
+
+### Security
+
+- Source-system identities, mapping-profile digests, source operators, trust
+  keys, and verification time are verifier-owned pins. Duplicate joins,
+  cross-population CAID/digest conflicts, same-operator source populations, and
+  report substitution fail closed. The artifact remains evidence about two
+  supplied populations and does not prove either source was complete.
+
 ## 0.22.2 (2026-07-31)
 
 ### Security

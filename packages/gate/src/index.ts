@@ -246,6 +246,7 @@ export * from './reliance-refusal-bridge.js';
 export * from './open-exposure-ledger.js';
 export * from './open-exposure-ledger-postgres.js';
 export * from './coverage-reconciliation-attestation.js';
+export * from './coverage-reconciliation-runner.js';
 export * from './receipt-census.js';
 export * from './loss-experience-feed.js';
 export {

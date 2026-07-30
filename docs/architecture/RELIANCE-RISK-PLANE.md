@@ -106,6 +106,17 @@ A coverage reconciliation attestation signs:
 The signer asserts the supplied populations. Population completeness requires
 separate system-of-record evidence and cannot be inferred from this artifact.
 
+The reference coverage runner adds the missing derivation boundary before the
+attestation. Each source operator signs a root over privacy-minimized
+`record_id`, `caid`, `action_digest`, and closed classification records. The
+relying party pins both source identities and mapping-profile digests, verifies
+the independently signed populations, rejects ambiguous identity mappings, and
+then derives all six conserved join counts. The Da Vinci PAS reference
+connector retrieves server-observed FHIR state by opaque reference and
+recomputes the exact action; a public caller cannot supply the action identity.
+This closes the reference implementation loop while preserving the same honest
+boundary: a signed root of supplied records does not prove source completeness.
+
 The Receipt Census emits only aggregate buckets whose action and outcome labels
 belong to a relying-party-pinned closed taxonomy and whose counts meet a
 configured minimum. Suppressed buckets are disclosed only as aggregate counts.

@@ -382,7 +382,7 @@ export default async function ProofPage() {
               {[
                 ['Preventive path', 'Declared exposure is reserved before provider invocation, remains open through uncertain outcomes, and closes only through the configured independent reconciliation authority.'],
                 ['Non-authorizing artifacts', 'A loss schedule, refusal statement, coverage attestation, receipt census, or loss feed cannot create authority for an action.'],
-                ['Current implementation scope', 'The stateful risk plane and signed risk artifacts are implemented in JavaScript. No Python or Go implementation, external deployment, insurer adoption, or loss-data network is claimed.'],
+                ['Current implementation scope', 'The stateful risk plane and signed risk artifacts have TypeScript source and a packaged JavaScript runtime. No Python or Go implementation, production source connector, insurer adoption, or loss-data network is claimed.'],
               ].map(([label, detail]) => (
                 <div key={label} style={{ borderTop: `2px solid ${color.gold}`, padding: '18px 4px 0 0' }}>
                   <h3 style={{ ...styles.h3, fontSize: 17, color: '#FAFAF9', margin: 0 }}>{label}</h3>
@@ -397,6 +397,9 @@ export default async function ProofPage() {
               evidence, not a legal or adverse-benefit denial.
             </p>
             <div style={{ display: 'flex', gap: 16, flexWrap: 'wrap', marginTop: 22 }}>
+              <a href="/gate/consequence-coverage" style={{ fontFamily: font.mono, fontSize: 11, color: color.gold }}>
+                Run the synthetic coverage lab &rarr;
+              </a>
               <a href={`${SOURCE_BLOB}/security/claims.v1.json`} style={{ fontFamily: font.mono, fontSize: 11, color: color.gold }}>
                 Open the exact claim manifest &rarr;
               </a>

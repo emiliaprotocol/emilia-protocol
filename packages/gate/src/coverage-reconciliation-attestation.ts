@@ -66,6 +66,7 @@ export function signCoverageReconciliationAttestation(input: RiskRecord, signer:
 export function verifyCoverageReconciliationAttestation(attestation: unknown, options: {
   trusted_keys?: TrustedRiskKeys; now?: string | number; expected_program?: RiskRecord;
   expected_census_digest?: string; expected_relying_party_id?: string;
+  expected_coverage_report_hash?: string;
 } = {}) {
   const refuse = (reason: string, verified = false, attestationDigest: string | null = null) => ({
     accepted: false,
@@ -102,6 +103,10 @@ export function verifyCoverageReconciliationAttestation(attestation: unknown, op
   }
   if (options.expected_relying_party_id !== payload.relying_party_id) {
     return refuse('relying_party_mismatch', true, signed.artifact_digest);
+  }
+  if (options.expected_coverage_report_hash !== undefined
+      && options.expected_coverage_report_hash !== payload.coverage_report_hash) {
+    return refuse('coverage_report_hash_mismatch', true, signed.artifact_digest);
   }
   return { accepted: true, verified: true, reason: null, attestation_digest: signed.artifact_digest, claim_boundary: COVERAGE_RECONCILIATION_CLAIM_BOUNDARY };
 }
