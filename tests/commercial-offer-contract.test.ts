@@ -17,7 +17,7 @@ describe('commercial offer contract', () => {
     expect(pricing).toContain('MANAGED_PILOT');
     expect(pricing).toContain('GATE_IMPLEMENTATION');
     expect(pricing).toContain('PRODUCTION_GATE');
-    expect(pricing).toContain('Amelia I');
+    expect(pricing).toContain('EMILIA Signal');
     expect(commercialOffer).toContain('$150K');
     expect(commercialOffer).toContain('$250K');
     expect(commercialOffer).toContain('$500K');

@@ -83,6 +83,10 @@ const nextConfig = {
       // old URL into the destination instead of indexing it as "Page with redirect".
       { source: '/score', destination: '/explorer', permanent: true },
       { source: '/enterprise', destination: '/product/enterprise', permanent: true },
+      { source: '/m2m', destination: '/model-to-matter', permanent: true },
+      { source: '/amelia-i', destination: '/signal', permanent: true },
+      { source: '/amelia-integrity', destination: '/signal', permanent: true },
+      { source: '/amelia-grip', destination: '/signal', permanent: true },
     ];
   },
   async headers() {

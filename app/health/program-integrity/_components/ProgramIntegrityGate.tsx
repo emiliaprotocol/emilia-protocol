@@ -150,11 +150,11 @@ export default function ProgramIntegrityGate(): React.ReactElement {
           <div className={styles.heroCopy}>
             <div className={styles.kicker}>
               <HeartPulse aria-hidden="true" size={15} />
-              Amelia I + EMILIA Gate
+              EMILIA Signal + EMILIA Gate
             </div>
             <h1>Find the risky workflow. Then make the next payment prove its authorization.</h1>
             <p className={styles.heroLede}>
-              Amelia I reconstructs the approval-to-effect chain from a governed legacy
+              EMILIA Signal reconstructs the approval-to-effect chain from a governed legacy
               export. EMILIA Gate then binds the provider action, authorization,
               destination, amount, and named approval before the next protected effect.
             </p>
@@ -165,7 +165,7 @@ export default function ProgramIntegrityGate(): React.ReactElement {
             </p>
             <div className={styles.heroActions}>
               <a href="/pilot?v=health" className={styles.primaryAction}>
-                Scope the Amelia I diagnostic
+                Scope the EMILIA Signal diagnostic
                 <ArrowRight aria-hidden="true" size={16} />
               </a>
               <a href="#reference-lab" className={styles.secondaryAction}>
@@ -185,7 +185,7 @@ export default function ProgramIntegrityGate(): React.ReactElement {
             </div>
             <dl className={styles.valueFacts}>
               <div>
-                <dt>Amelia I</dt>
+                <dt>EMILIA Signal</dt>
                 <dd>Find the boundary</dd>
               </div>
               <div>
@@ -475,13 +475,13 @@ export default function ProgramIntegrityGate(): React.ReactElement {
           <div className={styles.eyebrow}>Practical next step</div>
           <h2 id="program-integrity-next-step">Start with one read-only workflow for 60 days.</h2>
           <p>
-            Begin with synthetic replay and a governed export. Amelia I surfaces the
+            Begin with synthetic replay and a governed export. EMILIA Signal surfaces the
             approval-to-effect gaps and produces an Action Control Manifest template.
             If the workflow justifies prospective enforcement, Gate becomes the separately
             scoped next engagement at the real system boundary.
           </p>
           <a href="/pilot?v=gov" className={styles.pilotAction}>
-            Scope the Amelia I diagnostic
+            Scope the EMILIA Signal diagnostic
             <ArrowRight aria-hidden="true" size={16} />
           </a>
         </div>

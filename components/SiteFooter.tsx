@@ -4,10 +4,12 @@ import { ENTITY } from '@/lib/site-config';
 type FooterLink = [string, string];
 
 const COL_PRODUCT: FooterLink[] = [
+  ['/signal', 'EMILIA Signal'],
   ['/gate', 'EMILIA Gate'],
   ['/gate/live', 'Live Gate'],
-  ['/product/accountable-signoff', 'Approver Apps'],
   ['/assurance', 'Assurance Plane'],
+  ['/grace', 'GRACE'],
+  ['/model-to-matter', 'Model-to-Matter'],
   ['/pricing', 'Pricing'],
 ];
 

@@ -161,7 +161,7 @@ export default function PricingPage(): React.ReactElement {
             Diagnose the past. Protect the next effect. Operate the boundary.
           </h1>
           <p style={{ fontSize: 18, color: color.t2, maxWidth: 620, lineHeight: 1.7, margin: 0 }}>
-            The open protocol is free. Amelia I finds the workflow that needs control. Gate Qualification
+            The open protocol is free. EMILIA Signal finds the workflow that needs control. Gate Qualification
             can carry accepted evaluation evidence into that decision when needed. Implementation is scoped;
             Operated Gate is quoted only for a customer-specific deployment.
           </p>
@@ -253,7 +253,7 @@ export default function PricingPage(): React.ReactElement {
               Find the right boundary before asking engineering to change it.
             </h2>
             <p style={{ fontSize: 16, color: 'rgba(250,250,249,0.72)', lineHeight: 1.7, marginBottom: 30, maxWidth: 620 }}>
-              Amelia I starts with a synthetic replay and one governed export over {MANAGED_PILOT.durationLabel}.
+              EMILIA Signal starts with a synthetic replay and one governed export over {MANAGED_PILOT.durationLabel}.
               It reconstructs action groups, separates deterministic findings from heuristic leads, and produces a
               decision-ready manifest and implementation scope. No production path is changed in this first engagement.
             </p>
@@ -266,8 +266,8 @@ export default function PricingPage(): React.ReactElement {
               ))}
             </div>
             <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap' }}>
-              <Link href="/pilot" className="ep-cta" style={{ ...cta.primary, background: color.gold, color: '#1C1917' }}>Scope the Amelia I diagnostic &rarr;</Link>
-              <Link href="/health/program-integrity" className="ep-cta-secondary" style={{ ...cta.secondary, color: 'rgba(250,250,249,0.8)', borderColor: 'rgba(255,255,255,0.15)' }}>See the prospective Gate</Link>
+              <Link href="/pilot" className="ep-cta" style={{ ...cta.primary, background: color.gold, color: '#1C1917' }}>Scope the EMILIA Signal diagnostic &rarr;</Link>
+              <Link href="/signal" className="ep-cta-secondary" style={{ ...cta.secondary, color: 'rgba(250,250,249,0.8)', borderColor: 'rgba(255,255,255,0.15)' }}>Explore EMILIA Signal</Link>
             </div>
           </div>
         </C>
@@ -370,7 +370,7 @@ export default function PricingPage(): React.ReactElement {
                 Start with one consequential workflow.
               </h2>
               <p style={{ fontSize: 16, color: color.t2, lineHeight: 1.6, maxWidth: 440, margin: 0 }}>
-                Diagnose an uncertain legacy path with Amelia I, or put Gate directly before a known high-risk mutation.
+                Diagnose an uncertain legacy path with EMILIA Signal, or put Gate directly before a known high-risk mutation.
               </p>
             </div>
             <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap' }}>

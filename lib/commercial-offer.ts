@@ -5,7 +5,7 @@
  * so price, duration, scope, and rollout posture cannot drift independently.
  */
 export const MANAGED_PILOT = Object.freeze({
-  name: 'Amelia I Diagnostic',
+  name: 'EMILIA Signal Diagnostic',
   priceUsd: 25_000,
   priceLabel: '$25,000',
   shortPriceLabel: '$25K',

@@ -24,7 +24,7 @@ const BUYERS = [
 export default function GracePage() {
   return (
     <>
-      <SiteNav activePage="Solutions" />
+      <SiteNav activePage="GRACE" />
       <main style={styles.page}>
         {/* Hero */}
         <section style={{ ...styles.section, paddingTop: 80, paddingBottom: 56 }}>

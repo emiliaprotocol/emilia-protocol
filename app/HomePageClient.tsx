@@ -306,7 +306,7 @@ export default function HomePage() {
               Diagnose, integrate, or adopt from code.
             </h2>
             <p style={{ fontSize: 17, color: color.t2, lineHeight: 1.72, maxWidth: 660, marginTop: 20 }}>
-              Amelia I can find the legacy workflow that most needs control. Engineering teams can
+              EMILIA Signal can find the legacy workflow that most needs control. Engineering teams can
               protect a known boundary directly, while developers can adopt Receipt Required around
               one privileged tool without changing the rest of the agent stack.
             </p>
@@ -316,9 +316,9 @@ export default function HomePage() {
               {
                 label: 'Legacy diagnostic',
                 title: 'Find where approval and effect stopped matching.',
-                body: 'Amelia I reviews one governed export, produces source-linked integrity cases, and generates the Action Control Manifest template for the selected workflow.',
-                href: '/health/program-integrity',
-                cta: 'Explore Amelia I',
+                body: 'EMILIA Signal reviews one governed export, produces source-linked integrity cases, and generates the Action Control Manifest template for the selected workflow.',
+                href: '/signal',
+                cta: 'Explore EMILIA Signal',
               },
               {
                 label: 'Developer adoption',
