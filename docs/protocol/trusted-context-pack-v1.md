@@ -155,9 +155,14 @@ deployment-specific control. Pricing remains governed by
 
 ## Remaining deployment evidence
 
-The source-owned ApertoMemory implementation and official format vectors have
-not yet been independently reproduced by this provider plug-in, and no live
-customer memory system is connected. Production claims require a real provider
-adapter deployment, independently reproduced source vectors, durable Gate
-admission state, managed key/status operations, and customer-specific privacy
-and retention approval.
+The five-vector ApertoMemory trust-and-custody source-fact subset has now been
+derived independently in the ApertoMemory tree and matched field-for-field
+against the EMILIA composition fixtures; the reciprocal references and exact
+limits are recorded in `interop/apertomemory-emilia/README.md`. This does not
+constitute blanket ApertoMemory conformance or independent reproduction of its
+full 14-vector native conformance suite by this provider plug-in.
+
+No live customer memory system is connected. Production claims still require a
+real provider adapter deployment, durable Gate admission state, managed
+key/status operations, independently governed execution/outcome evidence, and
+customer-specific privacy and retention approval.

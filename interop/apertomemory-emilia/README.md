@@ -27,6 +27,28 @@ EMILIA cites the independent ApertoMemory draft and ApertoMemory may cite this
 composition profile. Each implementation and specification remains
 independently versioned and governed.
 
+### Confirmed cross-implementation check (2026-07-30)
+
+ApertoMemory independently derived the five native source-fact records from
+its reference `open_sealed` implementation before comparing them with the
+EMILIA fixtures. The ApertoMemory-owned fixture is pinned at:
+
+- repository: [`apertomemory/apertomemory`](https://github.com/apertomemory/apertomemory)
+- path: [`interop/emilia/apertomemory-source-facts.v2.json`](https://github.com/apertomemory/apertomemory/blob/4c44b0c/interop/emilia/apertomemory-source-facts.v2.json)
+- commit: [`4c44b0c`](https://github.com/apertomemory/apertomemory/commit/4c44b0c)
+
+That independently generated fixture matched EMILIA commit `961f101f`
+field-for-field for vectors 007, 008, 011, 012, and 014 across the exact
+sealed-object digest, native trust and authorship results, author/signer key
+identifiers, and custody claimed/proven authors. The commitment method also
+matched byte-for-byte.
+
+This is dated interoperability evidence for that five-vector trust-and-custody
+set. It is not blanket ApertoMemory conformance, does not replace the native
+14-vector conformance suite, and establishes none of model use, action linkage,
+action authorization, execution, or outcome. Each project keeps its fixture in
+its own tree so the comparison can be repeated after either side changes.
+
 ## Exact source commitment
 
 The source commitment is SHA-256 over the complete deterministic-CBOR sealed
