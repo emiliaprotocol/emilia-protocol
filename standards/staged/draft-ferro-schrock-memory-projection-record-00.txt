@@ -77,15 +77,15 @@ Table of Contents
      4.1.  Identity and Time . . . . . . . . . . . . . . . . . . . .   5
      4.2.  Selection Context . . . . . . . . . . . . . . . . . . . .   6
      4.3.  Delivered Entries and Projection Bytes  . . . . . . . . .   6
-     4.4.  Exclusions  . . . . . . . . . . . . . . . . . . . . . . .   6
+     4.4.  Exclusions  . . . . . . . . . . . . . . . . . . . . . . .   7
    5.  Canonicalization and Signature  . . . . . . . . . . . . . . .   7
    6.  Producer Algorithm  . . . . . . . . . . . . . . . . . . . . .   7
-   7.  Verifier Algorithm  . . . . . . . . . . . . . . . . . . . . .   7
+   7.  Verifier Algorithm  . . . . . . . . . . . . . . . . . . . . .   8
    8.  Composition with Downstream Systems . . . . . . . . . . . . .   8
    9.  Security Considerations . . . . . . . . . . . . . . . . . . .   9
    10. Privacy Considerations  . . . . . . . . . . . . . . . . . . .   9
    11. IANA Considerations . . . . . . . . . . . . . . . . . . . . .   9
-   12. Implementation Status . . . . . . . . . . . . . . . . . . . .   9
+   12. Implementation Status . . . . . . . . . . . . . . . . . . . .  10
    13. Acknowledgments . . . . . . . . . . . . . . . . . . . . . . .  10
    14. Normative References  . . . . . . . . . . . . . . . . . . . .  10
    15. Informative References  . . . . . . . . . . . . . . . . . . .  11
@@ -191,6 +191,9 @@ Internet-Draft          Memory Projection Records              July 2026
       read-time keyring snapshot, because trust is derived rather than
       stored in the object.
 
+   b64u  Unpadded base64url encoding as defined in Section 5 of
+      [RFC4648].
+
 4.  Memory Projection Record
 
    MEMORY-PROJECTION-RECORD-v1 is a closed I-JSON object [RFC7493].  The
@@ -215,9 +218,6 @@ Internet-Draft          Memory Projection Records              July 2026
        "context_frame_profile": "urn:context-frame:example:v1"
      },
      "delivered": [
-       {
-         "position": 0,
-         "object": {
 
 
 
@@ -226,13 +226,16 @@ Ferro & Schrock          Expires 30 January 2027                [Page 4]
 Internet-Draft          Memory Projection Records              July 2026
 
 
+       {
+         "position": 0,
+         "object": {
            "format_version": 2,
            "sealed_object_digest": "sha256:..."
          },
          "context_fragment_digest": "sha256:...",
          "derived_trust": "trusted",
          "authorship": "attested",
-         "author_key_id_b64u": "Y8HonACcWtc",
+         "author_key_id_b64u": "0FMJy9O1Xzs",
          "custody_present": true
        }
      ],
@@ -271,9 +274,6 @@ Internet-Draft          Memory Projection Records              July 2026
    producer; adapter.key_id selects a key from relying-party policy.
    proof.key_id MUST equal adapter.key_id.
 
-   The relying party MUST set a maximum acceptable interval between
-   trust_evaluated_at, created_at, and its verification time.  A valid
-   signature does not make a stale trust decision current.
 
 
 
@@ -281,6 +281,10 @@ Ferro & Schrock          Expires 30 January 2027                [Page 5]
 
 Internet-Draft          Memory Projection Records              July 2026
 
+
+   The relying party MUST set a maximum acceptable interval between
+   trust_evaluated_at, created_at, and its verification time.  A valid
+   signature does not make a stale trust decision current.
 
 4.2.  Selection Context
 
@@ -322,14 +326,10 @@ Internet-Draft          Memory Projection Records              July 2026
    authorship unknown and a null author key.  Attested authorship
    requires custody_present true.
 
-4.4.  Exclusions
 
-   exclusions.total MUST equal the sum of the closed by_reason counters.
-   authentication_failed counts objects refused by source
-   authentication; schema_invalid counts source objects the source
-   profile refuses; policy_filtered counts otherwise valid objects
-   excluded by policy; and context_limit counts otherwise eligible
-   objects omitted due to a projection limit.  A producer MUST NOT map
+
+
+
 
 
 
@@ -338,6 +338,14 @@ Ferro & Schrock          Expires 30 January 2027                [Page 6]
 Internet-Draft          Memory Projection Records              July 2026
 
 
+4.4.  Exclusions
+
+   exclusions.total MUST equal the sum of the closed by_reason counters.
+   authentication_failed counts objects refused by source
+   authentication; schema_invalid counts source objects the source
+   profile refuses; policy_filtered counts otherwise valid objects
+   excluded by policy; and context_limit counts otherwise eligible
+   objects omitted due to a projection limit.  A producer MUST NOT map
    an unknown reason into a semantically different counter.  This
    version does not disclose excluded object identifiers, reducing
    correlation and content-oracle risk.
@@ -377,14 +385,6 @@ Internet-Draft          Memory Projection Records              July 2026
        projection.digest, construct the nonclaims, and sign the closed
        record.
 
-   6.  Return or make available the projection bytes and record as one
-       logical result.  A failure after signing but before downstream
-       delivery MUST NOT be reported as proof that a model received the
-       bytes.
-
-7.  Verifier Algorithm
-
-
 
 
 
@@ -393,6 +393,13 @@ Ferro & Schrock          Expires 30 January 2027                [Page 7]
 
 Internet-Draft          Memory Projection Records              July 2026
 
+
+   6.  Return or make available the projection bytes and record as one
+       logical result.  A failure after signing but before downstream
+       delivery MUST NOT be reported as proof that a model received the
+       bytes.
+
+7.  Verifier Algorithm
 
    1.  Require the exact top-level and nested member sets defined by
        this version.  Validate types, enumerations, timestamps, and
@@ -435,13 +442,6 @@ Internet-Draft          Memory Projection Records              July 2026
    Projection Record MUST remain valid and useful without requiring any
    particular agent, authorization, or outcome framework.
 
-   EMILIA Trusted Context, AEC, Gate, and Outcome Binding are one
-   consumer profile.  They may use the projection as one evidence leg
-   and independently bind the actual action and consequence.  They are
-   not part of the neutral projection-record wire format and do not
-   authorize changes to the source profile or projection record.
-
-
 
 
 
@@ -449,6 +449,12 @@ Ferro & Schrock          Expires 30 January 2027                [Page 8]
 
 Internet-Draft          Memory Projection Records              July 2026
 
+
+   EMILIA Trusted Context, AEC, Gate, and Outcome Binding are one
+   consumer profile.  They may use the projection as one evidence leg
+   and independently bind the actual action and consequence.  They are
+   not part of the neutral projection-record wire format and do not
+   authorize changes to the source profile or projection record.
 
 9.  Security Considerations
 
@@ -486,6 +492,20 @@ Internet-Draft          Memory Projection Records              July 2026
 
    This document has no IANA actions.
 
+
+
+
+
+
+
+
+
+
+Ferro & Schrock          Expires 30 January 2027                [Page 9]
+
+Internet-Draft          Memory Projection Records              July 2026
+
+
 12.  Implementation Status
 
    An Apache-2.0 executable discussion profile [AMEM-EMILIA-INTEROP]
@@ -496,15 +516,6 @@ Internet-Draft          Memory Projection Records              July 2026
    vectors.  The implementation uses the domain AMEM-EMILIA-PROJECTION-
    RECORD-v0 and marks each record as discussion input rather than
    ApertoMemory conformance.
-
-
-
-
-
-Ferro & Schrock          Expires 30 January 2027                [Page 9]
-
-Internet-Draft          Memory Projection Records              July 2026
-
 
    The v0 executable profile is implementation input to this -00.  It is
    not asserted to conform to MEMORY-PROJECTION-RECORD-v1 until the
@@ -540,6 +551,17 @@ Internet-Draft          Memory Projection Records              July 2026
               DOI 10.17487/RFC7493, March 2015,
               <https://www.rfc-editor.org/info/rfc7493>.
 
+
+
+
+
+
+
+Ferro & Schrock          Expires 30 January 2027               [Page 10]
+
+Internet-Draft          Memory Projection Records              July 2026
+
+
    [RFC8032]  Josefsson, S. and I. Liusvaara, "Edwards-Curve Digital
               Signature Algorithm (EdDSA)", RFC 8032,
               DOI 10.17487/RFC8032, January 2017,
@@ -553,14 +575,6 @@ Internet-Draft          Memory Projection Records              July 2026
               Canonicalization Scheme (JCS)", RFC 8785,
               DOI 10.17487/RFC8785, June 2020,
               <https://www.rfc-editor.org/info/rfc8785>.
-
-
-
-
-Ferro & Schrock          Expires 30 January 2027               [Page 10]
-
-Internet-Draft          Memory Projection Records              July 2026
-
 
 15.  Informative References
 
@@ -588,20 +602,6 @@ Authors' Addresses
    EMILIA Protocol, Inc.
    United States of America
    Email: team@emiliaprotocol.ai
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 
 

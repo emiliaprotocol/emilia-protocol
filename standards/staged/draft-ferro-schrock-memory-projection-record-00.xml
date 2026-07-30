@@ -98,6 +98,8 @@
         state used when the selection decision was made. For ApertoMemory this
         is a read-time keyring snapshot, because trust is derived rather than
         stored in the object.</dd>
+        <dt>b64u</dt><dd>Unpadded base64url encoding as defined in Section 5 of
+        <xref target="RFC4648"/>.</dd>
       </dl>
     </section>
 
@@ -133,7 +135,7 @@
       "context_fragment_digest": "sha256:...",
       "derived_trust": "trusted",
       "authorship": "attested",
-      "author_key_id_b64u": "Y8HonACcWtc",
+      "author_key_id_b64u": "0FMJy9O1Xzs",
       "custody_present": true
     }
   ],
