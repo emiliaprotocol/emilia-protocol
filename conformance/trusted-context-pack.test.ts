@@ -28,7 +28,15 @@ function evaluatorFor(testCase: any) {
   const projectionPin = environment.projection_adapter_pin;
   const bindingPin = environment.binding_signer_pin;
   const provider = createApertoMemoryContextProvider({
-    adapterKeys: { [projectionPin.key_id]: projectionPin },
+    adapterKeys: {
+      [projectionPin.key_id]: {
+        public_key_spki_b64u: projectionPin.public_key_spki_b64u,
+        status: projectionPin.status,
+        valid_from: projectionPin.valid_from,
+        valid_to: projectionPin.valid_to,
+        revoked_at: projectionPin.revoked_at,
+      },
+    },
     statusCheckedAt: environment.projection_adapter_status_checked_at,
   });
   return createTrustedContextEvaluator({

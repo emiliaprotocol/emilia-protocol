@@ -404,6 +404,8 @@ export function createTrustedContextEvaluator(options) {
             providerResult = selected.verifyProjection(evidence.projection_record, {
                 verificationTime,
                 maxSignerStatusAgeSec: pinnedPolicy.max_signer_status_age_sec,
+                maxProjectionAgeSec: pinnedPolicy.max_projection_age_sec,
+                maxTrustAgeSec: pinnedPolicy.max_keyring_age_sec,
             });
         }
         catch {

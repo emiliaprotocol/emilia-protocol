@@ -1,4 +1,4 @@
-# ApertoMemory / EMILIA Memory-to-Action Composition Profile v0.1
+# ApertoMemory / EMILIA Memory-to-Action Composition Profile v0.2
 
 This directory closes two concrete composition outputs discussed with the
 ApertoMemory authors:
@@ -6,12 +6,13 @@ ApertoMemory authors:
 1. a minimum signed **trust-and-custody result** that an ApertoMemory adapter
    can produce today from the read-time verification semantics in
    `draft-ferro-apertomemory-02`; and
-2. a proposed signed **memory-projection record** for the later boundary where
+2. the provider-neutral signed **MEMORY-PROJECTION-RECORD-v1** boundary where
    an adapter commits to the exact ordered bytes it delivered to a caller.
 
 The first record is a composition vector over existing ApertoMemory semantics.
-The second is an EMILIA discussion profile; ApertoMemory -02 does not currently
-define or claim it.
+The second implements the wire format in
+`draft-ferro-schrock-memory-projection-record-00`. ApertoMemory -02 does not
+define or claim that downstream record.
 
 ## Independent source authority and reciprocal references
 
@@ -77,7 +78,8 @@ The records deliberately keep four questions separate:
 | Record | Establishes | Does not establish |
 | --- | --- | --- |
 | `AMEM-TRUST-CUSTODY-RESULT-v0` | A pinned adapter verified one sealed object under a named read-time keyring snapshot and reported the native trust, authorship, custody, and AI-boundary classification | model ingestion, model weighting, action linkage, action authorization, execution, or outcome |
-| `AMEM-PROJECTION-RECORD-v0` | A pinned adapter committed to the exact ordered context bytes it emitted, the object-level trust labels used to frame them, and the exclusions it applied | that a model ingested or used those bytes, that an action was authorized, or that an effect occurred |
+| `AMEM-PROJECTION-RECORD-v0` | Frozen provider-specific discussion input that preceded the joint draft | v1 conformance or any model/action/outcome claim |
+| `MEMORY-PROJECTION-RECORD-v1` | A pinned adapter committed to the recall request, selection policy, native trust snapshot, exact source-object bytes, ordered fragment bytes, complete emitted projection, and closed exclusion counts | that a model ingested or used those bytes, that an action was authorized, or that an effect occurred |
 
 The later EMILIA join binds a CAID or other action evidence to the projection
 digest. The projection record itself carries no CAID and makes no action claim.
@@ -121,7 +123,7 @@ The first source-fidelity acceptance set has the following exact pairing:
 | `012-custody-naming-an-unaccepted-key` | accepted signer names an author absent from the current keyring; result degrades to unverified/unknown |
 | `014-empty-custody-map` | malformed/empty custody map degrades without aborting the remaining recall |
 
-## Output 2: proposed memory-projection record
+## Output 2: provider-neutral memory-projection record v1
 
 The projection record is signed only after the exact UTF-8 context bytes are
 finalized and hashed, and before (or atomically with) returning those bytes to
@@ -129,18 +131,28 @@ the caller. Its ordered `delivered` entries bind each object to the exact
 framed fragment placed in context. The top-level `projection` member binds the
 complete concatenated byte sequence.
 
+The full verifier recomputes the exact recall-request, selection-policy,
+source-profile trust-snapshot, source-object, fragment, and complete-projection
+commitments. It also requires a source-profile verifier result for every
+delivered entry and proves that the ordered fragments byte-concatenate to the
+supplied complete projection. The envelope-only verifier is deliberately
+separate: it verifies the closed record, adapter signature, current pinned key,
+freshness, and nonclaims when a downstream Gate receives commitments but not
+plaintext memory.
+
 This proves what the adapter emitted under a specific selection policy and
-keyring snapshot. It does not prove what any model received internally, paid
+trust snapshot. It does not prove what any model received internally, paid
 attention to, or used.
 
 ## Signing boundary
 
-Both records use deterministic canonical JSON from `lib/canonical-json.js` and
-Ed25519 with domain separation:
+The trust/custody result and frozen v0 record retain their original domains.
+The neutral v1 record uses the exact domain from the joint draft:
 
 ```text
 AMEM-EMILIA-TRUST-CUSTODY-RESULT-v0\0 || JCS(record without proof)
 AMEM-EMILIA-PROJECTION-RECORD-v0\0    || JCS(record without proof)
+MEMORY-PROJECTION-RECORD-v1\0          || JCS(record without proof)
 ```
 
 Every member except `proof` is inside the signature boundary. Verification
@@ -151,28 +163,49 @@ inside or alongside the record is not a trust anchor.
 
 - `trust-custody-result.v0.schema.json` — strict JSON Schema for output 1
 - `memory-projection-record.v0.schema.json` — strict JSON Schema for output 2
+  legacy compatibility
+- `../../public/schemas/memory-projection-record-v1.schema.json` — public
+  provider-neutral v1 JSON Schema
 - `apertomemory-source-fixtures.v2.json` — six exact published objects: five
   custody cases plus one projection-support case, with the native expected
   outcomes used by the composition vectors
-- `apertomemory-emilia.v1.json` — deterministic positive and negative
-  composition vectors plus the pinned adapter key
+- `apertomemory-emilia.v1.json` — frozen v0 composition vectors retained for
+  compatibility
+- `memory-projection-record.v1.vectors.json` — deterministic reciprocal v1
+  package with exact verification material, pinned adapter policy, one positive
+  path, and eighteen hostile cases
 - `generate.mjs` — deterministic vector generator
+- `generate-memory-projection-v1.mjs` — deterministic v1 reciprocal-vector
+  generator
 - `verify.mjs` — structural, semantic, and signature verifier
 - `verify.test.mjs` — positive and hostile mutation tests
+- `../../packages/verify/src/memory-projection.ts` — neutral v1 producer,
+  envelope verifier, and full verifier
 
 ## Run
 
 ```bash
 node interop/apertomemory-emilia/generate.mjs --check
-node --test interop/apertomemory-emilia/verify.test.mjs
+node interop/apertomemory-emilia/generate-memory-projection-v1.mjs --check
+npm run memory-projection:conformance
 ```
 
 ## Status
 
-`AMEM-TRUST-CUSTODY-RESULT-v0` is an EMILIA composition profile over the
+`AMEM-TRUST-CUSTODY-RESULT-v0` remains an EMILIA composition profile over the
 published ApertoMemory -02 trust/custody semantics, not an independent
-ApertoMemory implementation claim. `AMEM-PROJECTION-RECORD-v0` is proposed
+ApertoMemory implementation claim. `AMEM-PROJECTION-RECORD-v0` remains frozen
 discussion input and is not asserted to be part of ApertoMemory -02.
+
+The EMILIA tree now implements the neutral v1 field set, domain, producer,
+envelope verifier, full byte verifier, source-profile callback boundary,
+single-use registry hook, Gate consumer path, and reciprocal hostile vectors.
+That is an **EMILIA-side implementation candidate**, not independent
+interoperability evidence. Andrea Ferro or another independently governed
+implementation must reproduce the v1 positive and hostile cases before either
+project claims reciprocal v1 interoperability. The already-published `-00`
+artifact remains unchanged; its historical implementation-status text was
+accurate when published.
 
 The provider-neutral runtime control that consumes the projection record lives
 in `packages/gate/src/trusted-context.ts`; the first provider plug-in is

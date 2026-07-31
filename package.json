@@ -81,6 +81,7 @@
     "conformance:aeb-1": "node packages/verify/cli.js aeb-conformance --reference",
     "caid:conformance": "node caid/conformance/run.mjs",
     "m2m:conformance": "node conformance/run-model-to-matter.mjs",
+    "memory-projection:conformance": "node interop/apertomemory-emilia/generate-memory-projection-v1.mjs --check && node --test packages/verify/memory-projection.test.js interop/apertomemory-emilia/verify.test.mjs packages/gate/trusted-context.test.js conformance/trusted-context-pack.test.js",
     "mobile:conformance": "node mobile/conformance/run.mjs",
     "mobile:release-check": "node scripts/check-mobile-release.mjs",
     "mobile:production-readiness": "node scripts/check-mobile-production.mjs",

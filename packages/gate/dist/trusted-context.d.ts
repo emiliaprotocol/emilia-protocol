@@ -35,6 +35,8 @@ export interface ContextEvidenceProvider {
     verifyProjection(record: unknown, context: {
         verificationTime: string;
         maxSignerStatusAgeSec: number;
+        maxProjectionAgeSec: number;
+        maxTrustAgeSec: number;
     }): ContextProviderVerification;
 }
 export interface TrustedContextPolicy extends RecordLike {

@@ -3,16 +3,20 @@
 /**
  * First Trusted Context Pack provider: ApertoMemory.
  *
- * This verifies the signed AMEM-PROJECTION-RECORD-v0 adapter artifact. It does
- * not decrypt `.amem` objects and does not claim independent conformance with
- * ApertoMemory's raw CBOR/COSE format. Native object verification remains the
- * ApertoMemory consumer's responsibility.
+ * This verifies the signed provider-neutral MEMORY-PROJECTION-RECORD-v1
+ * envelope, while retaining explicit compatibility with the older
+ * AMEM-PROJECTION-RECORD-v0 discussion profile. It does not decrypt `.amem`
+ * objects and does not claim independent conformance with ApertoMemory's raw
+ * CBOR/COSE format. Native object verification remains the ApertoMemory
+ * consumer's responsibility.
  */
 import crypto from 'node:crypto';
+import { MEMORY_PROJECTION_RECORD_VERSION, MemoryProjectionVerificationError, verifyMemoryProjectionRecordV1Envelope, } from '@emilia-protocol/verify/memory-projection';
 // @ts-ignore declarations live behind the compatibility entry point.
 import { canonicalize } from '../execution-binding.js';
 import { canonicalContextRecordDigest, } from './trusted-context.js';
 const PROJECTION_DOMAIN = Buffer.from('AMEM-EMILIA-PROJECTION-RECORD-v0\0', 'utf8');
+const MEMORY_PROJECTION_FRAME_PROFILE = 'urn:apertomemory:context-frame:v0';
 const DIGEST = /^sha256:[0-9a-f]{64}$/;
 const BASE64URL = /^[A-Za-z0-9_-]+$/;
 const RFC3339 = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d{1,9})?(?:Z|[+-]\d{2}:\d{2})$/;
@@ -63,6 +67,26 @@ const NONCLAIM_KEYS = new Set([
     'execution_outcome',
 ]);
 const PROOF_KEYS = new Set(['alg', 'key_id', 'signature_b64u']);
+function projectionV1Failure(error) {
+    if (!(error instanceof MemoryProjectionVerificationError)) {
+        return result('INDETERMINATE', 'projection_verification_unavailable');
+    }
+    if (error.code === 'adapter_key_revoked')
+        return result('NOT_VERIFIED', 'adapter_key_revoked');
+    if (error.code === 'adapter_key_inactive')
+        return result('NOT_VERIFIED', 'adapter_key_inactive');
+    if (error.code === 'adapter_key_not_pinned')
+        return result('NOT_VERIFIED', 'adapter_key_not_pinned');
+    if (error.code === 'signature_invalid')
+        return result('NOT_VERIFIED', 'projection_signature_invalid');
+    if (error.code === 'projection_stale' || error.code === 'projection_from_future') {
+        return result('INDETERMINATE', 'projection_stale');
+    }
+    if (error.code === 'trust_snapshot_stale' || error.code === 'trust_snapshot_from_future') {
+        return result('INDETERMINATE', 'keyring_status_stale');
+    }
+    return result('NOT_VERIFIED', 'projection_record_invalid');
+}
 function isRecord(value) {
     if (value === null || typeof value !== 'object' || Array.isArray(value))
         return false;
@@ -188,6 +212,42 @@ export function createApertoMemoryContextProvider(options) {
             const statusAge = (Date.parse(verificationTime) - Date.parse(statusCheckedAt)) / 1000;
             if (statusAge < 0 || statusAge > context.maxSignerStatusAgeSec) {
                 return result('INDETERMINATE', 'adapter_status_stale');
+            }
+            if (isDataRecord(record) && record['@version'] === MEMORY_PROJECTION_RECORD_VERSION) {
+                if (!Array.isArray(record.delivered)
+                    || record.delivered.length === 0
+                    || record.delivered.length > 256) {
+                    return result('NOT_VERIFIED', 'projection_record_invalid');
+                }
+                try {
+                    const verified = verifyMemoryProjectionRecordV1Envelope(record, {
+                        adapterKeys,
+                        verificationTime,
+                        maxProjectionAgeSec: context.maxProjectionAgeSec,
+                        maxTrustAgeSec: context.maxTrustAgeSec,
+                        expectedSourceProfile: profileId,
+                        expectedContextFrameProfile: MEMORY_PROJECTION_FRAME_PROFILE,
+                    });
+                    return Object.freeze({
+                        state: 'VERIFIED',
+                        reason: null,
+                        claims: Object.freeze({
+                            projection_id: verified.projection_id,
+                            projection_record_digest: canonicalContextRecordDigest(record),
+                            projection_digest: verified.projection_digest,
+                            created_at: verified.created_at,
+                            trust_evaluated_at: verified.trust_evaluated_at,
+                            adapter_status_checked_at: statusCheckedAt,
+                            adapter_id: record.adapter.id,
+                            adapter_key_id: record.adapter.key_id,
+                            delivered_trust: Object.freeze(record.delivered.map((entry) => entry.derived_trust)),
+                            excluded_by_reason: Object.freeze({ ...record.exclusions.by_reason }),
+                        }),
+                    });
+                }
+                catch (error) {
+                    return projectionV1Failure(error);
+                }
             }
             if (!exactKeys(record, RECORD_KEYS)
                 || record['@version'] !== 'AMEM-PROJECTION-RECORD-v0'
