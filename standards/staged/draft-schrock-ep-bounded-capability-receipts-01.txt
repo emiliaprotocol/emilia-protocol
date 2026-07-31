@@ -104,8 +104,8 @@ Table of Contents
    17. Implementation Status . . . . . . . . . . . . . . . . . . . .  17
    18. Changes Since -00 . . . . . . . . . . . . . . . . . . . . . .  19
    19. IANA Considerations . . . . . . . . . . . . . . . . . . . . .  19
-   20. Normative References  . . . . . . . . . . . . . . . . . . . .  19
-   21. Informative References  . . . . . . . . . . . . . . . . . . .  20
+   20. References  . . . . . . . . . . . . . . . . . . . . . . . . .  19
+     20.1.  Normative References . . . . . . . . . . . . . . . . . .  19
 
 
 
@@ -114,6 +114,7 @@ Schrock                  Expires 1 February 2027                [Page 2]
 Internet-Draft           EP Bounded Capabilities               July 2026
 
 
+     20.2.  Informative References . . . . . . . . . . . . . . . . .  20
    Author's Address  . . . . . . . . . . . . . . . . . . . . . . . .  21
 
 1.  Introduction
@@ -148,6 +149,8 @@ Internet-Draft           EP Bounded Capabilities               July 2026
    14 [RFC2119] [RFC8174] when, and only when, they appear in all
    capitals, as shown here.
 
+   BCP 14 is indexed by the RFC Editor at [BCP14].
+
 1.2.  Scope and Non-Goals
 
    This document defines issuance binding, action-scope evaluation,
@@ -157,10 +160,7 @@ Internet-Draft           EP Bounded Capabilities               July 2026
    settlement, currency conversion, revocation distribution, or the
    external effect adapter.
 
-   A capability receipt is machine authority evidence.  It is not,
-   merely by being signed, evidence that a human reviewed each later
-   action.  Deployments that require per-action human authorization
-   continue to require a per-action authorization artifact.
+
 
 
 
@@ -169,6 +169,11 @@ Schrock                  Expires 1 February 2027                [Page 3]
 
 Internet-Draft           EP Bounded Capabilities               July 2026
 
+
+   A capability receipt is machine authority evidence.  It is not,
+   merely by being signed, evidence that a human reviewed each later
+   action.  Deployments that require per-action human authorization
+   continue to require a per-action authorization artifact.
 
 2.  Terminology
 
@@ -213,11 +218,6 @@ Internet-Draft           EP Bounded Capabilities               July 2026
    receipt MUST NOT, by itself, become a trust anchor.  An empty trust
    configuration MUST fail closed.
 
-   The capability store is trusted to serialize state transitions and
-   retain committed operation records.  The effect adapter is trusted to
-   place the effect boundary correctly and to report outcomes honestly.
-   This protocol makes those trust dependencies explicit; it does not
-   remove them.
 
 
 
@@ -225,6 +225,12 @@ Schrock                  Expires 1 February 2027                [Page 4]
 
 Internet-Draft           EP Bounded Capabilities               July 2026
 
+
+   The capability store is trusted to serialize state transitions and
+   retain committed operation records.  The effect adapter is trusted to
+   place the effect boundary correctly and to report outcomes honestly.
+   This protocol makes those trust dependencies explicit; it does not
+   remove them.
 
    All capability-store participants that can authorize a capability or
    allocate, register, reserve, commit, reconcile, suspend, revoke, or
@@ -239,12 +245,6 @@ Internet-Draft           EP Bounded Capabilities               July 2026
    The receipt is a JSON object serialized using the JSON
    Canonicalization Scheme (JCS) [RFC8785] before signing.  The
    following is illustrative:
-
-
-
-
-
-
 
 
 
@@ -1043,21 +1043,21 @@ Internet-Draft           EP Bounded Capabilities               July 2026
    holder methods, and failure codes after implementation experience
    stabilizes the protocol.
 
-20.  Normative References
+20.  References
 
-   [EP-QUORUM]
-              Schrock, I., "Multi-Party Authorization (Quorum) for the
-              EMILIA Protocol", 2026, <https://datatracker.ietf.org/doc/
-              draft-schrock-ep-quorum/>.
+20.1.  Normative References
+
+   [BCP14]    Internet Engineering Task Force, "Key Words for Use in
+              RFCs to Indicate Requirement Levels", BCP 14, 2017,
+              <https://www.rfc-editor.org/info/bcp14>.
 
    [RFC2119]  Bradner, S., "Key words for use in RFCs to Indicate
               Requirement Levels", BCP 14, RFC 2119,
               DOI 10.17487/RFC2119, March 1997,
               <https://www.rfc-editor.org/info/rfc2119>.
 
-   [RFC3339]  Klyne, G. and C. Newman, "Date and Time on the Internet:
-              Timestamps", RFC 3339, DOI 10.17487/RFC3339, July 2002,
-              <https://www.rfc-editor.org/info/rfc3339>.
+
+
 
 
 
@@ -1065,6 +1065,10 @@ Schrock                  Expires 1 February 2027               [Page 19]
 
 Internet-Draft           EP Bounded Capabilities               July 2026
 
+
+   [RFC3339]  Klyne, G. and C. Newman, "Date and Time on the Internet:
+              Timestamps", RFC 3339, DOI 10.17487/RFC3339, July 2002,
+              <https://www.rfc-editor.org/info/rfc3339>.
 
    [RFC8032]  Josefsson, S. and I. Liusvaara, "Edwards-Curve Digital
               Signature Algorithm (EdDSA)", RFC 8032,
@@ -1080,7 +1084,7 @@ Internet-Draft           EP Bounded Capabilities               July 2026
               DOI 10.17487/RFC8785, June 2020,
               <https://www.rfc-editor.org/info/rfc8785>.
 
-21.  Informative References
+20.2.  Informative References
 
    [AIP]      Prakash, S., "Agent Identity Protocol (AIP): Verifiable
               Delegation for AI Agent Systems", 2026,
@@ -1105,6 +1109,19 @@ Internet-Draft           EP Bounded Capabilities               July 2026
               <https://datatracker.ietf.org/doc/draft-nelson-agent-
               delegation-receipts/>.
 
+   [EP-QUORUM]
+              Schrock, I., "Multi-Party Authorization (Quorum) for the
+              EMILIA Protocol", 2026, <https://datatracker.ietf.org/doc/
+              draft-schrock-ep-quorum/>.
+
+
+
+
+Schrock                  Expires 1 February 2027               [Page 20]
+
+Internet-Draft           EP Bounded Capabilities               July 2026
+
+
    [PEDIGREE] Rampalli, K., "PEDIGREE: Verifiable Delegation Identity
               for Agentic AI Systems", 2026,
               <https://datatracker.ietf.org/doc/draft-rampalli-
@@ -1114,13 +1131,6 @@ Internet-Draft           EP Bounded Capabilities               July 2026
               Rich Authorization Requests", RFC 9396,
               DOI 10.17487/RFC9396, May 2023,
               <https://www.rfc-editor.org/info/rfc9396>.
-
-
-
-Schrock                  Expires 1 February 2027               [Page 20]
-
-Internet-Draft           EP Bounded Capabilities               July 2026
-
 
    [TOKEN-BUDGETS]
               Khan, S., "Token Budgets: An Empirical Catalog of 63 LLM-
@@ -1139,16 +1149,6 @@ Author's Address
    EMILIA Protocol, Inc.
    United States of America
    Email: team@emiliaprotocol.ai
-
-
-
-
-
-
-
-
-
-
 
 
 

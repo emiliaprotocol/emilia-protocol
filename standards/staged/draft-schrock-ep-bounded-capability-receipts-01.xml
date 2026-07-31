@@ -73,6 +73,7 @@
         interpreted as described in BCP 14 <xref target="RFC2119"/>
         <xref target="RFC8174"/> when, and only when, they appear in all
         capitals, as shown here.</t>
+        <t>BCP 14 is indexed by the RFC Editor at <xref target="BCP14"/>.</t>
       </section>
 
       <section anchor="scope">
@@ -770,82 +771,93 @@ remaining = total - consumed - reserved
 
   <back>
     <references>
-      <name>Normative References</name>
-      <xi:include href="https://bib.ietf.org/public/rfc/bibxml/reference.RFC.2119.xml"/>
-      <xi:include href="https://bib.ietf.org/public/rfc/bibxml/reference.RFC.3339.xml"/>
-      <xi:include href="https://bib.ietf.org/public/rfc/bibxml/reference.RFC.8032.xml"/>
-      <xi:include href="https://bib.ietf.org/public/rfc/bibxml/reference.RFC.8174.xml"/>
-      <xi:include href="https://bib.ietf.org/public/rfc/bibxml/reference.RFC.8785.xml"/>
-      <reference anchor="EP-QUORUM" target="https://datatracker.ietf.org/doc/draft-schrock-ep-quorum/">
-        <front>
-          <title>Multi-Party Authorization (Quorum) for the EMILIA Protocol</title>
-          <author fullname="Iman Schrock"/>
-          <date year="2026"/>
-        </front>
-      </reference>
-    </references>
-    <references>
-      <name>Informative References</name>
-      <xi:include href="https://bib.ietf.org/public/rfc/bibxml/reference.RFC.9396.xml"/>
-      <reference anchor="TXN-TOKENS" target="https://datatracker.ietf.org/doc/draft-ietf-oauth-transaction-tokens/">
-        <front>
-          <title>Transaction Tokens</title>
-          <author fullname="George Fletcher"/>
-          <date year="2026"/>
-        </front>
-      </reference>
-      <reference anchor="DRP" target="https://datatracker.ietf.org/doc/draft-nelson-agent-delegation-receipts/">
-        <front>
-          <title>Delegation Receipt Protocol</title>
-          <author fullname="Andrew Nelson"/>
-          <date year="2026"/>
-        </front>
-      </reference>
-      <reference anchor="ATTENUATING" target="https://datatracker.ietf.org/doc/draft-niyikiza-oauth-attenuating-agent-tokens/">
-        <front>
-          <title>OAuth Attenuating Tokens for Agentic AI</title>
-          <author fullname="Eric Niyikiza"/>
-          <date year="2026"/>
-        </front>
-      </reference>
-      <reference anchor="AIP" target="https://datatracker.ietf.org/doc/draft-prakash-aip/">
-        <front>
-          <title>Agent Identity Protocol (AIP): Verifiable Delegation for AI Agent Systems</title>
-          <author fullname="Sunil Prakash"/>
-          <date year="2026"/>
-        </front>
-      </reference>
-      <reference anchor="PEDIGREE" target="https://datatracker.ietf.org/doc/draft-rampalli-pedigree/">
-        <front>
-          <title>PEDIGREE: Verifiable Delegation Identity for Agentic AI Systems</title>
-          <author fullname="Karthik Rampalli"/>
-          <date year="2026"/>
-        </front>
-      </reference>
-      <reference anchor="CB4A" target="https://datatracker.ietf.org/doc/draft-hartman-credential-broker-4-agents/">
-        <front>
-          <title>Credential Broker for Agents (CB4A)</title>
-          <author fullname="Kenneth G. Hartman"/>
-          <date year="2026"/>
-        </front>
-      </reference>
-      <reference anchor="CBC" target="https://datatracker.ietf.org/doc/draft-winmagic-wimse-condition-bounded-credentials/">
-        <front>
-          <title>Condition-Bounded Credentials for Workload and Agent Identity: Non-Exfiltratable Keys and Validity by Presence</title>
-          <author fullname="Thi Nguyen Huu"/>
-          <author fullname="Sergei Nikitin"/>
-          <author fullname="John O'Leary"/>
-          <date year="2026"/>
-        </front>
-      </reference>
-      <reference anchor="TOKEN-BUDGETS" target="https://arxiv.org/abs/2606.04056">
-        <front>
-          <title>Token Budgets: An Empirical Catalog of 63 LLM-Agent Budget-Overrun Incidents, with an Affine-Typed Rust Mitigation as a Case Study</title>
-          <author fullname="Sajjad Khan"/>
-          <date year="2026"/>
-        </front>
-        <seriesInfo name="arXiv" value="2606.04056"/>
-      </reference>
+      <name>References</name>
+      <references>
+        <name>Normative References</name>
+        <reference anchor="BCP14" target="https://www.rfc-editor.org/info/bcp14">
+          <front>
+            <title>Key Words for Use in RFCs to Indicate Requirement Levels</title>
+            <author><organization>Internet Engineering Task Force</organization></author>
+            <date year="2017"/>
+          </front>
+          <seriesInfo name="BCP" value="14"/>
+        </reference>
+        <xi:include href="https://bib.ietf.org/public/rfc/bibxml/reference.RFC.2119.xml"/>
+        <xi:include href="https://bib.ietf.org/public/rfc/bibxml/reference.RFC.3339.xml"/>
+        <xi:include href="https://bib.ietf.org/public/rfc/bibxml/reference.RFC.8032.xml"/>
+        <xi:include href="https://bib.ietf.org/public/rfc/bibxml/reference.RFC.8174.xml"/>
+        <xi:include href="https://bib.ietf.org/public/rfc/bibxml/reference.RFC.8785.xml"/>
+      </references>
+      <references>
+        <name>Informative References</name>
+        <xi:include href="https://bib.ietf.org/public/rfc/bibxml/reference.RFC.9396.xml"/>
+        <reference anchor="EP-QUORUM" target="https://datatracker.ietf.org/doc/draft-schrock-ep-quorum/">
+          <front>
+            <title>Multi-Party Authorization (Quorum) for the EMILIA Protocol</title>
+            <author fullname="Iman Schrock"/>
+            <date year="2026"/>
+          </front>
+        </reference>
+        <reference anchor="TXN-TOKENS" target="https://datatracker.ietf.org/doc/draft-ietf-oauth-transaction-tokens/">
+          <front>
+            <title>Transaction Tokens</title>
+            <author fullname="George Fletcher"/>
+            <date year="2026"/>
+          </front>
+        </reference>
+        <reference anchor="DRP" target="https://datatracker.ietf.org/doc/draft-nelson-agent-delegation-receipts/">
+          <front>
+            <title>Delegation Receipt Protocol</title>
+            <author fullname="Andrew Nelson"/>
+            <date year="2026"/>
+          </front>
+        </reference>
+        <reference anchor="ATTENUATING" target="https://datatracker.ietf.org/doc/draft-niyikiza-oauth-attenuating-agent-tokens/">
+          <front>
+            <title>OAuth Attenuating Tokens for Agentic AI</title>
+            <author fullname="Eric Niyikiza"/>
+            <date year="2026"/>
+          </front>
+        </reference>
+        <reference anchor="AIP" target="https://datatracker.ietf.org/doc/draft-prakash-aip/">
+          <front>
+            <title>Agent Identity Protocol (AIP): Verifiable Delegation for AI Agent Systems</title>
+            <author fullname="Sunil Prakash"/>
+            <date year="2026"/>
+          </front>
+        </reference>
+        <reference anchor="PEDIGREE" target="https://datatracker.ietf.org/doc/draft-rampalli-pedigree/">
+          <front>
+            <title>PEDIGREE: Verifiable Delegation Identity for Agentic AI Systems</title>
+            <author fullname="Karthik Rampalli"/>
+            <date year="2026"/>
+          </front>
+        </reference>
+        <reference anchor="CB4A" target="https://datatracker.ietf.org/doc/draft-hartman-credential-broker-4-agents/">
+          <front>
+            <title>Credential Broker for Agents (CB4A)</title>
+            <author fullname="Kenneth G. Hartman"/>
+            <date year="2026"/>
+          </front>
+        </reference>
+        <reference anchor="CBC" target="https://datatracker.ietf.org/doc/draft-winmagic-wimse-condition-bounded-credentials/">
+          <front>
+            <title>Condition-Bounded Credentials for Workload and Agent Identity: Non-Exfiltratable Keys and Validity by Presence</title>
+            <author fullname="Thi Nguyen Huu"/>
+            <author fullname="Sergei Nikitin"/>
+            <author fullname="John O'Leary"/>
+            <date year="2026"/>
+          </front>
+        </reference>
+        <reference anchor="TOKEN-BUDGETS" target="https://arxiv.org/abs/2606.04056">
+          <front>
+            <title>Token Budgets: An Empirical Catalog of 63 LLM-Agent Budget-Overrun Incidents, with an Affine-Typed Rust Mitigation as a Case Study</title>
+            <author fullname="Sajjad Khan"/>
+            <date year="2026"/>
+          </front>
+          <seriesInfo name="arXiv" value="2606.04056"/>
+        </reference>
+      </references>
     </references>
   </back>
 </rfc>
