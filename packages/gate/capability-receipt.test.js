@@ -5,7 +5,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { generateKeyPairSync, sign } from 'node:crypto';
 import { canonicalize } from './execution-binding.js';
-import { executeWithCapability, executeWithThreshold, reconcileCapabilityOperation, delegateCapabilityReceipt, createMemoryCapabilityStore, createPostgresCapabilityStore, isSecureCapabilityStore, CAPABILITY_SQL, mintCapabilityReceipt, reconstructCapabilitySecret, splitCapabilitySecret, verifyCapabilityReceipt, CAPABILITY_RECEIPT_VERSION, CAPABILITY_SCOPE_PROFILE, CAPABILITY_CAID_SCOPE_PROFILE, capabilityActionDigest, capabilityBaseReceiptDigest, } from './capability-receipt.js';
+import { executeWithCapability, executeWithThreshold, reconcileCapabilityOperation, delegateCapabilityReceipt, createMemoryCapabilityStore, createPostgresCapabilityStore, isSecureCapabilityStore, CAPABILITY_STATE_DDL, CAPABILITY_SQL, mintCapabilityReceipt, reconstructCapabilitySecret, splitCapabilitySecret, verifyCapabilityReceipt, CAPABILITY_RECEIPT_VERSION, CAPABILITY_SCOPE_PROFILE, CAPABILITY_CAID_SCOPE_PROFILE, CAPABILITY_ALLOWANCE_SCOPE_PROFILE, capabilityActionDigest, capabilityBaseReceiptDigest, } from './capability-receipt.js';
 const NOW = Date.parse('2026-07-18T22:00:00.000Z');
 function baseReceipt({ privateKey, publicKey, receiptId = 'base_1' } = {}) {
     const payload = {
@@ -71,6 +71,218 @@ test('capability stores expose explicit production durability and reconciliation
     assert.equal(isSecureCapabilityStore(methodsOnly), false);
     assert.equal(isSecureCapabilityStore({ ...methodsOnly, durable: true }), false);
     assert.equal(isSecureCapabilityStore({ ...methodsOnly, reconciliationCapable: true }), false);
+});
+test('memory capability operations isolate identical operation ids by capability', async () => {
+    const keys = issuer();
+    const first = mintCapabilityReceipt(keys.receipt, options({
+        issuerPrivateKey: keys.privateKey,
+        capabilityId: 'operation_scope_a',
+    }));
+    const second = mintCapabilityReceipt(keys.receipt, options({
+        issuerPrivateKey: keys.privateKey,
+        capabilityId: 'operation_scope_b',
+    }));
+    const store = createMemoryCapabilityStore();
+    assert.equal(store.registerCapability(first.capabilityReceipt), true);
+    assert.equal(store.registerCapability(second.capabilityReceipt), true);
+    const reserve = (minted, operationId) => store.reserveSpend({
+        capabilityId: minted.capabilityReceipt.capability.id,
+        capabilityFingerprint: store.getState(minted.capabilityReceipt.capability.id).capability_fingerprint,
+        operationId,
+        actionDigest: capabilityActionDigest(scopedAction(operationId)),
+        amount: 1,
+        currency: 'USD',
+        now: NOW,
+    });
+    const firstReservation = await reserve(first, 'shared-operation');
+    const secondReservation = await reserve(second, 'shared-operation');
+    assert.equal(firstReservation.ok, true);
+    assert.equal(secondReservation.ok, true);
+    assert.equal((await reserve(first, 'shared-operation')).reason, 'operation_in_flight');
+    assert.equal((await store.commitSpend({
+        capabilityId: first.capabilityReceipt.capability.id,
+        operationId: 'shared-operation',
+        reservationToken: firstReservation.reservation_token,
+        outcome: 'executed',
+        now: NOW,
+    })).ok, true);
+    assert.equal(store.getOperation('shared-operation', first.capabilityReceipt.capability.id).outcome, 'executed');
+    assert.equal(store.getOperation('shared-operation', second.capabilityReceipt.capability.id).status, 'reserved');
+    assert.equal((await reserve(first, 'shared-operation')).reason, 'operation_already_committed');
+    assert.equal((await store.commitSpend({
+        capabilityId: second.capabilityReceipt.capability.id,
+        operationId: 'shared-operation',
+        reservationToken: secondReservation.reservation_token,
+        outcome: 'executed',
+        now: NOW,
+    })).ok, true);
+    const firstIndeterminate = await reserve(first, 'shared-reconciliation');
+    const secondIndeterminate = await reserve(second, 'shared-reconciliation');
+    await store.commitSpend({
+        capabilityId: first.capabilityReceipt.capability.id,
+        operationId: 'shared-reconciliation',
+        reservationToken: firstIndeterminate.reservation_token,
+        outcome: 'indeterminate',
+        now: NOW,
+    });
+    await store.commitSpend({
+        capabilityId: second.capabilityReceipt.capability.id,
+        operationId: 'shared-reconciliation',
+        reservationToken: secondIndeterminate.reservation_token,
+        outcome: 'indeterminate',
+        now: NOW,
+    });
+    const firstEvidence = `sha256:${'1'.repeat(64)}`;
+    const secondEvidence = `sha256:${'2'.repeat(64)}`;
+    assert.equal((await store.reconcileSpend({
+        capabilityId: first.capabilityReceipt.capability.id,
+        operationId: 'shared-reconciliation',
+        actionDigest: capabilityActionDigest(scopedAction('shared-reconciliation')),
+        evidenceDigest: firstEvidence,
+        outcome: 'executed',
+        now: NOW + 1,
+    })).ok, true);
+    assert.equal(store.getOperation('shared-reconciliation', second.capabilityReceipt.capability.id).reconciliation_outcome, undefined);
+    assert.equal((await store.reconcileSpend({
+        capabilityId: second.capabilityReceipt.capability.id,
+        operationId: 'shared-reconciliation',
+        actionDigest: capabilityActionDigest(scopedAction('shared-reconciliation')),
+        evidenceDigest: secondEvidence,
+        outcome: 'executed',
+        now: NOW + 1,
+    })).ok, true);
+    assert.equal(store.getOperation('shared-reconciliation', first.capabilityReceipt.capability.id).reconciliation_evidence_digest, firstEvidence);
+    assert.equal(store.getOperation('shared-reconciliation', second.capabilityReceipt.capability.id).reconciliation_evidence_digest, secondEvidence);
+});
+test('postgres capability operations use a composite namespace and operation key', async () => {
+    assert.match(CAPABILITY_STATE_DDL, /PRIMARY KEY \(operation_namespace, operation_id\)/);
+    assert.doesNotMatch(CAPABILITY_STATE_DDL, /operation_id TEXT PRIMARY KEY/);
+    assert.match(CAPABILITY_SQL.readOperation, /operation_namespace = \$1 AND operation_id = \$2/);
+    const keys = issuer();
+    const first = mintCapabilityReceipt(keys.receipt, options({
+        issuerPrivateKey: keys.privateKey,
+        capabilityId: 'postgres_operation_scope_a',
+    }));
+    const second = mintCapabilityReceipt(keys.receipt, options({
+        issuerPrivateKey: keys.privateKey,
+        capabilityId: 'postgres_operation_scope_b',
+    }));
+    const states = new Map();
+    const operations = new Map();
+    const operationKey = (operationNamespace, operationId) => `${operationNamespace}\u0000${operationId}`;
+    const transaction = async (callback) => callback(async (sql, params) => {
+        if (sql === CAPABILITY_SQL.register) {
+            if (!states.has(params[0])) {
+                states.set(params[0], {
+                    capability_id: params[0],
+                    capability_fingerprint: params[4],
+                    budget_amount: String(params[1]),
+                    currency: params[2],
+                    consumed_amount: '0',
+                    reserved_amount: '0',
+                    expires_at: params[3],
+                });
+            }
+            return { rowCount: 1, rows: [] };
+        }
+        if (sql === CAPABILITY_SQL.readState) {
+            const row = states.get(params[0]);
+            return { rowCount: row ? 1 : 0, rows: row ? [row] : [] };
+        }
+        if (sql === CAPABILITY_SQL.readOperation) {
+            assert.equal(params.length, 2);
+            const row = operations.get(operationKey(params[0], params[1]));
+            return { rowCount: row ? 1 : 0, rows: row ? [row] : [] };
+        }
+        if (sql === CAPABILITY_SQL.reserveState) {
+            const row = states.get(params[0]);
+            row.reserved_amount = String(Number(row.reserved_amount) + Number(params[1]));
+            return { rowCount: 1, rows: [] };
+        }
+        if (sql === CAPABILITY_SQL.insertOperation) {
+            const [operationNamespace, capabilityId, operationId, actionDigest, amount, currency, reservationToken] = params;
+            operations.set(operationKey(operationNamespace, operationId), {
+                operation_namespace: operationNamespace,
+                capability_id: capabilityId,
+                operation_id: operationId,
+                action_digest: actionDigest,
+                amount: String(amount),
+                currency,
+                reservation_token: reservationToken,
+                status: 'reserved',
+                outcome: null,
+                reconciliation_outcome: null,
+                reconciliation_evidence_digest: null,
+            });
+            return { rowCount: 1, rows: [] };
+        }
+        if (sql === CAPABILITY_SQL.commitOperation) {
+            const [operationNamespace, operationId, capabilityId, outcome, , reservationToken] = params;
+            const row = operations.get(operationKey(operationNamespace, operationId));
+            if (!row || row.capability_id !== capabilityId || row.status !== 'reserved' || row.reservation_token !== reservationToken)
+                return { rowCount: 0, rows: [] };
+            row.status = 'committed';
+            row.outcome = outcome;
+            return { rowCount: 1, rows: [] };
+        }
+        if (sql === CAPABILITY_SQL.commitState) {
+            const row = states.get(params[0]);
+            row.reserved_amount = String(Number(row.reserved_amount) - Number(params[1]));
+            row.consumed_amount = String(Number(row.consumed_amount) + Number(params[1]));
+            return { rowCount: 1, rows: [] };
+        }
+        if (sql === CAPABILITY_SQL.reconcileOperation) {
+            const [operationNamespace, operationId, capabilityId, outcome, evidenceDigest] = params;
+            const row = operations.get(operationKey(operationNamespace, operationId));
+            if (!row || row.capability_id !== capabilityId || row.status !== 'committed' || row.outcome !== 'indeterminate' || row.reconciliation_outcome) {
+                return { rowCount: 0, rows: [] };
+            }
+            row.reconciliation_outcome = outcome;
+            row.reconciliation_evidence_digest = evidenceDigest;
+            return { rowCount: 1, rows: [] };
+        }
+        throw new Error(`unexpected SQL in composite operation test: ${sql}`);
+    });
+    const store = createPostgresCapabilityStore({ transaction });
+    assert.equal(await store.registerCapability(first.capabilityReceipt), true);
+    assert.equal(await store.registerCapability(second.capabilityReceipt), true);
+    const reserve = (minted) => store.reserveSpend({
+        capabilityId: minted.capabilityReceipt.capability.id,
+        capabilityFingerprint: states.get(minted.capabilityReceipt.capability.id).capability_fingerprint,
+        operationId: 'shared-postgres-operation',
+        actionDigest: capabilityActionDigest(scopedAction('shared-postgres-operation')),
+        amount: 1,
+        currency: 'USD',
+        now: NOW,
+    });
+    const firstReservation = await reserve(first);
+    const secondReservation = await reserve(second);
+    assert.equal(firstReservation.ok, true);
+    assert.equal(secondReservation.ok, true);
+    assert.equal((await reserve(first)).reason, 'operation_in_flight');
+    for (const [minted, reservation] of [[first, firstReservation], [second, secondReservation]]) {
+        assert.equal((await store.commitSpend({
+            capabilityId: minted.capabilityReceipt.capability.id,
+            operationId: 'shared-postgres-operation',
+            reservationToken: reservation.reservation_token,
+            outcome: 'indeterminate',
+            now: NOW,
+        })).ok, true);
+    }
+    const firstEvidence = `sha256:${'3'.repeat(64)}`;
+    const secondEvidence = `sha256:${'4'.repeat(64)}`;
+    for (const [minted, evidenceDigest] of [[first, firstEvidence], [second, secondEvidence]]) {
+        assert.equal((await store.reconcileSpend({
+            capabilityId: minted.capabilityReceipt.capability.id,
+            operationId: 'shared-postgres-operation',
+            actionDigest: capabilityActionDigest(scopedAction('shared-postgres-operation')),
+            evidenceDigest,
+            outcome: 'executed',
+            now: NOW + 1,
+        })).ok, true);
+    }
+    assert.equal(operations.get(operationKey(first.capabilityReceipt.capability.id, 'shared-postgres-operation')).reconciliation_evidence_digest, firstEvidence);
+    assert.equal(operations.get(operationKey(second.capabilityReceipt.capability.id, 'shared-postgres-operation')).reconciliation_evidence_digest, secondEvidence);
 });
 test('capability metadata is issuer-signed and tamper-evident', () => {
     const keys = issuer();
@@ -139,6 +351,59 @@ test('capability scope is mandatory, signed, exact, and operation-bound', async 
     });
     assert.equal(relabelled.reason, 'capability_operation_binding_failed');
     assert.equal(store.getState(minted.capabilityReceipt.capability.id).consumed_amount, 0);
+});
+test('allowance profile scope is closed, callback-verified, and operation-bound', async () => {
+    const keys = issuer();
+    const action = scopedAction('allowance-op', {
+        amount: 10,
+        action_type: 'stripe.payout.create',
+        destination: 'acct_allowed',
+    });
+    const minted = mintCapabilityReceipt(keys.receipt, options({
+        issuerPrivateKey: keys.privateKey,
+        scope: {
+            profile: CAPABILITY_ALLOWANCE_SCOPE_PROFILE,
+            profile_id: 'allowance:stripe-payout:01',
+            profile_digest: `sha256:${'a'.repeat(64)}`,
+            operation_id_field: 'operation_id',
+        },
+    }));
+    const store = createMemoryCapabilityStore();
+    assert.equal(store.registerCapability(minted.capabilityReceipt), true);
+    const common = {
+        capabilityReceipt: minted.capabilityReceipt,
+        secret: minted.secret,
+        action,
+        operationId: action.operation_id,
+        store,
+        trustedIssuerKeys: [keys.receipt.public_key],
+        verifyBaseReceipt: () => true,
+        executeAction: async () => ({ id: 'po_1' }),
+        now: NOW,
+    };
+    assert.equal((await executeWithCapability(common)).reason, 'capability_action_profile_verifier_required');
+    assert.equal((await executeWithCapability({
+        ...common,
+        verifyActionProfile: () => ({ ok: false, reason: 'target_not_allowed' }),
+    })).reason, 'target_not_allowed');
+    const accepted = await executeWithCapability({
+        ...common,
+        verifyActionProfile: (_candidate, profile) => ({
+            ok: profile.profile_id === 'allowance:stripe-payout:01'
+                && profile.profile_digest === `sha256:${'a'.repeat(64)}`,
+        }),
+    });
+    assert.equal(accepted.ok, true);
+    assert.throws(() => mintCapabilityReceipt(keys.receipt, options({
+        issuerPrivateKey: keys.privateKey,
+        scope: {
+            profile: CAPABILITY_ALLOWANCE_SCOPE_PROFILE,
+            profile_id: 'allowance:stripe-payout:01',
+            profile_digest: `sha256:${'a'.repeat(64)}`,
+            operation_id_field: 'operation_id',
+            ignored_constraint: true,
+        },
+    })), /scope is not closed/);
 });
 test('capability executes the exact immutable action that passed scope verification', async () => {
     const keys = issuer();

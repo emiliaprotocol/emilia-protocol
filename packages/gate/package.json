@@ -217,6 +217,10 @@
       "types": "./dist/capability-receipt.d.ts",
       "import": "./capability-receipt.js"
     },
+    "./allowance": {
+      "types": "./dist/allowance.d.ts",
+      "import": "./allowance.js"
+    },
     "./receipt-program": {
       "types": "./dist/receipt-program.d.ts",
       "import": "./receipt-program.js"
@@ -417,6 +421,7 @@
     "runtime-monitor.js",
     "formal-runtime-map.js",
     "capability-receipt.js",
+    "allowance.js",
     "receipt-program.js",
     "trust-program.js",
     "reliance-program.js",
@@ -524,10 +529,11 @@
   ],
   "scripts": {
     "build": "tsc -p tsconfig.json && node postbuild-ts-nocheck.mjs",
-    "prepack": "npm run build",
+    "prepack": "node run-prepack.mjs",
     "pretest": "npm run build",
     "test": "node --test --test-concurrency=1 && npm run test:qualification",
-    "test:qualification": "tsx --test --test-concurrency=1 admission-store.test.ts admission-store-postgres.test.ts gate-qualification-v2.test.ts bounded-execution-program.test.ts bounded-execution-report.test.ts execution-program-admission-store.test.ts execution-program-admission-store-postgres.test.ts execution-program-runtime-trace-replay.test.ts",
+    "check:allowance-security-test-coverage": "node check-allowance-security-test-coverage.mjs",
+    "test:qualification": "npm run check:allowance-security-test-coverage && tsx --test --test-concurrency=1 allowance.test.ts capability-receipt.test.ts adapters/stripe.test.ts adapters/github.test.ts adapters/supabase.test.ts admission-store.test.ts admission-store-postgres.test.ts gate-qualification-v2.test.ts bounded-execution-program.test.ts bounded-execution-report.test.ts execution-program-admission-store.test.ts execution-program-admission-store-postgres.test.ts execution-program-runtime-trace-replay.test.ts",
     "demo": "node demo.mjs",
     "eg1": "node eg1.mjs",
     "cf1": "node cf1.mjs"

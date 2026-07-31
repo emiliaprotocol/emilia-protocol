@@ -866,6 +866,26 @@ reconciliation; it never creates spendable budget out of thin air. A holder
 cannot edit `delegation_chain` or enlarge a child because the issuer signs the
 entire envelope.
 
+## Gate Allowances
+
+`@emilia-protocol/gate/allowance` turns a reviewed authorization into one
+customer-signed, time-bounded operating envelope. In-envelope actions run
+without another prompt; an out-of-envelope action refuses so a separately
+authenticated human can approve a successor allowance.
+
+The signed allowance binds its tenant, subject, audience, typed connector
+instance, action schema, target and exact-value allowlists, per-action ceiling,
+aggregate budget, authorizing-receipt digest, presentation digest, one
+capability identifier, capability-issuer key digest, and expiry. Execution also
+requires deployment-pinned receipt and current-status verifiers. V1 refuses
+delegated allowance capabilities.
+
+Typed reference wrappers are available for Stripe payouts, GitHub production
+workflow dispatches, and Supabase RLS policy replacements. Provider clients and
+credentials stay in the caller's process. See
+`docs/protocol/GATE-ALLOWANCES-v1.md` and the runnable
+`examples/gate-allowance/` demonstration.
+
 ## Receipt programs
 
 `createReceiptProgramKernel()` composes CAID, the Gate capability path, and the

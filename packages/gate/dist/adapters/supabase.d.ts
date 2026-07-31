@@ -68,6 +68,23 @@ export declare function guardSupabaseMutation(gate: any, client: any, args: any)
     reliance: any;
     execution: any;
 }>;
+/** Bind a typed RLS client to the project identity returned by a trusted provider probe. */
+export declare function createSupabaseAllowanceConnector({ client, }?: {
+    client?: any;
+}): Promise<Readonly<{}>>;
+/**
+ * Replace one specifically bound RLS policy under a signed Gate allowance.
+ *
+ * Arbitrary SQL is intentionally excluded: the wrapper binds table, policy,
+ * canonical definition digest, definition version, and operation identifier,
+ * then invokes only the typed alterPolicy actuator.
+ */
+export declare function guardSupabaseAllowanceMutation({ connector, params, operationId, ...allowanceOptions }: {
+    [x: string]: any;
+    connector: any;
+    params: any;
+    operationId: any;
+}): Promise<import("../reliance-risk-crypto.js").RiskRecord>;
 declare const _default: {
     SUPABASE_ACTION_PACK: readonly (Readonly<{
         id: "supabase.sql.destructive";
@@ -118,6 +135,8 @@ declare const _default: {
     SUPABASE_OPS: readonly string[];
     createSupabaseManifest: typeof createSupabaseManifest;
     guardSupabaseMutation: typeof guardSupabaseMutation;
+    guardSupabaseAllowanceMutation: typeof guardSupabaseAllowanceMutation;
+    createSupabaseAllowanceConnector: typeof createSupabaseAllowanceConnector;
     isDestructiveSql: typeof isDestructiveSql;
     statementHash: typeof statementHash;
     rlsDefinitionDigest: typeof rlsDefinitionDigest;

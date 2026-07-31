@@ -51,6 +51,7 @@
     "src/execution-binding.ts",
     "src/strict-json.ts",
     "src/capability-receipt.ts",
+    "src/allowance.ts",
     "src/coverage.ts",
     "src/settlement.ts",
     "src/siem.ts",

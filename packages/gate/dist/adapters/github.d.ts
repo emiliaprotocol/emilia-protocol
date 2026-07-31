@@ -68,6 +68,23 @@ export declare function guardGithubMutation(gate: any, octokit: any, args: any):
     reliance: any;
     execution: any;
 }>;
+/** Digest the closed workflow-dispatch input object without disclosing it in the allowance. */
+export declare function githubWorkflowInputsDigest(inputs?: {}): string;
+/** Bind an Octokit client to the installation identity returned by a trusted provider probe. */
+export declare function createGithubAllowanceConnector({ octokit, }?: {
+    octokit?: any;
+}): Promise<Readonly<{}>>;
+/**
+ * Dispatch one specifically bound production workflow under a signed Gate
+ * allowance. The Octokit client and GitHub credential remain in the caller's
+ * process; this path exposes no generic GitHub mutation.
+ */
+export declare function guardGithubAllowanceMutation({ connector, params, operationId, ...allowanceOptions }: {
+    [x: string]: any;
+    connector: any;
+    params: any;
+    operationId: any;
+}): Promise<import("../reliance-risk-crypto.js").RiskRecord>;
 declare const _default: {
     GITHUB_ACTION_PACK: readonly (Readonly<{
         id: "github.repo.delete";
@@ -118,6 +135,9 @@ declare const _default: {
     GITHUB_OPS: readonly string[];
     createGithubManifest: typeof createGithubManifest;
     guardGithubMutation: typeof guardGithubMutation;
+    githubWorkflowInputsDigest: typeof githubWorkflowInputsDigest;
+    createGithubAllowanceConnector: typeof createGithubAllowanceConnector;
+    guardGithubAllowanceMutation: typeof guardGithubAllowanceMutation;
 };
 export default _default;
 //# sourceMappingURL=github.d.ts.map

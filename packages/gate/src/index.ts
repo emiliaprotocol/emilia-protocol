@@ -79,6 +79,7 @@ import {
   CAPABILITY_SHARE_VERSION,
   CAPABILITY_SCOPE_PROFILE,
   CAPABILITY_CAID_SCOPE_PROFILE,
+  CAPABILITY_ALLOWANCE_SCOPE_PROFILE,
   CAPABILITY_STATE_DDL,
   CAPABILITY_SQL,
   capabilityBaseReceiptDigest,
@@ -214,6 +215,7 @@ export {
   CAPABILITY_SHARE_VERSION,
   CAPABILITY_SCOPE_PROFILE,
   CAPABILITY_CAID_SCOPE_PROFILE,
+  CAPABILITY_ALLOWANCE_SCOPE_PROFILE,
   CAPABILITY_STATE_DDL,
   CAPABILITY_SQL,
   capabilityBaseReceiptDigest,
@@ -234,6 +236,7 @@ export {
 export * from './authority-allocation.js';
 export * from './autonomy-control-plane-profile.js';
 export * from './bounded-execution-program.js';
+export * from './allowance.js';
 export * from './bounded-execution-report.js';
 export * from './admission-store.js';
 export * from './admission-store-postgres.js';
@@ -2187,6 +2190,7 @@ export default {
   CAPABILITY_SHARE_VERSION,
   CAPABILITY_SCOPE_PROFILE,
   CAPABILITY_CAID_SCOPE_PROFILE,
+  CAPABILITY_ALLOWANCE_SCOPE_PROFILE,
   CAPABILITY_STATE_DDL,
   CAPABILITY_SQL,
   capabilityBaseReceiptDigest,
