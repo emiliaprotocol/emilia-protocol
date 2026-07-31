@@ -691,6 +691,127 @@ test('delegation burns parent budget before registering a spendable child', asyn
     assert.equal(tooLarge.reason, 'budget_exceeded');
     assert.equal(store.getState('parent_1').consumed_amount, 40);
 });
+test('concurrent N-sibling delegation transfers rather than copies parent authority', async () => {
+    const keys = issuer();
+    const parent = mintCapabilityReceipt(keys.receipt, options({
+        issuerPrivateKey: keys.privateKey,
+        capabilityId: 'fanout_parent',
+        secret: Buffer.alloc(32, 31),
+    }));
+    const store = createMemoryCapabilityStore();
+    assert.equal(store.registerCapability(parent.capabilityReceipt), true);
+    const results = await Promise.all([1, 2, 3].map((index) => delegateCapabilityReceipt({
+        parentCapabilityReceipt: parent.capabilityReceipt,
+        parentSecret: parent.secret,
+        issuerPrivateKey: keys.privateKey,
+        trustedIssuerKeys: [keys.receipt.public_key],
+        budget: { amount: 40, currency: 'USD' },
+        expiry: NOW + 30_000,
+        delegateId: `fanout-operator-${index}`,
+        capabilityId: `fanout_child_${index}`,
+        operationId: `fanout_operation_${index}`,
+        secret: Buffer.alloc(32, 31 + index),
+        store,
+        now: NOW,
+    })));
+    assert.equal(results.filter((result) => result.ok).length, 2);
+    assert.equal(results.filter((result) => !result.ok && result.reason === 'budget_exceeded').length, 1);
+    assert.equal(store.getState('fanout_parent').consumed_amount, 80);
+    assert.equal([1, 2, 3].filter((index) => store.getState(`fanout_child_${index}`) !== null).length, 2);
+});
+test('one delegation operation identifier funds only one child digest', async () => {
+    const keys = issuer();
+    const parent = mintCapabilityReceipt(keys.receipt, options({
+        issuerPrivateKey: keys.privateKey,
+        capabilityId: 'injective_parent',
+        secret: Buffer.alloc(32, 41),
+    }));
+    const store = createMemoryCapabilityStore();
+    assert.equal(store.registerCapability(parent.capabilityReceipt), true);
+    const results = await Promise.all(['a', 'b'].map((suffix, index) => delegateCapabilityReceipt({
+        parentCapabilityReceipt: parent.capabilityReceipt,
+        parentSecret: parent.secret,
+        issuerPrivateKey: keys.privateKey,
+        trustedIssuerKeys: [keys.receipt.public_key],
+        budget: { amount: 30, currency: 'USD' },
+        expiry: NOW + 30_000,
+        delegateId: `injective-operator-${suffix}`,
+        capabilityId: `injective_child_${suffix}`,
+        operationId: 'injective_operation',
+        secret: Buffer.alloc(32, 42 + index),
+        store,
+        now: NOW,
+    })));
+    assert.equal(results.filter((result) => result.ok).length, 1);
+    assert.equal(results.filter((result) => (!result.ok && ['operation_in_flight', 'operation_already_committed'].includes(result.reason))).length, 1);
+    assert.equal(store.getState('injective_parent').consumed_amount, 30);
+    assert.equal(['a', 'b'].filter((suffix) => store.getState(`injective_child_${suffix}`) !== null).length, 1);
+});
+test('a failed child registration remains a funded orphan and never refunds the parent', async () => {
+    const keys = issuer();
+    const parent = mintCapabilityReceipt(keys.receipt, options({
+        issuerPrivateKey: keys.privateKey,
+        capabilityId: 'orphan_parent',
+        secret: Buffer.alloc(32, 45),
+    }));
+    const conflicting = mintCapabilityReceipt(keys.receipt, options({
+        issuerPrivateKey: keys.privateKey,
+        capabilityId: 'orphan_child',
+        secret: Buffer.alloc(32, 46),
+    }));
+    const store = createMemoryCapabilityStore();
+    assert.equal(store.registerCapability(parent.capabilityReceipt), true);
+    assert.equal(store.registerCapability(conflicting.capabilityReceipt), true);
+    const result = await delegateCapabilityReceipt({
+        parentCapabilityReceipt: parent.capabilityReceipt,
+        parentSecret: parent.secret,
+        issuerPrivateKey: keys.privateKey,
+        trustedIssuerKeys: [keys.receipt.public_key],
+        budget: { amount: 25, currency: 'USD' },
+        expiry: NOW + 30_000,
+        delegateId: 'orphan-operator',
+        capabilityId: 'orphan_child',
+        operationId: 'orphan_operation',
+        secret: Buffer.alloc(32, 47),
+        store,
+        now: NOW,
+    });
+    assert.deepEqual(result, {
+        ok: false,
+        reason: 'child_registration_failed',
+        operation_id: 'orphan_operation',
+    });
+    assert.equal(store.getState('orphan_parent').consumed_amount, 25);
+    assert.equal(store.getOperation('orphan_operation').outcome, 'delegated');
+    assert.equal(store.getState('orphan_child').budget_amount, 100);
+});
+test('separate authority stores demonstrate the explicit cross-domain non-guarantee', async () => {
+    const keys = issuer();
+    const parent = mintCapabilityReceipt(keys.receipt, options({
+        issuerPrivateKey: keys.privateKey,
+        capabilityId: 'fork_parent',
+        secret: Buffer.alloc(32, 48),
+    }));
+    const stores = [createMemoryCapabilityStore(), createMemoryCapabilityStore()];
+    for (const store of stores)
+        assert.equal(store.registerCapability(parent.capabilityReceipt), true);
+    const results = await Promise.all(stores.map((store, index) => delegateCapabilityReceipt({
+        parentCapabilityReceipt: parent.capabilityReceipt,
+        parentSecret: parent.secret,
+        issuerPrivateKey: keys.privateKey,
+        trustedIssuerKeys: [keys.receipt.public_key],
+        budget: { amount: 60, currency: 'USD' },
+        expiry: NOW + 30_000,
+        delegateId: `fork-operator-${index}`,
+        capabilityId: `fork_child_${index}`,
+        operationId: `fork_operation_${index}`,
+        secret: Buffer.alloc(32, 49 + index),
+        store,
+        now: NOW,
+    })));
+    assert.ok(results.every((result) => result.ok));
+    assert.deepEqual(stores.map((store) => store.getState('fork_parent').consumed_amount), [60, 60]);
+});
 test('delegation cannot outlive its parent, including across multiple hops', async () => {
     const keys = issuer();
     const parent = mintCapabilityReceipt(keys.receipt, options({

@@ -54,6 +54,7 @@ The unsigned construction input is a closed object with these fields:
 | `supersedes_program_digest` | `null` for version 1; otherwise the exact predecessor program digest. |
 | `issued_at`, `valid_from`, `expires_at` | UTC RFC 3339 instants satisfying `issued_at <= valid_from < expires_at`. Expiry is exclusive. |
 | `max_total_occurrences` | Mandatory positive safe integer no greater than 1,000,000. It bounds all retained occurrence records, including released occurrences. |
+| `max_concurrent_effects` | Mandatory positive safe integer no greater than 1,000,000. It bounds occurrences in `INVOKING` or `INDETERMINATE` for this program. |
 | `budgets` | One to 64 unique budget dimensions. |
 | `nodes` | One to 256 unique nodes forming a finite DAG with at least one root. |
 
@@ -169,7 +170,7 @@ The signer constructs this closed body:
 {
   "@version": "EP-BOUNDED-EXECUTION-PROGRAM-v1",
   "<normalized program fields>": "...",
-  "claim_boundary": "typed_reachability_and_attempt_budget_not_intent_safety_effect_truth_or_complete_mediation",
+  "claim_boundary": "typed_reachability_attempt_budget_and_effect_concurrency_not_intent_safety_effect_truth_or_complete_mediation",
   "issuer": { "id": "customer:...", "key_id": "key:..." }
 }
 ```
@@ -456,11 +457,19 @@ A program-aware begin, release, or expiry path likewise refuses an admission
 that lacks the exact execution-program association.
 
 Program-aware begin MUST recheck store-authoritative program status, program
-validity, and ordinary admission currentness. It then atomically consumes the
-ordinary execution right and moves every node charge from `reserved` to
-`consumed` before releasing the invocation capability. The occurrence becomes
-`INVOKING`. Once begin succeeds, neither a provider refusal, timeout, nor an
-indeterminate result restores the occurrence or budget.
+validity, ordinary admission currentness, and the signed concurrent-effect
+ceiling. Immediately before releasing the invocation capability, the store
+MUST count all occurrences for this exact program in `INVOKING` or
+`INDETERMINATE`. If that count is greater than or equal to
+`max_concurrent_effects`, begin MUST refuse with
+`program_concurrency_exhausted` without consuming the execution right or
+moving any budget charge.
+
+Otherwise begin atomically consumes the ordinary execution right and moves
+every node charge from `reserved` to `consumed` before releasing the invocation
+capability. The occurrence becomes `INVOKING`. Once begin succeeds, neither a
+provider refusal, timeout, nor an indeterminate result restores the occurrence
+or budget.
 
 Program-aware release and expiry are permitted only from `RESERVED`. They
 decrement each reserved budget charge, release the ordinary execution right and
@@ -471,8 +480,10 @@ after begin refuses because the execution right is consumed.
 
 `COMMITTED` and `PROVEN_NOT_COMMITTED` are terminal provider outcomes.
 `INDETERMINATE` records uncertainty after provider entry and keeps all charges
-consumed. Reconciliation may move it to either terminal outcome; reconciliation
-does not itself prove when the provider event occurred.
+consumed. `INDETERMINATE` also continues to occupy one concurrent-effect slot:
+uncertain work cannot be hidden by retrying around the ceiling. Reconciliation
+may move it to either terminal outcome and then releases that slot;
+reconciliation does not itself prove when the provider event occurred.
 
 A dependency is satisfied only when at least one occurrence of each named
 predecessor has a terminal state explicitly listed in that dependency.
@@ -532,7 +543,7 @@ projection:
   "reason": "program_schema_invalid",
   "program_digest": "sha256:... or null",
   "authorizer_id": "customer:... or null",
-  "claim_boundary": "typed_reachability_and_attempt_budget_not_intent_safety_effect_truth_or_complete_mediation"
+  "claim_boundary": "typed_reachability_attempt_budget_and_effect_concurrency_not_intent_safety_effect_truth_or_complete_mediation"
 }
 ```
 
@@ -609,7 +620,8 @@ canonical bytes, signatures, closed-shape checks, context bindings, and time
 boundaries. Passing every runtime trace establishes agreement with the abstract
 store-owned registration, authenticated action matching, current-status
 handling, admission-resource binding, total-history and indexed-count rules,
-authorization fence, and state transitions encoded by those traces.
+authorization fence, typed budgets, provider-entry concurrency ceiling, and
+state transitions encoded by those traces.
 
 It does not establish:
 
@@ -627,6 +639,6 @@ It does not establish:
   standardization, certification, or legal effect.
 
 The honest claim is: an occurrence was or was not admitted under one exact
-signed execution program according to this typed reachability and attempt-budget
-contract. It is not “intent verified,” “prompt injection detected,” or “effect
-truth proven.”
+signed execution program according to this typed reachability, attempt-budget,
+and concurrent-effect contract. It is not “intent verified,” “prompt injection
+detected,” or “effect truth proven.”

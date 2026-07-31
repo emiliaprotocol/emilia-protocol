@@ -23,7 +23,7 @@ import {
 } from './reliance-risk-crypto.js';
 
 export const BOUNDED_EXECUTION_PROGRAM_VERSION = 'EP-BOUNDED-EXECUTION-PROGRAM-v1';
-export const EXECUTION_PROGRAM_CLAIM_BOUNDARY = 'typed_reachability_and_attempt_budget_not_intent_safety_effect_truth_or_complete_mediation';
+export const EXECUTION_PROGRAM_CLAIM_BOUNDARY = 'typed_reachability_attempt_budget_and_effect_concurrency_not_intent_safety_effect_truth_or_complete_mediation';
 
 export const EXECUTION_PROGRAM_LIMITS = Object.freeze({
   budgets: 64,
@@ -32,6 +32,7 @@ export const EXECUTION_PROGRAM_LIMITS = Object.freeze({
   chargesPerNode: 64,
   maxOccurrences: 1_000_000,
   maxTotalOccurrences: 1_000_000,
+  maxConcurrentEffects: 1_000_000,
   maxBudget: Number.MAX_SAFE_INTEGER,
 });
 
@@ -39,7 +40,8 @@ const PROGRAM_KEYS = [
   '@version', 'program_id', 'tenant_id', 'version', 'subject_id', 'audience',
   'objective_digest', 'authorization_digest', 'presentation_digest',
   'supersedes_program_digest', 'issued_at', 'valid_from', 'expires_at',
-  'max_total_occurrences', 'budgets', 'nodes', 'claim_boundary',
+  'max_total_occurrences', 'max_concurrent_effects', 'budgets', 'nodes',
+  'claim_boundary',
 ] as const;
 const BUDGET_KEYS = ['budget_id', 'unit', 'limit'] as const;
 const NODE_KEYS = [
@@ -97,6 +99,7 @@ export interface BoundedExecutionProgramInput {
   valid_from: string;
   expires_at: string;
   max_total_occurrences: number;
+  max_concurrent_effects: number;
   budgets: ExecutionProgramBudget[];
   nodes: ExecutionProgramNode[];
 }
@@ -241,11 +244,14 @@ function normalizeProgram(input: unknown): RiskRecord {
   if (!Object.hasOwn(input, 'max_total_occurrences')) {
     throw new TypeError('program occurrence ceiling is invalid');
   }
+  if (!Object.hasOwn(input, 'max_concurrent_effects')) {
+    throw new TypeError('program concurrent-effect ceiling is invalid');
+  }
   if (!riskExact(input, [
     'program_id', 'tenant_id', 'version', 'subject_id', 'audience',
     'objective_digest', 'authorization_digest', 'presentation_digest',
     'supersedes_program_digest', 'issued_at', 'valid_from', 'expires_at',
-    'max_total_occurrences', 'budgets', 'nodes',
+    'max_total_occurrences', 'max_concurrent_effects', 'budgets', 'nodes',
   ])) throw new TypeError('program shape is invalid');
   if (!riskIdentifier(input.program_id)
       || !riskIdentifier(input.tenant_id)
@@ -268,6 +274,12 @@ function normalizeProgram(input: unknown): RiskRecord {
     EXECUTION_PROGRAM_LIMITS.maxTotalOccurrences,
   )) {
     throw new TypeError('program occurrence ceiling is invalid');
+  }
+  if (!positiveInteger(
+    input.max_concurrent_effects,
+    EXECUTION_PROGRAM_LIMITS.maxConcurrentEffects,
+  )) {
+    throw new TypeError('program concurrent-effect ceiling is invalid');
   }
   const issued = riskInstant(input.issued_at);
   const active = riskInstant(input.valid_from);
@@ -316,6 +328,7 @@ function normalizeProgram(input: unknown): RiskRecord {
     valid_from: new Date(active).toISOString(),
     expires_at: new Date(expires).toISOString(),
     max_total_occurrences: input.max_total_occurrences,
+    max_concurrent_effects: input.max_concurrent_effects,
     budgets,
     nodes,
   };

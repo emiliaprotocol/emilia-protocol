@@ -157,6 +157,7 @@
   "valid_from": "2026-07-30T20:00:00.000Z",
   "expires_at": "2026-07-30T21:00:00.000Z",
   "max_total_occurrences": 64,
+  "max_concurrent_effects": 4,
   "budgets": [
     { "budget_id": "attempts", "unit": "attempt", "limit": 3 }
   ],
@@ -188,6 +189,11 @@
       integer no greater than 1000000. It limits all retained occurrence
       records for the program, including occurrences later released before
       provider entry. Omission is a schema error.</t>
+      <t><tt>max_concurrent_effects</tt> is REQUIRED and MUST be a positive
+      safe integer no greater than 1000000. It limits the number of occurrences
+      for this program that can be in <tt>INVOKING</tt> or
+      <tt>INDETERMINATE</tt>. Reservation does not consume this ceiling;
+      provider entry does. Omission is a schema error.</t>
 
       <section anchor="budgets">
         <name>Budgets</name>
@@ -328,7 +334,7 @@ LCALPHA        = %x61-7A
       <t>In that example, <tt>CLAIM_BOUNDARY</tt> is the concatenation, with no
       intervening octets, of the following two ASCII strings:</t>
       <sourcecode type="text"><![CDATA[
-"typed_reachability_and_attempt_budget_not_" ||
+"typed_reachability_attempt_budget_and_effect_concurrency_not_" ||
 "intent_safety_effect_truth_or_complete_mediation"
 ]]></sourcecode>
       <t>The <tt>||</tt> notation in this display means byte concatenation; it
@@ -615,10 +621,17 @@ RESERVED -> RELEASED
         program-aware begin, release, or expiry path MUST refuse an admission
         that lacks the exact execution-program association.</t>
         <t>Program-aware begin MUST recheck store-authoritative program status,
-        program validity, and ordinary admission currentness, then atomically
-        consume the ordinary one-time execution right, move each node charge
-        from reserved to consumed, and set the occurrence to
-        <tt>INVOKING</tt> before releasing an invocation capability. If program
+        program validity, ordinary admission currentness, and the signed
+        concurrent-effect ceiling. Immediately before releasing the invocation
+        capability, the store MUST count every occurrence for this exact
+        program in <tt>INVOKING</tt> or <tt>INDETERMINATE</tt>. If the count is
+        greater than or equal to <tt>max_concurrent_effects</tt>, begin MUST
+        refuse with <tt>program_concurrency_exhausted</tt> without consuming
+        the execution right or moving any budget charge.</t>
+        <t>Otherwise begin atomically consumes the ordinary one-time execution
+        right, moves each node charge from reserved to consumed, and sets the
+        occurrence to <tt>INVOKING</tt> before releasing an invocation
+        capability. If program
         status is suspended, revoked, stale, unavailable, malformed, or expired,
         or if ordinary currentness fails before provider entry, the store MUST
         atomically release the ordinary reservation and resources, node
@@ -639,8 +652,9 @@ RESERVED -> RELEASED
         <name>Outcomes, Dependencies, and Reconciliation</name>
         <t><tt>COMMITTED</tt> and <tt>PROVEN_NOT_COMMITTED</tt> are terminal
         provider outcomes. <tt>INDETERMINATE</tt> records uncertainty after
-        provider entry and retains all consumed charges. Reconciliation MAY
-        move an indeterminate occurrence to either terminal outcome.
+        provider entry, retains all consumed charges, and continues to occupy
+        one concurrent-effect slot. Reconciliation MAY move an indeterminate
+        occurrence to either terminal outcome and then releases that slot.
         Reconciliation does not itself prove when the provider event occurred.</t>
         <t>A dependency is satisfied only when at least one occurrence of each
         named predecessor has a terminal state explicitly listed by that
@@ -706,6 +720,7 @@ RESERVED -> RELEASED
           <tr><td><tt>program_occurrence_exhausted</tt></td><td>The node occurrence ceiling is unavailable.</td></tr>
           <tr><td><tt>program_total_occurrence_exhausted</tt></td><td>The retained total-history ceiling is exhausted.</td></tr>
           <tr><td><tt>program_budget_exhausted</tt></td><td>At least one aggregate attempt budget is unavailable.</td></tr>
+          <tr><td><tt>program_concurrency_exhausted</tt></td><td>The signed concurrent-effect ceiling is occupied.</td></tr>
           <tr><td><tt>program_expiration_mismatch</tt></td><td>The admission expires after the program.</td></tr>
           <tr><td><tt>program_suspended</tt></td><td>The authoritative current status is suspended.</td></tr>
           <tr><td><tt>program_revoked</tt></td><td>The authoritative current status is revoked.</td></tr>
@@ -752,9 +767,10 @@ RESERVED -> RELEASED
       have complete mediation. Such a deployment MUST NOT claim program-wide
       enforcement merely because the signed object verifies.</t>
       <t><tt>INDETERMINATE</tt> is material uncertainty, not failure and not
-      permission to retry. Reconciliation can change the recorded provider
-      outcome but cannot reconstruct event order from evidence that does not
-      establish it.</t>
+      permission to retry. It continues to occupy a concurrent-effect slot
+      until authenticated reconciliation records a terminal outcome.
+      Reconciliation can change the recorded provider outcome but cannot
+      reconstruct event order from evidence that does not establish it.</t>
     </section>
 
     <section anchor="privacy">
@@ -818,7 +834,7 @@ RESERVED -> RELEASED
       refused an occurrence according to that program's typed reachability,
       current-status, total-history, node-occurrence, attempt-budget,
       AdmissionSnapshot-binding, and supersession rules within one transaction
-      domain.</t>
+      domain, including the signed provider-entry concurrency ceiling.</t>
       <t>It does not establish that natural-language intent was understood or
       correctly compiled; that an action profile is sound; that a plan is safe,
       lawful, optimal, or free of prompt injection; that provider evidence,

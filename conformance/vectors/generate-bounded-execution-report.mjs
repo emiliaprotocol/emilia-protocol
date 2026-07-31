@@ -89,6 +89,7 @@ const PROGRAM_INPUT = {
   valid_from: REPORT_START,
   expires_at: '2026-07-30T21:00:00.000Z',
   max_total_occurrences: 2,
+  max_concurrent_effects: 1,
   budgets: [{ budget_id: 'attempts', unit: 'attempt', limit: 1 }],
   nodes: [{
     node_id: 'inspect',

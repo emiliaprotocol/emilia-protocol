@@ -50,6 +50,7 @@ function program() {
     valid_from: '2026-07-29T20:00:00.000Z',
     expires_at: '2026-07-29T21:00:00.000Z',
     max_total_occurrences: 3,
+    max_concurrent_effects: 2,
     budgets: [
       { budget_id: 'attempts', unit: 'attempt', limit: 3 },
       { budget_id: 'change-risk', unit: 'risk-point', limit: 5 },
@@ -187,6 +188,20 @@ test('program construction rejects unknown fields, cycles, and invalid budgets',
   assert.throws(
     () => signBoundedExecutionProgram(excessive, material.signer),
     /program occurrence ceiling is invalid/,
+  );
+
+  const missingConcurrency = program();
+  delete (missingConcurrency as any).max_concurrent_effects;
+  assert.throws(
+    () => signBoundedExecutionProgram(missingConcurrency, material.signer),
+    /program concurrent-effect ceiling is invalid/,
+  );
+
+  const excessiveConcurrency = program();
+  excessiveConcurrency.max_concurrent_effects = 1_000_001;
+  assert.throws(
+    () => signBoundedExecutionProgram(excessiveConcurrency, material.signer),
+    /program concurrent-effect ceiling is invalid/,
   );
 });
 

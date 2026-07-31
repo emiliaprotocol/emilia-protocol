@@ -7,7 +7,7 @@
  */
 import { type RiskRecord, type TrustedRiskKeys } from './reliance-risk-crypto.js';
 export declare const BOUNDED_EXECUTION_PROGRAM_VERSION = "EP-BOUNDED-EXECUTION-PROGRAM-v1";
-export declare const EXECUTION_PROGRAM_CLAIM_BOUNDARY = "typed_reachability_and_attempt_budget_not_intent_safety_effect_truth_or_complete_mediation";
+export declare const EXECUTION_PROGRAM_CLAIM_BOUNDARY = "typed_reachability_attempt_budget_and_effect_concurrency_not_intent_safety_effect_truth_or_complete_mediation";
 export declare const EXECUTION_PROGRAM_LIMITS: Readonly<{
     budgets: 64;
     nodes: 256;
@@ -15,6 +15,7 @@ export declare const EXECUTION_PROGRAM_LIMITS: Readonly<{
     chargesPerNode: 64;
     maxOccurrences: 1000000;
     maxTotalOccurrences: 1000000;
+    maxConcurrentEffects: 1000000;
     maxBudget: number;
 }>;
 export type ExecutionProgramTerminalOutcome = 'COMMITTED' | 'PROVEN_NOT_COMMITTED';
@@ -62,6 +63,7 @@ export interface BoundedExecutionProgramInput {
     valid_from: string;
     expires_at: string;
     max_total_occurrences: number;
+    max_concurrent_effects: number;
     budgets: ExecutionProgramBudget[];
     nodes: ExecutionProgramNode[];
 }

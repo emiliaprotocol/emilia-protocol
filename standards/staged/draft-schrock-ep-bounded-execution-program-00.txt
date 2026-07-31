@@ -78,31 +78,31 @@ Table of Contents
      1.1.  Requirements Language . . . . . . . . . . . . . . . . . .   3
      1.2.  Scope and Layer Boundaries  . . . . . . . . . . . . . . .   3
    2.  Terminology . . . . . . . . . . . . . . . . . . . . . . . . .   4
-   3.  Closed Signed Program . . . . . . . . . . . . . . . . . . . .   4
+   3.  Closed Signed Program . . . . . . . . . . . . . . . . . . . .   5
      3.1.  Budgets . . . . . . . . . . . . . . . . . . . . . . . . .   6
      3.2.  Nodes . . . . . . . . . . . . . . . . . . . . . . . . . .   6
      3.3.  Action Selectors  . . . . . . . . . . . . . . . . . . . .   7
      3.4.  Closed-Shape Processing . . . . . . . . . . . . . . . . .   8
    4.  Canonicalization, Signature, and Program Digest . . . . . . .   8
-   5.  Verification and Registration . . . . . . . . . . . . . . . .   9
-     5.1.  Authorization-Digest Ordinary-Path Fence  . . . . . . . .  10
+   5.  Verification and Registration . . . . . . . . . . . . . . . .  10
+     5.1.  Authorization-Digest Ordinary-Path Fence  . . . . . . . .  11
      5.2.  Store-Authoritative Current Status  . . . . . . . . . . .  11
    6.  Deterministic AdmissionSnapshot Binding . . . . . . . . . . .  12
-   7.  Program-Aware Runtime . . . . . . . . . . . . . . . . . . . .  13
-     7.1.  Reservation . . . . . . . . . . . . . . . . . . . . . . .  13
-     7.2.  Total-History and Indexed Reachability Fences . . . . . .  14
-     7.3.  Begin, Release, and Expiry  . . . . . . . . . . . . . . .  15
+   7.  Program-Aware Runtime . . . . . . . . . . . . . . . . . . . .  14
+     7.1.  Reservation . . . . . . . . . . . . . . . . . . . . . . .  14
+     7.2.  Total-History and Indexed Reachability Fences . . . . . .  15
+     7.3.  Begin, Release, and Expiry  . . . . . . . . . . . . . . .  16
      7.4.  Outcomes, Dependencies, and Reconciliation  . . . . . . .  16
-   8.  Supersession and Replanning . . . . . . . . . . . . . . . . .  16
-   9.  Refusal Semantics . . . . . . . . . . . . . . . . . . . . . .  17
-   10. Security Considerations . . . . . . . . . . . . . . . . . . .  18
-   11. Privacy Considerations  . . . . . . . . . . . . . . . . . . .  19
-   12. Implementation Status . . . . . . . . . . . . . . . . . . . .  20
-   13. Operational Reporting (Informative) . . . . . . . . . . . . .  20
-   14. IANA Considerations . . . . . . . . . . . . . . . . . . . . .  20
-   15. Claim Boundary  . . . . . . . . . . . . . . . . . . . . . . .  21
-   16. Normative References  . . . . . . . . . . . . . . . . . . . .  21
-   Author's Address  . . . . . . . . . . . . . . . . . . . . . . . .  22
+   8.  Supersession and Replanning . . . . . . . . . . . . . . . . .  17
+   9.  Refusal Semantics . . . . . . . . . . . . . . . . . . . . . .  18
+   10. Security Considerations . . . . . . . . . . . . . . . . . . .  19
+   11. Privacy Considerations  . . . . . . . . . . . . . . . . . . .  20
+   12. Implementation Status . . . . . . . . . . . . . . . . . . . .  21
+   13. Operational Reporting (Informative) . . . . . . . . . . . . .  21
+   14. IANA Considerations . . . . . . . . . . . . . . . . . . . . .  21
+   15. Claim Boundary  . . . . . . . . . . . . . . . . . . . . . . .  22
+   16. Normative References  . . . . . . . . . . . . . . . . . . . .  22
+   Author's Address  . . . . . . . . . . . . . . . . . . . . . . . .  23
 
 
 
@@ -176,6 +176,15 @@ Internet-Draft            EP Bounded Execution                 July 2026
    integrity, or legal authority.  Those claims require their own
    authenticated evidence and relying-party acceptance rules.
 
+   This profile is complementary to software-supply-chain frameworks
+   such as in-toto.  In-toto verifies signed layouts and signed evidence
+   that designated functionaries performed supply-chain steps.  This
+   profile instead governs live consequence admission: it controls a
+   one-time execution right under current authorization, occurrence
+   ceilings, aggregate attempt budgets, post-entry uncertainty, and
+   authenticated reconciliation.  It does not replace in-toto or claim
+   that no other system can express ordered work.
+
 2.  Terminology
 
    Execution Program:  The immutable signed artifact defined in
@@ -209,15 +218,6 @@ Internet-Draft            EP Bounded Execution                 July 2026
 
    Terminal provider outcome:  Either COMMITTED or PROVEN_NOT_COMMITTED.
 
-   Current program status:  A store-authoritative ACTIVE, SUSPENDED, or
-      REVOKED observation for the exact program version and digest.
-
-3.  Closed Signed Program
-
-   The unsigned construction input is a closed I-JSON object [RFC7493]
-   containing exactly the following members:
-
-
 
 
 
@@ -225,6 +225,14 @@ Schrock                  Expires 31 January 2027                [Page 4]
 
 Internet-Draft            EP Bounded Execution                 July 2026
 
+
+   Current program status:  A store-authoritative ACTIVE, SUSPENDED, or
+      REVOKED observation for the exact program version and digest.
+
+3.  Closed Signed Program
+
+   The unsigned construction input is a closed I-JSON object [RFC7493]
+   containing exactly the following members:
 
    {
      "program_id": "program:production-remediation:01",
@@ -240,6 +248,7 @@ Internet-Draft            EP Bounded Execution                 July 2026
      "valid_from": "2026-07-30T20:00:00.000Z",
      "expires_at": "2026-07-30T21:00:00.000Z",
      "max_total_occurrences": 64,
+     "max_concurrent_effects": 4,
      "budgets": [
        { "budget_id": "attempts", "unit": "attempt", "limit": 3 }
      ],
@@ -265,6 +274,14 @@ Internet-Draft            EP Bounded Execution                 July 2026
    selected by the authorizer; it does not prove display integrity,
    human comprehension, or informed consent.
 
+
+
+
+Schrock                  Expires 31 January 2027                [Page 5]
+
+Internet-Draft            EP Bounded Execution                 July 2026
+
+
    The three times use the RFC 3339 [RFC3339] date-time production
    restricted to UTC with a trailing Z.  They MUST satisfy issued_at <=
    valid_from < expires_at.  Expiration is exclusive.
@@ -274,13 +291,11 @@ Internet-Draft            EP Bounded Execution                 July 2026
    for the program, including occurrences later released before provider
    entry.  Omission is a schema error.
 
-
-
-
-Schrock                  Expires 31 January 2027                [Page 5]
-
-Internet-Draft            EP Bounded Execution                 July 2026
-
+   max_concurrent_effects is REQUIRED and MUST be a positive safe
+   integer no greater than 1000000.  It limits the number of occurrences
+   for this program that can be in INVOKING or INDETERMINATE.
+   Reservation does not consume this ceiling; provider entry does.
+   Omission is a schema error.
 
 3.1.  Budgets
 
@@ -302,6 +317,26 @@ Internet-Draft            EP Bounded Execution                 July 2026
    nodes contains between 1 and 256 closed node objects.  Node
    identifiers MUST be unique.  The complete dependency graph MUST be
    acyclic and contain at least one root.
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+Schrock                  Expires 31 January 2027                [Page 6]
+
+Internet-Draft            EP Bounded Execution                 July 2026
+
 
    {
      "node_id": "remediate",
@@ -331,13 +366,6 @@ Internet-Draft            EP Bounded Execution                 July 2026
    invoking, expired, and indeterminate states are not dependency
    outcomes.
 
-
-
-Schrock                  Expires 31 January 2027                [Page 6]
-
-Internet-Draft            EP Bounded Execution                 July 2026
-
-
    charges contains between 1 and 64 objects with unique budget
    identifiers.  Every identifier MUST name a declared budget.  Each
    amount MUST be positive and MUST NOT exceed that budget's total
@@ -357,6 +385,14 @@ Internet-Draft            EP Bounded Execution                 July 2026
    digest MUST exactly equal the AdmissionSnapshot values.  This version
    accepts the following closed CAID syntax, using the core ABNF rules
    from [RFC5234]:
+
+
+
+
+Schrock                  Expires 31 January 2027                [Page 7]
+
+Internet-Draft            EP Bounded Execution                 July 2026
+
 
    caid           = "caid:1:" action-name "." action-version
                     ":jcs-sha256:" digest43
@@ -380,19 +416,6 @@ Internet-Draft            EP Bounded Execution                 July 2026
    program subject, operation ID, CAID, action digest, verifier ID,
    evidence payload digest, evidence trust-configuration digest, trust
    epoch, and AdmissionSnapshot trust-configuration digest.
-
-
-
-
-
-
-
-
-
-Schrock                  Expires 31 January 2027                [Page 7]
-
-Internet-Draft            EP Bounded Execution                 July 2026
-
 
    The AdmissionSnapshot MUST already contain that evidence payload in
    its singleton aeb input.  The input subject MUST equal the program
@@ -420,6 +443,13 @@ Internet-Draft            EP Bounded Execution                 July 2026
 
    2.  Sort budgets by the UTF-8 byte order of budget_id.
 
+
+
+Schrock                  Expires 31 January 2027                [Page 8]
+
+Internet-Draft            EP Bounded Execution                 July 2026
+
+
    3.  Sort nodes by the UTF-8 byte order of node_id.
 
    4.  Sort dependencies by the UTF-8 byte order of predecessor node_id.
@@ -441,16 +471,7 @@ Internet-Draft            EP Bounded Execution                 July 2026
    In that example, CLAIM_BOUNDARY is the concatenation, with no
    intervening octets, of the following two ASCII strings:
 
-
-
-
-
-Schrock                  Expires 31 January 2027                [Page 8]
-
-Internet-Draft            EP Bounded Execution                 July 2026
-
-
-   "typed_reachability_and_attempt_budget_not_" ||
+   "typed_reachability_attempt_budget_and_effect_concurrency_not_" ||
    "intent_safety_effect_truth_or_complete_mediation"
 
    The || notation in this display means byte concatenation; it is not
@@ -474,6 +495,17 @@ Internet-Draft            EP Bounded Execution                 July 2026
      "signature_b64u": "<canonical unpadded base64url>"
    }
 
+
+
+
+
+
+
+Schrock                  Expires 31 January 2027                [Page 9]
+
+Internet-Draft            EP Bounded Execution                 July 2026
+
+
    proof.key_id MUST equal issuer.key_id.  The signature uses Ed25519
    [RFC8032].  The signature value uses the URL- and filename-safe
    Base64 alphabet without padding [RFC4648] and MUST decode to exactly
@@ -494,17 +526,6 @@ Internet-Draft            EP Bounded Execution                 July 2026
    program_authorizer, and one of ACTIVE, SUSPENDED, or REVOKED.  Only a
    pin whose role is program_authorizer and whose key status is ACTIVE
    is eligible to register or supersede a v1 program.
-
-
-
-
-
-
-
-Schrock                  Expires 31 January 2027                [Page 9]
-
-Internet-Draft            EP Bounded Execution                 July 2026
-
 
    The artifact's issuer.key_id can select only among those store-owned
    eligible pins; it cannot create or alter a trust root.  The store
@@ -532,6 +553,15 @@ Internet-Draft            EP Bounded Execution                 July 2026
    noncanonical, open-shaped, context-substituted, inactive-key, or
    time-invalid program MUST be refused.
 
+
+
+
+
+Schrock                  Expires 31 January 2027               [Page 10]
+
+Internet-Draft            EP Bounded Execution                 July 2026
+
+
 5.1.  Authorization-Digest Ordinary-Path Fence
 
    Registration and ordinary admission reserve MUST serialize on a
@@ -554,14 +584,6 @@ Internet-Draft            EP Bounded Execution                 July 2026
    An ordinary reserve that observes a program-required fence MUST
    refuse with program_required and make no state change.  The
    registration and ordinary-reserve decisions MUST use the same
-
-
-
-Schrock                  Expires 31 January 2027               [Page 10]
-
-Internet-Draft            EP Bounded Execution                 July 2026
-
-
    serialization mechanism so that neither can race past the other.
    Once program-required, the fence MUST NOT reopen merely because an
    occurrence is released, expires, reaches a terminal outcome, or the
@@ -589,6 +611,13 @@ Internet-Draft            EP Bounded Execution                 July 2026
    response instant, so a response that becomes stale while the source
    is queried cannot authorize reservation or provider entry.
 
+
+
+Schrock                  Expires 31 January 2027               [Page 11]
+
+Internet-Draft            EP Bounded Execution                 July 2026
+
+
    Status is one of ACTIVE, SUSPENDED, or REVOKED.  Only a current
    ACTIVE observation permits reservation or begin.  SUSPENDED refuses
    with program_suspended.  REVOKED refuses with program_revoked and is
@@ -610,14 +639,6 @@ Internet-Draft            EP Bounded Execution                 July 2026
    count remain fenced.  Work already INVOKING or INDETERMINATE remains
    reconcilable.
 
-
-
-
-Schrock                  Expires 31 January 2027               [Page 11]
-
-Internet-Draft            EP Bounded Execution                 July 2026
-
-
 6.  Deterministic AdmissionSnapshot Binding
 
    A program occurrence MUST be represented inside its immutable
@@ -635,6 +656,23 @@ Internet-Draft            EP Bounded Execution                 July 2026
    }
 
    The resource fields are computed exactly as follows:
+
+
+
+
+
+
+
+
+
+
+
+
+
+Schrock                  Expires 31 January 2027               [Page 12]
+
+Internet-Draft            EP Bounded Execution                 July 2026
+
 
    identity_tuple = [tenant_id, program_digest, node_id, occurrence_id]
    identity_domain =
@@ -667,13 +705,6 @@ Internet-Draft            EP Bounded Execution                 July 2026
    raw caller- controlled identifiers, ambiguous delimiter
    concatenation, or another tuple encoding.
 
-
-
-Schrock                  Expires 31 January 2027               [Page 12]
-
-Internet-Draft            EP Bounded Execution                 July 2026
-
-
    If the caller supplies mutable AdmissionSnapshot input without this
    resource, the program-aware store MUST add the resource and then
    compute the snapshot digest.  If the caller supplies a precomputed
@@ -688,6 +719,16 @@ Internet-Draft            EP Bounded Execution                 July 2026
    authorization_digest; the AdmissionSnapshot authorization policy
    digest to equal the node's trust_program_digest; and the exact or
    profile action match defined in Section 3.3.
+
+
+
+
+
+
+Schrock                  Expires 31 January 2027               [Page 13]
+
+Internet-Draft            EP Bounded Execution                 July 2026
+
 
    The normalized AdmissionSnapshot expiry MUST be no later than the
    signed program expiry.  A later admission expiry MUST refuse with
@@ -720,16 +761,6 @@ Internet-Draft            EP Bounded Execution                 July 2026
    A program-aware reservation MUST atomically verify all of the
    following:
 
-
-
-
-
-
-Schrock                  Expires 31 January 2027               [Page 13]
-
-Internet-Draft            EP Bounded Execution                 July 2026
-
-
    *  the active program digest, tenant, version, validity interval,
       fresh store-authoritative ACTIVE status, and authorization- digest
       fence;
@@ -746,6 +777,14 @@ Internet-Draft            EP Bounded Execution                 July 2026
    *  total_occurrences < max_total_occurrences;
 
    *  the remaining non-released node occurrence ceiling;
+
+
+
+
+Schrock                  Expires 31 January 2027               [Page 14]
+
+Internet-Draft            EP Bounded Execution                 July 2026
+
 
    *  for every node charge, reserved + consumed + amount <= limit;
 
@@ -778,14 +817,6 @@ Internet-Draft            EP Bounded Execution                 July 2026
    program_total_occurrence_exhausted when it reaches the signed
    max_total_occurrences.
 
-
-
-
-Schrock                  Expires 31 January 2027               [Page 14]
-
-Internet-Draft            EP Bounded Execution                 July 2026
-
-
    The total ceiling bounds retained history, not concurrent work.  The
    per-node max_occurrences ceiling separately counts non-released
    occurrences and restores capacity on pre-entry release.  A released
@@ -799,37 +830,6 @@ Internet-Draft            EP Bounded Execution                 July 2026
    reconcile exactly with retained occurrence records and MUST be
    updated in the same transaction as their source transition.
 
-7.3.  Begin, Release, and Expiry
-
-   The ordinary begin, release, and expiry paths MUST refuse a program-
-   linked admission with program_required.  Conversely, a program-aware
-   begin, release, or expiry path MUST refuse an admission that lacks
-   the exact execution-program association.
-
-   Program-aware begin MUST recheck store-authoritative program status,
-   program validity, and ordinary admission currentness, then atomically
-   consume the ordinary one-time execution right, move each node charge
-   from reserved to consumed, and set the occurrence to INVOKING before
-   releasing an invocation capability.  If program status is suspended,
-   revoked, stale, unavailable, malformed, or expired, or if ordinary
-   currentness fails before provider entry, the store MUST atomically
-   release the ordinary reservation and resources, node capacity, and
-   reserved budget charges.  The occurrence remains in total history as
-   RELEASED.
-
-   Once begin succeeds, provider refusal, timeout, or uncertainty MUST
-   NOT restore the occurrence or its attempt-budget charges.  This rule
-   prevents a retry from converting uncertainty after provider entry
-   into unbounded authority.
-
-   Program-aware release and expiry are permitted only from RESERVED.
-   They decrement every reserved node charge, release the ordinary
-   execution right and resources, and set the occurrence to RELEASED.
-   Release after begin MUST be refused because the execution right and
-   charges are already consumed.
-
-
-
 
 
 
@@ -842,13 +842,61 @@ Schrock                  Expires 31 January 2027               [Page 15]
 Internet-Draft            EP Bounded Execution                 July 2026
 
 
+7.3.  Begin, Release, and Expiry
+
+   The ordinary begin, release, and expiry paths MUST refuse a program-
+   linked admission with program_required.  Conversely, a program-aware
+   begin, release, or expiry path MUST refuse an admission that lacks
+   the exact execution-program association.
+
+   Program-aware begin MUST recheck store-authoritative program status,
+   program validity, ordinary admission currentness, and the signed
+   concurrent-effect ceiling.  Immediately before releasing the
+   invocation capability, the store MUST count every occurrence for this
+   exact program in INVOKING or INDETERMINATE.  If the count is greater
+   than or equal to max_concurrent_effects, begin MUST refuse with
+   program_concurrency_exhausted without consuming the execution right
+   or moving any budget charge.
+
+   Otherwise begin atomically consumes the ordinary one-time execution
+   right, moves each node charge from reserved to consumed, and sets the
+   occurrence to INVOKING before releasing an invocation capability.  If
+   program status is suspended, revoked, stale, unavailable, malformed,
+   or expired, or if ordinary currentness fails before provider entry,
+   the store MUST atomically release the ordinary reservation and
+   resources, node capacity, and reserved budget charges.  The
+   occurrence remains in total history as RELEASED.
+
+   Once begin succeeds, provider refusal, timeout, or uncertainty MUST
+   NOT restore the occurrence or its attempt-budget charges.  This rule
+   prevents a retry from converting uncertainty after provider entry
+   into unbounded authority.
+
+   Program-aware release and expiry are permitted only from RESERVED.
+   They decrement every reserved node charge, release the ordinary
+   execution right and resources, and set the occurrence to RELEASED.
+   Release after begin MUST be refused because the execution right and
+   charges are already consumed.
+
 7.4.  Outcomes, Dependencies, and Reconciliation
 
    COMMITTED and PROVEN_NOT_COMMITTED are terminal provider outcomes.
-   INDETERMINATE records uncertainty after provider entry and retains
-   all consumed charges.  Reconciliation MAY move an indeterminate
-   occurrence to either terminal outcome.  Reconciliation does not
-   itself prove when the provider event occurred.
+   INDETERMINATE records uncertainty after provider entry, retains all
+   consumed charges, and continues to occupy one concurrent-effect slot.
+   Reconciliation MAY move an indeterminate occurrence to either
+   terminal outcome and then releases that slot.  Reconciliation does
+   not itself prove when the provider event occurred.
+
+
+
+
+
+
+
+Schrock                  Expires 31 January 2027               [Page 16]
+
+Internet-Draft            EP Bounded Execution                 July 2026
+
 
    A dependency is satisfied only when at least one occurrence of each
    named predecessor has a terminal state explicitly listed by that
@@ -885,19 +933,6 @@ Internet-Draft            EP Bounded Execution                 July 2026
    path fence.  The predecessor then refuses new reservations and new
    invocation starts.
 
-
-
-
-
-
-
-
-
-Schrock                  Expires 31 January 2027               [Page 16]
-
-Internet-Draft            EP Bounded Execution                 July 2026
-
-
    Already invoking or indeterminate predecessor work remains
    reconcilable.  The successor starts with zero reserved and consumed
    budgets, total_occurrences zero, fresh node and terminal indexes, and
@@ -905,6 +940,19 @@ Internet-Draft            EP Bounded Execution                 July 2026
    MUST NOT silently carry forward.  A successor can depend on earlier
    effects only through separately verified evidence explicitly admitted
    by the successor's own action-specific Trust Program.
+
+
+
+
+
+
+
+
+
+Schrock                  Expires 31 January 2027               [Page 17]
+
+Internet-Draft            EP Bounded Execution                 July 2026
+
 
 9.  Refusal Semantics
 
@@ -946,14 +994,6 @@ Internet-Draft            EP Bounded Execution                 July 2026
      +------------------------------------+--------------------------+
      | program_occurrence_exhausted       | The node occurrence      |
      |                                    | ceiling is unavailable.  |
-
-
-
-Schrock                  Expires 31 January 2027               [Page 17]
-
-Internet-Draft            EP Bounded Execution                 July 2026
-
-
      +------------------------------------+--------------------------+
      | program_total_occurrence_exhausted | The retained total-      |
      |                                    | history ceiling is       |
@@ -962,6 +1002,18 @@ Internet-Draft            EP Bounded Execution                 July 2026
      | program_budget_exhausted           | At least one aggregate   |
      |                                    | attempt budget is        |
      |                                    | unavailable.             |
+
+
+
+Schrock                  Expires 31 January 2027               [Page 18]
+
+Internet-Draft            EP Bounded Execution                 July 2026
+
+
+     +------------------------------------+--------------------------+
+     | program_concurrency_exhausted      | The signed concurrent-   |
+     |                                    | effect ceiling is        |
+     |                                    | occupied.                |
      +------------------------------------+--------------------------+
      | program_expiration_mismatch        | The admission expires    |
      |                                    | after the program.       |
@@ -1002,16 +1054,17 @@ Internet-Draft            EP Bounded Execution                 July 2026
    retry after an indeterminate outcome.  Closed signed shapes, store-
    owned trust and clock, authenticated profile evidence, current
    status, total-history and occurrence fences, structured resource
+   keys, the authorization-digest fence, and one linearizable state
+   domain address those threats at the admission boundary.
 
 
 
-Schrock                  Expires 31 January 2027               [Page 18]
+
+
+Schrock                  Expires 31 January 2027               [Page 19]
 
 Internet-Draft            EP Bounded Execution                 July 2026
 
-
-   keys, the authorization-digest fence, and one linearizable state
-   domain address those threats at the admission boundary.
 
    Private signing keys and store-owned out-of-band key pins require
    lifecycle, rotation, compromise, role, suspension, revocation, and
@@ -1044,9 +1097,10 @@ Internet-Draft            EP Bounded Execution                 July 2026
    verifies.
 
    INDETERMINATE is material uncertainty, not failure and not permission
-   to retry.  Reconciliation can change the recorded provider outcome
-   but cannot reconstruct event order from evidence that does not
-   establish it.
+   to retry.  It continues to occupy a concurrent-effect slot until
+   authenticated reconciliation records a terminal outcome.
+   Reconciliation can change the recorded provider outcome but cannot
+   reconstruct event order from evidence that does not establish it.
 
 11.  Privacy Considerations
 
@@ -1061,7 +1115,9 @@ Internet-Draft            EP Bounded Execution                 July 2026
 
 
 
-Schrock                  Expires 31 January 2027               [Page 19]
+
+
+Schrock                  Expires 31 January 2027               [Page 20]
 
 Internet-Draft            EP Bounded Execution                 July 2026
 
@@ -1117,7 +1173,7 @@ Internet-Draft            EP Bounded Execution                 July 2026
 
 
 
-Schrock                  Expires 31 January 2027               [Page 20]
+Schrock                  Expires 31 January 2027               [Page 21]
 
 Internet-Draft            EP Bounded Execution                 July 2026
 
@@ -1129,7 +1185,8 @@ Internet-Draft            EP Bounded Execution                 July 2026
    admitted or refused an occurrence according to that program's typed
    reachability, current-status, total-history, node-occurrence,
    attempt-budget, AdmissionSnapshot-binding, and supersession rules
-   within one transaction domain.
+   within one transaction domain, including the signed provider-entry
+   concurrency ceiling.
 
    It does not establish that natural-language intent was understood or
    correctly compiled; that an action profile is sound; that a plan is
@@ -1166,17 +1223,21 @@ Internet-Draft            EP Bounded Execution                 July 2026
               DOI 10.17487/RFC7493, March 2015,
               <https://www.rfc-editor.org/info/rfc7493>.
 
+
+
+
+
+
+
+Schrock                  Expires 31 January 2027               [Page 22]
+
+Internet-Draft            EP Bounded Execution                 July 2026
+
+
    [RFC8032]  Josefsson, S. and I. Liusvaara, "Edwards-Curve Digital
               Signature Algorithm (EdDSA)", RFC 8032,
               DOI 10.17487/RFC8032, January 2017,
               <https://www.rfc-editor.org/info/rfc8032>.
-
-
-
-Schrock                  Expires 31 January 2027               [Page 21]
-
-Internet-Draft            EP Bounded Execution                 July 2026
-
 
    [RFC8174]  Leiba, B., "Ambiguity of Uppercase vs Lowercase in RFC
               2119 Key Words", BCP 14, RFC 8174, DOI 10.17487/RFC8174,
@@ -1224,9 +1285,4 @@ Author's Address
 
 
 
-
-
-
-
-
-Schrock                  Expires 31 January 2027               [Page 22]
+Schrock                  Expires 31 January 2027               [Page 23]

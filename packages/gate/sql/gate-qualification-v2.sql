@@ -2450,7 +2450,8 @@ BEGIN
        '@version', 'program_id', 'tenant_id', 'version', 'subject_id', 'audience',
        'objective_digest', 'authorization_digest', 'presentation_digest',
        'supersedes_program_digest', 'issued_at', 'valid_from', 'expires_at',
-       'max_total_occurrences', 'budgets', 'nodes', 'claim_boundary'
+       'max_total_occurrences', 'max_concurrent_effects', 'budgets', 'nodes',
+       'claim_boundary'
      ]) IS NOT TRUE
      OR p_program->>'@version' <> 'EP-BOUNDED-EXECUTION-PROGRAM-v1'
      OR p_program->>'tenant_id' <> p_tenant_id
@@ -2464,6 +2465,10 @@ BEGIN
        p_program->'max_total_occurrences'
      ) IS NOT TRUE
      OR (p_program->>'max_total_occurrences')::bigint < 1
+     OR public.ep_gate_jsonb_is_safe_nonnegative_integer(
+       p_program->'max_concurrent_effects'
+     ) IS NOT TRUE
+     OR (p_program->>'max_concurrent_effects')::bigint < 1
      OR public.ep_gate_jsonb_is_digest(p_program->'objective_digest') IS NOT TRUE
      OR public.ep_gate_jsonb_is_digest(p_program->'authorization_digest') IS NOT TRUE
      OR public.ep_gate_jsonb_is_digest(p_program->'presentation_digest') IS NOT TRUE
@@ -3150,6 +3155,16 @@ BEGIN
         AND state = 'RESERVED';
     IF NOT FOUND THEN RAISE EXCEPTION 'execution program status release race'; END IF;
     RETURN public.ep_gate_refusal(v_status_reason);
+  END IF;
+  IF (
+    SELECT count(*)
+    FROM public.ep_gate_execution_program_occurrences
+    WHERE deployment_id = p_deployment_id
+      AND tenant_id = p_tenant_id
+      AND program_digest = v_program_digest
+      AND state IN ('INVOKING', 'INDETERMINATE')
+  ) >= (v_program.program_json->>'max_concurrent_effects')::bigint THEN
+    RETURN public.ep_gate_refusal('program_concurrency_exhausted');
   END IF;
   v_result := public.ep_gate_admission_begin_invocation_core(
     p_deployment_id, p_tenant_id, p_admission_id, p_expected_revision,
@@ -3879,6 +3894,17 @@ BEGIN
         )
         OR p.total_occurrences > (p.program_json->>'max_total_occurrences')::bigint
       )
+    UNION ALL
+    SELECT p.program_digest || ':program_concurrent_effects_invalid'
+    FROM public.ep_gate_execution_programs p
+    WHERE p.deployment_id = p_deployment_id
+      AND (
+        SELECT count(*)
+        FROM public.ep_gate_execution_program_occurrences o
+        WHERE o.deployment_id = p.deployment_id
+          AND o.program_digest = p.program_digest
+          AND o.state IN ('INVOKING', 'INDETERMINATE')
+      ) > (p.program_json->>'max_concurrent_effects')::bigint
     UNION ALL
     SELECT a.authorization_digest || ':program_authorization_invalid'
     FROM public.ep_gate_execution_program_authorizations a

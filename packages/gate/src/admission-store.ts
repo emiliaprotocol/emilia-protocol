@@ -322,7 +322,8 @@ export type AdmissionRefusalReason =
   | 'program_revoked'
   | 'program_status_indeterminate'
   | 'program_superseded'
-  | 'program_budget_exhausted';
+  | 'program_budget_exhausted'
+  | 'program_concurrency_exhausted';
 export type AdmissionRefusal = { ok: false; reason: AdmissionRefusalReason };
 export type AdmissionTransitionResult = { ok: true; record: Readonly<AdmissionRecord> } | AdmissionRefusal;
 export type AdmissionReserveResult = {
@@ -547,6 +548,7 @@ export type ExecutionProgramRefusalReason =
   | 'program_total_occurrence_exhausted'
   | 'program_occurrence_conflict'
   | 'program_budget_exhausted'
+  | 'program_concurrency_exhausted'
   | 'program_expiration_mismatch'
   | 'program_suspended'
   | 'program_revoked'
@@ -1524,6 +1526,14 @@ export function createMemoryAdmissionStore(options: CreateMemoryAdmissionStoreOp
     const now = Date.parse(at);
     if (now < Date.parse(programState.program.valid_from)) return 'program_not_active';
     if (now >= Date.parse(programState.program.expires_at)) return 'program_expired';
+    const openEffects = [...executionProgramOccurrences.values()].filter((candidate) => (
+      candidate.tenant_id === programState.tenant_id
+      && candidate.program_digest === programState.program_digest
+      && (candidate.state === 'INVOKING' || candidate.state === 'INDETERMINATE')
+    )).length;
+    if (openEffects >= programState.program.max_concurrent_effects) {
+      return 'program_concurrency_exhausted';
+    }
     for (const charge of occurrence.charges) {
       const budget = programState.budgets.find((entry) => entry.budget_id === charge.budget_id);
       if (!budget || budget.reserved < charge.amount) return 'program_budget_exhausted';
@@ -1884,10 +1894,14 @@ export function createMemoryAdmissionStore(options: CreateMemoryAdmissionStoreOp
       const expectedNodeCounts = new Map<string, number>();
       const expectedTerminalCounts = new Map<string, number>();
       let expectedTotalOccurrences = 0;
+      let expectedOpenEffects = 0;
       for (const occurrence of executionProgramOccurrences.values()) {
         if (occurrence.tenant_id !== programState.tenant_id
             || occurrence.program_digest !== programState.program_digest) continue;
         expectedTotalOccurrences += 1;
+        if (occurrence.state === 'INVOKING' || occurrence.state === 'INDETERMINATE') {
+          expectedOpenEffects += 1;
+        }
         if (occurrence.state !== 'RELEASED') {
           const countKey = executionProgramNodeCountKey(
             occurrence.tenant_id,
@@ -1938,6 +1952,9 @@ export function createMemoryAdmissionStore(options: CreateMemoryAdmissionStoreOp
       if (programState.total_occurrences !== expectedTotalOccurrences
           || programState.total_occurrences > programState.program.max_total_occurrences) {
         violations.push(`${key}:program_total_occurrence_mismatch`);
+      }
+      if (expectedOpenEffects > programState.program.max_concurrent_effects) {
+        violations.push(`${key}:program_concurrent_effect_limit_exceeded`);
       }
       for (const node of programState.program.nodes) {
         const countKey = executionProgramNodeCountKey(

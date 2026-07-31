@@ -100,6 +100,7 @@ function program(version = 1, predecessor: string | null = null) {
     valid_from: NOW,
     expires_at: '2026-07-29T21:00:00.000Z',
     max_total_occurrences: 4,
+    max_concurrent_effects: 2,
     budgets: [
       { budget_id: 'attempts', unit: 'attempt', limit: 2 },
       { budget_id: 'change-risk', unit: 'risk-point', limit: 3 },
@@ -382,6 +383,71 @@ test('INDETERMINATE consumes the attempt but never unlocks a dependent node', as
   });
   assert.equal(state?.budgets[0].consumed, 1);
   assert.equal(state?.budgets[0].reserved, 0);
+});
+
+test('the signed concurrent-effect ceiling blocks provider entry until an open effect closes', async () => {
+  const reference = store();
+  const source = program();
+  source.max_concurrent_effects = 1;
+  source.max_total_occurrences = 2;
+  source.nodes = [source.nodes[0]];
+  source.nodes[0].max_occurrences = 2;
+  source.budgets = source.budgets.map((entry) => ({ ...entry, limit: 2 }));
+  const artifact = signBoundedExecutionProgram(source, MATERIAL.signer);
+  const registered = await reference.registerExecutionProgram(artifact, MATERIAL.context());
+  assert.equal(registered.ok, true);
+  if (!registered.ok) return;
+
+  const firstInput = admissionInput('inspect', 201);
+  const secondInput = admissionInput('inspect', 202);
+  const first = await reference.reserveExecutionProgramAdmission({
+    program_digest: registered.program.program_digest,
+    node_id: 'inspect',
+    occurrence_id: 'occurrence:concurrency:1',
+    admission: firstInput,
+  });
+  const second = await reference.reserveExecutionProgramAdmission({
+    program_digest: registered.program.program_digest,
+    node_id: 'inspect',
+    occurrence_id: 'occurrence:concurrency:2',
+    admission: secondInput,
+  });
+  assert.equal(first.ok, true);
+  assert.equal(second.ok, true);
+  if (!first.ok || !second.ok) return;
+
+  const firstBegun = await reference.beginExecutionProgramInvocation({
+    tenant_id: firstInput.tenant_id,
+    admission_id: firstInput.admission_id,
+    expected_revision: 0,
+    owner_token: first.owner_token,
+  });
+  assert.equal(firstBegun.ok, true);
+  if (!firstBegun.ok) return;
+  assert.deepEqual(await reference.beginExecutionProgramInvocation({
+    tenant_id: secondInput.tenant_id,
+    admission_id: secondInput.admission_id,
+    expected_revision: 0,
+    owner_token: second.owner_token,
+  }), { ok: false, reason: 'program_concurrency_exhausted' });
+
+  assert.equal((await reference.recordProviderOutcome({
+    tenant_id: firstInput.tenant_id,
+    admission_id: firstInput.admission_id,
+    expected_revision: 1,
+    owner_token: first.owner_token,
+    invocation_token: firstBegun.invocation_token,
+    value: 'COMMITTED',
+    evidence_digest: d('provider:concurrency:1'),
+    observed_at: NOW,
+  })).ok, true);
+  assert.equal((await reference.beginExecutionProgramInvocation({
+    tenant_id: secondInput.tenant_id,
+    admission_id: secondInput.admission_id,
+    expected_revision: 0,
+    owner_token: second.owner_token,
+  })).ok, true);
+  assert.deepEqual(await reference.checkInvariants(), { ok: true, violations: [] });
 });
 
 test('release before invocation restores occurrence and budget reservations', async () => {

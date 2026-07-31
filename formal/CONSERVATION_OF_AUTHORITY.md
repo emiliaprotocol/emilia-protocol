@@ -12,8 +12,9 @@ The exact citeable result in this repository is:
 
 > **[COA-B1]** In the checked finite scopes of EMILIA's TLC and Alloy models,
 > no modeled delegation or receipt-program transition creates authority beyond
-> its parent grant, reopens terminal authority, or permits a second provider
-> effect under the same stable operation identifier.
+> its parent grant, multiplies a parent balance across sibling delegations in
+> one authoritative state domain, reopens terminal authority, or permits a
+> second provider effect under the same stable operation identifier.
 
 Every qualifier in that sentence is load-bearing. “Checked finite scopes” means
 the exact model bounds below; “modeled” excludes implementation details the
@@ -29,8 +30,10 @@ hold:
 1. **Containment:** `scope(Ai) subseteq scope(Ai-1)`,
    `budget(Ai) <= budget(Ai-1)`, and
    `expiry(Ai) <= expiry(Ai-1)`.
-2. **No authority creation by structure:** delegation is acyclic, each hop is
-   uniquely identified, and the leaf cannot appear as its own ancestor.
+2. **No authority creation by structure or fan-out:** delegation is acyclic,
+   each operation binds one child, the leaf cannot appear as its own ancestor,
+   and aggregate registered sibling authority is funded by committed parent
+   delegation operations within one authoritative state domain.
 3. **Single-use consequence:** an effect can begin only for the attempt that
    owns the atomic reservation for `o`; no second attempt for `o` reaches the
    effect boundary.
@@ -49,6 +52,7 @@ underlying checker results.
 | Scope containment | `ep_handshake.tla`: `DelegateCannotExceedPrincipal` | Delegate scope remains a subset of principal scope in the bounded handshake state machine. |
 | Scope containment | `ep_relations.als`: `DelegationScopeRespected` | Every modeled delegation's scope is contained by its declared maximum scope. |
 | Budget containment | `ep_capability.tla`: `ReserveWithinBudget`, `DelegationAuthorityNonIncreasing`, `BudgetImmutable` | Reserved plus consumed spend does not exceed the immutable budget; delegated budget does not increase. |
+| Fan-out containment | `ep_capability.tla`: `DirectChildAuthorityIsFunded`, `AggregateSiblingAuthorityConserved`, `DelegationOperationBindingImmutable` | Registered direct-child authority is funded by committed parent delegation operations; aggregate siblings remain within the parent balance; one operation cannot be rebound to another child. |
 | Expiry containment | `ep_capability.tla`: `ChildExpiryBoundedByParent` | A child expiry does not exceed its parent's expiry. |
 | Structural non-creation | `ep_capability.tla`: `DelegationAcyclic`; `ep_delegation.als`: `DelegationAcyclic`, `DelegationIdsUnique`, `LeafIsNotItsOwnAncestor`, `AuthorityNonIncreasing` | The bounded capability path is acyclic, has unique hops, excludes the leaf as an ancestor, and does not increase amount along the chain. |
 | Single-use consequence | `ep_handshake.tla`: `ConsumeOnceSafety`; `ep_relations.als`: `NoDoubleConsumption`, `MultiActorNoDoubleConsume` | A modeled authorization/handshake has at most one consumption. |
@@ -68,8 +72,9 @@ the relevant model**, not to an unpinned or universally current registry.
 
 - `ep_handshake.tla`: one handshake, two actors, one policy, policy versions up
   to 2, one continuity claim, and at most 10 modeled events in the CI model.
-- `ep_capability.tla`: three capability atoms, two operation atoms, budget and
-  time domains `0..2`, and delegation depth at most 2.
+- `ep_capability.tla`: four capability atoms (one root and three possible
+  children), three operation atoms, budget and time domains `0..2`, and
+  delegation depth at most 2.
 - `ep_relations.als`: scope 6 for the delegation assertion and scope 8 for the
   multi-actor consumption assertion.
 - `ep_delegation.als`: scope 6, with 5-bit integers for amount monotonicity.
@@ -86,6 +91,7 @@ The property does **not** establish:
 
 - a refinement proof from TypeScript, SQL, or Solidity to the formal models;
 - unbounded delegation depth, attempts, operations, budgets, or concurrency;
+- conservation across independent stores, clouds, or offline replicas;
 - database serializability, durability, or reservation-token unpredictability;
 - cryptographic unforgeability or canonicalization correctness;
 - that CAID hashes do not collide;

@@ -40,6 +40,12 @@ normalized `ExecutionProgramRuntimeState`, including its embedded verified
 program, authenticated status metadata, total occurrence count, budgets, and
 supersession state.
 
+The signed program includes `max_concurrent_effects`. Report construction
+reconciles the number of `INVOKING` and `INDETERMINATE` occurrences against
+that ceiling. An `INDETERMINATE` occurrence remains an open effect for this
+purpose until authenticated reconciliation records `COMMITTED` or
+`PROVEN_NOT_COMMITTED`.
+
 ## Deterministic node buckets
 
 Each program node appears once in UTF-8 byte order:
@@ -106,6 +112,9 @@ The artifact reports Gate-recorded program occurrences only. It does not prove:
 - that the bounded program is safe, lawful, correct, or complete;
 - complete mediation of all mutation paths; or
 - the absence of actions performed outside Gate.
+
+The concurrency count is Gate-recorded admission state, not proof that an
+external provider is or is not still processing the request.
 
 In particular, “executed outside the plan” is not claimed by this artifact.
 That comparison requires a separately signed external inventory root with its

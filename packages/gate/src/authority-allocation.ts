@@ -57,6 +57,11 @@ export interface AuthorityAllocationSnapshot {
   actions: readonly string[];
   audiences: readonly string[];
   budget: AuthorityAllocationBudget;
+  /**
+   * Maximum sibling allocations that may be active in this exact authority
+   * epoch. This is an allocation-count ceiling, not proof of process liveness.
+   */
+  max_active_children: number;
   expires_at: string;
   sibling_allocations: readonly AuthorityBranchAllocation[];
 }
@@ -341,6 +346,7 @@ function cloneSnapshot(snapshot: AuthorityAllocationSnapshot): AuthorityAllocati
     actions: [...snapshot.actions],
     audiences: [...snapshot.audiences],
     budget: { ...snapshot.budget },
+    max_active_children: snapshot.max_active_children,
     sibling_allocations: snapshot.sibling_allocations.map((allocation) => ({
       ...allocation,
       actions: [...allocation.actions],
@@ -360,6 +366,7 @@ function canonicalSnapshot(snapshot: AuthorityAllocationSnapshot): string {
     actions: snapshot.actions,
     audiences: snapshot.audiences,
     budget: snapshot.budget,
+    max_active_children: snapshot.max_active_children,
     expires_at: snapshot.expires_at,
     sibling_allocations: snapshot.sibling_allocations,
   });
@@ -413,9 +420,24 @@ export function validateAuthorityAllocationSnapshot(
   const parentActions = exactSet(input.actions, 'snapshot.actions');
   const parentAudiences = exactSet(input.audiences, 'snapshot.audiences');
   const parentBudget = budget(input.budget, 'snapshot.budget');
+  const maxActiveChildren = input.max_active_children;
+  if (!Number.isSafeInteger(maxActiveChildren)
+      || maxActiveChildren < 1
+      || maxActiveChildren > 1_000_000) {
+    fail(
+      'invalid_active_child_limit',
+      'snapshot.max_active_children must be a positive bounded safe integer',
+    );
+  }
   const parentExpiryMs = strictInstantMs(input.expires_at, 'snapshot.expires_at');
   if (!Array.isArray(input.sibling_allocations)) {
     fail('invalid_siblings', 'snapshot.sibling_allocations must be an array');
+  }
+  if (input.sibling_allocations.length > maxActiveChildren) {
+    fail(
+      'active_child_limit_exceeded',
+      'sibling allocations exceed snapshot.max_active_children',
+    );
   }
 
   const seen = new Set<string>();
@@ -471,6 +493,7 @@ export function validateAuthorityAllocationSnapshot(
     actions: parentActions,
     audiences: parentAudiences,
     budget: parentBudget,
+    max_active_children: maxActiveChildren,
     expires_at: input.expires_at,
     sibling_allocations: siblings,
   };

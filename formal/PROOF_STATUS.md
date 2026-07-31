@@ -107,6 +107,41 @@ TLC runs automatically in CI (`.github/workflows/tlc.yml`) on every push touchin
 
 ---
 
+## TLA+ — `ep_capability.tla`
+
+**Model checker:** TLC 2.19 (TLA+ tools `v1.7.4`, rev `5a47802`)
+**Verified parameters:** `Capabilities = {cap0, cap1, cap2, cap3}`,
+`Operations = {op1, op2, op3}`, `RootCap = cap0`, `MaxBudget = 2`,
+`MaxDelegates = 2`, and `MaxTick = 2`
+**Local execution:** 2026-07-31, pinned jar SHA-256
+`936a262061c914694dfd669a543be24573c45d5aa0ff20a8b96b23d01e050e88`
+**Result:** 1,420,626 states generated, 145,425 distinct states, complete
+depth 13 — **no error found** across 12 invariants and five temporal
+properties
+**Result evidence:** `formal/results/ep-capability.tlc.summary.txt`
+
+The configuration contains one root, three possible children, and three
+operation identifiers. It can therefore explore aggregate N=3 sibling
+allocation rather than only path-local or two-child narrowing. The checked
+properties include:
+
+- `DirectChildAuthorityIsFunded`: every registered direct child's budget is
+  backed by committed parent delegation spend;
+- `AggregateSiblingAuthorityConserved`: aggregate direct-child authority and
+  all outstanding reservations remain within the parent's immutable balance;
+- `DelegationOperationBindingImmutable`: one reserved delegation operation
+  cannot be rebound to a different parent, amount, child, or expiry; and
+- the existing path-narrowing, expiry, acyclicity, reserve/commit, monotonicity,
+  and single-commit properties.
+
+This result is bounded and scoped to one authoritative model state domain. It
+does not establish conservation across independent stores, clouds, or offline
+replicas. The executable reference tests deliberately demonstrate that two
+separate stores can each accept a locally valid allocation against the same
+parent authorization.
+
+---
+
 ## TLA+ — `ep_receipt_program.tla`
 
 **Model checker:** TLC 2.19 (TLA+ tools `v1.7.4`, rev `5a47802`)

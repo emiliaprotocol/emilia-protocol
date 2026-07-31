@@ -127,6 +127,7 @@ const BASE_INPUT = {
   valid_from: '2026-07-29T20:00:00Z',
   expires_at: '2026-07-29T21:00:00Z',
   max_total_occurrences: 3,
+  max_concurrent_effects: 2,
   // Intentionally unsorted. Canonical signing sorts budget_id bytewise.
   budgets: [
     { budget_id: 'change-risk', unit: 'risk-point', limit: 5 },
@@ -243,6 +244,7 @@ const TOTAL_OCCURRENCE_INPUT = {
   authorization_digest: digest('authorization:total-occurrence-ceiling'),
   presentation_digest: digest('presentation:total-occurrence-ceiling'),
   max_total_occurrences: 2,
+  max_concurrent_effects: 1,
   budgets: [{ budget_id: 'attempts', unit: 'attempt', limit: 10 }],
   nodes: [{
     ...clone(BASE_INPUT.nodes.find((node) => node.node_id === 'inspect')),
@@ -259,6 +261,7 @@ const DUPLICATE_UNIT_INPUT = {
   authorization_digest: digest('authorization:duplicate-unit-budgets'),
   presentation_digest: digest('presentation:duplicate-unit-budgets'),
   max_total_occurrences: 1,
+  max_concurrent_effects: 1,
   budgets: [
     { budget_id: 'attempts+foreground', unit: 'attempt', limit: 1 },
     { budget_id: 'attempts+background', unit: 'attempt', limit: 2 },
@@ -345,6 +348,12 @@ const hostileArtifacts = {
   }),
   signed_excessive_total_occurrence_ceiling: mutatePayload((payload) => {
     payload.max_total_occurrences = 1_000_001;
+  }),
+  signed_missing_concurrent_effect_ceiling: mutatePayload((payload) => {
+    delete payload.max_concurrent_effects;
+  }),
+  signed_excessive_concurrent_effect_ceiling: mutatePayload((payload) => {
+    payload.max_concurrent_effects = 1_000_001;
   }),
 };
 
@@ -1096,6 +1105,13 @@ function applyRuntimeOperation(state, operation, definitions) {
       releaseOccurrence(runtime, occurrence);
       return { ok: false, reason: statusRefusal };
     }
+    const openEffects = [...state.occurrences.values()].filter((candidate) => (
+      candidate.program_ref === operation.program_ref
+      && ['INVOKING', 'INDETERMINATE'].includes(candidate.state)
+    )).length;
+    if (openEffects >= runtime.definition.program.max_concurrent_effects) {
+      return { ok: false, reason: 'program_concurrency_exhausted' };
+    }
     for (const charge of occurrence.charges) {
       const budget = runtime.budgets.get(charge.budget_id);
       budget.reserved -= charge.amount;
@@ -1664,6 +1680,46 @@ function runtimeDefinitions(programs) {
           op: 'reserve', program_ref: 'total_occurrence_limit', node_id: 'inspect',
           occurrence_id: 'occurrence:total:2', admission: totalExact(),
         }, refuse('program_total_occurrence_exhausted')),
+      ],
+    },
+    {
+      id: 'hostile_concurrent_effect_ceiling_retains_indeterminate_slot',
+      classification: 'hostile',
+      purpose: 'Provider entry is bounded independently from reservation; INDETERMINATE holds the signed concurrency slot until authenticated reconciliation closes the uncertainty.',
+      steps: [
+        traceStep(register('total_occurrence_limit'), ok),
+        traceStep({
+          op: 'reserve', program_ref: 'total_occurrence_limit', node_id: 'inspect',
+          occurrence_id: 'occurrence:concurrency:0', admission: totalExact(),
+        }, ok),
+        traceStep({
+          op: 'reserve', program_ref: 'total_occurrence_limit', node_id: 'inspect',
+          occurrence_id: 'occurrence:concurrency:1', admission: totalExact(),
+        }, ok),
+        traceStep({
+          op: 'begin', program_ref: 'total_occurrence_limit',
+          occurrence_id: 'occurrence:concurrency:0',
+        }, ok),
+        traceStep({
+          op: 'begin', program_ref: 'total_occurrence_limit',
+          occurrence_id: 'occurrence:concurrency:1',
+        }, refuse('program_concurrency_exhausted')),
+        traceStep({
+          op: 'provider_outcome', program_ref: 'total_occurrence_limit',
+          occurrence_id: 'occurrence:concurrency:0', outcome: 'INDETERMINATE',
+        }, ok),
+        traceStep({
+          op: 'begin', program_ref: 'total_occurrence_limit',
+          occurrence_id: 'occurrence:concurrency:1',
+        }, refuse('program_concurrency_exhausted')),
+        traceStep({
+          op: 'provider_outcome', program_ref: 'total_occurrence_limit',
+          occurrence_id: 'occurrence:concurrency:0', outcome: 'COMMITTED',
+        }, ok),
+        traceStep({
+          op: 'begin', program_ref: 'total_occurrence_limit',
+          occurrence_id: 'occurrence:concurrency:1',
+        }, ok),
       ],
     },
     {

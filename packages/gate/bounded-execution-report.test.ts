@@ -72,6 +72,7 @@ function programInput() {
     valid_from: PROGRAM_NOW,
     expires_at: '2026-07-29T21:00:00.000Z',
     max_total_occurrences: 7,
+    max_concurrent_effects: 2,
     budgets: [{ budget_id: 'attempts', unit: 'attempt', limit: 10 }],
     nodes: [
       {

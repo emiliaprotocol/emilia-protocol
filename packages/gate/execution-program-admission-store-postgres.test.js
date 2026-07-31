@@ -58,6 +58,7 @@ function signedProgram() {
         valid_from: NOW,
         expires_at: '2026-07-29T21:00:00.000Z',
         max_total_occurrences: 1,
+        max_concurrent_effects: 1,
         budgets: [{ budget_id: 'attempts', unit: 'attempt', limit: 1 }],
         nodes: [{
                 node_id: 'inspect',
@@ -431,6 +432,7 @@ test('real PostgreSQL proves the complete execution-program lifecycle atomically
         valid_from: iso(now - 60_000),
         expires_at: iso(now + 15 * 60_000),
         max_total_occurrences: 7,
+        max_concurrent_effects: 2,
         budgets: [{ budget_id: 'attempts', unit: 'attempt', limit: 6 }],
         nodes,
     };

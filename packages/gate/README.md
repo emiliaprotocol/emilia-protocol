@@ -232,6 +232,12 @@ reservations plus one-time admission. The default strict policy remains
 
 ## Bounded execution programs
 
+The cross-module runtime composition is documented in
+[`Conserved Authority Runtime v1`](../../docs/protocol/conserved-authority-runtime-v1.md).
+It combines exact authority, sibling allocation, bounded capabilities, signed
+execution programs, credential-owning provider entry, and uncertainty without
+claiming cross-domain conservation.
+
 `@emilia-protocol/gate/bounded-execution-program` defines and verifies one
 signed, closed DAG of bounded autonomous actions. Each node pins either an
 exact CAID and action digest or a relying-party-pinned matching profile, one
@@ -258,9 +264,10 @@ replaces, the ordinary `AdmissionStore`. A standalone admission still owns one
 immutable operation snapshot, its resource reservations, execution right, and
 provider outcome. A program-linked admission must use the program-aware
 reserve, begin, release, and expiry methods so DAG reachability, occurrence
-limits, and program budget charges change in the same linearizable domain as
-the execution right. The memory implementation remains test-only and makes no
-durability or deployment claim.
+limits, typed program budget charges, and the signed concurrent-effect ceiling
+change in the same linearizable domain as the execution right. `INDETERMINATE`
+continues to occupy a concurrency slot until reconciliation. The memory
+implementation remains test-only and makes no durability or deployment claim.
 
 Registration fences the program's exact `authorization_digest`, preventing an
 ordinary admission under the same root authorization from bypassing the graph.
@@ -282,6 +289,11 @@ The adjacent surfaces remain separate:
   program orders eligible occurrences and accounts aggregate program charges;
   it neither mints capability authority nor replaces any capability receipt
   that the relying party requires.
+- Authority-allocation snapshots separately bind `max_active_children` for one
+  parent and refuse a wider same-domain sibling set. This is a bounded
+  allocation count, not proof that every registered child process is still
+  alive. Money, action occurrences, compute, and other consumable dimensions
+  remain typed budgets; concurrent effects remain a separate signed ceiling.
 - Signature and schema verification establish only the program's typed
   bindings. They do not prove intent, goal safety, provider or effect truth,
   complete mediation, or that any node is authorized or executed.
