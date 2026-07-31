@@ -16,6 +16,7 @@ const SECRET_KEY_PATTERNS: ReadonlyArray<{ re: RegExp; class: string }> = Object
   { re: /\bCREDENTIAL/, class: 'credential' },
   { re: /\bPRIVATE ?KEY\b/, class: 'private_key' },
   { re: /\bACCESS ?KEY\b/, class: 'access_key' },
+  { re: /\bKEY\b/, class: 'key' },
   { re: /\bSERVICE ?ROLE\b/, class: 'service_role' },
   { re: /\bAUTH(ORIZATION)?\b/, class: 'authorization' },
   { re: /\bBEARER\b/, class: 'bearer' },
@@ -142,11 +143,11 @@ export function redactText(text: unknown): string {
     (_match, kind: string) => `<redacted ${kind.toLowerCase()} credential>`,
   );
   out = out.replace(
-    /(--?(?:api[-_]?key|secret|token|password|passwd|credential|authorization|private[-_]?key|access[-_]?key|service[-_]?role|session|signing[-_]?key|dsn))(\s*=\s*|\s+)(?:"[^"]*"|'[^']*'|[^\s)"']+)/gi,
+    /(--?(?:key|api[-_]?key|secret|token|password|passwd|credential|authorization|private[-_]?key|access[-_]?key|service[-_]?role|session|signing[-_]?key|dsn))(\s*=\s*|\s+)(?:"[^"]*"|'[^']*'|[^\s)"']+)/gi,
     (_match, key: string, separator: string) => `${key}${separator.includes('=') ? '=' : ' '}<redacted credential>`,
   );
   out = out.replace(
-    /\b((?:[A-Za-z0-9]+[_-])*(?:api[_-]?key|secret|token|password|passwd|credential|authorization|private[_-]?key|access[_-]?key|service[_-]?role|session|signing[_-]?key|dsn))(\s*(?:=|:)\s*)(?:"[^"]*"|'[^']*'|[^\s)"']+)/gi,
+    /\b((?:[A-Za-z0-9]+[_-])*(?:key|api[_-]?key|secret|token|password|passwd|credential|authorization|private[_-]?key|access[_-]?key|service[_-]?role|session|signing[_-]?key|dsn))(\s*(?:=|:)\s*)(?:"[^"]*"|'[^']*'|[^\s)"']+)/gi,
     (_match, key: string, separator: string) => `${key}${separator}<redacted credential>`,
   );
   for (const shape of VALUE_SHAPES) {

@@ -1,7 +1,8 @@
 // SPDX-License-Identifier: Apache-2.0
 //
-// Passive discovery only: reads bounded configuration files, launches no
-// process, opens no network connection, and never unlocks a keychain.
+// Passive discovery only: scanner code reads bounded configuration files,
+// launches no configured server or child process, opens no network connection,
+// and never unlocks a keychain.
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
@@ -10,6 +11,8 @@ import { describeEnv, describeSecret, redactText, sanitizeArgs, sanitizeForRepor
 const MAX_CONFIG_BYTES = 8 * 1024 * 1024;
 const MAX_ENV_BYTES = 1024 * 1024;
 const MAX_ENV_FILES = 200;
+const MAX_SCAN_DIRECTORIES = 2_000;
+const MAX_DIRECTORY_ENTRIES = 5_000;
 function reportPath(value, home) {
     const resolvedHome = path.resolve(home);
     const resolvedValue = path.resolve(value);
@@ -38,6 +41,57 @@ function writableByCurrentProcess(value) {
         return false;
     }
 }
+function readBoundedRegularFile(file, maxBytes) {
+    let descriptor = null;
+    try {
+        const linkStat = fs.lstatSync(file);
+        if (linkStat.isSymbolicLink())
+            return { ok: false, status: 'symlink' };
+        if (!linkStat.isFile())
+            return { ok: false, status: 'unreadable' };
+        if (linkStat.size > maxBytes)
+            return { ok: false, status: 'too_large' };
+        const noFollow = typeof fs.constants.O_NOFOLLOW === 'number'
+            ? fs.constants.O_NOFOLLOW
+            : 0;
+        descriptor = fs.openSync(file, fs.constants.O_RDONLY | noFollow);
+        const openedStat = fs.fstatSync(descriptor);
+        if (!openedStat.isFile())
+            return { ok: false, status: 'unreadable' };
+        if (openedStat.size > maxBytes)
+            return { ok: false, status: 'too_large' };
+        const raw = fs.readFileSync(descriptor, 'utf8');
+        if (Buffer.byteLength(raw, 'utf8') > maxBytes) {
+            return { ok: false, status: 'too_large' };
+        }
+        return {
+            ok: true,
+            raw,
+            bytes: Buffer.byteLength(raw, 'utf8'),
+            status: 'read',
+        };
+    }
+    catch (error) {
+        const code = error?.code;
+        if (code === 'ENOENT')
+            return { ok: false, status: 'absent' };
+        if (code === 'ELOOP')
+            return { ok: false, status: 'symlink' };
+        if (code === 'EACCES' || code === 'EPERM')
+            return { ok: false, status: 'unreadable' };
+        return { ok: false, status: 'unreadable' };
+    }
+    finally {
+        if (descriptor !== null) {
+            try {
+                fs.closeSync(descriptor);
+            }
+            catch {
+                // The scan remains fail-closed even if descriptor cleanup reports an error.
+            }
+        }
+    }
+}
 function readJson(file) {
     if (path.extname(file).toLowerCase() !== '.json') {
         return {
@@ -46,11 +100,12 @@ function readJson(file) {
             format: path.extname(file).slice(1) || 'unknown',
         };
     }
+    const fileResult = readBoundedRegularFile(file, MAX_CONFIG_BYTES);
+    if (!fileResult.ok || fileResult.raw === undefined) {
+        return { ok: false, status: fileResult.status };
+    }
     try {
-        const stat = fs.statSync(file);
-        if (stat.size > MAX_CONFIG_BYTES)
-            return { ok: false, status: 'too_large' };
-        const raw = fs.readFileSync(file, 'utf8');
+        const raw = fileResult.raw;
         const gate = strictJsonGate(raw);
         if (!gate.ok)
             return { ok: false, status: 'malformed' };
@@ -61,15 +116,10 @@ function readJson(file) {
         return {
             ok: true,
             value: parsed,
-            bytes: Buffer.byteLength(raw, 'utf8'),
+            bytes: fileResult.bytes,
         };
     }
-    catch (error) {
-        const code = error?.code;
-        if (code === 'ENOENT')
-            return { ok: false, status: 'absent' };
-        if (code === 'EACCES' || code === 'EPERM')
-            return { ok: false, status: 'unreadable' };
+    catch {
         return { ok: false, status: 'malformed' };
     }
 }
@@ -225,16 +275,10 @@ export function credentialFiles(home = os.homedir()) {
     });
 }
 function envFileSecrets(file) {
-    let raw = '';
-    try {
-        const stat = fs.lstatSync(file);
-        if (stat.isSymbolicLink() || stat.size > MAX_ENV_BYTES)
-            return [];
-        raw = fs.readFileSync(file, 'utf8');
-    }
-    catch {
+    const fileResult = readBoundedRegularFile(file, MAX_ENV_BYTES);
+    if (!fileResult.ok || fileResult.raw === undefined)
         return [];
-    }
+    const raw = fileResult.raw;
     const out = [];
     for (const line of raw.split('\n')) {
         const match = /^\s*(?:export\s+)?([A-Za-z_][A-Za-z0-9_]*)\s*=\s*(.*)$/.exec(line);
@@ -253,35 +297,71 @@ function envFileSecrets(file) {
     }
     return out;
 }
-export function envFiles(cwd, home, maxDepth = 3) {
+function discoverEnvFiles(cwd, home, maxDepth = 3) {
     const found = [];
+    const limitations = new Set([
+        `environment-file search is bounded to depth ${maxDepth}, ${MAX_ENV_FILES} files, `
+            + `${MAX_SCAN_DIRECTORIES} directories, and ${MAX_DIRECTORY_ENTRIES} entries per directory`,
+    ]);
     const skip = new Set(['node_modules', '.git', '.next', 'dist', 'build', 'vendor', '.venv', 'Library']);
+    let directoriesVisited = 0;
     const walk = (directory, depth) => {
-        if (depth > maxDepth || found.length >= MAX_ENV_FILES)
+        if (depth > maxDepth)
             return;
-        let entries = [];
+        if (found.length >= MAX_ENV_FILES) {
+            limitations.add(`environment-file discovery reached its ${MAX_ENV_FILES}-file limit; additional files may be omitted`);
+            return;
+        }
+        if (directoriesVisited >= MAX_SCAN_DIRECTORIES) {
+            limitations.add(`environment-file discovery reached its ${MAX_SCAN_DIRECTORIES}-directory limit; additional directories may be omitted`);
+            return;
+        }
+        let handle = null;
         try {
-            entries = fs.readdirSync(directory, { withFileTypes: true });
+            handle = fs.opendirSync(directory);
+            directoriesVisited += 1;
         }
         catch {
             return;
         }
-        for (const entry of entries) {
-            if (entry.isSymbolicLink())
-                continue;
-            if (entry.isDirectory()) {
-                if (skip.has(entry.name) || (entry.name.startsWith('.') && entry.name !== '.config'))
+        try {
+            let entriesVisited = 0;
+            let entry;
+            while ((entry = handle.readSync()) !== null) {
+                entriesVisited += 1;
+                if (entriesVisited > MAX_DIRECTORY_ENTRIES) {
+                    limitations.add(`environment-file discovery reached the ${MAX_DIRECTORY_ENTRIES}-entry limit in ${reportPath(directory, home)}; additional entries may be omitted`);
+                    break;
+                }
+                if (entry.isSymbolicLink())
                     continue;
-                walk(path.join(directory, entry.name), depth + 1);
+                if (entry.isDirectory()) {
+                    if (skip.has(entry.name) || (entry.name.startsWith('.') && entry.name !== '.config'))
+                        continue;
+                    walk(path.join(directory, entry.name), depth + 1);
+                }
+                else if (/^\.env(\..+)?$/.test(entry.name)) {
+                    if (found.length >= MAX_ENV_FILES) {
+                        limitations.add(`environment-file discovery reached its ${MAX_ENV_FILES}-file limit; additional files may be omitted`);
+                        break;
+                    }
+                    const file = path.join(directory, entry.name);
+                    found.push({ path: reportPath(file, home), secrets: envFileSecrets(file) });
+                }
             }
-            else if (/^\.env(\..+)?$/.test(entry.name)) {
-                const file = path.join(directory, entry.name);
-                found.push({ path: reportPath(file, home), secrets: envFileSecrets(file) });
-            }
+        }
+        finally {
+            handle.closeSync();
         }
     };
     walk(path.resolve(cwd), 0);
-    return found;
+    return {
+        files: found.sort((left, right) => left.path.localeCompare(right.path)),
+        limitations: [...limitations].sort(),
+    };
+}
+export function envFiles(cwd, home, maxDepth = 3) {
+    return discoverEnvFiles(cwd, home, maxDepth).files;
 }
 export function discoverAuthority(options = {}) {
     const home = path.resolve(options.home ?? os.homedir());
@@ -289,6 +369,7 @@ export function discoverAuthority(options = {}) {
     const sources = [];
     const servers = [];
     const permissions = [];
+    const environment = discoverEnvFiles(cwd, home, options.maxEnvDepth ?? 3);
     for (const candidate of configCandidates({ ...options, home, cwd })) {
         const result = readJson(candidate.file);
         if (!result.ok || !result.value) {
@@ -331,7 +412,8 @@ export function discoverAuthority(options = {}) {
         servers,
         permissions,
         credential_files: credentialFiles(home),
-        env_files: envFiles(cwd, home, options.maxEnvDepth ?? 3),
+        env_files: environment.files,
+        limitations: environment.limitations,
     };
 }
 //# sourceMappingURL=discover.js.map

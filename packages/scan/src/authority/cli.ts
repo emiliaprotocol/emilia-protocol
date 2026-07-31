@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: Apache-2.0
 
+import fs from 'node:fs';
 import {
   AUTHORITY_SCAN_VERSION,
   authorityExitCode,
@@ -14,7 +15,9 @@ const USAGE = `emilia-scan authority ${AUTHORITY_SCAN_VERSION}
   emilia-scan authority [--json] [--out <new-file>] [--cwd <dir>]
 
   Passive local inventory of configured agent authority.
-  Reads bounded configuration files. Launches nothing. Makes no network request.
+  Reads bounded configuration files. After startup, scanner code launches no
+  configured server or child process and performs no network I/O.
+  npx may download the package before scanner startup.
   Credential values are not intentionally emitted.
 
   Alpha diagnostic. Not a security product. No authorization guarantee.
@@ -68,6 +71,9 @@ export function authorityMain(
   }
   try {
     const options = parseArgs(argv);
+    if (!fs.statSync(options.cwd).isDirectory()) {
+      throw new Error(`--cwd must name an existing directory: ${options.cwd}`);
+    }
     const result = runAuthorityScan({ cwd: options.cwd });
     const output = options.json ? renderAuthorityJson(result) : renderAuthorityText(result);
     if (options.out) {

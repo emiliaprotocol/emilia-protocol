@@ -13,6 +13,7 @@ const SECRET_KEY_PATTERNS = Object.freeze([
     { re: /\bCREDENTIAL/, class: 'credential' },
     { re: /\bPRIVATE ?KEY\b/, class: 'private_key' },
     { re: /\bACCESS ?KEY\b/, class: 'access_key' },
+    { re: /\bKEY\b/, class: 'key' },
     { re: /\bSERVICE ?ROLE\b/, class: 'service_role' },
     { re: /\bAUTH(ORIZATION)?\b/, class: 'authorization' },
     { re: /\bBEARER\b/, class: 'bearer' },
@@ -123,8 +124,8 @@ export function redactText(text) {
     out = out.replace(/-{5}BEGIN [A-Z ]*PRIVATE KEY-{5}[\s\S]*?-{5}END [A-Z ]*PRIVATE KEY-{5}/g, '<redacted pem_private_key>');
     out = out.replace(/\b(postgres|postgresql|mysql|mongodb|mongodb\+srv|redis|rediss|amqp|amqps):\/\/[^\s"'<>]+/gi, (_match, scheme) => `<redacted connection_string scheme=${scheme.toLowerCase()}>`);
     out = out.replace(/\b(Bearer|Basic)\s+[A-Za-z0-9._~+/-]{8,}={0,2}/gi, (_match, kind) => `<redacted ${kind.toLowerCase()} credential>`);
-    out = out.replace(/(--?(?:api[-_]?key|secret|token|password|passwd|credential|authorization|private[-_]?key|access[-_]?key|service[-_]?role|session|signing[-_]?key|dsn))(\s*=\s*|\s+)(?:"[^"]*"|'[^']*'|[^\s)"']+)/gi, (_match, key, separator) => `${key}${separator.includes('=') ? '=' : ' '}<redacted credential>`);
-    out = out.replace(/\b((?:[A-Za-z0-9]+[_-])*(?:api[_-]?key|secret|token|password|passwd|credential|authorization|private[_-]?key|access[_-]?key|service[_-]?role|session|signing[_-]?key|dsn))(\s*(?:=|:)\s*)(?:"[^"]*"|'[^']*'|[^\s)"']+)/gi, (_match, key, separator) => `${key}${separator}<redacted credential>`);
+    out = out.replace(/(--?(?:key|api[-_]?key|secret|token|password|passwd|credential|authorization|private[-_]?key|access[-_]?key|service[-_]?role|session|signing[-_]?key|dsn))(\s*=\s*|\s+)(?:"[^"]*"|'[^']*'|[^\s)"']+)/gi, (_match, key, separator) => `${key}${separator.includes('=') ? '=' : ' '}<redacted credential>`);
+    out = out.replace(/\b((?:[A-Za-z0-9]+[_-])*(?:key|api[_-]?key|secret|token|password|passwd|credential|authorization|private[_-]?key|access[_-]?key|service[_-]?role|session|signing[_-]?key|dsn))(\s*(?:=|:)\s*)(?:"[^"]*"|'[^']*'|[^\s)"']+)/gi, (_match, key, separator) => `${key}${separator}<redacted credential>`);
     for (const shape of VALUE_SHAPES) {
         const global = new RegExp(shape.re.source.replace(/^\^/, '').replace(/\$$/, ''), 'g');
         out = out.replace(global, `<redacted ${shape.class}>`);

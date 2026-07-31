@@ -1,8 +1,15 @@
 {
   "name": "@emilia-protocol/scan",
-  "version": "0.3.1",
+  "version": "0.3.2",
   "description": "Passive local authority inventory plus fail-closed static classification for MCP and OpenAPI action surfaces.",
   "license": "Apache-2.0",
+  "homepage": "https://www.emiliaprotocol.ai/scan",
+  "bugs": {
+    "url": "https://github.com/emiliaprotocol/emilia-protocol/issues"
+  },
+  "engines": {
+    "node": ">=20.19.0"
+  },
   "type": "module",
   "main": "index.js",
   "types": "dist/index.d.ts",

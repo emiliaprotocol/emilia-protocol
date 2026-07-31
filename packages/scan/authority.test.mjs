@@ -8,6 +8,7 @@ import {
   readFileSync,
   statSync,
   symlinkSync,
+  unlinkSync,
   writeFileSync,
 } from 'node:fs';
 import { tmpdir } from 'node:os';
@@ -83,8 +84,17 @@ test('PEM blocks and embedded connection strings are removed as complete values'
 
 test('secret flags redact the next argument even when the value has low entropy', () => {
   assert.deepEqual(
-    sanitizeArgs(['server-package', '--token', 'short', '--mode', 'safe']),
-    ['server-package', '--token', '<redacted credential argument>', '--mode', 'safe'],
+    sanitizeArgs(['server-package', '--token', 'short', '--key', 'tiny', '--key=small', '--mode', 'safe']),
+    [
+      'server-package',
+      '--token',
+      '<redacted credential argument>',
+      '--key',
+      '<redacted credential argument>',
+      '--key=<redacted credential>',
+      '--mode',
+      'safe',
+    ],
   );
 });
 
@@ -197,6 +207,60 @@ test('environment-file discovery skips symlinks and emits key metadata only', ()
   assert.ok(!serialized.includes(secret));
   assert.ok(result.inventory.env_files.some((entry) => entry.path.endsWith('/.env')));
   assert.ok(!result.inventory.env_files.some((entry) => entry.path.endsWith('/.env.link')));
+});
+
+test('symlinked configuration sources are excluded without reading their target', () => {
+  const secret = 'S7y'.repeat(20);
+  const { home, cwd } = fixture({});
+  const target = join(cwd, 'outside-config.json');
+  writeFileSync(target, JSON.stringify({
+    mcpServers: {
+      unsafe: {
+        command: 'node',
+        env: { TOKEN: secret },
+      },
+    },
+  }));
+  unlinkSync(join(cwd, '.mcp.json'));
+  symlinkSync(target, join(cwd, '.mcp.json'));
+  const result = runAuthorityScan({
+    cwd,
+    home,
+    applicationSupport: join(home, 'Library', 'Application Support'),
+    managedCandidates: [],
+  });
+  const source = result.inventory.sources.find((entry) => (
+    entry.scope === 'project' && entry.file === '~/project/.mcp.json'
+  ));
+  assert.equal(source?.status, 'symlink');
+  assert.ok(!JSON.stringify(result).includes(secret));
+  assert.ok(!result.inventory.servers.some((entry) => entry.name === 'unsafe'));
+});
+
+test('environment discovery reports when its bounded file limit is reached', () => {
+  const { home, cwd } = fixture({});
+  for (let index = 0; index < 201; index += 1) {
+    writeFileSync(join(cwd, `.env.${index}`), `TOKEN=value-${index}\n`);
+  }
+  const result = runAuthorityScan({
+    cwd,
+    home,
+    applicationSupport: join(home, 'Library', 'Application Support'),
+    managedCandidates: [],
+  });
+  assert.ok(result.inventory.env_files.length <= 200);
+  assert.ok(result.inventory.limitations.some((entry) => entry.includes('200-file limit')));
+  assert.match(renderAuthorityText(result), /additional files may be omitted/);
+});
+
+test('CLI refuses a nonexistent working directory', () => {
+  const root = mkdtempSync(join(tmpdir(), 'emilia-authority-invalid-cwd-'));
+  const missing = join(root, 'missing');
+  const result = spawnSync(process.execPath, [CLI, 'authority', '--cwd', missing], {
+    encoding: 'utf8',
+  });
+  assert.equal(result.status, 64);
+  assert.match(`${result.stdout}${result.stderr}`, /existing directory|ENOENT/i);
 });
 
 test('CLI writes owner-only reports and refuses overwrite or report-path symlinks', () => {
