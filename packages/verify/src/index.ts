@@ -290,6 +290,17 @@ export function verifyReceipt(doc: any, publicKeyBase64url: string, opts: any = 
   /** @type {{ version: boolean, signature: boolean, anchor: boolean|null }} */
   const checks: Obj = { version: false, signature: false, anchor: null };
 
+  // Inspect the complete caller-supplied object before reading any member.
+  // Besides rejecting values that disappear from JSON, the strict predicate
+  // catches hostile Proxy traps and turns them into a closed verifier result.
+  if (!isCanonicalizable(doc)) {
+    return {
+      valid: false,
+      checks,
+      error: 'Receipt is outside the EP canonicalization profile; only plain JSON data is accepted',
+    };
+  }
+
   if (!doc?.['@version'] || !SUPPORTED_VERSIONS.includes(doc['@version'])) {
     return { valid: false, checks, error: `Unsupported version: ${doc?.['@version']}` };
   }
@@ -1149,18 +1160,26 @@ function buildAttestationReport(contexts: any[]): Obj {
 }
 
 function trustReceiptCanonicalProfileError(receipt: any): string | null {
-  const leafContent = { ...receipt };
-  delete leafContent.log_proof;
-  delete leafContent.approver_key_proofs;
-  if (!isCanonicalizable(leafContent)) return 'Trust Receipt body';
+  try {
+    // Validate the complete envelope first. Validating only shallow copies can
+    // erase non-enumerable or symbol members before they reach the strict gate.
+    if (!isCanonicalizable(receipt)) return 'Trust Receipt body';
 
-  const checkpoint = receipt?.log_proof?.checkpoint;
-  if (checkpoint && typeof checkpoint === 'object') {
-    const signedCheckpoint = { ...checkpoint };
-    delete signedCheckpoint.log_signature;
-    if (!isCanonicalizable(signedCheckpoint)) return 'Trust Receipt checkpoint';
+    const leafContent = { ...receipt };
+    delete leafContent.log_proof;
+    delete leafContent.approver_key_proofs;
+    if (!isCanonicalizable(leafContent)) return 'Trust Receipt body';
+
+    const checkpoint = receipt?.log_proof?.checkpoint;
+    if (checkpoint && typeof checkpoint === 'object') {
+      const signedCheckpoint = { ...checkpoint };
+      delete signedCheckpoint.log_signature;
+      if (!isCanonicalizable(signedCheckpoint)) return 'Trust Receipt checkpoint';
+    }
+    return null;
+  } catch {
+    return 'Trust Receipt body';
   }
-  return null;
 }
 
 /**
@@ -1325,11 +1344,8 @@ export function verifyTrustReceipt(receipt: any, opts: Obj = {}): Obj {
       decision_scope: decisionScope,
     };
   }
-  // PIP-007 §2 advisory report — built from contexts as presented, independent
-  // of every cryptographic check. fail() carries it through early returns too.
-  const attestationContexts = Array.isArray(receipt?.contexts) ? receipt.contexts : [];
-  const attestation = buildAttestationReport(attestationContexts);
   const strict = createStrictReport(opts.strict === true);
+  let attestation: Obj = { present: false, consistent: true, issues: [] };
   const fail = (msg: string): Obj => {
     errors.push(msg);
     return {
@@ -1344,6 +1360,14 @@ export function verifyTrustReceipt(receipt: any, opts: Obj = {}): Obj {
   };
 
   if (!receipt || typeof receipt !== 'object') return fail('Missing receipt');
+  const profileError = trustReceiptCanonicalProfileError(receipt);
+  if (profileError) {
+    return fail(`${profileError} is outside the EP canonicalization profile; only plain JSON data is accepted`);
+  }
+  // PIP-007 §2 advisory report — built only after the complete envelope passed
+  // strict inspection, so accessors and hostile Proxy traps cannot execute here.
+  const attestationContexts = Array.isArray(receipt.contexts) ? receipt.contexts : [];
+  attestation = buildAttestationReport(attestationContexts);
   const { approverKeys = {}, logPublicKey } = opts;
   const contexts = Array.isArray(receipt.contexts) ? receipt.contexts : [];
   const signoffs = Array.isArray(receipt.signoffs) ? receipt.signoffs : [];
@@ -1351,10 +1375,6 @@ export function verifyTrustReceipt(receipt: any, opts: Obj = {}): Obj {
     context && typeof context === 'object' && Object.hasOwn(context, 'prev_context_hash'));
   if (!receipt.action || !receipt.action_hash) return fail('Missing action or action_hash');
   if (contexts.length === 0 || signoffs.length === 0) return fail('Missing contexts or signoffs');
-  const profileError = trustReceiptCanonicalProfileError(receipt);
-  if (profileError) {
-    return fail(`${profileError} is outside the EP canonicalization profile; encode non-integer quantities as strings`);
-  }
 
   // I-JSON canonicalization gate (fail-closed) — identical guard to verifyReceipt.
   // Every field folded into a signed digest below (action, contexts, leaf content)

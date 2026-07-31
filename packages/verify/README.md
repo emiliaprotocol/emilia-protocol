@@ -247,6 +247,9 @@ relying party supplies its own RFC 3339 `now`, the verifier also refuses an
 decision time. Omitting `now` preserves
 offline historical verification; trusted timestamp evidence is still required
 when a deployment needs to prove when a receipt was actually created.
+`evaluateReliance` treats its `input.now` as the authoritative decision clock
+and forwards that exact instant into receipt verification; callers do not need,
+and cannot use, a separate `opts.now` to weaken the temporal check.
 
 For a current reliance decision, set `verificationMode: 'current'` and pass the
 relying party's trusted `now`. Current mode requires every signing key to remain

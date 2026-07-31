@@ -302,6 +302,28 @@ test('public receipt verifiers fail closed instead of throwing on cycles and sym
   assert.doesNotThrow(() => { trustResult = verifyTrustReceipt(receipt, OPTS); });
   assert.equal(trustResult.valid, false);
   assert.match(trustResult.errors.join(' '), /canonicalization profile/i);
+
+  const hiddenTopLevel = buildReceipt();
+  Object.defineProperty(hiddenTopLevel, Symbol.for('hidden_command'), {
+    enumerable: false,
+    value: { override: true },
+  });
+  assert.doesNotThrow(() => {
+    trustResult = verifyTrustReceipt(hiddenTopLevel, OPTS);
+  });
+  assert.equal(trustResult.valid, false);
+  assert.match(trustResult.errors.join(' '), /canonicalization profile/i);
+
+  const hostileProxy = new Proxy(buildReceipt(), {
+    ownKeys() {
+      throw new Error('hostile ownKeys');
+    },
+  });
+  assert.doesNotThrow(() => {
+    trustResult = verifyTrustReceipt(hostileProxy, OPTS);
+  });
+  assert.equal(trustResult.valid, false);
+  assert.match(trustResult.errors.join(' '), /canonicalization profile/i);
 });
 
 test('base Trust Receipt verification labels quorum ordering as a separate unevaluated profile', () => {

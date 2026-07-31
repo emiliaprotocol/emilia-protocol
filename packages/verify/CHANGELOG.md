@@ -19,7 +19,9 @@ This package follows [Semantic Versioning](https://semver.org/).
 - Canonicalization now accepts only the closed JSON signing domain and refuses
   non-plain objects, sparse or extended arrays, accessors, symbol members,
   cycles, non-JSON values, unsafe numbers, and malformed UTF-16 before hashing,
-  signing, or verification.
+  signing, or verification. Complete receipt envelopes are inspected before
+  member access, so hostile Proxy traps and hidden top-level properties also
+  fail closed instead of escaping or disappearing through a shallow copy.
 - Every Trust Receipt result now states that offline authenticity is not
   current admission or replay prevention. Atomic one-time admission remains a
   Gate/consumption-store responsibility.
@@ -28,7 +30,8 @@ This package follows [Semantic Versioning](https://semver.org/).
   cloning.
 - A relying-party clock now refuses future `issued_at`, `signed_at`, and
   consumption `committed_at` values instead of granting presenter-controlled
-  future-time tolerance.
+  future-time tolerance; the reliance kernel forwards its exact decision clock
+  into that verification rather than relying on a duplicate caller option.
 - Trust Receipt decisions explicitly report whether ordered-quorum linkage was
   merely presented or was evaluated by `verifyQuorum`; base receipt
   verification no longer leaves that policy boundary implicit.
