@@ -6,6 +6,7 @@ consequential actions. Point it at what your agent can do; it tells you what
 should require authorization evidence, and hands you proposed config to review.
 
 ```bash
+npx @emilia-protocol/scan authority               # local config-derived authority inventory
 node cli.mjs --sample                        # see it work on a built-in sample
 node cli.mjs ./tools.json --emit manifest.json    # your MCP tool list
 node cli.mjs ./openapi.json --emit manifest.json  # your HTTP API surface
@@ -29,6 +30,21 @@ It does exactly three things, and never more:
 3. **Report** — a proposed `agent-action-control` manifest, the wrap to add at
    your tool-call choke point, and an honest coverage report.
 
+The `authority` command is a separate passive diagnostic:
+
+```bash
+npx @emilia-protocol/scan authority
+npx @emilia-protocol/scan authority --json
+npx @emilia-protocol/scan authority --out authority-report.json
+```
+
+It reads bounded local configuration files to inventory supported agent
+runtimes, declared MCP servers, credential-shaped fields, ambient credential
+files, and permission declarations. It launches no process and makes no network
+request. Configuration values are parsed locally in memory; credential values
+are not intentionally emitted. Report files are created owner-only and existing
+or symlinked report paths are refused.
+
 ## What it will not do
 
 - **It will not decide your risk model.** Which actions are consequential is a
@@ -46,6 +62,10 @@ It does exactly three things, and never more:
   whether your organization will actually fail-closed on a denial — which is a
   decision, not a setting). Nothing is enforced until you add the wrap and pin
   your keys.
+- **The authority scan cannot see a server's real tool surface.** It does not
+  launch servers. Run the static surface scan against a tool list or OpenAPI
+  document separately; a configuration-only authority scan exits non-zero
+  rather than implying complete coverage.
 
 That honesty is the point. A tool that claimed to make AI safe by installing it
 would be lying; risk is specific to your application, and only you know it. This
