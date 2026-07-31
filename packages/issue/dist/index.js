@@ -30,31 +30,12 @@
  * @license Apache-2.0
  */
 import crypto from 'node:crypto';
+import { canonicalizeStrictJson, isStrictCanonicalJson, } from '../strict-json.js';
 // ── canonicalization + hashing (byte-identical to packages/verify) ───────────
 /** Recursive canonical JSON — depth-first key sort at every level (JCS-equivalent). */
-export function canonicalize(value) {
-    if (value === null || value === undefined)
-        return JSON.stringify(value);
-    if (Array.isArray(value))
-        return `[${value.map(canonicalize).join(',')}]`;
-    if (typeof value === 'object') {
-        return `{${Object.keys(value)
-            .sort()
-            .map((k) => JSON.stringify(k) + ':' + canonicalize(value[k]))
-            .join(',')}}`;
-    }
-    return JSON.stringify(value);
-}
+export const canonicalize = canonicalizeStrictJson;
 export function isCanonicalizable(value) {
-    if (value === null || typeof value === 'string' || typeof value === 'boolean')
-        return true;
-    if (typeof value === 'number')
-        return Number.isInteger(value) && Number.isSafeInteger(value);
-    if (Array.isArray(value))
-        return value.every(isCanonicalizable);
-    if (typeof value === 'object')
-        return Object.values(value).every(isCanonicalizable);
-    return false;
+    return isStrictCanonicalJson(value);
 }
 function assertCanonicalizable(value, label) {
     if (!isCanonicalizable(value)) {

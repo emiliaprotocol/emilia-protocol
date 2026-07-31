@@ -5,6 +5,28 @@ This package follows [Semantic Versioning](https://semver.org/).
 
 ## Unreleased
 
+### Added
+
+- Current-evidence Trust Receipt verification with an explicit relying-party
+  clock, exact-target revocation-statement evaluation, optional WebAuthn
+  signature-counter enforcement, and high-value financial timestamp policy.
+- Approver-directory transition auditing that refuses a retroactive
+  `valid_to` narrowing unless compromise or an explicit reviewed exception is
+  recorded.
+
+### Security
+
+- Canonicalization now accepts only the closed JSON signing domain and refuses
+  non-plain objects, sparse or extended arrays, accessors, symbol members,
+  cycles, non-JSON values, unsafe numbers, and malformed UTF-16 before hashing,
+  signing, or verification.
+- Every Trust Receipt result now states that offline authenticity is not
+  current admission or replay prevention. Atomic one-time admission remains a
+  Gate/consumption-store responsibility.
+- WebAuthn results expose `sign_count`, backup eligibility/state, and a
+  counter-status signal without treating a non-increasing counter as proof of
+  cloning.
+
 ## 3.18.2 (2026-07-29)
 
 ### Documentation

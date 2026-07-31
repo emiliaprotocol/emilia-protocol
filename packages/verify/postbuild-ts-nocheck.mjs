@@ -19,6 +19,22 @@ for (const rel of targets) {
   writeFileSync(rel, content);
 }
 
+// One canonical JSON-domain implementation, three deliberately vendored
+// runtimes. Issue remains zero-dependency and the app remains browser-bundle
+// friendly, while byte identity prevents signer/verifier drift.
+copyFileSync('dist/strict-json.js', '../issue/strict-json.js');
+copyFileSync('dist/strict-json.js', '../../lib/strict-json.js');
+const issueStrictJsonMap = JSON.parse(readFileSync('dist/strict-json.js.map', 'utf8'));
+issueStrictJsonMap.sources = ['../verify/src/strict-json.ts'];
+writeFileSync('../issue/strict-json.js.map', JSON.stringify(issueStrictJsonMap));
+for (const target of [
+  '../require-receipt/src/strict-json.ts',
+  '../gate/src/strict-json.ts',
+  '../mobile/src/strict-json.ts',
+]) {
+  copyFileSync('src/strict-json.ts', target);
+}
+
 // The app vendors these compiled runtimes in lib/. Their sourceMappingURL
 // comments resolve beside the vendored file, so emit matching maps whose source
 // paths point back to the authoritative TypeScript instead of producing a Vite
@@ -28,6 +44,7 @@ for (const name of ['web', 'strict-json']) {
   sourceMap.sources = [`../packages/verify/src/${name}.ts`];
   writeFileSync(`../../lib/${name}.js.map`, JSON.stringify(sourceMap));
 }
+copyFileSync('dist/web.js', '../../lib/verify-web.js');
 
 // The published CLI must carry the exact governed AEB-1 suite it evaluates.
 // Keep the package copy generated from the repository source so `npx` works

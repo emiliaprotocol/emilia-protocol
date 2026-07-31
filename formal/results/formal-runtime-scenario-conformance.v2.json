@@ -711,7 +711,7 @@
     },
     {
       "path": "packages/gate/dist/strict-json.js",
-      "sha256": "9d2c888d03e2ed9ab45d891613882b9f9efb4109798043ee96b389f2e98dcc09"
+      "sha256": "e1e8eb85a6446894d5a64d9fd18dd0b41e8496faac6b71e25e2cd68140460d45"
     },
     {
       "path": "packages/gate/dist/trust-program-revocation.js",
@@ -847,7 +847,7 @@
     },
     {
       "path": "packages/mobile/dist/strict-json.js",
-      "sha256": "edb95a62949317b9f21ab2d0018f288e9f4e6e9a0c97f420e7db7f32924ab863"
+      "sha256": "ef3a96598827956c38b736eb08e76d4392437772363bf48b7170996c1ba9ab15"
     },
     {
       "path": "packages/mobile/enrollment.js",
@@ -875,7 +875,7 @@
     },
     {
       "path": "packages/require-receipt/dist/index.js",
-      "sha256": "60c9c2d533a8f98eb062b99700192eee8482691e2763aa3efc0c0ce970539026"
+      "sha256": "cdbaa692aee0ce1f4998550e8a6f747a4e73cdd6fc011c70971a2d7200bf7524"
     },
     {
       "path": "packages/require-receipt/dist/jws.js",
@@ -883,7 +883,7 @@
     },
     {
       "path": "packages/require-receipt/dist/strict-json.js",
-      "sha256": "bafcd3c454c7d9a048ae5f671ffd1968b20e51a566e993b8e53dc9e4e0b37096"
+      "sha256": "ef3a96598827956c38b736eb08e76d4392437772363bf48b7170996c1ba9ab15"
     },
     {
       "path": "packages/require-receipt/index.js",
@@ -983,7 +983,7 @@
     },
     {
       "path": "packages/verify/dist/index.js",
-      "sha256": "ce245831e7976be47c82966645cccce9412d86b64fc021fc45231e0917060981"
+      "sha256": "3212432c2cf2b2c0083f62529e6ee8c24ce48249425840204da5a5388c92764c"
     },
     {
       "path": "packages/verify/dist/initiator-attestation.js",
@@ -1023,7 +1023,7 @@
     },
     {
       "path": "packages/verify/dist/strict-json.js",
-      "sha256": "d41f77d0ca9a66836b8bc8b27d074c7fad8d9355c10366219cd3bde001a84165"
+      "sha256": "98befedb6643a882bf4110bcbbc27ec000e842c580180861ea18d9af7c23e377"
     },
     {
       "path": "packages/verify/dist/surface-binding.js",
@@ -1079,7 +1079,7 @@
     },
     {
       "path": "packages/verify/src/index.ts",
-      "sha256": "7b4e6dcfb1377ed579dd5ff562a751e2cb385f4c7b3a15a4d4a5ef2ff27f2509"
+      "sha256": "76de97c2a4c186e67b7fb2d58f8c746a39a6a35dc7661bd3f662864c46604b03"
     },
     {
       "path": "packages/verify/src/outcome-binding.ts",

@@ -107,9 +107,9 @@ describe('renderAction() value rendering: absence marker and risk_flags variants
     expect(r.text).toContain('Risk signals: 7');
   });
 
-  it('renders numbers via canonical JSON (locale-independent), strings as-is', () => {
-    const r = renderAction({ ...SIGNED, amount: 82000.5 });
-    expect(r.text).toContain('Amount: 82000.5');
+  it('renders canonical decimal strings as-is without locale-dependent formatting', () => {
+    const r = renderAction({ ...SIGNED, amount: '82000.50' });
+    expect(r.text).toContain('Amount: 82000.50');
     // No thousands separators / locale formatting ever.
     expect(r.text).not.toContain('82,000');
   });

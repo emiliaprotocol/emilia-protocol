@@ -9,6 +9,7 @@
  *
  * @license Apache-2.0
  */
+import { canonicalizeStrictJson } from './strict-json.js';
 type Obj = Record<string, any>;
 export { AGENTROA_DRAFT, verifyAgentROA } from './agentroa.js';
 export { AUTHORITY_PROGRAM_VERSION, AUTHORITY_PROGRAM_DOMAIN, AUTHORITY_STAGE_RECEIPT_VERSION, AUTHORITY_STAGE_RECEIPT_DOMAIN, AUTHORITY_PROGRAM_RESULT_VERSION, authorityProgramDigest, authorityStageReceiptDigest, deriveAuthorityProgramPredecessors, verifyAuthorityProgram, } from './authority-program.js';
@@ -25,7 +26,7 @@ export * from './gate-qualification.js';
 export * from './gate-qualification-promptfoo.js';
 export { OUTCOME_ATTESTATION_VERSION, OUTCOME_ATTESTATION_DOMAIN, OUTCOME_BINDING_VERSION, OUTCOME_BINDING_RESULT_VERSION, OUTCOME_OBSERVATION_VERSION, OUTCOME_OBSERVATION_DOMAIN, OUTCOME_BINDING_SET_VERSION, OUTCOME_BINDING_SET_RESULT_VERSION, OUTCOME_BINDING_OUTCOMES, buildOutcomeAttestation, buildOutcomeObservation, verifyOutcomeAttestation, verifyOutcomeObservation, verifyOutcomeObservationSet, observedEffectsDigest, outcomeBindingResultCore, outcomeBindingResultDigest, outcomeBindingSetResultDigest, trustReceiptDigest, verifyOutcomeBindingResultDigest, } from './outcome-binding.js';
 export { ORPRG_JSON_JCS_PROFILE, ORPRG_ACTION_PROFILE, computeOrprgActionDigest, verifyOrprgJsonJcsPermit, verifyOrprgJsonJcsPermitAsync, createOrprgAecVerifier, } from './orprg.js';
-declare function canonicalize(value: any): string;
+declare const canonicalize: typeof canonicalizeStrictJson;
 /**
  * EP canonicalization profile (RFC 8785 / JCS over an I-JSON profile).
  *
@@ -134,6 +135,20 @@ export declare function verifyCommitmentProof(proof: any, publicKeyBase64url?: s
  */
 export declare function verifyReceiptBundle(bundle: any, publicKeyBase64url: string): Obj;
 /**
+ * Audit an approver-directory update before it is installed.
+ *
+ * A retroactive `valid_to` narrowing is not equivalent to compromise: historical
+ * verification deliberately evaluates the key at the claimed issuance time.
+ * Operators therefore MUST mark a stolen or suspect key with `compromised_at`.
+ * This transition guard makes that easy-to-miss distinction executable.
+ *
+ * `now` is mandatory so the audit never consults an ambient process clock.
+ * Planned future expiry changes are allowed. A past-dated narrowing without
+ * `compromised_at` fails unless the caller explicitly records the exceptional
+ * `allowRetroactiveExpiryWithoutCompromise` override.
+ */
+export declare function auditApproverKeyDirectoryTransition(previousApproverKeys: Obj, nextApproverKeys: Obj, opts?: Obj): Obj;
+/**
  * Verify a Trust Receipt (I-D Section 6.2) fully offline — the Section 6.3
  * algorithm. All six steps; fails closed on any missing input.
  *
@@ -141,10 +156,21 @@ export declare function verifyReceiptBundle(bundle: any, publicKeyBase64url: str
  * @param {object} opts
  * @param {Record<string, {approver_id:string, public_key:string, key_class?:string, valid_from?:string, valid_to?:string, compromised_at?:string|null}>} [opts.approverKeys]
  *   - pinned approver key entries by approver_key_id (or a directory extract).
- * @param {string} [opts.now] - optional relying-party clock used only to reject
- *   presenter-claimed issuance more than five minutes in the future.
- *   Required for a meaningful result; the body defaults a missing/empty opts to
- *   {} and fails closed rather than throwing.
+ * @param {Record<string, object>} [opts.previousApproverKeys]
+ *   OPT-IN directory-transition guard. When supplied, verification fails closed
+ *   if an already-pinned key's `valid_to` was narrowed into the past without a
+ *   `compromised_at` marker. Requires `opts.now`. Planned future rotations pass.
+ * @param {boolean} [opts.allowRetroactiveExpiryWithoutCompromise=false]
+ *   Explicit exceptional override for a relying party that has independently
+ *   established that a retroactive directory correction was not a compromise.
+ * @param {string} [opts.now] - optional relying-party clock used to reject
+ *   presenter-claimed issuance more than five minutes in the future, evaluate
+ *   current-mode key status, audit directory transitions, and validate dated
+ *   revocation evidence. Required when `verificationMode` is `current`.
+ * @param {'historical'|'current'} [opts.verificationMode='historical']
+ *   Historical mode verifies authenticity at claimed issuance time. Current
+ *   mode additionally requires every signing key to remain current at
+ *   `opts.now`; it is the minimum mode for a current reliance decision.
  * @param {string} [opts.logPublicKey] - trusted log Ed25519 key (base64url SPKI DER)
  * @param {boolean} [opts.strict=false] - require deployment-grade strict checks
  * @param {string} [opts.rpId] - expected WebAuthn RP ID when strict mode sees Class-A signoffs
@@ -162,10 +188,11 @@ export declare function verifyReceiptBundle(bundle: any, publicKeyBase64url: str
  *   observed heads only; it does NOT establish currency or split-view honesty
  *   by itself (that needs independent witnesses).
  *
- * The five options below are ADDITIVE, OPT-IN knobs. Each runs ONLY when its
- * option is supplied, adds exactly one member to `checks`, and folds into
- * `valid` by conjunction. With none supplied, `checks` keeps its frozen seven
- * members and the result is byte-for-byte unchanged. Each fails closed.
+ * The evidence options below are additive and fail closed. Each active check
+ * adds one member to `checks` and folds into `valid` by conjunction. The
+ * always-present `decision_scope` is deliberately separate: it prevents an
+ * offline authenticity verdict from being misread as current admission or
+ * replay prevention.
  *
  * @param {{cosignatures:object[], pinnedWitnessKeys:Array<{witness_id:string,public_key:string}>, k:number}} [opts.witnessQuorum]
  *   OPT-IN (EP-WITNESS-v1): require >= k DISTINCT pinned witnesses to have
@@ -184,6 +211,19 @@ export declare function verifyReceiptBundle(bundle: any, publicKeyBase64url: str
  *   TSA asserted the digest existed at gen_time; it does NOT prove the action
  *   was correct/authorized and is authentic-as-of-token only (says nothing
  *   about current TSA-cert validity).
+ * @param {boolean} [opts.requireTimestampProof=false]
+ *   Require trusted-time evidence regardless of action type. Current-mode
+ *   financial actions at or above USD 100,000 require it automatically.
+ * @param {object[]} [opts.revocationStatements]
+ *   Exact-target EP revocation statements. A valid statement refuses; an
+ *   invalid exact-target statement is indeterminate and also refuses. Absence
+ *   leaves current revocation status unknown.
+ * @param {object} [opts.revokerKeys]
+ *   Pinned revoker keys used for `revocationStatements`.
+ * @param {Record<string, number>} [opts.webauthnSignCounts]
+ *   Previously stored counters keyed by approver key ID.
+ * @param {'observe'|'enforce'} [opts.webauthnCounterPolicy='observe']
+ *   Observe or fail closed on a non-advancing, nonzero WebAuthn counter.
  * @param {{now?:(number|string|Date), maxStalenessSeconds?:number, freshHead?:object, freshHeadRequired?:boolean, authentic_as_of_commit?:boolean}} [opts.currency]
  *   OPT-IN (EP-CURRENCY-v1): evaluate currency-at-T. Adds `checks.currency`,
  *   which passes ONLY when a supplied recent non-revoking signed head proves
@@ -206,13 +246,13 @@ export declare function verifyReceiptBundle(bundle: any, publicKeyBase64url: str
  *   `checks.initiator_attestation` (absent or malformed => false) and surfaces
  *   result.initiator_attestation. HONESTY: says WHICH software asked; it does
  *   NOT prove the software behaved (labels are self-asserted).
- * @returns {{ valid:boolean, checks:object, errors:string[], attestation:{ present:boolean, consistent:boolean, issues:string[] }, strict:{ enabled:boolean, valid:boolean, checks:object, errors:string[] }, witness_quorum?:object, timestamp_proof?:object, currency?:object, consumption?:object, initiator_attestation?:object }}
+ * @returns {{ valid:boolean, checks:object, errors:string[], decision_scope:object, attestation:{ present:boolean, consistent:boolean, issues:string[] }, strict:{ enabled:boolean, valid:boolean, checks:object, errors:string[] }, witness_quorum?:object, timestamp_proof?:object, revocation?:object, currency?:object, consumption?:object, initiator_attestation?:object }}
  *   `attestation` is the PIP-007 §2 ADVISORY report. It never affects `valid` or
  *   any member of `checks`: a receipt with a malformed or inconsistent
  *   attestation still verifies (or fails) on its cryptographic checks alone.
- *   The opt-in `witness_quorum` / `timestamp_proof` / `currency` / `consumption`
- *   / `initiator_attestation` result members are present ONLY when their
- *   respective option was supplied.
+ *   `decision_scope` is always present and states that this function establishes
+ *   authenticity, not current admission or atomic replay prevention. Optional
+ *   evidence results are present only when their respective inputs are supplied.
  */
 export declare function verifyTrustReceipt(receipt: any, opts?: Obj): Obj;
 /**

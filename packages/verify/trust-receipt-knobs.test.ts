@@ -6,9 +6,9 @@
  *   - each runs ONLY when its option is supplied;
  *   - each adds its own member to `checks` ONLY when active;
  *   - each folds into `valid` by conjunction;
- *   - with NO knob option set the result is byte-for-byte unchanged (the frozen
- *     seven-member `checks` set, and no extra top-level result members) — this
- *     is the backwards-compatibility contract, asserted directly below;
+ *   - with NO knob option set the cryptographic `checks` set remains the frozen
+ *     seven members. The unconditional `decision_scope` honesty boundary and
+ *     Class-A `webauthn_signoffs` metadata are tested separately below;
  *   - each FAILS CLOSED exactly as its module specifies.
  *
  * The knobs' underlying cryptography is exercised by each module's own test
@@ -167,7 +167,7 @@ const FROZEN_CHECK_KEYS = [
 ];
 
 // ══════════════════════════════════════════════════════════════════════════
-// BACKWARDS-COMPAT CONTRACT — no knob option ⇒ byte-for-byte unchanged.
+// BACKWARDS-COMPAT CONTRACT — no knob option preserves cryptographic checks.
 // ══════════════════════════════════════════════════════════════════════════
 
 test('BACKWARDS COMPAT: with no knob options the checks-key set is the frozen seven', () => {
@@ -176,11 +176,25 @@ test('BACKWARDS COMPAT: with no knob options the checks-key set is the frozen se
   assert.equal(r.valid, true);
 });
 
-test('BACKWARDS COMPAT: with no knob options the result has exactly the pre-knob top-level members', () => {
+test('HONESTY SURFACE: no knob options still expose scope and Class-A authenticator metadata', () => {
   const r = verifyTrustReceipt(buildReceipt(), OPTS);
-  assert.deepEqual(Object.keys(r).sort(), ['attestation', 'checks', 'errors', 'strict', 'valid'].sort());
-  // None of the five optional result members appear.
-  for (const k of ['witness_quorum', 'timestamp_proof', 'currency', 'consumption', 'initiator_attestation']) {
+  assert.deepEqual(
+    Object.keys(r).sort(),
+    ['attestation', 'checks', 'decision_scope', 'errors', 'strict', 'valid', 'webauthn_signoffs'].sort(),
+  );
+  assert.equal(r.decision_scope.authenticity_only, true);
+  assert.equal(r.decision_scope.admission_authorized, false);
+  assert.equal(r.webauthn_signoffs.length, 1);
+  // No option-gated evidence result appears.
+  for (const k of [
+    'witness_quorum',
+    'timestamp_proof',
+    'revocation',
+    'currency',
+    'consumption',
+    'initiator_attestation',
+    'key_directory_transition',
+  ]) {
     assert.equal(k in r, false, `unexpected result member ${k} with no knob options`);
   }
 });

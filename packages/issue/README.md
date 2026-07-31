@@ -111,6 +111,14 @@ const result = verifyTrustReceipt(receipt, {
 console.log(result.valid); // true
 ```
 
+`result.valid` is an offline authenticity verdict, not permission to execute.
+It does not establish current non-revocation and does not atomically consume the
+receipt. Before any consequential effect, use `verificationMode: 'current'`
+with a relying-party clock and route the receipt through the
+credential-owning Gate / `makeReceiptGate()` backed by one shared atomic
+consumption store. Do not implement execution as
+`if (verifyTrustReceipt(...).valid) run()`.
+
 For multi-approver receipts, separation of duties, or chaining to a prior receipt, drop down to `buildContexts` → `collectSignoffs` → `assembleAuthorizationReceipt` (or the one-call `issueAuthorizationReceipt`). See `index.d.ts` for the full surface.
 
 ## What a locally-issued receipt proves — and what it does not

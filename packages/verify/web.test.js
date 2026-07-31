@@ -60,7 +60,7 @@ function makeCommitmentProof() {
     };
 }
 // Mirrors test.js makeSignoff — a real P-256 assertion over an EP context.
-function makeSignoff({ tamperContext = null, flags = 0x05, type = 'webauthn.get', rpId = 'emiliaprotocol.ai', origin = 'https://www.emiliaprotocol.ai', crossOrigin, duplicateChallenge = false, } = {}) {
+function makeSignoff({ tamperContext = null, flags = 0x05, signCount = 9, type = 'webauthn.get', rpId = 'emiliaprotocol.ai', origin = 'https://www.emiliaprotocol.ai', crossOrigin, duplicateChallenge = false, } = {}) {
     const { privateKey, publicKey } = crypto.generateKeyPairSync('ec', { namedCurve: 'P-256' });
     const context = {
         ep_version: '1.0', context_type: 'ep.signoff.v1',
@@ -76,7 +76,12 @@ function makeSignoff({ tamperContext = null, flags = 0x05, type = 'webauthn.get'
     const authData = Buffer.concat([
         crypto.createHash('sha256').update(rpId, 'utf8').digest(),
         Buffer.from([flags]),
-        Buffer.from([0, 0, 0, 9]),
+        Buffer.from([
+            (signCount >>> 24) & 0xff,
+            (signCount >>> 16) & 0xff,
+            (signCount >>> 8) & 0xff,
+            signCount & 0xff,
+        ]),
     ]);
     const signed = Buffer.concat([authData, crypto.createHash('sha256').update(clientData).digest()]);
     const signature = crypto.sign('sha256', signed, privateKey);
@@ -105,6 +110,7 @@ async function assertEquivalentSignoff(signoff, spki, opts, expectValid) {
     const a = nodeV.verifyWebAuthnSignoff(signoff, spki, opts);
     const b = await webV.verifyWebAuthnSignoff(signoff, spki, opts);
     assert.deepEqual(b.checks, a.checks, 'signoff checks must match Node');
+    assert.deepEqual(b.authenticator, a.authenticator, 'authenticator metadata must match Node');
     assert.equal(b.valid, a.valid, 'signoff validity must match Node');
     if (expectValid !== undefined)
         assert.equal(b.valid, expectValid);
@@ -201,6 +207,61 @@ test('signoff: valid device assertion — both verifiers accept, identically', a
         rpId: 'emiliaprotocol.ai',
         allowedOrigins: ['https://www.emiliaprotocol.ai'],
     }, true);
+});
+test('signoff: surfaces signCount and backup flags without putting numbers in checks', async () => {
+    const { signoff, spki } = makeSignoff({ flags: 0x1d, signCount: 17 });
+    const node = nodeV.verifyWebAuthnSignoff(signoff, spki, {
+        previousSignCount: 16,
+        counterPolicy: 'enforce',
+    });
+    const web = await webV.verifyWebAuthnSignoff(signoff, spki, {
+        previousSignCount: 16,
+        counterPolicy: 'enforce',
+    });
+    assert.equal(node.valid, true);
+    assert.deepEqual(node.authenticator, {
+        sign_count: 17,
+        backup_eligible: true,
+        backup_state: true,
+        counter_status: 'advanced',
+    });
+    assert.deepEqual(web.authenticator, node.authenticator);
+    assert.ok(Object.values(node.checks).every((value) => typeof value === 'boolean' || value === null));
+});
+test('signoff: optional stateful policy refuses a non-increasing nonzero counter', async () => {
+    const { signoff, spki } = makeSignoff({ signCount: 17 });
+    const observed = nodeV.verifyWebAuthnSignoff(signoff, spki, {
+        previousSignCount: 17,
+        counterPolicy: 'observe',
+    });
+    assert.equal(observed.valid, true);
+    assert.equal(observed.authenticator.counter_status, 'not_advanced');
+    const enforced = nodeV.verifyWebAuthnSignoff(signoff, spki, {
+        previousSignCount: 17,
+        counterPolicy: 'enforce',
+    });
+    const webEnforced = await webV.verifyWebAuthnSignoff(signoff, spki, {
+        previousSignCount: 17,
+        counterPolicy: 'enforce',
+    });
+    assert.equal(enforced.valid, false);
+    assert.match(enforced.error, /did not advance/i);
+    assert.deepEqual(webEnforced.authenticator, enforced.authenticator);
+    assert.equal(webEnforced.valid, false);
+});
+test('signoff: zero counter is surfaced as unsupported, not treated as cloning proof', async () => {
+    const { signoff, spki } = makeSignoff({ signCount: 0 });
+    const node = nodeV.verifyWebAuthnSignoff(signoff, spki, {
+        previousSignCount: 22,
+        counterPolicy: 'enforce',
+    });
+    const web = await webV.verifyWebAuthnSignoff(signoff, spki, {
+        previousSignCount: 22,
+        counterPolicy: 'enforce',
+    });
+    assert.equal(node.valid, true);
+    assert.equal(node.authenticator.counter_status, 'unsupported');
+    assert.deepEqual(web.authenticator, node.authenticator);
 });
 test('signoff: tampered action — both reject (challenge no longer binds)', async () => {
     const { signoff, spki } = makeSignoff({ tamperContext: { action_hash: 'f'.repeat(64) } });

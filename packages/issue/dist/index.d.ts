@@ -30,9 +30,10 @@
  * @license Apache-2.0
  */
 import crypto from 'node:crypto';
+import { canonicalizeStrictJson } from '../strict-json.js';
 type AnyRecord = Record<string, any>;
 /** Recursive canonical JSON — depth-first key sort at every level (JCS-equivalent). */
-export declare function canonicalize(value: any): string;
+export declare const canonicalize: typeof canonicalizeStrictJson;
 export declare function isCanonicalizable(value: any): boolean;
 /** "sha256:<hex>" action hash of the canonical Action Object (I-D §3). */
 export declare function actionHash(action: any): string;

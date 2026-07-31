@@ -201,7 +201,14 @@ not merely `valid`; authentic negative outcomes are evidence and never authority
 
 Returns `{ valid, authorizes_action, outcome, requires_successor, checks, reason? }`.
 
-### `verifyTrustReceipt(receipt, { approverKeys, logPublicKey, now })` — *requires 1.3.0*
+### `verifyTrustReceipt(receipt, { approverKeys, logPublicKey, now })`
+
+> **Authenticity is not admission or replay prevention.** This pure offline
+> verifier never authorizes an effect and never atomically consumes a receipt.
+> Every result carries `decision_scope.authenticity_only: true`,
+> `admission_authorized: false`, and an explicit replay/revocation status.
+> Consequential execution must use the credential-owning Gate /
+> `makeReceiptGate()` with one shared atomic consumption store.
 
 The full offline verification algorithm from the Internet-Draft
 (draft-schrock-ep-authorization-receipts, Section 6.3) over a Section 6.2
@@ -219,7 +226,10 @@ Trust Receipt — all six steps, no network:
    text or an encoded digest string.
 6. `signed_at` / `committed_at` within `[issued_at, expires_at]`
 
-Returns `{ valid, checks, errors, attestation, strict }` and fails closed on any missing input.
+Returns `{ valid, checks, errors, attestation, strict, decision_scope }` and
+fails closed on missing cryptographic input. `valid: true` means the supplied
+artifact passed the requested authenticity checks; it does **not** mean the
+action is currently authorized or unused.
 
 `valid_from` / `valid_to` express ordinary issuance and rotation windows.
 `compromised_at` is different: its presence is a terminal relying-party directory
@@ -228,6 +238,44 @@ relying party supplies its own RFC 3339 `now`, the verifier also refuses an
 `issued_at` more than five minutes in the future. Omitting `now` preserves
 offline historical verification; trusted timestamp evidence is still required
 when a deployment needs to prove when a receipt was actually created.
+
+For a current reliance decision, set `verificationMode: 'current'` and pass the
+relying party's trusted `now`. Current mode requires every signing key to remain
+current at that decision time, so a presenter cannot evade an expired
+`valid_to` by backdating the receipt. If an operator narrows `valid_to` into the
+past, also pass the previous directory as `previousApproverKeys`: the
+transition fails closed unless the new entry carries `compromised_at` (or the
+relying party records the explicit
+`allowRetroactiveExpiryWithoutCompromise: true` exception).
+
+```js
+const result = verifyTrustReceipt(receipt, {
+  approverKeys: currentDirectory,
+  previousApproverKeys: priorDirectory,
+  logPublicKey,
+  verificationMode: 'current',
+  now: relyingPartyClock,
+  revocationStatements,
+  revokerKeys,
+});
+```
+
+When `revocationStatements` is absent, `decision_scope.revocation_status` is
+`unknown`, never “not revoked.” An authentic exact-target revocation refuses;
+a malformed exact-target statement is `indeterminate` and also refuses.
+
+Current-mode financial actions at or above USD 100,000 require a pinned RFC
+3161 `timestampProof`. The built-in trigger recognizes payment, transfer, wire,
+disbursement, purchase, refund, and financial action types. Other deployments
+can require the same control explicitly with `requireTimestampProof: true`.
+
+Class-A WebAuthn verification surfaces `sign_count`, backup eligibility, backup
+state, and a counter status under `webauthn_signoffs`. Pass the previously
+stored counter in `webauthnSignCounts[keyId]`. The default `observe` policy
+reports a non-advancing counter; `webauthnCounterPolicy: 'enforce'` refuses it.
+A zero counter remains `unsupported`, because authenticators are permitted not
+to implement signature counters. A non-advancing nonzero counter is a signal
+of possible cloning, malfunction, or reordered assertions—not proof by itself.
 
 #### Strict verifier mode — *requires 1.5.0*
 
@@ -360,9 +408,14 @@ r.attestation; // { present, consistent, issues: [] }
 
 The advisory **never affects `valid` or any member of `checks`** — by design (PIP-007 §2): a receipt carrying a malformed attestation still verifies cryptographically, exactly as it does on a verifier that predates this PIP. The attestation is **a claim by the initiator** — identified but never trusted — so a policy engine MUST NOT use it to relax any check or raise any trust score.
 
-#### Opt-in transparency and currency knobs (requires 3.5.0)
+#### Transparency, revocation, time, and consumption checks
 
-Five **additive, opt-in** checks extend `verifyTrustReceipt` in the same shape as `priorCheckpoint`: each runs **only** when you pass its option, adds **one** member to `checks` when active, folds into `valid` by conjunction, and **fails closed** with a distinct reason. Pass none of them and the result is byte-for-byte what a pre-3.5.0 verifier returns (the frozen seven `checks` members, no extra top-level members).
+The optional evidence checks extend `verifyTrustReceipt` in the same shape as
+`priorCheckpoint`: each runs only when its evidence or requirement is supplied,
+adds one member to `checks`, folds into `valid` by conjunction, and fails closed
+with a distinct reason. The always-present `decision_scope` is intentionally
+outside the cryptographic checks: it prevents callers from mistaking offline
+authenticity for current admission or atomic replay protection.
 
 ```js
 const r = verifyTrustReceipt(receipt, {
@@ -382,10 +435,14 @@ const r = verifyTrustReceipt(receipt, {
 
   // 5. Initiator-software attestation (EP-INITIATOR-ATTESTATION-v1).
   requireInitiatorAttestation: true,
+
+  // 6. Current exact-target revocation statements from pinned revokers.
+  revocationStatements,
+  revokerKeys,
 });
 // checks.witness_quorum / .timestamp_proof / .currency / .consumption /
-// .initiator_attestation are added only for the options you passed, and the
-// full module result is surfaced under the matching top-level member.
+// .initiator_attestation / .revocation are added only when active, and the full
+// module result is surfaced under the matching top-level member.
 ```
 
 Honesty boundaries (also stated in each module):
@@ -395,6 +452,10 @@ Honesty boundaries (also stated in each module):
 - **Currency** is a separate axis from offline authenticity. `checks.currency` passes **only** on status `fresh`; both `stale` and the honest offline default **`unknown`** fail the opted-in gate, because offline verification can **never** establish currency. Read `result.currency.currency_at_T` to tell `unknown` (offline only) apart from `stale`.
 - **Consumption proof** proves the tree-shaped consumption facts only. Checkpoint **signatures** and currency of the later head are the caller's responsibility.
 - **Initiator attestation** says **which** software asked; it does **not** prove the software behaved (the labels are self-asserted, and the digest is authentic-as-supplied, not proof of correct execution).
+- **Revocation statements** prove only what the presented, pinned statements
+  establish. Absence from a supplied list is not proof of current
+  non-revocation; without a current authenticated status source the result
+  remains `unknown`.
 
 Both the witness and consumption profiles now ship a verifier **and** a reference emitter, so the emit/verify loop is closed at reference level. A third party can PRODUCE these artifacts, not only check them:
 

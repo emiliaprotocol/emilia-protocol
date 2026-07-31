@@ -4,6 +4,13 @@
 
 export const MAX_JSON_DEPTH = 64;
 
+export interface StrictJsonSuccess { ok: true }
+export interface StrictJsonFailure { ok: false; reason: string }
+export type StrictJsonResult = StrictJsonSuccess | StrictJsonFailure;
+interface ObjectFrame { object: true; keys: Set<string>; expectsKey: boolean }
+interface ArrayFrame { object: false }
+type Frame = ObjectFrame | ArrayFrame;
+
 function hasUnpairedUtf16Surrogate(value: string): boolean {
   for (let index = 0; index < value.length; index += 1) {
     const code = value.charCodeAt(index);
@@ -18,7 +25,7 @@ function hasUnpairedUtf16Surrogate(value: string): boolean {
   return false;
 }
 
-export function strictJsonGate(raw: unknown) {
+export function strictJsonGate(raw: unknown): StrictJsonResult {
   if (typeof raw !== 'string') return { ok: false, reason: 'JSON input must be text' };
   const input = raw;
   if (hasUnpairedUtf16Surrogate(input)) {
@@ -26,10 +33,7 @@ export function strictJsonGate(raw: unknown) {
   }
   try { JSON.parse(input); } catch { return { ok: false, reason: 'invalid JSON syntax' }; }
   let index = 0;
-  const stack: Array<
-    | { object: true; keys: Set<string>; expectsKey: boolean }
-    | { object: false }
-  > = [];
+  const stack: Frame[] = [];
   let reason: string | null = null;
   const escapes: Record<string, string> = { '"': '"', '\\': '\\', '/': '/', b: '\b', f: '\f', n: '\n', r: '\r', t: '\t' };
 
@@ -73,7 +77,7 @@ export function strictJsonGate(raw: unknown) {
   while (index < input.length) {
     const character = input[index];
     if (character === '{') {
-      stack.push({ object: true, keys: new Set(), expectsKey: true });
+      stack.push({ object: true, keys: new Set<string>(), expectsKey: true });
       if (stack.length > MAX_JSON_DEPTH) return { ok: false, reason: `nesting depth exceeds ${MAX_JSON_DEPTH}` };
       index += 1;
     } else if (character === '[') {
@@ -93,16 +97,13 @@ export function strictJsonGate(raw: unknown) {
       const value = readString();
       if (reason) return { ok: false, reason };
       if (isKey) {
-        // `isKey` is only true when `top?.object && top.expectsKey` held above,
-        // which guarantees `top` is a defined object-frame here; narrow the
-        // type for the compiler without altering the runtime reference.
-        const frame = top as { object: true; keys: Set<string>; expectsKey: boolean };
-        // `readString()` only ever returns null on a path that also sets
-        // `reason`, and the `if (reason) return` above already exited in
-        // that case, so `value` is guaranteed to be a string here.
-        const key = value as string;
-        if (frame.keys.has(key)) return { ok: false, reason: 'duplicate object member name' };
-        frame.keys.add(key);
+        // isKey is only true when top?.object && top.expectsKey was truthy above,
+        // which guarantees top is the object-frame variant here; TS can't
+        // correlate that through the intermediate `isKey` boolean.
+        const frame = top as ObjectFrame;
+        if (value === null) return { ok: false, reason: 'invalid string member name' };
+        if (frame.keys.has(value)) return { ok: false, reason: 'duplicate object member name' };
+        frame.keys.add(value);
         frame.expectsKey = false;
       }
     } else {
@@ -112,4 +113,112 @@ export function strictJsonGate(raw: unknown) {
   return { ok: true };
 }
 
-export default { strictJsonGate, MAX_JSON_DEPTH };
+function canonicalDomainError(path: string, reason: string): TypeError {
+  return new TypeError(`value is outside the strict canonical JSON domain at ${path}: ${reason}`);
+}
+
+function canonicalizeValue(value: unknown, path: string, ancestors: Set<object>, depth: number): string {
+  if (depth > MAX_JSON_DEPTH) throw canonicalDomainError(path, `nesting depth exceeds ${MAX_JSON_DEPTH}`);
+  if (value === null) return 'null';
+  if (typeof value === 'string') {
+    if (hasUnpairedUtf16Surrogate(value)) throw canonicalDomainError(path, 'unpaired Unicode surrogate');
+    return JSON.stringify(value);
+  }
+  if (typeof value === 'boolean') return value ? 'true' : 'false';
+  if (typeof value === 'number') {
+    if (!Number.isSafeInteger(value)) {
+      throw canonicalDomainError(path, 'numbers must be safe integers; encode other quantities as strings');
+    }
+    return JSON.stringify(value);
+  }
+  if (typeof value !== 'object') {
+    throw canonicalDomainError(path, `${typeof value} is not a JSON value`);
+  }
+
+  const object = value as object;
+  if (ancestors.has(object)) throw canonicalDomainError(path, 'cyclic reference');
+  ancestors.add(object);
+  try {
+    if (Array.isArray(value)) {
+      const ownKeys = Reflect.ownKeys(value);
+      if (ownKeys.some((key) => typeof key !== 'string')) {
+        throw canonicalDomainError(path, 'symbol members are not JSON');
+      }
+      const expectedKeys = new Set(['length', ...Array.from({ length: value.length }, (_, index) => String(index))]);
+      if (ownKeys.length !== expectedKeys.size
+          || ownKeys.some((key) => !expectedKeys.has(key as string))) {
+        throw canonicalDomainError(path, 'sparse arrays and arrays with extra members are not permitted');
+      }
+      const entries: string[] = [];
+      for (let index = 0; index < value.length; index += 1) {
+        const descriptor = Object.getOwnPropertyDescriptor(value, String(index));
+        if (!descriptor || !('value' in descriptor)) {
+          throw canonicalDomainError(`${path}[${index}]`, 'array holes and accessors are not permitted');
+        }
+        entries.push(canonicalizeValue(descriptor.value, `${path}[${index}]`, ancestors, depth + 1));
+      }
+      return `[${entries.join(',')}]`;
+    }
+
+    const prototype = Object.getPrototypeOf(value);
+    if (prototype !== Object.prototype && prototype !== null) {
+      throw canonicalDomainError(path, 'only plain objects are permitted');
+    }
+    const ownKeys = Reflect.ownKeys(value);
+    if (ownKeys.some((key) => typeof key !== 'string')) {
+      throw canonicalDomainError(path, 'symbol members are not JSON');
+    }
+    const keys = (ownKeys as string[]).sort();
+    const members: string[] = [];
+    for (const key of keys) {
+      if (hasUnpairedUtf16Surrogate(key)) {
+        throw canonicalDomainError(`${path}.${key}`, 'member name contains an unpaired Unicode surrogate');
+      }
+      const descriptor = Object.getOwnPropertyDescriptor(value, key);
+      if (!descriptor || descriptor.enumerable !== true || !('value' in descriptor)) {
+        throw canonicalDomainError(`${path}.${key}`, 'non-enumerable members and accessors are not permitted');
+      }
+      members.push(`${JSON.stringify(key)}:${canonicalizeValue(
+        descriptor.value,
+        `${path}.${key}`,
+        ancestors,
+        depth + 1,
+      )}`);
+    }
+    return `{${members.join(',')}}`;
+  } catch (error) {
+    if (error instanceof TypeError && /strict canonical JSON domain/.test(error.message)) throw error;
+    throw canonicalDomainError(path, `object inspection failed: ${error instanceof Error ? error.message : String(error)}`);
+  } finally {
+    ancestors.delete(object);
+  }
+}
+
+/**
+ * Canonical bytes for the closed EP JSON domain. Unlike JSON.stringify, this
+ * refuses values that can disappear, execute code, or collapse to the same
+ * bytes: non-plain objects, sparse arrays, accessors, symbols, cycles,
+ * undefined/functions/bigints, non-safe-integer numbers, and malformed UTF-16.
+ */
+export function canonicalizeStrictJson(value: unknown): string {
+  return canonicalizeValue(value, '$', new Set<object>(), 0);
+}
+
+/** Pure predicate companion to canonicalizeStrictJson(). */
+export function isStrictCanonicalJson(value: unknown): boolean {
+  try {
+    canonicalizeStrictJson(value);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+const strictJson = {
+  strictJsonGate,
+  canonicalizeStrictJson,
+  isStrictCanonicalJson,
+  MAX_JSON_DEPTH,
+};
+
+export default strictJson;
