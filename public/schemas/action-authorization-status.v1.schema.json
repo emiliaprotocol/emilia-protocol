@@ -1,0 +1,330 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://www.emiliaprotocol.ai/schemas/action-authorization-status.v1.schema.json",
+  "title": "Action Authorization Status and Evidence Field Group v1",
+  "description": "A closed, implementation-neutral classification of an action's authorization requirement, authority state, binding, admission, effect, and supporting evidence. It does not decide causation, liability, coverage, or population completeness.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "@version",
+    "action",
+    "boundary",
+    "classification",
+    "evidence",
+    "classified_at",
+    "classifier"
+  ],
+  "properties": {
+    "@version": { "const": "ACTION-AUTHORIZATION-STATUS-v1" },
+    "action": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["reference", "type", "occurred_at"],
+      "properties": {
+        "reference": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["scheme", "value"],
+          "properties": {
+            "scheme": { "$ref": "#/$defs/identifier" },
+            "value": { "type": "string", "minLength": 1, "maxLength": 2048 }
+          }
+        },
+        "type": { "$ref": "#/$defs/identifier" },
+        "occurred_at": { "$ref": "#/$defs/timestamp" }
+      }
+    },
+    "boundary": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "role"],
+      "properties": {
+        "id": { "$ref": "#/$defs/identifier" },
+        "role": {
+          "enum": [
+            "credential_broker",
+            "resource_server",
+            "provider_gateway",
+            "execution_service",
+            "other"
+          ]
+        }
+      }
+    },
+    "classification": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["requirement", "authority", "binding", "admission", "effect"],
+      "properties": {
+        "requirement": {
+          "enum": ["exact_action", "bounded_program", "standing_scope", "none", "unknown"]
+        },
+        "authority": {
+          "enum": ["valid", "invalid", "revoked", "stale", "indeterminate", "not_evaluated"]
+        },
+        "binding": {
+          "enum": ["exact_action", "within_bound", "outside_bound", "none", "indeterminate", "not_evaluated"]
+        },
+        "admission": {
+          "enum": ["admitted", "refused", "bypassed", "indeterminate", "not_observed"]
+        },
+        "effect": {
+          "enum": ["executed", "failed", "not_executed", "indeterminate", "unknown"]
+        }
+      }
+    },
+    "evidence": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["class", "as_of", "population_basis", "source_systems", "verification_profile", "artifacts", "limitations"],
+      "properties": {
+        "class": {
+          "enum": [
+            "E0_NONE",
+            "E1_SELF_ASSERTED",
+            "E2_OPERATOR_RECORDED",
+            "E3_ACTION_BOUND_SIGNED",
+            "E4_OFFLINE_PINNED_VERIFIABLE",
+            "E5_RECONCILED_NAMED_POPULATION"
+          ]
+        },
+        "as_of": { "$ref": "#/$defs/timestamp" },
+        "population_basis": {
+          "enum": ["single_action", "declared_population", "reconciled_named_systems", "independent_observation"]
+        },
+        "source_systems": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": { "$ref": "#/$defs/identifier" }
+        },
+        "verification_profile": {
+          "oneOf": [
+            { "type": "null" },
+            { "$ref": "#/$defs/verification_profile" }
+          ]
+        },
+        "artifacts": {
+          "type": "array",
+          "maxItems": 64,
+          "items": { "$ref": "#/$defs/artifact" }
+        },
+        "limitations": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 32,
+          "items": { "type": "string", "minLength": 1, "maxLength": 2048 }
+        }
+      }
+    },
+    "classified_at": { "$ref": "#/$defs/timestamp" },
+    "classifier": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "method", "ruleset_digest"],
+      "properties": {
+        "id": { "$ref": "#/$defs/identifier" },
+        "method": { "enum": ["manual", "ruleset", "mixed"] },
+        "ruleset_digest": { "$ref": "#/$defs/digest" }
+      }
+    }
+  },
+  "allOf": [
+    {
+      "if": {
+        "properties": {
+          "classification": {
+            "type": "object",
+            "properties": { "requirement": { "const": "none" } },
+            "required": ["requirement"]
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "classification": {
+            "type": "object",
+            "properties": {
+              "authority": { "const": "not_evaluated" },
+              "binding": { "const": "not_evaluated" }
+            }
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "classification": {
+            "type": "object",
+            "properties": { "requirement": { "const": "unknown" } },
+            "required": ["requirement"]
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "classification": {
+            "type": "object",
+            "properties": {
+              "authority": { "const": "indeterminate" },
+              "binding": { "const": "indeterminate" }
+            }
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "evidence": {
+            "type": "object",
+            "properties": { "class": { "const": "E0_NONE" } },
+            "required": ["class"]
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "evidence": {
+            "type": "object",
+            "properties": { "artifacts": { "type": "array", "maxItems": 0 } }
+          }
+        }
+      },
+      "else": {
+        "properties": {
+          "evidence": {
+            "type": "object",
+            "properties": { "artifacts": { "type": "array", "minItems": 1 } }
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "evidence": {
+            "type": "object",
+            "properties": {
+              "class": {
+                "enum": [
+                  "E3_ACTION_BOUND_SIGNED",
+                  "E4_OFFLINE_PINNED_VERIFIABLE",
+                  "E5_RECONCILED_NAMED_POPULATION"
+                ]
+              }
+            },
+            "required": ["class"]
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "evidence": {
+            "type": "object",
+            "properties": {
+              "artifacts": {
+                "type": "array",
+                "contains": {
+                  "type": "object",
+                  "properties": { "verification": { "const": "verified" } },
+                  "required": ["verification"]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "evidence": {
+            "type": "object",
+            "properties": {
+              "class": {
+                "enum": ["E4_OFFLINE_PINNED_VERIFIABLE", "E5_RECONCILED_NAMED_POPULATION"]
+              }
+            },
+            "required": ["class"]
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "evidence": {
+            "type": "object",
+            "properties": {
+              "verification_profile": { "$ref": "#/$defs/verification_profile" },
+              "artifacts": {
+                "type": "array",
+                "not": {
+                  "contains": {
+                    "type": "object",
+                    "properties": { "verification": { "const": "failed" } },
+                    "required": ["verification"]
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "evidence": {
+            "type": "object",
+            "properties": { "class": { "const": "E5_RECONCILED_NAMED_POPULATION" } },
+            "required": ["class"]
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "evidence": {
+            "type": "object",
+            "properties": {
+              "population_basis": { "const": "reconciled_named_systems" },
+              "source_systems": { "type": "array", "minItems": 1 }
+            }
+          }
+        }
+      }
+    }
+  ],
+  "$defs": {
+    "identifier": {
+      "type": "string",
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9:_.@/+\\-]{0,511}$"
+    },
+    "timestamp": {
+      "type": "string",
+      "pattern": "^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}(?:\\.\\d{1,9})?Z$"
+    },
+    "digest": {
+      "type": "string",
+      "pattern": "^sha256:[0-9a-f]{64}$"
+    },
+    "artifact": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["type", "digest", "verification"],
+      "properties": {
+        "type": { "$ref": "#/$defs/identifier" },
+        "digest": { "$ref": "#/$defs/digest" },
+        "verification": { "enum": ["verified", "failed", "not_checked", "indeterminate"] }
+      }
+    },
+    "verification_profile": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "digest"],
+      "properties": {
+        "id": { "$ref": "#/$defs/identifier" },
+        "digest": { "$ref": "#/$defs/digest" }
+      }
+    }
+  }
+}
