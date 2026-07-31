@@ -35,7 +35,17 @@ The verifier enforces four cross-run constraints:
 
 ```sh
 node --test interop/aae-psea-gate/verify.test.mjs
+node interop/aae-psea-gate/reperform.mjs
 ```
+
+`reperform.mjs` is the independent return package. It fetches every source
+artifact from the immutable upstream commit, verifies the exact byte pins,
+authenticates the Ed25519 AAE JWS under the fixture's pinned trust decision,
+re-performs the applicable AAE Section 5 checks through step 7, checks that the
+action payload is exact RFC 8785 output, compares the recomputed 32 octets to
+the authenticated `action_binding`, and only then joins the result to the Gate
+attempt pair. Its JSON output is checked in as
+`independent-return.v1.json`.
 
 The vector deliberately does **not** establish named-human WHO confirmation,
 PSEA conformance, execution order or a provider effect. Those remain external

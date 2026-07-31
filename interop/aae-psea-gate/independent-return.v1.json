@@ -1,0 +1,34 @@
+{
+  "@version": "EMILIA-AAE-PSEA-INDEPENDENT-RETURN-v1",
+  "source": {
+    "repository": "https://github.com/MoltyCel/aae-conformance-vectors",
+    "commit": "e8c00e5014c52a4cb4ff51d24c360db5c82d599e",
+    "fixture_path": "fixtures/aae-psea-proof-exchange-v1/",
+    "source_vector_commit": "48450505c05c7182962c166781354e88412581e7",
+    "files": {
+      "fixtures/aae-psea-proof-exchange-v1/aae-envelope.jws": "sha256:c2db119de3f04a775a7c11afd1b78a6d6e03780ad84fc09f76ccb2ccac7c2b9b",
+      "fixtures/aae-psea-proof-exchange-v1/action-payload.json": "sha256:d6583cbc62c1278311ad311a586da207189693a98143f773a8fc960ae59ac606",
+      "fixtures/aae-psea-proof-exchange-v1/issuer-trust.json": "sha256:8ee59a17b9ff4b36dfe9f4dbfd49e12aafbe0443cc8477e243adec87aad4a2a9",
+      "fixtures/aae-psea-proof-exchange-v1/expected.json": "sha256:51e6ac125835573c44f63aeb0a0645f47cb4eef17756b4394c6f5a9c3544bb70",
+      "fixtures/aae-psea-proof-exchange-v1/manifest.json": "sha256:11cd5c6ff281c5253f28248b230d90dbb198a3435bf78d7a7e1a7c8c2fe14af2",
+      "fixtures/aae-psea-proof-exchange-v1/README.md": "sha256:fcf699e7dffa2570c7b7f1868d670bb1e5a75aedaa969a582002092b447149eb",
+      "interop/psea/vectors/xp-1-aligned-principal.json": "sha256:5405eff68026f02e8380d09075b07fbe6104448e2d1ec7c9be7d8c9085cc1d06"
+    }
+  },
+  "verification": {
+    "exact_source_bytes": "VERIFIED",
+    "aae_signature": "VALID",
+    "aae_native": "ACCEPT@7",
+    "action_payload_jcs": "EXACT",
+    "authenticated_action_binding": "MATCH",
+    "action_digest": "sha256:d6583cbc62c1278311ad311a586da207189693a98143f773a8fc960ae59ac606",
+    "gate_attempt_pair": "VALID",
+    "second_admission": "NONE/already_consumed"
+  },
+  "accepted_result": {
+    "action_linkage": "EQUIVALENT",
+    "principal_linkage": "PROPOSED",
+    "psea_conformance": "NOT_ESTABLISHED",
+    "provider_effect": "INDETERMINATE"
+  }
+}
