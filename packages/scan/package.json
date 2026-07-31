@@ -1,6 +1,6 @@
 {
   "name": "@emilia-protocol/scan",
-  "version": "0.3.0",
+  "version": "0.3.1",
   "description": "Passive local authority inventory plus fail-closed static classification for MCP and OpenAPI action surfaces.",
   "license": "Apache-2.0",
   "type": "module",
@@ -17,6 +17,7 @@
     }
   },
   "bin": {
+    "scan": "cli.mjs",
     "emilia-scan": "cli.mjs",
     "emilia-harden": "codemod.mjs"
   },
