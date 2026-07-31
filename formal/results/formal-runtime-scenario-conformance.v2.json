@@ -983,7 +983,7 @@
     },
     {
       "path": "packages/verify/dist/index.js",
-      "sha256": "ffbfa8a5b6e9319d2363545be8876bcb08541c9cf71cba70b50cfb365ffb65c8"
+      "sha256": "1ff6866dbb2136c7b49a000a3fe305f3ccdd65aab1d72f8251412bebc117a593"
     },
     {
       "path": "packages/verify/dist/initiator-attestation.js",
@@ -1011,7 +1011,7 @@
     },
     {
       "path": "packages/verify/dist/reliance.js",
-      "sha256": "fefc92e7f0654c5b6a17c9a7d3d3051ade4eb4843981ca5a6209458f2097a9b9"
+      "sha256": "f5ac524c0d35ea31c01081726dc313ad9c39d7b0de633fb0ba37356178555cfd"
     },
     {
       "path": "packages/verify/dist/revocation.js",
@@ -1079,7 +1079,7 @@
     },
     {
       "path": "packages/verify/src/index.ts",
-      "sha256": "95a292d7cc5b5e25bdc442df14ef677d8ab053a442dbe760c49229abb9bad7cf"
+      "sha256": "5df3d41824d17b645a38a61a996ea8555d1862afff00c43eb17f731b63f5fc46"
     },
     {
       "path": "packages/verify/src/outcome-binding.ts",
@@ -1087,7 +1087,7 @@
     },
     {
       "path": "packages/verify/src/reliance.ts",
-      "sha256": "ccb46c90fbedd578c439000b618f348e8ef1d0ec91c6733b95a415615fe0140e"
+      "sha256": "02e9a991fc77744ff83527e93bc402d0b20ff59389aa7d448304f7881076d1eb"
     },
     {
       "path": "packages/verify/src/revocation.ts",
