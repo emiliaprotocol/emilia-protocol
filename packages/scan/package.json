@@ -1,7 +1,7 @@
 {
   "name": "@emilia-protocol/scan",
-  "version": "0.2.1",
-  "description": "Fail-closed static classifier for MCP/OpenAPI action surfaces. MCP hints are advisory; output is a proposal, never an enforcement claim.",
+  "version": "0.3.0",
+  "description": "Passive local authority inventory plus fail-closed static classification for MCP and OpenAPI action surfaces.",
   "license": "Apache-2.0",
   "type": "module",
   "main": "index.js",
@@ -10,6 +10,10 @@
     ".": {
       "import": "./index.js",
       "types": "./dist/index.d.ts"
+    },
+    "./authority": {
+      "import": "./dist/authority/index.js",
+      "types": "./dist/authority/index.d.ts"
     }
   },
   "bin": {
@@ -29,7 +33,7 @@
   "scripts": {
     "build": "tsc -p tsconfig.json",
     "pretest": "npm run build",
-    "test": "node --test test.js"
+    "test": "node --test test.js authority.test.mjs"
   },
   "dependencies": {
     "@emilia-protocol/verify": "^3.10.0"

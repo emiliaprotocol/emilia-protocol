@@ -16,6 +16,14 @@ interface Post {
 
 const POSTS: Post[] = [
   {
+    title: 'A credential was all the authority it needed',
+    desc: 'The OpenAI–Hugging Face incident began as a containment failure. At external services, exposed credentials became enough to act. Those are different security problems.',
+    href: '/blog/credentials-are-not-action-authorization',
+    date: '2026-07',
+    tag: 'Agent Security',
+    accent: color.red,
+  },
+  {
     title: 'The two-person rule for AI agents',
     desc: 'Some actions are too consequential for one signature. M-of-N or ordered human approval, each signer bound to the exact action — the two-person rule made cryptographic, offline-verifiable, and fail-closed.',
     href: '/blog/the-two-person-rule-for-ai-agents',
@@ -76,7 +84,7 @@ export default function BlogIndexPage(): React.ReactElement {
         <div className="ep-tag ep-hero-badge">Blog</div>
         <h1 className="ep-hero-text" style={styles.h1}>Field notes</h1>
         <p className="ep-hero-text" style={{ ...styles.body, maxWidth: 620, marginBottom: 48 }}>
-          Working notes on AI agent authorization, MCP, formal verification, and fraud defense by action binding.
+          Working notes on AI agent authorization, authority discovery, MCP, formal verification, and fraud defense by action binding.
         </p>
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(380px, 1fr))', gap: 12 }}>
           {POSTS.map((p, i) => (

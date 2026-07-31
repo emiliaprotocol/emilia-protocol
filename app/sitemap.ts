@@ -23,6 +23,7 @@ export default function sitemap(): MetadataRoute.Sitemap {
     { path: '/gate',                  priority: 0.98, changeFrequency: 'weekly' },
     { path: '/assurance',             priority: 0.92, changeFrequency: 'weekly' },
     { path: '/agent-guard',           priority: 0.85, changeFrequency: 'monthly' },
+    { path: '/scan',                  priority: 0.9,  changeFrequency: 'weekly' },
     { path: '/fire-drill',            priority: 0.95, changeFrequency: 'weekly' },
     { path: '/fire-drill/cf-1',       priority: 0.9,  changeFrequency: 'monthly' },
     { path: '/fire-drill/gallery',    priority: 0.8,  changeFrequency: 'weekly' },
@@ -75,6 +76,7 @@ export default function sitemap(): MetadataRoute.Sitemap {
   // Top-of-funnel blog posts — educational content for keyword breadth.
   const blog = [
     { path: '/blog',                                              priority: 0.7,  changeFrequency: 'weekly' },
+    { path: '/blog/credentials-are-not-action-authorization',     priority: 0.85, changeFrequency: 'monthly' },
     { path: '/blog/the-two-person-rule-for-ai-agents',            priority: 0.8,  changeFrequency: 'monthly' },
     { path: '/blog/mcp-authorization-best-practices',             priority: 0.75, changeFrequency: 'monthly' },
     { path: '/blog/what-is-pre-action-authorization',             priority: 0.75, changeFrequency: 'monthly' },
