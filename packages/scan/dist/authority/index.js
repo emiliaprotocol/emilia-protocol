@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: Apache-2.0
 import { discoverAuthority } from './discover.js';
 import { detectAuthoritySignals } from './detect.js';
-export const AUTHORITY_SCAN_VERSION = '0.3.0';
+export const AUTHORITY_SCAN_VERSION = '0.3.1';
 export function runAuthorityScan(options = {}) {
     const inventory = discoverAuthority(options);
     const summary = {
