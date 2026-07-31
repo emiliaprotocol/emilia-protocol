@@ -791,11 +791,6 @@ function parseInstant(value: any): number {
   return Number.isFinite(parsed) ? parsed : NaN;
 }
 
-// Tolerance for benign clock skew between issuer and verifier when opts.now is
-// supplied. Only ever permits a slightly-future issued_at; never widens a
-// validity window and never affects backdating.
-const NOW_SKEW_MS = 5 * 60 * 1000;
-
 function withinWindow(t: any, from: any, to: any): boolean {
   const ts = parseInstant(t);
   if (Number.isNaN(ts)) return false;
@@ -1184,7 +1179,7 @@ function trustReceiptCanonicalProfileError(receipt: any): string | null {
  *   Explicit exceptional override for a relying party that has independently
  *   established that a retroactive directory correction was not a compromise.
  * @param {string} [opts.now] - optional relying-party clock used to reject
- *   presenter-claimed issuance more than five minutes in the future, evaluate
+ *   presenter-claimed issuance, signoff, or consumption after the decision time; evaluate
  *   current-mode key status, audit directory transitions, and validate dated
  *   revocation evidence. Required when `verificationMode` is `current`.
  * @param {'historical'|'current'} [opts.verificationMode='historical']
@@ -1292,6 +1287,11 @@ export function verifyTrustReceipt(receipt: any, opts: Obj = {}): Obj {
     admission_authorized: false,
     replay_status: 'not_evaluated',
     revocation_status: 'unknown',
+    quorum_ordering: {
+      presented: false,
+      evaluated: false,
+      verifier: 'verifyQuorum',
+    },
     warning: 'AUTHENTICITY IS NOT ADMISSION OR REPLAY PREVENTION',
   };
   const verificationMode = opts.verificationMode ?? 'historical';
@@ -1347,6 +1347,8 @@ export function verifyTrustReceipt(receipt: any, opts: Obj = {}): Obj {
   const { approverKeys = {}, logPublicKey } = opts;
   const contexts = Array.isArray(receipt.contexts) ? receipt.contexts : [];
   const signoffs = Array.isArray(receipt.signoffs) ? receipt.signoffs : [];
+  decisionScope.quorum_ordering.presented = contexts.some((context: any) =>
+    context && typeof context === 'object' && Object.hasOwn(context, 'prev_context_hash'));
   if (!receipt.action || !receipt.action_hash) return fail('Missing action or action_hash');
   if (contexts.length === 0 || signoffs.length === 0) return fail('Missing contexts or signoffs');
   const profileError = trustReceiptCanonicalProfileError(receipt);
@@ -1493,9 +1495,14 @@ export function verifyTrustReceipt(receipt: any, opts: Obj = {}): Obj {
     // issuance in the future: a receipt cannot have been approved after the
     // moment it is being verified. This does not bound backdating on its own
     // (see compromised_at above, and opts.timestampProof for a trusted anchor).
-    if (verifierNow !== null && parseInstant(ctx.issued_at) > verifierNow + NOW_SKEW_MS) {
+    if (verifierNow !== null && parseInstant(ctx.issued_at) > verifierNow) {
       signaturesOk = false;
       errors.push(`issued_at for ${s.approver_key_id} is in the future relative to the verifier clock`);
+      continue;
+    }
+    if (verifierNow !== null && parseInstant(s.signed_at) > verifierNow) {
+      signaturesOk = false;
+      errors.push(`signed_at for ${s.approver_key_id} is in the future relative to the verifier clock`);
       continue;
     }
     const digestBytes = Buffer.from(digestHex, 'hex');
@@ -1921,6 +1928,10 @@ export function verifyTrustReceipt(receipt: any, opts: Obj = {}): Obj {
     windowsOk = false;
     errors.push('missing consumption.committed_at');
   } else {
+    if (verifierNow !== null && parseInstant(committedAt) > verifierNow) {
+      windowsOk = false;
+      errors.push('committed_at is in the future relative to the verifier clock');
+    }
     for (const ctx of contexts) {
       if (!withinWindow(committedAt, ctx.issued_at, ctx.expires_at)) {
         windowsOk = false;

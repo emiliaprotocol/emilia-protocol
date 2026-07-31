@@ -26,6 +26,12 @@ This package follows [Semantic Versioning](https://semver.org/).
 - WebAuthn results expose `sign_count`, backup eligibility/state, and a
   counter-status signal without treating a non-increasing counter as proof of
   cloning.
+- A relying-party clock now refuses future `issued_at`, `signed_at`, and
+  consumption `committed_at` values instead of granting presenter-controlled
+  future-time tolerance.
+- Trust Receipt decisions explicitly report whether ordered-quorum linkage was
+  merely presented or was evaluated by `verifyQuorum`; base receipt
+  verification no longer leaves that policy boundary implicit.
 
 ## 3.18.2 (2026-07-29)
 

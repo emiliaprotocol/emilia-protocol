@@ -24,6 +24,7 @@ import {
   auditApproverKeyDirectoryTransition,
   canonicalize as canonicalizeVerifier,
   isCanonicalizable,
+  verifyReceipt,
   verifyTrustReceipt,
 } from './index.js';
 import { buildConsistencyProof, merkleRoot } from './consistency.js';
@@ -233,6 +234,11 @@ test('verification result refuses to imply admission, replay safety, or current 
     admission_authorized: false,
     replay_status: 'not_evaluated',
     revocation_status: 'unknown',
+    quorum_ordering: {
+      presented: false,
+      evaluated: false,
+      verifier: 'verifyQuorum',
+    },
     warning: 'AUTHENTICITY IS NOT ADMISSION OR REPLAY PREVENTION',
   });
 });
@@ -269,6 +275,45 @@ test('strict canonical JSON rejects colliding JavaScript object shapes before ha
       value?.constructor?.name || 'anonymous',
     );
   }
+});
+
+test('public receipt verifiers fail closed instead of throwing on cycles and symbol members', () => {
+  const cyclicPayload: any = { safe: 'visible' };
+  cyclicPayload.self = cyclicPayload;
+  const symbolPayload: any = { safe: 'visible' };
+  symbolPayload[Symbol.for('hidden_command')] = { override: true };
+
+  for (const payload of [cyclicPayload, symbolPayload]) {
+    let result: any;
+    assert.doesNotThrow(() => {
+      result = verifyReceipt({
+        '@version': 'EP-RECEIPT-v1',
+        payload,
+        signature: { algorithm: 'Ed25519', value: 'AA' },
+      }, 'AA');
+    });
+    assert.equal(result.valid, false);
+    assert.match(result.error, /canonicalization profile/i);
+  }
+
+  const receipt = buildReceipt();
+  receipt.action.self = receipt.action;
+  let trustResult: any;
+  assert.doesNotThrow(() => { trustResult = verifyTrustReceipt(receipt, OPTS); });
+  assert.equal(trustResult.valid, false);
+  assert.match(trustResult.errors.join(' '), /canonicalization profile/i);
+});
+
+test('base Trust Receipt verification labels quorum ordering as a separate unevaluated profile', () => {
+  const receipt = buildReceipt({ ctx1: { prev_context_hash: 'sha256:not-a-real-predecessor' } });
+  const result = verifyTrustReceipt(receipt, OPTS);
+
+  assert.equal(result.valid, true, JSON.stringify(result.errors));
+  assert.deepEqual(result.decision_scope.quorum_ordering, {
+    presented: true,
+    evaluated: false,
+    verifier: 'verifyQuorum',
+  });
 });
 
 // ── step 1: action binding ───────────────────────────────────────────────────
@@ -507,6 +552,23 @@ test('opts.now refuses an issued_at claimed in the future, and is inert when abs
   assert.equal(future.valid, false);
   assert.equal(future.checks.signoff_signatures, false);
   assert.ok(future.errors.some((e: string) => /future relative to the verifier clock/.test(e)));
+});
+
+test('opts.now refuses every presenter-controlled lifecycle time after the verifier decision time', () => {
+  const futureIssuance = verifyTrustReceipt(buildReceipt(), {
+    ...OPTS,
+    now: '2026-06-09T17:21:04Z',
+  });
+  assert.equal(futureIssuance.valid, false);
+  assert.ok(futureIssuance.errors.some((e: string) => /issued_at .*future relative/i.test(e)));
+
+  const futureSignoffAndCommit = verifyTrustReceipt(buildReceipt(), {
+    ...OPTS,
+    now: '2026-06-09T17:21:06Z',
+  });
+  assert.equal(futureSignoffAndCommit.valid, false);
+  assert.ok(futureSignoffAndCommit.errors.some((e: string) => /signed_at .*future relative/i.test(e)));
+  assert.ok(futureSignoffAndCommit.errors.some((e: string) => /committed_at .*future relative/i.test(e)));
 });
 
 test('opts.now itself fails closed when unparseable', () => {

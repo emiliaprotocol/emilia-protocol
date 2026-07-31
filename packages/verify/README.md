@@ -231,11 +231,20 @@ fails closed on missing cryptographic input. `valid: true` means the supplied
 artifact passed the requested authenticity checks; it does **not** mean the
 action is currently authorized or unused.
 
+`verifyTrustReceipt` authenticates each presented Authorization Context, but it
+does not evaluate the companion EP-QUORUM set-level policy. Its always-present
+`decision_scope.quorum_ordering` reports whether a `prev_context_hash` was
+present and names `verifyQuorum` as the required verifier. A green base receipt
+result MUST NOT be described as proof of threshold, roster order, or ordered
+chain linkage unless `verifyQuorum` also accepts the exact members and pinned
+policy.
+
 `valid_from` / `valid_to` express ordinary issuance and rotation windows.
 `compromised_at` is different: its presence is a terminal relying-party directory
 fact, so a stolen key cannot evade it by signing a backdated `issued_at`. When a
 relying party supplies its own RFC 3339 `now`, the verifier also refuses an
-`issued_at` more than five minutes in the future. Omitting `now` preserves
+`issued_at`, `signed_at`, or `consumption.committed_at` after that verifier
+decision time. Omitting `now` preserves
 offline historical verification; trusted timestamp evidence is still required
 when a deployment needs to prove when a receipt was actually created.
 

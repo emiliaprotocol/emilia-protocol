@@ -20,7 +20,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import crypto from 'node:crypto';
-import { REVOCATION_VERSION, auditApproverKeyDirectoryTransition, canonicalize as canonicalizeVerifier, isCanonicalizable, verifyTrustReceipt, } from './index.js';
+import { REVOCATION_VERSION, auditApproverKeyDirectoryTransition, canonicalize as canonicalizeVerifier, isCanonicalizable, verifyReceipt, verifyTrustReceipt, } from './index.js';
 import { buildConsistencyProof, merkleRoot } from './consistency.js';
 // ── canonicalize + sha256: must match index.js ───────────────────────────────
 function canonicalize(value) {
@@ -203,6 +203,11 @@ test('verification result refuses to imply admission, replay safety, or current 
         admission_authorized: false,
         replay_status: 'not_evaluated',
         revocation_status: 'unknown',
+        quorum_ordering: {
+            presented: false,
+            evaluated: false,
+            verifier: 'verifyQuorum',
+        },
         warning: 'AUTHENTICITY IS NOT ADMISSION OR REPLAY PREVENTION',
     });
 });
@@ -233,6 +238,40 @@ test('strict canonical JSON rejects colliding JavaScript object shapes before ha
         assert.equal(isCanonicalizable(value), false, value?.constructor?.name || 'anonymous');
         assert.throws(() => canonicalizeVerifier(value), /canonical JSON domain/i, value?.constructor?.name || 'anonymous');
     }
+});
+test('public receipt verifiers fail closed instead of throwing on cycles and symbol members', () => {
+    const cyclicPayload = { safe: 'visible' };
+    cyclicPayload.self = cyclicPayload;
+    const symbolPayload = { safe: 'visible' };
+    symbolPayload[Symbol.for('hidden_command')] = { override: true };
+    for (const payload of [cyclicPayload, symbolPayload]) {
+        let result;
+        assert.doesNotThrow(() => {
+            result = verifyReceipt({
+                '@version': 'EP-RECEIPT-v1',
+                payload,
+                signature: { algorithm: 'Ed25519', value: 'AA' },
+            }, 'AA');
+        });
+        assert.equal(result.valid, false);
+        assert.match(result.error, /canonicalization profile/i);
+    }
+    const receipt = buildReceipt();
+    receipt.action.self = receipt.action;
+    let trustResult;
+    assert.doesNotThrow(() => { trustResult = verifyTrustReceipt(receipt, OPTS); });
+    assert.equal(trustResult.valid, false);
+    assert.match(trustResult.errors.join(' '), /canonicalization profile/i);
+});
+test('base Trust Receipt verification labels quorum ordering as a separate unevaluated profile', () => {
+    const receipt = buildReceipt({ ctx1: { prev_context_hash: 'sha256:not-a-real-predecessor' } });
+    const result = verifyTrustReceipt(receipt, OPTS);
+    assert.equal(result.valid, true, JSON.stringify(result.errors));
+    assert.deepEqual(result.decision_scope.quorum_ordering, {
+        presented: true,
+        evaluated: false,
+        verifier: 'verifyQuorum',
+    });
 });
 // ── step 1: action binding ───────────────────────────────────────────────────
 test('step 1 — a tampered action parameter fails the action hash', () => {
@@ -445,6 +484,21 @@ test('opts.now refuses an issued_at claimed in the future, and is inert when abs
     assert.equal(future.valid, false);
     assert.equal(future.checks.signoff_signatures, false);
     assert.ok(future.errors.some((e) => /future relative to the verifier clock/.test(e)));
+});
+test('opts.now refuses every presenter-controlled lifecycle time after the verifier decision time', () => {
+    const futureIssuance = verifyTrustReceipt(buildReceipt(), {
+        ...OPTS,
+        now: '2026-06-09T17:21:04Z',
+    });
+    assert.equal(futureIssuance.valid, false);
+    assert.ok(futureIssuance.errors.some((e) => /issued_at .*future relative/i.test(e)));
+    const futureSignoffAndCommit = verifyTrustReceipt(buildReceipt(), {
+        ...OPTS,
+        now: '2026-06-09T17:21:06Z',
+    });
+    assert.equal(futureSignoffAndCommit.valid, false);
+    assert.ok(futureSignoffAndCommit.errors.some((e) => /signed_at .*future relative/i.test(e)));
+    assert.ok(futureSignoffAndCommit.errors.some((e) => /committed_at .*future relative/i.test(e)));
 });
 test('opts.now itself fails closed when unparseable', () => {
     const r = verifyTrustReceipt(buildReceipt(), { ...OPTS, now: 'not-a-date' });

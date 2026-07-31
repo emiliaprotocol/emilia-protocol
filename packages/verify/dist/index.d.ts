@@ -164,7 +164,7 @@ export declare function auditApproverKeyDirectoryTransition(previousApproverKeys
  *   Explicit exceptional override for a relying party that has independently
  *   established that a retroactive directory correction was not a compromise.
  * @param {string} [opts.now] - optional relying-party clock used to reject
- *   presenter-claimed issuance more than five minutes in the future, evaluate
+ *   presenter-claimed issuance, signoff, or consumption after the decision time; evaluate
  *   current-mode key status, audit directory transitions, and validate dated
  *   revocation evidence. Required when `verificationMode` is `current`.
  * @param {'historical'|'current'} [opts.verificationMode='historical']

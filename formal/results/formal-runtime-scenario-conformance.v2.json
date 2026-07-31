@@ -983,7 +983,7 @@
     },
     {
       "path": "packages/verify/dist/index.js",
-      "sha256": "3212432c2cf2b2c0083f62529e6ee8c24ce48249425840204da5a5388c92764c"
+      "sha256": "ffbfa8a5b6e9319d2363545be8876bcb08541c9cf71cba70b50cfb365ffb65c8"
     },
     {
       "path": "packages/verify/dist/initiator-attestation.js",
@@ -1079,7 +1079,7 @@
     },
     {
       "path": "packages/verify/src/index.ts",
-      "sha256": "76de97c2a4c186e67b7fb2d58f8c746a39a6a35dc7661bd3f662864c46604b03"
+      "sha256": "95a292d7cc5b5e25bdc442df14ef677d8ab053a442dbe760c49229abb9bad7cf"
     },
     {
       "path": "packages/verify/src/outcome-binding.ts",
