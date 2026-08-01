@@ -314,6 +314,9 @@ const ROUTE_POLICIES = {
   // AI Trust Desk — public intake form submission. No API key (like
   // /api/entities/register); IP-throttled because it triggers an LLM pipeline.
   'POST /api/trust-desk/intake':        { rateCategory: 'register', useAuth: false },
+  // Internal reviewer API. Authentication and named reviewer binding are
+  // performed by the host-only signed session in-route.
+  'POST /api/trust-desk/review/*':      { rateCategory: 'submit', useAuth: false },
 };
 
 // =============================================================================

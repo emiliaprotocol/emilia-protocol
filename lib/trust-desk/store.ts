@@ -29,9 +29,11 @@ export const STATUS = Object.freeze({
   CLASSIFYING: 'classifying',
   ANSWERING: 'answering',
   VERIFYING: 'verifying',
+  AWAITING_REVIEW: 'awaiting_review',
   MINTING: 'minting',
   PUBLISHED: 'published',
   ESCALATED: 'escalated',
+  REJECTED: 'rejected',
   FAILED: 'failed',
 });
 
@@ -101,6 +103,41 @@ export async function setStatus(
     : [];
   history.push({ status, at: isoNow() });
   return patchEngagement(engagementId, { status, status_history: history, ...extra });
+}
+
+export interface CompareAndSetStatusResult {
+  ok: boolean;
+  record: EngagementRecord | null;
+  reason: 'not_found' | 'status_mismatch' | null;
+}
+
+/**
+ * Atomically claim one pipeline transition. Production delegates to a
+ * row-locked Postgres RPC. The file backend is synchronous and intended only
+ * for one-process local/test use, so no await occurs between read and write.
+ */
+export async function compareAndSetStatus(
+  engagementId: string,
+  expectedStatus: string,
+  status: string,
+  extra: Record<string, any> = {},
+): Promise<CompareAndSetStatusResult> {
+  if (storeBackend() === 'supabase') {
+    return (await sb()).compareAndSetStatus(engagementId, expectedStatus, status, extra);
+  }
+  const current = fileGet(engagementId);
+  if (!current) return { ok: false, record: null, reason: 'not_found' };
+  if (current.status !== expectedStatus) {
+    return { ok: false, record: current, reason: 'status_mismatch' };
+  }
+  const at = isoNow();
+  const history: Array<{ status: string; at: string }> = Array.isArray(current.status_history)
+    ? [...current.status_history]
+    : [];
+  history.push({ status, at });
+  const next = { ...current, ...extra, status, status_history: history, updated_at: at };
+  fs.writeFileSync(fileFor(engagementId), JSON.stringify(next, null, 2));
+  return { ok: true, record: next, reason: null };
 }
 
 export async function listEngagements(): Promise<EngagementRecord[]> {

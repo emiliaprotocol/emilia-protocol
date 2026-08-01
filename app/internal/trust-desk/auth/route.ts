@@ -38,6 +38,14 @@ export async function GET(request: NextRequest): Promise<Response> {
     return NextResponse.json({ error: 'invalid token' }, { status: 401 });
   }
 
+  const session = issueTrustDeskSession();
+  if (!session) {
+    return NextResponse.json(
+      { error: 'TRUST_DESK_REVIEWER_ID is not configured with a valid named reviewer' },
+      { status: 503 },
+    );
+  }
+
   const bootstrap = await consumeTrustDeskBootstrap(provided);
   if (!bootstrap.ok) {
     if (bootstrap.reason === 'bootstrap_replayed') {
@@ -46,17 +54,15 @@ export async function GET(request: NextRequest): Promise<Response> {
     return NextResponse.json({ error: 'trust desk bootstrap store unavailable' }, { status: 503 });
   }
 
-  // TRUST_DESK_INTERNAL_TOKEN is confirmed present by the `expected` guard
-  // above, so issueTrustDeskSession()'s internal secret() cannot return null
-  // on this path and the session string is always produced.
-  const session = issueTrustDeskSession() as string;
   const res = NextResponse.redirect(new URL('/internal/trust-desk', request.url));
   res.headers.set('Referrer-Policy', 'no-referrer');
   res.cookies.set(TRUST_DESK_SESSION_COOKIE, session, {
     httpOnly: true,
     secure: process.env.NODE_ENV === 'production',
     sameSite: 'strict',
-    path: '/internal/trust-desk',
+    // The same host-only session authenticates the dashboard and its review
+    // API. Scope it to this host, not only the dashboard path.
+    path: '/',
     maxAge: 60 * 60 * 8, // 8 hours
   });
   return res;
