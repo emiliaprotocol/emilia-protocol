@@ -272,9 +272,9 @@ function fixture(options = {}) {
         allowed_origins: [ORIGIN],
         expected_nonce: NONCE,
         max_status_age_seconds: 120,
-        sign_count_policy: 'above-enrollment-and-one-time',
-        allow_backup_eligible: false,
-        allow_backup_state: false,
+        sign_count_policy: options.signCountPolicy ?? 'above-enrollment-and-one-time',
+        allow_backup_eligible: options.allowBackupEligible ?? false,
+        allow_backup_state: options.allowBackupState ?? false,
     };
     const root = {
         '@version': FIDO_AP2_AEB_TRUST_ROOT_VERSION,
@@ -285,7 +285,7 @@ function fixture(options = {}) {
         rp_id: RP_ID,
         key_class: 'A',
         status: options.rootStatus ?? 'active',
-        sign_count: 41,
+        sign_count: options.enrollmentSignCount ?? 41,
     };
     const status = {
         checked_at: '2026-07-31T17:59:45.000Z',
@@ -633,6 +633,24 @@ test('closed WebAuthn policy enforces UV, enrollment counter, backup flags, and 
         Buffer.from([0xa0]),
     ]).toString('base64url');
     assertRefused(extension);
+});
+test('an explicitly pinned zero-counter policy supports platform passkeys without weakening UV or replay bindings', () => {
+    const accepted = evaluate(fixture({
+        signCountPolicy: 'not-relied-upon',
+        signCount: 0,
+        enrollmentSignCount: 0,
+        flags: 0x1d,
+        allowBackupEligible: true,
+        allowBackupState: true,
+    })).native;
+    assert.equal(accepted.acceptance, 'ACCEPTED', JSON.stringify(accepted.reasons));
+    assertRefused(fixture({
+        signCountPolicy: 'not-relied-upon',
+        signCount: 0,
+        enrollmentSignCount: 0,
+        flags: 0x19,
+    }));
+    assertRefused(fixture({ signCount: 0, enrollmentSignCount: 0 }));
 });
 test('exact effect bindings define distinct signed replay domains', () => {
     const baseline = evaluate(fixture()).native;

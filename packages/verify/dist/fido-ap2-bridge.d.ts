@@ -92,6 +92,7 @@ export declare const FIDO_AP2_CAID_ACTION_DEFINITIONS: readonly Readonly<{
     optional_fields: readonly never[];
 }>[];
 export declare const FIDO_AP2_CAID_RESOLVER_DIGEST: `sha256:${string}`;
+export type FidoAp2SignCountPolicy = 'above-enrollment-and-one-time' | 'not-relied-upon';
 /** Project only the pinned AP2 v0.2 closed CheckoutMandate/PaymentMandate subset. */
 export declare function projectFidoAp2PaymentAction(input: unknown): Obj;
 /** Return the one immutable mapping profile implemented by this bridge. */
