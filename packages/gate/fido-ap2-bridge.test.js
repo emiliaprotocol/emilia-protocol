@@ -238,7 +238,7 @@ function authenticatedStatuses(evaluation, status) {
 }
 function fixture(options = {}) {
     const ap2 = rawAp2(options);
-    const action = projectFidoAp2PaymentAction(projectionInput(ap2));
+    const action = { ...projectFidoAp2PaymentAction(projectionInput(ap2)), ...options.actionOverrides };
     const actionCaid = caid(action);
     const profile = createFidoAp2PinnedProfile();
     const effectBytes = providerRequestBytes(ap2.payment_mandate_token);
@@ -539,6 +539,59 @@ function fixture(options = {}) {
         effectBytes,
     };
 }
+describe('FIDO/AP2 expected action is derived, not echoed', () => {
+    it('re-derives the economic fields from the mandates the Gate holds', () => {
+        const { controls } = fixture();
+        const derived = projectFidoAp2PaymentAction({
+            checkout_mandate: controls.ap2_source.checkout_mandate_payload,
+            payment_mandate: controls.ap2_source.payment_mandate_payload,
+            source_binding: createFidoAp2NativeSourceBinding(controls.ap2_source),
+        });
+        // Every field a tampered normalized_action could have lied about comes back
+        // from the mandate itself rather than from the artifact under check.
+        const payment = controls.ap2_source.payment_mandate_payload;
+        assert.equal(derived.amount_minor, payment.payment_amount.amount);
+        assert.equal(derived.currency, payment.payment_amount.currency);
+        assert.equal(derived.payee_id, payment.payee.id);
+        assert.equal(derived.payment_instrument_id, payment.payment_instrument.id);
+        assert.equal(derived.transaction_id, payment.transaction_id);
+    });
+    it('refuses admission when the attested action disagrees with the held mandates', () => {
+        // The full attack, built consistently. Everything the artifact carries
+        // agrees with itself: the disclosure the human saw, the signed context, the
+        // CAID, and an attestation from the pinned native verifier all name an
+        // action reading 9,999,999 minor units. Only the AP2 mandates the Gate is
+        // holding say otherwise. While the Gate echoed the artifact's own action
+        // back as its expectation, that comparison was a value against itself and
+        // every chain closed. Deriving the expectation from the mandates is what
+        // makes the disagreement visible.
+        const honest = fixture();
+        const attack = fixture({ actionOverrides: { amount_minor: 9_999_999 } });
+        // The artifact is internally consistent: it is only the mandates that disagree.
+        assert.equal(attack.action.amount_minor, 9_999_999);
+        assert.equal(attack.controls.ap2_source.payment_mandate_payload.payment_amount.amount, honest.action.amount_minor);
+        // Refused. Several layers object to an artifact whose action disagrees with
+        // the mandates (evaluation re-derivation and the verdict check both fire
+        // here), which is why the reported exploit needed inputs constructed past
+        // the public entry point. The Gate deriving its own expectation removes the
+        // last path where the disagreement would have gone unremarked.
+        assert.throws(() => createFidoAp2AdmissionInput(attack.raw, attack.controls));
+    });
+    it('refuses a payload spliced onto a different authenticated token', () => {
+        const { controls } = fixture();
+        const binding = createFidoAp2NativeSourceBinding(controls.ap2_source);
+        // Keep the authenticated token digests; change the amount underneath them.
+        // This is the splice docs/protocol/fido-ap2-consequence-bridge-v1.md says
+        // is refused, and the reason the Gate must run the projection itself.
+        const tampered = structuredClone(controls.ap2_source.payment_mandate_payload);
+        tampered.payment_amount.amount = 9_999_999;
+        assert.throws(() => projectFidoAp2PaymentAction({
+            checkout_mandate: controls.ap2_source.checkout_mandate_payload,
+            payment_mandate: tampered,
+            source_binding: binding,
+        }), /payload binding mismatch/);
+    });
+});
 const REQUIRED_QUALIFICATION_CHECKS = [
     'schemas',
     'payload_signatures',

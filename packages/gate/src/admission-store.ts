@@ -854,8 +854,20 @@ export function createMemoryAdmissionStore(options: CreateMemoryAdmissionStoreOp
     }
   }
 
-  function invariantViolations(): string[] {
+  /**
+   * @param now Optional observation instant. When supplied, a RESERVED record
+   *   whose own expires_at has passed is reported. Such a record is stuck: the
+   *   only party that can release or expire it is whoever holds the plaintext
+   *   owner token from reserve(), and a process that died between reserve() and
+   *   beginInvocation() took that token with it. Its operation head cannot be
+   *   deleted and its resource fences stay claimed, so the structural checks
+   *   below all pass while the reservation is permanently wedged. Surfacing it
+   *   does not reclaim it; it makes an otherwise invisible state visible to
+   *   whatever calls this.
+   */
+  function invariantViolations(now?: string | number | Date): string[] {
     const violations: string[] = [];
+    const observedAt = now === undefined ? null : new Date(now).getTime();
     for (const [key, stored] of records) {
       const record = stored.record;
       const history = journals.get(key) ?? [];
@@ -863,6 +875,14 @@ export function createMemoryAdmissionStore(options: CreateMemoryAdmissionStoreOp
       if (!verifyAdmissionJournal(history).ok) violations.push(`${key}:journal_invalid`);
       if (history.length !== record.revision + 1 || history.at(-1)?.record_digest !== record.record_digest) violations.push(`${key}:head_mismatch`);
       if (record.state === 'RESERVED' && (record.execution_right !== 'RESERVED' || record.provider_attempt !== 'NOT_ENTERED')) violations.push(`${key}:reserved_invalid`);
+      if (observedAt !== null && Number.isFinite(observedAt) && record.state === 'RESERVED') {
+        // Expiry lives on the immutable snapshot the reservation was made
+        // against, not on the mutable record.
+        const expiresAt = snapshots.get(record.snapshot_digest)?.body?.expires_at;
+        if (expiresAt && new Date(expiresAt).getTime() < observedAt) {
+          violations.push(`${key}:reserved_past_expiry`);
+        }
+      }
       for (const resource of record.resources) {
         if (resource.kind === 'monotonic_counter') {
           const head = monotonicCounterHeads.get(resourceKey(record.tenant_id, resource));

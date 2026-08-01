@@ -98,8 +98,33 @@ export declare function refusal(action: string, reason: string, extra?: AnyRecor
  * @returns {{ok:true, verified:object} | {ok:false, refusal:object}}
  */
 export declare function demandReceipt({ action, args, meta, verifyOpts }: AnyRecord): AnyRecord;
+/**
+ * In-memory, process-local hash chain over executed irreversible tool calls.
+ *
+ * Two boundaries the caller must know, because neither is enforceable from
+ * inside this class:
+ *
+ * DURABILITY. There is no sink. Entries live in this process and nowhere else,
+ * so a restart destroys the trail and the next append starts a fresh chain from
+ * genesis that verifies cleanly. That is a certainty on every deploy, not a
+ * threat scenario. A caller that needs an audit trail to survive the process
+ * must persist the entries itself.
+ *
+ * SCOPE OF verifyChain(). It proves this array is internally self-consistent:
+ * each entry's prev_hash matches its predecessor. It does NOT prove the chain
+ * is complete, that nothing was truncated, or that entries were not replaced
+ * wholesale, because the hash is keyless and anything holding a reference can
+ * rebuild a self-consistent chain. Truncation to any prefix, or a restart from
+ * genesis, both verify. Tamper-EVIDENCE against a party that can reach this
+ * object requires an external anchor this class does not have.
+ *
+ * `entries` is exposed read-only for that reason: a snapshot is safe to read,
+ * and a caller that mutates the array is defeating the only property on offer.
+ */
 export declare class ProvenanceLedger {
-    entries: AnyRecord[];
+    #private;
+    /** A frozen snapshot. Mutating the returned array does not affect the chain. */
+    get entries(): readonly AnyRecord[];
     constructor();
     /** sha256: of the previous entry, "" for genesis. */
     get headHash(): any;

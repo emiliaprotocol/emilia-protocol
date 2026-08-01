@@ -248,7 +248,7 @@ ledger.entries;         // append-only EP-PROVENANCE-ENTRY-v1 records (reference
 
 Each entry references one v1 receipt (`receipt_id` + content hash), the verified
 summary (outcome/subject/signer), the scoped **agent claim**, and the
-**liability** owner. `verifyChain()` proves the ledger is untampered; it does
+**liability** owner. `verifyChain()` proves this array is internally self-consistent; it does
 **not** replace per-receipt verification (that stays with require-receipt).
 
 ## What needs a live MCP host / signer to exercise

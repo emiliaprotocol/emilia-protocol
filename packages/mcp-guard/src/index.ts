@@ -282,15 +282,44 @@ export function demandReceipt({ action, args = {}, meta = {}, verifyOpts = {} }:
 // proposed by PIP (spec proposal), kept deliberately minimal here.
 // ---------------------------------------------------------------------------
 
+/**
+ * In-memory, process-local hash chain over executed irreversible tool calls.
+ *
+ * Two boundaries the caller must know, because neither is enforceable from
+ * inside this class:
+ *
+ * DURABILITY. There is no sink. Entries live in this process and nowhere else,
+ * so a restart destroys the trail and the next append starts a fresh chain from
+ * genesis that verifies cleanly. That is a certainty on every deploy, not a
+ * threat scenario. A caller that needs an audit trail to survive the process
+ * must persist the entries itself.
+ *
+ * SCOPE OF verifyChain(). It proves this array is internally self-consistent:
+ * each entry's prev_hash matches its predecessor. It does NOT prove the chain
+ * is complete, that nothing was truncated, or that entries were not replaced
+ * wholesale, because the hash is keyless and anything holding a reference can
+ * rebuild a self-consistent chain. Truncation to any prefix, or a restart from
+ * genesis, both verify. Tamper-EVIDENCE against a party that can reach this
+ * object requires an external anchor this class does not have.
+ *
+ * `entries` is exposed read-only for that reason: a snapshot is safe to read,
+ * and a caller that mutates the array is defeating the only property on offer.
+ */
 export class ProvenanceLedger {
-  entries: AnyRecord[] = [];
+  readonly #entries: AnyRecord[] = [];
+
+  /** A frozen snapshot. Mutating the returned array does not affect the chain. */
+  get entries(): readonly AnyRecord[] {
+    return Object.freeze([...this.#entries]);
+  }
+
   constructor() {
   }
 
   /** sha256: of the previous entry, "" for genesis. */
   get headHash() {
-    if (this.entries.length === 0) return '';
-    return this.entries[this.entries.length - 1].entry_hash;
+    if (this.#entries.length === 0) return '';
+    return this.#entries[this.#entries.length - 1].entry_hash;
   }
 
   /**
@@ -307,7 +336,7 @@ export class ProvenanceLedger {
     const prev = this.headHash;
     const body = {
       '@version': 'EP-PROVENANCE-ENTRY-v1', // additive composite, governed by PIP
-      sequence: this.entries.length,
+      sequence: this.#entries.length,
       at: at || new Date().toISOString(),
       tool,
       action,
@@ -325,7 +354,7 @@ export class ProvenanceLedger {
       prev_entry_hash: prev || null,
     };
     const entry = { ...body, entry_hash: hashObject(body) };
-    this.entries.push(entry);
+    this.#entries.push(entry);
     return entry;
   }
 
@@ -337,8 +366,8 @@ export class ProvenanceLedger {
    */
   verifyChain(): AnyRecord {
     let prev = '';
-    for (let i = 0; i < this.entries.length; i++) {
-      const e = this.entries[i];
+    for (let i = 0; i < this.#entries.length; i++) {
+      const e = this.#entries[i];
       const { entry_hash, ...body } = e;
       if (e.sequence !== i) return { ok: false, reason: 'sequence_gap', index: i };
       if ((body.prev_entry_hash || '') !== (prev || '')) {
@@ -347,7 +376,7 @@ export class ProvenanceLedger {
       if (hashObject(body) !== entry_hash) return { ok: false, reason: 'tampered_entry', index: i };
       prev = entry_hash;
     }
-    return { ok: true, length: this.entries.length };
+    return { ok: true, length: this.#entries.length };
   }
 }
 

@@ -263,6 +263,14 @@ export function createPlatformEnrollmentVerifier({
       return { valid: false };
     }
     try {
+      // Bound the input before it reaches a CBOR decoder. The sibling path in
+      // packages/mobile already enforces a base64url alphabet and a 128KB cap;
+      // this one decoded whatever arrived, bounded only by the HTTP body limit.
+      if (typeof input.token !== 'string'
+          || input.token.length > 174_764
+          || !/^[A-Za-z0-9_-]*$/.test(input.token)) {
+        return { valid: false, reason: 'attestation_token_out_of_bounds' };
+      }
       const attestationBytes = Buffer.from(input.token, 'base64url');
       const inspected = inspectAppleAttestation(attestationBytes);
       const signals = verifyAppleRuntimeSignals(inspected.authenticatorData, config);
