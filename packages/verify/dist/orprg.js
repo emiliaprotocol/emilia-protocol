@@ -26,7 +26,7 @@
  * or non-bypassable deployment.
  */
 import crypto from 'node:crypto';
-import { strictJsonGate } from './strict-json.js';
+import { canonicalizeStrictJson, strictJsonGate } from './strict-json.js';
 export const ORPRG_JSON_JCS_PROFILE = 'ORPRG-JSON-JCS-ED25519-v1';
 export const ORPRG_ACTION_PROFILE = 'ORPRG-JCS-ACTION-v1';
 const MAX_JSON_DEPTH = 64;
@@ -137,74 +137,30 @@ function validJurisdictions(value) {
     return sorted.every((entry, index) => entry === value[index] && (index === 0 || entry !== value[index - 1]));
 }
 function canonicalJsonSafety(value) {
-    const stack = [{ value, depth: 0 }];
-    const seen = new WeakSet();
-    let nodes = 0;
-    let stringBytes = 0;
-    while (stack.length > 0) {
-        // stack.length > 0 guarantees pop() is non-empty here; TS can't see the
-        // loop invariant, so this asserts the type the loop already ensures.
-        const current = stack.pop();
-        nodes += 1;
-        if (nodes > MAX_JSON_NODES || current.depth > MAX_JSON_DEPTH)
-            return false;
-        const item = current.value;
-        if (item === null || typeof item === 'boolean')
-            continue;
-        if (typeof item === 'string') {
-            if (!validUnicodeString(item))
-                return false;
-            stringBytes += Buffer.byteLength(item, 'utf8');
-            if (stringBytes > MAX_JSON_STRING_BYTES)
-                return false;
-            continue;
-        }
-        if (typeof item === 'number') {
-            // This concrete profile is the safe-integer I-JSON subset of JCS. It
-            // avoids cross-language ambiguity in budgets, epochs, and request data.
-            if (!Number.isSafeInteger(item))
-                return false;
-            continue;
-        }
-        if (!Array.isArray(item) && !isRecord(item))
-            return false;
-        if (seen.has(item))
-            return false;
-        seen.add(item);
-        if (Array.isArray(item)) {
-            for (const child of item)
-                stack.push({ value: child, depth: current.depth + 1 });
-            continue;
-        }
-        for (const [key, child] of Object.entries(item)) {
-            if (!validUnicodeString(key))
-                return false;
-            stringBytes += Buffer.byteLength(key, 'utf8');
-            if (stringBytes > MAX_JSON_STRING_BYTES)
-                return false;
-            stack.push({ value: child, depth: current.depth + 1 });
-        }
+    try {
+        canonicalizeStrictJson(value, {
+            maxDepth: MAX_JSON_DEPTH,
+            maxNodes: MAX_JSON_NODES,
+            maxStringBytes: MAX_JSON_STRING_BYTES,
+        });
+        return true;
     }
-    return true;
-}
-function serializeJcs(value) {
-    if (value === null)
-        return 'null';
-    if (typeof value === 'boolean' || typeof value === 'number' || typeof value === 'string') {
-        return JSON.stringify(value);
+    catch {
+        // Proxies and hostile property traps are outside the signed JSON domain.
+        return false;
     }
-    if (Array.isArray(value))
-        return `[${value.map(serializeJcs).join(',')}]`;
-    return `{${Object.keys(value)
-        // RFC 8785 sorts property names by UTF-16 code units.
-        .sort()
-        .map((key) => `${JSON.stringify(key)}:${serializeJcs(value[key])}`)
-        .join(',')}}`;
 }
 function canonicalizeJcs(value) {
-    if (!canonicalJsonSafety(value))
+    try {
+        return canonicalizeStrictJson(value, {
+            maxDepth: MAX_JSON_DEPTH,
+            maxNodes: MAX_JSON_NODES,
+            maxStringBytes: MAX_JSON_STRING_BYTES,
+        });
+    }
+    catch {
         return null;
-    return serializeJcs(value);
+    }
 }
 function sha256Canonical(value) {
     const canonical = canonicalizeJcs(value);

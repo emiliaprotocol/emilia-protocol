@@ -1,4 +1,9 @@
 export declare const MAX_JSON_DEPTH = 64;
+export interface StrictCanonicalJsonLimits {
+    maxDepth?: number;
+    maxNodes?: number;
+    maxStringBytes?: number;
+}
 export interface StrictJsonSuccess {
     ok: true;
 }
@@ -14,7 +19,7 @@ export declare function strictJsonGate(raw: unknown): StrictJsonResult;
  * bytes: non-plain objects, sparse arrays, accessors, symbols, cycles,
  * undefined/functions/bigints, non-safe-integer numbers, and malformed UTF-16.
  */
-export declare function canonicalizeStrictJson(value: unknown): string;
+export declare function canonicalizeStrictJson(value: unknown, limits?: StrictCanonicalJsonLimits): string;
 /** Pure predicate companion to canonicalizeStrictJson(). */
 export declare function isStrictCanonicalJson(value: unknown): boolean;
 declare const strictJson: {

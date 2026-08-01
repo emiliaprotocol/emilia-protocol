@@ -368,7 +368,7 @@ export declare class InMemoryAebConsumptionStore implements AebConsumptionStore 
     release(key: string): boolean;
     state(key: string): 'AVAILABLE' | 'RESERVED' | 'CONSUMED';
 }
-declare function canonicalize(value: unknown, seen?: WeakSet<object>): string;
+declare function canonicalize(value: unknown): string;
 declare function digest(value: unknown): AebDigest;
 /** Sign the exact result emitted by a native verifier or protocol gateway. */
 export declare function signAebNativeVerificationAttestation(body: AebNativeVerificationAttestationBody, signer: AebNativeVerificationAttestationSigner): AebNativeVerificationAttestation;

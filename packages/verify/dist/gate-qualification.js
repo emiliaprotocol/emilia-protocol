@@ -9,6 +9,7 @@
  * every decision is storage-independent and fail closed.
  */
 import crypto from 'node:crypto';
+import { canonicalizeStrictJson } from './strict-json.js';
 export const CANDIDATE_MANIFEST_VERSION = 'EP-CANDIDATE-MANIFEST-v1';
 export const EVALUATION_CAMPAIGN_PREDICATE = 'https://emiliaprotocol.ai/attestation/evaluation-campaign/v1';
 export const TEST_RESULT_PREDICATE = 'https://in-toto.io/attestation/test-result/v0.1';
@@ -122,37 +123,11 @@ function sortedUniqueStrings(value, min, max, predicate) {
     }
     return true;
 }
-function canonicalJsonInternal(value, state, depth) {
-    state.nodes += 1;
-    if (state.nodes > GATE_QUALIFICATION_LIMITS.max_object_nodes || depth > GATE_QUALIFICATION_LIMITS.max_object_depth) {
-        throw new TypeError('canonical_value_too_large');
-    }
-    if (value === null)
-        return 'null';
-    if (typeof value === 'boolean')
-        return value ? 'true' : 'false';
-    if (typeof value === 'string') {
-        if (!validUnicode(value))
-            throw new TypeError('invalid_unicode');
-        return JSON.stringify(value);
-    }
-    if (typeof value === 'number') {
-        if (!Number.isSafeInteger(value))
-            throw new TypeError('non_canonical_number');
-        return JSON.stringify(value);
-    }
-    if (Array.isArray(value))
-        return `[${value.map((entry) => canonicalJsonInternal(entry, state, depth + 1)).join(',')}]`;
-    if (!record(value))
-        throw new TypeError('non_canonical_value');
-    return `{${Object.keys(value).sort().map((key) => {
-        if (!validUnicode(key) || value[key] === undefined)
-            throw new TypeError('non_canonical_member');
-        return `${JSON.stringify(key)}:${canonicalJsonInternal(value[key], state, depth + 1)}`;
-    }).join(',')}}`;
-}
 export function canonicalizeQualification(value) {
-    return canonicalJsonInternal(value, { nodes: 0 }, 0);
+    return canonicalizeStrictJson(value, {
+        maxDepth: GATE_QUALIFICATION_LIMITS.max_object_depth,
+        maxNodes: GATE_QUALIFICATION_LIMITS.max_object_nodes,
+    });
 }
 export function qualificationPayloadDigest(value) {
     return `sha256:${crypto.createHash('sha256').update(canonicalizeQualification(value), 'utf8').digest('hex')}`;

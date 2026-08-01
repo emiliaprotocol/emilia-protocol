@@ -266,7 +266,15 @@ export function verifyProvenanceOffline(doc: Obj, opts: ProvenanceOptions = {}) 
   }
 
   const exec = doc.execution || {};
-  const reversibilityAsserted = typeof opts.reversibilityAsserted === 'function' ? opts.reversibilityAsserted(exec) === true : false;
+  let reversibilityAsserted = false;
+  if (typeof opts.reversibilityAsserted === 'function') {
+    try {
+      reversibilityAsserted = opts.reversibilityAsserted(exec) === true;
+    } catch {
+      // Predicate failure cannot remove the per-action approval requirement.
+      reversibilityAsserted = false;
+    }
+  }
   const needApproval = requireActionApprovalAlways || !reversibilityAsserted;
   const approval = doc.action_approval;
   const actionVerification = opts.actionVerification || opts.action_verification;

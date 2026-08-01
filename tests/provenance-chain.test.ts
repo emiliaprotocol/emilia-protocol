@@ -305,6 +305,29 @@ describe('EP-PROVENANCE-CHAIN-v1 — negatives (each MUST verify valid:false)', 
     }
   });
 
+  it('treats a throwing reversibility predicate as not reversible without escaping', async () => {
+    const b = await buildBaseline();
+    const doc = assembleProvenance({
+      rootSignoff: { receipt: b.root.receipt, verification: b.root.verification },
+      delegationChain: [b.link0],
+      execution: {
+        action_hash: 'sha256:' + crypto.randomBytes(32).toString('hex'),
+        irreversible: false,
+        executed_at: '2026-06-13T11:45:00.000Z',
+      },
+    });
+    for (const verify of [verifyProvenanceOffline, verifyPackagedProvenanceOffline]) {
+      let result;
+      expect(() => {
+        result = verify(doc, baseOpts(b, {
+          reversibilityAsserted: () => { throw new Error('predicate unavailable'); },
+        }));
+      }).not.toThrow();
+      expect(result.valid).toBe(false);
+      expect(result.checks.per_action_required).toBe(false);
+    }
+  });
+
   // (a) broken inter-hop link: chain[1] does not bind to chain[0].delegatee
   it('a_broken_inter_hop_link', async () => {
     const b = await buildBaseline();

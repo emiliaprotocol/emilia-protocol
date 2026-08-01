@@ -17,6 +17,20 @@ import assert from 'node:assert/strict';
 import crypto from 'node:crypto';
 import * as nodeV from './index.js';
 import * as webV from './web.js';
+test('browser and Node canonicalizers refuse the same hostile in-memory values', () => {
+    const symbolMember = { visible: true };
+    Object.defineProperty(symbolMember, Symbol.for('hidden_action'), {
+        value: { override: true },
+        enumerable: true,
+    });
+    const sparse = new Array(2);
+    sparse[1] = 'value';
+    const values = [symbolMember, sparse, new Map([['key', 'value']]), { omitted: undefined }];
+    for (const value of values) {
+        assert.throws(() => nodeV.canonicalize(value));
+        assert.throws(() => webV.canonicalize(value));
+    }
+});
 // Same recursive canonicalization the verifiers use, for building signed fixtures.
 function canon(v) {
     if (v === null || v === undefined)

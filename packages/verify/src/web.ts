@@ -13,7 +13,7 @@
  * @license Apache-2.0
  */
 
-import { strictJsonGate } from './strict-json.js';
+import { canonicalizeStrictJson, strictJsonGate } from './strict-json.js';
 
 type JsonObject = Record<string, any>;
 
@@ -83,22 +83,10 @@ function bytesToHex(bytes: Uint8Array): string {
   return hex;
 }
 
-// Same recursive canonical JSON as index.js / lib/guard-policies.js — depth-first
-// key sort at every level. Signer and verifier MUST compute byte-identical bytes.
-export function canonicalize(value: unknown): string {
-  if (value === null || value === undefined) return JSON.stringify(value);
-  if (Array.isArray(value)) {
-    return `[${value.map(canonicalize).join(',')}]`;
-  }
-  if (typeof value === 'object') {
-    const objectValue = value as Record<string, unknown>;
-    return `{${Object.keys(objectValue)
-      .sort()
-      .map((k) => JSON.stringify(k) + ':' + canonicalize(objectValue[k]))
-      .join(',')}}`;
-  }
-  return JSON.stringify(value);
-}
+// Browser and Node verification share one closed canonical JSON domain. The
+// helper has no Node dependencies, so importing it preserves edge/browser use
+// while eliminating generated-runtime drift.
+export const canonicalize = canonicalizeStrictJson;
 
 async function sha256Bytes(bytes: Uint8Array): Promise<Uint8Array> {
   return new Uint8Array(await subtle.digest('SHA-256', bufferSource(bytes)));

@@ -283,6 +283,39 @@ test('defines the frozen Gate Qualification v2 profiles and deterministic payloa
     assert.equal(CANDIDATE_MANIFEST_VERSION, 'EP-CANDIDATE-MANIFEST-v1');
     assert.deepEqual(QUALIFICATION_DECISIONS, ['QUALIFIED', 'NOT_QUALIFIED', 'INDETERMINATE']);
     assert.equal(qualificationPayloadDigest({ b: 2, a: 1 }), qualificationPayloadDigest({ a: 1, b: 2 }));
+    const symbolBearingPayload = { a: 1 };
+    Object.defineProperty(symbolBearingPayload, Symbol.for('hidden_qualification'), {
+        value: 'attacker-controlled',
+        enumerable: true,
+    });
+    assert.throws(() => canonicalizeQualification(symbolBearingPayload), /strict canonical JSON domain/, 'qualification signatures must refuse members outside the canonical JSON domain');
+    const rejected = [];
+    const hidden = { visible: true };
+    Object.defineProperty(hidden, 'hidden', { value: 'unsigned', enumerable: false });
+    rejected.push(hidden);
+    let getterCalls = 0;
+    const accessor = {};
+    Object.defineProperty(accessor, 'value', {
+        enumerable: true,
+        get() { getterCalls += 1; return 'unsigned'; },
+    });
+    rejected.push(accessor);
+    const sparse = new Array(2);
+    sparse[1] = 'value';
+    rejected.push(sparse);
+    const extraArrayMember = ['value'];
+    Object.defineProperty(extraArrayMember, 'unsigned', { value: true, enumerable: true });
+    rejected.push(extraArrayMember);
+    const symbolArrayMember = ['value'];
+    Object.defineProperty(symbolArrayMember, Symbol.for('unsigned'), { value: true, enumerable: true });
+    rejected.push(symbolArrayMember);
+    const cyclic = {};
+    cyclic.self = cyclic;
+    rejected.push(cyclic, new Map([['key', 'value']]), { omitted: undefined });
+    for (const value of rejected) {
+        assert.throws(() => canonicalizeQualification(value));
+    }
+    assert.equal(getterCalls, 0, 'qualification canonicalization must never execute an accessor');
 });
 test('qualifies a complete graph containing every terminal outcome without mutating inputs', () => {
     const fixture = makeFixture();
