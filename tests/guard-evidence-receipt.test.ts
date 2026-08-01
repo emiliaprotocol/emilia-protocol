@@ -94,6 +94,39 @@ describe('canonicalize', () => {
     expect(canonicalize([3, 1, 2])).toBe('[3,1,2]');
     expect(canonicalize(null)).toBe('null');
   });
+
+  it('refuses state a signature cannot cover without invoking accessors', () => {
+    let getterCalls = 0;
+    const accessor = {};
+    Object.defineProperty(accessor, 'amount', {
+      enumerable: true,
+      get() {
+        getterCalls += 1;
+        return 200;
+      },
+    });
+    const hidden = {};
+    Object.defineProperty(hidden, 'hidden', { value: 'not-signed', enumerable: false });
+    const symbolic = { amount: 200 };
+    Object.defineProperty(symbolic, Symbol('hidden'), { value: 'not-signed' });
+    const sparse = new Array(2);
+    sparse[1] = 'present';
+    const extended = ['present'];
+    extended.extra = 'not-signed';
+
+    for (const candidate of [
+      new Date('2026-01-01T00:00:00.000Z'),
+      new Map([['amount', 200]]),
+      hidden,
+      symbolic,
+      accessor,
+      sparse,
+      extended,
+    ]) {
+      expect(() => canonicalize(candidate)).toThrow(/canonicalization profile/);
+    }
+    expect(getterCalls).toBe(0);
+  });
 });
 
 describe('resolveReceiptStatus', () => {
@@ -136,6 +169,23 @@ describe('signEvidenceReceipt — honesty gate (returns null, fabricates nothing
     const base = createdState();
     delete base.canonical_action;
     expect(signEvidenceReceipt(args({ base, approved: approvedEvent }))).toBeNull();
+  });
+
+  it('approved but non-canonical action state → null without invoking accessors', () => {
+    let getterCalls = 0;
+    const unsafeAction = canonicalAction();
+    Object.defineProperty(unsafeAction, 'hidden', {
+      enumerable: true,
+      get() {
+        getterCalls += 1;
+        return 'not-signed';
+      },
+    });
+    expect(signEvidenceReceipt(args({
+      base: createdState({ canonical_action: unsafeAction }),
+      approved: approvedEvent,
+    }))).toBeNull();
+    expect(getterCalls).toBe(0);
   });
 });
 

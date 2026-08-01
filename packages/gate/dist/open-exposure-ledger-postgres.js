@@ -8,6 +8,7 @@
  * application credential field is deliberately never serialized to SQL.
  */
 import crypto from 'node:crypto';
+import { canonicalizeFiniteJson } from './strict-json.js';
 import { OPEN_EXPOSURE_HISTORY_VERSION, OPEN_EXPOSURE_LEDGER_VERSION, } from './open-exposure-ledger.js';
 export const OPEN_EXPOSURE_POSTGRES_SQL = Object.freeze({
     registerCeiling: 'SELECT open_exposure_private.register_ceiling($1::jsonb) AS result',
@@ -57,6 +58,8 @@ function protocol(condition, message) {
         throw new OpenExposurePostgresProtocolError(message);
 }
 function frozenCopy(value) {
+    // Values reaching this helper are closed records constructed by the adapter
+    // from validated database scalars and may intentionally contain bigint.
     const copy = structuredClone(value);
     const freeze = (candidate) => {
         if (candidate !== null && typeof candidate === 'object' && !Object.isFrozen(candidate)) {
@@ -69,17 +72,12 @@ function frozenCopy(value) {
     return copy;
 }
 function canonical(value) {
-    if (value === null || typeof value === 'boolean' || typeof value === 'string') {
-        return JSON.stringify(value);
+    try {
+        return canonicalizeFiniteJson(value);
     }
-    if (typeof value === 'number') {
-        protocol(Number.isFinite(value), 'cannot hash a non-finite number');
-        return JSON.stringify(value);
+    catch (cause) {
+        throw new OpenExposurePostgresProtocolError('cannot hash non-canonical JSON', { cause });
     }
-    if (Array.isArray(value))
-        return `[${value.map(canonical).join(',')}]`;
-    protocol(plain(value), 'cannot hash a non-plain object');
-    return `{${Object.keys(value).sort().map((key) => (`${JSON.stringify(key)}:${canonical(value[key])}`)).join(',')}}`;
 }
 function digest(domain, value) {
     return `sha256:${crypto.createHash('sha256')

@@ -13,6 +13,8 @@
  * @license Apache-2.0
  */
 
+import { deepSortKeys } from './handshake/binding.js';
+
 /**
  * A receipt is genuinely dynamic, externally-supplied data (v1 numeric
  * signals, v2 claims/evidence, and submitter-credibility metadata all merged
@@ -429,16 +431,7 @@ export function computeScoresFromClaims(claims: Record<string, any> | null | und
  * Required for cross-language hash verification (Python/Rust/Go must produce same hash).
  */
 function canonicalJSON(obj: unknown): string {
-  if (obj === null || obj === undefined) return 'null';
-  if (typeof obj === 'number' || typeof obj === 'boolean') return JSON.stringify(obj);
-  if (typeof obj === 'string') return JSON.stringify(obj);
-  if (Array.isArray(obj)) return '[' + obj.map(canonicalJSON).join(',') + ']';
-  if (typeof obj === 'object') {
-    const record = obj as Record<string, unknown>;
-    const keys = Object.keys(record).sort();
-    return '{' + keys.map(k => JSON.stringify(k) + ':' + canonicalJSON(record[k])).join(',') + '}';
-  }
-  return JSON.stringify(obj);
+  return JSON.stringify(deepSortKeys(obj));
 }
 
 /**
@@ -455,10 +448,10 @@ export async function computeReceiptHash(
 ): Promise<string> {
   const payload = canonicalJSON({
     // Identity
-    entity_id: receipt.entity_id,
-    submitted_by: receipt.submitted_by,
-    transaction_ref: receipt.transaction_ref,
-    transaction_type: receipt.transaction_type,
+    entity_id: receipt.entity_id ?? null,
+    submitted_by: receipt.submitted_by ?? null,
+    transaction_ref: receipt.transaction_ref ?? null,
+    transaction_type: receipt.transaction_type ?? null,
     // Context (task_type, category, geo, modality, value_band, risk_class)
     context: receipt.context ?? null,
     // Numeric signals

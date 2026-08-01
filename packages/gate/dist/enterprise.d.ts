@@ -18,15 +18,7 @@ export declare function mintEntitlement(privateKey: any, { org, tier, features, 
     kid: string;
 }): {
     '@version': string;
-    payload: {
-        org: string;
-        tier: string;
-        features: string[];
-        limits: Record<string, any>;
-        not_before: string | number;
-        expires_at: string | number;
-        kid: string;
-    };
+    payload: any;
     signature: {
         algorithm: string;
         value: string;

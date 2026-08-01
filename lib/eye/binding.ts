@@ -10,6 +10,7 @@
 
 import { sha256 } from '@/lib/crypto';
 import { EYE_SCOPE_BINDING_FIELDS } from './invariants.js';
+import { deepSortKeys } from '../handshake/binding.js';
 
 /** Parameters used to compute a scope_binding_hash. See EYE_SCOPE_BINDING_FIELDS. */
 export interface ScopeBindingParams {
@@ -39,8 +40,7 @@ export function computeScopeBinding(params: ScopeBindingParams): string {
   for (const field of EYE_SCOPE_BINDING_FIELDS) {
     material[field] = params[field] ?? null;
   }
-  const sortedKeys = Object.keys(material).sort();
-  const canonical = JSON.stringify(material, sortedKeys);
+  const canonical = JSON.stringify(deepSortKeys(material));
   return sha256(canonical);
 }
 
@@ -54,8 +54,7 @@ export function computeScopeBinding(params: ScopeBindingParams): string {
  * @returns Hex-encoded SHA-256 advisory_hash
  */
 export function computeAdvisoryHash(advisory: Record<string, unknown>): string {
-  const sortedKeys = Object.keys(advisory).sort();
-  const canonical = JSON.stringify(advisory, sortedKeys);
+  const canonical = JSON.stringify(deepSortKeys(advisory));
   return sha256(canonical);
 }
 
@@ -69,7 +68,6 @@ export function computeEvidenceHash(evidence: Record<string, unknown> | string):
   if (typeof evidence === 'string') {
     return sha256(evidence);
   }
-  const sortedKeys = Object.keys(evidence).sort();
-  const canonical = JSON.stringify(evidence, sortedKeys);
+  const canonical = JSON.stringify(deepSortKeys(evidence));
   return sha256(canonical);
 }

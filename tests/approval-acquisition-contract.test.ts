@@ -133,4 +133,30 @@ describe('EP-APPROVAL-v1 fixed payment profile', () => {
     ];
     for (const candidate of cases) expect(parseApprovalCreateRequest(candidate).ok).toBe(false);
   });
+
+  it('rejects hidden, symbolic, and accessor state before normalizing the request', async () => {
+    const { provisional } = fixture();
+    const { approvalActionHash } = await import('@emilia-protocol/require-receipt');
+    const valid = {
+      ...provisional,
+      challenge: { ...provisional.challenge, action_hash: approvalActionHash(provisional.action) },
+    };
+    let getterCalls = 0;
+    for (const decorate of [
+      (action) => Object.defineProperty(action, 'hidden', { value: 'not-signed' }),
+      (action) => Object.defineProperty(action, Symbol('hidden'), { value: 'not-signed' }),
+      (action) => Object.defineProperty(action, 'counterparty_name', {
+        enumerable: true,
+        get() {
+          getterCalls += 1;
+          return 'Bicycle Shop';
+        },
+      }),
+    ]) {
+      const action = { ...valid.action };
+      decorate(action);
+      expect(parseApprovalCreateRequest({ ...valid, action }).ok).toBe(false);
+    }
+    expect(getterCalls).toBe(0);
+  });
 });

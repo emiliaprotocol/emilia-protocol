@@ -98,6 +98,19 @@ function snapshot(overrides = {}) {
         ...overrides,
     };
 }
+test('admission snapshot refuses ghost state without invoking accessors', () => {
+    const value = snapshot();
+    let getterCalls = 0;
+    Object.defineProperty(value.provider, 'shadow_account', {
+        enumerable: true,
+        get() { getterCalls += 1; return 'account:shadow'; },
+    });
+    assert.throws(() => createAdmissionSnapshot(value), (error) => error instanceof AdmissionStoreValidationError && error.code === 'invalid_snapshot');
+    assert.equal(getterCalls, 0);
+    const symbol = snapshot();
+    symbol[Symbol('shadow')] = 'authority';
+    assert.throws(() => createAdmissionSnapshot(symbol), /canonical JSON/);
+});
 function withMonotonicCounter(value, expectedValue, nextValue) {
     value.resource_reservations.push({
         kind: 'monotonic_counter',

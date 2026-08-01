@@ -73,6 +73,40 @@ function signedReceipt(claimOverrides = {}) {
 }
 
 describe('EP-APPROVAL-v1 challenge contract', () => {
+  it('rejects JavaScript-only action state before hashing without invoking accessors', () => {
+    let getterCalls = 0;
+    const accessor = { action_type: 'payment.release' };
+    Object.defineProperty(accessor, 'amount', {
+      enumerable: true,
+      get() {
+        getterCalls += 1;
+        return 200;
+      },
+    });
+    const hidden = { action_type: 'payment.release' };
+    Object.defineProperty(hidden, 'hidden', { value: 'not-signed', enumerable: false });
+    const symbolic = { action_type: 'payment.release' };
+    Object.defineProperty(symbolic, Symbol('hidden'), { value: 'not-signed' });
+    const sparse = new Array(2);
+    sparse[1] = 'present';
+    const extended = ['present'];
+    extended.extra = 'not-signed';
+
+    for (const candidate of [
+      new Date('2026-01-01T00:00:00.000Z'),
+      new Map([['amount', 200]]),
+      hidden,
+      symbolic,
+      accessor,
+      sparse,
+      extended,
+    ]) {
+      expect(() => approvalActionHash(candidate)).toThrow(/closed|JSON|plain|member|array|accessor/i);
+    }
+    expect(getterCalls).toBe(0);
+    expect(() => approvalActionHash({ amount: 12.5 })).not.toThrow();
+  });
+
   it('adds one closed authorization block and parameter bindings to the 428 body', () => {
     const body = receiptChallenge('payment.release', 'approval required', {
       status: 428,

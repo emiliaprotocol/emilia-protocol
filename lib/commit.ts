@@ -32,6 +32,7 @@ import { getCommitSigningConfig, getKeyCustodyConfig } from '@/lib/env';
 import { resolveIssuerSigner } from '@/lib/key-custody';
 import { ProtocolWriteError } from '@/lib/errors';
 import { logger } from './logger.js';
+import { deepSortKeys } from './handshake/binding.js';
 
 // ── Constants ────────────────────────────────────────────────────────────────
 
@@ -259,24 +260,13 @@ function normalizeInstant(value: unknown): unknown {
  * back from a Postgres jsonb column (which reorders keys). Top-level-only sorting
  * left nested jsonb reordering to diverge the signed bytes on the verify side.
  */
-function deepCanonicalize(value: unknown): unknown {
-  if (value === null || typeof value !== 'object') return value;
-  if (Array.isArray(value)) return value.map(deepCanonicalize);
-  const record = value as Record<string, unknown>;
-  const out: Record<string, unknown> = {};
-  for (const key of Object.keys(record).sort()) {
-    if (record[key] !== undefined) out[key] = deepCanonicalize(record[key]);
-  }
-  return out;
-}
-
 /**
  * Build the canonical JSON payload for signing.
  * Keys are sorted alphabetically at every level for deterministic serialization
  * that survives a Postgres jsonb/timestamptz round-trip.
  */
 function buildCanonicalPayload(fields: unknown): string {
-  return JSON.stringify(deepCanonicalize(fields));
+  return JSON.stringify(deepSortKeys(fields));
 }
 
 /**

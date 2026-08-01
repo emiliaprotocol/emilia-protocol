@@ -11,6 +11,7 @@
  */
 
 import crypto from 'node:crypto';
+import { canonicalizeFiniteJson } from './strict-json.js';
 
 import {
   ADMISSION_JOURNAL_VERSION,
@@ -117,18 +118,8 @@ function plain(value: unknown): value is Record<string, unknown> {
 }
 
 function canonical(value: Json): string {
-  if (value === null || typeof value === 'boolean' || typeof value === 'string') {
-    return JSON.stringify(value);
-  }
-  if (typeof value === 'number') {
-    if (!Number.isFinite(value)) throw new AdmissionPostgresProtocolError('non-finite JSON number');
-    return JSON.stringify(value);
-  }
-  if (Array.isArray(value)) return `[${value.map(canonical).join(',')}]`;
-  if (!plain(value)) throw new AdmissionPostgresProtocolError('non-plain JSON object');
-  return `{${Object.keys(value).sort().map((key) => (
-    `${JSON.stringify(key)}:${canonical(value[key] as Json)}`
-  )).join(',')}}`;
+  try { return canonicalizeFiniteJson(value); }
+  catch (cause) { throw new AdmissionPostgresProtocolError('value is outside canonical JSON', { cause }); }
 }
 
 function hash(domain: string, value: unknown): AdmissionDigest {

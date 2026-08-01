@@ -11,6 +11,7 @@
  * authoritative read proves that this exact invocation-token digest committed.
  */
 import crypto from 'node:crypto';
+import { canonicalizeFiniteJson } from './strict-json.js';
 import { ADMISSION_JOURNAL_VERSION, ADMISSION_RECORD_VERSION, createAdmissionSnapshot, verifyAdmissionJournal, } from './admission-store.js';
 export const ADMISSION_POSTGRES_SQL = Object.freeze({
     reserve: 'SELECT public.ep_gate_admission_reserve($1::text, $2::text, $3::jsonb, $4::text) AS result',
@@ -54,19 +55,12 @@ function plain(value) {
     return prototype === Object.prototype || prototype === null;
 }
 function canonical(value) {
-    if (value === null || typeof value === 'boolean' || typeof value === 'string') {
-        return JSON.stringify(value);
+    try {
+        return canonicalizeFiniteJson(value);
     }
-    if (typeof value === 'number') {
-        if (!Number.isFinite(value))
-            throw new AdmissionPostgresProtocolError('non-finite JSON number');
-        return JSON.stringify(value);
+    catch (cause) {
+        throw new AdmissionPostgresProtocolError('value is outside canonical JSON', { cause });
     }
-    if (Array.isArray(value))
-        return `[${value.map(canonical).join(',')}]`;
-    if (!plain(value))
-        throw new AdmissionPostgresProtocolError('non-plain JSON object');
-    return `{${Object.keys(value).sort().map((key) => (`${JSON.stringify(key)}:${canonical(value[key])}`)).join(',')}}`;
 }
 function hash(domain, value) {
     return `sha256:${crypto.createHash('sha256')

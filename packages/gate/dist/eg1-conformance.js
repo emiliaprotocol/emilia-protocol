@@ -33,12 +33,10 @@
  * their gate to trust `harness.publicKey` for the run.
  */
 import crypto from 'node:crypto';
+import { canonicalizeStrictJson } from './strict-json.js';
 export const EG1_VERSION = 'EG-1';
 // Same sorted-key canonical JSON the receipt signature is computed over.
-const canon = (v) => (v == null ? JSON.stringify(v)
-    : Array.isArray(v) ? `[${v.map(canon).join(',')}]`
-        : typeof v === 'object' ? `{${Object.keys(v).sort().map((k) => JSON.stringify(k) + ':' + canon(v[k])).join(',')}}`
-            : JSON.stringify(v));
+const canon = canonicalizeStrictJson;
 const sha256Hex = (v) => crypto.createHash('sha256').update(v, 'utf8').digest('hex');
 const sha256Bytes = (v) => crypto.createHash('sha256').update(v).digest();
 const RP_ID = 'emiliaprotocol.ai';
@@ -53,6 +51,12 @@ const RP_ORIGIN = `https://www.${RP_ID}`;
  * @param {{ actionHash?: string, approver?: string, issuedAtMs?: number, nonce?: string, prevContextHash?: string }} [opts]
  */
 export function mintDeviceSignoff({ actionHash, approver, issuedAtMs = Date.now(), nonce, prevContextHash = undefined, } = {}) {
+    if (typeof actionHash !== 'string' || !/^(?:sha256:)?[0-9a-f]{64}$/i.test(actionHash)) {
+        throw new TypeError('EG-1 device signoff requires an exact SHA-256 actionHash');
+    }
+    if (typeof approver !== 'string' || approver.length === 0) {
+        throw new TypeError('EG-1 device signoff requires a named approver');
+    }
     const signer = crypto.generateKeyPairSync('ec', { namedCurve: 'P-256' });
     const context = {
         ep_version: '1.0', context_type: 'ep.signoff.v1',

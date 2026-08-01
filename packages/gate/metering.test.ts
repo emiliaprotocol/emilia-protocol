@@ -33,11 +33,12 @@ test('counts protected actions, allows, denies, replays over the period', () => 
 });
 
 test('breaks down by action type and required tier', () => {
+  const { required_tier: _omitted, ...unknown } = decision({ action: null });
   const u = meterUsage([
     decision(),
     decision({ action: 'db.drop_table', required_tier: 'quorum' }),
     decision({ action: 'db.drop_table', required_tier: 'quorum' }),
-    decision({ action: null, required_tier: undefined }),
+    unknown,
   ], PERIOD);
   assert.deepEqual(u.by_action_type, { 'db.drop_table': 2, 'payment.release': 1, unknown: 1 });
   assert.deepEqual(u.by_tier, { class_a: 1, quorum: 2, unknown: 1 });
@@ -181,7 +182,7 @@ test('statement refuses a missing org and foreign or malformed usage', () => {
   assert.throws(() => buildUsageStatement({ '@version': 'EP-GATE-RETENTION-EXPORT-v1' }, { org: 'ep:org:acme' }), /must be a EP-GATE-USAGE-v1/);
   assert.throws(
     () => buildUsageStatement({ ...u, protected_actions: NaN }, { org: 'ep:org:acme' }),
-    /protected_actions/,
+    /canonical finite JSON/,
   );
   assert.throws(
     () => buildUsageStatement({ ...u, period: null }, { org: 'ep:org:acme' }),
@@ -194,4 +195,23 @@ test('tampering with a metered count changes the content hash', () => {
   const honest = buildUsageStatement(u, { org: 'ep:org:acme' });
   const inflated = buildUsageStatement({ ...u, protected_actions: 2 }, { org: 'ep:org:acme' });
   assert.notEqual(honest.content_hash, inflated.content_hash);
+});
+
+test('metering refuses ghost state instead of undercounting or invoking accessors', () => {
+  const sparse = Array(2);
+  sparse[1] = decision();
+  assert.throws(() => meterUsage(sparse, PERIOD), /canonical finite JSON/);
+
+  let getterCalls = 0;
+  const entry = decision();
+  Object.defineProperty(entry, 'allow', {
+    enumerable: true,
+    get() { getterCalls += 1; return true; },
+  });
+  assert.throws(() => meterUsage([entry], PERIOD), /canonical finite JSON/);
+  assert.equal(getterCalls, 0);
+
+  const usage = meterUsage([decision()], PERIOD);
+  Object.defineProperty(usage.by_action_type, 'shadow', { value: 1, enumerable: false });
+  assert.throws(() => buildUsageStatement(usage, { org: 'ep:org:acme' }), /canonical finite JSON/);
 });

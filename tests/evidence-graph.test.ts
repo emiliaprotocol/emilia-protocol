@@ -130,7 +130,7 @@ describe('EP-AEG — evidence graph evaluation', () => {
 
   it('a policy with no required_edges strips nothing (|| [] fallback)', () => {
     const { doc } = buildGraph();
-    const noReq = { ...wirePack, required_edges: undefined };
+    const { required_edges: _omitted, ...noReq } = wirePack;
     const r = evaluateEvidenceGraph(doc, noReq, { verifiers, as_of: AS_OF });
     expect(r.reasons.join(' ')).not.toContain('required edge missing');
   });
@@ -179,7 +179,9 @@ const effectPolicy = (expected_effect_digest) => ({
 
 function ceremonyGraph({ viewed_at, approved_at, approver = 'alice', tampered = false } = {}) {
   const cer = mk('ceremony_evidence', {
-    approver, issued_at: '2026-07-02T00:00:00Z', viewed_at, approved_at,
+    approver, issued_at: '2026-07-02T00:00:00Z',
+    ...(viewed_at === undefined ? {} : { viewed_at }),
+    ...(approved_at === undefined ? {} : { approved_at }),
     ...(tampered ? { tampered: true } : {}),
   });
   const id = artifactDigest(cer);
@@ -191,7 +193,8 @@ function ceremonyGraph({ viewed_at, approved_at, approver = 'alice', tampered = 
 function effectGraph({ observed, committed, bad_sig = false, unpinned_key = false } = {}) {
   const att = mk('effect_attestation', {
     receipt_id: 'tr_effect_1', issued_at: '2026-07-02T00:00:00Z',
-    observed_effect_digest: observed, committed_effect_digest: committed,
+    ...(observed === undefined ? {} : { observed_effect_digest: observed }),
+    ...(committed === undefined ? {} : { committed_effect_digest: committed }),
     ...(bad_sig ? { bad_sig: true } : {}), ...(unpinned_key ? { unpinned_key: true } : {}),
   });
   const id = artifactDigest(att);
@@ -394,7 +397,7 @@ describe('EP-RELIANCE-RESULT — the verdict as signed evidence', () => {
     const doc = signed();
     doc.payload.evil = 1n; // BigInt -> canon() throws inside verify's try block
     const r = verifyRelianceResult(doc, [doc.verifier_key]);
-    expect(r.checks.structure).toBe(true);
+    expect(r.checks.structure).toBe(false);
     expect(r.checks.signature).toBe(false);
     expect(r.verified).toBe(false);
   });
@@ -425,14 +428,13 @@ describe('graphDigest — structural normalization is disclosure- and null-safe'
     expect(graphDigest(empty)).toMatch(/^sha256:[0-9a-f]{64}$/);
   });
 
-  it('nodes with missing id/type normalize to null and still sort stably', () => {
+  it('explicit undefined graph members are refused rather than normalized away', () => {
     const g = {
       '@version': EVIDENCE_GRAPH_VERSION,
       nodes: [{ id: undefined }, { id: 'sha256:bb', type: undefined }],
       edges: [{ from: undefined, rel: undefined, to: 'sha256:bb' }],
     };
-    // Deterministic across two calls (the null-normalization + sort ran).
-    expect(graphDigest(g)).toBe(graphDigest(JSON.parse(JSON.stringify(g))));
+    expect(() => graphDigest(g)).toThrow(/CANONICALIZATION_ERROR/);
   });
 });
 

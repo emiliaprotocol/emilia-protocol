@@ -191,20 +191,6 @@ export { ProtocolWriteError };
 // ── Crypto Helpers ──────────────────────────────────────────────────────────
 
 /**
- * Canonical JSON stringification with sorted keys for deterministic output.
- * Ensures that semantically identical objects with different key insertion
- * order produce the same string.
- *
- * @param {*} obj - Value to stringify
- * @returns {string} Deterministic JSON string
- */
-function canonicalStringify(obj: any): string {
-  if (obj === null || typeof obj !== 'object') return JSON.stringify(obj);
-  if (Array.isArray(obj)) return '[' + obj.map(canonicalStringify).join(',') + ']';
-  return '{' + Object.keys(obj).sort().map(k => JSON.stringify(k) + ':' + canonicalStringify(obj[k])).join(',') + '}';
-}
-
-/**
  * Compute an idempotency key from the command.
  * Same command type + same actor + same input = same key.
  *
@@ -215,7 +201,14 @@ function canonicalStringify(obj: any): string {
  * @returns {string} Hex-encoded SHA-256 hash used as idempotency key
  */
 function computeIdempotencyKey(command: ProtocolCommand): string {
-  return sha256(`${command.type}:${command.actor}:${canonicalStringify(command.input)}`);
+  const authority = resolveAuthority(command);
+  return sha256(canonicalize({
+    command_type: command.type,
+    actor_authority_id: authority.id,
+    actor_role: authority.role,
+    actor_source: authority.source,
+    input: command.input ?? null,
+  }));
 }
 
 // ── Idempotency Cache ───────────────────────────────────────────────────────

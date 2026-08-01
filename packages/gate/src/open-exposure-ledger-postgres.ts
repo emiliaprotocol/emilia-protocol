@@ -8,6 +8,7 @@
  */
 
 import crypto from 'node:crypto';
+import { canonicalizeFiniteJson } from './strict-json.js';
 
 import {
   OPEN_EXPOSURE_HISTORY_VERSION,
@@ -115,6 +116,8 @@ function protocol(condition: unknown, message: string): asserts condition {
 }
 
 function frozenCopy<T>(value: T): Readonly<T> {
+  // Values reaching this helper are closed records constructed by the adapter
+  // from validated database scalars and may intentionally contain bigint.
   const copy = structuredClone(value);
   const freeze = (candidate: unknown): void => {
     if (candidate !== null && typeof candidate === 'object' && !Object.isFrozen(candidate)) {
@@ -127,18 +130,8 @@ function frozenCopy<T>(value: T): Readonly<T> {
 }
 
 function canonical(value: Jsonish): string {
-  if (value === null || typeof value === 'boolean' || typeof value === 'string') {
-    return JSON.stringify(value);
-  }
-  if (typeof value === 'number') {
-    protocol(Number.isFinite(value), 'cannot hash a non-finite number');
-    return JSON.stringify(value);
-  }
-  if (Array.isArray(value)) return `[${value.map(canonical).join(',')}]`;
-  protocol(plain(value), 'cannot hash a non-plain object');
-  return `{${Object.keys(value).sort().map((key) => (
-    `${JSON.stringify(key)}:${canonical(value[key] as Jsonish)}`
-  )).join(',')}}`;
+  try { return canonicalizeFiniteJson(value); }
+  catch (cause) { throw new OpenExposurePostgresProtocolError('cannot hash non-canonical JSON', { cause }); }
 }
 
 function digest(domain: string, value: Jsonish): string {

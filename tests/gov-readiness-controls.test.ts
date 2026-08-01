@@ -102,6 +102,36 @@ describe('government readiness controls', () => {
     expect(report.errors.join(' ')).toContain('payload_hash mismatch');
   });
 
+  it('refuses payload members that the event hash cannot faithfully bind', () => {
+    expect(() => buildSecurityEvent({
+      eventType: 'receipt.challenge',
+      payload: { visible: 'same', omitted: undefined },
+    })).toThrow(/canonicalization profile/);
+    expect(() => buildSecurityEvent({
+      eventType: 'receipt.challenge',
+      payload: { visible: 'same', hidden: new Map([['authority', 'different']]) },
+    })).toThrow(/canonicalization profile/);
+
+    const symbol = Symbol('unbound');
+    expect(() => buildSecurityEvent({
+      eventType: 'receipt.challenge',
+      payload: { visible: 'same', [symbol]: 'different' },
+    })).toThrow(/canonicalization profile/);
+  });
+
+  it('refuses accessor-backed event material without invoking it', () => {
+    let reads = 0;
+    const payload = Object.defineProperty({}, 'authority', {
+      enumerable: true,
+      get() {
+        reads += 1;
+        return 'admin';
+      },
+    });
+    expect(() => buildSecurityEvent({ eventType: 'receipt.challenge', payload })).toThrow(/canonicalization profile/);
+    expect(reads).toBe(0);
+  });
+
   it('security event appender retries when a concurrent append wins the chain parent', async () => {
     const rows = [];
     let inserts = 0;

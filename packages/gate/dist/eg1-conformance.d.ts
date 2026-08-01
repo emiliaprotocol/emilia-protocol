@@ -21,10 +21,10 @@ export declare function mintDeviceSignoff({ actionHash, approver, issuedAtMs, no
             prev_context_hash?: string | undefined;
             ep_version: string;
             context_type: string;
-            action_hash: string | undefined;
+            action_hash: string;
             policy: string;
             nonce: string;
-            approver: string | undefined;
+            approver: string;
             initiator: string;
             issued_at: string;
             expires_at: string;
@@ -41,10 +41,10 @@ export declare function mintDeviceSignoff({ actionHash, approver, issuedAtMs, no
         prev_context_hash?: string | undefined;
         ep_version: string;
         context_type: string;
-        action_hash: string | undefined;
+        action_hash: string;
         policy: string;
         nonce: string;
-        approver: string | undefined;
+        approver: string;
         initiator: string;
         issued_at: string;
         expires_at: string;
@@ -87,10 +87,10 @@ export declare function mintQuorumEvidence({ actionHash, threshold, approvers, i
                 prev_context_hash?: string | undefined;
                 ep_version: string;
                 context_type: string;
-                action_hash: string | undefined;
+                action_hash: string;
                 policy: string;
                 nonce: string;
-                approver: string | undefined;
+                approver: string;
                 initiator: string;
                 issued_at: string;
                 expires_at: string;

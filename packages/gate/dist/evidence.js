@@ -23,19 +23,13 @@
  * mode a sink failure is best-effort and swallowed.
  */
 import crypto from 'node:crypto';
+import { canonicalizeFiniteJson, canonicalizeStrictJson } from './strict-json.js';
 function sha256hex(s) {
     return crypto.createHash('sha256').update(s).digest('hex');
 }
 /** Canonical JSON (recursive sorted keys) — matches @emilia-protocol/verify. */
 export function canonicalEvidenceJson(v) {
-    if (v === null || v === undefined)
-        return JSON.stringify(v);
-    if (Array.isArray(v))
-        return `[${v.map(canonicalEvidenceJson).join(',')}]`;
-    if (typeof v === 'object') {
-        return `{${Object.keys(v).sort().map((k) => JSON.stringify(k) + ':' + canonicalEvidenceJson(v[k])).join(',')}}`;
-    }
-    return JSON.stringify(v);
+    return canonicalizeFiniteJson(v);
 }
 const canonical = canonicalEvidenceJson;
 export function createEvidenceLog({ sink, strict = false } = {}) {
@@ -54,7 +48,9 @@ export function createEvidenceLog({ sink, strict = false } = {}) {
             // Deep-copy the caller's entry: a shallow spread embeds live references to
             // nested objects, so a caller mutating them after record() would silently
             // corrupt the hash-chained evidence record (and anything a sink persisted).
-            const snapshot = entry && typeof entry === 'object' ? structuredClone(entry) : entry;
+            const snapshot = JSON.parse(canonicalizeFiniteJson(entry, {
+                maxDepth: 64, maxNodes: 50000, maxStringBytes: 1024 * 1024,
+            }));
             const body = { seq: records.length, prev_hash: prev, ...snapshot };
             const hash = sha256hex(canonical(body));
             const rec = { ...body, hash };
@@ -239,7 +235,9 @@ export function createAtomicEvidenceLog(backend, { streamId = 'emilia-gate', max
             return backend.health();
         },
         async record(entry) {
-            const snapshot = structuredClone(entry);
+            const snapshot = JSON.parse(canonicalizeStrictJson(entry, {
+                maxDepth: 64, maxNodes: 50000, maxStringBytes: 1024 * 1024,
+            }));
             assertLogEntry(snapshot);
             const recordId = recordIdFactory();
             if (typeof recordId !== 'string' || recordId.length < 16 || recordId.length > 256) {

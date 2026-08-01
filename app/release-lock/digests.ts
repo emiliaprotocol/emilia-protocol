@@ -1,13 +1,9 @@
 // SPDX-License-Identifier: Apache-2.0
 
-export function canonicalize(value: unknown): string {
-  if (value === null || typeof value !== 'object') return JSON.stringify(value);
-  if (Array.isArray(value)) return `[${value.map((entry) => canonicalize(entry)).join(',')}]`;
+import { canonicalize as canonicalizeProtocol } from '../../lib/canonical-json.js';
 
-  const entries = Object.keys(value as Record<string, unknown>)
-    .sort()
-    .map((key) => `${JSON.stringify(key)}:${canonicalize((value as Record<string, unknown>)[key])}`);
-  return `{${entries.join(',')}}`;
+export function canonicalize(value: unknown): string {
+  return canonicalizeProtocol(value);
 }
 
 export async function sha256Digest(value: string | Record<string, unknown>): Promise<string> {

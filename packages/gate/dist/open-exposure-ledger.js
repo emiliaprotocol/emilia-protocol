@@ -37,23 +37,64 @@ function fail(code, message) {
     throw new OpenExposureValidationError(code, message);
 }
 function canonical(value) {
-    if (value === null || typeof value === 'boolean' || typeof value === 'string') {
-        return JSON.stringify(value);
-    }
-    if (typeof value === 'number') {
-        if (!Number.isFinite(value))
-            fail('invalid_number', 'numbers must be finite');
-        return JSON.stringify(value);
-    }
-    if (typeof value === 'bigint')
-        return JSON.stringify({ '@bigint': value.toString(10) });
-    if (Array.isArray(value))
-        return `[${value.map(canonical).join(',')}]`;
-    const prototype = Object.getPrototypeOf(value);
-    if (prototype !== Object.prototype && prototype !== null) {
-        fail('invalid_object', 'values must be plain objects');
-    }
-    return `{${Object.keys(value).sort().map((key) => (`${JSON.stringify(key)}:${canonical(value[key])}`)).join(',')}}`;
+    const ancestors = new Set();
+    const visit = (current) => {
+        if (current === null || typeof current === 'boolean' || typeof current === 'string') {
+            return JSON.stringify(current);
+        }
+        if (typeof current === 'number') {
+            if (!Number.isFinite(current))
+                fail('invalid_number', 'numbers must be finite');
+            return JSON.stringify(current);
+        }
+        if (typeof current === 'bigint')
+            return JSON.stringify({ '@bigint': current.toString(10) });
+        if (typeof current !== 'object')
+            fail('invalid_object', 'value is not JSON-like');
+        if (ancestors.has(current))
+            fail('invalid_object', 'cyclic values are not permitted');
+        ancestors.add(current);
+        try {
+            if (Array.isArray(current)) {
+                if (Object.getPrototypeOf(current) !== Array.prototype)
+                    fail('invalid_object', 'unsafe array prototype');
+                const keys = Reflect.ownKeys(current);
+                const expected = new Set(['length', ...Array.from({ length: current.length }, (_, index) => String(index))]);
+                if (keys.length !== expected.size
+                    || keys.some((key) => typeof key !== 'string' || !expected.has(key))) {
+                    fail('invalid_object', 'sparse arrays and extra array members are not permitted');
+                }
+                const members = [];
+                for (let index = 0; index < current.length; index += 1) {
+                    const descriptor = Object.getOwnPropertyDescriptor(current, String(index));
+                    if (!descriptor || !('value' in descriptor))
+                        fail('invalid_object', 'array accessors are not permitted');
+                    members.push(visit(descriptor.value));
+                }
+                return `[${members.join(',')}]`;
+            }
+            const prototype = Object.getPrototypeOf(current);
+            if (prototype !== Object.prototype && prototype !== null) {
+                fail('invalid_object', 'values must be plain objects');
+            }
+            const entries = [];
+            const ownKeys = Reflect.ownKeys(current);
+            if (ownKeys.some((key) => typeof key !== 'string'))
+                fail('invalid_object', 'symbol members are not permitted');
+            for (const key of ownKeys.sort()) {
+                const descriptor = Object.getOwnPropertyDescriptor(current, key);
+                if (!descriptor || descriptor.enumerable !== true || !('value' in descriptor)) {
+                    fail('invalid_object', 'hidden members and accessors are not permitted');
+                }
+                entries.push(`${JSON.stringify(key)}:${visit(descriptor.value)}`);
+            }
+            return `{${entries.join(',')}}`;
+        }
+        finally {
+            ancestors.delete(current);
+        }
+    };
+    return visit(value);
 }
 function digest(domain, value) {
     return `sha256:${crypto.createHash('sha256')
@@ -63,6 +104,7 @@ function digest(domain, value) {
         .digest('hex')}`;
 }
 function frozenCopy(value) {
+    canonical(value);
     return deepFreeze(structuredClone(value));
 }
 function deepFreeze(value) {
@@ -311,6 +353,12 @@ export function createMemoryOpenExposureLedger(options) {
         }
     }
     async function authenticated(tenantId, auth, expectedRole, expectedAuthority) {
+        try {
+            auth = frozenCopy(auth);
+        }
+        catch {
+            return { ok: false, reason: 'unauthenticated' };
+        }
         validateAuth(auth);
         let accepted = false;
         try {
@@ -380,6 +428,7 @@ export function createMemoryOpenExposureLedger(options) {
         reconciliationOnlyCloseout: true,
         testOnly: true,
         async registerCeiling(input, auth) {
+            input = frozenCopy(input);
             validateCeiling(input);
             const denied = await authenticated(input.tenantId, auth, 'POLICY_ADMIN');
             if (denied)
@@ -413,6 +462,7 @@ export function createMemoryOpenExposureLedger(options) {
             });
         },
         async reserve(input, auth) {
+            input = frozenCopy(input);
             validateReservation(input);
             const denied = await authenticated(input.tenantId, auth, 'ORIGIN', input.originAuthorityId);
             if (denied)
@@ -514,6 +564,7 @@ export function createMemoryOpenExposureLedger(options) {
             });
         },
         async beginInvocation(input, auth) {
+            input = frozenCopy(input);
             validateReference(input);
             if (!OPERATION_TOKEN.test(input.operationToken))
                 fail('invalid_operation_token', 'operationToken is invalid');
@@ -569,6 +620,7 @@ export function createMemoryOpenExposureLedger(options) {
             });
         },
         async markIndeterminate(input, auth) {
+            input = frozenCopy(input);
             validateReference(input);
             if (!OPERATION_TOKEN.test(input.operationToken))
                 fail('invalid_operation_token', 'operationToken is invalid');
@@ -613,6 +665,7 @@ export function createMemoryOpenExposureLedger(options) {
             });
         },
         async reconcile(input, auth) {
+            input = frozenCopy(input);
             validateReference(input);
             if (!OPERATION_TOKEN.test(input.operationToken))
                 fail('invalid_operation_token', 'operationToken is invalid');
@@ -690,6 +743,7 @@ export function createMemoryOpenExposureLedger(options) {
             });
         },
         async read(input, auth) {
+            input = frozenCopy(input);
             validateReference(input);
             const denied = await authenticated(input.tenantId, auth, 'READER');
             if (denied)
@@ -697,6 +751,7 @@ export function createMemoryOpenExposureLedger(options) {
             return { ok: true, record: recordFor(input) };
         },
         async history(input, auth) {
+            input = frozenCopy(input);
             validateReference(input);
             const denied = await authenticated(input.tenantId, auth, 'READER');
             if (denied)
@@ -707,6 +762,7 @@ export function createMemoryOpenExposureLedger(options) {
             };
         },
         async sumOpen(input, auth) {
+            input = frozenCopy(input);
             identifier(input.tenantId, 'tenantId');
             if (!CURRENCY.test(input.currency))
                 fail('invalid_currency', 'currency is invalid');
@@ -750,6 +806,7 @@ export function createMemoryOpenExposureLedger(options) {
             };
         },
         async listAging(input, auth) {
+            input = frozenCopy(input);
             identifier(input.tenantId, 'tenantId');
             const asOf = instant(input.asOf, 'asOf');
             if (!Number.isSafeInteger(input.minimumAgeMs) || input.minimumAgeMs < 0) {
@@ -771,6 +828,7 @@ export function createMemoryOpenExposureLedger(options) {
             return { ok: true, records: frozenCopy(selected) };
         },
         async listDeadlines(input, auth) {
+            input = frozenCopy(input);
             identifier(input.tenantId, 'tenantId');
             const dueAtOrBefore = instant(input.dueAtOrBefore, 'dueAtOrBefore');
             if (!Number.isSafeInteger(input.limit) || input.limit < 1 || input.limit > 10_000) {

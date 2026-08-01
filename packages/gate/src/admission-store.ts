@@ -10,6 +10,7 @@
  */
 
 import crypto from 'node:crypto';
+import { canonicalizeFiniteJson } from './strict-json.js';
 
 export const ADMISSION_SNAPSHOT_VERSION = 'EP-GATE-ADMISSION-SNAPSHOT-v2';
 export const ADMISSION_RECORD_VERSION = 'EP-GATE-ADMISSION-RECORD-v2';
@@ -419,14 +420,8 @@ function plain(value: unknown): value is Record<string, unknown> {
 }
 
 function canonical(value: Json): string {
-  if (value === null || typeof value === 'boolean' || typeof value === 'string') return JSON.stringify(value);
-  if (typeof value === 'number') {
-    if (!Number.isFinite(value)) fail('invalid_json', 'non-finite JSON number');
-    return JSON.stringify(value);
-  }
-  if (Array.isArray(value)) return `[${value.map((item) => canonical(item)).join(',')}]`;
-  if (!plain(value)) fail('invalid_json', 'non-plain JSON object');
-  return `{${Object.keys(value).sort().map((key) => `${JSON.stringify(key)}:${canonical(value[key] as Json)}`).join(',')}}`;
+  try { return canonicalizeFiniteJson(value); }
+  catch { throw new AdmissionStoreValidationError('invalid_json', 'value is outside canonical JSON'); }
 }
 
 function hash(domain: string, value: unknown): AdmissionDigest {
@@ -442,7 +437,7 @@ function deepFreeze<T>(value: T): Readonly<T> {
 }
 
 function frozenCopy<T>(value: T): Readonly<T> {
-  return deepFreeze(structuredClone(value));
+  return deepFreeze(JSON.parse(canonicalizeFiniteJson(value)) as T);
 }
 
 function identifier(value: unknown, field: string): string {
@@ -579,6 +574,8 @@ function normalizeRelation(raw: unknown): AdmissionRelation | null {
 }
 
 export function createAdmissionSnapshot(raw: AdmissionSnapshotInput): Readonly<AdmissionSnapshot> {
+  try { raw = JSON.parse(canonicalizeFiniteJson(raw)) as AdmissionSnapshotInput; }
+  catch { fail('invalid_snapshot', 'snapshot input is outside canonical JSON'); }
   if (!plain(raw)) fail('invalid_snapshot', 'snapshot input is invalid');
   const admitted = instant(raw.admitted_at, 'admitted_at');
   const expires = instant(raw.expires_at, 'expires_at');

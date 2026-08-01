@@ -23,6 +23,13 @@ function readFile(relPath) {
   return fs.readFileSync(path.join(ROOT, resolveSourcePath(ROOT, relPath)), 'utf-8');
 }
 
+function readTypeScriptSource(relPath) {
+  if (!relPath.endsWith('.ts')) {
+    throw new Error(`source claim audit requires an explicit TypeScript path: ${relPath}`);
+  }
+  return fs.readFileSync(path.join(ROOT, relPath), 'utf-8');
+}
+
 /**
  * Routes that exist in the filesystem but are intentionally omitted from
  * openapi.yaml because they are internal / not part of the public API.
@@ -440,13 +447,13 @@ describe('SDK (TypeScript) claims', () => {
 
 describe('MCP server README claims', () => {
   const mcpReadme = readFile('mcp-server/README.md');
-  const mcpSource = readFile('mcp-server/index.js');
+  const mcpSource = readTypeScriptSource('mcp-server/index.ts');
 
-  it('Tool count in MCP README matches actual handlers in index.js', () => {
+  it('Tool count in MCP README matches actual handlers in index.ts', () => {
     // Count tool descriptions in the README summary table
     const readmeToolCount = countMcpToolsInReadme(mcpReadme);
 
-    // Count actual tool definitions in index.js
+    // Count actual tool definitions in index.ts
     const actualToolCount = countMcpTools(mcpSource);
 
     expect(readmeToolCount).toBeGreaterThan(0);
@@ -464,7 +471,7 @@ describe('MCP server README claims', () => {
     expect(actualToolCount).toBe(claimedCount);
   });
 
-  it('Every tool listed in MCP README exists as a handler in index.js', () => {
+  it('Every tool listed in MCP README exists as a handler in index.ts', () => {
     // Extract tool names from README
     const readmeTools =
       mcpReadme
@@ -472,7 +479,7 @@ describe('MCP server README claims', () => {
         ?.map((t) => t.replace(/`/g, '')) || [];
     const uniqueReadmeTools = [...new Set(readmeTools)];
 
-    // Extract tool names from index.js
+    // Extract tool names from index.ts
     const sourceTools =
       mcpSource
         .match(/name:\s*['"]ep_([a-z_]+)['"]/g)
@@ -481,7 +488,7 @@ describe('MCP server README claims', () => {
     for (const tool of uniqueReadmeTools) {
       expect(
         sourceTools.includes(tool),
-        `Tool ${tool} listed in MCP README but not found in index.js`
+        `Tool ${tool} listed in MCP README but not found in index.ts`
       ).toBe(true);
     }
   });

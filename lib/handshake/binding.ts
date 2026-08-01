@@ -229,38 +229,63 @@ export function computePartySetHash(parties: Array<{ role: string; entity_ref: s
  * @throws {Error} on non-finite numbers, undefined, or functions.
  */
 export function deepSortKeys(value: unknown): unknown {
-  if (value === null) return null;
-  if (value === undefined) {
-    throw new Error('CANONICALIZATION_ERROR: undefined cannot be canonicalized');
-  }
-  if (typeof value === 'function') {
-    throw new Error('CANONICALIZATION_ERROR: functions cannot be canonicalized');
-  }
-  if (typeof value === 'number') {
-    if (!Number.isFinite(value)) {
-      throw new Error(`CANONICALIZATION_ERROR: non-finite number ${value}`);
+  const ancestors = new Set<object>();
+  const invalid = (reason: string): never => {
+    throw new Error(`CANONICALIZATION_ERROR: ${reason}`);
+  };
+  const visit = (current: unknown): unknown => {
+    if (current === null) return null;
+    if (current === undefined || typeof current === 'function'
+        || typeof current === 'symbol' || typeof current === 'bigint') {
+      return invalid(`${typeof current} cannot be canonicalized`);
     }
-    return value;
-  }
-  if (typeof value === 'string') {
-    return value.normalize('NFC');
-  }
-  if (Array.isArray(value)) {
-    return value.map(deepSortKeys);
-  }
-  if (typeof value === 'object') {
-    // Normalize keys to NFC BEFORE sorting. Sorting the raw (pre-normalization)
-    // keys and normalizing after made two Unicode-equivalent objects serialize in
-    // a different key order, diverging their hashes. Normalize, then sort on the
-    // normalized form, so canonically identical objects canonicalize identically.
-    const object = value as Record<string, unknown>;
-    const entries = Object.keys(object).map((k): [string, unknown] => [k.normalize('NFC'), deepSortKeys(object[k])]);
-    entries.sort((a, b) => (a[0] < b[0] ? -1 : a[0] > b[0] ? 1 : 0));
-    const out: Record<string, unknown> = {};
-    for (const [k, v] of entries) out[k] = v;
-    return out;
-  }
-  return value;
+    if (typeof current === 'number') {
+      if (!Number.isFinite(current)) return invalid(`non-finite number ${current}`);
+      return current;
+    }
+    if (typeof current === 'string') return current.normalize('NFC');
+    if (typeof current === 'boolean') return current;
+    if (typeof current !== 'object') return invalid(`${typeof current} cannot be canonicalized`);
+    if (ancestors.has(current)) return invalid('cyclic reference');
+    ancestors.add(current);
+    try {
+      if (Array.isArray(current)) {
+        if (Object.getPrototypeOf(current) !== Array.prototype) return invalid('unsafe array prototype');
+        const ownKeys = Reflect.ownKeys(current);
+        const expected = new Set(['length', ...Array.from({ length: current.length }, (_, index) => String(index))]);
+        if (ownKeys.length !== expected.size
+            || ownKeys.some((key) => typeof key !== 'string' || !expected.has(key))) {
+          return invalid('sparse arrays and arrays with extra members are not permitted');
+        }
+        return Array.from({ length: current.length }, (_, index) => {
+          const descriptor = Object.getOwnPropertyDescriptor(current, String(index));
+          if (!descriptor || !('value' in descriptor)) return invalid('array accessors are not permitted');
+          return visit(descriptor.value);
+        });
+      }
+
+      const prototype = Object.getPrototypeOf(current);
+      if (prototype !== Object.prototype && prototype !== null) return invalid('only plain objects are permitted');
+      const entries: Array<[string, unknown]> = [];
+      const normalizedKeys = new Set<string>();
+      for (const key of Reflect.ownKeys(current)) {
+        if (typeof key !== 'string') return invalid('symbol members are not permitted');
+        const descriptor = Object.getOwnPropertyDescriptor(current, key);
+        if (!descriptor || descriptor.enumerable !== true || !('value' in descriptor)) {
+          return invalid('hidden members and accessors are not permitted');
+        }
+        const normalizedKey = key.normalize('NFC');
+        if (normalizedKeys.has(normalizedKey)) return invalid('member names collide after NFC normalization');
+        normalizedKeys.add(normalizedKey);
+        entries.push([normalizedKey, visit(descriptor.value)]);
+      }
+      entries.sort((a, b) => (a[0] < b[0] ? -1 : a[0] > b[0] ? 1 : 0));
+      return Object.fromEntries(entries);
+    } finally {
+      ancestors.delete(current);
+    }
+  };
+  return visit(value);
 }
 
 /**

@@ -102,3 +102,20 @@ test('sanity: valid receipt with id still allows', async () => {
     const out = await gate.check({ selector: { action_type: 'payment.release' }, receipt: mint({ action: 'payment.release' }) });
     assert.equal(out.allow, true);
 });
+test('evidence log refuses non-JSON ghost state before hashing or persistence', async () => {
+    const log = createEvidenceLog({ strict: true });
+    let getterCalls = 0;
+    const accessor = { type: 'decision' };
+    Object.defineProperty(accessor, 'allow', {
+        enumerable: true,
+        get() { getterCalls += 1; return true; },
+    });
+    await assert.rejects(log.record(accessor), /canonical JSON domain/);
+    assert.equal(getterCalls, 0, 'evidence validation must never execute an accessor');
+    const hidden = { type: 'decision' };
+    Object.defineProperty(hidden, 'shadow', { value: 'allow', enumerable: false });
+    await assert.rejects(log.record(hidden), /canonical JSON domain/);
+    const symbol = { type: 'decision', [Symbol('shadow')]: 'allow' };
+    await assert.rejects(log.record(symbol), /canonical JSON domain/);
+    assert.equal(log.all().length, 0);
+});

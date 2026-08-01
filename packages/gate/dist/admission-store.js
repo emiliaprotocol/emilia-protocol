@@ -10,6 +10,7 @@
  * tests; it is deliberately not a durability claim.
  */
 import crypto from 'node:crypto';
+import { canonicalizeFiniteJson } from './strict-json.js';
 export const ADMISSION_SNAPSHOT_VERSION = 'EP-GATE-ADMISSION-SNAPSHOT-v2';
 export const ADMISSION_RECORD_VERSION = 'EP-GATE-ADMISSION-RECORD-v2';
 export const ADMISSION_JOURNAL_VERSION = 'EP-GATE-ADMISSION-JOURNAL-v2';
@@ -64,18 +65,12 @@ function plain(value) {
     return proto === Object.prototype || proto === null;
 }
 function canonical(value) {
-    if (value === null || typeof value === 'boolean' || typeof value === 'string')
-        return JSON.stringify(value);
-    if (typeof value === 'number') {
-        if (!Number.isFinite(value))
-            fail('invalid_json', 'non-finite JSON number');
-        return JSON.stringify(value);
+    try {
+        return canonicalizeFiniteJson(value);
     }
-    if (Array.isArray(value))
-        return `[${value.map((item) => canonical(item)).join(',')}]`;
-    if (!plain(value))
-        fail('invalid_json', 'non-plain JSON object');
-    return `{${Object.keys(value).sort().map((key) => `${JSON.stringify(key)}:${canonical(value[key])}`).join(',')}}`;
+    catch {
+        throw new AdmissionStoreValidationError('invalid_json', 'value is outside canonical JSON');
+    }
 }
 function hash(domain, value) {
     return `sha256:${crypto.createHash('sha256').update(domain).update('\0').update(canonical(value)).digest('hex')}`;
@@ -89,7 +84,7 @@ function deepFreeze(value) {
     return value;
 }
 function frozenCopy(value) {
-    return deepFreeze(structuredClone(value));
+    return deepFreeze(JSON.parse(canonicalizeFiniteJson(value)));
 }
 function identifier(value, field) {
     if (typeof value !== 'string' || !IDENTIFIER.test(value))
@@ -238,6 +233,12 @@ function normalizeRelation(raw) {
     };
 }
 export function createAdmissionSnapshot(raw) {
+    try {
+        raw = JSON.parse(canonicalizeFiniteJson(raw));
+    }
+    catch {
+        fail('invalid_snapshot', 'snapshot input is outside canonical JSON');
+    }
     if (!plain(raw))
         fail('invalid_snapshot', 'snapshot input is invalid');
     const admitted = instant(raw.admitted_at, 'admitted_at');

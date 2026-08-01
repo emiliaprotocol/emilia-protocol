@@ -208,6 +208,29 @@ test('mintEntitlement rejects invalid fields (never issue a malformed license)',
     assert.throws(() => mintEntitlement(issuer.privateKey, fields({ org: '' })), /org is required/);
     assert.throws(() => mintEntitlement(issuer.privateKey, fields({ expires_at: 'not-a-date' })), /expires_at/);
     assert.throws(() => mintEntitlement(issuer.privateKey, fields({ features: [42] })), /features/);
+    const hiddenLimits = { protected_actions_per_year: 10 };
+    Object.defineProperty(hiddenLimits, 'unmetered', { value: true, enumerable: false });
+    assert.throws(() => mintEntitlement(issuer.privateKey, fields({ limits: hiddenLimits })), /canonical JSON domain/);
+    let getterCalls = 0;
+    const accessorLimits = {};
+    Object.defineProperty(accessorLimits, 'protected_actions_per_year', {
+        enumerable: true,
+        get() { getterCalls += 1; return 10; },
+    });
+    assert.throws(() => mintEntitlement(issuer.privateKey, fields({ limits: accessorLimits })), /canonical JSON domain/);
+    assert.equal(getterCalls, 0, 'entitlement validation must never invoke accessors');
+});
+test('object-form verification refuses ghost state without invoking accessors', () => {
+    const ent = mint();
+    let getterCalls = 0;
+    Object.defineProperty(ent.payload.limits, 'shadow_limit', {
+        enumerable: true,
+        get() { getterCalls += 1; return 0; },
+    });
+    const v = verifyEntitlement(ent, { issuerKeys: ISSUER_KEYS, now: NOW });
+    assert.equal(v.valid, false);
+    assert.equal(v.reason, 'entitlement_malformed');
+    assert.equal(getterCalls, 0);
 });
 test('all five tiers mint and verify', () => {
     for (const tier of ENTITLEMENT_TIERS) {

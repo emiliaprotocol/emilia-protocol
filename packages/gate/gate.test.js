@@ -596,3 +596,7 @@ test('AUDIT: an unknown / mis-cased required tier fails CLOSED (no silent downgr
     assert.equal(out.allow, false);
     assert.equal(out.reason, 'unknown_required_tier');
 });
+test('EG-1 signoff helper refuses an unbound action or anonymous approver', () => {
+    assert.throws(() => mintDeviceSignoff({ approver: 'ep:approver:test' }), /actionHash/);
+    assert.throws(() => mintDeviceSignoff({ actionHash: HASH_FOR('payment.release') }), /named approver/);
+});

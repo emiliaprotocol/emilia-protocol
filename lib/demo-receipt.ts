@@ -29,6 +29,7 @@
 import crypto from 'node:crypto';
 import { getDemoSigningKey, isProduction } from './env.js';
 import { privateKeyFromSeedB64 } from './key-custody.js';
+import { canonicalize as canonicalizeProtocol } from './canonical-json.js';
 
 // Public-only signature material for the synthetic /r/example fixture. The
 // corresponding private key is intentionally not retained anywhere in the
@@ -86,17 +87,7 @@ export function signDemoPayload(payload: any): string {
 // level — nested objects keep insertion order, breaking determinism.
 
 export function canonicalize(value: any): string {
-  if (value === null || value === undefined) return JSON.stringify(value);
-  if (Array.isArray(value)) {
-    return `[${value.map((v: any) => canonicalize(v)).join(',')}]`;
-  }
-  if (typeof value === 'object') {
-    return `{${Object.keys(value)
-      .sort()
-      .map((k: string) => JSON.stringify(k) + ':' + canonicalize(value[k]))
-      .join(',')}}`;
-  }
-  return JSON.stringify(value);
+  return canonicalizeProtocol(value);
 }
 
 // ─── Build the demo receipt (cached at module load) ───────────────────────

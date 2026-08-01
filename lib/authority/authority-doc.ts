@@ -27,6 +27,7 @@
  */
 import crypto from 'node:crypto';
 import { evaluateAdmissibility } from '../evidence/admissibility.js';
+import { canonicalize } from '../canonical-json.js';
 
 export const AUTHORITY_DOC_VERSION = 'EP-AUTHORITY-DOC-v1';
 
@@ -70,11 +71,7 @@ interface AuthorityDoc {
 
 // Deterministic JCS-style canonicalization (I-JSON subset; no floats) —
 // byte-identical to lib/evidence/admissibility.js canon().
-function canon(v) {
-  if (v === null || typeof v !== 'object') return JSON.stringify(v);
-  if (Array.isArray(v)) return `[${v.map(canon).join(',')}]`;
-  return `{${Object.keys(v).sort().map((k) => `${JSON.stringify(k)}:${canon(v[k])}`).join(',')}}`;
-}
+const canon = canonicalize;
 const sha256hex = (s) => crypto.createHash('sha256').update(s).digest('hex');
 const toKey = (b64url) => crypto.createPublicKey({ key: Buffer.from(b64url, 'base64url'), type: 'spki', format: 'der' });
 export const authorityIssuerKeyId = (b64url) => (
@@ -146,9 +143,10 @@ export function createAuthorityDoc(
     issuer_keys: p.issuer_keys.map((k) => ({ kid: k.kid ?? authorityIssuerKeyId(k.key), ...k })),
     issued_at: p.issued_at,
   };
+  const canonicalCore = JSON.parse(canon(core));
   const doc = {
-    ...core,
-    sig: crypto.sign(null, Buffer.from(canon(core), 'utf8'), rootPrivateKey).toString('base64url'),
+    ...canonicalCore,
+    sig: crypto.sign(null, Buffer.from(canon(canonicalCore), 'utf8'), rootPrivateKey).toString('base64url'),
   } as typeof core & { sig: string; continuity_sig?: string };
   if (prev) {
     doc.continuity_sig = crypto.sign(null, Buffer.from(docCoreDigest(doc), 'utf8'), prev.continuityPrivateKey).toString('base64url');
@@ -179,6 +177,11 @@ export function endorseAuthorityDoc(doc, endorserOrg, endorserPrivateKey) {
 export function verifyAuthorityChain(docs) {
   const reasons: string[] = [];
   if (!Array.isArray(docs) || docs.length === 0) return { verified: false, head: null, breaks: [], reasons: ['empty chain'] };
+  try {
+    docs = docs.map((doc) => JSON.parse(canon(doc)));
+  } catch {
+    return { verified: false, head: null, breaks: [], reasons: ['authority chain contains non-canonical JSON state'] };
+  }
   const breaks: number[] = [];
   const registryIdentityByKid = new Map();
   for (let i = 0; i < docs.length; i++) {

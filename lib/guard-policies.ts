@@ -20,6 +20,7 @@
 
 import crypto from 'node:crypto';
 import { screenAml } from './aml/screening.js';
+import { canonicalize } from './canonical-json.js';
 
 // ─── Shared types ───────────────────────────────────────────────────────────
 
@@ -651,20 +652,6 @@ export function applyEnforcementMode(base: GuardPolicyDecision, mode: string): G
  */
 export function hashCanonicalAction(action: Record<string, unknown>): string {
   return crypto.createHash('sha256').update(canonicalize(action)).digest('hex');
-}
-
-function canonicalize(value: any): string {
-  if (value === null || value === undefined) return JSON.stringify(value);
-  if (Array.isArray(value)) {
-    return `[${value.map(canonicalize).join(',')}]`;
-  }
-  if (typeof value === 'object') {
-    return `{${Object.keys(value)
-      .sort()
-      .map((k) => JSON.stringify(k) + ':' + canonicalize(value[k]))
-      .join(',')}}`;
-  }
-  return JSON.stringify(value);
 }
 
 function denyReason(flag: string): string {

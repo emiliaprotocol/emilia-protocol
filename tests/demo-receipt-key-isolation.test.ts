@@ -51,4 +51,9 @@ describe('public demo signing boundary', () => {
     const signature = signDemoPayload(payload);
     expect(verify(payload, signature, getDemoRuntimePublicKeyBase64url())).toBe(true);
   });
+
+  it('refuses ghost fields before signing a demo artifact', () => {
+    expect(() => signDemoPayload({ demo: true, omitted: undefined })).toThrow(/canonicalization profile/);
+    expect(() => signDemoPayload({ demo: true, hidden: new Map([['authority', 'admin']]) })).toThrow(/canonicalization profile/);
+  });
 });

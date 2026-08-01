@@ -29,6 +29,7 @@
  * @license Apache-2.0
  */
 import crypto from 'crypto';
+import { canonicalizeStrictJson } from '../packages/verify/dist/strict-json.js';
 const baseUrl = process.argv[2];
 if (!baseUrl) {
     console.error('Usage: node conformance/ep-conformance-test.js <base-url>');
@@ -146,7 +147,7 @@ try {
             const signerKeys = await fetchJSON('/.well-known/ep-keys.json');
             const signerKey = signerKeys?.keys?.[testReceipt.signature.signer]?.public_key;
             if (signerKey && testReceipt.payload) {
-                const payloadBytes = Buffer.from(JSON.stringify(testReceipt.payload, Object.keys(testReceipt.payload).sort()), 'utf8');
+                const payloadBytes = Buffer.from(canonicalizeStrictJson(testReceipt.payload), 'utf8');
                 const keyDer = Buffer.from(signerKey, 'base64url');
                 const keyObject = crypto.createPublicKey({ key: keyDer, format: 'der', type: 'spki' });
                 const sigBytes = Buffer.from(testReceipt.signature.value, 'base64url');

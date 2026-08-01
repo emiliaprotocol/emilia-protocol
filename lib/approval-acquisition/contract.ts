@@ -5,7 +5,6 @@
 // display text, renderers, or an endpoint adapter. The reference registry is
 // deliberately limited to ceremonies that are fully implemented end to end.
 
-import crypto from 'node:crypto';
 import { approvalActionHash } from '@emilia-protocol/require-receipt';
 import { computeCaid } from '@/caid/impl/js/caid.mjs';
 import caidActionTypeRegistry from '@/caid/registry/action-types.json';
@@ -44,7 +43,6 @@ const ACTION_KEYS = Object.freeze([
   'currency',
   'payment_instruction_id',
 ]);
-const FORBIDDEN_KEYS = new Set(['__proto__', 'prototype', 'constructor']);
 const SHA256 = /^sha256:[a-f0-9]{64}$/;
 const IDEMPOTENCY = /^[A-Za-z0-9][A-Za-z0-9._:-]{15,127}$/;
 const APPROVER = /^[A-Za-z0-9:_.@-]{3,128}$/;
@@ -104,26 +102,17 @@ function hasExactKeys(value: JsonObject, required: readonly string[], optional: 
 }
 
 function closedJson(value: unknown, depth = 0): boolean {
-  if (depth > 32) return false;
-  if (value === null || typeof value === 'string' || typeof value === 'boolean') return true;
-  if (typeof value === 'number') return Number.isFinite(value);
-  if (Array.isArray(value)) return value.length <= 64 && value.every((entry) => closedJson(entry, depth + 1));
-  if (!isPlainObject(value)) return false;
-  const keys = Object.keys(value);
-  return keys.length <= 64
-    && keys.every((key) => !FORBIDDEN_KEYS.has(key) && closedJson(value[key], depth + 1));
-}
-
-function canonicalize(value: any): string {
-  if (value === null || typeof value !== 'object') return JSON.stringify(value);
-  if (Array.isArray(value)) return `[${value.map(canonicalize).join(',')}]`;
-  return `{${Object.keys(value).sort()
-    .map((key) => `${JSON.stringify(key)}:${canonicalize(value[key])}`)
-    .join(',')}}`;
+  void depth;
+  try {
+    approvalActionHash(value);
+    return true;
+  } catch {
+    return false;
+  }
 }
 
 function digest(value: unknown): string {
-  return `sha256:${crypto.createHash('sha256').update(canonicalize(value), 'utf8').digest('hex')}`;
+  return approvalActionHash(value);
 }
 
 function error(code: string, detail: string, status = 400): ApprovalParseResult {
@@ -293,4 +282,4 @@ export function bindApprovalCreateRequestScope(
   };
 }
 
-export const _internals = { canonicalize, digest, amountString };
+export const _internals = { digest, amountString };

@@ -32,6 +32,22 @@ test('atomic evidence: a restarted writer continues the shared head', async () =
     assert.equal(two.prev_hash, one.hash);
     assert.deepEqual(await restarted.verify(), { ok: true, length: 2, head: two.hash });
 });
+test('atomic evidence refuses ghost state before cloning, hashing, or append', async () => {
+    const backend = createMemoryAtomicEvidenceBackend();
+    const log = createAtomicEvidenceLog(backend, { streamId: 'ghost', recordIdFactory: ids('ghost') });
+    let getterCalls = 0;
+    const entry = { type: 'decision' };
+    Object.defineProperty(entry, 'allow', {
+        enumerable: true,
+        get() { getterCalls += 1; return true; },
+    });
+    await assert.rejects(log.record(entry), /canonical JSON domain/);
+    assert.equal(getterCalls, 0);
+    assert.deepEqual(await log.all(), []);
+    const symbol = { type: 'decision', [Symbol('shadow')]: true };
+    await assert.rejects(log.record(symbol), /canonical JSON domain/);
+    assert.deepEqual(await log.all(), []);
+});
 test('atomic evidence: response loss after append recovers the same record id', async () => {
     const base = createMemoryAtomicEvidenceBackend();
     let loseResponse = true;
@@ -115,7 +131,7 @@ test('atomic evidence: altered persisted bytes fail verification', async () => {
 test('atomic evidence: malformed and reserved-field entries fail closed', async () => {
     const log = createAtomicEvidenceLog(createMemoryAtomicEvidenceBackend(), { recordIdFactory: ids() });
     await assert.rejects(log.record({ seq: 9, type: 'decision' }), /reserved field seq/);
-    await assert.rejects(log.record({ type: 'decision', unsafe: 1.5 }), /non-safe integer/);
+    await assert.rejects(log.record({ type: 'decision', unsafe: 1.5 }), /safe integers/);
     const cyclic = { type: 'decision' };
     cyclic.self = cyclic;
     await assert.rejects(log.record(cyclic));
