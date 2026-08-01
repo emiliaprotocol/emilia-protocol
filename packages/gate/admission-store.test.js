@@ -8,6 +8,7 @@ import { ADMISSION_CURRENTNESS_VERSION, AdmissionStoreValidationError, createAdm
 const NOW = '2026-07-26T12:00:00.000Z';
 const EXPIRES = '2026-07-26T12:10:00.000Z';
 const INPUT_EXPIRES = '2026-07-26T12:15:00.000Z';
+const MONOTONIC_COUNTER_ID = 'webauthn-sign-count:credential-primary';
 function d(label) {
     return `sha256:${crypto.createHash('sha256').update(label).digest('hex')}`;
 }
@@ -97,6 +98,31 @@ function snapshot(overrides = {}) {
         ...overrides,
     };
 }
+function withMonotonicCounter(value, expectedValue, nextValue) {
+    value.resource_reservations.push({
+        kind: 'monotonic_counter',
+        resource_id: MONOTONIC_COUNTER_ID,
+        reservation_id: `counter:${value.admission_id}`,
+        digest: d(`counter:${expectedValue}:${nextValue}`),
+        expires_at: INPUT_EXPIRES,
+        expected_value: expectedValue,
+        next_value: nextValue,
+    });
+    return value;
+}
+function isolateNonCounterResources(value, suffix) {
+    value.resource_reservations = value.resource_reservations.map((resource) => ({
+        ...resource,
+        resource_id: resource.kind === 'monotonic_counter'
+            ? resource.resource_id
+            : resource.kind === 'provider_operation'
+                ? value.operation_id
+                : `${resource.resource_id}:${suffix}`,
+        reservation_id: `${resource.kind}:${value.admission_id}:${suffix}`,
+        digest: d(`${resource.kind}:${suffix}`),
+    }));
+    return value;
+}
 function matchingObservation(value) {
     return {
         '@version': ADMISSION_CURRENTNESS_VERSION,
@@ -157,6 +183,27 @@ test('reservation permanently fences tenant operation, admission and resources',
     conflict.resource_reservations = conflict.resource_reservations.map((resource) => resource.kind === 'replay' ? { ...resource, resource_id: 'receipt:once' } : resource);
     assert.deepEqual(await store.reserve(conflict), { ok: false, reason: 'resource_conflict' });
     assert.deepEqual(await store.checkInvariants(), { ok: true, violations: [] });
+});
+test('monotonic counter reserve requires an explicitly provisioned trusted head', async () => {
+    const value = withMonotonicCounter(snapshot(), 41, 42);
+    const missing = createMemoryAdmissionStore({
+        now: NOW,
+        ownerTokenFactory: () => owner(1),
+    });
+    assert.deepEqual(await missing.reserve(value), {
+        ok: false,
+        reason: 'resource_conflict',
+    });
+    const provisioned = createMemoryAdmissionStore({
+        now: NOW,
+        ownerTokenFactory: () => owner(2),
+        initialMonotonicCounterHeads: [{
+                tenant_id: value.tenant_id,
+                resource_id: MONOTONIC_COUNTER_ID,
+                current_value: 41,
+            }],
+    });
+    assert.equal((await provisioned.reserve(value)).ok, true);
 });
 test('beginInvocation atomically rechecks currentness then consumes every right before provider entry', async () => {
     const value = snapshot();
@@ -258,6 +305,73 @@ test('supersession changes admission only and retains exact operation identity',
     assert.equal(result.successor_snapshot.body.caid, predecessor.caid);
     assert.equal(result.successor_snapshot.body.action_digest, predecessor.action_digest);
     assert.equal((await store.readByOperation({ tenant_id: predecessor.tenant_id, operation_id: predecessor.operation_id }))?.admission_id, 'admission:002');
+    assert.deepEqual(await store.checkInvariants(), { ok: true, violations: [] });
+});
+test('supersession owner-token failure leaves predecessor, resources, operation head, and counter unchanged', async () => {
+    let ownerCall = 0;
+    const store = createMemoryAdmissionStore({
+        now: NOW,
+        ownerTokenFactory: () => {
+            ownerCall += 1;
+            if (ownerCall === 2)
+                throw new Error('injected successor owner failure');
+            return owner(ownerCall);
+        },
+        initialMonotonicCounterHeads: [{
+                tenant_id: 'tenant:alpha',
+                resource_id: MONOTONIC_COUNTER_ID,
+                current_value: 41,
+            }],
+    });
+    const predecessor = withMonotonicCounter(snapshot(), 41, 42);
+    const reserved = await store.reserve(predecessor);
+    assert.equal(reserved.ok, true);
+    if (!reserved.ok)
+        return;
+    const successor = withMonotonicCounter(snapshot({ admission_id: 'admission:002' }), 42, 43);
+    successor.resource_reservations = successor.resource_reservations.map((resource) => ({
+        ...resource,
+        reservation_id: `${resource.kind}:admission:002`,
+    }));
+    await assert.rejects(() => store.supersede({
+        tenant_id: predecessor.tenant_id,
+        admission_id: predecessor.admission_id,
+        expected_revision: reserved.record.revision,
+        owner_token: reserved.owner_token,
+        successor,
+    }), /injected successor owner failure/);
+    assert.deepEqual(await store.read({
+        tenant_id: predecessor.tenant_id,
+        admission_id: predecessor.admission_id,
+    }), reserved.record);
+    assert.deepEqual(await store.readByOperation({
+        tenant_id: predecessor.tenant_id,
+        operation_id: predecessor.operation_id,
+    }), reserved.record);
+    assert.equal(await store.read({
+        tenant_id: successor.tenant_id,
+        admission_id: successor.admission_id,
+    }), null);
+    const resourceConflict = isolateNonCounterResources(snapshot({
+        admission_id: 'admission:resource-probe',
+        operation_id: 'operation:resource-probe',
+        idempotency_key: 'idempotency:operation:resource-probe',
+    }), 'resource-probe');
+    resourceConflict.resource_reservations[0] = {
+        ...resourceConflict.resource_reservations[0],
+        resource_id: predecessor.resource_reservations[0].resource_id,
+    };
+    assert.deepEqual(await store.reserve(resourceConflict), {
+        ok: false,
+        reason: 'resource_conflict',
+    });
+    const counterProbe = isolateNonCounterResources(withMonotonicCounter(snapshot({
+        admission_id: 'admission:counter-probe',
+        operation_id: 'operation:counter-probe',
+        idempotency_key: 'idempotency:operation:counter-probe',
+    }), 42, 43), 'counter-probe');
+    assert.equal((await store.reserve(counterProbe)).ok, true);
+    assert.deepEqual(await store.checkInvariants(), { ok: true, violations: [] });
 });
 test('supersession refuses action/request substitution and every post-INVOKING state', async () => {
     let n = 1;

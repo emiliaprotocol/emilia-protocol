@@ -1,0 +1,902 @@
+{
+  "schema_ref": "https://emiliaprotocol.ai/schemas/conformance/fido-ap2-bridge-semantic-corpus.v1.schema.json",
+  "@version": "EP-FIDO-AP2-BRIDGE-SEMANTIC-CORPUS-v1",
+  "suite_id": "emilia-fido-ap2-bridge-v1",
+  "corpus_kind": "EMILIA_BRIDGE_SEMANTIC_DESCRIPTORS",
+  "source_pins": [
+    {
+      "name": "AP2",
+      "authority": "google-agentic-commerce/AP2 official repository",
+      "url": "https://github.com/google-agentic-commerce/AP2/tree/e1ea56db72a6385bce3e5c1112b3a56ce60acb43",
+      "version": "v0.2 CheckoutMandate and PaymentMandate profile",
+      "revision": "e1ea56db72a6385bce3e5c1112b3a56ce60acb43"
+    },
+    {
+      "name": "WebAuthn",
+      "authority": "W3C Candidate Recommendation Snapshot",
+      "url": "https://www.w3.org/TR/2026/CR-webauthn-3-20260526/",
+      "version": "Web Authentication Level 3",
+      "revision": "2026-05-26"
+    }
+  ],
+  "determinism": {
+    "fixed_now": "2026-07-31T18:00:00.000Z",
+    "vector_order": "ascending_numeric_id",
+    "reason_code_order": "lexicographic",
+    "test_catalog_order": "ascending_test_id",
+    "semantic_descriptors_only": true,
+    "raw_ap2_vectors_included": false,
+    "raw_webauthn_vectors_included": false,
+    "private_material_included": false,
+    "vector_count": 52
+  },
+  "claim_boundaries": [
+    "This file contains deterministic semantic descriptors, not executable AP2, FIDO, WebAuthn, authenticator, merchant-JWS, or payment-provider vectors.",
+    "Executable coverage is attributed only through an exact repository test file and exact test title in the test catalog; presence here does not assert that a test passed in any particular run.",
+    "A vector may describe only the subcase identified by its coverage.case_scope and must not be read as coverage of every behavior named by the containing test.",
+    "Native AP2 verification remains authoritative for mandate SD-JWTs, merchant checkout JWS verification, current-checkout validation, checkout hashing, and CheckoutMandate-to-PaymentMandate transaction linkage.",
+    "The WebAuthn adapter verifies only the RP-pinned human-authorization artifact and never implies native AP2 validity.",
+    "The closed profile accepts one canonical CheckoutMandate token and one canonical PaymentMandate token for immediate execution only.",
+    "The native source binding commits both exact token bytes and both disclosure-resolved payloads; the projected objects must match those authenticated payload commitments.",
+    "The WebAuthn signature counter is a durable monotonic admission resource, not merely a comparison with enrollment metadata.",
+    "Human evidence acceptance, exact action matching, AEB satisfaction, local authorization, AdmissionStore custody, provider commitment, and observed effect are separate states.",
+    "AdmissionStore is the sole authority-custody and one-time boundary; pure bridge builders do not reserve, invoke, or reconcile.",
+    "Provider commitment and observed effect are independent axes, including COMMITTED with DIVERGED.",
+    "Post-entry ambiguity consumes authority, forbids blind retry, and requires authenticated reconciliation without retransmission.",
+    "The profile is one tenant per deployment boundary and makes no FIDO final-standard, FIDO certification, AP2 certification, legal-consent, settlement, or effect-proof claim."
+  ],
+  "baseline": {
+    "source_revision": "google-agentic-commerce/AP2@e1ea56db72a6385bce3e5c1112b3a56ce60acb43",
+    "ap2_protocol_id": "ap2:v0.2-closed-checkout-payment",
+    "checkout_vct": "mandate.checkout.1",
+    "payment_vct": "mandate.payment.1",
+    "execution": "immediate",
+    "action_type": "payment.purchase.1",
+    "human_evidence_version": "EP-FIDO-AP2-EVIDENCE-v1",
+    "canonical_token_domain": "EP-FIDO-AP2-CANONICAL-TOKEN-v1",
+    "provider_request_domain": "EP-FIDO-AP2-PROVIDER-REQUEST-v1",
+    "checkout_payload_jwt_commitment": "sha256:<domain-separated exact merchant checkout JWS bytes>",
+    "human_disclosure_fields": [
+      "checkout_commitment",
+      "payment_commitment",
+      "checkout_payload_jwt_commitment",
+      "transaction_id",
+      "amount_minor",
+      "currency",
+      "payee_id",
+      "payee_name",
+      "payment_instrument_id",
+      "payment_instrument_type",
+      "execution",
+      "source_expires_at"
+    ],
+    "webauthn_algorithm": "ES256",
+    "webauthn_curve": "P-256",
+    "webauthn_authenticator_data_bytes": 37,
+    "webauthn_required_flags": [
+      "UP",
+      "UV"
+    ],
+    "aeb_requirement_expression": "ap2-native-authorization AND human_authorization",
+    "authenticated_status_count": 2,
+    "external_status_lease_count": 2,
+    "replay_resource_count": 3,
+    "webauthn_counter_resource_count": 1,
+    "checkout_hash_algorithms": ["sha-256", "sha-384", "sha-512"],
+    "provider_operation_resource_count": 1,
+    "tenant_boundary": "ONE_TENANT_PER_DEPLOYMENT"
+  },
+  "expected_profiles": {
+    "ACTION_MISMATCH": {
+      "projection": "MATCH",
+      "human_evidence": "ACCEPTED",
+      "aeb": "UNSATISFIED",
+      "local_authorization": "NOT_EVALUATED",
+      "admission": "NOT_EVALUATED",
+      "custody": "UNRESERVED",
+      "provider_commitment": "NOT_INVOKED",
+      "observed_effect": "NOT_OBSERVED",
+      "retry": "NOT_APPLICABLE",
+      "reconciliation": "NOT_APPLICABLE"
+    },
+    "ADMISSION_INPUT_BUILT": {
+      "projection": "MATCH",
+      "human_evidence": "ACCEPTED",
+      "aeb": "SATISFIED",
+      "local_authorization": "NOT_EVALUATED",
+      "admission": "INPUT_BUILT",
+      "custody": "UNRESERVED",
+      "provider_commitment": "NOT_INVOKED",
+      "observed_effect": "NOT_OBSERVED",
+      "retry": "NOT_APPLICABLE",
+      "reconciliation": "NOT_APPLICABLE"
+    },
+    "AEB_SATISFIED": {
+      "projection": "MATCH",
+      "human_evidence": "ACCEPTED",
+      "aeb": "SATISFIED",
+      "local_authorization": "NOT_EVALUATED",
+      "admission": "NOT_EVALUATED",
+      "custody": "UNRESERVED",
+      "provider_commitment": "NOT_INVOKED",
+      "observed_effect": "NOT_OBSERVED",
+      "retry": "NOT_APPLICABLE",
+      "reconciliation": "NOT_APPLICABLE"
+    },
+    "AUTHORIZED_BUNDLE": {
+      "projection": "MATCH",
+      "human_evidence": "ACCEPTED",
+      "aeb": "SATISFIED",
+      "local_authorization": "AUTHORIZED",
+      "admission": "INPUT_BUILT",
+      "custody": "UNRESERVED",
+      "provider_commitment": "NOT_INVOKED",
+      "observed_effect": "NOT_OBSERVED",
+      "retry": "NOT_APPLICABLE",
+      "reconciliation": "NOT_APPLICABLE"
+    },
+    "COMMITTED_DIVERGED": {
+      "projection": "NOT_EVALUATED",
+      "human_evidence": "NOT_EVALUATED",
+      "aeb": "NOT_EVALUATED",
+      "local_authorization": "NOT_EVALUATED",
+      "admission": "ADMITTED",
+      "custody": "TERMINAL",
+      "provider_commitment": "COMMITTED",
+      "observed_effect": "DIVERGED",
+      "retry": "REFUSE",
+      "reconciliation": "APPLIED"
+    },
+    "DISTINCT_REPLAY_DOMAIN": {
+      "projection": "MATCH",
+      "human_evidence": "ACCEPTED",
+      "aeb": "NOT_EVALUATED",
+      "local_authorization": "NOT_EVALUATED",
+      "admission": "NOT_EVALUATED",
+      "custody": "UNRESERVED",
+      "provider_commitment": "NOT_INVOKED",
+      "observed_effect": "NOT_OBSERVED",
+      "retry": "NOT_APPLICABLE",
+      "reconciliation": "NOT_APPLICABLE"
+    },
+    "HUMAN_ACCEPTED": {
+      "projection": "MATCH",
+      "human_evidence": "ACCEPTED",
+      "aeb": "NOT_EVALUATED",
+      "local_authorization": "NOT_EVALUATED",
+      "admission": "NOT_EVALUATED",
+      "custody": "UNRESERVED",
+      "provider_commitment": "NOT_INVOKED",
+      "observed_effect": "NOT_OBSERVED",
+      "retry": "NOT_APPLICABLE",
+      "reconciliation": "NOT_APPLICABLE"
+    },
+    "INVOKING_ONCE": {
+      "projection": "NOT_EVALUATED",
+      "human_evidence": "NOT_EVALUATED",
+      "aeb": "NOT_EVALUATED",
+      "local_authorization": "AUTHORIZED",
+      "admission": "ADMITTED",
+      "custody": "INVOKING",
+      "provider_commitment": "NOT_INVOKED",
+      "observed_effect": "NOT_OBSERVED",
+      "retry": "REFUSE",
+      "reconciliation": "NOT_APPLICABLE"
+    },
+    "POST_ENTRY_INDETERMINATE": {
+      "projection": "NOT_EVALUATED",
+      "human_evidence": "NOT_EVALUATED",
+      "aeb": "NOT_EVALUATED",
+      "local_authorization": "AUTHORIZED",
+      "admission": "ADMITTED",
+      "custody": "INDETERMINATE",
+      "provider_commitment": "INDETERMINATE",
+      "observed_effect": "INDETERMINATE",
+      "retry": "REFUSE",
+      "reconciliation": "REQUIRED"
+    },
+    "PROJECTED": {
+      "projection": "MATCH",
+      "human_evidence": "NOT_EVALUATED",
+      "aeb": "NOT_EVALUATED",
+      "local_authorization": "NOT_EVALUATED",
+      "admission": "NOT_EVALUATED",
+      "custody": "UNRESERVED",
+      "provider_commitment": "NOT_INVOKED",
+      "observed_effect": "NOT_OBSERVED",
+      "retry": "NOT_APPLICABLE",
+      "reconciliation": "NOT_APPLICABLE"
+    },
+    "REFUSED_PRE_ADMISSION": {
+      "projection": "REFUSED_OR_NOT_EVALUATED",
+      "human_evidence": "REFUSED_OR_NOT_EVALUATED",
+      "aeb": "UNSATISFIED_OR_NOT_EVALUATED",
+      "local_authorization": "NOT_EVALUATED",
+      "admission": "REFUSED_OR_NOT_EVALUATED",
+      "custody": "UNRESERVED",
+      "provider_commitment": "NOT_INVOKED",
+      "observed_effect": "NOT_OBSERVED",
+      "retry": "NOT_APPLICABLE",
+      "reconciliation": "NOT_APPLICABLE"
+    }
+  },
+  "test_catalog": [
+    {
+      "id": "T01",
+      "file": "packages/verify/fido-ap2-bridge.test.ts",
+      "title": "projection implements the current AP2 v0.2 closed CheckoutMandate and PaymentMandate"
+    },
+    {
+      "id": "T02",
+      "file": "packages/verify/fido-ap2-bridge.test.ts",
+      "title": "native source binding commits deterministic canonical AP2 SD-JWT token strings"
+    },
+    {
+      "id": "T03",
+      "file": "packages/verify/fido-ap2-bridge.test.ts",
+      "title": "projection explicitly rejects the legacy CartMandate model"
+    },
+    {
+      "id": "T04",
+      "file": "packages/verify/fido-ap2-bridge.test.ts",
+      "title": "projection rejects open or recurring execution and transaction mismatch"
+    },
+    {
+      "id": "T05",
+      "file": "packages/verify/fido-ap2-bridge.test.ts",
+      "title": "projection rejects a stale or spliced source binding"
+    },
+    {
+      "id": "T06",
+      "file": "packages/verify/fido-ap2-bridge.test.ts",
+      "title": "mutation of every material action field and source digest is refused"
+    },
+    {
+      "id": "T07",
+      "file": "packages/verify/fido-ap2-bridge.test.ts",
+      "title": "post-signing disclosure, scope, provider, and effect tampering is refused"
+    },
+    {
+      "id": "T08",
+      "file": "packages/verify/fido-ap2-bridge.test.ts",
+      "title": "every signed WebAuthn context binding is relying-party checked"
+    },
+    {
+      "id": "T09",
+      "file": "packages/verify/fido-ap2-bridge.test.ts",
+      "title": "source expiry bounds authorization context and current acceptance"
+    },
+    {
+      "id": "T10",
+      "file": "packages/verify/fido-ap2-bridge.test.ts",
+      "title": "wrong origin, RP ID, signature, credential, key status, or freshness is refused"
+    },
+    {
+      "id": "T11",
+      "file": "packages/verify/fido-ap2-bridge.test.ts",
+      "title": "closed WebAuthn policy enforces UV, enrollment counter, backup flags, and no extensions"
+    },
+    {
+      "id": "T12",
+      "file": "packages/verify/fido-ap2-bridge.test.ts",
+      "title": "exact effect bindings define distinct signed replay domains"
+    },
+    {
+      "id": "T13",
+      "file": "packages/verify/fido-ap2-bridge.test.ts",
+      "title": "expected-action mismatch is separate from successful WebAuthn verification"
+    },
+    {
+      "id": "T14",
+      "file": "packages/verify/fido-ap2-bridge.test.ts",
+      "title": "commitment-only artifact rejects raw AP2, unknown keys, and poisoned values"
+    },
+    {
+      "id": "T15",
+      "file": "packages/verify/fido-ap2-bridge.test.ts",
+      "title": "AEB composes separate AP2-native and WebAuthn-human legs for one exact action"
+    },
+    {
+      "id": "T16",
+      "file": "packages/gate/fido-ap2-bridge.test.ts",
+      "title": "builds the canonical admission from current mandates, exact source tokens, and trusted controls"
+    },
+    {
+      "id": "T17",
+      "file": "packages/gate/fido-ap2-bridge.test.ts",
+      "title": "retains the digest of the complete signed evaluation record and composes the derived AEB leg"
+    },
+    {
+      "id": "T18",
+      "file": "packages/gate/fido-ap2-bridge.test.ts",
+      "title": "refuses request-side clock, trust configuration, status, and verifier injection"
+    },
+    {
+      "id": "T19",
+      "file": "packages/gate/fido-ap2-bridge.test.ts",
+      "title": "refuses a forged signed evaluation and trusted actor mismatch"
+    },
+    {
+      "id": "T20",
+      "file": "packages/gate/fido-ap2-bridge.test.ts",
+      "title": "binds exact effect bytes, payment token, provider identity, and provider adapter"
+    },
+    {
+      "id": "T21",
+      "file": "packages/gate/fido-ap2-bridge.test.ts",
+      "title": "refuses authenticated-status identity mismatch and expired source authority"
+    },
+    {
+      "id": "T22",
+      "file": "packages/gate/fido-ap2-bridge.test.ts",
+      "title": "reaches AdmissionStore reserve and beginInvocation with authenticated external leases"
+    },
+    {
+      "id": "T23",
+      "file": "packages/gate/fido-ap2-bridge.test.ts",
+      "title": "refuses beginInvocation when an authenticated status head no longer matches"
+    },
+    {
+      "id": "T24",
+      "file": "packages/gate/fido-ap2-bridge.test.ts",
+      "title": "remains synchronous, pure, and deterministic for identical trusted inputs"
+    },
+    {
+      "id": "T25",
+      "file": "packages/gate/admission-store.test.ts",
+      "title": "beginInvocation atomically rechecks currentness then consumes every right before provider entry"
+    },
+    {
+      "id": "T26",
+      "file": "packages/gate/admission-store.test.ts",
+      "title": "provider commitment and observed effect remain independent, including COMMITTED plus DIVERGED"
+    },
+    {
+      "id": "T27",
+      "file": "packages/gate/admission-store.test.ts",
+      "title": "ambiguous post-commit crash becomes INDETERMINATE and cannot blind-retry"
+    },
+    {
+      "id": "T28",
+      "file": "packages/gate/fido-ap2-bridge.test.ts",
+      "title": "conformance corpus counts and executable test references cannot drift"
+    },
+    {
+      "id": "T29",
+      "file": "tests/fido-ap2-bridge-corpus.test.ts",
+      "title": "validates the closed public corpus against its independently stored schema"
+    },
+    {
+      "id": "T30",
+      "file": "packages/verify/fido-ap2-bridge.test.ts",
+      "title": "projection binds verified AP2 token payloads and honors the authenticated hash algorithm"
+    },
+    {
+      "id": "T31",
+      "file": "packages/gate/fido-ap2-bridge.test.ts",
+      "title": "requires the WebAuthn signature counter to advance from the server-owned head"
+    },
+    {
+      "id": "T32",
+      "file": "packages/gate/fido-ap2-bridge.test.ts",
+      "title": "atomically advances WebAuthn counters across distinct admissions"
+    },
+    {
+      "id": "T33",
+      "file": "packages/gate/admission-store-postgres.test.ts",
+      "title": "real PostgreSQL enforces reserve, supersession, currentness, crash recovery, and consumed truth"
+    }
+  ],
+  "coverage_observations": [
+    {
+      "requirement": "server-owned clock, pinned configuration, actors, provider, AP2 source, and provider-request bytes",
+      "status": "NAMED_EXECUTABLE_TEST",
+      "test_ids": ["T16", "T18", "T19", "T20"]
+    },
+    {
+      "requirement": "provider-request verifier binds exact request bytes to the exact PaymentMandate token and provider tuple",
+      "status": "NAMED_EXECUTABLE_TEST",
+      "test_ids": ["T20"]
+    },
+    {
+      "requirement": "exactly two authenticated current-status statements become two external leases",
+      "status": "NAMED_EXECUTABLE_TEST",
+      "test_ids": ["T16", "T21", "T22", "T23"]
+    },
+    {
+      "requirement": "AdmissionInput payload_digest equals the digest of the complete signed AEB evaluation record",
+      "status": "NAMED_EXECUTABLE_TEST",
+      "test_ids": ["T17"]
+    },
+    {
+      "requirement": "corpus counts, identifiers, reason-code ordering, and exact executable test references remain synchronized",
+      "status": "NAMED_EXECUTABLE_TEST",
+      "test_ids": ["T28"]
+    },
+    {
+      "requirement": "the public semantic corpus validates against an independently stored closed JSON Schema",
+      "status": "NAMED_EXECUTABLE_TEST",
+      "test_ids": ["T29"]
+    },
+    {
+      "requirement": "native AP2 token bytes, verified payloads, and authenticated checkout hash algorithm are jointly bound",
+      "status": "NAMED_EXECUTABLE_TEST",
+      "test_ids": ["T30"]
+    },
+    {
+      "requirement": "WebAuthn signature counters compare and advance atomically in memory and durable PostgreSQL admission stores",
+      "status": "NAMED_EXECUTABLE_TEST",
+      "test_ids": ["T31", "T32", "T33"]
+    }
+  ],
+  "vectors": [
+    {
+      "id": "01_closed_v02_projection",
+      "stage": "MAPPING",
+      "stimulus": "PINNED_CHECKOUT_AND_PAYMENT_MANDATES",
+      "description": "The exact v0.2 CheckoutMandate and PaymentMandate member sets project to one immediate payment action with source expiry.",
+      "expected_profile": "PROJECTED",
+      "reason_codes": [],
+      "coverage": { "test_id": "T01", "case_scope": "closed v0.2 model members, transaction linkage, action projection, source expiry" }
+    },
+    {
+      "id": "02_canonical_token_commitment",
+      "stage": "SOURCE_BINDING",
+      "stimulus": "SAME_CANONICAL_SD_JWT_TOKENS",
+      "description": "The same two canonical single-token strings produce the same domain-separated commitments and native artifact digest.",
+      "expected_profile": "PROJECTED",
+      "reason_codes": [],
+      "coverage": { "test_id": "T02", "case_scope": "deterministic token and native-artifact digests" }
+    },
+    {
+      "id": "03_malformed_token_refused",
+      "stage": "SOURCE_BINDING",
+      "stimulus": "MALFORMED_OR_NONCANONICAL_SD_JWT_TOKEN",
+      "description": "Missing or duplicate separators, leading whitespace, or an empty token is refused before projection.",
+      "expected_profile": "REFUSED_PRE_ADMISSION",
+      "reason_codes": ["canonical_token_required"],
+      "coverage": { "test_id": "T02", "case_scope": "malformed token loop" }
+    },
+    {
+      "id": "04_legacy_cart_refused",
+      "stage": "MAPPING",
+      "stimulus": "LEGACY_CART_MANDATE",
+      "description": "The pre-v0.2 CartMandate and opaque user_authorization shape is not accepted.",
+      "expected_profile": "REFUSED_PRE_ADMISSION",
+      "reason_codes": ["closed_profile_violation"],
+      "coverage": { "test_id": "T03", "case_scope": "legacy CartMandate fixture" }
+    },
+    {
+      "id": "05_open_checkout_refused",
+      "stage": "MAPPING",
+      "stimulus": "OPEN_CHECKOUT_MANDATE",
+      "description": "An open CheckoutMandate VCT is outside the closed profile.",
+      "expected_profile": "REFUSED_PRE_ADMISSION",
+      "reason_codes": ["open_semantics_unsupported"],
+      "coverage": { "test_id": "T04", "case_scope": "open CheckoutMandate mutation" }
+    },
+    {
+      "id": "06_open_payment_refused",
+      "stage": "MAPPING",
+      "stimulus": "OPEN_PAYMENT_MANDATE",
+      "description": "An open PaymentMandate VCT is outside the closed profile.",
+      "expected_profile": "REFUSED_PRE_ADMISSION",
+      "reason_codes": ["open_semantics_unsupported"],
+      "coverage": { "test_id": "T04", "case_scope": "open PaymentMandate mutation" }
+    },
+    {
+      "id": "07_scheduled_execution_refused",
+      "stage": "MAPPING",
+      "stimulus": "NON_NULL_EXECUTION_DATE",
+      "description": "A scheduled payment is outside the immediate-only profile.",
+      "expected_profile": "REFUSED_PRE_ADMISSION",
+      "reason_codes": ["immediate_execution_required"],
+      "coverage": { "test_id": "T04", "case_scope": "execution_date mutation" }
+    },
+    {
+      "id": "08_recurrence_refused",
+      "stage": "MAPPING",
+      "stimulus": "RECURRENCE_MEMBER",
+      "description": "A recurring payment or an added recurrence member fails the closed member check.",
+      "expected_profile": "REFUSED_PRE_ADMISSION",
+      "reason_codes": ["recurring_semantics_unsupported"],
+      "coverage": { "test_id": "T04", "case_scope": "recurrence mutation" }
+    },
+    {
+      "id": "09_transaction_link_mismatch",
+      "stage": "MAPPING",
+      "stimulus": "PAYMENT_TRANSACTION_ID_DIFFERS_FROM_CHECKOUT_HASH",
+      "description": "The PaymentMandate cannot be projected when transaction_id differs from CheckoutMandate.checkout_hash.",
+      "expected_profile": "REFUSED_PRE_ADMISSION",
+      "reason_codes": ["transaction_link_mismatch"],
+      "coverage": { "test_id": "T04", "case_scope": "transaction_id mutation" }
+    },
+    {
+      "id": "10_spliced_source_binding",
+      "stage": "SOURCE_BINDING",
+      "stimulus": "TOKEN_DIGEST_FROM_DIFFERENT_NATIVE_ARTIFACT",
+      "description": "A source binding whose component commitment no longer matches its native artifact digest is refused.",
+      "expected_profile": "REFUSED_PRE_ADMISSION",
+      "reason_codes": ["native_artifact_digest_mismatch"],
+      "coverage": { "test_id": "T05", "case_scope": "alternate checkout token digest splice" }
+    },
+    {
+      "id": "11_material_action_mutation",
+      "stage": "HUMAN_EVIDENCE",
+      "stimulus": "ANY_NORMALIZED_ACTION_FIELD_MUTATED_AFTER_SIGNING",
+      "description": "Mutation of each declared material action field is refused.",
+      "expected_profile": "REFUSED_PRE_ADMISSION",
+      "reason_codes": ["normalized_action_binding_mismatch"],
+      "coverage": { "test_id": "T06", "case_scope": "loop over every action field" }
+    },
+    {
+      "id": "12_source_commitment_mutation",
+      "stage": "HUMAN_EVIDENCE",
+      "stimulus": "ANY_SOURCE_COMMITMENT_MUTATED_AFTER_SIGNING",
+      "description": "Mutation of either mandate token commitment or the native-attestation commitment is refused.",
+      "expected_profile": "REFUSED_PRE_ADMISSION",
+      "reason_codes": ["source_commitment_mismatch"],
+      "coverage": { "test_id": "T06", "case_scope": "loop over all source commitment fields" }
+    },
+    {
+      "id": "13_artifact_scope_provider_effect_tamper",
+      "stage": "HUMAN_EVIDENCE",
+      "stimulus": "DISCLOSURE_SCOPE_PROVIDER_OR_EFFECT_MUTATED",
+      "description": "Post-signing disclosure, tenant, relying party, operation, effect request, or provider-tuple mutation is refused.",
+      "expected_profile": "REFUSED_PRE_ADMISSION",
+      "reason_codes": ["signed_artifact_binding_mismatch"],
+      "coverage": { "test_id": "T07", "case_scope": "all artifact-level mutation loops" }
+    },
+    {
+      "id": "14_signed_context_tamper",
+      "stage": "HUMAN_EVIDENCE",
+      "stimulus": "ANY_SIGNED_CONTEXT_BINDING_MUTATED",
+      "description": "Every source, scope, provider, action, CAID, disclosure, approver, nonce, and expiry context binding is RP-checked.",
+      "expected_profile": "REFUSED_PRE_ADMISSION",
+      "reason_codes": ["signed_context_binding_mismatch"],
+      "coverage": { "test_id": "T08", "case_scope": "loop over every signed context binding" }
+    },
+    {
+      "id": "15_context_outlives_source",
+      "stage": "HUMAN_EVIDENCE",
+      "stimulus": "AUTHORIZATION_EXPIRY_AFTER_SOURCE_EXPIRY",
+      "description": "The authorization context may not outlive the earlier AP2 source expiry.",
+      "expected_profile": "REFUSED_PRE_ADMISSION",
+      "reason_codes": ["source_expiry_mismatch"],
+      "coverage": { "test_id": "T09", "case_scope": "context expiry exceeds source expiry" }
+    },
+    {
+      "id": "16_source_expired",
+      "stage": "HUMAN_EVIDENCE",
+      "stimulus": "AP2_SOURCE_EXPIRED_AT_VERIFICATION_TIME",
+      "description": "An expired CheckoutMandate or PaymentMandate makes the human evidence non-current.",
+      "expected_profile": "REFUSED_PRE_ADMISSION",
+      "reason_codes": ["source_expired"],
+      "coverage": { "test_id": "T09", "case_scope": "expired checkout source fixture" }
+    },
+    {
+      "id": "17_wrong_origin",
+      "stage": "HUMAN_EVIDENCE",
+      "stimulus": "ORIGIN_OUTSIDE_RP_PIN",
+      "description": "A validly shaped assertion from an unpinned origin is refused.",
+      "expected_profile": "REFUSED_PRE_ADMISSION",
+      "reason_codes": ["webauthn_origin_refused"],
+      "coverage": { "test_id": "T10", "case_scope": "wrong origin fixture" }
+    },
+    {
+      "id": "18_wrong_rp_id",
+      "stage": "HUMAN_EVIDENCE",
+      "stimulus": "RP_ID_HASH_MISMATCH",
+      "description": "Authenticator data for another RP ID is refused.",
+      "expected_profile": "REFUSED_PRE_ADMISSION",
+      "reason_codes": ["webauthn_rp_id_mismatch"],
+      "coverage": { "test_id": "T10", "case_scope": "wrong RP ID fixture" }
+    },
+    {
+      "id": "19_bad_signature",
+      "stage": "HUMAN_EVIDENCE",
+      "stimulus": "WEBAUTHN_SIGNATURE_BIT_FLIP",
+      "description": "A modified ES256 signature is refused.",
+      "expected_profile": "REFUSED_PRE_ADMISSION",
+      "reason_codes": ["webauthn_signature_invalid"],
+      "coverage": { "test_id": "T10", "case_scope": "signature bit flip" }
+    },
+    {
+      "id": "20_wrong_credential_or_status",
+      "stage": "HUMAN_EVIDENCE",
+      "stimulus": "CREDENTIAL_MISMATCH_REVOKED_OR_STALE",
+      "description": "A different credential, inactive root, revoked status, or stale status is refused.",
+      "expected_profile": "REFUSED_PRE_ADMISSION",
+      "reason_codes": ["credential_or_status_refused"],
+      "coverage": { "test_id": "T10", "case_scope": "credential, root-status, revoked-status, and stale-status fixtures" }
+    },
+    {
+      "id": "21_uv_missing",
+      "stage": "HUMAN_EVIDENCE",
+      "stimulus": "UP_WITHOUT_UV",
+      "description": "The closed human leg requires both UP and UV.",
+      "expected_profile": "REFUSED_PRE_ADMISSION",
+      "reason_codes": ["webauthn_uv_required"],
+      "coverage": { "test_id": "T11", "case_scope": "flags 0x01 fixture" }
+    },
+    {
+      "id": "22_counter_not_above_enrollment",
+      "stage": "HUMAN_EVIDENCE",
+      "stimulus": "SIGN_COUNT_EQUAL_OR_BELOW_ENROLLED_COUNT",
+      "description": "A counter not strictly above the enrolled counter is refused.",
+      "expected_profile": "REFUSED_PRE_ADMISSION",
+      "reason_codes": ["sign_count_not_above_enrollment"],
+      "coverage": { "test_id": "T11", "case_scope": "signCount 41 and 40 fixtures" }
+    },
+    {
+      "id": "23_backup_flags_refused",
+      "stage": "HUMAN_EVIDENCE",
+      "stimulus": "BACKUP_ELIGIBLE_OR_BACKUP_STATE_DISALLOWED",
+      "description": "BE or BS is refused when the RP-pinned policy disallows it.",
+      "expected_profile": "REFUSED_PRE_ADMISSION",
+      "reason_codes": ["backup_policy_refused"],
+      "coverage": { "test_id": "T11", "case_scope": "flags 0x0d and 0x1d fixtures" }
+    },
+    {
+      "id": "24_webauthn_extension_refused",
+      "stage": "HUMAN_EVIDENCE",
+      "stimulus": "AUTHENTICATOR_DATA_LONGER_THAN_37_BYTES",
+      "description": "The no-extension profile refuses authenticator data beyond 37 bytes.",
+      "expected_profile": "REFUSED_PRE_ADMISSION",
+      "reason_codes": ["authenticator_data_outside_closed_profile"],
+      "coverage": { "test_id": "T11", "case_scope": "one-byte extension append" }
+    },
+    {
+      "id": "25_effect_binding_changes_replay",
+      "stage": "HUMAN_EVIDENCE",
+      "stimulus": "OPERATION_REQUEST_OR_PROVIDER_TUPLE_CHANGED_AND_RESIGNED",
+      "description": "A separately valid exact effect context receives a distinct replay unit.",
+      "expected_profile": "DISTINCT_REPLAY_DOMAIN",
+      "reason_codes": [],
+      "coverage": { "test_id": "T12", "case_scope": "operation, request digest, and provider tuple variants" }
+    },
+    {
+      "id": "26_expected_action_mismatch",
+      "stage": "MAPPING",
+      "stimulus": "VERIFIED_HUMAN_ARTIFACT_WITH_DIFFERENT_EXPECTED_ACTION",
+      "description": "Successful WebAuthn verification does not convert an expected-action mismatch into a match.",
+      "expected_profile": "ACTION_MISMATCH",
+      "reason_codes": ["expected_action_mismatch"],
+      "coverage": { "test_id": "T13", "case_scope": "amount_minor expected-action mutation" }
+    },
+    {
+      "id": "27_unpinned_mapping_profile",
+      "stage": "MAPPING",
+      "stimulus": "MAPPER_ID_CHANGED",
+      "description": "An unpinned mapping profile is indeterminate and yields no CAID.",
+      "expected_profile": "REFUSED_PRE_ADMISSION",
+      "reason_codes": ["pinned_mapping_profile_invalid"],
+      "coverage": { "test_id": "T13", "case_scope": "mapper_id mutation" }
+    },
+    {
+      "id": "28_raw_ap2_in_human_artifact",
+      "stage": "HUMAN_EVIDENCE",
+      "stimulus": "RAW_CHECKOUT_MANDATE_ADDED_TO_ARTIFACT",
+      "description": "The commitment-only human artifact rejects embedded raw AP2 mandates.",
+      "expected_profile": "REFUSED_PRE_ADMISSION",
+      "reason_codes": ["commitment_only_artifact_required"],
+      "coverage": { "test_id": "T14", "case_scope": "raw checkout_mandate addition" }
+    },
+    {
+      "id": "29_unknown_or_poisoned_shape",
+      "stage": "HUMAN_EVIDENCE",
+      "stimulus": "UNKNOWN_KEY_OVERSIZE_OR_NON_JSON_VALUE",
+      "description": "Unknown fields, oversized client data, poisoned arrays, non-JSON values, and empty identifiers fail closed.",
+      "expected_profile": "REFUSED_PRE_ADMISSION",
+      "reason_codes": ["closed_inert_json_required"],
+      "coverage": { "test_id": "T14", "case_scope": "unknown, oversized, poisoned, non-JSON, and empty-operation fixtures" }
+    },
+    {
+      "id": "30_two_leg_aeb_satisfied",
+      "stage": "AEB",
+      "stimulus": "VERIFIED_NATIVE_AND_HUMAN_LEGS_FOR_SAME_ACTION",
+      "description": "Separate AP2-native and WebAuthn-human legs compose to SATISFIED and re-verify in execution mode.",
+      "expected_profile": "AEB_SATISFIED",
+      "reason_codes": [],
+      "coverage": { "test_id": "T15", "case_scope": "two-leg evaluation and execution-mode re-verification" }
+    },
+    {
+      "id": "31_canonical_admission_input",
+      "stage": "ADMISSION_BUILD",
+      "stimulus": "VALID_TWO_LEG_BRIDGE_INPUT",
+      "description": "The builder uses current mandates, exact source tokens, and trusted controls to derive three replay resources, one monotonic-counter resource, one provider-operation resource, and two external leases without reserving them.",
+      "expected_profile": "ADMISSION_INPUT_BUILT",
+      "reason_codes": [],
+      "coverage": { "test_id": "T16", "case_scope": "canonical snapshot, exact source projection, request digest, replay resources, monotonic counter, provider operation, and two status leases" }
+    },
+    {
+      "id": "32_qualification_bundle_allow",
+      "stage": "QUALIFICATION",
+      "stimulus": "ALL_BOUND_QUALIFICATION_LEGS_ALLOW",
+      "description": "The AEB AdmissionInput retains the digest of the complete signed evaluation record and composes with qualification, AEC, and local policy for one snapshot.",
+      "expected_profile": "AUTHORIZED_BUNDLE",
+      "reason_codes": [],
+      "coverage": { "test_id": "T17", "case_scope": "complete evaluation record digest and qualification bundle composition" }
+    },
+    {
+      "id": "33_request_side_authority_injection",
+      "stage": "ADMISSION_BUILD",
+      "stimulus": "REQUEST_SUPPLIES_CLOCK_CONFIG_STATUS_OR_PROVIDER_VERIFIER",
+      "description": "Request-side clock, pinned configuration, current status, status resolver, or provider verifier fields are refused.",
+      "expected_profile": "REFUSED_PRE_ADMISSION",
+      "reason_codes": ["server_owned_control_required"],
+      "coverage": { "test_id": "T18", "case_scope": "all request-side authority injection fixtures" }
+    },
+    {
+      "id": "34_forged_signed_evaluation",
+      "stage": "ADMISSION_BUILD",
+      "stimulus": "AEB_EVALUATOR_SIGNATURE_BIT_FLIP",
+      "description": "A forged signed AEB evaluation is not execution-authorizing.",
+      "expected_profile": "REFUSED_PRE_ADMISSION",
+      "reason_codes": ["aeb_execution_reverification_failed"],
+      "coverage": { "test_id": "T19", "case_scope": "evaluator signature bit flip" }
+    },
+    {
+      "id": "35_trusted_actor_mismatch",
+      "stage": "ADMISSION_BUILD",
+      "stimulus": "SERVER_INITIATOR_OR_EXECUTOR_DIFFERS_FROM_AEB_RECORD",
+      "description": "A server-owned initiator or executor mismatch with the signed AEB record is refused.",
+      "expected_profile": "REFUSED_PRE_ADMISSION",
+      "reason_codes": ["trusted_actor_binding_mismatch"],
+      "coverage": { "test_id": "T19", "case_scope": "initiator_id and executor_id trusted-control mutations" }
+    },
+    {
+      "id": "36_exact_provider_request_binding",
+      "stage": "ADMISSION_BUILD",
+      "stimulus": "EXACT_BYTES_TOKEN_DIGEST_PROVIDER_AND_ADAPTER",
+      "description": "The pinned provider-request verifier receives the exact request bytes, PaymentMandate token, token digest, and provider tuple.",
+      "expected_profile": "ADMISSION_INPUT_BUILT",
+      "reason_codes": [],
+      "coverage": { "test_id": "T20", "case_scope": "captured provider-request verifier input" }
+    },
+    {
+      "id": "37_changed_provider_request_bytes",
+      "stage": "ADMISSION_BUILD",
+      "stimulus": "SERVER_REQUEST_BYTES_DIFFER_FROM_SIGNED_EFFECT_DIGEST",
+      "description": "A one-byte request mutation is refused when its recomputed digest differs from the signed Gate binding.",
+      "expected_profile": "REFUSED_PRE_ADMISSION",
+      "reason_codes": ["provider_request_digest_mismatch"],
+      "coverage": { "test_id": "T20", "case_scope": "changed effect_request_bytes fixture" }
+    },
+    {
+      "id": "38_wrong_payment_mandate_token",
+      "stage": "ADMISSION_BUILD",
+      "stimulus": "SERVER_PAYMENT_TOKEN_FROM_ALTERNATE_SOURCE",
+      "description": "An alternate PaymentMandate token is refused even if a presenter-supplied verifier callback returns true.",
+      "expected_profile": "REFUSED_PRE_ADMISSION",
+      "reason_codes": ["trusted_payment_token_binding_mismatch"],
+      "coverage": { "test_id": "T20", "case_scope": "alternate payment_mandate_token fixture" }
+    },
+    {
+      "id": "39_wrong_provider_adapter",
+      "stage": "ADMISSION_BUILD",
+      "stimulus": "PROVIDER_VERIFIER_IMPLEMENTATION_DIGEST_MISMATCH",
+      "description": "A provider-request verifier whose implementation digest differs from the executor-adapter digest is refused.",
+      "expected_profile": "REFUSED_PRE_ADMISSION",
+      "reason_codes": ["provider_adapter_binding_mismatch"],
+      "coverage": { "test_id": "T20", "case_scope": "provider verifier implementation_digest mutation" }
+    },
+    {
+      "id": "40_unbound_payment_token",
+      "stage": "ADMISSION_BUILD",
+      "stimulus": "PROVIDER_VERIFIER_RETURNS_FALSE",
+      "description": "Admission is refused when the pinned adapter cannot establish exact PaymentMandate-token binding in the provider request.",
+      "expected_profile": "REFUSED_PRE_ADMISSION",
+      "reason_codes": ["payment_token_not_bound_to_provider_request"],
+      "coverage": { "test_id": "T20", "case_scope": "provider verifier false return" }
+    },
+    {
+      "id": "41_status_identity_or_source_expiry",
+      "stage": "ADMISSION_BUILD",
+      "stimulus": "STATUS_IDENTITY_EVIDENCE_OR_SOURCE_FRESHNESS_MISMATCH",
+      "description": "Wrong status artifact identity, wrong evidence digest, expired source authority, or admission outliving source authority is refused.",
+      "expected_profile": "REFUSED_PRE_ADMISSION",
+      "reason_codes": ["authenticated_status_or_source_freshness_mismatch"],
+      "coverage": { "test_id": "T21", "case_scope": "all status identity, evidence digest, source expiry, and admission expiry fixtures" }
+    },
+    {
+      "id": "42_two_authenticated_status_leases",
+      "stage": "ADMISSION_BUILD",
+      "stimulus": "TWO_CURRENT_AUTHENTICATED_STATUS_HEADS",
+      "description": "Exactly two authenticated status heads become two external-lease reservations bound into the canonical admission.",
+      "expected_profile": "ADMISSION_INPUT_BUILT",
+      "reason_codes": [],
+      "coverage": { "test_id": "T16", "case_scope": "external lease count and head-digest equality" }
+    },
+    {
+      "id": "43_bridge_reserve_and_begin_with_leases",
+      "stage": "INVOCATION",
+      "stimulus": "CURRENT_BRIDGE_ADMISSION_WITH_TWO_EXTERNAL_LEASES",
+      "description": "The canonical bridge snapshot reaches AdmissionStore reserve and beginInvocation, which consumes the execution right and every resource.",
+      "expected_profile": "INVOKING_ONCE",
+      "reason_codes": [],
+      "coverage": { "test_id": "T22", "case_scope": "bridge reserve and successful beginInvocation with two external leases" }
+    },
+    {
+      "id": "44_changed_status_head_blocks_entry",
+      "stage": "INVOCATION",
+      "stimulus": "EXTERNAL_LEASE_HEAD_CHANGED_AFTER_RESERVATION",
+      "description": "A changed authenticated status head causes currentness refusal before provider entry.",
+      "expected_profile": "REFUSED_PRE_ADMISSION",
+      "reason_codes": ["authenticated_status_head_changed"],
+      "coverage": { "test_id": "T23", "case_scope": "changed external lease digest at beginInvocation" }
+    },
+    {
+      "id": "45_pure_deterministic_builder",
+      "stage": "ADMISSION_BUILD",
+      "stimulus": "IDENTICAL_TRUSTED_INPUTS",
+      "description": "The bridge builder is synchronous, pure, and deterministic and exposes no reserve, invocation, outcome, effect, or reconciliation surface.",
+      "expected_profile": "ADMISSION_INPUT_BUILT",
+      "reason_codes": [],
+      "coverage": { "test_id": "T24", "case_scope": "input immutability, identical outputs, synchrony, and forbidden methods" }
+    },
+    {
+      "id": "46_begin_invocation_consumes_once",
+      "stage": "INVOCATION",
+      "stimulus": "CURRENT_RESERVED_ADMISSION",
+      "description": "AdmissionStore atomically rechecks currentness and consumes every right before issuing one invocation permit; a second begin is refused.",
+      "expected_profile": "INVOKING_ONCE",
+      "reason_codes": [],
+      "coverage": { "test_id": "T25", "case_scope": "successful first beginInvocation and refused second begin" }
+    },
+    {
+      "id": "47_commitment_effect_independent",
+      "stage": "RECONCILIATION",
+      "stimulus": "PROVIDER_COMMITTED_EFFECT_DIVERGED",
+      "description": "Provider COMMITTED and observed effect DIVERGED coexist as independent recorded axes.",
+      "expected_profile": "COMMITTED_DIVERGED",
+      "reason_codes": ["effect_diverged"],
+      "coverage": { "test_id": "T26", "case_scope": "COMMITTED plus DIVERGED case" }
+    },
+    {
+      "id": "48_post_entry_ambiguity_no_retry",
+      "stage": "POST_ENTRY",
+      "stimulus": "CRASH_AFTER_POSSIBLE_PROVIDER_COMMIT",
+      "description": "Ambiguity after provider entry becomes INDETERMINATE, preserves consumed authority, refuses another begin, and requires reconciliation.",
+      "expected_profile": "POST_ENTRY_INDETERMINATE",
+      "reason_codes": ["blind_retry_forbidden", "provider_commitment_indeterminate", "reconciliation_required"],
+      "coverage": { "test_id": "T27", "case_scope": "ambiguous post-commit crash and refused beginInvocation retry" }
+    },
+    {
+      "id": "49_verified_payload_splice_refused",
+      "stage": "SOURCE_BINDING",
+      "stimulus": "VALID_TOKEN_BYTES_WITH_DIFFERENT_PROJECTED_PAYLOAD",
+      "description": "A valid token-byte commitment cannot be paired with a different disclosure-resolved checkout or payment object.",
+      "expected_profile": "REFUSED_PRE_ADMISSION",
+      "reason_codes": ["verified_payload_binding_mismatch"],
+      "coverage": { "test_id": "T30", "case_scope": "good source tokens paired with changed payee and amount" }
+    },
+    {
+      "id": "50_authenticated_ap2_hash_algorithm",
+      "stage": "MAPPING",
+      "stimulus": "AUTHENTICATED_SHA_384_OR_SHA_512_CHECKOUT_HASH",
+      "description": "The projection validates checkout linkage using the native verifier's authenticated sha-384 or sha-512 algorithm as permitted by pinned AP2 v0.2.",
+      "expected_profile": "PROJECTED",
+      "reason_codes": [],
+      "coverage": { "test_id": "T30", "case_scope": "valid sha-384 and sha-512 checkout linkage fixtures" }
+    },
+    {
+      "id": "51_stale_webauthn_counter_refused",
+      "stage": "ADMISSION_BUILD",
+      "stimulus": "ASSERTION_COUNTER_NOT_ABOVE_SERVER_HEAD",
+      "description": "An otherwise valid assertion is refused when its signCount does not advance beyond the server-owned credential head.",
+      "expected_profile": "REFUSED_PRE_ADMISSION",
+      "reason_codes": ["webauthn_counter_not_current"],
+      "coverage": { "test_id": "T31", "case_scope": "signCount 42 against current server head 42" }
+    },
+    {
+      "id": "52_atomic_webauthn_counter_advance",
+      "stage": "ADMISSION",
+      "stimulus": "DISTINCT_ADMISSIONS_REUSE_OR_ADVANCE_ONE_CREDENTIAL_COUNTER",
+      "description": "Only the exact expected-to-next counter transition reserves; duplicate counts conflict, later counts advance, and an earlier reserved admission remains invocable.",
+      "expected_profile": "INVOKING_ONCE",
+      "reason_codes": [],
+      "coverage": { "test_id": "T32", "case_scope": "memory-store compare-and-advance, duplicate refusal, later advance, and begin recheck; durable parity is T33" }
+    }
+  ]
+}

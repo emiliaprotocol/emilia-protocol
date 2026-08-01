@@ -1,0 +1,258 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://emiliaprotocol.ai/schemas/conformance/fido-ap2-bridge-semantic-corpus.v1.schema.json",
+  "title": "EMILIA FIDO AP2 bridge semantic corpus v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_ref",
+    "@version",
+    "suite_id",
+    "corpus_kind",
+    "source_pins",
+    "determinism",
+    "claim_boundaries",
+    "baseline",
+    "expected_profiles",
+    "test_catalog",
+    "coverage_observations",
+    "vectors"
+  ],
+  "properties": {
+    "schema_ref": { "const": "https://emiliaprotocol.ai/schemas/conformance/fido-ap2-bridge-semantic-corpus.v1.schema.json" },
+    "@version": { "const": "EP-FIDO-AP2-BRIDGE-SEMANTIC-CORPUS-v1" },
+    "suite_id": { "const": "emilia-fido-ap2-bridge-v1" },
+    "corpus_kind": { "const": "EMILIA_BRIDGE_SEMANTIC_DESCRIPTORS" },
+    "source_pins": {
+      "type": "array",
+      "minItems": 2,
+      "uniqueItems": true,
+      "items": { "$ref": "#/$defs/sourcePin" }
+    },
+    "determinism": { "$ref": "#/$defs/determinism" },
+    "claim_boundaries": {
+      "type": "array",
+      "minItems": 1,
+      "uniqueItems": true,
+      "items": { "$ref": "#/$defs/nonempty" }
+    },
+    "baseline": { "$ref": "#/$defs/baseline" },
+    "expected_profiles": {
+      "type": "object",
+      "minProperties": 1,
+      "propertyNames": { "pattern": "^[A-Z][A-Z0-9_]*$" },
+      "additionalProperties": { "$ref": "#/$defs/expectedProfile" }
+    },
+    "test_catalog": {
+      "type": "array",
+      "minItems": 1,
+      "items": { "$ref": "#/$defs/testCatalogEntry" }
+    },
+    "coverage_observations": {
+      "type": "array",
+      "minItems": 1,
+      "items": { "$ref": "#/$defs/coverageObservation" }
+    },
+    "vectors": {
+      "type": "array",
+      "minItems": 1,
+      "items": { "$ref": "#/$defs/vector" }
+    }
+  },
+  "$defs": {
+    "nonempty": { "type": "string", "minLength": 1 },
+    "testId": { "type": "string", "pattern": "^T[0-9]{2,}$" },
+    "sourcePin": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["name", "authority", "url", "version", "revision"],
+      "properties": {
+        "name": { "$ref": "#/$defs/nonempty" },
+        "authority": { "$ref": "#/$defs/nonempty" },
+        "url": { "type": "string", "pattern": "^https://" },
+        "version": { "$ref": "#/$defs/nonempty" },
+        "revision": { "$ref": "#/$defs/nonempty" }
+      }
+    },
+    "determinism": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "fixed_now",
+        "vector_order",
+        "reason_code_order",
+        "test_catalog_order",
+        "semantic_descriptors_only",
+        "raw_ap2_vectors_included",
+        "raw_webauthn_vectors_included",
+        "private_material_included",
+        "vector_count"
+      ],
+      "properties": {
+        "fixed_now": { "type": "string", "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9:.]+Z$" },
+        "vector_order": { "const": "ascending_numeric_id" },
+        "reason_code_order": { "const": "lexicographic" },
+        "test_catalog_order": { "const": "ascending_test_id" },
+        "semantic_descriptors_only": { "const": true },
+        "raw_ap2_vectors_included": { "const": false },
+        "raw_webauthn_vectors_included": { "const": false },
+        "private_material_included": { "const": false },
+        "vector_count": { "type": "integer", "minimum": 1 }
+      }
+    },
+    "baseline": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "source_revision",
+        "ap2_protocol_id",
+        "checkout_vct",
+        "payment_vct",
+        "execution",
+        "action_type",
+        "human_evidence_version",
+        "canonical_token_domain",
+        "provider_request_domain",
+        "checkout_payload_jwt_commitment",
+        "human_disclosure_fields",
+        "webauthn_algorithm",
+        "webauthn_curve",
+        "webauthn_authenticator_data_bytes",
+        "webauthn_required_flags",
+        "aeb_requirement_expression",
+        "authenticated_status_count",
+        "external_status_lease_count",
+        "replay_resource_count",
+        "webauthn_counter_resource_count",
+        "checkout_hash_algorithms",
+        "provider_operation_resource_count",
+        "tenant_boundary"
+      ],
+      "properties": {
+        "source_revision": { "$ref": "#/$defs/nonempty" },
+        "ap2_protocol_id": { "$ref": "#/$defs/nonempty" },
+        "checkout_vct": { "$ref": "#/$defs/nonempty" },
+        "payment_vct": { "$ref": "#/$defs/nonempty" },
+        "execution": { "const": "immediate" },
+        "action_type": { "$ref": "#/$defs/nonempty" },
+        "human_evidence_version": { "$ref": "#/$defs/nonempty" },
+        "canonical_token_domain": { "$ref": "#/$defs/nonempty" },
+        "provider_request_domain": { "$ref": "#/$defs/nonempty" },
+        "checkout_payload_jwt_commitment": { "$ref": "#/$defs/nonempty" },
+        "human_disclosure_fields": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": { "$ref": "#/$defs/nonempty" }
+        },
+        "webauthn_algorithm": { "const": "ES256" },
+        "webauthn_curve": { "const": "P-256" },
+        "webauthn_authenticator_data_bytes": { "const": 37 },
+        "webauthn_required_flags": {
+          "type": "array",
+          "minItems": 2,
+          "maxItems": 2,
+          "prefixItems": [{ "const": "UP" }, { "const": "UV" }],
+          "items": false
+        },
+        "aeb_requirement_expression": { "$ref": "#/$defs/nonempty" },
+        "authenticated_status_count": { "const": 2 },
+        "external_status_lease_count": { "const": 2 },
+        "replay_resource_count": { "const": 3 },
+        "webauthn_counter_resource_count": { "const": 1 },
+        "checkout_hash_algorithms": {
+          "type": "array",
+          "minItems": 3,
+          "maxItems": 3,
+          "prefixItems": [
+            { "const": "sha-256" },
+            { "const": "sha-384" },
+            { "const": "sha-512" }
+          ],
+          "items": false
+        },
+        "provider_operation_resource_count": { "const": 1 },
+        "tenant_boundary": { "const": "ONE_TENANT_PER_DEPLOYMENT" }
+      }
+    },
+    "expectedProfile": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "projection",
+        "human_evidence",
+        "aeb",
+        "local_authorization",
+        "admission",
+        "custody",
+        "provider_commitment",
+        "observed_effect",
+        "retry",
+        "reconciliation"
+      ],
+      "properties": {
+        "projection": { "$ref": "#/$defs/nonempty" },
+        "human_evidence": { "$ref": "#/$defs/nonempty" },
+        "aeb": { "$ref": "#/$defs/nonempty" },
+        "local_authorization": { "$ref": "#/$defs/nonempty" },
+        "admission": { "$ref": "#/$defs/nonempty" },
+        "custody": { "$ref": "#/$defs/nonempty" },
+        "provider_commitment": { "$ref": "#/$defs/nonempty" },
+        "observed_effect": { "$ref": "#/$defs/nonempty" },
+        "retry": { "$ref": "#/$defs/nonempty" },
+        "reconciliation": { "$ref": "#/$defs/nonempty" }
+      }
+    },
+    "testCatalogEntry": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "file", "title"],
+      "properties": {
+        "id": { "$ref": "#/$defs/testId" },
+        "file": { "type": "string", "pattern": "^(packages|tests)/.+\\.test\\.ts$" },
+        "title": { "$ref": "#/$defs/nonempty" }
+      }
+    },
+    "coverageObservation": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["requirement", "status", "test_ids"],
+      "properties": {
+        "requirement": { "$ref": "#/$defs/nonempty" },
+        "status": { "const": "NAMED_EXECUTABLE_TEST" },
+        "test_ids": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": { "$ref": "#/$defs/testId" }
+        }
+      }
+    },
+    "vector": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "stage", "stimulus", "description", "expected_profile", "reason_codes", "coverage"],
+      "properties": {
+        "id": { "type": "string", "pattern": "^[0-9]{2}_[a-z0-9_]+$" },
+        "stage": { "type": "string", "pattern": "^[A-Z][A-Z0-9_]*$" },
+        "stimulus": { "type": "string", "pattern": "^[A-Z][A-Z0-9_]*$" },
+        "description": { "$ref": "#/$defs/nonempty" },
+        "expected_profile": { "type": "string", "pattern": "^[A-Z][A-Z0-9_]*$" },
+        "reason_codes": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": { "type": "string", "pattern": "^[a-z][a-z0-9_]*$" }
+        },
+        "coverage": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["test_id", "case_scope"],
+          "properties": {
+            "test_id": { "$ref": "#/$defs/testId" },
+            "case_scope": { "$ref": "#/$defs/nonempty" }
+          }
+        }
+      }
+    }
+  }
+}

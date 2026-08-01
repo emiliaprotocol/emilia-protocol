@@ -119,6 +119,41 @@ reconciliation. The hostile fixture set is
 `conformance/vectors/psea-aeb.v1.json`; it is an EMILIA adapter suite, not an
 independent PSEA interoperability claim.
 
+`@emilia-protocol/verify/fido-ap2-bridge` verifies a relying-party-pinned
+WebAuthn ES256/P-256 human-authorization ceremony over one closed, immediate
+AP2 v0.2 `CheckoutMandate`/`PaymentMandate` projection. The signed context
+commits to exact canonical SD-JWT token strings, both disclosure-resolved
+verified payloads, the authenticated AP2 checkout-hash algorithm, the merchant checkout JWT,
+native-verification attestation, readable disclosure, CAID, normalized action,
+tenant, relying party, audience, operation, frozen provider request,
+provider/account, approver, nonce, and deadline. Native AP2 verification stays
+a separate authoritative attestation leg: it must verify the merchant checkout
+JWS, current checkout state, hash/transaction linkage, disclosed claims, and
+credential scope. The bridge does not reinterpret those credentials or turn a
+valid WebAuthn assertion into local authorization.
+
+The pinned immediate-payment subset follows AP2 v0.2 literally: an immediate
+payment omits `execution_date`, and optional merchant, instrument, PISP, and
+risk members are accepted only with their schema-defined types. `null` does
+not stand in for an omitted AP2 optional member. Bridge and AEB instants are
+limited to millisecond precision so JavaScript comparison never truncates a
+future not-before value into the present.
+
+The closed WebAuthn profile accepts only an enrolled ES256/P-256 key, a 37-byte
+extension-free assertion with UP and UV, approved origin/RP bindings, backup
+policy, and a counter above enrollment. The verifier treats the counter as
+clone-detection metadata; Gate separately compares and advances the durable
+RP/credential head atomically with admission. Legacy, open, recurring, unknown, stale, or
+materially lossy AP2 semantics fail closed. One-time execution custody remains
+the Gate Qualification v2 AdmissionStore boundary. A verified assertion proves
+the signed ceremony occurred; it does not prove legal consent or human
+comprehension.
+
+`createFidoAp2NativeSourceBinding()` domain-separates commitments to the exact
+byte sequences and strict payload digests accepted by the native verifier. A
+token cannot therefore be spliced onto a different projected amount or payee,
+and runtime serialization choices cannot silently change the source identity.
+
 ### Agent Edge Continuity — `@emilia-protocol/verify/agent-edge-continuity`
 
 `EP-AGENT-EDGE-CONTINUITY-v1` carries one material action across user,

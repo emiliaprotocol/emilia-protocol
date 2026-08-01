@@ -83,7 +83,8 @@ export type AdmissionResourceKind =
   | 'budget'
   | 'qualification_use'
   | 'provider_operation'
-  | 'external_lease';
+  | 'external_lease'
+  | 'monotonic_counter';
 
 export interface AdmissionResourceReservationInput {
   kind: AdmissionResourceKind;
@@ -91,6 +92,10 @@ export interface AdmissionResourceReservationInput {
   reservation_id: string;
   digest: AdmissionDigest;
   expires_at: string;
+  /** Present only for monotonic_counter. */
+  expected_value?: number;
+  /** Present only for monotonic_counter and strictly greater than expected_value. */
+  next_value?: number;
 }
 
 export interface CandidateCustodyBinding {
@@ -267,6 +272,12 @@ export interface AdmissionCurrentnessOracle {
   read(snapshot: Readonly<AdmissionSnapshot>): Promise<AdmissionCurrentnessObservation>;
 }
 
+export interface AdmissionMonotonicCounterHead {
+  tenant_id: string;
+  resource_id: string;
+  current_value: number;
+}
+
 export type AdmissionRefusalReason =
   | 'admission_exists'
   | 'admission_not_found'
@@ -373,6 +384,8 @@ export interface CreateMemoryAdmissionStoreOptions {
   maxCurrentnessAgeMs?: number;
   ownerTokenFactory?: () => string;
   invocationTokenFactory?: () => string;
+  /** Trusted current heads provisioned before reservation; missing heads fail closed. */
+  initialMonotonicCounterHeads?: readonly AdmissionMonotonicCounterHead[];
 }
 
 export class AdmissionStoreValidationError extends TypeError {
@@ -499,10 +512,18 @@ function normalizeDigests(raw: unknown, field: string, limit: number): Admission
 
 function normalizeResources(raw: unknown, admittedAt: number): AdmissionResourceReservationInput[] {
   if (!Array.isArray(raw) || raw.length < 1 || raw.length > ADMISSION_LIMITS.resources) fail('invalid_resources', 'resource reservations are invalid');
-  const allowed = new Set<AdmissionResourceKind>(['replay', 'capability', 'budget', 'qualification_use', 'provider_operation', 'external_lease']);
+  const allowed = new Set<AdmissionResourceKind>(['replay', 'capability', 'budget', 'qualification_use', 'provider_operation', 'external_lease', 'monotonic_counter']);
   const seen = new Set<string>();
   const values = raw.map((entry, index) => {
     if (!plain(entry) || !allowed.has(entry.kind as AdmissionResourceKind)) fail('invalid_resource', `resource[${index}] is invalid`);
+    const counter = entry.kind === 'monotonic_counter';
+    const allowedKeys = new Set([
+      'kind', 'resource_id', 'reservation_id', 'digest', 'expires_at',
+      ...(counter ? ['expected_value', 'next_value'] : []),
+    ]);
+    if (Reflect.ownKeys(entry).some((key) => typeof key !== 'string' || !allowedKeys.has(key))) {
+      fail('invalid_resource', `resource[${index}] has unknown fields`);
+    }
     const value: AdmissionResourceReservationInput = {
       kind: entry.kind as AdmissionResourceKind,
       resource_id: identifier(entry.resource_id, `resource[${index}].resource_id`),
@@ -510,6 +531,21 @@ function normalizeResources(raw: unknown, admittedAt: number): AdmissionResource
       digest: digest(entry.digest, `resource[${index}].digest`),
       expires_at: instant(entry.expires_at, `resource[${index}].expires_at`).iso,
     };
+    if (counter) {
+      value.expected_value = nonNegativeInteger(
+        entry.expected_value,
+        `resource[${index}].expected_value`,
+      );
+      value.next_value = nonNegativeInteger(
+        entry.next_value,
+        `resource[${index}].next_value`,
+      );
+      if (value.next_value <= value.expected_value || value.next_value > 0xffffffff) {
+        fail('invalid_resource', `resource[${index}] counter transition is invalid`);
+      }
+    } else if (entry.expected_value !== undefined || entry.next_value !== undefined) {
+      fail('invalid_resource', `resource[${index}] counter fields are invalid`);
+    }
     if (Date.parse(value.expires_at) <= admittedAt) fail('expired_resource', `resource[${index}] is expired`);
     const key = `${value.kind}\0${value.resource_id}`;
     if (seen.has(key)) fail('duplicate_resource', `resource[${index}] is duplicated`);
@@ -617,6 +653,7 @@ function validateSnapshot(raw: AdmissionSnapshot): Readonly<AdmissionSnapshot> {
 function operationKey(tenant: string, operation: string): string { return JSON.stringify([tenant, operation]); }
 function admissionKey(tenant: string, admission: string): string { return JSON.stringify([tenant, admission]); }
 function resourceKey(tenant: string, resource: AdmissionResourceReservationInput): string { return JSON.stringify([tenant, resource.kind, resource.resource_id]); }
+function monotonicCounterKey(tenant: string, resourceId: string): string { return JSON.stringify([tenant, 'monotonic_counter', resourceId]); }
 function tokenDigest(token: string): AdmissionDigest { return hash(`${ADMISSION_RECORD_VERSION}:TOKEN`, token); }
 
 function defaultOwnerToken(): string { return `admission-owner:v2:${crypto.randomBytes(32).toString('base64url')}`; }
@@ -702,6 +739,33 @@ export function createMemoryAdmissionStore(options: CreateMemoryAdmissionStoreOp
   const records = new Map<string, Stored>();
   const operationHeads = new Map<string, string>();
   const resourceOwners = new Map<string, string>();
+  const monotonicCounterHeads = new Map<string, number>();
+  const configuredCounterHeads = options.initialMonotonicCounterHeads ?? [];
+  if (!Array.isArray(configuredCounterHeads)) {
+    fail('invalid_counter_heads', 'initial monotonic counter heads are invalid');
+  }
+  const counterHeadKeys = new Set(['tenant_id', 'resource_id', 'current_value']);
+  for (const [index, head] of configuredCounterHeads.entries()) {
+    if (!plain(head)
+        || Reflect.ownKeys(head).some((key) => typeof key !== 'string' || !counterHeadKeys.has(key))
+        || Reflect.ownKeys(head).length !== counterHeadKeys.size) {
+      fail('invalid_counter_head', `initial monotonic counter head[${index}] is invalid`);
+    }
+    const tenant = identifier(head.tenant_id, `initialMonotonicCounterHeads[${index}].tenant_id`);
+    const resourceId = identifier(head.resource_id, `initialMonotonicCounterHeads[${index}].resource_id`);
+    const currentValue = nonNegativeInteger(
+      head.current_value,
+      `initialMonotonicCounterHeads[${index}].current_value`,
+    );
+    if (currentValue > 0xffffffff) {
+      fail('invalid_counter_head', `initial monotonic counter head[${index}] is invalid`);
+    }
+    const key = monotonicCounterKey(tenant, resourceId);
+    if (monotonicCounterHeads.has(key)) {
+      fail('duplicate_counter_head', `initial monotonic counter head[${index}] is duplicated`);
+    }
+    monotonicCounterHeads.set(key, currentValue);
+  }
   const journals = new Map<string, readonly Readonly<AdmissionJournalEntry>[]>();
   const ownerFactory = options.ownerTokenFactory ?? defaultOwnerToken;
   const invocationFactory = options.invocationTokenFactory ?? defaultInvocationToken;
@@ -765,15 +829,26 @@ export function createMemoryAdmissionStore(options: CreateMemoryAdmissionStoreOp
 
   function resourcesAvailable(snapshot: Readonly<AdmissionSnapshot>, ignored?: string): boolean {
     return snapshot.body.resource_reservations.every((resource) => {
+      if (resource.kind === 'monotonic_counter') {
+        const current = monotonicCounterHeads.get(resourceKey(snapshot.body.tenant_id, resource));
+        return current === resource.expected_value;
+      }
       const owner = resourceOwners.get(resourceKey(snapshot.body.tenant_id, resource));
       return owner === undefined || owner === ignored;
     });
   }
+  // Monotonic counter heads advance atomically with the successful reservation mutation.
   function claimResources(snapshot: Readonly<AdmissionSnapshot>, key: string): void {
-    for (const resource of snapshot.body.resource_reservations) resourceOwners.set(resourceKey(snapshot.body.tenant_id, resource), key);
+    for (const resource of snapshot.body.resource_reservations) {
+      const rKey = resourceKey(snapshot.body.tenant_id, resource);
+      if (resource.kind === 'monotonic_counter') {
+        monotonicCounterHeads.set(rKey, resource.next_value!);
+      } else resourceOwners.set(rKey, key);
+    }
   }
   function freeResources(record: Readonly<AdmissionRecord>, key: string): void {
     for (const resource of record.resources) {
+      if (resource.kind === 'monotonic_counter') continue;
       const rKey = resourceKey(record.tenant_id, resource);
       if (resourceOwners.get(rKey) === key) resourceOwners.delete(rKey);
     }
@@ -788,9 +863,39 @@ export function createMemoryAdmissionStore(options: CreateMemoryAdmissionStoreOp
       if (!verifyAdmissionJournal(history).ok) violations.push(`${key}:journal_invalid`);
       if (history.length !== record.revision + 1 || history.at(-1)?.record_digest !== record.record_digest) violations.push(`${key}:head_mismatch`);
       if (record.state === 'RESERVED' && (record.execution_right !== 'RESERVED' || record.provider_attempt !== 'NOT_ENTERED')) violations.push(`${key}:reserved_invalid`);
+      for (const resource of record.resources) {
+        if (resource.kind === 'monotonic_counter') {
+          const head = monotonicCounterHeads.get(resourceKey(record.tenant_id, resource));
+          if (head === undefined || head < resource.next_value!) {
+            violations.push(`${key}:monotonic_counter_head_invalid`);
+          }
+        }
+      }
       if (['INVOKING', 'INDETERMINATE', 'COMMITTED', 'PROVEN_NOT_COMMITTED'].includes(record.state)
           && (record.execution_right !== 'CONSUMED' || record.resources.some((resource) => resource.state !== 'CONSUMED'))) violations.push(`${key}:consumption_invalid`);
-      if (record.state === 'SUPERSEDED' && record.superseded_by_admission_id === null) violations.push(`${key}:supersession_missing`);
+      if (record.state === 'SUPERSEDED') {
+        if (record.superseded_by_admission_id === null) {
+          violations.push(`${key}:supersession_missing`);
+        } else {
+          const predecessorSnapshot = snapshots.get(record.snapshot_digest);
+          const successorKey = admissionKey(record.tenant_id, record.superseded_by_admission_id);
+          const successor = records.get(successorKey);
+          const successorSnapshot = successor
+            ? snapshots.get(successor.record.snapshot_digest)
+            : undefined;
+          if (!successor
+              || !predecessorSnapshot
+              || !successorSnapshot
+              || successorSnapshot.body.supersedes_admission_id !== record.admission_id
+              || !exactOperationIdentity(predecessorSnapshot.body, successorSnapshot.body)) {
+            violations.push(`${key}:supersession_target_invalid`);
+          }
+          const operationHead = operationHeads.get(operationKey(record.tenant_id, record.operation_id));
+          if (operationHead !== successorKey) {
+            violations.push(`${key}:supersession_head_invalid`);
+          }
+        }
+      }
     }
     for (const [op, admission] of operationHeads) {
       const stored = records.get(admission);
@@ -910,13 +1015,13 @@ export function createMemoryAdmissionStore(options: CreateMemoryAdmissionStoreOp
         const now = currentMs(options.now);
         if (Date.parse(successor.body.expires_at) <= now) return { ok: false, reason: 'admission_expired' };
         if (!resourcesAvailable(successor, key)) return { ok: false, reason: 'resource_conflict' };
+        const owner = validateOwner(ownerFactory());
         const at = new Date(now).toISOString();
         freeResources(stored.record, key);
         const predecessorRecord = append(key, stored.ownerToken, next(stored.record, at, {
           state: 'SUPERSEDED', execution_right: 'RELEASED', superseded_by_admission_id: successor.body.admission_id,
           resources: stored.record.resources.map((resource) => ({ ...resource, state: 'RELEASED' })),
         }), 'SUPERSEDED', at);
-        const owner = validateOwner(ownerFactory());
         snapshots.set(successor.snapshot_digest, successor);
         claimResources(successor, successorKey);
         operationHeads.set(operationKey(successor.body.tenant_id, successor.body.operation_id), successorKey);
@@ -950,7 +1055,12 @@ export function createMemoryAdmissionStore(options: CreateMemoryAdmissionStoreOp
         const observation = options.currentnessOracle
           ? await options.currentnessOracle.read(snapshot)
           : null;
-        if (!observation || !currentnessMatches(
+        const countersCurrent = snapshot.body.resource_reservations.every((resource) => (
+          resource.kind !== 'monotonic_counter'
+          || (monotonicCounterHeads.get(resourceKey(snapshot.body.tenant_id, resource)) ?? -1)
+            >= resource.next_value!
+        ));
+        if (!observation || !countersCurrent || !currentnessMatches(
           snapshot,
           observation,
           now,

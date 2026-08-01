@@ -65,6 +65,7 @@ export * from './autonomy-control-plane-profile.js';
 export * from './admission-store.js';
 export * from './admission-store-postgres.js';
 export * from './gate-qualification-v2.js';
+export * from './fido-ap2-bridge.js';
 export * from './referee.js';
 export * from './referee-runner.js';
 export * from './loss-allocation-schedule.js';

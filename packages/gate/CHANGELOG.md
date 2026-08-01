@@ -4,6 +4,37 @@
 All notable changes to `@emilia-protocol/gate` are documented here.
 This package follows [Semantic Versioning](https://semver.org/).
 
+## 0.22.0 (2026-07-31)
+
+### Added
+
+- FIDO/AP2 AdmissionStore builders that re-verify a signed,
+  execution-authorizing two-leg AEB record against server-owned pinned
+  configuration and authenticated status heads, remeasure the exact AP2 v0.2
+  token strings and final provider-request bytes, and require a pinned provider
+  adapter to find the exact PaymentMandate token in those frozen bytes.
+- Domain-separated one-time resources for the CheckoutMandate token,
+  PaymentMandate token, WebAuthn assertion, provider operation, and both
+  authenticated status heads, plus a durable monotonic counter resource for
+  the RP/credential pair. The signed full AEB evaluation record, including
+  initiator, executor, evaluator, nonce, and requirement, is retained in the
+  admission evidence.
+
+### Security
+
+- Request-side clocks, trust roots, status maps, actors, provider adapters, and
+  provider bytes are not accepted. Gate Qualification v2 plus AdmissionStore
+  `beginInvocation()` remain the sole authority-custody and one-time provider
+  entry boundary; the bridge creates no parallel consumption store and makes
+  no provider-outcome or observed-effect claim.
+- Admission builders return recursively frozen clones after validating the
+  complete Gate snapshot contract, preventing post-build nested mutation.
+- Memory and PostgreSQL AdmissionStores require a trusted enrollment or
+  recovery baseline, atomically compare and advance signed WebAuthn counters
+  with successful reservation, and recheck their durable head before
+  invocation. Missing enrollment, reuse, rollback, and artifact-selected
+  baselines fail closed.
+
 ## 0.21.0 (2026-07-29)
 
 ### Added
