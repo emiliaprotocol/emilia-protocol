@@ -587,7 +587,7 @@
     },
     {
       "path": "packages/gate/dist/fido-ap2-bridge.js",
-      "sha256": "826f88ace41c6179ba61580dae3c7b9a2abb62e64f87a2ec9a340ccc7f26fd8e"
+      "sha256": "f20f9e3c6a8c45834a5e10aa0308de91ccb2122125aab4b93f8db4376c8c9c4a"
     },
     {
       "path": "packages/gate/dist/formal-runtime-map.js",
