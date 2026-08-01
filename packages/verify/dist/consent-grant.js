@@ -450,7 +450,15 @@ export function verifyReceiptUnderGrant(receipt, grant, opts = {}) {
     const assetCovers = typeof opts.assetCovers === 'function'
         ? opts.assetCovers
         : (a, b) => a === b;
-    checks.asset_covered = assetCovers(action.asset, grant.asset) === true;
+    try {
+        checks.asset_covered = assetCovers(action.asset, grant.asset) === true;
+    }
+    catch {
+        // A caller-supplied predicate is policy code, not trusted verification
+        // evidence. A buggy or hostile predicate must refuse rather than escape the
+        // verifier's structured result contract or crash its enclosing service.
+        checks.asset_covered = false;
+    }
     if (!checks.asset_covered) {
         return refuseComposition('asset_mismatch', checks);
     }
@@ -458,7 +466,12 @@ export function verifyReceiptUnderGrant(receipt, grant, opts = {}) {
     const verbCovers = typeof opts.verbCovers === 'function'
         ? opts.verbCovers
         : (a, b) => a === b;
-    checks.verb_covered = verbCovers(action.control_verb, grant.control_verb) === true;
+    try {
+        checks.verb_covered = verbCovers(action.control_verb, grant.control_verb) === true;
+    }
+    catch {
+        checks.verb_covered = false;
+    }
     if (!checks.verb_covered) {
         return refuseComposition('verb_mismatch', checks);
     }

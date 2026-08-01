@@ -22,6 +22,9 @@ import {
   verifyProvenanceOffline,
   PROVENANCE_VERSION,
 } from '../lib/provenance/chain.js';
+import {
+  verifyProvenanceOffline as verifyPackagedProvenanceOffline,
+} from '../packages/verify/provenance.js';
 
 import {
   canonicalize,
@@ -289,6 +292,19 @@ describe('EP-PROVENANCE-CHAIN-v1 — positive (MUST verify valid:true)', () => {
 });
 
 describe('EP-PROVENANCE-CHAIN-v1 — negatives (each MUST verify valid:false)', () => {
+  it('rejects empty-prefix ".*" instead of widening it to universal authority', async () => {
+    const b = await buildBaseline();
+    const malformed = signedLink({ ...b.link0Base, scope: ['.*'] }, b.delegatorKp);
+    const doc = assemble(b, { delegationChain: [malformed] });
+
+    for (const verify of [verifyProvenanceOffline, verifyPackagedProvenanceOffline]) {
+      const res = verify(doc, baseOpts(b));
+      expect(res.valid).toBe(false);
+      expect(res.checks.scope_containment).toBe(false);
+      expect(res.errors.join(' ')).toMatch(/malformed|scope/i);
+    }
+  });
+
   // (a) broken inter-hop link: chain[1] does not bind to chain[0].delegatee
   it('a_broken_inter_hop_link', async () => {
     const b = await buildBaseline();

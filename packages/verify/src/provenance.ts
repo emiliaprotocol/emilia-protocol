@@ -57,6 +57,14 @@ function isWellFormedActionType(s: unknown): s is string {
   return typeof s === 'string' && WELL_FORMED_ACTION_TYPE.test(s);
 }
 
+function isWellFormedScopeToken(s: unknown): s is string {
+  if (s === '*') return true;
+  if (typeof s !== 'string') return false;
+  return s.endsWith('.*')
+    ? isWellFormedActionType(s.slice(0, -2))
+    : isWellFormedActionType(s);
+}
+
 function hasHumanSignoff(receipt: Obj, humanClasses: string[]): boolean {
   const set = new Set(humanClasses);
   const signoffs = Array.isArray(receipt?.signoffs) ? receipt.signoffs : [];
@@ -91,6 +99,7 @@ function scopePermits(scope: unknown, actionType: unknown): boolean {
   // BEFORE any prefix match, so a crafted "a..b" can't bypass "a.*" containment.
   if (!Array.isArray(scope) || !isWellFormedActionType(actionType)) return false;
   for (const grant of scope) {
+    if (!isWellFormedScopeToken(grant)) continue;
     if (grant === '*' || grant === actionType) return true;
     if (typeof grant === 'string' && grant.endsWith('.*')) {
       const prefix = grant.slice(0, -2);
@@ -103,6 +112,16 @@ function scopePermits(scope: unknown, actionType: unknown): boolean {
 function scopeContainmentViolations(parent: Obj, child: Obj): string[] {
   const violations: string[] = [];
   for (const token of child.scope || []) {
+    if (!isWellFormedScopeToken(token)) {
+      violations.push(`child scope token ${JSON.stringify(token)} is malformed`);
+      continue;
+    }
+    if (token === '*') {
+      if (!Array.isArray(parent.scope) || !parent.scope.includes('*')) {
+        violations.push(`child scope "*" exceeds parent scope [${(parent.scope || []).join(', ')}]`);
+      }
+      continue;
+    }
     const probe = typeof token === 'string' && token.endsWith('.*') ? token.slice(0, -2) : token;
     if (!scopePermits(parent.scope, probe)) {
       violations.push(`child scope "${token}" exceeds parent scope [${(parent.scope || []).join(', ')}]`);

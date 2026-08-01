@@ -1011,7 +1011,7 @@
     },
     {
       "path": "packages/verify/dist/provenance.js",
-      "sha256": "85078b9e24a154b7f39b4c20b957a500f1aa12bc64d0b552961482950c331fa6"
+      "sha256": "5d6e721a6be4972c2c0747818355bb432dab77ecd5c83af11dcfd6f8981e9708"
     },
     {
       "path": "packages/verify/dist/quorum.js",

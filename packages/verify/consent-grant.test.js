@@ -146,6 +146,34 @@ test('rejects a wrong control verb (verb_mismatch)', () => {
     assert.strictEqual(r.reason, 'verb_mismatch');
     assert.strictEqual(r.checks.verb_covered, false);
 });
+test('rejects with a structured asset_mismatch when assetCovers throws', () => {
+    const grant = makeGrant();
+    const receipt = makeReceipt(grant);
+    const r = verifyReceiptUnderGrant(receipt, grant, {
+        now: NOW,
+        pinnedPrincipalKey: PRINCIPAL.publicKeyB64u,
+        assetCovers: () => {
+            throw new Error('hostile asset predicate');
+        },
+    });
+    assert.strictEqual(r.ok, false);
+    assert.strictEqual(r.reason, 'asset_mismatch');
+    assert.strictEqual(r.checks.asset_covered, false);
+});
+test('rejects with a structured verb_mismatch when verbCovers throws', () => {
+    const grant = makeGrant();
+    const receipt = makeReceipt(grant);
+    const r = verifyReceiptUnderGrant(receipt, grant, {
+        now: NOW,
+        pinnedPrincipalKey: PRINCIPAL.publicKeyB64u,
+        verbCovers: () => {
+            throw new Error('hostile verb predicate');
+        },
+    });
+    assert.strictEqual(r.ok, false);
+    assert.strictEqual(r.reason, 'verb_mismatch');
+    assert.strictEqual(r.checks.verb_covered, false);
+});
 test('rejects a receipt bound to a DIFFERENT grant_hash (grant_binding_mismatch)', () => {
     const grant = makeGrant();
     const otherGrant = makeGrant({ grant_id: 'grant_other' });

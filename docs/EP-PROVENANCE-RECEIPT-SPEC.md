@@ -252,7 +252,9 @@ authority. The reference rule, applied per hop, is the conjunction of:
 
 1. **Action-type containment.** Every action type in `child.scope` is
    permitted by `parent.scope`. A parent entry `"x.*"` or `"*"` permits the
-   matching children; otherwise membership is exact-string. The executed
+   matching children, where `x` is a non-empty well-formed action-type prefix;
+   `".*"` is malformed and MUST be rejected rather than treated as `"*"`.
+   Otherwise membership is exact-string. The executed
    `execution.action_hash`'s action type (taken from the per-action
    approval's `receipt.action.action_type`) MUST be permitted by the
    **leaf** delegation's effective scope.

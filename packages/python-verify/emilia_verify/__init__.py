@@ -1286,6 +1286,7 @@ def verify_trust_receipt(receipt: Any, opts: Optional[dict] = None) -> dict:
 PROVENANCE_VERSION = "EP-PROVENANCE-CHAIN-v1"
 _DEFAULT_HUMAN_KEY_CLASSES = ["A"]
 _DELEGATION_PROOF_FIELDS = ["delegation_id", "delegator", "delegatee", "scope", "max_value_usd", "expires_at", "constraints"]
+_PROVENANCE_ACTION_TYPE_RE = _re.compile(r"^[A-Za-z0-9_-]+(?:\.[A-Za-z0-9_-]+)*$")
 
 
 def _has_human_signoff(receipt, human_classes):
@@ -1313,10 +1314,23 @@ def _latest_context_expiry(receipt):
     return mx
 
 
+def _well_formed_scope_token(token):
+    if token == "*":
+        return True
+    if not isinstance(token, str):
+        return False
+    candidate = token[:-2] if token.endswith(".*") else token
+    return _PROVENANCE_ACTION_TYPE_RE.fullmatch(candidate) is not None
+
+
 def _scope_permits(scope, action_type):
-    if not isinstance(scope, list) or not action_type:
+    if (not isinstance(scope, list)
+            or not isinstance(action_type, str)
+            or _PROVENANCE_ACTION_TYPE_RE.fullmatch(action_type) is None):
         return False
     for grant in scope:
+        if not _well_formed_scope_token(grant):
+            continue
         if grant == "*" or grant == action_type:
             return True
         if isinstance(grant, str) and grant.endswith(".*"):
@@ -1357,6 +1371,13 @@ def _js_min(a, b):
 def _scope_containment_violations(parent, child):
     viol = []
     for token in child.get("scope") or []:
+        if not _well_formed_scope_token(token):
+            viol.append("malformed child scope token")
+            continue
+        if token == "*":
+            if "*" not in (parent.get("scope") or []):
+                viol.append("scope exceeds parent")
+            continue
         probe = token[:-2] if isinstance(token, str) and token.endswith(".*") else token
         if not _scope_permits(parent.get("scope"), probe):
             viol.append("scope exceeds parent")

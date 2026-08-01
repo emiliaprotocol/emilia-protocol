@@ -91,13 +91,27 @@ function committedAtMs(receipt: any): number | null {
   return Number.isNaN(t) ? null : t;
 }
 
+const WELL_FORMED_ACTION_TYPE = /^[A-Za-z0-9_-]+(\.[A-Za-z0-9_-]+)*$/;
+function isWellFormedActionType(s: unknown): s is string {
+  return typeof s === 'string' && WELL_FORMED_ACTION_TYPE.test(s);
+}
+
+function isWellFormedScopeToken(s: unknown): s is string {
+  if (s === '*') return true;
+  if (typeof s !== 'string') return false;
+  return s.endsWith('.*')
+    ? isWellFormedActionType(s.slice(0, -2))
+    : isWellFormedActionType(s);
+}
+
 /**
  * One action-type token is permitted by a scope array. Supports exact match,
  * '*' (any), and 'prefix.*' globs (e.g. 'payment.*' permits 'payment.release').
  */
 function scopePermits(scope: any, actionType: any): boolean {
-  if (!Array.isArray(scope) || !actionType) return false;
+  if (!Array.isArray(scope) || !isWellFormedActionType(actionType)) return false;
   for (const grant of scope) {
+    if (!isWellFormedScopeToken(grant)) continue;
     if (grant === '*' || grant === actionType) return true;
     if (typeof grant === 'string' && grant.endsWith('.*')) {
       const prefix = grant.slice(0, -2);
@@ -119,6 +133,16 @@ function scopeContainmentViolations(parent: any, child: any): string[] {
 
   // 1. action-type containment
   for (const token of child.scope || []) {
+    if (!isWellFormedScopeToken(token)) {
+      violations.push(`child scope token ${JSON.stringify(token)} is malformed`);
+      continue;
+    }
+    if (token === '*') {
+      if (!Array.isArray(parent.scope) || !parent.scope.includes('*')) {
+        violations.push(`child scope "*" exceeds parent scope [${(parent.scope || []).join(', ')}]`);
+      }
+      continue;
+    }
     // a child glob is contained iff its prefix is permitted by the parent
     const probe = typeof token === 'string' && token.endsWith('.*') ? token.slice(0, -2) : token;
     if (!scopePermits(parent.scope, probe)) {

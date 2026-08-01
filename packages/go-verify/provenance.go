@@ -5,6 +5,7 @@
 package emiliaverify
 
 import (
+	"regexp"
 	"sort"
 	"strings"
 	"time"
@@ -13,6 +14,7 @@ import (
 const ProvenanceVersion = "EP-PROVENANCE-CHAIN-v1"
 
 var provenanceProofFields = []string{"delegation_id", "delegator", "delegatee", "scope", "max_value_usd", "expires_at", "constraints"}
+var provenanceActionTypePattern = regexp.MustCompile(`^[A-Za-z0-9_-]+(?:\.[A-Za-z0-9_-]+)*$`)
 
 func validProvenanceVerificationProfile(profile map[string]any) ([]string, bool) {
 	if profile == nil || getMap(profile["approver_keys"]) == nil || getStr(profile, "log_public_key") == "" || getStr(profile, "rp_id") == "" {
@@ -81,12 +83,26 @@ func provLatestContextExpiry(receipt map[string]any) (int64, bool) {
 	return mx, found
 }
 
+func provWellFormedScopeToken(token string) bool {
+	if token == "*" {
+		return true
+	}
+	candidate := token
+	if strings.HasSuffix(candidate, ".*") {
+		candidate = candidate[:len(candidate)-2]
+	}
+	return provenanceActionTypePattern.MatchString(candidate)
+}
+
 func provScopePermits(scope []any, actionType string) bool {
-	if actionType == "" {
+	if !provenanceActionTypePattern.MatchString(actionType) {
 		return false
 	}
 	for _, g := range scope {
 		grant, _ := g.(string)
+		if !provWellFormedScopeToken(grant) {
+			continue
+		}
 		if grant == "*" || grant == actionType {
 			return true
 		}
@@ -107,7 +123,23 @@ func provScopeAsSlice(v any) []any {
 
 func provScopeContained(parent, child map[string]any) bool {
 	for _, token := range provScopeAsSlice(child["scope"]) {
-		probe, _ := token.(string)
+		probe, ok := token.(string)
+		if !ok || !provWellFormedScopeToken(probe) {
+			return false
+		}
+		if probe == "*" {
+			parentPermitsAll := false
+			for _, parentToken := range provScopeAsSlice(parent["scope"]) {
+				if parentToken == "*" {
+					parentPermitsAll = true
+					break
+				}
+			}
+			if !parentPermitsAll {
+				return false
+			}
+			continue
+		}
 		if strings.HasSuffix(probe, ".*") {
 			probe = probe[:len(probe)-2]
 		}
@@ -267,9 +299,9 @@ func VerifyProvenanceOffline(doc map[string]any, opts map[string]any) Provenance
 	} else {
 		rootOrigins, _ := validProvenanceVerificationProfile(rootVerification)
 		r0 := VerifyTrustReceipt(getMap(root["receipt"]), map[string]any{
-			"approverKeys": rootVerification["approver_keys"],
-			"logPublicKey": rootVerification["log_public_key"],
-			"rpId": rootVerification["rp_id"],
+			"approverKeys":   rootVerification["approver_keys"],
+			"logPublicKey":   rootVerification["log_public_key"],
+			"rpId":           rootVerification["rp_id"],
 			"allowedOrigins": rootOrigins,
 		})
 		checks["root_receipt_valid"] = r0.Valid
@@ -295,9 +327,9 @@ func VerifyProvenanceOffline(doc map[string]any, opts map[string]any) Provenance
 		} else {
 			actionOrigins, _ := validProvenanceVerificationProfile(actionVerification)
 			ra := VerifyTrustReceipt(ar, map[string]any{
-				"approverKeys": actionVerification["approver_keys"],
-				"logPublicKey": actionVerification["log_public_key"],
-				"rpId": actionVerification["rp_id"],
+				"approverKeys":   actionVerification["approver_keys"],
+				"logPublicKey":   actionVerification["log_public_key"],
+				"rpId":           actionVerification["rp_id"],
 				"allowedOrigins": actionOrigins,
 			})
 			checks["action_receipt_valid"] = ra.Valid

@@ -135,7 +135,7 @@ reference:
 | `delegation_id` | REQUIRED | string | The DRP delegation id (`ep_dlg_…`). |
 | `delegator` | REQUIRED | string | Parent authority (`ep:approver:` / `ep:key:` id). |
 | `delegatee` | REQUIRED | string | Recipient of authority (`ep:agent:` / `ep:entity:` id). |
-| `scope` | REQUIRED | array | Granted action types; `'*'` and `'x.*'` globs permitted. |
+| `scope` | REQUIRED | array | Granted action types; `'*'` and `'x.*'` globs permitted, where `x` is a non-empty well-formed action-type prefix. `'.*'` is malformed and MUST NOT be interpreted as `'*'`. |
 | `max_value_usd` | OPTIONAL | number\|null | Value cap. `null`/absent **inherits the parent cap** (NOT "uncapped"). |
 | `expires_at` | REQUIRED | string | Delegation expiry (RFC 3339). |
 | `constraints` | OPTIONAL | object\|null | Opaque to this verifier. |
