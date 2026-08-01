@@ -50,6 +50,31 @@ set. It is not blanket ApertoMemory conformance, does not replace the native
 action authorization, execution, or outcome. Each project keeps its fixture in
 its own tree so the comparison can be repeated after either side changes.
 
+### Projection v1 reciprocal check (2026-08-01)
+
+ApertoMemory also produced the Projection v1 source facts and a separate
+projection producer without copying the EMILIA generator. The reciprocal
+inputs are pinned at:
+
+- source facts: [`apertomemory-source-facts.projection-v1.json`](https://github.com/apertomemory/apertomemory/blob/f5fe9ba5254b3c44c1cd5bc63c7c10bb1b1fc5a0/interop/emilia/apertomemory-source-facts.projection-v1.json), commit [`f5fe9ba`](https://github.com/apertomemory/apertomemory/commit/f5fe9ba5254b3c44c1cd5bc63c7c10bb1b1fc5a0), matched against EMILIA `c737f37277c85117ff05963ed6f8f14d03c5e6b3`; and
+- independent producer: [`projection_producer.py`](https://github.com/apertomemory/apertomemory/blob/7439e6b6f001ad1a86644f69786a9c6b9411aa4f/interop/emilia/projection_producer.py), commit [`7439e6b`](https://github.com/apertomemory/apertomemory/commit/7439e6b6f001ad1a86644f69786a9c6b9411aa4f).
+
+The two independently written producers converged byte-for-byte on the current
+positive example: source facts, ordered context fragments, trust snapshot, and
+complete projection. The exercise also exposed two `-00` underspecifications:
+`urn:apertomemory:context-frame:v0` names a framing profile without defining
+its exact bytes, and ApertoMemory does not yet publish the native keyring
+trust-snapshot serialization used by the example. Andrea Ferro owns the
+ApertoMemory trust-snapshot profile; the shared `-01` draft must define the
+context-frame template.
+
+Accordingly, this is evidence of convergence on one frozen example, not yet a
+claim that independent implementations are guaranteed to interoperate. The
+EMILIA candidate vectors additionally freeze null-author, empty accepted-key,
+and multiple accepted-key cases for reciprocal review. They remain candidates
+until checked against those normative profiles. None of these results proves
+model use, action authorization, execution, or outcome.
+
 ## Exact source commitment
 
 The source commitment is SHA-256 over the complete deterministic-CBOR sealed
@@ -173,7 +198,7 @@ inside or alongside the record is not a trust anchor.
   compatibility
 - `memory-projection-record.v1.vectors.json` — deterministic reciprocal v1
   package with exact verification material, pinned adapter policy, one positive
-  path, and eighteen hostile cases
+  path, eighteen hostile cases, and three candidate source-profile edge cases
 - `generate.mjs` — deterministic vector generator
 - `generate-memory-projection-v1.mjs` — deterministic v1 reciprocal-vector
   generator
@@ -200,12 +225,13 @@ discussion input and is not asserted to be part of ApertoMemory -02.
 The EMILIA tree now implements the neutral v1 field set, domain, producer,
 envelope verifier, full byte verifier, source-profile callback boundary,
 single-use registry hook, Gate consumer path, and reciprocal hostile vectors.
-That is an **EMILIA-side implementation candidate**, not independent
-interoperability evidence. Andrea Ferro or another independently governed
-implementation must reproduce the v1 positive and hostile cases before either
-project claims reciprocal v1 interoperability. The already-published `-00`
-artifact remains unchanged; its historical implementation-status text was
-accurate when published.
+ApertoMemory has independently reproduced the source facts and positive
+projection example. That is meaningful cross-implementation evidence, but it
+does not yet establish guaranteed reciprocal v1 interoperability: the exact
+context-frame and native trust-snapshot profiles remain to be made normative,
+and the hostile and candidate edge cases remain to be reproduced independently.
+The already-published `-00` artifact remains unchanged; its historical
+implementation-status text was accurate when published.
 
 The provider-neutral runtime control that consumes the projection record lives
 in `packages/gate/src/trusted-context.ts`; the first provider plug-in is

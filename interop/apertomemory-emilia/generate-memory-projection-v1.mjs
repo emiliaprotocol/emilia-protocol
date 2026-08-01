@@ -22,6 +22,25 @@ const legacyBundle = JSON.parse(readFileSync(LEGACY_BUNDLE_PATH, 'utf8'));
 const sourceFixtures = JSON.parse(readFileSync(SOURCE_FIXTURES_PATH, 'utf8'));
 const b64u = (bytes) => Buffer.from(bytes).toString('base64url');
 const keyIdB64u = (hex) => b64u(Buffer.from(hex, 'hex'));
+const sha256 = (bytes) => `sha256:${crypto.createHash('sha256').update(bytes).digest('hex')}`;
+
+function trustSnapshotBytes(ownerKeyIdB64u, acceptedKeyIdsB64u) {
+  return Buffer.from(canonicalize({
+    owner_key_id_b64u: ownerKeyIdB64u,
+    accepted_key_ids_b64u: [...acceptedKeyIdsB64u].sort(),
+  }), 'utf8');
+}
+
+function contextFragmentBytes({ trust, authorship, authorKeyIdB64u, custodyPresent, body }) {
+  const authorKey = authorKeyIdB64u ?? 'none';
+  return Buffer.from(
+    `[ApertoMemory trust=${trust} authorship=${authorship} author_key=${authorKey}`
+      + ` custody=${custodyPresent ? 'true' : 'false'}]\n`
+      + `${body}\n`
+      + '[/ApertoMemory]\n',
+    'utf8',
+  );
+}
 
 function deterministicEd25519(label) {
   const privateKey = crypto.createPrivateKey({
@@ -53,22 +72,32 @@ const selectionPolicyBytes = Buffer.from(
   'include trusted data; isolate labels; withhold unverified objects',
   'utf8',
 );
-const trustSnapshotBytes = Buffer.from(canonicalize({
-  owner_key_id_b64u: ownerKey,
-  accepted_key_ids_b64u: [originalAuthorKey],
-}), 'utf8');
-const firstFragment = Buffer.from(
-  `[ApertoMemory trust=trusted authorship=attested author_key=${originalAuthorKey} custody=true]\n`
-    + 'Source vector 007: fact authored by a third party and re-sealed by the vault owner.\n'
-    + '[/ApertoMemory]\n',
-  'utf8',
-);
-const secondFragment = Buffer.from(
-  `[ApertoMemory trust=self authorship=signed author_key=${ownerKey} custody=false]\n`
-    + 'Source vector 003: prefers formal B2B emails.\n'
-    + '[/ApertoMemory]\n',
-  'utf8',
-);
+const positiveTrustSnapshotBytes = trustSnapshotBytes(ownerKey, [originalAuthorKey]);
+const firstFragment = contextFragmentBytes({
+  trust: 'trusted',
+  authorship: 'attested',
+  authorKeyIdB64u: originalAuthorKey,
+  custodyPresent: true,
+  body: 'Source vector 007: fact authored by a third party and re-sealed by the vault owner.',
+});
+const secondFragment = contextFragmentBytes({
+  trust: 'self',
+  authorship: 'signed',
+  authorKeyIdB64u: ownerKey,
+  custodyPresent: false,
+  body: 'Source vector 003: prefers formal B2B emails.',
+});
+const nullAuthorFragment = contextFragmentBytes({
+  trust: 'unverified',
+  authorship: 'unknown',
+  authorKeyIdB64u: null,
+  custodyPresent: false,
+  body: 'Source edge: native verification did not resolve an author.',
+});
+const emptyAcceptedKeySnapshot = trustSnapshotBytes(ownerKey, []);
+const multipleAcceptedKeyInput = [ownerKey, originalAuthorKey];
+const multipleAcceptedKeys = [...multipleAcceptedKeyInput].sort();
+const multipleAcceptedKeySnapshot = trustSnapshotBytes(ownerKey, multipleAcceptedKeyInput);
 
 const produced = createMemoryProjectionRecordV1({
   sourceProfile: 'draft-ferro-apertomemory-02',
@@ -81,7 +110,7 @@ const produced = createMemoryProjectionRecordV1({
   selectionContext: {
     recallRequestBytes,
     selectionPolicyBytes,
-    trustSnapshotBytes,
+    trustSnapshotBytes: positiveTrustSnapshotBytes,
     trustEvaluatedAt: '2026-07-29T17:00:00.000Z',
     contextFrameProfile: 'urn:apertomemory:context-frame:v0',
   },
@@ -193,6 +222,36 @@ const bundle = {
       verification_scope: 'FULL_PROJECTION_AND_NATIVE_SOURCE_RESULTS',
       delivered_count: 2,
       excluded_count: 2,
+    },
+  },
+  source_profile_edge_cases: {
+    null_author: {
+      status: 'CANDIDATE_PENDING_APERTOMEMORY_PROFILE_REVIEW',
+      context_frame_profile: 'urn:apertomemory:context-frame:v0',
+      fragment_b64u: b64u(nullAuthorFragment),
+      fragment_digest: sha256(nullAuthorFragment),
+      native_source_result: {
+        derived_trust: 'unverified',
+        authorship: 'unknown',
+        author_key_id_b64u: null,
+        custody_present: false,
+      },
+    },
+    empty_accepted_key_set: {
+      status: 'CANDIDATE_PENDING_APERTOMEMORY_PROFILE_REVIEW',
+      owner_key_id_b64u: ownerKey,
+      accepted_key_ids_b64u: [],
+      trust_snapshot_b64u: b64u(emptyAcceptedKeySnapshot),
+      trust_snapshot_digest: sha256(emptyAcceptedKeySnapshot),
+    },
+    multiple_accepted_keys: {
+      status: 'CANDIDATE_PENDING_APERTOMEMORY_PROFILE_REVIEW',
+      owner_key_id_b64u: ownerKey,
+      input_accepted_key_ids_b64u: multipleAcceptedKeyInput,
+      accepted_key_ids_b64u: multipleAcceptedKeys,
+      ordering: 'LEXICOGRAPHIC_ASCENDING_BY_BASE64URL_TEXT',
+      trust_snapshot_b64u: b64u(multipleAcceptedKeySnapshot),
+      trust_snapshot_digest: sha256(multipleAcceptedKeySnapshot),
     },
   },
   cases,

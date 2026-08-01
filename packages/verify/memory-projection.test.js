@@ -108,6 +108,51 @@ test('published v1 domain and record version are exact', () => {
   assert.equal(vector.record_version, MEMORY_PROJECTION_RECORD_VERSION);
 });
 
+test('candidate ApertoMemory source-profile edge vectors freeze deterministic bytes', () => {
+  const edges = vector.source_profile_edge_cases;
+  assert.deepEqual(Object.keys(edges).sort(), [
+    'empty_accepted_key_set',
+    'multiple_accepted_keys',
+    'null_author',
+  ]);
+
+  const nullAuthor = edges.null_author;
+  assert.equal(
+    Buffer.from(nullAuthor.fragment_b64u, 'base64url').toString('utf8'),
+    '[ApertoMemory trust=unverified authorship=unknown author_key=none custody=false]\n'
+      + 'Source edge: native verification did not resolve an author.\n'
+      + '[/ApertoMemory]\n',
+  );
+  assert.deepEqual(nullAuthor.native_source_result, {
+    derived_trust: 'unverified',
+    authorship: 'unknown',
+    author_key_id_b64u: null,
+    custody_present: false,
+  });
+
+  assert.equal(
+    Buffer.from(edges.empty_accepted_key_set.trust_snapshot_b64u, 'base64url').toString('utf8'),
+    canonicalize({
+      owner_key_id_b64u: edges.empty_accepted_key_set.owner_key_id_b64u,
+      accepted_key_ids_b64u: [],
+    }),
+  );
+
+  const multiple = edges.multiple_accepted_keys;
+  assert.notDeepEqual(multiple.input_accepted_key_ids_b64u, multiple.accepted_key_ids_b64u);
+  assert.deepEqual(
+    multiple.accepted_key_ids_b64u,
+    [...multiple.input_accepted_key_ids_b64u].sort(),
+  );
+  assert.equal(
+    Buffer.from(multiple.trust_snapshot_b64u, 'base64url').toString('utf8'),
+    canonicalize({
+      owner_key_id_b64u: multiple.owner_key_id_b64u,
+      accepted_key_ids_b64u: multiple.accepted_key_ids_b64u,
+    }),
+  );
+});
+
 test('envelope-only verification states its narrower evidence boundary', () => {
   const result = verifyMemoryProjectionRecordV1Envelope(vector.projection.record, policy());
   assert.deepEqual(result, {

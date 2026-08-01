@@ -133,6 +133,42 @@
       "excluded_count": 2
     }
   },
+  "source_profile_edge_cases": {
+    "null_author": {
+      "status": "CANDIDATE_PENDING_APERTOMEMORY_PROFILE_REVIEW",
+      "context_frame_profile": "urn:apertomemory:context-frame:v0",
+      "fragment_b64u": "W0FwZXJ0b01lbW9yeSB0cnVzdD11bnZlcmlmaWVkIGF1dGhvcnNoaXA9dW5rbm93biBhdXRob3Jfa2V5PW5vbmUgY3VzdG9keT1mYWxzZV0KU291cmNlIGVkZ2U6IG5hdGl2ZSB2ZXJpZmljYXRpb24gZGlkIG5vdCByZXNvbHZlIGFuIGF1dGhvci4KWy9BcGVydG9NZW1vcnldCg",
+      "fragment_digest": "sha256:e14214df9b4b22487c19458a0d7c800ebe19435bc46f6109a7377c5ca156f9eb",
+      "native_source_result": {
+        "derived_trust": "unverified",
+        "authorship": "unknown",
+        "author_key_id_b64u": null,
+        "custody_present": false
+      }
+    },
+    "empty_accepted_key_set": {
+      "status": "CANDIDATE_PENDING_APERTOMEMORY_PROFILE_REVIEW",
+      "owner_key_id_b64u": "Y8HonACcWtc",
+      "accepted_key_ids_b64u": [],
+      "trust_snapshot_b64u": "eyJhY2NlcHRlZF9rZXlfaWRzX2I2NHUiOltdLCJvd25lcl9rZXlfaWRfYjY0dSI6Ilk4SG9uQUNjV3RjIn0",
+      "trust_snapshot_digest": "sha256:52021a21cd1895f3e0c8cf4700643c8ba0ab321d476eecde578d38e25dd7ac2f"
+    },
+    "multiple_accepted_keys": {
+      "status": "CANDIDATE_PENDING_APERTOMEMORY_PROFILE_REVIEW",
+      "owner_key_id_b64u": "Y8HonACcWtc",
+      "input_accepted_key_ids_b64u": [
+        "Y8HonACcWtc",
+        "0FMJy9O1Xzs"
+      ],
+      "accepted_key_ids_b64u": [
+        "0FMJy9O1Xzs",
+        "Y8HonACcWtc"
+      ],
+      "ordering": "LEXICOGRAPHIC_ASCENDING_BY_BASE64URL_TEXT",
+      "trust_snapshot_b64u": "eyJhY2NlcHRlZF9rZXlfaWRzX2I2NHUiOlsiMEZNSnk5TzFYenMiLCJZOEhvbkFDY1d0YyJdLCJvd25lcl9rZXlfaWRfYjY0dSI6Ilk4SG9uQUNjV3RjIn0",
+      "trust_snapshot_digest": "sha256:f0cbd461a31458c4a9b6ea7d60b91c4fafb21debd33786e741588de248df9d44"
+    }
+  },
   "cases": [
     {
       "id": "accept_full_projection",
