@@ -370,23 +370,43 @@ BEGIN
 END;
 $$;
 
-CREATE OR REPLACE FUNCTION public.ep_gate_hash(p_domain text, p_value jsonb)
-RETURNS text
-LANGUAGE sql
-IMMUTABLE
-STRICT
-SET search_path = pg_catalog, public
-AS $$
-  SELECT 'sha256:' || encode(
-    digest(
-      convert_to(p_domain, 'UTF8')
-        || decode('00', 'hex')
-        || convert_to(public.ep_gate_canonical_json(p_value), 'UTF8'),
-      'sha256'
-    ),
-    'hex'
-  )
-$$;
+-- pgcrypto may already be installed in a deployment-owned schema (for
+-- example, `extensions`).  CREATE EXTENSION IF NOT EXISTS does not relocate an
+-- existing extension, so an unqualified digest() call would make installation
+-- order observable and can fail despite pgcrypto being present.  Resolve the
+-- extension's trusted catalog namespace once and bake the qualified function
+-- name into the immutable hash helper.
+DO $ep_gate_hash_install$
+DECLARE v_pgcrypto_schema text;
+BEGIN
+  SELECT namespaces.nspname
+    INTO STRICT v_pgcrypto_schema
+    FROM pg_catalog.pg_extension AS extensions
+    JOIN pg_catalog.pg_namespace AS namespaces
+      ON namespaces.oid = extensions.extnamespace
+   WHERE extensions.extname = 'pgcrypto';
+
+  EXECUTE pg_catalog.format($function$
+    CREATE OR REPLACE FUNCTION public.ep_gate_hash(p_domain text, p_value jsonb)
+    RETURNS text
+    LANGUAGE sql
+    IMMUTABLE
+    STRICT
+    SET search_path = pg_catalog, public
+    AS $body$
+      SELECT 'sha256:' || pg_catalog.encode(
+        %I.digest(
+          pg_catalog.convert_to(p_domain, 'UTF8')
+            || pg_catalog.decode('00', 'hex')
+            || pg_catalog.convert_to(public.ep_gate_canonical_json(p_value), 'UTF8'),
+          'sha256'::text
+        ),
+        'hex'
+      )
+    $body$
+  $function$, v_pgcrypto_schema);
+END
+$ep_gate_hash_install$;
 
 CREATE OR REPLACE FUNCTION public.ep_gate_jsonb_has_exact_keys(
   p_value jsonb,
