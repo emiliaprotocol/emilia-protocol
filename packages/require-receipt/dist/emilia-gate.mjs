@@ -34,7 +34,7 @@
 //
 //   GENERATED — do not edit by hand. Regenerate with:
 //     npx @emilia-protocol/require-receipt   (or: node build-drop-in.mjs)
-//   source: @emilia-protocol/require-receipt@0.7.0  ·  content-sha256:d1f321dbde66474b
+//   source: @emilia-protocol/require-receipt@0.7.0  ·  content-sha256:784bfd5ac0688b43
 //   docs: https://www.emiliaprotocol.ai/gate   spec: draft-schrock-ep-authorization-receipts
 
 // SPDX-License-Identifier: Apache-2.0
@@ -46,7 +46,10 @@ function hasUnpairedUtf16Surrogate(value) {
         const code = value.charCodeAt(index);
         if (code >= 0xd800 && code <= 0xdbff) {
             const next = value.charCodeAt(index + 1);
-            if (next < 0xdc00 || next > 0xdfff)
+            // charCodeAt() returns NaN past the end of the string. Express the
+            // accepted range positively so an isolated terminal high surrogate is
+            // refused instead of slipping through both NaN comparisons.
+            if (!(next >= 0xdc00 && next <= 0xdfff))
                 return true;
             index += 1;
         }
