@@ -639,6 +639,13 @@ export function verifyReceiptBundle(bundle: any, publicKeyBase64url: string): Ob
     return { valid: false, total: 0, verified: 0, failed: ['Invalid bundle version'] };
   }
 
+  // A bundle with the right version but no document array is malformed input,
+  // not an exceptional condition. Refuse it without dereferencing attacker-
+  // controlled shape so callers cannot be crashed with a TypeError.
+  if (!Array.isArray(bundle.documents)) {
+    return { valid: false, total: 0, verified: 0, failed: ['Bundle documents must be an array'] };
+  }
+
   const failed: string[] = [];
   let verified = 0;
 

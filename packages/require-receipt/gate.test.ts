@@ -21,11 +21,11 @@ const ASSURANCE_SCOPE = {
 };
 
 // Mint a valid EP-RECEIPT-v1 bound to exactly `actionType`.
-function mint(actionType, { outcome = 'allow_with_signoff', quorum = null, omitId = false } = {}) {
+function mint(actionType, { outcome = 'allow_with_signoff', quorum = null, omitId = false, receiptId = null } = {}) {
   const { publicKey, privateKey } = crypto.generateKeyPairSync('ed25519');
   const pub = publicKey.export({ type: 'spki', format: 'der' }).toString('base64url');
   const payload = {
-    ...(omitId ? {} : { receipt_id: 'rcpt_' + crypto.randomBytes(6).toString('hex') }),
+    ...(omitId ? {} : { receipt_id: receiptId ?? 'rcpt_' + crypto.randomBytes(6).toString('hex') }),
     subject: 'agent:autonomous',
     created_at: new Date().toISOString(),
     claim: {
@@ -86,6 +86,24 @@ test('receipt without receipt_id -> refused before any reservation', async () =>
   const out = await g.run(mint('db.records.delete:customers', { omitId: true }), { target: 'customers' }, async () => { ran = true; });
   assert.equal(ran, false);
   assert.equal(out.ok, false);
+});
+
+test('whitespace-only receipt_id -> refused before any reservation', async () => {
+  const calls = [];
+  const store = {
+    async reserve(id) { calls.push(['reserve', id]); return true; },
+    async commit(id) { calls.push(['commit', id]); return true; },
+    async release(id) { calls.push(['release', id]); return true; },
+  };
+  const g = makeReceiptGate({ action: 'db.records.delete', allowInlineKey: true, maxAgeSec: 900, store });
+  const result = await g.check(
+    mint('db.records.delete:customers', { receiptId: ' \t\n ' }),
+    { target: 'customers' },
+  );
+
+  assert.equal(result.ok, false);
+  assert.equal(result.body.rejected.reason, 'missing_receipt_id');
+  assert.deepEqual(calls, [], 'consumption store must not receive a blank normalized identity');
 });
 
 test('missing receipt -> 428 challenge, no rejected detail', async () => {
