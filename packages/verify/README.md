@@ -160,9 +160,9 @@ authorization, admission, or replay prevention.
 byte sequences and strict payload digests accepted by the native verifier.
 Those commitments prevent a splice only when the caller supplies the exact
 tokens and disclosure-resolved payloads accepted by its authoritative native
-AP2 verifier and independently reprojects them before reliance. Gate's bridge
-does that reprojection at admission; this pure helper alone is not admission
-or native AP2 verification.
+AP2 verifier and independently reprojects them before reliance. The
+corresponding Gate 0.22.2 bridge performs that reprojection at admission; this
+pure helper alone is not admission or native AP2 verification.
 
 ### Agent Edge Continuity — `@emilia-protocol/verify/agent-edge-continuity`
 
