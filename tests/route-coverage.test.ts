@@ -240,6 +240,7 @@ const OPENAPI_EXEMPTIONS = [
   // status + verify are read endpoints; the monitor is a Vercel cron.
   // Documented in docs/TRUST-DESK-AUTOMATION-SPEC.md, not openapi.yaml.
   '/api/trust-desk/intake',
+  '/api/trust-desk/review/[engagementId]',
   '/api/trust-desk/status/[engagementId]',
   '/api/trust-desk/verify/[slug]',
   '/api/cron/trust-desk-monitor',
