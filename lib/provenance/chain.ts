@@ -38,6 +38,7 @@ import crypto from 'node:crypto';
 // packages by construction.
 import { verifyTrustReceipt } from '../../packages/verify/index.js';
 import { canonicalize } from '../../packages/issue/index.js';
+import { canonicalizeStrictJson } from '../../packages/verify/strict-json.js';
 
 export const PROVENANCE_VERSION = 'EP-PROVENANCE-CHAIN-v1';
 
@@ -48,7 +49,8 @@ const DEFAULT_HUMAN_KEY_CLASSES = ['A'];
 // ── small helpers ─────────────────────────────────────────────────────────
 
 function hexOf(h: any): string {
-  return String(h || '').replace(/^sha256:/, '').toLowerCase();
+  const value = String(h ?? '').replace(/^sha256:/, '').toLowerCase();
+  return /^[0-9a-f]{64}$/.test(value) ? value : '';
 }
 
 /** A receipt carries a human signoff if any signoff has a human key_class. */
@@ -152,11 +154,15 @@ function scopeContainmentViolations(parent: any, child: any): string[] {
 
   // 2. value containment
   const parentCap = parent.max_value_usd;
-  let childCap = child.max_value_usd;
-  if (childCap === null || childCap === undefined) childCap = parentCap; // inherit, not uncap
-  if (parentCap !== null && parentCap !== undefined) {
-    if (childCap === null || childCap === undefined || Number(childCap) > Number(parentCap)) {
-      violations.push(`child max_value_usd ${childCap} exceeds parent cap ${parentCap}`);
+  const parentCapNumber = Number(parentCap);
+  const childCap = child.max_value_usd;
+  if (childCap !== null && childCap !== undefined) {
+    const childCapNumber = Number(childCap);
+    if (!Number.isFinite(childCapNumber)) {
+      violations.push(`child max_value_usd ${childCap} is not a valid cap within parent cap ${parentCap}`);
+    } else if (parentCap !== null && parentCap !== undefined
+        && Number.isFinite(parentCapNumber) && childCapNumber > parentCapNumber) {
+      violations.push(`child max_value_usd ${childCap} exceeds parent cap ${parentCap}; child is not a valid cap within parent cap`);
     }
   }
 
@@ -334,7 +340,7 @@ export function verifyProvenanceOffline(doc: any, opts: any = {}): any {
   opts = opts && typeof opts === 'object' ? opts : {};
   const humanKeyClasses = opts.humanKeyClasses || DEFAULT_HUMAN_KEY_CLASSES;
   const allowUnsignedDelegations = opts.allowUnsignedDelegations === true;
-  const now = typeof opts.now === 'number' ? opts.now : Date.now();
+  const now = opts.now === undefined ? Date.now() : opts.now;
   const requireActionApprovalAlways = opts.requireActionApprovalAlways === true;
 
   const checks: any = {
@@ -371,6 +377,21 @@ export function verifyProvenanceOffline(doc: any, opts: any = {}): any {
     && profile.allowed_origins.length > 0
     && profile.allowed_origins.every((origin: any) => typeof origin === 'string' && origin.length > 0)
   );
+
+  if (!Number.isFinite(now)) {
+    fail('delegations_not_expired', 'verification reference time must be finite');
+    return { valid: false, checks, errors, links, agent_identity: null, liability: null };
+  }
+  if (doc === null || typeof doc !== 'object' || Array.isArray(doc)) {
+    errors.push(`unsupported version: ${doc?.['@version']}`);
+    return { valid: false, checks, errors, links, agent_identity: null, liability: null };
+  }
+  try {
+    canonicalizeStrictJson(doc, { maxDepth: 64, maxNodes: 100_000, maxStringBytes: 4_194_304 });
+  } catch {
+    fail('chain_links_bound', 'provenance document is outside the bounded canonical JSON domain');
+    return { valid: false, checks, errors, links, agent_identity: null, liability: null };
+  }
 
   // ── 0. version ───────────────────────────────────────────────────────────
   if (doc?.['@version'] !== PROVENANCE_VERSION) {
@@ -443,7 +464,11 @@ export function verifyProvenanceOffline(doc: any, opts: any = {}): any {
       }
     }
 
-    checks.execution_binding = hexOf(exec.action_hash) === hexOf(approval.receipt.action_hash);
+    const executionHash = hexOf(exec.action_hash);
+    const approvalHash = hexOf(approval.receipt.action_hash);
+    checks.execution_binding = executionHash !== ''
+      && approvalHash !== ''
+      && executionHash === approvalHash;
     if (!checks.execution_binding) {
       errors.push('execution.action_hash does not match action_approval.receipt.action_hash');
     }

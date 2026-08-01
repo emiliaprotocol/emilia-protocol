@@ -353,17 +353,41 @@ function canonicalizeInternal(
   state.seen.add(value);
   let result: string;
   if (Array.isArray(value)) {
-    result = `[${value.map((entry, index) => canonicalizeInternal(
-      entry, state, depth + 1, `${path}[${index}]`,
-    )).join(',')}]`;
+    const ownKeys = Reflect.ownKeys(value);
+    const expectedKeys = new Set([
+      'length',
+      ...Array.from({ length: value.length }, (_, index) => String(index)),
+    ]);
+    if (ownKeys.some((key) => typeof key !== 'string')
+        || ownKeys.length !== expectedKeys.size
+        || ownKeys.some((key) => !expectedKeys.has(key as string))) {
+      fail('non_canonical_value', path);
+    }
+    const entries: string[] = [];
+    for (let index = 0; index < value.length; index += 1) {
+      const descriptor = Object.getOwnPropertyDescriptor(value, String(index));
+      if (!descriptor || descriptor.enumerable !== true || !('value' in descriptor)) {
+        fail('non_canonical_value', `${path}[${index}]`);
+      }
+      entries.push(canonicalizeInternal(
+        descriptor.value, state, depth + 1, `${path}[${index}]`,
+      ));
+    }
+    result = `[${entries.join(',')}]`;
   } else {
     if (!isRecord(value)) fail('non_canonical_value', path);
-    result = `{${Object.keys(value).sort().map((key) => {
+    const ownKeys = Reflect.ownKeys(value);
+    if (ownKeys.some((key) => typeof key !== 'string')) fail('non_canonical_value', path);
+    result = `{${(ownKeys as string[]).sort().map((key) => {
       if (!validUnicode(key)
           || Buffer.byteLength(key, 'utf8') > AEB_CONSEQUENCE_LIMITS.max_string_bytes) {
         fail('invalid_string', `${path}.{key}`);
       }
-      return `${JSON.stringify(key)}:${canonicalizeInternal(value[key], state, depth + 1, `${path}.${key}`)}`;
+      const descriptor = Object.getOwnPropertyDescriptor(value, key);
+      if (!descriptor || descriptor.enumerable !== true || !('value' in descriptor)) {
+        fail('non_canonical_value', `${path}.${key}`);
+      }
+      return `${JSON.stringify(key)}:${canonicalizeInternal(descriptor.value, state, depth + 1, `${path}.${key}`)}`;
     }).join(',')}}`;
   }
   state.seen.delete(value);

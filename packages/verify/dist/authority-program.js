@@ -77,18 +77,34 @@ function boundedPlainJson(value) {
         if (Array.isArray(current.value)) {
             if (current.value.length > MAX_INPUT_NODES)
                 return false;
-            for (const member of current.value)
-                stack.push({ value: member, depth: current.depth + 1 });
+            const ownKeys = Reflect.ownKeys(current.value);
+            const expectedKeys = new Set([
+                'length',
+                ...Array.from({ length: current.value.length }, (_, index) => String(index)),
+            ]);
+            if (ownKeys.some((key) => typeof key !== 'string')
+                || ownKeys.length !== expectedKeys.size
+                || ownKeys.some((key) => !expectedKeys.has(key)))
+                return false;
+            for (let index = 0; index < current.value.length; index += 1) {
+                const descriptor = Object.getOwnPropertyDescriptor(current.value, String(index));
+                if (!descriptor || descriptor.enumerable !== true || !('value' in descriptor))
+                    return false;
+                stack.push({ value: descriptor.value, depth: current.depth + 1 });
+            }
             continue;
         }
-        const entries = Object.entries(current.value);
-        if (entries.length > MAX_INPUT_NODES)
+        const ownKeys = Reflect.ownKeys(current.value);
+        if (ownKeys.some((key) => typeof key !== 'string') || ownKeys.length > MAX_INPUT_NODES)
             return false;
-        for (const [key, member] of entries) {
+        for (const key of ownKeys) {
+            const descriptor = Object.getOwnPropertyDescriptor(current.value, key);
+            if (!descriptor || descriptor.enumerable !== true || !('value' in descriptor))
+                return false;
             stringBytes += Buffer.byteLength(key, 'utf8');
             if (stringBytes > MAX_INPUT_STRING_BYTES)
                 return false;
-            stack.push({ value: member, depth: current.depth + 1 });
+            stack.push({ value: descriptor.value, depth: current.depth + 1 });
         }
     }
     return true;

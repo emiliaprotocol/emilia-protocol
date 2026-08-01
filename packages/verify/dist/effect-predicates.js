@@ -44,6 +44,7 @@
  * policy: wide bounds prove little.
  */
 import crypto from 'node:crypto';
+import { canonicalizeStrictJson } from './strict-json.js';
 export const PREDICATE_OPS = Object.freeze([
     'eq', // observed value is exactly the predicted string
     'lte', // observed decimal-string value <= predicted value
@@ -65,11 +66,7 @@ export const MAX_EFFECT_STRING_LENGTH = 512;
 // Deterministic JCS-style canonicalization (I-JSON subset; no floats) —
 // byte-identical to lib/evidence/evidence-graph.js canon().
 function canon(v) {
-    if (v === null || typeof v !== 'object')
-        return JSON.stringify(v);
-    if (Array.isArray(v))
-        return `[${v.map(canon).join(',')}]`;
-    return `{${Object.keys(v).sort().map((k) => `${JSON.stringify(k)}:${canon(v[k])}`).join(',')}}`;
+    return canonicalizeStrictJson(v);
 }
 const sha256hex = (s) => crypto.createHash('sha256').update(s).digest('hex');
 const tooLong = (value) => typeof value === 'string'

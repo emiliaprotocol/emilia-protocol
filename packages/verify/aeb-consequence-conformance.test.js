@@ -213,6 +213,29 @@ test('schema limits bound strings, arrays, nodes, and depth', () => {
     assert.throws(() => canonicalizeAebConsequenceConformance(nested), (error) => error instanceof AebConsequenceConformanceError
         && error.code === 'max_depth_exceeded');
 });
+test('canonicalization rejects every property or array state that its bytes cannot cover', () => {
+    const hidden = { visible: true };
+    Object.defineProperty(hidden, 'hidden', { value: 'unsigned', enumerable: false });
+    const symbol = { visible: true };
+    symbol[Symbol('unsigned')] = 'unsigned';
+    let getterCalls = 0;
+    const accessor = {};
+    Object.defineProperty(accessor, 'secret', {
+        enumerable: true,
+        get() {
+            getterCalls += 1;
+            return 'unsigned';
+        },
+    });
+    const sparse = [1, , 3];
+    const extended = [1, 2];
+    extended.extra = 'unsigned';
+    for (const value of [hidden, symbol, accessor, sparse, extended, new Map([['a', 1]])]) {
+        assert.throws(() => canonicalizeAebConsequenceConformance(value), (error) => error instanceof AebConsequenceConformanceError
+            && error.code === 'non_canonical_value');
+    }
+    assert.equal(getterCalls, 0, 'canonicalization must inspect descriptors without invoking accessors');
+});
 test('evaluation and digests are deterministic and consume no ambient clock', () => {
     const input = vector('authorized_admission').input;
     const before = evaluateAebConsequenceCase(input);

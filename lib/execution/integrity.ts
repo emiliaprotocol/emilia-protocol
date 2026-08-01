@@ -459,10 +459,17 @@ export function verifyExecutionIntegrity(arg1?: any, arg2?: any, arg3?: any): Ex
   }
 
   const executorKeys = opts.executorKeys || {};
-  const reversibilityAsserted =
-    typeof opts.reversibilityAsserted === 'function'
-      ? opts.reversibilityAsserted(attestation) === true
-      : opts.reversibilityAsserted === true;
+  let reversibilityAsserted = opts.reversibilityAsserted === true;
+  if (typeof opts.reversibilityAsserted === 'function') {
+    try {
+      reversibilityAsserted = opts.reversibilityAsserted(attestation) === true;
+    } catch {
+      // A verifier-supplied predicate is an untrusted policy extension. Its
+      // failure can never relax the execution-integrity gate or escape as an
+      // exception; treat it exactly like an assertion that did not pass.
+      reversibilityAsserted = false;
+    }
+  }
 
   const checks: ExecutionIntegrityChecks = {
     attestation_present: true,           // an attestation is present when one is required

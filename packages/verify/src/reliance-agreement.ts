@@ -64,15 +64,20 @@ const SHA256_RE = /^sha256:[0-9a-f]{64}$/;
 /** Decimal money string: no sign, no exponent, no leading zeros, optional fraction. */
 const AMOUNT_RE = /^(0|[1-9][0-9]*)(\.[0-9]+)?$/;
 const CURRENCY_RE = /^[A-Z]{3}$/;
+const RFC3339_OFFSET_RE = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d+)?(?:Z|[+-]\d{2}:\d{2})$/;
 
 const sha256hex = (bytes: any): string => crypto.createHash('sha256').update(bytes).digest('hex');
 
-function toMs(t: number | string | Date | undefined): number {
-  if (t == null) return Date.now();
-  if (typeof t === 'number') return t;
-  if (t instanceof Date) return t.getTime();
+function toMs(t: unknown): number {
+  if (t === undefined) return Date.now();
+  if (typeof t === 'number') return Number.isFinite(t) ? t : NaN;
+  if (t instanceof Date) {
+    const ms = t.getTime();
+    return Number.isFinite(ms) ? ms : NaN;
+  }
+  if (typeof t !== 'string' || !RFC3339_OFFSET_RE.test(t)) return NaN;
   const ms = Date.parse(t);
-  return Number.isNaN(ms) ? Date.now() : ms;
+  return Number.isFinite(ms) ? ms : NaN;
 }
 
 /** Strict timestamp parse for fields inside signed objects: NaN on anything malformed. */
@@ -210,6 +215,8 @@ export function verifyRelianceAgreement(agreement: Obj, opts: AgreementOptions =
   const fail = (reason: string): Obj => { reasons.push(reason); return { valid: false, reasons }; };
   const now = toMs(opts.now);
   const trustedKeys = opts.trustedKeys && typeof opts.trustedKeys === 'object' ? opts.trustedKeys : {};
+
+  if (!Number.isFinite(now)) return fail('verification time must be a finite epoch or RFC-3339 instant with an explicit offset');
 
   // ── 1. STRUCTURE — closed vocabularies, fail-closed ────────────────────────
   if (!agreement || typeof agreement !== 'object' || Array.isArray(agreement)) return fail('agreement is not an object');
@@ -364,6 +371,8 @@ export function verifyRelianceEvent(event: Obj, opts: EventOptions = {}): Obj {
   const fail = (reason: string): Obj => { reasons.push(reason); return { valid: false, reasons }; };
   const now = toMs(opts.now);
   const { agreement, relianceResult } = opts;
+
+  if (!Number.isFinite(now)) return fail('verification time must be a finite epoch or RFC-3339 instant with an explicit offset');
 
   // ── 1. EVENT STRUCTURE ──────────────────────────────────────────────────────
   if (!event || typeof event !== 'object' || Array.isArray(event)) return fail('event is not an object');

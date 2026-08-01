@@ -63,3 +63,24 @@ test('observed_at in the future -> not fresh', () => {
   assert.equal(r.fresh, false);
   assert.equal(r.reason, 'observed_at_in_future');
 });
+
+test('malformed freshness policy fails closed instead of disabling the check', () => {
+  const binding = ctx({
+    agent_id: 'a',
+    delegation: { scheme: 'WIMSE', ref: 'x', observed_at: '2026-06-24T18:00:00Z' },
+  });
+  for (const maxAgeSec of [-1, Number.POSITIVE_INFINITY, Number.NaN, '600']) {
+    const r = evaluateAgentBinding(binding, { maxAgeSec, at: '2026-06-24T18:05:00Z' });
+    assert.equal(r.fresh, false);
+    assert.equal(r.reason, 'freshness_profile_invalid');
+  }
+});
+
+test('freshness reference time uses the strict shared RFC 3339 profile', () => {
+  const r = evaluateAgentBinding(
+    ctx({ agent_id: 'a', delegation: { scheme: 'WIMSE', ref: 'x', observed_at: '2026-06-24T18:00:00Z' } }),
+    { maxAgeSec: 600, at: '2026-06-24' },
+  );
+  assert.equal(r.fresh, false);
+  assert.equal(r.reason, 'freshness_reference_time_invalid');
+});

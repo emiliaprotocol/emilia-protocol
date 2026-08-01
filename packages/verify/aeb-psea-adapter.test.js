@@ -149,6 +149,26 @@ function profile() {
         profile_digest: digestAeb(null),
     };
 }
+test('PSEA canonicalization rejects unsigned object and array state without invoking accessors', () => {
+    const hidden = { visible: true };
+    Object.defineProperty(hidden, 'unsigned', { value: true, enumerable: false });
+    const symbol = { visible: true };
+    symbol[Symbol('unsigned')] = true;
+    const sparse = [1, , 3];
+    let getterCalls = 0;
+    const accessor = {};
+    Object.defineProperty(accessor, 'value', {
+        enumerable: true,
+        get() {
+            getterCalls += 1;
+            return 'unsigned';
+        },
+    });
+    for (const hostile of [hidden, symbol, sparse, accessor, new Map([['a', 1]])]) {
+        assert.throws(() => canonicalizePsea(hostile), /canonical JSON|JSON domain/);
+    }
+    assert.equal(getterCalls, 0);
+});
 test('valid PSEA -02 proof verifies and maps to the exact CAID action', () => {
     const inputArtifact = artifact();
     const inspected = inspectPseaProof({ artifact: inputArtifact, config, trust_roots: [root], now: NOW });

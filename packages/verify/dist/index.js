@@ -1912,17 +1912,27 @@ export function evaluateAgentBinding(context, opts = {}) {
         reason: 'recorded',
     };
     const { maxAgeSec, at } = opts;
-    if (typeof maxAgeSec === 'number' && maxAgeSec >= 0) {
+    if (Object.hasOwn(opts, 'maxAgeSec')) {
+        if (typeof maxAgeSec !== 'number' || !Number.isFinite(maxAgeSec) || maxAgeSec < 0) {
+            out.fresh = false;
+            out.reason = 'freshness_profile_invalid';
+            return out;
+        }
         if (!out.observed_at) {
             out.fresh = false;
             out.reason = 'freshness_required_but_no_observed_at';
             return out;
         }
-        const obs = Date.parse(out.observed_at);
-        const ref = at ? Date.parse(at) : Date.now();
-        if (Number.isNaN(obs) || Number.isNaN(ref)) {
+        const obs = parseInstant(out.observed_at);
+        if (!Number.isFinite(obs)) {
             out.fresh = false;
             out.reason = 'unparseable_observed_at';
+            return out;
+        }
+        const ref = at === undefined ? Date.now() : parseInstant(at);
+        if (!Number.isFinite(ref)) {
+            out.fresh = false;
+            out.reason = 'freshness_reference_time_invalid';
             return out;
         }
         const ageSec = (ref - obs) / 1000;

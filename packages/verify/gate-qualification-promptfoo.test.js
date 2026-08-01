@@ -7,6 +7,25 @@ import test from 'node:test';
 import { PROMPTFOO_QUALIFICATION_ADAPTER_VERSION, PROMPTFOO_QUALIFICATION_EVIDENCE_VERSION, PROMPTFOO_QUALIFICATION_LIMITS, PROMPTFOO_QUALIFICATION_RUN_METADATA_VERSION, adaptPromptfooQualificationArtifact, digestPromptfooQualification, promptfooQualificationChallengeDigest, } from './gate-qualification-promptfoo.js';
 const NOW = '2026-07-26T12:30:00Z';
 const PROMPT_BYTES = 'Classify case {{case}}';
+test('qualification digests reject unsigned members without invoking accessors', () => {
+    const hidden = { visible: true };
+    Object.defineProperty(hidden, 'unsigned', { value: true, enumerable: false });
+    const symbol = { visible: true };
+    symbol[Symbol('unsigned')] = true;
+    let getterCalls = 0;
+    const accessor = {};
+    Object.defineProperty(accessor, 'value', {
+        enumerable: true,
+        get() {
+            getterCalls += 1;
+            return 'unsigned';
+        },
+    });
+    for (const hostile of [hidden, symbol, accessor]) {
+        assert.throws(() => digestPromptfooQualification(hostile), /inspectable|JSON|member/);
+    }
+    assert.equal(getterCalls, 0);
+});
 function bytesDigest(value) {
     return `sha256:${crypto.createHash('sha256').update(Buffer.from(value, 'utf8')).digest('hex')}`;
 }

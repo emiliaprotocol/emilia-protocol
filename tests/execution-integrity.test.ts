@@ -244,6 +244,24 @@ describe('EP-EXECUTION-INTEGRITY-v1 — must_accept vector', () => {
     });
     expect(verifierAssertsReversible.valid).toBe(true);
   });
+
+  it('fails closed when the verifier-supplied reversibility predicate throws', () => {
+    expect(() => verifyExecutionIntegrity(null, RECEIPT, {
+      executorKeys: pinnedKeys(),
+      reversibilityAsserted: () => {
+        throw new Error('predicate failure');
+      },
+    })).not.toThrow();
+
+    const result = verifyExecutionIntegrity(null, RECEIPT, {
+      executorKeys: pinnedKeys(),
+      reversibilityAsserted: () => {
+        throw new Error('predicate failure');
+      },
+    });
+    expect(result.valid).toBe(false);
+    expect(result.checks.attestation_present).toBe(false);
+  });
 });
 
 // ── helper: re-sign a (possibly tampered) attestation over its canonical bytes ─

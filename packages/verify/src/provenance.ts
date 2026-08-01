@@ -21,6 +21,7 @@
  */
 import crypto from 'node:crypto';
 import { verifyTrustReceipt, canonicalize } from './index.js';
+import { canonicalizeStrictJson } from './strict-json.js';
 
 type Obj = Record<string, any>;
 
@@ -135,13 +136,14 @@ function scopeContainmentViolations(parent: Obj, child: Obj): string[] {
   // matching the Python and Go ports.
   const parentCap = parent.max_value_usd;
   const parentCapNum = Number(parentCap);
-  if (parentCap !== null && parentCap !== undefined && Number.isFinite(parentCapNum)) {
-    const childCap = child.max_value_usd;
-    if (childCap !== null && childCap !== undefined) {
-      const childCapNum = Number(childCap);
-      if (!Number.isFinite(childCapNum) || childCapNum > parentCapNum) {
-        violations.push(`child max_value_usd ${childCap} is not a valid cap within parent cap ${parentCap}`);
-      }
+  const childCap = child.max_value_usd;
+  if (childCap !== null && childCap !== undefined) {
+    const childCapNum = Number(childCap);
+    if (!Number.isFinite(childCapNum)) {
+      violations.push(`child max_value_usd ${childCap} is not a valid cap within parent cap ${parentCap}`);
+    } else if (parentCap !== null && parentCap !== undefined
+        && Number.isFinite(parentCapNum) && childCapNum > parentCapNum) {
+      violations.push(`child max_value_usd ${childCap} exceeds parent cap ${parentCap}; child is not a valid cap within parent cap`);
     }
   }
   const pExp = Date.parse(parent.expires_at);
@@ -212,7 +214,7 @@ export function verifyProvenanceOffline(doc: Obj, opts: ProvenanceOptions = {}) 
   opts = opts && typeof opts === 'object' ? opts : {};
   const humanKeyClasses = opts.humanKeyClasses || DEFAULT_HUMAN_KEY_CLASSES;
   const allowUnsignedDelegations = opts.allowUnsignedDelegations === true;
-  const now = typeof opts.now === 'number' ? opts.now : Date.now();
+  const now = opts.now === undefined ? Date.now() : opts.now;
   const requireActionApprovalAlways = opts.requireActionApprovalAlways === true;
 
   const checks: Record<string, boolean> = {
@@ -238,6 +240,21 @@ export function verifyProvenanceOffline(doc: Obj, opts: ProvenanceOptions = {}) 
     && profile.allowed_origins.length > 0
     && profile.allowed_origins.every((origin) => typeof origin === 'string' && origin.length > 0)
   );
+
+  if (!Number.isFinite(now)) {
+    fail('delegations_not_expired', 'verification reference time must be finite');
+    return { valid: false, checks, errors, links, agent_identity: null, liability: null };
+  }
+  if (doc === null || typeof doc !== 'object' || Array.isArray(doc)) {
+    errors.push(`unsupported version: ${(doc as any)?.['@version']}`);
+    return { valid: false, checks, errors, links, agent_identity: null, liability: null };
+  }
+  try {
+    canonicalizeStrictJson(doc, { maxDepth: 64, maxNodes: 100_000, maxStringBytes: 4_194_304 });
+  } catch {
+    fail('chain_links_bound', 'provenance document is outside the bounded canonical JSON domain');
+    return { valid: false, checks, errors, links, agent_identity: null, liability: null };
+  }
 
   if (doc?.['@version'] !== PROVENANCE_VERSION) {
     errors.push(`unsupported version: ${doc?.['@version']}`);
@@ -299,7 +316,11 @@ export function verifyProvenanceOffline(doc: Obj, opts: ProvenanceOptions = {}) 
       checks.action_human_signoff = hasHumanSignoff(approval.receipt, humanKeyClasses);
       if (!checks.action_human_signoff) errors.push('action_approval for an irreversible action carries no human signoff');
     }
-    checks.execution_binding = hexOf(exec.action_hash) === hexOf(approval.receipt.action_hash);
+    const executionHash = hexOf(exec.action_hash);
+    const approvalHash = hexOf(approval.receipt.action_hash);
+    checks.execution_binding = executionHash !== ''
+      && approvalHash !== ''
+      && executionHash === approvalHash;
     if (!checks.execution_binding) errors.push('execution.action_hash does not match action_approval.receipt.action_hash');
   }
 

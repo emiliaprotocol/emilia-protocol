@@ -73,9 +73,12 @@ function normalizeNow(now) {
     if (now === undefined)
         return Date.now();
     if (typeof now === 'number')
-        return now;
-    const ms = parseInstant(now instanceof Date ? now.toISOString() : now);
-    return ms;
+        return Number.isFinite(now) ? now : NaN;
+    if (now instanceof Date) {
+        const ms = now.getTime();
+        return Number.isFinite(ms) ? ms : NaN;
+    }
+    return parseInstant(now);
 }
 // The signed / hashed body: the grant with BOTH grant_hash and signature
 // removed. grant_hash is computed over these bytes, and the principal signs the
@@ -237,7 +240,7 @@ export function verifyConsentGrant(grant, pinnedPrincipalKey, opts = {}) {
         return refuseGrant('grant issued_at is after expires_at (empty validity window)', checks);
     }
     const nowMs = normalizeNow(opts.now);
-    if (Number.isNaN(nowMs)) {
+    if (!Number.isFinite(nowMs)) {
         return refuseGrant('opts.now is not a parseable instant', checks);
     }
     if (nowMs < issuedMs) {

@@ -13,6 +13,7 @@
  * https://www.ietf.org/archive/id/draft-yossif-psea-02.html
  */
 import crypto from 'node:crypto';
+import { canonicalizeStrictJson } from './strict-json.js';
 import { strictJsonGate } from './strict-json.js';
 // The CAID reference implementation is JavaScript and intentionally has no
 // TypeScript declaration surface in this repository.
@@ -93,42 +94,8 @@ function validUnicodeScalarString(value) {
 }
 /** RFC 8785-compatible JSON canonicalization for I-JSON data. */
 export function canonicalizePsea(value, seen = new WeakSet()) {
-    if (value === null)
-        return 'null';
-    if (typeof value === 'boolean')
-        return value ? 'true' : 'false';
-    if (typeof value === 'string') {
-        if (!validUnicodeScalarString(value))
-            throw new Error('invalid_unicode_scalar');
-        return JSON.stringify(value);
-    }
-    if (typeof value === 'number') {
-        if (!Number.isFinite(value) || !Number.isSafeInteger(value)) {
-            throw new Error('non_i_json_number');
-        }
-        return JSON.stringify(Object.is(value, -0) ? 0 : value);
-    }
-    if (typeof value !== 'object' || value === undefined)
-        throw new Error('non_json_value');
-    if (seen.has(value))
-        throw new Error('cyclic_json');
-    seen.add(value);
-    try {
-        if (Array.isArray(value)) {
-            return `[${value.map((entry) => canonicalizePsea(entry, seen)).join(',')}]`;
-        }
-        const object = value;
-        const keys = Object.keys(object).sort();
-        for (const key of keys) {
-            if (!validUnicodeScalarString(key) || object[key] === undefined) {
-                throw new Error('non_i_json_member');
-            }
-        }
-        return `{${keys.map((key) => `${JSON.stringify(key)}:${canonicalizePsea(object[key], seen)}`).join(',')}}`;
-    }
-    finally {
-        seen.delete(value);
-    }
+    void seen;
+    return canonicalizeStrictJson(value);
 }
 function digestBytes(bytes) {
     return `sha256:${crypto.createHash('sha256').update(bytes).digest('hex')}`;

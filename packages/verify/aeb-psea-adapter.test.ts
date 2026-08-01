@@ -177,6 +177,28 @@ function profile(): AebPinnedProfile {
   };
 }
 
+test('PSEA canonicalization rejects unsigned object and array state without invoking accessors', () => {
+  const hidden = { visible: true } as Record<string, unknown>;
+  Object.defineProperty(hidden, 'unsigned', { value: true, enumerable: false });
+  const symbol = { visible: true } as Record<PropertyKey, unknown>;
+  symbol[Symbol('unsigned')] = true;
+  const sparse = [1, , 3];
+  let getterCalls = 0;
+  const accessor: Record<string, unknown> = {};
+  Object.defineProperty(accessor, 'value', {
+    enumerable: true,
+    get() {
+      getterCalls += 1;
+      return 'unsigned';
+    },
+  });
+
+  for (const hostile of [hidden, symbol, sparse, accessor, new Map([['a', 1]])]) {
+    assert.throws(() => canonicalizePsea(hostile), /canonical JSON|JSON domain/);
+  }
+  assert.equal(getterCalls, 0);
+});
+
 test('valid PSEA -02 proof verifies and maps to the exact CAID action', () => {
   const inputArtifact = artifact();
   const inspected = inspectPseaProof({ artifact: inputArtifact, config, trust_roots: [root], now: NOW });

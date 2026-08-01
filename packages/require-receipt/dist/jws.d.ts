@@ -1,8 +1,9 @@
+import { canonicalizeStrictJson } from './strict-json.js';
 type AnyRecord = Record<string, any>;
 export declare const JWS_PROFILE_VERSION = "EP-RECEIPT-JWS-PROFILE-v1";
 export declare const JWS_ALG = "EdDSA";
 export declare const JWS_TYP = "application/ep-receipt+jws";
-declare function canonicalize(v: any): string;
+declare const canonicalize: typeof canonicalizeStrictJson;
 /**
  * Deterministic key id for an issuer Ed25519 public key: the first 16 bytes of
  * SHA-256 over the base64url SPKI-DER key, hex-encoded. EP receipts do not carry
