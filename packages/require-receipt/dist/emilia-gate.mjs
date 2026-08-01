@@ -34,7 +34,7 @@
 //
 //   GENERATED — do not edit by hand. Regenerate with:
 //     npx @emilia-protocol/require-receipt   (or: node build-drop-in.mjs)
-//   source: @emilia-protocol/require-receipt@0.7.0  ·  content-sha256:784bfd5ac0688b43
+//   source: @emilia-protocol/require-receipt@0.7.0  ·  content-sha256:a2f030f2b7145cc3
 //   docs: https://www.emiliaprotocol.ai/gate   spec: draft-schrock-ep-authorization-receipts
 
 // SPDX-License-Identifier: Apache-2.0
@@ -1601,8 +1601,8 @@ export function makeReceiptGate(opts = {}) {
         // to the same empty consume key, so the reservation below would neither
         // identify nor protect this receipt. Refuse before touching the store, as
         // app/api/v1/guarded and packages/gate already do (redteam HI-5).
-        const receiptId = v.receipt_id;
-        if (typeof receiptId !== 'string' || receiptId === '') {
+        const receiptId = typeof v.receipt_id === 'string' ? v.receipt_id.trim() : '';
+        if (receiptId === '') {
             return refuse(boundAction, 'missing_receipt_id', observedHash);
         }
         const assurance = evaluateReceiptAssurance(receipt, requiredTier, {
