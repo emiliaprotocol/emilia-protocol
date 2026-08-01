@@ -174,9 +174,9 @@ export default function UploadPage() {
           Upload your AI security review
         </h1>
         <p style={{ fontSize: 16, color: color.t2, lineHeight: 1.65, marginTop: 12 }}>
-          Takes about 5 minutes. Your trust page is generated automatically — most
-          publish within minutes; anything flagged for human review is handled by a
-          named reviewer within 4 business hours.
+          Takes about 5 minutes. The pipeline prepares a draft automatically, but
+          nothing publishes until a named reviewer signs off. Most reviews are
+          completed within 4 business hours.
         </p>
 
         <form onSubmit={onSubmit} style={{ marginTop: 40, display: 'flex', flexDirection: 'column', gap: 32 }} noValidate>
@@ -257,7 +257,7 @@ export default function UploadPage() {
             <Field label="Preference">
               <Select value={form.tier_preference} onChange={(e) => update('tier_preference', e.target.value)}>
                 <option value="packet">AI Trust Packet — $24,500 (recommended)</option>
-                <option value="emergency">Emergency Review — $3,500</option>
+                <option value="emergency">Gap Scan — $3,500</option>
                 <option value="full">Full Completion — $9,500</option>
                 <option value="retainer">Retainer — $12,000/mo</option>
                 <option value="unsure">Not sure — recommend me one</option>

@@ -1,9 +1,9 @@
 {
   "@version": "EMILIA-REPO-CONTEXT-v1",
-  "evidence_snapshot_at": "2026-08-01T05:58:43.812Z",
+  "evidence_snapshot_at": "2026-08-01T05:58:05.182Z",
   "provenance": {
     "generator": "scripts/generate-llm-context.mjs",
-    "input_digest_sha256": "2271903e34b6ac5acd04415ae1d40d19ce30c5d8f9809997f03b73f3b5c440bb",
+    "input_digest_sha256": "0fdb961088b02c484563c7c637446c5273920b6b0c027923b30aec2f6ff4102e",
     "generated_from": [
       {
         "path": "docs/ai/context-source.v1.json",
@@ -17,12 +17,12 @@
       },
       {
         "path": "lib/proof-stats.json",
-        "sha256": "43a4bf411dbac38bd681ebe129b0d5bcca4f29744de031b9ea28cb6555a5f1f2",
-        "bytes": 4298
+        "sha256": "3168bb9104bb85becec0a596a473f046d5cfde59bc39602204f31f2f24c952cd",
+        "bytes": 4299
       },
       {
         "path": "conformance/conformance-manifest.json",
-        "sha256": "dcc9a73d59c4b5708cb4a518659bcb78d06aaf4a5bf5c73aa1c13895536e90b3",
+        "sha256": "2dcc782fea98e2116dc43085ba0d0021b17efbf70482f91e10fd8de704eebbc5",
         "bytes": 6361
       },
       {
@@ -272,8 +272,8 @@
   ],
   "current_evidence": {
     "automated_tests": {
-      "total": 7991,
-      "files": 457,
+      "total": 8003,
+      "files": 459,
       "policy": "all platform-applicable cases must pass; platform-specific cases may skip"
     },
     "cross_language_conformance": {
@@ -282,7 +282,7 @@
       "implementations": 3,
       "relationship": "same_team_ports",
       "claim_scope": "current same-team cross-language consistency; not independent implementation evidence",
-      "manifest_sha256": "ba7c1aac6c4883c2670d2f75fa9839e6c38bc04224b996de27bdde71078e07f3",
+      "manifest_sha256": "4ade14e518342dc489a0f0d059a622840a0ccfa0077a12b19dd0e169d1aaf376",
       "vector_bundle_sha256": "ee1021eb36de8e50448d9f12f00d16f3e24561276c9a42241e88178d5daa0d3e"
     },
     "formal": {
@@ -314,7 +314,7 @@
         "coveredModelActions": 28,
         "actionCompleteModels": 1,
         "formalMutationOperators": 51,
-        "evidenceSha256": "e0ba0a4888d1aaded4cc3ddcff54219e7c27b5244110bb53840956faeae57d02",
+        "evidenceSha256": "155c64564f1878bedcc7fe3227f4a00006eb6285a51bc1de75b1410577a58fd3",
         "boundary": "selected model/runtime scenarios under explicit projection relations; not a mechanized implementation refinement proof"
       },
       "evidence_taxonomy": {

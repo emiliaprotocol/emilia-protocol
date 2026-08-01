@@ -17,6 +17,16 @@ function secret(): string | null {
   return typeof value === 'string' && value.length > 0 ? value : null;
 }
 
+function configuredReviewerId(): string | null {
+  const value = process.env.TRUST_DESK_REVIEWER_ID;
+  if (typeof value !== 'string') return null;
+  const reviewerId = value.trim();
+  if (reviewerId.length < 3 || reviewerId.length > 200 || /[\u0000-\u001f\u007f]/.test(reviewerId)) {
+    return null;
+  }
+  return reviewerId;
+}
+
 function encode(value: unknown): string {
   return Buffer.from(JSON.stringify(value), 'utf8').toString('base64url');
 }
@@ -35,16 +45,55 @@ function decode(value: string): any {
 
 export function issueTrustDeskSession(): string | null {
   const key = secret();
-  if (!key) return null;
+  const reviewerId = configuredReviewerId();
+  if (!key || !reviewerId) return null;
   const now = Math.floor(Date.now() / 1000);
   const payload = encode({
     purpose: 'trust-desk-reviewer',
     iat: now,
     exp: now + SESSION_TTL_SECONDS,
     nonce: crypto.randomBytes(24).toString('base64url'),
+    reviewer_id: reviewerId,
   });
   const mac = crypto.createHmac('sha256', key).update(payload).digest('base64url');
   return `tds1.${payload}.${mac}`;
+}
+
+export interface TrustDeskReviewerSession {
+  reviewerId: string;
+}
+
+export function authenticateTrustDeskReviewer(
+  token: string | null | undefined,
+): TrustDeskReviewerSession | null {
+  const key = secret();
+  if (!key || typeof token !== 'string' || token.length > MAX_SESSION_CHARS) return null;
+  const parts = token.split('.');
+  if (parts.length !== 3 || parts[0] !== 'tds1') return null;
+  const [, payload, suppliedMac] = parts;
+  if (!/^[A-Za-z0-9_-]+$/.test(payload) || !/^[A-Za-z0-9_-]+$/.test(suppliedMac)) return null;
+  const expectedMac = crypto.createHmac('sha256', key).update(payload).digest();
+  let actualMac: Buffer;
+  try { actualMac = Buffer.from(suppliedMac, 'base64url'); } catch { return null; }
+  if (actualMac.length !== expectedMac.length || !crypto.timingSafeEqual(actualMac, expectedMac)) return null;
+  const data = decode(payload);
+  const now = Math.floor(Date.now() / 1000);
+  if (!data
+    || data.purpose !== 'trust-desk-reviewer'
+    || typeof data.nonce !== 'string'
+    || data.nonce.length < 16
+    || typeof data.reviewer_id !== 'string'
+    || data.reviewer_id.trim() !== data.reviewer_id
+    || data.reviewer_id.length < 3
+    || data.reviewer_id.length > 200
+    || /[\u0000-\u001f\u007f]/.test(data.reviewer_id)
+    || !Number.isSafeInteger(data.iat)
+    || !Number.isSafeInteger(data.exp)
+    || data.exp < now
+    || data.iat > now + 60) {
+    return null;
+  }
+  return { reviewerId: data.reviewer_id };
 }
 
 export interface ConsumeTrustDeskBootstrapResult {
@@ -77,24 +126,5 @@ export async function consumeTrustDeskBootstrap(token: string): Promise<ConsumeT
 }
 
 export function verifyTrustDeskSession(token: string | null | undefined): boolean {
-  const key = secret();
-  if (!key || typeof token !== 'string' || token.length > MAX_SESSION_CHARS) return false;
-  const parts = token.split('.');
-  if (parts.length !== 3 || parts[0] !== 'tds1') return false;
-  const [, payload, suppliedMac] = parts;
-  if (!/^[A-Za-z0-9_-]+$/.test(payload) || !/^[A-Za-z0-9_-]+$/.test(suppliedMac)) return false;
-  const expectedMac = crypto.createHmac('sha256', key).update(payload).digest();
-  let actualMac: Buffer;
-  try { actualMac = Buffer.from(suppliedMac, 'base64url'); } catch { return false; }
-  if (actualMac.length !== expectedMac.length || !crypto.timingSafeEqual(actualMac, expectedMac)) return false;
-  const data = decode(payload);
-  const now = Math.floor(Date.now() / 1000);
-  return !!data
-    && data.purpose === 'trust-desk-reviewer'
-    && typeof data.nonce === 'string'
-    && data.nonce.length >= 16
-    && Number.isSafeInteger(data.iat)
-    && Number.isSafeInteger(data.exp)
-    && data.exp >= now
-    && data.iat <= now + 60;
+  return authenticateTrustDeskReviewer(token) !== null;
 }

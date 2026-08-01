@@ -56,6 +56,7 @@ const AUTHZ_SIGNALS = [
   'authenticateApprovalPollCapability', // EP-APPROVAL private bearer capability, hashed before exact request lookup
   'authenticateReleaseLockOrg', // Release Lock org + authenticated entity binding
   'releaseLockSessionCookie',   // host-only strict cookie; SQL binds lock + role + contact + optional round
+  'authenticateTrustDeskReviewer', // signed host-only session binds the named Trust Desk reviewer
 ];
 
 // Reviewed public-by-design routes: intentionally unauthenticated OR intentionally

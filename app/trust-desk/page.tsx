@@ -61,11 +61,13 @@ export default function TrustDeskLanding() {
             fontFamily: font.sans, fontSize: 20, lineHeight: 1.55, color: color.t2,
             maxWidth: 720, marginTop: 24,
           }}>
-            We answer them automatically — drafted from your intake and our versioned
-            policy templates, every answer cites a source — and publish a{' '}
-            <strong style={{ color: color.t1 }}>live trust page your buyer can verify</strong>.
             Prompt injection, model training, RAG data flows, agent tool access, AI incident
-            response — the questions your SOC 2 platform does not handle well.
+            response. Your SOC 2 report was never built to answer these, so someone on your team
+            writes them from scratch while the deal sits. We answer them from an{' '}
+            <strong style={{ color: color.t1 }}>AI policy corpus that already exists</strong>,
+            every answer cites its source, a named human signs off before anything ships, and your
+            buyer gets a live page where each claim carries a content hash they can re-check
+            months from now.
           </p>
 
           <div style={{ display: 'flex', flexWrap: 'wrap', gap: 20, alignItems: 'center', marginTop: 40 }}>
@@ -81,7 +83,7 @@ export default function TrustDeskLanding() {
               Upload your AI security review
             </Link>
             <span style={{ fontSize: 14, color: color.t3 }}>
-              Published in minutes · $3,500–$24,500 · No retainer required
+              Same day · $3,500 to $45,000 · No retainer required
             </span>
           </div>
 
@@ -143,7 +145,7 @@ export default function TrustDeskLanding() {
               ['Completed AI-specific questionnaire', 'Your buyer\'s security, risk, and AI-governance questions, answered in their language, aligned with SOC 2 and emerging AI-risk frameworks.'],
               ['Five AI policy documents', 'Data Handling & Model Training Disclosure. Prompt Injection Defense Statement. AI Subprocessor & Data Flow Map. Agent Access Control Policy. AI Incident Response Runbook.'],
               ['Live AI Trust Page', 'A URL you share with your buyer. Every claim timestamped, signed, and refreshable. Supersedes PDFs the day you deploy.'],
-              ['Signed claim hashes', 'Every policy and every answer carries a SHA-256 content hash and a signed envelope. Your buyer can verify any claim independently against the live /api/trust-desk/verify endpoint.'],
+              ['Signed claim hashes', 'Every policy and every answer carries a SHA-256 content hash and a signed envelope, checkable against the live /api/trust-desk/verify endpoint without taking our word for anything. What that proves is precise: the claim your buyer is reading is byte-for-byte the claim that was published, and it has not been quietly edited since. It does not prove the claim is true. That is still your statement, which is why a named human signs it off.'],
               ['30-day Q&A Slack channel', 'When your buyer\'s CISO sends a follow-up question, we handle it. Caps at 5 hours total; covers the deal to close.'],
               ['Optional risk-call support', 'If your buyer\'s security team wants a live call to walk through the answers, we join. (Retainer tier only.)'],
             ].map(([t, b]) => (
@@ -205,29 +207,42 @@ export default function TrustDeskLanding() {
             gap: 16, marginTop: 40,
           }}>
             <PricingCard
-              name="Emergency Review" price="$3,500" unit="per questionnaire" turnaround="Minutes"
+              name="Gap Scan" price="$3,500" unit="per questionnaire" turnaround="24 hours"
               href={STRIPE_LINKS.emergency}
-              bullets={['Review existing questionnaire', 'Fill missing answers', 'Highlight remaining gaps', 'No policy docs', 'No trust page']}
+              bullets={[
+                'Every question triaged into three buckets',
+                'AI-specific vs already covered by your SOC 2',
+                'Named list of what you cannot honestly answer yet',
+                'Written report, no drafted answers',
+                'Credited in full against any tier for 30 days',
+              ]}
             />
             <PricingCard
-              name="Full Completion" price="$9,500" unit="per questionnaire" turnaround="Minutes"
+              name="Full Completion" price="$18,000" unit="per questionnaire" turnaround="Same day"
               href={STRIPE_LINKS.full}
-              bullets={['Full questionnaire completion', 'Answer alignment with SOC 2', 'One policy summary doc', 'No trust page', 'No live hosting']}
+              bullets={['Every question answered and sourced', 'Aligned with your existing SOC 2 evidence', 'One policy summary document', 'Human sign-off before delivery', 'No trust page']}
             />
             <PricingCard
-              name="AI Trust Packet" price="$24,500" unit="per engagement" turnaround="Minutes"
+              name="AI Trust Packet" price="$35,000" unit="per engagement" turnaround="Same day"
               href={STRIPE_LINKS.packet} highlighted
-              bullets={['Full questionnaire', 'All 5 AI policy docs', 'Live AI Trust Page', 'Signed claim hashes', '30-day Q&A Slack']}
+              bullets={['Everything in Full Completion', 'All 5 AI policy documents', 'Live AI Trust Page', 'Every claim content-hashed', '30-day Q&A Slack channel']}
             />
             <PricingCard
-              name="Retainer" price="$12,000" unit="per month · 3 mo min" turnaround="Ongoing"
+              name="Retainer" price="$18,000" unit="per month · 3 mo min" turnaround="Ongoing"
               href={STRIPE_LINKS.retainer}
-              bullets={['Unlimited questionnaires', 'Rolling policy updates', 'Dedicated Slack channel', 'Live risk-call support', 'Custom vanity domain']}
+              bullets={['3 full questionnaires per month', 'Unlimited Gap Scans', 'Overage at $9,000 each', 'Rolling policy updates', 'Dedicated Slack channel']}
+            />
+            <PricingCard
+              name="Institutional" price="From $45,000" unit="quote only" turnaround="Sub-24 hour SLA"
+              href="/pilot"
+              bullets={['Named reviewer on every packet', 'Multiple legal entities covered', 'Quarterly re-attestation', 'Board-ready summary', 'Two engagements at a time']}
             />
           </div>
           <p style={{ fontSize: 14, color: color.t3, marginTop: 40 }}>
-            <strong>Not sure which?</strong> Most vendors with a single stuck deal pick the
-            AI Trust Packet. Vendors with two or more active reviews should start on Retainer.
+            <strong>Not sure which?</strong> Start with the Gap Scan. It tells you in 24 hours
+            which questions your SOC 2 already covers and which ones you have no policy behind
+            yet, and the full $3,500 comes off any tier you buy within 30 days. Vendors with two
+            or more active reviews should start on Retainer.
           </p>
         </div>
       </section>
@@ -244,7 +259,7 @@ export default function TrustDeskLanding() {
           }}>
             {[
               ['01', 'Upload', 'Send your questionnaire (Excel, PDF, or Word) plus 8 intake questions. Takes 10 minutes.'],
-              ['02', 'We answer', 'Our pipeline drafts every answer from your intake and our 5 versioned policy templates — no answer ships without a cited source. A named reviewer signs off on anything flagged. Minutes for most packets; up to 4 hours if a question needs human review.'],
+              ['02', 'We answer', 'Our pipeline drafts every answer from your intake and our 5 versioned policy templates, and no answer ships without a cited source. Then a named reviewer reads the packet and signs off. Nothing publishes on the machine pass alone, because these answers go to your buyer under your name. Same day for most packets.'],
               ['03', 'You forward', 'We deliver the trust page URL and all deliverables in Slack. You forward the URL to your buyer. Deal moves.'],
             ].map(([k, t, b]) => (
               <div key={k} style={{
@@ -286,7 +301,7 @@ export default function TrustDeskLanding() {
             fontFamily: font.sans, fontSize: 32, fontWeight: 700,
             letterSpacing: '-0.01em', color: color.t1, margin: 0,
           }}>
-            One upload. Minutes to publish. Deal moves.
+            One upload. Answered and signed off the same day. Deal moves.
           </h2>
           <Link
             href="/trust-desk/upload"
@@ -374,7 +389,7 @@ const FAQ = [
   { q: 'Will my buyer accept a "live trust page" instead of a PDF?',
     a: 'Yes. Enterprise security teams increasingly prefer trust centers (SafeBase, Vanta Trust Center, Drata Trust Center). Our page is the same pattern — with AI-specific policies those tools do not cover.' },
   { q: 'Can I verify the signed claims independently?',
-    a: 'Yes, today. Every claim has a SHA-256 content hash and a signed envelope. Your buyer hits /api/trust-desk/verify/<your-page> and gets per-claim pass/fail on content integrity, payload binding, and signature — no need to take our word for it.' },
+    a: 'Yes, today. Every claim has a SHA-256 content hash and a signed envelope. Your buyer hits /api/trust-desk/verify/<your-page> and gets per-claim pass/fail on content integrity, payload binding, and signature, with no need to take our word for it. Worth being exact about what passing means: it means the text has not changed since publication and the signature holds. It does not mean a third party audited the claim or accepted it. The claim is yours, drafted from your policies and signed off by a named reviewer.' },
   { q: 'Liability?',
     a: 'You remain responsible for the accuracy of the underlying claims about your product. We are responsible for the accuracy of the analysis, the policy drafting, and the platform. Our MSA is straightforward and we will send it on intake.' },
   { q: 'Why fintech only?',

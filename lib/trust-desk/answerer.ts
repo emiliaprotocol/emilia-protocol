@@ -10,9 +10,21 @@
  *   - intake      : a field the customer themselves provided
  *   - boilerplate : a fixed, audited fragment (e.g. SOC2 posture framing)
  *
- * Template and intake answers are DETERMINISTIC (no LLM, no hallucination
- * surface). Only ai_specific / customer-fact-present questions touch the LLM,
- * and those are forced to cite a template excerpt or they escalate.
+ * Intake and SOC 2 answers are DETERMINISTIC (no LLM, no hallucination
+ * surface). Template-matched questions are COMPOSED from the matched policy
+ * section, because returning the section verbatim does not answer the question
+ * that was asked: a retention question would come back with a paragraph about
+ * model training, cut off mid-sentence, and the verifier would pass it because
+ * text existed and carried a citation. Wrong-but-cited is worse than silence in
+ * front of a bank's risk team.
+ *
+ * Composition is constrained rather than free. The model must return the exact
+ * sentences from the policy that support its answer, every one of those quotes
+ * is checked to actually occur in the section (isGrounded), and any answer whose
+ * support cannot be located falls back to the deterministic excerpt at reduced
+ * confidence so a reviewer sees it. Quote grounding proves that cited text
+ * exists; it does not prove that every generated sentence is entailed. Human
+ * sign-off remains responsible for that semantic judgment.
  */
 
 import { BUCKET } from './classifier.js';
@@ -36,7 +48,7 @@ const MIN_LLM_CONFIDENCE = 0.75;
 export async function answerQuestion(q, ctx) {
   switch (q.bucket) {
     case BUCKET.AI_TEMPLATE_MATCH:
-      return answerFromTemplate(q, ctx);
+      return await answerFromTemplate(q, ctx);
     case BUCKET.SOC2_OVERLAP:
       return answerFromSoc2(q, ctx);
     case BUCKET.CUSTOMER_SPECIFIC:
@@ -67,29 +79,131 @@ export async function answerAll(questions, ctx, concurrency = 8) {
 
 // ── Deterministic answerers ─────────────────────────────────────────────────
 
-function answerFromTemplate(q, ctx) {
+async function answerFromTemplate(q, ctx) {
   const tpl = getTemplate(q.matched_template);
   if (!tpl || !tpl.content) return escalate(q, 'template_missing');
 
   const section = selectSection(tpl, q.text);
   const excerpt = section ? firstParagraphs(section.body, 2) : firstParagraphs(tpl.content, 2);
-  const answer = substitute(excerpt, ctx.policyVars).trim();
+  const fallbackAnswer = substitute(excerpt, ctx.policyVars).trim();
+  const sourceRef = {
+    kind: 'template',
+    template_id: tpl.id,
+    template_hash: tpl.content_hash,
+    section: section ? section.heading : null,
+  };
 
+  // The grounding pool is the selected section plus the rest of the template,
+  // so a question whose answer sits in a neighbouring section can still be
+  // answered from text we wrote rather than from the model's own knowledge.
+  const groundingPool = substitute(
+    section
+      ? `## ${section.heading}\n${section.body}\n\n${otherSections(tpl, section)}`
+      : tpl.content,
+    ctx.policyVars,
+  ).slice(0, 8000);
+
+  const composed = await composeFromPolicy(q, groundingPool, ctx);
+
+  if (composed.ok) {
+    return {
+      ...base(q),
+      status: ANSWER_STATUS.ANSWERED,
+      answer: composed.answer,
+      confidence: composed.confidence,
+      sources: [sourceRef, ...composed.quotes.map((quote) => ({ kind: 'policy_quote', quote }))],
+      answer_source: composed.answer_source,
+      grounded: true,
+    };
+  }
+
+  // Composition unavailable or ungrounded. Ship the excerpt rather than nothing,
+  // but at a confidence the verifier flags, because an excerpt is evidence the
+  // reviewer must turn into an answer, not an answer.
   return {
     ...base(q),
     status: ANSWER_STATUS.ANSWERED,
-    answer,
-    confidence: 0.95,
-    sources: [
-      {
-        kind: 'template',
-        template_id: tpl.id,
-        template_hash: tpl.content_hash,
-        section: section ? section.heading : null,
-      },
-    ],
-    answer_source: 'deterministic',
+    answer: fallbackAnswer,
+    confidence: 0.55,
+    sources: [sourceRef],
+    answer_source: 'deterministic_excerpt',
+    grounded: false,
+    compose_fallback_reason: composed.reason,
+    needs_rewrite: true,
   };
+}
+
+/**
+ * Compose an answer to the exact question from policy text we authored.
+ *
+ * Returns the answer plus the verbatim sentences that support it. Every quote is
+ * confirmed to occur in the supplied policy before the answer is accepted, so a
+ * fabricated justification cannot pass as a cited one.
+ */
+async function composeFromPolicy(q, policyText, ctx) {
+  if (!llmAvailable()) return { ok: false, reason: 'no_llm_provider' };
+
+  const company = ctx.intake?.company || 'the vendor';
+  const res = await llmJSON({
+    system:
+      'You answer one enterprise AI security questionnaire question on behalf of a vendor, using '
+      + 'ONLY the policy text supplied. Write the answer a reviewer at a bank expects: direct, '
+      + 'specific, two to five sentences, answering the exact question asked. Lead with the answer '
+      + 'itself, not with definitions or background. Do not add facts, certifications, '
+      + 'subprocessors, timeframes, or commitments that are absent from the policy text. If the '
+      + 'policy text does not answer the question, return an empty answer rather than a partial or '
+      + 'hedged one. Respond ONLY with JSON: '
+      + '{"answer": string, "supporting_quotes": string[], "confidence": 0..1}. Each supporting '
+      + 'quote MUST be copied verbatim from the policy text, at least 40 characters long.',
+    user:
+      `Vendor: ${company}\n\nQuestion: ${q.text}\n\nPolicy text (the ONLY permitted source):\n${policyText}`,
+    maxTokens: 700,
+    validate: (o) => o
+      && typeof o.answer === 'string'
+      && Array.isArray(o.supporting_quotes),
+  });
+
+  if (!res.ok) return { ok: false, reason: `llm_${(res as { ok: false; reason: string }).reason}` };
+
+  const { answer, supporting_quotes: quotes, confidence } = res.data;
+  const conf = clamp01(confidence);
+  const trimmed = String(answer || '').trim();
+
+  if (!trimmed) return { ok: false, reason: 'policy_does_not_answer' };
+  if (conf < MIN_LLM_CONFIDENCE) return { ok: false, reason: 'low_confidence' };
+
+  const grounded = (quotes || [])
+    .map((x) => String(x || '').trim())
+    .filter((x) => x.length >= 40 && isGrounded(x, policyText));
+
+  if (grounded.length === 0) return { ok: false, reason: 'no_verifiable_quote' };
+
+  return {
+    ok: true,
+    answer: trimmed,
+    confidence: conf,
+    quotes: grounded.slice(0, 3),
+    answer_source: `composed:${res.provider}`,
+  };
+}
+
+/**
+ * Does this quote actually occur in the policy? Whitespace is normalized because
+ * models reflow line breaks, but nothing else is relaxed: the words and their
+ * order must match text we wrote.
+ */
+function isGrounded(quote: string, policyText: string): boolean {
+  const norm = (s: string) => s.replace(/\s+/g, ' ').replace(/[*_`#]/g, '').trim().toLowerCase();
+  return norm(policyText).includes(norm(quote));
+}
+
+/** Remaining sections of a template, for grounding beyond the best-match one. */
+function otherSections(tpl, chosen): string {
+  return (tpl.sections || [])
+    .filter((s) => s.heading !== chosen.heading)
+    .slice(0, 6)
+    .map((s) => `## ${s.heading}\n${s.body}`)
+    .join('\n\n');
 }
 
 function answerFromSoc2(q, ctx) {

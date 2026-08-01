@@ -46,7 +46,8 @@ export default async function ReviewerDashboard() {
         <p style={{ fontFamily: font.sans, color: color.t2, fontSize: 14, maxWidth: 560, lineHeight: 1.6 }}>
           {gate === 'disabled' ? (
             <>
-              Set <code style={code}>TRUST_DESK_INTERNAL_TOKEN</code> on the server to enable this
+              Set <code style={code}>TRUST_DESK_INTERNAL_TOKEN</code> and{' '}
+              <code style={code}>TRUST_DESK_REVIEWER_ID</code> on the server to enable this
               dashboard. It exposes customer engagement details, so it stays off until a token is set.
             </>
           ) : (

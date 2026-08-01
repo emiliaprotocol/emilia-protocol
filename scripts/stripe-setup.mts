@@ -68,10 +68,10 @@ if (key.startsWith('sk_live_')) console.log('⚠  LIVE key — creating real, ch
 // Trust Desk amounts mirror the live /trust-desk page. EDIT only the EMILIA Gate Cloud ones.
 const PRODUCTS: ProductDefinition[] = [
   // AI Trust Desk — fixed-scope engagements (prices already published on /trust-desk)
-  { key: 'td_emergency', name: 'AI Trust Desk — Emergency Review', amount: 350000, interval: null, desc: 'Fixed-scope emergency questionnaire review.', linkEnv: 'NEXT_PUBLIC_STRIPE_EMERGENCY' },
-  { key: 'td_full', name: 'AI Trust Desk — Full Completion', amount: 950000, interval: null, desc: 'Full questionnaire completion.', linkEnv: 'NEXT_PUBLIC_STRIPE_FULL' },
-  { key: 'td_packet', name: 'AI Trust Desk — AI Trust Packet', amount: 2450000, interval: null, desc: 'Full AI Trust Packet engagement.', linkEnv: 'NEXT_PUBLIC_STRIPE_PACKET' },
-  { key: 'td_retainer', name: 'AI Trust Desk — Retainer', amount: 1200000, interval: 'month', desc: 'Ongoing retainer, 3-month minimum.', linkEnv: 'NEXT_PUBLIC_STRIPE_RETAINER' },
+  { key: 'td_emergency', name: 'AI Trust Desk — Gap Scan', amount: 350000, interval: null, desc: 'Questionnaire triage with a written gap report; credited toward another tier for 30 days.', linkEnv: 'NEXT_PUBLIC_STRIPE_EMERGENCY' },
+  { key: 'td_full', name: 'AI Trust Desk — Full Completion', amount: 1800000, interval: null, desc: 'Human-reviewed questionnaire completion with cited source evidence.', linkEnv: 'NEXT_PUBLIC_STRIPE_FULL' },
+  { key: 'td_packet', name: 'AI Trust Desk — AI Trust Packet', amount: 3500000, interval: null, desc: 'Full Completion plus policy documents, a reviewed live Trust Page and 30-day Q&A.', linkEnv: 'NEXT_PUBLIC_STRIPE_PACKET' },
+  { key: 'td_retainer', name: 'AI Trust Desk — Retainer', amount: 1800000, interval: 'month', desc: 'Three full questionnaires per month plus unlimited Gap Scans; 3-month minimum.', linkEnv: 'NEXT_PUBLIC_STRIPE_RETAINER' },
 
   // EMILIA Gate Cloud — monthly subscriptions.  ◀── EDIT THESE TWO AMOUNTS to your real prices
   { key: 'cloud_team', name: 'EMILIA Gate Cloud — Team', amount: 49900, interval: 'month', desc: 'Hosted control plane: managed policies, signoff orchestration, audit exports.', priceEnv: 'STRIPE_PRICE_CLOUD_TEAM', linkEnv: 'NEXT_PUBLIC_STRIPE_CLOUD_TEAM' },
@@ -84,7 +84,16 @@ const stripe: any = new Stripe(key);
 async function findOrCreateProduct(p: ProductDefinition): Promise<any> {
   const list: any = await stripe.products.list({ limit: 100, active: true });
   const found: any = list.data.find((x: any) => x.metadata?.ep_key === p.key);
-  if (found) return found;
+  if (found) {
+    if (found.name !== p.name || found.description !== p.desc) {
+      return stripe.products.update(found.id, {
+        name: p.name,
+        description: p.desc,
+        metadata: { ...found.metadata, ep_key: p.key, ep_setup: 'v1' },
+      });
+    }
+    return found;
+  }
   return stripe.products.create({ name: p.name, description: p.desc, metadata: { ep_key: p.key, ep_setup: 'v1' } });
 }
 
@@ -107,8 +116,12 @@ async function findOrCreateLink(product: any, price: any): Promise<any> {
   const existingId: string | undefined = product.metadata?.ep_link_id;
   if (existingId) {
     try {
-      const l: any = await stripe.paymentLinks.retrieve(existingId);
-      if (l?.active) return l;
+      const l: any = await stripe.paymentLinks.retrieve(existingId, {
+        expand: ['line_items'],
+      });
+      const existingPriceId: string | undefined = l?.line_items?.data?.[0]?.price?.id;
+      if (l?.active && existingPriceId === price.id) return l;
+      if (l?.active) await stripe.paymentLinks.update(existingId, { active: false });
     } catch { /* fall through and recreate */ }
   }
   const link: any = await stripe.paymentLinks.create({ line_items: [{ price: price.id, quantity: 1 }] });
