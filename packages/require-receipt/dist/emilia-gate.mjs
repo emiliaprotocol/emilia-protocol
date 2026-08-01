@@ -34,7 +34,7 @@
 //
 //   GENERATED — do not edit by hand. Regenerate with:
 //     npx @emilia-protocol/require-receipt   (or: node build-drop-in.mjs)
-//   source: @emilia-protocol/require-receipt@0.7.0  ·  content-sha256:a2f030f2b7145cc3
+//   source: @emilia-protocol/require-receipt@0.7.0  ·  content-sha256:d8425179d7a45e68
 //   docs: https://www.emiliaprotocol.ai/gate   spec: draft-schrock-ep-authorization-receipts
 
 // SPDX-License-Identifier: Apache-2.0
@@ -171,14 +171,24 @@ function strictJsonGate(raw) {
 function canonicalDomainError(path, reason) {
     return new TypeError(`value is outside the strict canonical JSON domain at ${path}: ${reason}`);
 }
-function canonicalizeValue(value, path, ancestors, depth) {
-    if (depth > MAX_JSON_DEPTH)
-        throw canonicalDomainError(path, `nesting depth exceeds ${MAX_JSON_DEPTH}`);
+function countString(value, path, state) {
+    state.stringBytes += new TextEncoder().encode(value).byteLength;
+    if (state.stringBytes > state.maxStringBytes) {
+        throw canonicalDomainError(path, `string bytes exceed ${state.maxStringBytes}`);
+    }
+}
+function canonicalizeValue(value, path, ancestors, depth, state) {
+    state.nodes += 1;
+    if (state.nodes > state.maxNodes)
+        throw canonicalDomainError(path, `node count exceeds ${state.maxNodes}`);
+    if (depth > state.maxDepth)
+        throw canonicalDomainError(path, `nesting depth exceeds ${state.maxDepth}`);
     if (value === null)
         return 'null';
     if (typeof value === 'string') {
         if (hasUnpairedUtf16Surrogate(value))
             throw canonicalDomainError(path, 'unpaired Unicode surrogate');
+        countString(value, path, state);
         return JSON.stringify(value);
     }
     if (typeof value === 'boolean')
@@ -213,7 +223,7 @@ function canonicalizeValue(value, path, ancestors, depth) {
                 if (!descriptor || !('value' in descriptor)) {
                     throw canonicalDomainError(`${path}[${index}]`, 'array holes and accessors are not permitted');
                 }
-                entries.push(canonicalizeValue(descriptor.value, `${path}[${index}]`, ancestors, depth + 1));
+                entries.push(canonicalizeValue(descriptor.value, `${path}[${index}]`, ancestors, depth + 1, state));
             }
             return `[${entries.join(',')}]`;
         }
@@ -231,11 +241,12 @@ function canonicalizeValue(value, path, ancestors, depth) {
             if (hasUnpairedUtf16Surrogate(key)) {
                 throw canonicalDomainError(`${path}.${key}`, 'member name contains an unpaired Unicode surrogate');
             }
+            countString(key, `${path}.${key}`, state);
             const descriptor = Object.getOwnPropertyDescriptor(value, key);
             if (!descriptor || descriptor.enumerable !== true || !('value' in descriptor)) {
                 throw canonicalDomainError(`${path}.${key}`, 'non-enumerable members and accessors are not permitted');
             }
-            members.push(`${JSON.stringify(key)}:${canonicalizeValue(descriptor.value, `${path}.${key}`, ancestors, depth + 1)}`);
+            members.push(`${JSON.stringify(key)}:${canonicalizeValue(descriptor.value, `${path}.${key}`, ancestors, depth + 1, state)}`);
         }
         return `{${members.join(',')}}`;
     }
@@ -254,8 +265,22 @@ function canonicalizeValue(value, path, ancestors, depth) {
  * bytes: non-plain objects, sparse arrays, accessors, symbols, cycles,
  * undefined/functions/bigints, non-safe-integer numbers, and malformed UTF-16.
  */
-function canonicalizeStrictJson(value) {
-    return canonicalizeValue(value, '$', new Set(), 0);
+function canonicalizeStrictJson(value, limits = {}) {
+    const maxDepth = limits.maxDepth ?? MAX_JSON_DEPTH;
+    const maxNodes = limits.maxNodes ?? Number.MAX_SAFE_INTEGER;
+    const maxStringBytes = limits.maxStringBytes ?? Number.MAX_SAFE_INTEGER;
+    if (!Number.isSafeInteger(maxDepth) || maxDepth < 0
+        || !Number.isSafeInteger(maxNodes) || maxNodes < 1
+        || !Number.isSafeInteger(maxStringBytes) || maxStringBytes < 0) {
+        throw new TypeError('strict canonical JSON limits must be non-negative safe integers');
+    }
+    return canonicalizeValue(value, '$', new Set(), 0, {
+        nodes: 0,
+        stringBytes: 0,
+        maxDepth,
+        maxNodes,
+        maxStringBytes,
+    });
 }
 /** Pure predicate companion to canonicalizeStrictJson(). */
 function isStrictCanonicalJson(value) {
