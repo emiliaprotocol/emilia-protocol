@@ -1,4 +1,3 @@
-// @ts-nocheck
 // SPDX-License-Identifier: Apache-2.0
 /** Durable, tenant-scoped replay protection for action-refusal acceptance. */
 export const ACTION_REFUSAL_REPLAY_FUNCTION = 'emilia_gate_evidence.consume_action_refusal';

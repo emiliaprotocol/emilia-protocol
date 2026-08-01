@@ -1,4 +1,3 @@
-// @ts-nocheck
 // SPDX-License-Identifier: Apache-2.0
 /**
  * Strict adapter from one exact Action Escrow kernel snapshot to the portable

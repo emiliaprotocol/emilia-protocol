@@ -1,4 +1,3 @@
-// @ts-nocheck
 // SPDX-License-Identifier: Apache-2.0
 /**
  * Signed external loss-experience observations with governed action classes.

@@ -1,4 +1,3 @@
-// @ts-nocheck
 // SPDX-License-Identifier: Apache-2.0
 /**
  * Customer-owned Reliance Program source and deterministic compiler.

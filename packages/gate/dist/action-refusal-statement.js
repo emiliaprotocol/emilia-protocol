@@ -1,4 +1,3 @@
-// @ts-nocheck
 // SPDX-License-Identifier: Apache-2.0
 /**
  * Exact-action technical refusal evidence. It is not a legal determination,

@@ -1,4 +1,3 @@
-// @ts-nocheck
 // SPDX-License-Identifier: Apache-2.0
 /**
  * Address-pinned, manually redirected resolver for Discovery-to-Permit

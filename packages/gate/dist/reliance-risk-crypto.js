@@ -1,4 +1,3 @@
-// @ts-nocheck
 // SPDX-License-Identifier: Apache-2.0
 import crypto from 'node:crypto';
 import { canonicalize, hashCanonical } from './execution-binding.js';

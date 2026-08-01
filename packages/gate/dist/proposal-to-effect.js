@@ -1,4 +1,3 @@
-// @ts-nocheck
 // SPDX-License-Identifier: Apache-2.0
 /**
  * Proposal-to-Effect is a product orchestration profile over existing EMILIA

@@ -1,4 +1,3 @@
-// @ts-nocheck
 // SPDX-License-Identifier: Apache-2.0
 // Execution-field binding for EMILIA Gate. This is the executor-side control
 // that prevents "the signed claim said X, the system mutated Y".

@@ -1,4 +1,3 @@
-// @ts-nocheck
 // SPDX-License-Identifier: Apache-2.0
 /**
  * Vendor-neutral orchestration for Gate coverage, evidence completeness, and

@@ -1,4 +1,3 @@
-// @ts-nocheck
 // SPDX-License-Identifier: Apache-2.0
 /**
  * Server-pinned EP-STATUS-v1 verification for Proposal-to-Effect AEB legs.

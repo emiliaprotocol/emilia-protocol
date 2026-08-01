@@ -181,8 +181,10 @@ legality or business suitability.
 immediate AP2 v0.2 profile. The caller supplies evidence; a separate
 server-owned controls object supplies the trusted clock, pinned AEB config,
 authenticated status resolver, tenant/RP/audience/actors, exact canonical AP2
-tokens, verified payloads, authenticated hash algorithm, current WebAuthn
-counter head, final provider-request bytes, and pinned provider adapter. The adapter
+tokens, verified payloads, current WebAuthn counter head, final
+provider-request bytes, and pinned provider adapter. The checkout hash
+algorithm is not supplied: it is derived when the source binding parses the
+mandate. The adapter
 must prove that those exact bytes carry the exact PaymentMandate token. The
 builders then retain the full signed AEB evaluation and derive replay,
 provider-operation, status-head, and monotonic WebAuthn-counter resources.

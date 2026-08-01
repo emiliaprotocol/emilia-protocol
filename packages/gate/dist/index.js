@@ -1,4 +1,3 @@
-// @ts-nocheck
 /**
  * @emilia-protocol/gate — EMILIA Gate: the Consequence Firewall.
  * @license Apache-2.0

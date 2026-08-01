@@ -1,4 +1,3 @@
-// @ts-nocheck
 // SPDX-License-Identifier: Apache-2.0
 /** Governed-taxonomy aggregate receipt census with coarse primary suppression. */
 import { RISK_DIGEST, riskDigest, riskExact, riskIdentifier, riskInstant, riskRecord, riskFreeze } from './reliance-risk-crypto.js';

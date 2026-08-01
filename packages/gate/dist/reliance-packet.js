@@ -1,4 +1,3 @@
-// @ts-nocheck
 // SPDX-License-Identifier: Apache-2.0
 // Auditor / insurer-facing reliance packet for an EMILIA Gate decision.
 export const RELIANCE_PACKET_VERSION = 'EP-GATE-RELIANCE-PACKET-v1';

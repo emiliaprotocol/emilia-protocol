@@ -1,4 +1,3 @@
-// @ts-nocheck
 // SPDX-License-Identifier: Apache-2.0
 /** Signed period reconciliation of supplied populations; never proof that the supplied population is complete. */
 import { RISK_DIGEST, riskExact, riskIdentifier, riskInstant, signRiskBody, verifyRiskBody, } from './reliance-risk-crypto.js';

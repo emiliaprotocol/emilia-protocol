@@ -1,4 +1,3 @@
-// @ts-nocheck
 // SPDX-License-Identifier: Apache-2.0
 /**
  * EG-1 Conformance — the binary artifact that turns "we adopted EMILIA Gate"

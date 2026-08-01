@@ -1,4 +1,3 @@
-// @ts-nocheck
 // SPDX-License-Identifier: Apache-2.0
 /**
  * Durable relying-party custody for accepted EP-STATUS-v1 heads.

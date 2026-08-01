@@ -499,6 +499,7 @@
     "deploy/terraform/versions.tf",
     "deploy/terraform/README.md",
     "deploy/terraform/service",
+    "sql/",
     "deploy/sql/001-runtime.sql",
     "reports/auditor-workpaper.js",
     "reports/reperform.js",

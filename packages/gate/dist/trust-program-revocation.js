@@ -1,4 +1,3 @@
-// @ts-nocheck
 // SPDX-License-Identifier: Apache-2.0
 /**
  * Public experimental Trust Program profile for EP-REVOCATION-v1.

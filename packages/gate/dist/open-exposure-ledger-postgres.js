@@ -1,4 +1,3 @@
-// @ts-nocheck
 // SPDX-License-Identifier: Apache-2.0
 /**
  * Deployment-bound PostgreSQL adapter for the Open Exposure Ledger.

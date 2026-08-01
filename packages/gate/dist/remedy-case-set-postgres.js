@@ -1,4 +1,3 @@
-// @ts-nocheck
 // SPDX-License-Identifier: Apache-2.0
 /**
  * Tenant-scoped PostgreSQL custody for Remedy Program case sets.

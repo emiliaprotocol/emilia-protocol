@@ -1,4 +1,3 @@
-// @ts-nocheck
 // SPDX-License-Identifier: Apache-2.0
 /**
  * PostgreSQL custody for Proposal-to-Effect consequence attempts.

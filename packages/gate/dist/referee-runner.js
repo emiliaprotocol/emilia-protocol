@@ -1,4 +1,3 @@
-// @ts-nocheck
 // SPDX-License-Identifier: Apache-2.0
 /**
  * Bounded subprocess transport for EMILIA protocol Referee runners.

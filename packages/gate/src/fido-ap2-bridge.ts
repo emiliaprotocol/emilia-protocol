@@ -20,6 +20,7 @@ import {
 import {
   createFidoAp2AebAdapter,
   createFidoAp2NativeSourceBinding,
+  projectFidoAp2PaymentAction,
   FIDO_AP2_AEB_ADAPTER_ID,
   FIDO_AP2_NATIVE_PROTOCOL_ID,
   type FidoAp2NativeSourceBindingInput,
@@ -1371,13 +1372,33 @@ export function createFidoAp2AdmissionInput(
     trusted.source.native_artifact_digest as AdmissionDigest,
   );
   const statuses = resolveTrustedStatuses(controls, evaluation, admitted);
+  // The expected action is DERIVED from the AP2 mandates the Gate already holds,
+  // never echoed from the artifact being checked. Passing the artifact's own
+  // normalized_action here made the human-leg comparison compare a value to
+  // itself, which left the economic meaning of the approval (amount, currency,
+  // payee, instrument, transaction id) resting entirely on one Ed25519
+  // attestation from the pinned native verifier. projectFidoAp2PaymentAction
+  // re-derives those fields from the mandate payloads and refuses a payload
+  // spliced onto a different token, which is the property
+  // docs/protocol/fido-ap2-consequence-bridge-v1.md already states is enforced.
+  let expectedAction: unknown;
+  try {
+    expectedAction = projectFidoAp2PaymentAction({
+      checkout_mandate: controls.ap2_source.checkout_mandate_payload,
+      payment_mandate: controls.ap2_source.payment_mandate_payload,
+      source_binding: trusted.source,
+    });
+  } catch (err) {
+    fail(`AP2 projection refused the server-owned mandates: ${(err as Error).message}`);
+  }
+
   const pinnedConfig = verifyEvaluationAtAdmission(
     input.evaluation,
     controls.pinned_config,
     statuses.current,
     input.humanArtifact,
     input.nativeAttestation,
-    object(input.humanArtifact, 'humanArtifact').normalized_action,
+    expectedAction,
     admitted.iso,
     evaluation,
   );
