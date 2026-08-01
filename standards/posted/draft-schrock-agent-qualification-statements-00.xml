@@ -1,0 +1,177 @@
+<?xml version="1.0" encoding="utf-8"?>
+<rfc xmlns:xi="http://www.w3.org/2001/XInclude"
+     docName="draft-schrock-agent-qualification-statements-00"
+     category="info" ipr="trust200902" submissionType="IETF"
+     version="3" tocInclude="true" sortRefs="true" symRefs="true">
+  <front>
+    <title abbrev="Agent Qualification">Portable Agent Qualification Statements for Consequential Actions</title>
+    <seriesInfo name="Internet-Draft" value="draft-schrock-agent-qualification-statements-00"/>
+    <author fullname="Iman Schrock">
+      <organization>EMILIA Protocol, Inc.</organization>
+      <address><postal><country>US</country></postal><email>team@emiliaprotocol.ai</email></address>
+    </author>
+    <date year="2026" month="July" day="27"/>
+    <area>sec</area>
+    <keyword>AI agents</keyword>
+    <keyword>qualification</keyword>
+    <keyword>evaluation evidence</keyword>
+    <keyword>runtime admission</keyword>
+    <abstract>
+      <t>Agent evaluations report what happened in a test environment. They do
+      not, by themselves, establish that a measured candidate satisfies a
+      relying party's policy, remains current, matches the runtime candidate,
+      or is authorized to perform a consequential action. This document
+      defines a portable Qualification Statement that binds a candidate,
+      complete evaluation campaign, qualification policy, assignment, and
+      status. It preserves three separate claims: observation, qualification,
+      and authorization. A relying party can accept a current qualification as
+      evidence at runtime, but MUST make a separate exact-action authorization
+      and admission decision.</t>
+    </abstract>
+  </front>
+  <middle>
+    <section anchor="intro">
+      <name>Introduction</name>
+      <t>Evaluation systems can execute tests, compare models, and fail a build.
+      A consequential system needs an additional portable claim: this exact
+      measured candidate satisfied this policy for this assignment, based on
+      this complete campaign, and the claim remains current now. It also needs
+      to avoid turning that claim into a universal score or transferable
+      authority.</t>
+      <t>This document defines the qualification layer. It does not define a
+      benchmark runner, model leaderboard, certification business, universal
+      intelligence score, or authorization token.</t>
+      <section anchor="terms"><name>Terminology</name>
+        <t>The key words "MUST", "MUST NOT", "REQUIRED", "SHALL", "SHALL NOT",
+        "SHOULD", "SHOULD NOT", "RECOMMENDED", "NOT RECOMMENDED", "MAY", and
+        "OPTIONAL" are to be interpreted as described in BCP 14
+        <xref target="RFC2119"/> <xref target="RFC8174"/> when, and only when,
+        they appear in all capitals.</t>
+      </section>
+    </section>
+    <section anchor="claims">
+      <name>Non-Collapsing Claims</name>
+      <dl>
+        <dt>Evaluation Attestation</dt><dd>Signed evidence of what was observed
+        during a named campaign over a measured candidate.</dd>
+        <dt>Qualification Policy</dt><dd>The relying-party-selected predicates,
+        thresholds, assignment, and validity rules that must be satisfied.</dd>
+        <dt>Qualification Statement</dt><dd>A signed claim that the candidate
+        and complete campaign satisfy that policy for that assignment.</dd>
+        <dt>Authorization</dt><dd>A separate decision about whether an exact
+        action may execute now under current authority and local policy.</dd>
+      </dl>
+      <t>A verifier MUST NOT reinterpret an Evaluation Attestation as a
+      Qualification Statement. A relying party MUST NOT reinterpret a
+      Qualification Statement as authorization. The labels VERIFIED,
+      ACCEPTED, QUALIFIED, SATISFIED, AUTHORIZED, and ADMITTED describe
+      different checks and MUST NOT be collapsed into one boolean.</t>
+    </section>
+    <section anchor="artifacts">
+      <name>Artifact Set</name>
+      <section anchor="candidate"><name>Candidate Manifest</name>
+        <t>The Candidate Manifest identifies the exact evaluated configuration.
+        It MUST bind immutable or content-addressed identifiers for code,
+        model, prompt, tools, policy-relevant configuration, and evaluation
+        environment. Mutable model aliases or unpinned remote resources make
+        runtime identity INDETERMINATE unless a profile defines an authenticated
+        resolution procedure.</t>
+      </section>
+      <section anchor="campaign"><name>Evaluation Campaign</name>
+        <t>The Evaluation Campaign binds the Candidate Manifest, assignment,
+        qualification-policy digest, evaluator identity, harness and suite
+        versions, ordered test results, start and completion times, and a
+        complete campaign-graph digest. Selectively omitting a failing result
+        MUST change the graph digest and invalidate the later qualification.</t>
+      </section>
+      <section anchor="statement"><name>Qualification Statement</name>
+        <t>A Qualification Statement MUST bind exactly three subjects: the
+        Candidate Manifest, the head Evaluation Campaign, and the complete
+        qualification-graph digest. Its signed predicate MUST bind the
+        qualification-policy digest, assignment digest, issuer, creation and
+        expiry times, and a closed result of QUALIFIED or NOT_QUALIFIED.</t>
+        <t>The signed statement MUST use a deterministic serialization or an
+        envelope profile that defines exact signing bytes. An unknown critical
+        member, missing subject, duplicate subject, or graph mismatch is
+        refused.</t>
+      </section>
+      <section anchor="status"><name>Qualification Status</name>
+        <t>Qualification status is a separately authenticated, monotonically
+        sequenced chain. Each entry binds the statement, authority, sequence,
+        predecessor digest, state, issuance time, and next-update time. A stale,
+        rolled-back, equivocated, revoked, or missing required status yields
+        NOT_QUALIFIED or INDETERMINATE according to the relying party's profile;
+        it never yields QUALIFIED.</t>
+      </section>
+    </section>
+    <section anchor="verification">
+      <name>Qualification Verification</name>
+      <t>The relying party MUST pin accepted issuers, evaluators, signature
+      suites, candidate-measurement rules, assignment vocabulary,
+      qualification policies, freshness limits, and status authorities. None
+      of those trust inputs may come solely from the presented bundle.</t>
+      <t>Verification proceeds in this order: envelope and signature; complete
+      campaign graph; candidate identity; assignment and policy binding;
+      predicate replay; statement time; current status; and runtime candidate
+      measurement. The result is QUALIFIED only if every required check passes.
+      A conclusive predicate failure is NOT_QUALIFIED. Missing, ambiguous,
+      unsupported, stale, or unavailable required input is INDETERMINATE and
+      fails closed.</t>
+      <t>At runtime the verifier MUST establish EXACT_MATCH between the measured
+      candidate and Candidate Manifest and IN_SCOPE between the protected
+      request and assignment. A changed prompt, tool, code digest, model, or
+      policy-relevant configuration requires a new qualification unless the
+      qualification policy explicitly covered the exact change.</t>
+    </section>
+    <section anchor="composition">
+      <name>Runtime Composition</name>
+      <t>A Qualification Statement MAY be carried as evaluation evidence in an
+      Authorization Evidence Chain <xref target="AEC"/> and evaluated at an
+      Action Evidence Boundary <xref target="AEB"/>. It can satisfy only the qualification role selected by the
+      relying party. The boundary still MUST establish the exact CAID, verify
+      authority evidence, make a local authorization decision, durably admit
+      the action, and enforce one-time invocation or refusal.</t>
+      <t>Qualification freshness is checked immediately before admission.
+      Qualification supersession after admission affects future admissions; it
+      does not rewrite a provider effect. An uncertain provider result remains
+      an execution-reconciliation matter, not a qualification decision.</t>
+    </section>
+    <section anchor="security"><name>Security Considerations</name>
+      <t>Implementations MUST defend against mutable aliases, selective-result
+      omission, evaluator-key substitution, assignment widening, policy
+      substitution, stale or rolled-back status, runtime candidate drift,
+      cross-tenant replay, and treating benchmark success as authority. A
+      qualification can be valid and still be irrelevant to the exact action.
+      A compromised accepted evaluator can issue false observations; relying
+      parties therefore need explicit evaluator roots, revocation, and
+      diversity rules appropriate to risk.</t>
+      <t>Scores are meaningful only within the named task, environment,
+      candidate, harness, rubric, and campaign. Implementations MUST NOT derive
+      a persistent universal reputation label from this protocol.</t>
+    </section>
+    <section anchor="iana"><name>IANA Considerations</name>
+      <t>This document requests no IANA action.</t>
+    </section>
+  </middle>
+  <back>
+    <references><name>References</name>
+      <references><name>Normative References</name>
+        <xi:include href="https://bib.ietf.org/public/rfc/bibxml/reference.RFC.2119.xml"/>
+        <xi:include href="https://bib.ietf.org/public/rfc/bibxml/reference.RFC.8174.xml"/>
+      </references>
+      <references><name>Informative References</name>
+        <reference anchor="AEB" target="https://datatracker.ietf.org/doc/draft-schrock-action-evidence-boundary/"><front><title>The Action Evidence Boundary for Consequential Agent Effects</title><author fullname="Iman Schrock"><organization>EMILIA Protocol, Inc.</organization></author><date year="2026" month="July"/></front><seriesInfo name="Internet-Draft" value="draft-schrock-action-evidence-boundary-02"/></reference>
+        <reference anchor="AEC" target="https://datatracker.ietf.org/doc/draft-schrock-ep-authorization-evidence-chain/"><front><title>Authorization Evidence Chains: Composing Heterogeneous Agent-Action Evidence</title><author fullname="Iman Schrock"><organization>EMILIA Protocol, Inc.</organization></author><date year="2026" month="July"/></front><seriesInfo name="Internet-Draft" value="draft-schrock-ep-authorization-evidence-chain-04"/></reference>
+      </references>
+    </references>
+    <section anchor="impl"><name>Implementation Status</name>
+      <t>An Apache-2.0 TypeScript reference implementation is published in the
+      EMILIA Protocol repository. It includes exported qualification verifiers,
+      a Promptfoo evaluation-only adapter, Gate composition, in-memory and
+      PostgreSQL admission stores, portable conformance vectors, hostile tests,
+      and a bounded TLA+ lifecycle model. This is same-team implementation and
+      model evidence. It is not independent interoperability, certification,
+      a managed service, or proof of any external evaluation system.</t>
+    </section>
+  </back>
+</rfc>

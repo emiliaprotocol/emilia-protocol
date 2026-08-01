@@ -1,6 +1,6 @@
 # EMILIA Standards Portfolio
 
-Updated: 2026-07-21
+Updated: 2026-08-01
 
 ## One story
 
@@ -93,7 +93,7 @@ content. The CAID Action-Mapping Profile handles the harder case:
 This is content correlation, not authorization. The current implementation and
 shared vectors are in [`../caid`](../caid).
 
-## Current published line
+## Current published line and next revision wave
 
 The July 19 wave established the initial protocol line. On **Tuesday, July 21,
 2026**, seven additional or successor revisions were published, and their local
@@ -114,11 +114,25 @@ XML sources were verified byte-for-byte against the IETF archive:
 7. `draft-schrock-model-to-matter-01`: the current Experimental executor-side
    application profile.
 
-Two implementation-backed candidates are staged but **not filed** as of July
-28: `draft-schrock-ep-outcome-binding-00` introduces source-routed predicted
-effects and independently pinned observations; `draft-schrock-model-to-matter-02`
-uses that result after single-use effect custody. Neither candidate claims
-physical truth, a physical deployment, partner endorsement, or IETF adoption.
+Outcome Binding-00, Model-to-Matter-02, Memory Projection Record-00, AEB-02,
+AE Challenge-01, Revocation Statement-01, Authority Introduction-02, Agent
+Qualification Statements-00, and Action Remedy Receipts-00 were subsequently
+published on July 29-30. Their current XML snapshots are in `posted/`.
+
+Four sources are staged but **not filed** as of August 1:
+
+1. AEC-05 adds verifier-derived distinct-subject requirement semantics while
+   retaining the boundary between SATISFIED and AUTHORIZED. The new requirement
+   member is specified but not yet implemented by the legacy AEC evaluator.
+2. AEB-03 makes separation of duties, current status, signed evaluation records,
+   and one-time consequence custody explicit boundary terms.
+3. Model-to-Matter-03 composes customer-owned Reliance Programs,
+   non-authorizing qualification evidence, and typed AEB admission. The new
+   program digests are not yet wired into the reference clearance object.
+4. Reliance Agreement-00 defines signed terms and per-action reliance records
+   conditioned on evidence sufficiency. Verification is not authorization,
+   legal enforceability, insurance issuance, fault allocation, escrow, or
+   payment.
 
 The published line also retains Authority Introduction-01, Quorum-03, Bounded
 Capability Receipts-00, and the other current individual drafts listed in
@@ -131,11 +145,9 @@ disposition, is in [`STATUS.json`](STATUS.json). A published individual
 Internet-Draft is a proposal, not an RFC, a working-group adoption, or IETF
 endorsement.
 
-Active successor drafts, review packets, and filing schedules are maintained
-outside the public repository. Intentionally public retired sources and
-partner-triggered profiles stay here only with an explicit disposition. Public
-filing status changes only when a submission is published and its immutable
-snapshot is archived here.
+The exact upload packet is in `staged/UPLOAD-THIS/`. Public filing status changes
+only when a submission is published and its immutable snapshot is moved to
+`posted/`.
 
 ## Disposition ledger
 
@@ -149,10 +161,10 @@ These are decisions, not an indefinite waiting room:
 | PQC | Retired as a standalone draft | Evidence Record crypto agility and anti-stripping |
 | Model-to-Matter | Published July 19 as an Experimental profile | Name and open executor profile established; deployment claims require a real executor |
 | Human Oversight | Partner-triggered profile | A regulator or management-system standards partner validates the mapping |
-| Reliance Agreement | Partner-triggered profile | A bank, insurer, or counterparty participates in legal review |
+| Reliance Agreement | Submission-ready individual draft | Narrow signed terms and reliance-event wire format; legal and insurance outcomes remain out of scope |
 
-Retired sources remain in `archive/`; the remaining partner-triggered sources
-live in `profiles/`. Neither directory is a filing queue.
+Retired sources remain in `archive/`; held application profiles live in
+`profiles/`. Neither directory is a filing queue.
 
 ## Adjacent work
 

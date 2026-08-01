@@ -1,0 +1,23 @@
+{
+  "draft-schrock-ep-authorization-evidence-chain-05": [
+    { "tag": "github_repo", "url": "https://github.com/emiliaprotocol/emilia-protocol" },
+    { "tag": "related_implementations", "url": "https://github.com/emiliaprotocol/emilia-protocol/blob/main/packages/verify/src/evidence-chain.ts" },
+    { "tag": "related_implementations", "url": "https://github.com/emiliaprotocol/emilia-protocol/blob/main/packages/verify/src/aeb-adapter-contract.ts" }
+  ],
+  "draft-schrock-action-evidence-boundary-03": [
+    { "tag": "github_repo", "url": "https://github.com/emiliaprotocol/emilia-protocol" },
+    { "tag": "related_implementations", "url": "https://github.com/emiliaprotocol/emilia-protocol/blob/main/packages/verify/src/aeb-adapter-contract.ts" },
+    { "tag": "related_implementations", "url": "https://github.com/emiliaprotocol/emilia-protocol/blob/main/packages/gate/src/proposal-to-effect.ts" },
+    { "tag": "related_implementations", "url": "https://github.com/emiliaprotocol/emilia-protocol/blob/main/packages/gate/src/aeb-consumption-store.ts" }
+  ],
+  "draft-schrock-model-to-matter-03": [
+    { "tag": "github_repo", "url": "https://github.com/emiliaprotocol/emilia-protocol" },
+    { "tag": "related_implementations", "url": "https://github.com/emiliaprotocol/emilia-protocol/blob/main/lib/frontier/model-to-matter.ts" },
+    { "tag": "related_implementations", "url": "https://github.com/emiliaprotocol/emilia-protocol/blob/main/packages/verify/src/outcome-binding.ts" }
+  ],
+  "draft-schrock-ep-reliance-agreement-00": [
+    { "tag": "github_repo", "url": "https://github.com/emiliaprotocol/emilia-protocol" },
+    { "tag": "related_implementations", "url": "https://github.com/emiliaprotocol/emilia-protocol/blob/main/packages/verify/src/reliance-agreement.ts" },
+    { "tag": "related_implementations", "url": "https://github.com/emiliaprotocol/emilia-protocol/blob/main/conformance/vectors/reliance-agreement.v1.json" }
+  ]
+}
