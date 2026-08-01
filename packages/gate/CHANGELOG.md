@@ -4,6 +4,24 @@
 All notable changes to `@emilia-protocol/gate` are documented here.
 This package follows [Semantic Versioning](https://semver.org/).
 
+## 0.22.2 (2026-07-31)
+
+### Security
+
+- Reproject the normalized payment action at admission from the exact
+  server-owned AP2 payloads and source binding, then require every Gate, human,
+  and AEB action digest to match it. A pinned verifier can no longer cause the
+  live path to compare a claimed action with itself.
+- Support an explicit zero-counter platform-passkey policy without a false
+  monotonicity claim; strict counter advancement remains the default, and both
+  modes retain exact assertion replay, AP2 token, provider-operation, and
+  one-time admission controls.
+
+### Packaging
+
+- Include and export the PostgreSQL Gate Qualification v2 schema used by the
+  durable AdmissionStore deployment.
+
 ## 0.22.1 (2026-07-31)
 
 ### Added

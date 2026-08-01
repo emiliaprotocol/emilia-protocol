@@ -20,8 +20,10 @@ import {
 import {
   createFidoAp2AebAdapter,
   createFidoAp2NativeSourceBinding,
+  projectFidoAp2PaymentAction,
   FIDO_AP2_AEB_ADAPTER_ID,
   FIDO_AP2_NATIVE_PROTOCOL_ID,
+  type FidoAp2SignCountPolicy,
   type FidoAp2NativeSourceBindingInput,
 } from '@emilia-protocol/verify/fido-ap2-bridge';
 
@@ -1179,6 +1181,22 @@ function validateTrustedControls(
   };
 }
 
+function pinnedSignCountPolicy(
+  pinnedConfig: AebPinnedConfig,
+  evaluation: ValidatedEvaluation,
+): FidoAp2SignCountPolicy {
+  const pin = object(
+    pinnedConfig.adapters[evaluation.humanAdapterId],
+    'pinnedConfig human adapter',
+  );
+  const config = object(pin.config, 'pinnedConfig human adapter config');
+  if (config.sign_count_policy !== 'above-enrollment-and-one-time'
+      && config.sign_count_policy !== 'not-relied-upon') {
+    fail('pinned WebAuthn counter policy is invalid');
+  }
+  return config.sign_count_policy;
+}
+
 function resourceDigestParts(
   bindings: Obj,
   artifact: ValidatedHumanArtifact,
@@ -1238,6 +1256,7 @@ function deriveResources(
   provider: ValidatedProvider,
   expiresAt: string,
   webauthnCounterHead: number,
+  signCountPolicy: FidoAp2SignCountPolicy,
 ): AdmissionResourceReservationInput[] {
   const context = resourceDigestParts(bindings, artifact, provider, evaluation);
   const webauthnId = `webauthn-assertion:${bridgeDigest(
@@ -1282,18 +1301,19 @@ function deriveResources(
     next_value: artifact.signCount,
   };
 
-  return [
+  const resources: AdmissionResourceReservationInput[] = [
     makeResource('replay', checkoutId, expiresAt, context),
     makeResource('replay', paymentId, expiresAt, context),
     makeResource('replay', webauthnId, expiresAt, context),
-    counter,
-    makeResource(
-      'provider_operation',
-      evaluation.operationId,
-      expiresAt,
-      context,
-    ),
   ];
+  if (signCountPolicy === 'above-enrollment-and-one-time') resources.push(counter);
+  resources.push(makeResource(
+    'provider_operation',
+    evaluation.operationId,
+    expiresAt,
+    context,
+  ));
+  return resources;
 }
 
 function aebInput(
@@ -1365,6 +1385,17 @@ export function createFidoAp2AdmissionInput(
     fail('closed source freshness does not cover admission');
   }
   const trusted = validateTrustedControls(controls);
+  let projectedAction: Obj;
+  try {
+    projectedAction = projectFidoAp2PaymentAction({
+      checkout_mandate: controls.ap2_source.checkout_mandate_payload,
+      payment_mandate: controls.ap2_source.payment_mandate_payload,
+      source_binding: trusted.source,
+    });
+  } catch {
+    return fail('trusted AP2 source cannot be projected into the closed action');
+  }
+  const projectedActionDigest = aebDigest(projectedAction, 'trusted AP2 projected action');
   const nativeAttestation = validateNativeAttestation(
     input.nativeAttestation,
     artifact,
@@ -1377,7 +1408,7 @@ export function createFidoAp2AdmissionInput(
     statuses.current,
     input.humanArtifact,
     input.nativeAttestation,
-    object(input.humanArtifact, 'humanArtifact').normalized_action,
+    projectedAction,
     admitted.iso,
     evaluation,
   );
@@ -1409,6 +1440,7 @@ export function createFidoAp2AdmissionInput(
     'bindings.effect_request_digest',
   );
   const provider = validateProvider(bindings.provider, 'bindings.provider');
+  const signCountPolicy = pinnedSignCountPolicy(pinnedConfig, evaluation);
 
   exact(tenantId, trusted.tenantId, 'server-owned tenant binding');
   exact(relyingPartyId, trusted.relyingPartyId, 'server-owned relying-party binding');
@@ -1441,7 +1473,13 @@ export function createFidoAp2AdmissionInput(
     trusted.source.payment_mandate_token_digest,
     'trusted payment token binding',
   );
-  if (artifact.signCount <= trusted.webauthnCounterHead) {
+  exact(
+    actionDigest,
+    projectedActionDigest,
+    'trusted AP2 projected-action binding',
+  );
+  if (signCountPolicy === 'above-enrollment-and-one-time'
+      && artifact.signCount <= trusted.webauthnCounterHead) {
     fail('WebAuthn counter is not above the server-owned current head');
   }
 
@@ -1504,6 +1542,7 @@ export function createFidoAp2AdmissionInput(
       provider,
       expires.iso,
       trusted.webauthnCounterHead,
+      signCountPolicy,
     ),
     ...statuses.leases,
   ];
