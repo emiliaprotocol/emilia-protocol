@@ -7,7 +7,7 @@ import test from 'node:test';
 // @ts-expect-error -- the CAID reference implementation intentionally has no TS surface.
 import { computeCaid } from './vendor/caid.mjs';
 import { AEB_NATIVE_VERIFICATION_ATTESTATION_VERSION, adapterPinDigest, canonicalizeAeb, createAebNativeVerificationAttestationAdapter, digestAeb, evaluateAebEvidence, registryEntryDigest, signAebNativeVerificationAttestation, unifiedRegistryDigest, verifyAebEvaluation, } from './aeb-adapter-contract.js';
-import { FIDO_AP2_ACTION_TYPE, FIDO_AP2_AEB_ADAPTER_ID, FIDO_AP2_AEB_CONFIG_VERSION, FIDO_AP2_AEB_TRUST_ROOT_VERSION, FIDO_AP2_CAID_ACTION_DEFINITIONS, FIDO_AP2_CAID_MAPPER_ID, FIDO_AP2_CAID_MAPPING_VERSION, FIDO_AP2_CAID_PROFILE_ID, FIDO_AP2_NATIVE_PROTOCOL_ID, FIDO_AP2_SOURCE_BYTES_DOMAIN, FIDO_AP2_SOURCE_REVISION, createFidoAp2AebAdapter, createFidoAp2NativeSourceBinding, createFidoAp2PinnedProfile, projectFidoAp2PaymentAction, } from './fido-ap2-bridge.js';
+import { FIDO_AP2_ACTION_TYPE, FIDO_AP2_AEB_ADAPTER_ID, FIDO_AP2_AEB_CONFIG_VERSION, FIDO_AP2_AEB_TRUST_ROOT_VERSION, FIDO_AP2_CAID_ACTION_DEFINITIONS, FIDO_AP2_CAID_RESOLVER_DESCRIPTOR, FIDO_AP2_CAID_RESOLVER_DIGEST, FIDO_AP2_CAID_MAPPER_ID, FIDO_AP2_CAID_MAPPING_VERSION, FIDO_AP2_CAID_PROFILE_ID, FIDO_AP2_NATIVE_PROTOCOL_ID, FIDO_AP2_SOURCE_BYTES_DOMAIN, FIDO_AP2_SOURCE_REVISION, createFidoAp2AebAdapter, createFidoAp2NativeSourceBinding, createFidoAp2PinnedProfile, projectFidoAp2PaymentAction, } from './fido-ap2-bridge.js';
 const NOW = '2026-07-31T18:00:00.000Z';
 const SOURCE_IAT = Math.floor(Date.parse('2026-07-31T17:59:00.000Z') / 1_000);
 const CHECKOUT_EXP = Math.floor(Date.parse('2026-07-31T18:05:00.000Z') / 1_000);
@@ -31,6 +31,9 @@ const NATIVE_PROTOCOL = FIDO_AP2_NATIVE_PROTOCOL_ID;
 const NATIVE_ADAPTER_ID = 'bridge:ap2-native-verifier';
 const NATIVE_KEY_ID = 'native-verifier:ap2:test';
 const EVALUATOR_KEY_ID = 'evaluator:fido-ap2:test';
+test('the pinned resolver digest matches its exported closed descriptor', () => {
+    assert.equal(digestAeb(FIDO_AP2_CAID_RESOLVER_DESCRIPTOR), FIDO_AP2_CAID_RESOLVER_DIGEST);
+});
 const webauthnSigner = crypto.generateKeyPairSync('ec', { namedCurve: 'P-256' });
 const nativeVerifierSigner = crypto.generateKeyPairSync('ed25519');
 const evaluatorSigner = crypto.generateKeyPairSync('ed25519');

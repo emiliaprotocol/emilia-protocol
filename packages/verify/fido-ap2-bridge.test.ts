@@ -24,6 +24,8 @@ import {
   FIDO_AP2_AEB_CONFIG_VERSION,
   FIDO_AP2_AEB_TRUST_ROOT_VERSION,
   FIDO_AP2_CAID_ACTION_DEFINITIONS,
+  FIDO_AP2_CAID_RESOLVER_DESCRIPTOR,
+  FIDO_AP2_CAID_RESOLVER_DIGEST,
   FIDO_AP2_CAID_MAPPER_ID,
   FIDO_AP2_CAID_MAPPING_VERSION,
   FIDO_AP2_CAID_PROFILE_ID,
@@ -61,6 +63,10 @@ const NATIVE_PROTOCOL = FIDO_AP2_NATIVE_PROTOCOL_ID;
 const NATIVE_ADAPTER_ID = 'bridge:ap2-native-verifier';
 const NATIVE_KEY_ID = 'native-verifier:ap2:test';
 const EVALUATOR_KEY_ID = 'evaluator:fido-ap2:test';
+
+test('the pinned resolver digest matches its exported closed descriptor', () => {
+  assert.equal(digestAeb(FIDO_AP2_CAID_RESOLVER_DESCRIPTOR), FIDO_AP2_CAID_RESOLVER_DIGEST);
+});
 
 const webauthnSigner = crypto.generateKeyPairSync('ec', { namedCurve: 'P-256' });
 const nativeVerifierSigner = crypto.generateKeyPairSync('ed25519');
