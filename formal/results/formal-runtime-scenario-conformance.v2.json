@@ -903,7 +903,7 @@
     },
     {
       "path": "packages/verify/dist/aeb-adapter-contract.js",
-      "sha256": "e99916aeeac8ddb229ebaea0ce9093317753ba7075fd2821ee7eaba3b79ba4f5"
+      "sha256": "d1518af88f684e1234685ba669ea0bb82bf264a3a5ec51a62fb442713e13d98b"
     },
     {
       "path": "packages/verify/dist/aeb-consequence-conformance.js",
@@ -979,7 +979,7 @@
     },
     {
       "path": "packages/verify/dist/fido-ap2-bridge.js",
-      "sha256": "b391b4ad387dc0030452e95edf07a2ab2f9c709771af5466f52fe8707ba32e52"
+      "sha256": "0c68f8a5348ac780771ecad8c49c7238b70efb9fbedbf5371b94aa3e49b1fa1b"
     },
     {
       "path": "packages/verify/dist/gate-qualification-promptfoo.js",
@@ -987,7 +987,7 @@
     },
     {
       "path": "packages/verify/dist/gate-qualification.js",
-      "sha256": "31c116f7a598369579a2eca65b5db20411bdc5e63e1cee150852a2a181301498"
+      "sha256": "568a5bcc7c746c4917175e4438ce7014b78a769f46f935d4db450785cc42ce24"
     },
     {
       "path": "packages/verify/dist/index.js",
@@ -999,7 +999,7 @@
     },
     {
       "path": "packages/verify/dist/orprg.js",
-      "sha256": "7d8b7d6257665b2d2a0feabf2aaf0e243e0f4466dfcb7f49baef9bd5d3af88db"
+      "sha256": "15b38cb10b9b2c8af475b78191837eeb476bf79b9dd4c360be7dd00411f620e8"
     },
     {
       "path": "packages/verify/dist/outcome-binding.js",
@@ -1011,7 +1011,7 @@
     },
     {
       "path": "packages/verify/dist/provenance.js",
-      "sha256": "5d6e721a6be4972c2c0747818355bb432dab77ecd5c83af11dcfd6f8981e9708"
+      "sha256": "a7a7c892f1f969f0d0f03c0010498e8e657fd12ff79fce3ad580478196349655"
     },
     {
       "path": "packages/verify/dist/quorum.js",
@@ -1031,7 +1031,7 @@
     },
     {
       "path": "packages/verify/dist/strict-json.js",
-      "sha256": "9bdf784352f58e4982a3493b39a8cede6242d2e68d9e25721660f61850d0925b"
+      "sha256": "bd9035a1d70fe78e9f4f64240e79b962e58eb31c0ab1549e98a8c44282dbfff3"
     },
     {
       "path": "packages/verify/dist/surface-binding.js",
@@ -1079,7 +1079,7 @@
     },
     {
       "path": "packages/verify/src/aeb-adapter-contract.ts",
-      "sha256": "6dfbe4e0c5401d260b29f0bbe4192a03128b4915e1c9227e41661ca9ac45b7ef"
+      "sha256": "1d4f1a42c6a65b11e08556feb56e7770f1a3022acb55659ccd0326428df5a536"
     },
     {
       "path": "packages/verify/src/authority-program.ts",
