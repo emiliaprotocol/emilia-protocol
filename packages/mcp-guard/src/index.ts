@@ -42,6 +42,7 @@ import {
   verifyEmiliaReceipt,
   receiptChallenge,
   evaluateReceiptAssurance,
+  canonicalizeStrictJson,
   makeReceiptGate,
   parseReceiptCarrier,
 } from '../../require-receipt/index.js';
@@ -55,37 +56,7 @@ type AnyRecord = Record<string, any>;
 // applied to an EP-RECEIPT-v1 payload here; Core canonicalization is untouched.
 // ---------------------------------------------------------------------------
 
-function canonicalize(v: any, seen: Set<any> = new Set<any>()): string {
-  if (v === null || typeof v === 'string' || typeof v === 'boolean') return JSON.stringify(v);
-  if (typeof v === 'number') {
-    if (!Number.isSafeInteger(v)) throw new TypeError('value_outside_ep_canonical_profile');
-    return JSON.stringify(v);
-  }
-  if (Array.isArray(v)) {
-    if (seen.has(v)) throw new TypeError('cyclic_value');
-    seen.add(v);
-    try {
-      return `[${v.map((entry) => canonicalize(entry, seen)).join(',')}]`;
-    } finally {
-      seen.delete(v);
-    }
-  }
-  if (typeof v === 'object') {
-    const proto = Object.getPrototypeOf(v);
-    if (proto !== Object.prototype && proto !== null) throw new TypeError('non_json_object');
-    if (seen.has(v)) throw new TypeError('cyclic_value');
-    seen.add(v);
-    try {
-      return `{${Object.keys(v)
-        .sort()
-        .map((k) => JSON.stringify(k) + ':' + canonicalize(v[k], seen))
-        .join(',')}}`;
-    } finally {
-      seen.delete(v);
-    }
-  }
-  throw new TypeError('value_outside_ep_canonical_profile');
-}
+const canonicalize = canonicalizeStrictJson;
 
 function sha256Hex(s: string): string {
   return crypto.createHash('sha256').update(s, 'utf8').digest('hex');
@@ -479,18 +450,18 @@ export function withMcpGuard(handler: (...args: any[]) => any, options: AnyRecor
     return bindToolAction(name, args, a || name);
   };
 
-  const gates = new Map();
   const gateFor = (action: string, requiredTier: string): any => {
-    const key = `${requiredTier}\u0000${action}`;
-    if (!gates.has(key)) {
-      gates.set(key, makeReceiptGate({
-        ...verifyOpts,
-        action,
-        assuranceClass: requiredTier,
-        store,
-      }));
-    }
-    return gates.get(key);
+    // Gate objects carry no authority state. The shared atomic consumption
+    // store does. Retaining one gate per attacker-controlled action string made
+    // this middleware a remotely growable memory cache and unsafe eviction
+    // would have risked confusing the state boundary. Build the lightweight
+    // wrapper per invocation and retain only the authoritative store.
+    return makeReceiptGate({
+      ...verifyOpts,
+      action,
+      assuranceClass: requiredTier,
+      store,
+    });
   };
 
   const guarded = async function guardedDispatch(name: string, args: AnyRecord = {}, extra: AnyRecord = {}): Promise<any> {

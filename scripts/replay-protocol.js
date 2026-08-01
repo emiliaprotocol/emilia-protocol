@@ -24,8 +24,22 @@
 import crypto from 'crypto';
 // Event payloads predate the strict EP I-JSON profile and legitimately contain
 // numeric score fields such as 82.5. Replay must preserve that established
-// portable hash encoding; new security-sensitive signers use lib/canonical-json.
-import { canonicalize } from '../packages/verify/index.js';
+// hash encoding; new security-sensitive signers use the strict canonical JSON
+// domain. Keep this legacy canonicalizer local so it cannot be mistaken for the
+// receipt signing primitive.
+function canonicalize(value) {
+    if (value === null || value === undefined)
+        return JSON.stringify(value);
+    if (Array.isArray(value))
+        return `[${value.map(canonicalize).join(',')}]`;
+    if (typeof value === 'object') {
+        return `{${Object.keys(value)
+            .sort()
+            .map((key) => `${JSON.stringify(key)}:${canonicalize(value[key])}`)
+            .join(',')}}`;
+    }
+    return JSON.stringify(value);
+}
 // ---------------------------------------------------------------------------
 // Hash helpers
 // ---------------------------------------------------------------------------

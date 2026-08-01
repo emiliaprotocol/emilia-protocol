@@ -33,6 +33,23 @@ describe('browser verifier — published source vs app copy', () => {
     expect(vendored).toBe(published);
   });
 
+  it('issuer and verifier ship byte-identical strict canonicalization runtimes', () => {
+    const verifier = readFileSync(resolve(root, 'packages/verify/dist/strict-json.js'), 'utf8');
+    const issuer = readFileSync(resolve(root, 'packages/issue/strict-json.js'), 'utf8');
+    expect(issuer).toBe(verifier);
+  });
+
+  it('all TypeScript consumers derive strict canonicalization from one source', () => {
+    const authoritative = readFileSync(resolve(root, 'packages/verify/src/strict-json.ts'), 'utf8');
+    for (const relative of [
+      'packages/require-receipt/src/strict-json.ts',
+      'packages/gate/src/strict-json.ts',
+      'packages/mobile/src/strict-json.ts',
+    ]) {
+      expect(readFileSync(resolve(root, relative), 'utf8')).toBe(authoritative);
+    }
+  });
+
   it('the vendored verifier actually verifies a signed receipt (smoke)', async () => {
     const crypto = await import('crypto');
     const { verifyReceipt } = await import('../lib/verify-web.js');

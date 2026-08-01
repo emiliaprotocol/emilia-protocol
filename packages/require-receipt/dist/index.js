@@ -18,7 +18,7 @@
  * @emilia-protocol/verify. Zero network. Pin the issuer keys you trust.
  */
 import crypto from 'node:crypto';
-import { strictJsonGate } from './strict-json.js';
+import { canonicalizeStrictJson, isStrictCanonicalJson, strictJsonGate, } from './strict-json.js';
 export { EP_APPROVAL_FLOW, APPROVAL_REQUEST_ID_PATTERN, APPROVAL_POLL_TOKEN_PATTERN, APPROVAL_IDEMPOTENCY_KEY_PATTERN, APPROVAL_STATUSES, approvalActionHash, validateApprovalAuthorization, validateRequiredFields, validateCaidSelector, beginReceiptApproval, pollReceiptApproval, } from './acquisition.js';
 import { approvalActionHash, validateApprovalAuthorization, validateRequiredFields, validateCaidSelector, } from './acquisition.js';
 export const LEGACY_RECEIPT_REQUIRED_STATUS = 402;
@@ -71,15 +71,7 @@ export function parseReceiptCarrier(value, { maxBytes = MAX_RECEIPT_CARRIER_BYTE
         return null;
     }
 }
-function canonicalize(v) {
-    if (v === null || v === undefined)
-        return JSON.stringify(v);
-    if (Array.isArray(v))
-        return `[${v.map(canonicalize).join(',')}]`;
-    if (typeof v === 'object')
-        return `{${Object.keys(v).sort().map((k) => JSON.stringify(k) + ':' + canonicalize(v[k])).join(',')}}`;
-    return JSON.stringify(v);
-}
+const canonicalize = canonicalizeStrictJson;
 /**
  * EP canonicalization profile: JCS over an I-JSON value subset. Signed receipt
  * payloads must contain only strings, booleans, null, arrays, objects, and safe
@@ -88,15 +80,7 @@ function canonicalize(v) {
  * diverge on canonical bytes.
  */
 export function isCanonicalizable(value) {
-    if (value === null || typeof value === 'string' || typeof value === 'boolean')
-        return true;
-    if (typeof value === 'number')
-        return Number.isInteger(value) && Number.isSafeInteger(value);
-    if (Array.isArray(value))
-        return value.every(isCanonicalizable);
-    if (typeof value === 'object')
-        return Object.values(value).every(isCanonicalizable);
-    return false;
+    return isStrictCanonicalJson(value);
 }
 /**
  * Parse a base64url SPKI-DER public key into a KeyObject, cached by string so a
@@ -826,7 +810,7 @@ export default requireReceiptExports;
 // Canonical hardened gate: target binding + consume-after-success + sanitized
 // rejections, in one reviewed place. Prefer this over hand-rolling a guard.
 export { makeReceiptGate } from './gate.js';
-export { strictJsonGate } from './strict-json.js';
+export { canonicalizeStrictJson, isStrictCanonicalJson, strictJsonGate, } from './strict-json.js';
 // EP-RECEIPT-JWS-PROFILE-v1: serialize/verify an EP receipt as a standard
 // compact JWS (RFC 7515, EdDSA per RFC 8037) so any JOSE verifier can consume
 // it. Parallel envelope over the SAME JCS canonical payload — not a replacement

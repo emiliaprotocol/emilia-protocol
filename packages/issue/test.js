@@ -36,6 +36,7 @@ import {
   validateInitiatorAttestation,
   validateAgentBinding,
   canonicalize,
+  isCanonicalizable,
   buildReceiptAnchorV2,
   ESCALATION_TRIGGERS,
   ATTESTATION_STATEMENT_MAX,
@@ -55,6 +56,34 @@ const action = {
   policy_id: 'ep:policy:wires-over-100k@v12',
   requested_at: '2026-06-09T17:21:04Z',
 };
+
+test('issuer rejects every non-JSON JavaScript shape that can collapse canonical bytes', () => {
+  class CustomRecord {
+    constructor() { this.value = 'same'; }
+  }
+  const sparse = [];
+  sparse.length = 1;
+  const getter = {};
+  Object.defineProperty(getter, 'value', { enumerable: true, get: () => 'same' });
+  const symbolMember = { value: 'same' };
+  Object.defineProperty(symbolMember, Symbol('hidden'), { value: 'secret', enumerable: true });
+  const cyclic = {};
+  cyclic.self = cyclic;
+  for (const value of [
+    new Date('2026-06-09T00:00:00Z'),
+    new Map([['value', 'same']]),
+    new Set(['same']),
+    /same/,
+    new CustomRecord(),
+    sparse,
+    getter,
+    symbolMember,
+    cyclic,
+  ]) {
+    assert.equal(isCanonicalizable(value), false);
+    assert.throws(() => canonicalize(value), /canonical JSON domain/i);
+  }
+});
 
 // A trusted log keypair shared across the multi-signer tests below.
 const log = (() => {
@@ -481,24 +510,14 @@ test('buildReceiptAnchorV2: a v2-anchored document verifies under verifyReceipt 
 });
 
 test('issuer refuses non-I-JSON signed material before minting Trust Receipts or anchors', async () => {
-  const a = classBSigner('ep:key:k1', 'ep:approver:cfo', new Date().toISOString());
   const badAction = { ...action, parameters: { amount: 2400000.25, currency: 'USD' } };
-  const contexts = buildContexts({
+  assert.throws(() => buildContexts({
     action: badAction,
     policyHash: 'sha256:aa',
     approvers: ['ep:approver:cfo'],
     requiredApprovals: 1,
     issuedAt: '2026-06-09T17:21:05Z',
     expiresAt: new Date(Date.now() + 3600_000).toISOString(),
-  });
-  const signoffs = await collectSignoffs(contexts, [a.signer]);
-  assert.throws(() => assembleAuthorizationReceipt({
-    receiptId: 'ep:receipt:bad-float',
-    action: badAction,
-    contexts,
-    signoffs,
-    committedAt: new Date().toISOString(),
-    log,
-  }), /canonicalization profile/);
+  }), /strict canonical JSON domain/);
   assert.throws(() => buildReceiptAnchorV2({ amount: 1.25 }), /canonicalization profile/);
 });

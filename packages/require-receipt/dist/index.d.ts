@@ -165,6 +165,6 @@ declare const requireReceiptExports: {
 };
 export default requireReceiptExports;
 export { makeReceiptGate } from './gate.js';
-export { strictJsonGate } from './strict-json.js';
+export { canonicalizeStrictJson, isStrictCanonicalJson, strictJsonGate, } from './strict-json.js';
 export { serializeReceiptJws, verifyReceiptJws, deriveKid, JWS_PROFILE_VERSION, JWS_ALG, JWS_TYP, } from './jws.js';
 //# sourceMappingURL=index.d.ts.map

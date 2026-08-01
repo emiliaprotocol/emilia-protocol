@@ -6,6 +6,7 @@
 
 import { describe, expect, it } from 'vitest';
 import crypto from 'node:crypto';
+import { readFileSync } from 'node:fs';
 import {
   classifyToolCall,
   bindToolAction,
@@ -57,6 +58,15 @@ describe('@emilia-protocol/mcp-guard boundary hardening', () => {
     expect(classifyToolCall('delete_repo', { __ep: { irreversible: false } }, {
       defaultIrreversible: true,
     })).toEqual({ irreversible: true, reason: 'default' });
+  });
+
+  it('retains no attacker-keyed per-action gate cache', () => {
+    const source = readFileSync(
+      new URL('../packages/mcp-guard/src/index.ts', import.meta.url),
+      'utf8',
+    );
+    expect(source).not.toMatch(/const\s+gates\s*=\s*new\s+Map/);
+    expect(source).not.toMatch(/gates\.(?:has|set|get)\s*\(/);
   });
 
   it('still allows per-call metadata to escalate a call to irreversible', () => {

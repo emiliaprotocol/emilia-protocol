@@ -6,6 +6,21 @@ Versioning model: Protocol spec and reference repo share the root version (1.0.x
 
 ## [Unreleased] — main as of 2026-06-11
 
+### Receipt release hardening
+
+- **Closed canonical signing domain** — Verify, Issue, Require Receipt, Gate,
+  Mobile, and the drop-in runtime share one strict JSON implementation. Values
+  that can disappear, execute code, or collapse to ambiguous bytes are refused
+  before signing or verification.
+- **MCP memory boundary** — MCP Guard no longer retains one gate per
+  attacker-controlled action. Lightweight gates are created per invocation;
+  only the shared atomic consumption store retains authority state.
+- **Current evidence and WebAuthn signals** — Trust Receipt verification can
+  enforce current key windows, revocation statements, transition auditing,
+  trusted timestamps for high-value financial actions, and state-aware
+  WebAuthn signature-counter policy while keeping authenticity separate from
+  admission and replay prevention.
+
 ### Activation pass — closing the pure-code loose ends
 - **SSO sessions** — a successful SAML ACS / OIDC callback now mints a signed EP
   session (`ep_session` cookie); `GET/DELETE /api/sso/session`. SSO *logs you in*,

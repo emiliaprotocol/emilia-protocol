@@ -37,51 +37,14 @@
  * assumptions. The demand hook fails CLOSED.
  */
 import crypto from 'node:crypto';
-import { verifyEmiliaReceipt, receiptChallenge, evaluateReceiptAssurance, makeReceiptGate, parseReceiptCarrier, } from '../../require-receipt/index.js';
+import { verifyEmiliaReceipt, receiptChallenge, evaluateReceiptAssurance, canonicalizeStrictJson, makeReceiptGate, parseReceiptCarrier, } from '../../require-receipt/index.js';
 // ---------------------------------------------------------------------------
 // Canonicalization (RFC 8785-style, key-sorted) — used ONLY for the additive
 // provenance bundle and for hashing tool-call inputs. It is byte-identical to
 // the canonicalize() in @emilia-protocol/issue and /require-receipt. It is NEVER
 // applied to an EP-RECEIPT-v1 payload here; Core canonicalization is untouched.
 // ---------------------------------------------------------------------------
-function canonicalize(v, seen = new Set()) {
-    if (v === null || typeof v === 'string' || typeof v === 'boolean')
-        return JSON.stringify(v);
-    if (typeof v === 'number') {
-        if (!Number.isSafeInteger(v))
-            throw new TypeError('value_outside_ep_canonical_profile');
-        return JSON.stringify(v);
-    }
-    if (Array.isArray(v)) {
-        if (seen.has(v))
-            throw new TypeError('cyclic_value');
-        seen.add(v);
-        try {
-            return `[${v.map((entry) => canonicalize(entry, seen)).join(',')}]`;
-        }
-        finally {
-            seen.delete(v);
-        }
-    }
-    if (typeof v === 'object') {
-        const proto = Object.getPrototypeOf(v);
-        if (proto !== Object.prototype && proto !== null)
-            throw new TypeError('non_json_object');
-        if (seen.has(v))
-            throw new TypeError('cyclic_value');
-        seen.add(v);
-        try {
-            return `{${Object.keys(v)
-                .sort()
-                .map((k) => JSON.stringify(k) + ':' + canonicalize(v[k], seen))
-                .join(',')}}`;
-        }
-        finally {
-            seen.delete(v);
-        }
-    }
-    throw new TypeError('value_outside_ep_canonical_profile');
-}
+const canonicalize = canonicalizeStrictJson;
 function sha256Hex(s) {
     return crypto.createHash('sha256').update(s, 'utf8').digest('hex');
 }
@@ -456,18 +419,18 @@ export function withMcpGuard(handler, options = {}) {
             a = globalAction(name, args, extra);
         return bindToolAction(name, args, a || name);
     };
-    const gates = new Map();
     const gateFor = (action, requiredTier) => {
-        const key = `${requiredTier}\u0000${action}`;
-        if (!gates.has(key)) {
-            gates.set(key, makeReceiptGate({
-                ...verifyOpts,
-                action,
-                assuranceClass: requiredTier,
-                store,
-            }));
-        }
-        return gates.get(key);
+        // Gate objects carry no authority state. The shared atomic consumption
+        // store does. Retaining one gate per attacker-controlled action string made
+        // this middleware a remotely growable memory cache and unsafe eviction
+        // would have risked confusing the state boundary. Build the lightweight
+        // wrapper per invocation and retain only the authoritative store.
+        return makeReceiptGate({
+            ...verifyOpts,
+            action,
+            assuranceClass: requiredTier,
+            store,
+        });
     };
     const guarded = async function guardedDispatch(name, args = {}, extra = {}) {
         const ann = resolveAnnotations(name);

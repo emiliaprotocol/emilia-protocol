@@ -23,6 +23,8 @@
     "tsconfig.json",
     "cli.js",
     "strict-json.js",
+    "strict-json.js.map",
+    "strict-json.d.ts",
     "index.d.ts",
     "README.md",
     "LICENSE"
