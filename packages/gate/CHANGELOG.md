@@ -4,7 +4,7 @@
 All notable changes to `@emilia-protocol/gate` are documented here.
 This package follows [Semantic Versioning](https://semver.org/).
 
-## 0.22.0 (2026-07-31)
+## 0.22.1 (2026-07-31)
 
 ### Added
 

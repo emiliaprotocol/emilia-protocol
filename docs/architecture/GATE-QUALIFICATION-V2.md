@@ -354,7 +354,7 @@ The repository release chain is dependency ordered:
 1. publish and verify the exact registry bytes for
    `@emilia-protocol/verify@3.19.0`;
 2. only after that pinned tarball is available, release
-   `@emilia-protocol/gate@0.22.0` and/or `ep-qualify@0.1.0`.
+   `@emilia-protocol/gate@0.22.1` and/or `ep-qualify@0.1.0`.
 
 Gate and `ep-qualify` are downstream siblings and may release independently
 after Verify. The release registry pins Verify's exact tarball digest for both.

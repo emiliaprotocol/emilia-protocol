@@ -220,7 +220,7 @@ reconciliation path, and protected-path inventory.
   invariants, 10 properties, a `COMMITTED + DIVERGED` witness, and a five-state
   unsafe late-supersession counterexample. It abstracts cryptography, provider
   truth, clocks, storage, deployment, and arbitrary concurrency.
-- The release chain orders Verify 3.19.0 before Gate 0.22.0 and `ep-qualify`
+- The release chain orders Verify 3.19.0 before Gate 0.22.1 and `ep-qualify`
   0.1.0, but the checkout does not establish that any package is live.
 - No federated coordinator, managed-production deployment, independent
   implementation, or production recovery evidence is established here.
