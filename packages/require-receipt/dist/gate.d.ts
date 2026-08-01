@@ -103,7 +103,7 @@ export declare function makeReceiptGate(opts?: AnyRecord): {
         ok: boolean;
         receiptId: string;
         outcome: any;
-        signer: string;
+        signer: string | undefined;
         subject: any;
         boundAction: string;
         status?: undefined;
@@ -152,7 +152,7 @@ export declare function makeReceiptGate(opts?: AnyRecord): {
         ok: boolean;
         receiptId: string;
         outcome: any;
-        signer: string;
+        signer: string | undefined;
         subject: any;
         boundAction: string;
         status?: undefined;
@@ -161,7 +161,7 @@ export declare function makeReceiptGate(opts?: AnyRecord): {
         ok: boolean;
         receiptId: string;
         outcome: any;
-        signer: string;
+        signer: string | undefined;
         result: unknown;
     }>;
     boundActionFor: (target: any) => string;

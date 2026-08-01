@@ -479,18 +479,40 @@ export function withMcpGuard(handler: (...args: any[]) => any, options: AnyRecor
     return bindToolAction(name, args, a || name);
   };
 
+  // The cache key embeds the bound action, which incorporates a digest of the
+  // call arguments, so a caller varying one argument per call mints an unbounded
+  // number of distinct keys. Unbounded here means the caller sets the memory
+  // ceiling of a long-lived server process, so the map is capped with LRU eviction.
+  //
+  // Evicting a gate cannot lose a reservation. A gate is a closure over config;
+  // one-time consumption state lives in `store`, which is shared across every gate
+  // and supplied by the caller. A re-created gate for the same key consults the
+  // same store and still refuses a replay.
+  const GATE_CACHE_MAX = 1000;
   const gates = new Map();
   const gateFor = (action: string, requiredTier: string): any => {
     const key = `${requiredTier}\u0000${action}`;
-    if (!gates.has(key)) {
-      gates.set(key, makeReceiptGate({
-        ...verifyOpts,
-        action,
-        assuranceClass: requiredTier,
-        store,
-      }));
+    const cached = gates.get(key);
+    if (cached !== undefined) {
+      // Refresh recency: re-inserting moves the key to the end of the Map's
+      // insertion order, which is what makes the eviction below LRU.
+      gates.delete(key);
+      gates.set(key, cached);
+      return cached;
     }
-    return gates.get(key);
+    const gate = makeReceiptGate({
+      ...verifyOpts,
+      action,
+      assuranceClass: requiredTier,
+      store,
+    });
+    gates.set(key, gate);
+    while (gates.size > GATE_CACHE_MAX) {
+      const oldest = gates.keys().next();
+      if (oldest.done) break;
+      gates.delete(oldest.value);
+    }
+    return gate;
   };
 
   const guarded = async function guardedDispatch(name: string, args: AnyRecord = {}, extra: AnyRecord = {}): Promise<any> {

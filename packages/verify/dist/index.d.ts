@@ -18,7 +18,6 @@ export * from './aeb-discovery-permit-adapter.js';
 export * from './aeb-wimse-oauth-adapter.js';
 export * from './aeb-native-adapters.js';
 export * from './aeb-psea-adapter.js';
-export * from './fido-ap2-bridge.js';
 export * from './agent-edge-continuity.js';
 export * from './discovery-permit-contract.js';
 export * from './status.js';
@@ -43,7 +42,7 @@ declare function canonicalize(value: any): string;
  * signing. It is a pure predicate (no throw), so it is safe to call anywhere.
  * Returns true iff every scalar is a string, boolean, null, or safe integer.
  */
-export declare function isCanonicalizable(value: any): boolean;
+export declare function isCanonicalizable(value: any, seen?: Set<any>): boolean;
 /**
  * EP-QUORUM-v1 ordered-chain hash: the hex SHA-256 of the canonical signoff
  * context. Used to cryptographically link each ordered signoff to its

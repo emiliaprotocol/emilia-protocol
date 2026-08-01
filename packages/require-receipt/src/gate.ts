@@ -217,7 +217,11 @@ export function makeReceiptGate(opts: AnyRecord = {}) {
     // to the same empty consume key, so the reservation below would neither
     // identify nor protect this receipt. Refuse before touching the store, as
     // app/api/v1/guarded and packages/gate already do (redteam HI-5).
-    const receiptId = v.receipt_id;
+    // Trimmed before the emptiness test: a whitespace-only id is not an
+    // identity. Two distinct receipts carrying '   ' would share one consume
+    // key, so the first to commit would block the second as a replay even
+    // though they authorize different things.
+    const receiptId = typeof v.receipt_id === 'string' ? v.receipt_id.trim() : v.receipt_id;
     if (typeof receiptId !== 'string' || receiptId === '') {
       return refuse(boundAction, 'missing_receipt_id', observedHash);
     }

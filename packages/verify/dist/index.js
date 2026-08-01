@@ -20,7 +20,6 @@ export * from './aeb-discovery-permit-adapter.js';
 export * from './aeb-wimse-oauth-adapter.js';
 export * from './aeb-native-adapters.js';
 export * from './aeb-psea-adapter.js';
-export * from './fido-ap2-bridge.js';
 export * from './agent-edge-continuity.js';
 export * from './discovery-permit-contract.js';
 export * from './status.js';
@@ -105,15 +104,35 @@ function canonicalize(value) {
  * signing. It is a pure predicate (no throw), so it is safe to call anywhere.
  * Returns true iff every scalar is a string, boolean, null, or safe integer.
  */
-export function isCanonicalizable(value) {
+export function isCanonicalizable(value, seen = new Set()) {
     if (value === null || typeof value === 'string' || typeof value === 'boolean')
         return true;
     if (typeof value === 'number')
         return Number.isInteger(value) && Number.isSafeInteger(value);
-    if (Array.isArray(value))
-        return value.every(isCanonicalizable);
-    if (typeof value === 'object')
-        return Object.values(value).every(isCanonicalizable);
+    if (typeof value === 'object') {
+        // A self-referential object would recurse until the stack is exhausted.
+        // JSON cannot express a cycle, so this is unreachable for anything parsed
+        // off the wire, but the predicate is exported and callers construct objects
+        // in memory before signing. Out of profile is the correct answer: a cyclic
+        // value has no canonical form, so it must not be signed.
+        if (seen.has(value))
+            return false;
+        seen.add(value);
+        try {
+            if (Array.isArray(value))
+                return value.every((v) => isCanonicalizable(v, seen));
+            // Symbol-keyed properties are invisible to Object.keys, so canonicalize()
+            // would omit them and the signature would not cover them. Any consumer
+            // reading the raw object could then act on material the signature never
+            // bound. Refuse rather than sign around them.
+            if (Object.getOwnPropertySymbols(value).length > 0)
+                return false;
+            return Object.values(value).every((v) => isCanonicalizable(v, seen));
+        }
+        finally {
+            seen.delete(value);
+        }
+    }
     return false; // undefined, bigint, symbol, function — out of profile
 }
 /**
@@ -494,6 +513,12 @@ export function verifyCommitmentProof(proof, publicKeyBase64url = null, options 
 export function verifyReceiptBundle(bundle, publicKeyBase64url) {
     if (bundle?.['@version'] !== 'EP-BUNDLE-v1') {
         return { valid: false, total: 0, verified: 0, failed: ['Invalid bundle version'] };
+    }
+    // A bundle carrying the right @version but no documents array would throw on
+    // .length here. Malformed input must return a refusal with a reason, never an
+    // uncaught TypeError that surfaces as a crash in the caller.
+    if (!Array.isArray(bundle.documents)) {
+        return { valid: false, total: 0, verified: 0, failed: ['Bundle documents must be an array'] };
     }
     const failed = [];
     let verified = 0;
