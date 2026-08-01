@@ -55,7 +55,7 @@ export function packageTargets(
       const importPath = typeof exportValue === 'string'
         ? exportValue
         : exportValue && typeof exportValue === 'object' && !Array.isArray(exportValue)
-          ? exportValue.import
+          ? (exportValue as Record<string, unknown>).import
           : undefined;
       if (typeof importPath !== 'string') {
         throw new Error(`${name} export ${subpath} has no closed import target`);
