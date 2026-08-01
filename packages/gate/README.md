@@ -177,6 +177,36 @@ A `QUALIFIED` verifier result by itself is non-authorizing. It does not grant
 permission, reserve or consume authority, invoke a provider, or establish
 legality or business suitability.
 
+`@emilia-protocol/gate/fido-ap2-bridge` supplies pure builders for the closed,
+immediate AP2 v0.2 profile. The caller supplies evidence; a separate
+server-owned controls object supplies the trusted clock, pinned AEB config,
+authenticated status resolver, tenant/RP/audience/actors, exact canonical AP2
+tokens, verified payloads, authenticated hash algorithm, current WebAuthn
+counter head, final provider-request bytes, and pinned provider adapter. The adapter
+must prove that those exact bytes carry the exact PaymentMandate token. The
+builders then retain the full signed AEB evaluation and derive replay,
+provider-operation, status-head, and monotonic WebAuthn-counter resources.
+
+The returned admission input is a recursively frozen clone. Immediate AP2
+execution is represented by an omitted `execution_date`, as required by the
+pinned v0.2 schema; schema-invalid `null` optionals fail closed upstream.
+
+Request-side trust configuration, status maps, clocks, actor identities,
+provider adapters, provider bytes, and reservation identifiers are not
+accepted. The builders do not reserve state, hold provider credentials, invoke
+a payment service, or reconcile an effect. The result must still pass Gate
+Qualification v2 remeasurement and AdmissionStore `beginInvocation()` before
+the protected adapter may enter the provider. The durable AdmissionStore is the
+sole one-time authority-custody boundary.
+Its memory and PostgreSQL implementations compare and advance the credential
+counter atomically with successful `reserve()` and recheck the durable head at
+`beginInvocation()`; duplicate or rolled-back counts fail closed. A trusted
+enrollment or recovery path must provision the initial head first
+(`initialMonotonicCounterHeads` for the test-only memory store, or the
+operator-only `ep_gate_provision_monotonic_counter` SQL function). A request
+cannot create or replace its own counter baseline, and release never lowers a
+committed head.
+
 ## Proposal to effect
 
 `@emilia-protocol/gate/proposal-to-effect` closes the loop from an agent's

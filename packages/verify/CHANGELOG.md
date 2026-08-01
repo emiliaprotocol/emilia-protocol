@@ -3,7 +3,36 @@
 All notable changes to `@emilia-protocol/verify` are documented here.
 This package follows [Semantic Versioning](https://semver.org/).
 
-## Unreleased
+## 3.19.0 (2026-07-31)
+
+### Added
+
+- A relying-party-pinned WebAuthn ES256/P-256 human-authorization adapter for
+  the closed, immediate AP2 v0.2 `CheckoutMandate`/`PaymentMandate` subset.
+  Exact canonical SD-JWT token strings, the merchant checkout JWT, the
+  normalized action, readable disclosure, protected provider request,
+  provider/account, tenant, actors, nonce, and source expiry are bound without
+  collapsing AP2-native verification into human authorization.
+- A deterministic AP2 v0.2-to-CAID projection and source-binding helper that
+  commits exact tokens, disclosure-resolved payloads, and the authenticated
+  AP2 checkout-hash algorithm returned by native verifiers.
+
+### Security
+
+- Unknown, legacy, open, recurring, materially lossy, stale, revoked,
+  previously consumed, cross-origin, extension-bearing, or malformed evidence
+  fails closed. The WebAuthn profile requires UP and UV, a 37-byte
+  extension-free assertion, an ES256/P-256 enrolled key, and a counter above
+  enrollment; exact one-time use remains a Gate admission property.
+- Strict canonicalization now rejects malformed UTF-16 in nested JSON values
+  and member names before signing, verification, or digesting.
+- The AP2 projection now follows the pinned v0.2 optional-member types and
+  represents immediate execution by omitting `execution_date`; schema-invalid
+  `null` optionals fail closed. AEB and bridge instants reject precision beyond
+  milliseconds instead of truncating a future not-before value.
+- Verified source payload commitments prevent valid mandate tokens from being
+  spliced onto unrelated projected objects; authenticated AP2 `sha-256`,
+  `sha-384`, and `sha-512` checkout linkage is supported.
 
 ## 3.18.2 (2026-07-29)
 

@@ -48,6 +48,7 @@
     "src/aeb-consequence-conformance.ts",
     "src/aeb-native-adapters.ts",
     "src/aeb-psea-adapter.ts",
+    "src/fido-ap2-bridge.ts",
     "src/agent-edge-continuity.ts",
     "src/status.ts",
     "src/gate-qualification.ts",

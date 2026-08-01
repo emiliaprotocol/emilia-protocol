@@ -168,6 +168,17 @@ test('SQL contract is singleton-bound, append-only, and has permanent operation/
   assert.match(sql, /unique_violation/);
   assert.match(sql, /ep_gate_protected_request_heads/);
   assert.match(sql, /ep_gate_evidence_heads/);
+  assert.match(sql, /CREATE TABLE IF NOT EXISTS public\.ep_gate_monotonic_counters/);
+  assert.match(sql, /CREATE OR REPLACE FUNCTION public\.ep_gate_provision_monotonic_counter/);
+  assert.match(sql, /ep_gate_advance_monotonic_counters/);
+  assert.match(sql, /UPDATE public\.ep_gate_monotonic_counters/);
+  assert.doesNotMatch(
+    sql.match(/CREATE OR REPLACE FUNCTION public\.ep_gate_advance_monotonic_counters[\s\S]*?\n\$\$;/)?.[0] ?? '',
+    /INSERT INTO public\.ep_gate_monotonic_counters/,
+  );
+  assert.match(sql, /current_value\s*=\s*\(v_resource->>'expected_value'\)::bigint/);
+  assert.match(sql, /c\.current_value < \(resource->>'next_value'\)::bigint/);
+  assert.match(sql, /WHERE resource->>'kind' <> 'monotonic_counter'/);
   assert.match(sql, /maximum_observation_age_ms/);
   assert.match(sql, /ep_gate_jsonb_has_exact_keys/);
   assert.match(sql, /REVOKE ALL ON FUNCTION public\.ep_gate_canonical_json\(jsonb\) FROM PUBLIC/);
@@ -233,6 +244,7 @@ test('real PostgreSQL enforces reserve, supersession, currentness, crash recover
       public.ep_gate_protected_request_heads,
       public.ep_gate_candidate_runtime_heads,
       public.ep_gate_external_leases,
+      public.ep_gate_monotonic_counters,
       public.ep_gate_qualification_status_heads,
       public.ep_gate_deployment_binding CASCADE`);
     const now = Date.now();
@@ -568,6 +580,101 @@ test('real PostgreSQL enforces reserve, supersession, currentness, crash recover
       tenantId: 'tenant:gate-v2',
       maxTransactionRetries: 6,
     });
+
+    const counterInput = (
+      suffix: string,
+      expectedValue: number,
+      nextValue: number,
+    ): AdmissionSnapshotInput => {
+      const value = admissionInput(
+        `admission:counter-${suffix}`,
+        `operation:counter-${suffix}`,
+        now,
+      );
+      value.resource_reservations.push({
+        kind: 'monotonic_counter',
+        resource_id: 'webauthn-sign-count:test-credential',
+        reservation_id: `counter-reservation:${suffix}`,
+        digest: HASH(suffix === 'first' ? '1' : suffix === 'clone' ? '2' : '3'),
+        expires_at: value.expires_at,
+        expected_value: expectedValue,
+        next_value: nextValue,
+      });
+      return value;
+    };
+    const firstCounterInput = counterInput('first', 41, 42);
+    const missingCounterInput = counterInput('missing-enrollment', 41, 42);
+    missingCounterInput.resource_reservations = missingCounterInput.resource_reservations.map(
+      (resource) => resource.kind === 'monotonic_counter'
+        ? { ...resource, resource_id: 'webauthn-sign-count:missing-enrollment' }
+        : resource,
+    );
+    await seedCurrentness(missingCounterInput);
+    assert.deepEqual(await store.reserve(missingCounterInput), {
+      ok: false,
+      reason: 'resource_conflict',
+    });
+    const missingCounterHead = await pool.query(`SELECT current_value
+      FROM public.ep_gate_monotonic_counters
+      WHERE deployment_id = $1 AND resource_id = $2`, [
+      'deployment:gate-v2', 'webauthn-sign-count:missing-enrollment',
+    ]);
+    assert.equal(missingCounterHead.rowCount, 0);
+
+    await pool.query(
+      'SELECT public.ep_gate_provision_monotonic_counter($1, $2, $3, $4)',
+      ['deployment:gate-v2', 'tenant:gate-v2', 'webauthn-sign-count:test-credential', 41],
+    );
+    await assert.rejects(
+      pool.query(
+        'SELECT public.ep_gate_provision_monotonic_counter($1, $2, $3, $4)',
+        ['deployment:gate-v2', 'tenant:gate-v2', 'webauthn-sign-count:test-credential', 41],
+      ),
+      /monotonic counter already provisioned/,
+    );
+    await seedCurrentness(firstCounterInput);
+    const firstCounter = await store.reserve(firstCounterInput);
+    assert.ok(firstCounter.ok);
+    const clonedCounterInput = counterInput('clone', 41, 42);
+    await seedCurrentness(clonedCounterInput);
+    assert.deepEqual(await store.reserve(clonedCounterInput), {
+      ok: false,
+      reason: 'resource_conflict',
+    });
+    const nextCounterInput = counterInput('next', 42, 43);
+    await seedCurrentness(nextCounterInput);
+    assert.ok((await store.reserve(nextCounterInput)).ok);
+
+    await pool.query(
+      'SELECT public.ep_gate_provision_monotonic_counter($1, $2, $3, $4)',
+      ['deployment:gate-v2', 'tenant:gate-v2', 'webauthn-sign-count:rollback-proof', 7],
+    );
+    const rollbackInput = counterInput('rollback-proof', 7, 8);
+    rollbackInput.resource_reservations = rollbackInput.resource_reservations.map(
+      (resource, index) => resource.kind === 'monotonic_counter'
+        ? { ...resource, resource_id: 'webauthn-sign-count:rollback-proof' }
+        : index === 0
+          ? { ...firstCounterInput.resource_reservations[0] }
+          : resource,
+    );
+    await seedCurrentness(rollbackInput);
+    assert.deepEqual(await store.reserve(rollbackInput), {
+      ok: false,
+      reason: 'resource_conflict',
+    });
+    const rollbackHead = await pool.query<{ current_value: string }>(`SELECT current_value::text
+      FROM public.ep_gate_monotonic_counters
+      WHERE deployment_id = $1 AND resource_id = $2`, [
+      'deployment:gate-v2', 'webauthn-sign-count:rollback-proof',
+    ]);
+    assert.equal(rollbackHead.rows[0]?.current_value, '7');
+    await seedCurrentness(firstCounterInput);
+    assert.ok((await store.beginInvocation({
+      tenant_id: firstCounter.record.tenant_id,
+      admission_id: firstCounter.record.admission_id,
+      expected_revision: firstCounter.record.revision,
+      owner_token: firstCounter.owner_token,
+    })).ok);
 
     const raceOperation = 'operation:reserve-race';
     await seedCurrentness(admissionInput('admission:reserve-race', raceOperation, now));

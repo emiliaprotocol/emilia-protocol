@@ -31,13 +31,17 @@ export interface AdmissionInput {
     trust_configuration_digest: AdmissionDigest;
     valid_until: string;
 }
-export type AdmissionResourceKind = 'replay' | 'capability' | 'budget' | 'qualification_use' | 'provider_operation' | 'external_lease';
+export type AdmissionResourceKind = 'replay' | 'capability' | 'budget' | 'qualification_use' | 'provider_operation' | 'external_lease' | 'monotonic_counter';
 export interface AdmissionResourceReservationInput {
     kind: AdmissionResourceKind;
     resource_id: string;
     reservation_id: string;
     digest: AdmissionDigest;
     expires_at: string;
+    /** Present only for monotonic_counter. */
+    expected_value?: number;
+    /** Present only for monotonic_counter and strictly greater than expected_value. */
+    next_value?: number;
 }
 export interface CandidateCustodyBinding {
     request_construction: 'GATE' | 'EXECUTOR_ADAPTER' | 'EXTERNAL';
@@ -176,6 +180,11 @@ export interface AdmissionCurrentnessObservation {
 export interface AdmissionCurrentnessOracle {
     read(snapshot: Readonly<AdmissionSnapshot>): Promise<AdmissionCurrentnessObservation>;
 }
+export interface AdmissionMonotonicCounterHead {
+    tenant_id: string;
+    resource_id: string;
+    current_value: number;
+}
 export type AdmissionRefusalReason = 'admission_exists' | 'admission_not_found' | 'operation_exists' | 'operation_conflict' | 'revision_conflict' | 'owner_conflict' | 'resource_conflict' | 'admission_expired' | 'currentness_refused' | 'execution_right_consumed' | 'state_conflict' | 'relation_not_found' | 'relation_conflict' | 'outcome_conflict' | 'evidence_required' | 'invocation_token_conflict';
 export type AdmissionRefusal = {
     ok: false;
@@ -271,6 +280,8 @@ export interface CreateMemoryAdmissionStoreOptions {
     maxCurrentnessAgeMs?: number;
     ownerTokenFactory?: () => string;
     invocationTokenFactory?: () => string;
+    /** Trusted current heads provisioned before reservation; missing heads fail closed. */
+    initialMonotonicCounterHeads?: readonly AdmissionMonotonicCounterHead[];
 }
 export declare class AdmissionStoreValidationError extends TypeError {
     readonly code: string;

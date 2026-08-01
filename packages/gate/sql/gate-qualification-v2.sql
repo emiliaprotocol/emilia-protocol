@@ -105,6 +105,20 @@ CREATE TABLE IF NOT EXISTS public.ep_gate_external_leases (
   PRIMARY KEY (deployment_id, resource_id)
 );
 
+-- Durable, deployment-local compare-and-advance heads. A trusted enrollment or
+-- recovery path provisions the authenticated baseline before admission. The
+-- head advances atomically with a successful reservation; release, expiry, and
+-- reconciliation never lower it. WebAuthn counters may skip, but a committed
+-- observed value must never be reusable or move backwards.
+CREATE TABLE IF NOT EXISTS public.ep_gate_monotonic_counters (
+  deployment_id text NOT NULL REFERENCES public.ep_gate_deployment_binding(deployment_id),
+  tenant_id text NOT NULL,
+  resource_id text NOT NULL,
+  current_value bigint NOT NULL CHECK (current_value BETWEEN 0 AND 4294967295),
+  updated_at timestamptz NOT NULL,
+  PRIMARY KEY (deployment_id, resource_id)
+);
+
 CREATE TABLE IF NOT EXISTS public.ep_gate_admission_snapshots (
   deployment_id text NOT NULL REFERENCES public.ep_gate_deployment_binding(deployment_id),
   tenant_id text NOT NULL,
@@ -193,6 +207,7 @@ REVOKE ALL ON TABLE public.ep_gate_protected_request_heads FROM PUBLIC;
 REVOKE ALL ON TABLE public.ep_gate_evidence_heads FROM PUBLIC;
 REVOKE ALL ON TABLE public.ep_gate_qualification_status_heads FROM PUBLIC;
 REVOKE ALL ON TABLE public.ep_gate_external_leases FROM PUBLIC;
+REVOKE ALL ON TABLE public.ep_gate_monotonic_counters FROM PUBLIC;
 REVOKE ALL ON TABLE public.ep_gate_admission_snapshots FROM PUBLIC;
 REVOKE ALL ON TABLE public.ep_gate_admission_records FROM PUBLIC;
 REVOKE ALL ON TABLE public.ep_gate_operation_heads FROM PUBLIC;
@@ -730,13 +745,19 @@ BEGIN
     RAISE EXCEPTION 'invalid admission resource cardinality';
   END IF;
   FOR v_resource IN SELECT item FROM jsonb_array_elements(v_resources) AS values_(item) LOOP
-    IF public.ep_gate_jsonb_has_exact_keys(v_resource, ARRAY[
-         'kind', 'resource_id', 'reservation_id', 'digest', 'expires_at'
-       ]) IS NOT TRUE
+    IF ((v_resource->>'kind' = 'monotonic_counter' AND
+         public.ep_gate_jsonb_has_exact_keys(v_resource, ARRAY[
+           'kind', 'resource_id', 'reservation_id', 'digest', 'expires_at',
+           'expected_value', 'next_value'
+         ]) IS NOT TRUE)
+        OR (v_resource->>'kind' <> 'monotonic_counter' AND
+         public.ep_gate_jsonb_has_exact_keys(v_resource, ARRAY[
+           'kind', 'resource_id', 'reservation_id', 'digest', 'expires_at'
+         ]) IS NOT TRUE))
        OR jsonb_typeof(v_resource->'kind') <> 'string'
        OR v_resource->>'kind' NOT IN (
          'replay', 'capability', 'budget', 'qualification_use',
-         'provider_operation', 'external_lease'
+         'provider_operation', 'external_lease', 'monotonic_counter'
        )
        OR public.ep_gate_jsonb_is_identifier(v_resource->'resource_id') IS NOT TRUE
        OR public.ep_gate_jsonb_is_identifier(v_resource->'reservation_id') IS NOT TRUE
@@ -744,7 +765,13 @@ BEGIN
        OR jsonb_typeof(v_resource->'expires_at') <> 'string'
        OR (v_resource->>'expires_at') !~ '^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}\.[0-9]{3}Z$'
        OR (v_resource->>'expires_at')::timestamptz <= v_admitted
-       OR v_expires > (v_resource->>'expires_at')::timestamptz THEN
+       OR v_expires > (v_resource->>'expires_at')::timestamptz
+       OR (v_resource->>'kind' = 'monotonic_counter' AND (
+         public.ep_gate_jsonb_is_safe_nonnegative_integer(v_resource->'expected_value') IS NOT TRUE
+         OR public.ep_gate_jsonb_is_safe_nonnegative_integer(v_resource->'next_value') IS NOT TRUE
+         OR (v_resource->>'next_value')::numeric <= (v_resource->>'expected_value')::numeric
+         OR (v_resource->>'next_value')::numeric > 4294967295
+       )) THEN
       RAISE EXCEPTION 'invalid admission resource';
     END IF;
   END LOOP;
@@ -1048,7 +1075,10 @@ AS $$
   SELECT
     (SELECT count(*) FROM public.ep_gate_resource_fences f
        WHERE f.deployment_id = p_deployment_id AND f.admission_id = p_admission_id)
-      = jsonb_array_length(p_snapshot->'body'->'resource_reservations')
+      = (SELECT count(*) FROM jsonb_array_elements(
+           p_snapshot->'body'->'resource_reservations'
+         ) AS values_(resource)
+         WHERE resource->>'kind' <> 'monotonic_counter')
     AND NOT EXISTS (
       SELECT 1
       FROM jsonb_array_elements(p_snapshot->'body'->'resource_reservations') AS values_(resource)
@@ -1057,12 +1087,86 @@ AS $$
        AND f.kind = resource->>'kind'
        AND f.resource_id = resource->>'resource_id'
        AND f.admission_id = p_admission_id
-      WHERE f.resource_id IS NULL
+      WHERE resource->>'kind' <> 'monotonic_counter'
+        AND (f.resource_id IS NULL
          OR f.reservation_id <> resource->>'reservation_id'
          OR f.digest <> resource->>'digest'
          OR f.expires_at <> (resource->>'expires_at')::timestamptz
-         OR f.state <> p_state
+         OR f.state <> p_state)
     )
+$$;
+
+CREATE OR REPLACE FUNCTION public.ep_gate_advance_monotonic_counters(
+  p_deployment_id text,
+  p_tenant_id text,
+  p_body jsonb,
+  p_recorded_at timestamptz
+)
+RETURNS void
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = pg_catalog, public
+AS $$
+DECLARE
+  v_resource jsonb;
+  v_rows bigint;
+BEGIN
+  FOR v_resource IN
+    SELECT resource
+    FROM jsonb_array_elements(p_body->'resource_reservations') AS values_(resource)
+    WHERE resource->>'kind' = 'monotonic_counter'
+    ORDER BY resource->>'resource_id'
+  LOOP
+    UPDATE public.ep_gate_monotonic_counters
+      SET current_value = (v_resource->>'next_value')::bigint,
+          updated_at = p_recorded_at
+      WHERE deployment_id = p_deployment_id
+        AND tenant_id = p_tenant_id
+        AND resource_id = v_resource->>'resource_id'
+        AND current_value = (v_resource->>'expected_value')::bigint;
+    GET DIAGNOSTICS v_rows = ROW_COUNT;
+    IF v_rows <> 1 THEN
+      RAISE EXCEPTION USING ERRCODE = '23505', MESSAGE = 'monotonic counter conflict';
+    END IF;
+  END LOOP;
+END;
+$$;
+
+-- Operator-only bootstrap for an authenticated WebAuthn enrollment or recovery
+-- ceremony. Runtime admission roles should receive no EXECUTE grant on this
+-- function. Re-provisioning an existing resource is always refused so a stale
+-- or attacker-selected baseline cannot replace the durable head.
+CREATE OR REPLACE FUNCTION public.ep_gate_provision_monotonic_counter(
+  p_deployment_id text,
+  p_tenant_id text,
+  p_resource_id text,
+  p_initial_value bigint
+)
+RETURNS void
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = pg_catalog, public
+AS $$
+BEGIN
+  PERFORM public.ep_gate_assert_binding(p_deployment_id, p_tenant_id);
+  IF public.ep_gate_jsonb_is_identifier(to_jsonb(p_resource_id)) IS NOT TRUE
+     OR p_initial_value IS NULL
+     OR p_initial_value < 0
+     OR p_initial_value > 4294967295 THEN
+    RAISE EXCEPTION 'invalid monotonic counter enrollment';
+  END IF;
+  BEGIN
+    INSERT INTO public.ep_gate_monotonic_counters (
+      deployment_id, tenant_id, resource_id, current_value, updated_at
+    ) VALUES (
+      p_deployment_id, p_tenant_id, p_resource_id, p_initial_value,
+      clock_timestamp()
+    );
+  EXCEPTION WHEN unique_violation THEN
+    RAISE EXCEPTION USING ERRCODE = '23505',
+      MESSAGE = 'monotonic counter already provisioned';
+  END;
+END;
 $$;
 
 CREATE OR REPLACE FUNCTION public.ep_gate_initial_record(
@@ -1154,6 +1258,9 @@ BEGIN
   END IF;
 
   BEGIN
+    PERFORM public.ep_gate_advance_monotonic_counters(
+      p_deployment_id, p_tenant_id, v_body, v_now
+    );
     INSERT INTO public.ep_gate_operation_heads (
       deployment_id, tenant_id, operation_id, admission_id, created_at, updated_at
     ) VALUES (
@@ -1179,6 +1286,7 @@ BEGIN
       resource->>'reservation_id', resource->>'digest', (resource->>'expires_at')::timestamptz,
       v_body->>'admission_id', 'RESERVED'
     FROM jsonb_array_elements(v_body->'resource_reservations') AS values_(resource)
+    WHERE resource->>'kind' <> 'monotonic_counter'
     ORDER BY resource->>'kind', resource->>'resource_id';
   EXCEPTION WHEN unique_violation THEN
     IF EXISTS (SELECT 1 FROM public.ep_gate_admission_records WHERE deployment_id = p_deployment_id AND admission_id = v_body->>'admission_id') THEN
@@ -1387,6 +1495,9 @@ BEGIN
   ) THEN RETURN public.ep_gate_refusal('resource_conflict'); END IF;
 
   BEGIN
+    PERFORM public.ep_gate_advance_monotonic_counters(
+      p_deployment_id, p_tenant_id, v_successor_body, v_now
+    );
     INSERT INTO public.ep_gate_admission_snapshots (
       deployment_id, tenant_id, snapshot_digest, admission_id, operation_id, snapshot_json, created_at
     ) VALUES (
@@ -1423,6 +1534,7 @@ BEGIN
       resource->>'reservation_id', resource->>'digest', (resource->>'expires_at')::timestamptz,
       v_successor_body->>'admission_id', 'RESERVED'
     FROM jsonb_array_elements(v_successor_body->'resource_reservations') AS values_(resource)
+    WHERE resource->>'kind' <> 'monotonic_counter'
     ORDER BY resource->>'kind', resource->>'resource_id';
     UPDATE public.ep_gate_operation_heads
       SET admission_id = v_successor_body->>'admission_id', updated_at = v_now
@@ -1534,6 +1646,16 @@ BEGIN
       )
     ORDER BY l.resource_id
     FOR SHARE;
+  PERFORM c.resource_id
+    FROM public.ep_gate_monotonic_counters c
+    WHERE c.deployment_id = p_deployment_id
+      AND EXISTS (
+        SELECT 1 FROM jsonb_array_elements(v_body->'resource_reservations') AS values_(resource)
+        WHERE resource->>'kind' = 'monotonic_counter'
+          AND resource->>'resource_id' = c.resource_id
+      )
+    ORDER BY c.resource_id
+    FOR SHARE;
   v_now := clock_timestamp();
   v_maximum_observation_age := make_interval(
     secs => v_binding.maximum_observation_age_ms::double precision / 1000.0
@@ -1614,6 +1736,19 @@ BEGIN
           OR l.observed_at < v_now - v_maximum_observation_age
           OR l.observed_at > v_now
           OR l.expires_at <= v_now
+        )
+    )
+    AND NOT EXISTS (
+      SELECT 1
+      FROM jsonb_array_elements(v_body->'resource_reservations') AS values_(resource)
+      LEFT JOIN public.ep_gate_monotonic_counters c
+        ON c.deployment_id = p_deployment_id
+       AND c.resource_id = resource->>'resource_id'
+      WHERE resource->>'kind' = 'monotonic_counter'
+        AND (
+          c.resource_id IS NULL
+          OR c.tenant_id <> p_tenant_id
+          OR c.current_value < (resource->>'next_value')::bigint
         )
     );
   IF NOT v_currentness_ok THEN
@@ -2016,6 +2151,23 @@ BEGIN
       AND (r.record_json->'resources' <> public.ep_gate_expected_resources(s.snapshot_json, 'CONSUMED')
            OR NOT public.ep_gate_resources_exact(r.deployment_id, r.admission_id, s.snapshot_json, 'CONSUMED'))
     UNION ALL
+    SELECT r.admission_id || ':monotonic_counter_head_invalid'
+    FROM public.ep_gate_admission_records r
+    JOIN public.ep_gate_admission_snapshots s
+      ON s.deployment_id = r.deployment_id AND s.snapshot_digest = r.snapshot_digest
+    WHERE r.deployment_id = p_deployment_id
+      AND EXISTS (
+        SELECT 1
+        FROM jsonb_array_elements(s.snapshot_json->'body'->'resource_reservations') AS values_(resource)
+        LEFT JOIN public.ep_gate_monotonic_counters c
+          ON c.deployment_id = r.deployment_id
+         AND c.resource_id = resource->>'resource_id'
+        WHERE resource->>'kind' = 'monotonic_counter'
+          AND (c.resource_id IS NULL
+               OR c.tenant_id <> p_tenant_id
+               OR c.current_value < (resource->>'next_value')::bigint)
+      )
+    UNION ALL
     SELECT h.operation_id || ':operation_head_invalid'
     FROM public.ep_gate_operation_heads h
     LEFT JOIN public.ep_gate_admission_records r
@@ -2054,6 +2206,8 @@ REVOKE ALL ON FUNCTION public.ep_gate_insert_record_and_journal(text, jsonb, tex
 REVOKE ALL ON FUNCTION public.ep_gate_apply_transition(text, jsonb, jsonb, text, timestamptz) FROM PUBLIC;
 REVOKE ALL ON FUNCTION public.ep_gate_load_admission_locked(text, text, text) FROM PUBLIC;
 REVOKE ALL ON FUNCTION public.ep_gate_resources_exact(text, text, jsonb, text) FROM PUBLIC;
+REVOKE ALL ON FUNCTION public.ep_gate_advance_monotonic_counters(text, text, jsonb, timestamptz) FROM PUBLIC;
+REVOKE ALL ON FUNCTION public.ep_gate_provision_monotonic_counter(text, text, text, bigint) FROM PUBLIC;
 REVOKE ALL ON FUNCTION public.ep_gate_initial_record(jsonb, text, timestamptz) FROM PUBLIC;
 REVOKE ALL ON FUNCTION public.ep_gate_admission_reserve(text, text, jsonb, text) FROM PUBLIC;
 REVOKE ALL ON FUNCTION public.ep_gate_admission_release(text, text, text, bigint, text, text) FROM PUBLIC;

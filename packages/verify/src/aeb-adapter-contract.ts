@@ -432,7 +432,7 @@ const DIGEST_RE = /^sha256:[0-9a-f]{64}$/;
 const CAID_RE = /^caid:1:[a-z][a-z0-9-]*(?:\.[a-z][a-z0-9-]*)*\.[1-9][0-9]*:[a-z0-9]+(?:-[a-z0-9]+)*:[A-Za-z0-9_-]{43}$/;
 const IDENT_RE = /^[A-Za-z0-9_.:-]{1,256}$/;
 const ROLE_RE = /^[A-Za-z][A-Za-z0-9_.:-]{0,127}$/;
-const RFC3339_RE = /^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2}):(\d{2})(?:\.\d{1,9})?Z$/;
+const RFC3339_RE = /^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2}):(\d{2})(?:\.(\d{1,3}))?Z$/;
 
 function isObject(value: unknown): value is Record<string, unknown> {
   return value !== null && typeof value === 'object' && !Array.isArray(value);
@@ -446,9 +446,28 @@ function deepFreeze<T>(value: T): T {
   return value;
 }
 
+function assertUnicodeScalarString(value: string): void {
+  for (let index = 0; index < value.length; index += 1) {
+    const codeUnit = value.charCodeAt(index);
+    if (codeUnit >= 0xd800 && codeUnit <= 0xdbff) {
+      const trailing = value.charCodeAt(index + 1);
+      if (!Number.isFinite(trailing) || trailing < 0xdc00 || trailing > 0xdfff) {
+        throw new Error('string contains a non-Unicode scalar value');
+      }
+      index += 1;
+    } else if (codeUnit >= 0xdc00 && codeUnit <= 0xdfff) {
+      throw new Error('string contains a non-Unicode scalar value');
+    }
+  }
+}
+
 function canonicalize(value: unknown, seen = new WeakSet<object>()): string {
   if (value === null) return 'null';
-  if (typeof value === 'string' || typeof value === 'boolean') return JSON.stringify(value);
+  if (typeof value === 'string') {
+    assertUnicodeScalarString(value);
+    return JSON.stringify(value);
+  }
+  if (typeof value === 'boolean') return JSON.stringify(value);
   if (typeof value === 'number') {
     if (!Number.isSafeInteger(value)) throw new Error('non-integer number is not canonicalizable');
     return JSON.stringify(value);
@@ -460,7 +479,9 @@ function canonicalize(value: unknown, seen = new WeakSet<object>()): string {
   if (Array.isArray(value)) {
     output = `[${value.map((item) => canonicalize(item, seen)).join(',')}]`;
   } else {
-    output = `{${Object.keys(value).sort().map((key) => `${JSON.stringify(key)}:${canonicalize((value as Record<string, unknown>)[key], seen)}`).join(',')}}`;
+    const keys = Object.keys(value);
+    for (const key of keys) assertUnicodeScalarString(key);
+    output = `{${keys.sort().map((key) => `${JSON.stringify(key)}:${canonicalize((value as Record<string, unknown>)[key], seen)}`).join(',')}}`;
   }
   seen.delete(value);
   return output;
@@ -484,10 +505,13 @@ function parseInstant(value: unknown): number {
   if (typeof value !== 'string') return NaN;
   const match = value.match(RFC3339_RE);
   if (!match) return NaN;
-  const [, y, mo, d, h, mi, s] = match;
+  const [, y, mo, d, h, mi, s, fraction = ''] = match;
+  // This profile accepts only clock precision the JavaScript runtime can
+  // compare without truncation. Higher precision must fail closed.
+  const milliseconds = Number(fraction.padEnd(3, '0').slice(0, 3));
   const date = new Date(0);
   date.setUTCFullYear(Number(y), Number(mo) - 1, Number(d));
-  date.setUTCHours(Number(h), Number(mi), Number(s), 0);
+  date.setUTCHours(Number(h), Number(mi), Number(s), milliseconds);
   if (date.toISOString().slice(0, 19) !== `${y}-${mo}-${d}T${h}:${mi}:${s}`) return NaN;
   return date.getTime();
 }
@@ -682,7 +706,7 @@ export function createAebNativeVerificationAttestationAdapter(
       }
       const now = parseInstant(input.now);
       if (!Number.isFinite(now) || now < parseInstant(input.artifact.verified_at)
-          || now > parseInstant(input.artifact.expires_at)) {
+          || now >= parseInstant(input.artifact.expires_at)) {
         fallback.acceptance = 'INDETERMINATE';
         fallback.reasons = ['native_attestation_outside_validity'];
         return fallback;

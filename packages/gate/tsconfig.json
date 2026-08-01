@@ -103,6 +103,7 @@
     "src/admission-store.ts",
     "src/admission-store-postgres.ts",
     "src/gate-qualification-v2.ts",
+    "src/fido-ap2-bridge.ts",
     "src/referee.ts",
     "src/referee-runner.ts",
     "src/reliance-risk-crypto.ts",

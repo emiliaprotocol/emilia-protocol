@@ -467,7 +467,7 @@
     },
     {
       "path": "package-lock.json",
-      "sha256": "f24391cef0458b82832d8415e5b997d7a6ff2702d5ede78d4f117013474455a3"
+      "sha256": "300f7588fdaa95a0302f28d3a14a17c79e60de925b5f1f0a831154c066d46493"
     },
     {
       "path": "package.json",
@@ -527,7 +527,7 @@
     },
     {
       "path": "packages/gate/dist/admission-store.js",
-      "sha256": "7ceb3e0b3c49ec35c0c10a7108995a56ea963382729c92fab40169986e00a81f"
+      "sha256": "f221b5c4224ef6ccd425336c02f86a400cc310de3488ceaa90a848ec155f749d"
     },
     {
       "path": "packages/gate/dist/aeb-consumption-store.js",
@@ -586,6 +586,10 @@
       "sha256": "8dca7c6951bf1315d2ec97484c8ef66ea12a851a937920f82560370bb881dbb5"
     },
     {
+      "path": "packages/gate/dist/fido-ap2-bridge.js",
+      "sha256": "826f88ace41c6179ba61580dae3c7b9a2abb62e64f87a2ec9a340ccc7f26fd8e"
+    },
+    {
       "path": "packages/gate/dist/formal-runtime-map.js",
       "sha256": "0eaa10dcf81c1f645c021392f73b587d6b8fbf61d580bc724d2e1d256d1e48c4"
     },
@@ -595,7 +599,7 @@
     },
     {
       "path": "packages/gate/dist/index.js",
-      "sha256": "e6f9c7524a8e4286f72d92cc3eb33800761a93b97b9815fd2ad38a2011926c2a"
+      "sha256": "5a479b0773b603b533b22d60f0edf05e8c93579762862a2cd916fd5732907c51"
     },
     {
       "path": "packages/gate/dist/key-registry.js",
@@ -771,7 +775,7 @@
     },
     {
       "path": "packages/gate/src/index.ts",
-      "sha256": "23ac0e6eaf3e060f3eaebcd4d52af4cf32e0493d08de68e6704675a1562885a2"
+      "sha256": "9254b364ace56a86b3a1c3c8347ae9a9aaadf97bbff4bf8edb0c7ef84283b367"
     },
     {
       "path": "packages/gate/src/network-witness.ts",
@@ -899,7 +903,7 @@
     },
     {
       "path": "packages/verify/dist/aeb-adapter-contract.js",
-      "sha256": "010547d2458936db1c6ff98e2157092673a03426a399a87b1b9bcf6b77edb3b7"
+      "sha256": "e99916aeeac8ddb229ebaea0ce9093317753ba7075fd2821ee7eaba3b79ba4f5"
     },
     {
       "path": "packages/verify/dist/aeb-consequence-conformance.js",
@@ -974,6 +978,10 @@
       "sha256": "556442054123ab9251dfb78a586d108fc2a35084a2b98a97a09c1ee9c0dd5f70"
     },
     {
+      "path": "packages/verify/dist/fido-ap2-bridge.js",
+      "sha256": "994492e2591f0545ef75947861215b157216df1d9bc2a7032c64109f6a6f429d"
+    },
+    {
       "path": "packages/verify/dist/gate-qualification-promptfoo.js",
       "sha256": "6b128fdb1577f20b17800a7da72177901e96c4e962fd38dd837523f999902955"
     },
@@ -983,7 +991,7 @@
     },
     {
       "path": "packages/verify/dist/index.js",
-      "sha256": "ce245831e7976be47c82966645cccce9412d86b64fc021fc45231e0917060981"
+      "sha256": "e4b01b2e0ff66fc76728670b84006ef5260efc943f0b496158d93d19c8897549"
     },
     {
       "path": "packages/verify/dist/initiator-attestation.js",
@@ -1054,6 +1062,10 @@
       "sha256": "754e43ca6f6e57c5d86f607d751d000086fe4e8e3124037bfc3fbed96166d0ce"
     },
     {
+      "path": "packages/verify/fido-ap2-bridge.js",
+      "sha256": "9912791ed97f6ac6deb361637eda173c3134a6ddc099fbd5e8a5638c5ef54ca6"
+    },
+    {
       "path": "packages/verify/index.js",
       "sha256": "f386e365a9998f08ea4947ffd415ca353c0a82766677a8e0cf3117909cccee24"
     },
@@ -1067,7 +1079,7 @@
     },
     {
       "path": "packages/verify/src/aeb-adapter-contract.ts",
-      "sha256": "754843e146320fa0be6d0ffb17840e055e4d1af823a95db70d7351722b4c521e"
+      "sha256": "6dfbe4e0c5401d260b29f0bbe4192a03128b4915e1c9227e41661ca9ac45b7ef"
     },
     {
       "path": "packages/verify/src/authority-program.ts",
@@ -1079,7 +1091,7 @@
     },
     {
       "path": "packages/verify/src/index.ts",
-      "sha256": "7b4e6dcfb1377ed579dd5ff562a751e2cb385f4c7b3a15a4d4a5ef2ff27f2509"
+      "sha256": "cdc24c7480e74eddbab0ebb50f183306ebc7bf2942bbc0d74fd996098c00b3d0"
     },
     {
       "path": "packages/verify/src/outcome-binding.ts",

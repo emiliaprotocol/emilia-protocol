@@ -5,11 +5,63 @@ import assert from 'node:assert/strict';
 import crypto from 'node:crypto';
 import fs from 'node:fs';
 import test from 'node:test';
-import { AEB_NATIVE_VERIFICATION_ATTESTATION_VERSION, InMemoryAebConsumptionStore, aebReservationKey, adapterPinDigest, digestAeb, evaluateAebEvidence, mappingProfileDigest, registryEntryDigest, unifiedRegistryDigest, authorizeAebExecution, authorizeAebExecutionDurable, createAebNativeVerificationAttestationAdapter, reconcileAebExecution, reconcileAebExecutionDurable, signAebNativeVerificationAttestation, verifyAebEvaluation, } from './aeb-adapter-contract.js';
+import { AEB_EVALUATION_DOMAIN, AEB_NATIVE_VERIFICATION_ATTESTATION_VERSION, InMemoryAebConsumptionStore, aebReservationKey, adapterPinDigest, canonicalizeAeb, digestAeb, evaluateAebEvidence, mappingProfileDigest, registryEntryDigest, unifiedRegistryDigest, authorizeAebExecution, authorizeAebExecutionDurable, createAebNativeVerificationAttestationAdapter, reconcileAebExecution, reconcileAebExecutionDurable, signAebNativeVerificationAttestation, verifyAebEvaluation, } from './aeb-adapter-contract.js';
 const vectors = JSON.parse(fs.readFileSync(new URL('../../conformance/vectors/aeb-adapter.v1.json', import.meta.url), 'utf8'));
 const CAID = `caid:1:order.purchase.1:jcs-sha256:${'A'.repeat(43)}`;
 const OTHER_CAID = `caid:1:order.purchase.1:jcs-sha256:${'B'.repeat(43)}`;
 const NOW = '2026-07-21T12:00:00Z';
+function legacyMalformedUnicodeCanonicalize(value) {
+    if (value === null)
+        return 'null';
+    if (typeof value === 'string' || typeof value === 'boolean' || typeof value === 'number') {
+        return JSON.stringify(value);
+    }
+    if (Array.isArray(value)) {
+        return `[${value.map(legacyMalformedUnicodeCanonicalize).join(',')}]`;
+    }
+    return `{${Object.keys(value).sort().map((key) => (`${JSON.stringify(key)}:${legacyMalformedUnicodeCanonicalize(value[key])}`)).join(',')}}`;
+}
+test('AEB canonicalization rejects lone UTF-16 surrogates in nested values and keys', () => {
+    assert.equal(canonicalizeAeb({ emoji: '\uD83D\uDE00' }), '{"emoji":"😀"}');
+    for (const malformed of [
+        { nested: { value: '\uD800' } },
+        { nested: { value: '\uDC00' } },
+        { nested: { ['high\uD800key']: 'value' } },
+        { nested: { ['low\uDC00key']: 'value' } },
+    ]) {
+        assert.throws(() => canonicalizeAeb(malformed), /Unicode scalar value/);
+        assert.throws(() => digestAeb(malformed), /Unicode scalar value/);
+    }
+});
+test('AEB signing refuses malformed Unicode before producing a signature', () => {
+    const nativeKey = crypto.generateKeyPairSync('ed25519');
+    const base = {
+        '@version': AEB_NATIVE_VERIFICATION_ATTESTATION_VERSION,
+        protocol_id: 'wimse',
+        audience: 'rp:test',
+        native_artifact_ref: 'urn:wimse:presentation:1',
+        native_artifact_digest: digestAeb({ native: 'artifact' }),
+        evidence_role: 'workload-possession',
+        subject: { id: 'workload:buyer', kind: 'workload' },
+        verified_at: '2026-07-21T11:58:00Z',
+        expires_at: '2026-07-21T12:10:00Z',
+        mapping: {
+            profile_digest: digestAeb({ profile: 'test' }),
+            mapper_id: 'mapper:test',
+            resolver_digest: digestAeb({ resolver: 'test' }),
+            caid: CAID,
+            normalized_action_digest: digestAeb({ action: 'test' }),
+        },
+    };
+    for (const attacker_metadata of [
+        { nested: { value: '\uD800' } },
+        { nested: { value: '\uDC00' } },
+        { nested: { ['high\uD800key']: 'value' } },
+        { nested: { ['low\uDC00key']: 'value' } },
+    ]) {
+        assert.throws(() => signAebNativeVerificationAttestation({ ...base, attacker_metadata }, { key_id: 'native-verifier:test', private_key: nativeKey.privateKey }), /Unicode scalar value/);
+    }
+});
 test('AEB-ADAPTER-v1 publishes the refusal and lifecycle vector set', () => {
     assert.equal(vectors['@version'], 'AEB-ADAPTER-v1');
     assert.deepEqual(vectors.vectors.map((vector) => vector.id), [
@@ -163,6 +215,32 @@ function evaluate(setupResult, legs = defaultLegs(), bindings = {}) {
         ...bindings,
     });
 }
+test('AEB verification fails closed on malformed Unicode in signed-record values and keys', () => {
+    const s = setup();
+    const valid = evaluate(s).record;
+    const malformedRecords = [
+        Object.assign(structuredClone(valid), { reasons: ['\uD800'] }),
+        Object.assign(structuredClone(valid), { reasons: ['\uDC00'] }),
+        structuredClone(valid),
+        structuredClone(valid),
+    ];
+    malformedRecords[2].composition['high\uD800key'] = 'value';
+    malformedRecords[3].composition['low\uDC00key'] = 'value';
+    for (const [index, record] of malformedRecords.entries()) {
+        const unsigned = structuredClone(record);
+        delete unsigned.signature;
+        record.signature.value = crypto.sign(null, Buffer.from(`${AEB_EVALUATION_DOMAIN}${legacyMalformedUnicodeCanonicalize(unsigned)}`, 'utf8'), s.keyPair.privateKey).toString('base64url');
+        const checked = verifyAebEvaluation(record, {
+            mode: 'historical',
+            config: s.config,
+            adapters: { 'test:operator': s.adapter },
+            artifacts: {},
+        });
+        assert.equal(checked.valid, false);
+        assert.equal(checked.checks.signature, false, `malformed verification case ${index}`);
+        assert.ok(checked.reasons.includes('evaluation_signature_invalid'));
+    }
+});
 function verificationInputs(legs = defaultLegs()) {
     return {
         artifacts: Object.fromEntries(legs.map((item) => [item.artifact_ref, item.artifact])),
@@ -370,6 +448,55 @@ test('signed native bridge composes WIMSE possession and human authorization', (
     assert.equal(omittedAction.valid, false);
     assert.equal(omittedAction.execution_authorizing, false);
     assert.ok(omittedAction.reasons.includes('expected_action_required'));
+    const fractional = signAebNativeVerificationAttestation({
+        '@version': AEB_NATIVE_VERIFICATION_ATTESTATION_VERSION,
+        protocol_id: 'wimse',
+        audience: 'rp:test',
+        native_artifact_ref: 'urn:wimse:fractional',
+        native_artifact_digest: digestAeb({ fractional: true }),
+        evidence_role: 'workload-possession',
+        subject: { id: 'workload:buyer', kind: 'workload' },
+        verified_at: '2026-07-21T11:59:59.999Z',
+        expires_at: '2026-07-21T12:00:00.500Z',
+        mapping: {
+            profile_digest: profile.profile_digest,
+            mapper_id: profile.mapper_id,
+            resolver_digest: profile.resolver.implementation_digest,
+            caid: CAID,
+            normalized_action_digest: actionDigest,
+        },
+    }, { key_id: keyId, private_key: nativeKey.privateKey });
+    const fractionalInput = {
+        artifact: fractional,
+        artifact_ref: 'statement:fractional',
+        status: status(),
+        trust_roots: pin.trust_roots,
+        adapter_config: pin.config,
+        expected_action: expectedAction,
+    };
+    assert.equal(adapter.verifyNative({
+        ...fractionalInput,
+        now: '2026-07-21T12:00:00.499Z',
+    }).acceptance, 'ACCEPTED');
+    assert.equal(adapter.verifyNative({
+        ...fractionalInput,
+        now: '2026-07-21T12:00:00.500Z',
+    }).acceptance, 'INDETERMINATE');
+    assert.equal(adapter.verifyNative({
+        ...fractionalInput,
+        now: '2026-07-21T11:59:59.998Z',
+    }).acceptance, 'INDETERMINATE');
+    const { signature: _fractionalSignature, ...fractionalBody } = fractional;
+    const subMillisecondNotBefore = signAebNativeVerificationAttestation({
+        ...fractionalBody,
+        native_artifact_ref: 'urn:wimse:sub-millisecond-not-before',
+        verified_at: '2026-07-21T11:59:59.999001Z',
+    }, { key_id: keyId, private_key: nativeKey.privateKey });
+    assert.notEqual(adapter.verifyNative({
+        ...fractionalInput,
+        artifact: subMillisecondNotBefore,
+        now: '2026-07-21T11:59:59.999Z',
+    }).acceptance, 'ACCEPTED');
     const forged = structuredClone(legs);
     forged[0].artifact.mapping.caid = OTHER_CAID;
     const refused = evaluateAebEvidence({
