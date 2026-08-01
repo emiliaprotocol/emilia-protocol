@@ -228,6 +228,7 @@ export type AdmissionJournalEvent =
   | 'RESERVED'
   | 'RELEASED'
   | 'EXPIRED'
+  | 'ABANDONED_BEFORE_INVOCATION'
   | 'SUPERSEDED'
   | 'INVOKING'
   | 'RECOVERED_INDETERMINATE'
@@ -337,6 +338,9 @@ export interface AdmissionCas extends AdmissionReference {
 export interface AdmissionRecoveryInput extends AdmissionReference {
   owner_token: string;
 }
+export interface AdmissionExpiredRecoveryInput extends AdmissionReference {
+  expected_revision: number;
+}
 export interface AdmissionProviderOutcomeInput extends AdmissionCas {
   invocation_token: string;
   value: AdmissionProviderOutcome;
@@ -366,6 +370,13 @@ export interface AdmissionStore {
   reserve(input: AdmissionSnapshotInput | AdmissionSnapshot): Promise<AdmissionReserveResult>;
   release(input: AdmissionCas, reason?: string): Promise<AdmissionTransitionResult>;
   expire(input: AdmissionCas): Promise<AdmissionTransitionResult>;
+  /**
+   * Deadline-gated recovery for a reservation whose per-operation owner token
+   * was lost before provider entry. This transition has no owner-token input:
+   * access to the recovery RPC is the authority, and state, immutable expiry,
+   * tenant/admission identity, and revision are all checked atomically.
+   */
+  reapExpiredReservation(input: AdmissionExpiredRecoveryInput): Promise<AdmissionTransitionResult>;
   supersede(input: AdmissionSupersedeInput): Promise<AdmissionSupersedeResult>;
   beginInvocation(input: AdmissionCas): Promise<AdmissionBeginResult>;
   recoverIndeterminate(input: AdmissionRecoveryInput): Promise<AdmissionRecoveryResult>;
@@ -863,6 +874,12 @@ export function createMemoryAdmissionStore(options: CreateMemoryAdmissionStoreOp
       if (!verifyAdmissionJournal(history).ok) violations.push(`${key}:journal_invalid`);
       if (history.length !== record.revision + 1 || history.at(-1)?.record_digest !== record.record_digest) violations.push(`${key}:head_mismatch`);
       if (record.state === 'RESERVED' && (record.execution_right !== 'RESERVED' || record.provider_attempt !== 'NOT_ENTERED')) violations.push(`${key}:reserved_invalid`);
+      const snapshot = snapshots.get(record.snapshot_digest);
+      if (record.state === 'RESERVED'
+          && snapshot
+          && Date.parse(snapshot.body.expires_at) <= currentMs(options.now)) {
+        violations.push(`${key}:reserved_past_expiry`);
+      }
       for (const resource of record.resources) {
         if (resource.kind === 'monotonic_counter') {
           const head = monotonicCounterHeads.get(resourceKey(record.tenant_id, resource));
@@ -997,6 +1014,42 @@ export function createMemoryAdmissionStore(options: CreateMemoryAdmissionStoreOp
           state: 'EXPIRED', execution_right: 'RELEASED', refusal_reason: 'admission_expired',
           resources: stored.record.resources.map((resource) => ({ ...resource, state: 'RELEASED' })),
         }), 'EXPIRED', at);
+        return { ok: true, record };
+      });
+    },
+
+    reapExpiredReservation(input) {
+      return atomic(() => {
+        const tenantId = identifier(input.tenant_id, 'tenant_id');
+        const admissionId = identifier(input.admission_id, 'admission_id');
+        const expectedRevision = nonNegativeInteger(input.expected_revision, 'expected_revision');
+        const key = admissionKey(tenantId, admissionId);
+        const stored = records.get(key);
+        if (!stored) return { ok: false, reason: 'admission_not_found' };
+        if (stored.record.revision !== expectedRevision) {
+          return { ok: false, reason: 'revision_conflict' };
+        }
+        if (stored.record.state !== 'RESERVED'
+            || stored.record.execution_right !== 'RESERVED'
+            || stored.record.provider_attempt !== 'NOT_ENTERED') {
+          return { ok: false, reason: 'state_conflict' };
+        }
+        const snapshot = snapshots.get(stored.record.snapshot_digest)!;
+        const now = currentMs(options.now);
+        if (Date.parse(snapshot.body.expires_at) > now) {
+          return { ok: false, reason: 'state_conflict' };
+        }
+        const at = new Date(now).toISOString();
+        freeResources(stored.record, key);
+        const record = append(key, stored.ownerToken, next(stored.record, at, {
+          state: 'EXPIRED',
+          execution_right: 'RELEASED',
+          refusal_reason: 'abandoned_before_invocation',
+          resources: stored.record.resources.map((resource) => ({
+            ...resource,
+            state: 'RELEASED',
+          })),
+        }), 'ABANDONED_BEFORE_INVOCATION', at);
         return { ok: true, record };
       });
     },

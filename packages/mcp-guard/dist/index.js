@@ -255,24 +255,143 @@ export function demandReceipt({ action, args = {}, meta = {}, verifyOpts = {} })
     }
     return { ok: true, verified: v };
 }
-// ---------------------------------------------------------------------------
-// Provenance ledger — an ADDITIVE, append-only record that BUNDLES references
-// to existing EP-RECEIPT-v1 receipts (by receipt_id + content hash). It is NOT
-// a receipt, NOT a new wire format for Core, and adds NO trust: each entry only
-// points at a v1 receipt that was independently verified. Re-verifying the
-// ledger = re-verifying each linked v1 receipt + checking the append-only hash
-// chain. This is the in-process anchor for the EP-PROVENANCE-CHAIN-v1 composite
-// proposed by PIP (spec proposal), kept deliberately minimal here.
-// ---------------------------------------------------------------------------
+export const PROVENANCE_POSTGRES_SQL = Object.freeze({
+    load: 'SELECT public.ep_mcp_provenance_load($1::text, $2::text) AS result',
+    append: 'SELECT public.ep_mcp_provenance_append($1::text, $2::text, $3::bigint, $4::text, $5::jsonb) AS result',
+});
+const PROVENANCE_IDENTIFIER = /^[A-Za-z0-9][A-Za-z0-9:_.@/-]{0,511}$/;
+function provenanceIdentifier(value, field) {
+    if (typeof value !== 'string' || !PROVENANCE_IDENTIFIER.test(value)) {
+        throw new TypeError(`${field} is invalid`);
+    }
+    return value;
+}
+function provenanceResult(value, operation) {
+    let parsed = value;
+    if (typeof parsed === 'string') {
+        try {
+            parsed = JSON.parse(parsed);
+        }
+        catch (error) {
+            throw new ProvenanceLedgerIntegrityError(`${operation}: malformed JSON result`, { cause: error });
+        }
+    }
+    if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)
+        || typeof parsed.ok !== 'boolean') {
+        throw new ProvenanceLedgerIntegrityError(`${operation}: malformed result`);
+    }
+    return parsed;
+}
+export function createPostgresProvenanceLedgerStore(options) {
+    if (!options || typeof options.query !== 'function') {
+        throw new TypeError('createPostgresProvenanceLedgerStore requires a pg-style query function');
+    }
+    const query = options.query;
+    const tenantId = provenanceIdentifier(options.tenantId, 'tenantId');
+    const ledgerId = provenanceIdentifier(options.ledgerId, 'ledgerId');
+    const rpc = async (operation, text, params) => {
+        const response = await query(text, params);
+        if (!response || response.rowCount !== 1 || !Array.isArray(response.rows)
+            || response.rows.length !== 1 || !Object.hasOwn(response.rows[0], 'result')) {
+            throw new ProvenanceLedgerIntegrityError(`${operation}: malformed PostgreSQL response`);
+        }
+        return provenanceResult(response.rows[0].result, operation);
+    };
+    return Object.freeze({
+        durable: true,
+        async load() {
+            const result = await rpc('provenance load', PROVENANCE_POSTGRES_SQL.load, [
+                tenantId,
+                ledgerId,
+            ]);
+            if (!result.ok || !Array.isArray(result.entries)) {
+                throw new ProvenanceLedgerIntegrityError('provenance load: store refused or omitted entries');
+            }
+            const expectedLength = Number(result.head_sequence) + 1;
+            if (!Number.isSafeInteger(expectedLength)
+                || expectedLength < 0
+                || result.entries.length !== expectedLength
+                || (result.entries.at(-1)?.entry_hash ?? '') !== (result.head_hash ?? '')) {
+                throw new ProvenanceLedgerIntegrityError('provenance load: durable head does not match entries');
+            }
+            return immutableCopy(result.entries);
+        },
+        async append(input) {
+            if (!Number.isSafeInteger(input.expectedSequence) || input.expectedSequence < 0) {
+                throw new TypeError('expectedSequence is invalid');
+            }
+            if (typeof input.expectedPreviousHash !== 'string') {
+                throw new TypeError('expectedPreviousHash is invalid');
+            }
+            const result = await rpc('provenance append', PROVENANCE_POSTGRES_SQL.append, [
+                tenantId,
+                ledgerId,
+                input.expectedSequence,
+                input.expectedPreviousHash,
+                JSON.stringify(input.entry),
+            ]);
+            if (result.ok)
+                return { ok: true };
+            if (result.reason === 'head_conflict') {
+                return { ok: false, reason: 'head_conflict' };
+            }
+            return { ok: false, reason: 'storage_refused' };
+        },
+    });
+}
+export class ProvenanceLedgerIntegrityError extends Error {
+    constructor(message, options) {
+        super(message, options);
+        this.name = 'ProvenanceLedgerIntegrityError';
+    }
+}
+function immutableCopy(value) {
+    const copy = structuredClone(value);
+    const freeze = (candidate) => {
+        if (candidate === null || typeof candidate !== 'object' || Object.isFrozen(candidate))
+            return;
+        for (const child of Object.values(candidate))
+            freeze(child);
+        Object.freeze(candidate);
+    };
+    freeze(copy);
+    return copy;
+}
 export class ProvenanceLedger {
-    entries = [];
+    #entries = [];
+    #store = null;
+    #tail = Promise.resolve();
+    durable = false;
     constructor() {
+    }
+    static async open({ store }) {
+        if (!store || store.durable !== true
+            || typeof store.load !== 'function'
+            || typeof store.append !== 'function') {
+            throw new TypeError('ProvenanceLedger.open requires a durable provenance store');
+        }
+        const loaded = await store.load();
+        if (!Array.isArray(loaded)) {
+            throw new ProvenanceLedgerIntegrityError('durable provenance store returned no entry array');
+        }
+        const ledger = new ProvenanceLedger();
+        ledger.#store = store;
+        Object.defineProperty(ledger, 'durable', { value: true });
+        ledger.#entries = loaded.map((entry) => immutableCopy(entry));
+        const verified = ledger.verifyChain();
+        if (!verified.ok) {
+            throw new ProvenanceLedgerIntegrityError(`durable provenance chain failed startup verification: ${verified.reason} at ${verified.index}`);
+        }
+        return ledger;
+    }
+    get entries() {
+        return immutableCopy(this.#entries);
     }
     /** sha256: of the previous entry, "" for genesis. */
     get headHash() {
-        if (this.entries.length === 0)
+        if (this.#entries.length === 0)
             return '';
-        return this.entries[this.entries.length - 1].entry_hash;
+        return this.#entries[this.#entries.length - 1].entry_hash;
     }
     /**
      * Append an entry that REFERENCES a v1 receipt for an executed irreversible
@@ -285,29 +404,50 @@ export class ProvenanceLedger {
      * @returns {object} the appended entry (with its own entry_hash)
      */
     append({ tool, action, actionDigest, receiptRef, verified, agentClaim, liability, at }) {
-        const prev = this.headHash;
-        const body = {
-            '@version': 'EP-PROVENANCE-ENTRY-v1', // additive composite, governed by PIP
-            sequence: this.entries.length,
-            at: at || new Date().toISOString(),
-            tool,
-            action,
-            action_digest: actionDigest, // hash of the tool call inputs
-            // Reference to the existing v1 receipt — NOT a copy of its signed bytes.
-            receipt_ref: receiptRef, // { receipt_id, receipt_hash }
-            // Summary of the OFFLINE verification that already passed (no new trust).
-            verified: verified
-                ? { outcome: verified.outcome, subject: verified.subject, signer: verified.signer }
-                : null,
-            // Agent identity is a scoped CLAIM, not a proof of strong identity.
-            agent_claim: agentClaim || null,
-            // Liability attestation: a named accountable owner. Evidence, not a ruling.
-            liability: liability || null,
-            prev_entry_hash: prev || null,
+        let resolveResult;
+        let rejectResult;
+        const result = new Promise((resolve, reject) => {
+            resolveResult = resolve;
+            rejectResult = reject;
+        });
+        const operation = async () => {
+            try {
+                const prev = this.headHash;
+                const body = {
+                    '@version': 'EP-PROVENANCE-ENTRY-v1',
+                    sequence: this.#entries.length,
+                    at: at || new Date().toISOString(),
+                    tool,
+                    action,
+                    action_digest: actionDigest,
+                    receipt_ref: receiptRef,
+                    verified: verified
+                        ? { outcome: verified.outcome, subject: verified.subject, signer: verified.signer }
+                        : null,
+                    agent_claim: agentClaim || null,
+                    liability: liability || null,
+                    prev_entry_hash: prev || null,
+                };
+                const entry = immutableCopy({ ...body, entry_hash: hashObject(body) });
+                if (this.#store) {
+                    const stored = await this.#store.append({
+                        expectedSequence: body.sequence,
+                        expectedPreviousHash: prev,
+                        entry,
+                    });
+                    if (!stored.ok) {
+                        throw new ProvenanceLedgerIntegrityError(`durable provenance append refused: ${stored.reason}`);
+                    }
+                }
+                this.#entries = [...this.#entries, entry];
+                resolveResult(entry);
+            }
+            catch (error) {
+                rejectResult(error);
+            }
         };
-        const entry = { ...body, entry_hash: hashObject(body) };
-        this.entries.push(entry);
-        return entry;
+        this.#tail = this.#tail.then(operation, operation);
+        return result;
     }
     /**
      * Re-verify the append-only chain offline. Does NOT re-verify the underlying
@@ -317,8 +457,8 @@ export class ProvenanceLedger {
      */
     verifyChain() {
         let prev = '';
-        for (let i = 0; i < this.entries.length; i++) {
-            const e = this.entries[i];
+        for (let i = 0; i < this.#entries.length; i++) {
+            const e = this.#entries[i];
             const { entry_hash, ...body } = e;
             if (e.sequence !== i)
                 return { ok: false, reason: 'sequence_gap', index: i };
@@ -329,7 +469,7 @@ export class ProvenanceLedger {
                 return { ok: false, reason: 'tampered_entry', index: i };
             prev = entry_hash;
         }
-        return { ok: true, length: this.entries.length };
+        return { ok: true, length: this.#entries.length };
     }
 }
 // ---------------------------------------------------------------------------
@@ -367,7 +507,8 @@ export class ProvenanceLedger {
  * @property {(ctx:object)=>Promise<{receipt:object, receipt_id?:string}>} [issueReceipt]
  *   ADAPTER. Emit an EP-RECEIPT-v1 for the approved action. Delegated to an EP
  *   host or `@emilia-protocol/issue`. This package never signs a receipt itself.
- * @property {ProvenanceLedger} [ledger]  shared ledger; one is created if absent.
+ * @property {ProvenanceLedger} [ledger] durable, startup-verified ledger.
+ * @property {boolean} [allowEphemeralLedger=false] explicit demo/test escape hatch.
  * @property {boolean} [enforceDemand=true]
  *   If true, an irreversible call that arrives WITH a receipt is verified by the
  *   demand hook and runs without re-gating (the agent already did the loop).
@@ -392,7 +533,18 @@ export function withMcpGuard(handler, options = {}) {
         throw new TypeError('withMcpGuard: first argument must be the tool-call handler');
     }
     const { policy, annotations = {}, getAnnotations, defaultIrreversible = true, trustReadOnlyHints = false, action: globalAction, verifyOpts = {}, requestConsent, requestClassASignoff, issueReceipt, enforceDemand = true, store = inMemoryConsumptionStore(), } = options;
-    const ledger = options.ledger instanceof ProvenanceLedger ? options.ledger : new ProvenanceLedger();
+    const suppliedLedger = options.ledger;
+    if (suppliedLedger !== undefined && !(suppliedLedger instanceof ProvenanceLedger)) {
+        throw new TypeError('withMcpGuard: ledger must be a ProvenanceLedger');
+    }
+    const ledger = suppliedLedger instanceof ProvenanceLedger
+        ? suppliedLedger
+        : options.allowEphemeralLedger === true
+            ? new ProvenanceLedger()
+            : null;
+    if (!ledger || (!ledger.durable && options.allowEphemeralLedger !== true)) {
+        throw new TypeError('withMcpGuard: a durable provenance ledger is required; use allowEphemeralLedger only for demos/tests');
+    }
     const resolveAnnotations = (name) => {
         let fromResolver;
         try {
@@ -462,7 +614,7 @@ export function withMcpGuard(handler, options = {}) {
             if (carriesReceipt) {
                 const doc = extractReceipt(args, meta);
                 const run = await gateFor(action, requiredTier).run(doc, {}, async (verified) => {
-                    ledger.append({
+                    await ledger.append({
                         tool: name,
                         action,
                         actionDigest,
@@ -553,7 +705,7 @@ export function withMcpGuard(handler, options = {}) {
         // effect, and commit after any invocation attempt. The newly issued receipt
         // cannot later be replayed through Path A.
         const run = await gateFor(action, requiredTier).run(doc, {}, async (verified) => {
-            ledger.append({
+            await ledger.append({
                 tool: name,
                 action,
                 actionDigest,
@@ -727,6 +879,7 @@ export default {
     refusal,
     classifyToolCall,
     bindToolAction,
+    createPostgresProvenanceLedgerStore,
     ProvenanceLedger,
     hashObject,
     GUARD_DECISIONS,

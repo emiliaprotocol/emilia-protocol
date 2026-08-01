@@ -186,7 +186,8 @@ CREATE TABLE IF NOT EXISTS public.ep_gate_admission_journal (
   operation_id text NOT NULL,
   sequence bigint NOT NULL CHECK (sequence >= 0),
   event text NOT NULL CHECK (event IN (
-    'RESERVED', 'RELEASED', 'EXPIRED', 'SUPERSEDED', 'INVOKING',
+    'RESERVED', 'RELEASED', 'EXPIRED', 'ABANDONED_BEFORE_INVOCATION',
+    'SUPERSEDED', 'INVOKING',
     'RECOVERED_INDETERMINATE', 'PROVIDER_OUTCOME', 'EFFECT_RELATION'
   )),
   record_digest text NOT NULL CHECK (record_digest ~ '^sha256:[0-9a-f]{64}$'),
@@ -200,6 +201,17 @@ CREATE TABLE IF NOT EXISTS public.ep_gate_admission_journal (
     REFERENCES public.ep_gate_admission_records(deployment_id, admission_id)
     DEFERRABLE INITIALLY DEFERRED
 );
+
+-- CREATE TABLE IF NOT EXISTS does not replace an existing check constraint.
+-- Make the recovery event valid on upgraded installations as well as new ones.
+ALTER TABLE public.ep_gate_admission_journal
+  DROP CONSTRAINT IF EXISTS ep_gate_admission_journal_event_check;
+ALTER TABLE public.ep_gate_admission_journal
+  ADD CONSTRAINT ep_gate_admission_journal_event_check CHECK (event IN (
+    'RESERVED', 'RELEASED', 'EXPIRED', 'ABANDONED_BEFORE_INVOCATION',
+    'SUPERSEDED', 'INVOKING', 'RECOVERED_INDETERMINATE',
+    'PROVIDER_OUTCOME', 'EFFECT_RELATION'
+  ));
 
 REVOKE ALL ON TABLE public.ep_gate_deployment_binding FROM PUBLIC;
 REVOKE ALL ON TABLE public.ep_gate_candidate_runtime_heads FROM PUBLIC;
@@ -1430,6 +1442,84 @@ BEGIN
 END;
 $$;
 
+-- Recovery authority is the database EXECUTE privilege on this dedicated RPC,
+-- not the per-operation owner token that may have died with a worker process.
+-- Operators should grant this function only to a narrowly scoped reaper role.
+-- The immutable deadline, exact tenant/admission identity, expected revision,
+-- and pre-invocation state are checked under the admission row lock. Once an
+-- invocation may have entered the provider, this function always refuses.
+CREATE OR REPLACE FUNCTION public.ep_gate_admission_reap_expired(
+  p_deployment_id text,
+  p_tenant_id text,
+  p_admission_id text,
+  p_expected_revision bigint
+)
+RETURNS jsonb
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = pg_catalog, public
+AS $$
+DECLARE
+  v_current jsonb;
+  v_snapshot jsonb;
+  v_now timestamptz;
+  v_record jsonb;
+BEGIN
+  PERFORM public.ep_gate_assert_binding(p_deployment_id, p_tenant_id);
+  v_current := public.ep_gate_load_admission_locked(
+    p_deployment_id,
+    p_tenant_id,
+    p_admission_id
+  );
+  IF v_current IS NULL THEN RETURN public.ep_gate_refusal('admission_not_found'); END IF;
+  IF (v_current->>'revision')::bigint <> p_expected_revision THEN
+    RETURN public.ep_gate_refusal('revision_conflict');
+  END IF;
+  IF v_current->>'state' <> 'RESERVED'
+     OR v_current->>'execution_right' <> 'RESERVED'
+     OR v_current->>'provider_attempt' <> 'NOT_ENTERED' THEN
+    RETURN public.ep_gate_refusal('state_conflict');
+  END IF;
+  SELECT snapshot_json INTO STRICT v_snapshot
+    FROM public.ep_gate_admission_snapshots
+    WHERE deployment_id = p_deployment_id
+      AND snapshot_digest = v_current->>'snapshot_digest';
+  v_now := clock_timestamp();
+  IF (v_snapshot->'body'->>'expires_at')::timestamptz > v_now THEN
+    RETURN public.ep_gate_refusal('state_conflict');
+  END IF;
+  PERFORM 1 FROM public.ep_gate_resource_fences
+    WHERE deployment_id = p_deployment_id AND admission_id = p_admission_id
+    ORDER BY kind, resource_id FOR UPDATE;
+  IF v_current->'resources' <> public.ep_gate_expected_resources(v_snapshot, 'RESERVED')
+     OR NOT public.ep_gate_resources_exact(
+       p_deployment_id,
+       p_admission_id,
+       v_snapshot,
+       'RESERVED'
+     ) THEN
+    RAISE EXCEPTION 'reserved resource head mismatch';
+  END IF;
+  DELETE FROM public.ep_gate_resource_fences
+    WHERE deployment_id = p_deployment_id
+      AND admission_id = p_admission_id
+      AND state = 'RESERVED';
+  v_record := public.ep_gate_apply_transition(
+    p_deployment_id,
+    v_current,
+    jsonb_build_object(
+      'state', 'EXPIRED',
+      'execution_right', 'RELEASED',
+      'refusal_reason', 'abandoned_before_invocation',
+      'resources', public.ep_gate_expected_resources(v_snapshot, 'RELEASED')
+    ),
+    'ABANDONED_BEFORE_INVOCATION',
+    v_now
+  );
+  RETURN jsonb_build_object('ok', true, 'record', v_record);
+END;
+$$;
+
 CREATE OR REPLACE FUNCTION public.ep_gate_admission_supersede(
   p_deployment_id text,
   p_tenant_id text,
@@ -2162,6 +2252,14 @@ BEGIN
            OR r.record_json->'resources' <> public.ep_gate_expected_resources(s.snapshot_json, 'RESERVED')
            OR NOT public.ep_gate_resources_exact(r.deployment_id, r.admission_id, s.snapshot_json, 'RESERVED'))
     UNION ALL
+    SELECT r.admission_id || ':reserved_past_expiry'
+    FROM public.ep_gate_admission_records r
+    JOIN public.ep_gate_admission_snapshots s
+      ON s.deployment_id = r.deployment_id AND s.snapshot_digest = r.snapshot_digest
+    WHERE r.deployment_id = p_deployment_id
+      AND r.record_json->>'state' = 'RESERVED'
+      AND (s.snapshot_json->'body'->>'expires_at')::timestamptz <= clock_timestamp()
+    UNION ALL
     SELECT r.admission_id || ':consumed_resource_invalid'
     FROM public.ep_gate_admission_records r
     JOIN public.ep_gate_admission_snapshots s
@@ -2232,6 +2330,7 @@ REVOKE ALL ON FUNCTION public.ep_gate_initial_record(jsonb, text, timestamptz) F
 REVOKE ALL ON FUNCTION public.ep_gate_admission_reserve(text, text, jsonb, text) FROM PUBLIC;
 REVOKE ALL ON FUNCTION public.ep_gate_admission_release(text, text, text, bigint, text, text) FROM PUBLIC;
 REVOKE ALL ON FUNCTION public.ep_gate_admission_expire(text, text, text, bigint, text) FROM PUBLIC;
+REVOKE ALL ON FUNCTION public.ep_gate_admission_reap_expired(text, text, text, bigint) FROM PUBLIC;
 REVOKE ALL ON FUNCTION public.ep_gate_admission_supersede(text, text, text, bigint, text, jsonb, text) FROM PUBLIC;
 REVOKE ALL ON FUNCTION public.ep_gate_admission_begin_invocation(text, text, text, bigint, text, text) FROM PUBLIC;
 REVOKE ALL ON FUNCTION public.ep_gate_admission_recover_indeterminate(text, text, text, text, text) FROM PUBLIC;

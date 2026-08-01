@@ -8,12 +8,14 @@
     ".": {
       "import": "./index.js",
       "types": "./dist/index.d.ts"
-    }
+    },
+    "./sql/provenance-ledger-v1.sql": "./sql/provenance-ledger-v1.sql"
   },
   "files": [
     "index.js",
     "dist/",
     "src/",
+    "sql/",
     "tsconfig.json",
     "README.md",
     "LICENSE"

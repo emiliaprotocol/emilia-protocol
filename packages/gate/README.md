@@ -173,6 +173,19 @@ deployment migration, cross-tenant operation, federated atomicity, or managed
 service operation; callers remain responsible for database roles, RPC
 installation, backups, monitoring, and recovery procedures.
 
+If a worker dies after `reserve()` but before `beginInvocation()`, the
+per-operation owner token may be unrecoverable. The store therefore exposes
+`reapExpiredReservation({ tenant_id, admission_id, expected_revision })` and
+the SQL contract exposes `ep_gate_admission_reap_expired`. That dedicated RPC
+has no owner-token argument. It succeeds only after the immutable admission
+deadline, only from `RESERVED / NOT_ENTERED`, and only at the exact revision
+under the admission row lock. It releases non-monotonic resource fences,
+retains the permanent operation head and monotonic counter advance, and appends
+`ABANDONED_BEFORE_INVOCATION` so an unused counter value is explainable.
+Anything at `INVOKING` or later remains frozen for indeterminate recovery and
+cannot be reaped. Grant EXECUTE on the recovery RPC only to a narrowly scoped
+reaper role; ordinary runtime roles do not need it.
+
 A `QUALIFIED` verifier result by itself is non-authorizing. It does not grant
 permission, reserve or consume authority, invoke a provider, or establish
 legality or business suitability.

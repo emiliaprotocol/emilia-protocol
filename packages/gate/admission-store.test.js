@@ -184,6 +184,80 @@ test('reservation permanently fences tenant operation, admission and resources',
     assert.deepEqual(await store.reserve(conflict), { ok: false, reason: 'resource_conflict' });
     assert.deepEqual(await store.checkInvariants(), { ok: true, violations: [] });
 });
+test('an expired pre-invocation reservation can be reaped without its lost owner token', async () => {
+    let now = Date.parse(NOW);
+    const store = createMemoryAdmissionStore({
+        now: () => now,
+        ownerTokenFactory: () => owner(1),
+    });
+    const value = snapshot();
+    const reserved = await store.reserve(value);
+    assert.equal(reserved.ok, true);
+    if (!reserved.ok)
+        return;
+    assert.deepEqual(await store.reapExpiredReservation({
+        tenant_id: value.tenant_id,
+        admission_id: value.admission_id,
+        expected_revision: 0,
+    }), { ok: false, reason: 'state_conflict' });
+    now = Date.parse(EXPIRES) + 1;
+    const reaped = await store.reapExpiredReservation({
+        tenant_id: value.tenant_id,
+        admission_id: value.admission_id,
+        expected_revision: 0,
+    });
+    assert.equal(reaped.ok, true);
+    if (!reaped.ok)
+        return;
+    assert.equal(reaped.record.state, 'EXPIRED');
+    assert.equal(reaped.record.execution_right, 'RELEASED');
+    assert.equal(reaped.record.provider_attempt, 'NOT_ENTERED');
+    assert.equal(reaped.record.refusal_reason, 'abandoned_before_invocation');
+    assert.ok(reaped.record.resources.every((resource) => resource.state === 'RELEASED'));
+    assert.deepEqual(await store.reapExpiredReservation({
+        tenant_id: value.tenant_id,
+        admission_id: value.admission_id,
+        expected_revision: 0,
+    }), { ok: false, reason: 'revision_conflict' });
+    const entries = await store.journal({
+        tenant_id: value.tenant_id,
+        admission_id: value.admission_id,
+    });
+    assert.equal(entries.at(-1)?.event, 'ABANDONED_BEFORE_INVOCATION');
+    const replacement = snapshot({
+        admission_id: 'admission:replacement',
+        operation_id: 'operation:replacement',
+        expires_at: '2026-07-26T12:12:00.000Z',
+    });
+    assert.equal((await store.reserve(replacement)).ok, true);
+    assert.deepEqual(await store.checkInvariants(), { ok: true, violations: [] });
+});
+test('the expiry reaper cannot touch an invocation that may have entered the provider', async () => {
+    let now = Date.parse(NOW);
+    const value = snapshot();
+    const store = createMemoryAdmissionStore({
+        now: () => now,
+        ownerTokenFactory: () => owner(1),
+        invocationTokenFactory: () => `admission-invocation:v2:${Buffer.alloc(32, 9).toString('base64url')}`,
+        currentnessOracle: { read: async () => matchingObservation(value) },
+    });
+    const reserved = await store.reserve(value);
+    assert.equal(reserved.ok, true);
+    if (!reserved.ok)
+        return;
+    assert.equal((await store.beginInvocation({
+        tenant_id: value.tenant_id,
+        admission_id: value.admission_id,
+        expected_revision: 0,
+        owner_token: reserved.owner_token,
+    })).ok, true);
+    now = Date.parse(EXPIRES) + 1;
+    assert.deepEqual(await store.reapExpiredReservation({
+        tenant_id: value.tenant_id,
+        admission_id: value.admission_id,
+        expected_revision: 1,
+    }), { ok: false, reason: 'state_conflict' });
+});
 test('monotonic counter reserve requires an explicitly provisioned trusted head', async () => {
     const value = withMonotonicCounter(snapshot(), 41, 42);
     const missing = createMemoryAdmissionStore({

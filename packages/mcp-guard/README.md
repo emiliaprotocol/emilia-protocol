@@ -67,7 +67,18 @@ MCP tool call ── classify ─┬─ reversible / read-only ─────�
 touch transport, schemas, or the tool list.
 
 ```js
-import { withMcpGuard, ProvenanceLedger } from '@emilia-protocol/mcp-guard';
+import {
+  createPostgresProvenanceLedgerStore,
+  ProvenanceLedger,
+  withMcpGuard,
+} from '@emilia-protocol/mcp-guard';
+
+const provenanceStore = createPostgresProvenanceLedgerStore({
+  query: (text, params) => pgPool.query(text, params),
+  tenantId: 'tenant:production',
+  ledgerId: 'mcp:primary',
+});
+const provenanceLedger = await ProvenanceLedger.open({ store: provenanceStore });
 
 // `handleTool(name, args, extra)` is your server's existing dispatcher.
 const guardedHandleTool = withMcpGuard(handleTool, {
@@ -98,7 +109,11 @@ const guardedHandleTool = withMcpGuard(handleTool, {
   // and release are ownership-fenced. Use one durable store across the fleet.
   store: durableReceiptStore, // { reserve, commit, release }
 
-  // 4) Adapters — REQUIRED to exercise Path B (mint a new receipt).
+  // 4) Durable provenance. Startup reloads and verifies the stored chain;
+  // each entry commits before the protected handler is called.
+  ledger: provenanceLedger,
+
+  // 5) Adapters — REQUIRED to exercise Path B (mint a new receipt).
   //    Without them the middleware fails closed at the first missing stage.
   requestConsent:       async (ctx) => ({ approved: await askUser(ctx) }),
   requestClassASignoff: async (ctx) => ({ approved: await webauthnAssert(ctx) }),
@@ -238,18 +253,38 @@ only `destructiveHint`/`readOnlyHint`, cannot replace a locally pinned action or
 ## Provenance ledger
 
 ```js
-import { ProvenanceLedger } from '@emilia-protocol/mcp-guard';
+import {
+  createPostgresProvenanceLedgerStore,
+  ProvenanceLedger,
+} from '@emilia-protocol/mcp-guard';
 
-const ledger = new ProvenanceLedger();           // pass into withMcpGuard({ ledger })
+const store = createPostgresProvenanceLedgerStore({
+  query: (text, params) => pgPool.query(text, params),
+  tenantId: 'tenant:production',
+  ledgerId: 'mcp:primary',
+});
+const ledger = await ProvenanceLedger.open({ store });
 // ... after some guarded irreversible calls:
 ledger.verifyChain();   // { ok: true, length } or { ok:false, reason, index } — fails closed
-ledger.entries;         // append-only EP-PROVENANCE-ENTRY-v1 records (references, not re-signed receipts)
+ledger.entries;         // frozen EP-PROVENANCE-ENTRY-v1 snapshot
 ```
 
 Each entry references one v1 receipt (`receipt_id` + content hash), the verified
 summary (outcome/subject/signer), the scoped **agent claim**, and the
-**liability** owner. `verifyChain()` proves the ledger is untampered; it does
-**not** replace per-receipt verification (that stays with require-receipt).
+**liability** owner. `verifyChain()` proves that the supplied entry array is
+self-consistent. It cannot by itself detect truncation to an earlier valid
+prefix and does **not** replace per-receipt verification. The shipped
+PostgreSQL store supplies the durable append-only head and atomic
+compare-and-append that the in-memory chain alone cannot provide.
+
+`withMcpGuard()` requires a durable, startup-opened ledger by default. The
+literal `allowEphemeralLedger: true` escape hatch exists only for tests and
+local demonstrations; it must not be used for a production audit trail. Install
+`sql/provenance-ledger-v1.sql`, grant its two RPCs to a dedicated runtime role,
+and grant no table privileges. Before granting the runtime role, the deployment
+owner calls `ep_mcp_provenance_bind(tenant_id, ledger_id)` once. The binding is
+permanent: one installed schema is one tenant/ledger authority domain, so a
+runtime that bypasses the adapter cannot select another tenant's history.
 
 ## What needs a live MCP host / signer to exercise
 
@@ -266,15 +301,20 @@ and are intentionally adapter-shaped (no-op defaults **fail closed**):
 
 Without adapters you can still exercise: classification, the **demand hook**
 against a pre-issued receipt, the **402 refusal** path, and the **provenance
-ledger** chain verification — all offline, no network.
+ledger** chain verification — all offline, no network. Construct an ephemeral
+ledger only with `allowEphemeralLedger: true` and only for that purpose.
 
 ## Exact wiring (no edits to the shared mcp-server)
 
 1. **Install** `@emilia-protocol/mcp-guard` and `@emilia-protocol/require-receipt`.
-2. **At server startup**, build the wrapper once:
+2. **At server startup**, open and verify the durable provenance ledger, then
+   build the wrapper once:
    ```js
-   import { withMcpGuard } from '@emilia-protocol/mcp-guard';
-   const guardedHandleTool = withMcpGuard(handleTool, { /* annotations, policy, verifyOpts, adapters */ });
+   import { ProvenanceLedger, withMcpGuard } from '@emilia-protocol/mcp-guard';
+   const guardedHandleTool = withMcpGuard(handleTool, {
+     ledger: await ProvenanceLedger.open({ store: durableProvenanceStore }),
+     /* annotations, policy, verifyOpts, adapters */
+   });
    ```
 3. **At the dispatch site** (inside the `CallToolRequestSchema` handler), change
    the single call:
@@ -287,8 +327,8 @@ ledger** chain verification — all offline, no network.
 4. **Return the refusal verbatim.** When the result is `{ ep_refused: true }`,
    surface it as the tool result so the agent can read `required.retry_with` and
    come back with a receipt.
-5. **(Optional)** persist `guardedHandleTool.ledger.entries` and periodically
-   call `.verifyChain()`.
+5. Monitor append failures. A failed durable append prevents the protected
+   handler from running; it is never silently downgraded to memory.
 
 Apache-2.0 · part of [EMILIA Protocol](https://www.emiliaprotocol.ai) ·
 **reference implementation, experimental**

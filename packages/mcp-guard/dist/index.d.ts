@@ -98,9 +98,46 @@ export declare function refusal(action: string, reason: string, extra?: AnyRecor
  * @returns {{ok:true, verified:object} | {ok:false, refusal:object}}
  */
 export declare function demandReceipt({ action, args, meta, verifyOpts }: AnyRecord): AnyRecord;
+export interface ProvenanceLedgerStoreAppendInput {
+    expectedSequence: number;
+    expectedPreviousHash: string;
+    entry: Readonly<AnyRecord>;
+}
+export interface ProvenanceLedgerStore {
+    readonly durable: true;
+    load(): Promise<readonly AnyRecord[]>;
+    append(input: ProvenanceLedgerStoreAppendInput): Promise<{
+        ok: true;
+    } | {
+        ok: false;
+        reason: 'head_conflict' | 'storage_refused';
+    }>;
+}
+export interface ProvenancePostgresQueryResult {
+    rowCount: number;
+    rows?: Array<Record<string, unknown>>;
+}
+export type ProvenancePostgresQuery = (text: string, params: readonly unknown[]) => Promise<ProvenancePostgresQueryResult>;
+export declare const PROVENANCE_POSTGRES_SQL: Readonly<{
+    load: "SELECT public.ep_mcp_provenance_load($1::text, $2::text) AS result";
+    append: "SELECT public.ep_mcp_provenance_append($1::text, $2::text, $3::bigint, $4::text, $5::jsonb) AS result";
+}>;
+export declare function createPostgresProvenanceLedgerStore(options: {
+    query: ProvenancePostgresQuery;
+    tenantId: string;
+    ledgerId: string;
+}): ProvenanceLedgerStore;
+export declare class ProvenanceLedgerIntegrityError extends Error {
+    constructor(message: string, options?: ErrorOptions);
+}
 export declare class ProvenanceLedger {
-    entries: AnyRecord[];
+    #private;
+    readonly durable: boolean;
     constructor();
+    static open({ store }: {
+        store: ProvenanceLedgerStore;
+    }): Promise<ProvenanceLedger>;
+    get entries(): readonly Readonly<AnyRecord>[];
     /** sha256: of the previous entry, "" for genesis. */
     get headHash(): any;
     /**
@@ -113,7 +150,7 @@ export declare class ProvenanceLedger {
      *   agentClaim?:any, liability?:any, at?:string}} entry
      * @returns {object} the appended entry (with its own entry_hash)
      */
-    append({ tool, action, actionDigest, receiptRef, verified, agentClaim, liability, at }: AnyRecord): AnyRecord;
+    append({ tool, action, actionDigest, receiptRef, verified, agentClaim, liability, at }: AnyRecord): Promise<Readonly<AnyRecord>>;
     /**
      * Re-verify the append-only chain offline. Does NOT re-verify the underlying
      * v1 receipts (that is the verifier's job via require-receipt); it only proves
@@ -154,7 +191,8 @@ export declare class ProvenanceLedger {
  * @property {(ctx:object)=>Promise<{receipt:object, receipt_id?:string}>} [issueReceipt]
  *   ADAPTER. Emit an EP-RECEIPT-v1 for the approved action. Delegated to an EP
  *   host or `@emilia-protocol/issue`. This package never signs a receipt itself.
- * @property {ProvenanceLedger} [ledger]  shared ledger; one is created if absent.
+ * @property {ProvenanceLedger} [ledger] durable, startup-verified ledger.
+ * @property {boolean} [allowEphemeralLedger=false] explicit demo/test escape hatch.
  * @property {boolean} [enforceDemand=true]
  *   If true, an irreversible call that arrives WITH a receipt is verified by the
  *   demand hook and runs without re-gating (the agent already did the loop).
@@ -200,6 +238,7 @@ declare const _default: {
     refusal: typeof refusal;
     classifyToolCall: typeof classifyToolCall;
     bindToolAction: typeof bindToolAction;
+    createPostgresProvenanceLedgerStore: typeof createPostgresProvenanceLedgerStore;
     ProvenanceLedger: typeof ProvenanceLedger;
     hashObject: typeof hashObject;
     GUARD_DECISIONS: Readonly<{

@@ -16,6 +16,7 @@ export const ADMISSION_POSTGRES_SQL = Object.freeze({
     reserve: 'SELECT public.ep_gate_admission_reserve($1::text, $2::text, $3::jsonb, $4::text) AS result',
     release: 'SELECT public.ep_gate_admission_release($1::text, $2::text, $3::text, $4::bigint, $5::text, $6::text) AS result',
     expire: 'SELECT public.ep_gate_admission_expire($1::text, $2::text, $3::text, $4::bigint, $5::text) AS result',
+    reapExpiredReservation: 'SELECT public.ep_gate_admission_reap_expired($1::text, $2::text, $3::text, $4::bigint) AS result',
     supersede: 'SELECT public.ep_gate_admission_supersede($1::text, $2::text, $3::text, $4::bigint, $5::text, $6::jsonb, $7::text) AS result',
     beginInvocation: 'SELECT public.ep_gate_admission_begin_invocation($1::text, $2::text, $3::text, $4::bigint, $5::text, $6::text) AS result',
     recoverIndeterminate: 'SELECT public.ep_gate_admission_recover_indeterminate($1::text, $2::text, $3::text, $4::text, $5::text) AS result',
@@ -346,6 +347,12 @@ export function createAdmissionPostgresStore(options) {
                 cas.expected_revision,
                 tokenDigest(cas.owner_token),
             ]), 'admission expire');
+        },
+        async reapExpiredReservation(input) {
+            const reference = validateReference(input);
+            assertTenant(reference.tenant_id);
+            const expectedRevision = revision(input.expected_revision);
+            return transitionResult(await rpc('admission reap expired reservation', ADMISSION_POSTGRES_SQL.reapExpiredReservation, [deploymentId, tenantId, reference.admission_id, expectedRevision]), 'admission reap expired reservation');
         },
         async supersede(input) {
             const cas = validateCas(input);
