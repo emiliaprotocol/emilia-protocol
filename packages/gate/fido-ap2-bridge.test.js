@@ -682,6 +682,35 @@ describe('FIDO/AP2 Gate bridge v1 over official AP2 v0.2', () => {
         assert.equal(counters[0].next_value, 42);
         assert.deepEqual(leases.map((lease) => lease.digest).sort(), f.statuses.map((status) => status.head_digest).sort());
     });
+    it('re-derives every economic field from the AP2 payloads held by Gate', () => {
+        const f = fixture();
+        const derived = projectFidoAp2PaymentAction({
+            checkout_mandate: f.controls.ap2_source.checkout_mandate_payload,
+            payment_mandate: f.controls.ap2_source.payment_mandate_payload,
+            source_binding: createFidoAp2NativeSourceBinding(f.controls.ap2_source),
+        });
+        const payment = f.controls.ap2_source.payment_mandate_payload;
+        const amount = payment.payment_amount;
+        const payee = payment.payee;
+        const instrument = payment.payment_instrument;
+        assert.equal(derived.amount_minor, amount.amount);
+        assert.equal(derived.currency, amount.currency);
+        assert.equal(derived.payee_id, payee.id);
+        assert.equal(derived.payment_instrument_id, instrument.id);
+        assert.equal(derived.transaction_id, payment.transaction_id);
+    });
+    it('refuses AP2 payload bytes spliced under authenticated token commitments', () => {
+        const f = fixture();
+        const binding = createFidoAp2NativeSourceBinding(f.controls.ap2_source);
+        const tampered = structuredClone(f.controls.ap2_source.payment_mandate_payload);
+        const amount = tampered.payment_amount;
+        amount.amount = 9_999_999;
+        assert.throws(() => projectFidoAp2PaymentAction({
+            checkout_mandate: f.controls.ap2_source.checkout_mandate_payload,
+            payment_mandate: tampered,
+            source_binding: binding,
+        }), /payload binding mismatch/);
+    });
     it('refuses a signed amount splice even when the pinned native verifier attests to it', () => {
         const f = fixture({
             claimedActionMutator: (action) => ({ ...action, amount_minor: 9_999_999 }),
