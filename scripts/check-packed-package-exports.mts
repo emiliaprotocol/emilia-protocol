@@ -32,28 +32,65 @@ function run(command: string, args: string[], cwd = ROOT): string {
   return result.stdout;
 }
 
-function packageTargets(name: string, packageJson: Record<string, any>): string[] {
+type PackageTarget = {
+  specifier: string;
+  kind: 'module' | 'asset';
+};
+
+const MODULE_EXTENSIONS = new Set(['.cjs', '.js', '.mjs']);
+const ASSET_EXTENSIONS = new Set(['.json', '.sql', '.wasm']);
+
+export function packageTargets(
+  name: string,
+  packageJson: Record<string, any>,
+): PackageTarget[] {
   const exportsMap = packageJson.exports;
   if (!exportsMap || typeof exportsMap !== 'object' || Array.isArray(exportsMap)) {
     throw new Error(`${name} has no closed package exports map`);
   }
-  return Object.keys(exportsMap)
-    .filter((subpath) => subpath !== './package.json')
-    .sort()
-    .map((subpath) => (subpath === '.' ? name : `${name}/${subpath.slice(2)}`));
+  return Object.entries(exportsMap)
+    .filter(([subpath]) => subpath !== './package.json')
+    .sort(([left], [right]) => left.localeCompare(right))
+    .map(([subpath, exportValue]) => {
+      const importPath = typeof exportValue === 'string'
+        ? exportValue
+        : exportValue && typeof exportValue === 'object' && !Array.isArray(exportValue)
+          ? exportValue.import
+          : undefined;
+      if (typeof importPath !== 'string') {
+        throw new Error(`${name} export ${subpath} has no closed import target`);
+      }
+      const extension = path.posix.extname(importPath);
+      const kind = MODULE_EXTENSIONS.has(extension)
+        ? 'module'
+        : ASSET_EXTENSIONS.has(extension)
+          ? 'asset'
+          : undefined;
+      if (!kind) {
+        throw new Error(`${name} export ${subpath} has unsupported target ${importPath}`);
+      }
+      return {
+        specifier: subpath === '.' ? name : `${name}/${subpath.slice(2)}`,
+        kind,
+      };
+    });
 }
 
-export function checkPackedPackageExports(): { packages: number; imports: number } {
+export function checkPackedPackageExports(): {
+  packages: number;
+  imports: number;
+  assets: number;
+} {
   const temporary = fs.mkdtempSync(path.join(os.tmpdir(), 'emilia-packed-exports-'));
   try {
     const tarballs: string[] = [];
-    const imports: string[] = [];
+    const targets: PackageTarget[] = [];
     for (const item of PACKAGES) {
       const packageJson = JSON.parse(fs.readFileSync(
         path.join(ROOT, item.directory, 'package.json'),
         'utf8',
       ));
-      imports.push(...packageTargets(item.name, packageJson));
+      targets.push(...packageTargets(item.name, packageJson));
       const report = JSON.parse(run('npm', [
         'pack',
         path.join(ROOT, item.directory),
@@ -81,12 +118,24 @@ export function checkPackedPackageExports(): { packages: number; imports: number
       ...tarballs,
     ], temporary);
 
+    const imports = targets.filter((target) => target.kind === 'module');
+    const assets = targets.filter((target) => target.kind === 'asset');
     const program = `
-      const targets = ${JSON.stringify(imports)};
-      for (const target of targets) {
+      import { readFile } from 'node:fs/promises';
+      import { fileURLToPath } from 'node:url';
+      const imports = ${JSON.stringify(imports.map(({ specifier }) => specifier))};
+      const assets = ${JSON.stringify(assets.map(({ specifier }) => specifier))};
+      for (const target of imports) {
         await import(target);
       }
-      process.stdout.write(JSON.stringify({imports: targets.length}));
+      for (const target of assets) {
+        const resolved = import.meta.resolve(target);
+        const bytes = await readFile(fileURLToPath(resolved));
+        if (bytes.length === 0) {
+          throw new Error(target + ' resolved to an empty packaged asset');
+        }
+      }
+      process.stdout.write(JSON.stringify({imports: imports.length, assets: assets.length}));
     `;
     const output = run(process.execPath, [
       '--input-type=module',
@@ -97,7 +146,14 @@ export function checkPackedPackageExports(): { packages: number; imports: number
     if (result.imports !== imports.length) {
       throw new Error('packed export smoke returned an incomplete import count');
     }
-    return { packages: PACKAGES.length, imports: imports.length };
+    if (result.assets !== assets.length) {
+      throw new Error('packed export smoke returned an incomplete asset count');
+    }
+    return {
+      packages: PACKAGES.length,
+      imports: imports.length,
+      assets: assets.length,
+    };
   } finally {
     fs.rmSync(temporary, { recursive: true, force: true });
   }
@@ -106,7 +162,6 @@ export function checkPackedPackageExports(): { packages: number; imports: number
 if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
   const result = checkPackedPackageExports();
   process.stdout.write(
-    `Packed package exports: ${result.packages} packages, ${result.imports} imports passed.\n`,
+    `Packed package exports: ${result.packages} packages, ${result.imports} imports and ${result.assets} assets passed.\n`,
   );
 }
-
