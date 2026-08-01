@@ -3,6 +3,22 @@
 All notable changes to `@emilia-protocol/verify` are documented here.
 This package follows [Semantic Versioning](https://semver.org/).
 
+## 3.19.1 (2026-07-31)
+
+### Security
+
+- Add an explicit relying-party-pinned `not-relied-upon` WebAuthn counter
+  policy for zero-counter platform passkeys while preserving UP, UV, exact
+  challenge/action binding, replay identities, and Gate one-time admission.
+  The strict above-enrollment policy remains the default.
+
+### Documentation
+
+- State that source commitments and projection helpers prevent AP2 semantic
+  splicing only when callers use the exact payloads accepted by their native
+  verifier and independently reproject them before reliance. Pure verification
+  remains distinct from authorization, admission, and replay prevention.
+
 ## 3.19.0 (2026-07-31)
 
 ### Added

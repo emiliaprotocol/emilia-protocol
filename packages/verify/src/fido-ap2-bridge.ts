@@ -320,6 +320,10 @@ export const FIDO_AP2_CAID_RESOLVER_DIGEST = digestAeb({
   definitions: FIDO_AP2_CAID_ACTION_DEFINITIONS,
 });
 
+export type FidoAp2SignCountPolicy =
+  | 'above-enrollment-and-one-time'
+  | 'not-relied-upon';
+
 interface PinnedConfig {
   evidence_role: 'human_authorization';
   subject: AebEvidenceSubject & { kind: 'human'; native_id: string };
@@ -331,7 +335,7 @@ interface PinnedConfig {
   allowed_origins: string[];
   expected_nonce: string;
   max_status_age_seconds: number;
-  sign_count_policy: 'above-enrollment-and-one-time';
+  sign_count_policy: FidoAp2SignCountPolicy;
   allow_backup_eligible: boolean;
   allow_backup_state: boolean;
 }
@@ -673,7 +677,8 @@ function parseConfig(value: unknown): PinnedConfig | null {
       })
       || new Set(value.allowed_origins).size !== value.allowed_origins.length
       || !nonEmptyString(value.expected_nonce) || !nonNegativeInteger(value.max_status_age_seconds)
-      || value.sign_count_policy !== 'above-enrollment-and-one-time'
+      || !['above-enrollment-and-one-time', 'not-relied-upon']
+        .includes(String(value.sign_count_policy))
       || typeof value.allow_backup_eligible !== 'boolean'
       || typeof value.allow_backup_state !== 'boolean') return null;
   return {
@@ -687,7 +692,7 @@ function parseConfig(value: unknown): PinnedConfig | null {
     allowed_origins: [...value.allowed_origins],
     expected_nonce: value.expected_nonce,
     max_status_age_seconds: value.max_status_age_seconds,
-    sign_count_policy: 'above-enrollment-and-one-time',
+    sign_count_policy: value.sign_count_policy as FidoAp2SignCountPolicy,
     allow_backup_eligible: value.allow_backup_eligible,
     allow_backup_state: value.allow_backup_state,
   };
