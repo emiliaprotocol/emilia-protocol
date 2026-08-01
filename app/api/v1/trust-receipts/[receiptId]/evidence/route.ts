@@ -88,7 +88,7 @@ export async function GET(
     // consumed) AND carries the canonical action it must sign over, mint a
     // signed { document, public_key } pair — the SAME shape the public demo
     // endpoint serves, consumable by @emilia-protocol/verify's verifyReceipt()
-    // / examples/grok_guard.py with NO trust in this server. signEvidenceReceipt
+    // / examples/executor_approval_gate.py with NO trust in this server. signEvidenceReceipt
     // returns null for any receipt it cannot honestly sign (pending, denied,
     // rejected, expired, or missing signed material); in that case we keep
     // returning the existing unsigned ep-guard-evidence-v1 packet below and

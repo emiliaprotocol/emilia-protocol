@@ -1,5 +1,5 @@
 # SPDX-License-Identifier: Apache-2.0
-"""Permanent red-team regression suite for examples/grok_guard.py.
+"""Permanent red-team regression suite for examples/executor_approval_gate.py.
 
 Re-runs all six adversarial vectors the red-team found, plus the genuine
 happy-path control, against the OFFLINE verification gate (`_verify_evidence_offline`
@@ -9,14 +9,15 @@ suite uses, and attacker keys are generated locally with `cryptography` exactly 
 packages/python-verify/tests/test_verify.py does.
 
     # direct (mirrors test_verify.py):
-    PYTHONPATH=packages/python-verify python3 examples/tests/test_grok_guard_redteam.py
+    PYTHONPATH=packages/python-verify python3 examples/tests/test_executor_approval_gate_redteam.py
     # or via pytest:
-    PYTHONPATH=packages/python-verify pytest examples/tests/test_grok_guard_redteam.py
+    PYTHONPATH=packages/python-verify pytest examples/tests/test_executor_approval_gate_redteam.py
 
 The six vectors (red-team finding -> expected verdict after hardening):
   1. tampered action under the enrolled key            -> signature_invalid
   2. attacker self-signs, serves own pubkey (unpinned) -> untrusted_signer
   3. genuinely-signed DIFFERENT receipt (id/amount)    -> claim_mismatch
+  4. stale or not-yet-valid signed approval            -> expired / not_yet_valid
   5a. anchor stripped/partial when require_anchor=True  -> anchor_required
   5b. same receipt presented twice / consumed status    -> replay / already_consumed
   6. hostile evidence bodies (str/int/list/junk/raise)  -> verified=False, never raises
@@ -43,7 +44,7 @@ from cryptography.hazmat.primitives.asymmetric.ed25519 import (  # noqa: E402
 
 from emilia_verify import canonicalize  # noqa: E402
 
-from examples.grok_guard import (  # noqa: E402
+from examples.executor_approval_gate import (  # noqa: E402
     InMemoryReplayStore,
     VerifiedReceipt,
     _verify_evidence_offline,
@@ -137,7 +138,7 @@ def test_control_proceeds_via_fingerprint_pin():
     """Pinning by SHA-256 fingerprint (not the raw key) also proceeds — the
     server-independent trust root can be a fingerprint."""
     doc, pub = _load_fixture()
-    from examples.grok_guard import _spki_fingerprint
+    from examples.executor_approval_gate import _spki_fingerprint
 
     pinned = load_trusted_signer_keys([_spki_fingerprint(pub)])
     r = _verify_evidence_offline(
@@ -317,6 +318,51 @@ def test_vector3e_amount_comparison_does_not_round_through_float():
     assert "amount mismatch" in (result.detail or ""), result
 
 
+# ── Vector 4: signed approval freshness ─────────────────────────────────────
+def test_vector4_fresh_signed_receipt_proceeds_under_relying_party_window():
+    """The relying party may impose a short lifetime over signed issued_at."""
+    doc, pub = _load_fixture()
+    result = _verify_evidence_offline(
+        _evidence(doc, pub),
+        expected=GENUINE_EXPECTED,
+        trusted_signer_keys=load_trusted_signer_keys([pub]),
+        replay_store=InMemoryReplayStore(),
+        evaluated_at="2026-06-04T00:05:00Z",
+        max_receipt_age_s=900,
+    )
+    assert result.verified is True, result
+
+
+def test_vector4_stale_signed_receipt_is_expired():
+    """A valid old signature is not authority for a new execution attempt."""
+    doc, pub = _load_fixture()
+    result = _verify_evidence_offline(
+        _evidence(doc, pub),
+        expected=GENUINE_EXPECTED,
+        trusted_signer_keys=load_trusted_signer_keys([pub]),
+        replay_store=InMemoryReplayStore(),
+        evaluated_at="2026-06-04T00:15:01Z",
+        max_receipt_age_s=900,
+    )
+    assert result.verified is False, result
+    assert result.status == "expired", result
+
+
+def test_vector4_receipt_issued_in_future_fails_closed():
+    """A future-dated signed approval cannot bypass the freshness window."""
+    doc, pub = _load_fixture()
+    result = _verify_evidence_offline(
+        _evidence(doc, pub),
+        expected=GENUINE_EXPECTED,
+        trusted_signer_keys=load_trusted_signer_keys([pub]),
+        replay_store=InMemoryReplayStore(),
+        evaluated_at="2026-06-03T23:59:59Z",
+        max_receipt_age_s=900,
+    )
+    assert result.verified is False, result
+    assert result.status == "not_yet_valid", result
+
+
 # ── Vector 5a: anchor stripped/partial when required ─────────────────────────
 def test_vector5a_anchor_stripped_anchor_required():
     """With require_anchor=True, a receipt whose Merkle anchor was stripped is
@@ -422,7 +468,7 @@ def test_vector5b_consumed_status_blocked():
     on — wait_for_approval routes it to already_consumed, verified=False. We
     assert the status partition directly: 'consumed' is no longer in
     APPROVED_STATUSES and is its own non-approval terminal."""
-    from examples.grok_guard import (
+    from examples.executor_approval_gate import (
         APPROVED_STATUSES,
         CONSUMED_STATUSES,
         TERMINAL_STATUSES,
@@ -472,7 +518,7 @@ def test_vector6_hostile_bodies_fail_closed_never_raise():
 def test_vector6_verifier_raise_is_verifier_error():
     """If the underlying verifier RAISES, the gate returns verifier_error,
     verified=False — never propagates the exception to the agent."""
-    import examples.grok_guard as g
+    import examples.executor_approval_gate as g
 
     doc, pub = _load_fixture()
     pinned = load_trusted_signer_keys([pub])
@@ -509,6 +555,9 @@ def _run_all():
         ("Vector 3c: wrong destination -> claim_mismatch", test_vector3c_different_destination_claim_mismatch),
         ("Vector 3d: signed omission/action swap -> claim_mismatch", test_vector3d_missing_material_fields_and_action_substitution_fail_closed),
         ("Vector 3e: amount precision collision -> claim_mismatch", test_vector3e_amount_comparison_does_not_round_through_float),
+        ("Vector 4: fresh receipt inside policy window", test_vector4_fresh_signed_receipt_proceeds_under_relying_party_window),
+        ("Vector 4: stale receipt -> expired", test_vector4_stale_signed_receipt_is_expired),
+        ("Vector 4: future-dated receipt -> not_yet_valid", test_vector4_receipt_issued_in_future_fails_closed),
         ("Vector 5a: anchor stripped -> anchor_required", test_vector5a_anchor_stripped_anchor_required),
         ("Vector 5a: anchor optional still proceeds", test_vector5a_anchor_optional_still_proceeds),
         ("Vector 5a: tampered anchor -> blocked", test_vector5a_tampered_anchor_blocked),

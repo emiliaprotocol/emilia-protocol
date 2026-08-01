@@ -160,7 +160,7 @@ This request is structurally an AuthZEN evaluation 4-tuple: subject = `(organiza
 
 ### 3.3 Adapter-normalized form
 
-The framework adapters (`examples/claude_guard.py`, `examples/grok_guard.py`, `examples/crewai_guard.py`, `examples/autogen_guard.py`, `examples/openai_agents_guard.py`, `examples/vercel-ai-guard.mjs`, `packages/openai-guard/index.js`) present the same decision under a uniform contract. Each maps the four-state vocabulary to: `allowed` (boolean) + `decision` (string) + `signoffRequired` (boolean), plus `reason` and the raw response. An EP-EP built on an adapter MUST preserve the underlying `decision` value and MUST NOT collapse `deny` and an unrecognized value into the same path.
+The framework adapters (`examples/claude_guard.py`, `examples/executor_approval_gate.py`, `examples/crewai_guard.py`, `examples/autogen_guard.py`, `examples/openai_agents_guard.py`, `examples/vercel-ai-guard.mjs`, `packages/openai-guard/index.js`) present the same decision under a uniform contract. Each maps the four-state vocabulary to: `allowed` (boolean) + `decision` (string) + `signoffRequired` (boolean), plus `reason` and the raw response. An EP-EP built on an adapter MUST preserve the underlying `decision` value and MUST NOT collapse `deny` and an unrecognized value into the same path.
 
 ---
 
@@ -222,7 +222,7 @@ Signed-document structure (abbreviated):
 }
 ```
 
-**Binding consequence.** Because the signature covers the exact `canonical_action`, a tampered action cannot produce a valid signature. Replay of a receipt issued for `$1` cannot authorize `$82,000` — the `action_hash` will not match. Offline verifiers (`@emilia-protocol/verify`, the `emilia-verify` Python package; see `examples/grok_guard.py`) re-canonicalize and verify the Ed25519 signature with no server round-trip.
+**Binding consequence.** Because the signature covers the exact `canonical_action`, a tampered action cannot produce a valid signature. Replay of a receipt issued for `$1` cannot authorize `$82,000` — the `action_hash` will not match. Offline verifiers (`@emilia-protocol/verify`, the `emilia-verify` Python package; see `examples/executor_approval_gate.py`) re-canonicalize and verify the Ed25519 signature with no server round-trip.
 
 **Composition with SCITT.** A Commit seal MAY be registered as a SCITT Signed Statement; the returned Merkle-inclusion Receipt becomes the Commit's transparency anchor. This is optional and does not change the binding rule above.
 
@@ -308,7 +308,7 @@ Policy engine and binding:
 - `docs/AGENT-GATE.md` — agent-gate behavior
 
 Adapters (uniform contract):
-- `examples/claude_guard.py`, `examples/grok_guard.py`, `examples/crewai_guard.py`, `examples/autogen_guard.py`, `examples/openai_agents_guard.py`, `examples/emilia_guard.py`, `examples/vercel-ai-guard.mjs`
+- `examples/claude_guard.py`, `examples/executor_approval_gate.py`, `examples/crewai_guard.py`, `examples/autogen_guard.py`, `examples/openai_agents_guard.py`, `examples/emilia_guard.py`, `examples/vercel-ai-guard.mjs`
 - `packages/openai-guard/index.js`, `packages/openai-guard/README.md`
 
 Advisory invariant:
