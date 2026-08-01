@@ -123,7 +123,8 @@ independent PSEA interoperability claim.
 WebAuthn ES256/P-256 human-authorization ceremony over one closed, immediate
 AP2 v0.2 `CheckoutMandate`/`PaymentMandate` projection. The signed context
 commits to exact canonical SD-JWT token strings, both disclosure-resolved
-verified payloads, the authenticated AP2 checkout-hash algorithm, the merchant checkout JWT,
+verified payloads, the checkout-hash algorithm derived from the exact issuer
+token, the merchant checkout JWT,
 native-verification attestation, readable disclosure, CAID, normalized action,
 tenant, relying party, audience, operation, frozen provider request,
 provider/account, approver, nonce, and deadline. Native AP2 verification stays
@@ -140,19 +141,28 @@ limited to millisecond precision so JavaScript comparison never truncates a
 future not-before value into the present.
 
 The closed WebAuthn profile accepts only an enrolled ES256/P-256 key, a 37-byte
-extension-free assertion with UP and UV, approved origin/RP bindings, backup
-policy, and a counter above enrollment. The verifier treats the counter as
-clone-detection metadata; Gate separately compares and advances the durable
-RP/credential head atomically with admission. Legacy, open, recurring, unknown, stale, or
-materially lossy AP2 semantics fail closed. One-time execution custody remains
-the Gate Qualification v2 AdmissionStore boundary. A verified assertion proves
-the signed ceremony occurred; it does not prove legal consent or human
-comprehension.
+extension-free assertion with UP and UV, approved origin/RP bindings, and
+relying-party-pinned backup policy. The default
+`above-enrollment-and-one-time` policy also requires a counter above
+enrollment; Gate compares and advances the durable RP/credential head
+atomically with admission. The explicit `not-relied-upon` policy supports
+authenticators such as synced platform passkeys whose counters remain zero;
+under that policy the counter supplies no clone-detection claim and Gate does
+not create a monotonic-counter resource. Exact ceremony binding, replay
+resources, and one-time provider admission remain required under both modes.
+Legacy, open, recurring, unknown, stale, or materially lossy AP2 semantics fail
+closed. One-time execution custody remains the Gate Qualification v2
+AdmissionStore boundary. A verified assertion proves the signed ceremony
+occurred; it does not prove legal consent, human comprehension, current
+authorization, admission, or replay prevention.
 
 `createFidoAp2NativeSourceBinding()` domain-separates commitments to the exact
-byte sequences and strict payload digests accepted by the native verifier. A
-token cannot therefore be spliced onto a different projected amount or payee,
-and runtime serialization choices cannot silently change the source identity.
+byte sequences and strict payload digests accepted by the native verifier.
+Those commitments prevent a splice only when the caller supplies the exact
+tokens and disclosure-resolved payloads accepted by its authoritative native
+AP2 verifier and independently reprojects them before reliance. Gate's bridge
+does that reprojection at admission; this pure helper alone is not admission
+or native AP2 verification.
 
 ### Agent Edge Continuity — `@emilia-protocol/verify/agent-edge-continuity`
 

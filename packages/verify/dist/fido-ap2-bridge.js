@@ -580,7 +580,8 @@ function parseConfig(value) {
         })
         || new Set(value.allowed_origins).size !== value.allowed_origins.length
         || !nonEmptyString(value.expected_nonce) || !nonNegativeInteger(value.max_status_age_seconds)
-        || value.sign_count_policy !== 'above-enrollment-and-one-time'
+        || !['above-enrollment-and-one-time', 'not-relied-upon']
+            .includes(String(value.sign_count_policy))
         || typeof value.allow_backup_eligible !== 'boolean'
         || typeof value.allow_backup_state !== 'boolean')
         return null;
@@ -595,7 +596,7 @@ function parseConfig(value) {
         allowed_origins: [...value.allowed_origins],
         expected_nonce: value.expected_nonce,
         max_status_age_seconds: value.max_status_age_seconds,
-        sign_count_policy: 'above-enrollment-and-one-time',
+        sign_count_policy: value.sign_count_policy,
         allow_backup_eligible: value.allow_backup_eligible,
         allow_backup_state: value.allow_backup_state,
     };
