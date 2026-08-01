@@ -19,7 +19,14 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import crypto from 'node:crypto';
-import { verifyTrustReceipt } from './index.js';
+import {
+  REVOCATION_VERSION,
+  auditApproverKeyDirectoryTransition,
+  canonicalize as canonicalizeVerifier,
+  isCanonicalizable,
+  verifyReceipt,
+  verifyTrustReceipt,
+} from './index.js';
 import { buildConsistencyProof, merkleRoot } from './consistency.js';
 
 // ── canonicalize + sha256: must match index.js ───────────────────────────────
@@ -167,6 +174,43 @@ const STRICT_OPTS = {
   expectedPolicyHash: 'sha256:77ab1234',
 };
 
+function revokerKeyId(publicKeyB64u: string): string {
+  return `ep:revoker-key:sha256:${crypto.createHash('sha256')
+    .update(Buffer.from(publicKeyB64u, 'base64url')).digest('hex')}`;
+}
+
+function signedReceiptRevocation(receipt: any) {
+  const { publicKey, privateKey } = crypto.generateKeyPairSync('ed25519');
+  const publicKeyB64u = publicKey.export({ type: 'spki', format: 'der' }).toString('base64url');
+  const signedFields = {
+    '@version': REVOCATION_VERSION,
+    action_hash: receipt.action_hash,
+    reason: 'authority withdrawn',
+    revoked_at: '2026-06-10T00:00:00Z',
+    revoker_id: 'ep:revoker:test',
+    target_id: receipt.receipt_id,
+    target_type: 'receipt',
+  };
+  return {
+    statement: {
+      ...signedFields,
+      proof: {
+        algorithm: 'Ed25519',
+        revoker_key_id: revokerKeyId(publicKeyB64u),
+        public_key: publicKeyB64u,
+        signature_b64u: crypto.sign(
+          null,
+          Buffer.from(canonicalize(signedFields), 'utf8'),
+          privateKey,
+        ).toString('base64url'),
+      },
+    },
+    revokerKeys: {
+      'ep:revoker:test': { public_key: publicKeyB64u },
+    },
+  };
+}
+
 // ── happy path ───────────────────────────────────────────────────────────────
 
 test('a complete Trust Receipt passes all six Section 6.3 steps', () => {
@@ -181,6 +225,117 @@ test('a complete Trust Receipt passes all six Section 6.3 steps', () => {
     windows: true,
   }, JSON.stringify(r.errors));
   assert.equal(r.valid, true);
+});
+
+test('verification result refuses to imply admission, replay safety, or current revocation status', () => {
+  const r = verifyTrustReceipt(buildReceipt(), OPTS);
+  assert.deepEqual(r.decision_scope, {
+    authenticity_only: true,
+    admission_authorized: false,
+    replay_status: 'not_evaluated',
+    revocation_status: 'unknown',
+    quorum_ordering: {
+      presented: false,
+      evaluated: false,
+      verifier: 'verifyQuorum',
+    },
+    warning: 'AUTHENTICITY IS NOT ADMISSION OR REPLAY PREVENTION',
+  });
+});
+
+test('strict canonical JSON rejects colliding JavaScript object shapes before hashing', () => {
+  class CustomRecord {
+    value = 'same';
+  }
+  const sparse: any[] = [];
+  sparse.length = 1;
+  const getter = {};
+  Object.defineProperty(getter, 'value', { enumerable: true, get: () => 'same' });
+  const symbolMember = { value: 'same' };
+  Object.defineProperty(symbolMember, Symbol('hidden'), { value: 'secret', enumerable: true });
+  const cyclic: any = {};
+  cyclic.self = cyclic;
+
+  const rejected = [
+    new Date('2026-06-09T00:00:00Z'),
+    new Map([['value', 'same']]),
+    new Set(['same']),
+    /same/,
+    new CustomRecord(),
+    sparse,
+    getter,
+    symbolMember,
+    cyclic,
+  ];
+  for (const value of rejected) {
+    assert.equal(isCanonicalizable(value), false, value?.constructor?.name || 'anonymous');
+    assert.throws(
+      () => canonicalizeVerifier(value),
+      /canonical JSON domain/i,
+      value?.constructor?.name || 'anonymous',
+    );
+  }
+});
+
+test('public receipt verifiers fail closed instead of throwing on cycles and symbol members', () => {
+  const cyclicPayload: any = { safe: 'visible' };
+  cyclicPayload.self = cyclicPayload;
+  const symbolPayload: any = { safe: 'visible' };
+  symbolPayload[Symbol.for('hidden_command')] = { override: true };
+
+  for (const payload of [cyclicPayload, symbolPayload]) {
+    let result: any;
+    assert.doesNotThrow(() => {
+      result = verifyReceipt({
+        '@version': 'EP-RECEIPT-v1',
+        payload,
+        signature: { algorithm: 'Ed25519', value: 'AA' },
+      }, 'AA');
+    });
+    assert.equal(result.valid, false);
+    assert.match(result.error, /canonicalization profile/i);
+  }
+
+  const receipt = buildReceipt();
+  receipt.action.self = receipt.action;
+  let trustResult: any;
+  assert.doesNotThrow(() => { trustResult = verifyTrustReceipt(receipt, OPTS); });
+  assert.equal(trustResult.valid, false);
+  assert.match(trustResult.errors.join(' '), /canonicalization profile/i);
+
+  const hiddenTopLevel = buildReceipt();
+  Object.defineProperty(hiddenTopLevel, Symbol.for('hidden_command'), {
+    enumerable: false,
+    value: { override: true },
+  });
+  assert.doesNotThrow(() => {
+    trustResult = verifyTrustReceipt(hiddenTopLevel, OPTS);
+  });
+  assert.equal(trustResult.valid, false);
+  assert.match(trustResult.errors.join(' '), /canonicalization profile/i);
+
+  const hostileProxy = new Proxy(buildReceipt(), {
+    ownKeys() {
+      throw new Error('hostile ownKeys');
+    },
+  });
+  assert.doesNotThrow(() => {
+    trustResult = verifyTrustReceipt(hostileProxy, OPTS);
+  });
+  assert.equal(trustResult.valid, false);
+  assert.match(trustResult.errors.join(' '), /canonicalization profile/i);
+});
+
+test('base Trust Receipt verification labels quorum ordering as a separate unevaluated profile', () => {
+  const receipt = buildReceipt({ ctx1: { prev_context_hash: 'sha256:not-a-real-predecessor' } });
+  const result = verifyTrustReceipt(receipt, OPTS);
+
+  assert.equal(result.valid, true, JSON.stringify(result.errors));
+  assert.deepEqual(result.decision_scope.quorum_ordering, {
+    presented: true,
+    evaluated: false,
+    verifier: 'verifyQuorum',
+  });
 });
 
 // ── step 1: action binding ───────────────────────────────────────────────────
@@ -275,6 +430,126 @@ test('step 3 — a compromised key is refused however the presenter backdates is
   assert.ok(r.errors.some((e: string) => /marked compromised/.test(e)));
 });
 
+test('current-evidence mode refuses a backdated receipt after the pinned key expired', () => {
+  const expiredOnly = {
+    ...KEYS,
+    'ep:key:controller#1': {
+      ...KEYS['ep:key:controller#1'],
+      valid_to: '2026-06-10T00:00:00Z',
+    },
+  };
+  const r = verifyTrustReceipt(buildReceipt(), {
+    approverKeys: expiredOnly,
+    logPublicKey: logKey.pub,
+    verificationMode: 'current',
+    now: '2026-06-20T00:00:00Z',
+  });
+  assert.equal(r.valid, false);
+  assert.equal(r.checks.signoff_signatures, false);
+  assert.match(r.errors.join(' '), /not current at the verifier decision time/i);
+});
+
+test('current-evidence mode requires an explicit relying-party clock', () => {
+  const r = verifyTrustReceipt(buildReceipt(), {
+    ...OPTS,
+    verificationMode: 'current',
+  });
+  assert.equal(r.valid, false);
+  assert.match(r.errors.join(' '), /verificationMode "current" requires opts\.now/);
+});
+
+test('directory transition audit refuses retroactive expiry masquerading as ordinary rotation', () => {
+  const narrowed = {
+    ...KEYS,
+    'ep:key:controller#1': {
+      ...KEYS['ep:key:controller#1'],
+      valid_to: '2026-06-10T00:00:00Z',
+    },
+  };
+  const audit = auditApproverKeyDirectoryTransition(KEYS, narrowed, {
+    now: '2026-06-20T00:00:00Z',
+  });
+  assert.equal(audit.valid, false);
+  assert.match(audit.errors.join(' '), /retroactive valid_to narrowing requires compromised_at/i);
+
+  const receiptResult = verifyTrustReceipt(buildReceipt(), {
+    approverKeys: narrowed,
+    previousApproverKeys: KEYS,
+    logPublicKey: logKey.pub,
+    now: '2026-06-20T00:00:00Z',
+  });
+  assert.equal(receiptResult.valid, false);
+  assert.equal(receiptResult.checks.key_directory_transition, false);
+  assert.equal(receiptResult.key_directory_transition.valid, false);
+});
+
+test('directory transition audit accepts compromise marking and planned future rotation', () => {
+  const compromised = {
+    ...KEYS,
+    'ep:key:controller#1': {
+      ...KEYS['ep:key:controller#1'],
+      valid_to: '2026-06-10T00:00:00Z',
+      compromised_at: '2026-06-10T00:00:00Z',
+    },
+  };
+  assert.equal(auditApproverKeyDirectoryTransition(KEYS, compromised, {
+    now: '2026-06-20T00:00:00Z',
+  }).valid, true);
+
+  const planned = {
+    ...KEYS,
+    'ep:key:controller#1': {
+      ...KEYS['ep:key:controller#1'],
+      valid_to: '2026-12-01T00:00:00Z',
+    },
+  };
+  assert.equal(auditApproverKeyDirectoryTransition(KEYS, planned, {
+    now: '2026-06-20T00:00:00Z',
+  }).valid, true);
+});
+
+test('high-value financial actions require trusted timestamp evidence in current-evidence mode', () => {
+  const r = verifyTrustReceipt(buildReceipt(), {
+    ...OPTS,
+    verificationMode: 'current',
+    now: '2026-06-09T17:26:00Z',
+  });
+  assert.equal(r.valid, false);
+  assert.equal(r.checks.timestamp_proof, false);
+  assert.match(r.errors.join(' '), /high-value financial action requires timestampProof/);
+});
+
+test('an authentic exact-target revocation is surfaced and refuses the receipt', () => {
+  const receipt = buildReceipt();
+  const { statement, revokerKeys } = signedReceiptRevocation(receipt);
+  const r = verifyTrustReceipt(receipt, {
+    ...OPTS,
+    now: '2026-06-20T00:00:00Z',
+    revocationStatements: [statement],
+    revokerKeys,
+  });
+  assert.equal(r.valid, false);
+  assert.equal(r.checks.revocation, false);
+  assert.equal(r.revocation.status, 'revoked');
+  assert.equal(r.decision_scope.revocation_status, 'revoked');
+  assert.match(r.errors.join(' '), /receipt is revoked/);
+});
+
+test('presented malformed exact-target revocation fails closed as indeterminate', () => {
+  const receipt = buildReceipt();
+  const { statement, revokerKeys } = signedReceiptRevocation(receipt);
+  statement.proof.signature_b64u = statement.proof.signature_b64u.slice(1);
+  const r = verifyTrustReceipt(receipt, {
+    ...OPTS,
+    now: '2026-06-20T00:00:00Z',
+    revocationStatements: [statement],
+    revokerKeys,
+  });
+  assert.equal(r.valid, false);
+  assert.equal(r.checks.revocation, false);
+  assert.equal(r.revocation.status, 'indeterminate');
+});
+
 test('step 3 — compromise is retroactive: a receipt issued before compromised_at is still refused', () => {
   const compromised = { ...KEYS, 'ep:key:controller#1': { ...KEYS['ep:key:controller#1'], compromised_at: '2099-01-01T00:00:00Z' } };
   const r = verifyTrustReceipt(buildReceipt(), { approverKeys: compromised, logPublicKey: logKey.pub });
@@ -299,6 +574,23 @@ test('opts.now refuses an issued_at claimed in the future, and is inert when abs
   assert.equal(future.valid, false);
   assert.equal(future.checks.signoff_signatures, false);
   assert.ok(future.errors.some((e: string) => /future relative to the verifier clock/.test(e)));
+});
+
+test('opts.now refuses every presenter-controlled lifecycle time after the verifier decision time', () => {
+  const futureIssuance = verifyTrustReceipt(buildReceipt(), {
+    ...OPTS,
+    now: '2026-06-09T17:21:04Z',
+  });
+  assert.equal(futureIssuance.valid, false);
+  assert.ok(futureIssuance.errors.some((e: string) => /issued_at .*future relative/i.test(e)));
+
+  const futureSignoffAndCommit = verifyTrustReceipt(buildReceipt(), {
+    ...OPTS,
+    now: '2026-06-09T17:21:06Z',
+  });
+  assert.equal(futureSignoffAndCommit.valid, false);
+  assert.ok(futureSignoffAndCommit.errors.some((e: string) => /signed_at .*future relative/i.test(e)));
+  assert.ok(futureSignoffAndCommit.errors.some((e: string) => /committed_at .*future relative/i.test(e)));
 });
 
 test('opts.now itself fails closed when unparseable', () => {

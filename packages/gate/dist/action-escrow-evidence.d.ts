@@ -10,10 +10,6 @@ export declare function parseActionEscrowEvidencePackage(raw: any, { maxBytes, }
     maxBytes?: number | undefined;
 }): {
     ok: boolean;
-    reason: string | undefined;
-    value: null;
-} | {
-    ok: boolean;
     reason: string;
     value: any;
 };

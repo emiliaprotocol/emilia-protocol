@@ -1283,6 +1283,16 @@ describe('EP-RELIANCE-KERNEL-v1 unit invariants', () => {
     }
   });
 
+  it('forwards the relying-party evaluation clock into receipt verification', () => {
+    const { input, opts } = assemble('none');
+    input.now = '2026-06-09T17:25:00Z';
+    expect(opts.now).toBeUndefined();
+
+    const result = evaluateReliance(input, opts);
+    expect(result).toMatchObject({ verdict: 'do_not_rely_unsigned', rely: false });
+    expect(result.reasons.at(-1)).toMatch(/signed_at .*future relative|committed_at is in the future/i);
+  });
+
   it('returns the closed invalid-profile result shape without retaining attacker fields', () => {
     const { input, opts } = assemble('none');
     input.relying_party_profile.required_authority = 'yes';
@@ -1712,10 +1722,11 @@ describe('EP-RELIANCE-KERNEL-v1 fail-closed oracles', () => {
     expect(r.reasons.at(-1)).toBe('authority is outside its validity window at reliance time');
   });
 
-  it('compares window instants arithmetically, including before the Unix epoch', () => {
-    // A pre-epoch instant is a NEGATIVE number of milliseconds. An absent bound
-    // must stay absent rather than coercing to 0, or every pre-1970 reliance
-    // silently falls outside its own open-ended window.
+  it('refuses a receipt whose lifecycle occurs after the claimed reliance instant', () => {
+    // This fixture previously used a pre-epoch relying-party clock solely to
+    // exercise authority-window arithmetic while retaining a receipt issued in
+    // 2026. That is a temporal paradox, not a valid reliance packet: the exact
+    // decision clock must reach receipt verification before any authority leg.
     const { input, opts } = assemble('none');
     input.now = '1969-01-01T00:00:00Z';
     input.relying_party_profile.required_evidence = ['receipt', 'class_a_or_quorum', 'authority_proof'];
@@ -1724,12 +1735,13 @@ describe('EP-RELIANCE-KERNEL-v1 fail-closed oracles', () => {
       validity: { to: '1969-06-01T00:00:00.000Z' },
     }, registryKey);
     const open = evaluateReliance(input, opts);
-    expect(open.verdict).toBe('rely');
-    expect(open.rely).toBe(true);
+    expect(open.verdict).toBe('do_not_rely_unsigned');
+    expect(open.rely).toBe(false);
+    expect(open.reasons.at(-1)).toMatch(/future relative to the verifier clock/);
 
-    // The same open-ended window, evaluated after `to`, still expires.
+    // A later pre-epoch instant still cannot predate the receipt it relies on.
     input.now = '1969-12-01T00:00:00Z';
-    expect(evaluateReliance(input, opts).verdict).toBe('do_not_rely_authority_expired');
+    expect(evaluateReliance(input, opts).verdict).toBe('do_not_rely_unsigned');
   });
 
   it('treats an explicitly null max_amount_usd as unbounded, not as an unprovable ceiling', () => {

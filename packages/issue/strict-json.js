@@ -1,93 +1,239 @@
+// @ts-nocheck
 // SPDX-License-Identifier: Apache-2.0
-// Duplicate-name and Unicode-scalar gate for CLI inputs. JSON.parse remains
-// the syntax gate; this pass removes ambiguous object semantics before signing.
-
+// Duplicate-name and Unicode-scalar gate for signed nested JSON such as
+// WebAuthn clientDataJSON. JSON.parse remains the syntax gate.
 export const MAX_JSON_DEPTH = 64;
-
-export function strictJsonGate(raw) {
-  if (typeof raw !== 'string') return { ok: false, reason: 'JSON input must be text' };
-  try { JSON.parse(raw); } catch { return { ok: false, reason: 'invalid JSON syntax' }; }
-  let index = 0;
-  const stack = [];
-  let reason = null;
-  const escapes = { '"': '"', '\\': '\\', '/': '/', b: '\b', f: '\f', n: '\n', r: '\r', t: '\t' };
-
-  function readString() {
-    index += 1;
-    let output = '';
-    while (index < raw.length) {
-      const character = raw[index];
-      if (character === '"') { index += 1; return output; }
-      if (character !== '\\') { output += character; index += 1; continue; }
-      const escape = raw[index + 1];
-      if (escape !== 'u') {
-        output += escapes[escape] ?? '';
-        index += 2;
-        continue;
-      }
-      const first = Number.parseInt(raw.slice(index + 2, index + 6), 16);
-      index += 6;
-      if (first >= 0xd800 && first <= 0xdbff) {
-        if (raw[index] === '\\' && raw[index + 1] === 'u') {
-          const second = Number.parseInt(raw.slice(index + 2, index + 6), 16);
-          if (second >= 0xdc00 && second <= 0xdfff) {
-            output += String.fromCharCode(first, second);
-            index += 6;
-            continue;
-          }
+function hasUnpairedUtf16Surrogate(value) {
+    for (let index = 0; index < value.length; index += 1) {
+        const code = value.charCodeAt(index);
+        if (code >= 0xd800 && code <= 0xdbff) {
+            const next = value.charCodeAt(index + 1);
+            // charCodeAt() returns NaN past the end of the string. Express the
+            // accepted range positively so an isolated terminal high surrogate is
+            // refused instead of slipping through both NaN comparisons.
+            if (!(next >= 0xdc00 && next <= 0xdfff))
+                return true;
+            index += 1;
         }
-        reason = 'unpaired high surrogate escape';
-        return null;
-      }
-      if (first >= 0xdc00 && first <= 0xdfff) {
-        reason = 'unpaired low surrogate escape';
-        return null;
-      }
-      output += String.fromCharCode(first);
+        else if (code >= 0xdc00 && code <= 0xdfff) {
+            return true;
+        }
     }
-    reason = 'unterminated string';
-    return null;
-  }
-
-  while (index < raw.length) {
-    const character = raw[index];
-    if (character === '{') {
-      stack.push({ object: true, keys: new Set(), expectsKey: true });
-      if (stack.length > MAX_JSON_DEPTH) return { ok: false, reason: `nesting depth exceeds ${MAX_JSON_DEPTH}` };
-      index += 1;
-    } else if (character === '[') {
-      stack.push({ object: false });
-      if (stack.length > MAX_JSON_DEPTH) return { ok: false, reason: `nesting depth exceeds ${MAX_JSON_DEPTH}` };
-      index += 1;
-    } else if (character === '}' || character === ']') {
-      stack.pop();
-      index += 1;
-    } else if (character === ',') {
-      const top = stack.at(-1);
-      if (top?.object) top.expectsKey = true;
-      index += 1;
-    } else if (character === '"') {
-      const top = stack.at(-1);
-      const isKey = Boolean(top?.object && top.expectsKey);
-      const rawValue = readString();
-      if (reason) return { ok: false, reason };
-      // readString() sets `reason` on every null-returning path and leaves it
-      // unset on the string-returning path, so a falsy `reason` here proves
-      // rawValue is a string.
-      const value = /** @type {string} */ (rawValue);
-      if (isKey) {
-        // isKey is only true when top?.object was truthy, so top is defined
-        // here and is the object-frame shape pushed for '{'.
-        const objectFrame = /** @type {{ object: true, keys: Set<string>, expectsKey: boolean }} */ (top);
-        if (objectFrame.keys.has(value)) return { ok: false, reason: 'duplicate object member name' };
-        objectFrame.keys.add(value);
-        objectFrame.expectsKey = false;
-      }
-    } else {
-      index += 1;
-    }
-  }
-  return { ok: true };
+    return false;
 }
-
-export default { strictJsonGate, MAX_JSON_DEPTH };
+export function strictJsonGate(raw) {
+    if (typeof raw !== 'string')
+        return { ok: false, reason: 'JSON input must be text' };
+    const input = raw;
+    if (hasUnpairedUtf16Surrogate(input)) {
+        return { ok: false, reason: 'unpaired Unicode surrogate' };
+    }
+    try {
+        JSON.parse(input);
+    }
+    catch {
+        return { ok: false, reason: 'invalid JSON syntax' };
+    }
+    let index = 0;
+    const stack = [];
+    let reason = null;
+    const escapes = { '"': '"', '\\': '\\', '/': '/', b: '\b', f: '\f', n: '\n', r: '\r', t: '\t' };
+    function readString() {
+        index += 1;
+        let output = '';
+        while (index < input.length) {
+            const character = input[index];
+            if (character === '"') {
+                index += 1;
+                return output;
+            }
+            if (character !== '\\') {
+                output += character;
+                index += 1;
+                continue;
+            }
+            const escape = input[index + 1];
+            if (escape !== 'u') {
+                output += escapes[escape] ?? '';
+                index += 2;
+                continue;
+            }
+            const first = Number.parseInt(input.slice(index + 2, index + 6), 16);
+            index += 6;
+            if (first >= 0xd800 && first <= 0xdbff) {
+                if (input[index] === '\\' && input[index + 1] === 'u') {
+                    const second = Number.parseInt(input.slice(index + 2, index + 6), 16);
+                    if (second >= 0xdc00 && second <= 0xdfff) {
+                        output += String.fromCharCode(first, second);
+                        index += 6;
+                        continue;
+                    }
+                }
+                reason = 'unpaired high surrogate escape';
+                return null;
+            }
+            if (first >= 0xdc00 && first <= 0xdfff) {
+                reason = 'unpaired low surrogate escape';
+                return null;
+            }
+            output += String.fromCharCode(first);
+        }
+        reason = 'unterminated string';
+        return null;
+    }
+    while (index < input.length) {
+        const character = input[index];
+        if (character === '{') {
+            stack.push({ object: true, keys: new Set(), expectsKey: true });
+            if (stack.length > MAX_JSON_DEPTH)
+                return { ok: false, reason: `nesting depth exceeds ${MAX_JSON_DEPTH}` };
+            index += 1;
+        }
+        else if (character === '[') {
+            stack.push({ object: false });
+            if (stack.length > MAX_JSON_DEPTH)
+                return { ok: false, reason: `nesting depth exceeds ${MAX_JSON_DEPTH}` };
+            index += 1;
+        }
+        else if (character === '}' || character === ']') {
+            stack.pop();
+            index += 1;
+        }
+        else if (character === ',') {
+            const top = stack.at(-1);
+            if (top?.object)
+                top.expectsKey = true;
+            index += 1;
+        }
+        else if (character === '"') {
+            const top = stack.at(-1);
+            const isKey = Boolean(top?.object && top.expectsKey);
+            const value = readString();
+            if (reason)
+                return { ok: false, reason };
+            if (isKey) {
+                // isKey is only true when top?.object && top.expectsKey was truthy above,
+                // which guarantees top is the object-frame variant here; TS can't
+                // correlate that through the intermediate `isKey` boolean.
+                const frame = top;
+                if (value === null)
+                    return { ok: false, reason: 'invalid string member name' };
+                if (frame.keys.has(value))
+                    return { ok: false, reason: 'duplicate object member name' };
+                frame.keys.add(value);
+                frame.expectsKey = false;
+            }
+        }
+        else {
+            index += 1;
+        }
+    }
+    return { ok: true };
+}
+function canonicalDomainError(path, reason) {
+    return new TypeError(`value is outside the strict canonical JSON domain at ${path}: ${reason}`);
+}
+function canonicalizeValue(value, path, ancestors, depth) {
+    if (depth > MAX_JSON_DEPTH)
+        throw canonicalDomainError(path, `nesting depth exceeds ${MAX_JSON_DEPTH}`);
+    if (value === null)
+        return 'null';
+    if (typeof value === 'string') {
+        if (hasUnpairedUtf16Surrogate(value))
+            throw canonicalDomainError(path, 'unpaired Unicode surrogate');
+        return JSON.stringify(value);
+    }
+    if (typeof value === 'boolean')
+        return value ? 'true' : 'false';
+    if (typeof value === 'number') {
+        if (!Number.isSafeInteger(value)) {
+            throw canonicalDomainError(path, 'numbers must be safe integers; encode other quantities as strings');
+        }
+        return JSON.stringify(value);
+    }
+    if (typeof value !== 'object') {
+        throw canonicalDomainError(path, `${typeof value} is not a JSON value`);
+    }
+    const object = value;
+    if (ancestors.has(object))
+        throw canonicalDomainError(path, 'cyclic reference');
+    ancestors.add(object);
+    try {
+        if (Array.isArray(value)) {
+            const ownKeys = Reflect.ownKeys(value);
+            if (ownKeys.some((key) => typeof key !== 'string')) {
+                throw canonicalDomainError(path, 'symbol members are not JSON');
+            }
+            const expectedKeys = new Set(['length', ...Array.from({ length: value.length }, (_, index) => String(index))]);
+            if (ownKeys.length !== expectedKeys.size
+                || ownKeys.some((key) => !expectedKeys.has(key))) {
+                throw canonicalDomainError(path, 'sparse arrays and arrays with extra members are not permitted');
+            }
+            const entries = [];
+            for (let index = 0; index < value.length; index += 1) {
+                const descriptor = Object.getOwnPropertyDescriptor(value, String(index));
+                if (!descriptor || !('value' in descriptor)) {
+                    throw canonicalDomainError(`${path}[${index}]`, 'array holes and accessors are not permitted');
+                }
+                entries.push(canonicalizeValue(descriptor.value, `${path}[${index}]`, ancestors, depth + 1));
+            }
+            return `[${entries.join(',')}]`;
+        }
+        const prototype = Object.getPrototypeOf(value);
+        if (prototype !== Object.prototype && prototype !== null) {
+            throw canonicalDomainError(path, 'only plain objects are permitted');
+        }
+        const ownKeys = Reflect.ownKeys(value);
+        if (ownKeys.some((key) => typeof key !== 'string')) {
+            throw canonicalDomainError(path, 'symbol members are not JSON');
+        }
+        const keys = ownKeys.sort();
+        const members = [];
+        for (const key of keys) {
+            if (hasUnpairedUtf16Surrogate(key)) {
+                throw canonicalDomainError(`${path}.${key}`, 'member name contains an unpaired Unicode surrogate');
+            }
+            const descriptor = Object.getOwnPropertyDescriptor(value, key);
+            if (!descriptor || descriptor.enumerable !== true || !('value' in descriptor)) {
+                throw canonicalDomainError(`${path}.${key}`, 'non-enumerable members and accessors are not permitted');
+            }
+            members.push(`${JSON.stringify(key)}:${canonicalizeValue(descriptor.value, `${path}.${key}`, ancestors, depth + 1)}`);
+        }
+        return `{${members.join(',')}}`;
+    }
+    catch (error) {
+        if (error instanceof TypeError && /strict canonical JSON domain/.test(error.message))
+            throw error;
+        throw canonicalDomainError(path, `object inspection failed: ${error instanceof Error ? error.message : String(error)}`);
+    }
+    finally {
+        ancestors.delete(object);
+    }
+}
+/**
+ * Canonical bytes for the closed EP JSON domain. Unlike JSON.stringify, this
+ * refuses values that can disappear, execute code, or collapse to the same
+ * bytes: non-plain objects, sparse arrays, accessors, symbols, cycles,
+ * undefined/functions/bigints, non-safe-integer numbers, and malformed UTF-16.
+ */
+export function canonicalizeStrictJson(value) {
+    return canonicalizeValue(value, '$', new Set(), 0);
+}
+/** Pure predicate companion to canonicalizeStrictJson(). */
+export function isStrictCanonicalJson(value) {
+    try {
+        canonicalizeStrictJson(value);
+        return true;
+    }
+    catch {
+        return false;
+    }
+}
+const strictJson = {
+    strictJsonGate,
+    canonicalizeStrictJson,
+    isStrictCanonicalJson,
+    MAX_JSON_DEPTH,
+};
+export default strictJson;
+//# sourceMappingURL=strict-json.js.map

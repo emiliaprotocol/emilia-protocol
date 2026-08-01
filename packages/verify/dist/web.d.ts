@@ -19,6 +19,8 @@ interface WebOptions {
     allowedOrigins?: string[];
     rpId?: string;
     allowUnsigned?: boolean;
+    previousSignCount?: number;
+    counterPolicy?: 'observe' | 'enforce';
 }
 export declare function canonicalize(value: unknown): string;
 export declare const MERKLE_V2_ALG = "EP-MERKLE-v2";
@@ -62,6 +64,12 @@ export declare function verifyWebAuthnSignoff(signoff: JsonObject, approverPubli
         rp_id_hash: boolean | null;
         signature: boolean;
     };
+    authenticator: {
+        sign_count: number;
+        backup_eligible: boolean;
+        backup_state: boolean;
+        counter_status: string;
+    } | null;
     error: string;
 } | {
     valid: boolean;
@@ -72,6 +80,12 @@ export declare function verifyWebAuthnSignoff(signoff: JsonObject, approverPubli
         user_verified: boolean;
         rp_id_hash: boolean | null;
         signature: boolean;
+    };
+    authenticator: {
+        sign_count: number;
+        backup_eligible: boolean;
+        backup_state: boolean;
+        counter_status: string;
     };
     error?: undefined;
 }>;

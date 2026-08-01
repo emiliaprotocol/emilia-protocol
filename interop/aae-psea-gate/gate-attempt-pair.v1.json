@@ -1,0 +1,67 @@
+{
+  "@version": "EMILIA-AAE-PSEA-GATE-ATTEMPT-PAIR-v1",
+  "profile": "aae-psea-seven-field-crosswalk",
+  "source_fixture": {
+    "repository": "https://github.com/MoltyCel/aae-conformance-vectors",
+    "pull_request": 6,
+    "commit": "e8c00e5014c52a4cb4ff51d24c360db5c82d599e",
+    "source_vector_commit": "48450505c05c7182962c166781354e88412581e7",
+    "path": "fixtures/aae-psea-proof-exchange-v1/",
+    "jws_digest": "sha256:c2db119de3f04a775a7c11afd1b78a6d6e03780ad84fc09f76ccb2ccac7c2b9b",
+    "action_payload_digest": "sha256:d6583cbc62c1278311ad311a586da207189693a98143f773a8fc960ae59ac606",
+    "who_axis_status": "PROPOSED"
+  },
+  "exchange_id": "urn:emilia:interop:aae-psea-gate:exchange:001",
+  "authority_id": "urn:emilia:authority:single-use:001",
+  "authority_digest": "sha256:6edf79aa66eaf0b59535addf28914e7e302c25738476b1375b5a1ed6449fa6fc",
+  "action_digest": "sha256:36fb9de709cfd015ab544f9534ff4be369c1f02eef76ed0c31baa2a6b9c00d84",
+  "evidence_digest": "sha256:cb741babcbc387c88177deea80f6735c3dd192e2613a4d806af25f90dbd6072e",
+  "attempts": [
+    {
+      "attempt": 1,
+      "rows": {
+        "aae_native": { "value": "ACCEPT" },
+        "action_linkage": { "value": "EQUIVALENT" },
+        "principal_linkage": { "value": "SAME", "status": "PROPOSED" },
+        "evidence_satisfaction": { "value": "SATISFIED" },
+        "decision": { "value": "AUTHORIZED" },
+        "admission": { "value": "CONSUMED" },
+        "outcome": { "value": "INDETERMINATE", "reason": "provider_outcome_unresolved" }
+      },
+      "gate_custody": {
+        "reservation_id": "urn:emilia:gate:reservation:001",
+        "execution_right": "CONSUMED",
+        "prior_admission": null
+      }
+    },
+    {
+      "attempt": 2,
+      "rows": {
+        "aae_native": { "value": "ACCEPT" },
+        "action_linkage": { "value": "EQUIVALENT" },
+        "principal_linkage": { "value": "SAME", "status": "PROPOSED" },
+        "evidence_satisfaction": { "value": "SATISFIED" },
+        "decision": { "value": "AUTHORIZED" },
+        "admission": { "value": "NONE", "reason": "already_consumed" },
+        "outcome": { "value": "NONE" }
+      },
+      "gate_custody": {
+        "reservation_id": "urn:emilia:gate:reservation:001",
+        "execution_right": "CONSUMED",
+        "prior_admission": "CONSUMED"
+      }
+    }
+  ],
+  "constraints": [
+    "non_none_outcome_requires_qualifying_admission",
+    "indeterminate_outcome_requires_reason",
+    "already_consumed_preserves_authorized_decision",
+    "attempt_pair_preserves_authority_action_and_evidence"
+  ],
+  "nonclaims": {
+    "psea_conformance": "NOT_ESTABLISHED",
+    "who_axis_confirmation": "NOT_ESTABLISHED",
+    "execution_order": "NOT_ESTABLISHED",
+    "provider_effect": "INDETERMINATE"
+  }
+}

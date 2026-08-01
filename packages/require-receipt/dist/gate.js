@@ -180,8 +180,8 @@ export function makeReceiptGate(opts = {}) {
         // to the same empty consume key, so the reservation below would neither
         // identify nor protect this receipt. Refuse before touching the store, as
         // app/api/v1/guarded and packages/gate already do (redteam HI-5).
-        const receiptId = v.receipt_id;
-        if (typeof receiptId !== 'string' || receiptId === '') {
+        const receiptId = typeof v.receipt_id === 'string' ? v.receipt_id.trim() : '';
+        if (receiptId === '') {
             return refuse(boundAction, 'missing_receipt_id', observedHash);
         }
         const assurance = evaluateReceiptAssurance(receipt, requiredTier, {

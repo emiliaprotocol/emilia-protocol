@@ -322,7 +322,14 @@ export function evaluateReliance(input: Obj = {}, opts: Obj = {}) {
 
   // ── 1. RECEIPT — cryptographically valid and bound to THIS action ──────────
   if (!receipt || typeof receipt !== 'object') return deny('do_not_rely_unsigned', 'no receipt supplied');
-  const rc = verifyTrustReceipt(receipt, opts as any);
+  // `input.now` is the reliance decision's trusted clock. Forward that exact
+  // instant into the receipt verifier so future-dated issuance, signoff, or
+  // consumption cannot pass here merely because callers omitted `opts.now`.
+  const receiptVerificationOpts = {
+    ...opts,
+    now: new Date(now).toISOString(),
+  };
+  const rc = verifyTrustReceipt(receipt, receiptVerificationOpts as any);
   checks.receipt = rc.valid === true;
   if (!rc.valid) return deny('do_not_rely_unsigned', `receipt did not verify: ${(rc.errors || []).join('; ') || 'invalid'}`);
   const relyingActionHash = digestHex(presentedAction.action_hash);

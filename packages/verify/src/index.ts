@@ -11,7 +11,12 @@
  */
 
 import crypto from 'crypto';
-import { strictJsonGate } from './strict-json.js';
+import {
+  canonicalizeStrictJson,
+  isStrictCanonicalJson,
+  strictJsonGate,
+} from './strict-json.js';
+import { verifyRevocation as verifyRevocationStatement } from './revocation.js';
 import { verifyOutcomeBindingCore, verifyOutcomeBindingSetCore } from './outcome-binding.js';
 
 type Obj = Record<string, any>;
@@ -98,44 +103,7 @@ function sha256(input: string): string {
   return crypto.createHash('sha256').update(input, 'utf8').digest('hex');
 }
 
-// Recursive canonical JSON — depth-first key sort at every level.
-//
-// The previous implementation
-//
-//   JSON.stringify(obj, Object.keys(obj).sort())
-//
-// was a SHALLOW canonicalization. The second argument to JSON.stringify
-// in array form is a property allowlist filter, NOT a sort order, and it
-// does NOT recurse into nested objects to enforce key order at depth.
-// Worse, it filters nested keys to only those names present in the
-// top-level allowlist.
-//
-// Net effect of the shallow pattern: a verifier and a signer that both
-// "sort keys before signing" could compute different canonical bytes for
-// the same logical document, producing a false-negative signature
-// failure. And nested fields (e.g. claim.context.risk_signals or
-// claim.context.change.after_bank_hash) were not deterministically
-// included in the signed material under the shallow algorithm.
-//
-// The fix below is the same recursive canonicalize() used by
-// lib/guard-policies.js (hashCanonicalAction) on the server side, so
-// signer and verifier produce byte-identical canonical material for any
-// arbitrarily-nested object.
-//
-// Bug history: shipped in 1.0.0, fixed in 1.0.1. See package.json.
-function canonicalize(value: any): string {
-  if (value === null || value === undefined) return JSON.stringify(value);
-  if (Array.isArray(value)) {
-    return `[${value.map(canonicalize).join(',')}]`;
-  }
-  if (typeof value === 'object') {
-    return `{${Object.keys(value)
-      .sort()
-      .map((k) => JSON.stringify(k) + ':' + canonicalize(value[k]))
-      .join(',')}}`;
-  }
-  return JSON.stringify(value);
-}
+const canonicalize = canonicalizeStrictJson;
 
 /**
  * EP canonicalization profile (RFC 8785 / JCS over an I-JSON profile).
@@ -154,11 +122,7 @@ function canonicalize(value: any): string {
  * Returns true iff every scalar is a string, boolean, null, or safe integer.
  */
 export function isCanonicalizable(value: any): boolean {
-  if (value === null || typeof value === 'string' || typeof value === 'boolean') return true;
-  if (typeof value === 'number') return Number.isInteger(value) && Number.isSafeInteger(value);
-  if (Array.isArray(value)) return value.every(isCanonicalizable);
-  if (typeof value === 'object') return Object.values(value).every(isCanonicalizable);
-  return false; // undefined, bigint, symbol, function — out of profile
+  return isStrictCanonicalJson(value);
 }
 
 /**
@@ -200,13 +164,12 @@ export { verifyEvidenceRecord, EVIDENCE_RECORD_VERSION } from './evidence-record
 import { verifyCheckpointConsistency } from './consistency.js';
 export { verifyCheckpointConsistency, CONSISTENCY_ALG } from './consistency.js';
 
-// ── OPT-IN transparency/currency knobs wired into verifyTrustReceipt ──────────
-// Each of the five modules below is an independent, additive check. It runs
-// ONLY when its dedicated option is supplied, adds ONE key to result.checks,
-// and folds into `valid` by conjunction. With none of the options set,
-// verifyTrustReceipt's `checks` keeps its frozen seven members and behaves
-// byte-for-byte as before. Every knob fails closed exactly as its module
-// specifies. See each module for the full honesty boundary.
+// ── Additive transparency/currency checks wired into verifyTrustReceipt ──────
+// Each module below is an independent, additive check. When active, it adds one
+// key to result.checks and folds into `valid` by conjunction. With none active,
+// the cryptographic `checks` object keeps its frozen seven members. The
+// top-level decision_scope is always present to distinguish authenticity from
+// admission and replay prevention.
 
 // EP-WITNESS-v1: k-of-n independent witness cosignatures over ONE checkpoint
 // head. Proves k distinct trusted witnesses attested to that head (the local,
@@ -328,6 +291,17 @@ export function verifyReceipt(doc: any, publicKeyBase64url: string, opts: any = 
   /** @type {{ version: boolean, signature: boolean, anchor: boolean|null }} */
   const checks: Obj = { version: false, signature: false, anchor: null };
 
+  // Inspect the complete caller-supplied object before reading any member.
+  // Besides rejecting values that disappear from JSON, the strict predicate
+  // catches hostile Proxy traps and turns them into a closed verifier result.
+  if (!isCanonicalizable(doc)) {
+    return {
+      valid: false,
+      checks,
+      error: 'Receipt is outside the EP canonicalization profile; only plain JSON data is accepted',
+    };
+  }
+
   if (!doc?.['@version'] || !SUPPORTED_VERSIONS.includes(doc['@version'])) {
     return { valid: false, checks, error: `Unsupported version: ${doc?.['@version']}` };
   }
@@ -426,6 +400,47 @@ export function verifyMerkleAnchor(leafHash: string, proof: any[], expectedRoot:
 // verified — biometric/PIN).
 const FLAG_UP = 0x01;
 const FLAG_UV = 0x04;
+const FLAG_BE = 0x08;
+const FLAG_BS = 0x10;
+
+function webauthnAuthenticatorMetadata(authData: Buffer, opts: any): Obj {
+  const flags = authData[32];
+  const signCount = authData.readUInt32BE(33);
+  const previous = opts.previousSignCount;
+  let counterStatus = 'untracked';
+  if (signCount === 0) {
+    counterStatus = 'unsupported';
+  } else if (previous !== undefined) {
+    counterStatus = signCount > previous ? 'advanced' : 'not_advanced';
+  }
+  return {
+    sign_count: signCount,
+    backup_eligible: (flags & FLAG_BE) === FLAG_BE,
+    backup_state: (flags & FLAG_BS) === FLAG_BS,
+    counter_status: counterStatus,
+  };
+}
+
+function webauthnCounterPolicyError(metadata: Obj, opts: any): string | null {
+  if (opts.previousSignCount !== undefined
+      && (!Number.isInteger(opts.previousSignCount)
+        || opts.previousSignCount < 0
+        || opts.previousSignCount > 0xffffffff)) {
+    return 'previousSignCount must be a 32-bit unsigned integer';
+  }
+  if (opts.counterPolicy !== undefined
+      && opts.counterPolicy !== 'observe'
+      && opts.counterPolicy !== 'enforce') {
+    return 'counterPolicy must be "observe" or "enforce"';
+  }
+  if (metadata.backup_state && !metadata.backup_eligible) {
+    return 'WebAuthn backup state is set while backup eligibility is not set';
+  }
+  if (opts.counterPolicy === 'enforce' && metadata.counter_status === 'not_advanced') {
+    return 'WebAuthn signCount did not advance; possible clone, malfunction, or reordered assertion';
+  }
+  return null;
+}
 
 /**
  * Verify a Class A (approver-held key) signoff fully offline.
@@ -465,14 +480,15 @@ export function verifyWebAuthnSignoff(signoff: any, approverPublicKeySpkiB64u: s
     rp_id_hash: null,
     signature: false,
   };
+  let authenticator: Obj | null = null;
 
   try {
     if (!signoff?.context || !signoff?.webauthn) {
-      return { valid: false, checks, error: 'Missing context or webauthn evidence' };
+      return { valid: false, checks, authenticator, error: 'Missing context or webauthn evidence' };
     }
     const { authenticator_data, client_data_json, signature } = signoff.webauthn;
     if (!authenticator_data || !client_data_json || !signature) {
-      return { valid: false, checks, error: 'Missing webauthn fields' };
+      return { valid: false, checks, authenticator, error: 'Missing webauthn fields' };
     }
 
     // 1. Challenge binding: clientDataJSON.challenge must equal
@@ -482,7 +498,7 @@ export function verifyWebAuthnSignoff(signoff: any, approverPublicKeySpkiB64u: s
     const clientDataText = FATAL_UTF8.decode(clientDataBytes);
     const clientDataGate = strictJsonGate(clientDataText);
     if (!clientDataGate.ok) {
-      return { valid: false, checks, error: `Invalid clientDataJSON: ${clientDataGate.reason}` };
+      return { valid: false, checks, authenticator, error: `Invalid clientDataJSON: ${clientDataGate.reason}` };
     }
     const clientData = JSON.parse(clientDataText);
     const expectedChallenge = crypto
@@ -499,18 +515,23 @@ export function verifyWebAuthnSignoff(signoff: any, approverPublicKeySpkiB64u: s
       if (opts.allowedOrigins.length === 0
           || !opts.allowedOrigins.includes(clientData.origin)
           || clientData.crossOrigin === true) {
-        return { valid: false, checks, error: 'WebAuthn origin is not allowed' };
+        return { valid: false, checks, authenticator, error: 'WebAuthn origin is not allowed' };
       }
     }
 
     // 3. Authenticator flags: user present + user verified.
     const authData = decodeBase64url(authenticator_data);
     if (authData.length < 37) {
-      return { valid: false, checks, error: 'authenticator_data too short' };
+      return { valid: false, checks, authenticator, error: 'authenticator_data too short' };
     }
     const flags = authData[32];
     checks.user_present = (flags & FLAG_UP) === FLAG_UP;
     checks.user_verified = (flags & FLAG_UV) === FLAG_UV;
+    authenticator = webauthnAuthenticatorMetadata(authData, opts);
+    const policyError = webauthnCounterPolicyError(authenticator, opts);
+    if (policyError) {
+      return { valid: false, checks, authenticator, error: policyError };
+    }
 
     // 4. Optional rpId scope check.
     if (opts.rpId) {
@@ -535,7 +556,7 @@ export function verifyWebAuthnSignoff(signoff: any, approverPublicKeySpkiB64u: s
       decodeBase64url(signature),
     );
   } catch (e) {
-    return { valid: false, checks, error: `WebAuthn verification failed: ${e instanceof Error ? e.message : String(e)}` };
+    return { valid: false, checks, authenticator, error: `WebAuthn verification failed: ${e instanceof Error ? e.message : String(e)}` };
   }
 
   const valid = checks.challenge_binding
@@ -544,7 +565,7 @@ export function verifyWebAuthnSignoff(signoff: any, approverPublicKeySpkiB64u: s
     && checks.user_verified
     && checks.signature
     && (checks.rp_id_hash === null || checks.rp_id_hash === true);
-  return { valid, checks };
+  return { valid, checks, authenticator };
 }
 
 // =============================================================================
@@ -618,6 +639,13 @@ export function verifyReceiptBundle(bundle: any, publicKeyBase64url: string): Ob
     return { valid: false, total: 0, verified: 0, failed: ['Invalid bundle version'] };
   }
 
+  // A bundle with the right version but no document array is malformed input,
+  // not an exceptional condition. Refuse it without dereferencing attacker-
+  // controlled shape so callers cannot be crashed with a TypeError.
+  if (!Array.isArray(bundle.documents)) {
+    return { valid: false, total: 0, verified: 0, failed: ['Bundle documents must be an array'] };
+  }
+
   const failed: string[] = [];
   let verified = 0;
 
@@ -660,6 +688,108 @@ function sha256Bytes(input: string): Buffer {
   return crypto.createHash('sha256').update(input, 'utf8').digest();
 }
 
+function usdMinorUnits(value: unknown): bigint | null {
+  if (typeof value !== 'string' || !/^(?:0|[1-9]\d*)(?:\.\d{1,2})?$/.test(value)) return null;
+  const [whole, fraction = ''] = value.split('.');
+  return BigInt(whole) * 100n + BigInt(fraction.padEnd(2, '0'));
+}
+
+function isHighValueFinancialAction(action: any): boolean {
+  const actionType = typeof action?.action_type === 'string' ? action.action_type.toLowerCase() : '';
+  const financial = /(?:^|[._-])(wire|payment|transfer|disbursement|purchase|refund|financial)(?:$|[._-])/.test(actionType);
+  const currency = action?.parameters?.currency;
+  const amount = usdMinorUnits(action?.parameters?.amount);
+  return financial && currency === 'USD' && amount !== null && amount >= 10_000_000n;
+}
+
+/**
+ * Audit an approver-directory update before it is installed.
+ *
+ * A retroactive `valid_to` narrowing is not equivalent to compromise: historical
+ * verification deliberately evaluates the key at the claimed issuance time.
+ * Operators therefore MUST mark a stolen or suspect key with `compromised_at`.
+ * This transition guard makes that easy-to-miss distinction executable.
+ *
+ * `now` is mandatory so the audit never consults an ambient process clock.
+ * Planned future expiry changes are allowed. A past-dated narrowing without
+ * `compromised_at` fails unless the caller explicitly records the exceptional
+ * `allowRetroactiveExpiryWithoutCompromise` override.
+ */
+export function auditApproverKeyDirectoryTransition(
+  previousApproverKeys: Obj,
+  nextApproverKeys: Obj,
+  opts: Obj = {},
+): Obj {
+  const errors: string[] = [];
+  const transitions: Obj[] = [];
+  const now = parseInstant(opts.now);
+  if (Number.isNaN(now)) {
+    return {
+      valid: false,
+      errors: ['approver-key transition audit requires a parseable opts.now'],
+      transitions,
+    };
+  }
+  if (!previousApproverKeys || typeof previousApproverKeys !== 'object' || Array.isArray(previousApproverKeys)
+      || !nextApproverKeys || typeof nextApproverKeys !== 'object' || Array.isArray(nextApproverKeys)) {
+    return {
+      valid: false,
+      errors: ['previousApproverKeys and nextApproverKeys must be key-directory objects'],
+      transitions,
+    };
+  }
+
+  for (const [keyId, nextEntry] of Object.entries(nextApproverKeys)) {
+    const previousEntry = previousApproverKeys[keyId];
+    if (!previousEntry || typeof previousEntry !== 'object'
+        || !nextEntry || typeof nextEntry !== 'object') continue;
+
+    if (nextEntry.compromised_at !== undefined && nextEntry.compromised_at !== null) {
+      const compromisedAt = parseInstant(nextEntry.compromised_at);
+      if (Number.isNaN(compromisedAt)) {
+        errors.push(`${keyId}: compromised_at is not a parseable instant`);
+      }
+    }
+
+    if (nextEntry.valid_to === undefined || nextEntry.valid_to === null) continue;
+    const nextValidTo = parseInstant(nextEntry.valid_to);
+    if (Number.isNaN(nextValidTo)) {
+      errors.push(`${keyId}: next valid_to is not a parseable instant`);
+      continue;
+    }
+    const previousValidTo = previousEntry.valid_to === undefined || previousEntry.valid_to === null
+      ? Number.POSITIVE_INFINITY
+      : parseInstant(previousEntry.valid_to);
+    if (Number.isNaN(previousValidTo)) {
+      errors.push(`${keyId}: previous valid_to is not a parseable instant`);
+      continue;
+    }
+
+    if (nextValidTo < previousValidTo) {
+      const retroactive = nextValidTo < now;
+      const compromiseRecorded = nextEntry.compromised_at !== undefined
+        && nextEntry.compromised_at !== null;
+      const allowedByException = opts.allowRetroactiveExpiryWithoutCompromise === true;
+      transitions.push({
+        approver_key_id: keyId,
+        kind: retroactive ? 'retroactive_valid_to_narrowing' : 'future_valid_to_narrowing',
+        previous_valid_to: previousEntry.valid_to ?? null,
+        next_valid_to: nextEntry.valid_to,
+        compromised_at: nextEntry.compromised_at ?? null,
+        exception_recorded: allowedByException,
+      });
+      if (retroactive && !compromiseRecorded && !allowedByException) {
+        errors.push(
+          `${keyId}: retroactive valid_to narrowing requires compromised_at `
+          + 'or an explicit allowRetroactiveExpiryWithoutCompromise exception',
+        );
+      }
+    }
+  }
+
+  return { valid: errors.length === 0, errors, transitions };
+}
+
 // Canonical EP timestamp profile: RFC 3339 with an explicit UTC offset ("Z" or
 // ±hh:mm). No-timezone ("2026-07-01T12:00:00") and date-only ("2026-07-01")
 // forms are REJECTED — they are ambiguous (UTC vs local) and must never satisfy
@@ -679,11 +809,6 @@ function parseInstant(value: any): number {
   const parsed = Date.parse(value);
   return Number.isFinite(parsed) ? parsed : NaN;
 }
-
-// Tolerance for benign clock skew between issuer and verifier when opts.now is
-// supplied. Only ever permits a slightly-future issued_at; never widens a
-// validity window and never affects backdating.
-const NOW_SKEW_MS = 5 * 60 * 1000;
 
 function withinWindow(t: any, from: any, to: any): boolean {
   const ts = parseInstant(t);
@@ -708,33 +833,39 @@ function parseClassAAssertion(webauthn: any): Obj | null {
 }
 
 // WebAuthn Class-A assertion bound to a context digest (challenge = b64u(digest)).
-function verifyClassAOverDigest(webauthn: any, digestBytes: Buffer, publicKeySpkiB64u: string, opts: any = {}): boolean {
+function verifyClassAOverDigest(webauthn: any, digestBytes: Buffer, publicKeySpkiB64u: string, opts: any = {}): Obj {
   try {
     const parsed = parseClassAAssertion(webauthn);
-    if (!parsed) return false;
+    if (!parsed) return { valid: false, authenticator: null, error: 'invalid WebAuthn assertion' };
     const { authData, clientData, clientDataBytes } = parsed;
-    if (clientData.type !== 'webauthn.get') return false;
-    if (clientData.challenge !== Buffer.from(digestBytes).toString('base64url')) return false;
+    const authenticator = webauthnAuthenticatorMetadata(authData, opts);
+    const policyError = webauthnCounterPolicyError(authenticator, opts);
+    if (policyError) return { valid: false, authenticator, error: policyError };
+    if (clientData.type !== 'webauthn.get') return { valid: false, authenticator };
+    if (clientData.challenge !== Buffer.from(digestBytes).toString('base64url')) return { valid: false, authenticator };
     if (opts.rpId) {
       const expectedRpIdHash = crypto.createHash('sha256').update(opts.rpId, 'utf8').digest();
-      if (!expectedRpIdHash.equals(authData.subarray(0, 32))) return false;
+      if (!expectedRpIdHash.equals(authData.subarray(0, 32))) return { valid: false, authenticator };
     }
     if (Array.isArray(opts.allowedOrigins)) {
       if (opts.allowedOrigins.length === 0
         || !opts.allowedOrigins.includes(clientData.origin)
-        || clientData.crossOrigin === true) return false;
+        || clientData.crossOrigin === true) return { valid: false, authenticator };
     }
 
-    if ((authData[32] & FLAG_UP) !== FLAG_UP) return false; // human presence required
-    if ((authData[32] & FLAG_UV) !== FLAG_UV) return false; // biometric/PIN verification required
+    if ((authData[32] & FLAG_UP) !== FLAG_UP) return { valid: false, authenticator }; // human presence required
+    if ((authData[32] & FLAG_UV) !== FLAG_UV) return { valid: false, authenticator }; // biometric/PIN verification required
 
     const signedData = Buffer.concat([authData, crypto.createHash('sha256').update(clientDataBytes).digest()]);
     const keyObject = crypto.createPublicKey({
       key: decodeBase64url(publicKeySpkiB64u), format: 'der', type: 'spki',
     });
-    return crypto.verify('sha256', signedData, keyObject, decodeBase64url(webauthn.signature));
+    return {
+      valid: crypto.verify('sha256', signedData, keyObject, decodeBase64url(webauthn.signature)),
+      authenticator,
+    };
   } catch {
-    return false;
+    return { valid: false, authenticator: null, error: 'WebAuthn verification failed' };
   }
 }
 
@@ -1037,18 +1168,26 @@ function buildAttestationReport(contexts: any[]): Obj {
 }
 
 function trustReceiptCanonicalProfileError(receipt: any): string | null {
-  const leafContent = { ...receipt };
-  delete leafContent.log_proof;
-  delete leafContent.approver_key_proofs;
-  if (!isCanonicalizable(leafContent)) return 'Trust Receipt body';
+  try {
+    // Validate the complete envelope first. Validating only shallow copies can
+    // erase non-enumerable or symbol members before they reach the strict gate.
+    if (!isCanonicalizable(receipt)) return 'Trust Receipt body';
 
-  const checkpoint = receipt?.log_proof?.checkpoint;
-  if (checkpoint && typeof checkpoint === 'object') {
-    const signedCheckpoint = { ...checkpoint };
-    delete signedCheckpoint.log_signature;
-    if (!isCanonicalizable(signedCheckpoint)) return 'Trust Receipt checkpoint';
+    const leafContent = { ...receipt };
+    delete leafContent.log_proof;
+    delete leafContent.approver_key_proofs;
+    if (!isCanonicalizable(leafContent)) return 'Trust Receipt body';
+
+    const checkpoint = receipt?.log_proof?.checkpoint;
+    if (checkpoint && typeof checkpoint === 'object') {
+      const signedCheckpoint = { ...checkpoint };
+      delete signedCheckpoint.log_signature;
+      if (!isCanonicalizable(signedCheckpoint)) return 'Trust Receipt checkpoint';
+    }
+    return null;
+  } catch {
+    return 'Trust Receipt body';
   }
-  return null;
 }
 
 /**
@@ -1059,10 +1198,21 @@ function trustReceiptCanonicalProfileError(receipt: any): string | null {
  * @param {object} opts
  * @param {Record<string, {approver_id:string, public_key:string, key_class?:string, valid_from?:string, valid_to?:string, compromised_at?:string|null}>} [opts.approverKeys]
  *   - pinned approver key entries by approver_key_id (or a directory extract).
- * @param {string} [opts.now] - optional relying-party clock used only to reject
- *   presenter-claimed issuance more than five minutes in the future.
- *   Required for a meaningful result; the body defaults a missing/empty opts to
- *   {} and fails closed rather than throwing.
+ * @param {Record<string, object>} [opts.previousApproverKeys]
+ *   OPT-IN directory-transition guard. When supplied, verification fails closed
+ *   if an already-pinned key's `valid_to` was narrowed into the past without a
+ *   `compromised_at` marker. Requires `opts.now`. Planned future rotations pass.
+ * @param {boolean} [opts.allowRetroactiveExpiryWithoutCompromise=false]
+ *   Explicit exceptional override for a relying party that has independently
+ *   established that a retroactive directory correction was not a compromise.
+ * @param {string} [opts.now] - optional relying-party clock used to reject
+ *   presenter-claimed issuance, signoff, or consumption after the decision time; evaluate
+ *   current-mode key status, audit directory transitions, and validate dated
+ *   revocation evidence. Required when `verificationMode` is `current`.
+ * @param {'historical'|'current'} [opts.verificationMode='historical']
+ *   Historical mode verifies authenticity at claimed issuance time. Current
+ *   mode additionally requires every signing key to remain current at
+ *   `opts.now`; it is the minimum mode for a current reliance decision.
  * @param {string} [opts.logPublicKey] - trusted log Ed25519 key (base64url SPKI DER)
  * @param {boolean} [opts.strict=false] - require deployment-grade strict checks
  * @param {string} [opts.rpId] - expected WebAuthn RP ID when strict mode sees Class-A signoffs
@@ -1080,10 +1230,11 @@ function trustReceiptCanonicalProfileError(receipt: any): string | null {
  *   observed heads only; it does NOT establish currency or split-view honesty
  *   by itself (that needs independent witnesses).
  *
- * The five options below are ADDITIVE, OPT-IN knobs. Each runs ONLY when its
- * option is supplied, adds exactly one member to `checks`, and folds into
- * `valid` by conjunction. With none supplied, `checks` keeps its frozen seven
- * members and the result is byte-for-byte unchanged. Each fails closed.
+ * The evidence options below are additive and fail closed. Each active check
+ * adds one member to `checks` and folds into `valid` by conjunction. The
+ * always-present `decision_scope` is deliberately separate: it prevents an
+ * offline authenticity verdict from being misread as current admission or
+ * replay prevention.
  *
  * @param {{cosignatures:object[], pinnedWitnessKeys:Array<{witness_id:string,public_key:string}>, k:number}} [opts.witnessQuorum]
  *   OPT-IN (EP-WITNESS-v1): require >= k DISTINCT pinned witnesses to have
@@ -1102,6 +1253,19 @@ function trustReceiptCanonicalProfileError(receipt: any): string | null {
  *   TSA asserted the digest existed at gen_time; it does NOT prove the action
  *   was correct/authorized and is authentic-as-of-token only (says nothing
  *   about current TSA-cert validity).
+ * @param {boolean} [opts.requireTimestampProof=false]
+ *   Require trusted-time evidence regardless of action type. Current-mode
+ *   financial actions at or above USD 100,000 require it automatically.
+ * @param {object[]} [opts.revocationStatements]
+ *   Exact-target EP revocation statements. A valid statement refuses; an
+ *   invalid exact-target statement is indeterminate and also refuses. Absence
+ *   leaves current revocation status unknown.
+ * @param {object} [opts.revokerKeys]
+ *   Pinned revoker keys used for `revocationStatements`.
+ * @param {Record<string, number>} [opts.webauthnSignCounts]
+ *   Previously stored counters keyed by approver key ID.
+ * @param {'observe'|'enforce'} [opts.webauthnCounterPolicy='observe']
+ *   Observe or fail closed on a non-advancing, nonzero WebAuthn counter.
  * @param {{now?:(number|string|Date), maxStalenessSeconds?:number, freshHead?:object, freshHeadRequired?:boolean, authentic_as_of_commit?:boolean}} [opts.currency]
  *   OPT-IN (EP-CURRENCY-v1): evaluate currency-at-T. Adds `checks.currency`,
  *   which passes ONLY when a supplied recent non-revoking signed head proves
@@ -1124,13 +1288,13 @@ function trustReceiptCanonicalProfileError(receipt: any): string | null {
  *   `checks.initiator_attestation` (absent or malformed => false) and surfaces
  *   result.initiator_attestation. HONESTY: says WHICH software asked; it does
  *   NOT prove the software behaved (labels are self-asserted).
- * @returns {{ valid:boolean, checks:object, errors:string[], attestation:{ present:boolean, consistent:boolean, issues:string[] }, strict:{ enabled:boolean, valid:boolean, checks:object, errors:string[] }, witness_quorum?:object, timestamp_proof?:object, currency?:object, consumption?:object, initiator_attestation?:object }}
+ * @returns {{ valid:boolean, checks:object, errors:string[], decision_scope:object, attestation:{ present:boolean, consistent:boolean, issues:string[] }, strict:{ enabled:boolean, valid:boolean, checks:object, errors:string[] }, witness_quorum?:object, timestamp_proof?:object, revocation?:object, currency?:object, consumption?:object, initiator_attestation?:object }}
  *   `attestation` is the PIP-007 §2 ADVISORY report. It never affects `valid` or
  *   any member of `checks`: a receipt with a malformed or inconsistent
  *   attestation still verifies (or fails) on its cryptographic checks alone.
- *   The opt-in `witness_quorum` / `timestamp_proof` / `currency` / `consumption`
- *   / `initiator_attestation` result members are present ONLY when their
- *   respective option was supplied.
+ *   `decision_scope` is always present and states that this function establishes
+ *   authenticity, not current admission or atomic replay prevention. Optional
+ *   evidence results are present only when their respective inputs are supplied.
  */
 export function verifyTrustReceipt(receipt: any, opts: Obj = {}): Obj {
   opts = opts && typeof opts === 'object' ? opts : {};
@@ -1144,6 +1308,28 @@ export function verifyTrustReceipt(receipt: any, opts: Obj = {}): Obj {
     windows: false,            // step 6
   };
   const errors: string[] = [];
+  const optionalResults: Obj = {};
+  const decisionScope: Obj = {
+    authenticity_only: true,
+    admission_authorized: false,
+    replay_status: 'not_evaluated',
+    revocation_status: 'unknown',
+    quorum_ordering: {
+      presented: false,
+      evaluated: false,
+      verifier: 'verifyQuorum',
+    },
+    warning: 'AUTHENTICITY IS NOT ADMISSION OR REPLAY PREVENTION',
+  };
+  const verificationMode = opts.verificationMode ?? 'historical';
+  if (verificationMode !== 'historical' && verificationMode !== 'current') {
+    return {
+      valid: false,
+      checks,
+      errors: ['verificationMode must be "historical" or "current"'],
+      decision_scope: decisionScope,
+    };
+  }
   // Optional relying-party clock. Absent, verification behaves exactly as
   // before; supplied, a claimed issuance in the future is refused. Left opt-in
   // because offline verification of an old receipt is a supported use.
@@ -1151,25 +1337,52 @@ export function verifyTrustReceipt(receipt: any, opts: Obj = {}): Obj {
     ? null
     : parseInstant(opts.now);
   if (verifierNow !== null && Number.isNaN(verifierNow)) {
-    return { valid: false, checks, errors: ['opts.now is not a parseable instant'] };
+    return {
+      valid: false,
+      checks,
+      errors: ['opts.now is not a parseable instant'],
+      decision_scope: decisionScope,
+    };
   }
-  // PIP-007 §2 advisory report — built from contexts as presented, independent
-  // of every cryptographic check. fail() carries it through early returns too.
-  const attestationContexts = Array.isArray(receipt?.contexts) ? receipt.contexts : [];
-  const attestation = buildAttestationReport(attestationContexts);
+  if (verificationMode === 'current' && verifierNow === null) {
+    return {
+      valid: false,
+      checks,
+      errors: ['verificationMode "current" requires opts.now from the relying-party clock'],
+      decision_scope: decisionScope,
+    };
+  }
   const strict = createStrictReport(opts.strict === true);
-  const fail = (msg: string): Obj => { errors.push(msg); return { valid: false, checks, errors, attestation, strict }; };
+  let attestation: Obj = { present: false, consistent: true, issues: [] };
+  const fail = (msg: string): Obj => {
+    errors.push(msg);
+    return {
+      valid: false,
+      checks,
+      errors,
+      attestation,
+      strict,
+      decision_scope: decisionScope,
+      ...optionalResults,
+    };
+  };
 
   if (!receipt || typeof receipt !== 'object') return fail('Missing receipt');
+  const profileError = trustReceiptCanonicalProfileError(receipt);
+  if (profileError) {
+    return fail(`${profileError} is outside the EP canonicalization profile; only plain JSON data is accepted`);
+  }
+  // PIP-007 §2 advisory report — built only after the complete envelope passed
+  // strict inspection, so accessors and hostile Proxy traps cannot execute here.
+  const attestationContexts = Array.isArray(receipt.contexts) ? receipt.contexts : [];
+  attestation = buildAttestationReport(attestationContexts);
   const { approverKeys = {}, logPublicKey } = opts;
   const contexts = Array.isArray(receipt.contexts) ? receipt.contexts : [];
   const signoffs = Array.isArray(receipt.signoffs) ? receipt.signoffs : [];
+  decisionScope.quorum_ordering.presented = contexts.some((context: any) =>
+    context && typeof context === 'object' && Object.hasOwn(context, 'prev_context_hash'));
   if (!receipt.action || !receipt.action_hash) return fail('Missing action or action_hash');
   if (contexts.length === 0 || signoffs.length === 0) return fail('Missing contexts or signoffs');
-  const profileError = trustReceiptCanonicalProfileError(receipt);
-  if (profileError) {
-    return fail(`${profileError} is outside the EP canonicalization profile; encode non-integer quantities as strings`);
-  }
 
   // I-JSON canonicalization gate (fail-closed) — identical guard to verifyReceipt.
   // Every field folded into a signed digest below (action, contexts, leaf content)
@@ -1179,6 +1392,24 @@ export function verifyTrustReceipt(receipt: any, opts: Obj = {}): Obj {
   const { signoffs: _s, log_proof: _lp, approver_key_proofs: _akp, ...canonicalScope } = receipt;
   if (!isCanonicalizable(canonicalScope)) {
     return fail('Receipt contains a value outside the EP canonicalization profile; use strings or safe integers in signed material');
+  }
+
+  if (opts.previousApproverKeys !== undefined) {
+    checks.key_directory_transition = false;
+    const transition = auditApproverKeyDirectoryTransition(
+      opts.previousApproverKeys,
+      approverKeys,
+      {
+        now: opts.now,
+        allowRetroactiveExpiryWithoutCompromise:
+          opts.allowRetroactiveExpiryWithoutCompromise === true,
+      },
+    );
+    optionalResults.key_directory_transition = transition;
+    checks.key_directory_transition = transition.valid === true;
+    if (!checks.key_directory_transition) {
+      errors.push(...transition.errors.map((error: string) => `approver-key directory: ${error}`));
+    }
   }
 
   // ── Step 1: recompute the action hash from the canonical Action Object ────
@@ -1218,6 +1449,7 @@ export function verifyTrustReceipt(receipt: any, opts: Obj = {}): Obj {
   // ── Step 3: per signoff — signature over the context hash vs approver key ─
   const validSignoffs = []; // cryptographically valid signed decisions, including denials
   const validApprovals = []; // validSignoffs whose signed decision authorizes the action
+  const webauthnSignoffs: Obj[] = [];
   let signaturesOk = signoffs.length > 0;
   for (const s of signoffs) {
     const digestHex = hexOf(s.context_hash);
@@ -1276,14 +1508,29 @@ export function verifyTrustReceipt(receipt: any, opts: Obj = {}): Obj {
       errors.push(`approver key ${s.approver_key_id} was not valid at issued_at`);
       continue;
     }
+    if (verificationMode === 'current') {
+      const currentFrom = parseInstant(keyEntry.valid_from);
+      const currentTo = parseInstant(keyEntry.valid_to);
+      if (Number.isNaN(currentFrom) || Number.isNaN(currentTo)
+          || verifierNow! < currentFrom || verifierNow! > currentTo) {
+        signaturesOk = false;
+        errors.push(`approver key ${s.approver_key_id} is not current at the verifier decision time`);
+        continue;
+      }
+    }
     // The window above is only as honest as ctx.issued_at, which the presenter
     // asserts. When the relying party supplies its own clock, refuse a claimed
     // issuance in the future: a receipt cannot have been approved after the
     // moment it is being verified. This does not bound backdating on its own
     // (see compromised_at above, and opts.timestampProof for a trusted anchor).
-    if (verifierNow !== null && parseInstant(ctx.issued_at) > verifierNow + NOW_SKEW_MS) {
+    if (verifierNow !== null && parseInstant(ctx.issued_at) > verifierNow) {
       signaturesOk = false;
       errors.push(`issued_at for ${s.approver_key_id} is in the future relative to the verifier clock`);
+      continue;
+    }
+    if (verifierNow !== null && parseInstant(s.signed_at) > verifierNow) {
+      signaturesOk = false;
+      errors.push(`signed_at for ${s.approver_key_id} is in the future relative to the verifier clock`);
       continue;
     }
     const digestBytes = Buffer.from(digestHex, 'hex');
@@ -1295,9 +1542,28 @@ export function verifyTrustReceipt(receipt: any, opts: Obj = {}): Obj {
     // A pinned Class-A key MUST be satisfied by a real WebAuthn assertion and is
     // rejected if it only carries a raw signature.
     const keyClass = keyEntry.key_class === 'A' ? 'A' : 'B';
-    const sigOk = keyClass === 'A'
-      ? Boolean(s.webauthn) && verifyClassAOverDigest(s.webauthn, digestBytes, keyEntry.public_key, opts)
-      : verifyEd25519OverDigest(s.signature, digestBytes, keyEntry.public_key);
+    let sigOk: boolean;
+    if (keyClass === 'A') {
+      const counterOptions = {
+        ...opts,
+        previousSignCount: opts.webauthnSignCounts?.[s.approver_key_id],
+        counterPolicy: opts.webauthnCounterPolicy ?? 'observe',
+      };
+      const webauthnResult = Boolean(s.webauthn)
+        ? verifyClassAOverDigest(s.webauthn, digestBytes, keyEntry.public_key, counterOptions)
+        : { valid: false, authenticator: null, error: 'missing WebAuthn assertion' };
+      webauthnSignoffs.push({
+        approver_key_id: s.approver_key_id,
+        approver: ctx.approver,
+        authenticator: webauthnResult.authenticator,
+        counter_policy: counterOptions.counterPolicy,
+        valid: webauthnResult.valid === true,
+        ...(webauthnResult.error ? { error: webauthnResult.error } : {}),
+      });
+      sigOk = webauthnResult.valid === true;
+    } else {
+      sigOk = verifyEd25519OverDigest(s.signature, digestBytes, keyEntry.public_key);
+    }
     if (!sigOk) {
       signaturesOk = false;
       errors.push(`signoff by ${ctx.approver} does not verify`);
@@ -1318,6 +1584,7 @@ export function verifyTrustReceipt(receipt: any, opts: Obj = {}): Obj {
     }
   }
   checks.signoff_signatures = signaturesOk;
+  if (webauthnSignoffs.length > 0) optionalResults.webauthn_signoffs = webauthnSignoffs;
 
   // ── Step 4: separation of duties ──────────────────────────────────────────
   const initiator = receipt.action.initiator;
@@ -1436,7 +1703,7 @@ export function verifyTrustReceipt(receipt: any, opts: Obj = {}): Obj {
   // Fail-closed: option set + malformed pin, unusable receipt checkpoint,
   // missing proof, or invalid proof each refuse with a distinct reason and
   // fail the receipt via checks.consistency. Option NOT set: this block never
-  // runs, checks keeps its frozen seven members, and the result is unchanged.
+  // runs and checks keeps its frozen seven members.
   if (opts.priorCheckpoint !== undefined) {
     checks.consistency = false;
     const prior = opts.priorCheckpoint;
@@ -1462,11 +1729,8 @@ export function verifyTrustReceipt(receipt: any, opts: Obj = {}): Obj {
   // runs ONLY when its option is present, sets ONE new `checks` member to false
   // first (fail-closed default) then flips it true only on a clean pass, and
   // surfaces its full module result under a dedicated, option-gated member of
-  // `optionalResults`. When NO knob option is supplied, `checks` keeps exactly
-  // its frozen seven members and `optionalResults` stays empty, so the returned
-  // object is byte-for-byte identical to the pre-knob behavior.
-  const optionalResults: Obj = {};
-
+  // `optionalResults`. When no evidence option is supplied, `checks` keeps
+  // exactly its frozen seven members and `optionalResults` stays empty.
   // ── Step 5d (OPT-IN): k-of-n witness cosignatures (EP-WITNESS-v1) ─────────
   // Require >= k DISTINCT pinned witnesses to have validly cosigned the
   // receipt's checkpoint head. HONESTY: this proves k trusted witnesses saw ONE
@@ -1508,7 +1772,23 @@ export function verifyTrustReceipt(receipt: any, opts: Obj = {}): Obj {
   // token only. Fail closed: the module refuses (verified:false + reason) on
   // missing token, missing/malformed digest, an unpinned TSA, or a bad
   // signature; a refusal fails checks.timestamp_proof.
-  if (opts.timestampProof !== undefined) {
+  const timestampRequiredByPolicy = opts.requireTimestampProof === true;
+  const timestampRequiredByFinancialProfile =
+    verificationMode === 'current' && isHighValueFinancialAction(receipt.action);
+  const timestampRequired = timestampRequiredByPolicy || timestampRequiredByFinancialProfile;
+  if (timestampRequired && opts.timestampProof === undefined) {
+    const reason = timestampRequiredByFinancialProfile
+      ? 'high-value financial action requires timestampProof in current-evidence mode'
+      : 'relying-party policy requires timestampProof';
+    checks.timestamp_proof = false;
+    optionalResults.timestamp_proof = {
+      verified: false,
+      tsa_key_id: null,
+      gen_time: null,
+      reason,
+    };
+    errors.push(reason);
+  } else if (opts.timestampProof !== undefined) {
     checks.timestamp_proof = false;
     const tp = opts.timestampProof;
     if (!tp || typeof tp !== 'object') {
@@ -1525,6 +1805,63 @@ export function verifyTrustReceipt(receipt: any, opts: Obj = {}): Obj {
         errors.push(`timestamp proof did not verify: ${res.reason}`);
       }
     }
+  }
+
+  // ── Step 5e.1 (OPT-IN): presented exact-target revocation statements ──────
+  // Absence is never called "not revoked": without a current authenticated
+  // status source the default remains `unknown`. A valid exact-target terminal
+  // revocation refuses. A malformed exact-target statement is
+  // `indeterminate` and also refuses rather than being ignored.
+  if (opts.revocationStatements !== undefined) {
+    checks.revocation = false;
+    const statements = opts.revocationStatements;
+    const target = {
+      target_type: 'receipt' as const,
+      target_id: receipt.receipt_id,
+      action_hash: receipt.action_hash,
+    };
+    const reports: Obj[] = [];
+    let exactPresented = false;
+    let revoked = false;
+    let indeterminate = false;
+    if (!Array.isArray(statements)) {
+      indeterminate = true;
+      errors.push('revocationStatements must be an array');
+    } else {
+      for (const statement of statements) {
+        const exact = statement?.target_type === target.target_type
+          && statement?.target_id === target.target_id
+          && hexOf(statement?.action_hash) === hexOf(target.action_hash);
+        if (!exact) continue;
+        exactPresented = true;
+        const report = verifyRevocationStatement(target, statement, {
+          revokerKeys: opts.revokerKeys,
+          now: opts.now,
+        });
+        reports.push(report);
+        if (report.valid) revoked = true;
+        else indeterminate = true;
+      }
+    }
+    const status = revoked
+      ? 'revoked'
+      : indeterminate
+        ? 'indeterminate'
+        : exactPresented
+          ? 'indeterminate'
+          : 'not_found_in_presented_set';
+    optionalResults.revocation = {
+      status,
+      exact_target_statements: reports.length,
+      reports,
+      warning: status === 'not_found_in_presented_set'
+        ? 'absence from the presented set is not proof of current non-revocation'
+        : null,
+    };
+    decisionScope.revocation_status = status;
+    checks.revocation = status === 'not_found_in_presented_set';
+    if (status === 'revoked') errors.push('receipt is revoked by an authentic exact-target statement');
+    else if (status === 'indeterminate') errors.push('exact-target revocation status is indeterminate');
   }
 
   // ── Step 5f (OPT-IN): currency-at-T (EP-CURRENCY-v1) ──────────────────────
@@ -1573,6 +1910,8 @@ export function verifyTrustReceipt(receipt: any, opts: Obj = {}): Obj {
     checks.consumption = res.valid === true;
     if (!checks.consumption) {
       errors.push(`consumption proof did not verify: ${res.reason}`);
+    } else {
+      decisionScope.replay_status = 'presented_consumption_proof_verified_not_atomic_admission';
     }
   }
 
@@ -1617,6 +1956,10 @@ export function verifyTrustReceipt(receipt: any, opts: Obj = {}): Obj {
     windowsOk = false;
     errors.push('missing consumption.committed_at');
   } else {
+    if (verifierNow !== null && parseInstant(committedAt) > verifierNow) {
+      windowsOk = false;
+      errors.push('committed_at is in the future relative to the verifier clock');
+    }
     for (const ctx of contexts) {
       if (!withinWindow(committedAt, ctx.issued_at, ctx.expires_at)) {
         windowsOk = false;
@@ -1638,10 +1981,17 @@ export function verifyTrustReceipt(receipt: any, opts: Obj = {}): Obj {
     }
   }
   const valid = Object.values(checks).every(Boolean) && strict.valid;
-  // Spread the opt-in knob results LAST. `optionalResults` is empty unless a
-  // knob option was supplied, so with no new options the returned object is
-  // byte-for-byte { valid, checks, errors, attestation, strict } as before.
-  return { valid, checks, errors, attestation, strict, ...optionalResults };
+  // Spread optional evidence reports last. decision_scope remains unconditional
+  // so no caller can silently equate authenticity with executable authority.
+  return {
+    valid,
+    checks,
+    errors,
+    attestation,
+    strict,
+    decision_scope: decisionScope,
+    ...optionalResults,
+  };
 }
 
 /**

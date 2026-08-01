@@ -106,6 +106,8 @@ export default defineConfig({
       // composition proof uses the same portable runner.
       'conformance/trusted-context-pack.test.ts',
       'interop/apertomemory-emilia/verify.test.mjs',
+      'interop/aae-psea-gate/verify.test.mjs',
+      'interop/aae-psea-gate/reperform.test.mjs',
       // Generated Node-20 companions of .test.ts sources (e.g. under
       // conformance/): vitest must collect the .ts source only, or every
       // converted test in a companion-glob tree runs twice.

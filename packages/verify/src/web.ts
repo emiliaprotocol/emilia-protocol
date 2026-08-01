@@ -23,6 +23,8 @@ interface WebOptions {
   allowedOrigins?: string[];
   rpId?: string;
   allowUnsigned?: boolean;
+  previousSignCount?: number;
+  counterPolicy?: 'observe' | 'enforce';
 }
 
 interface MerkleStep {
@@ -258,6 +260,45 @@ export async function verifyMerkleAnchor(leafHash: unknown, proof: unknown, expe
 
 const FLAG_UP = 0x01;
 const FLAG_UV = 0x04;
+const FLAG_BE = 0x08;
+const FLAG_BS = 0x10;
+
+function authenticatorMetadata(authData: Uint8Array, opts: WebOptions) {
+  const flags = authData[32];
+  const view = new DataView(authData.buffer, authData.byteOffset + 33, 4);
+  const signCount = view.getUint32(0, false);
+  const previous = opts.previousSignCount;
+  let counterStatus = 'untracked';
+  if (signCount === 0) counterStatus = 'unsupported';
+  else if (previous !== undefined) counterStatus = signCount > previous ? 'advanced' : 'not_advanced';
+  return {
+    sign_count: signCount,
+    backup_eligible: (flags & FLAG_BE) === FLAG_BE,
+    backup_state: (flags & FLAG_BS) === FLAG_BS,
+    counter_status: counterStatus,
+  };
+}
+
+function counterPolicyError(metadata: ReturnType<typeof authenticatorMetadata>, opts: WebOptions): string | null {
+  if (opts.previousSignCount !== undefined
+      && (!Number.isInteger(opts.previousSignCount)
+        || opts.previousSignCount < 0
+        || opts.previousSignCount > 0xffffffff)) {
+    return 'previousSignCount must be a 32-bit unsigned integer';
+  }
+  if (opts.counterPolicy !== undefined
+      && opts.counterPolicy !== 'observe'
+      && opts.counterPolicy !== 'enforce') {
+    return 'counterPolicy must be "observe" or "enforce"';
+  }
+  if (metadata.backup_state && !metadata.backup_eligible) {
+    return 'WebAuthn backup state is set while backup eligibility is not set';
+  }
+  if (opts.counterPolicy === 'enforce' && metadata.counter_status === 'not_advanced') {
+    return 'WebAuthn signCount did not advance; possible clone, malfunction, or reordered assertion';
+  }
+  return null;
+}
 
 /**
  * Verify a Class A (approver-held key) signoff fully offline, in the browser.
@@ -278,14 +319,15 @@ export async function verifyWebAuthnSignoff(signoff: JsonObject, approverPublicK
     rp_id_hash: null,
     signature: false,
   };
+  let authenticator: ReturnType<typeof authenticatorMetadata> | null = null;
 
   try {
     if (!signoff?.context || !signoff?.webauthn) {
-      return { valid: false, checks, error: 'Missing context or webauthn evidence' };
+      return { valid: false, checks, authenticator, error: 'Missing context or webauthn evidence' };
     }
     const { authenticator_data, client_data_json, signature } = signoff.webauthn;
     if (!authenticator_data || !client_data_json || !signature) {
-      return { valid: false, checks, error: 'Missing webauthn fields' };
+      return { valid: false, checks, authenticator, error: 'Missing webauthn fields' };
     }
 
     // 1. Challenge binding: clientData.challenge === b64u(SHA-256(canonical(context))).
@@ -296,6 +338,7 @@ export async function verifyWebAuthnSignoff(signoff: JsonObject, approverPublicK
       return {
         valid: false,
         checks,
+        authenticator,
         error: `Invalid clientDataJSON: ${'reason' in clientDataGate ? clientDataGate.reason : 'strict JSON rejected'}`,
       };
     }
@@ -310,18 +353,21 @@ export async function verifyWebAuthnSignoff(signoff: JsonObject, approverPublicK
       if (opts.allowedOrigins.length === 0
           || !opts.allowedOrigins.includes(clientData.origin)
           || clientData.crossOrigin === true) {
-        return { valid: false, checks, error: 'WebAuthn origin is not allowed' };
+        return { valid: false, checks, authenticator, error: 'WebAuthn origin is not allowed' };
       }
     }
 
     // 3. Authenticator flags: user present + user verified.
     const authData = b64uToBytes(authenticator_data);
     if (authData.length < 37) {
-      return { valid: false, checks, error: 'authenticator_data too short' };
+      return { valid: false, checks, authenticator, error: 'authenticator_data too short' };
     }
     const flags = authData[32];
     checks.user_present = (flags & FLAG_UP) === FLAG_UP;
     checks.user_verified = (flags & FLAG_UV) === FLAG_UV;
+    authenticator = authenticatorMetadata(authData, opts);
+    const policyError = counterPolicyError(authenticator, opts);
+    if (policyError) return { valid: false, checks, authenticator, error: policyError };
 
     // 4. Optional rpId scope check.
     if (opts.rpId) {
@@ -333,7 +379,7 @@ export async function verifyWebAuthnSignoff(signoff: JsonObject, approverPublicK
     const signedData = concatBytes(authData, await sha256Bytes(clientDataBytes));
     const rawSig = derEcdsaToRawP256(b64uToBytes(signature));
     if (!rawSig) {
-      return { valid: false, checks, error: 'Malformed ECDSA signature' };
+      return { valid: false, checks, authenticator, error: 'Malformed ECDSA signature' };
     }
     const key = await subtle.importKey(
       'spki', bufferSource(b64uToBytes(approverPublicKeySpkiB64u)),
@@ -343,7 +389,7 @@ export async function verifyWebAuthnSignoff(signoff: JsonObject, approverPublicK
       { name: 'ECDSA', hash: 'SHA-256' }, key, bufferSource(rawSig), bufferSource(signedData),
     );
   } catch (e) {
-    return { valid: false, checks, error: `WebAuthn verification failed: ${errorMessage(e)}` };
+    return { valid: false, checks, authenticator, error: `WebAuthn verification failed: ${errorMessage(e)}` };
   }
 
   const valid = checks.challenge_binding
@@ -352,7 +398,7 @@ export async function verifyWebAuthnSignoff(signoff: JsonObject, approverPublicK
     && checks.user_verified
     && checks.signature
     && (checks.rp_id_hash === null || checks.rp_id_hash === true);
-  return { valid, checks };
+  return { valid, checks, authenticator };
 }
 
 // =============================================================================

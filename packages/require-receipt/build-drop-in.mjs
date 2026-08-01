@@ -40,13 +40,24 @@ gate = gate.replace(/\n?\/\/# sourceMappingURL=.*\s*$/m, '\n');
 strictJson = strictJson.replace(/\n?\/\/# sourceMappingURL=.*\s*$/m, '\n');
 acquisition = acquisition.replace(/\n?\/\/# sourceMappingURL=.*\s*$/m, '\n');
 
-// Inline the nested-JSON ambiguity guard so the copy-in artifact stays zero-dep.
-index = index.replace("import { strictJsonGate } from './strict-json.js';\n", '');
-index = index.replace("export { strictJsonGate } from './strict-json.js';\n", '');
+// Inline the strict JSON-domain implementation so the copy-in artifact stays
+// zero-dependency even as the package imports all three canonical helpers.
+const strictJsonImport =
+  /import \{\s*canonicalizeStrictJson,\s*isStrictCanonicalJson,\s*strictJsonGate,\s*\} from '\.\/strict-json\.js';\n/;
+if (!strictJsonImport.test(index)) {
+  throw new Error('build-drop-in: strict-json import not found in index.js — source changed; update the generator.');
+}
+index = index.replace(strictJsonImport, '');
+const strictJsonExport =
+  /export \{\s*canonicalizeStrictJson,\s*isStrictCanonicalJson,\s*strictJsonGate,\s*\} from '\.\/strict-json\.js';\n/;
+if (!strictJsonExport.test(index)) {
+  throw new Error('build-drop-in: strict-json export not found in index.js — source changed; update the generator.');
+}
+index = index.replace(strictJsonExport, '');
 strictJson = strictJson
   .replace(/export const /g, 'const ')
   .replace(/export function /g, 'function ')
-  .replace(/\nexport default \{ strictJsonGate, MAX_JSON_DEPTH \};\n?/, '\n');
+  .replace(/\nexport default strictJson;\n?/, '\n');
 
 // Inline the acquisition contract too. It uses only node:crypto plus the
 // platform fetch supplied by the caller, so the copy-in remains zero-dep while
