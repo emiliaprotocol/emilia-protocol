@@ -251,7 +251,10 @@ function registryEntry(
   return entry;
 }
 
-function webauthnAssertion(context: Obj): Obj {
+function webauthnAssertion(
+  context: Obj,
+  options: { signCount?: number; backupEligible?: boolean; backupState?: boolean } = {},
+): Obj {
   const challenge = crypto.createHash('sha256')
     .update(canonicalizeAeb(context), 'utf8')
     .digest('base64url');
@@ -261,10 +264,13 @@ function webauthnAssertion(context: Obj): Obj {
     origin: ORIGIN,
   }), 'utf8');
   const counter = Buffer.alloc(4);
-  counter.writeUInt32BE(42);
+  counter.writeUInt32BE(options.signCount ?? 42);
+  const flags = 0x05
+    | (options.backupEligible ? 0x08 : 0)
+    | (options.backupState ? 0x10 : 0);
   const authenticatorData = Buffer.concat([
     crypto.createHash('sha256').update(RP_ID, 'utf8').digest(),
-    Buffer.from([0x05]),
+    Buffer.from([flags]),
     counter,
   ]);
   const signedData = Buffer.concat([
@@ -344,11 +350,21 @@ function authenticatedStatuses(
 
 interface FixtureOptions extends RawAp2Options {
   seed?: string;
+  claimedActionMutator?: (action: Obj) => Obj;
+  signCountPolicy?: 'above-enrollment-and-one-time' | 'not-relied-upon';
+  signCount?: number;
+  enrolledSignCount?: number;
+  counterHead?: number;
+  backupEligible?: boolean;
+  backupState?: boolean;
 }
 
 function fixture(options: FixtureOptions = {}) {
   const ap2 = rawAp2(options);
-  const action = projectFidoAp2PaymentAction(projectionInput(ap2));
+  const projectedAction = projectFidoAp2PaymentAction(projectionInput(ap2));
+  const action = options.claimedActionMutator
+    ? options.claimedActionMutator(structuredClone(projectedAction))
+    : projectedAction;
   const actionCaid = caid(action);
   const profile = createFidoAp2PinnedProfile();
   const effectBytes = providerRequestBytes(ap2.payment_mandate_token);
@@ -412,7 +428,11 @@ function fixture(options: FixtureOptions = {}) {
     disclosure,
     signoff: {
       context,
-      webauthn: webauthnAssertion(context),
+      webauthn: webauthnAssertion(context, {
+        signCount: options.signCount,
+        backupEligible: options.backupEligible,
+        backupState: options.backupState,
+      }),
     },
   };
   const humanAdapter = createFidoAp2AebAdapter();
@@ -460,9 +480,9 @@ function fixture(options: FixtureOptions = {}) {
     allowed_origins: [ORIGIN],
     expected_nonce: NONCE,
     max_status_age_seconds: 120,
-    sign_count_policy: 'above-enrollment-and-one-time',
-    allow_backup_eligible: false,
-    allow_backup_state: false,
+    sign_count_policy: options.signCountPolicy ?? 'above-enrollment-and-one-time',
+    allow_backup_eligible: options.backupEligible ?? false,
+    allow_backup_state: options.backupState ?? false,
   };
   const humanRoot = {
     '@version': FIDO_AP2_AEB_TRUST_ROOT_VERSION,
@@ -476,7 +496,7 @@ function fixture(options: FixtureOptions = {}) {
     rp_id: RP_ID,
     key_class: 'A',
     status: 'active',
-    sign_count: 41,
+    sign_count: options.enrolledSignCount ?? 41,
   };
   const humanPin: Obj = {
     version: humanAdapter.version,
@@ -648,7 +668,7 @@ function fixture(options: FixtureOptions = {}) {
     gate_trust_configuration_digest:
       evaluated.record.evaluator.pinned_config_digest,
     executor_adapter_digest: EXECUTOR_ADAPTER_DIGEST,
-    webauthn_counter_head: 41,
+    webauthn_counter_head: options.counterHead ?? 41,
     ap2_source: {
       checkout_mandate_token: ap2.checkout_mandate_token,
       payment_mandate_token: ap2.payment_mandate_token,
@@ -665,6 +685,7 @@ function fixture(options: FixtureOptions = {}) {
   return {
     ap2,
     action,
+    projectedAction,
     raw,
     pinnedConfig,
     statuses,
@@ -839,6 +860,93 @@ describe('FIDO/AP2 Gate bridge v1 over official AP2 v0.2', () => {
     assert.deepEqual(
       leases.map((lease) => lease.digest).sort(),
       f.statuses.map((status) => status.head_digest).sort(),
+    );
+  });
+
+  it('re-derives every economic field from the AP2 payloads held by Gate', () => {
+    const f = fixture();
+    const derived = projectFidoAp2PaymentAction({
+      checkout_mandate: f.controls.ap2_source.checkout_mandate_payload,
+      payment_mandate: f.controls.ap2_source.payment_mandate_payload,
+      source_binding: createFidoAp2NativeSourceBinding(f.controls.ap2_source),
+    });
+    const payment = f.controls.ap2_source.payment_mandate_payload as Obj;
+    const amount = payment.payment_amount as Obj;
+    const payee = payment.payee as Obj;
+    const instrument = payment.payment_instrument as Obj;
+
+    assert.equal(derived.amount_minor, amount.amount);
+    assert.equal(derived.currency, amount.currency);
+    assert.equal(derived.payee_id, payee.id);
+    assert.equal(derived.payment_instrument_id, instrument.id);
+    assert.equal(derived.transaction_id, payment.transaction_id);
+  });
+
+  it('refuses AP2 payload bytes spliced under authenticated token commitments', () => {
+    const f = fixture();
+    const binding = createFidoAp2NativeSourceBinding(f.controls.ap2_source);
+    const tampered = structuredClone(
+      f.controls.ap2_source.payment_mandate_payload,
+    ) as Obj;
+    const amount = tampered.payment_amount as Obj;
+    amount.amount = 9_999_999;
+
+    assert.throws(
+      () => projectFidoAp2PaymentAction({
+        checkout_mandate: f.controls.ap2_source.checkout_mandate_payload,
+        payment_mandate: tampered,
+        source_binding: binding,
+      }),
+      /payload binding mismatch/,
+    );
+  });
+
+  it('refuses a signed amount splice even when the pinned native verifier attests to it', () => {
+    const f = fixture({
+      claimedActionMutator: (action) => ({ ...action, amount_minor: 9_999_999 }),
+    });
+
+    assert.equal(f.projectedAction.amount_minor, 12_550);
+    assert.equal(f.raw.humanArtifact.normalized_action.amount_minor, 9_999_999);
+    assert.equal(
+      f.raw.humanArtifact.source_commitments.payment_mandate_token_digest,
+      f.ap2.source_binding.payment_mandate_token_digest,
+    );
+    assert.throws(
+      () => createFidoAp2AdmissionInput(f.raw, f.controls),
+      /signed AEB evaluation is not execution-authorizing|trusted AP2 projected-action binding/,
+    );
+  });
+
+  it('accepts a zero-counter platform passkey only under the pinned non-reliance policy', () => {
+    const f = fixture({
+      signCountPolicy: 'not-relied-upon',
+      signCount: 0,
+      enrolledSignCount: 0,
+      counterHead: 0,
+      backupEligible: true,
+      backupState: true,
+    });
+    const snapshot = createAdmissionSnapshot(
+      createFidoAp2AdmissionInput(f.raw, f.controls),
+    );
+
+    assert.equal(
+      snapshot.body.resource_reservations.filter(
+        (resource) => resource.kind === 'monotonic_counter',
+      ).length,
+      0,
+    );
+    assert.equal(
+      snapshot.body.resource_reservations.filter(
+        (resource) => resource.kind === 'replay',
+      ).length,
+      3,
+    );
+
+    assert.throws(
+      () => fixture({ signCount: 0, enrolledSignCount: 0, counterHead: 0 }),
+      /sign_count_not_above_enrollment/,
     );
   });
 

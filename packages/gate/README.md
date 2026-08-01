@@ -181,8 +181,11 @@ legality or business suitability.
 immediate AP2 v0.2 profile. The caller supplies evidence; a separate
 server-owned controls object supplies the trusted clock, pinned AEB config,
 authenticated status resolver, tenant/RP/audience/actors, exact canonical AP2
-tokens, verified payloads, authenticated hash algorithm, current WebAuthn
-counter head, final provider-request bytes, and pinned provider adapter. The adapter
+tokens, native-verifier-returned payloads, current WebAuthn counter head, final
+provider-request bytes, and pinned provider adapter. Gate derives the checkout
+hash algorithm from the exact issuer token and independently reprojects the
+native payloads at admission; the claimed human-action object is not used as
+its own expected value. The adapter
 must prove that those exact bytes carry the exact PaymentMandate token. The
 builders then retain the full signed AEB evaluation and derive replay,
 provider-operation, status-head, and monotonic WebAuthn-counter resources.
@@ -206,6 +209,13 @@ enrollment or recovery path must provision the initial head first
 operator-only `ep_gate_provision_monotonic_counter` SQL function). A request
 cannot create or replace its own counter baseline, and release never lowers a
 committed head.
+
+The explicit `not-relied-upon` WebAuthn policy is
+available for zero-counter platform passkeys: it makes no counter-based clone
+detection claim and emits no monotonic-counter reservation, while retaining UP,
+UV, exact-action, assertion-replay, native-token, and provider-operation
+reservations plus one-time admission. The default strict policy remains
+`above-enrollment-and-one-time`.
 
 ## Proposal to effect
 

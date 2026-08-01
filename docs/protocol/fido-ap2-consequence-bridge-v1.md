@@ -228,9 +228,11 @@ The closed human leg requires:
 - UP and UV set, no unsupported flag bits, and no authenticator extensions or
   attested-credential data;
 - relying-party-pinned backup-eligibility and backup-state policy; and
-- `signCount` strictly above both the enrolled count and the server-owned
-  current counter head under the pinned `above-enrollment-and-one-time`
-  policy.
+- one relying-party-pinned counter policy:
+  - `above-enrollment-and-one-time` requires `signCount` strictly above both
+    the enrolled count and the server-owned current counter head; or
+  - `not-relied-upon` permits a zero counter for platform passkeys and makes no
+    clone-detection or monotonicity claim from `signCount`.
 
 The RP owns the source revision, tenant, relying party, audience, action type,
 RP ID, origins, nonce, approver and credential identity, public key, key
@@ -240,8 +242,10 @@ and trust roots. Artifact-selected trust is ignored or refused.
 The derived WebAuthn replay unit includes the exact operation, request,
 provider, approver, credential, nonce, and context digest. AdmissionStore also
 reserves a replay resource derived from the credential, accepted count,
-artifact digest, and AEB replay unit, plus one durable `monotonic_counter`
-resource keyed only by relying party and credential. At reservation, that
+artifact digest, and AEB replay unit. Under
+`above-enrollment-and-one-time`, it additionally reserves one durable
+`monotonic_counter` resource keyed only by relying party and credential. At
+reservation, that
 resource atomically compares the server-owned expected head and advances it to
 the signed count. The head MUST already have been provisioned from an
 authenticated enrollment or recovery ceremony; an absent head fails closed
@@ -251,6 +255,12 @@ commits atomically with a successful reservation; if reservation fails, neither
 the admission nor the new head exists. Release, expiry, and reconciliation do
 not lower a committed head. Skipped values are safe, while reuse or rollback is
 refused. Counters remain clone signals, not proof of authenticator uniqueness.
+Under `not-relied-upon`, no monotonic-counter resource is emitted and a zero
+counter is not interpreted as evidence of either uniqueness or cloning. The
+exact assertion, AP2 tokens, operation, and provider entry remain independently
+replay-fenced and one-time admitted. A platform passkey may use Face ID for the
+WebAuthn user-verification ceremony; this profile does not claim that the
+credential private key is itself a Secure Enclave key.
 
 ## 7. Server-owned provider-request binding
 
@@ -272,6 +282,13 @@ clock | pinned AEB configuration | current-status resolver
 The checkout hash algorithm is not a separate trusted control. The bridge
 derives it from the exact CheckoutMandate issuer JWT's authenticated `_sd_alg`
 claim, defaulting to `sha-256` when that claim is absent.
+
+Gate independently projects the normalized action from the exact
+native-verifier-returned mandate payloads and source binding supplied through
+the trusted controls. The action digest in the Gate binding, human artifact,
+and AEB record MUST equal that independently projected digest. A signed claimed
+action therefore cannot substitute a different amount, payee, instrument, or
+transaction even if a pinned native-attestation issuer repeats the bad claim.
 
 For exact request bytes `R`, Gate computes:
 

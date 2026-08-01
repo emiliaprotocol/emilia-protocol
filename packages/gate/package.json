@@ -1,6 +1,6 @@
 {
   "name": "@emilia-protocol/gate",
-  "version": "0.22.1",
+  "version": "0.22.2",
   "repository": {
     "type": "git",
     "url": "https://github.com/emiliaprotocol/emilia-protocol.git",
@@ -317,6 +317,7 @@
       "types": "./dist/fido-ap2-bridge.d.ts",
       "import": "./fido-ap2-bridge.js"
     },
+    "./sql/gate-qualification-v2.sql": "./sql/gate-qualification-v2.sql",
     "./referee": {
       "types": "./dist/referee.d.ts",
       "import": "./referee.js"
@@ -429,6 +430,7 @@
     "admission-store-postgres.js",
     "gate-qualification-v2.js",
     "fido-ap2-bridge.js",
+    "sql/gate-qualification-v2.sql",
     "referee.js",
     "referee-runner.js",
     "loss-allocation-schedule.js",
@@ -517,7 +519,7 @@
   "dependencies": {
     "@noble/curves": "2.2.0",
     "@emilia-protocol/require-receipt": "0.7.0",
-    "@emilia-protocol/verify": "3.19.0"
+    "@emilia-protocol/verify": "3.19.1"
   },
   "keywords": [
     "emilia",

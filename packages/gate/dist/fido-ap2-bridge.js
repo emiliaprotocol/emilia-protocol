@@ -10,7 +10,7 @@
  */
 import crypto from 'node:crypto';
 import { createAebNativeVerificationAttestationAdapter, digestAeb, verifyAebEvaluation, } from '@emilia-protocol/verify/aeb-adapter-contract';
-import { createFidoAp2AebAdapter, createFidoAp2NativeSourceBinding, FIDO_AP2_AEB_ADAPTER_ID, FIDO_AP2_NATIVE_PROTOCOL_ID, } from '@emilia-protocol/verify/fido-ap2-bridge';
+import { createFidoAp2AebAdapter, createFidoAp2NativeSourceBinding, projectFidoAp2PaymentAction, FIDO_AP2_AEB_ADAPTER_ID, FIDO_AP2_NATIVE_PROTOCOL_ID, } from '@emilia-protocol/verify/fido-ap2-bridge';
 import { createAdmissionSnapshot, } from './admission-store.js';
 const DIGEST = /^sha256:[0-9a-f]{64}$/;
 const BRIDGE_DOMAIN = 'EP-FIDO-AP2-GATE-BRIDGE-v1';
@@ -841,6 +841,15 @@ function validateTrustedControls(controls) {
         webauthnCounterHead,
     };
 }
+function pinnedSignCountPolicy(pinnedConfig, evaluation) {
+    const pin = object(pinnedConfig.adapters[evaluation.humanAdapterId], 'pinnedConfig human adapter');
+    const config = object(pin.config, 'pinnedConfig human adapter config');
+    if (config.sign_count_policy !== 'above-enrollment-and-one-time'
+        && config.sign_count_policy !== 'not-relied-upon') {
+        fail('pinned WebAuthn counter policy is invalid');
+    }
+    return config.sign_count_policy;
+}
 function resourceDigestParts(bindings, artifact, provider, evaluation) {
     return [
         string(bindings.tenant_id, 'bindings.tenant_id'),
@@ -875,7 +884,7 @@ function makeResource(kind, resourceId, expiresAt, context) {
         expires_at: expiresAt,
     };
 }
-function deriveResources(bindings, artifact, evaluation, provider, expiresAt, webauthnCounterHead) {
+function deriveResources(bindings, artifact, evaluation, provider, expiresAt, webauthnCounterHead, signCountPolicy) {
     const context = resourceDigestParts(bindings, artifact, provider, evaluation);
     const webauthnId = `webauthn-assertion:${bridgeDigest('replay/webauthn-assertion', artifact.credentialId, String(artifact.signCount), artifact.artifactDigest, evaluation.humanReplayUnit)}`;
     const checkoutId = `ap2-checkout-mandate-token:${bridgeDigest('replay/ap2-checkout-mandate-token', artifact.checkoutMandateTokenDigest)}`;
@@ -890,13 +899,15 @@ function deriveResources(bindings, artifact, evaluation, provider, expiresAt, we
         expected_value: webauthnCounterHead,
         next_value: artifact.signCount,
     };
-    return [
+    const resources = [
         makeResource('replay', checkoutId, expiresAt, context),
         makeResource('replay', paymentId, expiresAt, context),
         makeResource('replay', webauthnId, expiresAt, context),
-        counter,
-        makeResource('provider_operation', evaluation.operationId, expiresAt, context),
     ];
+    if (signCountPolicy === 'above-enrollment-and-one-time')
+        resources.push(counter);
+    resources.push(makeResource('provider_operation', evaluation.operationId, expiresAt, context));
+    return resources;
 }
 function aebInput(evaluation, artifact) {
     const validUntil = [
@@ -961,9 +972,21 @@ export function createFidoAp2AdmissionInput(raw, controls) {
         fail('closed source freshness does not cover admission');
     }
     const trusted = validateTrustedControls(controls);
+    let projectedAction;
+    try {
+        projectedAction = projectFidoAp2PaymentAction({
+            checkout_mandate: controls.ap2_source.checkout_mandate_payload,
+            payment_mandate: controls.ap2_source.payment_mandate_payload,
+            source_binding: trusted.source,
+        });
+    }
+    catch {
+        return fail('trusted AP2 source cannot be projected into the closed action');
+    }
+    const projectedActionDigest = aebDigest(projectedAction, 'trusted AP2 projected action');
     const nativeAttestation = validateNativeAttestation(input.nativeAttestation, artifact, trusted.source.native_artifact_digest);
     const statuses = resolveTrustedStatuses(controls, evaluation, admitted);
-    const pinnedConfig = verifyEvaluationAtAdmission(input.evaluation, controls.pinned_config, statuses.current, input.humanArtifact, input.nativeAttestation, object(input.humanArtifact, 'humanArtifact').normalized_action, admitted.iso, evaluation);
+    const pinnedConfig = verifyEvaluationAtAdmission(input.evaluation, controls.pinned_config, statuses.current, input.humanArtifact, input.nativeAttestation, projectedAction, admitted.iso, evaluation);
     if (expires.ms > evaluation.legExpiresAtMs) {
         fail('AEB freshness does not cover admission expiration');
     }
@@ -985,6 +1008,7 @@ export function createFidoAp2AdmissionInput(raw, controls) {
     const actionDigest = digest(bindings.action_digest, 'bindings.action_digest');
     const effectRequestDigest = digest(bindings.effect_request_digest, 'bindings.effect_request_digest');
     const provider = validateProvider(bindings.provider, 'bindings.provider');
+    const signCountPolicy = pinnedSignCountPolicy(pinnedConfig, evaluation);
     exact(tenantId, trusted.tenantId, 'server-owned tenant binding');
     exact(relyingPartyId, trusted.relyingPartyId, 'server-owned relying-party binding');
     exact(audience, trusted.audience, 'server-owned audience binding');
@@ -995,7 +1019,9 @@ export function createFidoAp2AdmissionInput(raw, controls) {
     exact(bindings.trust_configuration_digest, trusted.gateTrustConfigurationDigest, 'server-owned Gate trust-configuration binding');
     exact(artifact.checkoutMandateTokenDigest, trusted.source.checkout_mandate_token_digest, 'trusted checkout token binding');
     exact(artifact.paymentMandateTokenDigest, trusted.source.payment_mandate_token_digest, 'trusted payment token binding');
-    if (artifact.signCount <= trusted.webauthnCounterHead) {
+    exact(actionDigest, projectedActionDigest, 'trusted AP2 projected-action binding');
+    if (signCountPolicy === 'above-enrollment-and-one-time'
+        && artifact.signCount <= trusted.webauthnCounterHead) {
         fail('WebAuthn counter is not above the server-owned current head');
     }
     exact(artifact.tenantId, tenantId, 'artifact tenant binding');
@@ -1024,7 +1050,7 @@ export function createFidoAp2AdmissionInput(raw, controls) {
     base.admitted_at = admitted.iso;
     base.inputs = insertAebInput(bindings.inputs, aebInput(evaluation, artifact));
     base.resource_reservations = [
-        ...deriveResources(bindings, artifact, evaluation, provider, expires.iso, trusted.webauthnCounterHead),
+        ...deriveResources(bindings, artifact, evaluation, provider, expires.iso, trusted.webauthnCounterHead, signCountPolicy),
         ...statuses.leases,
     ];
     const admissionInput = base;
