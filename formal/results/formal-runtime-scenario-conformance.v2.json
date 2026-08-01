@@ -467,7 +467,7 @@
     },
     {
       "path": "package-lock.json",
-      "sha256": "9b9316795a89c588464cfd054f7be6333102148a40e85c0f33ba64f9494c5258"
+      "sha256": "8664942516ec702929708617d3f1953ec2349c1ad2fff8dc7045cd3006096ddd"
     },
     {
       "path": "package.json",
@@ -979,7 +979,7 @@
     },
     {
       "path": "packages/verify/dist/fido-ap2-bridge.js",
-      "sha256": "994492e2591f0545ef75947861215b157216df1d9bc2a7032c64109f6a6f429d"
+      "sha256": "b391b4ad387dc0030452e95edf07a2ab2f9c709771af5466f52fe8707ba32e52"
     },
     {
       "path": "packages/verify/dist/gate-qualification-promptfoo.js",
