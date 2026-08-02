@@ -3,6 +3,22 @@
 All notable changes to `@emilia-protocol/verify` are documented here.
 This package follows [Semantic Versioning](https://semver.org/).
 
+## 3.20.0 (2026-08-01)
+
+### Added
+
+- Memory Projection Record v1 construction and relying-party verification as
+  the public `@emilia-protocol/verify/memory-projection` export. The record
+  binds a candidate manifest, projection policy, source and projected memory
+  digests, transformation disclosure, freshness, and verifier-owned trust
+  configuration without treating projection as authorization.
+
+### Security
+
+- The projection verifier rejects unknown fields, malformed or accessor-bearing
+  JSON, untrusted issuers, substituted policies or contexts, stale records,
+  source and output digest mismatches, and unsupported transformation claims.
+
 ## 3.19.1 (2026-07-31)
 
 ### Security
