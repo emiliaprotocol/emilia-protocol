@@ -1,6 +1,6 @@
 {
   "name": "@emilia-protocol/scan",
-  "version": "0.3.4",
+  "version": "0.3.5",
   "description": "Passive local authority inventory plus fail-closed static classification for MCP and OpenAPI action surfaces.",
   "license": "Apache-2.0",
   "homepage": "https://www.emiliaprotocol.ai/scan",
