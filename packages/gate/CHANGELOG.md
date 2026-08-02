@@ -6,6 +6,14 @@ This package follows [Semantic Versioning](https://semver.org/).
 
 ## Unreleased
 
+## 0.23.7 (2026-08-02)
+
+### Release
+
+- Supersedes the unpublished `0.23.6` tag after the protected release gate
+  required a source-bound LLM context refresh. Runtime, protocol, and draft
+  behavior are unchanged from `0.23.6`.
+
 ## 0.23.6 (2026-08-02)
 
 ### Security
