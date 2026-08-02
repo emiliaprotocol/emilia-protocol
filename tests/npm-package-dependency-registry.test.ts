@@ -54,7 +54,7 @@ describe('npm internal dependency registry guard', () => {
       {
         metadata: GATE_METADATA,
         directory: 'packages/gate',
-        version: '0.23.0',
+        version: '0.23.1',
         verifyVersion: '3.19.1',
         verifySha256: '8200097a0da2aa07fd64538bf7a369ab19e39c97c8d0e1ac95f61d97371a4657',
       },
