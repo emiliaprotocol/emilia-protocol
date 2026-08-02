@@ -36,9 +36,9 @@ a $30 refund flows freely. Point `XAI_BASE_URL` / `XAI_MODEL` at any OpenAI-comp
 > self-approval, no replay, money-destination + $50k+ always gated). They do **not** verify
 > Grok. This example is honest glue around a verified core.
 
-### What the Python guard (`grok_guard.py`) verifies — and what it does not
+### What the Python guard (`executor_approval_gate.py`) verifies — and what it does not
 
-`grok_guard.py` returns `proceed=true` for a signoff action **only** when every one of
+`executor_approval_gate.py` returns `proceed=true` for a signoff action **only** when every one of
 these offline checks passes in-process (each fails closed):
 
 1. **Signature** — the Ed25519 signature over the canonical EP-RECEIPT-v1 payload verifies
@@ -50,13 +50,16 @@ these offline checks passes in-process (each fails closed):
 3. **Request binding** — the signed `receipt_id` / amount / currency / destination / approver
    equal what the agent actually requested. A genuinely-signed $1 receipt cannot approve an
    $82k wire (`claim_mismatch`).
-4. **Single-use** — a `receipt_id` is redeemable at most once via an injectable `replay_store`
+4. **Freshness** — signed `issued_at` is evaluated against the relying party's local
+   `max_receipt_age_s` window (`expired` / `not_yet_valid`).
+5. **Single-use** — a `receipt_id` is redeemable at most once via an injectable `replay_store`
    (`replay`); `receipt_status: consumed` is treated as already-spent (`already_consumed`).
-5. **Anchor** (opt-in, `require_anchor=True`) — the Merkle inclusion proof must be present and
+6. **Anchor** (opt-in, `require_anchor=True`) — the Merkle inclusion proof must be present and
    valid (`anchor_required`).
 
-It does **not** prove the approver is wise or the action good — only that a *named, pinned key*
-signed the *exact* canonical action this agent requested.
+It does **not** prove the approver is wise or the action good. The headline receipt establishes
+that a pinned operator key attested to the named approval and exact canonical action; deployments
+requiring human-held-key proof must verify the separately carried Class-A decision evidence.
 
 **Honest residuals.** With `EP_TRUSTED_SIGNER_KEYS` configured, a fully compromised EMILIA
 server cannot make the agent proceed. The optional `/.well-known/ep-keys.json` bootstrap is a
@@ -68,12 +71,12 @@ reject some valid JS receipts, never the reverse), so it is a false-negative ris
 For a production-grade verifier that fails closed on a missing inclusion proof, see
 `@emilia-protocol/verify`'s `verifyTrustReceipt()` and the EP Internet-Draft §6.3.
 
-The six red-team vectors are re-run permanently by
-[`tests/test_grok_guard_redteam.py`](tests/test_grok_guard_redteam.py):
+Twenty-one checks across seven adversarial classes plus genuine controls are re-run permanently by
+[`tests/test_executor_approval_gate_redteam.py`](tests/test_executor_approval_gate_redteam.py):
 
 ```
-PYTHONPATH=packages/python-verify python3 examples/tests/test_grok_guard_redteam.py
-# or:  PYTHONPATH=packages/python-verify pytest examples/tests/test_grok_guard_redteam.py
+PYTHONPATH=packages/python-verify python3 examples/tests/test_executor_approval_gate_redteam.py
+# or:  PYTHONPATH=packages/python-verify pytest examples/tests/test_executor_approval_gate_redteam.py
 ```
 
 ## "Works with EMILIA" badge

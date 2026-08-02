@@ -970,11 +970,10 @@ jobs:
           PYTHONPATH: ${{ github.workspace }}/integrations/langchain-emilia
         run: pytest -q integrations/langchain-emilia/tests
 
-  # ── examples/grok_guard red-team regression ─────────────────────
-  # Re-runs all six adversarial vectors against the grok_guard offline gate
-  # (request-binding, signer-pinning, replay, anchor, defense-in-depth) plus the
-  # genuine-fixture control. Uses the local JS-signed fixture + locally generated
-  # attacker keys — NO network, NO prod. Also exercises the pure-Python verifier.
+  # ── Executor-bound approval gate red-team regression ─────────────
+  # Re-runs the executor-side offline-verification attacks and genuine controls.
+  # Uses the local JS-signed fixture + locally generated attacker keys — NO
+  # network and NO production access. Also exercises the pure-Python verifier.
   examples-grok-guard-redteam:
     runs-on: ubuntu-latest
     steps:
@@ -984,12 +983,12 @@ jobs:
           python-version: '3.12'
       - name: Install verifier deps (cryptography)
         run: python -m pip install --require-hashes -r .github/workflow-requirements/cryptography.txt
-      - name: Compile grok_guard.py
-        run: python -m py_compile examples/grok_guard.py
-      - name: Red-team regression suite (six vectors + control)
+      - name: Compile executor approval examples
+        run: python -m py_compile examples/executor_approval_gate.py examples/grok_guard.py examples/claude_guard.py
+      - name: Red-team executor-bound approval gate
         env:
           PYTHONPATH: packages/python-verify
-        run: python examples/tests/test_grok_guard_redteam.py
+        run: python examples/tests/test_executor_approval_gate_redteam.py
 
   # ── Job 12: OpenAPI spec linting ─────────────────────────────────
   openapi-lint:

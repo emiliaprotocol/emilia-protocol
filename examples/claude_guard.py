@@ -1,16 +1,11 @@
 # SPDX-License-Identifier: Apache-2.0
-"""claude_guard — EMILIA human-signoff gate for a Claude (Anthropic API) agent.
+"""Claude proposes; an executor-side EMILIA gate owns irreversible authority.
 
-The Anthropic-native counterpart to grok_guard.py: register one extra tool with
-Claude, and when the model decides an action is irreversible it calls
-`emilia_require_human_signoff` *instead of* the destructive tool. The dispatcher
-mints a pre-action Trust Receipt against EMILIA's policy engine, routes a
-signoff to a named human's device (Face ID / passkey), and returns
-`proceed=true` only on a real signature — with a receipt that verifies offline.
-
-The guard core (EmiliaGuard, dispatch_emilia_tool) is backend-agnostic and
-lives in grok_guard.py; this file adds the Anthropic tool schema and the
-Messages-API tool-use loop.
+The model is deliberately given no payment, delete, or send tool. It can only
+propose an exact action. The handler starts the approval flow and returns an
+opaque approval URL. A separate executor later calls the neutral resume path,
+which verifies the receipt offline, binds it to the pending action, enforces
+freshness and single-use, and only then invokes the real side effect.
 
 Run a live demo (mints real receipts; needs both keys):
 
@@ -27,17 +22,19 @@ from __future__ import annotations
 import json
 import os
 
-from grok_guard import EmiliaGuard, dispatch_emilia_tool
+try:
+    from examples.executor_approval_gate import EmiliaGuard, dispatch_emilia_tool
+except ModuleNotFoundError:  # direct execution from examples/
+    from executor_approval_gate import EmiliaGuard, dispatch_emilia_tool
 
 # ── Anthropic tool schema (input_schema, not OpenAI's nested function) ───────
-EMILIA_TOOL_ANTHROPIC = {
-    "name": "emilia_require_human_signoff",
+PROPOSE_IRREVERSIBLE_ACTION_TOOL = {
+    "name": "propose_irreversible_action",
     "description": (
-        "REQUIRED before any irreversible high-stakes action (releasing a large "
-        "payment, changing a payee bank account, deleting records). Returns "
-        "proceed=true only after a named human cryptographically approves on "
-        "their own device; otherwise blocked. Never execute the action unless "
-        "this returns proceed=true."
+        "Propose an irreversible high-stakes action for executor-side review. "
+        "This tool cannot execute the action. It starts a named-human approval "
+        "flow and returns an opaque approval URL; the executor independently "
+        "verifies and consumes any resulting exact-action receipt."
     ),
     "input_schema": {
         "type": "object",
@@ -57,24 +54,7 @@ EMILIA_TOOL_ANTHROPIC = {
     },
 }
 
-# The irreversible tool itself — in production this wires real money, which is
-# exactly why its description tells the model to gate it through EMILIA first.
-RELEASE_PAYMENT_TOOL = {
-    "name": "release_payment",
-    "description": (
-        "Releases a vendor payment (irreversible). You MUST call "
-        "emilia_require_human_signoff first and may only call this if it "
-        "returned proceed=true."
-    ),
-    "input_schema": {
-        "type": "object",
-        "properties": {
-            "wire_id": {"type": "string"},
-            "amount": {"type": "number"},
-        },
-        "required": ["wire_id", "amount"],
-    },
-}
+REGISTERED_AGENT_TOOLS = [PROPOSE_IRREVERSIBLE_ACTION_TOOL]
 
 
 def run_agent(prompt: str, model: str = "claude-fable-5", max_turns: int = 6) -> str:
@@ -89,7 +69,7 @@ def run_agent(prompt: str, model: str = "claude-fable-5", max_turns: int = 6) ->
         resp = client.messages.create(
             model=model,
             max_tokens=1024,
-            tools=[EMILIA_TOOL_ANTHROPIC, RELEASE_PAYMENT_TOOL],
+            tools=REGISTERED_AGENT_TOOLS,
             messages=messages,
         )
         if resp.stop_reason != "tool_use":
@@ -100,12 +80,10 @@ def run_agent(prompt: str, model: str = "claude-fable-5", max_turns: int = 6) ->
         for block in resp.content:
             if block.type != "tool_use":
                 continue
-            if block.name == "emilia_require_human_signoff":
-                # Blocks here while a named human approves on their device.
-                out = dispatch_emilia_tool(block.input, guard=guard)
-            elif block.name == "release_payment":
-                # Demo stub — your real payout call goes here.
-                out = {"released": True, "wire_id": block.input["wire_id"]}
+            if block.name == "propose_irreversible_action":
+                # Non-blocking: mint the receipt and return the approval URL.
+                # No irreversible callback is reachable from this agent loop.
+                out = dispatch_emilia_tool(block.input, guard=guard, wait=False)
             else:
                 out = {"error": f"unknown tool {block.name}"}
             results.append({
@@ -121,8 +99,8 @@ if __name__ == "__main__":
     if not (os.environ.get("ANTHROPIC_API_KEY") and os.environ.get("EP_API_KEY")):
         raise SystemExit(
             "Set ANTHROPIC_API_KEY and EP_API_KEY, then re-run.\n"
-            "The agent will be asked to wire $82,000 — EMILIA holds it for a "
-            "named human's device signoff before release_payment can run."
+            "The agent will propose an $82,000 wire. This process cannot move "
+            "money; a separate executor must verify and consume the receipt."
         )
     print(run_agent(
         "Release wire/8841 for $82,000 to Vendor 8841 for org org-claude-demo. "

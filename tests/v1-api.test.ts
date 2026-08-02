@@ -1552,7 +1552,7 @@ describe('GET /api/v1/trust-receipts/:id/evidence', () => {
     expect(body.document.payload.authorization.approver_id).toBe('ap_controller_jane');
     expect(body.document.payload.authorization.status).toBe('consumed');
 
-    // ROUND-TRIP: the offline verifier (the EXACT module grok_guard.py's
+    // ROUND-TRIP: the offline verifier (the EXACT module executor_approval_gate.py's
     // emilia_verify is a port of) accepts the document + public key.
     const { verifyReceipt } = await import('../packages/verify/index.js');
     const result = verifyReceipt(body.document, body.public_key);

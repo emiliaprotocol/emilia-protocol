@@ -4,7 +4,7 @@
 // FinGuard receipt's append-only audit_events log, so the production
 // /api/v1/trust-receipts/{id}/evidence endpoint can serve a receipt that an
 // offline verifier (@emilia-protocol/verify's verifyReceipt(), the pure-Python
-// emilia_verify, examples/grok_guard.py) checks WITHOUT trusting the server.
+// emilia_verify, examples/executor_approval_gate.py) checks WITHOUT trusting the server.
 //
 // THE SHAPE. This mirrors the public demo endpoint (lib/demo-receipt.js):
 //   { document: <signed EP-RECEIPT-v1>, public_key: <base64url SPKI DER> }
