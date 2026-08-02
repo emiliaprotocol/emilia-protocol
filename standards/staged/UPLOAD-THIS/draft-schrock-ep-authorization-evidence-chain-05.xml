@@ -91,10 +91,12 @@
 
     <section anchor="terminology">
       <name>Terminology</name>
-      <t>The key words "MUST", "MUST NOT", "REQUIRED", "SHOULD", "SHOULD
-      NOT", and "MAY" in this document are to be interpreted as described in
-      BCP 14 <xref target="RFC2119"/> <xref target="RFC8174"/> when, and only
-      when, they appear in all capitals, as shown here.</t>
+      <t>The key words "MUST", "MUST NOT", "REQUIRED", "SHALL", "SHALL
+      NOT", "SHOULD", "SHOULD NOT", "RECOMMENDED", "NOT RECOMMENDED",
+      "MAY", and "OPTIONAL" in this document are to be interpreted as
+      described in BCP 14 <xref target="RFC2119"/> <xref target="RFC8174"/>
+      when, and only when, they appear in all capitals, as shown here.</t>
+      <t>BCP 14 is indexed by the RFC Editor at <xref target="BCP14"/>.</t>
       <dl>
         <dt>Native verifier</dt>
         <dd>A verifier selected by the relying party for one artifact format
@@ -588,7 +590,8 @@ native VERIFIED
       <xref target="EP-QUORUM"/> define two native human-authorization
       components. AEC composes them without generalizing all evidence into
       those formats.</t>
-      <t>The earlier Action Evidence Graph draft <xref target="EP-AEG"/>
+      <t>The earlier Action Evidence Graph draft
+      (draft-schrock-ep-action-evidence-graph-00)
       described content-addressed graph references, relying-party evidence
       policy replay, a five-verdict classification, policy packs, and a signed
       reliance result. This revision incorporates the useful composition
@@ -651,63 +654,66 @@ native VERIFIED
 
   <back>
     <references>
-      <name>Normative References</name>
-      <xi:include href="https://bib.ietf.org/public/rfc/bibxml/reference.RFC.2119.xml"/>
-      <xi:include href="https://bib.ietf.org/public/rfc/bibxml/reference.RFC.8174.xml"/>
-      <xi:include href="https://bib.ietf.org/public/rfc/bibxml/reference.RFC.5234.xml"/>
-      <xi:include href="https://bib.ietf.org/public/rfc/bibxml/reference.RFC.7493.xml"/>
-      <xi:include href="https://bib.ietf.org/public/rfc/bibxml/reference.RFC.8785.xml"/>
-      <reference anchor="CAID" target="https://datatracker.ietf.org/doc/draft-schrock-canonical-action-identifier/">
+      <name>References</name>
+      <references>
+        <name>Normative References</name>
+        <reference anchor="BCP14" target="https://www.rfc-editor.org/info/bcp14">
+          <front>
+            <title>Key Words for Use in RFCs to Indicate Requirement Levels</title>
+            <author><organization>Internet Engineering Task Force</organization></author>
+            <date year="2017"/>
+          </front>
+          <seriesInfo name="BCP" value="14"/>
+        </reference>
+        <xi:include href="https://bib.ietf.org/public/rfc/bibxml/reference.RFC.2119.xml"/>
+        <xi:include href="https://bib.ietf.org/public/rfc/bibxml/reference.RFC.8174.xml"/>
+        <xi:include href="https://bib.ietf.org/public/rfc/bibxml/reference.RFC.5234.xml"/>
+        <xi:include href="https://bib.ietf.org/public/rfc/bibxml/reference.RFC.7493.xml"/>
+        <xi:include href="https://bib.ietf.org/public/rfc/bibxml/reference.RFC.8785.xml"/>
+        <reference anchor="CAID" target="https://datatracker.ietf.org/doc/draft-schrock-canonical-action-identifier/">
         <front>
           <title>The Canonical Action Identifier (CAID)</title>
           <author fullname="Iman Schrock"><organization>EMILIA Protocol, Inc.</organization></author>
           <date year="2026" month="July"/>
         </front>
         <seriesInfo name="Internet-Draft" value="draft-schrock-canonical-action-identifier-01"/>
-      </reference>
-      <reference anchor="EP-RECEIPTS" target="https://datatracker.ietf.org/doc/draft-schrock-ep-authorization-receipts/">
+        </reference>
+        <reference anchor="EP-RECEIPTS" target="https://datatracker.ietf.org/doc/draft-schrock-ep-authorization-receipts/">
         <front>
           <title>Authorization Receipts for High-Risk Agent Actions</title>
           <author fullname="Iman Schrock"><organization>EMILIA Protocol, Inc.</organization></author>
           <date year="2026" month="July"/>
         </front>
         <seriesInfo name="Internet-Draft" value="draft-schrock-ep-authorization-receipts-08"/>
-      </reference>
-      <reference anchor="EP-QUORUM" target="https://datatracker.ietf.org/doc/draft-schrock-ep-quorum/">
+        </reference>
+        <reference anchor="EP-QUORUM" target="https://datatracker.ietf.org/doc/draft-schrock-ep-quorum/">
         <front>
           <title>Multi-Party Quorum Authorization for High-Risk Agent Actions (EP-QUORUM)</title>
           <author fullname="Iman Schrock"><organization>EMILIA Protocol, Inc.</organization></author>
           <date year="2026" month="July"/>
         </front>
         <seriesInfo name="Internet-Draft" value="draft-schrock-ep-quorum-03"/>
-      </reference>
-    </references>
-    <references>
-      <name>Informative References</name>
-      <reference anchor="EP-AEG" target="https://datatracker.ietf.org/doc/draft-schrock-ep-action-evidence-graph/">
-        <front>
-          <title>Action Evidence Graphs and Evidence Policy Replay for High-Risk Agent Actions (EP-AEG)</title>
-          <author fullname="Iman Schrock"><organization>EMILIA Protocol, Inc.</organization></author>
-          <date year="2026" month="July"/>
-        </front>
-        <seriesInfo name="Internet-Draft" value="draft-schrock-ep-action-evidence-graph-00"/>
-      </reference>
-      <reference anchor="EP-AEB" target="https://datatracker.ietf.org/doc/draft-schrock-action-evidence-boundary/">
+        </reference>
+      </references>
+      <references>
+        <name>Informative References</name>
+        <reference anchor="EP-AEB" target="https://datatracker.ietf.org/doc/draft-schrock-action-evidence-boundary/">
         <front>
           <title>The Action Evidence Boundary for Consequential Agent Effects</title>
           <author fullname="Iman Schrock"><organization>EMILIA Protocol, Inc.</organization></author>
           <date year="2026" month="July"/>
         </front>
         <seriesInfo name="Internet-Draft" value="draft-schrock-action-evidence-boundary-03"/>
-      </reference>
-      <reference anchor="EP-QUALIFICATION" target="https://datatracker.ietf.org/doc/draft-schrock-agent-qualification-statements/">
+        </reference>
+        <reference anchor="EP-QUALIFICATION" target="https://datatracker.ietf.org/doc/draft-schrock-agent-qualification-statements/">
         <front>
           <title>Agent Qualification Statements</title>
           <author fullname="Iman Schrock"><organization>EMILIA Protocol, Inc.</organization></author>
           <date year="2026" month="July"/>
         </front>
         <seriesInfo name="Internet-Draft" value="draft-schrock-agent-qualification-statements-00"/>
-      </reference>
+        </reference>
+      </references>
     </references>
     <section anchor="acknowledgments" numbered="false">
       <name>Acknowledgments</name>

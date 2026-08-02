@@ -120,6 +120,7 @@
       "MAY", and "OPTIONAL" in this document are to be interpreted as
       described in BCP 14 <xref target="RFC2119"/> <xref target="RFC8174"/>
       when, and only when, they appear in all capitals, as shown here.</t>
+      <t>BCP 14 is indexed by the RFC Editor at <xref target="BCP14"/>.</t>
       <dl newline="false" spacing="normal">
         <dt>Effect boundary:</dt>
         <dd>The last control point that can withhold the protected mutation
@@ -721,6 +722,14 @@
       <name>References</name>
       <references>
         <name>Normative References</name>
+        <reference anchor="BCP14" target="https://www.rfc-editor.org/info/bcp14">
+          <front>
+            <title>Key Words for Use in RFCs to Indicate Requirement Levels</title>
+            <author><organization>Internet Engineering Task Force</organization></author>
+            <date year="2017"/>
+          </front>
+          <seriesInfo name="BCP" value="14"/>
+        </reference>
         <xi:include href="https://bib.ietf.org/public/rfc/bibxml/reference.RFC.2119.xml"/>
         <xi:include href="https://bib.ietf.org/public/rfc/bibxml/reference.RFC.8174.xml"/>
         <reference anchor="CAID" target="https://datatracker.ietf.org/doc/draft-schrock-canonical-action-identifier/">
