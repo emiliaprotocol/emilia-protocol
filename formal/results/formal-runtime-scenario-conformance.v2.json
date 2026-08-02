@@ -499,7 +499,7 @@
     },
     {
       "path": "package.json",
-      "sha256": "ffc5da0bbf0ff92b3d68190d03e715c9f45618ada65605eb342184271eea70f8"
+      "sha256": "5493f014e402a315445471bbedbd6a8cbcd5c2058dd5d963e1d6b35a39f42191"
     },
     {
       "path": "packages/gate/aec-execution.js",
@@ -1019,11 +1019,15 @@
     },
     {
       "path": "packages/verify/dist/index.js",
-      "sha256": "65a4f0c806415ad72b46a0222b16e1d841f2d3ad98e35c48b6bab4e169048885"
+      "sha256": "572e2564abcf8091377ab9373489f012e1750925f58e622c5333f98b4c08990c"
     },
     {
       "path": "packages/verify/dist/initiator-attestation.js",
       "sha256": "778ff7e6419a66c870466b8ed3aaf2a1f5751518e81a8b1a8b52788fc8565f7b"
+    },
+    {
+      "path": "packages/verify/dist/memory-projection.js",
+      "sha256": "fa175c754c1b132d25fe46994f583cde715db9f1790bfdedf88195e557226ca9"
     },
     {
       "path": "packages/verify/dist/orprg.js",
@@ -1119,7 +1123,7 @@
     },
     {
       "path": "packages/verify/src/index.ts",
-      "sha256": "7e809741fecceca02c316977d1c60c0909448ecf00bc03973718de45768dd973"
+      "sha256": "72115d951002f94a0adc3a4992b2ddc6241ff6d42835b16546258de7217675e0"
     },
     {
       "path": "packages/verify/src/outcome-binding.ts",

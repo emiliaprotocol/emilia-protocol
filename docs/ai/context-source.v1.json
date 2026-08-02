@@ -420,16 +420,16 @@
       "purpose": "15 deterministic Model-to-Matter CAID, acceptance, refusal, replay, storage-failure, and effect-statement cases"
     },
     {
-      "path": "standards/posted/draft-schrock-model-to-matter-01.xml",
-      "purpose": "Published July 21 Experimental Model-to-Matter profile with explicit non-goals and implementation status"
+      "path": "standards/posted/draft-schrock-model-to-matter-02.xml",
+      "purpose": "Published July 29 Experimental Model-to-Matter profile adding source-routed Outcome Binding while retaining explicit non-goals and implementation limits"
     },
     {
-      "path": "standards/staged/draft-schrock-model-to-matter-02.xml",
-      "purpose": "Upload-ready candidate revision adding source-routed Outcome Binding, canonical-key and declared-control-domain independence, source status, observation windows, and quorum; not yet a published Internet-Draft"
+      "path": "standards/staged/UPLOAD-THIS/draft-schrock-model-to-matter-03.xml",
+      "purpose": "Upload-ready candidate revision adding relying-party programs, qualification evidence, and typed AEB composition while preserving the no-physical-truth limitation; not yet filed"
     },
     {
-      "path": "standards/staged/draft-schrock-ep-outcome-binding-00.xml",
-      "purpose": "Upload-ready candidate defining executor, system-of-record, and independent-observer outcome sources with exact binding, canonical-key and declared-control-domain separation, source status, observation windows, quorum, and indeterminate lifecycle"
+      "path": "standards/posted/draft-schrock-ep-outcome-binding-00.xml",
+      "purpose": "Published July 29 profile defining executor, system-of-record, and independent-observer outcome sources with exact binding, source separation, observation windows, quorum, and an indeterminate lifecycle"
     },
     {
       "path": "examples/mobile-government",
