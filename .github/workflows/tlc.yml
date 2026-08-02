@@ -16,10 +16,12 @@ on:
       - 'formal/**.tla'
       - 'formal/**.cfg'
       - 'formal/check-gate-qualification-v2.mjs'
+      - 'formal/check-bounded-execution-program-v1.mjs'
       - 'formal/CONSERVATION_OF_AUTHORITY.md'
       - 'formal/PROOF_STATUS.md'
       - 'formal/RUN_TLC.md'
       - 'formal/runtime-scenarios.v2.json'
+      - 'formal/results/bounded-execution-program-v1.tlc.json'
       - 'formal/results/*.tlc.summary.txt'
       - 'formal/results/formal-runtime-scenario-conformance.v2.json'
       - 'conformance/refinement/**'
@@ -41,10 +43,12 @@ on:
       - 'formal/**.tla'
       - 'formal/**.cfg'
       - 'formal/check-gate-qualification-v2.mjs'
+      - 'formal/check-bounded-execution-program-v1.mjs'
       - 'formal/CONSERVATION_OF_AUTHORITY.md'
       - 'formal/PROOF_STATUS.md'
       - 'formal/RUN_TLC.md'
       - 'formal/runtime-scenarios.v2.json'
+      - 'formal/results/bounded-execution-program-v1.tlc.json'
       - 'formal/results/*.tlc.summary.txt'
       - 'formal/results/formal-runtime-scenario-conformance.v2.json'
       - 'conformance/refinement/**'
@@ -115,6 +119,11 @@ jobs:
         env:
           TLA2TOOLS_JAR: ${{ github.workspace }}/tla2tools.jar
         run: node formal/check-gate-qualification-v2.mjs
+
+      - name: Verify Bounded Execution Program v1 and negative controls
+        env:
+          TLA2TOOLS_JAR: ${{ github.workspace }}/tla2tools.jar
+        run: node formal/check-bounded-execution-program-v1.mjs --check
 
       - name: Run TLC on ep_handshake.tla
         working-directory: formal

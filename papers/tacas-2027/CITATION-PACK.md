@@ -50,7 +50,8 @@ counts from the submission commit; do not copy counts from a deck or chat.
 > delegation: along every valid root-to-leaf path, action scope, amount ceiling,
 > expiry, and remaining delegation depth are monotonically non-increasing.
 > Across parallel children, aggregate budget conservation additionally requires
-> an authoritative allocation proof and atomic reservation accounting.
+> parent-funded transfer, operation-to-child binding, and atomic reservation
+> accounting in one authoritative state domain.
 
 This is not the scalar equation `authority_in = authority_out`. Authority is a
 product order over heterogeneous constraints, and sibling allocations require
@@ -58,6 +59,20 @@ an independent aggregate bound. The repository's finite models can provide
 bounded counterexample search. Calling this an unbounded machine-checked
 theorem requires an inductive TLAPS, Lean, Coq, or Isabelle proof over arbitrary
 valid chains and fan-out.
+
+The reference runtime treats the constraints as different dimensions rather
+than collapsing them into “tokens”: typed consumable balances, action-attempt
+ceilings, retained-history limits, active-child ceilings, provider-effect
+concurrency, scope, audience, validity, and current status. A provider effect
+can begin only after the authoritative store grants its exact reservation.
+`INDETERMINATE` keeps the effect-concurrency slot occupied until authenticated
+reconciliation. These are implementation claims and executable evidence, not a
+formal refinement result.
+
+The exclusion is as important as the positive claim: two independent stores can
+each accept a locally valid allocation against the same parent. The repository
+keeps that state-fork trace as an executable counterexample and never describes
+the bounded model as cross-cloud or offline conservation.
 
 ### Platform attestation as an AEC leg
 
@@ -100,6 +115,26 @@ attestation, or independent proof of physical outcome.
   https://www.rfc-editor.org/info/rfc9711/
 - RFC 9782, Entity Attestation Token Media Types:
   https://www.rfc-editor.org/info/rfc9782/
+- AIP, for token-scoped ceilings that are explicitly not running balances:
+  https://datatracker.ietf.org/doc/draft-prakash-aip/
+- PEDIGREE, for cryptographic delegation and operator ceilings:
+  https://datatracker.ietf.org/doc/draft-rampalli-pedigree/
+- Credential Broker for Agents, for proxy and short-lived credential-delivery
+  patterns that EMILIA composes with rather than redefines:
+  https://datatracker.ietf.org/doc/draft-hartman-credential-broker-4-agents/
+- Condition-Bounded Credentials, for keys whose usability is bound to live
+  workload conditions where a stable attestable workload exists:
+  https://datatracker.ietf.org/doc/draft-winmagic-wimse-condition-bounded-credentials/
+- *Token Budgets: Affine Types for Controlled LLM Consumption*, adjacent prior
+  art for compile-time Rust integrity and LLM-cost accounting:
+  https://arxiv.org/abs/2606.04056
+
+The paper's differentiation from these works is deliberately narrow. It does
+not claim to invent budgets, delegation, credential brokers, or affine resource
+accounting. It studies how a human-authorized exact action becomes a running
+runtime balance whose provider entry is gated by current reservations, whose
+sibling allocations transfer rather than copy authority, and whose uncertain
+post-entry result requires reconciliation.
 
 ## Venue facts
 

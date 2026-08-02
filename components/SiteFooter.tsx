@@ -7,6 +7,8 @@ const COL_PRODUCT: FooterLink[] = [
   ['/signal', 'EMILIA Signal'],
   ['/gate', 'EMILIA Gate'],
   ['/gate/live', 'Live Gate'],
+  ['/gate/consequence-coverage', 'Coverage Lab'],
+  ['/product/accountable-signoff', 'Approver Apps'],
   ['/assurance', 'Assurance Plane'],
   ['/grace', 'GRACE'],
   ['/model-to-matter', 'Model-to-Matter'],

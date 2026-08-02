@@ -4,6 +4,51 @@
 All notable changes to `@emilia-protocol/gate` are documented here.
 This package follows [Semantic Versioning](https://semver.org/).
 
+## Unreleased
+
+## 0.23.0 (2026-08-01)
+
+### Added
+
+- `./coverage-reconciliation-runner`, which verifies independently signed,
+  privacy-minimized source inventories, joins exact CAID/action-digest pairs,
+  derives conserving counts, and emits a report-bound period attestation.
+- `./bounded-execution-program`, a canonical signed finite action DAG with
+  exact-action or pinned-profile nodes, typed terminal dependencies, retained-
+  occurrence ceilings, multidimensional attempt budgets, suspension,
+  revocation, and fresh signed supersession.
+- `./bounded-execution-report`, a signed point-in-time, program-to-date record
+  of Gate-observed occurrences and budget use with an explicit boundary around
+  external effects and actions outside Gate.
+- Program-aware in-memory and PostgreSQL AdmissionStore operations that bind
+  each occurrence into the immutable admission snapshot and consume the
+  one-time execution right in the same transaction as program state.
+- The versioned PostgreSQL reference schema in
+  `sql/gate-qualification-v2.sql`, deterministic reference vectors, runtime-
+  refinement traces, and a bounded TLC model with two intentional negative
+  controls.
+- Signed Gate Allowances that permit exact, bounded repeated operations while
+  retaining immutable provider-action binding, aggregate depletion, current
+  status, and one-time operation fencing.
+- Conserved-authority delegation across sibling fan-out: every child transfer
+  is funded exactly once from its parent in one authoritative state domain,
+  with aggregate sibling limits and explicit cross-domain non-guarantees.
+
+### Security
+
+- Source-system identities, mapping-profile digests, source operators, trust
+  keys, and verification time are verifier-owned pins. Duplicate joins,
+  cross-population CAID/digest conflicts, same-operator source populations, and
+  report substitution fail closed. The artifact remains evidence about two
+  supplied populations and does not prove either source was complete.
+- Program-authorizer keys, roles, status, verification time, action-profile
+  matchers, and current program status are store-owned policy. The signed
+  program constrains separately authorized actions; it does not prove human
+  ceremony, safe intent, provider or effect truth, complete mediation, or the
+  absence of actions outside Gate.
+- The ordinary and execution-program admission paths both retain monotonic
+  authenticator-counter currentness checks immediately before provider entry.
+
 ## 0.22.2 (2026-07-31)
 
 ### Security

@@ -107,6 +107,41 @@ TLC runs automatically in CI (`.github/workflows/tlc.yml`) on every push touchin
 
 ---
 
+## TLA+ — `ep_capability.tla`
+
+**Model checker:** TLC 2.19 (TLA+ tools `v1.7.4`, rev `5a47802`)
+**Verified parameters:** `Capabilities = {cap0, cap1, cap2, cap3}`,
+`Operations = {op1, op2, op3}`, `RootCap = cap0`, `MaxBudget = 2`,
+`MaxDelegates = 2`, and `MaxTick = 2`
+**Local execution:** 2026-07-31, pinned jar SHA-256
+`936a262061c914694dfd669a543be24573c45d5aa0ff20a8b96b23d01e050e88`
+**Result:** 1,420,626 states generated, 145,425 distinct states, complete
+depth 13 — **no error found** across 12 invariants and five temporal
+properties
+**Result evidence:** `formal/results/ep-capability.tlc.summary.txt`
+
+The configuration contains one root, three possible children, and three
+operation identifiers. It can therefore explore aggregate N=3 sibling
+allocation rather than only path-local or two-child narrowing. The checked
+properties include:
+
+- `DirectChildAuthorityIsFunded`: every registered direct child's budget is
+  backed by committed parent delegation spend;
+- `AggregateSiblingAuthorityConserved`: aggregate direct-child authority and
+  all outstanding reservations remain within the parent's immutable balance;
+- `DelegationOperationBindingImmutable`: one reserved delegation operation
+  cannot be rebound to a different parent, amount, child, or expiry; and
+- the existing path-narrowing, expiry, acyclicity, reserve/commit, monotonicity,
+  and single-commit properties.
+
+This result is bounded and scoped to one authoritative model state domain. It
+does not establish conservation across independent stores, clouds, or offline
+replicas. The executable reference tests deliberately demonstrate that two
+separate stores can each accept a locally valid allocation against the same
+parent authorization.
+
+---
+
 ## TLA+ — `ep_receipt_program.tla`
 
 **Model checker:** TLC 2.19 (TLA+ tools `v1.7.4`, rev `5a47802`)
@@ -681,6 +716,35 @@ mechanized refinement proof and does not establish cryptographic correctness,
 provider or effect truth, trusted time, durable storage, deployment behavior,
 or arbitrary concurrency/cardinality.
 
+## TLA+ — `ep_bounded_execution_program_v1.tla`
+
+**Status:** bounded finite-control model rerun locally on 2026-07-30;
+CI executes the checksum-pinned authenticated checker for every relevant
+change. TLC exhausted 5,722,136 generated / 531,820 distinct safe states to
+complete depth 19 with zero states queued. All 20 state invariants and 11
+transition properties held.
+
+The model covers a closed three-node DAG, outcome-specific dependency
+reachability, per-node and total occurrence ceilings, two-dimensional atomic
+attempt budgets, pre-entry release, consumed `INDETERMINATE` attempts,
+deterministic admission binding, ordinary-authorization fencing, pre-entry
+suspension/revocation/expiry, expiry clamping, fresh-context exact-version
+supersession, and reconciliation of post-entry uncertainty.
+
+Two deliberately unsafe models must fail. The unsigned-successor model
+falsifies `OnlySignedProgramsCanBeActive` in three trace states. The ordinary-
+authorization bypass model falsifies `AuthorizationFenceConsistent` in three
+trace states. The checker fails closed unless the safe exhaustion and both
+exact negative controls occur. Result evidence is recorded in
+`formal/results/bounded-execution-program-v1.tlc.json` and
+`formal/results/bounded-execution-program-v1.tlc.summary.txt`.
+
+**Boundary:** finite same-team control abstraction only. This is not an
+implementation refinement proof and does not establish cryptographic
+correctness, store-pinned trust-root retrieval, structured resource-digest byte
+construction, runtime-index correctness, provider/effect truth, trusted time,
+durable storage, complete mediation, or arbitrary concurrency/cardinality.
+
 ---
 
 When a property is verified by a model checker:
@@ -691,4 +755,4 @@ When a property is verified by a model checker:
 
 ---
 
-_Last updated: 2026-07-26 (Gate Qualification v2 bounded model: 19 invariants, 10 properties, independent provider/effect truth, and an expected unsafe supersession counterexample). Prior: 2026-07-24 (70 content-addressed selected model/runtime scenarios across 20 claims and 13 bounded models, 45 paired formal-counterexample/runtime-refusal controls, and action-complete coverage of all 28 declared actions in the end-to-end model). Prior: 2026-07-22 (bounded consequence-attempt/AEB custody model added to the pinned CI gate: 27 checks across 93,724 distinct states, including consume-before-commit ordering and stale-lease-only recovery; deliberately weakened replay model falsifies `InvokeAtMostOnce`). Prior: 2026-07-21 (bounded authority-program and receipt-program models plus Conservation of Authority claim boundary). Prior: 2026-07-10 (composed reliance-path v2: 10 strict lemmas verified; no-consumption and unpinned-registry-view comparisons falsified with concrete traces; all well-formedness checks clean)._
+_Last updated: 2026-07-30 (Bounded Execution Program v1: 20 invariants, 11 transition properties, 531,820 distinct safe states, and required unsigned-successor plus authorization-fence counterexamples). Prior: 2026-07-26 (Gate Qualification v2 bounded model: 19 invariants, 10 properties, independent provider/effect truth, and an expected unsafe supersession counterexample). Prior: 2026-07-24 (70 content-addressed selected model/runtime scenarios across 20 claims and 13 bounded models, 45 paired formal-counterexample/runtime-refusal controls, and action-complete coverage of all 28 declared actions in the end-to-end model). Prior: 2026-07-22 (bounded consequence-attempt/AEB custody model added to the pinned CI gate: 27 checks across 93,724 distinct states, including consume-before-commit ordering and stale-lease-only recovery; deliberately weakened replay model falsifies `InvokeAtMostOnce`). Prior: 2026-07-21 (bounded authority-program and receipt-program models plus Conservation of Authority claim boundary). Prior: 2026-07-10 (composed reliance-path v2: 10 strict lemmas verified; no-consumption and unpinned-registry-view comparisons falsified with concrete traces; all well-formedness checks clean)._

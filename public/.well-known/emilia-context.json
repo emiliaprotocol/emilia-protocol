@@ -1,9 +1,9 @@
 {
   "@version": "EMILIA-REPO-CONTEXT-v1",
-  "evidence_snapshot_at": "2026-08-02T02:38:34.912Z",
+  "evidence_snapshot_at": "2026-08-02T03:13:14.279Z",
   "provenance": {
     "generator": "scripts/generate-llm-context.mjs",
-    "input_digest_sha256": "a974e5aa1ad3aee43ec8276711737ca191df6daa99434206f0fdd5d9b8c3d918",
+    "input_digest_sha256": "65c55f407c83193acbfcd48a6ca75c42670ccffffaf112b7283e4f3133074c10",
     "generated_from": [
       {
         "path": "docs/ai/context-source.v1.json",
@@ -17,7 +17,7 @@
       },
       {
         "path": "lib/proof-stats.json",
-        "sha256": "48f47fc39e6f9b34a55c7a5f869a4c7704c45157e1725e1c4e5084e213112d61",
+        "sha256": "c32b69cd34858ce435a02a963ab106658cd0d22f89cdba54fa68d76e975a769e",
         "bytes": 4298
       },
       {
@@ -32,13 +32,13 @@
       },
       {
         "path": "security/claims.v1.json",
-        "sha256": "a1f6482e30209a03d7782c06cf30aca50dfa0d89de80d4255638b31b6cb2f667",
-        "bytes": 245084
+        "sha256": "8c182e097b9f6abf20b40e358a4f260684197de94868775af27efd86dc79baba",
+        "bytes": 247459
       },
       {
         "path": "security/security-case.json",
-        "sha256": "ee953a77793d77b975a938cfb004024378a28334039c73647d43a79957b7f155",
-        "bytes": 376757
+        "sha256": "2024edd2906f0b809cfd885fd731ac823c315243bf1b48e622ebd01ebda2c8cc",
+        "bytes": 380092
       },
       {
         "path": "lib/standards-observatory.snapshot.json",
@@ -272,8 +272,8 @@
   ],
   "current_evidence": {
     "automated_tests": {
-      "total": 8081,
-      "files": 463,
+      "total": 8095,
+      "files": 467,
       "policy": "all platform-applicable cases must pass; platform-specific cases may skip"
     },
     "cross_language_conformance": {
@@ -314,7 +314,7 @@
         "coveredModelActions": 28,
         "actionCompleteModels": 1,
         "formalMutationOperators": 51,
-        "evidenceSha256": "a074face62b5501369862323320ae58c3175025a28b4f22e1191ac28ae8b954b",
+        "evidenceSha256": "2b80a7ca7b23d201b556fa9b853d500176b7143d1801f6c4cc624cd84f412fad",
         "boundary": "selected model/runtime scenarios under explicit projection relations; not a mechanized implementation refinement proof"
       },
       "evidence_taxonomy": {
@@ -383,8 +383,8 @@
     "security_case": {
       "status": "passed",
       "claims": 35,
-      "evidence_files": 252,
-      "evidence_bundle_sha256": "c8d088fc5fefb66052491a50a4939840207c416455ad56c330550177d2041172"
+      "evidence_files": 255,
+      "evidence_bundle_sha256": "8ec5910b58a807f04ac61b4a2efc3683453eb6e3200063bb1e1fb915d6f7603b"
     },
     "caid": {
       "core_vectors": 48,
@@ -1042,11 +1042,12 @@
     },
     {
       "claim_id": "conservation-of-authority-is-bounded-and-non-amplifying",
-      "statement": "Within an accepted delegation path, action and audience selectors can only narrow, budget dimensions and expiry cannot increase, and cycles or a leaf naming itself as an ancestor are refused. Aggregate sibling-budget conservation is claimed only when allocations come from an authoritative epoch-pinned ledger and reservations are atomic; it is not inferred from path containment alone.",
+      "statement": "Within an accepted delegation path, action and audience selectors can only narrow, budget dimensions and expiry cannot increase, and cycles or a leaf naming itself as an ancestor are refused. Aggregate sibling-budget conservation is claimed only when parent-funded child operations, allocations, reservations, and commits share one authoritative atomic state domain; it is not inferred from path containment alone and is not claimed across independent stores.",
       "acceptance_roots": [
         "the relying party's pinned authority-registry view and capability issuer",
         "an authoritative epoch-pinned allocation ledger for aggregate branch claims",
-        "atomic compare-and-update reservation in the shared capability store"
+        "atomic compare-and-update reservation in the shared capability store",
+        "one authoritative atomic state domain for every authority-bearing ancestor and descendant"
       ],
       "enforcement_path": [
         {
@@ -1149,16 +1150,30 @@
             "AggregateBranchBudgetIsConserved",
             "AuthoritativeAllocationIsRequired"
           ]
+        },
+        {
+          "status": "partial",
+          "method": "bounded_tla_model_checking",
+          "model": "formal/ep_capability.tla",
+          "runner": "formal/ep_capability.cfg",
+          "result_evidence": "formal/results/ep-capability.tlc.summary.txt",
+          "obligations": [
+            "DirectChildAuthorityIsFunded",
+            "AggregateSiblingAuthorityConserved",
+            "DelegationOperationBindingImmutable"
+          ],
+          "scope": "TLC 2.19 exhaustively checked the bounded same-team finite configuration with one root, three possible children, three operation identifiers, amounts and time in 0..2, and delegation depth at most two. It models one authoritative state domain and is not a refinement proof of TypeScript or SQL."
         }
       ],
       "assumptions": [
         "every accepted child is evaluated against its direct authenticated parent",
         "aggregate branch claims use the same authoritative allocation epoch for all siblings",
-        "all workers share a linearizable atomic reservation boundary"
+        "all workers and every authority-bearing ancestor or descendant share one authoritative linearizable atomic state domain"
       ],
       "exclusions": [
         "the bounded evidence is not an unbounded theorem or a refinement proof of TypeScript or SQL",
         "path non-amplification alone does not conserve aggregate sibling budgets",
+        "conservation across independent stores, clouds, or offline replicas is not claimed",
         "registry compromise, database isolation failure, legal authority, human intent, and physical-world truth are outside this claim"
       ]
     },

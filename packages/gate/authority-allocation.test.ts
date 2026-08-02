@@ -35,6 +35,7 @@ function snapshot(
     actions: ['inspect', 'release'],
     audiences: ['merchant-a', 'merchant-b'],
     budget: { cents: 100, calls: 4 },
+    max_active_children: 2,
     expires_at: EXPIRY,
     sibling_allocations: [
       {
@@ -141,6 +142,30 @@ test('conserves the calls dimension independently of cents', () => {
     sibling_allocations: [
       base.sibling_allocations[0],
       { ...base.sibling_allocations[1], budget: { cents: 40, calls: 3 } },
+    ],
+  }), PIN)), 'aggregate_sibling_overspend');
+});
+
+test('limits active sibling allocations independently of their resource budgets', () => {
+  const base = snapshot();
+  assert.equal(validationCode(() => validateAuthorityAllocationSnapshot(snapshot({
+    max_active_children: 1,
+    sibling_allocations: base.sibling_allocations,
+  }), PIN)), 'active_child_limit_exceeded');
+  assert.equal(validationCode(() => validateAuthorityAllocationSnapshot(snapshot({
+    max_active_children: 0,
+  }), PIN)), 'invalid_active_child_limit');
+});
+
+test('rejects N-sibling aggregate over-allocation, not only the two-child case', () => {
+  const base = snapshot();
+  assert.equal(validationCode(() => validateAuthorityAllocationSnapshot(snapshot({
+    budget: { cents: 100, calls: 6 },
+    max_active_children: 3,
+    sibling_allocations: [
+      { ...base.sibling_allocations[0], allocation_id: 'branch:a', budget: { cents: 34, calls: 2 } },
+      { ...base.sibling_allocations[0], allocation_id: 'branch:b', budget: { cents: 34, calls: 2 } },
+      { ...base.sibling_allocations[0], allocation_id: 'branch:c', budget: { cents: 34, calls: 2 } },
     ],
   }), PIN)), 'aggregate_sibling_overspend');
 });

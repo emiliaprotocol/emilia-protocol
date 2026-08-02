@@ -54,6 +54,7 @@ const DOES_NOT_PROVE = [
   'That a sequence was screened. A screening leg reports only what a pinned external screening service signed. Model-to-Matter does no screening itself.',
   'That an authority judged correctly. An accepted signature proves what a pinned issuer stated, not that the statement was right.',
   'Physical truth. An effect statement proves what the executor signed, not that its sensors were honest.',
+  'Observer independence or complete coverage. Distinct pinned keys and declared control domains do not prove ownership independence or exclude an unobserved execution path.',
 ];
 
 // The six evidence legs. Traced to the adapter schema table in the spec.

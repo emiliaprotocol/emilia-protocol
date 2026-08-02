@@ -4,7 +4,7 @@ Status: public pre-submission working source; not a peer-reviewed security claim
 
 ## Citation-ready sentence
 
-> EMILIA Protocol is a capability-based authorization-receipt system for consequential machine actions with CI-gated TLA+, Alloy, and Tamarin models of selected core invariants: 57 TLC obligations in the post-integration corpus (a 40-obligation handshake/capability baseline plus 14 Receipt Program invariants and three temporal properties); 32 bounded Alloy assertions; and 22 Tamarin lemmas, of which 19 verify and three deliberately falsified comparison lemmas expose missing consumption or registry-view pinning. Its shared conformance suite contains 331 vectors exercised by three same-team TypeScript/Node, Python, and Go reference ports. The repository also contains opt-in Ed25519 plus ML-DSA-65 and Bulletproofs prototypes outside the default receipt path, optional Merkle anchoring, and witness-cosigning code for which independent operators remain pending.
+> EMILIA Protocol is a capability-based authorization-receipt system for consequential machine actions with CI-gated TLA+, Alloy, and Tamarin models of selected core invariants. The selected paper corpus contains 72 TLC obligations: 26 handshake invariants; 12 capability invariants plus five temporal properties; 14 Receipt Program invariants plus three temporal properties; and 11 Authority Program invariants plus one liveness property. The capability configuration includes one root, three possible children, and three operation identifiers so aggregate sibling conservation is checked within one authoritative state domain. The paper additionally reports 32 bounded Alloy assertions and 22 Tamarin lemmas, of which 19 verify and three deliberately falsified comparison lemmas expose missing consumption or registry-view pinning. Exact conformance-vector and port counts are regenerated at the artifact-freeze revision.
 
 This is the longest defensible one-sentence version at the pinned revision. A paper abstract should normally use the first two clauses and move optional cryptographic and witness mechanisms to a scoped implementation section.
 
@@ -35,7 +35,7 @@ These annotations become citeworthy when each one is attached to an immutable so
 | C7 | The conformance corpus records 21 suites, 331 vectors, and three reference ports. | EXECUTABLE EVIDENCE. `relationship` is explicitly `same_team_ports`. The TypeScript source executes as a Node/JavaScript runtime beside Python and Go. | `lib/proof-stats.json`; `conformance/conformance-manifest.json`; `conformance/run.mts`; `.github/workflows/ci.yml` |
 | C8 | CI runs the three language ports against shared vectors and separately gates TLC, Alloy, and Tamarin. | EXECUTABLE/OPERATIONAL evidence at the pinned revision. CI is not a refinement proof and does not prove the hosted runner or release pipeline trustworthy. | `.github/workflows/ci.yml`; `.github/workflows/tlc.yml`; `.github/workflows/alloy.yml`; `.github/workflows/tamarin.yml` |
 | C9 | A strict clean-room independent implementation has not yet been accepted. | Negative scope fact. The recorded Rust candidate has `strictCleanRoomAcceptance: false`; do not market same-team ports as independent. | `lib/proof-stats.json`; `conformance/clean-room/conformance-manifest.v1.json`; `conformance/external/` |
-| C10 | Delegated capability authority is modeled as monotonically non-increasing. | BOUNDED-CHECKED in TLA+ and Alloy under stated bounds; executable enforcement remains separate. | `DelegationAuthorityNonIncreasing` in `formal/ep_capability.tla`; `AuthorityNonIncreasing` in `formal/ep_delegation.als`; `packages/gate/src/capability-receipt.ts` |
+| C10 | Delegated capability authority is modeled as path-narrowing and aggregate sibling conservation. | BOUNDED-CHECKED in TLA+ and Alloy under stated bounds. The TLC fan-out configuration contains one root, three possible children, and three operation identifiers in one authoritative state domain. It does not establish conservation across independent stores, clouds, or offline replicas. | `DelegationAuthorityNonIncreasing`, `DirectChildAuthorityIsFunded`, `AggregateSiblingAuthorityConserved`, and `DelegationOperationBindingImmutable` in `formal/ep_capability.tla`; `AuthorityNonIncreasing` in `formal/ep_delegation.als` |
 | C11 | `EP-AUTHORITY-PROGRAM-v1` is a pure verifier over a relying-party-pinned signed recursive series/parallel program and immutable signed stage receipts. | PUBLIC EXPERIMENTAL EXECUTABLE EVIDENCE. It rejects arbitrary DAG vocabulary, requires a relying-party root CAID/action binding decision, verifies exact predecessor receipt digests, joins separately verified AEC/AOM results, requires capability narrowing and authoritative parallel allocation, and always returns `freshness_proven: false`, `revocation_checked: false`, and `execution_proven: false`. It is not deployed, independently reviewed, or an adopted standard. | `packages/verify/src/authority-program.ts`; `packages/verify/authority-program.test.ts`; `docs/architecture/AUTHORITY-PROGRAM.md`; `conformance/vectors/authority-program.v1.json` |
 | C12 | Conservation of Authority can be stated for the authority-program fold: validity implies every stage's capability is narrowed and every parallel allocation is authoritative. | BOUNDED-CHECKED in the representative four-stage nested series/parallel TLC configuration. Callback correctness remains a relying-party assumption; the model does not inspect native capability arithmetic. | `formal/ep_authority_program.tla` invariant `ConservationOfAuthority`; `formal/ep_authority_program.cfg`; `packages/verify/src/authority-program.ts` |
 | C13 | Authority-program verification proves neither freshness, current non-revocation, nor material execution. | BOUNDED-CHECKED execution exclusion plus executable result contract. `executionProven` remains false in every modeled state; the verifier also reports `freshness_proven: false` and `revocation_checked: false` in every outcome. | `NoExecutionProof` in `formal/ep_authority_program.tla`; closed result fields in `packages/verify/src/authority-program.ts` and its test |
@@ -45,22 +45,24 @@ These annotations become citeworthy when each one is attached to an immutable so
 | C17 | Receipt formats support optional Merkle inclusion anchoring. | EXECUTABLE/specification evidence. A Merkle anchor proves inclusion relative to the selected root; it does not prove statement truth or independent operation. | `docs/trust-receipt-spec.md`; receipt verifier and conformance vectors; `docs/RECEIPT-CLAIMS.md` |
 | C18 | The repository has a witness-cosigning design and reference implementation. | EXECUTABLE reference evidence only. Independent operators and a deployed multi-operator witness network remain pending. | `packages/verify/src/witness.ts`; `packages/verify/witness.test.ts`; witness server/emitter sources; `docs/RECEIPT-CLAIMS.md` |
 | C19 | An `ep-platform-attestation` AEC component consumes a closed EAT/JWT appraisal result only under relying-party-pinned verifier key, profile, audience, nonce, action digest, accepted build measurement, clock, and age limit. | IMPLEMENTED-REFERENCE plus EXTERNAL-DEPENDENCY. The verifier refuses presenter keys and component-verifier replacement and returns `hardware_verified: false`. It does not appraise raw TPM/TEE evidence or prove hardware genuineness. No Python, Go, deployed hardware, or independent operator is claimed. | `packages/verify/src/platform-attestation.ts`; `packages/verify/platform-attestation.test.ts`; `conformance/vectors/platform-attestation.v1.json`; `docs/PLATFORM-ATTESTATION-AEC.md`; claim `platform-attestation-result-is-rp-pinned-and-action-bound` in `security/claims.v1.json` |
+| C20 | The Gate reference implementation enforces conserved authority through several non-interchangeable controls: parent-funded child allocation, typed consumable budgets, action-attempt ceilings, active-child ceilings, provider-effect concurrency ceilings, and reservation-gated provider entry. | IMPLEMENTED-REFERENCE plus executable tests. The PostgreSQL paths rely on one authoritative serializable state domain. This is not a refinement proof, proof of complete mediation, or cross-store conservation result. `INDETERMINATE` retains its provider-effect concurrency slot until authenticated reconciliation. | `packages/gate/src/capability-receipt.ts`; `packages/gate/src/authority-allocation.ts`; `packages/gate/src/bounded-execution-program.ts`; `packages/gate/src/admission-store.ts`; `packages/gate/src/admission-store-postgres.ts`; `packages/gate/sql/gate-qualification-v2.sql`; focused tests and generated vectors |
+| C21 | Two independently initialized stores can each accept a locally valid child allocation against the same parent authorization. | EXECUTABLE COUNTEREXAMPLE to a deliberately excluded global claim. It demonstrates why one-authoritative-state-domain appears beside every conservation assertion; it is not a defect in the scoped local invariant. | `packages/gate/capability-receipt.test.ts`; `docs/protocol/conserved-authority-runtime-v1.md`; `standards/staged/draft-schrock-ep-bounded-capability-receipts-01.xml` |
 
 ## Reproducible count derivation
 
 The paper must regenerate, not manually transcribe, these totals:
 
 ```text
-TLC baseline obligations = 26 ep_handshake invariants
-                         + 10 ep_capability invariants
-                         +  4 ep_capability temporal properties
-                         = 40
+TLC handshake/capability = 26 ep_handshake invariants
+                         + 12 ep_capability invariants
+                         +  5 ep_capability temporal properties
+                         = 43
 
 Receipt Program addition = 14 invariants
                          +  3 temporal properties
                          = 17
 
-Selected TLC paper corpus = 40 + 17 + 12 = 69 obligations
+Selected TLC paper corpus = 43 + 17 + 12 = 72 obligations
 
 Alloy assertions = 15 relations
                  +  7 federation
@@ -103,6 +105,7 @@ from that exact clean revision.
 
 - “Authorization,” “identity,” “execution,” and “truth” are distinct. A valid receipt does not establish natural-person identity, legal authority, comprehension, physical outcome, or current revocation unless the selected profile supplies those inputs.
 - “No replay” is scoped to a conforming shared atomic consumption domain, not every independent executor worldwide.
+- “Conserved authority” is scoped to one authoritative state domain. Local success in two independently initialized stores is not global conservation.
 - Merkle inclusion, witness signatures, and platform attestation establish different facts and must not be collapsed into one trust score.
 
 ### External validity
@@ -121,11 +124,12 @@ from that exact clean revision.
 ## Do-not-claim list
 
 - Do not claim EP is the first authorization-receipt, staged-approval, or distributed-trust system.
-- Do not use 40 as the selected paper-corpus TLC total. The exact formulation is a 40-obligation baseline plus 17 bounded Receipt Program obligations plus 12 bounded Authority Program obligations, for 69 total; do not call all 69 invariants.
+- Do not use 40 or 69 as the selected paper-corpus TLC total. The current formulation is 26 handshake invariants, 12 capability invariants, five capability temporal properties, 17 bounded Receipt Program obligations, and 12 bounded Authority Program obligations, for 72 total; do not call all 72 invariants.
 - Do not claim all 22 Tamarin lemmas verify; 19 verify and three are deliberately falsified comparison lemmas.
 - Do not claim independence for the three same-team reference ports.
 - Do not claim a formal refinement proof from TLA+/Alloy/Tamarin to TypeScript, Python, or Go.
 - Do not claim global replay impossibility, universal atomicity, or execution truth.
+- Do not claim conservation across independent stores, clouds, or offline replicas.
 - Do not claim the bounded Receipt Program model proves implementation correctness, provider truth, settlement, or arbitrary concurrency.
 - Do not claim the authority-program verifier proves freshness, non-revocation, or execution; its result explicitly says each is unproven or unchecked.
 - Do not claim DTC settlement is production infrastructure. The public Base profile is experimental source until independently audited and deployed.

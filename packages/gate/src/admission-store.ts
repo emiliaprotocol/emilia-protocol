@@ -11,11 +11,27 @@
 
 import crypto from 'node:crypto';
 import { canonicalizeFiniteJson } from './strict-json.js';
+import {
+  verifyBoundedExecutionProgram,
+  type ExecutionProgramAction,
+  type ExecutionProgramCharge,
+  type ExecutionProgramNode,
+  type VerifiedBoundedExecutionProgram,
+} from './bounded-execution-program.js';
+import {
+  RISK_ID,
+  type TrustedRiskKeys,
+} from './reliance-risk-crypto.js';
 
 export const ADMISSION_SNAPSHOT_VERSION = 'EP-GATE-ADMISSION-SNAPSHOT-v2';
 export const ADMISSION_RECORD_VERSION = 'EP-GATE-ADMISSION-RECORD-v2';
 export const ADMISSION_JOURNAL_VERSION = 'EP-GATE-ADMISSION-JOURNAL-v2';
 export const ADMISSION_CURRENTNESS_VERSION = 'EP-GATE-ADMISSION-CURRENTNESS-v2';
+export const EXECUTION_PROGRAM_RUNTIME_VERSION = 'EP-BOUNDED-EXECUTION-PROGRAM-RUNTIME-v1';
+export const EXECUTION_PROGRAM_ADMISSION_BINDING_VERSION = 'EP-BOUNDED-EXECUTION-PROGRAM-ADMISSION-BINDING-v1';
+export const EXECUTION_PROGRAM_STATUS_VERSION = 'EP-BOUNDED-EXECUTION-PROGRAM-STATUS-v1';
+export const EXECUTION_PROGRAM_REPORT_SNAPSHOT_VERSION =
+  'EP-BOUNDED-EXECUTION-PROGRAM-REPORT-SNAPSHOT-v1';
 
 export const ADMISSION_LIMITS = Object.freeze({
   inputs: 128,
@@ -28,7 +44,7 @@ export const ADMISSION_LIMITS = Object.freeze({
 
 const SHA256 = /^sha256:[0-9a-f]{64}$/;
 const CAID = /^caid:1:[a-z][a-z0-9-]*(?:\.[a-z][a-z0-9-]*)*\.[1-9][0-9]*:jcs-sha256:[A-Za-z0-9_-]{43}$/;
-const IDENTIFIER = /^[A-Za-z0-9][A-Za-z0-9:_.@/-]{0,511}$/;
+const IDENTIFIER = RISK_ID;
 const RFC3339 = /^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2}):(\d{2})(?:\.\d{1,9})?(?:Z|[+-]\d{2}:\d{2})$/;
 const OWNER_TOKEN = /^admission-owner:v2:[A-Za-z0-9_-]{32,128}$/;
 
@@ -85,7 +101,8 @@ export type AdmissionResourceKind =
   | 'qualification_use'
   | 'provider_operation'
   | 'external_lease'
-  | 'monotonic_counter';
+  | 'monotonic_counter'
+  | 'execution_program';
 
 export interface AdmissionResourceReservationInput {
   kind: AdmissionResourceKind;
@@ -296,7 +313,17 @@ export type AdmissionRefusalReason =
   | 'relation_conflict'
   | 'outcome_conflict'
   | 'evidence_required'
-  | 'invocation_token_conflict';
+  | 'invocation_token_conflict'
+  | 'program_required'
+  | 'program_not_found'
+  | 'program_not_active'
+  | 'program_expired'
+  | 'program_suspended'
+  | 'program_revoked'
+  | 'program_status_indeterminate'
+  | 'program_superseded'
+  | 'program_budget_exhausted'
+  | 'program_concurrency_exhausted';
 export type AdmissionRefusal = { ok: false; reason: AdmissionRefusalReason };
 export type AdmissionTransitionResult = { ok: true; record: Readonly<AdmissionRecord> } | AdmissionRefusal;
 export type AdmissionReserveResult = {
@@ -360,6 +387,210 @@ export interface AdmissionSupersedeInput extends AdmissionCas {
 
 export interface AdmissionInvariantCheck { ok: boolean; violations: readonly string[] }
 
+export type ExecutionProgramRuntimeStatus =
+  | 'ACTIVE'
+  | 'SUSPENDED'
+  | 'REVOKED'
+  | 'SUPERSEDED';
+export type ExecutionProgramAuthorizerKeyStatus = 'ACTIVE' | 'SUSPENDED' | 'REVOKED';
+export type ExecutionProgramCurrentStatus = 'ACTIVE' | 'SUSPENDED' | 'REVOKED';
+export type ExecutionProgramOccurrenceState =
+  | 'RESERVED'
+  | 'RELEASED'
+  | 'INVOKING'
+  | 'INDETERMINATE'
+  | 'COMMITTED'
+  | 'PROVEN_NOT_COMMITTED';
+
+export interface ExecutionProgramBudgetState {
+  budget_id: string;
+  unit: string;
+  limit: number;
+  reserved: number;
+  consumed: number;
+}
+
+export interface ExecutionProgramTrustedAuthorizerKey {
+  issuer_id: string;
+  public_key: string;
+  role: 'program_authorizer';
+  status: ExecutionProgramAuthorizerKeyStatus;
+}
+
+export interface ExecutionProgramVerificationPolicy {
+  trusted_keys: Readonly<Record<string, Readonly<ExecutionProgramTrustedAuthorizerKey>>>;
+}
+
+export interface ExecutionProgramRegistrationContext {
+  expected_program_id: string;
+  expected_tenant_id: string;
+  expected_authorization_digest: string;
+  expected_audience: string;
+}
+
+export interface ExecutionProgramStatusReference {
+  tenant_id: string;
+  program_id: string;
+  program_digest: string;
+  version: number;
+}
+
+export interface ExecutionProgramStatusObservation extends ExecutionProgramStatusReference {
+  '@version': typeof EXECUTION_PROGRAM_STATUS_VERSION;
+  status: ExecutionProgramCurrentStatus;
+  sequence: number;
+  observed_at: string;
+  expires_at: string;
+}
+
+export interface ExecutionProgramStatusOracle {
+  read(
+    reference: Readonly<ExecutionProgramStatusReference>,
+  ): Promise<ExecutionProgramStatusObservation | null>;
+}
+
+export interface ExecutionProgramActionMatchExpected {
+  tenant_id: string;
+  profile_id: string;
+  profile_digest: AdmissionDigest;
+  subject_id: string;
+  operation_id: string;
+  caid: string;
+  action_digest: AdmissionDigest;
+  verifier_id: string;
+  evidence_payload_digest: AdmissionDigest;
+  evidence_trust_configuration_digest: AdmissionDigest;
+  trust_epoch: number;
+  trust_configuration_digest: AdmissionDigest;
+}
+
+export interface ExecutionProgramActionMatchVerification
+  extends ExecutionProgramActionMatchExpected {
+  valid: true;
+  result: 'MATCH';
+}
+
+export interface ExecutionProgramActionMatchVerifier {
+  verify(input: Readonly<{
+    evidence: unknown;
+    expected: Readonly<ExecutionProgramActionMatchExpected>;
+  }>): Promise<ExecutionProgramActionMatchVerification | null>;
+}
+
+export interface ExecutionProgramRuntimeState {
+  '@version': typeof EXECUTION_PROGRAM_RUNTIME_VERSION;
+  tenant_id: string;
+  program_id: string;
+  program_digest: string;
+  version: number;
+  status: ExecutionProgramRuntimeStatus;
+  status_sequence: number;
+  status_observed_at: string;
+  status_expires_at: string;
+  authorizer_id: string;
+  registered_at: string;
+  superseded_by_program_digest: string | null;
+  total_occurrences: number;
+  budgets: readonly Readonly<ExecutionProgramBudgetState>[];
+  program: Readonly<VerifiedBoundedExecutionProgram>;
+}
+
+export interface ExecutionProgramOccurrence {
+  tenant_id: string;
+  program_digest: string;
+  node_id: string;
+  occurrence_id: string;
+  admission_id: string;
+  snapshot_digest: AdmissionDigest;
+  state: ExecutionProgramOccurrenceState;
+  charges: readonly Readonly<ExecutionProgramCharge>[];
+  created_at: string;
+  updated_at: string;
+}
+
+export interface ExecutionProgramReportSnapshotBody {
+  '@version': typeof EXECUTION_PROGRAM_REPORT_SNAPSHOT_VERSION;
+  tenant_id: string;
+  program_digest: string;
+  runtime_state: Readonly<ExecutionProgramRuntimeState>;
+  occurrences: readonly Readonly<ExecutionProgramOccurrence>[];
+}
+
+export interface ExecutionProgramReportSnapshot extends ExecutionProgramReportSnapshotBody {
+  snapshot_marker: AdmissionDigest;
+}
+
+/** @deprecated Trace-fixture shape only; not accepted by ExecutionProgramReserveInput. */
+export interface LegacyExecutionProgramActionMatch {
+  result: 'MATCH';
+  profile_id: string;
+  profile_digest: string;
+  evidence_payload_digest: AdmissionDigest;
+}
+
+export interface ExecutionProgramReserveInput {
+  program_digest: string;
+  node_id: string;
+  occurrence_id: string;
+  admission: AdmissionSnapshotInput | AdmissionSnapshot;
+  action_match_evidence?: unknown;
+}
+
+export type ExecutionProgramRefusalReason =
+  | AdmissionRefusalReason
+  | 'program_exists'
+  | 'program_not_found'
+  | 'program_inactive'
+  | 'program_superseded'
+  | 'program_binding_mismatch'
+  | 'program_node_unreachable'
+  | 'program_occurrence_exhausted'
+  | 'program_total_occurrence_exhausted'
+  | 'program_occurrence_conflict'
+  | 'program_budget_exhausted'
+  | 'program_concurrency_exhausted'
+  | 'program_expiration_mismatch'
+  | 'program_suspended'
+  | 'program_revoked'
+  | 'program_status_indeterminate'
+  | 'program_reserved_work_exists'
+  | 'program_supersession_invalid'
+  | 'program_signature_invalid'
+  | 'program_issuer_untrusted'
+  | 'program_schema_invalid'
+  | 'context_binding_required'
+  | 'authorizer_mismatch'
+  | 'program_id_mismatch'
+  | 'tenant_mismatch'
+  | 'authorization_mismatch'
+  | 'audience_mismatch'
+  | 'verification_time_invalid'
+  | 'program_not_active'
+  | 'program_expired';
+
+export type ExecutionProgramRegistrationResult = {
+  ok: true;
+  program: Readonly<ExecutionProgramRuntimeState>;
+} | { ok: false; reason: ExecutionProgramRefusalReason };
+
+export type ExecutionProgramReserveResult = AdmissionReserveResult | {
+  ok: false;
+  reason: ExecutionProgramRefusalReason;
+};
+
+export interface ExecutionProgramReference {
+  tenant_id: string;
+  program_digest: string;
+}
+
+export interface ExecutionProgramAdmissionBindingInput {
+  tenant_id: string;
+  program_digest: string;
+  node_id: string;
+  occurrence_id: string;
+  expires_at: string;
+}
+
 export interface AdmissionStore {
   readonly durable: boolean;
   readonly atomic: true;
@@ -390,10 +621,43 @@ export interface AdmissionStore {
   checkInvariants(): Promise<AdmissionInvariantCheck>;
 }
 
+export interface ExecutionProgramAdmissionStore extends AdmissionStore {
+  registerExecutionProgram(
+    artifact: unknown,
+    context: ExecutionProgramRegistrationContext,
+  ): Promise<ExecutionProgramRegistrationResult>;
+  reserveExecutionProgramAdmission(
+    input: ExecutionProgramReserveInput,
+  ): Promise<ExecutionProgramReserveResult>;
+  beginExecutionProgramInvocation(input: AdmissionCas): Promise<AdmissionBeginResult>;
+  releaseExecutionProgramAdmission(
+    input: AdmissionCas,
+    reason?: string,
+  ): Promise<AdmissionTransitionResult>;
+  expireExecutionProgramAdmission(input: AdmissionCas): Promise<AdmissionTransitionResult>;
+  supersedeExecutionProgram(
+    artifact: unknown,
+    context: ExecutionProgramRegistrationContext,
+  ): Promise<ExecutionProgramRegistrationResult>;
+  readExecutionProgram(
+    input: ExecutionProgramReference,
+  ): Promise<Readonly<ExecutionProgramRuntimeState> | null>;
+  readExecutionProgramReportSnapshot(
+    input: ExecutionProgramReference,
+  ): Promise<Readonly<ExecutionProgramReportSnapshot> | null>;
+  readExecutionProgramOccurrence(input: ExecutionProgramReference & {
+    occurrence_id: string;
+  }): Promise<Readonly<ExecutionProgramOccurrence> | null>;
+}
+
 export interface CreateMemoryAdmissionStoreOptions {
   now?: number | string | Date | (() => number | string | Date);
   currentnessOracle?: AdmissionCurrentnessOracle;
   maxCurrentnessAgeMs?: number;
+  executionProgramVerificationPolicy?: ExecutionProgramVerificationPolicy;
+  executionProgramStatusOracle?: ExecutionProgramStatusOracle;
+  maxExecutionProgramStatusAgeMs?: number;
+  executionProgramActionMatchVerifier?: ExecutionProgramActionMatchVerifier;
   ownerTokenFactory?: () => string;
   invocationTokenFactory?: () => string;
   /** Trusted current heads provisioned before reservation; missing heads fail closed. */
@@ -426,6 +690,25 @@ function canonical(value: Json): string {
 
 function hash(domain: string, value: unknown): AdmissionDigest {
   return `sha256:${crypto.createHash('sha256').update(domain).update('\0').update(canonical(value as Json)).digest('hex')}`;
+}
+
+/** Deterministic marker over the complete closed report-snapshot body. */
+export function executionProgramReportSnapshotMarker(
+  snapshot: Readonly<ExecutionProgramReportSnapshotBody>,
+): AdmissionDigest {
+  if (!plain(snapshot)
+      || Reflect.ownKeys(snapshot).length !== 5
+      || ![
+        '@version', 'tenant_id', 'program_digest', 'runtime_state', 'occurrences',
+      ].every((key) => Object.hasOwn(snapshot, key))
+      || snapshot['@version'] !== EXECUTION_PROGRAM_REPORT_SNAPSHOT_VERSION
+      || typeof snapshot.tenant_id !== 'string' || !IDENTIFIER.test(snapshot.tenant_id)
+      || typeof snapshot.program_digest !== 'string' || !SHA256.test(snapshot.program_digest)
+      || !plain(snapshot.runtime_state)
+      || !Array.isArray(snapshot.occurrences)) {
+    fail('invalid_execution_program_report_snapshot', 'report snapshot body is invalid');
+  }
+  return hash(`${EXECUTION_PROGRAM_REPORT_SNAPSHOT_VERSION}:MARKER`, snapshot);
 }
 
 function deepFreeze<T>(value: T): Readonly<T> {
@@ -473,6 +756,71 @@ function currentMs(source: CreateMemoryAdmissionStoreOptions['now']): number {
   return raw as number;
 }
 
+const EXECUTION_PROGRAM_CONTEXT_KEYS = Object.freeze([
+  'expected_program_id',
+  'expected_tenant_id',
+  'expected_authorization_digest',
+  'expected_audience',
+] as const);
+
+function executionProgramRegistrationContext(
+  raw: unknown,
+): ExecutionProgramRegistrationContext | null {
+  if (!plain(raw)
+      || Reflect.ownKeys(raw).length !== EXECUTION_PROGRAM_CONTEXT_KEYS.length
+      || !EXECUTION_PROGRAM_CONTEXT_KEYS.every((key) => Object.hasOwn(raw, key))) {
+    return null;
+  }
+  try {
+    return {
+      expected_program_id: identifier(raw.expected_program_id, 'expected_program_id'),
+      expected_tenant_id: identifier(raw.expected_tenant_id, 'expected_tenant_id'),
+      expected_authorization_digest: digest(
+        raw.expected_authorization_digest,
+        'expected_authorization_digest',
+      ),
+      expected_audience: identifier(raw.expected_audience, 'expected_audience'),
+    };
+  } catch {
+    return null;
+  }
+}
+
+function executionProgramTrustPolicy(
+  raw: ExecutionProgramVerificationPolicy | undefined,
+): {
+  trustedKeys: TrustedRiskKeys;
+  activeAuthorizers: ReadonlyMap<string, string>;
+} {
+  const trustedKeys = Object.create(null) as TrustedRiskKeys;
+  const activeAuthorizers = new Map<string, string>();
+  if (raw === undefined) return { trustedKeys, activeAuthorizers };
+  if (!plain(raw) || Reflect.ownKeys(raw).length !== 1
+      || !Object.hasOwn(raw, 'trusted_keys') || !plain(raw.trusted_keys)) {
+    fail('invalid_program_verification_policy', 'execution program verification policy is invalid');
+  }
+  for (const [keyId, value] of Object.entries(raw.trusted_keys)) {
+    if (!IDENTIFIER.test(keyId)
+        || !plain(value)
+        || Reflect.ownKeys(value).length !== 4
+        || !['issuer_id', 'public_key', 'role', 'status'].every((key) => Object.hasOwn(value, key))
+        || !IDENTIFIER.test(String(value.issuer_id ?? ''))
+        || typeof value.public_key !== 'string'
+        || !/^[A-Za-z0-9_-]+$/.test(value.public_key)
+        || value.role !== 'program_authorizer'
+        || !['ACTIVE', 'SUSPENDED', 'REVOKED'].includes(String(value.status ?? ''))) {
+      fail('invalid_program_verification_policy', 'execution program authorizer pin is invalid');
+    }
+    if (value.status !== 'ACTIVE') continue;
+    trustedKeys[keyId] = {
+      issuer_id: value.issuer_id as string,
+      public_key: value.public_key,
+    };
+    activeAuthorizers.set(keyId, value.issuer_id as string);
+  }
+  return { trustedKeys, activeAuthorizers };
+}
+
 function normalizeInputs(raw: unknown, admittedAt: number): AdmissionInput[] {
   if (!Array.isArray(raw) || raw.length > ADMISSION_LIMITS.inputs) fail('invalid_inputs', 'inputs are invalid');
   const counts = new Map<AdmissionInputRole, number>();
@@ -518,7 +866,10 @@ function normalizeDigests(raw: unknown, field: string, limit: number): Admission
 
 function normalizeResources(raw: unknown, admittedAt: number): AdmissionResourceReservationInput[] {
   if (!Array.isArray(raw) || raw.length < 1 || raw.length > ADMISSION_LIMITS.resources) fail('invalid_resources', 'resource reservations are invalid');
-  const allowed = new Set<AdmissionResourceKind>(['replay', 'capability', 'budget', 'qualification_use', 'provider_operation', 'external_lease', 'monotonic_counter']);
+  const allowed = new Set<AdmissionResourceKind>([
+    'replay', 'capability', 'budget', 'qualification_use', 'provider_operation',
+    'external_lease', 'monotonic_counter', 'execution_program',
+  ]);
   const seen = new Set<string>();
   const values = raw.map((entry, index) => {
     if (!plain(entry) || !allowed.has(entry.kind as AdmissionResourceKind)) fail('invalid_resource', `resource[${index}] is invalid`);
@@ -664,6 +1015,36 @@ function resourceKey(tenant: string, resource: AdmissionResourceReservationInput
 function monotonicCounterKey(tenant: string, resourceId: string): string { return JSON.stringify([tenant, 'monotonic_counter', resourceId]); }
 function tokenDigest(token: string): AdmissionDigest { return hash(`${ADMISSION_RECORD_VERSION}:TOKEN`, token); }
 
+export function createExecutionProgramAdmissionBinding(
+  input: ExecutionProgramAdmissionBindingInput,
+): AdmissionResourceReservationInput {
+  const tenantId = identifier(input.tenant_id, 'tenant_id');
+  const programDigest = digest(input.program_digest, 'program_digest');
+  const nodeId = identifier(input.node_id, 'node_id');
+  const occurrenceId = identifier(input.occurrence_id, 'occurrence_id');
+  const expiresAt = instant(input.expires_at, 'expires_at').iso;
+  const identityTuple = [tenantId, programDigest, nodeId, occurrenceId] as const;
+  const identityDigest = hash(
+    `${EXECUTION_PROGRAM_ADMISSION_BINDING_VERSION}:IDENTITY`,
+    identityTuple as unknown as Json,
+  );
+  const binding = {
+    '@version': EXECUTION_PROGRAM_ADMISSION_BINDING_VERSION,
+    tenant_id: tenantId,
+    program_digest: programDigest,
+    node_id: nodeId,
+    occurrence_id: occurrenceId,
+    expires_at: expiresAt,
+  };
+  return frozenCopy({
+    kind: 'execution_program',
+    resource_id: `execution-program:${identityDigest}`,
+    reservation_id: `execution-program-reservation:${identityDigest}`,
+    digest: hash(`${EXECUTION_PROGRAM_ADMISSION_BINDING_VERSION}:DIGEST`, binding),
+    expires_at: expiresAt,
+  });
+}
+
 function defaultOwnerToken(): string { return `admission-owner:v2:${crypto.randomBytes(32).toString('base64url')}`; }
 function defaultInvocationToken(): string { return `admission-invocation:v2:${crypto.randomBytes(32).toString('base64url')}`; }
 function validateOwner(value: unknown): string {
@@ -676,6 +1057,14 @@ type MutableRecord = Omit<AdmissionRecord, 'record_digest' | 'resources'> & {
   record_digest?: AdmissionDigest;
 };
 interface Stored { record: Readonly<AdmissionRecord>; ownerToken: string }
+
+interface MutableExecutionProgramState extends Omit<ExecutionProgramRuntimeState, 'budgets'> {
+  budgets: ExecutionProgramBudgetState[];
+}
+
+interface MutableExecutionProgramOccurrence extends Omit<ExecutionProgramOccurrence, 'charges'> {
+  charges: ExecutionProgramCharge[];
+}
 
 function finalizeRecord(raw: MutableRecord): Readonly<AdmissionRecord> {
   const { record_digest: _ignored, ...body } = raw;
@@ -742,7 +1131,7 @@ function currentnessMatches(
 }
 
 /** Linearizable, explicitly test-only reference implementation. */
-export function createMemoryAdmissionStore(options: CreateMemoryAdmissionStoreOptions = {}): AdmissionStore & { readonly testOnly: true } {
+export function createMemoryAdmissionStore(options: CreateMemoryAdmissionStoreOptions = {}): ExecutionProgramAdmissionStore & { readonly testOnly: true } {
   const snapshots = new Map<string, Readonly<AdmissionSnapshot>>();
   const records = new Map<string, Stored>();
   const operationHeads = new Map<string, string>();
@@ -775,6 +1164,17 @@ export function createMemoryAdmissionStore(options: CreateMemoryAdmissionStoreOp
     monotonicCounterHeads.set(key, currentValue);
   }
   const journals = new Map<string, readonly Readonly<AdmissionJournalEntry>[]>();
+  const executionPrograms = new Map<string, MutableExecutionProgramState>();
+  const executionProgramHeads = new Map<string, string>();
+  const executionProgramOccurrences = new Map<string, MutableExecutionProgramOccurrence>();
+  const executionProgramAdmissions = new Map<string, string>();
+  const executionProgramAuthorizationOwners = new Map<string, string>();
+  const executionProgramNodeOccurrenceCounts = new Map<string, number>();
+  const executionProgramTerminalOutcomeCounts = new Map<string, number>();
+  const currentnessOracle = options.currentnessOracle;
+  const executionProgramStatusOracle = options.executionProgramStatusOracle;
+  const executionProgramActionMatchVerifier = options.executionProgramActionMatchVerifier;
+  const programTrust = executionProgramTrustPolicy(options.executionProgramVerificationPolicy);
   const ownerFactory = options.ownerTokenFactory ?? defaultOwnerToken;
   const invocationFactory = options.invocationTokenFactory ?? defaultInvocationToken;
   const maxCurrentnessAgeMs = options.maxCurrentnessAgeMs
@@ -784,12 +1184,39 @@ export function createMemoryAdmissionStore(options: CreateMemoryAdmissionStoreOp
       || maxCurrentnessAgeMs > 300_000) {
     fail('invalid_currentness_age', 'max currentness age is invalid');
   }
+  const maxExecutionProgramStatusAgeMs = options.maxExecutionProgramStatusAgeMs
+    ?? ADMISSION_LIMITS.currentnessMaxAgeMs;
+  if (!Number.isSafeInteger(maxExecutionProgramStatusAgeMs)
+      || maxExecutionProgramStatusAgeMs < 1
+      || maxExecutionProgramStatusAgeMs > 300_000) {
+    fail('invalid_program_status_age', 'max execution program status age is invalid');
+  }
   let queue: Promise<void> = Promise.resolve();
+  const externalVerificationTimeoutMs = 5_000;
 
   function atomic<T>(fn: () => T | Promise<T>): Promise<T> {
     const next = queue.then(fn, fn);
     queue = next.then(() => undefined, () => undefined);
     return next;
+  }
+
+  async function boundedExternalVerification<T>(
+    operation: () => Promise<T>,
+  ): Promise<T | null> {
+    let timeout: ReturnType<typeof setTimeout> | undefined;
+    try {
+      return await Promise.race([
+        operation(),
+        new Promise<null>((resolve) => {
+          timeout = setTimeout(() => resolve(null), externalVerificationTimeoutMs);
+          timeout.unref();
+        }),
+      ]);
+    } catch {
+      return null;
+    } finally {
+      if (timeout !== undefined) clearTimeout(timeout);
+    }
   }
 
   function append(key: string, ownerToken: string, draft: MutableRecord, event: AdmissionJournalEvent, at: string): Readonly<AdmissionRecord> {
@@ -862,6 +1289,550 @@ export function createMemoryAdmissionStore(options: CreateMemoryAdmissionStoreOp
     }
   }
 
+  function executionProgramKey(tenantId: string, programDigest: string): string {
+    return JSON.stringify([tenantId, programDigest]);
+  }
+
+  function executionProgramHeadKey(tenantId: string, programId: string): string {
+    return JSON.stringify([tenantId, programId]);
+  }
+
+  function executionProgramAuthorizationKey(
+    tenantId: string,
+    authorizationDigest: string,
+  ): string {
+    return JSON.stringify([tenantId, authorizationDigest]);
+  }
+
+  function executionProgramOccurrenceKey(
+    tenantId: string,
+    programDigest: string,
+    occurrenceId: string,
+  ): string {
+    return JSON.stringify([tenantId, programDigest, occurrenceId]);
+  }
+
+  function executionProgramNodeCountKey(
+    tenantId: string,
+    programDigest: string,
+    nodeId: string,
+  ): string {
+    return JSON.stringify([tenantId, programDigest, nodeId]);
+  }
+
+  function executionProgramTerminalCountKey(
+    tenantId: string,
+    programDigest: string,
+    nodeId: string,
+    outcome: 'COMMITTED' | 'PROVEN_NOT_COMMITTED',
+  ): string {
+    return JSON.stringify([tenantId, programDigest, nodeId, outcome]);
+  }
+
+  function incrementIndex(index: Map<string, number>, key: string, amount: 1 | -1): void {
+    const nextValue = (index.get(key) ?? 0) + amount;
+    if (nextValue < 0) throw new Error('execution program invariant: negative index');
+    if (nextValue === 0) index.delete(key);
+    else index.set(key, nextValue);
+  }
+
+  function publicExecutionProgram(
+    state: MutableExecutionProgramState,
+  ): Readonly<ExecutionProgramRuntimeState> {
+    return frozenCopy(state);
+  }
+
+  function findProgramNode(
+    state: Readonly<ExecutionProgramRuntimeState>,
+    nodeId: string,
+  ): Readonly<ExecutionProgramNode> | null {
+    return state.program.nodes.find((node) => node.node_id === nodeId) ?? null;
+  }
+
+  async function executionProgramActionMatches(
+    state: Readonly<ExecutionProgramRuntimeState>,
+    action: Readonly<ExecutionProgramAction>,
+    snapshot: Readonly<AdmissionSnapshot>,
+    evidence: unknown,
+  ): Promise<boolean> {
+    if (action.mode === 'exact') {
+      return evidence === undefined
+        && snapshot.body.caid === action.caid
+        && snapshot.body.action_digest === action.action_digest;
+    }
+    const verifier = executionProgramActionMatchVerifier;
+    const input = snapshot.body.inputs.find((entry) => entry.role === 'aeb');
+    if (evidence === undefined || !verifier || !input
+        || input.subject !== state.program.subject_id
+        || input.profile_digest !== action.profile_digest) return false;
+    const expected: ExecutionProgramActionMatchExpected = {
+      tenant_id: state.tenant_id,
+      profile_id: action.profile_id,
+      profile_digest: action.profile_digest as AdmissionDigest,
+      subject_id: state.program.subject_id,
+      operation_id: snapshot.body.operation_id,
+      caid: snapshot.body.caid,
+      action_digest: snapshot.body.action_digest,
+      verifier_id: input.verifier_id,
+      evidence_payload_digest: input.payload_digest,
+      evidence_trust_configuration_digest: input.trust_configuration_digest,
+      trust_epoch: snapshot.body.trust_epoch,
+      trust_configuration_digest: snapshot.body.trust_configuration_digest,
+    };
+    try {
+      const result = await boundedExternalVerification(() => verifier.verify({
+        evidence,
+        expected: frozenCopy(expected),
+      }));
+      if (!plain(result)
+          || Reflect.ownKeys(result).length !== Reflect.ownKeys(expected).length + 2
+          || result.valid !== true || result.result !== 'MATCH') return false;
+      return Object.entries(expected).every(([key, value]) => result[key] === value);
+    } catch {
+      return false;
+    }
+  }
+
+  function executionProgramDependenciesSatisfied(
+    state: MutableExecutionProgramState,
+    node: Readonly<ExecutionProgramNode>,
+  ): boolean {
+    return node.depends_on.every((dependency) => dependency.outcomes.some((outcome) => (
+      (executionProgramTerminalOutcomeCounts.get(executionProgramTerminalCountKey(
+        state.tenant_id,
+        state.program_digest,
+        dependency.node_id,
+        outcome,
+      )) ?? 0) > 0
+    )));
+  }
+
+  function executionProgramStatusReason(
+    state: MutableExecutionProgramState,
+  ): ExecutionProgramRefusalReason | null {
+    if (state.status === 'SUPERSEDED') return 'program_superseded';
+    if (state.status === 'SUSPENDED') return 'program_suspended';
+    if (state.status === 'REVOKED') return 'program_revoked';
+    return null;
+  }
+
+  async function readExecutionProgramStatus(
+    state: Readonly<ExecutionProgramRuntimeState>,
+  ): Promise<ExecutionProgramStatusObservation | null> {
+    const oracle = executionProgramStatusOracle;
+    if (!oracle || typeof oracle.read !== 'function') return null;
+    return boundedExternalVerification(() => oracle.read(frozenCopy({
+      tenant_id: state.tenant_id,
+      program_id: state.program_id,
+      program_digest: state.program_digest,
+      version: state.version,
+    })));
+  }
+
+  function applyExecutionProgramStatus(
+    state: MutableExecutionProgramState,
+    observation: ExecutionProgramStatusObservation | null,
+    now: number,
+  ): ExecutionProgramRefusalReason | null {
+    if (state.status === 'SUPERSEDED' || state.status === 'REVOKED') {
+      return executionProgramStatusReason(state);
+    }
+    const expectedKeys = [
+      '@version', 'tenant_id', 'program_id', 'program_digest', 'version',
+      'status', 'sequence', 'observed_at', 'expires_at',
+    ];
+    const observedAt = plain(observation) && typeof observation.observed_at === 'string'
+      ? Date.parse(observation.observed_at) : NaN;
+    const expiresAt = plain(observation) && typeof observation.expires_at === 'string'
+      ? Date.parse(observation.expires_at) : NaN;
+    if (!plain(observation)
+        || Reflect.ownKeys(observation).length !== expectedKeys.length
+        || !expectedKeys.every((key) => Object.hasOwn(observation, key))
+        || observation['@version'] !== EXECUTION_PROGRAM_STATUS_VERSION
+        || observation.tenant_id !== state.tenant_id
+        || observation.program_id !== state.program_id
+        || observation.program_digest !== state.program_digest
+        || observation.version !== state.version
+        || !['ACTIVE', 'SUSPENDED', 'REVOKED'].includes(String(observation.status ?? ''))
+        || !Number.isSafeInteger(observation.sequence) || observation.sequence < 0
+        || !Number.isFinite(observedAt) || !Number.isFinite(expiresAt)
+        || observedAt > now || now - observedAt > maxExecutionProgramStatusAgeMs
+        || expiresAt <= now || observation.sequence < state.status_sequence
+        || (observation.sequence === state.status_sequence
+          && (observation.status !== state.status
+            || observation.observed_at !== state.status_observed_at
+            || observation.expires_at !== state.status_expires_at))) {
+      return 'program_status_indeterminate';
+    }
+    state.status = observation.status;
+    state.status_sequence = observation.sequence;
+    state.status_observed_at = new Date(observedAt).toISOString();
+    state.status_expires_at = new Date(expiresAt).toISOString();
+    const statusReason = executionProgramStatusReason(state);
+    if (statusReason) return statusReason;
+    if (now < Date.parse(state.program.valid_from)) return 'program_not_active';
+    if (now >= Date.parse(state.program.expires_at)) return 'program_expired';
+    return null;
+  }
+
+  function releaseExecutionProgramOccurrenceForAdmission(
+    key: string,
+    at: string,
+  ): void {
+    const occurrenceKey = executionProgramAdmissions.get(key);
+    if (!occurrenceKey) return;
+    const occurrence = executionProgramOccurrences.get(occurrenceKey);
+    if (!occurrence || occurrence.state !== 'RESERVED') return;
+    const programState = executionPrograms.get(executionProgramKey(
+      occurrence.tenant_id,
+      occurrence.program_digest,
+    ));
+    if (!programState) throw new Error('execution program invariant: program missing');
+    for (const charge of occurrence.charges) {
+      const budget = programState.budgets.find((entry) => entry.budget_id === charge.budget_id);
+      if (!budget || budget.reserved < charge.amount) {
+        throw new Error('execution program invariant: reserved budget mismatch');
+      }
+      budget.reserved -= charge.amount;
+    }
+    incrementIndex(
+      executionProgramNodeOccurrenceCounts,
+      executionProgramNodeCountKey(
+        occurrence.tenant_id,
+        occurrence.program_digest,
+        occurrence.node_id,
+      ),
+      -1,
+    );
+    occurrence.state = 'RELEASED';
+    occurrence.updated_at = at;
+  }
+
+  function consumeExecutionProgramOccurrenceForAdmission(
+    key: string,
+    at: string,
+  ): ExecutionProgramRefusalReason | null {
+    const occurrenceKey = executionProgramAdmissions.get(key);
+    if (!occurrenceKey) return 'program_required';
+    const occurrence = executionProgramOccurrences.get(occurrenceKey);
+    if (!occurrence || occurrence.state !== 'RESERVED') return 'state_conflict';
+    const programState = executionPrograms.get(executionProgramKey(
+      occurrence.tenant_id,
+      occurrence.program_digest,
+    ));
+    if (!programState) return 'program_not_found';
+    const statusReason = executionProgramStatusReason(programState);
+    if (statusReason) return statusReason;
+    const now = Date.parse(at);
+    if (now < Date.parse(programState.program.valid_from)) return 'program_not_active';
+    if (now >= Date.parse(programState.program.expires_at)) return 'program_expired';
+    const openEffects = [...executionProgramOccurrences.values()].filter((candidate) => (
+      candidate.tenant_id === programState.tenant_id
+      && candidate.program_digest === programState.program_digest
+      && (candidate.state === 'INVOKING' || candidate.state === 'INDETERMINATE')
+    )).length;
+    if (openEffects >= programState.program.max_concurrent_effects) {
+      return 'program_concurrency_exhausted';
+    }
+    for (const charge of occurrence.charges) {
+      const budget = programState.budgets.find((entry) => entry.budget_id === charge.budget_id);
+      if (!budget || budget.reserved < charge.amount) return 'program_budget_exhausted';
+    }
+    for (const charge of occurrence.charges) {
+      const budget = programState.budgets.find((entry) => entry.budget_id === charge.budget_id)!;
+      budget.reserved -= charge.amount;
+      budget.consumed += charge.amount;
+    }
+    occurrence.state = 'INVOKING';
+    occurrence.updated_at = at;
+    return null;
+  }
+
+  function updateExecutionProgramOccurrenceForAdmission(
+    key: string,
+    state: Extract<ExecutionProgramOccurrenceState,
+      'INDETERMINATE' | 'COMMITTED' | 'PROVEN_NOT_COMMITTED'>,
+    at: string,
+  ): void {
+    const occurrenceKey = executionProgramAdmissions.get(key);
+    if (!occurrenceKey) return;
+    const occurrence = executionProgramOccurrences.get(occurrenceKey);
+    if (!occurrence || !['INVOKING', 'INDETERMINATE', 'COMMITTED', 'PROVEN_NOT_COMMITTED'].includes(occurrence.state)) {
+      throw new Error('execution program invariant: occurrence state mismatch');
+    }
+    const previous = occurrence.state;
+    occurrence.state = state;
+    occurrence.updated_at = at;
+    if ((state === 'COMMITTED' || state === 'PROVEN_NOT_COMMITTED')
+        && previous !== state) {
+      incrementIndex(
+        executionProgramTerminalOutcomeCounts,
+        executionProgramTerminalCountKey(
+          occurrence.tenant_id,
+          occurrence.program_digest,
+          occurrence.node_id,
+          state,
+        ),
+        1,
+      );
+    }
+  }
+
+  function reserveCore(
+    raw: AdmissionSnapshotInput | AdmissionSnapshot,
+    programAware = false,
+  ): AdmissionReserveResult {
+    const snapshot = plain(raw) && Object.hasOwn(raw, 'snapshot_digest')
+      ? validateSnapshot(raw as AdmissionSnapshot)
+      : createAdmissionSnapshot(raw as AdmissionSnapshotInput);
+    const body = snapshot.body;
+    const authorization = body.inputs.find((entry) => entry.role === 'authorization');
+    if (!programAware && authorization && executionProgramAuthorizationOwners.has(
+      executionProgramAuthorizationKey(body.tenant_id, authorization.payload_digest),
+    )) return { ok: false, reason: 'program_required' };
+    if (body.supersedes_admission_id !== null) return { ok: false, reason: 'relation_conflict' };
+    const key = admissionKey(body.tenant_id, body.admission_id);
+    const opKey = operationKey(body.tenant_id, body.operation_id);
+    if (records.has(key)) return { ok: false, reason: 'admission_exists' };
+    if (operationHeads.has(opKey)) return { ok: false, reason: 'operation_exists' };
+    const now = currentMs(options.now);
+    if (Date.parse(body.expires_at) <= now) return { ok: false, reason: 'admission_expired' };
+    if (body.remedy_for !== null) {
+      const target = records.get(admissionKey(body.remedy_for.tenant_id, body.remedy_for.admission_id));
+      if (!target || target.record.snapshot_digest !== body.remedy_for.snapshot_digest) return { ok: false, reason: 'relation_not_found' };
+      if (!['INVOKING', 'INDETERMINATE', 'COMMITTED', 'PROVEN_NOT_COMMITTED'].includes(target.record.state)) return { ok: false, reason: 'relation_conflict' };
+      const targetSnapshot = snapshots.get(target.record.snapshot_digest);
+      if (!targetSnapshot || targetSnapshot.body.operation_id === body.operation_id || targetSnapshot.body.caid === body.caid) return { ok: false, reason: 'relation_conflict' };
+    }
+    if (!resourcesAvailable(snapshot)) return { ok: false, reason: 'resource_conflict' };
+    const owner = validateOwner(ownerFactory());
+    const at = new Date(now).toISOString();
+    snapshots.set(snapshot.snapshot_digest, snapshot);
+    operationHeads.set(opKey, key);
+    claimResources(snapshot, key);
+    const record = append(key, owner, {
+      '@version': ADMISSION_RECORD_VERSION,
+      tenant_id: body.tenant_id,
+      admission_id: body.admission_id,
+      operation_id: body.operation_id,
+      snapshot_digest: snapshot.snapshot_digest,
+      revision: 0,
+      state: 'RESERVED',
+      execution_right: 'RESERVED',
+      provider_attempt: 'NOT_ENTERED',
+      owner_digest: tokenDigest(owner),
+      invocation_token_digest: null,
+      provider_outcome: null,
+      effect_relation: null,
+      resources: body.resource_reservations.map((resource) => ({ ...resource, state: 'RESERVED' })),
+      superseded_by_admission_id: null,
+      refusal_reason: null,
+      invocation_started_at: null,
+      created_at: at,
+      updated_at: at,
+      predecessor_record_digest: null,
+    }, 'RESERVED', at);
+    return { ok: true, snapshot, record, owner_token: owner };
+  }
+
+  function releaseReservedForRefusal(
+    key: string,
+    stored: Stored,
+    reason: string,
+    at: string,
+  ): void {
+    freeResources(stored.record, key);
+    append(key, stored.ownerToken, next(stored.record, at, {
+      state: 'RELEASED', execution_right: 'RELEASED', refusal_reason: reason,
+      resources: stored.record.resources.map((resource) => ({ ...resource, state: 'RELEASED' })),
+    }), 'RELEASED', at);
+    releaseExecutionProgramOccurrenceForAdmission(key, at);
+  }
+
+  function releaseCore(
+    input: AdmissionCas,
+    reason: string,
+    programAware: boolean,
+  ): AdmissionTransitionResult {
+    const selected = selectCas(input);
+    if ('ok' in selected) return selected;
+    const { key, stored } = selected;
+    if (executionProgramAdmissions.has(key) && !programAware) {
+      return { ok: false, reason: 'program_required' };
+    }
+    if (programAware && !executionProgramAdmissions.has(key)) {
+      return { ok: false, reason: 'program_required' };
+    }
+    if (stored.record.execution_right === 'CONSUMED') return { ok: false, reason: 'execution_right_consumed' };
+    if (stored.record.state !== 'RESERVED') return { ok: false, reason: 'state_conflict' };
+    const at = new Date(currentMs(options.now)).toISOString();
+    freeResources(stored.record, key);
+    const record = append(key, stored.ownerToken, next(stored.record, at, {
+      state: 'RELEASED', execution_right: 'RELEASED', refusal_reason: reason,
+      resources: stored.record.resources.map((resource) => ({ ...resource, state: 'RELEASED' })),
+    }), 'RELEASED', at);
+    releaseExecutionProgramOccurrenceForAdmission(key, at);
+    return { ok: true, record };
+  }
+
+  function expireCore(
+    input: AdmissionCas,
+    programAware: boolean,
+  ): AdmissionTransitionResult {
+    const selected = selectCas(input);
+    if ('ok' in selected) return selected;
+    const { key, stored } = selected;
+    if (executionProgramAdmissions.has(key) && !programAware) {
+      return { ok: false, reason: 'program_required' };
+    }
+    if (programAware && !executionProgramAdmissions.has(key)) {
+      return { ok: false, reason: 'program_required' };
+    }
+    if (stored.record.state !== 'RESERVED') return { ok: false, reason: 'state_conflict' };
+    const snapshot = snapshots.get(stored.record.snapshot_digest)!;
+    const now = currentMs(options.now);
+    if (Date.parse(snapshot.body.expires_at) > now) return { ok: false, reason: 'state_conflict' };
+    const at = new Date(now).toISOString();
+    freeResources(stored.record, key);
+    const record = append(key, stored.ownerToken, next(stored.record, at, {
+      state: 'EXPIRED', execution_right: 'RELEASED', refusal_reason: 'admission_expired',
+      resources: stored.record.resources.map((resource) => ({ ...resource, state: 'RELEASED' })),
+    }), 'EXPIRED', at);
+    releaseExecutionProgramOccurrenceForAdmission(key, at);
+    return { ok: true, record };
+  }
+
+  async function beginInvocationCore(
+    input: AdmissionCas,
+    programAware: boolean,
+  ): Promise<AdmissionBeginResult> {
+    const prepared = await atomic(() => {
+      const selected = selectCas(input);
+      if ('ok' in selected) return { ready: false as const, result: selected };
+      const { key, stored } = selected;
+      const linked = executionProgramAdmissions.has(key);
+      if (linked !== programAware) {
+        return {
+          ready: false as const,
+          result: { ok: false as const, reason: 'program_required' as const },
+        };
+      }
+      if (stored.record.state !== 'RESERVED'
+          || stored.record.execution_right !== 'RESERVED'
+          || stored.record.provider_attempt !== 'NOT_ENTERED') {
+        return {
+          ready: false as const,
+          result: { ok: false as const, reason: 'state_conflict' as const },
+        };
+      }
+      const snapshot = snapshots.get(stored.record.snapshot_digest)!;
+      let programState: Readonly<ExecutionProgramRuntimeState> | null = null;
+      if (programAware) {
+        const occurrenceKey = executionProgramAdmissions.get(key);
+        const occurrence = occurrenceKey
+          ? executionProgramOccurrences.get(occurrenceKey) : undefined;
+        const mutableProgramState = occurrence
+          ? executionPrograms.get(executionProgramKey(
+            occurrence.tenant_id,
+            occurrence.program_digest,
+          ))
+          : undefined;
+        if (!mutableProgramState) {
+          return {
+            ready: false as const,
+            result: { ok: false as const, reason: 'program_not_found' as const },
+          };
+        }
+        programState = publicExecutionProgram(mutableProgramState);
+      }
+      return { ready: true as const, key, snapshot, programState };
+    });
+    if (!prepared.ready) return prepared.result;
+
+    const [statusObservation, currentnessObservation] = await Promise.all([
+      prepared.programState
+        ? readExecutionProgramStatus(prepared.programState)
+        : Promise.resolve(null),
+      currentnessOracle && typeof currentnessOracle.read === 'function'
+        ? boundedExternalVerification(() => currentnessOracle.read(prepared.snapshot))
+        : Promise.resolve(null),
+    ]);
+    const validationTime = currentMs(options.now);
+
+    return atomic(() => {
+      const selected = selectCas(input);
+      if ('ok' in selected) return selected;
+      const { key, stored } = selected;
+      if (key !== prepared.key
+          || stored.record.snapshot_digest !== prepared.snapshot.snapshot_digest
+          || executionProgramAdmissions.has(key) !== programAware) {
+        return { ok: false, reason: 'revision_conflict' };
+      }
+      if (stored.record.state !== 'RESERVED'
+          || stored.record.execution_right !== 'RESERVED'
+          || stored.record.provider_attempt !== 'NOT_ENTERED') {
+        return { ok: false, reason: 'state_conflict' };
+      }
+      const snapshot = snapshots.get(stored.record.snapshot_digest)!;
+      if (programAware) {
+        const occurrenceKey = executionProgramAdmissions.get(key);
+        const occurrence = occurrenceKey
+          ? executionProgramOccurrences.get(occurrenceKey) : undefined;
+        const programState = occurrence
+          ? executionPrograms.get(executionProgramKey(
+            occurrence.tenant_id,
+            occurrence.program_digest,
+          ))
+          : undefined;
+        const refusal = programState
+          ? applyExecutionProgramStatus(programState, statusObservation, validationTime)
+          : 'program_not_found';
+        if (refusal) {
+          const at = new Date(validationTime).toISOString();
+          releaseReservedForRefusal(key, stored, refusal, at);
+          return { ok: false, reason: refusal as AdmissionRefusalReason };
+        }
+      }
+      if (Date.parse(snapshot.body.expires_at) <= validationTime) {
+        return { ok: false, reason: 'admission_expired' };
+      }
+      const countersCurrent = snapshot.body.resource_reservations.every((resource) => (
+        resource.kind !== 'monotonic_counter'
+        || (monotonicCounterHeads.get(resourceKey(snapshot.body.tenant_id, resource)) ?? -1)
+          >= resource.next_value!
+      ));
+      if (!currentnessObservation
+          || !countersCurrent
+          || !currentnessMatches(
+            snapshot,
+            currentnessObservation,
+            validationTime,
+            maxCurrentnessAgeMs,
+          )) {
+        const at = new Date(validationTime).toISOString();
+        releaseReservedForRefusal(key, stored, 'currentness_refused', at);
+        return { ok: false, reason: 'currentness_refused' };
+      }
+      const invocationToken = invocationFactory();
+      if (typeof invocationToken !== 'string' || invocationToken.length < 48) {
+        fail('invalid_invocation_token', 'invocation token is invalid');
+      }
+      const at = new Date(validationTime).toISOString();
+      if (programAware) {
+        const programRefusal = consumeExecutionProgramOccurrenceForAdmission(key, at);
+        if (programRefusal !== null) {
+          return { ok: false, reason: programRefusal as AdmissionRefusalReason };
+        }
+      }
+      const record = append(key, stored.ownerToken, next(stored.record, at, {
+        state: 'INVOKING', execution_right: 'CONSUMED', provider_attempt: 'INVOKING',
+        invocation_token_digest: tokenDigest(invocationToken), invocation_started_at: at,
+        resources: stored.record.resources.map((resource) => ({ ...resource, state: 'CONSUMED' })),
+      }), 'INVOKING', at);
+      return { ok: true, snapshot, record, invocation_token: invocationToken };
+    });
+  }
+
   function invariantViolations(): string[] {
     const violations: string[] = [];
     for (const [key, stored] of records) {
@@ -915,10 +1886,111 @@ export function createMemoryAdmissionStore(options: CreateMemoryAdmissionStoreOp
       const stored = records.get(admission);
       if (!stored || operationKey(stored.record.tenant_id, stored.record.operation_id) !== op) violations.push(`${op}:operation_head_invalid`);
     }
+    for (const [key, programState] of executionPrograms) {
+      const expected = new Map(programState.budgets.map((budget) => [
+        budget.budget_id,
+        { reserved: 0, consumed: 0 },
+      ]));
+      const expectedNodeCounts = new Map<string, number>();
+      const expectedTerminalCounts = new Map<string, number>();
+      let expectedTotalOccurrences = 0;
+      let expectedOpenEffects = 0;
+      for (const occurrence of executionProgramOccurrences.values()) {
+        if (occurrence.tenant_id !== programState.tenant_id
+            || occurrence.program_digest !== programState.program_digest) continue;
+        expectedTotalOccurrences += 1;
+        if (occurrence.state === 'INVOKING' || occurrence.state === 'INDETERMINATE') {
+          expectedOpenEffects += 1;
+        }
+        if (occurrence.state !== 'RELEASED') {
+          const countKey = executionProgramNodeCountKey(
+            occurrence.tenant_id,
+            occurrence.program_digest,
+            occurrence.node_id,
+          );
+          expectedNodeCounts.set(countKey, (expectedNodeCounts.get(countKey) ?? 0) + 1);
+        }
+        if (occurrence.state === 'COMMITTED' || occurrence.state === 'PROVEN_NOT_COMMITTED') {
+          const terminalKey = executionProgramTerminalCountKey(
+            occurrence.tenant_id,
+            occurrence.program_digest,
+            occurrence.node_id,
+            occurrence.state,
+          );
+          expectedTerminalCounts.set(
+            terminalKey,
+            (expectedTerminalCounts.get(terminalKey) ?? 0) + 1,
+          );
+        }
+        for (const charge of occurrence.charges) {
+          const aggregate = expected.get(charge.budget_id);
+          if (!aggregate) {
+            violations.push(`${key}:occurrence_budget_unknown`);
+            continue;
+          }
+          if (occurrence.state === 'RESERVED') aggregate.reserved += charge.amount;
+          if (['INVOKING', 'INDETERMINATE', 'COMMITTED', 'PROVEN_NOT_COMMITTED'].includes(occurrence.state)) {
+            aggregate.consumed += charge.amount;
+          }
+        }
+        const admission = records.get(admissionKey(occurrence.tenant_id, occurrence.admission_id));
+        if (!admission || admission.record.snapshot_digest !== occurrence.snapshot_digest) {
+          violations.push(`${key}:occurrence_admission_missing`);
+        } else if ((admission.record.state === 'EXPIRED' ? 'RELEASED' : admission.record.state)
+            !== occurrence.state) {
+          violations.push(`${key}:occurrence_admission_state_mismatch`);
+        }
+      }
+      for (const budget of programState.budgets) {
+        const aggregate = expected.get(budget.budget_id)!;
+        if (budget.reserved !== aggregate.reserved
+            || budget.consumed !== aggregate.consumed
+            || budget.reserved + budget.consumed > budget.limit) {
+          violations.push(`${key}:program_budget_mismatch:${budget.budget_id}`);
+        }
+      }
+      if (programState.total_occurrences !== expectedTotalOccurrences
+          || programState.total_occurrences > programState.program.max_total_occurrences) {
+        violations.push(`${key}:program_total_occurrence_mismatch`);
+      }
+      if (expectedOpenEffects > programState.program.max_concurrent_effects) {
+        violations.push(`${key}:program_concurrent_effect_limit_exceeded`);
+      }
+      for (const node of programState.program.nodes) {
+        const countKey = executionProgramNodeCountKey(
+          programState.tenant_id,
+          programState.program_digest,
+          node.node_id,
+        );
+        if ((executionProgramNodeOccurrenceCounts.get(countKey) ?? 0)
+            !== (expectedNodeCounts.get(countKey) ?? 0)) {
+          violations.push(`${key}:program_node_count_mismatch:${node.node_id}`);
+        }
+        for (const outcome of ['COMMITTED', 'PROVEN_NOT_COMMITTED'] as const) {
+          const terminalKey = executionProgramTerminalCountKey(
+            programState.tenant_id,
+            programState.program_digest,
+            node.node_id,
+            outcome,
+          );
+          if ((executionProgramTerminalOutcomeCounts.get(terminalKey) ?? 0)
+              !== (expectedTerminalCounts.get(terminalKey) ?? 0)) {
+            violations.push(`${key}:program_terminal_count_mismatch:${node.node_id}:${outcome}`);
+          }
+        }
+      }
+      const head = executionProgramHeads.get(executionProgramHeadKey(
+        programState.tenant_id,
+        programState.program_id,
+      ));
+      if (programState.status === 'ACTIVE' && head !== programState.program_digest) {
+        violations.push(`${key}:program_head_mismatch`);
+      }
+    }
     return violations;
   }
 
-  const store: AdmissionStore & { readonly testOnly: true } = {
+  const store: ExecutionProgramAdmissionStore & { readonly testOnly: true } = {
     testOnly: true,
     durable: false,
     atomic: true,
@@ -928,91 +2000,15 @@ export function createMemoryAdmissionStore(options: CreateMemoryAdmissionStoreOp
     transactionalCurrentness: true,
 
     reserve(raw) {
-      return atomic(() => {
-        const snapshot = plain(raw) && Object.hasOwn(raw, 'snapshot_digest')
-          ? validateSnapshot(raw as AdmissionSnapshot)
-          : createAdmissionSnapshot(raw as AdmissionSnapshotInput);
-        const body = snapshot.body;
-        if (body.supersedes_admission_id !== null) return { ok: false, reason: 'relation_conflict' };
-        const key = admissionKey(body.tenant_id, body.admission_id);
-        const opKey = operationKey(body.tenant_id, body.operation_id);
-        if (records.has(key)) return { ok: false, reason: 'admission_exists' };
-        if (operationHeads.has(opKey)) return { ok: false, reason: 'operation_exists' };
-        const now = currentMs(options.now);
-        if (Date.parse(body.expires_at) <= now) return { ok: false, reason: 'admission_expired' };
-        if (body.remedy_for !== null) {
-          const target = records.get(admissionKey(body.remedy_for.tenant_id, body.remedy_for.admission_id));
-          if (!target || target.record.snapshot_digest !== body.remedy_for.snapshot_digest) return { ok: false, reason: 'relation_not_found' };
-          if (!['INVOKING', 'INDETERMINATE', 'COMMITTED', 'PROVEN_NOT_COMMITTED'].includes(target.record.state)) return { ok: false, reason: 'relation_conflict' };
-          const targetSnapshot = snapshots.get(target.record.snapshot_digest);
-          if (!targetSnapshot || targetSnapshot.body.operation_id === body.operation_id || targetSnapshot.body.caid === body.caid) return { ok: false, reason: 'relation_conflict' };
-        }
-        if (!resourcesAvailable(snapshot)) return { ok: false, reason: 'resource_conflict' };
-        const owner = validateOwner(ownerFactory());
-        const at = new Date(now).toISOString();
-        snapshots.set(snapshot.snapshot_digest, snapshot);
-        operationHeads.set(opKey, key);
-        claimResources(snapshot, key);
-        const record = append(key, owner, {
-          '@version': ADMISSION_RECORD_VERSION,
-          tenant_id: body.tenant_id,
-          admission_id: body.admission_id,
-          operation_id: body.operation_id,
-          snapshot_digest: snapshot.snapshot_digest,
-          revision: 0,
-          state: 'RESERVED',
-          execution_right: 'RESERVED',
-          provider_attempt: 'NOT_ENTERED',
-          owner_digest: tokenDigest(owner),
-          invocation_token_digest: null,
-          provider_outcome: null,
-          effect_relation: null,
-          resources: body.resource_reservations.map((resource) => ({ ...resource, state: 'RESERVED' })),
-          superseded_by_admission_id: null,
-          refusal_reason: null,
-          invocation_started_at: null,
-          created_at: at,
-          updated_at: at,
-          predecessor_record_digest: null,
-        }, 'RESERVED', at);
-        return { ok: true, snapshot, record, owner_token: owner };
-      });
+      return atomic(() => reserveCore(raw));
     },
 
     release(input, reason = 'released_before_invocation') {
-      return atomic(() => {
-        const selected = selectCas(input);
-        if ('ok' in selected) return selected;
-        const { key, stored } = selected;
-        if (stored.record.execution_right === 'CONSUMED') return { ok: false, reason: 'execution_right_consumed' };
-        if (stored.record.state !== 'RESERVED') return { ok: false, reason: 'state_conflict' };
-        const at = new Date(currentMs(options.now)).toISOString();
-        freeResources(stored.record, key);
-        const record = append(key, stored.ownerToken, next(stored.record, at, {
-          state: 'RELEASED', execution_right: 'RELEASED', refusal_reason: reason,
-          resources: stored.record.resources.map((resource) => ({ ...resource, state: 'RELEASED' })),
-        }), 'RELEASED', at);
-        return { ok: true, record };
-      });
+      return atomic(() => releaseCore(input, reason, false));
     },
 
     expire(input) {
-      return atomic(() => {
-        const selected = selectCas(input);
-        if ('ok' in selected) return selected;
-        const { key, stored } = selected;
-        if (stored.record.state !== 'RESERVED') return { ok: false, reason: 'state_conflict' };
-        const snapshot = snapshots.get(stored.record.snapshot_digest)!;
-        const now = currentMs(options.now);
-        if (Date.parse(snapshot.body.expires_at) > now) return { ok: false, reason: 'state_conflict' };
-        const at = new Date(now).toISOString();
-        freeResources(stored.record, key);
-        const record = append(key, stored.ownerToken, next(stored.record, at, {
-          state: 'EXPIRED', execution_right: 'RELEASED', refusal_reason: 'admission_expired',
-          resources: stored.record.resources.map((resource) => ({ ...resource, state: 'RELEASED' })),
-        }), 'EXPIRED', at);
-        return { ok: true, record };
-      });
+      return atomic(() => expireCore(input, false));
     },
 
     reapExpiredReservation(input) {
@@ -1056,6 +2052,7 @@ export function createMemoryAdmissionStore(options: CreateMemoryAdmissionStoreOp
         const selected = selectCas(input);
         if ('ok' in selected) return selected;
         const { key, stored } = selected;
+        if (executionProgramAdmissions.has(key)) return { ok: false, reason: 'program_required' };
         if (stored.record.state !== 'RESERVED' || stored.record.execution_right !== 'RESERVED') return { ok: false, reason: 'state_conflict' };
         const predecessor = snapshots.get(stored.record.snapshot_digest)!;
         const successor = createAdmissionSnapshot({ ...input.successor, supersedes_admission_id: stored.record.admission_id, remedy_for: null });
@@ -1094,46 +2091,7 @@ export function createMemoryAdmissionStore(options: CreateMemoryAdmissionStoreOp
     },
 
     beginInvocation(input) {
-      return atomic(async () => {
-        const selected = selectCas(input);
-        if ('ok' in selected) return selected;
-        const { key, stored } = selected;
-        if (stored.record.state !== 'RESERVED' || stored.record.execution_right !== 'RESERVED' || stored.record.provider_attempt !== 'NOT_ENTERED') return { ok: false, reason: 'state_conflict' };
-        const snapshot = snapshots.get(stored.record.snapshot_digest)!;
-        const now = currentMs(options.now);
-        if (Date.parse(snapshot.body.expires_at) <= now) return { ok: false, reason: 'admission_expired' };
-        const observation = options.currentnessOracle
-          ? await options.currentnessOracle.read(snapshot)
-          : null;
-        const countersCurrent = snapshot.body.resource_reservations.every((resource) => (
-          resource.kind !== 'monotonic_counter'
-          || (monotonicCounterHeads.get(resourceKey(snapshot.body.tenant_id, resource)) ?? -1)
-            >= resource.next_value!
-        ));
-        if (!observation || !countersCurrent || !currentnessMatches(
-          snapshot,
-          observation,
-          now,
-          maxCurrentnessAgeMs,
-        )) {
-          const at = new Date(now).toISOString();
-          freeResources(stored.record, key);
-          append(key, stored.ownerToken, next(stored.record, at, {
-            state: 'RELEASED', execution_right: 'RELEASED', refusal_reason: 'currentness_refused',
-            resources: stored.record.resources.map((resource) => ({ ...resource, state: 'RELEASED' })),
-          }), 'RELEASED', at);
-          return { ok: false, reason: 'currentness_refused' };
-        }
-        const invocationToken = invocationFactory();
-        if (typeof invocationToken !== 'string' || invocationToken.length < 48) fail('invalid_invocation_token', 'invocation token is invalid');
-        const at = new Date(now).toISOString();
-        const record = append(key, stored.ownerToken, next(stored.record, at, {
-          state: 'INVOKING', execution_right: 'CONSUMED', provider_attempt: 'INVOKING',
-          invocation_token_digest: tokenDigest(invocationToken), invocation_started_at: at,
-          resources: stored.record.resources.map((resource) => ({ ...resource, state: 'CONSUMED' })),
-        }), 'INVOKING', at);
-        return { ok: true, snapshot, record, invocation_token: invocationToken };
-      });
+      return beginInvocationCore(input, false);
     },
 
     recoverIndeterminate(input) {
@@ -1152,6 +2110,7 @@ export function createMemoryAdmissionStore(options: CreateMemoryAdmissionStoreOp
           provider_outcome: { value: 'INDETERMINATE', evidence_digest: null, observed_at: at },
           refusal_reason: 'ambiguous_provider_entry',
         }), 'RECOVERED_INDETERMINATE', at);
+        updateExecutionProgramOccurrenceForAdmission(key, 'INDETERMINATE', at);
         return { ok: true, record, reconciliation_token: reconciliationToken };
       });
     },
@@ -1175,6 +2134,7 @@ export function createMemoryAdmissionStore(options: CreateMemoryAdmissionStoreOp
           provider_attempt: input.value,
           provider_outcome: { value: input.value, evidence_digest: evidence, observed_at: observed },
         }), 'PROVIDER_OUTCOME', at);
+        updateExecutionProgramOccurrenceForAdmission(key, input.value, at);
         return { ok: true, record };
       });
     },
@@ -1196,6 +2156,403 @@ export function createMemoryAdmissionStore(options: CreateMemoryAdmissionStoreOp
           effect_relation: { value: input.value, evidence_digest: evidence, observed_at: observed },
         }), 'EFFECT_RELATION', at);
         return { ok: true, record };
+      });
+    },
+
+    registerExecutionProgram(artifact, context) {
+      return atomic(() => {
+        if (!executionProgramStatusOracle
+            || typeof executionProgramStatusOracle.read !== 'function') {
+          return { ok: false, reason: 'program_status_indeterminate' };
+        }
+        const normalizedContext = executionProgramRegistrationContext(context);
+        if (!normalizedContext) return { ok: false, reason: 'context_binding_required' };
+        const keyId = plain(artifact) && plain(artifact.issuer)
+          && typeof artifact.issuer.key_id === 'string'
+          ? artifact.issuer.key_id : '';
+        const expectedAuthorizer = programTrust.activeAuthorizers.get(keyId) ?? '';
+        const verified = verifyBoundedExecutionProgram(artifact, {
+          ...normalizedContext,
+          expected_authorizer_id: expectedAuthorizer,
+          trusted_keys: programTrust.trustedKeys,
+          now: currentMs(options.now),
+        });
+        if (!verified.accepted || !verified.program || !verified.program_digest) {
+          return { ok: false, reason: verified.reason as ExecutionProgramRefusalReason };
+        }
+        const program = verified.program;
+        if (program.version !== 1 || program.supersedes_program_digest !== null) {
+          return { ok: false, reason: 'program_supersession_invalid' };
+        }
+        const key = executionProgramKey(program.tenant_id, verified.program_digest);
+        const headKey = executionProgramHeadKey(program.tenant_id, program.program_id);
+        const authorizationKey = executionProgramAuthorizationKey(
+          program.tenant_id,
+          program.authorization_digest,
+        );
+        if (executionPrograms.has(key) || executionProgramHeads.has(headKey)) {
+          return { ok: false, reason: 'program_exists' };
+        }
+        if (executionProgramAuthorizationOwners.has(authorizationKey)) {
+          return { ok: false, reason: 'program_binding_mismatch' };
+        }
+        const existingUnconsumedAuthorization = [...records.values()].some(({ record }) => {
+          if (record.tenant_id !== program.tenant_id || record.execution_right !== 'RESERVED') return false;
+          const snapshot = snapshots.get(record.snapshot_digest);
+          return snapshot?.body.inputs.some((entry) => (
+            entry.role === 'authorization'
+            && entry.payload_digest === program.authorization_digest
+          )) ?? false;
+        });
+        if (existingUnconsumedAuthorization) {
+          return { ok: false, reason: 'program_binding_mismatch' };
+        }
+        const state: MutableExecutionProgramState = {
+          '@version': EXECUTION_PROGRAM_RUNTIME_VERSION,
+          tenant_id: program.tenant_id,
+          program_id: program.program_id,
+          program_digest: verified.program_digest,
+          version: program.version,
+          status: 'ACTIVE',
+          status_sequence: 0,
+          status_observed_at: new Date(currentMs(options.now)).toISOString(),
+          status_expires_at: program.expires_at,
+          authorizer_id: verified.authorizer_id,
+          registered_at: new Date(currentMs(options.now)).toISOString(),
+          superseded_by_program_digest: null,
+          total_occurrences: 0,
+          budgets: program.budgets.map((budget) => ({
+            budget_id: budget.budget_id,
+            unit: budget.unit,
+            limit: budget.limit,
+            reserved: 0,
+            consumed: 0,
+          })),
+          program,
+        };
+        executionPrograms.set(key, state);
+        executionProgramHeads.set(headKey, verified.program_digest);
+        executionProgramAuthorizationOwners.set(authorizationKey, verified.program_digest);
+        return { ok: true, program: publicExecutionProgram(state) };
+      });
+    },
+
+    reserveExecutionProgramAdmission(input) {
+      const programDigest = digest(input.program_digest, 'program_digest');
+      const occurrenceId = identifier(input.occurrence_id, 'occurrence_id');
+      const nodeId = identifier(input.node_id, 'node_id');
+      const initialSnapshot = plain(input.admission) && Object.hasOwn(input.admission, 'snapshot_digest')
+        ? validateSnapshot(input.admission as AdmissionSnapshot)
+        : createAdmissionSnapshot(input.admission as AdmissionSnapshotInput);
+      return (async () => {
+        const prepared = await atomic(() => {
+          const state = executionPrograms.get(executionProgramKey(
+            initialSnapshot.body.tenant_id,
+            programDigest,
+          ));
+          if (!state) {
+            return {
+              ready: false as const,
+              result: { ok: false as const, reason: 'program_not_found' as const },
+            };
+          }
+          const node = findProgramNode(state, nodeId);
+          if (!node) {
+            return {
+              ready: false as const,
+              result: { ok: false as const, reason: 'program_binding_mismatch' as const },
+            };
+          }
+          return {
+            ready: true as const,
+            state: publicExecutionProgram(state),
+            node: frozenCopy(node),
+          };
+        });
+        if (!prepared.ready) return prepared.result;
+        const [statusObservation, actionMatches] = await Promise.all([
+          readExecutionProgramStatus(prepared.state),
+          executionProgramActionMatches(
+            prepared.state,
+            prepared.node.action,
+            initialSnapshot,
+            input.action_match_evidence,
+          ),
+        ]);
+        const validationTime = currentMs(options.now);
+
+        return atomic(() => {
+          const state = executionPrograms.get(executionProgramKey(
+            initialSnapshot.body.tenant_id,
+            programDigest,
+          ));
+          if (!state) return { ok: false, reason: 'program_not_found' };
+          const statusRefusal = applyExecutionProgramStatus(
+            state,
+            statusObservation,
+            validationTime,
+          );
+          if (statusRefusal) return { ok: false, reason: statusRefusal };
+          const node = findProgramNode(state, nodeId);
+          if (!node) return { ok: false, reason: 'program_binding_mismatch' };
+        const candidate = initialSnapshot.body.inputs.find((entry) => entry.role === 'candidate_manifest');
+        const authorization = initialSnapshot.body.inputs.find((entry) => entry.role === 'authorization');
+        if (candidate?.subject !== state.program.subject_id
+            || authorization?.payload_digest !== state.program.authorization_digest
+            || initialSnapshot.body.authorization_policy_digest !== node.trust_program_digest
+            || !actionMatches) {
+          return { ok: false, reason: 'program_binding_mismatch' };
+        }
+        if (Date.parse(initialSnapshot.body.expires_at) > Date.parse(state.program.expires_at)) {
+          return { ok: false, reason: 'program_expiration_mismatch' };
+        }
+        const programBinding = createExecutionProgramAdmissionBinding({
+          tenant_id: initialSnapshot.body.tenant_id,
+          program_digest: state.program_digest,
+          node_id: node.node_id,
+          occurrence_id: occurrenceId,
+          expires_at: initialSnapshot.body.expires_at,
+        });
+        const existingBindings = initialSnapshot.body.resource_reservations.filter(
+          (resource) => resource.kind === 'execution_program',
+        );
+        if (existingBindings.length > 1
+            || (existingBindings.length === 1
+              && canonical(existingBindings[0] as unknown as Json)
+                !== canonical(programBinding as unknown as Json))) {
+          return { ok: false, reason: 'program_binding_mismatch' };
+        }
+        let snapshot = initialSnapshot;
+        if (existingBindings.length === 0) {
+          if (plain(input.admission) && Object.hasOwn(input.admission, 'snapshot_digest')) {
+            return { ok: false, reason: 'program_binding_mismatch' };
+          }
+          const { '@version': _version, ...body } = initialSnapshot.body;
+          snapshot = createAdmissionSnapshot({
+            ...body,
+            resource_reservations: [
+              ...initialSnapshot.body.resource_reservations,
+              programBinding,
+            ],
+          });
+        }
+        const occurrenceKey = executionProgramOccurrenceKey(
+          state.tenant_id,
+          state.program_digest,
+          occurrenceId,
+        );
+        if (executionProgramOccurrences.has(occurrenceKey)) {
+          return { ok: false, reason: 'program_occurrence_conflict' };
+        }
+        if (state.total_occurrences >= state.program.max_total_occurrences) {
+          return { ok: false, reason: 'program_total_occurrence_exhausted' };
+        }
+        const nodeCountKey = executionProgramNodeCountKey(
+          state.tenant_id,
+          state.program_digest,
+          node.node_id,
+        );
+        const occurrenceCount = executionProgramNodeOccurrenceCounts.get(nodeCountKey) ?? 0;
+        if (occurrenceCount >= node.max_occurrences) {
+          return { ok: false, reason: 'program_occurrence_exhausted' };
+        }
+        if (!executionProgramDependenciesSatisfied(state, node)) {
+          return { ok: false, reason: 'program_node_unreachable' };
+        }
+        for (const charge of node.charges) {
+          const budget = state.budgets.find((entry) => entry.budget_id === charge.budget_id);
+          if (!budget || budget.reserved + budget.consumed + charge.amount > budget.limit) {
+            return { ok: false, reason: 'program_budget_exhausted' };
+          }
+        }
+        const reserved = reserveCore(snapshot, true);
+        if (!reserved.ok) return reserved;
+        const at = new Date(validationTime).toISOString();
+        for (const charge of node.charges) {
+          state.budgets.find((entry) => entry.budget_id === charge.budget_id)!.reserved += charge.amount;
+        }
+        const occurrence: MutableExecutionProgramOccurrence = {
+          tenant_id: state.tenant_id,
+          program_digest: state.program_digest,
+          node_id: node.node_id,
+          occurrence_id: occurrenceId,
+          admission_id: reserved.snapshot.body.admission_id,
+          snapshot_digest: reserved.snapshot.snapshot_digest,
+          state: 'RESERVED',
+          charges: node.charges.map((charge) => ({ ...charge })),
+          created_at: at,
+          updated_at: at,
+        };
+        executionProgramOccurrences.set(occurrenceKey, occurrence);
+        state.total_occurrences += 1;
+        incrementIndex(executionProgramNodeOccurrenceCounts, nodeCountKey, 1);
+        executionProgramAdmissions.set(admissionKey(
+          reserved.snapshot.body.tenant_id,
+          reserved.snapshot.body.admission_id,
+        ), occurrenceKey);
+        return reserved;
+      });
+      })();
+    },
+
+    beginExecutionProgramInvocation(input) {
+      return beginInvocationCore(input, true);
+    },
+
+    releaseExecutionProgramAdmission(input, reason = 'program_released_before_invocation') {
+      return atomic(() => releaseCore(input, reason, true));
+    },
+
+    expireExecutionProgramAdmission(input) {
+      return atomic(() => expireCore(input, true));
+    },
+
+    supersedeExecutionProgram(artifact, context) {
+      return atomic(() => {
+        const normalizedContext = executionProgramRegistrationContext(context);
+        if (!normalizedContext) return { ok: false, reason: 'context_binding_required' };
+        const keyId = plain(artifact) && plain(artifact.issuer)
+          && typeof artifact.issuer.key_id === 'string'
+          ? artifact.issuer.key_id : '';
+        const expectedAuthorizer = programTrust.activeAuthorizers.get(keyId) ?? '';
+        const verified = verifyBoundedExecutionProgram(artifact, {
+          ...normalizedContext,
+          expected_authorizer_id: expectedAuthorizer,
+          trusted_keys: programTrust.trustedKeys,
+          now: currentMs(options.now),
+        });
+        if (!verified.accepted || !verified.program || !verified.program_digest) {
+          return { ok: false, reason: verified.reason as ExecutionProgramRefusalReason };
+        }
+        const successor = verified.program;
+        if (successor.version < 2 || successor.supersedes_program_digest === null) {
+          return { ok: false, reason: 'program_supersession_invalid' };
+        }
+        const predecessor = executionPrograms.get(executionProgramKey(
+          successor.tenant_id,
+          successor.supersedes_program_digest,
+        ));
+        if (!predecessor) return { ok: false, reason: 'program_not_found' };
+        const headKey = executionProgramHeadKey(successor.tenant_id, successor.program_id);
+        if (predecessor.status !== 'ACTIVE'
+            || executionProgramHeads.get(headKey) !== predecessor.program_digest
+            || predecessor.program_id !== successor.program_id
+            || predecessor.version + 1 !== successor.version
+            || predecessor.authorizer_id !== verified.authorizer_id
+            || predecessor.program.subject_id !== successor.subject_id
+            || predecessor.program.audience !== successor.audience
+            || predecessor.program.objective_digest !== successor.objective_digest
+            || predecessor.program.presentation_digest !== successor.presentation_digest
+            || predecessor.program.authorization_digest === successor.authorization_digest) {
+          return { ok: false, reason: 'program_supersession_invalid' };
+        }
+        const hasReserved = [...executionProgramOccurrences.values()].some((occurrence) => (
+          occurrence.tenant_id === predecessor.tenant_id
+          && occurrence.program_digest === predecessor.program_digest
+          && occurrence.state === 'RESERVED'
+        ));
+        if (hasReserved) return { ok: false, reason: 'program_reserved_work_exists' };
+        const successorKey = executionProgramKey(successor.tenant_id, verified.program_digest);
+        if (executionPrograms.has(successorKey)) return { ok: false, reason: 'program_exists' };
+        const authorizationKey = executionProgramAuthorizationKey(
+          successor.tenant_id,
+          successor.authorization_digest,
+        );
+        const authorizationOwner = executionProgramAuthorizationOwners.get(authorizationKey);
+        if (authorizationOwner !== undefined) {
+          return { ok: false, reason: 'program_binding_mismatch' };
+        }
+        const nextState: MutableExecutionProgramState = {
+          '@version': EXECUTION_PROGRAM_RUNTIME_VERSION,
+          tenant_id: successor.tenant_id,
+          program_id: successor.program_id,
+          program_digest: verified.program_digest,
+          version: successor.version,
+          status: 'ACTIVE',
+          status_sequence: 0,
+          status_observed_at: new Date(currentMs(options.now)).toISOString(),
+          status_expires_at: successor.expires_at,
+          authorizer_id: verified.authorizer_id,
+          registered_at: new Date(currentMs(options.now)).toISOString(),
+          superseded_by_program_digest: null,
+          total_occurrences: 0,
+          budgets: successor.budgets.map((budget) => ({
+            budget_id: budget.budget_id,
+            unit: budget.unit,
+            limit: budget.limit,
+            reserved: 0,
+            consumed: 0,
+          })),
+          program: successor,
+        };
+        predecessor.status = 'SUPERSEDED';
+        predecessor.status_sequence += 1;
+        predecessor.status_observed_at = new Date(currentMs(options.now)).toISOString();
+        predecessor.status_expires_at = predecessor.program.expires_at;
+        predecessor.superseded_by_program_digest = verified.program_digest;
+        executionPrograms.set(successorKey, nextState);
+        executionProgramHeads.set(headKey, verified.program_digest);
+        executionProgramAuthorizationOwners.set(authorizationKey, verified.program_digest);
+        return { ok: true, program: publicExecutionProgram(nextState) };
+      });
+    },
+
+    readExecutionProgram(input) {
+      return atomic(() => {
+        const tenantId = identifier(input.tenant_id, 'tenant_id');
+        const programDigest = digest(input.program_digest, 'program_digest');
+        const state = executionPrograms.get(executionProgramKey(tenantId, programDigest));
+        return state ? publicExecutionProgram(state) : null;
+      });
+    },
+
+    readExecutionProgramReportSnapshot(input) {
+      return atomic(() => {
+        const tenantId = identifier(input.tenant_id, 'tenant_id');
+        const programDigest = digest(input.program_digest, 'program_digest');
+        const state = executionPrograms.get(executionProgramKey(tenantId, programDigest));
+        if (!state) return null;
+        const occurrences = [...executionProgramOccurrences.values()]
+          .filter((occurrence) => (
+            occurrence.tenant_id === tenantId
+            && occurrence.program_digest === programDigest
+          ))
+          .sort((left, right) => (
+            Buffer.compare(Buffer.from(left.node_id, 'utf8'), Buffer.from(right.node_id, 'utf8'))
+              || Buffer.compare(
+                Buffer.from(left.occurrence_id, 'utf8'),
+                Buffer.from(right.occurrence_id, 'utf8'),
+              )
+          ));
+        if (occurrences.length !== state.total_occurrences
+            || occurrences.length > state.program.max_total_occurrences) {
+          throw new Error('execution program invariant: report snapshot occurrence bound violated');
+        }
+        const body: ExecutionProgramReportSnapshotBody = {
+          '@version': EXECUTION_PROGRAM_REPORT_SNAPSHOT_VERSION,
+          tenant_id: tenantId,
+          program_digest: programDigest,
+          runtime_state: publicExecutionProgram(state),
+          occurrences: occurrences.map((occurrence) => frozenCopy(occurrence)),
+        };
+        return frozenCopy({
+          ...body,
+          snapshot_marker: executionProgramReportSnapshotMarker(body),
+        });
+      });
+    },
+
+    readExecutionProgramOccurrence(input) {
+      return atomic(() => {
+        const tenantId = identifier(input.tenant_id, 'tenant_id');
+        const programDigest = digest(input.program_digest, 'program_digest');
+        const occurrenceId = identifier(input.occurrence_id, 'occurrence_id');
+        const occurrence = executionProgramOccurrences.get(executionProgramOccurrenceKey(
+          tenantId,
+          programDigest,
+          occurrenceId,
+        ));
+        return occurrence ? frozenCopy(occurrence) : null;
       });
     },
 

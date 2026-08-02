@@ -482,6 +482,8 @@ jobs:
         env:
           NODE_OPTIONS: '--import ${{ github.workspace }}/scripts/ts-loader/register.mjs'
         run: npm run check:formal-traces
+      - name: Verify bounded-execution reference vectors are byte-current
+        run: npm run check:bounded-execution-artifacts
       - name: Run deterministic cross-language hostile corpus
         env:
           NODE_OPTIONS: '--import ${{ github.workspace }}/scripts/ts-loader/register.mjs'

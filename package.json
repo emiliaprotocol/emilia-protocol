@@ -94,6 +94,7 @@
     "conformance:manifest:clean-room": "node scripts/check-frozen-clean-room.mjs",
     "conformance:manifest:clean-room:check": "node scripts/check-frozen-clean-room.mjs",
     "conformance:hostility": "node scripts/differential-hostility.mjs",
+    "check:bounded-execution-artifacts": "node --import ./scripts/ts-loader/register.mjs conformance/vectors/generate-bounded-execution-program.mjs --check && node --import ./scripts/ts-loader/register.mjs conformance/vectors/generate-bounded-execution-report.mjs --check",
     "check:public-conformance-claims": "node scripts/check-public-conformance-claims.mjs",
     "check:proof-stats": "node scripts/generate-proof-stats.mjs --check",
     "sync:proof-stats": "node scripts/generate-proof-stats.mjs",

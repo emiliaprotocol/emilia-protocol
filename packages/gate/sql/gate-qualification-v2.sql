@@ -11,9 +11,11 @@
 --
 -- This schema intentionally has no tenant/principal map and no presenter-chosen
 -- tenant session setting.  One singleton binding makes the database a domain
--- for exactly one tenant and one deployment.  Deployment operators must grant
--- EXECUTE on the public RPC functions to the dedicated runtime role; table
--- privileges are not required because those RPCs are SECURITY DEFINER.
+-- for exactly one tenant and one deployment. Deployment operators must use two
+-- database credentials: a general runtime role for ordinary lifecycle/read
+-- RPCs, and an isolated verifier-service role for RPCs that accept assertions
+-- verified outside PostgreSQL. Table privileges are not required because the
+-- RPCs are SECURITY DEFINER. PostgreSQL does not verify Ed25519 here.
 
 -- Keep all function creation and privilege changes in one transaction.  New
 -- SECURITY DEFINER functions are therefore never visible with PostgreSQL's
@@ -163,7 +165,11 @@ CREATE TABLE IF NOT EXISTS public.ep_gate_operation_heads (
 CREATE TABLE IF NOT EXISTS public.ep_gate_resource_fences (
   deployment_id text NOT NULL REFERENCES public.ep_gate_deployment_binding(deployment_id),
   tenant_id text NOT NULL,
-  kind text NOT NULL CHECK (kind IN ('replay', 'capability', 'budget', 'qualification_use', 'provider_operation', 'external_lease')),
+  kind text NOT NULL CHECK (kind IN (
+    'replay', 'capability', 'budget', 'qualification_use',
+    'provider_operation', 'external_lease', 'monotonic_counter',
+    'execution_program'
+  )),
   resource_id text NOT NULL,
   reservation_id text NOT NULL,
   digest text NOT NULL CHECK (digest ~ '^sha256:[0-9a-f]{64}$'),
@@ -213,6 +219,147 @@ ALTER TABLE public.ep_gate_admission_journal
     'PROVIDER_OUTCOME', 'EFFECT_RELATION'
   ));
 
+-- Existing v2 installations need the newly immutable program binding admitted
+-- by the resource fence without rebuilding the table.
+ALTER TABLE public.ep_gate_resource_fences
+  DROP CONSTRAINT IF EXISTS ep_gate_resource_fences_kind_check;
+ALTER TABLE public.ep_gate_resource_fences
+  ADD CONSTRAINT ep_gate_resource_fences_kind_check CHECK (kind IN (
+    'replay', 'capability', 'budget', 'qualification_use',
+    'provider_operation', 'external_lease', 'monotonic_counter',
+    'execution_program'
+  ));
+
+CREATE UNIQUE INDEX IF NOT EXISTS ep_gate_deployment_tenant_unique
+  ON public.ep_gate_deployment_binding (deployment_id, tenant_id);
+CREATE UNIQUE INDEX IF NOT EXISTS ep_gate_admission_tenant_unique
+  ON public.ep_gate_admission_records (deployment_id, tenant_id, admission_id);
+
+CREATE TABLE IF NOT EXISTS public.ep_gate_execution_programs (
+  deployment_id text NOT NULL,
+  tenant_id text NOT NULL,
+  program_digest text NOT NULL CHECK (program_digest ~ '^sha256:[0-9a-f]{64}$'),
+  program_id text NOT NULL,
+  version bigint NOT NULL CHECK (version > 0),
+  status text NOT NULL CHECK (status IN ('ACTIVE', 'SUSPENDED', 'REVOKED', 'SUPERSEDED')),
+  status_sequence bigint NOT NULL DEFAULT 0 CHECK (status_sequence >= 0),
+  status_observed_at timestamptz NOT NULL,
+  status_expires_at timestamptz NOT NULL,
+  authorizer_id text NOT NULL,
+  signed_artifact_json jsonb NOT NULL CHECK (jsonb_typeof(signed_artifact_json) = 'object'),
+  program_json jsonb NOT NULL CHECK (jsonb_typeof(program_json) = 'object'),
+  budget_state_json jsonb NOT NULL CHECK (jsonb_typeof(budget_state_json) = 'array'),
+  total_occurrences bigint NOT NULL DEFAULT 0 CHECK (total_occurrences >= 0),
+  valid_from timestamptz NOT NULL,
+  expires_at timestamptz NOT NULL,
+  registered_at timestamptz NOT NULL,
+  superseded_by_program_digest text CHECK (
+    superseded_by_program_digest IS NULL
+    OR superseded_by_program_digest ~ '^sha256:[0-9a-f]{64}$'
+  ),
+  PRIMARY KEY (deployment_id, program_digest),
+  UNIQUE (deployment_id, tenant_id, program_digest),
+  UNIQUE (deployment_id, program_id, version),
+  FOREIGN KEY (deployment_id, tenant_id)
+    REFERENCES public.ep_gate_deployment_binding(deployment_id, tenant_id),
+  CHECK (expires_at > valid_from),
+  CHECK ((status IN ('ACTIVE', 'SUSPENDED', 'REVOKED') AND superseded_by_program_digest IS NULL)
+    OR (status = 'SUPERSEDED' AND superseded_by_program_digest IS NOT NULL))
+);
+
+ALTER TABLE public.ep_gate_execution_programs
+  ADD COLUMN IF NOT EXISTS total_occurrences bigint NOT NULL DEFAULT 0
+    CHECK (total_occurrences >= 0),
+  ADD COLUMN IF NOT EXISTS status_sequence bigint NOT NULL DEFAULT 0
+    CHECK (status_sequence >= 0),
+  ADD COLUMN IF NOT EXISTS status_observed_at timestamptz,
+  ADD COLUMN IF NOT EXISTS status_expires_at timestamptz;
+UPDATE public.ep_gate_execution_programs
+  SET status_observed_at = COALESCE(status_observed_at, registered_at),
+      status_expires_at = COALESCE(status_expires_at, expires_at)
+  WHERE status_observed_at IS NULL OR status_expires_at IS NULL;
+ALTER TABLE public.ep_gate_execution_programs
+  ALTER COLUMN status_observed_at SET NOT NULL,
+  ALTER COLUMN status_expires_at SET NOT NULL,
+  DROP CONSTRAINT IF EXISTS ep_gate_execution_programs_status_check,
+  DROP CONSTRAINT IF EXISTS ep_gate_execution_programs_check,
+  DROP CONSTRAINT IF EXISTS ep_gate_execution_programs_check1,
+  DROP CONSTRAINT IF EXISTS ep_gate_execution_programs_validity_check,
+  DROP CONSTRAINT IF EXISTS ep_gate_execution_programs_status_domain_check,
+  DROP CONSTRAINT IF EXISTS ep_gate_execution_programs_lifecycle_check,
+  ADD CONSTRAINT ep_gate_execution_programs_validity_check
+    CHECK (expires_at > valid_from),
+  ADD CONSTRAINT ep_gate_execution_programs_status_domain_check
+    CHECK (status IN ('ACTIVE', 'SUSPENDED', 'REVOKED', 'SUPERSEDED')),
+  ADD CONSTRAINT ep_gate_execution_programs_lifecycle_check
+    CHECK ((status IN ('ACTIVE', 'SUSPENDED', 'REVOKED')
+      AND superseded_by_program_digest IS NULL)
+      OR (status = 'SUPERSEDED' AND superseded_by_program_digest IS NOT NULL));
+
+CREATE TABLE IF NOT EXISTS public.ep_gate_execution_program_heads (
+  deployment_id text NOT NULL,
+  tenant_id text NOT NULL,
+  program_id text NOT NULL,
+  program_digest text NOT NULL,
+  version bigint NOT NULL CHECK (version > 0),
+  created_at timestamptz NOT NULL,
+  updated_at timestamptz NOT NULL,
+  PRIMARY KEY (deployment_id, program_id),
+  FOREIGN KEY (deployment_id, tenant_id, program_digest)
+    REFERENCES public.ep_gate_execution_programs(deployment_id, tenant_id, program_digest)
+    DEFERRABLE INITIALLY DEFERRED
+);
+
+-- Every observed authorization digest receives a serialization row. Ordinary
+-- reserve and program registration lock the same row, so neither can race past
+-- the other's decision. Once program_required becomes true it never reopens.
+CREATE TABLE IF NOT EXISTS public.ep_gate_execution_program_authorizations (
+  deployment_id text NOT NULL,
+  tenant_id text NOT NULL,
+  authorization_digest text NOT NULL CHECK (authorization_digest ~ '^sha256:[0-9a-f]{64}$'),
+  program_required boolean NOT NULL DEFAULT false,
+  owner_program_digest text,
+  created_at timestamptz NOT NULL,
+  updated_at timestamptz NOT NULL,
+  PRIMARY KEY (deployment_id, authorization_digest),
+  FOREIGN KEY (deployment_id, tenant_id)
+    REFERENCES public.ep_gate_deployment_binding(deployment_id, tenant_id),
+  FOREIGN KEY (deployment_id, tenant_id, owner_program_digest)
+    REFERENCES public.ep_gate_execution_programs(deployment_id, tenant_id, program_digest)
+    DEFERRABLE INITIALLY DEFERRED,
+  CHECK ((program_required AND owner_program_digest IS NOT NULL)
+    OR (NOT program_required AND owner_program_digest IS NULL))
+);
+
+CREATE TABLE IF NOT EXISTS public.ep_gate_execution_program_occurrences (
+  deployment_id text NOT NULL,
+  tenant_id text NOT NULL,
+  program_digest text NOT NULL,
+  node_id text NOT NULL,
+  occurrence_id text NOT NULL,
+  admission_id text NOT NULL,
+  snapshot_digest text NOT NULL CHECK (snapshot_digest ~ '^sha256:[0-9a-f]{64}$'),
+  state text NOT NULL CHECK (state IN (
+    'RESERVED', 'RELEASED', 'INVOKING', 'INDETERMINATE',
+    'COMMITTED', 'PROVEN_NOT_COMMITTED'
+  )),
+  charges_json jsonb NOT NULL CHECK (jsonb_typeof(charges_json) = 'array'),
+  created_at timestamptz NOT NULL,
+  updated_at timestamptz NOT NULL,
+  PRIMARY KEY (deployment_id, program_digest, occurrence_id),
+  UNIQUE (deployment_id, admission_id),
+  FOREIGN KEY (deployment_id, tenant_id, program_digest)
+    REFERENCES public.ep_gate_execution_programs(deployment_id, tenant_id, program_digest),
+  FOREIGN KEY (deployment_id, tenant_id, admission_id)
+    REFERENCES public.ep_gate_admission_records(deployment_id, tenant_id, admission_id)
+    DEFERRABLE INITIALLY DEFERRED
+);
+
+CREATE INDEX IF NOT EXISTS ep_gate_execution_program_occurrences_node_idx
+  ON public.ep_gate_execution_program_occurrences (
+    deployment_id, program_digest, node_id, state
+  );
+
 REVOKE ALL ON TABLE public.ep_gate_deployment_binding FROM PUBLIC;
 REVOKE ALL ON TABLE public.ep_gate_candidate_runtime_heads FROM PUBLIC;
 REVOKE ALL ON TABLE public.ep_gate_protected_request_heads FROM PUBLIC;
@@ -225,6 +372,10 @@ REVOKE ALL ON TABLE public.ep_gate_admission_records FROM PUBLIC;
 REVOKE ALL ON TABLE public.ep_gate_operation_heads FROM PUBLIC;
 REVOKE ALL ON TABLE public.ep_gate_resource_fences FROM PUBLIC;
 REVOKE ALL ON TABLE public.ep_gate_admission_journal FROM PUBLIC;
+REVOKE ALL ON TABLE public.ep_gate_execution_programs FROM PUBLIC;
+REVOKE ALL ON TABLE public.ep_gate_execution_program_heads FROM PUBLIC;
+REVOKE ALL ON TABLE public.ep_gate_execution_program_authorizations FROM PUBLIC;
+REVOKE ALL ON TABLE public.ep_gate_execution_program_occurrences FROM PUBLIC;
 
 CREATE OR REPLACE FUNCTION public.ep_gate_refuse_history_mutation()
 RETURNS trigger
@@ -789,7 +940,8 @@ BEGIN
        OR jsonb_typeof(v_resource->'kind') <> 'string'
        OR v_resource->>'kind' NOT IN (
          'replay', 'capability', 'budget', 'qualification_use',
-         'provider_operation', 'external_lease', 'monotonic_counter'
+         'provider_operation', 'external_lease', 'monotonic_counter',
+         'execution_program'
        )
        OR public.ep_gate_jsonb_is_identifier(v_resource->'resource_id') IS NOT TRUE
        OR public.ep_gate_jsonb_is_identifier(v_resource->'reservation_id') IS NOT TRUE
@@ -1236,11 +1388,12 @@ AS $$
   )
 $$;
 
-CREATE OR REPLACE FUNCTION public.ep_gate_admission_reserve(
+CREATE OR REPLACE FUNCTION public.ep_gate_admission_reserve_core(
   p_deployment_id text,
   p_tenant_id text,
   p_snapshot jsonb,
-  p_owner_digest text
+  p_owner_digest text,
+  p_program_aware boolean
 )
 RETURNS jsonb
 LANGUAGE plpgsql
@@ -1252,11 +1405,32 @@ DECLARE
   v_now timestamptz;
   v_record jsonb;
   v_target record;
+  v_authorization_digest text;
+  v_program_required boolean;
 BEGIN
   PERFORM public.ep_gate_assert_binding(p_deployment_id, p_tenant_id);
   PERFORM public.ep_gate_assert_snapshot(p_deployment_id, p_tenant_id, p_snapshot);
   IF p_owner_digest !~ '^sha256:[0-9a-f]{64}$' THEN RAISE EXCEPTION 'invalid owner digest'; END IF;
   v_body := p_snapshot->'body';
+  SELECT input->>'payload_digest' INTO STRICT v_authorization_digest
+    FROM jsonb_array_elements(v_body->'inputs') AS values_(input)
+    WHERE input->>'role' = 'authorization';
+  INSERT INTO public.ep_gate_execution_program_authorizations (
+    deployment_id, tenant_id, authorization_digest, program_required,
+    owner_program_digest, created_at, updated_at
+  ) VALUES (
+    p_deployment_id, p_tenant_id, v_authorization_digest, false,
+    NULL, transaction_timestamp(), transaction_timestamp()
+  ) ON CONFLICT (deployment_id, authorization_digest) DO NOTHING;
+  SELECT program_required INTO STRICT v_program_required
+    FROM public.ep_gate_execution_program_authorizations
+    WHERE deployment_id = p_deployment_id
+      AND tenant_id = p_tenant_id
+      AND authorization_digest = v_authorization_digest
+    FOR UPDATE;
+  IF NOT p_program_aware AND v_program_required THEN
+    RETURN public.ep_gate_refusal('program_required');
+  END IF;
   IF v_body->'supersedes_admission_id' <> 'null'::jsonb THEN
     RETURN public.ep_gate_refusal('relation_conflict');
   END IF;
@@ -1333,13 +1507,30 @@ BEGIN
 END;
 $$;
 
-CREATE OR REPLACE FUNCTION public.ep_gate_admission_release(
+CREATE OR REPLACE FUNCTION public.ep_gate_admission_reserve(
+  p_deployment_id text,
+  p_tenant_id text,
+  p_snapshot jsonb,
+  p_owner_digest text
+)
+RETURNS jsonb
+LANGUAGE sql
+SECURITY DEFINER
+SET search_path = pg_catalog, public
+AS $$
+  SELECT public.ep_gate_admission_reserve_core(
+    p_deployment_id, p_tenant_id, p_snapshot, p_owner_digest, false
+  )
+$$;
+
+CREATE OR REPLACE FUNCTION public.ep_gate_admission_release_core(
   p_deployment_id text,
   p_tenant_id text,
   p_admission_id text,
   p_expected_revision bigint,
   p_owner_digest text,
-  p_reason text
+  p_reason text,
+  p_program_aware boolean
 )
 RETURNS jsonb
 LANGUAGE plpgsql
@@ -1351,12 +1542,23 @@ DECLARE
   v_snapshot jsonb;
   v_now timestamptz;
   v_record jsonb;
+  v_linked boolean;
 BEGIN
   PERFORM public.ep_gate_assert_binding(p_deployment_id, p_tenant_id);
   v_current := public.ep_gate_load_admission_locked(p_deployment_id, p_tenant_id, p_admission_id);
   IF v_current IS NULL THEN RETURN public.ep_gate_refusal('admission_not_found'); END IF;
   IF (v_current->>'revision')::bigint <> p_expected_revision THEN RETURN public.ep_gate_refusal('revision_conflict'); END IF;
   IF v_current->>'owner_digest' <> p_owner_digest THEN RETURN public.ep_gate_refusal('owner_conflict'); END IF;
+  SELECT EXISTS (
+    SELECT 1 FROM public.ep_gate_resource_fences
+    WHERE deployment_id = p_deployment_id
+      AND tenant_id = p_tenant_id
+      AND admission_id = p_admission_id
+      AND kind = 'execution_program'
+  ) INTO v_linked;
+  IF v_linked IS DISTINCT FROM p_program_aware THEN
+    RETURN public.ep_gate_refusal('program_required');
+  END IF;
   IF v_current->>'execution_right' = 'CONSUMED' THEN RETURN public.ep_gate_refusal('execution_right_consumed'); END IF;
   IF v_current->>'state' <> 'RESERVED' THEN RETURN public.ep_gate_refusal('state_conflict'); END IF;
   SELECT snapshot_json INTO STRICT v_snapshot FROM public.ep_gate_admission_snapshots
@@ -1387,12 +1589,32 @@ BEGIN
 END;
 $$;
 
-CREATE OR REPLACE FUNCTION public.ep_gate_admission_expire(
+CREATE OR REPLACE FUNCTION public.ep_gate_admission_release(
   p_deployment_id text,
   p_tenant_id text,
   p_admission_id text,
   p_expected_revision bigint,
-  p_owner_digest text
+  p_owner_digest text,
+  p_reason text
+)
+RETURNS jsonb
+LANGUAGE sql
+SECURITY DEFINER
+SET search_path = pg_catalog, public
+AS $$
+  SELECT public.ep_gate_admission_release_core(
+    p_deployment_id, p_tenant_id, p_admission_id, p_expected_revision,
+    p_owner_digest, p_reason, false
+  )
+$$;
+
+CREATE OR REPLACE FUNCTION public.ep_gate_admission_expire_core(
+  p_deployment_id text,
+  p_tenant_id text,
+  p_admission_id text,
+  p_expected_revision bigint,
+  p_owner_digest text,
+  p_program_aware boolean
 )
 RETURNS jsonb
 LANGUAGE plpgsql
@@ -1404,12 +1626,23 @@ DECLARE
   v_snapshot jsonb;
   v_now timestamptz;
   v_record jsonb;
+  v_linked boolean;
 BEGIN
   PERFORM public.ep_gate_assert_binding(p_deployment_id, p_tenant_id);
   v_current := public.ep_gate_load_admission_locked(p_deployment_id, p_tenant_id, p_admission_id);
   IF v_current IS NULL THEN RETURN public.ep_gate_refusal('admission_not_found'); END IF;
   IF (v_current->>'revision')::bigint <> p_expected_revision THEN RETURN public.ep_gate_refusal('revision_conflict'); END IF;
   IF v_current->>'owner_digest' <> p_owner_digest THEN RETURN public.ep_gate_refusal('owner_conflict'); END IF;
+  SELECT EXISTS (
+    SELECT 1 FROM public.ep_gate_resource_fences
+    WHERE deployment_id = p_deployment_id
+      AND tenant_id = p_tenant_id
+      AND admission_id = p_admission_id
+      AND kind = 'execution_program'
+  ) INTO v_linked;
+  IF v_linked IS DISTINCT FROM p_program_aware THEN
+    RETURN public.ep_gate_refusal('program_required');
+  END IF;
   IF v_current->>'state' <> 'RESERVED' THEN RETURN public.ep_gate_refusal('state_conflict'); END IF;
   SELECT snapshot_json INTO STRICT v_snapshot FROM public.ep_gate_admission_snapshots
     WHERE deployment_id = p_deployment_id AND snapshot_digest = v_current->>'snapshot_digest';
@@ -1520,6 +1753,24 @@ BEGIN
 END;
 $$;
 
+CREATE OR REPLACE FUNCTION public.ep_gate_admission_expire(
+  p_deployment_id text,
+  p_tenant_id text,
+  p_admission_id text,
+  p_expected_revision bigint,
+  p_owner_digest text
+)
+RETURNS jsonb
+LANGUAGE sql
+SECURITY DEFINER
+SET search_path = pg_catalog, public
+AS $$
+  SELECT public.ep_gate_admission_expire_core(
+    p_deployment_id, p_tenant_id, p_admission_id, p_expected_revision,
+    p_owner_digest, false
+  )
+$$;
+
 CREATE OR REPLACE FUNCTION public.ep_gate_admission_supersede(
   p_deployment_id text,
   p_tenant_id text,
@@ -1549,6 +1800,13 @@ BEGIN
   IF v_current IS NULL THEN RETURN public.ep_gate_refusal('admission_not_found'); END IF;
   IF (v_current->>'revision')::bigint <> p_expected_revision THEN RETURN public.ep_gate_refusal('revision_conflict'); END IF;
   IF v_current->>'owner_digest' <> p_owner_digest THEN RETURN public.ep_gate_refusal('owner_conflict'); END IF;
+  IF EXISTS (
+    SELECT 1 FROM public.ep_gate_resource_fences
+    WHERE deployment_id = p_deployment_id
+      AND tenant_id = p_tenant_id
+      AND admission_id = p_predecessor_admission_id
+      AND kind = 'execution_program'
+  ) THEN RETURN public.ep_gate_refusal('program_required'); END IF;
   IF v_current->>'state' <> 'RESERVED' OR v_current->>'execution_right' <> 'RESERVED' THEN
     RETURN public.ep_gate_refusal('state_conflict');
   END IF;
@@ -1678,13 +1936,14 @@ $$;
 --   * AEB, AEC, local-policy, and authorization heads bind the complete matching
 --     AdmissionInput; qualification-status and external-lease heads remain
 --     independently current.  Every observed_at is subject to the same maximum.
-CREATE OR REPLACE FUNCTION public.ep_gate_admission_begin_invocation(
+CREATE OR REPLACE FUNCTION public.ep_gate_admission_begin_invocation_core(
   p_deployment_id text,
   p_tenant_id text,
   p_admission_id text,
   p_expected_revision bigint,
   p_owner_digest text,
-  p_invocation_token_digest text
+  p_invocation_token_digest text,
+  p_program_aware boolean
 )
 RETURNS jsonb
 LANGUAGE plpgsql
@@ -1701,6 +1960,7 @@ DECLARE
   v_maximum_observation_age interval;
   v_currentness_ok boolean := true;
   v_record jsonb;
+  v_linked boolean;
 BEGIN
   SELECT * INTO v_binding FROM public.ep_gate_assert_binding(p_deployment_id, p_tenant_id);
   IF p_invocation_token_digest !~ '^sha256:[0-9a-f]{64}$' THEN RAISE EXCEPTION 'invalid invocation token digest'; END IF;
@@ -1708,6 +1968,16 @@ BEGIN
   IF v_current IS NULL THEN RETURN public.ep_gate_refusal('admission_not_found'); END IF;
   IF (v_current->>'revision')::bigint <> p_expected_revision THEN RETURN public.ep_gate_refusal('revision_conflict'); END IF;
   IF v_current->>'owner_digest' <> p_owner_digest THEN RETURN public.ep_gate_refusal('owner_conflict'); END IF;
+  SELECT EXISTS (
+    SELECT 1 FROM public.ep_gate_resource_fences
+    WHERE deployment_id = p_deployment_id
+      AND tenant_id = p_tenant_id
+      AND admission_id = p_admission_id
+      AND kind = 'execution_program'
+  ) INTO v_linked;
+  IF v_linked IS DISTINCT FROM p_program_aware THEN
+    RETURN public.ep_gate_refusal('program_required');
+  END IF;
   IF v_current->>'state' <> 'RESERVED'
      OR v_current->>'execution_right' <> 'RESERVED'
      OR v_current->>'provider_attempt' <> 'NOT_ENTERED' THEN
@@ -1904,6 +2174,25 @@ BEGIN
 END;
 $$;
 
+CREATE OR REPLACE FUNCTION public.ep_gate_admission_begin_invocation(
+  p_deployment_id text,
+  p_tenant_id text,
+  p_admission_id text,
+  p_expected_revision bigint,
+  p_owner_digest text,
+  p_invocation_token_digest text
+)
+RETURNS jsonb
+LANGUAGE sql
+SECURITY DEFINER
+SET search_path = pg_catalog, public
+AS $$
+  SELECT public.ep_gate_admission_begin_invocation_core(
+    p_deployment_id, p_tenant_id, p_admission_id, p_expected_revision,
+    p_owner_digest, p_invocation_token_digest, false
+  )
+$$;
+
 CREATE OR REPLACE FUNCTION public.ep_gate_admission_recover_indeterminate(
   p_deployment_id text,
   p_tenant_id text,
@@ -1956,6 +2245,9 @@ BEGIN
     ),
     'RECOVERED_INDETERMINATE',
     v_now
+  );
+  PERFORM public.ep_gate_execution_program_sync_occurrence(
+    p_deployment_id, p_tenant_id, p_admission_id, 'INDETERMINATE', v_now
   );
   RETURN jsonb_build_object('ok', true, 'record', v_record);
 END;
@@ -2035,6 +2327,9 @@ BEGIN
     'PROVIDER_OUTCOME',
     v_now
   );
+  PERFORM public.ep_gate_execution_program_sync_occurrence(
+    p_deployment_id, p_tenant_id, p_admission_id, p_value, v_now
+  );
   RETURN jsonb_build_object('ok', true, 'record', v_record);
 END;
 $$;
@@ -2109,6 +2404,1252 @@ BEGIN
     v_now
   );
   RETURN jsonb_build_object('ok', true, 'record', v_record);
+END;
+$$;
+
+CREATE OR REPLACE FUNCTION public.ep_gate_plain_json_hash(p_value jsonb)
+RETURNS text
+LANGUAGE sql
+IMMUTABLE
+STRICT
+SET search_path = pg_catalog, public
+AS $$
+  SELECT 'sha256:' || encode(
+    digest(convert_to(public.ep_gate_canonical_json(p_value), 'UTF8'), 'sha256'),
+    'hex'
+  )
+$$;
+
+CREATE OR REPLACE FUNCTION public.ep_gate_assert_execution_program(
+  p_deployment_id text,
+  p_tenant_id text,
+  p_program_digest text,
+  p_signed_artifact jsonb,
+  p_program jsonb,
+  p_authorizer_id text
+)
+RETURNS void
+LANGUAGE plpgsql
+SET search_path = pg_catalog, public
+AS $$
+DECLARE
+  v_budget jsonb;
+  v_node jsonb;
+  v_count bigint;
+BEGIN
+  PERFORM public.ep_gate_assert_binding(p_deployment_id, p_tenant_id);
+  IF public.ep_gate_jsonb_is_digest(to_jsonb(p_program_digest)) IS NOT TRUE
+     OR public.ep_gate_jsonb_is_identifier(to_jsonb(p_authorizer_id)) IS NOT TRUE
+     OR jsonb_typeof(p_signed_artifact) <> 'object'
+     OR jsonb_typeof(p_program) <> 'object'
+     OR p_signed_artifact - 'proof' - 'issuer' <> p_program
+     OR p_signed_artifact->'issuer'->>'id' <> p_authorizer_id
+     OR p_signed_artifact->'issuer'->>'key_id' IS DISTINCT FROM p_signed_artifact->'proof'->>'key_id'
+     OR p_signed_artifact->'proof'->>'algorithm' <> 'Ed25519'
+     OR p_signed_artifact->'proof'->>'body_digest' <> p_program_digest
+     OR public.ep_gate_plain_json_hash(p_signed_artifact - 'proof') <> p_program_digest THEN
+    RAISE EXCEPTION 'invalid signed execution program binding';
+  END IF;
+  IF public.ep_gate_jsonb_has_exact_keys(p_program, ARRAY[
+       '@version', 'program_id', 'tenant_id', 'version', 'subject_id', 'audience',
+       'objective_digest', 'authorization_digest', 'presentation_digest',
+       'supersedes_program_digest', 'issued_at', 'valid_from', 'expires_at',
+       'max_total_occurrences', 'max_concurrent_effects', 'budgets', 'nodes',
+       'claim_boundary'
+     ]) IS NOT TRUE
+     OR p_program->>'@version' <> 'EP-BOUNDED-EXECUTION-PROGRAM-v1'
+     OR p_program->>'tenant_id' <> p_tenant_id
+     OR public.ep_gate_jsonb_is_identifier(p_program->'program_id') IS NOT TRUE
+     OR public.ep_gate_jsonb_is_identifier(p_program->'tenant_id') IS NOT TRUE
+     OR public.ep_gate_jsonb_is_identifier(p_program->'subject_id') IS NOT TRUE
+     OR public.ep_gate_jsonb_is_identifier(p_program->'audience') IS NOT TRUE
+     OR public.ep_gate_jsonb_is_safe_nonnegative_integer(p_program->'version') IS NOT TRUE
+     OR (p_program->>'version')::bigint < 1
+     OR public.ep_gate_jsonb_is_safe_nonnegative_integer(
+       p_program->'max_total_occurrences'
+     ) IS NOT TRUE
+     OR (p_program->>'max_total_occurrences')::bigint < 1
+     OR public.ep_gate_jsonb_is_safe_nonnegative_integer(
+       p_program->'max_concurrent_effects'
+     ) IS NOT TRUE
+     OR (p_program->>'max_concurrent_effects')::bigint < 1
+     OR public.ep_gate_jsonb_is_digest(p_program->'objective_digest') IS NOT TRUE
+     OR public.ep_gate_jsonb_is_digest(p_program->'authorization_digest') IS NOT TRUE
+     OR public.ep_gate_jsonb_is_digest(p_program->'presentation_digest') IS NOT TRUE
+     OR jsonb_typeof(p_program->'budgets') <> 'array'
+     OR jsonb_array_length(p_program->'budgets') < 1
+     OR jsonb_typeof(p_program->'nodes') <> 'array'
+     OR jsonb_array_length(p_program->'nodes') < 1 THEN
+    RAISE EXCEPTION 'invalid execution program payload';
+  END IF;
+  PERFORM (p_program->>'issued_at')::timestamptz;
+  PERFORM (p_program->>'valid_from')::timestamptz;
+  PERFORM (p_program->>'expires_at')::timestamptz;
+  IF (p_program->>'issued_at')::timestamptz > (p_program->>'valid_from')::timestamptz
+     OR (p_program->>'expires_at')::timestamptz <= (p_program->>'valid_from')::timestamptz THEN
+    RAISE EXCEPTION 'invalid execution program validity';
+  END IF;
+  FOR v_budget IN SELECT value FROM jsonb_array_elements(p_program->'budgets') LOOP
+    IF public.ep_gate_jsonb_has_exact_keys(v_budget, ARRAY['budget_id', 'unit', 'limit']) IS NOT TRUE
+       OR public.ep_gate_jsonb_is_identifier(v_budget->'budget_id') IS NOT TRUE
+       OR public.ep_gate_jsonb_is_identifier(v_budget->'unit') IS NOT TRUE
+       OR public.ep_gate_jsonb_is_safe_nonnegative_integer(v_budget->'limit') IS NOT TRUE
+       OR (v_budget->>'limit')::bigint < 1 THEN
+      RAISE EXCEPTION 'invalid execution program budget';
+    END IF;
+  END LOOP;
+  SELECT count(DISTINCT budget->>'budget_id') INTO v_count
+    FROM jsonb_array_elements(p_program->'budgets') AS values_(budget);
+  IF v_count <> jsonb_array_length(p_program->'budgets') THEN
+    RAISE EXCEPTION 'duplicate execution program budget';
+  END IF;
+  FOR v_node IN SELECT value FROM jsonb_array_elements(p_program->'nodes') LOOP
+    IF public.ep_gate_jsonb_has_exact_keys(v_node, ARRAY[
+         'node_id', 'action', 'trust_program_digest', 'depends_on',
+         'max_occurrences', 'charges'
+       ]) IS NOT TRUE
+       OR public.ep_gate_jsonb_is_identifier(v_node->'node_id') IS NOT TRUE
+       OR public.ep_gate_jsonb_is_digest(v_node->'trust_program_digest') IS NOT TRUE
+       OR public.ep_gate_jsonb_is_safe_nonnegative_integer(v_node->'max_occurrences') IS NOT TRUE
+       OR (v_node->>'max_occurrences')::bigint < 1
+       OR jsonb_typeof(v_node->'action') <> 'object'
+       OR jsonb_typeof(v_node->'depends_on') <> 'array'
+       OR jsonb_typeof(v_node->'charges') <> 'array'
+       OR jsonb_array_length(v_node->'charges') < 1 THEN
+      RAISE EXCEPTION 'invalid execution program node';
+    END IF;
+  END LOOP;
+  SELECT count(DISTINCT node->>'node_id') INTO v_count
+    FROM jsonb_array_elements(p_program->'nodes') AS values_(node);
+  IF v_count <> jsonb_array_length(p_program->'nodes') THEN
+    RAISE EXCEPTION 'duplicate execution program node';
+  END IF;
+END;
+$$;
+
+CREATE OR REPLACE FUNCTION public.ep_gate_execution_program_runtime(
+  p_program public.ep_gate_execution_programs
+)
+RETURNS jsonb
+LANGUAGE sql
+STABLE
+STRICT
+SET search_path = pg_catalog, public
+AS $$
+  SELECT jsonb_build_object(
+    '@version', 'EP-BOUNDED-EXECUTION-PROGRAM-RUNTIME-v1',
+    'tenant_id', p_program.tenant_id,
+    'program_id', p_program.program_id,
+    'program_digest', p_program.program_digest,
+    'version', p_program.version,
+    'status', p_program.status,
+    'status_sequence', p_program.status_sequence,
+    'status_observed_at', public.ep_gate_iso(p_program.status_observed_at),
+    'status_expires_at', public.ep_gate_iso(p_program.status_expires_at),
+    'authorizer_id', p_program.authorizer_id,
+    'registered_at', public.ep_gate_iso(p_program.registered_at),
+    'superseded_by_program_digest', p_program.superseded_by_program_digest,
+    'total_occurrences', p_program.total_occurrences,
+    'budgets', p_program.budget_state_json,
+    'program', p_program.program_json
+  )
+$$;
+
+CREATE OR REPLACE FUNCTION public.ep_gate_execution_program_occurrence_json(
+  p_occurrence public.ep_gate_execution_program_occurrences
+)
+RETURNS jsonb
+LANGUAGE sql
+STABLE
+STRICT
+SET search_path = pg_catalog, public
+AS $$
+  SELECT jsonb_build_object(
+    'tenant_id', p_occurrence.tenant_id,
+    'program_digest', p_occurrence.program_digest,
+    'node_id', p_occurrence.node_id,
+    'occurrence_id', p_occurrence.occurrence_id,
+    'admission_id', p_occurrence.admission_id,
+    'snapshot_digest', p_occurrence.snapshot_digest,
+    'state', p_occurrence.state,
+    'charges', p_occurrence.charges_json,
+    'created_at', public.ep_gate_iso(p_occurrence.created_at),
+    'updated_at', public.ep_gate_iso(p_occurrence.updated_at)
+  )
+$$;
+
+CREATE OR REPLACE FUNCTION public.ep_gate_execution_program_expected_binding(
+  p_tenant_id text,
+  p_program_digest text,
+  p_node_id text,
+  p_occurrence_id text,
+  p_expires_at timestamptz
+)
+RETURNS jsonb
+LANGUAGE plpgsql
+IMMUTABLE
+STRICT
+SET search_path = pg_catalog, public
+AS $$
+DECLARE
+  v_expires text := public.ep_gate_iso(p_expires_at);
+  v_identity_digest text;
+  v_binding jsonb;
+BEGIN
+  v_identity_digest := public.ep_gate_hash(
+    'EP-BOUNDED-EXECUTION-PROGRAM-ADMISSION-BINDING-v1:IDENTITY',
+    jsonb_build_array(p_tenant_id, p_program_digest, p_node_id, p_occurrence_id)
+  );
+  v_binding := jsonb_build_object(
+    '@version', 'EP-BOUNDED-EXECUTION-PROGRAM-ADMISSION-BINDING-v1',
+    'tenant_id', p_tenant_id,
+    'program_digest', p_program_digest,
+    'node_id', p_node_id,
+    'occurrence_id', p_occurrence_id,
+    'expires_at', v_expires
+  );
+  RETURN jsonb_build_object(
+    'kind', 'execution_program',
+    'resource_id', 'execution-program:' || v_identity_digest,
+    'reservation_id', 'execution-program-reservation:' || v_identity_digest,
+    'digest', public.ep_gate_hash(
+      'EP-BOUNDED-EXECUTION-PROGRAM-ADMISSION-BINDING-v1:DIGEST', v_binding
+    ),
+    'expires_at', v_expires
+  );
+END;
+$$;
+
+CREATE OR REPLACE FUNCTION public.ep_gate_execution_program_adjust_budgets(
+  p_budget_state jsonb,
+  p_charges jsonb,
+  p_reserved_delta integer,
+  p_consumed_delta integer
+)
+RETURNS jsonb
+LANGUAGE plpgsql
+IMMUTABLE
+STRICT
+SET search_path = pg_catalog, public
+AS $$
+DECLARE v_result jsonb;
+BEGIN
+  IF jsonb_typeof(p_budget_state) <> 'array' OR jsonb_typeof(p_charges) <> 'array'
+     OR p_reserved_delta NOT BETWEEN -1 AND 1 OR p_consumed_delta NOT BETWEEN -1 AND 1 THEN
+    RAISE EXCEPTION 'invalid execution program budget adjustment';
+  END IF;
+  IF EXISTS (
+    SELECT 1
+    FROM jsonb_array_elements(p_charges) AS charges(charge)
+    LEFT JOIN jsonb_array_elements(p_budget_state) AS budgets(budget)
+      ON budget->>'budget_id' = charge->>'budget_id'
+    WHERE budget IS NULL
+  ) THEN RAISE EXCEPTION 'execution program charge references unknown budget'; END IF;
+  SELECT jsonb_agg(
+    budget || jsonb_build_object(
+      'reserved', (budget->>'reserved')::bigint
+        + p_reserved_delta * COALESCE((charge->>'amount')::bigint, 0),
+      'consumed', (budget->>'consumed')::bigint
+        + p_consumed_delta * COALESCE((charge->>'amount')::bigint, 0)
+    ) ORDER BY (budget->>'budget_id') COLLATE "C"
+  ) INTO v_result
+  FROM jsonb_array_elements(p_budget_state) AS budgets(budget)
+  LEFT JOIN jsonb_array_elements(p_charges) AS charges(charge)
+    ON charge->>'budget_id' = budget->>'budget_id';
+  IF EXISTS (
+    SELECT 1 FROM jsonb_array_elements(v_result) AS values_(budget)
+    WHERE (budget->>'reserved')::bigint < 0
+       OR (budget->>'consumed')::bigint < 0
+       OR (budget->>'reserved')::bigint + (budget->>'consumed')::bigint
+          > (budget->>'limit')::bigint
+  ) THEN RAISE EXCEPTION 'execution program budget invariant violated'; END IF;
+  RETURN v_result;
+END;
+$$;
+
+CREATE OR REPLACE FUNCTION public.ep_gate_execution_program_sync_occurrence(
+  p_deployment_id text,
+  p_tenant_id text,
+  p_admission_id text,
+  p_state text,
+  p_updated_at timestamptz
+)
+RETURNS void
+LANGUAGE plpgsql
+SET search_path = pg_catalog, public
+AS $$
+BEGIN
+  IF p_state NOT IN ('INDETERMINATE', 'COMMITTED', 'PROVEN_NOT_COMMITTED') THEN
+    RAISE EXCEPTION 'invalid execution program terminal propagation';
+  END IF;
+  IF NOT EXISTS (
+    SELECT 1 FROM public.ep_gate_execution_program_occurrences
+    WHERE deployment_id = p_deployment_id
+      AND tenant_id = p_tenant_id
+      AND admission_id = p_admission_id
+  ) THEN RETURN; END IF;
+  UPDATE public.ep_gate_execution_program_occurrences
+    SET state = p_state, updated_at = p_updated_at
+    WHERE deployment_id = p_deployment_id
+      AND tenant_id = p_tenant_id
+      AND admission_id = p_admission_id
+      AND state IN ('INVOKING', 'INDETERMINATE', 'COMMITTED', 'PROVEN_NOT_COMMITTED');
+  IF NOT FOUND THEN RAISE EXCEPTION 'execution program occurrence propagation failed'; END IF;
+END;
+$$;
+
+CREATE OR REPLACE FUNCTION public.ep_gate_execution_program_apply_status(
+  p_deployment_id text,
+  p_tenant_id text,
+  p_program_digest text,
+  p_observation jsonb
+)
+RETURNS text
+LANGUAGE plpgsql
+SET search_path = pg_catalog, public
+AS $$
+DECLARE
+  v_program public.ep_gate_execution_programs%ROWTYPE;
+  v_now timestamptz := clock_timestamp();
+  v_maximum_observation_age interval;
+  v_observed_at timestamptz;
+  v_expires_at timestamptz;
+BEGIN
+  SELECT make_interval(
+    secs => maximum_observation_age_ms::double precision / 1000.0
+  ) INTO STRICT v_maximum_observation_age
+    FROM public.ep_gate_deployment_binding
+    WHERE singleton AND deployment_id = p_deployment_id AND tenant_id = p_tenant_id;
+  SELECT * INTO STRICT v_program
+    FROM public.ep_gate_execution_programs
+    WHERE deployment_id = p_deployment_id
+      AND tenant_id = p_tenant_id
+      AND program_digest = p_program_digest
+    FOR UPDATE;
+  IF v_program.status = 'SUPERSEDED' THEN RETURN 'program_superseded'; END IF;
+  IF v_program.status = 'REVOKED' THEN RETURN 'program_revoked'; END IF;
+  IF p_observation IS NULL THEN
+    RETURN 'program_status_indeterminate';
+  END IF;
+  IF jsonb_typeof(p_observation) <> 'object'
+       OR public.ep_gate_jsonb_has_exact_keys(p_observation, ARRAY[
+         '@version', 'tenant_id', 'program_id', 'program_digest', 'version',
+         'status', 'sequence', 'observed_at', 'expires_at'
+       ]) IS NOT TRUE
+       OR p_observation->>'@version' <> 'EP-BOUNDED-EXECUTION-PROGRAM-STATUS-v1'
+       OR p_observation->>'tenant_id' <> v_program.tenant_id
+       OR p_observation->>'program_id' <> v_program.program_id
+       OR p_observation->>'program_digest' <> v_program.program_digest
+       OR public.ep_gate_jsonb_is_safe_nonnegative_integer(p_observation->'version') IS NOT TRUE
+       OR (p_observation->>'version')::bigint <> v_program.version
+       OR COALESCE(
+         p_observation->>'status' NOT IN ('ACTIVE', 'SUSPENDED', 'REVOKED'),
+         true
+       )
+       OR public.ep_gate_jsonb_is_safe_nonnegative_integer(p_observation->'sequence') IS NOT TRUE THEN
+    RETURN 'program_status_indeterminate';
+  END IF;
+  BEGIN
+    v_observed_at := (p_observation->>'observed_at')::timestamptz;
+    v_expires_at := (p_observation->>'expires_at')::timestamptz;
+  EXCEPTION WHEN OTHERS THEN
+    RETURN 'program_status_indeterminate';
+  END;
+  IF v_observed_at > v_now
+     OR v_observed_at < v_now - v_maximum_observation_age
+     OR v_expires_at <= v_now
+     OR (p_observation->>'sequence')::bigint < v_program.status_sequence
+     OR ((p_observation->>'sequence')::bigint = v_program.status_sequence
+       AND (p_observation->>'status' <> v_program.status
+         OR v_observed_at <> v_program.status_observed_at
+         OR v_expires_at <> v_program.status_expires_at)) THEN
+    RETURN 'program_status_indeterminate';
+  END IF;
+  UPDATE public.ep_gate_execution_programs
+    SET status = p_observation->>'status',
+        status_sequence = (p_observation->>'sequence')::bigint,
+        status_observed_at = v_observed_at,
+        status_expires_at = v_expires_at
+    WHERE deployment_id = p_deployment_id
+      AND tenant_id = p_tenant_id
+      AND program_digest = p_program_digest;
+  v_program.status := p_observation->>'status';
+  IF v_program.status = 'SUSPENDED' THEN RETURN 'program_suspended'; END IF;
+  IF v_program.status = 'REVOKED' THEN RETURN 'program_revoked'; END IF;
+  IF v_program.valid_from > v_now THEN RETURN 'program_not_active'; END IF;
+  IF v_program.expires_at <= v_now THEN RETURN 'program_expired'; END IF;
+  RETURN NULL;
+END;
+$$;
+
+DROP FUNCTION IF EXISTS public.ep_gate_execution_program_register(
+  text, text, text, jsonb, jsonb, text
+);
+DROP FUNCTION IF EXISTS public.ep_gate_execution_program_register(
+  text, text, text, jsonb, jsonb, text, timestamptz
+);
+CREATE OR REPLACE FUNCTION public.ep_gate_execution_program_register(
+  p_deployment_id text,
+  p_tenant_id text,
+  p_program_digest text,
+  p_signed_artifact jsonb,
+  p_program jsonb,
+  p_authorizer_id text
+)
+RETURNS jsonb
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = pg_catalog, public
+AS $$
+DECLARE
+  v_now timestamptz := clock_timestamp();
+  v_budget_state jsonb;
+  v_program public.ep_gate_execution_programs%ROWTYPE;
+  v_authorization_digest text;
+  v_authorization public.ep_gate_execution_program_authorizations%ROWTYPE;
+BEGIN
+  PERFORM public.ep_gate_assert_execution_program(
+    p_deployment_id, p_tenant_id, p_program_digest,
+    p_signed_artifact, p_program, p_authorizer_id
+  );
+  IF (p_program->>'version')::bigint <> 1 OR p_program->'supersedes_program_digest' <> 'null'::jsonb THEN
+    RETURN public.ep_gate_refusal('program_supersession_invalid');
+  END IF;
+  IF (p_program->>'valid_from')::timestamptz > v_now THEN
+    RETURN public.ep_gate_refusal('program_not_active');
+  END IF;
+  IF (p_program->>'expires_at')::timestamptz <= v_now THEN
+    RETURN public.ep_gate_refusal('program_expired');
+  END IF;
+  IF EXISTS (
+    SELECT 1 FROM public.ep_gate_execution_programs
+    WHERE deployment_id = p_deployment_id
+      AND (program_digest = p_program_digest OR program_id = p_program->>'program_id')
+  ) THEN RETURN public.ep_gate_refusal('program_exists'); END IF;
+  v_authorization_digest := p_program->>'authorization_digest';
+  INSERT INTO public.ep_gate_execution_program_authorizations (
+    deployment_id, tenant_id, authorization_digest, program_required,
+    owner_program_digest, created_at, updated_at
+  ) VALUES (
+    p_deployment_id, p_tenant_id, v_authorization_digest, false, NULL, v_now, v_now
+  ) ON CONFLICT (deployment_id, authorization_digest) DO NOTHING;
+  SELECT * INTO STRICT v_authorization
+    FROM public.ep_gate_execution_program_authorizations
+    WHERE deployment_id = p_deployment_id
+      AND tenant_id = p_tenant_id
+      AND authorization_digest = v_authorization_digest
+    FOR UPDATE;
+  IF v_authorization.program_required THEN
+    RETURN public.ep_gate_refusal('program_binding_mismatch');
+  END IF;
+  IF EXISTS (
+    SELECT 1
+    FROM public.ep_gate_admission_records r
+    JOIN public.ep_gate_admission_snapshots s
+      ON s.deployment_id = r.deployment_id AND s.snapshot_digest = r.snapshot_digest
+    WHERE r.deployment_id = p_deployment_id
+      AND r.tenant_id = p_tenant_id
+      AND r.record_json->>'state' = 'RESERVED'
+      AND r.record_json->>'execution_right' = 'RESERVED'
+      AND EXISTS (
+        SELECT 1 FROM jsonb_array_elements(s.snapshot_json->'body'->'inputs') AS values_(input)
+        WHERE input->>'role' = 'authorization'
+          AND input->>'payload_digest' = v_authorization_digest
+      )
+  ) THEN RETURN public.ep_gate_refusal('program_binding_mismatch'); END IF;
+  SELECT jsonb_agg(jsonb_build_object(
+    'budget_id', budget->>'budget_id',
+    'unit', budget->>'unit',
+    'limit', (budget->>'limit')::bigint,
+    'reserved', 0,
+    'consumed', 0
+  ) ORDER BY (budget->>'budget_id') COLLATE "C") INTO v_budget_state
+  FROM jsonb_array_elements(p_program->'budgets') AS values_(budget);
+  BEGIN
+    INSERT INTO public.ep_gate_execution_programs (
+      deployment_id, tenant_id, program_digest, program_id, version, status,
+      status_sequence, status_observed_at, status_expires_at,
+      authorizer_id, signed_artifact_json, program_json, budget_state_json,
+      valid_from, expires_at, registered_at, superseded_by_program_digest
+    ) VALUES (
+      p_deployment_id, p_tenant_id, p_program_digest, p_program->>'program_id',
+      (p_program->>'version')::bigint, 'ACTIVE',
+      0, v_now, (p_program->>'expires_at')::timestamptz,
+      p_authorizer_id, p_signed_artifact, p_program, v_budget_state,
+      (p_program->>'valid_from')::timestamptz,
+      (p_program->>'expires_at')::timestamptz, v_now, NULL
+    );
+    INSERT INTO public.ep_gate_execution_program_heads (
+      deployment_id, tenant_id, program_id, program_digest, version, created_at, updated_at
+    ) VALUES (
+      p_deployment_id, p_tenant_id, p_program->>'program_id', p_program_digest, 1, v_now, v_now
+    );
+    UPDATE public.ep_gate_execution_program_authorizations
+      SET program_required = true, owner_program_digest = p_program_digest, updated_at = v_now
+      WHERE deployment_id = p_deployment_id
+        AND tenant_id = p_tenant_id
+        AND authorization_digest = v_authorization_digest
+        AND NOT program_required;
+    IF NOT FOUND THEN RAISE EXCEPTION 'authorization owner changed during registration'; END IF;
+  EXCEPTION WHEN unique_violation THEN
+    RETURN public.ep_gate_refusal('program_exists');
+  END;
+  SELECT * INTO STRICT v_program FROM public.ep_gate_execution_programs
+    WHERE deployment_id = p_deployment_id AND program_digest = p_program_digest;
+  RETURN jsonb_build_object('ok', true, 'program', public.ep_gate_execution_program_runtime(v_program));
+END;
+$$;
+
+DROP FUNCTION IF EXISTS public.ep_gate_execution_program_reserve_admission(
+  text, text, text, text, text, jsonb, jsonb, text
+);
+DROP FUNCTION IF EXISTS public.ep_gate_execution_program_reserve_admission(
+  text, text, text, text, text, jsonb, jsonb, text, jsonb, timestamptz
+);
+DROP FUNCTION IF EXISTS public.ep_gate_execution_program_reserve_admission(
+  text, text, text, text, text, jsonb, jsonb, text, jsonb
+);
+CREATE OR REPLACE FUNCTION public.ep_gate_execution_program_reserve_admission(
+  p_deployment_id text,
+  p_tenant_id text,
+  p_program_digest text,
+  p_node_id text,
+  p_occurrence_id text,
+  p_snapshot jsonb,
+  p_action_match jsonb,
+  p_owner_digest text,
+  p_status_observation jsonb
+)
+RETURNS jsonb
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = pg_catalog, public
+AS $$
+DECLARE
+  v_program public.ep_gate_execution_programs%ROWTYPE;
+  v_node jsonb;
+  v_body jsonb;
+  v_expected_binding jsonb;
+  v_now timestamptz := clock_timestamp();
+  v_result jsonb;
+  v_authorization_digest text;
+  v_status_reason text;
+BEGIN
+  PERFORM public.ep_gate_assert_binding(p_deployment_id, p_tenant_id);
+  PERFORM public.ep_gate_assert_snapshot(p_deployment_id, p_tenant_id, p_snapshot);
+  IF public.ep_gate_jsonb_is_digest(to_jsonb(p_program_digest)) IS NOT TRUE
+     OR public.ep_gate_jsonb_is_identifier(to_jsonb(p_node_id)) IS NOT TRUE
+     OR public.ep_gate_jsonb_is_identifier(to_jsonb(p_occurrence_id)) IS NOT TRUE THEN
+    RAISE EXCEPTION 'invalid execution program reservation reference';
+  END IF;
+  SELECT * INTO v_program FROM public.ep_gate_execution_programs
+    WHERE deployment_id = p_deployment_id
+      AND tenant_id = p_tenant_id
+      AND program_digest = p_program_digest
+    FOR UPDATE;
+  IF NOT FOUND THEN RETURN public.ep_gate_refusal('program_not_found'); END IF;
+  v_status_reason := public.ep_gate_execution_program_apply_status(
+    p_deployment_id, p_tenant_id, p_program_digest, p_status_observation
+  );
+  IF v_status_reason IS NOT NULL THEN RETURN public.ep_gate_refusal(v_status_reason); END IF;
+  SELECT node INTO v_node FROM jsonb_array_elements(v_program.program_json->'nodes') AS values_(node)
+    WHERE node->>'node_id' = p_node_id;
+  IF v_node IS NULL THEN RETURN public.ep_gate_refusal('program_binding_mismatch'); END IF;
+  v_body := p_snapshot->'body';
+  IF (v_body->>'expires_at')::timestamptz > v_program.expires_at THEN
+    RETURN public.ep_gate_refusal('program_expiration_mismatch');
+  END IF;
+  SELECT input->>'payload_digest' INTO STRICT v_authorization_digest
+    FROM jsonb_array_elements(v_body->'inputs') AS values_(input)
+    WHERE input->>'role' = 'authorization';
+  IF NOT EXISTS (
+       SELECT 1 FROM public.ep_gate_execution_program_authorizations
+       WHERE deployment_id = p_deployment_id
+         AND tenant_id = p_tenant_id
+         AND authorization_digest = v_authorization_digest
+         AND program_required
+         AND owner_program_digest = p_program_digest
+     )
+     OR v_authorization_digest <> v_program.program_json->>'authorization_digest'
+     OR v_body->>'authorization_policy_digest' <> v_node->>'trust_program_digest'
+     OR NOT EXISTS (
+       SELECT 1 FROM jsonb_array_elements(v_body->'inputs') AS values_(input)
+       WHERE input->>'role' = 'candidate_manifest'
+         AND input->>'subject' = v_program.program_json->>'subject_id'
+     ) THEN RETURN public.ep_gate_refusal('program_binding_mismatch'); END IF;
+  IF v_node->'action'->>'mode' = 'exact' THEN
+    IF p_action_match IS NOT NULL
+       OR v_body->>'caid' <> v_node->'action'->>'caid'
+       OR v_body->>'action_digest' <> v_node->'action'->>'action_digest' THEN
+      RETURN public.ep_gate_refusal('program_binding_mismatch');
+    END IF;
+  ELSIF v_node->'action'->>'mode' = 'profile' THEN
+    IF p_action_match IS NULL
+       OR public.ep_gate_jsonb_has_exact_keys(p_action_match, ARRAY[
+         'valid', 'result', 'tenant_id', 'profile_id', 'profile_digest',
+         'subject_id', 'operation_id', 'caid', 'action_digest', 'verifier_id',
+         'evidence_payload_digest', 'evidence_trust_configuration_digest',
+         'trust_epoch', 'trust_configuration_digest'
+       ]) IS NOT TRUE
+       OR p_action_match->'valid' <> 'true'::jsonb
+       OR p_action_match->>'result' <> 'MATCH'
+       OR p_action_match->>'tenant_id' <> p_tenant_id
+       OR p_action_match->>'profile_id' <> v_node->'action'->>'profile_id'
+       OR p_action_match->>'profile_digest' <> v_node->'action'->>'profile_digest'
+       OR p_action_match->>'subject_id' <> v_program.program_json->>'subject_id'
+       OR p_action_match->>'operation_id' <> v_body->>'operation_id'
+       OR p_action_match->>'caid' <> v_body->>'caid'
+       OR p_action_match->>'action_digest' <> v_body->>'action_digest'
+       OR public.ep_gate_jsonb_is_safe_nonnegative_integer(
+         p_action_match->'trust_epoch'
+       ) IS NOT TRUE
+       OR (p_action_match->>'trust_epoch')::bigint <> (v_body->>'trust_epoch')::bigint
+       OR p_action_match->>'trust_configuration_digest'
+         <> v_body->>'trust_configuration_digest'
+       OR NOT EXISTS (
+         SELECT 1 FROM jsonb_array_elements(v_body->'inputs') AS values_(input)
+         WHERE input->>'role' = 'aeb'
+           AND input->>'subject' = p_action_match->>'subject_id'
+           AND input->>'payload_digest' = p_action_match->>'evidence_payload_digest'
+           AND input->>'profile_digest' = p_action_match->>'profile_digest'
+           AND input->>'verifier_id' = p_action_match->>'verifier_id'
+           AND input->>'trust_configuration_digest'
+             = p_action_match->>'evidence_trust_configuration_digest'
+       ) THEN RETURN public.ep_gate_refusal('program_binding_mismatch'); END IF;
+  ELSE
+    RAISE EXCEPTION 'stored execution program action mode is invalid';
+  END IF;
+  v_expected_binding := public.ep_gate_execution_program_expected_binding(
+    p_tenant_id, p_program_digest, p_node_id, p_occurrence_id,
+    (v_body->>'expires_at')::timestamptz
+  );
+  IF (SELECT count(*) FROM jsonb_array_elements(v_body->'resource_reservations') AS values_(resource)
+      WHERE resource->>'kind' = 'execution_program') <> 1
+     OR NOT EXISTS (
+       SELECT 1 FROM jsonb_array_elements(v_body->'resource_reservations') AS values_(resource)
+       WHERE resource = v_expected_binding
+     ) THEN RETURN public.ep_gate_refusal('program_binding_mismatch'); END IF;
+  IF EXISTS (
+    SELECT 1 FROM public.ep_gate_execution_program_occurrences
+    WHERE deployment_id = p_deployment_id
+      AND program_digest = p_program_digest
+      AND occurrence_id = p_occurrence_id
+  ) THEN RETURN public.ep_gate_refusal('program_occurrence_conflict'); END IF;
+  IF (SELECT count(*) FROM public.ep_gate_execution_program_occurrences
+      WHERE deployment_id = p_deployment_id
+        AND program_digest = p_program_digest
+        AND node_id = p_node_id
+        AND state <> 'RELEASED') >= (v_node->>'max_occurrences')::bigint THEN
+    RETURN public.ep_gate_refusal('program_occurrence_exhausted');
+  END IF;
+  IF v_program.total_occurrences >= (v_program.program_json->>'max_total_occurrences')::bigint THEN
+    RETURN public.ep_gate_refusal('program_total_occurrence_exhausted');
+  END IF;
+  IF EXISTS (
+    SELECT 1 FROM jsonb_array_elements(v_node->'depends_on') AS dependencies(dependency)
+    WHERE NOT EXISTS (
+      SELECT 1 FROM public.ep_gate_execution_program_occurrences occurrence
+      WHERE occurrence.deployment_id = p_deployment_id
+        AND occurrence.program_digest = p_program_digest
+        AND occurrence.node_id = dependency->>'node_id'
+        AND occurrence.state IN (
+          SELECT jsonb_array_elements_text(dependency->'outcomes')
+        )
+    )
+  ) THEN RETURN public.ep_gate_refusal('program_node_unreachable'); END IF;
+  IF EXISTS (
+    SELECT 1
+    FROM jsonb_array_elements(v_node->'charges') AS charges(charge)
+    LEFT JOIN jsonb_array_elements(v_program.budget_state_json) AS budgets(budget)
+      ON budget->>'budget_id' = charge->>'budget_id'
+    WHERE budget IS NULL
+       OR (budget->>'reserved')::bigint + (budget->>'consumed')::bigint
+          + (charge->>'amount')::bigint > (budget->>'limit')::bigint
+  ) THEN RETURN public.ep_gate_refusal('program_budget_exhausted'); END IF;
+  v_result := public.ep_gate_admission_reserve_core(
+    p_deployment_id, p_tenant_id, p_snapshot, p_owner_digest, true
+  );
+  IF (v_result->>'ok')::boolean IS NOT TRUE THEN RETURN v_result; END IF;
+  UPDATE public.ep_gate_execution_programs
+    SET budget_state_json = public.ep_gate_execution_program_adjust_budgets(
+      budget_state_json, v_node->'charges', 1, 0
+    ),
+    total_occurrences = total_occurrences + 1
+    WHERE deployment_id = p_deployment_id AND program_digest = p_program_digest;
+  INSERT INTO public.ep_gate_execution_program_occurrences (
+    deployment_id, tenant_id, program_digest, node_id, occurrence_id,
+    admission_id, snapshot_digest, state, charges_json, created_at, updated_at
+  ) VALUES (
+    p_deployment_id, p_tenant_id, p_program_digest, p_node_id, p_occurrence_id,
+    v_body->>'admission_id', p_snapshot->>'snapshot_digest', 'RESERVED',
+    v_node->'charges', v_now, v_now
+  );
+  RETURN v_result;
+END;
+$$;
+
+DROP FUNCTION IF EXISTS public.ep_gate_execution_program_begin_invocation(
+  text, text, text, bigint, text, text
+);
+DROP FUNCTION IF EXISTS public.ep_gate_execution_program_begin_invocation(
+  text, text, text, bigint, text, text, jsonb, timestamptz
+);
+DROP FUNCTION IF EXISTS public.ep_gate_execution_program_begin_invocation(
+  text, text, text, bigint, text, text, jsonb
+);
+CREATE OR REPLACE FUNCTION public.ep_gate_execution_program_begin_invocation(
+  p_deployment_id text,
+  p_tenant_id text,
+  p_admission_id text,
+  p_expected_revision bigint,
+  p_owner_digest text,
+  p_invocation_token_digest text,
+  p_status_observation jsonb
+)
+RETURNS jsonb
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = pg_catalog, public
+AS $$
+DECLARE
+  v_program_digest text;
+  v_program public.ep_gate_execution_programs%ROWTYPE;
+  v_occurrence public.ep_gate_execution_program_occurrences%ROWTYPE;
+  v_result jsonb;
+  v_now timestamptz := clock_timestamp();
+  v_status_reason text;
+BEGIN
+  PERFORM public.ep_gate_assert_binding(p_deployment_id, p_tenant_id);
+  SELECT program_digest INTO v_program_digest
+    FROM public.ep_gate_execution_program_occurrences
+    WHERE deployment_id = p_deployment_id
+      AND tenant_id = p_tenant_id
+      AND admission_id = p_admission_id;
+  IF NOT FOUND THEN RETURN public.ep_gate_refusal('program_required'); END IF;
+  SELECT * INTO STRICT v_program FROM public.ep_gate_execution_programs
+    WHERE deployment_id = p_deployment_id
+      AND tenant_id = p_tenant_id
+      AND program_digest = v_program_digest
+    FOR UPDATE;
+  SELECT * INTO STRICT v_occurrence FROM public.ep_gate_execution_program_occurrences
+    WHERE deployment_id = p_deployment_id
+      AND tenant_id = p_tenant_id
+      AND admission_id = p_admission_id
+    FOR UPDATE;
+  IF v_occurrence.state <> 'RESERVED' THEN RETURN public.ep_gate_refusal('state_conflict'); END IF;
+  v_status_reason := public.ep_gate_execution_program_apply_status(
+    p_deployment_id, p_tenant_id, v_program_digest, p_status_observation
+  );
+  IF v_status_reason IS NOT NULL THEN
+    v_result := public.ep_gate_admission_release_core(
+      p_deployment_id, p_tenant_id, p_admission_id, p_expected_revision,
+      p_owner_digest, v_status_reason, true
+    );
+    IF (v_result->>'ok')::boolean IS NOT TRUE THEN RETURN v_result; END IF;
+    UPDATE public.ep_gate_execution_programs
+      SET budget_state_json = public.ep_gate_execution_program_adjust_budgets(
+        budget_state_json, v_occurrence.charges_json, -1, 0
+      )
+      WHERE deployment_id = p_deployment_id AND program_digest = v_program_digest;
+    UPDATE public.ep_gate_execution_program_occurrences
+      SET state = 'RELEASED', updated_at = v_now
+      WHERE deployment_id = p_deployment_id
+        AND program_digest = v_program_digest
+        AND occurrence_id = v_occurrence.occurrence_id
+        AND state = 'RESERVED';
+    IF NOT FOUND THEN RAISE EXCEPTION 'execution program status release race'; END IF;
+    RETURN public.ep_gate_refusal(v_status_reason);
+  END IF;
+  IF (
+    SELECT count(*)
+    FROM public.ep_gate_execution_program_occurrences
+    WHERE deployment_id = p_deployment_id
+      AND tenant_id = p_tenant_id
+      AND program_digest = v_program_digest
+      AND state IN ('INVOKING', 'INDETERMINATE')
+  ) >= (v_program.program_json->>'max_concurrent_effects')::bigint THEN
+    RETURN public.ep_gate_refusal('program_concurrency_exhausted');
+  END IF;
+  v_result := public.ep_gate_admission_begin_invocation_core(
+    p_deployment_id, p_tenant_id, p_admission_id, p_expected_revision,
+    p_owner_digest, p_invocation_token_digest, true
+  );
+  IF (v_result->>'ok')::boolean IS TRUE THEN
+    UPDATE public.ep_gate_execution_programs
+      SET budget_state_json = public.ep_gate_execution_program_adjust_budgets(
+        budget_state_json, v_occurrence.charges_json, -1, 1
+      )
+      WHERE deployment_id = p_deployment_id AND program_digest = v_program_digest;
+    UPDATE public.ep_gate_execution_program_occurrences
+      SET state = 'INVOKING', updated_at = v_now
+      WHERE deployment_id = p_deployment_id
+        AND program_digest = v_program_digest
+        AND occurrence_id = v_occurrence.occurrence_id
+        AND state = 'RESERVED';
+    IF NOT FOUND THEN RAISE EXCEPTION 'execution program occurrence begin race'; END IF;
+  ELSIF v_result->>'reason' = 'currentness_refused' THEN
+    UPDATE public.ep_gate_execution_programs
+      SET budget_state_json = public.ep_gate_execution_program_adjust_budgets(
+        budget_state_json, v_occurrence.charges_json, -1, 0
+      )
+      WHERE deployment_id = p_deployment_id AND program_digest = v_program_digest;
+    UPDATE public.ep_gate_execution_program_occurrences
+      SET state = 'RELEASED', updated_at = v_now
+      WHERE deployment_id = p_deployment_id
+        AND program_digest = v_program_digest
+        AND occurrence_id = v_occurrence.occurrence_id
+        AND state = 'RESERVED';
+    IF NOT FOUND THEN RAISE EXCEPTION 'execution program currentness release race'; END IF;
+  END IF;
+  RETURN v_result;
+END;
+$$;
+
+CREATE OR REPLACE FUNCTION public.ep_gate_execution_program_release_admission(
+  p_deployment_id text,
+  p_tenant_id text,
+  p_admission_id text,
+  p_expected_revision bigint,
+  p_owner_digest text,
+  p_reason text
+)
+RETURNS jsonb
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = pg_catalog, public
+AS $$
+DECLARE
+  v_program_digest text;
+  v_program public.ep_gate_execution_programs%ROWTYPE;
+  v_occurrence public.ep_gate_execution_program_occurrences%ROWTYPE;
+  v_result jsonb;
+  v_now timestamptz := transaction_timestamp();
+BEGIN
+  PERFORM public.ep_gate_assert_binding(p_deployment_id, p_tenant_id);
+  SELECT program_digest INTO v_program_digest
+    FROM public.ep_gate_execution_program_occurrences
+    WHERE deployment_id = p_deployment_id AND tenant_id = p_tenant_id
+      AND admission_id = p_admission_id;
+  IF NOT FOUND THEN RETURN public.ep_gate_refusal('program_required'); END IF;
+  SELECT * INTO STRICT v_program FROM public.ep_gate_execution_programs
+    WHERE deployment_id = p_deployment_id AND tenant_id = p_tenant_id
+      AND program_digest = v_program_digest FOR UPDATE;
+  SELECT * INTO STRICT v_occurrence FROM public.ep_gate_execution_program_occurrences
+    WHERE deployment_id = p_deployment_id AND tenant_id = p_tenant_id
+      AND admission_id = p_admission_id FOR UPDATE;
+  IF v_occurrence.state <> 'RESERVED' THEN RETURN public.ep_gate_refusal('state_conflict'); END IF;
+  v_result := public.ep_gate_admission_release_core(
+    p_deployment_id, p_tenant_id, p_admission_id, p_expected_revision,
+    p_owner_digest, p_reason, true
+  );
+  IF (v_result->>'ok')::boolean IS TRUE THEN
+    UPDATE public.ep_gate_execution_programs
+      SET budget_state_json = public.ep_gate_execution_program_adjust_budgets(
+        budget_state_json, v_occurrence.charges_json, -1, 0
+      )
+      WHERE deployment_id = p_deployment_id AND program_digest = v_program_digest;
+    UPDATE public.ep_gate_execution_program_occurrences
+      SET state = 'RELEASED', updated_at = v_now
+      WHERE deployment_id = p_deployment_id
+        AND program_digest = v_program_digest
+        AND occurrence_id = v_occurrence.occurrence_id
+        AND state = 'RESERVED';
+    IF NOT FOUND THEN RAISE EXCEPTION 'execution program occurrence release race'; END IF;
+  END IF;
+  RETURN v_result;
+END;
+$$;
+
+CREATE OR REPLACE FUNCTION public.ep_gate_execution_program_expire_admission(
+  p_deployment_id text,
+  p_tenant_id text,
+  p_admission_id text,
+  p_expected_revision bigint,
+  p_owner_digest text
+)
+RETURNS jsonb
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = pg_catalog, public
+AS $$
+DECLARE
+  v_program_digest text;
+  v_program public.ep_gate_execution_programs%ROWTYPE;
+  v_occurrence public.ep_gate_execution_program_occurrences%ROWTYPE;
+  v_result jsonb;
+  v_now timestamptz := transaction_timestamp();
+BEGIN
+  PERFORM public.ep_gate_assert_binding(p_deployment_id, p_tenant_id);
+  SELECT program_digest INTO v_program_digest
+    FROM public.ep_gate_execution_program_occurrences
+    WHERE deployment_id = p_deployment_id AND tenant_id = p_tenant_id
+      AND admission_id = p_admission_id;
+  IF NOT FOUND THEN RETURN public.ep_gate_refusal('program_required'); END IF;
+  SELECT * INTO STRICT v_program FROM public.ep_gate_execution_programs
+    WHERE deployment_id = p_deployment_id AND tenant_id = p_tenant_id
+      AND program_digest = v_program_digest FOR UPDATE;
+  SELECT * INTO STRICT v_occurrence FROM public.ep_gate_execution_program_occurrences
+    WHERE deployment_id = p_deployment_id AND tenant_id = p_tenant_id
+      AND admission_id = p_admission_id FOR UPDATE;
+  IF v_occurrence.state <> 'RESERVED' THEN RETURN public.ep_gate_refusal('state_conflict'); END IF;
+  v_result := public.ep_gate_admission_expire_core(
+    p_deployment_id, p_tenant_id, p_admission_id, p_expected_revision,
+    p_owner_digest, true
+  );
+  IF (v_result->>'ok')::boolean IS TRUE THEN
+    UPDATE public.ep_gate_execution_programs
+      SET budget_state_json = public.ep_gate_execution_program_adjust_budgets(
+        budget_state_json, v_occurrence.charges_json, -1, 0
+      )
+      WHERE deployment_id = p_deployment_id AND program_digest = v_program_digest;
+    UPDATE public.ep_gate_execution_program_occurrences
+      SET state = 'RELEASED', updated_at = v_now
+      WHERE deployment_id = p_deployment_id
+        AND program_digest = v_program_digest
+        AND occurrence_id = v_occurrence.occurrence_id
+        AND state = 'RESERVED';
+    IF NOT FOUND THEN RAISE EXCEPTION 'execution program occurrence expiry race'; END IF;
+  END IF;
+  RETURN v_result;
+END;
+$$;
+
+DROP FUNCTION IF EXISTS public.ep_gate_execution_program_supersede(
+  text, text, text, jsonb, jsonb, text
+);
+DROP FUNCTION IF EXISTS public.ep_gate_execution_program_supersede(
+  text, text, text, jsonb, jsonb, text, timestamptz
+);
+CREATE OR REPLACE FUNCTION public.ep_gate_execution_program_supersede(
+  p_deployment_id text,
+  p_tenant_id text,
+  p_program_digest text,
+  p_signed_artifact jsonb,
+  p_program jsonb,
+  p_authorizer_id text
+)
+RETURNS jsonb
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = pg_catalog, public
+AS $$
+DECLARE
+  v_now timestamptz := clock_timestamp();
+  v_predecessor_digest text;
+  v_predecessor public.ep_gate_execution_programs%ROWTYPE;
+  v_successor public.ep_gate_execution_programs%ROWTYPE;
+  v_head public.ep_gate_execution_program_heads%ROWTYPE;
+  v_authorization public.ep_gate_execution_program_authorizations%ROWTYPE;
+  v_authorization_digest text;
+  v_budget_state jsonb;
+BEGIN
+  PERFORM public.ep_gate_assert_execution_program(
+    p_deployment_id, p_tenant_id, p_program_digest,
+    p_signed_artifact, p_program, p_authorizer_id
+  );
+  IF (p_program->>'version')::bigint < 2
+     OR p_program->'supersedes_program_digest' = 'null'::jsonb THEN
+    RETURN public.ep_gate_refusal('program_supersession_invalid');
+  END IF;
+  IF (p_program->>'valid_from')::timestamptz > v_now THEN
+    RETURN public.ep_gate_refusal('program_not_active');
+  END IF;
+  IF (p_program->>'expires_at')::timestamptz <= v_now THEN
+    RETURN public.ep_gate_refusal('program_expired');
+  END IF;
+  v_predecessor_digest := p_program->>'supersedes_program_digest';
+  SELECT * INTO v_head FROM public.ep_gate_execution_program_heads
+    WHERE deployment_id = p_deployment_id
+      AND tenant_id = p_tenant_id
+      AND program_id = p_program->>'program_id'
+    FOR UPDATE;
+  IF NOT FOUND THEN RETURN public.ep_gate_refusal('program_not_found'); END IF;
+  SELECT * INTO v_predecessor FROM public.ep_gate_execution_programs
+    WHERE deployment_id = p_deployment_id
+      AND tenant_id = p_tenant_id
+      AND program_digest = v_predecessor_digest
+    FOR UPDATE;
+  IF NOT FOUND THEN RETURN public.ep_gate_refusal('program_not_found'); END IF;
+  IF v_predecessor.status <> 'ACTIVE'
+     OR v_head.program_digest <> v_predecessor.program_digest
+     OR v_predecessor.program_id <> p_program->>'program_id'
+     OR v_predecessor.version + 1 <> (p_program->>'version')::bigint
+     OR v_predecessor.authorizer_id <> p_authorizer_id
+     OR v_predecessor.program_json->>'subject_id' <> p_program->>'subject_id'
+     OR v_predecessor.program_json->>'audience' <> p_program->>'audience'
+     OR v_predecessor.program_json->>'objective_digest' <> p_program->>'objective_digest'
+     OR v_predecessor.program_json->>'presentation_digest' <> p_program->>'presentation_digest'
+     OR v_predecessor.program_json->>'authorization_digest'
+       = p_program->>'authorization_digest' THEN
+    RETURN public.ep_gate_refusal('program_supersession_invalid');
+  END IF;
+  IF EXISTS (
+    SELECT 1 FROM public.ep_gate_execution_program_occurrences
+    WHERE deployment_id = p_deployment_id
+      AND program_digest = v_predecessor_digest
+      AND state = 'RESERVED'
+  ) THEN RETURN public.ep_gate_refusal('program_reserved_work_exists'); END IF;
+  IF EXISTS (
+    SELECT 1 FROM public.ep_gate_execution_programs
+    WHERE deployment_id = p_deployment_id AND program_digest = p_program_digest
+  ) THEN RETURN public.ep_gate_refusal('program_exists'); END IF;
+  v_authorization_digest := p_program->>'authorization_digest';
+  INSERT INTO public.ep_gate_execution_program_authorizations (
+    deployment_id, tenant_id, authorization_digest, program_required,
+    owner_program_digest, created_at, updated_at
+  ) VALUES (
+    p_deployment_id, p_tenant_id, v_authorization_digest, false, NULL, v_now, v_now
+  ) ON CONFLICT (deployment_id, authorization_digest) DO NOTHING;
+  PERFORM authorization_digest
+    FROM public.ep_gate_execution_program_authorizations
+    WHERE deployment_id = p_deployment_id
+      AND tenant_id = p_tenant_id
+      AND authorization_digest IN (
+        v_predecessor.program_json->>'authorization_digest', v_authorization_digest
+      )
+    ORDER BY authorization_digest
+    FOR UPDATE;
+  SELECT * INTO STRICT v_authorization
+    FROM public.ep_gate_execution_program_authorizations
+    WHERE deployment_id = p_deployment_id
+      AND tenant_id = p_tenant_id
+      AND authorization_digest = v_authorization_digest;
+  IF v_authorization.program_required THEN
+    RETURN public.ep_gate_refusal('program_binding_mismatch');
+  END IF;
+  IF NOT v_authorization.program_required AND EXISTS (
+    SELECT 1
+    FROM public.ep_gate_admission_records r
+    JOIN public.ep_gate_admission_snapshots s
+      ON s.deployment_id = r.deployment_id AND s.snapshot_digest = r.snapshot_digest
+    WHERE r.deployment_id = p_deployment_id
+      AND r.tenant_id = p_tenant_id
+      AND r.record_json->>'state' = 'RESERVED'
+      AND r.record_json->>'execution_right' = 'RESERVED'
+      AND EXISTS (
+        SELECT 1 FROM jsonb_array_elements(s.snapshot_json->'body'->'inputs') AS values_(input)
+        WHERE input->>'role' = 'authorization'
+          AND input->>'payload_digest' = v_authorization_digest
+      )
+  ) THEN RETURN public.ep_gate_refusal('program_binding_mismatch'); END IF;
+  SELECT jsonb_agg(jsonb_build_object(
+    'budget_id', budget->>'budget_id',
+    'unit', budget->>'unit',
+    'limit', (budget->>'limit')::bigint,
+    'reserved', 0,
+    'consumed', 0
+  ) ORDER BY (budget->>'budget_id') COLLATE "C") INTO v_budget_state
+  FROM jsonb_array_elements(p_program->'budgets') AS values_(budget);
+  BEGIN
+    INSERT INTO public.ep_gate_execution_programs (
+      deployment_id, tenant_id, program_digest, program_id, version, status,
+      status_sequence, status_observed_at, status_expires_at,
+      authorizer_id, signed_artifact_json, program_json, budget_state_json,
+      valid_from, expires_at, registered_at, superseded_by_program_digest
+    ) VALUES (
+      p_deployment_id, p_tenant_id, p_program_digest, p_program->>'program_id',
+      (p_program->>'version')::bigint, 'ACTIVE',
+      0, v_now, (p_program->>'expires_at')::timestamptz,
+      p_authorizer_id, p_signed_artifact, p_program, v_budget_state,
+      (p_program->>'valid_from')::timestamptz,
+      (p_program->>'expires_at')::timestamptz, v_now, NULL
+    );
+    UPDATE public.ep_gate_execution_programs
+      SET status = 'SUPERSEDED',
+          status_sequence = status_sequence + 1,
+          status_observed_at = v_now,
+          status_expires_at = expires_at,
+          superseded_by_program_digest = p_program_digest
+      WHERE deployment_id = p_deployment_id
+        AND program_digest = v_predecessor_digest
+        AND status = 'ACTIVE';
+    IF NOT FOUND THEN RAISE EXCEPTION 'execution program predecessor changed'; END IF;
+    UPDATE public.ep_gate_execution_program_heads
+      SET program_digest = p_program_digest,
+          version = (p_program->>'version')::bigint,
+          updated_at = v_now
+      WHERE deployment_id = p_deployment_id
+        AND tenant_id = p_tenant_id
+        AND program_id = p_program->>'program_id'
+        AND program_digest = v_predecessor_digest;
+    IF NOT FOUND THEN RAISE EXCEPTION 'execution program head changed'; END IF;
+    UPDATE public.ep_gate_execution_program_authorizations
+      SET program_required = true,
+          owner_program_digest = p_program_digest,
+          updated_at = v_now
+      WHERE deployment_id = p_deployment_id
+        AND tenant_id = p_tenant_id
+        AND authorization_digest = v_authorization_digest
+        AND (NOT program_required OR owner_program_digest = v_predecessor_digest);
+    IF NOT FOUND THEN RAISE EXCEPTION 'execution program authorization changed'; END IF;
+  EXCEPTION WHEN unique_violation THEN
+    RETURN public.ep_gate_refusal('program_exists');
+  END;
+  SELECT * INTO STRICT v_successor FROM public.ep_gate_execution_programs
+    WHERE deployment_id = p_deployment_id AND program_digest = p_program_digest;
+  RETURN jsonb_build_object('ok', true, 'program', public.ep_gate_execution_program_runtime(v_successor));
+END;
+$$;
+
+CREATE OR REPLACE FUNCTION public.ep_gate_execution_program_read(
+  p_deployment_id text,
+  p_tenant_id text,
+  p_program_digest text
+)
+RETURNS jsonb
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = pg_catalog, public
+AS $$
+DECLARE v_program public.ep_gate_execution_programs%ROWTYPE;
+BEGIN
+  PERFORM public.ep_gate_assert_binding(p_deployment_id, p_tenant_id);
+  SELECT * INTO v_program FROM public.ep_gate_execution_programs
+    WHERE deployment_id = p_deployment_id
+      AND tenant_id = p_tenant_id
+      AND program_digest = p_program_digest;
+  IF NOT FOUND THEN RETURN NULL; END IF;
+  PERFORM public.ep_gate_assert_execution_program(
+    p_deployment_id, p_tenant_id, v_program.program_digest,
+    v_program.signed_artifact_json, v_program.program_json, v_program.authorizer_id
+  );
+  RETURN public.ep_gate_execution_program_runtime(v_program);
+END;
+$$;
+
+-- One statement reads the runtime row and the complete retained occurrence
+-- inventory under one MVCC snapshot. The signed program-wide ceiling plus one
+-- sentinel row bounds work and turns over-retention into a refusal, never a
+-- truncated report snapshot.
+CREATE OR REPLACE FUNCTION public.ep_gate_execution_program_read_report_snapshot(
+  p_deployment_id text,
+  p_tenant_id text,
+  p_program_digest text
+)
+RETURNS jsonb
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = pg_catalog, public
+AS $$
+DECLARE
+  v_program public.ep_gate_execution_programs%ROWTYPE;
+  v_snapshot_row record;
+  v_occurrences jsonb;
+  v_retained_count bigint;
+  v_max_total_occurrences bigint;
+  v_body jsonb;
+BEGIN
+  PERFORM public.ep_gate_assert_binding(p_deployment_id, p_tenant_id);
+  IF public.ep_gate_jsonb_is_digest(to_jsonb(p_program_digest)) IS NOT TRUE THEN
+    RAISE EXCEPTION 'invalid execution program report snapshot reference';
+  END IF;
+
+  SELECT p AS program, retained.occurrences, retained.retained_count,
+         (p.program_json->>'max_total_occurrences')::bigint AS max_total_occurrences
+    INTO v_snapshot_row
+  FROM public.ep_gate_execution_programs p
+  CROSS JOIN LATERAL (
+    SELECT COALESCE(
+             jsonb_agg(
+               bounded.occurrence_json
+               ORDER BY bounded.node_id COLLATE "C", bounded.occurrence_id COLLATE "C"
+             ),
+             '[]'::jsonb
+           ) AS occurrences,
+           count(*) AS retained_count
+    FROM (
+      SELECT o.node_id, o.occurrence_id,
+             public.ep_gate_execution_program_occurrence_json(o) AS occurrence_json
+      FROM public.ep_gate_execution_program_occurrences o
+      WHERE o.deployment_id = p_deployment_id
+        AND o.tenant_id = p_tenant_id
+        AND o.program_digest = p_program_digest
+      ORDER BY o.node_id COLLATE "C", o.occurrence_id COLLATE "C"
+      LIMIT ((p.program_json->>'max_total_occurrences')::bigint + 1)
+    ) bounded
+  ) retained
+  WHERE p.deployment_id = p_deployment_id
+    AND p.tenant_id = p_tenant_id
+    AND p.program_digest = p_program_digest;
+
+  IF NOT FOUND THEN RETURN NULL; END IF;
+  v_program := v_snapshot_row.program;
+  v_occurrences := v_snapshot_row.occurrences;
+  v_retained_count := v_snapshot_row.retained_count;
+  v_max_total_occurrences := v_snapshot_row.max_total_occurrences;
+  PERFORM public.ep_gate_assert_execution_program(
+    p_deployment_id, p_tenant_id, v_program.program_digest,
+    v_program.signed_artifact_json, v_program.program_json, v_program.authorizer_id
+  );
+  IF v_retained_count <> v_program.total_occurrences
+     OR v_retained_count > v_max_total_occurrences THEN
+    RAISE EXCEPTION 'execution program report snapshot occurrence bound violated';
+  END IF;
+
+  v_body := jsonb_build_object(
+    '@version', 'EP-BOUNDED-EXECUTION-PROGRAM-REPORT-SNAPSHOT-v1',
+    'tenant_id', v_program.tenant_id,
+    'program_digest', v_program.program_digest,
+    'runtime_state', public.ep_gate_execution_program_runtime(v_program),
+    'occurrences', v_occurrences
+  );
+  RETURN v_body || jsonb_build_object(
+    'snapshot_marker', public.ep_gate_hash(
+      'EP-BOUNDED-EXECUTION-PROGRAM-REPORT-SNAPSHOT-v1:MARKER',
+      v_body
+    )
+  );
+END;
+$$;
+
+CREATE OR REPLACE FUNCTION public.ep_gate_execution_program_read_by_admission(
+  p_deployment_id text,
+  p_tenant_id text,
+  p_admission_id text
+)
+RETURNS jsonb
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = pg_catalog, public
+AS $$
+DECLARE v_program public.ep_gate_execution_programs%ROWTYPE;
+BEGIN
+  PERFORM public.ep_gate_assert_binding(p_deployment_id, p_tenant_id);
+  SELECT p.* INTO v_program
+    FROM public.ep_gate_execution_program_occurrences o
+    JOIN public.ep_gate_execution_programs p
+      ON p.deployment_id = o.deployment_id
+     AND p.tenant_id = o.tenant_id
+     AND p.program_digest = o.program_digest
+    WHERE o.deployment_id = p_deployment_id
+      AND o.tenant_id = p_tenant_id
+      AND o.admission_id = p_admission_id;
+  IF NOT FOUND THEN RETURN NULL; END IF;
+  RETURN public.ep_gate_execution_program_runtime(v_program);
+END;
+$$;
+
+CREATE OR REPLACE FUNCTION public.ep_gate_execution_program_read_occurrence(
+  p_deployment_id text,
+  p_tenant_id text,
+  p_program_digest text,
+  p_occurrence_id text
+)
+RETURNS jsonb
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = pg_catalog, public
+AS $$
+DECLARE v_occurrence public.ep_gate_execution_program_occurrences%ROWTYPE;
+BEGIN
+  PERFORM public.ep_gate_assert_binding(p_deployment_id, p_tenant_id);
+  SELECT * INTO v_occurrence FROM public.ep_gate_execution_program_occurrences
+    WHERE deployment_id = p_deployment_id
+      AND tenant_id = p_tenant_id
+      AND program_digest = p_program_digest
+      AND occurrence_id = p_occurrence_id;
+  IF NOT FOUND THEN RETURN NULL; END IF;
+  RETURN public.ep_gate_execution_program_occurrence_json(v_occurrence);
 END;
 $$;
 
@@ -2292,14 +3833,100 @@ BEGIN
       ON r.deployment_id = h.deployment_id AND r.admission_id = h.admission_id
     WHERE h.deployment_id = p_deployment_id
       AND (r.admission_id IS NULL OR r.operation_id <> h.operation_id OR r.tenant_id <> p_tenant_id)
+    UNION ALL
+    SELECT o.occurrence_id || ':program_occurrence_invalid'
+    FROM public.ep_gate_execution_program_occurrences o
+    LEFT JOIN public.ep_gate_admission_records r
+      ON r.deployment_id = o.deployment_id AND r.admission_id = o.admission_id
+    LEFT JOIN public.ep_gate_admission_snapshots s
+      ON s.deployment_id = o.deployment_id AND s.snapshot_digest = o.snapshot_digest
+    WHERE o.deployment_id = p_deployment_id
+      AND (
+        r.admission_id IS NULL
+        OR s.snapshot_digest IS NULL
+        OR r.snapshot_digest <> o.snapshot_digest
+        OR NOT (
+          r.record_json->>'state' = o.state
+          OR (o.state = 'RELEASED' AND r.record_json->>'state' IN ('RELEASED', 'EXPIRED'))
+        )
+        OR (SELECT count(*) FROM jsonb_array_elements(s.snapshot_json->'body'->'resource_reservations') AS values_(resource)
+            WHERE resource->>'kind' = 'execution_program') <> 1
+      )
+    UNION ALL
+    SELECT p.program_digest || ':program_head_invalid'
+    FROM public.ep_gate_execution_programs p
+    LEFT JOIN public.ep_gate_execution_program_heads h
+      ON h.deployment_id = p.deployment_id
+     AND h.program_id = p.program_id
+     AND h.program_digest = p.program_digest
+    WHERE p.deployment_id = p_deployment_id
+      AND p.status = 'ACTIVE'
+      AND h.program_digest IS NULL
+    UNION ALL
+    SELECT p.program_digest || ':program_budget_invalid'
+    FROM public.ep_gate_execution_programs p
+    WHERE p.deployment_id = p_deployment_id
+      AND EXISTS (
+        SELECT 1
+        FROM jsonb_array_elements(p.budget_state_json) AS budgets(budget)
+        LEFT JOIN LATERAL (
+          SELECT
+            COALESCE(sum((charge->>'amount')::bigint) FILTER (WHERE o.state = 'RESERVED'), 0) AS reserved,
+            COALESCE(sum((charge->>'amount')::bigint) FILTER (
+              WHERE o.state IN ('INVOKING', 'INDETERMINATE', 'COMMITTED', 'PROVEN_NOT_COMMITTED')
+            ), 0) AS consumed
+          FROM public.ep_gate_execution_program_occurrences o
+          CROSS JOIN jsonb_array_elements(o.charges_json) AS charges(charge)
+          WHERE o.deployment_id = p.deployment_id
+            AND o.program_digest = p.program_digest
+            AND charge->>'budget_id' = budget->>'budget_id'
+        ) aggregate ON true
+        WHERE (budget->>'reserved')::bigint <> aggregate.reserved
+           OR (budget->>'consumed')::bigint <> aggregate.consumed
+           OR (budget->>'reserved')::bigint + (budget->>'consumed')::bigint
+              > (budget->>'limit')::bigint
+      )
+    UNION ALL
+    SELECT p.program_digest || ':program_total_occurrences_invalid'
+    FROM public.ep_gate_execution_programs p
+    WHERE p.deployment_id = p_deployment_id
+      AND (
+        p.total_occurrences <> (
+          SELECT count(*) FROM public.ep_gate_execution_program_occurrences o
+          WHERE o.deployment_id = p.deployment_id
+            AND o.program_digest = p.program_digest
+        )
+        OR p.total_occurrences > (p.program_json->>'max_total_occurrences')::bigint
+      )
+    UNION ALL
+    SELECT p.program_digest || ':program_concurrent_effects_invalid'
+    FROM public.ep_gate_execution_programs p
+    WHERE p.deployment_id = p_deployment_id
+      AND (
+        SELECT count(*)
+        FROM public.ep_gate_execution_program_occurrences o
+        WHERE o.deployment_id = p.deployment_id
+          AND o.program_digest = p.program_digest
+          AND o.state IN ('INVOKING', 'INDETERMINATE')
+      ) > (p.program_json->>'max_concurrent_effects')::bigint
+    UNION ALL
+    SELECT a.authorization_digest || ':program_authorization_invalid'
+    FROM public.ep_gate_execution_program_authorizations a
+    LEFT JOIN public.ep_gate_execution_programs p
+      ON p.deployment_id = a.deployment_id
+     AND p.program_digest = a.owner_program_digest
+    WHERE a.deployment_id = p_deployment_id
+      AND a.program_required
+      AND (p.program_digest IS NULL OR p.tenant_id <> p_tenant_id)
   )
   SELECT COALESCE(jsonb_agg(violation ORDER BY violation), '[]'::jsonb) INTO v_violations FROM violations;
   RETURN jsonb_build_object('ok', jsonb_array_length(v_violations) = 0, 'violations', v_violations);
 END;
 $$;
 
--- Helpers and RPCs default to no PUBLIC execution.  A deployment owner grants
--- only the ep_gate_admission_* RPCs to its dedicated runtime role.
+-- Helpers and RPCs default to no PUBLIC execution. A deployment owner grants
+-- ordinary lifecycle/read RPCs to the runtime role and assertion-bearing
+-- execution-program RPCs only to the isolated verifier-service role.
 REVOKE ALL ON FUNCTION public.ep_gate_refuse_history_mutation() FROM PUBLIC;
 REVOKE ALL ON FUNCTION public.ep_gate_guard_operation_head() FROM PUBLIC;
 REVOKE ALL ON FUNCTION public.ep_gate_guard_deployment_binding() FROM PUBLIC;
@@ -2327,11 +3954,15 @@ REVOKE ALL ON FUNCTION public.ep_gate_resources_exact(text, text, jsonb, text) F
 REVOKE ALL ON FUNCTION public.ep_gate_advance_monotonic_counters(text, text, jsonb, timestamptz) FROM PUBLIC;
 REVOKE ALL ON FUNCTION public.ep_gate_provision_monotonic_counter(text, text, text, bigint) FROM PUBLIC;
 REVOKE ALL ON FUNCTION public.ep_gate_initial_record(jsonb, text, timestamptz) FROM PUBLIC;
+REVOKE ALL ON FUNCTION public.ep_gate_admission_reserve_core(text, text, jsonb, text, boolean) FROM PUBLIC;
 REVOKE ALL ON FUNCTION public.ep_gate_admission_reserve(text, text, jsonb, text) FROM PUBLIC;
+REVOKE ALL ON FUNCTION public.ep_gate_admission_release_core(text, text, text, bigint, text, text, boolean) FROM PUBLIC;
 REVOKE ALL ON FUNCTION public.ep_gate_admission_release(text, text, text, bigint, text, text) FROM PUBLIC;
+REVOKE ALL ON FUNCTION public.ep_gate_admission_expire_core(text, text, text, bigint, text, boolean) FROM PUBLIC;
 REVOKE ALL ON FUNCTION public.ep_gate_admission_expire(text, text, text, bigint, text) FROM PUBLIC;
 REVOKE ALL ON FUNCTION public.ep_gate_admission_reap_expired(text, text, text, bigint) FROM PUBLIC;
 REVOKE ALL ON FUNCTION public.ep_gate_admission_supersede(text, text, text, bigint, text, jsonb, text) FROM PUBLIC;
+REVOKE ALL ON FUNCTION public.ep_gate_admission_begin_invocation_core(text, text, text, bigint, text, text, boolean) FROM PUBLIC;
 REVOKE ALL ON FUNCTION public.ep_gate_admission_begin_invocation(text, text, text, bigint, text, text) FROM PUBLIC;
 REVOKE ALL ON FUNCTION public.ep_gate_admission_recover_indeterminate(text, text, text, text, text) FROM PUBLIC;
 REVOKE ALL ON FUNCTION public.ep_gate_admission_record_provider_outcome(text, text, text, bigint, text, text, text, text, text) FROM PUBLIC;
@@ -2341,5 +3972,23 @@ REVOKE ALL ON FUNCTION public.ep_gate_admission_read_by_operation(text, text, te
 REVOKE ALL ON FUNCTION public.ep_gate_admission_read_snapshot(text, text, text) FROM PUBLIC;
 REVOKE ALL ON FUNCTION public.ep_gate_admission_journal(text, text, text) FROM PUBLIC;
 REVOKE ALL ON FUNCTION public.ep_gate_admission_check_invariants(text, text) FROM PUBLIC;
+REVOKE ALL ON FUNCTION public.ep_gate_plain_json_hash(jsonb) FROM PUBLIC;
+REVOKE ALL ON FUNCTION public.ep_gate_assert_execution_program(text, text, text, jsonb, jsonb, text) FROM PUBLIC;
+REVOKE ALL ON FUNCTION public.ep_gate_execution_program_runtime(public.ep_gate_execution_programs) FROM PUBLIC;
+REVOKE ALL ON FUNCTION public.ep_gate_execution_program_occurrence_json(public.ep_gate_execution_program_occurrences) FROM PUBLIC;
+REVOKE ALL ON FUNCTION public.ep_gate_execution_program_expected_binding(text, text, text, text, timestamptz) FROM PUBLIC;
+REVOKE ALL ON FUNCTION public.ep_gate_execution_program_adjust_budgets(jsonb, jsonb, integer, integer) FROM PUBLIC;
+REVOKE ALL ON FUNCTION public.ep_gate_execution_program_sync_occurrence(text, text, text, text, timestamptz) FROM PUBLIC;
+REVOKE ALL ON FUNCTION public.ep_gate_execution_program_apply_status(text, text, text, jsonb) FROM PUBLIC;
+REVOKE ALL ON FUNCTION public.ep_gate_execution_program_register(text, text, text, jsonb, jsonb, text) FROM PUBLIC;
+REVOKE ALL ON FUNCTION public.ep_gate_execution_program_reserve_admission(text, text, text, text, text, jsonb, jsonb, text, jsonb) FROM PUBLIC;
+REVOKE ALL ON FUNCTION public.ep_gate_execution_program_begin_invocation(text, text, text, bigint, text, text, jsonb) FROM PUBLIC;
+REVOKE ALL ON FUNCTION public.ep_gate_execution_program_release_admission(text, text, text, bigint, text, text) FROM PUBLIC;
+REVOKE ALL ON FUNCTION public.ep_gate_execution_program_expire_admission(text, text, text, bigint, text) FROM PUBLIC;
+REVOKE ALL ON FUNCTION public.ep_gate_execution_program_supersede(text, text, text, jsonb, jsonb, text) FROM PUBLIC;
+REVOKE ALL ON FUNCTION public.ep_gate_execution_program_read(text, text, text) FROM PUBLIC;
+REVOKE ALL ON FUNCTION public.ep_gate_execution_program_read_report_snapshot(text, text, text) FROM PUBLIC;
+REVOKE ALL ON FUNCTION public.ep_gate_execution_program_read_by_admission(text, text, text) FROM PUBLIC;
+REVOKE ALL ON FUNCTION public.ep_gate_execution_program_read_occurrence(text, text, text, text) FROM PUBLIC;
 
 COMMIT;

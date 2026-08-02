@@ -79,6 +79,7 @@ import {
   CAPABILITY_SHARE_VERSION,
   CAPABILITY_SCOPE_PROFILE,
   CAPABILITY_CAID_SCOPE_PROFILE,
+  CAPABILITY_ALLOWANCE_SCOPE_PROFILE,
   CAPABILITY_STATE_DDL,
   CAPABILITY_SQL,
   capabilityBaseReceiptDigest,
@@ -214,6 +215,7 @@ export {
   CAPABILITY_SHARE_VERSION,
   CAPABILITY_SCOPE_PROFILE,
   CAPABILITY_CAID_SCOPE_PROFILE,
+  CAPABILITY_ALLOWANCE_SCOPE_PROFILE,
   CAPABILITY_STATE_DDL,
   CAPABILITY_SQL,
   capabilityBaseReceiptDigest,
@@ -233,6 +235,9 @@ export {
 } from './capability-receipt.js';
 export * from './authority-allocation.js';
 export * from './autonomy-control-plane-profile.js';
+export * from './bounded-execution-program.js';
+export * from './allowance.js';
+export * from './bounded-execution-report.js';
 export * from './admission-store.js';
 export * from './admission-store-postgres.js';
 export * from './gate-qualification-v2.js';
@@ -246,6 +251,7 @@ export * from './reliance-refusal-bridge.js';
 export * from './open-exposure-ledger.js';
 export * from './open-exposure-ledger-postgres.js';
 export * from './coverage-reconciliation-attestation.js';
+export * from './coverage-reconciliation-runner.js';
 export * from './receipt-census.js';
 export * from './loss-experience-feed.js';
 export {
@@ -2184,6 +2190,7 @@ export default {
   CAPABILITY_SHARE_VERSION,
   CAPABILITY_SCOPE_PROFILE,
   CAPABILITY_CAID_SCOPE_PROFILE,
+  CAPABILITY_ALLOWANCE_SCOPE_PROFILE,
   CAPABILITY_STATE_DDL,
   CAPABILITY_SQL,
   capabilityBaseReceiptDigest,

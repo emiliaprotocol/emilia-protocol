@@ -1,6 +1,6 @@
 {
   "name": "@emilia-protocol/gate",
-  "version": "0.22.2",
+  "version": "0.23.0",
   "repository": {
     "type": "git",
     "url": "https://github.com/emiliaprotocol/emilia-protocol.git",
@@ -217,6 +217,10 @@
       "types": "./dist/capability-receipt.d.ts",
       "import": "./capability-receipt.js"
     },
+    "./allowance": {
+      "types": "./dist/allowance.d.ts",
+      "import": "./allowance.js"
+    },
     "./receipt-program": {
       "types": "./dist/receipt-program.d.ts",
       "import": "./receipt-program.js"
@@ -301,6 +305,14 @@
       "types": "./dist/autonomy-control-plane-profile.d.ts",
       "import": "./autonomy-control-plane-profile.js"
     },
+    "./bounded-execution-program": {
+      "types": "./dist/bounded-execution-program.d.ts",
+      "import": "./bounded-execution-program.js"
+    },
+    "./bounded-execution-report": {
+      "types": "./dist/bounded-execution-report.d.ts",
+      "import": "./bounded-execution-report.js"
+    },
     "./admission-store": {
       "types": "./dist/admission-store.d.ts",
       "import": "./admission-store.js"
@@ -354,6 +366,10 @@
       "types": "./dist/coverage-reconciliation-attestation.d.ts",
       "import": "./coverage-reconciliation-attestation.js"
     },
+    "./coverage-reconciliation-runner": {
+      "types": "./dist/coverage-reconciliation-runner.d.ts",
+      "import": "./coverage-reconciliation-runner.js"
+    },
     "./receipt-census": {
       "types": "./dist/receipt-census.d.ts",
       "import": "./receipt-census.js"
@@ -405,6 +421,7 @@
     "runtime-monitor.js",
     "formal-runtime-map.js",
     "capability-receipt.js",
+    "allowance.js",
     "receipt-program.js",
     "trust-program.js",
     "reliance-program.js",
@@ -426,8 +443,11 @@
     "discovery-permit-resolver.js",
     "authority-allocation.js",
     "autonomy-control-plane-profile.js",
+    "bounded-execution-program.js",
+    "bounded-execution-report.js",
     "admission-store.js",
     "admission-store-postgres.js",
+    "sql/gate-qualification-v2.sql",
     "gate-qualification-v2.js",
     "fido-ap2-bridge.js",
     "sql/gate-qualification-v2.sql",
@@ -440,6 +460,7 @@
     "open-exposure-ledger.js",
     "open-exposure-ledger-postgres.js",
     "coverage-reconciliation-attestation.js",
+    "coverage-reconciliation-runner.js",
     "receipt-census.js",
     "loss-experience-feed.js",
     "zk-range-proof.js",
@@ -508,10 +529,11 @@
   ],
   "scripts": {
     "build": "tsc -p tsconfig.json && node postbuild-ts-nocheck.mjs",
-    "prepack": "npm run build",
+    "prepack": "node run-prepack.mjs",
     "pretest": "npm run build",
-    "test": "node --test && npm run test:qualification",
-    "test:qualification": "tsx --test admission-store.test.ts admission-store-postgres.test.ts gate-qualification-v2.test.ts",
+    "test": "node --test --test-concurrency=1 && npm run test:qualification",
+    "check:allowance-security-test-coverage": "node check-allowance-security-test-coverage.mjs",
+    "test:qualification": "npm run check:allowance-security-test-coverage && tsx --test --test-concurrency=1 allowance.test.ts capability-receipt.test.ts adapters/stripe.test.ts adapters/github.test.ts adapters/supabase.test.ts admission-store.test.ts admission-store-postgres.test.ts gate-qualification-v2.test.ts bounded-execution-program.test.ts bounded-execution-report.test.ts execution-program-admission-store.test.ts execution-program-admission-store-postgres.test.ts execution-program-runtime-trace-replay.test.ts",
     "demo": "node demo.mjs",
     "eg1": "node eg1.mjs",
     "cf1": "node cf1.mjs"

@@ -13,7 +13,7 @@
 \* status/reservation_token). This model tracks the STORE state, never the
 \* envelope field, for every consumption invariant.
 \*
-\* Maps to code (packages/gate/capability-receipt.js unless noted):
+\* Maps to code (packages/gate/src/capability-receipt.ts unless noted):
 \*   BudgetNonNegative                 -> validateAmount L108; DDL CHECK budget_amount>=0 L466;
 \*                                        migration L22; budget set once at register (never updated) L488
 \*   EnvelopeConsumedZero (register)   -> assertCapabilityShape L206 (envelope consumed must be 0)
@@ -93,11 +93,26 @@ Available(c) == budget[c] - consumed[c] - reserved[c]
 \* --------------------------------------------------------------------------
 CommittedOpsOf(c) == {o \in Operations : opStatus[o] = "committed" /\ opCap[o] = c}
 ReservedOpsOf(c)  == {o \in Operations : opStatus[o] = "reserved"  /\ opCap[o] = c}
+CommittedDelegationsOf(c) == {
+    o \in Operations :
+        opStatus[o] = "committed"
+        /\ opCap[o] = c
+        /\ delegChild[o] # "none"
+}
+DirectChildrenOf(c) == {
+    ch \in registered :
+        parentPtr[ch] = c
+}
 
 RECURSIVE SumAmt(_)
 SumAmt(S) == IF S = {} THEN 0
              ELSE LET o == CHOOSE x \in S : TRUE
                   IN opAmount[o] + SumAmt(S \ {o})
+
+RECURSIVE SumBudget(_)
+SumBudget(S) == IF S = {} THEN 0
+                ELSE LET c == CHOOSE x \in S : TRUE
+                     IN budget[c] + SumBudget(S \ {c})
 
 \* --------------------------------------------------------------------------
 \* Type Invariant
@@ -178,6 +193,21 @@ DelegationAcyclic ==
     \A c \in registered :
         parentPtr[c] # "none" => chainLen[parentPtr[c]] < chainLen[c]
 
+\* I10: every registered direct child is backed by committed delegation spend
+\* from that exact parent. A committed-but-unregistered orphan increases the
+\* right side only, so crash-safe orphaning cannot create unbacked authority.
+DirectChildAuthorityIsFunded ==
+    \A p \in registered :
+        SumBudget(DirectChildrenOf(p)) <= SumAmt(CommittedDelegationsOf(p))
+
+\* I11: aggregate sibling authority is bounded by the parent's immutable
+\* balance within this one authoritative model state domain. This is the
+\* fan-out statement; it does not claim conservation across forked stores.
+AggregateSiblingAuthorityConserved ==
+    \A p \in registered :
+        /\ SumBudget(DirectChildrenOf(p)) <= consumed[p]
+        /\ consumed[p] + reserved[p] <= budget[p]
+
 \* --------------------------------------------------------------------------
 \* Transition-level (action) properties — checked as PROPERTY, not INVARIANT.
 \* --------------------------------------------------------------------------
@@ -201,6 +231,16 @@ NoDoubleCommit ==
 CommitRequiresReserve ==
     [][ \A o \in Operations :
           (opStatus[o] # "committed" /\ opStatus'[o] = "committed") => opStatus[o] = "reserved" ]_vars
+
+\* P5: once an operation identifier reserves a delegation, its exact parent,
+\* amount, child, and expiry binding cannot be substituted.
+DelegationOperationBindingImmutable ==
+    [][ \A o \in Operations :
+          opStatus[o] # "none" =>
+            /\ opCap'[o] = opCap[o]
+            /\ opAmount'[o] = opAmount[o]
+            /\ delegChild'[o] = delegChild[o]
+            /\ delegExpiry'[o] = delegExpiry[o] ]_vars
 
 \* --------------------------------------------------------------------------
 \* Initial State
@@ -435,9 +475,12 @@ THEOREM Spec => []DelegationBounded
 THEOREM Spec => []DelegationAuthorityNonIncreasing
 THEOREM Spec => []ChildExpiryBoundedByParent
 THEOREM Spec => []DelegationAcyclic
+THEOREM Spec => []DirectChildAuthorityIsFunded
+THEOREM Spec => []AggregateSiblingAuthorityConserved
 THEOREM Spec => ConsumptionMonotonic
 THEOREM Spec => BudgetImmutable
 THEOREM Spec => NoDoubleCommit
 THEOREM Spec => CommitRequiresReserve
+THEOREM Spec => DelegationOperationBindingImmutable
 
 ==========================================================================

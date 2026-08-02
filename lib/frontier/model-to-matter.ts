@@ -1141,7 +1141,7 @@ export function verifyModelToMatterEffect(effect: any, opts: any = {}): any {
 }
 
 /**
- * Reconcile the executor statement with independently pinned observations.
+ * Reconcile the executor statement with separately pinned observations.
  *
  * The Model-to-Matter clearance is mapped into Outcome Binding's receipt
  * commitment fields so every source signs the same action digest, CAID,
@@ -1216,7 +1216,7 @@ export function verifyModelToMatterOutcome(input: any, opts: any = {}): any {
     reason: binding.valid ? null : `outcome_${binding.outcome}`,
     effect,
     binding,
-    limitation: 'Independent signed observations improve attribution and reconciliation; they remain claims by pinned sources, not metaphysical proof of physical truth.',
+    limitation: 'Separately pinned observations improve attribution and reconciliation; configured distinctness does not establish source independence, population completeness, or physical truth.',
   };
 }
 

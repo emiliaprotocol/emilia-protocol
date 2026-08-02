@@ -42,6 +42,11 @@ export interface AuthorityAllocationSnapshot {
     actions: readonly string[];
     audiences: readonly string[];
     budget: AuthorityAllocationBudget;
+    /**
+     * Maximum sibling allocations that may be active in this exact authority
+     * epoch. This is an allocation-count ceiling, not proof of process liveness.
+     */
+    max_active_children: number;
     expires_at: string;
     sibling_allocations: readonly AuthorityBranchAllocation[];
 }

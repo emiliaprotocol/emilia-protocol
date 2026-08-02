@@ -13,6 +13,7 @@ export declare function verifyCoverageReconciliationAttestation(attestation: unk
     expected_program?: RiskRecord;
     expected_census_digest?: string;
     expected_relying_party_id?: string;
+    expected_coverage_report_hash?: string;
 }): {
     accepted: boolean;
     verified: boolean;

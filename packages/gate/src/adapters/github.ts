@@ -21,7 +21,16 @@
  * The receipt's claim must carry the same owner/repo (and username/permission or
  * branch) as the call — a receipt for repo A cannot authorize deleting repo B.
  */
-import { createAdapter, manifestFromPack } from './_kit.js';
+import {
+  canonicalActuatorObject,
+  createAdapter,
+  hashCanonical,
+  manifestFromPack,
+} from './_kit.js';
+import { executeWithGateAllowance } from '../allowance.js';
+
+const GITHUB_WORKFLOW_ALLOWANCE_ACTION = 'github.workflow.dispatch.production';
+const GITHUB_WORKFLOW_ALLOWANCE_UNIT = 'DISPATCH';
 
 export const GITHUB_ACTION_PACK = Object.freeze([
   Object.freeze({
@@ -84,6 +93,10 @@ const OPS = {
 
 const adapter = createAdapter({ system: 'github', ops: OPS });
 export const GITHUB_OPS = adapter.OPS;
+const githubAllowanceConnectors = new WeakMap<object, {
+  octokit: any;
+  connectorInstanceId: string;
+}>();
 
 /** Build an action-risk manifest for the GitHub destructive ops (plus any extras). */
 export function createGithubManifest(extraActions = []) {
@@ -107,4 +120,103 @@ export function guardGithubMutation(gate, octokit, args) {
   return adapter.guard(gate, octokit, args);
 }
 
-export default { GITHUB_ACTION_PACK, GITHUB_OPS, createGithubManifest, guardGithubMutation };
+/** Digest the closed workflow-dispatch input object without disclosing it in the allowance. */
+export function githubWorkflowInputsDigest(inputs = {}) {
+  return `sha256:${hashCanonical(inputs)}`;
+}
+
+/** Bind an Octokit client to the installation identity returned by a trusted provider probe. */
+export async function createGithubAllowanceConnector({
+  octokit,
+}: {
+  octokit?: any;
+} = {}) {
+  if (!octokit?.actions || typeof octokit.actions.createWorkflowDispatch !== 'function'
+      || typeof octokit.request !== 'function') {
+    throw new TypeError('createGithubAllowanceConnector requires an Octokit workflow-dispatch client');
+  }
+  const response = await octokit.request('GET /installation');
+  const installationId = response?.data?.id;
+  if (!Number.isSafeInteger(installationId) || installationId <= 0) {
+    throw new TypeError('GitHub installation identity probe returned an invalid installation');
+  }
+  const connectorInstanceId = `github:installation:${installationId}`;
+  const connector = Object.freeze({});
+  githubAllowanceConnectors.set(connector, { octokit, connectorInstanceId });
+  return connector;
+}
+
+/**
+ * Dispatch one specifically bound production workflow under a signed Gate
+ * allowance. The Octokit client and GitHub credential remain in the caller's
+ * process; this path exposes no generic GitHub mutation.
+ */
+export function guardGithubAllowanceMutation({
+  connector,
+  params,
+  operationId,
+  ...allowanceOptions
+}) {
+  const configured = githubAllowanceConnectors.get(connector);
+  if (!configured) throw new TypeError('guardGithubAllowanceMutation requires a configured GitHub allowance connector');
+  const { octokit, connectorInstanceId } = configured;
+  if (!params || typeof params !== 'object' || Array.isArray(params)) {
+    throw new TypeError('guardGithubAllowanceMutation requires workflow dispatch params');
+  }
+  for (const field of ['owner', 'repo', 'workflow', 'ref']) {
+    if (typeof params[field] !== 'string' || params[field].length === 0) {
+      throw new TypeError(`guardGithubAllowanceMutation requires params.${field}`);
+    }
+  }
+  if (params.inputs !== undefined
+      && (params.inputs === null || typeof params.inputs !== 'object' || Array.isArray(params.inputs))) {
+    throw new TypeError('guardGithubAllowanceMutation params.inputs must be an object');
+  }
+  const input = canonicalActuatorObject({
+    owner: params.owner,
+    repo: params.repo,
+    workflow: params.workflow,
+    ref: params.ref,
+    inputs: params.inputs || {},
+  });
+  const action = {
+    action_type: GITHUB_WORKFLOW_ALLOWANCE_ACTION,
+    repository: `${input.owner}/${input.repo}`,
+    workflow: input.workflow,
+    ref: input.ref,
+    inputs_digest: githubWorkflowInputsDigest(input.inputs),
+    workflow_inputs: input.inputs,
+    amount: 1,
+    currency: GITHUB_WORKFLOW_ALLOWANCE_UNIT,
+    operation_id: operationId,
+  };
+  return executeWithGateAllowance({
+    ...allowanceOptions,
+    expected: {
+      ...(allowanceOptions.expected || {}),
+      connector_id: connectorInstanceId,
+    },
+    action,
+    operationId,
+    executeAction: (verifiedAction) => {
+      const separator = verifiedAction.repository.indexOf('/');
+      return octokit.actions.createWorkflowDispatch({
+        owner: verifiedAction.repository.slice(0, separator),
+        repo: verifiedAction.repository.slice(separator + 1),
+        workflow_id: verifiedAction.workflow,
+        ref: verifiedAction.ref,
+        inputs: verifiedAction.workflow_inputs,
+      });
+    },
+  });
+}
+
+export default {
+  GITHUB_ACTION_PACK,
+  GITHUB_OPS,
+  createGithubManifest,
+  guardGithubMutation,
+  githubWorkflowInputsDigest,
+  createGithubAllowanceConnector,
+  guardGithubAllowanceMutation,
+};

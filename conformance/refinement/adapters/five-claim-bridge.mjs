@@ -173,6 +173,7 @@ export async function runConservationAuthorityScenario(scenario) {
     actions: ["inspect", "release"],
     audiences: ["merchant-a", "merchant-b"],
     budget: sharedInput.parent_budget,
+    max_active_children: sharedInput.allocations.length,
     expires_at: expiry,
     sibling_allocations: sharedInput.allocations.map((budget, index) => ({
       allocation_id: `branch:${index + 1}`,

@@ -1,0 +1,2544 @@
+<!DOCTYPE html>
+<html lang="en" class="Internet-Draft">
+<head>
+<meta charset="utf-8">
+<meta content="Common,Latin" name="scripts">
+<meta content="initial-scale=1.0" name="viewport">
+<title>Bounded Execution Programs for Consequential Agent Actions</title>
+<meta content="Iman Schrock" name="author">
+<meta content="
+       An authorization for one action does not by itself authorize an
+      open-ended agent plan. This document defines an Experimental profile for
+      a signed, finite, versioned directed acyclic graph of consequential action
+      occurrences. The program binds a total retained-history ceiling. Each node
+      binds an exact action or a pinned action-matching profile, an action-
+      specific Trust Program, outcome-specific dependencies, an occurrence
+      ceiling, and fixed charges against aggregate attempt budgets.
+       A conforming program-aware admission store evaluates reachability and
+      budgets in the same linearizable transaction domain as the ordinary
+      one-time execution right. It uses store-owned authorizer trust roots,
+      clock, authenticated profile-match verification, and current program
+      status; seals a deterministic execution-program resource into the
+      AdmissionSnapshot; and fences the program's independent authorization
+      digest against ordinary-path admission. The profile does not establish
+      that natural-language intent was understood, that a plan is safe or
+      lawful, that provider or effect evidence is true, or that every mutation
+      path was mediated.
+    " name="description">
+<meta content="xml2rfc 3.34.0" name="generator">
+<meta content="AI agents" name="keyword">
+<meta content="authorization" name="keyword">
+<meta content="bounded autonomy" name="keyword">
+<meta content="execution programs" name="keyword">
+<meta content="draft-schrock-ep-bounded-execution-program-00" name="ietf.draft">
+<!-- Generator version information:
+  xml2rfc 3.34.0
+    Python 3.14.5
+    ConfigArgParse 1.7.5
+    google-i18n-address 3.1.1
+    intervaltree 3.2.1
+    Jinja2 3.1.6
+    lxml 6.1.1
+    natsort 8.4.0
+    platformdirs 4.10.0
+    pycountry 26.2.16
+    PyYAML 6.0.3
+    requests 2.34.2
+    wcwidth 0.8.1
+-->
+<link href="draft-schrock-ep-bounded-execution-program-00.xml" rel="alternate" type="application/rfc+xml">
+<link href="#copyright" rel="license">
+<style type="text/css">/*
+
+  NOTE: Changes at the bottom of this file overrides some earlier settings.
+
+  Once the style has stabilized and has been adopted as an official RFC style,
+  this can be consolidated so that style settings occur only in one place, but
+  for now the contents of this file consists first of the initial CSS work as
+  provided to the RFC Formatter (xml2rfc) work, followed by itemized and
+  commented changes found necessary during the development of the v3
+  formatters.
+
+*/
+
+/* fonts */
+@import url('https://static.ietf.org/fonts/noto-sans/import.css'); /* Sans-serif */
+@import url('https://static.ietf.org/fonts/noto-serif/import.css'); /* Serif (print) */
+@import url('https://static.ietf.org/fonts/roboto-mono/import.css'); /* Monospace */
+
+:root {
+  --font-sans: 'Noto Sans', Arial, Helvetica, sans-serif;
+  --font-serif: 'Noto Serif', 'Times', 'Times New Roman', serif;
+  --font-mono: 'Roboto Mono', Courier, 'Courier New', monospace;
+}
+
+@viewport {
+  zoom: 1.0;
+}
+@-ms-viewport {
+  width: extend-to-zoom;
+  zoom: 1.0;
+}
+/* general and mobile first */
+html {
+}
+body {
+  max-width: 90%;
+  margin: 1.5em auto;
+  color: #222;
+  background-color: #fff;
+  font-size: 14px;
+  font-family: var(--font-sans);
+  line-height: 1.6;
+  scroll-behavior: smooth;
+  overflow-wrap: break-word;
+}
+.ears {
+  display: none;
+}
+
+/* headings */
+#title, h1, h2, h3, h4, h5, h6 {
+  margin: 1em 0 0.5em;
+  font-weight: bold;
+  line-height: 1.3;
+}
+#title {
+  clear: both;
+  border-bottom: 1px solid #ddd;
+  margin: 0 0 0.5em 0;
+  padding: 1em 0 0.5em;
+}
+.author {
+  padding-bottom: 4px;
+}
+h1 {
+  font-size: 26px;
+  margin: 1em 0;
+}
+h2 {
+  font-size: 22px;
+  margin-top: -20px;  /* provide offset for in-page anchors */
+  padding-top: 33px;
+}
+h3 {
+  font-size: 18px;
+  margin-top: -36px;  /* provide offset for in-page anchors */
+  padding-top: 42px;
+}
+h4 {
+  font-size: 16px;
+  margin-top: -36px;  /* provide offset for in-page anchors */
+  padding-top: 42px;
+}
+h5, h6 {
+  font-size: 14px;
+}
+#n-copyright-notice {
+  border-bottom: 1px solid #ddd;
+  padding-bottom: 1em;
+  margin-bottom: 1em;
+}
+/* general structure */
+p {
+  padding: 0;
+  margin: 0 0 1em 0;
+  text-align: left;
+}
+div, span {
+  position: relative;
+}
+div {
+  margin: 0;
+}
+.alignRight.art-text {
+  background-color: #f9f9f9;
+  border: 1px solid #eee;
+  border-radius: 3px;
+  padding: 1em 1em 0;
+  margin-bottom: 1.5em;
+}
+.alignRight.art-text pre {
+  padding: 0;
+}
+.alignRight {
+  margin: 1em 0;
+}
+.alignRight > *:first-child {
+  border: none;
+  margin: 0;
+  float: right;
+  clear: both;
+}
+.alignRight > *:nth-child(2) {
+  clear: both;
+  display: block;
+  border: none;
+}
+svg {
+  display: block;
+}
+@media print {
+  svg {
+    max-height: 850px;
+    max-width: 660px;
+  }
+}
+svg[font-family~="serif" i], svg [font-family~="serif" i] {
+  font-family: var(--font-serif);
+}
+svg[font-family~="sans-serif" i], svg [font-family~="sans-serif" i] {
+  font-family: var(--font-sans);
+}
+svg[font-family~="monospace" i], svg [font-family~="monospace" i] {
+  font-family: var(--font-mono);
+}
+.alignCenter.art-text {
+  background-color: #f9f9f9;
+  border: 1px solid #eee;
+  border-radius: 3px;
+  padding: 1em 1em 0;
+  margin-bottom: 1.5em;
+}
+.alignCenter.art-text pre {
+  padding: 0;
+}
+.alignCenter {
+  margin: 1em 0;
+}
+.alignCenter > *:first-child {
+  display: table;
+  border: none;
+  margin: 0 auto;
+}
+
+/* lists */
+ol, ul {
+  padding: 0;
+  margin: 0 0 1em 2em;
+}
+ol ol, ul ul, ol ul, ul ol {
+  margin-left: 1em;
+}
+li {
+  margin: 0 0 0.25em 0;
+}
+.ulCompact li {
+  margin: 0;
+}
+ul.empty, .ulEmpty {
+  list-style-type: none;
+}
+ul.empty li, .ulEmpty li {
+  margin-top: 0.5em;
+}
+ul.ulBare, li.ulBare {
+  margin-left: 0em !important;
+}
+ul.compact, .ulCompact,
+ol.compact, .olCompact {
+  line-height: 100%;
+  margin: 0 0 0 2em;
+}
+
+/* definition lists */
+dl {
+}
+dl > dt {
+  float: left;
+  margin-right: 1em;
+}
+/*
+dl.nohang > dt {
+  float: none;
+}
+*/
+dl > dd {
+  margin-bottom: .8em;
+  min-height: 1.3em;
+}
+dl.compact > dd, .dlCompact > dd {
+  margin-bottom: 0em;
+}
+dl > dd > dl {
+  margin-top: 0.5em;
+  margin-bottom: 0em;
+}
+
+/* links */
+a {
+  text-decoration: none;
+}
+a[href] {
+  color: #22e; /* Arlen: WCAG 2019 */
+}
+a[href]:hover {
+  background-color: #f2f2f2;
+}
+figcaption a[href],
+a[href].selfRef {
+  color: #222;
+}
+/* XXX probably not this:
+a.selfRef:hover {
+  background-color: transparent;
+  cursor: default;
+} */
+
+/* Figures */
+tt, code, pre {
+  background-color: #f9f9f9;
+  font-family: var(--font-mono);
+}
+pre {
+  border: 1px solid #eee;
+  margin: 0;
+  padding: 1em;
+}
+img {
+  max-width: 100%;
+}
+figure {
+  margin: 0;
+}
+figure blockquote {
+  margin: 0.8em 0.4em 0.4em;
+}
+figcaption {
+  font-style: italic;
+  margin: 0 0 1em 0;
+}
+@media screen {
+  pre {
+    overflow-x: auto;
+    max-width: 100%;
+    max-width: calc(100% - 22px);
+  }
+}
+
+/* aside, blockquote */
+aside, blockquote {
+  margin-left: 0;
+  padding: 1.2em 2em;
+}
+blockquote {
+  background-color: #f9f9f9;
+  color: #111; /* Arlen: WCAG 2019 */
+  border: 1px solid #ddd;
+  border-radius: 3px;
+  margin: 1em 0;
+}
+blockquote > *:last-child {
+  margin-bottom: 0;
+}
+cite {
+  display: block;
+  text-align: right;
+  font-style: italic;
+}
+.xref {
+  overflow-wrap: normal;
+}
+
+/* tables */
+table {
+  width: 100%;
+  margin: 0 0 1em;
+  border-collapse: collapse;
+  border: 1px solid #eee;
+}
+th, td {
+  text-align: left;
+  vertical-align: top;
+  padding: 0.5em 0.75em;
+}
+th {
+  text-align: left;
+  background-color: #e9e9e9;
+}
+tr:nth-child(2n+1) > td {
+  background-color: #f5f5f5;
+}
+table caption {
+  font-style: italic;
+  margin: 0;
+  padding: 0;
+  text-align: left;
+}
+table p {
+  /* XXX to avoid bottom margin on table row signifiers. If paragraphs should
+     be allowed within tables more generally, it would be far better to select on a class. */
+  margin: 0;
+}
+
+/* pilcrow */
+a.pilcrow {
+  color: #666; /* Arlen: AHDJ 2019 */
+  text-decoration: none;
+  visibility: hidden;
+  user-select: none;
+  -ms-user-select: none;
+  -o-user-select:none;
+  -moz-user-select: none;
+  -khtml-user-select: none;
+  -webkit-user-select: none;
+  -webkit-touch-callout: none;
+}
+@media screen {
+  aside:hover > a.pilcrow,
+  p:hover > a.pilcrow,
+  blockquote:hover > a.pilcrow,
+  div:hover > a.pilcrow,
+  li:hover > a.pilcrow,
+  pre:hover > a.pilcrow {
+    visibility: visible;
+  }
+  a.pilcrow:hover {
+    background-color: transparent;
+  }
+}
+
+/* misc */
+hr {
+  border: 0;
+  border-top: 1px solid #eee;
+}
+.bcp14 {
+  font-variant: small-caps;
+}
+
+.role {
+  font-variant: all-small-caps;
+}
+
+/* info block */
+#identifiers {
+  margin: 0;
+  font-size: 0.9em;
+}
+#identifiers dt {
+  width: 3em;
+  clear: left;
+}
+#identifiers dd {
+  float: left;
+  margin-bottom: 0;
+}
+/* Fix PDF info block run off issue */
+@media print {
+  #identifiers dd {
+    max-width: 100%;
+  }
+}
+#identifiers .authors .author {
+  display: inline-block;
+  margin-right: 1.5em;
+}
+#identifiers .authors .org {
+  font-style: italic;
+}
+
+/* The prepared/rendered info at the very bottom of the page */
+.docInfo {
+  color: #666; /* Arlen: WCAG 2019 */
+  font-size: 0.9em;
+  font-style: italic;
+  margin-top: 2em;
+}
+.docInfo .prepared {
+  float: left;
+}
+.docInfo .prepared {
+  float: right;
+}
+
+/* table of contents */
+#toc  {
+  padding: 0.75em 0 2em 0;
+  margin-bottom: 1em;
+}
+nav.toc ul {
+  margin: 0 0.5em 0 0;
+  padding: 0;
+  list-style: none;
+}
+nav.toc li {
+  line-height: 1.3em;
+  margin: 0.75em 0;
+  padding-left: 1.2em;
+  text-indent: -1.2em;
+}
+/* references */
+.references dt {
+  text-align: right;
+  font-weight: bold;
+  min-width: 7em;
+}
+.references dd {
+  margin-left: 8em;
+  overflow: auto;
+}
+
+.refInstance {
+  margin-bottom: 1.25em;
+}
+
+.refSubseries {
+  margin-bottom: 1.25em;
+}
+
+.references .ascii {
+  margin-bottom: 0.25em;
+}
+
+/* index */
+.index ul {
+  margin: 0 0 0 1em;
+  padding: 0;
+  list-style: none;
+}
+.index ul ul {
+  margin: 0;
+}
+.index li {
+  margin: 0;
+  text-indent: -2em;
+  padding-left: 2em;
+  padding-bottom: 5px;
+}
+.indexIndex {
+  margin: 0.5em 0 1em;
+}
+.index a {
+  font-weight: 700;
+}
+/* make the index two-column on all but the smallest screens */
+@media (min-width: 600px) {
+  .index ul {
+    -moz-column-count: 2;
+    -moz-column-gap: 20px;
+  }
+  .index ul ul {
+    -moz-column-count: 1;
+    -moz-column-gap: 0;
+  }
+}
+
+/* authors */
+address.vcard {
+  font-style: normal;
+  margin: 1em 0;
+}
+
+address.vcard .nameRole {
+  font-weight: 700;
+  margin-left: 0;
+}
+address.vcard .label {
+  font-family: var(--font-sans);
+  margin: 0.5em 0;
+}
+address.vcard .type {
+  display: none;
+}
+.alternative-contact {
+  margin: 1.5em 0 1em;
+}
+hr.addr {
+  border-top: 1px dashed;
+  margin: 0;
+  color: #ddd;
+  max-width: calc(100% - 16px);
+}
+
+/* temporary notes */
+.rfcEditorRemove::before {
+  position: absolute;
+  top: 0.2em;
+  right: 0.2em;
+  padding: 0.2em;
+  content: "The RFC Editor will remove this note";
+  color: #9e2a00; /* Arlen: WCAG 2019 */
+  background-color: #ffd; /* Arlen: WCAG 2019 */
+}
+.rfcEditorRemove {
+  position: relative;
+  padding-top: 1.8em;
+  background-color: #ffd; /* Arlen: WCAG 2019 */
+  border-radius: 3px;
+}
+.cref {
+  background-color: #ffd; /* Arlen: WCAG 2019 */
+  padding: 2px 4px;
+}
+.crefSource {
+  font-style: italic;
+}
+/* alternative layout for smaller screens */
+@media screen and (max-width: 1023px) {
+  body {
+    padding-top: 2em;
+  }
+  #title {
+    padding: 1em 0;
+  }
+  h1 {
+    font-size: 24px;
+  }
+  h2 {
+    font-size: 20px;
+    margin-top: -18px;  /* provide offset for in-page anchors */
+    padding-top: 38px;
+  }
+  #identifiers dd {
+    max-width: 60%;
+  }
+  #toc {
+    position: fixed;
+    z-index: 2;
+    top: 0;
+    right: 0;
+    padding: 0;
+    margin: 0;
+    background-color: inherit;
+    border-bottom: 1px solid #ccc;
+  }
+  #toc h2 {
+    margin: -1px 0 0 0;
+    padding: 4px 0 4px 6px;
+    padding-right: 1em;
+    min-width: 190px;
+    font-size: 1.1em;
+    text-align: right;
+    background-color: #444;
+    color: white;
+    cursor: pointer;
+  }
+  #toc h2::before { /* css hamburger */
+    float: right;
+    position: relative;
+    width: 1em;
+    height: 1px;
+    left: -164px;
+    margin: 6px 0 0 0;
+    background: white none repeat scroll 0 0;
+    box-shadow: 0 4px 0 0 white, 0 8px 0 0 white;
+    content: "";
+  }
+  #toc nav {
+    display: none;
+    padding: 0.5em 1em 1em;
+    overflow: auto;
+    height: calc(100vh - 48px);
+    border-left: 1px solid #ddd;
+  }
+}
+
+/* alternative layout for wide screens */
+@media screen and (min-width: 1024px) {
+  body {
+    max-width: 724px;
+    margin: 42px auto;
+    padding-left: 1.5em;
+    padding-right: 29em;
+  }
+  #toc {
+    position: fixed;
+    top: 42px;
+    right: 42px;
+    width: 25%;
+    margin: 0;
+    padding: 0 1em;
+    z-index: 1;
+  }
+  #toc h2 {
+    border-top: none;
+    border-bottom: 1px solid #ddd;
+    font-size: 1em;
+    font-weight: normal;
+    margin: 0;
+    padding: 0.25em 1em 1em 0;
+  }
+  #toc nav {
+    display: block;
+    height: calc(90vh - 84px);
+    bottom: 0;
+    padding: 0.5em 0 0;
+    overflow: auto;
+  }
+  img { /* future proofing */
+    max-width: 100%;
+    height: auto;
+  }
+}
+
+/* pagination */
+@media print {
+  body {
+    width: 100%;
+  }
+  p {
+    orphans: 3;
+    widows: 3;
+  }
+  #n-copyright-notice {
+    border-bottom: none;
+  }
+  #toc, #n-introduction {
+    page-break-before: always;
+  }
+  #toc {
+    border-top: none;
+    padding-top: 0;
+  }
+  figure, pre {
+    page-break-inside: avoid;
+  }
+  figure {
+    overflow: scroll;
+  }
+  .breakable pre {
+    break-inside: auto;
+  }
+  h1, h2, h3, h4, h5, h6 {
+    page-break-after: avoid;
+  }
+  h2+*, h3+*, h4+*, h5+*, h6+* {
+    page-break-before: avoid;
+  }
+  pre {
+    white-space: pre-wrap;
+    word-wrap: break-word;
+    font-size: 10pt;
+  }
+  table {
+    border: 1px solid #ddd;
+  }
+  td {
+    border-top: 1px solid #ddd;
+  }
+}
+
+/* This is commented out here, as the string-set: doesn't
+   pass W3C validation currently */
+/*
+.ears thead .left {
+  string-set: ears-top-left content();
+}
+
+.ears thead .center {
+  string-set: ears-top-center content();
+}
+
+.ears thead .right {
+  string-set: ears-top-right content();
+}
+
+.ears tfoot .left {
+  string-set: ears-bottom-left content();
+}
+
+.ears tfoot .center {
+  string-set: ears-bottom-center content();
+}
+
+.ears tfoot .right {
+  string-set: ears-bottom-right content();
+}
+*/
+
+@page :first {
+  padding-top: 0;
+  @top-left {
+    content: normal;
+    border: none;
+  }
+  @top-center {
+    content: normal;
+    border: none;
+  }
+  @top-right {
+    content: normal;
+    border: none;
+  }
+}
+
+@page {
+  size: A4;
+  margin-bottom: 45mm;
+  padding-top: 20px;
+  /* The following is commented out here, but set appropriately by in code, as
+     the content depends on the document */
+  /*
+  @top-left {
+    content: 'Internet-Draft';
+    vertical-align: bottom;
+    border-bottom: solid 1px #ccc;
+  }
+  @top-left {
+    content: string(ears-top-left);
+    vertical-align: bottom;
+    border-bottom: solid 1px #ccc;
+  }
+  @top-center {
+    content: string(ears-top-center);
+    vertical-align: bottom;
+    border-bottom: solid 1px #ccc;
+  }
+  @top-right {
+    content: string(ears-top-right);
+    vertical-align: bottom;
+    border-bottom: solid 1px #ccc;
+  }
+  @bottom-left {
+    content: string(ears-bottom-left);
+    vertical-align: top;
+    border-top: solid 1px #ccc;
+  }
+  @bottom-center {
+    content: string(ears-bottom-center);
+    vertical-align: top;
+    border-top: solid 1px #ccc;
+  }
+  @bottom-right {
+      content: '[Page ' counter(page) ']';
+      vertical-align: top;
+      border-top: solid 1px #ccc;
+  }
+  */
+
+}
+
+/* Changes introduced to fix issues found during implementation */
+/* Make sure links are clickable even if overlapped by following H* */
+a {
+  z-index: 2;
+}
+/* Separate body from document info even without intervening H1 */
+section {
+  clear: both;
+}
+
+
+/* Top align author divs, to avoid names without organization dropping level with org names */
+.author {
+  vertical-align: top;
+}
+
+/* Leave room in document info to show Internet-Draft on one line */
+#identifiers dt {
+  width: 8em;
+}
+
+/* Don't waste quite as much whitespace between label and value in doc info */
+#identifiers dd {
+  margin-left: 1em;
+}
+
+/* Give floating toc a background color (needed when it's a div inside section */
+#toc {
+  background-color: white;
+}
+
+/* Make the collapsed ToC header render white on gray also when it's a link */
+@media screen and (max-width: 1023px) {
+  #toc h2 a,
+  #toc h2 a:link,
+  #toc h2 a:focus,
+  #toc h2 a:hover,
+  #toc a.toplink,
+  #toc a.toplink:hover {
+    color: white;
+    background-color: #444;
+    text-decoration: none;
+  }
+}
+
+/* Give the bottom of the ToC some whitespace */
+@media screen and (min-width: 1024px) {
+  #toc {
+    padding: 0 0 1em 1em;
+  }
+}
+
+/* Style section numbers with more space between number and title */
+.section-number {
+  padding-right: 0.5em;
+}
+
+/* prevent monospace from becoming overly large */
+tt, code, pre {
+  font-size: 95%;
+}
+
+/* Fix the height/width aspect for ascii art*/
+.sourcecode pre,
+.art-text pre {
+  line-height: 1.12;
+}
+
+
+/* Add styling for a link in the ToC that points to the top of the document */
+a.toplink {
+  float: right;
+  margin-right: 0.5em;
+}
+
+/* Fix the dl styling to match the RFC 7992 attributes */
+dl > dt,
+dl.dlParallel > dt {
+  float: left;
+  margin-right: 1em;
+}
+dl.dlNewline > dt {
+  float: none;
+}
+
+/* Provide styling for table cell text alignment */
+table td.text-left,
+table th.text-left {
+  text-align: left;
+}
+table td.text-center,
+table th.text-center {
+  text-align: center;
+}
+table td.text-right,
+table th.text-right {
+  text-align: right;
+}
+
+/* Make the alternative author contact information look less like just another
+   author, and group it closer with the primary author contact information */
+.alternative-contact {
+  margin: 0.5em 0 0.25em 0;
+}
+address .non-ascii {
+  margin: 0 0 0 2em;
+}
+
+/* With it being possible to set tables with alignment
+  left, center, and right, { width: 100%; } does not make sense */
+table {
+  width: auto;
+}
+
+/* Avoid reference text that sits in a block with very wide left margin,
+   because of a long floating dt label.*/
+.references dd {
+  overflow: visible;
+}
+
+/* Control caption placement */
+caption {
+  caption-side: bottom;
+}
+
+/* Limit the width of the author address vcard, so names in right-to-left
+   script don't end up on the other side of the page. */
+
+address.vcard {
+  max-width: 30em;
+  margin-right: auto;
+}
+
+/* For address alignment dependent on LTR or RTL scripts */
+address div.left {
+  text-align: left;
+}
+address div.right {
+  text-align: right;
+}
+
+/* Provide table alignment support.  We can't use the alignX classes above
+   since they do unwanted things with caption and other styling. */
+table.right {
+ margin-left: auto;
+ margin-right: 0;
+}
+table.center {
+ margin-left: auto;
+ margin-right: auto;
+}
+table.left {
+ margin-left: 0;
+ margin-right: auto;
+}
+
+/* Give the table caption label the same styling as the figcaption */
+caption a[href] {
+  color: #222;
+}
+
+@media print {
+  .toplink {
+    display: none;
+  }
+
+  /* avoid overwriting the top border line with the ToC header */
+  #toc {
+    padding-top: 1px;
+  }
+
+  /* Avoid page breaks inside dl and author address entries */
+  .vcard {
+    page-break-inside: avoid;
+  }
+
+}
+/* Tweak the bcp14 keyword presentation */
+.bcp14 {
+  font-variant: small-caps;
+  font-weight: bold;
+  font-size: 0.9em;
+}
+/* Tweak the invisible space above H* in order not to overlay links in text above */
+ h2 {
+  margin-top: -18px;  /* provide offset for in-page anchors */
+  padding-top: 31px;
+ }
+ h3 {
+  margin-top: -18px;  /* provide offset for in-page anchors */
+  padding-top: 24px;
+ }
+ h4 {
+  margin-top: -18px;  /* provide offset for in-page anchors */
+  padding-top: 24px;
+ }
+/* Float artwork pilcrow to the right */
+@media screen {
+  .artwork a.pilcrow {
+    display: block;
+    line-height: 0.7;
+    margin-top: 0.15em;
+  }
+}
+/* Make pilcrows on dd visible */
+@media screen {
+  dd:hover > a.pilcrow {
+    visibility: visible;
+  }
+}
+/* Make the placement of figcaption match that of a table's caption
+   by removing the figure's added bottom margin */
+.alignLeft.art-text,
+.alignCenter.art-text,
+.alignRight.art-text {
+   margin-bottom: 0;
+}
+.alignLeft,
+.alignCenter,
+.alignRight {
+  margin: 1em 0 0 0;
+}
+/* In print, the pilcrow won't show on hover, so prevent it from taking up space,
+   possibly even requiring a new line */
+@media print {
+  a.pilcrow {
+    display: none;
+  }
+}
+/* Styling for the external metadata */
+div#external-metadata {
+  background-color: #eee;
+  padding: 0.5em;
+  margin-bottom: 0.5em;
+  display: none;
+}
+div#internal-metadata {
+  padding: 0.5em;                       /* to match the external-metadata padding */
+}
+/* Styling for title RFC Number */
+h1#rfcnum {
+  clear: both;
+  margin: 0 0 -1em;
+  padding: 1em 0 0 0;
+}
+/* Make .olPercent look the same as <ol><li> */
+dl.olPercent > dd {
+  margin-bottom: 0.25em;
+  min-height: initial;
+}
+/* Give aside some styling to set it apart */
+aside {
+  border-left: 1px solid #ddd;
+  margin: 1em 0 1em 2em;
+  padding: 0.2em 2em;
+}
+aside > dl,
+aside > ol,
+aside > ul,
+aside > table,
+aside > p {
+  margin-bottom: 0.5em;
+}
+/* Additional page break settings */
+@media print {
+  figcaption, table caption {
+    page-break-before: avoid;
+  }
+}
+/* Font size adjustments for print */
+@media print {
+  body  { font-size: 10pt;      line-height: normal; max-width: 96%; }
+  h1    { font-size: 1.72em;    padding-top: 1.5em; } /* 1*1.2*1.2*1.2 */
+  h2    { font-size: 1.44em;    padding-top: 1.5em; } /* 1*1.2*1.2 */
+  h3    { font-size: 1.2em;     padding-top: 1.5em; } /* 1*1.2 */
+  h4    { font-size: 1em;       padding-top: 1.5em; }
+  h5, h6 { font-size: 1em;      margin: initial; padding: 0.5em 0 0.3em; }
+}
+/* Sourcecode margin in print, when there's no pilcrow */
+@media print {
+  .artwork,
+  .artwork > pre,
+  .sourcecode {
+    margin-bottom: 1em;
+  }
+}
+/* Avoid narrow tables forcing too narrow table captions, which may render badly */
+table {
+  min-width: 20em;
+}
+/* ol type a */
+ol.type-a { list-style-type: lower-alpha; }
+ol.type-A { list-style-type: upper-alpha; }
+ol.type-i { list-style-type: lower-roman; }
+ol.type-I { list-style-type: upper-roman; }
+/* Apply the print table and row borders in general, on request from the RPC,
+and increase the contrast between border and odd row background slightly */
+table {
+  border: 1px solid #ddd;
+}
+td {
+  border-top: 1px solid #ddd;
+}
+tr {
+  break-inside: avoid;
+}
+tr:nth-child(2n+1) > td {
+  background-color: #f8f8f8;
+}
+/* Use style rules to govern display of the TOC. */
+@media screen and (max-width: 1023px) {
+  #toc nav { display: none; }
+  #toc.active nav { display: block; }
+}
+/* Add support for keepWithNext */
+.keepWithNext {
+  break-after: avoid-page;
+  break-after: avoid-page;
+}
+/* Add support for keepWithPrevious */
+.keepWithPrevious {
+  break-before: avoid-page;
+}
+/* Change the approach to avoiding breaks inside artwork etc. */
+figure, pre, table, .artwork, .sourcecode  {
+  break-before: auto;
+  break-after: auto;
+}
+/* Avoid breaks between <dt> and <dd> */
+dl {
+  break-before: auto;
+  break-inside: auto;
+}
+dt {
+  break-before: auto;
+  break-after: avoid-page;
+}
+dd {
+  break-before: avoid-page;
+  break-after: auto;
+  orphans: 3;
+  widows: 3
+}
+span.break, dd.break {
+  margin-bottom: 0;
+  min-height: 0;
+  break-before: auto;
+  break-inside: auto;
+  break-after: auto;
+}
+/* Undo break-before ToC */
+@media print {
+  #toc {
+    break-before: auto;
+  }
+}
+/* Text in compact lists should not get extra bottom margin space,
+   since that would makes the list not compact */
+ul.compact p, .ulCompact p,
+ol.compact p, .olCompact p {
+ margin: 0;
+}
+/* But the list as a whole needs the extra space at the end */
+section ul.compact,
+section .ulCompact,
+section ol.compact,
+section .olCompact {
+  margin-bottom: 1em;                    /* same as p not within ul.compact etc. */
+}
+/* The tt and code background above interferes with for instance table cell
+   backgrounds.  Changed to something a bit more selective. */
+tt, code {
+  background-color: transparent;
+}
+p tt, p code, li tt, li code, dt tt, dt code {
+  background-color: #f8f8f8;
+}
+/* Tweak the pre margin -- 0px doesn't come out well */
+pre {
+   margin-top: 0.5px;
+}
+/* Tweak the compact list text */
+ul.compact, .ulCompact,
+ol.compact, .olCompact,
+dl.compact, .dlCompact {
+  line-height: normal;
+}
+/* Don't add top margin for nested lists */
+li > ul, li > ol, li > dl,
+dd > ul, dd > ol, dd > dl,
+dl > dd > dl {
+  margin-top: initial;
+}
+/* Elements that should not be rendered on the same line as a <dt> */
+/* This should match the element list in writer.text.TextWriter.render_dl() */
+dd > div.artwork:first-child,
+dd > aside:first-child,
+dd > blockquote:first-child,
+dd > figure:first-child,
+dd > ol:first-child,
+dd > div.sourcecode:first-child,
+dd > table:first-child,
+dd > ul:first-child {
+  clear: left;
+}
+/* fix for weird browser behaviour when <dd/> is empty */
+dt+dd:empty::before{
+  content: "\00a0";
+}
+/* Make paragraph spacing inside <li> smaller than in body text, to fit better within the list */
+li > p {
+  margin-bottom: 0.5em
+}
+/* Don't let p margin spill out from inside list items */
+li > p:last-of-type:only-child {
+  margin-bottom: 0;
+}
+</style>
+<link href="rfc-local.css" rel="stylesheet" type="text/css">
+<script type="application/javascript">async function addMetadata(){try{const e=document.styleSheets[0].cssRules;for(let t=0;t<e.length;t++)if(/#identifiers/.exec(e[t].selectorText)){const a=e[t].cssText.replace("#identifiers","#external-updates");document.styleSheets[0].insertRule(a,document.styleSheets[0].cssRules.length)}}catch(e){console.log(e)}const e=document.getElementById("external-metadata");if(e)try{var t,a="",o=function(e){const t=document.getElementsByTagName("meta");for(let a=0;a<t.length;a++)if(t[a].getAttribute("name")===e)return t[a].getAttribute("content");return""}("rfc.number");if(o){t="https://www.rfc-editor.org/rfc/rfc"+o+".json";try{const e=await fetch(t);a=await e.json()}catch(e){t=document.URL.indexOf("html")>=0?document.URL.replace(/html$/,"json"):document.URL+".json";const o=await fetch(t);a=await o.json()}}if(!a)return;e.style.display="block";const s="",d="https://datatracker.ietf.org/doc",n="https://datatracker.ietf.org/ipr/search",c="https://www.rfc-editor.org/info",l=a.doc_id.toLowerCase(),i=a.doc_id.slice(0,3).toLowerCase(),f=a.doc_id.slice(3).replace(/^0+/,""),u={status:"Status",obsoletes:"Obsoletes",obsoleted_by:"Obsoleted By",updates:"Updates",updated_by:"Updated By",see_also:"See Also",errata_url:"Errata"};let h="<dl style='overflow:hidden' id='external-updates'>";["status","obsoletes","obsoleted_by","updates","updated_by","see_also","errata_url"].forEach(e=>{if("status"==e){a[e]=a[e].toLowerCase();var t=a[e].split(" "),o=t.length,w="",p=1;for(let e=0;e<o;e++)p<o?w=w+r(t[e])+" ":w+=r(t[e]),p++;a[e]=w}else if("obsoletes"==e||"obsoleted_by"==e||"updates"==e||"updated_by"==e){var g,m="",b=1;g=a[e].length;for(let t=0;t<g;t++)a[e][t]&&(a[e][t]=String(a[e][t]).toLowerCase(),m=b<g?m+"<a href='"+s+"/rfc/".concat(a[e][t])+"'>"+a[e][t].slice(3)+"</a>, ":m+"<a href='"+s+"/rfc/".concat(a[e][t])+"'>"+a[e][t].slice(3)+"</a>",b++);a[e]=m}else if("see_also"==e){var y,L="",C=1;y=a[e].length;for(let t=0;t<y;t++)if(a[e][t]){a[e][t]=String(a[e][t]);var _=a[e][t].slice(0,3),v=a[e][t].slice(3).replace(/^0+/,"");L=C<y?"RFC"!=_?L+"<a href='"+s+"/info/"+_.toLowerCase().concat(v.toLowerCase())+"'>"+_+" "+v+"</a>, ":L+"<a href='"+s+"/info/"+_.toLowerCase().concat(v.toLowerCase())+"'>"+v+"</a>, ":"RFC"!=_?L+"<a href='"+s+"/info/"+_.toLowerCase().concat(v.toLowerCase())+"'>"+_+" "+v+"</a>":L+"<a href='"+s+"/info/"+_.toLowerCase().concat(v.toLowerCase())+"'>"+v+"</a>",C++}a[e]=L}else if("errata_url"==e){var R="";R=a[e]?R+"<a href='"+a[e]+"'>Errata exist</a> | <a href='"+d+"/"+l+"'>Datatracker</a>| <a href='"+n+"/?"+i+"="+f+"&submit="+i+"'>IPR</a> | <a href='"+c+"/"+l+"'>Info page</a>":"<a href='"+d+"/"+l+"'>Datatracker</a> | <a href='"+n+"/?"+i+"="+f+"&submit="+i+"'>IPR</a> | <a href='"+c+"/"+l+"'>Info page</a>",a[e]=R}""!=a[e]?"Errata"==u[e]?h+=`<dt>More info:</dt><dd>${a[e]}</dd>`:h+=`<dt>${u[e]}:</dt><dd>${a[e]}</dd>`:"Errata"==u[e]&&(h+=`<dt>More info:</dt><dd>${a[e]}</dd>`)}),h+="</dl>",e.innerHTML=h}catch(e){console.log(e)}else console.log("Could not locate metadata <div> element");function r(e){return e.charAt(0).toUpperCase()+e.slice(1)}}window.removeEventListener("load",addMetadata),window.addEventListener("load",addMetadata);</script>
+</head>
+<body class="xml2rfc">
+<table class="ears">
+<thead><tr>
+<td class="left">Internet-Draft</td>
+<td class="center">EP Bounded Execution</td>
+<td class="right">July 2026</td>
+</tr></thead>
+<tfoot><tr>
+<td class="left">Schrock</td>
+<td class="center">Expires 31 January 2027</td>
+<td class="right">[Page]</td>
+</tr></tfoot>
+</table>
+<div id="external-metadata" class="document-information"></div>
+<div id="internal-metadata" class="document-information">
+<dl id="identifiers">
+<dt class="label-workgroup">Workgroup:</dt>
+<dd class="workgroup">Network Working Group</dd>
+<dt class="label-internet-draft">Internet-Draft:</dt>
+<dd class="internet-draft">draft-schrock-ep-bounded-execution-program-00</dd>
+<dt class="label-published">Published:</dt>
+<dd class="published">
+<time datetime="2026-07-30" class="published">30 July 2026</time>
+    </dd>
+<dt class="label-intended-status">Intended Status:</dt>
+<dd class="intended-status">Experimental</dd>
+<dt class="label-expires">Expires:</dt>
+<dd class="expires"><time datetime="2027-01-31">31 January 2027</time></dd>
+<dt class="label-authors">Author:</dt>
+<dd class="authors">
+<div class="author">
+      <div class="author-name">I. Schrock</div>
+<div class="org">EMILIA Protocol, Inc.</div>
+</div>
+</dd>
+</dl>
+</div>
+<h1 id="title">Bounded Execution Programs for Consequential Agent Actions</h1>
+<section id="section-abstract">
+      <h2 id="abstract"><a href="#abstract" class="selfRef">Abstract</a></h2>
+<p id="section-abstract-1">An authorization for one action does not by itself authorize an
+      open-ended agent plan. This document defines an Experimental profile for
+      a signed, finite, versioned directed acyclic graph of consequential action
+      occurrences. The program binds a total retained-history ceiling. Each node
+      binds an exact action or a pinned action-matching profile, an action-
+      specific Trust Program, outcome-specific dependencies, an occurrence
+      ceiling, and fixed charges against aggregate attempt budgets.<a href="#section-abstract-1" class="pilcrow">¶</a></p>
+<p id="section-abstract-2">A conforming program-aware admission store evaluates reachability and
+      budgets in the same linearizable transaction domain as the ordinary
+      one-time execution right. It uses store-owned authorizer trust roots,
+      clock, authenticated profile-match verification, and current program
+      status; seals a deterministic execution-program resource into the
+      AdmissionSnapshot; and fences the program's independent authorization
+      digest against ordinary-path admission. The profile does not establish
+      that natural-language intent was understood, that a plan is safe or
+      lawful, that provider or effect evidence is true, or that every mutation
+      path was mediated.<a href="#section-abstract-2" class="pilcrow">¶</a></p>
+</section>
+<div id="status-of-memo">
+<section id="section-boilerplate.1">
+        <h2 id="name-status-of-this-memo">
+<a href="#name-status-of-this-memo" class="section-name selfRef">Status of This Memo</a>
+        </h2>
+<p id="section-boilerplate.1-1">
+        This Internet-Draft is submitted in full conformance with the
+        provisions of BCP 78 and BCP 79.<a href="#section-boilerplate.1-1" class="pilcrow">¶</a></p>
+<p id="section-boilerplate.1-2">
+        Internet-Drafts are working documents of the Internet Engineering Task
+        Force (IETF). Note that other groups may also distribute working
+        documents as Internet-Drafts. The list of current Internet-Drafts is
+        at <span><a href="https://datatracker.ietf.org/drafts/current/">https://datatracker.ietf.org/drafts/current/</a></span>.<a href="#section-boilerplate.1-2" class="pilcrow">¶</a></p>
+<p id="section-boilerplate.1-3">
+        Internet-Drafts are draft documents valid for a maximum of six months
+        and may be updated, replaced, or obsoleted by other documents at any
+        time. It is inappropriate to use Internet-Drafts as reference
+        material or to cite them other than as "work in progress."<a href="#section-boilerplate.1-3" class="pilcrow">¶</a></p>
+<p id="section-boilerplate.1-4">
+        This Internet-Draft will expire on 31 January 2027.<a href="#section-boilerplate.1-4" class="pilcrow">¶</a></p>
+</section>
+</div>
+<div id="copyright">
+<section id="section-boilerplate.2">
+        <h2 id="name-copyright-notice">
+<a href="#name-copyright-notice" class="section-name selfRef">Copyright Notice</a>
+        </h2>
+<p id="section-boilerplate.2-1">
+            Copyright (c) 2026 IETF Trust and the persons identified as the
+            document authors. All rights reserved.<a href="#section-boilerplate.2-1" class="pilcrow">¶</a></p>
+<p id="section-boilerplate.2-2">
+            This document is subject to BCP 78 and the IETF Trust's Legal
+            Provisions Relating to IETF Documents
+            (<span><a href="https://trustee.ietf.org/license-info">https://trustee.ietf.org/license-info</a></span>) in effect on the date of
+            publication of this document. Please review these documents
+            carefully, as they describe your rights and restrictions with
+            respect to this document. Code Components extracted from this
+            document must include Revised BSD License text as described in
+            Section 4.e of the Trust Legal Provisions and are provided without
+            warranty as described in the Revised BSD License.<a href="#section-boilerplate.2-2" class="pilcrow">¶</a></p>
+</section>
+</div>
+<div id="toc">
+<section id="section-toc.1">
+        <a href="#" onclick="scroll(0,0)" class="toplink">▲</a><h2 id="name-table-of-contents">
+<a href="#name-table-of-contents" class="section-name selfRef">Table of Contents</a>
+        </h2>
+<nav class="toc"><ul class="compact toc ulBare ulEmpty">
+<li class="compact toc ulBare ulEmpty" id="section-toc.1-1.1">
+            <p id="section-toc.1-1.1.1" class="keepWithNext"><a href="#section-1" class="auto internal xref">1</a>.  <a href="#name-introduction" class="internal xref">Introduction</a></p>
+<ul class="compact toc ulBare ulEmpty">
+<li class="compact toc ulBare ulEmpty" id="section-toc.1-1.1.2.1">
+                <p id="section-toc.1-1.1.2.1.1" class="keepWithNext"><a href="#section-1.1" class="auto internal xref">1.1</a>.  <a href="#name-requirements-language" class="internal xref">Requirements Language</a></p>
+</li>
+              <li class="compact toc ulBare ulEmpty" id="section-toc.1-1.1.2.2">
+                <p id="section-toc.1-1.1.2.2.1" class="keepWithNext"><a href="#section-1.2" class="auto internal xref">1.2</a>.  <a href="#name-scope-and-layer-boundaries" class="internal xref">Scope and Layer Boundaries</a></p>
+</li>
+            </ul>
+</li>
+          <li class="compact toc ulBare ulEmpty" id="section-toc.1-1.2">
+            <p id="section-toc.1-1.2.1"><a href="#section-2" class="auto internal xref">2</a>.  <a href="#name-terminology" class="internal xref">Terminology</a></p>
+</li>
+          <li class="compact toc ulBare ulEmpty" id="section-toc.1-1.3">
+            <p id="section-toc.1-1.3.1"><a href="#section-3" class="auto internal xref">3</a>.  <a href="#name-closed-signed-program" class="internal xref">Closed Signed Program</a></p>
+<ul class="compact toc ulBare ulEmpty">
+<li class="compact toc ulBare ulEmpty" id="section-toc.1-1.3.2.1">
+                <p id="section-toc.1-1.3.2.1.1"><a href="#section-3.1" class="auto internal xref">3.1</a>.  <a href="#name-budgets" class="internal xref">Budgets</a></p>
+</li>
+              <li class="compact toc ulBare ulEmpty" id="section-toc.1-1.3.2.2">
+                <p id="section-toc.1-1.3.2.2.1"><a href="#section-3.2" class="auto internal xref">3.2</a>.  <a href="#name-nodes" class="internal xref">Nodes</a></p>
+</li>
+              <li class="compact toc ulBare ulEmpty" id="section-toc.1-1.3.2.3">
+                <p id="section-toc.1-1.3.2.3.1"><a href="#section-3.3" class="auto internal xref">3.3</a>.  <a href="#name-action-selectors" class="internal xref">Action Selectors</a></p>
+</li>
+              <li class="compact toc ulBare ulEmpty" id="section-toc.1-1.3.2.4">
+                <p id="section-toc.1-1.3.2.4.1"><a href="#section-3.4" class="auto internal xref">3.4</a>.  <a href="#name-closed-shape-processing" class="internal xref">Closed-Shape Processing</a></p>
+</li>
+            </ul>
+</li>
+          <li class="compact toc ulBare ulEmpty" id="section-toc.1-1.4">
+            <p id="section-toc.1-1.4.1"><a href="#section-4" class="auto internal xref">4</a>.  <a href="#name-canonicalization-signature-" class="internal xref">Canonicalization, Signature, and Program Digest</a></p>
+</li>
+          <li class="compact toc ulBare ulEmpty" id="section-toc.1-1.5">
+            <p id="section-toc.1-1.5.1"><a href="#section-5" class="auto internal xref">5</a>.  <a href="#name-verification-and-registrati" class="internal xref">Verification and Registration</a></p>
+<ul class="compact toc ulBare ulEmpty">
+<li class="compact toc ulBare ulEmpty" id="section-toc.1-1.5.2.1">
+                <p id="section-toc.1-1.5.2.1.1"><a href="#section-5.1" class="auto internal xref">5.1</a>.  <a href="#name-authorization-digest-ordina" class="internal xref">Authorization-Digest Ordinary-Path Fence</a></p>
+</li>
+              <li class="compact toc ulBare ulEmpty" id="section-toc.1-1.5.2.2">
+                <p id="section-toc.1-1.5.2.2.1"><a href="#section-5.2" class="auto internal xref">5.2</a>.  <a href="#name-store-authoritative-current" class="internal xref">Store-Authoritative Current Status</a></p>
+</li>
+            </ul>
+</li>
+          <li class="compact toc ulBare ulEmpty" id="section-toc.1-1.6">
+            <p id="section-toc.1-1.6.1"><a href="#section-6" class="auto internal xref">6</a>.  <a href="#name-deterministic-admissionsnap" class="internal xref">Deterministic AdmissionSnapshot Binding</a></p>
+</li>
+          <li class="compact toc ulBare ulEmpty" id="section-toc.1-1.7">
+            <p id="section-toc.1-1.7.1"><a href="#section-7" class="auto internal xref">7</a>.  <a href="#name-program-aware-runtime" class="internal xref">Program-Aware Runtime</a></p>
+<ul class="compact toc ulBare ulEmpty">
+<li class="compact toc ulBare ulEmpty" id="section-toc.1-1.7.2.1">
+                <p id="section-toc.1-1.7.2.1.1"><a href="#section-7.1" class="auto internal xref">7.1</a>.  <a href="#name-reservation" class="internal xref">Reservation</a></p>
+</li>
+              <li class="compact toc ulBare ulEmpty" id="section-toc.1-1.7.2.2">
+                <p id="section-toc.1-1.7.2.2.1"><a href="#section-7.2" class="auto internal xref">7.2</a>.  <a href="#name-total-history-and-indexed-r" class="internal xref">Total-History and Indexed Reachability Fences</a></p>
+</li>
+              <li class="compact toc ulBare ulEmpty" id="section-toc.1-1.7.2.3">
+                <p id="section-toc.1-1.7.2.3.1"><a href="#section-7.3" class="auto internal xref">7.3</a>.  <a href="#name-begin-release-and-expiry" class="internal xref">Begin, Release, and Expiry</a></p>
+</li>
+              <li class="compact toc ulBare ulEmpty" id="section-toc.1-1.7.2.4">
+                <p id="section-toc.1-1.7.2.4.1"><a href="#section-7.4" class="auto internal xref">7.4</a>.  <a href="#name-outcomes-dependencies-and-r" class="internal xref">Outcomes, Dependencies, and Reconciliation</a></p>
+</li>
+            </ul>
+</li>
+          <li class="compact toc ulBare ulEmpty" id="section-toc.1-1.8">
+            <p id="section-toc.1-1.8.1"><a href="#section-8" class="auto internal xref">8</a>.  <a href="#name-supersession-and-replanning" class="internal xref">Supersession and Replanning</a></p>
+</li>
+          <li class="compact toc ulBare ulEmpty" id="section-toc.1-1.9">
+            <p id="section-toc.1-1.9.1"><a href="#section-9" class="auto internal xref">9</a>.  <a href="#name-refusal-semantics" class="internal xref">Refusal Semantics</a></p>
+</li>
+          <li class="compact toc ulBare ulEmpty" id="section-toc.1-1.10">
+            <p id="section-toc.1-1.10.1"><a href="#section-10" class="auto internal xref">10</a>. <a href="#name-security-considerations" class="internal xref">Security Considerations</a></p>
+</li>
+          <li class="compact toc ulBare ulEmpty" id="section-toc.1-1.11">
+            <p id="section-toc.1-1.11.1"><a href="#section-11" class="auto internal xref">11</a>. <a href="#name-privacy-considerations" class="internal xref">Privacy Considerations</a></p>
+</li>
+          <li class="compact toc ulBare ulEmpty" id="section-toc.1-1.12">
+            <p id="section-toc.1-1.12.1"><a href="#section-12" class="auto internal xref">12</a>. <a href="#name-implementation-status" class="internal xref">Implementation Status</a></p>
+</li>
+          <li class="compact toc ulBare ulEmpty" id="section-toc.1-1.13">
+            <p id="section-toc.1-1.13.1"><a href="#section-13" class="auto internal xref">13</a>. <a href="#name-operational-reporting-infor" class="internal xref">Operational Reporting (Informative)</a></p>
+</li>
+          <li class="compact toc ulBare ulEmpty" id="section-toc.1-1.14">
+            <p id="section-toc.1-1.14.1"><a href="#section-14" class="auto internal xref">14</a>. <a href="#name-iana-considerations" class="internal xref">IANA Considerations</a></p>
+</li>
+          <li class="compact toc ulBare ulEmpty" id="section-toc.1-1.15">
+            <p id="section-toc.1-1.15.1"><a href="#section-15" class="auto internal xref">15</a>. <a href="#name-claim-boundary" class="internal xref">Claim Boundary</a></p>
+</li>
+          <li class="compact toc ulBare ulEmpty" id="section-toc.1-1.16">
+            <p id="section-toc.1-1.16.1"><a href="#section-16" class="auto internal xref">16</a>. <a href="#name-normative-references" class="internal xref">Normative References</a></p>
+</li>
+          <li class="compact toc ulBare ulEmpty" id="section-toc.1-1.17">
+            <p id="section-toc.1-1.17.1"><a href="#appendix-A" class="auto internal xref"></a><a href="#name-authors-address" class="internal xref">Author's Address</a></p>
+</li>
+        </ul>
+</nav>
+</section>
+</div>
+<div id="introduction">
+<section id="section-1">
+      <h2 id="name-introduction">
+<a href="#section-1" class="section-number selfRef">1. </a><a href="#name-introduction" class="section-name selfRef">Introduction</a>
+      </h2>
+<p id="section-1-1">Consequential agents often need authority for a bounded sequence of
+      related actions. Requiring a new authorization ceremony for every action
+      can be impractical, but treating a goal, generated plan, profile name, or
+      signature as open-ended authority removes the boundary that a gate is
+      supposed to enforce.<a href="#section-1-1" class="pilcrow">¶</a></p>
+<p id="section-1-2">This document defines <code>EP-BOUNDED-EXECUTION-PROGRAM-v1</code>. An
+      authorizer signs one closed graph whose action occurrences, dependency
+      outcomes, node and total-history ceilings, attempt budgets, validity
+      interval, and supersession lineage are explicit. The runtime answers one narrow
+      question: is this exact occurrence reachable now under this exact signed
+      program, while all occurrence and attempt-budget limits remain
+      available?<a href="#section-1-2" class="pilcrow">¶</a></p>
+<p id="section-1-3">The signed object and the runtime state machine are inseparable. A
+      signed graph without shared state cannot prevent replay or concurrent
+      over-reservation. A runtime ledger without a verified signed graph has no
+      portable authority boundary.<a href="#section-1-3" class="pilcrow">¶</a></p>
+<div id="requirements-language">
+<section id="section-1.1">
+        <h3 id="name-requirements-language">
+<a href="#section-1.1" class="section-number selfRef">1.1. </a><a href="#name-requirements-language" class="section-name selfRef">Requirements Language</a>
+        </h3>
+<p id="section-1.1-1">The key words "MUST", "MUST NOT", "REQUIRED", "SHALL", "SHALL
+        NOT", "SHOULD", "SHOULD NOT", "RECOMMENDED", "NOT RECOMMENDED",
+        "MAY", and "OPTIONAL" in this document are to be interpreted as
+        described in BCP 14 <span>[<a href="#RFC2119" class="cite xref">RFC2119</a>]</span>
+          <span>[<a href="#RFC8174" class="cite xref">RFC8174</a>]</span>
+        when, and only when, they appear in all capitals, as shown here.<a href="#section-1.1-1" class="pilcrow">¶</a></p>
+<p id="section-1.1-2">BCP 14 is indexed by the RFC Editor at <span>[<a href="#BCP14" class="cite xref">BCP14</a>]</span>.<a href="#section-1.1-2" class="pilcrow">¶</a></p>
+</section>
+</div>
+<div id="scope">
+<section id="section-1.2">
+        <h3 id="name-scope-and-layer-boundaries">
+<a href="#section-1.2" class="section-number selfRef">1.2. </a><a href="#name-scope-and-layer-boundaries" class="section-name selfRef">Scope and Layer Boundaries</a>
+        </h3>
+<p id="section-1.2-1">This profile adds cross-action reachability and aggregate attempt
+        accounting to an admission system. It does not replace the independent
+        authorization artifact bound by <code>authorization_digest</code>, the
+        action-specific evidence evaluation bound by
+        <code>trust_program_digest</code>, an AdmissionSnapshot's one-time execution
+        right, or any bounded capability receipt required for delegated scope
+        and resource authority.<a href="#section-1.2-1" class="pilcrow">¶</a></p>
+<p id="section-1.2-2">A program authorizer decides which graph and limits to sign. An
+        action verifier decides whether the evidence required for one action is
+        satisfied. The program-aware admission store decides whether one
+        occurrence is currently reachable and atomically reserves or consumes
+        its runtime rights. An effect or outcome verifier remains responsible
+        for claims about what happened after provider entry.<a href="#section-1.2-2" class="pilcrow">¶</a></p>
+<p id="section-1.2-3"><code>authorization_digest</code> is an exact byte commitment used for
+        binding and exclusion. It does not by itself prove that a human
+        ceremony occurred, who participated, consent, comprehension,
+        presentation integrity, or legal authority. Those claims require their
+        own authenticated evidence and relying-party acceptance rules.<a href="#section-1.2-3" class="pilcrow">¶</a></p>
+<p id="section-1.2-4">This profile is complementary to software-supply-chain frameworks
+        such as in-toto. In-toto verifies signed layouts and signed evidence
+        that designated functionaries performed supply-chain steps. This
+        profile instead governs live consequence admission: it controls a
+        one-time execution right under current authorization, occurrence
+        ceilings, aggregate attempt budgets, post-entry uncertainty, and
+        authenticated reconciliation. It does not replace in-toto or claim
+        that no other system can express ordered work.<a href="#section-1.2-4" class="pilcrow">¶</a></p>
+</section>
+</div>
+</section>
+</div>
+<div id="terminology">
+<section id="section-2">
+      <h2 id="name-terminology">
+<a href="#section-2" class="section-number selfRef">2. </a><a href="#name-terminology" class="section-name selfRef">Terminology</a>
+      </h2>
+<span class="break"></span><dl class="dlParallel" id="section-2-1">
+        <dt id="section-2-1.1">Execution Program:</dt>
+        <dd style="margin-left: 1.5em" id="section-2-1.2">The immutable signed artifact defined in <a href="#program" class="auto internal xref">Section 3</a>.<a href="#section-2-1.2" class="pilcrow">¶</a>
+</dd>
+        <dd class="break"></dd>
+<dt id="section-2-1.3">Program digest:</dt>
+        <dd style="margin-left: 1.5em" id="section-2-1.4">The domain-independent SHA-256 JCS digest of the complete signed
+        body with the attached <code>proof</code> member omitted.<a href="#section-2-1.4" class="pilcrow">¶</a>
+</dd>
+        <dd class="break"></dd>
+<dt id="section-2-1.5">Node:</dt>
+        <dd style="margin-left: 1.5em" id="section-2-1.6">A named action selector, Trust Program digest, dependency set,
+        occurrence ceiling, and fixed budget-charge set.<a href="#section-2-1.6" class="pilcrow">¶</a>
+</dd>
+        <dd class="break"></dd>
+<dt id="section-2-1.7">Occurrence:</dt>
+        <dd style="margin-left: 1.5em" id="section-2-1.8">One uniquely identified retained runtime record for an attempt to
+        execute a node. Release does not remove it from total history.<a href="#section-2-1.8" class="pilcrow">¶</a>
+</dd>
+        <dd class="break"></dd>
+<dt id="section-2-1.9">AdmissionSnapshot:</dt>
+        <dd style="margin-left: 1.5em" id="section-2-1.10">A closed, immutable object that binds all verified inputs,
+        resources, action identity, provider binding, and the one-time
+        execution right for one consequential operation.<a href="#section-2-1.10" class="pilcrow">¶</a>
+</dd>
+        <dd class="break"></dd>
+<dt id="section-2-1.11">Ordinary path:</dt>
+        <dd style="margin-left: 1.5em" id="section-2-1.12">An admission reserve, begin, release, or expiry path that does not
+        participate in the execution-program transaction.<a href="#section-2-1.12" class="pilcrow">¶</a>
+</dd>
+        <dd class="break"></dd>
+<dt id="section-2-1.13">Program-aware path:</dt>
+        <dd style="margin-left: 1.5em" id="section-2-1.14">An admission path that atomically evaluates and transitions both
+        the ordinary admission state and the execution-program state.<a href="#section-2-1.14" class="pilcrow">¶</a>
+</dd>
+        <dd class="break"></dd>
+<dt id="section-2-1.15">Provider entry:</dt>
+        <dd style="margin-left: 1.5em" id="section-2-1.16">The boundary after which an external consequence might have
+        occurred. The execution right and attempt charges are consumed before
+        the invocation capability is released across this boundary.<a href="#section-2-1.16" class="pilcrow">¶</a>
+</dd>
+        <dd class="break"></dd>
+<dt id="section-2-1.17">Terminal provider outcome:</dt>
+        <dd style="margin-left: 1.5em" id="section-2-1.18">Either <code>COMMITTED</code> or <code>PROVEN_NOT_COMMITTED</code>.<a href="#section-2-1.18" class="pilcrow">¶</a>
+</dd>
+        <dd class="break"></dd>
+<dt id="section-2-1.19">Current program status:</dt>
+        <dd style="margin-left: 1.5em" id="section-2-1.20">A store-authoritative <code>ACTIVE</code>, <code>SUSPENDED</code>, or
+        <code>REVOKED</code> observation for the exact program version and digest.<a href="#section-2-1.20" class="pilcrow">¶</a>
+</dd>
+      <dd class="break"></dd>
+</dl>
+</section>
+</div>
+<div id="program">
+<section id="section-3">
+      <h2 id="name-closed-signed-program">
+<a href="#section-3" class="section-number selfRef">3. </a><a href="#name-closed-signed-program" class="section-name selfRef">Closed Signed Program</a>
+      </h2>
+<p id="section-3-1">The unsigned construction input is a closed I-JSON object
+      <span>[<a href="#RFC7493" class="cite xref">RFC7493</a>]</span> containing exactly the following members:<a href="#section-3-1" class="pilcrow">¶</a></p>
+<div class="lang-json sourcecode" id="section-3-2">
+<pre>
+{
+  "program_id": "program:production-remediation:01",
+  "tenant_id": "tenant:example",
+  "version": 1,
+  "subject_id": "agent:operations:01",
+  "audience": "gate:production:01",
+  "objective_digest": "sha256:&lt;64 lowercase hexadecimal digits&gt;",
+  "authorization_digest": "sha256:&lt;64 lowercase hexadecimal digits&gt;",
+  "presentation_digest": "sha256:&lt;64 lowercase hexadecimal digits&gt;",
+  "supersedes_program_digest": null,
+  "issued_at": "2026-07-30T19:55:00.000Z",
+  "valid_from": "2026-07-30T20:00:00.000Z",
+  "expires_at": "2026-07-30T21:00:00.000Z",
+  "max_total_occurrences": 64,
+  "max_concurrent_effects": 4,
+  "budgets": [
+    { "budget_id": "attempts", "unit": "attempt", "limit": 3 }
+  ],
+  "nodes": [ "&lt;one or more nodes as defined below&gt;" ]
+}
+</pre><a href="#section-3-2" class="pilcrow">¶</a>
+</div>
+<p id="section-3-3"><code>program_id</code>, <code>tenant_id</code>, <code>subject_id</code>, and
+      <code>audience</code> are nonempty identifiers. An identifier MUST match:<a href="#section-3-3" class="pilcrow">¶</a></p>
+<div class="lang-text sourcecode" id="section-3-4">
+<pre>
+^[A-Za-z0-9][A-Za-z0-9:_.@/+\-]{0,511}$
+</pre><a href="#section-3-4" class="pilcrow">¶</a>
+</div>
+<p id="section-3-5">A digest in this document is the string <code>sha256:</code> followed by
+      exactly 64 lowercase hexadecimal digits. Version and numeric limits MUST
+      be positive I-JSON safe integers. Version 1 MUST have a null
+      <code>supersedes_program_digest</code>; a later version MUST contain the exact
+      predecessor program digest.<a href="#section-3-5" class="pilcrow">¶</a></p>
+<p id="section-3-6"><code>objective_digest</code> binds authorizer-selected objective bytes. It
+      does not prove that natural-language intent was understood or correctly
+      compiled. <code>authorization_digest</code> binds the independently verified
+      authorization evidence on which the program relies.
+      <code>presentation_digest</code> binds the approval or presentation material
+      selected by the authorizer; it does not prove display integrity, human
+      comprehension, or informed consent.<a href="#section-3-6" class="pilcrow">¶</a></p>
+<p id="section-3-7">The three times use the RFC 3339 <span>[<a href="#RFC3339" class="cite xref">RFC3339</a>]</span> date-time
+      production restricted to UTC with a trailing <code>Z</code>. They MUST satisfy
+      <code>issued_at &lt;= valid_from &lt; expires_at</code>. Expiration is
+      exclusive.<a href="#section-3-7" class="pilcrow">¶</a></p>
+<p id="section-3-8"><code>max_total_occurrences</code> is REQUIRED and MUST be a positive safe
+      integer no greater than 1000000. It limits all retained occurrence
+      records for the program, including occurrences later released before
+      provider entry. Omission is a schema error.<a href="#section-3-8" class="pilcrow">¶</a></p>
+<p id="section-3-9"><code>max_concurrent_effects</code> is REQUIRED and MUST be a positive
+      safe integer no greater than 1000000. It limits the number of occurrences
+      for this program that can be in <code>INVOKING</code> or
+      <code>INDETERMINATE</code>. Reservation does not consume this ceiling;
+      provider entry does. Omission is a schema error.<a href="#section-3-9" class="pilcrow">¶</a></p>
+<div id="budgets">
+<section id="section-3.1">
+        <h3 id="name-budgets">
+<a href="#section-3.1" class="section-number selfRef">3.1. </a><a href="#name-budgets" class="section-name selfRef">Budgets</a>
+        </h3>
+<p id="section-3.1-1"><code>budgets</code> contains between 1 and 64 closed objects. Each has
+        exactly <code>budget_id</code>, <code>unit</code>, and <code>limit</code>.
+        <code>budget_id</code> and <code>unit</code> are identifiers. Budget identifiers
+        MUST be unique. <code>budget_id</code>, not <code>unit</code>, identifies the
+        independent accounting dimension. Multiple budget dimensions MAY use
+        the same <code>unit</code> label without sharing a limit or accounting
+        state. The unit is a signed descriptive label and MUST NOT be used as
+        an alias key. <code>limit</code> MUST be a positive safe integer no greater
+        than 9007199254740991.<a href="#section-3.1-1" class="pilcrow">¶</a></p>
+<p id="section-3.1-2">A budget is an attempt-accounting dimension, not proof of economic
+        settlement or resource availability. A node's fixed charge is consumed
+        at provider entry even if the later result is indeterminate.<a href="#section-3.1-2" class="pilcrow">¶</a></p>
+</section>
+</div>
+<div id="nodes">
+<section id="section-3.2">
+        <h3 id="name-nodes">
+<a href="#section-3.2" class="section-number selfRef">3.2. </a><a href="#name-nodes" class="section-name selfRef">Nodes</a>
+        </h3>
+<p id="section-3.2-1"><code>nodes</code> contains between 1 and 256 closed node objects. Node
+        identifiers MUST be unique. The complete dependency graph MUST be
+        acyclic and contain at least one root.<a href="#section-3.2-1" class="pilcrow">¶</a></p>
+<div class="lang-json sourcecode" id="section-3.2-2">
+<pre>
+{
+  "node_id": "remediate",
+  "action": {
+    "mode": "profile",
+    "profile_id": "profile:terraform-reviewed-plan",
+    "profile_digest": "sha256:&lt;64 lowercase hexadecimal digits&gt;"
+  },
+  "trust_program_digest": "sha256:&lt;64 lowercase hexadecimal digits&gt;",
+  "depends_on": [
+    { "node_id": "inspect", "outcomes": ["COMMITTED"] }
+  ],
+  "max_occurrences": 1,
+  "charges": [
+    { "budget_id": "attempts", "amount": 1 }
+  ]
+}
+</pre><a href="#section-3.2-2" class="pilcrow">¶</a>
+</div>
+<p id="section-3.2-3"><code>trust_program_digest</code> pins the action-specific Trust Program
+        that MUST govern the corresponding AdmissionSnapshot.
+        <code>max_occurrences</code> MUST be a positive safe integer no greater than
+        1000000.<a href="#section-3.2-3" class="pilcrow">¶</a></p>
+<p id="section-3.2-4"><code>depends_on</code> contains at most 64 unique predecessor node
+        identifiers. Each dependency contains one or both unique strings
+        <code>COMMITTED</code> and <code>PROVEN_NOT_COMMITTED</code>. Every predecessor
+        MUST exist. Self-dependencies and cycles MUST be refused. Reserved,
+        released, invoking, expired, and indeterminate states are not dependency
+        outcomes.<a href="#section-3.2-4" class="pilcrow">¶</a></p>
+<p id="section-3.2-5"><code>charges</code> contains between 1 and 64 objects with unique budget
+        identifiers. Every identifier MUST name a declared budget. Each
+        <code>amount</code> MUST be positive and MUST NOT exceed that budget's total
+        program limit.<a href="#section-3.2-5" class="pilcrow">¶</a></p>
+</section>
+</div>
+<div id="action-selectors">
+<section id="section-3.3">
+        <h3 id="name-action-selectors">
+<a href="#section-3.3" class="section-number selfRef">3.3. </a><a href="#name-action-selectors" class="section-name selfRef">Action Selectors</a>
+        </h3>
+<p id="section-3.3-1">A node's <code>action</code> member has exactly one of two closed
+        shapes:<a href="#section-3.3-1" class="pilcrow">¶</a></p>
+<div class="lang-json sourcecode" id="section-3.3-2">
+<pre>
+{ "mode": "exact", "caid": "caid:1:...",
+  "action_digest": "sha256:&lt;64 lowercase hexadecimal digits&gt;" }
+</pre><a href="#section-3.3-2" class="pilcrow">¶</a>
+</div>
+<div class="lang-json sourcecode" id="section-3.3-3">
+<pre>
+{ "mode": "profile", "profile_id": "profile:...",
+  "profile_digest": "sha256:&lt;64 lowercase hexadecimal digits&gt;" }
+</pre><a href="#section-3.3-3" class="pilcrow">¶</a>
+</div>
+<p id="section-3.3-4">In exact mode, both the Canonical Action Identifier (CAID) and action
+        digest MUST exactly equal the AdmissionSnapshot values. This version
+        accepts the following closed CAID syntax, using the core ABNF rules from
+        <span>[<a href="#RFC5234" class="cite xref">RFC5234</a>]</span>:<a href="#section-3.3-4" class="pilcrow">¶</a></p>
+<div class="lang-abnf sourcecode" id="section-3.3-5">
+<pre>
+caid           = "caid:1:" action-name "." action-version
+                 ":jcs-sha256:" digest43
+action-name    = component *("." component)
+component      = LCALPHA *(LCALPHA / DIGIT / "-")
+action-version = %x31-39 *DIGIT
+digest43       = 43base64url-char
+base64url-char = ALPHA / DIGIT / "-" / "_"
+LCALPHA        = %x61-7A
+</pre><a href="#section-3.3-5" class="pilcrow">¶</a>
+</div>
+<p id="section-3.3-6">Action-name interpretation is defined by the selected CAID profile;
+        this document does not create a CAID registry.<a href="#section-3.3-6" class="pilcrow">¶</a></p>
+<p id="section-3.3-7">Profile mode does not make <code>profile_id</code> self-authenticating.
+        A caller-supplied <code>MATCH</code> flag or result object is not evidence
+        and MUST NOT satisfy a node. The caller instead supplies an opaque
+        evidence artifact to the store's configured authenticated action-match
+        verifier. That verifier MUST authenticate the artifact under its pinned
+        evidence profile and return a closed <code>valid: true</code>,
+        <code>result: MATCH</code> result that exactly binds tenant, profile ID and
+        digest, program subject, operation ID, CAID, action digest, verifier ID,
+        evidence payload digest, evidence trust-configuration digest, trust
+        epoch, and AdmissionSnapshot trust-configuration digest.<a href="#section-3.3-7" class="pilcrow">¶</a></p>
+<p id="section-3.3-8">The AdmissionSnapshot MUST already contain that evidence payload in
+        its singleton <code>aeb</code> input. The input subject MUST equal the
+        program subject, and its profile digest, verifier identifier, payload
+        digest, and trust-configuration digest MUST equal the authenticated
+        result. Missing evidence, a missing configured verifier, verifier
+        failure, an open result, or any substitution MUST fail closed.<a href="#section-3.3-8" class="pilcrow">¶</a></p>
+</section>
+</div>
+<div id="closed-shapes">
+<section id="section-3.4">
+        <h3 id="name-closed-shape-processing">
+<a href="#section-3.4" class="section-number selfRef">3.4. </a><a href="#name-closed-shape-processing" class="section-name selfRef">Closed-Shape Processing</a>
+        </h3>
+<p id="section-3.4-1">Unknown members, omitted required members, duplicate identifiers,
+        duplicate dependency outcomes, malformed values, non-safe integers,
+        unknown outcomes, missing predecessors, and cyclic graphs MUST be
+        refused at every signed-object boundary. Implementations MUST NOT
+        silently discard unknown members before signature or schema
+        validation.<a href="#section-3.4-1" class="pilcrow">¶</a></p>
+</section>
+</div>
+</section>
+</div>
+<div id="canonical-signature">
+<section id="section-4">
+      <h2 id="name-canonicalization-signature-">
+<a href="#section-4" class="section-number selfRef">4. </a><a href="#name-canonicalization-signature-" class="section-name selfRef">Canonicalization, Signature, and Program Digest</a>
+      </h2>
+<p id="section-4-1">Before signing, an implementation MUST validate the complete
+      construction input and then normalize it as follows:<a href="#section-4-1" class="pilcrow">¶</a></p>
+<ol start="1" type="1" class="normal type-1" id="section-4-2">
+        <li id="section-4-2.1">Convert each accepted UTC instant to RFC 3339 UTC form with exactly
+        three fractional-second digits.<a href="#section-4-2.1" class="pilcrow">¶</a>
+</li>
+        <li id="section-4-2.2">Sort budgets by the UTF-8 byte order of <code>budget_id</code>.<a href="#section-4-2.2" class="pilcrow">¶</a>
+</li>
+        <li id="section-4-2.3">Sort nodes by the UTF-8 byte order of <code>node_id</code>.<a href="#section-4-2.3" class="pilcrow">¶</a>
+</li>
+        <li id="section-4-2.4">Sort dependencies by the UTF-8 byte order of predecessor
+        <code>node_id</code>.<a href="#section-4-2.4" class="pilcrow">¶</a>
+</li>
+        <li id="section-4-2.5">Sort charges by the UTF-8 byte order of <code>budget_id</code>.<a href="#section-4-2.5" class="pilcrow">¶</a>
+</li>
+        <li id="section-4-2.6">Sort each dependency's terminal outcome strings in ascending byte
+        order.<a href="#section-4-2.6" class="pilcrow">¶</a>
+</li>
+      </ol>
+<p id="section-4-3">The signer adds the fixed version, claim boundary, and issuer:<a href="#section-4-3" class="pilcrow">¶</a></p>
+<div class="lang-json sourcecode" id="section-4-4">
+<pre>
+{
+  "@version": "EP-BOUNDED-EXECUTION-PROGRAM-v1",
+  "&lt;normalized program members&gt;": "...",
+  "claim_boundary": "&lt;CLAIM_BOUNDARY&gt;",
+  "issuer": { "id": "customer:example", "key_id": "key:example" }
+}
+</pre><a href="#section-4-4" class="pilcrow">¶</a>
+</div>
+<p id="section-4-5">In that example, <code>CLAIM_BOUNDARY</code> is the concatenation, with no
+      intervening octets, of the following two ASCII strings:<a href="#section-4-5" class="pilcrow">¶</a></p>
+<div class="lang-text sourcecode" id="section-4-6">
+<pre>
+"typed_reachability_attempt_budget_and_effect_concurrency_not_" ||
+"intent_safety_effect_truth_or_complete_mediation"
+</pre><a href="#section-4-6" class="pilcrow">¶</a>
+</div>
+<p id="section-4-7">The <code>||</code> notation in this display means byte concatenation; it
+      is not part of the member value.<a href="#section-4-7" class="pilcrow">¶</a></p>
+<p id="section-4-8">Let <code>body_jcs</code> be the UTF-8 encoding of the JSON Canonicalization
+      Scheme (JCS) <span>[<a href="#RFC8785" class="cite xref">RFC8785</a>]</span> representation of that complete
+      body. The signer computes:<a href="#section-4-8" class="pilcrow">¶</a></p>
+<div class="lang-text sourcecode" id="section-4-9">
+<pre>
+body_digest = "sha256:" || lowercase_hex(SHA-256(body_jcs))
+signature_input = UTF8("EP-BOUNDED-EXECUTION-PROGRAM-v1")
+                  || 0x00 || body_jcs
+signature = Ed25519-Sign(authorizer_private_key, signature_input)
+</pre><a href="#section-4-9" class="pilcrow">¶</a>
+</div>
+<p id="section-4-10">The signer attaches one closed proof object:<a href="#section-4-10" class="pilcrow">¶</a></p>
+<div class="lang-json sourcecode" id="section-4-11">
+<pre>
+{
+  "algorithm": "Ed25519",
+  "key_id": "key:example",
+  "body_digest": "sha256:&lt;64 lowercase hexadecimal digits&gt;",
+  "signature_b64u": "&lt;canonical unpadded base64url&gt;"
+}
+</pre><a href="#section-4-11" class="pilcrow">¶</a>
+</div>
+<p id="section-4-12"><code>proof.key_id</code> MUST equal <code>issuer.key_id</code>. The signature
+      uses Ed25519 <span>[<a href="#RFC8032" class="cite xref">RFC8032</a>]</span>. The signature value uses the URL-
+      and filename-safe Base64 alphabet without padding
+      <span>[<a href="#RFC4648" class="cite xref">RFC4648</a>]</span> and MUST decode to exactly 64 octets.<a href="#section-4-12" class="pilcrow">¶</a></p>
+<p id="section-4-13">The <code>program_digest</code> is <code>body_digest</code>: the prefixed
+      lowercase SHA-256 digest of the JCS body with <code>proof</code> omitted. It
+      identifies the authorizer, program, and every signed boundary. It is not
+      the digest of the proof-bearing artifact.<a href="#section-4-13" class="pilcrow">¶</a></p>
+</section>
+</div>
+<div id="verification">
+<section id="section-5">
+      <h2 id="name-verification-and-registrati">
+<a href="#section-5" class="section-number selfRef">5. </a><a href="#name-verification-and-registrati" class="section-name selfRef">Verification and Registration</a>
+      </h2>
+<p id="section-5-1">The program-aware store MUST own its program-authorizer verification
+      policy and clock. The registration caller MUST NOT nominate trusted keys,
+      expected authorizer identity, verification time, key role, or key status.
+      The store policy binds each key identifier to an issuer identifier,
+      canonical Ed25519 public key, the exact role
+      <code>program_authorizer</code>, and one of <code>ACTIVE</code>,
+      <code>SUSPENDED</code>, or <code>REVOKED</code>. Only a pin whose role is
+      <code>program_authorizer</code> and whose key status is <code>ACTIVE</code> is
+      eligible to register or supersede a v1 program.<a href="#section-5-1" class="pilcrow">¶</a></p>
+<p id="section-5-2">The artifact's <code>issuer.key_id</code> can select only among those
+      store-owned eligible pins; it cannot create or alter a trust root. The
+      store derives the expected authorizer identity from the selected pin and
+      obtains verification time from its own clock.<a href="#section-5-2" class="pilcrow">¶</a></p>
+<p id="section-5-3">The caller supplies one closed relying-party context containing exactly:<a href="#section-5-3" class="pilcrow">¶</a></p>
+<ul class="normal">
+<li class="normal" id="section-5-4.1">expected program identifier;<a href="#section-5-4.1" class="pilcrow">¶</a>
+</li>
+        <li class="normal" id="section-5-4.2">expected tenant identifier;<a href="#section-5-4.2" class="pilcrow">¶</a>
+</li>
+        <li class="normal" id="section-5-4.3">expected authorization digest;<a href="#section-5-4.3" class="pilcrow">¶</a>
+</li>
+        <li class="normal" id="section-5-4.4">expected audience.<a href="#section-5-4.4" class="pilcrow">¶</a>
+</li>
+      </ul>
+<p id="section-5-5">Unknown or caller-added trust and clock members MUST be refused as an
+      invalid context. The store MUST validate the proof envelope, recompute
+      the body digest, require the exact pinned issuer and key, parse the key as
+      Ed25519, and verify the signature over the domain-separated canonical
+      body. All caller context values MUST exactly equal the signed values.
+      Acceptance is valid only while
+      <code>valid_from &lt;= store_now &lt; expires_at</code>. A valid signature over an
+      invalid, noncanonical, open-shaped, context-substituted, inactive-key, or
+      time-invalid program MUST be refused.<a href="#section-5-5" class="pilcrow">¶</a></p>
+<div id="authorization-fence">
+<section id="section-5.1">
+        <h3 id="name-authorization-digest-ordina">
+<a href="#section-5.1" class="section-number selfRef">5.1. </a><a href="#name-authorization-digest-ordina" class="section-name selfRef">Authorization-Digest Ordinary-Path Fence</a>
+        </h3>
+<p id="section-5.1-1">Registration and ordinary admission reserve MUST serialize on a
+        durable fence keyed by the admission transaction domain,
+        <code>tenant_id</code>, and <code>authorization_digest</code>. The digest is the
+        exact <code>payload_digest</code> of the AdmissionSnapshot input whose role
+        is <code>authorization</code>.<a href="#section-5.1-1" class="pilcrow">¶</a></p>
+<p id="section-5.1-2">When registering version 1, the store MUST atomically:<a href="#section-5.1-2" class="pilcrow">¶</a></p>
+<ol start="1" type="1" class="normal type-1" id="section-5.1-3">
+          <li id="section-5.1-3.1">refuse if another execution program owns the fence;<a href="#section-5.1-3.1" class="pilcrow">¶</a>
+</li>
+          <li id="section-5.1-3.2">refuse if an ordinary admission using that authorization digest
+          still has an unconsumed reserved execution right;<a href="#section-5.1-3.2" class="pilcrow">¶</a>
+</li>
+          <li id="section-5.1-3.3">create the active program state; and<a href="#section-5.1-3.3" class="pilcrow">¶</a>
+</li>
+          <li id="section-5.1-3.4">make the authorization fence program-required and bind it to the
+          program digest.<a href="#section-5.1-3.4" class="pilcrow">¶</a>
+</li>
+        </ol>
+<p id="section-5.1-4">An ordinary reserve that observes a program-required fence MUST
+        refuse with <code>program_required</code> and make no state change. The
+        registration and ordinary-reserve decisions MUST use the same
+        serialization mechanism so that neither can race past the other. Once
+        program-required, the fence MUST NOT reopen merely because an
+        occurrence is released, expires, reaches a terminal outcome, or the
+        program is superseded.<a href="#section-5.1-4" class="pilcrow">¶</a></p>
+<p id="section-5.1-5">This fence prevents the independent authorization artifact from
+        being reused to bypass program reachability and budgets through an
+        ordinary reserve path. It does not prove that all provider mutation
+        paths pass through this admission store.<a href="#section-5.1-5" class="pilcrow">¶</a></p>
+</section>
+</div>
+<div id="program-status">
+<section id="section-5.2">
+        <h3 id="name-store-authoritative-current">
+<a href="#section-5.2" class="section-number selfRef">5.2. </a><a href="#name-store-authoritative-current" class="section-name selfRef">Store-Authoritative Current Status</a>
+        </h3>
+<p id="section-5.2-1">The store MUST obtain current program status from its configured
+        authoritative source at reservation and again immediately before
+        provider entry. The caller MUST NOT supply or select this source or its
+        observation. A closed <code>EP-BOUNDED-EXECUTION-PROGRAM-STATUS-v1</code>
+        observation contains the exact tenant ID, program ID, program digest,
+        version, status, nonnegative sequence, observation time, and expiry.<a href="#section-5.2-1" class="pilcrow">¶</a></p>
+<p id="section-5.2-2">A program-capable store without a configured authoritative status
+        source MUST fail closed with
+        <code>program_status_indeterminate</code>; locally initialized
+        <code>ACTIVE</code> state is not current-status evidence. The validation
+        instant MUST be sampled after the source returns. Expiry and maximum
+        observation age MUST be evaluated against that post-response instant,
+        so a response that becomes stale while the source is queried cannot
+        authorize reservation or provider entry.<a href="#section-5.2-2" class="pilcrow">¶</a></p>
+<p id="section-5.2-3">Status is one of <code>ACTIVE</code>, <code>SUSPENDED</code>, or
+        <code>REVOKED</code>. Only a current <code>ACTIVE</code> observation permits
+        reservation or begin. <code>SUSPENDED</code> refuses with
+        <code>program_suspended</code>. <code>REVOKED</code> refuses with
+        <code>program_revoked</code> and is sticky: a later observation MUST NOT
+        reopen that runtime.<a href="#section-5.2-3" class="pilcrow">¶</a></p>
+<p id="section-5.2-4">The store MUST fail closed with
+        <code>program_status_indeterminate</code> when the source is unavailable or
+        throws; the observation is missing, malformed, open-shaped, future-
+        dated, stale, or expired; any program identity differs; the sequence
+        regresses; or a repeated sequence conflicts with the previously
+        recorded status or times. The maximum observation age is store policy
+        and MUST NOT be caller-selectable.<a href="#section-5.2-4" class="pilcrow">¶</a></p>
+<p id="section-5.2-5">A status, program-validity, or status-currentness refusal at reserve
+        creates no occurrence or admission state. The same refusal at begin,
+        while the occurrence is still pre-entry <code>RESERVED</code>, MUST
+        atomically release the ordinary execution right and resources, the
+        node occurrence capacity, and every reserved budget charge, and mark
+        the occurrence <code>RELEASED</code>. Its occurrence identifier and total-
+        history count remain fenced. Work already <code>INVOKING</code> or
+        <code>INDETERMINATE</code> remains reconcilable.<a href="#section-5.2-5" class="pilcrow">¶</a></p>
+</section>
+</div>
+</section>
+</div>
+<div id="admission-binding">
+<section id="section-6">
+      <h2 id="name-deterministic-admissionsnap">
+<a href="#section-6" class="section-number selfRef">6. </a><a href="#name-deterministic-admissionsnap" class="section-name selfRef">Deterministic AdmissionSnapshot Binding</a>
+      </h2>
+<p id="section-6-1">A program occurrence MUST be represented inside its immutable
+      AdmissionSnapshot by exactly one resource whose kind is
+      <code>execution_program</code>. The resource is derived from this closed
+      binding object:<a href="#section-6-1" class="pilcrow">¶</a></p>
+<div class="lang-json sourcecode" id="section-6-2">
+<pre>
+{
+  "@version": "EP-BOUNDED-EXECUTION-PROGRAM-ADMISSION-BINDING-v1",
+  "tenant_id": "tenant:example",
+  "program_digest": "sha256:&lt;64 lowercase hexadecimal digits&gt;",
+  "node_id": "remediate",
+  "occurrence_id": "occurrence:remediate:01",
+  "expires_at": "2026-07-30T20:10:00.000Z"
+}
+</pre><a href="#section-6-2" class="pilcrow">¶</a>
+</div>
+<p id="section-6-3">The resource fields are computed exactly as follows:<a href="#section-6-3" class="pilcrow">¶</a></p>
+<div class="lang-text sourcecode" id="section-6-4">
+<pre>
+identity_tuple = [tenant_id, program_digest, node_id, occurrence_id]
+identity_domain =
+  "EP-BOUNDED-EXECUTION-PROGRAM-ADMISSION-" ||
+  "BINDING-v1:IDENTITY"
+identity_input = UTF8(identity_domain) || 0x00 ||
+                 UTF8(JCS(identity_tuple))
+identity_digest =
+  "sha256:" || lowercase_hex(SHA-256(identity_input))
+
+kind = "execution_program"
+resource_id = "execution-program:" || identity_digest
+reservation_id = "execution-program-reservation:" ||
+                 identity_digest
+digest_input =
+  UTF8("EP-BOUNDED-EXECUTION-PROGRAM-ADMISSION-BINDING-v1:DIGEST") ||
+  0x00 || UTF8(JCS(binding_object))
+digest = "sha256:" || lowercase_hex(SHA-256(digest_input))
+expires_at = binding_object.expires_at
+</pre><a href="#section-6-4" class="pilcrow">¶</a>
+</div>
+<p id="section-6-5">The binding's <code>tenant_id</code>, <code>program_digest</code>,
+      <code>node_id</code>, and <code>occurrence_id</code> MUST equal the values being
+      reserved. Its <code>expires_at</code> MUST equal the AdmissionSnapshot expiry.
+      The resource participates in the AdmissionSnapshot's normal resource
+      sorting and snapshot-digest computation.<a href="#section-6-5" class="pilcrow">¶</a></p>
+<p id="section-6-6">The identity digest is over a structured JCS array, not a delimiter-
+      joined string. The resulting resource and reservation identifiers are
+      fixed-length digest keys. Implementations MUST NOT substitute raw caller-
+      controlled identifiers, ambiguous delimiter concatenation, or another
+      tuple encoding.<a href="#section-6-6" class="pilcrow">¶</a></p>
+<p id="section-6-7">If the caller supplies mutable AdmissionSnapshot input without this
+      resource, the program-aware store MUST add the resource and then compute
+      the snapshot digest. If the caller supplies a precomputed immutable
+      AdmissionSnapshot, the store MUST accept it only when it already contains
+      exactly the expected resource. A snapshot with no binding, more than one
+      execution-program resource, or a nonidentical binding MUST be refused
+      with no state change.<a href="#section-6-7" class="pilcrow">¶</a></p>
+<p id="section-6-8">Before adding or accepting the binding, the store MUST also require:
+      the candidate-manifest subject to equal the signed
+      <code>subject_id</code>; the authorization input payload digest to equal the
+      signed <code>authorization_digest</code>; the AdmissionSnapshot authorization
+      policy digest to equal the node's <code>trust_program_digest</code>; and the
+      exact or profile action match defined in <a href="#action-selectors" class="auto internal xref">Section 3.3</a>.<a href="#section-6-8" class="pilcrow">¶</a></p>
+<p id="section-6-9">The normalized AdmissionSnapshot expiry MUST be no later than the
+      signed program expiry. A later admission expiry MUST refuse with
+      <code>program_expiration_mismatch</code> before any occurrence, budget,
+      resource, operation-head, or journal state is created. Equality is
+      permitted because both expirations are exclusive.<a href="#section-6-9" class="pilcrow">¶</a></p>
+</section>
+</div>
+<div id="runtime">
+<section id="section-7">
+      <h2 id="name-program-aware-runtime">
+<a href="#section-7" class="section-number selfRef">7. </a><a href="#name-program-aware-runtime" class="section-name selfRef">Program-Aware Runtime</a>
+      </h2>
+<p id="section-7-1">Registration of an accepted version 1 program creates one active
+      runtime state. It records store-clock status metadata, initializes
+      <code>total_occurrences</code> to zero, initializes reserved and consumed
+      values to zero for every independent <code>budget_id</code> while retaining
+      each signed unit label, and contains no occurrences.<a href="#section-7-1" class="pilcrow">¶</a></p>
+<p id="section-7-2">The program state, occurrence state, authorization-digest fence,
+      AdmissionSnapshot, ordinary resource reservations, and one-time execution
+      right MUST share one linearizable transaction domain. A compensating
+      sequence across independent stores is not atomic and does not conform to
+      this profile.<a href="#section-7-2" class="pilcrow">¶</a></p>
+<div class="lang-text sourcecode" id="section-7-3">
+<pre>
+RESERVED -&gt; INVOKING -&gt; COMMITTED
+                    \-&gt; PROVEN_NOT_COMMITTED
+                    \-&gt; INDETERMINATE -&gt; COMMITTED
+                                      \-&gt; PROVEN_NOT_COMMITTED
+RESERVED -&gt; RELEASED
+</pre><a href="#section-7-3" class="pilcrow">¶</a>
+</div>
+<div id="reservation">
+<section id="section-7.1">
+        <h3 id="name-reservation">
+<a href="#section-7.1" class="section-number selfRef">7.1. </a><a href="#name-reservation" class="section-name selfRef">Reservation</a>
+        </h3>
+<p id="section-7.1-1">A program-aware reservation MUST atomically verify all of the
+        following:<a href="#section-7.1-1" class="pilcrow">¶</a></p>
+<ul class="normal">
+<li class="normal" id="section-7.1-2.1">the active program digest, tenant, version, validity interval,
+          fresh store-authoritative <code>ACTIVE</code> status, and authorization-
+          digest fence;<a href="#section-7.1-2.1" class="pilcrow">¶</a>
+</li>
+          <li class="normal" id="section-7.1-2.2">node existence and exact Trust Program digest;<a href="#section-7.1-2.2" class="pilcrow">¶</a>
+</li>
+          <li class="normal" id="section-7.1-2.3">the exact CAID and action digest, or store-verifier-authenticated
+          profile evidence with every binding in
+          <a href="#action-selectors" class="auto internal xref">Section 3.3</a>;<a href="#section-7.1-2.3" class="pilcrow">¶</a>
+</li>
+          <li class="normal" id="section-7.1-2.4">every outcome-specific dependency;<a href="#section-7.1-2.4" class="pilcrow">¶</a>
+</li>
+          <li class="normal" id="section-7.1-2.5">an unused occurrence identifier;<a href="#section-7.1-2.5" class="pilcrow">¶</a>
+</li>
+          <li class="normal" id="section-7.1-2.6">
+            <code>total_occurrences &lt; max_total_occurrences</code>;<a href="#section-7.1-2.6" class="pilcrow">¶</a>
+</li>
+          <li class="normal" id="section-7.1-2.7">the remaining non-released node occurrence ceiling;<a href="#section-7.1-2.7" class="pilcrow">¶</a>
+</li>
+          <li class="normal" id="section-7.1-2.8">for every node charge,
+          <code>reserved + consumed + amount &lt;= limit</code>;<a href="#section-7.1-2.8" class="pilcrow">¶</a>
+</li>
+          <li class="normal" id="section-7.1-2.9">AdmissionSnapshot expiry no later than program expiry;<a href="#section-7.1-2.9" class="pilcrow">¶</a>
+</li>
+          <li class="normal" id="section-7.1-2.10">the deterministic AdmissionSnapshot binding in
+          <a href="#admission-binding" class="auto internal xref">Section 6</a>; and<a href="#section-7.1-2.10" class="pilcrow">¶</a>
+</li>
+          <li class="normal" id="section-7.1-2.11">all ordinary AdmissionSnapshot and resource-reservation
+          requirements.<a href="#section-7.1-2.11" class="pilcrow">¶</a>
+</li>
+        </ul>
+<p id="section-7.1-3">On success, the store permanently fences the occurrence identifier,
+        creates a <code>RESERVED</code> occurrence, increments
+        <code>total_occurrences</code> and the node's non-released count, increments
+        each named budget dimension's reserved value, and reserves the ordinary
+        admission and all of its resources. A refusal MUST make no state change
+        except that accepting a newer authoritative status observation updates
+        the program's status metadata before returning its corresponding
+        refusal.<a href="#section-7.1-3" class="pilcrow">¶</a></p>
+<p id="section-7.1-4">An occurrence in <code>RELEASED</code> no longer counts against the
+        node's occurrence ceiling, but its occurrence identifier remains
+        fenced and MUST NOT be reused.<a href="#section-7.1-4" class="pilcrow">¶</a></p>
+</section>
+</div>
+<div id="total-history">
+<section id="section-7.2">
+        <h3 id="name-total-history-and-indexed-r">
+<a href="#section-7.2" class="section-number selfRef">7.2. </a><a href="#name-total-history-and-indexed-r" class="section-name selfRef">Total-History and Indexed Reachability Fences</a>
+        </h3>
+<p id="section-7.2-1"><code>total_occurrences</code> is monotonic for one program digest. It
+        increments exactly once for every successful occurrence reservation and
+        MUST NOT decrement when an occurrence is released, expires before
+        provider entry, begins, reaches a terminal outcome, or is reconciled.
+        The store MUST refuse further reservation with
+        <code>program_total_occurrence_exhausted</code> when it reaches the signed
+        <code>max_total_occurrences</code>.<a href="#section-7.2-1" class="pilcrow">¶</a></p>
+<p id="section-7.2-2">The total ceiling bounds retained history, not concurrent work. The
+        per-node <code>max_occurrences</code> ceiling separately counts non-released
+        occurrences and restores capacity on pre-entry release. A released
+        occurrence therefore restores node and budget capacity but never total-
+        history capacity.<a href="#section-7.2-2" class="pilcrow">¶</a></p>
+<p id="section-7.2-3">Occurrence identifiers remain permanently fenced within the program.
+        A conforming transaction store SHOULD maintain atomic per-node counts
+        and per-node terminal-outcome counts so reservation and dependency
+        decisions do not require an unbounded scan. Those indexes MUST reconcile
+        exactly with retained occurrence records and MUST be updated in the same
+        transaction as their source transition.<a href="#section-7.2-3" class="pilcrow">¶</a></p>
+</section>
+</div>
+<div id="begin-release">
+<section id="section-7.3">
+        <h3 id="name-begin-release-and-expiry">
+<a href="#section-7.3" class="section-number selfRef">7.3. </a><a href="#name-begin-release-and-expiry" class="section-name selfRef">Begin, Release, and Expiry</a>
+        </h3>
+<p id="section-7.3-1">The ordinary begin, release, and expiry paths MUST refuse a
+        program-linked admission with <code>program_required</code>. Conversely, a
+        program-aware begin, release, or expiry path MUST refuse an admission
+        that lacks the exact execution-program association.<a href="#section-7.3-1" class="pilcrow">¶</a></p>
+<p id="section-7.3-2">Program-aware begin MUST recheck store-authoritative program status,
+        program validity, ordinary admission currentness, and the signed
+        concurrent-effect ceiling. Immediately before releasing the invocation
+        capability, the store MUST count every occurrence for this exact
+        program in <code>INVOKING</code> or <code>INDETERMINATE</code>. If the count is
+        greater than or equal to <code>max_concurrent_effects</code>, begin MUST
+        refuse with <code>program_concurrency_exhausted</code> without consuming
+        the execution right or moving any budget charge.<a href="#section-7.3-2" class="pilcrow">¶</a></p>
+<p id="section-7.3-3">Otherwise begin atomically consumes the ordinary one-time execution
+        right, moves each node charge from reserved to consumed, and sets the
+        occurrence to <code>INVOKING</code> before releasing an invocation
+        capability. If program
+        status is suspended, revoked, stale, unavailable, malformed, or expired,
+        or if ordinary currentness fails before provider entry, the store MUST
+        atomically release the ordinary reservation and resources, node
+        capacity, and reserved budget charges. The occurrence remains in total
+        history as <code>RELEASED</code>.<a href="#section-7.3-3" class="pilcrow">¶</a></p>
+<p id="section-7.3-4">Once begin succeeds, provider refusal, timeout, or uncertainty MUST
+        NOT restore the occurrence or its attempt-budget charges. This rule
+        prevents a retry from converting uncertainty after provider entry into
+        unbounded authority.<a href="#section-7.3-4" class="pilcrow">¶</a></p>
+<p id="section-7.3-5">Program-aware release and expiry are permitted only from
+        <code>RESERVED</code>. They decrement every reserved node charge, release
+        the ordinary execution right and resources, and set the occurrence to
+        <code>RELEASED</code>. Release after begin MUST be refused because the
+        execution right and charges are already consumed.<a href="#section-7.3-5" class="pilcrow">¶</a></p>
+</section>
+</div>
+<div id="outcomes">
+<section id="section-7.4">
+        <h3 id="name-outcomes-dependencies-and-r">
+<a href="#section-7.4" class="section-number selfRef">7.4. </a><a href="#name-outcomes-dependencies-and-r" class="section-name selfRef">Outcomes, Dependencies, and Reconciliation</a>
+        </h3>
+<p id="section-7.4-1"><code>COMMITTED</code> and <code>PROVEN_NOT_COMMITTED</code> are terminal
+        provider outcomes. <code>INDETERMINATE</code> records uncertainty after
+        provider entry, retains all consumed charges, and continues to occupy
+        one concurrent-effect slot. Reconciliation MAY move an indeterminate
+        occurrence to either terminal outcome and then releases that slot.
+        Reconciliation does not itself prove when the provider event occurred.<a href="#section-7.4-1" class="pilcrow">¶</a></p>
+<p id="section-7.4-2">A dependency is satisfied only when at least one occurrence of each
+        named predecessor has a terminal state explicitly listed by that
+        dependency. Terminality alone is insufficient:
+        <code>PROVEN_NOT_COMMITTED</code> does not satisfy a dependency that lists
+        only <code>COMMITTED</code>.<a href="#section-7.4-2" class="pilcrow">¶</a></p>
+<p id="section-7.4-3"><code>DIVERGED</code>, if represented by an effect-reconciliation layer,
+        is an observed-effect relation rather than a provider outcome. It MUST
+        NOT rewrite occurrence state, historical authorization, budgets, or
+        reachability and does not identify why an effect differed.<a href="#section-7.4-3" class="pilcrow">¶</a></p>
+</section>
+</div>
+</section>
+</div>
+<div id="supersession">
+<section id="section-8">
+      <h2 id="name-supersession-and-replanning">
+<a href="#section-8" class="section-number selfRef">8. </a><a href="#name-supersession-and-replanning" class="section-name selfRef">Supersession and Replanning</a>
+      </h2>
+<p id="section-8-1">Programs are immutable. Replanning creates a newly signed and
+      independently accepted version. The predecessor MUST be the active head.
+      A successor MUST bind its exact program digest, have exactly
+      <code>predecessor.version + 1</code>, and preserve the predecessor's tenant ID,
+      program ID, subject ID, audience, objective digest, presentation digest,
+      and program-authorizer identity. These are frozen identity and intent
+      bindings for v1 supersession.<a href="#section-8-1" class="pilcrow">¶</a></p>
+<p id="section-8-2">The successor MUST carry a distinct authorization digest that differs
+      from the predecessor and has never previously been registered in the
+      store's authorization-owner domain. The caller MUST supply that fresh
+      digest in the closed relying-party registration context. Reuse, a skipped
+      version, changed frozen binding, changed authorizer, wrong predecessor,
+      or an already-owned authorization digest MUST fail closed.<a href="#section-8-2" class="pilcrow">¶</a></p>
+<p id="section-8-3">Any predecessor occurrence still in <code>RESERVED</code> MUST block
+      supersession. On successful supersession, the store atomically marks the
+      predecessor <code>SUPERSEDED</code>, installs the successor as the active
+      head, and binds the successor's authorization digest into the ordinary-
+      path fence. The predecessor then refuses new reservations and new
+      invocation starts.<a href="#section-8-3" class="pilcrow">¶</a></p>
+<p id="section-8-4">Already invoking or indeterminate predecessor work remains
+      reconcilable. The successor starts with zero reserved and consumed
+      budgets, <code>total_occurrences</code> zero, fresh node and terminal indexes,
+      and no occurrences. Budget, occurrence, evidence, and terminal state MUST
+      NOT silently carry forward. A successor can depend on earlier effects
+      only through separately verified evidence explicitly admitted by the
+      successor's own action-specific Trust Program.<a href="#section-8-4" class="pilcrow">¶</a></p>
+</section>
+</div>
+<div id="errors">
+<section id="section-9">
+      <h2 id="name-refusal-semantics">
+<a href="#section-9" class="section-number selfRef">9. </a><a href="#name-refusal-semantics" class="section-name selfRef">Refusal Semantics</a>
+      </h2>
+<p id="section-9-1">Reservation and registration refusals are fail-closed and MUST NOT
+      create occurrence, budget, admission, resource, operation-head, journal,
+      or execution-right state. A store MAY retain a newer authenticated
+      program-status observation. A begin refusal caused by program status,
+      program expiry, or admission currentness deliberately performs the atomic
+      pre-entry release defined in <a href="#program-status" class="auto internal xref">Section 5.2</a>. Implementations
+      MAY expose a more detailed local error vocabulary. The following reasons
+      define interoperable semantic classes used by the reference profile:<a href="#section-9-1" class="pilcrow">¶</a></p>
+<span id="name-selected-refusal-reasons"></span><table class="center" id="table-1">
+        <caption>
+<a href="#table-1" class="selfRef">Table 1</a>:
+<a href="#name-selected-refusal-reasons" class="selfRef">Selected Refusal Reasons</a>
+        </caption>
+<thead>
+          <tr>
+            <th class="text-left" rowspan="1" colspan="1">Reason</th>
+            <th class="text-left" rowspan="1" colspan="1">Meaning</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td class="text-left" rowspan="1" colspan="1">
+              <code>context_binding_required</code>
+</td>
+            <td class="text-left" rowspan="1" colspan="1">Mandatory relying-party verification context is absent.</td>
+          </tr>
+          <tr>
+            <td class="text-left" rowspan="1" colspan="1">
+              <code>program_required</code>
+</td>
+            <td class="text-left" rowspan="1" colspan="1">An ordinary path attempted to use program-fenced authority or a linked admission.</td>
+          </tr>
+          <tr>
+            <td class="text-left" rowspan="1" colspan="1">
+              <code>program_binding_mismatch</code>
+</td>
+            <td class="text-left" rowspan="1" colspan="1">A signed, authorization, action, Trust Program, subject, or AdmissionSnapshot binding differs.</td>
+          </tr>
+          <tr>
+            <td class="text-left" rowspan="1" colspan="1">
+              <code>program_node_unreachable</code>
+</td>
+            <td class="text-left" rowspan="1" colspan="1">At least one outcome-specific dependency is unsatisfied.</td>
+          </tr>
+          <tr>
+            <td class="text-left" rowspan="1" colspan="1">
+              <code>program_occurrence_conflict</code>
+</td>
+            <td class="text-left" rowspan="1" colspan="1">The occurrence identifier was already fenced.</td>
+          </tr>
+          <tr>
+            <td class="text-left" rowspan="1" colspan="1">
+              <code>program_occurrence_exhausted</code>
+</td>
+            <td class="text-left" rowspan="1" colspan="1">The node occurrence ceiling is unavailable.</td>
+          </tr>
+          <tr>
+            <td class="text-left" rowspan="1" colspan="1">
+              <code>program_total_occurrence_exhausted</code>
+</td>
+            <td class="text-left" rowspan="1" colspan="1">The retained total-history ceiling is exhausted.</td>
+          </tr>
+          <tr>
+            <td class="text-left" rowspan="1" colspan="1">
+              <code>program_budget_exhausted</code>
+</td>
+            <td class="text-left" rowspan="1" colspan="1">At least one aggregate attempt budget is unavailable.</td>
+          </tr>
+          <tr>
+            <td class="text-left" rowspan="1" colspan="1">
+              <code>program_concurrency_exhausted</code>
+</td>
+            <td class="text-left" rowspan="1" colspan="1">The signed concurrent-effect ceiling is occupied.</td>
+          </tr>
+          <tr>
+            <td class="text-left" rowspan="1" colspan="1">
+              <code>program_expiration_mismatch</code>
+</td>
+            <td class="text-left" rowspan="1" colspan="1">The admission expires after the program.</td>
+          </tr>
+          <tr>
+            <td class="text-left" rowspan="1" colspan="1">
+              <code>program_suspended</code>
+</td>
+            <td class="text-left" rowspan="1" colspan="1">The authoritative current status is suspended.</td>
+          </tr>
+          <tr>
+            <td class="text-left" rowspan="1" colspan="1">
+              <code>program_revoked</code>
+</td>
+            <td class="text-left" rowspan="1" colspan="1">The authoritative current status is revoked.</td>
+          </tr>
+          <tr>
+            <td class="text-left" rowspan="1" colspan="1">
+              <code>program_status_indeterminate</code>
+</td>
+            <td class="text-left" rowspan="1" colspan="1">Current status is unavailable, stale, malformed, expired, or conflicting.</td>
+          </tr>
+          <tr>
+            <td class="text-left" rowspan="1" colspan="1">
+              <code>program_reserved_work_exists</code>
+</td>
+            <td class="text-left" rowspan="1" colspan="1">Reserved predecessor work blocks supersession.</td>
+          </tr>
+          <tr>
+            <td class="text-left" rowspan="1" colspan="1">
+              <code>program_supersession_invalid</code>
+</td>
+            <td class="text-left" rowspan="1" colspan="1">Version, predecessor, authorizer, frozen identity or intent, or fresh authorization requirements differ.</td>
+          </tr>
+        </tbody>
+      </table>
+</section>
+</div>
+<div id="security">
+<section id="section-10">
+      <h2 id="name-security-considerations">
+<a href="#section-10" class="section-number selfRef">10. </a><a href="#name-security-considerations" class="section-name selfRef">Security Considerations</a>
+      </h2>
+<p id="section-10-1">The principal threats are open-ended authority, graph substitution,
+      action substitution, profile-name trust, authorization reuse, ordinary-
+      path bypass, replay, reserve-release history exhaustion, concurrent over-
+      reservation, delimiter aliasing, stale or caller-selected status, budget
+      restoration after provider entry, and unsafe retry after an indeterminate
+      outcome. Closed signed shapes, store-owned trust and clock, authenticated
+      profile evidence, current status, total-history and occurrence fences,
+      structured resource keys, the authorization-digest fence, and one
+      linearizable state domain address those threats at the admission
+      boundary.<a href="#section-10-1" class="pilcrow">¶</a></p>
+<p id="section-10-2">Private signing keys and store-owned out-of-band key pins require
+      lifecycle, rotation, compromise, role, suspension, revocation, and audit
+      controls. A caller MUST NOT be able to extend the trust-root set or choose
+      the verification clock. A signature establishes that an eligible pinned
+      key signed canonical bytes. It does not establish that the key holder
+      understood the objective, that a presentation was faithful, that a
+      profile is safe, or that the selected limits are appropriate.<a href="#section-10-2" class="pilcrow">¶</a></p>
+<p id="section-10-3">Profile matching is security-critical. The store MUST configure the
+      authenticated verifier and pin both the profile identifier and digest.
+      Free-form model assertions, caller-authored <code>MATCH</code> objects, an
+      unverified profile name, or evidence not sealed into the singleton AEB
+      input MUST NOT satisfy a node.<a href="#section-10-3" class="pilcrow">¶</a></p>
+<p id="section-10-4">The total-history ceiling intentionally does not restore capacity on
+      release. This bounds retained state but also lets an authorized requester
+      consume the signed history allowance through repeated reserve-release
+      cycles. Authorizers SHOULD choose the ceiling and admission rate controls
+      for that denial-of-service exposure; implementations MUST NOT evade it by
+      deleting records or decrementing <code>total_occurrences</code>.<a href="#section-10-4" class="pilcrow">¶</a></p>
+<p id="section-10-5">The authorization-digest fence closes bypass only within its shared
+      transaction and enforcement domain. A deployment with another mutation
+      credential, provider path, replica, or store outside that domain does not
+      have complete mediation. Such a deployment MUST NOT claim program-wide
+      enforcement merely because the signed object verifies.<a href="#section-10-5" class="pilcrow">¶</a></p>
+<p id="section-10-6"><code>INDETERMINATE</code> is material uncertainty, not failure and not
+      permission to retry. It continues to occupy a concurrent-effect slot
+      until authenticated reconciliation records a terminal outcome.
+      Reconciliation can change the recorded provider outcome but cannot
+      reconstruct event order from evidence that does not establish it.<a href="#section-10-6" class="pilcrow">¶</a></p>
+</section>
+</div>
+<div id="privacy">
+<section id="section-11">
+      <h2 id="name-privacy-considerations">
+<a href="#section-11" class="section-number selfRef">11. </a><a href="#name-privacy-considerations" class="section-name selfRef">Privacy Considerations</a>
+      </h2>
+<p id="section-11-1">Programs and AdmissionSnapshots can reveal objectives, tenant and
+      subject identifiers, action relationships, provider operations, timing,
+      budgets, and incident-response structure. Implementations SHOULD use
+      pseudonymous identifiers where accountability permits, minimize program
+      duration and graph detail, disclose digests instead of underlying
+      evidence when appropriate, and enforce access controls and retention
+      periods for runtime records.<a href="#section-11-1" class="pilcrow">¶</a></p>
+<p id="section-11-2">Digesting low-entropy or guessable material does not make it secret.
+      Sensitive objective, authorization, and presentation material SHOULD use
+      confidentiality and selective-disclosure controls outside this profile.<a href="#section-11-2" class="pilcrow">¶</a></p>
+</section>
+</div>
+<div id="implementation-status">
+<section id="section-12">
+      <h2 id="name-implementation-status">
+<a href="#section-12" class="section-number selfRef">12. </a><a href="#name-implementation-status" class="section-name selfRef">Implementation Status</a>
+      </h2>
+<p id="section-12-1">An Apache-2.0 same-team reference implementation defines closed program
+      construction, normalization, Ed25519 signing, verification, program
+      digests, mandatory total-history fencing, structured deterministic
+      AdmissionSnapshot resource binding, store-owned program trust and clock,
+      authenticated action-match verification, current-status processing,
+      in-memory and PostgreSQL program-aware admission surfaces, and
+      language-neutral syntax and runtime vectors. The repository also contains
+      bounded state-machine analysis.<a href="#section-12-1" class="pilcrow">¶</a></p>
+<p id="section-12-2">These artifacts are implementation and regression evidence for this
+      Experimental profile. They are not evidence of an independent
+      implementation, cross-vendor interoperability, a durable production
+      deployment, complete mediation, unbounded formal proof, standardization,
+      certification, or legal effect.<a href="#section-12-2" class="pilcrow">¶</a></p>
+</section>
+</div>
+<div id="reporting">
+<section id="section-13">
+      <h2 id="name-operational-reporting-infor">
+<a href="#section-13" class="section-number selfRef">13. </a><a href="#name-operational-reporting-infor" class="section-name selfRef">Operational Reporting (Informative)</a>
+      </h2>
+<p id="section-13-1">The separate signed <code>EP-BOUNDED-EXECUTION-REPORT-v1</code> artifact can
+      authenticate a relying-party-generated snapshot of the runtime state and
+      retained occurrence inventory for one verified program. It is not an
+      authorization and is not required to execute this protocol.<a href="#section-13-1" class="pilcrow">¶</a></p>
+<p id="section-13-2">That report's boundary is Gate-recorded program occurrences only. It
+      does not prove external effect truth, event chronology, program safety,
+      complete mediation of mutation paths, the absence of actions performed
+      outside Gate, or that an action was "executed outside the plan". An
+      outside-plan claim requires a separately signed external inventory root
+      with its own population-completeness and capture-topology boundary.<a href="#section-13-2" class="pilcrow">¶</a></p>
+</section>
+</div>
+<div id="iana">
+<section id="section-14">
+      <h2 id="name-iana-considerations">
+<a href="#section-14" class="section-number selfRef">14. </a><a href="#name-iana-considerations" class="section-name selfRef">IANA Considerations</a>
+      </h2>
+<p id="section-14-1">This document has no IANA actions. Protocol identifiers, resource-kind
+      strings, refusal reasons, and action-profile identifiers in this revision
+      are closed by the profile and are not IANA registries. A future revision
+      can request registries or media types after implementation and
+      interoperability experience justifies them.<a href="#section-14-1" class="pilcrow">¶</a></p>
+</section>
+</div>
+<div id="claim-boundary">
+<section id="section-15">
+      <h2 id="name-claim-boundary">
+<a href="#section-15" class="section-number selfRef">15. </a><a href="#name-claim-boundary" class="section-name selfRef">Claim Boundary</a>
+      </h2>
+<p id="section-15-1">Verification can establish that a pinned authorizer signed one
+      canonical program. A conforming runtime can establish that it admitted or
+      refused an occurrence according to that program's typed reachability,
+      current-status, total-history, node-occurrence, attempt-budget,
+      AdmissionSnapshot-binding, and supersession rules within one transaction
+      domain, including the signed provider-entry concurrency ceiling.<a href="#section-15-1" class="pilcrow">¶</a></p>
+<p id="section-15-2">It does not establish that natural-language intent was understood or
+      correctly compiled; that an action profile is sound; that a plan is safe,
+      lawful, optimal, or free of prompt injection; that provider evidence,
+      observed effects, or production event chronology are true; that every
+      mutation path was mediated; that no action occurred outside Gate or the
+      program; or why an observed effect diverged.<a href="#section-15-2" class="pilcrow">¶</a></p>
+</section>
+</div>
+<section id="section-16">
+      <h2 id="name-normative-references">
+<a href="#section-16" class="section-number selfRef">16. </a><a href="#name-normative-references" class="section-name selfRef">Normative References</a>
+      </h2>
+<dl class="references">
+<dt id="BCP14">[BCP14]</dt>
+      <dd>
+<span class="refAuthor">Internet Engineering Task Force</span>, <span class="refTitle">"Key Words for Use in RFCs to Indicate Requirement Levels"</span>, <span class="seriesInfo">BCP 14</span>, <time datetime="2017" class="refDate">2017</time>, <span>&lt;<a href="https://www.rfc-editor.org/info/bcp14">https://www.rfc-editor.org/info/bcp14</a>&gt;</span>. </dd>
+<dd class="break"></dd>
+<dt id="RFC2119">[RFC2119]</dt>
+      <dd>
+<span class="refAuthor">Bradner, S.</span>, <span class="refTitle">"Key words for use in RFCs to Indicate Requirement Levels"</span>, <span class="seriesInfo">BCP 14</span>, <span class="seriesInfo">RFC 2119</span>, <span class="seriesInfo">DOI 10.17487/RFC2119</span>, <time datetime="1997-03" class="refDate">March 1997</time>, <span>&lt;<a href="https://www.rfc-editor.org/info/rfc2119">https://www.rfc-editor.org/info/rfc2119</a>&gt;</span>. </dd>
+<dd class="break"></dd>
+<dt id="RFC3339">[RFC3339]</dt>
+      <dd>
+<span class="refAuthor">Klyne, G.</span> and <span class="refAuthor">C. Newman</span>, <span class="refTitle">"Date and Time on the Internet: Timestamps"</span>, <span class="seriesInfo">RFC 3339</span>, <span class="seriesInfo">DOI 10.17487/RFC3339</span>, <time datetime="2002-07" class="refDate">July 2002</time>, <span>&lt;<a href="https://www.rfc-editor.org/info/rfc3339">https://www.rfc-editor.org/info/rfc3339</a>&gt;</span>. </dd>
+<dd class="break"></dd>
+<dt id="RFC4648">[RFC4648]</dt>
+      <dd>
+<span class="refAuthor">Josefsson, S.</span>, <span class="refTitle">"The Base16, Base32, and Base64 Data Encodings"</span>, <span class="seriesInfo">RFC 4648</span>, <span class="seriesInfo">DOI 10.17487/RFC4648</span>, <time datetime="2006-10" class="refDate">October 2006</time>, <span>&lt;<a href="https://www.rfc-editor.org/info/rfc4648">https://www.rfc-editor.org/info/rfc4648</a>&gt;</span>. </dd>
+<dd class="break"></dd>
+<dt id="RFC5234">[RFC5234]</dt>
+      <dd>
+<span class="refAuthor">Crocker, D., Ed.</span> and <span class="refAuthor">P. Overell</span>, <span class="refTitle">"Augmented BNF for Syntax Specifications: ABNF"</span>, <span class="seriesInfo">STD 68</span>, <span class="seriesInfo">RFC 5234</span>, <span class="seriesInfo">DOI 10.17487/RFC5234</span>, <time datetime="2008-01" class="refDate">January 2008</time>, <span>&lt;<a href="https://www.rfc-editor.org/info/rfc5234">https://www.rfc-editor.org/info/rfc5234</a>&gt;</span>. </dd>
+<dd class="break"></dd>
+<dt id="RFC7493">[RFC7493]</dt>
+      <dd>
+<span class="refAuthor">Bray, T., Ed.</span>, <span class="refTitle">"The I-JSON Message Format"</span>, <span class="seriesInfo">RFC 7493</span>, <span class="seriesInfo">DOI 10.17487/RFC7493</span>, <time datetime="2015-03" class="refDate">March 2015</time>, <span>&lt;<a href="https://www.rfc-editor.org/info/rfc7493">https://www.rfc-editor.org/info/rfc7493</a>&gt;</span>. </dd>
+<dd class="break"></dd>
+<dt id="RFC8032">[RFC8032]</dt>
+      <dd>
+<span class="refAuthor">Josefsson, S.</span> and <span class="refAuthor">I. Liusvaara</span>, <span class="refTitle">"Edwards-Curve Digital Signature Algorithm (EdDSA)"</span>, <span class="seriesInfo">RFC 8032</span>, <span class="seriesInfo">DOI 10.17487/RFC8032</span>, <time datetime="2017-01" class="refDate">January 2017</time>, <span>&lt;<a href="https://www.rfc-editor.org/info/rfc8032">https://www.rfc-editor.org/info/rfc8032</a>&gt;</span>. </dd>
+<dd class="break"></dd>
+<dt id="RFC8174">[RFC8174]</dt>
+      <dd>
+<span class="refAuthor">Leiba, B.</span>, <span class="refTitle">"Ambiguity of Uppercase vs Lowercase in RFC 2119 Key Words"</span>, <span class="seriesInfo">BCP 14</span>, <span class="seriesInfo">RFC 8174</span>, <span class="seriesInfo">DOI 10.17487/RFC8174</span>, <time datetime="2017-05" class="refDate">May 2017</time>, <span>&lt;<a href="https://www.rfc-editor.org/info/rfc8174">https://www.rfc-editor.org/info/rfc8174</a>&gt;</span>. </dd>
+<dd class="break"></dd>
+<dt id="RFC8785">[RFC8785]</dt>
+    <dd>
+<span class="refAuthor">Rundgren, A.</span>, <span class="refAuthor">Jordan, B.</span>, and <span class="refAuthor">S. Erdtman</span>, <span class="refTitle">"JSON Canonicalization Scheme (JCS)"</span>, <span class="seriesInfo">RFC 8785</span>, <span class="seriesInfo">DOI 10.17487/RFC8785</span>, <time datetime="2020-06" class="refDate">June 2020</time>, <span>&lt;<a href="https://www.rfc-editor.org/info/rfc8785">https://www.rfc-editor.org/info/rfc8785</a>&gt;</span>. </dd>
+<dd class="break"></dd>
+</dl>
+</section>
+<div id="authors-addresses">
+<section id="appendix-A">
+      <h2 id="name-authors-address">
+<a href="#name-authors-address" class="section-name selfRef">Author's Address</a>
+      </h2>
+<address class="vcard">
+        <div dir="auto" class="left"><span class="fn nameRole">Iman Schrock</span></div>
+<div dir="auto" class="left"><span class="org">EMILIA Protocol, Inc.</span></div>
+<div dir="auto" class="left"><span class="country-name">United States of America</span></div>
+<div class="email">
+<span>Email:</span>
+<a href="mailto:team@emiliaprotocol.ai" class="email">team@emiliaprotocol.ai</a>
+</div>
+</address>
+</section>
+</div>
+<script>const toc = document.getElementById("toc");
+toc.querySelector("h2").addEventListener("click", e => {
+  toc.classList.toggle("active");
+});
+toc.querySelector("nav").addEventListener("click", e => {
+  toc.classList.remove("active");
+});
+</script>
+</body>
+</html>

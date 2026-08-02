@@ -61,6 +61,28 @@ export declare function guardStripeMutation(gate: any, stripe: any, args: any): 
     reliance: any;
     execution: any;
 }>;
+/**
+ * Bind a Stripe client to the account identity returned by a trusted provider
+ * identity probe. The returned opaque connector is created during trusted
+ * deployment setup; action callers cannot pair an arbitrary client with a
+ * caller-asserted account string.
+ */
+export declare function createStripeAllowanceConnector({ stripe, }?: {
+    stripe?: any;
+}): Promise<Readonly<{}>>;
+/**
+ * Execute a typed Stripe payout under a signed Gate allowance.
+ *
+ * The Stripe client and credentials remain in the caller's process. This
+ * adapter constructs the exact closed action that the signed allowance names;
+ * generic Stripe methods are deliberately not exposed through this path.
+ */
+export declare function guardStripeAllowanceMutation({ connector, params, operationId, ...allowanceOptions }: {
+    [x: string]: any;
+    connector: any;
+    params: any;
+    operationId: any;
+}): Promise<import("../reliance-risk-crypto.js").RiskRecord>;
 declare const _default: {
     STRIPE_ACTION_PACK: readonly (Readonly<{
         id: "stripe.payout.create";
@@ -111,6 +133,8 @@ declare const _default: {
     STRIPE_OPS: readonly string[];
     createStripeManifest: typeof createStripeManifest;
     guardStripeMutation: typeof guardStripeMutation;
+    createStripeAllowanceConnector: typeof createStripeAllowanceConnector;
+    guardStripeAllowanceMutation: typeof guardStripeAllowanceMutation;
 };
 export default _default;
 //# sourceMappingURL=stripe.d.ts.map

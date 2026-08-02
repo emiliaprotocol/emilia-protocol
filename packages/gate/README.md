@@ -230,6 +230,194 @@ UV, exact-action, assertion-replay, native-token, and provider-operation
 reservations plus one-time admission. The default strict policy remains
 `above-enrollment-and-one-time`.
 
+## Bounded execution programs
+
+The cross-module runtime composition is documented in
+[`Conserved Authority Runtime v1`](../../docs/protocol/conserved-authority-runtime-v1.md).
+It combines exact authority, sibling allocation, bounded capabilities, signed
+execution programs, credential-owning provider entry, and uncertainty without
+claiming cross-domain conservation.
+
+`@emilia-protocol/gate/bounded-execution-program` defines and verifies one
+signed, closed DAG of bounded autonomous actions. Each node pins either an
+exact CAID and action digest or a relying-party-pinned matching profile, one
+Trust Program digest, terminal predecessor outcomes, an occurrence ceiling,
+and charges against aggregate program budgets. The artifact also binds the
+subject, objective, authorization-evidence and presentation byte commitments,
+audience, validity window, and explicit supersession lineage.
+
+```ts
+import {
+  signBoundedExecutionProgram,
+  verifyBoundedExecutionProgram,
+  type BoundedExecutionProgramInput,
+} from '@emilia-protocol/gate/bounded-execution-program';
+import {
+  createMemoryAdmissionStore,
+  type ExecutionProgramAdmissionStore,
+  type ExecutionProgramRuntimeState,
+} from '@emilia-protocol/gate/admission-store';
+```
+
+The program-aware `ExecutionProgramAdmissionStore` extends, rather than
+replaces, the ordinary `AdmissionStore`. A standalone admission still owns one
+immutable operation snapshot, its resource reservations, execution right, and
+provider outcome. A program-linked admission must use the program-aware
+reserve, begin, release, and expiry methods so DAG reachability, occurrence
+limits, typed program budget charges, and the signed concurrent-effect ceiling
+change in the same linearizable domain as the execution right. `INDETERMINATE`
+continues to occupy a concurrency slot until reconciliation. The memory
+implementation remains test-only and makes no durability or deployment claim.
+
+Registration fences the program's exact `authorization_digest`, preventing an
+ordinary admission under the same root authorization from bypassing the graph.
+Each program reservation also derives an `execution_program` resource binding
+over the tenant, program digest, node, occurrence, and admission expiry and
+seals it into the immutable AdmissionSnapshot. Missing or substituted bindings
+fail closed. An admission based on genuinely separate authorization remains an
+independent decision.
+
+The adjacent surfaces remain separate:
+
+- The Autonomy Control Plane compiles a closed, human-rooted policy into a
+  Trust Program for each exact child action; it is not the runtime DAG ledger.
+- A Trust Program governs the staged, parallel, or quorum evidence ceremony
+  for one action. A bounded execution node pins its digest but does not weaken
+  or replace that action's evidence requirements.
+- A bounded capability receipt carries scoped, budget-backed authority for an
+  action occurrence and is reserved before provider entry. An execution
+  program orders eligible occurrences and accounts aggregate program charges;
+  it neither mints capability authority nor replaces any capability receipt
+  that the relying party requires.
+- Authority-allocation snapshots separately bind `max_active_children` for one
+  parent and refuse a wider same-domain sibling set. This is a bounded
+  allocation count, not proof that every registered child process is still
+  alive. Money, action occurrences, compute, and other consumable dimensions
+  remain typed budgets; concurrent effects remain a separate signed ceiling.
+- Signature and schema verification establish only the program's typed
+  bindings. They do not prove intent, goal safety, provider or effect truth,
+  complete mediation, or that any node is authorized or executed.
+- The Ed25519 program signature identifies the relying party's pinned
+  program-authorizer. Human approval remains separately verified evidence—such
+  as a WebAuthn/P-256 ceremony—bound by the program's authorization and
+  presentation digests.
+- A constructor-pinned program-status oracle is mandatory for program
+  registration and is rechecked before reservation and provider entry. Stale,
+  unavailable, or absent status fails closed. This package
+  defines the checked observation shape, not a portable signed status artifact
+  or the trustworthiness of the deployment's status source. Work already past
+  provider entry is reconciled, not erased.
+
+`@emilia-protocol/gate/bounded-execution-report` turns one verified program and
+one transactionally consistent `readExecutionProgramReportSnapshot` result
+into a canonical, signed point-in-time program-to-date report. The snapshot
+contains the runtime state, every retained occurrence for the exact tenant and
+program digest, and a deterministic SHA-256 marker, bounded by the signed
+`max_total_occurrences`. The report separates terminal recorded outcomes,
+unresolved post-entry attempts, pre-entry releases, and never-attempted node
+capacity; binds aggregate budget use and supersession state; and can be
+reverified offline under relying-party-pinned report keys. A `RELEASED`
+occurrence remains in retained history and consumes program-wide retained
+inventory, but does not occupy reusable per-node occurrence capacity.
+
+The report covers Gate-recorded program occurrences only. It does not prove
+external effect truth, event chronology, program safety, complete mediation,
+or the absence of actions executed outside Gate. That population-completeness
+claim requires a separately signed external Inventory Root and is intentionally
+outside this package. The checked-in report vectors are same-team experimental
+reference vectors, not independent or cross-language conformance evidence.
+
+### Install the Gate Qualification v2 SQL artifact
+
+Pin the package artifact to `@emilia-protocol/gate@0.23.0` and verify the exact
+shipped migration before applying it. The SHA-256 below identifies this source
+artifact; it is not a statement that the migration is already deployed:
+
+```bash
+GATE_SQL_PATH=node_modules/@emilia-protocol/gate/sql/gate-qualification-v2.sql
+test "$(node -p "require('./node_modules/@emilia-protocol/gate/package.json').version")" = "0.23.0"
+printf '%s  %s\n' \
+  '96abdf739e845e501efa992e90397384344e5b67af3ffb7b9d4bcb4a0a4d417e' \
+  "$GATE_SQL_PATH" | shasum -a 256 -c -
+```
+
+Apply it with `ON_ERROR_STOP` as the database owner, or as a migration role
+that can create `pgcrypto`, tables, triggers, and `SECURITY DEFINER` functions:
+
+```bash
+psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -f "$GATE_SQL_PATH"
+```
+
+The migration revokes `PUBLIC` execution from every Gate helper and RPC. Keep
+those revocations in place. Use two independently credentialed service roles:
+
+- `emilia_gate_runtime` owns ordinary admission lifecycle and read access. It
+  MUST NOT execute RPCs that accept a verified program, profile `MATCH`, or
+  status assertion.
+- `emilia_gate_verifier_service` is an isolated verifier service. It verifies
+  Ed25519 programs, action-profile evidence, and signed status under pinned
+  trust roots before invoking the four assertion-bearing RPCs.
+
+The SQL deliberately does not verify Ed25519 inside PostgreSQL. Structural
+checks in those RPCs are defense in depth, not cryptographic authentication.
+Configure the adapter with two database pools so `query` uses the runtime
+credential and `executionProgramVerifierQuery` uses only the verifier-service
+credential. Never point both options at the same pool or database role.
+
+As the database owner, grant schema use to both roles, then grant the normal
+lifecycle/read surface only to the runtime role (replace both example role
+names with deployment-specific roles):
+
+```sql
+GRANT USAGE ON SCHEMA public TO emilia_gate_runtime, emilia_gate_verifier_service;
+GRANT EXECUTE ON FUNCTION public.ep_gate_admission_reserve(text,text,jsonb,text) TO emilia_gate_runtime;
+GRANT EXECUTE ON FUNCTION public.ep_gate_admission_release(text,text,text,bigint,text,text) TO emilia_gate_runtime;
+GRANT EXECUTE ON FUNCTION public.ep_gate_admission_expire(text,text,text,bigint,text) TO emilia_gate_runtime;
+GRANT EXECUTE ON FUNCTION public.ep_gate_admission_supersede(text,text,text,bigint,text,jsonb,text) TO emilia_gate_runtime;
+GRANT EXECUTE ON FUNCTION public.ep_gate_admission_begin_invocation(text,text,text,bigint,text,text) TO emilia_gate_runtime;
+GRANT EXECUTE ON FUNCTION public.ep_gate_admission_recover_indeterminate(text,text,text,text,text) TO emilia_gate_runtime;
+GRANT EXECUTE ON FUNCTION public.ep_gate_admission_record_provider_outcome(text,text,text,bigint,text,text,text,text,text) TO emilia_gate_runtime;
+GRANT EXECUTE ON FUNCTION public.ep_gate_admission_record_effect_relation(text,text,text,bigint,text,text,text,text,text) TO emilia_gate_runtime;
+GRANT EXECUTE ON FUNCTION public.ep_gate_admission_read(text,text,text) TO emilia_gate_runtime;
+GRANT EXECUTE ON FUNCTION public.ep_gate_admission_read_by_operation(text,text,text) TO emilia_gate_runtime;
+GRANT EXECUTE ON FUNCTION public.ep_gate_admission_read_snapshot(text,text,text) TO emilia_gate_runtime;
+GRANT EXECUTE ON FUNCTION public.ep_gate_admission_journal(text,text,text) TO emilia_gate_runtime;
+GRANT EXECUTE ON FUNCTION public.ep_gate_admission_check_invariants(text,text) TO emilia_gate_runtime;
+GRANT EXECUTE ON FUNCTION public.ep_gate_execution_program_release_admission(text,text,text,bigint,text,text) TO emilia_gate_runtime;
+GRANT EXECUTE ON FUNCTION public.ep_gate_execution_program_expire_admission(text,text,text,bigint,text) TO emilia_gate_runtime;
+GRANT EXECUTE ON FUNCTION public.ep_gate_execution_program_read(text,text,text) TO emilia_gate_runtime;
+GRANT EXECUTE ON FUNCTION public.ep_gate_execution_program_read_by_admission(text,text,text) TO emilia_gate_runtime;
+GRANT EXECUTE ON FUNCTION public.ep_gate_execution_program_read_report_snapshot(text,text,text) TO emilia_gate_runtime;
+GRANT EXECUTE ON FUNCTION public.ep_gate_execution_program_read_occurrence(text,text,text,text) TO emilia_gate_runtime;
+```
+
+Grant only the assertion-bearing surface to the verifier service:
+
+```sql
+GRANT EXECUTE ON FUNCTION public.ep_gate_execution_program_register(text,text,text,jsonb,jsonb,text) TO emilia_gate_verifier_service;
+GRANT EXECUTE ON FUNCTION public.ep_gate_execution_program_reserve_admission(text,text,text,text,text,jsonb,jsonb,text,jsonb) TO emilia_gate_verifier_service;
+GRANT EXECUTE ON FUNCTION public.ep_gate_execution_program_begin_invocation(text,text,text,bigint,text,text,jsonb) TO emilia_gate_verifier_service;
+GRANT EXECUTE ON FUNCTION public.ep_gate_execution_program_supersede(text,text,text,jsonb,jsonb,text) TO emilia_gate_verifier_service;
+```
+
+```ts
+const store = createAdmissionPostgresStore({
+  query: runtimePoolQuery,
+  executionProgramVerifierQuery: verifierServicePoolQuery,
+  deploymentId,
+  tenantId,
+  executionProgramVerificationPolicy,
+  executionProgramStatusOracle,
+  executionProgramActionMatchVerifier,
+});
+```
+
+Neither role needs table privileges or helper-function grants. Granting these
+RPCs establishes database access only; it does not establish deployment,
+complete mediation, external effect truth, or production evidence. A missing
+status oracle fails closed as `program_status_indeterminate`; PostgreSQL uses
+`clock_timestamp()` at mutation time for status expiry and maximum-age checks.
+
 ## Proposal to effect
 
 `@emilia-protocol/gate/proposal-to-effect` closes the loop from an agent's
@@ -690,6 +878,26 @@ reconciliation; it never creates spendable budget out of thin air. A holder
 cannot edit `delegation_chain` or enlarge a child because the issuer signs the
 entire envelope.
 
+## Gate Allowances
+
+`@emilia-protocol/gate/allowance` turns a reviewed authorization into one
+customer-signed, time-bounded operating envelope. In-envelope actions run
+without another prompt; an out-of-envelope action refuses so a separately
+authenticated human can approve a successor allowance.
+
+The signed allowance binds its tenant, subject, audience, typed connector
+instance, action schema, target and exact-value allowlists, per-action ceiling,
+aggregate budget, authorizing-receipt digest, presentation digest, one
+capability identifier, capability-issuer key digest, and expiry. Execution also
+requires deployment-pinned receipt and current-status verifiers. V1 refuses
+delegated allowance capabilities.
+
+Typed reference wrappers are available for Stripe payouts, GitHub production
+workflow dispatches, and Supabase RLS policy replacements. Provider clients and
+credentials stay in the caller's process. See
+`docs/protocol/GATE-ALLOWANCES-v1.md` and the runnable
+`examples/gate-allowance/` demonstration.
+
 ## Receipt programs
 
 `createReceiptProgramKernel()` composes CAID, the Gate capability path, and the
@@ -909,6 +1117,9 @@ Program and execution lifecycle:
 - `./action-refusal-statement` emits a signed exact-action technical refusal;
 - `./coverage-reconciliation-attestation` reconciles supplied effect and
   receipt populations for a bounded period;
+- `./coverage-reconciliation-runner` verifies independently signed minimized
+  source inventories, joins exact CAID/action pairs, derives conserving counts,
+  and emits the report-bound attestation;
 - `./receipt-census` emits governed-taxonomy aggregates with coarse primary suppression; and
 - `./loss-experience-feed` carries signed external observations whose
   corrections require a trusted current-head lineage resolver.

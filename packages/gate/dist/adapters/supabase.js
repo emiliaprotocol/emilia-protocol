@@ -18,8 +18,10 @@
  *     op: 'sql.destructive', params: { sql: 'DELETE FROM payments WHERE id=1', table: 'payments' }, receipt,
  *   });
  */
-import { createAdapter, manifestFromPack, hashCanonical } from './_kit.js';
+import { canonicalActuatorObject, createAdapter, manifestFromPack, hashCanonical, } from './_kit.js';
+import { executeWithGateAllowance } from '../allowance.js';
 export const RLS_DEFINITION_BINDING_VERSION = 'EP-SUPABASE-RLS-DEFINITION-v1';
+const SUPABASE_RLS_ALLOWANCE_UNIT = 'RLSCHANGE';
 const DESTRUCTIVE = /\b(delete|drop|truncate|alter\s+table)\b/i;
 const UPDATE_NO_WHERE = /\bupdate\b(?:(?!\bwhere\b).)*$/is;
 /** Heuristic: is this SQL destructive (DELETE/DROP/TRUNCATE/ALTER, or UPDATE without WHERE)? */
@@ -92,6 +94,7 @@ const OPS = {
 };
 const adapter = createAdapter({ system: 'supabase', ops: OPS });
 export const SUPABASE_OPS = adapter.OPS;
+const supabaseAllowanceConnectors = new WeakMap();
 export function createSupabaseManifest(extraActions = []) {
     return manifestFromPack(SUPABASE_ACTION_PACK, extraActions);
 }
@@ -105,8 +108,79 @@ export function createSupabaseManifest(extraActions = []) {
 export function guardSupabaseMutation(gate, client, args) {
     return adapter.guard(gate, client, args);
 }
+/** Bind a typed RLS client to the project identity returned by a trusted provider probe. */
+export async function createSupabaseAllowanceConnector({ client, } = {}) {
+    if (!client || typeof client.alterPolicy !== 'function') {
+        throw new TypeError('createSupabaseAllowanceConnector requires a typed RLS client');
+    }
+    let projectRef;
+    try {
+        const url = new URL(client.supabaseUrl);
+        const match = /^([a-z0-9-]{1,63})\.supabase\.co$/i.exec(url.hostname);
+        projectRef = match?.[1];
+    }
+    catch {
+        projectRef = undefined;
+    }
+    if (!projectRef) {
+        throw new TypeError('Supabase client does not expose a valid project URL');
+    }
+    const connectorInstanceId = `supabase:project:${projectRef}`;
+    const connector = Object.freeze({});
+    supabaseAllowanceConnectors.set(connector, { client, connectorInstanceId });
+    return connector;
+}
+/**
+ * Replace one specifically bound RLS policy under a signed Gate allowance.
+ *
+ * Arbitrary SQL is intentionally excluded: the wrapper binds table, policy,
+ * canonical definition digest, definition version, and operation identifier,
+ * then invokes only the typed alterPolicy actuator.
+ */
+export function guardSupabaseAllowanceMutation({ connector, params, operationId, ...allowanceOptions }) {
+    const configured = supabaseAllowanceConnectors.get(connector);
+    if (!configured)
+        throw new TypeError('guardSupabaseAllowanceMutation requires a configured Supabase allowance connector');
+    const { client, connectorInstanceId } = configured;
+    if (!params || typeof params !== 'object' || Array.isArray(params)) {
+        throw new TypeError('guardSupabaseAllowanceMutation requires RLS policy params');
+    }
+    for (const field of ['table', 'policy', 'definition']) {
+        if (typeof params[field] !== 'string' || params[field].length === 0) {
+            throw new TypeError(`guardSupabaseAllowanceMutation requires params.${field}`);
+        }
+    }
+    const input = canonicalActuatorObject({
+        table: params.table,
+        policy: params.policy,
+        definition: params.definition,
+    });
+    const action = {
+        action_type: 'supabase.rls.change',
+        table: input.table,
+        policy: input.policy,
+        rls_definition_digest: rlsDefinitionDigest(input.definition),
+        rls_definition_version: RLS_DEFINITION_BINDING_VERSION,
+        rls_definition: input.definition,
+        amount: 1,
+        currency: SUPABASE_RLS_ALLOWANCE_UNIT,
+        operation_id: operationId,
+    };
+    return executeWithGateAllowance({
+        ...allowanceOptions,
+        expected: {
+            ...(allowanceOptions.expected || {}),
+            connector_id: connectorInstanceId,
+        },
+        action,
+        operationId,
+        executeAction: (verifiedAction) => client.alterPolicy(verifiedAction.table, verifiedAction.policy, verifiedAction.rls_definition),
+    });
+}
 export default {
     SUPABASE_ACTION_PACK, SUPABASE_OPS, createSupabaseManifest, guardSupabaseMutation,
+    guardSupabaseAllowanceMutation,
+    createSupabaseAllowanceConnector,
     isDestructiveSql, statementHash, rlsDefinitionDigest, RLS_DEFINITION_BINDING_VERSION,
 };
 //# sourceMappingURL=supabase.js.map
