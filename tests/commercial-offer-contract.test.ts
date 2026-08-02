@@ -42,4 +42,13 @@ describe('commercial offer contract', () => {
     expect(publicOffer).toContain('deployment boundary');
     expect(publicOffer).toContain('service level');
   });
+
+  it('defines the Financial Authority design-partner offer as fixed server-owned terms', () => {
+    expect(commercialOffer).toContain("id: 'financial_authority_design_partner_v1'");
+    expect(commercialOffer).toContain("name: 'Financial Authority design-partner pilot'");
+    expect(commercialOffer).toContain('durationDays: 90');
+    expect(commercialOffer).toContain("workflowLabel: '1 protected workflow'");
+    expect(commercialOffer).toContain("providerRailLabel: '1 provider rail'");
+    expect(intake).toContain('FINANCIAL_AUTHORITY_DESIGN_PARTNER');
+  });
 });
