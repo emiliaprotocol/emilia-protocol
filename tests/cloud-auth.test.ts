@@ -357,3 +357,47 @@ describe('authenticateCloudRequest', () => {
     expect(result).toBeNull();
   });
 });
+
+describe('authenticateCloudRequest — bearer prefix filter', () => {
+  // Audit #12 finding 4. The pattern was /^Bearer\s+(e?pt?_\S+)$/i, in which
+  // only `p` was mandatory, so `p_…` and `pt_…` were admitted alongside the
+  // `ep_` / `ept_` prefixes the issuer actually mints. The SHA-256 key lookup
+  // was and is the real gate, so nothing authenticated that should not have —
+  // but a prefix filter that admits prefixes that cannot exist is not filtering.
+  //
+  // The finding's own table also lists `Bearer t_abc123` and `Bearer _abc123`
+  // as matches. Neither matched: `p` was never optional. Executed below so the
+  // record is the regex's behaviour, not a reading of it.
+  beforeEach(() => {
+    // A key lookup that finds nothing, so any pass/fail here is the regex's.
+    getGuardedClient.mockReturnValue(makeSupabaseMock({ keyRow: null }));
+  });
+
+  const reaches = async (header) => {
+    getGuardedClient.mockClear();
+    await authenticateCloudRequest(makeRequest(header));
+    return getGuardedClient.mock.calls.length > 0;
+  };
+
+  it('admits only the ep_ and ept_ prefixes', async () => {
+    expect(await reaches('Bearer ep_abc123')).toBe(true);
+    expect(await reaches('Bearer ept_abc123')).toBe(true);
+    expect(await reaches('Bearer EP_abc123')).toBe(true); // pattern is case-insensitive
+  });
+
+  it('no longer admits the p_ and pt_ prefixes the old pattern let through', async () => {
+    expect(await reaches('Bearer p_abc123')).toBe(false);
+    expect(await reaches('Bearer pt_abc123')).toBe(false);
+  });
+
+  it('rejects the prefixes the finding claimed matched but never did', async () => {
+    expect(await reaches('Bearer t_abc123')).toBe(false);
+    expect(await reaches('Bearer _abc123')).toBe(false);
+  });
+
+  it('rejects unrelated bearer shapes', async () => {
+    expect(await reaches('Bearer x_abc123')).toBe(false);
+    expect(await reaches('Bearer epx_abc123')).toBe(false);
+    expect(await reaches('Bearer ep-abc123')).toBe(false);
+  });
+});
