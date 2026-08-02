@@ -19,11 +19,14 @@ import { NextResponse, type NextRequest } from 'next/server';
 import { epProblem } from '@/lib/errors';
 import { extractQuestions, ExtractionUnsupportedError } from '@/lib/trust-desk/extractor';
 import { classifyQuestions, BUCKET } from '@/lib/trust-desk/classifier';
+import { enforceBodyByteLimit } from '@/lib/http/body-limit';
+import { checkRateLimit, getClientIP } from '@/lib/rate-limit';
 
 export const dynamic = 'force-dynamic';
 export const maxDuration = 60;
 
 const MAX_BYTES = 5 * 1024 * 1024;
+const MAX_ENVELOPE_BYTES = MAX_BYTES + 1024 * 1024;
 
 /** How each classifier bucket is presented. Wording is deliberately plain. */
 const PRESENTATION: Record<string, { group: string; label: string; note: string }> = {
@@ -55,6 +58,21 @@ const PRESENTATION: Record<string, { group: string; label: string; note: string 
 };
 
 export async function POST(request: NextRequest): Promise<NextResponse> {
+  const limited = await checkRateLimit(`ip:${getClientIP(request)}`, 'submit');
+  if (!limited.allowed) {
+    const response = epProblem(429, 'rate_limited', 'Too many questionnaire triage requests');
+    response.headers.set('retry-after', String(Math.max(1, Number(limited.reset) || 60)));
+    return response;
+  }
+
+  // Count the complete HTTP envelope before request.json() or formData() can
+  // buffer it. The extra megabyte permits multipart boundaries and fields but
+  // does not weaken the five-megabyte questionnaire limit below.
+  const bodyLimit = await enforceBodyByteLimit(request, MAX_ENVELOPE_BYTES);
+  if (!bodyLimit.ok) {
+    return epProblem(bodyLimit.status, bodyLimit.code, bodyLimit.detail);
+  }
+
   let content: string | Buffer | undefined;
   let filename = 'pasted.txt';
 
