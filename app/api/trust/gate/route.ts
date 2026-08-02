@@ -35,6 +35,13 @@ const GATE_POLICIES = {
 
 export async function POST(request: NextRequest): Promise<NextResponse> {
   try {
+    // Authentication does not depend on the request body. Reject anonymous
+    // callers before spending parser/canonicalizer work on attacker-controlled
+    // input. Routes whose auth policy depends on a body field are a separate
+    // case; this route has no such dependency.
+    const auth = await authenticateRequest(request);
+    if (auth.error) return EP_ERRORS.UNAUTHORIZED();
+
     // readLimitedJson's parameter/return types aren't native TS annotations
     // yet (its options param's inferred type is currently narrower than its
     // documented `{ emptyValue?, invalidValue? }` contract); call through
@@ -47,8 +54,6 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
     }
     const body = parsed.value;
 
-    const auth = await authenticateRequest(request);
-    if (auth.error) return EP_ERRORS.UNAUTHORIZED();
     const actor = authEntityActor(auth);
     const callerEntityId = authEntityId(auth);
     const handshakeActor = { entity_id: callerEntityId };

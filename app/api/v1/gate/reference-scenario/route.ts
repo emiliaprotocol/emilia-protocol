@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: Apache-2.0
 import { GATE_REFERENCE_PROFILES, runGateReferenceLab } from '@/lib/gate/reference-lab.js';
 import { checkRateLimit, getClientIP } from '@/lib/rate-limit.js';
+import { logger } from '@/lib/logger.js';
 
 export const dynamic = 'force-dynamic';
 
@@ -28,7 +29,11 @@ export async function GET(request: Request): Promise<Response> {
         'x-content-type-options': 'nosniff',
       },
     });
-  } catch {
+  } catch (error) {
+    logger.error('gate reference scenario failed', {
+      profile,
+      error: error instanceof Error ? error.message : String(error),
+    });
     return Response.json({ ok: false, error: 'gate_reference_scenario_failed' }, {
       status: 503,
       headers: { 'cache-control': 'no-store' },
