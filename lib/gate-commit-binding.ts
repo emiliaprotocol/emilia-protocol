@@ -61,6 +61,16 @@ function normalizeJson(value, path, state = { nodes: 0 }, depth = 0) {
     throw new GateCommitBindingError(`${path} must be a plain JSON object`);
   }
 
+  // Symbol-keyed members are invisible to Object.keys, so they would be absent
+  // from the normalized object this function returns and therefore absent from
+  // the binding hash, while remaining readable on the caller's original object.
+  // Every other canonicalizer in the tree routes through canonicalizeStrictJson,
+  // which refuses them ("symbol members are not JSON"); this one walks keys
+  // itself, so it needs the same refusal rather than a silent drop.
+  if (Object.getOwnPropertySymbols(value).length > 0) {
+    throw new GateCommitBindingError(`${path} contains symbol-keyed members`);
+  }
+
   const result = Object.create(null);
   for (const key of Object.keys(value).sort()) {
     if (FORBIDDEN_OBJECT_KEYS.has(key)) {
