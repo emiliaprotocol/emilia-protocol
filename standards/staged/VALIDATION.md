@@ -1,8 +1,8 @@
 # Validation record
 
 Validated on 2026-08-01 from branch
-`codex/ietf-four-draft-wave-20260801`, based on origin/main commit
-`50b5af670f4a2a3444a9ecc98662cfdd82d20128`.
+`codex/ietf-four-draft-wave-20260801`, rebased and revalidated against
+origin/main commit `f0d497ace6649c0b788bde81a44421cdcd8336dc`.
 
 ## Submission artifacts
 
