@@ -264,6 +264,22 @@ let activeStatus = {
   status_head_digest: digest('allowance-status:1'),
 };
 
+// Publish the opening status head before any spend is reserved. A spend whose
+// asserted status has no counterpart in the store is refused with
+// `allowance_status_not_initialized`, so an allowance that was signed but never
+// published cannot authorize anything. Initialization is the one advance that
+// asserts a null predecessor head; every later one names the head it replaces,
+// which is what makes the chain non-forkable.
+assert.equal((await capabilityStore.advanceAllowanceStatus({
+  allowance_profile_id: `${TENANT_ID}/${active.allowance.allowance_id}`,
+  allowance_digest: activeAllowanceDigest,
+  revision: active.allowance.revision,
+  expected_status_epoch: null,
+  expected_status_head_digest: null,
+  ...activeStatus,
+  status: 'active',
+})).ok, true);
+
 assert.equal(
   verifyGateAllowance(active.allowance, {
     trusted_keys: trustedAllowanceKeys,
