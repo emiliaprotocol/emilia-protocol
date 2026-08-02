@@ -20,11 +20,19 @@ export declare function strictJsonGate(raw: unknown): StrictJsonResult;
  * undefined/functions/bigints, non-safe-integer numbers, and malformed UTF-16.
  */
 export declare function canonicalizeStrictJson(value: unknown, limits?: StrictCanonicalJsonLimits): string;
+/**
+ * Canonical bytes for JSON records that intentionally carry finite decimal
+ * measurements. This keeps every structural refusal of canonicalizeStrictJson
+ * while allowing finite non-integer numbers. Protocol identities and signed
+ * cross-language state should continue to use canonicalizeStrictJson.
+ */
+export declare function canonicalizeFiniteJson(value: unknown, limits?: StrictCanonicalJsonLimits): string;
 /** Pure predicate companion to canonicalizeStrictJson(). */
 export declare function isStrictCanonicalJson(value: unknown): boolean;
 declare const strictJson: {
     strictJsonGate: typeof strictJsonGate;
     canonicalizeStrictJson: typeof canonicalizeStrictJson;
+    canonicalizeFiniteJson: typeof canonicalizeFiniteJson;
     isStrictCanonicalJson: typeof isStrictCanonicalJson;
     MAX_JSON_DEPTH: number;
 };
