@@ -165,7 +165,11 @@ CREATE TABLE IF NOT EXISTS public.ep_gate_operation_heads (
 CREATE TABLE IF NOT EXISTS public.ep_gate_resource_fences (
   deployment_id text NOT NULL REFERENCES public.ep_gate_deployment_binding(deployment_id),
   tenant_id text NOT NULL,
-  kind text NOT NULL CHECK (kind IN ('replay', 'capability', 'budget', 'qualification_use', 'provider_operation', 'external_lease', 'execution_program')),
+  kind text NOT NULL CHECK (kind IN (
+    'replay', 'capability', 'budget', 'qualification_use',
+    'provider_operation', 'external_lease', 'monotonic_counter',
+    'execution_program'
+  )),
   resource_id text NOT NULL,
   reservation_id text NOT NULL,
   digest text NOT NULL CHECK (digest ~ '^sha256:[0-9a-f]{64}$'),

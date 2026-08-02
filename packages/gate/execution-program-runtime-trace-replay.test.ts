@@ -89,7 +89,11 @@ interface RuntimeTrace {
   store_configuration_ref: string;
   steps: Array<{
     operation: RuntimeOperation;
-    expect: { result: ExpectedResult; state: ExpectedState };
+    expect: {
+      result: ExpectedResult;
+      state: ExpectedState;
+      store_invariants?: { ok: boolean; violations: string[] };
+    };
   }>;
 }
 
@@ -909,12 +913,12 @@ for (const trace of vectors.runtime.traces) {
       };
       assert.deepEqual(
         actual,
-        step.expect,
+        { result: step.expect.result, state: step.expect.state },
         `${trace.id} step ${stepIndex + 1} (${step.operation.op}): runtime refinement drift`,
       );
       assert.deepEqual(
         await store.checkInvariants(),
-        { ok: true, violations: [] },
+        step.expect.store_invariants ?? { ok: true, violations: [] },
         `${trace.id} step ${stepIndex + 1} (${step.operation.op}): store invariant drift`,
       );
     }

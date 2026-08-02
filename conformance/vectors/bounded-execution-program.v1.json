@@ -4647,6 +4647,10 @@
                   }
                 ],
                 "ordinary_admissions": []
+              },
+              "store_invariants": {
+                "ok": true,
+                "violations": []
               }
             }
           },
@@ -4749,6 +4753,10 @@
                   }
                 ],
                 "ordinary_admissions": []
+              },
+              "store_invariants": {
+                "ok": true,
+                "violations": []
               }
             }
           },
@@ -4829,6 +4837,10 @@
                   }
                 ],
                 "ordinary_admissions": []
+              },
+              "store_invariants": {
+                "ok": true,
+                "violations": []
               }
             }
           },
@@ -4910,6 +4922,10 @@
                   }
                 ],
                 "ordinary_admissions": []
+              },
+              "store_invariants": {
+                "ok": true,
+                "violations": []
               }
             }
           },
@@ -5055,6 +5071,10 @@
                   }
                 ],
                 "ordinary_admissions": []
+              },
+              "store_invariants": {
+                "ok": true,
+                "violations": []
               }
             }
           },
@@ -5149,6 +5169,10 @@
                   }
                 ],
                 "ordinary_admissions": []
+              },
+              "store_invariants": {
+                "ok": true,
+                "violations": []
               }
             }
           },
@@ -5244,6 +5268,10 @@
                   }
                 ],
                 "ordinary_admissions": []
+              },
+              "store_invariants": {
+                "ok": true,
+                "violations": []
               }
             }
           },
@@ -5374,6 +5402,10 @@
                   }
                 ],
                 "ordinary_admissions": []
+              },
+              "store_invariants": {
+                "ok": true,
+                "violations": []
               }
             }
           },
@@ -5482,6 +5514,10 @@
                   }
                 ],
                 "ordinary_admissions": []
+              },
+              "store_invariants": {
+                "ok": true,
+                "violations": []
               }
             }
           },
@@ -5591,6 +5627,10 @@
                   }
                 ],
                 "ordinary_admissions": []
+              },
+              "store_invariants": {
+                "ok": true,
+                "violations": []
               }
             }
           }
@@ -5669,6 +5709,10 @@
                   }
                 ],
                 "ordinary_admissions": []
+              },
+              "store_invariants": {
+                "ok": true,
+                "violations": []
               }
             }
           },
@@ -5771,6 +5815,10 @@
                   }
                 ],
                 "ordinary_admissions": []
+              },
+              "store_invariants": {
+                "ok": true,
+                "violations": []
               }
             }
           },
@@ -5896,6 +5944,10 @@
                   }
                 ],
                 "ordinary_admissions": []
+              },
+              "store_invariants": {
+                "ok": true,
+                "violations": []
               }
             }
           },
@@ -5976,6 +6028,10 @@
                   }
                 ],
                 "ordinary_admissions": []
+              },
+              "store_invariants": {
+                "ok": true,
+                "violations": []
               }
             }
           },
@@ -6057,6 +6113,10 @@
                   }
                 ],
                 "ordinary_admissions": []
+              },
+              "store_invariants": {
+                "ok": true,
+                "violations": []
               }
             }
           },
@@ -6138,6 +6198,10 @@
                   }
                 ],
                 "ordinary_admissions": []
+              },
+              "store_invariants": {
+                "ok": true,
+                "violations": []
               }
             }
           },
@@ -6263,6 +6327,10 @@
                   }
                 ],
                 "ordinary_admissions": []
+              },
+              "store_invariants": {
+                "ok": true,
+                "violations": []
               }
             }
           },
@@ -6344,6 +6412,10 @@
                   }
                 ],
                 "ordinary_admissions": []
+              },
+              "store_invariants": {
+                "ok": true,
+                "violations": []
               }
             }
           },
@@ -6489,6 +6561,10 @@
                   }
                 ],
                 "ordinary_admissions": []
+              },
+              "store_invariants": {
+                "ok": true,
+                "violations": []
               }
             }
           }
@@ -6567,6 +6643,10 @@
                   }
                 ],
                 "ordinary_admissions": []
+              },
+              "store_invariants": {
+                "ok": true,
+                "violations": []
               }
             }
           },
@@ -6669,6 +6749,10 @@
                   }
                 ],
                 "ordinary_admissions": []
+              },
+              "store_invariants": {
+                "ok": true,
+                "violations": []
               }
             }
           },
@@ -6750,6 +6834,10 @@
                   }
                 ],
                 "ordinary_admissions": []
+              },
+              "store_invariants": {
+                "ok": true,
+                "violations": []
               }
             }
           },
@@ -6830,6 +6918,10 @@
                   }
                 ],
                 "ordinary_admissions": []
+              },
+              "store_invariants": {
+                "ok": true,
+                "violations": []
               }
             }
           },
@@ -6926,6 +7018,10 @@
                   }
                 ],
                 "ordinary_admissions": []
+              },
+              "store_invariants": {
+                "ok": true,
+                "violations": []
               }
             }
           },
@@ -7042,6 +7138,10 @@
                   }
                 ],
                 "ordinary_admissions": []
+              },
+              "store_invariants": {
+                "ok": true,
+                "violations": []
               }
             }
           },
@@ -7152,6 +7252,10 @@
                   }
                 ],
                 "ordinary_admissions": []
+              },
+              "store_invariants": {
+                "ok": true,
+                "violations": []
               }
             }
           },
@@ -7246,6 +7350,10 @@
                   }
                 ],
                 "ordinary_admissions": []
+              },
+              "store_invariants": {
+                "ok": true,
+                "violations": []
               }
             }
           },
@@ -7341,6 +7449,10 @@
                   }
                 ],
                 "ordinary_admissions": []
+              },
+              "store_invariants": {
+                "ok": true,
+                "violations": []
               }
             }
           }
@@ -7419,6 +7531,10 @@
                   }
                 ],
                 "ordinary_admissions": []
+              },
+              "store_invariants": {
+                "ok": true,
+                "violations": []
               }
             }
           },
@@ -7500,6 +7616,10 @@
                   }
                 ],
                 "ordinary_admissions": []
+              },
+              "store_invariants": {
+                "ok": true,
+                "violations": []
               }
             }
           },
@@ -7602,6 +7722,10 @@
                   }
                 ],
                 "ordinary_admissions": []
+              },
+              "store_invariants": {
+                "ok": true,
+                "violations": []
               }
             }
           },
@@ -7682,6 +7806,10 @@
                   }
                 ],
                 "ordinary_admissions": []
+              },
+              "store_invariants": {
+                "ok": true,
+                "violations": []
               }
             }
           },
@@ -7763,6 +7891,10 @@
                   }
                 ],
                 "ordinary_admissions": []
+              },
+              "store_invariants": {
+                "ok": true,
+                "violations": []
               }
             }
           },
@@ -7875,6 +8007,10 @@
                   }
                 ],
                 "ordinary_admissions": []
+              },
+              "store_invariants": {
+                "ok": true,
+                "violations": []
               }
             }
           },
@@ -7981,6 +8117,10 @@
                   }
                 ],
                 "ordinary_admissions": []
+              },
+              "store_invariants": {
+                "ok": true,
+                "violations": []
               }
             }
           },
@@ -8106,6 +8246,10 @@
                   }
                 ],
                 "ordinary_admissions": []
+              },
+              "store_invariants": {
+                "ok": true,
+                "violations": []
               }
             }
           },
@@ -8202,6 +8346,10 @@
                   }
                 ],
                 "ordinary_admissions": []
+              },
+              "store_invariants": {
+                "ok": true,
+                "violations": []
               }
             }
           },
@@ -8347,6 +8495,10 @@
                   }
                 ],
                 "ordinary_admissions": []
+              },
+              "store_invariants": {
+                "ok": true,
+                "violations": []
               }
             }
           }
@@ -8425,6 +8577,10 @@
                   }
                 ],
                 "ordinary_admissions": []
+              },
+              "store_invariants": {
+                "ok": true,
+                "violations": []
               }
             }
           },
@@ -8527,6 +8683,10 @@
                   }
                 ],
                 "ordinary_admissions": []
+              },
+              "store_invariants": {
+                "ok": true,
+                "violations": []
               }
             }
           },
@@ -8613,6 +8773,10 @@
                   }
                 ],
                 "ordinary_admissions": []
+              },
+              "store_invariants": {
+                "ok": true,
+                "violations": []
               }
             }
           },
@@ -8693,6 +8857,10 @@
                   }
                 ],
                 "ordinary_admissions": []
+              },
+              "store_invariants": {
+                "ok": true,
+                "violations": []
               }
             }
           },
@@ -8779,6 +8947,10 @@
                   }
                 ],
                 "ordinary_admissions": []
+              },
+              "store_invariants": {
+                "ok": true,
+                "violations": []
               }
             }
           },
@@ -8865,6 +9037,10 @@
                   }
                 ],
                 "ordinary_admissions": []
+              },
+              "store_invariants": {
+                "ok": true,
+                "violations": []
               }
             }
           },
@@ -8951,6 +9127,10 @@
                   }
                 ],
                 "ordinary_admissions": []
+              },
+              "store_invariants": {
+                "ok": true,
+                "violations": []
               }
             }
           },
@@ -9081,6 +9261,10 @@
                   }
                 ],
                 "ordinary_admissions": []
+              },
+              "store_invariants": {
+                "ok": true,
+                "violations": []
               }
             }
           },
@@ -9222,6 +9406,10 @@
                   }
                 ],
                 "ordinary_admissions": []
+              },
+              "store_invariants": {
+                "ok": true,
+                "violations": []
               }
             }
           },
@@ -9383,6 +9571,10 @@
                   }
                 ],
                 "ordinary_admissions": []
+              },
+              "store_invariants": {
+                "ok": true,
+                "violations": []
               }
             }
           }
@@ -9461,6 +9653,10 @@
                   }
                 ],
                 "ordinary_admissions": []
+              },
+              "store_invariants": {
+                "ok": true,
+                "violations": []
               }
             }
           },
@@ -9563,6 +9759,10 @@
                   }
                 ],
                 "ordinary_admissions": []
+              },
+              "store_invariants": {
+                "ok": true,
+                "violations": []
               }
             }
           },
@@ -9643,6 +9843,10 @@
                   }
                 ],
                 "ordinary_admissions": []
+              },
+              "store_invariants": {
+                "ok": true,
+                "violations": []
               }
             }
           },
@@ -9724,6 +9928,10 @@
                   }
                 ],
                 "ordinary_admissions": []
+              },
+              "store_invariants": {
+                "ok": true,
+                "violations": []
               }
             }
           },
@@ -9849,6 +10057,10 @@
                   }
                 ],
                 "ordinary_admissions": []
+              },
+              "store_invariants": {
+                "ok": true,
+                "violations": []
               }
             }
           }
@@ -9927,6 +10139,10 @@
                   }
                 ],
                 "ordinary_admissions": []
+              },
+              "store_invariants": {
+                "ok": true,
+                "violations": []
               }
             }
           },
@@ -10008,6 +10224,10 @@
                   }
                 ],
                 "ordinary_admissions": []
+              },
+              "store_invariants": {
+                "ok": true,
+                "violations": []
               }
             }
           },
@@ -10097,6 +10317,10 @@
                   }
                 ],
                 "ordinary_admissions": []
+              },
+              "store_invariants": {
+                "ok": true,
+                "violations": []
               }
             }
           },
@@ -10186,6 +10410,10 @@
                   }
                 ],
                 "ordinary_admissions": []
+              },
+              "store_invariants": {
+                "ok": true,
+                "violations": []
               }
             }
           },
@@ -10275,6 +10503,10 @@
                   }
                 ],
                 "ordinary_admissions": []
+              },
+              "store_invariants": {
+                "ok": true,
+                "violations": []
               }
             }
           },
@@ -10364,6 +10596,10 @@
                   }
                 ],
                 "ordinary_admissions": []
+              },
+              "store_invariants": {
+                "ok": true,
+                "violations": []
               }
             }
           },
@@ -10453,6 +10689,10 @@
                   }
                 ],
                 "ordinary_admissions": []
+              },
+              "store_invariants": {
+                "ok": true,
+                "violations": []
               }
             }
           },
@@ -10549,6 +10789,10 @@
                   }
                 ],
                 "ordinary_admissions": []
+              },
+              "store_invariants": {
+                "ok": true,
+                "violations": []
               }
             }
           },
@@ -10659,6 +10903,10 @@
                   }
                 ],
                 "ordinary_admissions": []
+              },
+              "store_invariants": {
+                "ok": true,
+                "violations": []
               }
             }
           }
@@ -10693,6 +10941,10 @@
                     "execution_right": "RESERVED"
                   }
                 ]
+              },
+              "store_invariants": {
+                "ok": true,
+                "violations": []
               }
             }
           },
@@ -10724,6 +10976,10 @@
                     "execution_right": "RESERVED"
                   }
                 ]
+              },
+              "store_invariants": {
+                "ok": true,
+                "violations": []
               }
             }
           },
@@ -10748,6 +11004,10 @@
                     "execution_right": "RELEASED"
                   }
                 ]
+              },
+              "store_invariants": {
+                "ok": true,
+                "violations": []
               }
             }
           },
@@ -10825,6 +11085,10 @@
                     "execution_right": "RELEASED"
                   }
                 ]
+              },
+              "store_invariants": {
+                "ok": true,
+                "violations": []
               }
             }
           },
@@ -10899,6 +11163,10 @@
                     "execution_right": "RELEASED"
                   }
                 ]
+              },
+              "store_invariants": {
+                "ok": true,
+                "violations": []
               }
             }
           },
@@ -10978,6 +11246,10 @@
                     "execution_right": "RESERVED"
                   }
                 ]
+              },
+              "store_invariants": {
+                "ok": true,
+                "violations": []
               }
             }
           },
@@ -11063,6 +11335,10 @@
                     "execution_right": "RESERVED"
                   }
                 ]
+              },
+              "store_invariants": {
+                "ok": true,
+                "violations": []
               }
             }
           }
@@ -11141,6 +11417,10 @@
                   }
                 ],
                 "ordinary_admissions": []
+              },
+              "store_invariants": {
+                "ok": true,
+                "violations": []
               }
             }
           }
@@ -11173,6 +11453,10 @@
                 "occurrences": [],
                 "authorization_claims": [],
                 "ordinary_admissions": []
+              },
+              "store_invariants": {
+                "ok": true,
+                "violations": []
               }
             }
           }
@@ -11205,6 +11489,10 @@
                 "occurrences": [],
                 "authorization_claims": [],
                 "ordinary_admissions": []
+              },
+              "store_invariants": {
+                "ok": true,
+                "violations": []
               }
             }
           }
@@ -11237,6 +11525,10 @@
                 "occurrences": [],
                 "authorization_claims": [],
                 "ordinary_admissions": []
+              },
+              "store_invariants": {
+                "ok": true,
+                "violations": []
               }
             }
           }
@@ -11315,6 +11607,10 @@
                   }
                 ],
                 "ordinary_admissions": []
+              },
+              "store_invariants": {
+                "ok": true,
+                "violations": []
               }
             }
           },
@@ -11390,6 +11686,10 @@
                   }
                 ],
                 "ordinary_admissions": []
+              },
+              "store_invariants": {
+                "ok": true,
+                "violations": []
               }
             }
           },
@@ -11471,6 +11771,10 @@
                   }
                 ],
                 "ordinary_admissions": []
+              },
+              "store_invariants": {
+                "ok": true,
+                "violations": []
               }
             }
           },
@@ -11546,6 +11850,10 @@
                   }
                 ],
                 "ordinary_admissions": []
+              },
+              "store_invariants": {
+                "ok": true,
+                "violations": []
               }
             }
           },
@@ -11648,6 +11956,10 @@
                   }
                 ],
                 "ordinary_admissions": []
+              },
+              "store_invariants": {
+                "ok": true,
+                "violations": []
               }
             }
           },
@@ -11738,6 +12050,10 @@
                   }
                 ],
                 "ordinary_admissions": []
+              },
+              "store_invariants": {
+                "ok": true,
+                "violations": []
               }
             }
           },
@@ -11819,6 +12135,10 @@
                   }
                 ],
                 "ordinary_admissions": []
+              },
+              "store_invariants": {
+                "ok": true,
+                "violations": []
               }
             }
           },
@@ -11909,6 +12229,10 @@
                   }
                 ],
                 "ordinary_admissions": []
+              },
+              "store_invariants": {
+                "ok": true,
+                "violations": []
               }
             }
           },
@@ -12025,6 +12349,10 @@
                   }
                 ],
                 "ordinary_admissions": []
+              },
+              "store_invariants": {
+                "ok": true,
+                "violations": []
               }
             }
           },
@@ -12119,6 +12447,10 @@
                   }
                 ],
                 "ordinary_admissions": []
+              },
+              "store_invariants": {
+                "ok": true,
+                "violations": []
               }
             }
           },
@@ -12223,6 +12555,10 @@
                   }
                 ],
                 "ordinary_admissions": []
+              },
+              "store_invariants": {
+                "ok": true,
+                "violations": []
               }
             }
           },
@@ -12333,6 +12669,10 @@
                   }
                 ],
                 "ordinary_admissions": []
+              },
+              "store_invariants": {
+                "ok": true,
+                "violations": []
               }
             }
           },
@@ -12428,6 +12768,10 @@
                   }
                 ],
                 "ordinary_admissions": []
+              },
+              "store_invariants": {
+                "ok": true,
+                "violations": []
               }
             }
           }
@@ -12506,6 +12850,10 @@
                   }
                 ],
                 "ordinary_admissions": []
+              },
+              "store_invariants": {
+                "ok": true,
+                "violations": []
               }
             }
           },
@@ -12587,6 +12935,10 @@
                   }
                 ],
                 "ordinary_admissions": []
+              },
+              "store_invariants": {
+                "ok": true,
+                "violations": []
               }
             }
           },
@@ -12689,6 +13041,10 @@
                   }
                 ],
                 "ordinary_admissions": []
+              },
+              "store_invariants": {
+                "ok": true,
+                "violations": []
               }
             }
           },
@@ -12768,6 +13124,12 @@
                   }
                 ],
                 "ordinary_admissions": []
+              },
+              "store_invariants": {
+                "ok": false,
+                "violations": [
+                  "[\"tenant:example\",\"admission:trace:hostile_admission_expiry_cap_and_program_expiry_before_begin:3\"]:reserved_past_expiry"
+                ]
               }
             }
           },
@@ -12849,6 +13211,10 @@
                   }
                 ],
                 "ordinary_admissions": []
+              },
+              "store_invariants": {
+                "ok": true,
+                "violations": []
               }
             }
           }
@@ -12908,6 +13274,10 @@
                   }
                 ],
                 "ordinary_admissions": []
+              },
+              "store_invariants": {
+                "ok": true,
+                "violations": []
               }
             }
           },
@@ -12991,6 +13361,10 @@
                   }
                 ],
                 "ordinary_admissions": []
+              },
+              "store_invariants": {
+                "ok": true,
+                "violations": []
               }
             }
           },
@@ -13052,6 +13426,10 @@
                   }
                 ],
                 "ordinary_admissions": []
+              },
+              "store_invariants": {
+                "ok": true,
+                "violations": []
               }
             }
           },
@@ -13149,6 +13527,10 @@
                   }
                 ],
                 "ordinary_admissions": []
+              },
+              "store_invariants": {
+                "ok": true,
+                "violations": []
               }
             }
           },
@@ -13224,6 +13606,10 @@
                   }
                 ],
                 "ordinary_admissions": []
+              },
+              "store_invariants": {
+                "ok": true,
+                "violations": []
               }
             }
           },
@@ -13315,6 +13701,10 @@
                   }
                 ],
                 "ordinary_admissions": []
+              },
+              "store_invariants": {
+                "ok": true,
+                "violations": []
               }
             }
           }
@@ -13374,6 +13764,10 @@
                   }
                 ],
                 "ordinary_admissions": []
+              },
+              "store_invariants": {
+                "ok": true,
+                "violations": []
               }
             }
           },
@@ -13457,6 +13851,10 @@
                   }
                 ],
                 "ordinary_admissions": []
+              },
+              "store_invariants": {
+                "ok": true,
+                "violations": []
               }
             }
           },
@@ -13554,6 +13952,10 @@
                   }
                 ],
                 "ordinary_admissions": []
+              },
+              "store_invariants": {
+                "ok": true,
+                "violations": []
               }
             }
           },
@@ -13629,6 +14031,10 @@
                   }
                 ],
                 "ordinary_admissions": []
+              },
+              "store_invariants": {
+                "ok": true,
+                "violations": []
               }
             }
           },
@@ -13705,6 +14111,10 @@
                   }
                 ],
                 "ordinary_admissions": []
+              },
+              "store_invariants": {
+                "ok": true,
+                "violations": []
               }
             }
           },
@@ -13781,6 +14191,10 @@
                   }
                 ],
                 "ordinary_admissions": []
+              },
+              "store_invariants": {
+                "ok": true,
+                "violations": []
               }
             }
           },
@@ -13857,6 +14271,10 @@
                   }
                 ],
                 "ordinary_admissions": []
+              },
+              "store_invariants": {
+                "ok": true,
+                "violations": []
               }
             }
           },
@@ -13933,6 +14351,10 @@
                   }
                 ],
                 "ordinary_admissions": []
+              },
+              "store_invariants": {
+                "ok": true,
+                "violations": []
               }
             }
           },
@@ -14008,6 +14430,10 @@
                   }
                 ],
                 "ordinary_admissions": []
+              },
+              "store_invariants": {
+                "ok": true,
+                "violations": []
               }
             }
           }
@@ -14074,6 +14500,10 @@
                   }
                 ],
                 "ordinary_admissions": []
+              },
+              "store_invariants": {
+                "ok": true,
+                "violations": []
               }
             }
           },
@@ -14164,6 +14594,10 @@
                   }
                 ],
                 "ordinary_admissions": []
+              },
+              "store_invariants": {
+                "ok": true,
+                "violations": []
               }
             }
           },
@@ -14232,6 +14666,10 @@
                   }
                 ],
                 "ordinary_admissions": []
+              },
+              "store_invariants": {
+                "ok": true,
+                "violations": []
               }
             }
           }

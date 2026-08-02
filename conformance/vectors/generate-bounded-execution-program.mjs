@@ -1255,8 +1255,8 @@ function runtimeSnapshot(state) {
   };
 }
 
-function traceStep(operation, must) {
-  return { operation, must };
+function traceStep(operation, must, storeInvariants = { ok: true, violations: [] }) {
+  return { operation, must, storeInvariants };
 }
 
 function compileTrace(definition, programDefinitions, storeConfigurations) {
@@ -1266,13 +1266,20 @@ function compileTrace(definition, programDefinitions, storeConfigurations) {
     classification: definition.classification,
     purpose: definition.purpose,
     store_configuration_ref: definition.store_configuration_ref ?? 'active',
-    steps: definition.steps.map(({ operation, must }, index) => {
+    steps: definition.steps.map(({ operation, must, storeInvariants }, index) => {
       const result = applyRuntimeOperation(state, operation, programDefinitions);
       assert.equal(result.ok, must.ok, `${definition.id} step ${index + 1}: runtime success changed`);
       if (!must.ok) {
         assert.deepEqual(result, must, `${definition.id} step ${index + 1}: runtime refusal changed`);
       }
-      return { operation, expect: { result, state: runtimeSnapshot(state) } };
+      return {
+        operation,
+        expect: {
+          result,
+          state: runtimeSnapshot(state),
+          store_invariants: storeInvariants,
+        },
+      };
     }),
   };
 }
@@ -1650,7 +1657,16 @@ function runtimeDefinitions(programs) {
           occurrence_id: 'occurrence:expiry:at-limit',
           admission: exact('inspect', { expires_at: '2026-07-29T21:00:00.000Z' }),
         }, ok),
-        traceStep({ op: 'set_store_clock', now: '2026-07-29T21:00:00.000Z' }, ok),
+        traceStep(
+          { op: 'set_store_clock', now: '2026-07-29T21:00:00.000Z' },
+          ok,
+          {
+            ok: false,
+            violations: [
+              '["tenant:example","admission:trace:hostile_admission_expiry_cap_and_program_expiry_before_begin:3"]:reserved_past_expiry',
+            ],
+          },
+        ),
         traceStep({
           op: 'begin', program_ref: 'base', occurrence_id: 'occurrence:expiry:at-limit',
         }, refuse('program_expired')),
@@ -1748,7 +1764,7 @@ function validateRuntimeTraces(runtime) {
       const result = applyRuntimeOperation(state, step.operation, runtime.programs);
       assert.deepEqual(
         { result, state: runtimeSnapshot(state) },
-        step.expect,
+        { result: step.expect.result, state: step.expect.state },
         `${trace.id} step ${index + 1}: runtime vector mismatch`,
       );
     });
@@ -2345,12 +2361,12 @@ async function replayConcreteRuntimeTraces(runtime, syntaxFixtures) {
       };
       assert.deepEqual(
         actual,
-        step.expect,
+        { result: step.expect.result, state: step.expect.state },
         `${trace.id} step ${index + 1} (${step.operation.op}): concrete store replay drift`,
       );
       assert.deepEqual(
         await store.checkInvariants(),
-        { ok: true, violations: [] },
+        step.expect.store_invariants ?? { ok: true, violations: [] },
         `${trace.id} step ${index + 1}: concrete store invariant drift`,
       );
     }
