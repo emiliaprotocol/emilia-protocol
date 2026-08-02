@@ -42,6 +42,16 @@ export const RATE_LIMITS: Record<string, { window: number; max: number }> = {
   mobile_pairing: { window: 60, max: 10 },      // 10 native pairing attempts per minute per IP
   mobile_runtime_ip: { window: 60, max: 120 },  // Bound unauthenticated work before token lookup
   mobile_write: { window: 60, max: 60 },        // Bound ceremonies/attestation per paired session
+  // Every mutating route is expected to be named in middleware's ROUTE_POLICIES
+  // (tests/route-rate-limit-coverage.test.ts fails CI if one is not). This tier
+  // is what an unnamed one gets in the window between shipping and noticing:
+  // tight enough to blunt a volumetric attack on an endpoint nobody classified,
+  // loose enough that a legitimate new route degrades rather than bricks.
+  unclassified_write: { window: 60, max: 10 },
+  // Hosted MCP tool calls. Each one runs real asymmetric crypto (Ed25519 or
+  // P-256) plus canonicalization over caller-supplied JSON, so it does not
+  // belong in the same bucket as a cheap database read.
+  mcp_tool_call: { window: 60, max: 60 },
 };
 
 import { getRateLimitConfig, getUpstashConfig } from '@/lib/env';
@@ -70,6 +80,12 @@ const FAIL_CLOSED_CATEGORIES = new Set([
   'mobile_pairing',
   'mobile_runtime_ip',
   'mobile_write',
+  // An unclassified mutating route is unreviewed by definition; a rate-limiter
+  // outage must not be the moment it runs unthrottled.
+  'unclassified_write',
+  // Unauthenticated CPU work. Failing open here during a Redis outage hands an
+  // attacker free signature verification at whatever rate they can dial.
+  'mcp_tool_call',
 ]);
 
 async function redisCommand(command: string, ...args: string[]): Promise<any> {

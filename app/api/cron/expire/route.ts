@@ -27,7 +27,13 @@ import { authenticateOperator } from '@/lib/operator-auth';
  */
 export async function GET(request: NextRequest) {
   // Authenticate operator (supports per-operator tokens + legacy CRON_SECRET)
-  const auth = authenticateOperator(request);
+  const auth = await authenticateOperator(request, {
+    // Unattended scheduler: there is no named human behind a cron tick, so
+    // this route declares its opt-out from the named-operator default rather
+    // than inheriting it by silence. It takes no trust-changing action and
+    // reads no role from the result.
+    requireOperatorIdentity: false,
+  });
   if (!auth.valid) {
     return epProblem(401, 'unauthorized', auth.error || 'Unauthorized');
   }

@@ -31,7 +31,7 @@ import { logger } from '@/lib/logger.js';
 const MAX_BODY_BYTES = 32 * 1024;
 
 export async function POST(request: NextRequest) {
-  const auth = authenticateOperator(request, { requireOperatorIdentity: true });
+  const auth = await authenticateOperator(request, { requireOperatorIdentity: true });
   if (!auth.valid) return epProblem(401, 'unauthorized', auth.error || 'Unauthorized');
 
   const parsed = await readEpJson(request, MAX_BODY_BYTES);

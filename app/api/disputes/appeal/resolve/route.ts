@@ -23,7 +23,7 @@ const MAX_BODY_BYTES = 64 * 1024;
  */
 export async function POST(request: NextRequest) {
   try {
-    const opAuth = authenticateOperator(request, { requireOperatorIdentity: true }) as {
+    const opAuth = await authenticateOperator(request, { requireOperatorIdentity: true }) as {
       valid: boolean;
       operator_id?: string;
       role?: string;

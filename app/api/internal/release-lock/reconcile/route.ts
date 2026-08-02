@@ -20,7 +20,7 @@ type OperatorAuthResult = {
 
 export async function POST(request: NextRequest): Promise<NextResponse> {
   try {
-    const operator = authenticateOperator(request, {
+    const operator = await authenticateOperator(request, {
       requireOperatorIdentity: true,
     }) as OperatorAuthResult;
     if (!operator.valid) {

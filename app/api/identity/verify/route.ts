@@ -31,7 +31,7 @@ type OperatorAuthResult = {
 export async function POST(request: NextRequest): Promise<NextResponse> {
   try {
     // Host-verifier / operator only. Named identity required for the audit trail.
-    const opAuth = authenticateOperator(request, {
+    const opAuth = await authenticateOperator(request, {
       requireOperatorIdentity: true,
     }) as OperatorAuthResult;
     if (!opAuth.valid) return EP_ERRORS.UNAUTHORIZED();
