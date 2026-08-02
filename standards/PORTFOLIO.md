@@ -111,8 +111,8 @@ XML sources were verified byte-for-byte against the IETF archive:
    approval-evidence profile and extension seam.
 6. `draft-schrock-ep-revocation-statement-00`: signed retraction of authority
    without rewriting an already executed effect.
-7. `draft-schrock-model-to-matter-01`: the current Experimental executor-side
-   application profile.
+7. `draft-schrock-model-to-matter-01`: the July 21 Experimental executor-side
+   baseline, superseded by -02 on July 29.
 
 Outcome Binding-00, Model-to-Matter-02, Memory Projection Record-00, AEB-02,
 AE Challenge-01, Revocation Statement-01, Authority Introduction-02, Agent

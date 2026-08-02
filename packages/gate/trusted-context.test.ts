@@ -20,7 +20,7 @@ import { createApertoMemoryContextProvider } from './apertomemory-context.js';
 import { verifyAuthorizationChain } from '@emilia-protocol/verify/evidence-chain';
 
 const VECTOR_PATH = fileURLToPath(new URL(
-  '../../interop/apertomemory-emilia/apertomemory-emilia.v1.json',
+  '../../interop/apertomemory-emilia/memory-projection-record.v1.vectors.json',
   import.meta.url,
 ));
 const bundle = JSON.parse(readFileSync(VECTOR_PATH, 'utf8'));

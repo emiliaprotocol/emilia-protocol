@@ -57,10 +57,9 @@
       "provider_id": "apertomemory",
       "provider_profile": "draft-ferro-apertomemory-02",
       "projection_record": {
-        "@version": "AMEM-PROJECTION-RECORD-v0",
-        "profile_status": "EMILIA_DISCUSSION_INPUT_NOT_APERTOMEMORY_CONFORMANCE",
+        "@version": "MEMORY-PROJECTION-RECORD-v1",
         "source_profile": "draft-ferro-apertomemory-02",
-        "projection_id": "urn:apertomemory:projection:composition-01",
+        "projection_id": "urn:memory-projection:apertomemory:composition-01",
         "created_at": "2026-07-29T17:00:01.000Z",
         "adapter": {
           "id": "urn:apertomemory:adapter:reference-01",
@@ -68,38 +67,34 @@
         },
         "selection_context": {
           "recall_request_digest": "sha256:aa71638ef2a2a71d2c7e431b455ed1784221b353609387c9faf9b6d1fec70bd2",
-          "selection_policy_digest": "sha256:dc44f9b0707b6f271225d982bdd87801d57e7e362d58fd0116724367958574f1",
-          "keyring_snapshot_digest": "sha256:dedd5fac51eac80fcd6cb39c391d50c67535e98f4165cf73936921d334b8f735",
+          "selection_policy_digest": "sha256:e2eb1c9126e90780f593d2394238e2d6cbf9b4b68dd3ee8af4f6075d10203392",
+          "trust_snapshot_digest": "sha256:a88e485905b4ca7e9bc5fd0f019e6b5b6cb9523080ca49e14e119de128c15b59",
           "trust_evaluated_at": "2026-07-29T17:00:00.000Z",
-          "context_frame_profile": "AMEM-CONTEXT-FRAME-v0"
+          "context_frame_profile": "urn:apertomemory:context-frame:v0"
         },
         "delivered": [
           {
             "position": 0,
             "object": {
-              "id_b64u": "Zy4ZwtYbXxZytYs8HWT9Ow",
-              "scope_id_b64u": "Q9-2eFFydjD9cu-OsDVRqw",
               "format_version": 2,
-              "sealed_object_digest": "sha256:e9636f9b2e4f09c14a67ae5a4545dc19e576ed0ad8e1d79b48b9edc1e858f22c"
+              "sealed_object_digest": "sha256:025672610783f255e7b0866325796200f85eded589462522f6e0cf6516f63620"
             },
-            "context_fragment_digest": "sha256:f65cd2aa35a53c5d3ba870cc04cde7a102f9c59b39ebde92f8f8cad5cee43224",
+            "context_fragment_digest": "sha256:8705dd3315ac111cc0531f1f6cbc99df6542eec56fd732db95e37d1a15f15ecc",
             "derived_trust": "trusted",
             "authorship": "attested",
-            "author_key_id_b64u": "e7KN3MSU-w8",
+            "author_key_id_b64u": "0FMJy9O1Xzs",
             "custody_present": true
           },
           {
             "position": 1,
             "object": {
-              "id_b64u": "Unp5k6tcsBUxfamH8GR9VA",
-              "scope_id_b64u": "Q9-2eFFydjD9cu-OsDVRqw",
               "format_version": 2,
-              "sealed_object_digest": "sha256:9ebbb4c5025568ebf95a9f0a54b3acec41337d43853b6592b0a0bc87b68bd350"
+              "sealed_object_digest": "sha256:7634d1bad541e7226859acc4babbb61bdf955db5840d0b2866426bca221ccdb4"
             },
-            "context_fragment_digest": "sha256:d3becd165ad0103abd9ce8859b6eba19d5751e50e4c55fdd2d2d20aaae597f61",
+            "context_fragment_digest": "sha256:aca6bdb7f70afb3b138bceec59e9e978576e8c0efd3e3f4f44323f469ed813d1",
             "derived_trust": "self",
             "authorship": "signed",
-            "author_key_id_b64u": "lfXPfHuei1Y",
+            "author_key_id_b64u": "Y8HonACcWtc",
             "custody_present": false
           }
         ],
@@ -114,8 +109,8 @@
         },
         "projection": {
           "encoding": "utf-8",
-          "byte_length": 337,
-          "digest": "sha256:d10ab3118683cc05601faa26bf82a0c6eb316e8a78a57832d98f8ce2f8c5f95f"
+          "byte_length": 328,
+          "digest": "sha256:a58a3ede9399e4b69acf0cc6acd51d199e9282ec93883bf1d5c9c06619518b52"
         },
         "nonclaims": {
           "model_use": "NOT_ESTABLISHED",
@@ -126,15 +121,15 @@
         "proof": {
           "alg": "Ed25519",
           "key_id": "apertomemory-adapter-key-2026-07",
-          "signature_b64u": "1_G1j-pL9PQsgp0_4reHVs8RIVYjweXyUgJVO_arPr0mIi2d5zAYPoixNgBlTXU6yJYT-ZZwfNfEBOBMUyb1Aw"
+          "signature_b64u": "u8iHlBw1xwdOh7x9mWoIAaH4Gwqr_jNvqheDuH0WZDGIgamvpm3bGItK9Zk9c1zP9FPce0NvFczajJma1KZeAw"
         }
       },
       "context_binding": {
         "@version": "EP-TRUSTED-CONTEXT-BINDING-v1",
         "provider_id": "apertomemory",
         "provider_profile": "draft-ferro-apertomemory-02",
-        "projection_record_digest": "sha256:0af6d2f575151b0b3ed6f3d994401cc36caa7d5ada48aae7baef325b448e3ebd",
-        "projection_digest": "sha256:d10ab3118683cc05601faa26bf82a0c6eb316e8a78a57832d98f8ce2f8c5f95f",
+        "projection_record_digest": "sha256:9e92ebd705851fbaa8f2d70d58ce3727a52a3df868ff0c39afbf131376daea15",
+        "projection_digest": "sha256:a58a3ede9399e4b69acf0cc6acd51d199e9282ec93883bf1d5c9c06619518b52",
         "action_subject_digest": "sha256:443e1124c589bd57d0c2f07d519846e1bdeed22a00d41fafe87d3420e34143dd",
         "policy_digest": "sha256:331ebea10e56a590984a699fcf8ca52f5671526e531b18a75ec1bd0a4faba168",
         "nonce": "ctx_vector_nonce_01",
@@ -147,7 +142,7 @@
         "proof": {
           "alg": "Ed25519",
           "key_id": "gate-context-binder-vector-01",
-          "signature_b64u": "aCLbH9QxUFYtzJVTTIQcFNhR6vdrKDY4Qdi_WgZuCnx_cKVcoDNyCATP2N6tXUrM4aOyL6y1Zt9yrU09bpH2Dw"
+          "signature_b64u": "850cEqZPqqb1nkFF9jK6-ki_ygxoU9iFd_MRqk9XI5yti4ERLp-oDVSXVKdE_5Psl_xyhJnPCVk9NVUYVcAIBg"
         }
       }
     },
@@ -159,9 +154,9 @@
       "trusted_context": {
         "provider_id": "apertomemory",
         "provider_profile": "draft-ferro-apertomemory-02",
-        "projection_record_digest": "sha256:0af6d2f575151b0b3ed6f3d994401cc36caa7d5ada48aae7baef325b448e3ebd",
-        "projection_digest": "sha256:d10ab3118683cc05601faa26bf82a0c6eb316e8a78a57832d98f8ce2f8c5f95f",
-        "context_binding_digest": "sha256:4790ee719c116c81dd2b10b25496e2c07f35536039f24cb803968d43a7687d07"
+        "projection_record_digest": "sha256:9e92ebd705851fbaa8f2d70d58ce3727a52a3df868ff0c39afbf131376daea15",
+        "projection_digest": "sha256:a58a3ede9399e4b69acf0cc6acd51d199e9282ec93883bf1d5c9c06619518b52",
+        "context_binding_digest": "sha256:a5a93e6abb4c0e422637b79acdadc80866e46153bca0a3c3f66f243e58445468"
       }
     }
   },

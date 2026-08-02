@@ -81,7 +81,12 @@ export interface ContextEvidenceProvider {
   readonly profileId: string;
   verifyProjection(
     record: unknown,
-    context: { verificationTime: string; maxSignerStatusAgeSec: number },
+    context: {
+      verificationTime: string;
+      maxSignerStatusAgeSec: number;
+      maxProjectionAgeSec: number;
+      maxTrustAgeSec: number;
+    },
   ): ContextProviderVerification;
 }
 
@@ -488,6 +493,8 @@ export function createTrustedContextEvaluator(options: TrustedContextEvaluatorOp
       providerResult = selected.verifyProjection(evidence.projection_record, {
         verificationTime,
         maxSignerStatusAgeSec: pinnedPolicy.max_signer_status_age_sec,
+        maxProjectionAgeSec: pinnedPolicy.max_projection_age_sec,
+        maxTrustAgeSec: pinnedPolicy.max_keyring_age_sec,
       });
     } catch {
       return refusal('INDETERMINATE', 'provider_verification_unavailable');

@@ -231,6 +231,7 @@
     "The government mobile reference apps and example.gov identifiers are implementation examples. They do not claim adoption, procurement, partnership, or endorsement by any state, agency, or government entity.",
     "The GRACE live control room uses separately signed COSA executor and meter independent-observer Outcome Observations. Independent-source acceptance requires distinct canonical Ed25519 keys and distinct relying-party-declared control domains, current source pins, bound observation windows, and source quorum. A declared control domain is policy input, not proof of organizational independence. Settlement is downstream of a reconciled Outcome Binding result. The circuit exercises real verification and one-time state transitions but does not claim a physical grid event, production COSA integration, utility adoption, meter truth, or SCITT anchoring.",
     "Portable human-intent and approval evidence exists outside EMILIA. AuthZEN AARP includes requestable denial, asynchronous approval, an approval object with optional opaque proof or verifier state, JWS interoperability for by-value state, an exact-match baseline, and PDP re-evaluation. Mastercard's Verifiable Intent, co-developed with Google and contributed to the FIDO Alliance, also provides portable intent evidence; the cited FIDO page describes a contribution and prospective standardization, not a final FIDO specification. Comparisons must use exact guarantee profiles rather than zero-rival claims.",
+    "The Memory Projection Record v1 implementation is an EMILIA-side implementation candidate. Its reciprocal vectors exercise the published field set, signing domain, exact byte commitments, source-profile result checks, ordering, freshness, replay, and hostile mutations, but independent ApertoMemory implementation review has not yet established reciprocal interoperability.",
     "The connected Cloud approval endpoint is an implementation prototype for one fixed large_payment_release workflow. It must not be described as a production service, customer deployment, certification, independent interoperability result, or standards adoption."
   ],
   "source_precedence": [
@@ -387,6 +388,10 @@
       "purpose": "EMILIA Protocol receipt, signoff, trust-receipt, and core verification exports"
     },
     {
+      "path": "packages/verify/src/memory-projection.ts",
+      "purpose": "provider-neutral Memory Projection Record v1 producer, full exact-byte and native-source verifier, and narrower signed-envelope verifier for downstream Gate evidence evaluation; it does not establish model use, action authorization, execution, or outcome"
+    },
+    {
       "path": "packages/verify/evidence-chain.js",
       "purpose": "typed evidence composition under a relying-party-pinned requirement"
     },
@@ -415,16 +420,16 @@
       "purpose": "15 deterministic Model-to-Matter CAID, acceptance, refusal, replay, storage-failure, and effect-statement cases"
     },
     {
-      "path": "standards/posted/draft-schrock-model-to-matter-01.xml",
-      "purpose": "Published July 21 Experimental Model-to-Matter profile with explicit non-goals and implementation status"
+      "path": "standards/posted/draft-schrock-model-to-matter-02.xml",
+      "purpose": "Published July 29 Experimental Model-to-Matter profile adding source-routed Outcome Binding while retaining explicit non-goals and implementation limits"
     },
     {
-      "path": "standards/staged/draft-schrock-model-to-matter-02.xml",
-      "purpose": "Upload-ready candidate revision adding source-routed Outcome Binding, canonical-key and declared-control-domain independence, source status, observation windows, and quorum; not yet a published Internet-Draft"
+      "path": "standards/staged/UPLOAD-THIS/draft-schrock-model-to-matter-03.xml",
+      "purpose": "Upload-ready candidate revision adding relying-party programs, qualification evidence, and typed AEB composition while preserving the no-physical-truth limitation; not yet filed"
     },
     {
-      "path": "standards/staged/draft-schrock-ep-outcome-binding-00.xml",
-      "purpose": "Upload-ready candidate defining executor, system-of-record, and independent-observer outcome sources with exact binding, canonical-key and declared-control-domain separation, source status, observation windows, quorum, and indeterminate lifecycle"
+      "path": "standards/posted/draft-schrock-ep-outcome-binding-00.xml",
+      "purpose": "Published July 29 profile defining executor, system-of-record, and independent-observer outcome sources with exact binding, source separation, observation windows, quorum, and an indeterminate lifecycle"
     },
     {
       "path": "examples/mobile-government",

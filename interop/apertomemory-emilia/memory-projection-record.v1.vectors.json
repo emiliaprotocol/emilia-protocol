@@ -1,0 +1,307 @@
+{
+  "@version": "MEMORY-PROJECTION-RECIPROCAL-VECTORS-v1",
+  "record_version": "MEMORY-PROJECTION-RECORD-v1",
+  "contract": {
+    "draft": "draft-ferro-schrock-memory-projection-record-00",
+    "status": "EMILIA_SIDE_IMPLEMENTATION_CANDIDATE_PENDING_RECIPROCAL_REVIEW",
+    "source_profile": "draft-ferro-apertomemory-02"
+  },
+  "adapter_pin": {
+    "adapter_id": "urn:apertomemory:adapter:reference-01",
+    "key_id": "apertomemory-adapter-key-2026-07",
+    "alg": "Ed25519",
+    "public_key_spki_b64u": "MCowBQYDK2VwAyEA08THovDNs4pMv1ARMiWEVyplc8KPSoa1ORtO4VksAAc",
+    "status": "active",
+    "valid_from": "2026-07-29T00:00:00.000Z",
+    "valid_to": "2027-07-29T00:00:00.000Z",
+    "revoked_at": null
+  },
+  "verification_policy": {
+    "verification_time": "2026-07-29T17:01:00.000Z",
+    "max_projection_age_sec": 300,
+    "max_trust_age_sec": 300,
+    "expected_source_profile": "draft-ferro-apertomemory-02",
+    "expected_context_frame_profile": "urn:apertomemory:context-frame:v0"
+  },
+  "projection": {
+    "record": {
+      "@version": "MEMORY-PROJECTION-RECORD-v1",
+      "source_profile": "draft-ferro-apertomemory-02",
+      "projection_id": "urn:memory-projection:apertomemory:composition-01",
+      "created_at": "2026-07-29T17:00:01.000Z",
+      "adapter": {
+        "id": "urn:apertomemory:adapter:reference-01",
+        "key_id": "apertomemory-adapter-key-2026-07"
+      },
+      "selection_context": {
+        "recall_request_digest": "sha256:aa71638ef2a2a71d2c7e431b455ed1784221b353609387c9faf9b6d1fec70bd2",
+        "selection_policy_digest": "sha256:e2eb1c9126e90780f593d2394238e2d6cbf9b4b68dd3ee8af4f6075d10203392",
+        "trust_snapshot_digest": "sha256:a88e485905b4ca7e9bc5fd0f019e6b5b6cb9523080ca49e14e119de128c15b59",
+        "trust_evaluated_at": "2026-07-29T17:00:00.000Z",
+        "context_frame_profile": "urn:apertomemory:context-frame:v0"
+      },
+      "delivered": [
+        {
+          "position": 0,
+          "object": {
+            "format_version": 2,
+            "sealed_object_digest": "sha256:025672610783f255e7b0866325796200f85eded589462522f6e0cf6516f63620"
+          },
+          "context_fragment_digest": "sha256:8705dd3315ac111cc0531f1f6cbc99df6542eec56fd732db95e37d1a15f15ecc",
+          "derived_trust": "trusted",
+          "authorship": "attested",
+          "author_key_id_b64u": "0FMJy9O1Xzs",
+          "custody_present": true
+        },
+        {
+          "position": 1,
+          "object": {
+            "format_version": 2,
+            "sealed_object_digest": "sha256:7634d1bad541e7226859acc4babbb61bdf955db5840d0b2866426bca221ccdb4"
+          },
+          "context_fragment_digest": "sha256:aca6bdb7f70afb3b138bceec59e9e978576e8c0efd3e3f4f44323f469ed813d1",
+          "derived_trust": "self",
+          "authorship": "signed",
+          "author_key_id_b64u": "Y8HonACcWtc",
+          "custody_present": false
+        }
+      ],
+      "exclusions": {
+        "total": 2,
+        "by_reason": {
+          "authentication_failed": 1,
+          "schema_invalid": 0,
+          "policy_filtered": 0,
+          "context_limit": 1
+        }
+      },
+      "projection": {
+        "encoding": "utf-8",
+        "byte_length": 328,
+        "digest": "sha256:a58a3ede9399e4b69acf0cc6acd51d199e9282ec93883bf1d5c9c06619518b52"
+      },
+      "nonclaims": {
+        "model_use": "NOT_ESTABLISHED",
+        "action_linkage": "NOT_ESTABLISHED",
+        "action_authorization": "NOT_ESTABLISHED",
+        "execution_outcome": "NOT_ESTABLISHED"
+      },
+      "proof": {
+        "alg": "Ed25519",
+        "key_id": "apertomemory-adapter-key-2026-07",
+        "signature_b64u": "u8iHlBw1xwdOh7x9mWoIAaH4Gwqr_jNvqheDuH0WZDGIgamvpm3bGItK9Zk9c1zP9FPce0NvFczajJma1KZeAw"
+      }
+    },
+    "verification_material": {
+      "recall_request_b64u": "cHJpdmF0ZSByZWNhbGwgcmVxdWVzdCBmaXh0dXJlOyBjbGVhcnRleHQgZGVsaWJlcmF0ZWx5IG5vdCBjYXJyaWVk",
+      "selection_policy_b64u": "aW5jbHVkZSB0cnVzdGVkIGRhdGE7IGlzb2xhdGUgbGFiZWxzOyB3aXRoaG9sZCB1bnZlcmlmaWVkIG9iamVjdHM",
+      "trust_snapshot_b64u": "eyJhY2NlcHRlZF9rZXlfaWRzX2I2NHUiOlsiMEZNSnk5TzFYenMiXSwib3duZXJfa2V5X2lkX2I2NHUiOiJZOEhvbkFDY1d0YyJ9",
+      "source_object_b64u_by_position": [
+        "pAFQoKGio6SlpqeoqaqrrK2urwJQAQIDBAUGBwgJCgsMDQ4PEAMCBFjs0INDoQEDoQVMAAECAwQFBgcICQoLWNUY_HgjqvF4ZQaU3ziRH5BSyoHw23vFKHt-PmlSXQeDn_lmKYu_7j0_xCITMrL4GJ0-1jhLI0KfchlLdkuZ9fk_3tFzsmuyIUku-3HgJ0HVffRLPB5P7tt_Mj_GiW3CGUyshxkLLgu5vQCAQJsb8FN80ZLqDMQiOwHBShv3FVhcs4nAryI98PoQxYQkmoQwsa_rQ2yzznHV0vRQGHZde6VciOGgwpe68dWFHKb6Q7zwGF-YWDf3dFlSJoXY8_QX41Njczal37DEHAg3Mp3xVNwXhksuJc0",
+        "pAFQoKGio6SlpqeoqaqrrK2urwJQAQIDBAUGBwgJCgsMDQ4PEAMCBFjX0INDoQEDoQVMAAECAwQFBgcICQoLWMAY_HgjqvF4ZQaU3ziRH5BSyoHb23vFKHt5KHpUT0KQma1oKYu363F9_zAwMqP9EIY2hUvRbtoqvS64VkpRmzSfcri03iqwIEVs5jy-TCaGki7VdOHU0UJ-qOR6_B6g3ijEijmJy2waHQCYYAWpecDvBub2q7cvA0D4qkk0A-yduZAgepV6teECm24rLSAI9V9sOQAgxWjPn0tlDOrV66IPUEMI2B6YtBE25wRh72J3I3Q6zbM1EvOopzHqm3TdMaI"
+      ],
+      "fragment_b64u_by_position": [
+        "W0FwZXJ0b01lbW9yeSB0cnVzdD10cnVzdGVkIGF1dGhvcnNoaXA9YXR0ZXN0ZWQgYXV0aG9yX2tleT0wRk1KeTlPMVh6cyBjdXN0b2R5PXRydWVdClNvdXJjZSB2ZWN0b3IgMDA3OiBmYWN0IGF1dGhvcmVkIGJ5IGEgdGhpcmQgcGFydHkgYW5kIHJlLXNlYWxlZCBieSB0aGUgdmF1bHQgb3duZXIuClsvQXBlcnRvTWVtb3J5XQo",
+        "W0FwZXJ0b01lbW9yeSB0cnVzdD1zZWxmIGF1dGhvcnNoaXA9c2lnbmVkIGF1dGhvcl9rZXk9WThIb25BQ2NXdGMgY3VzdG9keT1mYWxzZV0KU291cmNlIHZlY3RvciAwMDM6IHByZWZlcnMgZm9ybWFsIEIyQiBlbWFpbHMuClsvQXBlcnRvTWVtb3J5XQo"
+      ],
+      "projection_b64u": "W0FwZXJ0b01lbW9yeSB0cnVzdD10cnVzdGVkIGF1dGhvcnNoaXA9YXR0ZXN0ZWQgYXV0aG9yX2tleT0wRk1KeTlPMVh6cyBjdXN0b2R5PXRydWVdClNvdXJjZSB2ZWN0b3IgMDA3OiBmYWN0IGF1dGhvcmVkIGJ5IGEgdGhpcmQgcGFydHkgYW5kIHJlLXNlYWxlZCBieSB0aGUgdmF1bHQgb3duZXIuClsvQXBlcnRvTWVtb3J5XQpbQXBlcnRvTWVtb3J5IHRydXN0PXNlbGYgYXV0aG9yc2hpcD1zaWduZWQgYXV0aG9yX2tleT1ZOEhvbkFDY1d0YyBjdXN0b2R5PWZhbHNlXQpTb3VyY2UgdmVjdG9yIDAwMzogcHJlZmVycyBmb3JtYWwgQjJCIGVtYWlscy4KWy9BcGVydG9NZW1vcnldCg",
+      "native_source_results_by_position": [
+        {
+          "valid": true,
+          "formatVersion": 2,
+          "sealedObjectDigest": "sha256:025672610783f255e7b0866325796200f85eded589462522f6e0cf6516f63620",
+          "derivedTrust": "trusted",
+          "authorship": "attested",
+          "authorKeyIdB64u": "0FMJy9O1Xzs",
+          "custodyPresent": true
+        },
+        {
+          "valid": true,
+          "formatVersion": 2,
+          "sealedObjectDigest": "sha256:7634d1bad541e7226859acc4babbb61bdf955db5840d0b2866426bca221ccdb4",
+          "derivedTrust": "self",
+          "authorship": "signed",
+          "authorKeyIdB64u": "Y8HonACcWtc",
+          "custodyPresent": false
+        }
+      ]
+    },
+    "expect": {
+      "valid": true,
+      "verification_scope": "FULL_PROJECTION_AND_NATIVE_SOURCE_RESULTS",
+      "delivered_count": 2,
+      "excluded_count": 2
+    }
+  },
+  "source_profile_edge_cases": {
+    "null_author": {
+      "status": "CANDIDATE_PENDING_APERTOMEMORY_PROFILE_REVIEW",
+      "context_frame_profile": "urn:apertomemory:context-frame:v0",
+      "fragment_b64u": "W0FwZXJ0b01lbW9yeSB0cnVzdD11bnZlcmlmaWVkIGF1dGhvcnNoaXA9dW5rbm93biBhdXRob3Jfa2V5PW5vbmUgY3VzdG9keT1mYWxzZV0KU291cmNlIGVkZ2U6IG5hdGl2ZSB2ZXJpZmljYXRpb24gZGlkIG5vdCByZXNvbHZlIGFuIGF1dGhvci4KWy9BcGVydG9NZW1vcnldCg",
+      "fragment_digest": "sha256:e14214df9b4b22487c19458a0d7c800ebe19435bc46f6109a7377c5ca156f9eb",
+      "native_source_result": {
+        "derived_trust": "unverified",
+        "authorship": "unknown",
+        "author_key_id_b64u": null,
+        "custody_present": false
+      }
+    },
+    "empty_accepted_key_set": {
+      "status": "CANDIDATE_PENDING_APERTOMEMORY_PROFILE_REVIEW",
+      "owner_key_id_b64u": "Y8HonACcWtc",
+      "accepted_key_ids_b64u": [],
+      "trust_snapshot_b64u": "eyJhY2NlcHRlZF9rZXlfaWRzX2I2NHUiOltdLCJvd25lcl9rZXlfaWRfYjY0dSI6Ilk4SG9uQUNjV3RjIn0",
+      "trust_snapshot_digest": "sha256:52021a21cd1895f3e0c8cf4700643c8ba0ab321d476eecde578d38e25dd7ac2f"
+    },
+    "multiple_accepted_keys": {
+      "status": "CANDIDATE_PENDING_APERTOMEMORY_PROFILE_REVIEW",
+      "owner_key_id_b64u": "Y8HonACcWtc",
+      "input_accepted_key_ids_b64u": [
+        "Y8HonACcWtc",
+        "0FMJy9O1Xzs"
+      ],
+      "accepted_key_ids_b64u": [
+        "0FMJy9O1Xzs",
+        "Y8HonACcWtc"
+      ],
+      "ordering": "LEXICOGRAPHIC_ASCENDING_BY_BASE64URL_TEXT",
+      "trust_snapshot_b64u": "eyJhY2NlcHRlZF9rZXlfaWRzX2I2NHUiOlsiMEZNSnk5TzFYenMiLCJZOEhvbkFDY1d0YyJdLCJvd25lcl9rZXlfaWRfYjY0dSI6Ilk4SG9uQUNjV3RjIn0",
+      "trust_snapshot_digest": "sha256:f0cbd461a31458c4a9b6ea7d60b91c4fafb21debd33786e741588de248df9d44"
+    }
+  },
+  "cases": [
+    {
+      "id": "accept_full_projection",
+      "mutation": null,
+      "expect": {
+        "result": "VALID"
+      }
+    },
+    {
+      "id": "refuse_unknown_member",
+      "mutation": "add_unknown_top_level_member",
+      "expect": {
+        "result": "record_invalid"
+      }
+    },
+    {
+      "id": "refuse_wrong_domain_signature",
+      "mutation": "sign_with_legacy_v0_domain",
+      "expect": {
+        "result": "signature_invalid"
+      }
+    },
+    {
+      "id": "refuse_entry_reordering",
+      "mutation": "swap_delivered_entries",
+      "expect": {
+        "result": "delivered_order_invalid"
+      }
+    },
+    {
+      "id": "refuse_entry_omission",
+      "mutation": "omit_delivered_entry",
+      "expect": {
+        "result": "signature_invalid"
+      }
+    },
+    {
+      "id": "refuse_duplicate_position",
+      "mutation": "duplicate_delivered_position",
+      "expect": {
+        "result": "delivered_order_invalid"
+      }
+    },
+    {
+      "id": "refuse_source_object_mutation",
+      "mutation": "mutate_source_object_bytes",
+      "expect": {
+        "result": "source_object_digest_mismatch"
+      }
+    },
+    {
+      "id": "refuse_fragment_mutation",
+      "mutation": "mutate_fragment_bytes",
+      "expect": {
+        "result": "fragment_digest_mismatch"
+      }
+    },
+    {
+      "id": "refuse_projection_not_equal_to_fragment_concatenation",
+      "mutation": "substitute_projection_bytes_only",
+      "expect": {
+        "result": "projection_fragment_concatenation_mismatch"
+      }
+    },
+    {
+      "id": "refuse_recall_request_mutation",
+      "mutation": "mutate_recall_request_bytes",
+      "expect": {
+        "result": "recall_request_digest_mismatch"
+      }
+    },
+    {
+      "id": "refuse_selection_policy_mutation",
+      "mutation": "mutate_selection_policy_bytes",
+      "expect": {
+        "result": "selection_policy_digest_mismatch"
+      }
+    },
+    {
+      "id": "refuse_trust_snapshot_mutation",
+      "mutation": "mutate_trust_snapshot_bytes",
+      "expect": {
+        "result": "trust_snapshot_digest_mismatch"
+      }
+    },
+    {
+      "id": "refuse_exclusion_count_mutation",
+      "mutation": "increment_exclusions_total",
+      "expect": {
+        "result": "exclusion_count_mismatch"
+      }
+    },
+    {
+      "id": "refuse_nonclaim_upgrade",
+      "mutation": "set_model_use_established",
+      "expect": {
+        "result": "nonclaim_invalid"
+      }
+    },
+    {
+      "id": "refuse_unpinned_adapter",
+      "mutation": "remove_adapter_pin",
+      "expect": {
+        "result": "adapter_key_not_pinned"
+      }
+    },
+    {
+      "id": "refuse_revoked_adapter",
+      "mutation": "revoke_adapter_key",
+      "expect": {
+        "result": "adapter_key_revoked"
+      }
+    },
+    {
+      "id": "refuse_stale_trust_snapshot",
+      "mutation": "advance_verification_time",
+      "expect": {
+        "result": "trust_snapshot_stale"
+      }
+    },
+    {
+      "id": "refuse_native_source_result_relabel",
+      "mutation": "relabel_native_source_result",
+      "expect": {
+        "result": "native_source_result_mismatch"
+      }
+    },
+    {
+      "id": "refuse_projection_replay",
+      "mutation": "register_projection_twice",
+      "expect": {
+        "result": "projection_replay"
+      }
+    }
+  ]
+}

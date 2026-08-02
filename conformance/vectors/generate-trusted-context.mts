@@ -13,7 +13,7 @@ import {
 
 const OUTPUT = fileURLToPath(new URL('./trusted-context.v1.json', import.meta.url));
 const AMEM = fileURLToPath(new URL(
-  '../../interop/apertomemory-emilia/apertomemory-emilia.v1.json',
+  '../../interop/apertomemory-emilia/memory-projection-record.v1.vectors.json',
   import.meta.url,
 ));
 const source = JSON.parse(readFileSync(AMEM, 'utf8'));

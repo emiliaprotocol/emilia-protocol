@@ -6,7 +6,7 @@ import { readFileSync, writeFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { canonicalContextBindingDigest, canonicalContextRecordDigest, signTrustedContextBinding, trustedContextPolicyDigest, } from '../../packages/gate/trusted-context.js';
 const OUTPUT = fileURLToPath(new URL('./trusted-context.v1.json', import.meta.url));
-const AMEM = fileURLToPath(new URL('../../interop/apertomemory-emilia/apertomemory-emilia.v1.json', import.meta.url));
+const AMEM = fileURLToPath(new URL('../../interop/apertomemory-emilia/memory-projection-record.v1.vectors.json', import.meta.url));
 const source = JSON.parse(readFileSync(AMEM, 'utf8'));
 const projectionRecord = source.projection.record;
 const HASH = (character) => `sha256:${character.repeat(64)}`;

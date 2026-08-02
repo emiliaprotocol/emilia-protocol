@@ -9,7 +9,7 @@ import { fileURLToPath } from 'node:url';
 import { CONTEXT_PROJECTION_COMPONENT, canonicalContextBindingDigest, canonicalContextRecordDigest, createTrustedContextAecVerifier, createTrustedContextEvaluator, signTrustedContextBinding, trustedContextPolicyDigest, verifyTrustedContextContinuity, } from './trusted-context.js';
 import { createApertoMemoryContextProvider } from './apertomemory-context.js';
 import { verifyAuthorizationChain } from '@emilia-protocol/verify/evidence-chain';
-const VECTOR_PATH = fileURLToPath(new URL('../../interop/apertomemory-emilia/apertomemory-emilia.v1.json', import.meta.url));
+const VECTOR_PATH = fileURLToPath(new URL('../../interop/apertomemory-emilia/memory-projection-record.v1.vectors.json', import.meta.url));
 const bundle = JSON.parse(readFileSync(VECTOR_PATH, 'utf8'));
 const record = bundle.projection.record;
 const HASH = (character) => `sha256:${character.repeat(64)}`;

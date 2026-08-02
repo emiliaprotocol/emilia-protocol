@@ -93,10 +93,11 @@ transaction time.
 
 ## ApertoMemory provider boundary
 
-`createApertoMemoryContextProvider()` verifies the signed
-`AMEM-PROJECTION-RECORD-v0` composition artifact under relying-party-pinned
-adapter keys and current status. It preserves ApertoMemory -02's material
-semantics:
+`createApertoMemoryContextProvider()` verifies the signed provider-neutral
+`MEMORY-PROJECTION-RECORD-v1` envelope under relying-party-pinned adapter keys
+and current status. It retains explicit compatibility with the frozen
+`AMEM-PROJECTION-RECORD-v0` discussion artifact. It preserves ApertoMemory
+-02's material semantics:
 
 - trust is derived at read time under the current keyring;
 - ordered projection entries bind sealed-object and framed-fragment digests;
@@ -105,10 +106,20 @@ semantics:
 - the record does not claim model ingestion, weighting, action authorization,
   execution, or outcome.
 
+The Gate provider performs the v1 **signed-envelope** verification scope. It
+does not receive plaintext context or source objects and therefore does not
+claim to have rehashed those commitment preimages. The full neutral verifier
+in `@emilia-protocol/verify/memory-projection` separately requires the exact
+request, policy, trust snapshot, source objects, fragments, complete projection,
+and one native source-verifier result per entry. It refuses when the supplied
+fragments do not byte-concatenate to the supplied projection.
+
 The provider plug-in does **not** decrypt `.amem` objects or independently
 implement the raw CBOR/COSE format. Native format verification remains owned by
 the ApertoMemory consumer. The checked-in `v0` record is a composition profile
-over the current draft, not an ApertoMemory standard or endorsement.
+over the source draft, not an ApertoMemory standard or endorsement. The v1
+record is provider-neutral and its ApertoMemory source fields remain governed
+by ApertoMemory's native verifier.
 
 For source commitments, the adapter hashes the exact complete sealed-object
 CBOR supplied by ApertoMemory. Keys 1-4 are mandatory and reserved OPTIONAL key
@@ -140,6 +151,10 @@ evidence role and therefore cannot unlock execution.
 - provider-neutral kernel: `packages/gate/src/trusted-context.ts`
 - ApertoMemory provider: `packages/gate/src/apertomemory-context.ts`
 - signed source records: `interop/apertomemory-emilia/`
+- neutral producer/verifier: `packages/verify/src/memory-projection.ts`
+- v1 schema: `public/schemas/memory-projection-record-v1.schema.json`
+- reciprocal v1 vectors:
+  `interop/apertomemory-emilia/memory-projection-record.v1.vectors.json`
 - hostile tests: `packages/gate/trusted-context.test.ts`
 - package exports: `@emilia-protocol/gate/trusted-context` and
   `@emilia-protocol/gate/trusted-context/apertomemory`
@@ -161,6 +176,11 @@ against the EMILIA composition fixtures; the reciprocal references and exact
 limits are recorded in `interop/apertomemory-emilia/README.md`. This does not
 constitute blanket ApertoMemory conformance or independent reproduction of its
 full 14-vector native conformance suite by this provider plug-in.
+
+The EMILIA-side v1 producer, full verifier, Gate envelope consumer, and hostile
+vectors are implemented. Reciprocal v1 execution by ApertoMemory or another
+independently governed implementation remains pending, so no independent v1
+interoperability claim is made.
 
 No live customer memory system is connected. Production claims still require a
 real provider adapter deployment, durable Gate admission state, managed

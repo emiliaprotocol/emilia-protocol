@@ -1,14 +1,14 @@
 {
   "@version": "EMILIA-REPO-CONTEXT-v1",
-  "evidence_snapshot_at": "2026-08-02T00:40:37.626Z",
+  "evidence_snapshot_at": "2026-08-02T02:38:34.912Z",
   "provenance": {
     "generator": "scripts/generate-llm-context.mjs",
-    "input_digest_sha256": "902c1305f984925f38d16d1e9bfe913961a6d414b9391daa356c4fb546a494cd",
+    "input_digest_sha256": "a974e5aa1ad3aee43ec8276711737ca191df6daa99434206f0fdd5d9b8c3d918",
     "generated_from": [
       {
         "path": "docs/ai/context-source.v1.json",
-        "sha256": "7a5decccb09f841fd083a4056f7d56fb1c8e11eeb18ceb3c6b87933aeb8e0d88",
-        "bytes": 42622
+        "sha256": "60bef111f37b121d9cefc5ce7e8aa05813de7d425b7fc5cc8e53abca9e1261fb",
+        "bytes": 43333
       },
       {
         "path": "scripts/generate-llm-context.mjs",
@@ -17,7 +17,7 @@
       },
       {
         "path": "lib/proof-stats.json",
-        "sha256": "e357f99cd40aa7909b612cf730db0ada57d21b5b5b28e8eab9680a47439a27aa",
+        "sha256": "48f47fc39e6f9b34a55c7a5f869a4c7704c45157e1725e1c4e5084e213112d61",
         "bytes": 4298
       },
       {
@@ -37,7 +37,7 @@
       },
       {
         "path": "security/security-case.json",
-        "sha256": "5c67b296bc788164a31ac5e61580e96a80a33e3d3dbd0f53e322f6a7f7158076",
+        "sha256": "ee953a77793d77b975a938cfb004024378a28334039c73647d43a79957b7f155",
         "bytes": 376757
       },
       {
@@ -47,8 +47,8 @@
       },
       {
         "path": "standards/STATUS.json",
-        "sha256": "43afa08d361c4f27f76a231007cfbae963be0761b8e7a6bfc73ce9925dfbd1f3",
-        "bytes": 21045
+        "sha256": "aa201d6c329131bf48e9c8846a7ce05836334eab29cf67b3182bcec217fff218",
+        "bytes": 23463
       },
       {
         "path": "caid/conformance/vectors.json",
@@ -272,7 +272,7 @@
   ],
   "current_evidence": {
     "automated_tests": {
-      "total": 8078,
+      "total": 8081,
       "files": 463,
       "policy": "all platform-applicable cases must pass; platform-specific cases may skip"
     },
@@ -384,7 +384,7 @@
       "status": "passed",
       "claims": 35,
       "evidence_files": 252,
-      "evidence_bundle_sha256": "5e43bdf5ac9e6639dae9934a1275afd388ec2c0a41d068a8a611c21452e04581"
+      "evidence_bundle_sha256": "c8d088fc5fefb66052491a50a4939840207c416455ad56c330550177d2041172"
     },
     "caid": {
       "core_vectors": 48,
@@ -4398,6 +4398,7 @@
     "The government mobile reference apps and example.gov identifiers are implementation examples. They do not claim adoption, procurement, partnership, or endorsement by any state, agency, or government entity.",
     "The GRACE live control room uses separately signed COSA executor and meter independent-observer Outcome Observations. Independent-source acceptance requires distinct canonical Ed25519 keys and distinct relying-party-declared control domains, current source pins, bound observation windows, and source quorum. A declared control domain is policy input, not proof of organizational independence. Settlement is downstream of a reconciled Outcome Binding result. The circuit exercises real verification and one-time state transitions but does not claim a physical grid event, production COSA integration, utility adoption, meter truth, or SCITT anchoring.",
     "Portable human-intent and approval evidence exists outside EMILIA. AuthZEN AARP includes requestable denial, asynchronous approval, an approval object with optional opaque proof or verifier state, JWS interoperability for by-value state, an exact-match baseline, and PDP re-evaluation. Mastercard's Verifiable Intent, co-developed with Google and contributed to the FIDO Alliance, also provides portable intent evidence; the cited FIDO page describes a contribution and prospective standardization, not a final FIDO specification. Comparisons must use exact guarantee profiles rather than zero-rival claims.",
+    "The Memory Projection Record v1 implementation is an EMILIA-side implementation candidate. Its reciprocal vectors exercise the published field set, signing domain, exact byte commitments, source-profile result checks, ordering, freshness, replay, and hostile mutations, but independent ApertoMemory implementation review has not yet established reciprocal interoperability.",
     "The connected Cloud approval endpoint is an implementation prototype for one fixed large_payment_release workflow. It must not be described as a production service, customer deployment, certification, independent interoperability result, or standards adoption."
   ],
   "source_precedence": [
@@ -4458,7 +4459,7 @@
   "standards": [
     {
       "identifier": "draft-schrock-ae-challenge",
-      "revision_at_snapshot": "00",
+      "revision_at_snapshot": "01",
       "role": "Machine-readable, action-bound request for missing authorization evidence; the challenge authorizes nothing",
       "next_action": "Use as the standalone HTTP 428 acquisition and retry contract; it uses the AEC presentation profile while remaining separate from AEB enforcement and AEC satisfaction semantics",
       "url": "https://datatracker.ietf.org/doc/draft-schrock-ae-challenge/",
@@ -4466,10 +4467,26 @@
     },
     {
       "identifier": "draft-schrock-action-evidence-boundary",
-      "revision_at_snapshot": "00",
+      "revision_at_snapshot": "02",
       "role": "Boundary contract joining independently verified evidence to one material action, reserving authority before invocation, and preserving indeterminate outcomes for authenticated reconciliation",
-      "next_action": "Published July 21; ship the open AEB-1 consequence-admission conformance pack, then collect independent implementation and interoperation results before revising the draft",
+      "next_action": "Published July 29; -03 is staged with pinned adapter requirements, authority-separation terms, current status, re-derivable evaluation records, and refusal evidence",
       "url": "https://datatracker.ietf.org/doc/draft-schrock-action-evidence-boundary/",
+      "status_rule": "Check the live IETF Datatracker URL; do not infer status or revision from a local filename."
+    },
+    {
+      "identifier": "draft-schrock-action-remedy-receipts",
+      "revision_at_snapshot": "00",
+      "role": "Dispute, decision, and fresh CAID-bound compensating-action evidence without rewriting the original effect",
+      "next_action": "Published July 29; use -00 as the current remedy lifecycle baseline",
+      "url": "https://datatracker.ietf.org/doc/draft-schrock-action-remedy-receipts/",
+      "status_rule": "Check the live IETF Datatracker URL; do not infer status or revision from a local filename."
+    },
+    {
+      "identifier": "draft-schrock-agent-qualification-statements",
+      "revision_at_snapshot": "00",
+      "role": "Task- and policy-bounded qualification evidence that never authorizes by itself",
+      "next_action": "Published July 29; compose as a native AEC evidence role",
+      "url": "https://datatracker.ietf.org/doc/draft-schrock-agent-qualification-statements/",
       "status_rule": "Check the live IETF Datatracker URL; do not infer status or revision from a local filename."
     },
     {
@@ -4498,9 +4515,9 @@
     },
     {
       "identifier": "draft-schrock-ep-authority-introduction",
-      "revision_at_snapshot": "01",
+      "revision_at_snapshot": "02",
       "role": "Authority introduction and trust-root boundary",
-      "next_action": "Published July 19; use -01 as the current trust-root and scoped-authority baseline",
+      "next_action": "Published July 29; use -02 as the current trust-root and scoped-authority baseline",
       "url": "https://datatracker.ietf.org/doc/draft-schrock-ep-authority-introduction/",
       "status_rule": "Check the live IETF Datatracker URL; do not infer status or revision from a local filename."
     },
@@ -4508,7 +4525,7 @@
       "identifier": "draft-schrock-ep-authorization-evidence-chain",
       "revision_at_snapshot": "04",
       "role": "Heterogeneous evidence composition",
-      "next_action": "Published July 21; use -04 as the current evidence-composition baseline",
+      "next_action": "Published July 21; -05 is staged with verifier-derived distinct-subject constraints and explicit AEC/AEB term ownership",
       "url": "https://datatracker.ietf.org/doc/draft-schrock-ep-authorization-evidence-chain/",
       "status_rule": "Check the live IETF Datatracker URL; do not infer status or revision from a local filename."
     },
@@ -4537,6 +4554,14 @@
       "status_rule": "Check the live IETF Datatracker URL; do not infer status or revision from a local filename."
     },
     {
+      "identifier": "draft-schrock-ep-outcome-binding",
+      "revision_at_snapshot": "00",
+      "role": "Source-routed predicted effects and independently pinned post-execution observations",
+      "next_action": "Published July 29; use -00 as the current outcome comparison and indeterminate-evidence baseline",
+      "url": "https://datatracker.ietf.org/doc/draft-schrock-ep-outcome-binding/",
+      "status_rule": "Check the live IETF Datatracker URL; do not infer status or revision from a local filename."
+    },
+    {
       "identifier": "draft-schrock-ep-presentation-binding",
       "revision_at_snapshot": "00",
       "role": "Binding the signed action to what the approver was shown",
@@ -4554,9 +4579,9 @@
     },
     {
       "identifier": "draft-schrock-ep-revocation-statement",
-      "revision_at_snapshot": "00",
+      "revision_at_snapshot": "01",
       "role": "Signed retraction of authority without rewriting an already executed effect",
-      "next_action": "Published July 21; collect freshness, status-distribution, and interoperability feedback",
+      "next_action": "Published July 29; use -01 as the current fail-closed status-target vocabulary",
       "url": "https://datatracker.ietf.org/doc/draft-schrock-ep-revocation-statement/",
       "status_rule": "Check the live IETF Datatracker URL; do not infer status or revision from a local filename."
     },
@@ -4570,10 +4595,18 @@
     },
     {
       "identifier": "draft-schrock-model-to-matter",
-      "revision_at_snapshot": "01",
+      "revision_at_snapshot": "02",
       "role": "Experimental executor-side authorization-evidence clearance for model-directed physical execution",
-      "next_action": "Published July 21; -02 is staged, not filed, adding source-routed Outcome Binding and independent observation while preserving the no-physical-truth limitation",
+      "next_action": "Published July 29; -03 is staged with relying-party program, qualification, and typed AEB composition while preserving the no-physical-truth limitation",
       "url": "https://datatracker.ietf.org/doc/draft-schrock-model-to-matter/",
+      "status_rule": "Check the live IETF Datatracker URL; do not infer status or revision from a local filename."
+    },
+    {
+      "identifier": "draft-ferro-schrock-memory-projection-record",
+      "revision_at_snapshot": "00",
+      "role": "Signed record of exact context bytes projected by a memory adapter, with explicit nonclaims",
+      "next_action": "Published July 30; coordinate future revisions with Andrea Ferro",
+      "url": "https://datatracker.ietf.org/doc/draft-ferro-schrock-memory-projection-record/",
       "status_rule": "Check the live IETF Datatracker URL; do not infer status or revision from a local filename."
     },
     {
@@ -4586,7 +4619,7 @@
     }
   ],
   "standards_portfolio": {
-    "updated": "2026-07-28",
+    "updated": "2026-08-01",
     "decision_vocabulary": {
       "VERIFIED": "One artifact passed its native verifier under relying-party-selected trust inputs.",
       "MATCH": "Independently verified artifacts denote the same material action directly or under exact pinned mapping profiles.",
@@ -4661,7 +4694,7 @@
         {
           "priority": 3,
           "draft": "draft-schrock-ep-authority-introduction-01",
-          "source": "standards/posted/draft-schrock-ep-authority-introduction-01.xml",
+          "source": "standards/archive/draft-schrock-ep-authority-introduction-01.xml",
           "claim": "Trust-root introduction and scoped human authority",
           "state": "published_ietf_archive_verified_exact_local_match"
         },
@@ -4731,11 +4764,6 @@
         "draft": "draft-schrock-ep-human-oversight-profile-00",
         "path": "standards/profiles/draft-schrock-ep-human-oversight-profile-00.xml",
         "trigger": "A regulator, government program, or management-system standards partner validates the control-to-evidence mapping."
-      },
-      {
-        "draft": "draft-schrock-ep-reliance-agreement-00",
-        "path": "standards/profiles/draft-schrock-ep-reliance-agreement-00.xml",
-        "trigger": "A bank, insurer, underwriter, or counterparty requires interoperable reliance terms and participates in legal review."
       }
     ],
     "held": [],
@@ -4873,6 +4901,10 @@
       "purpose": "EMILIA Protocol receipt, signoff, trust-receipt, and core verification exports"
     },
     {
+      "path": "packages/verify/src/memory-projection.ts",
+      "purpose": "provider-neutral Memory Projection Record v1 producer, full exact-byte and native-source verifier, and narrower signed-envelope verifier for downstream Gate evidence evaluation; it does not establish model use, action authorization, execution, or outcome"
+    },
+    {
       "path": "packages/verify/evidence-chain.js",
       "purpose": "typed evidence composition under a relying-party-pinned requirement"
     },
@@ -4901,16 +4933,16 @@
       "purpose": "15 deterministic Model-to-Matter CAID, acceptance, refusal, replay, storage-failure, and effect-statement cases"
     },
     {
-      "path": "standards/posted/draft-schrock-model-to-matter-01.xml",
-      "purpose": "Published July 21 Experimental Model-to-Matter profile with explicit non-goals and implementation status"
+      "path": "standards/posted/draft-schrock-model-to-matter-02.xml",
+      "purpose": "Published July 29 Experimental Model-to-Matter profile adding source-routed Outcome Binding while retaining explicit non-goals and implementation limits"
     },
     {
-      "path": "standards/staged/draft-schrock-model-to-matter-02.xml",
-      "purpose": "Upload-ready candidate revision adding source-routed Outcome Binding, canonical-key and declared-control-domain independence, source status, observation windows, and quorum; not yet a published Internet-Draft"
+      "path": "standards/staged/UPLOAD-THIS/draft-schrock-model-to-matter-03.xml",
+      "purpose": "Upload-ready candidate revision adding relying-party programs, qualification evidence, and typed AEB composition while preserving the no-physical-truth limitation; not yet filed"
     },
     {
-      "path": "standards/staged/draft-schrock-ep-outcome-binding-00.xml",
-      "purpose": "Upload-ready candidate defining executor, system-of-record, and independent-observer outcome sources with exact binding, canonical-key and declared-control-domain separation, source status, observation windows, quorum, and indeterminate lifecycle"
+      "path": "standards/posted/draft-schrock-ep-outcome-binding-00.xml",
+      "purpose": "Published July 29 profile defining executor, system-of-record, and independent-observer outcome sources with exact binding, source separation, observation windows, quorum, and an indeterminate lifecycle"
     },
     {
       "path": "examples/mobile-government",

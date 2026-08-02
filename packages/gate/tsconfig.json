@@ -13,6 +13,9 @@
     "paths": {
       "@emilia-protocol/verify/gate-qualification": [
         "../verify/dist/gate-qualification.d.ts"
+      ],
+      "@emilia-protocol/verify/memory-projection": [
+        "../verify/dist/memory-projection.d.ts"
       ]
     },
     "rootDir": "src",
