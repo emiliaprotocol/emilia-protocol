@@ -131,6 +131,17 @@ async function runCapabilityCase(kase) {
             // Resolve the capability the operation belongs to from the store.
             const op = store.getOperation(a.operation);
             const capabilityId = op ? op.capability_id : findCapId(caps, a.capability);
+            const entry = await store.beginProviderEntry({
+                capabilityId,
+                operationId: a.operation,
+                reservationToken: tokens.get(a.operation),
+                now: at,
+            });
+            if (!entry.ok) {
+                assertExpect(kase, i, entry, a.expect);
+                observeMonotonic(capabilityId);
+                continue;
+            }
             const res = await store.commitSpend({
                 capabilityId,
                 operationId: a.operation,
@@ -144,9 +155,11 @@ async function runCapabilityCase(kase) {
             continue;
         }
         if (a.do === 'commitRaw') {
-            // Adversarial commit with an explicit (possibly bogus) token / op id.
+            // A direct terminal attempt is intercepted at provider entry. This is
+            // where the current runtime proves operation existence and reservation
+            // ownership before any right is consumed or external effect can occur.
             const cap = caps.get(a.capability);
-            const res = await store.commitSpend({
+            const res = await store.beginProviderEntry({
                 capabilityId: cap.capabilityId,
                 operationId: a.operation,
                 reservationToken: a.token,
