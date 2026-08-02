@@ -36,8 +36,12 @@ export async function authenticateCloudRequest(request: Request): Promise<CloudA
     const authHeader = request.headers.get('authorization');
     if (!authHeader) return null;
 
-    // Accept both ep_ and ept_ prefixed keys
-    const bearerMatch = authHeader.match(/^Bearer\s+(e?pt?_\S+)$/i);
+    // Accept both ep_ and ept_ prefixed keys, and only those. The previous
+    // pattern was /^Bearer\s+(e?pt?_\S+)$/i, in which only `p` was mandatory —
+    // so `p_…` and `pt_…` matched too. The SHA-256 key lookup below is the real
+    // gate and rejected them, but a prefix filter that admits prefixes the
+    // issuer never mints is a filter that is not doing its job.
+    const bearerMatch = authHeader.match(/^Bearer\s+((?:ep|ept)_\S+)$/i);
     if (!bearerMatch) return null;
 
     const rawKey = bearerMatch[1];

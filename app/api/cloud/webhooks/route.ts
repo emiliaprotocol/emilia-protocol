@@ -72,11 +72,15 @@ export async function POST(request: NextRequest) {
       return epProblem(400, 'invalid_url', 'A valid webhook URL is required');
     }
 
-    // Basic URL validation
+    // Shape-only pre-check. The authoritative gate is validateWebhookUrl inside
+    // registerEndpoint below: https-only, literal-host guard, and a DNS resolve
+    // that rejects private/link-local answers. This check accepted http: and
+    // told the caller so, only for that deeper layer to refuse it — a message
+    // that named a protocol the platform has never delivered over.
     try {
       const parsed = new URL(url);
-      if (!['https:', 'http:'].includes(parsed.protocol)) {
-        return epProblem(400, 'invalid_url', 'Webhook URL must use HTTPS or HTTP');
+      if (parsed.protocol !== 'https:') {
+        return epProblem(400, 'invalid_url', 'Webhook URL must use HTTPS');
       }
     } catch {
       return epProblem(400, 'invalid_url', 'Webhook URL is not a valid URL');
