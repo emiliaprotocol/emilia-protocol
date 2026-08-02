@@ -4,8 +4,8 @@
 
 Network Working Group                                         I. Schrock
 Internet-Draft                                     EMILIA Protocol, Inc.
-Intended status: Experimental                               31 July 2026
-Expires: 1 February 2027
+Intended status: Experimental                              3 August 2026
+Expires: 4 February 2027
 
 
 Bounded Capability Receipts and Durable Spend Control for Agent Actions
@@ -53,12 +53,12 @@ Status of This Memo
 
 
 
-Schrock                  Expires 1 February 2027                [Page 1]
+Schrock                  Expires 4 February 2027                [Page 1]
 
-Internet-Draft           EP Bounded Capabilities               July 2026
+Internet-Draft           EP Bounded Capabilities             August 2026
 
 
-   This Internet-Draft will expire on 1 February 2027.
+   This Internet-Draft will expire on 4 February 2027.
 
 Copyright Notice
 
@@ -109,9 +109,9 @@ Table of Contents
 
 
 
-Schrock                  Expires 1 February 2027                [Page 2]
+Schrock                  Expires 4 February 2027                [Page 2]
 
-Internet-Draft           EP Bounded Capabilities               July 2026
+Internet-Draft           EP Bounded Capabilities             August 2026
 
 
      20.2.  Informative References . . . . . . . . . . . . . . . . .  20
@@ -165,9 +165,9 @@ Internet-Draft           EP Bounded Capabilities               July 2026
 
 
 
-Schrock                  Expires 1 February 2027                [Page 3]
+Schrock                  Expires 4 February 2027                [Page 3]
 
-Internet-Draft           EP Bounded Capabilities               July 2026
+Internet-Draft           EP Bounded Capabilities             August 2026
 
 
    A capability receipt is machine authority evidence.  It is not,
@@ -221,9 +221,9 @@ Internet-Draft           EP Bounded Capabilities               July 2026
 
 
 
-Schrock                  Expires 1 February 2027                [Page 4]
+Schrock                  Expires 4 February 2027                [Page 4]
 
-Internet-Draft           EP Bounded Capabilities               July 2026
+Internet-Draft           EP Bounded Capabilities             August 2026
 
 
    The capability store is trusted to serialize state transitions and
@@ -277,9 +277,9 @@ Internet-Draft           EP Bounded Capabilities               July 2026
 
 
 
-Schrock                  Expires 1 February 2027                [Page 5]
+Schrock                  Expires 4 February 2027                [Page 5]
 
-Internet-Draft           EP Bounded Capabilities               July 2026
+Internet-Draft           EP Bounded Capabilities             August 2026
 
 
    {
@@ -333,9 +333,9 @@ Internet-Draft           EP Bounded Capabilities               July 2026
 
 
 
-Schrock                  Expires 1 February 2027                [Page 6]
+Schrock                  Expires 4 February 2027                [Page 6]
 
-Internet-Draft           EP Bounded Capabilities               July 2026
+Internet-Draft           EP Bounded Capabilities             August 2026
 
 
    subject:  The intended holder or workload identifier.  This
@@ -389,9 +389,9 @@ Internet-Draft           EP Bounded Capabilities               July 2026
 
 
 
-Schrock                  Expires 1 February 2027                [Page 7]
+Schrock                  Expires 4 February 2027                [Page 7]
 
-Internet-Draft           EP Bounded Capabilities               July 2026
+Internet-Draft           EP Bounded Capabilities             August 2026
 
 
    The issuance authorization is bound by both its identifier and
@@ -445,9 +445,9 @@ Internet-Draft           EP Bounded Capabilities               July 2026
 
 
 
-Schrock                  Expires 1 February 2027                [Page 8]
+Schrock                  Expires 4 February 2027                [Page 8]
 
-Internet-Draft           EP Bounded Capabilities               July 2026
+Internet-Draft           EP Bounded Capabilities             August 2026
 
 
 5.  Issuance Authorization
@@ -501,9 +501,9 @@ Internet-Draft           EP Bounded Capabilities               July 2026
 
 
 
-Schrock                  Expires 1 February 2027                [Page 9]
+Schrock                  Expires 4 February 2027                [Page 9]
 
-Internet-Draft           EP Bounded Capabilities               July 2026
+Internet-Draft           EP Bounded Capabilities             August 2026
 
 
    secret; it does not prove that m distinct humans reviewed or approved
@@ -557,9 +557,9 @@ Internet-Draft           EP Bounded Capabilities               July 2026
 
 
 
-Schrock                  Expires 1 February 2027               [Page 10]
+Schrock                  Expires 4 February 2027               [Page 10]
 
-Internet-Draft           EP Bounded Capabilities               July 2026
+Internet-Draft           EP Bounded Capabilities             August 2026
 
 
    3.  reject a unit or scale mismatch;
@@ -613,9 +613,9 @@ Internet-Draft           EP Bounded Capabilities               July 2026
 
 
 
-Schrock                  Expires 1 February 2027               [Page 11]
+Schrock                  Expires 4 February 2027               [Page 11]
 
-Internet-Draft           EP Bounded Capabilities               July 2026
+Internet-Draft           EP Bounded Capabilities             August 2026
 
 
 9.4.  Crash Recovery and Reconciliation
@@ -669,9 +669,9 @@ Internet-Draft           EP Bounded Capabilities               July 2026
 
 
 
-Schrock                  Expires 1 February 2027               [Page 12]
+Schrock                  Expires 4 February 2027               [Page 12]
 
-Internet-Draft           EP Bounded Capabilities               July 2026
+Internet-Draft           EP Bounded Capabilities             August 2026
 
 
 11.  Evidence and Decision Vocabulary
@@ -725,9 +725,9 @@ Internet-Draft           EP Bounded Capabilities               July 2026
 
 
 
-Schrock                  Expires 1 February 2027               [Page 13]
+Schrock                  Expires 4 February 2027               [Page 13]
 
-Internet-Draft           EP Bounded Capabilities               July 2026
+Internet-Draft           EP Bounded Capabilities             August 2026
 
 
    *  capability_budget_exceeded
@@ -781,9 +781,9 @@ Internet-Draft           EP Bounded Capabilities               July 2026
 
 
 
-Schrock                  Expires 1 February 2027               [Page 14]
+Schrock                  Expires 4 February 2027               [Page 14]
 
-Internet-Draft           EP Bounded Capabilities               July 2026
+Internet-Draft           EP Bounded Capabilities             August 2026
 
 
 14.  Relationship to Other Work
@@ -837,9 +837,9 @@ Internet-Draft           EP Bounded Capabilities               July 2026
 
 
 
-Schrock                  Expires 1 February 2027               [Page 15]
+Schrock                  Expires 4 February 2027               [Page 15]
 
-Internet-Draft           EP Bounded Capabilities               July 2026
+Internet-Draft           EP Bounded Capabilities             August 2026
 
 
    Condition-Bounded Credentials [CBC] binds workload-key use to live,
@@ -893,9 +893,9 @@ Internet-Draft           EP Bounded Capabilities               July 2026
 
 
 
-Schrock                  Expires 1 February 2027               [Page 16]
+Schrock                  Expires 4 February 2027               [Page 16]
 
-Internet-Draft           EP Bounded Capabilities               July 2026
+Internet-Draft           EP Bounded Capabilities             August 2026
 
 
    *Units and arithmetic.* All accounting uses integers with signed unit
@@ -949,9 +949,9 @@ Internet-Draft           EP Bounded Capabilities               July 2026
 
 
 
-Schrock                  Expires 1 February 2027               [Page 17]
+Schrock                  Expires 4 February 2027               [Page 17]
 
-Internet-Draft           EP Bounded Capabilities               July 2026
+Internet-Draft           EP Bounded Capabilities             August 2026
 
 
    allocation, one operation identifier paired with different child
@@ -1005,9 +1005,9 @@ Internet-Draft           EP Bounded Capabilities               July 2026
 
 
 
-Schrock                  Expires 1 February 2027               [Page 18]
+Schrock                  Expires 4 February 2027               [Page 18]
 
-Internet-Draft           EP Bounded Capabilities               July 2026
+Internet-Draft           EP Bounded Capabilities             August 2026
 
 
    Additional targets exercise accounting and ownership invariants at
@@ -1061,9 +1061,9 @@ Internet-Draft           EP Bounded Capabilities               July 2026
 
 
 
-Schrock                  Expires 1 February 2027               [Page 19]
+Schrock                  Expires 4 February 2027               [Page 19]
 
-Internet-Draft           EP Bounded Capabilities               July 2026
+Internet-Draft           EP Bounded Capabilities             August 2026
 
 
    [RFC3339]  Klyne, G. and C. Newman, "Date and Time on the Internet:
@@ -1117,9 +1117,9 @@ Internet-Draft           EP Bounded Capabilities               July 2026
 
 
 
-Schrock                  Expires 1 February 2027               [Page 20]
+Schrock                  Expires 4 February 2027               [Page 20]
 
-Internet-Draft           EP Bounded Capabilities               July 2026
+Internet-Draft           EP Bounded Capabilities             August 2026
 
 
    [PEDIGREE] Rampalli, K., "PEDIGREE: Verifiable Delegation Identity
@@ -1173,4 +1173,4 @@ Author's Address
 
 
 
-Schrock                  Expires 1 February 2027               [Page 21]
+Schrock                  Expires 4 February 2027               [Page 21]

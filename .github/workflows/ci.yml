@@ -1141,6 +1141,8 @@ jobs:
           node-version: 20
       - name: Enforce public/private repository boundary
         run: node scripts/check-repository-boundary.js
+      - name: Verify staged Internet-Draft packet bytes
+        run: npm run check:standards-staged
       - name: Check docs for leaked secrets
         run: node scripts/check-docs-secrets.js
 

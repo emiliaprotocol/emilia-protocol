@@ -4,8 +4,8 @@
 
 Network Working Group                                         I. Schrock
 Internet-Draft                                     EMILIA Protocol, Inc.
-Intended status: Experimental                               30 July 2026
-Expires: 31 January 2027
+Intended status: Experimental                              3 August 2026
+Expires: 4 February 2027
 
 
        Bounded Execution Programs for Consequential Agent Actions
@@ -48,14 +48,14 @@ Status of This Memo
    time.  It is inappropriate to use Internet-Drafts as reference
    material or to cite them other than as "work in progress."
 
-   This Internet-Draft will expire on 31 January 2027.
+   This Internet-Draft will expire on 4 February 2027.
 
 
 
 
-Schrock                  Expires 31 January 2027                [Page 1]
+Schrock                  Expires 4 February 2027                [Page 1]
 
-Internet-Draft            EP Bounded Execution                 July 2026
+Internet-Draft            EP Bounded Execution               August 2026
 
 
 Copyright Notice
@@ -109,9 +109,9 @@ Table of Contents
 
 
 
-Schrock                  Expires 31 January 2027                [Page 2]
+Schrock                  Expires 4 February 2027                [Page 2]
 
-Internet-Draft            EP Bounded Execution                 July 2026
+Internet-Draft            EP Bounded Execution               August 2026
 
 
 1.  Introduction
@@ -165,9 +165,9 @@ Internet-Draft            EP Bounded Execution                 July 2026
 
 
 
-Schrock                  Expires 31 January 2027                [Page 3]
+Schrock                  Expires 4 February 2027                [Page 3]
 
-Internet-Draft            EP Bounded Execution                 July 2026
+Internet-Draft            EP Bounded Execution               August 2026
 
 
    authorization_digest is an exact byte commitment used for binding and
@@ -221,9 +221,9 @@ Internet-Draft            EP Bounded Execution                 July 2026
 
 
 
-Schrock                  Expires 31 January 2027                [Page 4]
+Schrock                  Expires 4 February 2027                [Page 4]
 
-Internet-Draft            EP Bounded Execution                 July 2026
+Internet-Draft            EP Bounded Execution               August 2026
 
 
    Current program status:  A store-authoritative ACTIVE, SUSPENDED, or
@@ -277,9 +277,9 @@ Internet-Draft            EP Bounded Execution                 July 2026
 
 
 
-Schrock                  Expires 31 January 2027                [Page 5]
+Schrock                  Expires 4 February 2027                [Page 5]
 
-Internet-Draft            EP Bounded Execution                 July 2026
+Internet-Draft            EP Bounded Execution               August 2026
 
 
    The three times use the RFC 3339 [RFC3339] date-time production
@@ -333,9 +333,9 @@ Internet-Draft            EP Bounded Execution                 July 2026
 
 
 
-Schrock                  Expires 31 January 2027                [Page 6]
+Schrock                  Expires 4 February 2027                [Page 6]
 
-Internet-Draft            EP Bounded Execution                 July 2026
+Internet-Draft            EP Bounded Execution               August 2026
 
 
    {
@@ -389,9 +389,9 @@ Internet-Draft            EP Bounded Execution                 July 2026
 
 
 
-Schrock                  Expires 31 January 2027                [Page 7]
+Schrock                  Expires 4 February 2027                [Page 7]
 
-Internet-Draft            EP Bounded Execution                 July 2026
+Internet-Draft            EP Bounded Execution               August 2026
 
 
    caid           = "caid:1:" action-name "." action-version
@@ -445,9 +445,9 @@ Internet-Draft            EP Bounded Execution                 July 2026
 
 
 
-Schrock                  Expires 31 January 2027                [Page 8]
+Schrock                  Expires 4 February 2027                [Page 8]
 
-Internet-Draft            EP Bounded Execution                 July 2026
+Internet-Draft            EP Bounded Execution               August 2026
 
 
    3.  Sort nodes by the UTF-8 byte order of node_id.
@@ -501,9 +501,9 @@ Internet-Draft            EP Bounded Execution                 July 2026
 
 
 
-Schrock                  Expires 31 January 2027                [Page 9]
+Schrock                  Expires 4 February 2027                [Page 9]
 
-Internet-Draft            EP Bounded Execution                 July 2026
+Internet-Draft            EP Bounded Execution               August 2026
 
 
    proof.key_id MUST equal issuer.key_id.  The signature uses Ed25519
@@ -557,9 +557,9 @@ Internet-Draft            EP Bounded Execution                 July 2026
 
 
 
-Schrock                  Expires 31 January 2027               [Page 10]
+Schrock                  Expires 4 February 2027               [Page 10]
 
-Internet-Draft            EP Bounded Execution                 July 2026
+Internet-Draft            EP Bounded Execution               August 2026
 
 
 5.1.  Authorization-Digest Ordinary-Path Fence
@@ -613,9 +613,9 @@ Internet-Draft            EP Bounded Execution                 July 2026
 
 
 
-Schrock                  Expires 31 January 2027               [Page 11]
+Schrock                  Expires 4 February 2027               [Page 11]
 
-Internet-Draft            EP Bounded Execution                 July 2026
+Internet-Draft            EP Bounded Execution               August 2026
 
 
    Status is one of ACTIVE, SUSPENDED, or REVOKED.  Only a current
@@ -669,9 +669,9 @@ Internet-Draft            EP Bounded Execution                 July 2026
 
 
 
-Schrock                  Expires 31 January 2027               [Page 12]
+Schrock                  Expires 4 February 2027               [Page 12]
 
-Internet-Draft            EP Bounded Execution                 July 2026
+Internet-Draft            EP Bounded Execution               August 2026
 
 
    identity_tuple = [tenant_id, program_digest, node_id, occurrence_id]
@@ -725,9 +725,9 @@ Internet-Draft            EP Bounded Execution                 July 2026
 
 
 
-Schrock                  Expires 31 January 2027               [Page 13]
+Schrock                  Expires 4 February 2027               [Page 13]
 
-Internet-Draft            EP Bounded Execution                 July 2026
+Internet-Draft            EP Bounded Execution               August 2026
 
 
    The normalized AdmissionSnapshot expiry MUST be no later than the
@@ -781,9 +781,9 @@ Internet-Draft            EP Bounded Execution                 July 2026
 
 
 
-Schrock                  Expires 31 January 2027               [Page 14]
+Schrock                  Expires 4 February 2027               [Page 14]
 
-Internet-Draft            EP Bounded Execution                 July 2026
+Internet-Draft            EP Bounded Execution               August 2026
 
 
    *  for every node charge, reserved + consumed + amount <= limit;
@@ -837,9 +837,9 @@ Internet-Draft            EP Bounded Execution                 July 2026
 
 
 
-Schrock                  Expires 31 January 2027               [Page 15]
+Schrock                  Expires 4 February 2027               [Page 15]
 
-Internet-Draft            EP Bounded Execution                 July 2026
+Internet-Draft            EP Bounded Execution               August 2026
 
 
 7.3.  Begin, Release, and Expiry
@@ -893,9 +893,9 @@ Internet-Draft            EP Bounded Execution                 July 2026
 
 
 
-Schrock                  Expires 31 January 2027               [Page 16]
+Schrock                  Expires 4 February 2027               [Page 16]
 
-Internet-Draft            EP Bounded Execution                 July 2026
+Internet-Draft            EP Bounded Execution               August 2026
 
 
    A dependency is satisfied only when at least one occurrence of each
@@ -949,9 +949,9 @@ Internet-Draft            EP Bounded Execution                 July 2026
 
 
 
-Schrock                  Expires 31 January 2027               [Page 17]
+Schrock                  Expires 4 February 2027               [Page 17]
 
-Internet-Draft            EP Bounded Execution                 July 2026
+Internet-Draft            EP Bounded Execution               August 2026
 
 
 9.  Refusal Semantics
@@ -1005,9 +1005,9 @@ Internet-Draft            EP Bounded Execution                 July 2026
 
 
 
-Schrock                  Expires 31 January 2027               [Page 18]
+Schrock                  Expires 4 February 2027               [Page 18]
 
-Internet-Draft            EP Bounded Execution                 July 2026
+Internet-Draft            EP Bounded Execution               August 2026
 
 
      +------------------------------------+--------------------------+
@@ -1061,9 +1061,9 @@ Internet-Draft            EP Bounded Execution                 July 2026
 
 
 
-Schrock                  Expires 31 January 2027               [Page 19]
+Schrock                  Expires 4 February 2027               [Page 19]
 
-Internet-Draft            EP Bounded Execution                 July 2026
+Internet-Draft            EP Bounded Execution               August 2026
 
 
    Private signing keys and store-owned out-of-band key pins require
@@ -1117,9 +1117,9 @@ Internet-Draft            EP Bounded Execution                 July 2026
 
 
 
-Schrock                  Expires 31 January 2027               [Page 20]
+Schrock                  Expires 4 February 2027               [Page 20]
 
-Internet-Draft            EP Bounded Execution                 July 2026
+Internet-Draft            EP Bounded Execution               August 2026
 
 
    Digesting low-entropy or guessable material does not make it secret.
@@ -1173,9 +1173,9 @@ Internet-Draft            EP Bounded Execution                 July 2026
 
 
 
-Schrock                  Expires 31 January 2027               [Page 21]
+Schrock                  Expires 4 February 2027               [Page 21]
 
-Internet-Draft            EP Bounded Execution                 July 2026
+Internet-Draft            EP Bounded Execution               August 2026
 
 
 15.  Claim Boundary
@@ -1229,9 +1229,9 @@ Internet-Draft            EP Bounded Execution                 July 2026
 
 
 
-Schrock                  Expires 31 January 2027               [Page 22]
+Schrock                  Expires 4 February 2027               [Page 22]
 
-Internet-Draft            EP Bounded Execution                 July 2026
+Internet-Draft            EP Bounded Execution               August 2026
 
 
    [RFC8032]  Josefsson, S. and I. Liusvaara, "Edwards-Curve Digital
@@ -1285,4 +1285,4 @@ Author's Address
 
 
 
-Schrock                  Expires 31 January 2027               [Page 23]
+Schrock                  Expires 4 February 2027               [Page 23]

@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <rfc xmlns:xi="http://www.w3.org/2001/XInclude"
      docName="draft-schrock-action-evidence-boundary-03"
-     category="info" ipr="trust200902"
+     category="info" ipr="trust200902" submissionType="IETF"
      version="3" tocInclude="true" sortRefs="true" symRefs="true">
   <front>
     <title abbrev="Action Evidence Boundary">The Action Evidence Boundary for Consequential Agent Effects</title>
@@ -15,7 +15,7 @@
         <email>team@emiliaprotocol.ai</email>
       </address>
     </author>
-    <date year="2026" month="August" day="1"/>
+    <date year="2026" month="August" day="3"/>
     <area>sec</area>
     <keyword>AI agents</keyword>
     <keyword>authorization evidence</keyword>
