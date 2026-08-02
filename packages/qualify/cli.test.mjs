@@ -31,7 +31,7 @@ import {
   qualificationGraphDigest,
   qualificationPayloadDigest,
   terminalOutcomesRoot,
-} from '../verify/src/gate-qualification.ts';
+} from '../verify/dist/gate-qualification.js';
 
 const CLI = join(dirname(fileURLToPath(import.meta.url)), 'cli.mjs');
 const MAX_INPUT_BYTES = 8 * 1024 * 1024;
