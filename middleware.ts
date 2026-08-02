@@ -256,12 +256,14 @@ const ROUTE_POLICIES = {
   // These are the two URLs a public launch hands to strangers, so the tier is
   // now a decision rather than a default.
   //
-  // /api/verify/* re-derives a receipt hash and checks a Merkle proof, so it is
-  // real work and it is fail-closed: an outage must not turn it into an
-  // unmetered oracle. /api/badge/* returns a cached SVG and is embedded in
-  // READMEs where an image proxy funnels many readers through few addresses,
-  // so it gets a generous bucket and stays fail-open. Failing a badge closed
-  // would break honest embedders during an outage and protect nothing.
+  // Both get their own bucket so a burst on either cannot spend the allowance
+  // the other needs, and both stay fail-open on a limiter outage. That is the
+  // opposite of the mcp_tool_call decision and it is deliberate: these surfaces
+  // exist so a stranger can check a claim, the verifier they call is the same
+  // published npm package anyone can run locally, and a receipt nobody can
+  // check is worthless. See lib/rate-limit.ts for the full reasoning.
+  // /api/badge/* is the more generous of the two because it is embedded in
+  // READMEs, where an image proxy funnels many readers through few addresses.
   'GET /api/verify/*':                { rateCategory: 'public_verify', useAuth: false },
   'GET /api/badge/*':                 { rateCategory: 'public_badge', useAuth: false },
 

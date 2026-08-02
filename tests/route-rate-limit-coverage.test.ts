@@ -186,18 +186,28 @@ describe('public evidence surfaces have explicit rate policies', () => {
     expect(RATE_LIMITS.public_verify.max).toBeLessThan(RATE_LIMITS.read.max);
   });
 
-  it('fails receipt verification closed, and badges open', async () => {
+  it('keeps both public evidence surfaces fail-OPEN on a limiter outage', async () => {
     const source = fs.readFileSync(path.join(ROOT, 'lib', 'rate-limit.ts'), 'utf8');
     const failClosed = source.slice(
       source.indexOf('FAIL_CLOSED_CATEGORIES'),
       source.indexOf('async function redisCommand'),
     );
-    // An unauthenticated verifier that falls open during a limiter outage is an
-    // unmetered proof oracle.
-    expect(failClosed).toContain("'public_verify'");
-    // A badge is a cached SVG embedded in READMEs. Failing it closed breaks
-    // honest embedders during an outage and protects nothing.
+    // The opposite of the mcp_tool_call decision, and deliberate. mcp_tool_call
+    // runs Ed25519 over a caller-supplied 256 KB document under a caller-supplied
+    // key, so the attacker chooses the work. These take an id, read a row the
+    // server already holds, and check a bounded proof over it.
+    //
+    // There is also no oracle to protect: the verifier is the published npm
+    // package. Failing these closed buys nothing and takes every "verify this
+    // yourself" link dark exactly when someone is checking a claim. An earlier
+    // revision of this PR did fail public_verify closed and the explorer e2e
+    // caught it, because the page renders the 503 body and a reader gets a
+    // rate-limiter message instead of an answer about the receipt.
+    expect(failClosed).not.toContain("'public_verify'");
     expect(failClosed).not.toContain("'public_badge'");
+    // mcp_tool_call stays closed. This asserts the distinction is real and not
+    // an accident of someone deleting the whole list.
+    expect(failClosed).toContain("'mcp_tool_call'");
   });
 
   it('gives badges a generous bucket so image proxies do not throttle readers', async () => {
