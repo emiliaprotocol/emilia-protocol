@@ -19,6 +19,7 @@ function expectBlockedFor(mutator) {
   expect(result.decision).toBe('blocked');
   expect(result.caid).toBeNull();
   expect(result.operation_id).toBe(scenario.operation_id);
+  expect(result.reason_codes.length).toBeGreaterThan(0);
 }
 
 describe('synthetic Medi-Cal hospice program integrity', () => {

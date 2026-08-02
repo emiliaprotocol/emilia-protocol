@@ -388,8 +388,15 @@ function validateInput(input: any): { values: any; status: Record<string, string
   }
 
   if (status.authorization === 'present') {
-    const expected = digest(authorizationProjection(values));
-    if (expected !== values.authorizationDigest) {
+    let expected = null;
+    try {
+      expected = digest(authorizationProjection(values));
+    } catch {
+      // Malformed or incomplete source material cannot be projected into a
+      // signed exact-action digest. Preserve the structured fail-closed result
+      // instead of leaking a canonicalization exception to the caller.
+    }
+    if (expected === null || expected !== values.authorizationDigest) {
       status.authorization = 'mismatch';
       failures.push('authorization_action_binding_failed');
     }

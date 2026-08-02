@@ -153,7 +153,7 @@ describe('atomic shared-head evidence log', () => {
     expect(() => createAtomicEvidenceLog({}, { streamId: '' })).toThrow(/readHead/);
     const log = createAtomicEvidenceLog(createMemoryAtomicEvidenceBackend(), { recordIdFactory: ids() });
     await expect(log.record({ seq: 9, type: 'decision' })).rejects.toThrow(/reserved field seq/);
-    await expect(log.record({ type: 'decision', unsafe: 1.5 })).rejects.toThrow(/non-safe integer/);
+    await expect(log.record({ type: 'decision', unsafe: 1.5 })).rejects.toThrow(/safe integers/);
     const cyclic = { type: 'decision' };
     cyclic.self = cyclic;
     await expect(log.record(cyclic)).rejects.toThrow();

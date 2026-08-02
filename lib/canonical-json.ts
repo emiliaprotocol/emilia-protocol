@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import {
+  canonicalizeFiniteJson,
   canonicalizeStrictJson,
   isStrictCanonicalJson,
 } from './strict-json.js';
@@ -36,5 +37,18 @@ export function canonicalize(value: unknown): string {
     return canonicalizeStrictJson(value);
   } catch (cause) {
     throw new TypeError('value is outside the EP canonicalization profile', { cause });
+  }
+}
+
+/**
+ * Recursive canonical JSON for closed records that intentionally carry finite
+ * decimal measurements (for example, policy thresholds). Structural ghost
+ * state is still refused; only the safe-integer restriction is relaxed.
+ */
+export function canonicalizeFinite(value: unknown): string {
+  try {
+    return canonicalizeFiniteJson(value);
+  } catch (cause) {
+    throw new TypeError('value is outside the finite EP canonicalization profile', { cause });
   }
 }

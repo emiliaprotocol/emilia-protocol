@@ -155,8 +155,10 @@ function canonicalizeValue(value, path, ancestors, depth, state) {
     if (typeof value === 'boolean')
         return value ? 'true' : 'false';
     if (typeof value === 'number') {
-        if (!Number.isSafeInteger(value)) {
-            throw canonicalDomainError(path, 'numbers must be safe integers; encode other quantities as strings');
+        if (!Number.isFinite(value) || (state.safeIntegersOnly && !Number.isSafeInteger(value))) {
+            throw canonicalDomainError(path, state.safeIntegersOnly
+                ? 'numbers must be safe integers; encode other quantities as strings'
+                : 'numbers must be finite');
         }
         return JSON.stringify(value);
     }
@@ -227,6 +229,18 @@ function canonicalizeValue(value, path, ancestors, depth, state) {
  * undefined/functions/bigints, non-safe-integer numbers, and malformed UTF-16.
  */
 export function canonicalizeStrictJson(value, limits = {}) {
+    return canonicalizeJsonDomain(value, limits, true);
+}
+/**
+ * Canonical bytes for JSON records that intentionally carry finite decimal
+ * measurements. This keeps every structural refusal of canonicalizeStrictJson
+ * while allowing finite non-integer numbers. Protocol identities and signed
+ * cross-language state should continue to use canonicalizeStrictJson.
+ */
+export function canonicalizeFiniteJson(value, limits = {}) {
+    return canonicalizeJsonDomain(value, limits, false);
+}
+function canonicalizeJsonDomain(value, limits, safeIntegersOnly) {
     const maxDepth = limits.maxDepth ?? MAX_JSON_DEPTH;
     const maxNodes = limits.maxNodes ?? Number.MAX_SAFE_INTEGER;
     const maxStringBytes = limits.maxStringBytes ?? Number.MAX_SAFE_INTEGER;
@@ -241,6 +255,7 @@ export function canonicalizeStrictJson(value, limits = {}) {
         maxDepth,
         maxNodes,
         maxStringBytes,
+        safeIntegersOnly,
     });
 }
 /** Pure predicate companion to canonicalizeStrictJson(). */
@@ -256,6 +271,7 @@ export function isStrictCanonicalJson(value) {
 const strictJson = {
     strictJsonGate,
     canonicalizeStrictJson,
+    canonicalizeFiniteJson,
     isStrictCanonicalJson,
     MAX_JSON_DEPTH,
 };

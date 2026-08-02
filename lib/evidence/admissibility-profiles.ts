@@ -226,7 +226,11 @@ function resolveRequirement(req, item, nowMs) {
     action_digest: item.action_digest ?? null,
     outcome: item.outcome ?? null,
     revoked: revocationRequired ? item.revoked === true : false,
-    issued_at: item.issued_at,
+    // Missing freshness evidence remains semantically absent, but the derived
+    // fact must itself stay inside the closed JSON domain used by replay
+    // digests. `undefined` would otherwise turn a valid structured verdict into
+    // an unrelated canonicalization refusal.
+    issued_at: item.issued_at ?? null,
   };
 
   const problems: string[] = [];

@@ -34,7 +34,7 @@
 //
 //   GENERATED — do not edit by hand. Regenerate with:
 //     npx @emilia-protocol/require-receipt   (or: node build-drop-in.mjs)
-//   source: @emilia-protocol/require-receipt@0.7.0  ·  content-sha256:d8425179d7a45e68
+//   source: @emilia-protocol/require-receipt@0.7.0  ·  content-sha256:23d0db4e4cfd0a41
 //   docs: https://www.emiliaprotocol.ai/gate   spec: draft-schrock-ep-authorization-receipts
 
 // SPDX-License-Identifier: Apache-2.0
@@ -194,8 +194,10 @@ function canonicalizeValue(value, path, ancestors, depth, state) {
     if (typeof value === 'boolean')
         return value ? 'true' : 'false';
     if (typeof value === 'number') {
-        if (!Number.isSafeInteger(value)) {
-            throw canonicalDomainError(path, 'numbers must be safe integers; encode other quantities as strings');
+        if (!Number.isFinite(value) || (state.safeIntegersOnly && !Number.isSafeInteger(value))) {
+            throw canonicalDomainError(path, state.safeIntegersOnly
+                ? 'numbers must be safe integers; encode other quantities as strings'
+                : 'numbers must be finite');
         }
         return JSON.stringify(value);
     }
@@ -266,6 +268,18 @@ function canonicalizeValue(value, path, ancestors, depth, state) {
  * undefined/functions/bigints, non-safe-integer numbers, and malformed UTF-16.
  */
 function canonicalizeStrictJson(value, limits = {}) {
+    return canonicalizeJsonDomain(value, limits, true);
+}
+/**
+ * Canonical bytes for JSON records that intentionally carry finite decimal
+ * measurements. This keeps every structural refusal of canonicalizeStrictJson
+ * while allowing finite non-integer numbers. Protocol identities and signed
+ * cross-language state should continue to use canonicalizeStrictJson.
+ */
+function canonicalizeFiniteJson(value, limits = {}) {
+    return canonicalizeJsonDomain(value, limits, false);
+}
+function canonicalizeJsonDomain(value, limits, safeIntegersOnly) {
     const maxDepth = limits.maxDepth ?? MAX_JSON_DEPTH;
     const maxNodes = limits.maxNodes ?? Number.MAX_SAFE_INTEGER;
     const maxStringBytes = limits.maxStringBytes ?? Number.MAX_SAFE_INTEGER;
@@ -280,6 +294,7 @@ function canonicalizeStrictJson(value, limits = {}) {
         maxDepth,
         maxNodes,
         maxStringBytes,
+        safeIntegersOnly,
     });
 }
 /** Pure predicate companion to canonicalizeStrictJson(). */
@@ -295,6 +310,7 @@ function isStrictCanonicalJson(value) {
 const strictJson = {
     strictJsonGate,
     canonicalizeStrictJson,
+    canonicalizeFiniteJson,
     isStrictCanonicalJson,
     MAX_JSON_DEPTH,
 };
@@ -336,44 +352,72 @@ function exactKeys(value, expected) {
     return actual.length === expected.length
         && actual.every((key, index) => key === [...expected].sort()[index]);
 }
-function assertClosedJson(value, path = '$', depth = 0) {
+function canonicalizeApprovalAction(value, path = '$', depth = 0, ancestors = new Set()) {
     if (depth > 32)
         throw new Error(`json_too_deep:${path}`);
-    if (value === null || typeof value === 'string' || typeof value === 'boolean')
-        return;
+    if (value === null || typeof value === 'string' || typeof value === 'boolean') {
+        return JSON.stringify(value);
+    }
     if (typeof value === 'number') {
         if (!Number.isFinite(value))
             throw new Error(`non_json_number:${path}`);
-        return;
-    }
-    if (Array.isArray(value)) {
-        if (value.length > 64)
-            throw new Error(`json_array_too_large:${path}`);
-        value.forEach((entry, index) => assertClosedJson(entry, `${path}[${index}]`, depth + 1));
-        return;
-    }
-    if (!isPlainObject(value))
-        throw new Error(`non_plain_object:${path}`);
-    const keys = Object.keys(value);
-    if (keys.length > 64)
-        throw new Error(`json_object_too_large:${path}`);
-    for (const key of keys) {
-        if (FORBIDDEN_KEYS.has(key))
-            throw new Error(`forbidden_key:${path}.${key}`);
-        assertClosedJson(value[key], `${path}.${key}`, depth + 1);
-    }
-}
-function canonicalizeApprovalAction(value) {
-    if (value === null || typeof value !== 'object')
         return JSON.stringify(value);
-    if (Array.isArray(value))
-        return `[${value.map(canonicalizeApprovalAction).join(',')}]`;
-    return `{${Object.keys(value).sort()
-        .map((key) => `${JSON.stringify(key)}:${canonicalizeApprovalAction(value[key])}`)
-        .join(',')}}`;
+    }
+    if (typeof value !== 'object')
+        throw new Error(`non_json_value:${path}`);
+    if (ancestors.has(value))
+        throw new Error(`cyclic_json:${path}`);
+    ancestors.add(value);
+    try {
+        if (Array.isArray(value)) {
+            if (value.length > 64)
+                throw new Error(`json_array_too_large:${path}`);
+            const ownKeys = Reflect.ownKeys(value);
+            const expected = new Set([
+                'length',
+                ...Array.from({ length: value.length }, (_, index) => String(index)),
+            ]);
+            if (ownKeys.some((key) => typeof key !== 'string')
+                || ownKeys.length !== expected.size
+                || ownKeys.some((key) => !expected.has(key))) {
+                throw new Error(`json_array_members_invalid:${path}`);
+            }
+            const members = [];
+            for (let index = 0; index < value.length; index += 1) {
+                const descriptor = Object.getOwnPropertyDescriptor(value, String(index));
+                if (!descriptor || !('value' in descriptor)) {
+                    throw new Error(`json_array_accessor_invalid:${path}[${index}]`);
+                }
+                members.push(canonicalizeApprovalAction(descriptor.value, `${path}[${index}]`, depth + 1, ancestors));
+            }
+            return `[${members.join(',')}]`;
+        }
+        if (!isPlainObject(value))
+            throw new Error(`non_plain_object:${path}`);
+        const ownKeys = Reflect.ownKeys(value);
+        if (ownKeys.some((key) => typeof key !== 'string')) {
+            throw new Error(`json_symbol_member:${path}`);
+        }
+        const keys = ownKeys.sort();
+        if (keys.length > 64)
+            throw new Error(`json_object_too_large:${path}`);
+        const members = [];
+        for (const key of keys) {
+            if (FORBIDDEN_KEYS.has(key))
+                throw new Error(`forbidden_key:${path}.${key}`);
+            const descriptor = Object.getOwnPropertyDescriptor(value, key);
+            if (!descriptor || descriptor.enumerable !== true || !('value' in descriptor)) {
+                throw new Error(`json_object_member_invalid:${path}.${key}`);
+            }
+            members.push(`${JSON.stringify(key)}:${canonicalizeApprovalAction(descriptor.value, `${path}.${key}`, depth + 1, ancestors)}`);
+        }
+        return `{${members.join(',')}}`;
+    }
+    finally {
+        ancestors.delete(value);
+    }
 }
 export function approvalActionHash(action) {
-    assertClosedJson(action);
     return `sha256:${crypto.createHash('sha256').update(canonicalizeApprovalAction(action), 'utf8').digest('hex')}`;
 }
 export function validateApprovalAuthorization(input) {
@@ -480,15 +524,18 @@ function validateChallenge(input) {
 function validateBoundAction(action, challenge) {
     if (!isPlainObject(action))
         throw new Error('action_invalid');
-    if (action.action_type !== challenge.action)
-        throw new Error('action_type_mismatch');
     for (const field of challenge.required_fields) {
-        if (!Object.hasOwn(action, field) || action[field] === undefined) {
+        const descriptor = Object.getOwnPropertyDescriptor(action, field);
+        if (!descriptor || !('value' in descriptor) || descriptor.value === undefined) {
             throw new Error(`required_field_missing:${field}`);
         }
     }
-    assertClosedJson(action);
-    if (challenge.action_hash && approvalActionHash(action) !== challenge.action_hash) {
+    const actionType = Object.getOwnPropertyDescriptor(action, 'action_type');
+    if (!actionType || !('value' in actionType) || actionType.value !== challenge.action) {
+        throw new Error('action_type_mismatch');
+    }
+    const actionHash = approvalActionHash(action);
+    if (challenge.action_hash && actionHash !== challenge.action_hash) {
         throw new Error('action_hash_mismatch');
     }
     const caidField = challenge.caid_selector?.field;
