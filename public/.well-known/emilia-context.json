@@ -1,9 +1,9 @@
 {
   "@version": "EMILIA-REPO-CONTEXT-v1",
-  "evidence_snapshot_at": "2026-08-02T04:04:57.429Z",
+  "evidence_snapshot_at": "2026-08-02T05:04:27.391Z",
   "provenance": {
     "generator": "scripts/generate-llm-context.mjs",
-    "input_digest_sha256": "305fc9f1c2a216d5b99139731c979fbb5e0380fa47e11a3b3f236c56158e0dc9",
+    "input_digest_sha256": "9d43bd5f340e1a684da22cb79223a85d149ff2e53f16e959da2c751056df1273",
     "generated_from": [
       {
         "path": "docs/ai/context-source.v1.json",
@@ -17,7 +17,7 @@
       },
       {
         "path": "lib/proof-stats.json",
-        "sha256": "bb2785938999e398f04e045372c383d116ac2b07289755d0bc2b0d6c832fa2c9",
+        "sha256": "31445e2bc15d1eff6e1449220d70e964726cf24d4e06b4e88e8f7e1b71d0b78f",
         "bytes": 4298
       },
       {
@@ -37,7 +37,7 @@
       },
       {
         "path": "security/security-case.json",
-        "sha256": "3977e692594418a2e5f365fdc4aa359eb2bc96a16592224e74529088c78a10f0",
+        "sha256": "708b723f9dd6fd1be32311902a582d37e78483fa95656f58301df7a4266e12bb",
         "bytes": 380092
       },
       {
@@ -47,8 +47,8 @@
       },
       {
         "path": "standards/STATUS.json",
-        "sha256": "aa201d6c329131bf48e9c8846a7ce05836334eab29cf67b3182bcec217fff218",
-        "bytes": 23463
+        "sha256": "84eb9365335c5ea74711607906b156a6f0122d8afe030643d69ef87e0acfaee1",
+        "bytes": 24886
       },
       {
         "path": "caid/conformance/vectors.json",
@@ -314,7 +314,7 @@
         "coveredModelActions": 28,
         "actionCompleteModels": 1,
         "formalMutationOperators": 51,
-        "evidenceSha256": "df9d6631b4a46dc13c5aeeae82a0ae7251b200bf32a0d935758e2c84015bd651",
+        "evidenceSha256": "2f163a1f73bf935177413752eb439659918ea118084647796850e27eb75ba5d2",
         "boundary": "selected model/runtime scenarios under explicit projection relations; not a mechanized implementation refinement proof"
       },
       "evidence_taxonomy": {
@@ -384,7 +384,7 @@
       "status": "passed",
       "claims": 35,
       "evidence_files": 255,
-      "evidence_bundle_sha256": "33926228540ba87b65bfae2b6300295099aab421f44fd128428bae454a13fd95"
+      "evidence_bundle_sha256": "610aecfb509584b00a0b6bc9542cf3aef7628045a603f2386a259d79b0cd210a"
     },
     "caid": {
       "core_vectors": 48,
@@ -4556,7 +4556,7 @@
       "identifier": "draft-schrock-ep-bounded-capability-receipts",
       "revision_at_snapshot": "00",
       "role": "Action-bound capability budget and spend evidence",
-      "next_action": "Published July 19; guard-path spend enforcement and verified-action binding are implemented on main",
+      "next_action": "Published July 19; -01 is staged with parent-funded delegation, aggregate sibling conservation, and the one-authoritative-state-domain limitation",
       "url": "https://datatracker.ietf.org/doc/draft-schrock-ep-bounded-capability-receipts/",
       "status_rule": "Check the live IETF Datatracker URL; do not infer status or revision from a local filename."
     },
