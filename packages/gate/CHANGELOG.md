@@ -6,6 +6,15 @@ This package follows [Semantic Versioning](https://semver.org/).
 
 ## Unreleased
 
+## 0.23.4 (2026-08-01)
+
+### Security
+
+- Refuse symbol-keyed members in Gate commit-binding inputs so every in-process
+  member is either covered by the exact-action hash or rejected.
+- Publish from the post-hardening protected-main baseline after the prior
+  approval-wait release was correctly invalidated by a main-branch advance.
+
 ## 0.23.3 (2026-08-01)
 
 ### Release

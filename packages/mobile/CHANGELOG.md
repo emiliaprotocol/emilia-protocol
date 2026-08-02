@@ -3,6 +3,13 @@
 
 All notable changes to `@emilia-protocol/mobile` are documented here.
 
+## 0.2.3 (2026-08-01)
+
+### Security
+
+- Reject malformed or oversized iOS enrollment attestation tokens before CBOR
+  inspection, matching the bounded package enrollment path.
+
 ## 0.2.2 (2026-08-01)
 
 ### Release
