@@ -6,6 +6,14 @@ This package follows [Semantic Versioning](https://semver.org/).
 
 ## Unreleased
 
+## 0.23.5 (2026-08-01)
+
+### Release
+
+- Supersedes the unpublished `0.23.4` tag after protected `main` advanced for a
+  standards-only idnits correction before registry publication. Security and
+  runtime behavior are unchanged.
+
 ## 0.23.4 (2026-08-01)
 
 ### Security
