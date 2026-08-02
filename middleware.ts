@@ -250,6 +250,21 @@ const ROUTE_POLICIES = {
   'GET /api/mcp/*':                   { rateCategory: 'read', useAuth: false },
   'DELETE /api/mcp/*':                { rateCategory: 'read', useAuth: false },
 
+  // Public, unauthenticated evidence surfaces. Both were unclassified and so
+  // inherited the read tier by default, which is the same allowance a cheap
+  // lookup gets and which falls OPEN when the rate limiter is unreachable.
+  // These are the two URLs a public launch hands to strangers, so the tier is
+  // now a decision rather than a default.
+  //
+  // /api/verify/* re-derives a receipt hash and checks a Merkle proof, so it is
+  // real work and it is fail-closed: an outage must not turn it into an
+  // unmetered oracle. /api/badge/* returns a cached SVG and is embedded in
+  // READMEs where an image proxy funnels many readers through few addresses,
+  // so it gets a generous bucket and stays fail-open. Failing a badge closed
+  // would break honest embedders during an outage and protect nothing.
+  'GET /api/verify/*':                { rateCategory: 'public_verify', useAuth: false },
+  'GET /api/badge/*':                 { rateCategory: 'public_badge', useAuth: false },
+
   // Operations / Cron
   // Cron routes skip rate limiting (CRON_SECRET auth is sufficient)
   'POST /api/blockchain/anchor':      { rateCategory: null, useAuth: false },

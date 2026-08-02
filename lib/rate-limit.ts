@@ -52,6 +52,16 @@ export const RATE_LIMITS: Record<string, { window: number; max: number }> = {
   // P-256) plus canonicalization over caller-supplied JSON, so it does not
   // belong in the same bucket as a cheap database read.
   mcp_tool_call: { window: 60, max: 60 },
+  // Unauthenticated public receipt verification. Each call is a database read
+  // plus a Merkle proof check, so it costs materially more than a lookup and it
+  // is the surface a launch points strangers at. Its own bucket, so a burst of
+  // verification cannot spend the same allowance as cheap reads.
+  public_verify: { window: 60, max: 60 },
+  // Public capability badges. Cheap to serve (an SVG and one projection read)
+  // and embedded in READMEs and docs, where an image proxy collapses many
+  // readers onto a few source addresses. Deliberately generous: throttling this
+  // by IP degrades honest embedders long before it inconveniences anyone else.
+  public_badge: { window: 60, max: 240 },
 };
 
 import { getRateLimitConfig, getUpstashConfig } from '@/lib/env';
@@ -86,6 +96,11 @@ const FAIL_CLOSED_CATEGORIES = new Set([
   // Unauthenticated CPU work. Failing open here during a Redis outage hands an
   // attacker free signature verification at whatever rate they can dial.
   'mcp_tool_call',
+  // Same reasoning over HTTP: an unauthenticated verification endpoint that
+  // falls open during a limiter outage is an unmetered proof oracle. Badges are
+  // deliberately NOT here; a badge is a cached SVG, and failing it closed would
+  // break every embedding page the moment Redis blinks.
+  'public_verify',
 ]);
 
 async function redisCommand(command: string, ...args: string[]): Promise<any> {

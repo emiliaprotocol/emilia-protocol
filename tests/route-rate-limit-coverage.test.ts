@@ -169,3 +169,40 @@ describe('rate-limit classification coverage', () => {
     expect(await tierFor('DELETE', 'https://ep.test/api/mcp/mcp')).toBe('read');
   });
 });
+
+describe('public evidence surfaces have explicit rate policies', () => {
+  // /api/verify/[receiptId] and /api/badge/[entity] take no auth and are the two
+  // URLs a public launch points strangers at. Neither was named in
+  // ROUTE_POLICIES, so both inherited the read tier by default. The coverage
+  // sweep above only guards MUTATING routes (deliberately: demoting every
+  // unmatched GET would be an availability change wearing a security label), so
+  // nothing would have caught it.
+
+  it('meters receipt verification separately from cheap reads', async () => {
+    const { RATE_LIMITS } = await import('../lib/rate-limit.js');
+    expect(await tierFor('GET', 'https://ep.test/api/verify/tr_abc123')).toBe('public_verify');
+    // Verification re-derives a hash and checks a Merkle proof. It must not
+    // share an allowance with a lookup.
+    expect(RATE_LIMITS.public_verify.max).toBeLessThan(RATE_LIMITS.read.max);
+  });
+
+  it('fails receipt verification closed, and badges open', async () => {
+    const source = fs.readFileSync(path.join(ROOT, 'lib', 'rate-limit.ts'), 'utf8');
+    const failClosed = source.slice(
+      source.indexOf('FAIL_CLOSED_CATEGORIES'),
+      source.indexOf('async function redisCommand'),
+    );
+    // An unauthenticated verifier that falls open during a limiter outage is an
+    // unmetered proof oracle.
+    expect(failClosed).toContain("'public_verify'");
+    // A badge is a cached SVG embedded in READMEs. Failing it closed breaks
+    // honest embedders during an outage and protects nothing.
+    expect(failClosed).not.toContain("'public_badge'");
+  });
+
+  it('gives badges a generous bucket so image proxies do not throttle readers', async () => {
+    const { RATE_LIMITS } = await import('../lib/rate-limit.js');
+    expect(await tierFor('GET', 'https://ep.test/api/badge/acme-bot')).toBe('public_badge');
+    expect(RATE_LIMITS.public_badge.max).toBeGreaterThan(RATE_LIMITS.read.max);
+  });
+});
