@@ -1,6 +1,6 @@
 {
   "name": "@emilia-protocol/require-receipt",
-  "version": "0.7.1",
+  "version": "0.7.2",
   "description": "Demand a verifiable EMILIA authorization receipt for any irreversible agent action. Emits Receipt Required challenges (428, with legacy 402 compatibility) and tells the agent exactly what to bring.",
   "type": "module",
   "main": "index.js",
@@ -38,7 +38,7 @@
     "CHANGELOG.md"
   ],
   "scripts": {
-    "build": "tsc -p tsconfig.json",
+    "build": "tsc -p tsconfig.json && node build-drop-in.mjs",
     "pretest": "npm run build",
     "test": "node --test",
     "build:drop-in": "node build-drop-in.mjs"

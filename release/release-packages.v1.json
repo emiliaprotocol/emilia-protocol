@@ -31,6 +31,10 @@
       "mode": "npm_reusable",
       "registry_dependency_tarballs": [
         {
+          "spec": "@emilia-protocol/require-receipt@0.7.2",
+          "sha256": "656bca7d1d115195ff436336593cc73cd8ce18e073a570a490fdd47a286f25b7"
+        },
+        {
           "spec": "@emilia-protocol/verify@3.20.1",
           "sha256": "b6e6fdbb75a5d5ab4c4d3ebae1d2a6259f3a0c9e30ef834861f0b7fcb6c9dc71"
         }
