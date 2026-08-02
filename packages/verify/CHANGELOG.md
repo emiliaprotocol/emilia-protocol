@@ -3,6 +3,14 @@
 All notable changes to `@emilia-protocol/verify` are documented here.
 This package follows [Semantic Versioning](https://semver.org/).
 
+## 3.20.1 (2026-08-01)
+
+### Release
+
+- Supersedes the unpublished `3.20.0` release tag after regenerating the
+  selected-scenario conformance artifact from the pinned live TLC oracle. No
+  verifier API or acceptance behavior changes from `3.20.0`.
+
 ## 3.20.0 (2026-08-01)
 
 ### Added

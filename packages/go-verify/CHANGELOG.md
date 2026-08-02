@@ -2,6 +2,14 @@
 
 ## Unreleased
 
+## 2.4.2 (2026-08-01)
+
+### Security
+
+- Enforce the closed provenance action-scope grammar, reject the malformed
+  empty-prefix wildcard `.*`, and require a universal child scope to be funded
+  by a universal parent scope, matching the TypeScript verifier.
+
 ## 2.4.1 (2026-07-29)
 
 - Trust Receipt verification treats pinned `compromised_at` as terminal and

@@ -1,9 +1,9 @@
 {
   "@version": "EMILIA-REPO-CONTEXT-v1",
-  "evidence_snapshot_at": "2026-08-02T03:13:14.279Z",
+  "evidence_snapshot_at": "2026-08-02T05:04:27.391Z",
   "provenance": {
     "generator": "scripts/generate-llm-context.mjs",
-    "input_digest_sha256": "65c55f407c83193acbfcd48a6ca75c42670ccffffaf112b7283e4f3133074c10",
+    "input_digest_sha256": "9d43bd5f340e1a684da22cb79223a85d149ff2e53f16e959da2c751056df1273",
     "generated_from": [
       {
         "path": "docs/ai/context-source.v1.json",
@@ -17,12 +17,12 @@
       },
       {
         "path": "lib/proof-stats.json",
-        "sha256": "c32b69cd34858ce435a02a963ab106658cd0d22f89cdba54fa68d76e975a769e",
+        "sha256": "31445e2bc15d1eff6e1449220d70e964726cf24d4e06b4e88e8f7e1b71d0b78f",
         "bytes": 4298
       },
       {
         "path": "conformance/conformance-manifest.json",
-        "sha256": "e1300fed56eceff424cad034db3c4fab8da6760759ad49b5916bdef227ef6674",
+        "sha256": "93b32b56491ef93402f01e64fed5ba53ea007ea3a8e508331f11af6d45f209a1",
         "bytes": 6361
       },
       {
@@ -32,12 +32,12 @@
       },
       {
         "path": "security/claims.v1.json",
-        "sha256": "8c182e097b9f6abf20b40e358a4f260684197de94868775af27efd86dc79baba",
+        "sha256": "5c95a294f7a7986dbb7035da4117ca0015e2d1e52d1a1b5f195825e4dfcaea90",
         "bytes": 247459
       },
       {
         "path": "security/security-case.json",
-        "sha256": "2024edd2906f0b809cfd885fd731ac823c315243bf1b48e622ebd01ebda2c8cc",
+        "sha256": "708b723f9dd6fd1be32311902a582d37e78483fa95656f58301df7a4266e12bb",
         "bytes": 380092
       },
       {
@@ -47,8 +47,8 @@
       },
       {
         "path": "standards/STATUS.json",
-        "sha256": "aa201d6c329131bf48e9c8846a7ce05836334eab29cf67b3182bcec217fff218",
-        "bytes": 23463
+        "sha256": "84eb9365335c5ea74711607906b156a6f0122d8afe030643d69ef87e0acfaee1",
+        "bytes": 24886
       },
       {
         "path": "caid/conformance/vectors.json",
@@ -282,7 +282,7 @@
       "implementations": 3,
       "relationship": "same_team_ports",
       "claim_scope": "current same-team cross-language consistency; not independent implementation evidence",
-      "manifest_sha256": "b61fa2107fad122a88715570ad09c3b2c131ffe28e451a4b254112f85c305322",
+      "manifest_sha256": "3301f88299ee978c9f80b5c128ffb994b041916867d4bd607554e28574faef78",
       "vector_bundle_sha256": "ee1021eb36de8e50448d9f12f00d16f3e24561276c9a42241e88178d5daa0d3e"
     },
     "formal": {
@@ -314,7 +314,7 @@
         "coveredModelActions": 28,
         "actionCompleteModels": 1,
         "formalMutationOperators": 51,
-        "evidenceSha256": "2b80a7ca7b23d201b556fa9b853d500176b7143d1801f6c4cc624cd84f412fad",
+        "evidenceSha256": "2f163a1f73bf935177413752eb439659918ea118084647796850e27eb75ba5d2",
         "boundary": "selected model/runtime scenarios under explicit projection relations; not a mechanized implementation refinement proof"
       },
       "evidence_taxonomy": {
@@ -384,7 +384,7 @@
       "status": "passed",
       "claims": 35,
       "evidence_files": 255,
-      "evidence_bundle_sha256": "8ec5910b58a807f04ac61b4a2efc3683453eb6e3200063bb1e1fb915d6f7603b"
+      "evidence_bundle_sha256": "610aecfb509584b00a0b6bc9542cf3aef7628045a603f2386a259d79b0cd210a"
     },
     "caid": {
       "core_vectors": 48,
@@ -4556,7 +4556,7 @@
       "identifier": "draft-schrock-ep-bounded-capability-receipts",
       "revision_at_snapshot": "00",
       "role": "Action-bound capability budget and spend evidence",
-      "next_action": "Published July 19; guard-path spend enforcement and verified-action binding are implemented on main",
+      "next_action": "Published July 19; -01 is staged with parent-funded delegation, aggregate sibling conservation, and the one-authoritative-state-domain limitation",
       "url": "https://datatracker.ietf.org/doc/draft-schrock-ep-bounded-capability-receipts/",
       "status_rule": "Check the live IETF Datatracker URL; do not infer status or revision from a local filename."
     },

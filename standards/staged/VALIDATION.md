@@ -1,13 +1,12 @@
 # Validation record
 
-Validated on 2026-08-01 from branch
-`codex/ietf-four-draft-wave-20260801`, rebased and revalidated against
-origin/main commit `f0d497ace6649c0b788bde81a44421cdcd8336dc`.
+Validated on 2026-08-01 from the release hardening branch after rebasing the
+packet onto current `origin/main`.
 
 ## Submission artifacts
 
-- `xmllint --noout` passed for all four XML sources.
-- `xml2rfc 3.34.0` generated TXT and HTML for all four sources.
+- `xmllint --noout` passed for all six XML sources.
+- `xml2rfc 3.34.0` generated TXT and HTML for all six sources.
 - `idnits 3.1.0 -m submission` reported `PASS - No nit found` for every TXT
   rendering.
 - `draft-schrock-action-evidence-boundary-03` intentionally retains the stream
@@ -22,6 +21,8 @@ origin/main commit `f0d497ace6649c0b788bde81a44421cdcd8336dc`.
 - AEB and legacy AEC focused suites: 41 passed, 0 failed.
 - Reliance Agreement and Model-to-Matter Vitest suites: 53 passed, 0 failed.
 - Model-to-Matter conformance: 15 of 15 vectors passed.
+- Bounded Capability and Bounded Execution implementation, conformance, and
+  bounded-model checks passed on the governed release baseline.
 - Protocol discipline: 0 critical findings, 12 pre-existing complexity
   warnings.
 - Write discipline passed.

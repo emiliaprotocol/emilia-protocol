@@ -655,8 +655,8 @@ for (const trace of vectors.runtime.traces) {
                 result: projectResult(executed.raw, step.expect.result, executed.binding),
                 state: await projectState(step.expect.state),
             };
-            assert.deepEqual(actual, step.expect, `${trace.id} step ${stepIndex + 1} (${step.operation.op}): runtime refinement drift`);
-            assert.deepEqual(await store.checkInvariants(), { ok: true, violations: [] }, `${trace.id} step ${stepIndex + 1} (${step.operation.op}): store invariant drift`);
+            assert.deepEqual(actual, { result: step.expect.result, state: step.expect.state }, `${trace.id} step ${stepIndex + 1} (${step.operation.op}): runtime refinement drift`);
+            assert.deepEqual(await store.checkInvariants(), step.expect.store_invariants ?? { ok: true, violations: [] }, `${trace.id} step ${stepIndex + 1} (${step.operation.op}): store invariant drift`);
         }
     });
 }

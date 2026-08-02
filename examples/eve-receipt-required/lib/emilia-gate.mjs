@@ -34,7 +34,7 @@
 //
 //   GENERATED — do not edit by hand. Regenerate with:
 //     npx @emilia-protocol/require-receipt   (or: node build-drop-in.mjs)
-//   source: @emilia-protocol/require-receipt@0.7.0  ·  content-sha256:23d0db4e4cfd0a41
+//   source: @emilia-protocol/require-receipt@0.7.1  ·  content-sha256:23d0db4e4cfd0a41
 //   docs: https://www.emiliaprotocol.ai/gate   spec: draft-schrock-ep-authorization-receipts
 
 // SPDX-License-Identifier: Apache-2.0

@@ -19,5 +19,17 @@
     { "tag": "github_repo", "url": "https://github.com/emiliaprotocol/emilia-protocol" },
     { "tag": "related_implementations", "url": "https://github.com/emiliaprotocol/emilia-protocol/blob/main/packages/verify/src/reliance-agreement.ts" },
     { "tag": "related_implementations", "url": "https://github.com/emiliaprotocol/emilia-protocol/blob/main/conformance/vectors/reliance-agreement.v1.json" }
+  ],
+  "draft-schrock-ep-bounded-capability-receipts-01": [
+    { "tag": "github_repo", "url": "https://github.com/emiliaprotocol/emilia-protocol" },
+    { "tag": "related_implementations", "url": "https://github.com/emiliaprotocol/emilia-protocol/blob/main/packages/gate/src/capability-receipt.ts" },
+    { "tag": "related_implementations", "url": "https://github.com/emiliaprotocol/emilia-protocol/blob/main/packages/gate/src/authority-allocation.ts" },
+    { "tag": "related_implementations", "url": "https://github.com/emiliaprotocol/emilia-protocol/blob/main/formal/ep_capability.tla" }
+  ],
+  "draft-schrock-ep-bounded-execution-program-00": [
+    { "tag": "github_repo", "url": "https://github.com/emiliaprotocol/emilia-protocol" },
+    { "tag": "related_implementations", "url": "https://github.com/emiliaprotocol/emilia-protocol/blob/main/packages/gate/src/bounded-execution-program.ts" },
+    { "tag": "related_implementations", "url": "https://github.com/emiliaprotocol/emilia-protocol/blob/main/packages/gate/src/admission-store.ts" },
+    { "tag": "related_implementations", "url": "https://github.com/emiliaprotocol/emilia-protocol/blob/main/conformance/vectors/bounded-execution-program.v1.json" }
   ]
 }

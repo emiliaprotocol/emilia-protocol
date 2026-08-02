@@ -2407,18 +2407,37 @@ BEGIN
 END;
 $$;
 
-CREATE OR REPLACE FUNCTION public.ep_gate_plain_json_hash(p_value jsonb)
-RETURNS text
-LANGUAGE sql
-IMMUTABLE
-STRICT
-SET search_path = pg_catalog, public
-AS $$
-  SELECT 'sha256:' || encode(
-    digest(convert_to(public.ep_gate_canonical_json(p_value), 'UTF8'), 'sha256'),
-    'hex'
-  )
-$$;
+-- Keep the execution-program hash helper independent of the schema in which
+-- the deployment already installed pgcrypto, just like ep_gate_hash above.
+DO $ep_gate_plain_hash_install$
+DECLARE v_pgcrypto_schema text;
+BEGIN
+  SELECT namespaces.nspname
+    INTO STRICT v_pgcrypto_schema
+    FROM pg_catalog.pg_extension AS extensions
+    JOIN pg_catalog.pg_namespace AS namespaces
+      ON namespaces.oid = extensions.extnamespace
+   WHERE extensions.extname = 'pgcrypto';
+
+  EXECUTE pg_catalog.format($function$
+    CREATE OR REPLACE FUNCTION public.ep_gate_plain_json_hash(p_value jsonb)
+    RETURNS text
+    LANGUAGE sql
+    IMMUTABLE
+    STRICT
+    SET search_path = pg_catalog, public
+    AS $body$
+      SELECT 'sha256:' || pg_catalog.encode(
+        %I.digest(
+          pg_catalog.convert_to(public.ep_gate_canonical_json(p_value), 'UTF8'),
+          'sha256'::text
+        ),
+        'hex'
+      )
+    $body$
+  $function$, v_pgcrypto_schema);
+END
+$ep_gate_plain_hash_install$;
 
 CREATE OR REPLACE FUNCTION public.ep_gate_assert_execution_program(
   p_deployment_id text,
