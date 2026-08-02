@@ -54,7 +54,7 @@ const manifestText = readFileSync(new URL('SHA256SUMS.txt', ROOT), 'utf8').trim(
 const manifest = new Map();
 for (const line of manifestText.split('\n')) {
   const match = /^([a-f0-9]{64})  (UPLOAD-THIS|RENDERS)\/(.+)$/.exec(line);
-  invariant(match, `Malformed checksum entry: ${line}`);
+  if (!match) throw new Error(`Malformed checksum entry: ${line}`);
   const relative = `${match[2]}/${match[3]}`;
   invariant(!manifest.has(relative), `Duplicate checksum entry: ${relative}`);
   manifest.set(relative, match[1]);
