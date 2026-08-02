@@ -3,6 +3,14 @@
 
 All notable changes to `@emilia-protocol/mobile` are documented here.
 
+## 0.2.4 (2026-08-01)
+
+### Release
+
+- Supersedes the unpublished `0.2.3` tag after protected `main` advanced for a
+  standards-only idnits correction before registry publication. Package
+  behavior is unchanged.
+
 ## 0.2.3 (2026-08-01)
 
 ### Security
