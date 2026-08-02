@@ -363,11 +363,11 @@
     },
     {
       "path": "lib/canonical-json.js",
-      "sha256": "3e203ece9002cb8d2181c63ce1f39ed84946fec1f73646c0dc5799707fb588b9"
+      "sha256": "63b81b13ea5724fb54e48d35847197d5ce42bd2f956a1a0a82c4299fae8a6361"
     },
     {
       "path": "lib/canonical-json.ts",
-      "sha256": "37952fc48e3b5e178f21406b2b2fbed618a9e9d49258ed07252772d0c76ceae8"
+      "sha256": "94eda53260223a08a43417e3174a93dae380935bee3928708c22a2945d41a585"
     },
     {
       "path": "lib/cbor-encode.js",
@@ -915,7 +915,7 @@
     },
     {
       "path": "packages/require-receipt/dist/strict-json.js",
-      "sha256": "049e822335887ca14fba34b3a018d942e08de17094964f162dcf8d3246810c0f"
+      "sha256": "676f2dfef8d8108b61116d1e16cedbc1b5f2e683b8bf7c4217719815205c976c"
     },
     {
       "path": "packages/require-receipt/index.js",
