@@ -43,6 +43,24 @@ const issueRequest = {
 };
 
 describe('gate commit exact-action binding', () => {
+  it('refuses symbol-keyed members rather than dropping them from the hash', () => {
+    // Object.keys does not see symbol members, so without this refusal they
+    // would be absent from the normalized binding and therefore absent from the
+    // hash, while staying readable on the caller's original object. Every other
+    // canonicalizer in the tree routes through canonicalizeStrictJson, which
+    // refuses them; this walk needed the same rule.
+    const tainted: Record<string, unknown> = { ...gateRequest };
+    tainted.scope = { ...(gateRequest.scope as Record<string, unknown>) };
+    (tainted.scope as Record<symbol, unknown>)[Symbol.for('hidden_override')] = {
+      max_value_usd: 999_999,
+    };
+
+    expect(() => buildGateCommitBindingFromGateRequest(tainted))
+      .toThrow(GateCommitBindingError);
+    expect(() => buildGateCommitBindingFromGateRequest(tainted))
+      .toThrow(/symbol-keyed/i);
+  });
+
   it('joins equivalent gate and issue requests despite key order and ref placement', () => {
     const gateBinding = buildGateCommitBindingFromGateRequest(gateRequest);
     const issueBinding = buildGateCommitBindingFromIssueRequest(issueRequest);
