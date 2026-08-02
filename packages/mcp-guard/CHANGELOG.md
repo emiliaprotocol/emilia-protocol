@@ -3,6 +3,13 @@
 
 All notable changes to `@emilia-protocol/mcp-guard` are documented here.
 
+## 0.4.3 (2026-08-01)
+
+### Release
+
+- Supersedes the unpublished `0.4.2` tag on the final protected-main release
+  baseline. Package behavior is unchanged.
+
 ## 0.4.2 (2026-08-01)
 
 ### Added
@@ -19,4 +26,3 @@ All notable changes to `@emilia-protocol/mcp-guard` are documented here.
   without limit or erase replay protection through eviction.
 - Keep ledger state private behind immutable snapshots, verify durable history
   on startup, and fail closed on malformed or conflicting storage results.
-

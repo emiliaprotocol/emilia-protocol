@@ -6,6 +6,14 @@ This package follows [Semantic Versioning](https://semver.org/).
 
 ## Unreleased
 
+## 0.23.3 (2026-08-01)
+
+### Release
+
+- Supersedes the unpublished `0.23.2` tag so Gate and its exact
+  `@emilia-protocol/require-receipt` 0.7.2 dependency publish from the same
+  protected-main baseline.
+
 ## 0.23.2 (2026-08-01)
 
 ### Release
