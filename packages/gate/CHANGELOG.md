@@ -6,7 +6,7 @@ This package follows [Semantic Versioning](https://semver.org/).
 
 ## Unreleased
 
-## 0.22.0 (2026-07-30)
+## 0.23.0 (2026-08-01)
 
 ### Added
 
@@ -27,6 +27,12 @@ This package follows [Semantic Versioning](https://semver.org/).
   `sql/gate-qualification-v2.sql`, deterministic reference vectors, runtime-
   refinement traces, and a bounded TLC model with two intentional negative
   controls.
+- Signed Gate Allowances that permit exact, bounded repeated operations while
+  retaining immutable provider-action binding, aggregate depletion, current
+  status, and one-time operation fencing.
+- Conserved-authority delegation across sibling fan-out: every child transfer
+  is funded exactly once from its parent in one authoritative state domain,
+  with aggregate sibling limits and explicit cross-domain non-guarantees.
 
 ### Security
 
@@ -40,6 +46,8 @@ This package follows [Semantic Versioning](https://semver.org/).
   program constrains separately authorized actions; it does not prove human
   ceremony, safe intent, provider or effect truth, complete mediation, or the
   absence of actions outside Gate.
+- The ordinary and execution-program admission paths both retain monotonic
+  authenticator-counter currentness checks immediately before provider entry.
 
 ## 0.22.2 (2026-07-31)
 
