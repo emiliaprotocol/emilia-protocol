@@ -1255,7 +1255,11 @@ function runtimeSnapshot(state) {
   };
 }
 
-function traceStep(operation, must, storeInvariants = { ok: true, violations: [] }) {
+function traceStep(
+  operation,
+  must,
+  storeInvariants = { ok: true, violations: /** @type {string[]} */ ([]) },
+) {
   return { operation, must, storeInvariants };
 }
 
