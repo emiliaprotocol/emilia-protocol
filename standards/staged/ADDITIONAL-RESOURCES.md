@@ -35,3 +35,21 @@ separate **URL** field. Do not paste `tag: URL` into the Tag field.
 | `github_repo` | `https://github.com/emiliaprotocol/emilia-protocol` |
 | `related_implementations` | `https://github.com/emiliaprotocol/emilia-protocol/blob/main/packages/verify/src/reliance-agreement.ts` |
 | `related_implementations` | `https://github.com/emiliaprotocol/emilia-protocol/blob/main/conformance/vectors/reliance-agreement.v1.json` |
+
+## draft-schrock-ep-bounded-capability-receipts-01
+
+| Tag | URL |
+| --- | --- |
+| `github_repo` | `https://github.com/emiliaprotocol/emilia-protocol` |
+| `related_implementations` | `https://github.com/emiliaprotocol/emilia-protocol/blob/main/packages/gate/src/capability-receipt.ts` |
+| `related_implementations` | `https://github.com/emiliaprotocol/emilia-protocol/blob/main/packages/gate/src/authority-allocation.ts` |
+| `related_implementations` | `https://github.com/emiliaprotocol/emilia-protocol/blob/main/formal/ep_capability.tla` |
+
+## draft-schrock-ep-bounded-execution-program-00
+
+| Tag | URL |
+| --- | --- |
+| `github_repo` | `https://github.com/emiliaprotocol/emilia-protocol` |
+| `related_implementations` | `https://github.com/emiliaprotocol/emilia-protocol/blob/main/packages/gate/src/bounded-execution-program.ts` |
+| `related_implementations` | `https://github.com/emiliaprotocol/emilia-protocol/blob/main/packages/gate/src/admission-store.ts` |
+| `related_implementations` | `https://github.com/emiliaprotocol/emilia-protocol/blob/main/conformance/vectors/bounded-execution-program.v1.json` |

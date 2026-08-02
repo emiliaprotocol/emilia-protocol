@@ -49,6 +49,8 @@ Only these XML sources are upload candidates:
 2. `draft-schrock-action-evidence-boundary-03`
 3. `draft-schrock-model-to-matter-03`
 4. `draft-schrock-ep-reliance-agreement-00`
+5. `draft-schrock-ep-bounded-capability-receipts-01`
+6. `draft-schrock-ep-bounded-execution-program-00`
 
 They are in `staged/UPLOAD-THIS/`; rendered forms, submission-mode `idnits`
 results, checksums, and Datatracker Additional Resources entries are kept next

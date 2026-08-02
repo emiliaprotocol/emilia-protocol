@@ -119,7 +119,7 @@ AE Challenge-01, Revocation Statement-01, Authority Introduction-02, Agent
 Qualification Statements-00, and Action Remedy Receipts-00 were subsequently
 published on July 29-30. Their current XML snapshots are in `posted/`.
 
-Four sources are staged but **not filed** as of August 1:
+Six sources are staged but **not filed** as of August 1:
 
 1. AEC-05 adds verifier-derived distinct-subject requirement semantics while
    retaining the boundary between SATISFIED and AUTHORIZED. The new requirement
@@ -133,6 +133,12 @@ Four sources are staged but **not filed** as of August 1:
    conditioned on evidence sufficiency. Verification is not authorization,
    legal enforceability, insurance issuance, fault allocation, escrow, or
    payment.
+5. Bounded Capability Receipts-01 makes parent-funded delegation, aggregate
+   sibling conservation, replay fencing, and the one-authoritative-state-domain
+   limitation unmistakably normative.
+6. Bounded Execution Program-00 defines a signed finite action program whose
+   reachability, occurrence ceilings, and aggregate budgets are enforced in the
+   same atomic domain as one-time Gate admission.
 
 The published line also retains Authority Introduction-01, Quorum-03, Bounded
 Capability Receipts-00, and the other current individual drafts listed in

@@ -139,7 +139,7 @@
       "revision": "00",
       "layer": "delegation_capability_policy",
       "role": "Action-bound capability budget and spend evidence",
-      "next_action": "Published July 19; guard-path spend enforcement and verified-action binding are implemented on main"
+      "next_action": "Published July 19; -01 is staged with parent-funded delegation, aggregate sibling conservation, and the one-authoritative-state-domain limitation"
     },
     {
       "draft": "draft-schrock-ep-evidence-record",
@@ -385,6 +385,30 @@
         "tests/model-to-matter.test.ts"
       ],
     "limitations": "No wet-lab deployment, screening capability, scientific-safety determination, physical truth, independent implementation, or partner endorsement is claimed; new program and requirement digests are not yet wired into the reference clearance object"
+    },
+    {
+      "draft": "draft-schrock-ep-bounded-capability-receipts-01",
+      "source": "standards/staged/UPLOAD-THIS/draft-schrock-ep-bounded-capability-receipts-01.xml",
+      "state": "submission_ready_not_filed",
+      "claim": "Parent-funded delegation and aggregate sibling conservation in one authoritative atomic state domain",
+      "implementation": [
+        "packages/gate/src/capability-receipt.ts",
+        "packages/gate/src/authority-allocation.ts",
+        "formal/ep_capability.tla"
+      ],
+      "limitations": "No cross-domain or offline global double-spend prevention, independent implementation, or unbounded proof is claimed"
+    },
+    {
+      "draft": "draft-schrock-ep-bounded-execution-program-00",
+      "source": "standards/staged/UPLOAD-THIS/draft-schrock-ep-bounded-execution-program-00.xml",
+      "state": "submission_ready_not_filed",
+      "claim": "Signed finite action programs with atomic reachability, occurrence, and aggregate-budget enforcement at Gate admission",
+      "implementation": [
+        "packages/gate/src/bounded-execution-program.ts",
+        "packages/gate/src/admission-store.ts",
+        "conformance/vectors/bounded-execution-program.v1.json"
+      ],
+      "limitations": "No plan-understanding, safety, legality, provider-truth, effect-truth, complete-mediation, or independent-implementation claim is made"
     }
   ],
   "retired_absorbed": [
