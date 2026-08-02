@@ -14,7 +14,10 @@ import { getGuardedClient } from '@/lib/write-guard';
 import { epProblem } from '@/lib/errors';
 import { logger } from '@/lib/logger.js';
 import { readLimitedJson } from '@/lib/http/body-limit';
-import { MANAGED_PILOT } from '@/lib/commercial-offer';
+import {
+  FINANCIAL_AUTHORITY_DESIGN_PARTNER,
+  MANAGED_PILOT,
+} from '@/lib/commercial-offer';
 
 const RESEND_URL = 'https://api.resend.com/emails';
 // Same verified Resend sender domain the Trust Desk uses.
@@ -32,6 +35,27 @@ const WORKFLOWS: Record<string, { label: string; pdf: string | null }> = {
 };
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/;
+
+const DEFAULT_OFFER_ID = 'signal_diagnostic_v1';
+
+type IntakeOffer = {
+  id: string;
+  name: string;
+  priceLabel: string;
+  durationLabel: string;
+  workflowLabel: string;
+  providerRailLabel?: string;
+  rolloutLabel: string;
+};
+
+const DEFAULT_OFFER: IntakeOffer = Object.freeze({
+  id: DEFAULT_OFFER_ID,
+  ...MANAGED_PILOT,
+});
+
+const INTAKE_OFFERS: Readonly<Record<string, IntakeOffer>> = Object.freeze({
+  [FINANCIAL_AUTHORITY_DESIGN_PARTNER.id]: FINANCIAL_AUTHORITY_DESIGN_PARTNER,
+});
 
 function clean(v: unknown, max: number): string {
   return typeof v === 'string' ? v.trim().slice(0, max) : '';
@@ -76,11 +100,15 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
     const org = clean(body.org, 160);
     const email = clean(body.email, 160);
     const message = clean(body.message, 2000);
+    const requestedOfferId = clean(body.offer_id, 100);
+    const offer = requestedOfferId ? INTAKE_OFFERS[requestedOfferId] : DEFAULT_OFFER;
     const workflowKey = WORKFLOWS[body.workflow] ? body.workflow : 'other';
     const workflow = WORKFLOWS[workflowKey];
 
     if (!name || !org) return epProblem(400, 'missing_fields', 'Name and organization are required');
     if (!EMAIL_RE.test(email)) return epProblem(400, 'invalid_email', 'A valid work email is required');
+    if (!offer) return epProblem(400, 'invalid_offer', 'The requested offer is not available');
+    const isDefaultOffer = offer.id === DEFAULT_OFFER_ID;
 
     // 1. Durable record — best-effort; the audit chain is the house pattern
     //    but a storage hiccup must not lose a lead that email can still carry.
@@ -96,7 +124,7 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
         target_id: org.toLowerCase().replace(/[^a-z0-9]+/g, '-').slice(0, 64) || 'unknown',
         action: 'request_pilot',
         before_state: null,
-        after_state: { name, org, email, workflow: workflowKey, message },
+        after_state: { name, org, email, workflow: workflowKey, message, offer_id: offer.id },
       });
       stored = !error;
       if (error) logger.warn('pilot request: audit insert failed', { error: error.message });
@@ -107,11 +135,18 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
     // 2. Internal notification — this is the lead reaching a human.
     const notified = await sendEmail({
       to: TEAM,
-      subject: `PILOT REQUEST: ${org} — ${workflow.label}`,
+      subject: isDefaultOffer
+        ? `PILOT REQUEST: ${org} — ${workflow.label}`
+        : `PILOT REQUEST: ${org} — ${offer.name}`,
       body:
         `New pilot request from ${name} (${email})\n` +
         `Organization: ${org}\n` +
         `Workflow: ${workflow.label}\n\n` +
+        (isDefaultOffer
+          ? ''
+          : `Offer: ${offer.name} (${offer.id})\n` +
+            `Fixed scope: ${offer.durationLabel}; ${offer.priceLabel}; ${offer.workflowLabel}` +
+            `${offer.providerRailLabel ? `; ${offer.providerRailLabel}` : ''}\n\n`) +
         `${message || '(no message)'}\n\n` +
         `Recorded in audit_events: ${stored ? 'yes' : 'NO — email is the only copy'}`,
     });
@@ -128,13 +163,20 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
     await sendEmail({
       to: email,
       subject: 'EMILIA pilot request received — what happens next',
-      body:
-        `Hi ${name.split(' ')[0]},\n\n` +
-        `Got your pilot request for: ${workflow.label}.\n\n` +
-        `What happens next: I reply personally within one business day with a ` +
-        `15-minute scheduling link and the one-page ${MANAGED_PILOT.durationLabel}, ` +
-        `${MANAGED_PILOT.priceLabel} pilot scope (${MANAGED_PILOT.workflowLabel}; ` +
-        `synthetic first, then a governed read-only export).\n\n` +
+      body: (isDefaultOffer
+        ? `Hi ${name.split(' ')[0]},\n\n` +
+          `Got your pilot request for: ${workflow.label}.\n\n` +
+          `What happens next: I reply personally within one business day with a ` +
+          `15-minute scheduling link and the one-page ${MANAGED_PILOT.durationLabel}, ` +
+          `${MANAGED_PILOT.priceLabel} pilot scope (${MANAGED_PILOT.workflowLabel}; ` +
+          `synthetic first, then a governed read-only export).\n\n`
+        : `Hi ${name.split(' ')[0]},\n\n` +
+          `Got your request for the ${offer.name}: ${workflow.label}.\n\n` +
+          `What happens next: I reply personally within one business day with a ` +
+          `15-minute scheduling link and the one-page ${offer.durationLabel}, ` +
+          `${offer.priceLabel} scope (${offer.workflowLabel}` +
+          `${offer.providerRailLabel ? `; ${offer.providerRailLabel}` : ''}; ` +
+          `${offer.rolloutLabel}).\n\n`) +
         `Meanwhile, three things you can verify without trusting us:\n` +
         `- Be the approver yourself (20 seconds): https://www.emiliaprotocol.ai/try\n` +
         `- Verify a receipt offline: https://www.emiliaprotocol.ai/verify\n` +

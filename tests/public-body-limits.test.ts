@@ -12,6 +12,12 @@ vi.mock('@/lib/logger.js', () => ({
   logger: { info: vi.fn(), warn: vi.fn(), error: vi.fn(), debug: vi.fn() },
 }));
 
+vi.mock('@/lib/arena/service', () => ({
+  ArenaServiceError: class ArenaServiceError extends Error {},
+  provisionArenaSession: vi.fn(),
+  submitArenaAttempt: vi.fn(),
+}));
+
 const Waitlist = await import('../app/api/waitlist/route.js');
 const Inquiries = await import('../app/api/inquiries/route.ts');
 const Operators = await import('../app/api/operators/apply/route.ts');
@@ -23,6 +29,8 @@ const DemoReceipt = await import('../app/api/demo/require-receipt/route.js');
 const DemoX402 = await import('../app/api/demo/x402/route.js');
 const Mcp = await import('../app/api/mcp/[transport]/route.ts');
 const SamlAcs = await import('../app/api/sso/saml/acs/route.ts');
+const ArenaSessions = await import('../app/api/arena/sessions/route.ts');
+const ArenaAttempts = await import('../app/api/arena/sessions/[sessionId]/attempts/route.ts');
 
 function oversizedReq(path, bytes, body = {}) {
   return new Request(`https://www.emiliaprotocol.ai${path}`, {
@@ -60,6 +68,8 @@ describe('public POST body limits', () => {
     ['demo/x402', DemoX402.POST, '/api/demo/x402', 257 * 1024],
     ['mcp', Mcp.POST, '/api/mcp/mcp', 257 * 1024],
     ['sso/saml/acs', SamlAcs.POST, '/api/sso/saml/acs', 257 * 1024],
+    ['arena/sessions', ArenaSessions.POST, '/api/arena/sessions', 5 * 1024],
+    ['arena/attempts', ArenaAttempts.POST, '/api/arena/sessions/arena_session_1/attempts', 9 * 1024],
   ];
 
   for (const [name, handler, path, bytes] of cases) {

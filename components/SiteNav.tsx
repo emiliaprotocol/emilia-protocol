@@ -8,6 +8,7 @@ import { color, font, radius, cta } from '@/lib/tokens';
 type NavLink = [string, string];
 
 const NAV_LINKS: NavLink[] = [
+  ['/arena', '/arena'],
   ['/signal', '/signal'],
   ['/gate', '/gate'],
   ['/use-cases', '/solutions'],

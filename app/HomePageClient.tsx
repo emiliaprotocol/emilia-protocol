@@ -171,8 +171,9 @@ export default function HomePage() {
               mutation.
             </p>
             <div className="ep-home-calm-actions">
-              <Link href="/gate/live" className="ep-home-hero-primary">Open the Gate reference</Link>
-              <Link href="/gate" className="ep-home-hero-secondary">Review the architecture →</Link>
+              <Link href="/arena" className="ep-home-hero-primary">Try the public Arena</Link>
+              <Link href="/gate" className="ep-home-hero-secondary">Explore Gate →</Link>
+              <Link href="/gate/live" className="ep-home-hero-secondary">Open the live reference →</Link>
             </div>
           </motion.div>
         </C>

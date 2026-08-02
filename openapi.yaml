@@ -68,6 +68,8 @@ tags:
     description: Bounded grid-curtailment authorization and reference evidence composition
   - name: EMILIA Gate
     description: Consequence Firewall enforcement and public reference scenarios
+  - name: Arena
+    description: Public synthetic allowance demonstration; no money, provider credentials, or production execution
   - name: GovGuard
     description: GovGuard pre-payment fraud-control adapter prechecks for high-risk government workflows
   - name: Cloud
@@ -6339,12 +6341,138 @@ paths:
         '403': { description: 'Named operator lacks release_lock.reconcile permission' }
         '409': { description: 'Effect is not ambiguous or provider binding mismatched' }
         '503': { description: 'Authoritative reconciliation unavailable' }
+
+  /api/arena/sessions:
+    post:
+      operationId: createArenaSession
+      tags: [Arena]
+      summary: Start a short-lived synthetic allowance session
+      description: |
+        Creates an isolated demonstration session with 1,000 synthetic CREDITS.
+        It does not create an identity, account, credential to an external
+        provider, or authority over money or production systems. The dedicated
+        `ep_arena_` capability is returned once and is not an EP API key.
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required: [agent_name]
+              properties:
+                agent_name:
+                  type: string
+                  minLength: 1
+                  maxLength: 64
+                  description: Private session label; excluded from public refusal records
+      responses:
+        '201': { description: 'Synthetic session and one-time-visible Arena capability created' }
+        '400': { description: 'Closed input shape or agent name invalid' }
+        '413': { description: 'Request body exceeds the Arena limit' }
+        '503': { description: 'Arena store or signing service unavailable' }
+
+  /api/arena/sessions/{sessionId}/attempts:
+    post:
+      operationId: submitArenaAttempt
+      tags: [Arena]
+      summary: Attempt one fixed-shape synthetic action
+      description: |
+        Atomically applies the session's synthetic occurrence and CREDITS
+        limits. The server derives the canonical action, action digest, CAID,
+        decision, and refusal reason. The client cannot supply a verdict.
+      security:
+        - ArenaSessionAuth: []
+      parameters:
+        - name: sessionId
+          in: path
+          required: true
+          schema: { type: string }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required: [operation_id, target, amount, purpose]
+              properties:
+                operation_id: { type: string }
+                target: { type: string, enum: [vendor.demo, compute.batch] }
+                amount: { type: integer, minimum: 1 }
+                purpose: { type: string }
+      responses:
+        '201': { description: 'Synthetic action admitted or refused by the atomic allowance store' }
+        '400': { description: 'Attempt is malformed or outside the closed action profile' }
+        '401': { description: 'Arena capability missing or invalid' }
+        '409': { description: 'Operation replay, equivocation, or session attempt cap reached' }
+        '413': { description: 'Request body exceeds the Arena limit' }
+        '503': { description: 'Arena store or signing service unavailable' }
+
+  /api/arena/sessions/{sessionId}/attempts/{attemptId}/publish:
+    post:
+      operationId: publishArenaRefusal
+      tags: [Arena]
+      summary: Publish a privacy-minimized synthetic refusal record
+      description: |
+        Explicitly publishes only the selected synthetic action, refusal
+        statement, fingerprints, and integrity material. The private session
+        label, allowance profile and limits, tenant, and session identifiers are
+        excluded. Publication does not establish issuer identity or acceptance.
+      security:
+        - ArenaSessionAuth: []
+      parameters:
+        - name: sessionId
+          in: path
+          required: true
+          schema: { type: string }
+        - name: attemptId
+          in: path
+          required: true
+          schema: { type: string }
+      responses:
+        '201': { description: 'Unlisted public integrity-record URL created' }
+        '401': { description: 'Arena capability missing or invalid' }
+        '404': { description: 'Attempt is absent or is not a publishable refusal' }
+        '409': { description: 'Attempt evidence is incomplete or inconsistent' }
+        '503': { description: 'Arena store unavailable' }
+
+  /api/arena/refusals/{shareId}:
+    get:
+      operationId: getPublicArenaRefusal
+      tags: [Arena]
+      summary: Verify an unlisted synthetic refusal record
+      description: |
+        Returns an opt-in, privacy-minimized record after re-verifying its
+        signed refusal projection. A successful integrity check means the
+        published bytes match the included key and statement; it is not an
+        authorization, acceptance, real-world execution, or independent issuer
+        identity claim.
+      security: []
+      parameters:
+        - name: shareId
+          in: path
+          required: true
+          schema: { type: string, pattern: '^arena_share_[a-f0-9]{40}$' }
+      responses:
+        '200': { description: 'Published synthetic refusal and integrity result' }
+        '404': { description: 'No active published refusal exists for this share id' }
+        '503': { description: 'Public verification is temporarily unavailable' }
 components:
   securitySchemes:
     BearerAuth:
       type: http
       scheme: bearer
       description: EP API key (ep_live_...)
+    ArenaSessionAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: ep_arena_<64 lowercase hex characters>
+      description: |
+        Short-lived capability scoped to one synthetic Arena session. It is
+        returned once, stored only as a hash, and is not accepted as an EP API
+        key or as authority over any external provider.
     CloudBearerAuth:
       type: http
       scheme: bearer

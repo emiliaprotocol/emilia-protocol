@@ -16,6 +16,26 @@ export const MANAGED_PILOT = Object.freeze({
   rolloutLabel: 'Synthetic first; governed export only after approval',
 });
 
+/**
+ * Fixed-scope design-partner offer for buyers graduating from the public
+ * Arena into one real consequence boundary. Commercial terms are selected by
+ * this server-owned identifier; intake callers cannot override them.
+ */
+export const FINANCIAL_AUTHORITY_DESIGN_PARTNER = Object.freeze({
+  id: 'financial_authority_design_partner_v1',
+  name: 'Financial Authority design-partner pilot',
+  priceUsd: 25_000,
+  priceLabel: '$25,000',
+  shortPriceLabel: '$25K',
+  durationDays: 90,
+  durationLabel: '90 days',
+  workflowCount: 1,
+  workflowLabel: '1 protected workflow',
+  providerRailCount: 1,
+  providerRailLabel: '1 provider rail',
+  rolloutLabel: 'Synthetic validation first; production access only through a buyer-approved boundary',
+});
+
 export const GATE_QUALIFICATION = Object.freeze({
   name: 'Gate Qualification v2',
   profileLabel: 'public experimental implementation profile',

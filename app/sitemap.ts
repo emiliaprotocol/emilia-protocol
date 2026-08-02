@@ -20,6 +20,7 @@ export default function sitemap(): MetadataRoute.Sitemap {
   // Top-level marketing surfaces — highest crawl priority.
   const marketing = [
     { path: '/',                      priority: 1.0, changeFrequency: 'weekly' },
+    { path: '/arena',                 priority: 0.99, changeFrequency: 'weekly' },
     { path: '/signal',                priority: 0.98, changeFrequency: 'weekly' },
     { path: '/gate',                  priority: 0.98, changeFrequency: 'weekly' },
     { path: '/assurance',             priority: 0.92, changeFrequency: 'weekly' },
