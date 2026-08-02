@@ -879,7 +879,7 @@
     },
     {
       "path": "packages/mobile/dist/strict-json.js",
-      "sha256": "049e822335887ca14fba34b3a018d942e08de17094964f162dcf8d3246810c0f"
+      "sha256": "676f2dfef8d8108b61116d1e16cedbc1b5f2e683b8bf7c4217719815205c976c"
     },
     {
       "path": "packages/mobile/enrollment.js",
