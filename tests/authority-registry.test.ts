@@ -18,6 +18,7 @@ import { computeRegistryHead } from '../lib/authority/registry-head.js';
 import { signAuthorityProof, verifyAuthorityProof } from '../lib/authority/proof.js';
 import { applyAuthorityEnforcement, authorityAdmissibilityCode } from '../lib/authority/enforcement.js';
 import { canonicalize } from '../lib/canonical-json.js';
+import { resolveAndBindAuthority } from '../lib/authority/index.js';
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 const SUITE = JSON.parse(readFileSync(resolve(HERE, '../conformance/vectors/authority.v1.json'), 'utf8'));
@@ -124,6 +125,18 @@ describe('EP-AUTHORITY-REGISTRY-v1 conformance suite', () => {
       digests[v.id] = resultDigest(result);
     }
     expect(digests).toEqual(COMPLETE_RESULT_DIGESTS);
+  });
+
+  it('resolves, enforces, and binds authority through the public one-call API', async () => {
+    const vector = SUITE.vectors.find((candidate) => candidate.id === 'authorized_within_scope_and_limit');
+    const outcome = await resolveAndBindAuthority(snapshotStore(SUITE.base_snapshot), vector.input, {
+      isCritical: true,
+      mode: 'enforce_critical',
+    });
+
+    expect(outcome.result.verdict).toBe('authorized');
+    expect(outcome.enforcement.block).toBe(false);
+    expect(outcome.binding.authority_result_hash).toMatch(/^sha256:[0-9a-f]{64}$/);
   });
 });
 
