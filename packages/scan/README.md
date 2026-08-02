@@ -40,10 +40,13 @@ npx @emilia-protocol/scan authority --out authority-report.json
 
 It reads bounded local configuration files to inventory supported agent
 runtimes, declared MCP servers, credential-shaped fields, ambient credential
-files, and permission declarations. It launches no process and makes no network
-request. Configuration values are parsed locally in memory; credential values
-are not intentionally emitted. Report files are created owner-only and existing
-or symlinked report paths are refused.
+files, and permission declarations. After it starts, scanner code launches no
+configured server or child process and performs no network I/O. When invoked
+through `npx`, npm may download the package before scanner startup.
+Configuration values are parsed locally in memory; credential values are not
+intentionally emitted. Report files are created owner-only and existing or
+symlinked report paths are refused. Symlinked configuration sources are excluded,
+and any reached discovery limit is printed in the report.
 
 ## What it will not do
 

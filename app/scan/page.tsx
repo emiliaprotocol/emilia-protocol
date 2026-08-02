@@ -12,7 +12,7 @@ export const metadata: Metadata = {
   openGraph: {
     title: 'See what your agents can reach',
     description:
-      'A passive local authority inventory. No process launch. No network request. No security guarantee.',
+      'A passive local authority inventory. Scanner code performs no network I/O or configured-server launch. No security guarantee.',
     url: 'https://www.emiliaprotocol.ai/scan',
     type: 'website',
   },
@@ -54,7 +54,7 @@ const FACTS = [
   {
     n: '02',
     title: 'Private local pass',
-    body: 'Parses bounded files in memory. It launches no configured server and makes no network request. Report files are created owner-only.',
+    body: 'Parses bounded files in memory. After startup, scanner code launches no configured server or child process and performs no network I/O. Report files are created owner-only.',
   },
   {
     n: '03',
@@ -85,8 +85,9 @@ export default function AuthorityScanPage(): React.ReactElement {
             </h1>
             <p style={{ fontSize: 19, lineHeight: 1.7, color: color.t2, maxWidth: 720, margin: '0 0 40px' }}>
               Before you add another guardrail, inventory the authority already sitting beside your agents.
-              EMILIA Scan reports configured reach and its own blind spots. It does not launch a server,
-              test a credential, or call home.
+              EMILIA Scan reports configured reach and its own blind spots. The scanner does not launch
+              a configured server, test a credential, or call home. npm may download the package before
+              the scan starts.
             </p>
             <pre style={{ ...codeBox, maxWidth: 760 }}>npx @emilia-protocol/scan authority</pre>
             <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap', marginTop: 24 }}>

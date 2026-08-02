@@ -13,7 +13,7 @@ export interface ConfigCandidate {
     file: string;
 }
 export interface ConfigSource extends ConfigCandidate {
-    status: 'absent' | 'read' | 'unreadable' | 'malformed' | 'unsupported_format' | 'too_large';
+    status: 'absent' | 'read' | 'unreadable' | 'malformed' | 'unsupported_format' | 'too_large' | 'symlink';
     bytes?: number;
     format?: string;
     top_level_keys?: string[];
@@ -57,6 +57,7 @@ export interface AuthorityInventory {
     permissions: PermissionDeclaration[];
     credential_files: CredentialFile[];
     env_files: EnvFile[];
+    limitations: string[];
 }
 export interface AuthoritySignal {
     id: string;

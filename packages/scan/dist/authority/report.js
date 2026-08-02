@@ -36,18 +36,29 @@ export function renderAuthorityText(input) {
     ];
     const read = inventory.sources.filter((source) => source.status === 'read');
     const unsupported = inventory.sources.filter((source) => source.status === 'unsupported_format');
+    const unreadable = inventory.sources.filter((source) => source.status === 'unreadable');
     const malformed = inventory.sources.filter((source) => source.status === 'malformed');
     const tooLarge = inventory.sources.filter((source) => source.status === 'too_large');
+    const symlinks = inventory.sources.filter((source) => source.status === 'symlink');
     lines.push(`Configuration sources read: ${read.length} of ${inventory.sources.length} checked.`);
     if (unsupported.length) {
         lines.push(`Unsupported formats excluded: ${unsupported.length}.`);
         for (const source of unsupported)
             lines.push(`  ${source.file} - not covered by this report.`);
     }
+    if (unreadable.length)
+        lines.push(`Unreadable configuration sources excluded: ${unreadable.length}.`);
     if (malformed.length)
         lines.push(`Malformed JSON sources excluded: ${malformed.length}.`);
     if (tooLarge.length)
         lines.push(`Oversized sources excluded: ${tooLarge.length}.`);
+    if (symlinks.length)
+        lines.push(`Symlinked configuration sources excluded: ${symlinks.length}.`);
+    if (inventory.limitations.length) {
+        lines.push('Discovery limits:');
+        for (const limitation of inventory.limitations)
+            lines.push(`  - ${limitation}`);
+    }
     const active = inventory.servers.filter((server) => !server.disabled);
     const credentialServers = active.filter((server) => (server.env.some((entry) => entry.secret)
         || server.header_secrets.some((entry) => entry.secret)));
@@ -94,7 +105,9 @@ export function renderAuthorityText(input) {
     lines.push('', `claim_boundary: ${AUTHORITY_CLAIM_BOUNDARY}`, '');
     lines.push('Configuration values were parsed locally in memory. Credential values');
     lines.push('are not intentionally emitted; secret-bearing fields are reduced to');
-    lines.push('redactions, key names, and classes. Nothing was sent anywhere.');
+    lines.push('redactions, key names, and classes. After scanner startup, scanner code');
+    lines.push('launched no configured server or child process and performed no network I/O.');
+    lines.push('When invoked through npx, npm may download the package before startup.');
     lines.push('');
     return lines.join('\n');
 }
