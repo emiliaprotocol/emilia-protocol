@@ -6,6 +6,18 @@ This package follows [Semantic Versioning](https://semver.org/).
 
 ## Unreleased
 
+## 0.23.6 (2026-08-02)
+
+### Security
+
+- Recheck each allowance's authoritative monotonic status head inside the same
+  atomic transaction that reserves spend, closing the verify-then-revoke race.
+- Persist invocation recovery authority before the durable `INVOKING`
+  transition so a process crash cannot strand an unowned operation.
+- Distinguish pre-provider reservations from entered effects, allowing only an
+  expired, demonstrably unentered reservation to be released automatically;
+  post-entry recovery remains evidence-gated and never blindly retries.
+
 ## 0.23.5 (2026-08-01)
 
 ### Release
