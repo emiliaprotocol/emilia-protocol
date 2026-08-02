@@ -6,6 +6,7 @@ import {
   __atomicEvidenceSecurityInternals,
   createAtomicEvidenceLog,
   createMemoryAtomicEvidenceBackend,
+  verifyEvidenceRecord,
 } from '../packages/gate/evidence.js';
 
 function ids(prefix = 'record') {
@@ -157,6 +158,35 @@ describe('atomic shared-head evidence log', () => {
     const cyclic = { type: 'decision' };
     cyclic.self = cyclic;
     await expect(log.record(cyclic)).rejects.toThrow();
+  });
+
+  it('independently refuses every malformed acknowledgement axis', async () => {
+    const log = createAtomicEvidenceLog(createMemoryAtomicEvidenceBackend(), {
+      recordIdFactory: () => 'verified-record-id-0001',
+    });
+    const valid = await log.record({ type: 'decision', allow: true });
+    expect(verifyEvidenceRecord(valid, {
+      atomicRequired: true,
+      expectedEntry: { type: 'decision', allow: true },
+    })).toBe(true);
+
+    for (const malformed of [
+      null,
+      [],
+      { ...valid, seq: -1 },
+      { ...valid, seq: 1.5 },
+      { ...valid, prev_hash: 'bad' },
+      { ...valid, hash: 'bad' },
+      { ...valid, record_id: '' },
+      { ...valid, record_id: 'x'.repeat(257) },
+    ]) {
+      expect(verifyEvidenceRecord(malformed, { atomicRequired: true })).toBe(false);
+    }
+    const { record_id: _recordId, ...withoutRecordId } = valid;
+    expect(verifyEvidenceRecord(withoutRecordId, { atomicRequired: true })).toBe(false);
+    expect(verifyEvidenceRecord(valid, { expectedEntry: null })).toBe(false);
+    expect(verifyEvidenceRecord(valid, { expectedEntry: [] })).toBe(false);
+    expect(verifyEvidenceRecord(valid, { expectedEntry: { type: 'decision', allow: false } })).toBe(false);
   });
 
   it('fails closed on unavailable or malformed backend history', async () => {

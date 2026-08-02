@@ -12,6 +12,8 @@ describe('strict JSON gate', () => {
   it('refuses non-text, malformed JSON, and duplicate names', () => {
     expect(strictJsonGate(null)).toEqual({ ok: false, reason: 'JSON input must be text' });
     expect(strictJsonGate('{')).toEqual({ ok: false, reason: 'invalid JSON syntax' });
+    expect(strictJsonGate('{"value":"\uD800"}'))
+      .toEqual({ ok: false, reason: 'unpaired Unicode surrogate' });
     expect(strictJsonGate('{"role":"user","role":"admin"}'))
       .toEqual({ ok: false, reason: 'duplicate object member name' });
     expect(strictJsonGate(String.raw`{"origin":"safe","\u006frigin":"attacker"}`))
@@ -152,5 +154,16 @@ describe('strict canonical JSON domain', () => {
     });
     expect(() => canonicalizeStrictJson(hostile))
       .toThrow('object inspection failed: trap fired');
+  });
+
+  it('enforces caller-pinned canonical resource limits', () => {
+    expect(() => canonicalizeStrictJson('ab', { maxStringBytes: 1 }))
+      .toThrow('string bytes exceed 1');
+    expect(() => canonicalizeStrictJson({}, { maxDepth: -1 }))
+      .toThrow('strict canonical JSON limits');
+    expect(() => canonicalizeStrictJson({}, { maxNodes: 0 }))
+      .toThrow('strict canonical JSON limits');
+    expect(() => canonicalizeStrictJson({}, { maxStringBytes: -1 }))
+      .toThrow('strict canonical JSON limits');
   });
 });
