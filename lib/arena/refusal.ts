@@ -63,6 +63,13 @@ function isRecord(value: unknown): value is Record<string, any> {
     && Reflect.ownKeys(value).every((key) => typeof key === 'string');
 }
 
+function canonicalInstant(value: unknown): string | null {
+  if (typeof value !== 'string') return null;
+  const epochMilliseconds = Date.parse(value);
+  if (!Number.isFinite(epochMilliseconds)) return null;
+  return new Date(epochMilliseconds).toISOString();
+}
+
 function refusedResult(reason: string, currentReason = reason) {
   return {
     integrity_verified: false as const,
@@ -113,10 +120,14 @@ export function verifyArenaPublicProjection(projection: unknown, now = Date.now(
     if (!isRecord(statement.program) || typeof statement.nonce !== 'string') {
       return refusedResult('arena_refusal_invalid');
     }
+    const statementRefusedAt = canonicalInstant(statement.refused_at);
+    const attemptCreatedAt = canonicalInstant(projection.attempt.created_at);
     if (!Array.isArray(statement.failed_requirement_ids)
         || statement.failed_requirement_ids.length !== 1
         || statement.failed_requirement_ids[0] !== expectedRequirement
-        || statement.refused_at !== projection.attempt.created_at) {
+        || statementRefusedAt === null
+        || attemptCreatedAt === null
+        || statementRefusedAt !== attemptCreatedAt) {
       return refusedResult('arena_projection_binding_mismatch');
     }
     const trustedKeys = {

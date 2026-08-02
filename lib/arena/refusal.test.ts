@@ -78,6 +78,21 @@ describe('Arena refusal publication verification', () => {
     expect(result.current_reason).toBe('refusal_expired');
   });
 
+  it('accepts PostgreSQL microsecond rendering of the signed millisecond instant', () => {
+    const { projection } = fixture();
+    projection.attempt.created_at = '2026-08-02T12:00:00.000085+00:00';
+    const result = verifyArenaPublicProjection(projection, Date.parse('2026-08-02T12:01:00.000Z'));
+    expect(result.integrity_verified).toBe(true);
+  });
+
+  it('refuses a PostgreSQL timestamp in the next signed millisecond', () => {
+    const { projection } = fixture();
+    projection.attempt.created_at = '2026-08-02T12:00:00.001085+00:00';
+    const result = verifyArenaPublicProjection(projection, Date.parse('2026-08-02T12:01:00.000Z'));
+    expect(result.integrity_verified).toBe(false);
+    expect(result.reason).toBe('arena_projection_binding_mismatch');
+  });
+
   it.each(['amount', 'action_digest', 'public_key', 'reason', 'created_at'])('fails closed on projection or key substitution', (field) => {
     const { projection } = fixture();
     const tampered: any = structuredClone(projection);
