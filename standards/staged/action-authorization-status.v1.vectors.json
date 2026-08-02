@@ -1,0 +1,234 @@
+{
+  "@version": "ACTION-AUTHORIZATION-STATUS-VECTORS-v1",
+  "schema": "../../public/schemas/action-authorization-status.v1.schema.json",
+  "description": "Language-neutral validity and semantic-boundary vectors for ACTION-AUTHORIZATION-STATUS-v1.",
+  "vectors": [
+    {
+      "id": "valid_exact_action_offline_verifiable",
+      "record": {
+        "@version": "ACTION-AUTHORIZATION-STATUS-v1",
+        "action": {
+          "reference": { "scheme": "caid", "value": "caid:1:example:release-payment" },
+          "type": "payment.release",
+          "occurred_at": "2026-07-30T18:00:00Z"
+        },
+        "boundary": { "id": "gate:production", "role": "provider_gateway" },
+        "classification": {
+          "requirement": "exact_action",
+          "authority": "valid",
+          "binding": "exact_action",
+          "admission": "admitted",
+          "effect": "executed"
+        },
+        "evidence": {
+          "class": "E4_OFFLINE_PINNED_VERIFIABLE",
+          "as_of": "2026-07-30T18:05:00Z",
+          "population_basis": "single_action",
+          "source_systems": ["gate:production"],
+          "verification_profile": {
+            "id": "ep-verify:3.14.0",
+            "digest": "sha256:9999999999999999999999999999999999999999999999999999999999999999"
+          },
+          "artifacts": [
+            {
+              "type": "authorization-receipt",
+              "digest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+              "verification": "verified"
+            }
+          ],
+          "limitations": [
+            "This classification does not establish causation, legal liability, coverage, or population completeness."
+          ]
+        },
+        "classified_at": "2026-07-30T18:06:00Z",
+        "classifier": {
+          "id": "adjuster:example",
+          "method": "mixed",
+          "ruleset_digest": "sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+        }
+      },
+      "expect": { "valid": true }
+    },
+    {
+      "id": "valid_refusal_with_observed_effect",
+      "record": {
+        "@version": "ACTION-AUTHORIZATION-STATUS-v1",
+        "action": {
+          "reference": { "scheme": "caid", "value": "caid:1:example:create-relay" },
+          "type": "infrastructure.resource.create",
+          "occurred_at": "2026-07-30T18:00:00Z"
+        },
+        "boundary": { "id": "gateway:declared", "role": "resource_server" },
+        "classification": {
+          "requirement": "exact_action",
+          "authority": "invalid",
+          "binding": "outside_bound",
+          "admission": "refused",
+          "effect": "executed"
+        },
+        "evidence": {
+          "class": "E3_ACTION_BOUND_SIGNED",
+          "as_of": "2026-07-30T18:05:00Z",
+          "population_basis": "single_action",
+          "source_systems": ["gateway:declared", "provider:effect-log"],
+          "verification_profile": null,
+          "artifacts": [
+            {
+              "type": "signed-refusal",
+              "digest": "sha256:cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+              "verification": "verified"
+            },
+            {
+              "type": "effect-record",
+              "digest": "sha256:dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd",
+              "verification": "not_checked"
+            }
+          ],
+          "limitations": [
+            "The named boundary refused the action, but the effect was observed through an unmediated or different path."
+          ]
+        },
+        "classified_at": "2026-07-30T18:06:00Z",
+        "classifier": {
+          "id": "forensics:example",
+          "method": "manual",
+          "ruleset_digest": "sha256:eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee"
+        }
+      },
+      "expect": { "valid": true }
+    },
+    {
+      "id": "invalid_unknown_requirement_promoted_to_valid_authority",
+      "record": {
+        "@version": "ACTION-AUTHORIZATION-STATUS-v1",
+        "action": {
+          "reference": { "scheme": "local", "value": "incident-action-17" },
+          "type": "data.write",
+          "occurred_at": "2026-07-30T18:00:00Z"
+        },
+        "boundary": { "id": "service:unknown", "role": "other" },
+        "classification": {
+          "requirement": "unknown",
+          "authority": "valid",
+          "binding": "exact_action",
+          "admission": "admitted",
+          "effect": "executed"
+        },
+        "evidence": {
+          "class": "E1_SELF_ASSERTED",
+          "as_of": "2026-07-30T18:05:00Z",
+          "population_basis": "single_action",
+          "source_systems": ["operator:statement"],
+          "verification_profile": null,
+          "artifacts": [
+            {
+              "type": "operator-statement",
+              "digest": "sha256:1111111111111111111111111111111111111111111111111111111111111111",
+              "verification": "not_checked"
+            }
+          ],
+          "limitations": ["The authorization requirement could not be established." ]
+        },
+        "classified_at": "2026-07-30T18:06:00Z",
+        "classifier": {
+          "id": "reviewer:example",
+          "method": "manual",
+          "ruleset_digest": "sha256:2222222222222222222222222222222222222222222222222222222222222222"
+        }
+      },
+      "expect": {
+        "valid": false,
+        "errors": [
+          "unknown_requirement_requires_indeterminate_authority",
+          "unknown_requirement_requires_indeterminate_binding"
+        ]
+      }
+    },
+    {
+      "id": "invalid_reconciled_population_without_named_sources",
+      "record": {
+        "@version": "ACTION-AUTHORIZATION-STATUS-v1",
+        "action": {
+          "reference": { "scheme": "caid", "value": "caid:1:example:delete-record" },
+          "type": "records.delete",
+          "occurred_at": "2026-07-30T18:00:00Z"
+        },
+        "boundary": { "id": "gate:production", "role": "execution_service" },
+        "classification": {
+          "requirement": "exact_action",
+          "authority": "valid",
+          "binding": "exact_action",
+          "admission": "admitted",
+          "effect": "executed"
+        },
+        "evidence": {
+          "class": "E5_RECONCILED_NAMED_POPULATION",
+          "as_of": "2026-07-30T18:05:00Z",
+          "population_basis": "declared_population",
+          "source_systems": [],
+          "verification_profile": {
+            "id": "reconciliation-profile:example",
+            "digest": "sha256:7777777777777777777777777777777777777777777777777777777777777777"
+          },
+          "artifacts": [
+            {
+              "type": "period-reconciliation",
+              "digest": "sha256:3333333333333333333333333333333333333333333333333333333333333333",
+              "verification": "verified"
+            }
+          ],
+          "limitations": ["No systems of record were named." ]
+        },
+        "classified_at": "2026-07-30T18:06:00Z",
+        "classifier": {
+          "id": "auditor:example",
+          "method": "mixed",
+          "ruleset_digest": "sha256:4444444444444444444444444444444444444444444444444444444444444444"
+        }
+      },
+      "expect": {
+        "valid": false,
+        "errors": [
+          "e5_requires_reconciled_population_basis",
+          "e5_requires_named_source_systems"
+        ]
+      }
+    },
+    {
+      "id": "invalid_unregistered_extension_member",
+      "record": {
+        "@version": "ACTION-AUTHORIZATION-STATUS-v1",
+        "action": {
+          "reference": { "scheme": "caid", "value": "caid:1:example:release-payment" },
+          "type": "payment.release",
+          "occurred_at": "2026-07-30T18:00:00Z"
+        },
+        "boundary": { "id": "gate:production", "role": "provider_gateway" },
+        "classification": {
+          "requirement": "exact_action",
+          "authority": "valid",
+          "binding": "exact_action",
+          "admission": "admitted",
+          "effect": "executed"
+        },
+        "evidence": {
+          "class": "E0_NONE",
+          "as_of": "2026-07-30T18:05:00Z",
+          "population_basis": "single_action",
+          "source_systems": [],
+          "verification_profile": null,
+          "artifacts": [],
+          "limitations": ["No supporting artifact was available." ]
+        },
+        "classified_at": "2026-07-30T18:06:00Z",
+        "classifier": {
+          "id": "reviewer:example",
+          "method": "manual",
+          "ruleset_digest": "sha256:5555555555555555555555555555555555555555555555555555555555555555"
+        },
+        "vendor_score": 99
+      },
+      "expect": { "valid": false, "errors": ["record_members_not_closed"] }
+    }
+  ]
+}
