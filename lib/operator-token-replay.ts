@@ -98,10 +98,16 @@ export async function consumeOperatorToken(
       body: JSON.stringify(['SET', key, '1', 'NX', 'EX', String(Math.max(1, Math.ceil(ttlSeconds)))]),
       signal: AbortSignal.timeout(REDIS_TIMEOUT_MS),
     });
+    if (!res.ok) {
+      throw new Error(`replay store returned HTTP ${res.status}`);
+    }
     const data = await res.json();
     if (data?.error) throw new Error(String(data.error));
-    if (data?.result === null || data?.result === undefined) {
+    if (data?.result === null) {
       return { ok: false, reason: 'already_consumed' };
+    }
+    if (data?.result !== 'OK') {
+      throw new Error('replay store returned an unexpected SET result');
     }
     return { ok: true };
   } catch (err: any) {

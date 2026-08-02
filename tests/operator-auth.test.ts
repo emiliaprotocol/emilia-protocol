@@ -16,6 +16,7 @@ beforeEach(() => {
 
 afterEach(() => {
   vi.unstubAllEnvs();
+  vi.unstubAllGlobals();
 });
 
 describe('operator auth — red-team accountability boundary', () => {
@@ -210,5 +211,78 @@ describe('operator auth — token replay', () => {
       });
       expect(result.valid).toBe(true);
     }
+  });
+});
+
+describe('operator auth — durable replay-store contract', () => {
+  function useUpstash(): void {
+    vi.stubEnv('UPSTASH_REDIS_REST_URL', 'https://redis.example.test');
+    vi.stubEnv('UPSTASH_REDIS_REST_TOKEN', 'test-token');
+    vi.stubEnv('EP_OPERATOR_KEYS', JSON.stringify({ op_alice: SECRET_HEX }));
+  }
+
+  it('accepts only an explicit atomic SET success from Redis', async () => {
+    useUpstash();
+    const fetchMock = vi.fn().mockResolvedValue(new Response(
+      JSON.stringify({ result: 'OK' }),
+      { status: 200, headers: { 'content-type': 'application/json' } },
+    ));
+    vi.stubGlobal('fetch', fetchMock);
+
+    const result = await verifyOperatorAuth(
+      generateOperatorToken('op_alice', SECRET_HEX),
+      { requireOperatorIdentity: true },
+    );
+
+    expect(result.valid).toBe(true);
+    expect(fetchMock).toHaveBeenCalledOnce();
+    const [, init] = fetchMock.mock.calls[0] as [string, RequestInit];
+    expect(JSON.parse(String(init.body))).toEqual(expect.arrayContaining(['SET', 'NX', 'EX']));
+  });
+
+  it('maps Redis NX contention to an already-used refusal', async () => {
+    useUpstash();
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue(new Response(
+      JSON.stringify({ result: null }),
+      { status: 200, headers: { 'content-type': 'application/json' } },
+    )));
+
+    const result = await verifyOperatorAuth(
+      generateOperatorToken('op_alice', SECRET_HEX),
+      { requireOperatorIdentity: true },
+    );
+
+    expect(result.valid).toBe(false);
+    expect(result.error).toMatch(/already used/i);
+  });
+
+  it.each([
+    ['HTTP failure', new Response('unavailable', { status: 503 })],
+    ['Redis error', new Response(JSON.stringify({ error: 'READONLY' }), { status: 200 })],
+    ['unexpected result', new Response(JSON.stringify({ result: 1 }), { status: 200 })],
+  ])('fails closed when the durable replay store returns %s', async (_label, response) => {
+    useUpstash();
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue(response));
+
+    const result = await verifyOperatorAuth(
+      generateOperatorToken('op_alice', SECRET_HEX),
+      { requireOperatorIdentity: true },
+    );
+
+    expect(result.valid).toBe(false);
+    expect(result.error).toMatch(/replay protection unavailable/i);
+  });
+
+  it('fails closed when the durable replay store cannot be reached', async () => {
+    useUpstash();
+    vi.stubGlobal('fetch', vi.fn().mockRejectedValue(new Error('network down')));
+
+    const result = await verifyOperatorAuth(
+      generateOperatorToken('op_alice', SECRET_HEX),
+      { requireOperatorIdentity: true },
+    );
+
+    expect(result.valid).toBe(false);
+    expect(result.error).toMatch(/replay protection unavailable/i);
   });
 });
