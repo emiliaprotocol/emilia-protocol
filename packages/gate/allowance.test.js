@@ -9,6 +9,25 @@ import { capabilityBaseReceiptDigest, createMemoryCapabilityStore, delegateCapab
 import { canonicalize } from './execution-binding.js';
 const NOW = Date.parse('2026-07-30T18:00:00.000Z');
 const D = (label) => `sha256:${crypto.createHash('sha256').update(label).digest('hex')}`;
+const currentStatus = (epoch = 1) => ({
+    ok: true,
+    status_epoch: epoch,
+    status_head_digest: D(`allowance-status:${epoch}`),
+});
+function initializeCurrentStatus(store, issued, epoch = 1) {
+    const status = currentStatus(epoch);
+    const result = store.advanceAllowanceStatus({
+        allowance_profile_id: `${issued.allowance.tenant_id}/${issued.allowance.allowance_id}`,
+        allowance_digest: allowanceDigest(issued.allowance),
+        revision: issued.allowance.revision,
+        status_epoch: status.status_epoch,
+        status_head_digest: status.status_head_digest,
+        expected_status_epoch: null,
+        expected_status_head_digest: null,
+        status: 'active',
+    });
+    assert.equal(result.ok, true);
+}
 function material() {
     const pair = generateKeyPairSync('ed25519');
     const publicKey = pair.publicKey.export({ type: 'spki', format: 'der' }).toString('base64url');
@@ -210,7 +229,7 @@ test('one allowance binds exactly one capability envelope and refuses delegation
         store,
         executeAction: async () => assert.fail('delegated allowance must not execute'),
         verifyAuthorizationReceipt: () => true,
-        verifyAllowanceStatus: () => true,
+        verifyAllowanceStatus: () => currentStatus(),
         trustedAllowanceKeys: keys.trustedKeys,
         trustedCapabilityIssuerKeys: [keys.publicKey],
         expected: {
@@ -236,6 +255,7 @@ test('allowed draws run unattended and atomically deplete the aggregate allowanc
     });
     const store = createMemoryCapabilityStore();
     assert.equal(store.registerCapability(issued.capabilityReceipt), true);
+    initializeCurrentStatus(store, issued);
     let authorizationChecks = 0;
     const result = await executeWithGateAllowance({
         allowance: issued.allowance,
@@ -249,7 +269,10 @@ test('allowed draws run unattended and atomically deplete the aggregate allowanc
             authorizationChecks += 1;
             return candidate.payload.receipt_id === receipt.payload.receipt_id;
         },
-        verifyAllowanceStatus: (_candidate, context) => context.revision === 1,
+        verifyAllowanceStatus: (_candidate, context) => ({
+            ...currentStatus(),
+            ok: context.revision === 1,
+        }),
         trustedAllowanceKeys: keys.trustedKeys,
         trustedCapabilityIssuerKeys: [keys.publicKey],
         expected: {
@@ -285,7 +308,7 @@ test('per-action cap, beneficiary allowlist, action shape, and receipt binding f
         store,
         executeAction: async () => { effects += 1; },
         verifyAuthorizationReceipt: () => true,
-        verifyAllowanceStatus: () => true,
+        verifyAllowanceStatus: () => currentStatus(),
         trustedAllowanceKeys: keys.trustedKeys,
         trustedCapabilityIssuerKeys: [keys.publicKey],
         expected: {
@@ -336,13 +359,14 @@ test('concurrent draws linearize and post-entry uncertainty consumes replay auth
     });
     const store = createMemoryCapabilityStore();
     assert.equal(store.registerCapability(issued.capabilityReceipt), true);
+    initializeCurrentStatus(store, issued);
     const common = {
         allowance: issued.allowance,
         capabilityReceipt: issued.capabilityReceipt,
         secret: issued.secret,
         store,
         verifyAuthorizationReceipt: () => true,
-        verifyAllowanceStatus: () => true,
+        verifyAllowanceStatus: () => currentStatus(),
         trustedAllowanceKeys: keys.trustedKeys,
         trustedCapabilityIssuerKeys: [keys.publicKey],
         expected: {
@@ -450,6 +474,67 @@ test('execution fails closed without current status and successors bind the pred
     });
     assert.equal(superseded.reason, 'allowance_superseded');
 });
+test('revocation landing after status verification but before spend reservation refuses the effect', async () => {
+    const keys = material();
+    const receipt = authorizationReceipt(keys);
+    const input = allowanceInput(receipt, keys);
+    const issued = issueGateAllowance({
+        authorizationReceipt: receipt,
+        allowance: input,
+        signer: keys.signer,
+        capabilityIssuerPrivateKey: keys.pair.privateKey,
+    });
+    const capabilityStore = createMemoryCapabilityStore();
+    assert.equal(capabilityStore.registerCapability(issued.capabilityReceipt), true);
+    const activeHead = D('allowance-status:active:1');
+    assert.equal((await capabilityStore.advanceAllowanceStatus({
+        allowance_profile_id: `${input.tenant_id}/${input.allowance_id}`,
+        allowance_digest: allowanceDigest(issued.allowance),
+        revision: 1,
+        status_epoch: 1,
+        status_head_digest: activeHead,
+        expected_status_epoch: null,
+        expected_status_head_digest: null,
+        status: 'active',
+    })).ok, true);
+    let effects = 0;
+    const result = await executeWithGateAllowance({
+        allowance: issued.allowance,
+        capabilityReceipt: issued.capabilityReceipt,
+        secret: issued.secret,
+        action: payout('payout:status-race'),
+        operationId: 'payout:status-race',
+        store: capabilityStore,
+        executeAction: async () => { effects += 1; },
+        verifyAuthorizationReceipt: () => true,
+        verifyAllowanceStatus: async () => {
+            assert.equal((await capabilityStore.advanceAllowanceStatus({
+                allowance_profile_id: `${input.tenant_id}/${input.allowance_id}`,
+                allowance_digest: allowanceDigest(issued.allowance),
+                revision: 1,
+                status: 'revoked',
+                status_epoch: 2,
+                status_head_digest: D('allowance-status:revoked:2'),
+                expected_status_epoch: 1,
+                expected_status_head_digest: activeHead,
+            })).ok, true);
+            return { ok: true, status_epoch: 1, status_head_digest: activeHead };
+        },
+        trustedAllowanceKeys: keys.trustedKeys,
+        trustedCapabilityIssuerKeys: [keys.publicKey],
+        expected: {
+            allowance_id: input.allowance_id,
+            tenant_id: input.tenant_id,
+            subject_id: input.subject_id,
+            audience: input.audience,
+            connector_id: input.connector_id,
+            authorizer_id: keys.signer.issuer_id,
+        },
+        now: NOW,
+    });
+    assert.equal(result.reason, 'allowance_revoked');
+    assert.equal(effects, 0);
+});
 test('a successor allowance cannot replay an operation consumed by its predecessor', async () => {
     const keys = material();
     const receipt = authorizationReceipt(keys);
@@ -475,6 +560,7 @@ test('a successor allowance cannot replay an operation consumed by its predecess
     });
     const store = createMemoryCapabilityStore();
     assert.equal(store.registerCapability(first.capabilityReceipt), true);
+    initializeCurrentStatus(store, first);
     assert.equal(store.registerCapability(successor.capabilityReceipt), true);
     const action = payout('payout:stable-across-successors');
     const common = {
@@ -483,7 +569,7 @@ test('a successor allowance cannot replay an operation consumed by its predecess
         operationId: action.operation_id,
         store,
         verifyAuthorizationReceipt: () => true,
-        verifyAllowanceStatus: () => true,
+        verifyAllowanceStatus: () => currentStatus(),
         trustedAllowanceKeys: keys.trustedKeys,
         trustedCapabilityIssuerKeys: [keys.publicKey],
         expected: {
@@ -502,11 +588,22 @@ test('a successor allowance cannot replay an operation consumed by its predecess
         capabilityReceipt: first.capabilityReceipt,
         executeAction: async () => ({ id: 'po_first' }),
     })).ok, true);
+    assert.equal((await store.advanceAllowanceStatus({
+        allowance_profile_id: `${firstInput.tenant_id}/${firstInput.allowance_id}`,
+        allowance_digest: allowanceDigest(successor.allowance),
+        revision: 2,
+        status_epoch: 2,
+        status_head_digest: currentStatus(2).status_head_digest,
+        expected_status_epoch: 1,
+        expected_status_head_digest: currentStatus(1).status_head_digest,
+        status: 'active',
+    })).ok, true);
     const replay = await executeWithGateAllowance({
         ...common,
         allowance: successor.allowance,
         capabilityReceipt: successor.capabilityReceipt,
         secret: successor.secret,
+        verifyAllowanceStatus: () => currentStatus(2),
         executeAction: async () => assert.fail('successor must not reset replay state'),
     });
     assert.equal(replay.reason, 'operation_already_committed');
@@ -523,6 +620,7 @@ test('a provider success followed by commit failure remains reconcilable without
     });
     const durableBoundary = createMemoryCapabilityStore();
     assert.equal(durableBoundary.registerCapability(issued.capabilityReceipt), true);
+    initializeCurrentStatus(durableBoundary, issued);
     let failCommit = true;
     const store = {
         ...durableBoundary,
@@ -548,7 +646,7 @@ test('a provider success followed by commit failure remains reconcilable without
             return { id: 'po_provider_confirmed' };
         },
         verifyAuthorizationReceipt: () => true,
-        verifyAllowanceStatus: () => true,
+        verifyAllowanceStatus: () => currentStatus(),
         trustedAllowanceKeys: keys.trustedKeys,
         trustedCapabilityIssuerKeys: [keys.publicKey],
         expected: {

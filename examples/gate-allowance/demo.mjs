@@ -211,6 +211,8 @@ function executionOptions(active, operationId) {
     verifyAllowanceStatus: (_allowance, context) => ({
       ok: context.allowance_digest === activeAllowanceDigest,
       reason: 'allowance_superseded',
+      status_epoch: activeStatus.status_epoch,
+      status_head_digest: activeStatus.status_head_digest,
     }),
     trustedAllowanceKeys,
     trustedCapabilityIssuerKeys: [capabilityIssuerPublicKey],
@@ -257,6 +259,10 @@ let active = issue({
   allowedTargets: ['acct_known_a', 'acct_timeout'],
 });
 let activeAllowanceDigest = allowanceDigest(active.allowance);
+let activeStatus = {
+  status_epoch: 1,
+  status_head_digest: digest('allowance-status:1'),
+};
 
 assert.equal(
   verifyGateAllowance(active.allowance, {
@@ -331,6 +337,20 @@ const successor = issue({
 });
 active = successor;
 activeAllowanceDigest = allowanceDigest(active.allowance);
+const successorStatus = {
+  status_epoch: 2,
+  status_head_digest: digest('allowance-status:2'),
+};
+assert.equal((await capabilityStore.advanceAllowanceStatus({
+  allowance_profile_id: `${TENANT_ID}/${active.allowance.allowance_id}`,
+  allowance_digest: activeAllowanceDigest,
+  revision: active.allowance.revision,
+  expected_status_epoch: activeStatus.status_epoch,
+  expected_status_head_digest: activeStatus.status_head_digest,
+  ...successorStatus,
+  status: 'active',
+})).ok, true);
+activeStatus = successorStatus;
 
 const retiredRefused = await guardStripeAllowanceMutation({
   connector: stripeConnector,

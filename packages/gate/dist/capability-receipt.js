@@ -165,6 +165,96 @@ function existingOperationReason(status) {
         return 'operation_already_committed';
     return 'operation_already_finalized';
 }
+function normalizeAllowanceStatusAssertion(value) {
+    if (!isRecord(value)
+        || Object.keys(value).length !== 5
+        || !Object.hasOwn(value, 'allowance_profile_id')
+        || !Object.hasOwn(value, 'allowance_digest')
+        || !Object.hasOwn(value, 'revision')
+        || !Object.hasOwn(value, 'status_epoch')
+        || !Object.hasOwn(value, 'status_head_digest')) {
+        throw new TypeError('allowance status assertion must be a closed object');
+    }
+    const allowanceProfileId = validateOperationNamespace(value.allowance_profile_id);
+    if (typeof value.allowance_digest !== 'string' || !ACTION_DIGEST_RE.test(value.allowance_digest)
+        || typeof value.status_head_digest !== 'string' || !ACTION_DIGEST_RE.test(value.status_head_digest)) {
+        throw new TypeError('allowance status digests must be SHA-256');
+    }
+    if (!Number.isSafeInteger(value.revision) || value.revision < 1
+        || !Number.isSafeInteger(value.status_epoch) || value.status_epoch < 1) {
+        throw new TypeError('allowance status revision and epoch must be positive safe integers');
+    }
+    return {
+        allowance_profile_id: allowanceProfileId,
+        allowance_digest: value.allowance_digest,
+        revision: value.revision,
+        status_epoch: value.status_epoch,
+        status_head_digest: value.status_head_digest,
+    };
+}
+function normalizeAllowanceStatusAdvance(value) {
+    if (!isRecord(value)
+        || Object.keys(value).length !== 8
+        || !Object.hasOwn(value, 'expected_status_epoch')
+        || !Object.hasOwn(value, 'expected_status_head_digest')
+        || !Object.hasOwn(value, 'status')) {
+        throw new TypeError('allowance status advance must be a closed object');
+    }
+    const assertion = normalizeAllowanceStatusAssertion(Object.fromEntries(['allowance_profile_id', 'allowance_digest', 'revision', 'status_epoch', 'status_head_digest']
+        .map((key) => [key, value[key]])));
+    const expectedEpoch = value.expected_status_epoch;
+    const expectedHead = value.expected_status_head_digest;
+    if ((expectedEpoch === null) !== (expectedHead === null)
+        || (expectedEpoch !== null
+            && (!Number.isSafeInteger(expectedEpoch) || expectedEpoch < 1
+                || typeof expectedHead !== 'string' || !ACTION_DIGEST_RE.test(expectedHead)))) {
+        throw new TypeError('allowance status expected head is invalid');
+    }
+    if (!['active', 'suspended', 'revoked'].includes(value.status)) {
+        throw new TypeError('allowance status is invalid');
+    }
+    return {
+        ...assertion,
+        expected_status_epoch: expectedEpoch,
+        expected_status_head_digest: expectedHead,
+        status: value.status,
+    };
+}
+function allowanceStatusRefusal(current, asserted) {
+    if (current.status !== 'active')
+        return `allowance_${current.status}`;
+    if (current.allowance_digest !== asserted.allowance_digest
+        || Number(current.revision) > asserted.revision) {
+        return 'allowance_superseded';
+    }
+    if (current.allowance_profile_id !== asserted.allowance_profile_id
+        || Number(current.revision) !== asserted.revision
+        || Number(current.status_epoch) !== asserted.status_epoch
+        || current.status_head_digest !== asserted.status_head_digest) {
+        return 'allowance_not_current';
+    }
+    return null;
+}
+function exactAllowanceStatus(current, next) {
+    return current.allowance_profile_id === next.allowance_profile_id
+        && current.allowance_digest === next.allowance_digest
+        && Number(current.revision) === next.revision
+        && Number(current.status_epoch) === next.status_epoch
+        && current.status_head_digest === next.status_head_digest
+        && current.status === next.status;
+}
+function allowanceStatusAdvanceConflict(current, next) {
+    return Number(current.status_epoch) !== next.expected_status_epoch
+        || current.status_head_digest !== next.expected_status_head_digest
+        || next.status_epoch <= Number(current.status_epoch)
+        || next.status_head_digest === current.status_head_digest
+        || next.revision < Number(current.revision)
+        || next.revision > Number(current.revision) + 1
+        || (next.revision === Number(current.revision)
+            && next.allowance_digest !== current.allowance_digest)
+        || (next.revision > Number(current.revision)
+            && next.allowance_digest === current.allowance_digest);
+}
 /** Digest the exact immutable action snapshot exercised under a capability. */
 export function capabilityActionDigest(action) {
     return `sha256:${sha256Hex(Buffer.from(canonicalize(action), 'utf8'))}`;
@@ -632,12 +722,17 @@ export function reconstructCapabilitySecret(shares, threshold) {
 }
 function capabilityStateFromEnvelope(capabilityReceipt) {
     const c = capabilityReceipt.capability;
+    const allowanceScope = c.scope?.profile === CAPABILITY_ALLOWANCE_SCOPE_PROFILE
+        ? c.scope
+        : null;
     return {
         capability_id: c.id,
         capability_fingerprint: capabilityEnvelopeFingerprint(capabilityReceipt),
         budget_amount: c.budget.amount,
         currency: c.budget.currency,
         expires_at: Date.parse(c.expiry),
+        allowance_profile_id: allowanceScope?.profile_id ?? null,
+        allowance_digest: allowanceScope?.profile_digest ?? null,
     };
 }
 /**
@@ -665,10 +760,12 @@ export function createMemoryCapabilityStore({ providerEntryTimeoutMs = DEFAULT_P
     const entryTimeoutMs = validateProviderEntryTimeoutMs(providerEntryTimeoutMs);
     const states = new Map();
     const operations = new Map();
+    const allowanceStatuses = new Map();
     const operationKey = (operationNamespace, operationId) => JSON.stringify([operationNamespace, operationId]);
     return {
         durable: false,
         reconciliationCapable: true,
+        allowanceCurrentnessCapable: true,
         registerCapability(capabilityReceipt) {
             const verified = verifyCapabilityReceipt(capabilityReceipt, { allowUntrustedIssuer: true });
             if (!verified.ok)
@@ -679,12 +776,38 @@ export function createMemoryCapabilityStore({ providerEntryTimeoutMs = DEFAULT_P
                 return existing.capability_fingerprint === state.capability_fingerprint
                     && existing.budget_amount === state.budget_amount
                     && existing.currency === state.currency
-                    && existing.expires_at === state.expires_at;
+                    && existing.expires_at === state.expires_at
+                    && existing.allowance_profile_id === state.allowance_profile_id
+                    && existing.allowance_digest === state.allowance_digest;
             }
             states.set(state.capability_id, { ...state, consumed_amount: 0, reserved_amount: 0 });
             return true;
         },
-        async reserveSpend({ capabilityId, capabilityFingerprint, operationNamespace = capabilityId, operationId, actionDigest, amount, currency, now = Date.now }) {
+        advanceAllowanceStatus(options) {
+            const next = normalizeAllowanceStatusAdvance(options);
+            const current = allowanceStatuses.get(next.allowance_profile_id);
+            if (current && exactAllowanceStatus(current, next)) {
+                return { ok: true, idempotent: true };
+            }
+            if (!current) {
+                if (next.expected_status_epoch !== null || next.expected_status_head_digest !== null) {
+                    return { ok: false, reason: 'allowance_status_head_conflict' };
+                }
+            }
+            else if (allowanceStatusAdvanceConflict(current, next)) {
+                return { ok: false, reason: 'allowance_status_head_conflict' };
+            }
+            allowanceStatuses.set(next.allowance_profile_id, {
+                allowance_profile_id: next.allowance_profile_id,
+                allowance_digest: next.allowance_digest,
+                revision: next.revision,
+                status_epoch: next.status_epoch,
+                status_head_digest: next.status_head_digest,
+                status: next.status,
+            });
+            return { ok: true, idempotent: false };
+        },
+        async reserveSpend({ capabilityId, capabilityFingerprint, operationNamespace = capabilityId, operationId, actionDigest, amount, currency, allowanceStatus, now = Date.now }) {
             validateOperationId(operationId);
             validateOperationNamespace(operationNamespace);
             validateActionDigest(actionDigest);
@@ -695,6 +818,28 @@ export function createMemoryCapabilityStore({ providerEntryTimeoutMs = DEFAULT_P
                 return { ok: false, reason: 'capability_not_registered' };
             if (state.capability_fingerprint !== capabilityFingerprint)
                 return { ok: false, reason: 'capability_envelope_mismatch' };
+            if (state.allowance_profile_id !== null && operationNamespace === state.allowance_profile_id) {
+                let asserted;
+                try {
+                    asserted = normalizeAllowanceStatusAssertion(allowanceStatus);
+                }
+                catch {
+                    return { ok: false, reason: 'allowance_status_assertion_required' };
+                }
+                if (asserted.allowance_profile_id !== state.allowance_profile_id
+                    || asserted.allowance_digest !== state.allowance_digest) {
+                    return { ok: false, reason: 'allowance_status_binding_mismatch' };
+                }
+                const current = allowanceStatuses.get(asserted.allowance_profile_id);
+                if (!current)
+                    return { ok: false, reason: 'allowance_status_not_initialized' };
+                const refusal = allowanceStatusRefusal(current, asserted);
+                if (refusal)
+                    return { ok: false, reason: refusal };
+            }
+            else if (allowanceStatus !== undefined) {
+                return { ok: false, reason: 'allowance_status_not_applicable' };
+            }
             const key = operationKey(operationNamespace, operationId);
             const existing = operations.get(key);
             if (existing)
@@ -720,6 +865,9 @@ export function createMemoryCapabilityStore({ providerEntryTimeoutMs = DEFAULT_P
                 reserved_at: at,
                 entry_deadline_at: entryDeadlineAt,
                 provider_entry_at: null,
+                allowance_revision: allowanceStatus?.revision ?? null,
+                allowance_status_epoch: allowanceStatus?.status_epoch ?? null,
+                allowance_status_head_digest: allowanceStatus?.status_head_digest ?? null,
             });
             state.reserved_amount += amount;
             return {
@@ -929,6 +1077,10 @@ export function createMemoryCapabilityStore({ providerEntryTimeoutMs = DEFAULT_P
             const state = states.get(capabilityId);
             return state ? Object.freeze({ ...state }) : null;
         },
+        getAllowanceStatus(allowanceProfileId) {
+            const status = allowanceStatuses.get(allowanceProfileId);
+            return status ? Object.freeze({ ...status }) : null;
+        },
         getOperation(operationId, capabilityId = null, operationNamespace = capabilityId) {
             let operation = capabilityId === null
                 ? null
@@ -948,6 +1100,7 @@ export function createMemoryCapabilityStore({ providerEntryTimeoutMs = DEFAULT_P
 }
 export const CAPABILITY_STATE_TABLE = 'ep_capability_state';
 export const CAPABILITY_OPERATION_TABLE = 'ep_capability_operations';
+export const CAPABILITY_ALLOWANCE_STATUS_TABLE = 'ep_gate_allowance_status';
 export const CAPABILITY_STATE_DDL = `CREATE TABLE IF NOT EXISTS ${CAPABILITY_STATE_TABLE} (
   capability_id TEXT PRIMARY KEY,
   capability_fingerprint TEXT NOT NULL CHECK (capability_fingerprint ~ '^sha256:[0-9a-f]{64}$'),
@@ -956,9 +1109,23 @@ export const CAPABILITY_STATE_DDL = `CREATE TABLE IF NOT EXISTS ${CAPABILITY_STA
   consumed_amount BIGINT NOT NULL DEFAULT 0 CHECK (consumed_amount >= 0),
   reserved_amount BIGINT NOT NULL DEFAULT 0 CHECK (reserved_amount >= 0),
   expires_at TIMESTAMPTZ NOT NULL,
-  created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+  created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+  allowance_profile_id TEXT,
+  allowance_digest TEXT CHECK (allowance_digest ~ '^sha256:[0-9a-f]{64}$'),
+  CHECK ((allowance_profile_id IS NULL) = (allowance_digest IS NULL))
 );
 ALTER TABLE ${CAPABILITY_STATE_TABLE} ADD COLUMN IF NOT EXISTS capability_fingerprint TEXT;
+ALTER TABLE ${CAPABILITY_STATE_TABLE} ADD COLUMN IF NOT EXISTS allowance_profile_id TEXT;
+ALTER TABLE ${CAPABILITY_STATE_TABLE} ADD COLUMN IF NOT EXISTS allowance_digest TEXT CHECK (allowance_digest ~ '^sha256:[0-9a-f]{64}$');
+CREATE TABLE IF NOT EXISTS ${CAPABILITY_ALLOWANCE_STATUS_TABLE} (
+  allowance_profile_id TEXT PRIMARY KEY,
+  allowance_digest TEXT NOT NULL CHECK (allowance_digest ~ '^sha256:[0-9a-f]{64}$'),
+  revision BIGINT NOT NULL CHECK (revision > 0),
+  status_epoch BIGINT NOT NULL CHECK (status_epoch > 0),
+  status_head_digest TEXT NOT NULL CHECK (status_head_digest ~ '^sha256:[0-9a-f]{64}$'),
+  status TEXT NOT NULL CHECK (status IN ('active', 'suspended', 'revoked')),
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
 CREATE TABLE IF NOT EXISTS ${CAPABILITY_OPERATION_TABLE} (
   operation_namespace TEXT NOT NULL,
   operation_id TEXT NOT NULL,
@@ -971,6 +1138,9 @@ CREATE TABLE IF NOT EXISTS ${CAPABILITY_OPERATION_TABLE} (
   outcome TEXT,
   reconciliation_outcome TEXT CHECK (reconciliation_outcome IN ('executed')),
   reconciliation_evidence_digest TEXT CHECK (reconciliation_evidence_digest ~ '^sha256:[0-9a-f]{64}$'),
+  allowance_revision BIGINT CHECK (allowance_revision > 0),
+  allowance_status_epoch BIGINT CHECK (allowance_status_epoch > 0),
+  allowance_status_head_digest TEXT CHECK (allowance_status_head_digest ~ '^sha256:[0-9a-f]{64}$'),
   reserved_at TIMESTAMPTZ NOT NULL,
   entry_deadline_at TIMESTAMPTZ,
   provider_entry_at TIMESTAMPTZ,
@@ -985,6 +1155,11 @@ CREATE TABLE IF NOT EXISTS ${CAPABILITY_OPERATION_TABLE} (
     OR
     (reconciliation_outcome IS NOT NULL AND reconciliation_evidence_digest IS NOT NULL AND reconciled_at IS NOT NULL)
   ),
+  CHECK (
+    (allowance_revision IS NULL AND allowance_status_epoch IS NULL AND allowance_status_head_digest IS NULL)
+    OR
+    (allowance_revision IS NOT NULL AND allowance_status_epoch IS NOT NULL AND allowance_status_head_digest IS NOT NULL)
+  ),
   PRIMARY KEY (operation_namespace, operation_id)
 );
 ALTER TABLE ${CAPABILITY_OPERATION_TABLE} ADD COLUMN IF NOT EXISTS operation_namespace TEXT;
@@ -998,6 +1173,9 @@ ALTER TABLE ${CAPABILITY_OPERATION_TABLE} DROP CONSTRAINT IF EXISTS ${CAPABILITY
 ALTER TABLE ${CAPABILITY_OPERATION_TABLE}
   ADD CONSTRAINT ${CAPABILITY_OPERATION_TABLE}_status_check
   CHECK (status IN ('reserved', 'provider_entered', 'committed', 'released'));
+ALTER TABLE ${CAPABILITY_OPERATION_TABLE} ADD COLUMN IF NOT EXISTS allowance_revision BIGINT CHECK (allowance_revision > 0);
+ALTER TABLE ${CAPABILITY_OPERATION_TABLE} ADD COLUMN IF NOT EXISTS allowance_status_epoch BIGINT CHECK (allowance_status_epoch > 0);
+ALTER TABLE ${CAPABILITY_OPERATION_TABLE} ADD COLUMN IF NOT EXISTS allowance_status_head_digest TEXT CHECK (allowance_status_head_digest ~ '^sha256:[0-9a-f]{64}$');
 UPDATE ${CAPABILITY_OPERATION_TABLE}
   SET operation_namespace = capability_id
   WHERE operation_namespace IS NULL;
@@ -1030,10 +1208,13 @@ $capability_operation_primary_key$;
 CREATE INDEX IF NOT EXISTS ${CAPABILITY_OPERATION_TABLE}_capability_idx ON ${CAPABILITY_OPERATION_TABLE}(capability_id);
 CREATE INDEX IF NOT EXISTS ${CAPABILITY_OPERATION_TABLE}_recovery_idx ON ${CAPABILITY_OPERATION_TABLE}(status, entry_deadline_at);`;
 export const CAPABILITY_SQL = Object.freeze({
-    register: `INSERT INTO ${CAPABILITY_STATE_TABLE} (capability_id, budget_amount, currency, expires_at, capability_fingerprint) VALUES ($1, $2, $3, $4, $5) ON CONFLICT (capability_id) DO UPDATE SET capability_fingerprint = COALESCE(${CAPABILITY_STATE_TABLE}.capability_fingerprint, EXCLUDED.capability_fingerprint) WHERE ${CAPABILITY_STATE_TABLE}.budget_amount = EXCLUDED.budget_amount AND ${CAPABILITY_STATE_TABLE}.currency = EXCLUDED.currency AND ${CAPABILITY_STATE_TABLE}.expires_at = EXCLUDED.expires_at`,
-    readState: `SELECT capability_id, capability_fingerprint, budget_amount, currency, consumed_amount, reserved_amount, expires_at FROM ${CAPABILITY_STATE_TABLE} WHERE capability_id = $1 FOR UPDATE`,
-    readOperation: `SELECT operation_namespace, operation_id, capability_id, action_digest, amount, currency, status, reservation_token, outcome, reconciliation_outcome, reconciliation_evidence_digest, reconciled_at, reserved_at, entry_deadline_at, provider_entry_at, released_at, release_reason, release_evidence_profile, release_evidence_digest FROM ${CAPABILITY_OPERATION_TABLE} WHERE operation_namespace = $1 AND operation_id = $2 FOR UPDATE`,
-    insertOperation: `INSERT INTO ${CAPABILITY_OPERATION_TABLE} (operation_namespace, capability_id, operation_id, action_digest, amount, currency, status, reservation_token, reserved_at, entry_deadline_at) VALUES ($1, $2, $3, $4, $5, $6, 'reserved', $7, $8, $9)`,
+    register: `INSERT INTO ${CAPABILITY_STATE_TABLE} (capability_id, budget_amount, currency, expires_at, capability_fingerprint, allowance_profile_id, allowance_digest) VALUES ($1, $2, $3, $4, $5, $6, $7) ON CONFLICT (capability_id) DO UPDATE SET capability_fingerprint = COALESCE(${CAPABILITY_STATE_TABLE}.capability_fingerprint, EXCLUDED.capability_fingerprint), allowance_profile_id = COALESCE(${CAPABILITY_STATE_TABLE}.allowance_profile_id, EXCLUDED.allowance_profile_id), allowance_digest = COALESCE(${CAPABILITY_STATE_TABLE}.allowance_digest, EXCLUDED.allowance_digest) WHERE ${CAPABILITY_STATE_TABLE}.budget_amount = EXCLUDED.budget_amount AND ${CAPABILITY_STATE_TABLE}.currency = EXCLUDED.currency AND ${CAPABILITY_STATE_TABLE}.expires_at = EXCLUDED.expires_at AND (${CAPABILITY_STATE_TABLE}.allowance_profile_id IS NULL OR ${CAPABILITY_STATE_TABLE}.allowance_profile_id IS NOT DISTINCT FROM EXCLUDED.allowance_profile_id) AND (${CAPABILITY_STATE_TABLE}.allowance_digest IS NULL OR ${CAPABILITY_STATE_TABLE}.allowance_digest IS NOT DISTINCT FROM EXCLUDED.allowance_digest)`,
+    readState: `SELECT capability_id, capability_fingerprint, budget_amount, currency, consumed_amount, reserved_amount, expires_at, allowance_profile_id, allowance_digest FROM ${CAPABILITY_STATE_TABLE} WHERE capability_id = $1 FOR UPDATE`,
+    readAllowanceStatus: `SELECT allowance_profile_id, allowance_digest, revision, status_epoch, status_head_digest, status FROM ${CAPABILITY_ALLOWANCE_STATUS_TABLE} WHERE allowance_profile_id = $1 FOR UPDATE`,
+    insertAllowanceStatus: `INSERT INTO ${CAPABILITY_ALLOWANCE_STATUS_TABLE} (allowance_profile_id, allowance_digest, revision, status_epoch, status_head_digest, status, updated_at) VALUES ($1, $2, $3, $4, $5, $6, $7) ON CONFLICT (allowance_profile_id) DO NOTHING`,
+    updateAllowanceStatus: `UPDATE ${CAPABILITY_ALLOWANCE_STATUS_TABLE} SET allowance_digest = $4, revision = $5, status_epoch = $6, status_head_digest = $7, status = $8, updated_at = $9 WHERE allowance_profile_id = $1 AND status_epoch = $2 AND status_head_digest = $3`,
+    readOperation: `SELECT operation_namespace, operation_id, capability_id, action_digest, amount, currency, status, reservation_token, outcome, reconciliation_outcome, reconciliation_evidence_digest, allowance_revision, allowance_status_epoch, allowance_status_head_digest, reconciled_at, reserved_at, entry_deadline_at, provider_entry_at, released_at, release_reason, release_evidence_profile, release_evidence_digest FROM ${CAPABILITY_OPERATION_TABLE} WHERE operation_namespace = $1 AND operation_id = $2 FOR UPDATE`,
+    insertOperation: `INSERT INTO ${CAPABILITY_OPERATION_TABLE} (operation_namespace, capability_id, operation_id, action_digest, amount, currency, status, reservation_token, reserved_at, entry_deadline_at, allowance_revision, allowance_status_epoch, allowance_status_head_digest) VALUES ($1, $2, $3, $4, $5, $6, 'reserved', $7, $8, $9, $10, $11, $12)`,
     reserveState: `UPDATE ${CAPABILITY_STATE_TABLE} SET reserved_amount = reserved_amount + $2 WHERE capability_id = $1 AND budget_amount - consumed_amount - reserved_amount >= $2`,
     beginProviderEntry: `UPDATE ${CAPABILITY_OPERATION_TABLE} SET status = 'provider_entered', provider_entry_at = $5 WHERE operation_namespace = $1 AND operation_id = $2 AND capability_id = $3 AND status = 'reserved' AND reservation_token = $4 AND entry_deadline_at IS NOT NULL AND entry_deadline_at > $5`,
     commitOperation: `UPDATE ${CAPABILITY_OPERATION_TABLE} SET status = 'committed', outcome = $4, committed_at = $5 WHERE operation_namespace = $1 AND operation_id = $2 AND capability_id = $3 AND status = $7 AND reservation_token = $6`,
@@ -1060,23 +1241,82 @@ export function createPostgresCapabilityStore({ transaction, providerEntryTimeou
     return {
         durable: true,
         reconciliationCapable: true,
+        allowanceCurrentnessCapable: true,
         async registerCapability(capabilityReceipt) {
             const verified = verifyCapabilityReceipt(capabilityReceipt, { allowUntrustedIssuer: true });
             if (!verified.ok)
                 return false;
             const state = capabilityStateFromEnvelope(capabilityReceipt);
             return transaction(async (query) => {
-                await query(CAPABILITY_SQL.register, [state.capability_id, state.budget_amount, capabilityReceipt.capability.budget.currency, new Date(state.expires_at).toISOString(), state.capability_fingerprint]);
+                await query(CAPABILITY_SQL.register, [
+                    state.capability_id,
+                    state.budget_amount,
+                    capabilityReceipt.capability.budget.currency,
+                    new Date(state.expires_at).toISOString(),
+                    state.capability_fingerprint,
+                    state.allowance_profile_id,
+                    state.allowance_digest,
+                ]);
                 const result = await query(CAPABILITY_SQL.readState, [state.capability_id]);
                 const row = result?.rows?.[0];
                 return Boolean(row)
                     && row.capability_fingerprint === state.capability_fingerprint
                     && Number(row.budget_amount) === state.budget_amount
                     && row.currency === state.currency
-                    && Date.parse(row.expires_at) === state.expires_at;
+                    && Date.parse(row.expires_at) === state.expires_at
+                    && (row.allowance_profile_id ?? null) === state.allowance_profile_id
+                    && (row.allowance_digest ?? null) === state.allowance_digest;
             });
         },
-        async reserveSpend({ capabilityId, capabilityFingerprint, operationNamespace = capabilityId, operationId, actionDigest, amount, currency, now = Date.now }) {
+        async advanceAllowanceStatus(options) {
+            const next = normalizeAllowanceStatusAdvance(options);
+            const updatedAt = new Date().toISOString();
+            return transaction(async (query) => {
+                let result = await query(CAPABILITY_SQL.readAllowanceStatus, [next.allowance_profile_id]);
+                let current = result?.rows?.[0];
+                if (current && exactAllowanceStatus(current, next)) {
+                    return { ok: true, idempotent: true };
+                }
+                if (!current) {
+                    if (next.expected_status_epoch !== null || next.expected_status_head_digest !== null) {
+                        return { ok: false, reason: 'allowance_status_head_conflict' };
+                    }
+                    await query(CAPABILITY_SQL.insertAllowanceStatus, [
+                        next.allowance_profile_id,
+                        next.allowance_digest,
+                        next.revision,
+                        next.status_epoch,
+                        next.status_head_digest,
+                        next.status,
+                        updatedAt,
+                    ]);
+                    result = await query(CAPABILITY_SQL.readAllowanceStatus, [next.allowance_profile_id]);
+                    current = result?.rows?.[0];
+                    return current && exactAllowanceStatus(current, next)
+                        ? { ok: true, idempotent: false }
+                        : { ok: false, reason: 'allowance_status_head_conflict' };
+                }
+                if (allowanceStatusAdvanceConflict(current, next)) {
+                    return { ok: false, reason: 'allowance_status_head_conflict' };
+                }
+                const advanced = await query(CAPABILITY_SQL.updateAllowanceStatus, [
+                    next.allowance_profile_id,
+                    next.expected_status_epoch,
+                    next.expected_status_head_digest,
+                    next.allowance_digest,
+                    next.revision,
+                    next.status_epoch,
+                    next.status_head_digest,
+                    next.status,
+                    updatedAt,
+                ]);
+                if (advanced?.rowCount !== 1) {
+                    return { ok: false, reason: 'allowance_status_head_conflict' };
+                }
+                return { ok: true, idempotent: false };
+            });
+        },
+        async reserveSpend({ capabilityId, capabilityFingerprint, operationNamespace = capabilityId, operationId, actionDigest, amount, currency, allowanceStatus, now = Date.now }) {
             validateOperationId(operationId);
             validateOperationNamespace(operationNamespace);
             validateAmount(amount);
@@ -1090,6 +1330,32 @@ export function createPostgresCapabilityStore({ transaction, providerEntryTimeou
                     return { ok: false, reason: 'capability_not_registered' };
                 if (state.capability_fingerprint !== capabilityFingerprint)
                     return { ok: false, reason: 'capability_envelope_mismatch' };
+                let assertedAllowanceStatus = null;
+                if (typeof state.allowance_profile_id === 'string'
+                    && operationNamespace === state.allowance_profile_id) {
+                    try {
+                        assertedAllowanceStatus = normalizeAllowanceStatusAssertion(allowanceStatus);
+                    }
+                    catch {
+                        return { ok: false, reason: 'allowance_status_assertion_required' };
+                    }
+                    if (assertedAllowanceStatus.allowance_profile_id !== state.allowance_profile_id
+                        || assertedAllowanceStatus.allowance_digest !== state.allowance_digest) {
+                        return { ok: false, reason: 'allowance_status_binding_mismatch' };
+                    }
+                    let statusResult = await query(CAPABILITY_SQL.readAllowanceStatus, [
+                        assertedAllowanceStatus.allowance_profile_id,
+                    ]);
+                    let currentStatus = statusResult?.rows?.[0];
+                    if (!currentStatus)
+                        return { ok: false, reason: 'allowance_status_not_initialized' };
+                    const refusal = allowanceStatusRefusal(currentStatus, assertedAllowanceStatus);
+                    if (refusal)
+                        return { ok: false, reason: refusal };
+                }
+                else if (allowanceStatus !== undefined) {
+                    return { ok: false, reason: 'allowance_status_not_applicable' };
+                }
                 const operationResult = await query(CAPABILITY_SQL.readOperation, [operationNamespace, operationId]);
                 if (operationResult?.rows?.[0])
                     return { ok: false, reason: existingOperationReason(operationResult.rows[0].status) };
@@ -1116,6 +1382,9 @@ export function createPostgresCapabilityStore({ transaction, providerEntryTimeou
                     token,
                     new Date(at).toISOString(),
                     new Date(entryDeadlineAt).toISOString(),
+                    assertedAllowanceStatus?.revision ?? null,
+                    assertedAllowanceStatus?.status_epoch ?? null,
+                    assertedAllowanceStatus?.status_head_digest ?? null,
                 ]);
                 return {
                     ok: true,
@@ -1401,7 +1670,7 @@ function capabilityAmount(action, capability, verifiedAction = action) {
  * @param {number|(() => number)} [options.now]
  * @param {boolean} [options.thresholdSecretVerified]
  */
-export async function executeWithCapability({ capabilityReceipt, secret, action, store, executeAction, gate = null, selector = {}, observedAction = null, trustedIssuerKeys = [], verifyBaseReceipt = null, resolveCaid = null, verifyActionProfile = null, operationId = null, now = Date.now, thresholdSecretVerified = false, } = {}) {
+export async function executeWithCapability({ capabilityReceipt, secret, action, store, executeAction, gate = null, selector = {}, observedAction = null, trustedIssuerKeys = [], verifyBaseReceipt = null, resolveCaid = null, verifyActionProfile = null, allowanceStatus, operationId = null, now = Date.now, thresholdSecretVerified = false, } = {}) {
     const verified = verifyCapabilityReceipt(capabilityReceipt, { trustedIssuerKeys });
     if (!verified.ok)
         return { ok: false, reason: verified.reason };
@@ -1479,6 +1748,7 @@ export async function executeWithCapability({ capabilityReceipt, secret, action,
         actionDigest: scope.action_digest,
         amount: spend.amount,
         currency: spend.currency,
+        ...(allowanceStatus ? { allowanceStatus } : {}),
         now,
     });
     if (!reserved?.ok)
@@ -1775,6 +2045,7 @@ export default {
     CAPABILITY_SCOPE_PROFILE,
     CAPABILITY_CAID_SCOPE_PROFILE,
     CAPABILITY_ALLOWANCE_SCOPE_PROFILE,
+    CAPABILITY_ALLOWANCE_STATUS_TABLE,
     CAPABILITY_STATE_DDL,
     CAPABILITY_SQL,
     capabilityBaseReceiptDigest,

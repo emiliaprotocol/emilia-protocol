@@ -177,6 +177,7 @@ const SERVICE_ONLY_TABLES = [
     // spending/budget state reached only through the service-role durable store.
     'ep_capability_state',
     'ep_capability_operations',
+    'ep_gate_allowance_status',
     // Durable AEB operation and native-protocol replay fences. These are
     // authoritative execution-control state and therefore service-only.
     'ep_aeb_consumption_operations',
@@ -283,10 +284,14 @@ export const contract = {
             'effect_contract_digest', 'retryable', 'provider_result'],
         scim_provisioning_tokens: ['tenant_id', 'token_hash', 'token_prefix', 'revoked_at'],
         ep_capability_state: ['capability_id', 'capability_fingerprint', 'budget_amount',
-            'currency', 'consumed_amount', 'reserved_amount', 'expires_at'],
+            'currency', 'consumed_amount', 'reserved_amount', 'expires_at',
+            'allowance_profile_id', 'allowance_digest'],
         ep_capability_operations: ['operation_id', 'capability_id', 'action_digest', 'amount', 'currency',
             'status', 'reservation_token', 'outcome', 'reconciliation_outcome',
-            'reconciliation_evidence_digest', 'reserved_at', 'committed_at', 'reconciled_at'],
+            'reconciliation_evidence_digest', 'allowance_revision', 'allowance_status_epoch',
+            'allowance_status_head_digest', 'reserved_at', 'committed_at', 'reconciled_at'],
+        ep_gate_allowance_status: ['allowance_profile_id', 'allowance_digest', 'revision',
+            'status_epoch', 'status_head_digest', 'status', 'updated_at'],
         ep_aeb_consumption_operations: ['tenant_id', 'relying_party_id', 'operation_key',
             'state', 'owner_token', 'reserved_at', 'consumed_at'],
         ep_aeb_consumption_replay_fences: ['tenant_id', 'relying_party_id', 'replay_key',

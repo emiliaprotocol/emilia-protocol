@@ -1,16 +1,18 @@
 {
   "schema_version": "EP-MIGRATION-HISTORY-v1",
-  "as_of": "2026-08-01",
+  "as_of": "2026-08-02",
   "remote_head": "20260728210700",
   "private_remote_versions": [
     "20260723192504"
   ],
   "retroactive_pending_versions": [],
   "forward_pending_versions": [
-    "20260801010000"
+    "20260801010000",
+    "20260802090000"
   ],
   "deployment_sequence": [
-    "20260801010000"
+    "20260801010000",
+    "20260802090000"
   ],
   "requires_include_all": false,
   "remote_versions": [
@@ -377,6 +379,7 @@
     "20260725204500_rollout_attempt_store_managed_role_fix.sql": "8a93a8ed5aaff3b0d61ef846ffb44832195323df57719afd74b2c720b1550d92",
     "20260725210000_schema_contract_identity_arguments.sql": "4b501f8fe32311c461eb287ea9cea89ae5b528d06f96832777911f4f53ffe86f",
     "20260728210700_open_exposure_ledger.sql": "8ca555e9eae2adcb6853690f6cbd850606164c8872c707d68a7904fc745d7c71",
-    "20260801010000_trust_desk_review_transition.sql": "e36b6784bb2bb31da23e55b5d27a5eb237d07ea4ab7af23b7ef409fe3f0df4e9"
+    "20260801010000_trust_desk_review_transition.sql": "e36b6784bb2bb31da23e55b5d27a5eb237d07ea4ab7af23b7ef409fe3f0df4e9",
+    "20260802090000_gate_allowance_currentness_atomicity.sql": "319a11f1430992bd7e9339d4ca55a61293ac8c6052af6870140dc64d37c91235"
   }
 }

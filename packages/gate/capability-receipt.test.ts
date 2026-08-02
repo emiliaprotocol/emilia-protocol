@@ -234,6 +234,8 @@ test('postgres capability operations use a composite namespace and operation key
   assert.match(CAPABILITY_STATE_DDL, /'provider_entered'/);
   assert.match(CAPABILITY_STATE_DDL, /'released'/);
   assert.match(CAPABILITY_SQL.readOperation, /operation_namespace = \$1 AND operation_id = \$2/);
+  assert.match(CAPABILITY_STATE_DDL, /CREATE TABLE IF NOT EXISTS ep_gate_allowance_status/);
+  assert.match(CAPABILITY_SQL.readAllowanceStatus, /FOR UPDATE/);
 
   const keys = issuer();
   const first = mintCapabilityReceipt(keys.receipt, options({
@@ -433,6 +435,97 @@ test('postgres capability operations use a composite namespace and operation key
   )).status, 'released');
 });
 
+test('postgres reservation refuses a stale allowance head under the status row lock', async () => {
+  const profileId = 'tenant:postgres/allowance:postgres';
+  const allowanceDigest = `sha256:${'a'.repeat(64)}`;
+  const activeHead = `sha256:${'b'.repeat(64)}`;
+  const revokedHead = `sha256:${'c'.repeat(64)}`;
+  const state = {
+    capability_id: 'postgres_allowance_capability',
+    capability_fingerprint: `sha256:${'d'.repeat(64)}`,
+    budget_amount: '10',
+    currency: 'USD',
+    consumed_amount: '0',
+    reserved_amount: '0',
+    expires_at: new Date(NOW + 60_000).toISOString(),
+    allowance_profile_id: profileId,
+    allowance_digest: allowanceDigest,
+  };
+  let status = null;
+  const transaction = async (callback) => callback(async (sql, params) => {
+    if (sql === CAPABILITY_SQL.readAllowanceStatus) {
+      return { rowCount: status ? 1 : 0, rows: status ? [status] : [] };
+    }
+    if (sql === CAPABILITY_SQL.insertAllowanceStatus) {
+      if (!status) {
+        status = {
+          allowance_profile_id: params[0],
+          allowance_digest: params[1],
+          revision: String(params[2]),
+          status_epoch: String(params[3]),
+          status_head_digest: params[4],
+          status: params[5],
+        };
+      }
+      return { rowCount: 1, rows: [] };
+    }
+    if (sql === CAPABILITY_SQL.updateAllowanceStatus) {
+      if (!status || Number(status.status_epoch) !== params[1]
+          || status.status_head_digest !== params[2]) return { rowCount: 0, rows: [] };
+      status = {
+        allowance_profile_id: params[0],
+        allowance_digest: params[3],
+        revision: String(params[4]),
+        status_epoch: String(params[5]),
+        status_head_digest: params[6],
+        status: params[7],
+      };
+      return { rowCount: 1, rows: [] };
+    }
+    if (sql === CAPABILITY_SQL.readState) return { rowCount: 1, rows: [state] };
+    throw new Error(`unexpected SQL in allowance currentness test: ${sql}`);
+  });
+  const store = createPostgresCapabilityStore({ transaction });
+  assert.equal((await store.advanceAllowanceStatus({
+    allowance_profile_id: profileId,
+    allowance_digest: allowanceDigest,
+    revision: 1,
+    status_epoch: 1,
+    status_head_digest: activeHead,
+    expected_status_epoch: null,
+    expected_status_head_digest: null,
+    status: 'active',
+  })).ok, true);
+  assert.equal((await store.advanceAllowanceStatus({
+    allowance_profile_id: profileId,
+    allowance_digest: allowanceDigest,
+    revision: 1,
+    status_epoch: 2,
+    status_head_digest: revokedHead,
+    expected_status_epoch: 1,
+    expected_status_head_digest: activeHead,
+    status: 'revoked',
+  })).ok, true);
+  const refused = await store.reserveSpend({
+    capabilityId: state.capability_id,
+    capabilityFingerprint: state.capability_fingerprint,
+    operationNamespace: profileId,
+    operationId: 'postgres-allowance-race',
+    actionDigest: `sha256:${'e'.repeat(64)}`,
+    amount: 1,
+    currency: 'USD',
+    allowanceStatus: {
+      allowance_profile_id: profileId,
+      allowance_digest: allowanceDigest,
+      revision: 1,
+      status_epoch: 1,
+      status_head_digest: activeHead,
+    },
+    now: NOW,
+  });
+  assert.equal(refused.reason, 'allowance_revoked');
+});
+
 test('capability metadata is issuer-signed and tamper-evident', () => {
   const keys = issuer();
   const minted = mintCapabilityReceipt(keys.receipt, options({ issuerPrivateKey: keys.privateKey }));
@@ -538,9 +631,30 @@ test('allowance profile scope is closed, callback-verified, and operation-bound'
     store,
     trustedIssuerKeys: [keys.receipt.public_key],
     verifyBaseReceipt: () => true,
+    allowanceStatus: {
+      allowance_profile_id: 'allowance:stripe-payout:01',
+      allowance_digest: `sha256:${'a'.repeat(64)}`,
+      revision: 1,
+      status_epoch: 1,
+      status_head_digest: `sha256:${'b'.repeat(64)}`,
+    },
     executeAction: async () => ({ id: 'po_1' }),
     now: NOW,
   };
+  assert.equal((await executeWithCapability({
+    ...common,
+    verifyActionProfile: () => ({ ok: true }),
+  })).reason, 'allowance_status_not_initialized');
+  assert.equal(store.advanceAllowanceStatus({
+    allowance_profile_id: 'allowance:stripe-payout:01',
+    allowance_digest: `sha256:${'a'.repeat(64)}`,
+    revision: 1,
+    status_epoch: 1,
+    status_head_digest: `sha256:${'b'.repeat(64)}`,
+    expected_status_epoch: null,
+    expected_status_head_digest: null,
+    status: 'active',
+  }).ok, true);
   assert.equal(
     (await executeWithCapability(common)).reason,
     'capability_action_profile_verifier_required',

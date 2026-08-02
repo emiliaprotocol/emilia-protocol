@@ -531,7 +531,17 @@ export async function executeWithGateAllowance({
     allowance_digest: string;
     revision: number;
     supersedes_allowance_digest: string | null;
-  }) => any) | null;
+  }) => {
+    ok: boolean;
+    reason?: string;
+    status_epoch?: number;
+    status_head_digest?: string;
+  } | Promise<{
+    ok: boolean;
+    reason?: string;
+    status_epoch?: number;
+    status_head_digest?: string;
+  }>) | null;
   trustedAllowanceKeys?: TrustedRiskKeys;
   trustedCapabilityIssuerKeys?: string[];
   expected?: ExpectedAllowanceContext;
@@ -569,16 +579,30 @@ export async function executeWithGateAllowance({
   if (typeof verifyAllowanceStatus !== 'function') {
     return { ok: false, reason: 'allowance_status_verifier_required' };
   }
-  const statusVerification = await verifyAllowanceStatus(
-    riskClone(verifiedArtifact),
-    {
-      allowance_digest: allowanceDigest(verifiedArtifact),
-      revision: body.revision,
-      supersedes_allowance_digest: body.supersedes_allowance_digest,
-    },
-  );
-  if (statusVerification !== true && statusVerification?.ok !== true) {
+  if (!store || store.allowanceCurrentnessCapable !== true) {
+    return { ok: false, reason: 'allowance_status_store_required' };
+  }
+  let statusVerification;
+  try {
+    statusVerification = await verifyAllowanceStatus(
+      riskClone(verifiedArtifact),
+      {
+        allowance_digest: allowanceDigest(verifiedArtifact),
+        revision: body.revision,
+        supersedes_allowance_digest: body.supersedes_allowance_digest,
+      },
+    );
+  } catch {
+    return { ok: false, reason: 'allowance_status_verification_failed' };
+  }
+  if (!statusVerification || statusVerification.ok !== true) {
     return { ok: false, reason: statusVerification?.reason || 'allowance_not_current' };
+  }
+  if (!Number.isSafeInteger(statusVerification.status_epoch)
+      || Number(statusVerification.status_epoch) < 1
+      || typeof statusVerification.status_head_digest !== 'string'
+      || !RISK_DIGEST.test(statusVerification.status_head_digest)) {
+    return { ok: false, reason: 'allowance_status_verification_invalid' };
   }
   const capability = capabilityReceipt?.capability;
   const scope = capability?.scope;
@@ -627,6 +651,13 @@ export async function executeWithGateAllowance({
         && profile.profile_digest === allowanceDigest(verifiedArtifact),
       reason: 'allowance_profile_binding_mismatch',
     }),
+    allowanceStatus: {
+      allowance_profile_id: `${body.tenant_id}/${body.allowance_id}`,
+      allowance_digest: allowanceDigest(verifiedArtifact),
+      revision: body.revision,
+      status_epoch: statusVerification.status_epoch,
+      status_head_digest: statusVerification.status_head_digest,
+    },
     trustedIssuerKeys: trustedCapabilityIssuerKeys,
     now,
   });

@@ -77,6 +77,8 @@ function capabilityAdapter(overrides = {}) {
         reconciliationCapable: true,
         registerCapability() { return true; },
         async reserveSpend() { return { ok: false }; },
+        async beginProviderEntry() { return { ok: false }; },
+        async recoverPreEntrySpend() { return { ok: false }; },
         async commitSpend() { return { ok: false }; },
         async reconcileSpend() { return { ok: false }; },
         ...overrides,
@@ -115,6 +117,18 @@ test('capability adapters must implement reconciliation even when their security
         capabilityStore,
         capabilityTrustedIssuerKeys: ['pinned-capability-issuer'],
     }), /capabilityStore must implement .*reconcileSpend\(\)/);
+});
+test('capability adapters must implement the provider-entry and pre-entry recovery boundary', () => {
+    for (const capabilityStore of [
+        capabilityAdapter({ beginProviderEntry: undefined }),
+        capabilityAdapter({ recoverPreEntrySpend: undefined }),
+    ]) {
+        assert.throws(() => createGate({
+            store: secureConsumptionStore(),
+            capabilityStore,
+            capabilityTrustedIssuerKeys: ['pinned-capability-issuer'],
+        }), /capabilityStore must implement/);
+    }
 });
 test('production gate accepts an explicitly marked durable reconciliation-capable adapter', () => {
     assert.doesNotThrow(() => createGate({
