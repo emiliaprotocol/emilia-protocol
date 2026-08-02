@@ -9,6 +9,9 @@ import { fileURLToPath } from 'node:url';
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const PACKAGES = [
     { name: '@emilia-protocol/verify', directory: 'packages/verify' },
+    // Gate pins this package exactly. Install the candidate tarball in the blank
+    // consumer so an unpublished patch never falls back to an older npm build.
+    { name: '@emilia-protocol/require-receipt', directory: 'packages/require-receipt' },
     { name: '@emilia-protocol/gate', directory: 'packages/gate' },
     { name: '@emilia-protocol/scan', directory: 'packages/scan' },
 ];
