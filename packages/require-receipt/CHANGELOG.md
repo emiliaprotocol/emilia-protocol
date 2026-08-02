@@ -3,6 +3,14 @@
 
 All notable changes to `@emilia-protocol/require-receipt` are documented here.
 
+## 0.7.2 (2026-08-01)
+
+### Packaging
+
+- Make a clean package build regenerate the drop-in runtime after `dist/` is
+  removed, and remove the redundant tracked `dist/README.md`, so the
+  reproducibility oracle no longer depends on stale build assets.
+
 ## 0.7.1 (2026-08-01)
 
 ### Security

@@ -6,6 +6,14 @@ This package follows [Semantic Versioning](https://semver.org/).
 
 ## Unreleased
 
+## 0.23.2 (2026-08-01)
+
+### Release
+
+- Supersedes the unpublished `0.23.1` tag and pins
+  `@emilia-protocol/require-receipt` 0.7.2, whose clean build now reproduces all
+  package-declared dist assets from source.
+
 ## 0.23.1 (2026-08-01)
 
 ### Release
