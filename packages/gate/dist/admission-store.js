@@ -10,6 +10,7 @@
  * tests; it is deliberately not a durability claim.
  */
 import crypto from 'node:crypto';
+import { canonicalizeFiniteJson } from './strict-json.js';
 export const ADMISSION_SNAPSHOT_VERSION = 'EP-GATE-ADMISSION-SNAPSHOT-v2';
 export const ADMISSION_RECORD_VERSION = 'EP-GATE-ADMISSION-RECORD-v2';
 export const ADMISSION_JOURNAL_VERSION = 'EP-GATE-ADMISSION-JOURNAL-v2';
@@ -64,18 +65,12 @@ function plain(value) {
     return proto === Object.prototype || proto === null;
 }
 function canonical(value) {
-    if (value === null || typeof value === 'boolean' || typeof value === 'string')
-        return JSON.stringify(value);
-    if (typeof value === 'number') {
-        if (!Number.isFinite(value))
-            fail('invalid_json', 'non-finite JSON number');
-        return JSON.stringify(value);
+    try {
+        return canonicalizeFiniteJson(value);
     }
-    if (Array.isArray(value))
-        return `[${value.map((item) => canonical(item)).join(',')}]`;
-    if (!plain(value))
-        fail('invalid_json', 'non-plain JSON object');
-    return `{${Object.keys(value).sort().map((key) => `${JSON.stringify(key)}:${canonical(value[key])}`).join(',')}}`;
+    catch {
+        throw new AdmissionStoreValidationError('invalid_json', 'value is outside canonical JSON');
+    }
 }
 function hash(domain, value) {
     return `sha256:${crypto.createHash('sha256').update(domain).update('\0').update(canonical(value)).digest('hex')}`;
@@ -89,7 +84,7 @@ function deepFreeze(value) {
     return value;
 }
 function frozenCopy(value) {
-    return deepFreeze(structuredClone(value));
+    return deepFreeze(JSON.parse(canonicalizeFiniteJson(value)));
 }
 function identifier(value, field) {
     if (typeof value !== 'string' || !IDENTIFIER.test(value))
@@ -238,6 +233,12 @@ function normalizeRelation(raw) {
     };
 }
 export function createAdmissionSnapshot(raw) {
+    try {
+        raw = JSON.parse(canonicalizeFiniteJson(raw));
+    }
+    catch {
+        fail('invalid_snapshot', 'snapshot input is outside canonical JSON');
+    }
     if (!plain(raw))
         fail('invalid_snapshot', 'snapshot input is invalid');
     const admitted = instant(raw.admitted_at, 'admitted_at');
@@ -529,6 +530,12 @@ export function createMemoryAdmissionStore(options = {}) {
                 violations.push(`${key}:head_mismatch`);
             if (record.state === 'RESERVED' && (record.execution_right !== 'RESERVED' || record.provider_attempt !== 'NOT_ENTERED'))
                 violations.push(`${key}:reserved_invalid`);
+            const snapshot = snapshots.get(record.snapshot_digest);
+            if (record.state === 'RESERVED'
+                && snapshot
+                && Date.parse(snapshot.body.expires_at) <= currentMs(options.now)) {
+                violations.push(`${key}:reserved_past_expiry`);
+            }
             for (const resource of record.resources) {
                 if (resource.kind === 'monotonic_counter') {
                     const head = monotonicCounterHeads.get(resourceKey(record.tenant_id, resource));
@@ -676,6 +683,42 @@ export function createMemoryAdmissionStore(options = {}) {
                     state: 'EXPIRED', execution_right: 'RELEASED', refusal_reason: 'admission_expired',
                     resources: stored.record.resources.map((resource) => ({ ...resource, state: 'RELEASED' })),
                 }), 'EXPIRED', at);
+                return { ok: true, record };
+            });
+        },
+        reapExpiredReservation(input) {
+            return atomic(() => {
+                const tenantId = identifier(input.tenant_id, 'tenant_id');
+                const admissionId = identifier(input.admission_id, 'admission_id');
+                const expectedRevision = nonNegativeInteger(input.expected_revision, 'expected_revision');
+                const key = admissionKey(tenantId, admissionId);
+                const stored = records.get(key);
+                if (!stored)
+                    return { ok: false, reason: 'admission_not_found' };
+                if (stored.record.revision !== expectedRevision) {
+                    return { ok: false, reason: 'revision_conflict' };
+                }
+                if (stored.record.state !== 'RESERVED'
+                    || stored.record.execution_right !== 'RESERVED'
+                    || stored.record.provider_attempt !== 'NOT_ENTERED') {
+                    return { ok: false, reason: 'state_conflict' };
+                }
+                const snapshot = snapshots.get(stored.record.snapshot_digest);
+                const now = currentMs(options.now);
+                if (Date.parse(snapshot.body.expires_at) > now) {
+                    return { ok: false, reason: 'state_conflict' };
+                }
+                const at = new Date(now).toISOString();
+                freeResources(stored.record, key);
+                const record = append(key, stored.ownerToken, next(stored.record, at, {
+                    state: 'EXPIRED',
+                    execution_right: 'RELEASED',
+                    refusal_reason: 'abandoned_before_invocation',
+                    resources: stored.record.resources.map((resource) => ({
+                        ...resource,
+                        state: 'RELEASED',
+                    })),
+                }), 'ABANDONED_BEFORE_INVOCATION', at);
                 return { ok: true, record };
             });
         },

@@ -22,6 +22,9 @@ import {
   verifyProvenanceOffline,
   PROVENANCE_VERSION,
 } from '../lib/provenance/chain.js';
+import {
+  verifyProvenanceOffline as verifyPackagedProvenanceOffline,
+} from '../packages/verify/provenance.js';
 
 import {
   canonicalize,
@@ -289,6 +292,105 @@ describe('EP-PROVENANCE-CHAIN-v1 — positive (MUST verify valid:true)', () => {
 });
 
 describe('EP-PROVENANCE-CHAIN-v1 — negatives (each MUST verify valid:false)', () => {
+  it('rejects non-finite verifier time instead of disabling expiry checks', async () => {
+    const b = await buildBaseline();
+    const doc = assemble(b);
+    for (const verify of [verifyProvenanceOffline, verifyPackagedProvenanceOffline]) {
+      for (const now of [Number.NaN, Number.POSITIVE_INFINITY, Number.NEGATIVE_INFINITY]) {
+        const res = verify(doc, baseOpts(b, { now }));
+        expect(res.valid, `${verify.name}: ${String(now)}`).toBe(false);
+        expect(res.errors.join(' ')).toMatch(/reference time/i);
+      }
+    }
+  });
+
+  it('rejects object state outside canonical JSON without invoking accessors', async () => {
+    const b = await buildBaseline();
+    const withSymbol = assemble(b);
+    withSymbol[Symbol('unsigned')] = 'unsigned';
+
+    let getterCalls = 0;
+    const withAccessor = assemble(b);
+    Object.defineProperty(withAccessor.delegation_chain[0], 'constraints', {
+      enumerable: true,
+      get() {
+        getterCalls += 1;
+        return null;
+      },
+    });
+
+    for (const verify of [verifyProvenanceOffline, verifyPackagedProvenanceOffline]) {
+      for (const doc of [withSymbol, withAccessor]) {
+        let res;
+        expect(() => { res = verify(doc, baseOpts(b)); }).not.toThrow();
+        expect(res.valid).toBe(false);
+        expect(res.errors.join(' ')).toMatch(/canonical JSON/i);
+      }
+    }
+    expect(getterCalls).toBe(0);
+  });
+
+  it('rejects malformed equal-looking action digests on the execution-binding axis', async () => {
+    const b = await buildBaseline();
+    const doc = assemble(b);
+    doc.execution.action_hash = 'not-a-sha256-digest';
+    doc.action_approval.receipt.action_hash = 'not-a-sha256-digest';
+
+    for (const verify of [verifyProvenanceOffline, verifyPackagedProvenanceOffline]) {
+      const res = verify(doc, baseOpts(b));
+      expect(res.valid).toBe(false);
+      expect(res.checks.execution_binding).toBe(false);
+    }
+  });
+
+  it('rejects a nonnumeric child value cap in both provenance implementations', async () => {
+    const b = await buildBaseline();
+    const malformed = signedLink({ ...b.link0Base, max_value_usd: 'not-a-number' }, b.delegatorKp);
+    const doc = assemble(b, { delegationChain: [malformed] });
+
+    for (const verify of [verifyProvenanceOffline, verifyPackagedProvenanceOffline]) {
+      const res = verify(doc, baseOpts(b));
+      expect(res.valid).toBe(false);
+      expect(res.checks.scope_containment).toBe(false);
+    }
+  });
+
+  it('rejects empty-prefix ".*" instead of widening it to universal authority', async () => {
+    const b = await buildBaseline();
+    const malformed = signedLink({ ...b.link0Base, scope: ['.*'] }, b.delegatorKp);
+    const doc = assemble(b, { delegationChain: [malformed] });
+
+    for (const verify of [verifyProvenanceOffline, verifyPackagedProvenanceOffline]) {
+      const res = verify(doc, baseOpts(b));
+      expect(res.valid).toBe(false);
+      expect(res.checks.scope_containment).toBe(false);
+      expect(res.errors.join(' ')).toMatch(/malformed|scope/i);
+    }
+  });
+
+  it('treats a throwing reversibility predicate as not reversible without escaping', async () => {
+    const b = await buildBaseline();
+    const doc = assembleProvenance({
+      rootSignoff: { receipt: b.root.receipt, verification: b.root.verification },
+      delegationChain: [b.link0],
+      execution: {
+        action_hash: 'sha256:' + crypto.randomBytes(32).toString('hex'),
+        irreversible: false,
+        executed_at: '2026-06-13T11:45:00.000Z',
+      },
+    });
+    for (const verify of [verifyProvenanceOffline, verifyPackagedProvenanceOffline]) {
+      let result;
+      expect(() => {
+        result = verify(doc, baseOpts(b, {
+          reversibilityAsserted: () => { throw new Error('predicate unavailable'); },
+        }));
+      }).not.toThrow();
+      expect(result.valid).toBe(false);
+      expect(result.checks.per_action_required).toBe(false);
+    }
+  });
+
   // (a) broken inter-hop link: chain[1] does not bind to chain[0].delegatee
   it('a_broken_inter_hop_link', async () => {
     const b = await buildBaseline();

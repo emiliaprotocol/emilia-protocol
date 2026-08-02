@@ -985,11 +985,26 @@ describe('EP Commit internals', () => {
     expect(JSON.parse(payload1)).toEqual({ a: 1, b: 2, c: 3 });
   });
 
-  it('buildCanonicalPayload omits undefined values', () => {
-    const payload = _internals.buildCanonicalPayload({ a: 1, b: undefined, c: 3 });
-    const parsed = JSON.parse(payload);
-    expect(parsed).toEqual({ a: 1, c: 3 });
-    expect(parsed).not.toHaveProperty('b');
+  it('buildCanonicalPayload refuses values a signature cannot bind', () => {
+    expect(() => _internals.buildCanonicalPayload({ a: 1, b: undefined, c: 3 }))
+      .toThrow(/CANONICALIZATION_ERROR/);
+    expect(() => _internals.buildCanonicalPayload({ context: new Map([['authority', 'admin']]) }))
+      .toThrow(/CANONICALIZATION_ERROR/);
+    expect(() => _internals.buildCanonicalPayload({ context: 'visible', [Symbol('authority')]: 'admin' }))
+      .toThrow(/CANONICALIZATION_ERROR/);
+  });
+
+  it('buildCanonicalPayload refuses accessors without invoking them', () => {
+    let reads = 0;
+    const value = Object.defineProperty({}, 'context', {
+      enumerable: true,
+      get() {
+        reads += 1;
+        return { authority: 'admin' };
+      },
+    });
+    expect(() => _internals.buildCanonicalPayload(value)).toThrow(/CANONICALIZATION_ERROR/);
+    expect(reads).toBe(0);
   });
 
   it('signPayload + verifySignature round-trip succeeds (Ed25519)', () => {

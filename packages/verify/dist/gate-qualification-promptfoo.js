@@ -385,24 +385,49 @@ function canonicalize(value, seen = new WeakSet()) {
     seen.add(value);
     let output;
     if (Array.isArray(value)) {
-        if (Object.keys(value).some((key) => !/^(0|[1-9][0-9]*)$/.test(key))
-            || Object.keys(value).length !== value.length) {
+        const ownKeys = Reflect.ownKeys(value);
+        const expectedKeys = new Set([
+            'length',
+            ...Array.from({ length: value.length }, (_, index) => String(index)),
+        ]);
+        if (ownKeys.some((key) => typeof key !== 'string')
+            || ownKeys.length !== expectedKeys.size
+            || ownKeys.some((key) => !expectedKeys.has(key))) {
             throw new TypeError('sparse or decorated array');
         }
-        output = `[${value.map((entry) => canonicalize(entry, seen)).join(',')}]`;
+        const entries = [];
+        for (let index = 0; index < value.length; index += 1) {
+            const descriptor = Object.getOwnPropertyDescriptor(value, String(index));
+            if (!descriptor || descriptor.enumerable !== true || !('value' in descriptor)) {
+                throw new TypeError('array member is not an enumerable data property');
+            }
+            entries.push(canonicalize(descriptor.value, seen));
+        }
+        output = `[${entries.join(',')}]`;
     }
     else {
         if (!isObject(value))
             throw new TypeError('non-plain object');
-        const keys = Object.keys(value);
+        const ownKeys = Reflect.ownKeys(value);
+        if (ownKeys.some((key) => typeof key !== 'string')) {
+            throw new TypeError('symbol member is not JSON');
+        }
+        const keys = ownKeys;
         for (const key of keys) {
             if (!validUnicode(key) || key === '__proto__' || key === 'prototype'
                 || key === 'constructor') {
                 throw new TypeError('unsafe object member');
             }
+            const descriptor = Object.getOwnPropertyDescriptor(value, key);
+            if (!descriptor || descriptor.enumerable !== true || !('value' in descriptor)) {
+                throw new TypeError('object member is not an enumerable data property');
+            }
         }
         keys.sort();
-        output = `{${keys.map((key) => `${JSON.stringify(key)}:${canonicalize(value[key], seen)}`).join(',')}}`;
+        output = `{${keys.map((key) => {
+            const descriptor = Object.getOwnPropertyDescriptor(value, key);
+            return `${JSON.stringify(key)}:${canonicalize(descriptor.value, seen)}`;
+        }).join(',')}}`;
     }
     seen.delete(value);
     return output;

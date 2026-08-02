@@ -11,6 +11,7 @@
  */
 
 import crypto from 'node:crypto';
+import { canonicalizeFiniteJson } from './strict-json.js';
 
 import {
   ADMISSION_JOURNAL_VERSION,
@@ -21,6 +22,7 @@ import {
   type AdmissionCas,
   type AdmissionDigest,
   type AdmissionEffectRelationInput,
+  type AdmissionExpiredRecoveryInput,
   type AdmissionInvariantCheck,
   type AdmissionJournalEntry,
   type AdmissionOperationReference,
@@ -74,6 +76,7 @@ export const ADMISSION_POSTGRES_SQL = Object.freeze({
   reserve: 'SELECT public.ep_gate_admission_reserve($1::text, $2::text, $3::jsonb, $4::text) AS result',
   release: 'SELECT public.ep_gate_admission_release($1::text, $2::text, $3::text, $4::bigint, $5::text, $6::text) AS result',
   expire: 'SELECT public.ep_gate_admission_expire($1::text, $2::text, $3::text, $4::bigint, $5::text) AS result',
+  reapExpiredReservation: 'SELECT public.ep_gate_admission_reap_expired($1::text, $2::text, $3::text, $4::bigint) AS result',
   supersede: 'SELECT public.ep_gate_admission_supersede($1::text, $2::text, $3::text, $4::bigint, $5::text, $6::jsonb, $7::text) AS result',
   beginInvocation: 'SELECT public.ep_gate_admission_begin_invocation($1::text, $2::text, $3::text, $4::bigint, $5::text, $6::text) AS result',
   recoverIndeterminate: 'SELECT public.ep_gate_admission_recover_indeterminate($1::text, $2::text, $3::text, $4::text, $5::text) AS result',
@@ -115,18 +118,8 @@ function plain(value: unknown): value is Record<string, unknown> {
 }
 
 function canonical(value: Json): string {
-  if (value === null || typeof value === 'boolean' || typeof value === 'string') {
-    return JSON.stringify(value);
-  }
-  if (typeof value === 'number') {
-    if (!Number.isFinite(value)) throw new AdmissionPostgresProtocolError('non-finite JSON number');
-    return JSON.stringify(value);
-  }
-  if (Array.isArray(value)) return `[${value.map(canonical).join(',')}]`;
-  if (!plain(value)) throw new AdmissionPostgresProtocolError('non-plain JSON object');
-  return `{${Object.keys(value).sort().map((key) => (
-    `${JSON.stringify(key)}:${canonical(value[key] as Json)}`
-  )).join(',')}}`;
+  try { return canonicalizeFiniteJson(value); }
+  catch (cause) { throw new AdmissionPostgresProtocolError('value is outside canonical JSON', { cause }); }
 }
 
 function hash(domain: string, value: unknown): AdmissionDigest {
@@ -444,6 +437,19 @@ export function createAdmissionPostgresStore(
         cas.expected_revision,
         tokenDigest(cas.owner_token),
       ]), 'admission expire');
+    },
+
+    async reapExpiredReservation(
+      input: AdmissionExpiredRecoveryInput,
+    ): Promise<AdmissionTransitionResult> {
+      const reference = validateReference(input);
+      assertTenant(reference.tenant_id);
+      const expectedRevision = revision(input.expected_revision);
+      return transitionResult(await rpc(
+        'admission reap expired reservation',
+        ADMISSION_POSTGRES_SQL.reapExpiredReservation,
+        [deploymentId, tenantId, reference.admission_id, expectedRevision],
+      ), 'admission reap expired reservation');
     },
 
     async supersede(input: AdmissionSupersedeInput): Promise<AdmissionSupersedeResult> {

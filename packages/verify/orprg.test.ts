@@ -301,6 +301,51 @@ test('the action profile is closed and refuses unsafe or ambiguous JSON', () => 
   assert.equal(computeOrprgActionDigest({ ...ACTION, request: { bad: '\ud800' } }), null);
   assert.equal(computeOrprgActionDigest({ ...ACTION, jurisdiction: ['US-NY', 'US-CA'] }), null);
   assert.equal(computeOrprgActionDigest({ ...ACTION, jurisdiction: ['US-CA', 'US-CA'] }), null);
+
+  const symbolBearingAction: Record<PropertyKey, unknown> = { ...ACTION };
+  Object.defineProperty(symbolBearingAction, Symbol.for('hidden_override'), {
+    value: { destination_account: 'acct_attacker' },
+    enumerable: true,
+  });
+  assert.equal(
+    computeOrprgActionDigest(symbolBearingAction),
+    null,
+    'an action with execution-visible data outside the signed JSON domain must be refused',
+  );
+
+  const forbiddenRequests = [];
+  const hidden = { visible: true };
+  Object.defineProperty(hidden, 'hidden', { value: 'unsigned', enumerable: false });
+  forbiddenRequests.push(hidden);
+
+  let getterCalls = 0;
+  const accessor = {};
+  Object.defineProperty(accessor, 'destination', {
+    enumerable: true,
+    get() { getterCalls += 1; return 'acct_attacker'; },
+  });
+  forbiddenRequests.push(accessor);
+
+  const sparse = new Array(2);
+  sparse[1] = 'value';
+  forbiddenRequests.push({ sparse });
+
+  const extraArrayMember: any[] = ['value'];
+  Object.defineProperty(extraArrayMember, 'unsigned', { value: true, enumerable: true });
+  forbiddenRequests.push({ extraArrayMember });
+
+  const symbolArrayMember: any[] = ['value'];
+  Object.defineProperty(symbolArrayMember, Symbol.for('unsigned'), { value: true, enumerable: true });
+  forbiddenRequests.push({ symbolArrayMember });
+
+  const cyclic: any = {};
+  cyclic.self = cyclic;
+  forbiddenRequests.push(cyclic, { map: new Map([['key', 'value']]) }, { omitted: undefined });
+
+  for (const request of forbiddenRequests) {
+    assert.equal(computeOrprgActionDigest({ ...ACTION, request }), null);
+  }
+  assert.equal(getterCalls, 0, 'canonicalization must never execute an accessor');
 });
 
 test('profile and action digest mismatches deny', () => {

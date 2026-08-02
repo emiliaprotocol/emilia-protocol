@@ -1,5 +1,5 @@
 /** Canonical JSON (recursive sorted keys) — matches @emilia-protocol/verify. */
-export declare function canonicalEvidenceJson(v: any): any;
+export declare function canonicalEvidenceJson(v: any): string;
 export declare function createEvidenceLog({ sink, strict }?: {
     sink?: (record: any) => any;
     strict?: boolean;

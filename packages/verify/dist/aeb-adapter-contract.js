@@ -19,6 +19,7 @@
  */
 import crypto from 'node:crypto';
 import { AEC_VERSION, actionDigest as aecActionDigest, verifyAuthorizationChain } from './evidence-chain.js';
+import { canonicalizeStrictJson } from './strict-json.js';
 export const AEB_ADAPTER_VERSION = 'AEB-ADAPTER-v1';
 export const AEB_EVALUATION_VERSION = 'AEB-EVALUATION-v1';
 export const AEB_EVALUATION_DOMAIN = `${AEB_EVALUATION_VERSION}\0`;
@@ -76,52 +77,11 @@ function deepFreeze(value) {
     }
     return value;
 }
-function assertUnicodeScalarString(value) {
-    for (let index = 0; index < value.length; index += 1) {
-        const codeUnit = value.charCodeAt(index);
-        if (codeUnit >= 0xd800 && codeUnit <= 0xdbff) {
-            const trailing = value.charCodeAt(index + 1);
-            if (!Number.isFinite(trailing) || trailing < 0xdc00 || trailing > 0xdfff) {
-                throw new Error('string contains a non-Unicode scalar value');
-            }
-            index += 1;
-        }
-        else if (codeUnit >= 0xdc00 && codeUnit <= 0xdfff) {
-            throw new Error('string contains a non-Unicode scalar value');
-        }
-    }
-}
-function canonicalize(value, seen = new WeakSet()) {
-    if (value === null)
-        return 'null';
-    if (typeof value === 'string') {
-        assertUnicodeScalarString(value);
-        return JSON.stringify(value);
-    }
-    if (typeof value === 'boolean')
-        return JSON.stringify(value);
-    if (typeof value === 'number') {
-        if (!Number.isSafeInteger(value))
-            throw new Error('non-integer number is not canonicalizable');
-        return JSON.stringify(value);
-    }
-    if (typeof value !== 'object' || value === undefined)
-        throw new Error('value is not canonicalizable');
-    if (seen.has(value))
-        throw new Error('cyclic value is not canonicalizable');
-    seen.add(value);
-    let output;
-    if (Array.isArray(value)) {
-        output = `[${value.map((item) => canonicalize(item, seen)).join(',')}]`;
-    }
-    else {
-        const keys = Object.keys(value);
-        for (const key of keys)
-            assertUnicodeScalarString(key);
-        output = `{${keys.sort().map((key) => `${JSON.stringify(key)}:${canonicalize(value[key], seen)}`).join(',')}}`;
-    }
-    seen.delete(value);
-    return output;
+// AEB signs the same closed JSON domain as the core verifier. Keeping this as
+// an alias prevents profile drift that could otherwise let executable values
+// disappear from signatures (symbols, accessors, sparse arrays, or class data).
+function canonicalize(value) {
+    return canonicalizeStrictJson(value);
 }
 function sha256(value) {
     // Protocol content commitment, not password or credential storage.

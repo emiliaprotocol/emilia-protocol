@@ -95,6 +95,15 @@ test('accepts an authentic, pinned, in-window grant', () => {
     assert.strictEqual(r.valid, true, r.reason);
     assert.deepStrictEqual(r.checks, { hash: true, signature: true, within_window: true });
 });
+test('rejects malformed and non-finite reference times', () => {
+    const grant = makeGrant();
+    for (const now of [Number.NaN, Number.POSITIVE_INFINITY, Number.NEGATIVE_INFINITY, 'not-a-time', new Date(Number.NaN)]) {
+        const r = verifyConsentGrant(grant, PRINCIPAL.publicKeyB64u, { now });
+        assert.strictEqual(r.valid, false, String(now));
+        assert.match(r.reason, /opts\.now/);
+        assert.strictEqual(r.checks.within_window, false);
+    }
+});
 test('accepts a per-action receipt acting under the grant (composition)', () => {
     const grant = makeGrant();
     const receipt = makeReceipt(grant);
@@ -141,6 +150,34 @@ test('rejects a wrong control verb (verb_mismatch)', () => {
     const receipt = makeReceipt(grant, { control_verb: 'setpoint.delete' });
     const r = verifyReceiptUnderGrant(receipt, grant, {
         now: NOW, pinnedPrincipalKey: PRINCIPAL.publicKeyB64u,
+    });
+    assert.strictEqual(r.ok, false);
+    assert.strictEqual(r.reason, 'verb_mismatch');
+    assert.strictEqual(r.checks.verb_covered, false);
+});
+test('rejects with a structured asset_mismatch when assetCovers throws', () => {
+    const grant = makeGrant();
+    const receipt = makeReceipt(grant);
+    const r = verifyReceiptUnderGrant(receipt, grant, {
+        now: NOW,
+        pinnedPrincipalKey: PRINCIPAL.publicKeyB64u,
+        assetCovers: () => {
+            throw new Error('hostile asset predicate');
+        },
+    });
+    assert.strictEqual(r.ok, false);
+    assert.strictEqual(r.reason, 'asset_mismatch');
+    assert.strictEqual(r.checks.asset_covered, false);
+});
+test('rejects with a structured verb_mismatch when verbCovers throws', () => {
+    const grant = makeGrant();
+    const receipt = makeReceipt(grant);
+    const r = verifyReceiptUnderGrant(receipt, grant, {
+        now: NOW,
+        pinnedPrincipalKey: PRINCIPAL.publicKeyB64u,
+        verbCovers: () => {
+            throw new Error('hostile verb predicate');
+        },
     });
     assert.strictEqual(r.ok, false);
     assert.strictEqual(r.reason, 'verb_mismatch');

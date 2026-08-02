@@ -310,7 +310,15 @@ export const FIDO_AP2_CAID_ACTION_DEFINITIONS = Object.freeze([Object.freeze({
   optional_fields: Object.freeze([]),
 })]);
 
-export const FIDO_AP2_CAID_RESOLVER_DIGEST = digestAeb({
+/**
+ * Closed descriptor for the native AP2-to-CAID projection implementation.
+ *
+ * Keep the descriptor separate from its pinned digest so importing the public
+ * package barrel never executes AEB hashing while the AEB/evidence-chain
+ * module cycle is still being initialized. A conformance test re-derives the
+ * literal and refuses descriptor drift.
+ */
+export const FIDO_AP2_CAID_RESOLVER_DESCRIPTOR = Object.freeze({
   mapper_id: FIDO_AP2_CAID_MAPPER_ID,
   version: '1',
   source_revision: FIDO_AP2_SOURCE_REVISION,
@@ -319,6 +327,9 @@ export const FIDO_AP2_CAID_RESOLVER_DIGEST = digestAeb({
   suite: 'jcs-sha256',
   definitions: FIDO_AP2_CAID_ACTION_DEFINITIONS,
 });
+
+export const FIDO_AP2_CAID_RESOLVER_DIGEST =
+  'sha256:f9eb3e7ec7d6e90cea71398a3e11cd99ba4a883578f71eb5b849d607826866f2' as AebDigest;
 
 export type FidoAp2SignCountPolicy =
   | 'above-enrollment-and-one-time'

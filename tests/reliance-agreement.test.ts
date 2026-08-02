@@ -223,6 +223,23 @@ describe('EP-RELIANCE-AGREEMENT-v1 invariants', () => {
     expect(r.reasons.join(' ')).toContain('validity window');
   });
 
+  it('malformed or non-finite verification times fail closed for agreements and events', () => {
+    const agreement = baseAgreement();
+    const result = baseResult();
+    const event = baseEvent(agreement, result);
+    const invalidTimes = ['not-a-time', Number.NaN, Number.POSITIVE_INFINITY, Number.NEGATIVE_INFINITY, new Date(Number.NaN), null];
+
+    for (const now of invalidTimes) {
+      const a = verifyRelianceAgreement(agreement, { trustedKeys: PINS, now });
+      expect(a.valid, String(now)).toBe(false);
+      expect(a.reasons.join(' ')).toContain('verification time');
+
+      const e = verifyRelianceEvent(event, { agreement, relianceResult: result, trustedKeys: PINS, now });
+      expect(e.valid, String(now)).toBe(false);
+      expect(e.reasons.join(' ')).toContain('verification time');
+    }
+  });
+
   it('the verifier signs nothing away: the pinned key set decides, never the carried public_key', () => {
     const agreement = baseAgreement();
     // Attacker swaps the carried public_key for their own; the pinned key still governs.

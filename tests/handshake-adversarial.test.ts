@@ -894,7 +894,7 @@ describe('A.4 — Binding completeness enforcement', () => {
     // function-typed value.
     const malformed = { action_type: 'transact', closure: () => 'leak' };
     expect(() => canonicalizeBinding(malformed)).toThrow(
-      /CANONICALIZATION_ERROR.*functions/,
+      /CANONICALIZATION_ERROR.*function/,
     );
   });
 

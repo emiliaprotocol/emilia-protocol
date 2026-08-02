@@ -10,6 +10,7 @@ const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const PACKAGES = [
     { name: '@emilia-protocol/verify', directory: 'packages/verify' },
     { name: '@emilia-protocol/gate', directory: 'packages/gate' },
+    { name: '@emilia-protocol/scan', directory: 'packages/scan' },
 ];
 function run(command, args, cwd = ROOT) {
     const result = spawnSync(command, args, {
@@ -62,14 +63,34 @@ export function packageTargets(name, packageJson) {
         };
     });
 }
+export function typedPackageSpecifiers(name, packageJson) {
+    const exportsMap = packageJson.exports;
+    if (!exportsMap || typeof exportsMap !== 'object' || Array.isArray(exportsMap)) {
+        throw new Error(`${name} has no closed package exports map`);
+    }
+    return Object.entries(exportsMap)
+        .filter(([subpath]) => subpath !== './package.json')
+        .sort(([left], [right]) => left.localeCompare(right))
+        .flatMap(([subpath, exportValue]) => {
+        const typesPath = exportValue && typeof exportValue === 'object'
+            && !Array.isArray(exportValue)
+            ? exportValue.types
+            : undefined;
+        if (typeof typesPath !== 'string')
+            return [];
+        return [subpath === '.' ? name : `${name}/${subpath.slice(2)}`];
+    });
+}
 export function checkPackedPackageExports() {
     const temporary = fs.mkdtempSync(path.join(os.tmpdir(), 'emilia-packed-exports-'));
     try {
         const tarballs = [];
         const targets = [];
+        const typedSpecifiers = [];
         for (const item of PACKAGES) {
             const packageJson = JSON.parse(fs.readFileSync(path.join(ROOT, item.directory, 'package.json'), 'utf8'));
             targets.push(...packageTargets(item.name, packageJson));
+            typedSpecifiers.push(...typedPackageSpecifiers(item.name, packageJson));
             const report = JSON.parse(run('npm', [
                 'pack',
                 path.join(ROOT, item.directory),
@@ -122,10 +143,29 @@ export function checkPackedPackageExports() {
         if (result.assets !== assets.length) {
             throw new Error('packed export smoke returned an incomplete asset count');
         }
+        const typeConsumer = typedSpecifiers
+            .map((specifier, index) => `import * as package${index} from ${JSON.stringify(specifier)};\nvoid package${index};`)
+            .join('\n');
+        fs.writeFileSync(path.join(temporary, 'consumer.ts'), `${typeConsumer}\n`, {
+            encoding: 'utf8',
+            mode: 0o600,
+        });
+        run(path.join(ROOT, 'node_modules', '.bin', 'tsc'), [
+            '--noEmit',
+            '--strict',
+            '--skipLibCheck', 'false',
+            '--module', 'NodeNext',
+            '--moduleResolution', 'NodeNext',
+            '--target', 'ES2022',
+            '--types', 'node',
+            '--typeRoots', path.join(ROOT, 'node_modules', '@types'),
+            'consumer.ts',
+        ], temporary);
         return {
             packages: PACKAGES.length,
             imports: imports.length,
             assets: assets.length,
+            declarations: typedSpecifiers.length,
         };
     }
     finally {
@@ -134,5 +174,5 @@ export function checkPackedPackageExports() {
 }
 if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
     const result = checkPackedPackageExports();
-    process.stdout.write(`Packed package exports: ${result.packages} packages, ${result.imports} imports and ${result.assets} assets passed.\n`);
+    process.stdout.write(`Packed package exports: ${result.packages} packages, ${result.imports} imports, ${result.assets} assets and ${result.declarations} typed entries passed.\n`);
 }

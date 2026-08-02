@@ -16,6 +16,27 @@ import {
 const NOW = '2026-07-26T12:30:00Z';
 const PROMPT_BYTES = 'Classify case {{case}}';
 
+test('qualification digests reject unsigned members without invoking accessors', () => {
+  const hidden = { visible: true } as Record<string, unknown>;
+  Object.defineProperty(hidden, 'unsigned', { value: true, enumerable: false });
+  const symbol = { visible: true } as Record<PropertyKey, unknown>;
+  symbol[Symbol('unsigned')] = true;
+  let getterCalls = 0;
+  const accessor: Record<string, unknown> = {};
+  Object.defineProperty(accessor, 'value', {
+    enumerable: true,
+    get() {
+      getterCalls += 1;
+      return 'unsigned';
+    },
+  });
+
+  for (const hostile of [hidden, symbol, accessor]) {
+    assert.throws(() => digestPromptfooQualification(hostile), /inspectable|JSON|member/);
+  }
+  assert.equal(getterCalls, 0);
+});
+
 function bytesDigest(value: string): `sha256:${string}` {
   return `sha256:${crypto.createHash('sha256').update(Buffer.from(value, 'utf8')).digest('hex')}`;
 }

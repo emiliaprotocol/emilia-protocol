@@ -1,5 +1,11 @@
 // SPDX-License-Identifier: Apache-2.0
 
+import {
+  canonicalizeFiniteJson,
+  canonicalizeStrictJson,
+  isStrictCanonicalJson,
+} from './strict-json.js';
+
 /**
  * Values admitted by the EP canonicalization profile.
  */
@@ -17,28 +23,7 @@ export type CanonicalValue =
  * safe integers so JS/Python/Go cannot serialize the same value differently.
  */
 export function isCanonicalizable(value: unknown): value is CanonicalValue {
-  if (value === null || typeof value === 'string' || typeof value === 'boolean') return true;
-  if (typeof value === 'number') return Number.isInteger(value) && Number.isSafeInteger(value);
-  if (Array.isArray(value)) return value.every(isCanonicalizable);
-  if (typeof value === 'object') return Object.values(value).every(isCanonicalizable);
-  return false;
-}
-
-function canonicalizeValue(value: CanonicalValue): string {
-  if (value === null) return 'null';
-  if (Array.isArray(value)) {
-    return `[${value.map((entry) => canonicalizeValue(entry)).join(',')}]`;
-  }
-  if (typeof value === 'object') {
-    const object = value;
-    return `{${Object.keys(object)
-      .sort()
-      .map((key) => JSON.stringify(key) + ':' + canonicalizeValue(object[key]))
-      .join(',')}}`;
-  }
-  const encoded = JSON.stringify(value);
-  if (encoded === undefined) throw new TypeError('value is outside the EP canonicalization profile');
-  return encoded;
+  return isStrictCanonicalJson(value);
 }
 
 /**
@@ -48,8 +33,22 @@ function canonicalizeValue(value: CanonicalValue): string {
  * Python and Go implementations cannot reproduce.
  */
 export function canonicalize(value: unknown): string {
-  if (!isCanonicalizable(value)) {
-    throw new TypeError('value is outside the EP canonicalization profile');
+  try {
+    return canonicalizeStrictJson(value);
+  } catch (cause) {
+    throw new TypeError('value is outside the EP canonicalization profile', { cause });
   }
-  return canonicalizeValue(value);
+}
+
+/**
+ * Recursive canonical JSON for closed records that intentionally carry finite
+ * decimal measurements (for example, policy thresholds). Structural ghost
+ * state is still refused; only the safe-integer restriction is relaxed.
+ */
+export function canonicalizeFinite(value: unknown): string {
+  try {
+    return canonicalizeFiniteJson(value);
+  } catch (cause) {
+    throw new TypeError('value is outside the finite EP canonicalization profile', { cause });
+  }
 }

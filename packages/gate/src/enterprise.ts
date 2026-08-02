@@ -21,7 +21,7 @@
  * from the wall clock implicitly, so verification is deterministic.
  */
 import crypto from 'node:crypto';
-import { strictJsonGate } from './strict-json.js';
+import { canonicalizeFiniteJson, strictJsonGate } from './strict-json.js';
 
 export const ENTITLEMENT_VERSION = 'EP-GATE-ENTITLEMENT-v1';
 export const ENTITLEMENT_TIERS = ['community', 'team', 'business', 'enterprise', 'regulated'];
@@ -30,14 +30,7 @@ export const ENTITLEMENT_TIERS = ['community', 'team', 'business', 'enterprise',
 const COMMUNITY = 'community';
 
 /** Canonical JSON (recursive sorted keys) — matches @emilia-protocol/verify. */
-function canonical(v) {
-  if (v === null || v === undefined) return JSON.stringify(v);
-  if (Array.isArray(v)) return `[${v.map(canonical).join(',')}]`;
-  if (typeof v === 'object') {
-    return `{${Object.keys(v).sort().map((k) => JSON.stringify(k) + ':' + canonical(v[k])).join(',')}}`;
-  }
-  return JSON.stringify(v);
-}
+const canonical = canonicalizeFiniteJson;
 
 function toMs(t) {
   if (t == null) return null;
@@ -85,7 +78,7 @@ export function mintEntitlement(privateKey, {
   // Snapshot features/limits into the signed payload: embedding the caller's live
   // array/object would let a licensing service mutate them after minting and
   // diverge the entitlement from its signature.
-  const payload = { org, tier, features: structuredClone(features), limits: structuredClone(limits), not_before, expires_at, kid };
+  const payload = JSON.parse(canonical({ org, tier, features, limits, not_before, expires_at, kid }));
   const value = crypto.sign(null, Buffer.from(canonical(payload), 'utf8'), privateKey).toString('base64url');
   return { '@version': ENTITLEMENT_VERSION, payload, signature: { algorithm: 'Ed25519', value } };
 }
@@ -130,6 +123,12 @@ export function verifyEntitlement(entitlementJson, {
       doc = JSON.parse(doc);
     } catch { return community('entitlement_unparseable'); }
   }
+  try {
+    // Normalize only after a descriptor-based canonical-domain check. This
+    // refuses accessors, symbols, non-plain objects, sparse arrays and cycles
+    // instead of letting them disappear before signature verification.
+    doc = JSON.parse(canonical(doc));
+  } catch { return community('entitlement_malformed'); }
   if (!doc || typeof doc !== 'object' || Array.isArray(doc)) return community('entitlement_malformed');
   if (doc['@version'] !== ENTITLEMENT_VERSION) return community('unsupported_version');
 

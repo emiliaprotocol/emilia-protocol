@@ -335,10 +335,14 @@ test('rejects arbitrary DAG vocabulary and every unknown signed field', () => {
 });
 
 test('hostile JavaScript objects cannot throw through the pure verifier', () => {
+  let getterCalls = 0;
   const hostile: Record<string, unknown> = {};
   Object.defineProperty(hostile, 'proof', {
     enumerable: true,
-    get() { throw new Error('attacker getter'); },
+    get() {
+      getterCalls += 1;
+      throw new Error('attacker getter');
+    },
   });
   const result = verifyAuthorityProgram(hostile, [], {});
   assert.deepEqual(result, {
@@ -355,6 +359,15 @@ test('hostile JavaScript objects cannot throw through the pure verifier', () => 
     execution_proven: false,
     reason: 'malformed_input',
   });
+  assert.equal(getterCalls, 0, 'the verifier must reject accessors without invoking attacker code');
+
+  const hidden = makeProgram();
+  Object.defineProperty(hidden, 'unsigned', { value: true, enumerable: false });
+  assert.equal(verifyAuthorityProgram(hidden, [], {}).reason, 'malformed_input');
+
+  const symbol = makeProgram();
+  symbol[Symbol('unsigned')] = true;
+  assert.equal(verifyAuthorityProgram(symbol, [], {}).reason, 'malformed_input');
 
   const cyclic: Record<string, unknown> = {};
   cyclic.self = cyclic;

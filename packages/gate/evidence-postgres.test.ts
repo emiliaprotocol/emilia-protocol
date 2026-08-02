@@ -249,10 +249,11 @@ test('postgres evidence: record() persists exact evidence.js canonical bytes and
     record_id: 'date-record-000001',
     value: new Date('2026-07-16T00:00:00.000Z'),
   };
+  assert.throws(() => hashRecord(dateBody), /strict canonical JSON domain/);
   const callsBefore = fake.controls.appendCalls;
   await assert.rejects(
-    backend.appendIfHead('dates', null, hashRecord(dateBody)),
-    /losslessly JSON-serializable/,
+    backend.appendIfHead('dates', null, { ...dateBody, hash: '0'.repeat(64) }),
+    /valid canonical atomic evidence record/,
   );
   assert.equal(fake.controls.appendCalls, callsBefore, 'non-lossless records never reach Postgres');
 

@@ -130,8 +130,11 @@
         "scope": {
           "type": "array",
           "minItems": 1,
-          "items": { "type": "string" },
-          "description": "Granted action types. '*' or 'x.*' globs permitted."
+          "items": {
+            "type": "string",
+            "pattern": "^(?:\\*|[A-Za-z0-9_-]+(?:\\.[A-Za-z0-9_-]+)*(?:\\.\\*)?)$"
+          },
+          "description": "Granted action types. '*' or 'x.*' globs permitted, where x is a non-empty well-formed action-type prefix. Empty-prefix '.*' is malformed."
         },
         "max_value_usd": {
           "type": ["number", "null"],

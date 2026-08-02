@@ -160,6 +160,11 @@ test('SQL contract is singleton-bound, append-only, and has permanent operation/
   assert.match(sql, /Gate Qualification v2 operation heads are permanent/);
   assert.match(sql, /consumed Gate resources cannot be released or transferred/);
   assert.match(sql, /ep_gate_admission_recover_indeterminate[\s\S]*p_owner_digest text[\s\S]*p_reconciliation_token_digest text/);
+  assert.match(sql, /ep_gate_admission_reap_expired[\s\S]*p_expected_revision bigint/);
+  assert.match(sql, /'ABANDONED_BEFORE_INVOCATION'/);
+  assert.match(sql, /reserved_past_expiry/);
+  assert.match(sql, /Recovery authority is the database EXECUTE privilege/);
+  assert.match(sql, /REVOKE ALL ON FUNCTION public\.ep_gate_admission_reap_expired/);
   assert.match(sql, /'invocation_token_digest', p_reconciliation_token_digest/);
   assert.match(sql, /v_successor_body->>'operation_id' <> v_predecessor_snapshot->'body'->>'operation_id'/);
   assert.match(sql, /v_successor_body->>'effect_request_digest'/);
@@ -201,6 +206,32 @@ test('adapter is explicitly durable, local_atomic, single-tenant, and deployment
     store.read({ tenant_id: 'tenant:other', admission_id: 'admission:x' }),
     /tenant_id does not match/,
   );
+});
+
+test('expiry recovery uses the dedicated deadline-gated RPC without an owner token', async () => {
+  const calls: Array<{ text: string; params: readonly unknown[] }> = [];
+  const query: AdmissionPostgresQuery = async (text, params) => {
+    calls.push({ text, params });
+    return {
+      rowCount: 1,
+      rows: [{ result: { ok: false, reason: 'state_conflict' } }],
+    };
+  };
+  const store = createAdmissionPostgresStore({
+    query,
+    deploymentId: 'deployment:gate-v2',
+    tenantId: 'tenant:gate-v2',
+  });
+  assert.deepEqual(await store.reapExpiredReservation({
+    tenant_id: 'tenant:gate-v2',
+    admission_id: 'admission:expired',
+    expected_revision: 3,
+  }), { ok: false, reason: 'state_conflict' });
+  assert.equal(calls.length, 1);
+  assert.match(calls[0].text, /ep_gate_admission_reap_expired/);
+  assert.deepEqual(calls[0].params, [
+    'deployment:gate-v2', 'tenant:gate-v2', 'admission:expired', 3,
+  ]);
 });
 
 const postgresUrl = process.env.ADMISSION_STORE_POSTGRES_TEST_URL;
@@ -580,6 +611,35 @@ test('real PostgreSQL enforces reserve, supersession, currentness, crash recover
       tenantId: 'tenant:gate-v2',
       maxTransactionRetries: 6,
     });
+
+    const reaperNow = Date.now();
+    const abandonedInput = admissionInput(
+      'admission:abandoned-before-invocation',
+      'operation:abandoned-before-invocation',
+      reaperNow,
+      { expires_at: iso(reaperNow + 250) },
+    );
+    await seedCurrentness(abandonedInput);
+    const abandoned = await store.reserve(abandonedInput);
+    assert.ok(abandoned.ok);
+    assert.deepEqual(await store.reapExpiredReservation({
+      tenant_id: abandoned.record.tenant_id,
+      admission_id: abandoned.record.admission_id,
+      expected_revision: abandoned.record.revision,
+    }), { ok: false, reason: 'state_conflict' });
+    await new Promise((resolve) => setTimeout(resolve, 300));
+    const reaped = await store.reapExpiredReservation({
+      tenant_id: abandoned.record.tenant_id,
+      admission_id: abandoned.record.admission_id,
+      expected_revision: abandoned.record.revision,
+    });
+    assert.ok(reaped.ok);
+    assert.equal(reaped.record.state, 'EXPIRED');
+    assert.equal(reaped.record.refusal_reason, 'abandoned_before_invocation');
+    assert.equal((await store.journal({
+      tenant_id: abandoned.record.tenant_id,
+      admission_id: abandoned.record.admission_id,
+    })).at(-1)?.event, 'ABANDONED_BEFORE_INVOCATION');
 
     const counterInput = (
       suffix: string,

@@ -374,22 +374,56 @@ function fail(code: string, message: string): never {
 }
 
 function canonical(value: Jsonish): string {
-  if (value === null || typeof value === 'boolean' || typeof value === 'string') {
-    return JSON.stringify(value);
-  }
-  if (typeof value === 'number') {
-    if (!Number.isFinite(value)) fail('invalid_number', 'numbers must be finite');
-    return JSON.stringify(value);
-  }
-  if (typeof value === 'bigint') return JSON.stringify({ '@bigint': value.toString(10) });
-  if (Array.isArray(value)) return `[${value.map(canonical).join(',')}]`;
-  const prototype = Object.getPrototypeOf(value);
-  if (prototype !== Object.prototype && prototype !== null) {
-    fail('invalid_object', 'values must be plain objects');
-  }
-  return `{${Object.keys(value).sort().map((key) => (
-    `${JSON.stringify(key)}:${canonical(value[key] as Jsonish)}`
-  )).join(',')}}`;
+  const ancestors = new Set<object>();
+  const visit = (current: Jsonish): string => {
+    if (current === null || typeof current === 'boolean' || typeof current === 'string') {
+      return JSON.stringify(current);
+    }
+    if (typeof current === 'number') {
+      if (!Number.isFinite(current)) fail('invalid_number', 'numbers must be finite');
+      return JSON.stringify(current);
+    }
+    if (typeof current === 'bigint') return JSON.stringify({ '@bigint': current.toString(10) });
+    if (typeof current !== 'object') fail('invalid_object', 'value is not JSON-like');
+    if (ancestors.has(current)) fail('invalid_object', 'cyclic values are not permitted');
+    ancestors.add(current);
+    try {
+      if (Array.isArray(current)) {
+        if (Object.getPrototypeOf(current) !== Array.prototype) fail('invalid_object', 'unsafe array prototype');
+        const keys = Reflect.ownKeys(current);
+        const expected = new Set(['length', ...Array.from({ length: current.length }, (_, index) => String(index))]);
+        if (keys.length !== expected.size
+            || keys.some((key) => typeof key !== 'string' || !expected.has(key))) {
+          fail('invalid_object', 'sparse arrays and extra array members are not permitted');
+        }
+        const members: string[] = [];
+        for (let index = 0; index < current.length; index += 1) {
+          const descriptor = Object.getOwnPropertyDescriptor(current, String(index));
+          if (!descriptor || !('value' in descriptor)) fail('invalid_object', 'array accessors are not permitted');
+          members.push(visit(descriptor.value as Jsonish));
+        }
+        return `[${members.join(',')}]`;
+      }
+      const prototype = Object.getPrototypeOf(current);
+      if (prototype !== Object.prototype && prototype !== null) {
+        fail('invalid_object', 'values must be plain objects');
+      }
+      const entries: string[] = [];
+      const ownKeys = Reflect.ownKeys(current);
+      if (ownKeys.some((key) => typeof key !== 'string')) fail('invalid_object', 'symbol members are not permitted');
+      for (const key of (ownKeys as string[]).sort()) {
+        const descriptor = Object.getOwnPropertyDescriptor(current, key);
+        if (!descriptor || descriptor.enumerable !== true || !('value' in descriptor)) {
+          fail('invalid_object', 'hidden members and accessors are not permitted');
+        }
+        entries.push(`${JSON.stringify(key)}:${visit(descriptor.value as Jsonish)}`);
+      }
+      return `{${entries.join(',')}}`;
+    } finally {
+      ancestors.delete(current);
+    }
+  };
+  return visit(value);
 }
 
 function digest(domain: string, value: unknown): string {
@@ -401,6 +435,7 @@ function digest(domain: string, value: unknown): string {
 }
 
 function frozenCopy<T>(value: T): Readonly<T> {
+  canonical(value as Jsonish);
   return deepFreeze(structuredClone(value));
 }
 
@@ -696,6 +731,8 @@ export function createMemoryOpenExposureLedger(
     expectedRole?: OpenExposureRole,
     expectedAuthority?: string,
   ): Promise<OpenExposureRefusal | null> {
+    try { auth = frozenCopy(auth) as OpenExposureAuth; }
+    catch { return { ok: false, reason: 'unauthenticated' }; }
     validateAuth(auth);
     let accepted = false;
     try {
@@ -786,6 +823,7 @@ export function createMemoryOpenExposureLedger(
     testOnly: true,
 
     async registerCeiling(input, auth) {
+      input = frozenCopy(input) as OpenExposureCeilingInput;
       validateCeiling(input);
       const denied = await authenticated(input.tenantId, auth, 'POLICY_ADMIN');
       if (denied) return denied;
@@ -819,6 +857,7 @@ export function createMemoryOpenExposureLedger(
     },
 
     async reserve(input, auth) {
+      input = frozenCopy(input) as OpenExposureReserveInput;
       validateReservation(input);
       const denied = await authenticated(
         input.tenantId, auth, 'ORIGIN', input.originAuthorityId,
@@ -931,6 +970,7 @@ export function createMemoryOpenExposureLedger(
     },
 
     async beginInvocation(input, auth) {
+      input = frozenCopy(input) as OpenExposureBeginInput;
       validateReference(input);
       if (!OPERATION_TOKEN.test(input.operationToken)) fail('invalid_operation_token', 'operationToken is invalid');
       validateInvocationBinding(input);
@@ -986,6 +1026,7 @@ export function createMemoryOpenExposureLedger(
     },
 
     async markIndeterminate(input, auth) {
+      input = frozenCopy(input) as OpenExposureIndeterminateInput;
       validateReference(input);
       if (!OPERATION_TOKEN.test(input.operationToken)) fail('invalid_operation_token', 'operationToken is invalid');
       sha256(input.evidenceDigest, 'evidenceDigest');
@@ -1028,6 +1069,7 @@ export function createMemoryOpenExposureLedger(
     },
 
     async reconcile(input, auth) {
+      input = frozenCopy(input) as OpenExposureReconciliationInput;
       validateReference(input);
       if (!OPERATION_TOKEN.test(input.operationToken)) fail('invalid_operation_token', 'operationToken is invalid');
       if (!RECONCILIATION_TOKEN.test(input.reconciliationToken)) {
@@ -1110,6 +1152,7 @@ export function createMemoryOpenExposureLedger(
     },
 
     async read(input, auth) {
+      input = frozenCopy(input) as OpenExposureReference;
       validateReference(input);
       const denied = await authenticated(input.tenantId, auth, 'READER');
       if (denied) return denied;
@@ -1117,6 +1160,7 @@ export function createMemoryOpenExposureLedger(
     },
 
     async history(input, auth) {
+      input = frozenCopy(input) as OpenExposureReference;
       validateReference(input);
       const denied = await authenticated(input.tenantId, auth, 'READER');
       if (denied) return denied;
@@ -1127,6 +1171,7 @@ export function createMemoryOpenExposureLedger(
     },
 
     async sumOpen(input, auth) {
+      input = frozenCopy(input) as OpenExposureSumInput;
       identifier(input.tenantId, 'tenantId');
       if (!CURRENCY.test(input.currency)) fail('invalid_currency', 'currency is invalid');
       validateWindow(input.windowStart, input.windowEnd);
@@ -1169,6 +1214,7 @@ export function createMemoryOpenExposureLedger(
     },
 
     async listAging(input, auth) {
+      input = frozenCopy(input) as OpenExposureAgingInput;
       identifier(input.tenantId, 'tenantId');
       const asOf = instant(input.asOf, 'asOf');
       if (!Number.isSafeInteger(input.minimumAgeMs) || input.minimumAgeMs < 0) {
@@ -1190,6 +1236,7 @@ export function createMemoryOpenExposureLedger(
     },
 
     async listDeadlines(input, auth) {
+      input = frozenCopy(input) as OpenExposureDeadlineInput;
       identifier(input.tenantId, 'tenantId');
       const dueAtOrBefore = instant(input.dueAtOrBefore, 'dueAtOrBefore');
       if (!Number.isSafeInteger(input.limit) || input.limit < 1 || input.limit > 10_000) {

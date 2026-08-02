@@ -53,4 +53,40 @@ describe('canonical JSON', () => {
       expect(() => canonicalize(value)).toThrow(/canonicalization profile/);
     }
   });
+
+  it('rejects unsigned JavaScript object state without invoking accessors', () => {
+    let getterCalls = 0;
+    const accessor = { visible: 'signed' } as Record<string, unknown>;
+    Object.defineProperty(accessor, 'hidden', {
+      enumerable: true,
+      get() {
+        getterCalls += 1;
+        return 'not-signed';
+      },
+    });
+    const nonEnumerable = { visible: 'signed' } as Record<string, unknown>;
+    Object.defineProperty(nonEnumerable, 'hidden', { enumerable: false, value: 'not-signed' });
+    const symbolMember = { visible: 'signed', [Symbol('hidden')]: 'not-signed' };
+    const sparse = new Array(2);
+    sparse[1] = 'signed';
+    const extended = ['signed'] as unknown[] & Record<string, unknown>;
+    extended.extra = 'not-signed';
+    const cyclic: Record<string, unknown> = {};
+    cyclic.self = cyclic;
+
+    for (const value of [
+      accessor,
+      nonEnumerable,
+      symbolMember,
+      sparse,
+      extended,
+      cyclic,
+      new Date('2026-08-01T00:00:00Z'),
+      new Map([['visible', 'signed']]),
+    ]) {
+      expect(isCanonicalizable(value)).toBe(false);
+      expect(() => canonicalize(value)).toThrow(/canonicalization profile/);
+    }
+    expect(getterCalls).toBe(0);
+  });
 });

@@ -118,6 +118,19 @@ describe('Eye — computeAdvisoryHash', () => {
     const h2 = computeAdvisoryHash({ type: 'adverse_media' });
     expect(h1).not.toBe(h2);
   });
+
+  it('binds nested advisory material instead of collapsing nested objects', () => {
+    const first = computeAdvisoryHash({ type: 'velocity', detail: { threshold: 10 } });
+    const second = computeAdvisoryHash({ type: 'velocity', detail: { threshold: 11 } });
+    expect(first).not.toBe(second);
+  });
+
+  it('refuses non-JSON and hidden advisory material', () => {
+    expect(() => computeAdvisoryHash({ type: 'velocity', omitted: undefined })).toThrow(/CANONICALIZATION_ERROR/);
+    expect(() => computeAdvisoryHash({ type: 'velocity', when: new Date() })).toThrow(/CANONICALIZATION_ERROR/);
+    expect(() => computeAdvisoryHash({ type: 'velocity', values: new Map([['risk', 1]]) })).toThrow(/CANONICALIZATION_ERROR/);
+    expect(() => computeAdvisoryHash({ type: 'velocity', [Symbol('authority')]: 'admin' })).toThrow(/CANONICALIZATION_ERROR/);
+  });
 });
 
 // ============================================================================
@@ -147,6 +160,19 @@ describe('Eye — computeEvidenceHash', () => {
   it('is deterministic', () => {
     const evidence = { findings: ['match-1', 'match-2'], confidence: 0.95 };
     expect(computeEvidenceHash(evidence)).toBe(computeEvidenceHash(evidence));
+  });
+
+  it('refuses accessor-backed evidence without invoking it', () => {
+    let reads = 0;
+    const evidence = Object.defineProperty({}, 'finding', {
+      enumerable: true,
+      get() {
+        reads += 1;
+        return 'match';
+      },
+    });
+    expect(() => computeEvidenceHash(evidence)).toThrow(/CANONICALIZATION_ERROR/);
+    expect(reads).toBe(0);
   });
 });
 

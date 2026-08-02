@@ -27,17 +27,14 @@
 
 import crypto from 'node:crypto';
 import { verifyAuthorizationChain } from '../../packages/verify/evidence-chain.js';
+import { deepSortKeys } from '../handshake/binding.js';
 
 export const ADMISSIBILITY_VERDICTS = Object.freeze([
   'admissible', 'missing_evidence', 'stale', 'conflicted', 'unverifiable',
 ]);
 
 // Deterministic JCS-style canonicalization (I-JSON subset; no floats).
-function canon(v: any): string {
-  if (v === null || typeof v !== 'object') return JSON.stringify(v);
-  if (Array.isArray(v)) return `[${v.map(canon).join(',')}]`;
-  return `{${Object.keys(v).sort().map((k) => `${JSON.stringify(k)}:${canon(v[k])}`).join(',')}}`;
-}
+const canon = (value: unknown): string => JSON.stringify(deepSortKeys(value));
 const sha256hex = (s: string): string => crypto.createHash('sha256').update(s).digest('hex');
 const DIGEST_RE = /^(?:sha256:)?([0-9a-f]{64})$/i;
 const comparableAction = (value: any): any => {
@@ -76,6 +73,24 @@ const comparableAction = (value: any): any => {
  *            requirement:string, satisfied_by:string[], per_component:object[], reasons:string[], replay_digest:string }}
  */
 export function evaluateAdmissibility(bundle: any, policy: any, opts: any = {}) {
+  try {
+    bundle = JSON.parse(canon(bundle ?? null));
+    policy = JSON.parse(canon(policy ?? null));
+    opts = JSON.parse(canon(opts ?? {}));
+  } catch {
+    const replay = {
+      '@version': 'EP-ADMISSIBILITY-REPLAY-v1',
+      malformed_input: true,
+      verdict: 'unverifiable',
+      reasons: ['input contains state outside the canonical JSON domain'],
+    };
+    return {
+      verdict: 'unverifiable', policy_id: null, reliance_purpose: null,
+      action_digest: null, requirement: null, satisfied_by: [], per_component: [],
+      reasons: replay.reasons, replay,
+      replay_digest: `sha256:${sha256hex(canon(replay))}`,
+    };
+  }
   opts = opts && typeof opts === 'object' && !Array.isArray(opts) ? opts : {};
   const reasons: string[] = [];
   const components: any[] = Array.isArray(bundle?.components) ? bundle.components : [];
@@ -261,15 +276,16 @@ export function evaluateChainAdmissibility(aec: any, policy: any, opts: any = {}
         // A valid-but-unbound leg attests a DIFFERENT action; give it a distinct
         // digest so the classifier reports `conflicted`, not a silent pass.
         action_digest: row.bound ? chain.action_digest : (row.valid ? `unbound:${i}` : null),
-        issued_at: ev.issued_at,
-        outcome: ev.outcome,
-        revoked: ev.revoked,
+        issued_at: ev.issued_at ?? null,
+        outcome: ev.outcome ?? null,
+        revoked: ev.revoked ?? null,
       };
     });
   }
 
   const result = evaluateAdmissibility(
-    { action_digest: chain.action_digest, components: facts }, policy, { as_of: opts.as_of },
+    { action_digest: chain.action_digest, components: facts }, policy,
+    opts.as_of === undefined ? {} : { as_of: opts.as_of },
   );
   /** @type {any} */ (result).chain = { allow: chain.allow, reasons: chain.reasons, requirement_source: chain.requirement_source };
   return result;

@@ -34,6 +34,7 @@ import {
   RECEIPT_PROOF_HEADER,
   RECEIPT_REQUIRED_HEADER,
   RECEIPT_REQUIRED_STATUS,
+  canonicalizeStrictJson,
   parseReceiptCarrier,
   receiptChallenge,
   receiptRequiredHeader,
@@ -121,12 +122,7 @@ const DEMO_QUORUM_POLICY = Object.freeze({
   }))),
 });
 
-function canonicalize(v: any): string {
-  if (v === null || v === undefined) return JSON.stringify(v);
-  if (Array.isArray(v)) return `[${v.map(canonicalize).join(',')}]`;
-  if (typeof v === 'object') return `{${Object.keys(v).sort().map((k) => JSON.stringify(k) + ':' + canonicalize(v[k])).join(',')}}`;
-  return JSON.stringify(v);
-}
+const canonicalize = canonicalizeStrictJson;
 
 function sha256(value: Buffer | string): Buffer {
   return crypto.createHash('sha256').update(value).digest();

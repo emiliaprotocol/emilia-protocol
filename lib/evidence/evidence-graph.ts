@@ -40,6 +40,7 @@
  *   meets THIS policy for THIS purpose at THIS time — nothing more.
  */
 import crypto from 'node:crypto';
+import { deepSortKeys } from '../handshake/binding.js';
 import type { KeyLike } from 'node:crypto';
 import { evaluateAdmissibility } from './admissibility.js';
 import {
@@ -115,11 +116,7 @@ export const EFFECT_ATTESTATION_TYPE = 'effect_attestation';
 
 // Deterministic JCS-style canonicalization (I-JSON subset; no floats) —
 // byte-identical to lib/evidence/admissibility.js canon().
-function canon(v: any): string {
-  if (v === null || typeof v !== 'object') return JSON.stringify(v);
-  if (Array.isArray(v)) return `[${v.map(canon).join(',')}]`;
-  return `{${Object.keys(v).sort().map((k) => `${JSON.stringify(k)}:${canon(v[k])}`).join(',')}}`;
-}
+const canon = (value: unknown): string => JSON.stringify(deepSortKeys(value));
 const sha256hex = (s: string): string => crypto.createHash('sha256').update(s).digest('hex');
 const normDigest = (d: unknown): string | null => (typeof d === 'string' ? d.replace(/^sha256:/i, '').toLowerCase() : null);
 
@@ -134,6 +131,7 @@ export function artifactDigest(artifact: unknown): string {
  * change what graph you are talking about.
  */
 export function graphDigest(graph: any): string {
+  graph = JSON.parse(canon(graph ?? null));
   const nodes = (graph?.nodes || []).map((n: any) => ({ id: normDigest(n.id), type: n.type ?? null }))
     .sort((a: any, b: any) => (a.id < b.id ? -1 : a.id > b.id ? 1 : 0));
   const edges = (graph?.edges || []).map((e: any) => ({ from: normDigest(e.from), rel: e.rel ?? null, to: normDigest(e.to) }))
@@ -196,6 +194,15 @@ function downgradeToConflicted(verdict: string): string {
 export function evaluateEvidenceGraph(graphDoc: any, policy: any, opts: any = {}): any {
   opts = opts && typeof opts === 'object' && !Array.isArray(opts) ? opts : {};
   const reasons: string[] = [];
+  let canonicalInputFailure = false;
+  try {
+    if (graphDoc && typeof graphDoc === 'object') graphDoc = JSON.parse(canon(graphDoc));
+    if (policy && typeof policy === 'object') policy = JSON.parse(canon(policy));
+  } catch {
+    graphDoc = null;
+    policy = null;
+    canonicalInputFailure = true;
+  }
   const g_digest = graphDigest(graphDoc);
   const structuralFail = (why: string, code?: string): any => {
     reasons.push(code ? `${code}: ${why}` : why);
@@ -205,7 +212,11 @@ export function evaluateEvidenceGraph(graphDoc: any, policy: any, opts: any = {}
     // widening that shared type from this batch. evaluateAdmissibility()'s own
     // return type is likewise not declared, so the whole result is `any` here —
     // this function augments it with graph-shape metadata after the fact.
-    const res: any = evaluateAdmissibility({ components: [{ type: 'evidence_graph', verified: false } as any] }, policy, { as_of: opts.as_of });
+    const res: any = evaluateAdmissibility(
+      { components: [{ type: 'evidence_graph', verified: false } as any] },
+      policy,
+      opts.as_of === undefined ? {} : { as_of: opts.as_of },
+    );
     res.reasons = [...reasons, ...res.reasons];
     // evaluateAdmissibility's return type doesn't declare `graph` — this function
     // augments the result with graph-shape metadata after the fact.
@@ -226,6 +237,8 @@ export function evaluateEvidenceGraph(graphDoc: any, policy: any, opts: any = {}
     res.replay_digest = `sha256:${sha256hex(canon(res.replay))}`;
     return res;
   };
+
+  if (canonicalInputFailure) return structuralFail('graph or policy contains non-canonical JSON state', 'malformed_graph');
 
   if (!graphDoc || typeof graphDoc !== 'object') return structuralFail('graph is not an object', 'malformed_graph');
   if (graphDoc['@version'] !== EVIDENCE_GRAPH_VERSION) return structuralFail(`unexpected @version (want ${EVIDENCE_GRAPH_VERSION})`, 'malformed_graph');
@@ -273,7 +286,7 @@ export function evaluateEvidenceGraph(graphDoc: any, policy: any, opts: any = {}
       ceremony?: any; effect?: any;
     } = {
       type: n.type, label: n.label ?? `#${idx}`, verified: false,
-      action_digest: null, issued_at: undefined, outcome: undefined, revoked: undefined,
+      action_digest: null, issued_at: null, outcome: null, revoked: null,
     };
     const rec = { node: n, id, artifact: null as any, verified: false, fact: row };
     byId.set(id, rec);
@@ -305,9 +318,9 @@ export function evaluateEvidenceGraph(graphDoc: any, policy: any, opts: any = {}
     const verifiedAttestation = res?.attestation && typeof res.attestation === 'object'
       ? res.attestation : {};
     row.action_digest = res.action_digest ?? verifierCommitments.action_hash ?? null;
-    row.issued_at = res.issued_at;
-    row.outcome = res.outcome;
-    row.revoked = res.revoked;
+    row.issued_at = res.issued_at ?? null;
+    row.outcome = res.outcome ?? null;
+    row.revoked = res.revoked ?? null;
     // Step 6 telemetry, surfaced by the type verifier alongside signature state.
     // ceremony_evidence: the signing-ceremony timeline + approver id.
     if (n.type === CEREMONY_EVIDENCE_TYPE) {
@@ -377,7 +390,7 @@ export function evaluateEvidenceGraph(graphDoc: any, policy: any, opts: any = {}
   const result: any = evaluateAdmissibility(
     { action_digest: graphDoc.action_digest, components: effectiveFacts },
     policy,
-    { as_of: opts.as_of },
+    opts.as_of === undefined ? {} : { as_of: opts.as_of },
   );
 
   // 5) A lying graph is unverifiable regardless of what else passed.
@@ -720,6 +733,8 @@ export function verifyRelianceResult(
     structure: false, result_digest: false, result_consistent: false,
     signature: false, issuer_pinned: false,
   };
+  try { doc = JSON.parse(canon(doc)); }
+  catch { return { verified: false, accepted: false, checks }; }
   if (!doc?.payload || doc.payload['@version'] !== RELIANCE_RESULT_VERSION || typeof doc.sig !== 'string' || typeof doc.verifier_key !== 'string') {
     return { verified: false, accepted: false, checks };
   }

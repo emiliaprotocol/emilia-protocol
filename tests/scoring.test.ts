@@ -266,6 +266,34 @@ describe('computeReceiptHash', () => {
     const hash2 = await computeReceiptHash(receipt2, null);
     expect(hash1).toBe(hash2);
   });
+
+  it('refuses nested receipt state that canonical JSON would erase', async () => {
+    const base = {
+      entity_id: 'e', submitted_by: 's', transaction_ref: 't', transaction_type: 'purchase',
+      evidence: { result: 'ok' },
+    };
+    await expect(computeReceiptHash({ ...base, evidence: { result: 'ok', omitted: undefined } }, null))
+      .rejects.toThrow(/CANONICALIZATION_ERROR/);
+    await expect(computeReceiptHash({ ...base, evidence: new Map([['result', 'ok']]) }, null))
+      .rejects.toThrow(/CANONICALIZATION_ERROR/);
+    await expect(computeReceiptHash({ ...base, evidence: { result: 'ok', [Symbol('authority')]: 'admin' } }, null))
+      .rejects.toThrow(/CANONICALIZATION_ERROR/);
+  });
+
+  it('does not invoke accessors while hashing receipt evidence', async () => {
+    let reads = 0;
+    const evidence = Object.defineProperty({}, 'result', {
+      enumerable: true,
+      get() {
+        reads += 1;
+        return 'ok';
+      },
+    });
+    await expect(computeReceiptHash({
+      entity_id: 'e', submitted_by: 's', transaction_ref: 't', transaction_type: 'purchase', evidence,
+    }, null)).rejects.toThrow(/CANONICALIZATION_ERROR/);
+    expect(reads).toBe(0);
+  });
 });
 
 describe('computeMatchScore', () => {

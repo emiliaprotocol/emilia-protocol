@@ -98,9 +98,12 @@ function parseInstant(value: unknown): number {
 
 function normalizeNow(now: unknown): number {
   if (now === undefined) return Date.now();
-  if (typeof now === 'number') return now;
-  const ms = parseInstant(now instanceof Date ? now.toISOString() : now);
-  return ms;
+  if (typeof now === 'number') return Number.isFinite(now) ? now : NaN;
+  if (now instanceof Date) {
+    const ms = now.getTime();
+    return Number.isFinite(ms) ? ms : NaN;
+  }
+  return parseInstant(now);
 }
 
 // The signed / hashed body: the grant with BOTH grant_hash and signature
@@ -273,7 +276,7 @@ export function verifyConsentGrant(grant: Obj, pinnedPrincipalKey: string | unde
     return refuseGrant('grant issued_at is after expires_at (empty validity window)', checks);
   }
   const nowMs = normalizeNow(opts.now);
-  if (Number.isNaN(nowMs)) {
+  if (!Number.isFinite(nowMs)) {
     return refuseGrant('opts.now is not a parseable instant', checks);
   }
   if (nowMs < issuedMs) {
@@ -489,7 +492,14 @@ export function verifyReceiptUnderGrant(receipt: Obj, grant: Obj, opts: Composit
   const assetCovers = typeof opts.assetCovers === 'function'
     ? opts.assetCovers
     : (a: any, b: any) => a === b;
-  checks.asset_covered = assetCovers(action.asset, grant.asset) === true;
+  try {
+    checks.asset_covered = assetCovers(action.asset, grant.asset) === true;
+  } catch {
+    // A caller-supplied predicate is policy code, not trusted verification
+    // evidence. A buggy or hostile predicate must refuse rather than escape the
+    // verifier's structured result contract or crash its enclosing service.
+    checks.asset_covered = false;
+  }
   if (!checks.asset_covered) {
     return refuseComposition('asset_mismatch', checks);
   }
@@ -498,7 +508,11 @@ export function verifyReceiptUnderGrant(receipt: Obj, grant: Obj, opts: Composit
   const verbCovers = typeof opts.verbCovers === 'function'
     ? opts.verbCovers
     : (a: any, b: any) => a === b;
-  checks.verb_covered = verbCovers(action.control_verb, grant.control_verb) === true;
+  try {
+    checks.verb_covered = verbCovers(action.control_verb, grant.control_verb) === true;
+  } catch {
+    checks.verb_covered = false;
+  }
   if (!checks.verb_covered) {
     return refuseComposition('verb_mismatch', checks);
   }

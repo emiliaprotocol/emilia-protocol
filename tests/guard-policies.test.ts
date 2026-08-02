@@ -454,9 +454,32 @@ describe('hashCanonicalAction', () => {
     expect(h1).not.toBe(h2);
   });
 
-  it('handles null and undefined consistently', () => {
+  it('accepts null but refuses values that could disappear from the action hash', () => {
     expect(() => hashCanonicalAction({ a: null })).not.toThrow();
-    expect(() => hashCanonicalAction({ a: undefined })).not.toThrow();
+    expect(() => hashCanonicalAction({ a: undefined })).toThrow(/canonicalization profile/);
+    expect(() => hashCanonicalAction({ a: new Date('2026-08-01T00:00:00Z') })).toThrow(/canonicalization profile/);
+    expect(() => hashCanonicalAction({ a: new Map([['amount', 100]]) })).toThrow(/canonicalization profile/);
+
+    const sparse = [] as unknown[];
+    sparse[1] = 'effect';
+    expect(() => hashCanonicalAction({ sparse })).toThrow(/canonicalization profile/);
+
+    const symbol = Symbol('unbound');
+    const hidden = { amount: 100, [symbol]: 'different authority' };
+    expect(() => hashCanonicalAction(hidden)).toThrow(/canonicalization profile/);
+  });
+
+  it('refuses accessor-backed action material without invoking the accessor', () => {
+    let reads = 0;
+    const action = Object.defineProperty({}, 'amount', {
+      enumerable: true,
+      get() {
+        reads += 1;
+        return 100;
+      },
+    });
+    expect(() => hashCanonicalAction(action)).toThrow(/canonicalization profile/);
+    expect(reads).toBe(0);
   });
 });
 

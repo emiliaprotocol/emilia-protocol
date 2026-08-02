@@ -53,13 +53,54 @@ test('AEB canonicalization rejects lone UTF-16 surrogates in nested values and k
   ]) {
     assert.throws(
       () => canonicalizeAeb(malformed),
-      /Unicode scalar value/,
+      /Unicode scalar value|Unicode surrogate/,
     );
     assert.throws(
       () => digestAeb(malformed),
-      /Unicode scalar value/,
+      /Unicode scalar value|Unicode surrogate/,
     );
   }
+});
+
+test('AEB canonicalization refuses executable data outside the signed JSON domain', () => {
+  const symbolMember: Record<PropertyKey, unknown> = { visible: true };
+  Object.defineProperty(symbolMember, Symbol.for('hidden_action'), {
+    value: { override: true },
+    enumerable: true,
+  });
+
+  const hidden = { visible: true };
+  Object.defineProperty(hidden, 'hidden', { value: 'unsigned', enumerable: false });
+
+  let getterCalls = 0;
+  const accessor = {};
+  Object.defineProperty(accessor, 'value', {
+    enumerable: true,
+    get() { getterCalls += 1; return 'unsigned'; },
+  });
+
+  const sparse = new Array(2);
+  sparse[1] = 'value';
+  const extraArrayMember: any[] = ['value'];
+  Object.defineProperty(extraArrayMember, 'unsigned', { value: true, enumerable: true });
+
+  const cyclic: any = {};
+  cyclic.self = cyclic;
+  for (const value of [
+    symbolMember,
+    hidden,
+    accessor,
+    sparse,
+    extraArrayMember,
+    cyclic,
+    new Date('2026-01-01T00:00:00Z'),
+    new Map([['key', 'value']]),
+    { omitted: undefined },
+  ]) {
+    assert.throws(() => canonicalizeAeb(value));
+    assert.throws(() => digestAeb(value));
+  }
+  assert.equal(getterCalls, 0, 'AEB canonicalization must never execute an accessor');
 });
 
 test('AEB signing refuses malformed Unicode before producing a signature', () => {
@@ -93,7 +134,7 @@ test('AEB signing refuses malformed Unicode before producing a signature', () =>
         { ...base, attacker_metadata } as never,
         { key_id: 'native-verifier:test', private_key: nativeKey.privateKey },
       ),
-      /Unicode scalar value/,
+      /Unicode scalar value|Unicode surrogate/,
     );
   }
 });

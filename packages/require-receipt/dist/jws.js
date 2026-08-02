@@ -26,7 +26,7 @@
  * `jose` library is a dev-only cross-verification dependency for the test suite.
  */
 import crypto from 'node:crypto';
-import { strictJsonGate } from './strict-json.js';
+import { canonicalizeStrictJson, strictJsonGate } from './strict-json.js';
 export const JWS_PROFILE_VERSION = 'EP-RECEIPT-JWS-PROFILE-v1';
 export const JWS_ALG = 'EdDSA';
 export const JWS_TYP = 'application/ep-receipt+jws';
@@ -35,18 +35,9 @@ const MAX_COMPACT_JWS_CHARS = 12 * 1024 * 1024;
 const MAX_PROTECTED_HEADER_BYTES = 4096;
 const UTF8_DECODER = new TextDecoder('utf-8', { fatal: true });
 // Single canonicalization source of truth — byte-identical to
-// @emilia-protocol/verify and @emilia-protocol/require-receipt: recursive,
-// depth-first key sort (RFC 8785 JCS over the EP I-JSON value subset).
-function canonicalize(v) {
-    if (v === null || v === undefined)
-        return JSON.stringify(v);
-    if (Array.isArray(v))
-        return `[${v.map(canonicalize).join(',')}]`;
-    if (typeof v === 'object') {
-        return `{${Object.keys(v).sort().map((k) => JSON.stringify(k) + ':' + canonicalize(v[k])).join(',')}}`;
-    }
-    return JSON.stringify(v);
-}
+// @emilia-protocol/verify and @emilia-protocol/require-receipt. The strict
+// domain gate refuses JavaScript-only state that JSON bytes cannot carry.
+const canonicalize = canonicalizeStrictJson;
 function b64u(buf) {
     return Buffer.from(buf).toString('base64url');
 }

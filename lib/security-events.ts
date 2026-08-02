@@ -12,30 +12,69 @@ import type { PostgrestError } from '@supabase/supabase-js';
 import { getServiceClient } from './supabase.js';
 import { siemEvent } from './siem.js';
 import { logger } from './logger.js';
+import { canonicalize as canonicalizeProtocol } from './canonical-json.js';
 
 const SECRET_KEY_RE = /(password|secret|token|api[_-]?key|authorization|private[_-]?key|seed)/i;
 
 export function canonicalize(value) {
-  if (value === null || value === undefined) return JSON.stringify(value);
-  if (Array.isArray(value)) return `[${value.map(canonicalize).join(',')}]`;
-  if (typeof value === 'object') {
-    return `{${Object.keys(value).sort().map((k) => JSON.stringify(k) + ':' + canonicalize(value[k])).join(',')}}`;
-  }
-  return JSON.stringify(value);
+  return canonicalizeProtocol(value);
 }
 
 export function sha256hex(value) {
   return crypto.createHash('sha256').update(value, 'utf8').digest('hex');
 }
 
-export function sanitizeSecurityPayload(value) {
-  if (Array.isArray(value)) return value.map(sanitizeSecurityPayload);
-  if (!value || typeof value !== 'object') return value;
-  const out = {};
-  for (const [key, inner] of Object.entries(value)) {
-    out[key] = SECRET_KEY_RE.test(key) ? '[redacted]' : sanitizeSecurityPayload(inner);
+function unsafeSecurityPayload(reason: string): never {
+  throw new TypeError(`value is outside the EP canonicalization profile: ${reason}`);
+}
+
+function sanitizeSecurityValue(value, ancestors) {
+  if (value === null || typeof value === 'string' || typeof value === 'boolean') return value;
+  if (typeof value === 'number') {
+    if (!Number.isSafeInteger(value)) unsafeSecurityPayload('numbers must be safe integers');
+    return value;
   }
-  return out;
+  if (!value || typeof value !== 'object') unsafeSecurityPayload(`${typeof value} is not JSON`);
+  if (ancestors.has(value)) unsafeSecurityPayload('cyclic reference');
+  ancestors.add(value);
+  try {
+    if (Array.isArray(value)) {
+      if (Object.getPrototypeOf(value) !== Array.prototype) unsafeSecurityPayload('unsafe array prototype');
+      const ownKeys = Reflect.ownKeys(value);
+      const expected = new Set(['length', ...Array.from({ length: value.length }, (_, index) => String(index))]);
+      if (ownKeys.some((key) => typeof key !== 'string' || !expected.has(key)) || ownKeys.length !== expected.size) {
+        unsafeSecurityPayload('sparse or extended array');
+      }
+      return Array.from({ length: value.length }, (_, index) => {
+        const descriptor = Object.getOwnPropertyDescriptor(value, String(index));
+        if (!descriptor || !('value' in descriptor)) unsafeSecurityPayload('array accessor');
+        return sanitizeSecurityValue(descriptor.value, ancestors);
+      });
+    }
+
+    const prototype = Object.getPrototypeOf(value);
+    if (prototype !== Object.prototype && prototype !== null) unsafeSecurityPayload('non-plain object');
+    const out: Record<string, unknown> = {};
+    for (const key of Reflect.ownKeys(value)) {
+      if (typeof key !== 'string') unsafeSecurityPayload('symbol member');
+      const descriptor = Object.getOwnPropertyDescriptor(value, key);
+      if (!descriptor || descriptor.enumerable !== true || !('value' in descriptor)) {
+        unsafeSecurityPayload('hidden or accessor member');
+      }
+      out[key] = SECRET_KEY_RE.test(key)
+        ? '[redacted]'
+        : sanitizeSecurityValue(descriptor.value, ancestors);
+    }
+    return out;
+  } finally {
+    ancestors.delete(value);
+  }
+}
+
+export function sanitizeSecurityPayload(value) {
+  const sanitized = sanitizeSecurityValue(value, new Set());
+  canonicalizeProtocol(sanitized);
+  return sanitized;
 }
 
 type SecurityEventInput = {

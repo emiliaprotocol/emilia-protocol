@@ -91,7 +91,77 @@ export declare const FIDO_AP2_CAID_ACTION_DEFINITIONS: readonly Readonly<{
     }>)[];
     optional_fields: readonly never[];
 }>[];
-export declare const FIDO_AP2_CAID_RESOLVER_DIGEST: `sha256:${string}`;
+/**
+ * Closed descriptor for the native AP2-to-CAID projection implementation.
+ *
+ * Keep the descriptor separate from its pinned digest so importing the public
+ * package barrel never executes AEB hashing while the AEB/evidence-chain
+ * module cycle is still being initialized. A conformance test re-derives the
+ * literal and refuses descriptor drift.
+ */
+export declare const FIDO_AP2_CAID_RESOLVER_DESCRIPTOR: Readonly<{
+    mapper_id: "mapper:fido-ap2-closed-payment-v1";
+    version: "1";
+    source_revision: "google-agentic-commerce/AP2@e1ea56db72a6385bce3e5c1112b3a56ce60acb43";
+    projection: "ap2-v0.2-closed-checkout-payment-immediate-v1";
+    action_type: "payment.purchase.1";
+    suite: "jcs-sha256";
+    definitions: readonly Readonly<{
+        action_type: "payment.purchase.1";
+        required_fields: readonly (Readonly<{
+            name: "checkout_mandate_digest";
+            type: "digest";
+        }> | Readonly<{
+            name: "payment_mandate_digest";
+            type: "digest";
+        }> | Readonly<{
+            name: "checkout_payload_jwt_digest";
+            type: "digest";
+        }> | Readonly<{
+            name: "transaction_id";
+            type: "string";
+        }> | Readonly<{
+            name: "amount_minor";
+            type: "integer";
+        }> | Readonly<{
+            name: "currency";
+            type: "string";
+        }> | Readonly<{
+            name: "payee_id";
+            type: "string";
+        }> | Readonly<{
+            name: "payee_name";
+            type: "string";
+        }> | Readonly<{
+            name: "payee_website_digest";
+            type: "digest";
+        }> | Readonly<{
+            name: "pisp_digest";
+            type: "digest";
+        }> | Readonly<{
+            name: "payment_instrument_id";
+            type: "string";
+        }> | Readonly<{
+            name: "payment_instrument_type";
+            type: "string";
+        }> | Readonly<{
+            name: "payment_instrument_description_digest";
+            type: "digest";
+        }> | Readonly<{
+            name: "risk_data_digest";
+            type: "digest";
+        }> | Readonly<{
+            name: "execution";
+            type: "enum";
+            values: readonly string[];
+        }> | Readonly<{
+            name: "source_expires_at";
+            type: "timestamp";
+        }>)[];
+        optional_fields: readonly never[];
+    }>[];
+}>;
+export declare const FIDO_AP2_CAID_RESOLVER_DIGEST: AebDigest;
 export type FidoAp2SignCountPolicy = 'above-enrollment-and-one-time' | 'not-relied-upon';
 /** Project only the pinned AP2 v0.2 closed CheckoutMandate/PaymentMandate subset. */
 export declare function projectFidoAp2PaymentAction(input: unknown): Obj;

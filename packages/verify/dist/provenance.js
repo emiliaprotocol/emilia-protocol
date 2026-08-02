@@ -21,6 +21,7 @@
  */
 import crypto from 'node:crypto';
 import { verifyTrustReceipt, canonicalize } from './index.js';
+import { canonicalizeStrictJson } from './strict-json.js';
 export const PROVENANCE_VERSION = 'EP-PROVENANCE-CHAIN-v1';
 const DEFAULT_HUMAN_KEY_CLASSES = ['A'];
 // Normalize to a bare lowercase hex digest, but ONLY if it is a well-formed
@@ -37,6 +38,15 @@ const hexOf = (h) => {
 const WELL_FORMED_ACTION_TYPE = /^[A-Za-z0-9_-]+(\.[A-Za-z0-9_-]+)*$/;
 function isWellFormedActionType(s) {
     return typeof s === 'string' && WELL_FORMED_ACTION_TYPE.test(s);
+}
+function isWellFormedScopeToken(s) {
+    if (s === '*')
+        return true;
+    if (typeof s !== 'string')
+        return false;
+    return s.endsWith('.*')
+        ? isWellFormedActionType(s.slice(0, -2))
+        : isWellFormedActionType(s);
 }
 function hasHumanSignoff(receipt, humanClasses) {
     const set = new Set(humanClasses);
@@ -73,6 +83,8 @@ function scopePermits(scope, actionType) {
     if (!Array.isArray(scope) || !isWellFormedActionType(actionType))
         return false;
     for (const grant of scope) {
+        if (!isWellFormedScopeToken(grant))
+            continue;
         if (grant === '*' || grant === actionType)
             return true;
         if (typeof grant === 'string' && grant.endsWith('.*')) {
@@ -86,6 +98,16 @@ function scopePermits(scope, actionType) {
 function scopeContainmentViolations(parent, child) {
     const violations = [];
     for (const token of child.scope || []) {
+        if (!isWellFormedScopeToken(token)) {
+            violations.push(`child scope token ${JSON.stringify(token)} is malformed`);
+            continue;
+        }
+        if (token === '*') {
+            if (!Array.isArray(parent.scope) || !parent.scope.includes('*')) {
+                violations.push(`child scope "*" exceeds parent scope [${(parent.scope || []).join(', ')}]`);
+            }
+            continue;
+        }
         const probe = typeof token === 'string' && token.endsWith('.*') ? token.slice(0, -2) : token;
         if (!scopePermits(parent.scope, probe)) {
             violations.push(`child scope "${token}" exceeds parent scope [${(parent.scope || []).join(', ')}]`);
@@ -99,13 +121,15 @@ function scopeContainmentViolations(parent, child) {
     // matching the Python and Go ports.
     const parentCap = parent.max_value_usd;
     const parentCapNum = Number(parentCap);
-    if (parentCap !== null && parentCap !== undefined && Number.isFinite(parentCapNum)) {
-        const childCap = child.max_value_usd;
-        if (childCap !== null && childCap !== undefined) {
-            const childCapNum = Number(childCap);
-            if (!Number.isFinite(childCapNum) || childCapNum > parentCapNum) {
-                violations.push(`child max_value_usd ${childCap} is not a valid cap within parent cap ${parentCap}`);
-            }
+    const childCap = child.max_value_usd;
+    if (childCap !== null && childCap !== undefined) {
+        const childCapNum = Number(childCap);
+        if (!Number.isFinite(childCapNum)) {
+            violations.push(`child max_value_usd ${childCap} is not a valid cap within parent cap ${parentCap}`);
+        }
+        else if (parentCap !== null && parentCap !== undefined
+            && Number.isFinite(parentCapNum) && childCapNum > parentCapNum) {
+            violations.push(`child max_value_usd ${childCap} exceeds parent cap ${parentCap}; child is not a valid cap within parent cap`);
         }
     }
     const pExp = Date.parse(parent.expires_at);
@@ -179,7 +203,7 @@ export function verifyProvenanceOffline(doc, opts = {}) {
     opts = opts && typeof opts === 'object' ? opts : {};
     const humanKeyClasses = opts.humanKeyClasses || DEFAULT_HUMAN_KEY_CLASSES;
     const allowUnsignedDelegations = opts.allowUnsignedDelegations === true;
-    const now = typeof opts.now === 'number' ? opts.now : Date.now();
+    const now = opts.now === undefined ? Date.now() : opts.now;
     const requireActionApprovalAlways = opts.requireActionApprovalAlways === true;
     const checks = {
         version: false, root_receipt_valid: false, root_human_signoff: false,
@@ -202,6 +226,21 @@ export function verifyProvenanceOffline(doc, opts = {}) {
         && Array.isArray(profile.allowed_origins)
         && profile.allowed_origins.length > 0
         && profile.allowed_origins.every((origin) => typeof origin === 'string' && origin.length > 0));
+    if (!Number.isFinite(now)) {
+        fail('delegations_not_expired', 'verification reference time must be finite');
+        return { valid: false, checks, errors, links, agent_identity: null, liability: null };
+    }
+    if (doc === null || typeof doc !== 'object' || Array.isArray(doc)) {
+        errors.push(`unsupported version: ${doc?.['@version']}`);
+        return { valid: false, checks, errors, links, agent_identity: null, liability: null };
+    }
+    try {
+        canonicalizeStrictJson(doc, { maxDepth: 64, maxNodes: 100_000, maxStringBytes: 4_194_304 });
+    }
+    catch {
+        fail('chain_links_bound', 'provenance document is outside the bounded canonical JSON domain');
+        return { valid: false, checks, errors, links, agent_identity: null, liability: null };
+    }
     if (doc?.['@version'] !== PROVENANCE_VERSION) {
         errors.push(`unsupported version: ${doc?.['@version']}`);
         return { valid: false, checks, errors, links, agent_identity: null, liability: null };
@@ -231,7 +270,16 @@ export function verifyProvenanceOffline(doc, opts = {}) {
             errors.push(`root receipt carries no human signoff (need key_class in [${humanKeyClasses.join(', ')}])`);
     }
     const exec = doc.execution || {};
-    const reversibilityAsserted = typeof opts.reversibilityAsserted === 'function' ? opts.reversibilityAsserted(exec) === true : false;
+    let reversibilityAsserted = false;
+    if (typeof opts.reversibilityAsserted === 'function') {
+        try {
+            reversibilityAsserted = opts.reversibilityAsserted(exec) === true;
+        }
+        catch {
+            // Predicate failure cannot remove the per-action approval requirement.
+            reversibilityAsserted = false;
+        }
+    }
     const needApproval = requireActionApprovalAlways || !reversibilityAsserted;
     const approval = doc.action_approval;
     const actionVerification = opts.actionVerification || opts.action_verification;
@@ -259,7 +307,11 @@ export function verifyProvenanceOffline(doc, opts = {}) {
             if (!checks.action_human_signoff)
                 errors.push('action_approval for an irreversible action carries no human signoff');
         }
-        checks.execution_binding = hexOf(exec.action_hash) === hexOf(approval.receipt.action_hash);
+        const executionHash = hexOf(exec.action_hash);
+        const approvalHash = hexOf(approval.receipt.action_hash);
+        checks.execution_binding = executionHash !== ''
+            && approvalHash !== ''
+            && executionHash === approvalHash;
         if (!checks.execution_binding)
             errors.push('execution.action_hash does not match action_approval.receipt.action_hash');
     }

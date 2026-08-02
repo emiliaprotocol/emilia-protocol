@@ -22,6 +22,7 @@
  * to exactly these numbers for billing reconciliation.
  */
 import crypto from 'node:crypto';
+import { canonicalizeFiniteJson } from './strict-json.js';
 export const USAGE_VERSION = 'EP-GATE-USAGE-v1';
 const DAYS_PER_YEAR = 365;
 // Mirrors retention.js's cold-horizon default (coldDays = 2190 = 6y): a receipt
@@ -31,16 +32,7 @@ function sha256hex(s) {
     return crypto.createHash('sha256').update(s).digest('hex');
 }
 /** Canonical JSON (recursive sorted keys) — matches evidence.js / @emilia-protocol/verify. */
-function canonical(v) {
-    if (v === null || v === undefined)
-        return JSON.stringify(v);
-    if (Array.isArray(v))
-        return `[${v.map(canonical).join(',')}]`;
-    if (typeof v === 'object') {
-        return `{${Object.keys(v).sort().map((k) => JSON.stringify(k) + ':' + canonical(v[k])).join(',')}}`;
-    }
-    return JSON.stringify(v);
-}
+const canonical = canonicalizeFiniteJson;
 function toMs(t) {
     if (t == null)
         return null;
@@ -104,6 +96,16 @@ export function meterUsage(entries = [], { periodStart, periodEnd, retentionYear
     if (!Number.isFinite(retentionYearsDefault) || retentionYearsDefault < 0) {
         throw new Error('meterUsage: retentionYearsDefault must be a finite number >= 0');
     }
+    try {
+        entries = JSON.parse(canonical(entries, {
+            maxDepth: 64, maxNodes: 100000, maxStringBytes: 4 * 1024 * 1024,
+        }));
+    }
+    catch (cause) {
+        throw new TypeError('meterUsage: entries must be canonical finite JSON', { cause });
+    }
+    if (!Array.isArray(entries))
+        throw new TypeError('meterUsage: entries must be an array');
     const warnings = [];
     const byAction = Object.create(null);
     const byTier = Object.create(null);
@@ -182,6 +184,12 @@ export function meterUsage(entries = [], { periodStart, periodEnd, retentionYear
  * @param {{ org?: string }} [o]
  */
 export function buildUsageStatement(usage, { org } = {}) {
+    try {
+        usage = JSON.parse(canonical(usage));
+    }
+    catch (cause) {
+        throw new TypeError('buildUsageStatement: usage must be canonical finite JSON', { cause });
+    }
     // Never emit a statement over an artifact of a different or unknown format,
     // and never one that fails to name who it bills.
     if (!usage || usage['@version'] !== USAGE_VERSION) {

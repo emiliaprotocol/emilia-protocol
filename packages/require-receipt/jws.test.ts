@@ -95,6 +95,31 @@ test('accepts a KeyObject and base64url SPKI key interchangeably', () => {
   assert.equal(verifyReceiptJws(jws, KEY.pubB64u).valid, true);
 });
 
+test('issuance rejects payload state that cannot be represented in signed JSON bytes', () => {
+  let getterCalls = 0;
+  const accessor = { receipt_id: 'tr_accessor' };
+  Object.defineProperty(accessor, 'hidden', {
+    enumerable: true,
+    get() {
+      getterCalls += 1;
+      return 'unsigned';
+    },
+  });
+  const symbolMember = { receipt_id: 'tr_symbol', [Symbol('hidden')]: 'unsigned' };
+  const nonEnumerable = { receipt_id: 'tr_hidden' };
+  Object.defineProperty(nonEnumerable, 'hidden', { enumerable: false, value: 'unsigned' });
+  const sparse = new Array(2);
+  sparse[1] = 'signed';
+
+  for (const payload of [accessor, symbolMember, nonEnumerable, { sparse }]) {
+    assert.throws(
+      () => serializeReceiptJws(sampleDoc(payload), KEY.priv),
+      /canonical JSON domain|canonicalization profile/,
+    );
+  }
+  assert.equal(getterCalls, 0);
+});
+
 // ── Tamper rejection ────────────────────────────────────────────────────────
 
 test('rejects a JWS whose payload byte was flipped', () => {

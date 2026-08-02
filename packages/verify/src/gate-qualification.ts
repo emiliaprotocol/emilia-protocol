@@ -9,6 +9,7 @@
  * every decision is storage-independent and fail closed.
  */
 import crypto from 'node:crypto';
+import { canonicalizeStrictJson } from './strict-json.js';
 
 type Obj = Record<string, any>;
 export type QualificationDigest = `sha256:${string}`;
@@ -198,31 +199,11 @@ function sortedUniqueStrings(value: any, min: number, max: number, predicate: (e
   return true;
 }
 
-function canonicalJsonInternal(value: any, state: { nodes: number }, depth: number): string {
-  state.nodes += 1;
-  if (state.nodes > GATE_QUALIFICATION_LIMITS.max_object_nodes || depth > GATE_QUALIFICATION_LIMITS.max_object_depth) {
-    throw new TypeError('canonical_value_too_large');
-  }
-  if (value === null) return 'null';
-  if (typeof value === 'boolean') return value ? 'true' : 'false';
-  if (typeof value === 'string') {
-    if (!validUnicode(value)) throw new TypeError('invalid_unicode');
-    return JSON.stringify(value);
-  }
-  if (typeof value === 'number') {
-    if (!Number.isSafeInteger(value)) throw new TypeError('non_canonical_number');
-    return JSON.stringify(value);
-  }
-  if (Array.isArray(value)) return `[${value.map((entry) => canonicalJsonInternal(entry, state, depth + 1)).join(',')}]`;
-  if (!record(value)) throw new TypeError('non_canonical_value');
-  return `{${Object.keys(value).sort().map((key) => {
-    if (!validUnicode(key) || value[key] === undefined) throw new TypeError('non_canonical_member');
-    return `${JSON.stringify(key)}:${canonicalJsonInternal(value[key], state, depth + 1)}`;
-  }).join(',')}}`;
-}
-
 export function canonicalizeQualification(value: unknown): string {
-  return canonicalJsonInternal(value, { nodes: 0 }, 0);
+  return canonicalizeStrictJson(value, {
+    maxDepth: GATE_QUALIFICATION_LIMITS.max_object_depth,
+    maxNodes: GATE_QUALIFICATION_LIMITS.max_object_nodes,
+  });
 }
 
 export function qualificationPayloadDigest(value: unknown): QualificationDigest {

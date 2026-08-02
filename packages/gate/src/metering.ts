@@ -21,6 +21,7 @@
  * to exactly these numbers for billing reconciliation.
  */
 import crypto from 'node:crypto';
+import { canonicalizeFiniteJson } from './strict-json.js';
 
 export const USAGE_VERSION = 'EP-GATE-USAGE-v1';
 
@@ -34,14 +35,7 @@ function sha256hex(s) {
 }
 
 /** Canonical JSON (recursive sorted keys) — matches evidence.js / @emilia-protocol/verify. */
-function canonical(v) {
-  if (v === null || v === undefined) return JSON.stringify(v);
-  if (Array.isArray(v)) return `[${v.map(canonical).join(',')}]`;
-  if (typeof v === 'object') {
-    return `{${Object.keys(v).sort().map((k) => JSON.stringify(k) + ':' + canonical(v[k])).join(',')}}`;
-  }
-  return JSON.stringify(v);
-}
+const canonical = canonicalizeFiniteJson;
 
 function toMs(t) {
   if (t == null) return null;
@@ -115,6 +109,14 @@ export function meterUsage(entries: any[] = [], {
   if (!Number.isFinite(retentionYearsDefault) || retentionYearsDefault < 0) {
     throw new Error('meterUsage: retentionYearsDefault must be a finite number >= 0');
   }
+  try {
+    entries = JSON.parse(canonical(entries, {
+      maxDepth: 64, maxNodes: 100000, maxStringBytes: 4 * 1024 * 1024,
+    }));
+  } catch (cause) {
+    throw new TypeError('meterUsage: entries must be canonical finite JSON', { cause });
+  }
+  if (!Array.isArray(entries)) throw new TypeError('meterUsage: entries must be an array');
 
   const warnings: { index: number; reason: string }[] = [];
   const byAction = Object.create(null);
@@ -192,6 +194,8 @@ export function meterUsage(entries: any[] = [], {
  * @param {{ org?: string }} [o]
  */
 export function buildUsageStatement(usage, { org }: { org?: string } = {}) {
+  try { usage = JSON.parse(canonical(usage)); }
+  catch (cause) { throw new TypeError('buildUsageStatement: usage must be canonical finite JSON', { cause }); }
   // Never emit a statement over an artifact of a different or unknown format,
   // and never one that fails to name who it bills.
   if (!usage || usage['@version'] !== USAGE_VERSION) {

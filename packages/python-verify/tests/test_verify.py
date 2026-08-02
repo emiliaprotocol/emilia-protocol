@@ -116,6 +116,14 @@ def test_scope_containment_nonnumeric_cap_does_not_crash():
     assert isinstance(viol, list)
 
 
+def test_provenance_scope_grammar_rejects_empty_prefix_wildcard():
+    from emilia_verify import _scope_containment_violations as contained
+
+    assert not contained({"scope": ["*"]}, {"scope": ["*"]})
+    assert not contained({"scope": ["payment.*"]}, {"scope": ["payment.release"]})
+    assert contained({"scope": ["*"]}, {"scope": [".*"]})
+
+
 def test_coercion_class_failclosed_parity():
     """Regression (surface sweep): the type-coercion class must fail closed and
     coerce identically to JS/Go."""

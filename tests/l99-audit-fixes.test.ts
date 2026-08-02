@@ -149,6 +149,30 @@ describe('L99-H2 — deepSortKeys canonicalizes Unicode and rejects malformed va
     expect(() => computePolicyHash({ nested: { u: undefined } })).toThrow(/CANONICALIZATION_ERROR/);
   });
 
+  it('rejects non-plain, symbol, sparse, and NFC-colliding material', () => {
+    expect(() => computePolicyHash({ nested: new Map([['policy', 'allow']]) })).toThrow(/CANONICALIZATION_ERROR/);
+    expect(() => computePolicyHash({ nested: new Date('2026-08-01T00:00:00Z') })).toThrow(/CANONICALIZATION_ERROR/);
+    expect(() => computePolicyHash({ [Symbol('authority')]: 'admin' })).toThrow(/CANONICALIZATION_ERROR/);
+
+    const sparse = [] as unknown[];
+    sparse[1] = 'allow';
+    expect(() => computePolicyHash({ sparse })).toThrow(/CANONICALIZATION_ERROR/);
+    expect(() => computePolicyHash({ 'caf\u00e9': 1, 'cafe\u0301': 2 })).toThrow(/CANONICALIZATION_ERROR/);
+  });
+
+  it('rejects accessors without invoking them', () => {
+    let reads = 0;
+    const value = Object.defineProperty({}, 'policy', {
+      enumerable: true,
+      get() {
+        reads += 1;
+        return 'allow';
+      },
+    });
+    expect(() => computePolicyHash(value)).toThrow(/CANONICALIZATION_ERROR/);
+    expect(reads).toBe(0);
+  });
+
   it('nested keys remain order-independent (regression for the original bug)', () => {
     const h1 = computePayloadHash({ z: 1, nested: { y: 2, x: 3 } });
     const h2 = computePayloadHash({ nested: { x: 3, y: 2 }, z: 1 });

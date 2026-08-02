@@ -26,6 +26,7 @@
     "dist",
     "src",
     "risk-packs.js",
+    "risk-packs.d.ts",
     "cli.mjs",
     "codemod.mjs",
     "README.md",

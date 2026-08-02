@@ -536,6 +536,41 @@ test('rejects presenter prediction fields in the exact attestation schema', () =
     assert.equal(result.valid, false);
     assert.match(result.errors.join(' '), /malformed_outcome_attestation/);
 });
+test('rejects unsigned JavaScript object state without invoking accessors', () => {
+    const hidden = attestation();
+    Object.defineProperty(hidden, 'unsigned', { value: true, enumerable: false });
+    const symbol = attestation();
+    symbol[Symbol('unsigned')] = true;
+    let getterCalls = 0;
+    const accessor = attestation();
+    Object.defineProperty(accessor, 'execution_id', {
+        enumerable: true,
+        get() {
+            getterCalls += 1;
+            return 'ep:execution:991';
+        },
+    });
+    for (const hostile of [hidden, symbol, accessor]) {
+        const result = verifyOutcomeBinding(receipt, hostile, {
+            receiptOptions,
+            executorKeys,
+            now: NOW,
+        });
+        assert.equal(result.valid, false);
+        assert.match(result.errors.join(' '), /canonical JSON|canonical_json|malformed_outcome_attestation/);
+    }
+    assert.equal(getterCalls, 0);
+});
+test('predicted-effect digests reject object state absent from canonical bytes', () => {
+    const hidden = [{ effect_type: 'payment', target: 'acct:vendor-9' }];
+    Object.defineProperty(hidden[0], 'unsigned', { value: true, enumerable: false });
+    const symbol = [{ effect_type: 'payment', target: 'acct:vendor-9' }];
+    symbol[0][Symbol('unsigned')] = true;
+    const sparse = [SIGNED_PREDICTIONS[0], , SIGNED_PREDICTIONS[0]];
+    for (const hostile of [hidden, symbol, sparse]) {
+        assert.throws(() => predictedEffectsDigest(hostile), /canonical JSON|JSON domain/);
+    }
+});
 test('literal-target profile refuses wildcard intent instead of pretending to match it', () => {
     const wildcard = [
         { effect_type: 'account_close', target: 'acct:*', predicate: { op: 'absent' } },

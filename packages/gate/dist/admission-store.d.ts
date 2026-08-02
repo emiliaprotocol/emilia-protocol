@@ -144,7 +144,7 @@ export interface AdmissionRecord {
     predecessor_record_digest: AdmissionDigest | null;
     record_digest: AdmissionDigest;
 }
-export type AdmissionJournalEvent = 'RESERVED' | 'RELEASED' | 'EXPIRED' | 'SUPERSEDED' | 'INVOKING' | 'RECOVERED_INDETERMINATE' | 'PROVIDER_OUTCOME' | 'EFFECT_RELATION';
+export type AdmissionJournalEvent = 'RESERVED' | 'RELEASED' | 'EXPIRED' | 'ABANDONED_BEFORE_INVOCATION' | 'SUPERSEDED' | 'INVOKING' | 'RECOVERED_INDETERMINATE' | 'PROVIDER_OUTCOME' | 'EFFECT_RELATION';
 export interface AdmissionJournalEntry {
     '@version': typeof ADMISSION_JOURNAL_VERSION;
     tenant_id: string;
@@ -233,6 +233,9 @@ export interface AdmissionCas extends AdmissionReference {
 export interface AdmissionRecoveryInput extends AdmissionReference {
     owner_token: string;
 }
+export interface AdmissionExpiredRecoveryInput extends AdmissionReference {
+    expected_revision: number;
+}
 export interface AdmissionProviderOutcomeInput extends AdmissionCas {
     invocation_token: string;
     value: AdmissionProviderOutcome;
@@ -263,6 +266,13 @@ export interface AdmissionStore {
     reserve(input: AdmissionSnapshotInput | AdmissionSnapshot): Promise<AdmissionReserveResult>;
     release(input: AdmissionCas, reason?: string): Promise<AdmissionTransitionResult>;
     expire(input: AdmissionCas): Promise<AdmissionTransitionResult>;
+    /**
+     * Deadline-gated recovery for a reservation whose per-operation owner token
+     * was lost before provider entry. This transition has no owner-token input:
+     * access to the recovery RPC is the authority, and state, immutable expiry,
+     * tenant/admission identity, and revision are all checked atomically.
+     */
+    reapExpiredReservation(input: AdmissionExpiredRecoveryInput): Promise<AdmissionTransitionResult>;
     supersede(input: AdmissionSupersedeInput): Promise<AdmissionSupersedeResult>;
     beginInvocation(input: AdmissionCas): Promise<AdmissionBeginResult>;
     recoverIndeterminate(input: AdmissionRecoveryInput): Promise<AdmissionRecoveryResult>;

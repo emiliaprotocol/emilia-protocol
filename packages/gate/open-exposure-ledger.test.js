@@ -89,6 +89,21 @@ function beginInput(input) {
         authorizationExpiresAt: input.authorizationExpiresAt,
     };
 }
+test('open exposure refuses ghost state without invoking accessors', async () => {
+    const ledger = createMemoryOpenExposureLedger({ authenticate: authenticator, clock: () => DEFAULT_NOW });
+    const value = ceiling('TENANT', '*', 100n);
+    let getterCalls = 0;
+    Object.defineProperty(value, 'scopeValue', {
+        enumerable: true,
+        get() { getterCalls += 1; return '*'; },
+    });
+    await assert.rejects(ledger.registerCeiling(value, auth('tenant-a', 'POLICY_ADMIN', 'policy-admin')), /accessors are not permitted/);
+    assert.equal(getterCalls, 0);
+    const credentials = auth('tenant-a', 'POLICY_ADMIN', 'policy-admin');
+    Object.defineProperty(credentials, 'shadow', { value: 'admin', enumerable: false });
+    const denied = await ledger.registerCeiling(ceiling('TENANT', '*', 100n), credentials);
+    assert.deepEqual(denied, { ok: false, reason: 'unauthenticated' });
+});
 async function configuredLedger(extraCeilings = [], clock = () => DEFAULT_NOW) {
     const ledger = createMemoryOpenExposureLedger({ authenticate: authenticator, clock });
     for (const configured of [...CEILINGS, ...extraCeilings]) {

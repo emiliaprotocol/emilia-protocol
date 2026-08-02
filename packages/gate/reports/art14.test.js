@@ -98,7 +98,7 @@ test('replay and tamper refusals are counted as blocked attempts', async () => {
 test('not_guarded pass-throughs are uncontrolled-action exceptions, not oversight', async () => {
     const entries = await chained([
         decision(at(1)),
-        decision(at(2), { reason: 'not_guarded', action: 'read.balance', receipt_id: null, subject: null, have_tier: undefined }),
+        decision(at(2), { reason: 'not_guarded', action: 'read.balance', receipt_id: null, subject: null, have_tier: null }),
     ]);
     const pack = buildArt14EvidencePack(entries, OPTS);
     assert.equal(pack.uncontrolled_action_exceptions.total, 1);

@@ -77,8 +77,9 @@ export const CANONICAL_BINDING_FIELDS = Object.freeze([
 export const BINDING_MATERIAL_VERSION = 1;
 
 // ── Crypto Helpers ───────────────────────────────────────────────────────────
-// sha256 imported from @/lib/crypto and re-exported for backward compatibility
-export { sha256 } from '@/lib/crypto';
+// Re-exported for backward compatibility. Keep the runtime-relative specifier
+// so the generated Node companion works without the app bundler's `@/` alias.
+export { sha256 } from '../crypto.js';
 
 export function newNonce(): string {
   return crypto.randomBytes(32).toString('hex');

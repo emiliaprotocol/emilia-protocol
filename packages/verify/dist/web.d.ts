@@ -12,6 +12,7 @@
  *
  * @license Apache-2.0
  */
+import { canonicalizeStrictJson } from './strict-json.js';
 type JsonObject = Record<string, any>;
 interface WebOptions {
     allowLegacyMerkle?: boolean;
@@ -22,7 +23,7 @@ interface WebOptions {
     previousSignCount?: number;
     counterPolicy?: 'observe' | 'enforce';
 }
-export declare function canonicalize(value: unknown): string;
+export declare const canonicalize: typeof canonicalizeStrictJson;
 export declare const MERKLE_V2_ALG = "EP-MERKLE-v2";
 /**
  * Verify an EP receipt document in the browser. Mirrors index.js verifyReceipt.

@@ -7,6 +7,7 @@
  * policy may add constraints; it can never replace or loosen signed intent.
  */
 import crypto from 'node:crypto';
+import { canonicalizeStrictJson } from './strict-json.js';
 import { DIVERGENCE_OUTCOMES, MAX_EFFECT_STRING_LENGTH, MAX_OBSERVED_EFFECTS, OUTCOME_SOURCE_ROLES, evaluatePredictedEffects, predictedEffectsDigest, validatePredictedEffects, } from './effect-predicates.js';
 export const OUTCOME_ATTESTATION_VERSION = 'EP-OUTCOME-ATTESTATION-v1';
 export const OUTCOME_ATTESTATION_DOMAIN = 'EP-OUTCOME-ATTESTATION-v1\0';
@@ -33,12 +34,7 @@ const OBSERVATION_KEYS = new Set([
 ]);
 const SOURCE_KEYS = new Set(['role', 'source_id', 'source_class', 'facility_id']);
 function canonicalize(value) {
-    if (value === null || typeof value !== 'object')
-        return JSON.stringify(value);
-    if (Array.isArray(value))
-        return `[${value.map(canonicalize).join(',')}]`;
-    const objectValue = value;
-    return `{${Object.keys(objectValue).sort().map((key) => `${JSON.stringify(key)}:${canonicalize(objectValue[key])}`).join(',')}}`;
+    return canonicalizeStrictJson(value);
 }
 const sha256hex = (bytes) => crypto.createHash('sha256').update(bytes).digest('hex');
 const digest = (value) => `sha256:${sha256hex(Buffer.from(canonicalize(value), 'utf8'))}`;
@@ -305,6 +301,13 @@ export function verifyOutcomeAttestation(attestation, opts = {}) {
     };
     const errors = [];
     const out = () => ({ valid: Object.values(checks).every(Boolean), checks, errors });
+    try {
+        canonicalize(attestation);
+    }
+    catch {
+        errors.push('malformed_outcome_attestation: outside canonical JSON domain');
+        return out();
+    }
     if (!exactKeys(attestation, TOP_KEYS)
         || attestation?.['@version'] !== OUTCOME_ATTESTATION_VERSION
         || typeof attestation.receipt_id !== 'string' || !attestation.receipt_id
@@ -441,6 +444,13 @@ export function verifyOutcomeObservation(observation, opts = {}) {
     };
     const errors = [];
     const out = () => ({ valid: Object.values(checks).every(Boolean), checks, errors });
+    try {
+        canonicalize(observation);
+    }
+    catch {
+        errors.push('malformed_outcome_observation: outside canonical JSON domain');
+        return out();
+    }
     if (!exactKeys(observation, OBSERVATION_KEYS)
         || observation?.['@version'] !== OUTCOME_OBSERVATION_VERSION
         || typeof observation.receipt_id !== 'string' || !observation.receipt_id
@@ -863,6 +873,22 @@ function combineEvaluations(signed, policy) {
  */
 export function verifyOutcomeBindingCore(receipt, attestation, opts = {}, verifyReceipt) {
     opts = opts && typeof opts === 'object' ? opts : {};
+    let receiptCanonical = true;
+    let attestationCanonical = true;
+    try {
+        canonicalize(receipt);
+    }
+    catch {
+        receiptCanonical = false;
+        receipt = {};
+    }
+    try {
+        canonicalize(attestation);
+    }
+    catch {
+        attestationCanonical = false;
+        attestation = {};
+    }
     const checks = {
         receipt_verified: false,
         signed_predictions: false,
@@ -928,6 +954,10 @@ export function verifyOutcomeBindingCore(receipt, attestation, opts = {}, verify
             result_digest: outcomeBindingResultDigest(result),
         };
     };
+    if (!receiptCanonical)
+        return refuse('receipt_not_canonical_json');
+    if (!attestationCanonical)
+        return refuse('attestation_not_canonical_json');
     if (typeof verifyReceipt !== 'function')
         return refuse('receipt_verifier_required');
     try {

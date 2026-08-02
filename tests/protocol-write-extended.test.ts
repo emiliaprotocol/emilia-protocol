@@ -767,6 +767,44 @@ describe('canonicalStringify (via computeIdempotencyKey)', () => {
     });
     expect(key1).toBe(key2);
   });
+
+  it('binds the resolved actor instead of collapsing every actor object', () => {
+    const first = _internals.computeIdempotencyKey({
+      type: 'submit_receipt',
+      actor: { id: 'actor_a' },
+      input: { entity_id: 'e', transaction_ref: 'tx' },
+    });
+    const second = _internals.computeIdempotencyKey({
+      type: 'submit_receipt',
+      actor: { id: 'actor_b' },
+      input: { entity_id: 'e', transaction_ref: 'tx' },
+    });
+    expect(first).not.toBe(second);
+  });
+
+  it('binds authorization role and source into the idempotency identity', () => {
+    const first = _internals.computeIdempotencyKey({
+      type: 'submit_receipt',
+      actor: { id: 'actor_a' },
+      requestMeta: { role: 'entity', source: 'api' },
+      input: { entity_id: 'e', transaction_ref: 'tx' },
+    });
+    const second = _internals.computeIdempotencyKey({
+      type: 'submit_receipt',
+      actor: { id: 'actor_a' },
+      requestMeta: { role: 'operator', source: 'admin' },
+      input: { entity_id: 'e', transaction_ref: 'tx' },
+    });
+    expect(first).not.toBe(second);
+  });
+
+  it('refuses input fields that would disappear from an idempotency key', () => {
+    expect(() => _internals.computeIdempotencyKey({
+      type: 'submit_receipt',
+      actor: { id: 'actor_a' },
+      input: { entity_id: 'e', hidden: undefined },
+    })).toThrow(/canonicalization profile/);
+  });
 });
 
 // ── assertInvariants ──────────────────────────────────────────────────────────

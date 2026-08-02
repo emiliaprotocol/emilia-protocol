@@ -19,6 +19,7 @@
 
 import crypto from 'node:crypto';
 import { sha256 } from '../crypto.js';
+import { deepSortKeys } from '../handshake/binding.js';
 
 // ── Canonicalization ───────────────────────────────────────────────────────
 
@@ -26,34 +27,7 @@ import { sha256 } from '../crypto.js';
  * Canonicalize a value for deterministic hashing.
  * Mirrors lib/handshake/binding.js:deepSortKeys exactly.
  */
-function canonicalize(value: any): any {
-  if (value === null) return null;
-  if (value === undefined) {
-    throw new Error('CANONICALIZATION_ERROR: undefined cannot be canonicalized');
-  }
-  if (typeof value === 'function') {
-    throw new Error('CANONICALIZATION_ERROR: functions cannot be canonicalized');
-  }
-  if (typeof value === 'number') {
-    if (!Number.isFinite(value)) {
-      throw new Error(`CANONICALIZATION_ERROR: non-finite number ${value}`);
-    }
-    return value;
-  }
-  if (typeof value === 'string') {
-    return value.normalize('NFC');
-  }
-  if (Array.isArray(value)) {
-    return value.map(canonicalize);
-  }
-  if (typeof value === 'object') {
-    const sortedKeys = Object.keys(value).sort();
-    const out: Record<string, any> = {};
-    for (const k of sortedKeys) out[k.normalize('NFC')] = canonicalize(value[k]);
-    return out;
-  }
-  return value;
-}
+const canonicalize = deepSortKeys;
 
 // ── Public API ─────────────────────────────────────────────────────────────
 

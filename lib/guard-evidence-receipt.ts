@@ -32,6 +32,7 @@
 // the existing unsigned ep-guard-evidence-v1 packet and fabricates NOTHING.
 
 import crypto from 'node:crypto';
+import { canonicalize as canonicalizeProtocol } from './canonical-json.js';
 import { getCommitSigningConfig } from './env.js';
 import { logger } from './logger.js';
 
@@ -44,15 +45,7 @@ const ED25519_PKCS8_DER_PREFIX = Buffer.from('302e020100300506032b657004220420',
  * re-derives exactly these bytes.
  */
 export function canonicalize(value) {
-  if (value === null || value === undefined) return JSON.stringify(value);
-  if (Array.isArray(value)) return `[${value.map(canonicalize).join(',')}]`;
-  if (typeof value === 'object') {
-    return `{${Object.keys(value)
-      .sort()
-      .map((k) => JSON.stringify(k) + ':' + canonicalize(value[k]))
-      .join(',')}}`;
-  }
-  return JSON.stringify(value);
+  return canonicalizeProtocol(value);
 }
 
 // ── Signing key ──────────────────────────────────────────────────────────────
@@ -206,8 +199,14 @@ export function signEvidenceReceipt({ receiptId, base, approved, rejected, consu
     expires_at: base.expires_at ?? null,
   };
 
+  let signedBytes;
+  try {
+    signedBytes = Buffer.from(canonicalize(payload), 'utf8');
+  } catch {
+    return null;
+  }
   const signatureValue = crypto
-    .sign(null, Buffer.from(canonicalize(payload), 'utf8'), keypair.privateKey)
+    .sign(null, signedBytes, keypair.privateKey)
     .toString('base64url');
 
   const document = {
