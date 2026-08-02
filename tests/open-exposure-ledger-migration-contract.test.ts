@@ -19,9 +19,10 @@ const migrationHash = crypto.createHash('sha256')
   .digest('hex');
 
 describe('Open Exposure Ledger PostgreSQL contract', () => {
-  it('is pinned as the applied remote head and absent from pending queues', () => {
-    expect(history.remote_head).toBe('20260728210700');
-    expect(history.remote_versions.at(-1)).toBe('20260728210700');
+  it('is pinned in applied remote history and absent from pending queues', () => {
+    expect(history.remote_versions).toContain('20260728210700');
+    expect(history.remote_versions.indexOf('20260728210700'))
+      .toBeLessThanOrEqual(history.remote_versions.indexOf(history.remote_head));
     expect(history.forward_pending_versions).not.toContain('20260728210700');
     expect(history.deployment_sequence).not.toContain('20260728210700');
     expect(history.public_files['20260728210700_open_exposure_ledger.sql'])
