@@ -568,6 +568,22 @@ describe('mobile production attestation adapters', () => {
       expected_app_id: base.iosBundleId,
       expected_attestation_key_id: 'apple-key',
     };
+    const boundedInspector = vi.fn(() => ({ authenticatorData: appleAuthenticatorData() }));
+    const boundedVerifier = createPlatformEnrollmentVerifier({
+      config: base,
+      playDecoder: async () => ({}),
+      inspectAppleAttestation: boundedInspector,
+    });
+    await expect(boundedVerifier({ ...validInput, token: 'not+base64url' })).resolves.toEqual({
+      valid: false,
+      reason: 'attestation_token_out_of_bounds',
+    });
+    await expect(boundedVerifier({ ...validInput, token: 'a'.repeat(174_765) })).resolves.toEqual({
+      valid: false,
+      reason: 'attestation_token_out_of_bounds',
+    });
+    expect(boundedInspector).not.toHaveBeenCalled();
+
     const noAndroid = createPlatformEnrollmentVerifier({ config: base, playDecoder: async () => ({}) });
     await expect(noAndroid({ ...validInput, platform: 'android' })).resolves.toEqual({ valid: false });
     for (const mutation of [
