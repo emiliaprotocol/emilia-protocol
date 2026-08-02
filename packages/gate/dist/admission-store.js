@@ -34,6 +34,7 @@ const CAID = /^caid:1:[a-z][a-z0-9-]*(?:\.[a-z][a-z0-9-]*)*\.[1-9][0-9]*:jcs-sha
 const IDENTIFIER = RISK_ID;
 const RFC3339 = /^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2}):(\d{2})(?:\.\d{1,9})?(?:Z|[+-]\d{2}:\d{2})$/;
 const OWNER_TOKEN = /^admission-owner:v2:[A-Za-z0-9_-]{32,128}$/;
+const INVOCATION_TOKEN = /^admission-invocation:v2:[A-Za-z0-9_-]{32,128}$/;
 const REQUIRED_SINGLETON_ROLES = Object.freeze([
     'candidate_manifest',
     'runtime_measurement',
@@ -440,6 +441,12 @@ function defaultInvocationToken() { return `admission-invocation:v2:${crypto.ran
 function validateOwner(value) {
     if (typeof value !== 'string' || !OWNER_TOKEN.test(value))
         fail('invalid_owner_token', 'owner token is invalid');
+    return value;
+}
+function validateInvocationToken(value) {
+    if (typeof value !== 'string' || !INVOCATION_TOKEN.test(value)) {
+        fail('invalid_invocation_token', 'invocation token is invalid');
+    }
     return value;
 }
 function finalizeRecord(raw) {
@@ -993,7 +1000,7 @@ export function createMemoryAdmissionStore(options = {}) {
         releaseExecutionProgramOccurrenceForAdmission(key, at);
         return { ok: true, record };
     }
-    async function beginInvocationCore(input, programAware) {
+    async function beginInvocationCore(input, programAware, preparedInvocationToken) {
         const prepared = await atomic(() => {
             const selected = selectCas(input);
             if ('ok' in selected)
@@ -1089,10 +1096,7 @@ export function createMemoryAdmissionStore(options = {}) {
                 releaseReservedForRefusal(key, stored, 'currentness_refused', at);
                 return { ok: false, reason: 'currentness_refused' };
             }
-            const invocationToken = invocationFactory();
-            if (typeof invocationToken !== 'string' || invocationToken.length < 48) {
-                fail('invalid_invocation_token', 'invocation token is invalid');
-            }
+            const invocationToken = validateInvocationToken(preparedInvocationToken ?? invocationFactory());
             const at = new Date(validationTime).toISOString();
             if (programAware) {
                 const programRefusal = consumeExecutionProgramOccurrenceForAdmission(key, at);
@@ -1107,6 +1111,26 @@ export function createMemoryAdmissionStore(options = {}) {
             }), 'INVOKING', at);
             return { ok: true, snapshot, record, invocation_token: invocationToken };
         });
+    }
+    function recoverIndeterminateCore(input, reconciliationToken) {
+        const key = admissionKey(identifier(input.tenant_id, 'tenant_id'), identifier(input.admission_id, 'admission_id'));
+        const stored = records.get(key);
+        if (!stored)
+            return { ok: false, reason: 'admission_not_found' };
+        if (stored.ownerToken !== validateOwner(input.owner_token))
+            return { ok: false, reason: 'owner_conflict' };
+        if (stored.record.state !== 'INVOKING')
+            return { ok: false, reason: 'state_conflict' };
+        const preparedToken = validateInvocationToken(reconciliationToken);
+        const at = new Date(currentMs(options.now)).toISOString();
+        const record = append(key, stored.ownerToken, next(stored.record, at, {
+            state: 'INDETERMINATE', provider_attempt: 'INDETERMINATE',
+            invocation_token_digest: tokenDigest(preparedToken),
+            provider_outcome: { value: 'INDETERMINATE', evidence_digest: null, observed_at: at },
+            refusal_reason: 'ambiguous_provider_entry',
+        }), 'RECOVERED_INDETERMINATE', at);
+        updateExecutionProgramOccurrenceForAdmission(key, 'INDETERMINATE', at);
+        return { ok: true, record, reconciliation_token: preparedToken };
     }
     function invariantViolations() {
         const violations = [];
@@ -1355,29 +1379,14 @@ export function createMemoryAdmissionStore(options = {}) {
         beginInvocation(input) {
             return beginInvocationCore(input, false);
         },
+        beginInvocationWithPreparedToken(input) {
+            return beginInvocationCore(input, false, input.invocation_token);
+        },
         recoverIndeterminate(input) {
-            return atomic(() => {
-                const key = admissionKey(identifier(input.tenant_id, 'tenant_id'), identifier(input.admission_id, 'admission_id'));
-                const stored = records.get(key);
-                if (!stored)
-                    return { ok: false, reason: 'admission_not_found' };
-                if (stored.ownerToken !== validateOwner(input.owner_token))
-                    return { ok: false, reason: 'owner_conflict' };
-                if (stored.record.state !== 'INVOKING')
-                    return { ok: false, reason: 'state_conflict' };
-                const reconciliationToken = invocationFactory();
-                if (typeof reconciliationToken !== 'string' || reconciliationToken.length < 48)
-                    fail('invalid_invocation_token', 'reconciliation token is invalid');
-                const at = new Date(currentMs(options.now)).toISOString();
-                const record = append(key, stored.ownerToken, next(stored.record, at, {
-                    state: 'INDETERMINATE', provider_attempt: 'INDETERMINATE',
-                    invocation_token_digest: tokenDigest(reconciliationToken),
-                    provider_outcome: { value: 'INDETERMINATE', evidence_digest: null, observed_at: at },
-                    refusal_reason: 'ambiguous_provider_entry',
-                }), 'RECOVERED_INDETERMINATE', at);
-                updateExecutionProgramOccurrenceForAdmission(key, 'INDETERMINATE', at);
-                return { ok: true, record, reconciliation_token: reconciliationToken };
-            });
+            return atomic(() => recoverIndeterminateCore(input, invocationFactory()));
+        },
+        recoverIndeterminateWithPreparedToken(input) {
+            return atomic(() => recoverIndeterminateCore(input, input.reconciliation_token));
         },
         recordProviderOutcome(input) {
             return atomic(() => {

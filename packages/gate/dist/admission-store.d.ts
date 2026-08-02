@@ -238,6 +238,12 @@ export interface AdmissionCas extends AdmissionReference {
 export interface AdmissionRecoveryInput extends AdmissionReference {
     owner_token: string;
 }
+export interface AdmissionPreparedBeginInput extends AdmissionCas {
+    invocation_token: string;
+}
+export interface AdmissionPreparedRecoveryInput extends AdmissionRecoveryInput {
+    reconciliation_token: string;
+}
 export interface AdmissionExpiredRecoveryInput extends AdmissionReference {
     expected_revision: number;
 }
@@ -422,7 +428,18 @@ export interface AdmissionStore {
     reapExpiredReservation(input: AdmissionExpiredRecoveryInput): Promise<AdmissionTransitionResult>;
     supersede(input: AdmissionSupersedeInput): Promise<AdmissionSupersedeResult>;
     beginInvocation(input: AdmissionCas): Promise<AdmissionBeginResult>;
+    /**
+     * Begins with an invocation token that the orchestrator durably custodied
+     * before this atomic state transition. The supplied token is the exact token
+     * whose digest is committed with INVOKING.
+     */
+    beginInvocationWithPreparedToken(input: AdmissionPreparedBeginInput): Promise<AdmissionBeginResult>;
     recoverIndeterminate(input: AdmissionRecoveryInput): Promise<AdmissionRecoveryResult>;
+    /**
+     * Recovers with a reconciliation token that was durably custodied before
+     * the INVOKING transition. The old invocation token is atomically replaced.
+     */
+    recoverIndeterminateWithPreparedToken(input: AdmissionPreparedRecoveryInput): Promise<AdmissionRecoveryResult>;
     recordProviderOutcome(input: AdmissionProviderOutcomeInput): Promise<AdmissionTransitionResult>;
     recordEffectRelation(input: AdmissionEffectRelationInput): Promise<AdmissionTransitionResult>;
     read(input: AdmissionReference): Promise<Readonly<AdmissionRecord> | null>;

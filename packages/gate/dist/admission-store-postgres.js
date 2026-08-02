@@ -626,10 +626,10 @@ export function createAdmissionPostgresStore(options) {
             return { ok: false };
         }
     }
-    async function beginInvocation(input, operation, text, extraParams = [], execute = rpc) {
+    async function beginInvocation(input, operation, text, extraParams = [], execute = rpc, preparedInvocationToken) {
         const cas = validateCas(input);
         assertTenant(cas.tenant_id);
-        const generatedInvocation = invocationToken(invocationFactory());
+        const generatedInvocation = invocationToken(preparedInvocationToken ?? invocationFactory());
         const generatedDigest = tokenDigest(generatedInvocation);
         try {
             const value = await execute(operation, text, [
@@ -688,6 +688,27 @@ export function createAdmissionPostgresStore(options) {
             }
             throw new AdmissionPostgresAmbiguousBeginError(cas.admission_id, `${operation} outcome is not provably attributable to this invocation token`, { cause: error });
         }
+    }
+    async function recoverIndeterminate(input, preparedReconciliationToken) {
+        const reference = validateReference(input);
+        assertTenant(reference.tenant_id);
+        const recoveryOwner = ownerToken(input.owner_token);
+        const reconciliationToken = invocationToken(preparedReconciliationToken ?? invocationFactory());
+        const value = await rpc('admission recover indeterminate', ADMISSION_POSTGRES_SQL.recoverIndeterminate, [
+            deploymentId,
+            tenantId,
+            reference.admission_id,
+            tokenDigest(recoveryOwner),
+            tokenDigest(reconciliationToken),
+        ]);
+        const result = normalizeResultObject(value, 'admission recover indeterminate');
+        if (!result.ok)
+            return detached(result);
+        const record = validateRecord(result.record, 'admission recover indeterminate', tenantId);
+        if (record.invocation_token_digest !== tokenDigest(reconciliationToken)) {
+            throw new AdmissionPostgresProtocolError('admission recover indeterminate: reconciliation token digest mismatch');
+        }
+        return { ok: true, record, reconciliation_token: reconciliationToken };
     }
     const store = {
         durable: true,
@@ -785,26 +806,14 @@ export function createAdmissionPostgresStore(options) {
         beginInvocation(input) {
             return beginInvocation(input, 'admission begin invocation', ADMISSION_POSTGRES_SQL.beginInvocation);
         },
-        async recoverIndeterminate(input) {
-            const reference = validateReference(input);
-            assertTenant(reference.tenant_id);
-            const recoveryOwner = ownerToken(input.owner_token);
-            const reconciliationToken = invocationToken(invocationFactory());
-            const value = await rpc('admission recover indeterminate', ADMISSION_POSTGRES_SQL.recoverIndeterminate, [
-                deploymentId,
-                tenantId,
-                reference.admission_id,
-                tokenDigest(recoveryOwner),
-                tokenDigest(reconciliationToken),
-            ]);
-            const result = normalizeResultObject(value, 'admission recover indeterminate');
-            if (!result.ok)
-                return detached(result);
-            const record = validateRecord(result.record, 'admission recover indeterminate', tenantId);
-            if (record.invocation_token_digest !== tokenDigest(reconciliationToken)) {
-                throw new AdmissionPostgresProtocolError('admission recover indeterminate: reconciliation token digest mismatch');
-            }
-            return { ok: true, record, reconciliation_token: reconciliationToken };
+        beginInvocationWithPreparedToken(input) {
+            return beginInvocation(input, 'admission begin invocation', ADMISSION_POSTGRES_SQL.beginInvocation, [], rpc, input.invocation_token);
+        },
+        recoverIndeterminate(input) {
+            return recoverIndeterminate(input);
+        },
+        recoverIndeterminateWithPreparedToken(input) {
+            return recoverIndeterminate(input, input.reconciliation_token);
         },
         async recordProviderOutcome(input) {
             const cas = validateCas(input);

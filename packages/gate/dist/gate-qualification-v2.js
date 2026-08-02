@@ -6,7 +6,7 @@
  * immutable AdmissionSnapshot may cross the one-time invocation boundary.
  */
 import crypto from 'node:crypto';
-import { createAdmissionSnapshot } from './admission-store.js';
+import { ADMISSION_RECORD_VERSION, createAdmissionSnapshot, } from './admission-store.js';
 export const GATE_QUALIFICATION_V2_VERSION = 'EP-GATE-QUALIFICATION-v2';
 const DIGEST = /^sha256:[0-9a-f]{64}$/;
 const REQUIRED_QUALIFICATION_CHECKS = Object.freeze([
@@ -33,6 +33,8 @@ const GATE_QUALIFICATION_V2_PROGRAM_DIGEST = `sha256:${crypto
     .digest('hex')}`;
 const DEFAULT_ADAPTER_TIMEOUT_MS = 30_000;
 const MAX_ADAPTER_TIMEOUT_MS = 300_000;
+const OWNER_TOKEN = /^admission-owner:v2:[A-Za-z0-9_-]{32,128}$/;
+const INVOCATION_TOKEN = /^admission-invocation:v2:[A-Za-z0-9_-]{32,128}$/;
 /** Explicitly test-only custody. Production callers must supply durable KMS-backed custody. */
 export function createMemoryInvocationAuthorityCustodyV2() {
     const values = new Map();
@@ -40,8 +42,15 @@ export function createMemoryInvocationAuthorityCustodyV2() {
         custody: 'protected',
         durable: false,
         testOnly: true,
-        async put(input) {
-            values.set(authorityKey(input.tenantId, input.admissionId), frozenCopy(input.authority));
+        async stage(input) {
+            const key = authorityKey(input.tenantId, input.admissionId);
+            const authority = frozenCopy(input.authority);
+            const existing = values.get(key);
+            if (existing && !sameInvocationAuthority(existing, authority)) {
+                throw new Error('invocation authority already staged');
+            }
+            if (!existing)
+                values.set(key, authority);
         },
         async get(input) {
             return values.get(authorityKey(input.tenantId, input.admissionId)) ?? null;
@@ -63,6 +72,48 @@ function validString(value) {
 }
 function validDigest(value) {
     return typeof value === 'string' && DIGEST.test(value);
+}
+function secureInvocationToken() {
+    return `admission-invocation:v2:${crypto.randomBytes(32).toString('base64url')}`;
+}
+function admissionTokenDigest(token) {
+    return `sha256:${crypto.createHash('sha256')
+        .update(`${ADMISSION_RECORD_VERSION}:TOKEN`)
+        .update('\0')
+        .update(JSON.stringify(token))
+        .digest('hex')}`;
+}
+function validInvocationAuthority(value) {
+    return isRecord(value)
+        && Reflect.ownKeys(value).length === 4
+        && typeof value.ownerToken === 'string'
+        && OWNER_TOKEN.test(value.ownerToken)
+        && typeof value.invocationToken === 'string'
+        && INVOCATION_TOKEN.test(value.invocationToken)
+        && typeof value.reconciliationToken === 'string'
+        && INVOCATION_TOKEN.test(value.reconciliationToken)
+        && value.reconciliationToken !== value.invocationToken
+        && validDigest(value.snapshotDigest);
+}
+function sameInvocationAuthority(left, right) {
+    return left.ownerToken === right.ownerToken
+        && left.invocationToken === right.invocationToken
+        && left.reconciliationToken === right.reconciliationToken
+        && left.snapshotDigest === right.snapshotDigest;
+}
+function activeInvocationAuthority(authority, record) {
+    const token = record.invocation_token_digest
+        === admissionTokenDigest(authority.invocationToken)
+        ? authority.invocationToken
+        : record.invocation_token_digest
+            === admissionTokenDigest(authority.reconciliationToken)
+            ? authority.reconciliationToken
+            : null;
+    return token === null ? null : deepFreeze({
+        ownerToken: authority.ownerToken,
+        invocationToken: token,
+        snapshotDigest: authority.snapshotDigest,
+    });
 }
 function validInstant(value) {
     return typeof value === 'string' && Number.isFinite(Date.parse(value));
@@ -356,7 +407,9 @@ function verifyStoreCapabilities(store, testOnly) {
         'reserve',
         'release',
         'beginInvocation',
+        'beginInvocationWithPreparedToken',
         'recoverIndeterminate',
+        'recoverIndeterminateWithPreparedToken',
         'recordProviderOutcome',
         'recordEffectRelation',
         'read',
@@ -518,7 +571,7 @@ export class GateQualificationV2 {
         }
         if (!options.authorityCustody
             || options.authorityCustody.custody !== 'protected'
-            || typeof options.authorityCustody.put !== 'function'
+            || typeof options.authorityCustody.stage !== 'function'
             || typeof options.authorityCustody.get !== 'function'
             || typeof options.authorityCustody.delete !== 'function') {
             throw new TypeError('Gate Qualification v2 requires protected invocation-authority custody');
@@ -574,15 +627,27 @@ export class GateQualificationV2 {
             },
         });
     }
-    async #saveAuthority(snapshot, authority) {
-        await this.#authorityCustody.put({
+    async #stageAuthority(snapshot, authority) {
+        await this.#authorityCustody.stage({
             tenantId: snapshot.body.tenant_id,
             admissionId: snapshot.body.admission_id,
             authority: frozenCopy(authority),
         });
+        const stored = await this.#authorityCustody.get({
+            tenantId: snapshot.body.tenant_id,
+            admissionId: snapshot.body.admission_id,
+        });
+        if (!validInvocationAuthority(stored)
+            || !sameInvocationAuthority(stored, authority)) {
+            throw new Error('invocation authority custody readback mismatch');
+        }
     }
     async #getAuthority(tenantId, admissionId) {
-        return this.#authorityCustody.get({ tenantId, admissionId });
+        const authority = await this.#authorityCustody.get({
+            tenantId,
+            admissionId,
+        });
+        return validInvocationAuthority(authority) ? authority : null;
     }
     async #recordIndeterminateEffect(snapshot, authority, expectedRevision) {
         try {
@@ -601,28 +666,28 @@ export class GateQualificationV2 {
             return null;
         }
     }
-    async #recoverInvoking(snapshot, ownerToken) {
+    async #recoverInvoking(snapshot, authority) {
         try {
-            const recovered = await this.#store.recoverIndeterminate({
+            const recovered = await this.#store.recoverIndeterminateWithPreparedToken({
                 ...reference(snapshot),
-                owner_token: ownerToken,
+                owner_token: authority.ownerToken,
+                reconciliation_token: authority.reconciliationToken,
             });
-            if (!recovered.ok)
+            if (!recovered.ok
+                || recovered.reconciliation_token !== authority.reconciliationToken) {
                 return null;
-            const authority = {
-                ownerToken,
-                invocationToken: recovered.reconciliation_token,
-                snapshotDigest: snapshot.snapshot_digest,
-            };
-            await this.#saveAuthority(snapshot, authority);
-            await this.#recordIndeterminateEffect(snapshot, authority, recovered.record.revision);
-            return authority;
+            }
+            const active = activeInvocationAuthority(authority, recovered.record);
+            if (!active)
+                return null;
+            await this.#recordIndeterminateEffect(snapshot, active, recovered.record.revision);
+            return active;
         }
         catch {
             return null;
         }
     }
-    async #beginAmbiguity(snapshot, ownerToken) {
+    async #beginAmbiguity(snapshot, authority) {
         let record;
         try {
             record = await this.#store.read(reference(snapshot));
@@ -634,7 +699,7 @@ export class GateQualificationV2 {
             return reconciliationRequired(snapshot.body.admission_id, 'begin_invocation_read_ambiguous');
         }
         if (record.state === 'INVOKING') {
-            await this.#recoverInvoking(snapshot, ownerToken);
+            await this.#recoverInvoking(snapshot, authority);
         }
         return reconciliationRequired(snapshot.body.admission_id, 'begin_invocation_unconfirmed');
     }
@@ -688,11 +753,11 @@ export class GateQualificationV2 {
         }
         return { ok: true, relation };
     }
-    async #processEvidence(rawEvidence, snapshot, authority, record) {
+    async #processEvidence(rawEvidence, snapshot, authority, preparedAuthority, record) {
         const verified = await this.#verifyProviderEvidence(rawEvidence, snapshot);
         if (!verified.ok) {
             if (record.state === 'INVOKING') {
-                await this.#recoverInvoking(snapshot, authority.ownerToken);
+                await this.#recoverInvoking(snapshot, preparedAuthority);
             }
             return reconciliationRequired(snapshot.body.admission_id, verified.reason);
         }
@@ -859,58 +924,80 @@ export class GateQualificationV2 {
             }
             return refused(refreshedDecision.reasons[0] ?? 'invocation_remeasurement_refused', refreshedDecision);
         }
+        let reconciliationToken = secureInvocationToken();
+        const invocationToken = secureInvocationToken();
+        while (reconciliationToken === invocationToken) {
+            reconciliationToken = secureInvocationToken();
+        }
+        const preparedAuthority = deepFreeze({
+            ownerToken: reserved.owner_token,
+            invocationToken,
+            reconciliationToken,
+            snapshotDigest: reserved.snapshot.snapshot_digest,
+        });
+        try {
+            await this.#stageAuthority(reserved.snapshot, preparedAuthority);
+        }
+        catch {
+            let released = false;
+            try {
+                released = (await this.#store.release({
+                    ...reference(reserved.snapshot),
+                    expected_revision: reserved.record.revision,
+                    owner_token: reserved.owner_token,
+                }, 'invocation_authority_custody_failed')).ok;
+            }
+            catch {
+                // The ordered begin has not run, but reservation release is unconfirmed.
+            }
+            return released
+                ? refused('invocation_authority_custody_failed', refreshedDecision)
+                : reconciliationRequired(reserved.snapshot.body.admission_id, 'invocation_authority_custody_unconfirmed');
+        }
         let begun;
         try {
-            begun = await this.#store.beginInvocation({
+            begun = await this.#store.beginInvocationWithPreparedToken({
                 ...reference(reserved.snapshot),
                 expected_revision: reserved.record.revision,
                 owner_token: reserved.owner_token,
+                invocation_token: preparedAuthority.invocationToken,
             });
         }
         catch {
-            return this.#beginAmbiguity(reserved.snapshot, reserved.owner_token);
+            return this.#beginAmbiguity(reserved.snapshot, preparedAuthority);
         }
         if (!begun.ok) {
             if (begun.reason === 'state_conflict'
                 || begun.reason === 'revision_conflict') {
-                return this.#beginAmbiguity(reserved.snapshot, reserved.owner_token);
+                return this.#beginAmbiguity(reserved.snapshot, preparedAuthority);
             }
             return refused(begun.reason, decision);
         }
         const begunSnapshot = canonicalSnapshot(begun.snapshot);
+        const activeAuthority = activeInvocationAuthority(preparedAuthority, begun.record);
         if (!begunSnapshot.ok || !deeplyFrozen(begun.snapshot)
             || begun.snapshot.snapshot_digest !== reserved.snapshot.snapshot_digest
             || begun.record.snapshot_digest !== begun.snapshot.snapshot_digest
+            || begun.invocation_token !== preparedAuthority.invocationToken
+            || activeAuthority?.invocationToken !== preparedAuthority.invocationToken
             || begun.record.state !== 'INVOKING'
             || begun.record.execution_right !== 'CONSUMED'
             || begun.record.resources.some((resource) => resource.state !== 'CONSUMED')) {
-            await this.#recoverInvoking(begun.snapshot, reserved.owner_token);
+            await this.#recoverInvoking(reserved.snapshot, preparedAuthority);
             return reconciliationRequired(reserved.snapshot.body.admission_id, 'begin_invocation_snapshot_mismatch');
         }
-        const authority = {
-            ownerToken: reserved.owner_token,
-            invocationToken: begun.invocation_token,
-            snapshotDigest: begun.snapshot.snapshot_digest,
-        };
-        try {
-            await this.#saveAuthority(begun.snapshot, authority);
-        }
-        catch {
-            await this.#recoverInvoking(begun.snapshot, reserved.owner_token);
-            return reconciliationRequired(begun.snapshot.body.admission_id, 'invocation_authority_custody_failed');
-        }
-        const adapterInput = protectedInvocation(begun.snapshot, begun.invocation_token);
+        const adapterInput = protectedInvocation(begun.snapshot, activeAuthority.invocationToken);
         let rawEvidence;
         try {
             rawEvidence = await withinTimeout(() => this.#adapter.invoke(adapterInput), this.#adapterTimeoutMs);
         }
         catch (error) {
-            await this.#recoverInvoking(begun.snapshot, authority.ownerToken);
+            await this.#recoverInvoking(begun.snapshot, preparedAuthority);
             return reconciliationRequired(begun.snapshot.body.admission_id, error instanceof AdapterTimeoutError
                 ? 'provider_invocation_timed_out'
                 : 'provider_invocation_outcome_unknown');
         }
-        return this.#processEvidence(rawEvidence, begun.snapshot, authority, begun.record);
+        return this.#processEvidence(rawEvidence, begun.snapshot, activeAuthority, preparedAuthority, begun.record);
     }
     /** Evidence-only reconciliation. This method has no mutation-adapter path. */
     async reconcile(input) {
@@ -946,22 +1033,23 @@ export class GateQualificationV2 {
             || snapshot.snapshot_digest !== record.snapshot_digest) {
             return reconciliationRequired(input.admission_id, 'admission_snapshot_read_ambiguous');
         }
-        let authority;
+        let preparedAuthority;
         try {
-            authority = await this.#getAuthority(input.tenant_id, input.admission_id);
+            preparedAuthority = await this.#getAuthority(input.tenant_id, input.admission_id);
         }
         catch {
             return reconciliationRequired(input.admission_id, 'reconciliation_authority_unavailable');
         }
-        if (!authority || authority.snapshotDigest !== snapshot.snapshot_digest) {
+        if (!preparedAuthority
+            || preparedAuthority.snapshotDigest !== snapshot.snapshot_digest) {
             return reconciliationRequired(input.admission_id, 'reconciliation_authority_unavailable');
         }
+        let authority;
         if (record.state === 'INVOKING') {
-            const recovered = await this.#recoverInvoking(snapshot, authority.ownerToken);
-            if (!recovered) {
+            authority = await this.#recoverInvoking(snapshot, preparedAuthority);
+            if (!authority) {
                 return reconciliationRequired(input.admission_id, 'recovery_unconfirmed');
             }
-            authority = recovered;
             try {
                 record = await this.#store.read(input);
             }
@@ -970,6 +1058,12 @@ export class GateQualificationV2 {
             }
             if (!record) {
                 return reconciliationRequired(input.admission_id, 'admission_read_ambiguous');
+            }
+        }
+        else {
+            authority = activeInvocationAuthority(preparedAuthority, record);
+            if (!authority) {
+                return reconciliationRequired(input.admission_id, 'reconciliation_authority_unavailable');
             }
         }
         const providerUnresolved = !record.provider_outcome
@@ -992,7 +1086,7 @@ export class GateQualificationV2 {
                 ? 'provider_reconciliation_timed_out'
                 : 'provider_reconciliation_failed');
         }
-        return this.#processEvidence(rawEvidence, snapshot, authority, record);
+        return this.#processEvidence(rawEvidence, snapshot, authority, preparedAuthority, record);
     }
 }
 export default {
