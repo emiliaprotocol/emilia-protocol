@@ -240,9 +240,13 @@ const ROUTE_POLICIES = {
   'POST /api/handshake/*/revoke':     { rateCategory: 'protocol_write', useAuth: true },
 
   // Remote MCP server (streamable HTTP) — public read-only connector for
-  // claude.ai / MCP Directory. JSON-RPC rides on POST, but every exposed tool
-  // is a read or an in-process offline verification, so read-tier limits fit.
-  'POST /api/mcp/*':                  { rateCategory: 'read', useAuth: false },
+  // claude.ai / MCP Directory. JSON-RPC rides on POST, and ep_verify_receipt /
+  // ep_verify_signoff run real Ed25519 / P-256 verification plus canonicalization
+  // over caller-supplied JSON in-process. That is unauthenticated CPU, so POST
+  // gets its own fail-closed tier rather than sharing the read bucket with
+  // cheap lookups. GET (SSE stream) and DELETE (session teardown) do no crypto
+  // and stay on read so a reconnecting client is not punished.
+  'POST /api/mcp/*':                  { rateCategory: 'mcp_tool_call', useAuth: false },
   'GET /api/mcp/*':                   { rateCategory: 'read', useAuth: false },
   'DELETE /api/mcp/*':                { rateCategory: 'read', useAuth: false },
 
@@ -354,13 +358,24 @@ function classifyRoute(method, pathname) {
     }
   }
 
-  // Default: unmatched routes get 'read'
-  // Warn on unmatched mutating methods — potential missing classification
+  // Unmatched MUTATING route: fall to the tightest tier, not the read tier.
+  //
+  // The old default handed an unclassified POST/PUT/PATCH/DELETE the full read
+  // allowance (120/min) on an IP-only key, and fell OPEN if the rate limiter
+  // was unreachable. That inverted the safe direction: forgetting to classify a
+  // route made it MORE permissive than classifying it, and the only signal was
+  // a console warning nobody reads in production. Now forgetting costs
+  // throughput, which is noticed, instead of costing protection, which is not.
+  //
+  // tests/route-rate-limit-coverage.test.ts asserts no route under app/api
+  // actually lands here, so this is a backstop for the window between adding a
+  // route and CI catching it — not a tier any shipped endpoint runs on.
   if (['POST', 'PUT', 'PATCH', 'DELETE'].includes(upperMethod)) {
     console.warn(
-      `[rate-limit] Unclassified write route: ${upperMethod} ${pathname} — defaulting to 'read'. ` +
-      `Add this route to ROUTE_POLICIES in middleware.js.`
+      `[rate-limit] Unclassified write route: ${upperMethod} ${pathname} — defaulting to 'unclassified_write' (10/min). ` +
+      `Add this route to ROUTE_POLICIES in middleware.ts.`
     );
+    return { rateCategory: 'unclassified_write', useAuth: true };
   }
 
   return { rateCategory: 'read', useAuth: false };

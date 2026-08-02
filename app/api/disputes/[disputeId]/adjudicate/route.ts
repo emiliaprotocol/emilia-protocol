@@ -60,7 +60,7 @@ export async function POST(
     // -------------------------------------------------------------------
     // Authorization: operator auth or authenticated filer
     // -------------------------------------------------------------------
-    const opAuth = authenticateOperator(request, { requireOperatorIdentity: true });
+    const opAuth = await authenticateOperator(request, { requireOperatorIdentity: true });
     const isCron = opAuth.valid;
 
     let callerEntityId: string | null = null;

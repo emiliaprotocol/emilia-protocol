@@ -26,7 +26,13 @@ export const runtime = 'nodejs';
  * Call via Vercel Cron (vercel.json) or an external scheduler.
  */
 async function run(request: NextRequest): Promise<NextResponse> {
-  const auth = authenticateOperator(request);
+  const auth = await authenticateOperator(request, {
+    // Unattended scheduler: there is no named human behind a cron tick, so
+    // this route declares its opt-out from the named-operator default rather
+    // than inheriting it by silence. It takes no trust-changing action and
+    // reads no role from the result.
+    requireOperatorIdentity: false,
+  });
   if (!auth.valid) return epProblem(401, 'unauthorized', auth.error || 'Unauthorized');
 
   const dryRun = new URL(request.url).searchParams.get('dry_run') === '1';

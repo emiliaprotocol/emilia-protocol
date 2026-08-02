@@ -12,16 +12,28 @@
  *   EP_OPERATOR_KEYS — JSON map: { "operator_id": "hex_secret", ... }
  *   CRON_SECRET — Legacy shared secret (deprecated, still accepted)
  *
+ * Each per-operator token authorizes exactly ONE request: the first
+ * presentation consumes it (see lib/operator-token-replay.ts). Callers that
+ * need to hit several endpoints must mint a token per endpoint.
+ *
  * @license Apache-2.0
  */
 
 import crypto from 'crypto';
 import { getOperatorKeys, getOperatorRoles, getCronSecret } from './env.js';
+import { consumeOperatorToken } from './operator-token-replay.js';
 
 const TOKEN_MAX_AGE_MS = 5 * 60 * 1000; // 5 minutes
 const TOKEN_PREFIX = 'ep_op_';
 
 export interface OperatorAuthOptions {
+  /**
+   * Whether this route demands a NAMED operator. Defaults to true: a route
+   * that says nothing gets the identity requirement, and only a route that
+   * explicitly declares itself an unattended job opts out. The previous
+   * default was false, so a new sensitive route that simply forgot to pass
+   * the flag silently accepted the anonymous shared cron secret.
+   */
   requireOperatorIdentity?: boolean;
 }
 
@@ -52,10 +64,13 @@ export function generateOperatorToken(operatorId: string, secretHex: string): st
 /**
  * Verify an operator token or legacy CRON_SECRET.
  *
+ * Async because a valid per-operator token must also be CLAIMED before it
+ * authorizes anything — see lib/operator-token-replay.ts.
+ *
  * @param {string} token - The token from Authorization header or query param
- * @returns {{ valid: boolean, operator_id?: string, role?: string|null, error?: string }}
+ * @returns {Promise<{ valid: boolean, operator_id?: string, role?: string|null, error?: string }>}
  */
-export function verifyOperatorAuth(token: string | null | undefined, opts: OperatorAuthOptions = {}): OperatorAuthResult {
+export async function verifyOperatorAuth(token: string | null | undefined, opts: OperatorAuthOptions = {}): Promise<OperatorAuthResult> {
   if (!token) {
     return { valid: false, error: 'No token provided' };
   }
@@ -100,26 +115,41 @@ export function verifyOperatorAuth(token: string | null | undefined, opts: Opera
       return { valid: false, error: 'Invalid signature' };
     }
 
+    // Genuine bytes, minted recently, by a keyholder. None of that establishes
+    // that the PRESENTER is the keyholder, so the token has to be spent: claim
+    // its single use before it authorizes anything. The TTL outlives the
+    // token's own window so a record can never expire while the token it
+    // guards is still inside the age check above.
+    const claim = await consumeOperatorToken(providedHmac, TOKEN_MAX_AGE_MS / 1000 + 60);
+    if (!claim.ok) {
+      return {
+        valid: false,
+        error: claim.reason === 'already_consumed'
+          ? 'Operator token already used; mint a fresh token per request'
+          : 'Operator token replay protection unavailable',
+      };
+    }
+
     const role = getOperatorRoles().get(operatorId) || null;
     return { valid: true, operator_id: operatorId, role };
   }
 
   // === Path 2: Legacy CRON_SECRET (deprecated, backward compatible) ===
-  // Sensitive routes pass requireOperatorIdentity so every trust-changing
-  // action ties to a NAMED operator in the audit trail. The shared cron
-  // secret is anonymous by construction (operator_id '_legacy_cron'), so it
-  // is refused on those routes UNCONDITIONALLY — not just once per-operator
-  // keys are configured. Making the refusal contingent on
-  // getOperatorKeys().size > 0 meant that in a deployment that had not yet
-  // provisioned EP_OPERATOR_KEYS, a leaked CRON_SECRET could resolve
-  // disputes, adjudicate appeals, and revoke commit signing keys with the
-  // full 'operator' role. A credential meant only for unattended cron jobs
-  // (expire / collusion-scan / anchor, which never set requireOperatorIdentity)
-  // must never be able to take a named-operator action, regardless of
-  // migration state. The cron jobs are unaffected: they call
-  // authenticateOperator(request) without requireOperatorIdentity and only
-  // check auth.valid, so the shared secret still authenticates them.
-  if (opts.requireOperatorIdentity) {
+  // Every trust-changing action must tie to a NAMED operator in the audit
+  // trail. The shared cron secret is anonymous by construction (operator_id
+  // '_legacy_cron'), so it is refused on identity-required routes
+  // UNCONDITIONALLY — not just once per-operator keys are configured. Making
+  // the refusal contingent on getOperatorKeys().size > 0 meant that in a
+  // deployment that had not yet provisioned EP_OPERATOR_KEYS, a leaked
+  // CRON_SECRET could resolve disputes, adjudicate appeals, and revoke commit
+  // signing keys with the full 'operator' role.
+  //
+  // The requirement is now the DEFAULT rather than something a route has to
+  // remember to ask for. Only the unattended schedulers (expire /
+  // collusion-scan / trust-desk-monitor / anchor) opt out, each explicitly and
+  // in one line at the call site, so the declaration is visible in review. A
+  // new route that says nothing about identity is protected by silence.
+  if (opts.requireOperatorIdentity !== false) {
     return { valid: false, error: 'This action requires a per-operator token, not the shared secret' };
   }
   const cronSecret = getCronSecret();
@@ -127,7 +157,12 @@ export function verifyOperatorAuth(token: string | null | undefined, opts: Opera
     const a = Buffer.from(token, 'utf8');
     const b = Buffer.from(cronSecret, 'utf8');
     if (a.length === b.length && crypto.timingSafeEqual(a, b)) {
-      return { valid: true, operator_id: '_legacy_cron', role: 'operator' };
+      // role null, not 'operator'. Nothing consumes this role today — every
+      // hasPermission() caller is on an identity-required route the shared
+      // secret can no longer reach — but naming the anonymous credential after
+      // the most privileged role in OPERATOR_ROLES is a trap set for whoever
+      // next writes `if (hasPermission(auth.role, ...))` on a cron route.
+      return { valid: true, operator_id: '_legacy_cron', role: null };
     }
   }
 
@@ -139,9 +174,9 @@ export function verifyOperatorAuth(token: string | null | undefined, opts: Opera
  * Extracts token from Authorization header (Bearer) or x-cron-secret header.
  *
  * @param {Request} request
- * @returns {{ valid: boolean, operator_id?: string, error?: string }}
+ * @returns {Promise<{ valid: boolean, operator_id?: string, error?: string }>}
  */
-export function authenticateOperator(request: Request, opts: OperatorAuthOptions = {}): OperatorAuthResult {
+export async function authenticateOperator(request: Request, opts: OperatorAuthOptions = {}): Promise<OperatorAuthResult> {
   // Try Authorization: Bearer <token> first
   const auth = request.headers.get('authorization') || '';
   const bearer = auth.replace(/^Bearer\s+/i, '').trim();
