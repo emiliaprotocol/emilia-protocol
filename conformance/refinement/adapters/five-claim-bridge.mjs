@@ -826,7 +826,7 @@ export async function runReceiptProgramScenario(scenario) {
   }
   const fixture = receiptProgramFixture();
   let providerCalls = 0;
-  let reservationObserved = false;
+  let providerEntryObserved = false;
   const suppliedCaid = substituted
     ? `${fixture.caid.slice(0, -1)}${
         fixture.caid.endsWith("A") ? "B" : "A"
@@ -842,10 +842,10 @@ export async function runReceiptProgramScenario(scenario) {
       const state = fixture.capabilityStore.getState(
         "cap_five_claim_receipt_program",
       );
-      reservationObserved =
-        operation?.status === "reserved" &&
-        state?.reserved_amount === 40 &&
-        state?.consumed_amount === 0;
+      providerEntryObserved =
+        operation?.status === "provider_entered" &&
+        state?.reserved_amount === 0 &&
+        state?.consumed_amount === 40;
       return {
         provider: "simulated-refinement-custodian",
         status: "settled",
@@ -898,7 +898,7 @@ export async function runReceiptProgramScenario(scenario) {
   assertBridge(
     output.ok === true &&
       output.outcome === "executed" &&
-      reservationObserved &&
+      providerEntryObserved &&
       providerCalls === 1 &&
       state?.consumed_amount === 40 &&
       state?.reserved_amount === 0 &&

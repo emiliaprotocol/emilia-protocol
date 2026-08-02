@@ -91,7 +91,7 @@
     },
     {
       "path": "conformance/refinement/adapters/five-claim-bridge.mjs",
-      "sha256": "cd8fd0ef115e6c8a6f005d813e82947724592d3cda5c2b3a3e28e8558cb06e25"
+      "sha256": "c096a634742fc6fab08958692e735e5cb8738dd057d4d77c8b276a3811faf9a7"
     },
     {
       "path": "conformance/refinement/adapters/grace-curtailment.mjs",
@@ -495,7 +495,7 @@
     },
     {
       "path": "package-lock.json",
-      "sha256": "162250efc1c053a745f6f9dd7c463ec58c4ce77490e760f4cf077793ed3b6c40"
+      "sha256": "0cfdc2c3ddb0863979c9d5c92b70764ba949b41c53b2be0d42d38032801934e4"
     },
     {
       "path": "package.json",
@@ -551,11 +551,11 @@
     },
     {
       "path": "packages/gate/dist/admission-store-postgres.js",
-      "sha256": "256ed30a1ef6fcb12afeef3266616f1f418c58c390dce0c9a25aa38d24e06872"
+      "sha256": "640b1ab872aa1e7a88531699f9a320dbcd0bb727c20b8b05307d8ec5dd91e54a"
     },
     {
       "path": "packages/gate/dist/admission-store.js",
-      "sha256": "8ad428e9247efe163af57453ba013cd549d5e2d718ee84aed91590601f41f0c6"
+      "sha256": "8ef4835edb14a45b88b379134ac92f9532a173f09da6022b08bdf8325db40446"
     },
     {
       "path": "packages/gate/dist/aeb-consumption-store.js",
@@ -567,7 +567,7 @@
     },
     {
       "path": "packages/gate/dist/allowance.js",
-      "sha256": "d6281088b3a1358e7e8e929b51e5cadf951e8bf4f77d44ff96742c1f6b406d22"
+      "sha256": "79ac181ab8a61b45dd8a7c7098649f740a5b42cd4ecadf3a7685c580743e3d76"
     },
     {
       "path": "packages/gate/dist/authority-allocation.js",
@@ -591,7 +591,7 @@
     },
     {
       "path": "packages/gate/dist/capability-receipt.js",
-      "sha256": "50fe13e44878f10e1b97e6b83e94e2c1d00451cde7a849c875af981a5c119504"
+      "sha256": "bb03adb30d2d3a63380a25b47c783c48f15b7738b229e9081f26a8cea032decb"
     },
     {
       "path": "packages/gate/dist/cf1-conformance.js",
@@ -639,11 +639,11 @@
     },
     {
       "path": "packages/gate/dist/gate-qualification-v2.js",
-      "sha256": "c23e66ab142ffe36454a1f2794db389f67242d8f0e92b8048d546204c88837f6"
+      "sha256": "3769cde5f3ae695b68da0c62a07247187bc8c029e5b8c868cc1fd7c594733898"
     },
     {
       "path": "packages/gate/dist/index.js",
-      "sha256": "7ae70de1ac8eeed0ffb49b0b97c8871e5555987bd7f8d36763ac34d5c7d5269a"
+      "sha256": "f0d0b886953d69a9423b66d21f4f2d0141658f8817f634fd8df6b44d2522b70c"
     },
     {
       "path": "packages/gate/dist/key-registry.js",
@@ -799,7 +799,7 @@
     },
     {
       "path": "packages/gate/src/capability-receipt.ts",
-      "sha256": "e7ca02aae3c7ef141aaa96929d2604930cfec170c8ad288abdcc53889404422f"
+      "sha256": "be633b155ea067dbaa9fb4ee0b477f5b13d3b617379ec1b0867ea8ee55d56079"
     },
     {
       "path": "packages/gate/src/challenge-store.ts",
@@ -819,7 +819,7 @@
     },
     {
       "path": "packages/gate/src/index.ts",
-      "sha256": "2ac8ecc37fda9b51ba3510b928ef8fa943b6ef282ddf55b50ac3510c761dc395"
+      "sha256": "a299bf8f95af60d9f503eb8f474cde06668d84a98c994c6ece4a57182e7ca85a"
     },
     {
       "path": "packages/gate/src/network-witness.ts",
