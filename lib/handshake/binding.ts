@@ -11,7 +11,7 @@
  */
 
 import crypto from 'crypto';
-import { sha256 } from '@/lib/crypto';
+import { sha256 } from '../crypto.js';
 import { CANONICAL_BINDING_FIELDS, BINDING_MATERIAL_VERSION } from './invariants.js';
 
 /**

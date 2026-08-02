@@ -29,6 +29,7 @@ export const STANDALONE_RUNTIME_SOURCES = [
   'lib/env.ts',
   'lib/envelope/descriptors.ts',
   'lib/guard-policies.ts',
+  'lib/handshake/binding.ts',
   'lib/handshake/invariants.ts',
   'lib/key-custody.ts',
   'lib/logger.ts',

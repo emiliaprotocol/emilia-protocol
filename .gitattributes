@@ -58,6 +58,7 @@ lib/demo-receipt.js linguist-generated=true
 lib/env.js linguist-generated=true
 lib/envelope/descriptors.js linguist-generated=true
 lib/guard-policies.js linguist-generated=true
+lib/handshake/binding.js linguist-generated=true
 lib/handshake/invariants.js linguist-generated=true
 lib/key-custody.js linguist-generated=true
 lib/logger.js linguist-generated=true
