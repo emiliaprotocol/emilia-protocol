@@ -3,6 +3,14 @@
 
 ## Unreleased
 
+## 2.8.3 (2026-08-01)
+
+### Security
+
+- Enforce the closed provenance action-scope grammar, reject the malformed
+  empty-prefix wildcard `.*`, and require a universal child scope to be funded
+  by a universal parent scope, matching the TypeScript verifier.
+
 ## 2.8.2 (2026-07-29)
 
 - Reissues the unreleased 2.8.1 verifier behavior from the exact protected-main

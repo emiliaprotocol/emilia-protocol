@@ -6,6 +6,14 @@ This package follows [Semantic Versioning](https://semver.org/).
 
 ## Unreleased
 
+## 0.23.1 (2026-08-01)
+
+### Release
+
+- Supersedes the unpublished `0.23.0` release tag on the corrected protected-
+  main evidence baseline. No Gate API or admission behavior changes from
+  `0.23.0`.
+
 ## 0.23.0 (2026-08-01)
 
 ### Added
