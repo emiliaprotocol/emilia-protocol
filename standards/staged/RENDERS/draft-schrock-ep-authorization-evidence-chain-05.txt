@@ -4,8 +4,8 @@
 
 Network Working Group                                         I. Schrock
 Internet-Draft                                     EMILIA Protocol, Inc.
-Intended status: Informational                             1 August 2026
-Expires: 2 February 2027
+Intended status: Informational                             3 August 2026
+Expires: 4 February 2027
 
 
   Authorization Evidence Chains: Composing Heterogeneous Agent-Action
@@ -53,12 +53,12 @@ Status of This Memo
 
 
 
-Schrock                  Expires 2 February 2027                [Page 1]
+Schrock                  Expires 4 February 2027                [Page 1]
 
 Internet-Draft        Authorization Evidence Chains          August 2026
 
 
-   This Internet-Draft will expire on 2 February 2027.
+   This Internet-Draft will expire on 4 February 2027.
 
 Copyright Notice
 
@@ -96,8 +96,9 @@ Table of Contents
    17. IANA Considerations . . . . . . . . . . . . . . . . . . . . .  16
    18. Changes in -05  . . . . . . . . . . . . . . . . . . . . . . .  16
    19. Implementation Status . . . . . . . . . . . . . . . . . . . .  16
-   20. Normative References  . . . . . . . . . . . . . . . . . . . .  16
-   21. Informative References  . . . . . . . . . . . . . . . . . . .  17
+   20. References  . . . . . . . . . . . . . . . . . . . . . . . . .  16
+     20.1.  Normative References . . . . . . . . . . . . . . . . . .  16
+     20.2.  Informative References . . . . . . . . . . . . . . . . .  17
    Acknowledgments . . . . . . . . . . . . . . . . . . . . . . . . .  18
    Author's Address  . . . . . . . . . . . . . . . . . . . . . . . .  18
 
@@ -108,8 +109,7 @@ Table of Contents
 
 
 
-
-Schrock                  Expires 2 February 2027                [Page 2]
+Schrock                  Expires 4 February 2027                [Page 2]
 
 Internet-Draft        Authorization Evidence Chains          August 2026
 
@@ -165,17 +165,20 @@ Internet-Draft        Authorization Evidence Chains          August 2026
 
 
 
-Schrock                  Expires 2 February 2027                [Page 3]
+Schrock                  Expires 4 February 2027                [Page 3]
 
 Internet-Draft        Authorization Evidence Chains          August 2026
 
 
 2.  Terminology
 
-   The key words "MUST", "MUST NOT", "REQUIRED", "SHOULD", "SHOULD NOT",
-   and "MAY" in this document are to be interpreted as described in BCP
+   The key words "MUST", "MUST NOT", "REQUIRED", "SHALL", "SHALL NOT",
+   "SHOULD", "SHOULD NOT", "RECOMMENDED", "NOT RECOMMENDED", "MAY", and
+   "OPTIONAL" in this document are to be interpreted as described in BCP
    14 [RFC2119] [RFC8174] when, and only when, they appear in all
    capitals, as shown here.
+
+   BCP 14 is indexed by the RFC Editor at [BCP14].
 
    Native verifier  A verifier selected by the relying party for one
       artifact format and revision.  It checks that format's syntax,
@@ -218,10 +221,7 @@ Internet-Draft        Authorization Evidence Chains          August 2026
 
 
 
-
-
-
-Schrock                  Expires 2 February 2027                [Page 4]
+Schrock                  Expires 4 February 2027                [Page 4]
 
 Internet-Draft        Authorization Evidence Chains          August 2026
 
@@ -277,7 +277,7 @@ Internet-Draft        Authorization Evidence Chains          August 2026
 
 
 
-Schrock                  Expires 2 February 2027                [Page 5]
+Schrock                  Expires 4 February 2027                [Page 5]
 
 Internet-Draft        Authorization Evidence Chains          August 2026
 
@@ -333,7 +333,7 @@ Internet-Draft        Authorization Evidence Chains          August 2026
 
 
 
-Schrock                  Expires 2 February 2027                [Page 6]
+Schrock                  Expires 4 February 2027                [Page 6]
 
 Internet-Draft        Authorization Evidence Chains          August 2026
 
@@ -389,7 +389,7 @@ Internet-Draft        Authorization Evidence Chains          August 2026
 
 
 
-Schrock                  Expires 2 February 2027                [Page 7]
+Schrock                  Expires 4 February 2027                [Page 7]
 
 Internet-Draft        Authorization Evidence Chains          August 2026
 
@@ -445,7 +445,7 @@ Internet-Draft        Authorization Evidence Chains          August 2026
 
 
 
-Schrock                  Expires 2 February 2027                [Page 8]
+Schrock                  Expires 4 February 2027                [Page 8]
 
 Internet-Draft        Authorization Evidence Chains          August 2026
 
@@ -501,7 +501,7 @@ Internet-Draft        Authorization Evidence Chains          August 2026
 
 
 
-Schrock                  Expires 2 February 2027                [Page 9]
+Schrock                  Expires 4 February 2027                [Page 9]
 
 Internet-Draft        Authorization Evidence Chains          August 2026
 
@@ -557,7 +557,7 @@ Internet-Draft        Authorization Evidence Chains          August 2026
 
 
 
-Schrock                  Expires 2 February 2027               [Page 10]
+Schrock                  Expires 4 February 2027               [Page 10]
 
 Internet-Draft        Authorization Evidence Chains          August 2026
 
@@ -613,7 +613,7 @@ Internet-Draft        Authorization Evidence Chains          August 2026
 
 
 
-Schrock                  Expires 2 February 2027               [Page 11]
+Schrock                  Expires 4 February 2027               [Page 11]
 
 Internet-Draft        Authorization Evidence Chains          August 2026
 
@@ -669,7 +669,7 @@ Internet-Draft        Authorization Evidence Chains          August 2026
 
 
 
-Schrock                  Expires 2 February 2027               [Page 12]
+Schrock                  Expires 4 February 2027               [Page 12]
 
 Internet-Draft        Authorization Evidence Chains          August 2026
 
@@ -725,7 +725,7 @@ Internet-Draft        Authorization Evidence Chains          August 2026
 
 
 
-Schrock                  Expires 2 February 2027               [Page 13]
+Schrock                  Expires 4 February 2027               [Page 13]
 
 Internet-Draft        Authorization Evidence Chains          August 2026
 
@@ -781,7 +781,7 @@ Internet-Draft        Authorization Evidence Chains          August 2026
 
 
 
-Schrock                  Expires 2 February 2027               [Page 14]
+Schrock                  Expires 4 February 2027               [Page 14]
 
 Internet-Draft        Authorization Evidence Chains          August 2026
 
@@ -809,15 +809,15 @@ Internet-Draft        Authorization Evidence Chains          August 2026
    two native human-authorization components.  AEC composes them without
    generalizing all evidence into those formats.
 
-   The earlier Action Evidence Graph draft [EP-AEG] described content-
-   addressed graph references, relying-party evidence policy replay, a
-   five-verdict classification, policy packs, and a signed reliance
-   result.  This revision incorporates the useful composition substance
-   into AEC: relying-party-owned evidence requirements, content-digested
-   components, byte-backed relations, normalized facts, and a replay
-   digest.  It intentionally does not adopt the EP-AEG-v1 graph
-   envelope, five-verdict taxonomy, policy packs, or signed reliance-
-   result format.
+   The earlier Action Evidence Graph draft (draft-schrock-ep-action-
+   evidence-graph-00) described content-addressed graph references,
+   relying-party evidence policy replay, a five-verdict classification,
+   policy packs, and a signed reliance result.  This revision
+   incorporates the useful composition substance into AEC: relying-
+   party-owned evidence requirements, content-digested components, byte-
+   backed relations, normalized facts, and a replay digest.  It
+   intentionally does not adopt the EP-AEG-v1 graph envelope, five-
+   verdict taxonomy, policy packs, or signed reliance-result format.
 
    Revision -04 superseded draft-schrock-ep-action-evidence-graph-00 for
    this evidence-composition and replay scope.  This revision preserves
@@ -837,7 +837,7 @@ Internet-Draft        Authorization Evidence Chains          August 2026
 
 
 
-Schrock                  Expires 2 February 2027               [Page 15]
+Schrock                  Expires 4 February 2027               [Page 15]
 
 Internet-Draft        Authorization Evidence Chains          August 2026
 
@@ -882,21 +882,27 @@ Internet-Draft        Authorization Evidence Chains          August 2026
    of this revision until they enforce the closed object and its refusal
    behavior.
 
-20.  Normative References
+20.  References
+
+20.1.  Normative References
+
+   [BCP14]    Internet Engineering Task Force, "Key Words for Use in
+              RFCs to Indicate Requirement Levels", BCP 14, 2017,
+              <https://www.rfc-editor.org/info/bcp14>.
+
+
+
+
+Schrock                  Expires 4 February 2027               [Page 16]
+
+Internet-Draft        Authorization Evidence Chains          August 2026
+
 
    [CAID]     Schrock, I., "The Canonical Action Identifier (CAID)",
               Work in Progress, Internet-Draft, draft-schrock-canonical-
               action-identifier-01, July 2026,
               <https://datatracker.ietf.org/doc/draft-schrock-canonical-
               action-identifier/>.
-
-
-
-
-Schrock                  Expires 2 February 2027               [Page 16]
-
-Internet-Draft        Authorization Evidence Chains          August 2026
-
 
    [EP-QUORUM]
               Schrock, I., "Multi-Party Quorum Authorization for High-
@@ -935,28 +941,24 @@ Internet-Draft        Authorization Evidence Chains          August 2026
               DOI 10.17487/RFC8785, June 2020,
               <https://www.rfc-editor.org/info/rfc8785>.
 
-21.  Informative References
+20.2.  Informative References
+
+
+
+
+
+
+
+Schrock                  Expires 4 February 2027               [Page 17]
+
+Internet-Draft        Authorization Evidence Chains          August 2026
+
 
    [EP-AEB]   Schrock, I., "The Action Evidence Boundary for
               Consequential Agent Effects", Work in Progress, Internet-
               Draft, draft-schrock-action-evidence-boundary-03, July
               2026, <https://datatracker.ietf.org/doc/draft-schrock-
               action-evidence-boundary/>.
-
-   [EP-AEG]   Schrock, I., "Action Evidence Graphs and Evidence Policy
-              Replay for High-Risk Agent Actions (EP-AEG)", Work in
-              Progress, Internet-Draft, draft-schrock-ep-action-
-
-
-
-Schrock                  Expires 2 February 2027               [Page 17]
-
-Internet-Draft        Authorization Evidence Chains          August 2026
-
-
-              evidence-graph-00, July 2026,
-              <https://datatracker.ietf.org/doc/draft-schrock-ep-action-
-              evidence-graph/>.
 
    [EP-QUALIFICATION]
               Schrock, I., "Agent Qualification Statements", Work in
@@ -1003,6 +1005,4 @@ Author's Address
 
 
 
-
-
-Schrock                  Expires 2 February 2027               [Page 18]
+Schrock                  Expires 4 February 2027               [Page 18]

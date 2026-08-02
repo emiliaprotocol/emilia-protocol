@@ -1,4 +1,4 @@
-# August 1, 2026 Internet-Draft upload packet
+# August 3, 2026 Internet-Draft upload packet
 
 This directory is a submission packet, not a publication record. Upload only
 the six XML files in `UPLOAD-THIS/`. `RENDERS/` contains local review copies.
@@ -12,6 +12,16 @@ Recommended upload order:
 4. `draft-schrock-ep-reliance-agreement-00.xml`
 5. `draft-schrock-ep-bounded-capability-receipts-01.xml`
 6. `draft-schrock-ep-bounded-execution-program-00.xml`
+
+## Datatracker action
+
+For AEC-05, AEB-03, Model-to-Matter-03, and Bounded Capability Receipts-01,
+open the existing Datatracker draft and upload the XML as its next revision.
+For Reliance Agreement-00 and Bounded Execution Program-00, use **Submit a new
+Internet-Draft**. Leave the Datatracker **replaces**, **updates**, and
+**obsoletes** fields empty for all six: a revision supersedes the older revision
+under the same draft name automatically; it is not a different replacement
+draft. Add the resource rows from `ADDITIONAL-RESOURCES.md` after each upload.
 
 AEC, AEB, Model-to-Matter, and Bounded Capability Receipts are successor
 revisions of active individual drafts. Reliance Agreement and Bounded Execution

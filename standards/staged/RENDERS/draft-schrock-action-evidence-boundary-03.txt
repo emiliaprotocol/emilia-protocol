@@ -4,8 +4,8 @@
 
 Network Working Group                                         I. Schrock
 Internet-Draft                                     EMILIA Protocol, Inc.
-Intended status: Informational                             1 August 2026
-Expires: 2 February 2027
+Intended status: Informational                             3 August 2026
+Expires: 4 February 2027
 
 
       The Action Evidence Boundary for Consequential Agent Effects
@@ -46,14 +46,14 @@ Status of This Memo
    time.  It is inappropriate to use Internet-Drafts as reference
    material or to cite them other than as "work in progress."
 
-   This Internet-Draft will expire on 2 February 2027.
+   This Internet-Draft will expire on 4 February 2027.
 
 
 
 
 
 
-Schrock                  Expires 2 February 2027                [Page 1]
+Schrock                  Expires 4 February 2027                [Page 1]
 
 Internet-Draft          Action Evidence Boundary             August 2026
 
@@ -109,7 +109,7 @@ Table of Contents
 
 
 
-Schrock                  Expires 2 February 2027                [Page 2]
+Schrock                  Expires 4 February 2027                [Page 2]
 
 Internet-Draft          Action Evidence Boundary             August 2026
 
@@ -165,7 +165,7 @@ Internet-Draft          Action Evidence Boundary             August 2026
 
 
 
-Schrock                  Expires 2 February 2027                [Page 3]
+Schrock                  Expires 4 February 2027                [Page 3]
 
 Internet-Draft          Action Evidence Boundary             August 2026
 
@@ -212,6 +212,8 @@ Internet-Draft          Action Evidence Boundary             August 2026
    14 [RFC2119] [RFC8174] when, and only when, they appear in all
    capitals, as shown here.
 
+   BCP 14 is indexed by the RFC Editor at [BCP14].
+
    Effect boundary:  The last control point that can withhold the
       protected mutation before it is submitted to the effecting system.
 
@@ -219,9 +221,7 @@ Internet-Draft          Action Evidence Boundary             August 2026
 
 
 
-
-
-Schrock                  Expires 2 February 2027                [Page 4]
+Schrock                  Expires 4 February 2027                [Page 4]
 
 Internet-Draft          Action Evidence Boundary             August 2026
 
@@ -277,7 +277,7 @@ Internet-Draft          Action Evidence Boundary             August 2026
 
 
 
-Schrock                  Expires 2 February 2027                [Page 5]
+Schrock                  Expires 4 February 2027                [Page 5]
 
 Internet-Draft          Action Evidence Boundary             August 2026
 
@@ -333,7 +333,7 @@ Internet-Draft          Action Evidence Boundary             August 2026
 
 
 
-Schrock                  Expires 2 February 2027                [Page 6]
+Schrock                  Expires 4 February 2027                [Page 6]
 
 Internet-Draft          Action Evidence Boundary             August 2026
 
@@ -389,7 +389,7 @@ Internet-Draft          Action Evidence Boundary             August 2026
 
 
 
-Schrock                  Expires 2 February 2027                [Page 7]
+Schrock                  Expires 4 February 2027                [Page 7]
 
 Internet-Draft          Action Evidence Boundary             August 2026
 
@@ -445,7 +445,7 @@ Internet-Draft          Action Evidence Boundary             August 2026
 
 
 
-Schrock                  Expires 2 February 2027                [Page 8]
+Schrock                  Expires 4 February 2027                [Page 8]
 
 Internet-Draft          Action Evidence Boundary             August 2026
 
@@ -501,7 +501,7 @@ Internet-Draft          Action Evidence Boundary             August 2026
 
 
 
-Schrock                  Expires 2 February 2027                [Page 9]
+Schrock                  Expires 4 February 2027                [Page 9]
 
 Internet-Draft          Action Evidence Boundary             August 2026
 
@@ -557,7 +557,7 @@ Internet-Draft          Action Evidence Boundary             August 2026
 
 
 
-Schrock                  Expires 2 February 2027               [Page 10]
+Schrock                  Expires 4 February 2027               [Page 10]
 
 Internet-Draft          Action Evidence Boundary             August 2026
 
@@ -613,7 +613,7 @@ Internet-Draft          Action Evidence Boundary             August 2026
 
 
 
-Schrock                  Expires 2 February 2027               [Page 11]
+Schrock                  Expires 4 February 2027               [Page 11]
 
 Internet-Draft          Action Evidence Boundary             August 2026
 
@@ -669,7 +669,7 @@ Internet-Draft          Action Evidence Boundary             August 2026
 
 
 
-Schrock                  Expires 2 February 2027               [Page 12]
+Schrock                  Expires 4 February 2027               [Page 12]
 
 Internet-Draft          Action Evidence Boundary             August 2026
 
@@ -725,7 +725,7 @@ Internet-Draft          Action Evidence Boundary             August 2026
 
 
 
-Schrock                  Expires 2 February 2027               [Page 13]
+Schrock                  Expires 4 February 2027               [Page 13]
 
 Internet-Draft          Action Evidence Boundary             August 2026
 
@@ -781,7 +781,7 @@ Internet-Draft          Action Evidence Boundary             August 2026
 
 
 
-Schrock                  Expires 2 February 2027               [Page 14]
+Schrock                  Expires 4 February 2027               [Page 14]
 
 Internet-Draft          Action Evidence Boundary             August 2026
 
@@ -837,7 +837,7 @@ Internet-Draft          Action Evidence Boundary             August 2026
 
 
 
-Schrock                  Expires 2 February 2027               [Page 15]
+Schrock                  Expires 4 February 2027               [Page 15]
 
 Internet-Draft          Action Evidence Boundary             August 2026
 
@@ -893,7 +893,7 @@ Internet-Draft          Action Evidence Boundary             August 2026
 
 
 
-Schrock                  Expires 2 February 2027               [Page 16]
+Schrock                  Expires 4 February 2027               [Page 16]
 
 Internet-Draft          Action Evidence Boundary             August 2026
 
@@ -949,7 +949,7 @@ Internet-Draft          Action Evidence Boundary             August 2026
 
 
 
-Schrock                  Expires 2 February 2027               [Page 17]
+Schrock                  Expires 4 February 2027               [Page 17]
 
 Internet-Draft          Action Evidence Boundary             August 2026
 
@@ -968,6 +968,10 @@ Internet-Draft          Action Evidence Boundary             August 2026
               evidence-chain-05, July 2026,
               <https://datatracker.ietf.org/doc/draft-schrock-ep-
               authorization-evidence-chain/>.
+
+   [BCP14]    Internet Engineering Task Force, "Key Words for Use in
+              RFCs to Indicate Requirement Levels", BCP 14, 2017,
+              <https://www.rfc-editor.org/info/bcp14>.
 
    [CAID]     Schrock, I., "The Canonical Action Identifier (CAID)",
               Work in Progress, Internet-Draft, draft-schrock-canonical-
@@ -994,21 +998,24 @@ Internet-Draft          Action Evidence Boundary             August 2026
               <https://datatracker.ietf.org/doc/draft-klrc-aiagent-
               auth/>.
 
+
+
+
+
+
+
+
+Schrock                  Expires 4 February 2027               [Page 18]
+
+Internet-Draft          Action Evidence Boundary             August 2026
+
+
    [MUNOZ-PERMIT]
               Munoz, C., "A SCITT Profile for Pre-Execution AI Action
               Authorization Records", Work in Progress, Internet-Draft,
               draft-munoz-scitt-permit-profile-01, July 2026,
               <https://datatracker.ietf.org/doc/draft-munoz-scitt-
               permit-profile/>.
-
-
-
-
-
-Schrock                  Expires 2 February 2027               [Page 18]
-
-Internet-Draft          Action Evidence Boundary             August 2026
-
 
    [MUNOZ-WIMSE-EVIDENCE]
               Munoz, C., "Signed Authorization-Evidence Records for
@@ -1050,6 +1057,15 @@ Appendix A.  Acknowledgments
 
 Author's Address
 
+
+
+
+
+Schrock                  Expires 4 February 2027               [Page 19]
+
+Internet-Draft          Action Evidence Boundary             August 2026
+
+
    Iman Schrock
    EMILIA Protocol, Inc.
    United States of America
@@ -1061,4 +1077,44 @@ Author's Address
 
 
 
-Schrock                  Expires 2 February 2027               [Page 19]
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+Schrock                  Expires 4 February 2027               [Page 20]

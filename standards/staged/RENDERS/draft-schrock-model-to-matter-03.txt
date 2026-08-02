@@ -4,8 +4,8 @@
 
 Network Working Group                                         I. Schrock
 Internet-Draft                                     EMILIA Protocol, Inc.
-Intended status: Experimental                              1 August 2026
-Expires: 2 February 2027
+Intended status: Experimental                              3 August 2026
+Expires: 4 February 2027
 
 
  Model-to-Matter: Authorization and Outcome Evidence for Model-Directed
@@ -41,7 +41,7 @@ Status of This Memo
    time.  It is inappropriate to use Internet-Drafts as reference
    material or to cite them other than as "work in progress."
 
-   This Internet-Draft will expire on 2 February 2027.
+   This Internet-Draft will expire on 4 February 2027.
 
 Copyright Notice
 
@@ -53,7 +53,7 @@ Copyright Notice
 
 
 
-Schrock                  Expires 2 February 2027                [Page 1]
+Schrock                  Expires 4 February 2027                [Page 1]
 
 Internet-Draft               Model-to-Matter                 August 2026
 
@@ -109,10 +109,12 @@ Table of Contents
 
 
 
-Schrock                  Expires 2 February 2027                [Page 2]
+Schrock                  Expires 4 February 2027                [Page 2]
 
 Internet-Draft               Model-to-Matter                 August 2026
 
+
+   BCP 14 is indexed by the RFC Editor at [BCP14].
 
 2.  Canonical Action
 
@@ -163,9 +165,7 @@ Internet-Draft               Model-to-Matter                 August 2026
 
 
 
-
-
-Schrock                  Expires 2 February 2027                [Page 3]
+Schrock                  Expires 4 February 2027                [Page 3]
 
 Internet-Draft               Model-to-Matter                 August 2026
 
@@ -221,7 +221,7 @@ Internet-Draft               Model-to-Matter                 August 2026
 
 
 
-Schrock                  Expires 2 February 2027                [Page 4]
+Schrock                  Expires 4 February 2027                [Page 4]
 
 Internet-Draft               Model-to-Matter                 August 2026
 
@@ -277,7 +277,7 @@ Internet-Draft               Model-to-Matter                 August 2026
 
 
 
-Schrock                  Expires 2 February 2027                [Page 5]
+Schrock                  Expires 4 February 2027                [Page 5]
 
 Internet-Draft               Model-to-Matter                 August 2026
 
@@ -333,10 +333,14 @@ Internet-Draft               Model-to-Matter                 August 2026
 
 
 
-Schrock                  Expires 2 February 2027                [Page 6]
+Schrock                  Expires 4 February 2027                [Page 6]
 
 Internet-Draft               Model-to-Matter                 August 2026
 
+
+   [BCP14]    Internet Engineering Task Force, "Key Words for Use in
+              RFCs to Indicate Requirement Levels", BCP 14, 2017,
+              <https://www.rfc-editor.org/info/bcp14>.
 
    [EP-AEB]   Schrock, I., "The Action Evidence Boundary for
               Consequential Agent Effects", Work in Progress, Internet-
@@ -385,8 +389,4 @@ Author's Address
 
 
 
-
-
-
-
-Schrock                  Expires 2 February 2027                [Page 7]
+Schrock                  Expires 4 February 2027                [Page 7]
