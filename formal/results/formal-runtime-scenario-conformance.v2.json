@@ -495,7 +495,7 @@
     },
     {
       "path": "package-lock.json",
-      "sha256": "12b19b92d362d157e0662440c221a65c095253fcdbb49d76a7ff95a872a39ed0"
+      "sha256": "becdade93d2abcfaa77e6eaa984f3b46b172e09fce0373e11e26acdb1fefe770"
     },
     {
       "path": "package.json",
