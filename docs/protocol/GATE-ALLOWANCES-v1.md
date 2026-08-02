@@ -98,8 +98,16 @@ not permitted in v1.
 The capability also binds the exact authorizing receipt bytes. Issuance does
 not itself establish that the receipt is trustworthy. Every execution requires
 the relying party's `verifyAuthorizationReceipt` callback and a
-`verifyAllowanceStatus` callback proving that this signed allowance revision is
-still the locally accepted one.
+`verifyAllowanceStatus` callback returning the verified positive `status_epoch`
+and `status_head_digest`. Gate carries that observation into `reserveSpend`.
+The capability store compares it with the authoritative allowance-lineage head
+under the same memory critical section or PostgreSQL row-lock transaction that
+reserves budget. A revocation, suspension, or successor that linearizes first
+therefore refuses the spend. Status publishers advance that head through the
+store's compare-and-advance `advanceAllowanceStatus()` method. The publisher
+MUST initialize the authoritative head before any spend; reservation never
+creates a head from the presenter's assertion and fails closed with
+`allowance_status_not_initialized` when no authoritative head exists.
 
 ## Admission and execution
 
@@ -132,8 +140,9 @@ Gate refuses before provider entry when:
 - the operation identifier was already reserved or committed; or
 - the aggregate budget cannot cover the new reservation.
 
-The capability store linearizes concurrent reservations. Two operations cannot
-both spend the same remaining budget. Operation identities are scoped by
+The capability store linearizes currentness checks and concurrent reservations.
+Two operations cannot both spend the same remaining budget, and a stale verified
+status head cannot reserve after a newer status head lands. Operation identities are scoped by
 tenant and stable allowance lineage—not by the replaceable capability ID—so a
 successor cannot replay an operation consumed under its predecessor. An
 unrelated tenant or allowance can still use the same local operation string

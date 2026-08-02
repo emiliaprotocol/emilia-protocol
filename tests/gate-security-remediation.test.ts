@@ -690,7 +690,9 @@ describe('Gate construction guards fail closed without a runtime monitor', () =>
     });
     const capabilityStore = {
       registerCapability: async () => ({ ok: true }),
-      reserveSpend: async () => ({ ok: true, reservation_id: 'res_1' }),
+      reserveSpend: async () => ({ ok: false, reason: 'capability_test_store_refusal' }),
+      beginProviderEntry: async () => ({ ok: false, reason: 'capability_test_store_refusal' }),
+      recoverPreEntrySpend: async () => ({ ok: false, reason: 'capability_test_store_refusal' }),
       commitSpend: async () => ({ ok: true }),
       reconcileSpend: async () => ({ ok: true }),
     };

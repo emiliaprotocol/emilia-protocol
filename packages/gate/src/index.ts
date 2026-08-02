@@ -80,6 +80,7 @@ import {
   CAPABILITY_SCOPE_PROFILE,
   CAPABILITY_CAID_SCOPE_PROFILE,
   CAPABILITY_ALLOWANCE_SCOPE_PROFILE,
+  CAPABILITY_ALLOWANCE_STATUS_TABLE,
   CAPABILITY_STATE_DDL,
   CAPABILITY_SQL,
   capabilityBaseReceiptDigest,
@@ -216,6 +217,7 @@ export {
   CAPABILITY_SCOPE_PROFILE,
   CAPABILITY_CAID_SCOPE_PROFILE,
   CAPABILITY_ALLOWANCE_SCOPE_PROFILE,
+  CAPABILITY_ALLOWANCE_STATUS_TABLE,
   CAPABILITY_STATE_DDL,
   CAPABILITY_SQL,
   capabilityBaseReceiptDigest,
@@ -1040,9 +1042,11 @@ export function createGate({ manifest = null, trustedKeys = [], maxAgeSec = 900,
   }
   if (capabilityStore && (typeof capabilityStore.registerCapability !== 'function'
       || typeof capabilityStore.reserveSpend !== 'function'
+      || typeof capabilityStore.beginProviderEntry !== 'function'
+      || typeof capabilityStore.recoverPreEntrySpend !== 'function'
       || typeof capabilityStore.commitSpend !== 'function'
       || typeof capabilityStore.reconcileSpend !== 'function')) {
-    throw new Error('EMILIA Gate capabilityStore must implement registerCapability(), reserveSpend(), commitSpend(), and reconcileSpend()');
+    throw new Error('EMILIA Gate capabilityStore must implement registerCapability(), reserveSpend(), beginProviderEntry(), recoverPreEntrySpend(), commitSpend(), and reconcileSpend()');
   }
   if (capabilityStore && !allowEphemeralStore && !isSecureCapabilityStore(capabilityStore)) {
     throw new Error(
@@ -2191,6 +2195,7 @@ export default {
   CAPABILITY_SCOPE_PROFILE,
   CAPABILITY_CAID_SCOPE_PROFILE,
   CAPABILITY_ALLOWANCE_SCOPE_PROFILE,
+  CAPABILITY_ALLOWANCE_STATUS_TABLE,
   CAPABILITY_STATE_DDL,
   CAPABILITY_SQL,
   capabilityBaseReceiptDigest,

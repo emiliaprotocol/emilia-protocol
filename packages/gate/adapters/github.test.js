@@ -6,10 +6,29 @@ import assert from 'node:assert/strict';
 import { generateKeyPairSync } from 'node:crypto';
 import { createGate, createEg1Harness } from '../index.js';
 import { createGithubManifest, createGithubAllowanceConnector, githubWorkflowInputsDigest, guardGithubAllowanceMutation, guardGithubMutation, GITHUB_OPS, } from './github.js';
-import { issueGateAllowance } from '../allowance.js';
+import { allowanceDigest, issueGateAllowance } from '../allowance.js';
 import { createMemoryCapabilityStore } from '../capability-receipt.js';
 const GITHUB_CONNECTOR_ID = 'github:installation:101';
 const githubConnector = (octokit) => createGithubAllowanceConnector({ octokit });
+const currentAllowanceStatus = () => ({
+    ok: true,
+    status_epoch: 1,
+    status_head_digest: `sha256:${'a'.repeat(64)}`,
+});
+function initializeAllowanceStatus(store, issued) {
+    const status = currentAllowanceStatus();
+    const result = store.advanceAllowanceStatus({
+        allowance_profile_id: `${issued.allowance.tenant_id}/${issued.allowance.allowance_id}`,
+        allowance_digest: allowanceDigest(issued.allowance),
+        revision: issued.allowance.revision,
+        status_epoch: status.status_epoch,
+        status_head_digest: status.status_head_digest,
+        expected_status_epoch: null,
+        expected_status_head_digest: null,
+        status: 'active',
+    });
+    assert.equal(result.ok, true);
+}
 function fakeOctokit(installationId = 101) {
     const calls = [];
     return {
@@ -143,6 +162,7 @@ function issueWorkflowAllowance({ repository = 'acme/prod', connectorId = GITHUB
     });
     const store = createMemoryCapabilityStore();
     assert.equal(store.registerCapability(issued.capabilityReceipt), true);
+    initializeAllowanceStatus(store, issued);
     return {
         issued,
         store,
@@ -162,7 +182,7 @@ function workflowAllowanceArgs(issued, store, trustedAllowanceKeys, trustedCapab
         secret: issued.secret,
         store,
         verifyAuthorizationReceipt: () => true,
-        verifyAllowanceStatus: () => true,
+        verifyAllowanceStatus: () => currentAllowanceStatus(),
         trustedAllowanceKeys,
         trustedCapabilityIssuerKeys,
         expected: {

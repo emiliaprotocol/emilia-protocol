@@ -24,6 +24,18 @@ type CapabilityBudget = {
     amount: number;
     currency: string;
 };
+type AllowanceStatusAssertion = {
+    allowance_profile_id: string;
+    allowance_digest: string;
+    revision: number;
+    status_epoch: number;
+    status_head_digest: string;
+};
+type AdvanceAllowanceStatusOptions = AllowanceStatusAssertion & {
+    expected_status_epoch: number | null;
+    expected_status_head_digest: string | null;
+    status: 'active' | 'suspended' | 'revoked';
+};
 type ReserveSpendOptions = {
     capabilityId: string;
     capabilityFingerprint: string;
@@ -32,6 +44,7 @@ type ReserveSpendOptions = {
     actionDigest: string;
     amount: number;
     currency: string;
+    allowanceStatus?: AllowanceStatusAssertion;
     now?: number | (() => number);
 };
 type CommitSpendOptions = {
@@ -42,12 +55,27 @@ type CommitSpendOptions = {
     outcome?: string;
     now?: number | (() => number);
 };
+type BeginProviderEntryOptions = {
+    capabilityId?: string;
+    operationNamespace?: string;
+    operationId?: string;
+    reservationToken?: string;
+    now?: number | (() => number);
+};
+type RecoverPreEntrySpendOptions = {
+    capabilityId?: string;
+    operationNamespace?: string;
+    operationId?: string;
+    actionDigest?: string;
+    now?: number | (() => number);
+};
 type ReconcileSpendOptions = {
     capabilityId?: string;
     operationNamespace?: string;
     operationId?: string;
     actionDigest?: string;
     evidenceDigest?: string;
+    evidenceProfile?: string;
     outcome?: string;
     now?: number | (() => number);
 };
@@ -67,6 +95,7 @@ type ExecuteWithCapabilityOptions = {
         profile_id: string;
         profile_digest: string;
     }) => any) | null;
+    allowanceStatus?: AllowanceStatusAssertion;
     operationId?: string | null;
     now?: number | (() => number);
     thresholdSecretVerified?: boolean;
@@ -233,22 +262,73 @@ export declare function isSecureCapabilityStore(store: any): boolean;
  * and is suitable only for tests; production callers must use an implementation
  * backed by a transactional database or equivalent linearizable store.
  */
-export declare function createMemoryCapabilityStore(): {
+export declare function createMemoryCapabilityStore({ providerEntryTimeoutMs, }?: {
+    providerEntryTimeoutMs?: number;
+}): {
     durable: boolean;
     reconciliationCapable: boolean;
+    allowanceCurrentnessCapable: boolean;
     registerCapability(capabilityReceipt: any): boolean;
-    reserveSpend({ capabilityId, capabilityFingerprint, operationNamespace, operationId, actionDigest, amount, currency, now }: ReserveSpendOptions): Promise<{
+    advanceAllowanceStatus(options: AdvanceAllowanceStatusOptions): {
+        ok: boolean;
+        idempotent: boolean;
+        reason?: undefined;
+    } | {
+        ok: boolean;
+        reason: string;
+        idempotent?: undefined;
+    };
+    reserveSpend({ capabilityId, capabilityFingerprint, operationNamespace, operationId, actionDigest, amount, currency, allowanceStatus, now }: ReserveSpendOptions): Promise<{
         ok: boolean;
         reason: string;
         operation_id?: undefined;
         reservation_token?: undefined;
+        entry_deadline_at?: undefined;
         remaining?: undefined;
     } | {
         ok: boolean;
         operation_id: string;
         reservation_token: `${string}-${string}-${string}-${string}-${string}`;
+        entry_deadline_at: number;
         remaining: number;
         reason?: undefined;
+    }>;
+    beginProviderEntry({ capabilityId, operationNamespace, operationId, reservationToken, now }?: BeginProviderEntryOptions): Promise<{
+        ok: boolean;
+        reason: string;
+        operation_id?: undefined;
+        provider_entry_at?: undefined;
+        consumed?: undefined;
+        remaining?: undefined;
+    } | {
+        ok: boolean;
+        operation_id: string | undefined;
+        provider_entry_at: any;
+        consumed: any;
+        remaining: number;
+        reason?: undefined;
+    }>;
+    recoverPreEntrySpend({ capabilityId, operationNamespace, operationId, actionDigest, now }?: RecoverPreEntrySpendOptions): Promise<{
+        ok: boolean;
+        reason: string;
+        idempotent?: undefined;
+        outcome?: undefined;
+        released?: undefined;
+        remaining?: undefined;
+    } | {
+        ok: boolean;
+        idempotent: boolean;
+        outcome: string;
+        released: any;
+        remaining: number;
+        reason?: undefined;
+    } | {
+        ok: boolean;
+        outcome: string;
+        released: any;
+        remaining: number;
+        reason?: undefined;
+        idempotent?: undefined;
     }>;
     commitSpend({ capabilityId, operationNamespace, operationId, reservationToken, outcome, now }?: CommitSpendOptions): Promise<{
         ok: boolean;
@@ -263,7 +343,7 @@ export declare function createMemoryCapabilityStore(): {
         remaining: number;
         reason?: undefined;
     }>;
-    reconcileSpend({ capabilityId, operationNamespace, operationId, actionDigest, evidenceDigest, outcome, now }?: ReconcileSpendOptions): Promise<{
+    reconcileSpend({ capabilityId, operationNamespace, operationId, actionDigest, evidenceDigest, evidenceProfile, outcome, now }?: ReconcileSpendOptions): Promise<{
         ok: boolean;
         reason: string;
         idempotent?: undefined;
@@ -275,20 +355,30 @@ export declare function createMemoryCapabilityStore(): {
         reason?: undefined;
     }>;
     getState(capabilityId: any): any;
+    getAllowanceStatus(allowanceProfileId: any): any;
     getOperation(operationId: any, capabilityId?: null, operationNamespace?: null): any;
 };
 export declare const CAPABILITY_STATE_TABLE = "ep_capability_state";
 export declare const CAPABILITY_OPERATION_TABLE = "ep_capability_operations";
-export declare const CAPABILITY_STATE_DDL = "CREATE TABLE IF NOT EXISTS ep_capability_state (\n  capability_id TEXT PRIMARY KEY,\n  capability_fingerprint TEXT NOT NULL CHECK (capability_fingerprint ~ '^sha256:[0-9a-f]{64}$'),\n  budget_amount BIGINT NOT NULL CHECK (budget_amount >= 0),\n  currency TEXT NOT NULL,\n  consumed_amount BIGINT NOT NULL DEFAULT 0 CHECK (consumed_amount >= 0),\n  reserved_amount BIGINT NOT NULL DEFAULT 0 CHECK (reserved_amount >= 0),\n  expires_at TIMESTAMPTZ NOT NULL,\n  created_at TIMESTAMPTZ NOT NULL DEFAULT now()\n);\nALTER TABLE ep_capability_state ADD COLUMN IF NOT EXISTS capability_fingerprint TEXT;\nCREATE TABLE IF NOT EXISTS ep_capability_operations (\n  operation_namespace TEXT NOT NULL,\n  operation_id TEXT NOT NULL,\n  capability_id TEXT NOT NULL REFERENCES ep_capability_state(capability_id),\n  action_digest TEXT NOT NULL CHECK (action_digest ~ '^sha256:[0-9a-f]{64}$'),\n  amount BIGINT NOT NULL CHECK (amount > 0),\n  currency TEXT NOT NULL,\n  status TEXT NOT NULL CHECK (status IN ('reserved', 'committed')),\n  reservation_token TEXT NOT NULL,\n  outcome TEXT,\n  reconciliation_outcome TEXT CHECK (reconciliation_outcome IN ('executed')),\n  reconciliation_evidence_digest TEXT CHECK (reconciliation_evidence_digest ~ '^sha256:[0-9a-f]{64}$'),\n  reserved_at TIMESTAMPTZ NOT NULL,\n  committed_at TIMESTAMPTZ,\n  reconciled_at TIMESTAMPTZ,\n  CHECK (\n    (reconciliation_outcome IS NULL AND reconciliation_evidence_digest IS NULL AND reconciled_at IS NULL)\n    OR\n    (reconciliation_outcome IS NOT NULL AND reconciliation_evidence_digest IS NOT NULL AND reconciled_at IS NOT NULL)\n  ),\n  PRIMARY KEY (operation_namespace, operation_id)\n);\nALTER TABLE ep_capability_operations ADD COLUMN IF NOT EXISTS operation_namespace TEXT;\nUPDATE ep_capability_operations\n  SET operation_namespace = capability_id\n  WHERE operation_namespace IS NULL;\nALTER TABLE ep_capability_operations\n  ALTER COLUMN operation_namespace SET NOT NULL;\nDO $capability_operation_primary_key$\nDECLARE\n  current_primary_key_name TEXT;\n  current_primary_key_definition TEXT;\nBEGIN\n  SELECT conname, pg_get_constraintdef(oid)\n    INTO current_primary_key_name, current_primary_key_definition\n    FROM pg_constraint\n    WHERE conrelid = 'ep_capability_operations'::regclass\n      AND contype = 'p';\n  IF current_primary_key_definition IS DISTINCT FROM 'PRIMARY KEY (operation_namespace, operation_id)' THEN\n    IF current_primary_key_name IS NOT NULL THEN\n      EXECUTE format(\n        'ALTER TABLE %I DROP CONSTRAINT %I',\n        'ep_capability_operations',\n        current_primary_key_name\n      );\n    END IF;\n    ALTER TABLE ep_capability_operations\n      ADD CONSTRAINT ep_capability_operations_pkey\n      PRIMARY KEY (operation_namespace, operation_id);\n  END IF;\nEND\n$capability_operation_primary_key$;\nCREATE INDEX IF NOT EXISTS ep_capability_operations_capability_idx ON ep_capability_operations(capability_id);";
+export declare const CAPABILITY_ALLOWANCE_STATUS_TABLE = "ep_gate_allowance_status";
+export declare const CAPABILITY_STATE_DDL = "CREATE TABLE IF NOT EXISTS ep_capability_state (\n  capability_id TEXT PRIMARY KEY,\n  capability_fingerprint TEXT NOT NULL CHECK (capability_fingerprint ~ '^sha256:[0-9a-f]{64}$'),\n  budget_amount BIGINT NOT NULL CHECK (budget_amount >= 0),\n  currency TEXT NOT NULL,\n  consumed_amount BIGINT NOT NULL DEFAULT 0 CHECK (consumed_amount >= 0),\n  reserved_amount BIGINT NOT NULL DEFAULT 0 CHECK (reserved_amount >= 0),\n  expires_at TIMESTAMPTZ NOT NULL,\n  created_at TIMESTAMPTZ NOT NULL DEFAULT now(),\n  allowance_profile_id TEXT,\n  allowance_digest TEXT CHECK (allowance_digest ~ '^sha256:[0-9a-f]{64}$'),\n  CHECK ((allowance_profile_id IS NULL) = (allowance_digest IS NULL))\n);\nALTER TABLE ep_capability_state ADD COLUMN IF NOT EXISTS capability_fingerprint TEXT;\nALTER TABLE ep_capability_state ADD COLUMN IF NOT EXISTS allowance_profile_id TEXT;\nALTER TABLE ep_capability_state ADD COLUMN IF NOT EXISTS allowance_digest TEXT CHECK (allowance_digest ~ '^sha256:[0-9a-f]{64}$');\nCREATE TABLE IF NOT EXISTS ep_gate_allowance_status (\n  allowance_profile_id TEXT PRIMARY KEY,\n  allowance_digest TEXT NOT NULL CHECK (allowance_digest ~ '^sha256:[0-9a-f]{64}$'),\n  revision BIGINT NOT NULL CHECK (revision > 0),\n  status_epoch BIGINT NOT NULL CHECK (status_epoch > 0),\n  status_head_digest TEXT NOT NULL CHECK (status_head_digest ~ '^sha256:[0-9a-f]{64}$'),\n  status TEXT NOT NULL CHECK (status IN ('active', 'suspended', 'revoked')),\n  updated_at TIMESTAMPTZ NOT NULL DEFAULT now()\n);\nCREATE TABLE IF NOT EXISTS ep_capability_operations (\n  operation_namespace TEXT NOT NULL,\n  operation_id TEXT NOT NULL,\n  capability_id TEXT NOT NULL REFERENCES ep_capability_state(capability_id),\n  action_digest TEXT NOT NULL CHECK (action_digest ~ '^sha256:[0-9a-f]{64}$'),\n  amount BIGINT NOT NULL CHECK (amount > 0),\n  currency TEXT NOT NULL,\n  status TEXT NOT NULL CONSTRAINT ep_capability_operations_status_check CHECK (status IN ('reserved', 'provider_entered', 'committed', 'released')),\n  reservation_token TEXT NOT NULL,\n  outcome TEXT,\n  reconciliation_outcome TEXT CHECK (reconciliation_outcome IN ('executed')),\n  reconciliation_evidence_digest TEXT CHECK (reconciliation_evidence_digest ~ '^sha256:[0-9a-f]{64}$'),\n  allowance_revision BIGINT CHECK (allowance_revision > 0),\n  allowance_status_epoch BIGINT CHECK (allowance_status_epoch > 0),\n  allowance_status_head_digest TEXT CHECK (allowance_status_head_digest ~ '^sha256:[0-9a-f]{64}$'),\n  reserved_at TIMESTAMPTZ NOT NULL,\n  entry_deadline_at TIMESTAMPTZ,\n  provider_entry_at TIMESTAMPTZ,\n  committed_at TIMESTAMPTZ,\n  reconciled_at TIMESTAMPTZ,\n  released_at TIMESTAMPTZ,\n  release_reason TEXT,\n  release_evidence_profile TEXT,\n  release_evidence_digest TEXT CHECK (release_evidence_digest ~ '^sha256:[0-9a-f]{64}$'),\n  CHECK (\n    (reconciliation_outcome IS NULL AND reconciliation_evidence_digest IS NULL AND reconciled_at IS NULL)\n    OR\n    (reconciliation_outcome IS NOT NULL AND reconciliation_evidence_digest IS NOT NULL AND reconciled_at IS NOT NULL)\n  ),\n  CHECK (\n    (allowance_revision IS NULL AND allowance_status_epoch IS NULL AND allowance_status_head_digest IS NULL)\n    OR\n    (allowance_revision IS NOT NULL AND allowance_status_epoch IS NOT NULL AND allowance_status_head_digest IS NOT NULL)\n  ),\n  PRIMARY KEY (operation_namespace, operation_id)\n);\nALTER TABLE ep_capability_operations ADD COLUMN IF NOT EXISTS operation_namespace TEXT;\nALTER TABLE ep_capability_operations ADD COLUMN IF NOT EXISTS entry_deadline_at TIMESTAMPTZ;\nALTER TABLE ep_capability_operations ADD COLUMN IF NOT EXISTS provider_entry_at TIMESTAMPTZ;\nALTER TABLE ep_capability_operations ADD COLUMN IF NOT EXISTS released_at TIMESTAMPTZ;\nALTER TABLE ep_capability_operations ADD COLUMN IF NOT EXISTS release_reason TEXT;\nALTER TABLE ep_capability_operations ADD COLUMN IF NOT EXISTS release_evidence_profile TEXT;\nALTER TABLE ep_capability_operations ADD COLUMN IF NOT EXISTS release_evidence_digest TEXT CHECK (release_evidence_digest ~ '^sha256:[0-9a-f]{64}$');\nALTER TABLE ep_capability_operations DROP CONSTRAINT IF EXISTS ep_capability_operations_status_check;\nALTER TABLE ep_capability_operations\n  ADD CONSTRAINT ep_capability_operations_status_check\n  CHECK (status IN ('reserved', 'provider_entered', 'committed', 'released'));\nALTER TABLE ep_capability_operations ADD COLUMN IF NOT EXISTS allowance_revision BIGINT CHECK (allowance_revision > 0);\nALTER TABLE ep_capability_operations ADD COLUMN IF NOT EXISTS allowance_status_epoch BIGINT CHECK (allowance_status_epoch > 0);\nALTER TABLE ep_capability_operations ADD COLUMN IF NOT EXISTS allowance_status_head_digest TEXT CHECK (allowance_status_head_digest ~ '^sha256:[0-9a-f]{64}$');\nUPDATE ep_capability_operations\n  SET operation_namespace = capability_id\n  WHERE operation_namespace IS NULL;\nALTER TABLE ep_capability_operations\n  ALTER COLUMN operation_namespace SET NOT NULL;\nDO $capability_operation_primary_key$\nDECLARE\n  current_primary_key_name TEXT;\n  current_primary_key_definition TEXT;\nBEGIN\n  SELECT conname, pg_get_constraintdef(oid)\n    INTO current_primary_key_name, current_primary_key_definition\n    FROM pg_constraint\n    WHERE conrelid = 'ep_capability_operations'::regclass\n      AND contype = 'p';\n  IF current_primary_key_definition IS DISTINCT FROM 'PRIMARY KEY (operation_namespace, operation_id)' THEN\n    IF current_primary_key_name IS NOT NULL THEN\n      EXECUTE format(\n        'ALTER TABLE %I DROP CONSTRAINT %I',\n        'ep_capability_operations',\n        current_primary_key_name\n      );\n    END IF;\n    ALTER TABLE ep_capability_operations\n      ADD CONSTRAINT ep_capability_operations_pkey\n      PRIMARY KEY (operation_namespace, operation_id);\n  END IF;\nEND\n$capability_operation_primary_key$;\nCREATE INDEX IF NOT EXISTS ep_capability_operations_capability_idx ON ep_capability_operations(capability_id);\nCREATE INDEX IF NOT EXISTS ep_capability_operations_recovery_idx ON ep_capability_operations(status, entry_deadline_at);";
 export declare const CAPABILITY_SQL: Readonly<{
-    register: "INSERT INTO ep_capability_state (capability_id, budget_amount, currency, expires_at, capability_fingerprint) VALUES ($1, $2, $3, $4, $5) ON CONFLICT (capability_id) DO UPDATE SET capability_fingerprint = COALESCE(ep_capability_state.capability_fingerprint, EXCLUDED.capability_fingerprint) WHERE ep_capability_state.budget_amount = EXCLUDED.budget_amount AND ep_capability_state.currency = EXCLUDED.currency AND ep_capability_state.expires_at = EXCLUDED.expires_at";
-    readState: "SELECT capability_id, capability_fingerprint, budget_amount, currency, consumed_amount, reserved_amount, expires_at FROM ep_capability_state WHERE capability_id = $1 FOR UPDATE";
-    readOperation: "SELECT operation_namespace, operation_id, capability_id, action_digest, amount, currency, status, reservation_token, outcome, reconciliation_outcome, reconciliation_evidence_digest, reconciled_at FROM ep_capability_operations WHERE operation_namespace = $1 AND operation_id = $2 FOR UPDATE";
-    insertOperation: "INSERT INTO ep_capability_operations (operation_namespace, capability_id, operation_id, action_digest, amount, currency, status, reservation_token, reserved_at) VALUES ($1, $2, $3, $4, $5, $6, 'reserved', $7, $8)";
+    register: "INSERT INTO ep_capability_state (capability_id, budget_amount, currency, expires_at, capability_fingerprint, allowance_profile_id, allowance_digest) VALUES ($1, $2, $3, $4, $5, $6, $7) ON CONFLICT (capability_id) DO UPDATE SET capability_fingerprint = COALESCE(ep_capability_state.capability_fingerprint, EXCLUDED.capability_fingerprint), allowance_profile_id = COALESCE(ep_capability_state.allowance_profile_id, EXCLUDED.allowance_profile_id), allowance_digest = COALESCE(ep_capability_state.allowance_digest, EXCLUDED.allowance_digest) WHERE ep_capability_state.budget_amount = EXCLUDED.budget_amount AND ep_capability_state.currency = EXCLUDED.currency AND ep_capability_state.expires_at = EXCLUDED.expires_at AND (ep_capability_state.allowance_profile_id IS NULL OR ep_capability_state.allowance_profile_id IS NOT DISTINCT FROM EXCLUDED.allowance_profile_id) AND (ep_capability_state.allowance_digest IS NULL OR ep_capability_state.allowance_digest IS NOT DISTINCT FROM EXCLUDED.allowance_digest)";
+    readState: "SELECT capability_id, capability_fingerprint, budget_amount, currency, consumed_amount, reserved_amount, expires_at, allowance_profile_id, allowance_digest FROM ep_capability_state WHERE capability_id = $1 FOR UPDATE";
+    readAllowanceStatus: "SELECT allowance_profile_id, allowance_digest, revision, status_epoch, status_head_digest, status FROM ep_gate_allowance_status WHERE allowance_profile_id = $1 FOR UPDATE";
+    insertAllowanceStatus: "INSERT INTO ep_gate_allowance_status (allowance_profile_id, allowance_digest, revision, status_epoch, status_head_digest, status, updated_at) VALUES ($1, $2, $3, $4, $5, $6, $7) ON CONFLICT (allowance_profile_id) DO NOTHING";
+    updateAllowanceStatus: "UPDATE ep_gate_allowance_status SET allowance_digest = $4, revision = $5, status_epoch = $6, status_head_digest = $7, status = $8, updated_at = $9 WHERE allowance_profile_id = $1 AND status_epoch = $2 AND status_head_digest = $3";
+    readOperation: "SELECT operation_namespace, operation_id, capability_id, action_digest, amount, currency, status, reservation_token, outcome, reconciliation_outcome, reconciliation_evidence_digest, allowance_revision, allowance_status_epoch, allowance_status_head_digest, reconciled_at, reserved_at, entry_deadline_at, provider_entry_at, released_at, release_reason, release_evidence_profile, release_evidence_digest FROM ep_capability_operations WHERE operation_namespace = $1 AND operation_id = $2 FOR UPDATE";
+    insertOperation: "INSERT INTO ep_capability_operations (operation_namespace, capability_id, operation_id, action_digest, amount, currency, status, reservation_token, reserved_at, entry_deadline_at, allowance_revision, allowance_status_epoch, allowance_status_head_digest) VALUES ($1, $2, $3, $4, $5, $6, 'reserved', $7, $8, $9, $10, $11, $12)";
     reserveState: "UPDATE ep_capability_state SET reserved_amount = reserved_amount + $2 WHERE capability_id = $1 AND budget_amount - consumed_amount - reserved_amount >= $2";
-    commitOperation: "UPDATE ep_capability_operations SET status = 'committed', outcome = $4, committed_at = $5 WHERE operation_namespace = $1 AND operation_id = $2 AND capability_id = $3 AND status = 'reserved' AND reservation_token = $6";
+    beginProviderEntry: "UPDATE ep_capability_operations SET status = 'provider_entered', provider_entry_at = $5 WHERE operation_namespace = $1 AND operation_id = $2 AND capability_id = $3 AND status = 'reserved' AND reservation_token = $4 AND entry_deadline_at IS NOT NULL AND entry_deadline_at > $5";
+    commitOperation: "UPDATE ep_capability_operations SET status = 'committed', outcome = $4, committed_at = $5 WHERE operation_namespace = $1 AND operation_id = $2 AND capability_id = $3 AND status = $7 AND reservation_token = $6";
     reconcileOperation: "UPDATE ep_capability_operations SET reconciliation_outcome = $4, reconciliation_evidence_digest = $5, reconciled_at = $6 WHERE operation_namespace = $1 AND operation_id = $2 AND capability_id = $3 AND status = 'committed' AND outcome = 'indeterminate' AND reconciliation_outcome IS NULL";
+    recoverPreEntryOperation: "UPDATE ep_capability_operations SET status = 'released', outcome = 'not_entered', release_reason = 'pre_entry_deadline_elapsed', released_at = $5 WHERE operation_namespace = $1 AND operation_id = $2 AND capability_id = $3 AND action_digest = $4 AND status = 'reserved' AND entry_deadline_at IS NOT NULL AND entry_deadline_at <= $5";
+    releaseEnteredOperation: "UPDATE ep_capability_operations SET status = 'released', outcome = 'not_entered', release_reason = 'authenticated_provider_non_entry', release_evidence_profile = $5, release_evidence_digest = $6, released_at = $7 WHERE operation_namespace = $1 AND operation_id = $2 AND capability_id = $3 AND action_digest = $4 AND entry_deadline_at IS NOT NULL AND entry_deadline_at <= $7 AND (status = 'provider_entered' OR (status = 'committed' AND outcome = 'indeterminate'))";
     commitState: "UPDATE ep_capability_state SET reserved_amount = reserved_amount - $2, consumed_amount = consumed_amount + $2 WHERE capability_id = $1 AND reserved_amount >= $2";
+    releaseReservedState: "UPDATE ep_capability_state SET reserved_amount = reserved_amount - $2 WHERE capability_id = $1 AND reserved_amount >= $2";
+    releaseConsumedState: "UPDATE ep_capability_state SET consumed_amount = consumed_amount - $2 WHERE capability_id = $1 AND consumed_amount >= $2";
 }>;
 /**
  * Production adapter. `transaction` MUST run the callback on one database
@@ -299,21 +389,26 @@ export declare const CAPABILITY_SQL: Readonly<{
  * @param {object} [options]
  * @param {(callback: (query: Function) => any) => any} [options.transaction]
  */
-export declare function createPostgresCapabilityStore({ transaction }?: {
+export declare function createPostgresCapabilityStore({ transaction, providerEntryTimeoutMs, }?: {
     transaction?: (callback: (query: Function) => any) => any;
+    providerEntryTimeoutMs?: number;
 }): {
     durable: boolean;
     reconciliationCapable: boolean;
+    allowanceCurrentnessCapable: boolean;
     registerCapability(capabilityReceipt: any): Promise<any>;
-    reserveSpend({ capabilityId, capabilityFingerprint, operationNamespace, operationId, actionDigest, amount, currency, now }: ReserveSpendOptions): Promise<any>;
+    advanceAllowanceStatus(options: AdvanceAllowanceStatusOptions): Promise<any>;
+    reserveSpend({ capabilityId, capabilityFingerprint, operationNamespace, operationId, actionDigest, amount, currency, allowanceStatus, now }: ReserveSpendOptions): Promise<any>;
+    beginProviderEntry({ capabilityId, operationNamespace, operationId, reservationToken, now }?: BeginProviderEntryOptions): Promise<any>;
+    recoverPreEntrySpend({ capabilityId, operationNamespace, operationId, actionDigest, now }?: RecoverPreEntrySpendOptions): Promise<any>;
     commitSpend({ capabilityId, operationNamespace, operationId, reservationToken, outcome, now }?: CommitSpendOptions): Promise<any>;
-    reconcileSpend({ capabilityId, operationNamespace, operationId, actionDigest, evidenceDigest, outcome, now }?: ReconcileSpendOptions): Promise<any>;
+    reconcileSpend({ capabilityId, operationNamespace, operationId, actionDigest, evidenceDigest, evidenceProfile, outcome, now }?: ReconcileSpendOptions): Promise<any>;
 };
 /**
  * Execute one spend under a capability. The base EP receipt is checked on
  * every spend with consumptionMode=none; the capability store is the replay
  * and budget authority. The external function is entered only after the
- * atomic reservation succeeds. `action` is the budget projection; the
+ * atomic reservation and durable provider-entry transition succeed. `action` is the budget projection; the
  * external function receives only a clone of the exact verified
  * `observedAction ?? action`. Any exception after entry permanently commits
  * the reserved amount as indeterminate.
@@ -335,7 +430,7 @@ export declare function createPostgresCapabilityStore({ transaction }?: {
  * @param {number|(() => number)} [options.now]
  * @param {boolean} [options.thresholdSecretVerified]
  */
-export declare function executeWithCapability({ capabilityReceipt, secret, action, store, executeAction, gate, selector, observedAction, trustedIssuerKeys, verifyBaseReceipt, resolveCaid, verifyActionProfile, operationId, now, thresholdSecretVerified, }?: ExecuteWithCapabilityOptions): Promise<{
+export declare function executeWithCapability({ capabilityReceipt, secret, action, store, executeAction, gate, selector, observedAction, trustedIssuerKeys, verifyBaseReceipt, resolveCaid, verifyActionProfile, allowanceStatus, operationId, now, thresholdSecretVerified, }?: ExecuteWithCapabilityOptions): Promise<{
     ok: boolean;
     reason: string | undefined;
     scope?: undefined;
@@ -364,6 +459,15 @@ export declare function executeWithCapability({ capabilityReceipt, secret, actio
     result?: undefined;
     operation_id?: undefined;
 } | {
+    caid?: any;
+    ok: boolean;
+    reason: any;
+    authorization: Record<string, any> | null;
+    operation_id: string | null;
+    action_digest: any;
+    scope?: undefined;
+    result?: undefined;
+} | {
     ok: boolean;
     reason: string;
     authorization: Record<string, any> | null;
@@ -380,15 +484,6 @@ export declare function executeWithCapability({ capabilityReceipt, secret, actio
     action_digest: any;
     reason?: undefined;
     scope?: undefined;
-} | {
-    caid?: any;
-    ok: boolean;
-    reason: string;
-    authorization: Record<string, any> | null;
-    operation_id: string | null;
-    action_digest: any;
-    scope?: undefined;
-    result?: undefined;
 }>;
 /**
  * Execute a capability requiring m-of-n Shamir shares.
@@ -425,6 +520,15 @@ export declare function executeWithThreshold({ capabilityReceipt, shares, ...opt
     result?: undefined;
     operation_id?: undefined;
 } | {
+    caid?: any;
+    ok: boolean;
+    reason: any;
+    authorization: Record<string, any> | null;
+    operation_id: string | null;
+    action_digest: any;
+    scope?: undefined;
+    result?: undefined;
+} | {
     ok: boolean;
     reason: string;
     authorization: Record<string, any> | null;
@@ -441,21 +545,12 @@ export declare function executeWithThreshold({ capabilityReceipt, shares, ...opt
     action_digest: any;
     reason?: undefined;
     scope?: undefined;
-} | {
-    caid?: any;
-    ok: boolean;
-    reason: string;
-    authorization: Record<string, any> | null;
-    operation_id: string | null;
-    action_digest: any;
-    scope?: undefined;
-    result?: undefined;
 }>;
 /**
- * Authentically reconcile a committed indeterminate capability operation.
- * The generic path records only a proven `executed` outcome and never restores
- * budget. A deployment that wants to prove the effect boundary was not crossed
- * needs a separate, action-specific negative-evidence profile.
+ * Authentically reconcile a capability operation. Positive evidence records an
+ * executed outcome without restoring budget. A post-entry release additionally
+ * requires an authenticated, action-specific negative-evidence profile and is
+ * still gated by the reservation's durable provider-entry deadline.
  *
  * @param {object} [options]
  * @param {any} [options.store]
@@ -476,19 +571,16 @@ export declare function reconcileCapabilityOperation({ store, capabilityId, oper
     verifyEvidence?: (...args: any[]) => any;
     now?: number | (() => number);
 }): Promise<{
+    idempotent: boolean;
+    evidence_profile?: any;
     ok: boolean;
-    outcome: string;
+    outcome: any;
     action_digest: any;
     evidence_digest: string;
-    idempotent: boolean;
     reason?: undefined;
 } | {
     ok: boolean;
     reason: any;
-    outcome?: undefined;
-    action_digest?: undefined;
-    evidence_digest?: undefined;
-    idempotent?: undefined;
 }>;
 /**
  * Issue a bounded child capability from a parent capability.
@@ -589,16 +681,25 @@ declare const _default: {
     CAPABILITY_SCOPE_PROFILE: string;
     CAPABILITY_CAID_SCOPE_PROFILE: string;
     CAPABILITY_ALLOWANCE_SCOPE_PROFILE: string;
+    CAPABILITY_ALLOWANCE_STATUS_TABLE: string;
     CAPABILITY_STATE_DDL: string;
     CAPABILITY_SQL: Readonly<{
-        register: "INSERT INTO ep_capability_state (capability_id, budget_amount, currency, expires_at, capability_fingerprint) VALUES ($1, $2, $3, $4, $5) ON CONFLICT (capability_id) DO UPDATE SET capability_fingerprint = COALESCE(ep_capability_state.capability_fingerprint, EXCLUDED.capability_fingerprint) WHERE ep_capability_state.budget_amount = EXCLUDED.budget_amount AND ep_capability_state.currency = EXCLUDED.currency AND ep_capability_state.expires_at = EXCLUDED.expires_at";
-        readState: "SELECT capability_id, capability_fingerprint, budget_amount, currency, consumed_amount, reserved_amount, expires_at FROM ep_capability_state WHERE capability_id = $1 FOR UPDATE";
-        readOperation: "SELECT operation_namespace, operation_id, capability_id, action_digest, amount, currency, status, reservation_token, outcome, reconciliation_outcome, reconciliation_evidence_digest, reconciled_at FROM ep_capability_operations WHERE operation_namespace = $1 AND operation_id = $2 FOR UPDATE";
-        insertOperation: "INSERT INTO ep_capability_operations (operation_namespace, capability_id, operation_id, action_digest, amount, currency, status, reservation_token, reserved_at) VALUES ($1, $2, $3, $4, $5, $6, 'reserved', $7, $8)";
+        register: "INSERT INTO ep_capability_state (capability_id, budget_amount, currency, expires_at, capability_fingerprint, allowance_profile_id, allowance_digest) VALUES ($1, $2, $3, $4, $5, $6, $7) ON CONFLICT (capability_id) DO UPDATE SET capability_fingerprint = COALESCE(ep_capability_state.capability_fingerprint, EXCLUDED.capability_fingerprint), allowance_profile_id = COALESCE(ep_capability_state.allowance_profile_id, EXCLUDED.allowance_profile_id), allowance_digest = COALESCE(ep_capability_state.allowance_digest, EXCLUDED.allowance_digest) WHERE ep_capability_state.budget_amount = EXCLUDED.budget_amount AND ep_capability_state.currency = EXCLUDED.currency AND ep_capability_state.expires_at = EXCLUDED.expires_at AND (ep_capability_state.allowance_profile_id IS NULL OR ep_capability_state.allowance_profile_id IS NOT DISTINCT FROM EXCLUDED.allowance_profile_id) AND (ep_capability_state.allowance_digest IS NULL OR ep_capability_state.allowance_digest IS NOT DISTINCT FROM EXCLUDED.allowance_digest)";
+        readState: "SELECT capability_id, capability_fingerprint, budget_amount, currency, consumed_amount, reserved_amount, expires_at, allowance_profile_id, allowance_digest FROM ep_capability_state WHERE capability_id = $1 FOR UPDATE";
+        readAllowanceStatus: "SELECT allowance_profile_id, allowance_digest, revision, status_epoch, status_head_digest, status FROM ep_gate_allowance_status WHERE allowance_profile_id = $1 FOR UPDATE";
+        insertAllowanceStatus: "INSERT INTO ep_gate_allowance_status (allowance_profile_id, allowance_digest, revision, status_epoch, status_head_digest, status, updated_at) VALUES ($1, $2, $3, $4, $5, $6, $7) ON CONFLICT (allowance_profile_id) DO NOTHING";
+        updateAllowanceStatus: "UPDATE ep_gate_allowance_status SET allowance_digest = $4, revision = $5, status_epoch = $6, status_head_digest = $7, status = $8, updated_at = $9 WHERE allowance_profile_id = $1 AND status_epoch = $2 AND status_head_digest = $3";
+        readOperation: "SELECT operation_namespace, operation_id, capability_id, action_digest, amount, currency, status, reservation_token, outcome, reconciliation_outcome, reconciliation_evidence_digest, allowance_revision, allowance_status_epoch, allowance_status_head_digest, reconciled_at, reserved_at, entry_deadline_at, provider_entry_at, released_at, release_reason, release_evidence_profile, release_evidence_digest FROM ep_capability_operations WHERE operation_namespace = $1 AND operation_id = $2 FOR UPDATE";
+        insertOperation: "INSERT INTO ep_capability_operations (operation_namespace, capability_id, operation_id, action_digest, amount, currency, status, reservation_token, reserved_at, entry_deadline_at, allowance_revision, allowance_status_epoch, allowance_status_head_digest) VALUES ($1, $2, $3, $4, $5, $6, 'reserved', $7, $8, $9, $10, $11, $12)";
         reserveState: "UPDATE ep_capability_state SET reserved_amount = reserved_amount + $2 WHERE capability_id = $1 AND budget_amount - consumed_amount - reserved_amount >= $2";
-        commitOperation: "UPDATE ep_capability_operations SET status = 'committed', outcome = $4, committed_at = $5 WHERE operation_namespace = $1 AND operation_id = $2 AND capability_id = $3 AND status = 'reserved' AND reservation_token = $6";
+        beginProviderEntry: "UPDATE ep_capability_operations SET status = 'provider_entered', provider_entry_at = $5 WHERE operation_namespace = $1 AND operation_id = $2 AND capability_id = $3 AND status = 'reserved' AND reservation_token = $4 AND entry_deadline_at IS NOT NULL AND entry_deadline_at > $5";
+        commitOperation: "UPDATE ep_capability_operations SET status = 'committed', outcome = $4, committed_at = $5 WHERE operation_namespace = $1 AND operation_id = $2 AND capability_id = $3 AND status = $7 AND reservation_token = $6";
         reconcileOperation: "UPDATE ep_capability_operations SET reconciliation_outcome = $4, reconciliation_evidence_digest = $5, reconciled_at = $6 WHERE operation_namespace = $1 AND operation_id = $2 AND capability_id = $3 AND status = 'committed' AND outcome = 'indeterminate' AND reconciliation_outcome IS NULL";
+        recoverPreEntryOperation: "UPDATE ep_capability_operations SET status = 'released', outcome = 'not_entered', release_reason = 'pre_entry_deadline_elapsed', released_at = $5 WHERE operation_namespace = $1 AND operation_id = $2 AND capability_id = $3 AND action_digest = $4 AND status = 'reserved' AND entry_deadline_at IS NOT NULL AND entry_deadline_at <= $5";
+        releaseEnteredOperation: "UPDATE ep_capability_operations SET status = 'released', outcome = 'not_entered', release_reason = 'authenticated_provider_non_entry', release_evidence_profile = $5, release_evidence_digest = $6, released_at = $7 WHERE operation_namespace = $1 AND operation_id = $2 AND capability_id = $3 AND action_digest = $4 AND entry_deadline_at IS NOT NULL AND entry_deadline_at <= $7 AND (status = 'provider_entered' OR (status = 'committed' AND outcome = 'indeterminate'))";
         commitState: "UPDATE ep_capability_state SET reserved_amount = reserved_amount - $2, consumed_amount = consumed_amount + $2 WHERE capability_id = $1 AND reserved_amount >= $2";
+        releaseReservedState: "UPDATE ep_capability_state SET reserved_amount = reserved_amount - $2 WHERE capability_id = $1 AND reserved_amount >= $2";
+        releaseConsumedState: "UPDATE ep_capability_state SET consumed_amount = consumed_amount - $2 WHERE capability_id = $1 AND consumed_amount >= $2";
     }>;
     capabilityBaseReceiptDigest: typeof capabilityBaseReceiptDigest;
     capabilityActionDigest: typeof capabilityActionDigest;

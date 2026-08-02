@@ -17,10 +17,10 @@
 // The target imports and drives the ACTUAL createMemoryCapabilityStore and
 // mintCapabilityReceipt exported from packages/gate/capability-receipt.js — no
 // reimplementation. Each scenario mints a fresh capability, registers it, then
-// interleaves N randomized spend operations (each: reserve -> commit) plus a
-// seeded mix of adversarial operations (double-commit, wrong-token commit,
-// over-budget bids). After the interleaving settles, the store's own state is
-// checked against the safety invariants.
+// interleaves N randomized spend operations (each: reserve -> provider entry ->
+// commit) plus a seeded mix of adversarial operations (double-commit,
+// wrong-token provider entry, over-budget bids). After the interleaving settles,
+// the store's own state is checked against the safety invariants.
 
 import { generateKeyPairSync } from 'node:crypto';
 import {
@@ -145,8 +145,19 @@ export default {
         assertConsumedMonotonic();
       };
 
+      const providerEntryStep = async () => {
+        if (!state.reserved) return;
+        const entered = await store.beginProviderEntry({
+          capabilityId,
+          operationId,
+          reservationToken: state.token as string,
+          now: clock,
+        });
+        invariant(entered.ok, 'provider-entry-owner', `owner provider entry refused: ${entered.reason}`);
+      };
+
       if (kind === 'normal') {
-        ops.push([reserveStep, commitStep]);
+        ops.push([reserveStep, providerEntryStep, commitStep]);
       } else if (kind === 'double-commit') {
         // Second commit on the same operation MUST be refused (no double-spend).
         const doubleStep = async () => {
@@ -161,20 +172,20 @@ export default {
           invariant(!again.ok && again.reason === 'capability_operation_already_finalized',
             'no-double-commit', `second commit of ${operationId} returned ${JSON.stringify(again)}`);
         };
-        ops.push([reserveStep, commitStep, doubleStep]);
+        ops.push([reserveStep, providerEntryStep, commitStep, doubleStep]);
       } else {
-        // Commit with a forged reservation token MUST be refused.
+        // Provider entry with a forged reservation token MUST be refused.
         const wrongTokenStep = async () => {
           if (!state.reserved) return;
-          const forged = await store.commitSpend({
+          const forged = await store.beginProviderEntry({
             capabilityId,
             operationId,
             reservationToken: 'forged-token-0000000000000000',
             now: clock,
           });
-          invariant(!forged.ok, 'reservation-owner-fencing', `forged-token commit of ${operationId} succeeded`);
+          invariant(!forged.ok, 'reservation-owner-fencing', `forged-token provider entry of ${operationId} succeeded`);
         };
-        ops.push([reserveStep, wrongTokenStep, commitStep]);
+        ops.push([reserveStep, wrongTokenStep, providerEntryStep, commitStep]);
       }
     }
 

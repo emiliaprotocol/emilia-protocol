@@ -5,7 +5,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { createGate, createEg1Harness } from '../index.js';
 import { createStripeManifest, createStripeAllowanceConnector, guardStripeAllowanceMutation, guardStripeMutation, STRIPE_OPS, } from './stripe.js';
-import { issueGateAllowance, } from '../allowance.js';
+import { allowanceDigest, issueGateAllowance, } from '../allowance.js';
 import { createMemoryCapabilityStore } from '../capability-receipt.js';
 import { generateKeyPairSync } from 'node:crypto';
 function fakeStripe(accountId = 'acct_authorized') {
@@ -34,6 +34,25 @@ function setup(action) {
 const PAYOUT = { action_type: 'stripe.payout.create', amount: 40000, currency: 'usd', destination: 'acct_x' };
 const STRIPE_CONNECTOR_ID = 'stripe:acct_authorized';
 const stripeConnector = (stripe) => createStripeAllowanceConnector({ stripe });
+const currentAllowanceStatus = () => ({
+    ok: true,
+    status_epoch: 1,
+    status_head_digest: `sha256:${'a'.repeat(64)}`,
+});
+function initializeAllowanceStatus(store, issued) {
+    const status = currentAllowanceStatus();
+    const result = store.advanceAllowanceStatus({
+        allowance_profile_id: `${issued.allowance.tenant_id}/${issued.allowance.allowance_id}`,
+        allowance_digest: allowanceDigest(issued.allowance),
+        revision: issued.allowance.revision,
+        status_epoch: status.status_epoch,
+        status_head_digest: status.status_head_digest,
+        expected_status_epoch: null,
+        expected_status_head_digest: null,
+        status: 'active',
+    });
+    assert.equal(result.ok, true);
+}
 test('exposes the destructive Stripe ops', () => {
     assert.deepEqual([...STRIPE_OPS].sort(), ['bank_account.change', 'payout.create', 'refund.create']);
 });
@@ -120,6 +139,7 @@ test('typed Stripe payout allowance keeps the client local and executes in-envel
     });
     const store = createMemoryCapabilityStore();
     assert.equal(store.registerCapability(issued.capabilityReceipt), true);
+    initializeAllowanceStatus(store, issued);
     const stripe = fakeStripe();
     const connector = await stripeConnector(stripe);
     const result = await guardStripeAllowanceMutation({
@@ -131,7 +151,7 @@ test('typed Stripe payout allowance keeps the client local and executes in-envel
         secret: issued.secret,
         store,
         verifyAuthorizationReceipt: () => true,
-        verifyAllowanceStatus: () => true,
+        verifyAllowanceStatus: () => currentAllowanceStatus(),
         trustedAllowanceKeys: {
             'key:allowance': {
                 issuer_id: 'customer:security',
@@ -202,6 +222,7 @@ test('typed Stripe payout executes the immutable verified action when caller par
     });
     const store = createMemoryCapabilityStore();
     assert.equal(store.registerCapability(issued.capabilityReceipt), true);
+    initializeAllowanceStatus(store, issued);
     const stripe = fakeStripe();
     const connector = await stripeConnector(stripe);
     const params = { amount: 4_000, currency: 'USD', destination: 'acct_known' };
@@ -218,7 +239,7 @@ test('typed Stripe payout executes the immutable verified action when caller par
             params.destination = 'acct_attacker';
             return true;
         },
-        verifyAllowanceStatus: () => true,
+        verifyAllowanceStatus: () => currentAllowanceStatus(),
         trustedAllowanceKeys: {
             'key:allowance': {
                 issuer_id: 'customer:security',
@@ -303,7 +324,7 @@ test('typed Stripe payout refuses cross-protocol and cross-account connector sub
             secret: issued.secret,
             store,
             verifyAuthorizationReceipt: () => true,
-            verifyAllowanceStatus: () => true,
+            verifyAllowanceStatus: () => currentAllowanceStatus(),
             trustedAllowanceKeys: {
                 'key:allowance': {
                     issuer_id: 'customer:security',

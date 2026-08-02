@@ -71,7 +71,17 @@ export declare function executeWithGateAllowance({ allowance, capabilityReceipt,
         allowance_digest: string;
         revision: number;
         supersedes_allowance_digest: string | null;
-    }) => any) | null;
+    }) => {
+        ok: boolean;
+        reason?: string;
+        status_epoch?: number;
+        status_head_digest?: string;
+    } | Promise<{
+        ok: boolean;
+        reason?: string;
+        status_epoch?: number;
+        status_head_digest?: string;
+    }>) | null;
     trustedAllowanceKeys?: TrustedRiskKeys;
     trustedCapabilityIssuerKeys?: string[];
     expected?: ExpectedAllowanceContext;

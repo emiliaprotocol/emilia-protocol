@@ -32,6 +32,8 @@ import {
   type AdmissionInvariantCheck,
   type AdmissionJournalEntry,
   type AdmissionOperationReference,
+  type AdmissionPreparedBeginInput,
+  type AdmissionPreparedRecoveryInput,
   type AdmissionProviderOutcomeInput,
   type AdmissionRecord,
   type AdmissionRecoveryInput,
@@ -828,10 +830,13 @@ export function createAdmissionPostgresStore(
       text: string,
       params: readonly unknown[],
     ) => Promise<unknown> = rpc,
+    preparedInvocationToken?: string,
   ): Promise<AdmissionBeginResult> {
     const cas = validateCas(input);
     assertTenant(cas.tenant_id);
-    const generatedInvocation = invocationToken(invocationFactory());
+    const generatedInvocation = invocationToken(
+      preparedInvocationToken ?? invocationFactory(),
+    );
     const generatedDigest = tokenDigest(generatedInvocation);
     try {
       const value = await execute(operation, text, [
@@ -899,6 +904,42 @@ export function createAdmissionPostgresStore(
         { cause: error },
       );
     }
+  }
+
+  async function recoverIndeterminate(
+    input: AdmissionRecoveryInput,
+    preparedReconciliationToken?: string,
+  ): Promise<AdmissionRecoveryResult> {
+    const reference = validateReference(input);
+    assertTenant(reference.tenant_id);
+    const recoveryOwner = ownerToken(input.owner_token);
+    const reconciliationToken = invocationToken(
+      preparedReconciliationToken ?? invocationFactory(),
+    );
+    const value = await rpc(
+      'admission recover indeterminate',
+      ADMISSION_POSTGRES_SQL.recoverIndeterminate,
+      [
+        deploymentId,
+        tenantId,
+        reference.admission_id,
+        tokenDigest(recoveryOwner),
+        tokenDigest(reconciliationToken),
+      ],
+    );
+    const result = normalizeResultObject(value, 'admission recover indeterminate');
+    if (!result.ok) return detached(result) as AdmissionRecoveryResult;
+    const record = validateRecord(
+      result.record,
+      'admission recover indeterminate',
+      tenantId,
+    );
+    if (record.invocation_token_digest !== tokenDigest(reconciliationToken)) {
+      throw new AdmissionPostgresProtocolError(
+        'admission recover indeterminate: reconciliation token digest mismatch',
+      );
+    }
+    return { ok: true, record, reconciliation_token: reconciliationToken };
   }
 
   const store: AdmissionPostgresStore = {
@@ -1023,35 +1064,27 @@ export function createAdmissionPostgresStore(
       );
     },
 
-    async recoverIndeterminate(input: AdmissionRecoveryInput): Promise<AdmissionRecoveryResult> {
-      const reference = validateReference(input);
-      assertTenant(reference.tenant_id);
-      const recoveryOwner = ownerToken(input.owner_token);
-      const reconciliationToken = invocationToken(invocationFactory());
-      const value = await rpc(
-        'admission recover indeterminate',
-        ADMISSION_POSTGRES_SQL.recoverIndeterminate,
-        [
-          deploymentId,
-          tenantId,
-          reference.admission_id,
-          tokenDigest(recoveryOwner),
-          tokenDigest(reconciliationToken),
-        ],
+    beginInvocationWithPreparedToken(
+      input: AdmissionPreparedBeginInput,
+    ): Promise<AdmissionBeginResult> {
+      return beginInvocation(
+        input,
+        'admission begin invocation',
+        ADMISSION_POSTGRES_SQL.beginInvocation,
+        [],
+        rpc,
+        input.invocation_token,
       );
-      const result = normalizeResultObject(value, 'admission recover indeterminate');
-      if (!result.ok) return detached(result) as AdmissionRecoveryResult;
-      const record = validateRecord(
-        result.record,
-        'admission recover indeterminate',
-        tenantId,
-      );
-      if (record.invocation_token_digest !== tokenDigest(reconciliationToken)) {
-        throw new AdmissionPostgresProtocolError(
-          'admission recover indeterminate: reconciliation token digest mismatch',
-        );
-      }
-      return { ok: true, record, reconciliation_token: reconciliationToken };
+    },
+
+    recoverIndeterminate(input: AdmissionRecoveryInput): Promise<AdmissionRecoveryResult> {
+      return recoverIndeterminate(input);
+    },
+
+    recoverIndeterminateWithPreparedToken(
+      input: AdmissionPreparedRecoveryInput,
+    ): Promise<AdmissionRecoveryResult> {
+      return recoverIndeterminate(input, input.reconciliation_token);
     },
 
     async recordProviderOutcome(input: AdmissionProviderOutcomeInput): Promise<AdmissionTransitionResult> {

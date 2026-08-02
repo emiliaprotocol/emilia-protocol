@@ -6,10 +6,29 @@ import assert from 'node:assert/strict';
 import { generateKeyPairSync } from 'node:crypto';
 import { createGate, createEg1Harness } from '../index.js';
 import { createSupabaseAllowanceConnector, createSupabaseManifest, guardSupabaseAllowanceMutation, guardSupabaseMutation, SUPABASE_OPS, isDestructiveSql, statementHash, rlsDefinitionDigest, RLS_DEFINITION_BINDING_VERSION, } from './supabase.js';
-import { issueGateAllowance } from '../allowance.js';
+import { allowanceDigest, issueGateAllowance } from '../allowance.js';
 import { createMemoryCapabilityStore } from '../capability-receipt.js';
 const SUPABASE_CONNECTOR_ID = 'supabase:project:prod';
 const supabaseConnector = (client) => createSupabaseAllowanceConnector({ client });
+const currentAllowanceStatus = () => ({
+    ok: true,
+    status_epoch: 1,
+    status_head_digest: `sha256:${'a'.repeat(64)}`,
+});
+function initializeAllowanceStatus(store, issued) {
+    const status = currentAllowanceStatus();
+    const result = store.advanceAllowanceStatus({
+        allowance_profile_id: `${issued.allowance.tenant_id}/${issued.allowance.allowance_id}`,
+        allowance_digest: allowanceDigest(issued.allowance),
+        revision: issued.allowance.revision,
+        status_epoch: status.status_epoch,
+        status_head_digest: status.status_head_digest,
+        expected_status_epoch: null,
+        expected_status_head_digest: null,
+        status: 'active',
+    });
+    assert.equal(result.ok, true);
+}
 function fakeDb(projectRef = 'prod') {
     const calls = [];
     return {
@@ -134,6 +153,7 @@ function issueRlsAllowance({ table = 'public.payments', connectorId = SUPABASE_C
     });
     const store = createMemoryCapabilityStore();
     assert.equal(store.registerCapability(issued.capabilityReceipt), true);
+    initializeAllowanceStatus(store, issued);
     return {
         issued,
         store,
@@ -153,7 +173,7 @@ function rlsAllowanceArgs(issued, store, trustedAllowanceKeys, trustedCapability
         secret: issued.secret,
         store,
         verifyAuthorizationReceipt: () => true,
-        verifyAllowanceStatus: () => true,
+        verifyAllowanceStatus: () => currentAllowanceStatus(),
         trustedAllowanceKeys,
         trustedCapabilityIssuerKeys,
         expected: {

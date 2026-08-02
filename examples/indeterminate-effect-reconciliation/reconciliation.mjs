@@ -76,6 +76,10 @@ export async function reconcileIndeterminateEffect({ capabilityStore, capability
     });
     if (!durableReconciliation.ok)
         throw new Error(`capability reconciliation refused: ${durableReconciliation.reason}`);
+    if (!('idempotent' in durableReconciliation)
+        || typeof durableReconciliation.idempotent !== 'boolean') {
+        throw new Error('capability reconciliation returned an ambiguous success result');
+    }
     // durableReconciliation.ok is only reachable if verifyEvidence returned
     // normally above, which only happens after `verified` was assigned a real
     // VerifiedProviderEvidence (verifySignedProviderEvidence never returns a

@@ -510,8 +510,8 @@ describe('Gate Qualification v2 custody orchestration', () => {
                     'account:attacker';
                 return result;
             },
-            async beginInvocation(input) {
-                const result = await base.beginInvocation(input);
+            async beginInvocationWithPreparedToken(input) {
+                const result = await base.beginInvocationWithPreparedToken(input);
                 if (result.ok)
                     begunSnapshot = result.snapshot;
                 return result;
@@ -616,15 +616,74 @@ describe('Gate Qualification v2 custody orchestration', () => {
         assert.equal(replacement.counts.invoke, 0);
         assert.equal(replacement.counts.reconcile, 1);
     });
+    it('stages restart authority before an unacknowledged begin commit and never releases consumed rights', async () => {
+        const value = snapshot();
+        const base = memoryStore(value);
+        const authorityCustody = createMemoryInvocationAuthorityCustodyV2();
+        let authorityPresentAtBeginCommit = false;
+        const crashingStore = {
+            ...base,
+            async beginInvocationWithPreparedToken(input) {
+                const result = await base.beginInvocationWithPreparedToken(input);
+                if (result.ok) {
+                    authorityPresentAtBeginCommit = (await authorityCustody.get({
+                        tenantId: value.body.tenant_id,
+                        admissionId: value.body.admission_id,
+                    })) !== null;
+                    throw new Error('hard crash after atomic begin commit');
+                }
+                return result;
+            },
+            async read() {
+                throw new Error('crashed process cannot perform begin readback');
+            },
+        };
+        const crashed = harness({
+            store: crashingStore,
+            authorityCustody,
+            async invoke() {
+                assert.fail('the crashed process must not enter the provider');
+            },
+        });
+        const initial = await crashed.gate.execute(executionInput(value));
+        assert.equal(initial.status, 'reconciliation_required');
+        assert.equal(crashed.counts.invoke, 0);
+        assert.equal(authorityPresentAtBeginCommit, true, 'custody must linearize before beginInvocation');
+        const staged = await authorityCustody.get({
+            tenantId: value.body.tenant_id,
+            admissionId: value.body.admission_id,
+        });
+        assert.ok(staged, 'owner authority must be durable before beginInvocation commits');
+        assert.deepEqual(await base.release({
+            tenant_id: value.body.tenant_id,
+            admission_id: value.body.admission_id,
+            expected_revision: 1,
+            owner_token: staged.ownerToken,
+        }), { ok: false, reason: 'execution_right_consumed' });
+        const replacement = harness({
+            store: base,
+            authorityCustody,
+            async reconcile(input) {
+                return providerEvidence(input.snapshot, 'COMMITTED');
+            },
+        });
+        const reconciled = await replacement.gate.reconcile({
+            tenant_id: value.body.tenant_id,
+            admission_id: value.body.admission_id,
+        });
+        assert.equal(reconciled.status, 'committed');
+        assert.equal(replacement.counts.invoke, 0);
+        assert.equal(replacement.counts.reconcile, 1);
+    });
     it('authoritatively reads begin ambiguity, marks consumed state indeterminate, and never retries', async () => {
         const value = snapshot();
         const base = memoryStore(value);
         let beginCalls = 0;
         const store = {
             ...base,
-            async beginInvocation(input) {
+            async beginInvocationWithPreparedToken(input) {
                 beginCalls += 1;
-                const result = await base.beginInvocation(input);
+                const result = await base.beginInvocationWithPreparedToken(input);
                 if (result.ok)
                     throw new Error('ack lost after atomic begin');
                 return result;
@@ -649,7 +708,7 @@ describe('Gate Qualification v2 custody orchestration', () => {
         const base = memoryStore(value);
         const store = {
             ...base,
-            async beginInvocation() {
+            async beginInvocationWithPreparedToken() {
                 throw new Error('begin transport failure before acknowledgement');
             },
             async read() {

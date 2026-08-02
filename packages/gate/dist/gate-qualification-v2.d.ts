@@ -171,10 +171,11 @@ export type GateQualificationExecutionResultV2 = {
     readonly evidence: Readonly<ProviderEvidenceV2>;
     readonly relation: Readonly<ObservedEffectRelationV2>;
 };
-interface InvocationAuthorityV2 {
-    ownerToken: string;
-    invocationToken: string;
-    snapshotDigest: AdmissionDigestV2;
+export interface InvocationAuthorityV2 {
+    readonly ownerToken: string;
+    readonly invocationToken: string;
+    readonly reconciliationToken: string;
+    readonly snapshotDigest: AdmissionDigestV2;
 }
 /**
  * A protected, restart-safe custody boundary for the capabilities needed to
@@ -184,7 +185,11 @@ export interface InvocationAuthorityCustodyV2 {
     readonly custody: 'protected';
     readonly durable: boolean;
     readonly testOnly?: true;
-    put(input: Readonly<{
+    /**
+     * Atomically create this admission's immutable authority bundle. An exact
+     * replay is idempotent; replacing a different bundle MUST fail.
+     */
+    stage(input: Readonly<{
         tenantId: string;
         admissionId: string;
         authority: Readonly<InvocationAuthorityV2>;

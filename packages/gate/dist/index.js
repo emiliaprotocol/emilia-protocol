@@ -41,7 +41,7 @@ import { classifyRetention, buildRetentionExport } from './retention.js';
 import { ACTION_CONTROL_MANIFEST_VERSION, createDefaultActionControlManifest, findActionControl, resolveActionControl, validateActionControlManifest, } from './action-control-manifest.js';
 import { createRuntimeMonitor, RUNTIME_MONITOR_VERSION, RUNTIME_MONITOR_MODES, RUNTIME_INVARIANTS, } from './runtime-monitor.js';
 import { FORMAL_RUNTIME_BRIDGE_VERSION, FORMAL_RUNTIME_SPEC, FORMAL_RUNTIME_CONFIG, FORMAL_RUNTIME_INVARIANT_MAP, } from './formal-runtime-map.js';
-import { CAPABILITY_RECEIPT_VERSION, CAPABILITY_STATE_VERSION, CAPABILITY_SHARE_VERSION, CAPABILITY_SCOPE_PROFILE, CAPABILITY_CAID_SCOPE_PROFILE, CAPABILITY_ALLOWANCE_SCOPE_PROFILE, CAPABILITY_STATE_DDL, CAPABILITY_SQL, capabilityBaseReceiptDigest, capabilityActionDigest, verifyCapabilityScope, mintCapabilityReceipt, verifyCapabilityReceipt, splitCapabilitySecret, reconstructCapabilitySecret, createMemoryCapabilityStore, createPostgresCapabilityStore, isSecureCapabilityStore, executeWithCapability, executeWithThreshold, reconcileCapabilityOperation, } from './capability-receipt.js';
+import { CAPABILITY_RECEIPT_VERSION, CAPABILITY_STATE_VERSION, CAPABILITY_SHARE_VERSION, CAPABILITY_SCOPE_PROFILE, CAPABILITY_CAID_SCOPE_PROFILE, CAPABILITY_ALLOWANCE_SCOPE_PROFILE, CAPABILITY_ALLOWANCE_STATUS_TABLE, CAPABILITY_STATE_DDL, CAPABILITY_SQL, capabilityBaseReceiptDigest, capabilityActionDigest, verifyCapabilityScope, mintCapabilityReceipt, verifyCapabilityReceipt, splitCapabilitySecret, reconstructCapabilitySecret, createMemoryCapabilityStore, createPostgresCapabilityStore, isSecureCapabilityStore, executeWithCapability, executeWithThreshold, reconcileCapabilityOperation, } from './capability-receipt.js';
 import { ZK_RANGE_RECEIPT_VERSION, ZK_RANGE_SCHEME, ZK_RANGE_BACKEND_PACKAGE, deriveZkRangeBases, loadBulletproofBackend, mintZkRangeReceipt, verifyZkRangeReceipt, } from './zk-range-proof.js';
 import { mintBreakGlassAuthorization, verifyBreakGlass, consumeBreakGlass, buildBreakGlassEvidence, runBreakGlass, BREAKGLASS_VERSION, BREAKGLASS_EVIDENCE_KIND, } from './breakglass.js';
 export { MemoryConsumptionStore, canonicalEvidenceJson, createEvidenceLog, createAtomicEvidenceLog, createMemoryAtomicEvidenceBackend, };
@@ -59,7 +59,7 @@ export { CF1_VERSION, CF1_CHECKS, runCf1 } from './cf1-conformance.js';
 export { mintBreakGlassAuthorization, verifyBreakGlass, consumeBreakGlass, buildBreakGlassEvidence, runBreakGlass, BREAKGLASS_VERSION, BREAKGLASS_EVIDENCE_KIND, };
 export { createRuntimeMonitor, RUNTIME_MONITOR_VERSION, RUNTIME_MONITOR_MODES, RUNTIME_INVARIANTS } from './runtime-monitor.js';
 export { FORMAL_RUNTIME_BRIDGE_VERSION, FORMAL_RUNTIME_SPEC, FORMAL_RUNTIME_CONFIG, FORMAL_RUNTIME_INVARIANT_MAP, } from './formal-runtime-map.js';
-export { CAPABILITY_RECEIPT_VERSION, CAPABILITY_STATE_VERSION, CAPABILITY_SHARE_VERSION, CAPABILITY_SCOPE_PROFILE, CAPABILITY_CAID_SCOPE_PROFILE, CAPABILITY_ALLOWANCE_SCOPE_PROFILE, CAPABILITY_STATE_DDL, CAPABILITY_SQL, capabilityBaseReceiptDigest, capabilityActionDigest, verifyCapabilityScope, mintCapabilityReceipt, verifyCapabilityReceipt, splitCapabilitySecret, reconstructCapabilitySecret, createMemoryCapabilityStore, createPostgresCapabilityStore, isSecureCapabilityStore, executeWithCapability, executeWithThreshold, reconcileCapabilityOperation, delegateCapabilityReceipt, } from './capability-receipt.js';
+export { CAPABILITY_RECEIPT_VERSION, CAPABILITY_STATE_VERSION, CAPABILITY_SHARE_VERSION, CAPABILITY_SCOPE_PROFILE, CAPABILITY_CAID_SCOPE_PROFILE, CAPABILITY_ALLOWANCE_SCOPE_PROFILE, CAPABILITY_ALLOWANCE_STATUS_TABLE, CAPABILITY_STATE_DDL, CAPABILITY_SQL, capabilityBaseReceiptDigest, capabilityActionDigest, verifyCapabilityScope, mintCapabilityReceipt, verifyCapabilityReceipt, splitCapabilitySecret, reconstructCapabilitySecret, createMemoryCapabilityStore, createPostgresCapabilityStore, isSecureCapabilityStore, executeWithCapability, executeWithThreshold, reconcileCapabilityOperation, delegateCapabilityReceipt, } from './capability-receipt.js';
 export * from './authority-allocation.js';
 export * from './autonomy-control-plane-profile.js';
 export * from './bounded-execution-program.js';
@@ -640,9 +640,11 @@ export function createGate({ manifest = null, trustedKeys = [], maxAgeSec = 900,
     }
     if (capabilityStore && (typeof capabilityStore.registerCapability !== 'function'
         || typeof capabilityStore.reserveSpend !== 'function'
+        || typeof capabilityStore.beginProviderEntry !== 'function'
+        || typeof capabilityStore.recoverPreEntrySpend !== 'function'
         || typeof capabilityStore.commitSpend !== 'function'
         || typeof capabilityStore.reconcileSpend !== 'function')) {
-        throw new Error('EMILIA Gate capabilityStore must implement registerCapability(), reserveSpend(), commitSpend(), and reconcileSpend()');
+        throw new Error('EMILIA Gate capabilityStore must implement registerCapability(), reserveSpend(), beginProviderEntry(), recoverPreEntrySpend(), commitSpend(), and reconcileSpend()');
     }
     if (capabilityStore && !allowEphemeralStore && !isSecureCapabilityStore(capabilityStore)) {
         throw new Error('EMILIA Gate capabilityStore must be durable and reconciliation-capable. '
@@ -1747,6 +1749,7 @@ export default {
     CAPABILITY_SCOPE_PROFILE,
     CAPABILITY_CAID_SCOPE_PROFILE,
     CAPABILITY_ALLOWANCE_SCOPE_PROFILE,
+    CAPABILITY_ALLOWANCE_STATUS_TABLE,
     CAPABILITY_STATE_DDL,
     CAPABILITY_SQL,
     capabilityBaseReceiptDigest,
