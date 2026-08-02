@@ -18,14 +18,13 @@ Start here:
 
 A draft published on the IETF Datatracker is an **active individual
 Internet-Draft**. It is not an RFC, not an adopted working-group item, and not
-IETF endorsement. Active successor drafts, review packets, and filing schedules
-are prepared outside this public repository. Intentionally public retired
-sources and partner-triggered profiles remain here with explicit dispositions.
+IETF endorsement. New revisions are prepared in `staged/`, while immutable
+published snapshots and superseded history live in `posted/` and `archive/`.
 
-The July 21 publication set was verified against the immutable IETF archive on
-2026-07-21. Each of its seven XML sources is byte-for-byte identical to the
-archive copy. Earlier rendered snapshots remain historical conveniences; the
-IETF archive is authoritative for rendered forms and live status.
+The current July 29-30 publication snapshots were checked against the immutable
+IETF archive on 2026-08-01. Earlier rendered snapshots remain historical
+conveniences; the IETF archive is authoritative for rendered forms and live
+status.
 
 ## Cohesive architecture
 
@@ -42,29 +41,25 @@ and Quorum provide named evidence profiles. AEC evaluates evidence
 satisfaction. Challenge, enforcement, outcome, revocation, and preservation
 remain separate lifecycle transitions.
 
-## Current July 21 published wave
+## August 1 submission-ready wave
 
-1. `draft-schrock-action-evidence-boundary-00`
-2. `draft-schrock-canonical-action-identifier-01`
-3. `draft-schrock-ep-architecture-02`
-4. `draft-schrock-ep-authorization-evidence-chain-04`
-5. `draft-schrock-ep-authorization-receipts-08`
-6. `draft-schrock-ep-revocation-statement-00`
-7. `draft-schrock-model-to-matter-01` (Experimental application profile; no
-   deployment or partner claim)
+Only these XML sources are upload candidates:
 
-These revisions advance the thin protocol line without collapsing evidence,
-authorization, revocation, and execution into one claim. Model-to-Matter
-remains an experimental executor profile with explicit non-goals.
+1. `draft-schrock-ep-authorization-evidence-chain-05`
+2. `draft-schrock-action-evidence-boundary-03`
+3. `draft-schrock-model-to-matter-03`
+4. `draft-schrock-ep-reliance-agreement-00`
+
+They are in `staged/UPLOAD-THIS/`; rendered forms, submission-mode `idnits`
+results, checksums, and Datatracker Additional Resources entries are kept next
+to them. Nothing in `posted/`, `archive/`, or `profiles/` is an upload candidate.
 
 ## Directory layout
 
 - `posted/`: source snapshots for revisions already on Datatracker.
 - `archive/`: superseded revisions and retired standalone candidates.
-- `profiles/`: remaining application or commercial profiles that need an
-  external validating partner before they re-enter the filing lane.
+- `profiles/`: held application profiles that are not in the filing lane.
 - `observatory/`: revision-pinned source catalog and generated comparison data.
 
-Active successor drafts and filing packets remain outside this public
-repository. Intentionally public retired and partner-triggered sources are not
-submission queues. Use `STATUS.json` and then Datatracker for filing status.
+Use `STATUS.json` and then Datatracker for filing status. Local staging is not
+publication; only a Datatracker submission creates a published revision.

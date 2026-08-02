@@ -19,10 +19,26 @@ The following posted revisions were superseded on 2026-07-21 and moved here:
 - `draft-schrock-ep-authorization-receipts-07`
 - `draft-schrock-model-to-matter-00`
 
+The following posted revisions were superseded on 2026-07-29 and moved here:
+
+- `draft-schrock-ae-challenge-00`
+- `draft-schrock-action-evidence-boundary-00`
+- `draft-schrock-ep-authority-introduction-01`
+- `draft-schrock-ep-revocation-statement-00`
+- `draft-schrock-model-to-matter-01`
+
+The following replaced series were removed from the posted-current inventory
+on 2026-08-01 and moved here with their historical renderings:
+
+- `draft-schrock-agent-action-manifest-00`
+- `draft-schrock-authorization-evidence-challenge-00`
+- `draft-schrock-ep-action-evidence-graph-00`
+- `draft-schrock-ep-enforcement-point-00`
+
 `draft-schrock-authorization-evidence-challenge-01.html` is an unfiled
 rendering from the longer-named July 3 series that Datatracker marks replaced
 by Action Evidence Boundary. The active standalone challenge is the distinct
-`draft-schrock-ae-challenge-00` series in `../posted/`; this archived HTML is
+`draft-schrock-ae-challenge-01` revision in `../posted/`; this archived HTML is
 not an upload candidate.
 
 The following unfiled standalone candidates were retired on 2026-07-14:

@@ -1,9 +1,9 @@
 {
   "@version": "EMILIA-STANDARDS-PORTFOLIO-v1",
-  "updated": "2026-07-28",
-  "active_datatracker_count": 16,
-  "active_schrock_datatracker_count": 15,
-  "posted_snapshot_policy": "standards/posted contains the current published revision of every active draft-schrock-* Datatracker record. The seven XML sources in the July 22 UTC publication wave were verified byte-for-byte against the immutable IETF archive; earlier TXT snapshots remain historical conveniences, while the IETF archive is authoritative for rendered forms.",
+  "updated": "2026-08-01",
+  "active_datatracker_count": 20,
+  "active_schrock_datatracker_count": 19,
+  "posted_snapshot_policy": "standards/posted contains the current published revision of every active draft-schrock-* Datatracker record represented in this repository. Current July 29-30 XML snapshots were verified byte-for-byte against the immutable IETF archive on 2026-08-01; the IETF archive remains authoritative for rendered forms and live status.",
   "status_language": {
     "active_individual_submission": "Published on the IETF Datatracker as an individual Internet-Draft. Not an RFC, not an adopted working-group item, and not IETF endorsement.",
     "candidate": "Repository source under review. Not filed.",
@@ -66,17 +66,31 @@
   "active_datatracker": [
     {
       "draft": "draft-schrock-ae-challenge",
-      "revision": "00",
+      "revision": "01",
       "layer": "execution_lifecycle",
       "role": "Machine-readable, action-bound request for missing authorization evidence; the challenge authorizes nothing",
       "next_action": "Use as the standalone HTTP 428 acquisition and retry contract; it uses the AEC presentation profile while remaining separate from AEB enforcement and AEC satisfaction semantics"
     },
     {
       "draft": "draft-schrock-action-evidence-boundary",
-      "revision": "00",
+      "revision": "02",
       "layer": "execution_lifecycle",
       "role": "Boundary contract joining independently verified evidence to one material action, reserving authority before invocation, and preserving indeterminate outcomes for authenticated reconciliation",
-      "next_action": "Published July 21; ship the open AEB-1 consequence-admission conformance pack, then collect independent implementation and interoperation results before revising the draft"
+      "next_action": "Published July 29; -03 is staged with pinned adapter requirements, authority-separation terms, current status, re-derivable evaluation records, and refusal evidence"
+    },
+    {
+      "draft": "draft-schrock-action-remedy-receipts",
+      "revision": "00",
+      "layer": "execution_lifecycle",
+      "role": "Dispute, decision, and fresh CAID-bound compensating-action evidence without rewriting the original effect",
+      "next_action": "Published July 29; use -00 as the current remedy lifecycle baseline"
+    },
+    {
+      "draft": "draft-schrock-agent-qualification-statements",
+      "revision": "00",
+      "layer": "evidence_satisfaction",
+      "role": "Task- and policy-bounded qualification evidence that never authorizes by itself",
+      "next_action": "Published July 29; compose as a native AEC evidence role"
     },
     {
       "draft": "draft-schrock-canonical-action-identifier",
@@ -101,17 +115,17 @@
     },
     {
       "draft": "draft-schrock-ep-authority-introduction",
-      "revision": "01",
+      "revision": "02",
       "layer": "delegation_capability_policy",
       "role": "Authority introduction and trust-root boundary",
-      "next_action": "Published July 19; use -01 as the current trust-root and scoped-authority baseline"
+      "next_action": "Published July 29; use -02 as the current trust-root and scoped-authority baseline"
     },
     {
       "draft": "draft-schrock-ep-authorization-evidence-chain",
       "revision": "04",
       "layer": "evidence_satisfaction",
       "role": "Heterogeneous evidence composition",
-      "next_action": "Published July 21; use -04 as the current evidence-composition baseline"
+      "next_action": "Published July 21; -05 is staged with verifier-derived distinct-subject constraints and explicit AEC/AEB term ownership"
     },
     {
       "draft": "draft-schrock-ep-authorization-receipts",
@@ -135,6 +149,13 @@
       "next_action": "Hold the current published revision"
     },
     {
+      "draft": "draft-schrock-ep-outcome-binding",
+      "revision": "00",
+      "layer": "execution_lifecycle",
+      "role": "Source-routed predicted effects and independently pinned post-execution observations",
+      "next_action": "Published July 29; use -00 as the current outcome comparison and indeterminate-evidence baseline"
+    },
+    {
       "draft": "draft-schrock-ep-presentation-binding",
       "revision": "00",
       "layer": "authorization_evidence",
@@ -150,10 +171,10 @@
     },
     {
       "draft": "draft-schrock-ep-revocation-statement",
-      "revision": "00",
+      "revision": "01",
       "layer": "execution_lifecycle",
       "role": "Signed retraction of authority without rewriting an already executed effect",
-      "next_action": "Published July 21; collect freshness, status-distribution, and interoperability feedback"
+      "next_action": "Published July 29; use -01 as the current fail-closed status-target vocabulary"
     },
     {
       "draft": "draft-schrock-human-authorization-binding",
@@ -164,10 +185,17 @@
     },
     {
       "draft": "draft-schrock-model-to-matter",
-      "revision": "01",
+      "revision": "02",
       "layer": "execution_lifecycle",
       "role": "Experimental executor-side authorization-evidence clearance for model-directed physical execution",
-      "next_action": "Published July 21; -02 is staged, not filed, adding source-routed Outcome Binding and independent observation while preserving the no-physical-truth limitation"
+      "next_action": "Published July 29; -03 is staged with relying-party program, qualification, and typed AEB composition while preserving the no-physical-truth limitation"
+    },
+    {
+      "draft": "draft-ferro-schrock-memory-projection-record",
+      "revision": "00",
+      "layer": "authorization_evidence",
+      "role": "Signed record of exact context bytes projected by a memory adapter, with explicit nonclaims",
+      "next_action": "Published July 30; coordinate future revisions with Andrea Ferro"
     },
     {
       "draft": "draft-mih-sato-agent-accountability-composition",
@@ -226,7 +254,7 @@
       {
         "priority": 3,
         "draft": "draft-schrock-ep-authority-introduction-01",
-        "source": "standards/posted/draft-schrock-ep-authority-introduction-01.xml",
+        "source": "standards/archive/draft-schrock-ep-authority-introduction-01.xml",
         "claim": "Trust-root introduction and scoped human authority",
         "state": "published_ietf_archive_verified_exact_local_match"
       },
@@ -276,7 +304,7 @@
     "items": [
       {
         "draft": "draft-schrock-action-evidence-boundary-00",
-        "source": "standards/posted/draft-schrock-action-evidence-boundary-00.xml",
+        "source": "standards/archive/draft-schrock-action-evidence-boundary-00.xml",
         "state": "published_ietf_archive_verified_exact_local_match"
       },
       {
@@ -301,12 +329,12 @@
       },
       {
         "draft": "draft-schrock-ep-revocation-statement-00",
-        "source": "standards/posted/draft-schrock-ep-revocation-statement-00.xml",
+        "source": "standards/archive/draft-schrock-ep-revocation-statement-00.xml",
         "state": "published_ietf_archive_verified_exact_local_match"
       },
       {
         "draft": "draft-schrock-model-to-matter-01",
-        "source": "standards/posted/draft-schrock-model-to-matter-01.xml",
+        "source": "standards/archive/draft-schrock-model-to-matter-01.xml",
         "state": "published_ietf_archive_verified_exact_local_match",
         "limitations": "Reference implementation and synthetic vectors only; no deployment, scientific-safety determination, physical-truth claim, or external endorsement"
       }
@@ -314,27 +342,49 @@
   },
   "staged_candidates": [
     {
-      "draft": "draft-schrock-ep-outcome-binding-00",
-      "source": "standards/staged/draft-schrock-ep-outcome-binding-00.xml",
-      "state": "candidate_not_filed",
-      "claim": "Source-routed predicted effects and independently pinned post-execution observations with indeterminate lifecycle and closed divergence comparison",
+      "draft": "draft-schrock-ep-reliance-agreement-00",
+    "source": "standards/staged/UPLOAD-THIS/draft-schrock-ep-reliance-agreement-00.xml",
+      "state": "submission_ready_not_filed",
+      "claim": "Signed terms conditioned on a pinned evidence profile plus a per-action reliance event",
       "implementation": [
-        "packages/verify/src/outcome-binding.ts",
-        "conformance/vectors/outcome-binding.sources.v1.json",
-        "lib/grace/mobile-grid.ts"
+        "packages/verify/src/reliance-agreement.ts",
+        "conformance/vectors/reliance-agreement.v1.json"
       ],
-      "limitations": "Signed observations remain claims by pinned sources; no physical truth, sensor certification, utility acceptance, or external endorsement is claimed"
+      "limitations": "No authorization, legal enforceability, insurance issuance, coverage decision, fault allocation, solvency, escrow, or payment is claimed"
     },
     {
-      "draft": "draft-schrock-model-to-matter-02",
-      "source": "standards/staged/draft-schrock-model-to-matter-02.xml",
-      "state": "candidate_not_filed",
-      "claim": "Model-to-Matter revision binding expected effects to executor and independent observation sources after single-use physical-effect custody",
+      "draft": "draft-schrock-ep-authorization-evidence-chain-05",
+    "source": "standards/staged/UPLOAD-THIS/draft-schrock-ep-authorization-evidence-chain-05.xml",
+      "state": "submission_ready_not_filed",
+      "claim": "Verifier-derived distinct-subject evidence constraints with explicit AEC and AEB term ownership",
+      "implementation": [
+        "packages/verify/src/evidence-chain.ts",
+        "packages/verify/src/aeb-adapter-contract.ts"
+      ],
+    "limitations": "Evidence satisfaction remains distinct from local authorization, one-time custody, and execution; the new role_constraints object is specified but not yet implemented by the legacy AEC evaluator"
+    },
+    {
+      "draft": "draft-schrock-action-evidence-boundary-03",
+    "source": "standards/staged/UPLOAD-THIS/draft-schrock-action-evidence-boundary-03.xml",
+      "state": "submission_ready_not_filed",
+      "claim": "Pinned adapter and boundary requirements, authority-separation terms, current status, re-derivable evaluation records, and refusal evidence",
+      "implementation": [
+        "packages/verify/src/aeb-adapter-contract.ts",
+        "packages/gate/src/proposal-to-effect.ts",
+        "packages/gate/src/aeb-consumption-store.ts"
+      ],
+      "limitations": "Reference conformance does not prove complete mediation or independent implementation"
+    },
+    {
+      "draft": "draft-schrock-model-to-matter-03",
+    "source": "standards/staged/UPLOAD-THIS/draft-schrock-model-to-matter-03.xml",
+      "state": "submission_ready_not_filed",
+      "claim": "Model-to-Matter composition with relying-party programs, qualification evidence, and typed AEB admission",
       "implementation": [
         "lib/frontier/model-to-matter.ts",
         "tests/model-to-matter.test.ts"
       ],
-      "limitations": "No wet-lab deployment, screening capability, scientific-safety determination, physical truth, independent implementation, or partner endorsement is claimed"
+    "limitations": "No wet-lab deployment, screening capability, scientific-safety determination, physical truth, independent implementation, or partner endorsement is claimed; new program and requirement digests are not yet wired into the reference clearance object"
     }
   ],
   "retired_absorbed": [
@@ -364,11 +414,6 @@
       "draft": "draft-schrock-ep-human-oversight-profile-00",
       "path": "standards/profiles/draft-schrock-ep-human-oversight-profile-00.xml",
       "trigger": "A regulator, government program, or management-system standards partner validates the control-to-evidence mapping."
-    },
-    {
-      "draft": "draft-schrock-ep-reliance-agreement-00",
-      "path": "standards/profiles/draft-schrock-ep-reliance-agreement-00.xml",
-      "trigger": "A bank, insurer, underwriter, or counterparty requires interoperable reliance terms and participates in legal review."
     }
   ],
   "held": [],

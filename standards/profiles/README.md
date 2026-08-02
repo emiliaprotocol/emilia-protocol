@@ -10,9 +10,10 @@ filing.
 - `draft-schrock-ep-human-oversight-profile-00`: regulatory implementation
   profile. Trigger: a standards or government partner needs a portable mapping
   from oversight controls to evidence requirements.
-- `draft-schrock-ep-reliance-agreement-00`: commercial/legal expression.
-  Trigger: an insurer, bank, or counterparty needs interoperable reliance terms;
-  legal enforceability remains outside the protocol.
+
+The Reliance Agreement moved to `../staged/` after its implementation and
+claim-boundary review. Its movement does not imply legal, insurance, or partner
+validation.
 
 Profile-local vocabularies are not shared protocol registries. In particular,
 none of these files defines a universal assurance-class taxonomy.

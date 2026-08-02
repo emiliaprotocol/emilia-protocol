@@ -15,7 +15,7 @@
         <email>team@emiliaprotocol.ai</email>
       </address>
     </author>
-    <date year="2026" month="July" day="12"/>
+    <date year="2026" month="August" day="1"/>
     <area>sec</area>
     <keyword>AI agents</keyword>
     <keyword>evidence</keyword>
@@ -23,64 +23,34 @@
     <keyword>liability</keyword>
     <keyword>indemnity</keyword>
     <abstract>
-      <t>The authorization-evidence stack for high-risk agent actions
-      produces verdicts: signed artifacts are presented, replayed
-      against a relying party's pinned evidence policy, and found
-      admissible or not. The commercial layer above the verdict, who
-      bears the loss when a relying party acts on evidence that
-      satisfied the policy, exists today only in prose. Insurers
-      underwrite AI-agent operations against control standards written
-      in natural language; no interoperable signed object expresses
-      "if the presented evidence satisfies reliance profile P, these
-      liability terms apply between us." This document defines the
-      Reliance Agreement (EP-RELIANCE-AGREEMENT-v1): a machine-readable
-      object, signed by every party its own required-signer list names,
-      in which an issuer, a relying party, and optionally an
-      underwriter condition a liability shift or an indemnity (with cap
-      amounts as decimal strings) on authorization-evidence sufficiency,
-      referencing the evidence condition by digest of a reliance
-      profile rather than restating policy. It also defines the
-      Reliance Event (EP-RELIANCE-EVENT-v1), the per-action claim
-      instrument binding one action's evidence verdict to the
-      agreement. Verifying these objects proves who agreed to what
-      terms over which evidence conditions, and that a specific
-      reliance occurred inside the agreement's scope and window. The
-      object is the interoperable expression of an agreement, designed
-      to be incorporated by reference into a prose master agreement; it
-      is not a substitute for contract law, and enforceability is
-      jurisdiction-dependent and out of scope.</t>
+      <t>This document defines EP-RELIANCE-AGREEMENT-v1, a signed,
+      machine-readable statement of terms conditioned on a specific
+      relying-party evidence profile, and EP-RELIANCE-EVENT-v1, a signed
+      per-action record joining one action, one reliance result, and one
+      agreement. The agreement references the evidence condition by digest
+      rather than restating or weakening it. Every required party signs the
+      same canonical bytes, and monetary amounts are represented as decimal
+      strings.</t>
+      <t>Verification establishes signatures, content integrity, scope, time,
+      and digest bindings. It does not authorize an action, re-evaluate the
+      evidence packet, establish legal enforceability, issue insurance,
+      determine coverage, allocate fault, prove solvency, reserve funds, or
+      compel payment. Those decisions remain with the relying party and the
+      applicable prose agreement, law, and dispute forum.</t>
     </abstract>
   </front>
   <middle>
     <section anchor="intro">
       <name>Introduction</name>
-      <t>Signed-evidence formats for agent actions answer "did a named
-      human authorize this exact action, and does the packet satisfy my
-      policy?" Authorization receipts
-      <xref target="I-D.schrock-ep-authorization-receipts"/> carry the
-      approval; evidence graphs and policy replay
-      <xref target="I-D.schrock-ep-action-evidence-graph"/> turn
-      heterogeneous artifacts into a closed verdict; assurance classes
-      <xref target="I-D.schrock-ep-assurance-classes"/> grade how
-      strong the human proof is. What none of these carries is the
-      commercial consequence of the verdict: when a bank wires funds, a
-      platform executes an irreversible action, or a processor
-      dispenses against evidence that satisfied the pinned policy, who
-      bears the loss if the underlying authorization was nonetheless
-      wrong?</t>
-      <t>The market has already priced this question. Insurance
-      products for AI-agent operations exist today: certification-plus-
-      coverage programs such as AIUC-1 with Lloyd's market capacity,
-      Munich Re's aiSure performance guarantees, and Armilla's
-      AI-liability coverage underwritten with Chaucer. These are
-      evidence that the economics exist ahead of the interoperable
-      object: each conditions coverage on controls and evidence
-      described in prose policy wordings and audit standards. A relying
-      party cannot mechanically discover, verify, or present the terms
-      it is relying under; an underwriter cannot mechanically bind
-      coverage to the exact evidence condition its actuaries priced;
-      and a dispute forum receives narrative, not signed structure.</t>
-      <t>This document defines the missing object. A Reliance Agreement
+      <t>Authorization Receipts
+      <xref target="I-D.schrock-ep-authorization-receipts"/> can carry one
+      action-bound approval artifact. AEC <xref target="I-D.schrock-ep-aec"/>
+      evaluates whether independently verified and action-matched evidence
+      fills a relying-party requirement. AEB <xref target="I-D.schrock-aeb"/>
+      makes the separate local authorization, custody, invocation, and
+      reconciliation decisions. None of those layers should silently invent
+      the terms under which another party agrees to rely on the result.</t>
+      <t>This document defines a narrow interchange object. A Reliance Agreement
       is a signed, portable, offline-verifiable statement by named
       parties: if the evidence presented for an action in this scope
       satisfies the reliance profile identified here by digest, then
@@ -197,10 +167,10 @@
         the terms are conditioned on. The agreement references evidence
         policy by digest and never restates it; the profile itself is
         exchanged, pinned, and replayed through the existing evidence
-        machinery. condition.min_assurance_class OPTIONALLY names the
-        minimum assurance class
-        <xref target="I-D.schrock-ep-assurance-classes"/> from the
-        closed set S, H, V, Q. condition.max_staleness_sec OPTIONALLY
+        machinery. condition.min_assurance_class OPTIONALLY names a
+        profile-local compatibility value from the closed set S, H, V, Q.
+        These values do not create a universal cross-protocol assurance
+        taxonomy. condition.max_staleness_sec OPTIONALLY
         bounds the acceptable age of the evidence verdict, in
         seconds.</t>
         <t>terms.mode is from the closed set liability_shift (the
@@ -294,16 +264,16 @@
       verdict inside the reliance result is honest is established by
       replaying the evidence against the profile the agreement pins by
       digest, using the evidence machinery of
-      <xref target="I-D.schrock-ep-action-evidence-graph"/>; this
+      <xref target="I-D.schrock-ep-aec"/> and the separate admission
+      controls of <xref target="I-D.schrock-aeb"/>; this
       document's verifier proves only that the claimed verdict, the
       claimed action, and the agreed terms are the ones bound
       together.</t>
     </section>
     <section anchor="scope-honest">
       <name>What This Object Is and Is Not</name>
-      <t>This section is normative in spirit even where it uses no
-      capitalized keywords, because the most likely failure of this
-      object is overclaim by its own users.</t>
+      <t>Implementations MUST preserve the claim boundaries in this section in
+      user interfaces and machine-readable verification results.</t>
       <t>A Reliance Agreement is the machine-readable EXPRESSION of a
       reliance agreement, not a substitute for contract law. It is
       designed to be incorporated by reference into a prose master
@@ -374,26 +344,14 @@
       termsOfUse, but the agreement object itself, with its own
       multi-party signatures, is what this document defines and what
       termsOfUse lacks.</t>
-      <t>The prose market. AIUC-1 certification with Lloyd's market
-      coverage, Munich Re's aiSure, and Armilla's coverage underwritten
-      with Chaucer are named here neutrally as the market signal: the
-      willingness to price AI-agent liability against control evidence
-      already exists. Today each program binds coverage to controls
-      through prose wordings and bespoke audits. An interoperable
-      agreement object lets any such program state its evidence
-      condition as a pinned profile digest and its terms as a signed
-      object any relying party and any forum can verify; nothing in
-      this document depends on, or is endorsed by, any of those
-      programs.</t>
       <t>The EP evidence stack. Authorization receipts
       <xref target="I-D.schrock-ep-authorization-receipts"/> supply the
-      action-bound human approval; evidence graphs and policy replay
-      <xref target="I-D.schrock-ep-action-evidence-graph"/> compute the
-      admissibility verdict a reliance result records; assurance
-      classes <xref target="I-D.schrock-ep-assurance-classes"/> supply
-      the ordered vocabulary condition.min_assurance_class draws from.
-      This document adds no evidence type and no verdict; it adds the
-      commercial commitment layer that consumes them.</t>
+      action-bound human approval; AEC
+      <xref target="I-D.schrock-ep-aec"/> computes evidence sufficiency;
+      and AEB <xref target="I-D.schrock-aeb"/> owns the consequence-admission
+      decision and lifecycle. This document adds no evidence type,
+      authorization verdict, or execution transition. It records signed terms
+      and one party's action-bound act of reliance.</t>
     </section>
     <section anchor="security">
       <name>Security Considerations</name>
@@ -409,6 +367,12 @@
       this document funds, reserves, or escrows them, and a verifier
       MUST NOT present a verified agreement as proof of ability to
       pay.</t>
+      <t>Insurance and legal status. A verified underwriter signature is not an
+      insurance policy, binder, certificate, or proof of coverage. A verified
+      agreement does not establish that a term is lawful or enforceable, that a
+      loss falls within coverage, that a party caused the loss, or that any
+      party must pay. Implementations MUST present these objects as signed
+      inputs to legal and commercial processes, not as their outputs.</t>
       <t>Key compromise. A compromised signer key forges commitments:
       an attacker holding the issuer key can sign agreements the issuer
       never made, and one holding the relying-party key can fabricate
@@ -469,23 +433,23 @@
             <author fullname="Iman Schrock"><organization>EMILIA Protocol, Inc.</organization></author>
             <date year="2026" month="July"/>
           </front>
-          <seriesInfo name="Internet-Draft" value="draft-schrock-ep-authorization-receipts-06"/>
+          <seriesInfo name="Internet-Draft" value="draft-schrock-ep-authorization-receipts-08"/>
         </reference>
-        <reference anchor="I-D.schrock-ep-action-evidence-graph" target="https://datatracker.ietf.org/doc/draft-schrock-ep-action-evidence-graph/">
+        <reference anchor="I-D.schrock-ep-aec" target="https://datatracker.ietf.org/doc/draft-schrock-ep-authorization-evidence-chain/">
           <front>
-            <title>Action Evidence Graphs and Evidence Policy Replay for High-Risk Agent Actions (EP-AEG)</title>
+            <title>Authorization Evidence Chains: Composing Heterogeneous Agent-Action Evidence</title>
             <author fullname="Iman Schrock"><organization>EMILIA Protocol, Inc.</organization></author>
-            <date year="2026" month="July"/>
+            <date year="2026" month="August"/>
           </front>
-          <seriesInfo name="Internet-Draft" value="draft-schrock-ep-action-evidence-graph-00"/>
+          <seriesInfo name="Internet-Draft" value="draft-schrock-ep-authorization-evidence-chain-05"/>
         </reference>
-        <reference anchor="I-D.schrock-ep-assurance-classes" target="https://datatracker.ietf.org/doc/draft-schrock-ep-assurance-classes/">
+        <reference anchor="I-D.schrock-aeb" target="https://datatracker.ietf.org/doc/draft-schrock-action-evidence-boundary/">
           <front>
-            <title>Assurance Classes for Authorization Receipts</title>
+            <title>The Action Evidence Boundary for Consequential Agent Effects</title>
             <author fullname="Iman Schrock"><organization>EMILIA Protocol, Inc.</organization></author>
-            <date year="2026" month="July"/>
+            <date year="2026" month="August"/>
           </front>
-          <seriesInfo name="Internet-Draft" value="draft-schrock-ep-assurance-classes-00"/>
+          <seriesInfo name="Internet-Draft" value="draft-schrock-action-evidence-boundary-03"/>
         </reference>
         <reference anchor="LegalRuleML" target="https://docs.oasis-open.org/legalruleml/legalruleml-core-spec/v1.0/legalruleml-core-spec-v1.0.html">
           <front>
@@ -522,12 +486,12 @@
       <name>Implementation Status</name>
       <t>A reference implementation is published Apache-2.0 in the
       EMILIA Protocol repository
-      (packages/verify/reliance-agreement.js): a pure, offline,
+      (packages/verify/src/reliance-agreement.ts): a pure, offline,
       fail-closed verifier for both objects (verifyRelianceAgreement,
       verifyRelianceEvent) with no dependency beyond the platform
       crypto library, plus signing helpers. A conformance suite of
       sixteen vectors (conformance/vectors/reliance-agreement.v1.json,
-      exercised by tests/reliance-agreement.test.js) covers the happy
+      exercised by tests/reliance-agreement.test.ts) covers the happy
       paths for both objects and the refusals specified here: a missing
       required signature, an expired or not-yet-effective window, a cap
       amount tampered after signing, a cap amount expressed as a JSON

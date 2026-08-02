@@ -1,0 +1,234 @@
+<?xml version="1.0" encoding="utf-8"?>
+<rfc xmlns:xi="http://www.w3.org/2001/XInclude"
+     docName="draft-schrock-model-to-matter-03"
+     category="exp" ipr="trust200902" submissionType="IETF"
+     version="3" tocInclude="true" sortRefs="true" symRefs="true">
+  <front>
+    <title abbrev="Model-to-Matter">Model-to-Matter: Authorization and Outcome Evidence for Model-Directed Physical Execution</title>
+    <seriesInfo name="Internet-Draft" value="draft-schrock-model-to-matter-03"/>
+    <author fullname="Iman Schrock"><organization>EMILIA Protocol, Inc.</organization>
+      <address><postal><country>US</country></postal><email>team@emiliaprotocol.ai</email></address>
+    </author>
+    <date year="2026" month="August" day="1"/>
+    <area>sec</area><keyword>AI agents</keyword><keyword>physical execution</keyword>
+    <keyword>independent observation</keyword><keyword>outcome binding</keyword>
+    <abstract>
+      <t>Advanced models can propose operations that produce physical effects.
+      Model-to-Matter defines an executor-owned profile that composes model,
+      safety, institutional, domain, screening, and human evidence over one
+      canonical action before single-use execution. This revision also profiles
+      post-execution Outcome Binding. An executor effect statement remains one
+      source claim; required independent observers sign separately bound
+      observations. Missing outcome evidence is indeterminate, not success or
+      failure. The profile standardizes evidence custody and reconciliation; it
+      does not perform screening, determine scientific safety, certify a
+      facility, or establish physical truth.</t>
+    </abstract>
+  </front>
+  <middle>
+    <section anchor="introduction"><name>Introduction</name>
+      <t>A digital proposal can become a physical effect through a laboratory,
+      instrument gateway, robot, manufacturing system, or other executor.
+      Independent authorities may each approve a different fact. The executor
+      therefore constructs one closed Action Object and accepts evidence only
+      when every required issuer agrees about that action.</t>
+      <t>Authorization and outcome are separate phases. clear_to_execute permits
+      one invocation; it does not assert that invocation occurred. An executor
+      effect statement records the executor's claim; it does not prove a sensor
+      result. Outcome reconciliation requires the independently pinned sources
+      selected by the expected-effects policy.</t>
+      <section><name>Requirements Language</name><t>The key words "MUST", "MUST NOT",
+      "REQUIRED", "SHALL", "SHALL NOT", "SHOULD", "SHOULD NOT", "RECOMMENDED",
+      "NOT RECOMMENDED", "MAY", and "OPTIONAL" in this document are to be
+      interpreted as described in BCP 14 <xref target="RFC2119"/>
+      <xref target="RFC8174"/> when, and only when, they appear in all capitals,
+      as shown here.</t></section>
+    </section>
+
+    <section anchor="action"><name>Canonical Action</name>
+      <t>EP-MODEL-TO-MATTER-ACTION-v1 is a closed I-JSON
+      <xref target="RFC7493"/> object serialized with JCS
+      <xref target="RFC8785"/>. It binds model manifest, harness and safeguards;
+      experiment protocol, material commitment and expected-effects digest;
+      principal; executor and facility; purpose; destination; requested time;
+      and max_executions=1. Raw biological content, prompts, completions, and
+      hidden reasoning MUST NOT appear in the portable object.</t>
+      <t>The executor independently computes both action_digest and CAID. The
+      identifiers MUST encode the same canonical bytes. CAID identifies the
+      action; it does not prove identity, authority, safety, execution, or
+      outcome.</t>
+    </section>
+
+    <section anchor="preexecution"><name>Pre-Execution Evidence and Clearance</name>
+      <t>The executor pins its own acceptance profile. The initial profile
+      requires model_attestation, safety_case_attestation,
+      institutional_authority, biosafety_review, domain_screening, and
+      human_authorization artifacts. Each artifact is signed by a pinned issuer
+      and binds action_digest. Presenter-supplied issuer keys, sufficiency rules,
+      or revocation policy MUST NOT influence acceptance.</t>
+      <t>A deployment MAY express those evidence roles in a customer-owned,
+      signed Reliance Program and compile that source into its execution-time
+      Gate configuration. When it does, the exact program identifier, version,
+      source digest, compiled-program digest, and evidence-requirement digest
+      MUST be pinned by the executor and bound into the clearance record. A
+      presenter-supplied program or an unpinned compiled result MUST be refused.</t>
+      <t>A model or agent qualification statement MAY fill a named evaluation
+      role only after native verification binds the exact candidate, harness,
+      assignment, policy, campaign, freshness, and status. Qualification is
+      evidence about measured fitness. It is not human authorization, legal
+      authority, safety approval, or permission to execute, and MUST NOT satisfy
+      any of those roles by itself.</t>
+      <t>The executor MUST apply the Action Evidence Boundary
+      <xref target="EP-AEB"/> after native verification and AEC
+      <xref target="EP-AEC"/> evidence
+      satisfaction. It independently derives the exact physical action, applies
+      local authorization, verifies required separation-of-duty terms and
+      current status, and durably consumes or reserves the clearance before
+      dispatch.</t>
+      <t>The executor registers and atomically consumes a short-lived challenge.
+      Before returning clear_to_execute it atomically consumes the action digest
+      in durable shared state. Storage ambiguity returns indeterminate and
+      freezes execution pending authenticated reconciliation. It MUST NOT permit
+      blind retry.</t>
+    </section>
+
+    <section anchor="dispatch"><name>Effect Custody</name>
+      <t>After clearance consumption, the protected effect enters dispatch
+      custody. The executor records a stable operation identifier and the exact
+      action digest, CAID, clearance replay digest, provider, and facility.
+      A lost provider response after invocation is indeterminate. Reconciliation
+      MUST query the authenticated provider operation; it MUST NOT issue a new
+      physical action under the consumed clearance.</t>
+    </section>
+
+    <section anchor="outcomes"><name>Outcome Claims and Binding</name>
+      <t>The Action Object's experiment.expected_effects_digest MUST commit to
+      the exact source-routed predicted_effects array. Each prediction identifies
+      an executor, system_of_record, or independent_observer role and MAY require
+      a source class. Post-execution observations conform to
+      <xref target="I-D.schrock-ep-outcome-binding"/>.</t>
+      <t>For this profile, each observation MUST bind the action_digest as
+      action_hash, the action CAID, clearance replay digest, stable operation
+      identifier, executor facility, and observation window. The clearance
+      replay digest is used as the authorization digest and consumption binding;
+      the derived authorization identifier is
+      "ep:m2m:clearance:" followed by the lowercase hexadecimal digest value.</t>
+      <t>EP-MODEL-TO-MATTER-EFFECT-v1 remains the executor's signed statement.
+      Its status is completed, failed, aborted, or indeterminate. Its
+      observed_effect_digest MUST equal the observed_effects_digest of the
+      accepted executor-role observation. This prevents an executor statement
+      from being attached to different executor observations.</t>
+      <t>An accepted executor statement is necessary when required by policy and
+      is not physical truth. If a prediction requires an independent observer,
+      the verifier MUST NOT reconcile without an accepted observation from a
+      separately pinned source matching the required role, class, and facility.
+      The independent source MUST use an Ed25519 canonical key identity and a
+      relying-party-declared control domain distinct from every executor or
+      other non-independent source. A second key in the executor's control
+      domain is not independent.</t>
+      <t>The executor's acceptance profile MUST pin source status and validity,
+      source quorum, distinctness dimensions, and any required observation
+      window and maximum attestation delay. Those requirements are verifier
+      policy and MUST NOT be accepted from the observation presenter. A
+      compromised at the attestation instant, retired outside its pinned
+      historical validity interval, expired, not-yet-valid, non-distinct, late, or
+      window-mismatched source cannot satisfy the required evidence role.
+      Missing or unauthenticated evidence yields lifecycle_state=indeterminate
+      and outcome=null. Authentic evidence yields in_bounds, divergent, or
+      incomparable under Outcome Binding. An indeterminate state MUST NOT be
+      mapped to incomparable.</t>
+    </section>
+
+    <section anchor="remedy"><name>Remedy and Subsequent Action</name>
+      <t>A divergent or failed outcome does not authorize a remedy. Any rollback,
+      compensation, cleanup, repeat experiment, or other consequence is a new
+      action with a separately constructed Action Object, CAID, evidence set,
+      challenge, clearance, and consumption event.</t>
+    </section>
+
+    <section anchor="industrial"><name>Industrial Execution Profile</name>
+      <t>An industrial deployment SHOULD separate at least three roles: the
+      actuator or facility executes; a meter, EMS, SCADA historian, laboratory
+      instrument, or other telemetry source observes under a separately pinned
+      identity; and the Model-to-Matter verifier reconciles evidence and applies
+      settlement or remediation policy. A controller acknowledgment MUST NOT be
+      represented as an independent physical measurement.</t>
+      <t>Action State or another external evidence format MAY carry the stable
+      action identity, custody transition, and Outcome Binding result digest.
+      Such a carrier is an adapter and is not a core dependency of this profile.</t>
+    </section>
+
+    <section anchor="security"><name>Security Considerations</name>
+      <t>This profile does not decide scientific safety, validate raw material,
+      certify a source, establish control-domain ownership, or establish physical
+      truth. Pinned sources may be wrong, compromised, correlated, or colluding.
+      Deployments need independent
+      operational controls, source calibration, key governance, bounded
+      observation windows, incident response, and legal review appropriate to
+      the physical consequence.</t>
+      <t>Exact action, CAID, clearance, operation, executor, facility, source,
+      and time bindings are mandatory. Evidence for different operations or
+      facilities MUST NOT be joined. An effect status of indeterminate and an
+      Outcome Binding lifecycle of indeterminate prohibit blind retry.</t>
+    </section>
+    <section anchor="privacy"><name>Privacy Considerations</name>
+      <t>Portable evidence can reveal models, institutions, facilities,
+      principals, purposes, destinations, and times. Deployments SHOULD minimize
+      identifiers and use hiding commitments for low-entropy sensitive content.
+      A plain digest is not automatically confidential.</t>
+    </section>
+    <section anchor="iana"><name>IANA Considerations</name><t>This document has no IANA actions.</t></section>
+    <section anchor="implementation"><name>Implementation Status</name>
+      <t>An Apache-2.0 TypeScript implementation provides the closed Action
+      Object, CAID binding, six signed evidence adapters, registered challenge,
+      durable single-use clearance, effect statements, source-routed Outcome
+      Binding, independently signed observation sets, canonical-key and
+      control-domain separation, source status and validity, observation-window
+      policy, distinct-source quorum, and adversarial tests.
+      Demonstrations are synthetic and process no raw biological content. No
+      wet-lab deployment, scientific validation, partner endorsement, or
+      independent implementation is claimed. The repository also contains
+      separate implementations of customer-owned Reliance Programs, typed AEB
+      boundary terms, and Agent Qualification Statements. The new program and
+      requirement digests specified by this revision are not yet wired into the
+      Model-to-Matter reference clearance object. Their composition here is a
+      normative interoperability requirement, not a claim that the current
+      reference implementation or a physical deployment already enforces it.</t>
+    </section>
+    <section anchor="changes"><name>Changes since -02</name>
+      <t>This revision adds the optional customer-owned Reliance Program
+      composition, binds program and requirement digests into clearance, makes
+      qualification evidence explicitly non-authorizing, and profiles the
+      typed AEB boundary checks between evidence satisfaction and dispatch. It
+      does not change the physical-action object, outcome-binding rules, or the
+      limitation that signed observations are claims by pinned sources rather
+      than proof of physical truth.</t>
+    </section>
+  </middle>
+  <back>
+    <references><name>Normative References</name>
+      <xi:include href="https://bib.ietf.org/public/rfc/bibxml/reference.RFC.2119.xml"/>
+      <xi:include href="https://bib.ietf.org/public/rfc/bibxml/reference.RFC.7493.xml"/>
+      <xi:include href="https://bib.ietf.org/public/rfc/bibxml/reference.RFC.8174.xml"/>
+      <xi:include href="https://bib.ietf.org/public/rfc/bibxml/reference.RFC.8785.xml"/>
+      <reference anchor="I-D.schrock-ep-outcome-binding">
+        <front><title>Outcome Binding for Authorized Actions and Independently Observed Effects</title>
+          <author fullname="Iman Schrock"><organization>EMILIA Protocol, Inc.</organization></author>
+          <date year="2026" month="July"/></front>
+        <seriesInfo name="Internet-Draft" value="draft-schrock-ep-outcome-binding-00"/>
+      </reference>
+      <reference anchor="EP-AEB" target="https://datatracker.ietf.org/doc/draft-schrock-action-evidence-boundary/">
+        <front><title>The Action Evidence Boundary for Consequential Agent Effects</title>
+          <author fullname="Iman Schrock"><organization>EMILIA Protocol, Inc.</organization></author>
+          <date year="2026" month="August"/></front>
+        <seriesInfo name="Internet-Draft" value="draft-schrock-action-evidence-boundary-03"/>
+      </reference>
+      <reference anchor="EP-AEC" target="https://datatracker.ietf.org/doc/draft-schrock-ep-authorization-evidence-chain/">
+        <front><title>Authorization Evidence Chains: Composing Heterogeneous Agent-Action Evidence</title>
+          <author fullname="Iman Schrock"><organization>EMILIA Protocol, Inc.</organization></author>
+          <date year="2026" month="August"/></front>
+        <seriesInfo name="Internet-Draft" value="draft-schrock-ep-authorization-evidence-chain-05"/>
+      </reference>
+    </references>
+  </back>
+</rfc>

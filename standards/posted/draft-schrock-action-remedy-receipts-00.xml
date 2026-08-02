@@ -1,0 +1,147 @@
+<?xml version="1.0" encoding="utf-8"?>
+<rfc xmlns:xi="http://www.w3.org/2001/XInclude"
+     docName="draft-schrock-action-remedy-receipts-00"
+     category="info" ipr="trust200902" submissionType="IETF"
+     version="3" tocInclude="true" sortRefs="true" symRefs="true">
+  <front>
+    <title abbrev="Action Remedy Receipts">Action Remedy Receipts for Consequential Agent Effects</title>
+    <seriesInfo name="Internet-Draft" value="draft-schrock-action-remedy-receipts-00"/>
+    <author fullname="Iman Schrock"><organization>EMILIA Protocol, Inc.</organization><address><postal><country>US</country></postal><email>team@emiliaprotocol.ai</email></address></author>
+    <date year="2026" month="July" day="27"/>
+    <area>sec</area>
+    <keyword>AI agents</keyword><keyword>remedy</keyword><keyword>refund</keyword><keyword>reconciliation</keyword>
+    <abstract><t>Revocation cannot undo an effect that already occurred. A
+    dispute does not authorize a refund, return, reversal, or other remedy.
+    This document defines Action Remedy Receipts for recording a bounded
+    dispute decision and a fresh compensating action without rewriting the
+    original action or effect. Every remedy has its own operation identifier,
+    CAID, action digest, authority, consequence owner, and execution result.
+    Indeterminate outcomes remain fenced until authenticated reconciliation.</t></abstract>
+  </front>
+  <middle>
+    <section anchor="intro"><name>Introduction</name>
+      <t>Consequential systems need a lifecycle after execution: late
+      revocation, dispute intake, decision, remedy authorization, remedy
+      execution, and reconciliation. Collapsing these steps creates two unsafe
+      fictions: that revocation rewrites history, or that opening a dispute
+      authorizes a compensating effect.</t>
+      <t>This document defines a signed record family that preserves the
+      original effect and binds each later step. It does not define legal
+      entitlement, adjudication, insurance coverage, payment finality, or a
+      universal remedy policy. It uses CAID <xref target="CAID"/> for exact
+      compensating-action identity, composes with the AEB lifecycle
+      <xref target="AEB"/>, and preserves the separate revocation semantics in
+      <xref target="REVOCATION"/>.</t>
+      <section anchor="terms"><name>Terminology</name><t>The key words "MUST",
+      "MUST NOT", "REQUIRED", "SHALL", "SHALL NOT", "SHOULD", "SHOULD NOT",
+      "RECOMMENDED", "NOT RECOMMENDED", "MAY", and "OPTIONAL" are to be
+      interpreted as described in BCP 14 <xref target="RFC2119"/>
+      <xref target="RFC8174"/> when, and only when, they appear in all
+      capitals.</t></section>
+    </section>
+    <section anchor="invariants"><name>Lifecycle Invariants</name>
+      <ol>
+        <li>A revocation withdraws future authority for its exact target. It
+        MUST NOT relabel or delete an earlier provider result.</li>
+        <li>A dispute is a bounded challenge and evidence set. It MUST NOT be
+        treated as a decision or remedy authorization.</li>
+        <li>A decision is separately authorized and bound to one dispute. It
+        MAY authorize no remedy or one or more bounded remedy legs.</li>
+        <li>Every remedy leg is a fresh compensating action. It MUST use a new
+        operation identifier and a different action digest from the original.</li>
+        <li>An uncertain original or remedy effect remains INDETERMINATE. It
+        MUST NOT be blindly retried or called reversed.</li>
+      </ol>
+    </section>
+    <section anchor="receipt"><name>The Remedy Receipt</name>
+      <t>An EP-ACTION-REMEDY-v1 payload contains exactly these logical groups:</t>
+      <dl>
+        <dt>case</dt><dd>case_id, tenant or reliance domain, opened_at, and the
+        pinned remedy-profile digest.</dd>
+        <dt>original</dt><dd>original operation_id, CAID, action_digest,
+        consequence owner, owner-profile digest, terminal evidence digest, and
+        observed owner result.</dd>
+        <dt>dispute</dt><dd>dispute_id, challenger, evidence digests, requested
+        remedy units and unit, and opening time.</dd>
+        <dt>decision</dt><dd>decision artifact digest, verifier profile,
+        decision authority, decision time, and result of no_remedy or
+        remedy_authorized.</dd>
+        <dt>remedy</dt><dd>new operation_id, CAID, action_digest, destination
+        binding, units, unit, selected consequence owner, owner-profile digest,
+        and authority evidence digests.</dd>
+        <dt>result</dt><dd>authorized, claimed, executed, refused, indeterminate,
+        or reconciled, plus authenticated owner evidence and observation time.</dd>
+      </dl>
+      <t>The signed payload MUST bind all groups that apply to its state and a
+      monotonic revision. Unknown members are refused unless a negotiated
+      extension profile defines their signing and processing semantics.</t>
+    </section>
+    <section anchor="processing"><name>Processing Model</name>
+      <section anchor="open"><name>Open a Case</name><t>The relying party MUST
+      verify that the original operation, action digest, CAID, owner result, and
+      terminal evidence refer to the same protected effect. If the original
+      result is INDETERMINATE, the case can accept petition evidence but MUST
+      NOT authorize an effectful remedy until authenticated reconciliation
+      establishes EXECUTED.</t></section>
+      <section anchor="decide"><name>Decide Separately</name><t>The decision
+      verifier, trust roots, policy, and decision authority are relying-party
+      inputs. A valid dispute signature does not grant decision authority. A
+      decision of no_remedy closes the case without inventing a compensating
+      action. A remedy authorization MUST bind the exact remedy leg and a limit
+      no greater than the remaining case amount.</t></section>
+      <section anchor="compensate"><name>Execute a Fresh Compensating Action</name>
+        <t>The remedy operation_id, action_digest, and CAID MUST differ from the
+        original. The compensating action then traverses the same evidence,
+        authorization, durable claim, provider invocation, and reconciliation
+        controls as any other consequential action. The original record remains
+        immutable. An implementation MUST represent rollback as false: the
+        protocol records compensation, not time reversal.</t>
+        <t>A physical return, monetary refund, fee reversal, inventory change,
+        and entitlement revocation are different material effects. Each MUST be
+        a separately bound leg. A shared decision can authorize multiple legs,
+        but evidence for one leg MUST NOT be replayed as another.</t>
+      </section>
+      <section anchor="reconcile"><name>Reconcile Uncertainty</name><t>An
+      indeterminate remedy remains claimed and fenced. Authenticated evidence
+      for the same operation MAY establish executed or proved_no_effect. The
+      latter returns the case to its prior disputed state without consuming
+      remedy units. Conflicting or mismatched evidence leaves the operation
+      indeterminate.</t></section>
+    </section>
+    <section anchor="claims"><name>Claim Boundary</name>
+      <t>A valid receipt can show that named parties signed the bounded case,
+      decision, remedy, and owner evidence and that the technical bindings are
+      internally consistent. It does not prove legal liability, consumer
+      entitlement, adjudicator correctness, availability of funds, delivery of
+      goods, or reversal of an external effect beyond the accepted owner
+      evidence.</t>
+    </section>
+    <section anchor="security"><name>Security Considerations</name>
+      <t>Implementations MUST refuse original/remedy action equality, operation
+      replay, authority substitution, decision/dispute role substitution,
+      evidence reuse across remedy legs, limit overflow, stale status, wrong
+      tenant, wrong consequence owner, and unauthenticated reconciliation.
+      Durable compare-and-swap state is required when multiple workers can
+      claim a remedy. Store ambiguity fails closed.</t>
+    </section>
+    <section anchor="iana"><name>IANA Considerations</name><t>This document
+    requests no IANA action.</t></section>
+  </middle>
+  <back>
+    <references><name>References</name><references><name>Normative References</name>
+      <xi:include href="https://bib.ietf.org/public/rfc/bibxml/reference.RFC.2119.xml"/>
+      <xi:include href="https://bib.ietf.org/public/rfc/bibxml/reference.RFC.8174.xml"/>
+    </references><references><name>Informative References</name>
+      <reference anchor="CAID" target="https://datatracker.ietf.org/doc/draft-schrock-canonical-action-identifier/"><front><title>The Canonical Action Identifier (CAID)</title><author fullname="Iman Schrock"><organization>EMILIA Protocol, Inc.</organization></author><date year="2026" month="July"/></front><seriesInfo name="Internet-Draft" value="draft-schrock-canonical-action-identifier-01"/></reference>
+      <reference anchor="AEB" target="https://datatracker.ietf.org/doc/draft-schrock-action-evidence-boundary/"><front><title>The Action Evidence Boundary for Consequential Agent Effects</title><author fullname="Iman Schrock"><organization>EMILIA Protocol, Inc.</organization></author><date year="2026" month="July"/></front><seriesInfo name="Internet-Draft" value="draft-schrock-action-evidence-boundary-01"/></reference>
+      <reference anchor="REVOCATION" target="https://datatracker.ietf.org/doc/draft-schrock-ep-revocation-statement/"><front><title>Revocation Statements for Agent-Action Authorization Evidence</title><author fullname="Iman Schrock"><organization>EMILIA Protocol, Inc.</organization></author><date year="2026" month="July"/></front><seriesInfo name="Internet-Draft" value="draft-schrock-ep-revocation-statement-01"/></reference>
+    </references></references>
+    <section anchor="impl"><name>Implementation Status</name><t>An Apache-2.0
+    TypeScript reference kernel is published in the EMILIA Protocol repository.
+    It includes durable remedy cases, bounded units, distinct original and
+    remedy CAIDs and action digests, claim fencing, multi-leg case sets,
+    authenticated owner results, indeterminate reconciliation, tests, and a
+    TLA+ lifecycle model. It is same-team implementation evidence, not an
+    independent implementation, legal remedy system, or operated deployment.</t></section>
+  </back>
+</rfc>
