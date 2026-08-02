@@ -8,13 +8,16 @@ import { color, font, radius, cta } from '@/lib/tokens';
 type NavLink = [string, string];
 
 const NAV_LINKS: NavLink[] = [
-  ['/gate', 'Gate'],
-  ['/use-cases', 'Solutions'],
-  ['/assurance', 'Assurance'],
-  ['/protocol', 'Protocol'],
-  ['/proof', 'Proof'],
-  ['/docs', 'Docs'],
-  ['/pricing', 'Pricing'],
+  ['/signal', '/signal'],
+  ['/gate', '/gate'],
+  ['/use-cases', '/solutions'],
+  ['/assurance', '/assurance'],
+  ['/grace', '/grace'],
+  ['/model-to-matter', '/model-to-matter'],
+  ['/protocol', '/protocol'],
+  ['/proof', '/proof'],
+  ['/docs', '/docs'],
+  ['/pricing', '/pricing'],
 ];
 
 type SiteNavProps = {
@@ -23,6 +26,10 @@ type SiteNavProps = {
 
 export default function SiteNav({ activePage }: SiteNavProps) {
   const [mobileOpen, setMobileOpen] = useState(false);
+  const activeKey = activePage?.replace(/^\/+/, '').toLowerCase();
+  const linkIsActive = (href: string, label: string): boolean => (
+    href.slice(1) === activeKey || label.slice(1) === activeKey
+  );
 
   useEffect(() => {
     if (!mobileOpen) return undefined;
@@ -68,13 +75,13 @@ export default function SiteNav({ activePage }: SiteNavProps) {
           </Link>
 
           {/* Desktop links */}
-          <div className="ep-nav-links" style={{ display: 'flex', alignItems: 'center', gap: 18, margin: '0 auto' }}>
+          <div className="ep-nav-links" style={{ display: 'flex', alignItems: 'center', gap: 14, margin: '0 auto' }}>
             {NAV_LINKS.map(([href, label]) => (
               <a
                 key={label}
                 href={href}
                 className="ep-nav-link"
-                data-active={label === activePage ? 'true' : undefined}
+                data-active={linkIsActive(href, label) ? 'true' : undefined}
                 target={href.startsWith('http') ? '_blank' : undefined}
                 rel={href.startsWith('http') ? 'noopener noreferrer' : undefined}
               >{label}</a>
@@ -113,7 +120,7 @@ export default function SiteNav({ activePage }: SiteNavProps) {
           <a
             key={label}
             href={href}
-            data-active={label === activePage ? 'true' : undefined}
+            data-active={linkIsActive(href, label) ? 'true' : undefined}
             onClick={() => setMobileOpen(false)}
           >{label}</a>
         ))}

@@ -89,7 +89,7 @@ export default function PilotPage(): React.ReactElement {
         </h1>
         <p style={{ ...styles.body, maxWidth: 580 }}>
           Pick one consequential workflow and begin with synthetic replay plus a governed read-only export.
-          Amelia I reconstructs the approval-to-effect chain, surfaces source-linked integrity cases, and
+          EMILIA Signal reconstructs the approval-to-effect chain, surfaces source-linked integrity cases, and
           produces the material-field map and Action Control Manifest template. You leave with evidence,
           a Gate implementation scope, and a clear decision about whether prospective enforcement is worth it.
         </p>

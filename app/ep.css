@@ -533,7 +533,7 @@
   display: none;
 }
 
-@media (max-width: 860px) {
+@media (max-width: 1240px) {
   .ep-nav-links {
     display: none !important;
   }
