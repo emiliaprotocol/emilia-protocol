@@ -11,8 +11,11 @@ This package follows [Semantic Versioning](https://semver.org/).
 ### Release
 
 - Supersedes the unpublished `0.23.0` release tag on the corrected protected-
-  main evidence baseline. No Gate API or admission behavior changes from
-  `0.23.0`.
+  main evidence baseline.
+- Pins `@emilia-protocol/verify` 3.20.1 and
+  `@emilia-protocol/require-receipt` 0.7.1 so the published Gate consumes the
+  same hardened canonicalization, projection, and receipt behavior verified by
+  this release's evidence chain.
 
 ## 0.23.0 (2026-08-01)
 

@@ -1,6 +1,6 @@
 {
   "name": "@emilia-protocol/mobile",
-  "version": "0.2.0",
+  "version": "0.2.1",
   "description": "Native mobile ceremony contract and fail-closed server verifier for EMILIA Class-A authorization evidence.",
   "license": "Apache-2.0",
   "type": "module",
@@ -20,6 +20,7 @@
     "presentation.js",
     "strict-json.js",
     "README.md",
+    "CHANGELOG.md",
     "LICENSE"
   ],
   "engines": {
