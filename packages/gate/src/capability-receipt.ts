@@ -40,6 +40,8 @@ const SHARE_BYTES = 66;
 const HASH_BYTES = 32;
 const MAX_CURRENCY_BYTES = 32;
 const MAX_OPERATION_ID_BYTES = 128;
+const MAX_EVIDENCE_PROFILE_BYTES = 512;
+const DEFAULT_PROVIDER_ENTRY_TIMEOUT_MS = 30_000;
 const MAX_DELEGATES = 64;
 const MAX_SCOPE_ACTIONS = 256;
 const ACTION_DIGEST_RE = /^sha256:[0-9a-f]{64}$/;
@@ -68,12 +70,27 @@ type CommitSpendOptions = {
   outcome?: string;
   now?: number | (() => number);
 };
+type BeginProviderEntryOptions = {
+  capabilityId?: string;
+  operationNamespace?: string;
+  operationId?: string;
+  reservationToken?: string;
+  now?: number | (() => number);
+};
+type RecoverPreEntrySpendOptions = {
+  capabilityId?: string;
+  operationNamespace?: string;
+  operationId?: string;
+  actionDigest?: string;
+  now?: number | (() => number);
+};
 type ReconcileSpendOptions = {
   capabilityId?: string;
   operationNamespace?: string;
   operationId?: string;
   actionDigest?: string;
   evidenceDigest?: string;
+  evidenceProfile?: string;
   outcome?: string;
   now?: number | (() => number);
 };
@@ -194,6 +211,42 @@ function validateOperationNamespace(operationNamespace) {
     throw new TypeError('operation_namespace must be a bounded non-empty string');
   }
   return operationNamespace;
+}
+
+function validateProviderEntryTimeoutMs(value) {
+  if (!Number.isSafeInteger(value) || value <= 0) {
+    throw new TypeError('providerEntryTimeoutMs must be a positive safe integer');
+  }
+  return value;
+}
+
+function entryDeadline(at, capabilityExpiry, timeoutMs) {
+  const timeoutDeadline = at > Number.MAX_SAFE_INTEGER - timeoutMs
+    ? Number.MAX_SAFE_INTEGER
+    : at + timeoutMs;
+  return Math.min(capabilityExpiry, timeoutDeadline);
+}
+
+function validateActionDigest(actionDigest) {
+  if (typeof actionDigest !== 'string' || !ACTION_DIGEST_RE.test(actionDigest)) {
+    throw new TypeError('action_digest must be SHA-256');
+  }
+  return actionDigest;
+}
+
+function validateEvidenceProfile(evidenceProfile) {
+  if (typeof evidenceProfile !== 'string'
+      || evidenceProfile.length === 0
+      || Buffer.byteLength(evidenceProfile, 'utf8') > MAX_EVIDENCE_PROFILE_BYTES) {
+    throw new TypeError('evidence_profile must be a bounded non-empty string');
+  }
+  return evidenceProfile;
+}
+
+function existingOperationReason(status) {
+  if (status === 'reserved' || status === 'provider_entered') return 'operation_in_flight';
+  if (status === 'committed') return 'operation_already_committed';
+  return 'operation_already_finalized';
 }
 
 /** Digest the exact immutable action snapshot exercised under a capability. */
@@ -707,6 +760,8 @@ export function isSecureCapabilityStore(store) {
     && store.reconciliationCapable === true
     && typeof store.registerCapability === 'function'
     && typeof store.reserveSpend === 'function'
+    && typeof store.beginProviderEntry === 'function'
+    && typeof store.recoverPreEntrySpend === 'function'
     && typeof store.commitSpend === 'function'
     && typeof store.reconcileSpend === 'function';
 }
@@ -716,7 +771,10 @@ export function isSecureCapabilityStore(store) {
  * and is suitable only for tests; production callers must use an implementation
  * backed by a transactional database or equivalent linearizable store.
  */
-export function createMemoryCapabilityStore() {
+export function createMemoryCapabilityStore({
+  providerEntryTimeoutMs = DEFAULT_PROVIDER_ENTRY_TIMEOUT_MS,
+}: { providerEntryTimeoutMs?: number } = {}) {
+  const entryTimeoutMs = validateProviderEntryTimeoutMs(providerEntryTimeoutMs);
   const states = new Map();
   const operations = new Map();
   const operationKey = (operationNamespace, operationId) =>
@@ -741,7 +799,7 @@ export function createMemoryCapabilityStore() {
     async reserveSpend({ capabilityId, capabilityFingerprint, operationNamespace = capabilityId, operationId, actionDigest, amount, currency, now = Date.now }: ReserveSpendOptions) {
       validateOperationId(operationId);
       validateOperationNamespace(operationNamespace);
-      if (typeof actionDigest !== 'string' || !ACTION_DIGEST_RE.test(actionDigest)) throw new TypeError('action_digest must be SHA-256');
+      validateActionDigest(actionDigest);
       validateAmount(amount);
       validateCurrency(currency);
       const state = states.get(capabilityId);
@@ -749,39 +807,183 @@ export function createMemoryCapabilityStore() {
       if (state.capability_fingerprint !== capabilityFingerprint) return { ok: false, reason: 'capability_envelope_mismatch' };
       const key = operationKey(operationNamespace, operationId);
       const existing = operations.get(key);
-      if (existing) return { ok: false, reason: existing.status === 'reserved' ? 'operation_in_flight' : 'operation_already_committed' };
+      if (existing) return { ok: false, reason: existingOperationReason(existing.status) };
       const at = nowMs(now);
       if (at >= state.expires_at) return { ok: false, reason: 'capability_expired' };
       if (currency !== state.currency) return { ok: false, reason: 'currency_mismatch' };
       if (state.consumed_amount + state.reserved_amount + amount > state.budget_amount) return { ok: false, reason: 'budget_exceeded' };
       const reservationToken = randomUUID();
-      operations.set(key, { operation_namespace: operationNamespace, operation_id: operationId, capability_id: capabilityId, action_digest: actionDigest, amount, currency, status: 'reserved', reservation_token: reservationToken, reserved_at: at });
+      const entryDeadlineAt = entryDeadline(at, state.expires_at, entryTimeoutMs);
+      operations.set(key, {
+        operation_namespace: operationNamespace,
+        operation_id: operationId,
+        capability_id: capabilityId,
+        action_digest: actionDigest,
+        amount,
+        currency,
+        status: 'reserved',
+        reservation_token: reservationToken,
+        reserved_at: at,
+        entry_deadline_at: entryDeadlineAt,
+        provider_entry_at: null,
+      });
       state.reserved_amount += amount;
-      return { ok: true, operation_id: operationId, reservation_token: reservationToken, remaining: state.budget_amount - state.consumed_amount - state.reserved_amount };
+      return {
+        ok: true,
+        operation_id: operationId,
+        reservation_token: reservationToken,
+        entry_deadline_at: entryDeadlineAt,
+        remaining: state.budget_amount - state.consumed_amount - state.reserved_amount,
+      };
+    },
+    async beginProviderEntry({ capabilityId, operationNamespace = capabilityId, operationId, reservationToken, now = Date.now }: BeginProviderEntryOptions = {}) {
+      validateOperationId(operationId);
+      validateOperationNamespace(operationNamespace);
+      if (typeof reservationToken !== 'string' || reservationToken.length < 16) {
+        return { ok: false, reason: 'capability_reservation_token_invalid' };
+      }
+      const operation = operations.get(operationKey(operationNamespace, operationId));
+      const state = states.get(capabilityId);
+      if (!operation || !state) return { ok: false, reason: 'capability_operation_not_found' };
+      if (operation.capability_id !== capabilityId) return { ok: false, reason: 'capability_operation_owner_mismatch' };
+      if (operation.status !== 'reserved') {
+        return {
+          ok: false,
+          reason: operation.status === 'provider_entered'
+            ? 'capability_provider_entry_already_recorded'
+            : 'capability_operation_already_finalized',
+        };
+      }
+      if (operation.reservation_token !== reservationToken) return { ok: false, reason: 'capability_reservation_owner_mismatch' };
+      const at = nowMs(now);
+      if (at >= operation.entry_deadline_at) return { ok: false, reason: 'capability_reservation_expired' };
+      operation.status = 'provider_entered';
+      operation.provider_entry_at = at;
+      state.reserved_amount -= operation.amount;
+      state.consumed_amount += operation.amount;
+      return {
+        ok: true,
+        operation_id: operationId,
+        provider_entry_at: at,
+        consumed: state.consumed_amount,
+        remaining: state.budget_amount - state.consumed_amount - state.reserved_amount,
+      };
+    },
+    async recoverPreEntrySpend({ capabilityId, operationNamespace = capabilityId, operationId, actionDigest, now = Date.now }: RecoverPreEntrySpendOptions = {}) {
+      validateOperationId(operationId);
+      validateOperationNamespace(operationNamespace);
+      validateActionDigest(actionDigest);
+      const operation = operations.get(operationKey(operationNamespace, operationId));
+      const state = states.get(capabilityId);
+      if (!operation || !state) return { ok: false, reason: 'capability_operation_not_found' };
+      if (operation.capability_id !== capabilityId) return { ok: false, reason: 'capability_operation_owner_mismatch' };
+      if (operation.action_digest !== actionDigest) return { ok: false, reason: 'capability_reconciliation_action_mismatch' };
+      if (operation.status === 'released' && operation.outcome === 'not_entered'
+          && operation.release_reason === 'pre_entry_deadline_elapsed') {
+        return {
+          ok: true,
+          idempotent: true,
+          outcome: 'not_entered',
+          released: operation.amount,
+          remaining: state.budget_amount - state.consumed_amount - state.reserved_amount,
+        };
+      }
+      if (operation.status !== 'reserved') {
+        return { ok: false, reason: 'capability_provider_entry_recorded' };
+      }
+      const at = nowMs(now);
+      if (!Number.isSafeInteger(operation.entry_deadline_at)) {
+        return { ok: false, reason: 'capability_recovery_deadline_unavailable' };
+      }
+      if (at < operation.entry_deadline_at) return { ok: false, reason: 'capability_recovery_deadline_active' };
+      operation.status = 'released';
+      operation.outcome = 'not_entered';
+      operation.release_reason = 'pre_entry_deadline_elapsed';
+      operation.released_at = at;
+      state.reserved_amount -= operation.amount;
+      return {
+        ok: true,
+        outcome: 'not_entered',
+        released: operation.amount,
+        remaining: state.budget_amount - state.consumed_amount - state.reserved_amount,
+      };
     },
     async commitSpend({ capabilityId, operationNamespace = capabilityId, operationId, reservationToken, outcome = 'executed', now = Date.now }: CommitSpendOptions = {}) {
+      validateOperationId(operationId);
       validateOperationNamespace(operationNamespace);
       const operation = operations.get(operationKey(operationNamespace, operationId));
       const state = states.get(capabilityId);
       if (!operation || !state) return { ok: false, reason: 'capability_operation_not_found' };
       if (operation.capability_id !== capabilityId) return { ok: false, reason: 'capability_operation_owner_mismatch' };
-      if (operation.status !== 'reserved') return { ok: false, reason: 'capability_operation_already_finalized' };
+      if (!['executed', 'indeterminate', 'delegated'].includes(outcome)) return { ok: false, reason: 'capability_outcome_invalid' };
+      const expectedStatus = outcome === 'delegated' ? 'reserved' : 'provider_entered';
+      if (operation.status !== expectedStatus) {
+        return {
+          ok: false,
+          reason: operation.status === 'reserved'
+            ? 'capability_provider_entry_not_recorded'
+            : 'capability_operation_already_finalized',
+        };
+      }
       if (operation.reservation_token !== reservationToken) return { ok: false, reason: 'capability_reservation_owner_mismatch' };
+      const at = nowMs(now);
+      if (outcome === 'delegated' && at >= operation.entry_deadline_at) {
+        return { ok: false, reason: 'capability_reservation_expired' };
+      }
       operation.status = 'committed';
       operation.outcome = outcome;
-      operation.committed_at = nowMs(now);
-      state.reserved_amount -= operation.amount;
-      state.consumed_amount += operation.amount;
+      operation.committed_at = at;
+      if (outcome === 'delegated') {
+        state.reserved_amount -= operation.amount;
+        state.consumed_amount += operation.amount;
+      }
       return { ok: true, outcome, consumed: state.consumed_amount, remaining: state.budget_amount - state.consumed_amount - state.reserved_amount };
     },
-    async reconcileSpend({ capabilityId, operationNamespace = capabilityId, operationId, actionDigest, evidenceDigest, outcome = 'executed', now = Date.now }: ReconcileSpendOptions = {}) {
+    async reconcileSpend({ capabilityId, operationNamespace = capabilityId, operationId, actionDigest, evidenceDigest, evidenceProfile, outcome = 'executed', now = Date.now }: ReconcileSpendOptions = {}) {
+      validateOperationId(operationId);
       validateOperationNamespace(operationNamespace);
       const operation = operations.get(operationKey(operationNamespace, operationId));
       if (!operation) return { ok: false, reason: 'capability_operation_not_found' };
       if (operation.capability_id !== capabilityId) return { ok: false, reason: 'capability_operation_owner_mismatch' };
       if (operation.action_digest !== actionDigest) return { ok: false, reason: 'capability_reconciliation_action_mismatch' };
-      if (outcome !== 'executed' || typeof evidenceDigest !== 'string' || !ACTION_DIGEST_RE.test(evidenceDigest)) {
+      if (!['executed', 'not_entered'].includes(outcome)
+          || typeof evidenceDigest !== 'string' || !ACTION_DIGEST_RE.test(evidenceDigest)) {
         return { ok: false, reason: 'capability_reconciliation_evidence_invalid' };
+      }
+      const at = nowMs(now);
+      if (outcome === 'not_entered') {
+        try {
+          validateEvidenceProfile(evidenceProfile);
+        } catch {
+          return { ok: false, reason: 'capability_reconciliation_evidence_invalid' };
+        }
+        const state = states.get(operation.capability_id);
+        if (!state) return { ok: false, reason: 'capability_not_registered' };
+        if (operation.status === 'released') {
+          return operation.outcome === 'not_entered'
+              && operation.release_evidence_digest === evidenceDigest
+              && operation.release_evidence_profile === evidenceProfile
+            ? { ok: true, idempotent: true, outcome }
+            : { ok: false, reason: 'capability_reconciliation_conflict' };
+        }
+        if (!Number.isSafeInteger(operation.entry_deadline_at)) {
+          return { ok: false, reason: 'capability_recovery_deadline_unavailable' };
+        }
+        if (at < operation.entry_deadline_at) return { ok: false, reason: 'capability_recovery_deadline_active' };
+        if (operation.status !== 'provider_entered'
+            && !(operation.status === 'committed' && operation.outcome === 'indeterminate')) {
+          return { ok: false, reason: operation.status === 'reserved'
+            ? 'capability_provider_entry_not_recorded'
+            : 'capability_operation_not_indeterminate' };
+        }
+        operation.status = 'released';
+        operation.outcome = 'not_entered';
+        operation.release_reason = 'authenticated_provider_non_entry';
+        operation.release_evidence_profile = evidenceProfile;
+        operation.release_evidence_digest = evidenceDigest;
+        operation.released_at = at;
+        state.consumed_amount -= operation.amount;
+        return { ok: true, idempotent: false, outcome };
       }
       if (operation.reconciliation_outcome) {
         return operation.reconciliation_outcome === outcome && operation.reconciliation_evidence_digest === evidenceDigest
@@ -793,15 +995,19 @@ export function createMemoryCapabilityStore() {
         if (!state) return { ok: false, reason: 'capability_not_registered' };
         operation.status = 'committed';
         operation.outcome = 'indeterminate';
-        operation.committed_at = nowMs(now);
+        operation.committed_at = at;
         state.reserved_amount -= operation.amount;
         state.consumed_amount += operation.amount;
+      } else if (operation.status === 'provider_entered') {
+        operation.status = 'committed';
+        operation.outcome = 'indeterminate';
+        operation.committed_at = at;
       } else if (operation.status !== 'committed' || operation.outcome !== 'indeterminate') {
         return { ok: false, reason: 'capability_operation_not_indeterminate' };
       }
       operation.reconciliation_outcome = outcome;
       operation.reconciliation_evidence_digest = evidenceDigest;
-      operation.reconciled_at = nowMs(now);
+      operation.reconciled_at = at;
       return { ok: true, idempotent: false, outcome };
     },
     getState(capabilityId) {
@@ -844,14 +1050,20 @@ CREATE TABLE IF NOT EXISTS ${CAPABILITY_OPERATION_TABLE} (
   action_digest TEXT NOT NULL CHECK (action_digest ~ '^sha256:[0-9a-f]{64}$'),
   amount BIGINT NOT NULL CHECK (amount > 0),
   currency TEXT NOT NULL,
-  status TEXT NOT NULL CHECK (status IN ('reserved', 'committed')),
+  status TEXT NOT NULL CONSTRAINT ${CAPABILITY_OPERATION_TABLE}_status_check CHECK (status IN ('reserved', 'provider_entered', 'committed', 'released')),
   reservation_token TEXT NOT NULL,
   outcome TEXT,
   reconciliation_outcome TEXT CHECK (reconciliation_outcome IN ('executed')),
   reconciliation_evidence_digest TEXT CHECK (reconciliation_evidence_digest ~ '^sha256:[0-9a-f]{64}$'),
   reserved_at TIMESTAMPTZ NOT NULL,
+  entry_deadline_at TIMESTAMPTZ,
+  provider_entry_at TIMESTAMPTZ,
   committed_at TIMESTAMPTZ,
   reconciled_at TIMESTAMPTZ,
+  released_at TIMESTAMPTZ,
+  release_reason TEXT,
+  release_evidence_profile TEXT,
+  release_evidence_digest TEXT CHECK (release_evidence_digest ~ '^sha256:[0-9a-f]{64}$'),
   CHECK (
     (reconciliation_outcome IS NULL AND reconciliation_evidence_digest IS NULL AND reconciled_at IS NULL)
     OR
@@ -860,6 +1072,16 @@ CREATE TABLE IF NOT EXISTS ${CAPABILITY_OPERATION_TABLE} (
   PRIMARY KEY (operation_namespace, operation_id)
 );
 ALTER TABLE ${CAPABILITY_OPERATION_TABLE} ADD COLUMN IF NOT EXISTS operation_namespace TEXT;
+ALTER TABLE ${CAPABILITY_OPERATION_TABLE} ADD COLUMN IF NOT EXISTS entry_deadline_at TIMESTAMPTZ;
+ALTER TABLE ${CAPABILITY_OPERATION_TABLE} ADD COLUMN IF NOT EXISTS provider_entry_at TIMESTAMPTZ;
+ALTER TABLE ${CAPABILITY_OPERATION_TABLE} ADD COLUMN IF NOT EXISTS released_at TIMESTAMPTZ;
+ALTER TABLE ${CAPABILITY_OPERATION_TABLE} ADD COLUMN IF NOT EXISTS release_reason TEXT;
+ALTER TABLE ${CAPABILITY_OPERATION_TABLE} ADD COLUMN IF NOT EXISTS release_evidence_profile TEXT;
+ALTER TABLE ${CAPABILITY_OPERATION_TABLE} ADD COLUMN IF NOT EXISTS release_evidence_digest TEXT CHECK (release_evidence_digest ~ '^sha256:[0-9a-f]{64}$');
+ALTER TABLE ${CAPABILITY_OPERATION_TABLE} DROP CONSTRAINT IF EXISTS ${CAPABILITY_OPERATION_TABLE}_status_check;
+ALTER TABLE ${CAPABILITY_OPERATION_TABLE}
+  ADD CONSTRAINT ${CAPABILITY_OPERATION_TABLE}_status_check
+  CHECK (status IN ('reserved', 'provider_entered', 'committed', 'released'));
 UPDATE ${CAPABILITY_OPERATION_TABLE}
   SET operation_namespace = capability_id
   WHERE operation_namespace IS NULL;
@@ -889,17 +1111,23 @@ BEGIN
   END IF;
 END
 $capability_operation_primary_key$;
-CREATE INDEX IF NOT EXISTS ${CAPABILITY_OPERATION_TABLE}_capability_idx ON ${CAPABILITY_OPERATION_TABLE}(capability_id);`;
+CREATE INDEX IF NOT EXISTS ${CAPABILITY_OPERATION_TABLE}_capability_idx ON ${CAPABILITY_OPERATION_TABLE}(capability_id);
+CREATE INDEX IF NOT EXISTS ${CAPABILITY_OPERATION_TABLE}_recovery_idx ON ${CAPABILITY_OPERATION_TABLE}(status, entry_deadline_at);`;
 
 export const CAPABILITY_SQL = Object.freeze({
   register: `INSERT INTO ${CAPABILITY_STATE_TABLE} (capability_id, budget_amount, currency, expires_at, capability_fingerprint) VALUES ($1, $2, $3, $4, $5) ON CONFLICT (capability_id) DO UPDATE SET capability_fingerprint = COALESCE(${CAPABILITY_STATE_TABLE}.capability_fingerprint, EXCLUDED.capability_fingerprint) WHERE ${CAPABILITY_STATE_TABLE}.budget_amount = EXCLUDED.budget_amount AND ${CAPABILITY_STATE_TABLE}.currency = EXCLUDED.currency AND ${CAPABILITY_STATE_TABLE}.expires_at = EXCLUDED.expires_at`,
   readState: `SELECT capability_id, capability_fingerprint, budget_amount, currency, consumed_amount, reserved_amount, expires_at FROM ${CAPABILITY_STATE_TABLE} WHERE capability_id = $1 FOR UPDATE`,
-  readOperation: `SELECT operation_namespace, operation_id, capability_id, action_digest, amount, currency, status, reservation_token, outcome, reconciliation_outcome, reconciliation_evidence_digest, reconciled_at FROM ${CAPABILITY_OPERATION_TABLE} WHERE operation_namespace = $1 AND operation_id = $2 FOR UPDATE`,
-  insertOperation: `INSERT INTO ${CAPABILITY_OPERATION_TABLE} (operation_namespace, capability_id, operation_id, action_digest, amount, currency, status, reservation_token, reserved_at) VALUES ($1, $2, $3, $4, $5, $6, 'reserved', $7, $8)`,
+  readOperation: `SELECT operation_namespace, operation_id, capability_id, action_digest, amount, currency, status, reservation_token, outcome, reconciliation_outcome, reconciliation_evidence_digest, reconciled_at, reserved_at, entry_deadline_at, provider_entry_at, released_at, release_reason, release_evidence_profile, release_evidence_digest FROM ${CAPABILITY_OPERATION_TABLE} WHERE operation_namespace = $1 AND operation_id = $2 FOR UPDATE`,
+  insertOperation: `INSERT INTO ${CAPABILITY_OPERATION_TABLE} (operation_namespace, capability_id, operation_id, action_digest, amount, currency, status, reservation_token, reserved_at, entry_deadline_at) VALUES ($1, $2, $3, $4, $5, $6, 'reserved', $7, $8, $9)`,
   reserveState: `UPDATE ${CAPABILITY_STATE_TABLE} SET reserved_amount = reserved_amount + $2 WHERE capability_id = $1 AND budget_amount - consumed_amount - reserved_amount >= $2`,
-  commitOperation: `UPDATE ${CAPABILITY_OPERATION_TABLE} SET status = 'committed', outcome = $4, committed_at = $5 WHERE operation_namespace = $1 AND operation_id = $2 AND capability_id = $3 AND status = 'reserved' AND reservation_token = $6`,
+  beginProviderEntry: `UPDATE ${CAPABILITY_OPERATION_TABLE} SET status = 'provider_entered', provider_entry_at = $5 WHERE operation_namespace = $1 AND operation_id = $2 AND capability_id = $3 AND status = 'reserved' AND reservation_token = $4 AND entry_deadline_at IS NOT NULL AND entry_deadline_at > $5`,
+  commitOperation: `UPDATE ${CAPABILITY_OPERATION_TABLE} SET status = 'committed', outcome = $4, committed_at = $5 WHERE operation_namespace = $1 AND operation_id = $2 AND capability_id = $3 AND status = $7 AND reservation_token = $6`,
   reconcileOperation: `UPDATE ${CAPABILITY_OPERATION_TABLE} SET reconciliation_outcome = $4, reconciliation_evidence_digest = $5, reconciled_at = $6 WHERE operation_namespace = $1 AND operation_id = $2 AND capability_id = $3 AND status = 'committed' AND outcome = 'indeterminate' AND reconciliation_outcome IS NULL`,
+  recoverPreEntryOperation: `UPDATE ${CAPABILITY_OPERATION_TABLE} SET status = 'released', outcome = 'not_entered', release_reason = 'pre_entry_deadline_elapsed', released_at = $5 WHERE operation_namespace = $1 AND operation_id = $2 AND capability_id = $3 AND action_digest = $4 AND status = 'reserved' AND entry_deadline_at IS NOT NULL AND entry_deadline_at <= $5`,
+  releaseEnteredOperation: `UPDATE ${CAPABILITY_OPERATION_TABLE} SET status = 'released', outcome = 'not_entered', release_reason = 'authenticated_provider_non_entry', release_evidence_profile = $5, release_evidence_digest = $6, released_at = $7 WHERE operation_namespace = $1 AND operation_id = $2 AND capability_id = $3 AND action_digest = $4 AND entry_deadline_at IS NOT NULL AND entry_deadline_at <= $7 AND (status = 'provider_entered' OR (status = 'committed' AND outcome = 'indeterminate'))`,
   commitState: `UPDATE ${CAPABILITY_STATE_TABLE} SET reserved_amount = reserved_amount - $2, consumed_amount = consumed_amount + $2 WHERE capability_id = $1 AND reserved_amount >= $2`,
+  releaseReservedState: `UPDATE ${CAPABILITY_STATE_TABLE} SET reserved_amount = reserved_amount - $2 WHERE capability_id = $1 AND reserved_amount >= $2`,
+  releaseConsumedState: `UPDATE ${CAPABILITY_STATE_TABLE} SET consumed_amount = consumed_amount - $2 WHERE capability_id = $1 AND consumed_amount >= $2`,
 });
 
 /**
@@ -911,8 +1139,15 @@ export const CAPABILITY_SQL = Object.freeze({
  * @param {object} [options]
  * @param {(callback: (query: Function) => any) => any} [options.transaction]
  */
-export function createPostgresCapabilityStore({ transaction }: { transaction?: (callback: (query: Function) => any) => any } = {}) {
+export function createPostgresCapabilityStore({
+  transaction,
+  providerEntryTimeoutMs = DEFAULT_PROVIDER_ENTRY_TIMEOUT_MS,
+}: {
+  transaction?: (callback: (query: Function) => any) => any;
+  providerEntryTimeoutMs?: number;
+} = {}) {
   if (typeof transaction !== 'function') throw new TypeError('createPostgresCapabilityStore requires a transaction(callback) function');
+  const entryTimeoutMs = validateProviderEntryTimeoutMs(providerEntryTimeoutMs);
   return {
     durable: true,
     reconciliationCapable: true,
@@ -933,7 +1168,7 @@ export function createPostgresCapabilityStore({ transaction }: { transaction?: (
     },
     async reserveSpend({ capabilityId, capabilityFingerprint, operationNamespace = capabilityId, operationId, actionDigest, amount, currency, now = Date.now }: ReserveSpendOptions) {
       validateOperationId(operationId); validateOperationNamespace(operationNamespace); validateAmount(amount); validateCurrency(currency);
-      if (typeof actionDigest !== 'string' || !ACTION_DIGEST_RE.test(actionDigest)) throw new TypeError('action_digest must be SHA-256');
+      validateActionDigest(actionDigest);
       const at = nowMs(now);
       return transaction(async (query) => {
         const stateResult = await query(CAPABILITY_SQL.readState, [capabilityId]);
@@ -941,19 +1176,37 @@ export function createPostgresCapabilityStore({ transaction }: { transaction?: (
         if (!state) return { ok: false, reason: 'capability_not_registered' };
         if (state.capability_fingerprint !== capabilityFingerprint) return { ok: false, reason: 'capability_envelope_mismatch' };
         const operationResult = await query(CAPABILITY_SQL.readOperation, [operationNamespace, operationId]);
-        if (operationResult?.rows?.[0]) return { ok: false, reason: operationResult.rows[0].status === 'reserved' ? 'operation_in_flight' : 'operation_already_committed' };
-        if (at >= Date.parse(state.expires_at)) return { ok: false, reason: 'capability_expired' };
+        if (operationResult?.rows?.[0]) return { ok: false, reason: existingOperationReason(operationResult.rows[0].status) };
+        const capabilityExpiry = Date.parse(state.expires_at);
+        if (at >= capabilityExpiry) return { ok: false, reason: 'capability_expired' };
         if (currency !== state.currency) return { ok: false, reason: 'currency_mismatch' };
         const available = Number(state.budget_amount) - Number(state.consumed_amount) - Number(state.reserved_amount);
         if (!Number.isSafeInteger(available) || available < amount) return { ok: false, reason: 'budget_exceeded' };
         const token = randomUUID();
         const reserved = await query(CAPABILITY_SQL.reserveState, [capabilityId, amount]);
         if (reserved?.rowCount !== 1) return { ok: false, reason: 'budget_reservation_conflict' };
-        await query(CAPABILITY_SQL.insertOperation, [operationNamespace, capabilityId, operationId, actionDigest, amount, currency, token, new Date(at).toISOString()]);
-        return { ok: true, operation_id: operationId, reservation_token: token, remaining: available - amount };
+        const entryDeadlineAt = entryDeadline(at, capabilityExpiry, entryTimeoutMs);
+        await query(CAPABILITY_SQL.insertOperation, [
+          operationNamespace,
+          capabilityId,
+          operationId,
+          actionDigest,
+          amount,
+          currency,
+          token,
+          new Date(at).toISOString(),
+          new Date(entryDeadlineAt).toISOString(),
+        ]);
+        return {
+          ok: true,
+          operation_id: operationId,
+          reservation_token: token,
+          entry_deadline_at: entryDeadlineAt,
+          remaining: available - amount,
+        };
       });
     },
-    async commitSpend({ capabilityId, operationNamespace = capabilityId, operationId, reservationToken, outcome = 'executed', now = Date.now }: CommitSpendOptions = {}) {
+    async beginProviderEntry({ capabilityId, operationNamespace = capabilityId, operationId, reservationToken, now = Date.now }: BeginProviderEntryOptions = {}) {
       validateOperationId(operationId); validateOperationNamespace(operationNamespace);
       if (typeof reservationToken !== 'string' || reservationToken.length < 16) return { ok: false, reason: 'capability_reservation_token_invalid' };
       const at = nowMs(now);
@@ -961,22 +1214,109 @@ export function createPostgresCapabilityStore({ transaction }: { transaction?: (
         const operationResult = await query(CAPABILITY_SQL.readOperation, [operationNamespace, operationId]);
         const operation = operationResult?.rows?.[0];
         if (!operation) return { ok: false, reason: 'capability_operation_not_found' };
-        if (operation.status !== 'reserved') return { ok: false, reason: 'capability_operation_already_finalized' };
-        if (operation.reservation_token !== reservationToken) return { ok: false, reason: 'capability_reservation_owner_mismatch' };
         if (operation.capability_id !== capabilityId) return { ok: false, reason: 'capability_operation_owner_mismatch' };
-        const committed = await query(CAPABILITY_SQL.commitOperation, [operationNamespace, operationId, capabilityId, outcome, new Date(at).toISOString(), reservationToken]);
+        if (operation.status !== 'reserved') {
+          return {
+            ok: false,
+            reason: operation.status === 'provider_entered'
+              ? 'capability_provider_entry_already_recorded'
+              : 'capability_operation_already_finalized',
+          };
+        }
+        if (operation.reservation_token !== reservationToken) return { ok: false, reason: 'capability_reservation_owner_mismatch' };
+        const deadline = Date.parse(operation.entry_deadline_at);
+        if (!Number.isFinite(deadline)) return { ok: false, reason: 'capability_recovery_deadline_unavailable' };
+        if (at >= deadline) return { ok: false, reason: 'capability_reservation_expired' };
+        const entered = await query(CAPABILITY_SQL.beginProviderEntry, [
+          operationNamespace,
+          operationId,
+          capabilityId,
+          reservationToken,
+          new Date(at).toISOString(),
+        ]);
+        if (entered?.rowCount !== 1) throw new Error('capability provider-entry transition lost ownership; transaction must roll back');
+        const consumed = await query(CAPABILITY_SQL.commitState, [capabilityId, operation.amount]);
+        if (consumed?.rowCount !== 1) throw new Error('capability provider-entry budget transition conflicted; transaction must roll back');
+        return { ok: true, operation_id: operationId, provider_entry_at: at, consumed: null, remaining: null };
+      });
+    },
+    async recoverPreEntrySpend({ capabilityId, operationNamespace = capabilityId, operationId, actionDigest, now = Date.now }: RecoverPreEntrySpendOptions = {}) {
+      validateOperationId(operationId); validateOperationNamespace(operationNamespace); validateActionDigest(actionDigest);
+      const at = nowMs(now);
+      return transaction(async (query) => {
+        const operationResult = await query(CAPABILITY_SQL.readOperation, [operationNamespace, operationId]);
+        const operation = operationResult?.rows?.[0];
+        if (!operation) return { ok: false, reason: 'capability_operation_not_found' };
+        if (operation.capability_id !== capabilityId) return { ok: false, reason: 'capability_operation_owner_mismatch' };
+        if (operation.action_digest !== actionDigest) return { ok: false, reason: 'capability_reconciliation_action_mismatch' };
+        if (operation.status === 'released' && operation.outcome === 'not_entered'
+            && operation.release_reason === 'pre_entry_deadline_elapsed') {
+          return { ok: true, idempotent: true, outcome: 'not_entered', released: Number(operation.amount), remaining: null };
+        }
+        if (operation.status !== 'reserved') return { ok: false, reason: 'capability_provider_entry_recorded' };
+        const deadline = Date.parse(operation.entry_deadline_at);
+        if (!Number.isFinite(deadline)) return { ok: false, reason: 'capability_recovery_deadline_unavailable' };
+        if (at < deadline) return { ok: false, reason: 'capability_recovery_deadline_active' };
+        const released = await query(CAPABILITY_SQL.recoverPreEntryOperation, [
+          operationNamespace,
+          operationId,
+          capabilityId,
+          actionDigest,
+          new Date(at).toISOString(),
+        ]);
+        if (released?.rowCount !== 1) throw new Error('capability pre-entry recovery lost ownership; transaction must roll back');
+        const restored = await query(CAPABILITY_SQL.releaseReservedState, [capabilityId, operation.amount]);
+        if (restored?.rowCount !== 1) throw new Error('capability pre-entry budget recovery conflicted; transaction must roll back');
+        return { ok: true, outcome: 'not_entered', released: Number(operation.amount), remaining: null };
+      });
+    },
+    async commitSpend({ capabilityId, operationNamespace = capabilityId, operationId, reservationToken, outcome = 'executed', now = Date.now }: CommitSpendOptions = {}) {
+      validateOperationId(operationId); validateOperationNamespace(operationNamespace);
+      if (typeof reservationToken !== 'string' || reservationToken.length < 16) return { ok: false, reason: 'capability_reservation_token_invalid' };
+      if (!['executed', 'indeterminate', 'delegated'].includes(outcome)) return { ok: false, reason: 'capability_outcome_invalid' };
+      const at = nowMs(now);
+      return transaction(async (query) => {
+        const operationResult = await query(CAPABILITY_SQL.readOperation, [operationNamespace, operationId]);
+        const operation = operationResult?.rows?.[0];
+        if (!operation) return { ok: false, reason: 'capability_operation_not_found' };
+        if (operation.capability_id !== capabilityId) return { ok: false, reason: 'capability_operation_owner_mismatch' };
+        const expectedStatus = outcome === 'delegated' ? 'reserved' : 'provider_entered';
+        if (operation.status !== expectedStatus) {
+          return {
+            ok: false,
+            reason: operation.status === 'reserved'
+              ? 'capability_provider_entry_not_recorded'
+              : 'capability_operation_already_finalized',
+          };
+        }
+        if (operation.reservation_token !== reservationToken) return { ok: false, reason: 'capability_reservation_owner_mismatch' };
+        if (outcome === 'delegated') {
+          const deadline = Date.parse(operation.entry_deadline_at);
+          if (!Number.isFinite(deadline)) return { ok: false, reason: 'capability_recovery_deadline_unavailable' };
+          if (at >= deadline) return { ok: false, reason: 'capability_reservation_expired' };
+        }
+        const committed = await query(CAPABILITY_SQL.commitOperation, [operationNamespace, operationId, capabilityId, outcome, new Date(at).toISOString(), reservationToken, expectedStatus]);
         if (committed?.rowCount !== 1) throw new Error('capability operation transition lost ownership; transaction must roll back');
-        const updated = await query(CAPABILITY_SQL.commitState, [capabilityId, operation.amount]);
-        if (updated?.rowCount !== 1) throw new Error('capability state transition conflicted; transaction must roll back');
+        if (outcome === 'delegated') {
+          const updated = await query(CAPABILITY_SQL.commitState, [capabilityId, operation.amount]);
+          if (updated?.rowCount !== 1) throw new Error('capability state transition conflicted; transaction must roll back');
+        }
         return { ok: true, outcome, consumed: null, remaining: null };
       });
     },
-    async reconcileSpend({ capabilityId, operationNamespace = capabilityId, operationId, actionDigest, evidenceDigest, outcome = 'executed', now = Date.now }: ReconcileSpendOptions = {}) {
+    async reconcileSpend({ capabilityId, operationNamespace = capabilityId, operationId, actionDigest, evidenceDigest, evidenceProfile, outcome = 'executed', now = Date.now }: ReconcileSpendOptions = {}) {
       validateOperationId(operationId); validateOperationNamespace(operationNamespace);
       if (typeof actionDigest !== 'string' || !ACTION_DIGEST_RE.test(actionDigest)
           || typeof evidenceDigest !== 'string' || !ACTION_DIGEST_RE.test(evidenceDigest)
-          || outcome !== 'executed') {
+          || !['executed', 'not_entered'].includes(outcome)) {
         return { ok: false, reason: 'capability_reconciliation_evidence_invalid' };
+      }
+      if (outcome === 'not_entered') {
+        try {
+          validateEvidenceProfile(evidenceProfile);
+        } catch {
+          return { ok: false, reason: 'capability_reconciliation_evidence_invalid' };
+        }
       }
       const at = nowMs(now);
       return transaction(async (query) => {
@@ -985,13 +1325,44 @@ export function createPostgresCapabilityStore({ transaction }: { transaction?: (
         if (!operation) return { ok: false, reason: 'capability_operation_not_found' };
         if (operation.capability_id !== capabilityId) return { ok: false, reason: 'capability_operation_owner_mismatch' };
         if (operation.action_digest !== actionDigest) return { ok: false, reason: 'capability_reconciliation_action_mismatch' };
+        if (outcome === 'not_entered') {
+          if (operation.status === 'released') {
+            return operation.outcome === 'not_entered'
+                && operation.release_evidence_digest === evidenceDigest
+                && operation.release_evidence_profile === evidenceProfile
+              ? { ok: true, idempotent: true, outcome }
+              : { ok: false, reason: 'capability_reconciliation_conflict' };
+          }
+          const deadline = Date.parse(operation.entry_deadline_at);
+          if (!Number.isFinite(deadline)) return { ok: false, reason: 'capability_recovery_deadline_unavailable' };
+          if (at < deadline) return { ok: false, reason: 'capability_recovery_deadline_active' };
+          if (operation.status !== 'provider_entered'
+              && !(operation.status === 'committed' && operation.outcome === 'indeterminate')) {
+            return { ok: false, reason: operation.status === 'reserved'
+              ? 'capability_provider_entry_not_recorded'
+              : 'capability_operation_not_indeterminate' };
+          }
+          const released = await query(CAPABILITY_SQL.releaseEnteredOperation, [
+            operationNamespace,
+            operationId,
+            capabilityId,
+            actionDigest,
+            evidenceProfile,
+            evidenceDigest,
+            new Date(at).toISOString(),
+          ]);
+          if (released?.rowCount !== 1) throw new Error('capability authenticated non-entry transition conflicted; transaction must roll back');
+          const restored = await query(CAPABILITY_SQL.releaseConsumedState, [capabilityId, operation.amount]);
+          if (restored?.rowCount !== 1) throw new Error('capability authenticated non-entry budget recovery conflicted; transaction must roll back');
+          return { ok: true, idempotent: false, outcome };
+        }
         if (operation.reconciliation_outcome) {
           return operation.reconciliation_outcome === outcome
               && operation.reconciliation_evidence_digest === evidenceDigest
             ? { ok: true, idempotent: true, outcome }
             : { ok: false, reason: 'capability_reconciliation_conflict' };
         }
-        if (operation.status === 'reserved') {
+        if (operation.status === 'reserved' || operation.status === 'provider_entered') {
           const committed = await query(CAPABILITY_SQL.commitOperation, [
             operationNamespace,
             operationId,
@@ -999,10 +1370,13 @@ export function createPostgresCapabilityStore({ transaction }: { transaction?: (
             'indeterminate',
             new Date(at).toISOString(),
             operation.reservation_token,
+            operation.status,
           ]);
           if (committed?.rowCount !== 1) throw new Error('capability indeterminate recovery lost ownership; transaction must roll back');
-          const consumed = await query(CAPABILITY_SQL.commitState, [capabilityId, operation.amount]);
-          if (consumed?.rowCount !== 1) throw new Error('capability indeterminate budget recovery conflicted; transaction must roll back');
+          if (operation.status === 'reserved') {
+            const consumed = await query(CAPABILITY_SQL.commitState, [capabilityId, operation.amount]);
+            if (consumed?.rowCount !== 1) throw new Error('capability indeterminate budget recovery conflicted; transaction must roll back');
+          }
         } else if (operation.status !== 'committed' || operation.outcome !== 'indeterminate') {
           return { ok: false, reason: 'capability_operation_not_indeterminate' };
         }
@@ -1044,7 +1418,7 @@ function capabilityAmount(action, capability, verifiedAction = action) {
  * Execute one spend under a capability. The base EP receipt is checked on
  * every spend with consumptionMode=none; the capability store is the replay
  * and budget authority. The external function is entered only after the
- * atomic reservation succeeds. `action` is the budget projection; the
+ * atomic reservation and durable provider-entry transition succeed. `action` is the budget projection; the
  * external function receives only a clone of the exact verified
  * `observedAction ?? action`. Any exception after entry permanently commits
  * the reserved amount as indeterminate.
@@ -1087,7 +1461,12 @@ export async function executeWithCapability({
   if (!verified.ok) return { ok: false, reason: verified.reason };
   if ((verified.capability.threshold.m !== 1 || verified.capability.threshold.n !== 1) && thresholdSecretVerified !== true) return { ok: false, reason: 'threshold_shares_required' };
   if (!verifySecret(verified.capability, secret)) return { ok: false, reason: 'invalid_secret' };
-  if (!store || typeof store.reserveSpend !== 'function' || typeof store.commitSpend !== 'function') return { ok: false, reason: 'capability_store_required' };
+  if (!store
+      || typeof store.reserveSpend !== 'function'
+      || typeof store.beginProviderEntry !== 'function'
+      || typeof store.commitSpend !== 'function') {
+    return { ok: false, reason: 'capability_store_required' };
+  }
   if (typeof executeAction !== 'function') throw new TypeError('executeWithCapability requires executeAction');
   try {
     validateOperationId(operationId);
@@ -1146,6 +1525,23 @@ export async function executeWithCapability({
     now,
   });
   if (!reserved?.ok) return { ok: false, reason: reserved?.reason || 'capability_reservation_refused', authorization };
+  const providerEntry = await store.beginProviderEntry({
+    capabilityId: verified.capability.id,
+    operationNamespace: scope.operation_namespace ?? verified.capability.id,
+    operationId,
+    reservationToken: reserved.reservation_token,
+    now,
+  }).catch(() => ({ ok: false, reason: 'capability_provider_entry_indeterminate' }));
+  if (!providerEntry?.ok) {
+    return {
+      ok: false,
+      reason: providerEntry?.reason || 'capability_provider_entry_indeterminate',
+      authorization,
+      operation_id: operationId,
+      action_digest: scope.action_digest,
+      ...(scope.caid ? { caid: scope.caid } : {}),
+    };
+  }
   try {
     const result = await executeAction(structuredClone(immutableAction), {
       capabilityReceipt,
@@ -1155,6 +1551,7 @@ export async function executeWithCapability({
       ...(scope.caid ? { caid: scope.caid } : {}),
       observed_action: immutableAction,
       reservation: reserved,
+      provider_entry: providerEntry,
     });
     const committed = await store.commitSpend({ capabilityId: verified.capability.id, operationNamespace: scope.operation_namespace ?? verified.capability.id, operationId, reservationToken: reserved.reservation_token, outcome: 'executed', now });
     if (!committed?.ok) return { ok: false, reason: 'capability_commit_indeterminate', authorization, result, operation_id: operationId };
@@ -1196,10 +1593,10 @@ export async function executeWithThreshold({ capabilityReceipt, shares, ...optio
 }
 
 /**
- * Authentically reconcile a committed indeterminate capability operation.
- * The generic path records only a proven `executed` outcome and never restores
- * budget. A deployment that wants to prove the effect boundary was not crossed
- * needs a separate, action-specific negative-evidence profile.
+ * Authentically reconcile a capability operation. Positive evidence records an
+ * executed outcome without restoring budget. A post-entry release additionally
+ * requires an authenticated, action-specific negative-evidence profile and is
+ * still gated by the reservation's durable provider-entry deadline.
  *
  * @param {object} [options]
  * @param {any} [options.store]
@@ -1253,12 +1650,26 @@ export async function reconcileCapabilityOperation({
   } catch {
     return { ok: false, reason: 'capability_reconciliation_evidence_rejected' };
   }
+  const negative = isRecord(verified) && verified.outcome === 'not_entered';
   if (!isRecord(verified) || verified.valid !== true
-      || verified.outcome !== 'executed'
+      || !['executed', 'not_entered'].includes(verified.outcome)
       || verified.action_digest !== actionDigest
       || typeof verified.evidence_digest !== 'string'
       || !ACTION_DIGEST_RE.test(verified.evidence_digest)) {
     return { ok: false, reason: 'capability_reconciliation_evidence_rejected' };
+  }
+  if (negative && (verified.authenticated !== true
+      || verified.capability_id !== capabilityId
+      || verified.operation_namespace !== operationNamespace
+      || verified.operation_id !== operationId)) {
+    return { ok: false, reason: 'capability_reconciliation_evidence_rejected' };
+  }
+  if (negative) {
+    try {
+      validateEvidenceProfile(verified.evidence_profile);
+    } catch {
+      return { ok: false, reason: 'capability_reconciliation_evidence_rejected' };
+    }
   }
   const result = await store.reconcileSpend({
     capabilityId,
@@ -1266,11 +1677,19 @@ export async function reconcileCapabilityOperation({
     operationId,
     actionDigest,
     evidenceDigest: verified.evidence_digest,
-    outcome: 'executed',
+    ...(negative ? { evidenceProfile: verified.evidence_profile } : {}),
+    outcome: verified.outcome,
     now,
   });
   return result?.ok
-    ? { ok: true, outcome: 'executed', action_digest: actionDigest, evidence_digest: verified.evidence_digest, idempotent: result.idempotent === true }
+    ? {
+      ok: true,
+      outcome: verified.outcome,
+      action_digest: actionDigest,
+      evidence_digest: verified.evidence_digest,
+      ...(negative ? { evidence_profile: verified.evidence_profile } : {}),
+      idempotent: result.idempotent === true,
+    }
     : { ok: false, reason: result?.reason || 'capability_reconciliation_refused' };
 }
 

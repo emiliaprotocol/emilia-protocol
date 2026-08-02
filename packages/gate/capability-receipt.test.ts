@@ -61,6 +61,8 @@ const DEFAULT_SCOPE_ACTIONS = [
   scopedAction('bad_1', { currency: 'EUR' }),
   scopedAction('threshold_op_1', { amount: 25 }),
   scopedAction('envelope_collision_spend'),
+  scopedAction('crash_before_provider_entry', { amount: 10 }),
+  scopedAction('post_entry_negative_evidence', { amount: 10 }),
 ];
 
 function options(overrides = {}) {
@@ -93,6 +95,8 @@ test('capability stores expose explicit production durability and reconciliation
   const methodsOnly = {
     registerCapability() {},
     reserveSpend() {},
+    beginProviderEntry() {},
+    recoverPreEntrySpend() {},
     commitSpend() {},
     reconcileSpend() {},
   };
@@ -130,6 +134,12 @@ test('memory capability operations isolate identical operation ids by capability
   assert.equal(firstReservation.ok, true);
   assert.equal(secondReservation.ok, true);
   assert.equal((await reserve(first, 'shared-operation')).reason, 'operation_in_flight');
+  assert.equal((await store.beginProviderEntry({
+    capabilityId: first.capabilityReceipt.capability.id,
+    operationId: 'shared-operation',
+    reservationToken: firstReservation.reservation_token,
+    now: NOW,
+  })).ok, true);
 
   assert.equal((await store.commitSpend({
     capabilityId: first.capabilityReceipt.capability.id,
@@ -141,6 +151,12 @@ test('memory capability operations isolate identical operation ids by capability
   assert.equal(store.getOperation('shared-operation', first.capabilityReceipt.capability.id).outcome, 'executed');
   assert.equal(store.getOperation('shared-operation', second.capabilityReceipt.capability.id).status, 'reserved');
   assert.equal((await reserve(first, 'shared-operation')).reason, 'operation_already_committed');
+  assert.equal((await store.beginProviderEntry({
+    capabilityId: second.capabilityReceipt.capability.id,
+    operationId: 'shared-operation',
+    reservationToken: secondReservation.reservation_token,
+    now: NOW,
+  })).ok, true);
   assert.equal((await store.commitSpend({
     capabilityId: second.capabilityReceipt.capability.id,
     operationId: 'shared-operation',
@@ -151,6 +167,12 @@ test('memory capability operations isolate identical operation ids by capability
 
   const firstIndeterminate = await reserve(first, 'shared-reconciliation');
   const secondIndeterminate = await reserve(second, 'shared-reconciliation');
+  assert.equal((await store.beginProviderEntry({
+    capabilityId: first.capabilityReceipt.capability.id,
+    operationId: 'shared-reconciliation',
+    reservationToken: firstIndeterminate.reservation_token,
+    now: NOW,
+  })).ok, true);
   await store.commitSpend({
     capabilityId: first.capabilityReceipt.capability.id,
     operationId: 'shared-reconciliation',
@@ -158,6 +180,12 @@ test('memory capability operations isolate identical operation ids by capability
     outcome: 'indeterminate',
     now: NOW,
   });
+  assert.equal((await store.beginProviderEntry({
+    capabilityId: second.capabilityReceipt.capability.id,
+    operationId: 'shared-reconciliation',
+    reservationToken: secondIndeterminate.reservation_token,
+    now: NOW,
+  })).ok, true);
   await store.commitSpend({
     capabilityId: second.capabilityReceipt.capability.id,
     operationId: 'shared-reconciliation',
@@ -201,6 +229,10 @@ test('memory capability operations isolate identical operation ids by capability
 test('postgres capability operations use a composite namespace and operation key', async () => {
   assert.match(CAPABILITY_STATE_DDL, /PRIMARY KEY \(operation_namespace, operation_id\)/);
   assert.doesNotMatch(CAPABILITY_STATE_DDL, /operation_id TEXT PRIMARY KEY/);
+  assert.match(CAPABILITY_STATE_DDL, /entry_deadline_at TIMESTAMPTZ/);
+  assert.match(CAPABILITY_STATE_DDL, /provider_entry_at TIMESTAMPTZ/);
+  assert.match(CAPABILITY_STATE_DDL, /'provider_entered'/);
+  assert.match(CAPABILITY_STATE_DDL, /'released'/);
   assert.match(CAPABILITY_SQL.readOperation, /operation_namespace = \$1 AND operation_id = \$2/);
 
   const keys = issuer();
@@ -245,7 +277,7 @@ test('postgres capability operations use a composite namespace and operation key
       return { rowCount: 1, rows: [] };
     }
     if (sql === CAPABILITY_SQL.insertOperation) {
-      const [operationNamespace, capabilityId, operationId, actionDigest, amount, currency, reservationToken] = params;
+      const [operationNamespace, capabilityId, operationId, actionDigest, amount, currency, reservationToken, reservedAt, entryDeadlineAt] = params;
       operations.set(operationKey(operationNamespace, operationId), {
         operation_namespace: operationNamespace,
         capability_id: capabilityId,
@@ -258,13 +290,28 @@ test('postgres capability operations use a composite namespace and operation key
         outcome: null,
         reconciliation_outcome: null,
         reconciliation_evidence_digest: null,
+        reserved_at: reservedAt,
+        entry_deadline_at: entryDeadlineAt,
+        provider_entry_at: null,
       });
       return { rowCount: 1, rows: [] };
     }
-    if (sql === CAPABILITY_SQL.commitOperation) {
-      const [operationNamespace, operationId, capabilityId, outcome, , reservationToken] = params;
+    if (sql === CAPABILITY_SQL.beginProviderEntry) {
+      const [operationNamespace, operationId, capabilityId, reservationToken, enteredAt] = params;
       const row = operations.get(operationKey(operationNamespace, operationId));
-      if (!row || row.capability_id !== capabilityId || row.status !== 'reserved' || row.reservation_token !== reservationToken) return { rowCount: 0, rows: [] };
+      if (!row || row.capability_id !== capabilityId || row.status !== 'reserved'
+          || row.reservation_token !== reservationToken
+          || Date.parse(row.entry_deadline_at) <= Date.parse(enteredAt)) {
+        return { rowCount: 0, rows: [] };
+      }
+      row.status = 'provider_entered';
+      row.provider_entry_at = enteredAt;
+      return { rowCount: 1, rows: [] };
+    }
+    if (sql === CAPABILITY_SQL.commitOperation) {
+      const [operationNamespace, operationId, capabilityId, outcome, , reservationToken, expectedStatus] = params;
+      const row = operations.get(operationKey(operationNamespace, operationId));
+      if (!row || row.capability_id !== capabilityId || row.status !== expectedStatus || row.reservation_token !== reservationToken) return { rowCount: 0, rows: [] };
       row.status = 'committed';
       row.outcome = outcome;
       return { rowCount: 1, rows: [] };
@@ -273,6 +320,22 @@ test('postgres capability operations use a composite namespace and operation key
       const row = states.get(params[0]);
       row.reserved_amount = String(Number(row.reserved_amount) - Number(params[1]));
       row.consumed_amount = String(Number(row.consumed_amount) + Number(params[1]));
+      return { rowCount: 1, rows: [] };
+    }
+    if (sql === CAPABILITY_SQL.recoverPreEntryOperation) {
+      const [operationNamespace, operationId, capabilityId, actionDigest, recoveredAt] = params;
+      const row = operations.get(operationKey(operationNamespace, operationId));
+      if (!row || row.capability_id !== capabilityId || row.action_digest !== actionDigest
+          || row.status !== 'reserved' || Date.parse(row.entry_deadline_at) > Date.parse(recoveredAt)) {
+        return { rowCount: 0, rows: [] };
+      }
+      row.status = 'released';
+      row.outcome = 'not_entered';
+      return { rowCount: 1, rows: [] };
+    }
+    if (sql === CAPABILITY_SQL.releaseReservedState) {
+      const row = states.get(params[0]);
+      row.reserved_amount = String(Number(row.reserved_amount) - Number(params[1]));
       return { rowCount: 1, rows: [] };
     }
     if (sql === CAPABILITY_SQL.reconcileOperation) {
@@ -287,7 +350,7 @@ test('postgres capability operations use a composite namespace and operation key
     }
     throw new Error(`unexpected SQL in composite operation test: ${sql}`);
   });
-  const store = createPostgresCapabilityStore({ transaction });
+  const store = createPostgresCapabilityStore({ transaction, providerEntryTimeoutMs: 1_000 });
   assert.equal(await store.registerCapability(first.capabilityReceipt), true);
   assert.equal(await store.registerCapability(second.capabilityReceipt), true);
 
@@ -307,6 +370,12 @@ test('postgres capability operations use a composite namespace and operation key
   assert.equal((await reserve(first)).reason, 'operation_in_flight');
 
   for (const [minted, reservation] of [[first, firstReservation], [second, secondReservation]]) {
+    assert.equal((await store.beginProviderEntry({
+      capabilityId: minted.capabilityReceipt.capability.id,
+      operationId: 'shared-postgres-operation',
+      reservationToken: reservation.reservation_token,
+      now: NOW,
+    })).ok, true);
     assert.equal((await store.commitSpend({
       capabilityId: minted.capabilityReceipt.capability.id,
       operationId: 'shared-postgres-operation',
@@ -335,6 +404,33 @@ test('postgres capability operations use a composite namespace and operation key
     operations.get(operationKey(second.capabilityReceipt.capability.id, 'shared-postgres-operation')).reconciliation_evidence_digest,
     secondEvidence,
   );
+
+  const abandoned = await store.reserveSpend({
+    capabilityId: first.capabilityReceipt.capability.id,
+    capabilityFingerprint: states.get(first.capabilityReceipt.capability.id).capability_fingerprint,
+    operationId: 'postgres-abandoned-before-entry',
+    actionDigest: capabilityActionDigest(scopedAction('postgres-abandoned-before-entry')),
+    amount: 5,
+    currency: 'USD',
+    now: NOW,
+  });
+  assert.equal(abandoned.ok, true);
+  assert.deepEqual(await store.recoverPreEntrySpend({
+    capabilityId: first.capabilityReceipt.capability.id,
+    operationId: 'postgres-abandoned-before-entry',
+    actionDigest: capabilityActionDigest(scopedAction('postgres-abandoned-before-entry')),
+    now: NOW + 999,
+  }), { ok: false, reason: 'capability_recovery_deadline_active' });
+  assert.equal((await store.recoverPreEntrySpend({
+    capabilityId: first.capabilityReceipt.capability.id,
+    operationId: 'postgres-abandoned-before-entry',
+    actionDigest: capabilityActionDigest(scopedAction('postgres-abandoned-before-entry')),
+    now: NOW + 1_000,
+  })).ok, true);
+  assert.equal(operations.get(operationKey(
+    first.capabilityReceipt.capability.id,
+    'postgres-abandoned-before-entry',
+  )).status, 'released');
 });
 
 test('capability metadata is issuer-signed and tamper-evident', () => {
@@ -678,6 +774,167 @@ test('atomic capability spending enforces the budget and consumes indeterminate 
   assert.equal((await reconcile()).idempotent, true);
   assert.equal(store.getOperation('op_4').reconciliation_outcome, 'executed');
   assert.equal(store.getState(minted.capabilityReceipt.capability.id).consumed_amount, 100);
+});
+
+test('a crash after reserveSpend but before provider entry is recoverable only after its durable deadline', async () => {
+  const keys = issuer();
+  const minted = mintCapabilityReceipt(keys.receipt, options({ issuerPrivateKey: keys.privateKey }));
+  const store = createMemoryCapabilityStore({ providerEntryTimeoutMs: 1_000 });
+  assert.equal(store.registerCapability(minted.capabilityReceipt), true);
+
+  let effects = 0;
+  const crashAfterReserve = {
+    ...store,
+    async reserveSpend(input) {
+      const reserved = await store.reserveSpend(input);
+      assert.equal(reserved.ok, true);
+      throw new Error('simulated process crash after durable reserve');
+    },
+  };
+  await assert.rejects(executeWithCapability({
+    capabilityReceipt: minted.capabilityReceipt,
+    secret: minted.secret,
+    action: scopedAction('crash_before_provider_entry', { amount: 10 }),
+    operationId: 'crash_before_provider_entry',
+    store: crashAfterReserve,
+    trustedIssuerKeys: [keys.receipt.public_key],
+    verifyBaseReceipt: () => true,
+    executeAction: async () => { effects += 1; },
+    now: NOW,
+  }), /simulated process crash/);
+
+  const actionDigest = capabilityActionDigest(scopedAction('crash_before_provider_entry', { amount: 10 }));
+  const operation = store.getOperation('crash_before_provider_entry', minted.capabilityReceipt.capability.id);
+  assert.equal(effects, 0);
+  assert.equal(operation.status, 'reserved');
+  assert.equal(operation.entry_deadline_at, NOW + 1_000);
+  assert.equal(store.getState(minted.capabilityReceipt.capability.id).reserved_amount, 10);
+  assert.deepEqual(await store.recoverPreEntrySpend({
+    capabilityId: minted.capabilityReceipt.capability.id,
+    operationId: 'crash_before_provider_entry',
+    actionDigest,
+    now: NOW + 999,
+  }), { ok: false, reason: 'capability_recovery_deadline_active' });
+
+  const recovered = await store.recoverPreEntrySpend({
+    capabilityId: minted.capabilityReceipt.capability.id,
+    operationId: 'crash_before_provider_entry',
+    actionDigest,
+    now: NOW + 1_000,
+  });
+  assert.deepEqual(recovered, { ok: true, outcome: 'not_entered', released: 10, remaining: 100 });
+  assert.equal(store.getState(minted.capabilityReceipt.capability.id).reserved_amount, 0);
+  assert.equal(store.getState(minted.capabilityReceipt.capability.id).consumed_amount, 0);
+  assert.equal(store.getOperation('crash_before_provider_entry').status, 'released');
+
+  const blindRetry = await executeWithCapability({
+    capabilityReceipt: minted.capabilityReceipt,
+    secret: minted.secret,
+    action: scopedAction('crash_before_provider_entry', { amount: 10 }),
+    operationId: 'crash_before_provider_entry',
+    store,
+    trustedIssuerKeys: [keys.receipt.public_key],
+    verifyBaseReceipt: () => true,
+    executeAction: async () => { effects += 1; },
+    now: NOW + 1_001,
+  });
+  assert.equal(blindRetry.reason, 'operation_already_finalized');
+  assert.equal(effects, 0);
+});
+
+test('post-entry release requires deadline-gated action-specific authenticated negative evidence', async () => {
+  const keys = issuer();
+  const action = scopedAction('post_entry_negative_evidence', { amount: 10 });
+  const actionDigest = capabilityActionDigest(action);
+  const minted = mintCapabilityReceipt(keys.receipt, options({ issuerPrivateKey: keys.privateKey }));
+  const store = createMemoryCapabilityStore({ providerEntryTimeoutMs: 1_000 });
+  assert.equal(store.registerCapability(minted.capabilityReceipt), true);
+  const capabilityId = minted.capabilityReceipt.capability.id;
+  const reserved = await store.reserveSpend({
+    capabilityId,
+    capabilityFingerprint: store.getState(capabilityId).capability_fingerprint,
+    operationId: action.operation_id,
+    actionDigest,
+    amount: action.amount,
+    currency: action.currency,
+    now: NOW,
+  });
+  assert.equal(reserved.ok, true);
+  assert.equal((await store.beginProviderEntry({
+    capabilityId,
+    operationId: action.operation_id,
+    reservationToken: reserved.reservation_token,
+    now: NOW,
+  })).ok, true);
+  assert.equal(store.getOperation(action.operation_id).status, 'provider_entered');
+  assert.equal(store.getState(capabilityId).reserved_amount, 0);
+  assert.equal(store.getState(capabilityId).consumed_amount, 10);
+  assert.deepEqual(await store.recoverPreEntrySpend({
+    capabilityId,
+    operationId: action.operation_id,
+    actionDigest,
+    now: NOW + 1_000,
+  }), { ok: false, reason: 'capability_provider_entry_recorded' });
+
+  const evidenceDigest = `sha256:${'b'.repeat(64)}`;
+  const reconcile = (now, verifyEvidence) => reconcileCapabilityOperation({
+    store,
+    capabilityId,
+    operationId: action.operation_id,
+    action,
+    evidence: { provider: 'test', operation_id: action.operation_id },
+    verifyEvidence,
+    now,
+  });
+  const unauthenticated = await reconcile(NOW + 1_000, (_evidence, context) => ({
+    valid: true,
+    outcome: 'not_entered',
+    action_digest: context.action_digest,
+    evidence_digest: evidenceDigest,
+  }));
+  assert.equal(unauthenticated.reason, 'capability_reconciliation_evidence_rejected');
+
+  const verifiedNegative = (_evidence, context) => ({
+    valid: true,
+    authenticated: true,
+    outcome: 'not_entered',
+    capability_id: context.capability_id,
+    operation_namespace: context.operation_namespace,
+    operation_id: context.operation_id,
+    action_digest: context.action_digest,
+    evidence_profile: 'urn:test:provider-negative-entry:v1',
+    evidence_digest: evidenceDigest,
+  });
+  assert.deepEqual(await reconcile(NOW + 999, verifiedNegative), {
+    ok: false,
+    reason: 'capability_recovery_deadline_active',
+  });
+
+  const released = await reconcile(NOW + 1_000, verifiedNegative);
+  assert.deepEqual(released, {
+    ok: true,
+    outcome: 'not_entered',
+    action_digest: actionDigest,
+    evidence_digest: evidenceDigest,
+    evidence_profile: 'urn:test:provider-negative-entry:v1',
+    idempotent: false,
+  });
+  assert.equal(store.getOperation(action.operation_id).status, 'released');
+  assert.equal(store.getOperation(action.operation_id).release_evidence_digest, evidenceDigest);
+  assert.equal(store.getState(capabilityId).consumed_amount, 0);
+
+  const blindRetry = await executeWithCapability({
+    capabilityReceipt: minted.capabilityReceipt,
+    secret: minted.secret,
+    action,
+    operationId: action.operation_id,
+    store,
+    trustedIssuerKeys: [keys.receipt.public_key],
+    verifyBaseReceipt: () => true,
+    executeAction: async () => assert.fail('released operation must remain replay-fenced'),
+    now: NOW + 1_001,
+  });
+  assert.equal(blindRetry.reason, 'operation_already_finalized');
 });
 
 test('capability refuses invalid secret, currency, and unverified base authority', async () => {
