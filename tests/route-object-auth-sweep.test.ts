@@ -57,6 +57,8 @@ const AUTHZ_SIGNALS = [
   'authenticateReleaseLockOrg', // Release Lock org + authenticated entity binding
   'releaseLockSessionCookie',   // host-only strict cookie; SQL binds lock + role + contact + optional round
   'authenticateTrustDeskReviewer', // signed host-only session binds the named Trust Desk reviewer
+  'submitArenaAttempt',       // Arena service authenticates the exact ep_arena_ session capability
+  'publishArenaRefusal',      // Arena service authenticates capability + session + attempt ownership
 ];
 
 // Reviewed public-by-design routes: intentionally unauthenticated OR intentionally
@@ -74,6 +76,7 @@ const PUBLIC_BY_DESIGN = new Set([
   'app/api/r/[receiptId]/page.js',                    // public share page (not under api but guard scans api only)
   'app/api/badge/[entity]/route.ts',                  // public capability badge — boolean only, never a score/secret
   'app/api/demo/crash/[scenarioId]/route.ts',         // public, unauthenticated crash-test demo (self-signed sandbox)
+  'app/api/arena/refusals/[shareId]/route.ts',        // explicit opt-in, privacy-minimized integrity record behind 160-bit share id
   'app/api/score/[entityId]/route.ts',                // RETIRED — returns HTTP 410 Gone (score surface removed)
   'app/api/score/[entityId]/history/route.ts',        // RETIRED — returns HTTP 410 Gone
 ]);

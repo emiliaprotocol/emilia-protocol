@@ -9,12 +9,14 @@
   "forward_pending_versions": [
     "20260801010000",
     "20260802090000",
-    "20260802091000"
+    "20260802091000",
+    "20260802120000"
   ],
   "deployment_sequence": [
     "20260801010000",
     "20260802090000",
-    "20260802091000"
+    "20260802091000",
+    "20260802120000"
   ],
   "requires_include_all": false,
   "remote_versions": [
@@ -383,6 +385,7 @@
     "20260728210700_open_exposure_ledger.sql": "8ca555e9eae2adcb6853690f6cbd850606164c8872c707d68a7904fc745d7c71",
     "20260801010000_trust_desk_review_transition.sql": "e36b6784bb2bb31da23e55b5d27a5eb237d07ea4ab7af23b7ef409fe3f0df4e9",
     "20260802090000_gate_allowance_currentness_atomicity.sql": "319a11f1430992bd7e9339d4ca55a61293ac8c6052af6870140dc64d37c91235",
-    "20260802091000_gate_allowance_status_fortress_db_security_invariants.sql": "7f220f1a213d75f36334787ab94087e1f9365d0ab2cbcd7ef640dcd924ff407e"
+    "20260802091000_gate_allowance_status_fortress_db_security_invariants.sql": "7f220f1a213d75f36334787ab94087e1f9365d0ab2cbcd7ef640dcd924ff407e",
+    "20260802120000_arena_synthetic_allowance.sql": "4c834f8c80e390bce0c77ea5b7dd3a76843df54fd450c0cd111a4f01eb5b0ee2"
   }
 }

@@ -119,13 +119,13 @@ describe('TRUST_TABLES list', () => {
     expect(tableMatch).not.toBeNull();
   });
 
-  it('contains the expected number of trust tables (39)', () => {
-    // Bumped when adding trust-bearing tables (latest: mobile action continuity).
+  it('contains the expected number of trust tables (42)', () => {
+    // Bumped when adding trust-bearing tables (latest: Arena synthetic allowance).
     // Update both the count and the in-source TRUST_TABLES list together
     // when a new trust-bearing table is introduced.
     const entries = tableMatch[1].match(/'[^']+'/g);
     expect(entries).not.toBeNull();
-    expect(entries.length).toBe(39);
+    expect(entries.length).toBe(42);
   });
 
   const expectedCoreTables = [

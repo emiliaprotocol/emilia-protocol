@@ -347,6 +347,52 @@ test('allowed draws run unattended and atomically deplete the aggregate allowanc
   assert.equal(authorizationChecks, 1);
 });
 
+test('authorization receipt verifier exceptions fail closed before execution', async () => {
+  const keys = material();
+  const receipt = authorizationReceipt(keys);
+  const issued = issueGateAllowance({
+    authorizationReceipt: receipt,
+    allowance: allowanceInput(receipt, keys),
+    signer: keys.signer,
+    capabilityIssuerPrivateKey: keys.pair.privateKey,
+  });
+  const store = createMemoryCapabilityStore();
+  assert.equal(store.registerCapability(issued.capabilityReceipt), true);
+  initializeCurrentStatus(store, issued);
+  let effects = 0;
+
+  const result = await executeWithGateAllowance({
+    allowance: issued.allowance,
+    capabilityReceipt: issued.capabilityReceipt,
+    secret: issued.secret,
+    action: payout('payout:verifier-exception'),
+    operationId: 'payout:verifier-exception',
+    store,
+    executeAction: async () => { effects += 1; },
+    verifyAuthorizationReceipt: async () => {
+      throw new Error('malformed receipt verifier input');
+    },
+    verifyAllowanceStatus: () => currentStatus(),
+    trustedAllowanceKeys: keys.trustedKeys,
+    trustedCapabilityIssuerKeys: [keys.publicKey],
+    expected: {
+      allowance_id: 'allowance:stripe-payout:01',
+      tenant_id: 'tenant:example',
+      subject_id: 'agent:finance:01',
+      audience: 'gate:finance:production',
+      connector_id: 'stripe',
+      authorizer_id: 'customer:example-security',
+    },
+    now: NOW,
+  });
+
+  assert.deepEqual(result, {
+    ok: false,
+    reason: 'allowance_authorization_receipt_verification_failed',
+  });
+  assert.equal(effects, 0);
+});
+
 test('per-action cap, beneficiary allowlist, action shape, and receipt binding fail before effect', async () => {
   const keys = material();
   const receipt = authorizationReceipt(keys);

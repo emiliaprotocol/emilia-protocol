@@ -414,7 +414,13 @@ export async function executeWithGateAllowance({ allowance, capabilityReceipt, s
     if (typeof verifyAuthorizationReceipt !== 'function') {
         return { ok: false, reason: 'allowance_authorization_receipt_verifier_required' };
     }
-    const receiptVerification = await verifyAuthorizationReceipt(riskClone(receipt), riskClone(verifiedArtifact));
+    let receiptVerification;
+    try {
+        receiptVerification = await verifyAuthorizationReceipt(riskClone(receipt), riskClone(verifiedArtifact));
+    }
+    catch {
+        return { ok: false, reason: 'allowance_authorization_receipt_verification_failed' };
+    }
     if (receiptVerification !== true && receiptVerification?.ok !== true) {
         return { ok: false, reason: receiptVerification?.reason || 'allowance_authorization_receipt_rejected' };
     }

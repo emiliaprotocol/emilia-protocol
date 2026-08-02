@@ -31,6 +31,17 @@ const RELEASE_LOCK_BROWSER_MUTATIONS = Object.freeze([
 ]);
 
 const ROUTE_POLICIES = {
+  // Public synthetic Arena. Session creation has no credential yet. Attempt
+  // and publication routes authenticate the dedicated ep_arena_ capability in
+  // the service layer; the edge key stays IP-only so attacker-supplied bearer
+  // text cannot create arbitrary rate-limit identities before authentication.
+  // Public refusal records are integrity-check surfaces, not admission or
+  // issuer-identity claims, and share the reviewed public-verifier tier.
+  'POST /api/arena/sessions':                    { rateCategory: 'register', useAuth: false },
+  'POST /api/arena/sessions/*/attempts':         { rateCategory: 'submit', useAuth: false },
+  'POST /api/arena/sessions/*/attempts/*/publish': { rateCategory: 'submit', useAuth: false },
+  'GET /api/arena/refusals/*':                   { rateCategory: 'public_verify', useAuth: false },
+
   // Pilot-request intake (public lead form; honeypot + validation in route)
   'POST /api/pilot/request':          { rateCategory: 'submit', useAuth: false },
   'POST /api/pilot/sandbox/provision': { rateCategory: 'submit', useAuth: false },

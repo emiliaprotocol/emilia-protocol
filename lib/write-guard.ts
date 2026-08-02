@@ -60,6 +60,9 @@ const TRUST_TABLES: readonly string[] = Object.freeze([
   'mobile_action_operations',
   'mobile_executor_keys',
   'mobile_action_alignments',
+  'arena_sessions',
+  'arena_attempts',
+  'arena_shares',
 ]);
 
 /**
