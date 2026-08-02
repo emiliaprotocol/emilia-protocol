@@ -388,7 +388,7 @@ function validateInput(input: any): { values: any; status: Record<string, string
   }
 
   if (status.authorization === 'present') {
-    let expected = null;
+    let expected: string | null = null;
     try {
       expected = digest(authorizationProjection(values));
     } catch {
