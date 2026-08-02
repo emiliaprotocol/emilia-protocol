@@ -250,6 +250,23 @@ const ROUTE_POLICIES = {
   'GET /api/mcp/*':                   { rateCategory: 'read', useAuth: false },
   'DELETE /api/mcp/*':                { rateCategory: 'read', useAuth: false },
 
+  // Public, unauthenticated evidence surfaces. Both were unclassified and so
+  // inherited the read tier by default, which is the same allowance a cheap
+  // lookup gets and which falls OPEN when the rate limiter is unreachable.
+  // These are the two URLs a public launch hands to strangers, so the tier is
+  // now a decision rather than a default.
+  //
+  // Both get their own bucket so a burst on either cannot spend the allowance
+  // the other needs, and both stay fail-open on a limiter outage. That is the
+  // opposite of the mcp_tool_call decision and it is deliberate: these surfaces
+  // exist so a stranger can check a claim, the verifier they call is the same
+  // published npm package anyone can run locally, and a receipt nobody can
+  // check is worthless. See lib/rate-limit.ts for the full reasoning.
+  // /api/badge/* is the more generous of the two because it is embedded in
+  // READMEs, where an image proxy funnels many readers through few addresses.
+  'GET /api/verify/*':                { rateCategory: 'public_verify', useAuth: false },
+  'GET /api/badge/*':                 { rateCategory: 'public_badge', useAuth: false },
+
   // Operations / Cron
   // Cron routes skip rate limiting (CRON_SECRET auth is sufficient)
   'POST /api/blockchain/anchor':      { rateCategory: null, useAuth: false },

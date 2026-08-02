@@ -52,6 +52,27 @@ export const RATE_LIMITS: Record<string, { window: number; max: number }> = {
   // P-256) plus canonicalization over caller-supplied JSON, so it does not
   // belong in the same bucket as a cheap database read.
   mcp_tool_call: { window: 60, max: 60 },
+  // Unauthenticated public receipt verification. Its own bucket so a burst of
+  // verification cannot spend the same allowance as cheap reads.
+  //
+  // Deliberately NOT in FAIL_CLOSED_CATEGORIES, unlike mcp_tool_call, and the
+  // difference matters because the two look alike. mcp_tool_call runs Ed25519
+  // over a caller-supplied document of up to 256 KB under a caller-supplied
+  // key: the attacker chooses the work. This route takes a receipt id, reads a
+  // row the server already holds, and checks a bounded Merkle proof over it.
+  // The attacker chooses neither the payload nor its size.
+  //
+  // There is also no oracle here to protect. The verifier is this repository's
+  // published npm package, so anyone wanting unlimited verification runs it
+  // locally at full speed. Failing this closed buys nothing and costs the whole
+  // point of the endpoint: a receipt nobody can check is worthless, so
+  // availability IS the security property on this surface.
+  public_verify: { window: 60, max: 60 },
+  // Public capability badges. Cheap to serve (an SVG and one projection read)
+  // and embedded in READMEs and docs, where an image proxy collapses many
+  // readers onto a few source addresses. Deliberately generous: throttling this
+  // by IP degrades honest embedders long before it inconveniences anyone else.
+  public_badge: { window: 60, max: 240 },
 };
 
 import { getRateLimitConfig, getUpstashConfig } from '@/lib/env';
@@ -86,6 +107,13 @@ const FAIL_CLOSED_CATEGORIES = new Set([
   // Unauthenticated CPU work. Failing open here during a Redis outage hands an
   // attacker free signature verification at whatever rate they can dial.
   'mcp_tool_call',
+  // public_verify and public_badge are deliberately absent. Membership here is
+  // not only an outage posture: checkRateLimit below refuses a fail-closed
+  // category outright whenever durableRequired is set and Upstash is not
+  // configured, so listing a public evidence surface here takes it dark in
+  // every such deployment, not merely during a Redis incident. See the note on
+  // those two tiers above for why that trade is wrong for them and right for
+  // mcp_tool_call.
 ]);
 
 async function redisCommand(command: string, ...args: string[]): Promise<any> {
