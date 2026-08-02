@@ -91,7 +91,7 @@
     },
     {
       "path": "conformance/refinement/adapters/five-claim-bridge.mjs",
-      "sha256": "cfaa73d4313f3abc7e2720fff1fe47ccbb821219e38e01c9fb31180410e35abe"
+      "sha256": "cd8fd0ef115e6c8a6f005d813e82947724592d3cda5c2b3a3e28e8558cb06e25"
     },
     {
       "path": "conformance/refinement/adapters/grace-curtailment.mjs",
@@ -419,11 +419,11 @@
     },
     {
       "path": "lib/frontier/model-to-matter.js",
-      "sha256": "95dce639cab359b43a674cce866e81ed81473ea8dfe9be6961e548b7bd080ed8"
+      "sha256": "a650316a5f9660916f59096fec078f7ecab5b901c021ea963b114fa4e387cc90"
     },
     {
       "path": "lib/frontier/model-to-matter.ts",
-      "sha256": "c7798fcf53ed945bdc41314305d1e564015c127c7ab1e1eefaaa0f29c7b724b1"
+      "sha256": "0a62964a7b261129b498a4c3cbff9768fba27866464ea8be3b8bf931a7706cbe"
     },
     {
       "path": "lib/grace/curtailment.js",
@@ -495,11 +495,11 @@
     },
     {
       "path": "package-lock.json",
-      "sha256": "fdb126fe9bc72029b357c99f2690101ac92a1d0695cf7836f6f18b51b2a298e6"
+      "sha256": "627905631dd8a7fb61b0b7dac481e1e19dfa57d1e69ba6d15a6cb961f51fc923"
     },
     {
       "path": "package.json",
-      "sha256": "5493f014e402a315445471bbedbd6a8cbcd5c2058dd5d963e1d6b35a39f42191"
+      "sha256": "edc3ccaf67d190078c381c3b61e1113ef4d51d3fda642f0083773931a5aad41c"
     },
     {
       "path": "packages/gate/aec-execution.js",
@@ -507,7 +507,7 @@
     },
     {
       "path": "packages/gate/authority-allocation.test.ts",
-      "sha256": "412acd51b63be2a20f665f60a52f8eac2a1c41762ade8024f958bfe25035baf4"
+      "sha256": "ce8b1a2f448612b5eb85027f8cad7d9b68b1802351d0962dbb167184a8f53235"
     },
     {
       "path": "packages/gate/challenge-store.js",
@@ -551,11 +551,11 @@
     },
     {
       "path": "packages/gate/dist/admission-store-postgres.js",
-      "sha256": "cb962f2a73b7c67ee242a12060ea85e718a75ad55007ad0f863b2e54e8e41c3c"
+      "sha256": "256ed30a1ef6fcb12afeef3266616f1f418c58c390dce0c9a25aa38d24e06872"
     },
     {
       "path": "packages/gate/dist/admission-store.js",
-      "sha256": "23cd2c39cb33e9bb0a14ee2b7a2441810ca3289cf502b9535309d09c9b6650cf"
+      "sha256": "8ad428e9247efe163af57453ba013cd549d5e2d718ee84aed91590601f41f0c6"
     },
     {
       "path": "packages/gate/dist/aeb-consumption-store.js",
@@ -566,12 +566,24 @@
       "sha256": "6434db826c5b9381da74bee128d1575a303485891416890dbfd0daaccca4caf9"
     },
     {
+      "path": "packages/gate/dist/allowance.js",
+      "sha256": "d6281088b3a1358e7e8e929b51e5cadf951e8bf4f77d44ff96742c1f6b406d22"
+    },
+    {
       "path": "packages/gate/dist/authority-allocation.js",
-      "sha256": "1da7d98a4f98fcffd82d03532f28761a7d351635066eb8c9901776030981fa64"
+      "sha256": "96da5145f15b7c35eaea4599580f4a12dbec86b5a36eb3ecca9968dee3e78020"
     },
     {
       "path": "packages/gate/dist/autonomy-control-plane-profile.js",
       "sha256": "05b27e572bd2a0a86b5e473a9b047e88eee327d31321217751f353e5db4a4c7a"
+    },
+    {
+      "path": "packages/gate/dist/bounded-execution-program.js",
+      "sha256": "5aaff064c1d5aa78611aadf241c2733aec202647d6a32b2d3f1bad4e4f4e52c8"
+    },
+    {
+      "path": "packages/gate/dist/bounded-execution-report.js",
+      "sha256": "ae2a25608f1e9c0f99c1c218c96d1134b056deb0abe0fae3727f029ce2184982"
     },
     {
       "path": "packages/gate/dist/breakglass.js",
@@ -579,7 +591,7 @@
     },
     {
       "path": "packages/gate/dist/capability-receipt.js",
-      "sha256": "0b4a0897f07c72fcdbd6d22518e61206b9e32caf2828550c0d6d62351fef749d"
+      "sha256": "50fe13e44878f10e1b97e6b83e94e2c1d00451cde7a849c875af981a5c119504"
     },
     {
       "path": "packages/gate/dist/cf1-conformance.js",
@@ -595,7 +607,11 @@
     },
     {
       "path": "packages/gate/dist/coverage-reconciliation-attestation.js",
-      "sha256": "80a1be346da1c89ad4e71135651d36b296bc8684923aa66663b2b544aa599854"
+      "sha256": "fa8196c8fc9bb177475111329cad93a71493c7f7e16d71bfdebfbc601b27613d"
+    },
+    {
+      "path": "packages/gate/dist/coverage-reconciliation-runner.js",
+      "sha256": "51435377f3b34ebebc66aea4b77cb7f6db0ba4d8ecaa9402e06568b7dff09013"
     },
     {
       "path": "packages/gate/dist/discovery-permit-resolver.js",
@@ -627,7 +643,7 @@
     },
     {
       "path": "packages/gate/dist/index.js",
-      "sha256": "42e653b56002419d19c54d674aca935fef06dfd8aaaada7354c5b58e34f8a3ae"
+      "sha256": "7ae70de1ac8eeed0ffb49b0b97c8871e5555987bd7f8d36763ac34d5c7d5269a"
     },
     {
       "path": "packages/gate/dist/key-registry.js",
@@ -779,11 +795,11 @@
     },
     {
       "path": "packages/gate/src/authority-allocation.ts",
-      "sha256": "521489f744f0384480bcd85785dbf6696e60c49e84a95494e8d68d613f1d9fa5"
+      "sha256": "6361270a8c67dc2f4aaa14fd55728e0ce7ed736bc4f7ff3d6ca1225a11be6b30"
     },
     {
       "path": "packages/gate/src/capability-receipt.ts",
-      "sha256": "ed0bad957ff4c6c65ee5447a18db9d75805d9fd4b0517da2d6d90d87a45672dc"
+      "sha256": "e7ca02aae3c7ef141aaa96929d2604930cfec170c8ad288abdcc53889404422f"
     },
     {
       "path": "packages/gate/src/challenge-store.ts",
@@ -803,7 +819,7 @@
     },
     {
       "path": "packages/gate/src/index.ts",
-      "sha256": "55c73b5f8e222e61a32986c332a005f4925201afd9d2591423839a46aee0a316"
+      "sha256": "2ac8ecc37fda9b51ba3510b928ef8fa943b6ef282ddf55b50ac3510c761dc395"
     },
     {
       "path": "packages/gate/src/network-witness.ts",
