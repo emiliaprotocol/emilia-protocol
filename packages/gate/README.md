@@ -816,20 +816,114 @@ state row before reserving budget. If the external effect throws, the reserved
 amount is committed as indeterminate; it is never silently reopened. The
 capability path is separate from ordinary receipt consumption: the capability
 store owns replay and budget state for each explicitly supplied operation ID.
-The verifier requires a pinned capability issuer key. Every operation must
-match one exact signed action digest, and the caller's stable operation ID must
-equal the signed scope's field in the executor-observed action. The same digest
-is persisted with the reservation. The separate budget projection must match
-the amount and currency in that verified action, and the effect callback
-receives a clone of the verified action—not the projection. A new operation ID
-therefore cannot relabel the same payment instruction after a timeout.
+The verifier requires a pinned capability issuer key. The caller's operation ID
+must equal the signed scope's field in the executor-observed action. The
+`action_digest` remains the v1 digest of that complete immutable action and is
+persisted unchanged for exact-action evidence and reconciliation. The separate
+budget projection must match the amount and currency in the verified action,
+and the effect callback receives a clone of the verified action—not the
+projection.
+
+`action_fence_digest` is a separate, reservation-only identity used for
+namespace-level duplicate-action exclusion. It never replaces or redefines
+`action_digest` or `capabilityActionDigest()`. Exact-digest scope defaults the
+fence to the exact action digest. CAID scope derives a domain-separated fence
+deterministically from the pinned resolver's validated CAID, so two wrappers
+with different operation IDs can retain different exact digests while mapping
+to one material-action fence. Different CAIDs derive different fences.
+
+Allowance/profile scope uses the exact action digest as its conservative safe
+default. A profile verifier may instead return
+`{ ok: true, action_fence_digest }`; Gate accepts that override only when it is
+a canonical `sha256:<64 lowercase hex>` digest. The verifier is responsible for
+deriving that value from the profile-validated material action under its pinned
+rules. A malformed supplied fence fails closed rather than falling back. The
+low-level store API applies the same exact-digest default when
+`actionFenceDigest` is omitted for compatibility.
+
+Both digests are persisted in memory and PostgreSQL operation state. A live
+fence conflict returns `action_digest`, `action_fence_digest`, and
+`holding_operation_id`; `executeWithCapability()` preserves those diagnostics
+instead of collapsing the store refusal to a reason alone.
+
+#### Install the production action fence
+
+The unique index is intentionally non-concurrent and can block capability
+writes while PostgreSQL builds it. Use this operator sequence; do not apply it
+against an actively written table:
+
+1. Quiesce every writer to `ep_capability_operations`, including Gate workers,
+   migration jobs, repair tools, and direct database writers. Confirm the
+   quiescence independently; the preflight cannot prove that no writer exists.
+2. Run the packaged, read-only preflight as the migration role:
+
+   ```bash
+   GATE_PREFLIGHT=node_modules/@emilia-protocol/gate/deploy/sql/capability-action-fence-preflight.sql
+   psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -f "$GATE_PREFLIGHT"
+   ```
+
+   It omits reservation secrets and changes no rows. It prints and refuses every
+   legacy `reserved` operation that lacks a provider-entry deadline (SQLSTATE
+   `55000`), then prints every duplicate live
+   `(operation_namespace, action_fence_digest)` group and refuses duplicates
+   with SQLSTATE `23505`. When those guards pass, it also previews every legacy
+   capability ID that the migration will quarantine.
+
+   A historical `action_digest` is shown only as compatibility identity. It is
+   not evidence that two wrappers describe the same material action. Never use
+   this preflight or its output to infer semantic equivalence.
+3. Reconcile every refused row by status while writers remain quiesced:
+   - `reserved`: use the normal owner-fenced pre-entry recovery only after its
+     deadline has elapsed and provider non-entry is established. Otherwise
+     leave it unresolved and stop the deployment.
+   - `provider_entered`: never delete or relabel it. Release is permitted only
+     through the authenticated provider-non-entry lifecycle after its deadline;
+     otherwise preserve it for authenticated reconciliation and stop.
+   - `committed`: never delete or relabel it as `released`. Reconcile an
+     `indeterminate` outcome only from exact authenticated provider evidence.
+     If multiple committed rows remain, preserve all evidence and use a
+     separately reviewed, auditable incident-remediation migration; this
+     generic migration must remain blocked.
+4. Rerun the preflight until it exits zero with empty unsafe-reservation and
+   duplicate result sets. Do not use
+   ad hoc `DELETE`, status rewrites, or reservation-token edits to make it pass.
+5. Apply `20260803010000_capability_action_digest_fence.sql` with
+   `ON_ERROR_STOP=1` while writers are still quiesced. The file owns an explicit
+   `BEGIN`/`COMMIT` boundary, repeats the unsafe-reservation and duplicate
+   guards, restores the digest and lifecycle constraints, and either commits the
+   complete upgrade or commits nothing.
+6. Treat every capability ID that had historical operations as permanently
+   quarantined with `semantic_fence_ready = false`. Do not flip that flag back
+   to `true`, and do not backfill a semantic mapping from its historical exact
+   digests. After evidence-preserving review, issue a fresh capability with a
+   new capability ID and the current semantic fence contract.
+7. Verify the installed contract before restoring writers:
+
+   ```sql
+   SELECT i.indisunique,
+          pg_get_indexdef(i.indexrelid) AS index_definition,
+          pg_get_expr(i.indpred, i.indrelid) AS predicate
+     FROM pg_index AS i
+     WHERE i.indexrelid =
+       to_regclass('ep_capability_operations_live_action_uniq');
+   ```
+
+   Require `indisunique = true`, a valid and ready immediate btree with no
+   included columns, ordered keys
+   `(operation_namespace, action_fence_digest)`, and exactly the live statuses
+   `reserved`, `provider_entered`, and `committed`. Each key must use its source
+   column's exact collation, the default btree operator class, and ordinary
+   ascending/nulls-last options. The migration and packaged preflight refuse a
+   stale, non-unique, differently collated, non-default-opclass, or otherwise
+   wrong same-named index.
 
 The built-in `urn:emilia:scope:action-digest-set-v1` profile is exact-byte
 scope. `urn:emilia:scope:caid-set-v1` is also supported for interoperable
 material-action scope, but only when the deployment supplies its pinned CAID
 resolver as `capabilityCaidResolver`; a missing, unknown, or non-matching CAID
-fails closed. CAID correlates content here—it does not replace issuer trust,
-human authorization, holder proof, or durable budget state.
+fails closed. The resolved CAID also supplies the material fence described
+above. CAID correlates content here—it does not replace issuer trust, human
+authorization, holder proof, or durable budget state.
 
 ### Gate-integrated capability enforcement
 

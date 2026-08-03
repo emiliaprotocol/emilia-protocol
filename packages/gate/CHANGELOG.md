@@ -6,6 +6,22 @@ This package follows [Semantic Versioning](https://semver.org/).
 
 ## Unreleased
 
+## 0.23.8 (2026-08-03)
+
+### Security
+
+- Fence live reservations by a stable material-action digest in addition to
+  the exact request digest, so wrapper-specific operation IDs cannot authorize
+  the same consequential action twice.
+- Permanently quarantine legacy capability IDs whose historical rows do not
+  carry authoritative semantic-fence evidence; reviewed recovery issues a new
+  capability ID instead of inferring equivalence from old exact digests.
+- Reject failed CAID resolver decisions, non-positive spend reservations, and
+  mismatched action digests across pre-entry recovery and indeterminate
+  reconciliation in both memory and PostgreSQL stores.
+- Validate the complete PostgreSQL fence-index contract and enforce semantic
+  readiness at the database boundary, including direct table writers.
+
 ## 0.23.7 (2026-08-02)
 
 ### Release

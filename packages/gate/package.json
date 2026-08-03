@@ -1,6 +1,6 @@
 {
   "name": "@emilia-protocol/gate",
-  "version": "0.23.7",
+  "version": "0.23.8",
   "repository": {
     "type": "git",
     "url": "https://github.com/emiliaprotocol/emilia-protocol.git",
@@ -523,6 +523,7 @@
     "deploy/terraform/README.md",
     "deploy/terraform/service",
     "deploy/sql/001-runtime.sql",
+    "deploy/sql/capability-action-fence-preflight.sql",
     "reports/auditor-workpaper.js",
     "reports/reperform.js",
     "reports/external-verification.js"
@@ -533,7 +534,7 @@
     "pretest": "npm run build",
     "test": "node --test --test-concurrency=1 && npm run test:qualification",
     "check:allowance-security-test-coverage": "node check-allowance-security-test-coverage.mjs",
-    "test:qualification": "npm run check:allowance-security-test-coverage && tsx --test --test-concurrency=1 allowance.test.ts capability-receipt.test.ts adapters/stripe.test.ts adapters/github.test.ts adapters/supabase.test.ts admission-store.test.ts admission-store-postgres.test.ts gate-qualification-v2.test.ts bounded-execution-program.test.ts bounded-execution-report.test.ts execution-program-admission-store.test.ts execution-program-admission-store-postgres.test.ts execution-program-runtime-trace-replay.test.ts",
+    "test:qualification": "npm run check:allowance-security-test-coverage && tsx --test --test-concurrency=1 allowance.test.ts capability-receipt.test.ts action-fence-runtime-regression.test.ts adapters/stripe.test.ts adapters/github.test.ts adapters/supabase.test.ts admission-store.test.ts admission-store-postgres.test.ts gate-qualification-v2.test.ts bounded-execution-program.test.ts bounded-execution-report.test.ts execution-program-admission-store.test.ts execution-program-admission-store-postgres.test.ts execution-program-runtime-trace-replay.test.ts",
     "demo": "node demo.mjs",
     "eg1": "node eg1.mjs",
     "cf1": "node cf1.mjs"

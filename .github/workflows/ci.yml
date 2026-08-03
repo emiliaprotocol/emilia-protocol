@@ -1241,6 +1241,7 @@ jobs:
           tests/consequence-actuator-provider-record-postgres.test.ts
           tests/rollout-attempt-role-graph-postgres.test.ts
           tests/history-reconciliation-forward-postgres.test.ts
+          tests/capability-action-fence-migration-chain-postgres.test.ts
         env:
           INTEGRATION_POSTGRES: '1'
           PGHOST: localhost
@@ -1250,5 +1251,9 @@ jobs:
           PGDATABASE: ep_test
       - name: Run Gate AdmissionStore PostgreSQL contract
         run: node --test --import tsx packages/gate/admission-store-postgres.test.ts
+        env:
+          ADMISSION_STORE_POSTGRES_TEST_URL: postgresql://ep_test:ci-${{ github.run_id }}-${{ github.run_attempt }}@localhost:5433/ep_test
+      - name: Run Gate capability PostgreSQL contract
+        run: node --test --import tsx packages/gate/capability-receipt.test.ts
         env:
           ADMISSION_STORE_POSTGRES_TEST_URL: postgresql://ep_test:ci-${{ github.run_id }}-${{ github.run_attempt }}@localhost:5433/ep_test

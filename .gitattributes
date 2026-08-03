@@ -423,6 +423,7 @@ packages/gate/action-escrow-postgres.test.js linguist-generated=true
 packages/gate/action-escrow-state.test.js linguist-generated=true
 packages/gate/action-escrow-verifiers.test.js linguist-generated=true
 packages/gate/action-escrow.test.js linguist-generated=true
+packages/gate/action-fence-runtime-regression.test.js linguist-generated=true
 packages/gate/action-refusal-postgres.test.js linguist-generated=true
 packages/gate/action-refusal-statement.test.js linguist-generated=true
 packages/gate/adapters/aws.test.js linguist-generated=true

@@ -4,9 +4,11 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { generateKeyPairSync, sign } from 'node:crypto';
+import { createRequire } from 'node:module';
 import { canonicalize } from './execution-binding.js';
-import { executeWithCapability, executeWithThreshold, reconcileCapabilityOperation, delegateCapabilityReceipt, createMemoryCapabilityStore, createPostgresCapabilityStore, isSecureCapabilityStore, CAPABILITY_STATE_DDL, CAPABILITY_SQL, mintCapabilityReceipt, reconstructCapabilitySecret, splitCapabilitySecret, verifyCapabilityReceipt, CAPABILITY_RECEIPT_VERSION, CAPABILITY_SCOPE_PROFILE, CAPABILITY_CAID_SCOPE_PROFILE, CAPABILITY_ALLOWANCE_SCOPE_PROFILE, capabilityActionDigest, capabilityBaseReceiptDigest, } from './capability-receipt.js';
+import { executeWithCapability, executeWithThreshold, reconcileCapabilityOperation, delegateCapabilityReceipt, createMemoryCapabilityStore, createPostgresCapabilityStore, isSecureCapabilityStore, CAPABILITY_STATE_DDL, CAPABILITY_SQL, mintCapabilityReceipt, reconstructCapabilitySecret, splitCapabilitySecret, verifyCapabilityReceipt, verifyCapabilityScope, CAPABILITY_RECEIPT_VERSION, CAPABILITY_SCOPE_PROFILE, CAPABILITY_CAID_SCOPE_PROFILE, CAPABILITY_ALLOWANCE_SCOPE_PROFILE, capabilityActionDigest, capabilityBaseReceiptDigest, } from './capability-receipt.js';
 const NOW = Date.parse('2026-07-18T22:00:00.000Z');
+const require = createRequire(import.meta.url);
 function baseReceipt({ privateKey, publicKey, receiptId = 'base_1' } = {}) {
     const payload = {
         receipt_id: receiptId,
@@ -102,7 +104,11 @@ test('memory capability operations isolate identical operation ids by capability
     const secondReservation = await reserve(second, 'shared-operation');
     assert.equal(firstReservation.ok, true);
     assert.equal(secondReservation.ok, true);
-    assert.equal((await reserve(first, 'shared-operation')).reason, 'operation_in_flight');
+    const repeated = await reserve(first, 'shared-operation');
+    assert.equal(repeated.reason, 'operation_in_flight');
+    assert.equal(repeated.action_digest, capabilityActionDigest(scopedAction('shared-operation')));
+    assert.equal(repeated.action_fence_digest, repeated.action_digest);
+    assert.equal(repeated.holding_operation_id, 'shared-operation');
     assert.equal((await store.beginProviderEntry({
         capabilityId: first.capabilityReceipt.capability.id,
         operationId: 'shared-operation',
@@ -192,6 +198,23 @@ test('postgres capability operations use a composite namespace and operation key
     assert.match(CAPABILITY_SQL.readOperation, /operation_namespace = \$1 AND operation_id = \$2/);
     assert.match(CAPABILITY_STATE_DDL, /CREATE TABLE IF NOT EXISTS ep_gate_allowance_status/);
     assert.match(CAPABILITY_SQL.readAllowanceStatus, /FOR UPDATE/);
+    // The action fence: scoped to the namespace, restricted to statuses that still
+    // hold the action, and row-locked so two concurrent reservations for one action
+    // serialize rather than both passing the read.
+    assert.match(CAPABILITY_STATE_DDL, /action_fence_digest TEXT NOT NULL/);
+    assert.match(CAPABILITY_SQL.readActionHolder, /operation_namespace = \$1 AND action_fence_digest = \$2/);
+    assert.match(CAPABILITY_SQL.readActionHolder, /'reserved', 'provider_entered', 'committed'/);
+    assert.doesNotMatch(CAPABILITY_SQL.readActionHolder, /'released'/);
+    assert.match(CAPABILITY_SQL.readActionHolder, /FOR UPDATE/);
+    assert.match(CAPABILITY_STATE_DDL, /CREATE UNIQUE INDEX IF NOT EXISTS ep_capability_operations_live_action_uniq\s+ON ep_capability_operations\(operation_namespace, action_fence_digest\)\s+WHERE status IN \('reserved', 'provider_entered', 'committed'\)/);
+    assert.match(CAPABILITY_STATE_DDL, /duplicate live capability actions require operator reconciliation/);
+    assert.match(CAPABILITY_STATE_DDL, /FROM pg_index AS i/);
+    assert.match(CAPABILITY_STATE_DDL, /i\.indisunique/);
+    assert.match(CAPABILITY_STATE_DDL, /i\.indisvalid/);
+    assert.match(CAPABILITY_STATE_DDL, /i\.indisready/);
+    assert.match(CAPABILITY_STATE_DDL, /i\.indnatts/);
+    assert.match(CAPABILITY_STATE_DDL, /ARRAY\['operation_namespace', 'action_fence_digest'\]::TEXT\[\]/);
+    assert.match(CAPABILITY_STATE_DDL, /capability action-fence index does not match its required contract/);
     const keys = issuer();
     const first = mintCapabilityReceipt(keys.receipt, options({
         issuerPrivateKey: keys.privateKey,
@@ -215,6 +238,7 @@ test('postgres capability operations use a composite namespace and operation key
                     consumed_amount: '0',
                     reserved_amount: '0',
                     expires_at: params[3],
+                    semantic_fence_ready: true,
                 });
             }
             return { rowCount: 1, rows: [] };
@@ -228,18 +252,27 @@ test('postgres capability operations use a composite namespace and operation key
             const row = operations.get(operationKey(params[0], params[1]));
             return { rowCount: row ? 1 : 0, rows: row ? [row] : [] };
         }
+        if (sql === CAPABILITY_SQL.readActionHolder) {
+            assert.equal(params.length, 2);
+            const [operationNamespace, actionFenceDigest] = params;
+            const row = [...operations.values()].find((entry) => entry.operation_namespace === operationNamespace
+                && entry.action_fence_digest === actionFenceDigest
+                && ['reserved', 'provider_entered', 'committed'].includes(entry.status));
+            return { rowCount: row ? 1 : 0, rows: row ? [row] : [] };
+        }
         if (sql === CAPABILITY_SQL.reserveState) {
             const row = states.get(params[0]);
             row.reserved_amount = String(Number(row.reserved_amount) + Number(params[1]));
             return { rowCount: 1, rows: [] };
         }
         if (sql === CAPABILITY_SQL.insertOperation) {
-            const [operationNamespace, capabilityId, operationId, actionDigest, amount, currency, reservationToken, reservedAt, entryDeadlineAt] = params;
+            const [operationNamespace, capabilityId, operationId, actionDigest, actionFenceDigest, amount, currency, reservationToken, reservedAt, entryDeadlineAt] = params;
             operations.set(operationKey(operationNamespace, operationId), {
                 operation_namespace: operationNamespace,
                 capability_id: capabilityId,
                 operation_id: operationId,
                 action_digest: actionDigest,
+                action_fence_digest: actionFenceDigest,
                 amount: String(amount),
                 currency,
                 reservation_token: reservationToken,
@@ -393,6 +426,7 @@ test('postgres reservation refuses a stale allowance head under the status row l
         expires_at: new Date(NOW + 60_000).toISOString(),
         allowance_profile_id: profileId,
         allowance_digest: allowanceDigest,
+        semantic_fence_ready: true,
     };
     let status = null;
     const transaction = async (callback) => callback(async (sql, params) => {
@@ -738,6 +772,137 @@ test('CAID scope requires a pinned resolver and matches only an allowed CAID', a
     assert.equal(result.ok, true);
     assert.equal(result.caid, caid);
     assert.equal(result.result, caid);
+});
+test('CAID-equivalent wrappers keep exact digests but share one runtime fence', async () => {
+    const keys = issuer();
+    const caid = `caid:1:payment.release.1:jcs-sha256:${'A'.repeat(43)}`;
+    const firstAction = scopedAction('wrapper-a', {
+        amount: 5,
+        action_type: 'payment.release',
+        destination: 'acct_material',
+    });
+    const secondAction = { ...firstAction, operation_id: 'wrapper-b' };
+    const minted = mintCapabilityReceipt(keys.receipt, options({
+        issuerPrivateKey: keys.privateKey,
+        capabilityId: 'caid_action_fence',
+        scope: {
+            profile: CAPABILITY_CAID_SCOPE_PROFILE,
+            operation_id_field: 'operation_id',
+            caids: [caid],
+        },
+    }));
+    const firstScope = verifyCapabilityScope(minted.capabilityReceipt.capability, firstAction, firstAction.operation_id, { resolveCaid: () => caid });
+    const secondScope = verifyCapabilityScope(minted.capabilityReceipt.capability, secondAction, secondAction.operation_id, { resolveCaid: () => caid });
+    assert.equal(firstScope.ok, true);
+    assert.equal(secondScope.ok, true);
+    assert.notEqual(firstScope.action_digest, secondScope.action_digest);
+    assert.equal(firstScope.action_digest, capabilityActionDigest(firstAction));
+    assert.equal(secondScope.action_digest, capabilityActionDigest(secondAction));
+    assert.equal(firstScope.action_fence_digest, secondScope.action_fence_digest);
+    assert.notEqual(firstScope.action_fence_digest, firstScope.action_digest);
+    const store = createMemoryCapabilityStore();
+    assert.equal(store.registerCapability(minted.capabilityReceipt), true);
+    const executions = [];
+    const execute = (action) => executeWithCapability({
+        capabilityReceipt: minted.capabilityReceipt,
+        secret: minted.secret,
+        action,
+        operationId: action.operation_id,
+        store,
+        trustedIssuerKeys: [keys.receipt.public_key],
+        resolveCaid: () => caid,
+        verifyBaseReceipt: () => true,
+        executeAction: async (_verifiedAction, context) => {
+            executions.push(action.operation_id);
+            return context.action_fence_digest;
+        },
+        now: NOW,
+    });
+    const first = await execute(firstAction);
+    const duplicate = await execute(secondAction);
+    assert.equal(first.ok, true);
+    assert.equal(first.action_digest, capabilityActionDigest(firstAction));
+    assert.equal(first.action_fence_digest, firstScope.action_fence_digest);
+    assert.equal(duplicate.ok, false);
+    assert.equal(duplicate.reason, 'action_already_committed');
+    assert.equal(duplicate.action_digest, capabilityActionDigest(secondAction));
+    assert.equal(duplicate.action_fence_digest, firstScope.action_fence_digest);
+    assert.equal(duplicate.holding_operation_id, firstAction.operation_id);
+    assert.deepEqual(executions, [firstAction.operation_id]);
+    assert.equal(store.getOperation(firstAction.operation_id).action_digest, capabilityActionDigest(firstAction));
+    assert.equal(store.getOperation(firstAction.operation_id).action_fence_digest, firstScope.action_fence_digest);
+});
+test('materially different CAIDs derive distinct runtime fences', async () => {
+    const keys = issuer();
+    const caidA = `caid:1:payment.release.1:jcs-sha256:${'B'.repeat(43)}`;
+    const caidB = `caid:1:payment.release.1:jcs-sha256:${'C'.repeat(43)}`;
+    const actions = [
+        scopedAction('material-a', { amount: 5, destination: 'acct_a' }),
+        scopedAction('material-b', { amount: 5, destination: 'acct_b' }),
+    ];
+    const resolveCaid = (action) => action.destination === 'acct_a' ? caidA : caidB;
+    const minted = mintCapabilityReceipt(keys.receipt, options({
+        issuerPrivateKey: keys.privateKey,
+        capabilityId: 'caid_distinct_fences',
+        scope: {
+            profile: CAPABILITY_CAID_SCOPE_PROFILE,
+            operation_id_field: 'operation_id',
+            caids: [caidA, caidB],
+        },
+    }));
+    const scopes = actions.map((action) => verifyCapabilityScope(minted.capabilityReceipt.capability, action, action.operation_id, { resolveCaid }));
+    assert.equal(scopes.every((scope) => scope.ok), true);
+    assert.notEqual(scopes[0].action_fence_digest, scopes[1].action_fence_digest);
+    const store = createMemoryCapabilityStore();
+    assert.equal(store.registerCapability(minted.capabilityReceipt), true);
+    const results = [];
+    for (const action of actions) {
+        results.push(await executeWithCapability({
+            capabilityReceipt: minted.capabilityReceipt,
+            secret: minted.secret,
+            action,
+            operationId: action.operation_id,
+            store,
+            trustedIssuerKeys: [keys.receipt.public_key],
+            resolveCaid,
+            verifyBaseReceipt: () => true,
+            executeAction: async () => action.destination,
+            now: NOW,
+        }));
+    }
+    assert.equal(results.every((result) => result.ok), true);
+    assert.notEqual(results[0].action_fence_digest, results[1].action_fence_digest);
+});
+test('allowance profile fences use a validated verifier digest or the exact safe default', () => {
+    const action = scopedAction('allowance-fence', { destination: 'acct_allowed' });
+    const capability = {
+        scope: {
+            profile: CAPABILITY_ALLOWANCE_SCOPE_PROFILE,
+            profile_id: 'allowance:profile-fence:01',
+            profile_digest: `sha256:${'d'.repeat(64)}`,
+            operation_id_field: 'operation_id',
+        },
+    };
+    const exactDigest = capabilityActionDigest(action);
+    const verifierFenceDigest = `sha256:${'e'.repeat(64)}`;
+    const defaulted = verifyCapabilityScope(capability, action, action.operation_id, {
+        verifyActionProfile: () => true,
+    });
+    assert.equal(defaulted.ok, true);
+    assert.equal(defaulted.action_digest, exactDigest);
+    assert.equal(defaulted.action_fence_digest, exactDigest);
+    const supplied = verifyCapabilityScope(capability, action, action.operation_id, {
+        verifyActionProfile: () => ({ ok: true, action_fence_digest: verifierFenceDigest }),
+    });
+    assert.equal(supplied.ok, true);
+    assert.equal(supplied.action_digest, exactDigest);
+    assert.equal(supplied.action_fence_digest, verifierFenceDigest);
+    const malformed = verifyCapabilityScope(capability, action, action.operation_id, {
+        verifyActionProfile: () => ({ ok: true, action_fence_digest: 'not-a-digest' }),
+    });
+    assert.equal(malformed.ok, false);
+    assert.equal(malformed.reason, 'capability_action_fence_digest_invalid');
+    assert.equal(malformed.action_digest, exactDigest);
 });
 test('atomic capability spending enforces the budget and consumes indeterminate effects', async () => {
     const keys = issuer();
@@ -1287,6 +1452,7 @@ test('postgres capability state also rejects a conflicting envelope', async () =
                     consumed_amount: '0',
                     reserved_amount: '0',
                     expires_at: params[3],
+                    semantic_fence_ready: true,
                 };
             }
             return { rowCount: row.capability_fingerprint === params[4] ? 1 : 0 };
@@ -1424,4 +1590,620 @@ test('a delegation chain naming the leaf capability as a parent is rejected as a
             chainEntry({ delegation_id: 'd1', parent: 'broken_leaf', amount: 10 }), // parent == leaf id
         ],
     })), /references the leaf capability as a parent/);
+});
+test('the durable store fences on the separate action fence too, not only the memory store', async () => {
+    // The memory fence had a behavioural test and the durable one did not: removing
+    // the postgres call site left every test green because the only assertions on it
+    // were about the SHAPE of the SQL string. A guard nothing exercises is a guard
+    // nobody will notice losing.
+    const keys = issuer();
+    const minted = mintCapabilityReceipt(keys.receipt, options({
+        issuerPrivateKey: keys.privateKey,
+        capabilityId: 'postgres_action_fence',
+    }));
+    const states = new Map();
+    const operations = new Map();
+    const key = (ns, id) => `${ns}\u0000${id}`;
+    const transaction = async (callback) => callback(async (sql, params) => {
+        if (sql === CAPABILITY_SQL.register) {
+            states.set(params[0], {
+                capability_id: params[0], capability_fingerprint: params[4],
+                budget_amount: String(params[1]), currency: params[2],
+                consumed_amount: '0', reserved_amount: '0', expires_at: params[3],
+                semantic_fence_ready: true,
+            });
+            return { rowCount: 1, rows: [] };
+        }
+        if (sql === CAPABILITY_SQL.readState) {
+            const row = states.get(params[0]);
+            return { rowCount: row ? 1 : 0, rows: row ? [row] : [] };
+        }
+        if (sql === CAPABILITY_SQL.readOperation) {
+            const row = operations.get(key(params[0], params[1]));
+            return { rowCount: row ? 1 : 0, rows: row ? [row] : [] };
+        }
+        if (sql === CAPABILITY_SQL.readActionHolder) {
+            // Mirrors the partial unique index predicate in migration 20260803010000.
+            const row = [...operations.values()].find((entry) => entry.operation_namespace === params[0]
+                && entry.action_fence_digest === params[1]
+                && ['reserved', 'provider_entered', 'committed'].includes(entry.status));
+            return { rowCount: row ? 1 : 0, rows: row ? [row] : [] };
+        }
+        if (sql === CAPABILITY_SQL.reserveState) {
+            const row = states.get(params[0]);
+            row.reserved_amount = String(Number(row.reserved_amount) + Number(params[1]));
+            return { rowCount: 1, rows: [] };
+        }
+        if (sql === CAPABILITY_SQL.insertOperation) {
+            const [ns, capabilityId, operationId, actionDigest, actionFenceDigest, amount, currency, token, reservedAt, deadline] = params;
+            operations.set(key(ns, operationId), {
+                operation_namespace: ns, capability_id: capabilityId, operation_id: operationId,
+                action_digest: actionDigest, action_fence_digest: actionFenceDigest,
+                amount: String(amount), currency,
+                reservation_token: token, status: 'reserved', outcome: null,
+                reserved_at: reservedAt, entry_deadline_at: deadline, provider_entry_at: null,
+            });
+            return { rowCount: 1, rows: [] };
+        }
+        throw new Error(`unexpected SQL in postgres action fence test: ${sql}`);
+    });
+    const store = createPostgresCapabilityStore({ transaction, providerEntryTimeoutMs: 1_000 });
+    assert.equal(await store.registerCapability(minted.capabilityReceipt), true);
+    const capabilityId = minted.capabilityReceipt.capability.id;
+    const firstAction = capabilityActionDigest(scopedAction('evt_1', { target: 'merge-pr-99' }));
+    const secondAction = capabilityActionDigest(scopedAction('evt_2', { target: 'merge-pr-99' }));
+    const oneFence = capabilityActionDigest({ target: 'merge-pr-99' });
+    const reserve = (operationId, actionDigest, actionFenceDigest) => store.reserveSpend({
+        capabilityId,
+        capabilityFingerprint: states.get(capabilityId).capability_fingerprint,
+        operationId,
+        actionDigest,
+        actionFenceDigest,
+        amount: 1,
+        currency: 'USD',
+        now: NOW,
+    });
+    assert.equal((await reserve('evt_1', firstAction, oneFence)).ok, true);
+    const duplicate = await reserve('evt_2', secondAction, oneFence);
+    assert.equal(duplicate.ok, false);
+    assert.equal(duplicate.reason, 'action_in_flight');
+    assert.equal(duplicate.holding_operation_id, 'evt_1');
+    assert.equal(duplicate.action_digest, secondAction);
+    assert.equal(duplicate.action_fence_digest, oneFence);
+    assert.equal(operations.get(key(capabilityId, 'evt_1')).action_digest, firstAction);
+    assert.equal(operations.get(key(capabilityId, 'evt_1')).action_fence_digest, oneFence);
+    // A different action is unaffected.
+    const distinctAction = capabilityActionDigest(scopedAction('evt_3', { target: 'merge-pr-100' }));
+    const distinctFence = capabilityActionDigest({ target: 'merge-pr-100' });
+    assert.equal((await reserve('evt_3', distinctAction, distinctFence)).ok, true);
+});
+test('a concurrent postgres action-fence collision returns a closed refusal instead of escaping', async () => {
+    const keys = issuer();
+    const minted = mintCapabilityReceipt(keys.receipt, options({
+        issuerPrivateKey: keys.privateKey,
+        capabilityId: 'postgres_action_fence_race',
+    }));
+    const reference = createMemoryCapabilityStore();
+    assert.equal(reference.registerCapability(minted.capabilityReceipt), true);
+    const state = reference.getState(minted.capabilityReceipt.capability.id);
+    let actionHolderReads = 0;
+    const transaction = async (callback) => callback(async (sql) => {
+        if (sql === CAPABILITY_SQL.register)
+            return { rowCount: 1, rows: [] };
+        if (sql === CAPABILITY_SQL.readState) {
+            return {
+                rowCount: 1,
+                rows: [{
+                        capability_id: state.capability_id,
+                        capability_fingerprint: state.capability_fingerprint,
+                        budget_amount: String(state.budget_amount),
+                        currency: state.currency,
+                        consumed_amount: '0',
+                        reserved_amount: '0',
+                        expires_at: new Date(state.expires_at).toISOString(),
+                        semantic_fence_ready: true,
+                    }],
+            };
+        }
+        if (sql === CAPABILITY_SQL.readOperation) {
+            return { rowCount: 0, rows: [] };
+        }
+        if (sql === CAPABILITY_SQL.readActionHolder) {
+            actionHolderReads += 1;
+            return actionHolderReads === 1
+                ? { rowCount: 0, rows: [] }
+                : { rowCount: 1, rows: [{ operation_id: 'evt_racing_winner', status: 'reserved' }] };
+        }
+        if (sql === CAPABILITY_SQL.reserveState)
+            return { rowCount: 1, rows: [] };
+        if (sql === CAPABILITY_SQL.insertOperation) {
+            const error = new Error('duplicate action holder');
+            error.code = '23505';
+            error.constraint = 'ep_capability_operations_live_action_uniq';
+            throw error;
+        }
+        throw new Error(`unexpected SQL in postgres action-fence race test: ${sql}`);
+    });
+    const store = createPostgresCapabilityStore({ transaction });
+    assert.equal(await store.registerCapability(minted.capabilityReceipt), true);
+    const result = await store.reserveSpend({
+        capabilityId: state.capability_id,
+        capabilityFingerprint: state.capability_fingerprint,
+        operationId: 'evt_racing_loser',
+        actionDigest: capabilityActionDigest(scopedAction('merge-pr-race')),
+        amount: 1,
+        currency: 'USD',
+        now: NOW,
+    });
+    assert.deepEqual(result, {
+        ok: false,
+        reason: 'action_in_flight',
+        action_digest: capabilityActionDigest(scopedAction('merge-pr-race')),
+        action_fence_digest: capabilityActionDigest(scopedAction('merge-pr-race')),
+        holding_operation_id: 'evt_racing_winner',
+    });
+});
+test('an unrelated postgres unique violation is not laundered into action_in_flight', async () => {
+    const keys = issuer();
+    const minted = mintCapabilityReceipt(keys.receipt, options({
+        issuerPrivateKey: keys.privateKey,
+        capabilityId: 'postgres_unrelated_unique_violation',
+    }));
+    const reference = createMemoryCapabilityStore();
+    assert.equal(reference.registerCapability(minted.capabilityReceipt), true);
+    const state = reference.getState(minted.capabilityReceipt.capability.id);
+    const transaction = async (callback) => callback(async (sql) => {
+        if (sql === CAPABILITY_SQL.register)
+            return { rowCount: 1, rows: [] };
+        if (sql === CAPABILITY_SQL.readState) {
+            return {
+                rowCount: 1,
+                rows: [{
+                        capability_id: state.capability_id,
+                        capability_fingerprint: state.capability_fingerprint,
+                        budget_amount: String(state.budget_amount),
+                        currency: state.currency,
+                        consumed_amount: '0',
+                        reserved_amount: '0',
+                        expires_at: new Date(state.expires_at).toISOString(),
+                        semantic_fence_ready: true,
+                    }],
+            };
+        }
+        if (sql === CAPABILITY_SQL.readOperation || sql === CAPABILITY_SQL.readActionHolder) {
+            return { rowCount: 0, rows: [] };
+        }
+        if (sql === CAPABILITY_SQL.reserveState)
+            return { rowCount: 1, rows: [] };
+        if (sql === CAPABILITY_SQL.insertOperation) {
+            const error = new Error('unrelated duplicate');
+            error.code = '23505';
+            error.constraint = 'some_other_unique_constraint';
+            throw error;
+        }
+        throw new Error(`unexpected SQL in unrelated unique-violation test: ${sql}`);
+    });
+    const store = createPostgresCapabilityStore({ transaction });
+    assert.equal(await store.registerCapability(minted.capabilityReceipt), true);
+    await assert.rejects(store.reserveSpend({
+        capabilityId: state.capability_id,
+        capabilityFingerprint: state.capability_fingerprint,
+        operationId: 'evt_unrelated_unique',
+        actionDigest: capabilityActionDigest(scopedAction('unrelated-unique')),
+        amount: 1,
+        currency: 'USD',
+        now: NOW,
+    }), (error) => (error.code === '23505' && error.constraint === 'some_other_unique_constraint'));
+});
+const capabilityPostgresUrl = process.env.ADMISSION_STORE_POSTGRES_TEST_URL;
+test('real PostgreSQL action fence is load-bearing across capability rows', {
+    skip: capabilityPostgresUrl ? false : 'ADMISSION_STORE_POSTGRES_TEST_URL is not configured',
+}, async () => {
+    const { Pool } = require('pg');
+    const pool = new Pool({ connectionString: capabilityPostgresUrl, max: 8 });
+    const schemaPrefix = `ep_action_fence_${process.pid}_${Date.now()}`;
+    async function runRace(schema, ddl) {
+        await pool.query(`CREATE SCHEMA ${schema}`);
+        const setup = await pool.connect();
+        try {
+            await setup.query(`SET search_path TO ${schema}, public`);
+            await setup.query(ddl);
+        }
+        finally {
+            setup.release();
+        }
+        let arrived = 0;
+        let releaseBarrier;
+        const barrier = new Promise((resolve) => { releaseBarrier = resolve; });
+        const transaction = async (callback) => {
+            const client = await pool.connect();
+            try {
+                await client.query('BEGIN');
+                await client.query(`SET LOCAL search_path TO ${schema}, public`);
+                const result = await callback(async (sql, params = []) => {
+                    const queried = await client.query(sql, [...params]);
+                    if (sql === CAPABILITY_SQL.readActionHolder && queried.rows.length === 0) {
+                        arrived += 1;
+                        if (arrived === 2)
+                            releaseBarrier();
+                        await barrier;
+                    }
+                    return { rowCount: queried.rowCount ?? 0, rows: queried.rows };
+                });
+                await client.query('COMMIT');
+                return result;
+            }
+            catch (error) {
+                await client.query('ROLLBACK');
+                throw error;
+            }
+            finally {
+                client.release();
+            }
+        };
+        const keys = issuer();
+        const first = mintCapabilityReceipt(keys.receipt, options({
+            issuerPrivateKey: keys.privateKey,
+            capabilityId: `${schema}_a`,
+        }));
+        const second = mintCapabilityReceipt(keys.receipt, options({
+            issuerPrivateKey: keys.privateKey,
+            capabilityId: `${schema}_b`,
+        }));
+        const reference = createMemoryCapabilityStore();
+        assert.equal(reference.registerCapability(first.capabilityReceipt), true);
+        assert.equal(reference.registerCapability(second.capabilityReceipt), true);
+        const firstState = reference.getState(first.capabilityReceipt.capability.id);
+        const secondState = reference.getState(second.capabilityReceipt.capability.id);
+        const store = createPostgresCapabilityStore({ transaction });
+        assert.equal(await store.registerCapability(first.capabilityReceipt), true);
+        assert.equal(await store.registerCapability(second.capabilityReceipt), true);
+        const actionDigest = capabilityActionDigest(scopedAction('stable-semantic-action'));
+        const operationNamespace = 'tenant:shared-action-fence';
+        const results = await Promise.all([
+            store.reserveSpend({
+                capabilityId: firstState.capability_id,
+                capabilityFingerprint: firstState.capability_fingerprint,
+                operationNamespace,
+                operationId: 'request-wrapper-a',
+                actionDigest,
+                amount: 1,
+                currency: 'USD',
+                now: NOW,
+            }),
+            store.reserveSpend({
+                capabilityId: secondState.capability_id,
+                capabilityFingerprint: secondState.capability_fingerprint,
+                operationNamespace,
+                operationId: 'request-wrapper-b',
+                actionDigest,
+                amount: 1,
+                currency: 'USD',
+                now: NOW,
+            }),
+        ]);
+        return results.filter((result) => result.ok).length;
+    }
+    try {
+        assert.equal(await runRace(`${schemaPrefix}_shipped`, CAPABILITY_STATE_DDL), 1);
+        const vulnerableDdl = CAPABILITY_STATE_DDL
+            .replace('CREATE UNIQUE INDEX IF NOT EXISTS ep_capability_operations_live_action_uniq', 'CREATE INDEX IF NOT EXISTS ep_capability_operations_live_action_uniq')
+            .replace(/DO \$capability_action_fence_index_contract\$[\s\S]*?\$capability_action_fence_index_contract\$;/, '');
+        assert.notEqual(vulnerableDdl, CAPABILITY_STATE_DDL, 'mutation must remove uniqueness');
+        assert.doesNotMatch(vulnerableDdl, /capability action-fence index does not match its required contract/);
+        assert.equal(await runRace(`${schemaPrefix}_mutated`, vulnerableDdl), 2, 'the negative control must admit both reservations when uniqueness is removed');
+    }
+    finally {
+        await pool.query(`DROP SCHEMA IF EXISTS ${schemaPrefix}_shipped CASCADE`);
+        await pool.query(`DROP SCHEMA IF EXISTS ${schemaPrefix}_mutated CASCADE`);
+        await pool.end();
+    }
+});
+test('package DDL rejects a same-name index with a non-unique or wrong contract', {
+    skip: capabilityPostgresUrl ? false : 'ADMISSION_STORE_POSTGRES_TEST_URL is not configured',
+}, async () => {
+    const { Pool } = require('pg');
+    const pool = new Pool({ connectionString: capabilityPostgresUrl, max: 1 });
+    const schemaPrefix = `ep_action_fence_contract_${process.pid}_${Date.now()}`;
+    const conflictingIndexes = [
+        `CREATE INDEX ep_capability_operations_live_action_uniq
+       ON ep_capability_operations (operation_namespace, action_fence_digest)
+       WHERE status IN ('reserved', 'provider_entered', 'committed')`,
+        `CREATE UNIQUE INDEX ep_capability_operations_live_action_uniq
+       ON ep_capability_operations (operation_namespace, action_digest)
+       WHERE status IN ('reserved', 'provider_entered', 'committed')`,
+        `CREATE UNIQUE INDEX ep_capability_operations_live_action_uniq
+       ON ep_capability_operations (operation_namespace, action_fence_digest)
+       INCLUDE (action_digest)
+       WHERE status IN ('reserved', 'provider_entered', 'committed')`,
+        `CREATE UNIQUE INDEX ep_capability_operations_live_action_uniq
+       ON ep_capability_operations (operation_namespace text_pattern_ops, action_fence_digest)
+       WHERE status IN ('reserved', 'provider_entered', 'committed')`,
+        `CREATE UNIQUE INDEX ep_capability_operations_live_action_uniq
+       ON ep_capability_operations (operation_namespace COLLATE "C", action_fence_digest COLLATE "C")
+       WHERE status IN ('reserved', 'provider_entered', 'committed')`,
+    ];
+    try {
+        for (const [index, conflictingIndex] of conflictingIndexes.entries()) {
+            const schema = `${schemaPrefix}_${index}`;
+            await pool.query(`CREATE SCHEMA ${schema}`);
+            const client = await pool.connect();
+            try {
+                await client.query(`SET search_path TO ${schema}, public`);
+                await client.query(CAPABILITY_STATE_DDL);
+                await client.query('DROP INDEX ep_capability_operations_live_action_uniq');
+                await client.query(conflictingIndex);
+                await assert.rejects(client.query(CAPABILITY_STATE_DDL), (error) => error.code === '55000', `conflicting index ${index} must be rejected`);
+            }
+            finally {
+                client.release();
+            }
+        }
+    }
+    finally {
+        for (const index of conflictingIndexes.keys()) {
+            await pool.query(`DROP SCHEMA IF EXISTS ${schemaPrefix}_${index} CASCADE`);
+        }
+        await pool.end();
+    }
+});
+test('package DDL quarantines legacy capability ids at the database boundary', {
+    skip: capabilityPostgresUrl ? false : 'ADMISSION_STORE_POSTGRES_TEST_URL is not configured',
+}, async () => {
+    const { Pool } = require('pg');
+    const pool = new Pool({ connectionString: capabilityPostgresUrl, max: 1 });
+    const schemaPrefix = `ep_semantic_fence_contract_${process.pid}_${Date.now()}`;
+    async function directInsertOutcome(schema, ddl) {
+        await pool.query(`CREATE SCHEMA ${schema}`);
+        const client = await pool.connect();
+        try {
+            await client.query(`SET search_path TO ${schema}, public`);
+            await client.query(ddl);
+            await client.query(`
+        INSERT INTO ep_capability_state (
+          capability_id, capability_fingerprint, budget_amount, currency,
+          consumed_amount, reserved_amount, expires_at, semantic_fence_ready
+        ) VALUES ($1, $2, 10, 'USD', 0, 0, now() + interval '1 hour', FALSE)
+      `, ['legacy:quarantined', `sha256:${'a'.repeat(64)}`]);
+            try {
+                await client.query(`
+          INSERT INTO ep_capability_operations (
+            operation_namespace, operation_id, capability_id, action_digest,
+            action_fence_digest, amount, currency, status, reservation_token,
+            reserved_at, entry_deadline_at
+          ) VALUES ($1, $2, $3, $4, $5, 1, 'USD', 'reserved', $6, now(), now() + interval '1 minute')
+        `, [
+                    'legacy:quarantined',
+                    'operation:must-not-enter',
+                    'legacy:quarantined',
+                    `sha256:${'b'.repeat(64)}`,
+                    `sha256:${'c'.repeat(64)}`,
+                    'reservation:must-not-enter',
+                ]);
+                return 'admitted';
+            }
+            catch (error) {
+                return error.code ?? 'unknown_error';
+            }
+        }
+        finally {
+            client.release();
+        }
+    }
+    try {
+        assert.equal(await directInsertOutcome(`${schemaPrefix}_shipped`, CAPABILITY_STATE_DDL), '55000');
+        const vulnerableDdl = CAPABILITY_STATE_DDL.replace(/CREATE OR REPLACE FUNCTION ep_require_semantic_capability_fence\(\)[\s\S]*?EXECUTE FUNCTION ep_require_semantic_capability_fence\(\);/, '');
+        assert.notEqual(vulnerableDdl, CAPABILITY_STATE_DDL, 'mutation must remove the database guard');
+        assert.equal(await directInsertOutcome(`${schemaPrefix}_mutated`, vulnerableDdl), 'admitted', 'the negative control must show that the trigger is load-bearing');
+    }
+    finally {
+        await pool.query(`DROP SCHEMA IF EXISTS ${schemaPrefix}_shipped CASCADE`);
+        await pool.query(`DROP SCHEMA IF EXISTS ${schemaPrefix}_mutated CASCADE`);
+        await pool.end();
+    }
+});
+test('package DDL quarantines an incomplete bootstrap that already defaulted the state flag to true', {
+    skip: capabilityPostgresUrl ? false : 'ADMISSION_STORE_POSTGRES_TEST_URL is not configured',
+}, async () => {
+    const { Pool } = require('pg');
+    const pool = new Pool({ connectionString: capabilityPostgresUrl, max: 1 });
+    const schemaPrefix = `ep_semantic_fence_upgrade_${process.pid}_${Date.now()}`;
+    async function upgradeOutcome(schema, ddl) {
+        await pool.query(`CREATE SCHEMA ${schema}`);
+        const client = await pool.connect();
+        try {
+            await client.query(`SET search_path TO ${schema}, public`);
+            await client.query(CAPABILITY_STATE_DDL);
+            await client.query(`
+        DROP TRIGGER ep_capability_operations_semantic_fence_guard
+          ON ep_capability_operations;
+        ALTER TABLE ep_capability_operations
+          DROP CONSTRAINT ep_capability_operations_pkey,
+          ALTER COLUMN operation_namespace DROP NOT NULL,
+          ALTER COLUMN action_fence_digest DROP NOT NULL;
+        ALTER TABLE ep_capability_operations
+          ADD CONSTRAINT ep_capability_operations_pkey PRIMARY KEY (operation_id)
+      `);
+            await client.query(`
+        INSERT INTO ep_capability_state (
+          capability_id, capability_fingerprint, budget_amount, currency,
+          consumed_amount, reserved_amount, expires_at, semantic_fence_ready
+        ) VALUES ($1, $2, 10, 'USD', 0, 0, now() + interval '1 hour', TRUE)
+      `, ['legacy:already-true', `sha256:${'a'.repeat(64)}`]);
+            await client.query(`
+        INSERT INTO ep_capability_operations (
+          operation_namespace, operation_id, capability_id, action_digest,
+          action_fence_digest, amount, currency, status, reservation_token,
+          reserved_at
+        ) VALUES (NULL, $1, $2, $3, NULL, 1, 'USD', 'committed', $4, now())
+      `, [
+                'operation:historical',
+                'legacy:already-true',
+                `sha256:${'b'.repeat(64)}`,
+                'reservation:historical',
+            ]);
+            await client.query(ddl);
+            const state = await client.query(`
+        SELECT semantic_fence_ready
+        FROM ep_capability_state
+        WHERE capability_id = 'legacy:already-true'
+      `);
+            let insert = 'admitted';
+            try {
+                await client.query(`
+          INSERT INTO ep_capability_operations (
+            operation_namespace, operation_id, capability_id, action_digest,
+            action_fence_digest, amount, currency, status, reservation_token,
+            reserved_at, entry_deadline_at
+          ) VALUES ($1, $2, $3, $4, $5, 1, 'USD', 'reserved', $6, now(), now() + interval '1 minute')
+        `, [
+                    'legacy:already-true',
+                    'operation:must-not-enter',
+                    'legacy:already-true',
+                    `sha256:${'c'.repeat(64)}`,
+                    `sha256:${'d'.repeat(64)}`,
+                    'reservation:must-not-enter',
+                ]);
+            }
+            catch (error) {
+                insert = error.code ?? 'unknown_error';
+            }
+            return {
+                ready: state.rows[0]?.semantic_fence_ready ?? true,
+                insert,
+            };
+        }
+        finally {
+            client.release();
+        }
+    }
+    try {
+        assert.deepEqual(await upgradeOutcome(`${schemaPrefix}_shipped`, CAPABILITY_STATE_DDL), { ready: false, insert: '55000' });
+        const vulnerableDdl = CAPABILITY_STATE_DDL.replace(`WHERE operation_namespace IS NULL\n   OR action_fence_digest IS NULL;`, 'WHERE FALSE;');
+        assert.notEqual(vulnerableDdl, CAPABILITY_STATE_DDL, 'mutation must erase legacy-id capture');
+        assert.deepEqual(await upgradeOutcome(`${schemaPrefix}_mutated`, vulnerableDdl), { ready: true, insert: 'admitted' }, 'the negative control must reproduce the incomplete-bootstrap bypass');
+    }
+    finally {
+        await pool.query(`DROP SCHEMA IF EXISTS ${schemaPrefix}_shipped CASCADE`);
+        await pool.query(`DROP SCHEMA IF EXISTS ${schemaPrefix}_mutated CASCADE`);
+        await pool.end();
+    }
+});
+test('a second operation id cannot re-authorize an action another operation already holds', async () => {
+    // Anton Dziatkovskii, reviewing anthropics/claude-cookbooks#803: "request_approval
+    // is a tool call like any other, so it can arrive twice for one pr: the agent
+    // retries after a timeout, or the first user.custom_tool_result never lands and it
+    // asks again. each call gets its own event_id, both entries carry the same
+    // action_digest, and consume_approval only asks 'was this token used', never 'was
+    // this action already done'."
+    //
+    // That was true of this store too. Dedup keyed on (namespace, operation_id), and
+    // action_digest was recorded on the row without ever being consulted. Budget is
+    // not material-action identity: two wrappers can both reserve positive occurrence
+    // units while still referring to one merge/delete/deploy action.
+    const keys = issuer();
+    const minted = mintCapabilityReceipt(keys.receipt, options({
+        issuerPrivateKey: keys.privateKey,
+        capabilityId: 'action_fence',
+    }));
+    const store = createMemoryCapabilityStore();
+    assert.equal(store.registerCapability(minted.capabilityReceipt), true);
+    const capabilityId = minted.capabilityReceipt.capability.id;
+    const fingerprint = store.getState(capabilityId).capability_fingerprint;
+    // ONE action. Two request ids, exactly as a retried approval produces.
+    const oneAction = capabilityActionDigest(scopedAction('merge-pr-42'));
+    const reserve = (operationId, actionDigest = oneAction) => store.reserveSpend({
+        capabilityId,
+        capabilityFingerprint: fingerprint,
+        operationId,
+        actionDigest,
+        amount: 1,
+        currency: 'USD',
+        now: NOW,
+    });
+    const first = await reserve('evt_1');
+    assert.equal(first.ok, true);
+    const second = await reserve('evt_2');
+    assert.equal(second.ok, false);
+    assert.equal(second.reason, 'action_in_flight');
+    // The refusal names WHICH operation holds it, so an operator can find the
+    // outstanding approval instead of guessing.
+    assert.equal(second.holding_operation_id, 'evt_1');
+    assert.equal(second.action_digest, oneAction);
+    // A different action under the same capability is unaffected.
+    assert.equal((await reserve('evt_3', capabilityActionDigest(scopedAction('merge-pr-43')))).ok, true);
+    // Once the first commits, the action is done, and the reason sharpens from
+    // in-flight to already-committed. Still refused.
+    assert.equal((await store.beginProviderEntry({
+        capabilityId, operationId: 'evt_1', reservationToken: first.reservation_token, now: NOW,
+    })).ok, true);
+    assert.equal((await store.commitSpend({
+        capabilityId, operationId: 'evt_1', reservationToken: first.reservation_token,
+        outcome: 'executed', now: NOW,
+    })).ok, true);
+    const afterCommit = await reserve('evt_4');
+    assert.equal(afterCommit.ok, false);
+    assert.equal(afterCommit.reason, 'action_already_committed');
+});
+test('a released action can be re-authorized, because the provider never received it', async () => {
+    // The fence must not turn a proven non-entry into a permanently dead action.
+    // 'released' carries outcome 'not_entered', so retrying is correct.
+    const keys = issuer();
+    const minted = mintCapabilityReceipt(keys.receipt, options({
+        issuerPrivateKey: keys.privateKey,
+        capabilityId: 'action_fence_release',
+    }));
+    const store = createMemoryCapabilityStore({ providerEntryTimeoutMs: 1000 });
+    assert.equal(store.registerCapability(minted.capabilityReceipt), true);
+    const capabilityId = minted.capabilityReceipt.capability.id;
+    const fingerprint = store.getState(capabilityId).capability_fingerprint;
+    const oneAction = capabilityActionDigest(scopedAction('deploy-build-9'));
+    const reserve = (operationId, now) => store.reserveSpend({
+        capabilityId,
+        capabilityFingerprint: fingerprint,
+        operationId,
+        actionDigest: oneAction,
+        amount: 1,
+        currency: 'USD',
+        now,
+    });
+    assert.equal((await reserve('evt_a', NOW)).ok, true);
+    assert.equal((await reserve('evt_b', NOW)).reason, 'action_in_flight');
+    const recovered = await store.recoverPreEntrySpend({
+        capabilityId,
+        operationId: 'evt_a',
+        actionDigest: oneAction,
+        now: NOW + 5000,
+    });
+    assert.equal(recovered.ok, true);
+    assert.equal(store.getOperation('evt_a', capabilityId).status, 'released');
+    // The action is free again.
+    assert.equal((await reserve('evt_b', NOW + 5000)).ok, true);
+});
+test('two distinct capabilities may each hold one action, so quorum stays possible', async () => {
+    // The fence is scoped to the authorization namespace, which defaults to the
+    // capability id. A global fence would make N-of-M approval of one action
+    // unsatisfiable: the second approver could never reserve.
+    const keys = issuer();
+    const a = mintCapabilityReceipt(keys.receipt, options({
+        issuerPrivateKey: keys.privateKey, capabilityId: 'quorum_a',
+    }));
+    const b = mintCapabilityReceipt(keys.receipt, options({
+        issuerPrivateKey: keys.privateKey, capabilityId: 'quorum_b',
+    }));
+    const store = createMemoryCapabilityStore();
+    assert.equal(store.registerCapability(a.capabilityReceipt), true);
+    assert.equal(store.registerCapability(b.capabilityReceipt), true);
+    const sameAction = capabilityActionDigest(scopedAction('wire-transfer-7'));
+    const reserve = (minted) => store.reserveSpend({
+        capabilityId: minted.capabilityReceipt.capability.id,
+        capabilityFingerprint: store.getState(minted.capabilityReceipt.capability.id).capability_fingerprint,
+        operationId: 'approval',
+        actionDigest: sameAction,
+        amount: 1,
+        currency: 'USD',
+        now: NOW,
+    });
+    assert.equal((await reserve(a)).ok, true);
+    assert.equal((await reserve(b)).ok, true);
 });
