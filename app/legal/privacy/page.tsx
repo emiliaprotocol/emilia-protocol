@@ -73,6 +73,7 @@ export default function PrivacyPage() {
           <li>Inquiry / contact form submissions — retained while the relationship is active and for 24 months thereafter unless deletion is requested.</li>
           <li>Server access logs — 30 days at the edge, 90 days in cold storage.</li>
           <li>Hosted-service customer trust receipts and policy data — for the duration of the customer relationship plus the period required to comply with legal obligations or as specified in the customer's contract.</li>
+          <li>Agent Adoption — the user-supplied candidate label and optional source URL, passkey public material, Operating Bond, and synthetic event history are retained for up to 30 days, then removed by a scheduled purge. The source URL is never fetched and is excluded from the public projection. An unlisted public projection can disappear sooner if the creating browser session revokes it.</li>
         </ul>
 
         <h2 style={styles.h2}>7. Your rights</h2>

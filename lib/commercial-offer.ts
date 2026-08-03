@@ -36,6 +36,24 @@ export const FINANCIAL_AUTHORITY_DESIGN_PARTNER = Object.freeze({
   rolloutLabel: 'Synthetic validation first; production access only through a buyer-approved boundary',
 });
 
+/**
+ * Fixed-scope graduation path from the public Agent Adoption sandbox to one
+ * buyer-controlled consequence boundary. The public flow itself remains free,
+ * synthetic, and no-egress.
+ */
+export const AGENT_ADOPTION_DESIGN_PARTNER = Object.freeze({
+  id: 'agent_adoption_design_partner_v1',
+  name: 'Agent Adoption protected-workflow pilot',
+  priceUsd: 25_000,
+  priceLabel: '$25,000',
+  shortPriceLabel: '$25K',
+  durationDays: 90,
+  durationLabel: '90 days',
+  workflowCount: 1,
+  workflowLabel: '1 protected agent workflow',
+  rolloutLabel: 'Synthetic validation first; production only through a buyer-approved Gate boundary',
+});
+
 export const GATE_QUALIFICATION = Object.freeze({
   name: 'Gate Qualification v2',
   profileLabel: 'public experimental implementation profile',

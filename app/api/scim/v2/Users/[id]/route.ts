@@ -9,7 +9,7 @@ import {
   toScimUser, fromScimUser, applyPatch, etag, validateScimUser,
 } from '@/lib/scim/core';
 import { scimJson, scimErrorResponse, requireScimAuth, scimBaseUrl, readScimJson } from '@/lib/scim/http';
-import { revokeApproverCredentials, recordApproverEligible } from '@/lib/scim/approver-link';
+import { recordApproverEligible } from '@/lib/scim/approver-link';
 import { isScimAutoApproverEnabled } from '@/lib/env';
 
 type ScimAuthResult = {
@@ -113,12 +113,19 @@ export async function DELETE(request: NextRequest, { params }: RouteParams): Pro
   if (loadErr) return scimErrorResponse(503, 'Directory unavailable');
   if (!current) return scimErrorResponse(404, `User ${id} not found`);
 
-  const { error } = await supabase.from('scim_users').delete().eq('tenant_id', auth.tenantId).eq('id', id);
-  if (error) { logger.error('[scim/Users/:id] delete failed:', error); return scimErrorResponse(503, 'Directory unavailable'); }
-
-  // Hard delete is the strongest deprovision: revoke any live signing
-  // credentials for this identity in the same write.
-  await revokeApproverCredentials(supabase, auth.tenantId, current.user_name, 'scim_delete', auth.organizationId);
+  const { data, error } = await supabase.rpc('apply_scim_user_and_authority_atomic', {
+    p_tenant_id: auth.tenantId,
+    p_organization_id: auth.organizationId ?? null,
+    p_user_id: id,
+    p_expected_version: current.version ?? 1,
+    p_fields: {},
+    p_delete: true,
+    p_reason: 'scim_delete',
+  });
+  if (error) { logger.error('[scim/Users/:id] atomic delete failed:', error); return scimErrorResponse(503, 'Directory unavailable'); }
+  if (data?.error === 'user_not_found') return scimErrorResponse(404, `User ${id} not found`);
+  if (data?.error === 'version_conflict') return scimErrorResponse(409, 'User changed during deprovision', 'mutability');
+  if (data?.status !== 'deleted') return scimErrorResponse(503, 'Directory unavailable');
   return new Response(null, { status: 204 });
 }
 
@@ -132,33 +139,35 @@ async function writeUser(
   fields: any,
   request: NextRequest,
 ): Promise<NextResponse> {
-  const nextVersion = (current.version ?? 1) + 1;
   // Capture the prior active state BEFORE the write — the update mutates the
   // user row, and the linkage decision is about the transition.
   const wasActive = current.active !== false;
   try {
-    const { data, error } = await supabase
-      .from('scim_users')
-      .update({ ...fields, version: nextVersion, updated_at: new Date().toISOString() })
-      .eq('tenant_id', tenantId)
-      .eq('id', id)
-      .select('*')
-      .single();
+    const { data: result, error } = await supabase.rpc('apply_scim_user_and_authority_atomic', {
+      p_tenant_id: tenantId,
+      p_organization_id: organizationId ?? null,
+      p_user_id: id,
+      p_expected_version: current.version ?? 1,
+      p_fields: fields,
+      p_delete: false,
+      p_reason: 'scim_deactivate',
+    });
 
     if (error) {
       if (error.code === '23505') return scimErrorResponse(409, `userName ${fields.user_name} already in use`, 'uniqueness');
       logger.error('[scim/Users/:id] write failed:', error);
       return scimErrorResponse(503, 'Directory unavailable');
     }
+    if (result?.error === 'user_not_found') return scimErrorResponse(404, `User ${id} not found`);
+    if (result?.error === 'version_conflict') return scimErrorResponse(409, 'User changed during update', 'mutability');
+    const data = result?.user;
+    if (result?.status !== 'updated' || !data) return scimErrorResponse(503, 'Directory unavailable');
 
-    // SCIM → approver linkage. Deprovision (active true→false) revokes every
-    // live signing credential for this identity in the same write; offboarding
-    // in the IdP removes signing authority in the same sync. Re-activation
-    // makes the human eligible to RE-ENROLL — it never resurrects revoked keys.
+    // Deprovision and credential revocation were committed atomically by the
+    // RPC. Re-activation makes the human eligible to RE-ENROLL; it never
+    // resurrects revoked keys.
     const isActive = data.active !== false;
-    if (wasActive && !isActive) {
-      await revokeApproverCredentials(supabase, tenantId, current.user_name, 'scim_deactivate', organizationId);
-    } else if (!wasActive && isActive && isScimAutoApproverEnabled()) {
+    if (!wasActive && isActive && isScimAutoApproverEnabled()) {
       // Re-activation grants approver eligibility ONLY when auto-approver is
       // explicitly enabled; otherwise eligibility goes through admin approval so
       // a compromised SCIM token can't mint an approver. (T3) Note: deactivation
@@ -167,7 +176,7 @@ async function writeUser(
     }
 
     const resource = toScimUser(data, scimBaseUrl(request));
-    return scimJson(resource, { etag: etag(data.version ?? nextVersion) });
+    return scimJson(resource, { etag: etag(data.version ?? ((current.version ?? 1) + 1)) });
   } catch (err) {
     logger.error('[scim/Users/:id] write error:', err);
     return scimErrorResponse(500, 'Internal error');

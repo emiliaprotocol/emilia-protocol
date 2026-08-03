@@ -28,6 +28,13 @@ const REFUSAL_TTL_MS = 7 * 24 * 60 * 60 * 1000;
 const TOTAL_AMOUNT = 1_000;
 const MAX_AMOUNT_PER_ACTION = 250;
 const ALLOWED_TARGETS = Object.freeze(['compute.batch', 'vendor.demo']);
+const COMPOSED_TARGET = /^[A-Za-z0-9][A-Za-z0-9:_.@+\-]{0,127}$/;
+
+export type ArenaProvisioningProfile = Readonly<{
+  totalAmount: number;
+  maxAmountPerAction: number;
+  allowedTargets: readonly string[];
+}>;
 
 export class ArenaServiceError extends Error {
   constructor(public status: number, public code: string, message = code) {
@@ -99,10 +106,12 @@ function storedRefusalProjection({
 
 export async function provisionArenaSession({
   agentName,
+  profile,
   client,
   now = Date.now(),
 }: {
   agentName: string;
+  profile?: ArenaProvisioningProfile;
   client?: SupabaseClient;
   now?: number;
 }) {
@@ -111,15 +120,34 @@ export async function provisionArenaSession({
   const tokenHash = crypto.createHash('sha256').update(token, 'utf8').digest('hex');
   const issuedAt = new Date(now).toISOString();
   const expiresAt = new Date(now + SESSION_TTL_MS).toISOString();
-  const allowance = createArenaAllowance({
-    sessionId,
-    agentName,
-    totalAmount: TOTAL_AMOUNT,
-    maxAmountPerAction: MAX_AMOUNT_PER_ACTION,
-    allowedTargets: [...ALLOWED_TARGETS],
-    issuedAt,
-    expiresAt,
-  });
+  const totalAmount = profile?.totalAmount ?? TOTAL_AMOUNT;
+  const maxAmountPerAction = profile?.maxAmountPerAction ?? MAX_AMOUNT_PER_ACTION;
+  const allowedTargets = profile?.allowedTargets ?? ALLOWED_TARGETS;
+  if (profile && (
+    !Number.isSafeInteger(totalAmount) || totalAmount < 1 || totalAmount > 10_000
+    || !Number.isSafeInteger(maxAmountPerAction) || maxAmountPerAction < 1
+    || maxAmountPerAction > totalAmount
+    || !Array.isArray(allowedTargets) || allowedTargets.length < 1 || allowedTargets.length > 32
+    || allowedTargets.some((target) => typeof target !== 'string' || !COMPOSED_TARGET.test(target))
+    || new Set(allowedTargets).size !== allowedTargets.length
+  )) {
+    throw new ArenaServiceError(400, 'arena_profile_invalid');
+  }
+  let allowance: ArenaAllowance;
+  try {
+    allowance = createArenaAllowance({
+      sessionId,
+      agentName,
+      totalAmount,
+      maxAmountPerAction,
+      allowedTargets: [...allowedTargets],
+      issuedAt,
+      expiresAt,
+    });
+  } catch (cause) {
+    if (profile) throw new ArenaServiceError(400, 'arena_profile_invalid');
+    throw cause;
+  }
   const { publicKey, privateKey } = crypto.generateKeyPairSync('ed25519');
   const publicKeyB64 = publicKey.export({ type: 'spki', format: 'der' }).toString('base64url');
   const privateKeyB64 = privateKey.export({ type: 'pkcs8', format: 'der' }).toString('base64url');

@@ -40,7 +40,7 @@ export async function GET(request: NextRequest) {
 
   const supabase = getGuardedClient();
   const now = new Date().toISOString();
-  const results: { bilateral_expired: number, disputes_escalated: number, continuity_expired: number, errors: Array<{ step: string, error: any }> } = { bilateral_expired: 0, disputes_escalated: 0, continuity_expired: 0, errors: [] };
+  const results: { bilateral_expired: number, disputes_escalated: number, continuity_expired: number, agent_adoptions_purged: number, errors: Array<{ step: string, error: any }> } = { bilateral_expired: 0, disputes_escalated: 0, continuity_expired: 0, agent_adoptions_purged: 0, errors: [] };
 
   // 1. Expire stale bilateral confirmations (48h window)
   try {
@@ -106,6 +106,21 @@ export async function GET(request: NextRequest) {
     // Table may not exist yet — that's fine
     if (!err.message?.includes('does not exist')) {
       results.errors.push({ step: 'continuity_expire', error: err.message });
+    }
+  }
+
+  // 4. Remove expired public Agent Adoption sessions and their private
+  // artifacts in bounded batches. The RPC is the only path allowed through
+  // the append-only triggers; direct deletes remain refused.
+  try {
+    const { data, error } = await supabase.rpc('purge_expired_agent_adoptions', {
+      p_limit: 100,
+    });
+    if (error) throw error;
+    results.agent_adoptions_purged = Number(data ?? 0);
+  } catch (err) {
+    if (!String(err?.message ?? err).includes('does not exist')) {
+      results.errors.push({ step: 'agent_adoption_retention_purge', error: err?.message ?? String(err) });
     }
   }
 

@@ -80,7 +80,61 @@ class Query {
   }
 }
 
-const mockClient = { from: (table) => new Query(table) };
+const mockClient = {
+  from: (table) => new Query(table),
+  async rpc(name, args) {
+    if (name !== 'apply_scim_user_and_authority_atomic') {
+      return { data: null, error: { message: `unknown rpc ${name}` } };
+    }
+    const user = store.scim_users.find(
+      (row) => row.tenant_id === args.p_tenant_id && row.id === args.p_user_id,
+    );
+    if (!user) return { data: { error: 'user_not_found' }, error: null };
+    if ((user.version ?? 1) !== args.p_expected_version) {
+      return { data: { error: 'version_conflict' }, error: null };
+    }
+    const org = args.p_organization_id || args.p_tenant_id;
+    const revoke = () => {
+      let count = 0;
+      for (const credential of store.approver_credentials) {
+        if (credential.organization_id === org
+            && credential.approver_id === user.user_name
+            && credential.revoked_at === null) {
+          credential.revoked_at = '2026-06-11T00:01:00Z';
+          count += 1;
+        }
+      }
+      store.audit_events.push({
+        id: newId(),
+        event_type: 'scim.approver.deprovisioned',
+        target_id: user.user_name,
+        after_state: { credentials_revoked: count },
+      });
+      return count;
+    };
+    if (args.p_delete) {
+      const count = revoke();
+      store.scim_users = store.scim_users.filter((row) => row !== user);
+      return { data: { status: 'deleted', credentials_revoked: count }, error: null };
+    }
+    const wasActive = user.active !== false;
+    Object.assign(user, args.p_fields, {
+      version: (user.version ?? 1) + 1,
+      updated_at: '2026-06-11T00:01:00Z',
+    });
+    const active = user.active !== false;
+    const count = wasActive && !active ? revoke() : 0;
+    return {
+      data: {
+        status: 'updated',
+        credentials_revoked: count,
+        user,
+        reactivated: !wasActive && active,
+      },
+      error: null,
+    };
+  },
+};
 vi.mock('@/lib/write-guard', () => ({ getGuardedClient: () => mockClient }));
 
 // Import AFTER mocks are registered.

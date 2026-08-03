@@ -52,18 +52,37 @@ describe('pilot request commercial offer routing', () => {
     vi.restoreAllMocks();
   });
 
-  it('routes the fixed Financial Authority offer id to its server-owned scope', async () => {
+  it('routes the fixed Financial Authority offer id to the internal team only', async () => {
     const response = await POST(request({
       offer_id: 'financial_authority_design_partner_v1',
     }) as never);
 
     expect(response.status).toBe(200);
-    const acknowledgment = sentEmails().find((email) => email.to === 'ada@example.com');
-    expect(acknowledgment?.text).toContain('Financial Authority design-partner pilot');
-    expect(acknowledgment?.text).toContain('90 days');
-    expect(acknowledgment?.text).toContain('$25,000');
-    expect(acknowledgment?.text).toContain('1 protected workflow');
-    expect(acknowledgment?.text).toContain('1 provider rail');
+    const emails = sentEmails();
+    expect(emails).toHaveLength(1);
+    expect(emails[0].to).toBe('team@emiliaprotocol.ai');
+    expect(emails[0].text).toContain('Financial Authority design-partner pilot');
+    expect(emails[0].text).toContain('90 days');
+    expect(emails[0].text).toContain('$25,000');
+    expect(emails[0].text).toContain('1 protected workflow');
+    expect(emails[0].text).toContain('1 provider rail');
+  });
+
+  it('routes Agent Adoption graduates to its own protected-workflow offer', async () => {
+    const response = await POST(request({
+      offer_id: 'agent_adoption_design_partner_v1',
+      workflow: 'other',
+    }) as never);
+
+    expect(response.status).toBe(200);
+    const emails = sentEmails();
+    expect(emails).toHaveLength(1);
+    expect(emails[0].to).toBe('team@emiliaprotocol.ai');
+    expect(emails[0].text).toContain('Agent Adoption protected-workflow pilot');
+    expect(emails[0].text).toContain('90 days');
+    expect(emails[0].text).toContain('$25,000');
+    expect(emails[0].text).toContain('1 protected agent workflow');
+    expect(emails[0].text).not.toContain('provider rail');
   });
 
   it('ignores caller-supplied commercial terms for a recognized offer', async () => {
@@ -77,7 +96,10 @@ describe('pilot request commercial offer routing', () => {
     }) as never);
 
     expect(response.status).toBe(200);
-    const allEmailText = sentEmails().map((email) => email.text).join('\n');
+    const sent = sentEmails();
+    expect(sent).toHaveLength(1);
+    expect(sent[0].to).toBe('team@emiliaprotocol.ai');
+    const allEmailText = sent.map((email) => email.text).join('\n');
     expect(allEmailText).toContain('$25,000');
     expect(allEmailText).toContain('90 days');
     expect(allEmailText).not.toContain('$1');
@@ -88,9 +110,11 @@ describe('pilot request commercial offer routing', () => {
   it('preserves the Signal default and rejects unknown offer ids', async () => {
     const defaultResponse = await POST(request({}) as never);
     expect(defaultResponse.status).toBe(200);
-    const defaultAcknowledgment = sentEmails().find((email) => email.to === 'ada@example.com');
-    expect(defaultAcknowledgment?.text).toContain('60 days');
-    expect(defaultAcknowledgment?.text).toContain('1 read-only workflow diagnostic');
+    const defaultMessages = sentEmails();
+    expect(defaultMessages).toHaveLength(1);
+    expect(defaultMessages[0].to).toBe('team@emiliaprotocol.ai');
+    expect(defaultMessages[0].text).toContain('60 days');
+    expect(defaultMessages[0].text).toContain('1 read-only workflow diagnostic');
 
     vi.mocked(fetch).mockClear();
     mockGetGuardedClient.mockClear();

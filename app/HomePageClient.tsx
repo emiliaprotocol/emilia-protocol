@@ -103,7 +103,7 @@ const DEV_TOOLS = [
   { title: 'Verify It Yourself', body: 'Drop a receipt or a Face ID device signoff and watch every cryptographic check verify — entirely in your browser, nothing uploaded, no account, no EP server trusted.', code: '/verify', href: '/verify', accent: color.green, dark: true  },
   { title: 'Trust Playground', body: 'Walk through the EP lifecycle interactively. Create entities, issue receipts, run handshakes — all from one page.',                 code: '/playground',       href: '/playground', accent: color.blue,  dark: false },
   { title: 'Trust Explorer',   body: 'Verify any receipt, proof, or entity. Like Etherscan for trust. Public, transparent, cryptographically verified.',                   code: '/explorer',         href: '/explorer',   accent: color.gold,  dark: false },
-  { title: 'Embed Widget',     body: 'Drop a trust badge on any page. One script tag, one web component. Live data from the EP operator.',                                code: '<ep-trust-badge />', href: '/adopt',      accent: color.t2,    dark: false },
+  { title: 'Embed Widget',     body: 'Drop a trust badge on any page. One script tag, one web component. Live data from the EP operator.',                                code: '<ep-trust-badge />', href: '/badge',      accent: color.t2,    dark: false },
 ];
 
 // Max-width container
@@ -171,7 +171,7 @@ export default function HomePage() {
               mutation.
             </p>
             <div className="ep-home-calm-actions">
-              <Link href="/arena" className="ep-home-hero-primary">Try the public Arena</Link>
+              <Link href="/adopt" className="ep-home-hero-primary">Run the Agent Adoption Challenge</Link>
               <Link href="/gate" className="ep-home-hero-secondary">Explore Gate →</Link>
               <Link href="/gate/live" className="ep-home-hero-secondary">Open the live reference →</Link>
             </div>

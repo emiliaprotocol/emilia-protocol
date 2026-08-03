@@ -6,8 +6,16 @@
     "20260723192504"
   ],
   "retroactive_pending_versions": [],
-  "forward_pending_versions": [],
-  "deployment_sequence": [],
+  "forward_pending_versions": [
+    "20260802230000",
+    "20260802231000",
+    "20260802232000"
+  ],
+  "deployment_sequence": [
+    "20260802230000",
+    "20260802231000",
+    "20260802232000"
+  ],
   "requires_include_all": false,
   "remote_versions": [
     "001",
@@ -382,6 +390,9 @@
     "20260802090000_gate_allowance_currentness_atomicity.sql": "319a11f1430992bd7e9339d4ca55a61293ac8c6052af6870140dc64d37c91235",
     "20260802091000_gate_allowance_status_fortress_db_security_invariants.sql": "7f220f1a213d75f36334787ab94087e1f9365d0ab2cbcd7ef640dcd924ff407e",
     "20260802120000_arena_synthetic_allowance.sql": "4c834f8c80e390bce0c77ea5b7dd3a76843df54fd450c0cd111a4f01eb5b0ee2",
-    "20260802193000_arena_refusal_timestamp_normalization.sql": "2c9fb784084b60c06aaa8795599a0ef91300ca8c604e99becacfb2937f9a45bb"
+    "20260802193000_arena_refusal_timestamp_normalization.sql": "2c9fb784084b60c06aaa8795599a0ef91300ca8c604e99becacfb2937f9a45bb",
+    "20260802230000_agent_adoption_v1.sql": "937e1c7983b6b628cf01351c849346961f1846679ec2e15b5dec6e484855735a",
+    "20260802231000_restore_webauthn_directory_anchor.sql": "90bb596edff8f495de541ab5df582fb45023abff077fc527a48eea4e635afd76",
+    "20260802232000_scim_authority_atomic.sql": "334619a03c3a089d3ae038ab9b20dd4c3dab28a9af0eff0b12ac3b2bdfd38e92"
   }
 }

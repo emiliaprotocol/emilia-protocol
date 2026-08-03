@@ -69,7 +69,7 @@ export default async function NetworkPage(): Promise<React.ReactElement> {
           </p>
           <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap' }}>
             <Link href="/explorer" className="ep-cta" style={cta.primary}>Verify a receipt &rarr;</Link>
-            <Link href="/adopt" className="ep-cta-secondary" style={cta.secondary}>Join the network</Link>
+            <Link href="/signup" className="ep-cta-secondary" style={cta.secondary}>Join the network</Link>
           </div>
         </C>
       </section>
@@ -139,7 +139,7 @@ export default async function NetworkPage(): Promise<React.ReactElement> {
                 can&rsquo;t be faked, because the number isn&rsquo;t yours to set. Links straight to the
                 Explorer for full verification.
               </p>
-              <Link href="/adopt" style={{ fontFamily: font.mono, fontSize: 12, color: color.gold, letterSpacing: 0.5, textDecoration: 'underline', textUnderlineOffset: 3 }}>
+              <Link href="/signup" style={{ fontFamily: font.mono, fontSize: 12, color: color.gold, letterSpacing: 0.5, textDecoration: 'underline', textUnderlineOffset: 3 }}>
                 Get your badge &rarr;
               </Link>
             </div>
@@ -156,7 +156,7 @@ export default async function NetworkPage(): Promise<React.ReactElement> {
               Put your trust on the record.
             </h2>
             <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap' }}>
-              <Link href="/adopt" className="ep-cta" style={cta.primary}>Register an entity</Link>
+              <Link href="/signup" className="ep-cta" style={cta.primary}>Register an entity</Link>
               <Link href="/explorer" className="ep-cta-secondary" style={cta.secondary}>Explore the network</Link>
             </div>
           </div>

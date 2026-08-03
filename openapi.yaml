@@ -70,6 +70,8 @@ tags:
     description: Consequence Firewall enforcement and public reference scenarios
   - name: Arena
     description: Public synthetic allowance demonstration; no money, provider credentials, or production execution
+  - name: Agent Adoption
+    description: Public no-egress challenge that binds a candidate to a synthetic job and allowance with an adoption-only passkey
   - name: GovGuard
     description: GovGuard pre-payment fraud-control adapter prechecks for high-risk government workflows
   - name: Cloud
@@ -6459,6 +6461,261 @@ paths:
         '200': { description: 'Published synthetic refusal and integrity result' }
         '404': { description: 'No active published refusal exists for this share id' }
         '503': { description: 'Public verification is temporarily unavailable' }
+
+  /api/adopt/sessions:
+    post:
+      operationId: createAgentAdoptionSession
+      tags: [Agent Adoption]
+      summary: Build a draft synthetic Operating Bond
+      description: |
+        Validates bounded candidate metadata and selects only server-owned job
+        and allowance templates. Source URLs are inert metadata and are never
+        fetched. This creates no identity, certification, money, provider
+        credential, marketplace status, or production authority.
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required: [label, source_kind, job_template_id, allowance_template_id]
+              properties:
+                label: { type: string, minLength: 1, maxLength: 80 }
+                source_kind: { type: string, enum: [github, mcp, a2a, local] }
+                source_url:
+                  type: string
+                  format: uri
+                  maxLength: 2048
+                  pattern: '^https://(?:[a-z0-9](?:[a-z0-9.-]*[a-z0-9])?)/(?:[^\s?#]+)$'
+                  description: Canonical HTTPS metadata URL with a non-empty path and no userinfo, port, query, or fragment. The service never fetches it.
+                agent_key_thumbprint: { type: string, pattern: '^sha256:[a-f0-9]{64}$' }
+                job_template_id:
+                  type: string
+                  enum: [job_vendor_intake_v1, job_compute_batch_v1, job_document_route_v1]
+                allowance_template_id:
+                  type: string
+                  enum: [allowance_cautious_v1, allowance_balanced_v1, allowance_stretch_v1]
+      responses:
+        '201': { description: 'Draft Operating Bond and dedicated adoption capability created' }
+        '400': { description: 'Candidate or template selection is outside the closed profile' }
+        '413': { description: 'Request body exceeds the Agent Adoption limit' }
+        '503': { description: 'Agent Adoption storage is unavailable' }
+
+  /api/adopt/sessions/{sessionId}/passkey/register/options:
+    post:
+      operationId: createAgentAdoptionRegistrationOptions
+      tags: [Agent Adoption]
+      summary: Begin adoption-only passkey registration
+      security: [{ AdoptionSessionAuth: [] }]
+      parameters:
+        - $ref: '#/components/parameters/AgentAdoptionSessionId'
+      responses:
+        '200': { description: 'Exact Operating Bond registration challenge created' }
+        '401': { description: 'Adoption capability missing or invalid' }
+        '410': { description: 'Adoption capability expired' }
+        '409': { description: 'Adoption state no longer permits registration' }
+        '503': { description: 'Passkey policy or storage unavailable' }
+
+  /api/adopt/sessions/{sessionId}:
+    get:
+      operationId: recoverAgentAdoptionSession
+      tags: [Agent Adoption]
+      summary: Recover bounded state for the current browser session
+      description: Uses the host's HttpOnly, Secure, SameSite=Strict adoption cookie or the explicit session bearer. The response excludes the bearer capability and permits same-browser continuation or revocation until the persisted session expiry.
+      security: [{ AdoptionSessionAuth: [] }]
+      parameters:
+        - $ref: '#/components/parameters/AgentAdoptionSessionId'
+      responses:
+        '200': { description: 'Non-secret current session state recovered' }
+        '401': { description: 'Adoption capability missing or invalid' }
+        '410': { description: 'Adoption capability expired or revoked' }
+        '503': { description: 'Agent Adoption storage unavailable' }
+
+  /api/adopt/sessions/{sessionId}/passkey/register/verify:
+    post:
+      operationId: verifyAgentAdoptionRegistration
+      tags: [Agent Adoption]
+      summary: Verify and store an adoption-only passkey
+      security: [{ AdoptionSessionAuth: [] }]
+      parameters:
+        - $ref: '#/components/parameters/AgentAdoptionSessionId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required: [ceremony_token, attestation]
+              properties:
+                ceremony_token: { type: string }
+                attestation: { type: object }
+      responses:
+        '201': { description: 'Adoption-only ES256 passkey registered' }
+        '400': { description: 'Attestation or ceremony failed closed verification' }
+        '401': { description: 'Adoption capability missing or invalid' }
+        '409': { description: 'Challenge replay or conflicting state' }
+        '410': { description: 'Adoption capability expired' }
+        '413': { description: 'Request body exceeds the Agent Adoption limit' }
+
+  /api/adopt/sessions/{sessionId}/passkey/assert/options:
+    post:
+      operationId: createAgentAdoptionAssertionOptions
+      tags: [Agent Adoption]
+      summary: Begin exact Operating Bond assertion
+      security: [{ AdoptionSessionAuth: [] }]
+      parameters:
+        - $ref: '#/components/parameters/AgentAdoptionSessionId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required: [credential_id]
+              properties:
+                credential_id: { type: string, maxLength: 1024 }
+      responses:
+        '200': { description: 'Exact Operating Bond assertion challenge created' }
+        '400': { description: 'Credential selection is malformed' }
+        '401': { description: 'Adoption capability missing or invalid' }
+        '409': { description: 'Operating Bond already asserted or adoption revoked' }
+        '410': { description: 'Adoption capability expired' }
+        '413': { description: 'Request body exceeds the Agent Adoption limit' }
+
+  /api/adopt/sessions/{sessionId}/passkey/assert/verify:
+    post:
+      operationId: verifyAgentAdoptionAssertion
+      tags: [Agent Adoption]
+      summary: Assert the exact synthetic Operating Bond
+      description: User presence and authenticator verification are recorded for the adoption-local credential. This is not identity, account authority, or authorization for later real actions.
+      security: [{ AdoptionSessionAuth: [] }]
+      parameters:
+        - $ref: '#/components/parameters/AgentAdoptionSessionId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required: [ceremony_token, assertion]
+              properties:
+                ceremony_token: { type: string }
+                assertion: { type: object }
+      responses:
+        '200': { description: 'Operating Bond asserted once' }
+        '400': { description: 'Assertion or ceremony failed closed verification' }
+        '401': { description: 'Adoption capability missing or invalid' }
+        '409': { description: 'Replay, counter conflict, or revoked adoption' }
+        '410': { description: 'Adoption capability expired' }
+        '413': { description: 'Request body exceeds the Agent Adoption limit' }
+
+  /api/adopt/sessions/{sessionId}/trial:
+    post:
+      operationId: provisionAgentAdoptionTrial
+      tags: [Agent Adoption]
+      summary: Provision an opaque no-egress synthetic trial
+      security: [{ AdoptionSessionAuth: [] }]
+      parameters:
+        - $ref: '#/components/parameters/AgentAdoptionSessionId'
+      responses:
+        '201': { description: 'Opaque trial capability bound to the asserted Operating Bond' }
+        '401': { description: 'Adoption capability missing or invalid' }
+        '409': { description: 'Operating Bond is not asserted' }
+        '410': { description: 'Adoption capability expired' }
+        '503': { description: 'Synthetic Arena unavailable' }
+
+  /api/adopt/sessions/{sessionId}/attempts:
+    post:
+      operationId: submitAgentAdoptionAttempt
+      tags: [Agent Adoption]
+      summary: Run one server-defined synthetic boundary test
+      description: The caller selects one fixed attempt template; the server derives the target, amount, action, and verdict. No request reaches a provider or production executor.
+      security: [{ AdoptionSessionAuth: [] }]
+      parameters:
+        - $ref: '#/components/parameters/AgentAdoptionSessionId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required: [attempt_template_id, trial_token]
+              properties:
+                attempt_template_id:
+                  type: string
+                  enum: [attempt_in_bounds_v1, attempt_over_limit_v1, attempt_unlisted_target_v1]
+                trial_token: { type: string }
+      responses:
+        '201': { description: 'Synthetic attempt permitted or refused' }
+        '400': { description: 'Attempt template malformed' }
+        '401': { description: 'Adoption or trial capability invalid' }
+        '409': { description: 'Adoption revoked or allowance state conflicts' }
+        '410': { description: 'Adoption capability expired' }
+        '413': { description: 'Request body exceeds the Agent Adoption limit' }
+
+  /api/adopt/sessions/{sessionId}/share:
+    post:
+      operationId: publishAgentAdoptionBond
+      tags: [Agent Adoption]
+      summary: Publish an unlisted revocable Operating Bond projection
+      description: Publishes only bounded candidate metadata, operating limits, and assertion fingerprints. Raw passkey material, source URL, refusals, session credentials, and civil identity remain private.
+      security: [{ AdoptionSessionAuth: [] }]
+      parameters:
+        - $ref: '#/components/parameters/AgentAdoptionSessionId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required: [bond_id]
+              properties:
+                bond_id: { type: string, format: uuid }
+      responses:
+        '201': { description: 'Unlisted revocable Operating Bond URL created' }
+        '400': { description: 'Bond does not match the asserted session bond' }
+        '401': { description: 'Adoption capability missing or invalid' }
+        '409': { description: 'Adoption revoked or bond unavailable' }
+        '410': { description: 'Adoption capability expired' }
+        '413': { description: 'Request body exceeds the Agent Adoption limit' }
+
+  /api/adopt/sessions/{sessionId}/revoke:
+    post:
+      operationId: revokeAgentAdoption
+      tags: [Agent Adoption]
+      summary: Revoke the adoption and every public projection
+      security: [{ AdoptionSessionAuth: [] }]
+      parameters:
+        - $ref: '#/components/parameters/AgentAdoptionSessionId'
+      responses:
+        '200': { description: 'Adoption and public projections revoked' }
+        '401': { description: 'Adoption capability missing or invalid' }
+        '410': { description: 'Adoption capability expired' }
+        '503': { description: 'Revocation store unavailable' }
+
+  /api/adopt/shares/{shareId}:
+    get:
+      operationId: getPublicAgentAdoptionBond
+      tags: [Agent Adoption]
+      summary: Read an active public Operating Bond projection
+      description: Never-created and revoked share identifiers both return 404 so revocation cannot be enumerated.
+      security: []
+      parameters:
+        - name: shareId
+          in: path
+          required: true
+          schema: { type: string, pattern: '^agent_share_[a-f0-9]{40}$' }
+      responses:
+        '200': { description: 'Active bounded Operating Bond projection' }
+        '404': { description: 'No active public projection exists' }
+        '503': { description: 'Public projection store unavailable' }
 components:
   securitySchemes:
     BearerAuth:
@@ -6473,6 +6730,17 @@ components:
         Short-lived capability scoped to one synthetic Arena session. It is
         returned once, stored only as a hash, and is not accepted as an EP API
         key or as authority over any external provider.
+    AdoptionSessionAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: eaa1_<64 lowercase hex characters>
+      description: |
+        Dedicated capability scoped to one public Agent Adoption challenge.
+        The browser also stores the current capability in an HttpOnly, Secure,
+        SameSite=Strict cookie for same-browser recovery. Cookie-authenticated
+        mutations additionally require an exact same-origin Origin header.
+        It is not an EP API key, identity credential, provider credential, or
+        authorization for a later consequential action.
     CloudBearerAuth:
       type: http
       scheme: bearer
@@ -6513,6 +6781,14 @@ components:
         the session token is never returned in a JSON body.
 
   parameters:
+    AgentAdoptionSessionId:
+      name: sessionId
+      in: path
+      required: true
+      description: Opaque Agent Adoption session identifier
+      schema:
+        type: string
+        format: uuid
     ApprovalRequestId:
       name: requestId
       in: path

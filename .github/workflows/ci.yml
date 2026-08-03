@@ -1237,6 +1237,7 @@ jobs:
         run: >-
           npx vitest run --no-file-parallelism
           tests/postgres-integration.test.ts
+          tests/agent-adoption-postgres.integration.test.ts
           tests/consequence-actuator-provider-record-postgres.test.ts
           tests/rollout-attempt-role-graph-postgres.test.ts
           tests/history-reconciliation-forward-postgres.test.ts

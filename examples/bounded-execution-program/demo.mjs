@@ -108,6 +108,7 @@ function program(version = 1, supersedesProgramDigest = null) {
     valid_from: NOW,
     expires_at: '2026-07-30T20:00:00.000Z',
     max_total_occurrences: successor ? 5 : 4,
+    max_concurrent_effects: 1,
     budgets: [
       { budget_id: 'attempts', unit: 'attempt', limit: successor ? 4 : 3 },
       { budget_id: 'change-risk', unit: 'risk-point', limit: successor ? 5 : 4 },

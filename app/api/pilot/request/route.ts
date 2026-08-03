@@ -4,8 +4,7 @@
 // Replaces the bare mailto: CTA on /govguard and /finguard, which is a dead
 // button on machines with no configured mail handler (most government
 // workstations). Flow: validate → record an audit event (best-effort) →
-// notify team@ via Resend → auto-acknowledge the requester with the matching
-// vertical's compliance PDF. The request succeeds if EITHER the internal
+// notify team@ via Resend. The request succeeds if EITHER the internal
 // notification or the durable record lands — a lead is never silently lost;
 // if both fail the caller gets a 503 with the mailto fallback.
 
@@ -15,6 +14,7 @@ import { epProblem } from '@/lib/errors';
 import { logger } from '@/lib/logger.js';
 import { readLimitedJson } from '@/lib/http/body-limit';
 import {
+  AGENT_ADOPTION_DESIGN_PARTNER,
   FINANCIAL_AUTHORITY_DESIGN_PARTNER,
   MANAGED_PILOT,
 } from '@/lib/commercial-offer';
@@ -25,13 +25,13 @@ const FROM = process.env.PILOT_FROM_EMAIL || 'EMILIA Protocol <trust@emiliaproto
 const TEAM = 'team@emiliaprotocol.ai';
 const MAX_PILOT_REQUEST_BYTES = 16 * 1024;
 
-const WORKFLOWS: Record<string, { label: string; pdf: string | null }> = {
-  wire_release: { label: 'Wire / payment release', pdf: 'emilia-eu-ai-act-financial-services.pdf' },
-  beneficiary_change: { label: 'Vendor / beneficiary bank-detail change', pdf: 'emilia-eu-ai-act-financial-services.pdf' },
-  benefit_account_change: { label: 'Benefit payment-destination change', pdf: 'emilia-eu-ai-act-government.pdf' },
-  caseworker_override: { label: 'Caseworker / examiner override', pdf: 'emilia-eu-ai-act-government.pdf' },
-  clinical_action: { label: 'Clinical / administrative healthcare action', pdf: 'emilia-eu-ai-act-healthcare.pdf' },
-  other: { label: 'Another irreversible agent action', pdf: null },
+const WORKFLOWS: Record<string, { label: string }> = {
+  wire_release: { label: 'Wire / payment release' },
+  beneficiary_change: { label: 'Vendor / beneficiary bank-detail change' },
+  benefit_account_change: { label: 'Benefit payment-destination change' },
+  caseworker_override: { label: 'Caseworker / examiner override' },
+  clinical_action: { label: 'Clinical / administrative healthcare action' },
+  other: { label: 'Another irreversible agent action' },
 };
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/;
@@ -54,6 +54,7 @@ const DEFAULT_OFFER: IntakeOffer = Object.freeze({
 });
 
 const INTAKE_OFFERS: Readonly<Record<string, IntakeOffer>> = Object.freeze({
+  [AGENT_ADOPTION_DESIGN_PARTNER.id]: AGENT_ADOPTION_DESIGN_PARTNER,
   [FINANCIAL_AUTHORITY_DESIGN_PARTNER.id]: FINANCIAL_AUTHORITY_DESIGN_PARTNER,
 });
 
@@ -142,11 +143,9 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
         `New pilot request from ${name} (${email})\n` +
         `Organization: ${org}\n` +
         `Workflow: ${workflow.label}\n\n` +
-        (isDefaultOffer
-          ? ''
-          : `Offer: ${offer.name} (${offer.id})\n` +
-            `Fixed scope: ${offer.durationLabel}; ${offer.priceLabel}; ${offer.workflowLabel}` +
-            `${offer.providerRailLabel ? `; ${offer.providerRailLabel}` : ''}\n\n`) +
+        `Offer: ${offer.name} (${offer.id})\n` +
+        `Fixed scope: ${offer.durationLabel}; ${offer.priceLabel}; ${offer.workflowLabel}` +
+        `${offer.providerRailLabel ? `; ${offer.providerRailLabel}` : ''}\n\n` +
         `${message || '(no message)'}\n\n` +
         `Recorded in audit_events: ${stored ? 'yes' : 'NO — email is the only copy'}`,
     });
@@ -156,35 +155,9 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
         `We could not record your request right now — please email ${TEAM} directly.`);
     }
 
-    // 3. Auto-acknowledgment with the matching compliance mapping. Non-fatal.
-    const pdfLine = workflow.pdf
-      ? `For your compliance file, the sector mapping we discussed on the site:\nhttps://www.emiliaprotocol.ai/compliance/${workflow.pdf}\n\n`
-      : '';
-    await sendEmail({
-      to: email,
-      subject: 'EMILIA pilot request received — what happens next',
-      body: (isDefaultOffer
-        ? `Hi ${name.split(' ')[0]},\n\n` +
-          `Got your pilot request for: ${workflow.label}.\n\n` +
-          `What happens next: I reply personally within one business day with a ` +
-          `15-minute scheduling link and the one-page ${MANAGED_PILOT.durationLabel}, ` +
-          `${MANAGED_PILOT.priceLabel} pilot scope (${MANAGED_PILOT.workflowLabel}; ` +
-          `synthetic first, then a governed read-only export).\n\n`
-        : `Hi ${name.split(' ')[0]},\n\n` +
-          `Got your request for the ${offer.name}: ${workflow.label}.\n\n` +
-          `What happens next: I reply personally within one business day with a ` +
-          `15-minute scheduling link and the one-page ${offer.durationLabel}, ` +
-          `${offer.priceLabel} scope (${offer.workflowLabel}` +
-          `${offer.providerRailLabel ? `; ${offer.providerRailLabel}` : ''}; ` +
-          `${offer.rolloutLabel}).\n\n`) +
-        `Meanwhile, three things you can verify without trusting us:\n` +
-        `- Be the approver yourself (20 seconds): https://www.emiliaprotocol.ai/try\n` +
-        `- Verify a receipt offline: https://www.emiliaprotocol.ai/verify\n` +
-        pdfLine +
-        `— Iman Schrock, Founder, EMILIA Protocol\n` +
-        `team@emiliaprotocol.ai · emiliaprotocol.ai`,
-    });
-
+    // Do not send mail to caller-supplied addresses. Public intake only records
+    // the request and notifies the internal team; that keeps this endpoint from
+    // becoming an outbound-email relay for address validation or harassment.
     return NextResponse.json({ ok: true, stored, notified });
   } catch (err) {
     logger.error('pilot request error:', err);
