@@ -14,6 +14,19 @@ const PACKAGES = [
     { name: '@emilia-protocol/require-receipt', directory: 'packages/require-receipt' },
     { name: '@emilia-protocol/gate', directory: 'packages/gate' },
     { name: '@emilia-protocol/scan', directory: 'packages/scan' },
+    // Every publishable package with a closed exports map belongs behind the
+    // blank-consumer check. This catches dependencies or relative imports that
+    // happen to work only inside the monorepo or a flat node_modules layout.
+    { name: '@emilia-protocol/mcp-guard', directory: 'packages/mcp-guard' },
+    { name: '@emilia-protocol/attest', directory: 'packages/attest' },
+    { name: '@emilia-protocol/issue', directory: 'packages/issue' },
+    { name: '@emilia-protocol/langchain', directory: 'packages/langchain' },
+    { name: '@emilia-protocol/openai-agents', directory: 'packages/openai-agents' },
+    { name: '@emilia-protocol/openai-guard', directory: 'packages/openai-guard' },
+    { name: '@emilia-protocol/fire-drill', directory: 'packages/fire-drill' },
+    { name: '@emilia-protocol/fire-drill-mcp', directory: 'packages/fire-drill-mcp' },
+    // crash-test and mobile are deliberately absent: neither declares a closed
+    // exports map. Add them here when they expose an importable package surface.
 ];
 function run(command, args, cwd = ROOT) {
     const result = spawnSync(command, args, {

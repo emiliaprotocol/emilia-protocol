@@ -37,7 +37,13 @@
  * assumptions. The demand hook fails CLOSED.
  */
 import crypto from 'node:crypto';
-import { verifyEmiliaReceipt, receiptChallenge, evaluateReceiptAssurance, canonicalizeStrictJson, makeReceiptGate, parseReceiptCarrier, } from '../../require-receipt/index.js';
+import { verifyEmiliaReceipt, receiptChallenge, evaluateReceiptAssurance, canonicalizeStrictJson, makeReceiptGate, parseReceiptCarrier,
+// Package specifier, not a relative path. '../../require-receipt/index.js'
+// escapes this package's own root: it resolved only by accident of npm's flat
+// node_modules layout and pointed at whatever require-receipt happened to be
+// hoisted beside it, which under a strict layout (pnpm, Yarn PnP) resolves to
+// nothing at all.
+ } from '@emilia-protocol/require-receipt';
 // ---------------------------------------------------------------------------
 // Canonicalization (RFC 8785-style, key-sorted) — used ONLY for the additive
 // provenance bundle and for hashing tool-call inputs. It is byte-identical to

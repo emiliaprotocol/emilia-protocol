@@ -1,6 +1,6 @@
 {
   "name": "@emilia-protocol/mcp-guard",
-  "version": "0.4.3",
+  "version": "0.4.4",
   "description": "Fail-closed MCP receipt middleware with exact-action binding, one-time consumption, strict receipt parsing, and escalation-only treatment of untrusted tool metadata.",
   "type": "module",
   "main": "index.js",
@@ -45,7 +45,7 @@
     "test": "cd ../.. && npx vitest run tests/mcp-guard-boundary.test.ts"
   },
   "peerDependencies": {
-    "@emilia-protocol/require-receipt": "^0.6.0"
+    "@emilia-protocol/require-receipt": "^0.7.0"
   },
   "repository": {
     "type": "git",
