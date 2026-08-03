@@ -279,6 +279,43 @@ describe('@emilia-protocol/mcp-guard boundary hardening', () => {
     })).toEqual({ irreversible: true, reason: 'default' });
   });
 
+  it('honours a policy that returns classifyToolCall\'s own shape, and still fails closed on junk', () => {
+    // A policy written as `(name) => ({ irreversible: false })` mirrors the shape
+    // this very function returns, so it is the obvious thing to write. Only a bare
+    // boolean was read, so the object fell through to defaultIrreversible. That
+    // failed CLOSED, which is the safe direction and is exactly why nobody noticed:
+    // the operator's intent was dropped in silence and every call stayed gated.
+    expect(classifyToolCall('list_tables', {}, { policy: () => ({ irreversible: false }) }))
+      .toEqual({ irreversible: false, reason: 'policy_fn' });
+    expect(classifyToolCall('delete_repo', {}, { policy: () => ({ irreversible: true }) }))
+      .toEqual({ irreversible: true, reason: 'policy_fn' });
+
+    // Bare booleans are unchanged.
+    expect(classifyToolCall('list_tables', {}, { policy: () => false }))
+      .toEqual({ irreversible: false, reason: 'policy_fn' });
+
+    // Everything that is not an explicit boolean decision still fails closed.
+    for (const policy of [
+      () => ({ nope: 1 }),
+      () => ({ irreversible: 'false' }),
+      () => undefined,
+      () => null,
+      () => 'false',
+    ]) {
+      expect(classifyToolCall('delete_repo', {}, { policy }))
+        .toEqual({ irreversible: true, reason: 'default' });
+    }
+
+    // A throwing classifier is still treated as irreversible.
+    expect(classifyToolCall('delete_repo', {}, { policy: () => { throw new Error('boom'); } }))
+      .toEqual({ irreversible: true, reason: 'policy_fn_threw' });
+
+    // An attacker-supplied per-call downgrade still cannot beat an object policy.
+    expect(classifyToolCall('delete_repo', { __ep: { irreversible: true } }, {
+      policy: () => ({ irreversible: false }),
+    })).toEqual({ irreversible: true, reason: 'per_call_override' });
+  });
+
   it('retains no attacker-keyed per-action gate cache', () => {
     const source = readFileSync(
       new URL('../packages/mcp-guard/src/index.ts', import.meta.url),
