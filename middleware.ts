@@ -357,6 +357,7 @@ const ROUTE_POLICIES = {
 
   // Cloud — admin (tenant credentials and policy rollouts)
   'POST /api/cloud/tenants/*/api-keys': { rateCategory: 'cloud_admin', useAuth: true },
+  'POST /api/cloud/tenants/*/panic':    { rateCategory: 'cloud_admin', useAuth: true },
   'GET /api/cloud/authorities/policy-rollout': { rateCategory: 'cloud_admin', useAuth: true },
   'POST /api/cloud/authorities/policy-rollout': { rateCategory: 'cloud_admin', useAuth: true },
   'POST /api/cloud/authorities/policy-rollout/*/revoke': { rateCategory: 'cloud_admin', useAuth: true },

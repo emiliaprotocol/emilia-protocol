@@ -23,6 +23,12 @@ import {
 import { loadSignoffForSigning, loadApproverCredentials } from '@/lib/webauthn-signoff';
 import { renderAction } from '@/lib/wysiwys/render.js';
 import { readLimitedJson } from '@/lib/http/body-limit';
+import {
+  buildCeremonyBinding,
+  signoffCeremonyPolicy,
+  signoffConfirmationPhrase,
+} from '@/lib/signoff/ceremony-policy.js';
+import type { SignoffCeremonyBinding } from '@/lib/signoff/ceremony-policy.js';
 
 const MAX_WEBAUTHN_SIGNOFF_OPTIONS_BYTES = 32 * 1024;
 
@@ -108,6 +114,9 @@ export async function POST(
       try {
         rendering = renderAction(canonicalAction);
         displayHash = rendering.display_hash;
+        if (rendering.action_hash.replace(/^sha256:/, '') !== loaded.actionHash.replace(/^sha256:/, '')) {
+          return epProblem(409, 'canonical_action_mismatch', 'Stored canonical_action does not match the receipt-issued action_hash');
+        }
       } catch (e) {
         logger.warn('[webauthn] signoff options: renderAction failed:', e?.message);
         if (displayBindingRequired) {
@@ -117,6 +126,44 @@ export async function POST(
     }
     if (displayBindingRequired && !displayHash) {
       return epProblem(409, 'display_binding_required', 'Class-A signoff requires WYSIWYS display_hash binding');
+    }
+    let ceremony: SignoffCeremonyBinding | null = null;
+    if (displayBindingRequired && signedDecision === 'approved') {
+      let expectedPhrase: string;
+      try {
+        expectedPhrase = signoffConfirmationPhrase(
+          loaded.createdState?.action_type,
+          loaded.actionHash,
+        );
+      } catch {
+        return epProblem(409, 'confirmation_binding_required', 'Class-A approval requires a valid action type and SHA-256 action hash');
+      }
+      if (body.confirmation_phrase !== expectedPhrase) {
+        return epProblem(409, 'confirmation_phrase_mismatch', 'Type the displayed action-specific confirmation phrase exactly');
+      }
+      const { data: metric, error: metricError } = await supabase
+        .from('signoff_metrics')
+        .select('rendered_at')
+        .eq('signoff_id', signoffId)
+        .maybeSingle();
+      if (metricError) {
+        logger.error('[webauthn] signoff options: review metric load failed:', metricError);
+        return epProblem(503, 'review_state_unavailable', 'Could not verify the Class-A review interval');
+      }
+      const reviewStartedAt = metric?.rendered_at;
+      const reviewStartedMs = typeof reviewStartedAt === 'string' ? Date.parse(reviewStartedAt) : Number.NaN;
+      if (!Number.isFinite(reviewStartedMs)) {
+        return epProblem(409, 'signoff_review_required', 'Open and review the signoff page before approving');
+      }
+      const policy = signoffCeremonyPolicy();
+      if (issuedAt.getTime() - reviewStartedMs < policy.minimum_review_ms) {
+        return epProblem(429, 'minimum_review_time_required', `Review the exact action for at least ${policy.minimum_review_ms} ms before approving`);
+      }
+      ceremony = buildCeremonyBinding({
+        policy,
+        phrase: expectedPhrase,
+        reviewStartedAt: new Date(reviewStartedMs).toISOString(),
+      });
     }
     const context = buildAuthorizationContext({
       actionHash: loaded.actionHash,
@@ -134,6 +181,7 @@ export async function POST(
       // real, already-guarded types; zero runtime effect.
       decision: signedDecision as any,
       displayHash: displayHash as any,
+      ceremony,
     });
     const challenge = contextHashBytes(context).toString('base64url');
 

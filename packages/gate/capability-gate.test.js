@@ -14,7 +14,7 @@ const ACTION = {
     payment_instruction_id: 'pi_capability_gate',
     beneficiary_account_hash: 'sha256:capability-beneficiary',
 };
-function fixture({ budget = 100, baseAction = ACTION } = {}) {
+function fixture({ budget = 100, baseAction = ACTION, providerEntryGuard = null } = {}) {
     const harness = createEg1Harness({ action: baseAction, now: () => NOW, idPrefix: 'cap-gate' });
     const issuer = generateKeyPairSync('ed25519');
     const issuerPublicKey = issuer.publicKey.export({ type: 'spki', format: 'der' }).toString('base64url');
@@ -44,6 +44,7 @@ function fixture({ budget = 100, baseAction = ACTION } = {}) {
         capabilityStore,
         capabilityTrustedIssuerKeys: [issuerPublicKey],
         runtimeMonitor,
+        providerEntryGuard,
         allowEphemeralStore: true,
         now: () => NOW,
     });
@@ -167,6 +168,21 @@ test('gate capability path refuses overspend before the effect', async () => {
     assert.equal(effects, 0);
     assert.equal(f.capabilityStore.getState('cap_30').consumed_amount, 0);
     assert.equal(f.runtimeMonitor.getMode(), 'normal');
+});
+test('gate capability path rechecks the provider-entry guard after budget reservation and before the effect', async () => {
+    const f = fixture({
+        providerEntryGuard: async () => ({ ok: false, reason: 'organization_suspended', status: 423 }),
+    });
+    let effects = 0;
+    const out = await f.gate.run(request(f, { operationId: ACTION.payment_instruction_id }), async () => {
+        effects += 1;
+    });
+    assert.equal(out.ok, false);
+    assert.equal(out.capability.reason, 'organization_suspended');
+    assert.equal(effects, 0);
+    assert.equal(f.capabilityStore.getOperation(ACTION.payment_instruction_id).status, 'reserved');
+    assert.equal(f.capabilityStore.getState('cap_100').consumed_amount, 0);
+    assert.equal(f.capabilityStore.getState('cap_100').reserved_amount, 40);
 });
 test('gate capability path refuses a missing stable operation id before the effect', async () => {
     const f = fixture();

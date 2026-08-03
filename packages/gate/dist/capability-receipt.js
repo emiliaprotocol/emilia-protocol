@@ -2170,11 +2170,15 @@ function capabilityAmount(action, capability, verifiedAction = action) {
  * @param {Function|null} [options.verifyBaseReceipt]
  * @param {Function|null} [options.resolveCaid]
  * @param {Function|null} [options.verifyActionProfile]
+ * @param {Function|null} [options.providerEntryGuard] final relying-party check
+ *   after the atomic budget reservation and immediately before provider entry.
+ *   A refusal leaves the pre-entry reservation fenced for deadline recovery;
+ *   it never invokes the provider.
  * @param {string|null} [options.operationId]
  * @param {number|(() => number)} [options.now]
  * @param {boolean} [options.thresholdSecretVerified]
  */
-export async function executeWithCapability({ capabilityReceipt, secret, action, store, executeAction, gate = null, selector = {}, observedAction = null, trustedIssuerKeys = [], verifyBaseReceipt = null, resolveCaid = null, verifyActionProfile = null, allowanceStatus, operationId = null, now = Date.now, thresholdSecretVerified = false, } = {}) {
+export async function executeWithCapability({ capabilityReceipt, secret, action, store, executeAction, gate = null, selector = {}, observedAction = null, trustedIssuerKeys = [], verifyBaseReceipt = null, resolveCaid = null, verifyActionProfile = null, providerEntryGuard = null, allowanceStatus, operationId = null, now = Date.now, thresholdSecretVerified = false, } = {}) {
     const verified = verifyCapabilityReceipt(capabilityReceipt, { trustedIssuerKeys });
     if (!verified.ok)
         return { ok: false, reason: verified.reason };
@@ -2190,6 +2194,9 @@ export async function executeWithCapability({ capabilityReceipt, secret, action,
     }
     if (typeof executeAction !== 'function')
         throw new TypeError('executeWithCapability requires executeAction');
+    if (providerEntryGuard !== null && typeof providerEntryGuard !== 'function') {
+        throw new TypeError('providerEntryGuard must be a function when configured');
+    }
     try {
         validateOperationId(operationId);
     }
@@ -2269,6 +2276,38 @@ export async function executeWithCapability({ capabilityReceipt, secret, action,
                 : {}),
             ...(scope.caid ? { caid: scope.caid } : {}),
         };
+    }
+    if (providerEntryGuard) {
+        let entryVerdict;
+        try {
+            entryVerdict = await providerEntryGuard(Object.freeze({
+                authorization: structuredClone(authorization),
+                selector: structuredClone(selector),
+                observed_action: structuredClone(immutableAction),
+                capability: structuredClone({
+                    id: verified.capability.id,
+                    operation_id: operationId,
+                    action_digest: scope.action_digest,
+                    action_fence_digest: scope.action_fence_digest,
+                }),
+            }));
+        }
+        catch {
+            entryVerdict = { ok: false, reason: 'provider_entry_guard_unavailable' };
+        }
+        if (!entryVerdict || entryVerdict.ok !== true) {
+            return {
+                ok: false,
+                reason: typeof entryVerdict?.reason === 'string'
+                    ? entryVerdict.reason
+                    : 'provider_entry_guard_refused',
+                authorization,
+                operation_id: operationId,
+                action_digest: scope.action_digest,
+                action_fence_digest: scope.action_fence_digest,
+                ...(scope.caid ? { caid: scope.caid } : {}),
+            };
+        }
     }
     const providerEntry = await store.beginProviderEntry({
         capabilityId: verified.capability.id,

@@ -184,6 +184,7 @@ export function createRuntimeMonitor({
     },
     effectReturned(cycleId) { return transition(cycleId, 'effect_returned'); },
     effectFailed(cycleId) { return transition(cycleId, 'effect_failed'); },
+    providerEntryRefused(cycleId) { return transition(cycleId, 'capability_refused'); },
     capabilityRefused(cycleId) { return transition(cycleId, 'capability_refused'); },
     consumptionCommitted(cycleId) { return transition(cycleId, 'consumed'); },
     executionRecorded(cycleId) { return transition(cycleId, 'execution_recorded'); },

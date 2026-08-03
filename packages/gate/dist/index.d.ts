@@ -8,6 +8,7 @@ import { createKeyRegistry, asKeyRegistry } from './key-registry.js';
 import { classifyRetention, buildRetentionExport } from './retention.js';
 import { createDefaultActionControlManifest, findActionControl, resolveActionControl, validateActionControlManifest } from './action-control-manifest.js';
 import { createRuntimeMonitor } from './runtime-monitor.js';
+import { type ProviderEntryGuard } from './provider-entry.js';
 import { capabilityBaseReceiptDigest, capabilityActionDigest, verifyCapabilityScope, mintCapabilityReceipt, verifyCapabilityReceipt, splitCapabilitySecret, reconstructCapabilitySecret, createMemoryCapabilityStore, createPostgresCapabilityStore, isSecureCapabilityStore, executeWithCapability, executeWithThreshold, reconcileCapabilityOperation } from './capability-receipt.js';
 import { deriveZkRangeBases, loadBulletproofBackend, mintZkRangeReceipt, verifyZkRangeReceipt } from './zk-range-proof.js';
 import { mintBreakGlassAuthorization, verifyBreakGlass, consumeBreakGlass, buildBreakGlassEvidence, runBreakGlass, BREAKGLASS_VERSION, BREAKGLASS_EVIDENCE_KIND } from './breakglass.js';
@@ -40,6 +41,8 @@ export { EG1_VERSION, EG1_CHECKS, EG1_DEFAULT_ACTION, EG1_DEFAULT_SELECTOR, crea
 export { CF1_VERSION, CF1_CHECKS, runCf1 } from './cf1-conformance.js';
 export { mintBreakGlassAuthorization, verifyBreakGlass, consumeBreakGlass, buildBreakGlassEvidence, runBreakGlass, BREAKGLASS_VERSION, BREAKGLASS_EVIDENCE_KIND, };
 export { createRuntimeMonitor, RUNTIME_MONITOR_VERSION, RUNTIME_MONITOR_MODES, RUNTIME_INVARIANTS } from './runtime-monitor.js';
+export * from './provider-entry.js';
+export * from './execution-value.js';
 export { FORMAL_RUNTIME_BRIDGE_VERSION, FORMAL_RUNTIME_SPEC, FORMAL_RUNTIME_CONFIG, FORMAL_RUNTIME_INVARIANT_MAP, } from './formal-runtime-map.js';
 export { CAPABILITY_RECEIPT_VERSION, CAPABILITY_STATE_VERSION, CAPABILITY_SHARE_VERSION, CAPABILITY_SCOPE_PROFILE, CAPABILITY_CAID_SCOPE_PROFILE, CAPABILITY_ALLOWANCE_SCOPE_PROFILE, CAPABILITY_ALLOWANCE_STATUS_TABLE, CAPABILITY_STATE_DDL, CAPABILITY_SQL, capabilityBaseReceiptDigest, capabilityActionDigest, verifyCapabilityScope, mintCapabilityReceipt, verifyCapabilityReceipt, splitCapabilitySecret, reconstructCapabilitySecret, createMemoryCapabilityStore, createPostgresCapabilityStore, isSecureCapabilityStore, executeWithCapability, executeWithThreshold, reconcileCapabilityOperation, delegateCapabilityReceipt, } from './capability-receipt.js';
 export * from './authority-allocation.js';
@@ -323,8 +326,9 @@ interface CreateGateOptions {
     verifyAdmissibilityPacket?: ((...args: any[]) => any) | null;
     allowEmbeddedApproverKeys?: boolean;
     runtimeMonitor?: ReturnType<typeof createRuntimeMonitor> | null;
+    providerEntryGuard?: ProviderEntryGuard | null;
 }
-export declare function createGate({ manifest, trustedKeys, maxAgeSec, store, log, capabilityStore, capabilityTrustedIssuerKeys, capabilityCaidResolver, allowInlineKey, allowEphemeralStore, strictEvidence, now, keyRegistry, approverKeys, approver_keys, verifyAssurance, rpId, allowedOrigins, quorumPolicy, quorumPolicies, requiredAdmissibilityProfile, verifyAdmissibilityPacket, allowEmbeddedApproverKeys, runtimeMonitor }?: CreateGateOptions): {
+export declare function createGate({ manifest, trustedKeys, maxAgeSec, store, log, capabilityStore, capabilityTrustedIssuerKeys, capabilityCaidResolver, allowInlineKey, allowEphemeralStore, strictEvidence, now, keyRegistry, approverKeys, approver_keys, verifyAssurance, rpId, allowedOrigins, quorumPolicy, quorumPolicies, requiredAdmissibilityProfile, verifyAdmissibilityPacket, allowEmbeddedApproverKeys, runtimeMonitor, providerEntryGuard }?: CreateGateOptions): {
     check: ({ selector, receipt, observedAction, consumptionMode, admissibilityProfile, reliancePacket: presentedPacket, admissibility, capability }?: {
         selector?: any;
         receipt?: any;

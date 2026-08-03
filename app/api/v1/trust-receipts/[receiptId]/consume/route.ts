@@ -574,6 +574,20 @@ export async function POST(
           'Approver credential or authority changed before consume committed',
         );
       }
+      if (String(insertErr.message || '').includes('tenant_execution_suspended')) {
+        return epProblem(
+          423,
+          'organization_suspended',
+          'The organization-wide panic control is active; no pending receipt may execute.',
+        );
+      }
+      if (String(insertErr.message || '').includes('tenant_panic_invalidated_receipt')) {
+        return epProblem(
+          409,
+          'receipt_invalidated_by_panic',
+          'This receipt predates an organization-wide panic event and cannot be reactivated.',
+        );
+      }
       logger.error('[guard] consume: audit insert failed:', insertErr);
       return epProblem(500, 'internal_error', 'Failed to record consume');
     }

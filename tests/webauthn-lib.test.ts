@@ -266,4 +266,20 @@ describe('lib/webauthn — WYSIWYS display_hash binding', () => {
     // The challenge IS the context hash — binding the display changes what the human signs.
     expect(contextHashHex(withDisplay)).not.toBe(withoutHash);
   });
+
+  it('binds a Class-A ceremony into the signed context without changing legacy contexts', () => {
+    const legacyHash = contextHashHex(buildAuthorizationContext(baseArgs));
+    const ceremony = {
+      profile: 'EP-SIGNOFF-CEREMONY-v1' as const,
+      policy_digest: `sha256:${'1'.repeat(64)}`,
+      confirmation_hash: `sha256:${'2'.repeat(64)}`,
+      review_started_at: '2026-01-01T00:00:00.000Z',
+      minimum_review_ms: 3000,
+      max_approvals: 5,
+      window_seconds: 3600,
+    };
+    const bound = buildAuthorizationContext({ ...baseArgs, ceremony });
+    expect(bound.ceremony).toEqual(ceremony);
+    expect(contextHashHex(bound)).not.toBe(legacyHash);
+  });
 });

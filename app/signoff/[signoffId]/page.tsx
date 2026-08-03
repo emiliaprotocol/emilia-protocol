@@ -11,6 +11,7 @@ import { getServiceClient } from '@/lib/supabase';
 import { SIGNOFF_ID_PATTERN } from '@/lib/webauthn';
 import { creatorBoundSignoffRequests, decisionMatchesRequest } from '@/lib/guard-signoff-binding.js';
 import { renderAction } from '@/lib/wysiwys/render.js';
+import { signoffConfirmationPhrase } from '@/lib/signoff/ceremony-policy.js';
 import SignoffSigner from './signer';
 
 export const dynamic = 'force-dynamic';
@@ -137,6 +138,15 @@ export default async function SignoffPage({ params }: PageParams) {
 
   const amount = typeof action?.amount === 'number' ? action.amount : null;
   const currency = typeof action?.currency === 'string' ? action.currency : null;
+  let confirmationPhrase = '';
+  if (status === 'pending' && base.required_assurance === 'A') {
+    try {
+      confirmationPhrase = signoffConfirmationPhrase(base.action_type, base.action_hash);
+    } catch {
+      // The options endpoint independently refuses a Class-A ceremony that
+      // cannot derive this exact action-specific phrase.
+    }
+  }
 
   return (
     <div style={wrap}>
@@ -196,6 +206,7 @@ export default async function SignoffPage({ params }: PageParams) {
           expectedActionHash={base.action_hash || ''}
           expectedDisplayHash={rendered?.display_hash || ''}
           expectedRenderProfile={rendered?.render_profile || ''}
+          confirmationPhrase={confirmationPhrase}
         />
 
         <p style={{ color: '#56524B', fontSize: 11, marginTop: 28, lineHeight: 1.6 }}>

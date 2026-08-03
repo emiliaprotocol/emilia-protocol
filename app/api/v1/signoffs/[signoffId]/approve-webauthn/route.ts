@@ -28,6 +28,13 @@ import { canAccept } from '@/lib/signoff/quorum-session.js';
 import { decisionToMember, decisionsToMembers } from '@/lib/signoff/attestation-members.js';
 import { readLimitedJson } from '@/lib/http/body-limit';
 import { strictJsonGate } from '@/lib/strict-json.js';
+import {
+  SIGNOFF_CEREMONY_PROFILE,
+  confirmationPhraseHash,
+  signoffCeremonyPolicy,
+  signoffCeremonyPolicyDigest,
+  signoffConfirmationPhrase,
+} from '@/lib/signoff/ceremony-policy.js';
 
 const MAX_WEBAUTHN_APPROVE_BYTES = 256 * 1024;
 
@@ -167,6 +174,37 @@ export async function POST(
     if (requiredAssurance === 'A' && !challengeRow.context?.display_hash) {
       return epProblem(409, 'display_binding_required', 'Class-A signoff requires a WYSIWYS display_hash bound into the signed context');
     }
+    if (requiredAssurance === 'A' && signedDecision === 'approved') {
+      const ceremony = challengeRow.context?.ceremony;
+      const policy = signoffCeremonyPolicy();
+      let expectedConfirmationHash: string;
+      try {
+        expectedConfirmationHash = confirmationPhraseHash(signoffConfirmationPhrase(
+          loaded.createdState?.action_type,
+          loaded.actionHash,
+        ));
+      } catch {
+        return epProblem(409, 'confirmation_binding_required', 'Class-A approval cannot derive its action-specific confirmation binding');
+      }
+      const reviewStartedMs = typeof ceremony?.review_started_at === 'string'
+        ? Date.parse(ceremony.review_started_at)
+        : Number.NaN;
+      const issuedAtMs = typeof challengeRow.context?.issued_at === 'string'
+        ? Date.parse(challengeRow.context.issued_at)
+        : Number.NaN;
+      const ceremonyValid = ceremony?.profile === SIGNOFF_CEREMONY_PROFILE
+        && ceremony?.policy_digest === signoffCeremonyPolicyDigest(policy)
+        && ceremony?.confirmation_hash === expectedConfirmationHash
+        && ceremony?.minimum_review_ms === policy.minimum_review_ms
+        && ceremony?.max_approvals === policy.max_approvals
+        && ceremony?.window_seconds === policy.window_seconds
+        && Number.isFinite(reviewStartedMs)
+        && Number.isFinite(issuedAtMs)
+        && issuedAtMs - reviewStartedMs >= policy.minimum_review_ms;
+      if (!ceremonyValid) {
+        return epProblem(409, 'ceremony_binding_invalid', 'Class-A approval does not bind the current review and attention policy');
+      }
+    }
 
     // ── Credential: the assertion's credential must belong to this approver.
     const { data: creds, error: credErr } = await supabase
@@ -240,6 +278,29 @@ export async function POST(
       .select('id');
     if (!claimed || claimed.length === 0) {
       return epProblem(409, 'challenge_replayed', 'Signing challenge already consumed');
+    }
+
+    // Approval fatigue is a durable state problem, not a UI promise. Consume
+    // the fixed-window allowance only after a valid, single-use assertion has
+    // been claimed. Denials are never throttled.
+    if (requiredAssurance === 'A' && decision === 'approved') {
+      const policy = signoffCeremonyPolicy();
+      const { data: velocity, error: velocityError } = await supabase.rpc(
+        'consume_signoff_approval_velocity',
+        {
+          p_organization_id: loaded.organizationId,
+          p_approver_id: body.approver_id,
+          p_max_approvals: policy.max_approvals,
+          p_window_seconds: policy.window_seconds,
+        },
+      );
+      if (velocityError) {
+        logger.error('[webauthn] approve: velocity state unavailable:', velocityError);
+        return epProblem(503, 'approval_velocity_unavailable', 'Could not verify the Class-A approval velocity policy');
+      }
+      if (!velocity?.ok) {
+        return epProblem(429, 'approval_velocity_exceeded', 'This approver has reached the Class-A approval limit for the current hour');
+      }
     }
 
     // ── EP-QUORUM-v1 early gate (defense-in-depth) ─────────────────────────

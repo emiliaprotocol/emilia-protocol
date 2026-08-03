@@ -40,6 +40,7 @@ import { createKeyRegistry, asKeyRegistry } from './key-registry.js';
 import { classifyRetention, buildRetentionExport } from './retention.js';
 import { ACTION_CONTROL_MANIFEST_VERSION, createDefaultActionControlManifest, findActionControl, resolveActionControl, validateActionControlManifest, } from './action-control-manifest.js';
 import { createRuntimeMonitor, RUNTIME_MONITOR_VERSION, RUNTIME_MONITOR_MODES, RUNTIME_INVARIANTS, } from './runtime-monitor.js';
+import { evaluateProviderEntryGuard, providerEntryContext, } from './provider-entry.js';
 import { FORMAL_RUNTIME_BRIDGE_VERSION, FORMAL_RUNTIME_SPEC, FORMAL_RUNTIME_CONFIG, FORMAL_RUNTIME_INVARIANT_MAP, } from './formal-runtime-map.js';
 import { CAPABILITY_RECEIPT_VERSION, CAPABILITY_STATE_VERSION, CAPABILITY_SHARE_VERSION, CAPABILITY_SCOPE_PROFILE, CAPABILITY_CAID_SCOPE_PROFILE, CAPABILITY_ALLOWANCE_SCOPE_PROFILE, CAPABILITY_ALLOWANCE_STATUS_TABLE, CAPABILITY_STATE_DDL, CAPABILITY_SQL, capabilityBaseReceiptDigest, capabilityActionDigest, verifyCapabilityScope, mintCapabilityReceipt, verifyCapabilityReceipt, splitCapabilitySecret, reconstructCapabilitySecret, createMemoryCapabilityStore, createPostgresCapabilityStore, isSecureCapabilityStore, executeWithCapability, executeWithThreshold, reconcileCapabilityOperation, } from './capability-receipt.js';
 import { ZK_RANGE_RECEIPT_VERSION, ZK_RANGE_SCHEME, ZK_RANGE_BACKEND_PACKAGE, deriveZkRangeBases, loadBulletproofBackend, mintZkRangeReceipt, verifyZkRangeReceipt, } from './zk-range-proof.js';
@@ -58,6 +59,8 @@ export { EG1_VERSION, EG1_CHECKS, EG1_DEFAULT_ACTION, EG1_DEFAULT_SELECTOR, crea
 export { CF1_VERSION, CF1_CHECKS, runCf1 } from './cf1-conformance.js';
 export { mintBreakGlassAuthorization, verifyBreakGlass, consumeBreakGlass, buildBreakGlassEvidence, runBreakGlass, BREAKGLASS_VERSION, BREAKGLASS_EVIDENCE_KIND, };
 export { createRuntimeMonitor, RUNTIME_MONITOR_VERSION, RUNTIME_MONITOR_MODES, RUNTIME_INVARIANTS } from './runtime-monitor.js';
+export * from './provider-entry.js';
+export * from './execution-value.js';
 export { FORMAL_RUNTIME_BRIDGE_VERSION, FORMAL_RUNTIME_SPEC, FORMAL_RUNTIME_CONFIG, FORMAL_RUNTIME_INVARIANT_MAP, } from './formal-runtime-map.js';
 export { CAPABILITY_RECEIPT_VERSION, CAPABILITY_STATE_VERSION, CAPABILITY_SHARE_VERSION, CAPABILITY_SCOPE_PROFILE, CAPABILITY_CAID_SCOPE_PROFILE, CAPABILITY_ALLOWANCE_SCOPE_PROFILE, CAPABILITY_ALLOWANCE_STATUS_TABLE, CAPABILITY_STATE_DDL, CAPABILITY_SQL, capabilityBaseReceiptDigest, capabilityActionDigest, verifyCapabilityScope, mintCapabilityReceipt, verifyCapabilityReceipt, splitCapabilitySecret, reconstructCapabilitySecret, createMemoryCapabilityStore, createPostgresCapabilityStore, isSecureCapabilityStore, executeWithCapability, executeWithThreshold, reconcileCapabilityOperation, delegateCapabilityReceipt, } from './capability-receipt.js';
 export * from './authority-allocation.js';
@@ -613,7 +616,7 @@ export function verifyBusinessAuthorization({ requirement, receipt, assurance, t
     }
     return base;
 }
-export function createGate({ manifest = null, trustedKeys = [], maxAgeSec = 900, store, log, capabilityStore = null, capabilityTrustedIssuerKeys = [], capabilityCaidResolver = null, allowInlineKey = false, allowEphemeralStore = false, strictEvidence = true, now = Date.now, keyRegistry = null, approverKeys = {}, approver_keys = null, verifyAssurance = null, rpId = null, allowedOrigins = [], quorumPolicy = null, quorumPolicies = {}, requiredAdmissibilityProfile = null, verifyAdmissibilityPacket = null, allowEmbeddedApproverKeys = false, runtimeMonitor = createRuntimeMonitor({ now }) } = {}) {
+export function createGate({ manifest = null, trustedKeys = [], maxAgeSec = 900, store, log, capabilityStore = null, capabilityTrustedIssuerKeys = [], capabilityCaidResolver = null, allowInlineKey = false, allowEphemeralStore = false, strictEvidence = true, now = Date.now, keyRegistry = null, approverKeys = {}, approver_keys = null, verifyAssurance = null, rpId = null, allowedOrigins = [], quorumPolicy = null, quorumPolicies = {}, requiredAdmissibilityProfile = null, verifyAdmissibilityPacket = null, allowEmbeddedApproverKeys = false, runtimeMonitor = createRuntimeMonitor({ now }), providerEntryGuard = null } = {}) {
     // Production key custody: a registry (rotation + revocation) supersedes a flat
     // trustedKeys list. A flat list is coerced to an always-valid registry, so
     // existing callers are unchanged.
@@ -671,11 +674,20 @@ export function createGate({ manifest = null, trustedKeys = [], maxAgeSec = 900,
             throw new Error(`EMILIA Gate consumption store must implement ${method}()`);
         }
     }
+    if (providerEntryGuard !== null && typeof providerEntryGuard !== 'function') {
+        throw new Error('EMILIA Gate providerEntryGuard must be a function when configured');
+    }
+    if (providerEntryGuard !== null && typeof consumption?.release !== 'function') {
+        throw new Error('EMILIA Gate providerEntryGuard requires a consumption store with release() for pre-effect refusals');
+    }
     if (!allowEphemeralStore && !isSecureConsumptionStore(consumption)) {
         throw new Error('EMILIA Gate requires a durable, ownership-fenced, permanent consumption store. '
             + 'Pass allowEphemeralStore:true only for an explicit test/demo gate.');
     }
     const evidence = log || createEvidenceLog({ strict: strictEvidence });
+    async function providerEntryVerdict({ authorization, selector = {}, observedAction = null, capability = null, }) {
+        return evaluateProviderEntryGuard(providerEntryGuard, providerEntryContext({ authorization, selector, observedAction, capability, now }));
+    }
     function resolveRequirement(selector) {
         if (!manifest)
             return null;
@@ -1329,6 +1341,14 @@ export function createGate({ manifest = null, trustedKeys = [], maxAgeSec = 900,
             operationId,
             now,
             executeAction,
+            providerEntryGuard: providerEntryGuard
+                ? (input) => providerEntryVerdict({
+                    authorization: input.authorization,
+                    selector: input.selector,
+                    observedAction: input.observed_action,
+                    capability: input.capability,
+                })
+                : null,
         };
         const capabilityResult = Array.isArray(context.shares)
             ? await executeWithThreshold(/** @type {any} */ ({ ...executorInput, shares: context.shares }))
@@ -1445,6 +1465,54 @@ export function createGate({ manifest = null, trustedKeys = [], maxAgeSec = 900,
         }
         const receiptId = authorization.evidence?.receipt_id;
         const runtimeCycleId = authorization._runtime_cycle_id;
+        const entryVerdict = await providerEntryVerdict({ authorization, selector, observedAction, capability: null });
+        if (!entryVerdict.ok) {
+            const disposition = entryVerdict.reservation || 'release';
+            let transitionOk = disposition === 'hold';
+            try {
+                if (disposition === 'burn')
+                    transitionOk = (await consumption.commit(receiptId)) === true;
+                if (disposition === 'release')
+                    transitionOk = (await consumption.release(receiptId)) === true;
+            }
+            catch {
+                transitionOk = false;
+            }
+            const reason = transitionOk
+                ? entryVerdict.reason || 'provider_entry_refused'
+                : 'provider_entry_reservation_transition_indeterminate';
+            const status = transitionOk ? (entryVerdict.status || 409) : 503;
+            const refusalEvidence = await evidence.record({
+                kind: 'provider_entry',
+                at: new Date(typeof now === 'function' ? now() : now).toISOString(),
+                authorizes_decision: authorization.evidence?.hash ?? null,
+                action: authorization.action ?? null,
+                receipt_id: receiptId ?? null,
+                outcome: 'refused',
+                reason,
+                guard_evidence: entryVerdict.evidence ?? null,
+                reservation_disposition: disposition,
+                reservation_transition_ok: transitionOk,
+            });
+            runtimeMonitor?.providerEntryRefused?.(runtimeCycleId);
+            const refusal = {
+                allow: false,
+                status,
+                reason,
+                action: authorization.action ?? null,
+                challenge: {
+                    rejected: {
+                        type: 'provider_entry',
+                        reason,
+                        receipt_id: receiptId ?? null,
+                    },
+                },
+                header: null,
+                evidence: refusalEvidence,
+                prior_authorization: authorization.evidence?.hash ?? null,
+            };
+            return { ok: false, status, body: refusal.challenge, authorization: refusal };
+        }
         if (runtimeMonitor && runtimeCycleId) {
             const runtimeStart = runtimeMonitor.beginExecution(runtimeCycleId, authorization);
             if (!runtimeStart.ok) {

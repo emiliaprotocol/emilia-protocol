@@ -12,6 +12,7 @@ interface SignoffSignerProps {
   expectedActionHash: string;
   expectedDisplayHash: string;
   expectedRenderProfile: string;
+  confirmationPhrase: string;
 }
 
 interface SignoffResult {
@@ -34,11 +35,13 @@ export default function SignoffSigner({
   expectedActionHash,
   expectedDisplayHash,
   expectedRenderProfile,
+  confirmationPhrase,
 }: SignoffSignerProps) {
   const [busy, setBusy] = useState(false);
   const [result, setResult] = useState<SignoffResult | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [prepared, setPrepared] = useState<PreparedData | null>(null);
+  const [confirmation, setConfirmation] = useState('');
 
   if (status !== 'pending' && !result) {
     return (
@@ -59,7 +62,11 @@ export default function SignoffSigner({
       const optRes = await fetch(`/api/v1/signoffs/${signoffId}/webauthn-options`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ approver_id: intendedApproverId, decision }),
+        body: JSON.stringify({
+          approver_id: intendedApproverId,
+          decision,
+          ...(decision === 'approved' ? { confirmation_phrase: confirmation } : {}),
+        }),
       });
       const optData = await optRes.json();
       if (!optRes.ok) throw new Error(optData.detail || optData.title || 'Could not start signing');
@@ -163,27 +170,45 @@ export default function SignoffSigner({
           </div>
         </div>
       ) : (
-        <div style={{ display: 'flex', gap: 10 }}>
-          <button
-            onClick={() => prepare('approved')}
-            disabled={busy || !intendedApproverId}
-            style={{
-              flex: 1, padding: '12px 16px', borderRadius: 8, border: 'none', cursor: busy ? 'wait' : 'pointer',
-              background: '#C9A554', color: '#16140F', fontWeight: 700, fontSize: 14,
-            }}
-          >
-            {busy ? 'Preparing challenge…' : 'Prepare approval'}
-          </button>
-          <button
-            onClick={() => prepare('rejected')}
-            disabled={busy || !intendedApproverId}
-            style={{
-              padding: '12px 16px', borderRadius: 8, border: '1px solid #33302A', cursor: busy ? 'wait' : 'pointer',
-              background: 'transparent', color: '#F5F2EC', fontWeight: 600, fontSize: 14,
-            }}
-          >
-            Prepare decline
-          </button>
+        <div>
+          {confirmationPhrase && (
+            <div style={{ padding: 12, border: '1px solid #4B432F', borderRadius: 8, background: '#16140F', marginBottom: 12 }}>
+              <label htmlFor="approval-confirmation" style={{ display: 'block', color: '#8A857C', fontSize: 12, lineHeight: 1.5 }}>
+                To approve, type the action-specific phrase exactly:
+              </label>
+              <div style={{ ...mono, margin: '8px 0', fontSize: 13, color: '#C9A554' }}>{confirmationPhrase}</div>
+              <input
+                id="approval-confirmation"
+                value={confirmation}
+                onChange={(event) => setConfirmation(event.target.value)}
+                autoComplete="off"
+                spellCheck={false}
+                style={{ ...mono, boxSizing: 'border-box', width: '100%', padding: '10px 12px', borderRadius: 7, border: '1px solid #4B432F', background: '#0E0D0B', color: '#F5F2EC' }}
+              />
+            </div>
+          )}
+          <div style={{ display: 'flex', gap: 10 }}>
+            <button
+              onClick={() => prepare('approved')}
+              disabled={busy || !intendedApproverId || !confirmationPhrase || confirmation !== confirmationPhrase}
+              style={{
+                flex: 1, padding: '12px 16px', borderRadius: 8, border: 'none', cursor: busy ? 'wait' : 'pointer',
+                background: '#C9A554', color: '#16140F', fontWeight: 700, fontSize: 14,
+              }}
+            >
+              {busy ? 'Preparing challenge…' : 'Prepare approval'}
+            </button>
+            <button
+              onClick={() => prepare('rejected')}
+              disabled={busy || !intendedApproverId}
+              style={{
+                padding: '12px 16px', borderRadius: 8, border: '1px solid #33302A', cursor: busy ? 'wait' : 'pointer',
+                background: 'transparent', color: '#F5F2EC', fontWeight: 600, fontSize: 14,
+              }}
+            >
+              Prepare decline
+            </button>
+          </div>
         </div>
       )}
       {error && (

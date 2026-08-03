@@ -12,6 +12,7 @@ import crypto from 'node:crypto';
 import { Decoder } from 'cbor-x';
 import { getWebAuthnConfig } from './env.js';
 import { canonicalize as canonicalizeJson } from './canonical-json.js';
+import type { SignoffCeremonyBinding } from './signoff/ceremony-policy.js';
 
 export interface RpConfig {
   rpName: string;
@@ -49,6 +50,7 @@ export interface AuthorizationContextParams {
   expiresAt: string;
   decision?: 'approved' | 'denied' | null;
   displayHash?: string | null;
+  ceremony?: SignoffCeremonyBinding | null;
 }
 
 export interface AuthorizationContext {
@@ -66,6 +68,7 @@ export interface AuthorizationContext {
   expires_at: string;
   decision?: 'approved' | 'denied';
   display_hash?: string;
+  ceremony?: SignoffCeremonyBinding;
 }
 
 /**
@@ -84,6 +87,7 @@ export function buildAuthorizationContext({
   expiresAt,
   decision = null,
   displayHash = null,
+  ceremony = null,
 }: AuthorizationContextParams): AuthorizationContext {
   if (decision !== null && decision !== 'approved' && decision !== 'denied') {
     throw new TypeError('decision must be approved, denied, or null');
@@ -111,6 +115,10 @@ export function buildAuthorizationContext({
   // what was displayed — not just the action hash. Conditional so existing
   // no-display flows hash byte-identically (back-compat).
   if (displayHash) ctx.display_hash = displayHash;
+  // Class-A ceremony policy is signed alongside the action and display. The
+  // canonical round-trip both detaches the caller's object and rejects values
+  // that cannot be reproduced by an offline verifier.
+  if (ceremony) ctx.ceremony = JSON.parse(canonicalizeJson(ceremony));
   return ctx;
 }
 

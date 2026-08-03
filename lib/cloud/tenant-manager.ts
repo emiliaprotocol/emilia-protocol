@@ -167,6 +167,33 @@ export async function archiveTenant(tenantId) {
   return { tenant };
 }
 
+/**
+ * Organization-wide emergency stop. The database function locks the tenant,
+ * suspends it, revokes every live tenant key, and advances an immutable epoch
+ * in one transaction. Receipt consumption takes the same lock.
+ */
+export async function panicTenant(tenantId, actorId, reason) {
+  if (typeof tenantId !== 'string' || tenantId.length === 0
+      || typeof actorId !== 'string' || actorId.length === 0
+      || typeof reason !== 'string' || reason.trim().length < 3 || reason.length > 500) {
+    return { error: 'Invalid tenant panic request', status: 400 };
+  }
+  const supabase = getServiceClient();
+  const { data, error } = await supabase.rpc('guard_panic_tenant', {
+    p_tenant_id: tenantId,
+    p_actor_id: actorId,
+    p_reason: reason.trim(),
+  });
+  if (error) {
+    logger.error('[tenant-manager] panicTenant error:', error);
+    if (String(error.message || '').includes('tenant_not_found')) {
+      return { error: 'Tenant not found', status: 404 };
+    }
+    return { error: 'Failed to suspend tenant', status: 500 };
+  }
+  return { control: data };
+}
+
 // ── Members ──────────────────────────────────────────────────────────────────
 
 /**

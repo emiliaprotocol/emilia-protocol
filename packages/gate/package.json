@@ -72,6 +72,10 @@
       "types": "./dist/adapters/salesforce.d.ts",
       "import": "./adapters/salesforce.js"
     },
+    "./adapters/mongodb": {
+      "types": "./dist/adapters/mongodb.d.ts",
+      "import": "./adapters/mongodb.js"
+    },
     "./key-registry": {
       "types": "./dist/key-registry.d.ts",
       "import": "./key-registry.js"
@@ -489,6 +493,7 @@
     "adapters/linear.js",
     "adapters/jira.js",
     "adapters/salesforce.js",
+    "adapters/mongodb.js",
     "demo.mjs",
     "custody-demo.mjs",
     "LICENSE",

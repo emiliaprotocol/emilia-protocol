@@ -10,6 +10,7 @@ import {
   getTenant,
   updateTenant,
   archiveTenant,
+  panicTenant,
   inviteMember,
   listMembers,
   createEnvironment,
@@ -315,6 +316,32 @@ describe('archiveTenant', () => {
     const result = await archiveTenant('tenant-1');
     expect(result.status).toBe(404);
     expect(result.error).toMatch(/already archived/i);
+  });
+});
+
+describe('panicTenant', () => {
+  beforeEach(() => vi.clearAllMocks());
+
+  it('delegates the emergency transition to the atomic database function', async () => {
+    const rpc = vi.fn().mockResolvedValue({
+      data: { tenant_id: 'tenant-1', status: 'suspended', epoch: 4 },
+      error: null,
+    });
+    getServiceClient.mockReturnValue({ rpc });
+    const result = await panicTenant('tenant-1', 'entity:user-1', 'credential compromise');
+    expect(result.control).toMatchObject({ status: 'suspended', epoch: 4 });
+    expect(rpc).toHaveBeenCalledWith('guard_panic_tenant', {
+      p_tenant_id: 'tenant-1',
+      p_actor_id: 'entity:user-1',
+      p_reason: 'credential compromise',
+    });
+  });
+
+  it('rejects malformed panic requests before database access', async () => {
+    getServiceClient.mockReturnValue({ rpc: vi.fn() });
+    expect((await panicTenant('', 'actor', 'reason')).status).toBe(400);
+    expect((await panicTenant('tenant-1', '', 'reason')).status).toBe(400);
+    expect((await panicTenant('tenant-1', 'actor', 'x')).status).toBe(400);
   });
 });
 

@@ -101,6 +101,7 @@ type ExecuteWithCapabilityOptions = {
     operationId?: string | null;
     now?: number | (() => number);
     thresholdSecretVerified?: boolean;
+    providerEntryGuard?: ((context: Record<string, any>) => any) | null;
 };
 type ExecuteWithCapabilityResult = {
     ok: boolean;
@@ -459,11 +460,15 @@ export declare function createPostgresCapabilityStore({ transaction, providerEnt
  * @param {Function|null} [options.verifyBaseReceipt]
  * @param {Function|null} [options.resolveCaid]
  * @param {Function|null} [options.verifyActionProfile]
+ * @param {Function|null} [options.providerEntryGuard] final relying-party check
+ *   after the atomic budget reservation and immediately before provider entry.
+ *   A refusal leaves the pre-entry reservation fenced for deadline recovery;
+ *   it never invokes the provider.
  * @param {string|null} [options.operationId]
  * @param {number|(() => number)} [options.now]
  * @param {boolean} [options.thresholdSecretVerified]
  */
-export declare function executeWithCapability({ capabilityReceipt, secret, action, store, executeAction, gate, selector, observedAction, trustedIssuerKeys, verifyBaseReceipt, resolveCaid, verifyActionProfile, allowanceStatus, operationId, now, thresholdSecretVerified, }?: ExecuteWithCapabilityOptions): Promise<ExecuteWithCapabilityResult>;
+export declare function executeWithCapability({ capabilityReceipt, secret, action, store, executeAction, gate, selector, observedAction, trustedIssuerKeys, verifyBaseReceipt, resolveCaid, verifyActionProfile, providerEntryGuard, allowanceStatus, operationId, now, thresholdSecretVerified, }?: ExecuteWithCapabilityOptions): Promise<ExecuteWithCapabilityResult>;
 /**
  * Execute a capability requiring m-of-n Shamir shares.
  * @param {Record<string, any>} [args] capabilityReceipt, shares, and executeWithCapability passthrough options

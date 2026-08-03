@@ -75,6 +75,7 @@
     "src/reports/reperform.ts",
     "src/adapters/_kit.ts",
     "src/adapters/linear.ts",
+    "src/adapters/mongodb.ts",
     "src/adapters/aws.ts",
     "src/adapters/supabase.ts",
     "src/adapters/stripe.ts",

@@ -73,6 +73,13 @@ export declare function createRuntimeMonitor({ now, onDivergence, authorizeRecov
     } | {
         ok: boolean;
     };
+    providerEntryRefused(cycleId: any): {
+        ok: boolean;
+        reason: string;
+        event: any;
+    } | {
+        ok: boolean;
+    };
     capabilityRefused(cycleId: any): {
         ok: boolean;
         reason: string;

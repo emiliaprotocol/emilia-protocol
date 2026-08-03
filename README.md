@@ -171,7 +171,7 @@ npx -y @emilia-protocol/mcp-server
 
 **Act II — Decision (policy-bound, deterministic).** The action is checked against a hash-pinned policy: `allow`, `allow-with-signoff`, or `deny`. Plus an **observe mode** that changes nothing in production and reports what *would* have been held. Deterministic, auditable — not a black-box risk score.
 
-**Act III — The ceremony (device-bound human signoff).** When policy requires a human, EMILIA runs a **WebAuthn / passkey signoff bound to the exact action** — Face ID / Touch ID on the operator's own device. This *narrows the "what you saw is what you signed" gap* (via the experimental display-attestation profile); it does not eliminate it. No autonomous loop can skip the ceremony.
+**Act III — The ceremony (device-bound human signoff).** When policy requires a human, EMILIA runs a **WebAuthn / passkey signoff bound to the exact action and its deterministic display hash** — Face ID / Touch ID on the operator's own device. Class-A approvals also bind a server-measured review interval and an action-specific confirmation phrase, with a durable per-approver velocity limit. This narrows the "what you saw is what you signed" gap; it does not prove comprehension. A correctly installed protected path cannot skip the ceremony.
 
 **Act IV — The receipt (the evidence).** The result is a **signed authorization receipt** that anyone can verify **offline, with open-source code, no backend, no vendor trust.** Tamper it and verification fails by construction. Optionally anchor it for public timestamping — the core needs no blockchain.
 

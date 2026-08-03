@@ -315,6 +315,14 @@ Only the consequence-owning executor makes **AUTHORIZED**. It evaluates:
 The authorization decision MUST be recorded before invocation. Evidence
 satisfaction alone MUST NOT enter the effect.
 
+For a connected Class-A human approval, the signed authorization context MUST
+bind the exact action and deterministic display hash. The reference web
+ceremony additionally binds a server-owned policy digest, a server-measured
+review start, and a hash of an action-specific confirmation phrase. The
+approval endpoint enforces a durable, atomic per-approver velocity limit.
+These controls increase action-specific attention; they do not prove human
+comprehension or eliminate every UI-spoofing risk.
+
 ### 6.7 Reserve one-time and bounded state
 
 Before invoking the external effect, Gate atomically reserves:
@@ -331,6 +339,28 @@ currency MUST equal the observed action.
 If the state store is unavailable, stale, non-atomic, or reports an ambiguous
 reservation result, Gate MUST refuse before invocation. An abandoned
 high-risk reservation does not expire back into availability automatically.
+
+#### 6.7.1 Recheck immediately before provider entry
+
+Authorization and reservation are not sufficient if a material fact can
+change while they run. Immediately before releasing the credential-owning
+actuator, a deployment MUST recheck every configured provider-entry predicate.
+The reference hook supports independent, fail-closed predicates including:
+
+- an authenticated organization-status observation with a bounded age and
+  monotonically advancing epoch;
+- a fresh, issuer-pinned execution-value attestation bound to the exact action
+  digest for non-base-currency limits; and
+- deployment-specific provider, tenant, environment, and revocation state.
+
+A throw, malformed result, stale observation, source mismatch, or unavailable
+oracle is a refusal. Organization suspension burns an ordinary one-time
+receipt; a bounded capability reservation remains fenced for authenticated
+deadline recovery. The Cloud panic operation locks the same tenant row as
+receipt consumption, suspends the tenant, revokes its live API keys, and
+permanently invalidates receipts minted at or before the panic epoch. This
+defines a linearization point: either consumption wins before panic, or panic
+wins and the old receipt cannot later revive.
 
 ### 6.8 Invoke the protected effect
 
@@ -544,6 +574,10 @@ the complete effect-relevant request. Opaque or unsupported traffic MUST be
 denied or forwarded only to a downstream domain Gate that performs the
 application-level checks.
 
+An eBPF or L4 network policy can force traffic through a boundary, but cannot
+by itself derive amount, beneficiary, repository, SQL filter, or other
+application semantics. It is a routing control, not an exact-action verifier.
+
 **Complete-mediation conditions.**
 
 - Default network policy denies direct egress, alternate interfaces, tunnels,
@@ -667,6 +701,13 @@ of:
 
 Coverage is established by controls at the protected boundary, not by the
 absence of observed bypass traffic.
+
+The package includes exact-action adapters for AWS, Stripe, GitHub,
+Supabase/Postgres, Kubernetes, and MongoDB. The MongoDB connector pins the held
+credential to a configured cluster identity and binds database, collection,
+operation id, and canonical filter/update digests before provider entry. These
+adapters close only the paths that actually use them; network policy and
+system-of-record credential custody must make those paths exclusive.
 
 A deployment attestation plus a separately pinned active probe can establish
 that a declared surface behaved as `gated` at the evaluation time. A passive

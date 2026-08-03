@@ -666,6 +666,7 @@ await guardGithubMutation(gate, octokit, {
 | **Stripe** | `@emilia-protocol/gate/adapters/stripe` | payout.create `class_a`, refund.create `class_a`, bank_account.change `quorum` |
 | **Supabase / Postgres** | `@emilia-protocol/gate/adapters/supabase` | sql.destructive `class_a`, data.export `class_a`, rls.change `quorum` |
 | **AWS (IAM + network)** | `@emilia-protocol/gate/adapters/aws` | iam.attach_policy `quorum`, iam.create_access_key `class_a`, iam.delete_user `class_a`, ec2.authorize_ingress `quorum` |
+| **MongoDB** | `@emilia-protocol/gate/adapters/mongodb` | document.delete_many `class_a`, document.update_many `class_a`, collection.drop `quorum` |
 
 ```js
 import { createStripeManifest, guardStripeMutation } from '@emilia-protocol/gate/adapters/stripe';

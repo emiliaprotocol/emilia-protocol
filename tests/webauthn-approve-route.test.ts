@@ -1,6 +1,11 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import { describe, it, expect, vi, beforeEach } from 'vitest';
+import {
+  buildCeremonyBinding,
+  signoffCeremonyPolicy,
+  signoffConfirmationPhrase,
+} from '../lib/signoff/ceremony-policy.js';
 
 const mockGetGuardedClient = vi.fn();
 const mockLoadSignoffForSigning = vi.fn();
@@ -8,6 +13,18 @@ const mockVerifyAuthenticationResponse = vi.fn();
 
 const CHALLENGE_BYTES = Buffer.from('signed-context-challenge');
 const CHALLENGE = CHALLENGE_BYTES.toString('base64url');
+const ACTION_HASH = `sha256:${'a'.repeat(64)}`;
+const ACTION_TYPE = 'large_payment_release';
+const REVIEW_STARTED_AT = '2026-08-03T12:00:00.000Z';
+const ISSUED_AT = '2026-08-03T12:00:10.000Z';
+
+function ceremonyBinding() {
+  return buildCeremonyBinding({
+    policy: signoffCeremonyPolicy(),
+    phrase: signoffConfirmationPhrase(ACTION_TYPE, ACTION_HASH),
+    reviewStartedAt: REVIEW_STARTED_AT,
+  });
+}
 
 vi.mock('@/lib/write-guard', () => ({
   getGuardedClient: (...args) => mockGetGuardedClient(...args),
@@ -69,16 +86,21 @@ function loadedSignoff(approverId = 'cfo@example.com') {
     receiptId: 'tr_' + 'b'.repeat(32),
     organizationId: 'org_1',
     requestEvent: { after_state: { approver_id: approverId, required_assurance: 'A' } },
-    createdState: { organization_id: 'org_1', action_hash: 'sha256:approved-action' },
+    createdState: {
+      organization_id: 'org_1',
+      action_type: ACTION_TYPE,
+      action_hash: ACTION_HASH,
+      required_assurance: 'A',
+    },
     initiatorId: 'ep_entity_initiator',
-    actionHash: 'sha256:approved-action',
+    actionHash: ACTION_HASH,
     requestExpiresAt: '2999-01-01T00:00:00.000Z',
     alreadyDecided: false,
   };
 }
 
-function makeClient({ contextDecision = 'approved', credential = {} } = {}) {
-  const calls = { updates: [], selects: [], inserts: [], upserts: [] };
+function makeClient({ contextDecision = 'approved', credential = {}, ceremony = ceremonyBinding(), velocity = { ok: true } } = {}) {
+  const calls = { updates: [], selects: [], inserts: [], upserts: [], rpcs: [] };
   function builder(table) {
     const state = { table, eq: {}, is: {}, operation: 'select' };
     const b = {
@@ -110,9 +132,11 @@ function makeClient({ contextDecision = 'approved', credential = {} } = {}) {
                 id: 'ch_1',
                 challenge: CHALLENGE,
                 context: {
-                  action_hash: 'sha256:approved-action',
+                  action_hash: ACTION_HASH,
                   display_hash: 'sha256:display',
                   decision: contextDecision,
+                  issued_at: ISSUED_AT,
+                  ceremony,
                 },
                 context_hash: 'sha256:context',
                 expires_at: '2999-01-01T00:00:00.000Z',
@@ -147,7 +171,16 @@ function makeClient({ contextDecision = 'approved', credential = {} } = {}) {
     };
     return b;
   }
-  return { client: { from: (table) => builder(table) }, calls };
+  return {
+    client: {
+      from: (table) => builder(table),
+      rpc: vi.fn((name, args) => {
+        calls.rpcs.push({ name, args });
+        return Promise.resolve({ data: velocity, error: null });
+      }),
+    },
+    calls,
+  };
 }
 
 describe('POST /api/v1/signoffs/:id/approve-webauthn — red-team ceremony hardening', () => {
@@ -212,6 +245,29 @@ describe('POST /api/v1/signoffs/:id/approve-webauthn — red-team ceremony harde
     expect((await res.json()).type).toContain('decision_mismatch');
     expect(mockVerifyAuthenticationResponse).not.toHaveBeenCalled();
     expect(calls.updates).toHaveLength(0);
+  });
+
+  it('refuses an approval whose signed ceremony does not match the current policy', async () => {
+    const { client, calls } = makeClient({ ceremony: null });
+    mockGetGuardedClient.mockReturnValue(client);
+
+    const res = await POST(req({
+      approver_id: 'cfo@example.com',
+      decision: 'approved',
+      assertion: {
+        id: 'cred_1',
+        response: {
+          clientDataJSON: clientDataJson(),
+          authenticatorData: 'auth',
+          signature: 'sig',
+        },
+      },
+    }), { params: Promise.resolve({ signoffId: 'sig_' + 'a'.repeat(32) }) });
+
+    expect(res.status).toBe(409);
+    expect((await res.json()).type).toContain('ceremony_binding_invalid');
+    expect(mockVerifyAuthenticationResponse).not.toHaveBeenCalled();
+    expect(calls.rpcs).toHaveLength(0);
   });
 
   it('records a verified denial from the signed context as a terminal rejection event', async () => {
@@ -308,6 +364,38 @@ describe('POST /api/v1/signoffs/:id/approve-webauthn — red-team ceremony harde
     expect(credentialSelect.select).toContain('valid_from');
     expect(credentialSelect.select).toContain('valid_to');
     expect(credentialSelect.is).toMatchObject({ revoked_at: null });
+    expect(calls.rpcs).toHaveLength(1);
+    expect(calls.rpcs[0]).toMatchObject({
+      name: 'consume_signoff_approval_velocity',
+      args: { p_organization_id: 'org_1', p_max_approvals: 5, p_window_seconds: 3600 },
+    });
+  });
+
+  it('fails closed after a valid assertion when the durable approval velocity is exhausted', async () => {
+    const { client, calls } = makeClient({ velocity: { ok: false, reason: 'approval_velocity_exceeded' } });
+    mockGetGuardedClient.mockReturnValue(client);
+    mockVerifyAuthenticationResponse.mockResolvedValue({
+      verified: true,
+      authenticationInfo: { newCounter: 1 },
+    });
+
+    const res = await POST(req({
+      approver_id: 'cfo@example.com',
+      decision: 'approved',
+      assertion: {
+        id: 'cred_1',
+        response: {
+          clientDataJSON: clientDataJson(),
+          authenticatorData: 'auth',
+          signature: 'sig',
+        },
+      },
+    }), { params: Promise.resolve({ signoffId: 'sig_' + 'a'.repeat(32) }) });
+
+    expect(res.status).toBe(429);
+    expect((await res.json()).type).toContain('approval_velocity_exceeded');
+    expect(calls.rpcs).toHaveLength(1);
+    expect(calls.inserts.find((call) => call.table === 'audit_events')).toBeUndefined();
   });
 
   it.each([

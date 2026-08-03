@@ -200,6 +200,7 @@ const OPENAPI_EXEMPTIONS = [
   '/api/cloud/authorities/policy-rollout',
   '/api/cloud/authorities/policy-rollout/[authorityId]/revoke',
   '/api/cloud/tenants/[tenantId]/api-keys',
+  '/api/cloud/tenants/[tenantId]/panic',
   '/api/cloud/signoff/analytics',
   '/api/cloud/signoff/dashboard',
   '/api/cloud/signoff/escalate',

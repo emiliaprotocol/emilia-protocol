@@ -90,7 +90,7 @@ const HOW_IT_WORKS = [
 // hidden in an EMILIA-integrated path. Each line names the attack it closes.
 const BINDINGS = [
   { n: '01', accent: color.green, label: 'Reject before mutation',   body: 'Consume must succeed before the write runs. An unauthorized action is stopped, not logged after the fact.' },
-  { n: '02', accent: color.blue,  label: 'Exact-action binding',     body: 'The receipt binds the action hash, and (with the experimental display-attestation profile) a hash of the rendered context — narrowing the “signed the wrong thing” gap between the bytes signed and what the approver saw.' },
+  { n: '02', accent: color.blue,  label: 'Exact-action binding',     body: 'The receipt binds the action hash and the connected Class-A ceremony binds a deterministic display hash, server-measured review interval, and action-specific confirmation — narrowing the “signed the wrong thing” gap without claiming to prove comprehension.' },
   { n: '03', accent: color.gold,  label: 'Policy binding',           body: 'The receipt binds the policy content that was in force, not just a policy name or version label.' },
   { n: '04', accent: color.green, label: 'Authority binding',        body: 'Holding a credential is separate from holding permission to approve. Gate evaluates the signer against the relying party’s pinned authority sources and scope.' },
   { n: '05', accent: color.blue,  label: 'Class-A enforcement',      body: 'High-risk actions require a passkey / WebAuthn device signoff — or stronger. Weaker assurance fails closed.' },
