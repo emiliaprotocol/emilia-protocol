@@ -3,6 +3,7 @@
 
 import SiteNav from '@/components/SiteNav';
 import SiteFooter from '@/components/SiteFooter';
+import { PROTECTED_WORKFLOW_PILOT } from '@/lib/commercial-offer';
 import { styles, cta, color, font, radius } from '@/lib/tokens';
 
 const PROTECTED_ACTIONS = [
@@ -82,10 +83,10 @@ const STAGES = [
 ];
 
 const PILOT_TERMS = [
-  ['One workflow', 'Pick a single disbursement or change flow to watch first.'],
-  ['Observe mode', 'Nothing is blocked. You see what would have needed signoff.'],
-  ['60 days', 'Long enough to catch the actions that matter, short enough to scope.'],
-  ['$25K', 'Scoped enough for a departmental pilot.'],
+  [PROTECTED_WORKFLOW_PILOT.workflowLabel, 'Pick one disbursement or change flow to protect.'],
+  ['Synthetic + read-only first', 'Validate the evidence path before a buyer approves production enforcement.'],
+  [PROTECTED_WORKFLOW_PILOT.durationLabel, 'One fixed, time-boxed engagement.'],
+  [PROTECTED_WORKFLOW_PILOT.shortPriceLabel, 'One fixed public pilot price.'],
   ['Audit packet', 'Receipts, decisions, and evidence your auditors can verify offline.'],
 ];
 
@@ -161,7 +162,7 @@ export default function GovGuardPage() {
           <div style={{ display: 'flex', gap: 12, marginTop: 30, flexWrap: 'wrap' }}>
             <a href="/pilot/sandbox?v=gov" style={cta.primary}>Run the GovGuard fire drill</a>
             <a href="/health/program-integrity" style={cta.secondary}>Run the healthcare integrity scenario</a>
-            <a href="/pilot?v=gov" style={cta.secondary}>Scope a 60-day pilot</a>
+            <a href="/pilot?v=gov" style={cta.secondary}>Scope the 90-day protected-workflow pilot</a>
           </div>
           <p style={{ fontSize: 13, color: color.t3, marginTop: 16, maxWidth: 740, lineHeight: 1.6 }}>
             Start in observe mode. Nothing gets blocked at first. You see what would
@@ -176,7 +177,7 @@ export default function GovGuardPage() {
 
         <section style={styles.sectionWide}>
           <div style={styles.eyebrow}>PILOT SHAPE</div>
-          <h2 style={{ ...styles.h2, maxWidth: 760 }}>Start with a fire drill on one workflow.</h2>
+          <h2 style={{ ...styles.h2, maxWidth: 760 }}>Start with one protected workflow.</h2>
           <div style={{ marginTop: 28, display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(190px, 1fr))', gap: 16 }}>
             {PILOT_TERMS.map(([label, body]) => (
               <div key={label} style={{ ...styles.card, padding: 22 }}>
@@ -327,12 +328,15 @@ export default function GovGuardPage() {
             <p style={{ ...styles.body, maxWidth: 560, margin: '16px auto 24px' }}>
               Pick one workflow: vendor payment destination, disbursement release,
               grant disbursement, provider enrollment, benefit routing, or eligibility
-              override. GovGuard observes for 60 days, produces the authorization
-              evidence, and shows what would have required named signoff. Pilot fee:
-              $25K.
+              override. The single 90-day protected-workflow pilot starts with synthetic
+              and read-only validation, then uses a buyer-approved Gate boundary for
+              production enforcement. Fixed pilot fee: $25K.
             </p>
             <a href="/pilot/sandbox?v=gov" style={cta.primary}>
               Run the GovGuard fire drill
+            </a>
+            <a href="/pilot?v=gov" style={{ ...cta.secondary, marginLeft: 12 }}>
+              Scope the protected-workflow pilot
             </a>
             <p style={{ fontSize: 13, color: color.t3, marginTop: 18 }}>
               For your compliance file: <a href="/compliance/emilia-eu-ai-act-government.pdf" style={{ color: color.blue, textDecoration: 'none' }}>EU AI Act mapping for government programs</a>

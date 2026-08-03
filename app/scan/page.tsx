@@ -67,6 +67,7 @@ const EXIT_CODES = [
   ['1', 'Signals found', 'Review the reachable authority and configuration conditions named in the report.'],
   ['2', 'Malformed input', 'At least one supported configuration source could not be trusted as parsed.'],
   ['3', 'Surface not visible', 'The config-only scan could not see or classify the operation surface. This is not a clean bill of health.'],
+  ['64', 'Usage, argument, or filesystem error', 'The command line or selected path was invalid, unavailable, or unsafe to use.'],
 ];
 
 export default function AuthorityScanPage(): React.ReactElement {

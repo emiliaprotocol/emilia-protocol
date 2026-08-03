@@ -93,16 +93,16 @@ function readBoundedRegularFile(file, maxBytes) {
     }
 }
 function readJson(file) {
+    const fileResult = readBoundedRegularFile(file, MAX_CONFIG_BYTES);
+    if (!fileResult.ok || fileResult.raw === undefined) {
+        return { ok: false, status: fileResult.status };
+    }
     if (path.extname(file).toLowerCase() !== '.json') {
         return {
             ok: false,
             status: 'unsupported_format',
             format: path.extname(file).slice(1) || 'unknown',
         };
-    }
-    const fileResult = readBoundedRegularFile(file, MAX_CONFIG_BYTES);
-    if (!fileResult.ok || fileResult.raw === undefined) {
-        return { ok: false, status: fileResult.status };
     }
     try {
         const raw = fileResult.raw;

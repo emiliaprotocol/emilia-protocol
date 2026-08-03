@@ -82,11 +82,12 @@ of the protocol specification itself.
 
 | # | Endpoint | Method | Tag | Role |
 |---|----------|--------|-----|------|
-| 1 | `/api/health` | GET | System | Health check |
-| 2 | `/api/audit` | GET | System | Query the append-only audit trail |
-| 3 | `/api/cron/expire` | GET | Internal | Expire stale records (cron job) |
-| 4 | `/api/blockchain/anchor` | POST | Internal | Anchor receipts to blockchain (cron) |
-| 5 | `/api/blockchain/anchor` | GET | Internal | Anchor alias for Vercel Cron |
+| 1 | `/api/health` | GET | System | Fail-closed production readiness probe |
+| 2 | `/api/live` | GET | System | Process-only liveness probe |
+| 3 | `/api/audit` | GET | System | Query the append-only audit trail |
+| 4 | `/api/cron/expire` | GET | Internal | Expire stale records (cron job) |
+| 5 | `/api/blockchain/anchor` | POST | Internal | Anchor receipts to blockchain (cron) |
+| 6 | `/api/blockchain/anchor` | GET | Internal | Anchor alias for Vercel Cron |
 
 ---
 

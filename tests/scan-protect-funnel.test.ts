@@ -13,6 +13,8 @@ describe('scan to protected MCP boundary funnel', () => {
   const mcp = read('app/mcp/page.tsx');
   const guide = read('app/guides/require-receipt/page.tsx');
   const repositoryReadme = read('README.md');
+  const packageReadme = read('packages/scan/README.md');
+  const packageChangelog = read('packages/scan/CHANGELOG.md');
   const sitemap = read('app/sitemap.ts');
 
   it('starts with a passive local scan and offers one bounded protection step', () => {
@@ -31,6 +33,7 @@ describe('scan to protected MCP boundary funnel', () => {
     expect(scan).toContain('href="/mcp"');
 
     expect(guard).toContain('Coming from Scan? Start with one flagged tool.');
+    expect(guard).toContain('reviewable protection scaffold—not a patch');
     expect(guard).toContain('href="/guides/require-receipt"');
     expect(guard).toContain('href="/mcp"');
     expect(guard).toContain('href="/scan"');
@@ -38,6 +41,10 @@ describe('scan to protected MCP boundary funnel', () => {
     expect(guide).toContain('node emilia/verify-setup.mjs');
     expect(guide).toContain('durable provenance ledger');
     expect(guide).toContain('shared atomic consumption store');
+    expect(guard).not.toContain('due process, proven');
+    expect(guard).toContain('does not prove due process');
+    expect(guard).toContain('A signature verifies those bytes under the pinned key');
+    expect(guard).toContain('does not prove identity, authority, due process, or correctness');
   });
 
   it('distinguishes protecting an existing tool from adding verifier tools', () => {
@@ -56,5 +63,12 @@ describe('scan to protected MCP boundary funnel', () => {
     expect(repositoryReadme).toContain('durable provenance ledger');
     expect(repositoryReadme).toContain('shared atomic consumption store');
     expect(repositoryReadme).not.toContain('const guarded = withMcpGuard(handleTool, {');
+  });
+
+  it('publishes exit 64 consistently for authority CLI usage, argument, and filesystem errors', () => {
+    for (const publicCopy of [scan, packageReadme, packageChangelog]) {
+      expect(publicCopy).toContain('64');
+      expect(publicCopy.replace(/\s+/g, ' ')).toMatch(/usage, argument, (?:or )?filesystem error/i);
+    }
   });
 });

@@ -4,26 +4,14 @@
  * The public commercial offer. Buyer-facing pages and emails import this file
  * so price, duration, scope, and rollout posture cannot drift independently.
  */
-export const MANAGED_PILOT = Object.freeze({
-  name: 'EMILIA Signal Diagnostic',
-  priceUsd: 25_000,
-  priceLabel: '$25,000',
-  shortPriceLabel: '$25K',
-  durationDays: 60,
-  durationLabel: '60 days',
-  workflowCount: 1,
-  workflowLabel: '1 read-only workflow diagnostic',
-  rolloutLabel: 'Synthetic first; governed export only after approval',
-});
-
 /**
- * Fixed-scope design-partner offer for buyers graduating from the public
- * Arena into one real consequence boundary. Commercial terms are selected by
- * this server-owned identifier; intake callers cannot override them.
+ * The single fixed-scope pilot offered from every public conversion path.
+ * Commercial terms are selected by this server-owned identifier; intake
+ * callers cannot override them or manufacture a second public offer.
  */
-export const FINANCIAL_AUTHORITY_DESIGN_PARTNER = Object.freeze({
-  id: 'financial_authority_design_partner_v1',
-  name: 'Financial Authority design-partner pilot',
+export const PROTECTED_WORKFLOW_PILOT = Object.freeze({
+  id: 'protected_workflow_pilot_v1',
+  name: 'Protected-workflow pilot',
   priceUsd: 25_000,
   priceLabel: '$25,000',
   shortPriceLabel: '$25K',
@@ -31,27 +19,10 @@ export const FINANCIAL_AUTHORITY_DESIGN_PARTNER = Object.freeze({
   durationLabel: '90 days',
   workflowCount: 1,
   workflowLabel: '1 protected workflow',
-  providerRailCount: 1,
-  providerRailLabel: '1 provider rail',
-  rolloutLabel: 'Synthetic validation first; production access only through a buyer-approved boundary',
-});
-
-/**
- * Fixed-scope graduation path from the public Agent Adoption sandbox to one
- * buyer-controlled consequence boundary. The public flow itself remains free,
- * synthetic, and no-egress.
- */
-export const AGENT_ADOPTION_DESIGN_PARTNER = Object.freeze({
-  id: 'agent_adoption_design_partner_v1',
-  name: 'Agent Adoption protected-workflow pilot',
-  priceUsd: 25_000,
-  priceLabel: '$25,000',
-  shortPriceLabel: '$25K',
-  durationDays: 90,
-  durationLabel: '90 days',
-  workflowCount: 1,
-  workflowLabel: '1 protected agent workflow',
-  rolloutLabel: 'Synthetic validation first; production only through a buyer-approved Gate boundary',
+  firstProfileLabel: 'Payer adverse medical-necessity determination',
+  safetyRuleLabel: 'No valid licensed-review evidence, no adverse determination',
+  eligibilityLabel: 'Other consequential workflows remain eligible',
+  rolloutLabel: 'Synthetic and read-only validation first; production only through a buyer-approved Gate boundary',
 });
 
 export const GATE_QUALIFICATION = Object.freeze({

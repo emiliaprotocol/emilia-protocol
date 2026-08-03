@@ -4,14 +4,23 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 const mocks = vi.hoisted(() => ({
   provision: vi.fn(),
   submit: vi.fn(),
+  publish: vi.fn(),
+  loadPublic: vi.fn(),
 }));
 
 vi.mock('@/lib/arena/service', () => ({
   provisionArenaSession: mocks.provision,
   submitArenaAttempt: mocks.submit,
+  publishArenaRefusal: mocks.publish,
+  loadPublicArenaRefusal: mocks.loadPublic,
 }));
 
-const { provisionBoundAgentTrial, submitBoundAgentTrial, AgentAdoptionTrialError } =
+const {
+  provisionBoundAgentTrial,
+  publishBoundAgentTrialRefusal,
+  submitBoundAgentTrial,
+  AgentAdoptionTrialError,
+} =
   await import('./trial');
 const { seal } = await import('@/lib/crypto/secret-box');
 
@@ -19,6 +28,7 @@ const NOW = Date.parse('2026-08-02T17:00:00.000Z');
 const ADOPTION_ID = '00000000-0000-4000-8000-000000000001';
 const BOND_ID = '00000000-0000-4000-8000-000000000002';
 const BOND_DIGEST = `sha256:${'a'.repeat(64)}`;
+const client = { rpc: vi.fn() };
 
 function authorization() {
   return {
@@ -47,7 +57,10 @@ function authorization() {
 }
 
 describe('Agent Adoption no-egress trial adapter', () => {
-  beforeEach(() => vi.resetAllMocks());
+  beforeEach(() => {
+    vi.resetAllMocks();
+    client.rpc.mockResolvedValue({ data: true, error: null });
+  });
 
   it('provisions an Arena profile from the exact asserted bond and hides the Arena token', async () => {
     mocks.provision.mockResolvedValue({
@@ -55,7 +68,7 @@ describe('Agent Adoption no-egress trial adapter', () => {
       token: `ep_arena_${'2'.repeat(64)}`,
       allowance: { expires_at: '2026-08-03T17:00:00.000Z' },
     });
-    const result = await provisionBoundAgentTrial({ authorization: authorization(), now: NOW });
+    const result = await provisionBoundAgentTrial({ authorization: authorization(), client: client as any, now: NOW });
     expect(mocks.provision).toHaveBeenCalledWith(expect.objectContaining({
       agentName: 'Atlas',
       profile: {
@@ -64,9 +77,34 @@ describe('Agent Adoption no-egress trial adapter', () => {
         allowedTargets: ['documents.demo'],
       },
     }));
+    expect(client.rpc).toHaveBeenCalledWith('bind_agent_record_trial_source', {
+      p_adoption_id: ADOPTION_ID,
+      p_adoption_session_token: `eaa1_${'b'.repeat(64)}`,
+      p_bond_id: BOND_ID,
+      p_bond_digest: BOND_DIGEST,
+      p_source_session_id: `arena_session_${'1'.repeat(32)}`,
+      p_source_token: `ep_arena_${'2'.repeat(64)}`,
+    });
     expect(result.trial_token).toMatch(/^epenc:v1:/);
     expect(JSON.stringify(result)).not.toContain('ep_arena_');
     expect(JSON.stringify(result)).not.toContain('arena_session_');
+  });
+
+  it('does not issue a trial token unless the database binds both bearer credentials', async () => {
+    mocks.provision.mockResolvedValue({
+      session_id: `arena_session_${'1'.repeat(32)}`,
+      token: `ep_arena_${'2'.repeat(64)}`,
+      allowance: { expires_at: '2026-08-03T17:00:00.000Z' },
+    });
+    client.rpc.mockResolvedValueOnce({
+      data: null,
+      error: { code: 'P0002', message: 'source not found' },
+    });
+    await expect(provisionBoundAgentTrial({
+      authorization: authorization(),
+      client: client as any,
+      now: NOW,
+    })).rejects.toMatchObject({ code: 'agent_adoption_trial_unavailable' });
   });
 
   it('rejects a trial token replayed under another adoption or bond', async () => {
@@ -75,7 +113,7 @@ describe('Agent Adoption no-egress trial adapter', () => {
       token: `ep_arena_${'2'.repeat(64)}`,
       allowance: { expires_at: '2026-08-03T17:00:00.000Z' },
     });
-    const trial = await provisionBoundAgentTrial({ authorization: authorization(), now: NOW });
+    const trial = await provisionBoundAgentTrial({ authorization: authorization(), client: client as any, now: NOW });
     const other = authorization();
     other.sessionId = '00000000-0000-4000-8000-000000000009';
     other.session.adoption_id = other.sessionId;
@@ -101,7 +139,7 @@ describe('Agent Adoption no-egress trial adapter', () => {
       action_digest: `sha256:${'4'.repeat(64)}`,
       refusal_digest: `sha256:${'5'.repeat(64)}`,
     });
-    const trial = await provisionBoundAgentTrial({ authorization: authorization(), now: NOW });
+    const trial = await provisionBoundAgentTrial({ authorization: authorization(), client: client as any, now: NOW });
     const result = await submitBoundAgentTrial({
       authorization: authorization(),
       input: { attempt_template_id: 'attempt_over_limit_v1', trial_token: trial.trial_token },
@@ -127,7 +165,7 @@ describe('Agent Adoption no-egress trial adapter', () => {
       token: `ep_arena_${'2'.repeat(64)}`,
       allowance: { expires_at: '2026-08-03T17:00:00.000Z' },
     });
-    const trial = await provisionBoundAgentTrial({ authorization: authorization(), now: NOW });
+    const trial = await provisionBoundAgentTrial({ authorization: authorization(), client: client as any, now: NOW });
     await expect(submitBoundAgentTrial({
       authorization: authorization(),
       input: {
@@ -157,7 +195,7 @@ describe('Agent Adoption no-egress trial adapter', () => {
       token: `ep_arena_${'2'.repeat(64)}`,
       allowance: { expires_at: '2026-08-03T17:00:00.000Z' },
     });
-    await expect(provisionBoundAgentTrial({ authorization: authorization(), now: NOW }))
+    await expect(provisionBoundAgentTrial({ authorization: authorization(), client: client as any, now: NOW }))
       .rejects.toMatchObject({ code: 'agent_adoption_trial_unavailable' });
 
     mocks.provision.mockResolvedValue({
@@ -165,7 +203,7 @@ describe('Agent Adoption no-egress trial adapter', () => {
       token: `ep_arena_${'2'.repeat(64)}`,
       allowance: { expires_at: '2026-08-03T17:00:00.000Z' },
     });
-    const trial = await provisionBoundAgentTrial({ authorization: authorization(), now: NOW });
+    const trial = await provisionBoundAgentTrial({ authorization: authorization(), client: client as any, now: NOW });
 
     await expect(submitBoundAgentTrial({
       authorization: authorization(),
@@ -216,5 +254,84 @@ describe('Agent Adoption no-egress trial adapter', () => {
       input: { attempt_template_id: 'attempt_in_bounds_v1', trial_token: trial.trial_token },
       now: NOW,
     })).rejects.toMatchObject({ code: 'agent_adoption_trial_decision_invalid' });
+  });
+
+  it('publishes only the signed refusal bound to this adoption trial', async () => {
+    const attemptId = `arena_attempt_${'3'.repeat(32)}`;
+    const shareId = `arena_share_${'6'.repeat(40)}`;
+    const actionDigest = `sha256:${'4'.repeat(64)}`;
+    const refusalDigest = `sha256:${'5'.repeat(64)}`;
+    mocks.provision.mockResolvedValue({
+      session_id: `arena_session_${'1'.repeat(32)}`,
+      token: `ep_arena_${'2'.repeat(64)}`,
+      allowance: { expires_at: '2026-08-03T17:00:00.000Z' },
+    });
+    mocks.publish.mockResolvedValue({ share_id: shareId });
+    mocks.loadPublic.mockResolvedValue({
+      share_id: shareId,
+      verification: { integrity_verified: true },
+      projection: {
+        profile: 'EP-ARENA-PUBLIC-REFUSAL-v1',
+        attempt: {
+          attempt_id: attemptId,
+          decision: 'refuse',
+          action_digest: actionDigest,
+          created_at: new Date(NOW).toISOString(),
+        },
+        refusal_digest: refusalDigest,
+        refusal_artifact: { '@version': 'EP-ACTION-REFUSAL-STATEMENT-v1' },
+      },
+    });
+    const trial = await provisionBoundAgentTrial({ authorization: authorization(), client: client as any, now: NOW });
+    const result = await publishBoundAgentTrialRefusal({
+      authorization: authorization(),
+      input: { trial_token: trial.trial_token, attempt_id: attemptId },
+      now: NOW,
+    });
+    expect(result).toMatchObject({
+      adoption_id: ADOPTION_ID,
+      bond_id: BOND_ID,
+      bond_digest: BOND_DIGEST,
+      arena_share_id: shareId,
+      action_digest: actionDigest,
+      refusal_digest: refusalDigest,
+    });
+    const request = mocks.publish.mock.calls[0][0].request as Request;
+    expect(request.headers.get('authorization')).toBe(`Bearer ep_arena_${'2'.repeat(64)}`);
+    expect(mocks.publish.mock.calls[0][0]).toMatchObject({
+      sessionId: `arena_session_${'1'.repeat(32)}`,
+      attemptId,
+      now: NOW,
+    });
+  });
+
+  it('refuses permit or mismatched public projections instead of creating record evidence', async () => {
+    const attemptId = `arena_attempt_${'3'.repeat(32)}`;
+    const shareId = `arena_share_${'6'.repeat(40)}`;
+    mocks.provision.mockResolvedValue({
+      session_id: `arena_session_${'1'.repeat(32)}`,
+      token: `ep_arena_${'2'.repeat(64)}`,
+      allowance: { expires_at: '2026-08-03T17:00:00.000Z' },
+    });
+    mocks.publish.mockResolvedValue({ share_id: shareId });
+    mocks.loadPublic.mockResolvedValue({
+      share_id: shareId,
+      verification: { integrity_verified: true },
+      projection: {
+        attempt: {
+          attempt_id: attemptId,
+          decision: 'permit',
+          action_digest: `sha256:${'4'.repeat(64)}`,
+          created_at: new Date(NOW).toISOString(),
+        },
+        refusal_digest: `sha256:${'5'.repeat(64)}`,
+      },
+    });
+    const trial = await provisionBoundAgentTrial({ authorization: authorization(), client: client as any, now: NOW });
+    await expect(publishBoundAgentTrialRefusal({
+      authorization: authorization(),
+      input: { trial_token: trial.trial_token, attempt_id: attemptId },
+      now: NOW,
+    })).rejects.toMatchObject({ code: 'agent_adoption_refusal_publication_invalid' });
   });
 });

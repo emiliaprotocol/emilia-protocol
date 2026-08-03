@@ -15,12 +15,17 @@ npx @emilia-protocol/scan ./openapi.json           # classify your HTTP API surf
 npx @emilia-protocol/scan protect ./tools.json
 npx @emilia-protocol/scan protect ./tools.json --apply
 node emilia/verify-setup.mjs                       # synthetic local refusal check
+node emilia/verify-setup.mjs --emit-handoff \
+  --reviewed-manifest-digest sha256:<reviewed-digest> \
+  --action <reviewed-tool-name>                    # explicit owner-only JSON handoff
 ```
 
 `scan protect` (also available as the legacy `emilia-harden` bin) currently
 accepts MCP tool lists and generates a `withMcpGuard` wrap. OpenAPI remains a
 passive scan/manifest surface in this release: the command refuses to generate
 a verification-only HTTP middleware until durable one-use consumption is wired.
+Generated integration instructions install the audited runtime exactly with
+`npm install --save-exact @emilia-protocol/mcp-guard@0.4.5`.
 
 It does exactly three things, and never more:
 
@@ -41,6 +46,49 @@ and its handler was not invoked. That check does not prove provider credentials
 are unreachable through some other path, that your production state is durable,
 or that your keys and approval adapters are correctly configured.
 
+## Machine-readable adoption handoff
+
+`verify-setup.mjs` is read-only by default. It prints the exact manifest and
+generated-scaffold digests after the local refusal check. Once you have reviewed
+`action-control.manifest.json`, you can acknowledge those exact bytes and select
+which visible consequential MCP tools may appear in a local handoff:
+
+```bash
+node emilia/verify-setup.mjs \
+  --emit-handoff \
+  --reviewed-manifest-digest sha256:<reviewed-digest> \
+  --action deleteCustomer \
+  --action deployToProduction
+```
+
+This explicitly creates `emilia/scan-adoption-handoff.json` with mode `0600`.
+Creation is no-replace: an existing regular file, symlink, or hard link is never
+followed or overwritten. The verification command makes no network request,
+launches no process, and never invokes the supplied consequential handler.
+
+The JSON contract is `EP-SCAN-ADOPTION-HANDOFF-v1`:
+
+- `reviewed_manifest` binds the SHA-256 digest of the exact reviewed manifest
+  file bytes. Emission fails unless the caller-supplied digest matches.
+- `generated_scaffold` lists SHA-256 digests for `guard.mjs`,
+  `verify-setup.mjs`, and `INTEGRATION.md`. Its aggregate SHA-256 is computed
+  over the UTF-8 bytes of `JSON.stringify(files)` in that fixed order.
+- `selected_actions` contains only explicitly selected, discovered,
+  receipt-required MCP actions: manifest id, MCP selector, action type,
+  assurance class, and `receipt_required: true`.
+- `local_refusal` records `status: "passed"`, that the supplied handler was not
+  called, and a machine-readable boundary. It asserts only a local synthetic
+  refusal. It explicitly does not assert production enforcement, complete
+  mediation, credential isolation, durable state, trusted-key configuration, a
+  signed refusal artifact, or public verification.
+
+The handoff has no timestamp and reads no ambient identity or host source. It
+does not include tool arguments, credential values, input descriptions, source
+paths, paths outside the generated output directory, usernames, or host data.
+Only explicitly selected visible action names and generated-output basenames are
+included. Treat it as a privacy-bounded local adoption handoff, not a production
+attestation or an `EP-ACTION-REFUSAL-STATEMENT-v1` artifact.
+
 The `authority` command is a separate passive diagnostic:
 
 ```bash
@@ -55,9 +103,17 @@ files, and permission declarations. After it starts, scanner code launches no
 configured server or child process and performs no network I/O. When invoked
 through `npx`, npm may download the package before scanner startup.
 Configuration values are parsed locally in memory; credential values are not
-intentionally emitted. Report files are created owner-only and existing or
-symlinked report paths are refused. Symlinked configuration sources are excluded,
-and any reached discovery limit is printed in the report.
+emitted. Credential descriptors may include key name, class, exact length,
+prefix class, detection evidence, and scheme, but never the credential value.
+Report files are created owner-only and existing or symlinked report paths are
+refused. Symlinked configuration sources are excluded, and any reached discovery
+limit is printed in the report.
+
+The authority command uses these exit codes: `0` for complete visible coverage
+with no signals (not currently reachable in configuration-only mode), `1` when
+signals are present, `2` for a malformed configuration source, `3` when the
+operation surface is not visible or classifiable, and `64` for a usage, argument,
+or filesystem error.
 
 ## What it will not do
 
@@ -69,6 +125,12 @@ and any reached discovery limit is printed in the report.
 - **It does not trust MCP hints as policy.** `readOnlyHint` is advisory. A
   high-risk semantic match overrides it, and an otherwise opaque action defaults
   to receipt-required until a reviewer confirms it is read-only.
+- **Read words cannot hide another operation.** The classifier applies a public,
+  data-shaped precedence policy: category and destructive evidence first, then
+  state-change verbs (including ordinary inflections such as `updates`,
+  `archived`, and `rotating`) and write methods, then hybrid markers such as
+  `and` or `then`. Only a leading read verb with no higher-precedence signal is
+  proposed for pass-through; mutation or ambiguity defaults receipt-required.
 - **It will not edit your code.** It emits the manifest and the wrap; you apply
   them after review.
 - **It will never tell you that you are "protected."** It reports what it could
@@ -85,10 +147,15 @@ That honesty is the point. A tool that claimed to make AI safe by installing it
 would be lying; risk is specific to your application, and only you know it. This
 makes declaring it cheap, and keeps you in control of the declaration.
 
-JSON input is capped at 8 MiB, duplicate member names are refused, and scans are
-limited to 10,000 bounded action records. `--emit` refuses to overwrite an
-existing manifest. `protect` is dry-run by default, writes only inside the
-current working directory, refuses symlink traversal, and does not overwrite
-existing files unless you explicitly pass `--force`.
+JSON input is required to be a regular file and is bounded to 8 MiB before any
+content read; non-regular files, symlinked path components, files that change
+during the read, and duplicate member names are refused. Scans are limited to
+10,000 bounded action records. Unknown options fail with usage status rather
+than silently degrading a requested operation. `--emit` refuses to overwrite an
+existing manifest. `protect` is dry-run by default and accepts one direct-child
+output directory under the current working directory. It builds the complete
+scaffold in a private staging directory and installs it as one directory rename,
+refuses symlink traversal, and does not replace an existing output unless you
+explicitly pass `--force`.
 
 Part of [EMILIA Protocol](https://www.emiliaprotocol.ai). Apache-2.0.

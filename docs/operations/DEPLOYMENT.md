@@ -29,6 +29,7 @@ All environment variables are accessed through `lib/env.js`. No other file reads
 | `EP_AUTO_SUBMIT_SECRET` | Shared secret for machine-to-machine `/api/receipts/auto-submit` auth | 64+ char random string |
 | `CRON_SECRET` | Vercel Cron authentication token | Auto-set by Vercel |
 | `EP_COMMIT_SIGNING_KEY` | Base64-encoded 32-byte Ed25519 seed for commit signing | Base64 string |
+| `EP_AGENT_RECORD_CREATION_CAPABILITY` | Application-only Agent Record creation authorization; must match the private database capability | `earc1_` + 64 lowercase hex |
 | `UPSTASH_REDIS_REST_URL` | Upstash Redis endpoint for distributed rate limiting | `https://xxxx.upstash.io` |
 | `UPSTASH_REDIS_REST_TOKEN` | Upstash Redis auth token | `AXxx...` |
 
@@ -142,12 +143,96 @@ Both endpoints are rate-limited to the `anchor` category (1 request per 6 hours)
 - [ ] All required environment variables are set (see matrix above)
 - [ ] `EP_COMMIT_SIGNING_KEY` is set (fatal error in production if missing)
 - [ ] `EP_COMMIT_SIGNING_KEYS` is valid JSON if set (fatal error in production if malformed)
+- [ ] `EP_AGENT_RECORD_CREATION_CAPABILITY` is configured in Vercel and matches the one-way private database capability
 - [ ] Upstash Redis is configured (rate limiting falls back to in-memory without it, which does not work across serverless instances)
 - [ ] Database schema is applied and append-only triggers are active on `protocol_events` and `handshake_events`
 - [ ] `npm run check:protocol` passes (write-discipline CI enforcement)
 - [ ] `npm run test:run` passes
 
 ### Deployment
+
+For Agent Record and other forward-compatible database changes, deploy in this
+order:
+
+1. Generate the Agent Record creation capability in a secure operator context.
+   It must be `earc1_` followed by 64 lowercase hexadecimal characters. Do not
+   print it to build output, application logs, or public readiness responses.
+2. Apply the forward-compatible Supabase migration first.
+3. Using the same hosted non-superuser migration operator, call
+   `public.configure_agent_record_creation_capability(secret)` as documented in
+   [Agent Record creation capability](../AGENT-RECORD-CREATION-CAPABILITY.md).
+   The migration grants that operator only this configuration RPC after
+   removing every temporary `agent_record_store_owner` membership edge. Do not grant
+   the private table, private helper, public configuration RPC, or base creator
+   to `service_role`.
+4. Verify the live database contract before application promotion: confirm the
+   expected function signatures and grants, confirm direct execution of the
+   base creator remains denied to `service_role`, and run the non-mutating
+   capability and RPC contract checks.
+5. Set the same value as `EP_AGENT_RECORD_CREATION_CAPABILITY` in the target
+   Vercel environment alongside the signer, Supabase, and Upstash prerequisites.
+6. Only after the database verification passes, promote or merge the Vercel
+   application that calls the new contract. Vercel must also have the blocking
+   deployment check below before any new production deployment is allowed to
+   auto-alias.
+
+This ordering keeps the old application compatible while the database moves
+forward and prevents a new application from reaching RPCs that are not live yet.
+
+### Required external Vercel production-alias gate
+
+`vercel.json` cannot register project Deployment Checks. Production aliasing
+remains unsafe until this external check exists in the linked Vercel project.
+The GitHub Actions check-run name is intentionally unique and stable:
+`emilia-production-schema-contract`. Do not rename it without replacing the
+Vercel configuration and branch-protection requirement in the same controlled
+change.
+
+From a directory linked to the intended Vercel project, first inspect and list;
+then add exactly one blocking production check:
+
+```bash
+vercel project inspect
+vercel project checks --format json
+vercel project checks add \
+  --check-name "emilia-production-schema-contract" \
+  --requires build-ready \
+  --blocks deployment-alias \
+  --targets production \
+  --source '{"kind":"git-provider","provider":"github","externalCheckName":"emilia-production-schema-contract"}' \
+  --format json
+vercel project checks --blocks deployment-alias --format json
+```
+
+The equivalent API operation is `POST /v2/projects/{projectIdOrName}/checks`
+with a team-scoped token that can manage the intended project:
+
+```bash
+curl --fail-with-body --request POST \
+  --url "https://api.vercel.com/v2/projects/${VERCEL_PROJECT_ID}/checks?teamId=${VERCEL_TEAM_ID}" \
+  --header "Authorization: Bearer ${VERCEL_TOKEN}" \
+  --header "Content-Type: application/json" \
+  --data '{
+    "name": "emilia-production-schema-contract",
+    "requires": "build-ready",
+    "blocks": "deployment-alias",
+    "targets": ["production"],
+    "source": {
+      "kind": "git-provider",
+      "provider": "github",
+      "externalCheckName": "emilia-production-schema-contract"
+    }
+  }'
+```
+
+Use the CLI path when possible because it resolves the already-linked project
+and scope. Never paste token values into the command or repository. If creation
+returns an ambiguous error, list checks before retrying so a duplicate is not
+created. The resulting object must have `requires=build-ready`,
+`blocks=deployment-alias`, `targets=["production"]`, and the exact GitHub source
+above. Also require `emilia-production-schema-contract` in GitHub rules for
+`main`. A Vercel `Force Promote` bypasses Deployment Checks and requires an
+explicit incident decision; it is not a normal release path.
 
 ```bash
 # Build
@@ -162,29 +247,19 @@ npm run start
 
 ### Post-Deployment Verification
 
-1. **Health check**: `GET /api/health`
+1. **Readiness check**: `GET /api/health`
 
    Expected response:
    ```json
-   {
-     "status": "healthy",
-     "protocol_version": "EP/1.1-v2",
-     "timestamp": "2026-03-20T...",
-     "uptime_check_ms": 150,
-     "checks": {
-       "database": { "status": "ok", "latency_ms": 120, "entities": 42, "receipts": 300, "active_disputes": 2 },
-       "rate_limiter": { "status": "ok", "backend": "upstash_redis" },
-       "anchoring": { "status": "configured", "chain": "base_l2" }
-     },
-     "surfaces": { ... }
-   }
+   { "status": "ready" }
    ```
 
    Verify:
-   - `status` is `"healthy"` (not `"degraded"`)
-   - `checks.database.status` is `"ok"`
-   - `checks.rate_limiter.backend` is `"upstash_redis"` in production (not `"in_memory"`)
-   - `checks.anchoring.status` is `"configured"` if blockchain anchoring is enabled
+   - HTTP status is `200`; any unavailable production dependency returns `503`
+     with exactly `{ "status": "not_ready" }`.
+   - The body contains no dependency, schema, count, latency, or secret detail.
+   - `GET /api/live` separately returns `200` with exactly
+     `{ "status": "live" }` and proves process liveness only.
 
 2. **Entity registration**: `POST /api/entities/register` with a test entity. Confirm a `201` response and that an `ep_live_` API key is returned.
 
@@ -196,19 +271,19 @@ npm run start
 
 ## Health Check Endpoint
 
-**`GET /api/health`** -- no authentication required.
+**`GET /api/health`** -- unauthenticated readiness. Production returns `200`
+only when the signer, durable limiter, Supabase configuration, matching creation
+capability, and every Agent Record RPC probe pass. False, missing, malformed,
+or thrown checks return a detail-free `503`. Responses are never cached.
 
-Checks performed:
-- Database connectivity and query latency
-- Entity, receipt, and active dispute counts
-- Rate limiter backend status (Upstash Redis vs in-memory fallback)
-- Blockchain anchoring configuration status
-
-Returns `200` with `status: "healthy"` or `status: "degraded"` if any check fails. The endpoint itself never returns a non-200 status unless the response assembly fails (500).
+**`GET /api/live`** -- unauthenticated process-only liveness. It does not query
+the database and must not be used to decide whether a deployment may receive
+traffic.
 
 ## Rollback Procedure
 
 1. Revert to the previous Vercel deployment via the Vercel dashboard or `vercel rollback`.
-2. If a database migration was applied, apply the corresponding rollback migration.
-3. Verify via `/api/health` that the rolled-back instance is healthy.
-4. Protocol events are append-only and cannot be rolled back. If a bad state was materialized, use the reconstitution script: `npm run reconstitute` to replay events and rebuild projections.
+2. Retain the already-applied forward-compatible database migration. Application rollback does not roll back the Supabase schema.
+3. Do not invent or apply an Agent Record rollback migration. There is no destructive Agent Record down migration; use a separately reviewed forward repair if the live database contract itself needs correction.
+4. Verify via `/api/health` that the rolled-back application is healthy against the retained schema.
+5. Protocol events are append-only and cannot be rolled back. If a bad state was materialized, use the reconstitution script: `npm run reconstitute` to replay events and rebuild projections.

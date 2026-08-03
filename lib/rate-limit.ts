@@ -63,11 +63,12 @@ export const RATE_LIMITS: Record<string, { window: number; max: number }> = {
   // row the server already holds, and checks a bounded Merkle proof over it.
   // The attacker chooses neither the payload nor its size.
   //
-  // There is also no oracle here to protect. The verifier is this repository's
-  // published npm package, so anyone wanting unlimited verification runs it
-  // locally at full speed. Failing this closed buys nothing and costs the whole
-  // point of the endpoint: a receipt nobody can check is worthless, so
-  // availability IS the security property on this surface.
+  // These defaults describe locally reproducible receipt verification: the
+  // verifier is this repository's published npm package, so anyone wanting
+  // unlimited verification runs it locally at full speed. Failing that route
+  // closed buys nothing and costs the whole point of the endpoint. Operated
+  // current-status surfaces sharing this bucket must opt into requireDurable
+  // per call instead of changing the category-wide availability contract.
   public_verify: { window: 60, max: 60 },
   // Public capability badges. Cheap to serve (an SVG and one projection read)
   // and embedded in READMEs and docs, where an image proxy collapses many
@@ -112,10 +113,11 @@ const FAIL_CLOSED_CATEGORIES = new Set([
   // public_verify and public_badge are deliberately absent. Membership here is
   // not only an outage posture: checkRateLimit below refuses a fail-closed
   // category outright whenever durableRequired is set and Upstash is not
-  // configured, so listing a public evidence surface here takes it dark in
-  // every such deployment, not merely during a Redis incident. See the note on
-  // those two tiers above for why that trade is wrong for them and right for
-  // mcp_tool_call.
+  // configured, so listing a shared public evidence category here takes every
+  // route in it dark. Agent Record is the narrower exception: its operated
+  // current-status oracle opts into requireDurable per call, while static
+  // badges and locally reproducible receipt verification retain fail-open
+  // availability.
 ]);
 
 async function redisCommand(command: string, ...args: string[]): Promise<any> {
@@ -133,7 +135,11 @@ async function redisCommand(command: string, ...args: string[]): Promise<any> {
   return data.result;
 }
 
-async function checkRateLimitRedis(key: string, category: string): Promise<RateLimitResult> {
+async function checkRateLimitRedis(
+  key: string,
+  category: string,
+  requireDurable: boolean,
+): Promise<RateLimitResult> {
   const config = RATE_LIMITS[category] || RATE_LIMITS.read;
   const redisKey = `ep:rl:${category}:${key}`;
   const now = Math.floor(Date.now() / 1000);
@@ -161,7 +167,7 @@ async function checkRateLimitRedis(key: string, category: string): Promise<RateL
     logger.error('Upstash rate limit error:', err.message);
     // Sensitive write/admin categories fail-closed on Redis error to prevent abuse
     // during infrastructure outages. Read endpoints fail-open for availability.
-    if (FAIL_CLOSED_CATEGORIES.has(category)) {
+    if (requireDurable || FAIL_CLOSED_CATEGORIES.has(category)) {
       return { allowed: false, remaining: 0, reset: 60, error: 'rate_limit_unavailable' };
     }
     return { allowed: true, remaining: -1, reset: config.window };
@@ -241,13 +247,18 @@ if (typeof setInterval !== 'undefined') {
  *
  * @param {string} key - Identifier (IP address or API key prefix)
  * @param {string} category - One of: register, submit, read, anchor, waitlist
+ * @param {{ requireDurable?: boolean }} options - Refuse per-instance memory in durable-required deployments
  * @returns {Promise<{ allowed: boolean, remaining: number, reset: number, error?: string }>}
  */
-export async function checkRateLimit(key: string, category: string): Promise<RateLimitResult> {
+export async function checkRateLimit(
+  key: string,
+  category: string,
+  { requireDurable = false }: { requireDurable?: boolean } = {},
+): Promise<RateLimitResult> {
   if (useRedis) {
-    return checkRateLimitRedis(key, category);
+    return checkRateLimitRedis(key, category, requireDurable);
   }
-  if (durableRequired && FAIL_CLOSED_CATEGORIES.has(category)) {
+  if (durableRequired && (requireDurable || FAIL_CLOSED_CATEGORIES.has(category))) {
     return { allowed: false, remaining: 0, reset: 60, error: 'durable_rate_limit_required' };
   }
   return checkRateLimitMemory(key, category);

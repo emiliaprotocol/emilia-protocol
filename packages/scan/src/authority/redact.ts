@@ -56,7 +56,11 @@ function looksHighEntropy(value: unknown): boolean {
 
 export function describeSecret(key: unknown, value: unknown): SecretDescriptor {
   const keyName = String(key ?? '');
-  const upper = keyName.toUpperCase().replace(/[_\-.:/]+/g, ' ');
+  const upper = keyName
+    .replace(/([a-z0-9])([A-Z])/g, '$1 $2')
+    .replace(/([A-Z]+)([A-Z][a-z])/g, '$1 $2')
+    .replace(/[_\-.:/]+/g, ' ')
+    .toUpperCase();
   const str = typeof value === 'string' ? value : '';
   const out: SecretDescriptor = {
     secret: false,
@@ -139,16 +143,32 @@ export function redactText(text: unknown): string {
     (_match, scheme: string) => `<redacted connection_string scheme=${scheme.toLowerCase()}>`,
   );
   out = out.replace(
-    /\b(Bearer|Basic)\s+[A-Za-z0-9._~+/-]{8,}={0,2}/gi,
+    /\b(Bearer|Basic)\s+[^\s"',;<>]+/gi,
     (_match, kind: string) => `<redacted ${kind.toLowerCase()} credential>`,
   );
   out = out.replace(
-    /(--?(?:key|api[-_]?key|secret|token|password|passwd|credential|authorization|private[-_]?key|access[-_]?key|service[-_]?role|session|signing[-_]?key|dsn))(\s*=\s*|\s+)(?:"[^"]*"|'[^']*'|[^\s)"']+)/gi,
+    /(--?(?:key|api[-_]?key|secret|token|password|passwd|credential|authorization|private[-_]?key|access[-_]?key|service[-_]?role|session|signing[-_]?key|dsn))(\s*=\s*|\s+)(?!<redacted\b)(?:"[^"]*"|'[^']*'|[^\s)"']+)/gi,
     (_match, key: string, separator: string) => `${key}${separator.includes('=') ? '=' : ' '}<redacted credential>`,
   );
   out = out.replace(
-    /\b((?:[A-Za-z0-9]+[_-])*(?:key|api[_-]?key|secret|token|password|passwd|credential|authorization|private[_-]?key|access[_-]?key|service[_-]?role|session|signing[_-]?key|dsn))(\s*(?:=|:)\s*)(?:"[^"]*"|'[^']*'|[^\s)"']+)/gi,
+    /\b((?:[A-Za-z0-9]+[_-])*(?:key|api[_-]?key|secret|token|password|passwd|credential|authorization|private[_-]?key|access[_-]?key|service[_-]?role|session|signing[_-]?key|dsn))(\s*(?:=|:)\s*)(?!<redacted\b)(?:"[^"]*"|'[^']*'|[^\s)"']+)/gi,
     (_match, key: string, separator: string) => `${key}${separator}<redacted credential>`,
+  );
+  // Cover camelCase and slash-style command flags without relying on a
+  // credential value being long or high-entropy. The callback asks the same
+  // key classifier used for structured configuration, so ordinary prose is
+  // preserved while `--clientSecret short` and `/accessToken:short` are not.
+  out = out.replace(
+    /(^|[\s"'([{,;])((?:--?|\/)?[A-Za-z][A-Za-z0-9_.-]{0,127})(\s*(?:=|:)\s*|\s+)(?!<redacted\b)(?:"[^"]*"|'[^']*'|[^\s)"']+)/g,
+    (match, prefix: string, rawKey: string, separator: string, offset: number, input: string) => {
+      const openRedaction = input.lastIndexOf('<redacted', offset);
+      const closedRedaction = input.lastIndexOf('>', offset);
+      if (openRedaction > closedRedaction) return match;
+      const key = rawKey.replace(/^(?:--?|\/)/, '');
+      return describeSecret(key, 'placeholder').secret
+        ? `${prefix}${rawKey}${separator.includes('=') || separator.includes(':') ? separator : ' '}<redacted credential>`
+        : match;
+    },
   );
   for (const shape of VALUE_SHAPES) {
     const global = new RegExp(shape.re.source.replace(/^\^/, '').replace(/\$$/, ''), 'g');
@@ -186,8 +206,17 @@ export function sanitizeForReport(
     return sanitized;
   }
   const out: Record<string, unknown> = {};
+  const isSecretDescriptor = typeof (value as Record<string, unknown>).secret === 'boolean'
+    && Object.hasOwn(value, 'class')
+    && Object.hasOwn(value, 'key');
   for (const [childKey, childValue] of Object.entries(value)) {
-    out[childKey] = sanitizeForReport(childValue, childKey, seen);
+    if (isSecretDescriptor && childKey === 'key' && typeof childValue === 'string') {
+      out[childKey] = /^[A-Za-z_][A-Za-z0-9_.:-]{0,127}$/.test(childValue)
+        ? childValue
+        : '<redacted invalid key name>';
+    } else {
+      out[childKey] = sanitizeForReport(childValue, childKey, seen);
+    }
   }
   seen.delete(value);
   return out;
@@ -204,17 +233,20 @@ export function sanitizeArgs(args: unknown): string[] {
       redactNext = false;
       continue;
     }
-    if (arg.startsWith('-')) {
-      const key = arg.replace(/^-+/, '').split('=', 1)[0];
-      if (describeSecret(key, 'placeholder').secret) {
-        const equals = arg.indexOf('=');
-        if (equals >= 0) out.push(`${arg.slice(0, equals + 1)}<redacted credential>`);
-        else {
-          out.push(arg);
-          redactNext = true;
-        }
-        continue;
+    const normalized = arg.replace(/^(?:--?|\/)/, '');
+    const separatorIndex = normalized.search(/[=:]/);
+    const key = separatorIndex >= 0 ? normalized.slice(0, separatorIndex) : normalized;
+    if (describeSecret(key, 'placeholder').secret) {
+      const originalSeparatorIndex = separatorIndex >= 0
+        ? arg.length - normalized.length + separatorIndex
+        : -1;
+      if (originalSeparatorIndex >= 0) {
+        out.push(`${arg.slice(0, originalSeparatorIndex + 1)}<redacted credential>`);
+      } else {
+        out.push(arg);
+        redactNext = true;
       }
+      continue;
     }
     out.push(String(sanitizeForReport(arg, 'argument')));
   }

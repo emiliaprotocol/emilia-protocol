@@ -2,10 +2,28 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { spawnSync } from 'node:child_process';
-import { cpSync, linkSync, mkdirSync, mkdtempSync, readFileSync, symlinkSync, unlinkSync, writeFileSync } from 'node:fs';
+import { createHash } from 'node:crypto';
+import { cpSync, existsSync, linkSync, mkdirSync, mkdtempSync, readFileSync, readdirSync, statSync, symlinkSync, unlinkSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { classifyAction, scanActions, KNOWN_CATEGORIES, HIGH_RISK_ACTION_PACKS } from './index.js';
+
+const sha256 = (bytes) => `sha256:${createHash('sha256').update(bytes).digest('hex')}`;
+
+function installLocalMcpGuard(dir) {
+  const scope = join(dir, 'node_modules', '@emilia-protocol');
+  mkdirSync(scope, { recursive: true });
+  cpSync(join(import.meta.dirname, '..', 'mcp-guard'), join(scope, 'mcp-guard'), { recursive: true });
+  cpSync(join(import.meta.dirname, '..', 'require-receipt'), join(scope, 'require-receipt'), { recursive: true });
+}
+
+function expectedScaffoldBinding(dir) {
+  const files = ['guard.mjs', 'verify-setup.mjs', 'INTEGRATION.md'].map((file) => ({
+    file,
+    sha256: sha256(readFileSync(join(dir, 'emilia', file))),
+  }));
+  return { sha256: sha256(Buffer.from(JSON.stringify(files), 'utf8')), files };
+}
 
 test('STRUCTURAL: every category maps to a real risk pack (no guessed ids)', () => {
   const realIds = new Set(HIGH_RISK_ACTION_PACKS.map((p) => p.id));
@@ -172,6 +190,74 @@ test('codemod refuses symlinked input and hard-linked output leaves', () => {
   assert.equal(readFileSync(external, 'utf8'), 'preserve-me');
 });
 
+test('scan and protect refuse oversized, non-regular, and ancestor-symlinked inputs before parsing', () => {
+  const dir = mkdtempSync(join(tmpdir(), 'emilia-scan-bounded-read-'));
+  const oversized = join(dir, 'oversized.json');
+  writeFileSync(oversized, Buffer.alloc((8 * 1024 * 1024) + 1, 0x20));
+  for (const args of [[oversized], ['protect', oversized]]) {
+    const run = spawnSync(process.execPath, [join(import.meta.dirname, 'cli.mjs'), ...args], {
+      cwd: dir,
+      encoding: 'utf8',
+      timeout: 2_000,
+    });
+    assert.notEqual(run.status, 0);
+    assert.match(`${run.stdout}${run.stderr}`, /exceeds 8388608 bytes/i);
+  }
+
+  const nonRegular = spawnSync(process.execPath, [join(import.meta.dirname, 'cli.mjs'), '/dev/zero'], {
+    cwd: dir,
+    encoding: 'utf8',
+    timeout: 2_000,
+  });
+  assert.notEqual(nonRegular.status, 0);
+  assert.equal(nonRegular.signal, null, 'non-regular input must be rejected, not timeout-killed');
+  assert.match(`${nonRegular.stdout}${nonRegular.stderr}`, /non-regular input/i);
+
+  const realParent = join(dir, 'real-parent');
+  const linkedParent = join(dir, 'linked-parent');
+  mkdirSync(realParent);
+  writeFileSync(join(realParent, 'tools.json'), '[{"name":"getAccountBalance"}]');
+  symlinkSync(realParent, linkedParent, 'dir');
+  const linked = spawnSync(process.execPath, [join(import.meta.dirname, 'cli.mjs'), join(linkedParent, 'tools.json')], {
+    cwd: dir,
+    encoding: 'utf8',
+  });
+  assert.notEqual(linked.status, 0);
+  assert.match(`${linked.stdout}${linked.stderr}`, /symlinked input path component/i);
+});
+
+test('scan and protect reject unknown options with usage status', () => {
+  for (const args of [['--sample', '--definitely-unknown'], ['protect', '--sample', '--definitely-unknown']]) {
+    const run = spawnSync(process.execPath, [join(import.meta.dirname, 'cli.mjs'), ...args], {
+      encoding: 'utf8',
+    });
+    assert.equal(run.status, 64, `${args.join(' ')}\n${run.stdout}\n${run.stderr}`);
+    assert.match(run.stderr, /unknown option: --definitely-unknown/);
+  }
+});
+
+test('protect installs one direct-child scaffold atomically and force replaces the directory as a unit', () => {
+  const dir = mkdtempSync(join(tmpdir(), 'emilia-protect-atomic-'));
+  const nested = spawnSync(process.execPath, [
+    join(import.meta.dirname, 'cli.mjs'), 'protect', '--sample', '--out', 'nested/emilia', '--apply',
+  ], { cwd: dir, encoding: 'utf8' });
+  assert.notEqual(nested.status, 0);
+  assert.match(`${nested.stdout}${nested.stderr}`, /refusing nested output directory/i);
+  assert.equal(existsSync(join(dir, 'nested')), false);
+
+  mkdirSync(join(dir, 'emilia'));
+  writeFileSync(join(dir, 'emilia', 'stale.txt'), 'must disappear only under explicit force');
+  const replaced = spawnSync(process.execPath, [
+    join(import.meta.dirname, 'cli.mjs'), 'protect', '--sample', '--out', 'emilia', '--apply', '--force',
+  ], { cwd: dir, encoding: 'utf8' });
+  assert.equal(replaced.status, 0, `${replaced.stdout}\n${replaced.stderr}`);
+  assert.equal(existsSync(join(dir, 'emilia', 'stale.txt')), false);
+  assert.deepEqual(readdirSync(join(dir, 'emilia')).sort(), [
+    'INTEGRATION.md', 'action-control.manifest.json', 'guard.mjs', 'verify-setup.mjs',
+  ]);
+  assert.equal(readdirSync(dir).some((entry) => entry.startsWith('.emilia.')), false);
+});
+
 test('scan protect routes to the dry-run hardener without writing files', () => {
   const dir = mkdtempSync(join(tmpdir(), 'emilia-protect-dry-'));
   const run = spawnSync(process.execPath, [join(import.meta.dirname, 'cli.mjs'), 'protect', '--sample'], {
@@ -186,6 +272,150 @@ test('scan protect routes to the dry-run hardener without writing files', () => 
   assert.equal(spawnSync(process.execPath, ['-e', "import('node:fs').then(fs => process.exit(fs.existsSync('emilia') ? 1 : 0))"], {
     cwd: dir,
   }).status, 0, 'dry-run must not create the output directory');
+});
+
+test('scan CLI exercises MCP, OpenAPI, sample, emit, and refusal paths', () => {
+  const dir = mkdtempSync(join(tmpdir(), 'emilia-scan-cli-'));
+  const mcpInput = join(dir, 'tools.json');
+  const emitted = join(dir, 'manifest.json');
+  writeFileSync(mcpInput, JSON.stringify({
+    tools: [
+      { name: 'getAccountBalance', description: 'Read the balance' },
+      { name: 'rotateApiKey', description: 'Fetch the current key and rotate it' },
+    ],
+  }));
+
+  const mcp = spawnSync(process.execPath, [join(import.meta.dirname, 'cli.mjs'), mcpInput, '--emit', emitted], {
+    cwd: dir,
+    encoding: 'utf8',
+  });
+  assert.equal(mcp.status, 0, `${mcp.stdout}\n${mcp.stderr}`);
+  assert.match(mcp.stdout, /mcp surface, 2 actions/);
+  assert.match(mcp.stdout, /rotateApiKey/);
+  assert.match(mcp.stdout, /REVIEW \(fail-closed\)/);
+  assert.match(mcp.stdout, /Only statically-listed tools are visible/);
+  const emittedManifest = JSON.parse(readFileSync(emitted, 'utf8'));
+  assert.ok(emittedManifest.actions.some((action) => action.match?.tool === 'rotateApiKey'));
+
+  const overwrite = spawnSync(process.execPath, [join(import.meta.dirname, 'cli.mjs'), mcpInput, '--emit', emitted], {
+    cwd: dir,
+    encoding: 'utf8',
+  });
+  assert.equal(overwrite.status, 2);
+  assert.match(`${overwrite.stdout}${overwrite.stderr}`, /refusing to overwrite existing manifest/);
+
+  const openApiInput = join(dir, 'openapi.json');
+  writeFileSync(openApiInput, JSON.stringify({
+    openapi: '3.1.0',
+    paths: {
+      '/status': {
+        parameters: [],
+        get: { description: 'Read service health' },
+      },
+      '/jobs': {
+        post: { operationId: 'startJob', summary: 'Start a background job' },
+      },
+    },
+  }));
+  const openApi = spawnSync(process.execPath, [join(import.meta.dirname, 'cli.mjs'), openApiInput], {
+    cwd: dir,
+    encoding: 'utf8',
+  });
+  assert.equal(openApi.status, 0, `${openApi.stdout}\n${openApi.stderr}`);
+  assert.match(openApi.stdout, /openapi surface, 2 actions/);
+  assert.match(openApi.stdout, /get \/status/);
+  assert.match(openApi.stdout, /startJob/);
+  assert.match(openApi.stdout, /undocumented endpoints/);
+
+  const completeOpenApiInput = join(dir, 'openapi-complete.json');
+  writeFileSync(completeOpenApiInput, JSON.stringify({
+    openapi: '3.1.0',
+    paths: {
+      '/admin': {
+        head: { operationId: 'headReplay', summary: 'Inspect replay state' },
+        options: { operationId: 'configurePolicy', summary: 'Change policy options' },
+        trace: { operationId: 'traceSecrets', summary: 'Trace sensitive request details' },
+      },
+    },
+  }));
+  const completeOpenApi = spawnSync(process.execPath, [join(import.meta.dirname, 'cli.mjs'), completeOpenApiInput], {
+    cwd: dir,
+    encoding: 'utf8',
+  });
+  assert.equal(completeOpenApi.status, 0, `${completeOpenApi.stdout}\n${completeOpenApi.stderr}`);
+  assert.match(completeOpenApi.stdout, /openapi surface, 3 actions/);
+  assert.match(completeOpenApi.stdout, /headReplay/);
+  assert.match(completeOpenApi.stdout, /configurePolicy/);
+  assert.match(completeOpenApi.stdout, /traceSecrets/);
+
+  const invalidOpenApiInput = join(dir, 'openapi-invalid.json');
+  const invalidManifest = join(dir, 'invalid-manifest.json');
+  writeFileSync(invalidOpenApiInput, JSON.stringify({ openapi: '3.1.0', paths: [] }));
+  const invalidOpenApi = spawnSync(process.execPath, [
+    join(import.meta.dirname, 'cli.mjs'),
+    invalidOpenApiInput,
+    '--emit',
+    invalidManifest,
+  ], {
+    cwd: dir,
+    encoding: 'utf8',
+  });
+  assert.notEqual(invalidOpenApi.status, 0);
+  assert.match(`${invalidOpenApi.stdout}${invalidOpenApi.stderr}`, /OpenAPI paths must be an object/);
+  assert.equal(existsSync(invalidManifest), false, 'malformed OpenAPI must not emit a false-empty manifest');
+
+  const sample = spawnSync(process.execPath, [join(import.meta.dirname, 'cli.mjs'), '--sample'], {
+    cwd: dir,
+    encoding: 'utf8',
+  });
+  assert.equal(sample.status, 0, `${sample.stdout}\n${sample.stderr}`);
+  assert.match(sample.stdout, /built-in sample/);
+
+  const unrecognized = join(dir, 'unrecognized.json');
+  writeFileSync(unrecognized, JSON.stringify({ not_tools: true }));
+  const refused = spawnSync(process.execPath, [join(import.meta.dirname, 'cli.mjs'), unrecognized], {
+    cwd: dir,
+    encoding: 'utf8',
+  });
+  assert.notEqual(refused.status, 0);
+  assert.match(`${refused.stdout}${refused.stderr}`, /Unrecognized input/);
+
+  const missing = spawnSync(process.execPath, [join(import.meta.dirname, 'cli.mjs')], {
+    cwd: dir,
+    encoding: 'utf8',
+  });
+  assert.equal(missing.status, 2);
+  assert.match(`${missing.stdout}${missing.stderr}`, /usage: cli\.mjs/);
+});
+
+test('scan CLI requires an output path after --emit before scanning or writing', () => {
+  for (const args of [['--sample', '--emit'], ['--emit', '--sample']]) {
+    const dir = mkdtempSync(join(tmpdir(), 'emilia-scan-missing-emit-'));
+    const run = spawnSync(process.execPath, [join(import.meta.dirname, 'cli.mjs'), ...args], {
+      cwd: dir,
+      encoding: 'utf8',
+    });
+
+    assert.equal(run.status, 2, `${args.join(' ')}\n${run.stdout}\n${run.stderr}`);
+    assert.equal(run.stdout, '', 'argument errors must be rejected before scan output');
+    assert.match(run.stderr, /--emit requires a value/);
+    assert.deepEqual(readdirSync(dir), [], 'argument errors must not create output');
+  }
+});
+
+test('scan protect requires an output directory after --out before scanning or writing', () => {
+  for (const args of [['protect', '--sample', '--out'], ['protect', '--sample', '--out', '--apply']]) {
+    const dir = mkdtempSync(join(tmpdir(), 'emilia-protect-missing-out-'));
+    const run = spawnSync(process.execPath, [join(import.meta.dirname, 'cli.mjs'), ...args], {
+      cwd: dir,
+      encoding: 'utf8',
+    });
+
+    assert.equal(run.status, 2, `${args.join(' ')}\n${run.stdout}\n${run.stderr}`);
+    assert.equal(run.stdout, '', 'argument errors must be rejected before protect output');
+    assert.match(run.stderr, /--out requires a value/);
+    assert.deepEqual(readdirSync(dir), [], 'argument errors must not create output');
+  }
 });
 
 test('OpenAPI scan preserves route selectors but protect refuses verification-only HTTP scaffolds', () => {
@@ -267,10 +497,7 @@ test('generated MCP protection separates durable production state from the expli
   assert.match(integration, /durable provenance ledger/i);
   assert.match(integration, /shared atomic consumption store/i);
 
-  const scope = join(dir, 'node_modules', '@emilia-protocol');
-  mkdirSync(scope, { recursive: true });
-  cpSync(join(import.meta.dirname, '..', 'mcp-guard'), join(scope, 'mcp-guard'), { recursive: true });
-  cpSync(join(import.meta.dirname, '..', 'require-receipt'), join(scope, 'require-receipt'), { recursive: true });
+  installLocalMcpGuard(dir);
 
   const imported = await import(`${new URL(`file://${guardPath}`).href}?test=${Date.now()}`);
   assert.throws(
@@ -317,4 +544,208 @@ test('generated MCP protection separates durable production state from the expli
   });
   assert.notEqual(productionDemo.status, 0);
   assert.match(`${productionDemo.stdout}${productionDemo.stderr}`, /demo guard is unavailable in production/);
+});
+
+test('scan-to-adoption handoff binds reviewed bytes and explicit consequential actions without ambient data', () => {
+  const dir = mkdtempSync(join(tmpdir(), 'emilia-handoff-contract-'));
+  const input = join(dir, 'tools.json');
+  const sensitive = {
+    argument: 'customer-secret-argument-991',
+    credential: 'ep_live_private_credential_992',
+    outsidePath: '/Users/private-operator/hidden/config.json',
+    username: 'private-operator-993',
+    host: 'private-host-994.internal',
+  };
+  writeFileSync(input, JSON.stringify([
+    {
+      name: 'deleteCustomer',
+      description: `Permanently remove a record; runtime argument ${sensitive.argument}; source ${sensitive.outsidePath}`,
+    },
+    { name: 'deployToProduction', description: 'Ship the current build to production' },
+    { name: 'getAccountBalance', description: 'Read the current balance' },
+  ]));
+
+  const protect = spawnSync(process.execPath, [
+    join(import.meta.dirname, 'codemod.mjs'),
+    input,
+    '--out',
+    'emilia',
+    '--apply',
+  ], { cwd: dir, encoding: 'utf8' });
+  assert.equal(protect.status, 0, `${protect.stdout}\n${protect.stderr}`);
+  installLocalMcpGuard(dir);
+
+  const verifyPath = join(dir, 'emilia', 'verify-setup.mjs');
+  const handoffPath = join(dir, 'emilia', 'scan-adoption-handoff.json');
+  const defaultVerify = spawnSync(process.execPath, [verifyPath], { cwd: dir, encoding: 'utf8' });
+  assert.equal(defaultVerify.status, 0, `${defaultVerify.stdout}\n${defaultVerify.stderr}`);
+  assert.equal(existsSync(handoffPath), false, 'verification must not write a handoff without an explicit flag');
+
+  const manifestDigest = sha256(readFileSync(join(dir, 'emilia', 'action-control.manifest.json')));
+  const emit = spawnSync(process.execPath, [
+    verifyPath,
+    '--emit-handoff',
+    '--reviewed-manifest-digest',
+    manifestDigest,
+    '--action',
+    'deleteCustomer',
+    '--action',
+    'deployToProduction',
+  ], {
+    cwd: dir,
+    encoding: 'utf8',
+    env: {
+      ...process.env,
+      EP_TRUSTED_ISSUER_KEYS: sensitive.credential,
+      USER: sensitive.username,
+      HOSTNAME: sensitive.host,
+      HOME: sensitive.outsidePath,
+    },
+  });
+  assert.equal(emit.status, 0, `${emit.stdout}\n${emit.stderr}`);
+
+  const handoffText = readFileSync(handoffPath, 'utf8');
+  const handoff = JSON.parse(handoffText);
+  assert.deepEqual(Object.keys(handoff), [
+    '@version',
+    'reviewed_manifest',
+    'generated_scaffold',
+    'selected_actions',
+    'local_refusal',
+  ]);
+  assert.equal(handoff['@version'], 'EP-SCAN-ADOPTION-HANDOFF-v1');
+  assert.deepEqual(handoff.reviewed_manifest, {
+    file: 'action-control.manifest.json',
+    sha256: manifestDigest,
+  });
+  assert.deepEqual(handoff.generated_scaffold, expectedScaffoldBinding(dir));
+  assert.deepEqual(handoff.selected_actions, [
+    {
+      id: 'discovered.deletecustomer',
+      selector: { protocol: 'mcp', tool: 'deleteCustomer' },
+      action_type: 'record.delete',
+      assurance_class: 'class_a',
+      receipt_required: true,
+    },
+    {
+      id: 'discovered.deploytoproduction',
+      selector: { protocol: 'mcp', tool: 'deployToProduction' },
+      action_type: 'deploy.production',
+      assurance_class: 'quorum',
+      receipt_required: true,
+    },
+  ]);
+  assert.deepEqual(handoff.local_refusal, {
+    status: 'passed',
+    claim: 'selected synthetic calls were refused by the generated local demo wrapper before the supplied handler',
+    handler_called: false,
+    state: 'ephemeral_demo_only',
+    claim_boundary: {
+      asserted: [
+        'selected_actions_refused_locally',
+        'supplied_handler_not_called',
+      ],
+      not_asserted: [
+        'production_enforcement',
+        'complete_mediation',
+        'credential_isolation',
+        'durable_state',
+        'trusted_key_configuration',
+        'signed_refusal_artifact',
+        'public_verification',
+      ],
+    },
+  });
+  assert.equal(statSync(handoffPath).mode & 0o777, 0o600, 'handoff must be owner-only');
+
+  for (const forbidden of [...Object.values(sensitive), dir, 'customer_id', 'synthetic-customer-001']) {
+    assert.equal(handoffText.includes(forbidden), false, `handoff leaked forbidden value: ${forbidden}`);
+  }
+});
+
+test('handoff emission requires review acknowledgement, consequential selection, and safe-create output', () => {
+  const dir = mkdtempSync(join(tmpdir(), 'emilia-handoff-safety-'));
+  const apply = spawnSync(process.execPath, [
+    join(import.meta.dirname, 'codemod.mjs'),
+    '--sample',
+    '--apply',
+  ], { cwd: dir, encoding: 'utf8' });
+  assert.equal(apply.status, 0, `${apply.stdout}\n${apply.stderr}`);
+  installLocalMcpGuard(dir);
+
+  const verifyPath = join(dir, 'emilia', 'verify-setup.mjs');
+  const manifestDigest = sha256(readFileSync(join(dir, 'emilia', 'action-control.manifest.json')));
+  const run = (...extra) => spawnSync(process.execPath, [verifyPath, '--emit-handoff', ...extra], {
+    cwd: dir,
+    encoding: 'utf8',
+  });
+
+  const unreviewed = run('--action', 'deleteCustomer');
+  assert.notEqual(unreviewed.status, 0);
+  assert.match(`${unreviewed.stdout}${unreviewed.stderr}`, /reviewed manifest digest is required/i);
+
+  const missingDigestValue = run('--reviewed-manifest-digest', '-h');
+  assert.notEqual(missingDigestValue.status, 0);
+  assert.match(`${missingDigestValue.stdout}${missingDigestValue.stderr}`, /reviewed manifest digest is required after/i);
+
+  const missingActionValue = run(
+    '--reviewed-manifest-digest',
+    manifestDigest,
+    '--action',
+    '-h',
+  );
+  assert.notEqual(missingActionValue.status, 0);
+  assert.match(`${missingActionValue.stdout}${missingActionValue.stderr}`, /tool name is required after --action/i);
+
+  const mismatched = run(
+    '--reviewed-manifest-digest',
+    `sha256:${'0'.repeat(64)}`,
+    '--action',
+    'deleteCustomer',
+  );
+  assert.notEqual(mismatched.status, 0);
+  assert.match(`${mismatched.stdout}${mismatched.stderr}`, /reviewed manifest digest does not match/i);
+
+  const nonConsequential = run(
+    '--reviewed-manifest-digest',
+    manifestDigest,
+    '--action',
+    'getAccountBalance',
+  );
+  assert.notEqual(nonConsequential.status, 0);
+  assert.match(`${nonConsequential.stdout}${nonConsequential.stderr}`, /not a visible consequential action/i);
+
+  const first = run(
+    '--reviewed-manifest-digest',
+    manifestDigest,
+    '--action',
+    'deleteCustomer',
+  );
+  assert.equal(first.status, 0, `${first.stdout}\n${first.stderr}`);
+  const handoffPath = join(dir, 'emilia', 'scan-adoption-handoff.json');
+  const firstBytes = readFileSync(handoffPath);
+
+  const overwrite = run(
+    '--reviewed-manifest-digest',
+    manifestDigest,
+    '--action',
+    'deleteCustomer',
+  );
+  assert.notEqual(overwrite.status, 0);
+  assert.match(`${overwrite.stdout}${overwrite.stderr}`, /refusing to overwrite existing handoff/i);
+  assert.deepEqual(readFileSync(handoffPath), firstBytes, 'existing handoff bytes must be preserved');
+
+  unlinkSync(handoffPath);
+  const external = join(dir, 'external-must-not-change.json');
+  writeFileSync(external, '{"preserve":true}\n');
+  symlinkSync(external, handoffPath);
+  const symlink = run(
+    '--reviewed-manifest-digest',
+    manifestDigest,
+    '--action',
+    'deleteCustomer',
+  );
+  assert.notEqual(symlink.status, 0);
+  assert.match(`${symlink.stdout}${symlink.stderr}`, /refusing to overwrite existing handoff/i);
+  assert.equal(readFileSync(external, 'utf8'), '{"preserve":true}\n');
 });

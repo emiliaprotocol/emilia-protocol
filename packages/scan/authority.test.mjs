@@ -15,6 +15,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { spawnSync } from 'node:child_process';
 import {
+  AUTHORITY_SCAN_VERSION,
   authorityExitCode,
   describeSecret,
   redactText,
@@ -26,6 +27,22 @@ import {
 } from './dist/authority/index.js';
 
 const CLI = join(import.meta.dirname, 'cli.mjs');
+
+test('authority reports the package release version from package metadata', () => {
+  const packageVersion = JSON.parse(readFileSync(join(import.meta.dirname, 'package.json'), 'utf8')).version;
+  const root = mkdtempSync(join(tmpdir(), 'emilia-authority-version-'));
+  const home = join(root, 'home');
+  const cwd = join(home, 'project');
+  mkdirSync(cwd, { recursive: true });
+  assert.equal(AUTHORITY_SCAN_VERSION, packageVersion);
+  assert.equal(runAuthorityScan({
+    cwd,
+    home,
+    applicationSupport: join(home, 'Library', 'Application Support'),
+    managedCandidates: [],
+    maxEnvDepth: 0,
+  }).version, packageVersion);
+});
 
 test('both published npm bin targets start with a Node shebang', () => {
   for (const file of ['cli.mjs', 'codemod.mjs']) {
@@ -68,6 +85,17 @@ test('generic bearer values, assignments, URLs, and high-entropy tokens are reda
   }
 });
 
+test('short Authorization credentials are fully redacted', () => {
+  for (const input of [
+    'Authorization: Bearer s3cr3t',
+    'Authorization: Basic dXNlcg==',
+  ]) {
+    const output = redactText(input);
+    assert.ok(!output.includes(input.split(' ').at(-1)), input);
+    assert.match(output, /<redacted (bearer|basic) credential>/);
+  }
+});
+
 test('PEM blocks and embedded connection strings are removed as complete values', () => {
   const pem = [
     '-----BEGIN PRIVATE KEY-----',
@@ -98,6 +126,16 @@ test('secret flags redact the next argument even when the value has low entropy'
   );
 });
 
+test('camelCase and slash-style short credentials never cross the report boundary', () => {
+  const secrets = ['short-demo-secret', 'tiny-access-token'];
+  const output = JSON.stringify(sanitizeForReport({
+    command: `node server.js --clientSecret ${secrets[0]}`,
+    args: [`/accessToken:${secrets[1]}`],
+  }));
+  for (const secret of secrets) assert.equal(output.includes(secret), false, secret);
+  assert.match(output, /<redacted credential>/);
+});
+
 test('recursive report sanitizer removes secrets from arbitrary future fields', () => {
   const secret = 'Q7v'.repeat(20);
   const output = JSON.stringify(sanitizeForReport({
@@ -106,6 +144,17 @@ test('recursive report sanitizer removes secrets from arbitrary future fields', 
     args: ['--token', secret],
   }));
   assert.ok(!output.includes(secret));
+});
+
+test('secret descriptors retain safe key names without retaining credential values', () => {
+  assert.deepEqual(
+    sanitizeForReport({ key: 'GOOGLE_AI_API_KEY', class: 'api_key', secret: true, length: 42 }),
+    { key: 'GOOGLE_AI_API_KEY', class: 'api_key', secret: true, length: 42 },
+  );
+  assert.equal(
+    sanitizeForReport({ key: 'unsafe key name with spaces', class: 'api_key', secret: true }).key,
+    '<redacted invalid key name>',
+  );
 });
 
 test('MCP args and permission rules do not leak fake credentials in either output format', () => {
@@ -138,6 +187,40 @@ test('MCP args and permission rules do not leak fake credentials in either outpu
   assert.deepEqual(server.args.slice(1, 3), ['--api-key', '<redacted credential argument>']);
 });
 
+test('rendered reports redact short camelCase secret flags in split and equals forms', () => {
+  const flagCases = ['clientSecret', 'accessToken', 'refreshToken', 'authToken'].flatMap(
+    (flag, index) => [
+      { flag, form: 'split', value: `short-${index}-split` },
+      { flag, form: 'equals', value: `short-${index}-equals` },
+    ],
+  );
+  const args = ['server-package'];
+  for (const { flag, form, value } of flagCases) {
+    if (form === 'split') args.push(`--${flag}`, value);
+    else args.push(`--${flag}=${value}`);
+  }
+  const { home, cwd } = fixture({
+    mcpServers: {
+      hostile: { command: 'npx', args },
+    },
+  });
+  const result = runAuthorityScan({
+    cwd,
+    home,
+    applicationSupport: join(home, 'Library', 'Application Support'),
+    managedCandidates: [],
+  });
+
+  for (const [format, output] of [
+    ['json', renderAuthorityJson(result)],
+    ['text', renderAuthorityText(result)],
+  ]) {
+    for (const { flag, form, value } of flagCases) {
+      assert.equal(output.includes(value), false, `${format}: --${flag} ${form}`);
+    }
+  }
+});
+
 test('unsupported TOML is excluded rather than called malformed or clean', () => {
   const { home, cwd } = fixture({});
   mkdirSync(join(home, '.codex'), { recursive: true });
@@ -151,6 +234,19 @@ test('unsupported TOML is excluded rather than called malformed or clean', () =>
   const codex = result.inventory.sources.find((source) => source.runtime === 'codex');
   assert.equal(codex?.status, 'unsupported_format');
   assert.equal(authorityExitCode(result), 3);
+});
+
+test('an absent unsupported-format candidate is reported absent', () => {
+  const { home, cwd } = fixture({});
+  const result = runAuthorityScan({
+    cwd,
+    home,
+    applicationSupport: join(home, 'Library', 'Application Support'),
+    managedCandidates: [],
+    maxEnvDepth: 0,
+  });
+  const codex = result.inventory.sources.find((source) => source.runtime === 'codex');
+  assert.equal(codex?.status, 'absent');
 });
 
 test('malformed and duplicate-member JSON fail distinctly', () => {
@@ -189,6 +285,66 @@ test('writability claim is tied to an actual current-process access check', () =
   const permission = result.inventory.permissions.find((entry) => entry.source.endsWith('.mcp.json'));
   assert.equal(permission?.writable_by_current_process, true);
   assert.ok(result.signals.some((signal) => signal.id === 'BYPASS-01'));
+});
+
+test('authority detection reports each consequential local-authority signal with bounded evidence', () => {
+  const secret = 'authority-test-secret';
+  const { home, cwd } = fixture({
+    mcpServers: {
+      shellRunner: {
+        command: 'npx',
+        args: ['shell-server'],
+        env: { API_KEY: secret },
+      },
+      stripeControl: {
+        url: 'https://api.stripe.example/mcp',
+        headers: { Authorization: `Bearer ${secret}` },
+      },
+      disabledShell: {
+        command: 'bash',
+        disabled: true,
+      },
+    },
+    permissions: {
+      allow: ['Bash(curl:*)'],
+      ask: ['Bash(git push:*)'],
+      defaultMode: 'allowEdits',
+      additionalDirectories: ['/private/shared'],
+    },
+  });
+  mkdirSync(join(home, '.aws'), { recursive: true });
+  writeFileSync(join(home, '.aws', 'credentials'), '[default]\naws_access_key_id=fake\n');
+  writeFileSync(join(cwd, '.env.local'), `SERVICE_TOKEN=${secret}\n`);
+
+  const result = runAuthorityScan({
+    cwd,
+    home,
+    applicationSupport: join(home, 'Library', 'Application Support'),
+    managedCandidates: [],
+  });
+  const ids = new Set(result.signals.map((signal) => signal.id));
+  assert.deepEqual(
+    [...ids].sort(),
+    [
+      'BYPASS-01',
+      'BYPASS-02',
+      'CRED-01',
+      'CRED-02',
+      'CRED-03',
+      'EGRESS-01',
+      'EXEC-01',
+      'INFRA-01',
+      'SHELL-01',
+      'WILDCARD-01',
+    ],
+  );
+  assert.equal(authorityExitCode(result), 1);
+  assert.ok(!JSON.stringify(result).includes(secret));
+  assert.ok(!result.signals.some((signal) => JSON.stringify(signal.observed).includes('disabledShell')));
+  const text = renderAuthorityText(result);
+  assert.match(text, /\[CRITICAL\] SHELL-01/);
+  assert.match(text, /\[HIGH\] CRED-01/);
+  assert.match(text, /\[MEDIUM\] WILDCARD-01/);
 });
 
 test('environment-file discovery skips symlinks and emits key metadata only', () => {
@@ -261,6 +417,29 @@ test('CLI refuses a nonexistent working directory', () => {
   });
   assert.equal(result.status, 64);
   assert.match(`${result.stdout}${result.stderr}`, /existing directory|ENOENT/i);
+});
+
+test('authority CLI requires values for every value-bearing option', () => {
+  for (const [option, nextFlag] of [['--out', '--json'], ['--cwd', '-h']]) {
+    const result = spawnSync(process.execPath, [CLI, 'authority', option, nextFlag], {
+      encoding: 'utf8',
+    });
+    assert.equal(result.status, 64, `${option}\n${result.stdout}\n${result.stderr}`);
+    assert.equal(result.stdout, '');
+    assert.match(result.stderr, new RegExp(`${option} requires a value`));
+  }
+});
+
+test('authority CLI help publishes the complete exit-code contract', () => {
+  const result = spawnSync(process.execPath, [CLI, 'authority', '--help'], {
+    encoding: 'utf8',
+  });
+  assert.equal(result.status, 0, `${result.stdout}\n${result.stderr}`);
+  assert.match(result.stdout, /\n\s+0\s+complete visible surface/);
+  assert.match(result.stdout, /\n\s+1\s+signals present/);
+  assert.match(result.stdout, /\n\s+2\s+malformed configuration source/);
+  assert.match(result.stdout, /\n\s+3\s+operation surface not visible or not classifiable/);
+  assert.match(result.stdout, /\n\s+64\s+usage, argument, or filesystem error/);
 });
 
 test('CLI writes owner-only reports and refuses overwrite or report-path symlinks', () => {

@@ -89,6 +89,7 @@ describe('Agent Adoption route contract', () => {
       session_token: SESSION_TOKEN,
       expires_at: '2099-08-02T00:00:00.000Z',
       authority_state: 'draft',
+      passkey_registered: false,
       passkey_asserted: false,
     });
     const response = await Sessions.POST(request('/api/adopt/sessions', {
@@ -133,6 +134,7 @@ describe('Agent Adoption route contract', () => {
           adoption_id: SESSION_ID,
           status: 'active',
           expires_at: '2099-08-02T00:00:00.000Z',
+          credential_count: 1,
           bond_count: 1,
           latest_bond_id: SESSION_ID,
           latest_bond_digest: `sha256:${'b'.repeat(64)}`,
@@ -158,11 +160,43 @@ describe('Agent Adoption route contract', () => {
     expect(body).toMatchObject({
       session_id: SESSION_ID,
       authority_state: 'asserted',
+      passkey_registered: true,
       passkey_asserted: true,
       recovery: { label: 'Atlas', source_kind: 'local' },
     });
     expect(JSON.stringify(body)).not.toContain(SESSION_TOKEN);
+    expect(JSON.stringify(body)).not.toContain('credential_id');
     expect(response.headers.get('cache-control')).toContain('no-store');
+  });
+
+  it('reports durable passkey registration separately from assertion without returning its credential ID', async () => {
+    mocks.authorize.mockResolvedValueOnce({
+      ...authorization,
+      session: {
+        adoption_id: SESSION_ID,
+        status: 'active',
+        expires_at: '2099-08-02T00:00:00.000Z',
+        credential_count: 1,
+        bond_count: 0,
+        bond_digest: `sha256:${'b'.repeat(64)}`,
+        operating_bond: { candidate: { label: 'Atlas' } },
+      },
+    });
+    const response = await SessionRecovery.GET(new Request(
+      `https://www.emiliaprotocol.ai/api/adopt/sessions/${SESSION_ID}`,
+      { headers: { authorization: `Bearer ${SESSION_TOKEN}` } },
+    ) as any, params);
+
+    expect(response.status).toBe(200);
+    const body = await response.json();
+    expect(body).toMatchObject({
+      session_id: SESSION_ID,
+      authority_state: 'draft',
+      passkey_registered: true,
+      passkey_asserted: false,
+    });
+    expect(JSON.stringify(body)).not.toContain('credential_id');
+    expect(JSON.stringify(body)).not.toContain(SESSION_TOKEN);
   });
 
   it('requires exact same-origin for cookie-authenticated mutations', async () => {

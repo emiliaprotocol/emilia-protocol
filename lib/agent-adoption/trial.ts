@@ -3,7 +3,12 @@ import crypto from 'node:crypto';
 import type { SupabaseClient } from '@supabase/supabase-js';
 
 import { open, seal } from '@/lib/crypto/secret-box';
-import { provisionArenaSession, submitArenaAttempt } from '@/lib/arena/service';
+import {
+  loadPublicArenaRefusal,
+  provisionArenaSession,
+  publishArenaRefusal,
+  submitArenaAttempt,
+} from '@/lib/arena/service';
 
 const TRIAL_VERSION = 'EP-AGENT-ADOPTION-TRIAL-v1';
 const TRIAL_TOKEN = /^epenc:v1:[A-Za-z0-9_-]{40,8192}$/;
@@ -11,6 +16,8 @@ const SESSION_ID = /^[0-9a-f-]{36}$/;
 const BOND_DIGEST = /^sha256:[0-9a-f]{64}$/;
 const ARENA_SESSION_ID = /^arena_session_[0-9a-f]{32}$/;
 const ARENA_TOKEN = /^ep_arena_[0-9a-f]{64}$/;
+const ARENA_ATTEMPT_ID = /^arena_attempt_[0-9a-f]{32}$/;
+const ARENA_SHARE_ID = /^arena_share_[0-9a-f]{40}$/;
 const ATTEMPTS = new Set([
   'attempt_in_bounds_v1',
   'attempt_over_limit_v1',
@@ -143,6 +150,25 @@ export async function provisionBoundAgentTrial({
       || typeof arena.allowance?.expires_at !== 'string') {
     fail(503, 'agent_adoption_trial_unavailable');
   }
+  if (!client) {
+    fail(503, 'agent_adoption_trial_unavailable');
+  }
+  let binding: any;
+  try {
+    binding = await client.rpc('bind_agent_record_trial_source', {
+      p_adoption_id: bound.adoptionId,
+      p_adoption_session_token: authorization.sessionToken,
+      p_bond_id: bound.bondId,
+      p_bond_digest: bound.bondDigest,
+      p_source_session_id: arena.session_id,
+      p_source_token: arena.token,
+    });
+  } catch {
+    fail(503, 'agent_adoption_trial_unavailable');
+  }
+  if (binding?.error || binding?.data !== true) {
+    fail(503, 'agent_adoption_trial_unavailable');
+  }
   const envelope: TrialEnvelope = {
     '@version': TRIAL_VERSION,
     adoption_id: bound.adoptionId,
@@ -250,5 +276,73 @@ export async function submitBoundAgentTrial({
     ...(result.decision === 'refuse' && typeof result.refusal_digest === 'string'
       ? { refusal_digest: result.refusal_digest }
       : {}),
+  });
+}
+
+/**
+ * Publish and re-read one signed refusal from the exact Arena session sealed
+ * into this adoption's trial capability. Agent Record creation uses its
+ * separate private refusal-source reader and never calls this publication path.
+ */
+export async function publishBoundAgentTrialRefusal({
+  authorization,
+  input,
+  client,
+  now = Date.now(),
+}: {
+  authorization: AgentAdoptionAuthorization;
+  input: unknown;
+  client?: SupabaseClient;
+  now?: number;
+}) {
+  const bound = activeBond(authorization);
+  if (!input || typeof input !== 'object' || Array.isArray(input)
+      || Object.getPrototypeOf(input) !== Object.prototype
+      || Reflect.ownKeys(input).length !== 2
+      || !Object.hasOwn(input, 'trial_token')
+      || !Object.hasOwn(input, 'attempt_id')) {
+    fail(400, 'agent_adoption_refusal_publication_invalid');
+  }
+  const value = input as Record<string, unknown>;
+  if (typeof value.trial_token !== 'string'
+      || typeof value.attempt_id !== 'string'
+      || !ARENA_ATTEMPT_ID.test(value.attempt_id)) {
+    fail(400, 'agent_adoption_refusal_publication_invalid');
+  }
+  const trial = parseTrialToken(value.trial_token, bound, now);
+  const request = new Request(
+    `https://www.emiliaprotocol.ai/api/arena/sessions/${trial.arena_session_id}/attempts/${value.attempt_id}/publish`,
+    { headers: { authorization: `Bearer ${trial.arena_token}` } },
+  );
+  const published = await publishArenaRefusal({
+    request,
+    sessionId: trial.arena_session_id,
+    attemptId: value.attempt_id,
+    client,
+    now,
+  });
+  if (!ARENA_SHARE_ID.test(published?.share_id ?? '')) {
+    fail(503, 'agent_adoption_refusal_publication_invalid');
+  }
+  const publicRefusal: any = await loadPublicArenaRefusal(published.share_id, client);
+  if (!publicRefusal
+      || publicRefusal.share_id !== published.share_id
+      || publicRefusal.verification?.integrity_verified !== true
+      || publicRefusal.projection?.attempt?.attempt_id !== value.attempt_id
+      || publicRefusal.projection?.attempt?.decision !== 'refuse'
+      || !BOND_DIGEST.test(publicRefusal.projection?.attempt?.action_digest ?? '')
+      || !BOND_DIGEST.test(publicRefusal.projection?.refusal_digest ?? '')) {
+    fail(503, 'agent_adoption_refusal_publication_invalid');
+  }
+  return Object.freeze({
+    adoption_id: bound.adoptionId,
+    bond_id: bound.bondId,
+    bond_digest: bound.bondDigest,
+    agent_label: bound.agentLabel,
+    arena_share_id: published.share_id,
+    action_digest: publicRefusal.projection.attempt.action_digest,
+    refusal_digest: publicRefusal.projection.refusal_digest,
+    refused_at: publicRefusal.projection.attempt.created_at,
+    public_refusal_projection: publicRefusal.projection,
   });
 }

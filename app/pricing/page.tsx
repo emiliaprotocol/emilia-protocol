@@ -2,17 +2,17 @@ import type { Metadata } from 'next';
 import Link from 'next/link';
 import SiteNav from '@/components/SiteNav';
 import SiteFooter from '@/components/SiteFooter';
-import { GATE_IMPLEMENTATION, GATE_QUALIFICATION, MANAGED_PILOT, PRODUCTION_GATE } from '@/lib/commercial-offer';
+import { GATE_IMPLEMENTATION, GATE_QUALIFICATION, PRODUCTION_GATE, PROTECTED_WORKFLOW_PILOT } from '@/lib/commercial-offer';
 import { cta, color, font, radius } from '@/lib/tokens';
 
 export const metadata: Metadata = {
   title: 'EMILIA Gate Pricing',
   description:
-    'Use the open EMILIA Protocol for free, diagnose one legacy workflow, and scope customer-specific Gate enforcement with optional qualification and reliance-risk controls.',
+    'Use the open EMILIA Protocol for free, run one fixed 90-day protected-workflow pilot, and scope customer-specific Gate enforcement with optional qualification and reliance-risk controls.',
   alternates: { canonical: '/pricing' },
   openGraph: {
     title: 'EMILIA Gate Pricing',
-    description: 'Open proof infrastructure, a read-only diagnostic, customer-specific Gate implementation, and deployment-scoped enforcement, exposure, reconciliation, and evidence operations.',
+    description: 'Open verification infrastructure, one $25K protected-workflow pilot, customer-specific Gate implementation, and deployment-scoped enforcement, reconciliation, and evidence operations.',
     url: 'https://www.emiliaprotocol.ai/pricing',
     type: 'website',
   },
@@ -57,24 +57,24 @@ const TIERS: Array<{
     ],
   },
   {
-    name: MANAGED_PILOT.name,
-    price: MANAGED_PILOT.shortPriceLabel,
-    priceNote: `fixed scope · ${MANAGED_PILOT.durationLabel}`,
+    name: PROTECTED_WORKFLOW_PILOT.name,
+    price: PROTECTED_WORKFLOW_PILOT.shortPriceLabel,
+    priceNote: `fixed scope · ${PROTECTED_WORKFLOW_PILOT.durationLabel}`,
     priceIsLabel: false,
-    tagline: 'Find where old records lose the approval-to-effect chain before changing a production path.',
+    tagline: 'Protect one buyer-selected consequence boundary, beginning with synthetic and read-only validation before any accepted production change.',
     accent: color.blue,
     cta: { label: 'Scope the pilot', href: '/pilot' },
     ctaStyle: 'primary' as const,
     highlight: true,
     available: true,
     features: [
-      MANAGED_PILOT.workflowLabel,
-      'Synthetic replay, then one governed read-only export',
-      'Source-linked integrity cases, not automated fraud verdicts',
-      'Deterministic findings separated from heuristic leads',
-      'Material-field and action-type map',
-      'Action Control Manifest template',
-      'Decision-ready Gate implementation scope',
+      PROTECTED_WORKFLOW_PILOT.workflowLabel,
+      `First profile: ${PROTECTED_WORKFLOW_PILOT.firstProfileLabel}`,
+      PROTECTED_WORKFLOW_PILOT.safetyRuleLabel,
+      PROTECTED_WORKFLOW_PILOT.eligibilityLabel,
+      'Synthetic replay and governed read-only validation first',
+      'Buyer-approved executor boundary before production',
+      'Action Control Manifest and acceptance test plan',
     ],
   },
   {
@@ -161,9 +161,10 @@ export default function PricingPage(): React.ReactElement {
             Diagnose the past. Protect the next effect. Operate the boundary.
           </h1>
           <p style={{ fontSize: 18, color: color.t2, maxWidth: 620, lineHeight: 1.7, margin: 0 }}>
-            The open protocol is free. EMILIA Signal finds the workflow that needs control. Gate Qualification
-            can carry accepted evaluation evidence into that decision when needed. Implementation is scoped;
-            Operated Gate is quoted only for a customer-specific deployment.
+            The open protocol is free. The one public pilot is {PROTECTED_WORKFLOW_PILOT.shortPriceLabel} for{' '}
+            {PROTECTED_WORKFLOW_PILOT.durationLabel} and {PROTECTED_WORKFLOW_PILOT.workflowLabel}. Gate Qualification
+            can carry accepted evaluation evidence into that decision when needed. It is not identity, certification,
+            or authority. Implementation is scoped; Operated Gate is quoted only for a customer-specific deployment.
           </p>
           <p style={{ fontFamily: font.mono, fontSize: 13, fontWeight: 600, color: color.gold, lineHeight: 1.65, margin: '18px 0 0' }}>
             {GATE_QUALIFICATION.boundaryLine}
@@ -242,23 +243,25 @@ export default function PricingPage(): React.ReactElement {
         </C>
       </section>
 
-      {/* START WITH A PILOT — the commercial front door */}
+      {/* START WITH THE CANONICAL PILOT — the commercial front door */}
       <section style={{ padding: '76px 0', background: '#1C1917', borderTop: `3px solid ${color.gold}` }}>
         <C>
           <div style={{ maxWidth: 720 }}>
             <div style={{ fontFamily: font.mono, fontSize: 10, letterSpacing: 2, textTransform: 'uppercase', color: color.gold, marginBottom: 16 }}>
-              Start here &middot; read-only diagnostic
+              Start here &middot; one protected workflow
             </div>
             <h2 style={{ fontFamily: font.sans, fontWeight: 700, fontSize: 'clamp(26px, 3.2vw, 42px)', letterSpacing: -1.4, lineHeight: 1.08, color: '#FAFAF9', marginBottom: 18 }}>
-              Find the right boundary before asking engineering to change it.
+              Protect one real consequence boundary in 90 days.
             </h2>
             <p style={{ fontSize: 16, color: 'rgba(250,250,249,0.72)', lineHeight: 1.7, marginBottom: 30, maxWidth: 620 }}>
-              EMILIA Signal starts with a synthetic replay and one governed export over {MANAGED_PILOT.durationLabel}.
-              It reconstructs action groups, separates deterministic findings from heuristic leads, and produces a
-              decision-ready manifest and implementation scope. No production path is changed in this first engagement.
+              The first profile is {PROTECTED_WORKFLOW_PILOT.firstProfileLabel.toLowerCase()}:{' '}
+              {PROTECTED_WORKFLOW_PILOT.safetyRuleLabel.toLowerCase()}. Missing or invalid evidence routes to lawful
+              human review or a patient-protective fallback; it is not authority to withhold medically necessary care.
+              Other consequential workflows remain eligible. Every pilot starts with synthetic and read-only validation,
+              and no production path changes until the buyer accepts the executor-bound Gate design.
             </p>
             <div style={{ display: 'flex', gap: 36, flexWrap: 'wrap', marginBottom: 32 }}>
-              {[[MANAGED_PILOT.shortPriceLabel, 'fixed, scoped engagement'], [MANAGED_PILOT.durationLabel, 'synthetic first, governed export second'], [MANAGED_PILOT.workflowLabel, 'find the riskiest boundary']].map(([n, l]) => (
+              {[[PROTECTED_WORKFLOW_PILOT.shortPriceLabel, 'fixed, scoped engagement'], [PROTECTED_WORKFLOW_PILOT.durationLabel, 'synthetic and read-only first'], [PROTECTED_WORKFLOW_PILOT.workflowLabel, 'buyer-selected consequence boundary']].map(([n, l]) => (
                 <div key={n}>
                   <div style={{ fontFamily: font.sans, fontWeight: 700, fontSize: 26, letterSpacing: -1, color: '#FAFAF9' }}>{n}</div>
                   <div style={{ fontFamily: font.mono, fontSize: 11, letterSpacing: 0.4, color: 'rgba(250,250,249,0.55)' }}>{l}</div>
@@ -266,8 +269,8 @@ export default function PricingPage(): React.ReactElement {
               ))}
             </div>
             <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap' }}>
-              <Link href="/pilot" className="ep-cta" style={{ ...cta.primary, background: color.gold, color: '#1C1917' }}>Scope the EMILIA Signal diagnostic &rarr;</Link>
-              <Link href="/signal" className="ep-cta-secondary" style={{ ...cta.secondary, color: 'rgba(250,250,249,0.8)', borderColor: 'rgba(255,255,255,0.15)' }}>Explore EMILIA Signal</Link>
+              <Link href="/pilot" className="ep-cta" style={{ ...cta.primary, background: color.gold, color: '#1C1917' }}>Scope the protected-workflow pilot &rarr;</Link>
+              <Link href="/arena" className="ep-cta-secondary" style={{ ...cta.secondary, color: 'rgba(250,250,249,0.8)', borderColor: 'rgba(255,255,255,0.15)' }}>Create a factual synthetic record</Link>
             </div>
           </div>
         </C>
@@ -370,7 +373,7 @@ export default function PricingPage(): React.ReactElement {
                 Start with one consequential workflow.
               </h2>
               <p style={{ fontSize: 16, color: color.t2, lineHeight: 1.6, maxWidth: 440, margin: 0 }}>
-                Diagnose an uncertain legacy path with EMILIA Signal, or put Gate directly before a known high-risk mutation.
+                Begin with the canonical 90-day pilot, or use the open MCP path to protect one configured tool yourself.
               </p>
             </div>
             <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap' }}>

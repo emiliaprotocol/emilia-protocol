@@ -222,6 +222,52 @@ export function getCommitSigningConfig(): {
   return { signingKey, trustedKeys, isProduction: isProductionEnv };
 }
 
+const AGENT_RECORD_SIGNING_KEY_ID = /^[A-Za-z0-9][A-Za-z0-9._:-]{0,63}$/;
+const DEFAULT_AGENT_RECORD_SIGNING_KEY_ID = 'ep-signing-key-1';
+const RESERVED_AGENT_RECORD_SIGNING_KEY_IDS = new Set(['constructor', 'prototype']);
+
+export function isAgentRecordSigningKeyId(value: unknown): value is string {
+  return typeof value === 'string'
+    && AGENT_RECORD_SIGNING_KEY_ID.test(value)
+    && !RESERVED_AGENT_RECORD_SIGNING_KEY_IDS.has(value);
+}
+
+/**
+ * Agent Record signer configuration.
+ *
+ * EP_AGENT_RECORD_SIGNING_KEY_ID identifies the current EP_COMMIT_SIGNING_KEY
+ * in every newly signed Agent Record. The legacy fixed id remains the default
+ * when the variable is unset, while an explicitly configured id is restricted
+ * to the same closed ASCII shape enforced by the Agent Record schema.
+ */
+export function getAgentRecordSigningConfig(): {
+  signingKeyId: string;
+  signingKey: string | null;
+  trustedKeys: Record<string, string> | null;
+  isProduction: boolean;
+} {
+  const signingKeyId = process.env.EP_AGENT_RECORD_SIGNING_KEY_ID
+    || DEFAULT_AGENT_RECORD_SIGNING_KEY_ID;
+  if (!isAgentRecordSigningKeyId(signingKeyId)) {
+    throw Object.assign(
+      new Error(
+        'EP_AGENT_RECORD_SIGNING_KEY_ID must use the safe Agent Record key-id shape',
+      ),
+      { code: 'agent_record_operator_key_id_invalid' },
+    );
+  }
+  return { signingKeyId, ...getCommitSigningConfig() };
+}
+
+/**
+ * Application-only capability accepted by the private Agent Record creator.
+ * The service validates the closed value shape before use; centralizing the
+ * read here keeps trust-bearing EP configuration inside the governed boundary.
+ */
+export function getAgentRecordCreationCapability(): string | null {
+  return process.env.EP_AGENT_RECORD_CREATION_CAPABILITY || null;
+}
+
 // =============================================================================
 // GOVERNMENT / HIGH-ASSURANCE DEPLOYMENT
 // =============================================================================

@@ -1,6 +1,6 @@
 {
   "name": "@emilia-protocol/scan",
-  "version": "0.3.7",
+  "version": "0.3.8",
   "description": "Passive local authority inventory plus fail-closed static classification for MCP and OpenAPI action surfaces.",
   "license": "Apache-2.0",
   "homepage": "https://www.emiliaprotocol.ai/scan",
@@ -36,13 +36,15 @@
     "risk-packs.d.ts",
     "cli.mjs",
     "codemod.mjs",
+    "safe-file.mjs",
+    "CHANGELOG.md",
     "README.md",
     "LICENSE"
   ],
   "scripts": {
     "build": "tsc -p tsconfig.json",
     "pretest": "npm run build",
-    "test": "node --test test.js authority.test.mjs"
+    "test": "node --test test.js authority.test.mjs classification.test.mjs packed-consumer.test.mjs"
   },
   "dependencies": {
     "@emilia-protocol/verify": "^3.10.0"

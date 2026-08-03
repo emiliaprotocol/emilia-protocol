@@ -142,6 +142,7 @@ export interface AdoptSession {
   session_id: string;
   expires_at: string;
   authority_state: 'draft' | 'asserted' | 'revoked';
+  passkey_registered: boolean;
   passkey_asserted: boolean;
   bond_id?: string;
   bond_digest?: string;
@@ -194,6 +195,18 @@ interface PublishedOperatingBond {
   published_at: string;
 }
 
+interface CreatedAgentRecord {
+  record_id: string;
+  created_at: string;
+  retention_expires_at: string;
+}
+
+interface VisibleAgentRecord {
+  record_id: string;
+  created_at: string;
+  retention_expires_at: string;
+}
+
 interface RevokedSession {
   authority_state: 'revoked';
   revoked_at: string;
@@ -205,6 +218,7 @@ export interface AdoptApiClient {
   assertPasskey(session: AdoptSession): Promise<AdoptSession>;
   provisionTrial?(session: AdoptSession): Promise<AdoptSession>;
   runAttempt(session: AdoptSession, templateId: AttemptTemplateId): Promise<AdoptAttempt>;
+  createAgentRecord?(session: AdoptSession, attempt: AdoptAttempt): Promise<CreatedAgentRecord>;
   publishOperatingBond(session: AdoptSession): Promise<PublishedOperatingBond>;
   revokeSession(session: AdoptSession): Promise<RevokedSession>;
 }
@@ -212,6 +226,14 @@ export interface AdoptApiClient {
 type ApiProblem = { detail?: unknown; title?: unknown };
 
 const ADOPT_API_BASE = '/api/adopt/sessions';
+const PASSKEY_CREDENTIAL_PREFIX = 'emilia_agent_adoption_passkey:';
+const PENDING_OWNER_PREFIX = 'emilia_agent_record_pending:';
+const PENDING_OWNER_RECOVERY_CURSOR = 'emilia_agent_record_recovery_cursor';
+const OWNER_COMMITMENT_DOMAIN = 'emilia-agent-record-owner-token-v1\0';
+const CREDENTIAL_ID = /^[A-Za-z0-9_-]{1,1024}$/;
+const RECORD_ID = /^agent_record_[0-9a-f]{40}$/;
+const OWNER_TOKEN = /^ear1_[0-9a-f]{64}$/;
+const MAX_PENDING_RECORD_RECOVERIES = 16;
 
 async function requestJson<T>(url: string, init: RequestInit): Promise<T> {
   const response = await fetch(url, { credentials: 'same-origin', ...init });
@@ -261,31 +283,78 @@ export const adoptApiClient: AdoptApiClient = {
   },
 
   async assertPasskey(session) {
-    const registration = await requestJson<PasskeyRegistrationOptionsResponse>(
-      ADOPT_API_BASE + '/' + encodeURIComponent(session.session_id) + '/passkey/register/options',
-      authorized(session),
-    );
     const { startAuthentication, startRegistration } = await import('@simplewebauthn/browser');
-    const attestation: RegistrationResponseJSON = await startRegistration({
-      optionsJSON: registration.options,
-    });
-    const registered = await requestJson<PasskeyRegistrationResponse>(
-      ADOPT_API_BASE + '/' + encodeURIComponent(session.session_id) + '/passkey/register/verify',
-      authorized(session, {
-        ceremony_token: registration.ceremony_token,
-        attestation,
-      }),
-    );
+    const credentialKey = passkeyCredentialKey(session.session_id);
+    let credentialId = rememberedPasskeyCredential(session.session_id);
+    let activeSession = session;
+
+    // A registration response can disappear after the credential is durable.
+    // Refresh only when local state proves this browser already created one;
+    // the authenticated recovery route decides whether to resume or retry.
+    if (credentialId && !activeSession.passkey_asserted) {
+      activeSession = await requestJson<AdoptSession>(
+        ADOPT_API_BASE + '/' + encodeURIComponent(session.session_id),
+        { method: 'GET' },
+      );
+    }
+
+    if (!activeSession.passkey_asserted && !activeSession.passkey_registered) {
+      if (credentialId) {
+        window.localStorage.removeItem(credentialKey);
+        credentialId = '';
+      }
+      const registration = await requestJson<PasskeyRegistrationOptionsResponse>(
+        ADOPT_API_BASE + '/' + encodeURIComponent(session.session_id) + '/passkey/register/options',
+        authorized(activeSession),
+      );
+      const attestation: RegistrationResponseJSON = await startRegistration({
+        optionsJSON: registration.options,
+      });
+      if (!CREDENTIAL_ID.test(attestation.id) || attestation.rawId !== attestation.id) {
+        throw new Error('The passkey returned an invalid credential reference.');
+      }
+
+      // Persist before sending the completion request. If storage fails, do not
+      // create server state this browser cannot resume after response loss.
+      window.localStorage.setItem(credentialKey, attestation.id);
+      credentialId = attestation.id;
+      const registered = await requestJson<PasskeyRegistrationResponse>(
+        ADOPT_API_BASE + '/' + encodeURIComponent(session.session_id) + '/passkey/register/verify',
+        authorized(activeSession, {
+          ceremony_token: registration.ceremony_token,
+          attestation,
+        }),
+      );
+      if (registered.credential_id !== credentialId) {
+        throw new Error('Passkey registration returned an unexpected credential reference.');
+      }
+      activeSession = { ...activeSession, passkey_registered: true };
+    }
+
+    if (activeSession.passkey_asserted) {
+      window.localStorage.removeItem(credentialKey);
+      const trial = await requestJson<AdoptSession>(
+        ADOPT_API_BASE + '/' + encodeURIComponent(session.session_id) + '/trial',
+        authorized(activeSession),
+      );
+      return { ...activeSession, ...trial };
+    }
+    if (!activeSession.passkey_registered || !CREDENTIAL_ID.test(credentialId)) {
+      throw new Error(
+        'This session already has a passkey, but this browser no longer has its local credential reference. Revoke the session and start again.',
+      );
+    }
+
     const assertionOptions = await requestJson<PasskeyAssertionOptionsResponse>(
       ADOPT_API_BASE + '/' + encodeURIComponent(session.session_id) + '/passkey/assert/options',
-      authorized(session, { credential_id: registered.credential_id }),
+      authorized(activeSession, { credential_id: credentialId }),
     );
     const assertion: AuthenticationResponseJSON = await startAuthentication({
       optionsJSON: assertionOptions.options,
     });
     const assertedSession = await requestJson<AdoptSession>(
       ADOPT_API_BASE + '/' + encodeURIComponent(session.session_id) + '/passkey/assert/verify',
-      authorized(session, {
+      authorized(activeSession, {
         ceremony_token: assertionOptions.ceremony_token,
         assertion,
       }),
@@ -294,6 +363,7 @@ export const adoptApiClient: AdoptApiClient = {
       ADOPT_API_BASE + '/' + encodeURIComponent(session.session_id) + '/trial',
       authorized(assertedSession),
     );
+    window.localStorage.removeItem(credentialKey);
     return { ...assertedSession, ...trial };
   },
 
@@ -305,6 +375,36 @@ export const adoptApiClient: AdoptApiClient = {
         trial_token: session.trial_token,
       }),
     );
+  },
+
+  async createAgentRecord(session, attempt) {
+    const credential = await pendingRecordCredential(attempt.attempt_id);
+    const existingOwnerToken = window.localStorage.getItem(ownerKey(credential.record_id));
+    if (existingOwnerToken !== null && existingOwnerToken !== credential.owner_token) {
+      throw new Error('This browser already holds a different owner credential for this Agent Record.');
+    }
+    const record = await requestJson<CreatedAgentRecord>(
+      ADOPT_API_BASE + '/' + encodeURIComponent(session.session_id) + '/records',
+      authorized(session, {
+        trial_token: session.trial_token,
+        attempt_id: attempt.attempt_id,
+        record_id: credential.record_id,
+        owner_token: credential.owner_token,
+      }),
+    );
+    if (record.record_id !== credential.record_id
+        || !await ownerCredentialMatchesRecord(record.record_id, credential.owner_token)) {
+      throw new Error('Agent Record storage returned an unexpected identifier.');
+    }
+    const ownerTokenAfterCreate = window.localStorage.getItem(ownerKey(record.record_id));
+    if (ownerTokenAfterCreate !== null && ownerTokenAfterCreate !== credential.owner_token) {
+      throw new Error('This browser already holds a different owner credential for this Agent Record.');
+    }
+    if (ownerTokenAfterCreate === null) {
+      window.localStorage.setItem(ownerKey(record.record_id), credential.owner_token);
+    }
+    window.localStorage.removeItem(credential.storageKey);
+    return record;
   },
 
   async provisionTrial(session) {
@@ -396,11 +496,222 @@ function fingerprint(value?: string) {
   return value.length > 30 ? value.slice(0, 18) + '…' + value.slice(-8) : value;
 }
 
-interface AdoptExperienceProps {
-  api?: AdoptApiClient;
+function getPublicArtifactId(shareUrl?: string): string {
+  const id = shareUrl?.split('/').at(-1) ?? '';
+  return /^agent_share_[0-9a-f]{40}$/.test(id) ? id : '';
 }
 
-export default function AdoptExperience({ api = adoptApiClient }: AdoptExperienceProps) {
+function ownerKey(recordId: string) {
+  return `emilia_agent_record_owner:${recordId}`;
+}
+
+function pendingOwnerKey(attemptId: string) {
+  return `${PENDING_OWNER_PREFIX}${attemptId}`;
+}
+
+function passkeyCredentialKey(sessionId: string) {
+  return `${PASSKEY_CREDENTIAL_PREFIX}${sessionId}`;
+}
+
+function rememberedPasskeyCredential(sessionId: string) {
+  const credentialId = window.localStorage.getItem(passkeyCredentialKey(sessionId)) ?? '';
+  return CREDENTIAL_ID.test(credentialId) ? credentialId : '';
+}
+
+function secureHex(byteLength: number) {
+  const bytes = new Uint8Array(byteLength);
+  globalThis.crypto.getRandomValues(bytes);
+  return Array.from(bytes, (byte) => byte.toString(16).padStart(2, '0')).join('');
+}
+
+interface PendingRecordCredential {
+  storageKey: string;
+  record_id: string;
+  owner_token: string;
+}
+
+async function committedRecordId(ownerToken: string) {
+  const commitment = await globalThis.crypto.subtle.digest(
+    'SHA-256',
+    new TextEncoder().encode(OWNER_COMMITMENT_DOMAIN + ownerToken),
+  );
+  const hex = Array.from(
+    new Uint8Array(commitment),
+    (byte) => byte.toString(16).padStart(2, '0'),
+  ).join('');
+  return `agent_record_${hex.slice(0, 40)}`;
+}
+
+async function ownerCredentialMatchesRecord(recordId: string, ownerToken: string) {
+  return RECORD_ID.test(recordId)
+    && OWNER_TOKEN.test(ownerToken)
+    && recordId === await committedRecordId(ownerToken);
+}
+
+function shapedPendingRecord(storageKey: string, value: string): PendingRecordCredential | null {
+  try {
+    const parsed = JSON.parse(value) as { record_id?: unknown; owner_token?: unknown };
+    if (typeof parsed.record_id === 'string' && RECORD_ID.test(parsed.record_id)
+        && typeof parsed.owner_token === 'string' && OWNER_TOKEN.test(parsed.owner_token)) {
+      return { storageKey, record_id: parsed.record_id, owner_token: parsed.owner_token };
+    }
+  } catch {
+    // The caller decides when malformed local state can be safely deleted.
+  }
+  return null;
+}
+
+async function pendingRecordCredential(attemptId: string): Promise<PendingRecordCredential> {
+  const storageKey = pendingOwnerKey(attemptId);
+  const prior = window.localStorage.getItem(storageKey);
+  if (prior !== null) {
+    const parsed = shapedPendingRecord(storageKey, prior);
+    if (parsed) {
+      if (!await ownerCredentialMatchesRecord(parsed.record_id, parsed.owner_token)) {
+        throw new Error(
+          'The saved Agent Record owner credential does not match its record identifier.',
+        );
+      }
+      return parsed;
+    }
+    window.localStorage.removeItem(storageKey);
+  }
+  const ownerToken = `ear1_${secureHex(32)}`;
+  const credential = {
+    storageKey,
+    record_id: await committedRecordId(ownerToken),
+    owner_token: ownerToken,
+  };
+  if (!await ownerCredentialMatchesRecord(credential.record_id, credential.owner_token)) {
+    throw new Error('The Agent Record owner credential could not be bound to its identifier.');
+  }
+  window.localStorage.setItem(storageKey, JSON.stringify({
+    record_id: credential.record_id,
+    owner_token: credential.owner_token,
+  }));
+  return credential;
+}
+
+function pendingRecordFromStorage(storageKey: string): PendingRecordCredential | null {
+  const value = window.localStorage.getItem(storageKey);
+  if (!value) return null;
+  return shapedPendingRecord(storageKey, value);
+}
+
+function promotePendingOwnerCredential(pending: PendingRecordCredential) {
+  const destinationKey = ownerKey(pending.record_id);
+  const existingOwnerToken = window.localStorage.getItem(destinationKey);
+  if (existingOwnerToken !== null && existingOwnerToken !== pending.owner_token) return false;
+  if (existingOwnerToken === null) {
+    window.localStorage.setItem(destinationKey, pending.owner_token);
+  }
+  window.localStorage.removeItem(pending.storageKey);
+  return true;
+}
+
+function visibleRecoveredRecord(value: unknown, recordId: string): VisibleAgentRecord | null {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) return null;
+  const response = value as Record<string, any>;
+  const record = response.public_projection?.record;
+  if (response.record_id !== recordId
+      || record?.record_id !== recordId
+      || response.verification?.integrity_verified !== true
+      || response.verification?.currently_public !== true
+      || typeof record.observed_at !== 'string'
+      || typeof record.retention_expires_at !== 'string') {
+    return null;
+  }
+  const createdAt = Date.parse(record.observed_at);
+  const retentionExpiresAt = Date.parse(record.retention_expires_at);
+  if (!Number.isFinite(createdAt) || new Date(createdAt).toISOString() !== record.observed_at
+      || !Number.isFinite(retentionExpiresAt)
+      || new Date(retentionExpiresAt).toISOString() !== record.retention_expires_at
+      || retentionExpiresAt <= createdAt) {
+    return null;
+  }
+  return {
+    record_id: recordId,
+    created_at: record.observed_at,
+    retention_expires_at: record.retention_expires_at,
+  };
+}
+
+async function recoverPendingAgentRecords(): Promise<VisibleAgentRecord[]> {
+  const storageKeys = Array.from({ length: window.localStorage.length }, (_, index) => (
+    window.localStorage.key(index)
+  )).filter((key): key is string => Boolean(key?.startsWith(PENDING_OWNER_PREFIX)))
+    .sort();
+  const pendingRecords: PendingRecordCredential[] = [];
+  for (const storageKey of storageKeys) {
+    const pending = pendingRecordFromStorage(storageKey);
+    if (pending) {
+      pendingRecords.push(pending);
+    } else {
+      window.localStorage.removeItem(storageKey);
+    }
+  }
+
+  const priorCursor = window.localStorage.getItem(PENDING_OWNER_RECOVERY_CURSOR);
+  const orderedRecords = priorCursor === null
+    ? pendingRecords
+    : [
+        ...pendingRecords.filter((pending) => pending.storageKey > priorCursor),
+        ...pendingRecords.filter((pending) => pending.storageKey <= priorCursor),
+      ];
+  const recoveryBatch = orderedRecords.slice(0, MAX_PENDING_RECORD_RECOVERIES);
+  if (recoveryBatch.length > 0) {
+    window.localStorage.setItem(
+      PENDING_OWNER_RECOVERY_CURSOR,
+      recoveryBatch[recoveryBatch.length - 1].storageKey,
+    );
+  }
+  const recovered: VisibleAgentRecord[] = [];
+
+  for (const pending of recoveryBatch) {
+    if (!await ownerCredentialMatchesRecord(pending.record_id, pending.owner_token)) continue;
+    const existingOwnerToken = window.localStorage.getItem(ownerKey(pending.record_id));
+    if (existingOwnerToken !== null && existingOwnerToken !== pending.owner_token) continue;
+    let response: Response;
+    try {
+      response = await fetch(`/api/agent-records/${encodeURIComponent(pending.record_id)}`, {
+        method: 'GET',
+        credentials: 'omit',
+        mode: 'same-origin',
+        cache: 'no-store',
+        redirect: 'error',
+        referrerPolicy: 'no-referrer',
+        headers: { accept: 'application/json' },
+      });
+    } catch {
+      continue;
+    }
+    if (!response.ok) continue;
+    const visible = visibleRecoveredRecord(await response.json().catch(() => null), pending.record_id);
+    if (!visible) continue;
+
+    // The owner token never participates in recovery lookup. Promotion is a
+    // local rename performed only after the opaque public record verifies.
+    if (!await ownerCredentialMatchesRecord(pending.record_id, pending.owner_token)) continue;
+    if (!promotePendingOwnerCredential(pending)) continue;
+    recovered.push(visible);
+  }
+  if (!Array.from({ length: window.localStorage.length }, (_, index) => (
+    window.localStorage.key(index)
+  )).some((key) => key?.startsWith(PENDING_OWNER_PREFIX))) {
+    window.localStorage.removeItem(PENDING_OWNER_RECOVERY_CURSOR);
+  }
+  return recovered;
+}
+
+interface AdoptExperienceProps {
+  api?: AdoptApiClient;
+  agentRecordReady?: boolean;
+}
+
+export default function AdoptExperience({
+  api = adoptApiClient,
+  agentRecordReady = true,
+}: AdoptExperienceProps) {
   const [stageIndex, setStageIndex] = useState(0);
   const [furthestStage, setFurthestStage] = useState(0);
   const [agentLabel, setAgentLabel] = useState('Atlas');
@@ -414,6 +725,8 @@ export default function AdoptExperience({ api = adoptApiClient }: AdoptExperienc
   const [error, setError] = useState('');
   const [status, setStatus] = useState('Describe the agent you want to test.');
   const [publicationConfirmed, setPublicationConfirmed] = useState(false);
+  const [recordConfirmed, setRecordConfirmed] = useState(false);
+  const [agentRecord, setAgentRecord] = useState<VisibleAgentRecord | null>(null);
   const [revokeArmed, setRevokeArmed] = useState(false);
 
   const currentStage = STAGES[stageIndex];
@@ -422,6 +735,12 @@ export default function AdoptExperience({ api = adoptApiClient }: AdoptExperienc
   const selectedAllowance = ALLOWANCE_TEMPLATES.find((item) => item.id === allowanceTemplateId);
   const latestAttempt = attempts.at(-1);
   const publishedAttempt = [...attempts].reverse().find((attempt) => Boolean(attempt.share_url));
+  const publicArtifactId = getPublicArtifactId(publishedAttempt?.share_url);
+  const pilotHref = agentRecord
+    ? `/pilot?artifact_id=${encodeURIComponent(agentRecord.record_id)}`
+    : publicArtifactId
+      ? `/pilot?artifact_id=${encodeURIComponent(publicArtifactId)}`
+      : '/pilot';
   const revoked = session?.authority_state === 'revoked';
   const sourceUrlValid = !sourceUrl || (() => {
     try {
@@ -459,6 +778,19 @@ export default function AdoptExperience({ api = adoptApiClient }: AdoptExperienc
     });
     return () => { cancelled = true; };
   }, [api]);
+
+  useEffect(() => {
+    if (!agentRecordReady) return;
+    let cancelled = false;
+    recoverPendingAgentRecords().then((recovered) => {
+      if (cancelled || recovered.length === 0) return;
+      setAgentRecord(recovered.at(-1)!);
+      setStatus('Recovered a committed Agent Record and restored its browser-only owner control.');
+    }).catch(() => {
+      // Public recovery is best-effort; pending local credentials remain for a later reload.
+    });
+    return () => { cancelled = true; };
+  }, [agentRecordReady]);
 
   function chooseTemplate(stage: StageId, templateId: TemplateId, applySelection: () => void) {
     applySelection();
@@ -521,6 +853,7 @@ export default function AdoptExperience({ api = adoptApiClient }: AdoptExperienc
           : session;
       if (activeSession !== session) setSession(activeSession);
       const attempt = await api.runAttempt(activeSession, templateId);
+      setRecordConfirmed(false);
       setAttempts((current) => [...current, attempt]);
       setFurthestStage((current) => Math.max(current, 5));
       if (attempt.decision === 'refuse') {
@@ -533,6 +866,33 @@ export default function AdoptExperience({ api = adoptApiClient }: AdoptExperienc
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : 'The synthetic attempt could not run.');
       setStatus('Attempt not completed. No action left the challenge.');
+    } finally {
+      setBusy('');
+    }
+  }
+
+  async function createFactualAgentRecord() {
+    if (!session?.trial_token
+        || !latestAttempt
+        || latestAttempt.decision !== 'refuse'
+        || !recordConfirmed
+        || !api.createAgentRecord
+        || !agentRecordReady
+        || revoked) return;
+    setBusy('agent-record');
+    setError('');
+    setStatus('Creating one unlisted factual record from the verified Arena refusal…');
+    try {
+      const record = await api.createAgentRecord(session, latestAttempt);
+      setAgentRecord({
+        record_id: record.record_id,
+        created_at: record.created_at,
+        retention_expires_at: record.retention_expires_at,
+      });
+      setStatus('Agent Record created. This browser now holds the only record-control credential.');
+    } catch (cause) {
+      setError(cause instanceof Error ? cause.message : 'The Agent Record could not be created.');
+      setStatus('Agent Record creation did not complete.');
     } finally {
       setBusy('');
     }
@@ -671,6 +1031,14 @@ export default function AdoptExperience({ api = adoptApiClient }: AdoptExperienc
 
       <div className={styles.liveRegion} aria-live="polite" aria-atomic="true">{status}</div>
       {error && <div className={styles.error} role="alert">{error}</div>}
+      {agentRecord && !latestAttempt && (
+        <div className={styles.agentRecordCreated} role="status">
+          <strong>Committed Agent Record recovered in this browser.</strong>
+          <a href={`/agent-record/r/${encodeURIComponent(agentRecord.record_id)}`}>
+            Open factual Agent Record ↗
+          </a>
+        </div>
+      )}
 
       <section className={styles.workspace} aria-labelledby={'stage-' + currentStage.id}>
         <div className={styles.stagePanel}>
@@ -864,7 +1232,7 @@ export default function AdoptExperience({ api = adoptApiClient }: AdoptExperienc
                   </div>
                   <div>
                     <button type="button" onClick={() => setStageIndex(5)}>Review & share Operating Bond →</button>
-                    <a href="/pilot?offer=agent-adoption" onClick={openPilot}>Scope the $25K protected-workflow pilot ↗</a>
+                    <a href={pilotHref} onClick={openPilot}>Scope the $25K protected-workflow pilot ↗</a>
                   </div>
                 </div>
               )}
@@ -933,11 +1301,59 @@ export default function AdoptExperience({ api = adoptApiClient }: AdoptExperienc
                         <p className={styles.publicationNote}>The source URL, raw passkey assertion, refusal, session token, provider credential, and civil identity are not published.</p>
                       </>
                     )}
+                    {latestAttempt.decision === 'refuse' && (
+                      <section className={styles.agentRecordPanel}>
+                        <p className={styles.panelLabel}>OPTIONAL FACTUAL AGENT RECORD</p>
+                        {!agentRecordReady ? (
+                          <div className={styles.agentRecordCreated} role="status">
+                            <h3>Agent Record publication is temporarily unavailable.</h3>
+                            <p>
+                              The synthetic challenge and optional Operating Bond remain available.
+                              No Agent Record readiness claim is made until the operated dependencies pass.
+                            </p>
+                          </div>
+                        ) : agentRecord ? (
+                          <div className={styles.agentRecordCreated} role="status">
+                            <h3>One refusal observation is now unlisted and public.</h3>
+                            <p>
+                              This records one verified Arena refusal bound to one Operating Bond.
+                              It is not identity, certification, reputation, production coverage, or future authorization.
+                            </p>
+                            <p className={styles.recoveryWarning}>
+                              <strong>One-time recovery warning:</strong> this browser stores the only owner credential.
+                              Clearing its site data removes your ability to unpublish, and EMILIA cannot recover it.
+                            </p>
+                            <a href={`/agent-record/r/${encodeURIComponent(agentRecord.record_id)}`}>
+                              Open factual Agent Record ↗
+                            </a>
+                          </div>
+                        ) : (
+                          <>
+                            <h3>Record this refused attempt as one fact?</h3>
+                            <p>
+                              The server will verify the exact signed refusal and publish a digest-bound,
+                              operator-signed observation. It reveals no agent label, owner credential, prompt,
+                              action parameters, Arena source link, or identity claim.
+                            </p>
+                            <label className={styles.publishConsent}>
+                              <input type="checkbox" checked={recordConfirmed}
+                                onChange={(event) => setRecordConfirmed(event.target.checked)} />
+                              <span>I understand this creates an unlisted public observation of this refusal only.</span>
+                            </label>
+                            <button type="button" className={styles.agentRecordButton}
+                              disabled={!recordConfirmed || busy === 'agent-record' || revoked}
+                              onClick={createFactualAgentRecord}>
+                              {busy === 'agent-record' ? 'Creating factual record…' : 'Create factual Agent Record →'}
+                            </button>
+                          </>
+                        )}
+                      </section>
+                    )}
                     <div className={styles.pilotCallout}>
                       <p className={styles.panelLabel}>PRODUCTION GRADUATION</p>
                       <h3>Have one workflow that needs this boundary?</h3>
-                      <p>Scope a separate protected-workflow pilot. The Arena result is evidence for the conversation, not a production claim.</p>
-                      <a href="/pilot?offer=agent-adoption" onClick={openPilot}>Explore the $25K protected-workflow pilot →</a>
+                      <p>Scope a separate protected-workflow pilot. If this public record is attached, the server validates its active identifier; the synthetic result remains factual context, not production evidence.</p>
+                      <a href={pilotHref} onClick={openPilot}>Explore the $25K protected-workflow pilot →</a>
                     </div>
                   </div>
                 </div>

@@ -86,9 +86,16 @@ export DATABASE_URL=$(aws secretsmanager get-secret-value \
 
 # Apply all EP migrations
 for f in supabase/migrations/*.sql; do
-  psql "$DATABASE_URL" -f "$f"
+  psql --single-transaction --set=ON_ERROR_STOP=1 \
+    "$DATABASE_URL" --file "$f"
 done
 ```
+
+Each migration is one fail-fast transaction. If any statement fails, including
+late cleanup, `psql` rolls back that migration instead of leaving partial
+schemas, grants, role memberships, functions, or policies behind. Supabase's
+migration runner owns its migration batch when using `supabase db push`; do not
+add `BEGIN` or `COMMIT` to the migration files themselves.
 
 ---
 

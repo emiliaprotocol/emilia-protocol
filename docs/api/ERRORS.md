@@ -88,7 +88,6 @@ Retry-After: {seconds until window resets}
 |---|---|---|
 | `internal_error` | Internal server error | Unhandled server error. No details exposed to prevent information leakage |
 | `malformed_key_record` | Internal error during authentication | The API key record in the database is missing or has an invalid `entity_id` |
-| `health_check_failed` | Health check response assembly failed | The `/api/health` endpoint itself failed to build its response |
 
 ### Service Unavailable (503)
 
@@ -96,6 +95,7 @@ Retry-After: {seconds until window resets}
 |---|---|---|
 | `auth_service_unavailable` | Authentication service unavailable | Database error during API key lookup or entity lookup. Returned instead of masquerading as "invalid key" |
 | `rate_limit_unavailable` | Service temporarily unavailable -- rate limiting backend offline | Upstash Redis is unreachable and this endpoint's rate limit category is fail-closed (`submit`, `protocol_write`, `dispute_write`, `report_write`, `register`, `anchor`, `cloud_write`, `cloud_admin`) |
+| `not_ready` | `{"status":"not_ready"}` | `/api/health` could not prove every production readiness dependency. The response intentionally omits dependency details. |
 
 ## Protocol Write Errors
 

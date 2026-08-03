@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { checkRateLimit, getClientIP, RATE_LIMITS } from '@/lib/rate-limit';
+import { getAgentRecordConfigurationReadiness } from '@/lib/agent-record/readiness';
 import { siemEvent } from '@/lib/siem';
 
 /**
@@ -22,6 +23,7 @@ import { siemEvent } from '@/lib/siem';
 const BODY_METHODS = new Set(['POST', 'PUT', 'PATCH', 'DELETE']);
 const DEFAULT_API_BODY_LIMIT_BYTES = 1024 * 1024;
 const MULTIPART_API_BODY_LIMIT_BYTES = 26 * 1024 * 1024; // 25 MB file + form overhead
+const NO_STORE_CACHE_CONTROL = 'no-store, no-cache, must-revalidate';
 const RELEASE_LOCK_BROWSER_MUTATIONS = Object.freeze([
   /^\/api\/v1\/release-locks\/invitations\/exchange$/,
   /^\/api\/v1\/release-locks\/pairings\/exchange$/,
@@ -31,6 +33,9 @@ const RELEASE_LOCK_BROWSER_MUTATIONS = Object.freeze([
 ]);
 const AGENT_ADOPTION_SESSION_ROUTE = /^\/api\/adopt\/sessions\/[^/]+(?:\/|$)/;
 const PUBLIC_AGENT_ADOPTION_SHARE_PAGE = /^\/adopt\/r\/[^/]+$/;
+const PUBLIC_AGENT_RECORD_PAGE = /^\/agent-record\/r\/[^/]+$/;
+const AGENT_RECORD_API = /^\/api\/agent-records\/[^/]+(?:\/revoke)?$/;
+const AGENT_RECORD_CREATE_API = /^\/api\/adopt\/sessions\/[^/]+\/records$/;
 
 const ROUTE_POLICIES = {
   // Public synthetic Arena. Session creation has no credential yet. Attempt
@@ -57,9 +62,12 @@ const ROUTE_POLICIES = {
   'POST /api/adopt/sessions/*/passkey/assert/verify':     { rateCategory: 'submit', useAuth: false },
   'POST /api/adopt/sessions/*/trial':                     { rateCategory: 'submit', useAuth: false },
   'POST /api/adopt/sessions/*/attempts':                  { rateCategory: 'submit', useAuth: false },
+  'POST /api/adopt/sessions/*/records':                   { rateCategory: 'submit', useAuth: false },
   'POST /api/adopt/sessions/*/share':                     { rateCategory: 'submit', useAuth: false },
   'POST /api/adopt/sessions/*/revoke':                    { rateCategory: 'submit', useAuth: false },
   'GET /api/adopt/shares/*':                              { rateCategory: 'public_verify', useAuth: false },
+  'GET /api/agent-records/*':                             { rateCategory: 'public_verify', useAuth: false },
+  'POST /api/agent-records/*/revoke':                     { rateCategory: 'submit', useAuth: false },
 
   // Pilot-request intake (public lead form; honeypot + validation in route)
   'POST /api/pilot/request':          { rateCategory: 'pilot_request', useAuth: false },
@@ -611,6 +619,7 @@ function buildCSP(nonce) {
  */
 export async function middleware(request) {
   const { pathname } = request.nextUrl;
+  const method = request.method.toUpperCase();
 
   // Phantom URLs that crawlers mis-extract from the rendered HTML and that were
   // never real links: /$ comes from React's streaming-SSR Suspense comment
@@ -625,6 +634,28 @@ export async function middleware(request) {
     });
   }
 
+  // Agent Record is an operated public service, not an offline-only verifier.
+  // In production it stays dark unless its signer, durable limiter, and
+  // server-held database configuration are all present. Route handlers perform
+  // the separate live RPC probe. This gate is deliberately scoped so /adopt and
+  // unrelated public evidence pages remain usable.
+  const isAgentRecordRuntimePath = PUBLIC_AGENT_RECORD_PAGE.test(pathname)
+    || AGENT_RECORD_API.test(pathname)
+    || (method === 'POST' && AGENT_RECORD_CREATE_API.test(pathname));
+  if (isAgentRecordRuntimePath && !getAgentRecordConfigurationReadiness().ready) {
+    const response = NextResponse.json(
+      {
+        error: 'Agent Record is temporarily unavailable.',
+        code: 'agent_record_unavailable',
+        retry_after: 60,
+      },
+      { status: 503 },
+    );
+    response.headers.set('Cache-Control', NO_STORE_CACHE_CONTROL);
+    response.headers.set('Retry-After', '60');
+    return response;
+  }
+
   // Non-API page requests: inject per-request nonce and CSP header. Public
   // Operating Bond pages are dynamic database reads, so meter them before the
   // generic page return. Unlike the general public-verifier API policy, this
@@ -634,10 +665,14 @@ export async function middleware(request) {
   // can read it (e.g. in app/layout.js) and pass it to <Script> tags.
   if (!pathname.startsWith('/api/')) {
     let publicShareRateLimit: Awaited<ReturnType<typeof checkRateLimit>> | null = null;
-    if (request.method.toUpperCase() === 'GET' && PUBLIC_AGENT_ADOPTION_SHARE_PAGE.test(pathname)) {
+    const isAgentRecordPage = PUBLIC_AGENT_RECORD_PAGE.test(pathname);
+    if (method === 'GET'
+        && (PUBLIC_AGENT_ADOPTION_SHARE_PAGE.test(pathname) || isAgentRecordPage)) {
       const ip = getClientIP(request);
       try {
-        publicShareRateLimit = await checkRateLimit(ip, 'public_verify');
+        publicShareRateLimit = isAgentRecordPage
+          ? await checkRateLimit(ip, 'public_verify', { requireDurable: true })
+          : await checkRateLimit(ip, 'public_verify');
       } catch {
         publicShareRateLimit = {
           allowed: false,
@@ -654,6 +689,7 @@ export async function middleware(request) {
           { error: 'Service temporarily unavailable — rate limiting backend offline', retry_after: 60 },
           { status: 503 },
         );
+        response.headers.set('Cache-Control', NO_STORE_CACHE_CONTROL);
         response.headers.set('Retry-After', '60');
         return response;
       }
@@ -675,6 +711,7 @@ export async function middleware(request) {
           },
           { status: 429 },
         );
+        response.headers.set('Cache-Control', NO_STORE_CACHE_CONTROL);
         response.headers.set('X-RateLimit-Limit', String(config.max));
         response.headers.set('X-RateLimit-Remaining', '0');
         response.headers.set('X-RateLimit-Reset', String(publicShareRateLimit.reset));
@@ -787,7 +824,40 @@ export async function middleware(request) {
     }
   }
 
-  const result = await checkRateLimit(rateLimitKey, rateCategory);
+  const isAgentRecordApi = AGENT_RECORD_API.test(pathname);
+  const requiresDurableAgentRecordLimit = isAgentRecordApi
+    && method === 'GET';
+  let result;
+  try {
+    result = requiresDurableAgentRecordLimit
+      ? await checkRateLimit(rateLimitKey, rateCategory, { requireDurable: true })
+      : await checkRateLimit(rateLimitKey, rateCategory);
+  } catch (error) {
+    if (!isAgentRecordApi) throw error;
+    result = {
+      allowed: false,
+      remaining: 0,
+      reset: 60,
+      error: 'rate_limit_unavailable',
+    };
+  }
+
+  // Agent Record is an operated public observation with a server-held store,
+  // not a locally reproducible verifier. Its exact lookup and owner mutation
+  // therefore require the durable limiter in production and fail closed on
+  // either an outage or the fail-open in-memory sentinel.
+  if (isAgentRecordApi
+      && (result.error === 'rate_limit_unavailable'
+        || result.error === 'durable_rate_limit_required'
+        || result.remaining < 0)) {
+    const response = NextResponse.json(
+      { error: 'Service temporarily unavailable — durable rate limiting required', retry_after: 60 },
+      { status: 503 },
+    );
+    response.headers.set('Cache-Control', NO_STORE_CACHE_CONTROL);
+    response.headers.set('Retry-After', '60');
+    return response;
+  }
 
   if (!result.allowed) {
     // Distinguish between rate-limited and rate-limiter-unavailable (fail-closed)
@@ -819,6 +889,7 @@ export async function middleware(request) {
     res.headers.set('X-RateLimit-Remaining', '0');
     res.headers.set('X-RateLimit-Reset', String(result.reset));
     res.headers.set('Retry-After', String(result.reset));
+    if (isAgentRecordApi) res.headers.set('Cache-Control', NO_STORE_CACHE_CONTROL);
     return res;
   }
 

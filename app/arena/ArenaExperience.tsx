@@ -2,7 +2,7 @@
 
 // SPDX-License-Identifier: Apache-2.0
 import { useMemo, useState } from 'react';
-import { FINANCIAL_AUTHORITY_DESIGN_PARTNER } from '@/lib/commercial-offer';
+import { PROTECTED_WORKFLOW_PILOT } from '@/lib/commercial-offer';
 import styles from './arena.module.css';
 
 type Example = { label: string; target: string; amount: number; purpose: string };
@@ -37,6 +37,11 @@ const REASON_COPY: Record<string, string> = {
   allowance_currency_mismatch: 'The request used a different unit than the allowance.',
   allowance_expired: 'The allowance was no longer current.',
 };
+
+function publicArtifactId(shareUrl?: string): string {
+  const id = shareUrl?.split('/').at(-1) ?? '';
+  return /^arena_share_[0-9a-f]{40}$/.test(id) ? id : '';
+}
 
 export default function ArenaExperience() {
   const [agentName, setAgentName] = useState('Night Shift');
@@ -132,10 +137,11 @@ export default function ArenaExperience() {
       const response = await fetch('/api/pilot/request', {
         method: 'POST', headers: { 'content-type': 'application/json' },
         body: JSON.stringify({
-          offer_id: 'financial_authority_design_partner_v1',
+          offer_id: PROTECTED_WORKFLOW_PILOT.id,
           name: form.get('name'), org: form.get('org'), email: form.get('email'),
           workflow: 'other',
-          message: `Protected workflow: ${form.get('workflow')}. Current provider or rail: ${form.get('provider') || 'not specified'}.`,
+          artifact_id: publicArtifactId([...attempts].reverse().find((attempt) => attempt.share_url)?.share_url),
+          message: `Workflow to protect: ${form.get('workflow')}. Current system of record: ${form.get('system') || 'not specified'}.`,
           website: '',
         }),
       });
@@ -164,7 +170,7 @@ export default function ArenaExperience() {
           <h1>Give your agent an allowance.<br /><em>Not your account.</em></h1>
           <p className={styles.lede}>
             Label a private synthetic session. Give it 1,000 credits. Then watch EMILIA permit what fits,
-            refuse what does not, and seal the refusal into a portable record.
+            refuse what does not, and seal the refusal into a portable integrity record.
           </p>
           <div className={styles.boundary}>No signup · no money · no provider credentials · no production execution</div>
         </div>
@@ -262,15 +268,15 @@ export default function ArenaExperience() {
       <section className={styles.howItWorks}>
         <div><span>01</span><h3>Bound</h3><p>One agent, one time window, named targets, aggregate and per-action limits.</p></div>
         <div><span>02</span><h3>Refuse</h3><p>The decision is made before an out-of-envelope action can enter an executor.</p></div>
-        <div><span>03</span><h3>Prove</h3><p>A signed refusal binds the exact action and can be checked from the public record.</p></div>
-        <div><span>04</span><h3>Deploy</h3><p>A design partner replaces synthetic credits with one governed workflow and provider rail.</p></div>
+        <div><span>03</span><h3>Record</h3><p>A signed refusal binds the exact synthetic action under the included session key. It does not establish identity, authority, or correctness.</p></div>
+        <div><span>04</span><h3>Pilot</h3><p>A separately scoped engagement protects one buyer-selected workflow at its real executor boundary.</p></div>
       </section>
 
       <section className={styles.conversion}>
         <div>
           <p className={styles.eyebrow}>FROM SYNTHETIC TO ONE LIVE WORKFLOW</p>
           <h2>Protect the action that can actually cost you.</h2>
-          <p>{FINANCIAL_AUTHORITY_DESIGN_PARTNER.shortPriceLabel} · {FINANCIAL_AUTHORITY_DESIGN_PARTNER.durationLabel} · {FINANCIAL_AUTHORITY_DESIGN_PARTNER.workflowLabel} · {FINANCIAL_AUTHORITY_DESIGN_PARTNER.providerRailLabel}. Sandbox first. EMILIA supplies the authority-control software; your regulated provider keeps custody and settlement.</p>
+          <p>{PROTECTED_WORKFLOW_PILOT.shortPriceLabel} · {PROTECTED_WORKFLOW_PILOT.durationLabel} · {PROTECTED_WORKFLOW_PILOT.workflowLabel}. First profile: {PROTECTED_WORKFLOW_PILOT.firstProfileLabel}. {PROTECTED_WORKFLOW_PILOT.eligibilityLabel}. Sandbox and read-only validation come first; production waits for a buyer-approved executor boundary. EMILIA does not verify identity, certify a deployment, take custody, settle funds, or judge the underlying decision.</p>
         </div>
         {!leadOpen ? <button onClick={() => setLeadOpen(true)}>Scope the design-partner pilot →</button> : leadState === 'sent' ? (
           <div className={styles.sent}>Request received. Iman will reply personally within one business day.</div>
@@ -280,7 +286,7 @@ export default function ArenaExperience() {
             <label><span>Work email</span><input name="email" type="email" autoComplete="email" required maxLength={160} /></label>
             <label><span>Organization</span><input name="org" autoComplete="organization" required maxLength={160} /></label>
             <label><span>Workflow to protect</span><input name="workflow" required maxLength={180} /></label>
-            <label><span>Current provider or rail <small>optional</small></span><input name="provider" maxLength={180} /></label>
+            <label><span>Current system of record <small>optional</small></span><input name="system" maxLength={180} /></label>
             {leadError && <div className={styles.leadError} role="alert" tabIndex={-1}>{leadError}</div>}
             <button disabled={leadState === 'sending'}>{leadState === 'sending' ? 'Sending…' : 'Request scope →'}</button>
           </form>

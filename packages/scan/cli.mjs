@@ -11,11 +11,17 @@
 import fs from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { scanActions, KNOWN_CATEGORIES } from './index.js';
+import { readBoundedRegularFile } from './safe-file.mjs';
 
 let strictJsonGate;
 try { ({ strictJsonGate } = await import('@emilia-protocol/verify/strict-json')); }
 catch { ({ strictJsonGate } = await import('../verify/strict-json.js')); }
 const MAX_INPUT_BYTES = 8 * 1024 * 1024;
+const OPENAPI_METHODS = new Set(['get', 'put', 'post', 'delete', 'options', 'head', 'patch', 'trace']);
+
+function isRecord(value) {
+  return Boolean(value) && typeof value === 'object' && !Array.isArray(value);
+}
 
 const SAMPLE = [
   { name: 'getAccountBalance', description: 'Return the current balance for an account' },
@@ -36,18 +42,25 @@ function ingest(raw) {
   const gate = strictJsonGate(raw);
   if (!gate.ok) throw new Error(`Input refused: ${gate.reason}.`);
   const j = JSON.parse(raw);
-  if (j && j.openapi && j.paths) {
+  if (j && typeof j.openapi === 'string' && Object.hasOwn(j, 'paths')) {
+    if (!isRecord(j.paths)) throw new Error('OpenAPI paths must be an object.');
     const actions = [];
     for (const [p, ops] of Object.entries(j.paths)) {
+      if (!isRecord(ops)) throw new Error(`OpenAPI path item must be an object: ${p}.`);
       for (const [method, op] of Object.entries(ops)) {
-        if (!['get', 'post', 'put', 'patch', 'delete'].includes(method)) continue;
+        const normalizedMethod = method.toLowerCase();
+        if (!OPENAPI_METHODS.has(normalizedMethod)) continue;
+        if (!isRecord(op)) throw new Error(`OpenAPI operation must be an object: ${method} ${p}.`);
         actions.push({
-          name: op?.operationId || `${method} ${p}`,
-          description: op?.summary || op?.description || '',
-          http_method: method,
+          name: op.operationId || `${normalizedMethod} ${p}`,
+          description: op.summary || op.description || '',
+          http_method: normalizedMethod,
           route_path: p,
         });
       }
+    }
+    if (actions.length === 0) {
+      throw new Error('OpenAPI spec declares no operations; refusing a false-empty surface.');
     }
     return { actions, source: 'openapi', blindSpots: ['Only operations declared in the spec are visible; undocumented endpoints and query-param-dependent risk are not.'] };
   }
@@ -67,16 +80,44 @@ if (args[0] === 'authority') {
   process.argv = [process.argv[0], fileURLToPath(new URL('./codemod.mjs', import.meta.url)), ...args.slice(1)];
   await import('./codemod.mjs');
 } else {
-  const emitIdx = args.indexOf('--emit');
-  const emitPath = emitIdx >= 0 ? args[emitIdx + 1] : null;
+  let emitPath = null;
+  let sample = false;
+  const positionals = [];
+  for (let index = 0; index < args.length; index += 1) {
+    const arg = args[index];
+    if (arg === '--sample') {
+      if (sample) { console.error('duplicate option: --sample'); process.exit(64); }
+      sample = true;
+      continue;
+    }
+    if (arg === '--emit') {
+      const value = args[index + 1];
+      if (!value || value.startsWith('-')) {
+        console.error('--emit requires a value');
+        process.exit(2);
+      }
+      if (emitPath !== null) { console.error('duplicate option: --emit'); process.exit(64); }
+      emitPath = value;
+      index += 1;
+      continue;
+    }
+    if (arg.startsWith('-')) {
+      console.error(`unknown option: ${arg}`);
+      process.exit(64);
+    }
+    positionals.push(arg);
+  }
+  if (positionals.length > 1 || (sample && positionals.length > 0)) {
+    console.error('provide exactly one input file or --sample, not both');
+    process.exit(64);
+  }
   let input;
-  if (args.includes('--sample')) {
+  if (sample) {
     input = { actions: SAMPLE, source: 'mcp', blindSpots: ['This is the built-in sample. Real scans see only statically-listed tools; runtime-registered tools and value-dependent risk are invisible.'] };
   } else {
-    const file = args.find((a) => !a.startsWith('--') && a !== emitPath);
+    const file = positionals[0];
     if (!file) { console.error('usage: cli.mjs <actions.json|openapi.json> [--emit manifest.json] | --sample | protect <input> [--apply]'); process.exit(2); }
-    const raw = fs.readFileSync(file);
-    if (raw.length > MAX_INPUT_BYTES) { console.error(`input exceeds ${MAX_INPUT_BYTES} bytes`); process.exit(2); }
+    const raw = readBoundedRegularFile(file, MAX_INPUT_BYTES);
     input = ingest(raw.toString('utf8'));
   }
 

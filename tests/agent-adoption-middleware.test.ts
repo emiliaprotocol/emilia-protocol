@@ -179,4 +179,54 @@ describe('Agent Adoption middleware security boundaries', () => {
     expect(mocks.checkRateLimit).toHaveBeenCalledWith('203.0.113.44', 'public_verify');
     expect(response.headers.get('x-ratelimit-limit')).toBe('60');
   });
+
+  it('classifies Agent Record creation and revocation as fail-closed submit mutations', async () => {
+    const sessionId = '00000000-0000-4000-8000-000000000001';
+    const recordId = `agent_record_${'9'.repeat(40)}`;
+
+    for (const path of [
+      `/api/adopt/sessions/${sessionId}/records`,
+      `/api/agent-records/${recordId}/revoke`,
+    ]) {
+      mocks.checkRateLimit.mockClear();
+      const response = await middleware(request(path, { method: 'POST' }) as never);
+      expect(mocks.checkRateLimit).toHaveBeenCalledWith('203.0.113.44', 'submit');
+      expect(response.headers.get('x-ratelimit-limit')).toBe('30');
+    }
+  });
+
+  it('meters exact Agent Record API and page reads as public verification', async () => {
+    const recordId = `agent_record_${'a'.repeat(40)}`;
+    for (const path of [
+      `/api/agent-records/${recordId}`,
+      `/agent-record/r/${recordId}`,
+    ]) {
+      mocks.checkRateLimit.mockClear();
+      const response = await middleware(request(path) as never);
+      expect(mocks.checkRateLimit).toHaveBeenCalledWith(
+        '203.0.113.44',
+        'public_verify',
+        { requireDurable: true },
+      );
+      expect(response.headers.get('x-ratelimit-limit')).toBe('60');
+    }
+  });
+
+  it('fails Agent Record API and page reads closed without a durable production decision', async () => {
+    const recordId = `agent_record_${'b'.repeat(40)}`;
+    for (const result of [
+      { allowed: false, remaining: 0, reset: 60, error: 'durable_rate_limit_required' },
+      { allowed: true, remaining: -1, reset: 60 },
+    ]) {
+      for (const path of [
+        `/api/agent-records/${recordId}`,
+        `/agent-record/r/${recordId}`,
+      ]) {
+        mocks.checkRateLimit.mockResolvedValueOnce(result);
+        const response = await middleware(request(path) as never);
+        expect(response.status).toBe(503);
+        expect(response.headers.get('retry-after')).toBe('60');
+      }
+    }
+  });
 });

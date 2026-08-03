@@ -18,16 +18,19 @@ const USAGE = `emilia-scan authority ${AUTHORITY_SCAN_VERSION}
     1  signals present
     2  malformed configuration source
     3  operation surface not visible or not classifiable
+    64 usage, argument, or filesystem error
 `;
 function parseArgs(argv) {
-    const options = { json: false, out: null, cwd: process.cwd() };
+    const options = { help: false, json: false, out: null, cwd: process.cwd() };
     for (let index = 0; index < argv.length; index += 1) {
         const argument = argv[index];
-        if (argument === '--json')
+        if (argument === '--help' || argument === '-h')
+            options.help = true;
+        else if (argument === '--json')
             options.json = true;
         else if (argument === '--out' || argument === '--cwd') {
             const value = argv[index + 1];
-            if (!value || value.startsWith('--'))
+            if (!value || value.startsWith('-'))
                 throw new Error(`${argument} requires a value`);
             if (argument === '--out')
                 options.out = value;
@@ -45,12 +48,12 @@ export function authorityMain(argv, io = {
     stdout: (value) => process.stdout.write(value),
     stderr: (value) => process.stderr.write(value),
 }) {
-    if (argv.includes('--help') || argv.includes('-h')) {
-        io.stdout(USAGE);
-        return 0;
-    }
     try {
         const options = parseArgs(argv);
+        if (options.help) {
+            io.stdout(USAGE);
+            return 0;
+        }
         if (!fs.statSync(options.cwd).isDirectory()) {
             throw new Error(`--cwd must name an existing directory: ${options.cwd}`);
         }
