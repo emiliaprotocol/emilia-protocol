@@ -6,16 +6,53 @@
 -- certification, marketplace state, or production authority. The only public
 -- access path is exact opaque record_id lookup. There is no enumeration RPC.
 
+SELECT pg_catalog.set_config(
+  'ep.agent_record_migration_role',
+  CURRENT_USER,
+  TRUE
+);
+
+-- PostgreSQL 17 gives a non-superuser CREATEROLE caller an automatic ADMIN
+-- membership in every role it creates. Create the permanent owner through a
+-- disposable bootstrap role so dropping that bootstrap below removes the
+-- automatic edge. The migration operator receives only temporary SET edges.
 DO $roles$
 BEGIN
-  IF NOT EXISTS (
+  IF EXISTS (
     SELECT 1
     FROM pg_catalog.pg_roles
     WHERE rolname = 'agent_record_store_owner'
   ) THEN
-    CREATE ROLE agent_record_store_owner NOLOGIN
-      NOSUPERUSER NOCREATEDB NOCREATEROLE NOREPLICATION NOBYPASSRLS;
+    RAISE EXCEPTION 'agent record owner already exists before migration'
+      USING ERRCODE = '55000';
   END IF;
+  IF EXISTS (
+    SELECT 1
+    FROM pg_catalog.pg_roles
+    WHERE rolname = 'agent_record_store_bootstrap'
+  ) THEN
+    RAISE EXCEPTION 'agent record bootstrap role already exists before migration'
+      USING ERRCODE = '55000';
+  END IF;
+
+  CREATE ROLE agent_record_store_bootstrap NOLOGIN
+    NOSUPERUSER NOCREATEDB CREATEROLE NOREPLICATION NOBYPASSRLS;
+  EXECUTE pg_catalog.format(
+    'GRANT agent_record_store_bootstrap TO %I WITH INHERIT FALSE, SET TRUE GRANTED BY %I',
+    pg_catalog.current_setting('ep.agent_record_migration_role'),
+    pg_catalog.current_setting('ep.agent_record_migration_role')
+  );
+  EXECUTE 'SET ROLE agent_record_store_bootstrap';
+  CREATE ROLE agent_record_store_owner NOLOGIN
+    NOSUPERUSER NOCREATEDB NOCREATEROLE NOREPLICATION NOBYPASSRLS;
+  EXECUTE pg_catalog.format(
+    'GRANT agent_record_store_owner TO %I WITH INHERIT FALSE, SET TRUE GRANTED BY agent_record_store_bootstrap',
+    pg_catalog.current_setting('ep.agent_record_migration_role')
+  );
+  EXECUTE pg_catalog.format(
+    'SET ROLE %I',
+    pg_catalog.current_setting('ep.agent_record_migration_role')
+  );
 END
 $roles$;
 
@@ -38,19 +75,10 @@ BEGIN
 END
 $least_privilege_role$;
 
-SELECT pg_catalog.set_config(
-  'ep.agent_record_migration_role',
-  CURRENT_USER,
-  TRUE
-);
-GRANT agent_record_store_owner TO CURRENT_USER
-  WITH INHERIT FALSE, SET TRUE;
 GRANT USAGE, CREATE ON SCHEMA public TO agent_record_store_owner;
 
 CREATE SCHEMA agent_record_private
   AUTHORIZATION agent_record_store_owner;
-REVOKE ALL ON SCHEMA agent_record_private
-  FROM PUBLIC, anon, authenticated, service_role;
 GRANT USAGE ON SCHEMA extensions TO agent_record_store_owner;
 GRANT EXECUTE ON FUNCTION extensions.digest(BYTEA, TEXT)
   TO agent_record_store_owner;
@@ -178,6 +206,9 @@ GRANT EXECUTE ON FUNCTION public.read_agent_record_refusal_source(TEXT, TEXT, TE
 
 SET ROLE agent_record_store_owner;
 
+REVOKE ALL ON SCHEMA agent_record_private
+  FROM PUBLIC, anon, authenticated, service_role;
+
 ALTER DEFAULT PRIVILEGES IN SCHEMA agent_record_private
   REVOKE ALL ON TABLES FROM PUBLIC;
 ALTER DEFAULT PRIVILEGES IN SCHEMA agent_record_private
@@ -233,6 +264,7 @@ CREATE TABLE agent_record_private.creation_capability (
   singleton BOOLEAN PRIMARY KEY DEFAULT TRUE CHECK (singleton),
   capability_hash TEXT COLLATE "C" NOT NULL UNIQUE
     CHECK (capability_hash ~ '^[0-9a-f]{64}$'),
+  configured_by TEXT COLLATE "C" NOT NULL,
   configured_at TIMESTAMPTZ NOT NULL
 );
 
@@ -331,17 +363,43 @@ BEGIN
   INSERT INTO agent_record_private.creation_capability (
     singleton,
     capability_hash,
+    configured_by,
     configured_at
   ) VALUES (
     TRUE,
     agent_record_private.token_hash(p_creation_capability),
+    SESSION_USER,
     pg_catalog.transaction_timestamp()
   )
   ON CONFLICT (singleton) DO UPDATE
   SET capability_hash = EXCLUDED.capability_hash,
+      configured_by = EXCLUDED.configured_by,
       configured_at = EXCLUDED.configured_at;
 END
 $agent_record_configure_creation_capability$;
+
+-- The migration operator must be able to provision and rotate the capability
+-- after its temporary SET membership in the private owner has been revoked.
+-- This wrapper is owned by the NOLOGIN store owner, returns no capability data,
+-- and receives one exact direct EXECUTE grant below. Application roles remain
+-- unable to configure the capability or execute the base creator.
+CREATE FUNCTION public.configure_agent_record_creation_capability(
+  p_creation_capability TEXT
+)
+RETURNS BOOLEAN
+LANGUAGE plpgsql
+VOLATILE
+SECURITY DEFINER
+SET search_path = ''
+SET statement_timeout = '2s'
+AS $configure_agent_record_creation_capability$
+BEGIN
+  PERFORM agent_record_private.configure_creation_capability(
+    p_creation_capability
+  );
+  RETURN TRUE;
+END
+$configure_agent_record_creation_capability$;
 
 CREATE FUNCTION agent_record_private.creation_capability_matches(
   p_creation_capability TEXT
@@ -843,6 +901,16 @@ REVOKE ALL ON FUNCTION agent_record_private.iso_ms(TIMESTAMPTZ)
 REVOKE ALL ON FUNCTION agent_record_private.reject_immutable_record_mutation()
   FROM PUBLIC, anon, authenticated, service_role;
 
+REVOKE ALL ON FUNCTION public.configure_agent_record_creation_capability(TEXT)
+  FROM PUBLIC, anon, authenticated, service_role;
+DO $grant_agent_record_configurator$
+BEGIN
+  EXECUTE pg_catalog.format(
+    'GRANT EXECUTE ON FUNCTION public.configure_agent_record_creation_capability(TEXT) TO %I',
+    pg_catalog.current_setting('ep.agent_record_migration_role')
+  );
+END
+$grant_agent_record_configurator$;
 REVOKE ALL ON FUNCTION public.create_agent_record(UUID, TEXT, TEXT, TEXT, UUID, TEXT, TEXT, TEXT, TEXT, TEXT, TEXT, TEXT, TEXT, TIMESTAMPTZ, TIMESTAMPTZ, TIMESTAMPTZ, JSONB)
   FROM PUBLIC, anon, authenticated, service_role;
 REVOKE ALL ON FUNCTION public.create_agent_record_with_capability(UUID, TEXT, TEXT, TEXT, UUID, TEXT, TEXT, TEXT, TEXT, TEXT, TEXT, TEXT, TEXT, TIMESTAMPTZ, TIMESTAMPTZ, TIMESTAMPTZ, JSONB, TEXT)
@@ -869,7 +937,9 @@ COMMENT ON TABLE agent_record_private.records IS
 COMMENT ON TABLE agent_record_private.revocations IS
   'Append-only terminal owner revocations; a revoked record is uniformly absent from public reads.';
 COMMENT ON TABLE agent_record_private.creation_capability IS
-  'Forced-RLS hash of the independent application-only capability that gates irreversible Agent Record creation.';
+  'Forced-RLS hash and configuring session role for the independent application-only capability that gates irreversible Agent Record creation.';
+COMMENT ON FUNCTION public.configure_agent_record_creation_capability(TEXT) IS
+  'Directly granted migration-operator provisioning path; stores only the capability hash and caller audit identity and returns no capability data.';
 COMMENT ON FUNCTION public.create_agent_record_with_capability(UUID, TEXT, TEXT, TEXT, UUID, TEXT, TEXT, TEXT, TEXT, TEXT, TEXT, TEXT, TEXT, TIMESTAMPTZ, TIMESTAMPTZ, TIMESTAMPTZ, JSONB, TEXT) IS
   'Capability-gated application entry point; the application must verify the Ed25519 projection before invoking it. SQL shape validation is not signature verification.';
 COMMENT ON FUNCTION public.check_agent_record_creation_capability(TEXT) IS
@@ -886,4 +956,22 @@ BEGIN
 END
 $restore_migration_role$;
 REVOKE CREATE ON SCHEMA public FROM agent_record_store_owner;
-REVOKE agent_record_store_owner FROM CURRENT_USER;
+DO $drop_agent_record_bootstrap$
+BEGIN
+  EXECUTE 'SET ROLE agent_record_store_bootstrap';
+  EXECUTE pg_catalog.format(
+    'REVOKE agent_record_store_owner FROM %I GRANTED BY agent_record_store_bootstrap',
+    pg_catalog.current_setting('ep.agent_record_migration_role')
+  );
+  EXECUTE pg_catalog.format(
+    'SET ROLE %I',
+    pg_catalog.current_setting('ep.agent_record_migration_role')
+  );
+  EXECUTE pg_catalog.format(
+    'REVOKE agent_record_store_bootstrap FROM %I GRANTED BY %I',
+    pg_catalog.current_setting('ep.agent_record_migration_role'),
+    pg_catalog.current_setting('ep.agent_record_migration_role')
+  );
+  DROP ROLE agent_record_store_bootstrap;
+END
+$drop_agent_record_bootstrap$;

@@ -153,17 +153,20 @@ Filter application logs by `_ep_telemetry` to isolate protocol write events from
 - `brigading` pattern triggered: **S3** (potential coordinated attack on an entity)
 - `retaliatory_filing` triggered: **S4** (log for operator review)
 
-### 9. Health Check
+### 9. Readiness and Liveness Probes
 
-**Why**: The `/api/health` endpoint provides a consolidated status view.
+**Why**: `/api/health` is the fail-closed production readiness signal. It
+validates the Agent Record signing, rate-limit, database configuration,
+creation authorization, and RPC dependencies without returning dependency
+details. `/api/live` reports process liveness only.
 
-**Metric**: Poll `/api/health` periodically (e.g., every 60 seconds).
+**Metric**: Poll `/api/health` periodically (e.g., every 60 seconds). Use
+`/api/live` only to determine whether the process can answer HTTP requests.
 
 **Alert threshold**:
-- `status: "degraded"`: **S3**
-- Health check returns non-200: **S1**
-- `checks.database.status` not `"ok"`: **S2**
-- `checks.rate_limiter.backend` is `"in_memory"` in production: **S3**
+- `/api/health` returns `503 {"status":"not_ready"}`: **S1**
+- `/api/health` is unreachable or returns any other contract: **S1**
+- `/api/live` is unreachable: **S1**
 
 ### 10. Binding Security Check Rates (New — 2026-04-04)
 
@@ -232,7 +235,8 @@ issuer_status: ["authority_revoked_at_write" OR "authority_expired_at_write"]
 | Policy resolution failure rate | Application logs | S1/S2 |
 | HTTP 429 rate by category | Access logs | S2/S3 |
 | HTTP 503 rate (rate_limit_unavailable) | Access logs | S2 |
-| Health check status | `/api/health` | S1/S3 |
+| Production readiness | `/api/health` | S1 |
+| Process liveness | `/api/live` | S1 |
 | Abuse pattern triggers | Application logs | S3/S4 |
 | nonce_required / nonce_mismatch count | Application logs | S3 |
 | payload_hash_required / mismatch count | Application logs | S3 |
@@ -272,7 +276,8 @@ issuer_status: ["authority_revoked_at_write" OR "authority_expired_at_write"]
 
 ### Dashboard 4: Infrastructure
 
-- Health check status (healthy/degraded)
+- Production readiness (`ready`/`not_ready`)
+- Process liveness (`live`/unreachable)
 - Database query latency
 - Rate limiter backend status
 - Blockchain anchoring status and last anchor timestamp

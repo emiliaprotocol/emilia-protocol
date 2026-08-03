@@ -1,6 +1,10 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import { existsSync, readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
+
+vi.mock('@/lib/agent-record/runtime-readiness', () => ({
+  getAgentRecordRuntimeReadiness: vi.fn(async () => ({ ready: true })),
+}));
 
 import { GET as healthGET } from '../app/api/health/route.ts';
 import { GET as policiesGET } from '../app/api/policies/route.ts';
@@ -36,12 +40,12 @@ function nextRequest(url, init) {
 }
 
 describe('anonymous recon hardening', () => {
-  it('/api/health exposes only boring liveness', async () => {
+  it('/api/health exposes only boring readiness', async () => {
     const res = await healthGET();
     const body = await res.json();
 
     expect(res.status).toBe(200);
-    expect(body).toEqual({ status: 'ok' });
+    expect(body).toEqual({ status: 'ready' });
     expect(JSON.stringify(body)).not.toMatch(/surfaces|checks|database|schema|queue|upstash|base_l2|protocol_version/i);
   });
 

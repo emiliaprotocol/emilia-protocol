@@ -132,7 +132,7 @@ These routes expose the kernel operations over HTTP. They are thin wrappers that
 | `app/api/disputes/appeal/route.js` | POST: appeal dispute |
 | `app/api/disputes/withdraw/route.js` | POST: withdraw dispute |
 | `app/api/disputes/report/route.js` | POST: file human report |
-| `app/api/health/route.ts` | GET: health check |
+| `app/api/health/route.ts` | GET: fail-closed production readiness probe |
 
 ---
 
@@ -149,7 +149,8 @@ Infrastructure and operational concerns. Necessary for running an EP node, but n
 | `app/api/cron/expire/route.js` | Cron: expire stale commits/handshakes |
 | `app/api/audit/route.js` | Audit log retrieval |
 | `app/api/stats/route.js` | System statistics |
-| `app/api/health/route.ts` | Health check (also listed under kernel for liveness) |
+| `app/api/health/route.ts` | Production readiness probe (also listed under kernel) |
+| `app/api/live/route.ts` | Process-only liveness probe |
 | `app/api/operators/apply/route.js` | Operator application |
 | `supabase/` | Database migrations and configuration |
 | `lib/blockchain.js` | Blockchain anchoring adapter (optional integrity proof) |

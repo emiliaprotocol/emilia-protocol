@@ -8,6 +8,11 @@ import YAML from 'yaml';
 const ROOT = resolve(import.meta.dirname, '..');
 const docs = readFileSync(resolve(ROOT, 'docs/AGENT-RECORD.md'), 'utf8');
 const deploymentDocs = readFileSync(resolve(ROOT, 'docs/operations/DEPLOYMENT.md'), 'utf8');
+const capabilityDocs = readFileSync(
+  resolve(ROOT, 'docs/AGENT-RECORD-CREATION-CAPABILITY.md'),
+  'utf8',
+);
+const schemaWorkflow = readFileSync(resolve(ROOT, '.github/workflows/schema-security.yml'), 'utf8');
 const openApiSource = readFileSync(resolve(ROOT, 'openapi.yaml'), 'utf8');
 const openApiDocument = YAML.parseDocument(openApiSource, { uniqueKeys: true });
 const openApi = openApiDocument.toJS();
@@ -144,5 +149,35 @@ describe('Agent Record documentation and OpenAPI lifecycle contract', () => {
     );
     expect(deploymentDocs).toContain('Do not invent or apply an Agent Record rollback migration.');
     expect(deploymentDocs).not.toContain('apply the corresponding rollback migration');
+  });
+
+  it('provisions through the post-migration non-superuser operator RPC', () => {
+    expect(capabilityDocs).toContain(
+      'SELECT public.configure_agent_record_creation_capability(',
+    );
+    expect(capabilityDocs).not.toMatch(/SET (?:LOCAL )?ROLE agent_record_store_owner/);
+    expect(capabilityDocs).toMatch(/migration[^.]*receives\s+direct `EXECUTE`/s);
+    expect(capabilityDocs).toContain(
+      'retains no `ADMIN`, `SET`, or `INHERIT` membership',
+    );
+    expect(capabilityDocs).toContain('cannot execute the base creator');
+  });
+
+  it('pins one unique GitHub check name and exact external Vercel alias gate', () => {
+    expect(schemaWorkflow).toContain('name: emilia-production-schema-contract');
+    expect(schemaWorkflow.match(/name: emilia-production-schema-contract/g)).toHaveLength(1);
+    expect(deploymentDocs).toContain('--check-name "emilia-production-schema-contract"');
+    expect(deploymentDocs).toContain('--requires build-ready');
+    expect(deploymentDocs).toContain('--blocks deployment-alias');
+    expect(deploymentDocs).toContain('--targets production');
+    expect(deploymentDocs).toContain(
+      '"externalCheckName":"emilia-production-schema-contract"',
+    );
+    expect(deploymentDocs).toContain(
+      'POST /v2/projects/{projectIdOrName}/checks',
+    );
+    expect(deploymentDocs.replace(/\s+/g, ' ')).toContain(
+      'Production aliasing remains unsafe until this external check exists',
+    );
   });
 });

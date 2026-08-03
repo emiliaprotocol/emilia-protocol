@@ -15,8 +15,12 @@ const awsDeploymentGuide = readFileSync(
 describe('Agent Record v1 migration source contract', () => {
   it('uses a dedicated least-privilege NOLOGIN owner and forced RLS', () => {
     expect(migration).toMatch(
+      /CREATE ROLE agent_record_store_bootstrap NOLOGIN[\s\S]*CREATEROLE[\s\S]*NOBYPASSRLS/,
+    );
+    expect(migration).toMatch(
       /CREATE ROLE agent_record_store_owner NOLOGIN[\s\S]*NOBYPASSRLS/,
     );
+    expect(migration).toContain('DROP ROLE agent_record_store_bootstrap;');
     expect(migration).toContain(
       'CREATE SCHEMA agent_record_private\n  AUTHORIZATION agent_record_store_owner;',
     );
@@ -44,6 +48,7 @@ describe('Agent Record v1 migration source contract', () => {
     )].map((match) => match[1]);
     expect(publicFunctions).toEqual([
       'read_agent_record_refusal_source',
+      'configure_agent_record_creation_capability',
       'create_agent_record',
       'create_agent_record_with_capability',
       'check_agent_record_creation_capability',
@@ -174,6 +179,16 @@ describe('Agent Record v1 migration source contract', () => {
     expect(migration).toContain(
       'REVOKE ALL ON FUNCTION agent_record_private.configure_creation_capability(TEXT)\n  FROM PUBLIC, anon, authenticated, service_role;',
     );
+    expect(migration).toContain(
+      'CREATE FUNCTION public.configure_agent_record_creation_capability(',
+    );
+    expect(migration).toMatch(
+      /GRANT EXECUTE ON FUNCTION public\.configure_agent_record_creation_capability\(TEXT\)[\s\S]*pg_catalog\.current_setting\('ep\.agent_record_migration_role'\)/,
+    );
+    expect(migration).toContain(
+      'REVOKE ALL ON FUNCTION public.configure_agent_record_creation_capability(TEXT)\n  FROM PUBLIC, anon, authenticated, service_role;',
+    );
+    expect(migration).toContain('configured_by TEXT COLLATE "C" NOT NULL');
     expect(migration).toContain(
       'SQL shape validation is not signature verification.',
     );

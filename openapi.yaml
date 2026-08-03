@@ -2750,10 +2750,50 @@ paths:
   /api/health:
     get:
       tags: [System]
-      summary: Health check
+      summary: Application readiness
+      description: |
+        Returns 200 only when the production Agent Record configuration,
+        matching private creation capability, and bounded database RPC contract
+        are ready. Failures are detail-free and never disclose which dependency
+        failed.
       responses:
         '200':
-          description: Minimal public liveness status
+          description: Application dependencies are ready
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: false
+                required: [status]
+                properties:
+                  status: { type: string, enum: [ready] }
+        '503':
+          description: Application dependencies are not ready; no dependency detail is disclosed
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: false
+                required: [status]
+                properties:
+                  status: { type: string, enum: [not_ready] }
+
+  /api/live:
+    get:
+      tags: [System]
+      summary: Process liveness
+      description: Process-only liveness; does not imply database or schema readiness.
+      responses:
+        '200':
+          description: Process can answer HTTP
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: false
+                required: [status]
+                properties:
+                  status: { type: string, enum: [live] }
 
   /api/stats:
     get:

@@ -11,21 +11,23 @@ The creation capability must be independently generated in the exact form
 the Supabase service-role key or the signing key. Store it in the application
 secret manager; never expose it to a browser or log it.
 
-The database stores only its SHA-256 hash. A database operator configures the
-same secret through a private-schema function while acting as
-`agent_record_store_owner`:
+The database stores only its SHA-256 hash plus the configuring database session
+role and timestamp. The non-superuser role that applies the migration receives
+direct `EXECUTE` on one public configuration RPC. The migration removes its
+temporary `SET` edges and drops the disposable role that created the permanent
+owner, so the operator retains no `ADMIN`, `SET`, or `INHERIT` membership in
+`agent_record_store_owner` and cannot execute the base creator. Using that same
+hosted migration operator connection, configure or rotate the value with:
 
 ```sql
-BEGIN;
-SET LOCAL ROLE agent_record_store_owner;
-SELECT agent_record_private.configure_creation_capability(
+SELECT public.configure_agent_record_creation_capability(
   '<secret-manager value of EP_AGENT_RECORD_CREATION_CAPABILITY>'
 );
-COMMIT;
 ```
 
-`service_role` cannot execute that configuration function, read its forced-RLS
-table, or execute `public.create_agent_record` directly. It can execute only
+The RPC returns only `true`; it never returns the secret or hash. `service_role`,
+`anon`, and `authenticated` cannot execute it, read its forced-RLS table, or
+execute `public.create_agent_record` directly. `service_role` can execute only
 `public.create_agent_record_with_capability(...)`. PostgreSQL validates the
 projection's closed shape but does not authenticate Ed25519; the application
 must verify the freshly signed projection before calling the capability-gated

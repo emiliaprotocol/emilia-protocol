@@ -35,7 +35,14 @@ const baseConnection = {
 };
 const controlDatabase = process.env.PGDATABASE ?? 'ep_test';
 const GENERIC_ROLES = ['anon', 'authenticated', 'service_role'] as const;
-const GLOBAL_ROLES = [...GENERIC_ROLES, 'agent_record_store_owner'] as const;
+const MIGRATION_OPERATOR = 'agent_record_migration_operator_test';
+const BOOTSTRAP_ROLE = 'agent_record_store_bootstrap';
+const GLOBAL_ROLES = [
+  ...GENERIC_ROLES,
+  'agent_record_store_owner',
+  BOOTSTRAP_ROLE,
+  MIGRATION_OPERATOR,
+] as const;
 
 const ADOPTION_ID = '11111111-1111-4111-8111-111111111111';
 const SESSION_TOKEN = `eaa1_${'1'.repeat(64)}`;
@@ -93,6 +100,7 @@ const priorEnvironment = Object.freeze({
 });
 
 let admin: pg.Client | undefined;
+let operator: pg.Client | undefined;
 let database: pg.Pool | undefined;
 let initiallyPresentRoles = new Set<string>();
 let initialServiceRoleBypassRls: boolean | undefined;
@@ -188,18 +196,11 @@ async function asRole<T>(
 }
 
 async function configureCapability(capability: string): Promise<void> {
-  if (!database) throw new Error('database is unavailable');
-  const client = await database.connect();
-  try {
-    await client.query('SET ROLE agent_record_store_owner');
-    await client.query(
-      'SELECT agent_record_private.configure_creation_capability($1)',
-      [capability],
-    );
-  } finally {
-    await client.query('RESET ROLE').catch(() => undefined);
-    client.release();
-  }
+  if (!operator) throw new Error('migration operator is unavailable');
+  await operator.query(
+    'SELECT public.configure_agent_record_creation_capability($1)',
+    [capability],
+  );
 }
 
 async function readSource(attemptId: string): Promise<PreparedSource> {
@@ -324,6 +325,10 @@ async function terminateTestDatabaseConnections(): Promise<void> {
 }
 
 async function cleanup(): Promise<void> {
+  if (operator) {
+    await operator.end();
+    operator = undefined;
+  }
   if (database) {
     await database.end();
     database = undefined;
@@ -386,10 +391,38 @@ suite('Agent Record v1 on PostgreSQL 17', () => {
       `);
     }
     await admin.query('ALTER ROLE service_role BYPASSRLS');
-    await admin.query(`CREATE DATABASE ${identifier(DATABASE)} TEMPLATE template0`);
+    await admin.query(`
+      CREATE ROLE ${identifier(MIGRATION_OPERATOR)} NOLOGIN
+        NOSUPERUSER NOCREATEDB CREATEROLE NOREPLICATION NOBYPASSRLS
+    `);
+    await admin.query(
+      `CREATE DATABASE ${identifier(DATABASE)} OWNER ${identifier(MIGRATION_OPERATOR)} TEMPLATE template0`,
+    );
     database = new pg.Pool({ ...baseConnection, database: DATABASE, max: 8 });
+    operator = new pg.Client({ ...baseConnection, database: DATABASE });
+    await operator.connect();
+    await operator.query(`SET SESSION AUTHORIZATION ${identifier(MIGRATION_OPERATOR)}`);
+    const operatorEnvironment = await operator.query<{
+      current_user: string;
+      session_user: string;
+      is_superuser: boolean;
+      can_create_role: boolean;
+    }>(`
+      SELECT CURRENT_USER AS current_user,
+             SESSION_USER AS session_user,
+             pg_catalog.current_setting('is_superuser')::boolean AS is_superuser,
+             role.rolcreaterole AS can_create_role
+        FROM pg_catalog.pg_roles AS role
+       WHERE role.rolname = CURRENT_USER
+    `);
+    expect(operatorEnvironment.rows).toEqual([{
+      current_user: MIGRATION_OPERATOR,
+      session_user: MIGRATION_OPERATOR,
+      is_superuser: false,
+      can_create_role: true,
+    }]);
 
-    await database.query(`
+    await operator.query(`
       CREATE SCHEMA extensions;
       CREATE EXTENSION pgcrypto WITH SCHEMA extensions;
 
@@ -458,7 +491,7 @@ suite('Agent Record v1 on PostgreSQL 17', () => {
     `);
 
     for (const attempt of ATTEMPTS) {
-      await database.query(
+      await operator.query(
         `INSERT INTO public.arena_sessions (
            session_id, token_hash, challenge_id, challenge_version,
            issuer_id, key_id, public_key, status, expires_at
@@ -476,7 +509,7 @@ suite('Agent Record v1 on PostgreSQL 17', () => {
           SESSION_EXPIRES_AT,
         ],
       );
-      await database.query(
+      await operator.query(
         `INSERT INTO public.arena_attempts (
            tenant_id, session_row_id, session_id, challenge_id, challenge_version,
            attempt_id, attempt_nonce, action, action_digest, caid, decision, reason,
@@ -502,7 +535,33 @@ suite('Agent Record v1 on PostgreSQL 17', () => {
       );
     }
 
-    await database.query(migration);
+    await operator.query(migration);
+    const residualRoles = await operator.query<{
+      bootstrap_exists: boolean;
+      owner_membership_exists: boolean;
+    }>(`
+      SELECT
+        EXISTS (
+          SELECT 1 FROM pg_catalog.pg_roles
+           WHERE rolname = '${BOOTSTRAP_ROLE}'
+        ) AS bootstrap_exists,
+        EXISTS (
+          SELECT 1
+            FROM pg_catalog.pg_auth_members AS membership
+            JOIN pg_catalog.pg_roles AS granted_role
+              ON granted_role.oid = membership.roleid
+            JOIN pg_catalog.pg_roles AS member_role
+              ON member_role.oid = membership.member
+           WHERE granted_role.rolname = 'agent_record_store_owner'
+             AND member_role.rolname = '${MIGRATION_OPERATOR}'
+        ) AS owner_membership_exists
+    `);
+    expect(residualRoles.rows).toEqual([{
+      bootstrap_exists: false,
+      owner_membership_exists: false,
+    }]);
+    await expect(operator.query('SET ROLE agent_record_store_owner'))
+      .rejects.toMatchObject({ code: '42501' });
     await configureCapability(CREATION_CAPABILITY);
     primarySource = await readSource(ATTEMPTS[0].attemptId);
     secondarySource = await readSource(ATTEMPTS[1].attemptId);
@@ -554,6 +613,7 @@ suite('Agent Record v1 on PostgreSQL 17', () => {
       base_create: boolean;
       capability_create: boolean;
       capability_configure: boolean;
+      operator_configure: boolean;
     }>(`
       SELECT
         has_function_privilege(
@@ -568,20 +628,39 @@ suite('Agent Record v1 on PostgreSQL 17', () => {
         ) AS capability_create,
         has_function_privilege(
           'service_role',
-          'agent_record_private.configure_creation_capability(text)',
+          'public.configure_agent_record_creation_capability(text)',
           'EXECUTE'
-        ) AS capability_configure
+        ) AS capability_configure,
+        has_function_privilege(
+          '${MIGRATION_OPERATOR}',
+          'public.configure_agent_record_creation_capability(text)',
+          'EXECUTE'
+        ) AS operator_configure
     `);
     expect(privileges.rows).toEqual([{
       base_create: false,
       capability_create: true,
       capability_configure: false,
+      operator_configure: true,
     }]);
 
     await expect(asRole('service_role', (client) => client.query(
-      'SELECT agent_record_private.configure_creation_capability($1)',
+      'SELECT public.configure_agent_record_creation_capability($1)',
       [WRONG_CAPABILITY],
     ))).rejects.toMatchObject({ code: '42501' });
+    const audit = await database!.query<{
+      configured_by: string;
+      capability_is_plaintext: boolean;
+    }>(`
+      SELECT configured_by,
+             capability_hash = $1 AS capability_is_plaintext
+        FROM agent_record_private.creation_capability
+       WHERE singleton
+    `, [CREATION_CAPABILITY]);
+    expect(audit.rows).toEqual([{
+      configured_by: MIGRATION_OPERATOR,
+      capability_is_plaintext: false,
+    }]);
     const readiness = await asRole('service_role', async (client) => {
       const result = await client.query<{ valid: boolean; invalid: boolean }>(
         `SELECT public.check_agent_record_creation_capability($1) AS valid,

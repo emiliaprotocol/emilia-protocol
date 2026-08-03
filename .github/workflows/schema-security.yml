@@ -17,9 +17,9 @@ name: schema-security
 #   schema introspection functions; cannot read any table rows). The god-mode
 #   service-role key is NOT in CI.
 #
-# To make this a true deploy gate: add "schema-security / schema-contract" as a
-# required status check in branch protection for main, and enable Vercel's
-# "wait for CI to pass" on the Git integration.
+# To make this a true deploy gate: require the unique
+# `emilia-production-schema-contract` GitHub check on main and configure the
+# external Vercel deployment check documented in docs/operations/DEPLOYMENT.md.
 
 env:
   FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
@@ -127,6 +127,7 @@ jobs:
         run: npm run schema:reconcile
 
   schema-contract:
+    name: emilia-production-schema-contract
     if: always()
     needs: [candidate-reconciliation, live-schema-contract]
     runs-on: ubuntu-latest
@@ -153,4 +154,4 @@ jobs:
               exit 1
             }
           fi
-          echo '"schema-security / schema-contract" is satisfied.'
+          echo '"emilia-production-schema-contract" is satisfied.'
