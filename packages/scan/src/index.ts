@@ -50,9 +50,14 @@ export interface Classification {
 // action inherits that pack's assurance_class, required_fields, and rationale.
 // Deliberately conservative: strong verbs/nouns only, so a match is defensible.
 const CATEGORY_SIGNALS = [
-  // bank-detail changes are checked BEFORE generic money movement so "payee" /
-  // "beneficiary" land here rather than matching the "pay" in "payee".
-  { pack: 'money_movement.bank_details_change', any: ['bank_detail', 'bankdetail', 'payee', 'beneficiary', 'routing', 'ach_detail', 'payroll_account', 'vendor_account', 'account_number', 'iban'] },
+  // A bank target is not itself a change. Require both the affected banking
+  // concept and explicit mutation intent so an outgoing wire to a beneficiary
+  // stays money movement while updateBeneficiaryBankDetails lands here.
+  {
+    pack: 'money_movement.bank_details_change',
+    any: ['bank_detail', 'bankdetail', 'payee', 'beneficiary', 'routing', 'ach_detail', 'payroll_account', 'vendor_account', 'account_number', 'iban'],
+    requiresAny: ['change', 'update', 'set', 'modify', 'edit', 'replace', 'add', 'create', 'register'],
+  },
   { pack: 'money_movement.release', any: ['payment', 'wire', 'transfer', 'remit', 'disburse', 'payout', 'send_money', 'sendmoney', 'settle', 'refund', 'charge', 'invoice_pay', 'pay'] },
   { pack: 'production.deploy', any: ['deploy', 'release_prod', 'rollout', 'ship_prod', 'promote', 'publish_release', 'terraform_apply', 'infra_apply', 'production_push'] },
   { pack: 'permissions.admin_change', any: ['grant', 'role', 'privilege', 'permission', 'entitlement', 'iam', 'make_admin', 'add_admin', 'assign_role', 'elevate', 'sudo_grant'] },
@@ -70,6 +75,17 @@ function norm(s: unknown): string {
   return String(s || '').toLowerCase().replace(/[^a-z0-9]+/g, '_');
 }
 
+function semanticNorm(s: unknown): string {
+  return String(s || '')
+    .replace(/([a-z0-9])([A-Z])/g, '$1_$2')
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '_');
+}
+
+function hasWholeSignal(hay: string, signal: string): boolean {
+  return `_${hay}_`.includes(`_${signal}_`);
+}
+
 // Classify ONE action. Returns a proposed control with an explicit reason and
 // confidence, or a fail-closed "unclassified" when it mutates but doesn't match.
 export function classifyAction(action: unknown): Classification {
@@ -77,7 +93,7 @@ export function classifyAction(action: unknown): Classification {
     return { decision: 'review_fail_closed', receipt_required: true, assurance_class: 'class_a', reason: 'malformed action — defaults to require a receipt', confidence: 'low' };
   }
   const candidate = action as ActionInput;
-  const hay = `${norm(candidate.name)}_${norm(candidate.description)}`;
+  const hay = `${semanticNorm(candidate.name)}_${semanticNorm(candidate.description)}`;
   const ann = candidate.annotations && typeof candidate.annotations === 'object' && !Array.isArray(candidate.annotations)
     ? candidate.annotations : {};
   const cat = matchCategory(hay);
@@ -133,8 +149,14 @@ export function classifyAction(action: unknown): Classification {
 
 function matchCategory(hay: string): { pack: string; hit: string } | null {
   for (const cat of CATEGORY_SIGNALS) {
-    const hit = cat.any.find((k) => hay.includes(k));
-    if (hit) return { pack: cat.pack, hit };
+    const hit = cat.any.find((k) => k === 'pay' ? hasWholeSignal(hay, k) : hay.includes(k));
+    const requiredSignals = 'requiresAny' in cat && Array.isArray(cat.requiresAny)
+      ? cat.requiresAny
+      : undefined;
+    const requiredHit = requiredSignals?.find((k) => hasWholeSignal(hay, k));
+    if (hit && (!requiredSignals || requiredHit)) {
+      return { pack: cat.pack, hit: requiredHit ? `${requiredHit}+${hit}` : hit };
+    }
   }
   return null;
 }

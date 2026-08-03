@@ -36,6 +36,8 @@ test('recognized high-risk actions are gated at the right tier', () => {
   assert.equal(wire.decision, 'gate');
   assert.equal(wire.receipt_required, true);
   assert.equal(wire.assurance_class, 'class_a');
+  assert.equal(wire.category, 'money_movement.release');
+  assert.ok(wire.required_fields.includes('amount_usd'), 'a wire must bind payment fields, not bank-change fields');
 
   const deploy = classifyAction({ name: 'deployToProduction', description: 'ship build to prod' });
   assert.equal(deploy.decision, 'gate');
@@ -43,7 +45,18 @@ test('recognized high-risk actions are gated at the right tier', () => {
 
   const bank = classifyAction({ name: 'updateBeneficiaryBankDetails', description: 'change destination account for a payee' });
   assert.equal(bank.decision, 'gate');
-  assert.equal(bank.category, 'money_movement.bank_details_change', 'payee/beneficiary must land in bank-detail-change, not generic release');
+  assert.equal(bank.category, 'money_movement.bank_details_change', 'change intent plus payee/beneficiary must land in bank-detail-change');
+
+  assert.equal(
+    classifyAction({ name: 'getBeneficiary', description: 'read the current beneficiary' }).decision,
+    'pass_through',
+    'mentioning a beneficiary without change intent must not become a bank-detail change',
+  );
+  assert.equal(
+    classifyAction({ name: 'getPayeeAsset', description: 'read the current payee asset' }).decision,
+    'pass_through',
+    'pay inside payee and set inside asset must not create payment or change intent',
+  );
 });
 
 test('read-only actions pass through', () => {
