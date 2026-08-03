@@ -154,4 +154,91 @@ describe('Agent Record private refusal source', () => {
       code: 'agent_adoption_refusal_source_invalid',
     });
   });
+
+  it('refuses an authorization that is not bound to one active bond', async () => {
+    const client = { rpc: vi.fn() };
+    await expect(prepareAgentRecordRefusalSource({
+      authorization: {
+        ...authorization,
+        session: { ...authorization.session, bond_count: 2 },
+      },
+      input: { trial_token: trialToken(), attempt_id: ATTEMPT_ID },
+      client: client as any,
+      now: NOW,
+    })).rejects.toMatchObject({
+      status: 409,
+      code: 'agent_adoption_bond_not_asserted',
+    });
+    expect(client.rpc).not.toHaveBeenCalled();
+  });
+
+  it('refuses malformed input and expired trial authority before source lookup', async () => {
+    const client = { rpc: vi.fn() };
+    await expect(prepareAgentRecordRefusalSource({
+      authorization,
+      input: { trial_token: trialToken(), attempt_id: 'arena_attempt_invalid' },
+      client: client as any,
+      now: NOW,
+    })).rejects.toMatchObject({
+      status: 400,
+      code: 'agent_adoption_refusal_source_invalid',
+    });
+    await expect(prepareAgentRecordRefusalSource({
+      authorization,
+      input: { trial_token: trialToken(), attempt_id: ATTEMPT_ID },
+      client: client as any,
+      now: Date.parse('2026-08-02T20:04:00.000Z'),
+    })).rejects.toMatchObject({
+      status: 401,
+      code: 'agent_adoption_trial_invalid',
+    });
+    expect(client.rpc).not.toHaveBeenCalled();
+  });
+
+  it('normalizes source transport and RPC failures without exposing internals', async () => {
+    const unavailable = {
+      rpc: vi.fn(async () => {
+        throw new Error('private database detail');
+      }),
+    };
+    await expect(prepareAgentRecordRefusalSource({
+      authorization,
+      input: { trial_token: trialToken(), attempt_id: ATTEMPT_ID },
+      client: unavailable as any,
+      now: NOW,
+    })).rejects.toMatchObject({
+      status: 503,
+      code: 'agent_adoption_refusal_source_invalid',
+      message: 'The refusal source is unavailable.',
+    });
+
+    for (const [code, status] of [['P0002', 404], ['XX000', 503]] as const) {
+      const failed = { rpc: vi.fn().mockResolvedValue({ data: null, error: { code } }) };
+      await expect(prepareAgentRecordRefusalSource({
+        authorization,
+        input: { trial_token: trialToken(), attempt_id: ATTEMPT_ID },
+        client: failed as any,
+        now: NOW,
+      })).rejects.toMatchObject({
+        status,
+        code: 'agent_adoption_refusal_source_invalid',
+      });
+    }
+  });
+
+  it('refuses a structurally incomplete source before signature verification', async () => {
+    const source: any = signedSource();
+    delete source.source_commitment;
+    const client = { rpc: vi.fn().mockResolvedValue({ data: source, error: null }) };
+
+    await expect(prepareAgentRecordRefusalSource({
+      authorization,
+      input: { trial_token: trialToken(), attempt_id: ATTEMPT_ID },
+      client: client as any,
+      now: NOW,
+    })).rejects.toMatchObject({
+      status: 503,
+      code: 'agent_adoption_refusal_source_invalid',
+    });
+  });
 });

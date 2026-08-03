@@ -252,4 +252,117 @@ describe('Agent Record runtime readiness', () => {
     expect(result.checks.database_rpcs).toBe(false);
     expect(result.unavailable).toContain('database_rpcs');
   });
+
+  it('does not touch the database when production configuration is incomplete', async () => {
+    const client = healthyRpcClient();
+    const result = await getAgentRecordRuntimeReadiness({
+      environment: productionEnvironment({ EP_COMMIT_SIGNING_KEY: undefined }),
+      client: client as never,
+      useCache: false,
+    });
+
+    expect(result).toMatchObject({
+      enforced: true,
+      ready: false,
+      checks: {
+        signing_key: false,
+        database_creation_authorization: false,
+        database_rpcs: false,
+      },
+    });
+    expect(client.rpc).not.toHaveBeenCalled();
+  });
+
+  it('turns transport exceptions from every probe into one fail-closed result', async () => {
+    const client = {
+      rpc: vi.fn(async () => {
+        throw new Error('database transport unavailable');
+      }),
+    };
+    const result = await getAgentRecordRuntimeReadiness({
+      environment: productionEnvironment(),
+      client: client as never,
+      useCache: false,
+    });
+
+    expect(client.rpc).toHaveBeenCalledTimes(7);
+    expect(result).toMatchObject({
+      enforced: true,
+      ready: false,
+      checks: {
+        database_creation_authorization: false,
+        database_rpcs: false,
+      },
+    });
+    expect(result.unavailable).toEqual([
+      'database_creation_authorization',
+      'database_rpcs',
+    ]);
+  });
+
+  it('deduplicates in-flight probes and reuses only an unexpired readiness result', async () => {
+    let release!: () => void;
+    const blocked = new Promise<void>((resolve) => { release = resolve; });
+    const client = {
+      rpc: vi.fn(async (name: string) => {
+        await blocked;
+        return {
+          data: [
+            'check_agent_record_creation_capability',
+            'check_agent_record_storage_contract',
+          ].includes(name) ? true : null,
+          error: [
+            'check_agent_record_creation_capability',
+            'check_agent_record_storage_contract',
+          ].includes(name)
+            ? null
+            : {
+                code: [
+                  'read_agent_adoption_session',
+                  'read_agent_record_public',
+                  'read_agent_record_refusal_source',
+                ].includes(name) ? 'P0002' : '22023',
+              },
+        };
+      }),
+    };
+
+    const first = getAgentRecordRuntimeReadiness({
+      environment: productionEnvironment(),
+      client: client as never,
+      now: 1_000,
+      useCache: true,
+    });
+    const concurrent = getAgentRecordRuntimeReadiness({
+      environment: productionEnvironment(),
+      client: client as never,
+      now: 1_000,
+      useCache: true,
+    });
+    release();
+    const [firstResult, concurrentResult] = await Promise.all([first, concurrent]);
+
+    expect(firstResult.ready).toBe(true);
+    expect(concurrentResult).toBe(firstResult);
+    expect(client.rpc).toHaveBeenCalledTimes(7);
+
+    const cached = await getAgentRecordRuntimeReadiness({
+      environment: productionEnvironment(),
+      client: client as never,
+      now: 1_001,
+      useCache: true,
+    });
+    expect(cached).toBe(firstResult);
+    expect(client.rpc).toHaveBeenCalledTimes(7);
+
+    const refreshed = await getAgentRecordRuntimeReadiness({
+      environment: productionEnvironment(),
+      client: client as never,
+      now: 31_001,
+      useCache: true,
+    });
+    expect(refreshed.ready).toBe(true);
+    expect(refreshed).not.toBe(firstResult);
+    expect(client.rpc).toHaveBeenCalledTimes(14);
+  });
 });

@@ -1176,7 +1176,8 @@ class WorkflowTrustContractTests(unittest.TestCase):
         self.assertIn("if: always()", aggregator)
         self.assertIn("needs.candidate-reconciliation.result", aggregator)
         self.assertIn("needs.live-schema-contract.result", aggregator)
-        self.assertIn('"schema-security / schema-contract"', workflow)
+        self.assertIn('name: emilia-production-schema-contract', workflow)
+        self.assertIn('"emilia-production-schema-contract" is satisfied.', workflow)
 
     def test_ci_uses_the_same_release_image_builder(self) -> None:
         workflow = (ROOT / ".github/workflows/ci.yml").read_text()
