@@ -591,7 +591,7 @@
     },
     {
       "path": "packages/gate/dist/capability-receipt.js",
-      "sha256": "25a18815fdda69d64bbef3acae8c7db1d36b165f45d8bd3c69fb766161420b05"
+      "sha256": "5a878be8d9fc6fbf5cb0ae6eab37127cb649042ae02d04a00c5989ff00dc0789"
     },
     {
       "path": "packages/gate/dist/cf1-conformance.js",
@@ -630,6 +630,10 @@
       "sha256": "8dca7c6951bf1315d2ec97484c8ef66ea12a851a937920f82560370bb881dbb5"
     },
     {
+      "path": "packages/gate/dist/execution-value.js",
+      "sha256": "add56373471a1dab21d2833abfec80417a6d4dc457640503ebd2514fd7ebd82f"
+    },
+    {
       "path": "packages/gate/dist/fido-ap2-bridge.js",
       "sha256": "f20f9e3c6a8c45834a5e10aa0308de91ccb2122125aab4b93f8db4376c8c9c4a"
     },
@@ -643,7 +647,7 @@
     },
     {
       "path": "packages/gate/dist/index.js",
-      "sha256": "f0d0b886953d69a9423b66d21f4f2d0141658f8817f634fd8df6b44d2522b70c"
+      "sha256": "828c59b044167ed5b27409ee4672ae15999413b687717a41b6e69df6fd32705c"
     },
     {
       "path": "packages/gate/dist/key-registry.js",
@@ -684,6 +688,10 @@
     {
       "path": "packages/gate/dist/proposal-to-effect.js",
       "sha256": "5d3bf24ceafaee60a4556a126df915763fc7017d47a781d3632e08507d715641"
+    },
+    {
+      "path": "packages/gate/dist/provider-entry.js",
+      "sha256": "221a6182d605d49749e47def533cd3342b3bdeb3b025f0a81b7a8f4d09774dc6"
     },
     {
       "path": "packages/gate/dist/receipt-census.js",
@@ -747,7 +755,7 @@
     },
     {
       "path": "packages/gate/dist/runtime-monitor.js",
-      "sha256": "86bced8ff47be21af0ee1641921b53fd9a0950aba95bfee3aed6a29b5c96687c"
+      "sha256": "5b1481a20550f4ea093f0c4139fbfdbfc60c35704e61e2afdec80f7c291fc675"
     },
     {
       "path": "packages/gate/dist/store-postgres.js",
@@ -799,7 +807,7 @@
     },
     {
       "path": "packages/gate/src/capability-receipt.ts",
-      "sha256": "4e0c919301169eba97c48c2c44fc42cea8efb6964be8e5ac3eb875193374c6c7"
+      "sha256": "f65f07975359614c5b1cec5d23321e62d3e8789c3db68f9ad84c53ece22f6dbb"
     },
     {
       "path": "packages/gate/src/challenge-store.ts",
@@ -819,7 +827,7 @@
     },
     {
       "path": "packages/gate/src/index.ts",
-      "sha256": "a299bf8f95af60d9f503eb8f474cde06668d84a98c994c6ece4a57182e7ca85a"
+      "sha256": "e2914cbda29e67541d7a98f0a18f7aceeac9d424dc0d76a2363db8867cb2f213"
     },
     {
       "path": "packages/gate/src/network-witness.ts",
