@@ -705,9 +705,13 @@ async function recoverPendingAgentRecords(): Promise<VisibleAgentRecord[]> {
 
 interface AdoptExperienceProps {
   api?: AdoptApiClient;
+  agentRecordReady?: boolean;
 }
 
-export default function AdoptExperience({ api = adoptApiClient }: AdoptExperienceProps) {
+export default function AdoptExperience({
+  api = adoptApiClient,
+  agentRecordReady = true,
+}: AdoptExperienceProps) {
   const [stageIndex, setStageIndex] = useState(0);
   const [furthestStage, setFurthestStage] = useState(0);
   const [agentLabel, setAgentLabel] = useState('Atlas');
@@ -776,6 +780,7 @@ export default function AdoptExperience({ api = adoptApiClient }: AdoptExperienc
   }, [api]);
 
   useEffect(() => {
+    if (!agentRecordReady) return;
     let cancelled = false;
     recoverPendingAgentRecords().then((recovered) => {
       if (cancelled || recovered.length === 0) return;
@@ -785,7 +790,7 @@ export default function AdoptExperience({ api = adoptApiClient }: AdoptExperienc
       // Public recovery is best-effort; pending local credentials remain for a later reload.
     });
     return () => { cancelled = true; };
-  }, []);
+  }, [agentRecordReady]);
 
   function chooseTemplate(stage: StageId, templateId: TemplateId, applySelection: () => void) {
     applySelection();
@@ -872,6 +877,7 @@ export default function AdoptExperience({ api = adoptApiClient }: AdoptExperienc
         || latestAttempt.decision !== 'refuse'
         || !recordConfirmed
         || !api.createAgentRecord
+        || !agentRecordReady
         || revoked) return;
     setBusy('agent-record');
     setError('');
@@ -1298,7 +1304,15 @@ export default function AdoptExperience({ api = adoptApiClient }: AdoptExperienc
                     {latestAttempt.decision === 'refuse' && (
                       <section className={styles.agentRecordPanel}>
                         <p className={styles.panelLabel}>OPTIONAL FACTUAL AGENT RECORD</p>
-                        {agentRecord ? (
+                        {!agentRecordReady ? (
+                          <div className={styles.agentRecordCreated} role="status">
+                            <h3>Agent Record publication is temporarily unavailable.</h3>
+                            <p>
+                              The synthetic challenge and optional Operating Bond remain available.
+                              No Agent Record readiness claim is made until the operated dependencies pass.
+                            </p>
+                          </div>
+                        ) : agentRecord ? (
                           <div className={styles.agentRecordCreated} role="status">
                             <h3>One refusal observation is now unlisted and public.</h3>
                             <p>

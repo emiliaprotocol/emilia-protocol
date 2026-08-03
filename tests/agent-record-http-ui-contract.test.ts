@@ -8,6 +8,7 @@ const mocks = vi.hoisted(() => ({
   authorize: vi.fn(),
   create: vi.fn(),
   load: vi.fn(),
+  readiness: vi.fn(),
   revoke: vi.fn(),
 }));
 
@@ -24,6 +25,10 @@ vi.mock('@/lib/agent-record/service', () => ({
   createAgentRecord: mocks.create,
   loadPublicAgentRecord: mocks.load,
   revokeAgentRecord: mocks.revoke,
+}));
+
+vi.mock('@/lib/agent-record/runtime-readiness', () => ({
+  getAgentRecordRuntimeReadiness: mocks.readiness,
 }));
 
 vi.mock('@/lib/logger.js', () => ({
@@ -65,7 +70,48 @@ const recordParams = { params: { recordId: RECORD_ID } };
 describe('Agent Record HTTP contract', () => {
   beforeEach(() => {
     vi.resetAllMocks();
+    mocks.readiness.mockResolvedValue({ ready: true });
     mocks.authorize.mockResolvedValue(authorization);
+  });
+
+  it('fails creation and exact public operations closed when runtime readiness is absent', async () => {
+    mocks.readiness.mockResolvedValue({ ready: false });
+
+    const createResponse = await CreateRoute.POST(
+      createRequest({
+        trial_token: TRIAL_TOKEN,
+        attempt_id: ATTEMPT_ID,
+        record_id: RECORD_ID,
+        owner_token: OWNER_TOKEN,
+      }) as never,
+      createParams,
+    );
+    const publicResponse = await PublicRoute.GET(
+      new Request(`https://www.emiliaprotocol.ai/api/agent-records/${RECORD_ID}`),
+      recordParams,
+    );
+    const revokeResponse = await RevokeRoute.POST(
+      new Request(`https://www.emiliaprotocol.ai/api/agent-records/${RECORD_ID}/revoke`, {
+        method: 'POST',
+        headers: {
+          authorization: `Bearer ${OWNER_TOKEN}`,
+          origin: 'https://www.emiliaprotocol.ai',
+        },
+      }),
+      recordParams,
+    );
+
+    for (const response of [createResponse, publicResponse, revokeResponse]) {
+      expect(response.status).toBe(503);
+      expect(await response.json()).toMatchObject({
+        type: 'https://emiliaprotocol.ai/errors/agent_record_unavailable',
+        status: 503,
+      });
+    }
+    expect(mocks.authorize).not.toHaveBeenCalled();
+    expect(mocks.create).not.toHaveBeenCalled();
+    expect(mocks.load).not.toHaveBeenCalled();
+    expect(mocks.revoke).not.toHaveBeenCalled();
   });
 
   it('authenticates the exact adoption session before creating one refusal-bound record', async () => {
@@ -223,6 +269,7 @@ describe('Agent Record UI and custody contract', () => {
   const adopt = readFileSync(resolve('app/adopt/AdoptExperience.tsx'), 'utf8');
   const page = readFileSync(resolve('app/agent-record/r/[recordId]/page.tsx'), 'utf8');
   const controls = readFileSync(resolve('app/agent-record/r/[recordId]/OwnerControls.tsx'), 'utf8');
+  const adoptPage = readFileSync(resolve('app/adopt/page.tsx'), 'utf8');
 
   it('creates only after an explicit confirmation of a refused trial attempt', () => {
     expect(adopt).toContain("latestAttempt.decision === 'refuse'");
@@ -234,6 +281,9 @@ describe('Agent Record UI and custody contract', () => {
     expect(adopt).toContain('verify the exact signed refusal');
     expect(adopt).toContain('digest-bound');
     expect(adopt).toContain('action parameters, Arena source link');
+    expect(adoptPage).toContain('agentRecordReady={agentRecordReadiness.ready}');
+    expect(adopt).toContain('Agent Record publication is temporarily unavailable.');
+    expect(adopt).toContain('No Agent Record readiness claim is made');
   });
 
   it('keeps the owner token only in record-specific local storage and out of URLs and analytics', () => {

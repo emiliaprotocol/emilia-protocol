@@ -121,6 +121,30 @@ without creating an ownerless public record or replacing the first committed
 timestamps. A conflicting replay remains refused. The database stores only the
 credential hash.
 
+## Runtime readiness
+
+Agent Record is an operated public observation service, not a locally
+reproducible status verifier. In production, creation, exact public pages, the
+public API, and owner revocation fail closed unless all of these dependencies are
+ready:
+
+- `EP_COMMIT_SIGNING_KEY` is a canonical base64-encoded 32-byte Ed25519 seed and
+  `EP_AGENT_RECORD_SIGNING_KEY_ID` is valid;
+- both `UPSTASH_REDIS_REST_URL` and `UPSTASH_REDIS_REST_TOKEN` configure the
+  durable public rate limiter;
+- `NEXT_PUBLIC_SUPABASE_URL` and `SUPABASE_SERVICE_ROLE_KEY` configure the
+  server-held database client; and
+- the service role can execute `create_agent_record`, `read_agent_record_public`,
+  and `revoke_agent_record` with the deployed signatures.
+
+The live RPC readiness probes use deliberately invalid, non-secret inputs that
+each function rejects in its first validation/not-found branch before any
+mutation. Probe results are cached briefly; no key, token, URL, or database error
+detail is returned to a public caller. An unavailable dependency produces one
+generic `503 agent_record_unavailable` response, and `/adopt` keeps the synthetic
+challenge and Operating Bond available while suppressing Agent Record creation.
+Development and tests retain their documented ephemeral/in-memory behavior.
+
 ## Access model
 
 `agent_record_private` is owned by a dedicated `NOLOGIN`, non-superuser,

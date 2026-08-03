@@ -28,6 +28,20 @@ const WORKFLOWS = [
 
 const PRESELECT = { gov: 'benefit_account_change', fin: 'wire_release', health: 'payer_adverse_determination' };
 
+function publicRecordReturn(artifactId: string): { href: string; label: string } {
+  const encoded = encodeURIComponent(artifactId);
+  if (artifactId.startsWith('agent_record_')) {
+    return { href: `/agent-record/r/${encoded}`, label: 'return to the Agent Record' };
+  }
+  if (artifactId.startsWith('agent_share_')) {
+    return { href: `/adopt/r/${encoded}`, label: 'return to the Operating Bond' };
+  }
+  if (artifactId.startsWith('arena_share_')) {
+    return { href: `/arena/r/${encoded}`, label: 'return to the Arena refusal record' };
+  }
+  return { href: '/try', label: 'be the approver yourself in 20 seconds' };
+}
+
 export default function PilotPage(): React.ReactElement {
   const [form, setForm] = useState({
     name: '', org: '', email: '', workflow: 'payer_adverse_determination', message: '', website: '',
@@ -56,6 +70,7 @@ export default function PilotPage(): React.ReactElement {
 
   const set = (k) => (e) => setForm((f) => ({ ...f, [k]: e.target.value }));
   const selectedOffer = PROTECTED_WORKFLOW_PILOT;
+  const returnLink = publicRecordReturn(form.artifact_id);
   const terms = [
     [selectedOffer.durationLabel, 'time-boxed engagement'],
     [selectedOffer.shortPriceLabel, 'fixed scope and price'],
@@ -119,8 +134,8 @@ export default function PilotPage(): React.ReactElement {
             <div style={{ fontWeight: 700, fontSize: 18, color: '#15803D', marginBottom: 8 }}>Request recorded.</div>
             <p style={{ fontSize: 14.5, color: color.t2, lineHeight: 1.65, margin: 0 }}>
               I reply personally within one business day. Meanwhile:{' '}
-              <a href={form.artifact_id.startsWith('agent_share_') ? '/adopt' : '/try'} style={lnk}>
-                {form.artifact_id.startsWith('agent_share_') ? 'continue the factual candidate record' : 'be the approver yourself in 20 seconds'}
+              <a href={returnLink.href} style={lnk}>
+                {returnLink.label}
               </a>.
             </p>
           </div>
@@ -142,11 +157,11 @@ export default function PilotPage(): React.ReactElement {
 
             <label style={lbl} htmlFor="p-artifact">Public record ID (optional)</label>
             <input id="p-artifact" value={form.artifact_id} onChange={set('artifact_id')} style={input}
-              maxLength={80} pattern="(?:arena_share|agent_share)_[0-9a-f]{40}"
-              placeholder="arena_share_… or agent_share_…" aria-describedby="p-artifact-note" />
+              maxLength={80} pattern="(?:arena_share|agent_share|agent_record)_[0-9a-f]{40}"
+              placeholder="arena_share_…, agent_share_…, or agent_record_…" aria-describedby="p-artifact-note" />
             <small id="p-artifact-note" style={{ display: 'block', color: color.t3, lineHeight: 1.55 }}>
-              Only an active public Arena refusal or Agent Adoption Operating Bond ID is accepted. The server
-              resolves it before recording the request; pasted claims, receipt text, and arbitrary URLs are not evidence.
+              Only an active public Arena refusal, Agent Adoption Operating Bond, or Agent Record ID is accepted.
+              The server resolves it before recording the request; pasted claims, receipt text, and arbitrary URLs are not evidence.
             </small>
 
             <label style={lbl} htmlFor="p-msg">Buyer context (optional, unverified)</label>

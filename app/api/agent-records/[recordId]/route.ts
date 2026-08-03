@@ -2,6 +2,7 @@
 import { NextResponse } from 'next/server';
 
 import { AgentRecordServiceError, loadPublicAgentRecord } from '@/lib/agent-record/service';
+import { getAgentRecordRuntimeReadiness } from '@/lib/agent-record/runtime-readiness';
 import { epProblem } from '@/lib/errors';
 import { logger } from '@/lib/logger.js';
 
@@ -26,6 +27,12 @@ export async function GET(
   context: { params: Promise<{ recordId: string }> | { recordId: string } },
 ) {
   try {
+    const readiness = await getAgentRecordRuntimeReadiness();
+    if (!readiness.ready) {
+      const response = epProblem(503, 'agent_record_unavailable', 'Agent Record is temporarily unavailable.');
+      for (const [key, value] of Object.entries(PUBLIC_HEADERS)) response.headers.set(key, value);
+      return response;
+    }
     const { recordId } = await context.params;
     const record = await loadPublicAgentRecord({ recordId });
     if (!record) return notFound();

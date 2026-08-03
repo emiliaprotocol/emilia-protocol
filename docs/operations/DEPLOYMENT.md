@@ -149,6 +149,19 @@ Both endpoints are rate-limited to the `anchor` category (1 request per 6 hours)
 
 ### Deployment
 
+For Agent Record and other forward-compatible database changes, deploy in this
+order:
+
+1. Apply the forward-compatible Supabase migration first.
+2. Verify the live database contract before application promotion: confirm the
+   expected function signatures and service-role grants, and run the documented
+   non-mutating readiness/contract checks.
+3. Only after that verification passes, promote or merge the Vercel application
+   that calls the new contract.
+
+This ordering keeps the old application compatible while the database moves
+forward and prevents a new application from reaching RPCs that are not live yet.
+
 ```bash
 # Build
 npm run build
@@ -209,6 +222,7 @@ Returns `200` with `status: "healthy"` or `status: "degraded"` if any check fail
 ## Rollback Procedure
 
 1. Revert to the previous Vercel deployment via the Vercel dashboard or `vercel rollback`.
-2. If a database migration was applied, apply the corresponding rollback migration.
-3. Verify via `/api/health` that the rolled-back instance is healthy.
-4. Protocol events are append-only and cannot be rolled back. If a bad state was materialized, use the reconstitution script: `npm run reconstitute` to replay events and rebuild projections.
+2. Retain the already-applied forward-compatible database migration. Application rollback does not roll back the Supabase schema.
+3. Do not invent or apply an Agent Record rollback migration. There is no destructive Agent Record down migration; use a separately reviewed forward repair if the live database contract itself needs correction.
+4. Verify via `/api/health` that the rolled-back application is healthy against the retained schema.
+5. Protocol events are append-only and cannot be rolled back. If a bad state was materialized, use the reconstitution script: `npm run reconstitute` to replay events and rebuild projections.

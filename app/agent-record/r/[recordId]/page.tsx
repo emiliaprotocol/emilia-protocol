@@ -2,6 +2,7 @@
 import type { Metadata } from 'next';
 
 import { loadPublicAgentRecord } from '@/lib/agent-record/service';
+import { getAgentRecordRuntimeReadiness } from '@/lib/agent-record/runtime-readiness';
 import OwnerControls from './OwnerControls';
 import styles from './record.module.css';
 
@@ -43,7 +44,7 @@ function StoreUnavailable() {
         <p className={styles.kicker}>STATUS UNAVAILABLE</p>
         <h1>This Agent Record cannot be checked right now.</h1>
         <p>
-          The record store is temporarily unavailable. This page makes no claim about whether
+          The Agent Record service is temporarily unavailable. This page makes no claim about whether
           the record exists, is current, expired, or unpublished.
         </p>
         <a href="/adopt" className={styles.primary}>Return to the synthetic challenge →</a>
@@ -58,6 +59,8 @@ export default async function AgentRecordPage({
   params: Promise<{ recordId: string }> | { recordId: string };
 }) {
   const { recordId } = await params;
+  const readiness = await getAgentRecordRuntimeReadiness();
+  if (!readiness.ready) return <StoreUnavailable />;
   let result: Awaited<ReturnType<typeof loadPublicAgentRecord>> = null;
   let unavailable = false;
   try {

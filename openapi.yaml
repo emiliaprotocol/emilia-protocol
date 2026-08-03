@@ -6738,6 +6738,12 @@ paths:
         record, projection, and timestamps even when the service computes and
         signs fresh observation and retention timestamps. Conflicting reuse of
         a record ID, owner credential, Arena source, or refusal digest fails.
+
+        In production this operation is available only when the operator
+        signing seed and key ID, durable Upstash limiter, server-side Supabase
+        configuration, and all Agent Record RPC entry points pass the runtime
+        readiness gate. Public errors never include dependency values or
+        database details.
       security: [{ AdoptionSessionAuth: [] }]
       parameters:
         - $ref: '#/components/parameters/AgentAdoptionSessionId'
@@ -6765,7 +6771,7 @@ paths:
         '401': { description: 'Adoption or trial capability invalid' }
         '409': { description: 'Conflicting reuse of a record ID, owner credential, Arena source, or refusal digest, or an adoption lifecycle conflict' }
         '413': { description: 'Request body exceeds the Agent Record limit' }
-        '503': { description: 'Record signing or storage unavailable' }
+        '503': { description: 'Agent Record runtime readiness, signing, durable rate limiting, or storage unavailable; no dependency detail is disclosed' }
 
   /api/agent-records/{recordId}:
     get:
@@ -6779,6 +6785,10 @@ paths:
         source. Unknown, revoked, expired, and malformed record identifiers
         return the same 404 response. No list, search, feed, rank, score, or
         identity surface exists.
+
+        Production reads fail closed unless the operator signer, durable
+        Upstash limiter, server-side Supabase configuration, and all Agent
+        Record RPC entry points pass the runtime readiness gate.
       security: []
       parameters:
         - name: recordId
@@ -6793,7 +6803,7 @@ paths:
               schema:
                 $ref: '#/components/schemas/AgentRecordPublicResponse'
         '404': { description: 'No active public observation exists' }
-        '503': { description: 'Public record or durable rate-limit store unavailable' }
+        '503': { description: 'Agent Record runtime readiness, public record, or durable rate-limit store unavailable; no dependency detail is disclosed' }
 
   /api/agent-records/{recordId}/revoke:
     post:
@@ -6807,6 +6817,10 @@ paths:
         Record revocation and marks only its internally bound Arena share
         revoked; it does not rewrite either signed projection. An exact retry
         returns the original terminal result.
+
+        Production revocation fails closed unless the operator signer, durable
+        Upstash limiter, server-side Supabase configuration, and all Agent
+        Record RPC entry points pass the runtime readiness gate.
       security: [{ AgentRecordOwnerAuth: [] }]
       parameters:
         - name: recordId
@@ -6817,7 +6831,7 @@ paths:
         '200': { description: 'Record permanently unpublished' }
         '403': { description: 'Exact same-origin browser mutation required' }
         '404': { description: 'Record or owner credential unavailable' }
-        '503': { description: 'Revocation or durable rate-limit store unavailable' }
+        '503': { description: 'Agent Record runtime readiness, revocation, or durable rate-limit store unavailable; no dependency detail is disclosed' }
 components:
   securitySchemes:
     BearerAuth:

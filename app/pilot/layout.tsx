@@ -4,9 +4,9 @@
 import type { Metadata } from 'next';
 
 export const metadata: Metadata = {
-  title: 'Request a Managed Gate Pilot — One Workflow, 60 Days — EMILIA Protocol',
+  title: 'Request a Protected-Workflow Pilot — One Workflow, 90 Days — EMILIA Protocol',
   description:
-    'Scope one consequential workflow for a fixed 60-day EMILIA Signal diagnostic: synthetic first, then a governed read-only export, source-linked findings, and a Gate implementation decision.',
+    'Scope one protected workflow for one fixed 90-day, $25K pilot: synthetic and read-only validation first, then production only through a buyer-approved Gate boundary.',
   alternates: { canonical: '/pilot' },
 };
 

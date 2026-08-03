@@ -3,6 +3,7 @@ import type { NextRequest } from 'next/server';
 
 import { adoptionError, adoptionJson } from '@/lib/agent-adoption/http';
 import { createAgentRecord, AgentRecordServiceError } from '@/lib/agent-record/service';
+import { getAgentRecordRuntimeReadiness } from '@/lib/agent-record/runtime-readiness';
 import { epProblem } from '@/lib/errors';
 import { readLimitedJson } from '@/lib/http/body-limit';
 import { authorizeAgentAdoptionRequest } from '../../../session-cookie';
@@ -15,6 +16,10 @@ export async function POST(
   context: { params: Promise<{ sessionId: string }> | { sessionId: string } },
 ) {
   try {
+    const readiness = await getAgentRecordRuntimeReadiness();
+    if (!readiness.ready) {
+      return epProblem(503, 'agent_record_unavailable', 'Agent Record is temporarily unavailable.');
+    }
     const { sessionId } = await context.params;
     // Authenticate before reading attacker-controlled bytes. Cookie recovery
     // also enforces an exact same-origin mutation.

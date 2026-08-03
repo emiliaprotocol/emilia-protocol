@@ -7,6 +7,7 @@ import YAML from 'yaml';
 
 const ROOT = resolve(import.meta.dirname, '..');
 const docs = readFileSync(resolve(ROOT, 'docs/AGENT-RECORD.md'), 'utf8');
+const deploymentDocs = readFileSync(resolve(ROOT, 'docs/operations/DEPLOYMENT.md'), 'utf8');
 const openApiSource = readFileSync(resolve(ROOT, 'openapi.yaml'), 'utf8');
 const openApiDocument = YAML.parseDocument(openApiSource, { uniqueKeys: true });
 const openApi = openApiDocument.toJS();
@@ -86,5 +87,47 @@ describe('Agent Record documentation and OpenAPI lifecycle contract', () => {
       .toEqual(['artifact_digest', 'profile']);
     expect(JSON.stringify(observation)).not.toMatch(/arena_share_id|arena_share_/i);
     expect(JSON.stringify(publicResponse)).not.toMatch(/arena_share_id|arena_share_/i);
+  });
+
+  it('documents the secret-free fail-closed production readiness boundary', () => {
+    const runtimeDocs = markdownSection('Runtime readiness', 'Access model');
+    const create = openApi.paths['/api/adopt/sessions/{sessionId}/records'].post;
+    const read = openApi.paths['/api/agent-records/{recordId}'].get;
+    const revoke = openApi.paths['/api/agent-records/{recordId}/revoke'].post;
+
+    for (const dependency of [
+      'EP_COMMIT_SIGNING_KEY',
+      'UPSTASH_REDIS_REST_URL',
+      'SUPABASE_SERVICE_ROLE_KEY',
+      'create_agent_record',
+      'read_agent_record_public',
+      'revoke_agent_record',
+    ]) expect(runtimeDocs).toContain(dependency);
+    expect(runtimeDocs).toContain('generic `503 agent_record_unavailable`');
+    for (const operation of [create, read, revoke]) {
+      expect(operation.description.replace(/\s+/g, ' ')).toContain('runtime readiness gate');
+      expect(operation.responses['503'].description).toContain('no dependency detail is disclosed');
+    }
+  });
+
+  it('deploys the forward-compatible database contract before the Vercel application', () => {
+    const migrationIndex = deploymentDocs.indexOf(
+      'Apply the forward-compatible Supabase migration first.',
+    );
+    const verificationIndex = deploymentDocs.indexOf(
+      'Verify the live database contract before application promotion',
+    );
+    const applicationIndex = deploymentDocs.indexOf(
+      'promote or merge the Vercel application',
+    );
+
+    expect(migrationIndex).toBeGreaterThanOrEqual(0);
+    expect(verificationIndex).toBeGreaterThan(migrationIndex);
+    expect(applicationIndex).toBeGreaterThan(verificationIndex);
+    expect(deploymentDocs).toContain(
+      'Application rollback does not roll back the Supabase schema.',
+    );
+    expect(deploymentDocs).toContain('Do not invent or apply an Agent Record rollback migration.');
+    expect(deploymentDocs).not.toContain('apply the corresponding rollback migration');
   });
 });

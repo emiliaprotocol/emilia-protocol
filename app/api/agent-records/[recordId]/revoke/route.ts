@@ -2,6 +2,7 @@
 import { NextResponse } from 'next/server';
 
 import { AgentRecordServiceError, revokeAgentRecord } from '@/lib/agent-record/service';
+import { getAgentRecordRuntimeReadiness } from '@/lib/agent-record/runtime-readiness';
 import { epProblem } from '@/lib/errors';
 import { logger } from '@/lib/logger.js';
 
@@ -40,6 +41,12 @@ export async function POST(
   if (!OWNER_TOKEN.test(ownerToken)) return notFound();
 
   try {
+    const readiness = await getAgentRecordRuntimeReadiness();
+    if (!readiness.ready) {
+      const response = epProblem(503, 'agent_record_unavailable', 'Agent Record is temporarily unavailable.');
+      for (const [key, value] of Object.entries(NO_STORE_HEADERS)) response.headers.set(key, value);
+      return response;
+    }
     const { recordId } = await context.params;
     const result = await revokeAgentRecord({ recordId, ownerToken });
     return NextResponse.json(result, { headers: NO_STORE_HEADERS });

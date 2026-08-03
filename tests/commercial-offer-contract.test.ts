@@ -11,6 +11,11 @@ const pilot = readFileSync(resolve(ROOT, 'app/pilot/page.tsx'), 'utf8');
 const pilotMetadata = readFileSync(resolve(ROOT, 'app/pilot/layout.tsx'), 'utf8');
 const intake = readFileSync(resolve(ROOT, 'app/api/pilot/request/route.ts'), 'utf8');
 const navigation = readFileSync(resolve(ROOT, 'components/SiteNav.tsx'), 'utf8');
+const govGuard = readFileSync(resolve(ROOT, 'app/govguard/page.tsx'), 'utf8');
+const programIntegrity = readFileSync(
+  resolve(ROOT, 'app/health/program-integrity/_components/ProgramIntegrityGate.tsx'),
+  'utf8',
+);
 
 describe('commercial offer contract', () => {
   it('has one canonical protected-workflow pilot and a coherent Gate expansion ladder', () => {
@@ -40,6 +45,19 @@ describe('commercial offer contract', () => {
     expect(pilotMetadata).not.toContain('Four Weeks');
     expect(pilotMetadata).not.toContain('Free');
     expect(navigation).not.toContain('href="/partners" className="ep-cta-secondary"');
+    const conversionSurfaces = `${pilotMetadata}\n${govGuard}\n${programIntegrity}`;
+    expect(conversionSurfaces).not.toMatch(/60[- ]day|60 days/i);
+    expect(conversionSurfaces).toContain('90-day protected-workflow pilot');
+    expect(conversionSurfaces).toContain('$25K');
+    expect(programIntegrity).toContain('href="/pilot?v=health"');
+  });
+
+  it('accepts and returns to every server-supported public record id', () => {
+    expect(pilot).toContain('(?:arena_share|agent_share|agent_record)_[0-9a-f]{40}');
+    expect(pilot).toContain('arena_share_…, agent_share_…, or agent_record_…');
+    expect(pilot).toContain("`/arena/r/${encoded}`");
+    expect(pilot).toContain("`/adopt/r/${encoded}`");
+    expect(pilot).toContain("`/agent-record/r/${encoded}`");
   });
 
   it('prices production by protected workflow rather than seats or API calls', () => {
