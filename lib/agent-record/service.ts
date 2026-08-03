@@ -2,11 +2,6 @@
 import crypto from 'node:crypto';
 import type { SupabaseClient } from '@supabase/supabase-js';
 
-import {
-  AgentAdoptionTrialError,
-  prepareBoundAgentTrialRefusal,
-  type AgentAdoptionAuthorization,
-} from '@/lib/agent-adoption/trial';
 import { getServiceClient } from '@/lib/supabase';
 import {
   AGENT_RECORD_RETENTION_MS,
@@ -14,16 +9,22 @@ import {
   signAgentRecordObservation,
   verifyAgentRecordObservation,
 } from './core';
+import {
+  AgentRecordSourceError,
+  prepareAgentRecordRefusalSource,
+  type AgentRecordAuthorization,
+} from './source';
 
 const RECORD_ID = /^agent_record_[0-9a-f]{40}$/;
 const OWNER_TOKEN = /^ear1_[0-9a-f]{64}$/;
 const REVOCATION_NONCE = /^earv1_[0-9a-f]{64}$/;
 const ADOPTION_ID = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/;
 const DIGEST = /^sha256:[0-9a-f]{64}$/;
-const ARENA_SESSION_ID = /^arena_session_[0-9a-f]{32}$/;
-const ARENA_TOKEN_HASH = /^[0-9a-f]{64}$/;
+const SOURCE_SESSION_ID = /^arena_session_[0-9a-f]{32}$/;
+const SOURCE_TOKEN_HASH = /^[0-9a-f]{64}$/;
 const ATTEMPT_ID = /^arena_attempt_[0-9a-f]{32}$/;
 const TRIAL_TOKEN = /^epenc:v1:[A-Za-z0-9_-]{40,8192}$/;
+const CREATION_CAPABILITY = /^earc1_[0-9a-f]{64}$/;
 
 type RpcClient = Pick<SupabaseClient, 'rpc'>;
 type StoreError = Readonly<{ code?: string; message?: string; details?: string }>;
@@ -62,11 +63,39 @@ function canonicalInstant(value: unknown): value is string {
   return Number.isFinite(parsed) && new Date(parsed).toISOString() === value;
 }
 
+export function agentRecordIdForOwnerToken(ownerToken: string): string {
+  const commitment = crypto.createHash('sha256')
+    .update(`emilia-agent-record-owner-token-v1\0${ownerToken}`, 'utf8')
+    .digest('hex');
+  return `agent_record_${commitment.slice(0, 40)}`;
+}
+
+export function agentRecordOwnerPairMatches(recordId: unknown, ownerToken: unknown): boolean {
+  return typeof recordId === 'string'
+    && RECORD_ID.test(recordId)
+    && typeof ownerToken === 'string'
+    && OWNER_TOKEN.test(ownerToken)
+    && recordId === agentRecordIdForOwnerToken(ownerToken);
+}
+
 function storeStatus(error: StoreError | null | undefined): number {
+  if (error?.code === '42501') return 503;
   if (error?.code === '22023') return 400;
   if (error?.code === 'P0002') return 404;
   if (error?.code === '23505' || error?.code === '55000') return 409;
   return 503;
+}
+
+function creationCapability(): string {
+  const capability = process.env.EP_AGENT_RECORD_CREATION_CAPABILITY ?? '';
+  if (!CREATION_CAPABILITY.test(capability)) {
+    fail(
+      503,
+      'agent_record_creation_capability_unavailable',
+      'Agent Record creation is unavailable.',
+    );
+  }
+  return capability;
 }
 
 async function callRpc(
@@ -128,7 +157,7 @@ function creationInput(value: unknown): {
 
 function refusalBindings(
   value: unknown,
-  authorization: AgentAdoptionAuthorization,
+  authorization: AgentRecordAuthorization,
   attemptId: string,
 ) {
   if (!isRecord(value)
@@ -142,33 +171,28 @@ function refusalBindings(
       || !ADOPTION_ID.test(value.adoption_id ?? '')
       || !ADOPTION_ID.test(value.bond_id ?? '')
       || !DIGEST.test(value.bond_digest ?? '')
-      || !ARENA_SESSION_ID.test(value.arena_session_id ?? '')
-      || !ARENA_TOKEN_HASH.test(value.arena_token_hash ?? '')
+      || !SOURCE_SESSION_ID.test(value.source_session_id ?? '')
+      || !SOURCE_TOKEN_HASH.test(value.source_token_hash ?? '')
+      || value.source_attempt_id !== attemptId
+      || !ATTEMPT_ID.test(value.source_attempt_id ?? '')
+      || !DIGEST.test(value.source_commitment ?? '')
+      || !DIGEST.test(value.source_artifact_digest ?? '')
       || !DIGEST.test(value.action_digest ?? '')
       || !DIGEST.test(value.refusal_digest ?? '')
+      || value.source_artifact_digest !== value.refusal_digest
       || !canonicalInstant(value.refused_at)
-      || !isRecord(value.public_refusal_projection)) {
-    fail(503, 'agent_record_refusal_invalid', 'The bound Arena refusal is invalid.');
-  }
-  const projection = value.public_refusal_projection;
-  if (projection.profile !== 'EP-ARENA-PUBLIC-REFUSAL-v1'
-      || !isRecord(projection.attempt)
-      || projection.attempt.attempt_id !== attemptId
-      || projection.attempt.decision !== 'refuse'
-      || projection.attempt.action_digest !== value.action_digest
-      || projection.attempt.created_at !== value.refused_at
-      || projection.refusal_digest !== value.refusal_digest
-      || !isRecord(projection.refusal_artifact)
-      || projection.refusal_artifact['@version'] !== 'EP-ACTION-REFUSAL-STATEMENT-v1') {
-    fail(503, 'agent_record_refusal_invalid', 'The bound Arena refusal is inconsistent.');
+  ) {
+    fail(503, 'agent_record_refusal_invalid', 'The bound signed refusal is invalid.');
   }
   return {
     adoptionId: value.adoption_id as string,
     bondId: value.bond_id as string,
     bondDigest: value.bond_digest as string,
-    arenaSessionId: value.arena_session_id as string,
-    arenaTokenHash: value.arena_token_hash as string,
-    sourceArtifactDigest: value.refusal_digest as string,
+    sourceSessionId: value.source_session_id as string,
+    sourceTokenHash: value.source_token_hash as string,
+    sourceAttemptId: value.source_attempt_id as string,
+    sourceCommitment: value.source_commitment as string,
+    sourceArtifactDigest: value.source_artifact_digest as string,
     actionDigest: value.action_digest as string,
     refusalDigest: value.refusal_digest as string,
     refusedAt: value.refused_at as string,
@@ -181,18 +205,22 @@ export async function createAgentRecord({
   client = getServiceClient(),
   now = Date.now(),
 }: {
-  authorization: AgentAdoptionAuthorization;
+  authorization: AgentRecordAuthorization;
   input: unknown;
   client?: SupabaseClient;
   now?: number;
 }) {
   const parsed = creationInput(input);
+  if (!agentRecordOwnerPairMatches(parsed.record_id, parsed.owner_token)) {
+    fail(400, 'agent_record_creation_invalid', 'Agent Record creation input is invalid.');
+  }
   if (!Number.isFinite(now)) {
     fail(400, 'agent_record_creation_invalid', 'Agent Record observation time is invalid.');
   }
+  const capability = creationCapability();
   let prepared: unknown;
   try {
-    prepared = await prepareBoundAgentTrialRefusal({
+    prepared = await prepareAgentRecordRefusalSource({
       authorization,
       input: {
         trial_token: parsed.trial_token,
@@ -202,7 +230,7 @@ export async function createAgentRecord({
       now,
     });
   } catch (cause) {
-    if (cause instanceof AgentAdoptionTrialError) {
+    if (cause instanceof AgentRecordSourceError) {
       fail(cause.status, cause.code, cause.message, cause);
     }
     throw cause;
@@ -229,20 +257,25 @@ export async function createAgentRecord({
       if (cause.code.startsWith('agent_record_operator_')) {
         fail(503, cause.code, cause.message, cause);
       }
-      fail(503, 'agent_record_refusal_invalid', 'The bound Arena refusal is invalid.', cause);
+      fail(503, 'agent_record_refusal_invalid', 'The bound signed refusal is invalid.', cause);
     }
     throw cause;
   }
-  const stored = await callRpc(client, 'create_agent_record', {
+  const preflightVerification = verifyAgentRecordObservation(publicProjection, now);
+  if (!preflightVerification.verified || !preflightVerification.within_retention) {
+    fail(503, 'agent_record_operator_signature_invalid', 'The operator signature is invalid.');
+  }
+  const stored = await callRpc(client, 'create_agent_record_with_capability', {
     p_record_id: recordId,
     p_owner_token: parsed.owner_token,
     p_adoption_id: source.adoptionId,
     p_adoption_session_token: authorization.sessionToken,
     p_bond_id: source.bondId,
     p_bond_digest: source.bondDigest,
-    p_arena_session_id: source.arenaSessionId,
-    p_arena_token_hash: source.arenaTokenHash,
-    p_arena_attempt_id: parsed.attempt_id,
+    p_source_session_id: source.sourceSessionId,
+    p_source_token_hash: source.sourceTokenHash,
+    p_source_attempt_id: source.sourceAttemptId,
+    p_source_commitment: source.sourceCommitment,
     p_source_artifact_digest: source.sourceArtifactDigest,
     p_action_digest: source.actionDigest,
     p_refusal_digest: source.refusalDigest,
@@ -250,6 +283,7 @@ export async function createAgentRecord({
     p_observed_at: observedAt,
     p_retention_expires_at: retentionExpiresAt,
     p_public_projection: publicProjection,
+    p_creation_capability: capability,
   });
   if (!exactKeys(stored, [
     'record_id',
@@ -293,7 +327,7 @@ export async function revokeAgentRecord({
   ownerToken: string;
   client?: RpcClient;
 }) {
-  if (!RECORD_ID.test(recordId) || !OWNER_TOKEN.test(ownerToken)) {
+  if (!agentRecordOwnerPairMatches(recordId, ownerToken)) {
     fail(400, 'agent_record_owner_credential_invalid', 'Agent Record owner credential is invalid.');
   }
   const revocationNonce = `earv1_${crypto.randomBytes(32).toString('hex')}`;

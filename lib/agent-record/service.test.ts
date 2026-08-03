@@ -3,25 +3,26 @@ import crypto from 'node:crypto';
 
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
-vi.mock('@/lib/agent-adoption/trial', () => ({
-  AgentAdoptionTrialError: class AgentAdoptionTrialError extends Error {
+vi.mock('./source', () => ({
+  AgentRecordSourceError: class AgentRecordSourceError extends Error {
     constructor(public status: number, public code: string, message = code) {
       super(message);
     }
   },
-  prepareBoundAgentTrialRefusal: vi.fn(),
+  prepareAgentRecordRefusalSource: vi.fn(),
 }));
 
 import {
-  AgentAdoptionTrialError,
-  prepareBoundAgentTrialRefusal,
-} from '@/lib/agent-adoption/trial';
+  AgentRecordSourceError,
+  prepareAgentRecordRefusalSource,
+} from './source';
 import {
   AGENT_RECORD_RETENTION_MS,
   signAgentRecordObservation,
 } from './core';
 import {
   AgentRecordServiceError,
+  agentRecordIdForOwnerToken,
   createAgentRecord,
   loadPublicAgentRecord,
   revokeAgentRecord,
@@ -34,11 +35,17 @@ const ACTION_DIGEST = `sha256:${'c'.repeat(64)}`;
 const REFUSAL_DIGEST = `sha256:${'d'.repeat(64)}`;
 const ARENA_SESSION_ID = `arena_session_${'e'.repeat(32)}`;
 const ARENA_TOKEN_HASH = 'e'.repeat(64);
+const SOURCE_COMMITMENT = `sha256:${'e'.repeat(64)}`;
 const ATTEMPT_ID = `arena_attempt_${'f'.repeat(32)}`;
 const TRIAL_TOKEN = `epenc:v1:${'A'.repeat(64)}`;
 const SESSION_TOKEN = `eaa1_${'1'.repeat(64)}`;
-const RECORD_ID = `agent_record_${'2'.repeat(40)}`;
 const OWNER_TOKEN = `ear1_${'3'.repeat(64)}`;
+const CREATION_CAPABILITY = `earc1_${'4'.repeat(64)}`;
+const OWNER_RECORD_DOMAIN = 'emilia-agent-record-owner-token-v1\0';
+const RECORD_ID = `agent_record_${crypto.createHash('sha256')
+  .update(OWNER_RECORD_DOMAIN + OWNER_TOKEN, 'utf8')
+  .digest('hex')
+  .slice(0, 40)}`;
 const NOW = Date.parse('2026-08-02T20:01:00.000Z');
 const REFUSED_AT = '2026-08-02T20:00:00.000Z';
 const RETENTION_EXPIRES_AT = new Date(NOW + AGENT_RECORD_RETENTION_MS).toISOString();
@@ -66,30 +73,19 @@ const refusalSource = () => ({
   adoption_id: ADOPTION_ID,
   bond_id: BOND_ID,
   bond_digest: BOND_DIGEST,
-  agent_label: 'Atlas',
-  arena_session_id: ARENA_SESSION_ID,
-  arena_token_hash: ARENA_TOKEN_HASH,
+  source_session_id: ARENA_SESSION_ID,
+  source_token_hash: ARENA_TOKEN_HASH,
+  source_attempt_id: ATTEMPT_ID,
+  source_commitment: SOURCE_COMMITMENT,
+  source_artifact_digest: REFUSAL_DIGEST,
   action_digest: ACTION_DIGEST,
   refusal_digest: REFUSAL_DIGEST,
   refused_at: REFUSED_AT,
-  public_refusal_projection: {
-    profile: 'EP-ARENA-PUBLIC-REFUSAL-v1',
-    challenge_id: 'emilia.arena.allowance',
-    challenge_version: 1,
-    attempt: {
-      attempt_id: ATTEMPT_ID,
-      decision: 'refuse',
-      action_digest: ACTION_DIGEST,
-      created_at: REFUSED_AT,
-    },
-    refusal_artifact: { '@version': 'EP-ACTION-REFUSAL-STATEMENT-v1' },
-    refusal_digest: REFUSAL_DIGEST,
-  },
 });
 
 function createClient() {
   const rpc = vi.fn(async (name: string, args: Record<string, any>) => {
-    if (name !== 'create_agent_record') throw new Error(`unexpected RPC ${name}`);
+    if (name !== 'create_agent_record_with_capability') throw new Error(`unexpected RPC ${name}`);
     return {
       data: {
         record_id: args.p_record_id,
@@ -123,11 +119,18 @@ describe('Agent Record service', () => {
     vi.stubEnv('NODE_ENV', 'test');
     vi.stubEnv('EP_COMMIT_SIGNING_KEY', crypto.randomBytes(32).toString('base64'));
     vi.stubEnv('EP_COMMIT_SIGNING_KEYS', '');
-    vi.mocked(prepareBoundAgentTrialRefusal).mockResolvedValue(refusalSource() as any);
+    vi.stubEnv('EP_AGENT_RECORD_CREATION_CAPABILITY', CREATION_CAPABILITY);
+    vi.mocked(prepareAgentRecordRefusalSource).mockResolvedValue(refusalSource() as any);
   });
 
   afterEach(() => {
     vi.unstubAllEnvs();
+  });
+
+  it('implements the exact domain-separated browser record-id derivation', () => {
+    expect(agentRecordIdForOwnerToken(OWNER_TOKEN)).toBe(
+      'agent_record_57c9d565c4e6067446854eb778b970a039a9ac74',
+    );
   });
 
   it('creates from the exact bound refusal without returning the owner credential', async () => {
@@ -140,7 +143,7 @@ describe('Agent Record service', () => {
       now: NOW,
     });
 
-    expect(prepareBoundAgentTrialRefusal).toHaveBeenCalledWith({
+    expect(prepareAgentRecordRefusalSource).toHaveBeenCalledWith({
       authorization,
       input: { trial_token: TRIAL_TOKEN, attempt_id: ATTEMPT_ID },
       client,
@@ -160,20 +163,23 @@ describe('Agent Record service', () => {
       p_adoption_session_token: SESSION_TOKEN,
       p_bond_id: BOND_ID,
       p_bond_digest: BOND_DIGEST,
-      p_arena_session_id: ARENA_SESSION_ID,
-      p_arena_token_hash: ARENA_TOKEN_HASH,
-      p_arena_attempt_id: ATTEMPT_ID,
+      p_source_session_id: ARENA_SESSION_ID,
+      p_source_token_hash: ARENA_TOKEN_HASH,
+      p_source_attempt_id: ATTEMPT_ID,
+      p_source_commitment: SOURCE_COMMITMENT,
       p_source_artifact_digest: REFUSAL_DIGEST,
       p_action_digest: ACTION_DIGEST,
       p_refusal_digest: REFUSAL_DIGEST,
       p_refused_at: REFUSED_AT,
       p_observed_at: new Date(NOW).toISOString(),
       p_retention_expires_at: RETENTION_EXPIRES_AT,
+      p_creation_capability: CREATION_CAPABILITY,
     });
     expect(JSON.stringify(args.p_public_projection)).not.toMatch(
       /adoption_id|session_id|owner_token|credential_id|candidate_url|source_url|arena_share_id|arena_share_|\/arena\/|\/api\/arena\/refusals|webauthn|prompt|ip_address|raw_action|action_parameters|agent_label/i,
     );
     expect(args).not.toHaveProperty('p_arena_share_id');
+    expect(args).not.toHaveProperty('p_public_refusal_projection');
     expect(args.p_public_projection.record.source).toEqual({
       profile: 'EP-ACTION-REFUSAL-STATEMENT-v1',
       artifact_digest: REFUSAL_DIGEST,
@@ -193,7 +199,20 @@ describe('Agent Record service', () => {
       client: client as any,
       now: NOW,
     })).rejects.toMatchObject({ status: 400, code: 'agent_record_creation_invalid' });
-    expect(prepareBoundAgentTrialRefusal).not.toHaveBeenCalled();
+    expect(prepareAgentRecordRefusalSource).not.toHaveBeenCalled();
+    expect(client.rpc).not.toHaveBeenCalled();
+  });
+
+  it('rejects a caller record id that is not derived from the owner token', async () => {
+    const client = createClient();
+
+    await expect(createAgentRecord({
+      authorization,
+      input: { ...CREATION_INPUT, record_id: `agent_record_${'0'.repeat(40)}` },
+      client: client as any,
+      now: NOW,
+    })).rejects.toMatchObject({ status: 400, code: 'agent_record_creation_invalid' });
+    expect(prepareAgentRecordRefusalSource).not.toHaveBeenCalled();
     expect(client.rpc).not.toHaveBeenCalled();
   });
 
@@ -206,13 +225,13 @@ describe('Agent Record service', () => {
       client: client as any,
       now: Number.NaN,
     })).rejects.toMatchObject({ status: 400, code: 'agent_record_creation_invalid' });
-    expect(prepareBoundAgentTrialRefusal).not.toHaveBeenCalled();
+    expect(prepareAgentRecordRefusalSource).not.toHaveBeenCalled();
     expect(client.rpc).not.toHaveBeenCalled();
   });
 
   it('preserves a typed trial refusal and never reaches persistence', async () => {
-    vi.mocked(prepareBoundAgentTrialRefusal).mockRejectedValue(
-      new AgentAdoptionTrialError(401, 'agent_adoption_trial_invalid', 'trial denied'),
+    vi.mocked(prepareAgentRecordRefusalSource).mockRejectedValue(
+      new AgentRecordSourceError(401, 'agent_adoption_trial_invalid', 'trial denied'),
     );
     const client = createClient();
 
@@ -227,7 +246,7 @@ describe('Agent Record service', () => {
 
   it('does not misclassify an unexpected trial preparation failure', async () => {
     const failure = new Error('unexpected preparation failure');
-    vi.mocked(prepareBoundAgentTrialRefusal).mockRejectedValue(failure);
+    vi.mocked(prepareAgentRecordRefusalSource).mockRejectedValue(failure);
 
     await expect(createAgentRecord({
       authorization,
@@ -242,18 +261,18 @@ describe('Agent Record service', () => {
     ['cross-bond id', (source: any) => { source.bond_id = 'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb'; }],
     ['cross-bond digest', (source: any) => { source.bond_digest = `sha256:${'1'.repeat(64)}`; }],
     ['source digest substitution', (source: any) => {
-      source.public_refusal_projection.refusal_digest = `sha256:${'2'.repeat(64)}`;
+      source.source_artifact_digest = `sha256:${'2'.repeat(64)}`;
     }],
-    ['action substitution', (source: any) => {
-      source.public_refusal_projection.attempt.action_digest = `sha256:${'3'.repeat(64)}`;
+    ['source commitment substitution', (source: any) => {
+      source.source_commitment = 'not-a-commitment';
     }],
     ['attempt substitution', (source: any) => {
-      source.public_refusal_projection.attempt.attempt_id = `arena_attempt_${'4'.repeat(32)}`;
+      source.source_attempt_id = `arena_attempt_${'4'.repeat(32)}`;
     }],
   ])('refuses %s before persistence', async (_name, mutate) => {
     const source: any = refusalSource();
     mutate(source);
-    vi.mocked(prepareBoundAgentTrialRefusal).mockResolvedValue(source);
+    vi.mocked(prepareAgentRecordRefusalSource).mockResolvedValue(source);
     const client = createClient();
 
     await expect(createAgentRecord({
@@ -265,11 +284,10 @@ describe('Agent Record service', () => {
     expect(client.rpc).not.toHaveBeenCalled();
   });
 
-  it('rejects an unsigned permit event before persistence', async () => {
+  it('rejects a refusal source without its artifact digest before persistence', async () => {
     const source: any = refusalSource();
-    source.public_refusal_projection.attempt.decision = 'permit';
-    delete source.public_refusal_projection.refusal_artifact;
-    vi.mocked(prepareBoundAgentTrialRefusal).mockResolvedValue(source);
+    delete source.source_artifact_digest;
+    vi.mocked(prepareAgentRecordRefusalSource).mockResolvedValue(source);
     const client = createClient();
 
     await expect(createAgentRecord({
@@ -281,7 +299,7 @@ describe('Agent Record service', () => {
     expect(client.rpc).not.toHaveBeenCalled();
   });
 
-  it('fails closed before atomic publication when the production operator key is absent', async () => {
+  it('fails closed before atomic creation when the production operator key is absent', async () => {
     vi.stubEnv('NODE_ENV', 'production');
     vi.stubEnv('EP_COMMIT_SIGNING_KEY', '');
     const client = createClient();
@@ -298,7 +316,27 @@ describe('Agent Record service', () => {
     expect(client.rpc).not.toHaveBeenCalled();
   });
 
-  it('uses one atomic mutation RPC and exposes no pre-publication cleanup path on failure', async () => {
+  it.each([undefined, '', `earc1_${'A'.repeat(64)}`, `earc1_${'4'.repeat(63)}`])(
+    'fails closed before source access when the creation capability is %s',
+    async (capability) => {
+      vi.stubEnv('EP_AGENT_RECORD_CREATION_CAPABILITY', capability ?? '');
+      const client = createClient();
+
+      await expect(createAgentRecord({
+        authorization,
+        input: CREATION_INPUT,
+        client: client as any,
+        now: NOW,
+      })).rejects.toMatchObject({
+        status: 503,
+        code: 'agent_record_creation_capability_unavailable',
+      });
+      expect(prepareAgentRecordRefusalSource).not.toHaveBeenCalled();
+      expect(client.rpc).not.toHaveBeenCalled();
+    },
+  );
+
+  it('uses one atomic mutation RPC and exposes no secondary publication path on failure', async () => {
     const client = {
       rpc: vi.fn().mockResolvedValue({
         data: null,
@@ -315,20 +353,20 @@ describe('Agent Record service', () => {
       status: 503,
       code: 'agent_record_store_unavailable',
     });
-    expect(prepareBoundAgentTrialRefusal).toHaveBeenCalledOnce();
+    expect(prepareAgentRecordRefusalSource).toHaveBeenCalledOnce();
     expect(client.rpc).toHaveBeenCalledTimes(1);
-    expect(client.rpc).toHaveBeenCalledWith('create_agent_record', expect.objectContaining({
-      p_arena_session_id: ARENA_SESSION_ID,
-      p_arena_token_hash: ARENA_TOKEN_HASH,
-      p_arena_attempt_id: ATTEMPT_ID,
+    expect(client.rpc).toHaveBeenCalledWith('create_agent_record_with_capability', expect.objectContaining({
+      p_source_session_id: ARENA_SESSION_ID,
+      p_source_token_hash: ARENA_TOKEN_HASH,
+      p_source_attempt_id: ATTEMPT_ID,
+      p_source_commitment: SOURCE_COMMITMENT,
     }));
   });
 
   it('maps a refusal timestamp after observation to an invalid bound refusal', async () => {
     const source: any = refusalSource();
     source.refused_at = '2026-08-02T20:02:00.000Z';
-    source.public_refusal_projection.attempt.created_at = source.refused_at;
-    vi.mocked(prepareBoundAgentTrialRefusal).mockResolvedValue(source);
+    vi.mocked(prepareAgentRecordRefusalSource).mockResolvedValue(source);
     const client = createClient();
 
     await expect(createAgentRecord({
@@ -354,6 +392,22 @@ describe('Agent Record service', () => {
       client: client as any,
       now: NOW,
     })).rejects.toMatchObject({ status: 409, code: 'agent_record_conflict' });
+  });
+
+  it('maps database capability denial to generic storage unavailability', async () => {
+    const client = {
+      rpc: vi.fn().mockResolvedValue({
+        data: null,
+        error: { code: '42501', message: 'capability mismatch' },
+      }),
+    };
+
+    await expect(createAgentRecord({
+      authorization,
+      input: CREATION_INPUT,
+      client: client as any,
+      now: NOW,
+    })).rejects.toMatchObject({ status: 503, code: 'agent_record_store_unavailable' });
   });
 
   it.each([
@@ -416,6 +470,7 @@ describe('Agent Record service', () => {
   it.each([
     ['invalid record id', 'not-a-record', OWNER_TOKEN],
     ['invalid owner token', RECORD_ID, 'ear1_not-hex'],
+    ['mismatched record and owner pair', `agent_record_${'0'.repeat(40)}`, OWNER_TOKEN],
   ])('rejects an %s before revocation storage', async (_name, recordId, ownerToken) => {
     const client = { rpc: vi.fn() };
 

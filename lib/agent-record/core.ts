@@ -7,7 +7,7 @@ import { getAgentRecordSigningConfig, isAgentRecordSigningKeyId } from '@/lib/en
 export const AGENT_RECORD_VERSION = 'EP-AGENT-RECORD-OBSERVATION-v1' as const;
 export const AGENT_RECORD_RETENTION_MS = 365 * 24 * 60 * 60 * 1_000;
 export const AGENT_RECORD_CLAIM_BOUNDARY =
-  'one_operator_observation_of_one_verified_signed_arena_refusal_only' as const;
+  'one_operator_observation_of_one_verified_signed_refusal_artifact_only' as const;
 
 const SIGNING_DOMAIN = `${AGENT_RECORD_VERSION}\0`;
 const RECORD_ID = /^agent_record_[0-9a-f]{40}$/;

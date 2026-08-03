@@ -133,7 +133,7 @@ describe('Agent Record observation core', () => {
     );
     const observation: any = structuredClone(signAgentRecordObservation(input()));
     expect(observation.signature.value).toBe(
-      '_JTL-izkuPd4f6j_CsrdqzTIZHzb1lPLZWrzRE8ua4SQ0hNDP6FD9WTjmKcskUWpfwHkjrgu3fxVrc-bVSdeBQ',
+      'Bq2WuSPSoTyb9PMEiFtrHigjGBMo4GNIxSukXZ6nJGpcboWWBswsZ2RCt2rgrkuqgxGYRMHzu6Ya2T03l_JOCQ',
     );
 
     const canonical = observation.signature.value;

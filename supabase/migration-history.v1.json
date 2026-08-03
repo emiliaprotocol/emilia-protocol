@@ -395,6 +395,6 @@
     "20260802231000_restore_webauthn_directory_anchor.sql": "90bb596edff8f495de541ab5df582fb45023abff077fc527a48eea4e635afd76",
     "20260802232000_scim_authority_atomic.sql": "334619a03c3a089d3ae038ab9b20dd4c3dab28a9af0eff0b12ac3b2bdfd38e92",
     "20260803010000_capability_action_digest_fence.sql": "cb3ace0456137a5c0286ddd84c4552c402181193827aedb03d94e6fab0eeee5e",
-    "20260803020000_agent_record_v1.sql": "90a39baa39393bf8d352e90cb488632f1747c8bc9c10e317619a02a2c612a5fb"
+    "20260803020000_agent_record_v1.sql": "43317e1ff1454783945789fcd670ed64c389af08d4b20f86237c9ba159cdfb22"
   }
 }

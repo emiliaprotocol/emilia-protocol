@@ -1,6 +1,6 @@
 -- SPDX-License-Identifier: Apache-2.0
 -- Agent Record v1: one privacy-minimized operator observation of one verified,
--- signed Arena refusal reached through the exact Agent Adoption trial binding.
+-- signed refusal reached through the exact Agent Adoption trial binding.
 --
 -- This is not identity, ownership, competence, safety, rank, score,
 -- certification, marketplace state, or production authority. The only public
@@ -51,27 +51,21 @@ CREATE SCHEMA agent_record_private
   AUTHORIZATION agent_record_store_owner;
 REVOKE ALL ON SCHEMA agent_record_private
   FROM PUBLIC, anon, authenticated, service_role;
-CREATE SCHEMA agent_record_control_private;
-REVOKE ALL ON SCHEMA agent_record_control_private
-  FROM PUBLIC, anon, authenticated, service_role;
-GRANT USAGE ON SCHEMA agent_record_control_private
-  TO agent_record_store_owner;
-
 GRANT USAGE ON SCHEMA extensions TO agent_record_store_owner;
 GRANT EXECUTE ON FUNCTION extensions.digest(BYTEA, TEXT)
   TO agent_record_store_owner;
 
--- Creation rechecks the active adoption through its existing bounded RPC and
--- invokes Arena publication inside the same transaction. The read-only source
--- RPC returns only the projection that would be published; it never exposes an
--- Arena token, private key, raw private session, or allowance profile.
+-- Creation rechecks the active adoption through its existing bounded RPC. The
+-- read-only source RPC returns the signed refusal and digest-only bindings
+-- needed for server verification. It never creates a share or returns raw
+-- action parameters, an Arena token, a private key, or an allowance profile.
 GRANT EXECUTE ON FUNCTION public.read_agent_adoption_session(UUID, TEXT)
   TO agent_record_store_owner;
 
-CREATE FUNCTION public.read_agent_record_arena_source(
-  p_arena_token_hash TEXT,
-  p_arena_session_id TEXT,
-  p_arena_attempt_id TEXT
+CREATE FUNCTION public.read_agent_record_refusal_source(
+  p_source_token_hash TEXT,
+  p_source_session_id TEXT,
+  p_source_attempt_id TEXT
 )
 RETURNS JSONB
 LANGUAGE plpgsql
@@ -79,20 +73,20 @@ STABLE
 SECURITY DEFINER
 SET search_path = ''
 SET row_security = 'off'
-AS $agent_record_arena_source$
+AS $agent_record_refusal_source$
 DECLARE
   v_attempt public.arena_attempts%ROWTYPE;
   v_session public.arena_sessions%ROWTYPE;
-  v_projection JSONB;
+  v_source_commitment TEXT;
 BEGIN
-  IF p_arena_token_hash IS NULL
-    OR p_arena_token_hash !~ '^[0-9a-f]{64}$'
-    OR p_arena_session_id IS NULL
-    OR p_arena_session_id !~ '^arena_session_[0-9a-f]{32}$'
-    OR p_arena_attempt_id IS NULL
-    OR p_arena_attempt_id !~ '^arena_attempt_[0-9a-f]{32}$'
+  IF p_source_token_hash IS NULL
+    OR p_source_token_hash !~ '^[0-9a-f]{64}$'
+    OR p_source_session_id IS NULL
+    OR p_source_session_id !~ '^arena_session_[0-9a-f]{32}$'
+    OR p_source_attempt_id IS NULL
+    OR p_source_attempt_id !~ '^arena_attempt_[0-9a-f]{32}$'
   THEN
-    RAISE EXCEPTION 'Agent Record Arena source input is invalid'
+    RAISE EXCEPTION 'Agent Record refusal source input is invalid'
       USING ERRCODE = '22023';
   END IF;
 
@@ -101,11 +95,11 @@ BEGIN
   FROM public.arena_attempts AS attempt
   JOIN public.arena_sessions AS session
     ON session.id = attempt.session_row_id
-  WHERE attempt.attempt_id = p_arena_attempt_id
-    AND session.session_id = p_arena_session_id
-    AND session.token_hash = p_arena_token_hash;
+  WHERE attempt.attempt_id = p_source_attempt_id
+    AND session.session_id = p_source_session_id
+    AND session.token_hash = p_source_token_hash;
   IF NOT FOUND THEN
-    RAISE EXCEPTION 'Agent Record Arena source not found'
+    RAISE EXCEPTION 'Agent Record refusal source not found'
       USING ERRCODE = 'P0002';
   END IF;
 
@@ -119,188 +113,68 @@ BEGIN
     OR v_attempt.evidence_status IS DISTINCT FROM 'complete'
     OR v_attempt.refusal_artifact IS NULL
     OR v_attempt.refusal_digest IS NULL
-  THEN
-    RAISE EXCEPTION 'Agent Record Arena source is not publishable'
-      USING ERRCODE = '55000';
-  END IF;
-
-  v_projection := pg_catalog.jsonb_build_object(
-    'profile', 'EP-ARENA-PUBLIC-REFUSAL-v1',
-    'challenge_id', v_session.challenge_id,
-    'challenge_version', v_session.challenge_version,
-    'attempt', pg_catalog.jsonb_build_object(
-      'attempt_id', v_attempt.attempt_id,
-      'action', v_attempt.action,
-      'caid', v_attempt.caid,
-      'action_digest', v_attempt.action_digest,
-      'decision', v_attempt.decision,
-      'reason', v_attempt.reason,
-      'created_at', pg_catalog.to_char(
+    OR v_attempt.refusal_digest !~ '^sha256:[0-9a-f]{64}$'
+    OR v_attempt.action_digest !~ '^sha256:[0-9a-f]{64}$'
+    OR pg_catalog.jsonb_typeof(v_attempt.refusal_artifact) IS DISTINCT FROM 'object'
+    OR v_attempt.refusal_artifact ->> '@version' IS DISTINCT FROM
+      'EP-ACTION-REFUSAL-STATEMENT-v1'
+    OR v_attempt.refusal_artifact ->> 'refusal_id' IS DISTINCT FROM
+      'refusal:' || v_attempt.attempt_id
+    OR v_attempt.refusal_artifact ->> 'action_digest' IS DISTINCT FROM
+      v_attempt.action_digest
+    OR v_attempt.refusal_artifact ->> 'refused_at' IS DISTINCT FROM
+      pg_catalog.to_char(
         v_attempt.created_at AT TIME ZONE 'UTC',
         'YYYY-MM-DD"T"HH24:MI:SS.MS"Z"'
       )
+    OR v_attempt.refusal_artifact -> 'issuer' ->> 'id' IS DISTINCT FROM
+      v_session.issuer_id
+    OR v_attempt.refusal_artifact -> 'issuer' ->> 'key_id' IS DISTINCT FROM
+      v_session.key_id
+  THEN
+    RAISE EXCEPTION 'Agent Record refusal source is invalid'
+      USING ERRCODE = '55000';
+  END IF;
+
+  v_source_commitment := 'sha256:' || pg_catalog.encode(
+    extensions.digest(
+      pg_catalog.convert_to(
+        'emilia-agent-record-private-refusal-source-v1',
+        'UTF8'
+      )
+      || pg_catalog.decode('00', 'hex')
+      || pg_catalog.convert_to(v_session.session_id, 'UTF8')
+      || pg_catalog.decode('00', 'hex')
+      || pg_catalog.convert_to(v_attempt.attempt_id, 'UTF8')
+      || pg_catalog.decode('00', 'hex')
+      || pg_catalog.convert_to(v_attempt.refusal_digest, 'UTF8'),
+      'sha256'
+    ),
+    'hex'
+  );
+
+  RETURN pg_catalog.jsonb_build_object(
+    'source_commitment', v_source_commitment,
+    'source_artifact_digest', v_attempt.refusal_digest,
+    'action_digest', v_attempt.action_digest,
+    'refusal_digest', v_attempt.refusal_digest,
+    'refused_at', pg_catalog.to_char(
+      v_attempt.created_at AT TIME ZONE 'UTC',
+      'YYYY-MM-DD"T"HH24:MI:SS.MS"Z"'
     ),
     'refusal_artifact', v_attempt.refusal_artifact,
-    'refusal_digest', v_attempt.refusal_digest,
     'issuer', pg_catalog.jsonb_build_object(
       'issuer_id', v_session.issuer_id,
       'key_id', v_session.key_id,
       'public_key', v_session.public_key
-    ),
-    'claim_boundary',
-      'synthetic_challenge_not_identity_competence_certification_money_or_production_authority'
-  );
-
-  RETURN pg_catalog.jsonb_build_object(
-    'arena_session_id', v_session.session_id,
-    'attempt_id', v_attempt.attempt_id,
-    'public_refusal_projection', v_projection
+    )
   );
 END
-$agent_record_arena_source$;
-REVOKE ALL ON FUNCTION public.read_agent_record_arena_source(TEXT, TEXT, TEXT)
+$agent_record_refusal_source$;
+REVOKE ALL ON FUNCTION public.read_agent_record_refusal_source(TEXT, TEXT, TEXT)
   FROM PUBLIC, anon, authenticated, service_role, agent_record_store_owner;
-GRANT EXECUTE ON FUNCTION public.read_agent_record_arena_source(TEXT, TEXT, TEXT)
+GRANT EXECUTE ON FUNCTION public.read_agent_record_refusal_source(TEXT, TEXT, TEXT)
   TO service_role, agent_record_store_owner;
-
-CREATE FUNCTION agent_record_control_private.publish_arena_source(
-  p_arena_token_hash TEXT,
-  p_arena_session_id TEXT,
-  p_arena_attempt_id TEXT
-)
-RETURNS JSONB
-LANGUAGE plpgsql
-VOLATILE
-SECURITY DEFINER
-SET search_path = ''
-SET row_security = 'off'
-AS $publish_agent_record_arena_source$
-DECLARE
-  v_publish JSONB;
-BEGIN
-  IF p_arena_token_hash IS NULL
-    OR p_arena_token_hash !~ '^[0-9a-f]{64}$'
-    OR p_arena_session_id IS NULL
-    OR p_arena_session_id !~ '^arena_session_[0-9a-f]{32}$'
-    OR p_arena_attempt_id IS NULL
-    OR p_arena_attempt_id !~ '^arena_attempt_[0-9a-f]{32}$'
-  THEN
-    RAISE EXCEPTION 'Agent Record Arena publication input is invalid'
-      USING ERRCODE = '22023';
-  END IF;
-
-  PERFORM 1
-  FROM public.arena_attempts AS attempt
-  JOIN public.arena_sessions AS session
-    ON session.id = attempt.session_row_id
-  WHERE attempt.attempt_id = p_arena_attempt_id
-    AND session.session_id = p_arena_session_id
-    AND session.token_hash = p_arena_token_hash
-    AND session.status = 'active'
-    AND session.expires_at > pg_catalog.clock_timestamp()
-    AND attempt.decision = 'refuse'
-    AND attempt.evidence_status = 'complete'
-  FOR UPDATE OF session, attempt;
-  IF NOT FOUND THEN
-    RAISE EXCEPTION 'Agent Record Arena source is not publishable'
-      USING ERRCODE = '55000';
-  END IF;
-
-  v_publish := public.publish_arena_refusal(
-    p_arena_token_hash,
-    p_arena_attempt_id
-  );
-  RETURN v_publish;
-END
-$publish_agent_record_arena_source$;
-REVOKE ALL ON FUNCTION agent_record_control_private.publish_arena_source(TEXT, TEXT, TEXT)
-  FROM PUBLIC, anon, authenticated, service_role, agent_record_store_owner;
-GRANT EXECUTE ON FUNCTION agent_record_control_private.publish_arena_source(TEXT, TEXT, TEXT)
-  TO agent_record_store_owner;
-
--- service_role retains the existing read and bounded SECURITY DEFINER RPC
--- surfaces. Remove any stale direct-write ACLs explicitly: BYPASSRLS skips row
--- policies, but it does not bypass table privileges.
-REVOKE INSERT, UPDATE, DELETE
-  ON TABLE public.arena_shares
-  FROM service_role;
-GRANT SELECT (share_id, public_projection, revoked_at)
-  ON TABLE public.arena_shares TO agent_record_store_owner;
-CREATE POLICY arena_shares_agent_record_source_read
-  ON public.arena_shares
-  FOR SELECT
-  TO agent_record_store_owner
-  USING (revoked_at IS NULL);
-
--- Arena shares are otherwise immutable. Agent Record revocation is the one
--- narrow exception: the owner may retract the exact Arena source that the
--- record exposed. The transaction-local share-id fence prevents the definer
--- function from revoking any other public artifact or changing signed bytes.
-CREATE OR REPLACE FUNCTION public.arena_shares_immutable()
-RETURNS TRIGGER
-LANGUAGE plpgsql
-SET search_path = ''
-AS $arena_shares_immutable$
-BEGIN
-  IF TG_OP = 'UPDATE'
-    AND OLD.revoked_at IS NULL
-    AND NEW.revoked_at IS NOT NULL
-    AND (pg_catalog.to_jsonb(NEW) - 'revoked_at') IS NOT DISTINCT FROM
-      (pg_catalog.to_jsonb(OLD) - 'revoked_at')
-    AND OLD.share_id IS NOT DISTINCT FROM
-      pg_catalog.current_setting('ep.agent_record_arena_share_revoke', TRUE)
-  THEN
-    RETURN NEW;
-  END IF;
-  RAISE EXCEPTION 'arena share rows are immutable'
-    USING ERRCODE = '55000';
-END
-$arena_shares_immutable$;
-
-DROP TRIGGER IF EXISTS arena_shares_immutable_trigger
-  ON public.arena_shares;
-CREATE TRIGGER arena_shares_immutable_trigger
-  BEFORE UPDATE OR DELETE ON public.arena_shares
-  FOR EACH ROW EXECUTE FUNCTION public.arena_shares_immutable();
-
-CREATE FUNCTION agent_record_control_private.revoke_arena_source(
-  p_share_id TEXT,
-  p_revoked_at TIMESTAMPTZ
-)
-RETURNS VOID
-LANGUAGE plpgsql
-VOLATILE
-SECURITY DEFINER
-SET search_path = ''
-SET row_security = 'off'
-AS $revoke_agent_record_arena_source$
-BEGIN
-  IF p_share_id IS NULL
-    OR p_share_id !~ '^arena_share_[0-9a-f]{40}$'
-    OR p_revoked_at IS NULL
-  THEN
-    RAISE EXCEPTION 'agent record Arena source revocation is invalid'
-      USING ERRCODE = '22023';
-  END IF;
-  PERFORM pg_catalog.set_config(
-    'ep.agent_record_arena_share_revoke',
-    p_share_id,
-    TRUE
-  );
-  UPDATE public.arena_shares AS share
-  SET revoked_at = p_revoked_at
-  WHERE share.share_id = p_share_id
-    AND share.revoked_at IS NULL;
-  IF NOT FOUND THEN
-    RAISE EXCEPTION 'agent record Arena source revocation failed'
-      USING ERRCODE = '55000';
-  END IF;
-END
-$revoke_agent_record_arena_source$;
-REVOKE ALL ON FUNCTION agent_record_control_private.revoke_arena_source(TEXT, TIMESTAMPTZ)
-  FROM PUBLIC, anon, authenticated, service_role;
-GRANT EXECUTE ON FUNCTION agent_record_control_private.revoke_arena_source(TEXT, TIMESTAMPTZ)
-  TO agent_record_store_owner;
 
 SET ROLE agent_record_store_owner;
 
@@ -320,8 +194,8 @@ CREATE TABLE agent_record_private.records (
   bond_id UUID NOT NULL,
   bond_digest TEXT COLLATE "C" NOT NULL
     CHECK (bond_digest ~ '^sha256:[0-9a-f]{64}$'),
-  arena_share_id TEXT COLLATE "C" NOT NULL UNIQUE
-    CHECK (arena_share_id ~ '^arena_share_[0-9a-f]{40}$'),
+  source_commitment TEXT COLLATE "C" NOT NULL UNIQUE
+    CHECK (source_commitment ~ '^sha256:[0-9a-f]{64}$'),
   source_artifact_digest TEXT COLLATE "C" NOT NULL UNIQUE
     CHECK (source_artifact_digest ~ '^sha256:[0-9a-f]{64}$'),
   action_digest TEXT COLLATE "C" NOT NULL
@@ -355,6 +229,13 @@ CREATE TABLE agent_record_private.revocations (
     ON DELETE RESTRICT
 );
 
+CREATE TABLE agent_record_private.creation_capability (
+  singleton BOOLEAN PRIMARY KEY DEFAULT TRUE CHECK (singleton),
+  capability_hash TEXT COLLATE "C" NOT NULL UNIQUE
+    CHECK (capability_hash ~ '^[0-9a-f]{64}$'),
+  configured_at TIMESTAMPTZ NOT NULL
+);
+
 CREATE INDEX agent_record_retention_idx
   ON agent_record_private.records (retention_expires_at, record_id);
 
@@ -366,6 +247,10 @@ ALTER TABLE agent_record_private.revocations
   ENABLE ROW LEVEL SECURITY;
 ALTER TABLE agent_record_private.revocations
   FORCE ROW LEVEL SECURITY;
+ALTER TABLE agent_record_private.creation_capability
+  ENABLE ROW LEVEL SECURITY;
+ALTER TABLE agent_record_private.creation_capability
+  FORCE ROW LEVEL SECURITY;
 
 CREATE POLICY agent_record_records_owner_only
   ON agent_record_private.records
@@ -373,10 +258,15 @@ CREATE POLICY agent_record_records_owner_only
 CREATE POLICY agent_record_revocations_owner_only
   ON agent_record_private.revocations
   TO agent_record_store_owner USING (TRUE) WITH CHECK (TRUE);
+CREATE POLICY agent_record_creation_capability_owner_only
+  ON agent_record_private.creation_capability
+  TO agent_record_store_owner USING (TRUE) WITH CHECK (TRUE);
 
 REVOKE ALL ON TABLE agent_record_private.records
   FROM PUBLIC, anon, authenticated, service_role;
 REVOKE ALL ON TABLE agent_record_private.revocations
+  FROM PUBLIC, anon, authenticated, service_role;
+REVOKE ALL ON TABLE agent_record_private.creation_capability
   FROM PUBLIC, anon, authenticated, service_role;
 
 CREATE FUNCTION agent_record_private.token_hash(p_token TEXT)
@@ -391,6 +281,88 @@ AS $agent_record_token_hash$
     'hex'
   );
 $agent_record_token_hash$;
+
+CREATE FUNCTION agent_record_private.owner_record_id(p_owner_token TEXT)
+RETURNS TEXT
+LANGUAGE sql
+IMMUTABLE
+SECURITY DEFINER
+SET search_path = ''
+AS $agent_record_owner_record_id$
+  SELECT CASE
+    WHEN p_owner_token ~ '^ear1_[0-9a-f]{64}$' THEN
+      'agent_record_' || pg_catalog.substr(
+        pg_catalog.encode(
+          extensions.digest(
+            pg_catalog.convert_to(
+              'emilia-agent-record-owner-token-v1',
+              'UTF8'
+            )
+            || pg_catalog.decode('00', 'hex')
+            || pg_catalog.convert_to(p_owner_token, 'UTF8'),
+            'sha256'
+          ),
+          'hex'
+        ),
+        1,
+        40
+      )
+    ELSE NULL
+  END;
+$agent_record_owner_record_id$;
+
+CREATE FUNCTION agent_record_private.configure_creation_capability(
+  p_creation_capability TEXT
+)
+RETURNS VOID
+LANGUAGE plpgsql
+VOLATILE
+SECURITY DEFINER
+SET search_path = ''
+AS $agent_record_configure_creation_capability$
+BEGIN
+  IF p_creation_capability IS NULL
+    OR p_creation_capability !~ '^earc1_[0-9a-f]{64}$'
+  THEN
+    RAISE EXCEPTION 'Agent Record creation capability is invalid'
+      USING ERRCODE = '22023';
+  END IF;
+
+  INSERT INTO agent_record_private.creation_capability (
+    singleton,
+    capability_hash,
+    configured_at
+  ) VALUES (
+    TRUE,
+    agent_record_private.token_hash(p_creation_capability),
+    pg_catalog.transaction_timestamp()
+  )
+  ON CONFLICT (singleton) DO UPDATE
+  SET capability_hash = EXCLUDED.capability_hash,
+      configured_at = EXCLUDED.configured_at;
+END
+$agent_record_configure_creation_capability$;
+
+CREATE FUNCTION agent_record_private.creation_capability_matches(
+  p_creation_capability TEXT
+)
+RETURNS BOOLEAN
+LANGUAGE sql
+STABLE
+SECURITY DEFINER
+SET search_path = ''
+AS $agent_record_creation_capability_matches$
+  SELECT
+    p_creation_capability IS NOT NULL
+    AND p_creation_capability ~ '^earc1_[0-9a-f]{64}$'
+    AND EXISTS (
+      SELECT 1
+      FROM agent_record_private.creation_capability AS capability
+      WHERE capability.singleton
+        AND capability.capability_hash =
+          agent_record_private.token_hash(p_creation_capability)
+    );
+$agent_record_creation_capability_matches$;
 
 CREATE FUNCTION agent_record_private.iso_ms(p_value TIMESTAMPTZ)
 RETURNS TEXT
@@ -433,9 +405,10 @@ CREATE FUNCTION public.create_agent_record(
   p_owner_token TEXT,
   p_bond_id UUID,
   p_bond_digest TEXT,
-  p_arena_session_id TEXT,
-  p_arena_token_hash TEXT,
-  p_arena_attempt_id TEXT,
+  p_source_session_id TEXT,
+  p_source_token_hash TEXT,
+  p_source_attempt_id TEXT,
+  p_source_commitment TEXT,
   p_source_artifact_digest TEXT,
   p_action_digest TEXT,
   p_refusal_digest TEXT,
@@ -454,10 +427,7 @@ SET statement_timeout = '5s'
 AS $create_agent_record$
 DECLARE
   v_adoption JSONB;
-  v_arena_source JSONB;
-  v_arena_projection JSONB;
-  v_publish JSONB;
-  v_arena_share_id TEXT;
+  v_source JSONB;
   v_existing agent_record_private.records%ROWTYPE;
 BEGIN
   IF p_adoption_id IS NULL
@@ -467,15 +437,19 @@ BEGIN
     OR p_record_id !~ '^agent_record_[0-9a-f]{40}$'
     OR p_owner_token IS NULL
     OR p_owner_token !~ '^ear1_[0-9a-f]{64}$'
+    OR p_record_id IS DISTINCT FROM
+      agent_record_private.owner_record_id(p_owner_token)
     OR p_bond_id IS NULL
     OR p_bond_digest IS NULL
     OR p_bond_digest !~ '^sha256:[0-9a-f]{64}$'
-    OR p_arena_session_id IS NULL
-    OR p_arena_session_id !~ '^arena_session_[0-9a-f]{32}$'
-    OR p_arena_token_hash IS NULL
-    OR p_arena_token_hash !~ '^[0-9a-f]{64}$'
-    OR p_arena_attempt_id IS NULL
-    OR p_arena_attempt_id !~ '^arena_attempt_[0-9a-f]{32}$'
+    OR p_source_session_id IS NULL
+    OR p_source_session_id !~ '^arena_session_[0-9a-f]{32}$'
+    OR p_source_token_hash IS NULL
+    OR p_source_token_hash !~ '^[0-9a-f]{64}$'
+    OR p_source_attempt_id IS NULL
+    OR p_source_attempt_id !~ '^arena_attempt_[0-9a-f]{32}$'
+    OR p_source_commitment IS NULL
+    OR p_source_commitment !~ '^sha256:[0-9a-f]{64}$'
     OR p_source_artifact_digest IS NULL
     OR p_source_artifact_digest !~ '^sha256:[0-9a-f]{64}$'
     OR p_action_digest IS NULL
@@ -489,6 +463,7 @@ BEGIN
     OR p_refused_at > p_observed_at
     OR p_observed_at > pg_catalog.clock_timestamp() + INTERVAL '5 minutes'
     OR p_retention_expires_at IS DISTINCT FROM p_observed_at + INTERVAL '365 days'
+    OR p_retention_expires_at <= pg_catalog.clock_timestamp()
     OR p_public_projection IS NULL
     OR pg_catalog.jsonb_typeof(p_public_projection) IS DISTINCT FROM 'object'
     OR pg_catalog.pg_column_size(p_public_projection) > 8192
@@ -544,7 +519,7 @@ BEGIN
     OR p_public_projection -> 'record' ->> 'retention_expires_at' IS DISTINCT FROM
       agent_record_private.iso_ms(p_retention_expires_at)
     OR p_public_projection -> 'record' ->> 'claim_boundary' IS DISTINCT FROM
-        'one_operator_observation_of_one_verified_signed_arena_refusal_only'
+        'one_operator_observation_of_one_verified_signed_refusal_artifact_only'
     OR p_public_projection -> 'signature' ->> 'algorithm' IS DISTINCT FROM 'Ed25519'
     OR pg_catalog.jsonb_typeof(
       p_public_projection -> 'signature' -> 'key_id'
@@ -580,62 +555,24 @@ BEGIN
       USING ERRCODE = '55000';
   END IF;
 
-  v_arena_source := public.read_agent_record_arena_source(
-    p_arena_token_hash,
-    p_arena_session_id,
-    p_arena_attempt_id
+  v_source := public.read_agent_record_refusal_source(
+    p_source_token_hash,
+    p_source_session_id,
+    p_source_attempt_id
   );
-  v_arena_projection := v_arena_source -> 'public_refusal_projection';
-  IF v_arena_source ->> 'arena_session_id' IS DISTINCT FROM p_arena_session_id
-    OR v_arena_source ->> 'attempt_id' IS DISTINCT FROM p_arena_attempt_id
-    OR v_arena_projection ->> 'profile' IS DISTINCT FROM 'EP-ARENA-PUBLIC-REFUSAL-v1'
-    OR v_arena_projection -> 'attempt' ->> 'attempt_id' IS DISTINCT FROM p_arena_attempt_id
-    OR v_arena_projection -> 'attempt' ->> 'decision' IS DISTINCT FROM 'refuse'
-    OR v_arena_projection -> 'attempt' ->> 'action_digest' IS DISTINCT FROM p_action_digest
-    OR v_arena_projection -> 'attempt' ->> 'created_at' IS DISTINCT FROM
+  IF v_source ->> 'source_commitment' IS DISTINCT FROM p_source_commitment
+    OR v_source ->> 'source_artifact_digest' IS DISTINCT FROM
+      p_source_artifact_digest
+    OR v_source ->> 'action_digest' IS DISTINCT FROM p_action_digest
+    OR v_source ->> 'refusal_digest' IS DISTINCT FROM p_refusal_digest
+    OR v_source ->> 'refused_at' IS DISTINCT FROM
       agent_record_private.iso_ms(p_refused_at)
-    OR v_arena_projection ->> 'refusal_digest' IS DISTINCT FROM p_refusal_digest
-    OR v_arena_projection -> 'refusal_artifact' ->> '@version' IS DISTINCT FROM
+    OR v_source -> 'refusal_artifact' ->> '@version' IS DISTINCT FROM
         'EP-ACTION-REFUSAL-STATEMENT-v1'
+    OR v_source -> 'refusal_artifact' ->> 'action_digest' IS DISTINCT FROM
+      p_action_digest
   THEN
-    RAISE EXCEPTION 'Arena refusal source does not match agent record bindings'
-      USING ERRCODE = '55000';
-  END IF;
-
-  -- publish_arena_refusal runs inside this function's transaction. Any later
-  -- exception, uniqueness conflict, or injected store failure rolls back both
-  -- this share insertion and the Agent Record insertion.
-  v_publish := agent_record_control_private.publish_arena_source(
-    p_arena_token_hash,
-    p_arena_session_id,
-    p_arena_attempt_id
-  );
-  v_arena_share_id := v_publish ->> 'share_id';
-  IF v_publish ->> 'ok' IS DISTINCT FROM 'true'
-    OR v_arena_share_id IS NULL
-    OR v_arena_share_id !~ '^arena_share_[0-9a-f]{40}$'
-  THEN
-    RAISE EXCEPTION 'Arena refusal publication failed'
-      USING ERRCODE = '55000';
-  END IF;
-
-  SELECT share.public_projection
-  INTO v_arena_projection
-  FROM public.arena_shares AS share
-  WHERE share.share_id = v_arena_share_id
-    AND share.revoked_at IS NULL;
-  IF NOT FOUND
-    OR v_arena_projection ->> 'profile' IS DISTINCT FROM 'EP-ARENA-PUBLIC-REFUSAL-v1'
-    OR v_arena_projection -> 'attempt' ->> 'attempt_id' IS DISTINCT FROM p_arena_attempt_id
-    OR v_arena_projection -> 'attempt' ->> 'decision' IS DISTINCT FROM 'refuse'
-    OR v_arena_projection -> 'attempt' ->> 'action_digest' IS DISTINCT FROM p_action_digest
-    OR v_arena_projection -> 'attempt' ->> 'created_at' IS DISTINCT FROM
-      agent_record_private.iso_ms(p_refused_at)
-    OR v_arena_projection ->> 'refusal_digest' IS DISTINCT FROM p_refusal_digest
-    OR v_arena_projection -> 'refusal_artifact' ->> '@version' IS DISTINCT FROM
-        'EP-ACTION-REFUSAL-STATEMENT-v1'
-  THEN
-    RAISE EXCEPTION 'Arena refusal source does not match agent record bindings'
+    RAISE EXCEPTION 'private refusal source does not match agent record bindings'
       USING ERRCODE = '55000';
   END IF;
 
@@ -645,7 +582,7 @@ BEGIN
     adoption_id,
     bond_id,
     bond_digest,
-    arena_share_id,
+    source_commitment,
     source_artifact_digest,
     action_digest,
     refusal_digest,
@@ -659,7 +596,7 @@ BEGIN
     p_adoption_id,
     p_bond_id,
     p_bond_digest,
-    v_arena_share_id,
+    p_source_commitment,
     p_source_artifact_digest,
     p_action_digest,
     p_refusal_digest,
@@ -680,7 +617,7 @@ BEGIN
       AND record.adoption_id = p_adoption_id
       AND record.bond_id = p_bond_id
       AND record.bond_digest = p_bond_digest
-      AND record.arena_share_id = v_arena_share_id
+      AND record.source_commitment = p_source_commitment
       AND record.source_artifact_digest = p_source_artifact_digest
       AND record.action_digest = p_action_digest
       AND record.refusal_digest = p_refusal_digest
@@ -699,6 +636,83 @@ BEGIN
   );
 END
 $create_agent_record$;
+
+-- PostgreSQL does not natively verify Ed25519. The application verifies the
+-- exact public projection before crossing this boundary, and only that signing
+-- path holds the independent creation capability. General service_role access
+-- cannot execute the base creator and cannot configure or read the capability.
+CREATE FUNCTION public.create_agent_record_with_capability(
+  p_adoption_id UUID,
+  p_adoption_session_token TEXT,
+  p_record_id TEXT,
+  p_owner_token TEXT,
+  p_bond_id UUID,
+  p_bond_digest TEXT,
+  p_source_session_id TEXT,
+  p_source_token_hash TEXT,
+  p_source_attempt_id TEXT,
+  p_source_commitment TEXT,
+  p_source_artifact_digest TEXT,
+  p_action_digest TEXT,
+  p_refusal_digest TEXT,
+  p_refused_at TIMESTAMPTZ,
+  p_observed_at TIMESTAMPTZ,
+  p_retention_expires_at TIMESTAMPTZ,
+  p_public_projection JSONB,
+  p_creation_capability TEXT
+)
+RETURNS JSONB
+LANGUAGE plpgsql
+VOLATILE
+SECURITY DEFINER
+SET search_path = ''
+SET lock_timeout = '2s'
+SET statement_timeout = '5s'
+AS $create_agent_record_with_capability$
+BEGIN
+  IF NOT agent_record_private.creation_capability_matches(
+    p_creation_capability
+  ) THEN
+    RAISE EXCEPTION 'Agent Record creation capability is unavailable'
+      USING ERRCODE = '42501';
+  END IF;
+
+  RETURN public.create_agent_record(
+    p_adoption_id,
+    p_adoption_session_token,
+    p_record_id,
+    p_owner_token,
+    p_bond_id,
+    p_bond_digest,
+    p_source_session_id,
+    p_source_token_hash,
+    p_source_attempt_id,
+    p_source_commitment,
+    p_source_artifact_digest,
+    p_action_digest,
+    p_refusal_digest,
+    p_refused_at,
+    p_observed_at,
+    p_retention_expires_at,
+    p_public_projection
+  );
+END
+$create_agent_record_with_capability$;
+
+CREATE FUNCTION public.check_agent_record_creation_capability(
+  p_creation_capability TEXT
+)
+RETURNS BOOLEAN
+LANGUAGE sql
+STABLE
+SECURITY DEFINER
+SET search_path = ''
+SET statement_timeout = '2s'
+AS $check_agent_record_creation_capability$
+  SELECT agent_record_private.creation_capability_matches(
+    p_creation_capability
+  );
+$check_agent_record_creation_capability$;
 
 CREATE FUNCTION public.revoke_agent_record(
   p_record_id TEXT,
@@ -722,6 +736,8 @@ BEGIN
     OR p_record_id !~ '^agent_record_[0-9a-f]{40}$'
     OR p_owner_token IS NULL
     OR p_owner_token !~ '^ear1_[0-9a-f]{64}$'
+    OR p_record_id IS DISTINCT FROM
+      agent_record_private.owner_record_id(p_owner_token)
     OR p_revocation_nonce IS NULL
     OR p_revocation_nonce !~ '^earv1_[0-9a-f]{64}$'
   THEN
@@ -762,11 +778,6 @@ BEGIN
     v_record.record_id,
     pg_catalog.gen_random_uuid(),
     agent_record_private.token_hash(p_revocation_nonce),
-    v_revoked_at
-  );
-
-  PERFORM agent_record_control_private.revoke_arena_source(
-    v_record.arena_share_id,
     v_revoked_at
   );
 
@@ -821,14 +832,26 @@ $read_agent_record_public$;
 
 REVOKE ALL ON FUNCTION agent_record_private.token_hash(TEXT)
   FROM PUBLIC, anon, authenticated, service_role;
+REVOKE ALL ON FUNCTION agent_record_private.owner_record_id(TEXT)
+  FROM PUBLIC, anon, authenticated, service_role;
+REVOKE ALL ON FUNCTION agent_record_private.configure_creation_capability(TEXT)
+  FROM PUBLIC, anon, authenticated, service_role;
+REVOKE ALL ON FUNCTION agent_record_private.creation_capability_matches(TEXT)
+  FROM PUBLIC, anon, authenticated, service_role;
 REVOKE ALL ON FUNCTION agent_record_private.iso_ms(TIMESTAMPTZ)
   FROM PUBLIC, anon, authenticated, service_role;
 REVOKE ALL ON FUNCTION agent_record_private.reject_immutable_record_mutation()
   FROM PUBLIC, anon, authenticated, service_role;
 
-REVOKE ALL ON FUNCTION public.create_agent_record(UUID, TEXT, TEXT, TEXT, UUID, TEXT, TEXT, TEXT, TEXT, TEXT, TEXT, TEXT, TIMESTAMPTZ, TIMESTAMPTZ, TIMESTAMPTZ, JSONB)
+REVOKE ALL ON FUNCTION public.create_agent_record(UUID, TEXT, TEXT, TEXT, UUID, TEXT, TEXT, TEXT, TEXT, TEXT, TEXT, TEXT, TEXT, TIMESTAMPTZ, TIMESTAMPTZ, TIMESTAMPTZ, JSONB)
   FROM PUBLIC, anon, authenticated, service_role;
-GRANT EXECUTE ON FUNCTION public.create_agent_record(UUID, TEXT, TEXT, TEXT, UUID, TEXT, TEXT, TEXT, TEXT, TEXT, TEXT, TEXT, TIMESTAMPTZ, TIMESTAMPTZ, TIMESTAMPTZ, JSONB)
+REVOKE ALL ON FUNCTION public.create_agent_record_with_capability(UUID, TEXT, TEXT, TEXT, UUID, TEXT, TEXT, TEXT, TEXT, TEXT, TEXT, TEXT, TEXT, TIMESTAMPTZ, TIMESTAMPTZ, TIMESTAMPTZ, JSONB, TEXT)
+  FROM PUBLIC, anon, authenticated, service_role;
+GRANT EXECUTE ON FUNCTION public.create_agent_record_with_capability(UUID, TEXT, TEXT, TEXT, UUID, TEXT, TEXT, TEXT, TEXT, TEXT, TEXT, TEXT, TEXT, TIMESTAMPTZ, TIMESTAMPTZ, TIMESTAMPTZ, JSONB, TEXT)
+  TO service_role;
+REVOKE ALL ON FUNCTION public.check_agent_record_creation_capability(TEXT)
+  FROM PUBLIC, anon, authenticated, service_role;
+GRANT EXECUTE ON FUNCTION public.check_agent_record_creation_capability(TEXT)
   TO service_role;
 REVOKE ALL ON FUNCTION public.revoke_agent_record(TEXT, TEXT, TEXT)
   FROM PUBLIC, anon, authenticated, service_role;
@@ -842,9 +865,15 @@ GRANT EXECUTE ON FUNCTION public.read_agent_record_public(TEXT)
 COMMENT ON SCHEMA agent_record_private IS
   'RPC-only custody for minimal factual Agent Records and owner revocations.';
 COMMENT ON TABLE agent_record_private.records IS
-  'Immutable minimal bindings for one operator-observed signed Arena refusal; exact-id public projection expires after 365 days.';
+  'Immutable digest-only bindings for one operator-observed signed refusal; exact-id public projection expires after 365 days.';
 COMMENT ON TABLE agent_record_private.revocations IS
   'Append-only terminal owner revocations; a revoked record is uniformly absent from public reads.';
+COMMENT ON TABLE agent_record_private.creation_capability IS
+  'Forced-RLS hash of the independent application-only capability that gates irreversible Agent Record creation.';
+COMMENT ON FUNCTION public.create_agent_record_with_capability(UUID, TEXT, TEXT, TEXT, UUID, TEXT, TEXT, TEXT, TEXT, TEXT, TEXT, TEXT, TEXT, TIMESTAMPTZ, TIMESTAMPTZ, TIMESTAMPTZ, JSONB, TEXT) IS
+  'Capability-gated application entry point; the application must verify the Ed25519 projection before invoking it. SQL shape validation is not signature verification.';
+COMMENT ON FUNCTION public.check_agent_record_creation_capability(TEXT) IS
+  'Readiness probe that returns only whether the supplied application capability matches the forced-RLS configured hash.';
 COMMENT ON FUNCTION public.read_agent_record_public(TEXT) IS
   'Server-only exact opaque Agent Record lookup; the public HTTP route verifies the operator signature and unknown, expired, and revoked records all raise P0002.';
 

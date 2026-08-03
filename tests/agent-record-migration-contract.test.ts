@@ -20,7 +20,7 @@ describe('Agent Record v1 migration source contract', () => {
     expect(migration).toContain(
       'CREATE SCHEMA agent_record_private\n  AUTHORIZATION agent_record_store_owner;',
     );
-    expect(migration.match(/FORCE ROW LEVEL SECURITY/g)).toHaveLength(2);
+    expect(migration.match(/FORCE ROW LEVEL SECURITY/g)).toHaveLength(3);
     expect(migration).toContain(
       'REVOKE ALL ON SCHEMA agent_record_private\n  FROM PUBLIC, anon, authenticated, service_role;',
     );
@@ -30,25 +30,39 @@ describe('Agent Record v1 migration source contract', () => {
     expect(migration).toContain(
       'REVOKE ALL ON TABLE agent_record_private.revocations\n  FROM PUBLIC, anon, authenticated, service_role;',
     );
+    expect(migration).toContain(
+      'REVOKE ALL ON TABLE agent_record_private.creation_capability\n  FROM PUBLIC, anon, authenticated, service_role;',
+    );
     expect(migration).not.toMatch(
       /GRANT\s+(?:SELECT|INSERT|UPDATE|DELETE|ALL)[\s\S]{0,120}agent_record_private\.[\s\S]{0,120}(?:anon|authenticated|service_role)/i,
     );
   });
 
-  it('exposes only read-only source preparation, exact create, owner-revoke, and opaque-id public-read RPCs', () => {
+  it('exposes only the bounded Agent Record RPC surface', () => {
     const publicFunctions = [...migration.matchAll(
       /CREATE FUNCTION public\.([a-z0-9_]+)\(/g,
     )].map((match) => match[1]);
     expect(publicFunctions).toEqual([
-      'read_agent_record_arena_source',
+      'read_agent_record_refusal_source',
       'create_agent_record',
+      'create_agent_record_with_capability',
+      'check_agent_record_creation_capability',
       'revoke_agent_record',
       'read_agent_record_public',
     ]);
     expect(migration).not.toMatch(/agent_record_(?:list|search|feed|sitemap)|vanity|handle/i);
     expect(migration.match(/SECURITY DEFINER/g)?.length).toBeGreaterThanOrEqual(6);
     expect(migration).toContain(
-      'GRANT EXECUTE ON FUNCTION public.create_agent_record(UUID, TEXT, TEXT, TEXT, UUID, TEXT, TEXT, TEXT, TEXT, TEXT, TEXT, TEXT, TIMESTAMPTZ, TIMESTAMPTZ, TIMESTAMPTZ, JSONB)\n  TO service_role;',
+      'REVOKE ALL ON FUNCTION public.create_agent_record(UUID, TEXT, TEXT, TEXT, UUID, TEXT, TEXT, TEXT, TEXT, TEXT, TEXT, TEXT, TEXT, TIMESTAMPTZ, TIMESTAMPTZ, TIMESTAMPTZ, JSONB)\n  FROM PUBLIC, anon, authenticated, service_role;',
+    );
+    expect(migration).not.toContain(
+      'GRANT EXECUTE ON FUNCTION public.create_agent_record(UUID, TEXT, TEXT, TEXT, UUID, TEXT, TEXT, TEXT, TEXT, TEXT, TEXT, TEXT, TEXT, TIMESTAMPTZ, TIMESTAMPTZ, TIMESTAMPTZ, JSONB)',
+    );
+    expect(migration).toContain(
+      'GRANT EXECUTE ON FUNCTION public.create_agent_record_with_capability(UUID, TEXT, TEXT, TEXT, UUID, TEXT, TEXT, TEXT, TEXT, TEXT, TEXT, TEXT, TEXT, TIMESTAMPTZ, TIMESTAMPTZ, TIMESTAMPTZ, JSONB, TEXT)\n  TO service_role;',
+    );
+    expect(migration).toContain(
+      'GRANT EXECUTE ON FUNCTION public.check_agent_record_creation_capability(TEXT)\n  TO service_role;',
     );
     expect(migration).toContain(
       'GRANT EXECUTE ON FUNCTION public.revoke_agent_record(TEXT, TEXT, TEXT)\n  TO service_role;',
@@ -64,6 +78,7 @@ describe('Agent Record v1 migration source contract', () => {
   it('makes record, refusal source, and owner credential hashes atomically unique', () => {
     expect(migration).toMatch(/record_id TEXT[\s\S]*PRIMARY KEY/);
     expect(migration).toMatch(/owner_token_hash TEXT[\s\S]*NOT NULL UNIQUE/);
+    expect(migration).toMatch(/source_commitment TEXT[\s\S]*NOT NULL UNIQUE/);
     expect(migration).toMatch(/source_artifact_digest TEXT[\s\S]*NOT NULL UNIQUE/);
     expect(migration).toContain('refusal_digest = source_artifact_digest');
     expect(migration).toContain("p_owner_token !~ '^ear1_[0-9a-f]{64}$'");
@@ -74,9 +89,19 @@ describe('Agent Record v1 migration source contract', () => {
       'ON CONFLICT (record_id) DO NOTHING\n  RETURNING * INTO v_existing;',
     );
     expect(migration).toMatch(
-      /WHERE record\.record_id = p_record_id[\s\S]*record\.owner_token_hash = agent_record_private\.token_hash\(p_owner_token\)[\s\S]*record\.arena_share_id = v_arena_share_id/,
+      /WHERE record\.record_id = p_record_id[\s\S]*record\.owner_token_hash = agent_record_private\.token_hash\(p_owner_token\)[\s\S]*record\.source_commitment = p_source_commitment/,
     );
     expect(migration).not.toMatch(/owner_token\s+TEXT[\s\S]*CREATE TABLE/i);
+  });
+
+  it('derives the exact record identifier from the owner token in create and revoke', () => {
+    expect(migration).toContain("'emilia-agent-record-owner-token-v1'");
+    expect(migration).toContain("pg_catalog.decode('00', 'hex')");
+    expect(migration).toContain("|| pg_catalog.convert_to(p_owner_token, 'UTF8')");
+    expect(migration).toMatch(/'agent_record_' \|\| pg_catalog\.substr\([\s\S]*1,\s*40/);
+    expect(migration.match(
+      /p_record_id IS DISTINCT FROM\s*agent_record_private\.owner_record_id\(p_owner_token\)/g,
+    )).toHaveLength(2);
   });
 
   it('rechecks the active adoption and exact latest bond inside creation', () => {
@@ -91,55 +116,36 @@ describe('Agent Record v1 migration source contract', () => {
       "v_adoption ->> 'latest_bond_digest' IS DISTINCT FROM p_bond_digest",
     );
     expect(migration).toMatch(
-      /public\.read_agent_record_arena_source\(\s*p_arena_token_hash,\s*p_arena_session_id,\s*p_arena_attempt_id\s*\)/,
+      /public\.read_agent_record_refusal_source\(\s*p_source_token_hash,\s*p_source_session_id,\s*p_source_attempt_id\s*\)/,
     );
     expect(migration).toContain(
-      "v_arena_projection -> 'attempt' ->> 'decision' IS DISTINCT FROM 'refuse'",
+      "v_source ->> 'source_commitment' IS DISTINCT FROM p_source_commitment",
     );
     expect(migration).toContain(
-      "v_arena_projection -> 'refusal_artifact' ->> '@version' IS DISTINCT FROM\n        'EP-ACTION-REFUSAL-STATEMENT-v1'",
+      "v_source -> 'refusal_artifact' ->> '@version' IS DISTINCT FROM\n        'EP-ACTION-REFUSAL-STATEMENT-v1'",
     );
   });
 
-  it('publishes the Arena source only inside the Agent Record transaction', () => {
+  it('creates only the Agent Record and never creates a second Arena artifact', () => {
     const createFunction = migration.match(
       /CREATE FUNCTION public\.create_agent_record[\s\S]*?\nEND\n\$create_agent_record\$;/,
     )?.[0];
     expect(createFunction).toBeDefined();
-    expect(createFunction).toContain(
-      'v_publish := agent_record_control_private.publish_arena_source(',
-    );
-    expect(createFunction).toContain("v_publish ->> 'share_id'");
     expect(createFunction).toContain('INSERT INTO agent_record_private.records');
-    expect(createFunction?.indexOf('v_publish := agent_record_control_private.publish_arena_source('))
-      .toBeLessThan(createFunction?.indexOf('INSERT INTO agent_record_private.records') ?? -1);
-    expect(createFunction).not.toMatch(/DELETE FROM public\.arena_shares|cleanup|compensat/i);
-    expect(migration).toMatch(
-      /CREATE FUNCTION agent_record_control_private\.publish_arena_source[\s\S]*FOR UPDATE OF session, attempt/,
-    );
-    expect(migration).toContain(
-      "AND session.status = 'active'\n    AND session.expires_at > pg_catalog.clock_timestamp()",
-    );
-    expect(migration).toContain(
-      'REVOKE ALL ON FUNCTION agent_record_control_private.publish_arena_source(TEXT, TEXT, TEXT)\n  FROM PUBLIC, anon, authenticated, service_role, agent_record_store_owner;',
-    );
-    expect(migration).toContain(
-      'GRANT EXECUTE ON FUNCTION agent_record_control_private.publish_arena_source(TEXT, TEXT, TEXT)\n  TO agent_record_store_owner;',
-    );
+    expect(createFunction).not.toMatch(/publish_arena|arena_shares|public_refusal_projection/i);
+    expect(migration).not.toMatch(/agent_record_control_private|arena_share_id/i);
+    expect(migration).not.toContain('CREATE OR REPLACE FUNCTION public.arena_shares_immutable');
   });
 
-  it('removes stale service-role Arena write ACLs without removing reads or approved RPCs', () => {
+  it('leaves the existing Arena share product and ACLs untouched', () => {
+    expect(migration).not.toMatch(/\b(?:INSERT|UPDATE|DELETE)\s+(?:INTO\s+)?public\.arena_shares/i);
+    expect(migration).not.toMatch(/(?:GRANT|REVOKE)[\s\S]{0,100}public\.arena_shares/i);
+    expect(migration).not.toMatch(/publish_arena_refusal|revoke_arena_source/i);
     expect(migration).toContain(
-      'REVOKE INSERT, UPDATE, DELETE\n  ON TABLE public.arena_shares\n  FROM service_role;',
-    );
-    expect(migration).not.toMatch(
-      /REVOKE[\s\S]{0,80}SELECT[\s\S]{0,80}ON TABLE public\.arena_shares[\s\S]{0,40}service_role/i,
-    );
-    expect(migration).toContain(
-      'GRANT EXECUTE ON FUNCTION public.read_agent_record_arena_source(TEXT, TEXT, TEXT)\n  TO service_role, agent_record_store_owner;',
+      'GRANT EXECUTE ON FUNCTION public.read_agent_record_refusal_source(TEXT, TEXT, TEXT)\n  TO service_role, agent_record_store_owner;',
     );
     expect(migration).toContain(
-      'GRANT EXECUTE ON FUNCTION public.create_agent_record(UUID, TEXT, TEXT, TEXT, UUID, TEXT, TEXT, TEXT, TEXT, TEXT, TEXT, TEXT, TIMESTAMPTZ, TIMESTAMPTZ, TIMESTAMPTZ, JSONB)\n  TO service_role;',
+      'GRANT EXECUTE ON FUNCTION public.create_agent_record_with_capability(UUID, TEXT, TEXT, TEXT, UUID, TEXT, TEXT, TEXT, TEXT, TEXT, TEXT, TEXT, TEXT, TIMESTAMPTZ, TIMESTAMPTZ, TIMESTAMPTZ, JSONB, TEXT)\n  TO service_role;',
     );
     expect(migration).toContain(
       'GRANT EXECUTE ON FUNCTION public.revoke_agent_record(TEXT, TEXT, TEXT)\n  TO service_role;',
@@ -149,18 +155,45 @@ describe('Agent Record v1 migration source contract', () => {
     );
   });
 
+  it('gates irreversible creation behind an independently configured capability', () => {
+    expect(migration).toContain(
+      'CREATE TABLE agent_record_private.creation_capability',
+    );
+    expect(migration).toContain(
+      "p_creation_capability !~ '^earc1_[0-9a-f]{64}$'",
+    );
+    expect(migration).toContain(
+      'agent_record_private.token_hash(p_creation_capability)',
+    );
+    expect(migration).toContain(
+      'IF NOT agent_record_private.creation_capability_matches(',
+    );
+    expect(migration).toContain(
+      "USING ERRCODE = '42501'",
+    );
+    expect(migration).toContain(
+      'REVOKE ALL ON FUNCTION agent_record_private.configure_creation_capability(TEXT)\n  FROM PUBLIC, anon, authenticated, service_role;',
+    );
+    expect(migration).toContain(
+      'SQL shape validation is not signature verification.',
+    );
+  });
+
   it('keeps source preparation read-only and server-only', () => {
     const sourceReader = migration.match(
-      /CREATE FUNCTION public\.read_agent_record_arena_source[\s\S]*?\nEND\n\$agent_record_arena_source\$;/,
+      /CREATE FUNCTION public\.read_agent_record_refusal_source[\s\S]*?\nEND\n\$agent_record_refusal_source\$;/,
     )?.[0];
     expect(sourceReader).toBeDefined();
     expect(sourceReader).toContain('STABLE');
     expect(sourceReader).not.toMatch(/\b(?:INSERT|UPDATE|DELETE)\b/);
+    expect(sourceReader).not.toMatch(/v_attempt\.action\b|public_refusal_projection|share_id/);
+    expect(sourceReader).toContain("'source_commitment', v_source_commitment");
+    expect(sourceReader).toContain("'refusal_artifact', v_attempt.refusal_artifact");
     expect(migration).toContain(
-      'REVOKE ALL ON FUNCTION public.read_agent_record_arena_source(TEXT, TEXT, TEXT)\n  FROM PUBLIC, anon, authenticated, service_role, agent_record_store_owner;',
+      'REVOKE ALL ON FUNCTION public.read_agent_record_refusal_source(TEXT, TEXT, TEXT)\n  FROM PUBLIC, anon, authenticated, service_role, agent_record_store_owner;',
     );
     expect(migration).toContain(
-      'GRANT EXECUTE ON FUNCTION public.read_agent_record_arena_source(TEXT, TEXT, TEXT)\n  TO service_role, agent_record_store_owner;',
+      'GRANT EXECUTE ON FUNCTION public.read_agent_record_refusal_source(TEXT, TEXT, TEXT)\n  TO service_role, agent_record_store_owner;',
     );
   });
 
@@ -172,11 +205,14 @@ describe('Agent Record v1 migration source contract', () => {
     expect(migration).toContain(
       "p_retention_expires_at IS DISTINCT FROM p_observed_at + INTERVAL '365 days'",
     );
+    expect(migration).toContain(
+      'p_retention_expires_at <= pg_catalog.clock_timestamp()',
+    );
     expect(migration).toMatch(
       /p_public_projection ->> '@version' IS DISTINCT FROM\s*'EP-AGENT-RECORD-OBSERVATION-v1'/,
     );
     expect(migration).toContain(
-      "p_public_projection -> 'record' ->> 'claim_boundary' IS DISTINCT FROM\n        'one_operator_observation_of_one_verified_signed_arena_refusal_only'",
+      "p_public_projection -> 'record' ->> 'claim_boundary' IS DISTINCT FROM\n        'one_operator_observation_of_one_verified_signed_refusal_artifact_only'",
     );
     expect(migration).toContain(
       "p_public_projection -> 'signature' ->> 'key_source' IS DISTINCT FROM\n        'operator-commit-signing-key'",
@@ -208,7 +244,7 @@ describe('Agent Record v1 migration source contract', () => {
     expect(readFunction).toContain("'public_projection', v_public_projection");
   });
 
-  it('stores an append-only revocation without modifying the source record', () => {
+  it('stores an append-only revocation without modifying the source or Arena', () => {
     expect(migration).toContain(
       'CREATE TRIGGER agent_record_revocations_immutable_trigger',
     );
@@ -219,18 +255,10 @@ describe('Agent Record v1 migration source contract', () => {
       /INSERT INTO agent_record_private\.revocations[\s\S]*RETURN pg_catalog\.jsonb_build_object/,
     );
     expect(migration).not.toMatch(/UPDATE agent_record_private\.records[\s\S]*revok/i);
-    expect(migration).toContain(
-      'PERFORM agent_record_control_private.revoke_arena_source(',
-    );
-    expect(migration).toContain(
-      "AND (pg_catalog.to_jsonb(NEW) - 'revoked_at') IS NOT DISTINCT FROM",
-    );
-    expect(migration).toContain(
-      "OLD.share_id IS NOT DISTINCT FROM\n      pg_catalog.current_setting('ep.agent_record_arena_share_revoke', TRUE)",
-    );
-    expect(migration).toContain(
-      'REVOKE ALL ON FUNCTION agent_record_control_private.revoke_arena_source(TEXT, TIMESTAMPTZ)\n  FROM PUBLIC, anon, authenticated, service_role;',
-    );
+    const revokeFunction = migration.match(
+      /CREATE FUNCTION public\.revoke_agent_record[\s\S]*?\nEND\n\$revoke_agent_record\$;/,
+    )?.[0];
+    expect(revokeFunction).not.toMatch(/arena|share|source_commitment/i);
   });
 
   it('requires atomic direct-Postgres application and remains Supabase-transaction compatible', () => {
