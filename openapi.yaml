@@ -6726,10 +6726,11 @@ paths:
         Reads and verifies the immutable signed Arena refusal source bound to
         the active session's sole Operating Bond without publishing it. The
         service signs EP-AGENT-RECORD-OBSERVATION-v1 before any database
-        mutation. One database transaction then rechecks the active adoption,
-        latest bond, and Arena source; publishes the exact Arena share; and
-        inserts the immutable Agent Record. A later failure rolls back both
-        insertions. Permit attempts cannot create a record.
+        mutation. The application-only creation capability authorizes one
+        database transaction, which rechecks the active adoption, latest bond,
+        and signed refusal source and inserts the immutable Agent Record. A
+        later failure leaves no partial record. Permit attempts cannot create a
+        record.
 
         The browser generates and preserves the opaque record ID and owner token
         before the request. The token controls only record revocation, is stored
@@ -6741,9 +6742,9 @@ paths:
 
         In production this operation is available only when the operator
         signing seed and key ID, durable Upstash limiter, server-side Supabase
-        configuration, and all Agent Record RPC entry points pass the runtime
-        readiness gate. Public errors never include dependency values or
-        database details.
+        configuration, matching private database creation capability, and all
+        Agent Record RPC entry points pass the runtime readiness gate. Public
+        errors never include dependency values or database details.
       security: [{ AdoptionSessionAuth: [] }]
       parameters:
         - $ref: '#/components/parameters/AgentAdoptionSessionId'
@@ -6771,7 +6772,7 @@ paths:
         '401': { description: 'Adoption or trial capability invalid' }
         '409': { description: 'Conflicting reuse of a record ID, owner credential, Arena source, or refusal digest, or an adoption lifecycle conflict' }
         '413': { description: 'Request body exceeds the Agent Record limit' }
-        '503': { description: 'Agent Record runtime readiness, signing, durable rate limiting, or storage unavailable; no dependency detail is disclosed' }
+        '503': { description: 'Agent Record runtime readiness, signing, creation authorization, durable rate limiting, or storage unavailable; no dependency detail is disclosed' }
 
   /api/agent-records/{recordId}:
     get:

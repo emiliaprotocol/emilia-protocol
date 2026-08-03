@@ -33,6 +33,7 @@ async function loadRealMiddleware(mode: LimiterMode, readiness: ReadinessMode = 
         signing_key: readiness === 'ready',
         durable_rate_limiting: readiness === 'ready',
         database_configuration: readiness === 'ready',
+        database_creation_authorization: readiness === 'ready',
       },
       unavailable: readiness === 'ready' ? [] : ['signing_key'],
     }),

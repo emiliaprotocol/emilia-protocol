@@ -29,6 +29,7 @@ All environment variables are accessed through `lib/env.js`. No other file reads
 | `EP_AUTO_SUBMIT_SECRET` | Shared secret for machine-to-machine `/api/receipts/auto-submit` auth | 64+ char random string |
 | `CRON_SECRET` | Vercel Cron authentication token | Auto-set by Vercel |
 | `EP_COMMIT_SIGNING_KEY` | Base64-encoded 32-byte Ed25519 seed for commit signing | Base64 string |
+| `EP_AGENT_RECORD_CREATION_CAPABILITY` | Application-only Agent Record creation authorization; must match the private database capability | `earc1_` + 64 lowercase hex |
 | `UPSTASH_REDIS_REST_URL` | Upstash Redis endpoint for distributed rate limiting | `https://xxxx.upstash.io` |
 | `UPSTASH_REDIS_REST_TOKEN` | Upstash Redis auth token | `AXxx...` |
 
@@ -142,6 +143,7 @@ Both endpoints are rate-limited to the `anchor` category (1 request per 6 hours)
 - [ ] All required environment variables are set (see matrix above)
 - [ ] `EP_COMMIT_SIGNING_KEY` is set (fatal error in production if missing)
 - [ ] `EP_COMMIT_SIGNING_KEYS` is valid JSON if set (fatal error in production if malformed)
+- [ ] `EP_AGENT_RECORD_CREATION_CAPABILITY` is configured in Vercel and matches the one-way private database capability
 - [ ] Upstash Redis is configured (rate limiting falls back to in-memory without it, which does not work across serverless instances)
 - [ ] Database schema is applied and append-only triggers are active on `protocol_events` and `handshake_events`
 - [ ] `npm run check:protocol` passes (write-discipline CI enforcement)
@@ -152,12 +154,21 @@ Both endpoints are rate-limited to the `anchor` category (1 request per 6 hours)
 For Agent Record and other forward-compatible database changes, deploy in this
 order:
 
-1. Apply the forward-compatible Supabase migration first.
-2. Verify the live database contract before application promotion: confirm the
-   expected function signatures and service-role grants, and run the documented
-   non-mutating readiness/contract checks.
-3. Only after that verification passes, promote or merge the Vercel application
-   that calls the new contract.
+1. Generate the Agent Record creation capability in a secure operator context.
+   It must be `earc1_` followed by 64 lowercase hexadecimal characters. Do not
+   print it to build output, application logs, or public readiness responses.
+2. Apply the forward-compatible Supabase migration first.
+3. Using the privileged migration role, configure the private database
+   capability to the generated value. Do not grant the private capability table
+   or configuration function to `service_role`.
+4. Verify the live database contract before application promotion: confirm the
+   expected function signatures and grants, confirm direct execution of the
+   base creator remains denied to `service_role`, and run the non-mutating
+   capability and RPC contract checks.
+5. Set the same value as `EP_AGENT_RECORD_CREATION_CAPABILITY` in the target
+   Vercel environment alongside the signer, Supabase, and Upstash prerequisites.
+6. Only after the database verification passes, promote or merge the Vercel
+   application that calls the new contract.
 
 This ordering keeps the old application compatible while the database moves
 forward and prevents a new application from reaching RPCs that are not live yet.

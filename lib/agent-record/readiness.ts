@@ -4,6 +4,7 @@ export type AgentRecordReadinessDependency =
   | 'signing_key'
   | 'durable_rate_limiting'
   | 'database_configuration'
+  | 'database_creation_authorization'
   | 'database_rpcs';
 
 export type AgentRecordConfigurationReadiness = Readonly<{
@@ -13,6 +14,7 @@ export type AgentRecordConfigurationReadiness = Readonly<{
     signing_key: boolean;
     durable_rate_limiting: boolean;
     database_configuration: boolean;
+    database_creation_authorization: boolean;
   }>;
   unavailable: readonly AgentRecordReadinessDependency[];
 }>;
@@ -22,6 +24,7 @@ type RuntimeEnvironment = Readonly<Record<string, string | undefined>>;
 const SIGNING_KEY_ID = /^[A-Za-z0-9][A-Za-z0-9._:-]{0,63}$/;
 const RESERVED_SIGNING_KEY_IDS = new Set(['constructor', 'prototype']);
 const BASE64_ED25519_SEED = /^[A-Za-z0-9+/]{43}=$/;
+const CREATION_CAPABILITY = /^earc1_[0-9a-f]{64}$/;
 
 function validSigningKeyId(value: string): boolean {
   return SIGNING_KEY_ID.test(value) && !RESERVED_SIGNING_KEY_IDS.has(value);
@@ -57,6 +60,9 @@ export function getAgentRecordConfigurationReadiness(
     ),
     database_configuration: Boolean(
       environment.NEXT_PUBLIC_SUPABASE_URL && environment.SUPABASE_SERVICE_ROLE_KEY,
+    ),
+    database_creation_authorization: CREATION_CAPABILITY.test(
+      environment.EP_AGENT_RECORD_CREATION_CAPABILITY ?? '',
     ),
   });
   const unavailable = Object.freeze((Object.entries(checks) as Array<[

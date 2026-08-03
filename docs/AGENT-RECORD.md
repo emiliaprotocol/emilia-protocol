@@ -8,18 +8,20 @@ listing, identity, ownership, competence, or safety claim.
 
 A record can be created only through `createAgentRecord()` while its Agent
 Adoption session and sole Operating Bond are active. First, the service uses
-the read-only `prepareBoundAgentTrialRefusal()` path to open the encrypted trial
-envelope, rebind the adoption ID, bond ID and digest, and Arena session, and read
-and verify the immutable signed refusal without publishing it. Permit events
-have no signed refusal artifact and are rejected.
+the read-only `prepareAgentRecordRefusalSource()` path to open the encrypted
+trial envelope, rebind the adoption ID, bond ID and digest, and Arena session,
+and read and verify the immutable signed refusal without publishing a public
+Arena share. Permit events have no signed refusal artifact and are rejected.
 
 The service then signs the `EP-AGENT-RECORD-OBSERVATION-v1` projection before
-any database mutation. One `create_agent_record` database transaction rechecks
-the active adoption credential, latest bond, and immutable Arena source;
-publishes the exact Arena share; and inserts the immutable Agent Record. A later
-failure or conflict rolls back both insertions. Unique constraints consume the
-opaque record ID, internal Arena share, source refusal digest, and SHA-256
-owner-token hash. No caller chooses a vanity identifier.
+any database mutation. The `create_agent_record_with_capability` wrapper first
+authenticates the application-only creation capability. One base
+`create_agent_record` database transaction then rechecks the active adoption
+credential, latest bond, and immutable signed refusal source and inserts the
+immutable Agent Record. A later failure or conflict leaves no partial record.
+Unique constraints consume the opaque record ID, private source commitment,
+source refusal digest, and SHA-256 owner-token hash. No caller chooses a vanity
+identifier.
 
 The creation request contains no timestamp fields. On an exact retry, the
 service may compute and sign a candidate with fresh observation and retention
@@ -49,10 +51,10 @@ configured operator key by key ID. Artifact-supplied public keys are not part of
 the schema and are rejected. Production creation fails closed when
 `EP_COMMIT_SIGNING_KEY` is absent.
 
-The Arena share ID is an internal transaction, uniqueness, and revocation
-binding. It is not a field in the signed Agent Record envelope and is not
-returned by the public Agent Record endpoint. The refusal-artifact digest is the
-only public source binding; it is not a dereferenceable Arena URL.
+The private source commitment is a transaction and uniqueness binding. It is
+not a field in the signed Agent Record envelope and is not returned by the
+public Agent Record endpoint. The refusal-artifact digest is the only public
+source binding; it is not a dereferenceable Arena URL.
 
 `EP_AGENT_RECORD_SIGNING_KEY_ID` names the current Agent Record signing key.
 When it is unset, the backward-compatible default is `ep-signing-key-1`. An ID
@@ -86,12 +88,11 @@ SHA-256 hash. Possession proves control of this record credential only; it does
 not prove identity or ownership of an agent, codebase, account, or key.
 
 Revocation uses one database transaction to append an immutable terminal Agent
-Record revocation and set only `revoked_at` on the exact internally bound Arena
-share. It does not rewrite or delete the Agent Record or either signed public
-projection, and the consumed source cannot be republished into another Agent
-Record. An exact revocation retry returns the original terminal result. Exact
-public reads return the same not-found result for unknown, expired, and revoked
-IDs.
+Record revocation. It does not rewrite or delete the Agent Record or its signed
+public projection, and the consumed source cannot be republished into another
+Agent Record. An exact revocation retry returns the original terminal result.
+Exact public reads return the same not-found result for unknown, expired, and
+revoked IDs.
 
 ## Retention boundary
 
@@ -133,15 +134,22 @@ ready:
 - both `UPSTASH_REDIS_REST_URL` and `UPSTASH_REDIS_REST_TOKEN` configure the
   durable public rate limiter;
 - `NEXT_PUBLIC_SUPABASE_URL` and `SUPABASE_SERVICE_ROLE_KEY` configure the
-  server-held database client; and
-- the service role can execute `create_agent_record`, `read_agent_record_public`,
-  and `revoke_agent_record` with the deployed signatures.
+  server-held database client;
+- `EP_AGENT_RECORD_CREATION_CAPABILITY` has the exact `earc1_` plus 64
+  lowercase-hex shape and matches the one-way capability configured in the
+  private database store; and
+- the service role can execute `check_agent_record_creation_capability`,
+  `create_agent_record_with_capability`, `read_agent_record_public`, and
+  `revoke_agent_record` with the deployed signatures.
 
-The live RPC readiness probes use deliberately invalid, non-secret inputs that
-each function rejects in its first validation/not-found branch before any
-mutation. Probe results are cached briefly; no key, token, URL, or database error
-detail is returned to a public caller. An unavailable dependency produces one
-generic `503 agent_record_unavailable` response, and `/adopt` keeps the synthetic
+The live authorization check confirms only whether the server-held creation
+capability matches the private database configuration. The creation probe uses
+that capability with null business inputs, which the base creator rejects in
+its first validation block before any mutation. The read and revoke probes use
+deliberately invalid, non-secret identifiers. Probe results are cached briefly;
+no capability, key, token, URL, or database error detail is returned to a public
+caller. An unavailable dependency produces one generic
+`503 agent_record_unavailable` response, and `/adopt` keeps the synthetic
 challenge and Operating Bond available while suppressing Agent Record creation.
 Development and tests retain their documented ephemeral/in-memory behavior.
 
@@ -155,5 +163,9 @@ exact opaque-ID lookup through the server-only
 signature before returning the envelope. `anon` and `authenticated` cannot
 execute the RPC directly. There is no list, search, feed, sitemap, handle, or
 enumeration function. Creation and owner revocation are separate
-`service_role`-only `SECURITY DEFINER` RPCs. The database validates closed
-structure and exact source bindings; it does not claim to verify Ed25519.
+`service_role`-only `SECURITY DEFINER` RPCs. The service role cannot execute the
+base creator directly: it must use `create_agent_record_with_capability`. The
+matching capability is stored only as a private hash and can be checked through
+a boolean-only server RPC; neither the capability table nor its configuration
+function is granted to `service_role`. The database validates closed structure
+and exact source bindings; it does not claim to verify Ed25519.

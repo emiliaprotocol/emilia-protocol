@@ -34,7 +34,7 @@ describe('Agent Record documentation and OpenAPI lifecycle contract', () => {
     expect(openApiDocument.warnings.map((warning) => warning.message)).toEqual([]);
   });
 
-  it('documents read and sign before the atomic publication transaction', () => {
+  it('documents read and sign before the atomic record transaction', () => {
     const creationDocs = markdownSection('Creation boundary', 'Public projection');
     const operation = openApi.paths['/api/adopt/sessions/{sessionId}/records'].post;
 
@@ -42,18 +42,18 @@ describe('Agent Record documentation and OpenAPI lifecycle contract', () => {
       const normalized = lifecycle.replaceAll('`', '').replace(/\s+/g, ' ').toLowerCase();
       const readIndex = normalized.indexOf('read');
       const signIndex = normalized.indexOf('signs');
-      const publishIndex = normalized.indexOf('publishes the exact arena share');
       const insertIndex = normalized.indexOf('inserts the immutable agent record');
 
       expect(readIndex).toBeGreaterThanOrEqual(0);
       expect(signIndex).toBeGreaterThan(readIndex);
-      expect(publishIndex).toBeGreaterThan(signIndex);
-      expect(insertIndex).toBeGreaterThan(publishIndex);
+      expect(insertIndex).toBeGreaterThan(signIndex);
       expect(normalized).toMatch(
         /signs (?:the )?ep-agent-record-observation-v1 (?:projection )?before any database mutation/,
       );
-      expect(normalized).toMatch(/one (?:create_agent_record )?database transaction/);
+      expect(normalized).toContain('creation capability');
+      expect(normalized).toMatch(/one (?:base )?(?:create_agent_record )?database transaction|authorizes one database transaction/);
       expect(lifecycle).not.toContain('publishBoundAgentTrialRefusal');
+      expect(normalized).not.toContain('publishes the exact arena share');
     }
   });
 
@@ -73,13 +73,14 @@ describe('Agent Record documentation and OpenAPI lifecycle contract', () => {
     expect(requestSchema.properties).not.toHaveProperty('retention_expires_at');
   });
 
-  it('keeps the public envelope closed and excludes the Arena share identifier', () => {
+  it('keeps the public envelope closed and excludes private source identifiers', () => {
     const publicDocs = markdownSection('Public projection', 'Operator signing-key rotation');
     const observation = openApi.components.schemas.AgentRecordObservation;
     const publicResponseRef = openApi.paths['/api/agent-records/{recordId}']
       .get.responses['200'].content['application/json'].schema.$ref;
     const publicResponse = resolveRef(publicResponseRef);
 
+    expect(publicDocs).toContain('private source commitment');
     expect(publicDocs).toContain('not a field in the signed Agent Record envelope');
     expect(observation.additionalProperties).toBe(false);
     expect(observation.properties.record.additionalProperties).toBe(false);
@@ -89,7 +90,7 @@ describe('Agent Record documentation and OpenAPI lifecycle contract', () => {
     expect(JSON.stringify(publicResponse)).not.toMatch(/arena_share_id|arena_share_/i);
   });
 
-  it('documents the secret-free fail-closed production readiness boundary', () => {
+  it('documents the non-disclosing fail-closed production readiness boundary', () => {
     const runtimeDocs = markdownSection('Runtime readiness', 'Access model');
     const create = openApi.paths['/api/adopt/sessions/{sessionId}/records'].post;
     const read = openApi.paths['/api/agent-records/{recordId}'].get;
@@ -99,11 +100,15 @@ describe('Agent Record documentation and OpenAPI lifecycle contract', () => {
       'EP_COMMIT_SIGNING_KEY',
       'UPSTASH_REDIS_REST_URL',
       'SUPABASE_SERVICE_ROLE_KEY',
-      'create_agent_record',
+      'EP_AGENT_RECORD_CREATION_CAPABILITY',
+      'check_agent_record_creation_capability',
+      'create_agent_record_with_capability',
       'read_agent_record_public',
       'revoke_agent_record',
     ]) expect(runtimeDocs).toContain(dependency);
-    expect(runtimeDocs).toContain('generic `503 agent_record_unavailable`');
+    expect(runtimeDocs.replace(/\s+/g, ' ')).toContain(
+      'generic `503 agent_record_unavailable`',
+    );
     for (const operation of [create, read, revoke]) {
       expect(operation.description.replace(/\s+/g, ' ')).toContain('runtime readiness gate');
       expect(operation.responses['503'].description).toContain('no dependency detail is disclosed');
@@ -111,13 +116,14 @@ describe('Agent Record documentation and OpenAPI lifecycle contract', () => {
   });
 
   it('deploys the forward-compatible database contract before the Vercel application', () => {
-    const migrationIndex = deploymentDocs.indexOf(
+    const normalizedDeploymentDocs = deploymentDocs.replace(/\s+/g, ' ');
+    const migrationIndex = normalizedDeploymentDocs.indexOf(
       'Apply the forward-compatible Supabase migration first.',
     );
-    const verificationIndex = deploymentDocs.indexOf(
+    const verificationIndex = normalizedDeploymentDocs.indexOf(
       'Verify the live database contract before application promotion',
     );
-    const applicationIndex = deploymentDocs.indexOf(
+    const applicationIndex = normalizedDeploymentDocs.indexOf(
       'promote or merge the Vercel application',
     );
 
