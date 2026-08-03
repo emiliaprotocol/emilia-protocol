@@ -12,7 +12,10 @@ vi.mock('@/lib/agent-adoption/trial', () => ({
   publishBoundAgentTrialRefusal: vi.fn(),
 }));
 
-import { publishBoundAgentTrialRefusal } from '@/lib/agent-adoption/trial';
+import {
+  AgentAdoptionTrialError,
+  publishBoundAgentTrialRefusal,
+} from '@/lib/agent-adoption/trial';
 import {
   AGENT_RECORD_RETENTION_MS,
   signAgentRecordObservation,
@@ -98,6 +101,20 @@ function createClient() {
   return { rpc };
 }
 
+function signedObservation() {
+  return signAgentRecordObservation({
+    recordId: RECORD_ID,
+    bondId: BOND_ID,
+    bondDigest: BOND_DIGEST,
+    sourceArtifactDigest: REFUSAL_DIGEST,
+    actionDigest: ACTION_DIGEST,
+    refusalDigest: REFUSAL_DIGEST,
+    refusedAt: REFUSED_AT,
+    observedAt: new Date(NOW).toISOString(),
+    retentionExpiresAt: RETENTION_EXPIRES_AT,
+  });
+}
+
 describe('Agent Record service', () => {
   beforeEach(() => {
     vi.clearAllMocks();
@@ -157,6 +174,63 @@ describe('Agent Record service', () => {
       profile: 'EP-ACTION-REFUSAL-STATEMENT-v1',
       artifact_digest: REFUSAL_DIGEST,
     });
+  });
+
+  it.each([
+    ['a missing owner credential', { ...CREATION_INPUT, owner_token: undefined }],
+    ['an injected extra field', { ...CREATION_INPUT, admin: true }],
+    ['a malformed encrypted trial token', { ...CREATION_INPUT, trial_token: 'plaintext' }],
+  ])('rejects %s before publishing or persistence', async (_name, input) => {
+    const client = createClient();
+
+    await expect(createAgentRecord({
+      authorization,
+      input,
+      client: client as any,
+      now: NOW,
+    })).rejects.toMatchObject({ status: 400, code: 'agent_record_creation_invalid' });
+    expect(publishBoundAgentTrialRefusal).not.toHaveBeenCalled();
+    expect(client.rpc).not.toHaveBeenCalled();
+  });
+
+  it('rejects a non-finite observation clock before publishing', async () => {
+    const client = createClient();
+
+    await expect(createAgentRecord({
+      authorization,
+      input: CREATION_INPUT,
+      client: client as any,
+      now: Number.NaN,
+    })).rejects.toMatchObject({ status: 400, code: 'agent_record_creation_invalid' });
+    expect(publishBoundAgentTrialRefusal).not.toHaveBeenCalled();
+    expect(client.rpc).not.toHaveBeenCalled();
+  });
+
+  it('preserves a typed trial refusal and never reaches persistence', async () => {
+    vi.mocked(publishBoundAgentTrialRefusal).mockRejectedValue(
+      new AgentAdoptionTrialError(401, 'agent_adoption_trial_invalid', 'trial denied'),
+    );
+    const client = createClient();
+
+    await expect(createAgentRecord({
+      authorization,
+      input: CREATION_INPUT,
+      client: client as any,
+      now: NOW,
+    })).rejects.toMatchObject({ status: 401, code: 'agent_adoption_trial_invalid' });
+    expect(client.rpc).not.toHaveBeenCalled();
+  });
+
+  it('does not misclassify an unexpected trial publication failure', async () => {
+    const failure = new Error('unexpected publication failure');
+    vi.mocked(publishBoundAgentTrialRefusal).mockRejectedValue(failure);
+
+    await expect(createAgentRecord({
+      authorization,
+      input: CREATION_INPUT,
+      client: createClient() as any,
+      now: NOW,
+    })).rejects.toBe(failure);
   });
 
   it.each([
@@ -220,6 +294,22 @@ describe('Agent Record service', () => {
     expect(client.rpc).not.toHaveBeenCalled();
   });
 
+  it('maps a refusal timestamp after observation to an invalid bound refusal', async () => {
+    const source: any = refusalSource();
+    source.refused_at = '2026-08-02T20:02:00.000Z';
+    source.public_refusal_projection.attempt.created_at = source.refused_at;
+    vi.mocked(publishBoundAgentTrialRefusal).mockResolvedValue(source);
+    const client = createClient();
+
+    await expect(createAgentRecord({
+      authorization,
+      input: CREATION_INPUT,
+      client: client as any,
+      now: NOW,
+    })).rejects.toMatchObject({ status: 503, code: 'agent_record_refusal_invalid' });
+    expect(client.rpc).not.toHaveBeenCalled();
+  });
+
   it('maps atomic source replay to a conflict and never fabricates an owner token', async () => {
     const client = {
       rpc: vi.fn().mockResolvedValue({
@@ -234,6 +324,35 @@ describe('Agent Record service', () => {
       client: client as any,
       now: NOW,
     })).rejects.toMatchObject({ status: 409, code: 'agent_record_conflict' });
+  });
+
+  it.each([
+    ['invalid database input', '22023', 400, 'agent_record_invalid'],
+    ['atomic credential conflict', '55000', 409, 'agent_record_conflict'],
+    ['unavailable storage', 'XX000', 503, 'agent_record_store_unavailable'],
+  ])('maps %s without exposing raw store errors', async (_name, code, status, expectedCode) => {
+    const client = {
+      rpc: vi.fn().mockResolvedValue({
+        data: null,
+        error: { code, message: 'database detail that must not escape' },
+      }),
+    };
+
+    await expect(revokeAgentRecord({
+      recordId: RECORD_ID,
+      ownerToken: OWNER_TOKEN,
+      client: client as any,
+    })).rejects.toMatchObject({ status, code: expectedCode });
+  });
+
+  it('rejects a missing success payload from storage', async () => {
+    const client = { rpc: vi.fn().mockResolvedValue({ data: null, error: null }) };
+
+    await expect(revokeAgentRecord({
+      recordId: RECORD_ID,
+      ownerToken: OWNER_TOKEN,
+      client: client as any,
+    })).rejects.toMatchObject({ status: 503, code: 'agent_record_store_invalid' });
   });
 
   it('revokes with the dedicated owner credential and an operation nonce', async () => {
@@ -264,6 +383,35 @@ describe('Agent Record service', () => {
     });
   });
 
+  it.each([
+    ['invalid record id', 'not-a-record', OWNER_TOKEN],
+    ['invalid owner token', RECORD_ID, 'ear1_not-hex'],
+  ])('rejects an %s before revocation storage', async (_name, recordId, ownerToken) => {
+    const client = { rpc: vi.fn() };
+
+    await expect(revokeAgentRecord({
+      recordId,
+      ownerToken,
+      client: client as any,
+    })).rejects.toMatchObject({ status: 400, code: 'agent_record_owner_credential_invalid' });
+    expect(client.rpc).not.toHaveBeenCalled();
+  });
+
+  it('rejects an inconsistent revocation result', async () => {
+    const client = {
+      rpc: vi.fn().mockResolvedValue({
+        data: { record_id: RECORD_ID, revoked: false, revoked_at: null },
+        error: null,
+      }),
+    };
+
+    await expect(revokeAgentRecord({
+      recordId: RECORD_ID,
+      ownerToken: OWNER_TOKEN,
+      client: client as any,
+    })).rejects.toMatchObject({ status: 503, code: 'agent_record_store_invalid' });
+  });
+
   it('returns the same null for unknown and revoked public records', async () => {
     const client = {
       rpc: vi.fn().mockResolvedValue({
@@ -278,6 +426,61 @@ describe('Agent Record service', () => {
       .resolves.toBeNull();
     await expect(loadPublicAgentRecord({ recordId: 'not-a-record', client: client as any, now: NOW }))
       .resolves.toBeNull();
+  });
+
+  it('loads a retained signed record and marks storage status as checked', async () => {
+    const observation = signedObservation();
+    const client = {
+      rpc: vi.fn().mockResolvedValue({
+        data: { record_id: RECORD_ID, public_projection: observation },
+        error: null,
+      }),
+    };
+
+    await expect(loadPublicAgentRecord({
+      recordId: RECORD_ID,
+      client: client as any,
+      now: NOW,
+    })).resolves.toMatchObject({
+      record_id: RECORD_ID,
+      public_projection: observation,
+      verification: {
+        integrity_verified: true,
+        status_checked: true,
+        currently_public: true,
+        claim_boundary: observation.record.claim_boundary,
+      },
+    });
+  });
+
+  it('hides an expired but cryptographically valid public record', async () => {
+    const client = {
+      rpc: vi.fn().mockResolvedValue({
+        data: { record_id: RECORD_ID, public_projection: signedObservation() },
+        error: null,
+      }),
+    };
+
+    await expect(loadPublicAgentRecord({
+      recordId: RECORD_ID,
+      client: client as any,
+      now: Date.parse(RETENTION_EXPIRES_AT),
+    })).resolves.toBeNull();
+  });
+
+  it('rejects an inconsistent public store envelope', async () => {
+    const client = {
+      rpc: vi.fn().mockResolvedValue({
+        data: { record_id: `agent_record_${'9'.repeat(40)}`, public_projection: signedObservation() },
+        error: null,
+      }),
+    };
+
+    await expect(loadPublicAgentRecord({
+      recordId: RECORD_ID,
+      client: client as any,
+      now: NOW,
+    })).rejects.toMatchObject({ status: 503, code: 'agent_record_store_invalid' });
   });
 
   it('rejects an embedded-key substitution returned by storage', async () => {
@@ -332,6 +535,30 @@ describe('Agent Record service', () => {
       status: 503,
       code: 'agent_record_store_invalid',
     });
+  });
+
+  it('rejects a persisted projection whose signature no longer verifies', async () => {
+    const client = createClient();
+    client.rpc.mockImplementationOnce(async (_name, args) => {
+      const publicProjection: any = structuredClone(args.p_public_projection);
+      publicProjection.signature.value = `${publicProjection.signature.value.startsWith('A') ? 'B' : 'A'}${publicProjection.signature.value.slice(1)}`;
+      return {
+        data: {
+          record_id: args.p_record_id,
+          created_at: args.p_observed_at,
+          retention_expires_at: args.p_retention_expires_at,
+          public_projection: publicProjection,
+        },
+        error: null,
+      };
+    });
+
+    await expect(createAgentRecord({
+      authorization,
+      input: CREATION_INPUT,
+      client: client as any,
+      now: NOW,
+    })).rejects.toMatchObject({ status: 503, code: 'agent_record_store_invalid' });
   });
 
   it('uses typed service errors for store failures', async () => {

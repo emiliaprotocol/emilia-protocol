@@ -91,6 +91,41 @@ describe('Agent Record observation core', () => {
     });
   });
 
+  it.each([
+    ['malformed record id', { recordId: 'agent_record_not-hex' }],
+    ['mismatched refusal digest', { refusalDigest: `sha256:${'e'.repeat(64)}` }],
+    ['non-canonical observation instant', { observedAt: '2026-08-02T20:01:00Z' }],
+    ['refusal after observation', { refusedAt: '2026-08-02T20:02:00.000Z' }],
+    ['wrong retention interval', { retentionExpiresAt: '2027-08-02T20:01:00.001Z' }],
+  ])('rejects %s before signing', (_name, mutation) => {
+    expect(() => signAgentRecordObservation({ ...input(), ...mutation })).toThrowError(
+      expect.objectContaining<Partial<AgentRecordCoreError>>({
+        code: 'agent_record_observation_input_invalid',
+      }),
+    );
+  });
+
+  it('rejects a malformed operator seed before signing', () => {
+    vi.stubEnv('EP_COMMIT_SIGNING_KEY', Buffer.alloc(31).toString('base64'));
+
+    expect(() => signAgentRecordObservation(input())).toThrowError(
+      expect.objectContaining<Partial<AgentRecordCoreError>>({
+        code: 'agent_record_operator_key_invalid',
+      }),
+    );
+  });
+
+  it('uses one process-local development keypair when no stable key is configured', () => {
+    vi.stubEnv('EP_COMMIT_SIGNING_KEY', '');
+    const observation = signAgentRecordObservation(input());
+
+    expect(verifyAgentRecordObservation(observation, Date.parse(OBSERVED_AT))).toMatchObject({
+      verified: true,
+      within_retention: true,
+      record_id: RECORD_ID,
+    });
+  });
+
   it('rejects the exact non-canonical Q-to-R base64url signature alias', () => {
     vi.stubEnv(
       'EP_COMMIT_SIGNING_KEY',
@@ -169,6 +204,39 @@ describe('Agent Record observation core', () => {
       status_checked: false,
       reason: null,
       record_id: RECORD_ID,
+    });
+  });
+
+  it('fails closed when a rotated key is absent or malformed in the trust set', () => {
+    const seed = crypto.randomBytes(32);
+    vi.stubEnv('EP_COMMIT_SIGNING_KEY', seed.toString('base64'));
+    vi.stubEnv('EP_AGENT_RECORD_SIGNING_KEY_ID', 'agent-record-key-old');
+    const observation = signAgentRecordObservation(input());
+
+    vi.stubEnv('EP_COMMIT_SIGNING_KEY', crypto.randomBytes(32).toString('base64'));
+    vi.stubEnv('EP_AGENT_RECORD_SIGNING_KEY_ID', 'agent-record-key-current');
+    vi.stubEnv('EP_COMMIT_SIGNING_KEYS', '');
+    expect(verifyAgentRecordObservation(observation, Date.parse(OBSERVED_AT))).toMatchObject({
+      verified: false,
+      reason: 'agent_record_operator_key_unavailable',
+    });
+
+    vi.stubEnv('EP_COMMIT_SIGNING_KEYS', JSON.stringify({
+      'agent-record-key-old': Buffer.alloc(31).toString('base64'),
+    }));
+    expect(verifyAgentRecordObservation(observation, Date.parse(OBSERVED_AT))).toMatchObject({
+      verified: false,
+      reason: 'agent_record_operator_key_unavailable',
+    });
+  });
+
+  it('rejects a canonical but cryptographically invalid signature', () => {
+    const observation: any = structuredClone(signAgentRecordObservation(input()));
+    observation.signature.value = `${observation.signature.value.startsWith('A') ? 'B' : 'A'}${observation.signature.value.slice(1)}`;
+
+    expect(verifyAgentRecordObservation(observation, Date.parse(OBSERVED_AT))).toMatchObject({
+      verified: false,
+      reason: 'agent_record_signature_invalid',
     });
   });
 
@@ -255,6 +323,35 @@ describe('Agent Record observation core', () => {
     });
   });
 
+  it.each([
+    ['before observation', Date.parse(OBSERVED_AT) - 1],
+    ['with a non-finite clock', Number.NaN],
+  ])('verifies integrity but withholds a record %s', (_name, now) => {
+    const observation = signAgentRecordObservation(input());
+
+    expect(verifyAgentRecordObservation(observation, now)).toMatchObject({
+      verified: true,
+      within_retention: false,
+      status_checked: false,
+      reason: 'agent_record_not_yet_observed',
+      record_id: RECORD_ID,
+    });
+  });
+
+  it('turns hostile reflection failures into a closed verification result', () => {
+    const hostile = new Proxy({}, {
+      ownKeys() {
+        throw new Error('hostile ownKeys trap');
+      },
+    });
+
+    expect(() => verifyAgentRecordObservation(hostile, Date.parse(OBSERVED_AT))).not.toThrow();
+    expect(verifyAgentRecordObservation(hostile, Date.parse(OBSERVED_AT))).toMatchObject({
+      verified: false,
+      reason: 'agent_record_observation_invalid',
+    });
+  });
+
   it('fails closed in production when the stable operator key is absent', () => {
     vi.stubEnv('NODE_ENV', 'production');
     vi.stubEnv('EP_COMMIT_SIGNING_KEY', '');
@@ -277,6 +374,15 @@ describe('Agent Record observation core', () => {
       expect.objectContaining<Partial<AgentRecordCoreError>>({
         code: 'agent_record_operator_key_id_invalid',
       }),
+    );
+  });
+
+  it('does not downgrade malformed production trust configuration', () => {
+    vi.stubEnv('NODE_ENV', 'production');
+    vi.stubEnv('EP_COMMIT_SIGNING_KEYS', '{not-json');
+
+    expect(() => signAgentRecordObservation(input())).toThrow(
+      'EP_COMMIT_SIGNING_KEYS contains invalid JSON or structure',
     );
   });
 });
