@@ -7,18 +7,20 @@ should require authorization evidence, and hands you proposed config to review.
 
 ```bash
 npx @emilia-protocol/scan authority               # local config-derived authority inventory
-node cli.mjs --sample                        # see it work on a built-in sample
-node cli.mjs ./tools.json --emit manifest.json    # your MCP tool list
-node cli.mjs ./openapi.json --emit manifest.json  # your HTTP API surface
+npx @emilia-protocol/scan --sample                 # classify the built-in surface
+npx @emilia-protocol/scan ./tools.json             # classify your MCP tool list
+npx @emilia-protocol/scan ./openapi.json           # classify your HTTP API surface
 
-# generate drop-in files (dry-run by default; --apply to write, never overwrites)
-node codemod.mjs ./tools.json --apply        # MCP -> guard.mjs (withMcpGuard)
-node codemod.mjs ./openapi.json --apply      # OpenAPI -> http-guard.mjs (Express 428 receipt gate)
+# generate reviewed protection files (dry-run by default)
+npx @emilia-protocol/scan protect ./tools.json
+npx @emilia-protocol/scan protect ./tools.json --apply
+node emilia/verify-setup.mjs                       # synthetic local refusal check
 ```
 
-`emilia-harden` reads the surface and generates the matching guard: an MCP
-`withMcpGuard` wrap for a tool list, or an Express middleware (`requireEmiliaReceipt`,
-`428 Receipt-Required` per consequential route) for an OpenAPI spec.
+`scan protect` (also available as the legacy `emilia-harden` bin) currently
+accepts MCP tool lists and generates a `withMcpGuard` wrap. OpenAPI remains a
+passive scan/manifest surface in this release: the command refuses to generate
+a verification-only HTTP middleware until durable one-use consumption is wired.
 
 It does exactly three things, and never more:
 
@@ -27,8 +29,17 @@ It does exactly three things, and never more:
    money movement, bank-detail changes, production deploys, IAM grants, data
    export, record deletion, decision overrides. Each match carries an assurance
    tier (`class_a` or `quorum`) and the fields the receipt must bind.
-3. **Report** — a proposed `agent-action-control` manifest, the wrap to add at
-   your tool-call choke point, and an honest coverage report.
+3. **Protect one declared MCP surface** — emit a proposed `agent-action-control`
+   manifest, a production wrapper, integration instructions, and a local
+   synthetic refusal check. You still review and install the wrapper.
+
+The MCP production wrapper requires a durable provenance ledger and a shared
+atomic consumption store. It refuses to initialize without both. The generated
+`verify-setup.mjs` deliberately uses ephemeral demo state so it can prove one
+narrow fact locally: a synthetic destructive call without a receipt was refused
+and its handler was not invoked. That check does not prove provider credentials
+are unreachable through some other path, that your production state is durable,
+or that your keys and approval adapters are correctly configured.
 
 The `authority` command is a separate passive diagnostic:
 
@@ -76,6 +87,8 @@ makes declaring it cheap, and keeps you in control of the declaration.
 
 JSON input is capped at 8 MiB, duplicate member names are refused, and scans are
 limited to 10,000 bounded action records. `--emit` refuses to overwrite an
-existing manifest.
+existing manifest. `protect` is dry-run by default, writes only inside the
+current working directory, refuses symlink traversal, and does not overwrite
+existing files unless you explicitly pass `--force`.
 
 Part of [EMILIA Protocol](https://www.emiliaprotocol.ai). Apache-2.0.

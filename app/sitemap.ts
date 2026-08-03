@@ -25,6 +25,7 @@ export default function sitemap(): MetadataRoute.Sitemap {
     { path: '/gate',                  priority: 0.98, changeFrequency: 'weekly' },
     { path: '/assurance',             priority: 0.92, changeFrequency: 'weekly' },
     { path: '/model-to-matter',       priority: 0.9, changeFrequency: 'monthly' },
+    { path: '/scan',                  priority: 0.95, changeFrequency: 'weekly' },
     { path: '/agent-guard',           priority: 0.85, changeFrequency: 'monthly' },
     { path: '/fire-drill',            priority: 0.95, changeFrequency: 'weekly' },
     { path: '/fire-drill/cf-1',       priority: 0.9,  changeFrequency: 'monthly' },

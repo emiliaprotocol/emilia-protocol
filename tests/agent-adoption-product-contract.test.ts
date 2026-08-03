@@ -63,7 +63,7 @@ describe('Agent Adoption public claim and funnel contract', () => {
     expect(openapi).toContain("'413': { description: 'Request body exceeds the Agent Adoption limit' }");
     expect(middleware).toContain("'GET /api/adopt/sessions/*':                            { rateCategory: 'submit'");
     expect(css).toContain('outline: 3px solid #073b2c');
-    expect(homepage).toContain('Run the Agent Adoption Challenge');
+    expect(homepage).toContain('Scan what your agents can reach');
     expect(publicPage).toContain('USER-SUPPLIED, UNVERIFIED CANDIDATE LABEL');
     expect(publicPage).toContain('creating browser session may have revoked it, or it may have expired');
     expect(css).toMatch(/\.publicationNote \{[\s\S]*?font-size: 12px;/);

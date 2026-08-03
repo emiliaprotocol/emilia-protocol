@@ -3,11 +3,13 @@
 //
 //   node packages/scan/cli.mjs <actions.json | openapi.json>  [--emit manifest.json]
 //   node packages/scan/cli.mjs --sample
+//   node packages/scan/cli.mjs protect <actions.json | openapi.json> [--apply]
 //
 // Ingests MCP tool lists ([{name, description, annotations}] or {tools:[...]}) or
 // an OpenAPI spec, classifies, and prints an HONEST report. Enforces nothing on
 // its own — it proposes; you confirm and add the wrap.
 import fs from 'node:fs';
+import { fileURLToPath } from 'node:url';
 import { scanActions, KNOWN_CATEGORIES } from './index.js';
 
 let strictJsonGate;
@@ -39,7 +41,12 @@ function ingest(raw) {
     for (const [p, ops] of Object.entries(j.paths)) {
       for (const [method, op] of Object.entries(ops)) {
         if (!['get', 'post', 'put', 'patch', 'delete'].includes(method)) continue;
-        actions.push({ name: op?.operationId || `${method} ${p}`, description: op?.summary || op?.description || '', http_method: method });
+        actions.push({
+          name: op?.operationId || `${method} ${p}`,
+          description: op?.summary || op?.description || '',
+          http_method: method,
+          route_path: p,
+        });
       }
     }
     return { actions, source: 'openapi', blindSpots: ['Only operations declared in the spec are visible; undocumented endpoints and query-param-dependent risk are not.'] };
@@ -53,6 +60,12 @@ const args = process.argv.slice(2);
 if (args[0] === 'authority') {
   const { authorityMain } = await import('./dist/authority/cli.js');
   process.exitCode = authorityMain(args.slice(1));
+} else if (args[0] === 'protect') {
+  // Reuse the hardener in-process. This launches no configured server and makes
+  // no network request; it only reads the supplied declaration and, with
+  // --apply, creates a reviewed scaffold under the selected output directory.
+  process.argv = [process.argv[0], fileURLToPath(new URL('./codemod.mjs', import.meta.url)), ...args.slice(1)];
+  await import('./codemod.mjs');
 } else {
   const emitIdx = args.indexOf('--emit');
   const emitPath = emitIdx >= 0 ? args[emitIdx + 1] : null;
@@ -61,7 +74,7 @@ if (args[0] === 'authority') {
     input = { actions: SAMPLE, source: 'mcp', blindSpots: ['This is the built-in sample. Real scans see only statically-listed tools; runtime-registered tools and value-dependent risk are invisible.'] };
   } else {
     const file = args.find((a) => !a.startsWith('--') && a !== emitPath);
-    if (!file) { console.error('usage: cli.mjs <actions.json|openapi.json> [--emit manifest.json] | --sample'); process.exit(2); }
+    if (!file) { console.error('usage: cli.mjs <actions.json|openapi.json> [--emit manifest.json] | --sample | protect <input> [--apply]'); process.exit(2); }
     const raw = fs.readFileSync(file);
     if (raw.length > MAX_INPUT_BYTES) { console.error(`input exceeds ${MAX_INPUT_BYTES} bytes`); process.exit(2); }
     input = ingest(raw.toString('utf8'));
@@ -97,10 +110,9 @@ if (args[0] === 'authority') {
 
   console.log(`\n${C.b}Next (nothing is enforced until you do this)${C.r}`);
   console.log('  1. Review the classifications above; downgrade any false positive, and confirm each REVIEW item.');
-  console.log('  2. Wire the guard at your tool-call choke point (one wrap):');
-  console.log(`     ${C.dim}import { withMcpGuard } from '@emilia-protocol/mcp-guard';${C.r}`);
-  console.log(`     ${C.dim}const dispatch = withMcpGuard(yourDispatch, { manifest, verifyOpts: { trustedKeys } });${C.r}`);
-  console.log('  3. Pin your issuer/approver keys. Until keys are pinned and the wrap is in place, NOTHING is enforced.');
+  console.log('  2. Generate the reviewed protection scaffold (still a dry-run):');
+  console.log(`     ${C.dim}npx @emilia-protocol/scan protect <this-input>${C.r}`);
+  console.log('  3. Apply and integrate it at the credential-owning dispatch boundary. Until that boundary, durable state, and pinned keys exist, NOTHING is enforced.');
 
   if (emitPath) {
     try {

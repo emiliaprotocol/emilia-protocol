@@ -1,10 +1,10 @@
 #!/usr/bin/env node
 // SPDX-License-Identifier: Apache-2.0
 //
-//   node packages/scan/codemod.mjs <actions.json|openapi.json|--sample> [--out ./emilia] [--apply] [--force]
+//   npx @emilia-protocol/scan protect <actions.json|--sample> [--out ./emilia] [--apply] [--force]
 //
 // Turns a scan into drop-in files: a reviewed action-control manifest and a
-// runnable guard module you import at your tool-call choke point.
+// guard module you review and import at the credential-owning dispatch boundary.
 //
 // SAFETY BOUNDARY (this is the whole point):
 //   - DRY-RUN by default. It prints every file it WOULD write. Nothing is
@@ -18,6 +18,7 @@
 //     until you wire them. Nothing verifies until you pin issuer keys.
 import fs from 'node:fs';
 import path from 'node:path';
+import { randomUUID } from 'node:crypto';
 import { scanActions } from './index.js';
 
 let strictJsonGate;
@@ -43,6 +44,9 @@ const SAMPLE = [
 ];
 
 function ingest(file) {
+  if (fs.lstatSync(file).isSymbolicLink()) {
+    throw new Error(`Refusing symlinked input: ${file}`);
+  }
   const raw = fs.readFileSync(file);
   if (raw.length > MAX_INPUT_BYTES) throw new Error(`Input exceeds ${MAX_INPUT_BYTES} bytes.`);
   const text = raw.toString('utf8');
@@ -81,7 +85,13 @@ else {
 
 /** @type {any} */
 const rep = scanActions(input.actions, { source: input.source });
-const isHttp = input.source === 'openapi';
+if (input.source === 'openapi') {
+  console.error(
+    'OpenAPI protect is unavailable until durable one-use consumption is wired. '
+    + 'Use `npx @emilia-protocol/scan <openapi.json>` for passive classification.',
+  );
+  process.exit(2);
+}
 
 // Build the guard's per-tool annotations from the scan. Gated + fail-closed
 // actions => irreversible:true; read-only => irreversible:false. Anything the
@@ -115,24 +125,83 @@ const annotations = {
 ${annEntries.join('\n')}
 };
 
-/** Wrap your MCP tool-call dispatcher. */
-export function guardDispatch(dispatch) {
-  if (trustedKeys.length === 0) {
-    console.warn('[emilia] EP_TRUSTED_ISSUER_KEYS is empty — gated actions will be REFUSED until you pin keys.');
+/**
+ * Wrap your MCP tool-call dispatcher for production.
+ * The generator never silently downgrades authoritative state to memory.
+ */
+export function guardDispatch(dispatch, runtime = {}) {
+  if (!runtime.ledger || !runtime.store) {
+    throw new TypeError(
+      '[emilia] production guard requires a durable provenance ledger and shared atomic consumption store',
+    );
+  }
+  if (runtime.store.durable !== true
+      || runtime.store.ownershipFenced !== true
+      || runtime.store.permanentConsumption !== true
+      || typeof runtime.store.reserve !== 'function'
+      || typeof runtime.store.commit !== 'function'
+      || typeof runtime.store.release !== 'function') {
+    throw new TypeError('[emilia] production guard requires a durable, ownership-fenced, permanent consumption store');
+  }
+  const pinnedKeys = runtime.trustedKeys || trustedKeys;
+  if (!Array.isArray(pinnedKeys) || pinnedKeys.length === 0) {
+    throw new TypeError('[emilia] production guard requires at least one pinned trusted key');
   }
   return withMcpGuard(dispatch, {
     annotations,
     defaultIrreversible: true, // fail closed: any tool the scan did not see is gated
-    verifyOpts: { trustedKeys },
+    verifyOpts: { trustedKeys: pinnedKeys },
     enforceDemand: true,
-    // Wire these adapters to your EP host / @emilia-protocol/issue. Until then, a
-    // gated call arriving WITHOUT a valid receipt fails closed (is refused).
-    // requestClassASignoff: async (ctx) => yourSignoff(ctx),
-    // issueReceipt: async (ctx) => yourHost.issue(ctx),
+    ledger: runtime.ledger,
+    store: runtime.store,
+    requestConsent: runtime.requestConsent,
+    requestClassASignoff: runtime.requestClassASignoff,
+    issueReceipt: runtime.issueReceipt,
+  });
+}
+
+/** Local setup check only. Never use ephemeral state in production. */
+export function guardDispatchDemo(dispatch) {
+  if (process.env.NODE_ENV === 'production') {
+    throw new TypeError('[emilia] demo guard is unavailable in production');
+  }
+  return withMcpGuard(dispatch, {
+    annotations,
+    defaultIrreversible: true,
+    verifyOpts: { trustedKeys: [] },
+    enforceDemand: true,
+    allowEphemeralLedger: true,
   });
 }
 
 export { manifest };
+`;
+
+const verifySetupJs = `// SPDX-License-Identifier: Apache-2.0
+// GENERATED local setup check. It performs no network request and executes no
+// consequential handler. Ephemeral state here is intentional and demo-only.
+import assert from 'node:assert/strict';
+import { guardDispatchDemo } from './guard.mjs';
+
+let called = false;
+const rawDispatch = async () => {
+  called = true;
+  return { executed: true };
+};
+const guarded = guardDispatchDemo(rawDispatch);
+const result = await guarded('deleteCustomer', { customer_id: 'synthetic-customer-001' });
+const unknownResult = await guarded('runtimeRegisteredDangerousAction', { target: 'synthetic-target-001' });
+
+assert.equal(called, false, 'underlying handler was called');
+assert.equal(result?.ep_refused, true, 'missing receipt was not refused');
+assert.equal(result?.code, 'emilia_receipt_required', 'unexpected refusal code');
+assert.equal(result?.stage, 'consent', 'unexpected refusal stage');
+assert.equal(unknownResult?.ep_refused, true, 'an unscanned runtime tool was not refused');
+assert.equal(called, false, 'underlying handler was called by an unscanned runtime tool');
+
+console.log('EMILIA PROTECT CHECK: PASS — underlying handler was not called.');
+console.log('This proves only that the generated local wrapper refused this synthetic call.');
+console.log('Production still requires a durable ledger, shared atomic store, pinned keys, and a non-bypassable dispatch boundary.');
 `;
 
 const integrationMd = `# EMILIA integration (generated)
@@ -145,74 +214,31 @@ const integrationMd = `# EMILIA integration (generated)
 \`\`\`js
 import { guardDispatch } from './${outDir}/guard.mjs';
 // before: const result = await dispatch(name, args, extra);
-const dispatch = guardDispatch(rawDispatch);   // wrap once, at the choke point
+const dispatch = guardDispatch(rawDispatch, {
+  ledger,       // durable provenance ledger; verify it at startup
+  store,        // shared atomic consumption store; never process-local in production
+  trustedKeys,  // relying-party-pinned issuer/approver keys
+  requestConsent,
+  requestClassASignoff,
+  issueReceipt,
+});             // wrap once, at the non-bypassable choke point
 \`\`\`
 
-3. Pin keys: set \`EP_TRUSTED_ISSUER_KEYS\` to your issuer/approver public keys.
-4. Wire the signoff/issue adapters in \`guard.mjs\` to your EP host.
+3. Before integration, run \`node ${outDir}/verify-setup.mjs\`. It is a local,
+   ephemeral-state refusal check only; it does not prove production coverage.
+4. Pin keys and supply a durable provenance ledger plus a shared atomic
+   consumption store. Wire the consent/signoff/issue adapters to your EP host.
 
-Nothing is enforced until steps 2 and 3 are done. This scaffold proposes; it does
-not protect on its own.
-`;
-
-// ---- HTTP guard for an OpenAPI surface (Express, requireEmiliaReceipt) ----
-const toExpressPath = (p) => String(p || '/').replace(/\{([^}]+)\}/g, ':$1');
-const routes = rep.results
-  .filter((r) => r.classification.decision === 'gate' || r.classification.decision === 'review_fail_closed')
-  .map((r) => ({
-    method: String(r.action.http_method || 'post').toLowerCase(),
-    path: toExpressPath(r.action.route_path),
-    action: r.classification.category ? (rep.manifest.actions.find((a) => a.match?.tool === r.action.name)?.action_type || r.action.name) : r.action.name,
-    tier: r.classification.assurance_class || 'class_a',
-    review: r.classification.decision === 'review_fail_closed',
-  }));
-const reviewCount = routes.filter((r) => r.review).length;
-
-const httpGuardJs = `// SPDX-License-Identifier: Apache-2.0
-// GENERATED by @emilia-protocol/scan (emilia-harden). REVIEW before use.
-import { requireEmiliaReceipt } from '@emilia-protocol/require-receipt';
-
-// Pin your issuer/approver public keys OUT OF BAND (comma-separated base64url SPKI).
-// Until set, every gated route fails closed (428 Receipt-Required on each request).
-const trustedKeys = (process.env.EP_TRUSTED_ISSUER_KEYS || '').split(',').map((s) => s.trim()).filter(Boolean);
-
-// Consequential routes from the scan. Each demands a valid receipt at its tier; a
-// request without one gets HTTP 428 + a Receipt-Required challenge. Edit freely.
-export const GATED_ROUTES = ${JSON.stringify(routes.map(({ review, ...r }) => r), null, 2)};
-
-/** Apply one receipt gate per consequential route to an Express/Connect app. */
-export function applyEmiliaGates(app) {
-  if (trustedKeys.length === 0) {
-    console.warn('[emilia] EP_TRUSTED_ISSUER_KEYS is empty — gated routes refuse every request until you pin keys.');
-  }
-  for (const r of GATED_ROUTES) {
-    app[r.method](r.path, requireEmiliaReceipt({ action: r.action, assuranceClass: r.tier, statusCode: 428, trustedKeys }));
-  }
-  return app;
-}
-`;
-
-const httpIntegrationMd = `# EMILIA integration (generated, HTTP / OpenAPI)
-
-0. Install the runtime guard: \`npm install @emilia-protocol/require-receipt\`
-1. Review \`action-control.manifest.json\` and \`GATED_ROUTES\` in \`http-guard.mjs\`.
-   ${reviewCount ? `Confirm the ${reviewCount} route(s) marked review (mutating, unrecognized category — defaulted fail-closed).` : 'Downgrade any false positive.'}
-2. Apply the gates BEFORE your route handlers:
-
-\`\`\`js
-import { applyEmiliaGates } from './${outDir}/http-guard.mjs';
-applyEmiliaGates(app);   // one receipt gate per consequential route; returns 428 without a valid receipt
-\`\`\`
-
-3. Serve the manifest so agents can discover what to bring:
-   \`app.get('/.well-known/agent-actions.json', (_req, res) => res.sendFile(new URL('./action-control.manifest.json', import.meta.url).pathname));\`
-4. Pin keys: set \`EP_TRUSTED_ISSUER_KEYS\`. Nothing is enforced until steps 2 and 4 are done.
+Nothing is enforced until the wrapper owns every path to the provider credential,
+the state is durable, and the keys are pinned. This scaffold proposes; it does not
+protect on its own.
 `;
 
 const files = [
   { rel: path.join(outDir, 'action-control.manifest.json'), body: `${JSON.stringify(rep.manifest, null, 2)}\n` },
-  { rel: path.join(outDir, isHttp ? 'http-guard.mjs' : 'guard.mjs'), body: isHttp ? httpGuardJs : guardJs },
-  { rel: path.join(outDir, 'INTEGRATION.md'), body: isHttp ? httpIntegrationMd : integrationMd },
+  { rel: path.join(outDir, 'guard.mjs'), body: guardJs },
+  { rel: path.join(outDir, 'verify-setup.mjs'), body: verifySetupJs },
+  { rel: path.join(outDir, 'INTEGRATION.md'), body: integrationMd },
 ];
 
 const B = '\x1b[1m'; const D = '\x1b[2m'; const R = '\x1b[0m'; const Y = '\x1b[33m';
@@ -255,14 +281,42 @@ for (const segment of relativeOut.split(path.sep).filter(Boolean)) {
   }
 }
 for (const f of files) {
-  if (lstatIfPresent(f.rel)?.isSymbolicLink()) {
+  const leaf = lstatIfPresent(f.rel);
+  if (leaf?.isSymbolicLink()) {
     console.error(`${Y}Refusing symlinked output file: ${f.rel}${R}`);
+    process.exit(1);
+  }
+  if (leaf && leaf.nlink > 1) {
+    console.error(`${Y}Refusing hard-linked output file: ${f.rel}${R}`);
     process.exit(1);
   }
 }
 fs.mkdirSync(outAbsolute, { recursive: true });
 for (const f of files) {
-  fs.writeFileSync(path.resolve(f.rel), f.body, { flag: force ? 'w' : 'wx' });
-  console.log(`  wrote ${f.rel}`);
+  const target = path.resolve(f.rel);
+  const temp = path.join(path.dirname(target), `.${path.basename(target)}.${process.pid}.${randomUUID()}.tmp`);
+  let fd;
+  try {
+    fd = fs.openSync(temp, 'wx', 0o600);
+    fs.writeFileSync(fd, f.body, 'utf8');
+    fs.fsyncSync(fd);
+    fs.closeSync(fd);
+    fd = undefined;
+    if (force) {
+      fs.renameSync(temp, target);
+    } else {
+      // linkSync is the portable no-replace operation: if another process
+      // creates target after validation, this fails rather than clobbering it.
+      fs.linkSync(temp, target);
+      fs.unlinkSync(temp);
+    }
+    console.log(`  wrote ${f.rel}`);
+  } catch (error) {
+    if (fd !== undefined) fs.closeSync(fd);
+    try { fs.unlinkSync(temp); } catch (cleanupError) {
+      if (cleanupError.code !== 'ENOENT') throw cleanupError;
+    }
+    throw error;
+  }
 }
 console.log(`\n${B}Done.${R} Now do steps 2 and 3 in ${path.join(outDir, 'INTEGRATION.md')} — nothing is enforced until you do.\n`);

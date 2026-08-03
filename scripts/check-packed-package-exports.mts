@@ -159,6 +159,35 @@ export function checkPackedPackageExports(): {
       ...tarballs,
     ], temporary);
 
+    const installedScan = fs.realpathSync(path.join(
+      temporary,
+      'node_modules',
+      '@emilia-protocol',
+      'scan',
+    ));
+    const installedRoot = fs.realpathSync(path.join(temporary, 'node_modules'));
+    if (!installedScan.startsWith(`${installedRoot}${path.sep}`)) {
+      throw new Error(`packed scan resolved outside the blank consumer: ${installedScan}`);
+    }
+
+    // Importability is necessary but insufficient for CLI packages. Exercise
+    // the real packed binaries and the generated artifact from a blank
+    // consumer so workspace-relative imports or unpublished package fallbacks
+    // cannot make the release appear healthy.
+    const protectedOutput = path.join(temporary, 'emilia');
+    run(path.join(temporary, 'node_modules', '.bin', 'scan'), [
+      'protect',
+      '--sample',
+      '--apply',
+      '--out', 'emilia',
+    ], temporary);
+    const setupOutput = run(process.execPath, [
+      path.join(protectedOutput, 'verify-setup.mjs'),
+    ], temporary);
+    if (!setupOutput.includes('EMILIA PROTECT CHECK: PASS')) {
+      throw new Error('packed scan protect setup check did not prove refusal');
+    }
+
     const imports = targets.filter((target) => target.kind === 'module');
     const assets = targets.filter((target) => target.kind === 'asset');
     const program = `

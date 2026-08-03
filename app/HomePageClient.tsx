@@ -37,7 +37,7 @@ const PROBLEMS = [
 ];
 
 const SURFACES = [
-  { title: 'MCP and privileged tool-call profile', body: 'Wrap release_payment, delete_repo, or deploy_production so the tool returns Receipt Required before mutation. This is the developer adoption path into EMILIA Gate.', href: '/mcp', accent: color.t2, tags: ['MCP', 'DEVELOPER ON-RAMP'] },
+  { title: 'MCP and privileged tool-call profile', body: 'Scan the declared tool surface, choose one consequential action, then mediate its real executor path so it returns Receipt Required before mutation.', href: '/scan', accent: color.t2, tags: ['MCP', 'DEVELOPER ON-RAMP'] },
   { title: 'Government action profile', body: 'Apply Gate to disbursements, benefit-routing changes, provider enrollment, and accountable overrides at the system-of-record boundary.', href: '/govguard', accent: color.green, tags: ['GATE PROFILE', 'GOVERNMENT'] },
   { title: 'Financial action profile', body: 'Apply the same Gate to wire releases, beneficiary changes, account modifications, and privileged treasury operations before funds move.', href: '/finguard', accent: color.blue, tags: ['GATE PROFILE', 'FINANCIAL'] },
   { title: 'Energy action profile — GRACE', body: 'Apply Gate to bounded curtailment commands and preserve authorization, execution acknowledgment, and effect evidence without claiming meter truth.', href: '/grace', accent: color.green, tags: ['GATE PROFILE', 'ENERGY'] },
@@ -171,8 +171,8 @@ export default function HomePage() {
               mutation.
             </p>
             <div className="ep-home-calm-actions">
-              <Link href="/adopt" className="ep-home-hero-primary">Run the Agent Adoption Challenge</Link>
-              <Link href="/gate" className="ep-home-hero-secondary">Explore Gate →</Link>
+              <Link href="/scan" className="ep-home-hero-primary">Scan what your agents can reach</Link>
+              <Link href="/agent-guard" className="ep-home-hero-secondary">Protect one flagged tool →</Link>
               <Link href="/gate/live" className="ep-home-hero-secondary">Open the live reference →</Link>
             </div>
           </motion.div>
@@ -643,14 +643,11 @@ export default function HomePage() {
                 Wrap dangerous tools.<br />Require receipts.<br />Verify forever.
               </h2>
               <p style={{ fontSize: 16, color: 'rgba(250,250,249,0.72)', lineHeight: 1.72, marginTop: 22, maxWidth: 460 }}>
-                MCP is already the tool-action layer for agents. EMILIA is one wrapper around the
-                irreversible ones — <em style={{ fontStyle: 'normal', color: '#FAFAF9' }}>release_payment</em>, <em style={{ fontStyle: 'normal', color: '#FAFAF9' }}>delete_repo</em>, <em style={{ fontStyle: 'normal', color: '#FAFAF9' }}>deploy_production</em> — so the
-                tool refuses to run without a receipt. Government, financial, energy, and
-                enterprise profiles apply the same Gate to their own action boundaries.
+                Start with a passive local scan. Choose one consequential MCP tool — <em style={{ fontStyle: 'normal', color: '#FAFAF9' }}>release_payment</em>, <em style={{ fontStyle: 'normal', color: '#FAFAF9' }}>delete_repo</em>, or <em style={{ fontStyle: 'normal', color: '#FAFAF9' }}>deploy_production</em> — then place the guard on the real executor path. It covers only paths that integration fully mediates.
               </p>
               <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap', marginTop: 28 }}>
-                <Link href="/mcp" className="ep-cta" style={{ ...cta.primary }}>MCP guard →</Link>
-                <Link href="/quickstart" className="ep-cta-secondary" style={{ ...cta.secondary, color: '#FAFAF9', borderColor: 'rgba(250,250,249,0.3)' }}>Quickstart</Link>
+                <Link href="/agent-guard" className="ep-cta" style={{ ...cta.primary }}>Protect one flagged tool →</Link>
+                <Link href="/mcp" className="ep-cta-secondary" style={{ ...cta.secondary, color: '#FAFAF9', borderColor: 'rgba(250,250,249,0.3)' }}>MCP integration</Link>
               </div>
             </motion.div>
 
@@ -659,19 +656,15 @@ export default function HomePage() {
               background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.12)',
               borderRadius: radius.base, padding: '24px 26px', color: 'rgba(250,250,249,0.92)', overflowX: 'auto',
             }}>
-              <div style={{ color: 'rgba(250,250,249,0.45)' }}>{'// one wrapper around your tool dispatcher'}</div>
-              <div><span style={{ color: color.gold }}>import</span> {'{ withMcpGuard }'} <span style={{ color: color.gold }}>from</span> <span style={{ color: '#9BE7A0' }}>'@emilia-protocol/mcp-guard'</span></div>
+              <div style={{ color: 'rgba(250,250,249,0.45)' }}>{'// scan first; dry-run by default'}</div>
+              <div>$ npx @emilia-protocol/scan authority</div>
+              <div>$ npx @emilia-protocol/scan protect ./tools.json</div>
               <div style={{ height: 12 }} />
-              <div><span style={{ color: color.gold }}>const</span> guarded = <span style={{ color: '#9BE7A0' }}>withMcpGuard</span>(handleTool, {'{'}</div>
-              <div>&nbsp;&nbsp;annotations: {'{'}</div>
-              <div>&nbsp;&nbsp;&nbsp;&nbsp;release_payment:&nbsp;&nbsp;{'{'} irreversible: <span style={{ color: '#9BE7A0' }}>true</span>, action: <span style={{ color: '#9BE7A0' }}>'payment.release'</span> {'}'},</div>
-              <div>&nbsp;&nbsp;&nbsp;&nbsp;delete_repo:&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;{'{'} irreversible: <span style={{ color: '#9BE7A0' }}>true</span>, action: <span style={{ color: '#9BE7A0' }}>'github.repo.delete'</span> {'}'},</div>
-              <div>&nbsp;&nbsp;&nbsp;&nbsp;deploy_production: {'{'} irreversible: <span style={{ color: '#9BE7A0' }}>true</span>, action: <span style={{ color: '#9BE7A0' }}>'deploy.production'</span> {'}'},</div>
-              <div>&nbsp;&nbsp;{'}'},</div>
-              <div>{'}'}) <span style={{ color: 'rgba(250,250,249,0.45)' }}>{'// missing receipt → refused, never a silent pass'}</span></div>
+              <div style={{ color: 'rgba(250,250,249,0.45)' }}>{'// review, create, and run the local refusal check'}</div>
+              <div>$ npx @emilia-protocol/scan protect ./tools.json --apply</div>
+              <div>$ node emilia/verify-setup.mjs</div>
               <div style={{ height: 16 }} />
-              <div style={{ color: 'rgba(250,250,249,0.45)' }}>{'// see it in 60s, fully offline:'}</div>
-              <div>$ node examples/mcp/payment-server.mjs</div>
+              <div style={{ color: 'rgba(250,250,249,0.45)' }}>{'// production: durable ledger + shared atomic store + pinned keys'}</div>
             </motion.div>
           </div>
         </C>

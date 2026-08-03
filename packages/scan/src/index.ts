@@ -22,12 +22,15 @@
 import { HIGH_RISK_ACTION_PACKS, DEFAULT_PASS_THROUGH_ACTIONS, createDefaultActionRiskManifest } from '../risk-packs.js';
 
 const MAX_ACTIONS = 10_000;
+const SOURCE_CONFUSING_NAME = /[\u0000-\u001f\u007f-\u009f\u202a-\u202e\u2066-\u2069]/u;
+const RESERVED_OBJECT_NAMES = new Set(['__proto__', 'prototype', 'constructor']);
 
 export interface ActionInput {
   name: string;
   description?: string;
   annotations?: Record<string, unknown>;
   http_method?: string;
+  route_path?: string;
   [key: string]: unknown;
 }
 
@@ -47,9 +50,14 @@ export interface Classification {
 // action inherits that pack's assurance_class, required_fields, and rationale.
 // Deliberately conservative: strong verbs/nouns only, so a match is defensible.
 const CATEGORY_SIGNALS = [
-  // bank-detail changes are checked BEFORE generic money movement so "payee" /
-  // "beneficiary" land here rather than matching the "pay" in "payee".
-  { pack: 'money_movement.bank_details_change', any: ['bank_detail', 'bankdetail', 'payee', 'beneficiary', 'routing', 'ach_detail', 'payroll_account', 'vendor_account', 'account_number', 'iban'] },
+  // A bank target is not itself a change. Require both the affected banking
+  // concept and explicit mutation intent so an outgoing wire to a beneficiary
+  // stays money movement while updateBeneficiaryBankDetails lands here.
+  {
+    pack: 'money_movement.bank_details_change',
+    any: ['bank_detail', 'bankdetail', 'payee', 'beneficiary', 'routing', 'ach_detail', 'payroll_account', 'vendor_account', 'account_number', 'iban'],
+    requiresAny: ['change', 'update', 'set', 'modify', 'edit', 'replace', 'add', 'create', 'register'],
+  },
   { pack: 'money_movement.release', any: ['payment', 'wire', 'transfer', 'remit', 'disburse', 'payout', 'send_money', 'sendmoney', 'settle', 'refund', 'charge', 'invoice_pay', 'pay'] },
   { pack: 'production.deploy', any: ['deploy', 'release_prod', 'rollout', 'ship_prod', 'promote', 'publish_release', 'terraform_apply', 'infra_apply', 'production_push'] },
   { pack: 'permissions.admin_change', any: ['grant', 'role', 'privilege', 'permission', 'entitlement', 'iam', 'make_admin', 'add_admin', 'assign_role', 'elevate', 'sudo_grant'] },
@@ -67,6 +75,17 @@ function norm(s: unknown): string {
   return String(s || '').toLowerCase().replace(/[^a-z0-9]+/g, '_');
 }
 
+function semanticNorm(s: unknown): string {
+  return String(s || '')
+    .replace(/([a-z0-9])([A-Z])/g, '$1_$2')
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '_');
+}
+
+function hasWholeSignal(hay: string, signal: string): boolean {
+  return `_${hay}_`.includes(`_${signal}_`);
+}
+
 // Classify ONE action. Returns a proposed control with an explicit reason and
 // confidence, or a fail-closed "unclassified" when it mutates but doesn't match.
 export function classifyAction(action: unknown): Classification {
@@ -74,7 +93,7 @@ export function classifyAction(action: unknown): Classification {
     return { decision: 'review_fail_closed', receipt_required: true, assurance_class: 'class_a', reason: 'malformed action — defaults to require a receipt', confidence: 'low' };
   }
   const candidate = action as ActionInput;
-  const hay = `${norm(candidate.name)}_${norm(candidate.description)}`;
+  const hay = `${semanticNorm(candidate.name)}_${semanticNorm(candidate.description)}`;
   const ann = candidate.annotations && typeof candidate.annotations === 'object' && !Array.isArray(candidate.annotations)
     ? candidate.annotations : {};
   const cat = matchCategory(hay);
@@ -130,8 +149,14 @@ export function classifyAction(action: unknown): Classification {
 
 function matchCategory(hay: string): { pack: string; hit: string } | null {
   for (const cat of CATEGORY_SIGNALS) {
-    const hit = cat.any.find((k) => hay.includes(k));
-    if (hit) return { pack: cat.pack, hit };
+    const hit = cat.any.find((k) => k === 'pay' ? hasWholeSignal(hay, k) : hay.includes(k));
+    const requiredSignals = 'requiresAny' in cat && Array.isArray(cat.requiresAny)
+      ? cat.requiresAny
+      : undefined;
+    const requiredHit = requiredSignals?.find((k) => hasWholeSignal(hay, k));
+    if (hit && (!requiredSignals || requiredHit)) {
+      return { pack: cat.pack, hit: requiredHit ? `${requiredHit}+${hit}` : hit };
+    }
   }
   return null;
 }
@@ -141,12 +166,39 @@ export function scanActions(actions: ActionInput[], { source = 'list', blindSpot
   if (!Array.isArray(actions) || actions.length > MAX_ACTIONS) {
     throw new Error(`scan: actions must be an array with at most ${MAX_ACTIONS} entries`);
   }
+  const exactNames = new Set<string>();
+  const normalizedNames = new Map<string, string>();
   for (const action of actions) {
     if (!action || typeof action !== 'object' || Array.isArray(action)
         || typeof action.name !== 'string' || !action.name || action.name.length > 256
         || (action.description !== undefined && (typeof action.description !== 'string' || action.description.length > 16_384))) {
       throw new Error('scan: each action requires a non-empty name and bounded string description');
     }
+    if (SOURCE_CONFUSING_NAME.test(action.name) || RESERVED_OBJECT_NAMES.has(action.name)) {
+      throw new Error(`scan: action name is unsafe for generated source: ${JSON.stringify(action.name)}`);
+    }
+    if (source === 'openapi'
+        && (typeof action.http_method !== 'string'
+          || !['GET', 'POST', 'PUT', 'PATCH', 'DELETE'].includes(action.http_method.toUpperCase())
+          || typeof action.route_path !== 'string'
+          || !action.route_path.startsWith('/')
+          || action.route_path.length > 2_048
+          || SOURCE_CONFUSING_NAME.test(action.route_path))) {
+      throw new Error('scan: each OpenAPI action requires a bounded HTTP method and route path');
+    }
+    if (exactNames.has(action.name)) {
+      throw new Error(`scan: duplicate action name: ${JSON.stringify(action.name)}`);
+    }
+    exactNames.add(action.name);
+    const normalized = norm(action.name);
+    if (!normalized) {
+      throw new Error(`scan: action name is unsafe after normalization: ${JSON.stringify(action.name)}`);
+    }
+    const collision = normalizedNames.get(normalized);
+    if (collision) {
+      throw new Error(`scan: normalized action name collision: ${JSON.stringify(collision)} and ${JSON.stringify(action.name)}`);
+    }
+    normalizedNames.set(normalized, action.name);
   }
   const results = actions.map((a) => ({ action: a, classification: classifyAction(a) }));
   const bucket = (d: Classification['decision']) => results.filter((r) => r.classification.decision === d);
@@ -165,7 +217,9 @@ export function scanActions(actions: ActionInput[], { source = 'list', blindSpot
     risk: classification.decision === 'gate' ? 'high' : 'unconfirmed',
     receipt_required: true,
     assurance_class: classification.assurance_class || 'class_a',
-    match: { protocol: source === 'openapi' ? 'http' : 'mcp', tool: action.name },
+    match: source === 'openapi'
+      ? { protocol: 'http', method: action.http_method!.toUpperCase(), path: action.route_path! }
+      : { protocol: 'mcp', tool: action.name },
     why: classification.why || classification.reason,
     needs_human_confirmation: classification.decision === 'review_fail_closed',
     execution_binding: { required_fields: classification.required_fields || ['action_type'] },

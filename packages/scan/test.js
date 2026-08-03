@@ -2,7 +2,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { spawnSync } from 'node:child_process';
-import { mkdtempSync, symlinkSync, writeFileSync } from 'node:fs';
+import { cpSync, linkSync, mkdirSync, mkdtempSync, readFileSync, symlinkSync, unlinkSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { classifyAction, scanActions, KNOWN_CATEGORIES, HIGH_RISK_ACTION_PACKS } from './index.js';
@@ -36,6 +36,8 @@ test('recognized high-risk actions are gated at the right tier', () => {
   assert.equal(wire.decision, 'gate');
   assert.equal(wire.receipt_required, true);
   assert.equal(wire.assurance_class, 'class_a');
+  assert.equal(wire.category, 'money_movement.release');
+  assert.ok(wire.required_fields.includes('amount_usd'), 'a wire must bind payment fields, not bank-change fields');
 
   const deploy = classifyAction({ name: 'deployToProduction', description: 'ship build to prod' });
   assert.equal(deploy.decision, 'gate');
@@ -43,7 +45,18 @@ test('recognized high-risk actions are gated at the right tier', () => {
 
   const bank = classifyAction({ name: 'updateBeneficiaryBankDetails', description: 'change destination account for a payee' });
   assert.equal(bank.decision, 'gate');
-  assert.equal(bank.category, 'money_movement.bank_details_change', 'payee/beneficiary must land in bank-detail-change, not generic release');
+  assert.equal(bank.category, 'money_movement.bank_details_change', 'change intent plus payee/beneficiary must land in bank-detail-change');
+
+  assert.equal(
+    classifyAction({ name: 'getBeneficiary', description: 'read the current beneficiary' }).decision,
+    'pass_through',
+    'mentioning a beneficiary without change intent must not become a bank-detail change',
+  );
+  assert.equal(
+    classifyAction({ name: 'getPayeeAsset', description: 'read the current payee asset' }).decision,
+    'pass_through',
+    'pay inside payee and set inside asset must not create payment or change intent',
+  );
 });
 
 test('read-only actions pass through', () => {
@@ -89,6 +102,18 @@ test('malformed or oversized action surfaces are refused', () => {
   assert.throws(() => scanActions([null]), /each action/);
   assert.throws(() => scanActions([{ name: 'x'.repeat(257) }]), /bounded/);
   assert.throws(() => scanActions(Array.from({ length: 10_001 }, () => ({ name: 'get_x' }))), /at most/);
+  assert.throws(
+    () => scanActions([{ name: 'sendWire', http_method: 'post' }], { source: 'openapi' }),
+    /OpenAPI action requires a bounded HTTP method and route path/,
+  );
+});
+
+test('duplicate, colliding, and source-confusing tool names are refused', () => {
+  assert.throws(() => scanActions([{ name: 'wire-now' }, { name: 'wire_now' }]), /normalized action name collision/);
+  assert.throws(() => scanActions([{ name: 'same' }, { name: 'same' }]), /duplicate action name/);
+  for (const name of ['__proto__', 'prototype', 'constructor', 'bad\u202Ename', 'bad\u0000name']) {
+    assert.throws(() => scanActions([{ name }]), /action name is unsafe/);
+  }
 });
 
 test('codemod refuses duplicate JSON members and symlinked output paths', () => {
@@ -111,4 +136,185 @@ test('codemod refuses duplicate JSON members and symlinked output paths', () => 
   });
   assert.notEqual(symlinkRun.status, 0);
   assert.match(`${symlinkRun.stdout}${symlinkRun.stderr}`, /symlinked output path/);
+});
+
+test('codemod refuses symlinked input and hard-linked output leaves', () => {
+  const dir = mkdtempSync(join(tmpdir(), 'emilia-scan-links-'));
+  const declaration = join(dir, 'tools.json');
+  const inputLink = join(dir, 'linked-tools.json');
+  writeFileSync(declaration, '[{"name":"deleteCustomer"}]');
+  symlinkSync(declaration, inputLink);
+
+  const linkedInputRun = spawnSync(process.execPath, [join(import.meta.dirname, 'codemod.mjs'), inputLink], {
+    cwd: dir,
+    encoding: 'utf8',
+  });
+  assert.notEqual(linkedInputRun.status, 0);
+  assert.match(`${linkedInputRun.stdout}${linkedInputRun.stderr}`, /symlinked input/);
+
+  const first = spawnSync(process.execPath, [join(import.meta.dirname, 'codemod.mjs'), '--sample', '--apply'], {
+    cwd: dir,
+    encoding: 'utf8',
+  });
+  assert.equal(first.status, 0, `${first.stdout}\n${first.stderr}`);
+  const external = join(dir, 'must-not-change.txt');
+  const leaf = join(dir, 'emilia', 'guard.mjs');
+  writeFileSync(external, 'preserve-me');
+  unlinkSync(leaf);
+  linkSync(external, leaf);
+
+  const hardLinkRun = spawnSync(process.execPath, [join(import.meta.dirname, 'codemod.mjs'), '--sample', '--apply', '--force'], {
+    cwd: dir,
+    encoding: 'utf8',
+  });
+  assert.notEqual(hardLinkRun.status, 0);
+  assert.match(`${hardLinkRun.stdout}${hardLinkRun.stderr}`, /hard-linked output file/);
+  assert.equal(readFileSync(external, 'utf8'), 'preserve-me');
+});
+
+test('scan protect routes to the dry-run hardener without writing files', () => {
+  const dir = mkdtempSync(join(tmpdir(), 'emilia-protect-dry-'));
+  const run = spawnSync(process.execPath, [join(import.meta.dirname, 'cli.mjs'), 'protect', '--sample'], {
+    cwd: dir,
+    encoding: 'utf8',
+  });
+
+  assert.equal(run.status, 0, `${run.stdout}\n${run.stderr}`);
+  assert.match(run.stdout, /DRY RUN — nothing written/);
+  assert.match(run.stdout, /would create: emilia\/guard\.mjs/);
+  assert.match(run.stdout, /would create: emilia\/verify-setup\.mjs/);
+  assert.equal(spawnSync(process.execPath, ['-e', "import('node:fs').then(fs => process.exit(fs.existsSync('emilia') ? 1 : 0))"], {
+    cwd: dir,
+  }).status, 0, 'dry-run must not create the output directory');
+});
+
+test('OpenAPI scan preserves route selectors but protect refuses verification-only HTTP scaffolds', () => {
+  const dir = mkdtempSync(join(tmpdir(), 'emilia-protect-openapi-'));
+  const input = join(dir, 'openapi.json');
+  writeFileSync(input, JSON.stringify({
+    openapi: '3.1.0',
+    paths: {
+      '/payments/{paymentId}': {
+        post: { operationId: 'sendWire', summary: 'Send an outgoing wire transfer' },
+      },
+      '/customers/{customerId}': {
+        delete: { operationId: 'deleteCustomer', summary: 'Permanently delete a customer' },
+      },
+    },
+  }));
+
+  const run = spawnSync(process.execPath, [
+    join(import.meta.dirname, 'cli.mjs'),
+    'protect',
+    input,
+    '--apply',
+  ], {
+    cwd: dir,
+    encoding: 'utf8',
+  });
+
+  assert.notEqual(run.status, 0, 'OpenAPI protect must not emit a replayable verification-only gate');
+  assert.match(`${run.stdout}${run.stderr}`, /OpenAPI protect is unavailable until durable one-use consumption is wired/);
+  assert.equal(spawnSync(process.execPath, ['-e', "import('node:fs').then(fs => process.exit(fs.existsSync('emilia') ? 1 : 0))"], {
+    cwd: dir,
+  }).status, 0, 'refused OpenAPI protect must not create an output directory');
+
+  const manifest = scanActions([
+    { name: 'sendWire', description: 'Send an outgoing wire transfer', http_method: 'post', route_path: '/payments/{paymentId}' },
+    { name: 'deleteCustomer', description: 'Permanently delete a customer', http_method: 'delete', route_path: '/customers/{customerId}' },
+  ], { source: 'openapi' }).manifest;
+  assert.deepEqual(
+    manifest.actions
+      .filter((action) => String(action.id).startsWith('discovered.'))
+      .map((action) => action.match),
+    [
+      { protocol: 'http', method: 'POST', path: '/payments/{paymentId}' },
+      { protocol: 'http', method: 'DELETE', path: '/customers/{customerId}' },
+    ],
+  );
+});
+
+test('generated MCP protection separates durable production state from the explicit local check', async () => {
+  const dir = mkdtempSync(join(tmpdir(), 'emilia-protect-apply-'));
+  const run = spawnSync(process.execPath, [
+    join(import.meta.dirname, 'cli.mjs'),
+    'protect',
+    '--sample',
+    '--out',
+    'emilia',
+    '--apply',
+  ], {
+    cwd: dir,
+    encoding: 'utf8',
+  });
+
+  assert.equal(run.status, 0, `${run.stdout}\n${run.stderr}`);
+  const guardPath = join(dir, 'emilia', 'guard.mjs');
+  const checkPath = join(dir, 'emilia', 'verify-setup.mjs');
+  const integrationPath = join(dir, 'emilia', 'INTEGRATION.md');
+  const guardSource = readFileSync(guardPath, 'utf8');
+  const checkSource = readFileSync(checkPath, 'utf8');
+  const integration = readFileSync(integrationPath, 'utf8');
+  const productionSource = guardSource.split('export function guardDispatchDemo')[0];
+
+  assert.match(productionSource, /runtime\.ledger/);
+  assert.match(productionSource, /runtime\.store/);
+  assert.doesNotMatch(productionSource, /allowEphemeralLedger:\s*true/,
+    'the production wrapper must never opt into ephemeral provenance');
+  assert.match(guardSource, /export function guardDispatchDemo[\s\S]*allowEphemeralLedger:\s*true/,
+    'the standalone local check must make its ephemeral state explicit in its helper');
+  assert.match(checkSource, /Ephemeral state here is intentional and demo-only/);
+  assert.match(integration, /durable provenance ledger/i);
+  assert.match(integration, /shared atomic consumption store/i);
+
+  const scope = join(dir, 'node_modules', '@emilia-protocol');
+  mkdirSync(scope, { recursive: true });
+  cpSync(join(import.meta.dirname, '..', 'mcp-guard'), join(scope, 'mcp-guard'), { recursive: true });
+  cpSync(join(import.meta.dirname, '..', 'require-receipt'), join(scope, 'require-receipt'), { recursive: true });
+
+  const imported = await import(`${new URL(`file://${guardPath}`).href}?test=${Date.now()}`);
+  assert.throws(
+    () => imported.guardDispatch(async () => ({ ok: true })),
+    /durable provenance ledger and shared atomic consumption store/,
+  );
+  const methods = {
+    async reserve() { return true; },
+    async commit() { return true; },
+    async release() { return true; },
+  };
+  const secureStore = {
+    ...methods,
+    durable: true,
+    ownershipFenced: true,
+    permanentConsumption: true,
+  };
+  assert.throws(
+    () => imported.guardDispatch(async () => ({ ok: true }), {
+      ledger: { durable: true },
+      store: { ...methods, durable: false, ownershipFenced: true, permanentConsumption: true },
+      trustedKeys: ['pinned-key'],
+    }),
+    /durable, ownership-fenced, permanent consumption store/,
+  );
+  assert.throws(
+    () => imported.guardDispatch(async () => ({ ok: true }), {
+      ledger: { durable: true },
+      store: secureStore,
+      trustedKeys: [],
+    }),
+    /at least one pinned trusted key/,
+  );
+
+  const check = spawnSync(process.execPath, [checkPath], { cwd: dir, encoding: 'utf8' });
+  assert.equal(check.status, 0, `${check.stdout}\n${check.stderr}`);
+  assert.match(check.stdout, /EMILIA PROTECT CHECK: PASS/);
+  assert.match(check.stdout, /underlying handler was not called/);
+
+  const productionDemo = spawnSync(process.execPath, [checkPath], {
+    cwd: dir,
+    encoding: 'utf8',
+    env: { ...process.env, NODE_ENV: 'production' },
+  });
+  assert.notEqual(productionDemo.status, 0);
+  assert.match(`${productionDemo.stdout}${productionDemo.stderr}`, /demo guard is unavailable in production/);
 });
