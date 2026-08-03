@@ -43,13 +43,16 @@ describe('Agent Record v1 migration source contract', () => {
     expect(migration).not.toMatch(/agent_record_(?:list|search|feed|sitemap)|vanity|handle/i);
     expect(migration.match(/SECURITY DEFINER/g)?.length).toBeGreaterThanOrEqual(6);
     expect(migration).toContain(
-      'GRANT EXECUTE ON FUNCTION public.create_agent_record(UUID, TEXT, TEXT, UUID, TEXT, TEXT, TEXT, TEXT, TEXT, TIMESTAMPTZ, TIMESTAMPTZ, TIMESTAMPTZ, JSONB)\n  TO service_role;',
+      'GRANT EXECUTE ON FUNCTION public.create_agent_record(UUID, TEXT, TEXT, TEXT, UUID, TEXT, TEXT, TEXT, TEXT, TEXT, TIMESTAMPTZ, TIMESTAMPTZ, TIMESTAMPTZ, JSONB)\n  TO service_role;',
     );
     expect(migration).toContain(
       'GRANT EXECUTE ON FUNCTION public.revoke_agent_record(TEXT, TEXT, TEXT)\n  TO service_role;',
     );
     expect(migration).toContain(
-      'GRANT EXECUTE ON FUNCTION public.read_agent_record_public(TEXT)\n  TO anon, authenticated, service_role;',
+      'GRANT EXECUTE ON FUNCTION public.read_agent_record_public(TEXT)\n  TO service_role;',
+    );
+    expect(migration).not.toMatch(
+      /GRANT EXECUTE ON FUNCTION public\.read_agent_record_public\(TEXT\)[\s\S]{0,60}(?:anon|authenticated)/,
     );
   });
 
@@ -58,10 +61,11 @@ describe('Agent Record v1 migration source contract', () => {
     expect(migration).toMatch(/owner_token_hash TEXT[\s\S]*NOT NULL UNIQUE/);
     expect(migration).toMatch(/source_artifact_digest TEXT[\s\S]*NOT NULL UNIQUE/);
     expect(migration).toContain('refusal_digest = source_artifact_digest');
-    expect(migration).toContain("v_owner_token := 'ear1_' ||");
+    expect(migration).toContain("p_owner_token !~ '^ear1_[0-9a-f]{64}$'");
     expect(migration).toContain(
-      'agent_record_private.token_hash(v_owner_token)',
+      'agent_record_private.token_hash(p_owner_token)',
     );
+    expect(migration).toContain('ON CONFLICT (record_id) DO NOTHING;');
     expect(migration).not.toMatch(/owner_token\s+TEXT[\s\S]*CREATE TABLE/i);
   });
 

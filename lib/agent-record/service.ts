@@ -109,15 +109,29 @@ async function callRpc(
   return result.data;
 }
 
-function creationInput(value: unknown): { trial_token: string; attempt_id: string } {
-  if (!exactKeys(value, ['trial_token', 'attempt_id'])
+function creationInput(value: unknown): {
+  trial_token: string;
+  attempt_id: string;
+  record_id: string;
+  owner_token: string;
+} {
+  if (!exactKeys(value, ['trial_token', 'attempt_id', 'record_id', 'owner_token'])
       || typeof value.trial_token !== 'string'
       || !TRIAL_TOKEN.test(value.trial_token)
       || typeof value.attempt_id !== 'string'
-      || !ATTEMPT_ID.test(value.attempt_id)) {
+      || !ATTEMPT_ID.test(value.attempt_id)
+      || typeof value.record_id !== 'string'
+      || !RECORD_ID.test(value.record_id)
+      || typeof value.owner_token !== 'string'
+      || !OWNER_TOKEN.test(value.owner_token)) {
     fail(400, 'agent_record_creation_invalid', 'Agent Record creation input is invalid.');
   }
-  return { trial_token: value.trial_token, attempt_id: value.attempt_id };
+  return {
+    trial_token: value.trial_token,
+    attempt_id: value.attempt_id,
+    record_id: value.record_id,
+    owner_token: value.owner_token,
+  };
 }
 
 function refusalBindings(
@@ -186,7 +200,10 @@ export async function createAgentRecord({
   try {
     published = await publishBoundAgentTrialRefusal({
       authorization,
-      input: parsed,
+      input: {
+        trial_token: parsed.trial_token,
+        attempt_id: parsed.attempt_id,
+      },
       client,
       now,
     });
@@ -197,7 +214,7 @@ export async function createAgentRecord({
     throw cause;
   }
   const source = refusalBindings(published, authorization, parsed.attempt_id);
-  const recordId = `agent_record_${crypto.randomBytes(20).toString('hex')}`;
+  const recordId = parsed.record_id;
   const observedAt = new Date(now).toISOString();
   const retentionExpiresAt = new Date(now + AGENT_RECORD_RETENTION_MS).toISOString();
   let publicProjection;
@@ -225,6 +242,7 @@ export async function createAgentRecord({
   }
   const stored = await callRpc(client, 'create_agent_record', {
     p_record_id: recordId,
+    p_owner_token: parsed.owner_token,
     p_adoption_id: source.adoptionId,
     p_adoption_session_token: authorization.sessionToken,
     p_bond_id: source.bondId,
@@ -246,14 +264,14 @@ export async function createAgentRecord({
     'public_projection',
   ])
       || stored.record_id !== recordId
-      || !OWNER_TOKEN.test(stored.owner_token ?? '')
+      || stored.owner_token !== parsed.owner_token
       || stored.created_at !== observedAt
       || stored.retention_expires_at !== retentionExpiresAt
       || !sameCanonical(stored.public_projection, publicProjection)) {
     fail(503, 'agent_record_store_invalid', 'Stored Agent Record is inconsistent.');
   }
   const verification = verifyAgentRecordObservation(stored.public_projection, now);
-  if (!verification.verified || !verification.currently_public) {
+  if (!verification.verified || !verification.within_retention) {
     fail(503, 'agent_record_store_invalid', 'Stored Agent Record did not verify.');
   }
   return Object.freeze({
@@ -321,11 +339,11 @@ export async function loadPublicAgentRecord({
     fail(503, 'agent_record_store_invalid', 'Stored public Agent Record is inconsistent.');
   }
   const verification = verifyAgentRecordObservation(stored.public_projection, now);
-  if (verification.verified && !verification.currently_public
+  if (verification.verified && !verification.within_retention
       && verification.reason === 'agent_record_expired') {
     return null;
   }
-  if (!verification.verified || !verification.currently_public
+  if (!verification.verified || !verification.within_retention
       || verification.record_id !== recordId) {
     fail(503, 'agent_record_store_invalid', 'Stored public Agent Record did not verify.');
   }
@@ -334,6 +352,7 @@ export async function loadPublicAgentRecord({
     public_projection: stored.public_projection,
     verification: Object.freeze({
       integrity_verified: true as const,
+      status_checked: true as const,
       currently_public: true as const,
       claim_boundary: stored.public_projection.record.claim_boundary,
     }),

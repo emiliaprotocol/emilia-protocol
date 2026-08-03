@@ -295,7 +295,8 @@ function structurallyValid(value: unknown): value is AgentRecordObservation {
 function refused(reason: string) {
   return Object.freeze({
     verified: false as const,
-    currently_public: false,
+    within_retention: false,
+    status_checked: false as const,
     reason,
     record_id: null,
   });
@@ -318,7 +319,8 @@ export function verifyAgentRecordObservation(value: unknown, now = Date.now()) {
     if (!Number.isFinite(now) || now < observedAt) {
       return Object.freeze({
         verified: true as const,
-        currently_public: false,
+        within_retention: false,
+        status_checked: false as const,
         reason: 'agent_record_not_yet_observed',
         record_id: value.record.record_id,
       });
@@ -326,14 +328,16 @@ export function verifyAgentRecordObservation(value: unknown, now = Date.now()) {
     if (now >= retentionExpiresAt) {
       return Object.freeze({
         verified: true as const,
-        currently_public: false,
+        within_retention: false,
+        status_checked: false as const,
         reason: 'agent_record_expired',
         record_id: value.record.record_id,
       });
     }
     return Object.freeze({
       verified: true as const,
-      currently_public: true,
+      within_retention: true,
+      status_checked: false as const,
       reason: null,
       record_id: value.record.record_id,
     });

@@ -87,7 +87,8 @@ describe('Agent Record observation core', () => {
     });
     expect(verifyAgentRecordObservation(observation, Date.parse(OBSERVED_AT))).toMatchObject({
       verified: true,
-      currently_public: true,
+      within_retention: true,
+      status_checked: false,
       reason: null,
       record_id: RECORD_ID,
     });
@@ -110,14 +111,15 @@ describe('Agent Record observation core', () => {
     expect(verifyAgentRecordObservation(
       observationB,
       Date.parse(OBSERVED_AT),
-    )).toMatchObject({ verified: true, currently_public: true });
+    )).toMatchObject({ verified: true, within_retention: true, status_checked: false });
 
     expect(verifyAgentRecordObservation(
       observationA,
       Date.parse(OBSERVED_AT),
     )).toMatchObject({
       verified: true,
-      currently_public: true,
+      within_retention: true,
+      status_checked: false,
       reason: null,
       record_id: RECORD_ID,
     });
@@ -156,7 +158,8 @@ describe('Agent Record observation core', () => {
 
     expect(verifyAgentRecordObservation(observation, Date.parse(OBSERVED_AT))).toMatchObject({
       verified: false,
-      currently_public: false,
+      within_retention: false,
+      status_checked: false,
     });
   });
 
@@ -179,13 +182,14 @@ describe('Agent Record observation core', () => {
     expect(verifyAgentRecordObservation(
       observation,
       Date.parse(RETENTION_EXPIRES_AT) - 1,
-    )).toMatchObject({ verified: true, currently_public: true });
+    )).toMatchObject({ verified: true, within_retention: true, status_checked: false });
     expect(verifyAgentRecordObservation(
       observation,
       Date.parse(RETENTION_EXPIRES_AT),
     )).toMatchObject({
       verified: true,
-      currently_public: false,
+      within_retention: false,
+      status_checked: false,
       reason: 'agent_record_expired',
     });
   });

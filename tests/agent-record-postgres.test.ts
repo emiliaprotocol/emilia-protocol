@@ -44,6 +44,7 @@ const RECORD_ID = `agent_record_${'3'.repeat(40)}`;
 const ARENA_SHARE_ID = `arena_share_${'4'.repeat(40)}`;
 const ACTION_DIGEST = `sha256:${'5'.repeat(64)}`;
 const REFUSAL_DIGEST = `sha256:${'6'.repeat(64)}`;
+const OWNER_TOKEN = `ear1_${'a'.repeat(64)}`;
 const SIGNATURE = 'A'.repeat(86);
 const CLAIM_BOUNDARY =
   'one_operator_observation_of_one_verified_signed_arena_refusal_only';
@@ -141,6 +142,7 @@ type CreateInput = {
   adoptionId: string;
   sessionToken: string;
   recordId: string;
+  ownerToken: string;
   bondId: string;
   bondDigest: string;
   arenaShareId: string;
@@ -156,12 +158,15 @@ type CreateInput = {
 function createInput(overrides: Partial<CreateInput> = {}): CreateInput {
   const observedAt = overrides.observedAt ?? instant(-1_000);
   const refusedAt = overrides.refusedAt ?? instant(-2_000);
+  const recordId = overrides.recordId ?? RECORD_ID;
   const retentionExpiresAt = overrides.retentionExpiresAt
     ?? new Date(Date.parse(observedAt) + 365 * 24 * 60 * 60 * 1_000).toISOString();
   const input = {
     adoptionId: ADOPTION_ID,
     sessionToken: SESSION_TOKEN,
-    recordId: RECORD_ID,
+    recordId,
+    ownerToken: overrides.ownerToken
+      ?? `ear1_${createHash('sha256').update(recordId, 'utf8').digest('hex')}`,
     bondId: BOND_ID,
     bondDigest: BOND_DIGEST,
     arenaShareId: ARENA_SHARE_ID,
@@ -200,13 +205,14 @@ async function createRecord(
   return asRole(role, async (client) => {
     const result = await client.query<{ result: CreatedRecord }>(
       `SELECT public.create_agent_record(
-         $1::uuid, $2, $3, $4::uuid, $5, $6, $7, $8, $9,
-         $10::timestamptz, $11::timestamptz, $12::timestamptz, $13::jsonb
+         $1::uuid, $2, $3, $4, $5::uuid, $6, $7, $8, $9, $10,
+         $11::timestamptz, $12::timestamptz, $13::timestamptz, $14::jsonb
        ) AS result`,
       [
         input.adoptionId,
         input.sessionToken,
         input.recordId,
+        input.ownerToken,
         input.bondId,
         input.bondDigest,
         input.arenaShareId,
@@ -240,7 +246,7 @@ async function insertArenaShare(input: {
 async function readPublic(
   recordId: string,
 ): Promise<{ record_id: string; public_projection: JsonObject }> {
-  return asRole('anon', async (client) => {
+  return asRole('service_role', async (client) => {
     const result = await client.query<{
       result: { record_id: string; public_projection: JsonObject };
     }>('SELECT public.read_agent_record_public($1) AS result', [recordId]);
@@ -405,7 +411,7 @@ suite('Agent Record v1 RPC lifecycle on PostgreSQL 17', () => {
 
     expect(created).toMatchObject({
       record_id: RECORD_ID,
-      owner_token: expect.stringMatching(/^ear1_[0-9a-f]{64}$/),
+      owner_token: input.ownerToken,
       created_at: input.observedAt,
       retention_expires_at: input.retentionExpiresAt,
       public_projection: input.publicProjection,
@@ -431,6 +437,37 @@ suite('Agent Record v1 RPC lifecycle on PostgreSQL 17', () => {
     expect(JSON.stringify(stored.rows[0].public_projection)).not.toContain(
       created.owner_token,
     );
+  });
+
+  it('replays the exact creation idempotently after a lost response', async () => {
+    const shareId = `arena_share_${'a'.repeat(40)}`;
+    const sourceDigest = digest('b');
+    const actionDigest = digest('c');
+    const refusedAt = instant(-2_000);
+    await insertArenaShare({
+      arenaShareId: shareId,
+      actionDigest,
+      refusalDigest: sourceDigest,
+      refusedAt,
+    });
+    const input = createInput({
+      recordId: `agent_record_${'a'.repeat(40)}`,
+      ownerToken: `ear1_${'b'.repeat(64)}`,
+      arenaShareId: shareId,
+      sourceArtifactDigest: sourceDigest,
+      refusalDigest: sourceDigest,
+      actionDigest,
+      refusedAt,
+    });
+
+    const first = await createRecord(input);
+    const retried = await createRecord(input);
+    expect(retried).toEqual(first);
+
+    await expect(createRecord({
+      ...input,
+      ownerToken: `ear1_${'c'.repeat(64)}`,
+    })).rejects.toMatchObject({ code: '23505' });
   });
 
   it('accepts a rotated safe key id and rejects key ids outside the closed set', async () => {
@@ -668,6 +705,13 @@ suite('Agent Record v1 RPC lifecycle on PostgreSQL 17', () => {
     expect(functions.rows.map(({ proname }) => proname).join(' ')).not.toMatch(
       /list|search|feed|sitemap|enumerate/,
     );
+
+    for (const role of ['anon', 'authenticated'] as const) {
+      await expect(asRole(role, (client) => client.query(
+        'SELECT public.read_agent_record_public($1)',
+        [RECORD_ID],
+      ))).rejects.toMatchObject({ code: '42501' });
+    }
 
     for (const role of ['anon', 'authenticated', 'service_role'] as const) {
       await expect(asRole(role, (client) => client.query(

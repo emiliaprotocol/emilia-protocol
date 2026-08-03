@@ -196,7 +196,6 @@ interface PublishedOperatingBond {
 
 interface CreatedAgentRecord {
   record_id: string;
-  owner_token: string;
   created_at: string;
   retention_expires_at: string;
 }
@@ -322,13 +321,23 @@ export const adoptApiClient: AdoptApiClient = {
   },
 
   createAgentRecord(session, attempt) {
+    const credential = pendingRecordCredential(attempt.attempt_id);
     return requestJson<CreatedAgentRecord>(
       ADOPT_API_BASE + '/' + encodeURIComponent(session.session_id) + '/records',
       authorized(session, {
         trial_token: session.trial_token,
         attempt_id: attempt.attempt_id,
+        record_id: credential.record_id,
+        owner_token: credential.owner_token,
       }),
-    );
+    ).then((record) => {
+      if (record.record_id !== credential.record_id) {
+        throw new Error('Agent Record storage returned an unexpected identifier.');
+      }
+      window.localStorage.setItem(ownerKey(record.record_id), credential.owner_token);
+      window.localStorage.removeItem(credential.storageKey);
+      return record;
+    });
   },
 
   async provisionTrial(session) {
@@ -427,6 +436,44 @@ function getPublicArtifactId(shareUrl?: string): string {
 
 function ownerKey(recordId: string) {
   return `emilia_agent_record_owner:${recordId}`;
+}
+
+function pendingOwnerKey(attemptId: string) {
+  return `emilia_agent_record_pending:${attemptId}`;
+}
+
+function secureHex(byteLength: number) {
+  const bytes = new Uint8Array(byteLength);
+  globalThis.crypto.getRandomValues(bytes);
+  return Array.from(bytes, (byte) => byte.toString(16).padStart(2, '0')).join('');
+}
+
+function pendingRecordCredential(attemptId: string) {
+  const storageKey = pendingOwnerKey(attemptId);
+  const prior = window.localStorage.getItem(storageKey);
+  if (prior) {
+    try {
+      const parsed = JSON.parse(prior) as { record_id?: unknown; owner_token?: unknown };
+      if (typeof parsed.record_id === 'string'
+          && /^agent_record_[0-9a-f]{40}$/.test(parsed.record_id)
+          && typeof parsed.owner_token === 'string'
+          && /^ear1_[0-9a-f]{64}$/.test(parsed.owner_token)) {
+        return { storageKey, record_id: parsed.record_id, owner_token: parsed.owner_token };
+      }
+    } catch {
+      // Replace malformed local state with a fresh bounded credential below.
+    }
+  }
+  const credential = {
+    storageKey,
+    record_id: `agent_record_${secureHex(20)}`,
+    owner_token: `ear1_${secureHex(32)}`,
+  };
+  window.localStorage.setItem(storageKey, JSON.stringify({
+    record_id: credential.record_id,
+    owner_token: credential.owner_token,
+  }));
+  return credential;
 }
 
 interface AdoptExperienceProps {
@@ -592,7 +639,6 @@ export default function AdoptExperience({ api = adoptApiClient }: AdoptExperienc
     setStatus('Creating one unlisted factual record from the verified Arena refusal…');
     try {
       const record = await api.createAgentRecord(session, latestAttempt);
-      window.localStorage.setItem(ownerKey(record.record_id), record.owner_token);
       setAgentRecord({
         record_id: record.record_id,
         created_at: record.created_at,

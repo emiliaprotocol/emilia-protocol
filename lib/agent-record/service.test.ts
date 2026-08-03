@@ -38,6 +38,12 @@ const OWNER_TOKEN = `ear1_${'3'.repeat(64)}`;
 const NOW = Date.parse('2026-08-02T20:01:00.000Z');
 const REFUSED_AT = '2026-08-02T20:00:00.000Z';
 const RETENTION_EXPIRES_AT = new Date(NOW + AGENT_RECORD_RETENTION_MS).toISOString();
+const CREATION_INPUT = Object.freeze({
+  trial_token: TRIAL_TOKEN,
+  attempt_id: ATTEMPT_ID,
+  record_id: RECORD_ID,
+  owner_token: OWNER_TOKEN,
+});
 
 const authorization: any = Object.freeze({
   sessionId: ADOPTION_ID,
@@ -82,7 +88,7 @@ function createClient() {
     return {
       data: {
         record_id: args.p_record_id,
-        owner_token: OWNER_TOKEN,
+        owner_token: args.p_owner_token,
         created_at: args.p_observed_at,
         retention_expires_at: args.p_retention_expires_at,
         public_projection: args.p_public_projection,
@@ -111,7 +117,7 @@ describe('Agent Record service', () => {
 
     const result = await createAgentRecord({
       authorization,
-      input: { trial_token: TRIAL_TOKEN, attempt_id: ATTEMPT_ID },
+      input: CREATION_INPUT,
       client: client as any,
       now: NOW,
     });
@@ -123,7 +129,7 @@ describe('Agent Record service', () => {
       now: NOW,
     });
     expect(result).toMatchObject({
-      record_id: expect.stringMatching(/^agent_record_[0-9a-f]{40}$/),
+      record_id: RECORD_ID,
       owner_token: OWNER_TOKEN,
       created_at: new Date(NOW).toISOString(),
       retention_expires_at: RETENTION_EXPIRES_AT,
@@ -132,6 +138,7 @@ describe('Agent Record service', () => {
     const [, args] = client.rpc.mock.calls[0];
     expect(args).toMatchObject({
       p_record_id: result.record_id,
+      p_owner_token: OWNER_TOKEN,
       p_adoption_id: ADOPTION_ID,
       p_adoption_session_token: SESSION_TOKEN,
       p_bond_id: BOND_ID,
@@ -170,7 +177,7 @@ describe('Agent Record service', () => {
 
     await expect(createAgentRecord({
       authorization,
-      input: { trial_token: TRIAL_TOKEN, attempt_id: ATTEMPT_ID },
+      input: CREATION_INPUT,
       client: client as any,
       now: NOW,
     })).rejects.toMatchObject({ code: 'agent_record_refusal_invalid' });
@@ -186,7 +193,7 @@ describe('Agent Record service', () => {
 
     await expect(createAgentRecord({
       authorization,
-      input: { trial_token: TRIAL_TOKEN, attempt_id: ATTEMPT_ID },
+      input: CREATION_INPUT,
       client: client as any,
       now: NOW,
     })).rejects.toMatchObject({ code: 'agent_record_refusal_invalid' });
@@ -200,7 +207,7 @@ describe('Agent Record service', () => {
 
     await expect(createAgentRecord({
       authorization,
-      input: { trial_token: TRIAL_TOKEN, attempt_id: ATTEMPT_ID },
+      input: CREATION_INPUT,
       client: client as any,
       now: NOW,
     })).rejects.toMatchObject({
@@ -220,7 +227,7 @@ describe('Agent Record service', () => {
 
     await expect(createAgentRecord({
       authorization,
-      input: { trial_token: TRIAL_TOKEN, attempt_id: ATTEMPT_ID },
+      input: CREATION_INPUT,
       client: client as any,
       now: NOW,
     })).rejects.toMatchObject({ status: 409, code: 'agent_record_conflict' });
@@ -316,7 +323,7 @@ describe('Agent Record service', () => {
 
     await expect(createAgentRecord({
       authorization,
-      input: { trial_token: TRIAL_TOKEN, attempt_id: ATTEMPT_ID },
+      input: CREATION_INPUT,
       client: client as any,
       now: NOW,
     })).rejects.toMatchObject({

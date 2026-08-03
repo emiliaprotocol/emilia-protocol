@@ -55,8 +55,6 @@ REVOKE ALL ON SCHEMA agent_record_private
 GRANT USAGE ON SCHEMA extensions TO agent_record_store_owner;
 GRANT EXECUTE ON FUNCTION extensions.digest(BYTEA, TEXT)
   TO agent_record_store_owner;
-GRANT EXECUTE ON FUNCTION extensions.gen_random_bytes(INTEGER)
-  TO agent_record_store_owner;
 
 -- Creation rechecks the active adoption through its existing bounded RPC.
 -- It can inspect only non-revoked Arena public projections, never sessions,
@@ -199,6 +197,7 @@ CREATE FUNCTION public.create_agent_record(
   p_adoption_id UUID,
   p_adoption_session_token TEXT,
   p_record_id TEXT,
+  p_owner_token TEXT,
   p_bond_id UUID,
   p_bond_digest TEXT,
   p_arena_share_id TEXT,
@@ -221,13 +220,15 @@ AS $create_agent_record$
 DECLARE
   v_adoption JSONB;
   v_arena_projection JSONB;
-  v_owner_token TEXT;
+  v_existing agent_record_private.records%ROWTYPE;
 BEGIN
   IF p_adoption_id IS NULL
     OR p_adoption_session_token IS NULL
     OR p_adoption_session_token !~ '^eaa1_[0-9a-f]{64}$'
     OR p_record_id IS NULL
     OR p_record_id !~ '^agent_record_[0-9a-f]{40}$'
+    OR p_owner_token IS NULL
+    OR p_owner_token !~ '^ear1_[0-9a-f]{64}$'
     OR p_bond_id IS NULL
     OR p_bond_digest IS NULL
     OR p_bond_digest !~ '^sha256:[0-9a-f]{64}$'
@@ -358,8 +359,6 @@ BEGIN
       USING ERRCODE = '55000';
   END IF;
 
-  v_owner_token := 'ear1_' ||
-    pg_catalog.encode(extensions.gen_random_bytes(32), 'hex');
   INSERT INTO agent_record_private.records (
     record_id,
     owner_token_hash,
@@ -376,7 +375,7 @@ BEGIN
     public_projection
   ) VALUES (
     p_record_id,
-    agent_record_private.token_hash(v_owner_token),
+    agent_record_private.token_hash(p_owner_token),
     p_adoption_id,
     p_bond_id,
     p_bond_digest,
@@ -388,11 +387,35 @@ BEGIN
     p_observed_at,
     p_retention_expires_at,
     p_public_projection
-  );
+  )
+  ON CONFLICT (record_id) DO NOTHING;
+
+  IF NOT FOUND THEN
+    SELECT record.*
+    INTO v_existing
+    FROM agent_record_private.records AS record
+    WHERE record.record_id = p_record_id
+      AND record.owner_token_hash = agent_record_private.token_hash(p_owner_token)
+      AND record.adoption_id = p_adoption_id
+      AND record.bond_id = p_bond_id
+      AND record.bond_digest = p_bond_digest
+      AND record.arena_share_id = p_arena_share_id
+      AND record.source_artifact_digest = p_source_artifact_digest
+      AND record.action_digest = p_action_digest
+      AND record.refusal_digest = p_refusal_digest
+      AND record.refused_at = p_refused_at
+      AND record.observed_at = p_observed_at
+      AND record.retention_expires_at = p_retention_expires_at
+      AND record.public_projection = p_public_projection;
+    IF NOT FOUND THEN
+      RAISE EXCEPTION 'agent record identifier was already consumed'
+        USING ERRCODE = '23505';
+    END IF;
+  END IF;
 
   RETURN pg_catalog.jsonb_build_object(
     'record_id', p_record_id,
-    'owner_token', v_owner_token,
+    'owner_token', p_owner_token,
     'created_at', agent_record_private.iso_ms(p_observed_at),
     'retention_expires_at', agent_record_private.iso_ms(p_retention_expires_at),
     'public_projection', p_public_projection
@@ -521,9 +544,9 @@ REVOKE ALL ON FUNCTION agent_record_private.iso_ms(TIMESTAMPTZ)
 REVOKE ALL ON FUNCTION agent_record_private.reject_immutable_record_mutation()
   FROM PUBLIC, anon, authenticated, service_role;
 
-REVOKE ALL ON FUNCTION public.create_agent_record(UUID, TEXT, TEXT, UUID, TEXT, TEXT, TEXT, TEXT, TEXT, TIMESTAMPTZ, TIMESTAMPTZ, TIMESTAMPTZ, JSONB)
+REVOKE ALL ON FUNCTION public.create_agent_record(UUID, TEXT, TEXT, TEXT, UUID, TEXT, TEXT, TEXT, TEXT, TEXT, TIMESTAMPTZ, TIMESTAMPTZ, TIMESTAMPTZ, JSONB)
   FROM PUBLIC, anon, authenticated, service_role;
-GRANT EXECUTE ON FUNCTION public.create_agent_record(UUID, TEXT, TEXT, UUID, TEXT, TEXT, TEXT, TEXT, TEXT, TIMESTAMPTZ, TIMESTAMPTZ, TIMESTAMPTZ, JSONB)
+GRANT EXECUTE ON FUNCTION public.create_agent_record(UUID, TEXT, TEXT, TEXT, UUID, TEXT, TEXT, TEXT, TEXT, TEXT, TIMESTAMPTZ, TIMESTAMPTZ, TIMESTAMPTZ, JSONB)
   TO service_role;
 REVOKE ALL ON FUNCTION public.revoke_agent_record(TEXT, TEXT, TEXT)
   FROM PUBLIC, anon, authenticated, service_role;
@@ -532,7 +555,7 @@ GRANT EXECUTE ON FUNCTION public.revoke_agent_record(TEXT, TEXT, TEXT)
 REVOKE ALL ON FUNCTION public.read_agent_record_public(TEXT)
   FROM PUBLIC, anon, authenticated, service_role;
 GRANT EXECUTE ON FUNCTION public.read_agent_record_public(TEXT)
-  TO anon, authenticated, service_role;
+  TO service_role;
 
 COMMENT ON SCHEMA agent_record_private IS
   'RPC-only custody for minimal factual Agent Records and owner revocations.';
@@ -541,7 +564,7 @@ COMMENT ON TABLE agent_record_private.records IS
 COMMENT ON TABLE agent_record_private.revocations IS
   'Append-only terminal owner revocations; a revoked record is uniformly absent from public reads.';
 COMMENT ON FUNCTION public.read_agent_record_public(TEXT) IS
-  'Exact opaque Agent Record lookup only; unknown, expired, and revoked records all raise P0002.';
+  'Server-only exact opaque Agent Record lookup; the public HTTP route verifies the operator signature and unknown, expired, and revoked records all raise P0002.';
 
 DO $restore_migration_role$
 BEGIN

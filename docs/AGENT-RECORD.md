@@ -80,16 +80,36 @@ Public availability is the half-open interval
 At the first instant equal to `retention_expires_at`, the record is no longer
 public. Owner revocation ends public availability earlier.
 
+The offline envelope verifier proves signature integrity and whether the signed
+retention interval contains the supplied time. It deliberately returns
+`status_checked: false`; it cannot determine whether the owner later revoked
+the record. Only a current exact lookup through the operator service can return
+`currently_public: true`, after the database has checked the append-only
+revocation set. A cached envelope MUST NOT be treated as proof of current
+publication status.
+
 The minimal private binding, SHA-256 credential hash, and any revocation remain
 as immutable replay tombstones so an expired or revoked source cannot be used
 to mint a second record. They contain none of the forbidden raw/private fields
 listed above.
 
+The browser creates the opaque record identifier and 256-bit owner credential,
+stores the pending pair before the network request, and submits both through the
+authenticated creation route. Creation is idempotent only for the exact same
+identifier, owner credential, source, signed envelope, and timestamps. A lost
+HTTP response can therefore be retried without creating an ownerless public
+record; a conflicting replay remains refused. The database stores only the
+credential hash.
+
 ## Access model
 
 `agent_record_private` is owned by a dedicated `NOLOGIN`, non-superuser,
 non-`BYPASSRLS` role. Both tables use forced RLS. `anon`, `authenticated`, and
-`service_role` have no direct table access. The only public lookup is the
-bounded `read_agent_record_public(record_id)` RPC; there is no list, search,
-feed, sitemap, handle, or enumeration function. Creation and owner revocation
-are separate `service_role`-only `SECURITY DEFINER` RPCs.
+`service_role` have no direct table access. The public HTTP route performs an
+exact opaque-ID lookup through the server-only
+`read_agent_record_public(record_id)` RPC and then verifies the operator
+signature before returning the envelope. `anon` and `authenticated` cannot
+execute the RPC directly. There is no list, search, feed, sitemap, handle, or
+enumeration function. Creation and owner revocation are separate
+`service_role`-only `SECURITY DEFINER` RPCs. The database validates closed
+structure and exact source bindings; it does not claim to verify Ed25519.
