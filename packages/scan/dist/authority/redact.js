@@ -50,7 +50,11 @@ function looksHighEntropy(value) {
 }
 export function describeSecret(key, value) {
     const keyName = String(key ?? '');
-    const upper = keyName.toUpperCase().replace(/[_\-.:/]+/g, ' ');
+    const upper = keyName
+        .replace(/([a-z0-9])([A-Z])/g, '$1 $2')
+        .replace(/([A-Z]+)([A-Z][a-z])/g, '$1 $2')
+        .replace(/[_\-.:/]+/g, ' ')
+        .toUpperCase();
     const str = typeof value === 'string' ? value : '';
     const out = {
         secret: false,

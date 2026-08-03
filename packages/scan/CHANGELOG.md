@@ -5,6 +5,14 @@ All notable changes to `@emilia-protocol/scan` are documented here.
 
 ## 0.3.8 (2026-08-03)
 
+### Added
+
+- Add the owner-only, no-replace `EP-SCAN-ADOPTION-HANDOFF-v1` artifact, binding
+  reviewed manifest and generated-scaffold digests to explicitly selected,
+  receipt-required MCP actions and the bounded local refusal result without
+  ambient identity, host data, credential values, or production-enforcement
+  claims.
+
 ### Security
 
 - Replace the loose read-word heuristic with an explicit precedence policy:
@@ -12,6 +20,9 @@ All notable changes to `@emilia-protocol/scan` are documented here.
   outrank lexical read evidence, and only a leading read verb may pass through.
 - Exercise exact `rotateApiKey` and `archiveCustomer` generated guards from a
   packed blank consumer and prove a missing receipt never reaches the handler.
+- Redact short credential values for camelCase secret flags such as
+  `--clientSecret`, `--accessToken`, `--refreshToken`, and `--authToken` in both
+  split and `=` argument forms.
 
 ### Fixed
 
@@ -26,4 +37,4 @@ All notable changes to `@emilia-protocol/scan` are documented here.
 ### Tests
 
 - Add behavioral CLI, authority-signal, package-version, hostile-classifier,
-  and packed-consumer coverage for the release paths.
+  rendered-report redaction, and packed-consumer coverage for the release paths.

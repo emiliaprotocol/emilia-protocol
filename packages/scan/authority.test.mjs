@@ -177,6 +177,40 @@ test('MCP args and permission rules do not leak fake credentials in either outpu
   assert.deepEqual(server.args.slice(1, 3), ['--api-key', '<redacted credential argument>']);
 });
 
+test('rendered reports redact short camelCase secret flags in split and equals forms', () => {
+  const flagCases = ['clientSecret', 'accessToken', 'refreshToken', 'authToken'].flatMap(
+    (flag, index) => [
+      { flag, form: 'split', value: `short-${index}-split` },
+      { flag, form: 'equals', value: `short-${index}-equals` },
+    ],
+  );
+  const args = ['server-package'];
+  for (const { flag, form, value } of flagCases) {
+    if (form === 'split') args.push(`--${flag}`, value);
+    else args.push(`--${flag}=${value}`);
+  }
+  const { home, cwd } = fixture({
+    mcpServers: {
+      hostile: { command: 'npx', args },
+    },
+  });
+  const result = runAuthorityScan({
+    cwd,
+    home,
+    applicationSupport: join(home, 'Library', 'Application Support'),
+    managedCandidates: [],
+  });
+
+  for (const [format, output] of [
+    ['json', renderAuthorityJson(result)],
+    ['text', renderAuthorityText(result)],
+  ]) {
+    for (const { flag, form, value } of flagCases) {
+      assert.equal(output.includes(value), false, `${format}: --${flag} ${form}`);
+    }
+  }
+});
+
 test('unsupported TOML is excluded rather than called malformed or clean', () => {
   const { home, cwd } = fixture({});
   mkdirSync(join(home, '.codex'), { recursive: true });

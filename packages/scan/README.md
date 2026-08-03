@@ -103,9 +103,11 @@ files, and permission declarations. After it starts, scanner code launches no
 configured server or child process and performs no network I/O. When invoked
 through `npx`, npm may download the package before scanner startup.
 Configuration values are parsed locally in memory; credential values are not
-intentionally emitted. Report files are created owner-only and existing or
-symlinked report paths are refused. Symlinked configuration sources are excluded,
-and any reached discovery limit is printed in the report.
+emitted. Credential descriptors may include key name, class, exact length,
+prefix class, detection evidence, and scheme, but never the credential value.
+Report files are created owner-only and existing or symlinked report paths are
+refused. Symlinked configuration sources are excluded, and any reached discovery
+limit is printed in the report.
 
 The authority command uses these exit codes: `0` for complete visible coverage
 with no signals (not currently reachable in configuration-only mode), `1` when

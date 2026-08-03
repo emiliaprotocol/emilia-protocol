@@ -11,7 +11,7 @@ export const AUTHORITY_CLAIM_BOUNDARY =
 export const AUTHORITY_SCOPE = Object.freeze({
   reports: [
     'What supported agent runtimes are configured to reach from configuration files visible to this process.',
-    'Which configured paths carry credential-shaped fields, by key name and class only.',
+    'Which configured paths carry credential-shaped fields. Descriptors may include key name, class, exact length, prefix class, detection evidence, and scheme, but never the value.',
     'Whether a declared operation surface was visible to this configuration-only scan.',
   ],
   does_not_report: [
@@ -108,9 +108,9 @@ export function renderAuthorityText(input: AuthorityScanResult): string {
   lines.push('', 'What it does not prove:');
   for (const item of AUTHORITY_SCOPE.does_not_prove) lines.push(`  - ${item}`);
   lines.push('', `claim_boundary: ${AUTHORITY_CLAIM_BOUNDARY}`, '');
-  lines.push('Configuration values were parsed locally in memory. Credential values');
-  lines.push('are not intentionally emitted; secret-bearing fields are reduced to');
-  lines.push('redactions, key names, and classes. After scanner startup, scanner code');
+  lines.push('Configuration values were parsed locally in memory. Credential descriptors');
+  lines.push('may include key name, class, exact length, prefix class, detection evidence,');
+  lines.push('and scheme, but never the credential value. After scanner startup, scanner code');
   lines.push('launched no configured server or child process and performed no network I/O.');
   lines.push('When invoked through npx, npm may download the package before startup.');
   lines.push('');
