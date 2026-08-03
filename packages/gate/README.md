@@ -824,6 +824,67 @@ the amount and currency in that verified action, and the effect callback
 receives a clone of the verified action—not the projection. A new operation ID
 therefore cannot relabel the same payment instruction after a timeout.
 
+The database's shared action-digest fence is narrower, store-level defense in
+depth. It prevents two live rows only when callers deliberately supply the same
+stable semantic action digest in the same authorization namespace. Gate does
+not infer that two request wrappers are equivalent after their operation IDs or
+other digest inputs change. Deployments that need cross-wrapper equivalence
+must define that semantic digest at their trust boundary and preserve it across
+the wrappers they intend to join.
+
+#### Install the production action-digest fence
+
+The unique index is intentionally non-concurrent and can block capability
+writes while PostgreSQL builds it. Use this operator sequence; do not apply it
+against an actively written table:
+
+1. Quiesce every writer to `ep_capability_operations`, including Gate workers,
+   migration jobs, repair tools, and direct database writers. Confirm the
+   quiescence independently; the preflight cannot prove that no writer exists.
+2. Run the packaged, read-only preflight as the migration role:
+
+   ```bash
+   GATE_PREFLIGHT=node_modules/@emilia-protocol/gate/deploy/sql/capability-action-fence-preflight.sql
+   psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -f "$GATE_PREFLIGHT"
+   ```
+
+   It prints every duplicate `(operation_namespace, action_digest)` group whose
+   status is `reserved`, `provider_entered`, or `committed`, omits reservation
+   secrets, changes no rows, and exits with SQLSTATE `23505` if any group exists.
+3. Reconcile every printed row by status while writers remain quiesced:
+   - `reserved`: use the normal owner-fenced pre-entry recovery only after its
+     deadline has elapsed and provider non-entry is established. Otherwise
+     leave it unresolved and stop the deployment.
+   - `provider_entered`: never delete or relabel it. Release is permitted only
+     through the authenticated provider-non-entry lifecycle after its deadline;
+     otherwise preserve it for authenticated reconciliation and stop.
+   - `committed`: never delete or relabel it as `released`. Reconcile an
+     `indeterminate` outcome only from exact authenticated provider evidence.
+     If multiple committed rows remain, preserve all evidence and use a
+     separately reviewed, auditable incident-remediation migration; this
+     generic migration must remain blocked.
+4. Rerun the preflight until it exits zero with an empty result set. Do not use
+   ad hoc `DELETE`, status rewrites, or reservation-token edits to make it pass.
+5. Apply `20260803010000_capability_action_digest_fence.sql` with
+   `ON_ERROR_STOP=1` while writers are still quiesced. The migration repeats the
+   duplicate guard and fails closed before index creation if the population
+   changed.
+6. Verify the installed contract before restoring writers:
+
+   ```sql
+   SELECT i.indisunique,
+          pg_get_indexdef(i.indexrelid) AS index_definition,
+          pg_get_expr(i.indpred, i.indrelid) AS predicate
+     FROM pg_index AS i
+     WHERE i.indexrelid =
+       to_regclass('ep_capability_operations_live_action_uniq');
+   ```
+
+   Require `indisunique = true`, ordered columns
+   `(operation_namespace, action_digest)`, and exactly the live statuses
+   `reserved`, `provider_entered`, and `committed`. The migration performs the
+   same contract check and refuses a stale same-named index.
+
 The built-in `urn:emilia:scope:action-digest-set-v1` profile is exact-byte
 scope. `urn:emilia:scope:caid-set-v1` is also supported for interoperable
 material-action scope, but only when the deployment supplies its pinned CAID

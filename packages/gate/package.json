@@ -523,6 +523,7 @@
     "deploy/terraform/README.md",
     "deploy/terraform/service",
     "deploy/sql/001-runtime.sql",
+    "deploy/sql/capability-action-fence-preflight.sql",
     "reports/auditor-workpaper.js",
     "reports/reperform.js",
     "reports/external-verification.js"

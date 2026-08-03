@@ -393,6 +393,6 @@
     "20260802230000_agent_adoption_v1.sql": "4dac867dd9bd695f9640d8623cbc68e3f0659ff0a87587b1f7f5994f20cb09bf",
     "20260802231000_restore_webauthn_directory_anchor.sql": "90bb596edff8f495de541ab5df582fb45023abff077fc527a48eea4e635afd76",
     "20260802232000_scim_authority_atomic.sql": "334619a03c3a089d3ae038ab9b20dd4c3dab28a9af0eff0b12ac3b2bdfd38e92",
-    "20260803010000_capability_action_digest_fence.sql": "1f8dcc7dec551c62375734427257b9ab3e208c1dc43f7dae33eb9bf33e15bbb7"
+    "20260803010000_capability_action_digest_fence.sql": "0584345e3b3a6dcaffa8e4afd2706fd6ebc6707a3d7e1e406218d5bb0e55f723"
   }
 }
