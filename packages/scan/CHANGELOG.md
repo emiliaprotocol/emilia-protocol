@@ -22,7 +22,14 @@ All notable changes to `@emilia-protocol/scan` are documented here.
   packed blank consumer and prove a missing receipt never reaches the handler.
 - Redact short credential values for camelCase secret flags such as
   `--clientSecret`, `--accessToken`, `--refreshToken`, and `--authToken` in both
-  split and `=` argument forms.
+  split, `=`, slash, and command-string forms.
+- Recognize ordinary inflections of state-changing verbs so descriptions such
+  as `updates`, `archives`, and `rotates` cannot hide behind a read-shaped tool
+  name.
+- Bound regular-file reads before content ingestion; refuse non-regular files,
+  symlinked path components, and files that change during the read.
+- Install protection scaffolds from a private sibling staging directory as one
+  directory operation, preventing output-path swaps from redirecting writes.
 
 ### Fixed
 
@@ -33,6 +40,8 @@ All notable changes to `@emilia-protocol/scan` are documented here.
 - Reject missing or flag-shaped values for every value-bearing Scan option
   before scanning or writing.
 - Publish exit code `64` consistently for authority CLI usage, argument, or filesystem errors.
+- Reject unknown and duplicate CLI options instead of silently degrading a
+  requested apply operation into a successful dry run.
 
 ### Tests
 
