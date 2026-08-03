@@ -7,16 +7,27 @@ listing, identity, ownership, competence, or safety claim.
 ## Creation boundary
 
 A record can be created only through `createAgentRecord()` while its Agent
-Adoption session and sole Operating Bond are active. The service delegates to
-the existing `publishBoundAgentTrialRefusal()` bridge, which opens the encrypted
-trial envelope, rebinds the adoption ID, bond ID and digest, and Arena session,
-publishes the exact attempt, reloads the public Arena refusal, and verifies it.
-Permit events have no signed refusal artifact and are rejected.
+Adoption session and sole Operating Bond are active. First, the service uses
+the read-only `prepareBoundAgentTrialRefusal()` path to open the encrypted trial
+envelope, rebind the adoption ID, bond ID and digest, and Arena session, and read
+and verify the immutable signed refusal without publishing it. Permit events
+have no signed refusal artifact and are rejected.
 
-The database rechecks the active adoption credential and latest bond before its
-atomic insert. Unique constraints consume the opaque record ID, Arena share,
-source refusal digest, and SHA-256 owner-token hash. No caller chooses a vanity
-identifier.
+The service then signs the `EP-AGENT-RECORD-OBSERVATION-v1` projection before
+any database mutation. One `create_agent_record` database transaction rechecks
+the active adoption credential, latest bond, and immutable Arena source;
+publishes the exact Arena share; and inserts the immutable Agent Record. A later
+failure or conflict rolls back both insertions. Unique constraints consume the
+opaque record ID, internal Arena share, source refusal digest, and SHA-256
+owner-token hash. No caller chooses a vanity identifier.
+
+The creation request contains no timestamp fields. On an exact retry, the
+service may compute and sign a candidate with fresh observation and retention
+timestamps, but the transaction returns the original committed record,
+projection, and timestamps without rewriting them. Exact means the same record
+ID, owner credential, adoption and bond, and Arena refusal source. Reusing a
+record ID with a different owner or source, or reusing an owner credential,
+Arena source, or refusal digest for another record, fails as a conflict.
 
 ## Public projection
 
@@ -24,7 +35,7 @@ The outer `EP-AGENT-RECORD-OBSERVATION-v1` envelope contains only:
 
 - opaque record ID;
 - Operating Bond ID and digest;
-- public Arena share ID and refusal-artifact digest;
+- refusal-artifact profile and digest;
 - action and refusal digests;
 - refusal, observation, and retention instants;
 - the explicit claim boundary; and
@@ -37,6 +48,11 @@ label, raw action, or action parameters. Public verification resolves the
 configured operator key by key ID. Artifact-supplied public keys are not part of
 the schema and are rejected. Production creation fails closed when
 `EP_COMMIT_SIGNING_KEY` is absent.
+
+The Arena share ID is an internal transaction, uniqueness, and revocation
+binding. It is not a field in the signed Agent Record envelope and is not
+returned by the public Agent Record endpoint. The refusal-artifact digest is the
+only public source binding; it is not a dereferenceable Arena URL.
 
 `EP_AGENT_RECORD_SIGNING_KEY_ID` names the current Agent Record signing key.
 When it is unset, the backward-compatible default is `ep-signing-key-1`. An ID
@@ -69,9 +85,13 @@ before creation. The API never returns it and the database stores only its
 SHA-256 hash. Possession proves control of this record credential only; it does
 not prove identity or ownership of an agent, codebase, account, or key.
 
-Revocation appends one immutable terminal revocation. It does not update or
-delete the source record and cannot republish it. Exact public reads return the
-same not-found result for unknown, expired, and revoked IDs.
+Revocation uses one database transaction to append an immutable terminal Agent
+Record revocation and set only `revoked_at` on the exact internally bound Arena
+share. It does not rewrite or delete the Agent Record or either signed public
+projection, and the consumed source cannot be republished into another Agent
+Record. An exact revocation retry returns the original terminal result. Exact
+public reads return the same not-found result for unknown, expired, and revoked
+IDs.
 
 ## Retention boundary
 
@@ -96,10 +116,9 @@ listed above.
 
 The browser creates the opaque record identifier and 256-bit owner credential,
 stores the pending pair before the network request, and submits both through the
-authenticated creation route. Creation is idempotent only for the exact same
-identifier, owner credential, source, signed envelope, and timestamps. A lost
-HTTP response can therefore be retried without creating an ownerless public
-record; a conflicting replay remains refused. The database stores only the
+authenticated creation route. A lost HTTP response can therefore be retried
+without creating an ownerless public record or replacing the first committed
+timestamps. A conflicting replay remains refused. The database stores only the
 credential hash.
 
 ## Access model

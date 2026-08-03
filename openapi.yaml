@@ -6723,12 +6723,21 @@ paths:
       tags: [Agent Adoption]
       summary: Create one unlisted factual observation from a refused synthetic attempt
       description: |
-        Re-verifies and publishes the exact signed Arena refusal bound to the
-        active session's sole Operating Bond, then wraps it in an operator-signed
-        EP-AGENT-RECORD-OBSERVATION-v1. Permit attempts cannot create a record.
+        Reads and verifies the immutable signed Arena refusal source bound to
+        the active session's sole Operating Bond without publishing it. The
+        service signs EP-AGENT-RECORD-OBSERVATION-v1 before any database
+        mutation. One database transaction then rechecks the active adoption,
+        latest bond, and Arena source; publishes the exact Arena share; and
+        inserts the immutable Agent Record. A later failure rolls back both
+        insertions. Permit attempts cannot create a record.
+
         The browser generates and preserves the opaque record ID and owner token
         before the request. The token controls only record revocation, is stored
-        only as a hash, and is never returned by the API.
+        only as a hash, and is never returned by the API. The request contains
+        no timestamp fields. An exact retry returns the original committed
+        record, projection, and timestamps even when the service computes and
+        signs fresh observation and retention timestamps. Conflicting reuse of
+        a record ID, owner credential, Arena source, or refusal digest fails.
       security: [{ AdoptionSessionAuth: [] }]
       parameters:
         - $ref: '#/components/parameters/AgentAdoptionSessionId'
@@ -6746,10 +6755,15 @@ paths:
                 record_id: { type: string, pattern: '^agent_record_[a-f0-9]{40}$' }
                 owner_token: { type: string, pattern: '^ear1_[a-f0-9]{64}$', writeOnly: true }
       responses:
-        '201': { description: 'One refusal-bound factual observation created; no owner credential returned' }
+        '201':
+          description: 'Original or exactly replayed refusal-bound factual observation; no owner credential returned'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AgentRecordCreateResponse'
         '400': { description: 'Input malformed or attempt is not a refusal' }
         '401': { description: 'Adoption or trial capability invalid' }
-        '409': { description: 'Source refusal already consumed or adoption state conflicts' }
+        '409': { description: 'Conflicting reuse of a record ID, owner credential, Arena source, or refusal digest, or an adoption lifecycle conflict' }
         '413': { description: 'Request body exceeds the Agent Record limit' }
         '503': { description: 'Record signing or storage unavailable' }
 
@@ -6758,7 +6772,13 @@ paths:
       operationId: getPublicAgentRecord
       tags: [Agent Adoption]
       summary: Read one exact active Agent Record observation
-      description: Unknown, revoked, expired, and malformed record identifiers return the same 404 response. No list, search, feed, rank, score, or identity surface exists.
+      description: |
+        Returns the closed operator-signed Agent Record envelope and current
+        publication verification. The public envelope contains the refusal
+        artifact digest but no Arena share identifier or dereferenceable Arena
+        source. Unknown, revoked, expired, and malformed record identifiers
+        return the same 404 response. No list, search, feed, rank, score, or
+        identity surface exists.
       security: []
       parameters:
         - name: recordId
@@ -6766,7 +6786,12 @@ paths:
           required: true
           schema: { type: string, pattern: '^agent_record_[a-f0-9]{40}$' }
       responses:
-        '200': { description: 'Current operator-signed factual observation' }
+        '200':
+          description: 'Current operator-signed factual observation'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AgentRecordPublicResponse'
         '404': { description: 'No active public observation exists' }
         '503': { description: 'Public record or durable rate-limit store unavailable' }
 
@@ -6775,7 +6800,13 @@ paths:
       operationId: revokeAgentRecord
       tags: [Agent Adoption]
       summary: Permanently unpublish one Agent Record
-      description: The record-specific owner token is accepted only as an Authorization bearer and is never returned in the public projection, URL, cookie, or lookup response.
+      description: |
+        The record-specific owner token is accepted only as an Authorization
+        bearer and is never returned in the public projection, URL, cookie, or
+        lookup response. One database transaction appends the terminal Agent
+        Record revocation and marks only its internally bound Arena share
+        revoked; it does not rewrite either signed projection. An exact retry
+        returns the original terminal result.
       security: [{ AgentRecordOwnerAuth: [] }]
       parameters:
         - name: recordId
@@ -6912,6 +6943,134 @@ components:
         format: uri
 
   schemas:
+    AgentRecordCreateResponse:
+      type: object
+      additionalProperties: false
+      required: [record_id, created_at, retention_expires_at, public_projection]
+      properties:
+        record_id:
+          type: string
+          pattern: '^agent_record_[a-f0-9]{40}$'
+        created_at:
+          type: string
+          format: date-time
+          description: Observation time from the first committed creation; exact retries do not replace it.
+        retention_expires_at:
+          type: string
+          format: date-time
+          description: Exactly 365 days after the first committed observation time.
+        public_projection:
+          $ref: '#/components/schemas/AgentRecordObservation'
+
+    AgentRecordPublicResponse:
+      type: object
+      additionalProperties: false
+      required: [record_id, public_projection, verification]
+      properties:
+        record_id:
+          type: string
+          pattern: '^agent_record_[a-f0-9]{40}$'
+        public_projection:
+          $ref: '#/components/schemas/AgentRecordObservation'
+        verification:
+          $ref: '#/components/schemas/AgentRecordPublicVerification'
+
+    AgentRecordPublicVerification:
+      type: object
+      additionalProperties: false
+      required: [integrity_verified, status_checked, currently_public, claim_boundary]
+      properties:
+        integrity_verified:
+          type: boolean
+          enum: [true]
+        status_checked:
+          type: boolean
+          enum: [true]
+        currently_public:
+          type: boolean
+          enum: [true]
+        claim_boundary:
+          type: string
+          enum: [one_operator_observation_of_one_verified_signed_arena_refusal_only]
+
+    AgentRecordObservation:
+      type: object
+      additionalProperties: false
+      description: |
+        Closed operator-signed factual observation. The Arena share identifier
+        is retained only as a private storage binding and is not part of this
+        envelope.
+      required: ['@version', record, signature]
+      properties:
+        '@version':
+          type: string
+          enum: [EP-AGENT-RECORD-OBSERVATION-v1]
+        record:
+          type: object
+          additionalProperties: false
+          required:
+            [record_id, bond, source, action, refusal, observed_at,
+             retention_expires_at, claim_boundary]
+          properties:
+            record_id:
+              type: string
+              pattern: '^agent_record_[a-f0-9]{40}$'
+            bond:
+              type: object
+              additionalProperties: false
+              required: [bond_id, bond_digest]
+              properties:
+                bond_id: { type: string, format: uuid }
+                bond_digest: { type: string, pattern: '^sha256:[a-f0-9]{64}$' }
+            source:
+              type: object
+              additionalProperties: false
+              description: Digest-only refusal-artifact binding; not a dereferenceable Arena source.
+              required: [profile, artifact_digest]
+              properties:
+                profile:
+                  type: string
+                  enum: [EP-ACTION-REFUSAL-STATEMENT-v1]
+                artifact_digest:
+                  type: string
+                  pattern: '^sha256:[a-f0-9]{64}$'
+            action:
+              type: object
+              additionalProperties: false
+              required: [action_digest]
+              properties:
+                action_digest: { type: string, pattern: '^sha256:[a-f0-9]{64}$' }
+            refusal:
+              type: object
+              additionalProperties: false
+              required: [refusal_digest, refused_at]
+              properties:
+                refusal_digest: { type: string, pattern: '^sha256:[a-f0-9]{64}$' }
+                refused_at: { type: string, format: date-time }
+            observed_at: { type: string, format: date-time }
+            retention_expires_at:
+              type: string
+              format: date-time
+              description: Exactly 365 days after observed_at.
+            claim_boundary:
+              type: string
+              enum: [one_operator_observation_of_one_verified_signed_arena_refusal_only]
+        signature:
+          type: object
+          additionalProperties: false
+          required: [algorithm, key_id, key_source, value]
+          properties:
+            algorithm: { type: string, enum: [Ed25519] }
+            key_id:
+              type: string
+              pattern: '^(?!(?:constructor|prototype)$)[A-Za-z0-9][A-Za-z0-9._:-]{0,63}$'
+            key_source:
+              type: string
+              enum: [operator-commit-signing-key]
+            value:
+              type: string
+              pattern: '^[A-Za-z0-9_-]{86}$'
+
     ApprovalAcquisitionCreateRequest:
       type: object
       additionalProperties: false
