@@ -64,8 +64,12 @@ const MAX_NONCE_CACHE_SIZE = 10_000;
 const _usedNonces: Set<string> = new Set();
 
 /**
- * Add a nonce to the in-memory cache with LRU-style eviction.
- * Evicts the oldest entries when the cache exceeds MAX_NONCE_CACHE_SIZE.
+ * Add a nonce to the in-memory cache with FIFO eviction.
+ *
+ * FIFO is deliberate. A nonce is single-use, so a second lookup is a replay;
+ * promoting it on access would retain attacker-replayed values and evict newer
+ * legitimate values. The database uniqueness constraint remains the durable
+ * replay authority. This cache only avoids a database round trip.
  */
 function _trackNonce(nonce: string): void {
   _usedNonces.add(nonce);

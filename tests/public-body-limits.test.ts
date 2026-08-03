@@ -63,7 +63,6 @@ describe('public POST body limits', () => {
     ['pilot/request', PilotRequest.POST, '/api/pilot/request', 17 * 1024],
     ['checkout', Checkout.POST, '/api/checkout', 3 * 1024],
     ['v1/guarded', Guarded.POST, '/api/v1/guarded?action=payment.release', 257 * 1024],
-    ['trust/gate', TrustGate.POST, '/api/trust/gate', 257 * 1024],
     ['demo/require-receipt', DemoReceipt.POST, '/api/demo/require-receipt', 257 * 1024],
     ['demo/x402', DemoX402.POST, '/api/demo/x402', 257 * 1024],
     ['mcp', Mcp.POST, '/api/mcp/mcp', 257 * 1024],
@@ -80,6 +79,13 @@ describe('public POST body limits', () => {
       expect(mockGetGuardedClient).not.toHaveBeenCalled();
     });
   }
+
+  it('trust/gate authenticates a large anonymous request before reading its body', async () => {
+    const res = await TrustGate.POST(oversizedReq('/api/trust/gate', 257 * 1024, { ping: true }), {});
+
+    expect(res.status).toBe(401);
+    expect(mockGetGuardedClient).not.toHaveBeenCalled();
+  });
 
   it('enforces the cap even when Content-Length is absent', async () => {
     const hugeJson = JSON.stringify({ email: `${'a'.repeat(5 * 1024)}@example.com` });
