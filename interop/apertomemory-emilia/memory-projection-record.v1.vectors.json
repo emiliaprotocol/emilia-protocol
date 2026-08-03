@@ -3,8 +3,10 @@
   "record_version": "MEMORY-PROJECTION-RECORD-v1",
   "contract": {
     "draft": "draft-ferro-schrock-memory-projection-record-00",
-    "status": "EMILIA_SIDE_IMPLEMENTATION_CANDIDATE_PENDING_RECIPROCAL_REVIEW",
-    "source_profile": "draft-ferro-apertomemory-02"
+    "status": "RECIPROCAL_PROFILE_REVIEWED_AT_APERTOMEMORY_48BE525",
+    "source_profile": "draft-ferro-apertomemory-02",
+    "trust_snapshot_profile": "urn:apertomemory:trust-snapshot:v0",
+    "context_frame_profile": "urn:apertomemory:context-frame:v0"
   },
   "adapter_pin": {
     "adapter_id": "urn:apertomemory:adapter:reference-01",
@@ -36,7 +38,7 @@
       "selection_context": {
         "recall_request_digest": "sha256:aa71638ef2a2a71d2c7e431b455ed1784221b353609387c9faf9b6d1fec70bd2",
         "selection_policy_digest": "sha256:e2eb1c9126e90780f593d2394238e2d6cbf9b4b68dd3ee8af4f6075d10203392",
-        "trust_snapshot_digest": "sha256:a88e485905b4ca7e9bc5fd0f019e6b5b6cb9523080ca49e14e119de128c15b59",
+        "trust_snapshot_digest": "sha256:ad677e36d1ac311f758cefeb41069704d1bc995612db0bc1029e239ecfcc2b5d",
         "trust_evaluated_at": "2026-07-29T17:00:00.000Z",
         "context_frame_profile": "urn:apertomemory:context-frame:v0"
       },
@@ -89,13 +91,13 @@
       "proof": {
         "alg": "Ed25519",
         "key_id": "apertomemory-adapter-key-2026-07",
-        "signature_b64u": "u8iHlBw1xwdOh7x9mWoIAaH4Gwqr_jNvqheDuH0WZDGIgamvpm3bGItK9Zk9c1zP9FPce0NvFczajJma1KZeAw"
+        "signature_b64u": "AhfmEtuBREAdnWqrHpfWoy3TMzB_76Ma_B9xX1aEB_5rtEQz6AxvyfS7vgMCZ8zb3s0-CTPZwGLa6oNZxg7QCw"
       }
     },
     "verification_material": {
       "recall_request_b64u": "cHJpdmF0ZSByZWNhbGwgcmVxdWVzdCBmaXh0dXJlOyBjbGVhcnRleHQgZGVsaWJlcmF0ZWx5IG5vdCBjYXJyaWVk",
       "selection_policy_b64u": "aW5jbHVkZSB0cnVzdGVkIGRhdGE7IGlzb2xhdGUgbGFiZWxzOyB3aXRoaG9sZCB1bnZlcmlmaWVkIG9iamVjdHM",
-      "trust_snapshot_b64u": "eyJhY2NlcHRlZF9rZXlfaWRzX2I2NHUiOlsiMEZNSnk5TzFYenMiXSwib3duZXJfa2V5X2lkX2I2NHUiOiJZOEhvbkFDY1d0YyJ9",
+      "trust_snapshot_b64u": "ogFIY8HonACcWtcCgUjQUwnL07VfOw",
       "source_object_b64u_by_position": [
         "pAFQoKGio6SlpqeoqaqrrK2urwJQAQIDBAUGBwgJCgsMDQ4PEAMCBFjs0INDoQEDoQVMAAECAwQFBgcICQoLWNUY_HgjqvF4ZQaU3ziRH5BSyoHw23vFKHt-PmlSXQeDn_lmKYu_7j0_xCITMrL4GJ0-1jhLI0KfchlLdkuZ9fk_3tFzsmuyIUku-3HgJ0HVffRLPB5P7tt_Mj_GiW3CGUyshxkLLgu5vQCAQJsb8FN80ZLqDMQiOwHBShv3FVhcs4nAryI98PoQxYQkmoQwsa_rQ2yzznHV0vRQGHZde6VciOGgwpe68dWFHKb6Q7zwGF-YWDf3dFlSJoXY8_QX41Njczal37DEHAg3Mp3xVNwXhksuJc0",
         "pAFQoKGio6SlpqeoqaqrrK2urwJQAQIDBAUGBwgJCgsMDQ4PEAMCBFjX0INDoQEDoQVMAAECAwQFBgcICQoLWMAY_HgjqvF4ZQaU3ziRH5BSyoHb23vFKHt5KHpUT0KQma1oKYu363F9_zAwMqP9EIY2hUvRbtoqvS64VkpRmzSfcri03iqwIEVs5jy-TCaGki7VdOHU0UJ-qOR6_B6g3ijEijmJy2waHQCYYAWpecDvBub2q7cvA0D4qkk0A-yduZAgepV6teECm24rLSAI9V9sOQAgxWjPn0tlDOrV66IPUEMI2B6YtBE25wRh72J3I3Q6zbM1EvOopzHqm3TdMaI"
@@ -135,7 +137,7 @@
   },
   "source_profile_edge_cases": {
     "null_author": {
-      "status": "CANDIDATE_PENDING_APERTOMEMORY_PROFILE_REVIEW",
+      "status": "NORMATIVE_APERTOMEMORY_CONTEXT_FRAME_V0",
       "context_frame_profile": "urn:apertomemory:context-frame:v0",
       "fragment_b64u": "W0FwZXJ0b01lbW9yeSB0cnVzdD11bnZlcmlmaWVkIGF1dGhvcnNoaXA9dW5rbm93biBhdXRob3Jfa2V5PW5vbmUgY3VzdG9keT1mYWxzZV0KU291cmNlIGVkZ2U6IG5hdGl2ZSB2ZXJpZmljYXRpb24gZGlkIG5vdCByZXNvbHZlIGFuIGF1dGhvci4KWy9BcGVydG9NZW1vcnldCg",
       "fragment_digest": "sha256:e14214df9b4b22487c19458a0d7c800ebe19435bc46f6109a7377c5ca156f9eb",
@@ -147,26 +149,30 @@
       }
     },
     "empty_accepted_key_set": {
-      "status": "CANDIDATE_PENDING_APERTOMEMORY_PROFILE_REVIEW",
-      "owner_key_id_b64u": "Y8HonACcWtc",
-      "accepted_key_ids_b64u": [],
-      "trust_snapshot_b64u": "eyJhY2NlcHRlZF9rZXlfaWRzX2I2NHUiOltdLCJvd25lcl9rZXlfaWRfYjY0dSI6Ilk4SG9uQUNjV3RjIn0",
-      "trust_snapshot_digest": "sha256:52021a21cd1895f3e0c8cf4700643c8ba0ab321d476eecde578d38e25dd7ac2f"
+      "status": "NORMATIVE_APERTOMEMORY_TRUST_SNAPSHOT_V0",
+      "trust_snapshot_profile": "urn:apertomemory:trust-snapshot:v0",
+      "container": "CANONICAL_CBOR_RFC8949_SECTION_4_2",
+      "owner_key_id_hex": "63c1e89c009c5ad7",
+      "accepted_key_ids_hex": [],
+      "trust_snapshot_b64u": "ogFIY8HonACcWtcCgA",
+      "trust_snapshot_digest": "sha256:eddde59fb79cca10fdadf0c5bfc7c3b7e466cab79dcb95a5c4ea165fc8eb5bf0"
     },
     "multiple_accepted_keys": {
-      "status": "CANDIDATE_PENDING_APERTOMEMORY_PROFILE_REVIEW",
-      "owner_key_id_b64u": "Y8HonACcWtc",
-      "input_accepted_key_ids_b64u": [
-        "Y8HonACcWtc",
-        "0FMJy9O1Xzs"
+      "status": "NORMATIVE_APERTOMEMORY_TRUST_SNAPSHOT_V0",
+      "trust_snapshot_profile": "urn:apertomemory:trust-snapshot:v0",
+      "container": "CANONICAL_CBOR_RFC8949_SECTION_4_2",
+      "owner_key_id_hex": "0102030405060708",
+      "input_accepted_key_ids_hex": [
+        "d000000000000000",
+        "0000000000000001"
       ],
-      "accepted_key_ids_b64u": [
-        "0FMJy9O1Xzs",
-        "Y8HonACcWtc"
+      "accepted_key_ids_hex": [
+        "0000000000000001",
+        "d000000000000000"
       ],
-      "ordering": "LEXICOGRAPHIC_ASCENDING_BY_BASE64URL_TEXT",
-      "trust_snapshot_b64u": "eyJhY2NlcHRlZF9rZXlfaWRzX2I2NHUiOlsiMEZNSnk5TzFYenMiLCJZOEhvbkFDY1d0YyJdLCJvd25lcl9rZXlfaWRfYjY0dSI6Ilk4SG9uQUNjV3RjIn0",
-      "trust_snapshot_digest": "sha256:f0cbd461a31458c4a9b6ea7d60b91c4fafb21debd33786e741588de248df9d44"
+      "ordering": "RAW_KEY_ID_BYTES_ASCENDING",
+      "trust_snapshot_b64u": "ogFIAQIDBAUGBwgCgkgAAAAAAAAAAUjQAAAAAAAAAA",
+      "trust_snapshot_digest": "sha256:a6cec9a790d68dda6df60477c802cd3738650cd8f1b38fcc21125de51762e231"
     }
   },
   "cases": [

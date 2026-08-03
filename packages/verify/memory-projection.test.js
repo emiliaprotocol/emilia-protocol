@@ -108,7 +108,19 @@ test('published v1 domain and record version are exact', () => {
   assert.equal(vector.record_version, MEMORY_PROJECTION_RECORD_VERSION);
 });
 
-test('candidate ApertoMemory source-profile edge vectors freeze deterministic bytes', () => {
+test('normative ApertoMemory source-profile vectors freeze deterministic bytes', () => {
+  assert.equal(
+    Buffer.from(
+      vector.projection.verification_material.trust_snapshot_b64u,
+      'base64url',
+    ).toString('hex'),
+    'a2014863c1e89c009c5ad7028148d05309cbd3b55f3b',
+  );
+  assert.equal(
+    vector.projection.record.selection_context.trust_snapshot_digest,
+    'sha256:ad677e36d1ac311f758cefeb41069704d1bc995612db0bc1029e239ecfcc2b5d',
+  );
+
   const edges = vector.source_profile_edge_cases;
   assert.deepEqual(Object.keys(edges).sort(), [
     'empty_accepted_key_set',
@@ -117,6 +129,7 @@ test('candidate ApertoMemory source-profile edge vectors freeze deterministic by
   ]);
 
   const nullAuthor = edges.null_author;
+  assert.equal(nullAuthor.status, 'NORMATIVE_APERTOMEMORY_CONTEXT_FRAME_V0');
   assert.equal(
     Buffer.from(nullAuthor.fragment_b64u, 'base64url').toString('utf8'),
     '[ApertoMemory trust=unverified authorship=unknown author_key=none custody=false]\n'
@@ -130,26 +143,32 @@ test('candidate ApertoMemory source-profile edge vectors freeze deterministic by
     custody_present: false,
   });
 
+  const empty = edges.empty_accepted_key_set;
+  assert.equal(empty.status, 'NORMATIVE_APERTOMEMORY_TRUST_SNAPSHOT_V0');
+  assert.equal(empty.trust_snapshot_profile, 'urn:apertomemory:trust-snapshot:v0');
   assert.equal(
-    Buffer.from(edges.empty_accepted_key_set.trust_snapshot_b64u, 'base64url').toString('utf8'),
-    canonicalize({
-      owner_key_id_b64u: edges.empty_accepted_key_set.owner_key_id_b64u,
-      accepted_key_ids_b64u: [],
-    }),
+    Buffer.from(empty.trust_snapshot_b64u, 'base64url').toString('hex'),
+    'a2014863c1e89c009c5ad70280',
+  );
+  assert.equal(
+    empty.trust_snapshot_digest,
+    'sha256:eddde59fb79cca10fdadf0c5bfc7c3b7e466cab79dcb95a5c4ea165fc8eb5bf0',
   );
 
   const multiple = edges.multiple_accepted_keys;
-  assert.notDeepEqual(multiple.input_accepted_key_ids_b64u, multiple.accepted_key_ids_b64u);
+  assert.equal(multiple.ordering, 'RAW_KEY_ID_BYTES_ASCENDING');
+  assert.notDeepEqual(multiple.input_accepted_key_ids_hex, multiple.accepted_key_ids_hex);
   assert.deepEqual(
-    multiple.accepted_key_ids_b64u,
-    [...multiple.input_accepted_key_ids_b64u].sort(),
+    multiple.accepted_key_ids_hex,
+    ['0000000000000001', 'd000000000000000'],
   );
   assert.equal(
-    Buffer.from(multiple.trust_snapshot_b64u, 'base64url').toString('utf8'),
-    canonicalize({
-      owner_key_id_b64u: multiple.owner_key_id_b64u,
-      accepted_key_ids_b64u: multiple.accepted_key_ids_b64u,
-    }),
+    Buffer.from(multiple.trust_snapshot_b64u, 'base64url').toString('hex'),
+    'a201480102030405060708028248000000000000000148d000000000000000',
+  );
+  assert.equal(
+    multiple.trust_snapshot_digest,
+    'sha256:a6cec9a790d68dda6df60477c802cd3738650cd8f1b38fcc21125de51762e231',
   );
 });
 

@@ -24,11 +24,43 @@ const b64u = (bytes) => Buffer.from(bytes).toString('base64url');
 const keyIdB64u = (hex) => b64u(Buffer.from(hex, 'hex'));
 const sha256 = (bytes) => `sha256:${crypto.createHash('sha256').update(bytes).digest('hex')}`;
 
-function trustSnapshotBytes(ownerKeyIdB64u, acceptedKeyIdsB64u) {
-  return Buffer.from(canonicalize({
-    owner_key_id_b64u: ownerKeyIdB64u,
-    accepted_key_ids_b64u: [...acceptedKeyIdsB64u].sort(),
-  }), 'utf8');
+function keyIdBytes(hex) {
+  if (!/^[0-9a-f]{16}$/.test(hex)) {
+    throw new Error(`ApertoMemory key-id must be 8 lowercase-hex bytes: ${hex}`);
+  }
+  return Buffer.from(hex, 'hex');
+}
+
+function canonicalCborArrayHeader(length) {
+  if (!Number.isSafeInteger(length) || length < 0) {
+    throw new Error('CBOR array length must be a non-negative safe integer');
+  }
+  if (length < 24) return Buffer.from([0x80 + length]);
+  if (length < 0x100) return Buffer.from([0x98, length]);
+  if (length < 0x10000) {
+    const header = Buffer.alloc(3);
+    header[0] = 0x99;
+    header.writeUInt16BE(length, 1);
+    return header;
+  }
+  throw new Error('test-vector keyring is too large for this canonical CBOR encoder');
+}
+
+function trustSnapshotBytes(ownerKeyIdHex, acceptedKeyIdsHex) {
+  const owner = keyIdBytes(ownerKeyIdHex);
+  const accepted = [...new Map(
+    acceptedKeyIdsHex.map((hex) => [hex, keyIdBytes(hex)]),
+  ).values()].sort(Buffer.compare);
+
+  // ApertoMemory Trust-Snapshot Profile v0:
+  // canonical CBOR {1: owner-bstr8, 2: [accepted-bstr8...]}, with raw-byte sort.
+  return Buffer.concat([
+    Buffer.from([0xa2, 0x01, 0x48]),
+    owner,
+    Buffer.from([0x02]),
+    canonicalCborArrayHeader(accepted.length),
+    ...accepted.flatMap((keyId) => [Buffer.from([0x48]), keyId]),
+  ]);
 }
 
 function contextFragmentBytes({ trust, authorship, authorKeyIdB64u, custodyPresent, body }) {
@@ -62,8 +94,10 @@ if (adapterPublicKey !== legacyBundle.adapter_pin.public_key_spki_b64u) {
 
 const source007 = sourceFixtures.vectors['007-custody-attested'];
 const source003 = sourceFixtures.projection_support['003-sealed-object-v2'];
-const ownerKey = keyIdB64u('63c1e89c009c5ad7');
-const originalAuthorKey = keyIdB64u('d05309cbd3b55f3b');
+const ownerKeyHex = '63c1e89c009c5ad7';
+const originalAuthorKeyHex = 'd05309cbd3b55f3b';
+const ownerKey = keyIdB64u(ownerKeyHex);
+const originalAuthorKey = keyIdB64u(originalAuthorKeyHex);
 const recallRequestBytes = Buffer.from(
   'private recall request fixture; cleartext deliberately not carried',
   'utf8',
@@ -72,7 +106,7 @@ const selectionPolicyBytes = Buffer.from(
   'include trusted data; isolate labels; withhold unverified objects',
   'utf8',
 );
-const positiveTrustSnapshotBytes = trustSnapshotBytes(ownerKey, [originalAuthorKey]);
+const positiveTrustSnapshotBytes = trustSnapshotBytes(ownerKeyHex, [originalAuthorKeyHex]);
 const firstFragment = contextFragmentBytes({
   trust: 'trusted',
   authorship: 'attested',
@@ -94,10 +128,15 @@ const nullAuthorFragment = contextFragmentBytes({
   custodyPresent: false,
   body: 'Source edge: native verification did not resolve an author.',
 });
-const emptyAcceptedKeySnapshot = trustSnapshotBytes(ownerKey, []);
-const multipleAcceptedKeyInput = [ownerKey, originalAuthorKey];
-const multipleAcceptedKeys = [...multipleAcceptedKeyInput].sort();
-const multipleAcceptedKeySnapshot = trustSnapshotBytes(ownerKey, multipleAcceptedKeyInput);
+const emptyAcceptedKeySnapshot = trustSnapshotBytes(ownerKeyHex, []);
+const orderingOwnerKeyHex = '0102030405060708';
+const multipleAcceptedKeyInputHex = ['d000000000000000', '0000000000000001'];
+const multipleAcceptedKeysHex = [...multipleAcceptedKeyInputHex]
+  .sort((left, right) => Buffer.compare(keyIdBytes(left), keyIdBytes(right)));
+const multipleAcceptedKeySnapshot = trustSnapshotBytes(
+  orderingOwnerKeyHex,
+  multipleAcceptedKeyInputHex,
+);
 
 const produced = createMemoryProjectionRecordV1({
   sourceProfile: 'draft-ferro-apertomemory-02',
@@ -184,8 +223,10 @@ const bundle = {
   record_version: MEMORY_PROJECTION_RECORD_VERSION,
   contract: {
     draft: 'draft-ferro-schrock-memory-projection-record-00',
-    status: 'EMILIA_SIDE_IMPLEMENTATION_CANDIDATE_PENDING_RECIPROCAL_REVIEW',
+    status: 'RECIPROCAL_PROFILE_REVIEWED_AT_APERTOMEMORY_48BE525',
     source_profile: 'draft-ferro-apertomemory-02',
+    trust_snapshot_profile: 'urn:apertomemory:trust-snapshot:v0',
+    context_frame_profile: 'urn:apertomemory:context-frame:v0',
   },
   adapter_pin: {
     adapter_id: legacyBundle.adapter_pin.adapter_id,
@@ -226,7 +267,7 @@ const bundle = {
   },
   source_profile_edge_cases: {
     null_author: {
-      status: 'CANDIDATE_PENDING_APERTOMEMORY_PROFILE_REVIEW',
+      status: 'NORMATIVE_APERTOMEMORY_CONTEXT_FRAME_V0',
       context_frame_profile: 'urn:apertomemory:context-frame:v0',
       fragment_b64u: b64u(nullAuthorFragment),
       fragment_digest: sha256(nullAuthorFragment),
@@ -238,18 +279,22 @@ const bundle = {
       },
     },
     empty_accepted_key_set: {
-      status: 'CANDIDATE_PENDING_APERTOMEMORY_PROFILE_REVIEW',
-      owner_key_id_b64u: ownerKey,
-      accepted_key_ids_b64u: [],
+      status: 'NORMATIVE_APERTOMEMORY_TRUST_SNAPSHOT_V0',
+      trust_snapshot_profile: 'urn:apertomemory:trust-snapshot:v0',
+      container: 'CANONICAL_CBOR_RFC8949_SECTION_4_2',
+      owner_key_id_hex: ownerKeyHex,
+      accepted_key_ids_hex: [],
       trust_snapshot_b64u: b64u(emptyAcceptedKeySnapshot),
       trust_snapshot_digest: sha256(emptyAcceptedKeySnapshot),
     },
     multiple_accepted_keys: {
-      status: 'CANDIDATE_PENDING_APERTOMEMORY_PROFILE_REVIEW',
-      owner_key_id_b64u: ownerKey,
-      input_accepted_key_ids_b64u: multipleAcceptedKeyInput,
-      accepted_key_ids_b64u: multipleAcceptedKeys,
-      ordering: 'LEXICOGRAPHIC_ASCENDING_BY_BASE64URL_TEXT',
+      status: 'NORMATIVE_APERTOMEMORY_TRUST_SNAPSHOT_V0',
+      trust_snapshot_profile: 'urn:apertomemory:trust-snapshot:v0',
+      container: 'CANONICAL_CBOR_RFC8949_SECTION_4_2',
+      owner_key_id_hex: orderingOwnerKeyHex,
+      input_accepted_key_ids_hex: multipleAcceptedKeyInputHex,
+      accepted_key_ids_hex: multipleAcceptedKeysHex,
+      ordering: 'RAW_KEY_ID_BYTES_ASCENDING',
       trust_snapshot_b64u: b64u(multipleAcceptedKeySnapshot),
       trust_snapshot_digest: sha256(multipleAcceptedKeySnapshot),
     },

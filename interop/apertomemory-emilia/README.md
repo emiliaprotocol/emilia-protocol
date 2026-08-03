@@ -59,21 +59,26 @@ inputs are pinned at:
 - source facts: [`apertomemory-source-facts.projection-v1.json`](https://github.com/apertomemory/apertomemory/blob/f5fe9ba5254b3c44c1cd5bc63c7c10bb1b1fc5a0/interop/emilia/apertomemory-source-facts.projection-v1.json), commit [`f5fe9ba`](https://github.com/apertomemory/apertomemory/commit/f5fe9ba5254b3c44c1cd5bc63c7c10bb1b1fc5a0), matched against EMILIA `c737f37277c85117ff05963ed6f8f14d03c5e6b3`; and
 - independent producer: [`projection_producer.py`](https://github.com/apertomemory/apertomemory/blob/7439e6b6f001ad1a86644f69786a9c6b9411aa4f/interop/emilia/projection_producer.py), commit [`7439e6b`](https://github.com/apertomemory/apertomemory/commit/7439e6b6f001ad1a86644f69786a9c6b9411aa4f).
 
-The two independently written producers converged byte-for-byte on the current
-positive example: source facts, ordered context fragments, trust snapshot, and
-complete projection. The exercise also exposed two `-00` underspecifications:
-`urn:apertomemory:context-frame:v0` names a framing profile without defining
-its exact bytes, and ApertoMemory does not yet publish the native keyring
-trust-snapshot serialization used by the example. Andrea Ferro owns the
-ApertoMemory trust-snapshot profile; the shared `-01` draft must define the
-context-frame template.
+The two independently written producers first converged byte-for-byte on one
+frozen positive example. That exercise exposed two `-00` underspecifications:
+the exact `urn:apertomemory:context-frame:v0` bytes and the native keyring
+trust-snapshot serialization.
 
-Accordingly, this is evidence of convergence on one frozen example, not yet a
-claim that independent implementations are guaranteed to interoperate. The
-EMILIA candidate vectors additionally freeze null-author, empty accepted-key,
-and multiple accepted-key cases for reciprocal review. They remain candidates
-until checked against those normative profiles. None of these results proves
-model use, action authorization, execution, or outcome.
+Andrea Ferro subsequently defined both source-owned profiles and corrected an
+internal trust-snapshot example before review. EMILIA independently checked
+the corrected commit and adopted it as the reciprocal source boundary:
+
+- corrected ApertoMemory profile commit: [`48be525`](https://github.com/apertomemory/apertomemory/commit/48be5250f26aea9e34bc4f8adaca22ac9016cc84)
+- [`apertomemory-context-frame-v0-profile.md`](https://github.com/apertomemory/apertomemory/blob/48be5250f26aea9e34bc4f8adaca22ac9016cc84/interop/emilia/apertomemory-context-frame-v0-profile.md) ratifies the existing fragment bytes, including `author_key=none`; and
+- [`apertomemory-trust-snapshot-profile.md`](https://github.com/apertomemory/apertomemory/blob/48be5250f26aea9e34bc4f8adaca22ac9016cc84/interop/emilia/apertomemory-trust-snapshot-profile.md) replaces the provisional JSON/base64url snapshot with canonical CBOR, raw eight-byte key identifiers, and raw-byte ordering.
+
+The EMILIA vectors now use those normative bytes. The context fragments remain
+unchanged; the trust-snapshot bytes, digest, record signature, and reciprocal
+record change as required. The worked CBOR bytes and digests reproduce the
+ApertoMemory profile at `48be525`, including the raw-byte-vs-base64url ordering
+discriminator and the empty accepted-key case. This is profile-level reciprocal
+evidence for the checked cases, not blanket ApertoMemory conformance. It proves
+none of model use, action authorization, execution, or outcome.
 
 ## Exact source commitment
 
@@ -198,7 +203,8 @@ inside or alongside the record is not a trust anchor.
   compatibility
 - `memory-projection-record.v1.vectors.json` — deterministic reciprocal v1
   package with exact verification material, pinned adapter policy, one positive
-  path, eighteen hostile cases, and three candidate source-profile edge cases
+  path, eighteen hostile cases, and three source-profile vectors under the
+  normative ApertoMemory context-frame and trust-snapshot v0 profiles
 - `generate.mjs` — deterministic vector generator
 - `generate-memory-projection-v1.mjs` — deterministic v1 reciprocal-vector
   generator
@@ -226,12 +232,13 @@ The EMILIA tree now implements the neutral v1 field set, domain, producer,
 envelope verifier, full byte verifier, source-profile callback boundary,
 single-use registry hook, Gate consumer path, and reciprocal hostile vectors.
 ApertoMemory has independently reproduced the source facts and positive
-projection example. That is meaningful cross-implementation evidence, but it
-does not yet establish guaranteed reciprocal v1 interoperability: the exact
-context-frame and native trust-snapshot profiles remain to be made normative,
-and the hostile and candidate edge cases remain to be reproduced independently.
-The already-published `-00` artifact remains unchanged; its historical
-implementation-status text was accurate when published.
+projection example and has made the exact context-frame and trust-snapshot
+profiles normative on its side. EMILIA's vectors implement those profiles at
+the pinned commit. The hostile cases have not all been reproduced by the second
+implementation, so this remains bounded reciprocal evidence rather than a
+blanket interoperability or conformance claim. The already-published `-00`
+artifact remains unchanged; its historical implementation-status text was
+accurate when published.
 
 The provider-neutral runtime control that consumes the projection record lives
 in `packages/gate/src/trusted-context.ts`; the first provider plug-in is

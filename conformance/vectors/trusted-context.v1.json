@@ -68,7 +68,7 @@
         "selection_context": {
           "recall_request_digest": "sha256:aa71638ef2a2a71d2c7e431b455ed1784221b353609387c9faf9b6d1fec70bd2",
           "selection_policy_digest": "sha256:e2eb1c9126e90780f593d2394238e2d6cbf9b4b68dd3ee8af4f6075d10203392",
-          "trust_snapshot_digest": "sha256:a88e485905b4ca7e9bc5fd0f019e6b5b6cb9523080ca49e14e119de128c15b59",
+          "trust_snapshot_digest": "sha256:ad677e36d1ac311f758cefeb41069704d1bc995612db0bc1029e239ecfcc2b5d",
           "trust_evaluated_at": "2026-07-29T17:00:00.000Z",
           "context_frame_profile": "urn:apertomemory:context-frame:v0"
         },
@@ -121,14 +121,14 @@
         "proof": {
           "alg": "Ed25519",
           "key_id": "apertomemory-adapter-key-2026-07",
-          "signature_b64u": "u8iHlBw1xwdOh7x9mWoIAaH4Gwqr_jNvqheDuH0WZDGIgamvpm3bGItK9Zk9c1zP9FPce0NvFczajJma1KZeAw"
+          "signature_b64u": "AhfmEtuBREAdnWqrHpfWoy3TMzB_76Ma_B9xX1aEB_5rtEQz6AxvyfS7vgMCZ8zb3s0-CTPZwGLa6oNZxg7QCw"
         }
       },
       "context_binding": {
         "@version": "EP-TRUSTED-CONTEXT-BINDING-v1",
         "provider_id": "apertomemory",
         "provider_profile": "draft-ferro-apertomemory-02",
-        "projection_record_digest": "sha256:9e92ebd705851fbaa8f2d70d58ce3727a52a3df868ff0c39afbf131376daea15",
+        "projection_record_digest": "sha256:97604aff04078d9b1537301ac7a1a69f08c5ac50277ae16c4e29bb360dff8593",
         "projection_digest": "sha256:a58a3ede9399e4b69acf0cc6acd51d199e9282ec93883bf1d5c9c06619518b52",
         "action_subject_digest": "sha256:443e1124c589bd57d0c2f07d519846e1bdeed22a00d41fafe87d3420e34143dd",
         "policy_digest": "sha256:331ebea10e56a590984a699fcf8ca52f5671526e531b18a75ec1bd0a4faba168",
@@ -142,7 +142,7 @@
         "proof": {
           "alg": "Ed25519",
           "key_id": "gate-context-binder-vector-01",
-          "signature_b64u": "850cEqZPqqb1nkFF9jK6-ki_ygxoU9iFd_MRqk9XI5yti4ERLp-oDVSXVKdE_5Psl_xyhJnPCVk9NVUYVcAIBg"
+          "signature_b64u": "Q3jOWpvTs-kq_oXuL1Srb9hPugpP33wSVhEkHaP9TuX05Rf1SVELQYP9268R_DeZ9ZkCqfRMIa10ed-mMypJDQ"
         }
       }
     },
@@ -154,9 +154,9 @@
       "trusted_context": {
         "provider_id": "apertomemory",
         "provider_profile": "draft-ferro-apertomemory-02",
-        "projection_record_digest": "sha256:9e92ebd705851fbaa8f2d70d58ce3727a52a3df868ff0c39afbf131376daea15",
+        "projection_record_digest": "sha256:97604aff04078d9b1537301ac7a1a69f08c5ac50277ae16c4e29bb360dff8593",
         "projection_digest": "sha256:a58a3ede9399e4b69acf0cc6acd51d199e9282ec93883bf1d5c9c06619518b52",
-        "context_binding_digest": "sha256:a5a93e6abb4c0e422637b79acdadc80866e46153bca0a3c3f66f243e58445468"
+        "context_binding_digest": "sha256:e78e1101a7d858d798d9e0e2ea69763025ba09e2b8e6343b48a1cb4188d7db87"
       }
     }
   },
