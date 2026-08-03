@@ -651,3 +651,207 @@ describe('agent-adoption WebAuthn hostile ceremony handling', () => {
     expect(mocks.coseToSpkiP256).not.toHaveBeenCalled();
   });
 });
+
+describe('agent-adoption WebAuthn fail-closed edge coverage', () => {
+  it('rejects malformed context shape, origin syntax, and verification time', async () => {
+    expect(() => buildAgentAdoptionRegistrationContext(null as any))
+      .toThrow(expect.objectContaining({ code: 'context_invalid' }));
+    expect(() => registrationContext({ origin: 'https://[' }))
+      .toThrow(expect.objectContaining({ code: 'context_invalid' }));
+    expect(() => registrationContext({ expiresAt: '2030-01-01T00:05:00Z' }))
+      .toThrow(expect.objectContaining({ code: 'context_invalid' }));
+    expect(() => agentAdoptionWebAuthnChallenge({ ...registrationContext(), extra: true } as any))
+      .toThrow(expect.objectContaining({ code: 'context_invalid' }));
+
+    await expect(createAgentAdoptionRegistrationOptions({
+      context: registrationContext(), now: -1,
+    })).rejects.toMatchObject({ code: 'time_invalid' });
+    await expect(createAgentAdoptionRegistrationOptions({
+      context: registrationContext(), now: Date.parse(CONTEXT_INPUT.issuedAt) - 1,
+    })).rejects.toMatchObject({ code: 'context_not_yet_valid' });
+  });
+
+  it('rejects malformed credential metadata before creating assertion options', async () => {
+    const context = assertionContext();
+    for (const changed of [
+      { transports: 'internal' },
+      { transports: ['internal', 'internal'] },
+      { device_type: 'unknown' },
+      { sign_count: -1 },
+      { sign_count: 0, counter_supported: true },
+    ]) {
+      await expect(createAgentAdoptionAssertionOptions({
+        context,
+        credential: { ...CREDENTIAL, ...changed } as any,
+        now: NOW,
+      })).rejects.toMatchObject({ code: 'credential_invalid' });
+    }
+  });
+
+  it('fails closed when registration option generation throws or widens the ceremony', async () => {
+    mocks.generateRegistrationOptions.mockRejectedValueOnce(new Error('generator failed'));
+    await expect(createAgentAdoptionRegistrationOptions({
+      context: registrationContext(), now: NOW,
+    })).rejects.toMatchObject({ code: 'registration_options_failed' });
+
+    mocks.generateRegistrationOptions.mockResolvedValueOnce({ challenge: 'wrong', rp: { id: RP_ID } });
+    await expect(createAgentAdoptionRegistrationOptions({
+      context: registrationContext(), now: NOW,
+    })).rejects.toMatchObject({ code: 'registration_options_failed' });
+
+    await expect(createAgentAdoptionRegistrationOptions({
+      context: registrationContext(), existingCredentials: [null as any], now: NOW,
+    })).rejects.toMatchObject({ code: 'registration_options_invalid' });
+    await expect(createAgentAdoptionRegistrationOptions({
+      context: registrationContext(), rpName: ' padded ', now: NOW,
+    })).rejects.toMatchObject({ code: 'registration_options_invalid' });
+  });
+
+  it('bounds registration JSON and client-data decoding before crypto', async () => {
+    const ceremony = await createAgentAdoptionRegistrationOptions({
+      context: registrationContext(), now: NOW,
+    });
+    const base = registrationResponse(ceremony.challenge);
+
+    const cycle: any[] = [];
+    cycle.push(cycle);
+    await expect(verifyAgentAdoptionRegistration({
+      ceremony, attestation: { ...base, cycle }, now: NOW,
+    })).rejects.toMatchObject({ code: 'registration_response_invalid' });
+
+    const tooMany = Object.fromEntries(Array.from({ length: 65 }, (_, index) => [`k${index}`, index]));
+    await expect(verifyAgentAdoptionRegistration({
+      ceremony, attestation: { ...base, tooMany }, now: NOW,
+    })).rejects.toMatchObject({ code: 'registration_response_too_large' });
+    await expect(verifyAgentAdoptionRegistration({
+      ceremony, attestation: { ...base, number: Number.POSITIVE_INFINITY }, now: NOW,
+    })).rejects.toMatchObject({ code: 'registration_response_invalid' });
+    await expect(verifyAgentAdoptionRegistration({
+      ceremony, attestation: { ...base, bigint: 1n }, now: NOW,
+    })).rejects.toMatchObject({ code: 'registration_response_invalid' });
+
+    const invalidAlphabet = {
+      ...base,
+      response: { ...base.response, clientDataJSON: '***' },
+    };
+    await expect(verifyAgentAdoptionRegistration({
+      ceremony, attestation: invalidAlphabet, now: NOW,
+    })).rejects.toMatchObject({ code: 'registration_client_data_invalid' });
+    const invalidJson = {
+      ...base,
+      response: { ...base.response, clientDataJSON: Buffer.from('{', 'utf8').toString('base64url') },
+    };
+    await expect(verifyAgentAdoptionRegistration({
+      ceremony, attestation: invalidJson, now: NOW,
+    })).rejects.toMatchObject({ code: 'registration_client_data_invalid' });
+    await expect(verifyAgentAdoptionRegistration({
+      ceremony: null as any, attestation: base, now: NOW,
+    })).rejects.toMatchObject({ code: 'ceremony_context_mismatch' });
+    await expect(verifyAgentAdoptionRegistration({
+      ceremony: { ...ceremony, context: { ...ceremony.context, extra: true } } as any,
+      attestation: base,
+      now: NOW,
+    })).rejects.toMatchObject({ code: 'ceremony_context_mismatch' });
+  });
+
+  it('normalizes registration verifier and metadata failures', async () => {
+    const ceremony = await createAgentAdoptionRegistrationOptions({
+      context: registrationContext(), now: NOW,
+    });
+    const attestation = registrationResponse(ceremony.challenge);
+    const info = (overrides: Record<string, unknown> = {}) => ({
+      credential: {
+        id: attestation.id,
+        publicKey: new Uint8Array([1, 2, 3]),
+        counter: 0,
+        transports: ['internal'],
+      },
+      userVerified: true,
+      credentialDeviceType: 'singleDevice',
+      credentialBackedUp: false,
+      origin: ORIGIN,
+      rpID: RP_ID,
+      ...overrides,
+    });
+
+    mocks.verifyRegistrationResponse.mockRejectedValueOnce(new Error('verifier failed'));
+    await expect(verifyAgentAdoptionRegistration({ ceremony, attestation, now: NOW }))
+      .rejects.toMatchObject({ code: 'registration_verification_failed' });
+    mocks.verifyRegistrationResponse.mockResolvedValueOnce({ verified: false });
+    await expect(verifyAgentAdoptionRegistration({ ceremony, attestation, now: NOW }))
+      .rejects.toMatchObject({ code: 'registration_verification_failed' });
+    mocks.verifyRegistrationResponse.mockResolvedValueOnce({
+      verified: true, registrationInfo: info({ credentialBackedUp: undefined }),
+    });
+    await expect(verifyAgentAdoptionRegistration({ ceremony, attestation, now: NOW }))
+      .rejects.toMatchObject({ code: 'registration_metadata_invalid' });
+    mocks.verifyRegistrationResponse.mockResolvedValueOnce({
+      verified: true, registrationInfo: info({ credential: { id: attestation.id, publicKey: new Uint8Array(), counter: 0 } }),
+    });
+    await expect(verifyAgentAdoptionRegistration({ ceremony, attestation, now: NOW }))
+      .rejects.toMatchObject({ code: 'registration_credential_invalid' });
+    mocks.verifyRegistrationResponse.mockResolvedValueOnce({
+      verified: true, registrationInfo: info({ credentialDeviceType: 'unknown' }),
+    });
+    await expect(verifyAgentAdoptionRegistration({ ceremony, attestation, now: NOW }))
+      .rejects.toMatchObject({ code: 'credential_invalid' });
+  });
+
+  it('fails closed when assertion option generation throws or widens the ceremony', async () => {
+    mocks.generateAuthenticationOptions.mockRejectedValueOnce(new Error('generator failed'));
+    await expect(createAgentAdoptionAssertionOptions({
+      context: assertionContext(), credential: CREDENTIAL, now: NOW,
+    })).rejects.toMatchObject({ code: 'assertion_options_failed' });
+    mocks.generateAuthenticationOptions.mockResolvedValueOnce({
+      challenge: 'wrong', rpId: RP_ID, allowCredentials: [{ id: CREDENTIAL.credential_id }],
+    });
+    await expect(createAgentAdoptionAssertionOptions({
+      context: assertionContext(), credential: CREDENTIAL, now: NOW,
+    })).rejects.toMatchObject({ code: 'assertion_options_failed' });
+  });
+
+  it('normalizes assertion key, verifier, scope, UV, and counter failures', async () => {
+    const ceremony = await createAgentAdoptionAssertionOptions({
+      context: assertionContext(), credential: CREDENTIAL, now: NOW,
+    });
+    const assertion = assertionResponse(ceremony.challenge, 1);
+
+    mocks.coseToSpkiP256.mockReturnValueOnce(Buffer.from([9]));
+    await expect(verifyAgentAdoptionAssertion({ ceremony, assertion, credential: CREDENTIAL, now: NOW }))
+      .rejects.toMatchObject({ code: 'credential_key_mismatch' });
+    mocks.coseToSpkiP256.mockImplementationOnce(() => { throw new Error('unsupported'); });
+    await expect(verifyAgentAdoptionAssertion({ ceremony, assertion, credential: CREDENTIAL, now: NOW }))
+      .rejects.toMatchObject({ code: 'credential_key_unsupported' });
+
+    mocks.verifyAuthenticationResponse.mockRejectedValueOnce(new Error('verifier failed'));
+    await expect(verifyAgentAdoptionAssertion({ ceremony, assertion, credential: CREDENTIAL, now: NOW }))
+      .rejects.toMatchObject({ code: 'assertion_verification_failed' });
+    mocks.verifyAuthenticationResponse.mockResolvedValueOnce({ verified: false });
+    await expect(verifyAgentAdoptionAssertion({ ceremony, assertion, credential: CREDENTIAL, now: NOW }))
+      .rejects.toMatchObject({ code: 'assertion_verification_failed' });
+
+    const authenticationInfo = (overrides: Record<string, unknown> = {}) => ({
+      credentialID: CREDENTIAL.credential_id,
+      newCounter: 1,
+      userVerified: true,
+      credentialDeviceType: 'singleDevice',
+      credentialBackedUp: false,
+      origin: ORIGIN,
+      rpID: RP_ID,
+      ...overrides,
+    });
+    for (const [overrides, code] of [
+      [{ credentialID: 'other_credential' }, 'assertion_credential_invalid'],
+      [{ userVerified: false }, 'assertion_user_verification_required'],
+      [{ origin: 'https://evil.example.test' }, 'assertion_scope_invalid'],
+      [{ newCounter: 2 }, 'assertion_counter_not_monotonic'],
+    ] as const) {
+      mocks.verifyAuthenticationResponse.mockResolvedValueOnce({
+        verified: true,
+        authenticationInfo: authenticationInfo(overrides),
+      });
+      await expect(verifyAgentAdoptionAssertion({ ceremony, assertion, credential: CREDENTIAL, now: NOW }))
+        .rejects.toMatchObject({ code });
+    }
+  });
+});
