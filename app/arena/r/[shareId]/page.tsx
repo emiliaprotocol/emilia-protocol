@@ -114,6 +114,7 @@ export default async function ArenaRefusalPage({ params }: PageProps) {
   const sealClass = !verified ? `${styles.verificationSeal} ${styles.failed}`
     : current ? styles.verificationSeal
       : `${styles.verificationSeal} ${styles.stale}`;
+  const pilotHref = `/pilot?artifact_id=${encodeURIComponent(shareId)}`;
 
   if (!verified) {
     return (
@@ -148,13 +149,13 @@ export default async function ArenaRefusalPage({ params }: PageProps) {
             <p className={styles.statusEyebrow}>PUBLIC SYNTHETIC REFUSAL RECORD</p>
             <h1>An exact synthetic action crossed a declared boundary.</h1>
             <p>
-              This public integrity checker re-derives the action binding and checks the signed refusal against the session key carried by this record.
+              This public integrity checker re-derives the action binding and checks the signed refusal against the included session key. That key is not an independently pinned identity or authority credential.
             </p>
           </div>
           <div className={sealClass} role="status">
             <span className={styles.statusEyebrow}>{current ? 'RECORD INTEGRITY MATCHES' : 'HISTORICAL INTEGRITY MATCHES'}</span>
             <strong>{current ? 'Signed fields match' : 'Signature matches · window elapsed'}</strong>
-            <p>{current ? 'The included key validates the signed fields and action binding.' : safeVerificationMessage(verification.current_reason)}</p>
+            <p>{current ? 'The included session key validates the signed fields and action binding; it does not establish who controlled that key.' : safeVerificationMessage(verification.current_reason)}</p>
           </div>
         </header>
 
@@ -177,6 +178,7 @@ export default async function ArenaRefusalPage({ params }: PageProps) {
 
             <div className={styles.proofSection}>
               <h3>Exact-action binding</h3>
+              <div className={styles.digest}>Public record ID<br />{shareId}</div>
               <div className={styles.digest}>CAID<br />{text(attempt?.caid)}</div>
               <div className={styles.digest}>ACTION DIGEST<br />{text(attempt?.action_digest)}</div>
               <div className={styles.digest}>REFUSAL DIGEST<br />{text(projection?.refusal_digest)}</div>
@@ -185,11 +187,11 @@ export default async function ArenaRefusalPage({ params }: PageProps) {
 
           <aside className={styles.shareAside}>
             <section>
-              <h3>What this proves</h3>
+              <h3>What this record verifies</h3>
               <ul>
                 <li>The published action and reason match the signed refusal.</li>
                 <li>The refusal binds the exact synthetic action shown here.</li>
-                <li>The record has not changed since this session key signed it.</li>
+                <li>The displayed fields remain consistent with the included session key.</li>
               </ul>
             </section>
             <section className={styles.notProof}>
@@ -202,14 +204,15 @@ export default async function ArenaRefusalPage({ params }: PageProps) {
             </section>
             <div className={styles.trustNote}>
               <strong>Integrity-only trust boundary.</strong><br />
-              The verification key is included in this public record. It proves consistency with that key; it is not an independently pinned identity or certification credential.
+              The verification key is included in this public record. It checks consistency with that key; it does not establish who controlled that key and is not an independently pinned identity, authority, or certification credential.
             </div>
           </aside>
         </section>
 
         <footer className={styles.shareFooter}>
           <span>Published {date(record.published_at)} · Synthetic no-egress challenge</span>
-          <a href="/arena">Run the Arena challenge →</a>
+          <a href="/arena">Continue the factual record →</a>
+          <a href={pilotHref}>Scope the protected-workflow pilot →</a>
         </footer>
       </div>
     </main>

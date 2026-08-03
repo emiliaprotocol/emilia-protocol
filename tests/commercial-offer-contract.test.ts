@@ -13,11 +13,15 @@ const intake = readFileSync(resolve(ROOT, 'app/api/pilot/request/route.ts'), 'ut
 const navigation = readFileSync(resolve(ROOT, 'components/SiteNav.tsx'), 'utf8');
 
 describe('commercial offer contract', () => {
-  it('has one diagnostic entry offer and a coherent Gate expansion ladder', () => {
-    expect(pricing).toContain('MANAGED_PILOT');
+  it('has one canonical protected-workflow pilot and a coherent Gate expansion ladder', () => {
+    expect(pricing).toContain('PROTECTED_WORKFLOW_PILOT');
     expect(pricing).toContain('GATE_IMPLEMENTATION');
     expect(pricing).toContain('PRODUCTION_GATE');
-    expect(pricing).toContain('EMILIA Signal');
+    expect(commercialOffer.match(/durationDays: 90/g)).toHaveLength(1);
+    expect(commercialOffer.match(/priceUsd: 25_000/g)).toHaveLength(1);
+    expect(commercialOffer).not.toContain('MANAGED_PILOT');
+    expect(commercialOffer).not.toContain('FINANCIAL_AUTHORITY_DESIGN_PARTNER');
+    expect(commercialOffer).not.toContain('AGENT_ADOPTION_DESIGN_PARTNER');
     expect(commercialOffer).toContain('$150K');
     expect(commercialOffer).toContain('$250K');
     expect(commercialOffer).toContain('$500K');
@@ -25,9 +29,11 @@ describe('commercial offer contract', () => {
     expect(pricing).not.toContain('Gate Cloud is in early access');
   });
 
-  it('uses the shared pilot offer in every buyer-facing path', () => {
+  it('uses the shared canonical pilot offer in every buyer-facing path', () => {
     expect(pilot).toContain("from '@/lib/commercial-offer'");
     expect(intake).toContain("from '@/lib/commercial-offer'");
+    expect(pilot).toContain('PROTECTED_WORKFLOW_PILOT');
+    expect(intake).toContain('PROTECTED_WORKFLOW_PILOT');
     expect(pilot).not.toContain("['4 weeks'");
     expect(pilot).not.toContain("['Free'");
     expect(intake).not.toContain('4 weeks, free');
@@ -43,19 +49,18 @@ describe('commercial offer contract', () => {
     expect(publicOffer).toContain('service level');
   });
 
-  it('defines the Financial Authority design-partner offer as fixed server-owned terms', () => {
-    expect(commercialOffer).toContain("id: 'financial_authority_design_partner_v1'");
-    expect(commercialOffer).toContain("name: 'Financial Authority design-partner pilot'");
+  it('defines one protected-workflow pilot with payer adverse determination as the first profile', () => {
+    expect(commercialOffer).toContain("id: 'protected_workflow_pilot_v1'");
+    expect(commercialOffer).toContain("name: 'Protected-workflow pilot'");
     expect(commercialOffer).toContain('durationDays: 90');
     expect(commercialOffer).toContain("workflowLabel: '1 protected workflow'");
-    expect(commercialOffer).toContain("providerRailLabel: '1 provider rail'");
-    expect(intake).toContain('FINANCIAL_AUTHORITY_DESIGN_PARTNER');
   });
 
-  it('defines Agent Adoption graduation without financial-rail claims', () => {
-    expect(commercialOffer).toContain("id: 'agent_adoption_design_partner_v1'");
-    expect(commercialOffer).toContain("name: 'Agent Adoption protected-workflow pilot'");
-    expect(commercialOffer).toContain("workflowLabel: '1 protected agent workflow'");
-    expect(intake).toContain('AGENT_ADOPTION_DESIGN_PARTNER');
+  it('names payer adverse determination first while keeping other workflows eligible', () => {
+    expect(commercialOffer).toContain("firstProfileLabel: 'Payer adverse medical-necessity determination'");
+    expect(commercialOffer).toContain("safetyRuleLabel: 'No valid licensed-review evidence, no adverse determination'");
+    expect(pilot).toContain('Other consequential workflows remain eligible');
+    expect(pilot).toContain('payer_adverse_determination');
+    expect(intake).toContain('payer_adverse_determination');
   });
 });

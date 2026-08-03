@@ -396,6 +396,11 @@ function fingerprint(value?: string) {
   return value.length > 30 ? value.slice(0, 18) + '…' + value.slice(-8) : value;
 }
 
+function getPublicArtifactId(shareUrl?: string): string {
+  const id = shareUrl?.split('/').at(-1) ?? '';
+  return /^agent_share_[0-9a-f]{40}$/.test(id) ? id : '';
+}
+
 interface AdoptExperienceProps {
   api?: AdoptApiClient;
 }
@@ -422,6 +427,10 @@ export default function AdoptExperience({ api = adoptApiClient }: AdoptExperienc
   const selectedAllowance = ALLOWANCE_TEMPLATES.find((item) => item.id === allowanceTemplateId);
   const latestAttempt = attempts.at(-1);
   const publishedAttempt = [...attempts].reverse().find((attempt) => Boolean(attempt.share_url));
+  const publicArtifactId = getPublicArtifactId(publishedAttempt?.share_url);
+  const pilotHref = publicArtifactId
+    ? `/pilot?artifact_id=${encodeURIComponent(publicArtifactId)}`
+    : '/pilot';
   const revoked = session?.authority_state === 'revoked';
   const sourceUrlValid = !sourceUrl || (() => {
     try {
@@ -864,7 +873,7 @@ export default function AdoptExperience({ api = adoptApiClient }: AdoptExperienc
                   </div>
                   <div>
                     <button type="button" onClick={() => setStageIndex(5)}>Review & share Operating Bond →</button>
-                    <a href="/pilot?offer=agent-adoption" onClick={openPilot}>Scope the $25K protected-workflow pilot ↗</a>
+                    <a href={pilotHref} onClick={openPilot}>Scope the $25K protected-workflow pilot ↗</a>
                   </div>
                 </div>
               )}
@@ -936,8 +945,8 @@ export default function AdoptExperience({ api = adoptApiClient }: AdoptExperienc
                     <div className={styles.pilotCallout}>
                       <p className={styles.panelLabel}>PRODUCTION GRADUATION</p>
                       <h3>Have one workflow that needs this boundary?</h3>
-                      <p>Scope a separate protected-workflow pilot. The Arena result is evidence for the conversation, not a production claim.</p>
-                      <a href="/pilot?offer=agent-adoption" onClick={openPilot}>Explore the $25K protected-workflow pilot →</a>
+                      <p>Scope a separate protected-workflow pilot. If this public record is attached, the server validates its active identifier; the synthetic result remains factual context, not production evidence.</p>
+                      <a href={pilotHref} onClick={openPilot}>Explore the $25K protected-workflow pilot →</a>
                     </div>
                   </div>
                 </div>

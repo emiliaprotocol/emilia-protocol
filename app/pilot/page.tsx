@@ -13,10 +13,11 @@
 import { useEffect, useState } from 'react';
 import SiteNav from '@/components/SiteNav';
 import SiteFooter from '@/components/SiteFooter';
-import { AGENT_ADOPTION_DESIGN_PARTNER, MANAGED_PILOT } from '@/lib/commercial-offer';
+import { PROTECTED_WORKFLOW_PILOT } from '@/lib/commercial-offer';
 import { color, font, radius, styles } from '@/lib/tokens';
 
 const WORKFLOWS = [
+  ['payer_adverse_determination', 'Payer adverse medical-necessity determination · first profile'],
   ['wire_release', 'Wire / payment release'],
   ['beneficiary_change', 'Vendor / beneficiary bank-detail change'],
   ['benefit_account_change', 'Benefit payment-destination change'],
@@ -25,11 +26,12 @@ const WORKFLOWS = [
   ['other', 'Another irreversible agent action'],
 ];
 
-const PRESELECT = { gov: 'benefit_account_change', fin: 'wire_release', health: 'clinical_action' };
+const PRESELECT = { gov: 'benefit_account_change', fin: 'wire_release', health: 'payer_adverse_determination' };
 
 export default function PilotPage(): React.ReactElement {
   const [form, setForm] = useState({
-    name: '', org: '', email: '', workflow: 'wire_release', message: '', website: '', offer_id: '',
+    name: '', org: '', email: '', workflow: 'payer_adverse_determination', message: '', website: '',
+    offer_id: PROTECTED_WORKFLOW_PILOT.id, artifact_id: '',
   });
   const [state, setState] = useState('idle'); // idle | busy | done | error
   const [error, setError] = useState('');
@@ -42,37 +44,25 @@ export default function PilotPage(): React.ReactElement {
       if (cancelled) return;
       const params = new URLSearchParams(window.location.search);
       const v = params.get('v');
-      if (params.get('offer') === 'agent-adoption') {
-        setForm((f) => ({
-          ...f,
-          offer_id: AGENT_ADOPTION_DESIGN_PARTNER.id,
-          workflow: 'other',
-        }));
-      } else if (v && PRESELECT[v]) {
-        setForm((f) => ({ ...f, workflow: PRESELECT[v] }));
-      }
+      const artifactId = params.get('artifact_id')?.trim().slice(0, 80) ?? '';
+      setForm((f) => ({
+        ...f,
+        ...(v && PRESELECT[v] ? { workflow: PRESELECT[v] } : {}),
+        ...(artifactId ? { artifact_id: artifactId } : {}),
+      }));
     });
     return () => { cancelled = true; };
   }, []);
 
   const set = (k) => (e) => setForm((f) => ({ ...f, [k]: e.target.value }));
-  const isAgentAdoption = form.offer_id === AGENT_ADOPTION_DESIGN_PARTNER.id;
-  const selectedOffer = isAgentAdoption ? AGENT_ADOPTION_DESIGN_PARTNER : MANAGED_PILOT;
-  const terms = isAgentAdoption
-    ? [
-        [selectedOffer.durationLabel, 'time-boxed engagement'],
-        [selectedOffer.shortPriceLabel, 'fixed scope and price'],
-        [selectedOffer.workflowLabel, 'one buyer-selected agent workflow'],
-        ['Synthetic first', 'no production access during validation'],
-        ['Buyer-approved boundary', 'production scope requires explicit acceptance'],
-      ]
-    : [
-        [selectedOffer.durationLabel, 'time-boxed engagement'],
-        [selectedOffer.shortPriceLabel, 'fixed scope and price'],
-        ['Read-only first', 'no production path changes in the diagnostic'],
-        [selectedOffer.workflowLabel, 'the consequential action you choose'],
-        ['Decision package', 'findings, manifest template, and implementation scope'],
-      ];
+  const selectedOffer = PROTECTED_WORKFLOW_PILOT;
+  const terms = [
+    [selectedOffer.durationLabel, 'time-boxed engagement'],
+    [selectedOffer.shortPriceLabel, 'fixed scope and price'],
+    [selectedOffer.workflowLabel, 'one buyer-selected consequence boundary'],
+    ['Synthetic + read-only first', 'production waits for explicit buyer acceptance'],
+    ['Server-validated records only', 'public record IDs are resolved before intake'],
+  ];
 
   async function submit(e) {
     e.preventDefault();
@@ -105,13 +95,14 @@ export default function PilotPage(): React.ReactElement {
           Pilot request
         </div>
         <h1 style={{ ...styles.h1, maxWidth: 600 }}>
-          {isAgentAdoption ? 'Protect one agent workflow.' : 'Find the workflow to protect.'}{' '}
+          Protect one consequential workflow.{' '}
           {selectedOffer.durationLabel}. {selectedOffer.shortPriceLabel}.
         </h1>
         <p style={{ ...styles.body, maxWidth: 580 }}>
-          {isAgentAdoption
-            ? 'Move one candidate from the public no-egress challenge into a separately scoped, buyer-controlled pilot. We validate the workflow synthetically first, define the exact consequence boundary, and connect production only after the buyer approves the Gate design. The public Operating Bond is context for the conversation—not production evidence.'
-            : 'Pick one consequential workflow and begin with synthetic replay plus a governed read-only export. EMILIA Signal reconstructs the approval-to-effect chain, surfaces source-linked integrity cases, and produces the material-field map and Action Control Manifest template. You leave with evidence, a Gate implementation scope, and a clear decision about whether prospective enforcement is worth it.'}
+          Start with {selectedOffer.firstProfileLabel.toLowerCase()}: {selectedOffer.safetyRuleLabel.toLowerCase()}.
+          Missing, stale, invalid, unqualified, or mismatched evidence routes to lawful human review or a
+          patient-protective fallback; it does not authorize withholding medically necessary care. Other consequential workflows remain eligible under the same fixed offer. EMILIA does not verify civil
+          identity, certify a deployment, judge medical correctness, take custody, or move money.
         </p>
 
         {/* terms strip */}
@@ -128,8 +119,8 @@ export default function PilotPage(): React.ReactElement {
             <div style={{ fontWeight: 700, fontSize: 18, color: '#15803D', marginBottom: 8 }}>Request recorded.</div>
             <p style={{ fontSize: 14.5, color: color.t2, lineHeight: 1.65, margin: 0 }}>
               I reply personally within one business day. Meanwhile:{' '}
-              <a href={isAgentAdoption ? '/adopt' : '/try'} style={lnk}>
-                {isAgentAdoption ? 'run the public candidate challenge' : 'be the approver yourself in 20 seconds'}
+              <a href={form.artifact_id.startsWith('agent_share_') ? '/adopt' : '/try'} style={lnk}>
+                {form.artifact_id.startsWith('agent_share_') ? 'continue the factual candidate record' : 'be the approver yourself in 20 seconds'}
               </a>.
             </p>
           </div>
@@ -149,14 +140,23 @@ export default function PilotPage(): React.ReactElement {
               {WORKFLOWS.map(([v, label]) => <option key={v} value={v}>{label}</option>)}
             </select>
 
-            <label style={lbl} htmlFor="p-msg">Anything else (optional)</label>
+            <label style={lbl} htmlFor="p-artifact">Public record ID (optional)</label>
+            <input id="p-artifact" value={form.artifact_id} onChange={set('artifact_id')} style={input}
+              maxLength={80} pattern="(?:arena_share|agent_share)_[0-9a-f]{40}"
+              placeholder="arena_share_… or agent_share_…" aria-describedby="p-artifact-note" />
+            <small id="p-artifact-note" style={{ display: 'block', color: color.t3, lineHeight: 1.55 }}>
+              Only an active public Arena refusal or Agent Adoption Operating Bond ID is accepted. The server
+              resolves it before recording the request; pasted claims, receipt text, and arbitrary URLs are not evidence.
+            </small>
+
+            <label style={lbl} htmlFor="p-msg">Buyer context (optional, unverified)</label>
             <textarea id="p-msg" value={form.message} onChange={set('message')} style={{ ...input, minHeight: 96, resize: 'vertical' }} placeholder="Stack, timeline, constraints…" />
 
             {/* honeypot — humans never see or fill this */}
             <input type="text" name="website" value={form.website} onChange={set('website')} autoComplete="off" tabIndex={-1} aria-hidden="true" style={{ position: 'absolute', left: -9999, width: 1, height: 1, opacity: 0 }} />
 
             <button type="submit" disabled={state === 'busy'} style={{ width: '100%', background: color.t1, color: '#fff', border: 'none', borderRadius: radius.sm, padding: '14px 24px', fontFamily: font.sans, fontWeight: 600, fontSize: 15, cursor: state === 'busy' ? 'wait' : 'pointer', opacity: state === 'busy' ? 0.6 : 1, marginTop: 6 }}>
-              {state === 'busy' ? 'Sending…' : isAgentAdoption ? 'Request the Agent Adoption pilot →' : 'Request a pilot scope →'}
+              {state === 'busy' ? 'Sending…' : 'Request the protected-workflow pilot →'}
             </button>
 
             {state === 'error' && (

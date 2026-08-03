@@ -64,6 +64,7 @@ export default async function AgentAdoptionSharePage({
   const candidate = projection.candidate ?? {};
   const limits = projection.operating_limits ?? {};
   const observation = projection.assertion_observation ?? {};
+  const pilotHref = `/pilot?artifact_id=${encodeURIComponent(shareId)}`;
 
   return (
     <main className={styles.page}>
@@ -100,6 +101,7 @@ export default async function AgentAdoptionSharePage({
 
         <section className={styles.integrity}>
           <p className={styles.kicker}>INTEGRITY REFERENCE</p>
+          <div><span>Public record ID</span><code>{shareId}</code></div>
           <div><span>Operating Bond</span><code>{shortDigest(projection.bond_digest)}</code></div>
           <div><span>Candidate</span><code>{shortDigest(projection.candidate_digest)}</code></div>
           <div><span>Passkey assertion</span><code>{shortDigest(observation.assertion_digest)}</code></div>
@@ -118,7 +120,8 @@ export default async function AgentAdoptionSharePage({
 
         <footer>
           <span>Anyone with this unlisted link can inspect it while it remains active.</span>
-          <a href="/adopt">Run the challenge →</a>
+          <a href="/adopt">Continue the factual record →</a>
+          <a href={pilotHref}>Scope the protected-workflow pilot →</a>
         </footer>
       </section>
     </main>

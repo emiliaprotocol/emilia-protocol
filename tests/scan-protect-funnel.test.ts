@@ -31,6 +31,7 @@ describe('scan to protected MCP boundary funnel', () => {
     expect(scan).toContain('href="/mcp"');
 
     expect(guard).toContain('Coming from Scan? Start with one flagged tool.');
+    expect(guard).toContain('reviewable protection scaffold—not a patch');
     expect(guard).toContain('href="/guides/require-receipt"');
     expect(guard).toContain('href="/mcp"');
     expect(guard).toContain('href="/scan"');
@@ -38,6 +39,10 @@ describe('scan to protected MCP boundary funnel', () => {
     expect(guide).toContain('node emilia/verify-setup.mjs');
     expect(guide).toContain('durable provenance ledger');
     expect(guide).toContain('shared atomic consumption store');
+    expect(guard).not.toContain('due process, proven');
+    expect(guard).toContain('does not prove due process');
+    expect(guard).toContain('A signature verifies those bytes under the pinned key');
+    expect(guard).toContain('does not prove identity, authority, due process, or correctness');
   });
 
   it('distinguishes protecting an existing tool from adding verifier tools', () => {

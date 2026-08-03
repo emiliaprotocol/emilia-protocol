@@ -11,6 +11,8 @@ const docs = read('docs/AGENT-ADOPTION.md');
 const pilot = read('app/pilot/page.tsx');
 const offers = read('lib/commercial-offer.ts');
 const publicPage = read('app/adopt/r/[shareId]/page.tsx');
+const arenaPublicPage = read('app/arena/r/[shareId]/page.tsx');
+const arenaExperience = read('app/arena/ArenaExperience.tsx');
 const css = read('app/adopt/adopt.module.css');
 const federation = read('docs/conformance/FEDERATION-PROOF.md');
 const openapi = read('openapi.yaml');
@@ -41,12 +43,19 @@ describe('Agent Adoption public claim and funnel contract', () => {
     expect(experience).not.toContain('A refusal is required before publication');
   });
 
-  it('routes adoption graduates into the fixed 90-day $25K offer', () => {
-    expect(experience.match(/\/pilot\?offer=agent-adoption/g)).toHaveLength(2);
-    expect(pilot).toContain('AGENT_ADOPTION_DESIGN_PARTNER.id');
-    expect(pilot).toContain("offer_id: ''");
-    expect(offers).toMatch(/AGENT_ADOPTION_DESIGN_PARTNER[\s\S]*?durationLabel: '90 days'/);
-    expect(offers).toMatch(/AGENT_ADOPTION_DESIGN_PARTNER[\s\S]*?shortPriceLabel: '\$25K'/);
+  it('routes adoption graduates into the one canonical 90-day $25K offer', () => {
+    expect(experience).not.toContain('/pilot?offer=agent-adoption');
+    expect(experience).toContain("`/pilot?artifact_id=${encodeURIComponent(publicArtifactId)}`");
+    expect(pilot).toContain('PROTECTED_WORKFLOW_PILOT.id');
+    expect(offers).toMatch(/PROTECTED_WORKFLOW_PILOT[\s\S]*?durationLabel: '90 days'/);
+    expect(offers).toMatch(/PROTECTED_WORKFLOW_PILOT[\s\S]*?shortPriceLabel: '\$25K'/);
+    expect(publicPage).toContain("`/pilot?artifact_id=${encodeURIComponent(shareId)}`");
+    expect(arenaPublicPage).toContain("`/pilot?artifact_id=${encodeURIComponent(shareId)}`");
+    for (const page of [arenaPublicPage, publicPage]) {
+      expect(page).toContain('Continue the factual record');
+      expect(page).toContain('Scope the protected-workflow pilot');
+      expect(page).toContain('Public record ID');
+    }
   });
 
   it('distinguishes store outage from unknown or revoked public records', () => {
@@ -68,5 +77,11 @@ describe('Agent Adoption public claim and funnel contract', () => {
     expect(publicPage).toContain('creating browser session may have revoked it, or it may have expired');
     expect(css).toMatch(/\.publicationNote \{[\s\S]*?font-size: 12px;/);
     expect(css).toMatch(/\.envelopeFinePrint \{[\s\S]*?font-size: 12px;/);
+    expect(arenaPublicPage).not.toContain('What this proves');
+    expect(arenaPublicPage).toContain('What this record verifies');
+    expect(arenaPublicPage).toContain('included session key');
+    expect(arenaPublicPage).toContain('does not establish who controlled that key');
+    expect(arenaExperience).not.toContain('<h3>Prove</h3>');
+    expect(arenaExperience).toContain('<h3>Record</h3>');
   });
 });

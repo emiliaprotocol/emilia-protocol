@@ -101,8 +101,8 @@ const FLOW = [
     body: 'The configured policy returns allow, require signoff, or deny. Allow means the stated policy was satisfied; it is not a claim that the action is wise, safe, or lawful.',
   },
   {
-    step: '03', accent: color.gold, label: 'Prove',
-    body: 'Every protected decision emits signed authorization evidence bound to the action hash. A relying party can verify it offline with @emilia-protocol/verify under explicitly pinned trust inputs.',
+    step: '03', accent: color.gold, label: 'Record',
+    body: 'When the configured evidence profile emits a signed decision, it binds the stated action bytes. A relying party can verify those bytes offline with @emilia-protocol/verify under explicitly pinned trust inputs. A signature verifies those bytes under the pinned key; it does not prove identity, authority, due process, or correctness.',
   },
 ];
 
@@ -116,9 +116,9 @@ const FRAMEWORKS = [
 ];
 
 const SCENARIOS = [
-  { tag: 'TREASURY', title: 'Agent tries to wire $50K', body: 'An invoice-paying agent attempts a payment to a new account. Blocked. A named human signs off. Wire proceeds with a receipt.', enforced: true },
+  { tag: 'TREASURY', title: 'Agent tries to wire $50K', body: 'An invoice-paying agent attempts a payment to a new account. The configured path blocks until the required exact-action evidence validates. Provider execution and outcome remain separate facts.', enforced: true },
   { tag: 'INFRA', title: 'Agent tries to drop prod', body: 'A coding agent runs a destructive migration on the production database. The action is gated before it executes.', enforced: false },
-  { tag: 'BENEFITS', title: 'Agent redirects a benefit', body: 'An agent changes the bank account on a benefits case. Blocked pending an accountable caseworker signoff — due process, proven.', enforced: true },
+  { tag: 'BENEFITS', title: 'Agent redirects a benefit', body: 'An agent changes the bank account on a benefits case. The configured path can block for a caseworker decision and record the exact action. That record supports review; it does not prove due process, identity, authority, or correctness.', enforced: true },
   { tag: 'DATA', title: 'Agent exfiltrates PII', body: 'An agent attempts to export a table of personal records to an external destination. The high-risk write is intercepted.', enforced: false },
 ];
 
@@ -159,6 +159,10 @@ export default function AgentGuardPage() {
           <p style={{ fontFamily: font.mono, fontSize: 12, color: color.gold, margin: '-20px 0 28px' }}>
             Coming from Scan? Start with one flagged tool.
           </p>
+          <p style={{ fontSize: 13, color: color.t3, maxWidth: 650, lineHeight: 1.65, margin: '-14px 0 28px' }}>
+            Scan&apos;s protect output is a reviewable protection scaffold—not a patch. Review the generated files,
+            bind the real executor path, configure durable consumption and provenance, then test the integration.
+          </p>
           <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap' }}>
             <Link href="/guides/require-receipt" className="ep-cta" style={cta.primary}>Add Receipt Required to MCP &rarr;</Link>
             <Link href="/mcp" className="ep-cta-secondary" style={cta.secondary}>See the MCP integration</Link>
@@ -183,8 +187,8 @@ export default function AgentGuardPage() {
               </h2>
               <p style={{ fontSize: 16, color: color.t2, lineHeight: 1.7, marginBottom: 18 }}>
                 No proxy to deploy. No data path to reroute. You call the gate at the decision point;
-                EMILIA answers <strong style={{ color: color.t1 }}>allow</strong>, <strong style={{ color: color.t1 }}>require&nbsp;signoff</strong>, or <strong style={{ color: color.t1 }}>deny</strong> &mdash; decided by a
-                policy engine with 26 machine-checked theorems behind it.
+                EMILIA answers <strong style={{ color: color.t1 }}>allow</strong>, <strong style={{ color: color.t1 }}>require&nbsp;signoff</strong>, or <strong style={{ color: color.t1 }}>deny</strong> &mdash; under the
+                policy and trust inputs configured for that mediated path.
               </p>
               <p style={{ fontSize: 14, color: color.t3, lineHeight: 1.7, margin: 0 }}>
                 The HTTP call below is live with your API key (signup is free). The wrapper below it ships today on npm and PyPI.
@@ -212,7 +216,7 @@ export default function AgentGuardPage() {
                 No receipt, no irreversible action.
               </h2>
               <p style={{ fontSize: 16, color: color.t2, lineHeight: 1.7, marginBottom: 18 }}>
-                The flip side of the gate: make your own endpoint <strong style={{ color: color.t1 }}>require</strong> proof.
+                The flip side of the gate: make your own endpoint <strong style={{ color: color.t1 }}>require</strong> named evidence.
                 An irreversible call with no valid receipt gets a <strong style={{ color: color.t1 }}>428</strong> describing
                 exactly what to bring &mdash; a well-behaved agent obtains one and retries, and you verify it offline.
                 The agent follows a pinned acquisition endpoint, a named human reviews the exact action,
@@ -233,7 +237,7 @@ export default function AgentGuardPage() {
             What happens on every call
           </div>
           <h2 style={{ fontFamily: font.sans, fontWeight: 700, fontSize: 'clamp(24px, 2.8vw, 36px)', letterSpacing: -1, lineHeight: 1.15, color: color.t1, maxWidth: 560, marginBottom: 48 }}>
-            Intercept, decide, prove.
+            Intercept, decide, record.
           </h2>
           <div style={{ borderTop: `1px solid ${color.border}` }}>
             {FLOW.map((item) => (
@@ -310,7 +314,7 @@ export default function AgentGuardPage() {
         <C>
           <div style={{ maxWidth: 640, position: 'relative' }}>
             <h2 style={{ fontFamily: font.sans, fontWeight: 700, fontSize: 'clamp(30px, 4vw, 52px)', letterSpacing: -2, lineHeight: 1.0, color: '#FAFAF9', marginBottom: 24 }}>
-              Don&rsquo;t ship an agent without a kill switch.
+              Don&rsquo;t expose a consequential tool without an executor-side boundary.
             </h2>
             <p style={{ fontSize: 16, color: 'rgba(250,250,249,0.7)', lineHeight: 1.7, marginBottom: 36, maxWidth: 520 }}>
               The Protocol, verifier, vectors, SDK, and MCP packages are open. Add EMILIA Gate when you need

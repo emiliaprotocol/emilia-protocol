@@ -13,11 +13,9 @@ import { getGuardedClient } from '@/lib/write-guard';
 import { epProblem } from '@/lib/errors';
 import { logger } from '@/lib/logger.js';
 import { readLimitedJson } from '@/lib/http/body-limit';
-import {
-  AGENT_ADOPTION_DESIGN_PARTNER,
-  FINANCIAL_AUTHORITY_DESIGN_PARTNER,
-  MANAGED_PILOT,
-} from '@/lib/commercial-offer';
+import { loadPublicArenaRefusal } from '@/lib/arena/service';
+import { loadPublicAgentAdoptionBond } from '@/lib/agent-adoption/service';
+import { PROTECTED_WORKFLOW_PILOT } from '@/lib/commercial-offer';
 
 const RESEND_URL = 'https://api.resend.com/emails';
 // Same verified Resend sender domain the Trust Desk uses.
@@ -26,6 +24,7 @@ const TEAM = 'team@emiliaprotocol.ai';
 const MAX_PILOT_REQUEST_BYTES = 16 * 1024;
 
 const WORKFLOWS: Record<string, { label: string }> = {
+  payer_adverse_determination: { label: 'Payer adverse medical-necessity determination' },
   wire_release: { label: 'Wire / payment release' },
   beneficiary_change: { label: 'Vendor / beneficiary bank-detail change' },
   benefit_account_change: { label: 'Benefit payment-destination change' },
@@ -35,8 +34,16 @@ const WORKFLOWS: Record<string, { label: string }> = {
 };
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/;
-
-const DEFAULT_OFFER_ID = 'signal_diagnostic_v1';
+const ARENA_SHARE_ID = /^arena_share_[0-9a-f]{40}$/;
+const AGENT_SHARE_ID = /^agent_share_[0-9a-f]{40}$/;
+const UNSUPPORTED_EVIDENCE_FIELDS = Object.freeze([
+  'artifact',
+  'artifact_url',
+  'claimed_evidence',
+  'evidence',
+  'proof',
+  'receipt',
+]);
 
 type IntakeOffer = {
   id: string;
@@ -44,22 +51,36 @@ type IntakeOffer = {
   priceLabel: string;
   durationLabel: string;
   workflowLabel: string;
-  providerRailLabel?: string;
+  firstProfileLabel: string;
+  safetyRuleLabel: string;
+  eligibilityLabel: string;
   rolloutLabel: string;
 };
 
-const DEFAULT_OFFER: IntakeOffer = Object.freeze({
-  id: DEFAULT_OFFER_ID,
-  ...MANAGED_PILOT,
-});
+const PILOT_OFFER: IntakeOffer = PROTECTED_WORKFLOW_PILOT;
 
-const INTAKE_OFFERS: Readonly<Record<string, IntakeOffer>> = Object.freeze({
-  [AGENT_ADOPTION_DESIGN_PARTNER.id]: AGENT_ADOPTION_DESIGN_PARTNER,
-  [FINANCIAL_AUTHORITY_DESIGN_PARTNER.id]: FINANCIAL_AUTHORITY_DESIGN_PARTNER,
-});
+type ValidatedPublicArtifact = Readonly<{
+  id: string;
+  kind: 'arena_refusal' | 'operating_bond';
+  label: 'Arena refusal record' | 'Operating Bond';
+}>;
 
 function clean(v: unknown, max: number): string {
   return typeof v === 'string' ? v.trim().slice(0, max) : '';
+}
+
+async function validatePublicArtifact(id: string): Promise<ValidatedPublicArtifact | null> {
+  if (ARENA_SHARE_ID.test(id)) {
+    const record = await loadPublicArenaRefusal(id);
+    if (!record || record.share_id !== id || record.verification.integrity_verified !== true) return null;
+    return Object.freeze({ id, kind: 'arena_refusal', label: 'Arena refusal record' });
+  }
+  if (AGENT_SHARE_ID.test(id)) {
+    const record = await loadPublicAgentAdoptionBond({ shareId: id });
+    if (!record || record.share_id !== id || record.revoked !== false) return null;
+    return Object.freeze({ id, kind: 'operating_bond', label: 'Operating Bond' });
+  }
+  return null;
 }
 
 async function sendEmail({ to, subject, body }: { to: string; subject: string; body: string }): Promise<boolean> {
@@ -97,19 +118,41 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
       return NextResponse.json({ ok: true });
     }
 
+    if (UNSUPPORTED_EVIDENCE_FIELDS.some((field) => Object.hasOwn(body, field))) {
+      return epProblem(400, 'unsupported_evidence_claim',
+        'Attach an active public Arena or Agent Adoption record identifier instead of claimed evidence');
+    }
+
     const name = clean(body.name, 120);
     const org = clean(body.org, 160);
     const email = clean(body.email, 160);
     const message = clean(body.message, 2000);
     const requestedOfferId = clean(body.offer_id, 100);
-    const offer = requestedOfferId ? INTAKE_OFFERS[requestedOfferId] : DEFAULT_OFFER;
+    const offer = !requestedOfferId || requestedOfferId === PILOT_OFFER.id ? PILOT_OFFER : null;
+    const artifactId = clean(body.artifact_id, 80);
     const workflowKey = WORKFLOWS[body.workflow] ? body.workflow : 'other';
     const workflow = WORKFLOWS[workflowKey];
 
     if (!name || !org) return epProblem(400, 'missing_fields', 'Name and organization are required');
     if (!EMAIL_RE.test(email)) return epProblem(400, 'invalid_email', 'A valid work email is required');
     if (!offer) return epProblem(400, 'invalid_offer', 'The requested offer is not available');
-    const isDefaultOffer = offer.id === DEFAULT_OFFER_ID;
+    let publicArtifact: ValidatedPublicArtifact | null = null;
+    if (artifactId) {
+      if (!ARENA_SHARE_ID.test(artifactId) && !AGENT_SHARE_ID.test(artifactId)) {
+        return epProblem(400, 'invalid_artifact_id',
+          'Public record ID must be an active Arena or Agent Adoption share identifier');
+      }
+      try {
+        publicArtifact = await validatePublicArtifact(artifactId);
+      } catch {
+        return epProblem(503, 'artifact_validation_unavailable',
+          'The public record could not be validated right now; try again later');
+      }
+      if (!publicArtifact) {
+        return epProblem(400, 'invalid_artifact_id',
+          'The public record is unknown, inactive, or did not pass its public validation profile');
+      }
+    }
 
     // 1. Durable record — best-effort; the audit chain is the house pattern
     //    but a storage hiccup must not lose a lead that email can still carry.
@@ -125,7 +168,15 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
         target_id: org.toLowerCase().replace(/[^a-z0-9]+/g, '-').slice(0, 64) || 'unknown',
         action: 'request_pilot',
         before_state: null,
-        after_state: { name, org, email, workflow: workflowKey, message, offer_id: offer.id },
+        after_state: {
+          name,
+          org,
+          email,
+          workflow: workflowKey,
+          buyer_context_unverified: message,
+          offer_id: offer.id,
+          public_artifact: publicArtifact,
+        },
       });
       stored = !error;
       if (error) logger.warn('pilot request: audit insert failed', { error: error.message });
@@ -136,17 +187,18 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
     // 2. Internal notification — this is the lead reaching a human.
     const notified = await sendEmail({
       to: TEAM,
-      subject: isDefaultOffer
-        ? `PILOT REQUEST: ${org} — ${workflow.label}`
-        : `PILOT REQUEST: ${org} — ${offer.name}`,
+      subject: `PILOT REQUEST: ${org} — ${workflow.label}`,
       body:
         `New pilot request from ${name} (${email})\n` +
         `Organization: ${org}\n` +
         `Workflow: ${workflow.label}\n\n` +
         `Offer: ${offer.name} (${offer.id})\n` +
-        `Fixed scope: ${offer.durationLabel}; ${offer.priceLabel}; ${offer.workflowLabel}` +
-        `${offer.providerRailLabel ? `; ${offer.providerRailLabel}` : ''}\n\n` +
-        `${message || '(no message)'}\n\n` +
+        `Fixed scope: ${offer.durationLabel}; ${offer.priceLabel}; ${offer.workflowLabel}\n` +
+        `First profile: ${offer.firstProfileLabel}\n` +
+        `Safety rule: ${offer.safetyRuleLabel}\n` +
+        `${offer.eligibilityLabel}.\n` +
+        `Validated public record: ${publicArtifact ? `${publicArtifact.id} (${publicArtifact.label})` : '(none attached)'}\n\n` +
+        `Buyer context (unverified): ${message || '(none)'}\n\n` +
         `Recorded in audit_events: ${stored ? 'yes' : 'NO — email is the only copy'}`,
     });
 
