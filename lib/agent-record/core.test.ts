@@ -91,6 +91,56 @@ describe('Agent Record observation core', () => {
     });
   });
 
+  it('rejects the exact non-canonical Q-to-R base64url signature alias', () => {
+    vi.stubEnv(
+      'EP_COMMIT_SIGNING_KEY',
+      'AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAQ=',
+    );
+    const observation: any = structuredClone(signAgentRecordObservation(input()));
+    expect(observation.signature.value).toBe(
+      '_JTL-izkuPd4f6j_CsrdqzTIZHzb1lPLZWrzRE8ua4SQ0hNDP6FD9WTjmKcskUWpfwHkjrgu3fxVrc-bVSdeBQ',
+    );
+
+    const canonical = observation.signature.value;
+    observation.signature.value = `${canonical.slice(0, -1)}R`;
+    expect(observation.signature.value).not.toBe(canonical);
+    expect(Buffer.from(observation.signature.value, 'base64url')).toEqual(
+      Buffer.from(canonical, 'base64url'),
+    );
+
+    expect(verifyAgentRecordObservation(
+      observation,
+      Date.parse(OBSERVED_AT),
+    )).toMatchObject({
+      verified: false,
+      reason: 'agent_record_observation_invalid',
+    });
+  });
+
+  it('rejects every non-canonical same-byte last-sextet signature mutation', () => {
+    const alphabet = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-_';
+    const observation = signAgentRecordObservation(input());
+    const canonical = observation.signature.value;
+    const finalIndex = alphabet.indexOf(canonical.at(-1) ?? '');
+    const groupStart = Math.floor(finalIndex / 16) * 16;
+
+    expect(finalIndex).toBe(groupStart);
+    for (let offset = 1; offset < 16; offset += 1) {
+      const mutant: any = structuredClone(observation);
+      mutant.signature.value = `${canonical.slice(0, -1)}${alphabet[groupStart + offset]}`;
+      expect(Buffer.from(mutant.signature.value, 'base64url')).toEqual(
+        Buffer.from(canonical, 'base64url'),
+      );
+      expect(verifyAgentRecordObservation(
+        mutant,
+        Date.parse(OBSERVED_AT),
+      )).toMatchObject({
+        verified: false,
+        reason: 'agent_record_observation_invalid',
+      });
+    }
+  });
+
   it('verifies a retained observation after the current operator key and id rotate', () => {
     const seedA = crypto.randomBytes(32);
     vi.stubEnv('EP_COMMIT_SIGNING_KEY', seedA.toString('base64'));

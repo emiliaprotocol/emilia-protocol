@@ -17,6 +17,16 @@ const SIGNATURE = /^[A-Za-z0-9_-]{86}$/;
 const ED25519_PKCS8_DER_PREFIX = Buffer.from('302e020100300506032b657004220420', 'hex');
 const ED25519_SPKI_DER_PREFIX = Buffer.from('302a300506032b6570032100', 'hex');
 
+function isCanonicalSignature(value: unknown): value is string {
+  if (typeof value !== 'string' || !SIGNATURE.test(value)) return false;
+  try {
+    const decoded = Buffer.from(value, 'base64url');
+    return decoded.length === 64 && decoded.toString('base64url') === value;
+  } catch {
+    return false;
+  }
+}
+
 export type AgentRecordObservationInput = Readonly<{
   recordId: string;
   bondId: string;
@@ -231,7 +241,7 @@ export function signAgentRecordObservation(
   };
   const signer = configuredSigner();
   const value = crypto.sign(null, signingBytes(record), signer.privateKey).toString('base64url');
-  if (!SIGNATURE.test(value)) {
+  if (!isCanonicalSignature(value)) {
     fail('agent_record_operator_signature_invalid', 'The operator signature is invalid.');
   }
   return deepFreeze({
@@ -270,7 +280,7 @@ function structurallyValid(value: unknown): value is AgentRecordObservation {
   return value.signature.algorithm === 'Ed25519'
     && isAgentRecordSigningKeyId(value.signature.key_id)
     && value.signature.key_source === 'operator-commit-signing-key'
-    && SIGNATURE.test(value.signature.value)
+    && isCanonicalSignature(value.signature.value)
     && record.source.profile === 'EP-ACTION-REFUSAL-STATEMENT-v1'
     && record.claim_boundary === AGENT_RECORD_CLAIM_BOUNDARY
     && validInput({
