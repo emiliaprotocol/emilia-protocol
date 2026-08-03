@@ -150,8 +150,13 @@ describe('Agent Record service', () => {
       p_retention_expires_at: RETENTION_EXPIRES_AT,
     });
     expect(JSON.stringify(args.p_public_projection)).not.toMatch(
-      /adoption_id|session_id|owner_token|credential_id|candidate_url|source_url|webauthn|prompt|ip_address|raw_action|action_parameters|agent_label/i,
+      /adoption_id|session_id|owner_token|credential_id|candidate_url|source_url|arena_share_id|arena_share_|\/arena\/|\/api\/arena\/refusals|webauthn|prompt|ip_address|raw_action|action_parameters|agent_label/i,
     );
+    expect(args.p_arena_share_id).toBe(ARENA_SHARE_ID);
+    expect(args.p_public_projection.record.source).toEqual({
+      profile: 'EP-ACTION-REFUSAL-STATEMENT-v1',
+      artifact_digest: REFUSAL_DIGEST,
+    });
   });
 
   it.each([
@@ -280,7 +285,6 @@ describe('Agent Record service', () => {
       recordId: RECORD_ID,
       bondId: BOND_ID,
       bondDigest: BOND_DIGEST,
-      arenaShareId: ARENA_SHARE_ID,
       sourceArtifactDigest: REFUSAL_DIGEST,
       actionDigest: ACTION_DIGEST,
       refusalDigest: REFUSAL_DIGEST,

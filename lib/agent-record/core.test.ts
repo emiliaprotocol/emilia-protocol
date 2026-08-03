@@ -16,7 +16,6 @@ const BOND_ID = '11111111-1111-4111-8111-111111111111';
 const BOND_DIGEST = `sha256:${'b'.repeat(64)}`;
 const SOURCE_DIGEST = `sha256:${'c'.repeat(64)}`;
 const ACTION_DIGEST = `sha256:${'d'.repeat(64)}`;
-const ARENA_SHARE_ID = `arena_share_${'e'.repeat(40)}`;
 const REFUSED_AT = '2026-08-02T20:00:00.000Z';
 const OBSERVED_AT = '2026-08-02T20:01:00.000Z';
 const RETENTION_EXPIRES_AT = new Date(
@@ -40,7 +39,6 @@ const input = () => ({
   recordId: RECORD_ID,
   bondId: BOND_ID,
   bondDigest: BOND_DIGEST,
-  arenaShareId: ARENA_SHARE_ID,
   sourceArtifactDigest: SOURCE_DIGEST,
   actionDigest: ACTION_DIGEST,
   refusalDigest: SOURCE_DIGEST,
@@ -70,7 +68,6 @@ describe('Agent Record observation core', () => {
         bond: { bond_id: BOND_ID, bond_digest: BOND_DIGEST },
         source: {
           profile: 'EP-ACTION-REFUSAL-STATEMENT-v1',
-          arena_share_id: ARENA_SHARE_ID,
           artifact_digest: SOURCE_DIGEST,
         },
         action: { action_digest: ACTION_DIGEST },
@@ -139,9 +136,23 @@ describe('Agent Record observation core', () => {
       'retention_expires_at',
       'source',
     ]);
+    expect(Object.keys(observation.record.source).sort()).toEqual([
+      'artifact_digest',
+      'profile',
+    ]);
     expect(JSON.stringify(observation)).not.toMatch(
-      /adoption_id|session_id|owner_token|credential_id|candidate_url|source_url|webauthn|prompt|ip_address|raw_action|action_parameters|agent_label|score|rank|marketplace/i,
+      /adoption_id|session_id|owner_token|credential_id|candidate_url|source_url|arena_share_id|arena_share_|\/arena\/|\/api\/arena\/refusals|webauthn|prompt|ip_address|raw_action|action_parameters|agent_label|score|rank|marketplace/i,
     );
+  });
+
+  it('rejects a dereferenceable Arena source added to the signed public shape', () => {
+    const observation: any = structuredClone(signAgentRecordObservation(input()));
+    observation.record.source.arena_share_id = `arena_share_${'e'.repeat(40)}`;
+
+    expect(verifyAgentRecordObservation(observation, Date.parse(OBSERVED_AT))).toMatchObject({
+      verified: false,
+      reason: 'agent_record_observation_invalid',
+    });
   });
 
   it.each([

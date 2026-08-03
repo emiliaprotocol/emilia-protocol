@@ -94,6 +94,10 @@ describe('Agent Record v1 migration source contract', () => {
   });
 
   it('allows only the signed observation projection and exact 365-day public retention', () => {
+    const projectionGuard = migration.match(
+      /IF \(SELECT pg_catalog\.count\(\*\) FROM pg_catalog\.jsonb_object_keys\(p_public_projection\)\)[\s\S]*?RAISE EXCEPTION 'agent record public projection is invalid'/,
+    )?.[0];
+    expect(projectionGuard).toBeDefined();
     expect(migration).toContain(
       "p_retention_expires_at IS DISTINCT FROM p_observed_at + INTERVAL '365 days'",
     );
@@ -109,6 +113,10 @@ describe('Agent Record v1 migration source contract', () => {
     expect(migration).toContain(
       "(SELECT pg_catalog.count(*) FROM pg_catalog.jsonb_object_keys(p_public_projection)) <> 3",
     );
+    expect(projectionGuard).toContain(
+      "FROM pg_catalog.jsonb_object_keys(p_public_projection -> 'record' -> 'source')\n    ) <> 2",
+    );
+    expect(projectionGuard).not.toContain("->> 'arena_share_id'");
     expect(migration).toContain(
       "record.retention_expires_at > pg_catalog.clock_timestamp()",
     );

@@ -13,7 +13,6 @@ const SIGNING_DOMAIN = `${AGENT_RECORD_VERSION}\0`;
 const RECORD_ID = /^agent_record_[0-9a-f]{40}$/;
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/;
 const DIGEST = /^sha256:[0-9a-f]{64}$/;
-const ARENA_SHARE_ID = /^arena_share_[0-9a-f]{40}$/;
 const SIGNATURE = /^[A-Za-z0-9_-]{86}$/;
 const ED25519_PKCS8_DER_PREFIX = Buffer.from('302e020100300506032b657004220420', 'hex');
 const ED25519_SPKI_DER_PREFIX = Buffer.from('302a300506032b6570032100', 'hex');
@@ -22,7 +21,6 @@ export type AgentRecordObservationInput = Readonly<{
   recordId: string;
   bondId: string;
   bondDigest: string;
-  arenaShareId: string;
   sourceArtifactDigest: string;
   actionDigest: string;
   refusalDigest: string;
@@ -38,7 +36,6 @@ export type AgentRecordObservation = Readonly<{
     bond: Readonly<{ bond_id: string; bond_digest: string }>;
     source: Readonly<{
       profile: 'EP-ACTION-REFUSAL-STATEMENT-v1';
-      arena_share_id: string;
       artifact_digest: string;
     }>;
     action: Readonly<{ action_digest: string }>;
@@ -202,7 +199,6 @@ function validInput(value: AgentRecordObservationInput): boolean {
   return RECORD_ID.test(value.recordId)
     && UUID.test(value.bondId)
     && DIGEST.test(value.bondDigest)
-    && ARENA_SHARE_ID.test(value.arenaShareId)
     && DIGEST.test(value.sourceArtifactDigest)
     && DIGEST.test(value.actionDigest)
     && DIGEST.test(value.refusalDigest)
@@ -225,7 +221,6 @@ export function signAgentRecordObservation(
     bond: { bond_id: input.bondId, bond_digest: input.bondDigest },
     source: {
       profile: 'EP-ACTION-REFUSAL-STATEMENT-v1',
-      arena_share_id: input.arenaShareId,
       artifact_digest: input.sourceArtifactDigest,
     },
     action: { action_digest: input.actionDigest },
@@ -265,7 +260,7 @@ function structurallyValid(value: unknown): value is AgentRecordObservation {
         'claim_boundary',
       ])
       || !exactKeys(value.record.bond, ['bond_id', 'bond_digest'])
-      || !exactKeys(value.record.source, ['profile', 'arena_share_id', 'artifact_digest'])
+      || !exactKeys(value.record.source, ['profile', 'artifact_digest'])
       || !exactKeys(value.record.action, ['action_digest'])
       || !exactKeys(value.record.refusal, ['refusal_digest', 'refused_at'])
       || !exactKeys(value.signature, ['algorithm', 'key_id', 'key_source', 'value'])) {
@@ -282,7 +277,6 @@ function structurallyValid(value: unknown): value is AgentRecordObservation {
       recordId: record.record_id,
       bondId: record.bond.bond_id,
       bondDigest: record.bond.bond_digest,
-      arenaShareId: record.source.arena_share_id,
       sourceArtifactDigest: record.source.artifact_digest,
       actionDigest: record.action.action_digest,
       refusalDigest: record.refusal.refusal_digest,

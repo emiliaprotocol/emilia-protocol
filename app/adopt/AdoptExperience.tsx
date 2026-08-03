@@ -1070,9 +1070,9 @@ export default function AdoptExperience({ api = adoptApiClient }: AdoptExperienc
                           <>
                             <h3>Record this refused attempt as one fact?</h3>
                             <p>
-                              The server will verify and publish the exact signed refusal, wrap it in an
-                              operator-signed observation, and reveal no agent label, owner credential, prompt,
-                              action parameters, or identity claim.
+                              The server will verify the exact signed refusal and publish a digest-bound,
+                              operator-signed observation. It reveals no agent label, owner credential, prompt,
+                              action parameters, Arena source link, or identity claim.
                             </p>
                             <label className={styles.publishConsent}>
                               <input type="checkbox" checked={recordConfirmed}

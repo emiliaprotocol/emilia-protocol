@@ -40,6 +40,8 @@ const RECORD_ID = `agent_record_${'b'.repeat(40)}`;
 const OWNER_TOKEN = `ear1_${'c'.repeat(64)}`;
 const ATTEMPT_ID = `arena_attempt_${'d'.repeat(32)}`;
 const TRIAL_TOKEN = `epenc:v1:${'e'.repeat(64)}`;
+const ARTIFACT_DIGEST = `sha256:${'f'.repeat(64)}`;
+const ACTION_DIGEST = `sha256:${'1'.repeat(64)}`;
 const authorization = Object.freeze({
   sessionId: SESSION_ID,
   sessionToken: SESSION_TOKEN,
@@ -120,7 +122,15 @@ describe('Agent Record HTTP contract', () => {
       record_id: RECORD_ID,
       public_projection: {
         '@version': 'EP-AGENT-RECORD-OBSERVATION-v1',
-        record: { claim_boundary: 'fact-only' },
+        record: {
+          source: {
+            profile: 'EP-ACTION-REFUSAL-STATEMENT-v1',
+            artifact_digest: ARTIFACT_DIGEST,
+          },
+          action: { action_digest: ACTION_DIGEST },
+          refusal: { refusal_digest: ARTIFACT_DIGEST },
+          claim_boundary: 'fact-only',
+        },
       },
       verification: { integrity_verified: true, currently_public: true },
     });
@@ -134,7 +144,13 @@ describe('Agent Record HTTP contract', () => {
     expect(mocks.load).toHaveBeenCalledWith({ recordId: RECORD_ID });
     const body = await response.json();
     expect(body.record_id).toBe(RECORD_ID);
-    expect(JSON.stringify(body)).not.toContain('ear1_');
+    const publicBytes = JSON.stringify(body);
+    expect(publicBytes).not.toContain('ear1_');
+    expect(publicBytes).not.toMatch(
+      /arena_share_id|arena_share_|\/arena\/|\/api\/arena\/refusals/,
+    );
+    expect(publicBytes).toContain(ARTIFACT_DIGEST);
+    expect(publicBytes).toContain(ACTION_DIGEST);
     expect(response.headers.get('cache-control')).toContain('no-store');
     expect(response.headers.get('content-security-policy')).toContain("default-src 'none'");
   });
@@ -215,6 +231,9 @@ describe('Agent Record UI and custody contract', () => {
     expect(adopt).toContain('trial_token: session.trial_token');
     expect(adopt).toContain('attempt_id: attempt.attempt_id');
     expect(adopt).not.toContain("latestAttempt.decision === 'permit' && create");
+    expect(adopt).toContain('verify the exact signed refusal');
+    expect(adopt).toContain('digest-bound');
+    expect(adopt).toContain('action parameters, Arena source link');
   });
 
   it('keeps the owner token only in record-specific local storage and out of URLs and analytics', () => {

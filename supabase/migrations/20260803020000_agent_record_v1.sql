@@ -346,7 +346,7 @@ BEGIN
     OR (
       SELECT pg_catalog.count(*)
       FROM pg_catalog.jsonb_object_keys(p_public_projection -> 'record' -> 'source')
-    ) <> 3
+    ) <> 2
     OR (
       SELECT pg_catalog.count(*)
       FROM pg_catalog.jsonb_object_keys(p_public_projection -> 'record' -> 'action')
@@ -364,8 +364,6 @@ BEGIN
     OR p_public_projection -> 'record' -> 'bond' ->> 'bond_digest' IS DISTINCT FROM p_bond_digest
     OR p_public_projection -> 'record' -> 'source' ->> 'profile' IS DISTINCT FROM
       'EP-ACTION-REFUSAL-STATEMENT-v1'
-    OR p_public_projection -> 'record' -> 'source' ->> 'arena_share_id' IS DISTINCT FROM
-      p_arena_share_id
     OR p_public_projection -> 'record' -> 'source' ->> 'artifact_digest' IS DISTINCT FROM
       p_source_artifact_digest
     OR p_public_projection -> 'record' -> 'action' ->> 'action_digest' IS DISTINCT FROM

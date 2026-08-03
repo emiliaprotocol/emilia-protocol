@@ -214,7 +214,6 @@ export async function createAgentRecord({
       recordId,
       bondId: source.bondId,
       bondDigest: source.bondDigest,
-      arenaShareId: source.arenaShareId,
       sourceArtifactDigest: source.sourceArtifactDigest,
       actionDigest: source.actionDigest,
       refusalDigest: source.refusalDigest,
@@ -260,7 +259,6 @@ export async function createAgentRecord({
       || stored.public_projection?.record?.record_id !== recordId
       || stored.public_projection?.record?.bond?.bond_id !== source.bondId
       || stored.public_projection?.record?.bond?.bond_digest !== source.bondDigest
-      || stored.public_projection?.record?.source?.arena_share_id !== source.arenaShareId
       || stored.public_projection?.record?.source?.artifact_digest !== source.sourceArtifactDigest
       || stored.public_projection?.record?.action?.action_digest !== source.actionDigest
       || stored.public_projection?.record?.refusal?.refusal_digest !== source.refusalDigest

@@ -98,7 +98,6 @@ function recordProjection(input: {
   recordId: string;
   bondId: string;
   bondDigest: string;
-  arenaShareId: string;
   sourceArtifactDigest: string;
   actionDigest: string;
   refusalDigest: string;
@@ -116,7 +115,6 @@ function recordProjection(input: {
       },
       source: {
         profile: 'EP-ACTION-REFUSAL-STATEMENT-v1',
-        arena_share_id: input.arenaShareId,
         artifact_digest: input.sourceArtifactDigest,
       },
       action: { action_digest: input.actionDigest },
@@ -428,12 +426,16 @@ suite('Agent Record v1 RPC lifecycle on PostgreSQL 17', () => {
       WHERE record_id = $1
     `, [RECORD_ID]);
     expect(stored.rows).toHaveLength(1);
+    expect(stored.rows[0].row_text).toContain(`\"arena_share_id\":\"${ARENA_SHARE_ID}\"`);
     expect(stored.rows[0].owner_token_hash).toBe(
       createHash('sha256').update(input.ownerToken, 'utf8').digest('hex'),
     );
     expect(stored.rows[0].row_text).not.toContain(input.ownerToken);
     expect(JSON.stringify(stored.rows[0].public_projection)).not.toContain(
       input.ownerToken,
+    );
+    expect(JSON.stringify(stored.rows[0].public_projection)).not.toMatch(
+      /arena_share_id|arena_share_|\/arena\/|\/api\/arena\/refusals/,
     );
   });
 
@@ -474,6 +476,38 @@ suite('Agent Record v1 RPC lifecycle on PostgreSQL 17', () => {
       ...input,
       ownerToken: `ear1_${'c'.repeat(64)}`,
     })).rejects.toMatchObject({ code: '23505' });
+  });
+
+  it('rejects a dereferenceable Arena source in the public projection', async () => {
+    const arenaShareId = `arena_share_${'3'.repeat(40)}`;
+    const refusalDigest = digest('6');
+    const actionDigest = digest('7');
+    const refusedAt = instant(-2_000);
+    await insertArenaShare({ arenaShareId, actionDigest, refusalDigest, refusedAt });
+    const input = createInput({
+      recordId: `agent_record_${'4'.repeat(40)}`,
+      arenaShareId,
+      sourceArtifactDigest: refusalDigest,
+      refusalDigest,
+      actionDigest,
+      refusedAt,
+    });
+    const unsafeProjection = structuredClone(input.publicProjection);
+    (unsafeProjection.record as JsonObject).source = {
+      ...((unsafeProjection.record as JsonObject).source as JsonObject),
+      arena_share_id: arenaShareId,
+    };
+
+    await expect(createRecord({
+      ...input,
+      publicProjection: unsafeProjection,
+    })).rejects.toMatchObject({ code: '22023' });
+
+    const stored = await database.query<{ count: string }>(
+      'SELECT count(*)::text AS count FROM agent_record_private.records WHERE record_id = $1',
+      [input.recordId],
+    );
+    expect(stored.rows).toEqual([{ count: '0' }]);
   });
 
   it('accepts a rotated safe key id and rejects key ids outside the closed set', async () => {
@@ -693,6 +727,12 @@ suite('Agent Record v1 RPC lifecycle on PostgreSQL 17', () => {
         '@version': 'EP-AGENT-RECORD-OBSERVATION-v1',
       },
     });
+    const publicBytes = JSON.stringify(publicRecord);
+    expect(publicBytes).not.toMatch(
+      /arena_share_id|arena_share_|\/arena\/|\/api\/arena\/refusals/,
+    );
+    expect(publicBytes).toContain(REFUSAL_DIGEST);
+    expect(publicBytes).toContain(ACTION_DIGEST);
 
     const functions = await database.query<{ proname: string }>(`
       SELECT procedure.proname
