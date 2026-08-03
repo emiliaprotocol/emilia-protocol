@@ -1262,7 +1262,25 @@ BEGIN
 END
 $capability_operation_primary_key$;
 CREATE INDEX IF NOT EXISTS ${CAPABILITY_OPERATION_TABLE}_capability_idx ON ${CAPABILITY_OPERATION_TABLE}(capability_id);
-CREATE INDEX IF NOT EXISTS ${CAPABILITY_OPERATION_TABLE}_recovery_idx ON ${CAPABILITY_OPERATION_TABLE}(status, entry_deadline_at);`;
+CREATE INDEX IF NOT EXISTS ${CAPABILITY_OPERATION_TABLE}_recovery_idx ON ${CAPABILITY_OPERATION_TABLE}(status, entry_deadline_at);
+DO $capability_live_action_preflight$
+BEGIN
+  IF EXISTS (
+    SELECT 1
+      FROM ${CAPABILITY_OPERATION_TABLE}
+      WHERE status IN ('reserved', 'provider_entered', 'committed')
+      GROUP BY operation_namespace, action_digest
+      HAVING count(*) > 1
+  ) THEN
+    RAISE EXCEPTION USING
+      ERRCODE = '23505',
+      MESSAGE = 'duplicate live capability actions require operator reconciliation before installing the action fence';
+  END IF;
+END
+$capability_live_action_preflight$;
+CREATE UNIQUE INDEX IF NOT EXISTS ${ACTION_FENCE_CONSTRAINT}
+  ON ${CAPABILITY_OPERATION_TABLE}(operation_namespace, action_digest)
+  WHERE status IN ('reserved', 'provider_entered', 'committed');`;
 export const CAPABILITY_SQL = Object.freeze({
     register: `INSERT INTO ${CAPABILITY_STATE_TABLE} (capability_id, budget_amount, currency, expires_at, capability_fingerprint, allowance_profile_id, allowance_digest) VALUES ($1, $2, $3, $4, $5, $6, $7) ON CONFLICT (capability_id) DO UPDATE SET capability_fingerprint = COALESCE(${CAPABILITY_STATE_TABLE}.capability_fingerprint, EXCLUDED.capability_fingerprint), allowance_profile_id = COALESCE(${CAPABILITY_STATE_TABLE}.allowance_profile_id, EXCLUDED.allowance_profile_id), allowance_digest = COALESCE(${CAPABILITY_STATE_TABLE}.allowance_digest, EXCLUDED.allowance_digest) WHERE ${CAPABILITY_STATE_TABLE}.budget_amount = EXCLUDED.budget_amount AND ${CAPABILITY_STATE_TABLE}.currency = EXCLUDED.currency AND ${CAPABILITY_STATE_TABLE}.expires_at = EXCLUDED.expires_at AND (${CAPABILITY_STATE_TABLE}.allowance_profile_id IS NULL OR ${CAPABILITY_STATE_TABLE}.allowance_profile_id IS NOT DISTINCT FROM EXCLUDED.allowance_profile_id) AND (${CAPABILITY_STATE_TABLE}.allowance_digest IS NULL OR ${CAPABILITY_STATE_TABLE}.allowance_digest IS NOT DISTINCT FROM EXCLUDED.allowance_digest)`,
     readState: `SELECT capability_id, capability_fingerprint, budget_amount, currency, consumed_amount, reserved_amount, expires_at, allowance_profile_id, allowance_digest FROM ${CAPABILITY_STATE_TABLE} WHERE capability_id = $1 FOR UPDATE`,
@@ -1273,8 +1291,9 @@ export const CAPABILITY_SQL = Object.freeze({
     // Is this exact action already held by SOME operation, whatever its id? The
     // An existing holder is row-locked here. Same-capability reservations also
     // serialize on readState. For custom namespaces spanning capability rows, the
-    // partial unique index in migration 20260803010000 is the authoritative race
-    // backstop because PostgreSQL cannot lock a row that does not exist yet.
+    // partial unique index shipped in CAPABILITY_STATE_DDL (and mirrored by the
+    // repository migration) is the authoritative race backstop because
+    // PostgreSQL cannot lock a row that does not exist yet.
     readActionHolder: `SELECT operation_id, status FROM ${CAPABILITY_OPERATION_TABLE} WHERE operation_namespace = $1 AND action_digest = $2 AND status IN ('reserved', 'provider_entered', 'committed') LIMIT 1 FOR UPDATE`,
     insertOperation: `INSERT INTO ${CAPABILITY_OPERATION_TABLE} (operation_namespace, capability_id, operation_id, action_digest, amount, currency, status, reservation_token, reserved_at, entry_deadline_at, allowance_revision, allowance_status_epoch, allowance_status_head_digest) VALUES ($1, $2, $3, $4, $5, $6, 'reserved', $7, $8, $9, $10, $11, $12)`,
     reserveState: `UPDATE ${CAPABILITY_STATE_TABLE} SET reserved_amount = reserved_amount + $2 WHERE capability_id = $1 AND budget_amount - consumed_amount - reserved_amount >= $2`,

@@ -3,6 +3,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { generateKeyPairSync, sign } from 'node:crypto';
+import { createRequire } from 'node:module';
 import { canonicalize } from './execution-binding.js';
 import {
   executeWithCapability,
@@ -27,6 +28,7 @@ import {
 } from './capability-receipt.js';
 
 const NOW = Date.parse('2026-07-18T22:00:00.000Z');
+const require = createRequire(import.meta.url);
 
 function baseReceipt({ privateKey, publicKey, receiptId = 'base_1' } = {}) {
   const payload = {
@@ -243,6 +245,11 @@ test('postgres capability operations use a composite namespace and operation key
   assert.match(CAPABILITY_SQL.readActionHolder, /'reserved', 'provider_entered', 'committed'/);
   assert.doesNotMatch(CAPABILITY_SQL.readActionHolder, /'released'/);
   assert.match(CAPABILITY_SQL.readActionHolder, /FOR UPDATE/);
+  assert.match(
+    CAPABILITY_STATE_DDL,
+    /CREATE UNIQUE INDEX IF NOT EXISTS ep_capability_operations_live_action_uniq\s+ON ep_capability_operations\(operation_namespace, action_digest\)\s+WHERE status IN \('reserved', 'provider_entered', 'committed'\)/,
+  );
+  assert.match(CAPABILITY_STATE_DDL, /duplicate live capability actions require operator reconciliation/);
 
   const keys = issuer();
   const first = mintCapabilityReceipt(keys.receipt, options({
@@ -1719,6 +1726,170 @@ test('a concurrent postgres action-fence collision returns a closed refusal inst
     reason: 'action_in_flight',
     action_digest: capabilityActionDigest(scopedAction('merge-pr-race')),
   });
+});
+
+test('an unrelated postgres unique violation is not laundered into action_in_flight', async () => {
+  const keys = issuer();
+  const minted = mintCapabilityReceipt(keys.receipt, options({
+    issuerPrivateKey: keys.privateKey,
+    capabilityId: 'postgres_unrelated_unique_violation',
+  }));
+  const reference = createMemoryCapabilityStore();
+  assert.equal(reference.registerCapability(minted.capabilityReceipt), true);
+  const state = reference.getState(minted.capabilityReceipt.capability.id);
+  const transaction = async (callback) => callback(async (sql) => {
+    if (sql === CAPABILITY_SQL.register) return { rowCount: 1, rows: [] };
+    if (sql === CAPABILITY_SQL.readState) {
+      return {
+        rowCount: 1,
+        rows: [{
+          capability_id: state.capability_id,
+          capability_fingerprint: state.capability_fingerprint,
+          budget_amount: String(state.budget_amount),
+          currency: state.currency,
+          consumed_amount: '0',
+          reserved_amount: '0',
+          expires_at: new Date(state.expires_at).toISOString(),
+        }],
+      };
+    }
+    if (sql === CAPABILITY_SQL.readOperation || sql === CAPABILITY_SQL.readActionHolder) {
+      return { rowCount: 0, rows: [] };
+    }
+    if (sql === CAPABILITY_SQL.reserveState) return { rowCount: 1, rows: [] };
+    if (sql === CAPABILITY_SQL.insertOperation) {
+      const error = new Error('unrelated duplicate') as Error & { code: string; constraint: string };
+      error.code = '23505';
+      error.constraint = 'some_other_unique_constraint';
+      throw error;
+    }
+    throw new Error(`unexpected SQL in unrelated unique-violation test: ${sql}`);
+  });
+  const store = createPostgresCapabilityStore({ transaction });
+  assert.equal(await store.registerCapability(minted.capabilityReceipt), true);
+  await assert.rejects(
+    store.reserveSpend({
+      capabilityId: state.capability_id,
+      capabilityFingerprint: state.capability_fingerprint,
+      operationId: 'evt_unrelated_unique',
+      actionDigest: capabilityActionDigest(scopedAction('unrelated-unique')),
+      amount: 1,
+      currency: 'USD',
+      now: NOW,
+    }),
+    (error: Error & { code?: string; constraint?: string }) => (
+      error.code === '23505' && error.constraint === 'some_other_unique_constraint'
+    ),
+  );
+});
+
+const capabilityPostgresUrl = process.env.ADMISSION_STORE_POSTGRES_TEST_URL;
+
+test('real PostgreSQL action fence is load-bearing across capability rows', {
+  skip: capabilityPostgresUrl ? false : 'ADMISSION_STORE_POSTGRES_TEST_URL is not configured',
+}, async () => {
+  const { Pool } = require('pg') as { Pool: new (options: Record<string, unknown>) => any };
+  const pool = new Pool({ connectionString: capabilityPostgresUrl, max: 8 });
+  const schemaPrefix = `ep_action_fence_${process.pid}_${Date.now()}`;
+
+  async function runRace(schema: string, ddl: string): Promise<number> {
+    await pool.query(`CREATE SCHEMA ${schema}`);
+    const setup = await pool.connect();
+    try {
+      await setup.query(`SET search_path TO ${schema}, public`);
+      await setup.query(ddl);
+    } finally {
+      setup.release();
+    }
+
+    let arrived = 0;
+    let releaseBarrier!: () => void;
+    const barrier = new Promise<void>((resolve) => { releaseBarrier = resolve; });
+    const transaction = async (callback) => {
+      const client = await pool.connect();
+      try {
+        await client.query('BEGIN');
+        await client.query(`SET LOCAL search_path TO ${schema}, public`);
+        const result = await callback(async (sql, params = []) => {
+          const queried = await client.query(sql, [...params]);
+          if (sql === CAPABILITY_SQL.readActionHolder && queried.rows.length === 0) {
+            arrived += 1;
+            if (arrived === 2) releaseBarrier();
+            await barrier;
+          }
+          return { rowCount: queried.rowCount ?? 0, rows: queried.rows };
+        });
+        await client.query('COMMIT');
+        return result;
+      } catch (error) {
+        await client.query('ROLLBACK');
+        throw error;
+      } finally {
+        client.release();
+      }
+    };
+
+    const keys = issuer();
+    const first = mintCapabilityReceipt(keys.receipt, options({
+      issuerPrivateKey: keys.privateKey,
+      capabilityId: `${schema}_a`,
+    }));
+    const second = mintCapabilityReceipt(keys.receipt, options({
+      issuerPrivateKey: keys.privateKey,
+      capabilityId: `${schema}_b`,
+    }));
+    const reference = createMemoryCapabilityStore();
+    assert.equal(reference.registerCapability(first.capabilityReceipt), true);
+    assert.equal(reference.registerCapability(second.capabilityReceipt), true);
+    const firstState = reference.getState(first.capabilityReceipt.capability.id);
+    const secondState = reference.getState(second.capabilityReceipt.capability.id);
+    const store = createPostgresCapabilityStore({ transaction });
+    assert.equal(await store.registerCapability(first.capabilityReceipt), true);
+    assert.equal(await store.registerCapability(second.capabilityReceipt), true);
+    const actionDigest = capabilityActionDigest(scopedAction('stable-semantic-action'));
+    const operationNamespace = 'tenant:shared-action-fence';
+    const results = await Promise.all([
+      store.reserveSpend({
+        capabilityId: firstState.capability_id,
+        capabilityFingerprint: firstState.capability_fingerprint,
+        operationNamespace,
+        operationId: 'request-wrapper-a',
+        actionDigest,
+        amount: 1,
+        currency: 'USD',
+        now: NOW,
+      }),
+      store.reserveSpend({
+        capabilityId: secondState.capability_id,
+        capabilityFingerprint: secondState.capability_fingerprint,
+        operationNamespace,
+        operationId: 'request-wrapper-b',
+        actionDigest,
+        amount: 1,
+        currency: 'USD',
+        now: NOW,
+      }),
+    ]);
+    return results.filter((result) => result.ok).length;
+  }
+
+  try {
+    assert.equal(await runRace(`${schemaPrefix}_shipped`, CAPABILITY_STATE_DDL), 1);
+    const vulnerableDdl = CAPABILITY_STATE_DDL.replace(
+      'CREATE UNIQUE INDEX IF NOT EXISTS ep_capability_operations_live_action_uniq',
+      'CREATE INDEX IF NOT EXISTS ep_capability_operations_live_action_uniq',
+    );
+    assert.notEqual(vulnerableDdl, CAPABILITY_STATE_DDL, 'mutation must remove uniqueness');
+    assert.equal(
+      await runRace(`${schemaPrefix}_mutated`, vulnerableDdl),
+      2,
+      'the negative control must admit both reservations when uniqueness is removed',
+    );
+  } finally {
+    await pool.query(`DROP SCHEMA IF EXISTS ${schemaPrefix}_shipped CASCADE`);
+    await pool.query(`DROP SCHEMA IF EXISTS ${schemaPrefix}_mutated CASCADE`);
+    await pool.end();
+  }
 });
 
 
