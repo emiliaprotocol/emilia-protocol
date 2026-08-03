@@ -862,12 +862,17 @@ against an actively written table:
    psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -f "$GATE_PREFLIGHT"
    ```
 
-   It prints every duplicate `(operation_namespace, action_fence_digest)` group
-   whose status is `reserved`, `provider_entered`, or `committed`, omits
-   reservation secrets, changes no rows, and exits with SQLSTATE `23505` if any
-   group exists. Historical rows default their fence to their recorded exact
-   `action_digest`; the migration does not invent broader equivalence.
-3. Reconcile every printed row by status while writers remain quiesced:
+   It omits reservation secrets and changes no rows. It prints and refuses every
+   legacy `reserved` operation that lacks a provider-entry deadline (SQLSTATE
+   `55000`), then prints every duplicate live
+   `(operation_namespace, action_fence_digest)` group and refuses duplicates
+   with SQLSTATE `23505`. When those guards pass, it also previews every legacy
+   capability ID that the migration will quarantine.
+
+   A historical `action_digest` is shown only as compatibility identity. It is
+   not evidence that two wrappers describe the same material action. Never use
+   this preflight or its output to infer semantic equivalence.
+3. Reconcile every refused row by status while writers remain quiesced:
    - `reserved`: use the normal owner-fenced pre-entry recovery only after its
      deadline has elapsed and provider non-entry is established. Otherwise
      leave it unresolved and stop the deployment.
@@ -879,13 +884,20 @@ against an actively written table:
      If multiple committed rows remain, preserve all evidence and use a
      separately reviewed, auditable incident-remediation migration; this
      generic migration must remain blocked.
-4. Rerun the preflight until it exits zero with an empty result set. Do not use
+4. Rerun the preflight until it exits zero with empty unsafe-reservation and
+   duplicate result sets. Do not use
    ad hoc `DELETE`, status rewrites, or reservation-token edits to make it pass.
 5. Apply `20260803010000_capability_action_digest_fence.sql` with
-   `ON_ERROR_STOP=1` while writers are still quiesced. The migration repeats the
-   duplicate guard and fails closed before index creation if the population
-   changed.
-6. Verify the installed contract before restoring writers:
+   `ON_ERROR_STOP=1` while writers are still quiesced. The file owns an explicit
+   `BEGIN`/`COMMIT` boundary, repeats the unsafe-reservation and duplicate
+   guards, restores the digest and lifecycle constraints, and either commits the
+   complete upgrade or commits nothing.
+6. Treat every capability ID that had historical operations as permanently
+   quarantined with `semantic_fence_ready = false`. Do not flip that flag back
+   to `true`, and do not backfill a semantic mapping from its historical exact
+   digests. After evidence-preserving review, issue a fresh capability with a
+   new capability ID and the current semantic fence contract.
+7. Verify the installed contract before restoring writers:
 
    ```sql
    SELECT i.indisunique,
@@ -899,9 +911,11 @@ against an actively written table:
    Require `indisunique = true`, a valid and ready immediate btree with no
    included columns, ordered keys
    `(operation_namespace, action_fence_digest)`, and exactly the live statuses
-   `reserved`, `provider_entered`, and `committed`. The migration and packaged
-   bootstrap DDL perform the same contract check and refuse a stale, non-unique,
-   or otherwise wrong same-named index.
+   `reserved`, `provider_entered`, and `committed`. Each key must use its source
+   column's exact collation, the default btree operator class, and ordinary
+   ascending/nulls-last options. The migration and packaged preflight refuse a
+   stale, non-unique, differently collated, non-default-opclass, or otherwise
+   wrong same-named index.
 
 The built-in `urn:emilia:scope:action-digest-set-v1` profile is exact-byte
 scope. `urn:emilia:scope:caid-set-v1` is also supported for interoperable

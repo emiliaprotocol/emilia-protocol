@@ -87,10 +87,10 @@ async function applyHistoricalCapabilityChain(): Promise<void> {
 async function applyFenceMigration(): Promise<void> {
   const client = await database.connect();
   try {
-    await client.query('BEGIN');
     await client.query(FENCE_MIGRATION);
-    await client.query('COMMIT');
   } catch (error) {
+    // The migration owns its BEGIN/COMMIT boundary. A failed statement leaves
+    // that explicit transaction aborted until the caller rolls it back.
     await client.query('ROLLBACK');
     throw error;
   } finally {
@@ -144,6 +144,7 @@ async function insertOperation(
   operationId: string,
   actionDigest: string,
   capabilityId = 'capability:history',
+  status = 'reserved',
 ): Promise<void> {
   await database.query(
     `INSERT INTO public.ep_capability_operations (
@@ -155,8 +156,14 @@ async function insertOperation(
        status,
        reservation_token,
        reserved_at
-     ) VALUES ($1, $2, $3, 1, 'USD', 'reserved', $4, now())`,
-    [operationId, capabilityId, actionDigest, `reservation:${operationId}`],
+     ) VALUES ($1, $2, $3, 1, 'USD', $4, $5, now())`,
+    [
+      operationId,
+      capabilityId,
+      actionDigest,
+      status,
+      `reservation:${operationId}`,
+    ],
   );
 }
 
@@ -222,13 +229,22 @@ suite('capability action fence over the PostgreSQL 17 migration chain', () => {
     }
   });
 
-  it('backfills the historical namespace, migrates the primary key, and installs the exact fence', async () => {
+  it('atomically upgrades the true historical schema and quarantines its capability', async () => {
     await applyHistoricalCapabilityChain();
     expect(await operationNamespaceExists()).toBe(false);
 
+    // Simulate an incomplete package bootstrap that added the readiness flag
+    // with its default before the tracked fence migration reached production.
+    // A legacy ID must still be quarantined; TRUE is not grandfathered.
+    await database.query(`
+      ALTER TABLE public.ep_capability_state
+      ADD COLUMN semantic_fence_ready BOOLEAN NOT NULL DEFAULT TRUE
+    `);
+
     await insertCapability();
+    await insertCapability('capability:fresh');
     const digest = `sha256:${'a'.repeat(64)}`;
-    await insertOperation('operation:historical', digest);
+    await insertOperation('operation:historical', digest, 'capability:history', 'committed');
 
     // The deployment preflight must be usable before the migration, not only
     // against the package-created table shape.
@@ -262,6 +278,179 @@ suite('capability action fence over the PostgreSQL 17 migration chain', () => {
         AND column_name = 'operation_namespace'
     `);
     expect(namespaceColumn.rows).toEqual([{ is_nullable: 'NO' }]);
+
+    const lifecycleColumns = await database.query<{ column_name: string }>(`
+      SELECT column_name
+      FROM information_schema.columns
+      WHERE table_schema = 'public'
+        AND table_name = 'ep_capability_operations'
+        AND column_name = ANY($1::TEXT[])
+      ORDER BY column_name
+    `, [[
+      'entry_deadline_at',
+      'provider_entry_at',
+      'released_at',
+      'release_reason',
+      'release_evidence_profile',
+      'release_evidence_digest',
+    ]]);
+    expect(lifecycleColumns.rows.map(({ column_name }) => column_name)).toEqual([
+      'entry_deadline_at',
+      'provider_entry_at',
+      'release_evidence_digest',
+      'release_evidence_profile',
+      'release_reason',
+      'released_at',
+    ]);
+
+    const statusConstraint = await database.query<{ definition: string }>(`
+      SELECT pg_catalog.pg_get_constraintdef(oid) AS definition
+      FROM pg_catalog.pg_constraint
+      WHERE conrelid = 'public.ep_capability_operations'::pg_catalog.regclass
+        AND conname = 'ep_capability_operations_status_check'
+    `);
+    expect(normalizedPredicate(statusConstraint.rows[0]?.definition ?? '')).toContain(
+      "ARRAY['reserved','provider_entered','committed','released']",
+    );
+
+    const digestConstraints = await database.query<{ conname: string }>(`
+      SELECT conname
+      FROM pg_catalog.pg_constraint
+      WHERE conrelid = 'public.ep_capability_operations'::pg_catalog.regclass
+        AND conname = ANY($1::TEXT[])
+      ORDER BY conname
+    `, [[
+      'ep_capability_operations_action_digest_check',
+      'ep_capability_operations_action_fence_digest_check',
+      'ep_capability_operations_release_evidence_digest_check',
+    ]]);
+    expect(digestConstraints.rows.map(({ conname }) => conname)).toEqual([
+      'ep_capability_operations_action_digest_check',
+      'ep_capability_operations_action_fence_digest_check',
+      'ep_capability_operations_release_evidence_digest_check',
+    ]);
+
+    const semanticState = await database.query<{
+      capability_id: string;
+      semantic_fence_ready: boolean;
+    }>(`
+      SELECT capability_id, semantic_fence_ready
+      FROM public.ep_capability_state
+      WHERE capability_id = 'capability:history'
+    `);
+    expect(semanticState.rows).toEqual([{
+      capability_id: 'capability:history',
+      semantic_fence_ready: false,
+    }]);
+
+    await expect(database.query(`
+      INSERT INTO public.ep_capability_operations (
+        operation_namespace,
+        operation_id,
+        capability_id,
+        action_digest,
+        action_fence_digest,
+        amount,
+        currency,
+        status,
+        reservation_token,
+        reserved_at,
+        entry_deadline_at
+      ) VALUES ($1, $2, $3, $4, $5, 1, 'USD', 'reserved', $6, now(), now() + interval '1 minute')
+    `, [
+      'capability:history',
+      'operation:semantic-retry',
+      'capability:history',
+      `sha256:${'b'.repeat(64)}`,
+      `sha256:${'c'.repeat(64)}`,
+      'reservation:semantic-retry',
+    ])).rejects.toMatchObject({
+      code: '55000',
+      message: 'capability semantic action fence is not ready',
+      hint: 'Do not unquarantine this legacy capability ID or infer semantic equivalence from historical exact digests. After review, issue a fresh capability with a new capability ID.',
+    });
+
+    const freshSemanticState = await database.query<{
+      semantic_fence_ready: boolean;
+    }>(`
+      SELECT semantic_fence_ready
+      FROM public.ep_capability_state
+      WHERE capability_id = 'capability:fresh'
+    `);
+    expect(freshSemanticState.rows).toEqual([{ semantic_fence_ready: true }]);
+
+    const freshActionDigest = `sha256:${'4'.repeat(64)}`;
+    const freshFenceDigest = `sha256:${'5'.repeat(64)}`;
+    await expect(database.query(`
+      INSERT INTO public.ep_capability_operations (
+        operation_namespace,
+        operation_id,
+        capability_id,
+        action_digest,
+        action_fence_digest,
+        amount,
+        currency,
+        status,
+        reservation_token,
+        reserved_at,
+        entry_deadline_at
+      ) VALUES ($1, $2, $3, $4, $5, 1, 'USD', 'reserved', $6, now(), now() + interval '1 minute')
+    `, [
+      'capability:fresh',
+      'operation:fresh',
+      'capability:fresh',
+      freshActionDigest,
+      freshFenceDigest,
+      'reservation:fresh',
+    ])).resolves.toBeDefined();
+    await expect(database.query(`
+      UPDATE public.ep_capability_operations
+      SET status = 'provider_entered', provider_entry_at = now()
+      WHERE operation_namespace = 'capability:fresh'
+        AND operation_id = 'operation:fresh'
+    `)).resolves.toBeDefined();
+    await expect(database.query(`
+      UPDATE public.ep_capability_operations
+      SET status = 'released',
+          released_at = now(),
+          release_reason = 'authenticated_provider_non_entry',
+          release_evidence_profile = 'test-profile',
+          release_evidence_digest = $1
+      WHERE operation_namespace = 'capability:fresh'
+        AND operation_id = 'operation:fresh'
+    `, [`sha256:${'6'.repeat(64)}`])).resolves.toBeDefined();
+
+    await expect(database.query(`
+      INSERT INTO public.ep_capability_operations (
+        operation_namespace,
+        operation_id,
+        capability_id,
+        action_digest,
+        action_fence_digest,
+        amount,
+        currency,
+        status,
+        reservation_token,
+        reserved_at,
+        entry_deadline_at
+      ) VALUES (
+        'capability:fresh',
+        'operation:malformed',
+        'capability:fresh',
+        $1,
+        'not-a-digest',
+        1,
+        'USD',
+        'reserved',
+        'reservation:malformed',
+        now(),
+        now() + interval '1 minute'
+      )
+    `, [freshActionDigest])).rejects.toMatchObject({ code: '23514' });
+
+    // A successful second application proves the explicit transaction,
+    // quarantine, trigger, restored constraints, and index contract converge.
+    await expect(applyFenceMigration()).resolves.toBeUndefined();
 
     const primaryKey = await database.query<{ columns: string[] }>(`
       SELECT ARRAY(
@@ -385,8 +574,8 @@ suite('capability action fence over the PostgreSQL 17 migration chain', () => {
     await applyHistoricalCapabilityChain();
     await insertCapability();
     const duplicateDigest = `sha256:${'d'.repeat(64)}`;
-    await insertOperation('operation:duplicate:1', duplicateDigest);
-    await insertOperation('operation:duplicate:2', duplicateDigest);
+    await insertOperation('operation:duplicate:1', duplicateDigest, 'capability:history', 'committed');
+    await insertOperation('operation:duplicate:2', duplicateDigest, 'capability:history', 'committed');
 
     await expect(runPackagedPreflight()).rejects.toMatchObject({
       code: '23505',
@@ -411,12 +600,12 @@ suite('capability action fence over the PostgreSQL 17 migration chain', () => {
     expect(preserved.rows).toEqual([
       {
         operation_id: 'operation:duplicate:1',
-        status: 'reserved',
+        status: 'committed',
         action_digest: duplicateDigest,
       },
       {
         operation_id: 'operation:duplicate:2',
-        status: 'reserved',
+        status: 'committed',
         action_digest: duplicateDigest,
       },
     ]);
@@ -449,5 +638,83 @@ suite('capability action fence over the PostgreSQL 17 migration chain', () => {
       WHERE operation_id = 'operation:unbound'
     `);
     expect(preserved.rows).toEqual([{ capability_id: '' }]);
+  });
+
+  it('blocks a legacy reserved row and rolls the complete migration back', async () => {
+    await applyHistoricalCapabilityChain();
+    await insertCapability();
+    await insertOperation('operation:unsafe-reserved', `sha256:${'f'.repeat(64)}`);
+
+    await expect(runPackagedPreflight()).rejects.toMatchObject({
+      code: '55000',
+      message: 'EMILIA capability action-digest preflight found 1 unsafe legacy reserved operation(s)',
+    });
+    await expect(applyFenceMigration()).rejects.toMatchObject({
+      code: '55000',
+      message: 'EMILIA capability action-fence migration found 1 unsafe legacy reserved operation(s)',
+    });
+
+    expect(await operationNamespaceExists()).toBe(false);
+    const primaryKey = await database.query<{ definition: string }>(`
+      SELECT pg_catalog.pg_get_constraintdef(oid) AS definition
+      FROM pg_catalog.pg_constraint
+      WHERE conrelid = 'public.ep_capability_operations'::pg_catalog.regclass
+        AND contype = 'p'
+    `);
+    expect(primaryKey.rows).toEqual([{ definition: 'PRIMARY KEY (operation_id)' }]);
+    const semanticColumn = await database.query<{ exists: boolean }>(`
+      SELECT EXISTS (
+        SELECT 1
+        FROM information_schema.columns
+        WHERE table_schema = 'public'
+          AND table_name = 'ep_capability_state'
+          AND column_name = 'semantic_fence_ready'
+      ) AS exists
+    `);
+    expect(semanticColumn.rows).toEqual([{ exists: false }]);
+  });
+
+  it.each([
+    {
+      name: 'non-default btree operator classes',
+      operationNamespaceDefinition: 'TEXT',
+      keys: 'operation_namespace text_pattern_ops, action_fence_digest text_pattern_ops',
+    },
+    {
+      name: 'index collations that differ from their columns',
+      operationNamespaceDefinition: 'TEXT COLLATE public.ep_case_insensitive',
+      keys: 'operation_namespace COLLATE "C", action_fence_digest COLLATE "C"',
+    },
+  ])('rejects a same-named fence using $name', async ({
+    operationNamespaceDefinition,
+    keys,
+  }) => {
+    await database.query(`
+      CREATE COLLATION public.ep_case_insensitive (
+        provider = icu,
+        locale = 'und-u-ks-level2',
+        deterministic = false
+      )
+    `);
+    await applyHistoricalCapabilityChain();
+    await database.query(`
+      ALTER TABLE public.ep_capability_operations
+        ADD COLUMN operation_namespace ${operationNamespaceDefinition},
+        ADD COLUMN action_fence_digest TEXT
+    `);
+    await database.query(`
+      CREATE UNIQUE INDEX ep_capability_operations_live_action_uniq
+      ON public.ep_capability_operations (${keys})
+      WHERE status IN ('reserved', 'provider_entered', 'committed')
+    `);
+
+    await expect(runPackagedPreflight()).rejects.toMatchObject({
+      code: '55000',
+      message: 'EMILIA capability action-digest fence index does not match its required contract',
+    });
+    await expect(applyFenceMigration()).rejects.toMatchObject({
+      code: '55000',
+      message: 'EMILIA capability action-digest fence index does not match its required contract',
+    });
   });
 });

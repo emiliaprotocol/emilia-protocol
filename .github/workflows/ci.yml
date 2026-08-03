@@ -1253,3 +1253,7 @@ jobs:
         run: node --test --import tsx packages/gate/admission-store-postgres.test.ts
         env:
           ADMISSION_STORE_POSTGRES_TEST_URL: postgresql://ep_test:ci-${{ github.run_id }}-${{ github.run_attempt }}@localhost:5433/ep_test
+      - name: Run Gate capability PostgreSQL contract
+        run: node --test --import tsx packages/gate/capability-receipt.test.ts
+        env:
+          ADMISSION_STORE_POSTGRES_TEST_URL: postgresql://ep_test:ci-${{ github.run_id }}-${{ github.run_attempt }}@localhost:5433/ep_test
