@@ -190,6 +190,74 @@ test('codemod refuses symlinked input and hard-linked output leaves', () => {
   assert.equal(readFileSync(external, 'utf8'), 'preserve-me');
 });
 
+test('scan and protect refuse oversized, non-regular, and ancestor-symlinked inputs before parsing', () => {
+  const dir = mkdtempSync(join(tmpdir(), 'emilia-scan-bounded-read-'));
+  const oversized = join(dir, 'oversized.json');
+  writeFileSync(oversized, Buffer.alloc((8 * 1024 * 1024) + 1, 0x20));
+  for (const args of [[oversized], ['protect', oversized]]) {
+    const run = spawnSync(process.execPath, [join(import.meta.dirname, 'cli.mjs'), ...args], {
+      cwd: dir,
+      encoding: 'utf8',
+      timeout: 2_000,
+    });
+    assert.notEqual(run.status, 0);
+    assert.match(`${run.stdout}${run.stderr}`, /exceeds 8388608 bytes/i);
+  }
+
+  const nonRegular = spawnSync(process.execPath, [join(import.meta.dirname, 'cli.mjs'), '/dev/zero'], {
+    cwd: dir,
+    encoding: 'utf8',
+    timeout: 2_000,
+  });
+  assert.notEqual(nonRegular.status, 0);
+  assert.equal(nonRegular.signal, null, 'non-regular input must be rejected, not timeout-killed');
+  assert.match(`${nonRegular.stdout}${nonRegular.stderr}`, /non-regular input/i);
+
+  const realParent = join(dir, 'real-parent');
+  const linkedParent = join(dir, 'linked-parent');
+  mkdirSync(realParent);
+  writeFileSync(join(realParent, 'tools.json'), '[{"name":"getAccountBalance"}]');
+  symlinkSync(realParent, linkedParent, 'dir');
+  const linked = spawnSync(process.execPath, [join(import.meta.dirname, 'cli.mjs'), join(linkedParent, 'tools.json')], {
+    cwd: dir,
+    encoding: 'utf8',
+  });
+  assert.notEqual(linked.status, 0);
+  assert.match(`${linked.stdout}${linked.stderr}`, /symlinked input path component/i);
+});
+
+test('scan and protect reject unknown options with usage status', () => {
+  for (const args of [['--sample', '--definitely-unknown'], ['protect', '--sample', '--definitely-unknown']]) {
+    const run = spawnSync(process.execPath, [join(import.meta.dirname, 'cli.mjs'), ...args], {
+      encoding: 'utf8',
+    });
+    assert.equal(run.status, 64, `${args.join(' ')}\n${run.stdout}\n${run.stderr}`);
+    assert.match(run.stderr, /unknown option: --definitely-unknown/);
+  }
+});
+
+test('protect installs one direct-child scaffold atomically and force replaces the directory as a unit', () => {
+  const dir = mkdtempSync(join(tmpdir(), 'emilia-protect-atomic-'));
+  const nested = spawnSync(process.execPath, [
+    join(import.meta.dirname, 'cli.mjs'), 'protect', '--sample', '--out', 'nested/emilia', '--apply',
+  ], { cwd: dir, encoding: 'utf8' });
+  assert.notEqual(nested.status, 0);
+  assert.match(`${nested.stdout}${nested.stderr}`, /refusing nested output directory/i);
+  assert.equal(existsSync(join(dir, 'nested')), false);
+
+  mkdirSync(join(dir, 'emilia'));
+  writeFileSync(join(dir, 'emilia', 'stale.txt'), 'must disappear only under explicit force');
+  const replaced = spawnSync(process.execPath, [
+    join(import.meta.dirname, 'cli.mjs'), 'protect', '--sample', '--out', 'emilia', '--apply', '--force',
+  ], { cwd: dir, encoding: 'utf8' });
+  assert.equal(replaced.status, 0, `${replaced.stdout}\n${replaced.stderr}`);
+  assert.equal(existsSync(join(dir, 'emilia', 'stale.txt')), false);
+  assert.deepEqual(readdirSync(join(dir, 'emilia')).sort(), [
+    'INTEGRATION.md', 'action-control.manifest.json', 'guard.mjs', 'verify-setup.mjs',
+  ]);
+  assert.equal(readdirSync(dir).some((entry) => entry.startsWith('.emilia.')), false);
+});
+
 test('scan protect routes to the dry-run hardener without writing files', () => {
   const dir = mkdtempSync(join(tmpdir(), 'emilia-protect-dry-'));
   const run = spawnSync(process.execPath, [join(import.meta.dirname, 'cli.mjs'), 'protect', '--sample'], {

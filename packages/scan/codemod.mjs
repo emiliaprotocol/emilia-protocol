@@ -20,6 +20,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { randomUUID } from 'node:crypto';
 import { scanActions } from './index.js';
+import { readBoundedRegularFile } from './safe-file.mjs';
 
 let strictJsonGate;
 try { ({ strictJsonGate } = await import('@emilia-protocol/verify/strict-json')); }
@@ -45,11 +46,7 @@ const SAMPLE = [
 ];
 
 function ingest(file) {
-  if (fs.lstatSync(file).isSymbolicLink()) {
-    throw new Error(`Refusing symlinked input: ${file}`);
-  }
-  const raw = fs.readFileSync(file);
-  if (raw.length > MAX_INPUT_BYTES) throw new Error(`Input exceeds ${MAX_INPUT_BYTES} bytes.`);
+  const raw = readBoundedRegularFile(file, MAX_INPUT_BYTES);
   const text = raw.toString('utf8');
   const gate = strictJsonGate(text);
   if (!gate.ok) throw new Error(`Input refused: ${gate.reason}.`);
@@ -70,29 +67,56 @@ function ingest(file) {
 }
 
 const args = process.argv.slice(2);
-const flag = (f) => args.includes(f);
-const opt = (f, d) => {
-  let value = d;
-  for (let index = 0; index < args.length; index += 1) {
-    if (args[index] !== f) continue;
+let outDir = 'emilia';
+let apply = false;
+let force = false;
+let sample = false;
+let outSeen = false;
+const positionals = [];
+for (let index = 0; index < args.length; index += 1) {
+  const arg = args[index];
+  if (arg === '--out') {
     const candidate = args[index + 1];
     if (!candidate || candidate.startsWith('-')) {
-      console.error(`${f} requires a value`);
+      console.error('--out requires a value');
       process.exit(2);
     }
-    value = candidate;
+    if (outSeen) { console.error('duplicate option: --out'); process.exit(64); }
+    outSeen = true;
+    outDir = candidate;
     index += 1;
+    continue;
   }
-  return value;
-};
-const outDir = opt('--out', 'emilia');
-const apply = flag('--apply');
-const force = flag('--force');
+  if (arg === '--apply' || arg === '--force' || arg === '--sample') {
+    const key = arg.slice(2);
+    if ((key === 'apply' && apply) || (key === 'force' && force) || (key === 'sample' && sample)) {
+      console.error(`duplicate option: ${arg}`);
+      process.exit(64);
+    }
+    if (key === 'apply') apply = true;
+    if (key === 'force') force = true;
+    if (key === 'sample') sample = true;
+    continue;
+  }
+  if (arg.startsWith('-')) {
+    console.error(`unknown option: ${arg}`);
+    process.exit(64);
+  }
+  positionals.push(arg);
+}
+if (positionals.length > 1 || (sample && positionals.length > 0)) {
+  console.error('provide exactly one input file or --sample, not both');
+  process.exit(64);
+}
+if (force && !apply) {
+  console.error('--force requires --apply');
+  process.exit(64);
+}
 
 let input;
-if (flag('--sample')) input = { actions: SAMPLE, source: 'mcp' };
+if (sample) input = { actions: SAMPLE, source: 'mcp' };
 else {
-  const file = args.find((a) => !a.startsWith('--') && a !== outDir);
+  const file = positionals[0];
   if (!file) { console.error('usage: codemod.mjs <actions.json|--sample> [--out dir] [--apply] [--force]'); process.exit(2); }
   input = ingest(file);
 }
@@ -456,6 +480,10 @@ if (relativeOut.startsWith('..') || path.isAbsolute(relativeOut)) {
   console.error(`${Y}Refusing output directory outside the current working directory: ${outDir}${R}`);
   process.exit(1);
 }
+if (!relativeOut || relativeOut.split(path.sep).filter(Boolean).length !== 1) {
+  console.error(`${Y}Refusing nested output directory; choose one direct child of the current working directory: ${outDir}${R}`);
+  process.exit(1);
+}
 let cursor = process.cwd();
 for (const segment of relativeOut.split(path.sep).filter(Boolean)) {
   cursor = path.join(cursor, segment);
@@ -476,32 +504,52 @@ for (const f of files) {
     process.exit(1);
   }
 }
-fs.mkdirSync(outAbsolute, { recursive: true });
-for (const f of files) {
-  const target = path.resolve(f.rel);
-  const temp = path.join(path.dirname(target), `.${path.basename(target)}.${process.pid}.${randomUUID()}.tmp`);
-  let fd;
-  try {
-    fd = fs.openSync(temp, 'wx', 0o600);
-    fs.writeFileSync(fd, f.body, 'utf8');
-    fs.fsyncSync(fd);
-    fs.closeSync(fd);
-    fd = undefined;
-    if (force) {
-      fs.renameSync(temp, target);
-    } else {
-      // linkSync is the portable no-replace operation: if another process
-      // creates target after validation, this fails rather than clobbering it.
-      fs.linkSync(temp, target);
-      fs.unlinkSync(temp);
+// Build the complete scaffold in a fresh sibling directory, then install the
+// directory with rename. No write ever resolves through the caller-selected
+// output path, so an ancestor/leaf symlink swap cannot redirect a file write.
+const stage = fs.mkdtempSync(path.join(process.cwd(), `.${path.basename(relativeOut)}.stage-`));
+fs.chmodSync(stage, 0o700);
+let backup = null;
+try {
+  for (const f of files) {
+    const leaf = path.relative(outDir, f.rel);
+    if (!leaf || leaf.startsWith('..') || path.isAbsolute(leaf) || leaf.includes(path.sep)) {
+      throw new Error(`Unsafe generated file path: ${f.rel}`);
     }
-    console.log(`  wrote ${f.rel}`);
-  } catch (error) {
-    if (fd !== undefined) fs.closeSync(fd);
-    try { fs.unlinkSync(temp); } catch (cleanupError) {
-      if (cleanupError.code !== 'ENOENT') throw cleanupError;
+    const target = path.join(stage, leaf);
+    const fd = fs.openSync(target, 'wx', 0o600);
+    try {
+      fs.writeFileSync(fd, f.body, 'utf8');
+      fs.fsyncSync(fd);
+    } finally {
+      fs.closeSync(fd);
     }
-    throw error;
   }
+
+  const existingRoot = lstatIfPresent(outAbsolute);
+  if (existingRoot && !force) {
+    throw Object.assign(new Error(`Refusing to overwrite existing output directory: ${outDir}`), { code: 'EEXIST' });
+  }
+  if (existingRoot) {
+    if (existingRoot.isSymbolicLink() || !existingRoot.isDirectory()) {
+      throw new Error(`Refusing non-directory output path: ${outDir}`);
+    }
+    backup = path.join(process.cwd(), `.${path.basename(relativeOut)}.backup-${process.pid}-${randomUUID()}`);
+    fs.renameSync(outAbsolute, backup);
+    const moved = fs.lstatSync(backup);
+    if (moved.dev !== existingRoot.dev || moved.ino !== existingRoot.ino) {
+      throw new Error(`Output directory changed during replacement: ${outDir}`);
+    }
+  }
+  fs.renameSync(stage, outAbsolute);
+  if (backup) {
+    fs.rmSync(backup, { recursive: true, force: false });
+    backup = null;
+  }
+  for (const f of files) console.log(`  wrote ${f.rel}`);
+} catch (error) {
+  if (backup && !lstatIfPresent(outAbsolute)) fs.renameSync(backup, outAbsolute);
+  try { fs.rmSync(stage, { recursive: true, force: true }); } catch {}
+  throw error;
 }
 console.log(`\n${B}Done.${R} Now do steps 2 and 3 in ${path.join(outDir, 'INTEGRATION.md')} — nothing is enforced until you do.\n`);

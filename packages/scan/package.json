@@ -36,6 +36,7 @@
     "risk-packs.d.ts",
     "cli.mjs",
     "codemod.mjs",
+    "safe-file.mjs",
     "CHANGELOG.md",
     "README.md",
     "LICENSE"

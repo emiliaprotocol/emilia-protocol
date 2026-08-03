@@ -126,6 +126,16 @@ test('secret flags redact the next argument even when the value has low entropy'
   );
 });
 
+test('camelCase and slash-style short credentials never cross the report boundary', () => {
+  const secrets = ['short-demo-secret', 'tiny-access-token'];
+  const output = JSON.stringify(sanitizeForReport({
+    command: `node server.js --clientSecret ${secrets[0]}`,
+    args: [`/accessToken:${secrets[1]}`],
+  }));
+  for (const secret of secrets) assert.equal(output.includes(secret), false, secret);
+  assert.match(output, /<redacted credential>/);
+});
+
 test('recursive report sanitizer removes secrets from arbitrary future fields', () => {
   const secret = 'Q7v'.repeat(20);
   const output = JSON.stringify(sanitizeForReport({

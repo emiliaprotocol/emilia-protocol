@@ -87,6 +87,25 @@ function semanticNorm(s) {
 function semanticTokens(s) {
     return semanticNorm(s).split('_').filter(Boolean);
 }
+function inflectedForms(signal) {
+    const forms = new Set([signal, `${signal}s`, `${signal}ed`, `${signal}ing`]);
+    if (signal.endsWith('e')) {
+        forms.add(`${signal}d`);
+        forms.add(`${signal.slice(0, -1)}ing`);
+    }
+    if (signal.endsWith('y') && signal.length > 1 && !/[aeiou]y$/.test(signal)) {
+        forms.add(`${signal.slice(0, -1)}ies`);
+        forms.add(`${signal.slice(0, -1)}ied`);
+    }
+    if (/(?:s|x|z|ch|sh|o)$/.test(signal))
+        forms.add(`${signal}es`);
+    return forms;
+}
+const STATE_CHANGE_FORM_TO_SIGNAL = new Map();
+for (const signal of CLASSIFICATION_POLICY.stateChangeSignals) {
+    for (const form of inflectedForms(signal))
+        STATE_CHANGE_FORM_TO_SIGNAL.set(form, signal);
+}
 function hasWholeSignal(hay, signal) {
     return `_${hay}_`.includes(`_${signal}_`);
 }
@@ -125,7 +144,10 @@ export function classifyAction(action) {
     }
     const leadingReadSignal = CLASSIFICATION_POLICY.readOnlyLeadingSignals.find((signal) => (nameTokens[0] === signal));
     const readSignal = semanticTokensCombined.find((token) => (CLASSIFICATION_POLICY.readOnlyLeadingSignals.includes(token)));
-    const stateChangeSignal = semanticTokensCombined.find((token) => (CLASSIFICATION_POLICY.stateChangeSignals.includes(token)));
+    const stateChangeToken = semanticTokensCombined.find((token) => (STATE_CHANGE_FORM_TO_SIGNAL.has(token)));
+    const stateChangeSignal = stateChangeToken
+        ? STATE_CHANGE_FORM_TO_SIGNAL.get(stateChangeToken)
+        : undefined;
     const writeMethod = CLASSIFICATION_POLICY.writeMethods.includes(String(candidate.http_method || '').toUpperCase()) ? String(candidate.http_method).toUpperCase() : undefined;
     const hybridMarker = readSignal
         ? semanticTokensCombined.find((token) => CLASSIFICATION_POLICY.hybridOperationMarkers.includes(token))

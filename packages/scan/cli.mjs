@@ -11,6 +11,7 @@
 import fs from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { scanActions, KNOWN_CATEGORIES } from './index.js';
+import { readBoundedRegularFile } from './safe-file.mjs';
 
 let strictJsonGate;
 try { ({ strictJsonGate } = await import('@emilia-protocol/verify/strict-json')); }
@@ -80,24 +81,43 @@ if (args[0] === 'authority') {
   await import('./codemod.mjs');
 } else {
   let emitPath = null;
+  let sample = false;
+  const positionals = [];
   for (let index = 0; index < args.length; index += 1) {
-    if (args[index] !== '--emit') continue;
-    const value = args[index + 1];
-    if (!value || value.startsWith('-')) {
-      console.error('--emit requires a value');
-      process.exit(2);
+    const arg = args[index];
+    if (arg === '--sample') {
+      if (sample) { console.error('duplicate option: --sample'); process.exit(64); }
+      sample = true;
+      continue;
     }
-    emitPath = value;
-    index += 1;
+    if (arg === '--emit') {
+      const value = args[index + 1];
+      if (!value || value.startsWith('-')) {
+        console.error('--emit requires a value');
+        process.exit(2);
+      }
+      if (emitPath !== null) { console.error('duplicate option: --emit'); process.exit(64); }
+      emitPath = value;
+      index += 1;
+      continue;
+    }
+    if (arg.startsWith('-')) {
+      console.error(`unknown option: ${arg}`);
+      process.exit(64);
+    }
+    positionals.push(arg);
+  }
+  if (positionals.length > 1 || (sample && positionals.length > 0)) {
+    console.error('provide exactly one input file or --sample, not both');
+    process.exit(64);
   }
   let input;
-  if (args.includes('--sample')) {
+  if (sample) {
     input = { actions: SAMPLE, source: 'mcp', blindSpots: ['This is the built-in sample. Real scans see only statically-listed tools; runtime-registered tools and value-dependent risk are invisible.'] };
   } else {
-    const file = args.find((a) => !a.startsWith('--') && a !== emitPath);
+    const file = positionals[0];
     if (!file) { console.error('usage: cli.mjs <actions.json|openapi.json> [--emit manifest.json] | --sample | protect <input> [--apply]'); process.exit(2); }
-    const raw = fs.readFileSync(file);
-    if (raw.length > MAX_INPUT_BYTES) { console.error(`input exceeds ${MAX_INPUT_BYTES} bytes`); process.exit(2); }
+    const raw = readBoundedRegularFile(file, MAX_INPUT_BYTES);
     input = ingest(raw.toString('utf8'));
   }
 

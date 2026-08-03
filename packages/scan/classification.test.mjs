@@ -46,3 +46,17 @@ test('read words cannot launder mutation or ambiguous hybrid semantics', () => {
     assert.match(classification.reason, new RegExp(expectedSignal, 'i'), action.name);
   }
 });
+
+test('inflected mutation verbs fail closed instead of hiding behind a read-shaped name', () => {
+  for (const [description, expectedSignal] of [
+    ['Rotates the active API credential', 'rotate'],
+    ['Archives the record', 'archive'],
+    ['Updates account metadata', 'update'],
+    ['Revoked the current authorization', 'revoke'],
+  ]) {
+    const classification = classifyAction({ name: 'getCustomer', description });
+    assert.equal(classification.decision, 'review_fail_closed', description);
+    assert.equal(classification.receipt_required, true, description);
+    assert.match(classification.reason, new RegExp(expectedSignal, 'i'), description);
+  }
+});

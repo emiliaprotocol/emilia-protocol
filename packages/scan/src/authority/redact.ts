@@ -154,6 +154,22 @@ export function redactText(text: unknown): string {
     /\b((?:[A-Za-z0-9]+[_-])*(?:key|api[_-]?key|secret|token|password|passwd|credential|authorization|private[_-]?key|access[_-]?key|service[_-]?role|session|signing[_-]?key|dsn))(\s*(?:=|:)\s*)(?!<redacted\b)(?:"[^"]*"|'[^']*'|[^\s)"']+)/gi,
     (_match, key: string, separator: string) => `${key}${separator}<redacted credential>`,
   );
+  // Cover camelCase and slash-style command flags without relying on a
+  // credential value being long or high-entropy. The callback asks the same
+  // key classifier used for structured configuration, so ordinary prose is
+  // preserved while `--clientSecret short` and `/accessToken:short` are not.
+  out = out.replace(
+    /(^|[\s"'([{,;])((?:--?|\/)?[A-Za-z][A-Za-z0-9_.-]{0,127})(\s*(?:=|:)\s*|\s+)(?!<redacted\b)(?:"[^"]*"|'[^']*'|[^\s)"']+)/g,
+    (match, prefix: string, rawKey: string, separator: string, offset: number, input: string) => {
+      const openRedaction = input.lastIndexOf('<redacted', offset);
+      const closedRedaction = input.lastIndexOf('>', offset);
+      if (openRedaction > closedRedaction) return match;
+      const key = rawKey.replace(/^(?:--?|\/)/, '');
+      return describeSecret(key, 'placeholder').secret
+        ? `${prefix}${rawKey}${separator.includes('=') || separator.includes(':') ? separator : ' '}<redacted credential>`
+        : match;
+    },
+  );
   for (const shape of VALUE_SHAPES) {
     const global = new RegExp(shape.re.source.replace(/^\^/, '').replace(/\$$/, ''), 'g');
     out = out.replace(global, `<redacted ${shape.class}>`);
@@ -217,17 +233,20 @@ export function sanitizeArgs(args: unknown): string[] {
       redactNext = false;
       continue;
     }
-    if (arg.startsWith('-')) {
-      const key = arg.replace(/^-+/, '').split('=', 1)[0];
-      if (describeSecret(key, 'placeholder').secret) {
-        const equals = arg.indexOf('=');
-        if (equals >= 0) out.push(`${arg.slice(0, equals + 1)}<redacted credential>`);
-        else {
-          out.push(arg);
-          redactNext = true;
-        }
-        continue;
+    const normalized = arg.replace(/^(?:--?|\/)/, '');
+    const separatorIndex = normalized.search(/[=:]/);
+    const key = separatorIndex >= 0 ? normalized.slice(0, separatorIndex) : normalized;
+    if (describeSecret(key, 'placeholder').secret) {
+      const originalSeparatorIndex = separatorIndex >= 0
+        ? arg.length - normalized.length + separatorIndex
+        : -1;
+      if (originalSeparatorIndex >= 0) {
+        out.push(`${arg.slice(0, originalSeparatorIndex + 1)}<redacted credential>`);
+      } else {
+        out.push(arg);
+        redactNext = true;
       }
+      continue;
     }
     out.push(String(sanitizeForReport(arg, 'argument')));
   }

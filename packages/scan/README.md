@@ -127,9 +127,10 @@ or filesystem error.
   to receipt-required until a reviewer confirms it is read-only.
 - **Read words cannot hide another operation.** The classifier applies a public,
   data-shaped precedence policy: category and destructive evidence first, then
-  state-change verbs and write methods, then hybrid markers such as `and` or
-  `then`. Only a leading read verb with no higher-precedence signal is proposed
-  for pass-through; mutation or ambiguity defaults receipt-required.
+  state-change verbs (including ordinary inflections such as `updates`,
+  `archived`, and `rotating`) and write methods, then hybrid markers such as
+  `and` or `then`. Only a leading read verb with no higher-precedence signal is
+  proposed for pass-through; mutation or ambiguity defaults receipt-required.
 - **It will not edit your code.** It emits the manifest and the wrap; you apply
   them after review.
 - **It will never tell you that you are "protected."** It reports what it could
@@ -146,10 +147,15 @@ That honesty is the point. A tool that claimed to make AI safe by installing it
 would be lying; risk is specific to your application, and only you know it. This
 makes declaring it cheap, and keeps you in control of the declaration.
 
-JSON input is capped at 8 MiB, duplicate member names are refused, and scans are
-limited to 10,000 bounded action records. `--emit` refuses to overwrite an
-existing manifest. `protect` is dry-run by default, writes only inside the
-current working directory, refuses symlink traversal, and does not overwrite
-existing files unless you explicitly pass `--force`.
+JSON input is required to be a regular file and is bounded to 8 MiB before any
+content read; non-regular files, symlinked path components, files that change
+during the read, and duplicate member names are refused. Scans are limited to
+10,000 bounded action records. Unknown options fail with usage status rather
+than silently degrading a requested operation. `--emit` refuses to overwrite an
+existing manifest. `protect` is dry-run by default and accepts one direct-child
+output directory under the current working directory. It builds the complete
+scaffold in a private staging directory and installs it as one directory rename,
+refuses symlink traversal, and does not replace an existing output unless you
+explicitly pass `--force`.
 
 Part of [EMILIA Protocol](https://www.emiliaprotocol.ai). Apache-2.0.
