@@ -35,6 +35,14 @@ function jsonRequest(url: string, body: unknown, headers: Record<string, string>
   }) as any;
 }
 
+function expectCurrentStatusCacheHeaders(response: Response) {
+  const cacheControl = response.headers.get('cache-control');
+  expect(cacheControl).toBe('no-store, max-age=0');
+  expect(cacheControl).not.toMatch(/(?:^|[,\s])public(?:$|[,\s])|s-maxage|stale-while-revalidate/i);
+  expect(response.headers.get('pragma')).toBe('no-cache');
+  expect(response.headers.get('expires')).toBe('0');
+}
+
 describe('Arena route contract', () => {
   beforeEach(() => vi.resetAllMocks());
 
@@ -88,13 +96,24 @@ describe('Arena route contract', () => {
 
   it('keeps unpublished or unknown public refusals indistinguishable', async () => {
     mocks.load.mockResolvedValue(null);
-    const response = await PublicRefusal.GET(new Request('https://example.test/refusal'), {
-      params: { shareId: `arena_share_${'0'.repeat(40)}` },
-    });
-    expect(response.status).toBe(404);
+    const shareIds = [`arena_share_${'0'.repeat(40)}`, 'private_arena_share_database_id'];
+    const bodies = [];
+
+    for (const shareId of shareIds) {
+      const response = await PublicRefusal.GET(new Request('https://example.test/refusal'), {
+        params: { shareId },
+      });
+      expect(response.status).toBe(404);
+      expectCurrentStatusCacheHeaders(response);
+      const body = await response.json();
+      expect(JSON.stringify(body)).not.toContain(shareId);
+      bodies.push(body);
+    }
+
+    expect(bodies[0]).toEqual(bodies[1]);
   });
 
-  it('serves published refusals with a restrictive content policy', async () => {
+  it('serves published refusals as current status with no public or stale caching', async () => {
     mocks.load.mockResolvedValue({
       share_id: `arena_share_${'1'.repeat(40)}`,
       verification: { integrity_verified: true, accepted: null },
@@ -103,7 +122,26 @@ describe('Arena route contract', () => {
       params: { shareId: `arena_share_${'1'.repeat(40)}` },
     });
     expect(response.status).toBe(200);
+    expectCurrentStatusCacheHeaders(response);
     expect(response.headers.get('content-security-policy')).toContain("default-src 'none'");
     expect((await response.json()).verification.accepted).toBeNull();
+  });
+
+  it('prevents caching on service and unexpected public refusal errors', async () => {
+    const { ArenaServiceError } = await import('@/lib/arena/service');
+    const errors = [
+      new ArenaServiceError(503, 'arena_store_unavailable', 'arena_store_unavailable'),
+      new Error('database details must remain private'),
+    ];
+
+    for (const error of errors) {
+      mocks.load.mockRejectedValueOnce(error);
+      const response = await PublicRefusal.GET(new Request('https://example.test/refusal'), {
+        params: { shareId: `arena_share_${'2'.repeat(40)}` },
+      });
+      expect(response.status).toBe(503);
+      expectCurrentStatusCacheHeaders(response);
+      expect(await response.text()).not.toContain('database details must remain private');
+    }
   });
 });
