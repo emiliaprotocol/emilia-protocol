@@ -88,7 +88,6 @@ function createClient() {
     return {
       data: {
         record_id: args.p_record_id,
-        owner_token: args.p_owner_token,
         created_at: args.p_observed_at,
         retention_expires_at: args.p_retention_expires_at,
         public_projection: args.p_public_projection,
@@ -112,7 +111,7 @@ describe('Agent Record service', () => {
     vi.unstubAllEnvs();
   });
 
-  it('creates from the exact bound refusal and returns the dedicated owner token once', async () => {
+  it('creates from the exact bound refusal without returning the owner credential', async () => {
     const client = createClient();
 
     const result = await createAgentRecord({
@@ -130,7 +129,6 @@ describe('Agent Record service', () => {
     });
     expect(result).toMatchObject({
       record_id: RECORD_ID,
-      owner_token: OWNER_TOKEN,
       created_at: new Date(NOW).toISOString(),
       retention_expires_at: RETENTION_EXPIRES_AT,
     });
@@ -308,7 +306,7 @@ describe('Agent Record service', () => {
     });
   });
 
-  it('rejects invalid one-time owner credentials returned by storage', async () => {
+  it('rejects storage that echoes an owner credential into the response shape', async () => {
     const client = createClient();
     client.rpc.mockImplementationOnce(async (_name, args) => ({
       data: {

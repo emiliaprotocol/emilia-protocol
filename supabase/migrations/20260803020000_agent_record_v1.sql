@@ -415,7 +415,6 @@ BEGIN
 
   RETURN pg_catalog.jsonb_build_object(
     'record_id', p_record_id,
-    'owner_token', p_owner_token,
     'created_at', agent_record_private.iso_ms(p_observed_at),
     'retention_expires_at', agent_record_private.iso_ms(p_retention_expires_at),
     'public_projection', p_public_projection

@@ -258,13 +258,11 @@ export async function createAgentRecord({
   });
   if (!exactKeys(stored, [
     'record_id',
-    'owner_token',
     'created_at',
     'retention_expires_at',
     'public_projection',
   ])
       || stored.record_id !== recordId
-      || stored.owner_token !== parsed.owner_token
       || stored.created_at !== observedAt
       || stored.retention_expires_at !== retentionExpiresAt
       || !sameCanonical(stored.public_projection, publicProjection)) {
@@ -276,7 +274,6 @@ export async function createAgentRecord({
   }
   return Object.freeze({
     record_id: stored.record_id as string,
-    owner_token: stored.owner_token as string,
     created_at: stored.created_at as string,
     retention_expires_at: stored.retention_expires_at as string,
     public_projection: stored.public_projection,

@@ -6726,7 +6726,9 @@ paths:
         Re-verifies and publishes the exact signed Arena refusal bound to the
         active session's sole Operating Bond, then wraps it in an operator-signed
         EP-AGENT-RECORD-OBSERVATION-v1. Permit attempts cannot create a record.
-        The returned owner token controls only record revocation and is returned once.
+        The browser generates and preserves the opaque record ID and owner token
+        before the request. The token controls only record revocation, is stored
+        only as a hash, and is never returned by the API.
       security: [{ AdoptionSessionAuth: [] }]
       parameters:
         - $ref: '#/components/parameters/AgentAdoptionSessionId'
@@ -6737,12 +6739,14 @@ paths:
             schema:
               type: object
               additionalProperties: false
-              required: [trial_token, attempt_id]
+              required: [trial_token, attempt_id, record_id, owner_token]
               properties:
                 trial_token: { type: string, pattern: '^epenc:v1:[A-Za-z0-9_-]{40,8192}$' }
                 attempt_id: { type: string, pattern: '^arena_attempt_[a-f0-9]{32}$' }
+                record_id: { type: string, pattern: '^agent_record_[a-f0-9]{40}$' }
+                owner_token: { type: string, pattern: '^ear1_[a-f0-9]{64}$', writeOnly: true }
       responses:
-        '201': { description: 'One refusal-bound factual observation and one-time owner token created' }
+        '201': { description: 'One refusal-bound factual observation created; no owner credential returned' }
         '400': { description: 'Input malformed or attempt is not a refusal' }
         '401': { description: 'Adoption or trial capability invalid' }
         '409': { description: 'Source refusal already consumed or adoption state conflicts' }
@@ -6812,7 +6816,7 @@ components:
       type: http
       scheme: bearer
       bearerFormat: ear1_<64 lowercase hex characters>
-      description: Record-specific revocation credential returned once at creation and stored only as a SHA-256 hash server-side.
+      description: Record-specific revocation credential generated and retained by the browser before creation; never returned by the API and stored only as a SHA-256 hash server-side.
     CloudBearerAuth:
       type: http
       scheme: bearer

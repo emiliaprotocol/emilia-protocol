@@ -52,7 +52,6 @@ const CLAIM_BOUNDARY =
 type JsonObject = Record<string, unknown>;
 type CreatedRecord = {
   record_id: string;
-  owner_token: string;
   created_at: string;
   retention_expires_at: string;
   public_projection: JsonObject;
@@ -398,7 +397,7 @@ suite('Agent Record v1 RPC lifecycle on PostgreSQL 17', () => {
     }
   });
 
-  it('creates one refusal-bound record and returns an unstored owner token once', async () => {
+  it('creates one refusal-bound record without returning or storing the owner token', async () => {
     const source = await database.query<{ public_projection: JsonObject }>(
       'SELECT public_projection FROM public.arena_shares WHERE share_id = $1',
       [ARENA_SHARE_ID],
@@ -411,7 +410,6 @@ suite('Agent Record v1 RPC lifecycle on PostgreSQL 17', () => {
 
     expect(created).toMatchObject({
       record_id: RECORD_ID,
-      owner_token: input.ownerToken,
       created_at: input.observedAt,
       retention_expires_at: input.retentionExpiresAt,
       public_projection: input.publicProjection,
@@ -431,11 +429,11 @@ suite('Agent Record v1 RPC lifecycle on PostgreSQL 17', () => {
     `, [RECORD_ID]);
     expect(stored.rows).toHaveLength(1);
     expect(stored.rows[0].owner_token_hash).toBe(
-      createHash('sha256').update(created.owner_token, 'utf8').digest('hex'),
+      createHash('sha256').update(input.ownerToken, 'utf8').digest('hex'),
     );
-    expect(stored.rows[0].row_text).not.toContain(created.owner_token);
+    expect(stored.rows[0].row_text).not.toContain(input.ownerToken);
     expect(JSON.stringify(stored.rows[0].public_projection)).not.toContain(
-      created.owner_token,
+      input.ownerToken,
     );
   });
 
@@ -728,9 +726,8 @@ suite('Agent Record v1 RPC lifecycle on PostgreSQL 17', () => {
     `, [RECORD_ID]);
     const ownerHash = JSON.parse(stored.rows[0].row_text).owner_token_hash as string;
 
-    // The plaintext owner token was deliberately returned only by the creation
-    // test, so recover it from that test is impossible. Create a second record
-    // here and retain its one-time return solely for the revocation ceremony.
+    // The caller generates and retains the plaintext owner token. Create a
+    // second record here so this test has an independent revocation ceremony.
     const shareId = `arena_share_${'2'.repeat(40)}`;
     const sourceDigest = digest('4');
     const actionDigest = digest('5');
@@ -765,7 +762,7 @@ suite('Agent Record v1 RPC lifecycle on PostgreSQL 17', () => {
       unknownError = error;
     }
 
-    await expect(revoke(input.recordId, created.owner_token)).resolves.toMatchObject({
+    await expect(revoke(input.recordId, input.ownerToken)).resolves.toMatchObject({
       record_id: input.recordId,
       revoked: true,
     });

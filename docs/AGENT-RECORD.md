@@ -64,9 +64,10 @@ only; never place an Ed25519 seed or other private key material in it.
 
 ## Owner credential and revocation
 
-Creation returns one dedicated `ear1_` owner credential once. Only its SHA-256
-hash is stored. Possession proves control of this record credential only; it
-does not prove identity or ownership of an agent, codebase, account, or key.
+The browser generates one dedicated `ear1_` owner credential and stores it
+before creation. The API never returns it and the database stores only its
+SHA-256 hash. Possession proves control of this record credential only; it does
+not prove identity or ownership of an agent, codebase, account, or key.
 
 Revocation appends one immutable terminal revocation. It does not update or
 delete the source record and cannot republish it. Exact public reads return the
