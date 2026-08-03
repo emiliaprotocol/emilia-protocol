@@ -36,14 +36,14 @@ fallback; it is not authority to withhold medically necessary care.
 
 ## Engineering evidence, not architecture claims
 
-EMILIA ships a security case that reviewers can execute. The current repository resolves **33
-security claims over 228 hashed evidence files**, verifies **20 Tamarin lemmas across two composed
+EMILIA ships a security case that reviewers can execute. The current repository resolves **35
+security claims over 255 hashed evidence files**, verifies **20 Tamarin lemmas across two composed
 Dolev-Yao models — 17 all-traces obligations and 3 exists-trace reachability witnesses** — and
 preserves **8 deliberately weakened variants that produce concrete
 attack traces when load-bearing checks are removed**. The live same-team conformance corpus contains **21 suites and
 331 current vectors**. Separately, an externally authored Rust verifier is pinned to the frozen
 **16-suite/164-vector** bundle and a **359-case hostility campaign**. The broader suite contains
-**7,800+ automated tests across 425+ files**.
+**8,445 automated tests across 492 files**.
 
 Production JavaScript and JSDoc surfaces are compiler-checked with TypeScript
 `checkJs`; the secure app has its own compatibility compiler project, while
@@ -118,14 +118,20 @@ It deliberately includes no blockchain or simulated zero-knowledge claim. See
 the [receipt-program architecture](docs/architecture/RECEIPT-PROGRAM-EXECUTION-KERNEL.md)
 for the production state and trust requirements.
 
-Wrap your own tool dispatcher in production — see [examples/mcp/](examples/mcp/) and [`/mcp`](https://www.emiliaprotocol.ai/mcp):
+Start with a dry run against your declared tool surface, then generate the
+reviewable integration files:
 
-```js
-import { withMcpGuard } from '@emilia-protocol/mcp-guard';
-const guarded = withMcpGuard(handleTool, {
-  annotations: { release_payment: { irreversible: true, action: 'payment.release' } },
-}); // missing receipt → refused, never a silent pass
+```bash
+npx @emilia-protocol/scan protect ./tools.json
+npx @emilia-protocol/scan protect ./tools.json --apply
+node emilia/verify-setup.mjs
 ```
+
+The generated local check uses explicitly ephemeral demo state and proves only
+that its synthetic handler was not called. Production requires a durable provenance ledger,
+a shared atomic consumption store, pinned keys, and the wrapper on every path to the real
+provider credential. See
+[examples/mcp/](examples/mcp/) and [`/mcp`](https://www.emiliaprotocol.ai/mcp).
 
 ## Try it in 30 seconds
 
@@ -235,7 +241,7 @@ Eye observes. Handshake verifies. Signoff owns. Commit seals.
 
 | Metric | Value |
 |---|---|
-| Automated test cases | 7,800+ across 425+ files; all platform-applicable cases must pass |
+| Automated test cases | 8,445 across 492 files; all platform-applicable cases must pass |
 | TLA+ safety properties | 26 bounded invariants held in the configured state space; not an implementation-refinement or unbounded proof — see [PROOF_STATUS.md](formal/PROOF_STATUS.md) |
 | Alloy relational assertions | 35 facts + 32 assertions across four models — verified in CI |
 | Red-team cases cataloged | 85 — [RED_TEAM_CASES.md](docs/conformance/RED_TEAM_CASES.md) |

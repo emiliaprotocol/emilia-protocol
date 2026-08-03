@@ -12,6 +12,7 @@ describe('scan to protected MCP boundary funnel', () => {
   const guard = read('app/agent-guard/page.tsx');
   const mcp = read('app/mcp/page.tsx');
   const guide = read('app/guides/require-receipt/page.tsx');
+  const repositoryReadme = read('README.md');
   const sitemap = read('app/sitemap.ts');
 
   it('starts with a passive local scan and offers one bounded protection step', () => {
@@ -50,5 +51,10 @@ describe('scan to protected MCP boundary funnel', () => {
 
   it('makes the passive scanner discoverable without bloating global navigation', () => {
     expect(sitemap).toContain("{ path: '/scan'");
+    expect(repositoryReadme).toContain('npx @emilia-protocol/scan protect ./tools.json');
+    expect(repositoryReadme).toContain('node emilia/verify-setup.mjs');
+    expect(repositoryReadme).toContain('durable provenance ledger');
+    expect(repositoryReadme).toContain('shared atomic consumption store');
+    expect(repositoryReadme).not.toContain('const guarded = withMcpGuard(handleTool, {');
   });
 });
