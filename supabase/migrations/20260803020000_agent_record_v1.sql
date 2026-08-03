@@ -305,7 +305,17 @@ BEGIN
     OR p_public_projection -> 'record' ->> 'claim_boundary' IS DISTINCT FROM
         'one_operator_observation_of_one_verified_signed_arena_refusal_only'
     OR p_public_projection -> 'signature' ->> 'algorithm' IS DISTINCT FROM 'Ed25519'
-    OR p_public_projection -> 'signature' ->> 'key_id' IS DISTINCT FROM 'ep-signing-key-1'
+    OR pg_catalog.jsonb_typeof(
+      p_public_projection -> 'signature' -> 'key_id'
+    ) IS DISTINCT FROM 'string'
+    OR (COALESCE(
+      p_public_projection -> 'signature' ->> 'key_id',
+      ''
+    ) COLLATE "C") !~ '^[A-Za-z0-9][A-Za-z0-9._:-]{0,63}$'
+    OR p_public_projection -> 'signature' ->> 'key_id' IN (
+      'constructor',
+      'prototype'
+    )
     OR p_public_projection -> 'signature' ->> 'key_source' IS DISTINCT FROM
         'operator-commit-signing-key'
     OR p_public_projection -> 'signature' ->> 'value' !~ '^[A-Za-z0-9_-]{86}$'

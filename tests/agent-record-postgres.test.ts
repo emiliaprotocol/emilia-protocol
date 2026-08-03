@@ -433,6 +433,65 @@ suite('Agent Record v1 RPC lifecycle on PostgreSQL 17', () => {
     );
   });
 
+  it('accepts a rotated safe key id and rejects key ids outside the closed set', async () => {
+    const safeShareId = `arena_share_${'7'.repeat(40)}`;
+    const safeRefusalDigest = digest('7');
+    const safeActionDigest = digest('8');
+    const safeRefusedAt = instant(-2_000);
+    await insertArenaShare({
+      arenaShareId: safeShareId,
+      actionDigest: safeActionDigest,
+      refusalDigest: safeRefusalDigest,
+      refusedAt: safeRefusedAt,
+    });
+    const safeInput = createInput({
+      recordId: `agent_record_${'7'.repeat(40)}`,
+      arenaShareId: safeShareId,
+      sourceArtifactDigest: safeRefusalDigest,
+      refusalDigest: safeRefusalDigest,
+      actionDigest: safeActionDigest,
+      refusedAt: safeRefusedAt,
+    });
+    const safeProjection = structuredClone(safeInput.publicProjection);
+    (safeProjection.signature as JsonObject).key_id = 'agent-record-key:2026.08-b';
+
+    await expect(createRecord({
+      ...safeInput,
+      publicProjection: safeProjection,
+    })).resolves.toMatchObject({
+      record_id: safeInput.recordId,
+      public_projection: safeProjection,
+    });
+
+    const unsafeShareId = `arena_share_${'0'.repeat(40)}`;
+    const unsafeRefusalDigest = digest('0');
+    const unsafeActionDigest = digest('f');
+    const unsafeRefusedAt = instant(-2_000);
+    await insertArenaShare({
+      arenaShareId: unsafeShareId,
+      actionDigest: unsafeActionDigest,
+      refusalDigest: unsafeRefusalDigest,
+      refusedAt: unsafeRefusedAt,
+    });
+    const unsafeInput = createInput({
+      recordId: `agent_record_${'8'.repeat(40)}`,
+      arenaShareId: unsafeShareId,
+      sourceArtifactDigest: unsafeRefusalDigest,
+      refusalDigest: unsafeRefusalDigest,
+      actionDigest: unsafeActionDigest,
+      refusedAt: unsafeRefusedAt,
+    });
+    for (const keyId of ['unsafe/key', 'constructor']) {
+      const unsafeProjection = structuredClone(unsafeInput.publicProjection);
+      (unsafeProjection.signature as JsonObject).key_id = keyId;
+
+      await expect(createRecord({
+        ...unsafeInput,
+        publicProjection: unsafeProjection,
+      }), keyId).rejects.toMatchObject({ code: '22023' });
+    }
+  });
+
   it('serializes same-source creation so exactly one concurrent replay wins', async () => {
     const arenaShareId = `arena_share_${'8'.repeat(40)}`;
     const refusalDigest = digest('9');

@@ -28,7 +28,8 @@ The outer `EP-AGENT-RECORD-OBSERVATION-v1` envelope contains only:
 - action and refusal digests;
 - refusal, observation, and retention instants;
 - the explicit claim boundary; and
-- an Ed25519 signature from the operator commit signing key.
+- an Ed25519 signature from the operator commit signing key, carrying its
+  validated current key ID.
 
 It contains no adoption or Arena session ID, owner token or hash, passkey or
 credential ID, candidate URL, raw WebAuthn material, prompt, IP address, agent
@@ -36,6 +37,30 @@ label, raw action, or action parameters. Public verification resolves the
 configured operator key by key ID. Artifact-supplied public keys are not part of
 the schema and are rejected. Production creation fails closed when
 `EP_COMMIT_SIGNING_KEY` is absent.
+
+`EP_AGENT_RECORD_SIGNING_KEY_ID` names the current Agent Record signing key.
+When it is unset, the backward-compatible default is `ep-signing-key-1`. An ID
+must match the closed ASCII shape `[A-Za-z0-9][A-Za-z0-9._:-]{0,63}`; the
+reserved map-property names `constructor` and `prototype` are also forbidden.
+The runtime and database reject any other shape.
+
+## Operator signing-key rotation
+
+Rotate the Agent Record signer in this order:
+
+1. Derive key A's raw 32-byte Ed25519 public key and add its standard-base64
+   value under key ID A in `EP_COMMIT_SIGNING_KEYS` while A is still current.
+2. Deploy that retained-key map before changing the current signer.
+3. Change `EP_COMMIT_SIGNING_KEY` to private seed B and
+   `EP_AGENT_RECORD_SIGNING_KEY_ID` to a new key ID B in the same deployment.
+   Never reuse A's ID for B's private key.
+4. Verify both a newly signed B observation and an existing A observation.
+
+Keep A's entry in `EP_COMMIT_SIGNING_KEYS` until every A-signed Agent Record is
+past its public retention interval: at least 365 days after the last observation
+signed by A, plus any deployment-clock allowance. Removing it earlier makes a
+still-public record cryptographically unverifiable. The map holds public keys
+only; never place an Ed25519 seed or other private key material in it.
 
 ## Owner credential and revocation
 

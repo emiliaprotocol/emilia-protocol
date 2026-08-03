@@ -2,7 +2,7 @@
 import crypto from 'node:crypto';
 
 import { canonicalize } from '@/lib/canonical-json';
-import { getCommitSigningConfig } from '@/lib/env';
+import { getAgentRecordSigningConfig, isAgentRecordSigningKeyId } from '@/lib/env';
 
 export const AGENT_RECORD_VERSION = 'EP-AGENT-RECORD-OBSERVATION-v1' as const;
 export const AGENT_RECORD_RETENTION_MS = 365 * 24 * 60 * 60 * 1_000;
@@ -10,7 +10,6 @@ export const AGENT_RECORD_CLAIM_BOUNDARY =
   'one_operator_observation_of_one_verified_signed_arena_refusal_only' as const;
 
 const SIGNING_DOMAIN = `${AGENT_RECORD_VERSION}\0`;
-const OPERATOR_KEY_ID = 'ep-signing-key-1';
 const RECORD_ID = /^agent_record_[0-9a-f]{40}$/;
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/;
 const DIGEST = /^sha256:[0-9a-f]{64}$/;
@@ -50,7 +49,7 @@ export type AgentRecordObservation = Readonly<{
   }>;
   signature: Readonly<{
     algorithm: 'Ed25519';
-    key_id: typeof OPERATOR_KEY_ID;
+    key_id: string;
     key_source: 'operator-commit-signing-key';
     value: string;
   }>;
@@ -136,29 +135,49 @@ function developmentKeys(): AgentRecordKeypair {
   return developmentKeypair;
 }
 
-function configuredPrivateKey(): crypto.KeyObject {
-  const config = getCommitSigningConfig();
-  if (config.signingKey) return derivePrivateKey(config.signingKey);
+function signingConfig(): ReturnType<typeof getAgentRecordSigningConfig> {
+  try {
+    return getAgentRecordSigningConfig();
+  } catch (cause) {
+    if ((cause as { code?: unknown })?.code !== 'agent_record_operator_key_id_invalid') {
+      throw cause;
+    }
+    fail(
+      'agent_record_operator_key_id_invalid',
+      'The current Agent Record signing key id is invalid.',
+      cause,
+    );
+  }
+}
+
+function configuredSigner(): Readonly<{ keyId: string; privateKey: crypto.KeyObject }> {
+  const config = signingConfig();
+  if (config.signingKey) {
+    return {
+      keyId: config.signingKeyId,
+      privateKey: derivePrivateKey(config.signingKey),
+    };
+  }
   if (config.isProduction) {
     fail(
       'agent_record_operator_key_unavailable',
       'A stable operator commit signing key is required for Agent Record creation.',
     );
   }
-  return developmentKeys().privateKey;
+  return { keyId: config.signingKeyId, privateKey: developmentKeys().privateKey };
 }
 
 function configuredPublicKey(keyId: unknown): crypto.KeyObject | null {
-  if (typeof keyId !== 'string') return null;
-  const config = getCommitSigningConfig();
-  if (keyId === OPERATOR_KEY_ID && config.signingKey) {
+  if (!isAgentRecordSigningKeyId(keyId)) return null;
+  const config = signingConfig();
+  if (keyId === config.signingKeyId && config.signingKey) {
     return crypto.createPublicKey(
       derivePrivateKey(config.signingKey) as unknown as crypto.PublicKeyInput,
     );
   }
   const trusted = config.trustedKeys?.[keyId];
   if (trusted) return publicKeyFromRaw(trusted);
-  if (!config.isProduction && keyId === OPERATOR_KEY_ID && !config.signingKey) {
+  if (!config.isProduction && keyId === config.signingKeyId && !config.signingKey) {
     return developmentKeys().publicKey;
   }
   return null;
@@ -215,7 +234,8 @@ export function signAgentRecordObservation(
     retention_expires_at: input.retentionExpiresAt,
     claim_boundary: AGENT_RECORD_CLAIM_BOUNDARY,
   };
-  const value = crypto.sign(null, signingBytes(record), configuredPrivateKey()).toString('base64url');
+  const signer = configuredSigner();
+  const value = crypto.sign(null, signingBytes(record), signer.privateKey).toString('base64url');
   if (!SIGNATURE.test(value)) {
     fail('agent_record_operator_signature_invalid', 'The operator signature is invalid.');
   }
@@ -224,7 +244,7 @@ export function signAgentRecordObservation(
     record,
     signature: {
       algorithm: 'Ed25519',
-      key_id: OPERATOR_KEY_ID,
+      key_id: signer.keyId,
       key_source: 'operator-commit-signing-key',
       value,
     },
@@ -253,6 +273,7 @@ function structurallyValid(value: unknown): value is AgentRecordObservation {
   }
   const record = value.record;
   return value.signature.algorithm === 'Ed25519'
+    && isAgentRecordSigningKeyId(value.signature.key_id)
     && value.signature.key_source === 'operator-commit-signing-key'
     && SIGNATURE.test(value.signature.value)
     && record.source.profile === 'EP-ACTION-REFUSAL-STATEMENT-v1'

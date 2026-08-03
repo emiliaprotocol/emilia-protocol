@@ -22,6 +22,19 @@ const OBSERVED_AT = '2026-08-02T20:01:00.000Z';
 const RETENTION_EXPIRES_AT = new Date(
   Date.parse(OBSERVED_AT) + AGENT_RECORD_RETENTION_MS,
 ).toISOString();
+const ED25519_PKCS8_DER_PREFIX = Buffer.from('302e020100300506032b657004220420', 'hex');
+
+function rawPublicKey(seed: Buffer): string {
+  const privateKey = crypto.createPrivateKey({
+    key: Buffer.concat([ED25519_PKCS8_DER_PREFIX, seed]),
+    format: 'der',
+    type: 'pkcs8',
+  });
+  return crypto.createPublicKey(privateKey)
+    .export({ type: 'spki', format: 'der' })
+    .subarray(12)
+    .toString('base64');
+}
 
 const input = () => ({
   recordId: RECORD_ID,
@@ -80,6 +93,36 @@ describe('Agent Record observation core', () => {
     });
   });
 
+  it('verifies a retained observation after the current operator key and id rotate', () => {
+    const seedA = crypto.randomBytes(32);
+    vi.stubEnv('EP_COMMIT_SIGNING_KEY', seedA.toString('base64'));
+    vi.stubEnv('EP_AGENT_RECORD_SIGNING_KEY_ID', 'agent-record-key-a');
+    const observationA = signAgentRecordObservation(input());
+    expect(observationA.signature.key_id).toBe('agent-record-key-a');
+
+    vi.stubEnv('EP_COMMIT_SIGNING_KEY', crypto.randomBytes(32).toString('base64'));
+    vi.stubEnv('EP_AGENT_RECORD_SIGNING_KEY_ID', 'agent-record-key-b');
+    vi.stubEnv('EP_COMMIT_SIGNING_KEYS', JSON.stringify({
+      'agent-record-key-a': rawPublicKey(seedA),
+    }));
+    const observationB = signAgentRecordObservation(input());
+    expect(observationB.signature.key_id).toBe('agent-record-key-b');
+    expect(verifyAgentRecordObservation(
+      observationB,
+      Date.parse(OBSERVED_AT),
+    )).toMatchObject({ verified: true, currently_public: true });
+
+    expect(verifyAgentRecordObservation(
+      observationA,
+      Date.parse(OBSERVED_AT),
+    )).toMatchObject({
+      verified: true,
+      currently_public: true,
+      reason: null,
+      record_id: RECORD_ID,
+    });
+  });
+
   it('contains only the bounded public allowlist and no identity, credential, or action payload', () => {
     const observation = signAgentRecordObservation(input());
 
@@ -106,6 +149,7 @@ describe('Agent Record observation core', () => {
     ['action', (value: any) => { value.record.action.action_digest = `sha256:${'3'.repeat(64)}`; }],
     ['refusal', (value: any) => { value.record.refusal.refusal_digest = `sha256:${'4'.repeat(64)}`; }],
     ['retention', (value: any) => { value.record.retention_expires_at = '2027-08-01T20:01:00.000Z'; }],
+    ['operator key id', (value: any) => { value.signature.key_id = 'unsafe/key'; }],
   ])('refuses %s substitution or mutation', (_name, mutate) => {
     const observation: any = structuredClone(signAgentRecordObservation(input()));
     mutate(observation);
@@ -153,6 +197,20 @@ describe('Agent Record observation core', () => {
     expect(() => signAgentRecordObservation(input())).toThrowError(
       expect.objectContaining<Partial<AgentRecordCoreError>>({
         code: 'agent_record_operator_key_unavailable',
+      }),
+    );
+  });
+
+  it.each([
+    'unsafe/key',
+    `k${'a'.repeat(64)}`,
+    'constructor',
+  ])('refuses unsafe current operator key id %s', (keyId) => {
+    vi.stubEnv('EP_AGENT_RECORD_SIGNING_KEY_ID', keyId);
+
+    expect(() => signAgentRecordObservation(input())).toThrowError(
+      expect.objectContaining<Partial<AgentRecordCoreError>>({
+        code: 'agent_record_operator_key_id_invalid',
       }),
     );
   });
