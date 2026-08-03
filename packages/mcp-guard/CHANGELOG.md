@@ -3,6 +3,15 @@
 
 All notable changes to `@emilia-protocol/mcp-guard` are documented here.
 
+## 0.4.4 (2026-08-02)
+
+### Fixed
+
+- Restore the published package's blank-consumer ESM import by shipping the
+  generated runtime companions referenced by the package entry point.
+- Exercise the packed package from an empty consumer during the repository
+  export gate so a workspace fallback cannot mask a broken npm artifact.
+
 ## 0.4.3 (2026-08-01)
 
 ### Release
