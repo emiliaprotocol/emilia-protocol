@@ -169,7 +169,7 @@ export default function AuthorityScanPage(): React.ReactElement {
                 operations may need action-bound evidence. Review that proposal yourself. Nothing is
                 enforced until a guard completely mediates the real executor path under your pinned policy and keys.
               </p>
-              <pre style={codeBox}>{`npx @emilia-protocol/scan ./tools.json\nnpx @emilia-protocol/scan ./openapi.json`}</pre>
+              <pre style={codeBox}>{`# inspect the declared action surface\nnpx @emilia-protocol/scan ./tools.json\n\n# generate a reviewed protection scaffold (dry-run)\nnpx @emilia-protocol/scan protect ./tools.json\n\n# create it, then run the synthetic refusal check\nnpx @emilia-protocol/scan protect ./tools.json --apply\nnode emilia/verify-setup.mjs`}</pre>
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(190px, 100%), 1fr))', gap: 12, marginTop: 24 }}>
                 {[
                   ['01', 'Scan locally'],

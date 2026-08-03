@@ -19,6 +19,13 @@ const codeBox: React.CSSProperties = {
   whiteSpace: 'pre',
 };
 
+const PROTECT = `# inspect first; this makes no change
+npx @emilia-protocol/scan protect ./tools.json
+
+# create the reviewed manifest, wrapper, and local refusal check
+npx @emilia-protocol/scan protect ./tools.json --apply
+node emilia/verify-setup.mjs`;
+
 const MANIFEST = `{
   "@version": "EP-ACTION-CONTROL-MANIFEST-v0.2",
   "profile": "agent-action-control",
@@ -250,9 +257,22 @@ export default function RequireReceiptGuide() {
             Forged receipt never reaches the mutation.
           </p>
           <div style={{ display: 'flex', gap: 12, marginTop: 28, flexWrap: 'wrap' }}>
-            <a href="https://github.com/emiliaprotocol/emilia-protocol/tree/main/examples/mcp" target="_blank" rel="noopener noreferrer" style={cta.primary}>Run the MCP ritual</a>
+            <a href="/scan" style={cta.primary}>Scan and protect one tool</a>
+            <a href="https://github.com/emiliaprotocol/emilia-protocol/tree/main/examples/mcp" target="_blank" rel="noopener noreferrer" style={cta.secondary}>Run the MCP ritual</a>
             <a href="/mcp" style={cta.secondary}>See the MCP page</a>
           </div>
+        </section>
+
+        <section style={styles.sectionWide}>
+          <div style={styles.eyebrow}>STEP 0 · GENERATE A REVIEWABLE START</div>
+          <h2 style={{ ...styles.h2, maxWidth: 760 }}>Turn a declared tool list into a bounded integration.</h2>
+          <p style={{ ...styles.body, maxWidth: 760 }}>
+            The first command is a dry run. After you review its classifications, the second creates
+            a manifest, production wrapper, and synthetic local refusal check. The local check proves
+            only that its handler was not called. Production still requires a durable provenance ledger,
+            a shared atomic consumption store, pinned keys, and a wrapper on every path to the real credential.
+          </p>
+          <pre style={codeBox}>{PROTECT}</pre>
         </section>
 
         <section style={styles.sectionWide}>

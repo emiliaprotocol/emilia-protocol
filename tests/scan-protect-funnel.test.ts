@@ -11,6 +11,7 @@ describe('scan to protected MCP boundary funnel', () => {
   const scan = read('app/scan/page.tsx');
   const guard = read('app/agent-guard/page.tsx');
   const mcp = read('app/mcp/page.tsx');
+  const guide = read('app/guides/require-receipt/page.tsx');
   const sitemap = read('app/sitemap.ts');
 
   it('starts with a passive local scan and offers one bounded protection step', () => {
@@ -24,6 +25,7 @@ describe('scan to protected MCP boundary funnel', () => {
     expect(scan).toContain('Scan locally');
     expect(scan).toContain('Choose one consequential tool');
     expect(scan).toContain('Mediate its real executor path');
+    expect(scan).toContain('npx @emilia-protocol/scan protect ./tools.json');
     expect(scan).toContain('href="/agent-guard"');
     expect(scan).toContain('href="/mcp"');
 
@@ -31,6 +33,10 @@ describe('scan to protected MCP boundary funnel', () => {
     expect(guard).toContain('href="/guides/require-receipt"');
     expect(guard).toContain('href="/mcp"');
     expect(guard).toContain('href="/scan"');
+    expect(guide).toContain('npx @emilia-protocol/scan protect ./tools.json');
+    expect(guide).toContain('node emilia/verify-setup.mjs');
+    expect(guide).toContain('durable provenance ledger');
+    expect(guide).toContain('shared atomic consumption store');
   });
 
   it('distinguishes protecting an existing tool from adding verifier tools', () => {
