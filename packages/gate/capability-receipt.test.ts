@@ -1666,6 +1666,61 @@ test('the durable store fences on the action digest too, not only the memory sto
   assert.equal((await reserve('evt_3', capabilityActionDigest(scopedAction('merge-pr-100')))).ok, true);
 });
 
+test('a concurrent postgres action-fence collision returns a closed refusal instead of escaping', async () => {
+  const keys = issuer();
+  const minted = mintCapabilityReceipt(keys.receipt, options({
+    issuerPrivateKey: keys.privateKey,
+    capabilityId: 'postgres_action_fence_race',
+  }));
+  const reference = createMemoryCapabilityStore();
+  assert.equal(reference.registerCapability(minted.capabilityReceipt), true);
+  const state = reference.getState(minted.capabilityReceipt.capability.id);
+  const transaction = async (callback) => callback(async (sql) => {
+    if (sql === CAPABILITY_SQL.register) return { rowCount: 1, rows: [] };
+    if (sql === CAPABILITY_SQL.readState) {
+      return {
+        rowCount: 1,
+        rows: [{
+          capability_id: state.capability_id,
+          capability_fingerprint: state.capability_fingerprint,
+          budget_amount: String(state.budget_amount),
+          currency: state.currency,
+          consumed_amount: '0',
+          reserved_amount: '0',
+          expires_at: new Date(state.expires_at).toISOString(),
+        }],
+      };
+    }
+    if (sql === CAPABILITY_SQL.readOperation || sql === CAPABILITY_SQL.readActionHolder) {
+      return { rowCount: 0, rows: [] };
+    }
+    if (sql === CAPABILITY_SQL.reserveState) return { rowCount: 1, rows: [] };
+    if (sql === CAPABILITY_SQL.insertOperation) {
+      const error = new Error('duplicate action holder') as Error & { code: string; constraint: string };
+      error.code = '23505';
+      error.constraint = 'ep_capability_operations_live_action_uniq';
+      throw error;
+    }
+    throw new Error(`unexpected SQL in postgres action-fence race test: ${sql}`);
+  });
+  const store = createPostgresCapabilityStore({ transaction });
+  assert.equal(await store.registerCapability(minted.capabilityReceipt), true);
+  const result = await store.reserveSpend({
+    capabilityId: state.capability_id,
+    capabilityFingerprint: state.capability_fingerprint,
+    operationId: 'evt_racing_loser',
+    actionDigest: capabilityActionDigest(scopedAction('merge-pr-race')),
+    amount: 1,
+    currency: 'USD',
+    now: NOW,
+  });
+  assert.deepEqual(result, {
+    ok: false,
+    reason: 'action_in_flight',
+    action_digest: capabilityActionDigest(scopedAction('merge-pr-race')),
+  });
+});
+
 
 test('a second operation id cannot re-authorize an action another operation already holds', async () => {
   // Anton Dziatkovskii, reviewing anthropics/claude-cookbooks#803: "request_approval
