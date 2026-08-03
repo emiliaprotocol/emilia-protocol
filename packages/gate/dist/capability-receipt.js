@@ -165,6 +165,25 @@ function existingOperationReason(status) {
         return 'operation_already_committed';
     return 'operation_already_finalized';
 }
+/**
+ * Statuses in which an operation still holds the action: it is either about to
+ * happen, happening, or has happened. 'released' is absent on purpose. A
+ * released operation carries outcome 'not_entered', meaning the provider
+ * provably never received it, so re-authorizing that same action is a genuine
+ * retry rather than a duplicate.
+ */
+const ACTION_HOLDING_STATUSES = Object.freeze(['reserved', 'provider_entered', 'committed']);
+/**
+ * Why a DIFFERENT operation already holds this action digest.
+ *
+ * Deliberately distinct from existingOperationReason. That one answers "this
+ * operation id was already used". This one answers "some other operation id is
+ * already authorized for this exact action", which is a different diagnosis and
+ * a different fix for the caller.
+ */
+function actionHeldReason(status) {
+    return status === 'committed' ? 'action_already_committed' : 'action_in_flight';
+}
 function normalizeAllowanceStatusAssertion(value) {
     if (!isRecord(value)
         || Object.keys(value).length !== 5
@@ -762,6 +781,13 @@ export function createMemoryCapabilityStore({ providerEntryTimeoutMs = DEFAULT_P
     const operations = new Map();
     const allowanceStatuses = new Map();
     const operationKey = (operationNamespace, operationId) => JSON.stringify([operationNamespace, operationId]);
+    const actionKey = (operationNamespace, actionDigest) => JSON.stringify([operationNamespace, actionDigest]);
+    // actionKey -> operationKey. A HINT, never the source of truth. Every read
+    // revalidates the operation it points at, so a holder that has since been
+    // released simply fails the status test and the entry is overwritten. That is
+    // why nothing here has to be deleted on release: a stale hint self-heals, and
+    // an index maintained at every transition would not.
+    const actionHolders = new Map();
     return {
         durable: false,
         reconciliationCapable: true,
@@ -844,6 +870,22 @@ export function createMemoryCapabilityStore({ providerEntryTimeoutMs = DEFAULT_P
             const existing = operations.get(key);
             if (existing)
                 return { ok: false, reason: existingOperationReason(existing.status) };
+            // Fence on the ACTION, not only on the token. A caller that retries
+            // request-for-approval gets a fresh operation id, and both requests carry
+            // the same action digest. Keying only on the id let both reserve, so the
+            // same merge, payout, or delete could be authorized twice under two ids.
+            // The budget hid this whenever an amount was attached; it hid nothing for
+            // a zero-amount irreversible action.
+            const held = actionHolders.get(actionKey(operationNamespace, actionDigest));
+            const holder = held === undefined ? undefined : operations.get(held);
+            if (holder && ACTION_HOLDING_STATUSES.includes(holder.status)) {
+                return {
+                    ok: false,
+                    reason: actionHeldReason(holder.status),
+                    action_digest: actionDigest,
+                    holding_operation_id: holder.operation_id,
+                };
+            }
             const at = nowMs(now);
             if (at >= state.expires_at)
                 return { ok: false, reason: 'capability_expired' };
@@ -870,6 +912,7 @@ export function createMemoryCapabilityStore({ providerEntryTimeoutMs = DEFAULT_P
                 allowance_status_head_digest: allowanceStatus?.status_head_digest ?? null,
             });
             state.reserved_amount += amount;
+            actionHolders.set(actionKey(operationNamespace, actionDigest), key);
             return {
                 ok: true,
                 operation_id: operationId,
@@ -1214,6 +1257,12 @@ export const CAPABILITY_SQL = Object.freeze({
     insertAllowanceStatus: `INSERT INTO ${CAPABILITY_ALLOWANCE_STATUS_TABLE} (allowance_profile_id, allowance_digest, revision, status_epoch, status_head_digest, status, updated_at) VALUES ($1, $2, $3, $4, $5, $6, $7) ON CONFLICT (allowance_profile_id) DO NOTHING`,
     updateAllowanceStatus: `UPDATE ${CAPABILITY_ALLOWANCE_STATUS_TABLE} SET allowance_digest = $4, revision = $5, status_epoch = $6, status_head_digest = $7, status = $8, updated_at = $9 WHERE allowance_profile_id = $1 AND status_epoch = $2 AND status_head_digest = $3`,
     readOperation: `SELECT operation_namespace, operation_id, capability_id, action_digest, amount, currency, status, reservation_token, outcome, reconciliation_outcome, reconciliation_evidence_digest, allowance_revision, allowance_status_epoch, allowance_status_head_digest, reconciled_at, reserved_at, entry_deadline_at, provider_entry_at, released_at, release_reason, release_evidence_profile, release_evidence_digest FROM ${CAPABILITY_OPERATION_TABLE} WHERE operation_namespace = $1 AND operation_id = $2 FOR UPDATE`,
+    // Is this exact action already held by SOME operation, whatever its id? The
+    // FOR UPDATE takes the row lock so two concurrent reservations for one action
+    // serialize here rather than both passing the read. The partial unique index
+    // in migration 20260803010000 is the backstop if a caller reaches the table
+    // outside this transaction.
+    readActionHolder: `SELECT operation_id, status FROM ${CAPABILITY_OPERATION_TABLE} WHERE operation_namespace = $1 AND action_digest = $2 AND status IN ('reserved', 'provider_entered', 'committed') LIMIT 1 FOR UPDATE`,
     insertOperation: `INSERT INTO ${CAPABILITY_OPERATION_TABLE} (operation_namespace, capability_id, operation_id, action_digest, amount, currency, status, reservation_token, reserved_at, entry_deadline_at, allowance_revision, allowance_status_epoch, allowance_status_head_digest) VALUES ($1, $2, $3, $4, $5, $6, 'reserved', $7, $8, $9, $10, $11, $12)`,
     reserveState: `UPDATE ${CAPABILITY_STATE_TABLE} SET reserved_amount = reserved_amount + $2 WHERE capability_id = $1 AND budget_amount - consumed_amount - reserved_amount >= $2`,
     beginProviderEntry: `UPDATE ${CAPABILITY_OPERATION_TABLE} SET status = 'provider_entered', provider_entry_at = $5 WHERE operation_namespace = $1 AND operation_id = $2 AND capability_id = $3 AND status = 'reserved' AND reservation_token = $4 AND entry_deadline_at IS NOT NULL AND entry_deadline_at > $5`,
@@ -1359,6 +1408,19 @@ export function createPostgresCapabilityStore({ transaction, providerEntryTimeou
                 const operationResult = await query(CAPABILITY_SQL.readOperation, [operationNamespace, operationId]);
                 if (operationResult?.rows?.[0])
                     return { ok: false, reason: existingOperationReason(operationResult.rows[0].status) };
+                // Same fence as the memory store: a second operation id carrying an
+                // action digest that is already reserved, entered, or committed is a
+                // duplicate authorization of one action, not a new one.
+                const holderResult = await query(CAPABILITY_SQL.readActionHolder, [operationNamespace, actionDigest]);
+                const holder = holderResult?.rows?.[0];
+                if (holder) {
+                    return {
+                        ok: false,
+                        reason: actionHeldReason(holder.status),
+                        action_digest: actionDigest,
+                        holding_operation_id: holder.operation_id,
+                    };
+                }
                 const capabilityExpiry = Date.parse(state.expires_at);
                 if (at >= capabilityExpiry)
                     return { ok: false, reason: 'capability_expired' };

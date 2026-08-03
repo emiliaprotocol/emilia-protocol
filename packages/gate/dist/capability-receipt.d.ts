@@ -281,6 +281,17 @@ export declare function createMemoryCapabilityStore({ providerEntryTimeoutMs, }?
     reserveSpend({ capabilityId, capabilityFingerprint, operationNamespace, operationId, actionDigest, amount, currency, allowanceStatus, now }: ReserveSpendOptions): Promise<{
         ok: boolean;
         reason: string;
+        action_digest?: undefined;
+        holding_operation_id?: undefined;
+        operation_id?: undefined;
+        reservation_token?: undefined;
+        entry_deadline_at?: undefined;
+        remaining?: undefined;
+    } | {
+        ok: boolean;
+        reason: string;
+        action_digest: string;
+        holding_operation_id: any;
         operation_id?: undefined;
         reservation_token?: undefined;
         entry_deadline_at?: undefined;
@@ -292,6 +303,8 @@ export declare function createMemoryCapabilityStore({ providerEntryTimeoutMs, }?
         entry_deadline_at: number;
         remaining: number;
         reason?: undefined;
+        action_digest?: undefined;
+        holding_operation_id?: undefined;
     }>;
     beginProviderEntry({ capabilityId, operationNamespace, operationId, reservationToken, now }?: BeginProviderEntryOptions): Promise<{
         ok: boolean;
@@ -369,6 +382,7 @@ export declare const CAPABILITY_SQL: Readonly<{
     insertAllowanceStatus: "INSERT INTO ep_gate_allowance_status (allowance_profile_id, allowance_digest, revision, status_epoch, status_head_digest, status, updated_at) VALUES ($1, $2, $3, $4, $5, $6, $7) ON CONFLICT (allowance_profile_id) DO NOTHING";
     updateAllowanceStatus: "UPDATE ep_gate_allowance_status SET allowance_digest = $4, revision = $5, status_epoch = $6, status_head_digest = $7, status = $8, updated_at = $9 WHERE allowance_profile_id = $1 AND status_epoch = $2 AND status_head_digest = $3";
     readOperation: "SELECT operation_namespace, operation_id, capability_id, action_digest, amount, currency, status, reservation_token, outcome, reconciliation_outcome, reconciliation_evidence_digest, allowance_revision, allowance_status_epoch, allowance_status_head_digest, reconciled_at, reserved_at, entry_deadline_at, provider_entry_at, released_at, release_reason, release_evidence_profile, release_evidence_digest FROM ep_capability_operations WHERE operation_namespace = $1 AND operation_id = $2 FOR UPDATE";
+    readActionHolder: "SELECT operation_id, status FROM ep_capability_operations WHERE operation_namespace = $1 AND action_digest = $2 AND status IN ('reserved', 'provider_entered', 'committed') LIMIT 1 FOR UPDATE";
     insertOperation: "INSERT INTO ep_capability_operations (operation_namespace, capability_id, operation_id, action_digest, amount, currency, status, reservation_token, reserved_at, entry_deadline_at, allowance_revision, allowance_status_epoch, allowance_status_head_digest) VALUES ($1, $2, $3, $4, $5, $6, 'reserved', $7, $8, $9, $10, $11, $12)";
     reserveState: "UPDATE ep_capability_state SET reserved_amount = reserved_amount + $2 WHERE capability_id = $1 AND budget_amount - consumed_amount - reserved_amount >= $2";
     beginProviderEntry: "UPDATE ep_capability_operations SET status = 'provider_entered', provider_entry_at = $5 WHERE operation_namespace = $1 AND operation_id = $2 AND capability_id = $3 AND status = 'reserved' AND reservation_token = $4 AND entry_deadline_at IS NOT NULL AND entry_deadline_at > $5";
@@ -690,6 +704,7 @@ declare const _default: {
         insertAllowanceStatus: "INSERT INTO ep_gate_allowance_status (allowance_profile_id, allowance_digest, revision, status_epoch, status_head_digest, status, updated_at) VALUES ($1, $2, $3, $4, $5, $6, $7) ON CONFLICT (allowance_profile_id) DO NOTHING";
         updateAllowanceStatus: "UPDATE ep_gate_allowance_status SET allowance_digest = $4, revision = $5, status_epoch = $6, status_head_digest = $7, status = $8, updated_at = $9 WHERE allowance_profile_id = $1 AND status_epoch = $2 AND status_head_digest = $3";
         readOperation: "SELECT operation_namespace, operation_id, capability_id, action_digest, amount, currency, status, reservation_token, outcome, reconciliation_outcome, reconciliation_evidence_digest, allowance_revision, allowance_status_epoch, allowance_status_head_digest, reconciled_at, reserved_at, entry_deadline_at, provider_entry_at, released_at, release_reason, release_evidence_profile, release_evidence_digest FROM ep_capability_operations WHERE operation_namespace = $1 AND operation_id = $2 FOR UPDATE";
+        readActionHolder: "SELECT operation_id, status FROM ep_capability_operations WHERE operation_namespace = $1 AND action_digest = $2 AND status IN ('reserved', 'provider_entered', 'committed') LIMIT 1 FOR UPDATE";
         insertOperation: "INSERT INTO ep_capability_operations (operation_namespace, capability_id, operation_id, action_digest, amount, currency, status, reservation_token, reserved_at, entry_deadline_at, allowance_revision, allowance_status_epoch, allowance_status_head_digest) VALUES ($1, $2, $3, $4, $5, $6, 'reserved', $7, $8, $9, $10, $11, $12)";
         reserveState: "UPDATE ep_capability_state SET reserved_amount = reserved_amount + $2 WHERE capability_id = $1 AND budget_amount - consumed_amount - reserved_amount >= $2";
         beginProviderEntry: "UPDATE ep_capability_operations SET status = 'provider_entered', provider_entry_at = $5 WHERE operation_namespace = $1 AND operation_id = $2 AND capability_id = $3 AND status = 'reserved' AND reservation_token = $4 AND entry_deadline_at IS NOT NULL AND entry_deadline_at > $5";
