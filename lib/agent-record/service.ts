@@ -2,6 +2,7 @@
 import crypto from 'node:crypto';
 import type { SupabaseClient } from '@supabase/supabase-js';
 
+import { getAgentRecordCreationCapability } from '@/lib/env.js';
 import { getServiceClient } from '@/lib/supabase';
 import {
   AGENT_RECORD_RETENTION_MS,
@@ -87,7 +88,7 @@ function storeStatus(error: StoreError | null | undefined): number {
 }
 
 function creationCapability(): string {
-  const capability = process.env.EP_AGENT_RECORD_CREATION_CAPABILITY ?? '';
+  const capability = getAgentRecordCreationCapability() ?? '';
   if (!CREATION_CAPABILITY.test(capability)) {
     fail(
       503,

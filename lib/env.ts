@@ -259,6 +259,15 @@ export function getAgentRecordSigningConfig(): {
   return { signingKeyId, ...getCommitSigningConfig() };
 }
 
+/**
+ * Application-only capability accepted by the private Agent Record creator.
+ * The service validates the closed value shape before use; centralizing the
+ * read here keeps trust-bearing EP configuration inside the governed boundary.
+ */
+export function getAgentRecordCreationCapability(): string | null {
+  return process.env.EP_AGENT_RECORD_CREATION_CAPABILITY || null;
+}
+
 // =============================================================================
 // GOVERNMENT / HIGH-ASSURANCE DEPLOYMENT
 // =============================================================================

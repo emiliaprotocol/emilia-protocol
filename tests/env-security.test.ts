@@ -2,6 +2,7 @@
 import { afterEach, describe, expect, it } from 'vitest';
 import {
   getCommitSigningConfig,
+  getAgentRecordCreationCapability,
   getOperatorKeys,
   getOperatorRoles,
   getPinnedApproverKeys,
@@ -44,5 +45,13 @@ describe('security-sensitive environment JSON', () => {
     delete process.env.EP_GOV_STRICT;
     delete process.env.EP_REQUIRE_DURABLE_RATE_LIMIT;
     expect(getRateLimitConfig().durableRequired).toBe(true);
+  });
+
+  it('centralizes the Agent Record creation capability without transforming it', () => {
+    const capability = `earc1_${'a'.repeat(64)}`;
+    process.env.EP_AGENT_RECORD_CREATION_CAPABILITY = capability;
+    expect(getAgentRecordCreationCapability()).toBe(capability);
+    delete process.env.EP_AGENT_RECORD_CREATION_CAPABILITY;
+    expect(getAgentRecordCreationCapability()).toBeNull();
   });
 });
