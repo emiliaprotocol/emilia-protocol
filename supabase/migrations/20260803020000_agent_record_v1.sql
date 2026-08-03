@@ -51,6 +51,11 @@ CREATE SCHEMA agent_record_private
   AUTHORIZATION agent_record_store_owner;
 REVOKE ALL ON SCHEMA agent_record_private
   FROM PUBLIC, anon, authenticated, service_role;
+CREATE SCHEMA agent_record_control_private;
+REVOKE ALL ON SCHEMA agent_record_control_private
+  FROM PUBLIC, anon, authenticated, service_role;
+GRANT USAGE ON SCHEMA agent_record_control_private
+  TO agent_record_store_owner;
 
 GRANT USAGE ON SCHEMA extensions TO agent_record_store_owner;
 GRANT EXECUTE ON FUNCTION extensions.digest(BYTEA, TEXT)
@@ -68,6 +73,76 @@ CREATE POLICY arena_shares_agent_record_source_read
   FOR SELECT
   TO agent_record_store_owner
   USING (revoked_at IS NULL);
+
+-- Arena shares are otherwise immutable. Agent Record revocation is the one
+-- narrow exception: the owner may retract the exact Arena source that the
+-- record exposed. The transaction-local share-id fence prevents the definer
+-- function from revoking any other public artifact or changing signed bytes.
+CREATE OR REPLACE FUNCTION public.arena_shares_immutable()
+RETURNS TRIGGER
+LANGUAGE plpgsql
+SET search_path = ''
+AS $arena_shares_immutable$
+BEGIN
+  IF TG_OP = 'UPDATE'
+    AND OLD.revoked_at IS NULL
+    AND NEW.revoked_at IS NOT NULL
+    AND (pg_catalog.to_jsonb(NEW) - 'revoked_at') IS NOT DISTINCT FROM
+      (pg_catalog.to_jsonb(OLD) - 'revoked_at')
+    AND OLD.share_id IS NOT DISTINCT FROM
+      pg_catalog.current_setting('ep.agent_record_arena_share_revoke', TRUE)
+  THEN
+    RETURN NEW;
+  END IF;
+  RAISE EXCEPTION 'arena share rows are immutable'
+    USING ERRCODE = '55000';
+END
+$arena_shares_immutable$;
+
+DROP TRIGGER IF EXISTS arena_shares_immutable_trigger
+  ON public.arena_shares;
+CREATE TRIGGER arena_shares_immutable_trigger
+  BEFORE UPDATE OR DELETE ON public.arena_shares
+  FOR EACH ROW EXECUTE FUNCTION public.arena_shares_immutable();
+
+CREATE FUNCTION agent_record_control_private.revoke_arena_source(
+  p_share_id TEXT,
+  p_revoked_at TIMESTAMPTZ
+)
+RETURNS VOID
+LANGUAGE plpgsql
+VOLATILE
+SECURITY DEFINER
+SET search_path = ''
+SET row_security = 'off'
+AS $revoke_agent_record_arena_source$
+BEGIN
+  IF p_share_id IS NULL
+    OR p_share_id !~ '^arena_share_[0-9a-f]{40}$'
+    OR p_revoked_at IS NULL
+  THEN
+    RAISE EXCEPTION 'agent record Arena source revocation is invalid'
+      USING ERRCODE = '22023';
+  END IF;
+  PERFORM pg_catalog.set_config(
+    'ep.agent_record_arena_share_revoke',
+    p_share_id,
+    TRUE
+  );
+  UPDATE public.arena_shares AS share
+  SET revoked_at = p_revoked_at
+  WHERE share.share_id = p_share_id
+    AND share.revoked_at IS NULL;
+  IF NOT FOUND THEN
+    RAISE EXCEPTION 'agent record Arena source revocation failed'
+      USING ERRCODE = '55000';
+  END IF;
+END
+$revoke_agent_record_arena_source$;
+REVOKE ALL ON FUNCTION agent_record_control_private.revoke_arena_source(TEXT, TIMESTAMPTZ)
+  FROM PUBLIC, anon, authenticated, service_role;
+GRANT EXECUTE ON FUNCTION agent_record_control_private.revoke_arena_source(TEXT, TIMESTAMPTZ)
+  TO agent_record_store_owner;
 
 SET ROLE agent_record_store_owner;
 
@@ -388,7 +463,8 @@ BEGIN
     p_retention_expires_at,
     p_public_projection
   )
-  ON CONFLICT (record_id) DO NOTHING;
+  ON CONFLICT (record_id) DO NOTHING
+  RETURNING * INTO v_existing;
 
   IF NOT FOUND THEN
     SELECT record.*
@@ -403,10 +479,7 @@ BEGIN
       AND record.source_artifact_digest = p_source_artifact_digest
       AND record.action_digest = p_action_digest
       AND record.refusal_digest = p_refusal_digest
-      AND record.refused_at = p_refused_at
-      AND record.observed_at = p_observed_at
-      AND record.retention_expires_at = p_retention_expires_at
-      AND record.public_projection = p_public_projection;
+      AND record.refused_at = p_refused_at;
     IF NOT FOUND THEN
       RAISE EXCEPTION 'agent record identifier was already consumed'
         USING ERRCODE = '23505';
@@ -414,10 +487,10 @@ BEGIN
   END IF;
 
   RETURN pg_catalog.jsonb_build_object(
-    'record_id', p_record_id,
-    'created_at', agent_record_private.iso_ms(p_observed_at),
-    'retention_expires_at', agent_record_private.iso_ms(p_retention_expires_at),
-    'public_projection', p_public_projection
+    'record_id', v_existing.record_id,
+    'created_at', agent_record_private.iso_ms(v_existing.observed_at),
+    'retention_expires_at', agent_record_private.iso_ms(v_existing.retention_expires_at),
+    'public_projection', v_existing.public_projection
   );
 END
 $create_agent_record$;
@@ -484,6 +557,11 @@ BEGIN
     v_record.record_id,
     pg_catalog.gen_random_uuid(),
     agent_record_private.token_hash(p_revocation_nonce),
+    v_revoked_at
+  );
+
+  PERFORM agent_record_control_private.revoke_arena_source(
+    v_record.arena_share_id,
     v_revoked_at
   );
 

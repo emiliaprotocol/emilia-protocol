@@ -69,14 +69,18 @@ describe('Agent Record HTTP contract', () => {
   it('authenticates the exact adoption session before creating one refusal-bound record', async () => {
     mocks.create.mockResolvedValue({
       record_id: RECORD_ID,
-      owner_token: OWNER_TOKEN,
       created_at: '2026-08-03T00:00:00.000Z',
       retention_expires_at: '2027-08-03T00:00:00.000Z',
       public_projection: { '@version': 'EP-AGENT-RECORD-OBSERVATION-v1' },
     });
 
     const request = createRequest(
-      { trial_token: TRIAL_TOKEN, attempt_id: ATTEMPT_ID },
+      {
+        trial_token: TRIAL_TOKEN,
+        attempt_id: ATTEMPT_ID,
+        record_id: RECORD_ID,
+        owner_token: OWNER_TOKEN,
+      },
       { origin: 'https://www.emiliaprotocol.ai' },
     );
     const response = await CreateRoute.POST(request as never, createParams);
@@ -85,9 +89,16 @@ describe('Agent Record HTTP contract', () => {
     expect(mocks.authorize).toHaveBeenCalledWith({ request, sessionId: SESSION_ID });
     expect(mocks.create).toHaveBeenCalledWith({
       authorization,
-      input: { trial_token: TRIAL_TOKEN, attempt_id: ATTEMPT_ID },
+      input: {
+        trial_token: TRIAL_TOKEN,
+        attempt_id: ATTEMPT_ID,
+        record_id: RECORD_ID,
+        owner_token: OWNER_TOKEN,
+      },
     });
-    expect(await response.json()).toMatchObject({ record_id: RECORD_ID, owner_token: OWNER_TOKEN });
+    const body = await response.json();
+    expect(body).toMatchObject({ record_id: RECORD_ID });
+    expect(JSON.stringify(body)).not.toContain(OWNER_TOKEN);
     expect(response.headers.get('cache-control')).toContain('no-store');
     expect(response.headers.get('referrer-policy')).toBe('no-referrer');
   });
@@ -208,7 +219,9 @@ describe('Agent Record UI and custody contract', () => {
 
   it('keeps the owner token only in record-specific local storage and out of URLs and analytics', () => {
     expect(adopt).toContain('emilia_agent_record_owner:');
-    expect(adopt).toContain('window.localStorage.setItem(ownerKey(record.record_id), record.owner_token)');
+    expect(adopt).toContain('window.localStorage.setItem(ownerKey(record.record_id), credential.owner_token)');
+    expect(adopt).toContain('window.localStorage.setItem(storageKey');
+    expect(adopt).not.toContain('record.owner_token');
     expect(adopt).not.toMatch(/searchParams[^\n]+owner_token/);
     expect(adopt).not.toMatch(/emitAdoptEvent\([^)]*owner_token/);
     expect(controls).toContain('window.localStorage.getItem(ownerKey(recordId))');

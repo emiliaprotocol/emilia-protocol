@@ -459,7 +459,15 @@ suite('Agent Record v1 RPC lifecycle on PostgreSQL 17', () => {
     });
 
     const first = await createRecord(input);
-    const retried = await createRecord(input);
+    const retryValues = {
+      ...input,
+      observedAt: instant(1),
+      retentionExpiresAt: instant(1 + 365 * 24 * 60 * 60 * 1_000),
+    };
+    const retried = await createRecord({
+      ...retryValues,
+      publicProjection: recordProjection(retryValues),
+    });
     expect(retried).toEqual(first);
 
     await expect(createRecord({
@@ -748,6 +756,14 @@ suite('Agent Record v1 RPC lifecycle on PostgreSQL 17', () => {
     });
     const created = await createRecord(input);
     expect(ownerHash).toMatch(/^[0-9a-f]{64}$/);
+    const sourceBefore = await database.query<{
+      public_projection: JsonObject;
+      revoked_at: string | null;
+    }>(
+      'SELECT public_projection, revoked_at FROM public.arena_shares WHERE share_id = $1',
+      [shareId],
+    );
+    expect(sourceBefore.rows[0].revoked_at).toBeNull();
 
     await expect(revoke(
       input.recordId,
@@ -766,6 +782,22 @@ suite('Agent Record v1 RPC lifecycle on PostgreSQL 17', () => {
       record_id: input.recordId,
       revoked: true,
     });
+    const sourceAfter = await database.query<{
+      public_projection: JsonObject;
+      revoked_at: string | null;
+    }>(
+      'SELECT public_projection, revoked_at FROM public.arena_shares WHERE share_id = $1',
+      [shareId],
+    );
+    expect(sourceAfter.rows[0].revoked_at).not.toBeNull();
+    expect(sourceAfter.rows[0].public_projection).toEqual(
+      sourceBefore.rows[0].public_projection,
+    );
+    const publicArenaSource = await database.query<{ count: string }>(
+      'SELECT count(*)::text AS count FROM public.arena_shares WHERE share_id = $1 AND revoked_at IS NULL',
+      [shareId],
+    );
+    expect(publicArenaSource.rows).toEqual([{ count: '0' }]);
     try {
       await readPublic(input.recordId);
     } catch (error) {

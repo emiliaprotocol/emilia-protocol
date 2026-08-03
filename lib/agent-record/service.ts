@@ -2,7 +2,6 @@
 import crypto from 'node:crypto';
 import type { SupabaseClient } from '@supabase/supabase-js';
 
-import { canonicalize } from '@/lib/canonical-json';
 import {
   AgentAdoptionTrialError,
   publishBoundAgentTrialRefusal,
@@ -60,14 +59,6 @@ function canonicalInstant(value: unknown): value is string {
   if (typeof value !== 'string') return false;
   const parsed = Date.parse(value);
   return Number.isFinite(parsed) && new Date(parsed).toISOString() === value;
-}
-
-function sameCanonical(left: unknown, right: unknown): boolean {
-  try {
-    return canonicalize(left) === canonicalize(right);
-  } catch {
-    return false;
-  }
 }
 
 function storeStatus(error: StoreError | null | undefined): number {
@@ -263,9 +254,19 @@ export async function createAgentRecord({
     'public_projection',
   ])
       || stored.record_id !== recordId
-      || stored.created_at !== observedAt
-      || stored.retention_expires_at !== retentionExpiresAt
-      || !sameCanonical(stored.public_projection, publicProjection)) {
+      || !canonicalInstant(stored.created_at)
+      || !canonicalInstant(stored.retention_expires_at)
+      || !isRecord(stored.public_projection)
+      || stored.public_projection?.record?.record_id !== recordId
+      || stored.public_projection?.record?.bond?.bond_id !== source.bondId
+      || stored.public_projection?.record?.bond?.bond_digest !== source.bondDigest
+      || stored.public_projection?.record?.source?.arena_share_id !== source.arenaShareId
+      || stored.public_projection?.record?.source?.artifact_digest !== source.sourceArtifactDigest
+      || stored.public_projection?.record?.action?.action_digest !== source.actionDigest
+      || stored.public_projection?.record?.refusal?.refusal_digest !== source.refusalDigest
+      || stored.public_projection?.record?.refusal?.refused_at !== source.refusedAt
+      || stored.created_at !== stored.public_projection?.record?.observed_at
+      || stored.retention_expires_at !== stored.public_projection?.record?.retention_expires_at) {
     fail(503, 'agent_record_store_invalid', 'Stored Agent Record is inconsistent.');
   }
   const verification = verifyAgentRecordObservation(stored.public_projection, now);

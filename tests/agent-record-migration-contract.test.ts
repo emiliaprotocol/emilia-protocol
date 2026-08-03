@@ -65,7 +65,12 @@ describe('Agent Record v1 migration source contract', () => {
     expect(migration).toContain(
       'agent_record_private.token_hash(p_owner_token)',
     );
-    expect(migration).toContain('ON CONFLICT (record_id) DO NOTHING;');
+    expect(migration).toContain(
+      'ON CONFLICT (record_id) DO NOTHING\n  RETURNING * INTO v_existing;',
+    );
+    expect(migration).toMatch(
+      /WHERE record\.record_id = p_record_id[\s\S]*record\.owner_token_hash = agent_record_private\.token_hash\(p_owner_token\)[\s\S]*record\.arena_share_id = p_arena_share_id/,
+    );
     expect(migration).not.toMatch(/owner_token\s+TEXT[\s\S]*CREATE TABLE/i);
   });
 
@@ -135,5 +140,17 @@ describe('Agent Record v1 migration source contract', () => {
       /INSERT INTO agent_record_private\.revocations[\s\S]*RETURN pg_catalog\.jsonb_build_object/,
     );
     expect(migration).not.toMatch(/UPDATE agent_record_private\.records[\s\S]*revok/i);
+    expect(migration).toContain(
+      'PERFORM agent_record_control_private.revoke_arena_source(',
+    );
+    expect(migration).toContain(
+      "AND (pg_catalog.to_jsonb(NEW) - 'revoked_at') IS NOT DISTINCT FROM",
+    );
+    expect(migration).toContain(
+      "OLD.share_id IS NOT DISTINCT FROM\n      pg_catalog.current_setting('ep.agent_record_arena_share_revoke', TRUE)",
+    );
+    expect(migration).toContain(
+      'REVOKE ALL ON FUNCTION agent_record_control_private.revoke_arena_source(TEXT, TIMESTAMPTZ)\n  FROM PUBLIC, anon, authenticated, service_role;',
+    );
   });
 });
