@@ -171,6 +171,38 @@ test('scan protect routes to the dry-run hardener without writing files', () => 
   }).status, 0, 'dry-run must not create the output directory');
 });
 
+test('OpenAPI protection preserves distinct route paths in the generated HTTP guard', () => {
+  const dir = mkdtempSync(join(tmpdir(), 'emilia-protect-openapi-'));
+  const input = join(dir, 'openapi.json');
+  writeFileSync(input, JSON.stringify({
+    openapi: '3.1.0',
+    paths: {
+      '/payments/{paymentId}': {
+        post: { operationId: 'sendWire', summary: 'Send an outgoing wire transfer' },
+      },
+      '/customers/{customerId}': {
+        delete: { operationId: 'deleteCustomer', summary: 'Permanently delete a customer' },
+      },
+    },
+  }));
+
+  const run = spawnSync(process.execPath, [
+    join(import.meta.dirname, 'cli.mjs'),
+    'protect',
+    input,
+    '--apply',
+  ], {
+    cwd: dir,
+    encoding: 'utf8',
+  });
+
+  assert.equal(run.status, 0, `${run.stdout}\n${run.stderr}`);
+  const guard = readFileSync(join(dir, 'emilia', 'http-guard.mjs'), 'utf8');
+  assert.match(guard, /"path": "\/payments\/:paymentId"/);
+  assert.match(guard, /"path": "\/customers\/:customerId"/);
+  assert.doesNotMatch(guard, /"path": "\/"/);
+});
+
 test('generated MCP protection separates durable production state from the explicit local check', async () => {
   const dir = mkdtempSync(join(tmpdir(), 'emilia-protect-apply-'));
   const run = spawnSync(process.execPath, [
