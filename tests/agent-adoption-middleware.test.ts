@@ -203,7 +203,11 @@ describe('Agent Adoption middleware security boundaries', () => {
     ]) {
       mocks.checkRateLimit.mockClear();
       const response = await middleware(request(path) as never);
-      expect(mocks.checkRateLimit).toHaveBeenCalledWith('203.0.113.44', 'public_verify');
+      expect(mocks.checkRateLimit).toHaveBeenCalledWith(
+        '203.0.113.44',
+        'public_verify',
+        { requireDurable: true },
+      );
       expect(response.headers.get('x-ratelimit-limit')).toBe('60');
     }
   });

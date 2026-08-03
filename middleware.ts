@@ -639,11 +639,14 @@ export async function middleware(request) {
   // can read it (e.g. in app/layout.js) and pass it to <Script> tags.
   if (!pathname.startsWith('/api/')) {
     let publicShareRateLimit: Awaited<ReturnType<typeof checkRateLimit>> | null = null;
+    const isAgentRecordPage = PUBLIC_AGENT_RECORD_PAGE.test(pathname);
     if (request.method.toUpperCase() === 'GET'
-        && (PUBLIC_AGENT_ADOPTION_SHARE_PAGE.test(pathname) || PUBLIC_AGENT_RECORD_PAGE.test(pathname))) {
+        && (PUBLIC_AGENT_ADOPTION_SHARE_PAGE.test(pathname) || isAgentRecordPage)) {
       const ip = getClientIP(request);
       try {
-        publicShareRateLimit = await checkRateLimit(ip, 'public_verify');
+        publicShareRateLimit = isAgentRecordPage
+          ? await checkRateLimit(ip, 'public_verify', { requireDurable: true })
+          : await checkRateLimit(ip, 'public_verify');
       } catch {
         publicShareRateLimit = {
           allowed: false,
@@ -793,11 +796,16 @@ export async function middleware(request) {
     }
   }
 
+  const isAgentRecordApi = AGENT_RECORD_API.test(pathname);
+  const requiresDurableAgentRecordLimit = isAgentRecordApi
+    && request.method.toUpperCase() === 'GET';
   let result;
   try {
-    result = await checkRateLimit(rateLimitKey, rateCategory);
+    result = requiresDurableAgentRecordLimit
+      ? await checkRateLimit(rateLimitKey, rateCategory, { requireDurable: true })
+      : await checkRateLimit(rateLimitKey, rateCategory);
   } catch (error) {
-    if (!AGENT_RECORD_API.test(pathname)) throw error;
+    if (!isAgentRecordApi) throw error;
     result = {
       allowed: false,
       remaining: 0,
@@ -810,7 +818,7 @@ export async function middleware(request) {
   // not a locally reproducible verifier. Its exact lookup and owner mutation
   // therefore require the durable limiter in production and fail closed on
   // either an outage or the fail-open in-memory sentinel.
-  if (AGENT_RECORD_API.test(pathname)
+  if (isAgentRecordApi
       && (result.error === 'rate_limit_unavailable'
         || result.error === 'durable_rate_limit_required'
         || result.remaining < 0)) {
