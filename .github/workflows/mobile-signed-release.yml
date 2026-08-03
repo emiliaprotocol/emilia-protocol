@@ -68,7 +68,7 @@ jobs:
         with:
           node-version: 20
           cache: npm
-      - uses: actions/setup-java@03ad4de0992f5dab5e18fcb136590ce7c4a0ac95 # v5.6.0
+      - uses: actions/setup-java@b6effb05e454b25005698d916606bdc6ffcbf961 # v5.7.0
         with:
           distribution: temurin
           java-version: '17'
@@ -115,7 +115,7 @@ jobs:
           unzip -p "$APK" 'classes*.dex' | strings | grep -Fx 'https://www.emiliaprotocol.ai/api/'
           ! unzip -l "$APK" | grep -E '(^|/)(\.env|id_rsa|.*\.jks|.*\.keystore)$'
           sha256sum "$APK" "$AAB" | tee android-release.sha256
-      - uses: actions/attest@f7c74d28b9d84cb8768d0b8ca14a4bac6ef463e6 # v4.2.0
+      - uses: actions/attest@508db95dd578ae2727ebd6217d5ba78e4fbda05d # v4.2.1
         with:
           subject-path: |
             sdks/kotlin-mobile/sample/build/outputs/apk/release/*.apk
@@ -207,7 +207,7 @@ jobs:
           ! find "$APP" -type f | grep -E '(^|/)(\.env|id_rsa|.*\.p12|.*\.mobileprovision)$'
           ditto -c -k --keepParent "$RUNNER_TEMP/EMILIA-Approver.xcarchive" EMILIA-Approver.xcarchive.zip
           shasum -a 256 EMILIA-Approver.xcarchive.zip | tee ios-release.sha256
-      - uses: actions/attest@f7c74d28b9d84cb8768d0b8ca14a4bac6ef463e6 # v4.2.0
+      - uses: actions/attest@508db95dd578ae2727ebd6217d5ba78e4fbda05d # v4.2.1
         with:
           subject-path: EMILIA-Approver.xcarchive.zip
       - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1

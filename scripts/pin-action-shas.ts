@@ -1,11 +1,12 @@
 #!/usr/bin/env node
 /**
- * pin-action-shas.js
+ * pin-action-shas.ts
  *
  * One-shot migration: replaces version-tagged GitHub Action references
  * with commit SHA pins across all .github/workflows/*.yml files.
  *
- * SHA pins as of 2026-04-02. Re-run after Dependabot updates the SHAs.
+ * SHA pins verified against upstream tags on 2026-08-03. Re-run after
+ * Dependabot updates the SHAs.
  */
 
 import fs from 'node:fs';
@@ -20,24 +21,26 @@ const WORKFLOWS: string = path.join(ROOT, '.github', 'workflows');
 // Format: 'owner/action@tag-or-version' → 'owner/action@SHA  # version-comment'
 const PINS: { [key: string]: string } = {
   // ── GitHub official actions ──────────────────────────────────────────────
-  'actions/checkout@v4':
-    'actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5  # v4.3.1',
-  'actions/setup-node@v4':
-    'actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020  # v4.4.0',
-  'actions/setup-python@v5':
-    'actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065  # v5.6.0',
-  'actions/upload-artifact@v4':
-    'actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02  # v4.6.2',
-  'actions/setup-java@v4':
-    'actions/setup-java@c1e323688fd81a25caa38c78aa6df2d33d3e20d9  # v4.8.0',
+  'actions/checkout@v7':
+    'actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1',
+  'actions/setup-node@v7':
+    'actions/setup-node@820762786026740c76f36085b0efc47a31fe5020  # v7.0.0',
+  'actions/setup-python@v7':
+    'actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97  # v7.0.0',
+  'actions/upload-artifact@v7':
+    'actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a  # v7.0.1',
+  'actions/setup-java@v5':
+    'actions/setup-java@b6effb05e454b25005698d916606bdc6ffcbf961  # v5.7.0',
+  'actions/attest@v4':
+    'actions/attest@508db95dd578ae2727ebd6217d5ba78e4fbda05d  # v4.2.1',
 
   // ── CodeQL ───────────────────────────────────────────────────────────────
-  'github/codeql-action/init@v3':
-    'github/codeql-action/init@5c8a8a642e79153f5d047b10ec1cba1d1cc65699  # v3.35.1',
-  'github/codeql-action/analyze@v3':
-    'github/codeql-action/analyze@5c8a8a642e79153f5d047b10ec1cba1d1cc65699  # v3.35.1',
-  'github/codeql-action/autobuild@v3':
-    'github/codeql-action/autobuild@5c8a8a642e79153f5d047b10ec1cba1d1cc65699  # v3.35.1',
+  'github/codeql-action/init@v4':
+    'github/codeql-action/init@f205ea1c3313d32999d8d6a48b4f6530d4437b38  # v4.37.4',
+  'github/codeql-action/analyze@v4':
+    'github/codeql-action/analyze@f205ea1c3313d32999d8d6a48b4f6530d4437b38  # v4.37.4',
+  'github/codeql-action/autobuild@v4':
+    'github/codeql-action/autobuild@f205ea1c3313d32999d8d6a48b4f6530d4437b38  # v4.37.4',
 
   // ── Security / compliance ─────────────────────────────────────────────────
   'gitleaks/gitleaks-action@v2':
@@ -47,7 +50,7 @@ const PINS: { [key: string]: string } = {
 
   // ── Python packaging ─────────────────────────────────────────────────────
   'pypa/gh-action-pypi-publish@release/v1':
-    'pypa/gh-action-pypi-publish@ed0c53931b1dc9bd32cbe73a98c7f6766f8a527e  # v1.13.0',
+    'pypa/gh-action-pypi-publish@dc37677b2e1c63e2034f94d8a5b11f265b73ba33  # v1.14.2',
 };
 
 // ── Process each workflow file ────────────────────────────────────────────────

@@ -4,6 +4,7 @@ import {
   mkdtempSync,
   existsSync,
   mkdirSync,
+  readdirSync,
   readFileSync,
   rmSync,
   writeFileSync,
@@ -24,6 +25,43 @@ import {
 import YAML from 'yaml';
 
 describe('release-chain coverage', () => {
+  it('keeps every governed workflow on the reviewed upstream action revisions', () => {
+    const helper = readFileSync('scripts/pin-action-shas.ts', 'utf8');
+    for (const [tag, pinned] of Object.entries({
+      'actions/checkout@v7': 'actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1',
+      'actions/setup-node@v7': 'actions/setup-node@820762786026740c76f36085b0efc47a31fe5020  # v7.0.0',
+      'actions/setup-python@v7': 'actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97  # v7.0.0',
+      'actions/upload-artifact@v7': 'actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a  # v7.0.1',
+      'actions/setup-java@v5': 'actions/setup-java@b6effb05e454b25005698d916606bdc6ffcbf961  # v5.7.0',
+      'actions/attest@v4': 'actions/attest@508db95dd578ae2727ebd6217d5ba78e4fbda05d  # v4.2.1',
+      'github/codeql-action/init@v4': 'github/codeql-action/init@f205ea1c3313d32999d8d6a48b4f6530d4437b38  # v4.37.4',
+      'pypa/gh-action-pypi-publish@release/v1': 'pypa/gh-action-pypi-publish@dc37677b2e1c63e2034f94d8a5b11f265b73ba33  # v1.14.2',
+    })) {
+      expect(helper).toContain(`'${tag}'`);
+      expect(helper).toContain(`'${pinned}'`);
+    }
+    expect(helper).not.toContain('SHA pins as of 2026-04-02');
+
+    const expectedRefs = {
+      'actions/checkout': '3d3c42e5aac5ba805825da76410c181273ba90b1',
+      'actions/setup-java': 'b6effb05e454b25005698d916606bdc6ffcbf961',
+      'actions/attest': '508db95dd578ae2727ebd6217d5ba78e4fbda05d',
+      'pypa/gh-action-pypi-publish': 'dc37677b2e1c63e2034f94d8a5b11f265b73ba33',
+    };
+    const workflows = readdirSync('.github/workflows')
+      .filter((name) => name.endsWith('.yml') || name.endsWith('.yaml'))
+      .map((name) => readFileSync(path.join('.github/workflows', name), 'utf8'))
+      .join('\n');
+
+    for (const [action, expectedRef] of Object.entries(expectedRefs)) {
+      const escaped = action.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+      const refs = [...workflows.matchAll(new RegExp(`${escaped}@([^\\s#"']+)`, 'gu'))]
+        .map((match) => match[1]);
+      expect(refs.length, action).toBeGreaterThan(0);
+      expect(new Set(refs), action).toEqual(new Set([expectedRef]));
+    }
+  });
+
   it('forbids ambiguous generic tag provenance in favor of exact package publishers', () => {
     expect(existsSync('.github/workflows/release.yml')).toBe(false);
     expect(auditReleaseChain()).toEqual({ packages: 26, npm: 20, pypi: 5, go: 1 });
@@ -249,6 +287,28 @@ describe('release-chain coverage', () => {
     const reusable = readFileSync('.github/workflows/_publish-npm-package.yml', 'utf8');
     const reusableWithoutJava17 = reusable.replace("java-version: '17'", "java-version: '21'");
     expect(() => validateReusableNpmWorkflowText(reusableWithoutJava17)).toThrow(/TLA\+ execution guard/);
+  });
+
+  it('refuses stale checkout, Java, attestation, and PyPI publish action revisions', () => {
+    const npm = readFileSync('.github/workflows/_publish-npm-package.yml', 'utf8');
+    expect(() => validateReusableNpmWorkflowText(npm.replace(
+      'actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1',
+      'actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803',
+    ))).toThrow(/checkout action/);
+    expect(() => validateReusableNpmWorkflowText(npm.replace(
+      'actions/setup-java@b6effb05e454b25005698d916606bdc6ffcbf961',
+      'actions/setup-java@03ad4de0992f5dab5e18fcb136590ce7c4a0ac95',
+    ))).toThrow(/TLA\+ execution guard/);
+    expect(() => validateReusableNpmWorkflowText(npm.replace(
+      'actions/attest@508db95dd578ae2727ebd6217d5ba78e4fbda05d',
+      'actions/attest@f7c74d28b9d84cb8768d0b8ca14a4bac6ef463e6',
+    ))).toThrow(/attestation action/);
+
+    const pypi = readFileSync('.github/workflows/_publish-pypi-package.yml', 'utf8');
+    expect(() => validateReusablePypiWorkflowText(pypi.replace(
+      'pypa/gh-action-pypi-publish@dc37677b2e1c63e2034f94d8a5b11f265b73ba33',
+      'pypa/gh-action-pypi-publish@ba38be9e461d3875417946c167d0b5f3d385a247',
+    ))).toThrow(/release controls/);
   });
 
   it('refuses PyPI release workflows without the pinned TLA+ runtime required by the security case', () => {

@@ -12,6 +12,12 @@ const WORKFLOW_DIR = '.github/workflows';
 const REPOSITORY_URL = 'https://github.com/emiliaprotocol/emilia-protocol.git';
 const SKIP_DIRS = new Set(['.git', '.next', '.venv', 'node_modules', 'release-artifacts']);
 const CANONICAL_SEMVER = /^(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)$/;
+const RELEASE_ACTION_REFS = Object.freeze({
+    checkout: 'actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1',
+    setupJava: 'actions/setup-java@b6effb05e454b25005698d916606bdc6ffcbf961',
+    attest: 'actions/attest@508db95dd578ae2727ebd6217d5ba78e4fbda05d',
+    pypiPublish: 'pypa/gh-action-pypi-publish@dc37677b2e1c63e2034f94d8a5b11f265b73ba33',
+});
 function walkFiles(root, directory = root, files = []) {
     for (const entry of fs.readdirSync(directory, { withFileTypes: true })) {
         if (entry.isSymbolicLink())
@@ -101,6 +107,14 @@ function requireBefore(text, earlier, later, label) {
         throw new Error(`${label} must run ${earlier} before ${later}`);
     }
 }
+function requireOnlyActionRef(text, expected, label) {
+    const action = expected.slice(0, expected.lastIndexOf('@'));
+    const actionPattern = new RegExp(`${escapeRegExp(action)}@[^\\s#"']+`, 'gu');
+    const refs = text.match(actionPattern) ?? [];
+    if (refs.length === 0 || refs.some((ref) => ref !== expected)) {
+        throw new Error(`${label} must use only ${expected}`);
+    }
+}
 function forbidCredentialInjection(text, label) {
     if (/^\s*(?:NPM_TOKEN|NODE_AUTH_TOKEN|TWINE_PASSWORD|PYPI_API_TOKEN)\s*:/m.test(text)
         || /^\s*password\s*:/m.test(text)) {
@@ -110,7 +124,7 @@ function forbidCredentialInjection(text, label) {
 export function validateTlaSecurityCaseWorkflowText(text, label, evidenceCommand = 'npm run security-case:emit') {
     requireText(text, [
         'TLA2TOOLS_JAR: ${{ github.workspace }}/tla2tools.jar',
-        'actions/setup-java@03ad4de0992f5dab5e18fcb136590ce7c4a0ac95',
+        RELEASE_ACTION_REFS.setupJava,
         'distribution: temurin',
         "java-version: '17'",
         'TLA_VERSION: v1.7.4',
@@ -118,7 +132,8 @@ export function validateTlaSecurityCaseWorkflowText(text, label, evidenceCommand
         '"https://github.com/tlaplus/tlaplus/releases/download/${TLA_VERSION}/tla2tools.jar"',
         'echo "${TLA_SHA256}  tla2tools.jar" | sha256sum -c -',
     ], `${label} TLA+ execution guard`);
-    requireBefore(text, 'actions/setup-java@03ad4de0992f5dab5e18fcb136590ce7c4a0ac95', evidenceCommand, `${label} Java 17 guard`);
+    requireOnlyActionRef(text, RELEASE_ACTION_REFS.setupJava, `${label} Java setup action`);
+    requireBefore(text, RELEASE_ACTION_REFS.setupJava, evidenceCommand, `${label} Java 17 guard`);
     requireBefore(text, 'echo "${TLA_SHA256}  tla2tools.jar" | sha256sum -c -', evidenceCommand, `${label} TLA+ checksum guard`);
     return true;
 }
@@ -181,7 +196,7 @@ export function validateReusableNpmWorkflowText(text) {
         'actions/upload-artifact@',
         'actions/download-artifact@',
         'artifact-ids: ${{ needs.build.outputs.release_artifact_id }}',
-        'actions/attest@',
+        RELEASE_ACTION_REFS.attest,
         'subject-path: ${{ steps.validate.outputs.tarball }}',
         'npm publish "./${TESTED_TARBALL#./}" --access public --provenance --ignore-scripts',
         'cmp "$TESTED_TARBALL" "registry-copy/$REGISTRY_TARBALL"',
@@ -208,6 +223,8 @@ export function validateReusableNpmWorkflowText(text) {
         'node scripts/check-npm-package-dependencies.mjs --install-pinned "$PACKAGE_DIR"',
         'group: registry-publish-${{ inputs.package_name }}',
     ], 'reusable npm workflow');
+    requireOnlyActionRef(text, RELEASE_ACTION_REFS.checkout, 'reusable npm workflow checkout action');
+    requireOnlyActionRef(text, RELEASE_ACTION_REFS.attest, 'reusable npm workflow attestation action');
     if (text.includes('ref: ${{ inputs.release_tag }}')
         || text.includes('already exists; continuing to mandatory byte verification')
         || /\bgit ls-remote\b[^\n]*(?:\borigin\b|remote\.origin|git config)/u.test(text)) {
@@ -292,15 +309,18 @@ export function validateReusablePypiWorkflowText(text) {
         'npm run conformance:manifest',
         'verify-reproducible-wheel.mjs',
         'python -m pytest',
-        'actions/attest@',
+        RELEASE_ACTION_REFS.attest,
         'subject-path: ${{ steps.build.outputs.wheel }}',
         'subject-path: ${{ steps.build.outputs.sdist }}',
-        'gh-action-pypi-publish@',
+        RELEASE_ACTION_REFS.pypiPublish,
         'cmp "${{ steps.build.outputs.wheel }}" "$REGISTRY_WHEEL"',
         'cmp "${{ steps.build.outputs.sdist }}" "$REGISTRY_SDIST"',
         'scripts/require-release-approval.mjs',
         'group: registry-publish-pypi-${{ inputs.package_name }}',
     ], 'reusable PyPI workflow');
+    requireOnlyActionRef(text, RELEASE_ACTION_REFS.checkout, 'reusable PyPI workflow checkout action');
+    requireOnlyActionRef(text, RELEASE_ACTION_REFS.attest, 'reusable PyPI workflow attestation action');
+    requireOnlyActionRef(text, RELEASE_ACTION_REFS.pypiPublish, 'reusable PyPI workflow publish action');
     validateTlaSecurityCaseWorkflowText(text, 'reusable PyPI workflow');
     forbidCredentialInjection(text, 'reusable PyPI workflow');
     return true;
@@ -324,7 +344,7 @@ export function validateGoTagWorkflowText(text) {
         'go test ./...',
         'npm run security-case:emit',
         'npm run conformance:manifest',
-        'actions/attest@',
+        RELEASE_ACTION_REFS.attest,
         'github.rest.git.createRef',
         "context.ref !== 'refs/heads/main'",
         "includes.includes('refs/tags/packages/go-verify/v*')",
@@ -336,6 +356,8 @@ export function validateGoTagWorkflowText(text) {
         'diff -ru packages/go-verify "$PROXY_DIR"',
         'release-artifacts/go-verify-proxy.zip',
     ], 'Go tag workflow');
+    requireOnlyActionRef(text, RELEASE_ACTION_REFS.checkout, 'Go tag workflow checkout action');
+    requireOnlyActionRef(text, RELEASE_ACTION_REFS.attest, 'Go tag workflow attestation action');
     let workflow;
     try {
         workflow = YAML.parse(text);
@@ -438,11 +460,15 @@ export function validatePypiDirect(text, label) {
         'python -m pytest',
         'subject-path: ${{ steps.build.outputs.wheel }}',
         'subject-path: ${{ steps.build.outputs.sdist }}',
-        'gh-action-pypi-publish@',
+        RELEASE_ACTION_REFS.attest,
+        RELEASE_ACTION_REFS.pypiPublish,
         'cmp "${{ steps.build.outputs.wheel }}" "$REGISTRY_WHEEL"',
         'cmp "${{ steps.build.outputs.sdist }}" "$REGISTRY_SDIST"',
         'scripts/require-release-approval.mjs',
     ], label);
+    requireOnlyActionRef(text, RELEASE_ACTION_REFS.checkout, `${label} checkout action`);
+    requireOnlyActionRef(text, RELEASE_ACTION_REFS.attest, `${label} attestation action`);
+    requireOnlyActionRef(text, RELEASE_ACTION_REFS.pypiPublish, `${label} publish action`);
     validateManualPublisher(text, label, { direct: true });
     validateTlaSecurityCaseWorkflowText(text, label);
     forbidCredentialInjection(text, label);

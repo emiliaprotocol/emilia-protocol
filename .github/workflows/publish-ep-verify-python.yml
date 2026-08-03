@@ -55,7 +55,7 @@ jobs:
           cache: npm
 
       - name: Setup Java for the pinned formal-methods oracle
-        uses: actions/setup-java@03ad4de0992f5dab5e18fcb136590ce7c4a0ac95 # v5.6.0
+        uses: actions/setup-java@b6effb05e454b25005698d916606bdc6ffcbf961 # v5.7.0
         with:
           distribution: temurin
           java-version: '17'
@@ -123,17 +123,17 @@ jobs:
         run: python -m twine check "${{ steps.build.outputs.wheel }}" "${{ steps.build.outputs.sdist }}"
 
       - name: Attest exact wheel
-        uses: actions/attest@f7c74d28b9d84cb8768d0b8ca14a4bac6ef463e6 # v4.2.0
+        uses: actions/attest@508db95dd578ae2727ebd6217d5ba78e4fbda05d # v4.2.1
         with:
           subject-path: ${{ steps.build.outputs.wheel }}
 
       - name: Attest exact source distribution
-        uses: actions/attest@f7c74d28b9d84cb8768d0b8ca14a4bac6ef463e6 # v4.2.0
+        uses: actions/attest@508db95dd578ae2727ebd6217d5ba78e4fbda05d # v4.2.1
         with:
           subject-path: ${{ steps.build.outputs.sdist }}
 
       - name: Attest conformance and security manifests
-        uses: actions/attest@f7c74d28b9d84cb8768d0b8ca14a4bac6ef463e6 # v4.2.0
+        uses: actions/attest@508db95dd578ae2727ebd6217d5ba78e4fbda05d # v4.2.1
         with:
           subject-path: |
             security/security-case.json
@@ -152,7 +152,7 @@ jobs:
           retention-days: 90
 
       - name: Publish through PyPI Trusted Publishing
-        uses: pypa/gh-action-pypi-publish@ba38be9e461d3875417946c167d0b5f3d385a247 # v1.14.1
+        uses: pypa/gh-action-pypi-publish@dc37677b2e1c63e2034f94d8a5b11f265b73ba33 # v1.14.2
         with:
           packages-dir: release-artifacts/ep-verify-py/
 
