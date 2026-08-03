@@ -17,10 +17,10 @@ npx @emilia-protocol/scan protect ./tools.json --apply
 node emilia/verify-setup.mjs                       # synthetic local refusal check
 ```
 
-`scan protect` (also available as the legacy `emilia-harden` bin) reads the
-surface and generates the matching guard: an MCP
-`withMcpGuard` wrap for a tool list, or an Express middleware (`requireEmiliaReceipt`,
-`428 Receipt-Required` per consequential route) for an OpenAPI spec.
+`scan protect` (also available as the legacy `emilia-harden` bin) currently
+accepts MCP tool lists and generates a `withMcpGuard` wrap. OpenAPI remains a
+passive scan/manifest surface in this release: the command refuses to generate
+a verification-only HTTP middleware until durable one-use consumption is wired.
 
 It does exactly three things, and never more:
 
@@ -29,9 +29,9 @@ It does exactly three things, and never more:
    money movement, bank-detail changes, production deploys, IAM grants, data
    export, record deletion, decision overrides. Each match carries an assurance
    tier (`class_a` or `quorum`) and the fields the receipt must bind.
-3. **Protect one declared surface** — emit a proposed `agent-action-control`
-   manifest, a production wrapper, integration instructions, and (for MCP) a
-   local synthetic refusal check. You still review and install the wrapper.
+3. **Protect one declared MCP surface** — emit a proposed `agent-action-control`
+   manifest, a production wrapper, integration instructions, and a local
+   synthetic refusal check. You still review and install the wrapper.
 
 The MCP production wrapper requires a durable provenance ledger and a shared
 atomic consumption store. It refuses to initialize without both. The generated

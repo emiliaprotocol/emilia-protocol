@@ -175,7 +175,7 @@ test('scan protect routes to the dry-run hardener without writing files', () => 
   }).status, 0, 'dry-run must not create the output directory');
 });
 
-test('OpenAPI protection preserves distinct route paths in the generated HTTP guard', () => {
+test('OpenAPI scan preserves route selectors but protect refuses verification-only HTTP scaffolds', () => {
   const dir = mkdtempSync(join(tmpdir(), 'emilia-protect-openapi-'));
   const input = join(dir, 'openapi.json');
   writeFileSync(input, JSON.stringify({
@@ -200,12 +200,16 @@ test('OpenAPI protection preserves distinct route paths in the generated HTTP gu
     encoding: 'utf8',
   });
 
-  assert.equal(run.status, 0, `${run.stdout}\n${run.stderr}`);
-  const guard = readFileSync(join(dir, 'emilia', 'http-guard.mjs'), 'utf8');
-  const manifest = JSON.parse(readFileSync(join(dir, 'emilia', 'action-control.manifest.json'), 'utf8'));
-  assert.match(guard, /"path": "\/payments\/:paymentId"/);
-  assert.match(guard, /"path": "\/customers\/:customerId"/);
-  assert.doesNotMatch(guard, /"path": "\/"/);
+  assert.notEqual(run.status, 0, 'OpenAPI protect must not emit a replayable verification-only gate');
+  assert.match(`${run.stdout}${run.stderr}`, /OpenAPI protect is unavailable until durable one-use consumption is wired/);
+  assert.equal(spawnSync(process.execPath, ['-e', "import('node:fs').then(fs => process.exit(fs.existsSync('emilia') ? 1 : 0))"], {
+    cwd: dir,
+  }).status, 0, 'refused OpenAPI protect must not create an output directory');
+
+  const manifest = scanActions([
+    { name: 'sendWire', description: 'Send an outgoing wire transfer', http_method: 'post', route_path: '/payments/{paymentId}' },
+    { name: 'deleteCustomer', description: 'Permanently delete a customer', http_method: 'delete', route_path: '/customers/{customerId}' },
+  ], { source: 'openapi' }).manifest;
   assert.deepEqual(
     manifest.actions
       .filter((action) => String(action.id).startsWith('discovered.'))
