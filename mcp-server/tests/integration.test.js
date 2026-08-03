@@ -139,6 +139,15 @@ describe.skipIf(SKIP)('security boundaries', () => {
         await expect(handleTool('ep_trust_evaluate', { entity_id: 'e1' }))
             .rejects.toThrow(/duplicate object member/);
     });
+    it('refuses unpaired UTF-16 surrogate JSON at the MCP API boundary', async () => {
+        fetchSpy.mockResolvedValueOnce({
+            ok: true,
+            status: 200,
+            text: async () => String.raw `{"display_name":"attacker\uD800","entity_id":"e1"}`,
+        });
+        await expect(handleTool('ep_trust_profile', { entity_id: 'e1' }))
+            .rejects.toThrow(/unpaired (?:high )?surrogate/i);
+    });
 });
 // ---------------------------------------------------------------------------
 // ── 2. ep_trust_evaluate — POST, no auth ────────────────────────────────────
