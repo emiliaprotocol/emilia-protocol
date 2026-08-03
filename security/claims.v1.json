@@ -1807,7 +1807,7 @@
         { "file": "tests/release-reproducibility.test.ts", "title": "rejects a one-byte registry artifact substitution", "runner": "vitest" }
       ],
       "operational_evidence": [
-        { "file": ".github/workflows/_publish-npm-package.yml", "contains": ["actions/attest@f7c74d28b9d84cb8768d0b8ca14a4bac6ef463e6", "npm publish \"./${TESTED_TARBALL#./}\" --access public --provenance --ignore-scripts", "cmp \"$TESTED_TARBALL\" \"registry-copy/$REGISTRY_TARBALL\""] },
+        { "file": ".github/workflows/_publish-npm-package.yml", "contains": ["actions/attest@508db95dd578ae2727ebd6217d5ba78e4fbda05d", "npm publish \"./${TESTED_TARBALL#./}\" --access public --provenance --ignore-scripts", "cmp \"$TESTED_TARBALL\" \"registry-copy/$REGISTRY_TARBALL\""] },
         { "file": ".github/workflows/publish-verify-sdk.yml", "contains": ["uses: ./.github/workflows/_publish-npm-package.yml", "package_name: '@emilia-protocol/verify'"] }
       ],
       "formal": [
@@ -1846,7 +1846,7 @@
         { "file": "tests/release-reproducibility.test.ts", "title": "PyPI workflow builds twice, attests, publishes, and registry-compares the same wheel and sdist", "runner": "vitest" }
       ],
       "operational_evidence": [
-        { "file": ".github/workflows/publish-python-verify.yml", "contains": ["verify-reproducible-wheel.mjs packages/python-verify", "subject-path: ${{ steps.build.outputs.wheel }}", "subject-path: ${{ steps.build.outputs.sdist }}", "packages-dir: release-artifacts/python-verify/", "cmp \"${{ steps.build.outputs.wheel }}\" \"$REGISTRY_WHEEL\"", "cmp \"${{ steps.build.outputs.sdist }}\" \"$REGISTRY_SDIST\""] }
+        { "file": ".github/workflows/publish-python-verify.yml", "contains": ["verify-reproducible-wheel.mjs packages/python-verify", "actions/attest@508db95dd578ae2727ebd6217d5ba78e4fbda05d", "subject-path: ${{ steps.build.outputs.wheel }}", "subject-path: ${{ steps.build.outputs.sdist }}", "pypa/gh-action-pypi-publish@dc37677b2e1c63e2034f94d8a5b11f265b73ba33", "packages-dir: release-artifacts/python-verify/", "cmp \"${{ steps.build.outputs.wheel }}\" \"$REGISTRY_WHEEL\"", "cmp \"${{ steps.build.outputs.sdist }}\" \"$REGISTRY_SDIST\""] }
       ],
       "formal": [
         { "status": "not_modeled", "gap": "Hosted CI identity, PyPI storage, and trusted-publisher configuration are operational trust assumptions rather than protocol-state properties." }
@@ -1858,7 +1858,7 @@
     {
       "claim_id": "npm-pypi-releases-use-verifiable-bytes",
       "statement": "Every declared npm and PyPI release requires a version-bound owner dispatch and protected-environment approval or explicit recorded administrator bypass, tests source from an immutable tag on main, constructs reproducible package bytes, attests the exact artifact with security and conformance manifests, publishes through OIDC, and compares every registry artifact byte-for-byte after publication.",
-      "acceptance_roots": ["the checked-in EP-RELEASE-PACKAGE-REGISTRY-v1 inventory", "the FutureEnterprises owner identity", "the registry-publishing-approval environment", "GitHub Actions OIDC identity", "npm and PyPI trusted-publisher configuration"],
+      "acceptance_roots": ["the checked-in EP-RELEASE-PACKAGE-REGISTRY-v1 inventory", "the FutureEnterprises owner identity", "the registry-publishing-approval environment", "GitHub Actions OIDC identity", "pinned GitHub Action revisions", "npm and PyPI trusted-publisher configuration"],
       "enforcement_path": [
         { "language": "javascript", "file": "scripts/check-release-chain.mjs", "symbol": "auditReleaseChain", "exported": true },
         { "language": "javascript", "file": "scripts/require-release-approval.mjs", "symbol": "validateReleaseApproval", "exported": true },
@@ -1883,16 +1883,18 @@
         { "suite": "security/vectors.v1.json", "case_id": "reject_unapproved_release_dispatch", "polarity": "negative", "expect": { "valid": false } }
       ],
       "tests": [
+        { "file": "tests/release-chain-coverage.test.ts", "title": "keeps every governed workflow on the reviewed upstream action revisions", "runner": "vitest" },
         { "file": "tests/release-chain-coverage.test.ts", "title": "every declared npm and PyPI package uses reproducible registry-byte verification", "runner": "vitest" },
         { "file": "tests/release-chain-coverage.test.ts", "title": "refuses a reusable publisher with its post-registry byte comparison removed", "runner": "vitest" },
         { "file": "tests/release-chain-coverage.test.ts", "title": "refuses a reusable PyPI publisher with its post-registry byte comparison removed", "runner": "vitest" },
+        { "file": "tests/release-chain-coverage.test.ts", "title": "refuses stale checkout, Java, attestation, and PyPI publish action revisions", "runner": "vitest" },
         { "file": "tests/release-approval.test.ts", "title": "accepts an owner dispatch bound to the exact package version and tag", "runner": "vitest" },
         { "file": "tests/release-approval.test.ts", "title": "rejects automatic events, other actors, tag drift, and weak confirmation", "runner": "vitest" },
         { "file": "tests/release-approval.test.ts", "title": "binds the checked-out commit to a tag contained in main", "runner": "vitest" }
       ],
       "operational_evidence": [
-        { "file": ".github/workflows/_publish-npm-package.yml", "contains": ["scripts/require-release-approval.mjs", "npm run check:security-case", "npm run conformance:manifest:check", "verify-reproducible-package.mjs", "actions/attest@f7c74d28b9d84cb8768d0b8ca14a4bac6ef463e6", "npm publish \"./${TESTED_TARBALL#./}\" --access public --provenance --ignore-scripts", "cmp \"$TESTED_TARBALL\" \"registry-copy/$REGISTRY_TARBALL\""] },
-        { "file": ".github/workflows/_publish-pypi-package.yml", "contains": ["verify-reproducible-wheel.mjs", "gh-action-pypi-publish@", "cmp \"${{ steps.build.outputs.wheel }}\" \"$REGISTRY_WHEEL\"", "cmp \"${{ steps.build.outputs.sdist }}\" \"$REGISTRY_SDIST\""] },
+        { "file": ".github/workflows/_publish-npm-package.yml", "contains": ["scripts/require-release-approval.mjs", "npm run check:security-case", "npm run conformance:manifest:check", "verify-reproducible-package.mjs", "actions/setup-java@b6effb05e454b25005698d916606bdc6ffcbf961", "actions/attest@508db95dd578ae2727ebd6217d5ba78e4fbda05d", "npm publish \"./${TESTED_TARBALL#./}\" --access public --provenance --ignore-scripts", "cmp \"$TESTED_TARBALL\" \"registry-copy/$REGISTRY_TARBALL\""] },
+        { "file": ".github/workflows/_publish-pypi-package.yml", "contains": ["verify-reproducible-wheel.mjs", "actions/setup-java@b6effb05e454b25005698d916606bdc6ffcbf961", "actions/attest@508db95dd578ae2727ebd6217d5ba78e4fbda05d", "pypa/gh-action-pypi-publish@dc37677b2e1c63e2034f94d8a5b11f265b73ba33", "cmp \"${{ steps.build.outputs.wheel }}\" \"$REGISTRY_WHEEL\"", "cmp \"${{ steps.build.outputs.sdist }}\" \"$REGISTRY_SDIST\""] },
         { "file": ".github/workflows/publish-gate.yml", "contains": ["uses: ./.github/workflows/_publish-npm-package.yml", "package_name: '@emilia-protocol/gate'"] },
         { "file": ".github/workflows/publish-verify-sdk.yml", "contains": ["uses: ./.github/workflows/_publish-npm-package.yml", "package_name: '@emilia-protocol/verify'"] },
         { "file": ".github/workflows/publish-python-verify.yml", "contains": ["verify-reproducible-wheel.mjs packages/python-verify", "cmp \"${{ steps.build.outputs.sdist }}\" \"$REGISTRY_SDIST\""] },
@@ -1908,7 +1910,7 @@
     {
       "claim_id": "go-module-release-is-tag-and-proxy-bound",
       "statement": "The Go verifier release preflights the exact workflow-dispatched main commit with read-only credentials and the module's declared minimum Go toolchain. After protected-environment approval, a separate API-only job creates the exact version tag at that commit. A final read-only job downloads only from proxy.golang.org with sum.golang.org verification, checks Path, Version, Sum, GoModSum, and the complete VCS origin tuple, and refuses unless the proxy source tree equals the tested module source.",
-      "acceptance_roots": ["the checked-in Go module release identity", "the FutureEnterprises owner identity", "the registry-publishing-approval environment", "the workflow-dispatched refs/heads/main commit", "an active GitHub update-and-deletion ruleset for refs/tags/packages/go-verify/v*", "GitHub tag-ref authority", "proxy.golang.org and sum.golang.org"],
+      "acceptance_roots": ["the checked-in Go module release identity", "the FutureEnterprises owner identity", "the registry-publishing-approval environment", "the workflow-dispatched refs/heads/main commit", "pinned GitHub Action revisions", "an active GitHub update-and-deletion ruleset for refs/tags/packages/go-verify/v*", "GitHub tag-ref authority", "proxy.golang.org and sum.golang.org"],
       "enforcement_path": [
         { "language": "javascript", "file": "scripts/check-release-chain.mjs", "symbol": "discoverReleaseSurfaces", "exported": true },
         { "language": "javascript", "file": "scripts/check-release-chain.mjs", "symbol": "validateGoTagWorkflowText", "exported": true },
@@ -1941,7 +1943,7 @@
         { "file": "tests/release-approval.test.ts", "title": "permits tag creation only from the exact clean main commit with no existing tag", "runner": "vitest" }
       ],
       "operational_evidence": [
-        { "file": ".github/workflows/publish-go-verify.yml", "contains": ["ref: ${{ github.sha }}", "persist-credentials: false", "--expected-commit \"$GITHUB_SHA\"", "go-version-file: packages/go-verify/go.mod", "refs/tags/packages/go-verify/v*", "rules.has('deletion') && rules.has('update')", "github.rest.git.createRef", "p.Origin?.[key]", "p.GoModSum", "diff -ru packages/go-verify \"$PROXY_DIR\"", "release-artifacts/go-verify-proxy.zip"] },
+        { "file": ".github/workflows/publish-go-verify.yml", "contains": ["actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1", "actions/setup-java@b6effb05e454b25005698d916606bdc6ffcbf961", "actions/attest@508db95dd578ae2727ebd6217d5ba78e4fbda05d", "ref: ${{ github.sha }}", "persist-credentials: false", "--expected-commit \"$GITHUB_SHA\"", "go-version-file: packages/go-verify/go.mod", "refs/tags/packages/go-verify/v*", "rules.has('deletion') && rules.has('update')", "github.rest.git.createRef", "p.Origin?.[key]", "p.GoModSum", "diff -ru packages/go-verify \"$PROXY_DIR\"", "release-artifacts/go-verify-proxy.zip"] },
         { "file": "packages/go-verify/go-release.json", "contains": ["EP-GO-MODULE-RELEASE-v1", "github.com/emiliaprotocol/emilia-protocol/packages/go-verify/v2", "packages/go-verify/v2.4.2"] },
         { "file": "release/release-packages.v1.json", "contains": ["github.com/emiliaprotocol/emilia-protocol/packages/go-verify/v2", "publish-go-verify.yml", "go_tag"] },
         { "file": "packages/go-verify/signoff_compatibility_test.go", "contains": ["func(map[string]any, string, string) SignoffResult", "func(map[string]any, string) QuorumResult"] }
