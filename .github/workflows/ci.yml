@@ -1241,6 +1241,7 @@ jobs:
           tests/consequence-actuator-provider-record-postgres.test.ts
           tests/rollout-attempt-role-graph-postgres.test.ts
           tests/history-reconciliation-forward-postgres.test.ts
+          tests/capability-action-fence-migration-chain-postgres.test.ts
         env:
           INTEGRATION_POSTGRES: '1'
           PGHOST: localhost
