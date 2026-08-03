@@ -7,10 +7,13 @@
 -- authorizable twice under two ids. A budget masked it whenever an amount was
 -- attached and masked nothing at all for a zero-amount irreversible action.
 --
--- reserveSpend now reads the holder inside its transaction with FOR UPDATE,
--- which serializes two concurrent reservations for one action. This index is
--- the backstop for anything reaching the table outside that path, and it makes
--- the invariant a property of the database rather than of one code path.
+-- reserveSpend reads and locks an existing holder inside its transaction, and
+-- same-capability reservations serialize on the capability-state row. A custom
+-- namespace can span different capability rows, however, and PostgreSQL cannot
+-- lock an absent operation row. This index is therefore the authoritative race
+-- backstop as well as protection for every other table writer. The adapter
+-- translates its SQLSTATE 23505 collision into the same closed action_in_flight
+-- result as the preflight read.
 --
 -- Scoped to operation_namespace on purpose. The namespace is the authorization
 -- domain, defaulting to the capability id. Two DIFFERENT capabilities may each

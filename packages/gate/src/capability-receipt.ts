@@ -46,6 +46,7 @@ const MAX_DELEGATES = 64;
 const MAX_SCOPE_ACTIONS = 256;
 const ACTION_DIGEST_RE = /^sha256:[0-9a-f]{64}$/;
 const CAID_RE = /^caid:1:[a-z][a-z0-9.-]*\.[1-9][0-9]*:jcs-sha256:[A-Za-z0-9_-]{43}$/;
+const ACTION_FENCE_CONSTRAINT = 'ep_capability_operations_live_action_uniq';
 
 type KeyMaterial = KeyObject | string | Buffer;
 type CapabilityBudget = { amount: number; currency: string };
@@ -282,6 +283,20 @@ const ACTION_HOLDING_STATUSES = Object.freeze(['reserved', 'provider_entered', '
  */
 function actionHeldReason(status) {
   return status === 'committed' ? 'action_already_committed' : 'action_in_flight';
+}
+
+/** Postgres unique_violation on the live-action partial index, and only that one. */
+const LIVE_ACTION_UNIQUE_INDEX = 'ep_capability_operations_live_action_uniq';
+function isLiveActionUniqueViolation(error: unknown): boolean {
+  return isRecord(error)
+    && error.code === '23505'
+    && error.constraint === LIVE_ACTION_UNIQUE_INDEX;
+}
+
+function isActionFenceConflict(error: unknown): boolean {
+  return isRecord(error)
+    && error.code === '23505'
+    && error.constraint === ACTION_FENCE_CONSTRAINT;
 }
 
 function normalizeAllowanceStatusAssertion(value: unknown): AllowanceStatusAssertion {
@@ -1361,10 +1376,10 @@ export const CAPABILITY_SQL = Object.freeze({
   updateAllowanceStatus: `UPDATE ${CAPABILITY_ALLOWANCE_STATUS_TABLE} SET allowance_digest = $4, revision = $5, status_epoch = $6, status_head_digest = $7, status = $8, updated_at = $9 WHERE allowance_profile_id = $1 AND status_epoch = $2 AND status_head_digest = $3`,
   readOperation: `SELECT operation_namespace, operation_id, capability_id, action_digest, amount, currency, status, reservation_token, outcome, reconciliation_outcome, reconciliation_evidence_digest, allowance_revision, allowance_status_epoch, allowance_status_head_digest, reconciled_at, reserved_at, entry_deadline_at, provider_entry_at, released_at, release_reason, release_evidence_profile, release_evidence_digest FROM ${CAPABILITY_OPERATION_TABLE} WHERE operation_namespace = $1 AND operation_id = $2 FOR UPDATE`,
   // Is this exact action already held by SOME operation, whatever its id? The
-  // FOR UPDATE takes the row lock so two concurrent reservations for one action
-  // serialize here rather than both passing the read. The partial unique index
-  // in migration 20260803010000 is the backstop if a caller reaches the table
-  // outside this transaction.
+  // An existing holder is row-locked here. Same-capability reservations also
+  // serialize on readState. For custom namespaces spanning capability rows, the
+  // partial unique index in migration 20260803010000 is the authoritative race
+  // backstop because PostgreSQL cannot lock a row that does not exist yet.
   readActionHolder: `SELECT operation_id, status FROM ${CAPABILITY_OPERATION_TABLE} WHERE operation_namespace = $1 AND action_digest = $2 AND status IN ('reserved', 'provider_entered', 'committed') LIMIT 1 FOR UPDATE`,
   insertOperation: `INSERT INTO ${CAPABILITY_OPERATION_TABLE} (operation_namespace, capability_id, operation_id, action_digest, amount, currency, status, reservation_token, reserved_at, entry_deadline_at, allowance_revision, allowance_status_epoch, allowance_status_head_digest) VALUES ($1, $2, $3, $4, $5, $6, 'reserved', $7, $8, $9, $10, $11, $12)`,
   reserveState: `UPDATE ${CAPABILITY_STATE_TABLE} SET reserved_amount = reserved_amount + $2 WHERE capability_id = $1 AND budget_amount - consumed_amount - reserved_amount >= $2`,
@@ -1477,7 +1492,8 @@ export function createPostgresCapabilityStore({
       validateOperationId(operationId); validateOperationNamespace(operationNamespace); validateAmount(amount); validateCurrency(currency);
       validateActionDigest(actionDigest);
       const at = nowMs(now);
-      return transaction(async (query) => {
+      try {
+        return await transaction(async (query) => {
         const stateResult = await query(CAPABILITY_SQL.readState, [capabilityId]);
         const state = stateResult?.rows?.[0];
         if (!state) return { ok: false, reason: 'capability_not_registered' };
@@ -1528,20 +1544,34 @@ export function createPostgresCapabilityStore({
         const reserved = await query(CAPABILITY_SQL.reserveState, [capabilityId, amount]);
         if (reserved?.rowCount !== 1) return { ok: false, reason: 'budget_reservation_conflict' };
         const entryDeadlineAt = entryDeadline(at, capabilityExpiry, entryTimeoutMs);
-        await query(CAPABILITY_SQL.insertOperation, [
-          operationNamespace,
-          capabilityId,
-          operationId,
-          actionDigest,
-          amount,
-          currency,
-          token,
-          new Date(at).toISOString(),
-          new Date(entryDeadlineAt).toISOString(),
-          assertedAllowanceStatus?.revision ?? null,
-          assertedAllowanceStatus?.status_epoch ?? null,
-          assertedAllowanceStatus?.status_head_digest ?? null,
-        ]);
+        try {
+          await query(CAPABILITY_SQL.insertOperation, [
+            operationNamespace,
+            capabilityId,
+            operationId,
+            actionDigest,
+            amount,
+            currency,
+            token,
+            new Date(at).toISOString(),
+            new Date(entryDeadlineAt).toISOString(),
+            assertedAllowanceStatus?.revision ?? null,
+            assertedAllowanceStatus?.status_epoch ?? null,
+            assertedAllowanceStatus?.status_head_digest ?? null,
+          ]);
+        } catch (error) {
+          // The readActionHolder above takes FOR UPDATE, so two reservations in
+          // the same transaction serialize there. A caller reaching this table
+          // on another connection can still lose the race, and then the partial
+          // unique index rejects the insert. Losing a race is a refusal with a
+          // reason, not an exception: a thrown 23505 would escape reserveSpend's
+          // result contract and reach the caller as a crash, which is the
+          // opposite of the property this index exists to provide.
+          if (isLiveActionUniqueViolation(error)) {
+            return { ok: false, reason: 'action_in_flight', action_digest: actionDigest };
+          }
+          throw error;
+        }
         return {
           ok: true,
           operation_id: operationId,
@@ -1549,7 +1579,21 @@ export function createPostgresCapabilityStore({
           entry_deadline_at: entryDeadlineAt,
           remaining: available - amount,
         };
-      });
+        });
+      } catch (error) {
+        // Two transactions can both observe an empty custom namespace before
+        // either inserts. The database constraint decides the winner. Translate
+        // that expected race into the same closed result as the preflight read;
+        // the transaction contract must roll back the budget reservation first.
+        if (isActionFenceConflict(error)) {
+          return {
+            ok: false,
+            reason: 'action_in_flight',
+            action_digest: actionDigest,
+          };
+        }
+        throw error;
+      }
     },
     async beginProviderEntry({ capabilityId, operationNamespace = capabilityId, operationId, reservationToken, now = Date.now }: BeginProviderEntryOptions = {}) {
       validateOperationId(operationId); validateOperationNamespace(operationNamespace);
