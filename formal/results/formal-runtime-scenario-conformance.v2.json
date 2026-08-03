@@ -591,7 +591,7 @@
     },
     {
       "path": "packages/gate/dist/capability-receipt.js",
-      "sha256": "d068388d1904db1d78efedd8e2c5c27ee4239ee0172197bac4500b0a42ecfb53"
+      "sha256": "a93a209c882ec453dfe9c0779ccdfc27f55d6062693205f58acf8bb3ba63a19c"
     },
     {
       "path": "packages/gate/dist/cf1-conformance.js",
@@ -799,7 +799,7 @@
     },
     {
       "path": "packages/gate/src/capability-receipt.ts",
-      "sha256": "09791ddd6abe84c4b2c01c251c7bc1c5d9b19cea809b26549619cbaa504b6a22"
+      "sha256": "4f08812840f7b2d8332fd37c0e763c7477604d1663a7c9b7e926a43ffada2f0c"
     },
     {
       "path": "packages/gate/src/challenge-store.ts",
