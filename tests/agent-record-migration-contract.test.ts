@@ -7,6 +7,10 @@ const migration = readFileSync(
   new URL('../supabase/migrations/20260803020000_agent_record_v1.sql', import.meta.url),
   'utf8',
 );
+const awsDeploymentGuide = readFileSync(
+  new URL('../docs/deployment/AWS-DEPLOYMENT-GUIDE.md', import.meta.url),
+  'utf8',
+);
 
 describe('Agent Record v1 migration source contract', () => {
   it('uses a dedicated least-privilege NOLOGIN owner and forced RLS', () => {
@@ -124,6 +128,27 @@ describe('Agent Record v1 migration source contract', () => {
     );
   });
 
+  it('removes stale service-role Arena write ACLs without removing reads or approved RPCs', () => {
+    expect(migration).toContain(
+      'REVOKE INSERT, UPDATE, DELETE\n  ON TABLE public.arena_shares\n  FROM service_role;',
+    );
+    expect(migration).not.toMatch(
+      /REVOKE[\s\S]{0,80}SELECT[\s\S]{0,80}ON TABLE public\.arena_shares[\s\S]{0,40}service_role/i,
+    );
+    expect(migration).toContain(
+      'GRANT EXECUTE ON FUNCTION public.read_agent_record_arena_source(TEXT, TEXT, TEXT)\n  TO service_role, agent_record_store_owner;',
+    );
+    expect(migration).toContain(
+      'GRANT EXECUTE ON FUNCTION public.create_agent_record(UUID, TEXT, TEXT, TEXT, UUID, TEXT, TEXT, TEXT, TEXT, TEXT, TEXT, TEXT, TIMESTAMPTZ, TIMESTAMPTZ, TIMESTAMPTZ, JSONB)\n  TO service_role;',
+    );
+    expect(migration).toContain(
+      'GRANT EXECUTE ON FUNCTION public.revoke_agent_record(TEXT, TEXT, TEXT)\n  TO service_role;',
+    );
+    expect(migration).toContain(
+      'GRANT EXECUTE ON FUNCTION public.read_agent_record_public(TEXT)\n  TO service_role;',
+    );
+  });
+
   it('keeps source preparation read-only and server-only', () => {
     const sourceReader = migration.match(
       /CREATE FUNCTION public\.read_agent_record_arena_source[\s\S]*?\nEND\n\$agent_record_arena_source\$;/,
@@ -205,6 +230,20 @@ describe('Agent Record v1 migration source contract', () => {
     );
     expect(migration).toContain(
       'REVOKE ALL ON FUNCTION agent_record_control_private.revoke_arena_source(TEXT, TIMESTAMPTZ)\n  FROM PUBLIC, anon, authenticated, service_role;',
+    );
+  });
+
+  it('requires atomic direct-Postgres application and remains Supabase-transaction compatible', () => {
+    const schemaStep = awsDeploymentGuide.match(
+      /## Step 2: Apply EP Schema[\s\S]*?(?=\n---\n\n## Step 3:)/,
+    )?.[0];
+    expect(schemaStep).toBeDefined();
+    expect(schemaStep).toContain(
+      'psql --single-transaction --set=ON_ERROR_STOP=1 \\\n    "$DATABASE_URL" --file "$f"',
+    );
+    expect(schemaStep).not.toContain('psql "$DATABASE_URL" -f "$f"');
+    expect(migration).not.toMatch(
+      /^\s*(?:BEGIN|START\s+TRANSACTION|COMMIT|ROLLBACK)\s*;/im,
     );
   });
 });

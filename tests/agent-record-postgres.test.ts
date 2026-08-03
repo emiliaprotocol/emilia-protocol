@@ -8,6 +8,7 @@
  * lane sets that flag and therefore cannot silently replace this with a mock.
  */
 import { createHash } from 'node:crypto';
+import { spawnSync } from 'node:child_process';
 import { readFileSync } from 'node:fs';
 
 import pg from 'pg';
@@ -63,6 +64,21 @@ let admin: pg.Client;
 let database: pg.Pool;
 let adminConnected = false;
 let initiallyPresentRoles = new Set<string>();
+let initialServiceRoleBypassRls: boolean | undefined;
+let deploymentRollbackProof: {
+  psqlExitStatus: number | null;
+  psqlReportedInjectedFailure: boolean;
+  currentUser: string;
+  sessionUser: string;
+  ownerRoleUnchanged: boolean;
+  ownerMembershipUnchanged: boolean;
+  privateSchemas: string[];
+  publicFunctions: string[];
+  serviceRoleCanSelect: boolean;
+  serviceRoleCanInsert: boolean;
+  serviceRoleCanUpdate: boolean;
+  serviceRoleCanDelete: boolean;
+};
 
 function identifier(value: string): string {
   return `"${value.replaceAll('"', '""')}"`;
@@ -181,6 +197,32 @@ async function asRole<T>(
   }
 }
 
+async function inRollbackAsRole<T>(
+  role: (typeof GENERIC_ROLES)[number],
+  callback: (client: pg.PoolClient) => Promise<T>,
+): Promise<T> {
+  const client = await database.connect();
+  try {
+    await client.query('BEGIN');
+    await client.query(`SET LOCAL ROLE ${identifier(role)}`);
+    return await callback(client);
+  } finally {
+    await client.query('ROLLBACK').catch(() => undefined);
+    client.release();
+  }
+}
+
+async function rolledBackRoleOutcome(
+  callback: (client: pg.PoolClient) => Promise<unknown>,
+): Promise<string> {
+  try {
+    await inRollbackAsRole('service_role', callback);
+    return 'SUCCEEDED';
+  } catch (error) {
+    return (error as { code?: string }).code ?? 'UNKNOWN_ERROR';
+  }
+}
+
 async function createRecord(
   input: CreateInput,
   role: (typeof GENERIC_ROLES)[number] = 'service_role',
@@ -291,6 +333,14 @@ async function cleanup(): Promise<void> {
   if (database) await database.end();
   await terminateTestDatabaseConnections();
   await admin.query(`DROP DATABASE IF EXISTS ${identifier(DATABASE)}`);
+  if (
+    initiallyPresentRoles.has('service_role')
+    && initialServiceRoleBypassRls !== undefined
+  ) {
+    await admin.query(
+      `ALTER ROLE service_role ${initialServiceRoleBypassRls ? 'BYPASSRLS' : 'NOBYPASSRLS'}`,
+    );
+  }
   for (const role of [...GLOBAL_ROLES].reverse()) {
     if (!initiallyPresentRoles.has(role)) {
       await admin.query(`DROP ROLE IF EXISTS ${identifier(role)}`);
@@ -318,11 +368,14 @@ suite('Agent Record v1 RPC lifecycle on PostgreSQL 17', () => {
       .toBeLessThan(180000);
     expect(environment.rows[0].is_superuser).toBe(true);
 
-    const roles = await admin.query<{ rolname: string }>(
-      'SELECT rolname FROM pg_catalog.pg_roles WHERE rolname = ANY($1::text[])',
+    const roles = await admin.query<{ rolname: string; rolbypassrls: boolean }>(
+      'SELECT rolname, rolbypassrls FROM pg_catalog.pg_roles WHERE rolname = ANY($1::text[])',
       [GLOBAL_ROLES],
     );
     initiallyPresentRoles = new Set(roles.rows.map(({ rolname }) => rolname));
+    initialServiceRoleBypassRls = roles.rows.find(
+      ({ rolname }) => rolname === 'service_role',
+    )?.rolbypassrls;
 
     await terminateTestDatabaseConnections();
     await admin.query(`DROP DATABASE IF EXISTS ${identifier(DATABASE)}`);
@@ -334,6 +387,7 @@ suite('Agent Record v1 RPC lifecycle on PostgreSQL 17', () => {
         END $role$
       `);
     }
+    await admin.query('ALTER ROLE service_role BYPASSRLS');
     await admin.query(`CREATE DATABASE ${identifier(DATABASE)} TEMPLATE template0`);
     database = new pg.Pool({ ...baseConnection, database: DATABASE, max: 10 });
 
@@ -390,7 +444,9 @@ suite('Agent Record v1 RPC lifecycle on PostgreSQL 17', () => {
       ALTER TABLE public.arena_shares ENABLE ROW LEVEL SECURITY;
       ALTER TABLE public.arena_shares FORCE ROW LEVEL SECURITY;
       REVOKE ALL ON TABLE public.arena_shares
-        FROM PUBLIC, anon, authenticated, service_role;
+        FROM PUBLIC, anon, authenticated;
+      GRANT SELECT, INSERT, UPDATE, DELETE ON TABLE public.arena_shares
+        TO service_role;
 
       CREATE FUNCTION public.publish_arena_refusal(
         p_token_hash TEXT,
@@ -523,7 +579,158 @@ suite('Agent Record v1 RPC lifecycle on PostgreSQL 17', () => {
       refusalDigest: REFUSAL_DIGEST,
       refusedAt,
     });
-    await database.query(migration);
+
+    const cleanupMarker = '\nDO $restore_migration_role$';
+    if (!migration.includes(cleanupMarker)) {
+      throw new Error('Agent Record migration cleanup marker is missing');
+    }
+    const failingMigration = migration.replace(
+      cleanupMarker,
+      `
+DO $agent_record_injected_deployment_failure$
+BEGIN
+  RAISE EXCEPTION 'injected pre-cleanup deployment failure'
+    USING ERRCODE = 'XX000';
+END
+$agent_record_injected_deployment_failure$;
+${cleanupMarker}`,
+    );
+    const migrationClient = await database.connect();
+    try {
+      const rollbackBaseline = await migrationClient.query<{
+        ownerRoleExists: boolean;
+        ownerMembershipExists: boolean;
+      }>(`
+        SELECT
+          EXISTS (
+            SELECT 1 FROM pg_catalog.pg_roles
+             WHERE rolname = 'agent_record_store_owner'
+          ) AS "ownerRoleExists",
+          EXISTS (
+            SELECT 1
+              FROM pg_catalog.pg_auth_members AS membership
+              JOIN pg_catalog.pg_roles AS granted_role
+                ON granted_role.oid = membership.roleid
+              JOIN pg_catalog.pg_roles AS member_role
+                ON member_role.oid = membership.member
+             WHERE granted_role.rolname = 'agent_record_store_owner'
+               AND member_role.rolname = SESSION_USER
+          ) AS "ownerMembershipExists"
+      `);
+      const directPostgresFailure = spawnSync(
+        'psql',
+        [
+          '--single-transaction',
+          '--set=ON_ERROR_STOP=1',
+          '--file=-',
+        ],
+        {
+          encoding: 'utf8',
+          env: {
+            ...process.env,
+            PGHOST: baseConnection.host,
+            PGPORT: String(baseConnection.port),
+            PGUSER: baseConnection.user,
+            PGPASSWORD: baseConnection.password,
+            PGDATABASE: DATABASE,
+          },
+          input: failingMigration,
+        },
+      );
+
+      const rollbackState = await migrationClient.query<{
+        currentUser: string;
+        sessionUser: string;
+        ownerRoleExists: boolean;
+        ownerMembershipExists: boolean;
+        privateSchemas: string[];
+        publicFunctions: string[];
+        serviceRoleCanSelect: boolean;
+        serviceRoleCanInsert: boolean;
+        serviceRoleCanUpdate: boolean;
+        serviceRoleCanDelete: boolean;
+      }>(`
+        SELECT
+          CURRENT_USER::TEXT AS "currentUser",
+          SESSION_USER::TEXT AS "sessionUser",
+          EXISTS (
+            SELECT 1 FROM pg_catalog.pg_roles
+             WHERE rolname = 'agent_record_store_owner'
+          ) AS "ownerRoleExists",
+          EXISTS (
+            SELECT 1
+              FROM pg_catalog.pg_auth_members AS membership
+              JOIN pg_catalog.pg_roles AS granted_role
+                ON granted_role.oid = membership.roleid
+              JOIN pg_catalog.pg_roles AS member_role
+                ON member_role.oid = membership.member
+             WHERE granted_role.rolname = 'agent_record_store_owner'
+               AND member_role.rolname = SESSION_USER
+          ) AS "ownerMembershipExists",
+          ARRAY(
+            SELECT namespace.nspname
+              FROM pg_catalog.pg_namespace AS namespace
+             WHERE namespace.nspname IN (
+               'agent_record_private',
+               'agent_record_control_private'
+             )
+             ORDER BY namespace.nspname
+          )::TEXT[] AS "privateSchemas",
+          ARRAY(
+            SELECT procedure.proname
+              FROM pg_catalog.pg_proc AS procedure
+              JOIN pg_catalog.pg_namespace AS namespace
+                ON namespace.oid = procedure.pronamespace
+             WHERE namespace.nspname = 'public'
+               AND procedure.proname LIKE '%agent_record%'
+             ORDER BY procedure.proname
+          )::TEXT[] AS "publicFunctions",
+          pg_catalog.has_table_privilege(
+            'service_role', 'public.arena_shares', 'SELECT'
+          ) AS "serviceRoleCanSelect",
+          pg_catalog.has_table_privilege(
+            'service_role', 'public.arena_shares', 'INSERT'
+          ) AS "serviceRoleCanInsert",
+          pg_catalog.has_table_privilege(
+            'service_role', 'public.arena_shares', 'UPDATE'
+          ) AS "serviceRoleCanUpdate",
+          pg_catalog.has_table_privilege(
+            'service_role', 'public.arena_shares', 'DELETE'
+          ) AS "serviceRoleCanDelete"
+      `);
+      deploymentRollbackProof = {
+        psqlExitStatus: directPostgresFailure.status,
+        psqlReportedInjectedFailure:
+          directPostgresFailure.stderr.includes(
+            'injected pre-cleanup deployment failure',
+          ),
+        currentUser: rollbackState.rows[0].currentUser,
+        sessionUser: rollbackState.rows[0].sessionUser,
+        ownerRoleUnchanged:
+          rollbackState.rows[0].ownerRoleExists
+          === rollbackBaseline.rows[0].ownerRoleExists,
+        ownerMembershipUnchanged:
+          rollbackState.rows[0].ownerMembershipExists
+          === rollbackBaseline.rows[0].ownerMembershipExists,
+        privateSchemas: rollbackState.rows[0].privateSchemas,
+        publicFunctions: rollbackState.rows[0].publicFunctions,
+        serviceRoleCanSelect: rollbackState.rows[0].serviceRoleCanSelect,
+        serviceRoleCanInsert: rollbackState.rows[0].serviceRoleCanInsert,
+        serviceRoleCanUpdate: rollbackState.rows[0].serviceRoleCanUpdate,
+        serviceRoleCanDelete: rollbackState.rows[0].serviceRoleCanDelete,
+      };
+
+      await migrationClient.query('BEGIN');
+      try {
+        await migrationClient.query(migration);
+        await migrationClient.query('COMMIT');
+      } catch (error) {
+        await migrationClient.query('ROLLBACK').catch(() => undefined);
+        throw error;
+      }
+    } finally {
+      migrationClient.release();
+    }
   }, 30_000);
 
   afterAll(async () => {
@@ -538,6 +745,23 @@ suite('Agent Record v1 RPC lifecycle on PostgreSQL 17', () => {
     } finally {
       await admin.end();
     }
+  });
+
+  it('rolls back every schema, grant, role, and function after a pre-cleanup deployment failure', () => {
+    expect(deploymentRollbackProof).toEqual({
+      psqlExitStatus: 3,
+      psqlReportedInjectedFailure: true,
+      currentUser: baseConnection.user,
+      sessionUser: baseConnection.user,
+      ownerRoleUnchanged: true,
+      ownerMembershipUnchanged: true,
+      privateSchemas: [],
+      publicFunctions: [],
+      serviceRoleCanSelect: true,
+      serviceRoleCanInsert: true,
+      serviceRoleCanUpdate: true,
+      serviceRoleCanDelete: true,
+    });
   });
 
   it('atomically publishes one refusal and creates one record without returning the owner token', async () => {
@@ -597,6 +821,142 @@ suite('Agent Record v1 RPC lifecycle on PostgreSQL 17', () => {
     expect(JSON.stringify(stored.rows[0].public_projection)).not.toMatch(
       /arena_share_id|arena_share_|\/arena\/|\/api\/arena\/refusals/,
     );
+  });
+
+  it('strips stale BYPASSRLS service-role writes while preserving reads and approved RPCs', async () => {
+    const privileges = await database.query<{
+      bypass_rls: boolean;
+      can_select: boolean;
+      can_insert: boolean;
+      can_update: boolean;
+      can_delete: boolean;
+      can_publish: boolean;
+      can_create_record: boolean;
+      can_read_record: boolean;
+      can_revoke_record: boolean;
+    }>(`
+      SELECT
+        role.rolbypassrls AS bypass_rls,
+        pg_catalog.has_table_privilege(
+          'service_role', 'public.arena_shares', 'SELECT'
+        ) AS can_select,
+        pg_catalog.has_table_privilege(
+          'service_role', 'public.arena_shares', 'INSERT'
+        ) AS can_insert,
+        pg_catalog.has_table_privilege(
+          'service_role', 'public.arena_shares', 'UPDATE'
+        ) AS can_update,
+        pg_catalog.has_table_privilege(
+          'service_role', 'public.arena_shares', 'DELETE'
+        ) AS can_delete,
+        pg_catalog.has_function_privilege(
+          'service_role', 'public.publish_arena_refusal(text,text)', 'EXECUTE'
+        ) AS can_publish,
+        pg_catalog.has_function_privilege(
+          'service_role',
+          'public.create_agent_record(uuid,text,text,text,uuid,text,text,text,text,text,text,text,timestamptz,timestamptz,timestamptz,jsonb)',
+          'EXECUTE'
+        ) AS can_create_record,
+        pg_catalog.has_function_privilege(
+          'service_role', 'public.read_agent_record_public(text)', 'EXECUTE'
+        ) AS can_read_record,
+        pg_catalog.has_function_privilege(
+          'service_role', 'public.revoke_agent_record(text,text,text)', 'EXECUTE'
+        ) AS can_revoke_record
+      FROM pg_catalog.pg_roles AS role
+      WHERE role.rolname = 'service_role'
+    `);
+    expect(privileges.rows).toEqual([{
+      bypass_rls: true,
+      can_select: true,
+      can_insert: false,
+      can_update: false,
+      can_delete: false,
+      can_publish: true,
+      can_create_record: true,
+      can_read_record: true,
+      can_revoke_record: true,
+    }]);
+
+    const share = await database.query<{ share_id: string }>(
+      'SELECT share_id FROM public.arena_shares WHERE attempt_id = $1',
+      [ARENA_ATTEMPT_ID],
+    );
+    const shareId = share.rows[0].share_id;
+    const writeOutcomes = {
+      insert: await rolledBackRoleOutcome((client) => client.query(
+        `INSERT INTO public.arena_shares (
+           share_id, tenant_id, session_row_id, session_id, challenge_id,
+           challenge_version, attempt_id, attempt_nonce, public_projection
+         )
+         SELECT $1, session.tenant_id, session.id, session.session_id,
+                session.challenge_id, session.challenge_version,
+                $2, $3, '{}'::jsonb
+           FROM public.arena_sessions AS session
+          WHERE session.session_id = $4`,
+        [
+          `arena_share_${'f'.repeat(40)}`,
+          `arena_attempt_${'f'.repeat(32)}`,
+          `nonce_${'f'.repeat(32)}`,
+          ARENA_SESSION_ID,
+        ],
+      )),
+      update: await rolledBackRoleOutcome((client) => client.query(
+        'UPDATE public.arena_shares SET revoked_at = clock_timestamp() WHERE share_id = $1',
+        [shareId],
+      )),
+      gucAssistedRevocation: await rolledBackRoleOutcome(async (client) => {
+        await client.query(
+          `SELECT pg_catalog.set_config(
+             'ep.agent_record_arena_share_revoke', $1, TRUE
+           )`,
+          [shareId],
+        );
+        return client.query(
+          'UPDATE public.arena_shares SET revoked_at = clock_timestamp() WHERE share_id = $1',
+          [shareId],
+        );
+      }),
+      delete: await rolledBackRoleOutcome((client) => client.query(
+        'DELETE FROM public.arena_shares WHERE share_id = $1',
+        [shareId],
+      )),
+    };
+    expect(writeOutcomes).toEqual({
+      insert: '42501',
+      update: '42501',
+      gucAssistedRevocation: '42501',
+      delete: '42501',
+    });
+
+    const directRead = await asRole('service_role', (client) => client.query<{
+      share_id: string;
+    }>('SELECT share_id FROM public.arena_shares WHERE share_id = $1', [shareId]));
+    expect(directRead.rows).toEqual([{ share_id: shareId }]);
+    const preparedSource = await asRole('service_role', (client) => client.query<{
+      source: JsonObject;
+    }>(
+      'SELECT public.read_agent_record_arena_source($1, $2, $3) AS source',
+      [ARENA_TOKEN_HASH, ARENA_SESSION_ID, ARENA_ATTEMPT_ID],
+    ));
+    expect(preparedSource.rows[0].source).toMatchObject({
+      arena_session_id: ARENA_SESSION_ID,
+      attempt_id: ARENA_ATTEMPT_ID,
+    });
+    const published = await asRole('service_role', (client) => client.query<{
+      result: JsonObject;
+    }>(
+      'SELECT public.publish_arena_refusal($1, $2) AS result',
+      [ARENA_TOKEN_HASH, ARENA_ATTEMPT_ID],
+    ));
+    expect(published.rows[0].result).toMatchObject({
+      ok: true,
+      idempotent: true,
+      share_id: shareId,
+    });
+    await expect(readPublic(RECORD_ID)).resolves.toMatchObject({
+      record_id: RECORD_ID,
+    });
   });
 
   it('rolls back the public share when an injected record insert failure follows publication', async () => {

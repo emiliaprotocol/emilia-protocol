@@ -218,6 +218,12 @@ REVOKE ALL ON FUNCTION agent_record_control_private.publish_arena_source(TEXT, T
 GRANT EXECUTE ON FUNCTION agent_record_control_private.publish_arena_source(TEXT, TEXT, TEXT)
   TO agent_record_store_owner;
 
+-- service_role retains the existing read and bounded SECURITY DEFINER RPC
+-- surfaces. Remove any stale direct-write ACLs explicitly: BYPASSRLS skips row
+-- policies, but it does not bypass table privileges.
+REVOKE INSERT, UPDATE, DELETE
+  ON TABLE public.arena_shares
+  FROM service_role;
 GRANT SELECT (share_id, public_projection, revoked_at)
   ON TABLE public.arena_shares TO agent_record_store_owner;
 CREATE POLICY arena_shares_agent_record_source_read
