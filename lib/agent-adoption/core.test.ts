@@ -142,6 +142,18 @@ describe('EP Agent Adoption / Operating Bond domain kernel', () => {
     expect(getterCalls).toBe(0);
   });
 
+  it('rejects required fields that are hidden as non-enumerable properties', () => {
+    const input = candidate();
+    Object.defineProperty(input, 'label', {
+      configurable: true,
+      enumerable: false,
+      value: 'Atlas',
+      writable: true,
+    });
+
+    expectInputCode(input, 'invalid_json_domain');
+  });
+
   it('rejects proxies before any inspection trap can execute', () => {
     let trapCalls = 0;
     const proxy = new Proxy({ hidden: true }, {
@@ -203,9 +215,15 @@ describe('EP Agent Adoption / Operating Bond domain kernel', () => {
       () => null,
     );
 
+    const oversizedCanonicalObject = candidate();
+    for (let index = 0; index < 90; index += 1) {
+      oversizedCanonicalObject[`field_${index}`] = 'x'.repeat(100);
+    }
+
     expectInputCode(oversized, 'invalid_json_domain');
     expectInputCode(candidate({ extra: deepRoot }), 'invalid_json_domain');
     expectInputCode(candidate({ extra: tooManyNodes }), 'invalid_json_domain');
+    expectInputCode(oversizedCanonicalObject, 'invalid_json_domain');
   });
 
   it('bounds and canonicalizes human-readable labels', () => {
@@ -233,6 +251,7 @@ describe('EP Agent Adoption / Operating Bond domain kernel', () => {
   });
 
   it.each([
+    'not-a-url',
     'http://example.com/agent',
     'https://user:password@example.com/agent',
     'https://example.com/agent?token=secret',

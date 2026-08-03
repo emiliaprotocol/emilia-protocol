@@ -350,6 +350,23 @@ describe('Agent Adoption service', () => {
     ]);
   });
 
+  it('rejects malformed stored passkey material before generating assertion options', async () => {
+    const client = rpcClient((name) => {
+      expect(name).toBe('create_agent_adoption_assertion_challenge');
+      return {
+        ...challenge(ASSERTION_CHALLENGE, 'assertion'),
+        credential: { ...credential, credential_id: 'not valid base64url' },
+      };
+    });
+
+    await expect(Service.createAgentAdoptionAssertionCeremony({
+      authorization: authorization({ credential_count: 1 }),
+      input: { credential_id: CREDENTIAL_ID },
+      client,
+    })).rejects.toMatchObject({ code: 'agent_adoption_store_invalid' });
+    expect(webauthn.createAssertion).not.toHaveBeenCalled();
+  });
+
   it('keeps revoked and never-created public shares indistinguishable', async () => {
     const shareId = `agent_share_${'d'.repeat(40)}`;
     const revoked = rpcClient(() => ({

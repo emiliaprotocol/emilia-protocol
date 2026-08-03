@@ -111,6 +111,19 @@ describe('Agent Adoption route contract', () => {
     expect(mocks.createSession).toHaveBeenCalledTimes(1);
   });
 
+  it('normalizes unexpected service failures without exposing their details', async () => {
+    mocks.createSession.mockRejectedValueOnce(new Error('private backend detail'));
+    const response = await Sessions.POST(request('/api/adopt/sessions', {
+      label: 'Atlas',
+      source_kind: 'local',
+      job_template_id: 'job_vendor_intake_v1',
+      allowance_template_id: 'allowance_cautious_v1',
+    }) as any);
+
+    expect(response.status).toBe(503);
+    expect(JSON.stringify(await response.json())).not.toContain('private backend detail');
+  });
+
   it('recovers non-secret session state from the HttpOnly cookie without returning the bearer', async () => {
     mocks.authorize.mockImplementationOnce(async ({ request }: { request: Request }) => {
       expect(request.headers.get('authorization')).toBe(`Bearer ${SESSION_TOKEN}`);

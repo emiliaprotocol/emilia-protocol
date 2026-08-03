@@ -13,6 +13,7 @@ vi.mock('@/lib/arena/service', () => ({
 
 const { provisionBoundAgentTrial, submitBoundAgentTrial, AgentAdoptionTrialError } =
   await import('./trial');
+const { seal } = await import('@/lib/crypto/secret-box');
 
 const NOW = Date.parse('2026-08-02T17:00:00.000Z');
 const ADOPTION_ID = '00000000-0000-4000-8000-000000000001';
@@ -142,6 +143,73 @@ describe('Agent Adoption no-egress trial adapter', () => {
       action: { target: 'documents.demo', amount: 30 },
       action_digest: `sha256:${'4'.repeat(64)}`,
       refusal_digest: `sha256:${'5'.repeat(64)}`,
+    });
+    await expect(submitBoundAgentTrial({
+      authorization: authorization(),
+      input: { attempt_template_id: 'attempt_in_bounds_v1', trial_token: trial.trial_token },
+      now: NOW,
+    })).rejects.toMatchObject({ code: 'agent_adoption_trial_decision_invalid' });
+  });
+
+  it('fails closed on malformed trial capabilities and malformed Arena results', async () => {
+    mocks.provision.mockResolvedValueOnce({
+      session_id: 'wrong',
+      token: `ep_arena_${'2'.repeat(64)}`,
+      allowance: { expires_at: '2026-08-03T17:00:00.000Z' },
+    });
+    await expect(provisionBoundAgentTrial({ authorization: authorization(), now: NOW }))
+      .rejects.toMatchObject({ code: 'agent_adoption_trial_unavailable' });
+
+    mocks.provision.mockResolvedValue({
+      session_id: `arena_session_${'1'.repeat(32)}`,
+      token: `ep_arena_${'2'.repeat(64)}`,
+      allowance: { expires_at: '2026-08-03T17:00:00.000Z' },
+    });
+    const trial = await provisionBoundAgentTrial({ authorization: authorization(), now: NOW });
+
+    await expect(submitBoundAgentTrial({
+      authorization: authorization(),
+      input: { attempt_template_id: 'attempt_in_bounds_v1', trial_token: 'not-a-token' },
+      now: NOW,
+    })).rejects.toMatchObject({ code: 'agent_adoption_trial_invalid' });
+
+    const bodyOffset = 'epenc:v1:'.length;
+    const replacement = trial.trial_token[bodyOffset] === 'A' ? 'B' : 'A';
+    const tampered = `${trial.trial_token.slice(0, bodyOffset)}${replacement}${trial.trial_token.slice(bodyOffset + 1)}`;
+    await expect(submitBoundAgentTrial({
+      authorization: authorization(),
+      input: { attempt_template_id: 'attempt_in_bounds_v1', trial_token: tampered },
+      now: NOW,
+    })).rejects.toMatchObject({ code: 'agent_adoption_trial_invalid' });
+
+    const malformedEnvelope = seal(JSON.stringify({ not: 'a trial envelope' }));
+    await expect(submitBoundAgentTrial({
+      authorization: authorization(),
+      input: { attempt_template_id: 'attempt_in_bounds_v1', trial_token: malformedEnvelope },
+      now: NOW,
+    })).rejects.toMatchObject({ code: 'agent_adoption_trial_invalid' });
+
+    await expect(submitBoundAgentTrial({
+      authorization: authorization(),
+      input: { attempt_template_id: 1, trial_token: trial.trial_token },
+      now: NOW,
+    })).rejects.toMatchObject({ code: 'agent_adoption_attempt_invalid' });
+
+    mocks.submit.mockResolvedValue({
+      attempt_id: 'wrong',
+      decision: 'allow',
+      action_digest: 'wrong',
+    });
+    await expect(submitBoundAgentTrial({
+      authorization: authorization(),
+      input: { attempt_template_id: 'attempt_in_bounds_v1', trial_token: trial.trial_token },
+      now: NOW,
+    })).rejects.toMatchObject({ code: 'agent_adoption_trial_decision_invalid' });
+
+    mocks.submit.mockResolvedValue({
+      attempt_id: `arena_attempt_${'3'.repeat(32)}`,
+      decision: 'unexpected',
+      action_digest: `sha256:${'4'.repeat(64)}`,
     });
     await expect(submitBoundAgentTrial({
       authorization: authorization(),
