@@ -21,7 +21,7 @@ export default function ComparePermitPage(): React.JSX.Element {
     { dim: 'Authorization models', them: 'RBAC, ABAC, ReBAC; policy-as-code — broad and mature', ep: 'Action risk classes + signoff thresholds, focused on the gate' },
     { dim: 'Human in the loop', them: 'Consent collection, just-in-time access requests', ep: 'Named signoff bound to the exact action parameters, one-time consumable' },
     { dim: 'Evidence', them: 'Audit logs and decision traces, inside the platform', ep: 'Authorization receipt — Ed25519 + Merkle, verifiable offline with no account or network' },
-    { dim: 'Assurance', them: 'Open-source policy engine (OPA / OPAL)', ep: 'Formally verified policy engine — 26 TLA+ theorems + 35 Alloy facts in CI' },
+    { dim: 'Assurance', them: 'Open-source policy engine (OPA / OPAL)', ep: 'Formally analyzed models — 26 TLA+ invariants checked by TLC + 35 Alloy facts in CI' },
     { dim: 'Replay resistance', them: 'Per-request policy decisions', ep: 'One-time consumable handshake bound to the exact action' },
     { dim: 'MCP', them: 'MCP Gateway — authenticate humans, identify agents, gate tokens, collect consent', ep: 'MCP server that gates the action and mints the receipt' },
     { dim: 'Deployment', them: 'SaaS + self-hosted', ep: 'Open protocol (Apache-2.0), self-host or cloud' },

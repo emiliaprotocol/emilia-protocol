@@ -22,7 +22,7 @@ export default function CompareHumanLayerPage() {
     { dim: 'Binding to the action', them: 'Approves a request; not cryptographically bound to the exact parameters', ep: 'Signoff bound to the exact action hash — amount, destination, beneficiary' },
     { dim: 'Replay', them: 'Reusable unless you prevent it', ep: 'One-time consumable (nonce)' },
     { dim: 'Evidence', them: 'A record in your own system — trust us', ep: 'Authorization receipt — Ed25519 + Merkle, verifiable offline, no account, no call home' },
-    { dim: 'Assurance', them: 'A well-built product; trust the implementation', ep: 'Formally verified policy engine — 26 TLA+ theorems + 35 Alloy facts, run the checker yourself' },
+    { dim: 'Assurance', them: 'A well-built product; trust the implementation', ep: 'Formally analyzed models — 26 TLA+ invariants checked by TLC + 35 Alloy facts, run the checker yourself' },
     { dim: 'Best for', them: 'Fast, friendly approval UX — developer velocity', ep: 'Provable authorization for auditors, regulators, fraud & treasury controls' },
   ];
 

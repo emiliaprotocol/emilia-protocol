@@ -97,7 +97,7 @@ export default async function ForAiCompaniesPage() {
               </div>
             ))}
           </div>
-          <p style={{ fontSize: 13, color: color.t3, marginTop: 16 }}>Four concepts. Nothing else. Formally verified (26 TLA+ theorems), Apache-2.0, no vendor lock-in.</p>
+          <p style={{ fontSize: 13, color: color.t3, marginTop: 16 }}>Four concepts. Nothing else. Formally analyzed (26 TLA+ invariants checked by TLC), Apache-2.0, no vendor lock-in.</p>
         </C>
       </section>
 

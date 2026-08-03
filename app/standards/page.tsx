@@ -253,19 +253,15 @@ export default function StandardsPage() {
         <section style={{ ...styles.section, paddingTop: 0 }}>
           <div style={styles.container}>
             <p style={{ ...styles.body, fontSize: 13, color: color.t3, maxWidth: 760 }}>
-              <b>Honest framing.</b> EMILIA currently has four active individual Internet-Drafts:{' '}
-              <a href="https://datatracker.ietf.org/doc/draft-schrock-ep-authorization-receipts/" style={{ color: color.gold }}>
-                Authorization Receipts -06
-              </a>,{' '}
-              <a href="https://datatracker.ietf.org/doc/draft-schrock-ep-quorum/" style={{ color: color.gold }}>
-                EP-QUORUM -02
-              </a>, and{' '}
-              <a href="https://datatracker.ietf.org/doc/draft-schrock-ep-authorization-evidence-chain/" style={{ color: color.gold }}>
-                EP-AEC -02
-              </a>, and{' '}
-              <a href="https://datatracker.ietf.org/doc/draft-schrock-ep-evidence-record/" style={{ color: color.gold }}>
-                EP-EVIDENCE-RECORD -01
-              </a>. They are licensed Apache-2.0 where applicable, are <b>not</b> IETF standards, and do <b>not</b> imply
+              <b>Honest framing.</b> The repository tracks 22 active Datatracker records as of August 3, 2026.
+              The latest six filings are{' '}
+              <a href="https://datatracker.ietf.org/doc/draft-schrock-action-evidence-boundary/" style={{ color: color.gold }}>AEB -03</a>,{' '}
+              <a href="https://datatracker.ietf.org/doc/draft-schrock-ep-authorization-evidence-chain/" style={{ color: color.gold }}>AEC -05</a>,{' '}
+              <a href="https://datatracker.ietf.org/doc/draft-schrock-model-to-matter/" style={{ color: color.gold }}>Model-to-Matter -03</a>,{' '}
+              <a href="https://datatracker.ietf.org/doc/draft-schrock-ep-reliance-agreement/" style={{ color: color.gold }}>Reliance Agreement -00</a>,{' '}
+              <a href="https://datatracker.ietf.org/doc/draft-schrock-ep-bounded-capability-receipts/" style={{ color: color.gold }}>Bounded Capability Receipts -01</a>, and{' '}
+              <a href="https://datatracker.ietf.org/doc/draft-schrock-ep-bounded-execution-program/" style={{ color: color.gold }}>Bounded Execution Program -00</a>.
+              They are licensed Apache-2.0 where applicable, are <b>not</b> IETF standards, and do <b>not</b> imply
               endorsement by any working group. The relationships above are <b>complement relationships</b> — how
               EMILIA composes with these standards — not claims of adoption by the OAuth, RATS, SCITT, WIMSE, or
               any other WG.

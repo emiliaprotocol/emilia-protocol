@@ -101,7 +101,7 @@ export default function ModelToMatterPage(): React.ReactElement {
           </div>
           <p style={{ fontSize: 13, color: color.t3, marginTop: 18, maxWidth: 760, lineHeight: 1.7 }}>
             Status: reference profile, pinned executor, adversarial demonstration, and published
-            Experimental Internet-Draft -00, July 2026. This profile has not been deployed in a wet
+            Experimental Internet-Draft -03, August 2026. This profile has not been deployed in a wet
             lab and claims no commercial or research partnership.
           </p>
         </section>
@@ -268,7 +268,7 @@ export default function ModelToMatterPage(): React.ReactElement {
           <h2 style={{ ...styles.h2, maxWidth: 760 }}>Read it, run it, break it.</h2>
           <div style={{ marginTop: 24, ...grid.auto(240) }}>
             <a href="https://datatracker.ietf.org/doc/draft-schrock-model-to-matter/" style={{ ...styles.card, padding: 22, textDecoration: 'none' }}>
-              <div style={{ ...styles.h3, fontSize: 17 }}>Internet-Draft -01</div>
+              <div style={{ ...styles.h3, fontSize: 17 }}>Internet-Draft -03</div>
               <div style={{ ...styles.cardBody, marginTop: 6 }}>The published Experimental executor profile.</div>
             </a>
             <a href={`${REPO}/blob/main/docs/verticals/MODEL-TO-MATTER.md`} style={{ ...styles.card, padding: 22, textDecoration: 'none' }}>

@@ -65,7 +65,7 @@ const FAQ = [
   },
   {
     q: 'Is it open source?',
-    a: 'Yes — Apache-2.0, and the policy engine is formally verified (26 TLA+ theorems in CI).',
+    a: 'Yes — Apache-2.0, and its models are formally analyzed (26 TLA+ invariants checked by TLC in CI).',
   },
 ];
 

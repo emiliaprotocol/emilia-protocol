@@ -1,8 +1,10 @@
-# August 3, 2026 Internet-Draft upload packet
+# August 3, 2026 Internet-Draft publication provenance
 
-This directory is a submission packet, not a publication record. Upload only
-the six XML files in `UPLOAD-THIS/`. `RENDERS/` contains local review copies.
-Nothing in `posted/`, `archive/`, or `profiles/` should be uploaded.
+All six drafts in this packet were published on August 3, 2026. The XML files
+in `UPLOAD-THIS/` are retained as the exact submitted-byte provenance set, and
+`RENDERS/` retains the corresponding local review copies. The canonical current
+repository snapshots now live in `standards/posted/`; older revisions live in
+`standards/archive/`.
 
 Recommended upload order:
 
@@ -13,15 +15,12 @@ Recommended upload order:
 5. `draft-schrock-ep-bounded-capability-receipts-01.xml`
 6. `draft-schrock-ep-bounded-execution-program-00.xml`
 
-## Datatracker action
+## Publication result
 
-For AEC-05, AEB-03, Model-to-Matter-03, and Bounded Capability Receipts-01,
-open the existing Datatracker draft and upload the XML as its next revision.
-For Reliance Agreement-00 and Bounded Execution Program-00, use **Submit a new
-Internet-Draft**. Leave the Datatracker **replaces**, **updates**, and
-**obsoletes** fields empty for all six: a revision supersedes the older revision
-under the same draft name automatically; it is not a different replacement
-draft. Add the resource rows from `ADDITIONAL-RESOURCES.md` after each upload.
+AEC-05, AEB-03, Model-to-Matter-03, and Bounded Capability Receipts-01 replaced
+their older revisions under the same draft names. Reliance Agreement-00 and
+Bounded Execution Program-00 created new active Datatracker records. No
+Datatracker replaces, updates, or obsoletes relationship was asserted.
 
 AEC, AEB, Model-to-Matter, and Bounded Capability Receipts are successor
 revisions of active individual drafts. Reliance Agreement and Bounded Execution
@@ -48,5 +47,6 @@ an RFC, working-group adoption, IETF consensus, or IETF endorsement.
   prove plan understanding, safety, legality, provider truth, effect truth, or
   complete mediation.
 
-Use `ADDITIONAL-RESOURCES.md` or `ADDITIONAL-RESOURCES.json` when completing the
-Datatracker form. Enter the tag token and URL in separate form fields.
+`ADDITIONAL-RESOURCES.md` and `ADDITIONAL-RESOURCES.json` record the resource
+metadata prepared for the publication forms. They are retained for audit and
+future-revision continuity.

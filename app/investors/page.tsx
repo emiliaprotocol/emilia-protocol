@@ -92,10 +92,12 @@ export default function InvestorsPage() {
           a defined protected workflow and operating boundary.
         </p>
         <p style={{ fontFamily: font.sans, fontSize: 14, lineHeight: 1.55, color: '#78716C', maxWidth: 560, marginBottom: 12 }}>
-          Seven new or revised individual Internet-Drafts were posted in the July 22 wave; 14
-          individual drafts are active. They are not RFCs, working-group items, adopted standards,
-          or IETF endorsement. No production hardware-attestation fleet or independently operated
-          witness network is claimed today.
+          The repository tracks 22 active Datatracker records. Six new or revised individual
+          Internet-Drafts were filed on August 3, 2026: AEB -03, AEC -05, Model-to-Matter -03,
+          Reliance Agreement -00, Bounded Capability Receipts -01, and Bounded Execution Program
+          -00. They are not RFCs, working-group items, adopted standards, or IETF endorsement. No
+          production hardware-attestation fleet or independently operated witness network is
+          claimed today.
         </p>
         <p style={{ fontFamily: font.sans, fontSize: 15, lineHeight: 1.55, color: '#78716C', maxWidth: 560 }}>
           The round materials, business model, and commercial detail are shared directly under NDA. Tell us a little below, or reach us at <a href="mailto:team@emiliaprotocol.ai" style={{ color: color.gold, textDecoration: 'none' }}>team@emiliaprotocol.ai</a>.

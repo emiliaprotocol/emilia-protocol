@@ -1,6 +1,6 @@
 # Product Marketing Context
 
-*Last updated: 2026-07-17*
+*Last updated: 2026-08-03*
 
 ## Product Overview
 
@@ -45,17 +45,17 @@ Do not lead a buyer or a language model with the draft portfolio, formal-method 
 
 ## Target Audience
 
-### Free adoption wedge: privileged MCP tool calls
+### Free adoption wedge: scan, protect, and publish a factual Agent Record
 
 **Target companies:** Teams deploying agents that can call administrative, production, financial, data, or infrastructure tools.
 
 **Primary users:** AI platform engineers, security engineers, MCP server maintainers, and developer-tool teams.
 
-**Job to be done:** Put a deny-by-default check in front of one consequential tool call without replacing the agent framework or joining a standards process.
+**Job to be done:** Passively inspect what connected agent tools can reach, place a deny-by-default check in front of one consequential call, and publish a factual record of the completed local setup without replacing the agent framework or joining a standards process.
 
-**Adoption promise:** A missing receipt returns an action-bound challenge; valid evidence permits the exact call once; replay and tampering are refused.
+**Adoption promise:** The scan launches nothing and makes no prevention claim. The protect step requires action-bound evidence for one selected tool, and the optional Agent Record reports completed checks without claiming certification, deployment security, or complete mediation.
 
-**Commercial role:** Developer distribution, reference deployments, logos, and integration pull. This is not assumed to be the first high-value revenue wedge.
+**Commercial role:** Public distribution and proof of demand. The conversion event is a buyer-selected $25K protected-workflow pilot, not a vanity scan or certification sale.
 
 ### First paid wedge: payer adverse medical-necessity determinations
 
@@ -203,13 +203,12 @@ Quantitative proof changes as the repository evolves. Never copy counts into new
 
 **Primary business goal:** Land one leverage-bearing, production-adjacent Gate deployment that controls a real consequential rail.
 
-**Adoption goal:** Make privileged MCP tool-call protection the fastest free path into the product.
+**Adoption goal:** Make scan → protect one tool → factual Agent Record the fastest free path into the product.
 
 **Revenue goal:** Sell a payer or utilization-management pilot that enforces and evidences licensed review before an adverse medical-necessity determination.
 
 **Primary conversion actions:**
 
-- Developer: protect one consequential MCP or HTTP action.
+- Developer: scan locally, protect one consequential MCP or HTTP action, and optionally publish a factual Agent Record.
 - Enterprise: scope one executor-side Gate pilot.
 - Assurer: re-perform one evidence package under independently pinned keys.
-

@@ -80,10 +80,10 @@ export default function BlogFormalVerificationPage(): React.ReactElement {
           TLA+ is built around the idea that a protocol is a sequence of states over time. You write actions ("here's how a state transitions to the next") and properties that must hold either everywhere ("safety": no bad state is ever reachable) or eventually ("liveness": every request eventually completes).
         </p>
         <p className="ep-reveal" style={styles.body}>
-          The TLC model checker explores the reachable state space and either certifies the property or gives you a trace. EMILIA's spec encodes 26 such theorems — examples include: every issued handshake is bound to a specific action and cannot be reused for a different action; every signoff binds to the exact handshake context and cannot be replayed; every receipt is verifiable from its own contents without reference to issuer state.
+          The TLC model checker explores the reachable state space under a pinned configuration and either confirms an invariant in that bounded state space or gives you a trace. EMILIA's core inventory contains 26 such invariants — examples include: every issued handshake is bound to a specific action and cannot be reused for a different action; every signoff binds to the exact handshake context and cannot be replayed; every receipt is verifiable from its own contents without reference to issuer state.
         </p>
         <p className="ep-reveal" style={styles.body}>
-          When a TLA+ theorem fails, the counterexample is a literal step-by-step run of the protocol that violates the property. You read it like a stack trace. The fix is usually either tightening a precondition (the action shouldn't have been allowed in that state) or adding a binding (the missing field that lets you distinguish two superficially similar actions).
+          When a TLA+ invariant fails under TLC, the counterexample is a literal step-by-step run of the modeled protocol that violates the property. You read it like a stack trace. The fix is usually either tightening a precondition (the action shouldn't have been allowed in that state) or adding a binding (the missing field that lets you distinguish two superficially similar actions).
         </p>
       </section>
 
@@ -103,7 +103,7 @@ export default function BlogFormalVerificationPage(): React.ReactElement {
           The two tools answer different questions. TLA+ is best at "across every possible run of the protocol, is this property always true?" Alloy is best at "across every possible structural configuration, is this invariant always true?" Most authorization protocols have properties of both shapes.
         </p>
         <p className="ep-reveal" style={styles.body}>
-          A worked example: handshake-binding integrity. The TLA+ theorem says "no execution path produces a state where a signoff exists for one handshake and a different handshake is consumed." The Alloy fact says "every consumed handshake has exactly one signoff that binds to its own challenge — never a sibling's." Both are about the same property; they catch different ways the protocol can go wrong.
+          A worked example: handshake-binding integrity. The TLA+ invariant says "no modeled execution path produces a state where a signoff exists for one handshake and a different handshake is consumed." The Alloy fact says "every consumed handshake has exactly one signoff that binds to its own challenge — never a sibling's." Both are about the same property; they catch different ways the protocol can go wrong.
         </p>
       </section>
 

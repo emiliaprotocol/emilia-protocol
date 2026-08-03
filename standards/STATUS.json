@@ -1,9 +1,9 @@
 {
   "@version": "EMILIA-STANDARDS-PORTFOLIO-v1",
-  "updated": "2026-08-01",
-  "active_datatracker_count": 20,
-  "active_schrock_datatracker_count": 19,
-  "posted_snapshot_policy": "standards/posted contains the current published revision of every active draft-schrock-* Datatracker record represented in this repository. Current July 29-30 XML snapshots were verified byte-for-byte against the immutable IETF archive on 2026-08-01; the IETF archive remains authoritative for rendered forms and live status.",
+  "updated": "2026-08-03",
+  "active_datatracker_count": 22,
+  "active_schrock_datatracker_count": 20,
+  "posted_snapshot_policy": "standards/posted contains the current published revision of every active draft-schrock-* Datatracker record represented in this repository. The six August 3 XML snapshots were verified byte-for-byte against the immutable IETF archive before promotion; the IETF archive remains authoritative for rendered forms and live status.",
   "status_language": {
     "active_individual_submission": "Published on the IETF Datatracker as an individual Internet-Draft. Not an RFC, not an adopted working-group item, and not IETF endorsement.",
     "candidate": "Repository source under review. Not filed.",
@@ -73,10 +73,10 @@
     },
     {
       "draft": "draft-schrock-action-evidence-boundary",
-      "revision": "02",
+      "revision": "03",
       "layer": "execution_lifecycle",
       "role": "Boundary contract joining independently verified evidence to one material action, reserving authority before invocation, and preserving indeterminate outcomes for authenticated reconciliation",
-      "next_action": "Published July 29; -03 is staged with pinned adapter requirements, authority-separation terms, current status, re-derivable evaluation records, and refusal evidence"
+      "next_action": "Published August 3; use -03 as the current pinned-adapter, authority-separation, current-status, re-derivable-evaluation, and refusal-evidence baseline"
     },
     {
       "draft": "draft-schrock-action-remedy-receipts",
@@ -122,10 +122,10 @@
     },
     {
       "draft": "draft-schrock-ep-authorization-evidence-chain",
-      "revision": "04",
+      "revision": "05",
       "layer": "evidence_satisfaction",
       "role": "Heterogeneous evidence composition",
-      "next_action": "Published July 21; -05 is staged with verifier-derived distinct-subject constraints and explicit AEC/AEB term ownership"
+      "next_action": "Published August 3; use -05 as the current verifier-derived distinct-subject and explicit AEC/AEB term-ownership baseline"
     },
     {
       "draft": "draft-schrock-ep-authorization-receipts",
@@ -136,10 +136,17 @@
     },
     {
       "draft": "draft-schrock-ep-bounded-capability-receipts",
-      "revision": "00",
+      "revision": "01",
       "layer": "delegation_capability_policy",
       "role": "Action-bound capability budget and spend evidence",
-      "next_action": "Published July 19; -01 is staged with parent-funded delegation, aggregate sibling conservation, and the one-authoritative-state-domain limitation"
+      "next_action": "Published August 3; use -01 for parent-funded delegation, aggregate sibling conservation, and the one-authoritative-state-domain limitation"
+    },
+    {
+      "draft": "draft-schrock-ep-bounded-execution-program",
+      "revision": "00",
+      "layer": "execution_lifecycle",
+      "role": "Reachability-, occurrence-, concurrency-, and budget-bounded runtime program for consequential action admission",
+      "next_action": "Published August 3; use -00 as the experimental bounded-execution-program baseline without implying plan understanding, safety, legality, effect truth, or complete mediation"
     },
     {
       "draft": "draft-schrock-ep-evidence-record",
@@ -177,6 +184,13 @@
       "next_action": "Published July 29; use -01 as the current fail-closed status-target vocabulary"
     },
     {
+      "draft": "draft-schrock-ep-reliance-agreement",
+      "revision": "00",
+      "layer": "execution_lifecycle",
+      "role": "Signed technical terms that bind reliance-program identifiers, versions, digests, parties, and acceptance conditions without creating legal enforceability or insurance",
+      "next_action": "Published August 3; use -00 as the technical reliance-terms baseline and preserve its explicit legal, insurance, fault, escrow, and payment nonclaims"
+    },
+    {
       "draft": "draft-schrock-human-authorization-binding",
       "revision": "00",
       "layer": "authorization_evidence",
@@ -185,10 +199,10 @@
     },
     {
       "draft": "draft-schrock-model-to-matter",
-      "revision": "02",
+      "revision": "03",
       "layer": "execution_lifecycle",
       "role": "Experimental executor-side authorization-evidence clearance for model-directed physical execution",
-      "next_action": "Published July 29; -03 is staged with relying-party program, qualification, and typed AEB composition while preserving the no-physical-truth limitation"
+      "next_action": "Published August 3; use -03 for relying-party program, qualification, and typed AEB composition while preserving the no-physical-truth limitation"
     },
     {
       "draft": "draft-ferro-schrock-memory-projection-record",
@@ -275,7 +289,7 @@
       {
         "priority": 6,
         "draft": "draft-schrock-ep-bounded-capability-receipts-00",
-        "source": "standards/posted/draft-schrock-ep-bounded-capability-receipts-00.xml",
+        "source": "standards/archive/draft-schrock-ep-bounded-capability-receipts-00.xml",
         "claim": "Action-bound capability budget and spend evidence",
         "state": "published_ietf_archive_verified_exact_local_match"
       },
@@ -340,11 +354,15 @@
       }
     ]
   },
-  "staged_candidates": [
+  "august_3_2026_wave": {
+    "filing_date": "2026-08-03",
+    "publication_status": "published_and_ietf_archive_verified_2026_08_03",
+    "verification": "Each listed XML is byte-for-byte identical to its immutable IETF archive artifact.",
+    "items": [
     {
       "draft": "draft-schrock-ep-reliance-agreement-00",
-    "source": "standards/staged/UPLOAD-THIS/draft-schrock-ep-reliance-agreement-00.xml",
-      "state": "submission_ready_not_filed",
+      "source": "standards/posted/draft-schrock-ep-reliance-agreement-00.xml",
+      "state": "published_ietf_archive_verified_exact_local_match",
       "claim": "Signed terms conditioned on a pinned evidence profile plus a per-action reliance event",
       "implementation": [
         "packages/verify/src/reliance-agreement.ts",
@@ -354,19 +372,19 @@
     },
     {
       "draft": "draft-schrock-ep-authorization-evidence-chain-05",
-    "source": "standards/staged/UPLOAD-THIS/draft-schrock-ep-authorization-evidence-chain-05.xml",
-      "state": "submission_ready_not_filed",
+      "source": "standards/posted/draft-schrock-ep-authorization-evidence-chain-05.xml",
+      "state": "published_ietf_archive_verified_exact_local_match",
       "claim": "Verifier-derived distinct-subject evidence constraints with explicit AEC and AEB term ownership",
       "implementation": [
         "packages/verify/src/evidence-chain.ts",
         "packages/verify/src/aeb-adapter-contract.ts"
       ],
-    "limitations": "Evidence satisfaction remains distinct from local authorization, one-time custody, and execution; the new role_constraints object is specified but not yet implemented by the legacy AEC evaluator"
+      "limitations": "Evidence satisfaction remains distinct from local authorization, one-time custody, and execution; the new role_constraints object is specified but not yet implemented by the legacy AEC evaluator"
     },
     {
       "draft": "draft-schrock-action-evidence-boundary-03",
-    "source": "standards/staged/UPLOAD-THIS/draft-schrock-action-evidence-boundary-03.xml",
-      "state": "submission_ready_not_filed",
+      "source": "standards/posted/draft-schrock-action-evidence-boundary-03.xml",
+      "state": "published_ietf_archive_verified_exact_local_match",
       "claim": "Pinned adapter and boundary requirements, authority-separation terms, current status, re-derivable evaluation records, and refusal evidence",
       "implementation": [
         "packages/verify/src/aeb-adapter-contract.ts",
@@ -377,19 +395,19 @@
     },
     {
       "draft": "draft-schrock-model-to-matter-03",
-    "source": "standards/staged/UPLOAD-THIS/draft-schrock-model-to-matter-03.xml",
-      "state": "submission_ready_not_filed",
+      "source": "standards/posted/draft-schrock-model-to-matter-03.xml",
+      "state": "published_ietf_archive_verified_exact_local_match",
       "claim": "Model-to-Matter composition with relying-party programs, qualification evidence, and typed AEB admission",
       "implementation": [
         "lib/frontier/model-to-matter.ts",
         "tests/model-to-matter.test.ts"
       ],
-    "limitations": "No wet-lab deployment, screening capability, scientific-safety determination, physical truth, independent implementation, or partner endorsement is claimed; new program and requirement digests are not yet wired into the reference clearance object"
+      "limitations": "No wet-lab deployment, screening capability, scientific-safety determination, physical truth, independent implementation, or partner endorsement is claimed; new program and requirement digests are not yet wired into the reference clearance object"
     },
     {
       "draft": "draft-schrock-ep-bounded-capability-receipts-01",
-      "source": "standards/staged/UPLOAD-THIS/draft-schrock-ep-bounded-capability-receipts-01.xml",
-      "state": "submission_ready_not_filed",
+      "source": "standards/posted/draft-schrock-ep-bounded-capability-receipts-01.xml",
+      "state": "published_ietf_archive_verified_exact_local_match",
       "claim": "Parent-funded delegation and aggregate sibling conservation in one authoritative atomic state domain",
       "implementation": [
         "packages/gate/src/capability-receipt.ts",
@@ -400,8 +418,8 @@
     },
     {
       "draft": "draft-schrock-ep-bounded-execution-program-00",
-      "source": "standards/staged/UPLOAD-THIS/draft-schrock-ep-bounded-execution-program-00.xml",
-      "state": "submission_ready_not_filed",
+      "source": "standards/posted/draft-schrock-ep-bounded-execution-program-00.xml",
+      "state": "published_ietf_archive_verified_exact_local_match",
       "claim": "Signed finite action programs with atomic reachability, occurrence, and aggregate-budget enforcement at Gate admission",
       "implementation": [
         "packages/gate/src/bounded-execution-program.ts",
@@ -410,7 +428,8 @@
       ],
       "limitations": "No plan-understanding, safety, legality, provider-truth, effect-truth, complete-mediation, or independent-implementation claim is made"
     }
-  ],
+    ]
+  },
   "retired_absorbed": [
     {
       "draft": "draft-schrock-ep-assurance-classes-00",

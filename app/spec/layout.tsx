@@ -4,7 +4,7 @@ export const metadata: Metadata = {
   title: 'Protocol Specification — Formal Verification + Receipts',
   description:
     'The full EMILIA Protocol specification: state machine, formal ' +
-    'invariants (26 TLA+ theorems, 35 Alloy facts), EP-RECEIPT-v1 schema, ' +
+    'invariants (26 TLA+ invariants checked by TLC, 35 Alloy facts), EP-RECEIPT-v1 schema, ' +
     'and conformance test fixtures. Reference for any implementer.',
   alternates: { canonical: '/spec' },
   openGraph: {
@@ -18,7 +18,7 @@ export const metadata: Metadata = {
   keywords: [
     'EP protocol specification',
     'formal verification AI authorization',
-    'TLA+ theorems',
+    'TLA+ invariants',
     'Alloy facts',
     'EP-RECEIPT-v1',
     'conformance test fixtures',

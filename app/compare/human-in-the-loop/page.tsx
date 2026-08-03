@@ -21,7 +21,7 @@ export default function CompareHumanInTheLoopPage() {
     { dim: 'Replay resistance', them: 'Usually none — an approval can be reused', ep: 'One-time consumable handshake' },
     { dim: 'Evidence', them: 'A log line in your own system — trust us', ep: 'Authorization receipt — Ed25519 + Merkle, verifiable offline' },
     { dim: 'Approver identity', them: 'Whoever clicked the button', ep: 'A named principal bound into the signoff' },
-    { dim: 'Assurance', them: 'Your own glue code', ep: 'Formally verified policy engine — 26 TLA+ theorems + 35 Alloy facts' },
+    { dim: 'Assurance', them: 'Your own glue code', ep: 'Formally analyzed models — 26 TLA+ invariants checked by TLC + 35 Alloy facts' },
     { dim: 'What you maintain', them: 'Channels, state, retries, audit storage', ep: 'A drop-in gate (MCP / SDK); receipts included' },
     { dim: 'Compliance', them: 'Ad hoc', ep: 'Maps to NIST AI RMF + EU AI Act human-oversight and traceability' },
   ];
