@@ -77,7 +77,7 @@ The final step is an externally-operated instance — a different organization s
 node conformance/operator2/verify-live.mjs https://<their-origin>
 ```
 
-The contract and a working reference operator are both already published. If you want to run an EP node, `conformance/operator2/` is the smallest complete example, the full conformance suite is in `conformance/`, and `app/adopt` Level 5 ("Operator — run your own node") is the on-ramp. Stand one up and the open milestone closes.
+The contract and a working reference operator are both already published. If you want to run an EP node, `conformance/operator2/` is the smallest complete example and the full conformance suite is in `conformance/`. An externally operated instance must run `verify-live.mjs` successfully before the open independence milestone closes.
 
 ---
 

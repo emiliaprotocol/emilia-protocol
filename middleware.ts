@@ -29,6 +29,8 @@ const RELEASE_LOCK_BROWSER_MUTATIONS = Object.freeze([
   /^\/api\/v1\/release-locks\/[^/]+\/rounds\/[^/]+\/(?:approvals|pairings)$/,
   /^\/api\/v1\/release-locks\/[^/]+\/rounds\/[^/]+\/action-check\/options$/,
 ]);
+const AGENT_ADOPTION_SESSION_ROUTE = /^\/api\/adopt\/sessions\/[^/]+(?:\/|$)/;
+const PUBLIC_AGENT_ADOPTION_SHARE_PAGE = /^\/adopt\/r\/[^/]+$/;
 
 const ROUTE_POLICIES = {
   // Public synthetic Arena. Session creation has no credential yet. Attempt
@@ -42,8 +44,25 @@ const ROUTE_POLICIES = {
   'POST /api/arena/sessions/*/attempts/*/publish': { rateCategory: 'submit', useAuth: false },
   'GET /api/arena/refusals/*':                   { rateCategory: 'public_verify', useAuth: false },
 
+  // Public Agent Adoption challenge. Session creation is anonymous; every
+  // later mutation authenticates a dedicated eaa1_ capability in-route. Keep
+  // edge limits IP-scoped so attacker-chosen bearer text cannot mint arbitrary
+  // rate-limit identities before authentication. Public share reads expose
+  // only the explicitly published, revocable Operating Bond projection.
+  'POST /api/adopt/sessions':                              { rateCategory: 'register', useAuth: false },
+  'GET /api/adopt/sessions/*':                            { rateCategory: 'submit', useAuth: false },
+  'POST /api/adopt/sessions/*/passkey/register/options':  { rateCategory: 'submit', useAuth: false },
+  'POST /api/adopt/sessions/*/passkey/register/verify':   { rateCategory: 'submit', useAuth: false },
+  'POST /api/adopt/sessions/*/passkey/assert/options':    { rateCategory: 'submit', useAuth: false },
+  'POST /api/adopt/sessions/*/passkey/assert/verify':     { rateCategory: 'submit', useAuth: false },
+  'POST /api/adopt/sessions/*/trial':                     { rateCategory: 'submit', useAuth: false },
+  'POST /api/adopt/sessions/*/attempts':                  { rateCategory: 'submit', useAuth: false },
+  'POST /api/adopt/sessions/*/share':                     { rateCategory: 'submit', useAuth: false },
+  'POST /api/adopt/sessions/*/revoke':                    { rateCategory: 'submit', useAuth: false },
+  'GET /api/adopt/shares/*':                              { rateCategory: 'public_verify', useAuth: false },
+
   // Pilot-request intake (public lead form; honeypot + validation in route)
-  'POST /api/pilot/request':          { rateCategory: 'submit', useAuth: false },
+  'POST /api/pilot/request':          { rateCategory: 'pilot_request', useAuth: false },
   'POST /api/pilot/sandbox/provision': { rateCategory: 'submit', useAuth: false },
   'GET /api/pilot/sandbox/report':     { rateCategory: 'read', useAuth: true },
 
@@ -486,9 +505,10 @@ function releaseLockOriginAllowed(request) {
  *      so the downstream route handler still receives the intact request.
  *
  * @param {import('next/server').NextRequest} request
+ * @param {{ declaredOnly?: boolean }} [options]
  * @returns {Promise<NextResponse|null>} a 413/400 response, or null to proceed.
  */
-async function rejectOversizedApiBody(request) {
+async function rejectOversizedApiBody(request, { declaredOnly = false } = {}) {
   if (!BODY_METHODS.has(request.method.toUpperCase())) return null;
   const limit = declaredApiBodyLimit(request);
 
@@ -504,6 +524,13 @@ async function rejectOversizedApiBody(request) {
     }
     if (length > limit) return payloadTooLarge(limit);
   }
+
+  // Agent Adoption session mutations carry a bearer capability that the route
+  // authenticates before its bounded read. Do not clone/drain that stream at
+  // the edge before the route has authenticated it. The declared-size check
+  // above remains a zero-read fast rejection; readLimitedJson() is the
+  // fail-closed stream cap after authorizeAgentAdoptionSession().
+  if (declaredOnly) return null;
 
   // Layer 2: byte-count the actual stream (covers chunked / absent / understated
   // Content-Length). Reading a clone leaves request.body intact for the handler.
@@ -598,15 +625,74 @@ export async function middleware(request) {
     });
   }
 
-  // Non-API page requests: inject per-request nonce and CSP header.
+  // Non-API page requests: inject per-request nonce and CSP header. Public
+  // Operating Bond pages are dynamic database reads, so meter them before the
+  // generic page return. Unlike the general public-verifier API policy, this
+  // hosted rendering path fails closed if its limiter cannot produce a real
+  // decision; a negative remaining count is checkRateLimit's outage sentinel.
   // The nonce is forwarded via x-nonce request header so server components
   // can read it (e.g. in app/layout.js) and pass it to <Script> tags.
   if (!pathname.startsWith('/api/')) {
+    let publicShareRateLimit: Awaited<ReturnType<typeof checkRateLimit>> | null = null;
+    if (request.method.toUpperCase() === 'GET' && PUBLIC_AGENT_ADOPTION_SHARE_PAGE.test(pathname)) {
+      const ip = getClientIP(request);
+      try {
+        publicShareRateLimit = await checkRateLimit(ip, 'public_verify');
+      } catch {
+        publicShareRateLimit = {
+          allowed: false,
+          remaining: 0,
+          reset: 60,
+          error: 'rate_limit_unavailable',
+        };
+      }
+
+      if (publicShareRateLimit.error === 'rate_limit_unavailable'
+          || publicShareRateLimit.error === 'durable_rate_limit_required'
+          || publicShareRateLimit.remaining < 0) {
+        const response = NextResponse.json(
+          { error: 'Service temporarily unavailable — rate limiting backend offline', retry_after: 60 },
+          { status: 503 },
+        );
+        response.headers.set('Retry-After', '60');
+        return response;
+      }
+
+      if (!publicShareRateLimit.allowed) {
+        const config = RATE_LIMITS.public_verify;
+        siemEvent('RATE_LIMIT_EXCEEDED', {
+          category: 'public_verify',
+          key: ip.slice(0, 16),
+          pathname,
+          method: request.method,
+        });
+        const response = NextResponse.json(
+          {
+            error: 'Rate limit exceeded',
+            limit: config.max,
+            window_seconds: config.window,
+            retry_after: publicShareRateLimit.reset,
+          },
+          { status: 429 },
+        );
+        response.headers.set('X-RateLimit-Limit', String(config.max));
+        response.headers.set('X-RateLimit-Remaining', '0');
+        response.headers.set('X-RateLimit-Reset', String(publicShareRateLimit.reset));
+        response.headers.set('Retry-After', String(publicShareRateLimit.reset));
+        return response;
+      }
+    }
+
     const nonce = btoa(String.fromCharCode(...crypto.getRandomValues(new Uint8Array(16))));
     const requestHeaders = new Headers(request.headers);
     requestHeaders.set('x-nonce', nonce);
     const response = NextResponse.next({ request: { headers: requestHeaders } });
     response.headers.set('Content-Security-Policy', buildCSP(nonce));
+    if (publicShareRateLimit) {
+      response.headers.set('X-RateLimit-Limit', String(RATE_LIMITS.public_verify.max));
+      response.headers.set('X-RateLimit-Remaining', String(publicShareRateLimit.remaining));
+      response.headers.set('X-RateLimit-Reset', String(publicShareRateLimit.reset));
+    }
     if (pathname === '/cloud' || pathname.startsWith('/cloud/')) {
       response.headers.set('X-Robots-Tag', 'noindex, nofollow');
     }
@@ -625,9 +711,6 @@ export async function middleware(request) {
     response.headers.set('cache-control', 'no-store');
     return response;
   }
-
-  const bodyLimitResponse = await rejectOversizedApiBody(request);
-  if (bodyLimitResponse) return bodyLimitResponse;
 
   // Cloud routes: enforce origin allowlist to prevent cross-origin reads from
   // arbitrary websites. Public protocol routes intentionally have no CORS restriction.
@@ -686,6 +769,10 @@ export async function middleware(request) {
   // Protocol routes (rateCategory: null) skip middleware rate limiting entirely.
   // They rely on auth + DB-level idempotency instead, saving an Upstash roundtrip (~80ms).
   if (rateCategory === null) {
+    const bodyLimitResponse = await rejectOversizedApiBody(request, {
+      declaredOnly: AGENT_ADOPTION_SESSION_ROUTE.test(pathname),
+    });
+    if (bodyLimitResponse) return bodyLimitResponse;
     return NextResponse.next();
   }
 
@@ -734,6 +821,14 @@ export async function middleware(request) {
     res.headers.set('Retry-After', String(result.reset));
     return res;
   }
+
+  // Meter before consuming a request stream. In particular, anonymous
+  // registration endpoints must not let a slow chunked body hold an Edge
+  // worker before the caller has spent its rate-limit allowance.
+  const bodyLimitResponse = await rejectOversizedApiBody(request, {
+    declaredOnly: AGENT_ADOPTION_SESSION_ROUTE.test(pathname),
+  });
+  if (bodyLimitResponse) return bodyLimitResponse;
 
   const response = NextResponse.next();
   response.headers.set('X-RateLimit-Limit', String(RATE_LIMITS[/** @type {keyof typeof RATE_LIMITS} */ (rateCategory)].max));

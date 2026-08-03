@@ -31,6 +31,7 @@ const Mcp = await import('../app/api/mcp/[transport]/route.ts');
 const SamlAcs = await import('../app/api/sso/saml/acs/route.ts');
 const ArenaSessions = await import('../app/api/arena/sessions/route.ts');
 const ArenaAttempts = await import('../app/api/arena/sessions/[sessionId]/attempts/route.ts');
+const AgentAdoptionSessions = await import('../app/api/adopt/sessions/route.ts');
 
 function oversizedReq(path, bytes, body = {}) {
   return new Request(`https://www.emiliaprotocol.ai${path}`, {
@@ -69,6 +70,7 @@ describe('public POST body limits', () => {
     ['sso/saml/acs', SamlAcs.POST, '/api/sso/saml/acs', 257 * 1024],
     ['arena/sessions', ArenaSessions.POST, '/api/arena/sessions', 5 * 1024],
     ['arena/attempts', ArenaAttempts.POST, '/api/arena/sessions/arena_session_1/attempts', 9 * 1024],
+    ['adopt/sessions', AgentAdoptionSessions.POST, '/api/adopt/sessions', 9 * 1024],
   ];
 
   for (const [name, handler, path, bytes] of cases) {

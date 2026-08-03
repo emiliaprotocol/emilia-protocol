@@ -20,7 +20,7 @@ export default function sitemap(): MetadataRoute.Sitemap {
   // Top-level marketing surfaces — highest crawl priority.
   const marketing = [
     { path: '/',                      priority: 1.0, changeFrequency: 'weekly' },
-    { path: '/arena',                 priority: 0.99, changeFrequency: 'weekly' },
+    { path: '/adopt',                 priority: 0.99, changeFrequency: 'weekly' },
     { path: '/signal',                priority: 0.98, changeFrequency: 'weekly' },
     { path: '/gate',                  priority: 0.98, changeFrequency: 'weekly' },
     { path: '/assurance',             priority: 0.92, changeFrequency: 'weekly' },
@@ -104,6 +104,7 @@ export default function sitemap(): MetadataRoute.Sitemap {
 
   // Functional / dynamic surfaces — present but lower SEO priority.
   const functional = [
+    { path: '/arena',       priority: 0.7, changeFrequency: 'weekly' },
     { path: '/demo',        priority: 0.9, changeFrequency: 'weekly' },
     { path: '/signup',      priority: 0.85, changeFrequency: 'monthly' },
     { path: '/break-the-ceremony', priority: 0.8, changeFrequency: 'weekly' },
@@ -113,7 +114,6 @@ export default function sitemap(): MetadataRoute.Sitemap {
     { path: '/eye',         priority: 0.7, changeFrequency: 'monthly' },
     { path: '/trust-desk',  priority: 0.9, changeFrequency: 'weekly' },
     { path: '/governance',  priority: 0.7, changeFrequency: 'monthly' },
-    { path: '/adopt',       priority: 0.7, changeFrequency: 'monthly' },
   ];
 
   // Static legal / org pages.

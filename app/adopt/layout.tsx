@@ -1,18 +1,19 @@
+// SPDX-License-Identifier: Apache-2.0
 import type { Metadata } from 'next';
 
 export const metadata: Metadata = {
-  title: 'Adopt EMILIA — Integrate Pre-Action Authorization',
+  title: 'Agent Adoption Challenge — EMILIA',
   description:
-    'Three-step adoption guide. Install the SDK, gate one high-risk action ' +
-    'in observe mode for two weeks, flip to enforce. ' +
-    '@emilia-protocol/sdk on npm; Python and Go ports in progress.',
+    'Describe an agent candidate, choose a synthetic job and allowance, add a user-present passkey ceremony, '
+    + 'and watch the Arena evaluate an exact no-egress action.',
   alternates: { canonical: '/adopt' },
   openGraph: {
-    title: 'Adopt EMILIA Protocol in Three Steps',
+    title: 'Draft an Operating Bond for an agent candidate.',
     description:
-      'Install the SDK, gate one action in observe mode, flip to enforce.',
-    url: 'https://www.emiliaprotocol.ai/adopt',
-    type: 'article',
+      'A no-signup, no-egress candidate challenge with synthetic credits, bounded actions, '
+      + 'a user-present passkey ceremony, and explicit publication.',
+    url: '/adopt',
+    type: 'website',
   },
 };
 

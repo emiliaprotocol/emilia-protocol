@@ -59,7 +59,7 @@ describe('middleware API body-size tripwire', () => {
     mockCheckRateLimit.mockResolvedValue({ allowed: true, remaining: 59, reset: 60 });
   });
 
-  it('rejects declared oversized JSON API bodies before rate limiting', async () => {
+  it('meters declared oversized JSON API bodies before rejecting them', async () => {
     const res = await middleware(req('/api/receipt', {
       headers: {
         'content-type': 'application/json',
@@ -68,7 +68,7 @@ describe('middleware API body-size tripwire', () => {
     }));
 
     expect(res.status).toBe(413);
-    expect(mockCheckRateLimit).not.toHaveBeenCalled();
+    expect(mockCheckRateLimit).toHaveBeenCalledWith('203.0.113.9', 'submit');
     expect(await res.json()).toMatchObject({ code: 'payload_too_large', max_bytes: 1024 * 1024 });
   });
 
@@ -91,7 +91,7 @@ describe('middleware API body-size tripwire', () => {
     }));
 
     expect(denied.status).toBe(413);
-    expect(mockCheckRateLimit).not.toHaveBeenCalled();
+    expect(mockCheckRateLimit).toHaveBeenCalledWith('203.0.113.9', 'register');
   });
 
   it('rejects a chunked oversized body with NO Content-Length (stream cap)', async () => {
@@ -101,7 +101,7 @@ describe('middleware API body-size tripwire', () => {
     }));
 
     expect(res.status).toBe(413);
-    expect(mockCheckRateLimit).not.toHaveBeenCalled();
+    expect(mockCheckRateLimit).toHaveBeenCalledWith('203.0.113.9', 'submit');
     expect(await res.json()).toMatchObject({ code: 'payload_too_large', max_bytes: 1024 * 1024 });
   });
 
@@ -125,7 +125,7 @@ describe('middleware API body-size tripwire', () => {
     }));
 
     expect(res.status).toBe(413);
-    expect(mockCheckRateLimit).not.toHaveBeenCalled();
+    expect(mockCheckRateLimit).toHaveBeenCalledWith('203.0.113.9', 'submit');
   });
 
   it('pins API matcher and mutating-method body-cap coverage', () => {

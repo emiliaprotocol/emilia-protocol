@@ -59,6 +59,8 @@ const AUTHZ_SIGNALS = [
   'authenticateTrustDeskReviewer', // signed host-only session binds the named Trust Desk reviewer
   'submitArenaAttempt',       // Arena service authenticates the exact ep_arena_ session capability
   'publishArenaRefusal',      // Arena service authenticates capability + session + attempt ownership
+  'authorizeAgentAdoptionSession', // hashed adoption capability bound to the exact session and tenant
+  'authorizeAgentAdoptionRequest', // bearer-or-HttpOnly recovery capability with exact-origin mutation guard
 ];
 
 // Reviewed public-by-design routes: intentionally unauthenticated OR intentionally
@@ -77,6 +79,7 @@ const PUBLIC_BY_DESIGN = new Set([
   'app/api/badge/[entity]/route.ts',                  // public capability badge — boolean only, never a score/secret
   'app/api/demo/crash/[scenarioId]/route.ts',         // public, unauthenticated crash-test demo (self-signed sandbox)
   'app/api/arena/refusals/[shareId]/route.ts',        // explicit opt-in, privacy-minimized integrity record behind 160-bit share id
+  'app/api/adopt/shares/[shareId]/route.ts',          // opt-in Operating Bond projection behind a 160-bit capability id; no session, credential, or identity fields
   'app/api/score/[entityId]/route.ts',                // RETIRED — returns HTTP 410 Gone (score surface removed)
   'app/api/score/[entityId]/history/route.ts',        // RETIRED — returns HTTP 410 Gone
 ]);

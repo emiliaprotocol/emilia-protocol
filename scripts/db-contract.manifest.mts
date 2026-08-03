@@ -481,6 +481,7 @@ export const contract: DbContract = {
     'complete_webauthn_registration_atomic',
     'consume_trust_desk_bootstrap_atomic',
     'compare_and_set_trust_desk_status_atomic',
+    'apply_scim_user_and_authority_atomic',
     ...RELEASE_LOCK_SERVICE_RPCS,
   ],
 
@@ -492,6 +493,7 @@ export const contract: DbContract = {
     'public.consume_gate_ref_atomic(text,text,text,text,text)',
     'public.revoke_commit_key_atomic(text,text,text)',
     'public.compare_and_set_trust_desk_status_atomic(text,text,text,jsonb)',
+    'public.apply_scim_user_and_authority_atomic(text,text,uuid,integer,jsonb,boolean,text)',
   ],
 
   // Functions that MUST exist (existence only). Includes the append-only

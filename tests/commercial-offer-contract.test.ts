@@ -51,4 +51,11 @@ describe('commercial offer contract', () => {
     expect(commercialOffer).toContain("providerRailLabel: '1 provider rail'");
     expect(intake).toContain('FINANCIAL_AUTHORITY_DESIGN_PARTNER');
   });
+
+  it('defines Agent Adoption graduation without financial-rail claims', () => {
+    expect(commercialOffer).toContain("id: 'agent_adoption_design_partner_v1'");
+    expect(commercialOffer).toContain("name: 'Agent Adoption protected-workflow pilot'");
+    expect(commercialOffer).toContain("workflowLabel: '1 protected agent workflow'");
+    expect(intake).toContain('AGENT_ADOPTION_DESIGN_PARTNER');
+  });
 });

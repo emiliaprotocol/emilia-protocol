@@ -437,6 +437,7 @@ export const contract = {
         'complete_webauthn_registration_atomic',
         'consume_trust_desk_bootstrap_atomic',
         'compare_and_set_trust_desk_status_atomic',
+        'apply_scim_user_and_authority_atomic',
         ...RELEASE_LOCK_SERVICE_RPCS,
     ],
     // These public mutation roots are pinned by identity arguments as well as by
@@ -447,6 +448,7 @@ export const contract = {
         'public.consume_gate_ref_atomic(text,text,text,text,text)',
         'public.revoke_commit_key_atomic(text,text,text)',
         'public.compare_and_set_trust_desk_status_atomic(text,text,text,jsonb)',
+        'public.apply_scim_user_and_authority_atomic(text,text,uuid,integer,jsonb,boolean,text)',
     ],
     // Functions that MUST exist (existence only). Includes the append-only
     // immutability triggers — their absence means tamper-evidence is unenforced.

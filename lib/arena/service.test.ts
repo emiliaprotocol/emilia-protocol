@@ -82,6 +82,42 @@ describe('Arena service boundary', () => {
     expect(JSON.stringify(args)).not.toContain(result.token);
   });
 
+  it('accepts only a bounded server-supplied synthetic profile for composed challenges', async () => {
+    const rpc = vi.fn(async () => ({ data: { ok: true }, error: null }));
+    const result = await provisionArenaSession({
+      agentName: 'Document Router',
+      client: { rpc } as any,
+      now: NOW,
+      profile: {
+        totalAmount: 200,
+        maxAmountPerAction: 40,
+        allowedTargets: ['documents.demo'],
+      },
+    });
+    const [, args] = rpc.mock.calls[0];
+    expect(result.allowance).toMatchObject({
+      total_amount: 200,
+      max_amount_per_action: 40,
+      allowed_targets: ['documents.demo'],
+    });
+    expect(args).toMatchObject({
+      p_total_amount: 200,
+      p_max_amount_per_action: 40,
+      p_allowed_targets: ['documents.demo'],
+    });
+
+    for (const profile of [
+      { totalAmount: 0, maxAmountPerAction: 1, allowedTargets: ['documents.demo'] },
+      { totalAmount: 10, maxAmountPerAction: 11, allowedTargets: ['documents.demo'] },
+      { totalAmount: 10, maxAmountPerAction: 1, allowedTargets: ['https://evil.test'] },
+      { totalAmount: 10, maxAmountPerAction: 1, allowedTargets: [] },
+    ]) {
+      await expect(provisionArenaSession({
+        agentName: 'Document Router', client: { rpc } as any, now: NOW, profile,
+      })).rejects.toMatchObject({ status: 400, code: 'arena_profile_invalid' });
+    }
+  });
+
   it('rejects caller-supplied verdict fields before touching the atomic attempt RPC', async () => {
     const token = `ep_arena_${'a'.repeat(64)}`;
     const row = sessionRow(token);
