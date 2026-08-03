@@ -3,7 +3,7 @@
   "evidence_snapshot_at": "2026-08-03T10:49:04.995Z",
   "provenance": {
     "generator": "scripts/generate-llm-context.mjs",
-    "input_digest_sha256": "53ad0989ef08631759dbded6b224752e985572def108620ab31ec9dd9bdc7cf0",
+    "input_digest_sha256": "3a55992ec039f1496aa7ae349c75b9a23f16f1543b022e58c3b71cc6762374c7",
     "generated_from": [
       {
         "path": "docs/ai/context-source.v1.json",
@@ -32,13 +32,13 @@
       },
       {
         "path": "security/claims.v1.json",
-        "sha256": "5c95a294f7a7986dbb7035da4117ca0015e2d1e52d1a1b5f195825e4dfcaea90",
-        "bytes": 247459
+        "sha256": "422c609f0a4698071c717cd8a1be8329d2c1b450dcda1adb4f613739b4f1a3dc",
+        "bytes": 248404
       },
       {
         "path": "security/security-case.json",
-        "sha256": "a08ebac223ab31faa29f3263596a22b35488f09647a855122439bd86a61b42b1",
-        "bytes": 380092
+        "sha256": "97b87ae5cdaf24f578290341d897bcd4e640e2c8280fcb8490e2799eb0cf096b",
+        "bytes": 381400
       },
       {
         "path": "lib/standards-observatory.snapshot.json",
@@ -384,7 +384,7 @@
       "status": "passed",
       "claims": 35,
       "evidence_files": 255,
-      "evidence_bundle_sha256": "d6b291bfff00918bbf9fbe4a06894f2d6f5e9f38665d74b9c10d2354badcb0c2"
+      "evidence_bundle_sha256": "26cd6c8583aaf80628f4af708796fa943ab12d4a8506001896dbebae593e7037"
     },
     "caid": {
       "core_vectors": 48,
@@ -2756,6 +2756,7 @@
         "the FutureEnterprises owner identity",
         "the registry-publishing-approval environment",
         "GitHub Actions OIDC identity",
+        "pinned GitHub Action revisions",
         "npm and PyPI trusted-publisher configuration"
       ],
       "enforcement_path": [
@@ -2851,6 +2852,7 @@
         "the FutureEnterprises owner identity",
         "the registry-publishing-approval environment",
         "the workflow-dispatched refs/heads/main commit",
+        "pinned GitHub Action revisions",
         "an active GitHub update-and-deletion ruleset for refs/tags/packages/go-verify/v*",
         "GitHub tag-ref authority",
         "proxy.golang.org and sum.golang.org"
