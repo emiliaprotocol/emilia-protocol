@@ -18,6 +18,13 @@ export interface Classification {
     reason: string;
     confidence: 'low' | 'medium' | 'high';
 }
+export declare const CLASSIFICATION_POLICY: Readonly<{
+    readOnlyLeadingSignals: readonly string[];
+    stateChangeSignals: readonly string[];
+    hybridOperationMarkers: readonly string[];
+    writeMethods: readonly string[];
+    precedence: readonly string[];
+}>;
 export declare function classifyAction(action: unknown): Classification;
 export declare function scanActions(actions: ActionInput[], { source, blindSpots }?: {
     source?: string;

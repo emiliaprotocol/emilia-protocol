@@ -24,6 +24,8 @@ node emilia/verify-setup.mjs --emit-handoff \
 accepts MCP tool lists and generates a `withMcpGuard` wrap. OpenAPI remains a
 passive scan/manifest surface in this release: the command refuses to generate
 a verification-only HTTP middleware until durable one-use consumption is wired.
+Generated integration instructions install the audited runtime exactly with
+`npm install --save-exact @emilia-protocol/mcp-guard@0.4.5`.
 
 It does exactly three things, and never more:
 
@@ -115,6 +117,11 @@ and any reached discovery limit is printed in the report.
 - **It does not trust MCP hints as policy.** `readOnlyHint` is advisory. A
   high-risk semantic match overrides it, and an otherwise opaque action defaults
   to receipt-required until a reviewer confirms it is read-only.
+- **Read words cannot hide another operation.** The classifier applies a public,
+  data-shaped precedence policy: category and destructive evidence first, then
+  state-change verbs and write methods, then hybrid markers such as `and` or
+  `then`. Only a leading read verb with no higher-precedence signal is proposed
+  for pass-through; mutation or ambiguity defaults receipt-required.
 - **It will not edit your code.** It emits the manifest and the wrap; you apply
   them after review.
 - **It will never tell you that you are "protected."** It reports what it could

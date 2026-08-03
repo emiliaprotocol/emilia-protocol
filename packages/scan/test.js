@@ -206,6 +206,83 @@ test('scan protect routes to the dry-run hardener without writing files', () => 
   }).status, 0, 'dry-run must not create the output directory');
 });
 
+test('scan CLI exercises MCP, OpenAPI, sample, emit, and refusal paths', () => {
+  const dir = mkdtempSync(join(tmpdir(), 'emilia-scan-cli-'));
+  const mcpInput = join(dir, 'tools.json');
+  const emitted = join(dir, 'manifest.json');
+  writeFileSync(mcpInput, JSON.stringify({
+    tools: [
+      { name: 'getAccountBalance', description: 'Read the balance' },
+      { name: 'rotateApiKey', description: 'Fetch the current key and rotate it' },
+    ],
+  }));
+
+  const mcp = spawnSync(process.execPath, [join(import.meta.dirname, 'cli.mjs'), mcpInput, '--emit', emitted], {
+    cwd: dir,
+    encoding: 'utf8',
+  });
+  assert.equal(mcp.status, 0, `${mcp.stdout}\n${mcp.stderr}`);
+  assert.match(mcp.stdout, /mcp surface, 2 actions/);
+  assert.match(mcp.stdout, /rotateApiKey/);
+  assert.match(mcp.stdout, /REVIEW \(fail-closed\)/);
+  assert.match(mcp.stdout, /Only statically-listed tools are visible/);
+  const emittedManifest = JSON.parse(readFileSync(emitted, 'utf8'));
+  assert.ok(emittedManifest.actions.some((action) => action.match?.tool === 'rotateApiKey'));
+
+  const overwrite = spawnSync(process.execPath, [join(import.meta.dirname, 'cli.mjs'), mcpInput, '--emit', emitted], {
+    cwd: dir,
+    encoding: 'utf8',
+  });
+  assert.equal(overwrite.status, 2);
+  assert.match(`${overwrite.stdout}${overwrite.stderr}`, /refusing to overwrite existing manifest/);
+
+  const openApiInput = join(dir, 'openapi.json');
+  writeFileSync(openApiInput, JSON.stringify({
+    openapi: '3.1.0',
+    paths: {
+      '/status': {
+        parameters: [],
+        get: { description: 'Read service health' },
+      },
+      '/jobs': {
+        post: { operationId: 'startJob', summary: 'Start a background job' },
+      },
+    },
+  }));
+  const openApi = spawnSync(process.execPath, [join(import.meta.dirname, 'cli.mjs'), openApiInput], {
+    cwd: dir,
+    encoding: 'utf8',
+  });
+  assert.equal(openApi.status, 0, `${openApi.stdout}\n${openApi.stderr}`);
+  assert.match(openApi.stdout, /openapi surface, 2 actions/);
+  assert.match(openApi.stdout, /get \/status/);
+  assert.match(openApi.stdout, /startJob/);
+  assert.match(openApi.stdout, /undocumented endpoints/);
+
+  const sample = spawnSync(process.execPath, [join(import.meta.dirname, 'cli.mjs'), '--sample'], {
+    cwd: dir,
+    encoding: 'utf8',
+  });
+  assert.equal(sample.status, 0, `${sample.stdout}\n${sample.stderr}`);
+  assert.match(sample.stdout, /built-in sample/);
+
+  const unrecognized = join(dir, 'unrecognized.json');
+  writeFileSync(unrecognized, JSON.stringify({ not_tools: true }));
+  const refused = spawnSync(process.execPath, [join(import.meta.dirname, 'cli.mjs'), unrecognized], {
+    cwd: dir,
+    encoding: 'utf8',
+  });
+  assert.notEqual(refused.status, 0);
+  assert.match(`${refused.stdout}${refused.stderr}`, /Unrecognized input/);
+
+  const missing = spawnSync(process.execPath, [join(import.meta.dirname, 'cli.mjs')], {
+    cwd: dir,
+    encoding: 'utf8',
+  });
+  assert.equal(missing.status, 2);
+  assert.match(`${missing.stdout}${missing.stderr}`, /usage: cli\.mjs/);
+});
+
 test('OpenAPI scan preserves route selectors but protect refuses verification-only HTTP scaffolds', () => {
   const dir = mkdtempSync(join(tmpdir(), 'emilia-protect-openapi-'));
   const input = join(dir, 'openapi.json');

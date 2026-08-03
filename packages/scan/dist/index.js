@@ -42,8 +42,38 @@ const CATEGORY_SIGNALS = [
     { pack: 'records.delete', any: ['delete', 'remove', 'purge', 'destroy', 'drop_table', 'wipe', 'erase', 'hard_delete'] },
     { pack: 'regulated.decision_override', any: ['override', 'adjudicate', 'dispose', 'approve_case', 'final_decision', 'waive', 'exception_approve'] },
 ];
-const READ_ONLY_SIGNALS = ['get', 'list', 'read', 'search', 'lookup', 'fetch', 'query', 'describe', 'view', 'count', 'status', 'summary', 'summarize', 'preview', 'health', 'ping'];
-const MUTATING_SIGNALS = ['create', 'update', 'set', 'write', 'post', 'put', 'patch', 'modify', 'edit', 'add', 'remove', 'send', 'submit', 'execute', 'run', 'apply', 'trigger', 'cancel', 'revoke', 'issue'];
+// This policy is intentionally data-shaped and exported so reviewers can audit
+// the lexical boundary without reverse-engineering control flow. Its precedence
+// is security-significant: a read word is evidence only when it is the leading
+// action verb, and any state-change signal, write method, or hybrid-operation
+// marker wins before pass-through is considered.
+export const CLASSIFICATION_POLICY = Object.freeze({
+    readOnlyLeadingSignals: Object.freeze([
+        'get', 'list', 'read', 'search', 'lookup', 'fetch', 'query', 'describe',
+        'view', 'count', 'status', 'summary', 'summarize', 'preview', 'health', 'ping',
+    ]),
+    stateChangeSignals: Object.freeze([
+        'create', 'update', 'set', 'write', 'post', 'put', 'patch', 'modify', 'edit',
+        'add', 'remove', 'send', 'submit', 'execute', 'run', 'apply', 'trigger',
+        'cancel', 'revoke', 'issue', 'replace', 'register', 'unregister', 'delete',
+        'destroy', 'purge', 'erase', 'archive', 'rotate', 'rename', 'move', 'copy',
+        'upload', 'import', 'publish', 'unpublish', 'enable', 'disable', 'activate',
+        'deactivate', 'start', 'stop', 'restart', 'reset', 'restore', 'invite',
+        'assign', 'unassign', 'approve', 'reject', 'accept', 'deny', 'lock', 'unlock',
+        'merge', 'commit', 'save', 'schedule', 'reschedule', 'close', 'open',
+        'increment', 'decrement',
+    ]),
+    hybridOperationMarkers: Object.freeze(['and', 'then', 'before', 'after', 'while', 'plus']),
+    writeMethods: Object.freeze(['POST', 'PUT', 'PATCH', 'DELETE']),
+    precedence: Object.freeze([
+        'risk_category',
+        'destructive_annotation',
+        'state_change_or_write_method',
+        'hybrid_operation_ambiguity',
+        'leading_read_signal',
+        'fail_closed_default',
+    ]),
+});
 const packById = Object.fromEntries(HIGH_RISK_ACTION_PACKS.map((p) => [p.id, p]));
 function norm(s) {
     return String(s || '').toLowerCase().replace(/[^a-z0-9]+/g, '_');
@@ -53,6 +83,9 @@ function semanticNorm(s) {
         .replace(/([a-z0-9])([A-Z])/g, '$1_$2')
         .toLowerCase()
         .replace(/[^a-z0-9]+/g, '_');
+}
+function semanticTokens(s) {
+    return semanticNorm(s).split('_').filter(Boolean);
 }
 function hasWholeSignal(hay, signal) {
     return `_${hay}_`.includes(`_${signal}_`);
@@ -64,7 +97,10 @@ export function classifyAction(action) {
         return { decision: 'review_fail_closed', receipt_required: true, assurance_class: 'class_a', reason: 'malformed action — defaults to require a receipt', confidence: 'low' };
     }
     const candidate = action;
-    const hay = `${semanticNorm(candidate.name)}_${semanticNorm(candidate.description)}`;
+    const nameTokens = semanticTokens(candidate.name);
+    const descriptionTokens = semanticTokens(candidate.description);
+    const semanticTokensCombined = [...nameTokens, ...descriptionTokens];
+    const hay = semanticTokensCombined.join('_');
     const ann = candidate.annotations && typeof candidate.annotations === 'object' && !Array.isArray(candidate.annotations)
         ? candidate.annotations : {};
     const cat = matchCategory(hay);
@@ -87,29 +123,53 @@ export function classifyAction(action) {
     if (ann.destructiveHint === true) {
         return { decision: 'gate', receipt_required: true, assurance_class: 'class_a', category: 'annotated_destructive', reason: 'annotation:destructiveHint', confidence: 'high' };
     }
-    const looksReadOnly = READ_ONLY_SIGNALS.some((k) => hay.startsWith(k) || hay.includes(`_${k}_`) || hay.endsWith(`_${k}`));
-    const looksMutating = MUTATING_SIGNALS.some((k) => hay.startsWith(k) || hay.includes(`_${k}_`) || hay.endsWith(`_${k}`))
-        || ['POST', 'PUT', 'PATCH', 'DELETE'].includes(String(candidate.http_method || '').toUpperCase());
-    if (looksReadOnly && !looksMutating) {
+    const leadingReadSignal = CLASSIFICATION_POLICY.readOnlyLeadingSignals.find((signal) => (nameTokens[0] === signal));
+    const readSignal = semanticTokensCombined.find((token) => (CLASSIFICATION_POLICY.readOnlyLeadingSignals.includes(token)));
+    const stateChangeSignal = semanticTokensCombined.find((token) => (CLASSIFICATION_POLICY.stateChangeSignals.includes(token)));
+    const writeMethod = CLASSIFICATION_POLICY.writeMethods.includes(String(candidate.http_method || '').toUpperCase()) ? String(candidate.http_method).toUpperCase() : undefined;
+    const hybridMarker = readSignal
+        ? semanticTokensCombined.find((token) => CLASSIFICATION_POLICY.hybridOperationMarkers.includes(token))
+        : undefined;
+    if (stateChangeSignal || writeMethod) {
+        const evidence = stateChangeSignal
+            ? `state-change signal "${stateChangeSignal}"`
+            : `write method "${writeMethod}"`;
         return {
-            decision: 'pass_through',
-            receipt_required: false,
-            reason: ann.readOnlyHint === true ? 'read-only verb plus advisory readOnlyHint; confirm handler behavior' : 'read-only verb, no mutation signal; confirm handler behavior',
+            decision: 'review_fail_closed',
+            receipt_required: true,
+            assurance_class: 'class_a',
+            reason: `${evidence} outranks read-only words — defaults to require a receipt; confirm or downgrade`,
             confidence: 'low',
         };
     }
-    if (looksMutating) {
-        // The honest core: a state-changing action we could not map to a known risk
-        // category is NOT waved through. It defaults fail-closed and asks a human.
-        return { decision: 'review_fail_closed', receipt_required: true, assurance_class: 'class_a', reason: 'mutating action, unrecognized category — defaults to require a receipt; confirm or downgrade', confidence: 'low' };
+    if (hybridMarker) {
+        return {
+            decision: 'review_fail_closed',
+            receipt_required: true,
+            assurance_class: 'class_a',
+            reason: `hybrid operation marker "${hybridMarker}" makes read-only semantics ambiguous — defaults to require a receipt`,
+            confidence: 'low',
+        };
+    }
+    if (leadingReadSignal) {
+        return {
+            decision: 'pass_through',
+            receipt_required: false,
+            reason: ann.readOnlyHint === true
+                ? `leading read-only verb "${leadingReadSignal}" plus advisory readOnlyHint; confirm handler behavior`
+                : `leading read-only verb "${leadingReadSignal}", no higher-precedence mutation or ambiguity signal; confirm handler behavior`,
+            confidence: 'low',
+        };
     }
     return {
         decision: 'review_fail_closed',
         receipt_required: true,
         assurance_class: 'class_a',
-        reason: ann.readOnlyHint === true
-            ? 'readOnlyHint is advisory and no independent read-only signal was found — defaults to require a receipt'
-            : 'no strong read-only signal — defaults to require a receipt; confirm or downgrade',
+        reason: readSignal
+            ? `read-only signal "${readSignal}" is not the leading action verb — ambiguous and defaulted to require a receipt`
+            : ann.readOnlyHint === true
+                ? 'readOnlyHint is advisory and no independent read-only signal was found — defaults to require a receipt'
+                : 'no strong read-only signal — defaults to require a receipt; confirm or downgrade',
         confidence: 'low',
     };
 }

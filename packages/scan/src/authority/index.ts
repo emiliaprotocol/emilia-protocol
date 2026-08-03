@@ -2,9 +2,10 @@
 
 import { discoverAuthority } from './discover.js';
 import { detectAuthoritySignals } from './detect.js';
+import { SCAN_VERSION } from '../version.js';
 import type { AuthorityScanResult, DiscoveryOptions, OperationVisibility } from './types.js';
 
-export const AUTHORITY_SCAN_VERSION = '0.3.2';
+export const AUTHORITY_SCAN_VERSION = SCAN_VERSION;
 
 export function runAuthorityScan(options: DiscoveryOptions = {}): AuthorityScanResult {
   const inventory = discoverAuthority(options);

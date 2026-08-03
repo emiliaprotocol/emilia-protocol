@@ -15,6 +15,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { spawnSync } from 'node:child_process';
 import {
+  AUTHORITY_SCAN_VERSION,
   authorityExitCode,
   describeSecret,
   redactText,
@@ -26,6 +27,22 @@ import {
 } from './dist/authority/index.js';
 
 const CLI = join(import.meta.dirname, 'cli.mjs');
+
+test('authority reports the package release version from package metadata', () => {
+  const packageVersion = JSON.parse(readFileSync(join(import.meta.dirname, 'package.json'), 'utf8')).version;
+  const root = mkdtempSync(join(tmpdir(), 'emilia-authority-version-'));
+  const home = join(root, 'home');
+  const cwd = join(home, 'project');
+  mkdirSync(cwd, { recursive: true });
+  assert.equal(AUTHORITY_SCAN_VERSION, packageVersion);
+  assert.equal(runAuthorityScan({
+    cwd,
+    home,
+    applicationSupport: join(home, 'Library', 'Application Support'),
+    managedCandidates: [],
+    maxEnvDepth: 0,
+  }).version, packageVersion);
+});
 
 test('both published npm bin targets start with a Node shebang', () => {
   for (const file of ['cli.mjs', 'codemod.mjs']) {
@@ -189,6 +206,66 @@ test('writability claim is tied to an actual current-process access check', () =
   const permission = result.inventory.permissions.find((entry) => entry.source.endsWith('.mcp.json'));
   assert.equal(permission?.writable_by_current_process, true);
   assert.ok(result.signals.some((signal) => signal.id === 'BYPASS-01'));
+});
+
+test('authority detection reports each consequential local-authority signal with bounded evidence', () => {
+  const secret = 'authority-test-secret';
+  const { home, cwd } = fixture({
+    mcpServers: {
+      shellRunner: {
+        command: 'npx',
+        args: ['shell-server'],
+        env: { API_KEY: secret },
+      },
+      stripeControl: {
+        url: 'https://api.stripe.example/mcp',
+        headers: { Authorization: `Bearer ${secret}` },
+      },
+      disabledShell: {
+        command: 'bash',
+        disabled: true,
+      },
+    },
+    permissions: {
+      allow: ['Bash(curl:*)'],
+      ask: ['Bash(git push:*)'],
+      defaultMode: 'allowEdits',
+      additionalDirectories: ['/private/shared'],
+    },
+  });
+  mkdirSync(join(home, '.aws'), { recursive: true });
+  writeFileSync(join(home, '.aws', 'credentials'), '[default]\naws_access_key_id=fake\n');
+  writeFileSync(join(cwd, '.env.local'), `SERVICE_TOKEN=${secret}\n`);
+
+  const result = runAuthorityScan({
+    cwd,
+    home,
+    applicationSupport: join(home, 'Library', 'Application Support'),
+    managedCandidates: [],
+  });
+  const ids = new Set(result.signals.map((signal) => signal.id));
+  assert.deepEqual(
+    [...ids].sort(),
+    [
+      'BYPASS-01',
+      'BYPASS-02',
+      'CRED-01',
+      'CRED-02',
+      'CRED-03',
+      'EGRESS-01',
+      'EXEC-01',
+      'INFRA-01',
+      'SHELL-01',
+      'WILDCARD-01',
+    ],
+  );
+  assert.equal(authorityExitCode(result), 1);
+  assert.ok(!JSON.stringify(result).includes(secret));
+  assert.ok(!result.signals.some((signal) => JSON.stringify(signal.observed).includes('disabledShell')));
+  const text = renderAuthorityText(result);
+  assert.match(text, /\[CRITICAL\] SHELL-01/);
+  assert.match(text, /\[HIGH\] CRED-01/);
+  assert.match(text, /\[MEDIUM\] WILDCARD-01/);
 });
 
 test('environment-file discovery skips symlinks and emits key metadata only', () => {

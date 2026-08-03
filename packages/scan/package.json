@@ -36,13 +36,14 @@
     "risk-packs.d.ts",
     "cli.mjs",
     "codemod.mjs",
+    "CHANGELOG.md",
     "README.md",
     "LICENSE"
   ],
   "scripts": {
     "build": "tsc -p tsconfig.json",
     "pretest": "npm run build",
-    "test": "node --test test.js authority.test.mjs"
+    "test": "node --test test.js authority.test.mjs classification.test.mjs packed-consumer.test.mjs"
   },
   "dependencies": {
     "@emilia-protocol/verify": "^3.10.0"

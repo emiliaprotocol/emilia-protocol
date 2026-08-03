@@ -1,5 +1,5 @@
 import type { AuthorityScanResult, DiscoveryOptions } from './types.js';
-export declare const AUTHORITY_SCAN_VERSION = "0.3.2";
+export declare const AUTHORITY_SCAN_VERSION: string;
 export declare function runAuthorityScan(options?: DiscoveryOptions): AuthorityScanResult;
 export * from './types.js';
 export { describeSecret, safeValue, describeEnv, redactText, sanitizeForReport, sanitizeArgs, } from './redact.js';
