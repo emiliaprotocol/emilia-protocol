@@ -4,6 +4,7 @@ export interface ActionInput {
     description?: string;
     annotations?: Record<string, unknown>;
     http_method?: string;
+    route_path?: string;
     [key: string]: unknown;
 }
 export interface Classification {

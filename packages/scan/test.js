@@ -89,6 +89,10 @@ test('malformed or oversized action surfaces are refused', () => {
   assert.throws(() => scanActions([null]), /each action/);
   assert.throws(() => scanActions([{ name: 'x'.repeat(257) }]), /bounded/);
   assert.throws(() => scanActions(Array.from({ length: 10_001 }, () => ({ name: 'get_x' }))), /at most/);
+  assert.throws(
+    () => scanActions([{ name: 'sendWire', http_method: 'post' }], { source: 'openapi' }),
+    /OpenAPI action requires a bounded HTTP method and route path/,
+  );
 });
 
 test('duplicate, colliding, and source-confusing tool names are refused', () => {
@@ -198,9 +202,19 @@ test('OpenAPI protection preserves distinct route paths in the generated HTTP gu
 
   assert.equal(run.status, 0, `${run.stdout}\n${run.stderr}`);
   const guard = readFileSync(join(dir, 'emilia', 'http-guard.mjs'), 'utf8');
+  const manifest = JSON.parse(readFileSync(join(dir, 'emilia', 'action-control.manifest.json'), 'utf8'));
   assert.match(guard, /"path": "\/payments\/:paymentId"/);
   assert.match(guard, /"path": "\/customers\/:customerId"/);
   assert.doesNotMatch(guard, /"path": "\/"/);
+  assert.deepEqual(
+    manifest.actions
+      .filter((action) => String(action.id).startsWith('discovered.'))
+      .map((action) => action.match),
+    [
+      { protocol: 'http', method: 'POST', path: '/payments/{paymentId}' },
+      { protocol: 'http', method: 'DELETE', path: '/customers/{customerId}' },
+    ],
+  );
 });
 
 test('generated MCP protection separates durable production state from the explicit local check', async () => {

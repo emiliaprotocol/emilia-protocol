@@ -123,6 +123,15 @@ export function scanActions(actions, { source = 'list', blindSpots = [] } = {}) 
         if (SOURCE_CONFUSING_NAME.test(action.name) || RESERVED_OBJECT_NAMES.has(action.name)) {
             throw new Error(`scan: action name is unsafe for generated source: ${JSON.stringify(action.name)}`);
         }
+        if (source === 'openapi'
+            && (typeof action.http_method !== 'string'
+                || !['GET', 'POST', 'PUT', 'PATCH', 'DELETE'].includes(action.http_method.toUpperCase())
+                || typeof action.route_path !== 'string'
+                || !action.route_path.startsWith('/')
+                || action.route_path.length > 2_048
+                || SOURCE_CONFUSING_NAME.test(action.route_path))) {
+            throw new Error('scan: each OpenAPI action requires a bounded HTTP method and route path');
+        }
         if (exactNames.has(action.name)) {
             throw new Error(`scan: duplicate action name: ${JSON.stringify(action.name)}`);
         }
@@ -153,7 +162,9 @@ export function scanActions(actions, { source = 'list', blindSpots = [] } = {}) 
         risk: classification.decision === 'gate' ? 'high' : 'unconfirmed',
         receipt_required: true,
         assurance_class: classification.assurance_class || 'class_a',
-        match: { protocol: source === 'openapi' ? 'http' : 'mcp', tool: action.name },
+        match: source === 'openapi'
+            ? { protocol: 'http', method: action.http_method.toUpperCase(), path: action.route_path }
+            : { protocol: 'mcp', tool: action.name },
         why: classification.why || classification.reason,
         needs_human_confirmation: classification.decision === 'review_fail_closed',
         execution_binding: { required_fields: classification.required_fields || ['action_type'] },

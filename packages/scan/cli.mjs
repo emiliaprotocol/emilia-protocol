@@ -41,7 +41,12 @@ function ingest(raw) {
     for (const [p, ops] of Object.entries(j.paths)) {
       for (const [method, op] of Object.entries(ops)) {
         if (!['get', 'post', 'put', 'patch', 'delete'].includes(method)) continue;
-        actions.push({ name: op?.operationId || `${method} ${p}`, description: op?.summary || op?.description || '', http_method: method });
+        actions.push({
+          name: op?.operationId || `${method} ${p}`,
+          description: op?.summary || op?.description || '',
+          http_method: method,
+          route_path: p,
+        });
       }
     }
     return { actions, source: 'openapi', blindSpots: ['Only operations declared in the spec are visible; undocumented endpoints and query-param-dependent risk are not.'] };
