@@ -59,7 +59,8 @@ export declare const GUARD_DECISIONS: Readonly<{
  *      trusted server annotations or policy)
  *   2. Trusted tool annotation:  annotations[name].irreversible
  *      (MCP destructiveHint can escalate; readOnlyHint is advisory by default)
- *   3. Policy function:          policy(name, args) → boolean
+ *   3. Policy function:          policy(name, args) → boolean, or
+ *                                { irreversible: boolean }
  *   4. Default:                  treated as irreversible. New or misspelled
  *      tools cannot silently bypass the guard; explicitly mark trusted read-only
  *      tools with `irreversible: false` or set `defaultIrreversible: false` only

@@ -131,7 +131,8 @@ function inMemoryConsumptionStore() {
  *      trusted server annotations or policy)
  *   2. Trusted tool annotation:  annotations[name].irreversible
  *      (MCP destructiveHint can escalate; readOnlyHint is advisory by default)
- *   3. Policy function:          policy(name, args) → boolean
+ *   3. Policy function:          policy(name, args) → boolean, or
+ *                                { irreversible: boolean }
  *   4. Default:                  treated as irreversible. New or misspelled
  *      tools cannot silently bypass the guard; explicitly mark trusted read-only
  *      tools with `irreversible: false` or set `defaultIrreversible: false` only
@@ -165,6 +166,16 @@ export function classifyToolCall(name: string, args: AnyRecord = {}, opts: AnyRe
       const p = policy(name, args);
       if (p === true) return { irreversible: true, reason: 'policy_fn' };
       if (p === false) return { irreversible: false, reason: 'policy_fn' };
+      // Also honour the shape this very function returns. A policy written as
+      // `(name) => ({ irreversible: false })` mirrors classifyToolCall's own
+      // output and is the obvious thing to write, but only a bare boolean was
+      // read, so the object fell through to defaultIrreversible. That failed
+      // CLOSED, which is the safe direction and exactly why it went unnoticed:
+      // the operator's intent was dropped in silence and every call was gated.
+      if (p !== null && typeof p === 'object' && typeof (p as AnyRecord).irreversible === 'boolean') {
+        return { irreversible: (p as AnyRecord).irreversible, reason: 'policy_fn' };
+      }
+
     } catch {
       // A throwing classifier is treated as "irreversible" — fail safe.
       return { irreversible: true, reason: 'policy_fn_threw' };
