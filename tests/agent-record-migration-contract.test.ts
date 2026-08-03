@@ -24,7 +24,7 @@ describe('Agent Record v1 migration source contract', () => {
     expect(migration).toContain(
       'CREATE SCHEMA agent_record_private\n  AUTHORIZATION agent_record_store_owner;',
     );
-    expect(migration.match(/FORCE ROW LEVEL SECURITY/g)).toHaveLength(3);
+    expect(migration.match(/FORCE ROW LEVEL SECURITY/g)).toHaveLength(4);
     expect(migration).toContain(
       'REVOKE ALL ON SCHEMA agent_record_private\n  FROM PUBLIC, anon, authenticated, service_role;',
     );
@@ -36,6 +36,9 @@ describe('Agent Record v1 migration source contract', () => {
     );
     expect(migration).toContain(
       'REVOKE ALL ON TABLE agent_record_private.creation_capability\n  FROM PUBLIC, anon, authenticated, service_role;',
+    );
+    expect(migration).toContain(
+      'REVOKE ALL ON TABLE agent_record_private.trial_bindings\n  FROM PUBLIC, anon, authenticated, service_role;',
     );
     expect(migration).not.toMatch(
       /GRANT\s+(?:SELECT|INSERT|UPDATE|DELETE|ALL)[\s\S]{0,120}agent_record_private\.[\s\S]{0,120}(?:anon|authenticated|service_role)/i,
@@ -49,9 +52,11 @@ describe('Agent Record v1 migration source contract', () => {
     expect(publicFunctions).toEqual([
       'read_agent_record_refusal_source',
       'configure_agent_record_creation_capability',
+      'bind_agent_record_trial_source',
       'create_agent_record',
       'create_agent_record_with_capability',
       'check_agent_record_creation_capability',
+      'check_agent_record_storage_contract',
       'revoke_agent_record',
       'read_agent_record_public',
     ]);
@@ -68,6 +73,12 @@ describe('Agent Record v1 migration source contract', () => {
     );
     expect(migration).toContain(
       'GRANT EXECUTE ON FUNCTION public.check_agent_record_creation_capability(TEXT)\n  TO service_role;',
+    );
+    expect(migration).toContain(
+      'GRANT EXECUTE ON FUNCTION public.bind_agent_record_trial_source(UUID, TEXT, UUID, TEXT, TEXT, TEXT)\n  TO service_role;',
+    );
+    expect(migration).toContain(
+      'GRANT EXECUTE ON FUNCTION public.check_agent_record_storage_contract()\n  TO service_role;',
     );
     expect(migration).toContain(
       'GRANT EXECUTE ON FUNCTION public.revoke_agent_record(TEXT, TEXT, TEXT)\n  TO service_role;',
@@ -121,13 +132,19 @@ describe('Agent Record v1 migration source contract', () => {
       "v_adoption ->> 'latest_bond_digest' IS DISTINCT FROM p_bond_digest",
     );
     expect(migration).toMatch(
-      /public\.read_agent_record_refusal_source\(\s*p_source_token_hash,\s*p_source_session_id,\s*p_source_attempt_id\s*\)/,
+      /public\.read_agent_record_refusal_source\(\s*p_source_token,\s*p_source_session_id,\s*p_source_attempt_id\s*\)/,
     );
     expect(migration).toContain(
       "v_source ->> 'source_commitment' IS DISTINCT FROM p_source_commitment",
     );
     expect(migration).toContain(
       "v_source -> 'refusal_artifact' ->> '@version' IS DISTINCT FROM\n        'EP-ACTION-REFUSAL-STATEMENT-v1'",
+    );
+    expect(migration).toMatch(
+      /FROM agent_record_private\.trial_bindings AS binding[\s\S]*binding\.adoption_id = p_adoption_id[\s\S]*binding\.bond_id = p_bond_id[\s\S]*binding\.source_token_hash =[\s\S]*token_hash\(p_source_token\)/,
+    );
+    expect(migration).toContain(
+      "pg_catalog.jsonb_typeof(\n      p_public_projection -> 'signature' -> 'value'\n    ) IS DISTINCT FROM 'string'",
     );
   });
 

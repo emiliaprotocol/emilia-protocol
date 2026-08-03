@@ -22,7 +22,7 @@ const REVOCATION_NONCE = /^earv1_[0-9a-f]{64}$/;
 const ADOPTION_ID = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/;
 const DIGEST = /^sha256:[0-9a-f]{64}$/;
 const SOURCE_SESSION_ID = /^arena_session_[0-9a-f]{32}$/;
-const SOURCE_TOKEN_HASH = /^[0-9a-f]{64}$/;
+const SOURCE_TOKEN = /^ep_arena_[0-9a-f]{64}$/;
 const ATTEMPT_ID = /^arena_attempt_[0-9a-f]{32}$/;
 const TRIAL_TOKEN = /^epenc:v1:[A-Za-z0-9_-]{40,8192}$/;
 const CREATION_CAPABILITY = /^earc1_[0-9a-f]{64}$/;
@@ -173,7 +173,7 @@ function refusalBindings(
       || !ADOPTION_ID.test(value.bond_id ?? '')
       || !DIGEST.test(value.bond_digest ?? '')
       || !SOURCE_SESSION_ID.test(value.source_session_id ?? '')
-      || !SOURCE_TOKEN_HASH.test(value.source_token_hash ?? '')
+      || !SOURCE_TOKEN.test(value.source_token ?? '')
       || value.source_attempt_id !== attemptId
       || !ATTEMPT_ID.test(value.source_attempt_id ?? '')
       || !DIGEST.test(value.source_commitment ?? '')
@@ -190,7 +190,7 @@ function refusalBindings(
     bondId: value.bond_id as string,
     bondDigest: value.bond_digest as string,
     sourceSessionId: value.source_session_id as string,
-    sourceTokenHash: value.source_token_hash as string,
+    sourceToken: value.source_token as string,
     sourceAttemptId: value.source_attempt_id as string,
     sourceCommitment: value.source_commitment as string,
     sourceArtifactDigest: value.source_artifact_digest as string,
@@ -274,7 +274,7 @@ export async function createAgentRecord({
     p_bond_id: source.bondId,
     p_bond_digest: source.bondDigest,
     p_source_session_id: source.sourceSessionId,
-    p_source_token_hash: source.sourceTokenHash,
+    p_source_token: source.sourceToken,
     p_source_attempt_id: source.sourceAttemptId,
     p_source_commitment: source.sourceCommitment,
     p_source_artifact_digest: source.sourceArtifactDigest,

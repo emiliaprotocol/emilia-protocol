@@ -89,9 +89,25 @@ GRANT EXECUTE ON FUNCTION extensions.digest(BYTEA, TEXT)
 -- action parameters, an Arena token, a private key, or an allowance profile.
 GRANT EXECUTE ON FUNCTION public.read_agent_adoption_session(UUID, TEXT)
   TO agent_record_store_owner;
+GRANT SELECT ON TABLE public.arena_sessions, public.arena_attempts
+  TO agent_record_store_owner;
+
+-- The dedicated NOLOGIN owner may read only the Arena source tables through
+-- explicit forced-RLS policies. No application role receives these policies,
+-- and the source RPC below still requires the plaintext session credential.
+CREATE POLICY agent_record_source_sessions_reader
+  ON public.arena_sessions
+  FOR SELECT
+  TO agent_record_store_owner
+  USING (TRUE);
+CREATE POLICY agent_record_source_attempts_reader
+  ON public.arena_attempts
+  FOR SELECT
+  TO agent_record_store_owner
+  USING (TRUE);
 
 CREATE FUNCTION public.read_agent_record_refusal_source(
-  p_source_token_hash TEXT,
+  p_source_token TEXT,
   p_source_session_id TEXT,
   p_source_attempt_id TEXT
 )
@@ -100,15 +116,15 @@ LANGUAGE plpgsql
 STABLE
 SECURITY DEFINER
 SET search_path = ''
-SET row_security = 'off'
+SET row_security = 'on'
 AS $agent_record_refusal_source$
 DECLARE
   v_attempt public.arena_attempts%ROWTYPE;
   v_session public.arena_sessions%ROWTYPE;
   v_source_commitment TEXT;
 BEGIN
-  IF p_source_token_hash IS NULL
-    OR p_source_token_hash !~ '^[0-9a-f]{64}$'
+  IF p_source_token IS NULL
+    OR p_source_token !~ '^ep_arena_[0-9a-f]{64}$'
     OR p_source_session_id IS NULL
     OR p_source_session_id !~ '^arena_session_[0-9a-f]{32}$'
     OR p_source_attempt_id IS NULL
@@ -125,7 +141,10 @@ BEGIN
     ON session.id = attempt.session_row_id
   WHERE attempt.attempt_id = p_source_attempt_id
     AND session.session_id = p_source_session_id
-    AND session.token_hash = p_source_token_hash;
+    AND session.token_hash = pg_catalog.encode(
+      extensions.digest(pg_catalog.convert_to(p_source_token, 'UTF8'), 'sha256'),
+      'hex'
+    );
   IF NOT FOUND THEN
     RAISE EXCEPTION 'Agent Record refusal source not found'
       USING ERRCODE = 'P0002';
@@ -199,6 +218,8 @@ BEGIN
   );
 END
 $agent_record_refusal_source$;
+ALTER FUNCTION public.read_agent_record_refusal_source(TEXT, TEXT, TEXT)
+  OWNER TO agent_record_store_owner;
 REVOKE ALL ON FUNCTION public.read_agent_record_refusal_source(TEXT, TEXT, TEXT)
   FROM PUBLIC, anon, authenticated, service_role, agent_record_store_owner;
 GRANT EXECUTE ON FUNCTION public.read_agent_record_refusal_source(TEXT, TEXT, TEXT)
@@ -268,6 +289,20 @@ CREATE TABLE agent_record_private.creation_capability (
   configured_at TIMESTAMPTZ NOT NULL
 );
 
+CREATE TABLE agent_record_private.trial_bindings (
+  source_session_id TEXT COLLATE "C" PRIMARY KEY
+    CHECK (source_session_id ~ '^arena_session_[0-9a-f]{32}$'),
+  source_token_hash TEXT COLLATE "C" NOT NULL UNIQUE
+    CHECK (source_token_hash ~ '^[0-9a-f]{64}$'),
+  adoption_id UUID NOT NULL,
+  bond_id UUID NOT NULL,
+  bond_digest TEXT COLLATE "C" NOT NULL
+    CHECK (bond_digest ~ '^sha256:[0-9a-f]{64}$'),
+  source_expires_at TIMESTAMPTZ NOT NULL,
+  bound_at TIMESTAMPTZ NOT NULL,
+  CHECK (bound_at < source_expires_at)
+);
+
 CREATE INDEX agent_record_retention_idx
   ON agent_record_private.records (retention_expires_at, record_id);
 
@@ -283,6 +318,10 @@ ALTER TABLE agent_record_private.creation_capability
   ENABLE ROW LEVEL SECURITY;
 ALTER TABLE agent_record_private.creation_capability
   FORCE ROW LEVEL SECURITY;
+ALTER TABLE agent_record_private.trial_bindings
+  ENABLE ROW LEVEL SECURITY;
+ALTER TABLE agent_record_private.trial_bindings
+  FORCE ROW LEVEL SECURITY;
 
 CREATE POLICY agent_record_records_owner_only
   ON agent_record_private.records
@@ -293,12 +332,17 @@ CREATE POLICY agent_record_revocations_owner_only
 CREATE POLICY agent_record_creation_capability_owner_only
   ON agent_record_private.creation_capability
   TO agent_record_store_owner USING (TRUE) WITH CHECK (TRUE);
+CREATE POLICY agent_record_trial_bindings_owner_only
+  ON agent_record_private.trial_bindings
+  TO agent_record_store_owner USING (TRUE) WITH CHECK (TRUE);
 
 REVOKE ALL ON TABLE agent_record_private.records
   FROM PUBLIC, anon, authenticated, service_role;
 REVOKE ALL ON TABLE agent_record_private.revocations
   FROM PUBLIC, anon, authenticated, service_role;
 REVOKE ALL ON TABLE agent_record_private.creation_capability
+  FROM PUBLIC, anon, authenticated, service_role;
+REVOKE ALL ON TABLE agent_record_private.trial_bindings
   FROM PUBLIC, anon, authenticated, service_role;
 
 CREATE FUNCTION agent_record_private.token_hash(p_token TEXT)
@@ -435,6 +479,115 @@ AS $agent_record_iso_ms$
   );
 $agent_record_iso_ms$;
 
+-- Bind one active adoption bond to one plaintext-authenticated Arena session
+-- before any public record can be created. The database stores only the token
+-- hash. A service_role database credential can read Arena hashes, but cannot
+-- manufacture this binding without both original bearer credentials.
+CREATE FUNCTION public.bind_agent_record_trial_source(
+  p_adoption_id UUID,
+  p_adoption_session_token TEXT,
+  p_bond_id UUID,
+  p_bond_digest TEXT,
+  p_source_session_id TEXT,
+  p_source_token TEXT
+)
+RETURNS BOOLEAN
+LANGUAGE plpgsql
+VOLATILE
+SECURITY DEFINER
+SET search_path = ''
+SET lock_timeout = '2s'
+SET statement_timeout = '5s'
+AS $bind_agent_record_trial_source$
+DECLARE
+  v_adoption JSONB;
+  v_source public.arena_sessions%ROWTYPE;
+  v_token_hash TEXT;
+  v_existing agent_record_private.trial_bindings%ROWTYPE;
+BEGIN
+  IF p_adoption_id IS NULL
+    OR p_adoption_session_token IS NULL
+    OR p_adoption_session_token !~ '^eaa1_[0-9a-f]{64}$'
+    OR p_bond_id IS NULL
+    OR p_bond_digest IS NULL
+    OR p_bond_digest !~ '^sha256:[0-9a-f]{64}$'
+    OR p_source_session_id IS NULL
+    OR p_source_session_id !~ '^arena_session_[0-9a-f]{32}$'
+    OR p_source_token IS NULL
+    OR p_source_token !~ '^ep_arena_[0-9a-f]{64}$'
+  THEN
+    RAISE EXCEPTION 'Agent Record trial binding input is invalid'
+      USING ERRCODE = '22023';
+  END IF;
+
+  v_adoption := public.read_agent_adoption_session(
+    p_adoption_id,
+    p_adoption_session_token
+  );
+  IF v_adoption ->> 'status' IS DISTINCT FROM 'active'
+    OR v_adoption ->> 'adoption_id' IS DISTINCT FROM p_adoption_id::TEXT
+    OR v_adoption ->> 'bond_count' IS DISTINCT FROM '1'
+    OR v_adoption ->> 'latest_bond_id' IS DISTINCT FROM p_bond_id::TEXT
+    OR v_adoption ->> 'bond_digest' IS DISTINCT FROM p_bond_digest
+    OR v_adoption ->> 'latest_bond_digest' IS DISTINCT FROM p_bond_digest
+  THEN
+    RAISE EXCEPTION 'Agent Record trial adoption binding is invalid'
+      USING ERRCODE = '55000';
+  END IF;
+
+  v_token_hash := agent_record_private.token_hash(p_source_token);
+  SELECT session.*
+  INTO v_source
+  FROM public.arena_sessions AS session
+  WHERE session.session_id = p_source_session_id
+    AND session.token_hash = v_token_hash
+    AND session.status = 'active'
+    AND session.expires_at > pg_catalog.clock_timestamp();
+  IF NOT FOUND THEN
+    RAISE EXCEPTION 'Agent Record trial Arena binding is invalid'
+      USING ERRCODE = 'P0002';
+  END IF;
+
+  INSERT INTO agent_record_private.trial_bindings (
+    source_session_id,
+    source_token_hash,
+    adoption_id,
+    bond_id,
+    bond_digest,
+    source_expires_at,
+    bound_at
+  ) VALUES (
+    p_source_session_id,
+    v_token_hash,
+    p_adoption_id,
+    p_bond_id,
+    p_bond_digest,
+    v_source.expires_at,
+    pg_catalog.transaction_timestamp()
+  )
+  ON CONFLICT (source_session_id) DO NOTHING
+  RETURNING * INTO v_existing;
+
+  IF NOT FOUND THEN
+    SELECT binding.*
+    INTO v_existing
+    FROM agent_record_private.trial_bindings AS binding
+    WHERE binding.source_session_id = p_source_session_id
+      AND binding.source_token_hash = v_token_hash
+      AND binding.adoption_id = p_adoption_id
+      AND binding.bond_id = p_bond_id
+      AND binding.bond_digest = p_bond_digest
+      AND binding.source_expires_at = v_source.expires_at;
+    IF NOT FOUND THEN
+      RAISE EXCEPTION 'Agent Record trial source was already bound'
+        USING ERRCODE = '23505';
+    END IF;
+  END IF;
+
+  RETURN TRUE;
+END
+$bind_agent_record_trial_source$;
+
 CREATE FUNCTION agent_record_private.reject_immutable_record_mutation()
 RETURNS TRIGGER
 LANGUAGE plpgsql
@@ -455,6 +608,10 @@ CREATE TRIGGER agent_record_revocations_immutable_trigger
   BEFORE UPDATE OR DELETE ON agent_record_private.revocations
   FOR EACH ROW
   EXECUTE FUNCTION agent_record_private.reject_immutable_record_mutation();
+CREATE TRIGGER agent_record_trial_bindings_immutable_trigger
+  BEFORE UPDATE OR DELETE ON agent_record_private.trial_bindings
+  FOR EACH ROW
+  EXECUTE FUNCTION agent_record_private.reject_immutable_record_mutation();
 
 CREATE FUNCTION public.create_agent_record(
   p_adoption_id UUID,
@@ -464,7 +621,7 @@ CREATE FUNCTION public.create_agent_record(
   p_bond_id UUID,
   p_bond_digest TEXT,
   p_source_session_id TEXT,
-  p_source_token_hash TEXT,
+  p_source_token TEXT,
   p_source_attempt_id TEXT,
   p_source_commitment TEXT,
   p_source_artifact_digest TEXT,
@@ -502,8 +659,8 @@ BEGIN
     OR p_bond_digest !~ '^sha256:[0-9a-f]{64}$'
     OR p_source_session_id IS NULL
     OR p_source_session_id !~ '^arena_session_[0-9a-f]{32}$'
-    OR p_source_token_hash IS NULL
-    OR p_source_token_hash !~ '^[0-9a-f]{64}$'
+    OR p_source_token IS NULL
+    OR p_source_token !~ '^ep_arena_[0-9a-f]{64}$'
     OR p_source_attempt_id IS NULL
     OR p_source_attempt_id !~ '^arena_attempt_[0-9a-f]{32}$'
     OR p_source_commitment IS NULL
@@ -592,6 +749,9 @@ BEGIN
     )
     OR p_public_projection -> 'signature' ->> 'key_source' IS DISTINCT FROM
         'operator-commit-signing-key'
+    OR pg_catalog.jsonb_typeof(
+      p_public_projection -> 'signature' -> 'value'
+    ) IS DISTINCT FROM 'string'
     OR p_public_projection -> 'signature' ->> 'value' !~ '^[A-Za-z0-9_-]{86}$'
   THEN
     RAISE EXCEPTION 'agent record public projection is invalid'
@@ -614,7 +774,7 @@ BEGIN
   END IF;
 
   v_source := public.read_agent_record_refusal_source(
-    p_source_token_hash,
+    p_source_token,
     p_source_session_id,
     p_source_attempt_id
   );
@@ -631,6 +791,21 @@ BEGIN
       p_action_digest
   THEN
     RAISE EXCEPTION 'private refusal source does not match agent record bindings'
+      USING ERRCODE = '55000';
+  END IF;
+
+  IF NOT EXISTS (
+    SELECT 1
+    FROM agent_record_private.trial_bindings AS binding
+    WHERE binding.source_session_id = p_source_session_id
+      AND binding.source_token_hash =
+        agent_record_private.token_hash(p_source_token)
+      AND binding.adoption_id = p_adoption_id
+      AND binding.bond_id = p_bond_id
+      AND binding.bond_digest = p_bond_digest
+      AND binding.source_expires_at > pg_catalog.clock_timestamp()
+  ) THEN
+    RAISE EXCEPTION 'Agent Record trial source is not bound to this adoption'
       USING ERRCODE = '55000';
   END IF;
 
@@ -707,7 +882,7 @@ CREATE FUNCTION public.create_agent_record_with_capability(
   p_bond_id UUID,
   p_bond_digest TEXT,
   p_source_session_id TEXT,
-  p_source_token_hash TEXT,
+  p_source_token TEXT,
   p_source_attempt_id TEXT,
   p_source_commitment TEXT,
   p_source_artifact_digest TEXT,
@@ -743,7 +918,7 @@ BEGIN
     p_bond_id,
     p_bond_digest,
     p_source_session_id,
-    p_source_token_hash,
+    p_source_token,
     p_source_attempt_id,
     p_source_commitment,
     p_source_artifact_digest,
@@ -771,6 +946,78 @@ AS $check_agent_record_creation_capability$
     p_creation_capability
   );
 $check_agent_record_creation_capability$;
+
+CREATE FUNCTION public.check_agent_record_storage_contract()
+RETURNS BOOLEAN
+LANGUAGE sql
+STABLE
+SECURITY DEFINER
+SET search_path = ''
+SET statement_timeout = '2s'
+AS $check_agent_record_storage_contract$
+  SELECT
+    (
+      SELECT pg_catalog.count(*) = 4
+      FROM pg_catalog.pg_class AS class
+      JOIN pg_catalog.pg_namespace AS namespace
+        ON namespace.oid = class.relnamespace
+      WHERE namespace.nspname = 'agent_record_private'
+        AND class.relname = ANY(ARRAY[
+          'records',
+          'revocations',
+          'creation_capability',
+          'trial_bindings'
+        ])
+        AND class.relkind = 'r'
+        AND class.relrowsecurity
+        AND class.relforcerowsecurity
+        AND pg_catalog.has_table_privilege(
+          'agent_record_store_owner',
+          class.oid,
+          'SELECT,INSERT,UPDATE,DELETE,TRUNCATE,REFERENCES,TRIGGER'
+        )
+        AND NOT pg_catalog.has_table_privilege(
+          'service_role',
+          class.oid,
+          'SELECT,INSERT,UPDATE,DELETE,TRUNCATE,REFERENCES,TRIGGER'
+        )
+    )
+    AND (
+      SELECT pg_catalog.count(*) = 4
+      FROM pg_catalog.pg_policies AS policy
+      WHERE policy.schemaname = 'agent_record_private'
+        AND policy.tablename = ANY(ARRAY[
+          'records',
+          'revocations',
+          'creation_capability',
+          'trial_bindings'
+        ])
+        AND policy.roles = ARRAY['agent_record_store_owner']::name[]
+        AND policy.cmd = 'ALL'
+        AND policy.qual = 'true'
+        AND policy.with_check = 'true'
+    )
+    AND (
+      SELECT pg_catalog.count(*) = 2
+      FROM pg_catalog.pg_policies AS policy
+      WHERE policy.schemaname = 'public'
+        AND policy.tablename = ANY(ARRAY['arena_sessions', 'arena_attempts'])
+        AND policy.roles = ARRAY['agent_record_store_owner']::name[]
+        AND policy.cmd = 'SELECT'
+        AND policy.qual = 'true'
+    )
+    AND (
+      SELECT pg_catalog.count(*) = 3
+      FROM pg_catalog.pg_trigger AS trigger
+      WHERE trigger.tgname = ANY(ARRAY[
+          'agent_record_records_immutable_trigger',
+          'agent_record_revocations_immutable_trigger',
+          'agent_record_trial_bindings_immutable_trigger'
+        ])
+        AND NOT trigger.tgisinternal
+        AND trigger.tgenabled = 'O'
+    );
+$check_agent_record_storage_contract$;
 
 CREATE FUNCTION public.revoke_agent_record(
   p_record_id TEXT,
@@ -913,6 +1160,10 @@ END
 $grant_agent_record_configurator$;
 REVOKE ALL ON FUNCTION public.create_agent_record(UUID, TEXT, TEXT, TEXT, UUID, TEXT, TEXT, TEXT, TEXT, TEXT, TEXT, TEXT, TEXT, TIMESTAMPTZ, TIMESTAMPTZ, TIMESTAMPTZ, JSONB)
   FROM PUBLIC, anon, authenticated, service_role;
+REVOKE ALL ON FUNCTION public.bind_agent_record_trial_source(UUID, TEXT, UUID, TEXT, TEXT, TEXT)
+  FROM PUBLIC, anon, authenticated, service_role;
+GRANT EXECUTE ON FUNCTION public.bind_agent_record_trial_source(UUID, TEXT, UUID, TEXT, TEXT, TEXT)
+  TO service_role;
 REVOKE ALL ON FUNCTION public.create_agent_record_with_capability(UUID, TEXT, TEXT, TEXT, UUID, TEXT, TEXT, TEXT, TEXT, TEXT, TEXT, TEXT, TEXT, TIMESTAMPTZ, TIMESTAMPTZ, TIMESTAMPTZ, JSONB, TEXT)
   FROM PUBLIC, anon, authenticated, service_role;
 GRANT EXECUTE ON FUNCTION public.create_agent_record_with_capability(UUID, TEXT, TEXT, TEXT, UUID, TEXT, TEXT, TEXT, TEXT, TEXT, TEXT, TEXT, TEXT, TIMESTAMPTZ, TIMESTAMPTZ, TIMESTAMPTZ, JSONB, TEXT)
@@ -920,6 +1171,10 @@ GRANT EXECUTE ON FUNCTION public.create_agent_record_with_capability(UUID, TEXT,
 REVOKE ALL ON FUNCTION public.check_agent_record_creation_capability(TEXT)
   FROM PUBLIC, anon, authenticated, service_role;
 GRANT EXECUTE ON FUNCTION public.check_agent_record_creation_capability(TEXT)
+  TO service_role;
+REVOKE ALL ON FUNCTION public.check_agent_record_storage_contract()
+  FROM PUBLIC, anon, authenticated, service_role;
+GRANT EXECUTE ON FUNCTION public.check_agent_record_storage_contract()
   TO service_role;
 REVOKE ALL ON FUNCTION public.revoke_agent_record(TEXT, TEXT, TEXT)
   FROM PUBLIC, anon, authenticated, service_role;
@@ -938,12 +1193,18 @@ COMMENT ON TABLE agent_record_private.revocations IS
   'Append-only terminal owner revocations; a revoked record is uniformly absent from public reads.';
 COMMENT ON TABLE agent_record_private.creation_capability IS
   'Forced-RLS hash and configuring session role for the independent application-only capability that gates irreversible Agent Record creation.';
+COMMENT ON TABLE agent_record_private.trial_bindings IS
+  'Immutable private relation between one plaintext-authenticated Arena session and the active adoption bond that provisioned it.';
+COMMENT ON FUNCTION public.bind_agent_record_trial_source(UUID, TEXT, UUID, TEXT, TEXT, TEXT) IS
+  'Binds one active adoption bond to one Arena session after independently authenticating both bearer credentials; stores no plaintext credential.';
 COMMENT ON FUNCTION public.configure_agent_record_creation_capability(TEXT) IS
   'Directly granted migration-operator provisioning path; stores only the capability hash and caller audit identity and returns no capability data.';
 COMMENT ON FUNCTION public.create_agent_record_with_capability(UUID, TEXT, TEXT, TEXT, UUID, TEXT, TEXT, TEXT, TEXT, TEXT, TEXT, TEXT, TEXT, TIMESTAMPTZ, TIMESTAMPTZ, TIMESTAMPTZ, JSONB, TEXT) IS
   'Capability-gated application entry point; the application must verify the Ed25519 projection before invoking it. SQL shape validation is not signature verification.';
 COMMENT ON FUNCTION public.check_agent_record_creation_capability(TEXT) IS
   'Readiness probe that returns only whether the supplied application capability matches the forced-RLS configured hash.';
+COMMENT ON FUNCTION public.check_agent_record_storage_contract() IS
+  'Readiness probe for forced RLS, private ACLs, source-reader policies, and immutable-table triggers; returns no record data.';
 COMMENT ON FUNCTION public.read_agent_record_public(TEXT) IS
   'Server-only exact opaque Agent Record lookup; the public HTTP route verifies the operator signature and unknown, expired, and revoked records all raise P0002.';
 

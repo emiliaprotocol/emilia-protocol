@@ -12,6 +12,9 @@ the read-only `prepareAgentRecordRefusalSource()` path to open the encrypted
 trial envelope, rebind the adoption ID, bond ID and digest, and Arena session,
 and read and verify the immutable signed refusal without publishing a public
 Arena share. Permit events have no signed refusal artifact and are rejected.
+Before the encrypted trial token is issued, the database independently
+authenticates both the active adoption credential and the plaintext Arena
+session credential and stores an immutable, hash-only binding between them.
 
 The service then signs the `EP-AGENT-RECORD-OBSERVATION-v1` projection before
 any database mutation. The `create_agent_record_with_capability` wrapper first
@@ -139,6 +142,7 @@ ready:
   lowercase-hex shape and matches the one-way capability configured in the
   private database store; and
 - the service role can execute `check_agent_record_creation_capability`,
+  `check_agent_record_storage_contract`, `bind_agent_record_trial_source`,
   `create_agent_record_with_capability`, `read_agent_adoption_session`,
   `read_agent_record_refusal_source`, `read_agent_record_public`, and
   `revoke_agent_record` with the deployed signatures.
@@ -147,7 +151,9 @@ The live authorization check confirms only whether the server-held creation
 capability matches the private database configuration. The creation probe uses
 that capability with null business inputs, which the base creator rejects in
 its first validation block before any mutation. The dependency, read, and revoke
-probes use valid-shaped but nonexistent, non-secret identifiers. Probe results are cached briefly;
+probes use valid-shaped but nonexistent, non-secret identifiers. The storage
+contract probe also checks the forced-RLS policies, private ACLs, Arena source
+reader policies, and immutable-table triggers. Probe results are cached briefly;
 no capability, key, token, URL, or database error detail is returned to a public
 caller. An unavailable dependency produces one generic
 `503 agent_record_unavailable` response, and `/adopt` keeps the synthetic
@@ -157,7 +163,7 @@ Development and tests retain their documented ephemeral/in-memory behavior.
 ## Access model
 
 `agent_record_private` is owned by a dedicated `NOLOGIN`, non-superuser,
-non-`BYPASSRLS` role. Both tables use forced RLS. `anon`, `authenticated`, and
+non-`BYPASSRLS` role. All four private tables use forced RLS. `anon`, `authenticated`, and
 `service_role` have no direct table access. The public HTTP route performs an
 exact opaque-ID lookup through the server-only
 `read_agent_record_public(record_id)` RPC and then verifies the operator

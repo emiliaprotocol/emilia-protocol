@@ -150,6 +150,25 @@ export async function provisionBoundAgentTrial({
       || typeof arena.allowance?.expires_at !== 'string') {
     fail(503, 'agent_adoption_trial_unavailable');
   }
+  if (!client) {
+    fail(503, 'agent_adoption_trial_unavailable');
+  }
+  let binding: any;
+  try {
+    binding = await client.rpc('bind_agent_record_trial_source', {
+      p_adoption_id: bound.adoptionId,
+      p_adoption_session_token: authorization.sessionToken,
+      p_bond_id: bound.bondId,
+      p_bond_digest: bound.bondDigest,
+      p_source_session_id: arena.session_id,
+      p_source_token: arena.token,
+    });
+  } catch {
+    fail(503, 'agent_adoption_trial_unavailable');
+  }
+  if (binding?.error || binding?.data !== true) {
+    fail(503, 'agent_adoption_trial_unavailable');
+  }
   const envelope: TrialEnvelope = {
     '@version': TRIAL_VERSION,
     adoption_id: bound.adoptionId,

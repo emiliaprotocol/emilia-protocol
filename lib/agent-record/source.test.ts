@@ -110,7 +110,7 @@ describe('Agent Record private refusal source', () => {
     });
 
     expect(client.rpc).toHaveBeenCalledWith('read_agent_record_refusal_source', {
-      p_source_token_hash: crypto.createHash('sha256').update(ARENA_TOKEN).digest('hex'),
+      p_source_token: ARENA_TOKEN,
       p_source_session_id: SESSION_ID,
       p_source_attempt_id: ATTEMPT_ID,
     });
@@ -119,13 +119,18 @@ describe('Agent Record private refusal source', () => {
       bond_id: BOND_ID,
       bond_digest: BOND_DIGEST,
       source_session_id: SESSION_ID,
-      source_token_hash: crypto.createHash('sha256').update(ARENA_TOKEN).digest('hex'),
       source_attempt_id: ATTEMPT_ID,
       source_commitment: SOURCE_COMMITMENT,
       source_artifact_digest: source.refusal_digest,
       action_digest: source.action_digest,
       refusal_digest: source.refusal_digest,
       refused_at: REFUSED_AT,
+    });
+    expect((result as any).source_token).toBe(ARENA_TOKEN);
+    expect(Object.getOwnPropertyDescriptor(result, 'source_token')).toMatchObject({
+      enumerable: false,
+      configurable: false,
+      writable: false,
     });
     expect(JSON.stringify(result)).not.toMatch(
       /refusal_artifact|public_projection|raw_action|action_parameters|arena_token|public_key|private_key/,

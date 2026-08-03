@@ -49,7 +49,8 @@ const SESSION_TOKEN = `eaa1_${'1'.repeat(64)}`;
 const BOND_ID = '22222222-2222-4222-8222-222222222222';
 const BOND_DIGEST = `sha256:${'2'.repeat(64)}`;
 const ARENA_SESSION_ID = `arena_session_${'4'.repeat(32)}`;
-const ARENA_TOKEN_HASH = '4'.repeat(64);
+const ARENA_TOKEN = `ep_arena_${'4'.repeat(64)}`;
+const ARENA_TOKEN_HASH = crypto.createHash('sha256').update(ARENA_TOKEN).digest('hex');
 const OWNER_TOKEN = `ear1_${'a'.repeat(64)}`;
 const SECOND_OWNER_TOKEN = `ear1_${'b'.repeat(64)}`;
 const THIRD_OWNER_TOKEN = `ear1_${'c'.repeat(64)}`;
@@ -80,7 +81,7 @@ type CreateInput = Readonly<{
   bondId: string;
   bondDigest: string;
   sourceSessionId: string;
-  sourceTokenHash: string;
+  sourceToken: string;
   sourceAttemptId: string;
   sourceCommitment: string;
   sourceArtifactDigest: string;
@@ -203,11 +204,23 @@ async function configureCapability(capability: string): Promise<void> {
   );
 }
 
+async function bindTrialSource(): Promise<void> {
+  await asRole('service_role', async (client) => {
+    const result = await client.query<{ bound: boolean }>(
+      `SELECT public.bind_agent_record_trial_source(
+         $1::uuid, $2, $3::uuid, $4, $5, $6
+       ) AS bound`,
+      [ADOPTION_ID, SESSION_TOKEN, BOND_ID, BOND_DIGEST, ARENA_SESSION_ID, ARENA_TOKEN],
+    );
+    expect(result.rows).toEqual([{ bound: true }]);
+  });
+}
+
 async function readSource(attemptId: string): Promise<PreparedSource> {
   return asRole('service_role', async (client) => {
     const result = await client.query<{ source: PreparedSource }>(
       'SELECT public.read_agent_record_refusal_source($1, $2, $3) AS source',
-      [ARENA_TOKEN_HASH, ARENA_SESSION_ID, attemptId],
+      [ARENA_TOKEN, ARENA_SESSION_ID, attemptId],
     );
     return result.rows[0].source;
   });
@@ -232,7 +245,7 @@ function createInput(
     bondId: BOND_ID,
     bondDigest: BOND_DIGEST,
     sourceSessionId: ARENA_SESSION_ID,
-    sourceTokenHash: ARENA_TOKEN_HASH,
+    sourceToken: ARENA_TOKEN,
     sourceAttemptId,
     sourceCommitment: source.source_commitment,
     sourceArtifactDigest: source.source_artifact_digest,
@@ -268,7 +281,7 @@ function createParameters(input: CreateInput): unknown[] {
     input.bondId,
     input.bondDigest,
     input.sourceSessionId,
-    input.sourceTokenHash,
+    input.sourceToken,
     input.sourceAttemptId,
     input.sourceCommitment,
     input.sourceArtifactDigest,
@@ -535,6 +548,13 @@ suite('Agent Record v1 on PostgreSQL 17', () => {
       );
     }
 
+    await operator.query(`
+      ALTER TABLE public.arena_sessions ENABLE ROW LEVEL SECURITY;
+      ALTER TABLE public.arena_sessions FORCE ROW LEVEL SECURITY;
+      ALTER TABLE public.arena_attempts ENABLE ROW LEVEL SECURITY;
+      ALTER TABLE public.arena_attempts FORCE ROW LEVEL SECURITY;
+    `);
+
     await operator.query(migration);
     const residualRoles = await operator.query<{
       bootstrap_exists: boolean;
@@ -563,6 +583,7 @@ suite('Agent Record v1 on PostgreSQL 17', () => {
     await expect(operator.query('SET ROLE agent_record_store_owner'))
       .rejects.toMatchObject({ code: '42501' });
     await configureCapability(CREATION_CAPABILITY);
+    await bindTrialSource();
     primarySource = await readSource(ATTEMPTS[0].attemptId);
     secondarySource = await readSource(ATTEMPTS[1].attemptId);
     primaryInput = createInput(primarySource, ATTEMPTS[0].attemptId, OWNER_TOKEN);
@@ -662,14 +683,58 @@ suite('Agent Record v1 on PostgreSQL 17', () => {
       capability_is_plaintext: false,
     }]);
     const readiness = await asRole('service_role', async (client) => {
-      const result = await client.query<{ valid: boolean; invalid: boolean }>(
+      const result = await client.query<{
+        valid: boolean;
+        invalid: boolean;
+        storage_contract: boolean;
+      }>(
         `SELECT public.check_agent_record_creation_capability($1) AS valid,
-                public.check_agent_record_creation_capability($2) AS invalid`,
+                public.check_agent_record_creation_capability($2) AS invalid,
+                public.check_agent_record_storage_contract() AS storage_contract`,
         [CREATION_CAPABILITY, WRONG_CAPABILITY],
       );
       return result.rows[0];
     });
-    expect(readiness).toEqual({ valid: true, invalid: false });
+    expect(readiness).toEqual({
+      valid: true,
+      invalid: false,
+      storage_contract: true,
+    });
+
+    await expect(asRole('service_role', (client) => client.query(
+      `SELECT public.bind_agent_record_trial_source(
+         $1::uuid, $2, $3::uuid, $4, $5, $6
+       )`,
+      [
+        ADOPTION_ID,
+        SESSION_TOKEN,
+        BOND_ID,
+        BOND_DIGEST,
+        ARENA_SESSION_ID,
+        `ep_arena_${'9'.repeat(64)}`,
+      ],
+    ))).rejects.toMatchObject({ code: 'P0002' });
+  });
+
+  it('rejects null or malformed operator signatures before consuming a refusal source', async () => {
+    const invalidProjection = structuredClone(createInput(
+      secondarySource,
+      ATTEMPTS[1].attemptId,
+      SECOND_OWNER_TOKEN,
+    ).publicProjection);
+    invalidProjection.signature.value = null;
+    const invalid = createInput(
+      secondarySource,
+      ATTEMPTS[1].attemptId,
+      SECOND_OWNER_TOKEN,
+      { publicProjection: invalidProjection },
+    );
+    await expect(createRecord(invalid)).rejects.toMatchObject({ code: '22023' });
+    const counts = await database!.query<{ count: string }>(
+      'SELECT count(*)::text AS count FROM agent_record_private.records WHERE source_commitment = $1',
+      [secondarySource.source_commitment],
+    );
+    expect(counts.rows).toEqual([{ count: '0' }]);
   });
 
   it('enforces the exact owner-derived record id in SQL for create and revoke', async () => {
@@ -799,13 +864,14 @@ suite('Agent Record v1 on PostgreSQL 17', () => {
        WHERE namespace.nspname = 'agent_record_private'
          AND class.relname = ANY($1::text[])
        ORDER BY class.relname
-    `, [['creation_capability', 'records', 'revocations']]);
+    `, [['creation_capability', 'records', 'revocations', 'trial_bindings']]);
     expect(relations.rows).toEqual([
       { relname: 'creation_capability', relrowsecurity: true, relforcerowsecurity: true },
       { relname: 'records', relrowsecurity: true, relforcerowsecurity: true },
       { relname: 'revocations', relrowsecurity: true, relforcerowsecurity: true },
+      { relname: 'trial_bindings', relrowsecurity: true, relforcerowsecurity: true },
     ]);
-    for (const table of ['creation_capability', 'records', 'revocations']) {
+    for (const table of ['creation_capability', 'records', 'revocations', 'trial_bindings']) {
       await expect(asRole('service_role', (client) => client.query(
         `SELECT * FROM agent_record_private.${table}`,
       )), table).rejects.toMatchObject({ code: '42501' });

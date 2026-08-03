@@ -43,7 +43,7 @@ const RPC_PROBES = Object.freeze([
     name: 'read_agent_record_refusal_source',
     expectedCode: 'P0002',
     args: Object.freeze({
-      p_source_token_hash: '0'.repeat(64),
+      p_source_token: `ep_arena_${'0'.repeat(64)}`,
       p_source_session_id: `arena_session_${'0'.repeat(32)}`,
       p_source_attempt_id: `arena_attempt_${'0'.repeat(32)}`,
     }),
@@ -90,6 +90,15 @@ async function probeCreationAuthorization(
   }
 }
 
+async function probeStorageContract(client: RpcClient): Promise<boolean> {
+  try {
+    const result = await client.rpc('check_agent_record_storage_contract', {});
+    return result?.error == null && result?.data === true;
+  } catch {
+    return false;
+  }
+}
+
 async function probeCreationRpc(
   client: RpcClient,
   creationCapability: string,
@@ -107,7 +116,7 @@ async function probeCreationRpc(
       p_bond_id: null,
       p_bond_digest: null,
       p_source_session_id: null,
-      p_source_token_hash: null,
+      p_source_token: null,
       p_source_attempt_id: null,
       p_source_commitment: null,
       p_source_artifact_digest: null,
@@ -149,14 +158,15 @@ function withRpcReadiness(
 }
 
 async function probeRuntime(client: RpcClient, creationCapability: string) {
-  const [databaseCreationAuthorization, creationRpc, ...otherRpcs] = await Promise.all([
+  const [databaseCreationAuthorization, storageContract, creationRpc, ...otherRpcs] = await Promise.all([
     probeCreationAuthorization(client, creationCapability),
+    probeStorageContract(client),
     probeCreationRpc(client, creationCapability),
     ...RPC_PROBES.map((probe) => probeRpc(client, probe)),
   ]);
   return Object.freeze({
     databaseCreationAuthorization,
-    databaseRpcs: creationRpc && otherRpcs.every(Boolean),
+    databaseRpcs: storageContract && creationRpc && otherRpcs.every(Boolean),
   });
 }
 

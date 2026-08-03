@@ -34,7 +34,7 @@ const BOND_DIGEST = `sha256:${'b'.repeat(64)}`;
 const ACTION_DIGEST = `sha256:${'c'.repeat(64)}`;
 const REFUSAL_DIGEST = `sha256:${'d'.repeat(64)}`;
 const ARENA_SESSION_ID = `arena_session_${'e'.repeat(32)}`;
-const ARENA_TOKEN_HASH = 'e'.repeat(64);
+const ARENA_TOKEN = `ep_arena_${'e'.repeat(64)}`;
 const SOURCE_COMMITMENT = `sha256:${'e'.repeat(64)}`;
 const ATTEMPT_ID = `arena_attempt_${'f'.repeat(32)}`;
 const TRIAL_TOKEN = `epenc:v1:${'A'.repeat(64)}`;
@@ -74,7 +74,7 @@ const refusalSource = () => ({
   bond_id: BOND_ID,
   bond_digest: BOND_DIGEST,
   source_session_id: ARENA_SESSION_ID,
-  source_token_hash: ARENA_TOKEN_HASH,
+  source_token: ARENA_TOKEN,
   source_attempt_id: ATTEMPT_ID,
   source_commitment: SOURCE_COMMITMENT,
   source_artifact_digest: REFUSAL_DIGEST,
@@ -164,7 +164,7 @@ describe('Agent Record service', () => {
       p_bond_id: BOND_ID,
       p_bond_digest: BOND_DIGEST,
       p_source_session_id: ARENA_SESSION_ID,
-      p_source_token_hash: ARENA_TOKEN_HASH,
+      p_source_token: ARENA_TOKEN,
       p_source_attempt_id: ATTEMPT_ID,
       p_source_commitment: SOURCE_COMMITMENT,
       p_source_artifact_digest: REFUSAL_DIGEST,
@@ -357,7 +357,7 @@ describe('Agent Record service', () => {
     expect(client.rpc).toHaveBeenCalledTimes(1);
     expect(client.rpc).toHaveBeenCalledWith('create_agent_record_with_capability', expect.objectContaining({
       p_source_session_id: ARENA_SESSION_ID,
-      p_source_token_hash: ARENA_TOKEN_HASH,
+      p_source_token: ARENA_TOKEN,
       p_source_attempt_id: ATTEMPT_ID,
       p_source_commitment: SOURCE_COMMITMENT,
     }));

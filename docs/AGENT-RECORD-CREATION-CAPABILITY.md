@@ -38,7 +38,10 @@ Production readiness is fail-closed. It is ready only when all of these hold:
 1. `EP_AGENT_RECORD_CREATION_CAPABILITY` is present and matches the exact form.
 2. Existing signing-key, durable-rate-limit, and database checks pass.
 3. `public.check_agent_record_creation_capability(secret)` returns `true`.
-4. The read, revoke, and capability-gated create RPCs have their expected ACLs.
+4. The trial-binding, read, revoke, and capability-gated create RPCs have their
+   expected ACLs.
+5. `public.check_agent_record_storage_contract()` confirms the forced-RLS,
+   private-table ACL, Arena source-reader policy, and immutable-trigger contract.
 
 Missing, malformed, or database-mismatched capability configuration must keep
 Agent Record creation unavailable with the generic `503 agent_record_unavailable`

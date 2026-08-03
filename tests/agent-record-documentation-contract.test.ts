@@ -114,6 +114,8 @@ describe('Agent Record documentation and OpenAPI lifecycle contract', () => {
       'SUPABASE_SERVICE_ROLE_KEY',
       'EP_AGENT_RECORD_CREATION_CAPABILITY',
       'check_agent_record_creation_capability',
+      'check_agent_record_storage_contract',
+      'bind_agent_record_trial_source',
       'create_agent_record_with_capability',
       'read_agent_adoption_session',
       'read_agent_record_public',

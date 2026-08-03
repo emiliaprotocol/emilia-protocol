@@ -20,7 +20,8 @@ Agent Record dependency failure must not turn liveness into a restart loop.
 `GET /api/health` is the traffic-readiness contract. In production it checks
 the Agent Record signing and durable rate-limit configuration, Supabase
 configuration, the one-way database creation capability match, and all bounded
-Agent Record RPC entry points. Results are briefly coalesced per process, but
+Agent Record RPC entry points. It also checks the private storage ACL, forced
+RLS, source-reader policy, and immutable-trigger contract. Results are briefly coalesced per process, but
 the HTTP response itself is `no-store`.
 
 Ready response (HTTP 200):

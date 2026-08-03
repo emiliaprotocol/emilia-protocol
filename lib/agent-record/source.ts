@@ -1,5 +1,4 @@
 // SPDX-License-Identifier: Apache-2.0
-import crypto from 'node:crypto';
 import type { SupabaseClient } from '@supabase/supabase-js';
 
 import { open } from '@/lib/crypto/secret-box';
@@ -134,14 +133,10 @@ export async function prepareAgentRecordRefusalSource({
     fail(400, 'agent_adoption_refusal_source_invalid');
   }
   const trial = openTrial(input.trial_token, bond, now);
-  const sourceTokenHash = crypto.createHash('sha256')
-    .update(trial.arena_token, 'utf8')
-    .digest('hex');
-
   let prepared: any;
   try {
     prepared = await client.rpc('read_agent_record_refusal_source', {
-      p_source_token_hash: sourceTokenHash,
+      p_source_token: trial.arena_token,
       p_source_session_id: trial.arena_session_id,
       p_source_attempt_id: input.attempt_id,
     });
@@ -204,17 +199,23 @@ export async function prepareAgentRecordRefusalSource({
     fail(503, 'agent_adoption_refusal_source_invalid');
   }
 
-  return Object.freeze({
+  const result = {
     adoption_id: bond.adoptionId,
     bond_id: bond.bondId,
     bond_digest: bond.bondDigest,
     source_session_id: trial.arena_session_id,
-    source_token_hash: sourceTokenHash,
     source_attempt_id: input.attempt_id,
     source_commitment: source.source_commitment as string,
     source_artifact_digest: source.source_artifact_digest as string,
     action_digest: source.action_digest as string,
     refusal_digest: source.refusal_digest as string,
     refused_at: source.refused_at as string,
+  } as Record<string, unknown>;
+  Object.defineProperty(result, 'source_token', {
+    value: trial.arena_token,
+    enumerable: false,
+    configurable: false,
+    writable: false,
   });
+  return Object.freeze(result);
 }

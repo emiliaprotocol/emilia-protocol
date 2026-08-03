@@ -29,8 +29,14 @@ function productionEnvironment(overrides: Record<string, string | undefined> = {
 function healthyRpcClient() {
   return {
     rpc: vi.fn(async (name: string) => ({
-      data: name === 'check_agent_record_creation_capability' ? true : null,
-      error: name === 'check_agent_record_creation_capability'
+      data: [
+        'check_agent_record_creation_capability',
+        'check_agent_record_storage_contract',
+      ].includes(name) ? true : null,
+      error: [
+        'check_agent_record_creation_capability',
+        'check_agent_record_storage_contract',
+      ].includes(name)
         ? null
         : {
             code: [
@@ -131,6 +137,7 @@ describe('Agent Record runtime readiness', () => {
     });
     expect(client.rpc.mock.calls.map(([name]) => name).sort()).toEqual([
       'check_agent_record_creation_capability',
+      'check_agent_record_storage_contract',
       'create_agent_record_with_capability',
       'read_agent_adoption_session',
       'read_agent_record_public',
@@ -158,7 +165,7 @@ describe('Agent Record runtime readiness', () => {
       'p_source_attempt_id',
       'p_source_commitment',
       'p_source_session_id',
-      'p_source_token_hash',
+      'p_source_token',
     ].sort());
     const serialized = JSON.stringify(result);
     for (const secret of Object.values(SECRETS)) expect(serialized).not.toContain(secret);
@@ -167,9 +174,13 @@ describe('Agent Record runtime readiness', () => {
   it('fails closed when the database capability does not match production configuration', async () => {
     const client = healthyRpcClient();
     client.rpc.mockImplementation(async (name: string) => ({
-      data: name === 'check_agent_record_creation_capability' ? false : null,
-      error: name === 'check_agent_record_creation_capability'
-        ? null
+      data: name === 'check_agent_record_creation_capability'
+        ? false
+        : name === 'check_agent_record_storage_contract' ? true : null,
+      error: [
+        'check_agent_record_creation_capability',
+        'check_agent_record_storage_contract',
+      ].includes(name) ? null
         : {
             code: name === 'create_agent_record_with_capability'
               ? '42501'
@@ -213,9 +224,14 @@ describe('Agent Record runtime readiness', () => {
   it('fails closed when the private refusal-source dependency is missing', async () => {
     const client = healthyRpcClient();
     client.rpc.mockImplementation(async (name: string) => ({
-      data: name === 'check_agent_record_creation_capability' ? true : null,
-      error: name === 'check_agent_record_creation_capability'
-        ? null
+      data: [
+        'check_agent_record_creation_capability',
+        'check_agent_record_storage_contract',
+      ].includes(name) ? true : null,
+      error: [
+        'check_agent_record_creation_capability',
+        'check_agent_record_storage_contract',
+      ].includes(name) ? null
         : {
             code: name === 'read_agent_record_refusal_source'
               ? 'PGRST202'
