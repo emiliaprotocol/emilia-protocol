@@ -681,7 +681,15 @@ test('allowance profile scope is closed, callback-verified, and operation-bound'
   };
   assert.equal((await executeWithCapability({
     ...common,
-    verifyActionProfile: () => ({ ok: true }),
+    verifyActionProfile: () => ({
+      ok: true,
+      action_fence_digest: capabilityActionDigest({
+        action_type: action.action_type,
+        amount: action.amount,
+        currency: action.currency,
+        destination: action.destination,
+      }),
+    }),
   })).reason, 'allowance_status_not_initialized');
   assert.equal(store.advanceAllowanceStatus({
     allowance_profile_id: 'allowance:stripe-payout:01',
@@ -709,6 +717,12 @@ test('allowance profile scope is closed, callback-verified, and operation-bound'
     verifyActionProfile: (_candidate, profile) => ({
       ok: profile.profile_id === 'allowance:stripe-payout:01'
         && profile.profile_digest === `sha256:${'a'.repeat(64)}`,
+      action_fence_digest: capabilityActionDigest({
+        action_type: action.action_type,
+        amount: action.amount,
+        currency: action.currency,
+        destination: action.destination,
+      }),
     }),
   });
   assert.equal(accepted.ok, true);
@@ -980,7 +994,7 @@ test('materially different CAIDs derive distinct runtime fences', async () => {
   assert.notEqual(results[0].action_fence_digest, results[1].action_fence_digest);
 });
 
-test('allowance profile fences use a validated verifier digest or the exact safe default', () => {
+test('allowance profile fences require a validated verifier digest', () => {
   const action = scopedAction('allowance-fence', { destination: 'acct_allowed' });
   const capability = {
     scope: {
@@ -992,12 +1006,19 @@ test('allowance profile fences use a validated verifier digest or the exact safe
   };
   const exactDigest = capabilityActionDigest(action);
   const verifierFenceDigest = `sha256:${'e'.repeat(64)}`;
-  const defaulted = verifyCapabilityScope(capability, action, action.operation_id, {
+  const booleanOnly = verifyCapabilityScope(capability, action, action.operation_id, {
     verifyActionProfile: () => true,
   });
-  assert.equal(defaulted.ok, true);
-  assert.equal(defaulted.action_digest, exactDigest);
-  assert.equal(defaulted.action_fence_digest, exactDigest);
+  assert.equal(booleanOnly.ok, false);
+  assert.equal(booleanOnly.reason, 'capability_action_fence_digest_required');
+  assert.equal(booleanOnly.action_digest, exactDigest);
+
+  const objectOnly = verifyCapabilityScope(capability, action, action.operation_id, {
+    verifyActionProfile: () => ({ ok: true }),
+  });
+  assert.equal(objectOnly.ok, false);
+  assert.equal(objectOnly.reason, 'capability_action_fence_digest_required');
+  assert.equal(objectOnly.action_digest, exactDigest);
 
   const supplied = verifyCapabilityScope(capability, action, action.operation_id, {
     verifyActionProfile: () => ({ ok: true, action_fence_digest: verifierFenceDigest }),

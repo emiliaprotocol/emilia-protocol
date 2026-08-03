@@ -6,7 +6,7 @@ import assert from 'node:assert/strict';
 import { generateKeyPairSync, sign } from 'node:crypto';
 import { createRequire } from 'node:module';
 import { canonicalize } from './execution-binding.js';
-import { CAPABILITY_CAID_SCOPE_PROFILE, CAPABILITY_SCOPE_PROFILE, CAPABILITY_SQL, CAPABILITY_STATE_DDL, capabilityActionDigest, createMemoryCapabilityStore, createPostgresCapabilityStore, executeWithCapability, mintCapabilityReceipt, } from './capability-receipt.js';
+import { CAPABILITY_ALLOWANCE_SCOPE_PROFILE, CAPABILITY_CAID_SCOPE_PROFILE, CAPABILITY_SCOPE_PROFILE, CAPABILITY_SQL, CAPABILITY_STATE_DDL, capabilityActionDigest, createMemoryCapabilityStore, createPostgresCapabilityStore, executeWithCapability, mintCapabilityReceipt, } from './capability-receipt.js';
 const NOW = Date.parse('2026-08-03T12:00:00.000Z');
 const PROVIDER_ENTRY_TIMEOUT_MS = 1_000;
 const POSTGRES_URL = process.env.ADMISSION_STORE_POSTGRES_TEST_URL;
@@ -157,6 +157,94 @@ test('a failed CAID resolver object refuses before any effect or spend', async (
     assert.equal(store.getOperation(operationId, minted.capabilityReceipt.capability.id), null);
     assert.equal(store.getState(minted.capabilityReceipt.capability.id).reserved_amount, 0);
     assert.equal(store.getState(minted.capabilityReceipt.capability.id).consumed_amount, 0);
+});
+test('allowance profile requires one trusted semantic fence across wrapper operation ids', async () => {
+    const profileId = 'allowance:semantic-fence-regression:01';
+    const profileDigest = `sha256:${'b'.repeat(64)}`;
+    const statusHeadDigest = `sha256:${'c'.repeat(64)}`;
+    const actions = [
+        action('wrapper-operation-a'),
+        action('wrapper-operation-b'),
+    ];
+    const semanticFenceDigest = capabilityActionDigest({
+        action_type: 'payment.release',
+        amount: 1,
+        currency: 'USD',
+        destination: 'acct_expected',
+    });
+    assert.notEqual(capabilityActionDigest(actions[0]), capabilityActionDigest(actions[1]));
+    const setup = (capabilityId) => {
+        const keys = issuer();
+        const minted = mintCapabilityReceipt(keys.receipt, {
+            capabilityId,
+            issuerPrivateKey: keys.privateKey,
+            budget: { amount: 10, currency: 'USD' },
+            expiry: NOW + 60_000,
+            scope: {
+                profile: CAPABILITY_ALLOWANCE_SCOPE_PROFILE,
+                profile_id: profileId,
+                profile_digest: profileDigest,
+                operation_id_field: 'operation_id',
+            },
+        });
+        const store = createMemoryCapabilityStore();
+        assert.equal(store.registerCapability(minted.capabilityReceipt), true);
+        const allowanceStatus = {
+            allowance_profile_id: profileId,
+            allowance_digest: profileDigest,
+            revision: 1,
+            status_epoch: 1,
+            status_head_digest: statusHeadDigest,
+        };
+        assert.equal(store.advanceAllowanceStatus({
+            ...allowanceStatus,
+            expected_status_epoch: null,
+            expected_status_head_digest: null,
+            status: 'active',
+        }).ok, true);
+        return { keys, minted, store, allowanceStatus };
+    };
+    const execute = async (fixture, candidate, verifyActionProfile, effects) => executeWithCapability({
+        capabilityReceipt: fixture.minted.capabilityReceipt,
+        secret: fixture.minted.secret,
+        action: candidate,
+        operationId: candidate.operation_id,
+        store: fixture.store,
+        trustedIssuerKeys: [fixture.keys.receipt.public_key],
+        verifyBaseReceipt: () => true,
+        verifyActionProfile,
+        allowanceStatus: fixture.allowanceStatus,
+        executeAction: async () => {
+            effects.push(candidate.operation_id);
+            return candidate.operation_id;
+        },
+        now: NOW,
+    });
+    const missingFence = setup('allowance_missing_semantic_fence');
+    const missingFenceEffects = [];
+    const missingFenceResults = [];
+    for (const candidate of actions) {
+        missingFenceResults.push(await execute(missingFence, candidate, () => ({ ok: true }), missingFenceEffects));
+    }
+    assert.deepEqual(missingFenceResults.map(({ ok, reason }) => ({ ok, reason })), actions.map(() => ({ ok: false, reason: 'capability_action_fence_digest_required' })));
+    assert.deepEqual(missingFenceEffects, [], 'neither wrapper may enter the effect without a trusted semantic fence');
+    assert.equal(missingFence.store.getState('allowance_missing_semantic_fence').reserved_amount, 0);
+    assert.equal(missingFence.store.getState('allowance_missing_semantic_fence').consumed_amount, 0);
+    for (const candidate of actions) {
+        assert.equal(missingFence.store.getOperation(candidate.operation_id), null);
+    }
+    const fenced = setup('allowance_explicit_semantic_fence');
+    const fencedEffects = [];
+    const verifier = () => ({ ok: true, action_fence_digest: semanticFenceDigest });
+    const first = await execute(fenced, actions[0], verifier, fencedEffects);
+    const duplicate = await execute(fenced, actions[1], verifier, fencedEffects);
+    assert.equal(first.ok, true);
+    assert.equal(first.action_fence_digest, semanticFenceDigest);
+    assert.equal(duplicate.ok, false);
+    assert.equal(duplicate.reason, 'action_already_committed');
+    assert.equal(duplicate.action_fence_digest, semanticFenceDigest);
+    assert.equal(duplicate.holding_operation_id, actions[0].operation_id);
+    assert.deepEqual(fencedEffects, [actions[0].operation_id]);
 });
 for (const amount of [0, -1]) {
     const label = amount === 0 ? 'zero' : 'negative';

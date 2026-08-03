@@ -545,16 +545,21 @@ export function verifyCapabilityScope(capability, action, operationId, {
           action_digest: actionDigest,
         };
       }
-      if (isRecord(result) && Object.hasOwn(result, 'action_fence_digest')) {
-        try {
-          actionFenceDigest = validateActionDigest(result.action_fence_digest);
-        } catch {
-          return {
-            ok: false,
-            reason: 'capability_action_fence_digest_invalid',
-            action_digest: actionDigest,
-          };
-        }
+      if (!isRecord(result) || !Object.hasOwn(result, 'action_fence_digest')) {
+        return {
+          ok: false,
+          reason: 'capability_action_fence_digest_required',
+          action_digest: actionDigest,
+        };
+      }
+      try {
+        actionFenceDigest = validateActionDigest(result.action_fence_digest);
+      } catch {
+        return {
+          ok: false,
+          reason: 'capability_action_fence_digest_invalid',
+          action_digest: actionDigest,
+        };
       }
     } else if (scope.profile === CAPABILITY_CAID_SCOPE_PROFILE) {
       if (typeof resolveCaid !== 'function') {

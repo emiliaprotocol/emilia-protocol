@@ -18,6 +18,7 @@ import {
 } from 'node:crypto';
 import {
   CAPABILITY_ALLOWANCE_SCOPE_PROFILE,
+  capabilityActionDigest,
   capabilityBaseReceiptDigest,
   executeWithCapability,
   mintCapabilityReceipt,
@@ -501,6 +502,17 @@ function validateActionAgainstAllowance(
   return { ok: true, amount, currency };
 }
 
+function allowanceActionFenceDigest(action: RiskRecord, operationIdField: string): string {
+  // operationIdField identifies the request wrapper, not the material action.
+  // Every other field is closed and profile-validated above, so the resulting
+  // digest remains stable when a caller retries one action under a new wrapper.
+  const materialAction: RiskRecord = {};
+  for (const field of Object.keys(action).sort()) {
+    if (field !== operationIdField) materialAction[field] = action[field];
+  }
+  return capabilityActionDigest(materialAction);
+}
+
 /**
  * Execute one typed, in-envelope action through the existing capability ledger.
  */
@@ -651,11 +663,19 @@ export async function executeWithGateAllowance({
     store,
     executeAction,
     verifyBaseReceipt: () => true,
-    verifyActionProfile: (_candidate, profile) => ({
-      ok: profile.profile_id === `${body.tenant_id}/${body.allowance_id}`
-        && profile.profile_digest === allowanceDigest(verifiedArtifact),
-      reason: 'allowance_profile_binding_mismatch',
-    }),
+    verifyActionProfile: (candidate, profile) => {
+      const ok = profile.profile_id === `${body.tenant_id}/${body.allowance_id}`
+        && profile.profile_digest === allowanceDigest(verifiedArtifact);
+      return ok
+        ? {
+          ok: true,
+          action_fence_digest: allowanceActionFenceDigest(
+            candidate,
+            body.constraints.operation_id_field,
+          ),
+        }
+        : { ok: false, reason: 'allowance_profile_binding_mismatch' };
+    },
     allowanceStatus: {
       allowance_profile_id: `${body.tenant_id}/${body.allowance_id}`,
       allowance_digest: allowanceDigest(verifiedArtifact),
