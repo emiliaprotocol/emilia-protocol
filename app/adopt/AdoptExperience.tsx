@@ -228,6 +228,8 @@ type ApiProblem = { detail?: unknown; title?: unknown };
 const ADOPT_API_BASE = '/api/adopt/sessions';
 const PASSKEY_CREDENTIAL_PREFIX = 'emilia_agent_adoption_passkey:';
 const PENDING_OWNER_PREFIX = 'emilia_agent_record_pending:';
+const PENDING_OWNER_RECOVERY_CURSOR = 'emilia_agent_record_recovery_cursor';
+const OWNER_COMMITMENT_DOMAIN = 'emilia-agent-record-owner-token-v1\0';
 const CREDENTIAL_ID = /^[A-Za-z0-9_-]{1,1024}$/;
 const RECORD_ID = /^agent_record_[0-9a-f]{40}$/;
 const OWNER_TOKEN = /^ear1_[0-9a-f]{64}$/;
@@ -375,9 +377,13 @@ export const adoptApiClient: AdoptApiClient = {
     );
   },
 
-  createAgentRecord(session, attempt) {
-    const credential = pendingRecordCredential(attempt.attempt_id);
-    return requestJson<CreatedAgentRecord>(
+  async createAgentRecord(session, attempt) {
+    const credential = await pendingRecordCredential(attempt.attempt_id);
+    const existingOwnerToken = window.localStorage.getItem(ownerKey(credential.record_id));
+    if (existingOwnerToken !== null && existingOwnerToken !== credential.owner_token) {
+      throw new Error('This browser already holds a different owner credential for this Agent Record.');
+    }
+    const record = await requestJson<CreatedAgentRecord>(
       ADOPT_API_BASE + '/' + encodeURIComponent(session.session_id) + '/records',
       authorized(session, {
         trial_token: session.trial_token,
@@ -385,14 +391,20 @@ export const adoptApiClient: AdoptApiClient = {
         record_id: credential.record_id,
         owner_token: credential.owner_token,
       }),
-    ).then((record) => {
-      if (record.record_id !== credential.record_id) {
-        throw new Error('Agent Record storage returned an unexpected identifier.');
-      }
+    );
+    if (record.record_id !== credential.record_id
+        || !await ownerCredentialMatchesRecord(record.record_id, credential.owner_token)) {
+      throw new Error('Agent Record storage returned an unexpected identifier.');
+    }
+    const ownerTokenAfterCreate = window.localStorage.getItem(ownerKey(record.record_id));
+    if (ownerTokenAfterCreate !== null && ownerTokenAfterCreate !== credential.owner_token) {
+      throw new Error('This browser already holds a different owner credential for this Agent Record.');
+    }
+    if (ownerTokenAfterCreate === null) {
       window.localStorage.setItem(ownerKey(record.record_id), credential.owner_token);
-      window.localStorage.removeItem(credential.storageKey);
-      return record;
-    });
+    }
+    window.localStorage.removeItem(credential.storageKey);
+    return record;
   },
 
   async provisionTrial(session) {
@@ -512,37 +524,31 @@ function secureHex(byteLength: number) {
   return Array.from(bytes, (byte) => byte.toString(16).padStart(2, '0')).join('');
 }
 
-function pendingRecordCredential(attemptId: string) {
-  const storageKey = pendingOwnerKey(attemptId);
-  const prior = window.localStorage.getItem(storageKey);
-  if (prior) {
-    try {
-      const parsed = JSON.parse(prior) as { record_id?: unknown; owner_token?: unknown };
-      if (typeof parsed.record_id === 'string'
-          && /^agent_record_[0-9a-f]{40}$/.test(parsed.record_id)
-          && typeof parsed.owner_token === 'string'
-          && /^ear1_[0-9a-f]{64}$/.test(parsed.owner_token)) {
-        return { storageKey, record_id: parsed.record_id, owner_token: parsed.owner_token };
-      }
-    } catch {
-      // Replace malformed local state with a fresh bounded credential below.
-    }
-  }
-  const credential = {
-    storageKey,
-    record_id: `agent_record_${secureHex(20)}`,
-    owner_token: `ear1_${secureHex(32)}`,
-  };
-  window.localStorage.setItem(storageKey, JSON.stringify({
-    record_id: credential.record_id,
-    owner_token: credential.owner_token,
-  }));
-  return credential;
+interface PendingRecordCredential {
+  storageKey: string;
+  record_id: string;
+  owner_token: string;
 }
 
-function pendingRecordFromStorage(storageKey: string) {
-  const value = window.localStorage.getItem(storageKey);
-  if (!value) return null;
+async function committedRecordId(ownerToken: string) {
+  const commitment = await globalThis.crypto.subtle.digest(
+    'SHA-256',
+    new TextEncoder().encode(OWNER_COMMITMENT_DOMAIN + ownerToken),
+  );
+  const hex = Array.from(
+    new Uint8Array(commitment),
+    (byte) => byte.toString(16).padStart(2, '0'),
+  ).join('');
+  return `agent_record_${hex.slice(0, 40)}`;
+}
+
+async function ownerCredentialMatchesRecord(recordId: string, ownerToken: string) {
+  return RECORD_ID.test(recordId)
+    && OWNER_TOKEN.test(ownerToken)
+    && recordId === await committedRecordId(ownerToken);
+}
+
+function shapedPendingRecord(storageKey: string, value: string): PendingRecordCredential | null {
   try {
     const parsed = JSON.parse(value) as { record_id?: unknown; owner_token?: unknown };
     if (typeof parsed.record_id === 'string' && RECORD_ID.test(parsed.record_id)
@@ -550,9 +556,57 @@ function pendingRecordFromStorage(storageKey: string) {
       return { storageKey, record_id: parsed.record_id, owner_token: parsed.owner_token };
     }
   } catch {
-    // Malformed local state is neither sent nor promoted.
+    // The caller decides when malformed local state can be safely deleted.
   }
   return null;
+}
+
+async function pendingRecordCredential(attemptId: string): Promise<PendingRecordCredential> {
+  const storageKey = pendingOwnerKey(attemptId);
+  const prior = window.localStorage.getItem(storageKey);
+  if (prior !== null) {
+    const parsed = shapedPendingRecord(storageKey, prior);
+    if (parsed) {
+      if (!await ownerCredentialMatchesRecord(parsed.record_id, parsed.owner_token)) {
+        throw new Error(
+          'The saved Agent Record owner credential does not match its record identifier.',
+        );
+      }
+      return parsed;
+    }
+    window.localStorage.removeItem(storageKey);
+  }
+  const ownerToken = `ear1_${secureHex(32)}`;
+  const credential = {
+    storageKey,
+    record_id: await committedRecordId(ownerToken),
+    owner_token: ownerToken,
+  };
+  if (!await ownerCredentialMatchesRecord(credential.record_id, credential.owner_token)) {
+    throw new Error('The Agent Record owner credential could not be bound to its identifier.');
+  }
+  window.localStorage.setItem(storageKey, JSON.stringify({
+    record_id: credential.record_id,
+    owner_token: credential.owner_token,
+  }));
+  return credential;
+}
+
+function pendingRecordFromStorage(storageKey: string): PendingRecordCredential | null {
+  const value = window.localStorage.getItem(storageKey);
+  if (!value) return null;
+  return shapedPendingRecord(storageKey, value);
+}
+
+function promotePendingOwnerCredential(pending: PendingRecordCredential) {
+  const destinationKey = ownerKey(pending.record_id);
+  const existingOwnerToken = window.localStorage.getItem(destinationKey);
+  if (existingOwnerToken !== null && existingOwnerToken !== pending.owner_token) return false;
+  if (existingOwnerToken === null) {
+    window.localStorage.setItem(destinationKey, pending.owner_token);
+  }
+  window.localStorage.removeItem(pending.storageKey);
+  return true;
 }
 
 function visibleRecoveredRecord(value: unknown, recordId: string): VisibleAgentRecord | null {
@@ -586,12 +640,37 @@ async function recoverPendingAgentRecords(): Promise<VisibleAgentRecord[]> {
   const storageKeys = Array.from({ length: window.localStorage.length }, (_, index) => (
     window.localStorage.key(index)
   )).filter((key): key is string => Boolean(key?.startsWith(PENDING_OWNER_PREFIX)))
-    .slice(0, MAX_PENDING_RECORD_RECOVERIES);
-  const recovered: VisibleAgentRecord[] = [];
-
+    .sort();
+  const pendingRecords: PendingRecordCredential[] = [];
   for (const storageKey of storageKeys) {
     const pending = pendingRecordFromStorage(storageKey);
-    if (!pending) continue;
+    if (pending) {
+      pendingRecords.push(pending);
+    } else {
+      window.localStorage.removeItem(storageKey);
+    }
+  }
+
+  const priorCursor = window.localStorage.getItem(PENDING_OWNER_RECOVERY_CURSOR);
+  const orderedRecords = priorCursor === null
+    ? pendingRecords
+    : [
+        ...pendingRecords.filter((pending) => pending.storageKey > priorCursor),
+        ...pendingRecords.filter((pending) => pending.storageKey <= priorCursor),
+      ];
+  const recoveryBatch = orderedRecords.slice(0, MAX_PENDING_RECORD_RECOVERIES);
+  if (recoveryBatch.length > 0) {
+    window.localStorage.setItem(
+      PENDING_OWNER_RECOVERY_CURSOR,
+      recoveryBatch[recoveryBatch.length - 1].storageKey,
+    );
+  }
+  const recovered: VisibleAgentRecord[] = [];
+
+  for (const pending of recoveryBatch) {
+    if (!await ownerCredentialMatchesRecord(pending.record_id, pending.owner_token)) continue;
+    const existingOwnerToken = window.localStorage.getItem(ownerKey(pending.record_id));
+    if (existingOwnerToken !== null && existingOwnerToken !== pending.owner_token) continue;
     let response: Response;
     try {
       response = await fetch(`/api/agent-records/${encodeURIComponent(pending.record_id)}`, {
@@ -612,9 +691,14 @@ async function recoverPendingAgentRecords(): Promise<VisibleAgentRecord[]> {
 
     // The owner token never participates in recovery lookup. Promotion is a
     // local rename performed only after the opaque public record verifies.
-    window.localStorage.setItem(ownerKey(pending.record_id), pending.owner_token);
-    window.localStorage.removeItem(pending.storageKey);
+    if (!await ownerCredentialMatchesRecord(pending.record_id, pending.owner_token)) continue;
+    if (!promotePendingOwnerCredential(pending)) continue;
     recovered.push(visible);
+  }
+  if (!Array.from({ length: window.localStorage.length }, (_, index) => (
+    window.localStorage.key(index)
+  )).some((key) => key?.startsWith(PENDING_OWNER_PREFIX))) {
+    window.localStorage.removeItem(PENDING_OWNER_RECOVERY_CURSOR);
   }
   return recovered;
 }
