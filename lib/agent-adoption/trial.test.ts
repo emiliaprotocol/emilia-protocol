@@ -4,14 +4,23 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 const mocks = vi.hoisted(() => ({
   provision: vi.fn(),
   submit: vi.fn(),
+  publish: vi.fn(),
+  loadPublic: vi.fn(),
 }));
 
 vi.mock('@/lib/arena/service', () => ({
   provisionArenaSession: mocks.provision,
   submitArenaAttempt: mocks.submit,
+  publishArenaRefusal: mocks.publish,
+  loadPublicArenaRefusal: mocks.loadPublic,
 }));
 
-const { provisionBoundAgentTrial, submitBoundAgentTrial, AgentAdoptionTrialError } =
+const {
+  provisionBoundAgentTrial,
+  publishBoundAgentTrialRefusal,
+  submitBoundAgentTrial,
+  AgentAdoptionTrialError,
+} =
   await import('./trial');
 const { seal } = await import('@/lib/crypto/secret-box');
 
@@ -216,5 +225,84 @@ describe('Agent Adoption no-egress trial adapter', () => {
       input: { attempt_template_id: 'attempt_in_bounds_v1', trial_token: trial.trial_token },
       now: NOW,
     })).rejects.toMatchObject({ code: 'agent_adoption_trial_decision_invalid' });
+  });
+
+  it('publishes only the signed refusal bound to this adoption trial', async () => {
+    const attemptId = `arena_attempt_${'3'.repeat(32)}`;
+    const shareId = `arena_share_${'6'.repeat(40)}`;
+    const actionDigest = `sha256:${'4'.repeat(64)}`;
+    const refusalDigest = `sha256:${'5'.repeat(64)}`;
+    mocks.provision.mockResolvedValue({
+      session_id: `arena_session_${'1'.repeat(32)}`,
+      token: `ep_arena_${'2'.repeat(64)}`,
+      allowance: { expires_at: '2026-08-03T17:00:00.000Z' },
+    });
+    mocks.publish.mockResolvedValue({ share_id: shareId });
+    mocks.loadPublic.mockResolvedValue({
+      share_id: shareId,
+      verification: { integrity_verified: true },
+      projection: {
+        profile: 'EP-ARENA-PUBLIC-REFUSAL-v1',
+        attempt: {
+          attempt_id: attemptId,
+          decision: 'refuse',
+          action_digest: actionDigest,
+          created_at: new Date(NOW).toISOString(),
+        },
+        refusal_digest: refusalDigest,
+        refusal_artifact: { '@version': 'EP-ACTION-REFUSAL-STATEMENT-v1' },
+      },
+    });
+    const trial = await provisionBoundAgentTrial({ authorization: authorization(), now: NOW });
+    const result = await publishBoundAgentTrialRefusal({
+      authorization: authorization(),
+      input: { trial_token: trial.trial_token, attempt_id: attemptId },
+      now: NOW,
+    });
+    expect(result).toMatchObject({
+      adoption_id: ADOPTION_ID,
+      bond_id: BOND_ID,
+      bond_digest: BOND_DIGEST,
+      arena_share_id: shareId,
+      action_digest: actionDigest,
+      refusal_digest: refusalDigest,
+    });
+    const request = mocks.publish.mock.calls[0][0].request as Request;
+    expect(request.headers.get('authorization')).toBe(`Bearer ep_arena_${'2'.repeat(64)}`);
+    expect(mocks.publish.mock.calls[0][0]).toMatchObject({
+      sessionId: `arena_session_${'1'.repeat(32)}`,
+      attemptId,
+      now: NOW,
+    });
+  });
+
+  it('refuses permit or mismatched public projections instead of creating record evidence', async () => {
+    const attemptId = `arena_attempt_${'3'.repeat(32)}`;
+    const shareId = `arena_share_${'6'.repeat(40)}`;
+    mocks.provision.mockResolvedValue({
+      session_id: `arena_session_${'1'.repeat(32)}`,
+      token: `ep_arena_${'2'.repeat(64)}`,
+      allowance: { expires_at: '2026-08-03T17:00:00.000Z' },
+    });
+    mocks.publish.mockResolvedValue({ share_id: shareId });
+    mocks.loadPublic.mockResolvedValue({
+      share_id: shareId,
+      verification: { integrity_verified: true },
+      projection: {
+        attempt: {
+          attempt_id: attemptId,
+          decision: 'permit',
+          action_digest: `sha256:${'4'.repeat(64)}`,
+          created_at: new Date(NOW).toISOString(),
+        },
+        refusal_digest: `sha256:${'5'.repeat(64)}`,
+      },
+    });
+    const trial = await provisionBoundAgentTrial({ authorization: authorization(), now: NOW });
+    await expect(publishBoundAgentTrialRefusal({
+      authorization: authorization(),
+      input: { trial_token: trial.trial_token, attempt_id: attemptId },
+      now: NOW,
+    })).rejects.toMatchObject({ code: 'agent_adoption_refusal_publication_invalid' });
   });
 });
