@@ -2002,6 +2002,93 @@ test('package DDL quarantines legacy capability ids at the database boundary', {
         await pool.end();
     }
 });
+test('package DDL quarantines an incomplete bootstrap that already defaulted the state flag to true', {
+    skip: capabilityPostgresUrl ? false : 'ADMISSION_STORE_POSTGRES_TEST_URL is not configured',
+}, async () => {
+    const { Pool } = require('pg');
+    const pool = new Pool({ connectionString: capabilityPostgresUrl, max: 1 });
+    const schemaPrefix = `ep_semantic_fence_upgrade_${process.pid}_${Date.now()}`;
+    async function upgradeOutcome(schema, ddl) {
+        await pool.query(`CREATE SCHEMA ${schema}`);
+        const client = await pool.connect();
+        try {
+            await client.query(`SET search_path TO ${schema}, public`);
+            await client.query(CAPABILITY_STATE_DDL);
+            await client.query(`
+        DROP TRIGGER ep_capability_operations_semantic_fence_guard
+          ON ep_capability_operations;
+        ALTER TABLE ep_capability_operations
+          DROP CONSTRAINT ep_capability_operations_pkey,
+          ALTER COLUMN operation_namespace DROP NOT NULL,
+          ALTER COLUMN action_fence_digest DROP NOT NULL;
+        ALTER TABLE ep_capability_operations
+          ADD CONSTRAINT ep_capability_operations_pkey PRIMARY KEY (operation_id)
+      `);
+            await client.query(`
+        INSERT INTO ep_capability_state (
+          capability_id, capability_fingerprint, budget_amount, currency,
+          consumed_amount, reserved_amount, expires_at, semantic_fence_ready
+        ) VALUES ($1, $2, 10, 'USD', 0, 0, now() + interval '1 hour', TRUE)
+      `, ['legacy:already-true', `sha256:${'a'.repeat(64)}`]);
+            await client.query(`
+        INSERT INTO ep_capability_operations (
+          operation_namespace, operation_id, capability_id, action_digest,
+          action_fence_digest, amount, currency, status, reservation_token,
+          reserved_at
+        ) VALUES (NULL, $1, $2, $3, NULL, 1, 'USD', 'committed', $4, now())
+      `, [
+                'operation:historical',
+                'legacy:already-true',
+                `sha256:${'b'.repeat(64)}`,
+                'reservation:historical',
+            ]);
+            await client.query(ddl);
+            const state = await client.query(`
+        SELECT semantic_fence_ready
+        FROM ep_capability_state
+        WHERE capability_id = 'legacy:already-true'
+      `);
+            let insert = 'admitted';
+            try {
+                await client.query(`
+          INSERT INTO ep_capability_operations (
+            operation_namespace, operation_id, capability_id, action_digest,
+            action_fence_digest, amount, currency, status, reservation_token,
+            reserved_at, entry_deadline_at
+          ) VALUES ($1, $2, $3, $4, $5, 1, 'USD', 'reserved', $6, now(), now() + interval '1 minute')
+        `, [
+                    'legacy:already-true',
+                    'operation:must-not-enter',
+                    'legacy:already-true',
+                    `sha256:${'c'.repeat(64)}`,
+                    `sha256:${'d'.repeat(64)}`,
+                    'reservation:must-not-enter',
+                ]);
+            }
+            catch (error) {
+                insert = error.code ?? 'unknown_error';
+            }
+            return {
+                ready: state.rows[0]?.semantic_fence_ready ?? true,
+                insert,
+            };
+        }
+        finally {
+            client.release();
+        }
+    }
+    try {
+        assert.deepEqual(await upgradeOutcome(`${schemaPrefix}_shipped`, CAPABILITY_STATE_DDL), { ready: false, insert: '55000' });
+        const vulnerableDdl = CAPABILITY_STATE_DDL.replace(`WHERE operation_namespace IS NULL\n   OR action_fence_digest IS NULL;`, 'WHERE FALSE;');
+        assert.notEqual(vulnerableDdl, CAPABILITY_STATE_DDL, 'mutation must erase legacy-id capture');
+        assert.deepEqual(await upgradeOutcome(`${schemaPrefix}_mutated`, vulnerableDdl), { ready: true, insert: 'admitted' }, 'the negative control must reproduce the incomplete-bootstrap bypass');
+    }
+    finally {
+        await pool.query(`DROP SCHEMA IF EXISTS ${schemaPrefix}_shipped CASCADE`);
+        await pool.query(`DROP SCHEMA IF EXISTS ${schemaPrefix}_mutated CASCADE`);
+        await pool.end();
+    }
+});
 test('a second operation id cannot re-authorize an action another operation already holds', async () => {
     // Anton Dziatkovskii, reviewing anthropics/claude-cookbooks#803: "request_approval
     // is a tool call like any other, so it can arrive twice for one pr: the agent

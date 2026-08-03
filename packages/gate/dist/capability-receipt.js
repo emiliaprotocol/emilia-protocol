@@ -1304,6 +1304,18 @@ ALTER TABLE ${CAPABILITY_OPERATION_TABLE} DROP CONSTRAINT IF EXISTS ${CAPABILITY
 ALTER TABLE ${CAPABILITY_OPERATION_TABLE}
   ADD CONSTRAINT ${CAPABILITY_OPERATION_TABLE}_action_fence_digest_check
   CHECK (action_fence_digest IS NULL OR action_fence_digest ~ '^sha256:[0-9a-f]{64}$');
+-- Capture legacy capability ids before compatibility backfills erase the only
+-- reliable signal that their historical rows never carried a semantic fence.
+-- This also closes an incomplete-bootstrap case where the state flag was
+-- already added with its TRUE default but operation bindings remain legacy.
+DROP TABLE IF EXISTS pg_temp.ep_capability_action_fence_legacy_ids;
+CREATE TEMP TABLE ep_capability_action_fence_legacy_ids
+ON COMMIT DROP
+AS
+SELECT DISTINCT capability_id
+FROM ${CAPABILITY_OPERATION_TABLE}
+WHERE operation_namespace IS NULL
+   OR action_fence_digest IS NULL;
 UPDATE ${CAPABILITY_OPERATION_TABLE}
   SET operation_namespace = capability_id
   WHERE operation_namespace IS NULL;
@@ -1322,6 +1334,10 @@ BEGIN
   END IF;
 END
 $capability_legacy_reservation_preflight$;
+UPDATE ${CAPABILITY_STATE_TABLE} AS capability_state
+  SET semantic_fence_ready = FALSE
+  FROM pg_temp.ep_capability_action_fence_legacy_ids AS legacy_capability
+  WHERE legacy_capability.capability_id = capability_state.capability_id;
 UPDATE ${CAPABILITY_STATE_TABLE} AS capability_state
   SET semantic_fence_ready = NOT EXISTS (
     SELECT 1 FROM ${CAPABILITY_OPERATION_TABLE} AS operation
