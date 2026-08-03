@@ -832,14 +832,26 @@ deterministically from the pinned resolver's validated CAID, so two wrappers
 with different operation IDs can retain different exact digests while mapping
 to one material-action fence. Different CAIDs derive different fences.
 
-Allowance/profile scope uses the exact action digest as its conservative safe
-default. A profile verifier may instead return
-`{ ok: true, action_fence_digest }`; Gate accepts that override only when it is
-a canonical `sha256:<64 lowercase hex>` digest. The verifier is responsible for
-deriving that value from the profile-validated material action under its pinned
-rules. A malformed supplied fence fails closed rather than falling back. The
-low-level store API applies the same exact-digest default when
-`actionFenceDigest` is omitted for compatibility.
+Allowance/profile scope has no exact-digest fallback. Its trusted profile
+verifier must return `{ ok: true, action_fence_digest }`, and Gate accepts the
+fence only when it is a canonical `sha256:<64 lowercase hex>` digest. Returning
+only `true` or `{ ok: true }` now refuses with
+`capability_action_fence_digest_required`; a malformed supplied fence refuses
+with `capability_action_fence_digest_invalid`. This is an intentional
+fail-closed compatibility break: an exact digest that includes a
+wrapper-specific operation ID is not evidence of semantic uniqueness.
+
+`executeWithGateAllowance()` derives its explicit fence from the closed,
+profile-validated action after removing only the signed
+`operation_id_field`. The allowance `profile_id` remains the operation
+namespace, so separate capability envelopes under that profile retain the
+same replay domain. A deployment that intentionally permits materially
+distinct, otherwise identical actions must include a stable business-action
+discriminator (for example, an invoice or payout-instruction ID) as another
+validated material field; changing only the wrapper operation ID cannot create
+new authority. The low-level store API retains its exact-digest default for
+exact-scope compatibility, but custom allowance/profile integrations must pass
+the verifier-produced semantic fence explicitly.
 
 Both digests are persisted in memory and PostgreSQL operation state. A live
 fence conflict returns `action_digest`, `action_fence_digest`, and

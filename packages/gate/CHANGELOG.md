@@ -6,6 +6,24 @@ This package follows [Semantic Versioning](https://semver.org/).
 
 ## Unreleased
 
+## 0.23.9 (2026-08-03)
+
+### Security
+
+- Fail closed when an allowance/profile verifier returns only `true` or
+  `{ ok: true }`; it must now return an explicit canonical
+  `action_fence_digest` derived from the profile-validated material action.
+- Derive the built-in Gate Allowance fence from every validated action field
+  except the wrapper-specific operation-ID field, so two operation IDs cannot
+  execute one material action twice in the shared allowance namespace.
+
+### Compatibility
+
+- Custom allowance/profile verifiers must return
+  `{ ok: true, action_fence_digest }`. This intentional security break does not
+  change the capability database schema or the exact-digest and CAID scope
+  semantics.
+
 ## 0.23.8 (2026-08-03)
 
 ### Security

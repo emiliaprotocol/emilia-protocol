@@ -14,6 +14,7 @@ import {
   verifyGateAllowance,
 } from './allowance.js';
 import {
+  capabilityActionDigest,
   capabilityBaseReceiptDigest,
   createMemoryCapabilityStore,
   delegateCapabilityReceipt,
@@ -347,6 +348,74 @@ test('allowed draws run unattended and atomically deplete the aggregate allowanc
   assert.equal(authorizationChecks, 1);
 });
 
+test('allowance execution fences one material action across wrapper operation ids', async () => {
+  const keys = material();
+  const receipt = authorizationReceipt(keys);
+  const input = allowanceInput(receipt, keys);
+  const issued = issueGateAllowance({
+    authorizationReceipt: receipt,
+    allowance: input,
+    signer: keys.signer,
+    capabilityIssuerPrivateKey: keys.pair.privateKey,
+  });
+  const store = createMemoryCapabilityStore();
+  assert.equal(store.registerCapability(issued.capabilityReceipt), true);
+  initializeCurrentStatus(store, issued);
+  const actions = [payout('payout:wrapper-a'), payout('payout:wrapper-b')];
+  const effects: string[] = [];
+  const common = {
+    allowance: issued.allowance,
+    capabilityReceipt: issued.capabilityReceipt,
+    secret: issued.secret,
+    store,
+    executeAction: async (candidate) => {
+      effects.push(candidate.operation_id);
+      return { id: candidate.operation_id };
+    },
+    verifyAuthorizationReceipt: () => true,
+    verifyAllowanceStatus: () => currentStatus(),
+    trustedAllowanceKeys: keys.trustedKeys,
+    trustedCapabilityIssuerKeys: [keys.publicKey],
+    expected: {
+      allowance_id: input.allowance_id,
+      tenant_id: input.tenant_id,
+      subject_id: input.subject_id,
+      audience: input.audience,
+      connector_id: input.connector_id,
+      authorizer_id: keys.signer.issuer_id,
+    },
+    now: NOW,
+  };
+
+  const first = await executeWithGateAllowance({
+    ...common,
+    action: actions[0],
+    operationId: actions[0].operation_id,
+  });
+  const duplicate = await executeWithGateAllowance({
+    ...common,
+    action: actions[1],
+    operationId: actions[1].operation_id,
+  });
+
+  assert.equal(first.ok, true);
+  assert.equal(duplicate.ok, false);
+  assert.equal(duplicate.reason, 'action_already_committed');
+  assert.notEqual(first.action_digest, duplicate.action_digest);
+  assert.equal(first.action_fence_digest, duplicate.action_fence_digest);
+  assert.equal(duplicate.holding_operation_id, actions[0].operation_id);
+  assert.deepEqual(effects, [actions[0].operation_id]);
+  assert.equal(
+    first.action_fence_digest,
+    capabilityActionDigest({
+      action_type: actions[0].action_type,
+      amount: actions[0].amount,
+      currency: actions[0].currency,
+      destination: actions[0].destination,
+    }),
+  );
+});
+
 test('authorization receipt verifier exceptions fail closed before execution', async () => {
   const keys = material();
   const receipt = authorizationReceipt(keys);
@@ -494,7 +563,7 @@ test('concurrent draws linearize and post-entry uncertainty consumes replay auth
     }),
     executeWithGateAllowance({
       ...common,
-      action: payout('payout:concurrent-b', { amount: 4_000 }),
+      action: payout('payout:concurrent-b', { amount: 4_000, destination: 'acct_known_b' }),
       operationId: 'payout:concurrent-b',
       executeAction: async () => ({ id: 'po_b' }),
     }),
