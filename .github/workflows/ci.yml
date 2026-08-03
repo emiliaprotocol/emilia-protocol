@@ -1186,7 +1186,10 @@ jobs:
         env:
           # next build needs valid envs at compile time; supply minimal stubs
           # so the build doesn't fail trying to read real secrets.
-          NEXT_PUBLIC_SUPABASE_URL: 'https://e2e.supabase.local'
+          # The production page executes its readiness probe at request time.
+          # Compile the same loopback URL that Playwright's inert RPC stub owns
+          # so Agent Record recovery is exercised without a real deployment.
+          NEXT_PUBLIC_SUPABASE_URL: 'http://127.0.0.1:54321'
           NEXT_PUBLIC_SUPABASE_ANON_KEY: 'e2e-anon-key'
       - name: Run E2E smoke tests
         run: npx playwright test
@@ -1194,7 +1197,7 @@ jobs:
           CI: 'true'
           # `next start` re-reads NEXT_PUBLIC_* at boot for runtime config —
           # keep parity with the build step so the production server starts.
-          NEXT_PUBLIC_SUPABASE_URL: 'https://e2e.supabase.local'
+          NEXT_PUBLIC_SUPABASE_URL: 'http://127.0.0.1:54321'
           NEXT_PUBLIC_SUPABASE_ANON_KEY: 'e2e-anon-key'
       - name: Upload Playwright report
         if: always()
