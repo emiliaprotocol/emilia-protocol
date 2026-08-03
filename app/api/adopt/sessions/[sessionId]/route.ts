@@ -18,6 +18,7 @@ export async function GET(
       session_id: sessionId,
       expires_at: stored.expires_at,
       authority_state: Number(stored.bond_count) > 0 ? 'asserted' : 'draft',
+      passkey_registered: Number(stored.credential_count) === 1,
       passkey_asserted: Number(stored.bond_count) > 0,
       bond_id: stored.latest_bond_id ?? undefined,
       bond_digest: stored.latest_bond_digest ?? stored.bond_digest,
@@ -32,4 +33,3 @@ export async function GET(
     return adoptionError(error, 'session_recovery');
   }
 }
-
