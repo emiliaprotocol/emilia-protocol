@@ -103,6 +103,8 @@ describe('Agent Record HTTP contract', () => {
 
     for (const response of [createResponse, publicResponse, revokeResponse]) {
       expect(response.status).toBe(503);
+      expect(response.headers.get('cache-control')).toContain('no-store');
+      expect(response.headers.get('referrer-policy')).toBe('no-referrer');
       expect(await response.json()).toMatchObject({
         type: 'https://emiliaprotocol.ai/errors/agent_record_unavailable',
         status: 503,
@@ -159,6 +161,7 @@ describe('Agent Record HTTP contract', () => {
     const response = await CreateRoute.POST(request as never, createParams);
 
     expect(response.status).toBe(401);
+    expect(response.headers.get('cache-control')).toContain('no-store');
     expect(request.bodyUsed).toBe(false);
     expect(mocks.create).not.toHaveBeenCalled();
   });
@@ -209,6 +212,7 @@ describe('Agent Record HTTP contract', () => {
         { params: { recordId } },
       );
       expect(response.status).toBe(404);
+      expect(response.headers.get('cache-control')).toContain('no-store');
       expect(await response.json()).toMatchObject({
         type: 'https://emiliaprotocol.ai/errors/agent_record_not_found',
         status: 404,
@@ -257,11 +261,30 @@ describe('Agent Record HTTP contract', () => {
         recordParams,
       );
       expect(response.status).toBe(404);
+      expect(response.headers.get('cache-control')).toContain('no-store');
       expect(await response.json()).toMatchObject({
         type: 'https://emiliaprotocol.ai/errors/agent_record_not_found',
         status: 404,
       });
     }
+  });
+
+  it('refuses cross-origin revocation without returning a cacheable error', async () => {
+    const response = await RevokeRoute.POST(
+      new Request(`https://www.emiliaprotocol.ai/api/agent-records/${RECORD_ID}/revoke`, {
+        method: 'POST',
+        headers: {
+          authorization: `Bearer ${OWNER_TOKEN}`,
+          origin: 'https://attacker.example',
+        },
+      }),
+      recordParams,
+    );
+
+    expect(response.status).toBe(403);
+    expect(response.headers.get('cache-control')).toContain('no-store');
+    expect(response.headers.get('referrer-policy')).toBe('no-referrer');
+    expect(mocks.revoke).not.toHaveBeenCalled();
   });
 });
 

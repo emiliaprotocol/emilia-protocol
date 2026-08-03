@@ -854,6 +854,7 @@ export async function middleware(request) {
       { error: 'Service temporarily unavailable — durable rate limiting required', retry_after: 60 },
       { status: 503 },
     );
+    response.headers.set('Cache-Control', NO_STORE_CACHE_CONTROL);
     response.headers.set('Retry-After', '60');
     return response;
   }
@@ -888,6 +889,7 @@ export async function middleware(request) {
     res.headers.set('X-RateLimit-Remaining', '0');
     res.headers.set('X-RateLimit-Reset', String(result.reset));
     res.headers.set('Retry-After', String(result.reset));
+    if (isAgentRecordApi) res.headers.set('Cache-Control', NO_STORE_CACHE_CONTROL);
     return res;
   }
 

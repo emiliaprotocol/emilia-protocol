@@ -32,6 +32,23 @@ let inFlightReadiness: Promise<AgentRecordRuntimeReadiness> | null = null;
 
 const RPC_PROBES = Object.freeze([
   Object.freeze({
+    name: 'read_agent_adoption_session',
+    expectedCode: 'P0002',
+    args: Object.freeze({
+      p_adoption_id: '00000000-0000-4000-8000-000000000000',
+      p_session_token: `eaa1_${'0'.repeat(64)}`,
+    }),
+  }),
+  Object.freeze({
+    name: 'read_agent_record_refusal_source',
+    expectedCode: 'P0002',
+    args: Object.freeze({
+      p_source_token_hash: '0'.repeat(64),
+      p_source_session_id: `arena_session_${'0'.repeat(32)}`,
+      p_source_attempt_id: `arena_attempt_${'0'.repeat(32)}`,
+    }),
+  }),
+  Object.freeze({
     name: 'read_agent_record_public',
     expectedCode: 'P0002',
     args: Object.freeze({ p_record_id: 'agent_record_readiness_probe' }),
@@ -146,8 +163,8 @@ async function probeRuntime(client: RpcClient, creationCapability: string) {
 /**
  * Production Agent Record gate. It validates secret presence without returning
  * values, verifies the independent database creation capability, then exercises
- * each deployed RPC entry point with inputs that cannot mutate state. Results
- * are briefly cached per process.
+ * each deployed RPC entry point and each creation dependency with inputs that
+ * cannot mutate state. Results are briefly cached per process.
  */
 export async function getAgentRecordRuntimeReadiness({
   environment = process.env,

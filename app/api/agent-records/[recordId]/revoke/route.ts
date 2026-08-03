@@ -33,7 +33,9 @@ export async function POST(
     expectedOrigin = '';
   }
   if (!expectedOrigin || request.headers.get('origin') !== expectedOrigin) {
-    return epProblem(403, 'agent_record_origin_denied', 'Agent Record revocation requires an exact same-origin request.');
+    const response = epProblem(403, 'agent_record_origin_denied', 'Agent Record revocation requires an exact same-origin request.');
+    for (const [key, value] of Object.entries(NO_STORE_HEADERS)) response.headers.set(key, value);
+    return response;
   }
 
   const header = request.headers.get('authorization') ?? '';

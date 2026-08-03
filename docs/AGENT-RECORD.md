@@ -139,14 +139,15 @@ ready:
   lowercase-hex shape and matches the one-way capability configured in the
   private database store; and
 - the service role can execute `check_agent_record_creation_capability`,
-  `create_agent_record_with_capability`, `read_agent_record_public`, and
+  `create_agent_record_with_capability`, `read_agent_adoption_session`,
+  `read_agent_record_refusal_source`, `read_agent_record_public`, and
   `revoke_agent_record` with the deployed signatures.
 
 The live authorization check confirms only whether the server-held creation
 capability matches the private database configuration. The creation probe uses
 that capability with null business inputs, which the base creator rejects in
-its first validation block before any mutation. The read and revoke probes use
-deliberately invalid, non-secret identifiers. Probe results are cached briefly;
+its first validation block before any mutation. The dependency, read, and revoke
+probes use valid-shaped but nonexistent, non-secret identifiers. Probe results are cached briefly;
 no capability, key, token, URL, or database error detail is returned to a public
 caller. An unavailable dependency produces one generic
 `503 agent_record_unavailable` response, and `/adopt` keeps the synthetic

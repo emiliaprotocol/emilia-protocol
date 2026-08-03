@@ -85,6 +85,17 @@ test('generic bearer values, assignments, URLs, and high-entropy tokens are reda
   }
 });
 
+test('short Authorization credentials are fully redacted', () => {
+  for (const input of [
+    'Authorization: Bearer s3cr3t',
+    'Authorization: Basic dXNlcg==',
+  ]) {
+    const output = redactText(input);
+    assert.ok(!output.includes(input.split(' ').at(-1)), input);
+    assert.match(output, /<redacted (bearer|basic) credential>/);
+  }
+});
+
 test('PEM blocks and embedded connection strings are removed as complete values', () => {
   const pem = [
     '-----BEGIN PRIVATE KEY-----',
@@ -123,6 +134,17 @@ test('recursive report sanitizer removes secrets from arbitrary future fields', 
     args: ['--token', secret],
   }));
   assert.ok(!output.includes(secret));
+});
+
+test('secret descriptors retain safe key names without retaining credential values', () => {
+  assert.deepEqual(
+    sanitizeForReport({ key: 'GOOGLE_AI_API_KEY', class: 'api_key', secret: true, length: 42 }),
+    { key: 'GOOGLE_AI_API_KEY', class: 'api_key', secret: true, length: 42 },
+  );
+  assert.equal(
+    sanitizeForReport({ key: 'unsafe key name with spaces', class: 'api_key', secret: true }).key,
+    '<redacted invalid key name>',
+  );
 });
 
 test('MCP args and permission rules do not leak fake credentials in either output format', () => {
@@ -168,6 +190,19 @@ test('unsupported TOML is excluded rather than called malformed or clean', () =>
   const codex = result.inventory.sources.find((source) => source.runtime === 'codex');
   assert.equal(codex?.status, 'unsupported_format');
   assert.equal(authorityExitCode(result), 3);
+});
+
+test('an absent unsupported-format candidate is reported absent', () => {
+  const { home, cwd } = fixture({});
+  const result = runAuthorityScan({
+    cwd,
+    home,
+    applicationSupport: join(home, 'Library', 'Application Support'),
+    managedCandidates: [],
+    maxEnvDepth: 0,
+  });
+  const codex = result.inventory.sources.find((source) => source.runtime === 'codex');
+  assert.equal(codex?.status, 'absent');
 });
 
 test('malformed and duplicate-member JSON fail distinctly', () => {

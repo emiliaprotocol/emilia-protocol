@@ -16,6 +16,11 @@ let strictJsonGate;
 try { ({ strictJsonGate } = await import('@emilia-protocol/verify/strict-json')); }
 catch { ({ strictJsonGate } = await import('../verify/strict-json.js')); }
 const MAX_INPUT_BYTES = 8 * 1024 * 1024;
+const OPENAPI_METHODS = new Set(['get', 'put', 'post', 'delete', 'options', 'head', 'patch', 'trace']);
+
+function isRecord(value) {
+  return Boolean(value) && typeof value === 'object' && !Array.isArray(value);
+}
 
 const SAMPLE = [
   { name: 'getAccountBalance', description: 'Return the current balance for an account' },
@@ -36,18 +41,25 @@ function ingest(raw) {
   const gate = strictJsonGate(raw);
   if (!gate.ok) throw new Error(`Input refused: ${gate.reason}.`);
   const j = JSON.parse(raw);
-  if (j && j.openapi && j.paths) {
+  if (j && typeof j.openapi === 'string' && Object.hasOwn(j, 'paths')) {
+    if (!isRecord(j.paths)) throw new Error('OpenAPI paths must be an object.');
     const actions = [];
     for (const [p, ops] of Object.entries(j.paths)) {
+      if (!isRecord(ops)) throw new Error(`OpenAPI path item must be an object: ${p}.`);
       for (const [method, op] of Object.entries(ops)) {
-        if (!['get', 'post', 'put', 'patch', 'delete'].includes(method)) continue;
+        const normalizedMethod = method.toLowerCase();
+        if (!OPENAPI_METHODS.has(normalizedMethod)) continue;
+        if (!isRecord(op)) throw new Error(`OpenAPI operation must be an object: ${method} ${p}.`);
         actions.push({
-          name: op?.operationId || `${method} ${p}`,
-          description: op?.summary || op?.description || '',
-          http_method: method,
+          name: op.operationId || `${normalizedMethod} ${p}`,
+          description: op.summary || op.description || '',
+          http_method: normalizedMethod,
           route_path: p,
         });
       }
+    }
+    if (actions.length === 0) {
+      throw new Error('OpenAPI spec declares no operations; refusing a false-empty surface.');
     }
     return { actions, source: 'openapi', blindSpots: ['Only operations declared in the spec are visible; undocumented endpoints and query-param-dependent risk are not.'] };
   }

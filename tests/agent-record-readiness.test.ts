@@ -32,7 +32,13 @@ function healthyRpcClient() {
       data: name === 'check_agent_record_creation_capability' ? true : null,
       error: name === 'check_agent_record_creation_capability'
         ? null
-        : { code: name === 'read_agent_record_public' ? 'P0002' : '22023' },
+        : {
+            code: [
+              'read_agent_adoption_session',
+              'read_agent_record_public',
+              'read_agent_record_refusal_source',
+            ].includes(name) ? 'P0002' : '22023',
+          },
     })),
   };
 }
@@ -126,7 +132,9 @@ describe('Agent Record runtime readiness', () => {
     expect(client.rpc.mock.calls.map(([name]) => name).sort()).toEqual([
       'check_agent_record_creation_capability',
       'create_agent_record_with_capability',
+      'read_agent_adoption_session',
       'read_agent_record_public',
+      'read_agent_record_refusal_source',
       'revoke_agent_record',
     ]);
     const createProbe = client.rpc.mock.calls.find(
@@ -189,6 +197,33 @@ describe('Agent Record runtime readiness', () => {
           ? 'PGRST202'
           : name === 'read_agent_record_public' ? 'P0002' : '22023',
       },
+    }));
+
+    const result = await getAgentRecordRuntimeReadiness({
+      environment: productionEnvironment(),
+      client: client as never,
+      useCache: false,
+    });
+
+    expect(result.ready).toBe(false);
+    expect(result.checks.database_rpcs).toBe(false);
+    expect(result.unavailable).toContain('database_rpcs');
+  });
+
+  it('fails closed when the private refusal-source dependency is missing', async () => {
+    const client = healthyRpcClient();
+    client.rpc.mockImplementation(async (name: string) => ({
+      data: name === 'check_agent_record_creation_capability' ? true : null,
+      error: name === 'check_agent_record_creation_capability'
+        ? null
+        : {
+            code: name === 'read_agent_record_refusal_source'
+              ? 'PGRST202'
+              : [
+                  'read_agent_adoption_session',
+                  'read_agent_record_public',
+                ].includes(name) ? 'P0002' : '22023',
+          },
     }));
 
     const result = await getAgentRecordRuntimeReadiness({

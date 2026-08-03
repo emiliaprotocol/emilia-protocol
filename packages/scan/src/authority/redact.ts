@@ -139,15 +139,15 @@ export function redactText(text: unknown): string {
     (_match, scheme: string) => `<redacted connection_string scheme=${scheme.toLowerCase()}>`,
   );
   out = out.replace(
-    /\b(Bearer|Basic)\s+[A-Za-z0-9._~+/-]{8,}={0,2}/gi,
+    /\b(Bearer|Basic)\s+[^\s"',;<>]+/gi,
     (_match, kind: string) => `<redacted ${kind.toLowerCase()} credential>`,
   );
   out = out.replace(
-    /(--?(?:key|api[-_]?key|secret|token|password|passwd|credential|authorization|private[-_]?key|access[-_]?key|service[-_]?role|session|signing[-_]?key|dsn))(\s*=\s*|\s+)(?:"[^"]*"|'[^']*'|[^\s)"']+)/gi,
+    /(--?(?:key|api[-_]?key|secret|token|password|passwd|credential|authorization|private[-_]?key|access[-_]?key|service[-_]?role|session|signing[-_]?key|dsn))(\s*=\s*|\s+)(?!<redacted\b)(?:"[^"]*"|'[^']*'|[^\s)"']+)/gi,
     (_match, key: string, separator: string) => `${key}${separator.includes('=') ? '=' : ' '}<redacted credential>`,
   );
   out = out.replace(
-    /\b((?:[A-Za-z0-9]+[_-])*(?:key|api[_-]?key|secret|token|password|passwd|credential|authorization|private[_-]?key|access[_-]?key|service[_-]?role|session|signing[_-]?key|dsn))(\s*(?:=|:)\s*)(?:"[^"]*"|'[^']*'|[^\s)"']+)/gi,
+    /\b((?:[A-Za-z0-9]+[_-])*(?:key|api[_-]?key|secret|token|password|passwd|credential|authorization|private[_-]?key|access[_-]?key|service[_-]?role|session|signing[_-]?key|dsn))(\s*(?:=|:)\s*)(?!<redacted\b)(?:"[^"]*"|'[^']*'|[^\s)"']+)/gi,
     (_match, key: string, separator: string) => `${key}${separator}<redacted credential>`,
   );
   for (const shape of VALUE_SHAPES) {
@@ -186,8 +186,17 @@ export function sanitizeForReport(
     return sanitized;
   }
   const out: Record<string, unknown> = {};
+  const isSecretDescriptor = typeof (value as Record<string, unknown>).secret === 'boolean'
+    && Object.hasOwn(value, 'class')
+    && Object.hasOwn(value, 'key');
   for (const [childKey, childValue] of Object.entries(value)) {
-    out[childKey] = sanitizeForReport(childValue, childKey, seen);
+    if (isSecretDescriptor && childKey === 'key' && typeof childValue === 'string') {
+      out[childKey] = /^[A-Za-z_][A-Za-z0-9_.:-]{0,127}$/.test(childValue)
+        ? childValue
+        : '<redacted invalid key name>';
+    } else {
+      out[childKey] = sanitizeForReport(childValue, childKey, seen);
+    }
   }
   seen.delete(value);
   return out;

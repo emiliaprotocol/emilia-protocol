@@ -115,11 +115,9 @@ describe('Agent Record durable rate limiting through real middleware', () => {
       const response = await middleware(new NextRequest(`https://ep.test${path}`) as never);
       expect(response.status, path).toBe(503);
       expect(response.headers.get('retry-after'), path).toBe('60');
-      if (path.startsWith('/agent-record/')) {
-        expect(response.headers.get('cache-control'), path).toBe(
-          'no-store, no-cache, must-revalidate',
-        );
-      }
+      expect(response.headers.get('cache-control'), path).toBe(
+        'no-store, no-cache, must-revalidate',
+      );
     }
     expect(fetchMock).not.toHaveBeenCalled();
   });
@@ -130,11 +128,9 @@ describe('Agent Record durable rate limiting through real middleware', () => {
     for (const path of AGENT_RECORD_PATHS) {
       const response = await middleware(new NextRequest(`https://ep.test${path}`) as never);
       expect(response.status, path).toBe(503);
-      if (path.startsWith('/agent-record/')) {
-        expect(response.headers.get('cache-control'), path).toBe(
-          'no-store, no-cache, must-revalidate',
-        );
-      }
+      expect(response.headers.get('cache-control'), path).toBe(
+        'no-store, no-cache, must-revalidate',
+      );
     }
 
     for (const path of ['/api/verify/tr_public', '/api/badge/agent-public']) {

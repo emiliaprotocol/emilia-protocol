@@ -204,7 +204,7 @@ export function scanActions(actions, { source = 'list', blindSpots = [] } = {}) 
         }
         if (source === 'openapi'
             && (typeof action.http_method !== 'string'
-                || !['GET', 'POST', 'PUT', 'PATCH', 'DELETE'].includes(action.http_method.toUpperCase())
+                || !['GET', 'PUT', 'POST', 'DELETE', 'OPTIONS', 'HEAD', 'PATCH', 'TRACE'].includes(action.http_method.toUpperCase())
                 || typeof action.route_path !== 'string'
                 || !action.route_path.startsWith('/')
                 || action.route_path.length > 2_048

@@ -88,6 +88,13 @@ describe('Agent Record documentation and OpenAPI lifecycle contract', () => {
       .toEqual(['artifact_digest', 'profile']);
     expect(JSON.stringify(observation)).not.toMatch(/arena_share_id|arena_share_/i);
     expect(JSON.stringify(publicResponse)).not.toMatch(/arena_share_id|arena_share_/i);
+    expect(observation.properties.record.properties.claim_boundary.enum).toEqual([
+      'one_operator_observation_of_one_verified_signed_refusal_artifact_only',
+    ]);
+    expect(openApi.components.schemas.AgentRecordPublicVerification.properties.claim_boundary.enum)
+      .toEqual(['one_operator_observation_of_one_verified_signed_refusal_artifact_only']);
+    expect(openApi.paths['/api/agent-records/{recordId}/revoke'].post.description)
+      .not.toMatch(/marks?.*Arena share.*revoked/is);
   });
 
   it('documents the non-disclosing fail-closed production readiness boundary', () => {
@@ -103,7 +110,9 @@ describe('Agent Record documentation and OpenAPI lifecycle contract', () => {
       'EP_AGENT_RECORD_CREATION_CAPABILITY',
       'check_agent_record_creation_capability',
       'create_agent_record_with_capability',
+      'read_agent_adoption_session',
       'read_agent_record_public',
+      'read_agent_record_refusal_source',
       'revoke_agent_record',
     ]) expect(runtimeDocs).toContain(dependency);
     expect(runtimeDocs.replace(/\s+/g, ' ')).toContain(

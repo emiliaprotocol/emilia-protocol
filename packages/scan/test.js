@@ -259,6 +259,43 @@ test('scan CLI exercises MCP, OpenAPI, sample, emit, and refusal paths', () => {
   assert.match(openApi.stdout, /startJob/);
   assert.match(openApi.stdout, /undocumented endpoints/);
 
+  const completeOpenApiInput = join(dir, 'openapi-complete.json');
+  writeFileSync(completeOpenApiInput, JSON.stringify({
+    openapi: '3.1.0',
+    paths: {
+      '/admin': {
+        head: { operationId: 'headReplay', summary: 'Inspect replay state' },
+        options: { operationId: 'configurePolicy', summary: 'Change policy options' },
+        trace: { operationId: 'traceSecrets', summary: 'Trace sensitive request details' },
+      },
+    },
+  }));
+  const completeOpenApi = spawnSync(process.execPath, [join(import.meta.dirname, 'cli.mjs'), completeOpenApiInput], {
+    cwd: dir,
+    encoding: 'utf8',
+  });
+  assert.equal(completeOpenApi.status, 0, `${completeOpenApi.stdout}\n${completeOpenApi.stderr}`);
+  assert.match(completeOpenApi.stdout, /openapi surface, 3 actions/);
+  assert.match(completeOpenApi.stdout, /headReplay/);
+  assert.match(completeOpenApi.stdout, /configurePolicy/);
+  assert.match(completeOpenApi.stdout, /traceSecrets/);
+
+  const invalidOpenApiInput = join(dir, 'openapi-invalid.json');
+  const invalidManifest = join(dir, 'invalid-manifest.json');
+  writeFileSync(invalidOpenApiInput, JSON.stringify({ openapi: '3.1.0', paths: [] }));
+  const invalidOpenApi = spawnSync(process.execPath, [
+    join(import.meta.dirname, 'cli.mjs'),
+    invalidOpenApiInput,
+    '--emit',
+    invalidManifest,
+  ], {
+    cwd: dir,
+    encoding: 'utf8',
+  });
+  assert.notEqual(invalidOpenApi.status, 0);
+  assert.match(`${invalidOpenApi.stdout}${invalidOpenApi.stderr}`, /OpenAPI paths must be an object/);
+  assert.equal(existsSync(invalidManifest), false, 'malformed OpenAPI must not emit a false-empty manifest');
+
   const sample = spawnSync(process.execPath, [join(import.meta.dirname, 'cli.mjs'), '--sample'], {
     cwd: dir,
     encoding: 'utf8',

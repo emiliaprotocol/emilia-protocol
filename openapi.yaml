@@ -6770,7 +6770,7 @@ paths:
                 $ref: '#/components/schemas/AgentRecordCreateResponse'
         '400': { description: 'Input malformed or attempt is not a refusal' }
         '401': { description: 'Adoption or trial capability invalid' }
-        '409': { description: 'Conflicting reuse of a record ID, owner credential, Arena source, or refusal digest, or an adoption lifecycle conflict' }
+        '409': { description: 'Conflicting reuse of a record ID, owner credential, private refusal source, or refusal digest, or an adoption lifecycle conflict' }
         '413': { description: 'Request body exceeds the Agent Record limit' }
         '503': { description: 'Agent Record runtime readiness, signing, creation authorization, durable rate limiting, or storage unavailable; no dependency detail is disclosed' }
 
@@ -6815,9 +6815,9 @@ paths:
         The record-specific owner token is accepted only as an Authorization
         bearer and is never returned in the public projection, URL, cookie, or
         lookup response. One database transaction appends the terminal Agent
-        Record revocation and marks only its internally bound Arena share
-        revoked; it does not rewrite either signed projection. An exact retry
-        returns the original terminal result.
+        Record revocation; it does not create or mutate an Arena share and does
+        not rewrite the signed observation. An exact retry returns the original
+        terminal result.
 
         Production revocation fails closed unless the operator signer, durable
         Upstash limiter, server-side Supabase configuration, and all Agent
@@ -7006,15 +7006,14 @@ components:
           enum: [true]
         claim_boundary:
           type: string
-          enum: [one_operator_observation_of_one_verified_signed_arena_refusal_only]
+          enum: [one_operator_observation_of_one_verified_signed_refusal_artifact_only]
 
     AgentRecordObservation:
       type: object
       additionalProperties: false
       description: |
-        Closed operator-signed factual observation. The Arena share identifier
-        is retained only as a private storage binding and is not part of this
-        envelope.
+        Closed operator-signed factual observation. The private source is bound
+        by a digest commitment; no Arena share is created or retained.
       required: ['@version', record, signature]
       properties:
         '@version':
@@ -7069,7 +7068,7 @@ components:
               description: Exactly 365 days after observed_at.
             claim_boundary:
               type: string
-              enum: [one_operator_observation_of_one_verified_signed_arena_refusal_only]
+              enum: [one_operator_observation_of_one_verified_signed_refusal_artifact_only]
         signature:
           type: object
           additionalProperties: false
