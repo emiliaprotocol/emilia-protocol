@@ -43,7 +43,7 @@ preserves **8 deliberately weakened variants that produce concrete
 attack traces when load-bearing checks are removed**. The live same-team conformance corpus contains **21 suites and
 331 current vectors**. Separately, an externally authored Rust verifier is pinned to the frozen
 **16-suite/164-vector** bundle and a **359-case hostility campaign**. The broader suite contains
-**8,458 automated tests across 494 files**.
+**8,460 automated tests across 494 files**.
 
 Production JavaScript and JSDoc surfaces are compiler-checked with TypeScript
 `checkJs`; the secure app has its own compatibility compiler project, while
