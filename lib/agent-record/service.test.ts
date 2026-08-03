@@ -24,10 +24,6 @@ import {
   revokeAgentRecord,
 } from './service';
 
-const ORIGINAL_NODE_ENV = process.env.NODE_ENV;
-const ORIGINAL_SIGNING_KEY = process.env.EP_COMMIT_SIGNING_KEY;
-const ORIGINAL_TRUSTED_KEYS = process.env.EP_COMMIT_SIGNING_KEYS;
-
 const ADOPTION_ID = '11111111-1111-4111-8111-111111111111';
 const BOND_ID = '22222222-2222-4222-8222-222222222222';
 const BOND_DIGEST = `sha256:${'b'.repeat(64)}`;
@@ -80,11 +76,6 @@ const refusalSource = () => ({
   },
 });
 
-function restore(name: string, value: string | undefined) {
-  if (value === undefined) delete process.env[name];
-  else process.env[name] = value;
-}
-
 function createClient() {
   const rpc = vi.fn(async (name: string, args: Record<string, any>) => {
     if (name !== 'create_agent_record') throw new Error(`unexpected RPC ${name}`);
@@ -105,16 +96,14 @@ function createClient() {
 describe('Agent Record service', () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    process.env.NODE_ENV = 'test';
-    process.env.EP_COMMIT_SIGNING_KEY = crypto.randomBytes(32).toString('base64');
-    delete process.env.EP_COMMIT_SIGNING_KEYS;
+    vi.stubEnv('NODE_ENV', 'test');
+    vi.stubEnv('EP_COMMIT_SIGNING_KEY', crypto.randomBytes(32).toString('base64'));
+    vi.stubEnv('EP_COMMIT_SIGNING_KEYS', '');
     vi.mocked(publishBoundAgentTrialRefusal).mockResolvedValue(refusalSource() as any);
   });
 
   afterEach(() => {
-    restore('NODE_ENV', ORIGINAL_NODE_ENV);
-    restore('EP_COMMIT_SIGNING_KEY', ORIGINAL_SIGNING_KEY);
-    restore('EP_COMMIT_SIGNING_KEYS', ORIGINAL_TRUSTED_KEYS);
+    vi.unstubAllEnvs();
   });
 
   it('creates from the exact bound refusal and returns the dedicated owner token once', async () => {
@@ -205,8 +194,8 @@ describe('Agent Record service', () => {
   });
 
   it('fails closed before persistence when the production operator key is absent', async () => {
-    process.env.NODE_ENV = 'production';
-    delete process.env.EP_COMMIT_SIGNING_KEY;
+    vi.stubEnv('NODE_ENV', 'production');
+    vi.stubEnv('EP_COMMIT_SIGNING_KEY', '');
     const client = createClient();
 
     await expect(createAgentRecord({

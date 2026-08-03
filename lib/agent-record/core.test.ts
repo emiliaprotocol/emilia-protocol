@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: Apache-2.0
 import crypto from 'node:crypto';
 
-import { afterEach, beforeEach, describe, expect, it } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import {
   AGENT_RECORD_CLAIM_BOUNDARY,
@@ -10,10 +10,6 @@ import {
   signAgentRecordObservation,
   verifyAgentRecordObservation,
 } from './core';
-
-const ORIGINAL_NODE_ENV = process.env.NODE_ENV;
-const ORIGINAL_SIGNING_KEY = process.env.EP_COMMIT_SIGNING_KEY;
-const ORIGINAL_TRUSTED_KEYS = process.env.EP_COMMIT_SIGNING_KEYS;
 
 const RECORD_ID = `agent_record_${'a'.repeat(40)}`;
 const BOND_ID = '11111111-1111-4111-8111-111111111111';
@@ -40,22 +36,15 @@ const input = () => ({
   retentionExpiresAt: RETENTION_EXPIRES_AT,
 });
 
-function restore(name: string, value: string | undefined) {
-  if (value === undefined) delete process.env[name];
-  else process.env[name] = value;
-}
-
 describe('Agent Record observation core', () => {
   beforeEach(() => {
-    process.env.NODE_ENV = 'test';
-    process.env.EP_COMMIT_SIGNING_KEY = crypto.randomBytes(32).toString('base64');
-    delete process.env.EP_COMMIT_SIGNING_KEYS;
+    vi.stubEnv('NODE_ENV', 'test');
+    vi.stubEnv('EP_COMMIT_SIGNING_KEY', crypto.randomBytes(32).toString('base64'));
+    vi.stubEnv('EP_COMMIT_SIGNING_KEYS', '');
   });
 
   afterEach(() => {
-    restore('NODE_ENV', ORIGINAL_NODE_ENV);
-    restore('EP_COMMIT_SIGNING_KEY', ORIGINAL_SIGNING_KEY);
-    restore('EP_COMMIT_SIGNING_KEYS', ORIGINAL_TRUSTED_KEYS);
+    vi.unstubAllEnvs();
   });
 
   it('operator-signs the exact factual bindings and verifies with configured trust', () => {
@@ -158,8 +147,8 @@ describe('Agent Record observation core', () => {
   });
 
   it('fails closed in production when the stable operator key is absent', () => {
-    process.env.NODE_ENV = 'production';
-    delete process.env.EP_COMMIT_SIGNING_KEY;
+    vi.stubEnv('NODE_ENV', 'production');
+    vi.stubEnv('EP_COMMIT_SIGNING_KEY', '');
 
     expect(() => signAgentRecordObservation(input())).toThrowError(
       expect.objectContaining<Partial<AgentRecordCoreError>>({
