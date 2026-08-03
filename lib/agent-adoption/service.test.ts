@@ -570,19 +570,22 @@ describe('Agent Adoption service', () => {
       latest_bond_digest: built.bond_digest,
       operating_bond: built.bond,
     });
-    const provisioned = await Service.provisionAgentAdoptionTrial({ authorization: auth, client: {} as any });
+    const trialClient = rpcClient((name) => (
+      name === 'bind_agent_record_trial_source' ? true : null
+    ));
+    const provisioned = await Service.provisionAgentAdoptionTrial({ authorization: auth, client: trialClient });
     expect(provisioned).toMatchObject({ session_id: ADOPTION_ID, session_token: SESSION_TOKEN });
     await expect(Service.attemptAgentAdoptionTrial({
       authorization: auth,
       input: { attempt_template_id: 'attempt_in_bounds_v1', trial_token: provisioned.trial_token },
-      client: {} as any,
+      client: trialClient,
     })).resolves.toMatchObject({ decision: 'permit', reason_code: 'within_allowance' });
 
     await expect(Service.provisionAgentAdoptionTrial({
-      authorization: authorization(), client: {} as any,
+      authorization: authorization(), client: trialClient,
     })).rejects.toMatchObject({ status: 409, code: 'agent_adoption_bond_not_asserted' });
     await expect(Service.attemptAgentAdoptionTrial({
-      authorization: auth, input: {}, client: {} as any,
+      authorization: auth, input: {}, client: trialClient,
     })).rejects.toMatchObject({ status: 400, code: 'agent_adoption_attempt_invalid' });
   });
 
@@ -724,16 +727,19 @@ describe('Agent Adoption service', () => {
       latest_bond_digest: built.bond_digest,
       operating_bond: built.bond,
     });
+    const trialClient = rpcClient((name) => (
+      name === 'bind_agent_record_trial_source' ? true : null
+    ));
     arena.provision.mockRejectedValueOnce(new Error('arena unavailable'));
-    await expect(Service.provisionAgentAdoptionTrial({ authorization: auth, client: {} as any }))
+    await expect(Service.provisionAgentAdoptionTrial({ authorization: auth, client: trialClient }))
       .rejects.toThrow('arena unavailable');
 
-    const provisioned = await Service.provisionAgentAdoptionTrial({ authorization: auth, client: {} as any });
+    const provisioned = await Service.provisionAgentAdoptionTrial({ authorization: auth, client: trialClient });
     arena.submit.mockRejectedValueOnce(new Error('arena submit unavailable'));
     await expect(Service.attemptAgentAdoptionTrial({
       authorization: auth,
       input: { attempt_template_id: 'attempt_in_bounds_v1', trial_token: provisioned.trial_token },
-      client: {} as any,
+      client: trialClient,
     })).rejects.toThrow('arena submit unavailable');
 
     const shareId = `agent_share_${'e'.repeat(40)}`;
