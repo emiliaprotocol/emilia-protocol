@@ -1,9 +1,9 @@
 {
   "@version": "EMILIA-REPO-CONTEXT-v1",
-  "evidence_snapshot_at": "2026-08-02T23:57:04.280Z",
+  "evidence_snapshot_at": "2026-08-03T04:34:16.238Z",
   "provenance": {
     "generator": "scripts/generate-llm-context.mjs",
-    "input_digest_sha256": "23b896523f76a3624e2fcb474e14076f3c6d3ae5f2ff30a64a5ce8bebe67283c",
+    "input_digest_sha256": "916fb2cfa2dfa9b5e075a8bfbf0297d3499e233992439b22491641180d801fe8",
     "generated_from": [
       {
         "path": "docs/ai/context-source.v1.json",
@@ -17,7 +17,7 @@
       },
       {
         "path": "lib/proof-stats.json",
-        "sha256": "5325216fa11dc50ff3788bd0259f7f11dafdfc0d956d664a15a7cb68b5ff4be6",
+        "sha256": "9d878c186959583cee12dec3867900ff99de68ff63ed8607ac3ef7db0f38f8f8",
         "bytes": 4298
       },
       {
@@ -272,8 +272,8 @@
   ],
   "current_evidence": {
     "automated_tests": {
-      "total": 8217,
-      "files": 482,
+      "total": 8445,
+      "files": 492,
       "policy": "all platform-applicable cases must pass; platform-specific cases may skip"
     },
     "cross_language_conformance": {
