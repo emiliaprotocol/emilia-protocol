@@ -31,6 +31,8 @@ const RELEASE_LOCK_BROWSER_MUTATIONS = Object.freeze([
 ]);
 const AGENT_ADOPTION_SESSION_ROUTE = /^\/api\/adopt\/sessions\/[^/]+(?:\/|$)/;
 const PUBLIC_AGENT_ADOPTION_SHARE_PAGE = /^\/adopt\/r\/[^/]+$/;
+const PUBLIC_AGENT_RECORD_PAGE = /^\/agent-record\/r\/[^/]+$/;
+const AGENT_RECORD_API = /^\/api\/agent-records\/[^/]+(?:\/revoke)?$/;
 
 const ROUTE_POLICIES = {
   // Public synthetic Arena. Session creation has no credential yet. Attempt
@@ -57,9 +59,12 @@ const ROUTE_POLICIES = {
   'POST /api/adopt/sessions/*/passkey/assert/verify':     { rateCategory: 'submit', useAuth: false },
   'POST /api/adopt/sessions/*/trial':                     { rateCategory: 'submit', useAuth: false },
   'POST /api/adopt/sessions/*/attempts':                  { rateCategory: 'submit', useAuth: false },
+  'POST /api/adopt/sessions/*/records':                   { rateCategory: 'submit', useAuth: false },
   'POST /api/adopt/sessions/*/share':                     { rateCategory: 'submit', useAuth: false },
   'POST /api/adopt/sessions/*/revoke':                    { rateCategory: 'submit', useAuth: false },
   'GET /api/adopt/shares/*':                              { rateCategory: 'public_verify', useAuth: false },
+  'GET /api/agent-records/*':                             { rateCategory: 'public_verify', useAuth: false },
+  'POST /api/agent-records/*/revoke':                     { rateCategory: 'submit', useAuth: false },
 
   // Pilot-request intake (public lead form; honeypot + validation in route)
   'POST /api/pilot/request':          { rateCategory: 'pilot_request', useAuth: false },
@@ -634,7 +639,8 @@ export async function middleware(request) {
   // can read it (e.g. in app/layout.js) and pass it to <Script> tags.
   if (!pathname.startsWith('/api/')) {
     let publicShareRateLimit: Awaited<ReturnType<typeof checkRateLimit>> | null = null;
-    if (request.method.toUpperCase() === 'GET' && PUBLIC_AGENT_ADOPTION_SHARE_PAGE.test(pathname)) {
+    if (request.method.toUpperCase() === 'GET'
+        && (PUBLIC_AGENT_ADOPTION_SHARE_PAGE.test(pathname) || PUBLIC_AGENT_RECORD_PAGE.test(pathname))) {
       const ip = getClientIP(request);
       try {
         publicShareRateLimit = await checkRateLimit(ip, 'public_verify');
@@ -787,7 +793,34 @@ export async function middleware(request) {
     }
   }
 
-  const result = await checkRateLimit(rateLimitKey, rateCategory);
+  let result;
+  try {
+    result = await checkRateLimit(rateLimitKey, rateCategory);
+  } catch (error) {
+    if (!AGENT_RECORD_API.test(pathname)) throw error;
+    result = {
+      allowed: false,
+      remaining: 0,
+      reset: 60,
+      error: 'rate_limit_unavailable',
+    };
+  }
+
+  // Agent Record is an operated public observation with a server-held store,
+  // not a locally reproducible verifier. Its exact lookup and owner mutation
+  // therefore require the durable limiter in production and fail closed on
+  // either an outage or the fail-open in-memory sentinel.
+  if (AGENT_RECORD_API.test(pathname)
+      && (result.error === 'rate_limit_unavailable'
+        || result.error === 'durable_rate_limit_required'
+        || result.remaining < 0)) {
+    const response = NextResponse.json(
+      { error: 'Service temporarily unavailable — durable rate limiting required', retry_after: 60 },
+      { status: 503 },
+    );
+    response.headers.set('Retry-After', '60');
+    return response;
+  }
 
   if (!result.allowed) {
     // Distinguish between rate-limited and rate-limiter-unavailable (fail-closed)

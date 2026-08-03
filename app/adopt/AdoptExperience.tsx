@@ -194,6 +194,19 @@ interface PublishedOperatingBond {
   published_at: string;
 }
 
+interface CreatedAgentRecord {
+  record_id: string;
+  owner_token: string;
+  created_at: string;
+  retention_expires_at: string;
+}
+
+interface VisibleAgentRecord {
+  record_id: string;
+  created_at: string;
+  retention_expires_at: string;
+}
+
 interface RevokedSession {
   authority_state: 'revoked';
   revoked_at: string;
@@ -205,6 +218,7 @@ export interface AdoptApiClient {
   assertPasskey(session: AdoptSession): Promise<AdoptSession>;
   provisionTrial?(session: AdoptSession): Promise<AdoptSession>;
   runAttempt(session: AdoptSession, templateId: AttemptTemplateId): Promise<AdoptAttempt>;
+  createAgentRecord?(session: AdoptSession, attempt: AdoptAttempt): Promise<CreatedAgentRecord>;
   publishOperatingBond(session: AdoptSession): Promise<PublishedOperatingBond>;
   revokeSession(session: AdoptSession): Promise<RevokedSession>;
 }
@@ -307,6 +321,16 @@ export const adoptApiClient: AdoptApiClient = {
     );
   },
 
+  createAgentRecord(session, attempt) {
+    return requestJson<CreatedAgentRecord>(
+      ADOPT_API_BASE + '/' + encodeURIComponent(session.session_id) + '/records',
+      authorized(session, {
+        trial_token: session.trial_token,
+        attempt_id: attempt.attempt_id,
+      }),
+    );
+  },
+
   async provisionTrial(session) {
     const trial = await requestJson<AdoptSession>(
       ADOPT_API_BASE + '/' + encodeURIComponent(session.session_id) + '/trial',
@@ -401,6 +425,10 @@ function getPublicArtifactId(shareUrl?: string): string {
   return /^agent_share_[0-9a-f]{40}$/.test(id) ? id : '';
 }
 
+function ownerKey(recordId: string) {
+  return `emilia_agent_record_owner:${recordId}`;
+}
+
 interface AdoptExperienceProps {
   api?: AdoptApiClient;
 }
@@ -419,6 +447,8 @@ export default function AdoptExperience({ api = adoptApiClient }: AdoptExperienc
   const [error, setError] = useState('');
   const [status, setStatus] = useState('Describe the agent you want to test.');
   const [publicationConfirmed, setPublicationConfirmed] = useState(false);
+  const [recordConfirmed, setRecordConfirmed] = useState(false);
+  const [agentRecord, setAgentRecord] = useState<VisibleAgentRecord | null>(null);
   const [revokeArmed, setRevokeArmed] = useState(false);
 
   const currentStage = STAGES[stageIndex];
@@ -428,9 +458,11 @@ export default function AdoptExperience({ api = adoptApiClient }: AdoptExperienc
   const latestAttempt = attempts.at(-1);
   const publishedAttempt = [...attempts].reverse().find((attempt) => Boolean(attempt.share_url));
   const publicArtifactId = getPublicArtifactId(publishedAttempt?.share_url);
-  const pilotHref = publicArtifactId
-    ? `/pilot?artifact_id=${encodeURIComponent(publicArtifactId)}`
-    : '/pilot';
+  const pilotHref = agentRecord
+    ? `/pilot?artifact_id=${encodeURIComponent(agentRecord.record_id)}`
+    : publicArtifactId
+      ? `/pilot?artifact_id=${encodeURIComponent(publicArtifactId)}`
+      : '/pilot';
   const revoked = session?.authority_state === 'revoked';
   const sourceUrlValid = !sourceUrl || (() => {
     try {
@@ -530,6 +562,7 @@ export default function AdoptExperience({ api = adoptApiClient }: AdoptExperienc
           : session;
       if (activeSession !== session) setSession(activeSession);
       const attempt = await api.runAttempt(activeSession, templateId);
+      setRecordConfirmed(false);
       setAttempts((current) => [...current, attempt]);
       setFurthestStage((current) => Math.max(current, 5));
       if (attempt.decision === 'refuse') {
@@ -542,6 +575,33 @@ export default function AdoptExperience({ api = adoptApiClient }: AdoptExperienc
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : 'The synthetic attempt could not run.');
       setStatus('Attempt not completed. No action left the challenge.');
+    } finally {
+      setBusy('');
+    }
+  }
+
+  async function createFactualAgentRecord() {
+    if (!session?.trial_token
+        || !latestAttempt
+        || latestAttempt.decision !== 'refuse'
+        || !recordConfirmed
+        || !api.createAgentRecord
+        || revoked) return;
+    setBusy('agent-record');
+    setError('');
+    setStatus('Creating one unlisted factual record from the verified Arena refusal…');
+    try {
+      const record = await api.createAgentRecord(session, latestAttempt);
+      window.localStorage.setItem(ownerKey(record.record_id), record.owner_token);
+      setAgentRecord({
+        record_id: record.record_id,
+        created_at: record.created_at,
+        retention_expires_at: record.retention_expires_at,
+      });
+      setStatus('Agent Record created. This browser now holds the only record-control credential.');
+    } catch (cause) {
+      setError(cause instanceof Error ? cause.message : 'The Agent Record could not be created.');
+      setStatus('Agent Record creation did not complete.');
     } finally {
       setBusy('');
     }
@@ -941,6 +1001,46 @@ export default function AdoptExperience({ api = adoptApiClient }: AdoptExperienc
                         </button>
                         <p className={styles.publicationNote}>The source URL, raw passkey assertion, refusal, session token, provider credential, and civil identity are not published.</p>
                       </>
+                    )}
+                    {latestAttempt.decision === 'refuse' && (
+                      <section className={styles.agentRecordPanel}>
+                        <p className={styles.panelLabel}>OPTIONAL FACTUAL AGENT RECORD</p>
+                        {agentRecord ? (
+                          <div className={styles.agentRecordCreated} role="status">
+                            <h3>One refusal observation is now unlisted and public.</h3>
+                            <p>
+                              This records one verified Arena refusal bound to one Operating Bond.
+                              It is not identity, certification, reputation, production coverage, or future authorization.
+                            </p>
+                            <p className={styles.recoveryWarning}>
+                              <strong>One-time recovery warning:</strong> this browser stores the only owner credential.
+                              Clearing its site data removes your ability to unpublish, and EMILIA cannot recover it.
+                            </p>
+                            <a href={`/agent-record/r/${encodeURIComponent(agentRecord.record_id)}`}>
+                              Open factual Agent Record ↗
+                            </a>
+                          </div>
+                        ) : (
+                          <>
+                            <h3>Record this refused attempt as one fact?</h3>
+                            <p>
+                              The server will verify and publish the exact signed refusal, wrap it in an
+                              operator-signed observation, and reveal no agent label, owner credential, prompt,
+                              action parameters, or identity claim.
+                            </p>
+                            <label className={styles.publishConsent}>
+                              <input type="checkbox" checked={recordConfirmed}
+                                onChange={(event) => setRecordConfirmed(event.target.checked)} />
+                              <span>I understand this creates an unlisted public observation of this refusal only.</span>
+                            </label>
+                            <button type="button" className={styles.agentRecordButton}
+                              disabled={!recordConfirmed || busy === 'agent-record' || revoked}
+                              onClick={createFactualAgentRecord}>
+                              {busy === 'agent-record' ? 'Creating factual record…' : 'Create factual Agent Record →'}
+                            </button>
+                          </>
+                        )}
+                      </section>
                     )}
                     <div className={styles.pilotCallout}>
                       <p className={styles.panelLabel}>PRODUCTION GRADUATION</p>

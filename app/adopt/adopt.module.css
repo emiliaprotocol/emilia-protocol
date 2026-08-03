@@ -1246,6 +1246,54 @@
   color: var(--adopt-green);
 }
 
+.agentRecordPanel {
+  margin-top: 22px;
+  padding: 22px;
+  border: 1px solid rgba(13, 117, 108, .24);
+  border-radius: 6px;
+  background: #f0fbf9;
+}
+
+.agentRecordPanel h3 { margin: 8px 0 10px; }
+
+.agentRecordPanel p {
+  color: var(--adopt-muted);
+  font-size: 11px;
+  line-height: 1.6;
+}
+
+.agentRecordButton {
+  width: 100%;
+  margin-top: 12px;
+  padding: 13px 16px;
+  border: 0;
+  border-radius: 4px;
+  color: #fff;
+  background: var(--adopt-green);
+  font: inherit;
+  font-size: 11px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.agentRecordButton:disabled { cursor: not-allowed; opacity: .45; }
+
+.agentRecordCreated a {
+  display: inline-block;
+  margin-top: 14px;
+  color: var(--adopt-green);
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.recoveryWarning {
+  margin-top: 14px;
+  padding: 12px 14px;
+  border-left: 3px solid var(--adopt-brass);
+  color: #744714 !important;
+  background: #fff7e8;
+}
+
 .pilotCallout {
   margin-top: 24px;
   padding: 21px;

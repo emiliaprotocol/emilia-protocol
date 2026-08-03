@@ -6716,6 +6716,73 @@ paths:
         '200': { description: 'Active bounded Operating Bond projection' }
         '404': { description: 'No active public projection exists' }
         '503': { description: 'Public projection store unavailable' }
+
+  /api/adopt/sessions/{sessionId}/records:
+    post:
+      operationId: createAgentRecord
+      tags: [Agent Adoption]
+      summary: Create one unlisted factual observation from a refused synthetic attempt
+      description: |
+        Re-verifies and publishes the exact signed Arena refusal bound to the
+        active session's sole Operating Bond, then wraps it in an operator-signed
+        EP-AGENT-RECORD-OBSERVATION-v1. Permit attempts cannot create a record.
+        The returned owner token controls only record revocation and is returned once.
+      security: [{ AdoptionSessionAuth: [] }]
+      parameters:
+        - $ref: '#/components/parameters/AgentAdoptionSessionId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required: [trial_token, attempt_id]
+              properties:
+                trial_token: { type: string, pattern: '^epenc:v1:[A-Za-z0-9_-]{40,8192}$' }
+                attempt_id: { type: string, pattern: '^arena_attempt_[a-f0-9]{32}$' }
+      responses:
+        '201': { description: 'One refusal-bound factual observation and one-time owner token created' }
+        '400': { description: 'Input malformed or attempt is not a refusal' }
+        '401': { description: 'Adoption or trial capability invalid' }
+        '409': { description: 'Source refusal already consumed or adoption state conflicts' }
+        '413': { description: 'Request body exceeds the Agent Record limit' }
+        '503': { description: 'Record signing or storage unavailable' }
+
+  /api/agent-records/{recordId}:
+    get:
+      operationId: getPublicAgentRecord
+      tags: [Agent Adoption]
+      summary: Read one exact active Agent Record observation
+      description: Unknown, revoked, expired, and malformed record identifiers return the same 404 response. No list, search, feed, rank, score, or identity surface exists.
+      security: []
+      parameters:
+        - name: recordId
+          in: path
+          required: true
+          schema: { type: string, pattern: '^agent_record_[a-f0-9]{40}$' }
+      responses:
+        '200': { description: 'Current operator-signed factual observation' }
+        '404': { description: 'No active public observation exists' }
+        '503': { description: 'Public record or durable rate-limit store unavailable' }
+
+  /api/agent-records/{recordId}/revoke:
+    post:
+      operationId: revokeAgentRecord
+      tags: [Agent Adoption]
+      summary: Permanently unpublish one Agent Record
+      description: The record-specific owner token is accepted only as an Authorization bearer and is never returned in the public projection, URL, cookie, or lookup response.
+      security: [{ AgentRecordOwnerAuth: [] }]
+      parameters:
+        - name: recordId
+          in: path
+          required: true
+          schema: { type: string, pattern: '^agent_record_[a-f0-9]{40}$' }
+      responses:
+        '200': { description: 'Record permanently unpublished' }
+        '403': { description: 'Exact same-origin browser mutation required' }
+        '404': { description: 'Record or owner credential unavailable' }
+        '503': { description: 'Revocation or durable rate-limit store unavailable' }
 components:
   securitySchemes:
     BearerAuth:
@@ -6741,6 +6808,11 @@ components:
         mutations additionally require an exact same-origin Origin header.
         It is not an EP API key, identity credential, provider credential, or
         authorization for a later consequential action.
+    AgentRecordOwnerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: ear1_<64 lowercase hex characters>
+      description: Record-specific revocation credential returned once at creation and stored only as a SHA-256 hash server-side.
     CloudBearerAuth:
       type: http
       scheme: bearer

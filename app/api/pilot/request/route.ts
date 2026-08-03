@@ -15,6 +15,7 @@ import { logger } from '@/lib/logger.js';
 import { readLimitedJson } from '@/lib/http/body-limit';
 import { loadPublicArenaRefusal } from '@/lib/arena/service';
 import { loadPublicAgentAdoptionBond } from '@/lib/agent-adoption/service';
+import { loadPublicAgentRecord } from '@/lib/agent-record/service';
 import { PROTECTED_WORKFLOW_PILOT } from '@/lib/commercial-offer';
 
 const RESEND_URL = 'https://api.resend.com/emails';
@@ -36,6 +37,7 @@ const WORKFLOWS: Record<string, { label: string }> = {
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/;
 const ARENA_SHARE_ID = /^arena_share_[0-9a-f]{40}$/;
 const AGENT_SHARE_ID = /^agent_share_[0-9a-f]{40}$/;
+const AGENT_RECORD_ID = /^agent_record_[0-9a-f]{40}$/;
 const UNSUPPORTED_EVIDENCE_FIELDS = Object.freeze([
   'artifact',
   'artifact_url',
@@ -61,8 +63,8 @@ const PILOT_OFFER: IntakeOffer = PROTECTED_WORKFLOW_PILOT;
 
 type ValidatedPublicArtifact = Readonly<{
   id: string;
-  kind: 'arena_refusal' | 'operating_bond';
-  label: 'Arena refusal record' | 'Operating Bond';
+  kind: 'arena_refusal' | 'operating_bond' | 'agent_record_observation';
+  label: 'Arena refusal record' | 'Operating Bond' | 'Agent Record observation';
 }>;
 
 function clean(v: unknown, max: number): string {
@@ -79,6 +81,18 @@ async function validatePublicArtifact(id: string): Promise<ValidatedPublicArtifa
     const record = await loadPublicAgentAdoptionBond({ shareId: id });
     if (!record || record.share_id !== id || record.revoked !== false) return null;
     return Object.freeze({ id, kind: 'operating_bond', label: 'Operating Bond' });
+  }
+  if (AGENT_RECORD_ID.test(id)) {
+    const record = await loadPublicAgentRecord({ recordId: id });
+    if (!record
+        || record.record_id !== id
+        || record.verification.integrity_verified !== true
+        || record.verification.currently_public !== true) return null;
+    return Object.freeze({
+      id,
+      kind: 'agent_record_observation',
+      label: 'Agent Record observation',
+    });
   }
   return null;
 }
@@ -138,9 +152,11 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
     if (!offer) return epProblem(400, 'invalid_offer', 'The requested offer is not available');
     let publicArtifact: ValidatedPublicArtifact | null = null;
     if (artifactId) {
-      if (!ARENA_SHARE_ID.test(artifactId) && !AGENT_SHARE_ID.test(artifactId)) {
+      if (!ARENA_SHARE_ID.test(artifactId)
+          && !AGENT_SHARE_ID.test(artifactId)
+          && !AGENT_RECORD_ID.test(artifactId)) {
         return epProblem(400, 'invalid_artifact_id',
-          'Public record ID must be an active Arena or Agent Adoption share identifier');
+          'Public record ID must be an active Arena, Operating Bond, or Agent Record identifier');
       }
       try {
         publicArtifact = await validatePublicArtifact(artifactId);

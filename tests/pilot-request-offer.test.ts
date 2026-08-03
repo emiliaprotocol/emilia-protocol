@@ -6,6 +6,7 @@ const mockGetGuardedClient = vi.fn();
 const publicArtifactMocks = vi.hoisted(() => ({
   loadArena: vi.fn(),
   loadAdoption: vi.fn(),
+  loadAgentRecord: vi.fn(),
 }));
 
 vi.mock('@/lib/write-guard', () => ({
@@ -22,6 +23,10 @@ vi.mock('@/lib/arena/service', () => ({
 
 vi.mock('@/lib/agent-adoption/service', () => ({
   loadPublicAgentAdoptionBond: publicArtifactMocks.loadAdoption,
+}));
+
+vi.mock('@/lib/agent-record/service', () => ({
+  loadPublicAgentRecord: publicArtifactMocks.loadAgentRecord,
 }));
 
 const { POST } = await import('../app/api/pilot/request/route.ts');
@@ -59,6 +64,7 @@ describe('pilot request commercial offer routing', () => {
     });
     publicArtifactMocks.loadArena.mockReset();
     publicArtifactMocks.loadAdoption.mockReset();
+    publicArtifactMocks.loadAgentRecord.mockReset();
   });
 
   afterEach(() => {
@@ -120,6 +126,18 @@ describe('pilot request commercial offer routing', () => {
     expect(publicArtifactMocks.loadAdoption).toHaveBeenCalledWith({ shareId: adoptionId });
     expect(sentEmails()[0].text).toContain(`Validated public record: ${adoptionId}`);
     expect(sentEmails()[0].text).toContain('Operating Bond');
+
+    vi.mocked(fetch).mockClear();
+    const recordId = `agent_record_${'d'.repeat(40)}`;
+    publicArtifactMocks.loadAgentRecord.mockResolvedValue({
+      record_id: recordId,
+      verification: { integrity_verified: true, currently_public: true },
+    });
+    const recordResponse = await POST(request({ artifact_id: recordId }) as never);
+    expect(recordResponse.status).toBe(200);
+    expect(publicArtifactMocks.loadAgentRecord).toHaveBeenCalledWith({ recordId });
+    expect(sentEmails()[0].text).toContain(`Validated public record: ${recordId}`);
+    expect(sentEmails()[0].text).toContain('Agent Record observation');
   });
 
   it('ignores caller-supplied commercial terms for a recognized offer', async () => {
@@ -176,6 +194,7 @@ describe('pilot request commercial offer routing', () => {
     }
     expect(publicArtifactMocks.loadArena).not.toHaveBeenCalled();
     expect(publicArtifactMocks.loadAdoption).not.toHaveBeenCalled();
+    expect(publicArtifactMocks.loadAgentRecord).not.toHaveBeenCalled();
     expect(fetch).not.toHaveBeenCalled();
     expect(mockGetGuardedClient).not.toHaveBeenCalled();
 
@@ -193,6 +212,14 @@ describe('pilot request commercial offer routing', () => {
     });
     const unverifiable = await POST(request({ artifact_id: unknownId }) as never);
     expect(unverifiable.status).toBe(400);
+    expect(fetch).not.toHaveBeenCalled();
+    expect(mockGetGuardedClient).not.toHaveBeenCalled();
+
+    const inactiveRecordId = `agent_record_${'e'.repeat(40)}`;
+    publicArtifactMocks.loadAgentRecord.mockResolvedValue(null);
+    const inactiveRecord = await POST(request({ artifact_id: inactiveRecordId }) as never);
+    expect(inactiveRecord.status).toBe(400);
+    expect(publicArtifactMocks.loadAgentRecord).toHaveBeenCalledWith({ recordId: inactiveRecordId });
     expect(fetch).not.toHaveBeenCalled();
     expect(mockGetGuardedClient).not.toHaveBeenCalled();
   });
