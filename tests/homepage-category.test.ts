@@ -47,7 +47,8 @@ describe('homepage category contract', () => {
     expect(page).toContain('verified lemmas');
     expect(page).toContain('counterexample traces');
     expect(page).toContain('href="/gate/live"');
-    expect(page).toContain('href="/gate"');
+    expect(page).toContain('href="/agent-guard"');
+    expect(page).toContain("href: '/gate'");
     expect(page).toContain('href="/proof"');
     expect(page).not.toContain('<CrashTestDemo />');
     expect(page).not.toContain('emilia-sequence.mp4');

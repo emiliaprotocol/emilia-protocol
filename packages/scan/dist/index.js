@@ -21,6 +21,8 @@
 // research project.
 import { HIGH_RISK_ACTION_PACKS, DEFAULT_PASS_THROUGH_ACTIONS, createDefaultActionRiskManifest } from '../risk-packs.js';
 const MAX_ACTIONS = 10_000;
+const SOURCE_CONFUSING_NAME = /[\u0000-\u001f\u007f-\u009f\u202a-\u202e\u2066-\u2069]/u;
+const RESERVED_OBJECT_NAMES = new Set(['__proto__', 'prototype', 'constructor']);
 // Keyword signals per risk category, keyed to the EP risk-pack ids so a matched
 // action inherits that pack's assurance_class, required_fields, and rationale.
 // Deliberately conservative: strong verbs/nouns only, so a match is defensible.
@@ -110,12 +112,30 @@ export function scanActions(actions, { source = 'list', blindSpots = [] } = {}) 
     if (!Array.isArray(actions) || actions.length > MAX_ACTIONS) {
         throw new Error(`scan: actions must be an array with at most ${MAX_ACTIONS} entries`);
     }
+    const exactNames = new Set();
+    const normalizedNames = new Map();
     for (const action of actions) {
         if (!action || typeof action !== 'object' || Array.isArray(action)
             || typeof action.name !== 'string' || !action.name || action.name.length > 256
             || (action.description !== undefined && (typeof action.description !== 'string' || action.description.length > 16_384))) {
             throw new Error('scan: each action requires a non-empty name and bounded string description');
         }
+        if (SOURCE_CONFUSING_NAME.test(action.name) || RESERVED_OBJECT_NAMES.has(action.name)) {
+            throw new Error(`scan: action name is unsafe for generated source: ${JSON.stringify(action.name)}`);
+        }
+        if (exactNames.has(action.name)) {
+            throw new Error(`scan: duplicate action name: ${JSON.stringify(action.name)}`);
+        }
+        exactNames.add(action.name);
+        const normalized = norm(action.name);
+        if (!normalized) {
+            throw new Error(`scan: action name is unsafe after normalization: ${JSON.stringify(action.name)}`);
+        }
+        const collision = normalizedNames.get(normalized);
+        if (collision) {
+            throw new Error(`scan: normalized action name collision: ${JSON.stringify(collision)} and ${JSON.stringify(action.name)}`);
+        }
+        normalizedNames.set(normalized, action.name);
     }
     const results = actions.map((a) => ({ action: a, classification: classifyAction(a) }));
     const bucket = (d) => results.filter((r) => r.classification.decision === d);

@@ -170,9 +170,21 @@ export default function AuthorityScanPage(): React.ReactElement {
                 enforced until a guard completely mediates the real executor path under your pinned policy and keys.
               </p>
               <pre style={codeBox}>{`npx @emilia-protocol/scan ./tools.json\nnpx @emilia-protocol/scan ./openapi.json`}</pre>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(190px, 100%), 1fr))', gap: 12, marginTop: 24 }}>
+                {[
+                  ['01', 'Scan locally'],
+                  ['02', 'Choose one consequential tool'],
+                  ['03', 'Mediate its real executor path'],
+                ].map(([step, label]) => (
+                  <div key={step} style={{ border: `1px solid ${color.border}`, borderRadius: radius.base, padding: '18px 20px', background: '#FAFAF9' }}>
+                    <div style={{ fontFamily: font.mono, fontSize: 10, color: color.gold, marginBottom: 8 }}>{step}</div>
+                    <div style={{ fontWeight: 700, fontSize: 14 }}>{label}</div>
+                  </div>
+                ))}
+              </div>
               <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap', marginTop: 28 }}>
-                <Link href="/gate" style={cta.primary}>See the enforcement boundary</Link>
-                <Link href="/blog/credentials-are-not-action-authorization" style={cta.secondary}>Read the incident analysis</Link>
+                <Link href="/agent-guard" style={cta.primary}>Protect a flagged MCP tool</Link>
+                <Link href="/mcp" style={cta.secondary}>See the MCP integration</Link>
               </div>
             </div>
           </div>

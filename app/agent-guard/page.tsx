@@ -156,9 +156,13 @@ export default function AgentGuardPage() {
             Guard puts EMILIA Gate before the configured tool or executor, then requires the evidence
             your policy names. It protects only the paths actually mediated by that integration.
           </p>
+          <p style={{ fontFamily: font.mono, fontSize: 12, color: color.gold, margin: '-20px 0 28px' }}>
+            Coming from Scan? Start with one flagged tool.
+          </p>
           <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap' }}>
             <Link href="/guides/require-receipt" className="ep-cta" style={cta.primary}>Add Receipt Required to MCP &rarr;</Link>
-            <Link href="/demo" className="ep-cta-secondary" style={cta.secondary}>Watch an agent get stopped</Link>
+            <Link href="/mcp" className="ep-cta-secondary" style={cta.secondary}>See the MCP integration</Link>
+            <Link href="/scan" className="ep-cta-secondary" style={cta.secondary}>Scan first</Link>
           </div>
           <p style={{ fontSize: 13, color: color.t3, marginTop: 16, fontFamily: font.mono }}>
             Run the rail now: <span style={{ color: color.t2 }}>FAST=1 node examples/mcp/payment-server.mjs</span> &nbsp;·&nbsp; no account needed

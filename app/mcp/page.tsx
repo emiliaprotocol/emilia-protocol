@@ -7,14 +7,13 @@ import SiteFooter from '@/components/SiteFooter';
 import { cta, color, font, radius } from '@/lib/tokens';
 
 export const metadata: Metadata = {
-  title: 'EMILIA MCP — Human Sign-off for AI Agent Actions',
+  title: 'EMILIA MCP — Protect Agent Tools and Verify Receipts',
   description:
-    "The MCP server that makes AI agents get a named human's signed yes before any "
-    + 'irreversible action. One-line install, formally verified, Apache-2.0.',
+    'Protect an existing MCP dispatcher with mcp-guard, or add EMILIA receipt and passkey verification tools to an MCP client with mcp-server.',
   alternates: { canonical: '/mcp' },
   openGraph: {
-    title: 'EMILIA MCP — human sign-off for AI agent actions',
-    description: 'An MCP server that makes your agent get a signed human "yes" before it does anything irreversible.',
+    title: 'EMILIA MCP — protect agent tools and verify receipts',
+    description: 'Two distinct MCP paths: guard an existing executor, or add EMILIA verification tools to a client.',
     url: 'https://www.emiliaprotocol.ai/mcp',
     type: 'website',
   },
@@ -33,8 +32,8 @@ const MCP_SOFTWARE_JSONLD = {
   applicationCategory: 'DeveloperApplication',
   operatingSystem: 'Cross-platform (Node.js 18+)',
   description:
-    'MCP server that adds trust and human sign-off to AI agents: verify authorization receipts, '
-    + 'verify passkey signoffs, and require a named human approval before an irreversible agent action.',
+    'MCP server that gives clients tools to verify EMILIA authorization receipts and passkey signoffs. '
+    + 'Protecting an existing MCP dispatcher is the separate @emilia-protocol/mcp-guard path.',
   url: 'https://www.emiliaprotocol.ai/mcp',
   downloadUrl: 'https://www.npmjs.com/package/@emilia-protocol/mcp-server',
   installUrl: 'https://www.npmjs.com/package/@emilia-protocol/mcp-server',
@@ -43,7 +42,7 @@ const MCP_SOFTWARE_JSONLD = {
   author: { '@type': 'Organization', name: 'EMILIA Protocol' },
   offers: { '@type': 'Offer', price: '0', priceCurrency: 'USD', availability: 'https://schema.org/InStock' },
   featureList: [
-    'Human sign-off before irreversible agent actions',
+    'Human-signoff workflow tools',
     'Offline-verifiable authorization receipts (Ed25519)',
     'Passkey/WebAuthn signoff verification',
     'Receipt verification',
@@ -54,7 +53,7 @@ const MCP_SOFTWARE_JSONLD = {
 const FAQ = [
   {
     q: 'What does the EMILIA MCP server do?',
-    a: 'It adds a trust and accountability layer to AI agents over the Model Context Protocol: agents can verify authorization receipts and passkey signoffs, and — the flagship — require a named human to sign off before any irreversible action (releasing a payment, changing a record, deploying). Rich trust-profile and policy-evaluation APIs require an authenticated EP API key.',
+    a: 'It adds EMILIA verification tools to an MCP client: verify authorization receipts and passkey signoffs. To protect an existing tool dispatcher, use the separate @emilia-protocol/mcp-guard package at the real executor boundary. Rich trust-profile and policy-evaluation APIs require an authenticated EP API key.',
   },
   {
     q: 'How do I install it?',
@@ -131,16 +130,16 @@ export default async function McpPage() {
             Model Context Protocol
           </div>
           <h1 style={{ fontFamily: font.sans, fontWeight: 700, fontSize: 'clamp(38px, 5vw, 64px)', letterSpacing: -2.2, lineHeight: 1.0, color: color.t1, margin: '0 0 24px', maxWidth: 860 }}>
-            A human signed <em style={{ fontStyle: 'normal', color: color.gold }}>yes</em> before your agent acts.
+            Two MCP paths. One <em style={{ fontStyle: 'normal', color: color.gold }}>consequence boundary.</em>
           </h1>
           <p style={{ fontSize: 18, color: color.t2, maxWidth: 620, lineHeight: 1.7, margin: '0 0 36px' }}>
-            EMILIA is the trust &amp; accountability layer for AI agents, delivered as an MCP server.
-            Verify receipts and passkey signoffs, and &mdash; the flagship &mdash; require a named human
-            sign-off before an agent does anything irreversible. Formally verified. Apache-2.0.
+            Protect an existing tool dispatcher with <code style={{ fontFamily: font.mono, fontSize: 15 }}>@emilia-protocol/mcp-guard</code>,
+            or add receipt and passkey verification tools to a client with <code style={{ fontFamily: font.mono, fontSize: 15 }}>@emilia-protocol/mcp-server</code>.
+            The guard covers only the executor paths it fully mediates.
           </p>
           <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap' }}>
-            <Link href="/demo" className="ep-cta" style={cta.primary}>Watch an agent get stopped &rarr;</Link>
-            <Link href="/agent-guard" className="ep-cta-secondary" style={cta.secondary}>How it works</Link>
+            <Link href="/guides/require-receipt" className="ep-cta" style={cta.primary}>Protect an MCP tool &rarr;</Link>
+            <Link href="/scan" className="ep-cta-secondary" style={cta.secondary}>Scan your surface first</Link>
           </div>
           <Image
             src="/mcp-demo.gif"
@@ -150,6 +149,25 @@ export default async function McpPage() {
             unoptimized
             style={{ width: '100%', maxWidth: 800, height: 'auto', marginTop: 48, borderRadius: radius.base, border: `1px solid ${color.border}`, boxShadow: '0 10px 50px rgba(12,10,9,0.10)', display: 'block' }}
           />
+        </C>
+      </section>
+
+      <section style={{ padding: '20px 0 64px', borderBottom: `1px solid ${color.border}` }}>
+        <C>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(320px, 100%), 1fr))', gap: 12 }}>
+            <div style={{ border: `1px solid ${color.border}`, borderTop: `3px solid ${color.gold}`, borderRadius: radius.base, background: color.card, padding: '26px 28px' }}>
+              <div style={{ fontFamily: font.mono, fontSize: 10, letterSpacing: 1.7, textTransform: 'uppercase', color: color.gold, marginBottom: 12 }}>Executor path</div>
+              <h2 style={{ fontSize: 23, letterSpacing: -0.5, margin: '0 0 10px' }}>Protect an existing MCP tool</h2>
+              <code style={{ fontFamily: font.mono, fontSize: 13, color: color.t1 }}>@emilia-protocol/mcp-guard</code>
+              <p style={{ fontSize: 14, lineHeight: 1.68, color: color.t2, margin: '14px 0 0' }}>Wrap the credential-owning dispatcher. Missing or invalid action-bound evidence is refused before the handler runs. Production requires durable provenance and shared atomic consumption state.</p>
+            </div>
+            <div style={{ border: `1px solid ${color.border}`, borderRadius: radius.base, background: color.card, padding: '26px 28px' }}>
+              <div style={{ fontFamily: font.mono, fontSize: 10, letterSpacing: 1.7, textTransform: 'uppercase', color: color.green, marginBottom: 12 }}>Client tools</div>
+              <h2 style={{ fontSize: 23, letterSpacing: -0.5, margin: '0 0 10px' }}>Add EMILIA verification tools to an MCP client</h2>
+              <code style={{ fontFamily: font.mono, fontSize: 13, color: color.t1 }}>@emilia-protocol/mcp-server</code>
+              <p style={{ fontSize: 14, lineHeight: 1.68, color: color.t2, margin: '14px 0 0' }}>Expose receipt and passkey verification tools to Claude Desktop, Cursor, Cline, Continue, or another MCP client. Installing this server alone does not mediate another tool&rsquo;s executor path.</p>
+            </div>
+          </div>
         </C>
       </section>
 
