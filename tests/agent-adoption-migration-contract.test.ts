@@ -47,6 +47,21 @@ function functionBody(name: string, delimiter: string): string {
 }
 
 describe('Agent Adoption v1 migration contract', () => {
+  it('restores the exact migration role before removing temporary owner membership', () => {
+    expect(migration).toContain(
+      "SELECT pg_catalog.set_config(\n  'ep.agent_adoption_migration_role',\n  CURRENT_USER,\n  TRUE\n);",
+    );
+    expect(migration).toContain(
+      'GRANT agent_adoption_store_owner TO CURRENT_USER\n  WITH INHERIT FALSE, SET TRUE;',
+    );
+    expect(migration).toContain(
+      "EXECUTE pg_catalog.format(\n    'SET ROLE %I',\n    pg_catalog.current_setting('ep.agent_adoption_migration_role')\n  );",
+    );
+    expect(migration).toContain(
+      'REVOKE CREATE ON SCHEMA public FROM agent_adoption_store_owner;\nREVOKE agent_adoption_store_owner FROM CURRENT_USER;',
+    );
+  });
+
   it('uses a private least-privilege owner, forced RLS, owner-only policies, and no direct API-role ACLs', () => {
     expect(migration).toContain('CREATE SCHEMA agent_adoption_private\n  AUTHORIZATION agent_adoption_store_owner;');
     expect(migration).toContain(

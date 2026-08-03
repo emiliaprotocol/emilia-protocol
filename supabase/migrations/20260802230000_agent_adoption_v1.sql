@@ -38,6 +38,15 @@ BEGIN
 END
 $least_privilege_role$;
 
+-- Supabase may execute with a managed migration role over a different wire
+-- login. Remember the actual migration role before switching to the private
+-- owner so cleanup restores and revokes the same principal on every PostgreSQL
+-- 17 deployment, without assuming that a role named `postgres` exists.
+SELECT pg_catalog.set_config(
+  'ep.agent_adoption_migration_role',
+  CURRENT_USER,
+  TRUE
+);
 GRANT agent_adoption_store_owner TO CURRENT_USER
   WITH INHERIT FALSE, SET TRUE;
 GRANT USAGE, CREATE ON SCHEMA public TO agent_adoption_store_owner;
@@ -2513,6 +2522,16 @@ COMMENT ON TABLE agent_adoption_private.adoption_revocations IS
 COMMENT ON TABLE agent_adoption_private.share_revocations IS
   'Append-only public-share revocations; source shares remain immutable.';
 
-RESET ROLE;
+-- RESET ROLE can return the Supabase CLI to its restricted wire login rather
+-- than the managed migration role. Restore the exact role captured above;
+-- SET ROLE authorization is checked against the session identity.
+DO $restore_migration_role$
+BEGIN
+  EXECUTE pg_catalog.format(
+    'SET ROLE %I',
+    pg_catalog.current_setting('ep.agent_adoption_migration_role')
+  );
+END
+$restore_migration_role$;
 REVOKE CREATE ON SCHEMA public FROM agent_adoption_store_owner;
 REVOKE agent_adoption_store_owner FROM CURRENT_USER;
