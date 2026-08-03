@@ -238,6 +238,7 @@ test('postgres capability operations use a composite namespace and operation key
                     consumed_amount: '0',
                     reserved_amount: '0',
                     expires_at: params[3],
+                    semantic_fence_ready: true,
                 });
             }
             return { rowCount: 1, rows: [] };
@@ -425,6 +426,7 @@ test('postgres reservation refuses a stale allowance head under the status row l
         expires_at: new Date(NOW + 60_000).toISOString(),
         allowance_profile_id: profileId,
         allowance_digest: allowanceDigest,
+        semantic_fence_ready: true,
     };
     let status = null;
     const transaction = async (callback) => callback(async (sql, params) => {
@@ -1450,6 +1452,7 @@ test('postgres capability state also rejects a conflicting envelope', async () =
                     consumed_amount: '0',
                     reserved_amount: '0',
                     expires_at: params[3],
+                    semantic_fence_ready: true,
                 };
             }
             return { rowCount: row.capability_fingerprint === params[4] ? 1 : 0 };
@@ -1607,6 +1610,7 @@ test('the durable store fences on the separate action fence too, not only the me
                 capability_id: params[0], capability_fingerprint: params[4],
                 budget_amount: String(params[1]), currency: params[2],
                 consumed_amount: '0', reserved_amount: '0', expires_at: params[3],
+                semantic_fence_ready: true,
             });
             return { rowCount: 1, rows: [] };
         }
@@ -1697,6 +1701,7 @@ test('a concurrent postgres action-fence collision returns a closed refusal inst
                         consumed_amount: '0',
                         reserved_amount: '0',
                         expires_at: new Date(state.expires_at).toISOString(),
+                        semantic_fence_ready: true,
                     }],
             };
         }
@@ -1761,6 +1766,7 @@ test('an unrelated postgres unique violation is not laundered into action_in_fli
                         consumed_amount: '0',
                         reserved_amount: '0',
                         expires_at: new Date(state.expires_at).toISOString(),
+                        semantic_fence_ready: true,
                     }],
             };
         }
@@ -1910,6 +1916,12 @@ test('package DDL rejects a same-name index with a non-unique or wrong contract'
        ON ep_capability_operations (operation_namespace, action_fence_digest)
        INCLUDE (action_digest)
        WHERE status IN ('reserved', 'provider_entered', 'committed')`,
+        `CREATE UNIQUE INDEX ep_capability_operations_live_action_uniq
+       ON ep_capability_operations (operation_namespace text_pattern_ops, action_fence_digest)
+       WHERE status IN ('reserved', 'provider_entered', 'committed')`,
+        `CREATE UNIQUE INDEX ep_capability_operations_live_action_uniq
+       ON ep_capability_operations (operation_namespace COLLATE "C", action_fence_digest COLLATE "C")
+       WHERE status IN ('reserved', 'provider_entered', 'committed')`,
     ];
     try {
         for (const [index, conflictingIndex] of conflictingIndexes.entries()) {
@@ -1921,7 +1933,7 @@ test('package DDL rejects a same-name index with a non-unique or wrong contract'
                 await client.query(CAPABILITY_STATE_DDL);
                 await client.query('DROP INDEX ep_capability_operations_live_action_uniq');
                 await client.query(conflictingIndex);
-                await assert.rejects(client.query(CAPABILITY_STATE_DDL), (error) => error.code === '55000');
+                await assert.rejects(client.query(CAPABILITY_STATE_DDL), (error) => error.code === '55000', `conflicting index ${index} must be rejected`);
             }
             finally {
                 client.release();
@@ -1935,6 +1947,61 @@ test('package DDL rejects a same-name index with a non-unique or wrong contract'
         await pool.end();
     }
 });
+test('package DDL quarantines legacy capability ids at the database boundary', {
+    skip: capabilityPostgresUrl ? false : 'ADMISSION_STORE_POSTGRES_TEST_URL is not configured',
+}, async () => {
+    const { Pool } = require('pg');
+    const pool = new Pool({ connectionString: capabilityPostgresUrl, max: 1 });
+    const schemaPrefix = `ep_semantic_fence_contract_${process.pid}_${Date.now()}`;
+    async function directInsertOutcome(schema, ddl) {
+        await pool.query(`CREATE SCHEMA ${schema}`);
+        const client = await pool.connect();
+        try {
+            await client.query(`SET search_path TO ${schema}, public`);
+            await client.query(ddl);
+            await client.query(`
+        INSERT INTO ep_capability_state (
+          capability_id, capability_fingerprint, budget_amount, currency,
+          consumed_amount, reserved_amount, expires_at, semantic_fence_ready
+        ) VALUES ($1, $2, 10, 'USD', 0, 0, now() + interval '1 hour', FALSE)
+      `, ['legacy:quarantined', `sha256:${'a'.repeat(64)}`]);
+            try {
+                await client.query(`
+          INSERT INTO ep_capability_operations (
+            operation_namespace, operation_id, capability_id, action_digest,
+            action_fence_digest, amount, currency, status, reservation_token,
+            reserved_at, entry_deadline_at
+          ) VALUES ($1, $2, $3, $4, $5, 1, 'USD', 'reserved', $6, now(), now() + interval '1 minute')
+        `, [
+                    'legacy:quarantined',
+                    'operation:must-not-enter',
+                    'legacy:quarantined',
+                    `sha256:${'b'.repeat(64)}`,
+                    `sha256:${'c'.repeat(64)}`,
+                    'reservation:must-not-enter',
+                ]);
+                return 'admitted';
+            }
+            catch (error) {
+                return error.code ?? 'unknown_error';
+            }
+        }
+        finally {
+            client.release();
+        }
+    }
+    try {
+        assert.equal(await directInsertOutcome(`${schemaPrefix}_shipped`, CAPABILITY_STATE_DDL), '55000');
+        const vulnerableDdl = CAPABILITY_STATE_DDL.replace(/CREATE OR REPLACE FUNCTION ep_require_semantic_capability_fence\(\)[\s\S]*?EXECUTE FUNCTION ep_require_semantic_capability_fence\(\);/, '');
+        assert.notEqual(vulnerableDdl, CAPABILITY_STATE_DDL, 'mutation must remove the database guard');
+        assert.equal(await directInsertOutcome(`${schemaPrefix}_mutated`, vulnerableDdl), 'admitted', 'the negative control must show that the trigger is load-bearing');
+    }
+    finally {
+        await pool.query(`DROP SCHEMA IF EXISTS ${schemaPrefix}_shipped CASCADE`);
+        await pool.query(`DROP SCHEMA IF EXISTS ${schemaPrefix}_mutated CASCADE`);
+        await pool.end();
+    }
+});
 test('a second operation id cannot re-authorize an action another operation already holds', async () => {
     // Anton Dziatkovskii, reviewing anthropics/claude-cookbooks#803: "request_approval
     // is a tool call like any other, so it can arrive twice for one pr: the agent
@@ -1944,9 +2011,9 @@ test('a second operation id cannot re-authorize an action another operation alre
     // this action already done'."
     //
     // That was true of this store too. Dedup keyed on (namespace, operation_id), and
-    // action_digest was recorded on the row without ever being consulted. The budget
-    // masked it whenever an amount was attached and masked nothing for a zero-amount
-    // irreversible action, which is the merge/delete/deploy case.
+    // action_digest was recorded on the row without ever being consulted. Budget is
+    // not material-action identity: two wrappers can both reserve positive occurrence
+    // units while still referring to one merge/delete/deploy action.
     const keys = issuer();
     const minted = mintCapabilityReceipt(keys.receipt, options({
         issuerPrivateKey: keys.privateKey,

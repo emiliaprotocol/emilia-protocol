@@ -120,6 +120,12 @@ function validateAmount(amount, label = 'amount') {
         throw new TypeError(`capability ${label} must be a non-negative safe integer`);
     return amount;
 }
+function validateSpendAmount(amount) {
+    if (!Number.isSafeInteger(amount) || amount <= 0) {
+        throw new TypeError('capability amount must be a positive safe integer');
+    }
+    return amount;
+}
 function validateOperationId(operationId) {
     if (typeof operationId !== 'string' || operationId.length === 0 || Buffer.byteLength(operationId, 'utf8') > MAX_OPERATION_ID_BYTES) {
         throw new TypeError('operation_id must be a short non-empty string');
@@ -425,7 +431,14 @@ export function verifyCapabilityScope(capability, action, operationId, { resolve
                 return { ok: false, reason: 'capability_caid_resolver_required', action_digest: actionDigest };
             }
             const resolved = resolveCaid(structuredClone(action));
-            caid = typeof resolved === 'string' ? resolved : resolved?.caid;
+            // Object-shaped resolvers carry an explicit decision. Never recover a
+            // CAID from a failed decision merely because the object also contains a
+            // syntactically valid `caid` field.
+            caid = typeof resolved === 'string'
+                ? resolved
+                : isRecord(resolved) && resolved.ok === true
+                    ? resolved.caid
+                    : null;
             if (typeof caid !== 'string' || !CAID_RE.test(caid)) {
                 return { ok: false, reason: 'capability_caid_resolution_failed', action_digest: actionDigest };
             }
@@ -880,7 +893,7 @@ export function createMemoryCapabilityStore({ providerEntryTimeoutMs = DEFAULT_P
             validateOperationNamespace(operationNamespace);
             validateActionDigest(actionDigest);
             validateActionDigest(actionFenceDigest);
-            validateAmount(amount);
+            validateSpendAmount(amount);
             validateCurrency(currency);
             const state = states.get(capabilityId);
             if (!state)
@@ -925,8 +938,9 @@ export function createMemoryCapabilityStore({ providerEntryTimeoutMs = DEFAULT_P
             // the same material-action fence. Keying only on the id let both reserve,
             // so the same merge, payout, or delete could be authorized twice under
             // two ids.
-            // The budget hid this whenever an amount was attached; it hid nothing for
-            // a zero-amount irreversible action.
+            // Budget is not material-action identity: two wrappers can both reserve
+            // positive occurrence units while still referring to one merge, payout,
+            // or delete. The separate fence closes that replay class.
             const held = actionHolders.get(actionKey(operationNamespace, actionFenceDigest));
             const holder = held === undefined ? undefined : operations.get(held);
             if (holder && ACTION_HOLDING_STATUSES.includes(holder.status)) {
@@ -1210,11 +1224,13 @@ export const CAPABILITY_STATE_DDL = `CREATE TABLE IF NOT EXISTS ${CAPABILITY_STA
   created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
   allowance_profile_id TEXT,
   allowance_digest TEXT CHECK (allowance_digest ~ '^sha256:[0-9a-f]{64}$'),
+  semantic_fence_ready BOOLEAN NOT NULL DEFAULT TRUE,
   CHECK ((allowance_profile_id IS NULL) = (allowance_digest IS NULL))
 );
 ALTER TABLE ${CAPABILITY_STATE_TABLE} ADD COLUMN IF NOT EXISTS capability_fingerprint TEXT;
 ALTER TABLE ${CAPABILITY_STATE_TABLE} ADD COLUMN IF NOT EXISTS allowance_profile_id TEXT;
 ALTER TABLE ${CAPABILITY_STATE_TABLE} ADD COLUMN IF NOT EXISTS allowance_digest TEXT CHECK (allowance_digest ~ '^sha256:[0-9a-f]{64}$');
+ALTER TABLE ${CAPABILITY_STATE_TABLE} ADD COLUMN IF NOT EXISTS semantic_fence_ready BOOLEAN;
 CREATE TABLE IF NOT EXISTS ${CAPABILITY_ALLOWANCE_STATUS_TABLE} (
   allowance_profile_id TEXT PRIMARY KEY,
   allowance_digest TEXT NOT NULL CHECK (allowance_digest ~ '^sha256:[0-9a-f]{64}$'),
@@ -1268,6 +1284,14 @@ ALTER TABLE ${CAPABILITY_OPERATION_TABLE} ADD COLUMN IF NOT EXISTS released_at T
 ALTER TABLE ${CAPABILITY_OPERATION_TABLE} ADD COLUMN IF NOT EXISTS release_reason TEXT;
 ALTER TABLE ${CAPABILITY_OPERATION_TABLE} ADD COLUMN IF NOT EXISTS release_evidence_profile TEXT;
 ALTER TABLE ${CAPABILITY_OPERATION_TABLE} ADD COLUMN IF NOT EXISTS release_evidence_digest TEXT CHECK (release_evidence_digest ~ '^sha256:[0-9a-f]{64}$');
+ALTER TABLE ${CAPABILITY_OPERATION_TABLE} DROP CONSTRAINT IF EXISTS ${CAPABILITY_OPERATION_TABLE}_action_digest_check;
+ALTER TABLE ${CAPABILITY_OPERATION_TABLE}
+  ADD CONSTRAINT ${CAPABILITY_OPERATION_TABLE}_action_digest_check
+  CHECK (action_digest ~ '^sha256:[0-9a-f]{64}$');
+ALTER TABLE ${CAPABILITY_OPERATION_TABLE} DROP CONSTRAINT IF EXISTS ${CAPABILITY_OPERATION_TABLE}_release_evidence_digest_check;
+ALTER TABLE ${CAPABILITY_OPERATION_TABLE}
+  ADD CONSTRAINT ${CAPABILITY_OPERATION_TABLE}_release_evidence_digest_check
+  CHECK (release_evidence_digest IS NULL OR release_evidence_digest ~ '^sha256:[0-9a-f]{64}$');
 ALTER TABLE ${CAPABILITY_OPERATION_TABLE} DROP CONSTRAINT IF EXISTS ${CAPABILITY_OPERATION_TABLE}_status_check;
 ALTER TABLE ${CAPABILITY_OPERATION_TABLE}
   ADD CONSTRAINT ${CAPABILITY_OPERATION_TABLE}_status_check
@@ -1276,12 +1300,64 @@ ALTER TABLE ${CAPABILITY_OPERATION_TABLE} ADD COLUMN IF NOT EXISTS allowance_rev
 ALTER TABLE ${CAPABILITY_OPERATION_TABLE} ADD COLUMN IF NOT EXISTS allowance_status_epoch BIGINT CHECK (allowance_status_epoch > 0);
 ALTER TABLE ${CAPABILITY_OPERATION_TABLE} ADD COLUMN IF NOT EXISTS allowance_status_head_digest TEXT CHECK (allowance_status_head_digest ~ '^sha256:[0-9a-f]{64}$');
 ALTER TABLE ${CAPABILITY_OPERATION_TABLE} ADD COLUMN IF NOT EXISTS action_fence_digest TEXT CHECK (action_fence_digest ~ '^sha256:[0-9a-f]{64}$');
+ALTER TABLE ${CAPABILITY_OPERATION_TABLE} DROP CONSTRAINT IF EXISTS ${CAPABILITY_OPERATION_TABLE}_action_fence_digest_check;
+ALTER TABLE ${CAPABILITY_OPERATION_TABLE}
+  ADD CONSTRAINT ${CAPABILITY_OPERATION_TABLE}_action_fence_digest_check
+  CHECK (action_fence_digest IS NULL OR action_fence_digest ~ '^sha256:[0-9a-f]{64}$');
 UPDATE ${CAPABILITY_OPERATION_TABLE}
   SET operation_namespace = capability_id
   WHERE operation_namespace IS NULL;
 UPDATE ${CAPABILITY_OPERATION_TABLE}
   SET action_fence_digest = action_digest
   WHERE action_fence_digest IS NULL;
+DO $capability_legacy_reservation_preflight$
+BEGIN
+  IF EXISTS (
+    SELECT 1 FROM ${CAPABILITY_OPERATION_TABLE}
+      WHERE status = 'reserved' AND entry_deadline_at IS NULL
+  ) THEN
+    RAISE EXCEPTION USING
+      ERRCODE = '55000',
+      MESSAGE = 'legacy reserved capability operations require operator reconciliation before action-fence migration';
+  END IF;
+END
+$capability_legacy_reservation_preflight$;
+UPDATE ${CAPABILITY_STATE_TABLE} AS capability_state
+  SET semantic_fence_ready = NOT EXISTS (
+    SELECT 1 FROM ${CAPABILITY_OPERATION_TABLE} AS operation
+      WHERE operation.capability_id = capability_state.capability_id
+  )
+  WHERE capability_state.semantic_fence_ready IS NULL;
+ALTER TABLE ${CAPABILITY_STATE_TABLE}
+  ALTER COLUMN semantic_fence_ready SET DEFAULT TRUE,
+  ALTER COLUMN semantic_fence_ready SET NOT NULL;
+CREATE OR REPLACE FUNCTION ep_require_semantic_capability_fence()
+RETURNS TRIGGER
+LANGUAGE plpgsql
+SET search_path FROM CURRENT
+AS $semantic_capability_fence_function$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1
+      FROM ${CAPABILITY_STATE_TABLE} AS capability_state
+      WHERE capability_state.capability_id = NEW.capability_id
+        AND capability_state.semantic_fence_ready IS TRUE
+  ) THEN
+    RAISE EXCEPTION USING
+      ERRCODE = '55000',
+      MESSAGE = 'capability semantic action fence is not ready',
+      DETAIL = format('capability_id=%s', NEW.capability_id),
+      HINT = 'Reissue a fresh capability with a new capability ID; do not infer semantic equivalence from historical exact digests.';
+  END IF;
+  RETURN NEW;
+END
+$semantic_capability_fence_function$;
+DROP TRIGGER IF EXISTS ep_capability_operations_semantic_fence_guard
+  ON ${CAPABILITY_OPERATION_TABLE};
+CREATE TRIGGER ep_capability_operations_semantic_fence_guard
+  BEFORE INSERT ON ${CAPABILITY_OPERATION_TABLE}
+  FOR EACH ROW
+  EXECUTE FUNCTION ep_require_semantic_capability_fence();
 ALTER TABLE ${CAPABILITY_OPERATION_TABLE}
   ALTER COLUMN operation_namespace SET NOT NULL;
 ALTER TABLE ${CAPABILITY_OPERATION_TABLE}
@@ -1343,6 +1419,11 @@ DECLARE
   index_key_count INTEGER;
   index_attribute_count INTEGER;
   index_key_columns TEXT[];
+  index_key_collations OID[];
+  expected_key_collations OID[];
+  index_key_opclasses OID[];
+  expected_key_opclasses OID[];
+  index_key_options SMALLINT[];
   index_predicate TEXT;
   normalized_predicate TEXT;
 BEGIN
@@ -1366,6 +1447,51 @@ BEGIN
           WHERE key.ordinal <= i.indnkeyatts
           ORDER BY key.ordinal
       ),
+      ARRAY(
+        SELECT key.collation_oid
+          FROM unnest(i.indcollation::OID[]) WITH ORDINALITY AS key(collation_oid, ordinal)
+          WHERE key.ordinal <= i.indnkeyatts
+          ORDER BY key.ordinal
+      ),
+      ARRAY(
+        SELECT attribute.attcollation
+          FROM unnest(i.indkey::SMALLINT[]) WITH ORDINALITY AS key(attnum, ordinal)
+          JOIN pg_attribute AS attribute
+            ON attribute.attrelid = i.indrelid
+           AND attribute.attnum = key.attnum
+          WHERE key.ordinal <= i.indnkeyatts
+          ORDER BY key.ordinal
+      ),
+      ARRAY(
+        SELECT key.opclass_oid
+          FROM unnest(i.indclass::OID[]) WITH ORDINALITY AS key(opclass_oid, ordinal)
+          WHERE key.ordinal <= i.indnkeyatts
+          ORDER BY key.ordinal
+      ),
+      ARRAY(
+        SELECT default_opclass.oid
+          FROM unnest(i.indkey::SMALLINT[]) WITH ORDINALITY AS key(attnum, ordinal)
+          JOIN pg_attribute AS attribute
+            ON attribute.attrelid = i.indrelid
+           AND attribute.attnum = key.attnum
+          JOIN LATERAL (
+            SELECT opclass.oid
+              FROM pg_opclass AS opclass
+              WHERE opclass.opcmethod = index_relation.relam
+                AND opclass.opcdefault
+                AND opclass.opcintype = attribute.atttypid
+              ORDER BY opclass.oid
+              LIMIT 1
+          ) AS default_opclass ON TRUE
+          WHERE key.ordinal <= i.indnkeyatts
+          ORDER BY key.ordinal
+      ),
+      ARRAY(
+        SELECT key.option_bits
+          FROM unnest(i.indoption::SMALLINT[]) WITH ORDINALITY AS key(option_bits, ordinal)
+          WHERE key.ordinal <= i.indnkeyatts
+          ORDER BY key.ordinal
+      ),
       pg_get_expr(i.indpred, i.indrelid)
     INTO
       index_is_unique,
@@ -1379,6 +1505,11 @@ BEGIN
       index_key_count,
       index_attribute_count,
       index_key_columns,
+      index_key_collations,
+      expected_key_collations,
+      index_key_opclasses,
+      expected_key_opclasses,
+      index_key_options,
       index_predicate
     FROM pg_index AS i
     JOIN pg_class AS index_relation
@@ -1405,13 +1536,16 @@ BEGIN
      OR index_key_count IS DISTINCT FROM 2
      OR index_attribute_count IS DISTINCT FROM 2
      OR index_key_columns IS DISTINCT FROM ARRAY['operation_namespace', 'action_fence_digest']::TEXT[]
+     OR index_key_collations IS DISTINCT FROM expected_key_collations
+     OR index_key_opclasses IS DISTINCT FROM expected_key_opclasses
+     OR index_key_options IS DISTINCT FROM ARRAY[0, 0]::SMALLINT[]
      OR normalized_predicate IS DISTINCT FROM
        '(status=ANY(ARRAY[''reserved'',''provider_entered'',''committed'']))' THEN
     RAISE EXCEPTION USING
       ERRCODE = '55000',
       MESSAGE = 'EMILIA capability action-fence index does not match its required contract',
       DETAIL = format(
-        'unique=%s valid=%s ready=%s immediate=%s exclusion=%s nulls_not_distinct=%s method=%s table_oid=%s key_count=%s attribute_count=%s columns=%s predicate=%s',
+        'unique=%s valid=%s ready=%s immediate=%s exclusion=%s nulls_not_distinct=%s method=%s table_oid=%s key_count=%s attribute_count=%s columns=%s collations=%s expected_collations=%s opclasses=%s expected_opclasses=%s options=%s predicate=%s',
         coalesce(index_is_unique::TEXT, '<missing>'),
         coalesce(index_is_valid::TEXT, '<missing>'),
         coalesce(index_is_ready::TEXT, '<missing>'),
@@ -1423,6 +1557,11 @@ BEGIN
         coalesce(index_key_count::TEXT, '<missing>'),
         coalesce(index_attribute_count::TEXT, '<missing>'),
         coalesce(array_to_string(index_key_columns, ','), '<missing>'),
+        coalesce(array_to_string(index_key_collations, ','), '<missing>'),
+        coalesce(array_to_string(expected_key_collations, ','), '<missing>'),
+        coalesce(array_to_string(index_key_opclasses, ','), '<missing>'),
+        coalesce(array_to_string(expected_key_opclasses, ','), '<missing>'),
+        coalesce(array_to_string(index_key_options, ','), '<missing>'),
         coalesce(index_predicate, '<missing>')
       ),
       HINT = 'Do not continue. Remove or repair the conflicting index only through a reviewed migration after preserving all operation history.';
@@ -1431,7 +1570,7 @@ END
 $capability_action_fence_index_contract$;`;
 export const CAPABILITY_SQL = Object.freeze({
     register: `INSERT INTO ${CAPABILITY_STATE_TABLE} (capability_id, budget_amount, currency, expires_at, capability_fingerprint, allowance_profile_id, allowance_digest) VALUES ($1, $2, $3, $4, $5, $6, $7) ON CONFLICT (capability_id) DO UPDATE SET capability_fingerprint = COALESCE(${CAPABILITY_STATE_TABLE}.capability_fingerprint, EXCLUDED.capability_fingerprint), allowance_profile_id = COALESCE(${CAPABILITY_STATE_TABLE}.allowance_profile_id, EXCLUDED.allowance_profile_id), allowance_digest = COALESCE(${CAPABILITY_STATE_TABLE}.allowance_digest, EXCLUDED.allowance_digest) WHERE ${CAPABILITY_STATE_TABLE}.budget_amount = EXCLUDED.budget_amount AND ${CAPABILITY_STATE_TABLE}.currency = EXCLUDED.currency AND ${CAPABILITY_STATE_TABLE}.expires_at = EXCLUDED.expires_at AND (${CAPABILITY_STATE_TABLE}.allowance_profile_id IS NULL OR ${CAPABILITY_STATE_TABLE}.allowance_profile_id IS NOT DISTINCT FROM EXCLUDED.allowance_profile_id) AND (${CAPABILITY_STATE_TABLE}.allowance_digest IS NULL OR ${CAPABILITY_STATE_TABLE}.allowance_digest IS NOT DISTINCT FROM EXCLUDED.allowance_digest)`,
-    readState: `SELECT capability_id, capability_fingerprint, budget_amount, currency, consumed_amount, reserved_amount, expires_at, allowance_profile_id, allowance_digest FROM ${CAPABILITY_STATE_TABLE} WHERE capability_id = $1 FOR UPDATE`,
+    readState: `SELECT capability_id, capability_fingerprint, budget_amount, currency, consumed_amount, reserved_amount, expires_at, allowance_profile_id, allowance_digest, semantic_fence_ready FROM ${CAPABILITY_STATE_TABLE} WHERE capability_id = $1 FOR UPDATE`,
     readAllowanceStatus: `SELECT allowance_profile_id, allowance_digest, revision, status_epoch, status_head_digest, status FROM ${CAPABILITY_ALLOWANCE_STATUS_TABLE} WHERE allowance_profile_id = $1 FOR UPDATE`,
     insertAllowanceStatus: `INSERT INTO ${CAPABILITY_ALLOWANCE_STATUS_TABLE} (allowance_profile_id, allowance_digest, revision, status_epoch, status_head_digest, status, updated_at) VALUES ($1, $2, $3, $4, $5, $6, $7) ON CONFLICT (allowance_profile_id) DO NOTHING`,
     updateAllowanceStatus: `UPDATE ${CAPABILITY_ALLOWANCE_STATUS_TABLE} SET allowance_digest = $4, revision = $5, status_epoch = $6, status_head_digest = $7, status = $8, updated_at = $9 WHERE allowance_profile_id = $1 AND status_epoch = $2 AND status_head_digest = $3`,
@@ -1444,7 +1583,7 @@ export const CAPABILITY_SQL = Object.freeze({
     // PostgreSQL cannot lock a row that does not exist yet.
     readActionHolder: `SELECT operation_id, status, action_digest, action_fence_digest FROM ${CAPABILITY_OPERATION_TABLE} WHERE operation_namespace = $1 AND action_fence_digest = $2 AND status IN ('reserved', 'provider_entered', 'committed') LIMIT 1 FOR UPDATE`,
     insertOperation: `INSERT INTO ${CAPABILITY_OPERATION_TABLE} (operation_namespace, capability_id, operation_id, action_digest, action_fence_digest, amount, currency, status, reservation_token, reserved_at, entry_deadline_at, allowance_revision, allowance_status_epoch, allowance_status_head_digest) VALUES ($1, $2, $3, $4, $5, $6, $7, 'reserved', $8, $9, $10, $11, $12, $13)`,
-    reserveState: `UPDATE ${CAPABILITY_STATE_TABLE} SET reserved_amount = reserved_amount + $2 WHERE capability_id = $1 AND budget_amount - consumed_amount - reserved_amount >= $2`,
+    reserveState: `UPDATE ${CAPABILITY_STATE_TABLE} SET reserved_amount = reserved_amount + $2 WHERE capability_id = $1 AND semantic_fence_ready IS TRUE AND budget_amount - consumed_amount - reserved_amount >= $2`,
     beginProviderEntry: `UPDATE ${CAPABILITY_OPERATION_TABLE} SET status = 'provider_entered', provider_entry_at = $5 WHERE operation_namespace = $1 AND operation_id = $2 AND capability_id = $3 AND status = 'reserved' AND reservation_token = $4 AND entry_deadline_at IS NOT NULL AND entry_deadline_at > $5`,
     commitOperation: `UPDATE ${CAPABILITY_OPERATION_TABLE} SET status = 'committed', outcome = $4, committed_at = $5 WHERE operation_namespace = $1 AND operation_id = $2 AND capability_id = $3 AND status = $7 AND reservation_token = $6`,
     reconcileOperation: `UPDATE ${CAPABILITY_OPERATION_TABLE} SET reconciliation_outcome = $4, reconciliation_evidence_digest = $5, reconciled_at = $6 WHERE operation_namespace = $1 AND operation_id = $2 AND capability_id = $3 AND status = 'committed' AND outcome = 'indeterminate' AND reconciliation_outcome IS NULL`,
@@ -1494,7 +1633,8 @@ export function createPostgresCapabilityStore({ transaction, providerEntryTimeou
                     && row.currency === state.currency
                     && Date.parse(row.expires_at) === state.expires_at
                     && (row.allowance_profile_id ?? null) === state.allowance_profile_id
-                    && (row.allowance_digest ?? null) === state.allowance_digest;
+                    && (row.allowance_digest ?? null) === state.allowance_digest
+                    && row.semantic_fence_ready === true;
             });
         },
         async advanceAllowanceStatus(options) {
@@ -1548,7 +1688,7 @@ export function createPostgresCapabilityStore({ transaction, providerEntryTimeou
         async reserveSpend({ capabilityId, capabilityFingerprint, operationNamespace = capabilityId, operationId, actionDigest, actionFenceDigest = actionDigest, amount, currency, allowanceStatus, now = Date.now }) {
             validateOperationId(operationId);
             validateOperationNamespace(operationNamespace);
-            validateAmount(amount);
+            validateSpendAmount(amount);
             validateCurrency(currency);
             validateActionDigest(actionDigest);
             validateActionDigest(actionFenceDigest);
@@ -1561,6 +1701,9 @@ export function createPostgresCapabilityStore({ transaction, providerEntryTimeou
                         return { ok: false, reason: 'capability_not_registered' };
                     if (state.capability_fingerprint !== capabilityFingerprint)
                         return { ok: false, reason: 'capability_envelope_mismatch' };
+                    if (state.semantic_fence_ready !== true) {
+                        return { ok: false, reason: 'capability_semantic_fence_migration_required' };
+                    }
                     let assertedAllowanceStatus = null;
                     if (typeof state.allowance_profile_id === 'string'
                         && operationNamespace === state.allowance_profile_id) {
