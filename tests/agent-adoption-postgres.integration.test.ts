@@ -170,8 +170,12 @@ async function terminateTestDatabaseConnections(): Promise<void> {
 }
 
 async function cleanup(): Promise<void> {
+  // Pool.end() is the orderly custody boundary for this suite's clients.
+  // Terminating those backends immediately afterward races node-postgres' socket
+  // shutdown and can surface an unhandled 57P01 even after every assertion has
+  // passed. Forced termination remains in beforeAll to recover stale clients
+  // left by an interrupted prior run; a healthy afterAll never needs it.
   if (database) await database.end();
-  await terminateTestDatabaseConnections();
   await admin.query(`DROP DATABASE IF EXISTS ${identifier(DATABASE)}`);
   for (const role of [...GLOBAL_ROLES].reverse()) {
     if (!initiallyPresentRoles.has(role)) {
