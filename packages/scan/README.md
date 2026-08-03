@@ -107,6 +107,12 @@ intentionally emitted. Report files are created owner-only and existing or
 symlinked report paths are refused. Symlinked configuration sources are excluded,
 and any reached discovery limit is printed in the report.
 
+The authority command uses these exit codes: `0` for complete visible coverage
+with no signals (not currently reachable in configuration-only mode), `1` when
+signals are present, `2` for a malformed configuration source, `3` when the
+operation surface is not visible or classifiable, and `64` for a usage, argument,
+or filesystem error.
+
 ## What it will not do
 
 - **It will not decide your risk model.** Which actions are consequential is a

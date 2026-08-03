@@ -340,6 +340,29 @@ test('CLI refuses a nonexistent working directory', () => {
   assert.match(`${result.stdout}${result.stderr}`, /existing directory|ENOENT/i);
 });
 
+test('authority CLI requires values for every value-bearing option', () => {
+  for (const [option, nextFlag] of [['--out', '--json'], ['--cwd', '-h']]) {
+    const result = spawnSync(process.execPath, [CLI, 'authority', option, nextFlag], {
+      encoding: 'utf8',
+    });
+    assert.equal(result.status, 64, `${option}\n${result.stdout}\n${result.stderr}`);
+    assert.equal(result.stdout, '');
+    assert.match(result.stderr, new RegExp(`${option} requires a value`));
+  }
+});
+
+test('authority CLI help publishes the complete exit-code contract', () => {
+  const result = spawnSync(process.execPath, [CLI, 'authority', '--help'], {
+    encoding: 'utf8',
+  });
+  assert.equal(result.status, 0, `${result.stdout}\n${result.stderr}`);
+  assert.match(result.stdout, /\n\s+0\s+complete visible surface/);
+  assert.match(result.stdout, /\n\s+1\s+signals present/);
+  assert.match(result.stdout, /\n\s+2\s+malformed configuration source/);
+  assert.match(result.stdout, /\n\s+3\s+operation surface not visible or not classifiable/);
+  assert.match(result.stdout, /\n\s+64\s+usage, argument, or filesystem error/);
+});
+
 test('CLI writes owner-only reports and refuses overwrite or report-path symlinks', () => {
   const { home, cwd } = fixture({});
   const output = join(cwd, 'authority-report.json');

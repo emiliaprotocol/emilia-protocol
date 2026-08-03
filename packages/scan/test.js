@@ -3,7 +3,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { spawnSync } from 'node:child_process';
 import { createHash } from 'node:crypto';
-import { cpSync, existsSync, linkSync, mkdirSync, mkdtempSync, readFileSync, statSync, symlinkSync, unlinkSync, writeFileSync } from 'node:fs';
+import { cpSync, existsSync, linkSync, mkdirSync, mkdtempSync, readFileSync, readdirSync, statSync, symlinkSync, unlinkSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { classifyAction, scanActions, KNOWN_CATEGORIES, HIGH_RISK_ACTION_PACKS } from './index.js';
@@ -283,6 +283,36 @@ test('scan CLI exercises MCP, OpenAPI, sample, emit, and refusal paths', () => {
   assert.match(`${missing.stdout}${missing.stderr}`, /usage: cli\.mjs/);
 });
 
+test('scan CLI requires an output path after --emit before scanning or writing', () => {
+  for (const args of [['--sample', '--emit'], ['--emit', '--sample']]) {
+    const dir = mkdtempSync(join(tmpdir(), 'emilia-scan-missing-emit-'));
+    const run = spawnSync(process.execPath, [join(import.meta.dirname, 'cli.mjs'), ...args], {
+      cwd: dir,
+      encoding: 'utf8',
+    });
+
+    assert.equal(run.status, 2, `${args.join(' ')}\n${run.stdout}\n${run.stderr}`);
+    assert.equal(run.stdout, '', 'argument errors must be rejected before scan output');
+    assert.match(run.stderr, /--emit requires a value/);
+    assert.deepEqual(readdirSync(dir), [], 'argument errors must not create output');
+  }
+});
+
+test('scan protect requires an output directory after --out before scanning or writing', () => {
+  for (const args of [['protect', '--sample', '--out'], ['protect', '--sample', '--out', '--apply']]) {
+    const dir = mkdtempSync(join(tmpdir(), 'emilia-protect-missing-out-'));
+    const run = spawnSync(process.execPath, [join(import.meta.dirname, 'cli.mjs'), ...args], {
+      cwd: dir,
+      encoding: 'utf8',
+    });
+
+    assert.equal(run.status, 2, `${args.join(' ')}\n${run.stdout}\n${run.stderr}`);
+    assert.equal(run.stdout, '', 'argument errors must be rejected before protect output');
+    assert.match(run.stderr, /--out requires a value/);
+    assert.deepEqual(readdirSync(dir), [], 'argument errors must not create output');
+  }
+});
+
 test('OpenAPI scan preserves route selectors but protect refuses verification-only HTTP scaffolds', () => {
   const dir = mkdtempSync(join(tmpdir(), 'emilia-protect-openapi-'));
   const input = join(dir, 'openapi.json');
@@ -548,6 +578,19 @@ test('handoff emission requires review acknowledgement, consequential selection,
   const unreviewed = run('--action', 'deleteCustomer');
   assert.notEqual(unreviewed.status, 0);
   assert.match(`${unreviewed.stdout}${unreviewed.stderr}`, /reviewed manifest digest is required/i);
+
+  const missingDigestValue = run('--reviewed-manifest-digest', '-h');
+  assert.notEqual(missingDigestValue.status, 0);
+  assert.match(`${missingDigestValue.stdout}${missingDigestValue.stderr}`, /reviewed manifest digest is required after/i);
+
+  const missingActionValue = run(
+    '--reviewed-manifest-digest',
+    manifestDigest,
+    '--action',
+    '-h',
+  );
+  assert.notEqual(missingActionValue.status, 0);
+  assert.match(`${missingActionValue.stdout}${missingActionValue.stderr}`, /tool name is required after --action/i);
 
   const mismatched = run(
     '--reviewed-manifest-digest',

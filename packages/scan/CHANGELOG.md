@@ -19,6 +19,9 @@ All notable changes to `@emilia-protocol/scan` are documented here.
   stale hard-coded `0.3.2` value.
 - Pin generated MCP integration instructions to the audited exact
   `@emilia-protocol/mcp-guard@0.4.5` release.
+- Reject missing or flag-shaped values for every value-bearing Scan option
+  before scanning or writing.
+- Publish exit code `64` consistently for authority CLI usage, argument, or filesystem errors.
 
 ### Tests
 

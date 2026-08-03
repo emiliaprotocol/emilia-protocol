@@ -67,8 +67,17 @@ if (args[0] === 'authority') {
   process.argv = [process.argv[0], fileURLToPath(new URL('./codemod.mjs', import.meta.url)), ...args.slice(1)];
   await import('./codemod.mjs');
 } else {
-  const emitIdx = args.indexOf('--emit');
-  const emitPath = emitIdx >= 0 ? args[emitIdx + 1] : null;
+  let emitPath = null;
+  for (let index = 0; index < args.length; index += 1) {
+    if (args[index] !== '--emit') continue;
+    const value = args[index + 1];
+    if (!value || value.startsWith('-')) {
+      console.error('--emit requires a value');
+      process.exit(2);
+    }
+    emitPath = value;
+    index += 1;
+  }
   let input;
   if (args.includes('--sample')) {
     input = { actions: SAMPLE, source: 'mcp', blindSpots: ['This is the built-in sample. Real scans see only statically-listed tools; runtime-registered tools and value-dependent risk are invisible.'] };

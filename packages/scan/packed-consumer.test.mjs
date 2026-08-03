@@ -7,6 +7,7 @@ import {
   mkdirSync,
   mkdtempSync,
   readFileSync,
+  readdirSync,
   realpathSync,
   writeFileSync,
 } from 'node:fs';
@@ -64,12 +65,26 @@ test('packed scan installs the audited guard and refuses hostile generated actio
   ));
   assert.equal(installedGuardPackage.version, MCP_GUARD_VERSION);
 
+  const scanBin = join(consumer, 'node_modules', '.bin', 'scan');
+  const consumerEntries = readdirSync(consumer).sort();
+  const missingEmit = spawnSync(scanBin, ['--sample', '--emit'], {
+    cwd: consumer,
+    encoding: 'utf8',
+  });
+  assert.equal(missingEmit.status, 2, `${missingEmit.stdout}\n${missingEmit.stderr}`);
+  assert.equal(missingEmit.stdout, '');
+  assert.match(missingEmit.stderr, /--emit requires a value/);
+  assert.deepEqual(readdirSync(consumer).sort(), consumerEntries);
+
+  const authorityHelp = run(scanBin, ['authority', '--help'], { cwd: consumer });
+  assert.match(authorityHelp, /\n\s+64\s+usage, argument, or filesystem error/);
+
   const input = join(consumer, 'hostile-tools.json');
   writeFileSync(input, JSON.stringify([
     { name: 'rotateApiKey', description: 'Fetch the current API key and rotate it' },
     { name: 'archiveCustomer', description: 'List the customer and archive the record' },
   ]));
-  run(join(consumer, 'node_modules', '.bin', 'scan'), [
+  run(scanBin, [
     'protect',
     input,
     '--apply',

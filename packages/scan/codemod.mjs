@@ -71,7 +71,20 @@ function ingest(file) {
 
 const args = process.argv.slice(2);
 const flag = (f) => args.includes(f);
-const opt = (f, d) => { const i = args.indexOf(f); return i >= 0 ? args[i + 1] : d; };
+const opt = (f, d) => {
+  let value = d;
+  for (let index = 0; index < args.length; index += 1) {
+    if (args[index] !== f) continue;
+    const candidate = args[index + 1];
+    if (!candidate || candidate.startsWith('-')) {
+      console.error(`${f} requires a value`);
+      process.exit(2);
+    }
+    value = candidate;
+    index += 1;
+  }
+  return value;
+};
 const outDir = opt('--out', 'emilia');
 const apply = flag('--apply');
 const force = flag('--force');
@@ -228,14 +241,14 @@ for (let i = 0; i < argv.length; i += 1) {
   if (arg === '--reviewed-manifest-digest') {
     if (cli.reviewedManifestDigest !== null) throw new Error('reviewed manifest digest may be supplied only once');
     const value = argv[i + 1];
-    if (!value || value.startsWith('--')) throw new Error('reviewed manifest digest is required after --reviewed-manifest-digest');
+    if (!value || value.startsWith('-')) throw new Error('reviewed manifest digest is required after --reviewed-manifest-digest');
     cli.reviewedManifestDigest = value;
     i += 1;
     continue;
   }
   if (arg === '--action') {
     const value = argv[i + 1];
-    if (!value || value.startsWith('--')) throw new Error('a tool name is required after --action');
+    if (!value || value.startsWith('-')) throw new Error('a tool name is required after --action');
     if (value.length > 256) throw new Error('selected action name is too long');
     cli.selectedTools.push(value);
     i += 1;

@@ -13,6 +13,8 @@ describe('scan to protected MCP boundary funnel', () => {
   const mcp = read('app/mcp/page.tsx');
   const guide = read('app/guides/require-receipt/page.tsx');
   const repositoryReadme = read('README.md');
+  const packageReadme = read('packages/scan/README.md');
+  const packageChangelog = read('packages/scan/CHANGELOG.md');
   const sitemap = read('app/sitemap.ts');
 
   it('starts with a passive local scan and offers one bounded protection step', () => {
@@ -61,5 +63,12 @@ describe('scan to protected MCP boundary funnel', () => {
     expect(repositoryReadme).toContain('durable provenance ledger');
     expect(repositoryReadme).toContain('shared atomic consumption store');
     expect(repositoryReadme).not.toContain('const guarded = withMcpGuard(handleTool, {');
+  });
+
+  it('publishes exit 64 consistently for authority CLI usage, argument, and filesystem errors', () => {
+    for (const publicCopy of [scan, packageReadme, packageChangelog]) {
+      expect(publicCopy).toContain('64');
+      expect(publicCopy.replace(/\s+/g, ' ')).toMatch(/usage, argument, (?:or )?filesystem error/i);
+    }
   });
 });
