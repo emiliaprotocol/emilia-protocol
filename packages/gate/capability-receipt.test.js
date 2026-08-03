@@ -6,7 +6,7 @@ import assert from 'node:assert/strict';
 import { generateKeyPairSync, sign } from 'node:crypto';
 import { createRequire } from 'node:module';
 import { canonicalize } from './execution-binding.js';
-import { executeWithCapability, executeWithThreshold, reconcileCapabilityOperation, delegateCapabilityReceipt, createMemoryCapabilityStore, createPostgresCapabilityStore, isSecureCapabilityStore, CAPABILITY_STATE_DDL, CAPABILITY_SQL, mintCapabilityReceipt, reconstructCapabilitySecret, splitCapabilitySecret, verifyCapabilityReceipt, CAPABILITY_RECEIPT_VERSION, CAPABILITY_SCOPE_PROFILE, CAPABILITY_CAID_SCOPE_PROFILE, CAPABILITY_ALLOWANCE_SCOPE_PROFILE, capabilityActionDigest, capabilityBaseReceiptDigest, } from './capability-receipt.js';
+import { executeWithCapability, executeWithThreshold, reconcileCapabilityOperation, delegateCapabilityReceipt, createMemoryCapabilityStore, createPostgresCapabilityStore, isSecureCapabilityStore, CAPABILITY_STATE_DDL, CAPABILITY_SQL, mintCapabilityReceipt, reconstructCapabilitySecret, splitCapabilitySecret, verifyCapabilityReceipt, verifyCapabilityScope, CAPABILITY_RECEIPT_VERSION, CAPABILITY_SCOPE_PROFILE, CAPABILITY_CAID_SCOPE_PROFILE, CAPABILITY_ALLOWANCE_SCOPE_PROFILE, capabilityActionDigest, capabilityBaseReceiptDigest, } from './capability-receipt.js';
 const NOW = Date.parse('2026-07-18T22:00:00.000Z');
 const require = createRequire(import.meta.url);
 function baseReceipt({ privateKey, publicKey, receiptId = 'base_1' } = {}) {
@@ -104,7 +104,11 @@ test('memory capability operations isolate identical operation ids by capability
     const secondReservation = await reserve(second, 'shared-operation');
     assert.equal(firstReservation.ok, true);
     assert.equal(secondReservation.ok, true);
-    assert.equal((await reserve(first, 'shared-operation')).reason, 'operation_in_flight');
+    const repeated = await reserve(first, 'shared-operation');
+    assert.equal(repeated.reason, 'operation_in_flight');
+    assert.equal(repeated.action_digest, capabilityActionDigest(scopedAction('shared-operation')));
+    assert.equal(repeated.action_fence_digest, repeated.action_digest);
+    assert.equal(repeated.holding_operation_id, 'shared-operation');
     assert.equal((await store.beginProviderEntry({
         capabilityId: first.capabilityReceipt.capability.id,
         operationId: 'shared-operation',
@@ -197,12 +201,20 @@ test('postgres capability operations use a composite namespace and operation key
     // The action fence: scoped to the namespace, restricted to statuses that still
     // hold the action, and row-locked so two concurrent reservations for one action
     // serialize rather than both passing the read.
-    assert.match(CAPABILITY_SQL.readActionHolder, /operation_namespace = \$1 AND action_digest = \$2/);
+    assert.match(CAPABILITY_STATE_DDL, /action_fence_digest TEXT NOT NULL/);
+    assert.match(CAPABILITY_SQL.readActionHolder, /operation_namespace = \$1 AND action_fence_digest = \$2/);
     assert.match(CAPABILITY_SQL.readActionHolder, /'reserved', 'provider_entered', 'committed'/);
     assert.doesNotMatch(CAPABILITY_SQL.readActionHolder, /'released'/);
     assert.match(CAPABILITY_SQL.readActionHolder, /FOR UPDATE/);
-    assert.match(CAPABILITY_STATE_DDL, /CREATE UNIQUE INDEX IF NOT EXISTS ep_capability_operations_live_action_uniq\s+ON ep_capability_operations\(operation_namespace, action_digest\)\s+WHERE status IN \('reserved', 'provider_entered', 'committed'\)/);
+    assert.match(CAPABILITY_STATE_DDL, /CREATE UNIQUE INDEX IF NOT EXISTS ep_capability_operations_live_action_uniq\s+ON ep_capability_operations\(operation_namespace, action_fence_digest\)\s+WHERE status IN \('reserved', 'provider_entered', 'committed'\)/);
     assert.match(CAPABILITY_STATE_DDL, /duplicate live capability actions require operator reconciliation/);
+    assert.match(CAPABILITY_STATE_DDL, /FROM pg_index AS i/);
+    assert.match(CAPABILITY_STATE_DDL, /i\.indisunique/);
+    assert.match(CAPABILITY_STATE_DDL, /i\.indisvalid/);
+    assert.match(CAPABILITY_STATE_DDL, /i\.indisready/);
+    assert.match(CAPABILITY_STATE_DDL, /i\.indnatts/);
+    assert.match(CAPABILITY_STATE_DDL, /ARRAY\['operation_namespace', 'action_fence_digest'\]::TEXT\[\]/);
+    assert.match(CAPABILITY_STATE_DDL, /capability action-fence index does not match its required contract/);
     const keys = issuer();
     const first = mintCapabilityReceipt(keys.receipt, options({
         issuerPrivateKey: keys.privateKey,
@@ -241,9 +253,9 @@ test('postgres capability operations use a composite namespace and operation key
         }
         if (sql === CAPABILITY_SQL.readActionHolder) {
             assert.equal(params.length, 2);
-            const [operationNamespace, actionDigest] = params;
+            const [operationNamespace, actionFenceDigest] = params;
             const row = [...operations.values()].find((entry) => entry.operation_namespace === operationNamespace
-                && entry.action_digest === actionDigest
+                && entry.action_fence_digest === actionFenceDigest
                 && ['reserved', 'provider_entered', 'committed'].includes(entry.status));
             return { rowCount: row ? 1 : 0, rows: row ? [row] : [] };
         }
@@ -253,12 +265,13 @@ test('postgres capability operations use a composite namespace and operation key
             return { rowCount: 1, rows: [] };
         }
         if (sql === CAPABILITY_SQL.insertOperation) {
-            const [operationNamespace, capabilityId, operationId, actionDigest, amount, currency, reservationToken, reservedAt, entryDeadlineAt] = params;
+            const [operationNamespace, capabilityId, operationId, actionDigest, actionFenceDigest, amount, currency, reservationToken, reservedAt, entryDeadlineAt] = params;
             operations.set(operationKey(operationNamespace, operationId), {
                 operation_namespace: operationNamespace,
                 capability_id: capabilityId,
                 operation_id: operationId,
                 action_digest: actionDigest,
+                action_fence_digest: actionFenceDigest,
                 amount: String(amount),
                 currency,
                 reservation_token: reservationToken,
@@ -757,6 +770,137 @@ test('CAID scope requires a pinned resolver and matches only an allowed CAID', a
     assert.equal(result.ok, true);
     assert.equal(result.caid, caid);
     assert.equal(result.result, caid);
+});
+test('CAID-equivalent wrappers keep exact digests but share one runtime fence', async () => {
+    const keys = issuer();
+    const caid = `caid:1:payment.release.1:jcs-sha256:${'A'.repeat(43)}`;
+    const firstAction = scopedAction('wrapper-a', {
+        amount: 5,
+        action_type: 'payment.release',
+        destination: 'acct_material',
+    });
+    const secondAction = { ...firstAction, operation_id: 'wrapper-b' };
+    const minted = mintCapabilityReceipt(keys.receipt, options({
+        issuerPrivateKey: keys.privateKey,
+        capabilityId: 'caid_action_fence',
+        scope: {
+            profile: CAPABILITY_CAID_SCOPE_PROFILE,
+            operation_id_field: 'operation_id',
+            caids: [caid],
+        },
+    }));
+    const firstScope = verifyCapabilityScope(minted.capabilityReceipt.capability, firstAction, firstAction.operation_id, { resolveCaid: () => caid });
+    const secondScope = verifyCapabilityScope(minted.capabilityReceipt.capability, secondAction, secondAction.operation_id, { resolveCaid: () => caid });
+    assert.equal(firstScope.ok, true);
+    assert.equal(secondScope.ok, true);
+    assert.notEqual(firstScope.action_digest, secondScope.action_digest);
+    assert.equal(firstScope.action_digest, capabilityActionDigest(firstAction));
+    assert.equal(secondScope.action_digest, capabilityActionDigest(secondAction));
+    assert.equal(firstScope.action_fence_digest, secondScope.action_fence_digest);
+    assert.notEqual(firstScope.action_fence_digest, firstScope.action_digest);
+    const store = createMemoryCapabilityStore();
+    assert.equal(store.registerCapability(minted.capabilityReceipt), true);
+    const executions = [];
+    const execute = (action) => executeWithCapability({
+        capabilityReceipt: minted.capabilityReceipt,
+        secret: minted.secret,
+        action,
+        operationId: action.operation_id,
+        store,
+        trustedIssuerKeys: [keys.receipt.public_key],
+        resolveCaid: () => caid,
+        verifyBaseReceipt: () => true,
+        executeAction: async (_verifiedAction, context) => {
+            executions.push(action.operation_id);
+            return context.action_fence_digest;
+        },
+        now: NOW,
+    });
+    const first = await execute(firstAction);
+    const duplicate = await execute(secondAction);
+    assert.equal(first.ok, true);
+    assert.equal(first.action_digest, capabilityActionDigest(firstAction));
+    assert.equal(first.action_fence_digest, firstScope.action_fence_digest);
+    assert.equal(duplicate.ok, false);
+    assert.equal(duplicate.reason, 'action_already_committed');
+    assert.equal(duplicate.action_digest, capabilityActionDigest(secondAction));
+    assert.equal(duplicate.action_fence_digest, firstScope.action_fence_digest);
+    assert.equal(duplicate.holding_operation_id, firstAction.operation_id);
+    assert.deepEqual(executions, [firstAction.operation_id]);
+    assert.equal(store.getOperation(firstAction.operation_id).action_digest, capabilityActionDigest(firstAction));
+    assert.equal(store.getOperation(firstAction.operation_id).action_fence_digest, firstScope.action_fence_digest);
+});
+test('materially different CAIDs derive distinct runtime fences', async () => {
+    const keys = issuer();
+    const caidA = `caid:1:payment.release.1:jcs-sha256:${'B'.repeat(43)}`;
+    const caidB = `caid:1:payment.release.1:jcs-sha256:${'C'.repeat(43)}`;
+    const actions = [
+        scopedAction('material-a', { amount: 5, destination: 'acct_a' }),
+        scopedAction('material-b', { amount: 5, destination: 'acct_b' }),
+    ];
+    const resolveCaid = (action) => action.destination === 'acct_a' ? caidA : caidB;
+    const minted = mintCapabilityReceipt(keys.receipt, options({
+        issuerPrivateKey: keys.privateKey,
+        capabilityId: 'caid_distinct_fences',
+        scope: {
+            profile: CAPABILITY_CAID_SCOPE_PROFILE,
+            operation_id_field: 'operation_id',
+            caids: [caidA, caidB],
+        },
+    }));
+    const scopes = actions.map((action) => verifyCapabilityScope(minted.capabilityReceipt.capability, action, action.operation_id, { resolveCaid }));
+    assert.equal(scopes.every((scope) => scope.ok), true);
+    assert.notEqual(scopes[0].action_fence_digest, scopes[1].action_fence_digest);
+    const store = createMemoryCapabilityStore();
+    assert.equal(store.registerCapability(minted.capabilityReceipt), true);
+    const results = [];
+    for (const action of actions) {
+        results.push(await executeWithCapability({
+            capabilityReceipt: minted.capabilityReceipt,
+            secret: minted.secret,
+            action,
+            operationId: action.operation_id,
+            store,
+            trustedIssuerKeys: [keys.receipt.public_key],
+            resolveCaid,
+            verifyBaseReceipt: () => true,
+            executeAction: async () => action.destination,
+            now: NOW,
+        }));
+    }
+    assert.equal(results.every((result) => result.ok), true);
+    assert.notEqual(results[0].action_fence_digest, results[1].action_fence_digest);
+});
+test('allowance profile fences use a validated verifier digest or the exact safe default', () => {
+    const action = scopedAction('allowance-fence', { destination: 'acct_allowed' });
+    const capability = {
+        scope: {
+            profile: CAPABILITY_ALLOWANCE_SCOPE_PROFILE,
+            profile_id: 'allowance:profile-fence:01',
+            profile_digest: `sha256:${'d'.repeat(64)}`,
+            operation_id_field: 'operation_id',
+        },
+    };
+    const exactDigest = capabilityActionDigest(action);
+    const verifierFenceDigest = `sha256:${'e'.repeat(64)}`;
+    const defaulted = verifyCapabilityScope(capability, action, action.operation_id, {
+        verifyActionProfile: () => true,
+    });
+    assert.equal(defaulted.ok, true);
+    assert.equal(defaulted.action_digest, exactDigest);
+    assert.equal(defaulted.action_fence_digest, exactDigest);
+    const supplied = verifyCapabilityScope(capability, action, action.operation_id, {
+        verifyActionProfile: () => ({ ok: true, action_fence_digest: verifierFenceDigest }),
+    });
+    assert.equal(supplied.ok, true);
+    assert.equal(supplied.action_digest, exactDigest);
+    assert.equal(supplied.action_fence_digest, verifierFenceDigest);
+    const malformed = verifyCapabilityScope(capability, action, action.operation_id, {
+        verifyActionProfile: () => ({ ok: true, action_fence_digest: 'not-a-digest' }),
+    });
+    assert.equal(malformed.ok, false);
+    assert.equal(malformed.reason, 'capability_action_fence_digest_invalid');
+    assert.equal(malformed.action_digest, exactDigest);
 });
 test('atomic capability spending enforces the budget and consumes indeterminate effects', async () => {
     const keys = issuer();
@@ -1444,7 +1588,7 @@ test('a delegation chain naming the leaf capability as a parent is rejected as a
         ],
     })), /references the leaf capability as a parent/);
 });
-test('the durable store fences on the action digest too, not only the memory store', async () => {
+test('the durable store fences on the separate action fence too, not only the memory store', async () => {
     // The memory fence had a behavioural test and the durable one did not: removing
     // the postgres call site left every test green because the only assertions on it
     // were about the SHAPE of the SQL string. A guard nothing exercises is a guard
@@ -1477,7 +1621,7 @@ test('the durable store fences on the action digest too, not only the memory sto
         if (sql === CAPABILITY_SQL.readActionHolder) {
             // Mirrors the partial unique index predicate in migration 20260803010000.
             const row = [...operations.values()].find((entry) => entry.operation_namespace === params[0]
-                && entry.action_digest === params[1]
+                && entry.action_fence_digest === params[1]
                 && ['reserved', 'provider_entered', 'committed'].includes(entry.status));
             return { rowCount: row ? 1 : 0, rows: row ? [row] : [] };
         }
@@ -1487,10 +1631,11 @@ test('the durable store fences on the action digest too, not only the memory sto
             return { rowCount: 1, rows: [] };
         }
         if (sql === CAPABILITY_SQL.insertOperation) {
-            const [ns, capabilityId, operationId, actionDigest, amount, currency, token, reservedAt, deadline] = params;
+            const [ns, capabilityId, operationId, actionDigest, actionFenceDigest, amount, currency, token, reservedAt, deadline] = params;
             operations.set(key(ns, operationId), {
                 operation_namespace: ns, capability_id: capabilityId, operation_id: operationId,
-                action_digest: actionDigest, amount: String(amount), currency,
+                action_digest: actionDigest, action_fence_digest: actionFenceDigest,
+                amount: String(amount), currency,
                 reservation_token: token, status: 'reserved', outcome: null,
                 reserved_at: reservedAt, entry_deadline_at: deadline, provider_entry_at: null,
             });
@@ -1501,23 +1646,32 @@ test('the durable store fences on the action digest too, not only the memory sto
     const store = createPostgresCapabilityStore({ transaction, providerEntryTimeoutMs: 1_000 });
     assert.equal(await store.registerCapability(minted.capabilityReceipt), true);
     const capabilityId = minted.capabilityReceipt.capability.id;
-    const oneAction = capabilityActionDigest(scopedAction('merge-pr-99'));
-    const reserve = (operationId, actionDigest = oneAction) => store.reserveSpend({
+    const firstAction = capabilityActionDigest(scopedAction('evt_1', { target: 'merge-pr-99' }));
+    const secondAction = capabilityActionDigest(scopedAction('evt_2', { target: 'merge-pr-99' }));
+    const oneFence = capabilityActionDigest({ target: 'merge-pr-99' });
+    const reserve = (operationId, actionDigest, actionFenceDigest) => store.reserveSpend({
         capabilityId,
         capabilityFingerprint: states.get(capabilityId).capability_fingerprint,
         operationId,
         actionDigest,
+        actionFenceDigest,
         amount: 1,
         currency: 'USD',
         now: NOW,
     });
-    assert.equal((await reserve('evt_1')).ok, true);
-    const duplicate = await reserve('evt_2');
+    assert.equal((await reserve('evt_1', firstAction, oneFence)).ok, true);
+    const duplicate = await reserve('evt_2', secondAction, oneFence);
     assert.equal(duplicate.ok, false);
     assert.equal(duplicate.reason, 'action_in_flight');
     assert.equal(duplicate.holding_operation_id, 'evt_1');
+    assert.equal(duplicate.action_digest, secondAction);
+    assert.equal(duplicate.action_fence_digest, oneFence);
+    assert.equal(operations.get(key(capabilityId, 'evt_1')).action_digest, firstAction);
+    assert.equal(operations.get(key(capabilityId, 'evt_1')).action_fence_digest, oneFence);
     // A different action is unaffected.
-    assert.equal((await reserve('evt_3', capabilityActionDigest(scopedAction('merge-pr-100')))).ok, true);
+    const distinctAction = capabilityActionDigest(scopedAction('evt_3', { target: 'merge-pr-100' }));
+    const distinctFence = capabilityActionDigest({ target: 'merge-pr-100' });
+    assert.equal((await reserve('evt_3', distinctAction, distinctFence)).ok, true);
 });
 test('a concurrent postgres action-fence collision returns a closed refusal instead of escaping', async () => {
     const keys = issuer();
@@ -1528,6 +1682,7 @@ test('a concurrent postgres action-fence collision returns a closed refusal inst
     const reference = createMemoryCapabilityStore();
     assert.equal(reference.registerCapability(minted.capabilityReceipt), true);
     const state = reference.getState(minted.capabilityReceipt.capability.id);
+    let actionHolderReads = 0;
     const transaction = async (callback) => callback(async (sql) => {
         if (sql === CAPABILITY_SQL.register)
             return { rowCount: 1, rows: [] };
@@ -1545,8 +1700,14 @@ test('a concurrent postgres action-fence collision returns a closed refusal inst
                     }],
             };
         }
-        if (sql === CAPABILITY_SQL.readOperation || sql === CAPABILITY_SQL.readActionHolder) {
+        if (sql === CAPABILITY_SQL.readOperation) {
             return { rowCount: 0, rows: [] };
+        }
+        if (sql === CAPABILITY_SQL.readActionHolder) {
+            actionHolderReads += 1;
+            return actionHolderReads === 1
+                ? { rowCount: 0, rows: [] }
+                : { rowCount: 1, rows: [{ operation_id: 'evt_racing_winner', status: 'reserved' }] };
         }
         if (sql === CAPABILITY_SQL.reserveState)
             return { rowCount: 1, rows: [] };
@@ -1573,6 +1734,8 @@ test('a concurrent postgres action-fence collision returns a closed refusal inst
         ok: false,
         reason: 'action_in_flight',
         action_digest: capabilityActionDigest(scopedAction('merge-pr-race')),
+        action_fence_digest: capabilityActionDigest(scopedAction('merge-pr-race')),
+        holding_operation_id: 'evt_racing_winner',
     });
 });
 test('an unrelated postgres unique violation is not laundered into action_in_flight', async () => {
@@ -1717,13 +1880,58 @@ test('real PostgreSQL action fence is load-bearing across capability rows', {
     }
     try {
         assert.equal(await runRace(`${schemaPrefix}_shipped`, CAPABILITY_STATE_DDL), 1);
-        const vulnerableDdl = CAPABILITY_STATE_DDL.replace('CREATE UNIQUE INDEX IF NOT EXISTS ep_capability_operations_live_action_uniq', 'CREATE INDEX IF NOT EXISTS ep_capability_operations_live_action_uniq');
+        const vulnerableDdl = CAPABILITY_STATE_DDL
+            .replace('CREATE UNIQUE INDEX IF NOT EXISTS ep_capability_operations_live_action_uniq', 'CREATE INDEX IF NOT EXISTS ep_capability_operations_live_action_uniq')
+            .replace(/DO \$capability_action_fence_index_contract\$[\s\S]*?\$capability_action_fence_index_contract\$;/, '');
         assert.notEqual(vulnerableDdl, CAPABILITY_STATE_DDL, 'mutation must remove uniqueness');
+        assert.doesNotMatch(vulnerableDdl, /capability action-fence index does not match its required contract/);
         assert.equal(await runRace(`${schemaPrefix}_mutated`, vulnerableDdl), 2, 'the negative control must admit both reservations when uniqueness is removed');
     }
     finally {
         await pool.query(`DROP SCHEMA IF EXISTS ${schemaPrefix}_shipped CASCADE`);
         await pool.query(`DROP SCHEMA IF EXISTS ${schemaPrefix}_mutated CASCADE`);
+        await pool.end();
+    }
+});
+test('package DDL rejects a same-name index with a non-unique or wrong contract', {
+    skip: capabilityPostgresUrl ? false : 'ADMISSION_STORE_POSTGRES_TEST_URL is not configured',
+}, async () => {
+    const { Pool } = require('pg');
+    const pool = new Pool({ connectionString: capabilityPostgresUrl, max: 1 });
+    const schemaPrefix = `ep_action_fence_contract_${process.pid}_${Date.now()}`;
+    const conflictingIndexes = [
+        `CREATE INDEX ep_capability_operations_live_action_uniq
+       ON ep_capability_operations (operation_namespace, action_fence_digest)
+       WHERE status IN ('reserved', 'provider_entered', 'committed')`,
+        `CREATE UNIQUE INDEX ep_capability_operations_live_action_uniq
+       ON ep_capability_operations (operation_namespace, action_digest)
+       WHERE status IN ('reserved', 'provider_entered', 'committed')`,
+        `CREATE UNIQUE INDEX ep_capability_operations_live_action_uniq
+       ON ep_capability_operations (operation_namespace, action_fence_digest)
+       INCLUDE (action_digest)
+       WHERE status IN ('reserved', 'provider_entered', 'committed')`,
+    ];
+    try {
+        for (const [index, conflictingIndex] of conflictingIndexes.entries()) {
+            const schema = `${schemaPrefix}_${index}`;
+            await pool.query(`CREATE SCHEMA ${schema}`);
+            const client = await pool.connect();
+            try {
+                await client.query(`SET search_path TO ${schema}, public`);
+                await client.query(CAPABILITY_STATE_DDL);
+                await client.query('DROP INDEX ep_capability_operations_live_action_uniq');
+                await client.query(conflictingIndex);
+                await assert.rejects(client.query(CAPABILITY_STATE_DDL), (error) => error.code === '55000');
+            }
+            finally {
+                client.release();
+            }
+        }
+    }
+    finally {
+        for (const index of conflictingIndexes.keys()) {
+            await pool.query(`DROP SCHEMA IF EXISTS ${schemaPrefix}_${index} CASCADE`);
+        }
         await pool.end();
     }
 });

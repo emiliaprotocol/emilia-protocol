@@ -33,6 +33,7 @@ export const CAPABILITY_HASH_ALGORITHM = 'sha256';
 export const CAPABILITY_SCOPE_PROFILE = 'urn:emilia:scope:action-digest-set-v1';
 export const CAPABILITY_CAID_SCOPE_PROFILE = 'urn:emilia:scope:caid-set-v1';
 export const CAPABILITY_ALLOWANCE_SCOPE_PROFILE = 'EP-CAPABILITY-ALLOWANCE-SCOPE-v1';
+export const CAPABILITY_ACTION_FENCE_PROFILE = 'EP-CAPABILITY-ACTION-FENCE-v1';
 
 // 2^521 - 1 is a prime and is comfortably larger than a 256-bit secret.
 const FIELD = (2n ** 521n) - 1n;
@@ -71,6 +72,7 @@ type ReserveSpendOptions = {
   operationNamespace?: string;
   operationId: string;
   actionDigest: string;
+  actionFenceDigest?: string;
   amount: number;
   currency: string;
   allowanceStatus?: AllowanceStatusAssertion;
@@ -125,6 +127,19 @@ type ExecuteWithCapabilityOptions = {
   operationId?: string | null;
   now?: number | (() => number);
   thresholdSecretVerified?: boolean;
+};
+type ExecuteWithCapabilityResult = {
+  ok: boolean;
+  reason?: string;
+  result?: any;
+  scope?: any;
+  authorization?: any;
+  operation_id?: string | null;
+  action_digest?: string;
+  action_fence_digest?: string;
+  holding_operation_id?: string | null;
+  caid?: string;
+  remaining?: any;
 };
 
 function isRecord(value: unknown): value is Record<string, any> {
@@ -400,6 +415,20 @@ export function capabilityActionDigest(action) {
   return `sha256:${sha256Hex(Buffer.from(canonicalize(action), 'utf8'))}`;
 }
 
+/**
+ * Derive the namespace-level duplicate-action fence for a resolved CAID.
+ * This domain is intentionally separate from the exact v1 action digest: CAID
+ * scope may join wrapper-distinct exact actions without changing what either
+ * action was or what capabilityActionDigest means.
+ */
+function capabilityCaidActionFenceDigest(caid: string) {
+  return `sha256:${sha256Hex(Buffer.from(canonicalize({
+    profile: CAPABILITY_ACTION_FENCE_PROFILE,
+    kind: 'caid',
+    caid,
+  }), 'utf8'))}`;
+}
+
 function normalizeCapabilityScope(scope): any {
   if (!isRecord(scope) || ![
     CAPABILITY_SCOPE_PROFILE,
@@ -487,7 +516,8 @@ export function verifyCapabilityScope(capability, action, operationId, {
   try {
     const scope = normalizeCapabilityScope(capability?.scope);
     const actionDigest = capabilityActionDigest(action);
-    let caid = null;
+    let actionFenceDigest = actionDigest;
+    let caid: string | null = null;
     if (scope.profile === CAPABILITY_ALLOWANCE_SCOPE_PROFILE) {
       if (typeof verifyActionProfile !== 'function') {
         return {
@@ -508,6 +538,17 @@ export function verifyCapabilityScope(capability, action, operationId, {
           action_digest: actionDigest,
         };
       }
+      if (isRecord(result) && Object.hasOwn(result, 'action_fence_digest')) {
+        try {
+          actionFenceDigest = validateActionDigest(result.action_fence_digest);
+        } catch {
+          return {
+            ok: false,
+            reason: 'capability_action_fence_digest_invalid',
+            action_digest: actionDigest,
+          };
+        }
+      }
     } else if (scope.profile === CAPABILITY_CAID_SCOPE_PROFILE) {
       if (typeof resolveCaid !== 'function') {
         return { ok: false, reason: 'capability_caid_resolver_required', action_digest: actionDigest };
@@ -520,6 +561,7 @@ export function verifyCapabilityScope(capability, action, operationId, {
       if (!scope.caids.includes(caid)) {
         return { ok: false, reason: 'capability_action_out_of_scope', action_digest: actionDigest, caid };
       }
+      actionFenceDigest = capabilityCaidActionFenceDigest(caid);
     } else if (!scope.action_digests.includes(actionDigest)) {
       return { ok: false, reason: 'capability_action_out_of_scope', action_digest: actionDigest };
     }
@@ -534,6 +576,7 @@ export function verifyCapabilityScope(capability, action, operationId, {
     return {
       ok: true,
       action_digest: actionDigest,
+      action_fence_digest: actionFenceDigest,
       ...(caid ? { caid } : {}),
       ...(scope.profile === CAPABILITY_ALLOWANCE_SCOPE_PROFILE
         ? { operation_namespace: scope.profile_id }
@@ -931,8 +974,8 @@ export function createMemoryCapabilityStore({
   const allowanceStatuses = new Map();
   const operationKey = (operationNamespace, operationId) =>
     JSON.stringify([operationNamespace, operationId]);
-  const actionKey = (operationNamespace, actionDigest) =>
-    JSON.stringify([operationNamespace, actionDigest]);
+  const actionKey = (operationNamespace, actionFenceDigest) =>
+    JSON.stringify([operationNamespace, actionFenceDigest]);
   // actionKey -> operationKey. A HINT, never the source of truth. Every read
   // revalidates the operation it points at, so a holder that has since been
   // released simply fails the status test and the entry is overwritten. That is
@@ -982,10 +1025,11 @@ export function createMemoryCapabilityStore({
       });
       return { ok: true, idempotent: false };
     },
-    async reserveSpend({ capabilityId, capabilityFingerprint, operationNamespace = capabilityId, operationId, actionDigest, amount, currency, allowanceStatus, now = Date.now }: ReserveSpendOptions) {
+    async reserveSpend({ capabilityId, capabilityFingerprint, operationNamespace = capabilityId, operationId, actionDigest, actionFenceDigest = actionDigest, amount, currency, allowanceStatus, now = Date.now }: ReserveSpendOptions) {
       validateOperationId(operationId);
       validateOperationNamespace(operationNamespace);
       validateActionDigest(actionDigest);
+      validateActionDigest(actionFenceDigest);
       validateAmount(amount);
       validateCurrency(currency);
       const state = states.get(capabilityId);
@@ -1011,20 +1055,30 @@ export function createMemoryCapabilityStore({
       }
       const key = operationKey(operationNamespace, operationId);
       const existing = operations.get(key);
-      if (existing) return { ok: false, reason: existingOperationReason(existing.status) };
+      if (existing) {
+        return {
+          ok: false,
+          reason: existingOperationReason(existing.status),
+          action_digest: actionDigest,
+          action_fence_digest: actionFenceDigest,
+          holding_operation_id: existing.operation_id,
+        };
+      }
       // Fence on the ACTION, not only on the token. A caller that retries
       // request-for-approval gets a fresh operation id, and both requests carry
-      // the same action digest. Keying only on the id let both reserve, so the
-      // same merge, payout, or delete could be authorized twice under two ids.
+      // the same material-action fence. Keying only on the id let both reserve,
+      // so the same merge, payout, or delete could be authorized twice under
+      // two ids.
       // The budget hid this whenever an amount was attached; it hid nothing for
       // a zero-amount irreversible action.
-      const held = actionHolders.get(actionKey(operationNamespace, actionDigest));
+      const held = actionHolders.get(actionKey(operationNamespace, actionFenceDigest));
       const holder = held === undefined ? undefined : operations.get(held);
       if (holder && ACTION_HOLDING_STATUSES.includes(holder.status)) {
         return {
           ok: false,
           reason: actionHeldReason(holder.status),
           action_digest: actionDigest,
+          action_fence_digest: actionFenceDigest,
           holding_operation_id: holder.operation_id,
         };
       }
@@ -1039,6 +1093,7 @@ export function createMemoryCapabilityStore({
         operation_id: operationId,
         capability_id: capabilityId,
         action_digest: actionDigest,
+        action_fence_digest: actionFenceDigest,
         amount,
         currency,
         status: 'reserved',
@@ -1051,10 +1106,12 @@ export function createMemoryCapabilityStore({
         allowance_status_head_digest: allowanceStatus?.status_head_digest ?? null,
       });
       state.reserved_amount += amount;
-      actionHolders.set(actionKey(operationNamespace, actionDigest), key);
+      actionHolders.set(actionKey(operationNamespace, actionFenceDigest), key);
       return {
         ok: true,
         operation_id: operationId,
+        action_digest: actionDigest,
+        action_fence_digest: actionFenceDigest,
         reservation_token: reservationToken,
         entry_deadline_at: entryDeadlineAt,
         remaining: state.budget_amount - state.consumed_amount - state.reserved_amount,
@@ -1291,6 +1348,7 @@ CREATE TABLE IF NOT EXISTS ${CAPABILITY_OPERATION_TABLE} (
   operation_id TEXT NOT NULL,
   capability_id TEXT NOT NULL REFERENCES ${CAPABILITY_STATE_TABLE}(capability_id),
   action_digest TEXT NOT NULL CHECK (action_digest ~ '^sha256:[0-9a-f]{64}$'),
+  action_fence_digest TEXT NOT NULL CHECK (action_fence_digest ~ '^sha256:[0-9a-f]{64}$'),
   amount BIGINT NOT NULL CHECK (amount > 0),
   currency TEXT NOT NULL,
   status TEXT NOT NULL CONSTRAINT ${CAPABILITY_OPERATION_TABLE}_status_check CHECK (status IN ('reserved', 'provider_entered', 'committed', 'released')),
@@ -1336,11 +1394,17 @@ ALTER TABLE ${CAPABILITY_OPERATION_TABLE}
 ALTER TABLE ${CAPABILITY_OPERATION_TABLE} ADD COLUMN IF NOT EXISTS allowance_revision BIGINT CHECK (allowance_revision > 0);
 ALTER TABLE ${CAPABILITY_OPERATION_TABLE} ADD COLUMN IF NOT EXISTS allowance_status_epoch BIGINT CHECK (allowance_status_epoch > 0);
 ALTER TABLE ${CAPABILITY_OPERATION_TABLE} ADD COLUMN IF NOT EXISTS allowance_status_head_digest TEXT CHECK (allowance_status_head_digest ~ '^sha256:[0-9a-f]{64}$');
+ALTER TABLE ${CAPABILITY_OPERATION_TABLE} ADD COLUMN IF NOT EXISTS action_fence_digest TEXT CHECK (action_fence_digest ~ '^sha256:[0-9a-f]{64}$');
 UPDATE ${CAPABILITY_OPERATION_TABLE}
   SET operation_namespace = capability_id
   WHERE operation_namespace IS NULL;
+UPDATE ${CAPABILITY_OPERATION_TABLE}
+  SET action_fence_digest = action_digest
+  WHERE action_fence_digest IS NULL;
 ALTER TABLE ${CAPABILITY_OPERATION_TABLE}
   ALTER COLUMN operation_namespace SET NOT NULL;
+ALTER TABLE ${CAPABILITY_OPERATION_TABLE}
+  ALTER COLUMN action_fence_digest SET NOT NULL;
 DO $capability_operation_primary_key$
 DECLARE
   current_primary_key_name TEXT;
@@ -1373,7 +1437,7 @@ BEGIN
     SELECT 1
       FROM ${CAPABILITY_OPERATION_TABLE}
       WHERE status IN ('reserved', 'provider_entered', 'committed')
-      GROUP BY operation_namespace, action_digest
+      GROUP BY operation_namespace, action_fence_digest
       HAVING count(*) > 1
   ) THEN
     RAISE EXCEPTION USING
@@ -1383,8 +1447,107 @@ BEGIN
 END
 $capability_live_action_preflight$;
 CREATE UNIQUE INDEX IF NOT EXISTS ${ACTION_FENCE_CONSTRAINT}
-  ON ${CAPABILITY_OPERATION_TABLE}(operation_namespace, action_digest)
-  WHERE status IN ('reserved', 'provider_entered', 'committed');`;
+  ON ${CAPABILITY_OPERATION_TABLE}(operation_namespace, action_fence_digest)
+  WHERE status IN ('reserved', 'provider_entered', 'committed');
+DO $capability_action_fence_index_contract$
+DECLARE
+  index_is_unique BOOLEAN;
+  index_is_valid BOOLEAN;
+  index_is_ready BOOLEAN;
+  index_is_immediate BOOLEAN;
+  index_is_exclusion BOOLEAN;
+  index_nulls_not_distinct BOOLEAN;
+  index_access_method TEXT;
+  index_table OID;
+  index_key_count INTEGER;
+  index_attribute_count INTEGER;
+  index_key_columns TEXT[];
+  index_predicate TEXT;
+  normalized_predicate TEXT;
+BEGIN
+  SELECT
+      i.indisunique,
+      i.indisvalid,
+      i.indisready,
+      i.indimmediate,
+      i.indisexclusion,
+      i.indnullsnotdistinct,
+      access_method.amname,
+      i.indrelid,
+      i.indnkeyatts,
+      i.indnatts,
+      ARRAY(
+        SELECT a.attname
+          FROM unnest(i.indkey::SMALLINT[]) WITH ORDINALITY AS key(attnum, ordinal)
+          JOIN pg_attribute AS a
+            ON a.attrelid = i.indrelid
+           AND a.attnum = key.attnum
+          WHERE key.ordinal <= i.indnkeyatts
+          ORDER BY key.ordinal
+      ),
+      pg_get_expr(i.indpred, i.indrelid)
+    INTO
+      index_is_unique,
+      index_is_valid,
+      index_is_ready,
+      index_is_immediate,
+      index_is_exclusion,
+      index_nulls_not_distinct,
+      index_access_method,
+      index_table,
+      index_key_count,
+      index_attribute_count,
+      index_key_columns,
+      index_predicate
+    FROM pg_index AS i
+    JOIN pg_class AS index_relation
+      ON index_relation.oid = i.indexrelid
+    JOIN pg_am AS access_method
+      ON access_method.oid = index_relation.relam
+    WHERE i.indexrelid = to_regclass('${ACTION_FENCE_CONSTRAINT}')
+      AND i.indrelid = '${CAPABILITY_OPERATION_TABLE}'::regclass;
+
+  normalized_predicate := replace(
+    regexp_replace(coalesce(index_predicate, ''), '\\s+', '', 'g'),
+    '::text',
+    ''
+  );
+
+  IF index_is_unique IS DISTINCT FROM TRUE
+     OR index_is_valid IS DISTINCT FROM TRUE
+     OR index_is_ready IS DISTINCT FROM TRUE
+     OR index_is_immediate IS DISTINCT FROM TRUE
+     OR index_is_exclusion IS DISTINCT FROM FALSE
+     OR index_nulls_not_distinct IS DISTINCT FROM FALSE
+     OR index_access_method IS DISTINCT FROM 'btree'
+     OR index_table IS DISTINCT FROM '${CAPABILITY_OPERATION_TABLE}'::regclass::OID
+     OR index_key_count IS DISTINCT FROM 2
+     OR index_attribute_count IS DISTINCT FROM 2
+     OR index_key_columns IS DISTINCT FROM ARRAY['operation_namespace', 'action_fence_digest']::TEXT[]
+     OR normalized_predicate IS DISTINCT FROM
+       '(status=ANY(ARRAY[''reserved'',''provider_entered'',''committed'']))' THEN
+    RAISE EXCEPTION USING
+      ERRCODE = '55000',
+      MESSAGE = 'EMILIA capability action-fence index does not match its required contract',
+      DETAIL = format(
+        'unique=%s valid=%s ready=%s immediate=%s exclusion=%s nulls_not_distinct=%s method=%s table_oid=%s key_count=%s attribute_count=%s columns=%s predicate=%s',
+        coalesce(index_is_unique::TEXT, '<missing>'),
+        coalesce(index_is_valid::TEXT, '<missing>'),
+        coalesce(index_is_ready::TEXT, '<missing>'),
+        coalesce(index_is_immediate::TEXT, '<missing>'),
+        coalesce(index_is_exclusion::TEXT, '<missing>'),
+        coalesce(index_nulls_not_distinct::TEXT, '<missing>'),
+        coalesce(index_access_method, '<missing>'),
+        coalesce(index_table::TEXT, '<missing>'),
+        coalesce(index_key_count::TEXT, '<missing>'),
+        coalesce(index_attribute_count::TEXT, '<missing>'),
+        coalesce(array_to_string(index_key_columns, ','), '<missing>'),
+        coalesce(index_predicate, '<missing>')
+      ),
+      HINT = 'Do not continue. Remove or repair the conflicting index only through a reviewed migration after preserving all operation history.';
+  END IF;
+END
+$capability_action_fence_index_contract$;`;
 
 export const CAPABILITY_SQL = Object.freeze({
   register: `INSERT INTO ${CAPABILITY_STATE_TABLE} (capability_id, budget_amount, currency, expires_at, capability_fingerprint, allowance_profile_id, allowance_digest) VALUES ($1, $2, $3, $4, $5, $6, $7) ON CONFLICT (capability_id) DO UPDATE SET capability_fingerprint = COALESCE(${CAPABILITY_STATE_TABLE}.capability_fingerprint, EXCLUDED.capability_fingerprint), allowance_profile_id = COALESCE(${CAPABILITY_STATE_TABLE}.allowance_profile_id, EXCLUDED.allowance_profile_id), allowance_digest = COALESCE(${CAPABILITY_STATE_TABLE}.allowance_digest, EXCLUDED.allowance_digest) WHERE ${CAPABILITY_STATE_TABLE}.budget_amount = EXCLUDED.budget_amount AND ${CAPABILITY_STATE_TABLE}.currency = EXCLUDED.currency AND ${CAPABILITY_STATE_TABLE}.expires_at = EXCLUDED.expires_at AND (${CAPABILITY_STATE_TABLE}.allowance_profile_id IS NULL OR ${CAPABILITY_STATE_TABLE}.allowance_profile_id IS NOT DISTINCT FROM EXCLUDED.allowance_profile_id) AND (${CAPABILITY_STATE_TABLE}.allowance_digest IS NULL OR ${CAPABILITY_STATE_TABLE}.allowance_digest IS NOT DISTINCT FROM EXCLUDED.allowance_digest)`,
@@ -1392,15 +1555,15 @@ export const CAPABILITY_SQL = Object.freeze({
   readAllowanceStatus: `SELECT allowance_profile_id, allowance_digest, revision, status_epoch, status_head_digest, status FROM ${CAPABILITY_ALLOWANCE_STATUS_TABLE} WHERE allowance_profile_id = $1 FOR UPDATE`,
   insertAllowanceStatus: `INSERT INTO ${CAPABILITY_ALLOWANCE_STATUS_TABLE} (allowance_profile_id, allowance_digest, revision, status_epoch, status_head_digest, status, updated_at) VALUES ($1, $2, $3, $4, $5, $6, $7) ON CONFLICT (allowance_profile_id) DO NOTHING`,
   updateAllowanceStatus: `UPDATE ${CAPABILITY_ALLOWANCE_STATUS_TABLE} SET allowance_digest = $4, revision = $5, status_epoch = $6, status_head_digest = $7, status = $8, updated_at = $9 WHERE allowance_profile_id = $1 AND status_epoch = $2 AND status_head_digest = $3`,
-  readOperation: `SELECT operation_namespace, operation_id, capability_id, action_digest, amount, currency, status, reservation_token, outcome, reconciliation_outcome, reconciliation_evidence_digest, allowance_revision, allowance_status_epoch, allowance_status_head_digest, reconciled_at, reserved_at, entry_deadline_at, provider_entry_at, released_at, release_reason, release_evidence_profile, release_evidence_digest FROM ${CAPABILITY_OPERATION_TABLE} WHERE operation_namespace = $1 AND operation_id = $2 FOR UPDATE`,
-  // Is this exact action already held by SOME operation, whatever its id? The
-  // An existing holder is row-locked here. Same-capability reservations also
+  readOperation: `SELECT operation_namespace, operation_id, capability_id, action_digest, action_fence_digest, amount, currency, status, reservation_token, outcome, reconciliation_outcome, reconciliation_evidence_digest, allowance_revision, allowance_status_epoch, allowance_status_head_digest, reconciled_at, reserved_at, entry_deadline_at, provider_entry_at, released_at, release_reason, release_evidence_profile, release_evidence_digest FROM ${CAPABILITY_OPERATION_TABLE} WHERE operation_namespace = $1 AND operation_id = $2 FOR UPDATE`,
+  // Is this material-action fence already held by SOME operation, whatever its
+  // id? An existing holder is row-locked here. Same-capability reservations also
   // serialize on readState. For custom namespaces spanning capability rows, the
   // partial unique index shipped in CAPABILITY_STATE_DDL (and mirrored by the
   // repository migration) is the authoritative race backstop because
   // PostgreSQL cannot lock a row that does not exist yet.
-  readActionHolder: `SELECT operation_id, status FROM ${CAPABILITY_OPERATION_TABLE} WHERE operation_namespace = $1 AND action_digest = $2 AND status IN ('reserved', 'provider_entered', 'committed') LIMIT 1 FOR UPDATE`,
-  insertOperation: `INSERT INTO ${CAPABILITY_OPERATION_TABLE} (operation_namespace, capability_id, operation_id, action_digest, amount, currency, status, reservation_token, reserved_at, entry_deadline_at, allowance_revision, allowance_status_epoch, allowance_status_head_digest) VALUES ($1, $2, $3, $4, $5, $6, 'reserved', $7, $8, $9, $10, $11, $12)`,
+  readActionHolder: `SELECT operation_id, status, action_digest, action_fence_digest FROM ${CAPABILITY_OPERATION_TABLE} WHERE operation_namespace = $1 AND action_fence_digest = $2 AND status IN ('reserved', 'provider_entered', 'committed') LIMIT 1 FOR UPDATE`,
+  insertOperation: `INSERT INTO ${CAPABILITY_OPERATION_TABLE} (operation_namespace, capability_id, operation_id, action_digest, action_fence_digest, amount, currency, status, reservation_token, reserved_at, entry_deadline_at, allowance_revision, allowance_status_epoch, allowance_status_head_digest) VALUES ($1, $2, $3, $4, $5, $6, $7, 'reserved', $8, $9, $10, $11, $12, $13)`,
   reserveState: `UPDATE ${CAPABILITY_STATE_TABLE} SET reserved_amount = reserved_amount + $2 WHERE capability_id = $1 AND budget_amount - consumed_amount - reserved_amount >= $2`,
   beginProviderEntry: `UPDATE ${CAPABILITY_OPERATION_TABLE} SET status = 'provider_entered', provider_entry_at = $5 WHERE operation_namespace = $1 AND operation_id = $2 AND capability_id = $3 AND status = 'reserved' AND reservation_token = $4 AND entry_deadline_at IS NOT NULL AND entry_deadline_at > $5`,
   commitOperation: `UPDATE ${CAPABILITY_OPERATION_TABLE} SET status = 'committed', outcome = $4, committed_at = $5 WHERE operation_namespace = $1 AND operation_id = $2 AND capability_id = $3 AND status = $7 AND reservation_token = $6`,
@@ -1507,9 +1670,10 @@ export function createPostgresCapabilityStore({
         return { ok: true, idempotent: false };
       });
     },
-    async reserveSpend({ capabilityId, capabilityFingerprint, operationNamespace = capabilityId, operationId, actionDigest, amount, currency, allowanceStatus, now = Date.now }: ReserveSpendOptions) {
+    async reserveSpend({ capabilityId, capabilityFingerprint, operationNamespace = capabilityId, operationId, actionDigest, actionFenceDigest = actionDigest, amount, currency, allowanceStatus, now = Date.now }: ReserveSpendOptions) {
       validateOperationId(operationId); validateOperationNamespace(operationNamespace); validateAmount(amount); validateCurrency(currency);
       validateActionDigest(actionDigest);
+      validateActionDigest(actionFenceDigest);
       const at = nowMs(now);
       try {
         return await transaction(async (query) => {
@@ -1540,17 +1704,26 @@ export function createPostgresCapabilityStore({
           return { ok: false, reason: 'allowance_status_not_applicable' };
         }
         const operationResult = await query(CAPABILITY_SQL.readOperation, [operationNamespace, operationId]);
-        if (operationResult?.rows?.[0]) return { ok: false, reason: existingOperationReason(operationResult.rows[0].status) };
+        if (operationResult?.rows?.[0]) {
+          return {
+            ok: false,
+            reason: existingOperationReason(operationResult.rows[0].status),
+            action_digest: actionDigest,
+            action_fence_digest: actionFenceDigest,
+            holding_operation_id: operationResult.rows[0].operation_id,
+          };
+        }
         // Same fence as the memory store: a second operation id carrying an
-        // action digest that is already reserved, entered, or committed is a
-        // duplicate authorization of one action, not a new one.
-        const holderResult = await query(CAPABILITY_SQL.readActionHolder, [operationNamespace, actionDigest]);
+        // material-action fence that is already reserved, entered, or committed
+        // is a duplicate authorization of one action, not a new one.
+        const holderResult = await query(CAPABILITY_SQL.readActionHolder, [operationNamespace, actionFenceDigest]);
         const holder = holderResult?.rows?.[0];
         if (holder) {
           return {
             ok: false,
             reason: actionHeldReason(holder.status),
             action_digest: actionDigest,
+            action_fence_digest: actionFenceDigest,
             holding_operation_id: holder.operation_id,
           };
         }
@@ -1563,37 +1736,26 @@ export function createPostgresCapabilityStore({
         const reserved = await query(CAPABILITY_SQL.reserveState, [capabilityId, amount]);
         if (reserved?.rowCount !== 1) return { ok: false, reason: 'budget_reservation_conflict' };
         const entryDeadlineAt = entryDeadline(at, capabilityExpiry, entryTimeoutMs);
-        try {
-          await query(CAPABILITY_SQL.insertOperation, [
-            operationNamespace,
-            capabilityId,
-            operationId,
-            actionDigest,
-            amount,
-            currency,
-            token,
-            new Date(at).toISOString(),
-            new Date(entryDeadlineAt).toISOString(),
-            assertedAllowanceStatus?.revision ?? null,
-            assertedAllowanceStatus?.status_epoch ?? null,
-            assertedAllowanceStatus?.status_head_digest ?? null,
-          ]);
-        } catch (error) {
-          // The readActionHolder above takes FOR UPDATE, so two reservations in
-          // the same transaction serialize there. A caller reaching this table
-          // on another connection can still lose the race, and then the partial
-          // unique index rejects the insert. Losing a race is a refusal with a
-          // reason, not an exception: a thrown 23505 would escape reserveSpend's
-          // result contract and reach the caller as a crash, which is the
-          // opposite of the property this index exists to provide.
-          if (isLiveActionUniqueViolation(error)) {
-            return { ok: false, reason: 'action_in_flight', action_digest: actionDigest };
-          }
-          throw error;
-        }
+        await query(CAPABILITY_SQL.insertOperation, [
+          operationNamespace,
+          capabilityId,
+          operationId,
+          actionDigest,
+          actionFenceDigest,
+          amount,
+          currency,
+          token,
+          new Date(at).toISOString(),
+          new Date(entryDeadlineAt).toISOString(),
+          assertedAllowanceStatus?.revision ?? null,
+          assertedAllowanceStatus?.status_epoch ?? null,
+          assertedAllowanceStatus?.status_head_digest ?? null,
+        ]);
         return {
           ok: true,
           operation_id: operationId,
+          action_digest: actionDigest,
+          action_fence_digest: actionFenceDigest,
           reservation_token: token,
           entry_deadline_at: entryDeadlineAt,
           remaining: available - amount,
@@ -1604,11 +1766,23 @@ export function createPostgresCapabilityStore({
         // either inserts. The database constraint decides the winner. Translate
         // that expected race into the same closed result as the preflight read;
         // the transaction contract must roll back the budget reservation first.
-        if (isActionFenceConflict(error)) {
+        if (isActionFenceConflict(error) || isLiveActionUniqueViolation(error)) {
+          let holder: Record<string, any> | null = null;
+          try {
+            const holderResult = await transaction((query) => query(
+              CAPABILITY_SQL.readActionHolder,
+              [operationNamespace, actionFenceDigest],
+            ));
+            holder = holderResult?.rows?.[0] ?? null;
+          } catch {
+            // Preserve the closed conflict even if the diagnostic lookup fails.
+          }
           return {
             ok: false,
-            reason: 'action_in_flight',
+            reason: holder ? actionHeldReason(holder.status) : 'action_in_flight',
             action_digest: actionDigest,
+            action_fence_digest: actionFenceDigest,
+            holding_operation_id: holder?.operation_id ?? null,
           };
         }
         throw error;
@@ -1865,7 +2039,7 @@ export async function executeWithCapability({
   operationId = null,
   now = Date.now,
   thresholdSecretVerified = false,
-}: ExecuteWithCapabilityOptions = {}) {
+}: ExecuteWithCapabilityOptions = {}): Promise<ExecuteWithCapabilityResult> {
   const verified = verifyCapabilityReceipt(capabilityReceipt, { trustedIssuerKeys });
   if (!verified.ok) return { ok: false, reason: verified.reason };
   if ((verified.capability.threshold.m !== 1 || verified.capability.threshold.n !== 1) && thresholdSecretVerified !== true) return { ok: false, reason: 'threshold_shares_required' };
@@ -1929,12 +2103,26 @@ export async function executeWithCapability({
     operationNamespace: scope.operation_namespace ?? verified.capability.id,
     operationId,
     actionDigest: scope.action_digest,
+    actionFenceDigest: scope.action_fence_digest,
     amount: spend.amount,
     currency: spend.currency,
     ...(allowanceStatus ? { allowanceStatus } : {}),
     now,
   });
-  if (!reserved?.ok) return { ok: false, reason: reserved?.reason || 'capability_reservation_refused', authorization };
+  if (!reserved?.ok) {
+    return {
+      ok: false,
+      reason: reserved?.reason || 'capability_reservation_refused',
+      authorization,
+      operation_id: operationId,
+      action_digest: reserved?.action_digest ?? scope.action_digest,
+      action_fence_digest: reserved?.action_fence_digest ?? scope.action_fence_digest,
+      ...(Object.hasOwn(reserved ?? {}, 'holding_operation_id')
+        ? { holding_operation_id: reserved.holding_operation_id }
+        : {}),
+      ...(scope.caid ? { caid: scope.caid } : {}),
+    };
+  }
   const providerEntry = await store.beginProviderEntry({
     capabilityId: verified.capability.id,
     operationNamespace: scope.operation_namespace ?? verified.capability.id,
@@ -1949,6 +2137,7 @@ export async function executeWithCapability({
       authorization,
       operation_id: operationId,
       action_digest: scope.action_digest,
+      action_fence_digest: scope.action_fence_digest,
       ...(scope.caid ? { caid: scope.caid } : {}),
     };
   }
@@ -1958,19 +2147,32 @@ export async function executeWithCapability({
       authorization,
       operation_id: operationId,
       action_digest: scope.action_digest,
+      action_fence_digest: scope.action_fence_digest,
       ...(scope.caid ? { caid: scope.caid } : {}),
       observed_action: immutableAction,
       reservation: reserved,
       provider_entry: providerEntry,
     });
     const committed = await store.commitSpend({ capabilityId: verified.capability.id, operationNamespace: scope.operation_namespace ?? verified.capability.id, operationId, reservationToken: reserved.reservation_token, outcome: 'executed', now });
-    if (!committed?.ok) return { ok: false, reason: 'capability_commit_indeterminate', authorization, result, operation_id: operationId };
+    if (!committed?.ok) {
+      return {
+        ok: false,
+        reason: 'capability_commit_indeterminate',
+        authorization,
+        result,
+        operation_id: operationId,
+        action_digest: scope.action_digest,
+        action_fence_digest: scope.action_fence_digest,
+        ...(scope.caid ? { caid: scope.caid } : {}),
+      };
+    }
     return {
       ok: true,
       result,
       authorization,
       operation_id: operationId,
       action_digest: scope.action_digest,
+      action_fence_digest: scope.action_fence_digest,
       ...(scope.caid ? { caid: scope.caid } : {}),
       remaining: committed.remaining,
     };
@@ -1982,6 +2184,7 @@ export async function executeWithCapability({
       authorization,
       operation_id: operationId,
       action_digest: scope.action_digest,
+      action_fence_digest: scope.action_fence_digest,
       ...(scope.caid ? { caid: scope.caid } : {}),
     };
   }
@@ -2259,6 +2462,7 @@ export default {
   CAPABILITY_SCOPE_PROFILE,
   CAPABILITY_CAID_SCOPE_PROFILE,
   CAPABILITY_ALLOWANCE_SCOPE_PROFILE,
+  CAPABILITY_ACTION_FENCE_PROFILE,
   CAPABILITY_ALLOWANCE_STATUS_TABLE,
   CAPABILITY_STATE_DDL,
   CAPABILITY_SQL,
