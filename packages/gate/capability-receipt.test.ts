@@ -564,6 +564,138 @@ test('postgres reservation refuses a stale allowance head under the status row l
   assert.equal(refused.reason, 'allowance_revoked');
 });
 
+test('allowance suspension after reservation refuses provider entry and preserves the reservation', async () => {
+  const keys = issuer();
+  const profileId = 'tenant:memory/allowance:panic';
+  const allowanceDigest = `sha256:${'1'.repeat(64)}`;
+  const activeHead = `sha256:${'2'.repeat(64)}`;
+  const suspendedHead = `sha256:${'3'.repeat(64)}`;
+  const minted = mintCapabilityReceipt(keys.receipt, options({
+    issuerPrivateKey: keys.privateKey,
+    capabilityId: 'allowance_panic_capability',
+    scope: {
+      profile: CAPABILITY_ALLOWANCE_SCOPE_PROFILE,
+      profile_id: profileId,
+      profile_digest: allowanceDigest,
+      operation_id_field: 'operation_id',
+    },
+  }));
+  const store = createMemoryCapabilityStore();
+  assert.equal(store.registerCapability(minted.capabilityReceipt), true);
+  assert.equal(store.advanceAllowanceStatus({
+    allowance_profile_id: profileId,
+    allowance_digest: allowanceDigest,
+    revision: 1,
+    status_epoch: 1,
+    status_head_digest: activeHead,
+    expected_status_epoch: null,
+    expected_status_head_digest: null,
+    status: 'active',
+  }).ok, true);
+
+  const capabilityId = minted.capabilityReceipt.capability.id;
+  const reservation = await store.reserveSpend({
+    capabilityId,
+    capabilityFingerprint: store.getState(capabilityId).capability_fingerprint,
+    operationNamespace: profileId,
+    operationId: 'reserved-before-panic',
+    actionDigest: `sha256:${'4'.repeat(64)}`,
+    amount: 1,
+    currency: 'USD',
+    allowanceStatus: {
+      allowance_profile_id: profileId,
+      allowance_digest: allowanceDigest,
+      revision: 1,
+      status_epoch: 1,
+      status_head_digest: activeHead,
+    },
+    now: NOW,
+  });
+  assert.equal(reservation.ok, true);
+  assert.equal(store.advanceAllowanceStatus({
+    allowance_profile_id: profileId,
+    allowance_digest: allowanceDigest,
+    revision: 1,
+    status_epoch: 2,
+    status_head_digest: suspendedHead,
+    expected_status_epoch: 1,
+    expected_status_head_digest: activeHead,
+    status: 'suspended',
+  }).ok, true);
+
+  assert.deepEqual(await store.beginProviderEntry({
+    capabilityId,
+    operationNamespace: profileId,
+    operationId: 'reserved-before-panic',
+    reservationToken: reservation.reservation_token,
+    now: NOW + 1,
+  }), { ok: false, reason: 'allowance_suspended' });
+  assert.equal(store.getOperation('reserved-before-panic', profileId).status, 'reserved');
+  assert.equal(store.getState(capabilityId).reserved_amount, 1);
+  assert.equal(store.getState(capabilityId).consumed_amount, 0);
+});
+
+test('postgres provider entry rechecks allowance currentness under the durable lock order', async () => {
+  const profileId = 'tenant:postgres/allowance:panic';
+  const allowanceDigest = `sha256:${'5'.repeat(64)}`;
+  const activeHead = `sha256:${'6'.repeat(64)}`;
+  const suspendedHead = `sha256:${'7'.repeat(64)}`;
+  const reservationToken = 'reservation-token-1234';
+  const state = {
+    capability_id: 'postgres_allowance_panic_capability',
+    allowance_profile_id: profileId,
+    allowance_digest: allowanceDigest,
+  };
+  const status = {
+    allowance_profile_id: profileId,
+    allowance_digest: allowanceDigest,
+    revision: '1',
+    status_epoch: '2',
+    status_head_digest: suspendedHead,
+    status: 'suspended',
+  };
+  const operation = {
+    operation_namespace: profileId,
+    operation_id: 'postgres-reserved-before-panic',
+    capability_id: state.capability_id,
+    action_digest: `sha256:${'8'.repeat(64)}`,
+    action_fence_digest: `sha256:${'8'.repeat(64)}`,
+    amount: '1',
+    currency: 'USD',
+    reservation_token: reservationToken,
+    status: 'reserved',
+    entry_deadline_at: new Date(NOW + 60_000).toISOString(),
+    allowance_revision: '1',
+    allowance_status_epoch: '1',
+    allowance_status_head_digest: activeHead,
+  };
+  const statements: string[] = [];
+  const transaction = async (callback) => callback(async (sql) => {
+    statements.push(sql);
+    if (sql === CAPABILITY_SQL.readState) return { rowCount: 1, rows: [state] };
+    if (sql === CAPABILITY_SQL.readAllowanceStatus) return { rowCount: 1, rows: [status] };
+    if (sql === CAPABILITY_SQL.readOperation) return { rowCount: 1, rows: [operation] };
+    if (sql === CAPABILITY_SQL.beginProviderEntry) {
+      assert.fail('suspended allowance must refuse before provider entry');
+    }
+    throw new Error(`unexpected SQL in provider-entry currentness test: ${sql}`);
+  });
+  const store = createPostgresCapabilityStore({ transaction });
+
+  assert.deepEqual(await store.beginProviderEntry({
+    capabilityId: state.capability_id,
+    operationNamespace: profileId,
+    operationId: operation.operation_id,
+    reservationToken,
+    now: NOW + 1,
+  }), { ok: false, reason: 'allowance_suspended' });
+  assert.deepEqual(statements, [
+    CAPABILITY_SQL.readState,
+    CAPABILITY_SQL.readAllowanceStatus,
+    CAPABILITY_SQL.readOperation,
+  ]);
+});
+
 test('capability metadata is issuer-signed and tamper-evident', () => {
   const keys = issuer();
   const minted = mintCapabilityReceipt(keys.receipt, options({ issuerPrivateKey: keys.privateKey }));

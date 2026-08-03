@@ -495,11 +495,11 @@
     },
     {
       "path": "package-lock.json",
-      "sha256": "2c5fe722cc1b1985a01d16052f951a42b0e3dd6b5a15a4bfce7422374c4a02c9"
+      "sha256": "0b19dea86d32b2fb859254d5664cc0cbd4365a2c94770482efbb43a0853a4650"
     },
     {
       "path": "package.json",
-      "sha256": "63e93e239f644f2e85de7339c8403ebe73d4a3fc19173853a96400c7c023d80c"
+      "sha256": "a89a5d2ab48d7b432a0de9246461e83e1544af36d538a75f84418301e5fa163e"
     },
     {
       "path": "packages/gate/aec-execution.js",
@@ -591,7 +591,7 @@
     },
     {
       "path": "packages/gate/dist/capability-receipt.js",
-      "sha256": "18b7e666d1ee8e62c7f2cb6414b82224d57beda4a01efaef08dc6216c060a36e"
+      "sha256": "25a18815fdda69d64bbef3acae8c7db1d36b165f45d8bd3c69fb766161420b05"
     },
     {
       "path": "packages/gate/dist/cf1-conformance.js",
@@ -799,7 +799,7 @@
     },
     {
       "path": "packages/gate/src/capability-receipt.ts",
-      "sha256": "1e6c1248233df7453e732fc2ef127adb76d1773b682beef2ff9557d0bdfb5b8c"
+      "sha256": "4e0c919301169eba97c48c2c44fc42cea8efb6964be8e5ac3eb875193374c6c7"
     },
     {
       "path": "packages/gate/src/challenge-store.ts",

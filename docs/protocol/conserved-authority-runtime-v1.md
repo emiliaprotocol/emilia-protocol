@@ -90,6 +90,13 @@ entry, Gate rechecks:
 If any check is unavailable, stale, mismatched, exhausted, suspended, revoked,
 or indeterminate, the provider credential is not released.
 
+For allowance-scoped execution, Gate captures the allowance revision and status
+head at reservation, then MUST revalidate that exact assertion against the
+current status row immediately before provider entry in the same atomic state
+domain. Suspension, revocation, or supersession after reservation therefore
+refuses entry. The reservation remains held for authenticated recovery or
+expiry; refusal does not invent evidence that the provider was never entered.
+
 Long-lived provider credentials should remain in Gate or a compatible
 credential broker. CB4A-style proxy and short-lived-token patterns can supply
 that custody layer. Condition-bounded workload keys can strengthen live-key

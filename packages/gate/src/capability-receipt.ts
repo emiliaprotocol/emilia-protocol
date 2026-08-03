@@ -395,6 +395,30 @@ function allowanceStatusRefusal(current, asserted: AllowanceStatusAssertion) {
   return null;
 }
 
+/**
+ * Reconstruct the exact allowance-status assertion captured when an operation
+ * was reserved. Provider entry replays this assertion against the current
+ * status head so a later suspension, revocation, or superseding revision takes
+ * effect before credentials cross the provider boundary.
+ */
+function reservedAllowanceStatusAssertion(state, operation): AllowanceStatusAssertion | null {
+  if (typeof state?.allowance_profile_id !== 'string'
+      || operation?.operation_namespace !== state.allowance_profile_id) {
+    return null;
+  }
+  try {
+    return normalizeAllowanceStatusAssertion({
+      allowance_profile_id: state.allowance_profile_id,
+      allowance_digest: state.allowance_digest,
+      revision: Number(operation.allowance_revision),
+      status_epoch: Number(operation.allowance_status_epoch),
+      status_head_digest: operation.allowance_status_head_digest,
+    });
+  } catch {
+    return null;
+  }
+}
+
 function exactAllowanceStatus(current, next: AdvanceAllowanceStatusOptions) {
   return current.allowance_profile_id === next.allowance_profile_id
     && current.allowance_digest === next.allowance_digest
@@ -1156,6 +1180,15 @@ export function createMemoryCapabilityStore({
         };
       }
       if (operation.reservation_token !== reservationToken) return { ok: false, reason: 'capability_reservation_owner_mismatch' };
+      const reservedAllowanceStatus = reservedAllowanceStatusAssertion(state, operation);
+      if (typeof state.allowance_profile_id === 'string'
+          && operationNamespace === state.allowance_profile_id) {
+        if (!reservedAllowanceStatus) return { ok: false, reason: 'allowance_status_assertion_required' };
+        const currentAllowanceStatus = allowanceStatuses.get(state.allowance_profile_id);
+        if (!currentAllowanceStatus) return { ok: false, reason: 'allowance_status_not_initialized' };
+        const refusal = allowanceStatusRefusal(currentAllowanceStatus, reservedAllowanceStatus);
+        if (refusal) return { ok: false, reason: refusal };
+      }
       const at = nowMs(now);
       if (at >= operation.entry_deadline_at) return { ok: false, reason: 'capability_reservation_expired' };
       operation.status = 'provider_entered';
@@ -1958,6 +1991,18 @@ export function createPostgresCapabilityStore({
       if (typeof reservationToken !== 'string' || reservationToken.length < 16) return { ok: false, reason: 'capability_reservation_token_invalid' };
       const at = nowMs(now);
       return transaction(async (query) => {
+        // Match reserveSpend's lock order (capability -> allowance status ->
+        // operation). The status row remains locked until provider entry is
+        // committed, so a concurrent panic/suspension cannot race this check.
+        const stateResult = await query(CAPABILITY_SQL.readState, [capabilityId]);
+        const state = stateResult?.rows?.[0];
+        if (!state) return { ok: false, reason: 'capability_not_registered' };
+        let currentAllowanceStatus = null;
+        if (typeof state.allowance_profile_id === 'string'
+            && operationNamespace === state.allowance_profile_id) {
+          const statusResult = await query(CAPABILITY_SQL.readAllowanceStatus, [state.allowance_profile_id]);
+          currentAllowanceStatus = statusResult?.rows?.[0] ?? null;
+        }
         const operationResult = await query(CAPABILITY_SQL.readOperation, [operationNamespace, operationId]);
         const operation = operationResult?.rows?.[0];
         if (!operation) return { ok: false, reason: 'capability_operation_not_found' };
@@ -1971,6 +2016,14 @@ export function createPostgresCapabilityStore({
           };
         }
         if (operation.reservation_token !== reservationToken) return { ok: false, reason: 'capability_reservation_owner_mismatch' };
+        if (typeof state.allowance_profile_id === 'string'
+            && operationNamespace === state.allowance_profile_id) {
+          const reservedAllowanceStatus = reservedAllowanceStatusAssertion(state, operation);
+          if (!reservedAllowanceStatus) return { ok: false, reason: 'allowance_status_assertion_required' };
+          if (!currentAllowanceStatus) return { ok: false, reason: 'allowance_status_not_initialized' };
+          const refusal = allowanceStatusRefusal(currentAllowanceStatus, reservedAllowanceStatus);
+          if (refusal) return { ok: false, reason: refusal };
+        }
         const deadline = Date.parse(operation.entry_deadline_at);
         if (!Number.isFinite(deadline)) return { ok: false, reason: 'capability_recovery_deadline_unavailable' };
         if (at >= deadline) return { ok: false, reason: 'capability_reservation_expired' };

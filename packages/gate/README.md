@@ -841,6 +841,13 @@ with `capability_action_fence_digest_invalid`. This is an intentional
 fail-closed compatibility break: an exact digest that includes a
 wrapper-specific operation ID is not evidence of semantic uniqueness.
 
+Allowance status is checked twice: once while reserving authority and again,
+under the same atomic state-domain lock order, immediately before provider
+entry. A suspension, revocation, or superseding status that lands between those
+transitions refuses provider entry. The reservation stays held until the
+authenticated recovery path or its deadline resolves it; Gate does not silently
+refund authority or claim that the provider was never entered.
+
 `executeWithGateAllowance()` derives its explicit fence from the closed,
 profile-validated action after removing only the signed
 `operation_id_field`. The allowance `profile_id` remains the operation
