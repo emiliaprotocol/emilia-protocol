@@ -41,7 +41,9 @@ const SESSION_TOKEN = `eaa1_${'1'.repeat(64)}`;
 const BOND_ID = '22222222-2222-4222-8222-222222222222';
 const BOND_DIGEST = `sha256:${'2'.repeat(64)}`;
 const RECORD_ID = `agent_record_${'3'.repeat(40)}`;
-const ARENA_SHARE_ID = `arena_share_${'4'.repeat(40)}`;
+const ARENA_SESSION_ID = `arena_session_${'4'.repeat(32)}`;
+const ARENA_TOKEN_HASH = '4'.repeat(64);
+const ARENA_ATTEMPT_ID = `arena_attempt_${'4'.repeat(32)}`;
 const ACTION_DIGEST = `sha256:${'5'.repeat(64)}`;
 const REFUSAL_DIGEST = `sha256:${'6'.repeat(64)}`;
 const OWNER_TOKEN = `ear1_${'a'.repeat(64)}`;
@@ -72,26 +74,6 @@ function digest(character: string): string {
 
 function instant(offsetMs = 0): string {
   return new Date(Date.now() + offsetMs).toISOString();
-}
-
-function sourceProjection(input: {
-  actionDigest: string;
-  refusalDigest: string;
-  refusedAt: string;
-  decision?: 'refuse' | 'permit';
-}): JsonObject {
-  return {
-    profile: 'EP-ARENA-PUBLIC-REFUSAL-v1',
-    attempt: {
-      decision: input.decision ?? 'refuse',
-      action_digest: input.actionDigest,
-      created_at: input.refusedAt,
-    },
-    refusal_artifact: {
-      '@version': 'EP-ACTION-REFUSAL-STATEMENT-v1',
-    },
-    refusal_digest: input.refusalDigest,
-  };
 }
 
 function recordProjection(input: {
@@ -142,7 +124,9 @@ type CreateInput = {
   ownerToken: string;
   bondId: string;
   bondDigest: string;
-  arenaShareId: string;
+  arenaSessionId: string;
+  arenaTokenHash: string;
+  arenaAttemptId: string;
   sourceArtifactDigest: string;
   actionDigest: string;
   refusalDigest: string;
@@ -166,7 +150,9 @@ function createInput(overrides: Partial<CreateInput> = {}): CreateInput {
       ?? `ear1_${createHash('sha256').update(recordId, 'utf8').digest('hex')}`,
     bondId: BOND_ID,
     bondDigest: BOND_DIGEST,
-    arenaShareId: ARENA_SHARE_ID,
+    arenaSessionId: ARENA_SESSION_ID,
+    arenaTokenHash: ARENA_TOKEN_HASH,
+    arenaAttemptId: ARENA_ATTEMPT_ID,
     sourceArtifactDigest: REFUSAL_DIGEST,
     actionDigest: ACTION_DIGEST,
     refusalDigest: REFUSAL_DIGEST,
@@ -203,7 +189,7 @@ async function createRecord(
     const result = await client.query<{ result: CreatedRecord }>(
       `SELECT public.create_agent_record(
          $1::uuid, $2, $3, $4, $5::uuid, $6, $7, $8, $9, $10,
-         $11::timestamptz, $12::timestamptz, $13::timestamptz, $14::jsonb
+         $11, $12, $13::timestamptz, $14::timestamptz, $15::timestamptz, $16::jsonb
        ) AS result`,
       [
         input.adoptionId,
@@ -212,7 +198,9 @@ async function createRecord(
         input.ownerToken,
         input.bondId,
         input.bondDigest,
-        input.arenaShareId,
+        input.arenaSessionId,
+        input.arenaTokenHash,
+        input.arenaAttemptId,
         input.sourceArtifactDigest,
         input.actionDigest,
         input.refusalDigest,
@@ -226,17 +214,41 @@ async function createRecord(
   });
 }
 
-async function insertArenaShare(input: {
-  arenaShareId: string;
+async function insertArenaRefusal(input: {
+  attemptId: string;
   actionDigest: string;
   refusalDigest: string;
   refusedAt: string;
   decision?: 'refuse' | 'permit';
 }): Promise<void> {
   await database.query(
-    `INSERT INTO public.arena_shares (share_id, public_projection)
-     VALUES ($1, $2::jsonb)`,
-    [input.arenaShareId, JSON.stringify(sourceProjection(input))],
+    `INSERT INTO public.arena_attempts (
+       tenant_id, session_row_id, session_id, challenge_id, challenge_version,
+       attempt_id, attempt_nonce, action, action_digest, caid, decision, reason,
+       evidence_status, refusal_artifact, refusal_digest, created_at
+     )
+     SELECT session.tenant_id, session.id, session.session_id,
+            session.challenge_id, session.challenge_version,
+            $1, $2, $3::jsonb, $4,
+            $5, $6, $7, $8, $9::jsonb, $10, $11::timestamptz
+       FROM public.arena_sessions AS session
+      WHERE session.session_id = $12`,
+    [
+      input.attemptId,
+      `nonce_${input.attemptId.slice(-32)}`,
+      JSON.stringify({ operation_id: `adopt:${input.attemptId}` }),
+      input.actionDigest,
+      `caid:1:arena.resource.allocate.1:jcs-sha256:${'A'.repeat(43)}`,
+      input.decision ?? 'refuse',
+      input.decision === 'permit' ? null : 'allowance_per_action_limit_exceeded',
+      input.decision === 'permit' ? 'not_applicable' : 'complete',
+      input.decision === 'permit' ? null : JSON.stringify({
+        '@version': 'EP-ACTION-REFUSAL-STATEMENT-v1',
+      }),
+      input.decision === 'permit' ? null : input.refusalDigest,
+      input.refusedAt,
+      ARENA_SESSION_ID,
+    ],
   );
 }
 
@@ -331,15 +343,139 @@ suite('Agent Record v1 RPC lifecycle on PostgreSQL 17', () => {
       CREATE SCHEMA extensions;
       CREATE EXTENSION pgcrypto WITH SCHEMA extensions;
 
+      CREATE TABLE public.arena_sessions (
+        id UUID PRIMARY KEY DEFAULT extensions.gen_random_uuid(),
+        tenant_id UUID NOT NULL DEFAULT extensions.gen_random_uuid(),
+        session_id TEXT NOT NULL UNIQUE,
+        token_hash TEXT NOT NULL UNIQUE,
+        challenge_id TEXT NOT NULL,
+        challenge_version BIGINT NOT NULL,
+        issuer_id TEXT NOT NULL,
+        key_id TEXT NOT NULL,
+        public_key TEXT NOT NULL,
+        status TEXT NOT NULL,
+        expires_at TIMESTAMPTZ NOT NULL
+      );
+      CREATE TABLE public.arena_attempts (
+        tenant_id UUID NOT NULL,
+        session_row_id UUID NOT NULL,
+        session_id TEXT NOT NULL,
+        challenge_id TEXT NOT NULL,
+        challenge_version BIGINT NOT NULL,
+        attempt_id TEXT PRIMARY KEY,
+        attempt_nonce TEXT NOT NULL,
+        action JSONB NOT NULL,
+        action_digest TEXT NOT NULL,
+        caid TEXT NOT NULL,
+        decision TEXT NOT NULL,
+        reason TEXT,
+        evidence_status TEXT NOT NULL,
+        refusal_artifact JSONB,
+        refusal_digest TEXT,
+        created_at TIMESTAMPTZ NOT NULL
+      );
       CREATE TABLE public.arena_shares (
         share_id TEXT COLLATE "C" PRIMARY KEY,
+        tenant_id UUID NOT NULL,
+        session_row_id UUID NOT NULL,
+        session_id TEXT NOT NULL,
+        challenge_id TEXT NOT NULL,
+        challenge_version BIGINT NOT NULL,
+        attempt_id TEXT NOT NULL UNIQUE,
+        attempt_nonce TEXT NOT NULL,
         public_projection JSONB NOT NULL,
+        created_at TIMESTAMPTZ NOT NULL DEFAULT clock_timestamp(),
         revoked_at TIMESTAMPTZ
       );
       ALTER TABLE public.arena_shares ENABLE ROW LEVEL SECURITY;
       ALTER TABLE public.arena_shares FORCE ROW LEVEL SECURITY;
       REVOKE ALL ON TABLE public.arena_shares
         FROM PUBLIC, anon, authenticated, service_role;
+
+      CREATE FUNCTION public.publish_arena_refusal(
+        p_token_hash TEXT,
+        p_attempt_id TEXT
+      ) RETURNS JSONB
+      LANGUAGE plpgsql
+      SECURITY DEFINER
+      SET search_path = ''
+      AS $arena_publish$
+      DECLARE
+        v_attempt public.arena_attempts%ROWTYPE;
+        v_session public.arena_sessions%ROWTYPE;
+        v_share_id TEXT;
+        v_projection JSONB;
+      BEGIN
+        SELECT attempt.* INTO v_attempt
+          FROM public.arena_attempts AS attempt
+          JOIN public.arena_sessions AS session
+            ON session.id = attempt.session_row_id
+         WHERE attempt.attempt_id = p_attempt_id
+           AND session.token_hash = p_token_hash;
+        IF NOT FOUND THEN
+          RETURN pg_catalog.jsonb_build_object('ok', false, 'status', 404);
+        END IF;
+        SELECT session.* INTO v_session
+          FROM public.arena_sessions AS session
+         WHERE session.id = v_attempt.session_row_id;
+        IF v_attempt.decision <> 'refuse'
+          OR v_attempt.evidence_status <> 'complete'
+        THEN
+          RETURN pg_catalog.jsonb_build_object('ok', false, 'status', 409);
+        END IF;
+        SELECT share.share_id INTO v_share_id
+          FROM public.arena_shares AS share
+         WHERE share.attempt_id = p_attempt_id;
+        IF FOUND THEN
+          RETURN pg_catalog.jsonb_build_object(
+            'ok', true, 'idempotent', true, 'share_id', v_share_id
+          );
+        END IF;
+        v_share_id := 'arena_share_' ||
+          pg_catalog.encode(extensions.gen_random_bytes(20), 'hex');
+        v_projection := pg_catalog.jsonb_build_object(
+          'profile', 'EP-ARENA-PUBLIC-REFUSAL-v1',
+          'challenge_id', v_session.challenge_id,
+          'challenge_version', v_session.challenge_version,
+          'attempt', pg_catalog.jsonb_build_object(
+            'attempt_id', v_attempt.attempt_id,
+            'action', v_attempt.action,
+            'caid', v_attempt.caid,
+            'action_digest', v_attempt.action_digest,
+            'decision', v_attempt.decision,
+            'reason', v_attempt.reason,
+            'created_at', pg_catalog.to_char(
+              v_attempt.created_at AT TIME ZONE 'UTC',
+              'YYYY-MM-DD"T"HH24:MI:SS.MS"Z"'
+            )
+          ),
+          'refusal_artifact', v_attempt.refusal_artifact,
+          'refusal_digest', v_attempt.refusal_digest,
+          'issuer', pg_catalog.jsonb_build_object(
+            'issuer_id', v_session.issuer_id,
+            'key_id', v_session.key_id,
+            'public_key', v_session.public_key
+          ),
+          'claim_boundary',
+            'synthetic_challenge_not_identity_competence_certification_money_or_production_authority'
+        );
+        INSERT INTO public.arena_shares (
+          share_id, tenant_id, session_row_id, session_id, challenge_id,
+          challenge_version, attempt_id, attempt_nonce, public_projection
+        ) VALUES (
+          v_share_id, v_session.tenant_id, v_session.id, v_session.session_id,
+          v_session.challenge_id, v_session.challenge_version,
+          v_attempt.attempt_id, v_attempt.attempt_nonce, v_projection
+        );
+        RETURN pg_catalog.jsonb_build_object(
+          'ok', true, 'idempotent', false, 'share_id', v_share_id
+        );
+      END
+      $arena_publish$;
+      REVOKE ALL ON FUNCTION public.publish_arena_refusal(TEXT, TEXT)
+        FROM PUBLIC, anon, authenticated;
+      GRANT EXECUTE ON FUNCTION public.publish_arena_refusal(TEXT, TEXT)
+        TO service_role;
 
       CREATE FUNCTION public.read_agent_adoption_session(
         p_adoption_id UUID,
@@ -371,9 +507,18 @@ suite('Agent Record v1 RPC lifecycle on PostgreSQL 17', () => {
         FROM PUBLIC, anon, authenticated, service_role;
     `);
 
+    await database.query(
+      `INSERT INTO public.arena_sessions (
+         session_id, token_hash, challenge_id, challenge_version,
+         issuer_id, key_id, public_key, status, expires_at
+       ) VALUES ($1, $2, 'emilia.arena.allowance', 1,
+                 'arena:test', 'arena:test:key', 'test-public-key',
+                 'active', $3::timestamptz)`,
+      [ARENA_SESSION_ID, ARENA_TOKEN_HASH, instant(60_000)],
+    );
     const refusedAt = instant(-3_000);
-    await insertArenaShare({
-      arenaShareId: ARENA_SHARE_ID,
+    await insertArenaRefusal({
+      attemptId: ARENA_ATTEMPT_ID,
       actionDigest: ACTION_DIGEST,
       refusalDigest: REFUSAL_DIGEST,
       refusedAt,
@@ -395,15 +540,23 @@ suite('Agent Record v1 RPC lifecycle on PostgreSQL 17', () => {
     }
   });
 
-  it('creates one refusal-bound record without returning or storing the owner token', async () => {
-    const source = await database.query<{ public_projection: JsonObject }>(
-      'SELECT public_projection FROM public.arena_shares WHERE share_id = $1',
-      [ARENA_SHARE_ID],
+  it('atomically publishes one refusal and creates one record without returning the owner token', async () => {
+    const source = await database.query<{ refused_at: string }>(
+      `SELECT pg_catalog.to_char(
+         created_at AT TIME ZONE 'UTC',
+         'YYYY-MM-DD"T"HH24:MI:SS.MS"Z"'
+       ) AS refused_at
+       FROM public.arena_attempts WHERE attempt_id = $1`,
+      [ARENA_ATTEMPT_ID],
     );
-    const refusedAt = String(
-      (source.rows[0].public_projection.attempt as JsonObject).created_at,
-    );
+    const refusedAt = source.rows[0].refused_at;
     const input = createInput({ refusedAt });
+    const before = await database.query<{ shares: string; records: string }>(`
+      SELECT
+        (SELECT count(*)::text FROM public.arena_shares WHERE attempt_id = $1) AS shares,
+        (SELECT count(*)::text FROM agent_record_private.records WHERE record_id = $2) AS records
+    `, [ARENA_ATTEMPT_ID, RECORD_ID]);
+    expect(before.rows).toEqual([{ shares: '0', records: '0' }]);
     const created = await createRecord(input);
 
     expect(created).toMatchObject({
@@ -415,18 +568,25 @@ suite('Agent Record v1 RPC lifecycle on PostgreSQL 17', () => {
 
     const stored = await database.query<{
       owner_token_hash: string;
+      arena_share_id: string;
       public_projection: JsonObject;
       row_text: string;
     }>(`
       SELECT
         owner_token_hash,
+        arena_share_id,
         public_projection,
         pg_catalog.row_to_json(record)::text AS row_text
       FROM agent_record_private.records AS record
       WHERE record_id = $1
     `, [RECORD_ID]);
     expect(stored.rows).toHaveLength(1);
-    expect(stored.rows[0].row_text).toContain(`\"arena_share_id\":\"${ARENA_SHARE_ID}\"`);
+    expect(stored.rows[0].arena_share_id).toMatch(/^arena_share_[0-9a-f]{40}$/);
+    const published = await database.query<{ share_id: string }>(
+      'SELECT share_id FROM public.arena_shares WHERE attempt_id = $1',
+      [ARENA_ATTEMPT_ID],
+    );
+    expect(published.rows).toEqual([{ share_id: stored.rows[0].arena_share_id }]);
     expect(stored.rows[0].owner_token_hash).toBe(
       createHash('sha256').update(input.ownerToken, 'utf8').digest('hex'),
     );
@@ -439,13 +599,62 @@ suite('Agent Record v1 RPC lifecycle on PostgreSQL 17', () => {
     );
   });
 
+  it('rolls back the public share when an injected record insert failure follows publication', async () => {
+    const attemptId = `arena_attempt_${'9'.repeat(32)}`;
+    const recordId = `agent_record_${'9'.repeat(40)}`;
+    const refusalDigest = digest('e');
+    const actionDigest = digest('d');
+    const refusedAt = instant(-2_000);
+    await insertArenaRefusal({ attemptId, actionDigest, refusalDigest, refusedAt });
+    const input = createInput({
+      arenaAttemptId: attemptId,
+      recordId,
+      sourceArtifactDigest: refusalDigest,
+      refusalDigest,
+      actionDigest,
+      refusedAt,
+    });
+
+    await database.query(`
+      CREATE FUNCTION public.agent_record_injected_insert_failure()
+      RETURNS TRIGGER
+      LANGUAGE plpgsql
+      SET search_path = ''
+      AS $failure$
+      BEGIN
+        RAISE EXCEPTION 'injected Agent Record insert failure'
+          USING ERRCODE = 'XX000';
+      END
+      $failure$;
+      CREATE TRIGGER agent_record_injected_insert_failure_trigger
+        BEFORE INSERT ON agent_record_private.records
+        FOR EACH ROW EXECUTE FUNCTION public.agent_record_injected_insert_failure();
+    `);
+    try {
+      await expect(createRecord(input)).rejects.toMatchObject({ code: 'XX000' });
+    } finally {
+      await database.query(`
+        DROP TRIGGER agent_record_injected_insert_failure_trigger
+          ON agent_record_private.records;
+        DROP FUNCTION public.agent_record_injected_insert_failure();
+      `);
+    }
+
+    const counts = await database.query<{ shares: string; records: string }>(`
+      SELECT
+        (SELECT count(*)::text FROM public.arena_shares WHERE attempt_id = $1) AS shares,
+        (SELECT count(*)::text FROM agent_record_private.records WHERE record_id = $2) AS records
+    `, [attemptId, recordId]);
+    expect(counts.rows).toEqual([{ shares: '0', records: '0' }]);
+  });
+
   it('replays the exact creation idempotently after a lost response', async () => {
-    const shareId = `arena_share_${'a'.repeat(40)}`;
+    const attemptId = `arena_attempt_${'a'.repeat(32)}`;
     const sourceDigest = digest('b');
     const actionDigest = digest('c');
     const refusedAt = instant(-2_000);
-    await insertArenaShare({
-      arenaShareId: shareId,
+    await insertArenaRefusal({
+      attemptId,
       actionDigest,
       refusalDigest: sourceDigest,
       refusedAt,
@@ -453,7 +662,7 @@ suite('Agent Record v1 RPC lifecycle on PostgreSQL 17', () => {
     const input = createInput({
       recordId: `agent_record_${'a'.repeat(40)}`,
       ownerToken: `ear1_${'b'.repeat(64)}`,
-      arenaShareId: shareId,
+      arenaAttemptId: attemptId,
       sourceArtifactDigest: sourceDigest,
       refusalDigest: sourceDigest,
       actionDigest,
@@ -476,6 +685,12 @@ suite('Agent Record v1 RPC lifecycle on PostgreSQL 17', () => {
       ...input,
       ownerToken: `ear1_${'c'.repeat(64)}`,
     })).rejects.toMatchObject({ code: '23505' });
+    const replayCounts = await database.query<{ shares: string; records: string }>(`
+      SELECT
+        (SELECT count(*)::text FROM public.arena_shares WHERE attempt_id = $1) AS shares,
+        (SELECT count(*)::text FROM agent_record_private.records WHERE source_artifact_digest = $2) AS records
+    `, [attemptId, sourceDigest]);
+    expect(replayCounts.rows).toEqual([{ shares: '1', records: '1' }]);
   });
 
   it('rejects a dereferenceable Arena source in the public projection', async () => {
@@ -483,10 +698,11 @@ suite('Agent Record v1 RPC lifecycle on PostgreSQL 17', () => {
     const refusalDigest = digest('6');
     const actionDigest = digest('7');
     const refusedAt = instant(-2_000);
-    await insertArenaShare({ arenaShareId, actionDigest, refusalDigest, refusedAt });
+    const attemptId = `arena_attempt_${'3'.repeat(32)}`;
+    await insertArenaRefusal({ attemptId, actionDigest, refusalDigest, refusedAt });
     const input = createInput({
       recordId: `agent_record_${'4'.repeat(40)}`,
-      arenaShareId,
+      arenaAttemptId: attemptId,
       sourceArtifactDigest: refusalDigest,
       refusalDigest,
       actionDigest,
@@ -511,19 +727,19 @@ suite('Agent Record v1 RPC lifecycle on PostgreSQL 17', () => {
   });
 
   it('accepts a rotated safe key id and rejects key ids outside the closed set', async () => {
-    const safeShareId = `arena_share_${'7'.repeat(40)}`;
+    const safeAttemptId = `arena_attempt_${'7'.repeat(32)}`;
     const safeRefusalDigest = digest('7');
     const safeActionDigest = digest('8');
     const safeRefusedAt = instant(-2_000);
-    await insertArenaShare({
-      arenaShareId: safeShareId,
+    await insertArenaRefusal({
+      attemptId: safeAttemptId,
       actionDigest: safeActionDigest,
       refusalDigest: safeRefusalDigest,
       refusedAt: safeRefusedAt,
     });
     const safeInput = createInput({
       recordId: `agent_record_${'7'.repeat(40)}`,
-      arenaShareId: safeShareId,
+      arenaAttemptId: safeAttemptId,
       sourceArtifactDigest: safeRefusalDigest,
       refusalDigest: safeRefusalDigest,
       actionDigest: safeActionDigest,
@@ -540,19 +756,19 @@ suite('Agent Record v1 RPC lifecycle on PostgreSQL 17', () => {
       public_projection: safeProjection,
     });
 
-    const unsafeShareId = `arena_share_${'0'.repeat(40)}`;
+    const unsafeAttemptId = `arena_attempt_${'0'.repeat(32)}`;
     const unsafeRefusalDigest = digest('0');
     const unsafeActionDigest = digest('f');
     const unsafeRefusedAt = instant(-2_000);
-    await insertArenaShare({
-      arenaShareId: unsafeShareId,
+    await insertArenaRefusal({
+      attemptId: unsafeAttemptId,
       actionDigest: unsafeActionDigest,
       refusalDigest: unsafeRefusalDigest,
       refusedAt: unsafeRefusedAt,
     });
     const unsafeInput = createInput({
       recordId: `agent_record_${'8'.repeat(40)}`,
-      arenaShareId: unsafeShareId,
+      arenaAttemptId: unsafeAttemptId,
       sourceArtifactDigest: unsafeRefusalDigest,
       refusalDigest: unsafeRefusalDigest,
       actionDigest: unsafeActionDigest,
@@ -570,15 +786,15 @@ suite('Agent Record v1 RPC lifecycle on PostgreSQL 17', () => {
   });
 
   it('serializes same-source creation so exactly one concurrent replay wins', async () => {
-    const arenaShareId = `arena_share_${'8'.repeat(40)}`;
+    const attemptId = `arena_attempt_${'8'.repeat(32)}`;
     const refusalDigest = digest('9');
     const actionDigest = digest('a');
     const refusedAt = instant(-2_000);
-    await insertArenaShare({ arenaShareId, actionDigest, refusalDigest, refusedAt });
+    await insertArenaRefusal({ attemptId, actionDigest, refusalDigest, refusedAt });
 
     const first = createInput({
       recordId: `agent_record_${'b'.repeat(40)}`,
-      arenaShareId,
+      arenaAttemptId: attemptId,
       sourceArtifactDigest: refusalDigest,
       refusalDigest,
       actionDigest,
@@ -605,13 +821,14 @@ suite('Agent Record v1 RPC lifecycle on PostgreSQL 17', () => {
       code: '23505',
     });
 
-    const count = await database.query<{ count: string }>(
-      `SELECT count(*)::text AS count
-         FROM agent_record_private.records
-        WHERE arena_share_id = $1 OR source_artifact_digest = $2`,
-      [arenaShareId, refusalDigest],
+    const count = await database.query<{ shares: string; records: string }>(
+      `SELECT
+         (SELECT count(*)::text FROM public.arena_shares WHERE attempt_id = $1) AS shares,
+         (SELECT count(*)::text FROM agent_record_private.records
+           WHERE source_artifact_digest = $2) AS records`,
+      [attemptId, refusalDigest],
     );
-    expect(count.rows).toEqual([{ count: '1' }]);
+    expect(count.rows).toEqual([{ shares: '1', records: '1' }]);
   });
 
   it('refuses cross-boundary and permit substitutions before persistence', async () => {
@@ -620,15 +837,17 @@ suite('Agent Record v1 RPC lifecycle on PostgreSQL 17', () => {
       input: CreateInput;
       code: string;
     }> = [];
-    const source = await database.query<{ public_projection: JsonObject }>(
-      'SELECT public_projection FROM public.arena_shares WHERE share_id = $1',
-      [ARENA_SHARE_ID],
+    const source = await database.query<{ refused_at: string }>(
+      `SELECT pg_catalog.to_char(
+         created_at AT TIME ZONE 'UTC',
+         'YYYY-MM-DD"T"HH24:MI:SS.MS"Z"'
+       ) AS refused_at
+       FROM public.arena_attempts WHERE attempt_id = $1`,
+      [ARENA_ATTEMPT_ID],
     );
     const base = createInput({
       recordId: `agent_record_${'d'.repeat(40)}`,
-      refusedAt: String(
-        (source.rows[0].public_projection.attempt as JsonObject).created_at,
-      ),
+      refusedAt: source.rows[0].refused_at,
     });
 
     const wrongBondValues = {
@@ -674,12 +893,12 @@ suite('Agent Record v1 RPC lifecycle on PostgreSQL 17', () => {
       code: '55000',
     });
 
-    const permitShareId = `arena_share_${'1'.repeat(40)}`;
+    const permitAttemptId = `arena_attempt_${'1'.repeat(32)}`;
     const permitDigest = digest('1');
     const permitActionDigest = digest('3');
     const permitRefusedAt = instant(-2_000);
-    await insertArenaShare({
-      arenaShareId: permitShareId,
+    await insertArenaRefusal({
+      attemptId: permitAttemptId,
       actionDigest: permitActionDigest,
       refusalDigest: permitDigest,
       refusedAt: permitRefusedAt,
@@ -687,7 +906,7 @@ suite('Agent Record v1 RPC lifecycle on PostgreSQL 17', () => {
     });
     const permitValues = createInput({
       recordId: `agent_record_${'1'.repeat(40)}`,
-      arenaShareId: permitShareId,
+      arenaAttemptId: permitAttemptId,
       sourceArtifactDigest: permitDigest,
       refusalDigest: permitDigest,
       actionDigest: permitActionDigest,
@@ -745,6 +964,7 @@ suite('Agent Record v1 RPC lifecycle on PostgreSQL 17', () => {
     `);
     expect(functions.rows.map(({ proname }) => proname)).toEqual([
       'create_agent_record',
+      'read_agent_record_arena_source',
       'read_agent_record_public',
       'revoke_agent_record',
     ]);
@@ -776,25 +996,30 @@ suite('Agent Record v1 RPC lifecycle on PostgreSQL 17', () => {
 
     // The caller generates and retains the plaintext owner token. Create a
     // second record here so this test has an independent revocation ceremony.
-    const shareId = `arena_share_${'2'.repeat(40)}`;
+    const attemptId = `arena_attempt_${'2'.repeat(32)}`;
     const sourceDigest = digest('4');
     const actionDigest = digest('5');
     const refusedAt = instant(-2_000);
-    await insertArenaShare({
-      arenaShareId: shareId,
+    await insertArenaRefusal({
+      attemptId,
       actionDigest,
       refusalDigest: sourceDigest,
       refusedAt,
     });
     const input = createInput({
       recordId: `agent_record_${'6'.repeat(40)}`,
-      arenaShareId: shareId,
+      arenaAttemptId: attemptId,
       sourceArtifactDigest: sourceDigest,
       refusalDigest: sourceDigest,
       actionDigest,
       refusedAt,
     });
     const created = await createRecord(input);
+    const published = await database.query<{ share_id: string }>(
+      'SELECT share_id FROM public.arena_shares WHERE attempt_id = $1',
+      [attemptId],
+    );
+    const shareId = published.rows[0].share_id;
     expect(ownerHash).toMatch(/^[0-9a-f]{64}$/);
     const sourceBefore = await database.query<{
       public_projection: JsonObject;

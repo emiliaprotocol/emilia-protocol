@@ -4,7 +4,7 @@ import type { SupabaseClient } from '@supabase/supabase-js';
 
 import {
   AgentAdoptionTrialError,
-  publishBoundAgentTrialRefusal,
+  prepareBoundAgentTrialRefusal,
   type AgentAdoptionAuthorization,
 } from '@/lib/agent-adoption/trial';
 import { getServiceClient } from '@/lib/supabase';
@@ -20,7 +20,8 @@ const OWNER_TOKEN = /^ear1_[0-9a-f]{64}$/;
 const REVOCATION_NONCE = /^earv1_[0-9a-f]{64}$/;
 const ADOPTION_ID = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/;
 const DIGEST = /^sha256:[0-9a-f]{64}$/;
-const ARENA_SHARE_ID = /^arena_share_[0-9a-f]{40}$/;
+const ARENA_SESSION_ID = /^arena_session_[0-9a-f]{32}$/;
+const ARENA_TOKEN_HASH = /^[0-9a-f]{64}$/;
 const ATTEMPT_ID = /^arena_attempt_[0-9a-f]{32}$/;
 const TRIAL_TOKEN = /^epenc:v1:[A-Za-z0-9_-]{40,8192}$/;
 
@@ -141,7 +142,8 @@ function refusalBindings(
       || !ADOPTION_ID.test(value.adoption_id ?? '')
       || !ADOPTION_ID.test(value.bond_id ?? '')
       || !DIGEST.test(value.bond_digest ?? '')
-      || !ARENA_SHARE_ID.test(value.arena_share_id ?? '')
+      || !ARENA_SESSION_ID.test(value.arena_session_id ?? '')
+      || !ARENA_TOKEN_HASH.test(value.arena_token_hash ?? '')
       || !DIGEST.test(value.action_digest ?? '')
       || !DIGEST.test(value.refusal_digest ?? '')
       || !canonicalInstant(value.refused_at)
@@ -164,7 +166,8 @@ function refusalBindings(
     adoptionId: value.adoption_id as string,
     bondId: value.bond_id as string,
     bondDigest: value.bond_digest as string,
-    arenaShareId: value.arena_share_id as string,
+    arenaSessionId: value.arena_session_id as string,
+    arenaTokenHash: value.arena_token_hash as string,
     sourceArtifactDigest: value.refusal_digest as string,
     actionDigest: value.action_digest as string,
     refusalDigest: value.refusal_digest as string,
@@ -187,9 +190,9 @@ export async function createAgentRecord({
   if (!Number.isFinite(now)) {
     fail(400, 'agent_record_creation_invalid', 'Agent Record observation time is invalid.');
   }
-  let published: unknown;
+  let prepared: unknown;
   try {
-    published = await publishBoundAgentTrialRefusal({
+    prepared = await prepareBoundAgentTrialRefusal({
       authorization,
       input: {
         trial_token: parsed.trial_token,
@@ -204,7 +207,7 @@ export async function createAgentRecord({
     }
     throw cause;
   }
-  const source = refusalBindings(published, authorization, parsed.attempt_id);
+  const source = refusalBindings(prepared, authorization, parsed.attempt_id);
   const recordId = parsed.record_id;
   const observedAt = new Date(now).toISOString();
   const retentionExpiresAt = new Date(now + AGENT_RECORD_RETENTION_MS).toISOString();
@@ -237,7 +240,9 @@ export async function createAgentRecord({
     p_adoption_session_token: authorization.sessionToken,
     p_bond_id: source.bondId,
     p_bond_digest: source.bondDigest,
-    p_arena_share_id: source.arenaShareId,
+    p_arena_session_id: source.arenaSessionId,
+    p_arena_token_hash: source.arenaTokenHash,
+    p_arena_attempt_id: parsed.attempt_id,
     p_source_artifact_digest: source.sourceArtifactDigest,
     p_action_digest: source.actionDigest,
     p_refusal_digest: source.refusalDigest,

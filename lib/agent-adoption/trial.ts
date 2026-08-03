@@ -9,6 +9,7 @@ import {
   publishArenaRefusal,
   submitArenaAttempt,
 } from '@/lib/arena/service';
+import { verifyArenaPublicProjection } from '@/lib/arena/refusal';
 
 const TRIAL_VERSION = 'EP-AGENT-ADOPTION-TRIAL-v1';
 const TRIAL_TOKEN = /^epenc:v1:[A-Za-z0-9_-]{40,8192}$/;
@@ -261,10 +262,95 @@ export async function submitBoundAgentTrial({
 }
 
 /**
+ * Read and verify the signed refusal bound to this adoption trial without
+ * publishing it. Agent Record creation signs these immutable bindings first;
+ * the database then publishes the Arena projection and stores the record in
+ * one transaction.
+ */
+export async function prepareBoundAgentTrialRefusal({
+  authorization,
+  input,
+  client,
+  now = Date.now(),
+}: {
+  authorization: AgentAdoptionAuthorization;
+  input: unknown;
+  client?: SupabaseClient;
+  now?: number;
+}) {
+  const bound = activeBond(authorization);
+  if (!input || typeof input !== 'object' || Array.isArray(input)
+      || Object.getPrototypeOf(input) !== Object.prototype
+      || Reflect.ownKeys(input).length !== 2
+      || !Object.hasOwn(input, 'trial_token')
+      || !Object.hasOwn(input, 'attempt_id')) {
+    fail(400, 'agent_adoption_refusal_publication_invalid');
+  }
+  const value = input as Record<string, unknown>;
+  if (typeof value.trial_token !== 'string'
+      || typeof value.attempt_id !== 'string'
+      || !ARENA_ATTEMPT_ID.test(value.attempt_id)) {
+    fail(400, 'agent_adoption_refusal_publication_invalid');
+  }
+  const trial = parseTrialToken(value.trial_token, bound, now);
+  const tokenHash = crypto.createHash('sha256').update(trial.arena_token, 'utf8').digest('hex');
+  const store = client ?? (await import('@/lib/supabase')).getServiceClient();
+  let prepared: any;
+  try {
+    prepared = await store.rpc('read_agent_record_arena_source', {
+      p_arena_token_hash: tokenHash,
+      p_arena_session_id: trial.arena_session_id,
+      p_arena_attempt_id: value.attempt_id,
+    });
+  } catch {
+    fail(503, 'agent_adoption_refusal_publication_invalid');
+  }
+  if (prepared?.error) {
+    fail(
+      prepared.error.code === 'P0002' ? 404 : 503,
+      'agent_adoption_refusal_publication_invalid',
+    );
+  }
+  const source = prepared?.data;
+  if (!source || typeof source !== 'object' || Array.isArray(source)
+      || Object.getPrototypeOf(source) !== Object.prototype
+      || Reflect.ownKeys(source).length !== 3
+      || source.arena_session_id !== trial.arena_session_id
+      || source.attempt_id !== value.attempt_id
+      || !source.public_refusal_projection
+      || typeof source.public_refusal_projection !== 'object') {
+    fail(503, 'agent_adoption_refusal_publication_invalid');
+  }
+  const projection = source.public_refusal_projection;
+  const verification = verifyArenaPublicProjection(projection, now);
+  if (!verification.integrity_verified
+      || projection.profile !== 'EP-ARENA-PUBLIC-REFUSAL-v1'
+      || projection.attempt?.attempt_id !== value.attempt_id
+      || projection.attempt?.decision !== 'refuse'
+      || !BOND_DIGEST.test(projection.attempt?.action_digest ?? '')
+      || !BOND_DIGEST.test(projection.refusal_digest ?? '')
+      || projection.refusal_artifact?.['@version'] !== 'EP-ACTION-REFUSAL-STATEMENT-v1') {
+    fail(503, 'agent_adoption_refusal_publication_invalid');
+  }
+  return Object.freeze({
+    adoption_id: bound.adoptionId,
+    bond_id: bound.bondId,
+    bond_digest: bound.bondDigest,
+    agent_label: bound.agentLabel,
+    arena_session_id: trial.arena_session_id,
+    arena_token_hash: tokenHash,
+    action_digest: projection.attempt.action_digest,
+    refusal_digest: projection.refusal_digest,
+    refused_at: projection.attempt.created_at,
+    public_refusal_projection: projection,
+  });
+}
+
+/**
  * Publish and re-read one signed refusal from the exact Arena session sealed
- * into this adoption's trial capability. This is the only bridge an Agent
- * Record may use: callers cannot attach an arbitrary public Arena share to an
- * adoption, and unsigned permit decisions never enter the record surface.
+ * into this adoption's trial capability. Agent Record creation deliberately
+ * uses prepareBoundAgentTrialRefusal instead so publication occurs inside its
+ * database transaction; this bridge remains for explicit Arena publication.
  */
 export async function publishBoundAgentTrialRefusal({
   authorization,

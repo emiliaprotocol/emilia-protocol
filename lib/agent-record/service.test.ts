@@ -9,12 +9,12 @@ vi.mock('@/lib/agent-adoption/trial', () => ({
       super(message);
     }
   },
-  publishBoundAgentTrialRefusal: vi.fn(),
+  prepareBoundAgentTrialRefusal: vi.fn(),
 }));
 
 import {
   AgentAdoptionTrialError,
-  publishBoundAgentTrialRefusal,
+  prepareBoundAgentTrialRefusal,
 } from '@/lib/agent-adoption/trial';
 import {
   AGENT_RECORD_RETENTION_MS,
@@ -32,7 +32,8 @@ const BOND_ID = '22222222-2222-4222-8222-222222222222';
 const BOND_DIGEST = `sha256:${'b'.repeat(64)}`;
 const ACTION_DIGEST = `sha256:${'c'.repeat(64)}`;
 const REFUSAL_DIGEST = `sha256:${'d'.repeat(64)}`;
-const ARENA_SHARE_ID = `arena_share_${'e'.repeat(40)}`;
+const ARENA_SESSION_ID = `arena_session_${'e'.repeat(32)}`;
+const ARENA_TOKEN_HASH = 'e'.repeat(64);
 const ATTEMPT_ID = `arena_attempt_${'f'.repeat(32)}`;
 const TRIAL_TOKEN = `epenc:v1:${'A'.repeat(64)}`;
 const SESSION_TOKEN = `eaa1_${'1'.repeat(64)}`;
@@ -66,7 +67,8 @@ const refusalSource = () => ({
   bond_id: BOND_ID,
   bond_digest: BOND_DIGEST,
   agent_label: 'Atlas',
-  arena_share_id: ARENA_SHARE_ID,
+  arena_session_id: ARENA_SESSION_ID,
+  arena_token_hash: ARENA_TOKEN_HASH,
   action_digest: ACTION_DIGEST,
   refusal_digest: REFUSAL_DIGEST,
   refused_at: REFUSED_AT,
@@ -121,7 +123,7 @@ describe('Agent Record service', () => {
     vi.stubEnv('NODE_ENV', 'test');
     vi.stubEnv('EP_COMMIT_SIGNING_KEY', crypto.randomBytes(32).toString('base64'));
     vi.stubEnv('EP_COMMIT_SIGNING_KEYS', '');
-    vi.mocked(publishBoundAgentTrialRefusal).mockResolvedValue(refusalSource() as any);
+    vi.mocked(prepareBoundAgentTrialRefusal).mockResolvedValue(refusalSource() as any);
   });
 
   afterEach(() => {
@@ -138,7 +140,7 @@ describe('Agent Record service', () => {
       now: NOW,
     });
 
-    expect(publishBoundAgentTrialRefusal).toHaveBeenCalledWith({
+    expect(prepareBoundAgentTrialRefusal).toHaveBeenCalledWith({
       authorization,
       input: { trial_token: TRIAL_TOKEN, attempt_id: ATTEMPT_ID },
       client,
@@ -158,7 +160,9 @@ describe('Agent Record service', () => {
       p_adoption_session_token: SESSION_TOKEN,
       p_bond_id: BOND_ID,
       p_bond_digest: BOND_DIGEST,
-      p_arena_share_id: ARENA_SHARE_ID,
+      p_arena_session_id: ARENA_SESSION_ID,
+      p_arena_token_hash: ARENA_TOKEN_HASH,
+      p_arena_attempt_id: ATTEMPT_ID,
       p_source_artifact_digest: REFUSAL_DIGEST,
       p_action_digest: ACTION_DIGEST,
       p_refusal_digest: REFUSAL_DIGEST,
@@ -169,7 +173,7 @@ describe('Agent Record service', () => {
     expect(JSON.stringify(args.p_public_projection)).not.toMatch(
       /adoption_id|session_id|owner_token|credential_id|candidate_url|source_url|arena_share_id|arena_share_|\/arena\/|\/api\/arena\/refusals|webauthn|prompt|ip_address|raw_action|action_parameters|agent_label/i,
     );
-    expect(args.p_arena_share_id).toBe(ARENA_SHARE_ID);
+    expect(args).not.toHaveProperty('p_arena_share_id');
     expect(args.p_public_projection.record.source).toEqual({
       profile: 'EP-ACTION-REFUSAL-STATEMENT-v1',
       artifact_digest: REFUSAL_DIGEST,
@@ -180,7 +184,7 @@ describe('Agent Record service', () => {
     ['a missing owner credential', { ...CREATION_INPUT, owner_token: undefined }],
     ['an injected extra field', { ...CREATION_INPUT, admin: true }],
     ['a malformed encrypted trial token', { ...CREATION_INPUT, trial_token: 'plaintext' }],
-  ])('rejects %s before publishing or persistence', async (_name, input) => {
+  ])('rejects %s before source preparation or persistence', async (_name, input) => {
     const client = createClient();
 
     await expect(createAgentRecord({
@@ -189,11 +193,11 @@ describe('Agent Record service', () => {
       client: client as any,
       now: NOW,
     })).rejects.toMatchObject({ status: 400, code: 'agent_record_creation_invalid' });
-    expect(publishBoundAgentTrialRefusal).not.toHaveBeenCalled();
+    expect(prepareBoundAgentTrialRefusal).not.toHaveBeenCalled();
     expect(client.rpc).not.toHaveBeenCalled();
   });
 
-  it('rejects a non-finite observation clock before publishing', async () => {
+  it('rejects a non-finite observation clock before source preparation', async () => {
     const client = createClient();
 
     await expect(createAgentRecord({
@@ -202,12 +206,12 @@ describe('Agent Record service', () => {
       client: client as any,
       now: Number.NaN,
     })).rejects.toMatchObject({ status: 400, code: 'agent_record_creation_invalid' });
-    expect(publishBoundAgentTrialRefusal).not.toHaveBeenCalled();
+    expect(prepareBoundAgentTrialRefusal).not.toHaveBeenCalled();
     expect(client.rpc).not.toHaveBeenCalled();
   });
 
   it('preserves a typed trial refusal and never reaches persistence', async () => {
-    vi.mocked(publishBoundAgentTrialRefusal).mockRejectedValue(
+    vi.mocked(prepareBoundAgentTrialRefusal).mockRejectedValue(
       new AgentAdoptionTrialError(401, 'agent_adoption_trial_invalid', 'trial denied'),
     );
     const client = createClient();
@@ -221,9 +225,9 @@ describe('Agent Record service', () => {
     expect(client.rpc).not.toHaveBeenCalled();
   });
 
-  it('does not misclassify an unexpected trial publication failure', async () => {
-    const failure = new Error('unexpected publication failure');
-    vi.mocked(publishBoundAgentTrialRefusal).mockRejectedValue(failure);
+  it('does not misclassify an unexpected trial preparation failure', async () => {
+    const failure = new Error('unexpected preparation failure');
+    vi.mocked(prepareBoundAgentTrialRefusal).mockRejectedValue(failure);
 
     await expect(createAgentRecord({
       authorization,
@@ -249,7 +253,7 @@ describe('Agent Record service', () => {
   ])('refuses %s before persistence', async (_name, mutate) => {
     const source: any = refusalSource();
     mutate(source);
-    vi.mocked(publishBoundAgentTrialRefusal).mockResolvedValue(source);
+    vi.mocked(prepareBoundAgentTrialRefusal).mockResolvedValue(source);
     const client = createClient();
 
     await expect(createAgentRecord({
@@ -265,7 +269,7 @@ describe('Agent Record service', () => {
     const source: any = refusalSource();
     source.public_refusal_projection.attempt.decision = 'permit';
     delete source.public_refusal_projection.refusal_artifact;
-    vi.mocked(publishBoundAgentTrialRefusal).mockResolvedValue(source);
+    vi.mocked(prepareBoundAgentTrialRefusal).mockResolvedValue(source);
     const client = createClient();
 
     await expect(createAgentRecord({
@@ -277,7 +281,7 @@ describe('Agent Record service', () => {
     expect(client.rpc).not.toHaveBeenCalled();
   });
 
-  it('fails closed before persistence when the production operator key is absent', async () => {
+  it('fails closed before atomic publication when the production operator key is absent', async () => {
     vi.stubEnv('NODE_ENV', 'production');
     vi.stubEnv('EP_COMMIT_SIGNING_KEY', '');
     const client = createClient();
@@ -294,11 +298,37 @@ describe('Agent Record service', () => {
     expect(client.rpc).not.toHaveBeenCalled();
   });
 
+  it('uses one atomic mutation RPC and exposes no pre-publication cleanup path on failure', async () => {
+    const client = {
+      rpc: vi.fn().mockResolvedValue({
+        data: null,
+        error: { code: 'XX000', message: 'injected transaction failure' },
+      }),
+    };
+
+    await expect(createAgentRecord({
+      authorization,
+      input: CREATION_INPUT,
+      client: client as any,
+      now: NOW,
+    })).rejects.toMatchObject({
+      status: 503,
+      code: 'agent_record_store_unavailable',
+    });
+    expect(prepareBoundAgentTrialRefusal).toHaveBeenCalledOnce();
+    expect(client.rpc).toHaveBeenCalledTimes(1);
+    expect(client.rpc).toHaveBeenCalledWith('create_agent_record', expect.objectContaining({
+      p_arena_session_id: ARENA_SESSION_ID,
+      p_arena_token_hash: ARENA_TOKEN_HASH,
+      p_arena_attempt_id: ATTEMPT_ID,
+    }));
+  });
+
   it('maps a refusal timestamp after observation to an invalid bound refusal', async () => {
     const source: any = refusalSource();
     source.refused_at = '2026-08-02T20:02:00.000Z';
     source.public_refusal_projection.attempt.created_at = source.refused_at;
-    vi.mocked(publishBoundAgentTrialRefusal).mockResolvedValue(source);
+    vi.mocked(prepareBoundAgentTrialRefusal).mockResolvedValue(source);
     const client = createClient();
 
     await expect(createAgentRecord({
