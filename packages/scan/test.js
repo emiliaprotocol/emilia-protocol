@@ -2,10 +2,28 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { spawnSync } from 'node:child_process';
-import { cpSync, linkSync, mkdirSync, mkdtempSync, readFileSync, symlinkSync, unlinkSync, writeFileSync } from 'node:fs';
+import { createHash } from 'node:crypto';
+import { cpSync, existsSync, linkSync, mkdirSync, mkdtempSync, readFileSync, statSync, symlinkSync, unlinkSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { classifyAction, scanActions, KNOWN_CATEGORIES, HIGH_RISK_ACTION_PACKS } from './index.js';
+
+const sha256 = (bytes) => `sha256:${createHash('sha256').update(bytes).digest('hex')}`;
+
+function installLocalMcpGuard(dir) {
+  const scope = join(dir, 'node_modules', '@emilia-protocol');
+  mkdirSync(scope, { recursive: true });
+  cpSync(join(import.meta.dirname, '..', 'mcp-guard'), join(scope, 'mcp-guard'), { recursive: true });
+  cpSync(join(import.meta.dirname, '..', 'require-receipt'), join(scope, 'require-receipt'), { recursive: true });
+}
+
+function expectedScaffoldBinding(dir) {
+  const files = ['guard.mjs', 'verify-setup.mjs', 'INTEGRATION.md'].map((file) => ({
+    file,
+    sha256: sha256(readFileSync(join(dir, 'emilia', file))),
+  }));
+  return { sha256: sha256(Buffer.from(JSON.stringify(files), 'utf8')), files };
+}
 
 test('STRUCTURAL: every category maps to a real risk pack (no guessed ids)', () => {
   const realIds = new Set(HIGH_RISK_ACTION_PACKS.map((p) => p.id));
@@ -267,10 +285,7 @@ test('generated MCP protection separates durable production state from the expli
   assert.match(integration, /durable provenance ledger/i);
   assert.match(integration, /shared atomic consumption store/i);
 
-  const scope = join(dir, 'node_modules', '@emilia-protocol');
-  mkdirSync(scope, { recursive: true });
-  cpSync(join(import.meta.dirname, '..', 'mcp-guard'), join(scope, 'mcp-guard'), { recursive: true });
-  cpSync(join(import.meta.dirname, '..', 'require-receipt'), join(scope, 'require-receipt'), { recursive: true });
+  installLocalMcpGuard(dir);
 
   const imported = await import(`${new URL(`file://${guardPath}`).href}?test=${Date.now()}`);
   assert.throws(
@@ -317,4 +332,195 @@ test('generated MCP protection separates durable production state from the expli
   });
   assert.notEqual(productionDemo.status, 0);
   assert.match(`${productionDemo.stdout}${productionDemo.stderr}`, /demo guard is unavailable in production/);
+});
+
+test('scan-to-adoption handoff binds reviewed bytes and explicit consequential actions without ambient data', () => {
+  const dir = mkdtempSync(join(tmpdir(), 'emilia-handoff-contract-'));
+  const input = join(dir, 'tools.json');
+  const sensitive = {
+    argument: 'customer-secret-argument-991',
+    credential: 'ep_live_private_credential_992',
+    outsidePath: '/Users/private-operator/hidden/config.json',
+    username: 'private-operator-993',
+    host: 'private-host-994.internal',
+  };
+  writeFileSync(input, JSON.stringify([
+    {
+      name: 'deleteCustomer',
+      description: `Permanently remove a record; runtime argument ${sensitive.argument}; source ${sensitive.outsidePath}`,
+    },
+    { name: 'deployToProduction', description: 'Ship the current build to production' },
+    { name: 'getAccountBalance', description: 'Read the current balance' },
+  ]));
+
+  const protect = spawnSync(process.execPath, [
+    join(import.meta.dirname, 'codemod.mjs'),
+    input,
+    '--out',
+    'emilia',
+    '--apply',
+  ], { cwd: dir, encoding: 'utf8' });
+  assert.equal(protect.status, 0, `${protect.stdout}\n${protect.stderr}`);
+  installLocalMcpGuard(dir);
+
+  const verifyPath = join(dir, 'emilia', 'verify-setup.mjs');
+  const handoffPath = join(dir, 'emilia', 'scan-adoption-handoff.json');
+  const defaultVerify = spawnSync(process.execPath, [verifyPath], { cwd: dir, encoding: 'utf8' });
+  assert.equal(defaultVerify.status, 0, `${defaultVerify.stdout}\n${defaultVerify.stderr}`);
+  assert.equal(existsSync(handoffPath), false, 'verification must not write a handoff without an explicit flag');
+
+  const manifestDigest = sha256(readFileSync(join(dir, 'emilia', 'action-control.manifest.json')));
+  const emit = spawnSync(process.execPath, [
+    verifyPath,
+    '--emit-handoff',
+    '--reviewed-manifest-digest',
+    manifestDigest,
+    '--action',
+    'deleteCustomer',
+    '--action',
+    'deployToProduction',
+  ], {
+    cwd: dir,
+    encoding: 'utf8',
+    env: {
+      ...process.env,
+      EP_TRUSTED_ISSUER_KEYS: sensitive.credential,
+      USER: sensitive.username,
+      HOSTNAME: sensitive.host,
+      HOME: sensitive.outsidePath,
+    },
+  });
+  assert.equal(emit.status, 0, `${emit.stdout}\n${emit.stderr}`);
+
+  const handoffText = readFileSync(handoffPath, 'utf8');
+  const handoff = JSON.parse(handoffText);
+  assert.deepEqual(Object.keys(handoff), [
+    '@version',
+    'reviewed_manifest',
+    'generated_scaffold',
+    'selected_actions',
+    'local_refusal',
+  ]);
+  assert.equal(handoff['@version'], 'EP-SCAN-ADOPTION-HANDOFF-v1');
+  assert.deepEqual(handoff.reviewed_manifest, {
+    file: 'action-control.manifest.json',
+    sha256: manifestDigest,
+  });
+  assert.deepEqual(handoff.generated_scaffold, expectedScaffoldBinding(dir));
+  assert.deepEqual(handoff.selected_actions, [
+    {
+      id: 'discovered.deletecustomer',
+      selector: { protocol: 'mcp', tool: 'deleteCustomer' },
+      action_type: 'record.delete',
+      assurance_class: 'class_a',
+      receipt_required: true,
+    },
+    {
+      id: 'discovered.deploytoproduction',
+      selector: { protocol: 'mcp', tool: 'deployToProduction' },
+      action_type: 'deploy.production',
+      assurance_class: 'quorum',
+      receipt_required: true,
+    },
+  ]);
+  assert.deepEqual(handoff.local_refusal, {
+    status: 'passed',
+    claim: 'selected synthetic calls were refused by the generated local demo wrapper before the supplied handler',
+    handler_called: false,
+    state: 'ephemeral_demo_only',
+    claim_boundary: {
+      asserted: [
+        'selected_actions_refused_locally',
+        'supplied_handler_not_called',
+      ],
+      not_asserted: [
+        'production_enforcement',
+        'complete_mediation',
+        'credential_isolation',
+        'durable_state',
+        'trusted_key_configuration',
+        'signed_refusal_artifact',
+        'public_verification',
+      ],
+    },
+  });
+  assert.equal(statSync(handoffPath).mode & 0o777, 0o600, 'handoff must be owner-only');
+
+  for (const forbidden of [...Object.values(sensitive), dir, 'customer_id', 'synthetic-customer-001']) {
+    assert.equal(handoffText.includes(forbidden), false, `handoff leaked forbidden value: ${forbidden}`);
+  }
+});
+
+test('handoff emission requires review acknowledgement, consequential selection, and safe-create output', () => {
+  const dir = mkdtempSync(join(tmpdir(), 'emilia-handoff-safety-'));
+  const apply = spawnSync(process.execPath, [
+    join(import.meta.dirname, 'codemod.mjs'),
+    '--sample',
+    '--apply',
+  ], { cwd: dir, encoding: 'utf8' });
+  assert.equal(apply.status, 0, `${apply.stdout}\n${apply.stderr}`);
+  installLocalMcpGuard(dir);
+
+  const verifyPath = join(dir, 'emilia', 'verify-setup.mjs');
+  const manifestDigest = sha256(readFileSync(join(dir, 'emilia', 'action-control.manifest.json')));
+  const run = (...extra) => spawnSync(process.execPath, [verifyPath, '--emit-handoff', ...extra], {
+    cwd: dir,
+    encoding: 'utf8',
+  });
+
+  const unreviewed = run('--action', 'deleteCustomer');
+  assert.notEqual(unreviewed.status, 0);
+  assert.match(`${unreviewed.stdout}${unreviewed.stderr}`, /reviewed manifest digest is required/i);
+
+  const mismatched = run(
+    '--reviewed-manifest-digest',
+    `sha256:${'0'.repeat(64)}`,
+    '--action',
+    'deleteCustomer',
+  );
+  assert.notEqual(mismatched.status, 0);
+  assert.match(`${mismatched.stdout}${mismatched.stderr}`, /reviewed manifest digest does not match/i);
+
+  const nonConsequential = run(
+    '--reviewed-manifest-digest',
+    manifestDigest,
+    '--action',
+    'getAccountBalance',
+  );
+  assert.notEqual(nonConsequential.status, 0);
+  assert.match(`${nonConsequential.stdout}${nonConsequential.stderr}`, /not a visible consequential action/i);
+
+  const first = run(
+    '--reviewed-manifest-digest',
+    manifestDigest,
+    '--action',
+    'deleteCustomer',
+  );
+  assert.equal(first.status, 0, `${first.stdout}\n${first.stderr}`);
+  const handoffPath = join(dir, 'emilia', 'scan-adoption-handoff.json');
+  const firstBytes = readFileSync(handoffPath);
+
+  const overwrite = run(
+    '--reviewed-manifest-digest',
+    manifestDigest,
+    '--action',
+    'deleteCustomer',
+  );
+  assert.notEqual(overwrite.status, 0);
+  assert.match(`${overwrite.stdout}${overwrite.stderr}`, /refusing to overwrite existing handoff/i);
+  assert.deepEqual(readFileSync(handoffPath), firstBytes, 'existing handoff bytes must be preserved');
+
+  unlinkSync(handoffPath);
+  const external = join(dir, 'external-must-not-change.json');
+  writeFileSync(external, '{"preserve":true}\n');
+  symlinkSync(external, handoffPath);
+  const symlink = run(
+    '--reviewed-manifest-digest',
+    manifestDigest,
+    '--action',
+    'deleteCustomer',
+  );
+  assert.notEqual(symlink.status, 0);
+  assert.match(`${symlink.stdout}${symlink.stderr}`, /refusing to overwrite existing handoff/i);
+  assert.equal(readFileSync(external, 'utf8'), '{"preserve":true}\n');
 });

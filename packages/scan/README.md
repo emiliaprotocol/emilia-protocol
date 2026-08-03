@@ -15,6 +15,9 @@ npx @emilia-protocol/scan ./openapi.json           # classify your HTTP API surf
 npx @emilia-protocol/scan protect ./tools.json
 npx @emilia-protocol/scan protect ./tools.json --apply
 node emilia/verify-setup.mjs                       # synthetic local refusal check
+node emilia/verify-setup.mjs --emit-handoff \
+  --reviewed-manifest-digest sha256:<reviewed-digest> \
+  --action <reviewed-tool-name>                    # explicit owner-only JSON handoff
 ```
 
 `scan protect` (also available as the legacy `emilia-harden` bin) currently
@@ -40,6 +43,49 @@ narrow fact locally: a synthetic destructive call without a receipt was refused
 and its handler was not invoked. That check does not prove provider credentials
 are unreachable through some other path, that your production state is durable,
 or that your keys and approval adapters are correctly configured.
+
+## Machine-readable adoption handoff
+
+`verify-setup.mjs` is read-only by default. It prints the exact manifest and
+generated-scaffold digests after the local refusal check. Once you have reviewed
+`action-control.manifest.json`, you can acknowledge those exact bytes and select
+which visible consequential MCP tools may appear in a local handoff:
+
+```bash
+node emilia/verify-setup.mjs \
+  --emit-handoff \
+  --reviewed-manifest-digest sha256:<reviewed-digest> \
+  --action deleteCustomer \
+  --action deployToProduction
+```
+
+This explicitly creates `emilia/scan-adoption-handoff.json` with mode `0600`.
+Creation is no-replace: an existing regular file, symlink, or hard link is never
+followed or overwritten. The verification command makes no network request,
+launches no process, and never invokes the supplied consequential handler.
+
+The JSON contract is `EP-SCAN-ADOPTION-HANDOFF-v1`:
+
+- `reviewed_manifest` binds the SHA-256 digest of the exact reviewed manifest
+  file bytes. Emission fails unless the caller-supplied digest matches.
+- `generated_scaffold` lists SHA-256 digests for `guard.mjs`,
+  `verify-setup.mjs`, and `INTEGRATION.md`. Its aggregate SHA-256 is computed
+  over the UTF-8 bytes of `JSON.stringify(files)` in that fixed order.
+- `selected_actions` contains only explicitly selected, discovered,
+  receipt-required MCP actions: manifest id, MCP selector, action type,
+  assurance class, and `receipt_required: true`.
+- `local_refusal` records `status: "passed"`, that the supplied handler was not
+  called, and a machine-readable boundary. It asserts only a local synthetic
+  refusal. It explicitly does not assert production enforcement, complete
+  mediation, credential isolation, durable state, trusted-key configuration, a
+  signed refusal artifact, or public verification.
+
+The handoff has no timestamp and reads no ambient identity or host source. It
+does not include tool arguments, credential values, input descriptions, source
+paths, paths outside the generated output directory, usernames, or host data.
+Only explicitly selected visible action names and generated-output basenames are
+included. Treat it as a privacy-bounded local adoption handoff, not a production
+attestation or an `EP-ACTION-REFUSAL-STATEMENT-v1` artifact.
 
 The `authority` command is a separate passive diagnostic:
 

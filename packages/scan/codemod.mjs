@@ -180,8 +180,102 @@ export { manifest };
 const verifySetupJs = `// SPDX-License-Identifier: Apache-2.0
 // GENERATED local setup check. It performs no network request and executes no
 // consequential handler. Ephemeral state here is intentional and demo-only.
+// It writes nothing unless --emit-handoff is explicit, and then only creates
+// scan-adoption-handoff.json beside this file without replacing existing bytes.
 import assert from 'node:assert/strict';
+import { createHash, randomUUID } from 'node:crypto';
+import {
+  closeSync,
+  fsyncSync,
+  linkSync,
+  openSync,
+  readFileSync,
+  unlinkSync,
+  writeFileSync,
+} from 'node:fs';
+import { dirname, join } from 'node:path';
+import { fileURLToPath } from 'node:url';
 import { guardDispatchDemo } from './guard.mjs';
+
+const here = dirname(fileURLToPath(import.meta.url));
+const manifestFile = 'action-control.manifest.json';
+const manifestBytes = readFileSync(join(here, manifestFile));
+const manifestDigest = 'sha256:' + createHash('sha256').update(manifestBytes).digest('hex');
+const manifest = JSON.parse(manifestBytes.toString('utf8'));
+
+const scaffoldFiles = ['guard.mjs', 'verify-setup.mjs', 'INTEGRATION.md'].map((file) => ({
+  file,
+  sha256: 'sha256:' + createHash('sha256').update(readFileSync(join(here, file))).digest('hex'),
+}));
+const scaffoldDigest = 'sha256:' + createHash('sha256')
+  .update(Buffer.from(JSON.stringify(scaffoldFiles), 'utf8'))
+  .digest('hex');
+
+const cli = {
+  emitHandoff: false,
+  reviewedManifestDigest: null,
+  selectedTools: [],
+};
+const argv = process.argv.slice(2);
+for (let i = 0; i < argv.length; i += 1) {
+  const arg = argv[i];
+  if (arg === '--emit-handoff') {
+    cli.emitHandoff = true;
+    continue;
+  }
+  if (arg === '--reviewed-manifest-digest') {
+    if (cli.reviewedManifestDigest !== null) throw new Error('reviewed manifest digest may be supplied only once');
+    const value = argv[i + 1];
+    if (!value || value.startsWith('--')) throw new Error('reviewed manifest digest is required after --reviewed-manifest-digest');
+    cli.reviewedManifestDigest = value;
+    i += 1;
+    continue;
+  }
+  if (arg === '--action') {
+    const value = argv[i + 1];
+    if (!value || value.startsWith('--')) throw new Error('a tool name is required after --action');
+    if (value.length > 256) throw new Error('selected action name is too long');
+    cli.selectedTools.push(value);
+    i += 1;
+    continue;
+  }
+  throw new Error('unknown verify-setup option');
+}
+if (cli.selectedTools.length > 32) throw new Error('at most 32 actions may be selected');
+if (new Set(cli.selectedTools).size !== cli.selectedTools.length) throw new Error('selected actions must be unique');
+
+const visibleConsequential = [];
+const visibleByTool = new Map();
+for (const action of Array.isArray(manifest?.actions) ? manifest.actions : []) {
+  if (!String(action?.id || '').startsWith('discovered.')) continue;
+  if (action?.receipt_required !== true || action?.match?.protocol !== 'mcp') continue;
+  const tool = action.match.tool;
+  if (typeof tool !== 'string' || tool.length === 0 || tool.length > 256) {
+    throw new Error('reviewed manifest has an invalid visible consequential action');
+  }
+  if (visibleByTool.has(tool)) throw new Error('reviewed manifest has duplicate visible consequential actions');
+  const selected = {
+    id: String(action.id),
+    selector: { protocol: 'mcp', tool },
+    action_type: String(action.action_type),
+    assurance_class: String(action.assurance_class),
+    receipt_required: true,
+  };
+  visibleConsequential.push(selected);
+  visibleByTool.set(tool, selected);
+}
+
+const selectedActions = cli.selectedTools.map((tool) => {
+  const action = visibleByTool.get(tool);
+  if (!action) throw new Error('selected tool is not a visible consequential action in the reviewed manifest');
+  return action;
+});
+
+if (cli.emitHandoff) {
+  if (cli.reviewedManifestDigest === null) throw new Error('reviewed manifest digest is required for handoff emission');
+  if (cli.reviewedManifestDigest !== manifestDigest) throw new Error('reviewed manifest digest does not match the current manifest bytes');
+  if (selectedActions.length === 0) throw new Error('at least one visible consequential action must be explicitly selected');
+}
 
 let called = false;
 const rawDispatch = async () => {
@@ -189,19 +283,82 @@ const rawDispatch = async () => {
   return { executed: true };
 };
 const guarded = guardDispatchDemo(rawDispatch);
-const result = await guarded('deleteCustomer', { customer_id: 'synthetic-customer-001' });
-const unknownResult = await guarded('runtimeRegisteredDangerousAction', { target: 'synthetic-target-001' });
-
-assert.equal(called, false, 'underlying handler was called');
-assert.equal(result?.ep_refused, true, 'missing receipt was not refused');
-assert.equal(result?.code, 'emilia_receipt_required', 'unexpected refusal code');
-assert.equal(result?.stage, 'consent', 'unexpected refusal stage');
+const checkedTools = selectedActions.length > 0
+  ? selectedActions.map((action) => action.selector.tool)
+  : [visibleConsequential[0]?.selector.tool || '__emilia_local_consequential_check__'];
+for (const tool of checkedTools) {
+  const result = await guarded(tool, {});
+  assert.equal(result?.ep_refused, true, 'missing receipt was not refused');
+  assert.equal(result?.code, 'emilia_receipt_required', 'unexpected refusal code');
+  assert.equal(result?.stage, 'consent', 'unexpected refusal stage');
+}
+let unknownTool = '__emilia_unscanned_local_check__';
+while (visibleByTool.has(unknownTool)) unknownTool += '_next';
+const unknownResult = await guarded(unknownTool, {});
 assert.equal(unknownResult?.ep_refused, true, 'an unscanned runtime tool was not refused');
 assert.equal(called, false, 'underlying handler was called by an unscanned runtime tool');
 
 console.log('EMILIA PROTECT CHECK: PASS — underlying handler was not called.');
-console.log('This proves only that the generated local wrapper refused this synthetic call.');
+console.log('This proves only that the generated local wrapper refused the selected synthetic call(s).');
 console.log('Production still requires a durable ledger, shared atomic store, pinned keys, and a non-bypassable dispatch boundary.');
+console.log('Manifest digest to review: ' + manifestDigest);
+console.log('Generated scaffold digest: ' + scaffoldDigest);
+
+if (cli.emitHandoff) {
+  const handoff = {
+    '@version': 'EP-SCAN-ADOPTION-HANDOFF-v1',
+    reviewed_manifest: {
+      file: manifestFile,
+      sha256: manifestDigest,
+    },
+    generated_scaffold: {
+      sha256: scaffoldDigest,
+      files: scaffoldFiles,
+    },
+    selected_actions: selectedActions,
+    local_refusal: {
+      status: 'passed',
+      claim: 'selected synthetic calls were refused by the generated local demo wrapper before the supplied handler',
+      handler_called: false,
+      state: 'ephemeral_demo_only',
+      claim_boundary: {
+        asserted: [
+          'selected_actions_refused_locally',
+          'supplied_handler_not_called',
+        ],
+        not_asserted: [
+          'production_enforcement',
+          'complete_mediation',
+          'credential_isolation',
+          'durable_state',
+          'trusted_key_configuration',
+          'signed_refusal_artifact',
+          'public_verification',
+        ],
+      },
+    },
+  };
+  const target = join(here, 'scan-adoption-handoff.json');
+  const temp = join(here, '.scan-adoption-handoff.' + process.pid + '.' + randomUUID() + '.tmp');
+  let fd;
+  try {
+    fd = openSync(temp, 'wx', 0o600);
+    writeFileSync(fd, JSON.stringify(handoff, null, 2) + '\\n', 'utf8');
+    fsyncSync(fd);
+    closeSync(fd);
+    fd = undefined;
+    linkSync(temp, target);
+    unlinkSync(temp);
+  } catch (error) {
+    if (fd !== undefined) closeSync(fd);
+    try { unlinkSync(temp); } catch (cleanupError) {
+      if (cleanupError.code !== 'ENOENT') throw cleanupError;
+    }
+    if (error.code === 'EEXIST') throw new Error('Refusing to overwrite existing handoff');
+    throw error;
+  }
+  console.log('Created owner-only scan-adoption-handoff.json beside the reviewed scaffold.');
+}
 `;
 
 const integrationMd = `# EMILIA integration (generated)
@@ -224,14 +381,27 @@ const dispatch = guardDispatch(rawDispatch, {
 });             // wrap once, at the non-bypassable choke point
 \`\`\`
 
-3. Before integration, run \`node ${outDir}/verify-setup.mjs\`. It is a local,
-   ephemeral-state refusal check only; it does not prove production coverage.
-4. Pin keys and supply a durable provenance ledger plus a shared atomic
+3. Before integration, run \`node ${outDir}/verify-setup.mjs\`. It makes no
+   network request, launches no process, executes no consequential handler, and
+   writes no file. It prints the exact manifest and scaffold digests to review.
+4. After reviewing the manifest, you may explicitly create a privacy-bounded
+   machine-readable handoff for selected consequential tools:
+
+\`\`\`bash
+node ${outDir}/verify-setup.mjs --emit-handoff --reviewed-manifest-digest sha256:<reviewed-digest> --action <reviewed-tool-name>
+\`\`\`
+
+   Repeat \`--action\` to select additional visible tools. The command creates
+   owner-only \`${outDir}/scan-adoption-handoff.json\` without overwriting an
+   existing file. It includes no tool arguments, credentials, ambient identity,
+   host data, timestamps, or paths outside this output directory.
+5. Pin keys and supply a durable provenance ledger plus a shared atomic
    consumption store. Wire the consent/signoff/issue adapters to your EP host.
 
 Nothing is enforced until the wrapper owns every path to the provider credential,
 the state is durable, and the keys are pinned. This scaffold proposes; it does not
-protect on its own.
+protect on its own. A passed local refusal is not a signed refusal artifact,
+public verification, production enforcement, or proof of complete mediation.
 `;
 
 const files = [
