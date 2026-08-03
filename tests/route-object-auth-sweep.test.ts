@@ -61,6 +61,7 @@ const AUTHZ_SIGNALS = [
   'publishArenaRefusal',      // Arena service authenticates capability + session + attempt ownership
   'authorizeAgentAdoptionSession', // hashed adoption capability bound to the exact session and tenant
   'authorizeAgentAdoptionRequest', // bearer-or-HttpOnly recovery capability with exact-origin mutation guard
+  'revokeAgentRecord',      // record-specific owner capability is hashed and checked inside the store RPC
 ];
 
 // Reviewed public-by-design routes: intentionally unauthenticated OR intentionally
@@ -80,6 +81,7 @@ const PUBLIC_BY_DESIGN = new Set([
   'app/api/demo/crash/[scenarioId]/route.ts',         // public, unauthenticated crash-test demo (self-signed sandbox)
   'app/api/arena/refusals/[shareId]/route.ts',        // explicit opt-in, privacy-minimized integrity record behind 160-bit share id
   'app/api/adopt/shares/[shareId]/route.ts',          // opt-in Operating Bond projection behind a 160-bit capability id; no session, credential, or identity fields
+  'app/api/agent-records/[recordId]/route.ts',         // unlisted factual projection behind a 160-bit opaque id; exact lookup only, no list/search surface
   'app/api/score/[entityId]/route.ts',                // RETIRED — returns HTTP 410 Gone (score surface removed)
   'app/api/score/[entityId]/history/route.ts',        // RETIRED — returns HTTP 410 Gone
 ]);
