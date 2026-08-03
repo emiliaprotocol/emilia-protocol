@@ -1,16 +1,16 @@
 {
   "schema_version": "EP-MIGRATION-HISTORY-v1",
-  "as_of": "2026-08-02",
-  "remote_head": "20260802232000",
+  "as_of": "2026-08-03",
+  "remote_head": "20260803010000",
   "private_remote_versions": [
     "20260723192504"
   ],
   "retroactive_pending_versions": [],
   "forward_pending_versions": [
-    "20260803010000"
+    "20260803020000"
   ],
   "deployment_sequence": [
-    "20260803010000"
+    "20260803020000"
   ],
   "requires_include_all": false,
   "remote_versions": [
@@ -202,7 +202,8 @@
     "20260802193000",
     "20260802230000",
     "20260802231000",
-    "20260802232000"
+    "20260802232000",
+    "20260803010000"
   ],
   "public_files": {
     "001_emilia_core_schema.sql": "f5e3c6c40fdaf54fbfc7a986f1b7cb021bfa8bee21a81bac39fe2da15f654060",
@@ -393,6 +394,7 @@
     "20260802230000_agent_adoption_v1.sql": "4dac867dd9bd695f9640d8623cbc68e3f0659ff0a87587b1f7f5994f20cb09bf",
     "20260802231000_restore_webauthn_directory_anchor.sql": "90bb596edff8f495de541ab5df582fb45023abff077fc527a48eea4e635afd76",
     "20260802232000_scim_authority_atomic.sql": "334619a03c3a089d3ae038ab9b20dd4c3dab28a9af0eff0b12ac3b2bdfd38e92",
-    "20260803010000_capability_action_digest_fence.sql": "cb3ace0456137a5c0286ddd84c4552c402181193827aedb03d94e6fab0eeee5e"
+    "20260803010000_capability_action_digest_fence.sql": "cb3ace0456137a5c0286ddd84c4552c402181193827aedb03d94e6fab0eeee5e",
+    "20260803020000_agent_record_v1.sql": "6dd0323cb1006cf1f3b6eb487daeeb496ca708bd194d2d2c90b3f1ed2cb13330"
   }
 }
