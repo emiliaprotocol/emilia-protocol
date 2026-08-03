@@ -38,13 +38,6 @@ const { privateKey } = generateKeyPairSync('ed25519');
 function baseReceipt(receiptId) {
   return { '@version': 'EP-RECEIPT-v1', payload: { receipt_id: receiptId, claim: { capability_only: true } } };
 }
-const STORE_ACTION_DIGEST = capabilityActionDigest({ operation_id: 'fuzz-store-template' });
-const STORE_SCOPE = {
-  profile: CAPABILITY_SCOPE_PROFILE,
-  operation_id_field: 'operation_id',
-  action_digests: [STORE_ACTION_DIGEST],
-};
-
 const CURRENCY = 'usd';
 // A fixed logical clock well before the capability expiry; the store treats
 // `now` as an injectable function, so no Date.now nondeterminism enters here.
@@ -65,6 +58,10 @@ export default {
   async iterate({ rng, iteration }) {
     const budget = rng.int(20, 500);
     const opCount = rng.int(4, 40);
+    const actionDigests = Array.from(
+      { length: opCount },
+      (_, index) => capabilityActionDigest({ operation_id: `fuzz-${iteration}-${index}` }),
+    );
     // Per-op max bid ranges from "tiny" to "can exceed budget alone", so both
     // the fits-easily and the heavily-contended regimes get exercised.
     const maxBid = rng.int(1, Math.max(2, Math.floor(budget / 2)));
@@ -75,7 +72,11 @@ export default {
       budget: { amount: budget, currency: CURRENCY },
       expiry: EXPIRY,
       capabilityId,
-      scope: STORE_SCOPE,
+      scope: {
+        profile: CAPABILITY_SCOPE_PROFILE,
+        operation_id_field: 'operation_id',
+        action_digests: actionDigests,
+      },
     });
 
     const store = createMemoryCapabilityStore();
@@ -109,7 +110,7 @@ export default {
           capabilityId,
           capabilityFingerprint: fingerprint,
           operationId,
-          actionDigest: STORE_ACTION_DIGEST,
+          actionDigest: actionDigests[i],
           amount,
           currency: CURRENCY,
           now: clock,
@@ -122,8 +123,10 @@ export default {
           invariant(typeof r.reservation_token === 'string' && r.reservation_token.length >= 16,
             'reservation-token-shape', `token=${r.reservation_token}`);
         } else {
-          // The only legitimate reasons to refuse a fresh, in-window,
-          // matching-currency reservation are budget exhaustion.
+          // Every fuzz operation has a distinct in-scope action digest, so a
+          // refusal here may only be a budget or same-operation refusal. This
+          // preserves the target's aggregate-budget coverage after adding the
+          // separate action-digest fence.
           invariant(r.reason === 'budget_exceeded' || r.reason === 'operation_in_flight'
             || r.reason === 'operation_already_committed',
           'reserve-refusal-reason', `unexpected reserve refusal: ${r.reason}`);
