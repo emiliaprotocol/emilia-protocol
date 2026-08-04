@@ -2,11 +2,11 @@
 
 > EMILIA Gate is the commercial consequence firewall that prevents consequential machine actions on protected executor paths without verifiable authority. It consumes native delegation and machine-policy evidence as independently verified inputs, joins them to exact-action human authority, reserves bounded capabilities before provider entry, preserves executed or indeterminate outcomes, refuses blind replay, and treats any remedy as a new authorized action rather than rewritten history. EMILIA Protocol is the open verification and evidence substrate underneath it; EMILIA Approver captures device-bound exact-action human decisions; EMILIA Assurance Plane provides scoped verification, re-performance, conformance reports, and deployment evidence without acting as an auditor or accredited certifier.
 
-This is a generated discovery index following the llms.txt proposal. Evidence snapshot: 2026-08-03T23:40:30.845Z. For substantive analysis, load the full or machine-readable context below before drawing conclusions from individual repository files.
+This is a generated discovery index following the llms.txt proposal. Evidence snapshot: 2026-08-04T05:48:13.485Z. For substantive analysis, load the full or machine-readable context below before drawing conclusions from individual repository files.
 
 ## Engineering Evidence
 
-EMILIA is implemented security infrastructure, not architecture-only: 8,644 automated tests across 508 files; 35 executable security claims over 255 hashed evidence files; 20 verified obligations across 2 composed Tamarin models, with 8 deliberately weakened variants producing concrete attack traces; and 78 content-addressed selected model/runtime scenarios across 14 bounded models and 21 claims, including 51 paired formal-counterexample/runtime-refusal controls.
+EMILIA is implemented security infrastructure, not architecture-only: 8,645 automated tests across 508 files; 35 executable security claims over 255 hashed evidence files; 20 verified obligations across 2 composed Tamarin models, with 8 deliberately weakened variants producing concrete attack traces; and 78 content-addressed selected model/runtime scenarios across 14 bounded models and 21 claims, including 51 paired formal-counterexample/runtime-refusal controls.
 
 Interoperability evidence: 21 conformance suites and 331 current vectors across three same-team ports; external Rust evidence covers a time-pinned 164-vector set plus 359 hostility cases. Strict clean-room construction acceptance remains false.
 
