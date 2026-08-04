@@ -1,0 +1,490 @@
+<?xml version="1.0" encoding="utf-8"?>
+<rfc xmlns:xi="http://www.w3.org/2001/XInclude"
+     docName="draft-ferro-schrock-memory-projection-record-01"
+     category="exp" ipr="trust200902" submissionType="IETF"
+     version="3" tocInclude="true" sortRefs="true" symRefs="true">
+  <front>
+    <title abbrev="Memory Projection Records">Signed Memory Projection Records for Verifiable AI Context Delivery</title>
+    <seriesInfo name="Internet-Draft" value="draft-ferro-schrock-memory-projection-record-01"/>
+    <author fullname="Andrea Ferro">
+      <organization>ApertoMemory</organization>
+      <address><email>irn@irn3.com</email></address>
+    </author>
+    <author fullname="Iman Schrock">
+      <organization>EMILIA Protocol, Inc.</organization>
+      <address><postal><country>US</country></postal><email>team@emiliaprotocol.ai</email></address>
+    </author>
+    <date year="2026" month="August" day="3"/>
+    <area>sec</area>
+    <keyword>AI memory</keyword><keyword>context delivery</keyword>
+    <keyword>provenance</keyword><keyword>memory poisoning</keyword>
+    <abstract>
+      <t>Encrypted and signed memory objects can establish source integrity,
+      authorship, and read-time trust without establishing which exact bytes a
+      memory adapter selected and delivered to a downstream AI system. This
+      document specifies a provider-neutral signed Memory Projection Record.
+      The record commits to the recall request and selection policy, the
+      read-time keyring snapshot, the ordered source objects and exact context
+      fragments delivered, the complete projection bytes, and summarized
+      exclusions. It deliberately does not claim that a model received, used,
+      or weighted the projection, that an action was authorized, or that an
+      outcome occurred. ApertoMemory is one source profile; other memory
+      formats can use the same projection boundary.</t>
+    </abstract>
+  </front>
+  <middle>
+    <section anchor="intro"><name>Introduction</name>
+      <t>A memory-object format and a context-delivery record answer different
+      questions. A memory-object format can prove that an object verified under
+      a key accepted at read time. It does not, by itself, identify the set,
+      order, framing, or exact bytes selected for a particular AI request.
+      Conversely, a projection record cannot repair invalid source provenance.
+      It can only preserve the source decision and bind it to the bytes emitted
+      by a named adapter.</t>
+      <t>This document defines the join between those layers. A projection
+      producer signs one closed record after the projection bytes and their
+      ordered fragments are finalized. A verifier recomputes the source-object,
+      fragment, and complete-projection commitments and verifies the adapter
+      signature under a relying-party-pinned key. The resulting fact is narrow:
+      the producer attests that it emitted the committed projection under the
+      committed selection context.</t>
+      <t>The source memory profile remains authoritative for its own object,
+      cryptographic, trust, authorship, and custody semantics. In particular,
+      ApertoMemory <xref target="I-D.ferro-apertomemory"/> remains authoritative
+      for sealed Memory Objects and its read-time trust derivation. This
+      document does not redefine those semantics. It defines a joint,
+      provider-neutral artifact above that boundary.</t>
+      <section anchor="requirements"><name>Requirements Language</name>
+        <t>The key words "MUST", "MUST NOT", "REQUIRED", "SHALL", "SHALL NOT",
+        "SHOULD", "SHOULD NOT", "RECOMMENDED", "NOT RECOMMENDED", "MAY", and
+        "OPTIONAL" in this document are to be interpreted as described in
+        BCP 14 <xref target="RFC2119"/> <xref target="RFC8174"/> when, and only
+        when, they appear in all capitals, as shown here.</t>
+      </section>
+    </section>
+
+    <section anchor="scope"><name>Scope and Nonclaims</name>
+      <t>A conforming Memory Projection Record establishes all of the following:</t>
+      <ul>
+        <li>the adapter identity and pinned signing key used to produce the record;</li>
+        <li>commitments to the recall request, selection policy, source-profile
+        trust snapshot, and framing profile;</li>
+        <li>the ordered list of source objects selected, with the trust and
+        authorship results supplied by the source profile;</li>
+        <li>the exact bytes of each framed context fragment and of the complete
+        emitted projection; and</li>
+        <li>the number of objects excluded for each closed exclusion reason.</li>
+      </ul>
+      <t>A projection record does not establish transport receipt, insertion
+      into a model context window, model use or weighting, action linkage,
+      action authorization, execution, or outcome. A downstream system MAY
+      bind the projection digest into a separate request, authorization, or
+      outcome protocol. Such a binding is outside this document.</t>
+    </section>
+
+    <section anchor="terms"><name>Terminology</name>
+      <dl>
+        <dt>Source profile</dt><dd>The independently governed memory format and
+        verification rules from which object identity, trust, authorship, and
+        custody facts are derived.</dd>
+        <dt>Projection producer</dt><dd>The adapter that selects source objects,
+        frames exact context fragments, constructs the complete projection, and
+        signs the Memory Projection Record.</dd>
+        <dt>Projection</dt><dd>The exact byte string emitted by the producer for
+        downstream context delivery.</dd>
+        <dt>Context fragment</dt><dd>The exact framed bytes contributed by one
+        selected source object at one position in the projection.</dd>
+        <dt>Trust snapshot</dt><dd>A commitment to the source-profile trust
+        state used when the selection decision was made. For ApertoMemory this
+        is a read-time keyring snapshot, because trust is derived rather than
+        stored in the object.</dd>
+        <dt>b64u</dt><dd>Unpadded base64url encoding as defined in Section 5 of
+        <xref target="RFC4648"/>.</dd>
+      </dl>
+    </section>
+
+    <section anchor="record"><name>Memory Projection Record</name>
+      <t>MEMORY-PROJECTION-RECORD-v1 is a closed I-JSON object
+      <xref target="RFC7493"/>. The top-level members are shown below. Member
+      order in a JSON serialization has no significance. Unknown members MUST
+      be refused until a later version defines an extension mechanism.</t>
+      <sourcecode type="json"><![CDATA[
+{
+  "@version": "MEMORY-PROJECTION-RECORD-v1",
+  "source_profile": "draft-ferro-apertomemory-02",
+  "projection_id": "urn:memory-projection:example:1234",
+  "created_at": "2026-07-29T17:00:01.000Z",
+  "adapter": {
+    "id": "urn:memory-adapter:example:1",
+    "key_id": "adapter-key-2026-07"
+  },
+  "selection_context": {
+    "recall_request_digest": "sha256:...",
+    "selection_policy_digest": "sha256:...",
+    "trust_snapshot_digest": "sha256:...",
+    "trust_evaluated_at": "2026-07-29T17:00:00.000Z",
+    "context_frame_profile": "urn:apertomemory:context-frame:v0"
+  },
+  "delivered": [
+    {
+      "position": 0,
+      "object": {
+        "format_version": 2,
+        "sealed_object_digest": "sha256:..."
+      },
+      "context_fragment_digest": "sha256:...",
+      "derived_trust": "trusted",
+      "authorship": "attested",
+      "author_key_id_b64u": "0FMJy9O1Xzs",
+      "custody_present": true
+    }
+  ],
+  "exclusions": {
+    "total": 2,
+    "by_reason": {
+      "authentication_failed": 1,
+      "schema_invalid": 0,
+      "policy_filtered": 0,
+      "context_limit": 1
+    }
+  },
+  "projection": {
+    "encoding": "utf-8",
+    "byte_length": 314,
+    "digest": "sha256:..."
+  },
+  "nonclaims": {
+    "model_use": "NOT_ESTABLISHED",
+    "action_linkage": "NOT_ESTABLISHED",
+    "action_authorization": "NOT_ESTABLISHED",
+    "execution_outcome": "NOT_ESTABLISHED"
+  },
+  "proof": {
+    "alg": "Ed25519",
+    "key_id": "adapter-key-2026-07",
+    "signature_b64u": "..."
+  }
+}
+]]></sourcecode>
+
+      <section anchor="identity-time"><name>Identity and Time</name>
+        <t>@version MUST equal MEMORY-PROJECTION-RECORD-v1. projection_id MUST
+        be a globally unique URI. created_at and trust_evaluated_at MUST be UTC
+        timestamps conforming to <xref target="RFC3339"/>. adapter.id identifies
+        the producer; adapter.key_id selects a key from relying-party policy.
+        proof.key_id MUST equal adapter.key_id.</t>
+        <t>The relying party MUST set a maximum acceptable interval between
+        trust_evaluated_at, created_at, and its verification time. A valid
+        signature does not make a stale trust decision current.</t>
+      </section>
+
+      <section anchor="selection"><name>Selection Context</name>
+        <t>recall_request_digest is SHA-256 over the exact request bytes under a
+        profile that defines their serialization. selection_policy_digest is
+        SHA-256 over the exact policy bytes that determined eligibility,
+        filtering, ordering, and limits. trust_snapshot_digest is SHA-256 over
+        the source-profile-defined trust snapshot. context_frame_profile names
+        the deterministic transformation from one opened source object and its
+        labels to one context fragment.</t>
+        <t>The cleartext request, policy, and trust snapshot need not be carried
+        in the record. A verifier that relies on any of them MUST possess the
+        exact bytes and their applicable serialization profiles and MUST
+        recompute the corresponding digest.</t>
+      </section>
+
+      <section anchor="delivered"><name>Delivered Entries and Projection Bytes</name>
+        <t>delivered is an array in projection order. position MUST equal the
+        zero-based array index and MUST NOT repeat. sealed_object_digest is
+        SHA-256 over the exact complete source-object bytes as supplied, without
+        parsing or reserialization. format_version is interpreted only by the
+        named source profile.</t>
+        <t>context_fragment_digest is SHA-256 over the exact bytes of the
+        fragment emitted for that entry, including framing labels, separators,
+        and line endings. The complete projection is the bytewise concatenation
+        of those fragments in ascending position. projection.byte_length and
+        projection.digest MUST equal the length and SHA-256 digest of that
+        complete byte string. This version supports only UTF-8 projection
+        bytes; projection.encoding MUST equal utf-8.</t>
+        <t>derived_trust, authorship, author_key_id_b64u, and custody_present
+        preserve the source-profile result used at selection time. They MUST
+        NOT be recomputed under rules invented by the projection producer. For
+        an ApertoMemory source, the source profile remains solely authoritative
+        for those values. Unverified content MUST use authorship unknown and a
+        null author key. Attested authorship requires custody_present true.</t>
+      </section>
+
+      <section anchor="exclusions"><name>Exclusions</name>
+        <t>exclusions.total MUST equal the sum of the closed by_reason counters.
+        authentication_failed counts objects refused by source authentication;
+        schema_invalid counts source objects the source profile refuses;
+        policy_filtered counts otherwise valid objects excluded by policy; and
+        context_limit counts otherwise eligible objects omitted due to a
+        projection limit. A producer MUST NOT map an unknown reason into a
+        semantically different counter. This version does not disclose excluded
+        object identifiers, reducing correlation and content-oracle risk.</t>
+      </section>
+    </section>
+
+    <section anchor="apertomemory-source-profile"><name>ApertoMemory Source Profile</name>
+      <t>This section defines the source-profile processing used when
+      source_profile equals draft-ferro-apertomemory-02 and
+      context_frame_profile equals urn:apertomemory:context-frame:v0. The
+      source-native outputs remain governed by
+      <xref target="I-D.ferro-apertomemory"/>. The projection producer MUST
+      preserve those outputs and MUST NOT upgrade or reinterpret them.</t>
+      <t>The embedded requirements below reproduce the ratified
+      <xref target="AMEM-TRUST-SNAPSHOT-PROFILE"/> and
+      <xref target="AMEM-CONTEXT-FRAME-PROFILE"/> profiles pinned at
+      ApertoMemory commit 48be525.</t>
+
+      <section anchor="apertomemory-trust-snapshot"><name>Trust Snapshot</name>
+        <t>The ApertoMemory trust snapshot MUST be encoded as deterministic CBOR
+        using the preferred serialization rules in Section 4.2 of
+        <xref target="RFC8949"/>. It is a two-member map. Integer key 1 maps to
+        the vault owner's signing-key identifier as an eight-byte CBOR byte
+        string. Integer key 2 maps to an array containing the accepted author
+        key identifiers, each as an eight-byte CBOR byte string.</t>
+        <t>Each key identifier is the first eight bytes of SHA-256 over the raw
+        Ed25519 signing public key. The accepted-key array MUST represent the
+        exact known_keys set at trust_evaluated_at: duplicate identifiers are
+        removed and the remaining raw byte strings are sorted in ascending
+        unsigned-byte order. The owner identifier is retained when it is also
+        present in known_keys. Integer key 2 MUST be present even when the set
+        is empty. A producer MUST NOT sort base64url or hexadecimal
+        representations in place of the raw bytes.</t>
+        <t>trust_snapshot_digest is the lowercase hexadecimal SHA-256 digest of
+        those exact deterministic-CBOR bytes, prefixed by sha256:.</t>
+        <sourcecode type="text"><![CDATA[
+single accepted key:
+  a2014863c1e89c009c5ad7028148d05309cbd3b55f3b
+  sha256:ad677e36d1ac311f758cefeb41069704d1bc995612db0bc1029e239ecfcc2b5d
+
+two accepted keys, raw-byte order:
+  a201480102030405060708028248000000000000000148d000000000000000
+  sha256:a6cec9a790d68dda6df60477c802cd3738650cd8f1b38fcc21125de51762e231
+
+empty accepted-key set:
+  a2014863c1e89c009c5ad70280
+  sha256:eddde59fb79cca10fdadf0c5bfc7c3b7e466cab79dcb95a5c4ea165fc8eb5bf0
+]]></sourcecode>
+      </section>
+
+      <section anchor="apertomemory-context-frame"><name>Context Fragment</name>
+        <t>The producer obtains derived_trust, authorship, author key, custody
+        state, and body bytes from the source-native open_sealed result. It MUST
+        NOT reproduce ApertoMemory trust logic inside the projection adapter.
+        The body is used as exact UTF-8 with no trimming, newline conversion,
+        or Unicode normalization.</t>
+        <t>The context fragment is the UTF-8 byte sequence produced by the
+        following exact concatenation. Every shown line ending is one LF byte
+        (0x0A), including the final line ending.</t>
+        <sourcecode type="text"><![CDATA[
+"[ApertoMemory trust=" + trust
++ " authorship=" + authorship
++ " author_key=" + author_key
++ " custody=" + custody
++ "]\n"
++ body
++ "\n[/ApertoMemory]\n"
+]]></sourcecode>
+        <t>trust is self, trusted, or unverified. authorship is signed,
+        attested, or unknown. author_key is the unpadded base64url encoding of
+        the native eight-byte author key identifier, or the literal none when
+        the source result has no author. custody is the lowercase literal true
+        or false. Fields and values MUST appear in the order shown.</t>
+      </section>
+    </section>
+
+    <section anchor="signing"><name>Canonicalization and Signature</name>
+      <t>Every member except proof is inside the signature boundary. The producer
+      removes proof, canonicalizes the remaining object with JCS
+      <xref target="RFC8785"/>, prefixes the following UTF-8 domain string and
+      one zero octet, and signs the resulting bytes with Ed25519
+      <xref target="RFC8032"/>:</t>
+      <sourcecode type="text"><![CDATA[
+MEMORY-PROJECTION-RECORD-v1\0 || JCS(record without proof)
+]]></sourcecode>
+      <t>proof.alg MUST equal Ed25519. signature_b64u is the unpadded base64url
+      encoding <xref target="RFC4648"/> of the 64-byte signature. The public key
+      MUST come from relying-party policy or an authenticated key-distribution
+      mechanism outside the record. A key carried with the record is not a
+      trust anchor.</t>
+    </section>
+
+    <section anchor="producer"><name>Producer Algorithm</name>
+      <ol>
+        <li>Open and verify candidate objects using their native source profile.
+        Record the trust snapshot and evaluation time.</li>
+        <li>Commit to the recall request and complete selection policy before
+        selecting objects.</li>
+        <li>Apply authentication, schema, policy, ordering, and size rules.
+        Count every excluded candidate under exactly one exclusion reason.</li>
+        <li>Construct each final context fragment, hash its exact bytes, and
+        append its entry in order. After this step the fragments MUST NOT be
+        mutated without rebuilding the record.</li>
+        <li>Concatenate the fragments, compute projection.byte_length and
+        projection.digest, construct the nonclaims, and sign the closed record.</li>
+        <li>Return or make available the projection bytes and record as one
+        logical result. A failure after signing but before downstream delivery
+        MUST NOT be reported as proof that a model received the bytes.</li>
+      </ol>
+    </section>
+
+    <section anchor="verification"><name>Verifier Algorithm</name>
+      <ol>
+        <li>Require the exact top-level and nested member sets defined by this
+        version. Validate types, enumerations, timestamps, and digest syntax.</li>
+        <li>Resolve adapter.key_id under relying-party policy, verify that it is
+        current for created_at, and verify the Ed25519 signature over the
+        domain-separated JCS bytes.</li>
+        <li>Enforce freshness policy for created_at and trust_evaluated_at and
+        reject a duplicate projection_id when policy requires single use.</li>
+        <li>If relying on the request, policy, or trust snapshot, recompute its
+        digest under the named profile.</li>
+        <li>Verify each exact source-object digest under its native source
+        profile. Preserve, rather than reinterpret, the native trust,
+        authorship, and custody result.</li>
+        <li>Require sequential positions. Recompute every fragment digest from
+        the exact fragment bytes, concatenate those bytes in order, and verify
+        the complete length and digest.</li>
+        <li>Verify that exclusions.total equals the sum of the closed reason
+        counters and that all four nonclaims equal NOT_ESTABLISHED.</li>
+      </ol>
+      <t>A verifier MUST refuse mutation, omission, duplication, or reordering of
+      a delivered entry; a fragment or projection mismatch; an unpinned,
+      expired, or compromised adapter key; a stale trust evaluation; a count
+      mismatch; an unknown field; an altered nonclaim; or an invalid signature.</t>
+    </section>
+
+    <section anchor="composition"><name>Composition with Downstream Systems</name>
+      <t>A downstream protocol may bind projection.digest and projection_id into
+      a model invocation, action proposal, authorization, admission decision,
+      execution receipt, or outcome record. That downstream protocol is
+      authoritative for its own semantics. The Memory Projection Record MUST
+      remain valid and useful without requiring any particular agent,
+      authorization, or outcome framework.</t>
+      <t>EMILIA Trusted Context, AEC, Gate, and Outcome Binding are one consumer
+      profile. They may use the projection as one evidence leg and independently
+      bind the actual action and consequence. They are not part of the neutral
+      projection-record wire format and do not authorize changes to the source
+      profile or projection record.</t>
+    </section>
+
+    <section anchor="security"><name>Security Considerations</name>
+      <t>A signed projection can preserve poisoned content with high integrity.
+      Producers MUST therefore apply the native source profile fail closed and
+      MUST keep unverified content distinguishable from self or trusted content.
+      The projection signature proves an adapter statement, not the correctness
+      of a memory, trust policy, keyring, framing policy, or model behavior.</t>
+      <t>Stable object identifiers and excluded-object lists create correlation
+      and membership oracles. This version commits to exact source bytes and
+      carries aggregate exclusion counts rather than cleartext source identifiers.
+      Deployments SHOULD use pairwise adapter identifiers where appropriate and
+      SHOULD minimize retention of request, policy, and projection material.</t>
+      <t>Replay can cause an old but valid projection to be applied under a new
+      request. Relying parties MUST enforce freshness and SHOULD register
+      projection_id atomically when single use is required. A stale or revoked
+      source keyring, adapter key, or policy MUST NOT be made current merely by
+      replaying a valid historical signature.</t>
+    </section>
+
+    <section anchor="privacy"><name>Privacy Considerations</name>
+      <t>Memory projections can contain highly sensitive personal facts and can
+      reveal selection behavior even when source objects remain encrypted.
+      Records SHOULD carry commitments rather than cleartext requests, policies,
+      trust snapshots, or excluded identifiers. The projection bytes SHOULD be
+      disclosed only to the intended downstream recipient. Logs SHOULD avoid
+      storing raw projection or fragment bytes unless operationally required.</t>
+    </section>
+
+    <section anchor="iana"><name>IANA Considerations</name>
+      <t>This document has no IANA actions.</t>
+    </section>
+
+    <section anchor="implementation"><name>Implementation Status</name>
+      <t>The Apache-2.0 implementation
+      <xref target="AMEM-EMILIA-INTEROP"/> implements
+      MEMORY-PROJECTION-RECORD-v1. It produces and verifies the closed neutral
+      field set and v1 domain-separated Ed25519 signature, recomputes the exact
+      recall-request, policy, trust-snapshot, source-object, fragment, and
+      complete-projection commitments, preserves source-native trust results,
+      and exercises positive and hostile mutation vectors.</t>
+      <t>ApertoMemory and EMILIA first independently reproduced five native
+      source-fact cases and matched their exact source-object digests and
+      native trust, authorship, signer, author, and custody results. Separate
+      producers then converged byte-for-byte on a frozen Projection v1 example.
+      That exercise exposed the two underspecifications resolved in
+      <xref target="apertomemory-source-profile"/>. ApertoMemory subsequently
+      published the exact context-frame and trust-snapshot profiles at pinned
+      commit 48be525, and EMILIA independently reproduced the three deterministic
+      CBOR examples and both checked context-frame digests before adopting those
+      bytes.</t>
+      <t>This is bounded reciprocal evidence for the checked source facts,
+      profile bytes, and Projection v1 cases. It is not blanket ApertoMemory
+      conformance, does not establish that every hostile case has a second
+      independent implementation, and establishes none of model receipt, model
+      use, action linkage, action authorization, execution, or outcome.</t>
+    </section>
+
+    <section anchor="changes-since-00"><name>Changes Since -00</name>
+      <t>This revision makes no change to the MEMORY-PROJECTION-RECORD-v1 wire
+      field set or signature domain. It specifies the exact ApertoMemory
+      deterministic-CBOR trust snapshot and context-frame bytes, updates the
+      example to name that framing profile, and records the bounded reciprocal
+      implementation evidence completed after -00.</t>
+    </section>
+
+    <section anchor="acknowledgments"><name>Acknowledgments</name>
+      <t>The authors thank Matteo Clementel for his review and contributions
+      to the memory-projection boundary.</t>
+    </section>
+
+  </middle>
+  <back>
+    <references><name>Normative References</name>
+      <xi:include href="https://bib.ietf.org/public/rfc/bibxml/reference.RFC.2119.xml"/>
+      <xi:include href="https://bib.ietf.org/public/rfc/bibxml/reference.RFC.3339.xml"/>
+      <xi:include href="https://bib.ietf.org/public/rfc/bibxml/reference.RFC.4648.xml"/>
+      <xi:include href="https://bib.ietf.org/public/rfc/bibxml/reference.RFC.7493.xml"/>
+      <xi:include href="https://bib.ietf.org/public/rfc/bibxml/reference.RFC.8032.xml"/>
+      <xi:include href="https://bib.ietf.org/public/rfc/bibxml/reference.RFC.8174.xml"/>
+      <xi:include href="https://bib.ietf.org/public/rfc/bibxml/reference.RFC.8785.xml"/>
+      <xi:include href="https://bib.ietf.org/public/rfc/bibxml/reference.RFC.8949.xml"/>
+    </references>
+    <references><name>Informative References</name>
+      <reference anchor="I-D.ferro-apertomemory"
+                 target="https://datatracker.ietf.org/doc/draft-ferro-apertomemory/">
+        <front>
+          <title>The ApertoMemory Format: Portable, Client-Side-Encrypted AI Memory</title>
+          <author fullname="Andrea Ferro"/>
+          <date year="2026" month="July" day="22"/>
+        </front>
+        <seriesInfo name="Internet-Draft" value="draft-ferro-apertomemory-02"/>
+      </reference>
+      <reference anchor="AMEM-CONTEXT-FRAME-PROFILE"
+                 target="https://github.com/apertomemory/apertomemory/blob/48be5250f26aea9e34bc4f8adaca22ac9016cc84/interop/emilia/apertomemory-context-frame-v0-profile.md">
+        <front>
+          <title>ApertoMemory Context Frame v0 Profile</title>
+          <author fullname="Andrea Ferro"/>
+          <date year="2026" month="August" day="3"/>
+        </front>
+      </reference>
+      <reference anchor="AMEM-TRUST-SNAPSHOT-PROFILE"
+                 target="https://github.com/apertomemory/apertomemory/blob/48be5250f26aea9e34bc4f8adaca22ac9016cc84/interop/emilia/apertomemory-trust-snapshot-profile.md">
+        <front>
+          <title>ApertoMemory Trust Snapshot v0 Profile</title>
+          <author fullname="Andrea Ferro"/>
+          <date year="2026" month="August" day="3"/>
+        </front>
+      </reference>
+      <reference anchor="AMEM-EMILIA-INTEROP"
+                 target="https://github.com/emilia-protocol/emilia-protocol/tree/main/interop/apertomemory-emilia">
+        <front>
+          <title>ApertoMemory / EMILIA Memory-to-Action Composition Profile</title>
+          <author fullname="Iman Schrock"/>
+          <date year="2026" month="July"/>
+        </front>
+      </reference>
+    </references>
+  </back>
+</rfc>
