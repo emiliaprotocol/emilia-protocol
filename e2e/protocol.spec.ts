@@ -13,7 +13,7 @@ test.describe('Protocol Page', () => {
     await expect(page.getByRole('heading', { level: 2, name: 'Four documents. One evidence path.' })).toBeVisible();
 
     const expectedDocuments = [
-      ['canonical-document-1', 'Authorization Receipts', 'draft-schrock-ep-authorization-receipts-08'],
+      ['canonical-document-1', 'Authorization Receipts', 'draft-schrock-ep-authorization-receipts-09'],
       ['canonical-document-2', 'Human Authorization Binding', 'draft-schrock-human-authorization-binding-00'],
       ['canonical-document-3', 'Authority Introduction', 'draft-schrock-ep-authority-introduction-02'],
       ['canonical-document-4', 'Authorization Evidence Chain', 'draft-schrock-ep-authorization-evidence-chain-05'],

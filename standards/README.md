@@ -47,7 +47,7 @@ remain separate lifecycle transitions.
 The reader-facing canonical surface is:
 
 1. **Authorization Receipts** —
-   [`draft-schrock-ep-authorization-receipts-08`](posted/draft-schrock-ep-authorization-receipts-08.xml):
+   [`draft-schrock-ep-authorization-receipts-09`](posted/draft-schrock-ep-authorization-receipts-09.xml):
    one action-bound organizational approval-evidence profile.
 2. **Human Authorization Binding** —
    [`draft-schrock-human-authorization-binding-00`](posted/draft-schrock-human-authorization-binding-00.xml):
@@ -101,7 +101,7 @@ publication provenance. The retained packet is not an upload queue.
 ## New-filing freeze
 
 A 90-day freeze on new Internet-Draft names and `-00` filings is in effect from
-2026-08-03 through 2026-11-01, inclusive. Maintenance revisions under an
+2026-08-04 through 2026-11-01, inclusive. Maintenance revisions under an
 existing active draft name remain allowed. The only exception requires a
 wire-level gap demonstrated by a named external implementer or named external
 deployment, recorded evidence of that demonstration, and a recorded overlap

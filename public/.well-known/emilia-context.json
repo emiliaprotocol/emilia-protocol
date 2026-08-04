@@ -3,7 +3,7 @@
   "evidence_snapshot_at": "2026-08-03T23:40:30.845Z",
   "provenance": {
     "generator": "scripts/generate-llm-context.mts",
-    "input_digest_sha256": "6207769e8108f5f2f49e39de609a7ee9cd48d77da918dedbe210b396229cb90f",
+    "input_digest_sha256": "8d731bf910261e5972de526fe59b591566f98a9b7a391983a4f9f1c13b75f622",
     "generated_from": [
       {
         "path": "docs/ai/context-source.v1.json",
@@ -47,8 +47,8 @@
       },
       {
         "path": "standards/STATUS.json",
-        "sha256": "f73800b87bc7cdaccd00023eafd7c388607696c15d067ae42fa0dcf191cada21",
-        "bytes": 35689
+        "sha256": "237e6462b05734eed8c3970734602e9ba6d67e604cbb917149a5f220dc96192d",
+        "bytes": 35715
       },
       {
         "path": "caid/conformance/vectors.json",
@@ -4548,9 +4548,9 @@
     },
     {
       "identifier": "draft-schrock-ep-authorization-receipts",
-      "revision_at_snapshot": "08",
+      "revision_at_snapshot": "09",
       "role": "One action-bound organizational approval evidence profile",
-      "next_action": "Published July 21; use -08 as the current receipt and extension baseline",
+      "next_action": "Published August 3; use -09 as the current Standards Track candidate for the receipt and extension baseline",
       "url": "https://datatracker.ietf.org/doc/draft-schrock-ep-authorization-receipts/",
       "status_rule": "Check the live IETF Datatracker URL; do not infer status or revision from a local filename."
     },
@@ -4671,10 +4671,10 @@
           "order": 1,
           "label": "Authorization Receipts",
           "draft": "draft-schrock-ep-authorization-receipts",
-          "revision": "08",
-          "source": "standards/posted/draft-schrock-ep-authorization-receipts-08.xml",
+          "revision": "09",
+          "source": "standards/posted/draft-schrock-ep-authorization-receipts-09.xml",
           "datatracker": "https://datatracker.ietf.org/doc/draft-schrock-ep-authorization-receipts/",
-          "snapshot_sha256": "30c1a9f1f9c918443ff89d5271e079be5a4d121233a47294f5425e050f5b9657",
+          "snapshot_sha256": "c4d430e4257fc6ff8a77d7eb8b6a40de3a3159f6eefa83f7df439ebbe42008b9",
           "canonical_question": "What action-bound organizational approval evidence was produced under the receipt profile?",
           "boundary": "One approval-evidence profile and extension seam; it does not establish scoped authority or evidence satisfaction by itself."
         },

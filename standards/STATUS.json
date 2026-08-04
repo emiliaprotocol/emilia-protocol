@@ -3,7 +3,7 @@
   "updated": "2026-08-03",
   "active_datatracker_count": 22,
   "active_schrock_datatracker_count": 20,
-  "posted_snapshot_policy": "standards/posted contains the current published revision of every active draft-schrock-* Datatracker record represented in this repository. The six August 3 XML snapshots were verified byte-for-byte against the immutable IETF archive before promotion. Their exact submitted bytes remain retained in standards/staged/UPLOAD-THIS as publication provenance, not as upload candidates; the IETF archive remains authoritative for rendered forms and live status.",
+  "posted_snapshot_policy": "standards/posted contains the current published revision of every active draft-schrock-* Datatracker record represented in this repository. The seven August 3 XML snapshots were verified byte-for-byte against the immutable IETF archive before promotion. Their exact submitted bytes remain retained in standards/staged as publication provenance, not as upload candidates; the IETF archive remains authoritative for rendered forms and live status.",
   "status_language": {
     "active_individual_submission": "Published on the IETF Datatracker as an individual Internet-Draft. Not an RFC, not an adopted working-group item, and not IETF endorsement.",
     "candidate": "Repository source under review. Not filed.",
@@ -13,7 +13,7 @@
     "held": "Temporary state only. No document may remain held without a dated decision or explicit external trigger.",
     "canonical_presentation_surface": "Reader-facing navigation across current active individual drafts. It creates no consolidation, replacement, update, obsolescence, retirement, or merger relationship.",
     "publication_provenance_packet": "Exact submitted bytes retained for audit after publication. Not an upload candidate or filing queue.",
-    "new_filing_freeze": "No new Internet-Draft name or -00 filing may enter the filing lane from 2026-08-03 through 2026-11-01 inclusive. Maintenance revisions under active names remain allowed. The sole exception requires a wire-level gap demonstrated by a named external implementer or named external deployment, recorded evidence, and recorded overlap review."
+    "new_filing_freeze": "No new Internet-Draft name or -00 filing may enter the filing lane from 2026-08-04 through 2026-11-01 inclusive. Maintenance revisions under active names remain allowed. The sole exception requires a wire-level gap demonstrated by a named external implementer or named external deployment, recorded evidence, and recorded overlap review."
   },
   "decision_vocabulary": {
     "VERIFIED": "One artifact passed its native verifier under relying-party-selected trust inputs.",
@@ -33,10 +33,10 @@
         "order": 1,
         "label": "Authorization Receipts",
         "draft": "draft-schrock-ep-authorization-receipts",
-        "revision": "08",
-        "source": "standards/posted/draft-schrock-ep-authorization-receipts-08.xml",
+        "revision": "09",
+        "source": "standards/posted/draft-schrock-ep-authorization-receipts-09.xml",
         "datatracker": "https://datatracker.ietf.org/doc/draft-schrock-ep-authorization-receipts/",
-        "snapshot_sha256": "30c1a9f1f9c918443ff89d5271e079be5a4d121233a47294f5425e050f5b9657",
+        "snapshot_sha256": "c4d430e4257fc6ff8a77d7eb8b6a40de3a3159f6eefa83f7df439ebbe42008b9",
         "canonical_question": "What action-bound organizational approval evidence was produced under the receipt profile?",
         "boundary": "One approval-evidence profile and extension seam; it does not establish scoped authority or evidence satisfaction by itself."
       },
@@ -259,10 +259,10 @@
     },
     {
       "draft": "draft-schrock-ep-authorization-receipts",
-      "revision": "08",
+      "revision": "09",
       "layer": "authorization_evidence",
       "role": "One action-bound organizational approval evidence profile",
-      "next_action": "Published July 21; use -08 as the current receipt and extension baseline"
+      "next_action": "Published August 3; use -09 as the current Standards Track candidate for the receipt and extension baseline"
     },
     {
       "draft": "draft-schrock-ep-bounded-capability-receipts",
@@ -468,7 +468,7 @@
       },
       {
         "draft": "draft-schrock-ep-authorization-receipts-08",
-        "source": "standards/posted/draft-schrock-ep-authorization-receipts-08.xml",
+        "source": "standards/archive/draft-schrock-ep-authorization-receipts-08.xml",
         "state": "published_ietf_archive_verified_exact_local_match"
       },
       {

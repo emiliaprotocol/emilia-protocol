@@ -41,7 +41,7 @@ authoritative for rendered forms.
 - `draft-schrock-ep-architecture-02`
 - `draft-schrock-ep-authority-introduction-02`
 - `draft-schrock-ep-authorization-evidence-chain-05`
-- `draft-schrock-ep-authorization-receipts-08`
+- `draft-schrock-ep-authorization-receipts-09`
 - `draft-schrock-ep-bounded-capability-receipts-01`
 - `draft-schrock-ep-bounded-execution-program-00`
 - `draft-schrock-ep-evidence-record-01`
@@ -57,9 +57,9 @@ authoritative for rendered forms.
 
 For reader navigation, the canonical evidence path is:
 
-1. [Authorization Receipts-08](draft-schrock-ep-authorization-receipts-08.xml)
+1. [Authorization Receipts-09](draft-schrock-ep-authorization-receipts-09.xml)
    defines the action-bound approval-evidence profile. The current posted
-   revision is -08; this inventory does not present -09 as published.
+   revision is -09 and the exact posted source matches the Datatracker submission.
 2. [Human Authorization Binding-00](draft-schrock-human-authorization-binding-00.xml)
    binds a named-human authorization artifact into an adjacent host record.
 3. [Authority Introduction-02](draft-schrock-ep-authority-introduction-02.xml)

@@ -9,17 +9,16 @@ import { styles, cta, color, font, radius } from '@/lib/tokens';
 const goldText = '#765A13';
 
 // Canonical presentation path from standards/STATUS.json. Keep these visible
-// revisions aligned with that file. Authorization Receipts intentionally stays
-// at -08 until the newer revision is successfully filed and main is updated.
+// revisions aligned with that file.
 const CANONICAL_DOCUMENTS = [
   {
     order: '01',
     label: 'Authorization Receipts',
-    draft: 'draft-schrock-ep-authorization-receipts-08',
+    draft: 'draft-schrock-ep-authorization-receipts-09',
     question: 'What action-bound organizational approval evidence was produced under the receipt profile?',
     boundary: 'One approval-evidence profile. It does not establish scoped authority or evidence satisfaction by itself.',
     href: '/spec',
-    linkLabel: 'Read Receipts -08',
+    linkLabel: 'Read Receipts -09',
     external: false,
   },
   {
@@ -287,13 +286,13 @@ export default function ProtocolPage() {
           <div className="ep-reveal" style={{ ...styles.card, display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))', gap: 28, alignItems: 'center', padding: '32px 36px' }}>
             <div>
               <div style={styles.eyebrow}>Start with document 01</div>
-              <h2 style={{ ...styles.h2, marginBottom: 10 }}>Authorization Receipts -08</h2>
+              <h2 style={{ ...styles.h2, marginBottom: 10 }}>Authorization Receipts -09</h2>
               <p style={{ ...styles.cardBody, fontSize: 15, margin: 0 }}>
                 Read the current posted receipt profile, then continue through binding, authority, and AEC.
               </p>
             </div>
             <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap', justifyContent: 'flex-end' }}>
-              <a href="/spec" className="ep-cta" style={cta.primary}>Read Receipts -08</a>
+              <a href="/spec" className="ep-cta" style={cta.primary}>Read Receipts -09</a>
               <a href="/standards" className="ep-cta-secondary" style={cta.secondary}>View the full portfolio</a>
             </div>
           </div>

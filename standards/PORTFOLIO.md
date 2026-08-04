@@ -85,10 +85,10 @@ through host-record binding and scoped authority, to relying-party evidence
 satisfaction:
 
 1. **Authorization Receipts** —
-   [`draft-schrock-ep-authorization-receipts-08`](posted/draft-schrock-ep-authorization-receipts-08.xml)
+   [`draft-schrock-ep-authorization-receipts-09`](posted/draft-schrock-ep-authorization-receipts-09.xml)
    defines one action-bound organizational approval-evidence profile and its
    extension seam. Snapshot SHA-256:
-   `30c1a9f1f9c918443ff89d5271e079be5a4d121233a47294f5425e050f5b9657`.
+   `c4d430e4257fc6ff8a77d7eb8b6a40de3a3159f6eefa83f7df439ebbe42008b9`.
 2. **Human Authorization Binding** —
    [`draft-schrock-human-authorization-binding-00`](posted/draft-schrock-human-authorization-binding-00.xml)
    binds a named-human authorization artifact by value or reference into an
@@ -168,8 +168,8 @@ XML sources were verified byte-for-byte against the IETF archive:
    test, and decision vocabulary.
 4. `draft-schrock-ep-authorization-evidence-chain-04`: current native
    verification, action binding, and evidence-satisfaction composition.
-5. `draft-schrock-ep-authorization-receipts-08`: current organizational
-   approval-evidence profile and extension seam.
+5. `draft-schrock-ep-authorization-receipts-08`: the July 21 organizational
+   approval-evidence profile and extension seam, superseded by -09 on August 3.
 6. `draft-schrock-ep-revocation-statement-00`: signed retraction of authority
    without rewriting an already executed effect.
 7. `draft-schrock-model-to-matter-01`: the July 21 Experimental executor-side
@@ -222,7 +222,7 @@ remains authoritative for rendered forms and live status.
 ## New-filing freeze
 
 A 90-day freeze on new Internet-Draft names and `-00` filings is in effect from
-2026-08-03 through 2026-11-01, inclusive. Maintenance revisions under an
+2026-08-04 through 2026-11-01, inclusive. Maintenance revisions under an
 existing active draft name remain allowed. The only exception requires all of
 the following: a wire-level gap, demonstration by a named external implementer
 or named external deployment, recorded evidence of that demonstration, and a
