@@ -130,9 +130,9 @@
         "sha256": "7452eb7b6b91ac9a1387a63eb8a0bc299c0597371945cb8aea0096980d039a7b"
       },
       "source": {
-        "files": 203,
-        "bytes": 3109687,
-        "tree_sha256": "bdeb5946053b9bbd89c626f66a8848539bee6d27c60357e589d0b8d486fc1415"
+        "files": 204,
+        "bytes": 3114444,
+        "tree_sha256": "ef20537bf5d243feaf915e1af0bef0ea56763b655ce982cf2d5d8fcbbb78820c"
       },
       "suites": 21,
       "vectors": 331,
@@ -163,12 +163,12 @@
       "relationship": "one_team_port",
       "runner": {
         "path": "packages/go-verify/cmd/conformance/main.go",
-        "sha256": "3ad51c6c2ecc744b0773700a6deaa17cf3ef2b3bc9573155de4fdcbaa2dfe1f3"
+        "sha256": "0f97aa28e8ab5b1045d6d71ad5b4ecf96673c4adb27115d69e3b69336f5ef85d"
       },
       "source": {
         "files": 44,
-        "bytes": 394305,
-        "tree_sha256": "ce6c2f7fca545e7c6258c4eafd2008cec8a80888b2b3fb802020afd049463b08"
+        "bytes": 394954,
+        "tree_sha256": "c86e98c777a5e855b22106885ebb0ecb32745f0bc07e60901d7b8b797c5cfaa9"
       },
       "suites": 21,
       "vectors": 331,
@@ -176,5 +176,5 @@
       "status": "pass"
     }
   ],
-  "manifest_sha256": "298871be28eb17f813cdceff6eb2a678f48ac99909dfcc2a2d994121968ad533"
+  "manifest_sha256": "1e6ce8a5cb7d619055d25b42126c04d3140f164289c7da673b54107fe833bce2"
 }
