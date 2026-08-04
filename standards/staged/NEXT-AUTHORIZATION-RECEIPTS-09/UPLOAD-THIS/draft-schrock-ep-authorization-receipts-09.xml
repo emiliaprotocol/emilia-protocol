@@ -279,7 +279,8 @@
       <t>The action hash is this receipt format's native integrity
       identifier. It is not assumed to equal an action digest from a
       different protocol. A composition layer MAY project the verified
-      Action Object into a Canonical Action IDentifier action type using
+      Action Object into a Canonical Action IDentifier action type
+      (<xref target="EP-CAID"/>) using
       an exact mapping profile pinned by the relying party. Such mapping
       occurs only after receipt verification and does not change this
       document's signature input. A failed, lossy, or unpinned mapping is
@@ -1071,6 +1072,20 @@ REQUESTED -> {PARTIALLY_APPROVED}* -> APPROVED -> COMMITTED
     </section>
     <section anchor="related-work">
       <name>Relationship to Other Work</name>
+      <t><strong>Companion EP documents.</strong> This document is
+      self-contained: a receipt is issued, verified, and consumed under
+      this specification alone. A family of separately published
+      companion documents composes with it without altering its
+      semantics, grouped by function: action identity and comparison
+      across independently issued artifacts (<xref target="EP-CAID"/>);
+      multi-approver policies (<xref target="EP-QUORUM"/>) and display
+      binding; enforcement-side ordering and bounded multi-action
+      execution (including <xref target="EP-BOUNDED-CAP"/>);
+      post-execution outcome observation, revocation statements, and
+      compensating remedies; and evidence composition, challenge, and
+      reliance records. Each companion consumes this document's digests
+      or supplies relying-party trust inputs; none is required for
+      conformance to this document.</t>
       <t><strong>DRP</strong>
       (<xref target="I-D.nelson-agent-delegation-receipts"/>) binds a
       <em>user's</em> delegation to an <em>operator's</em> instructions --
@@ -1089,7 +1104,8 @@ REQUESTED -> {PARTIALLY_APPROVED}* -> APPROVED -> COMMITTED
       holder proof, and validity interval; its shared reserve/commit store
       accounts later operations. A deployment that requires human approval of
       an individual exercise obtains a new action-bound EP receipt or
-      EP-QUORUM for that exercise.</t>
+      a quorum receipt set (<xref target="EP-QUORUM"/>) for that
+      exercise.</t>
       <t><strong>CIBA</strong> <xref target="CIBA"/> transports an
       authentication-time approval to a backchannel device; it does not
       produce an action-bound, offline-verifiable, one-time-consumable
@@ -1540,6 +1556,22 @@ REQUESTED -> {PARTIALLY_APPROVED}* -> APPROVED -> COMMITTED
         </front>
         <seriesInfo name="Internet-Draft" value="draft-schrock-ep-bounded-capability-receipts-00"/>
       </reference>
+      <reference anchor="EP-CAID" target="https://datatracker.ietf.org/doc/draft-schrock-canonical-action-identifier/">
+        <front>
+          <title>The Canonical Action Identifier (CAID)</title>
+          <author fullname="Iman Schrock"/>
+          <date year="2026" month="July"/>
+        </front>
+        <seriesInfo name="Internet-Draft" value="draft-schrock-canonical-action-identifier-01"/>
+      </reference>
+      <reference anchor="EP-QUORUM" target="https://datatracker.ietf.org/doc/draft-schrock-ep-quorum/">
+        <front>
+          <title>Multi-Party Quorum Authorization for High-Risk Agent Actions (EP-QUORUM)</title>
+          <author fullname="Iman Schrock"/>
+          <date year="2026" month="July"/>
+        </front>
+        <seriesInfo name="Internet-Draft" value="draft-schrock-ep-quorum-03"/>
+      </reference>
       <reference anchor="FORMAL-STATUS" target="https://github.com/emiliaprotocol/emilia-protocol/blob/main/formal/PROOF_STATUS.md">
         <front>
           <title>EMILIA Formal Proof Status and Scope</title>
@@ -1598,6 +1630,10 @@ REQUESTED -> {PARTIALLY_APPROVED}* -> APPROVED -> COMMITTED
         <li>Replaced legal non-repudiation language with cryptographic
         attribution, tamper evidence, and public verifiability; stated the
         issuer-equivocation boundary.</li>
+        <li>Added reference entries for the Canonical Action Identifier
+        and EP Quorum companion documents, previously used as terms of
+        art without citations, and a grouped companion-family paragraph
+        in Relationship to Other Work.</li>
         <li>Added the CAID Action-Mapping composition boundary without
         changing the EP v1 signature input.</li>
         <li>Added Mastercard Verifiable Intent and AuthZEN AARP as adjacent,
