@@ -2,7 +2,11 @@
 # EP-RECEIPT-SCITT-PROFILE-v1 — an EMILIA authorization receipt as a SCITT Signed Statement
 
 **Status:** working profile for SCITT WG engagement. Maps the EMILIA authorization receipt onto
-**RFC 9943** (the SCITT architecture, published 2026-06-30) + `draft-ietf-scitt-scrapi`. Shared with the SCITT WG list 2026-06-30.
+**RFC 9943** (SCITT Architecture), **RFC 9942** (COSE Receipts), and
+`draft-ietf-scitt-scrapi-11` (in the RFC Editor queue as of 2026-08-04). Shared with the SCITT WG
+list 2026-06-30. This repository implements the issuer-side Signed Statement envelope, the complete
+201/202/204/200 SCRAPI client flow, and a relying-party-pinned RFC 9942 `vds` dispatch boundary.
+Native RFC9162, CCF, or MMR proof verification remains the job of the configured profile verifier.
 
 ## What this profile does (and does not) claim
 
@@ -25,7 +29,7 @@ A SCITT Signed Statement is a `COSE_Sign1` (RFC 9052) over an Issuer's assertion
 | protected `alg` (label 1) | `EdDSA` (-8); Ed25519 per RFC 8037 / RFC 8032 — the same key EP already uses |
 | protected `content type` (label 3) | `application/ep-receipt+json` |
 | protected `kid` (label 4) | the issuer key id (SHA-256/16 of the issuer SPKI; same derivation as the JWS profile) |
-| protected `cwt`/issuer-subject (SCITT) | `issuer` = the authorizing authority; `subject` = the action identifier (`action_type` + bound target / `action_digest`) — so statements about one action collate |
+| protected `CWT Claims` (label 15) | `iss` (claim 1) = the authorizing authority; `sub` (claim 2) = `urn:emilia:action:sha256:<JCS-action-digest>` — so statements about one exact canonical action collate |
 | signature | Ed25519 over the COSE `Sig_structure` (`["Signature1", protected, ext_aad="", payload]`, RFC 9052 §4.4) |
 
 The signer is the **same human/authority key** as the native receipt. A verifier therefore gets the
@@ -42,8 +46,10 @@ Content-Type: application/cose
 <COSE_Sign1 bytes>
 ```
 
-The Transparency Service returns a **SCITT Receipt** (a COSE inclusion proof,
-`draft-ietf-cose-merkle-tree-proofs`). Signed Statement + Receipt = a **Transparent Statement**: the
+The Transparency Service returns a **SCITT Receipt** (a COSE inclusion proof, RFC 9942). It can
+return the Receipt directly with `201`, or return `202 + Location`; the client then polls that
+resource, honoring `Retry-After`, until `200` returns the Receipt (`204` means still running).
+Signed Statement + Receipt = a **Transparent Statement**: the
 authorization is now both *attributable to a named human* (EMILIA) and *tamper-evidently logged*
 (SCITT). EMILIA does not run the log; it produces the statement the log ingests.
 
@@ -70,11 +76,20 @@ narrow profiles on accepted work.
    for the *authorization* check).
 2. Parse the payload; confirm it is byte-identical EP-RECEIPT-v1 canonical (JCS) form, and that the
    bound action matches the action about to execute (action-binding).
-3. If a SCITT Receipt is present, verify the inclusion proof against the Transparency Service's
-   verifiable data structure (the *transparency* check — independent of step 1).
+3. If a SCITT Receipt is present, read protected header `vds` (label 395) and dispatch only to the
+   relying-party-pinned native verifier for that Verifiable Data Structure. The current identifiers
+   are RFC9162_SHA256 = 1, CCF = 2, and MMR = 3. Unknown `vds` is `INDETERMINATE`; a malformed or
+   missing protected `vds` fails.
+4. Accept the transparency leg only if that native verifier validates both the VDS proof and the
+   Transparency Service signature against pinned service parameters.
 
-Steps 1–2 are the EMILIA authorization check and need no network. Step 3 is the SCITT transparency
-check. Keep them conceptually separate.
+Steps 1–2 are the EMILIA authorization check and need no network. Steps 3–4 are the SCITT
+transparency check. A verified transparency leg is evidence; it is not AEB satisfaction, Gate
+authorization, execution, or outcome. Keep those decisions separate.
+
+For a large or sensitive receipt payload, RFC 9995 COSE Hash Envelope can carry a digest and payload
+location instead of exposing the full receipt to the log. That optional privacy shape is not emitted
+by the reference harness in this repository.
 
 ## 5. Freshness ("decay")
 
@@ -87,10 +102,10 @@ those terms — not as "decay physics."
 
 - **EMILIA** — `draft-schrock-ep-authorization-receipts` (individual I-D, Apache-2.0). Reference
   verifiers JS/Python/Go; JWS profile shipped (`EP-RECEIPT-JWS-PROFILE-v1`).
-- **SCITT** — architecture now **RFC 9943** (published 2026-06-30) + `draft-ietf-scitt-scrapi` + COSE
-  Receipts (`draft-ietf-cose-merkle-tree-proofs`): SCRAPI and COSE-Merkle remain active WG drafts
-  (Microsoft Signing Transparency is GA, so the substrate is real). **Not** an endorsement by the
-  SCITT WG; this is a complement profile.
+- **SCITT** — architecture is **RFC 9943** and COSE Receipts is **RFC 9942**.
+  `draft-ietf-scitt-scrapi-11` is WG work in the RFC Editor queue. The CCF Receipt profile is a SCITT
+  WG draft; the MMR Receipt profile is still an individual Internet-Draft under adoption review.
+  **Not** an endorsement by the SCITT WG; this is a complement profile.
 - **COSE / Ed25519** — RFC 9052 / RFC 9053 / RFC 8032 (published).
 
 Runnable examples (zero-dependency, signature-correct) are in `examples/scitt/`.
@@ -119,9 +134,31 @@ Optional external SCRAPI registration target:
 SCITT_URL=https://<transparency-service> node examples/scitt/ep-receipt-scitt-end-to-end.mjs
 ```
 
-External mode proves EP/COSE construction and registration against the target. It must not be
-described as full SCITT transparency verification until that target's returned Receipt is verified
-against that service's parameters.
+External mode completes synchronous or asynchronous SCRAPI registration. It returns success only
+when a caller also configures the native RFC 9942 profile verifier selected by protected `vds` and
+that verifier accepts the proof under pinned service parameters. Registration alone does not pass.
+
+Receipt-profile dispatch and its fail-closed negatives:
+
+```
+npx vitest run tests/scitt-receipt-dispatch.test.ts
+```
+
+The dispatch harness exercises RFC9162_SHA256 (1), CCF (2), MMR (3), unknown-profile abstention,
+and missing-`vds` refusal. It tests dispatch and result preservation; it does not claim that the
+three injected test adapters are implementations of those native proof algorithms.
+
+Candidate CPB → CAID → AEB cross-vector:
+
+```
+node examples/scitt/cpb-caid-aeb-cross-vector.mjs
+```
+
+The vector resolves a CPB typed digest reference under an EMILIA-owned candidate
+`caid-action-object` registry entry, recomputes the CAID over the exact material action, and keeps AEB
+evidence satisfaction separate from executor authorization. Equal digest text under a different or
+missing digest context is `INDETERMINATE`; action substitution is `UNSATISFIED`. The candidate entry
+is not part of the CPB draft's initial registry and is not claimed as adopted by its authors.
 
 HTTP mock server, when a socket-level SCRAPI-shaped endpoint is useful:
 
@@ -141,6 +178,6 @@ Legacy live smoke-test alias:
 SCITT_TS_URL=https://<transparency-service> node examples/scitt/ep-receipt-scitt-conformance.mjs
 ```
 
-The legacy conformance harness posts the generated `COSE_Sign1` to `POST /entries` and reports the
-returned bytes. It still does **not** claim full SCITT Receipt verification until the returned
-transparency / inclusion receipt is independently verified against that service's parameters.
+The conformance harness completes the SCRAPI resolution flow and reports the returned bytes. It does
+**not** claim full SCITT Receipt verification until the returned transparency / inclusion Receipt is
+verified by a configured native profile verifier against that service's parameters.

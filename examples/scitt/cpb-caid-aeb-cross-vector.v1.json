@@ -1,0 +1,29 @@
+{
+  "@version": "EP-CPB-CAID-AEB-CROSS-VECTOR-v1",
+  "status": "candidate-emilia-owned-composition-vector",
+  "artifact": {
+    "action_type": "payment.release.1",
+    "amount": "75000.00",
+    "currency": "USD",
+    "beneficiary_account": "sha256:4a4a4a4a4a4a4a4a4a4a4a4a4a4a4a4a4a4a4a4a4a4a4a4a4a4a4a4a4a4a4a4a",
+    "payment_instruction_id": "pi_scitt_cpb_001",
+    "memo": "approved supplier invoice"
+  },
+  "caid": "caid:1:payment.release.1:jcs-sha256:2T5-O1AdRybGGJ5i6L-XuvLSdxClk29qkLHPmkIDDh0",
+  "reference": {
+    "type": "caid-action-object",
+    "digest_alg": "SHA-256",
+    "digest": "d93e7e3b501d4726c6189e62e8bf97baf2d27710a5936f6a90b1cf9a42030e1d"
+  },
+  "registry": {
+    "caid-action-object": {
+      "digest_alg": "SHA-256",
+      "canonicalization": "jcs-sha256",
+      "preimage": "full-material-action-object",
+      "representation": "lowercase-hex",
+      "reference": "draft-schrock-canonical-action-identifier",
+      "status": "candidate-cpb-artifact-type-entry"
+    }
+  },
+  "aeb_native_result": "SATISFIED"
+}

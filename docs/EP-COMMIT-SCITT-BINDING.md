@@ -18,9 +18,9 @@ Rather than promote the EMILIA-specific mechanism to a "standard," this sketch l
 
 The only normative SCITT sources this sketch leans on:
 
-- **`draft-ietf-scitt-architecture`** — *"An Architecture for Trustworthy and Transparent Digital Supply Chains."* The source for the three primitives below. Verified current revision **`-22`** (Oct 2025) on the IETF Datatracker as of writing; SCITT drafts revise frequently, so a binding doc MUST re-check the revision and bind to registered IANA values / draft section numbers at the moment of publication, not to label integers quoted in any snapshot.
-- **`draft-ietf-scitt-scrapi`** — *"SCITT Reference APIs"* (verified current revision **`-09`**, Apr 2026). Defines the HTTP operations to register Signed Statements and retrieve Receipts.
-- **`draft-ietf-cose-merkle-tree-proofs`** — *"COSE Receipts"* (verified current revision **`-18`**, in the RFC Editor queue). Defines the inclusion-proof machinery and registers `RFC9162_SHA256` (a SHA-256 binary Merkle tree, built on RFC 9162 Certificate Transparency 2.0) as a Verifiable Data Structure.
+- **RFC 9943** — *"An Architecture for Trustworthy and Transparent Digital Supply Chains."* The source for the three primitives below.
+- **`draft-ietf-scitt-scrapi-11`** — *"SCITT Reference APIs"* (in the RFC Editor queue as of 2026-08-04). Defines synchronous and asynchronous registration and Receipt retrieval.
+- **RFC 9942** — *"COSE Receipts."* Defines the inclusion-proof machinery and registers `RFC9162_SHA256` (a SHA-256 binary Merkle tree, built on RFC 9162 Certificate Transparency 2.0) as VDS 1.
 
 A note on precision, as the house rules require: the exact COSE header labels (e.g. the inclusion-proof label, the VDS-identifier label) have shifted across architecture revisions. A real binding document must cite the registered values at write time. This sketch deliberately cites by **draft name and primitive name**, not by label integer.
 
@@ -28,7 +28,7 @@ A note on precision, as the house rules require: the exact COSE header labels (e
 
 ## 2. The three SCITT primitives, briefly
 
-| SCITT primitive | Definition (per `draft-ietf-scitt-architecture`) | Encoding |
+| SCITT primitive | Definition (per RFC 9943) | Encoding |
 |---|---|---|
 | **Signed Statement** | "An identifiable and non-repudiable Statement about an Artifact signed by an Issuer." | A `COSE_Sign1` message (RFC 9052). The protected header carries `CWT_Claims` (RFC 9597), which MUST include the Issuer claim `iss` and Subject claim `sub`. |
 | **Transparency Service (TS)** | "An entity that maintains and extends the Verifiable Data Structure and endorses its state." | An append-only, Merkle-verifiable log with three required properties: **append-only**, **non-equivocation**, **replayability**. Registration is "akin to a notarization procedure." |
@@ -44,9 +44,9 @@ The alignment is strong on all three rows. The annotations flag exactly where a 
 
 | EMILIA Protocol (EP) | SCITT primitive | Fit and binding notes |
 |---|---|---|
-| **EP authorization receipt** (wire tag `EP-RECEIPT-v1`) — the signed, post-action artifact; and the EP **Commit seal** (the Ed25519 signature over the canonical Commit payload) | **Signed Statement** (`COSE_Sign1`, RFC 9052) | Clean conceptual fit. Both EP artifacts are signed, non-repudiable assertions over a specific subject. To bind: encode the EP assertion as the COSE payload and populate `CWT_Claims` with `iss` (the EP operator / authorizing party) and `sub` (the action or Commit being attested). **Today** the EP signature is Ed25519 over canonical JSON (sorted keys), *not* a `COSE_Sign1` with CWT claims — so this row is a re-encoding, not a drop-in. The EP signer becomes the SCITT **Issuer**; key authority stays pinned to the EP trusted key registry by `kid`, not to any inline key in the statement. |
+| **EP authorization receipt** (wire tag `EP-RECEIPT-v1`) — the signed authorization artifact; and the EP **Commit seal** (the Ed25519 signature over the canonical Commit payload) | **Signed Statement** (`COSE_Sign1`, RFC 9052) | The authorization-receipt reference path now emits a signature-correct `COSE_Sign1` with protected CWT `iss` and `sub` and completes the SCRAPI resolution flow (`examples/scitt/`). The separate Commit object is still Ed25519 over canonical JSON and has no Commit-specific SCITT registration path. In either form, key authority stays pinned by the relying party; no inline key becomes authority. |
 | **EP Commit anchor / Merkle log** — the receipt Merkle tree (`buildMerkleTree`) and its optional Base L2 anchor | **Transparency Service** (append-only Verifiable Data Structure) | Clean fit *provided* the EP log demonstrably satisfies the TS triad: append-only, non-equivocation, replayability. EMILIA's receipt tree is a SHA-256 binary Merkle tree, which maps directly to VDS id `RFC9162_SHA256`. A binding doc must state which VDS profile EP claims. **Important asymmetry:** the EP Merkle log today contains **receipts** (post-action), not **Commits** (pre-action). Commits are not in any tree; they are signed DB records only. |
-| **EP anchor / inclusion proof** — `merkle_proof` + `merkle_root` carried on an anchored receipt | **Receipt** (`COSE_Sign1` signed by the TS, inclusion proof in unprotected header) | Clean fit. Binding requirement: re-express the EP inclusion proof as a COSE Receipt per `draft-ietf-cose-merkle-tree-proofs`, signed by the TS (the EP anchor authority), and the proof MUST pin the **tree-size / root** it was generated against (the RFC 9162 rule). **Today** the EP proof is a JSON array of `{hash, position}` steps verified by re-deriving the root (`verifyMerkleProof`), not a COSE-wrapped, TS-signed Receipt. |
+| **EP anchor / inclusion proof** — `merkle_proof` + `merkle_root` carried on an anchored receipt | **Receipt** (RFC 9942 envelope plus the selected native VDS proof profile) | Clean fit only after profile-specific verification. The Receipt's protected `vds` (label 395) selects the native proof algorithm; EMILIA dispatches only to a relying-party-pinned verifier. The proof must bind the statement and the applicable tree state under that profile. **Today** the EP anchor proof remains a JSON array of `{hash, position}` steps verified by re-deriving the root (`verifyMerkleProof`), not an RFC 9942 Receipt. |
 
 **Granularity note.** If EP delivers "authorization receipt + anchor proof" to a relying party as one bundle, that bundle maps to a SCITT **Transparent Statement**; the two EP components map individually to **Signed Statement** and **Receipt** as in the table above. A binding doc should state which granularity it operates at.
 
@@ -69,7 +69,7 @@ This section is grounded in the Commit/anchor recon and is deliberately conserva
 
 - **Commit-as-Signed-Statement registration.** `EP-ENFORCEMENT-POINT-SPEC.md` §4 says a Commit seal **MAY** be registered as a SCITT Signed Statement, and the returned Merkle-inclusion Receipt **would** become the Commit's transparency anchor. The registration path does not exist in the codebase. There is no `POST /scitt/register-statement`, no `commit.scitt_anchor_receipt_id`, no COSE encoding.
 - **Commits in a Verifiable Data Structure.** Today only receipts are Merkle-batched. Commits are not in any tree, so a Commit currently has **no chain of custody** to an anchored root. A SCITT integration would either register each Commit separately as a Signed Statement (yielding its own Receipt) or add a Commit-side log. A Commit cannot inherit a receipt's proof, because it is not in the receipt batch.
-- **COSE / CWT envelope.** EP artifacts are Ed25519-over-canonical-JSON today, not `COSE_Sign1` with `CWT_Claims` (`iss`, `sub`). Full SCITT parity requires the COSE re-encoding.
+- **Commit-specific COSE / CWT envelope.** The authorization-receipt example now emits the RFC 9943 envelope, but the Commit object itself remains Ed25519-over-canonical-JSON. Commit parity still requires applying that profile to the Commit's canonical claim.
 - **TS-signed Receipts.** EP inclusion proofs are self-verifying JSON, not COSE Receipts signed by a Transparency Service. A SCITT integration adds the TS signature and the tree-size pinning.
 - **Offline Commit verification.** Receipts verify offline because the issuer key material is discoverable. Commit verification today requires a DB round-trip against the trusted registry. Offline Commit parity needs either an embedded/discoverable key (e.g. a `kid` + `/.well-known/ep-keys.json` endpoint) or SCITT-side key pinning.
 - **An explicit append-only event log.** Commit status transitions are `UPDATE`s on the `commits` row, not append-only events. SCITT-style transparency favors one immutable row per state transition; EMILIA does not have this for Commits today.
@@ -111,9 +111,9 @@ The throughline, one more time: **EMILIA composes over SCITT.** The transparency
 
 ## 7. References
 
-- [SCITT-ARCH] IETF SCITT WG, "An Architecture for Trustworthy and Transparent Digital Supply Chains" (`draft-ietf-scitt-architecture`, work in progress; revision `-22` verified at time of writing).
-- [SCITT-SCRAPI] IETF SCITT WG, "SCITT Reference APIs" (`draft-ietf-scitt-scrapi`, work in progress; revision `-09` verified at time of writing).
-- [COSE-RECEIPTS] IETF COSE WG, "COSE Receipts" (`draft-ietf-cose-merkle-tree-proofs`, in RFC Editor queue; revision `-18` verified at time of writing). Registers `RFC9162_SHA256` as a Verifiable Data Structure.
+- [SCITT-ARCH] RFC 9943, "An Architecture for Trustworthy and Transparent Digital Supply Chains".
+- [SCITT-SCRAPI] IETF SCITT WG, "SCITT Reference APIs" (`draft-ietf-scitt-scrapi-11`, RFC Editor queue as of 2026-08-04).
+- [COSE-RECEIPTS] RFC 9942, "COSE Receipts". Registers `RFC9162_SHA256` as VDS 1.
 - [RFC9052] Schaad, J., "CBOR Object Signing and Encryption (COSE): Structures and Process".
 - [RFC9597] Prorock, M., et al., "CBOR Web Token (CWT) Claims in COSE Headers".
 - [RFC9162] Laurie, B., et al., "Certificate Transparency Version 2.0".

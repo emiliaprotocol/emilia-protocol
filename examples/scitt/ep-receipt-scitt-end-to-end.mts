@@ -16,15 +16,17 @@
 //
 //   SCITT_URL=http://127.0.0.1:8000 node examples/scitt/ep-receipt-scitt-end-to-end.mjs
 //
-// External mode proves EP/COSE construction and registration. A returned
-// service-specific SCITT Receipt still needs that service's receipt verifier
-// before claiming full transparency/inclusion verification.
+// External mode completes registration, then refuses to pass unless a
+// relying-party-pinned native verifier for the Receipt's protected `vds`
+// accepts the returned proof under that service's parameters.
 
 import crypto from 'node:crypto';
 import {
   buildArtifacts,
+  registerAndResolveScrapi,
   verifyProfileArtifacts,
 } from './ep-receipt-scitt-conformance.mjs';
+import { verifyScittReceiptByVds } from './scitt-receipt-dispatch.mjs';
 import {
   createMockScrapiRegistry,
   verifyMockTransparencyReceipt,
@@ -32,24 +34,16 @@ import {
 
 const sha256Hex = (buf) => crypto.createHash('sha256').update(buf).digest('hex');
 
-async function postSignedStatement(baseUrl, coseSign1) {
-  const url = new URL('/entries', baseUrl);
-  const res = await fetch(url, {
-    method: 'POST',
-    headers: {
-      'content-type': 'application/cose',
-      accept: 'application/cose, application/json, */*',
-    },
-    body: coseSign1,
-  });
-  const body = Buffer.from(await res.arrayBuffer());
+async function postSignedStatement(baseUrl, coseSign1, options = {}) {
+  const resolved = await registerAndResolveScrapi({ coseSign1 }, baseUrl, options);
   return {
-    ok: res.ok,
-    status: res.status,
-    location: res.headers.get('location') || '',
-    contentType: res.headers.get('content-type') || '',
-    body,
-    bodySha256: sha256Hex(body),
+    ok: resolved.ok,
+    status: resolved.status,
+    location: resolved.location,
+    contentType: resolved.contentType,
+    body: resolved.receipt,
+    bodySha256: sha256Hex(resolved.receipt),
+    polls: resolved.polls,
   };
 }
 
@@ -65,7 +59,14 @@ function check(id, title, pass, detail = '') {
   return { id, title, pass: Boolean(pass), detail };
 }
 
-async function runEndToEnd({ scittUrl = process.env.SCITT_URL || process.env.SCITT_TS_URL || '', useMockFallback = true } = {}) {
+async function runEndToEnd({
+  scittUrl = process.env.SCITT_URL || process.env.SCITT_TS_URL || '',
+  useMockFallback = true,
+  receiptProfiles = new Map(),
+  fetchImpl = fetch,
+  wait = undefined,
+  maxPolls = 8,
+} = {}) {
   const artifacts = buildArtifacts();
   const profileChecks = verifyProfileArtifacts(artifacts);
   let mock: any = null;
@@ -81,7 +82,11 @@ async function runEndToEnd({ scittUrl = process.env.SCITT_URL || process.env.SCI
 
   const registration = target === 'mock'
     ? { ...mock.register(artifacts.coseSign1), bodySha256: '' }
-    : await postSignedStatement(targetUrl, artifacts.coseSign1);
+    : await postSignedStatement(targetUrl, artifacts.coseSign1, {
+      fetchImpl,
+      ...(wait ? { wait } : {}),
+      maxPolls,
+    });
   registration.bodySha256 ||= sha256Hex(registration.body);
 
   const receipt = parseJsonBody(registration.body);
@@ -91,20 +96,19 @@ async function runEndToEnd({ scittUrl = process.env.SCITT_URL || process.env.SCI
       artifacts.coseSign1,
       mock.publicKey,
     )
-    : [
-      check(
-        'external_registration',
-        'external SCRAPI-compatible target accepted the Signed Statement',
-        registration.ok,
-        `${registration.status} ${registration.contentType}`,
-      ),
-      check(
-        'external_receipt_verifier_needed',
-        'returned transparency receipt requires a target-specific verifier before claiming inclusion verification',
-        true,
-        'not a SCITT WG conformance claim',
-      ),
-    ];
+    : (() => {
+      const native = verifyScittReceiptByVds({
+        receipt: registration.body,
+        statement: artifacts.coseSign1,
+        profiles: receiptProfiles,
+      });
+      return [check(
+        'external_receipt_native_verification',
+        'returned RFC 9942 Receipt verifies under the pinned native VDS profile',
+        registration.ok && native.native_verification === 'VERIFIED',
+        `vds=${native.vds ?? 'unknown'} profile=${native.profile_id ?? 'unconfigured'} ${native.reasons.join(',')}`,
+      )];
+    })();
 
   return {
     target,
@@ -135,7 +139,7 @@ function printReport(result) {
   console.log(`  location=${result.registration.location || '(none)'}`);
   console.log(`  receipt-bytes=${result.registration.body.length} receipt-sha256=${result.registration.bodySha256}`);
   printChecks(result.target === 'mock' ? 'Mock transparency receipt verification:' : 'External target status:', result.transparencyChecks);
-  console.log(`\n${result.passed ? 'END-TO-END PASS' : 'END-TO-END FAIL'} — ${result.target === 'mock' ? 'mock register/receipt/inclusion path verified in CI' : 'external registration only unless a receipt verifier is configured'}.`);
+  console.log(`\n${result.passed ? 'END-TO-END PASS' : 'END-TO-END FAIL'} — ${result.target === 'mock' ? 'mock register/receipt/inclusion path verified in CI' : 'external registration and pinned native Receipt verification are both required'}.`);
 }
 
 async function main() {

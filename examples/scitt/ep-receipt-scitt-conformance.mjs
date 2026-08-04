@@ -8,7 +8,7 @@
 // receipt as a SCITT Signed Statement:
 //   - native EP signature verifies over the RFC 8785/JCS payload bytes;
 //   - COSE_Sign1 is well-formed for the profile shape;
-//   - protected header carries alg=EdDSA, cty=application/ep-receipt+json, kid;
+//   - protected header carries alg=EdDSA, cty, kid, and RFC 9943 CWT iss/sub;
 //   - COSE Sig_structure verifies under the same Ed25519 key;
 //   - COSE payload bytes are byte-identical to the EP canonical payload;
 //   - SCRAPI request shape is POST /entries + application/cose.
@@ -22,6 +22,7 @@
 import crypto from 'node:crypto';
 const CTY = 'application/ep-receipt+json';
 const SCRAPI_PATH = '/entries';
+const DEFAULT_ISSUER = 'https://www.emiliaprotocol.ai/issuers/reference-authority';
 // --- RFC 8785 (JCS) canonicalization over the EP I-JSON value subset ---------
 function canonicalize(v) {
     return v === null || v === undefined ? JSON.stringify(v)
@@ -104,6 +105,9 @@ function decodeCbor(buf, offset = 0) {
         const inner = decodeCbor(buf, next);
         return { value: { tag, value: inner.value }, offset: inner.offset };
     }
+    if (major === 7 && ai === 22) {
+        return { value: null, offset };
+    }
     throw new Error(`unsupported CBOR major type ${major}`);
 }
 function buildArtifacts() {
@@ -111,6 +115,11 @@ function buildArtifacts() {
     const spki = publicKey.export({ type: 'spki', format: 'der' });
     const kid = crypto.createHash('sha256').update(spki).digest().subarray(0, 16);
     const action = { action_type: 'db.records.delete_all', target: 'customers' };
+    const issuer = DEFAULT_ISSUER;
+    const actionDigest = crypto.createHash('sha256')
+        .update(Buffer.from(canonicalize(action), 'utf8'))
+        .digest('hex');
+    const subject = `urn:emilia:action:sha256:${actionDigest}`;
     const payload = {
         receipt_id: 'rcpt_' + crypto.randomBytes(6).toString('hex'),
         subject: 'agent:autonomous',
@@ -128,6 +137,10 @@ function buildArtifacts() {
         [cbUint(1), cbNint(-8)], // alg = EdDSA (-8)
         [cbUint(3), cbTstr(CTY)], // content type
         [cbUint(4), cbBstr(kid)], // kid
+        [cbUint(15), cbMap([
+                [cbUint(1), cbTstr(issuer)], // iss
+                [cbUint(2), cbTstr(subject)], // sub
+            ])],
     ]);
     const protectedBstr = cbBstr(protectedMap);
     const sigStructure = cbArr([
@@ -148,6 +161,8 @@ function buildArtifacts() {
         privateKey,
         spki,
         kid,
+        issuer,
+        subject,
         payload,
         payloadBytes,
         nativeSig,
@@ -209,6 +224,10 @@ function verifyProfileArtifacts(artifacts) {
         check('protected_alg', 'protected alg is EdDSA (-8)', parsed.protected.get(1) === -8, String(parsed.protected.get(1))),
         check('protected_cty', `protected content type is ${CTY}`, parsed.protected.get(3) === CTY, parsed.protected.get(3)),
         check('protected_kid', 'protected kid matches issuer key id', Buffer.compare(parsed.protected.get(4), artifacts.kid) === 0, artifacts.kid.toString('hex')),
+        check('protected_cwt_issuer', 'protected CWT issuer identifies the authorizing authority', parsed.protected.get(15) instanceof Map
+            && parsed.protected.get(15).get(1) === artifacts.issuer, parsed.protected.get(15)?.get?.(1) || ''),
+        check('protected_cwt_subject', 'protected CWT subject identifies the exact canonical action', parsed.protected.get(15) instanceof Map
+            && parsed.protected.get(15).get(2) === artifacts.subject, parsed.protected.get(15)?.get?.(2) || ''),
         check('payload_byte_identity', 'COSE payload is byte-identical to EP canonical payload', Buffer.compare(parsed.payloadBytes, artifacts.payloadBytes) === 0),
         check('sig_structure_signature', 'COSE Sig_structure Ed25519 signature verifies', crypto.verify(null, rebuiltSigStructure, artifacts.publicKey, parsed.signature)),
         check('scrapi_request_shape', 'SCRAPI request is POST /entries with application/cose', artifacts.scrapi.method === 'POST'
@@ -218,20 +237,99 @@ function verifyProfileArtifacts(artifacts) {
     ];
 }
 async function registerWithTransparencyService(artifacts, baseUrl) {
-    const url = new URL(SCRAPI_PATH, baseUrl);
-    const res = await fetch(url, {
+    const resolved = await registerAndResolveScrapi(artifacts, baseUrl);
+    return {
+        status: resolved.status,
+        ok: resolved.ok,
+        contentType: resolved.contentType,
+        bodyLength: resolved.receipt.length,
+        bodySha256: crypto.createHash('sha256').update(resolved.receipt).digest('hex'),
+        location: resolved.location,
+        polls: resolved.polls,
+    };
+}
+function parseRetryAfterMilliseconds(value, attempt) {
+    if (value) {
+        const seconds = Number(value);
+        if (Number.isFinite(seconds) && seconds >= 0)
+            return Math.ceil(seconds * 1000);
+        const at = Date.parse(value);
+        if (Number.isFinite(at))
+            return Math.max(0, at - Date.now());
+    }
+    const base = Math.min(30_000, 1000 * (2 ** Math.max(0, attempt)));
+    return Math.ceil(base * (0.75 + Math.random() * 0.5));
+}
+const defaultWait = (milliseconds) => new Promise((resolve) => setTimeout(resolve, milliseconds));
+async function readScrapiReceipt(response, { location, polls }) {
+    const contentType = response.headers.get('content-type') || '';
+    if (contentType.split(';', 1)[0].trim().toLowerCase() !== 'application/cose') {
+        throw new Error('scrapi_receipt_content_type_invalid');
+    }
+    const receipt = Buffer.from(await response.arrayBuffer());
+    if (receipt.length === 0)
+        throw new Error('scrapi_receipt_empty');
+    return {
+        status: response.status,
+        ok: true,
+        location,
+        contentType,
+        receipt,
+        polls,
+    };
+}
+/**
+ * Complete draft-ietf-scitt-scrapi-11 registration flow.
+ *
+ * A 201 response carries the Receipt immediately. A 202 response MUST carry
+ * Location; the client then polls that resource, honoring Retry-After and
+ * capping retries. Receipt bytes are returned untrusted. A native RFC 9942
+ * profile verifier must still verify them before they become evidence.
+ */
+async function registerAndResolveScrapi(artifacts, baseUrl, { fetchImpl = fetch, wait = defaultWait, maxPolls = 8, } = {}) {
+    if (!Number.isInteger(maxPolls) || maxPolls < 1)
+        throw new Error('scrapi_invalid_max_polls');
+    const entriesUrl = new URL(SCRAPI_PATH, baseUrl);
+    const post = await fetchImpl(entriesUrl, {
         method: 'POST',
-        headers: { 'content-type': 'application/cose', accept: 'application/cose, */*' },
+        headers: { 'content-type': 'application/cose', accept: 'application/cose' },
         body: artifacts.coseSign1,
     });
-    const body = Buffer.from(await res.arrayBuffer());
-    return {
-        status: res.status,
-        ok: res.ok,
-        contentType: res.headers.get('content-type') || '',
-        bodyLength: body.length,
-        bodySha256: crypto.createHash('sha256').update(body).digest('hex'),
-    };
+    if (post.status === 201) {
+        const location = post.headers.get('location');
+        if (!location)
+            throw new Error('scrapi_201_missing_location');
+        return readScrapiReceipt(post, {
+            location: new URL(location, entriesUrl).toString(),
+            polls: 0,
+        });
+    }
+    if (post.status !== 202)
+        throw new Error(`scrapi_registration_failed:${post.status}`);
+    const location = post.headers.get('location');
+    if (!location)
+        throw new Error('scrapi_202_missing_location');
+    const receiptUrl = new URL(location, entriesUrl);
+    await wait(parseRetryAfterMilliseconds(post.headers.get('retry-after'), 0));
+    for (let polls = 1; polls <= maxPolls; polls++) {
+        const response = await fetchImpl(receiptUrl, {
+            method: 'GET',
+            headers: { accept: 'application/cose' },
+        });
+        if (response.status === 200) {
+            return readScrapiReceipt(response, {
+                location: receiptUrl.toString(),
+                polls,
+            });
+        }
+        if (![204, 429, 503].includes(response.status)) {
+            throw new Error(`scrapi_receipt_resolution_failed:${response.status}`);
+        }
+        if (polls === maxPolls)
+            break;
+        await wait(parseRetryAfterMilliseconds(response.headers.get('retry-after'), polls));
+    }
+    throw new Error('scrapi_receipt_poll_limit_exceeded');
 }
 function printReport({ checks, artifacts, live }) {
     console.log('EP-RECEIPT-SCITT-PROFILE-v1 local conformance');
@@ -273,4 +371,4 @@ if (import.meta.url === `file://${process.argv[1]}`) {
         process.exit(1);
     });
 }
-export { buildArtifacts, canonicalize, inspectCoseSign1, registerWithTransparencyService, verifyProfileArtifacts, };
+export { buildArtifacts, canonicalize, decodeCbor, inspectCoseSign1, registerAndResolveScrapi, registerWithTransparencyService, verifyProfileArtifacts, };
