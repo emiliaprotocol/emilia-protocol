@@ -459,7 +459,16 @@ func outcomeGraphResult(v vec) map[string]any {
 	}
 	if observed, present := v.Attestation["observed_effects"]; present {
 		predictions, predictionsPresent := v.Approved["predicted_effects"]
-		if !approvalBound || !predictionsPresent {
+		// A malformed predicted_effects (present but not an array) is NO
+		// commitment, not a mismatched one. The shipped JavaScript evaluator
+		// coerces a non-array to null (Array.isArray(...) ? ... : null) and the
+		// Python port type-checks with isinstance(..., list); checking only for
+		// PRESENCE here made Go report effect_incomparable where the other two
+		// report effect_commitment_missing. Verdict parity held (all three
+		// conflicted), so no refusal ever became an acceptance, but a relying
+		// party branching on the reason code got a different answer from Go.
+		_, predictionsAreList := predictions.([]any)
+		if !approvalBound || !predictionsPresent || !predictionsAreList {
 			reasons = append(reasons, "effect_commitment_missing")
 		} else if v.Approved["predicted_effects_digest"] != emiliaverify.PredictedEffectsDigest(predictions) {
 			reasons = append(reasons, "effect_incomparable")
