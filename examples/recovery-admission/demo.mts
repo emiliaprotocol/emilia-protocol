@@ -94,7 +94,7 @@ const admission: AdmissionSnapshotInput = {
   remedy_for: null,
 };
 
-const admissionStore = createMemoryAdmissionStore({
+const memoryAdmissionStore = createMemoryAdmissionStore({
   now,
   currentnessOracle: {
     read: async (snapshot) => ({
@@ -112,6 +112,15 @@ const admissionStore = createMemoryAdmissionStore({
       candidate_match: 'EXACT_MATCH',
       external_leases: [],
     }),
+  },
+});
+// Explicit unit/demo contract mock. The production executor rejects the
+// exported memory store unless a deployment supplies a durable implementation.
+const admissionStore = new Proxy(memoryAdmissionStore, {
+  get(target, property, receiver) {
+    if (property === 'durable') return true;
+    if (property === 'testOnly') return undefined;
+    return Reflect.get(target, property, receiver);
   },
 });
 const reserved = await admissionStore.reserve(admission);
@@ -243,6 +252,9 @@ const record = await admissionStore.read({
 });
 
 console.log(JSON.stringify({
+  demonstration: 'MOCKED_TRANSACTION_CONTROL_TRACE',
+  durability_proven: false,
+  sandbox_confinement_proven: false,
   recovery_mode: capabilityInput.mode,
   ordinary_admission_state: record?.state,
   execution_right: record?.execution_right,

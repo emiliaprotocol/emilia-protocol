@@ -2534,11 +2534,17 @@ export async function executeWithCapability({
         }),
       }));
     } catch {
-      entryVerdict = { ok: false, reason: 'provider_entry_guard_unavailable' };
+      entryVerdict = {
+        ok: false,
+        reason: 'provider_entry_guard_unavailable',
+        reservation: 'hold',
+      };
     }
     if (!entryVerdict || entryVerdict.ok !== true) {
       const suppliedDisposition = entryVerdict?.reservation;
-      const disposition = suppliedDisposition === undefined ? 'release' : suppliedDisposition;
+      // Absence is uncertainty, not proof that provider entry did not happen.
+      // Authority is restored only when a guard explicitly returns `release`.
+      const disposition = suppliedDisposition === undefined ? 'hold' : suppliedDisposition;
       if (!['release', 'burn', 'hold'].includes(disposition)) {
         return {
           ok: false,

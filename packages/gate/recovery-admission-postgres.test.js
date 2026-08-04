@@ -6,7 +6,7 @@ import { generateKeyPairSync } from 'node:crypto';
 import test from 'node:test';
 import { ADMISSION_CURRENTNESS_VERSION, createMemoryAdmissionStore, } from './admission-store.js';
 import { RECOVERY_CAPABILITY_STATUS_VERSION, deriveRecoveryAdmissionSnapshotBindings, signRecoveryCapability, } from './recovery-admission.js';
-import { RECOVERY_ADMISSION_POSTGRES_BEGIN, executeRecoveryAdmissionPostgresLocalAtomic, } from './recovery-admission-postgres.js';
+import { RECOVERY_ADMISSION_POSTGRES_BEGIN, RECOVERY_ADMISSION_POSTGRES_SET_TIMEOUT, executeRecoveryAdmissionPostgresLocalAtomic, } from './recovery-admission-postgres.js';
 const NOW_ISO = '2026-08-03T20:00:00.000Z';
 const NOW = Date.parse(NOW_ISO);
 const ACTION_EXPIRES = '2026-08-03T20:30:00.000Z';
@@ -142,9 +142,21 @@ async function fixture(pg = fakePostgres()) {
         private_key: signerPair.privateKey,
     };
     const admission = admissionInput();
-    const admissionStore = createMemoryAdmissionStore({
+    const memoryAdmissionStore = createMemoryAdmissionStore({
         now: NOW_ISO,
         currentnessOracle: { read: async (snapshot) => currentness(snapshot) },
+    });
+    // The executor rejects the exported test-only store. This proxy is the unit
+    // harness's explicit durable-store contract mock; live Postgres coverage is
+    // exercised separately when ADMISSION_STORE_POSTGRES_TEST_URL is configured.
+    const admissionStore = new Proxy(memoryAdmissionStore, {
+        get(target, property, receiver) {
+            if (property === 'durable')
+                return true;
+            if (property === 'testOnly')
+                return undefined;
+            return Reflect.get(target, property, receiver);
+        },
     });
     const reserved = await admissionStore.reserve(admission);
     assert.equal(reserved.ok, true);
@@ -258,6 +270,7 @@ async function fixture(pg = fakePostgres()) {
     };
     return {
         admission,
+        memoryAdmissionStore,
         admissionStore,
         artifact,
         signer,
@@ -277,6 +290,28 @@ async function fixture(pg = fakePostgres()) {
         },
     };
 }
+test('rejects an ephemeral admission store before provider entry', async () => {
+    const fx = await fixture();
+    const result = await executeRecoveryAdmissionPostgresLocalAtomic({
+        ...fx.options,
+        admissionStore: fx.memoryAdmissionStore,
+    });
+    assert.deepEqual(result, {
+        outcome: 'NOT_INVOKED', invoked: false, reason: 'admission_store_guarantee_mismatch',
+    });
+    assert.equal(fx.pg.connects(), 0);
+});
+test('uses the executor clock for capability validity', async () => {
+    const fx = await fixture();
+    const result = await executeRecoveryAdmissionPostgresLocalAtomic({
+        ...fx.options,
+        now: () => NOW - 1,
+    });
+    assert.deepEqual(result, {
+        outcome: 'NOT_INVOKED', invoked: false, reason: 'recovery_admission_refused',
+    });
+    assert.equal(fx.pg.connects(), 0);
+});
 test('consumes ordinary admission before one serializable transaction and records COMMITTED', async () => {
     const fx = await fixture();
     const result = await executeRecoveryAdmissionPostgresLocalAtomic(fx.options);
@@ -285,7 +320,8 @@ test('consumes ordinary admission before one serializable transaction and record
         evidence_digest: EVIDENCE_DIGEST,
     });
     assert.deepEqual(fx.pg.events, [
-        'CONNECT', RECOVERY_ADMISSION_POSTGRES_BEGIN, 'PERFORM_CALLBACK', 'PERFORM',
+        'CONNECT', RECOVERY_ADMISSION_POSTGRES_BEGIN, RECOVERY_ADMISSION_POSTGRES_SET_TIMEOUT,
+        'PERFORM_CALLBACK', 'PERFORM',
         'VALIDATE_CALLBACK', 'VALIDATE', 'RECHECK_CALLBACK', 'RECHECK', 'COMMIT', 'RELEASE',
     ]);
     const record = await fx.admissionStore.read({

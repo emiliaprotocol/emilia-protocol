@@ -141,12 +141,12 @@ export default function GatePage() {
         <section style={{ ...styles.section, paddingTop: 80, paddingBottom: 56 }}>
           <div style={styles.container}>
             <div style={{ ...styles.eyebrow, color: color.gold }}>EMILIA GATE · THE CONSEQUENCE FIREWALL</div>
-            <h1 style={{ ...styles.h1, marginTop: 16 }}>Stop consequential machine action before it becomes irreversible.</h1>
+            <h1 style={{ ...styles.h1, marginTop: 16 }}>Put a refusal boundary in front of consequential machine action.</h1>
             <p style={{ fontFamily: font.mono, color: color.gold, fontSize: 14, fontWeight: 600, marginTop: 18 }}>
               Protocol proves. Gate prevents.
             </p>
             <p style={{ ...styles.lead, maxWidth: 760, marginTop: 16 }}>
-              EMILIA Gate sits immediately before protected execution. Before money moves,
+              On a configured, exclusively mediated path, EMILIA Gate sits immediately before protected execution. Before money moves,
               infrastructure changes, regulated records update, or irreversible state changes, Gate
               verifies the exact authority and evidence the resource owner requires, consumes
               accepted authorization once, and records the result.
@@ -414,7 +414,8 @@ export default function GatePage() {
             </p>
             <p style={{ ...styles.body, maxWidth: 720, marginTop: 12 }}>
               Gate&apos;s experimental recovery developer surface follows buyer policy before execution.
-              The reference executor covers one locally contained PostgreSQL transaction. After a
+              The reference scaffold demonstrates a mocked PostgreSQL transaction-control trace; it
+              does not establish database mutation, durability, or sandbox confinement. After a
               provider may have acted but the result cannot be established, Gate consumes the
               reservation as indeterminate: no blind retry or refund. Any remedy is a new,
               separately authorized action. Remote compensation is a reserved-capacity building
@@ -425,7 +426,7 @@ export default function GatePage() {
               {[
                 ['428 challenge', 'Missing or bad receipt never reaches the mutation.'],
                 ['Observed fields', 'Executor binds facts from the real system, not the request body.'],
-                ['Execution proof', 'The post-action record commits to the authorization decision hash.'],
+                ['Execution record', 'The post-action record commits to the authorization decision and reported outcome; it is not physical proof of effect.'],
                 ['Reliance packet', 'Reproducible technical record with checks, evidence head, and limitations.'],
               ].map(([title, body]) => (
                 <div key={title} style={{ borderTop: `1px solid ${color.border}`, paddingTop: 14 }}>

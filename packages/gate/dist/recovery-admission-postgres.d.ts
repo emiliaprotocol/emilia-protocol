@@ -13,6 +13,7 @@
 import { type RecoveryAdmissionDecision, type RecoveryAdmissionDependencies, type RecoveryCapabilityVerificationContext, type VerifiedRecoveryCapability } from './recovery-admission.js';
 import type { AdmissionRecord, AdmissionSnapshot, AdmissionStore } from './admission-store.js';
 export declare const RECOVERY_ADMISSION_POSTGRES_BEGIN = "BEGIN ISOLATION LEVEL SERIALIZABLE READ WRITE";
+export declare const RECOVERY_ADMISSION_POSTGRES_SET_TIMEOUT = "SELECT set_config('statement_timeout', $1, true)";
 export interface RecoveryAdmissionPostgresQueryResult {
     readonly rowCount: number | null;
     readonly rows: readonly unknown[];

@@ -26,7 +26,9 @@ cannot reopen consumed authority.
    account, environment, adapter, resources, policy snapshot, trust epoch, and
    configuration epoch.
 2. `LOCAL_ATOMIC` is valid only when every protected effect is inside one
-   transaction owned by the executor. No remote call is permitted inside it.
+   transaction owned by the executor. Preventing remote calls is a deployment
+   requirement enforced with process isolation, scoped credentials, database
+   roles, and egress controls; the JavaScript callback contract cannot prove it.
 3. Only `RESERVED` plus authenticated final evidence of no provider entry may
    become released.
 4. Once execution authority is consumed, it never becomes reserved or released.
@@ -36,7 +38,9 @@ cannot reopen consumed authority.
    acknowledgements never authorize an invocation or retry.
 7. `INDETERMINATE` remains closed until authenticated evidence bound to the same
    tenant, provider, account, environment, operation, and action resolves it.
-8. Recovery credentials cannot invoke the provider.
+8. The reference remedy bridge exposes no provider operation. A deployment must
+   separately ensure that recovery workers possess no provider credential or
+   alternate egress path.
 9. Recovery classification never substitutes for ordinary authorization. The
    executor consumes the exact pre-existing Admission Store reservation before
    entering its transaction or provider.

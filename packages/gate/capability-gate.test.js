@@ -171,7 +171,7 @@ test('gate capability path refuses overspend before the effect', async () => {
 });
 test('gate capability path honors release, burn, and hold suspension dispositions', async (t) => {
     const cases = [
-        { name: 'default release', reservation: undefined, status: 'released', outcome: 'not_entered', consumed: 0, reserved: 0 },
+        { name: 'default hold', reservation: undefined, status: 'reserved', outcome: undefined, consumed: 0, reserved: 40 },
         { name: 'explicit release', reservation: 'release', status: 'released', outcome: 'not_entered', consumed: 0, reserved: 0 },
         { name: 'burn', reservation: 'burn', status: 'committed', outcome: 'refused', consumed: 40, reserved: 0 },
         { name: 'hold', reservation: 'hold', status: 'reserved', outcome: undefined, consumed: 0, reserved: 40 },
@@ -235,6 +235,17 @@ test('a burned capability refusal remains consumed and replay-fenced across run 
     assert.equal(f.capabilityStore.getOperation(ACTION.payment_instruction_id).status, 'committed');
     assert.equal(f.capabilityStore.getState('cap_100').consumed_amount, 40);
     assert.equal(f.capabilityStore.getState('cap_100').reserved_amount, 0);
+});
+test('a throwing provider-entry guard holds authority instead of restoring it', async () => {
+    const f = fixture({
+        providerEntryGuard: async () => { throw new Error('guard unavailable'); },
+    });
+    const out = await f.gate.run(request(f, { operationId: ACTION.payment_instruction_id }), async () => { throw new Error('effect must not run'); });
+    assert.equal(out.ok, false);
+    assert.equal(out.capability.reason, 'provider_entry_guard_unavailable');
+    const operation = f.capabilityStore.getOperation(ACTION.payment_instruction_id);
+    assert.equal(operation.status, 'reserved');
+    assert.equal(f.capabilityStore.getState('cap_100').reserved_amount, 40);
 });
 test('gate capability path refuses a missing stable operation id before the effect', async () => {
     const f = fixture();

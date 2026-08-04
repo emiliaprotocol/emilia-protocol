@@ -33,6 +33,8 @@ const INVOCATION_TOKEN = /^admission-invocation:v2:[A-Za-z0-9_-]{32,128}$/;
 
 export const RECOVERY_ADMISSION_POSTGRES_BEGIN =
   'BEGIN ISOLATION LEVEL SERIALIZABLE READ WRITE';
+export const RECOVERY_ADMISSION_POSTGRES_SET_TIMEOUT =
+  "SELECT set_config('statement_timeout', $1, true)";
 
 export interface RecoveryAdmissionPostgresQueryResult {
   readonly rowCount: number | null;
@@ -385,6 +387,8 @@ function recordMatches(
 
 function admissionStoreUsable(value: unknown): value is AdmissionStore {
   return isRecord(value)
+    && value.durable === true
+    && value.testOnly !== true
     && value.atomic === true
     && value.compareAndSwap === true
     && value.appendOnlyJournal === true
@@ -423,11 +427,24 @@ export async function executeRecoveryAdmissionPostgresLocalAtomic<TResult>(
 ): Promise<RecoveryAdmissionPostgresExecutionResult<TResult>> {
   assertCallbacks(options);
 
+  const now = options.now ?? Date.now;
+  let preflightNow: number;
+  try {
+    preflightNow = now();
+  } catch {
+    return notInvoked('clock_invalid');
+  }
+  if (!Number.isFinite(preflightNow)) return notInvoked('clock_invalid');
+  const verificationContext = Object.freeze({
+    ...options.verificationContext,
+    now: new Date(preflightNow).toISOString(),
+  });
+
   let decision: RecoveryAdmissionDecision;
   try {
     decision = await evaluateRecoveryAdmission(
       options.artifact,
-      options.verificationContext,
+      verificationContext,
       options.evaluatorDependencies,
     );
   } catch {
@@ -444,14 +461,6 @@ export async function executeRecoveryAdmissionPostgresLocalAtomic<TResult>(
     return notInvoked('admission_store_guarantee_mismatch');
   }
 
-  const now = options.now ?? Date.now;
-  let preflightNow: number;
-  try {
-    preflightNow = now();
-  } catch {
-    return notInvoked('clock_invalid');
-  }
-  if (!Number.isFinite(preflightNow)) return notInvoked('clock_invalid');
   if (preflightNow >= binding.deadline) return notInvoked('deadline_expired');
 
   let reservedRecord: Readonly<AdmissionRecord> | null;
@@ -524,7 +533,7 @@ export async function executeRecoveryAdmissionPostgresLocalAtomic<TResult>(
     } catch {
       // The evaluator already validated verificationContext.now.
     }
-    return options.verificationContext.now;
+    return verificationContext.now;
   };
 
   const persistOutcome = async <T>(
@@ -624,6 +633,9 @@ export async function executeRecoveryAdmissionPostgresLocalAtomic<TResult>(
         return await persistIndeterminate('clock_invalid');
       }
       await client.query(RECOVERY_ADMISSION_POSTGRES_BEGIN);
+      await client.query(RECOVERY_ADMISSION_POSTGRES_SET_TIMEOUT, [
+        String(binding.max_transaction_ms),
+      ]);
     } catch (error) {
       discardError = errorValue(error, 'unknown PostgreSQL BEGIN failure');
       return await persistIndeterminate('begin_failed');

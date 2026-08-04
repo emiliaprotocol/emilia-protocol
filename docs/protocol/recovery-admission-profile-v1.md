@@ -25,13 +25,14 @@ commit or roll back the protected mutation as one unit. The capability binds:
 - the adapter identifier and implementation digest; and
 - a maximum transaction duration.
 
-The reference PostgreSQL scaffold consumes the exact ordinary Admission Store
-reservation, starts a `SERIALIZABLE` transaction, runs the
-mutation through the bound adapter, validates the result, rechecks current
-status immediately before `COMMIT`, and commits once. A validation failure,
-status change, or pre-commit exception rolls back and returns
-`PROVEN_NOT_COMMITTED`. A lost commit acknowledgement or failed rollback is
-`INDETERMINATE`; it is never called rolled back.
+The reference PostgreSQL scaffold requires a durable ordinary Admission Store,
+consumes its exact reservation, starts a `SERIALIZABLE` transaction, invokes the
+relying party's pinned callback, validates the result, rechecks current status
+immediately before `COMMIT`, and attempts one commit. A validation failure may
+return `PROVEN_NOT_COMMITTED` only when rollback acknowledgement and bound
+evidence are both available. A callback failure without evidence, lost commit
+acknowledgement, or failed rollback is `INDETERMINATE`; it is never called rolled
+back or safe to retry.
 
 This mode applies only when every protected effect is inside that transaction.
 Calling a payment rail, sending a message, invoking another cloud, or performing
@@ -71,7 +72,7 @@ The reference evaluator returns one of four closed decisions:
 - `REFUSED`: do not enter the provider.
 
 Admission requires a valid signature from a pinned issuer, exact equality with
-the relying party's complete expected policy snapshot, an unexpired capability,
+the relying party-supplied trusted policy snapshot, an unexpired capability,
 affirmative current status, and all class-specific checks. Missing, stale,
 revoked, malformed, downgraded, or uncheckable state fails closed. Reserved
 compensation also requires the relying-party reservation verifier to confirm
@@ -79,16 +80,22 @@ the exact reservation and authority digests as current.
 
 Evaluation is not execution. The selected executor MUST recheck currentness and
 any reservation immediately before provider entry or commit. A successful
-evaluation cannot be cached across that boundary. The shipped remedy bridge
-reserves a fresh remedy but does not invoke the original action, so it is not a
-compensation-aware original-action executor.
+evaluation cannot be cached across that boundary. The repository-local
+experimental remedy bridge requires the current claim secret and reserves a
+fresh remedy, but it does not invoke the original action, so it is not a
+compensation-aware original-action executor and is not yet in a published
+package.
 
 ## Outcome discipline
 
 The profile uses the following meanings:
 
-- `COMMITTED`: the protected effect is known to have committed;
-- `PROVEN_NOT_COMMITTED`: the controlled boundary proves it did not commit;
+- `COMMITTED`: the selected transaction acknowledged `COMMIT` and the callback
+  supplied a bound evidence digest. It does not prove the intended mutation or
+  an external effect;
+- `PROVEN_NOT_COMMITTED`: rollback was acknowledged and bound callback evidence
+  supports non-commit inside the selected transaction. It says nothing about
+  any out-of-transaction effect;
 - `INDETERMINATE`: the effect may have happened and the system must not retry
   without authenticated reconciliation.
 
@@ -122,13 +129,18 @@ the action.
 
 - `@emilia-protocol/gate/recovery-admission`
 - `@emilia-protocol/gate/recovery-admission-postgres`
+- `@emilia-protocol/gate/recovery-admission-remedy`
 - `packages/gate/src/recovery-admission.ts`
 - `packages/gate/src/recovery-admission-postgres.ts`
+- `packages/gate/src/recovery-admission-remedy.ts`
 - `packages/gate/recovery-admission.test.ts`
 - `packages/gate/recovery-admission-postgres.test.ts`
+- `packages/gate/recovery-admission-remedy.test.ts`
 - `examples/recovery-admission/demo.mts`
 
-The PostgreSQL scaffold is the first reference adapter. Before this profile is
+The PostgreSQL scaffold currently has mock-backed transaction-control tests; it
+is not evidence of database mutation, crash durability, or process confinement.
+Before this profile is
 proposed as an Internet-Draft, the repository requires an independent second
 adapter, one end-to-end original-action integration for reserved compensation,
 and deployment evidence that local-effect confinement is enforced rather than

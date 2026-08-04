@@ -17,6 +17,7 @@ const DIGEST = /^sha256:[0-9a-f]{64}$/;
 const OWNER_TOKEN = /^admission-owner:v2:[A-Za-z0-9_-]{32,128}$/;
 const INVOCATION_TOKEN = /^admission-invocation:v2:[A-Za-z0-9_-]{32,128}$/;
 export const RECOVERY_ADMISSION_POSTGRES_BEGIN = 'BEGIN ISOLATION LEVEL SERIALIZABLE READ WRITE';
+export const RECOVERY_ADMISSION_POSTGRES_SET_TIMEOUT = "SELECT set_config('statement_timeout', $1, true)";
 function isRecord(value) {
     return value !== null && typeof value === 'object' && !Array.isArray(value);
 }
@@ -151,6 +152,8 @@ function recordMatches(record, binding) {
 }
 function admissionStoreUsable(value) {
     return isRecord(value)
+        && value.durable === true
+        && value.testOnly !== true
         && value.atomic === true
         && value.compareAndSwap === true
         && value.appendOnlyJournal === true
@@ -184,9 +187,23 @@ function poolFailure(pool, binding) {
  */
 export async function executeRecoveryAdmissionPostgresLocalAtomic(options) {
     assertCallbacks(options);
+    const now = options.now ?? Date.now;
+    let preflightNow;
+    try {
+        preflightNow = now();
+    }
+    catch {
+        return notInvoked('clock_invalid');
+    }
+    if (!Number.isFinite(preflightNow))
+        return notInvoked('clock_invalid');
+    const verificationContext = Object.freeze({
+        ...options.verificationContext,
+        now: new Date(preflightNow).toISOString(),
+    });
     let decision;
     try {
-        decision = await evaluateRecoveryAdmission(options.artifact, options.verificationContext, options.evaluatorDependencies);
+        decision = await evaluateRecoveryAdmission(options.artifact, verificationContext, options.evaluatorDependencies);
     }
     catch {
         return notInvoked('evaluation_failed');
@@ -203,16 +220,6 @@ export async function executeRecoveryAdmissionPostgresLocalAtomic(options) {
     if (!admissionStoreUsable(admissionStore)) {
         return notInvoked('admission_store_guarantee_mismatch');
     }
-    const now = options.now ?? Date.now;
-    let preflightNow;
-    try {
-        preflightNow = now();
-    }
-    catch {
-        return notInvoked('clock_invalid');
-    }
-    if (!Number.isFinite(preflightNow))
-        return notInvoked('clock_invalid');
     if (preflightNow >= binding.deadline)
         return notInvoked('deadline_expired');
     let reservedRecord;
@@ -289,7 +296,7 @@ export async function executeRecoveryAdmissionPostgresLocalAtomic(options) {
         catch {
             // The evaluator already validated verificationContext.now.
         }
-        return options.verificationContext.now;
+        return verificationContext.now;
     };
     const persistOutcome = async (value, evidenceDigest, result) => {
         try {
@@ -372,6 +379,9 @@ export async function executeRecoveryAdmissionPostgresLocalAtomic(options) {
                 return await persistIndeterminate('clock_invalid');
             }
             await client.query(RECOVERY_ADMISSION_POSTGRES_BEGIN);
+            await client.query(RECOVERY_ADMISSION_POSTGRES_SET_TIMEOUT, [
+                String(binding.max_transaction_ms),
+            ]);
         }
         catch (error) {
             discardError = errorValue(error, 'unknown PostgreSQL BEGIN failure');

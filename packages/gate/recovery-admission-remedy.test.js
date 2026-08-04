@@ -292,6 +292,7 @@ async function fixture(options = {}) {
     const bridge = createRecoveryAdmissionRemedyBridge({
         remedyProgramStore: remedyStore,
         admissionStore,
+        allowEphemeralStoresForTests: true,
         trustedReceiptKeys: {
             [ISSUER.key_id]: pair.publicKey.export({ type: 'spki', format: 'der' }).toString('base64url'),
         },
@@ -302,6 +303,7 @@ async function fixture(options = {}) {
         tenant_id: TENANT,
         remedy_case_instance_id: INSTANCE,
         original_admission_id: original.admission_id,
+        claim_token: 'worker-A',
         receipt,
         admission: remedy,
     };
@@ -324,6 +326,97 @@ test('reserves one fresh claimed remedy as a separate ordinary admission', async
         tenant_id: TENANT,
         admission_id: f.original.admission_id,
     }))?.state, 'COMMITTED');
+});
+test('captures the checked admission before any awaited store call', async () => {
+    const f = await fixture();
+    let releaseRead;
+    let readReached;
+    const readBarrier = new Promise((resolve) => { readReached = resolve; });
+    const continueRead = new Promise((resolve) => { releaseRead = resolve; });
+    const admissionStore = new Proxy(f.admissionStore, {
+        get(target, property, receiver) {
+            if (property === 'read') {
+                return async (input) => {
+                    const result = await target.read(input);
+                    readReached();
+                    await continueRead;
+                    return result;
+                };
+            }
+            return Reflect.get(target, property, receiver);
+        },
+    });
+    const bridge = createRecoveryAdmissionRemedyBridge({
+        remedyProgramStore: f.remedyStore,
+        admissionStore,
+        allowEphemeralStoresForTests: true,
+        trustedReceiptKeys: {
+            [ISSUER.key_id]: f.pair.publicKey.export({ type: 'spki', format: 'der' }).toString('base64url'),
+        },
+        expectedReceiptIssuer: ISSUER,
+        allowedRemedyOwners: [{ owner_mode: 'receipt-program', owner_digest: OWNER_DIGEST }],
+    });
+    const mutable = structuredClone(f.input);
+    const pending = bridge.reserve(mutable);
+    await readBarrier;
+    mutable.admission.action_digest = d('swapped-after-check');
+    mutable.admission.tenant_id = 'tenant:swapped';
+    releaseRead();
+    const result = await pending;
+    assert.equal(result.ok, true);
+    if (!result.ok)
+        return;
+    assert.equal(result.reservation.snapshot.body.action_digest, REMEDY_ACTION);
+    assert.equal(result.reservation.snapshot.body.tenant_id, TENANT);
+});
+test('requires the current remedy claim token owner', async () => {
+    const f = await fixture();
+    assert.deepEqual(await f.bridge.reserve({ ...f.input, claim_token: 'worker-B' }), {
+        ok: false,
+        reason: 'remedy_claim_owned',
+    });
+});
+test('rechecks the exact remedy claim revision before reservation', async () => {
+    const f = await fixture();
+    let reads = 0;
+    const remedyProgramStore = {
+        durable: f.remedyStore.durable,
+        create: (input) => f.remedyStore.create(input),
+        compareAndSwap: (input) => f.remedyStore.compareAndSwap(input),
+        async get(input) {
+            const result = await f.remedyStore.get(input);
+            reads += 1;
+            if (reads < 2 || !result.ok || !result.state)
+                return result;
+            return {
+                ok: true,
+                state: {
+                    ...structuredClone(result.state),
+                    revision: result.state.revision + 1,
+                    status: 'remedied',
+                    active_remedy: null,
+                },
+            };
+        },
+    };
+    const bridge = createRecoveryAdmissionRemedyBridge({
+        remedyProgramStore,
+        admissionStore: f.admissionStore,
+        allowEphemeralStoresForTests: true,
+        trustedReceiptKeys: {
+            [ISSUER.key_id]: f.pair.publicKey.export({ type: 'spki', format: 'der' }).toString('base64url'),
+        },
+        expectedReceiptIssuer: ISSUER,
+        allowedRemedyOwners: [{ owner_mode: 'receipt-program', owner_digest: OWNER_DIGEST }],
+    });
+    assert.deepEqual(await bridge.reserve(f.input), {
+        ok: false,
+        reason: 'remedy_claim_currentness_mismatch',
+    });
+    assert.equal(await f.admissionStore.read({
+        tenant_id: TENANT,
+        admission_id: f.remedy.admission_id,
+    }), null);
 });
 test('fails closed for every signed receipt binding mutation', async (t) => {
     const mutations = [
@@ -408,7 +501,7 @@ test('requires exactly one authorization input bound to the verified receipt dig
         ...duplicate.input,
         admission: { ...duplicate.remedy, inputs: [...duplicate.remedy.inputs, authorization] },
     });
-    assert.deepEqual(duplicateResult, { ok: false, reason: 'authorization_evidence_mismatch' });
+    assert.deepEqual(duplicateResult, { ok: false, reason: 'remedy_admission_binding_mismatch' });
 });
 test('requires a current claimed remedy and a server-pinned owner pair', async () => {
     const unclaimed = await fixture({ claim: false });
@@ -420,6 +513,7 @@ test('requires a current claimed remedy and a server-pinned owner pair', async (
     const bridge = createRecoveryAdmissionRemedyBridge({
         remedyProgramStore: wrongOwner.remedyStore,
         admissionStore: wrongOwner.admissionStore,
+        allowEphemeralStoresForTests: true,
         trustedReceiptKeys: {
             [ISSUER.key_id]: wrongOwner.pair.publicKey
                 .export({ type: 'spki', format: 'der' }).toString('base64url'),
@@ -459,6 +553,7 @@ test('the bridge cannot invoke, retry, or enter a provider', async () => {
     const bridge = createRecoveryAdmissionRemedyBridge({
         remedyProgramStore: f.remedyStore,
         admissionStore,
+        allowEphemeralStoresForTests: true,
         trustedReceiptKeys: {
             [ISSUER.key_id]: f.pair.publicKey.export({ type: 'spki', format: 'der' }).toString('base64url'),
         },
@@ -560,6 +655,7 @@ test('bounded-program reservation preserves occurrence and budget limits', async
     const bridge = createRecoveryAdmissionRemedyBridge({
         remedyProgramStore: f.remedyStore,
         admissionStore: policyStore,
+        allowEphemeralStoresForTests: true,
         trustedReceiptKeys: {
             [ISSUER.key_id]: f.pair.publicKey.export({ type: 'spki', format: 'der' }).toString('base64url'),
         },
@@ -577,7 +673,7 @@ test('bounded-program reservation preserves occurrence and budget limits', async
         },
     };
     const reserved = await bridge.reserve(input);
-    assert.equal(reserved.ok, true);
+    assert.equal(reserved.ok, true, reserved.ok ? undefined : reserved.reason);
     const runtime = await policyStore.readExecutionProgram({
         tenant_id: TENANT,
         program_digest: registered.program.program_digest,

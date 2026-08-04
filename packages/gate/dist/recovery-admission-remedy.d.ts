@@ -25,6 +25,8 @@ export interface RecoveryAdmissionRemedyBridgeOptions {
         key_id: string;
     }>;
     allowedRemedyOwners: readonly Readonly<RecoveryAdmissionRemedyOwner>[];
+    /** Unit-test escape hatch. Production bridges require two durable stores. */
+    allowEphemeralStoresForTests?: true;
 }
 export interface RecoveryAdmissionRemedyProgramInput extends Omit<ExecutionProgramReserveInput, 'admission'> {
 }
@@ -32,11 +34,12 @@ export interface RecoveryAdmissionRemedyInput {
     tenant_id: string;
     remedy_case_instance_id: string;
     original_admission_id: string;
+    claim_token: string;
     receipt: unknown;
     admission: AdmissionSnapshotInput | AdmissionSnapshot;
     execution_program?: RecoveryAdmissionRemedyProgramInput;
 }
-export type RecoveryAdmissionRemedyRefusalReason = 'recovery_admission_input_invalid' | 'remedy_current_state_unavailable' | 'remedy_case_not_found' | 'remedy_not_currently_claimed' | 'remedy_receipt_invalid' | 'remedy_receipt_state_mismatch' | 'remedy_receipt_binding_mismatch' | 'tenant_mismatch' | 'original_admission_not_found' | 'original_admission_binding_mismatch' | 'remedy_admission_binding_mismatch' | 'authorization_evidence_mismatch' | 'remedy_owner_not_allowed';
+export type RecoveryAdmissionRemedyRefusalReason = 'recovery_admission_input_invalid' | 'remedy_current_state_unavailable' | 'remedy_case_not_found' | 'remedy_not_currently_claimed' | 'remedy_claim_owned' | 'remedy_claim_currentness_mismatch' | 'remedy_receipt_invalid' | 'remedy_receipt_state_mismatch' | 'remedy_receipt_binding_mismatch' | 'tenant_mismatch' | 'original_admission_not_found' | 'original_admission_binding_mismatch' | 'remedy_admission_binding_mismatch' | 'authorization_evidence_mismatch' | 'remedy_owner_not_allowed';
 export type RecoveryAdmissionRemedyResult = {
     ok: true;
     receipt_content_digest: string;

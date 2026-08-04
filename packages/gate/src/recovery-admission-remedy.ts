@@ -21,6 +21,8 @@ import {
   verifyRemedyProgramReceipt,
 } from './remedy-program-receipt.js';
 import type { RemedyProgramStore } from './remedy-program.js';
+import { createHash } from 'node:crypto';
+import { canonicalize } from '../execution-binding.js';
 
 type DataRecord = Record<string, any>;
 
@@ -41,6 +43,8 @@ export interface RecoveryAdmissionRemedyBridgeOptions {
     key_id: string;
   }>;
   allowedRemedyOwners: readonly Readonly<RecoveryAdmissionRemedyOwner>[];
+  /** Unit-test escape hatch. Production bridges require two durable stores. */
+  allowEphemeralStoresForTests?: true;
 }
 
 export interface RecoveryAdmissionRemedyProgramInput
@@ -50,6 +54,7 @@ export interface RecoveryAdmissionRemedyInput {
   tenant_id: string;
   remedy_case_instance_id: string;
   original_admission_id: string;
+  claim_token: string;
   receipt: unknown;
   admission: AdmissionSnapshotInput | AdmissionSnapshot;
   execution_program?: RecoveryAdmissionRemedyProgramInput;
@@ -60,6 +65,8 @@ export type RecoveryAdmissionRemedyRefusalReason =
   | 'remedy_current_state_unavailable'
   | 'remedy_case_not_found'
   | 'remedy_not_currently_claimed'
+  | 'remedy_claim_owned'
+  | 'remedy_claim_currentness_mismatch'
   | 'remedy_receipt_invalid'
   | 'remedy_receipt_state_mismatch'
   | 'remedy_receipt_binding_mismatch'
@@ -102,18 +109,24 @@ function exactIssuer(value: unknown): value is RecoveryAdmissionRemedyBridgeOpti
 
 function exactInput(value: unknown): value is RecoveryAdmissionRemedyInput {
   if (!dataRecord(value)) return false;
-  const keys = Object.keys(value);
-  return keys.every((key) => [
+  const keys = Reflect.ownKeys(value);
+  if (keys.some((key) => typeof key !== 'string')) return false;
+  const stringKeys = keys as string[];
+  return stringKeys.every((key) => [
     'tenant_id', 'remedy_case_instance_id', 'original_admission_id',
-    'receipt', 'admission', 'execution_program',
+    'claim_token', 'receipt', 'admission', 'execution_program',
   ].includes(key))
-    && ['tenant_id', 'remedy_case_instance_id', 'original_admission_id', 'receipt', 'admission']
+    && ['tenant_id', 'remedy_case_instance_id', 'original_admission_id',
+      'claim_token', 'receipt', 'admission']
       .every((key) => Object.hasOwn(value, key))
     && typeof value.tenant_id === 'string' && value.tenant_id.length > 0
     && typeof value.remedy_case_instance_id === 'string'
     && value.remedy_case_instance_id.length > 0
     && typeof value.original_admission_id === 'string'
-    && value.original_admission_id.length > 0;
+    && value.original_admission_id.length > 0
+    && typeof value.claim_token === 'string'
+    && value.claim_token.length > 0
+    && Buffer.byteLength(value.claim_token, 'utf8') <= 256;
 }
 
 function snapshotOf(
@@ -122,15 +135,41 @@ function snapshotOf(
   try {
     if (dataRecord(value) && Object.hasOwn(value, 'snapshot_digest')) {
       const body = (value as AdmissionSnapshot).body;
-      return createAdmissionSnapshot(body as unknown as AdmissionSnapshotInput).snapshot_digest
-          === (value as AdmissionSnapshot).snapshot_digest
-        ? value as Readonly<AdmissionSnapshot>
+      const recreated = createAdmissionSnapshot(body as unknown as AdmissionSnapshotInput);
+      return recreated.snapshot_digest === (value as AdmissionSnapshot).snapshot_digest
+        ? recreated
         : null;
     }
     return createAdmissionSnapshot(value as AdmissionSnapshotInput);
   } catch {
     return null;
   }
+}
+
+function claimTokenDigest(token: string): string {
+  return `sha256:${createHash('sha256').update(canonicalize({ claim_token: token })).digest('hex')}`;
+}
+
+function currentClaimMatches(
+  state: DataRecord,
+  input: Readonly<{
+    tenantId: string;
+    instanceId: string;
+    operationId: string;
+    claimTokenDigest: string;
+    expectedRevision?: number;
+  }>,
+): boolean {
+  const active = state.active_remedy;
+  return state.tenant_id === input.tenantId
+    && state.instance_id === input.instanceId
+    && state.status === 'remedy_claimed'
+    && Number.isSafeInteger(state.revision)
+    && (input.expectedRevision === undefined || state.revision === input.expectedRevision)
+    && dataRecord(active)
+    && active.status === 'claimed'
+    && active.remedy_operation_id === input.operationId
+    && active.claim_token_digest === input.claimTokenDigest;
 }
 
 function relationMatches(
@@ -178,7 +217,13 @@ export function createRecoveryAdmissionRemedyBridge(
       || !dataRecord(options.trustedReceiptKeys)
       || !exactIssuer(options.expectedReceiptIssuer)
       || !Array.isArray(options.allowedRemedyOwners)
-      || options.allowedRemedyOwners.length === 0) {
+      || options.allowedRemedyOwners.length === 0
+      || (options.allowEphemeralStoresForTests !== undefined
+        && options.allowEphemeralStoresForTests !== true)
+      || (options.allowEphemeralStoresForTests !== true
+        && (options.remedyProgramStore.durable !== true
+          || options.admissionStore.durable !== true
+          || options.admissionStore.testOnly === true))) {
     throw new TypeError('recovery admission remedy bridge configuration is invalid');
   }
   const trustedReceiptKeys = Object.freeze({ ...options.trustedReceiptKeys });
@@ -202,10 +247,25 @@ export function createRecoveryAdmissionRemedyBridge(
     input: RecoveryAdmissionRemedyInput,
   ): Promise<RecoveryAdmissionRemedyResult> {
     if (!exactInput(input)) return { ok: false, reason: 'recovery_admission_input_invalid' };
-    const presentedAdmission = dataRecord(input.admission)
-      && Object.hasOwn(input.admission, 'snapshot_digest')
-      ? (input.admission as AdmissionSnapshot).body
-      : input.admission as AdmissionSnapshotInput;
+    const tenantId = input.tenant_id;
+    const remedyCaseInstanceId = input.remedy_case_instance_id;
+    const originalAdmissionId = input.original_admission_id;
+    const claimDigest = claimTokenDigest(input.claim_token);
+    let receipt: unknown;
+    let executionProgram: RecoveryAdmissionRemedyProgramInput | undefined;
+    let capturedAdmission: AdmissionSnapshotInput | AdmissionSnapshot;
+    try {
+      receipt = structuredClone(input.receipt);
+      capturedAdmission = structuredClone(input.admission);
+      executionProgram = input.execution_program === undefined
+        ? undefined
+        : structuredClone(input.execution_program);
+    } catch {
+      return { ok: false, reason: 'recovery_admission_input_invalid' };
+    }
+    const admission = snapshotOf(capturedAdmission);
+    if (!admission) return { ok: false, reason: 'remedy_admission_binding_mismatch' };
+    const presentedAdmission = admission.body;
     const presentedInputs = dataRecord(presentedAdmission)
       ? presentedAdmission.inputs : null;
     if (!Array.isArray(presentedInputs)
@@ -213,18 +273,16 @@ export function createRecoveryAdmissionRemedyBridge(
           && entry.role === 'authorization').length !== 1) {
       return { ok: false, reason: 'authorization_evidence_mismatch' };
     }
-    const admission = snapshotOf(input.admission);
-    if (!admission) return { ok: false, reason: 'remedy_admission_binding_mismatch' };
-    if (expectedReceiptIssuer.tenant !== input.tenant_id
-        || admission.body.tenant_id !== input.tenant_id) {
+    if (expectedReceiptIssuer.tenant !== tenantId
+        || admission.body.tenant_id !== tenantId) {
       return { ok: false, reason: 'tenant_mismatch' };
     }
 
     let current;
     try {
       current = await remedyProgramStore.get({
-        tenantId: input.tenant_id,
-        instanceId: input.remedy_case_instance_id,
+        tenantId,
+        instanceId: remedyCaseInstanceId,
       });
     } catch {
       return { ok: false, reason: 'remedy_current_state_unavailable' };
@@ -233,16 +291,18 @@ export function createRecoveryAdmissionRemedyBridge(
       return { ok: false, reason: 'remedy_case_not_found' };
     }
     const state = current.state as DataRecord;
-    const active = state.active_remedy;
-    if (state.tenant_id !== input.tenant_id
-        || state.instance_id !== input.remedy_case_instance_id) {
+    if (state.tenant_id !== tenantId
+        || state.instance_id !== remedyCaseInstanceId) {
       return { ok: false, reason: 'tenant_mismatch' };
     }
     if (state.status !== 'remedy_claimed'
-        || !dataRecord(active)
-        || active.status !== 'claimed'
-        || active.remedy_operation_id !== admission.body.operation_id) {
+        || !dataRecord(state.active_remedy)
+        || state.active_remedy.status !== 'claimed'
+        || state.active_remedy.remedy_operation_id !== admission.body.operation_id) {
       return { ok: false, reason: 'remedy_not_currently_claimed' };
+    }
+    if (state.active_remedy.claim_token_digest !== claimDigest) {
+      return { ok: false, reason: 'remedy_claim_owned' };
     }
 
     let expected;
@@ -251,7 +311,7 @@ export function createRecoveryAdmissionRemedyBridge(
     } catch {
       return { ok: false, reason: 'remedy_not_currently_claimed' };
     }
-    const verified = verifyRemedyProgramReceipt(input.receipt, {
+    const verified = verifyRemedyProgramReceipt(receipt, {
       trustedKeys: trustedReceiptKeys,
       expectedIssuer: expectedReceiptIssuer,
       state,
@@ -283,14 +343,14 @@ export function createRecoveryAdmissionRemedyBridge(
     }
 
     const originalRecord = await admissionStore.read({
-      tenant_id: input.tenant_id,
-      admission_id: input.original_admission_id,
+      tenant_id: tenantId,
+      admission_id: originalAdmissionId,
     });
     if (!originalRecord) return { ok: false, reason: 'original_admission_not_found' };
     const original = await admissionStore.readSnapshot(originalRecord.snapshot_digest);
     if (!original) return { ok: false, reason: 'original_admission_not_found' };
-    if (original.body.tenant_id !== input.tenant_id
-        || original.body.admission_id !== input.original_admission_id
+    if (original.body.tenant_id !== tenantId
+        || original.body.admission_id !== originalAdmissionId
         || !relationMatches(admission.body.remedy_for, original)
         || original.body.operation_id !== payload.original_effect.operation_id
         || original.body.caid !== payload.original_effect.caid
@@ -298,13 +358,39 @@ export function createRecoveryAdmissionRemedyBridge(
       return { ok: false, reason: 'original_admission_binding_mismatch' };
     }
 
+    // Recheck the exact claim revision immediately before transferring the
+    // right into AdmissionStore. The claim token proves ownership; the signed
+    // receipt and immutable admission snapshot prove what is transferred.
+    let rechecked;
+    try {
+      rechecked = await remedyProgramStore.get({
+        tenantId,
+        instanceId: remedyCaseInstanceId,
+      });
+    } catch {
+      return { ok: false, reason: 'remedy_current_state_unavailable' };
+    }
+    if (!rechecked || rechecked.ok !== true || !dataRecord(rechecked.state)
+        || !currentClaimMatches(rechecked.state, {
+          tenantId,
+          instanceId: remedyCaseInstanceId,
+          operationId: admission.body.operation_id,
+          claimTokenDigest: claimDigest,
+          expectedRevision: state.revision,
+        })) {
+      return { ok: false, reason: 'remedy_claim_currentness_mismatch' };
+    }
+
     let reserved: AdmissionReserveResult | ExecutionProgramReserveResult;
     try {
-      reserved = input.execution_program === undefined
-        ? await admissionStore.reserve(input.admission)
+      reserved = executionProgram === undefined
+        ? await admissionStore.reserve(admission)
         : await admissionStore.reserveExecutionProgramAdmission({
-          ...input.execution_program,
-          admission: input.admission,
+          ...executionProgram,
+          admission: (() => {
+            const { '@version': _version, ...body } = admission.body;
+            return body as AdmissionSnapshotInput;
+          })(),
         });
     } catch {
       return { ok: false, reason: 'remedy_current_state_unavailable' };
