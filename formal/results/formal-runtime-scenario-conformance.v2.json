@@ -499,7 +499,7 @@
     },
     {
       "path": "package.json",
-      "sha256": "46a3bb1df1b92d51233e07cc4980d695d4d11dbce34777e3905a712ba8103523"
+      "sha256": "86c6bb5c1fac5bc32a79bce5f4a6583609cb1c92dcd5e3ecca51b3edeaefb287"
     },
     {
       "path": "packages/gate/aec-execution.js",
@@ -555,7 +555,7 @@
     },
     {
       "path": "packages/gate/dist/admission-store.js",
-      "sha256": "8ef4835edb14a45b88b379134ac92f9532a173f09da6022b08bdf8325db40446"
+      "sha256": "043013cefe4e073c41b627c6df8fd8997dea100c74790006c22dc2e1172ecdbe"
     },
     {
       "path": "packages/gate/dist/aeb-consumption-store.js",
@@ -591,7 +591,7 @@
     },
     {
       "path": "packages/gate/dist/capability-receipt.js",
-      "sha256": "5a878be8d9fc6fbf5cb0ae6eab37127cb649042ae02d04a00c5989ff00dc0789"
+      "sha256": "a879b912954dbcfd3c022f4ae96bc7d0377fe5160b7f2a1af1a7d79646ef43af"
     },
     {
       "path": "packages/gate/dist/cf1-conformance.js",
@@ -647,7 +647,7 @@
     },
     {
       "path": "packages/gate/dist/index.js",
-      "sha256": "828c59b044167ed5b27409ee4672ae15999413b687717a41b6e69df6fd32705c"
+      "sha256": "969e6d90ea6c1b11c9a0b636754b6941e34dc811a2404fb0a279ad95e0fa881b"
     },
     {
       "path": "packages/gate/dist/key-registry.js",
@@ -691,7 +691,7 @@
     },
     {
       "path": "packages/gate/dist/provider-entry.js",
-      "sha256": "221a6182d605d49749e47def533cd3342b3bdeb3b025f0a81b7a8f4d09774dc6"
+      "sha256": "6ce34d4fe67739776965bc845d322e80eb3192137880f6fb38f26ff408ffbc25"
     },
     {
       "path": "packages/gate/dist/receipt-census.js",
@@ -700,6 +700,18 @@
     {
       "path": "packages/gate/dist/receipt-program.js",
       "sha256": "a72249eead82967d0b11e632753baebfcb89c3d7702ec46b27d609c6e2dc2606"
+    },
+    {
+      "path": "packages/gate/dist/recovery-admission-postgres.js",
+      "sha256": "1fe249c7598584e1f2ac2fca1139cf6ab689e09a3926e95c55601dc371b16b50"
+    },
+    {
+      "path": "packages/gate/dist/recovery-admission-remedy.js",
+      "sha256": "8a820648ca69083c8110c92144dc38da7973363f88ef466a152ef2a46580600d"
+    },
+    {
+      "path": "packages/gate/dist/recovery-admission.js",
+      "sha256": "6ed5f83088d212e57c308f7cb199535c4d54e3f5e567636cb37f3735a10f1633"
     },
     {
       "path": "packages/gate/dist/referee-runner.js",
@@ -807,7 +819,7 @@
     },
     {
       "path": "packages/gate/src/capability-receipt.ts",
-      "sha256": "f65f07975359614c5b1cec5d23321e62d3e8789c3db68f9ad84c53ece22f6dbb"
+      "sha256": "73e91d24bde94819888427304a2ddf31c6dfbb15b93746731009a1b8b35e73e1"
     },
     {
       "path": "packages/gate/src/challenge-store.ts",
@@ -827,7 +839,7 @@
     },
     {
       "path": "packages/gate/src/index.ts",
-      "sha256": "e2914cbda29e67541d7a98f0a18f7aceeac9d424dc0d76a2363db8867cb2f213"
+      "sha256": "8beab9a8b2645509d23cfae881747efee1cd5bc6e68c0d88146fbcd3852f2c42"
     },
     {
       "path": "packages/gate/src/network-witness.ts",
