@@ -890,7 +890,7 @@ export function createMemoryAdmissionStore(options = {}) {
             incrementIndex(executionProgramTerminalOutcomeCounts, executionProgramTerminalCountKey(occurrence.tenant_id, occurrence.program_digest, occurrence.node_id, state), 1);
         }
     }
-    function reserveCore(raw, programAware = false) {
+    function reserveCore(raw, programAware = false, preparedOwnerToken) {
         const snapshot = plain(raw) && Object.hasOwn(raw, 'snapshot_digest')
             ? validateSnapshot(raw)
             : createAdmissionSnapshot(raw);
@@ -933,7 +933,9 @@ export function createMemoryAdmissionStore(options = {}) {
         }
         if (!resourcesAvailable(snapshot))
             return { ok: false, reason: 'resource_conflict' };
-        const owner = validateOwner(ownerFactory());
+        const owner = preparedOwnerToken === undefined
+            ? validateOwner(ownerFactory())
+            : validateOwner(preparedOwnerToken);
         const at = new Date(now).toISOString();
         snapshots.set(snapshot.snapshot_digest, snapshot);
         operationHeads.set(opKey, key);
@@ -1344,6 +1346,7 @@ export function createMemoryAdmissionStore(options = {}) {
                         state: 'RELEASED',
                     })),
                 }), 'ABANDONED_BEFORE_INVOCATION', at);
+                releaseExecutionProgramOccurrenceForAdmission(key, at);
                 return { ok: true, record };
             });
         },
@@ -1536,6 +1539,9 @@ export function createMemoryAdmissionStore(options = {}) {
             });
         },
         reserveExecutionProgramAdmission(input) {
+            const preparedOwnerToken = Object.hasOwn(input, 'owner_token')
+                ? validateOwner(input.owner_token)
+                : undefined;
             const programDigest = digest(input.program_digest, 'program_digest');
             const occurrenceId = identifier(input.occurrence_id, 'occurrence_id');
             const nodeId = identifier(input.node_id, 'node_id');
@@ -1641,7 +1647,7 @@ export function createMemoryAdmissionStore(options = {}) {
                             return { ok: false, reason: 'program_budget_exhausted' };
                         }
                     }
-                    const reserved = reserveCore(snapshot, true);
+                    const reserved = reserveCore(snapshot, true, preparedOwnerToken);
                     if (!reserved.ok)
                         return reserved;
                     const at = new Date(validationTime).toISOString();
@@ -1667,6 +1673,10 @@ export function createMemoryAdmissionStore(options = {}) {
                     return reserved;
                 });
             })();
+        },
+        reserveExecutionProgramAdmissionWithPreparedOwnerToken(input) {
+            validateOwner(input.owner_token);
+            return store.reserveExecutionProgramAdmission(input);
         },
         beginExecutionProgramInvocation(input) {
             return beginInvocationCore(input, true);

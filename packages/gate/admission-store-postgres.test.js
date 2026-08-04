@@ -142,6 +142,10 @@ test('SQL contract is singleton-bound, append-only, and has permanent operation/
     assert.match(sql, /reserved_past_expiry/);
     assert.match(sql, /Recovery authority is the database EXECUTE privilege/);
     assert.match(sql, /REVOKE ALL ON FUNCTION public\.ep_gate_admission_reap_expired/);
+    const reaper = sql.match(/CREATE OR REPLACE FUNCTION public\.ep_gate_admission_reap_expired[\s\S]*?\n\$\$;/)?.[0] ?? '';
+    assert.match(reaper, /ep_gate_execution_program_occurrences/);
+    assert.match(reaper, /ep_gate_execution_program_adjust_budgets\([\s\S]*-1, 0/);
+    assert.match(reaper, /SET state = 'RELEASED'/);
     assert.match(sql, /'invocation_token_digest', p_reconciliation_token_digest/);
     assert.match(sql, /v_successor_body->>'operation_id' <> v_predecessor_snapshot->'body'->>'operation_id'/);
     assert.match(sql, /v_successor_body->>'effect_request_digest'/);

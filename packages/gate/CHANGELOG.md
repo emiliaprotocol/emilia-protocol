@@ -1,6 +1,18 @@
 <!-- SPDX-License-Identifier: Apache-2.0 -->
 # Changelog
 
+## 0.23.12 (2026-08-04)
+
+### Security
+
+- Allow an orchestrator to durably custody the exact reservation owner token
+  before Gate commits the atomic reservation, closing the process-death window
+  between those two steps.
+- Make deadline recovery program-aware so releasing an expired, provably
+  unentered admission also releases its occurrence and reserved budgets.
+- Keep post-provider-entry recovery evidence-gated; the deadline reaper does
+  not retry or erase an entered effect.
+
 ## 0.23.11
 
 - Publish the crash-safe bounded-program provider-entry path from 0.23.10 under

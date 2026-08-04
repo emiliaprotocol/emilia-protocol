@@ -545,6 +545,10 @@ export interface ExecutionProgramReserveInput {
   action_match_evidence?: unknown;
 }
 
+export interface ExecutionProgramPreparedReserveInput extends ExecutionProgramReserveInput {
+  owner_token: string;
+}
+
 export type ExecutionProgramRefusalReason =
   | AdmissionRefusalReason
   | 'program_exists'
@@ -652,6 +656,14 @@ export interface ExecutionProgramAdmissionStore extends AdmissionStore {
   ): Promise<ExecutionProgramRegistrationResult>;
   reserveExecutionProgramAdmission(
     input: ExecutionProgramReserveInput,
+  ): Promise<ExecutionProgramReserveResult>;
+  /**
+   * Reserves with an owner token the orchestrator durably custodied before the
+   * atomic transition. This closes the process-death window between reservation
+   * and persistence of the only capability that can advance or release it.
+   */
+  reserveExecutionProgramAdmissionWithPreparedOwnerToken(
+    input: ExecutionProgramPreparedReserveInput,
   ): Promise<ExecutionProgramReserveResult>;
   beginExecutionProgramInvocation(input: AdmissionCas): Promise<AdmissionBeginResult>;
   /**
@@ -1627,6 +1639,7 @@ export function createMemoryAdmissionStore(options: CreateMemoryAdmissionStoreOp
   function reserveCore(
     raw: AdmissionSnapshotInput | AdmissionSnapshot,
     programAware = false,
+    preparedOwnerToken?: string,
   ): AdmissionReserveResult {
     const snapshot = plain(raw) && Object.hasOwn(raw, 'snapshot_digest')
       ? validateSnapshot(raw as AdmissionSnapshot)
@@ -1662,7 +1675,9 @@ export function createMemoryAdmissionStore(options: CreateMemoryAdmissionStoreOp
           || targetSnapshot.body.caid === body.caid) return { ok: false, reason: 'relation_conflict' };
     }
     if (!resourcesAvailable(snapshot)) return { ok: false, reason: 'resource_conflict' };
-    const owner = validateOwner(ownerFactory());
+    const owner = preparedOwnerToken === undefined
+      ? validateOwner(ownerFactory())
+      : validateOwner(preparedOwnerToken);
     const at = new Date(now).toISOString();
     snapshots.set(snapshot.snapshot_digest, snapshot);
     operationHeads.set(opKey, key);
@@ -2121,6 +2136,7 @@ export function createMemoryAdmissionStore(options: CreateMemoryAdmissionStoreOp
             state: 'RELEASED',
           })),
         }), 'ABANDONED_BEFORE_INVOCATION', at);
+        releaseExecutionProgramOccurrenceForAdmission(key, at);
         return { ok: true, record };
       });
     },
@@ -2310,6 +2326,9 @@ export function createMemoryAdmissionStore(options: CreateMemoryAdmissionStoreOp
     },
 
     reserveExecutionProgramAdmission(input) {
+      const preparedOwnerToken = Object.hasOwn(input as object, 'owner_token')
+        ? validateOwner((input as ExecutionProgramPreparedReserveInput).owner_token)
+        : undefined;
       const programDigest = digest(input.program_digest, 'program_digest');
       const occurrenceId = identifier(input.occurrence_id, 'occurrence_id');
       const nodeId = identifier(input.node_id, 'node_id');
@@ -2437,7 +2456,7 @@ export function createMemoryAdmissionStore(options: CreateMemoryAdmissionStoreOp
             return { ok: false, reason: 'program_budget_exhausted' };
           }
         }
-        const reserved = reserveCore(snapshot, true);
+        const reserved = reserveCore(snapshot, true, preparedOwnerToken);
         if (!reserved.ok) return reserved;
         const at = new Date(validationTime).toISOString();
         for (const charge of node.charges) {
@@ -2465,6 +2484,11 @@ export function createMemoryAdmissionStore(options: CreateMemoryAdmissionStoreOp
         return reserved;
       });
       })();
+    },
+
+    reserveExecutionProgramAdmissionWithPreparedOwnerToken(input) {
+      validateOwner(input.owner_token);
+      return store.reserveExecutionProgramAdmission(input);
     },
 
     beginExecutionProgramInvocation(input) {

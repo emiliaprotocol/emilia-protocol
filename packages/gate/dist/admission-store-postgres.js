@@ -931,7 +931,9 @@ export function createAdmissionPostgresStore(options) {
                     resource_reservations: [...body.resource_reservations, binding],
                 });
             }
-            const generatedOwner = ownerToken(ownerFactory());
+            const generatedOwner = Object.hasOwn(input, 'owner_token')
+                ? ownerToken(input.owner_token)
+                : ownerToken(ownerFactory());
             const value = await verifierRpc('execution program admission reserve', ADMISSION_POSTGRES_SQL.reserveExecutionProgramAdmission, [
                 deploymentId,
                 tenantId,
@@ -952,6 +954,13 @@ export function createAdmissionPostgresStore(options) {
                 record: validateRecord(result.record, 'execution program admission reserve', tenantId),
                 owner_token: generatedOwner,
             };
+        },
+        async reserveExecutionProgramAdmissionWithPreparedOwnerToken(input) {
+            const preparedOwnerToken = ownerToken(input.owner_token);
+            return store.reserveExecutionProgramAdmission({
+                ...input,
+                owner_token: preparedOwnerToken,
+            });
         },
         async beginExecutionProgramInvocation(input) {
             const reference = validateCas(input);
