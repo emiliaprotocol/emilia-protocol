@@ -154,9 +154,9 @@ describe('current-bundle clean-room v2', () => {
     const kit = loadPinnedKitV2();
     expect(kit.bundle.totals).toEqual({ suites: 21, vectors: 331 });
     expect(kit.sourceManifestSha256)
-      .toBe('d1af0530ff9fb52a4cca20c28dc873461d61dad19f142c89114d3dfa24f8ddb3');
+      .toBe('0cd76716ba663d266eb3046c30304c6e40c0f507c46971ed23fc6834c6b56634');
     expect(kit.sourceManifestClaimSha256)
-      .toBe('298871be28eb17f813cdceff6eb2a678f48ac99909dfcc2a2d994121968ad533');
+      .toBe('1e6ce8a5cb7d619055d25b42126c04d3140f164289c7da673b54107fe833bce2');
     expect(kit.authorityExecutionCompanionSha256)
       .toBe('121a358459ffed223a41a79570cc5307693eaa89a59b3ad330710c5e2f286959');
     const authority = kit.contracts.find((entry) =>
