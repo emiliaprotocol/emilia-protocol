@@ -1042,12 +1042,16 @@
       "sha256": "568a5bcc7c746c4917175e4438ce7014b78a769f46f935d4db450785cc42ce24"
     },
     {
+      "path": "packages/verify/dist/hostile-text.js",
+      "sha256": "c2a74c7e2e1f37484d0a88f02f94d92ef2969818a280542cfac442769d089758"
+    },
+    {
       "path": "packages/verify/dist/index.js",
-      "sha256": "572e2564abcf8091377ab9373489f012e1750925f58e622c5333f98b4c08990c"
+      "sha256": "2674d8bcb9263291b61d4432b3de31f26e97231ad57036b7daa9c92a55675c9e"
     },
     {
       "path": "packages/verify/dist/initiator-attestation.js",
-      "sha256": "778ff7e6419a66c870466b8ed3aaf2a1f5751518e81a8b1a8b52788fc8565f7b"
+      "sha256": "841b9a1e22ddc8f278a281b9ff1046b2836c6aee659c85feb6e4afbad70b1c38"
     },
     {
       "path": "packages/verify/dist/memory-projection.js",
@@ -1147,7 +1151,7 @@
     },
     {
       "path": "packages/verify/src/index.ts",
-      "sha256": "72115d951002f94a0adc3a4992b2ddc6241ff6d42835b16546258de7217675e0"
+      "sha256": "c5b6731b7d15729ce67e11587adff36dc396b8db41797c9696f001f511e898e4"
     },
     {
       "path": "packages/verify/src/outcome-binding.ts",
