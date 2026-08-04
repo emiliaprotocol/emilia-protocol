@@ -18,8 +18,9 @@ const SPEC_FONT_CLASS = `${jetBrainsMono.className} ${outfit.className} ${spaceG
 export const metadata = {
   // This page renders the posted Internet-Draft. "Internet-Draft", not "RFC" —
   // claiming RFC status for an individual I-D overstates IETF standing.
-  title: 'draft-schrock-ep-authorization-receipts-08 — EMILIA Protocol Specification',
+  title: 'draft-schrock-ep-authorization-receipts-09 — EMILIA Protocol Specification',
   description: 'EMILIA Protocol specification (IETF Internet-Draft) — verifiable human-authorization receipts for high-risk agent actions.',
+  alternates: { canonical: '/spec' },
 };
 
 /**
@@ -91,7 +92,7 @@ function inlineFormat(text: string): string {
 }
 
 export default function SpecPage() {
-  const draftPath = join(process.cwd(), 'standards', 'posted', 'draft-schrock-ep-authorization-receipts-08.xml');
+  const draftPath = join(process.cwd(), 'standards', 'posted', 'draft-schrock-ep-authorization-receipts-09.xml');
   const draft = readFileSync(draftPath, 'utf8');
   const html = mdToHtml(`\`\`\`text\n${draft}\n\`\`\``);
 
@@ -120,15 +121,31 @@ export default function SpecPage() {
         .spec-content td { padding: 8px 12px; border: 1px solid rgba(255,255,255,0.06); color: #7a809a; }
         .spec-content hr { border: none; border-top: 1px solid rgba(255,255,255,0.06); margin: 32px 0; }
         .spec-badge { display: inline-flex; align-items: center; gap: 8px; font-family: 'JetBrains Mono', monospace; font-size: 11px; letter-spacing: 2px; color: #00d4ff; background: rgba(0,212,255,0.08); border: 1px solid rgba(0,212,255,0.15); padding: 8px 16px; border-radius: 100px; margin-bottom: 24px; }
+        .spec-path { display: flex; align-items: center; justify-content: space-between; gap: 16px; flex-wrap: wrap; border-bottom: 1px solid rgba(255,255,255,0.08); padding-bottom: 18px; margin-bottom: 32px; font-family: 'JetBrains Mono', monospace; font-size: 11px; letter-spacing: 0.5px; }
+        .spec-path-current { color: #7a809a; }
+        .spec-summary { max-width: 760px; padding: 18px 20px; margin: 0 0 20px !important; border-left: 3px solid #00d4ff; background: rgba(0,212,255,0.05); color: #a7abbb !important; }
         .spec-footer { margin-top: 64px; text-align: center; font-family: 'JetBrains Mono', monospace; font-size: 10px; color: #4a4f6a; letter-spacing: 1px; }
       `}} />
-      <SiteNav activePage="Spec" />
+      <SiteNav activePage="Protocol" />
       <div className="spec-content">
-        <div className="spec-badge">DRAFT-SCHROCK-EP-AUTHORIZATION-RECEIPTS-08 · IETF INDIVIDUAL SUBMISSION · APACHE 2.0</div>
-        <p style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: 12, color: '#7a809a', marginBottom: 8 }}>Canonical copy on the <a href="https://datatracker.ietf.org/doc/draft-schrock-ep-authorization-receipts/" target="_blank" rel="noopener noreferrer">IETF datatracker</a>. Conformance vectors: <a href="https://github.com/emiliaprotocol/emilia-protocol/blob/main/CONFORMANCE.md" target="_blank" rel="noopener noreferrer">CONFORMANCE.md</a>. Multi-party companion: <a href="https://datatracker.ietf.org/doc/draft-schrock-ep-quorum/" target="_blank" rel="noopener noreferrer">draft-schrock-ep-quorum</a>. Composition companion: <a href="https://datatracker.ietf.org/doc/draft-schrock-ep-authorization-evidence-chain/" target="_blank" rel="noopener noreferrer">draft-schrock-ep-authorization-evidence-chain</a>. Preprint: <a href="https://doi.org/10.5281/zenodo.20780638" target="_blank" rel="noopener noreferrer">Zenodo DOI</a>. Composition layer: <a href="/evidence-chain">Authorization Evidence Chains</a>.</p>
+        <nav className="spec-path" aria-label="Canonical four-document path">
+          <a href="/protocol">← Four-document protocol hub</a>
+          <span className="spec-path-current">Canonical path · 01 of 04</span>
+          <a href="https://datatracker.ietf.org/doc/draft-schrock-human-authorization-binding/" target="_blank" rel="noopener noreferrer">
+            Next: Human Authorization Binding -00 ↗
+          </a>
+        </nav>
+        <div className="spec-badge">DRAFT-SCHROCK-EP-AUTHORIZATION-RECEIPTS-09 · STANDARDS TRACK CANDIDATE · IETF INDIVIDUAL SUBMISSION · APACHE 2.0</div>
+        <p className="spec-summary">
+          Document 01 defines one action-bound organizational approval-evidence profile. Gate can
+          verify that evidence for the exact material action at a protected boundary, but this draft
+          does not by itself establish scoped authority, evidence satisfaction, local authorization,
+          execution, or complete mediation.
+        </p>
+        <p style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: 12, color: '#7a809a', marginBottom: 8 }}>Canonical copy on the <a href="https://datatracker.ietf.org/doc/draft-schrock-ep-authorization-receipts/" target="_blank" rel="noopener noreferrer">IETF datatracker</a>. Conformance vectors: <a href="https://github.com/emiliaprotocol/emilia-protocol/blob/main/CONFORMANCE.md" target="_blank" rel="noopener noreferrer">CONFORMANCE.md</a>. Multi-party companion: <a href="https://datatracker.ietf.org/doc/draft-schrock-ep-quorum/" target="_blank" rel="noopener noreferrer">draft-schrock-ep-quorum</a>. Composition companion: <a href="https://datatracker.ietf.org/doc/draft-schrock-ep-authorization-evidence-chain/" target="_blank" rel="noopener noreferrer">draft-schrock-ep-authorization-evidence-chain</a>. Preprint: <a href="https://doi.org/10.5281/zenodo.20780638" target="_blank" rel="noopener noreferrer">Zenodo DOI</a>. Canonical path: <a href="/protocol">four-document hub</a>.</p>
         <div dangerouslySetInnerHTML={{ __html: html }} />
         <div className="spec-footer">
-          EMILIA Protocol — draft-schrock-ep-authorization-receipts-08 — Apache 2.0 License
+          EMILIA Protocol — draft-schrock-ep-authorization-receipts-09 — Apache 2.0 License
         </div>
       </div>
       <SiteFooter />
