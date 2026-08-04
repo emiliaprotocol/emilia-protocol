@@ -1,6 +1,11 @@
 <!-- SPDX-License-Identifier: Apache-2.0 -->
 # Changelog
 
+## 0.23.10
+
+- Add crash-safe, program-aware provider entry with a caller-prepared invocation token.
+- Preserve bounded-program status, concurrency, occurrence, and budget checks on that path.
+
 All notable changes to `@emilia-protocol/gate` are documented here.
 This package follows [Semantic Versioning](https://semver.org/).
 

@@ -1671,6 +1671,9 @@ export function createMemoryAdmissionStore(options = {}) {
         beginExecutionProgramInvocation(input) {
             return beginInvocationCore(input, true);
         },
+        beginExecutionProgramInvocationWithPreparedToken(input) {
+            return beginInvocationCore(input, true, input.invocation_token);
+        },
         releaseExecutionProgramAdmission(input, reason = 'program_released_before_invocation') {
             return atomic(() => releaseCore(input, reason, true));
         },

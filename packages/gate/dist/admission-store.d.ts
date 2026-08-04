@@ -454,6 +454,12 @@ export interface ExecutionProgramAdmissionStore extends AdmissionStore {
     registerExecutionProgram(artifact: unknown, context: ExecutionProgramRegistrationContext): Promise<ExecutionProgramRegistrationResult>;
     reserveExecutionProgramAdmission(input: ExecutionProgramReserveInput): Promise<ExecutionProgramReserveResult>;
     beginExecutionProgramInvocation(input: AdmissionCas): Promise<AdmissionBeginResult>;
+    /**
+     * Program-aware provider entry using an invocation token durably custodied
+     * before the atomic state transition. This closes the crash window between
+     * consuming bounded authority and persisting the only reconciliation secret.
+     */
+    beginExecutionProgramInvocationWithPreparedToken(input: AdmissionPreparedBeginInput): Promise<AdmissionBeginResult>;
     releaseExecutionProgramAdmission(input: AdmissionCas, reason?: string): Promise<AdmissionTransitionResult>;
     expireExecutionProgramAdmission(input: AdmissionCas): Promise<AdmissionTransitionResult>;
     supersedeExecutionProgram(artifact: unknown, context: ExecutionProgramRegistrationContext): Promise<ExecutionProgramRegistrationResult>;

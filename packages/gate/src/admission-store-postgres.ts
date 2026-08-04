@@ -1281,6 +1281,32 @@ export function createAdmissionPostgresStore(
       );
     },
 
+    async beginExecutionProgramInvocationWithPreparedToken(
+      input: AdmissionPreparedBeginInput,
+    ): Promise<AdmissionBeginResult> {
+      const reference = validateCas(input);
+      assertTenant(reference.tenant_id);
+      const linked = await rpc(
+        'execution program read by admission',
+        ADMISSION_POSTGRES_SQL.readExecutionProgramByAdmission,
+        [deploymentId, tenantId, reference.admission_id],
+      );
+      const program = linked === null ? null : validateExecutionProgramRuntime(
+        linked,
+        'execution program read by admission',
+        tenantId,
+      );
+      const statusPayload = program === null ? null : await programStatusPayload(program);
+      return beginInvocation(
+        input,
+        'execution program begin invocation',
+        ADMISSION_POSTGRES_SQL.beginExecutionProgramInvocation,
+        [statusPayload],
+        verifierRpc,
+        input.invocation_token,
+      );
+    },
+
     async releaseExecutionProgramAdmission(
       input: AdmissionCas,
       reason = 'program_released_before_invocation',

@@ -314,6 +314,32 @@ test('program-linked admissions cannot bypass the program-aware begin or release
   assert.equal(begun.ok, true);
 });
 
+test('program-linked provider entry accepts a token durably prepared before atomic consumption', async () => {
+  const fixture = await register();
+  const value = admissionInput('inspect', 301);
+  const reserved = await fixture.store.reserveExecutionProgramAdmission({
+    program_digest: fixture.registered.program.program_digest,
+    node_id: 'inspect',
+    occurrence_id: 'occurrence:inspect:prepared-token',
+    admission: value,
+  });
+  assert.equal(reserved.ok, true);
+  if (!reserved.ok) return;
+  const invocationToken = `admission-invocation:v2:${Buffer.alloc(32, 31).toString('base64url')}`;
+  const begun = await fixture.store.beginExecutionProgramInvocationWithPreparedToken({
+    tenant_id: value.tenant_id,
+    admission_id: value.admission_id,
+    expected_revision: reserved.record.revision,
+    owner_token: reserved.owner_token,
+    invocation_token: invocationToken,
+  });
+  assert.equal(begun.ok, true);
+  if (!begun.ok) return;
+  assert.equal(begun.invocation_token, invocationToken);
+  assert.equal(begun.record.state, 'INVOKING');
+  assert.deepEqual(await fixture.store.checkInvariants(), { ok: true, violations: [] });
+});
+
 test('a terminal predecessor unlocks its dependent node and consumes budgets at provider entry', async () => {
   const fixture = await register();
   const inspect = admissionInput('inspect', 1);
