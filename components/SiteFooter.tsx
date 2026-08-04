@@ -4,23 +4,23 @@ import { ENTITY } from '@/lib/site-config';
 type FooterLink = [string, string];
 
 const COL_PRODUCT: FooterLink[] = [
-  ['/signal', 'EMILIA Signal'],
   ['/gate', 'EMILIA Gate'],
   ['/gate/live', 'Live Gate'],
-  ['/gate/consequence-coverage', 'Coverage Lab'],
   ['/product/accountable-signoff', 'Approver Apps'],
-  ['/assurance', 'Assurance Plane'],
-  ['/grace', 'GRACE'],
-  ['/model-to-matter', 'Model-to-Matter'],
   ['/pricing', 'Pricing'],
 ];
 
 const COL_SOLUTIONS: FooterLink[] = [
+  ['/use-cases', 'All Solutions'],
+  ['/signal', 'Signal Discovery'],
+  ['/assurance', 'Assurance'],
   ['/mcp', 'MCP Tool Calls'],
   ['/agent-guard', 'Agent Guard Profile'],
   ['/govguard', 'Government Profile'],
   ['/finguard', 'Financial Profile'],
   ['/grace', 'Energy Profile'],
+  ['/model-to-matter', 'Model-to-Matter'],
+  ['/gate/consequence-coverage', 'Coverage Lab'],
   ['/quorum', 'Multi-party Approval'],
 ];
 
