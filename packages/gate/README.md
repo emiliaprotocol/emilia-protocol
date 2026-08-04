@@ -173,14 +173,21 @@ deployment migration, cross-tenant operation, federated atomicity, or managed
 service operation; callers remain responsible for database roles, RPC
 installation, backups, monitoring, and recovery procedures.
 
-If a worker dies after `reserve()` but before `beginInvocation()`, the
-per-operation owner token may be unrecoverable. The store therefore exposes
+For an execution-program admission, a durable orchestrator should create and
+custody an owner capability first, then call
+`reserveExecutionProgramAdmissionWithPreparedOwnerToken()`. Gate atomically
+binds that exact capability to the reservation, closing the process-death
+window between reservation and local custody. The ordinary `reserve()` API
+still creates its owner token internally; if a worker using that path dies
+before custody, the token may be unrecoverable. The store therefore exposes
 `reapExpiredReservation({ tenant_id, admission_id, expected_revision })` and
 the SQL contract exposes `ep_gate_admission_reap_expired`. That dedicated RPC
 has no owner-token argument. It succeeds only after the immutable admission
 deadline, only from `RESERVED / NOT_ENTERED`, and only at the exact revision
-under the admission row lock. It releases non-monotonic resource fences,
-retains the permanent operation head and monotonic counter advance, and appends
+under the admission row lock. For an execution-program admission it also
+atomically releases the occurrence and its reserved program budget. It releases
+non-monotonic resource fences, retains the permanent operation head and
+monotonic counter advance, and appends
 `ABANDONED_BEFORE_INVOCATION` so an unused counter value is explainable.
 Anything at `INVOKING` or later remains frozen for indeterminate recovery and
 cannot be reaped. Grant EXECUTE on the recovery RPC only to a narrowly scoped
@@ -337,15 +344,15 @@ reference vectors, not independent or cross-language conformance evidence.
 
 ### Install the Gate Qualification v2 SQL artifact
 
-Pin the package artifact to `@emilia-protocol/gate@0.23.0` and verify the exact
+Pin the package artifact to `@emilia-protocol/gate@0.23.12` and verify the exact
 shipped migration before applying it. The SHA-256 below identifies this source
 artifact; it is not a statement that the migration is already deployed:
 
 ```bash
 GATE_SQL_PATH=node_modules/@emilia-protocol/gate/sql/gate-qualification-v2.sql
-test "$(node -p "require('./node_modules/@emilia-protocol/gate/package.json').version")" = "0.23.0"
+test "$(node -p "require('./node_modules/@emilia-protocol/gate/package.json').version")" = "0.23.12"
 printf '%s  %s\n' \
-  '96abdf739e845e501efa992e90397384344e5b67af3ffb7b9d4bcb4a0a4d417e' \
+  'e9b55e29c90cf7061bd62a8afd7c97402927e1eeb87649d4a38952a4b08df6b3' \
   "$GATE_SQL_PATH" | shasum -a 256 -c -
 ```
 

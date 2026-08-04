@@ -387,6 +387,9 @@ export interface ExecutionProgramReserveInput {
     admission: AdmissionSnapshotInput | AdmissionSnapshot;
     action_match_evidence?: unknown;
 }
+export interface ExecutionProgramPreparedReserveInput extends ExecutionProgramReserveInput {
+    owner_token: string;
+}
 export type ExecutionProgramRefusalReason = AdmissionRefusalReason | 'program_exists' | 'program_not_found' | 'program_inactive' | 'program_superseded' | 'program_binding_mismatch' | 'program_node_unreachable' | 'program_occurrence_exhausted' | 'program_total_occurrence_exhausted' | 'program_occurrence_conflict' | 'program_budget_exhausted' | 'program_concurrency_exhausted' | 'program_expiration_mismatch' | 'program_suspended' | 'program_revoked' | 'program_status_indeterminate' | 'program_reserved_work_exists' | 'program_supersession_invalid' | 'program_signature_invalid' | 'program_issuer_untrusted' | 'program_schema_invalid' | 'context_binding_required' | 'authorizer_mismatch' | 'program_id_mismatch' | 'tenant_mismatch' | 'authorization_mismatch' | 'audience_mismatch' | 'verification_time_invalid' | 'program_not_active' | 'program_expired';
 export type ExecutionProgramRegistrationResult = {
     ok: true;
@@ -453,6 +456,12 @@ export interface AdmissionStore {
 export interface ExecutionProgramAdmissionStore extends AdmissionStore {
     registerExecutionProgram(artifact: unknown, context: ExecutionProgramRegistrationContext): Promise<ExecutionProgramRegistrationResult>;
     reserveExecutionProgramAdmission(input: ExecutionProgramReserveInput): Promise<ExecutionProgramReserveResult>;
+    /**
+     * Reserves with an owner token the orchestrator durably custodied before the
+     * atomic transition. This closes the process-death window between reservation
+     * and persistence of the only capability that can advance or release it.
+     */
+    reserveExecutionProgramAdmissionWithPreparedOwnerToken(input: ExecutionProgramPreparedReserveInput): Promise<ExecutionProgramReserveResult>;
     beginExecutionProgramInvocation(input: AdmissionCas): Promise<AdmissionBeginResult>;
     /**
      * Program-aware provider entry using an invocation token durably custodied

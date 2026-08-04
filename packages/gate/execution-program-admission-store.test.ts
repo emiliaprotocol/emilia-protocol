@@ -340,6 +340,40 @@ test('program-linked provider entry accepts a token durably prepared before atom
   assert.deepEqual(await fixture.store.checkInvariants(), { ok: true, violations: [] });
 });
 
+test('program-linked reservation accepts an owner token durably prepared before atomic reservation', async () => {
+  const fixture = await register();
+  const value = admissionInput('inspect', 302);
+  const preparedOwnerToken = `admission-owner:v2:${Buffer.alloc(32, 32).toString('base64url')}`;
+  const reserved = await fixture.store.reserveExecutionProgramAdmissionWithPreparedOwnerToken({
+    program_digest: fixture.registered.program.program_digest,
+    node_id: 'inspect',
+    occurrence_id: 'occurrence:inspect:prepared-owner-token',
+    admission: value,
+    owner_token: preparedOwnerToken,
+  });
+  assert.equal(reserved.ok, true);
+  if (!reserved.ok) return;
+  assert.equal(reserved.owner_token, preparedOwnerToken);
+  assert.match(reserved.record.owner_digest, /^sha256:[0-9a-f]{64}$/);
+  assert.notEqual(reserved.record.owner_digest, preparedOwnerToken);
+  const invocationToken = `admission-invocation:v2:${Buffer.alloc(32, 33).toString('base64url')}`;
+  assert.deepEqual(await fixture.store.beginExecutionProgramInvocationWithPreparedToken({
+    tenant_id: value.tenant_id,
+    admission_id: value.admission_id,
+    expected_revision: reserved.record.revision,
+    owner_token: owner(99),
+    invocation_token: invocationToken,
+  }), { ok: false, reason: 'owner_conflict' });
+  const begun = await fixture.store.beginExecutionProgramInvocationWithPreparedToken({
+    tenant_id: value.tenant_id,
+    admission_id: value.admission_id,
+    expected_revision: reserved.record.revision,
+    owner_token: preparedOwnerToken,
+    invocation_token: invocationToken,
+  });
+  assert.equal(begun.ok, true);
+});
+
 test('a terminal predecessor unlocks its dependent node and consumes budgets at provider entry', async () => {
   const fixture = await register();
   const inspect = admissionInput('inspect', 1);
@@ -1178,6 +1212,36 @@ test('admission expiry is capped by program expiry and reserved work can expire 
   assert.ok((await reference.readExecutionProgram({
     tenant_id: 'tenant:alpha',
     program_digest: fixture.registered.program.program_digest,
+  }))?.budgets.every((budget) => budget.reserved === 0 && budget.consumed === 0));
+
+  let reapClock = Date.parse(NOW);
+  const reapReference = store({ now: () => reapClock });
+  const reapFixture = await register(reapReference);
+  const reapInput = extendEvidence(admissionInput('inspect', 64), '2026-07-29T21:00:00.000Z');
+  const reapReservation = await reapReference.reserveExecutionProgramAdmissionWithPreparedOwnerToken({
+    program_digest: reapFixture.registered.program.program_digest,
+    node_id: 'inspect',
+    occurrence_id: 'occurrence:expiry:reap',
+    admission: reapInput,
+    owner_token: owner(64),
+  });
+  assert.equal(reapReservation.ok, true);
+  if (!reapReservation.ok) return;
+  reapClock = Date.parse('2026-07-29T21:00:00.000Z');
+  const reaped = await reapReference.reapExpiredReservation({
+    tenant_id: reapInput.tenant_id,
+    admission_id: reapInput.admission_id,
+    expected_revision: reapReservation.record.revision,
+  });
+  assert.equal(reaped.ok, true);
+  assert.equal((await reapReference.readExecutionProgramOccurrence({
+    tenant_id: 'tenant:alpha',
+    program_digest: reapFixture.registered.program.program_digest,
+    occurrence_id: 'occurrence:expiry:reap',
+  }))?.state, 'RELEASED');
+  assert.ok((await reapReference.readExecutionProgram({
+    tenant_id: 'tenant:alpha',
+    program_digest: reapFixture.registered.program.program_digest,
   }))?.budgets.every((budget) => budget.reserved === 0 && budget.consumed === 0));
 
   let beginClock = Date.parse(NOW);

@@ -1697,8 +1697,34 @@ DECLARE
   v_snapshot jsonb;
   v_now timestamptz;
   v_record jsonb;
+  v_program public.ep_gate_execution_programs%ROWTYPE;
+  v_occurrence public.ep_gate_execution_program_occurrences%ROWTYPE;
+  v_program_bound boolean := false;
 BEGIN
   PERFORM public.ep_gate_assert_binding(p_deployment_id, p_tenant_id);
+  SELECT * INTO v_occurrence
+    FROM public.ep_gate_execution_program_occurrences
+    WHERE deployment_id = p_deployment_id
+      AND tenant_id = p_tenant_id
+      AND admission_id = p_admission_id;
+  IF FOUND THEN
+    v_program_bound := true;
+    SELECT * INTO STRICT v_program
+      FROM public.ep_gate_execution_programs
+      WHERE deployment_id = p_deployment_id
+        AND tenant_id = p_tenant_id
+        AND program_digest = v_occurrence.program_digest
+      FOR UPDATE;
+    SELECT * INTO STRICT v_occurrence
+      FROM public.ep_gate_execution_program_occurrences
+      WHERE deployment_id = p_deployment_id
+        AND tenant_id = p_tenant_id
+        AND admission_id = p_admission_id
+      FOR UPDATE;
+    IF v_occurrence.state <> 'RESERVED' THEN
+      RETURN public.ep_gate_refusal('state_conflict');
+    END IF;
+  END IF;
   v_current := public.ep_gate_load_admission_locked(
     p_deployment_id,
     p_tenant_id,
@@ -1749,6 +1775,24 @@ BEGIN
     'ABANDONED_BEFORE_INVOCATION',
     v_now
   );
+  IF v_program_bound THEN
+    UPDATE public.ep_gate_execution_programs
+      SET budget_state_json = public.ep_gate_execution_program_adjust_budgets(
+        budget_state_json, v_occurrence.charges_json, -1, 0
+      )
+      WHERE deployment_id = p_deployment_id
+        AND tenant_id = p_tenant_id
+        AND program_digest = v_occurrence.program_digest;
+    UPDATE public.ep_gate_execution_program_occurrences
+      SET state = 'RELEASED', updated_at = v_now
+      WHERE deployment_id = p_deployment_id
+        AND tenant_id = p_tenant_id
+        AND admission_id = p_admission_id
+        AND state = 'RESERVED';
+    IF NOT FOUND THEN
+      RAISE EXCEPTION 'execution program occurrence recovery release race';
+    END IF;
+  END IF;
   RETURN jsonb_build_object('ok', true, 'record', v_record);
 END;
 $$;

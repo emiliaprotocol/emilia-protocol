@@ -8,8 +8,8 @@ import { createRequire } from 'node:module';
 import test from 'node:test';
 import { fileURLToPath } from 'node:url';
 import { ADMISSION_POSTGRES_SQL, createAdmissionPostgresStore, } from './admission-store-postgres.js';
-import { executionProgramDigest, signBoundedExecutionProgram, } from './bounded-execution-program.js';
-import { EXECUTION_PROGRAM_REPORT_SNAPSHOT_VERSION, createAdmissionSnapshot, createExecutionProgramAdmissionBinding, executionProgramReportSnapshotMarker, } from './admission-store.js';
+import { executionProgramDigest, signBoundedExecutionProgram, verifyBoundedExecutionProgram, } from './bounded-execution-program.js';
+import { EXECUTION_PROGRAM_RUNTIME_VERSION, EXECUTION_PROGRAM_REPORT_SNAPSHOT_VERSION, createAdmissionSnapshot, createExecutionProgramAdmissionBinding, executionProgramReportSnapshotMarker, } from './admission-store.js';
 const SQL_PATH = fileURLToPath(new URL('./sql/gate-qualification-v2.sql', import.meta.url));
 const README_PATH = fileURLToPath(new URL('./README.md', import.meta.url));
 const DIGEST = `sha256:${'a'.repeat(64)}`;
@@ -20,6 +20,13 @@ function digestOf(label) {
 }
 function caidOf(label) {
     return `caid:1:devops.infrastructure-change.1:jcs-sha256:${crypto.createHash('sha256').update(label).digest('base64url')}`;
+}
+function ownerDigest(token) {
+    return `sha256:${crypto.createHash('sha256')
+        .update('EP-GATE-ADMISSION-RECORD-v2:TOKEN')
+        .update('\0')
+        .update(JSON.stringify(token))
+        .digest('hex')}`;
 }
 function signedProgram() {
     const pair = generateKeyPairSync('ed25519');
@@ -180,7 +187,9 @@ test('PostgreSQL adapter exposes the complete durable execution-program surface'
     for (const method of [
         'registerExecutionProgram',
         'reserveExecutionProgramAdmission',
+        'reserveExecutionProgramAdmissionWithPreparedOwnerToken',
         'beginExecutionProgramInvocation',
+        'beginExecutionProgramInvocationWithPreparedToken',
         'releaseExecutionProgramAdmission',
         'expireExecutionProgramAdmission',
         'supersedeExecutionProgram',
@@ -224,6 +233,80 @@ test('execution-program registration uses only store-owned trust roots and clock
         now: '2000-01-01T00:00:00.000Z',
     }), { ok: false, reason: 'context_binding_required' });
     assert.equal(queryCount, 0);
+});
+test('prepared reservation snapshots the exact owner token before any awaited verifier work', async () => {
+    const { artifact, context, policy } = signedProgram();
+    const verified = verifyBoundedExecutionProgram(artifact, {
+        trusted_keys: Object.fromEntries(Object.entries(policy.trusted_keys).map(([key, value]) => [
+            key,
+            { issuer_id: value.issuer_id, public_key: value.public_key },
+        ])),
+        expected_program_id: context.expected_program_id,
+        expected_tenant_id: context.expected_tenant_id,
+        expected_authorizer_id: 'customer:security',
+        expected_authorization_digest: context.expected_authorization_digest,
+        expected_audience: context.expected_audience,
+        now: NOW,
+    });
+    assert.equal(verified.accepted, true);
+    if (!verified.accepted || !verified.program || !verified.program_digest) {
+        assert.fail(verified.reason);
+    }
+    const runtime = {
+        '@version': EXECUTION_PROGRAM_RUNTIME_VERSION,
+        tenant_id: context.expected_tenant_id,
+        program_id: context.expected_program_id,
+        program_digest: verified.program_digest,
+        version: verified.program.version,
+        status: 'ACTIVE',
+        status_sequence: 0,
+        status_observed_at: NOW,
+        status_expires_at: '2026-07-29T21:00:00.000Z',
+        authorizer_id: 'customer:security',
+        registered_at: NOW,
+        superseded_by_program_digest: null,
+        total_occurrences: 0,
+        budgets: verified.program.budgets.map((budget) => ({
+            ...budget,
+            reserved: 0,
+            consumed: 0,
+        })),
+        program: verified.program,
+    };
+    const verifierCalls = [];
+    const query = async (text) => {
+        assert.equal(text, ADMISSION_POSTGRES_SQL.readExecutionProgram);
+        await Promise.resolve();
+        return { rowCount: 1, rows: [{ result: runtime }] };
+    };
+    const executionProgramVerifierQuery = async (text, params) => {
+        verifierCalls.push({ text, params });
+        return { rowCount: 1, rows: [{ result: { ok: false, reason: 'state_conflict' } }] };
+    };
+    const store = createAdmissionPostgresStore({
+        query,
+        executionProgramVerifierQuery,
+        deploymentId: 'deployment:gate-v2',
+        tenantId: context.expected_tenant_id,
+        now: NOW,
+        executionProgramVerificationPolicy: policy,
+    });
+    const preparedA = `admission-owner:v2:${Buffer.alloc(32, 7).toString('base64url')}`;
+    const substitutedB = `admission-owner:v2:${Buffer.alloc(32, 8).toString('base64url')}`;
+    const input = {
+        program_digest: verified.program_digest,
+        node_id: verified.program.nodes[0].node_id,
+        occurrence_id: 'occurrence:prepared-owner-token',
+        admission: admissionInput('admission:prepared-owner-token', 'operation:prepared-owner-token', Date.parse(NOW), verified.program.nodes[0], context.expected_authorization_digest, verified.program.subject_id),
+        owner_token: preparedA,
+    };
+    const pending = store.reserveExecutionProgramAdmissionWithPreparedOwnerToken(input);
+    input.owner_token = substitutedB;
+    assert.deepEqual(await pending, { ok: false, reason: 'state_conflict' });
+    assert.equal(verifierCalls.length, 1);
+    assert.equal(verifierCalls[0].text, ADMISSION_POSTGRES_SQL.reserveExecutionProgramAdmission);
+    assert.equal(verifierCalls[0].params[7], ownerDigest(preparedA));
+    assert.notEqual(verifierCalls[0].params[7], ownerDigest(substitutedB));
 });
 test('execution-program assertion RPCs require a distinct verifier-service query', async () => {
     const { artifact, context, policy } = signedProgram();
@@ -773,10 +856,15 @@ test('real PostgreSQL proves the complete execution-program lifecycle atomically
             ok: false,
             reason: 'program_required',
         });
-        const begun = await store.beginExecutionProgramInvocation(cas(inspectReserved));
+        const preparedInvocationToken = `admission-invocation:v2:${Buffer.alloc(32, 29).toString('base64url')}`;
+        const begun = await store.beginExecutionProgramInvocationWithPreparedToken({
+            ...cas(inspectReserved),
+            invocation_token: preparedInvocationToken,
+        });
         assert.equal(begun.ok, true);
         if (!begun.ok)
             assert.fail(begun.reason);
+        assert.equal(begun.invocation_token, preparedInvocationToken);
         assert.equal(begun.record.state, 'INVOKING');
         assert.equal((await store.readExecutionProgramOccurrence({
             tenant_id: 'tenant:gate-v2', program_digest: programDigest, occurrence_id: 'occurrence:inspect',

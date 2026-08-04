@@ -46,6 +46,7 @@ import {
   type ExecutionProgramActionMatchExpected,
   type ExecutionProgramActionMatchVerifier,
   type ExecutionProgramOccurrence,
+  type ExecutionProgramPreparedReserveInput,
   type ExecutionProgramReportSnapshot,
   type ExecutionProgramReportSnapshotBody,
   type ExecutionProgramRefusalReason,
@@ -1232,7 +1233,9 @@ export function createAdmissionPostgresStore(
           resource_reservations: [...body.resource_reservations, binding],
         });
       }
-      const generatedOwner = ownerToken(ownerFactory());
+      const generatedOwner = Object.hasOwn(input as object, 'owner_token')
+        ? ownerToken((input as ExecutionProgramPreparedReserveInput).owner_token)
+        : ownerToken(ownerFactory());
       const value = await verifierRpc(
         'execution program admission reserve',
         ADMISSION_POSTGRES_SQL.reserveExecutionProgramAdmission,
@@ -1256,6 +1259,16 @@ export function createAdmissionPostgresStore(
         record: validateRecord(result.record, 'execution program admission reserve', tenantId),
         owner_token: generatedOwner,
       };
+    },
+
+    async reserveExecutionProgramAdmissionWithPreparedOwnerToken(
+      input: ExecutionProgramPreparedReserveInput,
+    ): Promise<ExecutionProgramReserveResult> {
+      const preparedOwnerToken = ownerToken(input.owner_token);
+      return store.reserveExecutionProgramAdmission({
+        ...input,
+        owner_token: preparedOwnerToken,
+      } as ExecutionProgramPreparedReserveInput);
     },
 
     async beginExecutionProgramInvocation(input): Promise<AdmissionBeginResult> {
