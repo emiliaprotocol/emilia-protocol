@@ -50,7 +50,8 @@ const expectedPaths = [
 invariant(manifest.length === expectedPaths.length, 'Checksum manifest must contain exactly three entries');
 for (const [index, relative] of expectedPaths.entries()) {
   const match = /^([a-f0-9]{64})  (.+)$/.exec(manifest[index]);
-  invariant(match && match[2] === relative, `Malformed checksum entry for ${relative}`);
+  invariant(match !== null && match[2] === relative, `Malformed checksum entry for ${relative}`);
+  if (match === null) throw new Error(`Malformed checksum entry for ${relative}`);
   invariant(sha256(readFileSync(new URL(relative, root))) === match[1], `Checksum mismatch for ${relative}`);
 }
 

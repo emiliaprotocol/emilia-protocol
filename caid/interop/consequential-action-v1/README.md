@@ -32,6 +32,15 @@ therefore remains `PARTIAL` to `INDETERMINATE`. Policy epoch and authorization
 audience remain verifier context. This feedback is not validation of the CAID
 harness or broader pack, nor implementation, adoption, or endorsement.
 
+The APS revision -03 entry records narrow author feedback received on
+2026-08-03. APS defines what a native APS record establishes and how it
+verifies. An AEB/AEC relying mechanism must verify the APS artifact under
+those native rules, then independently decide whether the verified artifact
+is accepted and sufficient for its own evidence graph or verdict. Native APS
+verification is not inherited as trust. This is a composition boundary, not
+validation of the CAID harness or broader pack, nor implementation, adoption,
+or endorsement.
+
 ## Why the local action type is not in the public registry
 
 `consequence.invoke.1` is local to this project. It commits to:
