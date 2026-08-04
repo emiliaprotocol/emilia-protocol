@@ -66,6 +66,7 @@ const DEFAULT_SCOPE_ACTIONS = [
   scopedAction('envelope_collision_spend'),
   scopedAction('crash_before_provider_entry', { amount: 10 }),
   scopedAction('post_entry_negative_evidence', { amount: 10 }),
+  scopedAction('unknown_guard_disposition', { amount: 10 }),
 ];
 
 function options(overrides = {}) {
@@ -86,6 +87,7 @@ test('capability stores expose explicit production durability and reconciliation
   const memory = createMemoryCapabilityStore();
   assert.equal(memory.durable, false);
   assert.equal(memory.reconciliationCapable, true);
+  assert.equal(memory.providerEntryDispositionCapable, true);
   assert.equal(isSecureCapabilityStore(memory), false);
 
   const postgres = createPostgresCapabilityStore({
@@ -93,6 +95,7 @@ test('capability stores expose explicit production durability and reconciliation
   });
   assert.equal(postgres.durable, true);
   assert.equal(postgres.reconciliationCapable, true);
+  assert.equal(postgres.providerEntryDispositionCapable, true);
   assert.equal(isSecureCapabilityStore(postgres), true);
 
   const methodsOnly = {
@@ -251,6 +254,11 @@ test('postgres capability operations use a composite namespace and operation key
   assert.match(CAPABILITY_SQL.readActionHolder, /'reserved', 'provider_entered', 'committed'/);
   assert.doesNotMatch(CAPABILITY_SQL.readActionHolder, /'released'/);
   assert.match(CAPABILITY_SQL.readActionHolder, /FOR UPDATE/);
+  assert.match(CAPABILITY_SQL.releaseGuardRefusedOperation, /reservation_token = \$5 AND status = 'reserved'/);
+  assert.match(CAPABILITY_SQL.releaseReservedOperation, /entry_deadline_at <= \$7/);
+  assert.match(CAPABILITY_SQL.releaseReservedOperation, /status = 'reserved'/);
+  assert.doesNotMatch(CAPABILITY_SQL.releaseReservedOperation, /provider_entered/);
+  assert.equal(Object.hasOwn(CAPABILITY_SQL, 'releaseConsumedState'), false);
   assert.match(
     CAPABILITY_STATE_DDL,
     /CREATE UNIQUE INDEX IF NOT EXISTS ep_capability_operations_live_action_uniq\s+ON ep_capability_operations\(operation_namespace, action_fence_digest\)\s+WHERE status IN \('reserved', 'provider_entered', 'committed'\)/,
@@ -1302,7 +1310,39 @@ test('a crash after reserveSpend but before provider entry is recoverable only a
   assert.equal(effects, 0);
 });
 
-test('post-entry release requires deadline-gated action-specific authenticated negative evidence', async () => {
+test('an unknown provider-entry disposition fails closed and holds the reservation', async () => {
+  const keys = issuer();
+  const action = scopedAction('unknown_guard_disposition', { amount: 10 });
+  const minted = mintCapabilityReceipt(keys.receipt, options({ issuerPrivateKey: keys.privateKey }));
+  const store = createMemoryCapabilityStore();
+  assert.equal(store.registerCapability(minted.capabilityReceipt), true);
+  let effects = 0;
+
+  const result = await executeWithCapability({
+    capabilityReceipt: minted.capabilityReceipt,
+    secret: minted.secret,
+    action,
+    operationId: action.operation_id,
+    store,
+    trustedIssuerKeys: [keys.receipt.public_key],
+    verifyBaseReceipt: () => true,
+    providerEntryGuard: async () => ({
+      ok: false,
+      reason: 'organization_suspended',
+      reservation: 'restore',
+    }),
+    executeAction: async () => { effects += 1; },
+    now: NOW,
+  });
+
+  assert.equal(result.reason, 'capability_provider_entry_disposition_invalid');
+  assert.equal(effects, 0);
+  assert.equal(store.getOperation(action.operation_id).status, 'reserved');
+  assert.equal(store.getState(minted.capabilityReceipt.capability.id).consumed_amount, 0);
+  assert.equal(store.getState(minted.capabilityReceipt.capability.id).reserved_amount, 10);
+});
+
+test('negative evidence must be final and fresh before it releases a still-reserved operation', async () => {
   const keys = issuer();
   const action = scopedAction('post_entry_negative_evidence', { amount: 10 });
   const actionDigest = capabilityActionDigest(action);
@@ -1320,21 +1360,6 @@ test('post-entry release requires deadline-gated action-specific authenticated n
     now: NOW,
   });
   assert.equal(reserved.ok, true);
-  assert.equal((await store.beginProviderEntry({
-    capabilityId,
-    operationId: action.operation_id,
-    reservationToken: reserved.reservation_token,
-    now: NOW,
-  })).ok, true);
-  assert.equal(store.getOperation(action.operation_id).status, 'provider_entered');
-  assert.equal(store.getState(capabilityId).reserved_amount, 0);
-  assert.equal(store.getState(capabilityId).consumed_amount, 10);
-  assert.deepEqual(await store.recoverPreEntrySpend({
-    capabilityId,
-    operationId: action.operation_id,
-    actionDigest,
-    now: NOW + 1_000,
-  }), { ok: false, reason: 'capability_provider_entry_recorded' });
 
   const evidenceDigest = `sha256:${'b'.repeat(64)}`;
   const reconcile = (now, verifyEvidence) => reconcileCapabilityOperation({
@@ -1364,13 +1389,22 @@ test('post-entry release requires deadline-gated action-specific authenticated n
     action_digest: context.action_digest,
     evidence_profile: 'urn:test:provider-negative-entry:v1',
     evidence_digest: evidenceDigest,
+    observed_at: new Date(NOW + 1_000).toISOString(),
   });
-  assert.deepEqual(await reconcile(NOW + 999, verifiedNegative), {
-    ok: false,
-    reason: 'capability_recovery_deadline_active',
-  });
+  assert.equal((await reconcile(NOW + 1_000, (_evidence, context) => ({
+    ...verifiedNegative(_evidence, context),
+    final: false,
+  }))).reason, 'capability_reconciliation_evidence_rejected');
+  assert.equal((await reconcile(NOW + 1_000, (_evidence, context) => ({
+    ...verifiedNegative(_evidence, context),
+    final: true,
+    observed_at: new Date(NOW + 999).toISOString(),
+  }))).reason, 'capability_reconciliation_evidence_stale');
 
-  const released = await reconcile(NOW + 1_000, verifiedNegative);
+  const released = await reconcile(NOW + 1_000, (_evidence, context) => ({
+    ...verifiedNegative(_evidence, context),
+    final: true,
+  }));
   assert.deepEqual(released, {
     ok: true,
     outcome: 'not_entered',
@@ -1382,6 +1416,92 @@ test('post-entry release requires deadline-gated action-specific authenticated n
   assert.equal(store.getOperation(action.operation_id).status, 'released');
   assert.equal(store.getOperation(action.operation_id).release_evidence_digest, evidenceDigest);
   assert.equal(store.getState(capabilityId).consumed_amount, 0);
+  assert.equal(store.getState(capabilityId).reserved_amount, 0);
+});
+
+test('final negative evidence after provider entry records the outcome but never restores authority or budget', async () => {
+  const keys = issuer();
+  const action = scopedAction('post_entry_negative_evidence', { amount: 10 });
+  const actionDigest = capabilityActionDigest(action);
+  const minted = mintCapabilityReceipt(keys.receipt, options({ issuerPrivateKey: keys.privateKey }));
+  const store = createMemoryCapabilityStore({ providerEntryTimeoutMs: 1_000 });
+  assert.equal(store.registerCapability(minted.capabilityReceipt), true);
+  const capabilityId = minted.capabilityReceipt.capability.id;
+  const reserved = await store.reserveSpend({
+    capabilityId,
+    capabilityFingerprint: store.getState(capabilityId).capability_fingerprint,
+    operationId: action.operation_id,
+    actionDigest,
+    amount: action.amount,
+    currency: action.currency,
+    now: NOW,
+  });
+  assert.equal(reserved.ok, true);
+  assert.equal((await store.beginProviderEntry({
+    capabilityId,
+    operationId: action.operation_id,
+    reservationToken: reserved.reservation_token,
+    now: NOW,
+  })).ok, true);
+
+  const evidenceDigest = `sha256:${'c'.repeat(64)}`;
+  const reconciled = await reconcileCapabilityOperation({
+    store,
+    capabilityId,
+    operationId: action.operation_id,
+    action,
+    evidence: { provider: 'test', operation_id: action.operation_id },
+    now: NOW + 1_000,
+    verifyEvidence: (_evidence, context) => ({
+      valid: true,
+      authenticated: true,
+      final: true,
+      outcome: 'not_entered',
+      capability_id: context.capability_id,
+      operation_namespace: context.operation_namespace,
+      operation_id: context.operation_id,
+      action_digest: context.action_digest,
+      evidence_profile: 'urn:test:provider-negative-entry:v1',
+      evidence_digest: evidenceDigest,
+      observed_at: new Date(NOW + 1_000).toISOString(),
+    }),
+  });
+  assert.deepEqual(reconciled, {
+    ok: true,
+    outcome: 'not_entered',
+    action_digest: actionDigest,
+    evidence_digest: evidenceDigest,
+    evidence_profile: 'urn:test:provider-negative-entry:v1',
+    idempotent: false,
+  });
+  const operation = store.getOperation(action.operation_id);
+  assert.equal(operation.status, 'committed');
+  assert.equal(operation.outcome, 'indeterminate');
+  assert.equal(operation.reconciliation_outcome, 'not_entered');
+  assert.equal(store.getState(capabilityId).consumed_amount, 10);
+  assert.equal(store.getState(capabilityId).reserved_amount, 0);
+
+  const lateCommit = await store.commitSpend({
+    capabilityId,
+    operationId: action.operation_id,
+    reservationToken: reserved.reservation_token,
+    outcome: 'executed',
+    now: NOW + 1_001,
+  });
+  assert.equal(lateCommit.reason, 'capability_operation_already_finalized');
+  assert.equal(store.getState(capabilityId).consumed_amount, 10);
+
+  const crossRouteReplay = await store.reserveSpend({
+    capabilityId,
+    capabilityFingerprint: store.getState(capabilityId).capability_fingerprint,
+    operationNamespace: capabilityId,
+    operationId: 'alternate-route-operation',
+    actionDigest,
+    amount: action.amount,
+    currency: action.currency,
+    now: NOW + 1_001,
+  });
+  assert.equal(crossRouteReplay.reason, 'action_already_committed');
 
   const blindRetry = await executeWithCapability({
     capabilityReceipt: minted.capabilityReceipt,
@@ -1391,10 +1511,10 @@ test('post-entry release requires deadline-gated action-specific authenticated n
     store,
     trustedIssuerKeys: [keys.receipt.public_key],
     verifyBaseReceipt: () => true,
-    executeAction: async () => assert.fail('released operation must remain replay-fenced'),
+    executeAction: async () => assert.fail('consumed operation must remain replay-fenced'),
     now: NOW + 1_001,
   });
-  assert.equal(blindRetry.reason, 'operation_already_finalized');
+  assert.equal(blindRetry.reason, 'operation_already_committed');
 });
 
 test('capability refuses invalid secret, currency, and unverified base authority', async () => {

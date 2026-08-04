@@ -193,6 +193,57 @@ function currentnessOracle() {
   };
 }
 
+type RemedyRelationOverrides = Partial<{
+  tenant_id: string;
+  admission_id: string;
+  operation_id: string;
+  snapshot_digest: AdmissionSnapshotInput['action_digest'];
+  caid: string;
+  action_digest: AdmissionSnapshotInput['action_digest'];
+}>;
+
+function remedySnapshot(
+  target: AdmissionSnapshotInput,
+  targetSnapshotDigest: AdmissionSnapshotInput['action_digest'],
+  relationOverrides: RemedyRelationOverrides = {},
+): AdmissionSnapshotInput {
+  const relation = {
+    tenant_id: target.tenant_id,
+    admission_id: target.admission_id,
+    operation_id: target.operation_id,
+    snapshot_digest: targetSnapshotDigest,
+    caid: target.caid,
+    action_digest: target.action_digest,
+    ...relationOverrides,
+  };
+  return isolateNonCounterResources(snapshot({
+    tenant_id: target.tenant_id,
+    admission_id: 'admission:remedy',
+    operation_id: 'operation:remedy',
+    caid: caid('remedy'),
+    action_digest: d('remedy-action'),
+    effect_request_digest: d('remedy-effect'),
+    idempotency_key: 'idempotency:remedy',
+    remedy_for: relation,
+  }), 'remedy');
+}
+
+async function beginTarget(
+  store: ReturnType<typeof createMemoryAdmissionStore>,
+  target: AdmissionSnapshotInput,
+) {
+  const reserved = await store.reserve(target);
+  if (!reserved.ok) assert.fail(`target reservation failed: ${reserved.reason}`);
+  const begun = await store.beginInvocation({
+    tenant_id: target.tenant_id,
+    admission_id: target.admission_id,
+    expected_revision: 0,
+    owner_token: reserved.owner_token,
+  });
+  if (!begun.ok) assert.fail(`target invocation failed: ${begun.reason}`);
+  return begun;
+}
+
 test('snapshot is closed, canonical, sorted, immutable and deadline bounded', () => {
   const a = createAdmissionSnapshot(snapshot());
   const b = createAdmissionSnapshot(snapshot({ inputs: [...snapshot().inputs].reverse() }));
@@ -565,19 +616,49 @@ test('ambiguous post-commit crash becomes INDETERMINATE and cannot blind-retry',
   assert.deepEqual(await store.beginInvocation({ tenant_id: value.tenant_id, admission_id: value.admission_id, expected_revision: 2, owner_token: reserved.owner_token }), { ok: false, reason: 'state_conflict' });
 });
 
-test('remedy is a separately admitted action with a new operation and CAID', async () => {
+test('remedy admits only for the exact same-tenant target operation, CAID, and action digest', async () => {
   let n = 1;
   const store = createMemoryAdmissionStore({ now: NOW, ownerTokenFactory: () => owner(n++), currentnessOracle: currentnessOracle() });
   const original = snapshot();
-  const reserved = await store.reserve(original);
-  assert.equal(reserved.ok, true);
-  if (!reserved.ok) return;
-  const begun = await store.beginInvocation({ tenant_id: original.tenant_id, admission_id: original.admission_id, expected_revision: 0, owner_token: reserved.owner_token });
-  assert.equal(begun.ok, true);
-  if (!begun.ok) return;
-  const remedy = snapshot({ admission_id: 'admission:remedy', operation_id: 'operation:remedy', caid: caid('remedy'), action_digest: d('remedy-action'), effect_request_digest: d('remedy-effect'), idempotency_key: 'idempotency:remedy', remedy_for: { tenant_id: original.tenant_id, admission_id: original.admission_id, operation_id: original.operation_id, snapshot_digest: begun.snapshot.snapshot_digest } });
-  remedy.resource_reservations = remedy.resource_reservations.map((resource) => ({ ...resource, resource_id: `${resource.resource_id}:remedy`, reservation_id: `${resource.reservation_id}:remedy`, digest: d(`${resource.digest}:remedy`) }));
-  assert.equal((await store.reserve(remedy)).ok, true);
+  const begun = await beginTarget(store, original);
+  assert.equal((await store.reserve(remedySnapshot(original, begun.snapshot.snapshot_digest))).ok, true);
+});
+
+test('remedy refuses a target from another tenant', async () => {
+  let n = 1;
+  const store = createMemoryAdmissionStore({ now: NOW, ownerTokenFactory: () => owner(n++), currentnessOracle: currentnessOracle() });
+  const target = snapshot({ tenant_id: 'tenant:beta' });
+  const begun = await beginTarget(store, target);
+  const remedy = remedySnapshot(target, begun.snapshot.snapshot_digest, { tenant_id: target.tenant_id });
+  remedy.tenant_id = 'tenant:alpha';
+  assert.deepEqual(await store.reserve(remedy), { ok: false, reason: 'relation_conflict' });
+});
+
+test('remedy refuses a relation that names the wrong target operation', async () => {
+  let n = 1;
+  const store = createMemoryAdmissionStore({ now: NOW, ownerTokenFactory: () => owner(n++), currentnessOracle: currentnessOracle() });
+  const target = snapshot();
+  const begun = await beginTarget(store, target);
+  const remedy = remedySnapshot(target, begun.snapshot.snapshot_digest, { operation_id: 'operation:laundered' });
+  assert.deepEqual(await store.reserve(remedy), { ok: false, reason: 'relation_conflict' });
+});
+
+test('remedy refuses a relation with the wrong expected target CAID', async () => {
+  let n = 1;
+  const store = createMemoryAdmissionStore({ now: NOW, ownerTokenFactory: () => owner(n++), currentnessOracle: currentnessOracle() });
+  const target = snapshot();
+  const begun = await beginTarget(store, target);
+  const remedy = remedySnapshot(target, begun.snapshot.snapshot_digest, { caid: caid('laundered-target') });
+  assert.deepEqual(await store.reserve(remedy), { ok: false, reason: 'relation_conflict' });
+});
+
+test('remedy refuses a relation with the wrong expected target action digest', async () => {
+  let n = 1;
+  const store = createMemoryAdmissionStore({ now: NOW, ownerTokenFactory: () => owner(n++), currentnessOracle: currentnessOracle() });
+  const target = snapshot();
+  const begun = await beginTarget(store, target);
+  const remedy = remedySnapshot(target, begun.snapshot.snapshot_digest, { action_digest: d('laundered-target-action') });
+  assert.deepEqual(await store.reserve(remedy), { ok: false, reason: 'relation_conflict' });
 });
 
 test('CAS owner and revision stop stale writers and journal tampering is detectable', async () => {

@@ -325,6 +325,18 @@
       "types": "./dist/admission-store-postgres.d.ts",
       "import": "./admission-store-postgres.js"
     },
+    "./recovery-admission": {
+      "types": "./dist/recovery-admission.d.ts",
+      "import": "./recovery-admission.js"
+    },
+    "./recovery-admission-postgres": {
+      "types": "./dist/recovery-admission-postgres.d.ts",
+      "import": "./recovery-admission-postgres.js"
+    },
+    "./recovery-admission-remedy": {
+      "types": "./dist/recovery-admission-remedy.d.ts",
+      "import": "./recovery-admission-remedy.js"
+    },
     "./gate-qualification-v2": {
       "types": "./dist/gate-qualification-v2.d.ts",
       "import": "./gate-qualification-v2.js"
@@ -451,6 +463,9 @@
     "bounded-execution-report.js",
     "admission-store.js",
     "admission-store-postgres.js",
+    "recovery-admission.js",
+    "recovery-admission-postgres.js",
+    "recovery-admission-remedy.js",
     "sql/gate-qualification-v2.sql",
     "gate-qualification-v2.js",
     "fido-ap2-bridge.js",
@@ -539,7 +554,7 @@
     "pretest": "npm run build",
     "test": "node --test --test-concurrency=1 && npm run test:qualification",
     "check:allowance-security-test-coverage": "node check-allowance-security-test-coverage.mjs",
-    "test:qualification": "npm run check:allowance-security-test-coverage && tsx --test --test-concurrency=1 allowance.test.ts capability-receipt.test.ts action-fence-runtime-regression.test.ts adapters/stripe.test.ts adapters/github.test.ts adapters/supabase.test.ts admission-store.test.ts admission-store-postgres.test.ts gate-qualification-v2.test.ts bounded-execution-program.test.ts bounded-execution-report.test.ts execution-program-admission-store.test.ts execution-program-admission-store-postgres.test.ts execution-program-runtime-trace-replay.test.ts",
+    "test:qualification": "npm run check:allowance-security-test-coverage && tsx --test --test-concurrency=1 allowance.test.ts capability-receipt.test.ts action-fence-runtime-regression.test.ts adapters/stripe.test.ts adapters/github.test.ts adapters/supabase.test.ts admission-store.test.ts admission-store-postgres.test.ts gate-qualification-v2.test.ts bounded-execution-program.test.ts bounded-execution-report.test.ts execution-program-admission-store.test.ts execution-program-admission-store-postgres.test.ts execution-program-runtime-trace-replay.test.ts recovery-admission.test.ts recovery-admission-postgres.test.ts recovery-admission-remedy.test.ts",
     "demo": "node demo.mjs",
     "eg1": "node eg1.mjs",
     "cf1": "node cf1.mjs"

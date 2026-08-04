@@ -25,7 +25,7 @@ test('provider-entry context is immutable and a throwing guard fails closed', as
     assert.equal(context.checked_at, '2026-08-03T12:00:00.000Z');
     assert.equal(Object.isFrozen(context.observed_action), true);
     assert.throws(() => { context.observed_action.amount = 1; }, TypeError);
-    assert.deepEqual(await evaluateProviderEntryGuard(async () => { throw new Error('status down'); }, context), { ok: false, reason: 'provider_entry_guard_unavailable', status: 503 });
+    assert.deepEqual(await evaluateProviderEntryGuard(async () => { throw new Error('status down'); }, context), { ok: false, reason: 'provider_entry_guard_unavailable', status: 503, reservation: 'hold' });
 });
 test('organization status guard refuses stale, mismatched, unauthenticated, and suspended state', async () => {
     let observation = {

@@ -23,6 +23,7 @@
     "test": "vitest",
     "test:run": "vitest run",
     "demo:receipt-program": "node examples/receipt-program/demo.mjs",
+    "demo:recovery-admission": "node examples/recovery-admission/demo.mjs",
     "test:sync-interop": "node --test examples/scitt/sync-emilia-fixture.test.mjs",
     "ml:selftest": "node --test ml/risk-eval/classifiers/heuristic.selftest.mjs ml/risk-eval/classifiers/tinker.selftest.mjs && python3 ml/train/prepare.selftest.py",
     "ml:eval": "node ml/risk-eval/eval.mjs heuristic --min-perimeter=100",

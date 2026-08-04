@@ -83,6 +83,9 @@ export { PROPOSAL_TO_EFFECT_POSTGRES_DDL, PROPOSAL_TO_EFFECT_POSTGRES_SQL, propo
 export { AEB_PG_CONSUMPTION_STORE_VERSION, AEB_CONSUMPTION_OPERATION_TABLE, AEB_CONSUMPTION_REPLAY_TABLE, AEB_CONSUMPTION_DDL, AEB_CONSUMPTION_SQL, createPostgresAebDurableConsumptionStore, } from './aeb-consumption-store.js';
 export * from './consequence-actuator.js';
 export * from './discovery-permit-resolver.js';
+export * from './recovery-admission.js';
+export * from './recovery-admission-postgres.js';
+export * from './recovery-admission-remedy.js';
 export declare const ASSURANCE_TIERS: string[];
 /**
  * Structurally compare a PRE-COMPUTED admissibility block with a profile hash.
@@ -1021,10 +1024,10 @@ declare const _default: {
         commitOperation: "UPDATE ep_capability_operations SET status = 'committed', outcome = $4, committed_at = $5 WHERE operation_namespace = $1 AND operation_id = $2 AND capability_id = $3 AND status = $7 AND reservation_token = $6";
         reconcileOperation: "UPDATE ep_capability_operations SET reconciliation_outcome = $4, reconciliation_evidence_digest = $5, reconciled_at = $6 WHERE operation_namespace = $1 AND operation_id = $2 AND capability_id = $3 AND status = 'committed' AND outcome = 'indeterminate' AND reconciliation_outcome IS NULL";
         recoverPreEntryOperation: "UPDATE ep_capability_operations SET status = 'released', outcome = 'not_entered', release_reason = 'pre_entry_deadline_elapsed', released_at = $5 WHERE operation_namespace = $1 AND operation_id = $2 AND capability_id = $3 AND action_digest = $4 AND status = 'reserved' AND entry_deadline_at IS NOT NULL AND entry_deadline_at <= $5";
-        releaseEnteredOperation: "UPDATE ep_capability_operations SET status = 'released', outcome = 'not_entered', release_reason = 'authenticated_provider_non_entry', release_evidence_profile = $5, release_evidence_digest = $6, released_at = $7 WHERE operation_namespace = $1 AND operation_id = $2 AND capability_id = $3 AND action_digest = $4 AND entry_deadline_at IS NOT NULL AND entry_deadline_at <= $7 AND (status = 'provider_entered' OR (status = 'committed' AND outcome = 'indeterminate'))";
+        releaseGuardRefusedOperation: "UPDATE ep_capability_operations SET status = 'released', outcome = 'not_entered', release_reason = 'provider_entry_guard_release', released_at = $6 WHERE operation_namespace = $1 AND operation_id = $2 AND capability_id = $3 AND action_digest = $4 AND reservation_token = $5 AND status = 'reserved'";
+        releaseReservedOperation: "UPDATE ep_capability_operations SET status = 'released', outcome = 'not_entered', release_reason = 'authenticated_final_provider_non_entry', release_evidence_profile = $5, release_evidence_digest = $6, released_at = $8 WHERE operation_namespace = $1 AND operation_id = $2 AND capability_id = $3 AND action_digest = $4 AND entry_deadline_at IS NOT NULL AND entry_deadline_at <= $7 AND $7 <= $8 AND status = 'reserved'";
         commitState: "UPDATE ep_capability_state SET reserved_amount = reserved_amount - $2, consumed_amount = consumed_amount + $2 WHERE capability_id = $1 AND reserved_amount >= $2";
         releaseReservedState: "UPDATE ep_capability_state SET reserved_amount = reserved_amount - $2 WHERE capability_id = $1 AND reserved_amount >= $2";
-        releaseConsumedState: "UPDATE ep_capability_state SET consumed_amount = consumed_amount - $2 WHERE capability_id = $1 AND consumed_amount >= $2";
     }>;
     capabilityBaseReceiptDigest: typeof capabilityBaseReceiptDigest;
     capabilityActionDigest: typeof capabilityActionDigest;

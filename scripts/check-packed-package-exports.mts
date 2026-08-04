@@ -56,6 +56,13 @@ type PackageTarget = {
 
 const MODULE_EXTENSIONS = new Set(['.cjs', '.js', '.mjs']);
 const ASSET_EXTENSIONS = new Set(['.json', '.sql', '.wasm']);
+// Declaration/runtime parity is release-gated for new subpaths as they are
+// introduced. Expanding this set requires fixing any older wrapper debt first.
+const DEFAULT_EXPORT_PARITY_SPECIFIERS = new Set([
+  '@emilia-protocol/gate/recovery-admission',
+  '@emilia-protocol/gate/recovery-admission-postgres',
+  '@emilia-protocol/gate/recovery-admission-remedy',
+]);
 
 export function packageTargets(
   name: string,
@@ -114,6 +121,34 @@ export function typedPackageSpecifiers(
     });
 }
 
+function defaultTypedPackageSpecifiers(
+  name: string,
+  directory: string,
+  packageJson: Record<string, any>,
+): string[] {
+  const exportsMap = packageJson.exports;
+  if (!exportsMap || typeof exportsMap !== 'object' || Array.isArray(exportsMap)) {
+    throw new Error(`${name} has no closed package exports map`);
+  }
+  return Object.entries(exportsMap)
+    .filter(([subpath]) => subpath !== './package.json')
+    .sort(([left], [right]) => left.localeCompare(right))
+    .flatMap(([subpath, exportValue]) => {
+      const typesPath = exportValue && typeof exportValue === 'object'
+        && !Array.isArray(exportValue)
+        ? (exportValue as Record<string, unknown>).types
+        : undefined;
+      if (typeof typesPath !== 'string') return [];
+      const declaration = fs.readFileSync(path.join(ROOT, directory, typesPath), 'utf8');
+      const specifier = subpath === '.' ? name : `${name}/${subpath.slice(2)}`;
+      if (!DEFAULT_EXPORT_PARITY_SPECIFIERS.has(specifier)) return [];
+      if (!/\bexport\s+(?:default\b|\{[^}]*\bdefault\b[^}]*\}\s+from\b)/s.test(declaration)) {
+        return [];
+      }
+      return [specifier];
+    });
+}
+
 export function checkPackedPackageExports(): {
   packages: number;
   imports: number;
@@ -125,6 +160,7 @@ export function checkPackedPackageExports(): {
     const tarballs: string[] = [];
     const targets: PackageTarget[] = [];
     const typedSpecifiers: string[] = [];
+    const defaultTypedSpecifiers: string[] = [];
     for (const item of PACKAGES) {
       const packageJson = JSON.parse(fs.readFileSync(
         path.join(ROOT, item.directory, 'package.json'),
@@ -132,6 +168,11 @@ export function checkPackedPackageExports(): {
       ));
       targets.push(...packageTargets(item.name, packageJson));
       typedSpecifiers.push(...typedPackageSpecifiers(item.name, packageJson));
+      defaultTypedSpecifiers.push(...defaultTypedPackageSpecifiers(
+        item.name,
+        item.directory,
+        packageJson,
+      ));
       const report = JSON.parse(run('npm', [
         'pack',
         path.join(ROOT, item.directory),
@@ -195,8 +236,12 @@ export function checkPackedPackageExports(): {
       import { fileURLToPath } from 'node:url';
       const imports = ${JSON.stringify(imports.map(({ specifier }) => specifier))};
       const assets = ${JSON.stringify(assets.map(({ specifier }) => specifier))};
+      const defaults = ${JSON.stringify(defaultTypedSpecifiers)};
       for (const target of imports) {
-        await import(target);
+        const loaded = await import(target);
+        if (defaults.includes(target) && !Object.hasOwn(loaded, 'default')) {
+          throw new Error(target + ' declares a default export but its packed runtime omits it');
+        }
       }
       for (const target of assets) {
         const resolved = import.meta.resolve(target);
@@ -205,7 +250,11 @@ export function checkPackedPackageExports(): {
           throw new Error(target + ' resolved to an empty packaged asset');
         }
       }
-      process.stdout.write(JSON.stringify({imports: imports.length, assets: assets.length}));
+      process.stdout.write(JSON.stringify({
+        imports: imports.length,
+        assets: assets.length,
+        defaults: defaults.length,
+      }));
     `;
     const output = run(process.execPath, [
       '--input-type=module',
@@ -219,8 +268,13 @@ export function checkPackedPackageExports(): {
     if (result.assets !== assets.length) {
       throw new Error('packed export smoke returned an incomplete asset count');
     }
+    if (result.defaults !== defaultTypedSpecifiers.length) {
+      throw new Error('packed export smoke returned an incomplete default-export count');
+    }
     const typeConsumer = typedSpecifiers
       .map((specifier, index) => `import * as package${index} from ${JSON.stringify(specifier)};\nvoid package${index};`)
+      .concat(defaultTypedSpecifiers.map((specifier, index) =>
+        `import defaultPackage${index} from ${JSON.stringify(specifier)};\nvoid defaultPackage${index};`))
       .join('\n');
     fs.writeFileSync(path.join(temporary, 'consumer.ts'), `${typeConsumer}\n`, {
       encoding: 'utf8',

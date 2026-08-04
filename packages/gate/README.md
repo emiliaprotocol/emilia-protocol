@@ -1,9 +1,9 @@
 # @emilia-protocol/gate — EMILIA Gate
 
-**The Consequence Firewall.** Deny-by-default enforcement for consequential machine actions.
+**The Consequence Firewall.** Deny-by-default admission for configured consequential machine actions.
 
-> If an agent cannot produce a valid receipt, it cannot change money, code, permissions, data,
-> infrastructure, energy, or physical state.
+> On an exclusively mediated path, an agent without a valid receipt cannot reach the configured
+> executor for money, code, permissions, data, infrastructure, energy, or physical state.
 
 A guarded action runs **only** if it arrives with a receipt that is **valid** (Ed25519 over
 canonical JSON, signed by a pinned issuer), **in-scope** (bound to the exact action), **sufficiently
@@ -507,6 +507,39 @@ table, schema, or function authority. Remedy case sets use the same custody
 shape through a tenant-bound `ep_remedy_executor` login and
 `ep_remedy_private.tenant_principals`.
 
+## Recovery admission
+
+The experimental `@emilia-protocol/gate/recovery-admission` developer surface binds a relying-party-derived
+recovery class to one exact action, tenant, operation, provider account,
+environment, adapter, resource set, and policy/trust epochs. The presenter
+cannot choose or downgrade that class.
+
+- `LOCAL_ATOMIC` is valid only when every protected mutation stays inside one
+  executor-owned database transaction. The PostgreSQL reference scaffold uses a
+  `SERIALIZABLE` transaction, validates the result, rechecks currentness before
+  commit, consumes the exact ordinary Admission Store reservation before the
+  transaction, and treats commit acknowledgement loss as `INDETERMINATE`.
+- `RESERVED_COMPENSATION` proves only that a separately authorized remedy is
+  currently reserved. The remedy bridge verifies the claimed Remedy Program
+  receipt and reserves the fresh remedy through the existing Admission Store.
+  It never invokes a provider or reopens the original authority. It is a
+  building block; an original-action integration must re-evaluate reservation
+  currentness immediately before provider entry.
+- `IRREVERSIBLE` routes to the ordinary authority policy. It is not automatic
+  retry authority.
+
+Only a still-reserved, demonstrably pre-entry operation may be released. Once
+provider entry may have occurred, a timeout or negative lookup cannot restore
+authority. Compensation is a fresh action and never rewrites the original
+record. The callback markers in the PostgreSQL scaffold document the adapter
+contract; JavaScript cannot sandbox a dishonest callback, so enforceable
+confinement remains a deployment property. Run
+`npm run demo:recovery-admission` from the repository root for the local
+transaction path. See
+[`docs/protocol/recovery-admission-profile-v1.md`](../../docs/protocol/recovery-admission-profile-v1.md)
+and
+[`docs/threat-models/RECOVERY-ADMISSION-V1.md`](../../docs/threat-models/RECOVERY-ADMISSION-V1.md).
+
 ## Three-plane deployment
 
 High-consequence infrastructure separates three jobs instead of asking one
@@ -566,9 +599,9 @@ Each pack also defines `execution_binding.required_fields`. The executor must pa
 fields from the real system of record. If the signed claim and observed mutation differ, the gate
 refuses with `execution_binding_failed` before consuming the receipt.
 
-Execution-parameter binding is therefore a **Gate** guarantee that holds **only when you supply a
-system-of-record `observedAction`**: it is the Gate — not receipt verification on its own — that
-proves the executed parameters matched what was authorized. If a required field is declared but no
+Execution-parameter binding is therefore a **Gate** comparison that holds **only when you supply a
+system-of-record `observedAction`**: Gate can refuse when those observed parameters do not match what
+was authorized, but it does not prove what a provider ultimately executed. If a required field is declared but no
 `observedAction` is provided, the check fails closed (`execution_binding_failed`), never silently
 passes. A bare `@emilia-protocol/require-receipt` gate binds the action type/target only; reach for
 this package when parameter drift (amount, beneficiary, commit, role, …) must be caught.

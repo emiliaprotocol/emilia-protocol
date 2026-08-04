@@ -60,15 +60,22 @@ export async function evaluateProviderEntryGuard(guard, context) {
                     ? Number(result.status)
                     : 409,
                 evidence: cloneFreeze(result.evidence ?? null),
-                reservation: result.reservation === 'burn' || result.reservation === 'hold'
+                reservation: result.reservation === 'release'
+                    || result.reservation === 'burn'
+                    || result.reservation === 'hold'
                     ? result.reservation
-                    : 'release',
+                    : 'hold',
             });
         }
         return Object.freeze({ ok: true, evidence: cloneFreeze(result.evidence ?? null) });
     }
     catch {
-        return Object.freeze({ ok: false, reason: 'provider_entry_guard_unavailable', status: 503 });
+        return Object.freeze({
+            ok: false,
+            reason: 'provider_entry_guard_unavailable',
+            status: 503,
+            reservation: 'hold',
+        });
     }
 }
 /** Compose independent guards without collapsing their evidence or semantics. */

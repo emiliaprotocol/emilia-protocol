@@ -36,7 +36,7 @@ test('provider-entry context is immutable and a throwing guard fails closed', as
   assert.throws(() => { (context.observed_action as any).amount = 1; }, TypeError);
   assert.deepEqual(
     await evaluateProviderEntryGuard(async () => { throw new Error('status down'); }, context),
-    { ok: false, reason: 'provider_entry_guard_unavailable', status: 503 },
+    { ok: false, reason: 'provider_entry_guard_unavailable', status: 503, reservation: 'hold' },
   );
 });
 
